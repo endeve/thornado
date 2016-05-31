@@ -1,0 +1,11 @@
+MODULE KindModule
+
+  IMPLICIT NONE
+  PRIVATE
+
+  INTEGER, PUBLIC, PARAMETER :: &
+    DP = KIND( 1.d0 )
+  REAL(DP), PUBLIC, PARAMETER :: &
+    Pi = ACOS( - 1.0_DP )
+
+END MODULE KindModule
