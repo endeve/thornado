@@ -1,0 +1,4 @@
+include $(THORNADO_DIR)/Build/Makefile_Path
+include $(THORNADO_DIR)/Build/Makefile_Thornado_ObjectFiles
+include $(THORNADO_DIR)/Build/Makefile_Compilers
+include $(THORNADO_DIR)/Build/Makefile_Suffixes
