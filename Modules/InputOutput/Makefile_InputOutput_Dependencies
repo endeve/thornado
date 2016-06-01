@@ -1,0 +1,7 @@
+InputOutputModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  MeshModule.o \
+  FluidFieldsModule.o \
+  InputOutputModule.f90
