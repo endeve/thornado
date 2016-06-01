@@ -1,0 +1,28 @@
+QuadratureModule.o: \
+  KindModule.o \
+  QuadratureModule.f90
+
+UtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.f90
+
+PolynomialBasisModule_Lagrange.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  QuadratureModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule.f90
+
+PolynomialBasisModule_Legendre.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  PolynomialBasisModule_Legendre.f90
+
+PolynomialBasisMappingModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  QuadratureModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.f90
