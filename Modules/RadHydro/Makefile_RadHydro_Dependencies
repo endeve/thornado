@@ -1,0 +1,46 @@
+RiemannSolverModule.o: \
+  KindModule.o \
+  RiemannSolverModule.f90
+
+EulerEquationsUtilitiesModule.o: \
+  KindModule.o \
+  FluidFieldsModule.o \
+  EulerEquationsUtilitiesModule.f90
+
+EulerEquationsSolutionModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  MeshModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  RiemannSolverModule.o \
+  EulerEquationsUtilitiesModule.o \
+  EulerEquationsSolutionModule_DG.f90
+
+EulerEquationsLimiterModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  EulerEquationsUtilitiesModule.o \
+  EulerEquationsLimiterModule_DG.f90
+
+FluidEvolutionModule.o: \
+  EulerEquationsSolutionModule_DG.o \
+  EulerEquationsLimiterModule_DG.o \
+  FluidEvolutionModule.f90
+
+MomentEquationsSolutionModule_M1_DG.o: \
+  MomentEquationsSolutionModule_M1_DG.f90
+
+BoundaryConditionsModule.o: \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.o \
+  BoundaryConditionsModule.f90

@@ -1,0 +1,8 @@
+RAD_HYDRO = \
+  RiemannSolverModule.o \
+  EulerEquationsUtilitiesModule.o \
+  EulerEquationsSolutionModule_DG.o \
+  EulerEquationsLimiterModule_DG.o \
+  FluidEvolutionModule.o \
+  MomentEquationsSolutionModule_M1_DG.o \
+  BoundaryConditionsModule.o
