@@ -1,0 +1,14 @@
+ProgramInitializationModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  QuadratureModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  FluidEvolutionModule.o \
+  RiemannSolverModule.o \
+  TimeSteppingModule.o \
+  ProgramInitializationModule.f90
