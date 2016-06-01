@@ -1,0 +1,6 @@
+EquationOfStateModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.f90
