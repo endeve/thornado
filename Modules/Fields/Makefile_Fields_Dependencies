@@ -1,0 +1,4 @@
+FluidFieldsModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.f90
