@@ -1,0 +1,20 @@
+include ../../../Build/Makefile_Build
+
+all: MeshTest
+
+MeshTest: \
+	$(thornado) MeshTest.o
+	$(FLINKER) $(FLAGS) -o MeshTest_$(MACHINE) \
+	$(thornado) MeshTest.o \
+	$(LIBRARIES)
+
+clean:
+	rm -f *.o *.mod *.ld
+
+clobber: clean
+	rm -f MeshTest_$(MACHINE)
+
+MeshTest.o: \
+  KindModule.o \
+  MeshModule.o \
+  MeshTest.f90
