@@ -128,8 +128,16 @@ CONTAINS
 
                 DO iCF = 1, nCF
 
-                  uCF_L(iCF) &
-                    = evalLX_X1( uCF_P(:,iCF), + 0.5_DP, iNodeX2, iNodeX3 )
+                  uCF_L(iCF) = 0.0_DP
+                  DO jNodeX1 = 1, nNodesX(1)
+
+                    jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+
+                    uCF_L(iCF) &
+                      = uCF_L(iCF) &
+                          + L_X1_R(jNodeX1) * uCF_P(jNodeX,iCF)
+
+                  END DO
 
                 END DO
 
@@ -145,8 +153,16 @@ CONTAINS
 
                 DO iCF = 1, nCF
 
-                  uCF_R(iCF) &
-                    = evalLX_X1( uCF_K(:,iCF), - 0.5_DP, iNodeX2, iNodeX3 )
+                  uCF_R(iCF) = 0.0_DP
+                  DO jNodeX1 = 1, nNodesX(1)
+
+                    jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+
+                    uCF_R(iCF) &
+                      = uCF_R(iCF) &
+                          + L_X1_L(jNodeX1) * uCF_K(jNodeX,iCF)
+
+                  END DO
 
                 END DO
 
@@ -197,8 +213,16 @@ CONTAINS
 
                 DO iCF = 1, nCF
 
-                  uCF_L(iCF) &
-                    = evalLX_X1( uCF_K(:,iCF), + 0.5_DP, iNodeX2, iNodeX3 )
+                  uCF_L(iCF) = 0.0_DP
+                  DO jNodeX1 = 1, nNodesX(1)
+
+                    jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+
+                    uCF_L(iCF) &
+                      = uCF_L(iCF) &
+                          + L_X1_R(jNodeX1) * uCF_K(jNodeX,iCF)
+
+                  END DO
 
                 END DO
 
@@ -214,8 +238,16 @@ CONTAINS
 
                 DO iCF = 1, nCF
 
-                  uCF_R(iCF) &
-                    = evalLX_X1( uCF_N(:,iCF), - 0.5_DP, iNodeX2, iNodeX3 )
+                  uCF_R(iCF) = 0.0_DP
+                  DO jNodeX1 = 1, nNodesX(1)
+
+                    jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+
+                    uCF_R(iCF) &
+                      = uCF_R(iCF) &
+                          + L_X1_L(jNodeX1) * uCF_N(jNodeX,iCF)
+
+                  END DO
 
                 END DO
 
