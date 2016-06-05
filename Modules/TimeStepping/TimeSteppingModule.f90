@@ -228,6 +228,8 @@ CONTAINS
     REAL(DP), DIMENSION(1:nPF) :: uPF_N
     REAL(DP), DIMENSION(1:nAF) :: uAF_N
 
+    dt = HUGE( 1.0_DP )
+
     ASSOCIATE( dX1 => MeshX(1) % Width(1:nX(1)), &
                dX2 => MeshX(2) % Width(1:nX(2)), &
                dX3 => MeshX(3) % Width(1:nX(3)) )

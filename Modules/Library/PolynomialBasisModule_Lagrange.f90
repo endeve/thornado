@@ -258,7 +258,7 @@ CONTAINS
   END FUNCTION evalLX
 
 
-  REAL(DP) FUNCTION evalLX_X1( u, X1, iX2, iX3 )
+  PURE REAL(DP) FUNCTION evalLX_X1( u, X1, iX2, iX3 )
 
     REAL(DP), INTENT(in) :: u(1:nDOFX), X1
     INTEGER,  INTENT(in) :: iX2, iX3

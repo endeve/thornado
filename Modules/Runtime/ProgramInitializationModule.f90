@@ -176,7 +176,7 @@ CONTAINS
     DO iDim = 1, 3
 
       WRITE(*,'(A7,A3,I1,A4,ES8.2E2,A2,A3,I1,A4,&
-                ES8.2E2,A2,A6,I1,A4,ES10.4E2)') &
+                &ES8.2E2,A2,A6,I1,A4,ES10.4E2)') &
         '',   'xL(', iDim, ') = ', xL(iDim), &
         ', ', 'xR(', iDim, ') = ', xR(iDim), &
         ', ', 'ZoomX(', iDim, ') = ', ZoomX(iDim)
