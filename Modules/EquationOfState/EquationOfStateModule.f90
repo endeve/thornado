@@ -16,6 +16,14 @@ MODULE EquationOfStateModule
 
   USE KindModule, ONLY: &
     DP
+  USE UnitsModule, ONLY: &
+    Gram, &
+    Centimeter, &
+    Kelvin, &
+    Dyne, &
+    BoltzmannConstant, &
+    Erg, &
+    MeV
   USE ProgramHeaderModule, ONLY: &
     nX, nDOFX
   USE UtilitiesModule, ONLY: &
@@ -294,47 +302,59 @@ CONTAINS
     CALL MapTo1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_T ), T_1D )
     CALL MapTo1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_Ye), Y_1D )
 
+    ! --- Convert to weaklib units ---
+
+    D_1D = D_1D / ( Gram / Centimeter**3 )
+    T_1D = T_1D / ( Kelvin )
+    Y_1D = Y_1D
+
     ! --- Interpolate Pressure ----------------------------------------
 
     CALL LogInterpolateSingleVariable &
            ( D_1D, T_1D, Y_1D, D_T, T_T, Y_T, Log, OS(iP_T), P_T, TMP )
 
-    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_P ), TMP )
+    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_P ), &
+                    TMP * Dyne / Centimeter**2 )
 
     ! --- Interpolate Entropy Per Baryon ------------------------------
 
     CALL LogInterpolateSingleVariable &
            ( D_1D, T_1D, Y_1D, D_T, T_T, Y_T, Log, OS(iS_T), S_T, TMP )
 
-    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_S ), TMP )
+    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_S ), &
+                    TMP * BoltzmannConstant )
 
     ! --- Interpolate Specific Internal Energy ------------------------
 
     CALL LogInterpolateSingleVariable &
            ( D_1D, T_1D, Y_1D, D_T, T_T, Y_T, Log, OS(iE_T), E_T, TMP )
 
-    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_E ), TMP )
+    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_E ), &
+                    TMP * Erg / Gram )
 
     ! --- Interpolate Electron Chemical Potential ---------------------
 
     CALL LogInterpolateSingleVariable &
            ( D_1D, T_1D, Y_1D, D_T, T_T, Y_T, Log, OS(iMe_T), Me_T, TMP )
 
-    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_Me), TMP )
+    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_Me), &
+                    TMP * MeV )
 
     ! --- Interpolate Proton Chemical Potential -----------------------
 
     CALL LogInterpolateSingleVariable &
            ( D_1D, T_1D, Y_1D, D_T, T_T, Y_T, Log, OS(iMp_T), Mp_T, TMP )
 
-    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_Mp), TMP )
+    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_Mp), &
+                    TMP * MeV )
 
     ! --- Interpolate Neutron Chemical Potential ----------------------
 
     CALL LogInterpolateSingleVariable &
            ( D_1D, T_1D, Y_1D, D_T, T_T, Y_T, Log, OS(iMn_T), Mn_T, TMP )
 
-    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_Mn), TMP )    
+    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_Mn), &
+                    TMP * MeV )
 
     DEALLOCATE( D_1D, T_1D, Y_1D, TMP )
 
