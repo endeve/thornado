@@ -7,6 +7,7 @@ ProgramInitializationModule.o: \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
   FluidFieldsModule.o \
+  RadiationFieldsModule.o \
   EquationOfStateModule.o \
   FluidEvolutionModule.o \
   RiemannSolverModule.o \

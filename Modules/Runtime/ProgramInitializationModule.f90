@@ -25,6 +25,9 @@ MODULE ProgramInitializationModule
   USE FluidFieldsModule, ONLY: &
     CreateFluidFields, &
     DestroyFluidFields
+  USE RadiationFieldsModule, ONLY: &
+    CreateRadiationFields, &
+    DestroyRadiationFields
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
@@ -206,6 +209,8 @@ CONTAINS
 
     CALL CreateFluidFields( nX, swX )
 
+    CALL CreateRadiationFields( nX, swX, nE, swE )
+
     ! --- For Mapping Between Nodal and Modal Representations ---
 
     CALL InitializePolynomialBasisMapping &
@@ -264,6 +269,8 @@ CONTAINS
     ! --- Physical Fields ---
 
     CALL DestroyFluidFields
+
+    CALL DestroyRadiationFields
 
     ! --- Equation of State ---
 
