@@ -2,3 +2,8 @@ FluidFieldsModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   FluidFieldsModule.f90
+
+RadiationFieldsModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  RadiationFieldsModule.f90

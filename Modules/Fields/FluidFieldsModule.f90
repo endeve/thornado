@@ -3,7 +3,7 @@ MODULE FluidFieldsModule
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nNodes, nDOFX
+    nDOFX
 
   IMPLICIT NONE
   PRIVATE
