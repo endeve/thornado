@@ -1,5 +1,6 @@
 VPATH = \
 $(THORNADO_DIR)/Modules/Numbers: \
+$(THORNADO_DIR)/Modules/Units: \
 $(THORNADO_DIR)/Modules/ProgramHeader: \
 $(THORNADO_DIR)/Modules/Library: \
 $(THORNADO_DIR)/Modules/Mesh: \
