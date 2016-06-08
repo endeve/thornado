@@ -1,5 +1,6 @@
 ProgramInitializationModule.o: \
   KindModule.o \
+  UnitsModule.o \
   ProgramHeaderModule.o \
   QuadratureModule.o \
   PolynomialBasisModule_Lagrange.o \

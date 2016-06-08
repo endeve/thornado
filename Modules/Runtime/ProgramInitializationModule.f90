@@ -2,6 +2,9 @@ MODULE ProgramInitializationModule
 
   USE KindModule, ONLY: &
     DP
+  USE UnitsModule, ONLY: &
+    ActivateUnitsDisplay, &
+    DescribeUnitsDisplay
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nX, swX, xL, xR, ZoomX, &
@@ -53,7 +56,7 @@ CONTAINS
   SUBROUTINE InitializeProgram( ProgramName_Option, nX_Option, swX_Option, &
                bcX_Option, xL_Option, xR_Option, zoomX_Option, nE_Option, &
                swE_Option, bcE_Option, eL_Option, eR_Option, zoomE_Option, &
-               nNodes_Option, EquationOfState_Option, &
+               nNodes_Option, ActivateUnits_Option, EquationOfState_Option, &
                EquationOfStateTableName_Option, Gamma_IDEAL_Option, &
                FluidSolver_Option, FluidRiemannSolver_Option, &
                RadiationRiemannSolver_Option, EvolveFluid_Option, &
@@ -73,6 +76,7 @@ CONTAINS
     REAL(DP),               INTENT(in), OPTIONAL :: eR_Option
     REAL(DP),               INTENT(in), OPTIONAL :: zoomE_Option
     INTEGER,                INTENT(in), OPTIONAL :: nNodes_Option
+    LOGICAL,                INTENT(in), OPTIONAL :: ActivateUnits_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: EquationOfState_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: &
       EquationOfStateTableName_Option
@@ -85,6 +89,7 @@ CONTAINS
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveRadiation_Option
     INTEGER,                INTENT(in), OPTIONAL :: nStagesSSPRK_Option
 
+    LOGICAL :: ActivateUnits
     INTEGER :: iDim
 
     CALL InitializeProgramHeader &
@@ -101,6 +106,19 @@ CONTAINS
     WRITE(*,'(A2,A28,A)') &
       '', 'INFO: Initializing Program: ', TRIM( ProgramName )
     WRITE(*,*)
+
+    ! --- Units ---
+
+    ActivateUnits = .FALSE.
+    IF( PRESENT( ActivateUnits_Option ) ) &
+      ActivateUnits = ActivateUnits_Option
+
+    IF( ActivateUnits )THEN
+
+      CALL ActivateUnitsDisplay
+      CALL DescribeUnitsDisplay
+
+    END IF
 
     ! --- Problem Dimensionality ---
 
