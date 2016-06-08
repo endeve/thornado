@@ -197,7 +197,7 @@ CONTAINS
 
     INTEGER :: FUNIT
 
-    OPEN( UNIT = FUNIT, FILE = TRIM( FileName ) )
+    OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
 
     WRITE( FUNIT, * ) N, Vec(1:N)
 
@@ -214,7 +214,7 @@ CONTAINS
 
     INTEGER :: FUNIT
 
-    OPEN( UNIT = FUNIT, FILE = TRIM( FileName ) )
+    OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
 
     WRITE( FUNIT, * ) M, N, Mat(1:M,1:N)
 

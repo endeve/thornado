@@ -13,6 +13,15 @@ if [[ $THORNADO_MACHINE == titan* ]]; then
   module unload pgi gcc cce pathscale
   module unload PrgEnv-pgi PrgEnv-gnu PrgEnv-cray PrgEnv-pathscale PrgEnv-intel
 
+elif [[ $THORNADO_MACHINE == darter* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  module unload fftw cray-hdf5 cray-petsc
+  module unload pgi gcc cce intel
+  module unload PrgEnv-pgi PrgEnv-gnu PrgEnv-cray PrgEnv-intel
+
 elif [[ $THORNADO_MACHINE == sn1987b* ]]; then
 
   echo
@@ -36,6 +45,20 @@ elif [[ $THORNADO_MACHINE == titan_cray ]]; then
   module load PrgEnv-cray
   module load cray-hdf5
   module load subversion
+
+elif [[ $THORNADO_MACHINE == darter_gnu ]]; then
+
+  echo
+
+  module load PrgEnv-gnu
+  module load cray-hdf5
+
+elif [[ $THORNADO_MACHINE == darter_cray ]]; then
+
+  echo
+
+  module load PrgEnv-cray
+  module load cray-hdf5
 
 elif [[ $THORNADO_MACHINE == sn1987b ]]; then
 
