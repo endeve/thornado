@@ -30,9 +30,9 @@ DEBUG             = $(DEBUG_$(MACHINE))
 FLAGS_OPTIMIZE       = $(OPTIMIZE)
 OPTIMIZE_sn1987b     = -O2 -framework Accelerate
 OPTIMIZE_titan_gnu   = -O2
-OPTIMIZE_titan_cray  = -O2
+OPTIMIZE_titan_cray  = 
 OPTIMIZE_darter_gnu  = -O2
-OPTIMIZE_darter_cray = -O2
+OPTIMIZE_darter_cray = 
 OPTIMIZE             = $(OPTIMIZE_$(MACHINE))
 
 INCLUDE_HDF5_sn1987b          = -I/usr/local/Cellar/hdf5/1.8.16_1/include
