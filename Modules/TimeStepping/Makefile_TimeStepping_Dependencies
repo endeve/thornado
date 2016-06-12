@@ -1,5 +1,6 @@
 TimeSteppingModule.o: \
   KindModule.o \
+  UnitsModule.o \
   ProgramHeaderModule.o \
   MeshModule.o \
   FluidFieldsModule.o \
@@ -7,5 +8,6 @@ TimeSteppingModule.o: \
   InputOutputModule.o \
   EulerEquationsUtilitiesModule.o \
   FluidEvolutionModule.o \
+  FluidRadiationCouplingModule.o \
   BoundaryConditionsModule.o \
   TimeSteppingModule.f90

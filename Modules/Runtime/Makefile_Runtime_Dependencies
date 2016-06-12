@@ -10,7 +10,9 @@ ProgramInitializationModule.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   EquationOfStateModule.o \
+  OpacityModule.o \
   FluidEvolutionModule.o \
   RiemannSolverModule.o \
+  FluidRadiationCouplingModule.o \
   TimeSteppingModule.o \
   ProgramInitializationModule.f90

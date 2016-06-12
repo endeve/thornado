@@ -68,6 +68,7 @@ CONTAINS
   SUBROUTINE FinalizeFluidEvolution
 
     NULLIFY( ComputeRHS_Fluid )
+    NULLIFY( ApplySlopeLimiter_Fluid )
     NULLIFY( ApplyPositivityLimiter_Fluid )
 
   END SUBROUTINE FinalizeFluidEvolution

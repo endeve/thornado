@@ -2,6 +2,8 @@ MODULE TimeSteppingModule
 
   USE KindModule, ONLY: &
     DP
+  USE UnitsModule, ONLY: &
+    UnitsDisplay
   USE ProgramHeaderModule, ONLY: &
     nX, nDOFX, nNodes
   USE MeshModule, ONLY: &
@@ -19,6 +21,8 @@ MODULE TimeSteppingModule
     ComputeRHS_Fluid, &
     ApplySlopeLimiter_Fluid, &
     ApplyPositivityLimiter_Fluid
+  USE FluidRadiationCouplingModule, ONLY: &
+    CoupleFluidRadiation
   USE BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Fluid
 
@@ -45,6 +49,7 @@ MODULE TimeSteppingModule
   PUBLIC :: InitializeTimeStepping
   PUBLIC :: FinalizeTimeStepping
   PUBLIC :: EvolveFields
+  PUBLIC :: BackwardEuler
 
 CONTAINS
 
@@ -101,7 +106,8 @@ CONTAINS
   END SUBROUTINE FinalizeTimeStepping
 
 
-  SUBROUTINE EvolveFields( t_begin, t_end, dt_write, UpdateFields )
+  SUBROUTINE EvolveFields &
+               ( t_begin, t_end, dt_write, UpdateFields, dt_fixed_Option )
 
     REAL(DP), INTENT(in) :: t_begin, t_end, dt_write
     INTERFACE
@@ -110,18 +116,30 @@ CONTAINS
         REAL(DP), INTENT(in) :: dt
       END SUBROUTINE UpdateFields
     END INTERFACE
+    REAL(DP), INTENT(in), OPTIONAL :: dt_fixed_Option
 
     LOGICAL  :: WriteOutput = .FALSE.
+    LOGICAL  :: FixedTimeStep
     INTEGER  :: iCycle
-    REAL(DP) :: t, t_write, dt
+    REAL(DP) :: t, t_write, dt, dt_fixed
     REAL(DP), DIMENSION(0:1) :: WallTime
+
+    FixedTimeStep = .FALSE.
+    IF( PRESENT( dt_fixed_Option ) )THEN
+      FixedTimeStep = .TRUE.
+      dt_fixed = dt_fixed_Option
+    END IF
+
+    ASSOCIATE( U => UnitsDisplay )
 
     WRITE(*,*)
     WRITE(*,'(A4,A21)') '', 'INFO: Evolving Fields'
     WRITE(*,*)
-    WRITE(*,'(A6,A10,ES10.4E2,A2,A8,ES10.4E2,A2,A11,ES10.4E2)') &
-      '  ', 't_begin = ', t_begin, ', ', 't_end = ', t_end, &
-      ', ', 'dt_write = ', dt_write
+    WRITE(*,'(A6,A10,ES10.4E2,A1,2A2,A8,ES10.4E2,&
+              &A1,2A2,A11,ES10.4E2,A1,A2)') &
+      '', 't_begin = ',  t_begin  / U % TimeUnit, '', TRIM( U % TimeLabel ), &
+      '', 't_end = ',    t_end    / U % TimeUnit, '', TRIM( U % TimeLabel ), &
+      '', 'dt_write = ', dt_write / U % TimeUnit, '', TRIM( U % TimeLabel )
     WRITE(*,*)
 
     iCycle  = 0
@@ -138,7 +156,11 @@ CONTAINS
 
       iCycle = iCycle + 1
 
-      CALL ComputeTimeStep( dt )
+      IF( FixedTimeStep )THEN
+        dt = dt_fixed
+      ELSE
+        CALL ComputeTimeStep( dt )
+      END IF
 
       IF( t + dt > t_end )THEN
 
@@ -156,8 +178,10 @@ CONTAINS
 
       IF( MOD( iCycle, 100 ) == 0 )THEN
 
-        WRITE(*,'(A8,A8,I8.8,A2,A4,ES10.4E2,A2,A5,ES10.4E2)') &
-          '', 'Cycle = ', iCycle, ' ', 't = ', t, ' ', 'dt = ', dt
+        WRITE(*,'(A8,A8,I8.8,A2,A4,ES10.4E2,A1,A2,A2,A5,ES10.4E2,A1,A2)') &
+          '', 'Cycle = ', iCycle, &
+          '', 't = ', t / U % TimeUnit, '', TRIM( U % TimeLabel ), &
+          '', 'dt = ', dt / U % TimeUnit, '', TRIM( U % TimeLabel )
 
       END IF
 
@@ -178,8 +202,9 @@ CONTAINS
     CALL CPU_TIME( WallTime(1) )
 
     WRITE(*,*)
-    WRITE(*,'(A6,A15,ES10.4E2,A6,I8.8,A7,A4,ES10.4E2,A2)') &
-      '', 'Evolved to t = ', t, ' with ', iCycle, ' cycles', &
+    WRITE(*,'(A6,A15,ES10.4E2,A1,A2,A6,I8.8,A7,A4,ES10.4E2,A2)') &
+      '', 'Evolved to t = ', t / U % TimeUnit, '', TRIM( U % TimeLabel ), &
+      ' with ', iCycle, ' cycles', &
       ' in ', WallTime(1)-WallTime(0), ' s'
     WRITE(*,*)
     WRITE(*,'(A6,A12,ES10.4E2,A2,A12,ES10.4E2,A2,A12,ES10.4E2)') &
@@ -189,6 +214,8 @@ CONTAINS
     WRITE(*,*)
 
     CALL WriteFields1D
+
+    END ASSOCIATE ! U
 
   END SUBROUTINE EvolveFields
 
@@ -471,6 +498,16 @@ CONTAINS
     DEALLOCATE( uCF_0 )
 
   END SUBROUTINE Finalize_SSP_RK
+
+
+  SUBROUTINE BackwardEuler( dt )
+
+    REAL(DP), INTENT(in) :: dt
+
+    CALL CoupleFluidRadiation &
+           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+  END SUBROUTINE BackwardEuler
 
 
 END MODULE TimeSteppingModule

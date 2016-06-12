@@ -34,12 +34,18 @@ MODULE ProgramInitializationModule
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
+  USE OpacityModule, ONLY: &
+    InitializeOpacities, &
+    FinalizeOpacities
   USE FluidEvolutionModule, ONLY: &
     InitializeFluidEvolution, &
     FinalizeFluidEvolution
   USE RiemannSolverModule, ONLY: &
     InitializeRiemannSolvers, &
     FinalizeRiemannSolvers
+  USE FluidRadiationCouplingModule, ONLY: &
+    InitializeFluidRadiationCoupling, &
+    FinalizeFluidRadiationCoupling
   USE TimeSteppingModule, ONLY: &
     InitializeTimeStepping, &
     FinalizeTimeStepping
@@ -58,8 +64,9 @@ CONTAINS
                swE_Option, bcE_Option, eL_Option, eR_Option, zoomE_Option, &
                nNodes_Option, ActivateUnits_Option, EquationOfState_Option, &
                EquationOfStateTableName_Option, Gamma_IDEAL_Option, &
-               FluidSolver_Option, FluidRiemannSolver_Option, &
-               RadiationRiemannSolver_Option, EvolveFluid_Option, &
+               Opacity_Option, OpacityTableName_Option, FluidSolver_Option, &
+               FluidRiemannSolver_Option, RadiationRiemannSolver_Option, &
+               FluidRadiationCoupling_Option, EvolveFluid_Option, &
                EvolveRadiation_Option, nStagesSSPRK_Option )
 
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: ProgramName_Option
@@ -81,10 +88,14 @@ CONTAINS
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: &
       EquationOfStateTableName_Option
     REAL(DP),               INTENT(in), OPTIONAL :: Gamma_IDEAL_Option
+    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: Opacity_Option
+    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: OpacityTableName_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: FluidSolver_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: FluidRiemannSolver_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: &
       RadiationRiemannSolver_Option
+    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: &
+      FluidRadiationCoupling_Option
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveFluid_Option
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveRadiation_Option
     INTEGER,                INTENT(in), OPTIONAL :: nStagesSSPRK_Option
@@ -243,6 +254,12 @@ CONTAINS
                = EquationOfStateTableName_Option, &
              Gamma_IDEAL_Option = Gamma_IDEAL_Option )
 
+    ! --- Opacities ---
+
+    CALL InitializeOpacities &
+           ( Opacity_Option = Opacity_Option, &
+             OpacityTableName_Option = OpacityTableName_Option )
+
     ! --- Fluid Solver ---
 
     CALL InitializeFluidEvolution &
@@ -257,6 +274,11 @@ CONTAINS
                = FluidRiemannSolver_Option, &
              RadiationRiemannSolver_Option &
                = RadiationRiemannSolver_Option )
+
+    ! --- Fluid-Radiation Solver ---
+
+    CALL InitializeFluidRadiationCoupling &
+           ( FluidRadiationCoupling_Option = FluidRadiationCoupling_Option)
 
     ! --- Time Stepping ---
 
@@ -294,6 +316,10 @@ CONTAINS
 
     CALL FinalizeEquationOfState
 
+    ! --- Opacities ---
+
+    CALL FinalizeOpacities
+
     ! --- Fluid Solver ---
 
     CALL FinalizeFluidEvolution
@@ -303,6 +329,10 @@ CONTAINS
     ! --- Riemann Solvers ---
 
     CALL FinalizeRiemannSolvers
+
+    ! --- Fluid-Radiation Solver ---
+
+    CALL FinalizeFluidRadiationCoupling
 
     ! --- Time Stepping ---
 

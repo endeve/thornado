@@ -5,4 +5,7 @@ RAD_HYDRO = \
   EulerEquationsLimiterModule_DG.o \
   FluidEvolutionModule.o \
   MomentEquationsSolutionModule_M1_DG.o \
+  FluidRadiationCouplingUtilitiesModule.o \
+  FluidRadiationCouplingSolutionModule_Implicit.o \
+  FluidRadiationCouplingModule.o \
   BoundaryConditionsModule.o

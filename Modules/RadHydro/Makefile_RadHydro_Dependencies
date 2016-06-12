@@ -40,6 +40,22 @@ FluidEvolutionModule.o: \
 MomentEquationsSolutionModule_M1_DG.o: \
   MomentEquationsSolutionModule_M1_DG.f90
 
+FluidRadiationCouplingUtilitiesModule.o: \
+  FluidRadiationCouplingUtilitiesModule.f90
+
+FluidRadiationCouplingSolutionModule_Implicit.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  FluidRadiationCouplingUtilitiesModule.o \
+  FluidRadiationCouplingSolutionModule_Implicit.f90
+
+FluidRadiationCouplingModule.o: \
+  KindModule.o \
+  FluidRadiationCouplingSolutionModule_Implicit.o \
+  FluidRadiationCouplingModule.f90
+
 BoundaryConditionsModule.o: \
   ProgramHeaderModule.o \
   FluidFieldsModule.o \
