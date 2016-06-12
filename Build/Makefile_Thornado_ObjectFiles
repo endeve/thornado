@@ -5,6 +5,7 @@ include $(THORNADO_DIR)/Modules/Library/Makefile_Library_ObjectFiles
 include $(THORNADO_DIR)/Modules/Mesh/Makefile_Mesh_ObjectFiles
 include $(THORNADO_DIR)/Modules/Fields/Makefile_Fields_ObjectFiles
 include $(THORNADO_DIR)/Modules/EquationOfState/Makefile_EquationOfState_ObjectFiles
+include $(THORNADO_DIR)/Modules/Opacities/Makefile_Opacities_ObjectFiles
 include $(THORNADO_DIR)/Modules/InputOutput/Makefile_InputOutput_ObjectFiles
 include $(THORNADO_DIR)/Modules/RadHydro/Makefile_RadHydro_ObjectFiles
 include $(THORNADO_DIR)/Modules/TimeStepping/Makefile_TimeStepping_ObjectFiles
@@ -12,5 +13,5 @@ include $(THORNADO_DIR)/Modules/Runtime/Makefile_Runtime_ObjectFiles
 
 thornado = \
   $(NUMBERS) $(UNITS) $(PROGRAM_HEADER) $(LIBRARY) $(MESH) $(FIELDS) \
-  $(EQUATION_OF_STATE) $(INPUT_OUTPUT) $(RAD_HYDRO) $(TIME_STEPPING) \
-  $(RUNTIME)
+  $(EQUATION_OF_STATE) $(OPACITIES) $(INPUT_OUTPUT) $(RAD_HYDRO) \
+  $(TIME_STEPPING) $(RUNTIME)
