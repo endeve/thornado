@@ -1,0 +1,3 @@
+OpacityModule.o: \
+  KindModule.o \
+  OpacityModule.f90
