@@ -28,7 +28,8 @@ MODULE UnitsModule
 
   REAL(DP), PUBLIC, PARAMETER :: &
     Second      = SpeedOfLightMKS / SpeedOfLight * Meter, &
-    Millisecond = 1.0e-3_DP * Second
+    Millisecond = 1.0e-3_DP * Second, &
+    Microsecond = 1.0e-6_DP * Second
 
   ! --- Mass ---
 
