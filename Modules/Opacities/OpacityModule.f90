@@ -78,8 +78,6 @@ CONTAINS
 
     END SELECT
 
-    STOP
-
   END SUBROUTINE InitializeOpacities
 
 
