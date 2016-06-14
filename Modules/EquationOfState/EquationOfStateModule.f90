@@ -91,6 +91,7 @@ MODULE EquationOfStateModule
 
   PUBLIC :: InitializeEquationOfState
   PUBLIC :: FinalizeEquationOfState
+  PUBLIC :: ComputeChemicalPotentials_TABLE
 
 CONTAINS
 
@@ -232,7 +233,8 @@ CONTAINS
     Auxiliary_Fluid_IDEAL(iAF_E)  &
       = PF(iPF_E) / PF(iPF_D)
     Auxiliary_Fluid_IDEAL(iAF_Cs) &
-      = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - 1.0_DP ) * PF(iPF_E) / PF(iPF_D) )
+      = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - 1.0_DP ) &
+                * PF(iPF_E) / PF(iPF_D) )
 
     RETURN
   END FUNCTION Auxiliary_Fluid_IDEAL
@@ -363,6 +365,67 @@ CONTAINS
     END ASSOCIATE ! iD_T, etc.
 
   END SUBROUTINE ApplyEquationOfState_TABLE
+
+
+  SUBROUTINE ComputeChemicalPotentials_TABLE( D, T, Y, Me, Mp, Mn )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: Me, Mp, Mn
+
+    REAL(DP), DIMENSION(:), ALLOCATABLE :: TMP
+
+    ALLOCATE( TMP(SIZE( D )) )
+
+    ASSOCIATE &
+      ( iD_T  => EOS % TS % Indices % iRho,                       &
+        iT_T  => EOS % TS % Indices % iT,                         &
+        iY_T  => EOS % TS % Indices % iYe,                        &
+        iMe_T => EOS % DV % Indices % iElectronChemicalPotential, &
+        iMp_T => EOS % DV % Indices % iProtonChemicalPotential,   &
+        iMn_T => EOS % DV % Indices % iNeutronChemicalPotential )
+
+    ASSOCIATE &
+      ( D_T  => EOS % TS % States(iD_T) % Values,     &
+        T_T  => EOS % TS % States(iT_T) % Values,     &
+        Y_T  => EOS % TS % States(iY_T) % Values,     &
+        Log  => EOS % TS % LogInterp,                 &
+        Me_T => EOS % DV % Variables(iMe_T) % Values, &
+        Mp_T => EOS % DV % Variables(iMp_T) % Values, &
+        Mn_T => EOS % DV % Variables(iMn_T) % Values, &
+        OS   => EOS % DV % Offsets )
+
+    ! --- Interpolate Electron Chemical Potential ---------------------
+
+    CALL LogInterpolateSingleVariable &
+           ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, D_T, T_T, Y_T, &
+             Log, OS(iMe_T), Me_T, TMP )
+
+    Me(:) = TMP(:) * MeV
+
+
+    ! --- Interpolate Proton Chemical Potential -----------------------
+
+    CALL LogInterpolateSingleVariable &
+           ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, D_T, T_T, Y_T, &
+             Log, OS(iMp_T), Mp_T, TMP )
+
+    Mp(:) = TMP(:) * MeV
+
+    ! --- Interpolate Neutron Chemical Potential ----------------------
+
+    CALL LogInterpolateSingleVariable &
+           ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, D_T, T_T, Y_T, &
+             Log, OS(iMn_T), Mn_T, TMP )
+
+    Mn(:) = TMP(:) * MeV
+
+    END ASSOCIATE ! D_T, etc.
+
+    END ASSOCIATE ! iD_T, etc.
+
+    DEALLOCATE( TMP )
+
+  END SUBROUTINE ComputeChemicalPotentials_TABLE
 
 
   SUBROUTINE ComputeAuxiliary_Fluid_TABLE( iX_Begin, iX_End )
