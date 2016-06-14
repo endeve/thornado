@@ -40,6 +40,9 @@ MODULE ProgramInitializationModule
   USE FluidEvolutionModule, ONLY: &
     InitializeFluidEvolution, &
     FinalizeFluidEvolution
+  USE RadiationEvolutionModule, ONLY: &
+    InitializeRadiationEvolution, &
+    FinalizeRadiationEvolution
   USE RiemannSolverModule, ONLY: &
     InitializeRiemannSolvers, &
     FinalizeRiemannSolvers
@@ -59,15 +62,16 @@ MODULE ProgramInitializationModule
 CONTAINS
 
 
-  SUBROUTINE InitializeProgram( ProgramName_Option, nX_Option, swX_Option, &
-               bcX_Option, xL_Option, xR_Option, zoomX_Option, nE_Option, &
-               swE_Option, bcE_Option, eL_Option, eR_Option, zoomE_Option, &
-               nNodes_Option, ActivateUnits_Option, EquationOfState_Option, &
-               EquationOfStateTableName_Option, Gamma_IDEAL_Option, &
-               Opacity_Option, OpacityTableName_Option, FluidSolver_Option, &
-               FluidRiemannSolver_Option, RadiationRiemannSolver_Option, &
-               FluidRadiationCoupling_Option, EvolveFluid_Option, &
-               EvolveRadiation_Option, nStagesSSPRK_Option )
+  SUBROUTINE InitializeProgram &
+    ( ProgramName_Option, nX_Option, swX_Option, bcX_Option, xL_Option, &
+      xR_Option, zoomX_Option, nE_Option, swE_Option, bcE_Option, &
+      eL_Option, eR_Option, zoomE_Option, nNodes_Option, &
+      ActivateUnits_Option, EquationOfState_Option, &
+      EquationOfStateTableName_Option, Gamma_IDEAL_Option, Opacity_Option, &
+      OpacityTableName_Option, FluidSolver_Option, RadiationSolver_Option, &
+      FluidRiemannSolver_Option, RadiationRiemannSolver_Option, &
+      FluidRadiationCoupling_Option, EvolveFluid_Option, &
+      EvolveRadiation_Option, nStagesSSPRK_Option )
 
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: ProgramName_Option
     INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: nX_Option
@@ -91,6 +95,7 @@ CONTAINS
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: Opacity_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: OpacityTableName_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: FluidSolver_Option
+    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: RadiationSolver_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: FluidRiemannSolver_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: &
       RadiationRiemannSolver_Option
@@ -267,6 +272,9 @@ CONTAINS
 
     ! --- Radiation Solver ---
 
+    CALL InitializeRadiationEvolution &
+           ( RadiationSolver_Option = RadiationSolver_Option )
+
     ! --- Riemann Solvers ---
 
     CALL InitializeRiemannSolvers &
@@ -278,7 +286,8 @@ CONTAINS
     ! --- Fluid-Radiation Solver ---
 
     CALL InitializeFluidRadiationCoupling &
-           ( FluidRadiationCoupling_Option = FluidRadiationCoupling_Option)
+           ( FluidRadiationCoupling_Option &
+               = FluidRadiationCoupling_Option )
 
     ! --- Time Stepping ---
 
@@ -325,6 +334,8 @@ CONTAINS
     CALL FinalizeFluidEvolution
 
     ! --- Radiation Solver ---
+
+    CALL FinalizeRadiationEvolution
 
     ! --- Riemann Solvers ---
 

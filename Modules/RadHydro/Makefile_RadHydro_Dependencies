@@ -38,7 +38,12 @@ FluidEvolutionModule.o: \
   FluidEvolutionModule.f90
 
 MomentEquationsSolutionModule_M1_DG.o: \
+  KindModule.o \
   MomentEquationsSolutionModule_M1_DG.f90
+
+RadiationEvolutionModule.o: \
+  MomentEquationsSolutionModule_M1_DG.o: \  
+  RadiationEvolutionModule.f90
 
 FluidRadiationCouplingUtilitiesModule.o: \
   FluidRadiationCouplingUtilitiesModule.f90

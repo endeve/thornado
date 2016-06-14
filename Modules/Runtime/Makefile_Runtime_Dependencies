@@ -12,6 +12,7 @@ ProgramInitializationModule.o: \
   EquationOfStateModule.o \
   OpacityModule.o \
   FluidEvolutionModule.o \
+  RadiationEvolutionModule.o \
   RiemannSolverModule.o \
   FluidRadiationCouplingModule.o \
   TimeSteppingModule.o \

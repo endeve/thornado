@@ -21,6 +21,8 @@ MODULE TimeSteppingModule
     ComputeRHS_Fluid, &
     ApplySlopeLimiter_Fluid, &
     ApplyPositivityLimiter_Fluid
+  USE RadiationEvolutionModule, ONLY: &
+    ComputeRHS_Radiation
   USE FluidRadiationCouplingModule, ONLY: &
     CoupleFluidRadiation
   USE BoundaryConditionsModule, ONLY: &
@@ -307,9 +309,9 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: dt
 
-    IF( EvolveFluid )THEN
+    CALL Initialize_SSP_RK
 
-      CALL Initialize_SSP_RK
+    IF( EvolveFluid )THEN
 
       CALL ApplyBoundaryConditions_Fluid
 
@@ -324,9 +326,16 @@ CONTAINS
 
       CALL ApplyPositivityLimiter_Fluid
 
-      CALL Finalize_SSP_RK
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ComputeRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
 
     END IF
+
+    CALL Finalize_SSP_RK
 
   END SUBROUTINE SSP_RK1
 

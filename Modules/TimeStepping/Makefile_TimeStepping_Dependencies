@@ -8,6 +8,7 @@ TimeSteppingModule.o: \
   InputOutputModule.o \
   EulerEquationsUtilitiesModule.o \
   FluidEvolutionModule.o \
+  RadiationEvolutionModule.o \
   FluidRadiationCouplingModule.o \
   BoundaryConditionsModule.o \
   TimeSteppingModule.f90
