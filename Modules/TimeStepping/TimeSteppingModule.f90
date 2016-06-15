@@ -5,11 +5,14 @@ MODULE TimeSteppingModule
   USE UnitsModule, ONLY: &
     UnitsDisplay
   USE ProgramHeaderModule, ONLY: &
-    nX, nDOFX, nNodes
+    nX, nDOFX, nNodes, &
+    nE, nDOF
   USE MeshModule, ONLY: &
     MeshX
   USE FluidFieldsModule, ONLY: &
     uCF, rhsCF, nCF, nPF, nAF, iPF_V1, iPF_V2, iPF_V3, iAF_Cs
+  USE RadiationFieldsModule, ONLY: &
+    uCR, rhsCR, nCR, nSpecies
   USE EquationOfStateModule, ONLY: &
     Auxiliary_Fluid
   USE InputOutputModule, ONLY: &
@@ -26,7 +29,8 @@ MODULE TimeSteppingModule
   USE FluidRadiationCouplingModule, ONLY: &
     CoupleFluidRadiation
   USE BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_Fluid
+    ApplyBoundaryConditions_Fluid, &
+    ApplyBoundaryConditions_Radiation
 
   IMPLICIT NONE
   PRIVATE
@@ -36,7 +40,8 @@ MODULE TimeSteppingModule
   LOGICAL :: EvolveFluid     = .FALSE.
   LOGICAL :: EvolveRadiation = .FALSE.
   INTEGER :: nStagesSSPRK    = 1
-  REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: uCF_0
+  REAL(DP), DIMENSION(:,:,:,:,:),     ALLOCATABLE :: uCF_0
+  REAL(DP), DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE :: uCR_0
 
   PROCEDURE (TimeStepExplicit), POINTER, PUBLIC :: &
     SSP_RK => NULL()
@@ -67,10 +72,14 @@ CONTAINS
     IF( PRESENT( EvolveFluid_Option ) )THEN
       EvolveFluid = EvolveFluid_Option
     END IF
+    WRITE(*,*)
+    WRITE(*,'(A5,A19,L1)') '', 'Evolve Fluid = ', EvolveFluid
 
     IF( PRESENT( EvolveRadiation_Option ) )THEN
       EvolveRadiation = EvolveRadiation_Option
     END IF
+    WRITE(*,'(A5,A19,L1)') '', 'Evolve Radiation = ', EvolveRadiation
+    WRITE(*,*)
 
     IF( PRESENT( nStagesSSPRK_Option ) )THEN
       nStagesSSPRK = nStagesSSPRK_Option
@@ -293,7 +302,7 @@ CONTAINS
       END DO
     END DO
 
-    END ASSOCIATE ! dX1
+    END ASSOCIATE ! dX1, etc.
 
   END SUBROUTINE ComputeTimeStep_Fluid
 
@@ -301,6 +310,37 @@ CONTAINS
   SUBROUTINE ComputeTimeStep_Radiation( dt )
 
     REAL(DP), INTENT(out) :: dt
+
+    INTEGER  :: iX1, iX2, iX3, iNodeX
+    REAL(DP) :: CFL, dt_X1, dt_X2, dt_X3
+
+    dt = HUGE( 1.0_DP )
+
+    ASSOCIATE( dX1 => MeshX(1) % Width(1:nX(1)), &
+               dX2 => MeshX(2) % Width(1:nX(2)), &
+               dX3 => MeshX(3) % Width(1:nX(3)) )
+
+    CFL = 0.2_DP / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) ! For Debugging
+
+    DO iX3 = 1, nX(3)
+
+      dt_X3 = CFL * dX3(iX3)
+
+      DO iX2 = 1, nX(2)
+
+        dt_X2 = CFL * dX2(iX2)
+
+        DO iX1 = 1, nX(1)
+
+          dt_X1 = CFL * dX1(iX1)
+
+          dt = MIN( dt, dt_x1, dt_X2, dt_X3 )
+
+        END DO
+      END DO
+    END DO
+
+    END ASSOCIATE ! dX1, etc.
 
   END SUBROUTINE ComputeTimeStep_Radiation
 
@@ -318,6 +358,21 @@ CONTAINS
       CALL ComputeRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
 
+    END IF
+
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyBoundaryConditions_Radiation
+
+      CALL ComputeRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    END IF
+
+
+    IF( EvolveFluid )THEN
+
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, a = 0.0_DP, b = 1.0_DP )
@@ -328,12 +383,15 @@ CONTAINS
 
     END IF
 
+
     IF( EvolveRadiation )THEN
 
-      CALL ComputeRHS_Radiation &
-             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+      CALL ApplyRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+               dt = dt, a = 0.0_DP, b = 1.0_DP )
 
     END IF
+
 
     CALL Finalize_SSP_RK
 
@@ -346,9 +404,11 @@ CONTAINS
 
     REAL(DP), DIMENSION(0:1) :: WT
 
-    IF( EvolveFluid )THEN
+    CALL Initialize_SSP_RK
 
-      CALL Initialize_SSP_RK
+    ! -- RK Stage 1 --
+
+    IF( EvolveFluid )THEN
 
       CALL ApplyBoundaryConditions_Fluid
 
@@ -359,6 +419,19 @@ CONTAINS
 
       CALL CPU_TIME( WT(1) )
       wtR = wtR + ( WT(1) - WT(0) )
+
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyBoundaryConditions_Radiation
+
+      CALL ComputeRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    END IF
+
+    IF( EvolveFluid )THEN
 
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
@@ -378,6 +451,20 @@ CONTAINS
       CALL CPU_TIME( WT(1) )
       wtP = wtP + ( WT(1) - WT(0) )
 
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+               dt = dt, a = 0.0_DP, b = 1.0_DP )
+
+    END IF
+
+    ! -- RK Stage 2 --
+
+    IF( EvolveFluid )THEN
+
       CALL ApplyBoundaryConditions_Fluid
 
       CALL CPU_TIME( WT(0) )
@@ -387,6 +474,19 @@ CONTAINS
 
       CALL CPU_TIME( WT(1) )
       wtR = wtR + ( WT(1) - WT(0) )
+
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyBoundaryConditions_Radiation
+
+      CALL ComputeRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    END IF
+
+    IF( EvolveFluid )THEN
 
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
@@ -406,9 +506,17 @@ CONTAINS
       CALL CPU_TIME( WT(1) )
       wtP = wtP + ( WT(1) - WT(0) )
 
-      CALL Finalize_SSP_RK
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+               dt = dt, a = 0.5_DP, b = 0.5_DP )
 
     END IF
+
+    CALL Finalize_SSP_RK
 
   END SUBROUTINE SSP_RK2
 
@@ -469,10 +577,23 @@ CONTAINS
 
   SUBROUTINE Initialize_SSP_RK
 
-    ALLOCATE( uCF_0(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF) )
+    IF( EvolveFluid )THEN
 
-    uCF_0(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF) &
-      = uCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF)
+      ALLOCATE( uCF_0(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF) )
+
+      uCF_0(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF) &
+        = uCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF)
+
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      ALLOCATE( uCR_0(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies) )
+
+      uCR_0(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies) &
+        = uCR(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies)
+
+    END IF
 
   END SUBROUTINE Initialize_SSP_RK
 
@@ -502,9 +623,48 @@ CONTAINS
   END SUBROUTINE ApplyRHS_Fluid
 
 
+  SUBROUTINE ApplyRHS_Radiation( iX_Begin, iX_End, dt, a, b )
+
+    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    REAL(DP),              INTENT(in) :: dt, a, b
+
+    INTEGER :: iE, iX1, iX2, iX3, iCR, iS
+
+    DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+        DO iX3 = iX_Begin(3), iX_End(3)
+          DO iX2 = iX_Begin(2), iX_End(2)
+            DO iX1 = iX_Begin(1), iX_End(1)
+              DO iE = 1, nE
+
+                uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
+                  = a * uCR_0(:,iE,iX1,iX2,iX3,iCR,iS) &
+                      + b * ( uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
+                              + dt * rhsCR(:,iE,iX1,iX2,iX3,iCR,iS) )
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE ApplyRHS_Radiation
+
+
   SUBROUTINE Finalize_SSP_RK
 
-    DEALLOCATE( uCF_0 )
+    IF( EvolveFluid )THEN
+
+      DEALLOCATE( uCF_0 )
+
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      DEALLOCATE( uCR_0 )
+
+    END IF
 
   END SUBROUTINE Finalize_SSP_RK
 

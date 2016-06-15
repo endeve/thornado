@@ -4,6 +4,7 @@ TimeSteppingModule.o: \
   ProgramHeaderModule.o \
   MeshModule.o \
   FluidFieldsModule.o \
+  RadiationFieldsModule.o \
   EquationOfStateModule.o \
   InputOutputModule.o \
   EulerEquationsUtilitiesModule.o \
