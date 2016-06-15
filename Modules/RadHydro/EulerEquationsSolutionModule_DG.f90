@@ -7,7 +7,7 @@ MODULE EulerEquationsSolutionModule_DG
   USE UtilitiesModule, ONLY: &
     NodeNumberX
   USE PolynomialBasisModule_Lagrange, ONLY: &
-    evalLX_X1, L_X1, dL_X1
+    L_X1, dL_X1
   USE MeshModule, ONLY: &
     MeshX
   USE FluidFieldsModule, ONLY: &
