@@ -24,7 +24,7 @@ MODULE RadiationFieldsModule
                 'Eulerian Number Flux Density (2)', &
                 'Eulerian Number Flux Density (3)' ]
 
-  REAL(DP), DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: uCR
+  REAL(DP), DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: uCR, rhsCR
 
   ! --- Lagrangian (Primitive) Radiation Fields ---
 
@@ -94,6 +94,14 @@ CONTAINS
                  1-swX(3):nX(3)+swX(3), &
                  1:nCR, 1:nSpecies) )
 
+    ALLOCATE( rhsCR &
+                (1:nDOF, &
+                 1-swE:nE+swE, &
+                 1-swX(1):nX(1)+swX(1), &
+                 1-swX(2):nX(2)+swX(2), &
+                 1-swX(3):nX(3)+swX(3), &
+                 1:nCR, 1:nSpecies) )
+
   END SUBROUTINE CreateRadiationFields_Conserved
 
 
@@ -149,7 +157,7 @@ CONTAINS
 
   SUBROUTINE DestroyRadiationFields
 
-    DEALLOCATE( uCR, uPR, uAR )
+    DEALLOCATE( uCR, rhsCR, uPR, uAR )
 
   END SUBROUTINE DestroyRadiationFields
 
