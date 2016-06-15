@@ -67,10 +67,10 @@ CONTAINS
     END IF
 
     WRITE(*,*)
-    WRITE(*,'(A5,A9,A)') &
-      '', 'Opacity: ', TRIM( Opacity )
-    WRITE(*,'(A5,A9)') &
-      '', '-------- '
+    WRITE(*,'(A5,A11,A)') &
+      '', 'Opacities: ', TRIM( Opacity )
+    WRITE(*,'(A5,A11)') &
+      '', '---------- '
 
     SELECT CASE ( TRIM( Opacity ) )
       CASE( 'IDEAL' )
