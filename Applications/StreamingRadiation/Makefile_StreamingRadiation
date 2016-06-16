@@ -1,0 +1,32 @@
+include ../../../Build/Makefile_Build
+
+all: StreamingSineWave1D
+
+StreamingSineWave1D: \
+	$(thornado) StreamingRadiationInitializationModule.o \
+	StreamingSineWave1D.o
+	$(FLINKER) $(FLAGS) -o StreamingSineWave1D_$(MACHINE) \
+	$(thornado) StreamingRadiationInitializationModule.o \
+	StreamingSineWave1D.o \
+	$(LIBRARIES)
+
+clean:
+	rm -f *.o *.mod *.ld
+
+clobber: clean
+	rm -f StreamingSineWave1D_$(MACHINE)
+
+StreamingSineWave1D.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  StreamingRadiationInitializationModule.o \
+  TimeSteppingModule.o \
+  StreamingSineWave1D.f90
+
+StreamingRadiationInitializationModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  RadiationFieldsModule.o \
+  StreamingRadiationInitializationModule.f90
