@@ -15,14 +15,16 @@ MODULE FluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iCF_S2 = 3  ! Conserved Momentum Density 2
   INTEGER, PUBLIC, PARAMETER :: iCF_S3 = 4  ! Conserved Momentum Density 3
   INTEGER, PUBLIC, PARAMETER :: iCF_E  = 5  ! Conserved Energy Density
-  INTEGER, PUBLIC, PARAMETER :: nCF    = 5  ! n Conserved Fluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iCF_Ne = 6  ! Conserved Electron Density
+  INTEGER, PUBLIC, PARAMETER :: nCF    = 6  ! n Conserved Fluid Fields
 
   CHARACTER(32), DIMENSION(nCF), PUBLIC, PARAMETER :: &
     namesCF = [ 'Conserved Baryon Density        ', &
                 'Conserved Momentum Density (1)  ', &
                 'Conserved Momentum Density (2)  ', &
                 'Conserved Momentum Density (3)  ', &
-                'Conserved Energy Density        ' ]
+                'Conserved Energy Density        ', &
+                'Conserved Electron Density      ' ]
 
   REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: uCF, rhsCF
 
@@ -33,14 +35,16 @@ MODULE FluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iPF_V2 = 3  ! Three-Velocity 2
   INTEGER, PUBLIC, PARAMETER :: iPF_V3 = 4  ! Three-Velocity 3
   INTEGER, PUBLIC, PARAMETER :: iPF_E  = 5  ! Internal Energy Density
-  INTEGER, PUBLIC, PARAMETER :: nPF    = 5  ! n Primitive Fluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iPF_Ne = 6  ! Comoving Electron Density
+  INTEGER, PUBLIC, PARAMETER :: nPF    = 6  ! n Primitive Fluid Fields
 
   CHARACTER(32), DIMENSION(nPF), PUBLIC, PARAMETER :: &
     namesPF = [ 'Comoving Baryon Density         ', &
                 'Three-Velocity (1)              ', &
                 'Three-Velocity (2)              ', &
                 'Three-Velocity (3)              ', &
-                'Internal Energy Density         ' ]
+                'Internal Energy Density         ', &
+                'Comoving Electron Density       ' ]
 
   REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: uPF
 
