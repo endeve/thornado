@@ -360,7 +360,6 @@ CONTAINS
 
     END IF
 
-
     IF( EvolveRadiation )THEN
 
       CALL ApplyBoundaryConditions_Radiation
@@ -369,7 +368,6 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
 
     END IF
-
 
     IF( EvolveFluid )THEN
 
@@ -383,7 +381,6 @@ CONTAINS
 
     END IF
 
-
     IF( EvolveRadiation )THEN
 
       CALL ApplyRHS_Radiation &
@@ -391,7 +388,6 @@ CONTAINS
                dt = dt, a = 0.0_DP, b = 1.0_DP )
 
     END IF
-
 
     CALL Finalize_SSP_RK
 
@@ -525,14 +521,29 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: dt
 
-    IF( EvolveFluid )THEN
+    CALL Initialize_SSP_RK
 
-      CALL Initialize_SSP_RK
+    ! -- RK Stage 1 -- 
+
+    IF( EvolveFluid )THEN
 
       CALL ApplyBoundaryConditions_Fluid
 
       CALL ComputeRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyBoundaryConditions_Radiation
+
+      CALL ComputeRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    END IF
+
+    IF( EvolveFluid )THEN
 
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
@@ -542,10 +553,37 @@ CONTAINS
 
       CALL ApplyPositivityLimiter_Fluid
 
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+               dt = dt, a = 0.0_DP, b = 1.0_DP )
+
+    END IF
+
+    ! -- RK Stage 2 --
+
+    IF( EvolveFluid )THEN
+
       CALL ApplyBoundaryConditions_Fluid
 
       CALL ComputeRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyBoundaryConditions_Radiation
+
+      CALL ComputeRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    END IF
+
+    IF( EvolveFluid )THEN
 
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
@@ -555,10 +593,37 @@ CONTAINS
 
       CALL ApplyPositivityLimiter_Fluid
 
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+               dt = dt, a = 0.75_DP, b = 0.25_DP )
+
+    END IF
+
+    ! -- RK Stage 3 --
+
+    IF( EvolveFluid )THEN
+
       CALL ApplyBoundaryConditions_Fluid
 
       CALL ComputeRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyBoundaryConditions_Radiation
+
+      CALL ComputeRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    END IF
+
+    IF( EvolveFluid )THEN
 
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
@@ -568,9 +633,17 @@ CONTAINS
 
       CALL ApplyPositivityLimiter_Fluid
 
-      CALL Finalize_SSP_RK
+    END IF
 
-    END IF    
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+               dt = dt, a = 1.0_DP / 3.0_DP , b = 2.0_DP / 3.0_DP )
+
+    END IF
+
+    CALL Finalize_SSP_RK
 
   END SUBROUTINE SSP_RK3
 
