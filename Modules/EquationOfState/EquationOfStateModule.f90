@@ -10,7 +10,8 @@ MODULE EquationOfStateModule
   USE wlEquationOfStateTableModule, ONLY: &
     EquationOfStateTableType
   USE wlInterpolationModule, ONLY: &
-    LogInterpolateSingleVariable
+    LogInterpolateSingleVariable, &
+    ComputeTempFromIntEnergy
 
   ! ----------------------------------------------
 
@@ -48,11 +49,36 @@ MODULE EquationOfStateModule
   REAL(DP) :: &
     Gamma_IDEAL &
       = 5.0_DP / 3.0_DP
+  REAL(DP), PARAMETER :: &
+    BaryonMass = 1.66054e-24_DP * Gram ! 1 amu
   TYPE(EquationOfStateTableType) :: &
     EOS
 
   PROCEDURE ( ), POINTER, PUBLIC :: &
     ApplyEquationOfState => NULL()
+
+  INTERFACE
+    SUBROUTINE ComputeThermodynamicStates( IA1, IA2, IA3, OA1, OA2, OA3 )
+      USE KindModule, ONLY: DP
+      REAL(DP), DIMENSION(:), INTENT(in)  :: IA1, IA2, IA3
+      REAL(DP), DIMENSION(:), INTENT(out) :: OA1, OA2, OA3
+    END SUBROUTINE ComputeThermodynamicStates
+  END INTERFACE
+
+  PROCEDURE (ComputeThermodynamicStates), POINTER, PUBLIC :: &
+    ComputeThermodynamicStates_Primitive => NULL(), &
+    ComputeThermodynamicStates_Auxiliary => NULL()
+
+  INTERFACE
+    SUBROUTINE ComputeChemicalPotentialsSubroutine( D, T, Y, Me, Mp, Mn )
+      USE KindModule, ONLY: DP
+      REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
+      REAL(DP), DIMENSION(:), INTENT(out) :: Me, Mp, Mn
+    END SUBROUTINE ComputeChemicalPotentialsSubroutine
+  END INTERFACE
+
+  PROCEDURE (ComputeChemicalPotentialsSubroutine), POINTER, PUBLIC :: &
+    ComputeChemicalPotentials => NULL()
 
   INTERFACE
     SUBROUTINE AuxiliaryEosSubroutine( iB, iE )
@@ -91,7 +117,6 @@ MODULE EquationOfStateModule
 
   PUBLIC :: InitializeEquationOfState
   PUBLIC :: FinalizeEquationOfState
-  PUBLIC :: ComputeChemicalPotentials_TABLE
 
 CONTAINS
 
@@ -127,6 +152,12 @@ CONTAINS
 
         ApplyEquationOfState &
           => ApplyEquationOfState_IDEAL
+        ComputeThermodynamicStates_Primitive &
+          => ComputeThermodynamicStates_Primitive_IDEAL
+        ComputeThermodynamicStates_Auxiliary &
+          => ComputeThermodynamicStates_Auxiliary_IDEAL
+        ComputeChemicalPotentials &
+          => ComputeChemicalPotentials_IDEAL
         ComputeAuxiliary_Fluid &
           => ComputeAuxiliary_Fluid_IDEAL
         Auxiliary_Fluid &
@@ -151,6 +182,12 @@ CONTAINS
 
         ApplyEquationOfState &
           => ApplyEquationOfState_TABLE
+        ComputeThermodynamicStates_Primitive &
+          => ComputeThermodynamicStates_Primitive_TABLE
+        ComputeThermodynamicStates_Auxiliary &
+          => ComputeThermodynamicStates_Auxiliary_TABLE
+        ComputeChemicalPotentials &
+          => ComputeChemicalPotentials_TABLE
         ComputeAuxiliary_Fluid &
           => ComputeAuxiliary_Fluid_TABLE
         Auxiliary_Fluid &
@@ -175,6 +212,9 @@ CONTAINS
   SUBROUTINE FinalizeEquationOfState
 
     NULLIFY( ApplyEquationOfState )
+    NULLIFY( ComputeThermodynamicStates_Primitive )
+    NULLIFY( ComputeThermodynamicStates_Auxiliary )
+    NULLIFY( ComputeChemicalPotentials )
     NULLIFY( ComputeAuxiliary_Fluid )
     NULLIFY( Auxiliary_Fluid )
     NULLIFY( Pressure_Primitive )
@@ -191,6 +231,36 @@ CONTAINS
     WRITE(*,'(A4,A)') '', 'ApplyEquationOfState_IDEAL'
 
   END SUBROUTINE ApplyEquationOfState_IDEAL
+
+
+  SUBROUTINE ComputeThermodynamicStates_Primitive_IDEAL( D, T, Y, Ev, Em, Ne )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: Ev, Em, Ne
+
+    WRITE(*,'(A4,A)') '', 'ComputeThermodynamicStates_Primitive_IDEAL'
+
+  END SUBROUTINE ComputeThermodynamicStates_Primitive_IDEAL
+
+
+  SUBROUTINE ComputeThermodynamicStates_Auxiliary_IDEAL( D, Ev, Ne, T, Em, Y )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), DIMENSION(:), INTENT(out) :: T, Em, Y
+
+    WRITE(*,'(A4,A)') '', 'ComputeThermodynamicStates_Auxiliary_IDEAL'
+
+  END SUBROUTINE ComputeThermodynamicStates_Auxiliary_IDEAL
+
+
+  SUBROUTINE ComputeChemicalPotentials_IDEAL( D, T, Y, Me, Mp, Mn )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: Me, Mp, Mn
+
+    WRITE(*,'(A4,A)') '', 'ComputeChemicalPotentials_IDEAL'
+
+  END SUBROUTINE ComputeChemicalPotentials_IDEAL
 
 
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL( iX_Begin, iX_End )
@@ -367,6 +437,90 @@ CONTAINS
   END SUBROUTINE ApplyEquationOfState_TABLE
 
 
+  SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE( D, T, Y, Ev, Em, Ne )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: Ev, Em, Ne
+
+    REAL(DP), DIMENSION(:), ALLOCATABLE :: TMP
+
+    ALLOCATE( TMP(SIZE( D )) )
+
+    ASSOCIATE &
+      ( iD_T => EOS % TS % Indices % iRho, &
+        iT_T => EOS % TS % Indices % iT,   &
+        iY_T => EOS % TS % Indices % iYe,  &
+        iE_T => EOS % DV % Indices % iInternalEnergyDensity )
+
+    ASSOCIATE &
+      ( D_T  => EOS % TS % States(iD_T) % Values,    &
+        T_T  => EOS % TS % States(iT_T) % Values,    &
+        Y_T  => EOS % TS % States(iY_T) % Values,    &
+        Log  => EOS % TS % LogInterp,                &
+        E_T  => EOS % DV % Variables(iE_T) % Values, &
+        OS   => EOS % DV % Offsets )
+
+    ! --- Interpolate Specific Internal Energy ------------------------
+
+    CALL LogInterpolateSingleVariable &
+           ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, D_T, T_T, Y_T, &
+             Log, OS(iE_T), E_T, TMP )
+
+    Em(:) = TMP(:) * Erg / Gram      ! --- Internal Energy per Mass
+    Ev(:) = Em(:) * D(:)             ! --- Internal Energy per Volume
+    Ne(:) = Y(:) * D(:) / BaryonMass ! --- Electrons per Volume
+
+    END ASSOCIATE ! D_T, etc.
+
+    END ASSOCIATE ! iD_T, etc.
+
+    DEALLOCATE( TMP )
+
+  END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE
+
+
+  SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE( D, Ev, Ne, T, Em, Y )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), DIMENSION(:), INTENT(out) :: T, Em, Y
+
+    INTEGER                :: iS
+    REAL(DP), DIMENSION(1) :: TMP
+
+    ASSOCIATE &
+      ( iD_T => EOS % TS % Indices % iRho, &
+        iT_T => EOS % TS % Indices % iT,   &
+        iY_T => EOS % TS % Indices % iYe,  &
+        iE_T => EOS % DV % Indices % iInternalEnergyDensity )
+
+    ASSOCIATE &
+      ( D_T  => EOS % TS % States(iD_T) % Values,    &
+        T_T  => EOS % TS % States(iT_T) % Values,    &
+        Y_T  => EOS % TS % States(iY_T) % Values,    &
+        Log  => EOS % TS % LogInterp,                &
+        E_T  => EOS % DV % Variables(iE_T) % Values, &
+        OS   => EOS % DV % Offsets )
+
+    Em(:) = Ev(:) / D(:)              ! --- Internal Energy per Mass
+    Y(:)  = Ne(:) / D(:) * BaryonMass ! --- Electron Fraction
+
+    DO iS = 1, SIZE( D )
+
+      CALL ComputeTempFromIntEnergy &
+             ( D(iS) / ( Gram / Centimeter**3 ), Em(iS) / ( Erg / Gram ), &
+               Y(iS), D_T, T_T, Y_T, Log, E_T, OS(iE_T), TMP )
+
+      T(iS) = TMP(1) * Kelvin
+
+    END DO
+
+    END ASSOCIATE ! D_T, etc.
+
+    END ASSOCIATE ! iD_T, etc.
+
+  END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE
+
+
   SUBROUTINE ComputeChemicalPotentials_TABLE( D, T, Y, Me, Mp, Mn )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
@@ -401,7 +555,6 @@ CONTAINS
              Log, OS(iMe_T), Me_T, TMP )
 
     Me(:) = TMP(:) * MeV
-
 
     ! --- Interpolate Proton Chemical Potential -----------------------
 
