@@ -11,6 +11,7 @@ MODULE EquationOfStateModule
     EquationOfStateTableType
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable, &
+    LogInterpolateDifferentiateSingleVariable, &
     ComputeTempFromIntEnergy
 
   ! ----------------------------------------------
@@ -18,6 +19,7 @@ MODULE EquationOfStateModule
   USE KindModule, ONLY: &
     DP
   USE UnitsModule, ONLY: &
+    AtomicMassUnit, &
     Gram, &
     Centimeter, &
     Kelvin, &
@@ -49,10 +51,11 @@ MODULE EquationOfStateModule
   REAL(DP) :: &
     Gamma_IDEAL &
       = 5.0_DP / 3.0_DP
-  REAL(DP), PARAMETER :: &
-    BaryonMass = 1.66054e-24_DP * Gram ! 1 amu
   TYPE(EquationOfStateTableType) :: &
     EOS
+
+  REAL(DP), PUBLIC, PARAMETER :: &
+    BaryonMass = AtomicMassUnit
 
   PROCEDURE ( ), POINTER, PUBLIC :: &
     ApplyEquationOfState => NULL()
@@ -70,7 +73,8 @@ MODULE EquationOfStateModule
     ComputeThermodynamicStates_Auxiliary => NULL()
 
   INTERFACE
-    SUBROUTINE ComputeChemicalPotentialsSubroutine( D, T, Y, Me, Mp, Mn )
+    SUBROUTINE ComputeChemicalPotentialsSubroutine &
+                 ( D, T, Y, Me, Mp, Mn )
       USE KindModule, ONLY: DP
       REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
       REAL(DP), DIMENSION(:), INTENT(out) :: Me, Mp, Mn
@@ -79,6 +83,22 @@ MODULE EquationOfStateModule
 
   PROCEDURE (ComputeChemicalPotentialsSubroutine), POINTER, PUBLIC :: &
     ComputeChemicalPotentials => NULL()
+
+  INTERFACE
+    SUBROUTINE ComputeEquationOfStateVariable( D, T, Y, V, dVdT, dVdY )
+      USE KindModule, ONLY: DP
+      REAL(DP), DIMENSION(:), INTENT(in)            :: D, T, Y
+      REAL(DP), DIMENSION(:), INTENT(out)           :: V
+      REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dVdT
+      REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dVdY
+    END SUBROUTINE ComputeEquationOfStateVariable
+  END INTERFACE
+
+  PROCEDURE (ComputeEquationOfStateVariable), POINTER, PUBLIC :: &
+    ComputeSpecificInternalEnergy    => NULL(), &
+    ComputeElectronChemicalPotential => NULL(), &
+    ComputeProtonChemicalPotential   => NULL(), &
+    ComputeNeutronChemicalPotential  => NULL()
 
   INTERFACE
     SUBROUTINE AuxiliaryEosSubroutine( iB, iE )
@@ -186,8 +206,16 @@ CONTAINS
           => ComputeThermodynamicStates_Primitive_TABLE
         ComputeThermodynamicStates_Auxiliary &
           => ComputeThermodynamicStates_Auxiliary_TABLE
+        ComputeSpecificInternalEnergy &
+          => ComputeSpecificInternalEnergy_TABLE
         ComputeChemicalPotentials &
           => ComputeChemicalPotentials_TABLE
+        ComputeElectronChemicalPotential &
+          => ComputeElectronChemicalPotential_TABLE
+        ComputeProtonChemicalPotential &
+          => ComputeProtonChemicalPotential_TABLE
+        ComputeNeutronChemicalPotential &
+          => ComputeNeutronChemicalPotential_TABLE
         ComputeAuxiliary_Fluid &
           => ComputeAuxiliary_Fluid_TABLE
         Auxiliary_Fluid &
@@ -261,6 +289,36 @@ CONTAINS
     WRITE(*,'(A4,A)') '', 'ComputeChemicalPotentials_IDEAL'
 
   END SUBROUTINE ComputeChemicalPotentials_IDEAL
+
+
+  SUBROUTINE ComputeElectronChemicalPotential_IDEAL( D, T, Y, Me )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: Me
+
+    WRITE(*,'(A4,A)') '', 'ComputeElectronChemicalPotential_IDEAL'
+
+  END SUBROUTINE ComputeElectronChemicalPotential_IDEAL
+
+
+  SUBROUTINE ComputeProtonChemicalPotential_IDEAL( D, T, Y, Mp )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: Mp
+
+    WRITE(*,'(A4,A)') '', 'ComputeProtonChemicalPotential_IDEAL'
+
+  END SUBROUTINE ComputeProtonChemicalPotential_IDEAL
+
+
+  SUBROUTINE ComputeNeutronChemicalPotential_IDEAL( D, T, Y, Mn )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: Mn
+
+    WRITE(*,'(A4,A)') '', 'ComputeNeutronChemicalPotential_IDEAL'
+
+  END SUBROUTINE ComputeNeutronChemicalPotential_IDEAL
 
 
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL( iX_Begin, iX_End )
@@ -453,12 +511,12 @@ CONTAINS
         iE_T => EOS % DV % Indices % iInternalEnergyDensity )
 
     ASSOCIATE &
-      ( D_T  => EOS % TS % States(iD_T) % Values,    &
-        T_T  => EOS % TS % States(iT_T) % Values,    &
-        Y_T  => EOS % TS % States(iY_T) % Values,    &
-        Log  => EOS % TS % LogInterp,                &
-        E_T  => EOS % DV % Variables(iE_T) % Values, &
-        OS   => EOS % DV % Offsets )
+      ( D_T => EOS % TS % States(iD_T) % Values,    &
+        T_T => EOS % TS % States(iT_T) % Values,    &
+        Y_T => EOS % TS % States(iY_T) % Values,    &
+        Log => EOS % TS % LogInterp,                &
+        E_T => EOS % DV % Variables(iE_T) % Values, &
+        OS  => EOS % DV % Offsets )
 
     ! --- Interpolate Specific Internal Energy ------------------------
 
@@ -494,12 +552,12 @@ CONTAINS
         iE_T => EOS % DV % Indices % iInternalEnergyDensity )
 
     ASSOCIATE &
-      ( D_T  => EOS % TS % States(iD_T) % Values,    &
-        T_T  => EOS % TS % States(iT_T) % Values,    &
-        Y_T  => EOS % TS % States(iY_T) % Values,    &
-        Log  => EOS % TS % LogInterp,                &
-        E_T  => EOS % DV % Variables(iE_T) % Values, &
-        OS   => EOS % DV % Offsets )
+      ( D_T => EOS % TS % States(iD_T) % Values,    &
+        T_T => EOS % TS % States(iT_T) % Values,    &
+        Y_T => EOS % TS % States(iY_T) % Values,    &
+        Log => EOS % TS % LogInterp,                &
+        E_T => EOS % DV % Variables(iE_T) % Values, &
+        OS  => EOS % DV % Offsets )
 
     Em(:) = Ev(:) / D(:)              ! --- Internal Energy per Mass
     Y(:)  = Ne(:) / D(:) * BaryonMass ! --- Electron Fraction
@@ -519,6 +577,73 @@ CONTAINS
     END ASSOCIATE ! iD_T, etc.
 
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE
+
+
+  SUBROUTINE ComputeSpecificInternalEnergy_TABLE &
+               ( D, T, Y, E, dEdT_Option, dEdY_Option )
+
+    REAL(DP), DIMENSION(:), INTENT(in)            :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)           :: E
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dEdT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dEdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), DIMENSION(:),   ALLOCATABLE :: TMP
+    REAL(DP), DIMENSION(:,:), ALLOCATABLE :: dTMP
+
+    ComputeDerivatives = .FALSE.
+    IF( ALL( [ PRESENT( dEdT_Option ), PRESENT( dEdY_Option ) ] ) ) &
+      ComputeDerivatives = .TRUE.
+
+    ALLOCATE( TMP(SIZE( D )), dTMP(SIZE( D ), 3) )
+
+    ASSOCIATE &
+      ( iD_T => EOS % TS % Indices % iRho, &
+        iT_T => EOS % TS % Indices % iT,   &
+        iY_T => EOS % TS % Indices % iYe,  &
+        iE_T => EOS % DV % Indices % iInternalEnergyDensity )
+
+    ASSOCIATE &
+      ( D_T => EOS % TS % States(iD_T) % Values,    &
+        T_T => EOS % TS % States(iT_T) % Values,    &
+        Y_T => EOS % TS % States(iY_T) % Values,    &
+        Log => EOS % TS % LogInterp,                &
+        E_T => EOS % DV % Variables(iE_T) % Values, &
+        OS  => EOS % DV % Offsets )
+
+    ! --- Interpolate Specific Internal Energy ------------------------
+
+    IF( ComputeDerivatives )THEN
+
+      CALL LogInterpolateDifferentiateSingleVariable &
+             ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+               D_T, T_T, Y_T, Log, OS(iE_T), E_T, TMP, dTMP )
+
+      E(:) = TMP(:) * Erg / Gram
+
+      dEdT_Option(:) &
+        = dTMP(:,2) * Erg / Gram / Kelvin
+
+      dEdY_Option(:) &
+        = dTMP(:,3) * Erg / Gram
+
+    ELSE
+
+      CALL LogInterpolateSingleVariable &
+             ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+               D_T, T_T, Y_T, Log, OS(iE_T), E_T, TMP )
+
+      E(:) = TMP(:) * Erg / Gram
+
+    END IF
+
+    END ASSOCIATE ! D_T, etc.
+
+    END ASSOCIATE ! iD_T, etc.
+
+    DEALLOCATE( TMP, dTMP )
+
+  END SUBROUTINE ComputeSpecificInternalEnergy_TABLE
 
 
   SUBROUTINE ComputeChemicalPotentials_TABLE( D, T, Y, Me, Mp, Mn )
@@ -579,6 +704,207 @@ CONTAINS
     DEALLOCATE( TMP )
 
   END SUBROUTINE ComputeChemicalPotentials_TABLE
+
+
+  SUBROUTINE ComputeElectronChemicalPotential_TABLE &
+               ( D, T, Y, Me, dMedT_Option, dMedY_Option )
+
+    REAL(DP), DIMENSION(:), INTENT(in)            :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)           :: Me
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMedT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMedY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), DIMENSION(:),   ALLOCATABLE :: TMP
+    REAL(DP), DIMENSION(:,:), ALLOCATABLE :: dTMP
+
+    ComputeDerivatives = .FALSE.
+    IF( ALL( [ PRESENT( dMedT_Option ), PRESENT( dMedY_Option ) ] ) ) &
+      ComputeDerivatives = .TRUE.
+
+    ALLOCATE( TMP(SIZE( D )), dTMP(SIZE( D ), 3) )
+
+    ASSOCIATE &
+      ( iD_T  => EOS % TS % Indices % iRho, &
+        iT_T  => EOS % TS % Indices % iT,   &
+        iY_T  => EOS % TS % Indices % iYe,  &
+        iMe_T => EOS % DV % Indices % iElectronChemicalPotential )
+
+    ASSOCIATE &
+      ( D_T  => EOS % TS % States(iD_T) % Values,     &
+        T_T  => EOS % TS % States(iT_T) % Values,     &
+        Y_T  => EOS % TS % States(iY_T) % Values,     &
+        Log  => EOS % TS % LogInterp,                 &
+        Me_T => EOS % DV % Variables(iMe_T) % Values, &
+        OS   => EOS % DV % Offsets )
+
+    ! --- Interpolate Electron Chemical Potential ---------------------
+
+    IF( ComputeDerivatives )THEN
+
+      CALL LogInterpolateDifferentiateSingleVariable &
+             ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+               D_T, T_T, Y_T, Log, OS(iMe_T), Me_T, TMP, dTMP )
+
+      Me(:) = TMP(:) * MeV
+
+      dMedT_Option(:) &
+        = dTMP(:,2) * MeV / Kelvin
+
+      dMedY_Option(:) &
+        = dTMP(:,3) * MeV
+
+    ELSE
+
+      CALL LogInterpolateSingleVariable &
+             ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+               D_T, T_T, Y_T, Log, OS(iMe_T), Me_T, TMP )
+
+      Me(:) = TMP(:) * MeV
+
+    END IF
+
+    END ASSOCIATE ! D_T, etc.
+
+    END ASSOCIATE ! iD_T, etc.
+
+    DEALLOCATE( TMP, dTMP )
+
+  END SUBROUTINE ComputeElectronChemicalPotential_TABLE
+
+
+  SUBROUTINE ComputeProtonChemicalPotential_TABLE &
+               ( D, T, Y, Mp, dMpdT_Option, dMpdY_Option )
+
+    REAL(DP), DIMENSION(:), INTENT(in)            :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)           :: Mp
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMpdT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMpdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), DIMENSION(:),   ALLOCATABLE :: TMP
+    REAL(DP), DIMENSION(:,:), ALLOCATABLE :: dTMP
+
+    ComputeDerivatives = .FALSE.
+    IF( ALL( [ PRESENT( dMpdT_Option ), PRESENT( dMpdY_Option ) ] ) ) &
+      ComputeDerivatives = .TRUE.
+
+    ALLOCATE( TMP(SIZE( D )), dTMP(SIZE( D ), 3) )
+
+    ASSOCIATE &
+      ( iD_T  => EOS % TS % Indices % iRho, &
+        iT_T  => EOS % TS % Indices % iT,   &
+        iY_T  => EOS % TS % Indices % iYe,  &
+        iMp_T => EOS % DV % Indices % iProtonChemicalPotential )
+
+    ASSOCIATE &
+      ( D_T  => EOS % TS % States(iD_T) % Values,     &
+        T_T  => EOS % TS % States(iT_T) % Values,     &
+        Y_T  => EOS % TS % States(iY_T) % Values,     &
+        Log  => EOS % TS % LogInterp,                 &
+        Mp_T => EOS % DV % Variables(iMp_T) % Values, &
+        OS   => EOS % DV % Offsets )
+
+    ! --- Interpolate Proton Chemical Potential -----------------------
+
+    IF( ComputeDerivatives )THEN
+
+      CALL LogInterpolateDifferentiateSingleVariable &
+             ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+               D_T, T_T, Y_T, Log, OS(iMp_T), Mp_T, TMP, dTMP )
+
+      Mp(:) = TMP(:) * MeV
+
+      dMpdT_Option(:) &
+        = dTMP(:,2) * MeV / Kelvin
+
+      dMpdY_Option(:) &
+        = dTMP(:,3) * MeV
+
+    ELSE
+
+      CALL LogInterpolateSingleVariable &
+             ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+               D_T, T_T, Y_T, Log, OS(iMp_T), Mp_T, TMP )
+
+      Mp(:) = TMP(:) * MeV
+
+    END IF
+
+    END ASSOCIATE ! D_T, etc.
+
+    END ASSOCIATE ! iD_T, etc.
+
+    DEALLOCATE( TMP, dTMP )
+
+  END SUBROUTINE ComputeProtonChemicalPotential_TABLE
+
+
+  SUBROUTINE ComputeNeutronChemicalPotential_TABLE &
+               ( D, T, Y, Mn, dMndT_Option, dMndY_Option )
+
+    REAL(DP), DIMENSION(:), INTENT(in)            :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)           :: Mn
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMndT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMndY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), DIMENSION(:), ALLOCATABLE   :: TMP
+    REAL(DP), DIMENSION(:,:), ALLOCATABLE :: dTMP
+
+    ComputeDerivatives = .FALSE.
+    IF( ALL( [ PRESENT( dMndT_Option ), PRESENT( dMndY_Option ) ] ) ) &
+      ComputeDerivatives = .TRUE.
+
+    ALLOCATE( TMP(SIZE( D )), dTMP(SIZE( D ), 3) )
+
+    ASSOCIATE &
+      ( iD_T  => EOS % TS % Indices % iRho, &
+        iT_T  => EOS % TS % Indices % iT,   &
+        iY_T  => EOS % TS % Indices % iYe,  &
+        iMn_T => EOS % DV % Indices % iNeutronChemicalPotential )
+
+    ASSOCIATE &
+      ( D_T  => EOS % TS % States(iD_T) % Values,     &
+        T_T  => EOS % TS % States(iT_T) % Values,     &
+        Y_T  => EOS % TS % States(iY_T) % Values,     &
+        Log  => EOS % TS % LogInterp,                 &
+        Mn_T => EOS % DV % Variables(iMn_T) % Values, &
+        OS   => EOS % DV % Offsets )
+
+    ! --- Interpolate Neutron Chemical Potential ----------------------
+
+    IF( ComputeDerivatives )THEN
+
+      CALL LogInterpolateDifferentiateSingleVariable &
+             ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+               D_T, T_T, Y_T, Log, OS(iMn_T), Mn_T, TMP, dTMP )
+
+      Mn(:) = TMP(:) * MeV
+
+      dMndT_Option(:) &
+        = dTMP(:,2) * MeV / Kelvin
+
+      dMndY_Option(:) &
+        = dTMP(:,3) * MeV
+
+    ELSE
+
+      CALL LogInterpolateSingleVariable &
+             ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+               D_T, T_T, Y_T, Log, OS(iMn_T), Mn_T, TMP )
+
+      Mn(:) = TMP(:) * MeV
+
+    END IF
+
+    END ASSOCIATE ! D_T, etc.
+
+    END ASSOCIATE ! iD_T, etc.
+
+    DEALLOCATE( TMP, dTMP )
+
+  END SUBROUTINE ComputeNeutronChemicalPotential_TABLE
 
 
   SUBROUTINE ComputeAuxiliary_Fluid_TABLE( iX_Begin, iX_End )
