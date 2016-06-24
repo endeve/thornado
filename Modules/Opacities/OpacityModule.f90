@@ -39,10 +39,13 @@ MODULE OpacityModule
     ComputeAbsorptionCoefficients => NULL()
 
   INTERFACE
-    SUBROUTINE ComputeOpacity_A( E, D, T, Y, Opacity )
+    SUBROUTINE ComputeOpacity_A &
+      ( E, D, T, Y, Opacity, dOpacitydT, dOpacitydY )
       USE KindModule, ONLY: DP
-      REAL(DP), DIMENSION(:), INTENT(in)  :: E, D, T, Y
-      REAL(DP), DIMENSION(:), INTENT(out) :: Opacity
+      REAL(DP), DIMENSION(:), INTENT(in)            :: E, D, T, Y
+      REAL(DP), DIMENSION(:), INTENT(out)           :: Opacity
+      REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dOpacitydT
+      REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dOpacitydY
     END SUBROUTINE ComputeOpacity_A
   END INTERFACE
 
@@ -116,10 +119,13 @@ CONTAINS
   ! --- Ideal Opacities ---
 
 
-  SUBROUTINE ComputeAbsorptionCoefficients_IDEAL( E, D, T, Y, Chi )
+  SUBROUTINE ComputeAbsorptionCoefficients_IDEAL &
+               ( E, D, T, Y, Chi, dChidT_Option, dChidY_Option )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: E, D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out) :: Chi
+    REAL(DP), DIMENSION(:), INTENT(in)            :: E, D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)           :: Chi
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dChidT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dChidY_Option
 
     Chi = 0.0_DP
 
@@ -129,13 +135,22 @@ CONTAINS
   ! --- Tabulated Opacities (through weaklib) ---
 
 
-  SUBROUTINE ComputeAbsorptionCoefficients_TABLE( E, D, T, Y, Chi )
+  SUBROUTINE ComputeAbsorptionCoefficients_TABLE &
+               ( E, D, T, Y, Chi, dChidT_Option, dChidY_Option )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: E, D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out) :: Chi
+    REAL(DP), DIMENSION(:), INTENT(in)            :: E, D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)           :: Chi
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dChidT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dChidY_Option
 
-    INTEGER                :: iE
-    REAL(DP), DIMENSION(1) :: TMP
+    LOGICAL                  :: ComputeDerivatives
+    INTEGER                  :: iE
+    REAL(DP), DIMENSION(1)   :: TMP
+    REAL(DP), DIMENSION(1,4) :: dTMP
+
+    ComputeDerivatives = .FALSE.
+    IF( ALL( [ PRESENT( dChidT_Option ), PRESENT( dChidY_Option ) ] ) ) &
+      ComputeDerivatives = .TRUE.
 
     ASSOCIATE &
       ( EOS => OPACITIES % EOSTable )
@@ -155,29 +170,40 @@ CONTAINS
       ( Chi_T => OPACITIES % ThermEmAb % Absorptivity(1) % Values, &
         OS    => OPACITIES % ThermEmAb % Offset )
 
-    DO iE = 1, SIZE( E )
+    IF( ComputeDerivatives )THEN
 
-!      PRINT*
-!      PRINT*, "Interpolating Opacity"
-!      PRINT*, "  E = ", [ E(iE) ] / MeV
-!      PRINT*, "  D = ", [ D ] / ( Gram / Centimeter**3 )
-!      PRINT*, "  T = ", [ T ] / Kelvin
-!      PRINT*, "  Y = ", [ Y ]
+      DO iE = 1, SIZE( E )
 
-!      PRINT*
-!      PRINT*, "  E_T = ", E_T
-!      PRINT*, "  D_T = ", D_T
-!      PRINT*, "  T_T = ", T_T
-!      PRINT*, "  Y_T = ", Y_T
+        CALL LogInterpolateDifferentiateSingleVariable &
+               ( [ E(iE) ] / MeV, [ D ] / ( Gram / Centimeter**3 ), &
+                 [ T ] / Kelvin, [ Y ], E_T, D_T, T_T, Y_T, &
+                 [ 1, 1, 1, 0 ], OS, Chi_T, TMP, dTMP, debug = .FALSE. )
 
-      CALL LogInterpolateSingleVariable &
-             ( [ E(iE) ] / MeV, [ D ] / ( Gram / Centimeter**3 ), &
-               [ T ] / Kelvin, [ Y ], E_T, D_T, T_T, Y_T, [ 1, 1, 1, 0 ], &
-               OS, Chi_T, TMP )
+        Chi(iE) &
+          = TMP(1) * ( 1.0_DP / Centimeter )
 
-      Chi(iE) = TMP(1) * ( 1.0_DP / Centimeter )
+        dChidT_Option(iE) &
+          = dTMP(1,3) * ( 1.0_DP / Centimeter ) / Kelvin
 
-    END DO
+        dChidY_Option(iE) &
+          = dTMP(1,4) * ( 1.0_DP / Centimeter )
+
+      END DO
+
+    ELSE
+
+      DO iE = 1, SIZE( E )
+
+        CALL LogInterpolateSingleVariable &
+               ( [ E(iE) ] / MeV, [ D ] / ( Gram / Centimeter**3 ), &
+                 [ T ] / Kelvin, [ Y ], E_T, D_T, T_T, Y_T, &
+                 [ 1, 1, 1, 0 ], OS, Chi_T, TMP )
+
+        Chi(iE) = TMP(1) * ( 1.0_DP / Centimeter )
+
+      END DO
+
+    END IF
 
     END ASSOCIATE ! Chi_T
 
