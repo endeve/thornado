@@ -6,7 +6,9 @@ MODULE UnitsModule
     SpeedOfLightMKS, &
     GravitationalConstantMKS, &
     BoltzmannConstantMKS, &
-    ElectronVoltMKS
+    ElectronVoltMKS, &
+    PlanckConstantMKS, &
+    AvogadroConstantMKS
 
   IMPLICIT NONE
   PRIVATE
@@ -14,8 +16,7 @@ MODULE UnitsModule
   REAL(DP), PUBLIC, PARAMETER :: &
     SpeedOfLight          = 1.0_DP, &
     GravitationalConstant = 1.0_DP, &
-    BoltzmannConstant     = 1.0_DP, &
-    PlanckConstant        = 1.0_DP
+    BoltzmannConstant     = 1.0_DP
 
   ! --- Lenght ---
 
@@ -39,17 +40,19 @@ MODULE UnitsModule
     Gram      = 1.0e-3_DP * Kilogram, &
     SolarMass = 1.98892e30_DP * Kilogram
 
-  ! --- Other Units of Measure ---
+  ! --- Other Units of Measure and Constants ---
 
   REAL(DP), PUBLIC, PARAMETER :: &
-    Joule        = Kilogram * ( Meter / Second )**2, &
-    Erg          = Gram * ( Centimeter / Second )**2, &
-    Bethe        = 1.0e51_DP * Erg, &
-    ElectronVolt = ElectronVoltMKS * Joule, &
-    MeV          = 1.0e6_DP * ElectronVolt, &
-    Kelvin       = BoltzmannConstantMKS / BoltzmannConstant * Joule, &
-    Newton       = Joule / Meter, &
-    Dyne         = Erg / Centimeter
+    Joule          = Kilogram * ( Meter / Second )**2, &
+    Erg            = Gram * ( Centimeter / Second )**2, &
+    Bethe          = 1.0e51_DP * Erg, &
+    ElectronVolt   = ElectronVoltMKS * Joule, &
+    MeV            = 1.0e6_DP * ElectronVolt, &
+    Kelvin         = BoltzmannConstantMKS / BoltzmannConstant * Joule, &
+    Newton         = Joule / Meter, &
+    Dyne           = Erg / Centimeter, &
+    PlanckConstant = PlanckConstantMKS * Joule * Second, &
+    AtomicMassUnit = Gram / AvogadroConstantMKS
 
 
   ! --- Units Displayed During Execution and for IO ---
