@@ -157,7 +157,7 @@ CONTAINS
     t       = t_begin
     t_write = dt_write
 
-    CALL WriteFields1D
+    CALL WriteFields1D( Time = t )
 
     CALL CPU_TIME( WallTime(0) )
 
@@ -202,7 +202,7 @@ CONTAINS
 
       IF( WriteOutput )THEN
 
-        CALL WriteFields1D
+        CALL WriteFields1D( Time = t )
 
         WriteOutput = .FALSE.
 
@@ -224,7 +224,7 @@ CONTAINS
       '', '  wt(PLM) = ', wtP / (WallTime(1)-WallTime(0))
     WRITE(*,*)
 
-    CALL WriteFields1D
+    CALL WriteFields1D( Time = t )
 
     END ASSOCIATE ! U
 

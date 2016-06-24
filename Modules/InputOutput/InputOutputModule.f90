@@ -38,18 +38,22 @@ MODULE InputOutputModule
 CONTAINS
 
 
-  SUBROUTINE WriteFields1D
+  SUBROUTINE WriteFields1D( Time )
 
-    CALL WriteFluidFields1D
+    REAL(DP), INTENT(in) :: Time
 
-    CALL WriteRadiationFields1D
+    CALL WriteFluidFields1D( Time )
+
+    CALL WriteRadiationFields1D( Time )
 
     FileNumber = FileNumber + 1
 
   END SUBROUTINE WriteFields1D
 
 
-  SUBROUTINE WriteFluidFields1D
+  SUBROUTINE WriteFluidFields1D( Time )
+
+    REAL(DP), INTENT(in) :: Time
 
     CHARACTER(6)   :: FileNumberString
     CHARACTER(256) :: FileName
@@ -65,7 +69,8 @@ CONTAINS
 
     OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
 
-    WRITE( FUNIT, * ) nX(1), X1 / U % LengthUnit, &
+    WRITE( FUNIT, * ) &
+      Time / U % TimeUnit, nX(1), X1 / U % LengthUnit, &
       FluidField1D( uCF(:,1:nX(1),1,1,iCF_D ), nX(1) ) &
         / U % MassDensityUnit, &
       FluidField1D( uCF(:,1:nX(1),1,1,iCF_S1), nX(1) ) &
@@ -128,7 +133,9 @@ CONTAINS
   END FUNCTION FluidField1D
 
 
-  SUBROUTINE WriteRadiationFields1D
+  SUBROUTINE WriteRadiationFields1D( Time )
+
+    REAL(DP), INTENT(in) :: Time
 
     CHARACTER(6)   :: FileNumberString
     CHARACTER(256) :: FileName
@@ -147,6 +154,7 @@ CONTAINS
     OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
 
     WRITE( FUNIT, * ) &
+      Time / U % TimeUnit, &
       nE, E / U % EnergyUnit, nX(1), X1 / U % LengthUnit, &
       RadiationField1D( uCR(:,1:nE,1:nX(1),1,1,iCR_N, 1), nE, nX(1) ), &
       RadiationField1D( uCR(:,1:nE,1:nX(1),1,1,iCR_G1,1), nE, nX(1) ), &
