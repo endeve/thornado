@@ -34,7 +34,7 @@ MODULE EquationOfStateModule
     MapFrom1D
   USE FluidFieldsModule, ONLY: &
     uPF, nPF, & ! - Primitive Fluid Fields
-    iPF_D, iPF_E, &
+    iPF_D, iPF_E, iPF_Ne, &
     uAF, nAF, & ! - Auxiliary Fluid Fields
     iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, &
     iAF_Me, iAF_Mp, iAF_Mn, iAF_Gm, iAF_Cs
@@ -110,7 +110,7 @@ MODULE EquationOfStateModule
     ComputeAuxiliary_Fluid => NULL()
 
   INTERFACE
-    PURE FUNCTION AuxiliaryEosFunction_A( PF )
+    FUNCTION AuxiliaryEosFunction_A( PF )
       USE KindModule, ONLY: DP
       USE FluidFieldsModule, ONLY: nPF, nAF
       REAL(DP), DIMENSION(nPF), INTENT(in) :: PF
@@ -261,7 +261,8 @@ CONTAINS
   END SUBROUTINE ApplyEquationOfState_IDEAL
 
 
-  SUBROUTINE ComputeThermodynamicStates_Primitive_IDEAL( D, T, Y, Ev, Em, Ne )
+  SUBROUTINE ComputeThermodynamicStates_Primitive_IDEAL &
+               ( D, T, Y, Ev, Em, Ne )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: Ev, Em, Ne
@@ -271,7 +272,8 @@ CONTAINS
   END SUBROUTINE ComputeThermodynamicStates_Primitive_IDEAL
 
 
-  SUBROUTINE ComputeThermodynamicStates_Auxiliary_IDEAL( D, Ev, Ne, T, Em, Y )
+  SUBROUTINE ComputeThermodynamicStates_Auxiliary_IDEAL &
+               ( D, Ev, Ne, T, Em, Y )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: T, Em, Y
@@ -281,7 +283,8 @@ CONTAINS
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_IDEAL
 
 
-  SUBROUTINE ComputeChemicalPotentials_IDEAL( D, T, Y, Me, Mp, Mn )
+  SUBROUTINE ComputeChemicalPotentials_IDEAL &
+               ( D, T, Y, Me, Mp, Mn )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: Me, Mp, Mn
@@ -291,7 +294,8 @@ CONTAINS
   END SUBROUTINE ComputeChemicalPotentials_IDEAL
 
 
-  SUBROUTINE ComputeElectronChemicalPotential_IDEAL( D, T, Y, Me )
+  SUBROUTINE ComputeElectronChemicalPotential_IDEAL &
+               ( D, T, Y, Me )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: Me
@@ -301,7 +305,8 @@ CONTAINS
   END SUBROUTINE ComputeElectronChemicalPotential_IDEAL
 
 
-  SUBROUTINE ComputeProtonChemicalPotential_IDEAL( D, T, Y, Mp )
+  SUBROUTINE ComputeProtonChemicalPotential_IDEAL &
+               ( D, T, Y, Mp )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: Mp
@@ -311,7 +316,8 @@ CONTAINS
   END SUBROUTINE ComputeProtonChemicalPotential_IDEAL
 
 
-  SUBROUTINE ComputeNeutronChemicalPotential_IDEAL( D, T, Y, Mn )
+  SUBROUTINE ComputeNeutronChemicalPotential_IDEAL &
+               ( D, T, Y, Mn )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: Mn
@@ -349,7 +355,7 @@ CONTAINS
   END SUBROUTINE ComputeAuxiliary_Fluid_IDEAL
 
 
-  PURE FUNCTION Auxiliary_Fluid_IDEAL( PF )
+  FUNCTION Auxiliary_Fluid_IDEAL( PF )
 
     REAL(DP), DIMENSION(nPF), INTENT(in) :: PF
     REAL(DP), DIMENSION(nAF)             :: Auxiliary_Fluid_IDEAL
@@ -537,7 +543,8 @@ CONTAINS
   END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE
 
 
-  SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE( D, Ev, Ne, T, Em, Y )
+  SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE &
+               ( D, Ev, Ne, T, Em, Y )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: T, Em, Y
@@ -577,6 +584,40 @@ CONTAINS
     END ASSOCIATE ! iD_T, etc.
 
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE
+
+
+  SUBROUTINE ComputePressure_TABLE( D, T, Y, P )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: P
+
+    REAL(DP), DIMENSION(1:SIZE( D )) :: TMP
+
+    ASSOCIATE &
+      ( iD_T => EOS % TS % Indices % iRho, &
+        iT_T => EOS % TS % Indices % iT,   &
+        iY_T => EOS % TS % Indices % iYe,  &
+        iP_T => EOS % DV % Indices % iPressure )
+
+    ASSOCIATE &
+      ( D_T => EOS % TS % States(iD_T) % Values,    &
+        T_T => EOS % TS % States(iT_T) % Values,    &
+        Y_T => EOS % TS % States(iY_T) % Values,    &
+        Log => EOS % TS % LogInterp,                &
+        P_T => EOS % DV % Variables(iP_T) % Values, &
+        OS  => EOS % DV % Offsets )
+
+    CALL LogInterpolateSingleVariable &
+           ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+             D_T, T_T, Y_T, Log, OS(iP_T), P_T, TMP )
+
+    P(:) = TMP(:) * Dyne / Centimeter**2
+
+    END ASSOCIATE ! D_T, etc.
+
+    END ASSOCIATE ! iD_T, etc.
+
+  END SUBROUTINE ComputePressure_TABLE
 
 
   SUBROUTINE ComputeSpecificInternalEnergy_TABLE &
@@ -644,6 +685,46 @@ CONTAINS
     DEALLOCATE( TMP, dTMP )
 
   END SUBROUTINE ComputeSpecificInternalEnergy_TABLE
+
+
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+               ( D, E, Y, T )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, E, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: T
+
+    INTEGER                :: iS
+    REAL(DP), DIMENSION(1) :: TMP
+
+    ASSOCIATE &
+      ( iD_T => EOS % TS % Indices % iRho, &
+        iT_T => EOS % TS % Indices % iT,   &
+        iY_T => EOS % TS % Indices % iYe,  &
+        iE_T => EOS % DV % Indices % iInternalEnergyDensity )
+
+    ASSOCIATE &
+      ( D_T => EOS % TS % States(iD_T) % Values,    &
+        T_T => EOS % TS % States(iT_T) % Values,    &
+        Y_T => EOS % TS % States(iY_T) % Values,    &
+        Log => EOS % TS % LogInterp,                &
+        E_T => EOS % DV % Variables(iE_T) % Values, &
+        OS  => EOS % DV % Offsets )
+
+    DO iS = 1, SIZE( D )
+
+      CALL ComputeTempFromIntEnergy &
+             ( D(iS) / ( Gram / Centimeter**3 ), E(iS) / ( Erg / Gram ), &
+               Y(iS), D_T, T_T, Y_T, Log, E_T, OS(iE_T), TMP )
+
+      T(iS) = TMP(1) * Kelvin
+
+    END DO
+
+    END ASSOCIATE ! D_T, etc.
+
+    END ASSOCIATE ! iD_T, etc.
+
+  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE
 
 
   SUBROUTINE ComputeChemicalPotentials_TABLE( D, T, Y, Me, Mp, Mn )
@@ -907,20 +988,119 @@ CONTAINS
   END SUBROUTINE ComputeNeutronChemicalPotential_TABLE
 
 
+  SUBROUTINE ComputeRatioOfSpecificHeats_TABLE( D, T, Y, G )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: G
+
+    REAL(DP), DIMENSION(1:SIZE( D )) :: TMP
+
+    ASSOCIATE &
+      ( iD_T => EOS % TS % Indices % iRho, &
+        iT_T => EOS % TS % Indices % iT,   &
+        iY_T => EOS % TS % Indices % iYe,  &
+        iG_T => EOS % DV % Indices % iGamma1 )
+
+    ASSOCIATE &
+      ( D_T => EOS % TS % States(iD_T) % Values,    &
+        T_T => EOS % TS % States(iT_T) % Values,    &
+        Y_T => EOS % TS % States(iY_T) % Values,    &
+        Log => EOS % TS % LogInterp,                &
+        G_T => EOS % DV % Variables(iG_T) % Values, &
+        OS  => EOS % DV % Offsets )
+
+    CALL LogInterpolateSingleVariable &
+           ( D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+             D_T, T_T, Y_T, Log, OS(iG_T), G_T, TMP )
+
+    G(:) = TMP(:)
+
+    END ASSOCIATE ! D_T, etc.
+
+    END ASSOCIATE ! iD_T, etc.
+
+  END SUBROUTINE ComputeRatioOfSpecificHeats_TABLE
+
+
   SUBROUTINE ComputeAuxiliary_Fluid_TABLE( iX_Begin, iX_End )
 
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
 
+    INTEGER :: iX1, iX2, iX3
+
+    DO iX3 = iX_Begin(3), iX_End(3)
+      DO iX2 = iX_Begin(2), iX_End(2)
+        DO iX1 = iX_Begin(1), iX_End(1)
+
+          uAF(:,iX1,iX2,iX3,iAF_E) &
+            = uPF(:,iX1,iX2,iX3,iPF_E) &
+              / uPF(:,iX1,iX2,iX3,iPF_D)
+
+          uAF(:,iX1,iX2,iX3,iAF_Ye) &
+            = uPF(:,iX1,iX2,iX3,iPF_Ne) &
+              * ( BaryonMass / uPF(:,iX1,iX2,iX3,iPF_D) )
+
+          CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_E), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_T) )
+
+          CALL ComputePressure_TABLE &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_P) )
+
+          CALL ComputeRatioOfSpecificHeats_TABLE &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_Gm) )
+
+          uAF(:,iX1,iX2,iX3,iAF_Cs) &
+            = SQRT( uAF(:,iX1,iX2,iX3,iAF_Gm) &
+                    * uAF(:,iX1,iX2,iX3,iAF_P) &
+                      / uPF(:,iX1,iX2,iX3,iPF_D) )
+
+        END DO
+      END DO
+    END DO
+
   END SUBROUTINE ComputeAuxiliary_Fluid_TABLE
 
 
-  PURE FUNCTION Auxiliary_Fluid_TABLE( PF )
+  FUNCTION Auxiliary_Fluid_TABLE( PF )
 
     REAL(DP), DIMENSION(nPF), INTENT(in) :: PF
     REAL(DP), DIMENSION(nAF)             :: Auxiliary_Fluid_TABLE
 
-    Auxiliary_Fluid_TABLE(1:nAF) &
-      = 0.0_DP
+    REAL(DP), DIMENSION(1) :: TMP
+
+    Auxiliary_Fluid_TABLE(iAF_E) &
+      = PF(iPF_E) / PF(iPF_D)
+
+    Auxiliary_Fluid_TABLE(iAF_Ye) &
+      = PF(iPF_Ne) * ( BaryonMass / PF(iPF_D) )
+
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+           ( [ PF(iPF_D) ], [ Auxiliary_Fluid_TABLE(iAF_E) ], &
+             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP )
+
+    Auxiliary_Fluid_TABLE(iAF_T) &
+      = TMP(1)
+
+    CALL ComputePressure_TABLE &
+           ( [ PF(iPF_D) ], [ Auxiliary_Fluid_TABLE(iAF_T) ], &
+             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP )
+
+    Auxiliary_Fluid_TABLE(iAF_P) &
+      = TMP(1)
+
+    CALL ComputeRatioOfSpecificHeats_TABLE &
+           ( [ PF(iPF_D) ], [ Auxiliary_Fluid_TABLE(iAF_T) ], &
+             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP )
+
+    Auxiliary_Fluid_TABLE(iAF_Gm) &
+      = TMP(1)
+
+    Auxiliary_Fluid_TABLE(iAF_Cs) &
+      = SQRT( Auxiliary_Fluid_TABLE(iAF_Gm) &
+              * Auxiliary_Fluid_TABLE(iAF_P) / PF(iPF_D) )
 
     RETURN
   END FUNCTION Auxiliary_Fluid_TABLE
