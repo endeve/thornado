@@ -3,8 +3,8 @@ MODULE EulerEquationsUtilitiesModule
   USE KindModule, ONLY: &
     DP
   USE FluidFieldsModule, ONLY: &
-    uCF, nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, &
-    uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E
+    uCF, nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
 
   IMPLICIT NONE
   PRIVATE
@@ -42,6 +42,8 @@ CONTAINS
           + 0.5_DP * Primitive(iPF_D) &
               * ( Primitive(iPF_V1)**2 + Primitive(iPF_V2)**2 &
                     + Primitive(iPF_V3)**2 )
+    Conserved(iCF_Ne) &
+      = Primitive(iPF_Ne)
 
     RETURN
   END FUNCTION Conserved
@@ -64,6 +66,8 @@ CONTAINS
       = Conserved(iCF_E) &
           - 0.5_DP * ( Conserved(iCF_S1)**2 + Conserved(iCF_S2)**2 &
                        + Conserved(iCF_S3)**2 ) / Conserved(iCF_D)
+    Primitive(iPF_Ne)  &
+      = Conserved(iCF_Ne)
 
     RETURN
   END FUNCTION Primitive
@@ -100,6 +104,9 @@ CONTAINS
                     * ( uPF(:,iX1,iX2,iX3,iPF_V1)**2 &
                         + uPF(:,iX1,iX2,iX3,iPF_V2)**2 &
                         + uPF(:,iX1,iX2,iX3,iPF_V3)**2 )
+
+          uCF(:,iX1,iX2,iX3,iCF_Ne) &
+            = uPF(:,iX1,iX2,iX3,iPF_Ne)
 
         END DO
       END DO
@@ -140,6 +147,9 @@ CONTAINS
                         + uCF(:,iX1,iX2,iX3,iCF_S2)**2 &
                         + uCF(:,iX1,iX2,iX3,iCF_S3)**2 ) &
                       / uCF(:,iX1,iX2,iX3,iCF_D)
+
+          uPF(:,iX1,iX2,iX3,iPF_Ne) &
+            = uCF(:,iX1,iX2,iX3,iCF_Ne)
 
         END DO
       END DO
@@ -290,6 +300,8 @@ CONTAINS
     Flux_X1(iCF_S3) = D * V3 * V1
 
     Flux_X1(iCF_E)  = ( E + 0.5_DP * D * ( V1**2 + V2**2 + V3**2 ) + P ) * V1
+
+    Flux_X1(iCF_Ne) = 0.0_DP
 
     RETURN
   END FUNCTION Flux_X1

@@ -8,9 +8,7 @@ MODULE FluidRadiationCouplingSolutionModule_Implicit
     PlanckConstant, &
     Gram, &
     Centimeter, &
-    Kelvin, &
-    MeV, &
-    Erg
+    Kelvin
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, nDOFX, &
     nE, nNodesE, nDOFE
