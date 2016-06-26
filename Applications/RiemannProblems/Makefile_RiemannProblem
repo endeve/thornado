@@ -1,18 +1,39 @@
 include ../../../Build/Makefile_Build
 
-all: RiemannProblem1D
+all: RiemannProblem1D \
+     RiemannProblem1D_SphericalSymmetry \
+     RiemannProblem1D_NuclearEOS
 
 RiemannProblem1D: \
-	$(thornado) RiemannProblemInitializationModule.o RiemannProblem1D.o
+	$(thornado) RiemannProblemInitializationModule.o \
+	RiemannProblem1D.o
 	$(FLINKER) $(FLAGS) -o RiemannProblem1D_$(MACHINE) \
-	$(thornado) RiemannProblemInitializationModule.o RiemannProblem1D.o \
-	$(LIBRARIES)
+	$(thornado) RiemannProblemInitializationModule.o \
+	RiemannProblem1D.o $(LIBRARIES)
+
+RiemannProblem1D_SphericalSymmetry: \
+	$(thornado) RiemannProblemInitializationModule.o \
+	RiemannProblem1D_SphericalSymmetry.o
+	$(FLINKER) $(FLAGS) -o \
+	RiemannProblem1D_SphericalSymmetry_$(MACHINE) \
+	$(thornado) RiemannProblemInitializationModule.o \
+	RiemannProblem1D_SphericalSymmetry.o $(LIBRARIES)
+
+RiemannProblem1D_NuclearEOS: \
+	$(thornado) RiemannProblemInitializationModule.o \
+	RiemannProblem1D_NuclearEOS.o
+	$(FLINKER) $(FLAGS) -o \
+	RiemannProblem1D_NuclearEOS_$(MACHINE) \
+	$(thornado) RiemannProblemInitializationModule.o \
+	RiemannProblem1D_NuclearEOS.o $(LIBRARIES)
 
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
 	rm -f RiemannProblem1D_$(MACHINE)
+	rm -f RiemannProblem1D_SphericalSymmetry_$(MACHINE)
+	rm -f RiemannProblem1D_NuclearEOS_$(MACHINE)
 
 RiemannProblem1D.o: \
   KindModule.o \
@@ -20,6 +41,17 @@ RiemannProblem1D.o: \
   RiemannProblemInitializationModule.o \
   TimeSteppingModule.o \
   RiemannProblem1D.f90
+
+RiemannProblem1D_SphericalSymmetry.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  RiemannProblem1D_SphericalSymmetry.f90
+
+RiemannProblem1D_NuclearEOS.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramInitializationModule.o \
+  RiemannProblem1D_NuclearEOS.f90
 
 RiemannProblemInitializationModule.o: \
   KindModule.o \
