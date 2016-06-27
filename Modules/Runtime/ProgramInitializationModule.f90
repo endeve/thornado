@@ -25,6 +25,9 @@ MODULE ProgramInitializationModule
     MeshX, MeshE, &
     CreateMesh, &
     DestroyMesh
+  USE GeometryModule, ONLY: &
+    InitializeGeometry, &
+    FinalizeGeometry
   USE FluidFieldsModule, ONLY: &
     CreateFluidFields, &
     DestroyFluidFields
@@ -65,13 +68,13 @@ CONTAINS
   SUBROUTINE InitializeProgram &
     ( ProgramName_Option, nX_Option, swX_Option, bcX_Option, xL_Option, &
       xR_Option, zoomX_Option, nE_Option, swE_Option, bcE_Option, &
-      eL_Option, eR_Option, zoomE_Option, nNodes_Option, &
-      ActivateUnits_Option, EquationOfState_Option, &
-      EquationOfStateTableName_Option, Gamma_IDEAL_Option, Opacity_Option, &
-      OpacityTableName_Option, FluidSolver_Option, RadiationSolver_Option, &
-      FluidRiemannSolver_Option, RadiationRiemannSolver_Option, &
-      FluidRadiationCoupling_Option, EvolveFluid_Option, &
-      EvolveRadiation_Option, nStagesSSPRK_Option )
+      eL_Option, eR_Option, zoomE_Option, CoordinateSystem_Option, &
+      nNodes_Option, ActivateUnits_Option, EquationOfState_Option, &
+      EquationOfStateTableName_Option, Gamma_IDEAL_Option, &
+      Opacity_Option, OpacityTableName_Option, FluidSolver_Option, &
+      RadiationSolver_Option, FluidRiemannSolver_Option, &
+      RadiationRiemannSolver_Option, FluidRadiationCoupling_Option, &
+      EvolveFluid_Option, EvolveRadiation_Option, nStagesSSPRK_Option )
 
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: ProgramName_Option
     INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: nX_Option
@@ -87,6 +90,7 @@ CONTAINS
     REAL(DP),               INTENT(in), OPTIONAL :: eR_Option
     REAL(DP),               INTENT(in), OPTIONAL :: zoomE_Option
     INTEGER,                INTENT(in), OPTIONAL :: nNodes_Option
+    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: CoordinateSystem_Option
     LOGICAL,                INTENT(in), OPTIONAL :: ActivateUnits_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: EquationOfState_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: &
@@ -239,6 +243,12 @@ CONTAINS
       '', 'MIN/MAX de    = ', &
       MINVAL( MeshE % Width ), ' / ', MAXVAL( MeshE % Width )
 
+    ! --- Geometry ---
+
+    CALL InitializeGeometry &
+           ( CoordinateSystem_Option &
+               = CoordinateSystem_Option )
+
     ! --- Physical Fields ---
 
     CALL CreateFluidFields( nX, swX )
@@ -314,6 +324,10 @@ CONTAINS
     ! --- Spectral Grid ---
 
     CALL DestroyMesh( MeshE )
+
+    ! --- Geometry ---
+
+    CALL FinalizeGeometry
 
     ! --- Physical Fields ---
 

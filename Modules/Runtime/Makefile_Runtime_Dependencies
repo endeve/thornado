@@ -7,6 +7,7 @@ ProgramInitializationModule.o: \
   PolynomialBasisModule_Legendre.o \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
+  GeometryModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   EquationOfStateModule.o \
