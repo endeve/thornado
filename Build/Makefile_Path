@@ -4,6 +4,7 @@ $(THORNADO_DIR)/Modules/Units: \
 $(THORNADO_DIR)/Modules/ProgramHeader: \
 $(THORNADO_DIR)/Modules/Library: \
 $(THORNADO_DIR)/Modules/Mesh: \
+$(THORNADO_DIR)/Modules/Geometry: \
 $(THORNADO_DIR)/Modules/Fields: \
 $(THORNADO_DIR)/Modules/EquationOfState: \
 $(THORNADO_DIR)/Modules/Opacities: \
