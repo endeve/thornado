@@ -23,6 +23,8 @@ PROGRAM RiemannProblem1D_SphericalSymmetry
              = [ 1.0_DP, 1.0_DP, 1.0_DP ], &
            nNodes_Option &
              = 1, &
+           CoordinateSystem_Option &
+             = 'SPHERICAL', &
            EquationOfState_Option &
              = 'IDEAL', &
            Gamma_IDEAL_Option &

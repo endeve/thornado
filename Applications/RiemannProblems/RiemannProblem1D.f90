@@ -22,13 +22,13 @@ PROGRAM RiemannProblem1D
            bcX_Option = [ 2, 0, 0 ], &
            xL_Option = [ 0.0_DP, 0.0_DP, 0.0_DP ], &
            xR_Option = [ 1.0_DP, 1.0_DP, 1.0_DP ], &
-           nNodes_Option = 2, &
+           nNodes_Option = 1, &
            EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = 1.4_DP, &
            FluidSolver_Option = 'Euler_DG', &
            FluidRiemannSolver_Option = 'HLLC', &
            EvolveFluid_Option = .TRUE., &
-           nStagesSSPRK_Option = 2 )
+           nStagesSSPRK_Option = 1 )
 
   CALL InitializeRiemannProblem1D &
          ( D_L = 1.000_DP, V_L = [0.0_DP, 0.0_DP, 0.0_DP], P_L = 1.0_DP, &
