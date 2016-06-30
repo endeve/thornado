@@ -1,0 +1,35 @@
+include ../../../Build/Makefile_Build
+
+all: RelaxationEmissionAbsorption
+
+RelaxationEmissionAbsorption: \
+	$(thornado) FluidRadiationCouplingInitializationModule.o \
+	RelaxationEmissionAbsorption.o
+	$(FLINKER) $(FLAGS) -o RelaxationEmissionAbsorption_$(MACHINE) \
+	$(thornado) FluidRadiationCouplingInitializationModule.o \
+	RelaxationEmissionAbsorption.o \
+	$(LIBRARIES)
+
+clean:
+	rm -f *.o *.mod *.ld
+
+clobber: clean
+	rm -f RelaxationEmissionAbsorption_$(MACHINE)
+
+RelaxationEmissionAbsorption.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramInitializationModule.o \
+  FluidRadiationCouplingInitializationModule.o \
+  TimeSteppingModule.o \
+  RelaxationEmissionAbsorption.f90
+
+FluidRadiationCouplingInitializationModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  EquationOfStateModule.o \
+  FluidRadiationCouplingInitializationModule.f90
