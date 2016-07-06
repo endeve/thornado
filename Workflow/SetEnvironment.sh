@@ -22,6 +22,14 @@ elif [[ $THORNADO_MACHINE == darter* ]]; then
   module unload pgi gcc cce intel
   module unload PrgEnv-pgi PrgEnv-gnu PrgEnv-cray PrgEnv-intel
 
+elif [[ $THORNADO_MACHINE == beacon* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  module unload pgi gcc cce intel
+  module unload PE-gnu PE-intel
+
 elif [[ $THORNADO_MACHINE == sn1987b* ]]; then
 
   echo
@@ -59,6 +67,13 @@ elif [[ $THORNADO_MACHINE == darter_cray ]]; then
 
   module load PrgEnv-cray
   module load cray-hdf5
+
+elif [[ $THORNADO_MACHINE == beacon_intel ]]; then
+
+  echo
+
+  module load PE-intel
+  module load hdf5/1.8.14
 
 elif [[ $THORNADO_MACHINE == sn1987b ]]; then
 
