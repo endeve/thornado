@@ -6,7 +6,7 @@ MODULE GeometryModule
   IMPLICIT NONE
   PRIVATE
 
-  CHARACTER(16) :: &
+  CHARACTER(16), PUBLIC :: &
     CoordinateSystem &
       = 'CARTESIAN'
 
@@ -18,6 +18,10 @@ MODULE GeometryModule
   END INTERFACE
 
   PROCEDURE (MetricFunction), POINTER, PUBLIC :: a, b, c, d
+  PROCEDURE (MetricFunction), POINTER, PUBLIC :: dlnadX1
+  PROCEDURE (MetricFunction), POINTER, PUBLIC :: dlnbdX1
+  PROCEDURE (MetricFunction), POINTER, PUBLIC :: dlncdX2
+
 
   PUBLIC :: InitializeGeometry
   PUBLIC :: FinalizeGeometry
@@ -47,12 +51,20 @@ CONTAINS
         c => c_CARTESIAN
         d => SqrtDet_CARTESIAN
 
+        dlnadX1 => dlnadX1_CARTESIAN
+        dlnbdX1 => dlnbdX1_CARTESIAN
+        dlncdX2 => dlncdX2_CARTESIAN
+
       CASE ( 'SPHERICAL' )
 
         a => a_SPHERICAL
         b => b_SPHERICAL
         c => c_SPHERICAL
         d => SqrtDet_SPHERICAL
+
+        dlnadX1 => dlnadX1_SPHERICAL
+        dlnbdX1 => dlnbdX1_SPHERICAL
+        dlncdX2 => dlncdX2_SPHERICAL
 
       CASE ( 'CYLINDRICAL' )
 
@@ -61,11 +73,16 @@ CONTAINS
         c => c_CYLINDRICAL
         d => SqrtDet_CYLINDRICAL
 
+        dlnadX1 => dlnadX1_CYLINDRICAL
+        dlnbdX1 => dlnbdX1_CYLINDRICAL
+        dlncdX2 => dlncdX2_CYLINDRICAL
+
       CASE DEFAULT
 
         WRITE(*,*)
         WRITE(*,'(A5,A27,A)') &
           '', 'Invalid Coordinate System: ', TRIM( CoordinateSystem )
+        STOP
 
     END SELECT
 
@@ -122,6 +139,36 @@ CONTAINS
   END FUNCTION SqrtDet_CARTESIAN
 
 
+  PURE REAL(DP) FUNCTION dlnadX1_CARTESIAN( X )
+
+    REAL(DP), DIMENSION(3), INTENT(in) :: X
+
+    dlnadX1_CARTESIAN = 0.0_DP
+
+    RETURN
+  END FUNCTION dlnadX1_CARTESIAN
+
+
+  PURE REAL(DP) FUNCTION dlnbdX1_CARTESIAN( X )
+
+    REAL(DP), DIMENSION(3), INTENT(in) :: X
+
+    dlnbdX1_CARTESIAN = 0.0_DP
+
+    RETURN
+  END FUNCTION dlnbdX1_CARTESIAN
+
+
+  PURE REAL(DP) FUNCTION dlncdX2_CARTESIAN( X )
+
+    REAL(DP), DIMENSION(3), INTENT(in) :: X
+
+    dlncdX2_CARTESIAN = 0.0_DP
+
+    RETURN
+  END FUNCTION dlncdX2_CARTESIAN
+
+
   ! --- Spherical Coordinates ---
 
 
@@ -165,6 +212,36 @@ CONTAINS
   END FUNCTION SqrtDet_SPHERICAL
 
 
+  PURE REAL(DP) FUNCTION dlnadX1_SPHERICAL( X )
+
+    REAL(DP), DIMENSION(3), INTENT(in) :: X
+
+    dlnadX1_SPHERICAL = 1.0_DP / X(1)
+
+    RETURN
+  END FUNCTION dlnadX1_SPHERICAL
+
+
+  PURE REAL(DP) FUNCTION dlnbdX1_SPHERICAL( X )
+
+    REAL(DP), DIMENSION(3), INTENT(in) :: X
+
+    dlnbdX1_SPHERICAL = 1.0_DP / X(1)
+
+    RETURN
+  END FUNCTION dlnbdX1_SPHERICAL
+
+
+  PURE REAL(DP) FUNCTION dlncdX2_SPHERICAL( X )
+
+    REAL(DP), DIMENSION(3), INTENT(in) :: X
+
+    dlncdX2_SPHERICAL = 1.0_DP / TAN( X(2) )
+
+    RETURN
+  END FUNCTION dlncdX2_SPHERICAL
+
+
   ! --- Cylindrical Coordinates ---
 
 
@@ -206,6 +283,36 @@ CONTAINS
 
     RETURN
   END FUNCTION SqrtDet_CYLINDRICAL
+
+
+  PURE REAL(DP) FUNCTION dlnadX1_CYLINDRICAL( X )
+
+    REAL(DP), DIMENSION(3), INTENT(in) :: X
+
+    dlnadX1_CYLINDRICAL = 0.0_DP
+
+    RETURN
+  END FUNCTION dlnadX1_CYLINDRICAL
+
+
+  PURE REAL(DP) FUNCTION dlnbdX1_CYLINDRICAL( X )
+
+    REAL(DP), DIMENSION(3), INTENT(in) :: X
+
+    dlnbdX1_CYLINDRICAL = 1.0_DP / X(1)
+
+    RETURN
+  END FUNCTION dlnbdX1_CYLINDRICAL
+
+
+  PURE REAL(DP) FUNCTION dlncdX2_CYLINDRICAL( X )
+
+    REAL(DP), DIMENSION(3), INTENT(in) :: X
+
+    dlncdX2_CYLINDRICAL = 0.0_DP
+
+    RETURN
+  END FUNCTION dlncdX2_CYLINDRICAL
 
 
 END MODULE GeometryModule
