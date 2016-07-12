@@ -221,13 +221,15 @@ CONTAINS
         '',   'xL(', iDim, ') = ', xL(iDim), &
         ', ', 'xR(', iDim, ') = ', xR(iDim), &
         ', ', 'ZoomX(', iDim, ') = ', ZoomX(iDim)
+      WRITE(*,*)
 
-      CALL CreateMesh( MeshX(iDim), nX(iDim), nNodesX(iDim), &
+      CALL CreateMesh( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
                        xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
 
       WRITE(*,'(A9,A11,I1,A4,ES8.2E2,A3,ES8.2E2)') &
         '', 'MIN/MAX dx(', iDim, ') = ', &
         MINVAL( MeshX(iDim) % Width ), ' / ', MAXVAL( MeshX(iDim) % Width )
+      WRITE(*,*)
 
     END DO
 
@@ -236,8 +238,9 @@ CONTAINS
     WRITE(*,'(A7,A8,ES8.2E2,A2,A8,ES8.2E2,A2,A11,ES10.4E2)') &
       '', 'eL    = ', eL, ', ', 'eR    = ', eR, &
       ', ', 'ZoomE    = ', ZoomE
+    WRITE(*,*)
 
-    CALL CreateMesh( MeshE, nE, nNodesE, eL, eR, ZoomOption = ZoomE )
+    CALL CreateMesh( MeshE, nE, nNodesE, swE, eL, eR, ZoomOption = ZoomE )
 
     WRITE(*,'(A9,A16,ES8.2E2,A3,ES8.2E2)') &
       '', 'MIN/MAX de    = ', &

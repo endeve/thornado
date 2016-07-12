@@ -10,4 +10,5 @@ RAD_HYDRO = \
   FluidRadiationCouplingUtilitiesModule.o \
   FluidRadiationCouplingSolutionModule_Implicit.o \
   FluidRadiationCouplingModule.o \
+  ApplicationBoundaryConditionsModule.o \
   BoundaryConditionsModule.o

@@ -47,9 +47,9 @@ MODULE TimeSteppingModule
     SSP_RK => NULL()
 
   INTERFACE
-    SUBROUTINE TimeStepExplicit( dt )
+    SUBROUTINE TimeStepExplicit( t, dt )
       USE KindModule, ONLY: DP
-      REAL(DP), INTENT(in) :: dt
+      REAL(DP), INTENT(in) :: t, dt
     END SUBROUTINE TimeStepExplicit
   END INTERFACE
 
@@ -122,9 +122,9 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: t_begin, t_end, dt_write
     INTERFACE
-      SUBROUTINE UpdateFields( dt )
+      SUBROUTINE UpdateFields( t, dt )
         USE KindModule, ONLY: DP
-        REAL(DP), INTENT(in) :: dt
+        REAL(DP), INTENT(in) :: t, dt
       END SUBROUTINE UpdateFields
     END INTERFACE
     REAL(DP), INTENT(in), OPTIONAL :: dt_fixed_Option
@@ -196,7 +196,7 @@ CONTAINS
 
       END IF
 
-      CALL UpdateFields( dt )
+      CALL UpdateFields( t, dt )
 
       t = t + dt
 
@@ -345,9 +345,9 @@ CONTAINS
   END SUBROUTINE ComputeTimeStep_Radiation
 
 
-  SUBROUTINE SSP_RK1( dt )
+  SUBROUTINE SSP_RK1( t, dt )
 
-    REAL(DP), INTENT(in) :: dt
+    REAL(DP), INTENT(in) :: t, dt
 
     CALL Initialize_SSP_RK
 
@@ -362,7 +362,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation
+      CALL ApplyBoundaryConditions_Radiation( Time = t )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -394,9 +394,9 @@ CONTAINS
   END SUBROUTINE SSP_RK1
 
 
-  SUBROUTINE SSP_RK2( dt )
+  SUBROUTINE SSP_RK2( t, dt )
 
-    REAL(DP), INTENT(in) :: dt
+    REAL(DP), INTENT(in) :: t, dt
 
     REAL(DP), DIMENSION(0:1) :: WT
 
@@ -420,7 +420,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation
+      CALL ApplyBoundaryConditions_Radiation( Time = t )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -475,7 +475,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation
+      CALL ApplyBoundaryConditions_Radiation( Time = t + dt )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -517,9 +517,9 @@ CONTAINS
   END SUBROUTINE SSP_RK2
 
 
-  SUBROUTINE SSP_RK3( dt )
+  SUBROUTINE SSP_RK3( t, dt )
 
-    REAL(DP), INTENT(in) :: dt
+    REAL(DP), INTENT(in) :: t, dt
 
     CALL Initialize_SSP_RK
 
@@ -536,7 +536,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation
+      CALL ApplyBoundaryConditions_Radiation( Time = t )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -576,7 +576,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation
+      CALL ApplyBoundaryConditions_Radiation( Time = t + dt )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -616,7 +616,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation
+      CALL ApplyBoundaryConditions_Radiation( Time = t + 0.5_DP * dt )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -742,9 +742,9 @@ CONTAINS
   END SUBROUTINE Finalize_SSP_RK
 
 
-  SUBROUTINE BackwardEuler( dt )
+  SUBROUTINE BackwardEuler( t, dt )
 
-    REAL(DP), INTENT(in) :: dt
+    REAL(DP), INTENT(in) :: t, dt
 
     CALL CoupleFluidRadiation &
            ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )

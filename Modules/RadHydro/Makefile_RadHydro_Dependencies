@@ -39,6 +39,7 @@ FluidEvolutionModule.o: \
 
 MomentEquationsUtilitiesModule.o: \
   KindModule.o \
+  GeometryModule.o \
   MomentEquationsUtilitiesModule.f90
 
 MomentEquationsSolutionModule_M1_DG.o: \
@@ -47,6 +48,7 @@ MomentEquationsSolutionModule_M1_DG.o: \
   UtilitiesModule.o \
   PolynomialBasisModule_Lagrange.o \
   MeshModule.o \
+  GeometryModule.o \
   RadiationFieldsModule.o \
   RiemannSolverModule.o \
   MomentEquationsUtilitiesModule.o \  
@@ -72,8 +74,18 @@ FluidRadiationCouplingModule.o: \
   FluidRadiationCouplingSolutionModule_Implicit.o \
   FluidRadiationCouplingModule.f90
 
+ApplicationBoundaryConditionsModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  RadiationFieldsModule.o \
+  ApplicationBoundaryConditionsModule.f90
+
 BoundaryConditionsModule.o: \
+  KindModule.o \
   ProgramHeaderModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
+  ApplicationBoundaryConditionsModule.o \
   BoundaryConditionsModule.f90

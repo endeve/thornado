@@ -1,11 +1,15 @@
 MODULE BoundaryConditionsModule
 
+  USE KindModule, ONLY: &
+    DP
   USE ProgramHeaderModule, ONLY: &
     nX, bcX, nE
   USE FluidFieldsModule, ONLY: &
     uCF, nCF, uPF, nPF, uAF, nAF
   USE RadiationFieldsModule, ONLY: &
     uCR, nCR, nSpecies
+  USE ApplicationBoundaryConditionsModule, ONLY: &
+    ApplyApplicationBoundaryConditions_Radiation_X1
 
   IMPLICIT NONE
   PRIVATE
@@ -119,9 +123,19 @@ CONTAINS
   END SUBROUTINE ApplyBoundaryConditions_Fluid_X1
 
 
-  SUBROUTINE ApplyBoundaryConditions_Radiation
+  SUBROUTINE ApplyBoundaryConditions_Radiation( Time )
 
-    CALL ApplyBoundaryConditions_Radiation_X1
+    REAL(DP), INTENT(in) :: Time
+
+    IF( bcX(1) == 10 )THEN
+
+      CALL ApplyApplicationBoundaryConditions_Radiation_X1( Time )
+
+    ELSE
+
+      CALL ApplyBoundaryConditions_Radiation_X1
+
+    END IF
 
   END SUBROUTINE ApplyBoundaryConditions_Radiation
 

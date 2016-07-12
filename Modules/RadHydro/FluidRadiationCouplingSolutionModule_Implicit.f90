@@ -49,6 +49,7 @@ MODULE FluidRadiationCouplingSolutionModule_Implicit
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: f_FD, df_FDdT, df_FDdYe
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: uPR_N
 
+  REAL(DP), DIMENSION(:),     ALLOCATABLE :: Floor_FRC
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: FVEC_FRC, dU_FRC
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: U_FRC, FJAC_FRC
 
@@ -86,7 +87,8 @@ CONTAINS
     ALLOCATE( W2_N(nNodesE_G), W3_N(nNodesE_G) )
     CALL InitializeWeights( W2_N, W3_N )
 
-    ALLOCATE( uPF_N(nPF, nNodesX_G), uAF_N(nAF, nNodesX_G) )
+    ALLOCATE( uPF_N(nPF, nNodesX_G) )
+    ALLOCATE( uAF_N(nAF, nNodesX_G) )
     CALL InitializeFluidFields( uPF_N, uAF_N )
 
     ALLOCATE( duAFdT_N (nAF, nNodesX_G) )
@@ -105,10 +107,14 @@ CONTAINS
         df_FDdT (nNodesE_G, nNodesX_G), &
         df_FDdYe(nNodesE_G, nNodesX_G) )
 
-    ALLOCATE( U_FRC   (nNodesE_G+2, nNodesX_G, 0:1) )
-    ALLOCATE( FVEC_FRC(nNodesE_G+2, nNodesX_G) )
-    ALLOCATE( dU_FRC  (nNodesE_G+2, nNodesX_G) )
-    ALLOCATE( FJAC_FRC(nNodesE_G+2, nNodesE_G+2, nNodesX_G) )
+    ALLOCATE( Floor_FRC(nNodesE_G+2) )
+    ALLOCATE( U_FRC    (nNodesE_G+2, nNodesX_G, 0:1) )
+    ALLOCATE( FVEC_FRC (nNodesE_G+2, nNodesX_G) )
+    ALLOCATE( dU_FRC   (nNodesE_G+2, nNodesX_G) )
+    ALLOCATE( FJAC_FRC (nNodesE_G+2, nNodesE_G+2, nNodesX_G) )
+
+    Floor_FRC = 0.0_DP
+    Floor_FRC(1:nNodesE_G) = 1.0d-16
 
   END SUBROUTINE InitializeFluidRadiationCoupling
 
@@ -125,7 +131,7 @@ CONTAINS
     DEALLOCATE( Chi, dChidT, dChidYe )
     DEALLOCATE( f_FD, df_FDdT, df_FDdYe )
 
-    DEALLOCATE( U_FRC, FVEC_FRC, dU_FRC, FJAC_FRC )
+    DEALLOCATE( Floor_FRC, U_FRC, FVEC_FRC, dU_FRC, FJAC_FRC )
 
   END SUBROUTINE FinalizeFluidRadiationCoupling
 
@@ -135,18 +141,19 @@ CONTAINS
     REAL(DP), INTENT(in) :: dt
 
     LOGICAL, DIMENSION(1:nNodesX_G) :: Converged
-    INTEGER :: iIteration, iX
+    INTEGER :: iter, iX, iX_MAX
+    REAL(DP) :: Norm, MaxNorm
     REAL(DP), PARAMETER :: NewtonTol = 1.0d-8
 
     CALL SetStates_FRC &
            ( uPR_N(:,iPR_D,:), uPF_N(iPF_Ne,:), uPF_N(iPF_E,:), iOld )
 
     Converged  = .FALSE.
-    iIteration = 0
+    iter       = 0
 
     DO WHILE( .NOT. ALL( Converged ) )
 
-      iIteration = iIteration + 1
+      iter = iter + 1
 
       CALL ComputeThermodynamicStates_Auxiliary &
              ( uPF_N(iPF_D,:), uPF_N(iPF_E,:), uPF_N(iPF_Ne,:), &
@@ -171,31 +178,39 @@ CONTAINS
 
       CALL SolveLinearSystems_FRC( Converged )
 
+      MaxNorm = 0.0_DP
       DO iX = 1, nNodesX_G
 
         U_FRC(:,iX,iNew) = U_FRC(:,iX,iNew) + dU_FRC(:,iX)
 
-        IF( ENORM( dU_FRC(:,iX) / U_FRC(:,iX,iNew) ) <= NewtonTol ) &
-          Converged(iX) = .TRUE.
+        Norm = ENORM( dU_FRC(:,iX) / ( U_FRC(:,iX,iNew) + Floor_FRC(:) ) )
+        IF( Norm <= NewtonTol ) Converged(iX) = .TRUE.
+
+        IF( Norm >= MaxNorm )THEN
+
+          MaxNorm = Norm
+          iX_MAX  = iX
+
+        END IF
 
       END DO
 
       CALL GetStates_FRC &
              ( uPR_N(:,iPR_D,:), uPF_N(iPF_Ne,:), uPF_N(iPF_E,:), iNew )
 
-      IF( MOD( iIteration, 10 ) == 0 )THEN
+      IF( MOD( iter, 10 ) == 0 )THEN
 
         WRITE(*,*)
         WRITE(*,'(A8,A)') ' ', 'Emission/Absorption'
         WRITE(*,*)
         WRITE(*,'(A10,A12,I6.6,A2,A11,ES10.4E2)') &
-          ' ', 'Iteration = ', iIteration, &
-          ', ', '||dU/U|| = ', ENORM( dU_FRC(:,1) / U_FRC(:,1,iNew) )
+          ' ', 'Iteration = ', iter, &
+          ', ', '||dU/U|| = ', MaxNorm
         WRITE(*,*)
         WRITE(*,'(A12,A4,ES10.4E2,A2,A4,ES10.4E2,A2,A4,ES10.4E2)') &
-          '', 'D = ', uPF_N(iPF_D,1) / ( Gram / Centimeter**3 ), &
-          '', 'T = ', uAF_N(iAF_T,1) / Kelvin, &
-          '', 'Y = ', uAF_N(iAF_Ye,1)
+          '', 'D = ', uPF_N(iPF_D, iX) / ( Gram / Centimeter**3 ), &
+          '', 'T = ', uAF_N(iAF_T, iX) / Kelvin, &
+          '', 'Y = ', uAF_N(iAF_Ye,iX)
         WRITE(*,*)
 
       END IF
@@ -209,13 +224,20 @@ CONTAINS
 
     INTEGER :: iX
 
+    ASSOCIATE &
+      ( D_N  => uPF_N(iPF_D, 1:nNodesX_G), &
+        T_N  => uAF_N(iAF_T, 1:nNodesX_G), &
+        Ye_N => uAF_N(iAF_Ye,1:nNodesX_G) )
+
     DO iX = 1, nNodesX_G
 
       CALL ComputeAbsorptionCoefficients &
-             ( E_N, [uPF_N(iPF_D,iX)], [uAF_N(iAF_T,iX)], [uAF_N(iAF_Ye,iX)], &
+             ( E_N, [ D_N(iX) ], [ T_N(iX) ], [ Ye_N(iX) ], &
                Chi(:,iX), dChidT(:,iX), dChidYe(:,iX) )
 
     END DO
+
+    END ASSOCIATE ! D_N, etc.
 
   END SUBROUTINE SetRates_EmissionAbsorption
 
