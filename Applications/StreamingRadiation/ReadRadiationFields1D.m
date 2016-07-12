@@ -1,5 +1,5 @@
 function...
-  [ E, X, uCR_N, uPR_D ]...
+  [ Time, E, X, uCR_N, uPR_D ]...
     = ReadRadiationFields1D( AppName, FileNumber )
 
   FileName = [ './Output/' AppName '_RadiationFields_'...
@@ -7,12 +7,13 @@ function...
 
   RF = load( FileName )';
 
-  nE = RF(1);
-  E  = RF(2:nE+1);
-  nX = RF(nE+2:nE+2);
-  X  = RF(nE+3:nE+3+nX-1);
+  Time = RF(1);
+  nE   = RF(2);
+  E    = RF(3:nE+2);
+  nX   = RF(nE+3:nE+3);
+  X    = RF(nE+4:nE+4+nX-1);
   
-  iO = nE + nX + 2;
+  iO = nE + nX + 3;
   
   uCR_N  = zeros( nE, nX );
   uCR_G1 = zeros( nE, nX );
@@ -36,7 +37,7 @@ function...
 
   end
   
-  keyboard
+  %keyboard
 
 end
 

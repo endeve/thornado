@@ -19,6 +19,7 @@ MODULE StreamingRadiationInitializationModule
   PRIVATE
 
   PUBLIC :: InitializeStreamingSineWave1D
+  PUBLIC :: InitializeGaussianSphericalWave1D
 
 CONTAINS
 
@@ -89,6 +90,54 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeStreamingSineWave1D
+
+
+  SUBROUTINE InitializeGaussianSphericalWave1D
+
+    INTEGER  :: iS, iX1, iX2, iX3, iE
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeE, iNode
+    REAL(DP) :: X1
+
+    DO iS = 1, nSpecies
+
+      DO iX3 = 1, nX(3) 
+        DO iX2 = 1, nX(2)
+          DO iX1 = 1, nX(1)
+            DO iE = 1, nE
+
+              DO iNodeX3 = 1, nNodesX(3)
+                DO iNodeX2 = 1, nNodesX(2)
+                  DO iNodeX1 = 1, nNodesX(1)
+                    DO iNodeE = 1, nNodesE
+
+                      X1    = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+                      iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+
+                      uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
+                        = EXP( - X1**2 ) / X1**2
+
+                      uCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS) &
+                        = uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS)
+
+                      uCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS) &
+                        = 0.0_DP
+
+                      uCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS) &
+                        = 0.0_DP
+
+                    END DO
+                  END DO
+                END DO
+              END DO
+
+            END DO
+          END DO
+        END DO
+      END DO
+
+    END DO
+
+  END SUBROUTINE InitializeGaussianSphericalWave1D
 
 
 END MODULE StreamingRadiationInitializationModule

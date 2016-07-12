@@ -1,6 +1,7 @@
 include ../../../Build/Makefile_Build
 
-all: StreamingSineWave1D
+all: StreamingSineWave1D \
+     GaussianSphericalWave1D
 
 StreamingSineWave1D: \
 	$(thornado) StreamingRadiationInitializationModule.o \
@@ -10,11 +11,20 @@ StreamingSineWave1D: \
 	StreamingSineWave1D.o \
 	$(LIBRARIES)
 
+GaussianSphericalWave1D: \
+	$(thornado) StreamingRadiationInitializationModule.o \
+	GaussianSphericalWave1D.o
+	$(FLINKER) $(FLAGS) -o GaussianSphericalWave1D_$(MACHINE) \
+	$(thornado) StreamingRadiationInitializationModule.o \
+	GaussianSphericalWave1D.o \
+	$(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
 	rm -f StreamingSineWave1D_$(MACHINE)
+	rm -f GaussianSphericalWave1D_$(MACHINE)
 
 StreamingSineWave1D.o: \
   KindModule.o \
@@ -22,6 +32,13 @@ StreamingSineWave1D.o: \
   StreamingRadiationInitializationModule.o \
   TimeSteppingModule.o \
   StreamingSineWave1D.f90
+
+GaussianSphericalWave1D.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  StreamingRadiationInitializationModule.o \
+  TimeSteppingModule.o \
+  GaussianSphericalWave1D.f90
 
 StreamingRadiationInitializationModule.o: \
   KindModule.o \
