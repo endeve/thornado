@@ -171,65 +171,83 @@ CONTAINS
 
   SUBROUTINE ComputeEigenvectors_L( V1, V2, V3, E, P, Cs, L1 )
 
-    REAL(DP),                 INTENT(in)  :: V1, V2, V3, E, P, Cs
-    REAL(DP), DIMENSION(5,5), INTENT(out) :: L1
+    REAL(DP),                     INTENT(in)  :: V1, V2, V3, E, P, Cs
+    REAL(DP), DIMENSION(nCF,nCF), INTENT(out) :: L1
 
     REAL(DP) :: g, k, h, M1, M2, M3
 
-    g = P / ( E * Cs )
-    k = 0.5_DP * ( V1**2 + V2**2 + V3**2 )
-    h = g * k / Cs
+    L1(:,1) = [ 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+    L1(:,2) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+    L1(:,3) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+    L1(:,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
+    L1(:,5) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
+    L1(:,6) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
 
-    M1 = V1 / Cs; M2 = V2 / Cs; M3 = V3 / Cs
+    RETURN
 
-    L1(:,1) &
-      = [ 0.5_DP * ( h + M1 ), &
-          1.0_DP - h, &
-          0.5_DP * ( h - M1 ), &
-          V2, - V3 ]
-
-    L1(:,2) &
-      = [ - 0.5_DP * ( g * M1 + 1.0_DP / Cs ), &
-                       g * M1, &
-          - 0.5_DP * ( g * M1 - 1.0_DP / Cs ), &
-            0.0_DP, 0.0_DP ]
-
-    L1(:,3) &
-      = [ - 0.5_DP * g * M2, &
-                     g * M2, &
-          - 0.5_DP * g * M2, &
-          - 1.0_DP, 0.0_DP ]
-
-    L1(:,4) &
-      = [ - 0.5_DP * g * M3, &
-                     g * M3, &
-          - 0.5_DP * g * M3, &
-            0.0_DP, 1.0_DP ]
-
-    L1(:,5) &
-      = [ 0.5_DP * g / Cs, &
-                 - g / Cs, &
-          0.5_DP * g / Cs, &
-          0.0_DP, 0.0_DP ]
+!!$    g = P / ( E * Cs )
+!!$    k = 0.5_DP * ( V1**2 + V2**2 + V3**2 )
+!!$    h = g * k / Cs
+!!$
+!!$    M1 = V1 / Cs; M2 = V2 / Cs; M3 = V3 / Cs
+!!$
+!!$    L1(:,1) &
+!!$      = [ 0.5_DP * ( h + M1 ), &
+!!$          1.0_DP - h, &
+!!$          0.5_DP * ( h - M1 ), &
+!!$          V2, - V3 ]
+!!$
+!!$    L1(:,2) &
+!!$      = [ - 0.5_DP * ( g * M1 + 1.0_DP / Cs ), &
+!!$                       g * M1, &
+!!$          - 0.5_DP * ( g * M1 - 1.0_DP / Cs ), &
+!!$            0.0_DP, 0.0_DP ]
+!!$
+!!$    L1(:,3) &
+!!$      = [ - 0.5_DP * g * M2, &
+!!$                     g * M2, &
+!!$          - 0.5_DP * g * M2, &
+!!$          - 1.0_DP, 0.0_DP ]
+!!$
+!!$    L1(:,4) &
+!!$      = [ - 0.5_DP * g * M3, &
+!!$                     g * M3, &
+!!$          - 0.5_DP * g * M3, &
+!!$            0.0_DP, 1.0_DP ]
+!!$
+!!$    L1(:,5) &
+!!$      = [ 0.5_DP * g / Cs, &
+!!$                 - g / Cs, &
+!!$          0.5_DP * g / Cs, &
+!!$          0.0_DP, 0.0_DP ]
 
   END SUBROUTINE ComputeEigenvectors_L
 
 
   SUBROUTINE ComputeEigenvectors_R( V1, V2, V3, E, P, Cs, R1 )
 
-    REAL(DP),                 INTENT(in)  :: V1, V2, V3, E, P, Cs
-    REAL(DP), DIMENSION(5,5), INTENT(out) :: R1
+    REAL(DP),                     INTENT(in)  :: V1, V2, V3, E, P, Cs
+    REAL(DP), DIMENSION(nCF,nCF), INTENT(out) :: R1
 
     REAL(DP) :: k, h
 
-    k = 0.5_DP * ( V1**2 + V2**2 + V3**2 )
-    h = Cs**2 * ( E / P ) + k
+    R1(:,1) = [ 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+    R1(:,2) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+    R1(:,3) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+    R1(:,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
+    R1(:,5) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
+    R1(:,6) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
 
-    R1(:,1) = [ 1.0_DP, V1 - Cs,       V2,     V3, h - Cs * V1 ]
-    R1(:,2) = [ 1.0_DP,      V1,       V2,     V3,           k ]
-    R1(:,3) = [ 1.0_DP, V1 + Cs,       V2,     V3, h + Cs * V1 ]
-    R1(:,4) = [ 0.0_DP,  0.0_DP, - 1.0_DP, 0.0_DP,        - V2 ]
-    R1(:,5) = [ 0.0_DP,  0.0_DP,   0.0_DP, 1.0_DP,          V3 ]
+    RETURN
+
+!!$    k = 0.5_DP * ( V1**2 + V2**2 + V3**2 )
+!!$    h = Cs**2 * ( E / P ) + k
+!!$
+!!$    R1(:,1) = [ 1.0_DP, V1 - Cs,       V2,     V3, h - Cs * V1 ]
+!!$    R1(:,2) = [ 1.0_DP,      V1,       V2,     V3,           k ]
+!!$    R1(:,3) = [ 1.0_DP, V1 + Cs,       V2,     V3, h + Cs * V1 ]
+!!$    R1(:,4) = [ 0.0_DP,  0.0_DP, - 1.0_DP, 0.0_DP,        - V2 ]
+!!$    R1(:,5) = [ 0.0_DP,  0.0_DP,   0.0_DP, 1.0_DP,          V3 ]
 
   END SUBROUTINE ComputeEigenvectors_R
 
