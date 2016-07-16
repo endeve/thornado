@@ -167,8 +167,7 @@ CONTAINS
         Y_T => EOS % TS % States(iY_T) % Values )
 
     ASSOCIATE &
-      ( Chi_T => OPACITIES % ThermEmAb % Absorptivity(1) % Values, &
-        OS    => OPACITIES % ThermEmAb % Offset )
+      ( Chi_T => OPACITIES % ThermEmAb % Absorptivity(1) % Values )
 
     IF( ComputeDerivatives )THEN
 
@@ -177,7 +176,7 @@ CONTAINS
         CALL LogInterpolateDifferentiateSingleVariable &
                ( [ E(iE) ] / MeV, [ D ] / ( Gram / Centimeter**3 ), &
                  [ T ] / Kelvin, [ Y ], E_T, D_T, T_T, Y_T, &
-                 [ 1, 1, 1, 0 ], OS, Chi_T, TMP, dTMP, debug = .FALSE. )
+                 [ 1, 1, 1, 0 ], 0.0_DP, Chi_T, TMP, dTMP, debug = .FALSE. )
 
         Chi(iE) &
           = TMP(1) * ( 1.0_DP / Centimeter )
@@ -197,7 +196,7 @@ CONTAINS
         CALL LogInterpolateSingleVariable &
                ( [ E(iE) ] / MeV, [ D ] / ( Gram / Centimeter**3 ), &
                  [ T ] / Kelvin, [ Y ], E_T, D_T, T_T, Y_T, &
-                 [ 1, 1, 1, 0 ], OS, Chi_T, TMP )
+                 [ 1, 1, 1, 0 ], 0.0_DP, Chi_T, TMP )
 
         Chi(iE) = TMP(1) * ( 1.0_DP / Centimeter )
 
