@@ -322,6 +322,7 @@ CONTAINS
     INTEGER  :: iPoint, iCF, iNode
     REAL(DP) :: Theta, dD, dS1, dS2, dS3, dE
     REAL(DP) :: a, b, c, r1, r2
+    REAL(DP), DIMENSION(1:nPF) :: uPF_A
 
     IF( nDOFX == 1 ) RETURN
 
@@ -433,37 +434,57 @@ CONTAINS
 
             END DO
 
-            DO iNode = 1, nDOFX
-              uPF(iNode,iX1,iX2,iX3,:) &
-                = Primitive( uCF(iNode,iX1,iX2,iX3,:) )
+            uPF_A(1:nPF) = Primitive( uCF_M(1,1:nCF) )
+
+            DO iPoint = 1, nPoints
+              DO iCF = 1, nCF
+
+                uCF_P(iPoint,iCF) &
+                  = evalLX( uCF(:,iX1,iX2,iX3,iCF), Points_X1(iPoint), &
+                            Points_X2(iPoint), Points_X3(iPoint) )
+
+              END DO
+
+              uPF_P(iPoint,:) = Primitive( uCF_P(iPoint,:) )
+
             END DO
 
-            IF( ANY( uPF(:,iX1,iX2,iX3,iPF_D) <= 0.0_DP ) &
-                  .OR. ANY( uPF(:,iX1,iX2,iX3,iPF_E) <= 0.0_DP ) )THEN
+            IF( ANY( uPF_P(:,iPF_D) <= 0.0_DP ) &
+                  .OR. ANY( uPF_P(:,iPF_E) <= 0.0_DP ) )THEN
 
               PRINT*
               PRINT*, "Problem with Positivity Limiter!"
               PRINT*, "  iX1, iX2, iX3 = ", iX1, iX2, iX3
+              PRINT*, "  Theta = ", Theta
               PRINT*
               PRINT*, "  Conserved Fields (Nodal):"
-              PRINT*, "  D_N  = ", uCF(:,iX1,iX2,iX3,iCF_D)
-              PRINT*, "  S1_N = ", uCF(:,iX1,iX2,iX3,iCF_S1)
-              PRINT*, "  S2_N = ", uCF(:,iX1,iX2,iX3,iCF_S2)
-              PRINT*, "  S3_N = ", uCF(:,iX1,iX2,iX3,iCF_S3)
-              PRINT*, "  E_N  = ", uCF(:,iX1,iX2,iX3,iCF_E)
+              PRINT*, "  D_N  = ", uCF_P(:,iCF_D)
+              PRINT*, "  S1_N = ", uCF_P(:,iCF_S1)
+              PRINT*, "  S2_N = ", uCF_P(:,iCF_S2)
+              PRINT*, "  S3_N = ", uCF_P(:,iCF_S3)
+              PRINT*, "  E_N  = ", uCF_P(:,iCF_E)
               PRINT*
               PRINT*, "  Primitive Fields (Nodal):"
-              PRINT*, "  D_N  = ", uPF(:,iX1,iX2,iX3,iPF_D)
-              PRINT*, "  V1_N = ", uPF(:,iX1,iX2,iX3,iPF_V1)
-              PRINT*, "  V2_N = ", uPF(:,iX1,iX2,iX3,iPF_V2)
-              PRINT*, "  V3_N = ", uPF(:,iX1,iX2,iX3,iPF_V3)
-              PRINT*, "  E_N  = ", uPF(:,iX1,iX2,iX3,iPF_E)
+              PRINT*, "  D_N  = ", uPF_P(:,iPF_D)
+              PRINT*, "  V1_N = ", uPF_P(:,iPF_V1)
+              PRINT*, "  V2_N = ", uPF_P(:,iPF_V2)
+              PRINT*, "  V3_N = ", uPF_P(:,iPF_V3)
+              PRINT*, "  E_N  = ", uPF_P(:,iPF_E)
               PRINT*
+              PRINT*, "  Cell-Averages (Conserved):"
               PRINT*, "  D_A  = ", uCF_M(1,iCF_D)
               PRINT*, "  S1_A = ", uCF_M(1,iCF_S1)
               PRINT*, "  S2_A = ", uCF_M(1,iCF_S2)
               PRINT*, "  S3_A = ", uCF_M(1,iCF_S3)
               PRINT*, "  E_A  = ", uCF_M(1,iCF_E)
+              PRINT*
+              PRINT*, "  Cell-Averages (Primitive):"
+              PRINT*, "  D_A  = ", uPF_A(iPF_D)
+              PRINT*, "  V1_A = ", uPF_A(iPF_V1)
+              PRINT*, "  V2_A = ", uPF_A(iPF_V2)
+              PRINT*, "  V3_A = ", uPF_A(iPF_V3)
+              PRINT*, "  E_A  = ", uPF_A(iPF_E)
+              PRINT*
 
               STOP
 
