@@ -402,7 +402,7 @@ CONTAINS
                             + dS3 * uCF_M(1,iCF_S3) )
                 c = uCF_M(1,iCF_D) * uCF_M(1,iCF_E) &
                       - 0.5_DP * ( uCF_M(1,iCF_S1)**2 + uCF_M(1,iCF_S2)**2 &
-                                     + uCF_M(1,iCF_S3) + Tol_E )
+                                     + uCF_M(1,iCF_S3)**2 + Tol_E )
 
                 CALL GetRoots_Quadratic( a, b, c, r1, r2 )
 
