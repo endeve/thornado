@@ -9,6 +9,8 @@ MODULE TimeSteppingModule
     nE, nDOF
   USE MeshModule, ONLY: &
     MeshX
+  USE GeometryModule, ONLY: &
+    a, b, c
   USE FluidFieldsModule, ONLY: &
     uCF, rhsCF, nCF, nPF, nAF, iPF_V1, iPF_V2, iPF_V3, iAF_Cs
   USE RadiationFieldsModule, ONLY: &
@@ -40,17 +42,19 @@ MODULE TimeSteppingModule
   LOGICAL :: EvolveFluid     = .FALSE.
   LOGICAL :: EvolveRadiation = .FALSE.
   INTEGER :: nStagesSSPRK    = 1
+  INTEGER :: nStages_SI_RK   = 1
   REAL(DP), DIMENSION(:,:,:,:,:),     ALLOCATABLE :: uCF_0
   REAL(DP), DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE :: uCR_0
 
-  PROCEDURE (TimeStepExplicit), POINTER, PUBLIC :: &
-    SSP_RK => NULL()
+  PROCEDURE (TimeStepper), POINTER, PUBLIC :: &
+    SSP_RK => NULL(), &
+    SI_RK  => NULL()
 
   INTERFACE
-    SUBROUTINE TimeStepExplicit( t, dt )
+    SUBROUTINE TimeStepper( t, dt )
       USE KindModule, ONLY: DP
       REAL(DP), INTENT(in) :: t, dt
-    END SUBROUTINE TimeStepExplicit
+    END SUBROUTINE TimeStepper
   END INTERFACE
 
   PUBLIC :: InitializeTimeStepping
@@ -63,11 +67,12 @@ CONTAINS
 
   SUBROUTINE InitializeTimeStepping &
                ( EvolveFluid_Option, EvolveRadiation_Option, &
-                 nStagesSSPRK_Option )
+                 nStagesSSPRK_Option, nStages_SI_RK_Option )
 
     LOGICAL, INTENT(in), OPTIONAL :: EvolveFluid_Option
     LOGICAL, INTENT(in), OPTIONAL :: EvolveRadiation_Option
     INTEGER, INTENT(in), OPTIONAL :: nStagesSSPRK_Option
+    INTEGER, INTENT(in), OPTIONAL :: nStages_SI_RK_Option
 
     IF( PRESENT( EvolveFluid_Option ) )THEN
       EvolveFluid = EvolveFluid_Option
@@ -107,12 +112,34 @@ CONTAINS
 
     END SELECT
 
+    IF( PRESENT( nStages_SI_RK_Option ) )THEN
+      nStages_SI_RK = nStages_SI_RK_Option
+    END IF
+
+    SELECT CASE ( nStages_SI_RK )
+      CASE ( 1 )
+
+        SI_RK => SI_RK1
+
+      CASE ( 2 )
+
+        SI_RK => SI_RK2
+
+      CASE DEFAULT
+
+        WRITE(*,*)
+        WRITE(*,'(A4,A43,I2.2)') &
+          '', 'SI_RK not implemented for nStatges_SI_RK = ', nStages_SI_RK
+        STOP
+
+    END SELECT
+
   END SUBROUTINE InitializeTimeStepping
 
 
   SUBROUTINE FinalizeTimeStepping
 
-    NULLIFY( SSP_RK )
+    NULLIFY( SSP_RK, SI_RK )
 
   END SUBROUTINE FinalizeTimeStepping
 
@@ -121,12 +148,7 @@ CONTAINS
                ( t_begin, t_end, dt_write, UpdateFields, dt_fixed_Option )
 
     REAL(DP), INTENT(in) :: t_begin, t_end, dt_write
-    INTERFACE
-      SUBROUTINE UpdateFields( t, dt )
-        USE KindModule, ONLY: DP
-        REAL(DP), INTENT(in) :: t, dt
-      END SUBROUTINE UpdateFields
-    END INTERFACE
+    PROCEDURE (TimeStepper) :: UpdateFields
     REAL(DP), INTENT(in), OPTIONAL :: dt_fixed_Option
 
     LOGICAL  :: WriteOutput = .FALSE.
@@ -187,7 +209,7 @@ CONTAINS
 
       END IF
 
-      IF( MOD( iCycle, 100 ) == 0 )THEN
+      IF( MOD( iCycle, 1 ) == 0 )THEN
 
         WRITE(*,'(A8,A8,I8.8,A2,A4,ES10.4E2,A1,A2,A2,A5,ES10.4E2,A1,A2)') &
           '', 'Cycle = ', iCycle, &
@@ -316,23 +338,25 @@ CONTAINS
 
     dt = HUGE( 1.0_DP )
 
-    ASSOCIATE( dX1 => MeshX(1) % Width(1:nX(1)), &
-               dX2 => MeshX(2) % Width(1:nX(2)), &
-               dX3 => MeshX(3) % Width(1:nX(3)) )
+    ASSOCIATE( dX1 => MeshX(1) % Width (1:nX(1)), &
+               dX2 => MeshX(2) % Width (1:nX(2)), &
+               dX3 => MeshX(3) % Width (1:nX(3)), &
+               X1  => MeshX(1) % Center(1:nX(1)), &
+               X2  => MeshX(2) % Center(1:nX(2)), &
+               X3  => MeshX(3) % Center(1:nX(3)) )
 
     CFL = 0.2_DP / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) ! For Debugging
 
     DO iX3 = 1, nX(3)
-
-      dt_X3 = CFL * dX3(iX3)
-
       DO iX2 = 1, nX(2)
-
-        dt_X2 = CFL * dX2(iX2)
-
         DO iX1 = 1, nX(1)
 
           dt_X1 = CFL * dX1(iX1)
+          dt_X2 = CFL * a( [ X1(iX1), X2(iX2), X3(iX3) ] ) &
+                      * dX2(iX2)
+          dt_X3 = CFL * b( [ X1(iX1), X2(iX2), X3(iX3) ] ) &
+                      * c( [ X1(iX1), X2(iX2), X3(iX3) ] ) &
+                      * dX3(iX3)
 
           dt = MIN( dt, dt_x1, dt_X2, dt_X3 )
 
@@ -373,7 +397,7 @@ CONTAINS
 
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-               dt = dt, a = 0.0_DP, b = 1.0_DP )
+               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
       CALL ApplySlopeLimiter_Fluid
 
@@ -385,7 +409,7 @@ CONTAINS
 
       CALL ApplyRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-               dt = dt, a = 0.0_DP, b = 1.0_DP )
+               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
     END IF
 
@@ -431,7 +455,7 @@ CONTAINS
 
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-               dt = dt, a = 0.0_DP, b = 1.0_DP )
+               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
       CALL CPU_TIME( WT(0) )
 
@@ -453,7 +477,7 @@ CONTAINS
 
       CALL ApplyRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-               dt = dt, a = 0.0_DP, b = 1.0_DP )
+               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
     END IF
 
@@ -486,7 +510,7 @@ CONTAINS
 
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-               dt = dt, a = 0.5_DP, b = 0.5_DP )
+               dt = dt, alpha = 0.5_DP, beta = 0.5_DP )
 
       CALL CPU_TIME( WT(0) )
 
@@ -508,7 +532,7 @@ CONTAINS
 
       CALL ApplyRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-               dt = dt, a = 0.5_DP, b = 0.5_DP )
+               dt = dt, alpha = 0.5_DP, beta = 0.5_DP )
 
     END IF
 
@@ -547,7 +571,7 @@ CONTAINS
 
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-               dt = dt, a = 0.0_DP, b = 1.0_DP )
+               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
       CALL ApplySlopeLimiter_Fluid
 
@@ -559,7 +583,7 @@ CONTAINS
 
       CALL ApplyRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-               dt = dt, a = 0.0_DP, b = 1.0_DP )
+               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
     END IF
 
@@ -587,7 +611,7 @@ CONTAINS
 
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-               dt = dt, a = 0.75_DP, b = 0.25_DP )
+               dt = dt, alpha = 0.75_DP, beta = 0.25_DP )
 
       CALL ApplySlopeLimiter_Fluid
 
@@ -599,7 +623,7 @@ CONTAINS
 
       CALL ApplyRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-               dt = dt, a = 0.75_DP, b = 0.25_DP )
+               dt = dt, alpha = 0.75_DP, beta = 0.25_DP )
 
     END IF
 
@@ -627,7 +651,7 @@ CONTAINS
 
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-               dt = dt, a = 1.0_DP / 3.0_DP, b = 2.0_DP / 3.0_DP )
+               dt = dt, alpha = 1.0_DP / 3.0_DP, beta = 2.0_DP / 3.0_DP )
 
       CALL ApplySlopeLimiter_Fluid
 
@@ -639,7 +663,7 @@ CONTAINS
 
       CALL ApplyRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-               dt = dt, a = 1.0_DP / 3.0_DP , b = 2.0_DP / 3.0_DP )
+               dt = dt, alpha = 1.0_DP / 3.0_DP , beta = 2.0_DP / 3.0_DP )
 
     END IF
 
@@ -671,60 +695,6 @@ CONTAINS
   END SUBROUTINE Initialize_SSP_RK
 
 
-  SUBROUTINE ApplyRHS_Fluid( iX_Begin, iX_End, dt, a, b )
-
-    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
-    REAL(DP),              INTENT(in) :: dt, a, b
-
-    INTEGER :: iX1, iX2, iX3, iCF
-
-    DO iCF = 1, nCF
-      DO iX3 = iX_Begin(3), iX_End(3)
-        DO iX2 = iX_Begin(2), iX_End(2)
-          DO iX1 = iX_Begin(1), iX_End(1)
-
-            uCF(:,iX1,iX2,iX3,iCF) &
-              = a * uCF_0(:,iX1,iX2,iX3,iCF) &
-                  + b * ( uCF(:,iX1,iX2,iX3,iCF) &
-                          + dt * rhsCF(:,iX1,iX2,iX3,iCF) )
-
-          END DO
-        END DO
-      END DO
-    END DO
-
-  END SUBROUTINE ApplyRHS_Fluid
-
-
-  SUBROUTINE ApplyRHS_Radiation( iX_Begin, iX_End, dt, a, b )
-
-    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
-    REAL(DP),              INTENT(in) :: dt, a, b
-
-    INTEGER :: iE, iX1, iX2, iX3, iCR, iS
-
-    DO iS = 1, nSpecies
-      DO iCR = 1, nCR
-        DO iX3 = iX_Begin(3), iX_End(3)
-          DO iX2 = iX_Begin(2), iX_End(2)
-            DO iX1 = iX_Begin(1), iX_End(1)
-              DO iE = 1, nE
-
-                uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
-                  = a * uCR_0(:,iE,iX1,iX2,iX3,iCR,iS) &
-                      + b * ( uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
-                              + dt * rhsCR(:,iE,iX1,iX2,iX3,iCR,iS) )
-
-              END DO
-            END DO
-          END DO
-        END DO
-      END DO
-    END DO
-
-  END SUBROUTINE ApplyRHS_Radiation
-
-
   SUBROUTINE Finalize_SSP_RK
 
     IF( EvolveFluid )THEN
@@ -740,6 +710,126 @@ CONTAINS
     END IF
 
   END SUBROUTINE Finalize_SSP_RK
+
+
+  SUBROUTINE SI_RK1( t, dt )
+
+    REAL(DP), INTENT(in) :: t, dt
+
+    CALL Initialize_SI_RK
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyBoundaryConditions_Radiation( Time = t )
+
+      CALL ComputeRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
+
+    END IF
+
+    CALL CoupleFluidRadiation &
+           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    CALL Finalize_SI_RK
+
+  END SUBROUTINE SI_RK1
+
+
+  SUBROUTINE SI_RK2( t, dt )
+
+    REAL(DP), INTENT(in) :: t, dt
+
+    PRINT*, "SI_RK2"
+    STOP
+
+  END SUBROUTINE SI_RK2
+
+
+  SUBROUTINE Initialize_SI_RK
+
+    IF( EvolveRadiation )THEN
+
+      ALLOCATE( uCR_0(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies) )
+
+      uCR_0(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies) &
+        = uCR(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies)
+
+    END IF
+
+  END SUBROUTINE Initialize_SI_RK
+
+
+  SUBROUTINE Finalize_SI_RK
+
+    IF( EvolveRadiation )THEN
+
+      DEALLOCATE( uCR_0 )
+
+    END IF
+
+  END SUBROUTINE Finalize_SI_RK
+
+
+  SUBROUTINE ApplyRHS_Fluid( iX_Begin, iX_End, dt, alpha, beta )
+
+    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    REAL(DP),              INTENT(in) :: dt, alpha, beta
+
+    INTEGER :: iX1, iX2, iX3, iCF
+
+    DO iCF = 1, nCF
+      DO iX3 = iX_Begin(3), iX_End(3)
+        DO iX2 = iX_Begin(2), iX_End(2)
+          DO iX1 = iX_Begin(1), iX_End(1)
+
+            uCF(:,iX1,iX2,iX3,iCF) &
+              = alpha * uCF_0(:,iX1,iX2,iX3,iCF) &
+                  + beta * ( uCF(:,iX1,iX2,iX3,iCF) &
+                             + dt * rhsCF(:,iX1,iX2,iX3,iCF) )
+
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE ApplyRHS_Fluid
+
+
+  SUBROUTINE ApplyRHS_Radiation( iX_Begin, iX_End, dt, alpha, beta )
+
+    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    REAL(DP),              INTENT(in) :: dt, alpha, beta
+
+    INTEGER :: iE, iX1, iX2, iX3, iCR, iS
+
+    DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+        DO iX3 = iX_Begin(3), iX_End(3)
+          DO iX2 = iX_Begin(2), iX_End(2)
+            DO iX1 = iX_Begin(1), iX_End(1)
+              DO iE = 1, nE
+
+                uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
+                  = alpha * uCR_0(:,iE,iX1,iX2,iX3,iCR,iS) &
+                      + beta * ( uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
+                                 + dt * rhsCR(:,iE,iX1,iX2,iX3,iCR,iS) )
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE ApplyRHS_Radiation
 
 
   SUBROUTINE BackwardEuler( t, dt )
