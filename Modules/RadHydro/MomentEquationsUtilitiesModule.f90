@@ -2,16 +2,110 @@ MODULE MomentEquationsUtilitiesModule
 
   USE KindModule, ONLY: &
     DP
+  USE ProgramHeaderModule, ONLY: &
+    nE, nDOF
   USE GeometryModule, ONLY: &
     a, dlnadX1, dlnbdX1, dlncdX2
+  USE RadiationFieldsModule, ONLY: &
+    nSpecies, &
+    uCR, nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
+    uPR, nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
 
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: Conserved
+  PUBLIC :: Primitive
+  PUBLIC :: ComputeConserved
+  PUBLIC :: ComputePrimitive
   PUBLIC :: Flux_X1
   PUBLIC :: GeometrySources
 
 CONTAINS
+
+
+  PURE FUNCTION Conserved( Primitive )
+
+    REAL(DP), DIMENSION(1:nPR), INTENT(in) :: Primitive
+    REAL(DP), DIMENSION(1:nCR)             :: Conserved
+
+    Conserved(iCR_N)  = Primitive(iPR_D)
+    Conserved(iCR_G1) = Primitive(iPR_I1)
+    Conserved(iCR_G2) = Primitive(iPR_I2)
+    Conserved(iCR_G3) = Primitive(iPR_I3)
+
+    RETURN
+  END FUNCTION Conserved
+
+
+  PURE FUNCTION Primitive( Conserved )
+
+    REAL(DP), DIMENSION(1:nPR), INTENT(in) :: Conserved
+    REAL(DP), DIMENSION(1:nCR)             :: Primitive
+
+    Primitive(iPR_D)  = Conserved(iCR_N)
+    Primitive(iPR_I1) = Conserved(iCR_G1)
+    Primitive(iPR_I2) = Conserved(iCR_G2)
+    Primitive(iPR_I3) = Conserved(iCR_G3)
+
+    RETURN
+  END FUNCTION Primitive
+
+
+  SUBROUTINE ComputeConserved( iX_Begin, iX_End )
+
+    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+
+    INTEGER :: iNode, iE, iX1, iX2, iX3, iS
+
+    DO iS = 1, nSpecies
+
+      DO iX3 = iX_Begin(3), iX_End(3)
+        DO iX2 = iX_Begin(2), iX_End(2)
+          DO iX1 = iX_Begin(1), iX_End(2)
+            DO iE = 1, nE
+              DO iNode = 1, nDOF
+
+                uCR(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
+                  = Conserved( uPR(iNode,iE,iX1,iX2,iX3,1:nPR,iS) )
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+
+    END DO
+
+  END SUBROUTINE ComputeConserved
+
+
+  SUBROUTINE ComputePrimitive( iX_Begin, iX_End )
+
+    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+
+    INTEGER :: iNode, iE, iX1, iX2, iX3, iS
+
+    DO iS = 1, nSpecies
+
+      DO iX3 = iX_Begin(3), iX_End(3)
+        DO iX2 = iX_Begin(2), iX_End(2)
+          DO iX1 = iX_Begin(1), iX_End(2)
+            DO iE = 1, nE
+              DO iNode = 1, nDOF
+
+                uPR(iNode,iE,iX1,iX2,iX3,1:nPR,iS) &
+                  = Primitive( uCR(iNode,iE,iX1,iX2,iX3,1:nCR,iS) )
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+
+    END DO
+
+  END SUBROUTINE ComputePrimitive
 
 
   PURE FUNCTION Flux_X1( N, G_1, G_2, G_3 )
