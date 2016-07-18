@@ -39,7 +39,9 @@ FluidEvolutionModule.o: \
 
 MomentEquationsUtilitiesModule.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
   GeometryModule.o \
+  RadiationFieldsModule.o \
   MomentEquationsUtilitiesModule.f90
 
 MomentEquationsSolutionModule_M1_DG.o: \

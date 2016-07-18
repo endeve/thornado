@@ -19,7 +19,10 @@ MODULE FluidRadiationCouplingSolutionModule_Implicit
     iPF_D, iPF_E, iPF_Ne, nPF, &
     iAF_T, iAF_E, iAF_Ye, iAF_Me, iAF_Mp, iAF_Mn, nAF
   USE RadiationFieldsModule, ONLY: &
-    iPR_D, nPR
+    iPR_D, iPR_I1, iPR_I2, iPR_I3, nPR
+  USE MomentEquationsUtilitiesModule, ONLY: &
+    ComputeConserved, &
+    ComputePrimitive
   USE FluidRadiationCouplingUtilitiesModule, ONLY: &
     InitializeNodes, &
     InitializeWeights, &
@@ -64,11 +67,15 @@ CONTAINS
     REAL(DP),              INTENT(in) :: dt
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
 
+    CALL ComputePrimitive( iX_Begin, iX_End )
+
     CALL InitializeFluidRadiationCoupling
 
     CALL CoupleFluidRadiation_EmissionAbsorption( dt )
 
     CALL FinalizeFluidRadiationCoupling
+
+    CALL ComputeConserved( iX_Begin, iX_End )
 
   END SUBROUTINE CoupleFluidRadiation_Implicit_EmissionAbsorption
 
@@ -208,14 +215,16 @@ CONTAINS
           ', ', '||dU/U|| = ', MaxNorm
         WRITE(*,*)
         WRITE(*,'(A12,A4,ES10.4E2,A2,A4,ES10.4E2,A2,A4,ES10.4E2)') &
-          '', 'D = ', uPF_N(iPF_D, iX) / ( Gram / Centimeter**3 ), &
-          '', 'T = ', uAF_N(iAF_T, iX) / Kelvin, &
-          '', 'Y = ', uAF_N(iAF_Ye,iX)
+          '', 'D = ', uPF_N(iPF_D, iX_MAX) / ( Gram / Centimeter**3 ), &
+          '', 'T = ', uAF_N(iAF_T, iX_MAX) / Kelvin, &
+          '', 'Y = ', uAF_N(iAF_Ye,iX_MAX)
         WRITE(*,*)
 
       END IF
 
     END DO
+
+    CALL UpdateNumberFlux_EmissionAbsorption( dt )
 
   END SUBROUTINE CoupleFluidRadiation_EmissionAbsorption
 
@@ -552,6 +561,30 @@ CONTAINS
     END DO
 
   END SUBROUTINE GetStates_FRC
+
+
+  SUBROUTINE UpdateNumberFlux_EmissionAbsorption( dt )
+
+    REAL(DP), INTENT(in) :: dt
+
+    INTEGER :: iX, iE
+
+    DO iX = 1, nNodesX_G
+      DO iE = 1, nNodesE_G
+
+        uPR_N(iE,iPR_I1,iX) &
+          = uPR_N(iE,iPR_I1,iX) / ( 1.0_DP + dt * Chi(iE,iX) )
+
+        uPR_N(iE,iPR_I2,iX) &
+          = uPR_N(iE,iPR_I2,iX) / ( 1.0_DP + dt * Chi(iE,iX) )
+
+        uPR_N(iE,iPR_I3,iX) &
+          = uPR_N(iE,iPR_I3,iX) / ( 1.0_DP + dt * Chi(iE,iX) )
+
+      END DO
+    END DO
+
+  END SUBROUTINE UpdateNumberFlux_EmissionAbsorption
 
 
   PURE REAL(DP) FUNCTION ENORM( X )
