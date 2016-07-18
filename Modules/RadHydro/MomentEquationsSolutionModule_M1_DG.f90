@@ -318,8 +318,7 @@ CONTAINS
 
                     DO iNodeE = 1, nNodesE
 
-                      iNode &
-                        = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+                      iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
                       rhsCR(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
                         = rhsCR(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
