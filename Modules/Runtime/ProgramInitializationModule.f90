@@ -74,7 +74,8 @@ CONTAINS
       Opacity_Option, OpacityTableName_Option, FluidSolver_Option, &
       RadiationSolver_Option, FluidRiemannSolver_Option, &
       RadiationRiemannSolver_Option, FluidRadiationCoupling_Option, &
-      EvolveFluid_Option, EvolveRadiation_Option, nStagesSSPRK_Option )
+      EvolveFluid_Option, EvolveRadiation_Option, nStagesSSPRK_Option, &
+      nStages_SI_RK_Option )
 
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: ProgramName_Option
     INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: nX_Option
@@ -108,6 +109,7 @@ CONTAINS
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveFluid_Option
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveRadiation_Option
     INTEGER,                INTENT(in), OPTIONAL :: nStagesSSPRK_Option
+    INTEGER,                INTENT(in), OPTIONAL :: nStages_SI_RK_Option
 
     LOGICAL :: ActivateUnits
     INTEGER :: iDim
@@ -307,7 +309,8 @@ CONTAINS
     CALL InitializeTimeStepping &
            ( EvolveFluid_Option = EvolveFluid_Option, &
              EvolveRadiation_Option = EvolveRadiation_Option, &
-             nStagesSSPRK_Option = nStagesSSPRK_Option )
+             nStagesSSPRK_Option = nStagesSSPRK_Option, &
+             nStages_SI_RK_Option = nStages_SI_RK_Option )
 
   END SUBROUTINE InitializeProgram
 
