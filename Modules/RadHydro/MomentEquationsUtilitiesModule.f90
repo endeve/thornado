@@ -62,7 +62,7 @@ CONTAINS
 
       DO iX3 = iX_Begin(3), iX_End(3)
         DO iX2 = iX_Begin(2), iX_End(2)
-          DO iX1 = iX_Begin(1), iX_End(2)
+          DO iX1 = iX_Begin(1), iX_End(1)
             DO iE = 1, nE
               DO iNode = 1, nDOF
 
@@ -90,7 +90,7 @@ CONTAINS
 
       DO iX3 = iX_Begin(3), iX_End(3)
         DO iX2 = iX_Begin(2), iX_End(2)
-          DO iX1 = iX_Begin(1), iX_End(2)
+          DO iX1 = iX_Begin(1), iX_End(1)
             DO iE = 1, nE
               DO iNode = 1, nDOF
 
@@ -158,16 +158,18 @@ CONTAINS
             * dlnbdX1( X )
 
     GeometrySources(3) &
-      = N * 0.5_DP * ( (3.0_DP*Xi - 1.0_DP)*G_3*G_3/G2 + (1.0_DP - Xi) ) &
-            * dlncdX2( X ) / a( X ) &
-        - N * 0.5_DP * (3.0_DP*Xi - 1.0_DP)*G_1*G_2/G2 &
-            * dlnadX1( X )
+      = 0.0_DP
+!!$        N * 0.5_DP * ( (3.0_DP*Xi - 1.0_DP)*G_3*G_3/G2 + (1.0_DP - Xi) ) &
+!!$            * dlncdX2( X ) / a( X ) &
+!!$        - N * 0.5_DP * (3.0_DP*Xi - 1.0_DP)*G_1*G_2/G2 &
+!!$            * dlnadX1( X )
 
     GeometrySources(4) &
-      = - N * 0.5_DP * (3.0_DP*Xi - 1.0_DP)*G_1*G_3/G2 &
-            * dlnbdX1( X ) &
-        - N * 0.5_DP * (3.0_DP*Xi - 1.0_DP)*G_2*G_3/G2 &
-            * dlncdX2( X ) / a( X )
+      = 0.0_DP
+!!$        - N * 0.5_DP * (3.0_DP*Xi - 1.0_DP)*G_1*G_3/G2 &
+!!$            * dlnbdX1( X ) &
+!!$        - N * 0.5_DP * (3.0_DP*Xi - 1.0_DP)*G_2*G_3/G2 &
+!!$            * dlncdX2( X ) / a( X )
 
     RETURN
   END FUNCTION GeometrySources
