@@ -33,15 +33,15 @@ PROGRAM GaussianSphericalWave1D
            eR_Option &
              = 1.0_DP, &
            nNodes_Option &
-             = 1, &
+             = 2, &
            CoordinateSystem_Option &
              = 'SPHERICAL', &
            RadiationSolver_Option &
              = 'M1_DG', &
            EvolveRadiation_Option &
              = .TRUE., &
-           nStagesSSPRK_Option &
-             = 1 )
+           nStages_SSP_RK_Option &
+             = 2 )
 
   CALL InitializeGaussianSphericalWave1D
 

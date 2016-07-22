@@ -26,7 +26,7 @@ PROGRAM StreamingSineWave1D
            nNodes_Option = 3, &
            RadiationSolver_Option = 'M1_DG', &
            EvolveRadiation_Option = .TRUE., &
-           nStagesSSPRK_Option = 3 )
+           nStages_SSP_RK_Option = 3 )
 
   CALL InitializeStreamingSineWave1D
 
