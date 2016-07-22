@@ -42,7 +42,7 @@ MODULE TimeSteppingModule
 
   LOGICAL :: EvolveFluid     = .FALSE.
   LOGICAL :: EvolveRadiation = .FALSE.
-  INTEGER :: nStagesSSPRK    = 1
+  INTEGER :: nStages_SSP_RK  = 1
   INTEGER :: nStages_SI_RK   = 1
   REAL(DP), DIMENSION(:,:,:,:,:),     ALLOCATABLE :: uCF_0
   REAL(DP), DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE :: uCR_0
@@ -68,11 +68,11 @@ CONTAINS
 
   SUBROUTINE InitializeTimeStepping &
                ( EvolveFluid_Option, EvolveRadiation_Option, &
-                 nStagesSSPRK_Option, nStages_SI_RK_Option )
+                 nStages_SSP_RK_Option, nStages_SI_RK_Option )
 
     LOGICAL, INTENT(in), OPTIONAL :: EvolveFluid_Option
     LOGICAL, INTENT(in), OPTIONAL :: EvolveRadiation_Option
-    INTEGER, INTENT(in), OPTIONAL :: nStagesSSPRK_Option
+    INTEGER, INTENT(in), OPTIONAL :: nStages_SSP_RK_Option
     INTEGER, INTENT(in), OPTIONAL :: nStages_SI_RK_Option
 
     IF( PRESENT( EvolveFluid_Option ) )THEN
@@ -87,11 +87,11 @@ CONTAINS
     WRITE(*,'(A5,A19,L1)') '', 'Evolve Radiation = ', EvolveRadiation
     WRITE(*,*)
 
-    IF( PRESENT( nStagesSSPRK_Option ) )THEN
-      nStagesSSPRK = nStagesSSPRK_Option
+    IF( PRESENT( nStages_SSP_RK_Option ) )THEN
+      nStages_SSP_RK = nStages_SSP_RK_Option
     END IF
 
-    SELECT CASE ( nStagesSSPRK )
+    SELECT CASE ( nStages_SSP_RK )
       CASE ( 1 )
 
         SSP_RK => SSP_RK1
@@ -108,7 +108,7 @@ CONTAINS
 
         WRITE(*,*)
         WRITE(*,'(A4,A43,I2.2)') &
-          '', 'SSP_RK not implemented for nStatgesSSPRK = ', nStagesSSPRK
+          '', 'SSP_RK not implemented for nStatgesSSPRK = ', nStages_SSP_RK
         STOP
 
     END SELECT
