@@ -3,46 +3,38 @@ MODULE PolynomialBasisMappingModule
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, nDOFX
+    nNodesX, nDOFX, nDOF
   USE QuadratureModule, ONLY: &
     xG5, wG5
   USE UtilitiesModule, ONLY: &
     WriteMatrix
   USE PolynomialBasisModule_Lagrange, ONLY: &
-    L_X1, L_X2, L_X3
+    IndL_Q, L_E, L_X1, L_X2, L_X3
   USE PolynomialBasisModule_Legendre, ONLY: &
-    P_X1, P_X2, P_X3, MassPX
+    IndP_Q, P_E, P_X1, P_X2, P_X3, MassP, MassPX
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: InitializePolynomialBasisMapping
-  PUBLIC :: MapNodalToModal
-  PUBLIC :: MapModalToNodal
+  PUBLIC :: MapNodalToModal_Fluid
+  PUBLIC :: MapNodalToModal_Radiation
+  PUBLIC :: MapModalToNodal_Fluid
+  PUBLIC :: MapModalToNodal_Radiation
 
-  INTERFACE MapNodalToModal
-    MODULE PROCEDURE MapNodalToModal_Fluid
-    MODULE PROCEDURE MapNodalToModal_Radiation
-  END INTERFACE MapNodalToModal
-
-  INTERFACE MapModalToNodal
-    MODULE PROCEDURE MapModalToNodal_Fluid
-    MODULE PROCEDURE MapModalToNodal_Radiation
-  END INTERFACE MapModalToNodal
-
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Kij_X
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Pij_X
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Kij_X, K_ij
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Pij_X, P_ij
 
 CONTAINS
 
 
-  SUBROUTINE InitializePolynomialBasisMapping( Nodes_X1, Nodes_X2, Nodes_X3 )
+  SUBROUTINE InitializePolynomialBasisMapping( Nodes_E, Nodes_X1, Nodes_X2, Nodes_X3 )
 
-    REAL(DP), DIMENSION(:), INTENT(in) :: Nodes_X1, Nodes_X2, Nodes_X3
+    REAL(DP), DIMENSION(:), INTENT(in) :: Nodes_E, Nodes_X1, Nodes_X2, Nodes_X3
 
     INTEGER :: iX1, iX2, iX3
     INTEGER :: jX1, jX2, jX3
-    INTEGER :: qX1, qX2, qX3
+    INTEGER :: qE, qX1, qX2, qX3
     INTEGER :: i, j
 
     ALLOCATE( Kij_X(1:nDOFX,1:nDOFX), Pij_X(1:nDOFX,1:nDOFX) )
@@ -93,6 +85,43 @@ CONTAINS
       END DO
     END DO
 
+    ALLOCATE( K_ij(1:nDOF,1:nDOF), P_ij(1:nDOF,1:nDOF) )
+
+    K_ij = 0.0_DP
+    DO j = 1, nDOF
+      DO i = 1, nDOF
+
+        DO qX3 = 1, SIZE( xG5 )
+          DO qX2 = 1, SIZE( xG5 )
+            DO qX1 = 1, SIZE( xG5 )
+              DO qE  = 1, SIZE( xG5 )
+
+                K_ij(i,j) &
+                  = K_ij(i,j) &
+                      + wG5(qE) * wG5(qX1) * wG5(qX2) * wG5(qX3) &
+                          * P_E(IndP_Q(0,i)) % P( xG5(qE) ) &
+                              * P_X1(IndP_Q(1,i)) % P( xG5(qX1) ) &
+                                  * P_X2(IndP_Q(2,i)) % P( xG5(qX1) ) &
+                                      * P_X3(IndP_Q(3,i)) % P( xG5(qX1) ) &
+                          * L_E(IndL_Q(0,j)) % P( xG5(qE) ) &
+                              * L_X1(IndL_Q(1,j)) % P( xG5(qX1) ) &
+                                  * L_X2(IndL_Q(2,j)) % P( xG5(qX1) ) &
+                                      * L_X3(IndL_Q(3,j)) % P( xG5(qX1) )
+
+              END DO
+            END DO
+          END DO
+        END DO
+
+        P_ij(i,j) &
+          = P_E(IndP_Q(0,j)) % P( Nodes_E(IndL_Q(0,i)) ) &
+              * P_X1(IndP_Q(1,j)) % P( Nodes_X1(IndL_Q(1,i)) ) &
+                  * P_X2(IndP_Q(2,j)) % P( Nodes_X2(IndL_Q(2,i)) ) &
+                      * P_X3(IndP_Q(3,j)) % P( Nodes_X3(IndL_Q(3,i)) )
+
+      END DO
+    END DO
+
   END SUBROUTINE InitializePolynomialBasisMapping
 
 
@@ -112,7 +141,18 @@ CONTAINS
   END SUBROUTINE MapNodalToModal_Fluid
 
 
-  SUBROUTINE MapNodalToModal_Radiation
+  SUBROUTINE MapNodalToModal_Radiation( uN, uM )
+
+    REAL(DP), DIMENSION(nDOF), INTENT(in)  :: uN
+    REAL(DP), DIMENSION(nDOF), INTENT(out) :: uM
+
+    INTEGER :: i
+
+    uM = 0.0_DP
+    DO i = 1, nDOF
+      uM(:) = uM(:) + K_ij(:,i) * uN(i)
+    END DO
+    uM = MassP * uM
 
   END SUBROUTINE MapNodalToModal_Radiation
 
@@ -132,7 +172,17 @@ CONTAINS
   END SUBROUTINE MapModalToNodal_Fluid
 
 
-  SUBROUTINE MapModalToNodal_Radiation
+  SUBROUTINE MapModalToNodal_Radiation( uN, uM )
+
+    REAL(DP), DIMENSION(nDOF), INTENT(out) :: uN
+    REAL(DP), DIMENSION(nDOF), INTENT(in)  :: uM
+
+    INTEGER :: i
+
+    uN = 0.0_DP
+    DO i = 1, nDOF
+      uN(:) = uN(:) + P_ij(:,i) * uM(i)
+    END DO
 
   END SUBROUTINE MapModalToNodal_Radiation
 

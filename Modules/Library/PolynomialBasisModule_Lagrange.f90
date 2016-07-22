@@ -26,11 +26,13 @@ MODULE PolynomialBasisModule_Lagrange
     PROCEDURE (Basis), POINTER, NOPASS :: P
   END TYPE PolynomialBasisType
 
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: nodes
-  TYPE(PolynomialBasisType), DIMENSION(:), ALLOCATABLE, PUBLIC :: L_E,  dL_E
-  TYPE(PolynomialBasisType), DIMENSION(:), ALLOCATABLE, PUBLIC :: L_X1, dL_X1
-  TYPE(PolynomialBasisType), DIMENSION(:), ALLOCATABLE, PUBLIC :: L_X2, dL_X2
-  TYPE(PolynomialBasisType), DIMENSION(:), ALLOCATABLE, PUBLIC :: L_X3, dL_X3
+  REAL(DP),                  DIMENSION(:,:), ALLOCATABLE         :: nodes
+  INTEGER,                   DIMENSION(:,:), ALLOCATABLE, PUBLIC :: IndL_Q
+  INTEGER,                   DIMENSION(:,:), ALLOCATABLE, PUBLIC :: IndLx_Q
+  TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: L_E,  dL_E
+  TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: L_X1, dL_X1
+  TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: L_X2, dL_X2
+  TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: L_X3, dL_X3
 
   PUBLIC :: InitializePolynomialBasis_Lagrange
   PUBLIC :: evalL
@@ -57,6 +59,10 @@ CONTAINS
 
     ALLOCATE( L_X3(nNodesX(3)), dL_X3(nNodesX(3)) )
     CALL InitializeBasis( L_X3, dL_X3 )
+
+    ALLOCATE( IndL_Q (0:3,nDOF) )
+    ALLOCATE( IndLX_Q(1:3,nDOF) )
+    CALL InitializeIndices_TensorProductBasis
 
     CALL ComputeMassMatrix
 
@@ -161,6 +167,39 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE InitializeBasis
+
+
+  SUBROUTINE InitializeIndices_TensorProductBasis
+
+    INTEGER :: i, iNodeE, iNodeX1, iNodeX2, iNodeX3
+
+    i = 1
+    DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+        DO iNodeX1 = 1, nNodesX(1)
+
+          IndLX_Q(1:3,i) = [ iNodeX1, iNodeX2, iNodeX3 ]
+          i = i + 1
+
+        END DO
+      END DO
+    END DO
+
+    i = 1
+    DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+        DO iNodeX1 = 1, nNodesX(1)
+          DO iNodeE = 1, nNodesE
+
+            IndL_Q(0:3,i) = [ iNodeE, iNodeX1, iNodeX2, iNodeX3 ]
+            i = i + 1
+
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeIndices_TensorProductBasis
 
 
   SUBROUTINE ComputeMassMatrix

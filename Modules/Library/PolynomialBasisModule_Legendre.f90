@@ -3,7 +3,9 @@ MODULE PolynomialBasisModule_Legendre
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nNodesX
+    nDims, nDimsX, &
+    nNodes, nNodesE, nNodesX, &
+    nDOF, nDOFX
   USE QuadratureModule, ONLY: &
     xG5, wG5
   USE UtilitiesModule, ONLY: &
@@ -23,10 +25,14 @@ MODULE PolynomialBasisModule_Legendre
     PROCEDURE (Basis), POINTER, NOPASS :: P
   END TYPE PolynomialBasisType
 
-  REAL(DP),                  DIMENSION(:), ALLOCATABLE, PUBLIC :: MassPX
-  TYPE(PolynomialBasisType), DIMENSION(:), ALLOCATABLE, PUBLIC :: P_X1
-  TYPE(PolynomialBasisType), DIMENSION(:), ALLOCATABLE, PUBLIC :: P_X2
-  TYPE(PolynomialBasisType), DIMENSION(:), ALLOCATABLE, PUBLIC :: P_X3
+  INTEGER,                   DIMENSION(:,:), ALLOCATABLE, PUBLIC :: IndP_Q
+  INTEGER,                   DIMENSION(:,:), ALLOCATABLE, PUBLIC :: IndPX_Q
+  REAL(DP),                  DIMENSION(:),   ALLOCATABLE, PUBLIC :: MassP
+  REAL(DP),                  DIMENSION(:),   ALLOCATABLE, PUBLIC :: MassPX
+  TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: P_E
+  TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: P_X1
+  TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: P_X2
+  TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: P_X3
 
   PUBLIC :: InitializePolynomialBasis_Legendre
   PUBLIC :: evalPX
@@ -35,6 +41,9 @@ CONTAINS
 
 
   SUBROUTINE InitializePolynomialBasis_Legendre
+
+    ALLOCATE( P_E(nNodesE) )
+    CALL InitializeBasis( P_E )
 
     ALLOCATE( P_X1(nNodesX(1)) )
     CALL InitializeBasis( P_X1 )
@@ -45,6 +54,11 @@ CONTAINS
     ALLOCATE( P_X3(nNodesX(3)) )
     CALL InitializeBasis( P_X3 )
 
+    ALLOCATE( IndP_Q (0:3,nDOF) )
+    ALLOCATE( IndPX_Q(1:3,nDOFX) )
+    CALL InitializeIndices_TensorProductBasis
+
+    ALLOCATE( MassP (nDOF) )
     ALLOCATE( MassPX(nDOFX) )
     CALL ComputeMassMatrices
 
@@ -90,64 +104,144 @@ CONTAINS
   END SUBROUTINE InitializeBasis
 
 
-  SUBROUTINE ComputeMassMatrices
+  SUBROUTINE InitializeIndices_TensorProductBasis
 
-    INTEGER :: iX1, iX2, iX3
-    INTEGER :: jX1, jX2, jX3
-    INTEGER :: qX1, qX2, qX3
-    INTEGER :: i, j
-    REAL(DP), DIMENSION(:), ALLOCATABLE :: M_X
+    INTEGER :: i, ik, kMax, ik_E, ik_X1, ik_X2, ik_X3
 
-    ALLOCATE( M_X(1:nDOFX) )
+    kMax = nDimsX * nNodes
 
-    i = 0
-    DO iX1 = 1, nNodesX(1)
-      DO iX2 = 1, nNodesX(2)
-        DO iX3 = 1, nNodesX(3)
+    i = 1
+    DO ik = 0, kMax
+      DO ik_X3 = 0, nNodesX(3) - 1
+        DO ik_X2 = 0, nNodesX(2) - 1
+          DO ik_X1 = 0, nNodesX(1) - 1
 
-          i = i + 1
+            IF( SUM( [ ik_X1, ik_X2, ik_X3 ] ) == ik )THEN
 
-          j = 0
-          DO jX1 = 1, nNodesX(1)
-            DO jX2 = 1, nNodesX(2)
-              DO jX3 = 1, nNodesX(3)
+              IndPX_Q(1:3,i) = [ ik_X1+1, ik_X2+1, ik_X3+1 ]
+              i = i + 1
 
-                j = j + 1
+            END IF
 
-                IF( j /= i ) cycle
-
-                M_X(i) = 0.0_DP
-                DO qX3 = 1, SIZE( xG5 )
-                  DO qX2 = 1, SIZE( xG5 )
-                    DO qX1 = 1, SIZE( xG5 )
-
-                      M_X(i) &
-                        = M_X(i) &
-                            + wG5(qX1) * wG5(qX2) * wG5(qX3) &
-                                * P_X1(iX1) % P( xG5(qX1) ) &
-                                    * P_X2(iX2) % P( xG5(qX2) ) &
-                                        * P_X3(iX3) % P( xG5(qX3) ) &
-                                * P_X1(jX1) % P( xG5(qX1) ) &
-                                    * P_X2(jX2) % P( xG5(qX2) ) &
-                                        * P_X3(jX3) % P( xG5(qX3) )
-
-                    END DO
-                  END DO
-                END DO
-
-              END DO
-            END DO
           END DO
-
         END DO
       END DO
     END DO
 
-    MassPX = 1.0_DP / M_X ! Store as Inverse
+    kMax = nDims * nNodes
 
-    DEALLOCATE( M_X )
+    i = 1
+    DO ik = 0, kMax
+      DO ik_X3 = 0, nNodesX(3) - 1
+        DO ik_X2 = 0, nNodesX(2) - 1
+          DO ik_X1 = 0, nNodesX(1) - 1
+            DO ik_E = 0, nNodesE - 1
+
+              IF( SUM( [ ik_E, ik_X1, ik_X2, ik_X3 ] ) == ik )THEN
+
+                IndP_Q(0:3,i) = [ ik_E+1, ik_X1+1, ik_X2+1, ik_X3+1 ]
+                i = i + 1
+
+              END IF
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeIndices_TensorProductBasis
+
+
+  SUBROUTINE ComputeMassMatrices
+
+    INTEGER :: qE, qX1, qX2, qX3
+    INTEGER :: i, j
+    REAL(DP), DIMENSION(:), ALLOCATABLE :: Mass
+
+    ! --- Position Space Basis ---
+
+    ALLOCATE( Mass(1:nDOFX) )
+
+    Mass = 0.0_DP
+    DO j = 1, nDOFX
+      DO i = 1, nDOFX
+
+        IF( i /= j ) cycle
+
+        DO qX3 = 1, SIZE( xG5 )
+          DO qX2 = 1, SIZE( xG5 )
+            DO qX1 = 1, SIZE( xG5 )
+
+              Mass(i) &
+                = Mass(i) &
+                    + wG5(qX1) * wG5(qX2) * wG5(qX3) &
+                        * P_X1(IndPX_Q(1,i)) % P( xG5(qX1) ) &
+                            * P_X2(IndPX_Q(2,i)) % P( xG5(qX2) ) &
+                                * P_X3(IndPX_Q(3,i)) % P( xG5(qX3) ) &
+                        * P_X1(IndPX_Q(1,j)) % P( xG5(qX1) ) &
+                            * P_X2(IndPX_Q(2,j)) % P( xG5(qX2) ) &
+                                * P_X3(IndPX_Q(3,j)) % P( xG5(qX3) )
+
+            END DO
+          END DO
+        END DO
+
+      END DO
+    END DO
+
+    MassPX = 1.0_DP / Mass ! Store as Inverse
+
+    DEALLOCATE( Mass )
+
+    ! --- Energy-Position Space Basis ---
+
+    ALLOCATE( Mass(1:nDOF) )
+
+    Mass = 0.0_DP
+    DO j = 1, nDOF
+      DO i = 1, nDOF
+
+        IF( i /= j ) CYCLE
+
+        DO qX3 = 1, SIZE( xG5 )
+          DO qX2 = 1, SIZE( xG5 )
+            DO qX1 = 1, SIZE( xG5 )
+              DO qE  = 1, SIZE( xG5 )
+
+                Mass(i) &
+                  = Mass(i) &
+                      + wG5(qE) * wG5(qX1) * wG5(qX2) * wG5(qX3) &
+                          * P_E (IndP_Q(0,i)) % P( xG5(qE) ) &
+                              * P_X1(IndP_Q(1,i)) % P( xG5(qX1) ) &
+                                  * P_X2(IndP_Q(2,i)) % P( xG5(qX2) ) &
+                                      * P_X3(IndP_Q(3,i)) % P( xG5(qX3) ) &
+                          * P_E (IndP_Q(0,j)) % P( xG5(qE) ) &
+                              * P_X1(IndP_Q(1,j)) % P( xG5(qX1) ) &
+                                  * P_X2(IndP_Q(2,j)) % P( xG5(qX2) ) &
+                                      * P_X3(IndP_Q(3,j)) % P( xG5(qX3) )
+
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END DO
+    END DO
+
+    MassP = 1.0_DP / Mass ! Store as Inverse
+
+    DEALLOCATE( Mass )
 
   END SUBROUTINE ComputeMassMatrices
+
+
+  PURE REAL(DP) FUNCTION evalP( u, E, X1, X2, X3 )
+
+    REAL(DP), INTENT(in) :: u(1:nDOF), E, X1, X2, X3
+
+    RETURN
+  END FUNCTION evalP
 
 
   PURE REAL(DP) FUNCTION evalPX( u, X1, X2, X3 )
