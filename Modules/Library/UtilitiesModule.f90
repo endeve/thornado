@@ -16,6 +16,7 @@ MODULE UtilitiesModule
   PUBLIC :: MapTo1D
   PUBLIC :: MapFrom1D
   PUBLIC :: GetRoots_Quadratic
+  PUBLIC :: MinModB
   PUBLIC :: WriteVector
   PUBLIC :: WriteMatrix
 
@@ -187,6 +188,51 @@ CONTAINS
     END IF
 
   END SUBROUTINE GetRoots_Quadratic
+
+
+  REAL(DP) PURE ELEMENTAL FUNCTION MinMod2( a, b )
+
+    REAL(DP), INTENT(in) :: a, b
+
+    IF( a * b > 0.0_DP )THEN
+      IF( ABS( a ) < ABS( b ) )THEN
+        MinMod2 = a
+      ELSE
+        MinMod2 = b
+      END IF
+    ELSE
+      MinMod2 = 0.0_DP
+    END IF
+
+    RETURN
+  END FUNCTION MinMod2
+
+
+  REAL(DP) PURE ELEMENTAL FUNCTION MinMod( a, b, c )
+
+    REAL(DP), INTENT(in) :: a, b, c
+
+    MinMod = MinMod2( a, MinMod2( b, c ) )
+
+    RETURN
+  END FUNCTION MinMod
+
+
+  REAL(DP) PURE ELEMENTAL FUNCTION MinModB( a, b, c, dx, M )
+
+    REAL(DP), INTENT(in) :: a, b, c, dx, M
+
+    IF( ABS( a ) < M * dx**2 )THEN
+
+      MinModB = a
+
+    ELSE
+
+      MinModB = MinMod( a, b, c )
+
+    END IF
+
+  END FUNCTION MinModB
 
 
   SUBROUTINE WriteVector( N, Vec, FileName )
