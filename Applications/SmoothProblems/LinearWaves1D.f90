@@ -28,7 +28,7 @@ PROGRAM LinearWaves1D
            FluidSolver_Option = 'Euler_DG', &
            FluidRiemannSolver_Option = 'HLLC', &
            EvolveFluid_Option = .TRUE., &
-           nStagesSSPRK_Option = 3 )
+           nStages_SSP_RK_Option = 3 )
 
   CALL InitializeLinearWaves1D( 'EntropyWaves' )
 
