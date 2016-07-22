@@ -263,7 +263,7 @@ CONTAINS
     ! --- For Mapping Between Nodal and Modal Representations ---
 
     CALL InitializePolynomialBasisMapping &
-           ( MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
+           ( MeshE % Nodes, MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
 
     ! --- Equation of State ---
 
