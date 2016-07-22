@@ -35,7 +35,7 @@ PROGRAM RiemannProblem1D_SphericalSymmetry
              = 'HLL', &
            EvolveFluid_Option &
              = .TRUE., &
-           nStagesSSPRK_Option &
+           nStages_SSP_RK_Option &
              = 1 )
 
   CALL FinalizeProgram

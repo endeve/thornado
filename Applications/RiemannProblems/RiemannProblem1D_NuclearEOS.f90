@@ -37,7 +37,7 @@ PROGRAM RiemannProblem1D_NuclearEOS
              = 'LLF', &
            EvolveFluid_Option &
              = .TRUE., &
-           nStagesSSPRK_Option &
+           nStages_SSP_RK_Option &
              = 1 )
 
   CALL FinalizeProgram
