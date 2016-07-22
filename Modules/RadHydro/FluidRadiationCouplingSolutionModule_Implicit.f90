@@ -67,7 +67,7 @@ CONTAINS
     REAL(DP),              INTENT(in) :: dt
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
 
-    CALL ComputePrimitive( iX_Begin, iX_End )
+    CALL ComputePrimitive( iX_Begin = iX_Begin, iX_End = iX_End )
 
     CALL InitializeFluidRadiationCoupling
 
@@ -75,7 +75,7 @@ CONTAINS
 
     CALL FinalizeFluidRadiationCoupling
 
-    CALL ComputeConserved( iX_Begin, iX_End )
+    CALL ComputeConserved( iX_Begin = iX_Begin, iX_End = iX_End )
 
   END SUBROUTINE CoupleFluidRadiation_Implicit_EmissionAbsorption
 
@@ -210,9 +210,10 @@ CONTAINS
         WRITE(*,*)
         WRITE(*,'(A8,A)') ' ', 'Emission/Absorption'
         WRITE(*,*)
-        WRITE(*,'(A10,A12,I6.6,A2,A11,ES10.4E2)') &
+        WRITE(*,'(A10,A12,I6.6,A2,A11,ES10.4E2,A2,A9,I6.6)') &
           ' ', 'Iteration = ', iter, &
-          ', ', '||dU/U|| = ', MaxNorm
+          ', ', '||dU/U|| = ', MaxNorm, &
+          ', ', 'iX_MAX = ', iX_MAX
         WRITE(*,*)
         WRITE(*,'(A12,A4,ES10.4E2,A2,A4,ES10.4E2,A2,A4,ES10.4E2)') &
           '', 'D = ', uPF_N(iPF_D, iX_MAX) / ( Gram / Centimeter**3 ), &

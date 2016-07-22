@@ -5,14 +5,15 @@ MODULE EulerEquationsLimiterModule_DG
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, nDOFX
   USE UtilitiesModule, ONLY: &
-    GetRoots_Quadratic
+    GetRoots_Quadratic, &
+    MinModB
   USE PolynomialBasisModule_Lagrange, ONLY: &
     evalLX
   USE PolynomialBasisModule_Legendre, ONLY: &
     evalPX
   USE PolynomialBasisMappingModule, ONLY: &
-    MapNodalToModal, &
-    MapModalToNodal
+    MapNodalToModal_Fluid, &
+    MapModalToNodal_Fluid
   USE MeshModule, ONLY: &
     MeshX
   USE FluidFieldsModule, ONLY: &
@@ -39,7 +40,7 @@ MODULE EulerEquationsLimiterModule_DG
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X2
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X3
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCF_P, uPF_P, uAF_P
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCF_M, uCF_N
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCF_M
 
   PUBLIC :: InitializeLimiters_Euler_DG
   PUBLIC :: ApplySlopeLimiter_Euler_DG
@@ -67,7 +68,7 @@ CONTAINS
 
     ALLOCATE( uCF_P(nPoints,nCF), uPF_P(nPoints,nPF), uAF_P(nPoints,nAF) )
 
-    ALLOCATE( uCF_M(nDOFX,nCF), uCF_N(nDOFX,nCF) )
+    ALLOCATE( uCF_M(nDOFX,nCF) )
 
     ! --- Coordinates of Points Where Positivity is Required:
 
@@ -177,11 +178,11 @@ CONTAINS
 
           DO iCF = 1, nCF
 
-            CALL MapNodalToModal &
+            CALL MapNodalToModal_Fluid &
                    ( uCF(:,iX1-1,iX2,iX3,iCF), uCF_M_P(:,iCF) )
-            CALL MapNodalToModal &
+            CALL MapNodalToModal_Fluid &
                    ( uCF(:,iX1,  iX2,iX3,iCF), uCF_M  (:,iCF) )
-            CALL MapNodalToModal &
+            CALL MapNodalToModal_Fluid &
                    ( uCF(:,iX1+1,iX2,iX3,iCF), uCF_M_N(:,iCF) )
 
           END DO
@@ -208,7 +209,8 @@ CONTAINS
             = MinModB &
                 ( uCF_1(iX1,iX2,iX3,1:nCF), &
                   BetaTVD * MATMUL( L1, ( uCF_A - uCF_A_P ) ), &
-                  BetaTVD * MATMUL( L1, ( uCF_A_N - uCF_A ) ), dX1(iX1) )
+                  BetaTVD * MATMUL( L1, ( uCF_A_N - uCF_A ) ), &
+                  dX1(iX1), BetaTVB )
 
         END DO
       END DO
@@ -229,7 +231,7 @@ CONTAINS
 
             DO iCF = 1, nCF
 
-              CALL MapNodalToModal &
+              CALL MapNodalToModal_Fluid &
                      ( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
 
             END DO
@@ -256,7 +258,8 @@ CONTAINS
 
             DO iCF = 1, nCF
 
-              CALL MapModalToNodal( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
+              CALL MapModalToNodal_Fluid &
+                     ( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
 
             END DO
 
@@ -269,51 +272,6 @@ CONTAINS
     DEALLOCATE( uCF_1, uCF_1_T )
 
   END SUBROUTINE ApplySlopeLimiter_Euler_DG
-
-
-  REAL(DP) PURE ELEMENTAL FUNCTION MinMod2( a, b )
-
-    REAL(DP), INTENT(in) :: a, b
-
-    IF( a * b > 0.0_DP )THEN
-      IF( ABS( a ) < ABS( b ) )THEN
-        MinMod2 = a
-      ELSE
-        MinMod2 = b
-      END IF
-    ELSE
-      MinMod2 = 0.0_DP
-    END IF
-
-    RETURN
-  END FUNCTION MinMod2
-
-
-  REAL(DP) PURE ELEMENTAL FUNCTION MinMod( a, b, c )
-
-    REAL(DP), INTENT(in) :: a, b, c
-
-    MinMod = MinMod2( a, MinMod2( b, c ) )
-
-    RETURN
-  END FUNCTION MinMod
-
-
-  REAL(DP) PURE ELEMENTAL FUNCTION MinModB( a, b, c, dx )
-
-    REAL(DP), INTENT(in) :: a, b, c, dx
-
-    IF( ABS( a ) < BetaTVB * dx**2 )THEN
-
-      MinModB = a
-
-    ELSE
-
-      MinModB = MinMod( a, b, c )
-
-    END IF
-
-  END FUNCTION MinModB
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler_DG
@@ -350,7 +308,8 @@ CONTAINS
 
             DO iCF = 1, nCF
 
-              CALL MapNodalToModal( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
+              CALL MapNodalToModal_Fluid &
+                     ( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
 
             END DO
 
@@ -430,7 +389,8 @@ CONTAINS
 
             DO iCF = 1, nCF
 
-              CALL MapModalToNodal( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
+              CALL MapModalToNodal_Fluid &
+                     ( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
 
             END DO
 

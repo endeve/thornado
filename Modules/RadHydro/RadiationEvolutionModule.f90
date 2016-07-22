@@ -2,6 +2,9 @@ MODULE RadiationEvolutionModule
 
   USE MomentEquationsSolutionModule_M1_DG, ONLY: &
     ComputeRHS_M1_DG
+  USE MomentEquationsLimiterModule_DG, ONLY: &
+    InitializeLimiters_M1_DG, &
+    ApplySlopeLimiter_M1_DG
 
   IMPLICIT NONE
   PRIVATE
@@ -15,6 +18,14 @@ MODULE RadiationEvolutionModule
     SUBROUTINE ComputeRHS( iX_Begin, iX_End )
       INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
     END SUBROUTINE ComputeRHS
+  END INTERFACE
+
+  PROCEDURE (ApplyLimiter), POINTER, PUBLIC :: &
+    ApplySlopeLimiter_Radiation => NULL()
+
+  INTERFACE
+    SUBROUTINE ApplyLimiter
+    END SUBROUTINE ApplyLimiter
   END INTERFACE
 
   PUBLIC :: InitializeRadiationEvolution
@@ -35,9 +46,14 @@ CONTAINS
       CASE ( 'M1_DG' )
         ComputeRHS_Radiation &
           => ComputeRHS_M1_DG
+        ApplySlopeLimiter_Radiation &
+          => ApplySlopeLimiter_M1_DG
+        CALL InitializeLimiters_M1_DG
       CASE DEFAULT
         ComputeRHS_Radiation &
           => ComputeRHS_Dummy
+        ApplySlopeLimiter_Radiation &
+          => ApplyLimiter_Dummy
     END SELECT
 
   END SUBROUTINE InitializeRadiationEvolution
@@ -60,6 +76,16 @@ CONTAINS
     WRITE(*,*)
 
   END SUBROUTINE ComputeRHS_Dummy
+
+
+  SUBROUTINE ApplyLimiter_Dummy
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A)') &
+      '', 'RadiationEvolutionModule: ApplyLimiter_Dummy'
+    WRITE(*,*)
+
+  END SUBROUTINE ApplyLimiter_Dummy
 
 
 END MODULE RadiationEvolutionModule

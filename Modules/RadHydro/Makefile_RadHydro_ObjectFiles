@@ -6,6 +6,7 @@ RAD_HYDRO = \
   FluidEvolutionModule.o \
   MomentEquationsUtilitiesModule.o \
   MomentEquationsSolutionModule_M1_DG.o \
+  MomentEquationsLimiterModule_DG.o \
   RadiationEvolutionModule.o \
   FluidRadiationCouplingUtilitiesModule.o \
   FluidRadiationCouplingSolutionModule_Implicit.o \

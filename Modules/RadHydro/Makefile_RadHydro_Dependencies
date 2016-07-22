@@ -56,8 +56,13 @@ MomentEquationsSolutionModule_M1_DG.o: \
   MomentEquationsUtilitiesModule.o \  
   MomentEquationsSolutionModule_M1_DG.f90
 
+MomentEquationsLimiterModule_DG.o: \
+  KindModule.o \
+  MomentEquationsLimiterModule_DG.f90
+
 RadiationEvolutionModule.o: \
-  MomentEquationsSolutionModule_M1_DG.o: \  
+  MomentEquationsSolutionModule_M1_DG.o \
+  MomentEquationsLimiterModule_DG.o \
   RadiationEvolutionModule.f90
 
 FluidRadiationCouplingUtilitiesModule.o: \
