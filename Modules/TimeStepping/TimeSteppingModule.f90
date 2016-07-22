@@ -27,7 +27,8 @@ MODULE TimeSteppingModule
     ApplySlopeLimiter_Fluid, &
     ApplyPositivityLimiter_Fluid
   USE RadiationEvolutionModule, ONLY: &
-    ComputeRHS_Radiation
+    ComputeRHS_Radiation, &
+    ApplySlopeLimiter_Radiation
   USE FluidRadiationCouplingModule, ONLY: &
     CoupleFluidRadiation
   USE BoundaryConditionsModule, ONLY: &
@@ -209,7 +210,7 @@ CONTAINS
 
       END IF
 
-      IF( MOD( iCycle, 1 ) == 0 )THEN
+      IF( MOD( iCycle, 100 ) == 0 )THEN
 
         WRITE(*,'(A8,A8,I8.8,A2,A4,ES10.4E2,A1,A2,A2,A5,ES10.4E2,A1,A2)') &
           '', 'Cycle = ', iCycle, &
@@ -411,6 +412,8 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
+      CALL ApplySlopeLimiter_Radiation
+
     END IF
 
     CALL Finalize_SSP_RK
@@ -479,6 +482,8 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
+      CALL ApplySlopeLimiter_Radiation
+
     END IF
 
     ! -- RK Stage 2 --
@@ -534,6 +539,8 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.5_DP, beta = 0.5_DP )
 
+      CALL ApplySlopeLimiter_Radiation
+
     END IF
 
     CALL Finalize_SSP_RK
@@ -585,6 +592,8 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
+      CALL ApplySlopeLimiter_Radiation
+
     END IF
 
     ! -- RK Stage 2 --
@@ -625,6 +634,8 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.75_DP, beta = 0.25_DP )
 
+      CALL ApplySlopeLimiter_Radiation
+
     END IF
 
     ! -- RK Stage 3 --
@@ -664,6 +675,8 @@ CONTAINS
       CALL ApplyRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 1.0_DP / 3.0_DP , beta = 2.0_DP / 3.0_DP )
+
+      CALL ApplySlopeLimiter_Radiation
 
     END IF
 
@@ -733,6 +746,8 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
+      CALL ApplySlopeLimiter_Radiation
+
     END IF
 
     CALL CoupleFluidRadiation &
@@ -747,8 +762,79 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: t, dt
 
-    PRINT*, "SI_RK2"
-    STOP
+    INTEGER :: iE, iX1, iX2, iX3, iCR, iS
+
+    CALL Initialize_SI_RK
+
+    ! -- SI-RK Stage 1 --
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyBoundaryConditions_Radiation( Time = t )
+
+      CALL ComputeRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
+
+      CALL ApplySlopeLimiter_Radiation
+
+    END IF
+
+    CALL CoupleFluidRadiation &
+           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    ! -- SI-RK Stage 2 --
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyBoundaryConditions_Radiation( Time = t + dt )
+
+      CALL ComputeRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyRHS_Radiation &
+             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
+
+      CALL ApplySlopeLimiter_Radiation
+
+    END IF
+
+    CALL CoupleFluidRadiation &
+           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+    ! -- Combine Steps --
+
+    DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+        DO iX3 = 1, nX(3)
+          DO iX2 = 1, nX(2)
+            DO iX1 = 1, nX(1)
+              DO iE = 1, nE
+
+                uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
+                  = 0.5_DP * ( uCR_0(:,iE,iX1,iX2,iX3,iCR,iS) &
+                               + uCR(:,iE,iX1,iX2,iX3,iCR,iS) )
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    CALL Finalize_SI_RK
 
   END SUBROUTINE SI_RK2
 
