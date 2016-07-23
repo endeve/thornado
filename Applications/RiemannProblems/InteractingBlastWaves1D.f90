@@ -1,4 +1,4 @@
-PROGRAM RiemannProblem1D
+PROGRAM InteractingBlastWaves1D
 
   USE KindModule, ONLY: &
     DP
@@ -6,7 +6,7 @@ PROGRAM RiemannProblem1D
     InitializeProgram, &
     FinalizeProgram
   USE RiemannProblemInitializationModule, ONLY: &
-    InitializeRiemannProblem1D
+    InitializeInteractingBlastWaves1D
   USE TimeSteppingModule, ONLY: &
     EvolveFields, &
     SSP_RK
@@ -14,13 +14,14 @@ PROGRAM RiemannProblem1D
   IMPLICIT NONE
 
   CALL InitializeProgram &
-         ( ProgramName_Option = 'RiemannProblem1D', &
+         ( ProgramName_Option &
+             = 'InteractingBlastWaves1D', &
            nX_Option &
-             = [ 1024, 1, 1 ], &
+             = [ 400, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
-             = [ 2, 0, 0 ], &
+             = [ 3, 0, 0 ], &
            xL_Option &
              = [ 0.0_DP, 0.0_DP, 0.0_DP ], &
            xR_Option &
@@ -40,14 +41,12 @@ PROGRAM RiemannProblem1D
            nStages_SSP_RK_Option &
              = 1 )
 
-  CALL InitializeRiemannProblem1D &
-         ( D_L = 1.000_DP, V_L = [0.0_DP, 0.0_DP, 0.0_DP], P_L = 1.0_DP, &
-           D_R = 0.125_DP, V_R = [0.0_DP, 0.0_DP, 0.0_DP], P_R = 0.1_DP )
+  CALL InitializeInteractingBlastWaves1D
 
   CALL EvolveFields &
-         ( t_begin = 0.0_DP, t_end = 2.0d-1, dt_write = 1.0d-2, &
+         ( t_begin = 0.0_DP, t_end = 3.8d-2, dt_write = 1.0d-3, &
            UpdateFields = SSP_RK )
 
   CALL FinalizeProgram
 
-END PROGRAM RiemannProblem1D
+END PROGRAM InteractingBlastWaves1D

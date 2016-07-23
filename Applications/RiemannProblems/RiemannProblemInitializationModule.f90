@@ -24,6 +24,7 @@ MODULE RiemannProblemInitializationModule
   PRIVATE
 
   PUBLIC :: InitializeRiemannProblem1D
+  PUBLIC :: InitializeInteractingBlastWaves1D
 
 CONTAINS
 
@@ -101,6 +102,69 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeRiemannProblem1D
+
+
+  SUBROUTINE InitializeInteractingBlastWaves1D
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNode
+    REAL(DP) :: X1
+
+    WRITE(*,*)
+    WRITE(*,'(A2,A6,A)') &
+      '', 'INFO: ', TRIM( ProgramName )
+    WRITE(*,*)
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+              DO iNodeX1 = 1, nNodesX(1)
+
+                X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+                iNode = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+                uPF(iNode,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+                uPF(iNode,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+                uPF(iNode,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                uPF(iNode,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+
+                IF( X1 < 0.1_DP )THEN
+
+                  uAF(iNode,iX1,iX2,iX3,iAF_P) = 1.0d+3
+
+                ELSE IF( X1 > 0.9_DP )THEN
+
+                  uAF(iNode,iX1,iX2,iX3,iAF_P) = 1.0d+2
+
+                ELSE
+
+                  uAF(iNode,iX1,iX2,iX3,iAF_P) = 1.0d-1
+
+                END IF
+
+                uPF(iNode,iX1,iX2,iX3,iPF_E) &
+                  = InternalEnergy_Auxiliary &
+                      ( uPF(iNode,iX1,iX2,iX3,:), uAF(iNode,iX1,iX2,iX3,:) )
+
+                uAF(iNode,iX1,iX2,iX3,:) &
+                  = Auxiliary_Fluid( uPF(iNode,iX1,iX2,iX3,:) )
+
+                uCF(iNode,iX1,iX2,iX3,:) &
+                  = Conserved( uPF(iNode,iX1,iX2,iX3,:) )
+
+              END DO
+            END DO
+          END DO
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeInteractingBlastWaves1D
 
 
 END MODULE RiemannProblemInitializationModule

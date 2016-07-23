@@ -2,7 +2,8 @@ include ../../../Build/Makefile_Build
 
 all: RiemannProblem1D \
      RiemannProblem1D_SphericalSymmetry \
-     RiemannProblem1D_NuclearEOS
+     RiemannProblem1D_NuclearEOS \
+     InteractingBlastWaves1D
 
 RiemannProblem1D: \
 	$(thornado) RiemannProblemInitializationModule.o \
@@ -27,6 +28,13 @@ RiemannProblem1D_NuclearEOS: \
 	$(thornado) RiemannProblemInitializationModule.o \
 	RiemannProblem1D_NuclearEOS.o $(LIBRARIES)
 
+InteractingBlastWaves1D: \
+	$(thornado) RiemannProblemInitializationModule.o \
+	InteractingBlastWaves1D.o
+	$(FLINKER) $(FLAGS) -o InteractingBlastWaves1D_$(MACHINE) \
+	$(thornado) RiemannProblemInitializationModule.o \
+	InteractingBlastWaves1D.o $(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
@@ -34,6 +42,7 @@ clobber: clean
 	rm -f RiemannProblem1D_$(MACHINE)
 	rm -f RiemannProblem1D_SphericalSymmetry_$(MACHINE)
 	rm -f RiemannProblem1D_NuclearEOS_$(MACHINE)
+	rm -f InteractingBlastWaves1D_$(MACHINE)
 
 RiemannProblem1D.o: \
   KindModule.o \
@@ -52,6 +61,13 @@ RiemannProblem1D_NuclearEOS.o: \
   UnitsModule.o \
   ProgramInitializationModule.o \
   RiemannProblem1D_NuclearEOS.f90
+
+InteractingBlastWaves1D.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  RiemannProblemInitializationModule.o \
+  TimeSteppingModule.o \
+  InteractingBlastWaves1D.f90
 
 RiemannProblemInitializationModule.o: \
   KindModule.o \
