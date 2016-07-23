@@ -3,9 +3,13 @@ MODULE BoundaryConditionsModule
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nX, bcX, nE
+    nX, nNodesX, bcX, nE
+  USE UtilitiesModule, ONLY: &
+    NodeNumberX
   USE FluidFieldsModule, ONLY: &
-    uCF, nCF, uPF, nPF, uAF, nAF
+    uCF, nCF, iCF_S1, &
+    uPF, nPF, iPF_V1, &
+    uAF, nAF
   USE RadiationFieldsModule, ONLY: &
     uCR, nCR, nSpecies
   USE ApplicationBoundaryConditionsModule, ONLY: &
@@ -30,6 +34,8 @@ CONTAINS
   SUBROUTINE ApplyBoundaryConditions_Fluid_X1
 
     INTEGER :: iX2, iX3, iCF, iPF, iAF
+    INTEGER :: iNodeX1, jNodeX1, iNodeX2, iNodeX3
+    INTEGER :: iNodeX, jNodeX
 
     SELECT CASE ( bcX(1) )
 
@@ -106,6 +112,70 @@ CONTAINS
               uAF(:,nX(1)+1,iX2,iX3,iAF) &
                 = uAF(:,nX(1),iX2,iX3,iAF)
 
+            END DO
+
+          END DO
+        END DO
+
+      CASE ( 3 ) ! Reflecting
+
+        DO iX3 = 1, nX(3)
+          DO iX2 = 1, nX(2)
+
+            DO iNodeX3 = 1, nNodesX(3)
+              DO iNodeX2 = 1, nNodesX(2)
+                DO iNodeX1 = 1, nNodesX(1)
+
+                  jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+
+                  iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+                  jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+
+                  ! -- Conserved --
+
+                  DO iCF = 1, nCF
+
+                    uCF(iNodeX,0,      iX2,iX3,iCF) &
+                      = uCF(jNodeX,1,    iX2,iX3,iCF)
+                    uCF(iNodeX,nX(1)+1,iX2,iX3,iCF) &
+                      = uCF(jNodeX,nX(1),iX2,iX3,iCF)
+
+                  END DO
+
+                  uCF(iNodeX,0,      iX2,iX3,iCF_S1) &
+                    = - uCF(jNodeX,1,    iX2,iX3,iCF_S1)
+                  uCF(iNodeX,nX(1)+1,iX2,iX3,iCF_S1) &
+                    = - uCF(jNodeX,nX(1),iX2,iX3,iCF_S1)
+
+                  ! -- Primitive --
+
+                  DO iPF = 1, nPF
+
+                    uPF(iNodeX,0,      iX2,iX3,iPF) &
+                      = uPF(jNodeX,1,    iX2,iX3,iPF)
+                    uPF(iNodeX,nX(1)+1,iX2,iX3,iPF) &
+                      = uPF(jNodeX,nX(1),iX2,iX3,iPF)
+
+                  END DO
+
+                  uPF(iNodeX,0,      iX2,iX3,iPF_V1) &
+                    = - uPF(jNodeX,1,    iX2,iX3,iPF_V1)
+                  uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_V1) &
+                    = - uPF(jNodeX,nX(1),iX2,iX3,iPF_V1)
+
+                  ! -- Auxiliary --
+
+                  DO iAF = 1, nAF
+
+                    uAF(iNodeX,0,      iX2,iX3,iAF) &
+                      = uAF(jNodeX,1,    iX2,iX3,iAF)
+                    uAF(iNodeX,nX(1)+1,iX2,iX3,iAF) &
+                      = uAF(jNodeX,nX(1),iX2,iX3,iAF)
+
+                  END DO
+
+                END DO
+              END DO
             END DO
 
           END DO
