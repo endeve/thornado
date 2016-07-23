@@ -33,7 +33,7 @@ MODULE EulerEquationsLimiterModule_DG
   INTEGER                               :: nPoints
   REAL(DP), PARAMETER                   :: BetaTVD = 2.00_DP
   REAL(DP), PARAMETER                   :: BetaTVB = 50.0_DP
-  REAL(DP), PARAMETER                   :: Tol_TVD = 1.0d-1
+  REAL(DP), PARAMETER                   :: Tol_TVD = 1.0d-2
   REAL(DP), PARAMETER                   :: Tol_D = 1.0d-12
   REAL(DP), PARAMETER                   :: Tol_E = 1.0d-12
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X1
