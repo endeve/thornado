@@ -400,6 +400,8 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
+      CALL ApplyBoundaryConditions_Fluid
+
       CALL ApplySlopeLimiter_Fluid
 
       CALL ApplyPositivityLimiter_Fluid
@@ -460,6 +462,8 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
+      CALL ApplyBoundaryConditions_Fluid
+
       CALL CPU_TIME( WT(0) )
 
       CALL ApplySlopeLimiter_Fluid
@@ -516,6 +520,8 @@ CONTAINS
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.5_DP, beta = 0.5_DP )
+
+      CALL ApplyBoundaryConditions_Fluid
 
       CALL CPU_TIME( WT(0) )
 
@@ -580,6 +586,8 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
+      CALL ApplyBoundaryConditions_Fluid
+
       CALL ApplySlopeLimiter_Fluid
 
       CALL ApplyPositivityLimiter_Fluid
@@ -622,6 +630,8 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.75_DP, beta = 0.25_DP )
 
+      CALL ApplyBoundaryConditions_Fluid
+
       CALL ApplySlopeLimiter_Fluid
 
       CALL ApplyPositivityLimiter_Fluid
@@ -663,6 +673,8 @@ CONTAINS
       CALL ApplyRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 1.0_DP / 3.0_DP, beta = 2.0_DP / 3.0_DP )
+
+      CALL ApplyBoundaryConditions_Fluid
 
       CALL ApplySlopeLimiter_Fluid
 
