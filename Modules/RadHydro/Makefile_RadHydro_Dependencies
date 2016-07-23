@@ -92,6 +92,7 @@ ApplicationBoundaryConditionsModule.o: \
 BoundaryConditionsModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  UtilitiesModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   ApplicationBoundaryConditionsModule.o \

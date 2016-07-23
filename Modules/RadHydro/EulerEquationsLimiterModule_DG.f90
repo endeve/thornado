@@ -31,11 +31,11 @@ MODULE EulerEquationsLimiterModule_DG
   PRIVATE
 
   INTEGER                               :: nPoints
-  REAL(DP), PARAMETER                   :: BetaTVD = 1.00_DP
+  REAL(DP), PARAMETER                   :: BetaTVD = 2.00_DP
   REAL(DP), PARAMETER                   :: BetaTVB = 50.0_DP
-  REAL(DP), PARAMETER                   :: Tol_TVD = 2.0d-2
-  REAL(DP), PARAMETER                   :: Tol_D = 1.0d-13
-  REAL(DP), PARAMETER                   :: Tol_E = 1.0d-13
+  REAL(DP), PARAMETER                   :: Tol_TVD = 1.0d-1
+  REAL(DP), PARAMETER                   :: Tol_D = 1.0d-12
+  REAL(DP), PARAMETER                   :: Tol_E = 1.0d-12
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X1
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X2
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X3
@@ -356,12 +356,12 @@ CONTAINS
                 dE  = uCF_P(iPoint,iCF_E)  - uCF_M(1,iCF_E)
 
                 a = dD * dE - 0.5_DP * ( dS1**2 + dS2**2 + dS3**3 )
-                b = dE * uCF_M(1,iCF_D) + dD * uCF_M(1,iCF_E) &
+                b = dE * uCF_M(1,iCF_D) + dD * ( uCF_M(1,iCF_E) - Tol_E ) &
                       - ( dS1 * uCF_M(1,iCF_S1) + dS2 * uCF_M(1,iCF_S2) &
                             + dS3 * uCF_M(1,iCF_S3) )
-                c = uCF_M(1,iCF_D) * uCF_M(1,iCF_E) &
+                c = uCF_M(1,iCF_D) * ( uCF_M(1,iCF_E) - Tol_E ) &
                       - 0.5_DP * ( uCF_M(1,iCF_S1)**2 + uCF_M(1,iCF_S2)**2 &
-                                     + uCF_M(1,iCF_S3)**2 + Tol_E )
+                                     + uCF_M(1,iCF_S3)**2 )
 
                 CALL GetRoots_Quadratic( a, b, c, r1, r2 )
 
