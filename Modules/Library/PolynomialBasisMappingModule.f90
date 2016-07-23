@@ -9,9 +9,10 @@ MODULE PolynomialBasisMappingModule
   USE UtilitiesModule, ONLY: &
     WriteMatrix
   USE PolynomialBasisModule_Lagrange, ONLY: &
-    IndL_Q, L_E, L_X1, L_X2, L_X3
+    IndL_Q, IndLX_Q, L_E, L_X1, L_X2, L_X3
   USE PolynomialBasisModule_Legendre, ONLY: &
-    IndP_Q, P_E, P_X1, P_X2, P_X3, MassP, MassPX
+    IndP_Q, INDPX_Q, P_E, P_X1, P_X2, P_X3, &
+    MassP, MassPX
 
   IMPLICIT NONE
   PRIVATE
@@ -32,56 +33,38 @@ CONTAINS
 
     REAL(DP), DIMENSION(:), INTENT(in) :: Nodes_E, Nodes_X1, Nodes_X2, Nodes_X3
 
-    INTEGER :: iX1, iX2, iX3
-    INTEGER :: jX1, jX2, jX3
-    INTEGER :: qE, qX1, qX2, qX3
     INTEGER :: i, j
+    INTEGER :: qE, qX1, qX2, qX3
 
     ALLOCATE( Kij_X(1:nDOFX,1:nDOFX), Pij_X(1:nDOFX,1:nDOFX) )
 
-    i = 0
-    DO iX1 = 1, nNodesX(1)
-      DO iX2 = 1, nNodesX(2)
-        DO iX3 = 1, nNodesX(3)
+    Kij_X = 0.0_DP
+    DO j = 1, nDOFX
+      DO i = 1, nDOFX
 
-          i = i + 1
+        DO qX3 = 1, SIZE( xG5 )
+          DO qX2 = 1, SIZE( xG5 )
+            DO qX1 = 1, SIZE( xG5 )
 
-          j = 0
-          DO jX1 = 1, nNodesX(1)
-            DO jX2 = 1, nNodesX(2)
-              DO jX3 = 1, nNodesX(3)
+              Kij_X(i,j) &
+                = Kij_X(i,j) &
+                    + wG5(qX1) * wG5(qX2) * wG5(qX3) &
+                        * P_X1(IndPX_Q(1,i)) % P( xG5(qX1) ) &
+                            * P_X2(IndPX_Q(2,i)) % P( xG5(qX2) ) &
+                                * P_X3(IndPX_Q(3,i)) % P( xG5(qX3) ) &
+                        * L_X1(IndLX_Q(1,j)) % P( xG5(qX1) ) &
+                            * L_X2(IndLX_Q(2,j)) % P( xG5(qX2) ) &
+                                * L_X3(IndLX_Q(3,j)) % P( xG5(qX3) )
 
-                j = j + 1
-
-                Kij_X(i,j) = 0.0_DP
-                DO qX3 = 1, SIZE( xG5 )
-                  DO qX2 = 1, SIZE( xG5 )
-                    DO qX1 = 1, SIZE( xG5 )
-
-                      Kij_X(i,j) &
-                        = Kij_X(i,j) &
-                            + wG5(qX1) * wG5(qX2) * wG5(qX3) &
-                                * P_X1(iX1) % P( xG5(qX1) ) &
-                                    * P_X2(iX2) % P( xG5(qX2) ) &
-                                        * P_X3(iX3) % P( xG5(qX3) ) &
-                                * L_X1(jX1) % P( xG5(qX1) ) &
-                                    * L_X2(jX2) % P( xG5(qX2) ) &
-                                        * L_X3(jX3) % P( xG5(qX3) )
-
-                    END DO
-                  END DO
-                END DO
-
-                Pij_X(i,j) &
-                  = P_X1(jX1) % P( Nodes_X1(iX1) ) &
-                      * P_X2(jX2) % P( Nodes_X2(iX2) ) &
-                          * P_X3(jX3) % P( Nodes_X3(iX3) )
-
-              END DO
             END DO
           END DO
-
         END DO
+
+        Pij_X(i,j) &
+          = P_X1(IndPX_Q(1,j)) % P( Nodes_X1(IndLX_Q(1,i)) ) &
+              * P_X2(IndPX_Q(2,j)) % P( Nodes_X2(IndLX_Q(2,i)) ) &
+                  * P_X3(IndPX_Q(3,j)) % P( Nodes_X3(IndLX_Q(3,i)) )
+
       END DO
     END DO
 
