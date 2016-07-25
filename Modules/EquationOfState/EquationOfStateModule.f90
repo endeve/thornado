@@ -12,7 +12,8 @@ MODULE EquationOfStateModule
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable, &
     LogInterpolateDifferentiateSingleVariable, &
-    ComputeTempFromIntEnergy
+    ComputeTempFromIntEnergy, &
+    ComputeTempFromPressure
 
   ! ----------------------------------------------
 
@@ -73,8 +74,7 @@ MODULE EquationOfStateModule
     ComputeThermodynamicStates_Auxiliary => NULL()
 
   INTERFACE
-    SUBROUTINE ComputeChemicalPotentialsSubroutine &
-                 ( D, T, Y, Me, Mp, Mn )
+    SUBROUTINE ComputeChemicalPotentialsSubroutine( D, T, Y, Me, Mp, Mn )
       USE KindModule, ONLY: DP
       REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
       REAL(DP), DIMENSION(:), INTENT(out) :: Me, Mp, Mn
@@ -83,6 +83,18 @@ MODULE EquationOfStateModule
 
   PROCEDURE (ComputeChemicalPotentialsSubroutine), POINTER, PUBLIC :: &
     ComputeChemicalPotentials => NULL()
+
+  INTERFACE
+    SUBROUTINE ComputeTemperatureFromVariable( D, V, Y, T )
+      USE KindModule, ONLY: DP
+      REAL(DP), DIMENSION(:), INTENT(in)  :: D, V, Y
+      REAL(DP), DIMENSION(:), INTENT(out) :: T
+    END SUBROUTINE ComputeTemperatureFromVariable
+  END INTERFACE
+
+  PROCEDURE (ComputeTemperatureFromVariable), POINTER, PUBLIC :: &
+    ComputeTemperatureFromSpecificInternalEnergy => NULL(), &
+    ComputeTemperatureFromPressure               => NULL()
 
   INTERFACE
     SUBROUTINE ComputeEquationOfStateVariable( D, T, Y, V, dVdT, dVdY )
@@ -176,6 +188,10 @@ CONTAINS
           => ComputeThermodynamicStates_Primitive_IDEAL
         ComputeThermodynamicStates_Auxiliary &
           => ComputeThermodynamicStates_Auxiliary_IDEAL
+        ComputeTemperatureFromSpecificInternalEnergy &
+          => ComputeTemperatureFromSpecificInternalEnergy_IDEAL
+        ComputeTemperatureFromPressure &
+          => ComputeTemperatureFromPressure_IDEAL
         ComputeChemicalPotentials &
           => ComputeChemicalPotentials_IDEAL
         ComputeAuxiliary_Fluid &
@@ -206,6 +222,10 @@ CONTAINS
           => ComputeThermodynamicStates_Primitive_TABLE
         ComputeThermodynamicStates_Auxiliary &
           => ComputeThermodynamicStates_Auxiliary_TABLE
+        ComputeTemperatureFromSpecificInternalEnergy &
+          => ComputeTemperatureFromSpecificInternalEnergy_TABLE
+        ComputeTemperatureFromPressure &
+          => ComputeTemperatureFromPressure_TABLE
         ComputeSpecificInternalEnergy &
           => ComputeSpecificInternalEnergy_TABLE
         ComputeChemicalPotentials &
@@ -283,8 +303,27 @@ CONTAINS
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_IDEAL
 
 
-  SUBROUTINE ComputeChemicalPotentials_IDEAL &
-               ( D, T, Y, Me, Mp, Mn )
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_IDEAL( D, E, Y, T )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, E, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: T
+
+    WRITE(*,'(A4,A)') '', 'ComputeTemperatureFromSpecificInternalEnergy_IDEAL'
+
+  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_IDEAL
+
+
+  SUBROUTINE ComputeTemperatureFromPressure_IDEAL( D, P, Y, T )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, P, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: T
+
+    WRITE(*,'(A4,A)') '', 'ComputeTemperatureFromPressure_IDEAL'
+
+  END SUBROUTINE ComputeTemperatureFromPressure_IDEAL
+
+
+  SUBROUTINE ComputeChemicalPotentials_IDEAL( D, T, Y, Me, Mp, Mn )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: Me, Mp, Mn
@@ -294,8 +333,7 @@ CONTAINS
   END SUBROUTINE ComputeChemicalPotentials_IDEAL
 
 
-  SUBROUTINE ComputeElectronChemicalPotential_IDEAL &
-               ( D, T, Y, Me )
+  SUBROUTINE ComputeElectronChemicalPotential_IDEAL( D, T, Y, Me )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: Me
@@ -305,8 +343,7 @@ CONTAINS
   END SUBROUTINE ComputeElectronChemicalPotential_IDEAL
 
 
-  SUBROUTINE ComputeProtonChemicalPotential_IDEAL &
-               ( D, T, Y, Mp )
+  SUBROUTINE ComputeProtonChemicalPotential_IDEAL( D, T, Y, Mp )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: Mp
@@ -543,45 +580,15 @@ CONTAINS
   END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE
 
 
-  SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE &
-               ( D, Ev, Ne, T, Em, Y )
+  SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE( D, Ev, Ne, T, Em, Y )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: T, Em, Y
 
-    INTEGER                :: iS
-    REAL(DP), DIMENSION(1) :: TMP
-
-    ASSOCIATE &
-      ( iD_T => EOS % TS % Indices % iRho, &
-        iT_T => EOS % TS % Indices % iT,   &
-        iY_T => EOS % TS % Indices % iYe,  &
-        iE_T => EOS % DV % Indices % iInternalEnergyDensity )
-
-    ASSOCIATE &
-      ( D_T => EOS % TS % States(iD_T) % Values,    &
-        T_T => EOS % TS % States(iT_T) % Values,    &
-        Y_T => EOS % TS % States(iY_T) % Values,    &
-        Log => EOS % TS % LogInterp,                &
-        E_T => EOS % DV % Variables(iE_T) % Values, &
-        OS  => EOS % DV % Offsets )
-
     Em(:) = Ev(:) / D(:)              ! --- Internal Energy per Mass
     Y(:)  = Ne(:) / D(:) * BaryonMass ! --- Electron Fraction
 
-    DO iS = 1, SIZE( D )
-
-      CALL ComputeTempFromIntEnergy &
-             ( D(iS) / ( Gram / Centimeter**3 ), Em(iS) / ( Erg / Gram ), &
-               Y(iS), D_T, T_T, Y_T, Log, E_T, OS(iE_T), TMP )
-
-      T(iS) = TMP(1) * Kelvin
-
-    END DO
-
-    END ASSOCIATE ! D_T, etc.
-
-    END ASSOCIATE ! iD_T, etc.
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE( D, Em, Y, T )
 
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE
 
@@ -687,8 +694,7 @@ CONTAINS
   END SUBROUTINE ComputeSpecificInternalEnergy_TABLE
 
 
-  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-               ( D, E, Y, T )
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE( D, E, Y, T )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, E, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: T
@@ -725,6 +731,45 @@ CONTAINS
     END ASSOCIATE ! iD_T, etc.
 
   END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE
+
+
+  SUBROUTINE ComputeTemperatureFromPressure_TABLE( D, P, Y, T )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, P, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: T
+
+    INTEGER                :: iS
+    REAL(DP), DIMENSION(1) :: TMP
+
+    ASSOCIATE &
+      ( iD_T => EOS % TS % Indices % iRho, &
+        iT_T => EOS % TS % Indices % iT,   &
+        iY_T => EOS % TS % Indices % iYe,  &
+        iP_T => EOS % DV % Indices % iPressure )
+
+    ASSOCIATE &
+      ( D_T => EOS % TS % States(iD_T) % Values,    &
+        T_T => EOS % TS % States(iT_T) % Values,    &
+        Y_T => EOS % TS % States(iY_T) % Values,    &
+        Log => EOS % TS % LogInterp,                &
+        P_T => EOS % DV % Variables(iP_T) % Values, &
+        OS  => EOS % DV % Offsets )
+
+    DO iS = 1, SIZE( D )
+
+      CALL ComputeTempFromPressure &
+             ( D(iS) / ( Gram / Centimeter**3 ), P(iS) / ( Dyne / Centimeter**2 ), &
+               Y(iS), D_T, T_T, Y_T, Log, P_T, OS(iP_T), TMP )
+
+      T(iS) = TMP(1) * Kelvin
+
+    END DO
+
+    END ASSOCIATE ! D_T, etc.
+
+    END ASSOCIATE ! iD_T, etc.
+
+  END SUBROUTINE ComputeTemperatureFromPressure_TABLE
 
 
   SUBROUTINE ComputeChemicalPotentials_TABLE( D, T, Y, Me, Mp, Mn )
