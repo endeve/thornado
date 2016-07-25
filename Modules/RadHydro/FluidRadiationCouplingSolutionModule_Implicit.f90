@@ -1,7 +1,7 @@
 MODULE FluidRadiationCouplingSolutionModule_Implicit
 
   USE KindModule, ONLY: &
-    DP, Pi
+    DP, Pi, FourPi
   USE UnitsModule, ONLY: &
     SpeedOfLight, &
     BoltzmannConstant, &
@@ -36,7 +36,8 @@ MODULE FluidRadiationCouplingSolutionModule_Implicit
     ComputeSpecificInternalEnergy, &
     ComputeElectronChemicalPotential, &
     ComputeProtonChemicalPotential, &
-    ComputeNeutronChemicalPotential
+    ComputeNeutronChemicalPotential, &
+    ApplyEquationOfState
   USE OpacityModule, ONLY: &
     ComputeAbsorptionCoefficients
 
@@ -74,6 +75,8 @@ CONTAINS
     CALL CoupleFluidRadiation_EmissionAbsorption( dt )
 
     CALL FinalizeFluidRadiationCoupling
+
+    CALL ApplyEquationOfState
 
     CALL ComputeConserved( iX_Begin = iX_Begin, iX_End = iX_End )
 
@@ -205,6 +208,14 @@ CONTAINS
       CALL GetStates_FRC &
              ( uPR_N(:,iPR_D,:), uPF_N(iPF_Ne,:), uPF_N(iPF_E,:), iNew )
 
+      IF( ALL( Converged ) )THEN
+
+        CALL ComputeThermodynamicStates_Auxiliary &
+               ( uPF_N(iPF_D,:), uPF_N(iPF_E,:), uPF_N(iPF_Ne,:), &
+                 uAF_N(iAF_T,:), uAF_N(iAF_E,:), uAF_N(iAF_Ye,:) )
+
+      END IF
+
       IF( MOD( iter, 10 ) == 0 )THEN
 
         WRITE(*,*)
@@ -314,7 +325,7 @@ CONTAINS
         FVEC_FRC(iE,iX) &
           = ( 1.0_DP + dt * Chi(iE,iX) ) * U_FRC(iE,iX,iNew) &
               - ( U_FRC(iE,iX,iOld) &
-                    + dt * Chi(iE,iX) * 4.0_DP * Pi * f_FD(iE,iX) )
+                    + dt * Chi(iE,iX) * FourPi * f_FD(iE,iX) )
 
       END DO
 
@@ -325,7 +336,7 @@ CONTAINS
         = FVEC_FRC(iFRC_Ne,iX) &
           + dt / hc3 &
             * DOT_PRODUCT &
-              ( W2_N, Chi(:,iX) * ( 4.0_DP * Pi * f_FD(:,iX) &
+              ( W2_N, Chi(:,iX) * ( FourPi * f_FD(:,iX) &
                                     - U_FRC(1:nNodesE_G,iX,iNew) ) )
 
       FVEC_FRC(iFRC_E,iX) &
@@ -335,7 +346,7 @@ CONTAINS
         = FVEC_FRC(iFRC_E,iX) &
           + dt / hc3 &
             * DOT_PRODUCT &
-              ( W3_N, Chi(:,iX) * ( 4.0_DP * Pi * f_FD(:,iX) &
+              ( W3_N, Chi(:,iX) * ( FourPi * f_FD(:,iX) &
                                     - U_FRC(1:nNodesE_G,iX,iNew) ) )
 
     END DO
@@ -374,15 +385,15 @@ CONTAINS
         ! --- Derivative wrt Electron Density:
         FJAC_FRC(iE,iFRC_Ne,iX) &
           = dt * ( ( U_FRC(iE,iX,iNew) &
-                     - 4.0_DP * Pi * f_FD(iE,iX) ) * dChidYe(iE,iX) &
-                   - Chi(iE,iX) * 4.0_DP * Pi * df_FDdYe(iE,iX) ) &
+                     - FourPi * f_FD(iE,iX) ) * dChidYe(iE,iX) &
+                   - Chi(iE,iX) * FourPi * df_FDdYe(iE,iX) ) &
                * ( mB / D(iX) )
 
         ! --- Derivative wrt Internal Energy Density:
         FJAC_FRC(iE,iFRC_E, iX) &
           = dt * ( ( U_FRC(iE,iX,iNew) &
-                     - 4.0_DP * Pi * f_FD(iE,iX) ) * dChidT(iE,iX) &
-                   - Chi(iE,iX) * 4.0_DP * Pi * df_FDdT(iE,iX) ) &
+                     - FourPi * f_FD(iE,iX) ) * dChidT(iE,iX) &
+                   - Chi(iE,iX) * FourPi * df_FDdT(iE,iX) ) &
                / ( dEdT(iX) * D(iX) )
 
       END DO
@@ -400,18 +411,18 @@ CONTAINS
             + dt / hc3 &
               * DOT_PRODUCT &
                 ( W2_N, dChidYe(:,iX) &
-                        * ( 4.0_DP * Pi * f_FD(:,iX) &
+                        * ( FourPi * f_FD(:,iX) &
                             - U_FRC(1:nNodesE_G,iX,iNew) ) &
-                        + Chi(:,iX) * 4.0_DP * Pi * df_FDdYe(:,iX) ) &
+                        + Chi(:,iX) * FourPi * df_FDdYe(:,iX) ) &
               * ( mB / D(iX) )
 
       FJAC_FRC(iFRC_Ne,iFRC_E, iX) &
         = dt / hc3 &
           * DOT_PRODUCT &
             ( W2_N, dChidT(:,iX) &
-                    * ( 4.0_DP * Pi * f_FD(:,iX) &
+                    * ( FourPi * f_FD(:,iX) &
                         - U_FRC(1:nNodesE_G,iX,iNew) ) &
-                    + Chi(:,iX) * 4.0_DP * Pi * df_FDdT(:,iX) ) &
+                    + Chi(:,iX) * FourPi * df_FDdT(:,iX) ) &
           / ( dEdT(iX) * D(ix) )
 
       ! --- Internal Energy Equation ---
@@ -423,9 +434,9 @@ CONTAINS
         = dt / hc3 &
           * DOT_PRODUCT &
             ( W3_N, dChidYe(:,iX) &
-                    * ( 4.0_DP * Pi * f_FD(:,iX) &
+                    * ( FourPi * f_FD(:,iX) &
                         - U_FRC(1:nNodesE_G,iX,iNew) ) &
-                    + Chi(:,iX) * 4.0_DP * Pi * df_FDdYe(:,iX) ) &
+                    + Chi(:,iX) * FourPi * df_FDdYe(:,iX) ) &
           * ( mB / D(iX) )
 
       FJAC_FRC(iFRC_E, iFRC_E, iX) &
@@ -436,9 +447,9 @@ CONTAINS
             + dt / hc3 &
               * DOT_PRODUCT &
                 ( W3_N, dChidT(:,iX) &
-                        * ( 4.0_DP * Pi * f_FD(:,iX) &
+                        * ( FourPi * f_FD(:,iX) &
                             - U_FRC(1:nNodesE_G,iX,iNew) ) &
-                        + Chi(:,iX) * 4.0_DP * Pi * df_FDdT(:,iX) ) &
+                        + Chi(:,iX) * FourPi * df_FDdT(:,iX) ) &
               / ( dEdT(iX) * D(ix) )
 
     END DO

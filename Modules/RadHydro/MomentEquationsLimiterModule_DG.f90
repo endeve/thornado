@@ -22,7 +22,7 @@ MODULE MomentEquationsLimiterModule_DG
 
   REAL(DP), PARAMETER :: BetaTVD = 2.00_DP
   REAL(DP), PARAMETER :: BetaTVB = 50.0_DP
-  REAL(DP), PARAMETER :: Tol_TVD = 2.0d-2
+  REAL(DP), PARAMETER :: Tol_TVD = 1.0d-2
 
   PUBLIC :: InitializeLimiters_M1_DG
   PUBLIC :: ApplySlopeLimiter_M1_DG
