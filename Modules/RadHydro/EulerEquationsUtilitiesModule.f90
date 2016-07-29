@@ -323,7 +323,7 @@ CONTAINS
 
     Flux_X1(iCF_E)  = ( E + 0.5_DP * D * ( V1**2 + V2**2 + V3**2 ) + P ) * V1
 
-    Flux_X1(iCF_Ne) = Ne * (V1 + V2 + V3) 
+    Flux_X1(iCF_Ne) = Ne * V1
 
     RETURN
   END FUNCTION Flux_X1
