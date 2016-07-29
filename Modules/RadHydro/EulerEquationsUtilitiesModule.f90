@@ -10,6 +10,7 @@ MODULE EulerEquationsUtilitiesModule
   PRIVATE
 
   PUBLIC :: Conserved
+  PUBLIC :: ComputeConserved
   PUBLIC :: Primitive
   PUBLIC :: ComputePrimitive
   PUBLIC :: Eigenvalues
