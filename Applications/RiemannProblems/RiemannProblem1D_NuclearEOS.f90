@@ -10,6 +10,7 @@ PROGRAM RiemannProblem1D_NuclearEOS
     Kilometer, &
     Gram, &
     Second, &
+    Microsecond, &
     Erg
   USE RiemannProblemInitializationModule, ONLY: &
     InitializeRiemannProblem1D_NuclearEOS
@@ -59,7 +60,9 @@ PROGRAM RiemannProblem1D_NuclearEOS
            Ye_R = 0.3_DP )
 
   CALL EvolveFields &
-         ( t_begin = 0.0_DP, t_end = 0.0d-1, dt_write = 1.0d-2, &
+         ( t_begin  = 0.0d-0 * Microsecond, &
+           t_end    = 1.0d-0 * Microsecond, &
+           dt_write = 1.0d-2 * Microsecond, &
            UpdateFields = SSP_RK )
 
   CALL FinalizeProgram
