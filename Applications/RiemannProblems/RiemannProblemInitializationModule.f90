@@ -24,7 +24,8 @@ MODULE RiemannProblemInitializationModule
     ComputeThermodynamicStates_Primitive, &
     ApplyEquationOfState
   USE EulerEquationsUtilitiesModule, ONLY: &
-    Conserved
+    Conserved, &
+    ComputeConserved
 
   IMPLICIT NONE
   PRIVATE
@@ -206,6 +207,9 @@ CONTAINS
     END DO
 
     CALL ApplyEquationOfState
+
+    CALL ComputeConserved &
+           ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
 
   END SUBROUTINE InitializeRiemannProblem1D_NuclearEOS
 
