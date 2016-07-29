@@ -6,7 +6,11 @@ PROGRAM RiemannProblem1D_NuclearEOS
     InitializeProgram, &
     FinalizeProgram
   USE UnitsModule, ONLY: &
-    Kilometer, Gram, Centimeter, Erg
+    Centimeter, &
+    Kilometer, &
+    Gram, &
+    Second, &
+    Erg
   USE RiemannProblemInitializationModule, ONLY: &
     InitializeRiemannProblem1D_NuclearEOS
   USE TimeSteppingModule, ONLY: &
@@ -45,13 +49,18 @@ PROGRAM RiemannProblem1D_NuclearEOS
              = 1 )
 
   CALL InitializeRiemannProblem1D_NuclearEOS &
-    ( D_L = 1.000_DP * Gram / Centimeter**3, V_L = [0.0_DP, 0.0_DP, 0.0_DP], P_L = 1.0d-6 * Erg / Centimeter**3, Ye_L = 0.4_DP, &
-      D_R = 1.000_DP * Gram / Centimeter**3, V_R = [0.0_DP, 0.0_DP, 0.0_DP], P_R = 1.0d-6 * Erg / Centimeter**3, Ye_R = 0.3_DP )
+         ( D_L  = 1.0d12 * Gram / Centimeter**3, &
+           V_L  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer / Second, &
+           P_L  = 1.0d32 * Erg / Centimeter**3, &
+           Ye_L = 0.4_DP, &
+           D_R  = 1.0d12 * Gram / Centimeter**3, &
+           V_R  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer / Second, &
+           P_R  = 1.0d32 * Erg / Centimeter**3, &
+           Ye_R = 0.3_DP )
 
   CALL EvolveFields &
-    ( t_begin = 0.0_DP, t_end = 2.0d-1, dt_write = 1.0d-2, &
-      UpdateFields = SSP_RK )
-
+         ( t_begin = 0.0_DP, t_end = 0.0d-1, dt_write = 1.0d-2, &
+           UpdateFields = SSP_RK )
 
   CALL FinalizeProgram
 
