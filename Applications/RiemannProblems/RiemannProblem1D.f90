@@ -42,7 +42,8 @@ PROGRAM RiemannProblem1D
 
   CALL InitializeRiemannProblem1D &
          ( D_L = 1.000_DP, V_L = [0.0_DP, 0.0_DP, 0.0_DP], P_L = 1.0_DP, &
-           D_R = 0.125_DP, V_R = [0.0_DP, 0.0_DP, 0.0_DP], P_R = 0.1_DP )
+           D_R = 0.125_DP, V_R = [0.0_DP, 0.0_DP, 0.0_DP], P_R = 0.1_DP, &
+           X_D_Option = 0.5_DP )
 
   CALL EvolveFields &
          ( t_begin = 0.0_DP, t_end = 2.0d-1, dt_write = 1.0d-2, &

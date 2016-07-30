@@ -37,18 +37,26 @@ MODULE RiemannProblemInitializationModule
 CONTAINS
 
 
-  SUBROUTINE InitializeRiemannProblem1D( D_L, V_L, P_L, D_R, V_R, P_R )
+  SUBROUTINE InitializeRiemannProblem1D( D_L, V_L, P_L, D_R, V_R, P_R, X_D_Option )
 
     REAL(DP),               INTENT(in) :: D_L, P_L, D_R, P_R
     REAL(DP), DIMENSION(3), INTENT(in) :: V_L, V_R
+    REAL(DP),               INTENT(in), OPTIONAL :: X_D_Option
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNode
-    REAL(DP) :: X1
+    REAL(DP) :: X_D, X1
+
+    X_D = 0.5_DP
+    IF( PRESENT( X_D_Option ) ) &
+      X_D = X_D_Option
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') &
       '', 'INFO: ', TRIM( ProgramName )
+    WRITE(*,*)
+    WRITE(*,'(A7,A6,ES10.3E2)') &
+      '', 'X_D = ', X_D
     WRITE(*,*)
     WRITE(*,'(A7,A6,ES10.3E2,A24,A6,ES10.3E2)') &
       '', 'D_L = ', D_L, '', 'D_R = ', D_R
@@ -132,6 +140,9 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') &
       '', 'INFO: ', TRIM( ProgramName )
+    WRITE(*,*)
+    WRITE(*,'(A7,A7,ES10.3E2,A1,A)') &
+      '', 'X_D = ', X_D / U % LengthUnit, '', TRIM( U % LengthLabel )
     WRITE(*,*)
     WRITE(*,'(A7,A7,ES10.3E2,A1,A,A22,A7,ES10.3E2,A1,A)') &
       '', 'D_L = ', D_L / U % MassDensityUnit, &
