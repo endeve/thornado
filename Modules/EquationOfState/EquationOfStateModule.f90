@@ -451,7 +451,8 @@ CONTAINS
         iE_T  => EOS % DV % Indices % iInternalEnergyDensity,     &
         iMe_T => EOS % DV % Indices % iElectronChemicalPotential, &
         iMp_T => EOS % DV % Indices % iProtonChemicalPotential,   &
-        iMn_T => EOS % DV % Indices % iNeutronChemicalPotential )
+        iMn_T => EOS % DV % Indices % iNeutronChemicalPotential,  &
+        iGm_T => EOS % DV % Indices % iGamma1 )
 
     ASSOCIATE &
       ( D_T  => EOS % TS % States(iD_T) % Values,     &
@@ -464,6 +465,7 @@ CONTAINS
         Me_T => EOS % DV % Variables(iMe_T) % Values, &
         Mp_T => EOS % DV % Variables(iMp_T) % Values, &
         Mn_T => EOS % DV % Variables(iMn_T) % Values, &
+        Gm_T => EOS % DV % Variables(iGm_T) % Values, &
         OS   => EOS % DV % Offsets )
 
     ALLOCATE( D_1D(nDOFX*PRODUCT( nX )) )
@@ -528,6 +530,14 @@ CONTAINS
 
     CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_Mn), &
                     TMP * MeV )
+
+    ! --- Gamma1 ------------------------------------------------------
+
+    CALL LogInterpolateSingleVariable &
+           ( D_1D, T_1D, Y_1D, D_T, T_T, Y_T, Log, OS(iGm_T), Gm_T, TMP )
+
+    CALL MapFrom1D( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iAF_Gm), &
+                    TMP )
 
     DEALLOCATE( D_1D, T_1D, Y_1D, TMP )
 
