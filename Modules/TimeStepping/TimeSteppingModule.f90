@@ -193,7 +193,9 @@ CONTAINS
       IF( FixedTimeStep )THEN
         dt = dt_fixed
       ELSE
+        !PRINT *, 'Computing timestep.'
         CALL ComputeTimeStep( dt )
+        !PRINT *, 'Timestep computed.'
       END IF
 
       IF( t + dt > t_end )THEN
@@ -201,6 +203,10 @@ CONTAINS
         dt = t_end - t
 
       END IF
+
+      !PRINT *, 'Current time is: ', t
+      !PRINT *, 'Current timestep is: ', dt
+      !PRINT *, 'Write time is: ', t_write
 
       IF( t + dt > t_write )THEN
 
@@ -220,6 +226,8 @@ CONTAINS
       END IF
 
       CALL UpdateFields( t, dt )
+
+      !PRINT*, 'Fields updated.'
 
       t = t + dt
 
@@ -293,7 +301,10 @@ CONTAINS
 
     ASSOCIATE( dX1 => MeshX(1) % Width(1:nX(1)), &
                dX2 => MeshX(2) % Width(1:nX(2)), &
-               dX3 => MeshX(3) % Width(1:nX(3)) )
+               dX3 => MeshX(3) % Width(1:nX(3)), &
+               X1 => MeshX(1) % Center(1:nX(1)), &
+               X2 => MeshX(2) % Center(1:nX(2)), &
+               X3 => MeshX(3) % Center(1:nX(3))  )
 
     CFL = 0.2_DP / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) ! For Debugging
 
@@ -308,15 +319,16 @@ CONTAINS
 
             dt_X1 &
               = CFL * dX1(iX1) &
-                  / MAXVAL(ABS(Eigenvalues( uPF_N(iPF_V1), uAF_N(iAF_Cs) )))
+                   / MAXVAL(ABS(Eigenvalues( uPF_N(iPF_V1), uAF_N(iAF_Cs) )))
 
             dt_X2 &
-              = CFL * dX2(iX2) &
-                  / MAXVAL(ABS(Eigenvalues( uPF_N(iPF_V2), uAF_N(iAF_Cs) )))
+              = CFL * dX2(iX2) * a([X1(iX1), X2(iX2), X3(iX3)]) &
+                    / MAXVAL(ABS(Eigenvalues( uPF_N(iPF_V2), uAF_N(iAF_Cs) )))
 
             dt_X3 &
-              = CFL * dX3(iX3) &
-                  / MAXVAL(ABS(Eigenvalues( uPF_N(iPF_V3), uAF_N(iAF_Cs) )))
+              = CFL * dX3(iX3) * b([X1(iX1), X2(iX2), X3(iX3)]) &
+                               * c([X1(iX1), X2(iX2), X3(iX3)]) &
+                   / MAXVAL(ABS(Eigenvalues( uPF_N(iPF_V3), uAF_N(iAF_Cs) )))
 
             dt = MIN( dt, dt_x1, dt_X2, dt_X3 )
 
@@ -380,8 +392,12 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Fluid
 
+      !PRINT *, 'Computing RHS of fluid.'
+
       CALL ComputeRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+      !PRINT *, 'RHS Computed.'
 
     END IF
 
@@ -400,11 +416,15 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
+      !PRINT *, 'RHS Applied'
+
       CALL ApplyBoundaryConditions_Fluid
 
       CALL ApplySlopeLimiter_Fluid
 
       CALL ApplyPositivityLimiter_Fluid
+
+      !PRINT *, 'Slope and Pos. Limits Applied.'
 
     END IF
 
