@@ -5,6 +5,8 @@ MODULE EulerEquationsUtilitiesModule
   USE FluidFieldsModule, ONLY: &
     uCF, nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
+  USE GeometryModule, ONLY: &
+    a, b, c, dlnadX1, dlnbdX1, dlncdX2
 
   IMPLICIT NONE
   PRIVATE
@@ -21,9 +23,9 @@ MODULE EulerEquationsUtilitiesModule
   PUBLIC :: AlphaM
   PUBLIC :: AlphaC
   PUBLIC :: Flux_X1
+  PUBLIC :: GeometrySources
 
 CONTAINS
-
 
   PURE FUNCTION Conserved( Primitive )
 
@@ -49,7 +51,6 @@ CONTAINS
     RETURN
   END FUNCTION Conserved
 
-
   PURE FUNCTION Primitive( Conserved )
 
     REAL(DP), DIMENSION(1:nCF), INTENT(in) :: Conserved
@@ -72,7 +73,6 @@ CONTAINS
 
     RETURN
   END FUNCTION Primitive
-
 
   SUBROUTINE ComputeConserved( iX_Begin, iX_End )
 
@@ -309,9 +309,9 @@ CONTAINS
   END FUNCTION AlphaC
 
 
-  PURE FUNCTION Flux_X1( D, V1, V2, V3, E, P, Ne )
+  PURE FUNCTION Flux_X1( D, V1, V2, V3, E, P )
 
-    REAL(DP), INTENT(in)       :: D, V1, V2, V3, E, P, Ne
+    REAL(DP), INTENT(in)       :: D, V1, V2, V3, E, P
     REAL(DP), DIMENSION(1:nCF) :: Flux_X1
 
     Flux_X1(iCF_D)  = D * V1
@@ -324,10 +324,40 @@ CONTAINS
 
     Flux_X1(iCF_E)  = ( E + 0.5_DP * D * ( V1**2 + V2**2 + V3**2 ) + P ) * V1
 
-    Flux_X1(iCF_Ne) = Ne * V1
+    Flux_X1(iCF_Ne) = 0.0_DP
 
     RETURN
   END FUNCTION Flux_X1
 
+  PURE FUNCTION GeometrySources( D, V1, V2, V3, P, X )
+   
+    REAL(DP), INTENT(in) :: D, V1, V2, V3, P
+    REAL(DP), DIMENSION(3), INTENT(in) :: X
+    REAL(DP), DIMENSION(1:nCF) :: GeometrySources
+    REAL(DP) :: a1, b2, c3, dla, dlb, dlc
+
+    a1 = a(X)
+    b2 = b(X)
+    c3 = c(X)
+    dla = dlnadX1(X)
+    dlb = dlnbdX1(X)
+    dlc = dlncdX2(X) 
+
+    GeometrySources(iCF_D)       = 0.0_DP
+    
+    GeometrySources(iCF_S1)      = (a1**2* 1/D  * V2**2 + P) * dla &
+                                   +(b2**2 * c3**2 * 1/D * V3**2 + P) * dlb
+    
+    GeometrySources(iCF_S2)      = (b2**2 * c3**2 * 1/D * V3**2 + P)/a1 * dlc &
+                                   -(a1 * 1/D * V1 * V2) * dla 
+
+    GeometrySources(iCF_S3)      = -(b2 * c3 * 1/D * V1 * V3) * dlb &
+                                   -(b2 * c3 * 1/D * V2 * V3) * dlc
+    
+    GeometrySources(iCF_E)       = 0.0_DP
+    GeometrySources(iCF_Ne)      = 0.0_DP
+
+    RETURN
+  END FUNCTION GeometrySources
 
 END MODULE EulerEquationsUtilitiesModule

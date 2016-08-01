@@ -9,12 +9,16 @@ MODULE EulerEquationsSolutionModule_DG
   USE PolynomialBasisModule_Lagrange, ONLY: &
     L_X1, dL_X1
   USE MeshModule, ONLY: &
-    MeshX
+    MeshX, &
+    NodeCoordinate
+  USE GeometryModule, ONLY: &
+    CoordinateSystem, &
+    a, b
   USE FluidFieldsModule, ONLY: &
     rhsCF, &
-    uCF, iCF_D, iCF_S1, nCF, &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
-    uAF, iAF_P, iAF_Cs, nAF
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, nCF, iAF_P, &
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, nPF, &
+    uAF, iAF_P, iAF_Gm, iAF_Cs, nAF
   USE EquationOfStateModule, ONLY: &
     ComputeAuxiliary_Fluid, &
     Auxiliary_Fluid
@@ -27,9 +31,11 @@ MODULE EulerEquationsSolutionModule_DG
     AlphaP, &
     AlphaM, &
     AlphaC, &
-    Flux_X1
+    Flux_X1, &
+    GeometrySources
 
   IMPLICIT NONE
+
   PRIVATE
 
   PUBLIC :: ComputeRHS_Euler_DG
@@ -47,6 +53,8 @@ CONTAINS
 
     CALL ComputeRHS_Euler_DG_X1( iX_Begin, iX_End )
 
+    CALL ComputeRHS_Euler_DG_GeometrySources(iX_Begin, iX_End )
+
   END SUBROUTINE ComputeRHS_Euler_DG
 
 
@@ -61,12 +69,17 @@ CONTAINS
     REAL(DP), DIMENSION(1:nCF) :: uCF_L, uCF_R
     REAL(DP), DIMENSION(1:nPF) :: uPF_L, uPF_R
     REAL(DP), DIMENSION(1:nAF) :: uAF_L, uAF_R
+    REAL(DP), DIMENSION(nX(1)) :: a_X1_L, a_X1_R
+    REAL(DP), DIMENSION(nX(1)) :: b_X1_L, b_X1_R
     REAL(DP), DIMENSION(nNodesX(1)) :: L_X1_L, L_X1_R
+    REAL(DP), DIMENSION(nNodesX(1), nX(1)) :: a_X1_q
+    REAL(DP), DIMENSION(nNodesX(1), nX(1)) :: b_X1_q
     REAL(DP), DIMENSION(nNodesX(1),nNodesX(1)) :: dL_X1_q
 
     ASSOCIATE &
       ( x_q => MeshX(1) % Nodes, &
         w_q => MeshX(1) % Weights, &
+        X1C => MeshX(1) % Center(1:nX(1)), &
         dX1 => MeshX(1) % Width(1:nX(1)) )
 
     DO jNodeX1 = 1, nNodesX(1)
@@ -77,6 +90,23 @@ CONTAINS
       DO iNodeX1 = 1, nNodesX(1)
         dL_X1_q(iNodeX1,jNodeX1) &
           = dL_X1(jNodeX1) % P( x_q(iNodeX1) )
+      END DO
+    END DO
+
+    DO iX1 = iX_Begin(1), iX_End(1)
+      a_X1_L(iX1) &
+        = a( [ X1C(iX1) - 0.5_DP * dX1(iX1), 0.0_DP, 0.0_DP ] )
+      a_X1_R(iX1) &
+        = a( [ X1C(iX1) + 0.5_DP * dX1(iX1), 0.0_DP, 0.0_DP ] )
+      b_X1_L(iX1) &
+        = b( [ X1C(iX1) - 0.5_DP * dX1(iX1), 0.0_DP, 0.0_DP ] )
+      b_X1_R(iX1) &
+        = b( [ X1C(iX1) + 0.5_DP * dX1(iX1), 0.0_DP, 0.0_DP ] )
+      DO iNodeX1 = 1, nNodesX(1)
+        a_X1_q(iNodeX1,iX1) &
+          = a( [ X1C(iX1) + dX1(iX1) * x_q(iNodeX1), 0.0_DP, 0.0_DP ] )
+        b_X1_q(iNodeX1,iX1) &
+          = b( [ X1C(iX1) + dX1(iX1) * x_q(iNodeX1), 0.0_DP, 0.0_DP ] )
       END DO
     END DO
 
@@ -106,24 +136,27 @@ CONTAINS
 
                   jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
 
-                  VolumeTerm &
-                    = VolumeTerm &
-                        + w_q(jNodeX1) * dL_X1_q(jNodeX1,iNodeX1) &
+                  VolumeTerm(1:nCF) &
+                    = VolumeTerm(1:nCF) &
+                        + w_q(jNodeX1) &
+                            * dL_X1_q(jNodeX1,iNodeX1) &
+                            * a_X1_q(jNodeX1, iX1) &
+                            * b_X1_q(jNodeX1, iX1) &
                             * Flux_X1( uPF_K(jNodeX,iPF_D ), &
                                        uPF_K(jNodeX,iPF_V1), &
                                        uPF_K(jNodeX,iPF_V2), &
                                        uPF_K(jNodeX,iPF_V3), &
                                        uPF_K(jNodeX,iPF_E ), &
-                                       uAF_K(jNodeX,iAF_P ), &
-                                       uAF_K(jNodeX,iPF_Ne) )
-
+                                       uAF_K(jNodeX,iAF_P ) )  
                 END DO
 
                 rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
                   = rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
-                      + VolumeTerm(1:nCF) / ( w_q(iNodeX1) * dX1(iX1) )
-
-                ! -- Left Face --
+                      + VolumeTerm(1:nCF) / ( w_q(iNodeX1) &
+                                                * a_X1_q(iNodeX1, iX1) &
+                                                * b_X1_q(iNodeX1, iX1) & 
+                                                * dX1(iX1) )
+                ! -- Left Face -- 
 
                 ! -- Left State -- 
 
@@ -148,8 +181,7 @@ CONTAINS
 
                 Flux_L &
                   = Flux_X1( uPF_L(iPF_D), uPF_L(iPF_V1), uPF_L(iPF_V2), &
-                             uPF_L(iPF_V3), uPF_L(iPF_E), uAF_L(iAF_P),  &
-                             uPF_L(iPF_Ne) )
+                             uPF_L(iPF_V3), uPF_L(iPF_E), uAF_L(iAF_P) )
 
                 ! -- Right State --
 
@@ -174,8 +206,7 @@ CONTAINS
 
                 Flux_R &
                   = Flux_X1( uPF_R(iPF_D), uPF_R(iPF_V1), uPF_R(iPF_V2), &
-                             uPF_R(iPF_V3), uPF_R(iPF_E), uAF_R(iAF_P),  &
-                             uPF_R(iPF_Ne) )
+                             uPF_R(iPF_V3), uPF_R(iPF_E), uAF_R(iAF_P) )
 
                 ! -- Numerical Flux --
 
@@ -207,8 +238,12 @@ CONTAINS
 
                 rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
                   = rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
-                      + L_X1_L(iNodeX1) * Flux(1:nCF) &
-                          / ( w_q(iNodeX1) * dX1(iX1) )
+                      + L_X1_L(iNodeX1) &
+                          * Flux(1:nCF) &
+                          * a_X1_L(iX1) &
+                          * b_X1_L(iX1) / ( w_q(iNodeX1) * dX1(iX1) & 
+                                            * a_X1_q(iNodeX1, iX1) &
+                                            * b_X1_q(iNodeX1, iX1) )
 
                 ! -- Right Face --
 
@@ -235,8 +270,7 @@ CONTAINS
 
                 Flux_L &
                   = Flux_X1( uPF_L(iPF_D), uPF_L(iPF_V1), uPF_L(iPF_V2), &
-                             uPF_L(iPF_V3), uPF_L(iPF_E), uAF_L(iAF_P),  &
-                             uPF_L(iPF_Ne) )
+                             uPF_L(iPF_V3), uPF_L(iPF_E), uAF_L(iAF_P) )
 
                 ! -- Right State --
 
@@ -261,8 +295,7 @@ CONTAINS
 
                 Flux_R &
                   = Flux_X1( uPF_R(iPF_D), uPF_R(iPF_V1), uPF_R(iPF_V2), &
-                             uPF_R(iPF_V3), uPF_R(iPF_E), uAF_R(iAF_P),  &
-                             uPF_R(iPF_Ne) )
+                             uPF_R(iPF_V3), uPF_R(iPF_E), uAF_R(iAF_P) )
 
                 ! -- Numerical Flux --
 
@@ -295,8 +328,9 @@ CONTAINS
                 rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
                   = rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
                       - L_X1_R(iNodeX1) * Flux(1:nCF) &
-                          / ( w_q(iNodeX1) * dX1(iX1) )
-
+                          * a_X1_R(iX1) * b_X1_R(iX1) &
+                          / ( w_q(iNodeX1) * a_X1_q(iNodeX1, iX1) &
+                                * b_X1_q(iNodeX1, iX1) * dX1(iX1))
               END DO
             END DO
           END DO
@@ -311,5 +345,44 @@ CONTAINS
 
   END SUBROUTINE ComputeRHS_Euler_DG_X1
 
+  SUBROUTINE ComputeRHS_Euler_DG_GeometrySources(iX_Begin, iX_End)
+
+    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+
+    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3
+    INTEGER :: iNode
+    REAL(DP) :: X1, X2, X3
+
+    IF( TRIM( CoordinateSystem ) == 'CARTESIAN' ) RETURN
+
+    DO iX3 = iX_Begin(3), iX_End(3)
+      DO iX2 = iX_Begin(2), iX_End(2)
+        DO iX1 = iX_Begin(1), iX_End(1)
+          ASSOCIATE &
+            (uCF_K => uCF(:,iX1, iX2, iX3, :))
+          DO iNodeX3 = 1, nNodesX(3)
+            X3 = NodeCoordinate(MeshX(3), iX3, iNodeX3)
+            DO iNodeX2 = 1, nNodesX(2)
+              X2 = NodeCoordinate(MeshX(2), iX2, iNodeX2)
+              DO iNodeX1 = 1, nNodesX(1)
+                X1 = NodeCoordinate(MeshX(1), iX1, iNodeX1)
+                iNode = NodeNumberX(iNodeX1, iNodeX2, iNodeX3)
+                rhsCF(iNode, iX1, iX2, iX3, 1:nCF) &
+                = rhsCF(iNode, iX1, iX2, iX3, 1:nCF) &
+                + GeometrySources(uCF_K(iNode, iCF_D), &
+                                  uCF_K(iNode, iCF_S1), &
+                                  uCF_K(iNode, iCF_S2), &
+                                  uCF_K(iNode, iCF_S3), &
+                                  uCF_K(iNode, iAF_P), &
+                                  [X1, X2, X3 ] )
+              END DO
+            END DO
+          END DO
+          END ASSOCIATE 
+        END DO
+      END DO 
+    END DO
+  END SUBROUTINE ComputeRHS_Euler_DG_GeometrySources
 
 END MODULE EulerEquationsSolutionModule_DG
