@@ -1,0 +1,486 @@
+\documentclass[10pt,preprint]{aastex}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{mathrsfs}
+\usepackage{cite}
+\usepackage{times}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{lineno}
+\usepackage{yhmath}
+\usepackage{natbib}
+\bibliographystyle{apj}
+\usepackage{../definitions}
+\hypersetup{
+  bookmarksnumbered = true,
+  bookmarksopen=false,
+  pdfborder=0 0 0,         % make all links invisible, so the pdf looks good when printed
+  pdffitwindow=true,      % window fit to page when opened
+  pdfnewwindow=true, % links in new window
+  colorlinks=true,           % false: boxed links; true: colored links
+  linkcolor=blue,            % color of internal links
+  citecolor=magenta,    % color of links to bibliography
+  filecolor=magenta,     % color of file links
+  urlcolor=cyan              % color of external links
+}
+
+\newcommand{\ee}[1]{{\color{red} #1}}
+\newcommand{\dx}{\Delta x}
+\newcommand{\pbK}{\partial\mathbf{K}}
+\newcommand{\UDG}{\bU_{\mbox{\tiny DG}}}
+\newcommand{\sumx}{\sum_{i=1}^{d}}
+
+\begin{document}
+
+\title{Nodal Discontinuous Galerkin Method for the Euler Equations with Curvilinear Coordinates and Nuclear Equation of State for Astrophysics Simulations}
+\author{Eirik Endeve\altaffilmark{1}}
+\altaffiltext{1}{Department of Computational and Applied Mathematics, Oak Ridge National Laboratory, Oak Ridge, TN 37831-6354, USA; endevee@ornl.gov}
+
+\begin{abstract}
+We explore the use of the nodal Discontinuous Galerkin (DG) method in astrophysical hydrodynamics.  
+We focus on issues related to core-collapse supernova dynamics, which include the use of curvilinear coordinates and a nuclear equation of state.  
+\end{abstract}
+
+\section{Introduction}
+
+\section{Euler Equations of Gas Dynamics in Curvilinear Coordinates}
+
+$\vect{r}(\vect{x})\in\mathbb{R}^{3}$, so that the displacement vector is $d\vect{r}=dx^{i}\,\vect{e}_{i}$, where the coordinate basis vectors are
+\begin{equation}
+  \vect{e}_{i}=\pderiv{\vect{r}}{x^{i}}
+\end{equation}
+$ds_{\vect{x}}^{2}=d\vect{r}\cdot d\vect{r}$
+\begin{equation}
+  ds_{\vect{x}}^{2}=\gamma_{ij}\,dx^{i}\,dx^{j},
+\end{equation}
+where the coordinate basis metric tensor is defined as $\gamma_{ij}=\vect{e}_{i}\cdot\vect{e}_{j}$.  
+
+For general curvilinear spatial coordinates, the Euler equations for gas dynamics are \citep{landauLifshitz_1959}
+\begin{equation}
+  \pderiv{\rho}{t}
+  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\rho\,v^{i}\,\Big)=0,
+\end{equation}
+\begin{equation}
+  \pderiv{M_{j}}{t}
+  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,P^{i}_{~j}\,\Big)=\f{1}{2}\,P^{ik}\,\pderiv{\gamma_{ik}}{x^{j}},
+\end{equation}
+\begin{equation}
+  \pderiv{E}{t}
+  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\big(E+p\big)\,v^{i}\,\Big)=0,
+\end{equation}
+\begin{equation}
+  \pderiv{n_{e}}{t}
+  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,n_{e}\,v^{i}\,\Big)=0,
+\end{equation}
+where $\rho$ is the (baryon) mass density, $M^{i}=\rho\,v^{i}$ is the momentum density, $P^{ij}=\rho\,v^{i}\,v^{j}+p\,\gamma^{ij}$ the stress tensor, $E=e+\f{1}{2}\,\rho\,v_{i}\,v^{i}$ the total (internal plus kinetic) energy density, and $n_{e}$ the electron density.  
+The pressure is related to the density, internal energy density, and electron density by an equation of state (EoS); i.e., $p=p(\rho,e,n_{e})$.  
+(We also define the specific internal energy by $\epsilon=e/\rho$.)
+
+We assume the following diagonal form of the spatial metric tensor
+\begin{equation}
+  \gamma_{ij}=\mbox{diag}\big[\,1,a(x^{1})^{2},\,b(x^{1})^{2}c(x^{2})^{2}\,\big], 
+\end{equation}
+which is sufficiently general to accommodate Cartesian, cylindrical, and spherical polar coordinates (see Table~\ref{tab:metricFunctions} and Appendix~\ref{app:CurvilinearEuler}).  
+$\sqrt{\gamma}=abc$.  $w^{i}=e^{i}_{~j}\,\bar{w}^{j}$.  
+With $e^{i}_{~j}=\mbox{diag}\big[\,1,a(x^{1})^{-1},\,b(x^{1})^{-1}c(x^{2})^{-1}\,\big]$, we have $\{w^{i}\}_{i=1}^{3}=\{\bar{w}^{1},\,a^{-1}\,\bar{w}^{2},\,b^{-1}c^{-1}\,\bar{w}^{3}\}$.  
+\begin{table}
+  \begin{center}
+  \caption{Metric functions for Cartesian, Cylindrical, and Spherical coordinate systems.\label{tab:metricFunctions}}
+  \begin{tabular}{cccccccccccccc}
+    \midrule
+    Coordinates & $x^{1}$ & $x^{2}$ & $x^{3}$ & $\bar{w}^{1}$ & $\bar{w}^{2}$ & $\bar{w}^{3}$ & $a$ & $b$ & $c$ & $\sqrt{\gamma}$
+    & $\pderiv{a}{x^{1}}$ & $\pderiv{b}{x^{1}}$ & $\pderiv{c}{x^{2}}$ \\
+    \midrule
+    \midrule
+    Cartesian & $x$ & $y$ & $z$ & $w_{x}$ & $w_{y}$ & $w_{z}$ & 1 & 1 & 1 & 1 & 0 & 0 & 0 \\
+    Cylindrical & $R$ & $z$ & $\phi$ & $w_{R}$ & $w_{z}$ & $w_{\phi}$ & 1 & $R$ & 1 & $R$ & 0 & 1 & 0 \\
+    Spherical & $r$ & $\theta$ & $\phi$ & $w_{r}$ & $w_{\theta}$ & $w_{\phi}$ & $r$ & $r$ & $\sin\theta$ & $r^{2}\sin\theta$ & 1 & 1 & $\cos\theta$ \\
+    \midrule
+    \midrule
+  \end{tabular}
+  \end{center}
+\end{table}
+
+The mass conservation equation
+\begin{equation}
+  \pderiv{\rho}{t}
+  +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,\rho\,\bar{v}^{1}\,\Big)
+  +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,\rho\,\bar{v}^{2}\,\Big)
+  +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,\rho\,\bar{v}^{3}\,\Big)=0
+\end{equation}
+Components of the momentum equation
+\begin{equation}
+  \pderiv{\bar{M}^{i}}{t}
+  +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,\bar{P}^{1i}\,\Big)
+  +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,\bar{P}^{2i}\,\Big)
+  +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,\bar{P}^{3i}\,\Big)
+  =\bar{S}^{i},
+\end{equation}
+where the ``geometry sources'' are given by
+\small
+\begin{equation}
+  \bar{S}^{1}
+  =\bar{P}^{22}\f{1}{a}\pderiv{a}{x^{1}}+\bar{P}^{33}\f{1}{b}\pderiv{b}{x^{1}}, \quad
+  \bar{S}^{2}
+  =\bar{P}^{33}\f{1}{ac}\pderiv{c}{x^{2}}-\bar{P}^{12}\f{1}{a}\pderiv{a}{x^{1}}, \quad
+  \bar{S}^{3}
+  =-\bar{P}^{13}\f{1}{b}\pderiv{b}{x^{1}}-\bar{P}^{23}\f{1}{ac}\pderiv{c}{x^{2}}.  
+\end{equation}
+\normalsize
+Energy equation
+\begin{equation}
+  \pderiv{E}{t}
+  +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,\big(E+p\big)\,\bar{v}^{1}\,\Big)
+  +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,\big(E+p\big)\,\bar{v}^{2}\,\Big)
+  +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,\big(E+p\big)\,\bar{v}^{3}\,\Big)=0.  
+\end{equation}
+The electron conservation equation
+\begin{equation}
+  \pderiv{n_{e}}{t}
+  +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,n_{e}\,\bar{v}^{1}\,\Big)
+  +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,n_{e}\,\bar{v}^{2}\,\Big)
+  +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,n_{e}\,\bar{v}^{3}\,\Big)=0
+\end{equation}
+By defining $\bU=\big(\,\rho,\,\rho\,\bar{v}^{1},\,\rho\,\bar{v}^{2},\,\rho\,\bar{v}^{3},\,E,\,n_{e}\,\big)^{T}$, $\vect{S}(\bU)=\big(\,0,\,\bar{S}^{1},\,\bar{S}^{2},\,\bar{S}^{3}\,,0,\,0\,\big)^{T}$, and
+\begin{equation}
+  \vect{F}^{i}(\bU)
+  =\big(\,\rho\,\bar{v}^{i},\,\rho\,\bar{v}^{1}\,\bar{v}^{i}+p\,\delta^{1i},\,\rho\,\bar{v}^{2}\,\bar{v}^{i}+p\,\delta^{2i},\,\rho\,\bar{v}^{3}\,\bar{v}^{i}+p\,\delta^{3i},\,(E+p)\,\bar{v}^{i},\,n_{e}\,\bar{v}^{i}\,\big)^{T},
+\end{equation}
+we can write the system of equations in compact form
+\begin{equation}
+  \pderiv{\bU}{t}
+  +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,\vect{F}^{1}(\bU)\,\Big)
+  +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,\vect{F}^{2}(\bU)\,\Big)
+  +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,\vect{F}^{3}(\bU)\,\Big)
+  =\vect{S}(\bU).
+  \label{eq:extendedEulerCompact}
+\end{equation}
+
+\section{Discontinuous Galerkin Discretization}
+
+We divide the computational domain $D$ into a disjoint union $\mathcal{T}$ of open elements $\bK$, so that $D = \cup_{\bK \in \mathcal{T}}\bK$.  
+We require that each element is a box in the logical coordinates; i.e.,
+\begin{equation}
+  \bK=\{\vect{x} : x^{i} \in K^{i} := (\xL^{i},\xH^{i})\}, 
+\end{equation}
+with the surface elements denoted $\pbK^{i}=\otimes_{j\ne i}K^{j}$.  
+We use $V_{\bK}$ to denote the proper volume of the element
+\begin{equation}
+  V_{\bK} = \int_{\bK}dV, \quad\text{where}\quad dV = \sqrt{\gamma}\,\prod_{i=1}^{d}dx^{i}.  
+\end{equation}
+We also define $\bx=\{\tilde{\bx}^{i},x^{i}\}$ and $\dx^{i}=\xH^{i}-\xL^{i}$.  
+Here we let the approximation space for the DG method, $\mathbb{V}^{k}$, to be constructed from tensor products of one-dimensional polynomials of maximal degree $k$.  
+Note that functions in $\mathbb{V}^{k}$ can be discontinuous across element interfaces. 
+
+The semi-discrete DG problem is to find $\UDG\in\mathbb{V}^{k}$ (which approximates $\bU$) such that
+\begin{align}
+  &\partial_{t}\int_{\bK}\UDG\,v\,dV
+  +\sumx\int_{\pbK^{i}}\big(\,v\,\widehat{\vect{F}}^{i}(\UDG)\,dA^{i}\big|_{\xH^{i}}-v\,\widehat{\vect{F}}^{i}(\UDG)\,dA^{i}\big|_{\xL^{i}}\,\big) \nonumber \\
+  &\hspace{24pt}
+  -\sumx\int_{\bK}\vect{F}^{i}(\UDG)\,\nabla_{i}v\,dV
+  =\int_{\bK}\vect{S}(\UDG)\,v\,dV
+  \label{eq:semidiscreteDG}
+\end{align}
+for all $v\in\mathbb{V}^{k}$ and all $\bK\in\mathcal{T}$.  
+Here, $dV=abc\,dx^{1}\,dx^{2}\,dx^{3}$, the area elements are given by
+\begin{equation}
+  dA^{1}=abc\,dx^{2}\,dx^{3}=\tau^{1}\,dx^{2}\,dx^{3}, \quad
+  dA^{2}=bc\,dx^{1}\,dx^{3}=\tau^{2}\,dx^{1}\,dx^{3}, \quad
+  dA^{3}=a\,dx^{1}\,dx^{2}=\tau^{3}\,dx^{1}\,dx^{2}, 
+\end{equation}
+and the gradient operator is $\nabla_{i}=e^{j}_{~i}\pderiv{}{x^{j}}$.  
+
+\ee{Write more about Riemann solvers here.}
+In \eqref{eq:semidiscreteDG}, $\vect{\widehat{F}}^{i}(\UDG)$ is a numerical flux approximating the flux on the $i$th surface of $\bK$.  
+We also define the numerical flux function $\vect{\mathcal{F}}^{i}$, which for any $v\in\mathbb{V}^{k}$ is written as
+\begin{equation}
+  \vect{\widehat{F}}^{i}(v)=\vect{\mathcal{F}}^{i}(v(x^{i,-},\tilde{\bx}^{i}),v(x^{i,+},\tilde{\bx}^{i})),
+\end{equation}
+where superscripts $-/+$, e.g., in the arguments of $v(x^{i,-/+},\tilde{\bx}^{i})$, indicate that the function is evaluated to the immediate left/right of $x^{i}$.  
+
+The approximation space $\mathbb{V}^{k}$ contains the constant functions, and the choice $v=1$ in \eqref{eq:semidiscreteDG} gives
+\begin{equation}
+  \partial_{t}\bU_{\bK}
+  +\f{1}{V_{\bK}}\sumx\int_{\pbK^{i}}\big(\,\widehat{\vect{F}}^{i}(\UDG)\,dA^{i}\big|_{\xH^{i}}-\widehat{\vect{F}}^{i}(\UDG)\,dA^{i}\big|_{\xL^{i}}\,\big)
+  =\bS_{\bK},
+\end{equation}
+where we have defined the volume averages
+\begin{equation}
+  \bU_{\bK}=\f{1}{V_{\bK}}\int_{\bK}\UDG\,dV \quad\text{and}\quad
+  \bS_{\bK}=\f{1}{V_{\bK}}\int_{\bK}\vect{S}(\UDG)\,dV.  
+\end{equation}
+Here we use explicit, SSP-RK time integrators, which are convex combinations of forward Euler time steps \citep{gottlieb_etal_2001}.  
+Thus, without loss of generality, we consider here only a forward Euler time step for $\bU_{\bK}$; i.e., 
+\begin{equation}
+  \bU_{\bK}^{n+1}=\bU_{\bK}^{n}
+  =-\f{\dt}{V_{\bK}}\sumx\int_{\pbK^{i}}\big(\,\widehat{\vect{F}}^{i}(\UDG^{n})\,dA^{i}\big|_{\xH^{i}}-\widehat{\vect{F}}^{i}(\UDG^{n})\,dA^{i}\big|_{\xL^{i}}\,\big)
+  +\vect{S}_{\bK}^{n},
+\end{equation}
+where $\dt=t^{n+1}-t^{n}$ is the time step.  
+
+\subsection{Further Details on the DG Discretization of the Euler Equations}
+
+In each element $\bK$, we use a nodal representation in the conserved variables $\bU$; i.e.,
+\begin{equation}
+  \bU(\bx,t)\approx
+  \bU_{\DG}(\bx,t)=\sum_{\bi=\vect{1}}^{\bN}\bU_{\bi}(t)\,\ell_{\bi}(\bx),
+  \label{eq:conservedNodalExpansion}
+\end{equation}
+where $\ell_{\bi}(\bx)\in\bbQ^{k}$ are basis functions.  
+(Specifically, we use Lagrange polynomials $\ell_{i}(x)$ to construct the multidimensional representation.)  
+Moreover $\bi=\{i_{1},\ldots,i_{d}\}$ is a multi-index, and $\ell_{\bi}(\bx)=\prod_{k=1}^{d}\ell_{i_{k}}(x^{k})$.  
+From the property $\ell_{i}(x_{j})=\delta_{ij}$ we have the corresponding multidimensional version $\ell_{\bi}(\bx_{\bj})=\delta_{\bi\bj}$, so that $\bU_{\DG}(\bx_{\bi},t)=\bU_{\bi}(t)$; i.e., the expansion coefficients in Equation \eqref{eq:conservedNodalExpansion} represent the conserved variables defined in the nodes $\bx_{\bi}$.  
+To evaluate the integrals in Equation~\eqref{eq:semidiscreteDG}, we introduce numerical quadratures.  
+First we define the one-dimensional $N$-point quadrature $Q_{N}^{i}:C^{0}(I^{i})\to\bbR$ with abscissas $\{\eta_{q}\}_{q=1}^{N}$ and weights $\{w_{q}\}_{q=1}^{N}$, normalized such that $\sum_{q=1}^{N}w_{q}=1$.  
+(For example, the $N$-point Legendre-Gauss quadrature, which we will use, integrates polynomials of degree $\le 2N-1$ exactly.)
+If $P(x)$ is such a polynomial, we have
+\begin{equation}
+  \f{1}{\Delta x}\int_{K}P(x)\,dx=\int_{I}P(\eta)\,d\eta=Q_{N}\big[P\big]\equiv\sum_{q=1}^{N}w_{q}\,P(\eta_{q}).  
+\end{equation}
+
+Multi-dimensional integrals are evaluated by tensorization of one-dimensional quadratures.  
+For volume integrals, we define $\bQ_{N}:C^{0}(\bI)\to\bbR$ as the tensor product of one-dimensional $N$-point Legendre-Gauss quadrature rules $\bQ_{N}=\otimes_{i=1}^{d}Q_{N}^{i}$ with abscissas $\{\vect{\eta}_{\bq}\}_{\bq=\vect{1}}^{\bN}$ and weights $\{w_{\bq}\}_{\bq=\vect{1}}^{\bN}$.  
+Here, $\bq=\{q_{i}\}_{i=1}^{d}\in\bbN^{d}$, $\vect{\eta}_{\bq}=\{\eta_{q_{1}}^{1},\ldots,\eta_{q_{d}}^{d}\}$, and $w_{\bq}=w_{q_{1}}\ldots w_{q_{d}}$, so that the multi-dimensional volume integral is evaluated as
+\begin{equation}
+  \f{1}{|\bK|}\int_{\bK}P(\bx)\,d\bx
+  =\int_{\bI}P(\vect{\eta})\,d\vect{\eta}
+  =\bQ_{N}\big[P\big]
+  \equiv\sum_{\bq=\vect{1}}^{\bN}w_{\bq}\,P(\vect{\eta}_{\bq}),
+\end{equation}
+where $P:\bbR^{d}\to\bbR$.  
+Similarly, for surface integrals, we define $\tilde{\bQ}_{N}^{i}:C^{0}(\tilde{\bI}^{i})\to\bbR$ as the tensor product $\tilde{\bQ}_{N}^{i}=\otimes_{j\ne i}Q_{N}^{j}$ and denote the abscissas with $\{\tilde{\vect{\eta}}_{\tilde{\bq}_{i}}^{i}\}_{\tilde{\bq}_{i}=\vect{1}}^{\bN}$ and the weights with $\{w_{\tilde{\bq}_{i}}\}_{\tilde{\bq}_{i}=\vect{1}}^{\bN}$, respectively.  
+Here, the multi-index is $\tilde{\bq}_{i}=\{q_{j}\}_{j\ne i}\in\bbN^{d-1}$, $\tilde{\vect{\eta}}_{\tilde{\bq}_{i}}^{i}=\{\eta_{q_{j}}^{j}\}_{j\ne i}$, and $w_{\tilde{\bq}_{i}}=\prod_{j\ne i}w_{q_{j}}$.  
+Surface integrals are then evaluated as
+\begin{equation}
+  \f{1}{|\tilde{\bK}^{i}|}\int_{\tilde{\bK}^{i}}P(x^{i},\tilde{\bx}^{i})\,d\tilde{\bx}^{i}
+  =\int_{\tilde{\bI}^{i}}P(x^{i},\tilde{\vect{\eta}}^{i})\,d\tilde{\vect{\eta}}^{i}
+  =\tilde{\bQ}_{N}^{i}\big[P\big]
+  \equiv\sum_{\tilde{\bq}_{i}=\vect{1}}^{\bN}w_{\tilde{\bq}_{i}}\,P(x^{i},\tilde{\vect{\eta}}_{\tilde{\bq_{i}}}^{i}).  
+\end{equation}
+
+Inserting \eqref{eq:conservedNodalExpansion} into \eqref{eq:semidiscreteDG}, with $v(\bx)=\ell_{\bk}(\bx)$ and the quadratures defined above, we obtain
+\begin{align}
+  \pd{}{t}\int_{\bK}\bU_{\DG}\,v\,dV
+  &\approx w_{\bk}\,\sqrt{\gamma}_{\bk}\,|\bK|\,\pd{}{t}\bU_{\bk} \nonumber \\
+  &\hspace{12pt}
+  =w_{\bk}\,a(x_{k_{1}}^{1})\,b(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})\,\dx^{1}\,\dx^{2}\,\dx^{3}\,\pd{}{t}\bU_{\bk}
+\end{align}
+for the time derivative term, and
+\begin{align}
+  \int_{\bK}\bS(\bU_{\DG})\,v\,dV
+  &\approx w_{\bk}\,\sqrt{\gamma}_{\bk}\,|\bK|\,\bS(\bU_{\bk}) \nonumber \\
+  &\hspace{12pt}
+  =w_{\bk}\,a(x_{k_{1}}^{1})\,b(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})\,\dx^{1}\,\dx^{2}\,\dx^{3}\,\bS(\bU_{\bk})
+\end{align}
+for the source term.  
+For the surface integrals, we obtain, e.g., 
+\begin{align}
+  %
+  \int_{\tilde{\bK}^{1}}v\,\widehat{\bF}^{1}|_{x_{\Hgh}^{1}}\,dA^{1}
+  &\approx w_{\tilde{\bk}_{1}}\,\ell_{k_{1}}(+1)\,\widehat{\bF}^{1}(x_{\Hgh}^{1},\tilde{x}_{\tilde{\bk}_{1}}^{1})\,
+  \tau^{1}(x_{\Hgh}^{1},\tilde{x}_{\tilde{\bk}_{1}}^{1})\,|\tilde{\bK}^{1}| \nonumber \\
+  &\hspace{12pt}
+  =w_{\tilde{\bk}_{1}}\,\ell_{k_{1}}(+1)\,\widehat{\bF}^{1}(x_{\Hgh}^{1},\tilde{x}_{\tilde{\bk}_{1}}^{1})\,
+  a(x_{\Hgh}^{1})\,b(x_{\Hgh}^{1})\,c(x_{k_{2}}^{2})\,\dx^{2}\,\dx^{3}, \\
+  %
+  \int_{\tilde{\bK}^{2}}v\,\widehat{\bF}^{2}|_{x_{\Hgh}^{2}}\,dA^{2}
+  &\approx w_{\tilde{\bk}_{2}}\,\ell_{k_{2}}(+1)\,\widehat{\bF}^{2}(x_{\Hgh}^{2},\tilde{x}_{\tilde{\bk}_{2}}^{2})\,
+  \tau^{2}(x_{\Hgh}^{2},\tilde{x}_{\tilde{\bk}_{2}}^{2})\,|\tilde{\bK}^{2}| \nonumber \\
+  &\hspace{12pt}
+  =w_{\tilde{\bk}_{2}}\,\ell_{k_{2}}(+1)\,\widehat{\bF}^{2}(x_{\Hgh}^{2},\tilde{x}_{\tilde{\bk}_{2}}^{2})\,
+  b(x_{k_{1}}^{1})\,c(x_{\Hgh}^{2})\,\dx^{1}\,\dx^{3}, \\
+  %
+  \int_{\tilde{\bK}^{3}}v\,\widehat{\bF}^{3}|_{x_{\Hgh}^{3}}\,dA^{3}
+  &\approx w_{\tilde{\bk}_{3}}\,\ell_{k_{3}}(+1)\,\widehat{\bF}^{3}(x_{\Hgh}^{3},\tilde{x}_{\tilde{\bk}_{3}}^{3})\,
+  \tau^{3}(x_{\Hgh}^{3},\tilde{x}_{\tilde{\bk}_{3}}^{3})\,|\tilde{\bK}^{3}| \nonumber \\
+  &\hspace{12pt}
+  =w_{\tilde{\bk}_{3}}\,\ell_{k_{3}}(+1)\,\widehat{\bF}^{3}(x_{\Hgh}^{3},\tilde{x}_{\tilde{\bk}_{3}}^{3})\,
+  a(x_{k_{1}}^{1})\,\dx^{1}\,\dx^{2}.  
+\end{align}
+Finally, the `volume terms' become
+\begin{align}
+  %
+  \int_{\bK}\bF^{1}\,\pderiv{v}{x^{1}}\,dV
+  &\approx w_{\tilde{\bk}_{1}}\sum_{q_{1}=1}^{N}w_{q_{1}}\,\bF^{1}(x_{q_{1}}^{1},\tilde{\bx}_{\tilde{\bk}_{1}}^{1})\,
+  \pderiv{\ell_{k_{1}}}{\eta^{1}}(\eta_{q_{1}}^{1})\,\sqrt{\gamma}(x_{q_{1}}^{1},\tilde{\bx}_{\tilde{\bk}_{1}}^{1})\,|\tilde{\bK}^{1}| \nonumber \\
+  &\hspace{12pt}
+  =w_{\tilde{\bk}_{1}}\,c(x_{k_{2}}^{2})\,\dx^{2}\,\dx^{3}
+  \sum_{q_{1}=1}^{N}w_{q_{1}}\,\bF^{1}(x_{q_{1}}^{1},\tilde{\bx}_{\tilde{\bk}_{1}}^{1})\,
+  \pderiv{\ell_{k_{1}}}{\eta^{1}}(\eta_{q_{1}}^{1})\,a(x_{q_{1}}^{1})\,b(x_{q_{1}}^{1}), \\
+  %
+  \int_{\bK}\bF^{2}\,\f{1}{a}\pderiv{v}{x^{2}}\,dV
+  &\approx w_{\tilde{\bk}_{2}}\sum_{q_{2}=1}^{N}w_{q_{2}}\,\bF^{2}(x_{q_{2}}^{2},\tilde{\bx}_{\tilde{\bk}_{2}}^{2})\,
+  \f{1}{a(x_{k_{1}}^{1})}\pderiv{\ell_{k_{2}}}{\eta^{2}}(\eta_{q_{2}}^{2})\,\sqrt{\gamma}(x_{q_{2}}^{2},\tilde{\bx}_{\tilde{\bk}_{2}}^{2})\,|\tilde{\bK}^{2}| \\
+  &\hspace{12pt}
+  =w_{\tilde{\bk}_{2}}\,b(x_{k_{1}}^{1})\,\dx^{1}\,\dx^{3}\sum_{q_{2}=1}^{N}w_{q_{2}}\,\bF^{2}(x_{q_{2}}^{2},\tilde{\bx}_{\tilde{\bk}_{2}}^{2})\,
+  \pderiv{\ell_{k_{2}}}{\eta^{2}}(\eta_{q_{2}}^{2})\,c(x_{q_{2}}^{2}), \\
+  %
+  \int_{\bK}\bF^{3}\,\f{1}{bc}\pderiv{v}{x^{3}}\,dV
+  &\approx w_{\tilde{\bk}_{3}}\sum_{q_{3}=1}^{N}w_{q_{3}}\,\bF^{3}(x_{q_{3}}^{3},\tilde{\bx}_{\tilde{\bk}_{3}}^{3})\,
+  \f{1}{b(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})}\pderiv{\ell_{k_{3}}}{\eta^{3}}(\eta_{q_{3}}^{3})\,\sqrt{\gamma}(x_{q_{3}}^{3},\tilde{\bx}_{\tilde{\bk}_{3}}^{3})\,|\tilde{\bK}^{3}| \nonumber \\
+  &\hspace{12pt}
+  =w_{\tilde{\bk}_{3}}\,a(x_{k_{1}}^{1})\,\dx^{1}\,\dx^{2}\sum_{q_{3}=1}^{N}w_{q_{3}}\,\bF^{3}(x_{q_{3}}^{3},\tilde{\bx}_{\tilde{\bk}_{3}}^{3})\,
+  \pderiv{\ell_{k_{3}}}{\eta^{3}}(\eta_{q_{3}}^{3}).  
+\end{align}
+
+Combining the terms above with forward Euler time integration, we obtain
+\begin{align}
+  \bU_{\bk}^{n+1}
+  &=\bU_{\bk}^{n} \nonumber \\
+  &\hspace{12pt}
+  -\f{\dt}{w_{k_{1}}\,a(x_{k_{1}}^{1})\,b(x_{k_{1}}^{1})\,\dx^{1}}
+  \Big(\,
+    a(x_{\Hgh}^{1})\,b(x_{\Hgh}^{1})\,\widehat{\bF}^{1,n}(x_{\Hgh}^{1},\tilde{x}_{\tilde{\bk}_{1}}^{1})\,\ell_{k_{1}}(+1) \nonumber \\
+    &\hspace{128pt}
+    -a(x_{\Low}^{1})\,b(x_{\Low}^{1})\,\widehat{\bF}^{1,n}(x_{\Low}^{1},\tilde{x}_{\tilde{\bk}_{1}}^{1})\,\ell_{k_{1}}(-1)
+  \,\Big) \nonumber \\
+  &\hspace{12pt}
+  +\f{\dt}{w_{k_{1}}\,a(x_{k_{1}}^{1})\,b(x_{k_{1}}^{1})\,\dx^{1}}
+  \sum_{q_{1}=1}^{N}w_{q_{1}}\,a(x_{q_{1}}^{1})\,b(x_{q_{1}}^{1})\,\bF^{1,n}(x_{q_{1}}^{1},\tilde{\bx}_{\tilde{\bk}_{1}}^{1})\,
+  \pderiv{\ell_{k_{1}}}{\eta^{1}}(\eta_{q_{1}}^{1}) \nonumber \\
+  &\hspace{12pt}
+  -\f{\dt}{w_{k_{2}}\,a(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})\,\dx^{2}}
+  \Big(\,
+    c(x_{\Hgh}^{2})\,\widehat{\bF}^{2,n}(x_{\Hgh}^{2},\tilde{x}_{\tilde{\bk}_{2}}^{2})\,\ell_{k_{2}}(+1) \nonumber \\
+    &\hspace{128pt}
+    -c(x_{\Low}^{2})\,\widehat{\bF}^{2,n}(x_{\Low}^{2},\tilde{x}_{\tilde{\bk}_{2}}^{2})\,\ell_{k_{2}}(-1)
+  \,\Big) \nonumber \\
+  &\hspace{12pt}
+  +\f{\dt}{w_{k_{2}}\,a(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})\,\dx^{2}}
+  \sum_{q_{2}=1}^{N}w_{q_{2}}\,\bF^{2}(x_{q_{2}}^{2},\tilde{\bx}_{\tilde{\bk}_{2}}^{2})\,\pderiv{\ell_{k_{2}}}{\eta^{2}}(\eta_{q_{2}}^{2})\,c(x_{q_{2}}^{2}) \nonumber \\
+  &\hspace{12pt}
+  -\f{\dt}{w_{k_{3}}\,b(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})\,\dx^{3}}
+  \Big(\,
+    \widehat{\bF}^{3,n}(x_{\Hgh}^{3},\tilde{x}_{\tilde{\bk}_{3}}^{3})\,\ell_{k_{3}}(+1)
+    -\widehat{\bF}^{3,n}(x_{\Low}^{3},\tilde{x}_{\tilde{\bk}_{3}}^{3})\,\ell_{k_{3}}(-1)
+  \,\Big) \nonumber \\
+  &\hspace{12pt}
+  +\f{\dt}{w_{k_{3}}\,b(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})\,\dx^{3}}
+  \sum_{q_{3}=1}^{N}w_{q_{3}}\,\bF^{3}(x_{q_{3}}^{3},\tilde{\bx}_{\tilde{\bk}_{3}}^{3})\,
+  \pderiv{\ell_{k_{3}}}{\eta^{3}}(\eta_{q_{3}}^{3})
+  +\dt\,\bS(\bU_{\bk}^{n}).  
+\end{align}
+
+\bibliography{./references/references.bib}
+
+\appendix
+
+\section{Euler Equations in Commonly Used Curvilinear Coordinates}
+\label{app:CurvilinearEuler}
+
+\subsection{Cylindrical Coordinates}
+
+\begin{equation}
+  \pderiv{\rho}{t}
+  +\f{1}{R}\pderiv{}{R}\Big(R\,\rho\,v_{R}\Big)
+  +\pderiv{}{z}\Big(\rho\,v_{z}\Big)
+  +\f{1}{R}\pderiv{}{\phi}\Big(\rho\,v_{\phi}\Big)=0,
+\end{equation}
+\begin{equation}
+  \pderiv{\big(\rho\,v_{R}\big)}{t}
+  +\f{1}{R}\pderiv{}{R}\Big(R\,\big(\rho\,v_{R}\,v_{R}+p\big)\Big)
+  +\pderiv{}{z}\Big(\rho\,v_{R}\,v_{z}\Big)
+  +\f{1}{R}\pderiv{}{\phi}\Big(\rho\,v_{R}\,v_{\phi}\Big)
+  =\f{\big(\rho\,v_{\phi}^{2}+p\big)}{R},
+\end{equation}
+\begin{equation}
+  \pderiv{\big(\rho\,v_{z}\big)}{t}
+  +\f{1}{R}\pderiv{}{R}\Big(R\,\rho\,v_{z}\,v_{R}\Big)
+  +\pderiv{}{z}\Big(\big(\rho\,v_{z}\,v_{z}+p\big)\Big)
+  +\f{1}{R}\pderiv{}{\phi}\Big(\rho\,v_{z}\,v_{\phi}\Big)=0,
+\end{equation}
+\begin{equation}
+  \pderiv{\big(\rho\,v_{\phi}\big)}{t}
+  +\f{1}{R}\pderiv{}{R}\Big(R\,\rho\,v_{\phi}\,v_{R}\Big)
+  +\pderiv{}{z}\Big(\rho\,v_{\phi}\,v_{z}\Big)
+  +\f{1}{R}\pderiv{}{\phi}\Big(\rho\,v_{\phi}\,v_{\phi}+p\Big)
+  =-\f{\rho\,v_{\phi}\,v_{R}}{R},
+\end{equation}
+\begin{equation}
+  \pderiv{E}{t}+\f{1}{R}\pderiv{}{R}\Big(\,R\,\big(E+p\big)\,v_{R}\,\Big)+\pderiv{}{z}\Big(\,\big(E+p\big)\,v_{z}\,\Big)+\f{1}{R}\pderiv{}{\phi}\Big(\,\big(E+p\big)\,v_{\phi}\,\Big)=0.
+\end{equation}
+\begin{equation}
+  \pderiv{n_{e}}{t}
+  +\f{1}{R}\pderiv{}{R}\Big(R\,n_{e}\,v_{R}\Big)
+  +\pderiv{}{z}\Big(n_{e}\,v_{z}\Big)
+  +\f{1}{R}\pderiv{}{\phi}\Big(n_{e}\,v_{\phi}\Big)=0,
+\end{equation}
+
+\subsection{Spherical Coordinates}
+
+\begin{equation}
+  \pderiv{\rho}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\rho\,v_{r}\Big)
+  +\f{1}{r\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\rho\,v_{\theta}\Big)
+  +\f{1}{r\sin\theta}\pderiv{}{\phi}\Big(\rho\,v_{\phi}\Big)=0,
+\end{equation}
+\begin{equation}
+  \pderiv{\big(\rho\,v_{r}\big)}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\big(\rho\,v_{r}\,v_{r}+p\big)\Big)
+  +\f{1}{r\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\rho\,v_{r}\,v_{\theta}\Big)
+  +\f{1}{r\sin\theta}\pderiv{}{\phi}\Big(\rho\,v_{r}\,v_{\phi}\Big)
+  =\rho\,\f{\big(v_{\theta}^{2}+v_{\phi}^{2}\big)}{r}+\f{2\,p}{r},
+\end{equation}
+\begin{equation}
+  \pderiv{\big(\rho\,v_{\theta}\big)}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\rho\,v_{\theta}\,v_{r}\Big)
+  +\f{1}{r\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\big(\rho\,v_{\theta}\,v_{\theta}+p\big)\Big)
+  +\f{1}{r\sin\theta}\pderiv{}{\phi}\Big(\rho\,v_{\theta}\,v_{\phi}\Big)
+  =\cot\theta\,\f{\big(\rho\,v_{\phi}^{2}+p\big)}{r}-\rho\,\f{v_{r}\,v_{\theta}}{r},
+\end{equation}
+\begin{equation}
+  \pderiv{\big(\rho\,v_{\phi}\big)}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(\,r^{2}\,\rho\,v_{\phi}\,v_{r}\,\Big)
+  +\f{1}{r\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\rho\,v_{\phi}\,v_{\theta}\Big)
+  +\f{1}{r\sin\theta}\pderiv{}{\phi}\Big(\rho\,v_{\phi}\,v_{\phi}+p\Big)
+  =-\rho\,v_{\phi}\,\f{\big(v_{r}+v_{\theta}\,\cot\theta\big)}{r},
+\end{equation}
+\begin{equation}
+  \pderiv{E}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\big(E+p\big)\,v_{r}\Big)
+  +\f{1}{r\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\big(E+p\big)\,v_{\theta}\Big)
+  +\f{1}{r\sin\theta}\pderiv{}{\phi}\Big(\big(E+p\big)\,v_{\phi}\Big)=0.
+\end{equation}
+
+\begin{equation}
+  \pderiv{n_{e}}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,n_{e}\,v_{r}\Big)
+  +\f{1}{r\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,n_{e}\,v_{\theta}\Big)
+  +\f{1}{r\sin\theta}\pderiv{}{\phi}\Big(n_{e}\,v_{\phi}\Big)=0,
+\end{equation}
+
+\section{Characteristic Decomposition}
+\label{app:Characteristic}
+
+Here we list eigenvalues and eigenvectors of the extended Euler equations in Eq.~\eqref{eq:extendedEulerCompact}.  
+Let $\bU=(\rho,u,v,w,E,n)^{T}$ and 
+\begin{align}
+  \bF^{1}(\bU)
+  &=\big(\,u,\,u^{2}/\rho+p,\,u\,v/\rho,\,u\,w/\rho,\,(E+p)\,u/\rho,\,n\,u/\rho\,\big)^{T}, \\
+  \bF^{2}(\bU)
+  &=, \\
+  \bF^{3}(\bU)
+  &=.
+\end{align}
+The flux Jacobian matrices are given by
+\begin{align}
+  \pderiv{\bF^{1}(\bU)}{\bU}
+  =
+  \left(
+  \begin{array}{cccccc}
+  0 & 1 & 0 & 0 & 0 & 0 \\
+  -(u/\rho)^{2}+c_{s}^{2} & 2\,u/\rho & 0 & 0 & p_{E} & p_{n} \\
+  - u\,v/\rho^{2} & v/\rho & u/\rho & 0 & 0 & 0 \\
+  - u\,w/\rho^{2} & w/\rho & 0 & u/\rho & 0 & 0 \\
+  (c_{s}^{2}-h)\,u/\rho & h & 0 & 0 & (1+p_{E})\,u/\rho & p_{n}\,u/\rho \\
+  -n\,u/\rho^{2} & n/\rho & 0 & 0 & 0 & u/\rho
+  \end{array}
+  \right),
+\end{align}
+where we have defined $c_{s}^{2}=\Gamma\,p/\rho$, $\Gamma=(\partial\ln p/\partial\ln \rho)$, $h=(E+p)/\rho$, $p_{E}=(\partial p/\partial E)$, and $p_{n}=(\partial p/\partial n)$
+
+\end{document}
