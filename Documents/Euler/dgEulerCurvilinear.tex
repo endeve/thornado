@@ -13,7 +13,6 @@
 \usepackage{lineno}
 \usepackage{yhmath}
 \usepackage{natbib}
-\bibliographystyle{apj}
 \usepackage{../definitions}
 \hypersetup{
   bookmarksnumbered = true,
@@ -49,28 +48,30 @@ We focus on issues related to core-collapse supernova dynamics, which include th
 
 \section{Euler Equations of Gas Dynamics in Curvilinear Coordinates}
 
-$\vect{r}(\vect{x})\in\mathbb{R}^{3}$, so that the displacement vector is $d\vect{r}=dx^{i}\,\vect{e}_{i}$, where the coordinate basis vectors are
+We consider evolution in three-dimensional position space and denote the position vector with for a point with coordinates $\bx=\{x^{1},x^{2},x^{3}\}$ with $\vect{r}(\vect{x})\in\mathbb{R}^{3}$, so that the displacement vector is $d\vect{r}=dx^{i}\,\vect{e}_{i}$ and the coordinate basis vectors are
 \begin{equation}
-  \vect{e}_{i}=\pderiv{\vect{r}}{x^{i}}
+  \vect{e}_{i}=\pderiv{\vect{r}}{x^{i}}.  
 \end{equation}
-$ds_{\vect{x}}^{2}=d\vect{r}\cdot d\vect{r}$
+The squared infinitesimal line-element is
 \begin{equation}
-  ds_{\vect{x}}^{2}=\gamma_{ij}\,dx^{i}\,dx^{j},
+  ds_{\vect{x}}^{2}=d\vect{r}\cdot d\vect{r}=\gamma_{ij}\,dx^{i}\,dx^{j},
 \end{equation}
 where the coordinate basis metric tensor is defined as $\gamma_{ij}=\vect{e}_{i}\cdot\vect{e}_{j}$.  
 
-For general curvilinear spatial coordinates, the Euler equations for gas dynamics are \citep{landauLifshitz_1959}
+For general curvilinear spatial coordinates, the Euler equations for gas dynamics are \citep{leveque_2002}
 \begin{equation}
   \pderiv{\rho}{t}
   +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\rho\,v^{i}\,\Big)=0,
 \end{equation}
 \begin{equation}
   \pderiv{M_{j}}{t}
-  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,P^{i}_{~j}\,\Big)=\f{1}{2}\,P^{ik}\,\pderiv{\gamma_{ik}}{x^{j}},
+  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,P^{i}_{~j}\,\Big)
+  =\f{1}{2}\,P^{ik}\,\pderiv{\gamma_{ik}}{x^{j}}-\rho\,\pderiv{\Phi}{x^{j}},
 \end{equation}
 \begin{equation}
   \pderiv{E}{t}
-  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\big(E+p\big)\,v^{i}\,\Big)=0,
+  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\big(E+p\big)\,v^{i}\,\Big)
+  =-M^{i}\,\pderiv{\Phi}{x^{i}},
 \end{equation}
 \begin{equation}
   \pderiv{n_{e}}{t}
@@ -118,7 +119,7 @@ Components of the momentum equation
   +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,\bar{P}^{1i}\,\Big)
   +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,\bar{P}^{2i}\,\Big)
   +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,\bar{P}^{3i}\,\Big)
-  =\bar{S}^{i},
+  =\bar{S}^{i}+\bar{G}^{i},
 \end{equation}
 where the ``geometry sources'' are given by
 \small
@@ -128,24 +129,37 @@ where the ``geometry sources'' are given by
   \bar{S}^{2}
   =\bar{P}^{33}\f{1}{ac}\pderiv{c}{x^{2}}-\bar{P}^{12}\f{1}{a}\pderiv{a}{x^{1}}, \quad
   \bar{S}^{3}
-  =-\bar{P}^{13}\f{1}{b}\pderiv{b}{x^{1}}-\bar{P}^{23}\f{1}{ac}\pderiv{c}{x^{2}}.  
+  =-\bar{P}^{13}\f{1}{b}\pderiv{b}{x^{1}}-\bar{P}^{23}\f{1}{ac}\pderiv{c}{x^{2}},
 \end{equation}
 \normalsize
-Energy equation
+and the gravitational sources are
+\begin{equation}
+  \bar{G}^{1}
+  =-\rho\,\pderiv{\Phi}{x^{1}}, \quad
+  \bar{G}^{2}
+  =-\rho\,\f{1}{a}\pderiv{\Phi}{x^{2}}, \quad
+  \bar{G}^{3}
+  =-\rho\,\f{1}{bc}\pderiv{\Phi}{x^{3}}.
+\end{equation}
+The energy equation is given by
 \begin{equation}
   \pderiv{E}{t}
   +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,\big(E+p\big)\,\bar{v}^{1}\,\Big)
   +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,\big(E+p\big)\,\bar{v}^{2}\,\Big)
-  +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,\big(E+p\big)\,\bar{v}^{3}\,\Big)=0.  
+  +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,\big(E+p\big)\,\bar{v}^{3}\,\Big)=Q,  
 \end{equation}
-The electron conservation equation
+where the gravitational energy source is
+\begin{equation}
+  Q=-\Big(\,\bar{M}^{1}\pderiv{\Phi}{x^{1}}+\bar{M}^{2}\f{1}{a}\pderiv{\Phi}{x^{2}}+\bar{M}^{3}\f{1}{bc}\pderiv{\Phi}{x^{3}}\,\Big).
+\end{equation}
+Finally, the electron conservation equation
 \begin{equation}
   \pderiv{n_{e}}{t}
   +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,n_{e}\,\bar{v}^{1}\,\Big)
   +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,n_{e}\,\bar{v}^{2}\,\Big)
   +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,n_{e}\,\bar{v}^{3}\,\Big)=0
 \end{equation}
-By defining $\bU=\big(\,\rho,\,\rho\,\bar{v}^{1},\,\rho\,\bar{v}^{2},\,\rho\,\bar{v}^{3},\,E,\,n_{e}\,\big)^{T}$, $\vect{S}(\bU)=\big(\,0,\,\bar{S}^{1},\,\bar{S}^{2},\,\bar{S}^{3}\,,0,\,0\,\big)^{T}$, and
+By defining the vector of evolved variables $\bU=\big(\,\rho,\,\rho\,\bar{v}^{1},\,\rho\,\bar{v}^{2},\,\rho\,\bar{v}^{3},\,E,\,n_{e}\,\big)^{T}$, the vector of geometry sources $\vect{S}(\bU)=\big(\,0,\,\bar{S}^{1},\,\bar{S}^{2},\,\bar{S}^{3}\,,0,\,0\,\big)^{T}$, the vector of gravitational sources $\bG(\bU,\Phi)=\big(\,0,\bar{G}^{1},\bar{G}^{2},\bar{G}^{3},Q,0\,\big)^{T}$, and the vectors of flux vector components
 \begin{equation}
   \vect{F}^{i}(\bU)
   =\big(\,\rho\,\bar{v}^{i},\,\rho\,\bar{v}^{1}\,\bar{v}^{i}+p\,\delta^{1i},\,\rho\,\bar{v}^{2}\,\bar{v}^{i}+p\,\delta^{2i},\,\rho\,\bar{v}^{3}\,\bar{v}^{i}+p\,\delta^{3i},\,(E+p)\,\bar{v}^{i},\,n_{e}\,\bar{v}^{i}\,\big)^{T},
@@ -156,7 +170,7 @@ we can write the system of equations in compact form
   +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,\vect{F}^{1}(\bU)\,\Big)
   +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,\vect{F}^{2}(\bU)\,\Big)
   +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,\vect{F}^{3}(\bU)\,\Big)
-  =\vect{S}(\bU).
+  =\vect{S}(\bU)+\bG(\bU,\Phi).
   \label{eq:extendedEulerCompact}
 \end{equation}
 
@@ -365,7 +379,8 @@ Combining the terms above with forward Euler time integration, we obtain
   +\dt\,\bS(\bU_{\bk}^{n}).  
 \end{align}
 
-\bibliography{./references/references.bib}
+\bibliographystyle{apj}
+\bibliography{../References/references.bib}
 
 \appendix
 
