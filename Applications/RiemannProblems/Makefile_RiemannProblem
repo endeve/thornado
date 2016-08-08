@@ -54,6 +54,8 @@ RiemannProblem1D.o: \
 RiemannProblem1D_SphericalSymmetry.o: \
   KindModule.o \
   ProgramInitializationModule.o \
+  RiemannProblemInitializationModule.o \
+  TimeSteppingModule.o \
   RiemannProblem1D_SphericalSymmetry.f90
 
 RiemannProblem1D_NuclearEOS.o: \

@@ -1,10 +1,15 @@
 PROGRAM RiemannProblem1D_SphericalSymmetry
 
   USE KindModule, ONLY: &
-    DP
+    DP, Pi
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
+  USE RiemannProblemInitializationModule, ONLY: &
+    InitializeRiemannProblem1D
+  USE TimeSteppingModule, ONLY: &
+    EvolveFields, &
+    SSP_RK
 
   IMPLICIT NONE
 
@@ -12,7 +17,7 @@ PROGRAM RiemannProblem1D_SphericalSymmetry
          ( ProgramName_Option &
             = 'RiemannProblem1D_SphericalSymmetry', &
            nX_Option &
-             = [ 1024, 1, 1 ], &
+             = [ 512, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -20,7 +25,7 @@ PROGRAM RiemannProblem1D_SphericalSymmetry
            xL_Option &
              = [ 0.0_DP, 0.0_DP, 0.0_DP ], &
            xR_Option &
-             = [ 1.0_DP, 1.0_DP, 1.0_DP ], &
+             = [ 2.0_DP, Pi, 2 * Pi ], &
            nNodes_Option &
              = 1, &
            CoordinateSystem_Option &
@@ -32,11 +37,19 @@ PROGRAM RiemannProblem1D_SphericalSymmetry
            FluidSolver_Option &
              = 'Euler_DG', &
            FluidRiemannSolver_Option &
-             = 'HLL', &
+             = 'HLLC', &
            EvolveFluid_Option &
              = .TRUE., &
            nStages_SSP_RK_Option &
              = 1 )
+  
+  CALL InitializeRiemannProblem1D &
+         (D_L = 1.000_DP, V_L = [0.0_DP, 0.0_DP, 0.0_DP], P_L = 1.0_DP, &
+          D_R = 0.125_DP, V_R = [0.0_DP, 0.0_DP, 0.0_DP], P_R = 0.1_DP)
+
+  CALL EvolveFields &
+         ( t_begin = 0.0_DP, t_end = 0.5_DP, dt_write = 0.025_DP, &
+           UpdateFields = SSP_RK )
 
   CALL FinalizeProgram
 
