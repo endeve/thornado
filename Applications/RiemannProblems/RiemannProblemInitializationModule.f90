@@ -77,7 +77,7 @@ CONTAINS
 
                 iNode = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-                IF( X1 <= 0.5_DP )THEN
+                IF( X1 <= X_D )THEN
 
                   ! -- Left State --
 

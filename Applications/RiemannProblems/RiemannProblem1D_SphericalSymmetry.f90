@@ -17,7 +17,7 @@ PROGRAM RiemannProblem1D_SphericalSymmetry
          ( ProgramName_Option &
             = 'RiemannProblem1D_SphericalSymmetry', &
            nX_Option &
-             = [ 512, 1, 1 ], &
+             = [ 1000, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -44,8 +44,9 @@ PROGRAM RiemannProblem1D_SphericalSymmetry
              = 1 )
   
   CALL InitializeRiemannProblem1D &
-         (D_L = 1.000_DP, V_L = [0.0_DP, 0.0_DP, 0.0_DP], P_L = 1.0_DP, &
-          D_R = 0.125_DP, V_R = [0.0_DP, 0.0_DP, 0.0_DP], P_R = 0.1_DP)
+         ( D_L = 1.000_DP, V_L = [ 0.0_DP, 0.0_DP, 0.0_DP ], P_L = 1.0_DP, &
+           D_R = 0.125_DP, V_R = [ 0.0_DP, 0.0_DP, 0.0_DP ], P_R = 0.1_DP, &
+           X_D_Option = 1.0_DP )
 
   CALL EvolveFields &
          ( t_begin = 0.0_DP, t_end = 0.5_DP, dt_write = 0.025_DP, &
