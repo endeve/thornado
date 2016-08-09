@@ -312,9 +312,9 @@ CONTAINS
   END FUNCTION AlphaC
 
 
-  PURE FUNCTION Flux_X1( D, V1, V2, V3, E, P )
+  PURE FUNCTION Flux_X1( D, V1, V2, V3, E, P, Ne )
 
-    REAL(DP), INTENT(in)       :: D, V1, V2, V3, E, P
+    REAL(DP), INTENT(in)       :: D, V1, V2, V3, E, P, Ne
     REAL(DP), DIMENSION(1:nCF) :: Flux_X1
 
     Flux_X1(iCF_D)  = D * V1
@@ -327,7 +327,7 @@ CONTAINS
 
     Flux_X1(iCF_E)  = ( E + 0.5_DP * D * ( V1**2 + V2**2 + V3**2 ) + P ) * V1
 
-    Flux_X1(iCF_Ne) = 0.0_DP
+    Flux_X1(iCF_Ne) = Ne * V1
 
     RETURN
   END FUNCTION Flux_X1

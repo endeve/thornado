@@ -17,7 +17,7 @@ MODULE EulerEquationsSolutionModule_DG
   USE FluidFieldsModule, ONLY: &
     rhsCF, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, nCF, iAF_P, &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, nPF, &
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
     uAF, iAF_P, iAF_Gm, iAF_Cs, nAF
   USE EquationOfStateModule, ONLY: &
     ComputeAuxiliary_Fluid, &
@@ -152,7 +152,8 @@ CONTAINS
                                        uPF_K(jNodeX,iPF_V2), &
                                        uPF_K(jNodeX,iPF_V3), &
                                        uPF_K(jNodeX,iPF_E ), &
-                                       uAF_K(jNodeX,iAF_P ) ) &
+                                       uAF_K(jNodeX,iAF_P ), &
+                                       uAF_K(jNodeX,iPF_Ne) ) &
                             * dL_X1_q(jNodeX1,iNodeX1)
 
                 END DO
@@ -188,7 +189,8 @@ CONTAINS
 
                 Flux_L &
                   = Flux_X1( uPF_L(iPF_D), uPF_L(iPF_V1), uPF_L(iPF_V2), &
-                             uPF_L(iPF_V3), uPF_L(iPF_E), uAF_L(iAF_P) )
+                             uPF_L(iPF_V3), uPF_L(iPF_E), uAF_L(iAF_P),  &
+                             uPF_L(iPF_Ne) )
 
                 ! -- Right State --
 
@@ -213,7 +215,8 @@ CONTAINS
 
                 Flux_R &
                   = Flux_X1( uPF_R(iPF_D), uPF_R(iPF_V1), uPF_R(iPF_V2), &
-                             uPF_R(iPF_V3), uPF_R(iPF_E), uAF_R(iAF_P) )
+                             uPF_R(iPF_V3), uPF_R(iPF_E), uAF_R(iAF_P),  &
+                             uPF_R(iPF_Ne) )
 
                 ! -- Numerical Flux --
 
@@ -273,7 +276,8 @@ CONTAINS
 
                 Flux_L &
                   = Flux_X1( uPF_L(iPF_D), uPF_L(iPF_V1), uPF_L(iPF_V2), &
-                             uPF_L(iPF_V3), uPF_L(iPF_E), uAF_L(iAF_P) )
+                             uPF_L(iPF_V3), uPF_L(iPF_E), uAF_L(iAF_P),  &
+                             uPF_L(iPF_Ne) )
 
                 ! -- Right State --
 
@@ -296,7 +300,8 @@ CONTAINS
 
                 Flux_R &
                   = Flux_X1( uPF_R(iPF_D), uPF_R(iPF_V1), uPF_R(iPF_V2), &
-                             uPF_R(iPF_V3), uPF_R(iPF_E), uAF_R(iAF_P) )
+                             uPF_R(iPF_V3), uPF_R(iPF_E), uAF_R(iAF_P),  &
+                             uPF_R(iPF_Ne) )
 
                 ! -- Numerical Flux --
 
