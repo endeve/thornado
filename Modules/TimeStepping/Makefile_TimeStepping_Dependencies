@@ -13,3 +13,10 @@ TimeSteppingModule.o: \
   FluidRadiationCouplingModule.o \
   BoundaryConditionsModule.o \
   TimeSteppingModule.f90
+
+TimeSteppingModule_Explicit.o: \
+  KindModule.o \
+  UnitsModule.o \
+  InputOutputModule.o \
+  FluidRadiationCouplingSolutionModule_Explicit.o \
+  TimeSteppingModule_Explicit.f90
