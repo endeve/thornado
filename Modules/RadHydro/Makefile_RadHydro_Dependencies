@@ -76,6 +76,10 @@ FluidRadiationCouplingSolutionModule_Implicit.o: \
   FluidRadiationCouplingUtilitiesModule.o \
   FluidRadiationCouplingSolutionModule_Implicit.f90
 
+FluidRadiationCouplingSolutionModule_Explicit.o: \
+  KindModule.o \
+  FluidRadiationCouplingSolutionModule_Explicit.f90
+
 FluidRadiationCouplingModule.o: \
   KindModule.o \
   FluidRadiationCouplingSolutionModule_Implicit.o \

@@ -10,6 +10,7 @@ RAD_HYDRO = \
   RadiationEvolutionModule.o \
   FluidRadiationCouplingUtilitiesModule.o \
   FluidRadiationCouplingSolutionModule_Implicit.o \
+  FluidRadiationCouplingSolutionModule_Explicit.o \
   FluidRadiationCouplingModule.o \
   ApplicationBoundaryConditionsModule.o \
   BoundaryConditionsModule.o

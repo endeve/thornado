@@ -27,6 +27,7 @@ MODULE EulerEquationsUtilitiesModule
 
 CONTAINS
 
+
   PURE FUNCTION Conserved( Primitive )
 
     REAL(DP), DIMENSION(1:nPF), INTENT(in) :: Primitive
@@ -51,6 +52,7 @@ CONTAINS
     RETURN
   END FUNCTION Conserved
 
+
   PURE FUNCTION Primitive( Conserved )
 
     REAL(DP), DIMENSION(1:nCF), INTENT(in) :: Conserved
@@ -73,6 +75,7 @@ CONTAINS
 
     RETURN
   END FUNCTION Primitive
+
 
   SUBROUTINE ComputeConserved( iX_Begin, iX_End )
 
@@ -329,33 +332,33 @@ CONTAINS
     RETURN
   END FUNCTION Flux_X1
 
-  PURE FUNCTION GeometrySources( D, V1, V2, V3, P, X )
+  PURE FUNCTION GeometrySources( D, S_1, S_2, S_3, P, X )
    
-    REAL(DP), INTENT(in) :: D, V1, V2, V3, P
-    REAL(DP), DIMENSION(3), INTENT(in) :: X
-    REAL(DP), DIMENSION(1:nCF) :: GeometrySources
-    REAL(DP) :: a1, b2, c3, dla, dlb, dlc
+    REAL(DP)             :: GeometrySources(1:nCF)
+    REAL(DP), INTENT(in) :: D, S_1, S_2, S_3, P, X(1:3)
 
-    a1 = a(X)
-    b2 = b(X)
-    c3 = c(X)
-    dla = dlnadX1(X)
-    dlb = dlnbdX1(X)
-    dlc = dlncdX2(X) 
+    GeometrySources(iCF_D) &
+      = 0.0_DP
 
-    GeometrySources(iCF_D)       = 0.0_DP
-    
-    GeometrySources(iCF_S1)      = (a1**2* 1/D  * V2**2 + P) * dla &
-                                   +(b2**2 * c3**2 * 1/D * V3**2 + P) * dlb
-    
-    GeometrySources(iCF_S2)      = (b2**2 * c3**2 * 1/D * V3**2 + P)/a1 * dlc &
-                                   -(a1 * 1/D * V1 * V2) * dla 
+    GeometrySources(iCF_S1) &
+      = ( S_2**2 / D + P ) * dlnadX1( X ) &
+        + ( S_3**2 / D + P ) * dlnbdX1( X )
 
-    GeometrySources(iCF_S3)      = -(b2 * c3 * 1/D * V1 * V3) * dlb &
-                                   -(b2 * c3 * 1/D * V2 * V3) * dlc
+    GeometrySources(iCF_S2) &
+      = 0.0_DP
+!!$    (b2**2 * c3**2 * 1/D * S_3**2 + P)/a1 * dlc &
+!!$    -(a1 * 1/D * S_1 * S_2) * dla 
+
+    GeometrySources(iCF_S3) &
+      = 0.0_DP
+!!$      = -(b2 * c3 * 1/D * S_1 * S_3) * dlb &
+!!$        -(b2 * c3 * 1/D * S_2 * S_3) * dlc
     
-    GeometrySources(iCF_E)       = 0.0_DP
-    GeometrySources(iCF_Ne)      = 0.0_DP
+    GeometrySources(iCF_E) &
+      = 0.0_DP
+
+    GeometrySources(iCF_Ne) &
+      = 0.0_DP
 
     RETURN
   END FUNCTION GeometrySources
