@@ -193,9 +193,7 @@ CONTAINS
       IF( FixedTimeStep )THEN
         dt = dt_fixed
       ELSE
-        !PRINT *, 'Computing timestep.'
         CALL ComputeTimeStep( dt )
-        !PRINT *, 'Timestep computed.'
       END IF
 
       IF( t + dt > t_end )THEN
@@ -203,10 +201,6 @@ CONTAINS
         dt = t_end - t
 
       END IF
-
-      !PRINT *, 'Current time is: ', t
-      !PRINT *, 'Current timestep is: ', dt
-      !PRINT *, 'Write time is: ', t_write
 
       IF( t + dt > t_write )THEN
 
@@ -226,8 +220,6 @@ CONTAINS
       END IF
 
       CALL UpdateFields( t, dt )
-
-      !PRINT*, 'Fields updated.'
 
       t = t + dt
 
