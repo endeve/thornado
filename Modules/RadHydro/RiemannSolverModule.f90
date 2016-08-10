@@ -3,7 +3,7 @@ MODULE RiemannSolverModule
   USE KindModule, ONLY: &
     DP
   USE FluidFieldsModule, ONLY: &
-    iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
+    iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
 
   IMPLICIT NONE
   PRIVATE
@@ -136,7 +136,7 @@ CONTAINS
     REAL(DP),                  INTENT(in) :: alpha, alpha_P, alpha_M, alpha_C
     REAL(DP), DIMENSION(1:nF)             :: NumericalFlux_HLLC
 
-    REAL(DP)                  :: D, V1, V2, V3, P, E
+    REAL(DP)                  :: D, V1, V2, V3, P, E, Ne
     REAL(DP), DIMENSION(1:nF) :: TMP
 
     IF( alpha_M .EQ. 0.0_DP )THEN
@@ -159,6 +159,7 @@ CONTAINS
         V3 = TMP(iCF_S3) / TMP(iCF_D)
         P  = TMP(iCF_S1) - alpha_C * TMP(iCF_D)
         E  = ( TMP(iCF_E) - alpha_C * P ) / ( alpha_C + alpha_M )
+        Ne = TMP(iCF_Ne) / ( alpha_C + alpha_M )
 
       ELSE
 
@@ -170,6 +171,7 @@ CONTAINS
         V3 = TMP(iCF_S3) / TMP(iCF_D)
         P  = TMP(iCF_S1) - alpha_C * TMP(iCF_D)
         E  = ( TMP(iCF_E) - alpha_C * P ) / ( alpha_C - alpha_P )
+        Ne = TMP(iCF_Ne) / ( alpha_C - alpha_P )
 
       END IF
 
@@ -183,6 +185,8 @@ CONTAINS
         = D * V3 * V1
       NumericalFlux_HLLC(iCF_E) &
         = ( E + P ) * V1
+      NumericalFlux_HLLC(iCF_Ne) &
+        = Ne * V1
 
     END IF
 
