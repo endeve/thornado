@@ -472,15 +472,19 @@ Combining the terms above with forward Euler time integration, we obtain
 \label{app:Characteristic}
 
 Here we list eigenvalues and eigenvectors of the extended Euler equations in Eq.~\eqref{eq:extendedEulerCompact}.  
-Let $\bU=(\rho,u,v,w,E,n)^{T}$ and 
+Let the vector of conserved variables be $\bU=(\rho,m_{1},m_{2},m_{3},E,n)^{T}$ and the flux vectors
 \begin{align}
   \bF^{1}(\bU)
-  &=\big(\,u,\,u^{2}/\rho+p,\,u\,v/\rho,\,u\,w/\rho,\,(E+p)\,u/\rho,\,n\,u/\rho\,\big)^{T}, \\
+  &=\big(\,m_{1},\,m_{1}^{2}/\rho+p,\,m_{1}m_{2}/\rho,\,m_{1}\,m_{3}/\rho,\,(E+p)\,m_{1}/\rho,\,n\,m_{1}/\rho\,\big)^{T}, \\
   \bF^{2}(\bU)
   &=, \\
   \bF^{3}(\bU)
   &=.
 \end{align}
+The vector of primitive variables is $\bP=(\rho,v_{1},v_{2},v_{3},e,n)^{T}$.  
+We have $v_{i}=m_{i}/\rho$ ($i=1,2,3$) and $e=E-\f{m^{2}}{2\,\rho}$, where $m^{2}=m_{1}^{2}+m_{2}^{2}+m_{3}^{2}$.  
+The pressure is a function of the primitive variables $\rho$, $e$, and $n$; $p=p(\rho,e,n)$
+
 The flux Jacobian matrices are given by
 \begin{align}
   \pderiv{\bF^{1}(\bU)}{\bU}
@@ -488,14 +492,14 @@ The flux Jacobian matrices are given by
   \left(
   \begin{array}{cccccc}
   0 & 1 & 0 & 0 & 0 & 0 \\
-  -(u/\rho)^{2}+c_{s}^{2} & 2\,u/\rho & 0 & 0 & p_{E} & p_{n} \\
-  - u\,v/\rho^{2} & v/\rho & u/\rho & 0 & 0 & 0 \\
-  - u\,w/\rho^{2} & w/\rho & 0 & u/\rho & 0 & 0 \\
-  (c_{s}^{2}-h)\,u/\rho & h & 0 & 0 & (1+p_{E})\,u/\rho & p_{n}\,u/\rho \\
-  -n\,u/\rho^{2} & n/\rho & 0 & 0 & 0 & u/\rho
+  \big(\,p_{\rho}+\f{1}{2}p_{e}v^{2}\,\big)-v_{1}^{2} & \big(\,2-p_{e}\,\big)\,v_{1} & -p_{e}\,v_{2} & -p_{e}\,v_{3} & p_{e} & p_{n} \\
+  - v_{1}v_{2} & v_{2} & v_{3} & 0 & 0 & 0 \\
+  - v_{1}v_{3} & v_{3} & 0 & v_{1} & 0 & 0 \\
+  \big[\big(p_{\rho}+\f{1}{2}p_{e}v^{2}\big)-H\big]\,v_{1} & H-p_{e}v_{1}^{2} & -p_{e}v_{1}v_{2} & -p_{e}v_{1}v_{3} & (1+p_{e})\,v_{1} & p_{n}\,v_{1} \\
+  -n\,v_{1}/\rho & n/\rho & 0 & 0 & 0 & v_{1}
   \end{array}
   \right),
 \end{align}
-where we have defined $c_{s}^{2}=\Gamma\,p/\rho$, $\Gamma=(\partial\ln p/\partial\ln \rho)$, $h=(E+p)/\rho$, $p_{E}=(\partial p/\partial E)$, and $p_{n}=(\partial p/\partial n)$
+where $v^{2}=v_{1}^{2}+v_{2}^{2}+v_{3}^{2}$, $H=(E+p)/\rho$, $p_{\rho}=(\partial p/\partial \rho)$, $p_{e}=(\partial p/\partial e)$, and $p_{n}=(\partial p/\partial n)$.  
 
 \end{document}
