@@ -1,6 +1,7 @@
 include ../../../Build/Makefile_Build
 
-all: RelaxationEmissionAbsorption
+all: RelaxationEmissionAbsorption \
+     RelaxationEmissionAbsorption_Explicit
 
 RelaxationEmissionAbsorption: \
 	$(thornado) FluidRadiationCouplingInitializationModule.o \
@@ -10,11 +11,20 @@ RelaxationEmissionAbsorption: \
 	RelaxationEmissionAbsorption.o \
 	$(LIBRARIES)
 
+RelaxationEmissionAbsorption_Explicit: \
+	$(thornado) FluidRadiationCouplingInitializationModule.o \
+	RelaxationEmissionAbsorption_Explicit.o
+	$(FLINKER) $(FLAGS) -o RelaxationEmissionAbsorption_Explicit_$(MACHINE) \
+	$(thornado) FluidRadiationCouplingInitializationModule.o \
+	RelaxationEmissionAbsorption_Explicit.o \
+	$(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
 	rm -f RelaxationEmissionAbsorption_$(MACHINE)
+	rm -f RelaxationEmissionAbsorption_Explicit_$(MACHINE)
 
 RelaxationEmissionAbsorption.o: \
   KindModule.o \
@@ -23,6 +33,14 @@ RelaxationEmissionAbsorption.o: \
   FluidRadiationCouplingInitializationModule.o \
   TimeSteppingModule.o \
   RelaxationEmissionAbsorption.f90
+
+RelaxationEmissionAbsorption_Explicit.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramInitializationModule.o \
+  FluidRadiationCouplingInitializationModule.o \
+  TimeSteppingModule_Explicit.o \
+  RelaxationEmissionAbsorption_Explicit.f90
 
 FluidRadiationCouplingInitializationModule.o: \
   KindModule.o \

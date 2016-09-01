@@ -1,7 +1,7 @@
-PROGRAM RelaxationEmissionAbsorption
+PROGRAM CoolingProblem1D
 
   USE KindModule, ONLY: &
-    DP
+    DP, Pi, TwoPi
   USE UnitsModule, ONLY: &
     Kilometer, &
     MeV, &
@@ -14,37 +14,39 @@ PROGRAM RelaxationEmissionAbsorption
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
-  USE FluidRadiationCouplingInitializationModule, ONLY: &
-    InitializeRelaxation
+  USE TransportProblemsInitializationModule, ONLY: &
+    InitializeCoolingProblem1D
   USE TimeSteppingModule, ONLY: &
     EvolveFields, &
-    BackwardEuler
+    SI_RK
 
   IMPLICIT NONE
 
   CALL InitializeProgram &
          ( ProgramName_Option &
-             = 'RelaxationEmissionAbsorption', &
+             = 'CoolingProblem1D', &
            nX_Option &
-             = [ 1, 1, 1 ], &
+             = [ 128, 1, 1 ], &
            swX_Option &
-             = [ 0, 0, 0 ], &
+             = [ 1, 0, 0 ], &
            bcX_Option &
-             = [ 0, 0, 0 ], &
+             = [ 10, 0, 0 ], &
            xL_Option &
-             = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer, &
+             = [ 0.0d0 * Kilometer, 0.0d0, 0.0d0 ], &
            xR_Option &
-             = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer, &
+             = [ 1.0d2 * Kilometer, Pi,    TwoPi ], &
            nE_Option &
-             = 30, &
+             = 20, &
            eL_Option &
              = 0.0d0 * MeV, &
            eR_Option &
-             = 3.0d2 * MeV, &
+             = 1.0d2 * MeV, &
            ZoomE_Option &
              = 1.1_DP, &
            nNodes_Option &
              = 2, &
+           CoordinateSystem_Option &
+             = 'SPHERICAL', &
            ActivateUnits_Option &
              = .TRUE., &
            EquationOfState_Option &
@@ -58,23 +60,23 @@ PROGRAM RelaxationEmissionAbsorption
            FluidRadiationCoupling_Option &
              = 'EmissionAbsorption', &
            EvolveFluid_Option &
-             = .TRUE., &
+             = .FALSE., &
+           RadiationSolver_Option &
+             = 'M1_DG', &
            EvolveRadiation_Option &
-             = .TRUE. )
+             = .TRUE., &
+           nStages_SI_RK_Option &
+             = 2 )
 
-  CALL InitializeRelaxation &
-         ( D   = 1.00d14 * Gram / Centimeter**3, &
-           T   = 1.00d11 * Kelvin, &
-           Ye  = 0.30_DP, &
-           E_0 = 5.0d1 * MeV )
+  CALL InitializeCoolingProblem1D &
+         ( ProfileName = 'Output100ms.d' )
 
   CALL EvolveFields &
          ( t_begin  = 0.0d+0 * Microsecond, &
-           t_end    = 1.0d+2 * Microsecond, &
-           dt_write = 1.0d-0 * Microsecond, &
-           UpdateFields = BackwardEuler, &
-           dt_fixed_Option = 1.0d-2 * Microsecond )
+           t_end    = 1.0d+3 * Microsecond, &
+           dt_write = 1.0d+2 * Microsecond, &
+           UpdateFields = SI_RK )
 
   CALL FinalizeProgram
 
-END PROGRAM RelaxationEmissionAbsorption
+END PROGRAM CoolingProblem1D

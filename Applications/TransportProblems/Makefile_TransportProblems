@@ -1,0 +1,37 @@
+include ../../../Build/Makefile_Build
+
+all: CoolingProblem1D
+
+CoolingProblem1D: \
+	$(thornado) TransportProblemsInitializationModule.o \
+	CoolingProblem1D.o
+	$(FLINKER) $(FLAGS) -o CoolingProblem1D_$(MACHINE) \
+	$(thornado) TransportProblemsInitializationModule.o \
+	CoolingProblem1D.o \
+	$(LIBRARIES)
+
+clean:
+	rm -f *.o *.mod *.ld
+
+clobber: clean
+	rm -f CoolingProblem1D_$(MACHINE)
+
+CoolingProblem1D.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramInitializationModule.o \
+  TransportProblemsInitializationModule.o \
+  TimeSteppingModule.o \
+  CoolingProblem1D.f90
+
+TransportProblemsInitializationModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  EquationOfStateModule.o \
+  MomentEquationsUtilitiesModule.o \
+  TransportProblemsInitializationModule.f90
