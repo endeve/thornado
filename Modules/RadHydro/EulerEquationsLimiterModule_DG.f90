@@ -279,7 +279,7 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iPoint, iCF, iNode
     REAL(DP) :: Theta, dD, dS1, dS2, dS3, dE
-    REAL(DP) :: a, b, c, r1, r2
+    REAL(DP) :: delta, a, b, c, r1, r2
     REAL(DP), DIMENSION(1:nPF) :: uPF_A
 
     IF( nDOFX == 1 ) RETURN
@@ -346,6 +346,8 @@ CONTAINS
 
             IF( ANY( uPF_P(:,iPF_E) < Tol_E ) )THEN
 
+              delta = MAX( Tol_E / uCF_M(1,iCF_E), Tol_E )
+
               Theta = 1.0_DP
               DO iPoint = 1, nPoints
 
@@ -356,10 +358,11 @@ CONTAINS
                 dE  = uCF_P(iPoint,iCF_E)  - uCF_M(1,iCF_E)
 
                 a = dD * dE - 0.5_DP * ( dS1**2 + dS2**2 + dS3**3 )
-                b = dE * uCF_M(1,iCF_D) + dD * ( uCF_M(1,iCF_E) - Tol_E ) &
+                b = dE * uCF_M(1,iCF_D) &
+                      + dD * uCF_M(1,iCF_E) * ( 1.0_DP - delta ) &
                       - ( dS1 * uCF_M(1,iCF_S1) + dS2 * uCF_M(1,iCF_S2) &
                             + dS3 * uCF_M(1,iCF_S3) )
-                c = uCF_M(1,iCF_D) * ( uCF_M(1,iCF_E) - Tol_E ) &
+                c = uCF_M(1,iCF_D) * uCF_M(1,iCF_E) * ( 1.0_DP - delta ) &
                       - 0.5_DP * ( uCF_M(1,iCF_S1)**2 + uCF_M(1,iCF_S2)**2 &
                                      + uCF_M(1,iCF_S3)**2 )
 
