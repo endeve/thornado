@@ -32,31 +32,24 @@ MODULE RiemannProblemInitializationModule
 
   PUBLIC :: InitializeRiemannProblem1D
   PUBLIC :: InitializeRiemannProblem1D_NuclearEOS
+  PUBLIC :: InitializeSedov
   PUBLIC :: InitializeInteractingBlastWaves1D  
 
 CONTAINS
 
 
-  SUBROUTINE InitializeRiemannProblem1D( D_L, V_L, P_L, D_R, V_R, P_R, X_D_Option )
+  SUBROUTINE InitializeRiemannProblem1D( D_L, V_L, P_L, D_R, V_R, P_R )
 
     REAL(DP),               INTENT(in) :: D_L, P_L, D_R, P_R
     REAL(DP), DIMENSION(3), INTENT(in) :: V_L, V_R
-    REAL(DP),               INTENT(in), OPTIONAL :: X_D_Option
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNode
-    REAL(DP) :: X_D, X1
-
-    X_D = 0.5_DP
-    IF( PRESENT( X_D_Option ) ) &
-      X_D = X_D_Option
+    REAL(DP) :: X1
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') &
       '', 'INFO: ', TRIM( ProgramName )
-    WRITE(*,*)
-    WRITE(*,'(A7,A6,ES10.3E2)') &
-      '', 'X_D = ', X_D
     WRITE(*,*)
     WRITE(*,'(A7,A6,ES10.3E2,A24,A6,ES10.3E2)') &
       '', 'D_L = ', D_L, '', 'D_R = ', D_R
@@ -77,7 +70,7 @@ CONTAINS
 
                 iNode = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-                IF( X1 <= X_D )THEN
+                IF( X1 <= 1.0_DP )THEN
 
                   ! -- Left State --
 
@@ -119,7 +112,6 @@ CONTAINS
 
   END SUBROUTINE InitializeRiemannProblem1D
 
-
   SUBROUTINE InitializeRiemannProblem1D_NuclearEOS &
                ( D_L, V_L, P_L, Ye_L, D_R, V_R, P_R, Ye_R, X_D_Option )
 
@@ -140,9 +132,6 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') &
       '', 'INFO: ', TRIM( ProgramName )
-    WRITE(*,*)
-    WRITE(*,'(A7,A7,ES10.3E2,A1,A)') &
-      '', 'X_D = ', X_D / U % LengthUnit, '', TRIM( U % LengthLabel )
     WRITE(*,*)
     WRITE(*,'(A7,A7,ES10.3E2,A1,A,A22,A7,ES10.3E2,A1,A)') &
       '', 'D_L = ', D_L / U % MassDensityUnit, &
@@ -223,6 +212,72 @@ CONTAINS
            ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
 
   END SUBROUTINE InitializeRiemannProblem1D_NuclearEOS
+
+
+  SUBROUTINE InitializeSedov(E0)
+
+    REAL(DP), INTENT(IN) :: E0
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNode
+    REAL(DP) :: X1, R0, Gm
+
+     WRITE(*,*)
+     WRITE(*,'(A2,A6,A)') &
+       '', 'INFO: ', TRIM( ProgramName )
+     WRITE(*,*)
+     WRITE(*,'(A7,A6,ES10.3E2,A24,A6,ES10.3E2)') &
+       '', 'E0 = ', E0
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+              DO iNodeX1 = 1, nNodesX(1)
+
+                X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+                iNode = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+                  uPF(iNode,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+                  uPF(iNode,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+                  uPF(iNode,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                  uPF(iNode,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  
+                  Gm = 1.4_DP
+                  R0 = MeshX(1) % Width(1)
+
+                  IF( X1 < R0)THEN
+                 
+                    uAF(iNode, iX1, iX2, iX3, iAF_P) = (Gm - 1) * 3/(4 * Pi * R0**3) * E0
+                      
+                  ELSE
+                
+                    uAF(iNode, iX1, iX2, iX3, iAF_P) = 1.0d-5
+
+                  END IF 
+
+                uPF(iNode,iX1,iX2,iX3,iPF_E) &
+                  = InternalEnergy_Auxiliary &
+                      ( uPF(iNode,iX1,iX2,iX3,:), uAF(iNode,iX1,iX2,iX3,:) )
+
+                uAF(iNode,iX1,iX2,iX3,:) &
+                  = Auxiliary_Fluid( uPF(iNode,iX1,iX2,iX3,:) )
+
+                uCF(iNode,iX1,iX2,iX3,:) &
+                  = Conserved( uPF(iNode,iX1,iX2,iX3,:) )
+
+              END DO
+            END DO
+          END DO
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeSedov
 
 
   SUBROUTINE InitializeInteractingBlastWaves1D
