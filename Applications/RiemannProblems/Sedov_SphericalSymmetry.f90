@@ -17,7 +17,7 @@ PROGRAM Sedov_SphericalSymmetry
          ( ProgramName_Option &
             = 'Sedov_SphericalSymmetry', &
            nX_Option &
-             = [ 256, 1, 1 ], &
+             = [ 1024, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -43,7 +43,7 @@ PROGRAM Sedov_SphericalSymmetry
            nStages_SSP_RK_Option &
              = 1 )
   
-  CALL InitializeSedov(1.0_DP)
+  CALL InitializeSedov( E_0 = 1.0_DP, nDetonationCells_Option = 3 )
 
   CALL EvolveFields &
          ( t_begin = 0.0_DP, t_end = 1.0_DP, dt_write = 0.05_DP, &

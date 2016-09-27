@@ -38,18 +38,27 @@ MODULE RiemannProblemInitializationModule
 CONTAINS
 
 
-  SUBROUTINE InitializeRiemannProblem1D( D_L, V_L, P_L, D_R, V_R, P_R )
+  SUBROUTINE InitializeRiemannProblem1D &
+               ( D_L, V_L, P_L, D_R, V_R, P_R, X_D_Option )
 
     REAL(DP),               INTENT(in) :: D_L, P_L, D_R, P_R
     REAL(DP), DIMENSION(3), INTENT(in) :: V_L, V_R
+    REAL(DP),               INTENT(in), OPTIONAL :: X_D_Option
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNode
-    REAL(DP) :: X1
+    REAL(DP) :: X_D, X1
+
+    X_D = 0.5_DP
+    IF( PRESENT( X_D_Option ) ) &
+      X_D = X_D_Option
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') &
       '', 'INFO: ', TRIM( ProgramName )
+    WRITE(*,*)
+    WRITE(*,'(A7,A6,ES10.3E2)') &
+      '', 'X_D = ', X_D
     WRITE(*,*)
     WRITE(*,'(A7,A6,ES10.3E2,A24,A6,ES10.3E2)') &
       '', 'D_L = ', D_L, '', 'D_R = ', D_R
@@ -70,7 +79,7 @@ CONTAINS
 
                 iNode = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-                IF( X1 <= 1.0_DP )THEN
+                IF( X1 <= X_D )THEN
 
                   ! -- Left State --
 
@@ -111,6 +120,7 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeRiemannProblem1D
+
 
   SUBROUTINE InitializeRiemannProblem1D_NuclearEOS &
                ( D_L, V_L, P_L, Ye_L, D_R, V_R, P_R, Ye_R, X_D_Option )
@@ -214,20 +224,28 @@ CONTAINS
   END SUBROUTINE InitializeRiemannProblem1D_NuclearEOS
 
 
-  SUBROUTINE InitializeSedov(E0)
+  SUBROUTINE InitializeSedov( E_0, nDetonationCells_Option )
 
-    REAL(DP), INTENT(IN) :: E0
+    REAL(DP), INTENT(in) :: E_0
+    INTEGER,  INTENT(in), OPTIONAL :: nDetonationCells_Option
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNode
-    REAL(DP) :: X1, R0, Gm
+    INTEGER  :: nDetonationCells
+    REAL(DP) :: X1, R_0, Gm
 
-     WRITE(*,*)
-     WRITE(*,'(A2,A6,A)') &
-       '', 'INFO: ', TRIM( ProgramName )
-     WRITE(*,*)
-     WRITE(*,'(A7,A6,ES10.3E2,A24,A6,ES10.3E2)') &
-       '', 'E0 = ', E0
+    nDetonationCells = 1
+    IF( PRESENT( nDetonationCells_Option ) ) &
+      nDetonationCells = nDetonationCells_Option
+
+    R_0 = REAL( nDetonationCells ) * MeshX(1) % Width(1)
+
+    WRITE(*,*)
+    WRITE(*,'(A2,A6,A)') &
+      '', 'INFO: ', TRIM( ProgramName )
+    WRITE(*,*)
+    WRITE(*,'(A7,A,ES10.3E2,A2,I2.2,A2,ES10.3E2)') &
+      '', 'E_0, nDetonationCells, R_0 = ', E_0, ', ', nDetonationCells, ', ', R_0
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
@@ -241,23 +259,25 @@ CONTAINS
 
                 iNode = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-                  uPF(iNode,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNode,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNode,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNode,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  
-                  Gm = 1.4_DP
-                  R0 = MeshX(1) % Width(1)
+                uPF(iNode,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+                uPF(iNode,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+                uPF(iNode,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                uPF(iNode,iX1,iX2,iX3,iPF_V3) = 0.0_DP
 
-                  IF( X1 < R0)THEN
-                 
-                    uAF(iNode, iX1, iX2, iX3, iAF_P) = (Gm - 1) * 3/(4 * Pi * R0**3) * E0
-                      
-                  ELSE
-                
-                    uAF(iNode, iX1, iX2, iX3, iAF_P) = 1.0d-5
+                Gm = 1.4_DP
 
-                  END IF 
+                IF( X1 < R_0 )THEN
+
+                  uAF(iNode, iX1, iX2, iX3, iAF_P) &
+                    = ( Gm - 1.0_DP ) * 3.0_DP * E_0 &
+                      / ( 4.0_DP * Pi * R_0**3 )
+
+                ELSE
+
+                  uAF(iNode, iX1, iX2, iX3, iAF_P) &
+                    = 1.0d-5
+
+                END IF
 
                 uPF(iNode,iX1,iX2,iX3,iPF_E) &
                   = InternalEnergy_Auxiliary &
