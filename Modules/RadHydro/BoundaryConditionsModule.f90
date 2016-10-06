@@ -240,6 +240,28 @@ CONTAINS
           END DO
         END DO
 
+      CASE ( 2 ) ! Homogeneous
+
+        DO iS = 1, nSpecies
+          DO iX3 = 1, nX(3)
+            DO iX2 = 1, nX(2)
+              DO iE = 1, nE
+
+                DO iCR = 1, nCR
+
+                  uCR(:,iE,0,iX2,iX3,iCR,iS) &
+                    = uCR(:,iE,1,iX2,iX3,iCR,iS)
+
+                  uCR(:,iE,nX(1)+1,iX2,iX3,iCR,iS) &
+                    = uCR(:,iE,nX(1),iX2,iX3,iCR,iS)
+
+                END DO
+
+              END DO
+            END DO
+          END DO
+        END DO
+
       CASE DEFAULT
 
         WRITE(*,*)
