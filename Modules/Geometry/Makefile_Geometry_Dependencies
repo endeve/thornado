@@ -1,3 +1,6 @@
 GeometryModule.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
   GeometryModule.f90

@@ -2,13 +2,25 @@ MODULE GeometryModule
 
   USE KindModule, ONLY: &
     DP
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX, nDOF
+  USE UtilitiesModule, ONLY: &
+    NodeNumberX, &
+    NodeNumber
+  USE MeshModule, ONLY: &
+    MeshType, &
+    MeshX, MeshE, &
+    NodeCoordinate
 
   IMPLICIT NONE
   PRIVATE
 
   CHARACTER(16), PUBLIC :: &
-    CoordinateSystem &
-      = 'CARTESIAN'
+    CoordinateSystem = 'CARTESIAN'
+  REAL(DP), DIMENSION(:,:,:,:),   ALLOCATABLE, PUBLIC :: &
+    VolJacX
+  REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
+    VolJac
 
   INTERFACE
     PURE REAL(DP) FUNCTION MetricFunction( X )
@@ -22,16 +34,22 @@ MODULE GeometryModule
   PROCEDURE (MetricFunction), POINTER, PUBLIC :: dlnbdX1
   PROCEDURE (MetricFunction), POINTER, PUBLIC :: dlncdX2
 
-
   PUBLIC :: InitializeGeometry
   PUBLIC :: FinalizeGeometry
 
 CONTAINS
 
 
-  SUBROUTINE InitializeGeometry( CoordinateSystem_Option )
+  SUBROUTINE InitializeGeometry &
+               ( nX, nNodesX, swX, MeshX, nE, nNodesE, swE, MeshE, &
+                 CoordinateSystem_Option )
 
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: CoordinateSystem_Option
+    INTEGER,        DIMENSION(3), INTENT(in) :: nX, nNodesX, swX
+    TYPE(MeshType), DIMENSION(3), INTENT(in) :: MeshX
+    INTEGER,                      INTENT(in) :: nE, nNodesE, swE
+    TYPE(MeshType),               INTENT(in) :: MeshE
+    CHARACTER(LEN=*),             INTENT(in), OPTIONAL :: &
+      CoordinateSystem_Option
 
     IF( PRESENT( CoordinateSystem_Option ) )THEN
       CoordinateSystem = TRIM( CoordinateSystem_Option )
@@ -86,12 +104,127 @@ CONTAINS
 
     END SELECT
 
+    ALLOCATE &
+      ( VolJacX(1:nDOFX, &
+                1-swX(1):nX(1)+swX(1), &
+                1-swX(2):nX(2)+swX(2), &
+                1-swX(3):nX(3)+swX(3)) )
+
+    CALL ComputeGeometryX( nX, nNodesX, MeshX )
+
+    ALLOCATE &
+      ( VolJac(1:nDOF, &
+               1-swE   :nE   +swE,    &
+               1-swX(1):nX(1)+swX(1), &
+               1-swX(2):nX(2)+swX(2), &
+               1-swX(3):nX(3)+swX(3)) )
+
+    CALL ComputeGeometry( nX, nNodesX, MeshX, nE, nNodesE, MeshE )
+
   END SUBROUTINE InitializeGeometry
+
+
+  SUBROUTINE ComputeGeometryX( nX, nNodesX, MeshX )
+
+    INTEGER,        DIMENSION(3), INTENT(in) :: nX, nNodesX
+    TYPE(MeshType), DIMENSION(3), INTENT(in) :: MeshX
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
+    REAL(DP) :: X1, X2, X3
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX3 = 1, nNodesX(3)
+
+            X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
+
+            DO iNodeX2 = 1, nNodesX(2)
+
+              X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+              DO iNodeX1 = 1, nNodesX(1)
+
+                X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+                VolJacX(iNodeX,iX1,iX2,iX3) = d( [ X1, X2, X3 ] )
+
+              END DO
+
+            END DO
+
+          END DO
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE ComputeGeometryX
+
+
+  SUBROUTINE ComputeGeometry( nX, nNodesX, MeshX, nE, nNodesE, MeshE )
+
+    INTEGER,        DIMENSION(3), INTENT(in) :: nX, nNodesX
+    TYPE(MeshType), DIMENSION(3), INTENT(in) :: MeshX
+    INTEGER,                      INTENT(in) :: nE, nNodesE
+    TYPE(MeshType),               INTENT(in) :: MeshE
+
+    INTEGER  :: iE, iX1, iX2, iX3
+    INTEGER  :: iNodeE, iNodeX1, iNodeX2, iNodeX3, iNode
+    REAL(DP) :: E, X1, X2, X3
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          DO iE = 1, nE
+
+            DO iNodeX3 = 1, nNodesX(3)
+
+              X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
+
+              DO iNodeX2 = 1, nNodesX(2)
+
+                X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+                DO iNodeX1 = 1, nNodesX(1)
+
+                  X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+                  DO iNodeE = 1, nNodesE
+
+                    E = NodeCoordinate( MeshE, iE, iNodeE )
+
+                    iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+
+                    VolJac(iNode,iE,iX1,iX2,iX3) &
+                      = d( [ X1, X2, X3 ] ) * E**2
+
+                  END DO
+
+                END DO
+
+              END DO
+
+            END DO
+
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE ComputeGeometry
 
 
   SUBROUTINE FinalizeGeometry
 
     NULLIFY( a, b, c, d )
+
+    DEALLOCATE( VolJacX )
+    DEALLOCATE( VolJac  )
 
   END SUBROUTINE FinalizeGeometry
 
