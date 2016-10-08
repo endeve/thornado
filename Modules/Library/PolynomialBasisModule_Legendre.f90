@@ -35,6 +35,7 @@ MODULE PolynomialBasisModule_Legendre
   TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: P_X3
 
   PUBLIC :: InitializePolynomialBasis_Legendre
+  PUBLIC :: evalP
   PUBLIC :: evalPX
 
 CONTAINS
@@ -239,6 +240,31 @@ CONTAINS
   PURE REAL(DP) FUNCTION evalP( u, E, X1, X2, X3 )
 
     REAL(DP), INTENT(in) :: u(1:nDOF), E, X1, X2, X3
+
+    INTEGER  :: i, iE, iX1, iX2, iX3
+    REAL(DP) :: TMP_X1, TMP_X2, TMP_X3
+
+    i = 1
+    evalP = 0.0_DP
+    DO iX3 = 1, nNodesX(3)
+      TMP_X3 = P_X3(iX3) % P( X3 )
+      DO iX2 = 1, nNodesX(2)
+        TMP_X2 = P_X2(iX2) % P( X2 )
+        DO iX1 = 1, nNodesX(1)
+          TMP_X1 = P_X1(iX1) % P( X1 )
+          DO iE = 1, nNodesE
+
+            evalP &
+              = evalP &
+                + P_E(iE) % P( E ) * u(i) &
+                    * TMP_X1 * TMP_X2 * TMP_X3
+
+            i = i + 1
+
+          END DO
+        END DO
+      END DO
+    END DO
 
     RETURN
   END FUNCTION evalP
