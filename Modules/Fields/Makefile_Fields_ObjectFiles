@@ -1,3 +1,4 @@
 FIELDS = \
   FluidFieldsModule.o \
-  RadiationFieldsModule.o
+  RadiationFieldsModule.o \
+  RadiationFieldsUtilitiesModule.o

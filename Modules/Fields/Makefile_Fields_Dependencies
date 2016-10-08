@@ -7,3 +7,8 @@ RadiationFieldsModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   RadiationFieldsModule.f90
+
+RadiationFieldsUtilitiesModule.o: \
+  KindModule.o \
+  GeometryModule.o \
+  RadiationFieldsUtilitiesModule.f90
