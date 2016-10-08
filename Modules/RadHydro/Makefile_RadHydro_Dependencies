@@ -58,6 +58,14 @@ MomentEquationsSolutionModule_M1_DG.o: \
 
 MomentEquationsLimiterModule_DG.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
+  GeometryModule.o \
+  RadiationFieldsModule.o \
+  RadiationFieldsUtilitiesModule.o \
   MomentEquationsLimiterModule_DG.f90
 
 RadiationEvolutionModule.o: \

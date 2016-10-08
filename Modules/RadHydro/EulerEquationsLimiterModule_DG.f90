@@ -5,8 +5,8 @@ MODULE EulerEquationsLimiterModule_DG
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, nDOFX
   USE UtilitiesModule, ONLY: &
-    GetRoots_Quadratic, &
-    MinModB
+    MinModB, &
+    GetRoots_Quadratic
   USE PolynomialBasisModule_Lagrange, ONLY: &
     evalLX
   USE PolynomialBasisModule_Legendre, ONLY: &

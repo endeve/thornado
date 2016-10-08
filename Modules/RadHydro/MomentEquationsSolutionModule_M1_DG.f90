@@ -67,7 +67,7 @@ CONTAINS
         X1C => MeshX(1) % Center(1:nX(1)), &
         dX1 => MeshX(1) % Width (1:nX(1)) )
 
-    ! -- Precomute Lagrange Polynomials --
+    ! -- Precompute Lagrange Polynomials --
 
     DO jNodeX1 = 1, nNodesX(1)
       L_X1_L(jNodeX1) &

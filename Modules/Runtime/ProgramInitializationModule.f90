@@ -34,6 +34,9 @@ MODULE ProgramInitializationModule
   USE RadiationFieldsModule, ONLY: &
     CreateRadiationFields, &
     DestroyRadiationFields
+  USE RadiationFieldsUtilitiesModule, ONLY: &
+    InitializeRadiationFieldsUtilities, &
+    FinalizeRadiationFieldsUtilities
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
@@ -251,14 +254,18 @@ CONTAINS
     ! --- Geometry ---
 
     CALL InitializeGeometry &
-           ( CoordinateSystem_Option &
-               = CoordinateSystem_Option )
+           ( nX, nNodesX, swX, MeshX, nE, nNodesE, swE, MeshE, &
+             CoordinateSystem_Option = CoordinateSystem_Option )
 
     ! --- Physical Fields ---
 
     CALL CreateFluidFields( nX, swX )
 
     CALL CreateRadiationFields( nX, swX, nE, swE )
+
+    CALL InitializeRadiationFieldsUtilities &
+           ( MeshE % Weights, MeshX(1) % Weights, MeshX(2) % Weights, &
+             MeshX(3) % Weights )
 
     ! --- For Mapping Between Nodal and Modal Representations ---
 
@@ -340,6 +347,8 @@ CONTAINS
     CALL DestroyFluidFields
 
     CALL DestroyRadiationFields
+
+    CALL FinalizeRadiationFieldsUtilities
 
     ! --- Equation of State ---
 

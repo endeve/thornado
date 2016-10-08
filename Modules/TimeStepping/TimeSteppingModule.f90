@@ -28,7 +28,8 @@ MODULE TimeSteppingModule
     ApplyPositivityLimiter_Fluid
   USE RadiationEvolutionModule, ONLY: &
     ComputeRHS_Radiation, &
-    ApplySlopeLimiter_Radiation
+    ApplySlopeLimiter_Radiation, &
+    ApplyPositivityLimiter_Radiation
   USE FluidRadiationCouplingModule, ONLY: &
     CoupleFluidRadiation
   USE BoundaryConditionsModule, ONLY: &
@@ -463,8 +464,13 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Radiation( Time = t )
 
+      CALL CPU_TIME( WT(0) )
+
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+      CALL CPU_TIME( WT(1) )
+      wtR = wtR + ( WT(1) - WT(0) )
 
     END IF
 
@@ -498,7 +504,19 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
+      CALL CPU_TIME( WT(0) )
+
       CALL ApplySlopeLimiter_Radiation
+
+      CALL CPU_TIME( WT(1) )
+      wtS = wtS + ( WT(1) - WT(0) )
+
+      CALL CPU_TIME( WT(0) )
+
+      CALL ApplyPositivityLimiter_Radiation
+
+      CALL CPU_TIME( WT(1) )
+      wtP = wtP + ( WT(1) - WT(0) )
 
     END IF
 
@@ -522,8 +540,13 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Radiation( Time = t + dt )
 
+      CALL CPU_TIME( WT(0) )
+
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+      CALL CPU_TIME( WT(1) )
+      wtR = wtR + ( WT(1) - WT(0) )
 
     END IF
 
@@ -557,7 +580,19 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.5_DP, beta = 0.5_DP )
 
+      CALL CPU_TIME( WT(0) )
+
       CALL ApplySlopeLimiter_Radiation
+
+      CALL CPU_TIME( WT(1) )
+      wtS = wtS + ( WT(1) - WT(0) )
+
+      CALL CPU_TIME( WT(0) )
+
+      CALL ApplyPositivityLimiter_Radiation
+
+      CALL CPU_TIME( WT(1) )
+      wtP = wtP + ( WT(1) - WT(0) )
 
     END IF
 

@@ -4,7 +4,8 @@ MODULE RadiationEvolutionModule
     ComputeRHS_M1_DG
   USE MomentEquationsLimiterModule_DG, ONLY: &
     InitializeLimiters_M1_DG, &
-    ApplySlopeLimiter_M1_DG
+    ApplySlopeLimiter_M1_DG, &
+    ApplyPositivityLimiter_M1_DG
 
   IMPLICIT NONE
   PRIVATE
@@ -21,7 +22,8 @@ MODULE RadiationEvolutionModule
   END INTERFACE
 
   PROCEDURE (ApplyLimiter), POINTER, PUBLIC :: &
-    ApplySlopeLimiter_Radiation => NULL()
+    ApplySlopeLimiter_Radiation      => NULL(), &
+    ApplyPositivityLimiter_Radiation => NULL()
 
   INTERFACE
     SUBROUTINE ApplyLimiter
@@ -48,11 +50,15 @@ CONTAINS
           => ComputeRHS_M1_DG
         ApplySlopeLimiter_Radiation &
           => ApplySlopeLimiter_M1_DG
+        ApplyPositivityLimiter_Radiation &
+          => ApplyPositivityLimiter_M1_DG
         CALL InitializeLimiters_M1_DG
       CASE DEFAULT
         ComputeRHS_Radiation &
           => ComputeRHS_Dummy
         ApplySlopeLimiter_Radiation &
+          => ApplyLimiter_Dummy
+        ApplyPositivityLimiter_Radiation &
           => ApplyLimiter_Dummy
     END SELECT
 
