@@ -17,7 +17,7 @@ PROGRAM LineSource1D
          ( ProgramName_Option &
              = 'LineSource1D', &
            nX_Option &
-             = [ 1024, 1, 1 ], &
+             = [ 128, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -33,7 +33,7 @@ PROGRAM LineSource1D
            eR_Option &
              = 1.0_DP, &
            nNodes_Option &
-             = 1, &
+             = 2, &
            CoordinateSystem_Option &
              = 'CYLINDRICAL', &
            RadiationSolver_Option &
@@ -43,10 +43,10 @@ PROGRAM LineSource1D
            nStages_SSP_RK_Option &
              = 2 )
 
-  CALL InitializeLineSource1D( Sigma_Option = 0.005_DP )
+  CALL InitializeLineSource1D( Sigma_Option = 0.03_DP )
 
   CALL EvolveFields &
-         ( t_begin = 0.0d+0, t_end = 1.0d+0, dt_write = 1.0d-1, &
+         ( t_begin = 0.0d+0, t_end = 1.0d-0, dt_write = 1.0d-1, &
            UpdateFields = SSP_RK )
 
   CALL FinalizeProgram

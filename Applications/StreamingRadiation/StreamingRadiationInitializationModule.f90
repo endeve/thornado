@@ -177,7 +177,7 @@ CONTAINS
 
                       uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
                         = MAX( EXP( - 0.5_DP * ( X1 / Sigma )**2 ) &
-                               / ( 8.0_DP * Pi * Sigma**2 ), 1.0d-4 )
+                               / ( 2.0 * Sigma**2 ), 1.0d-4 )
 
                       uCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS) &
                         = EPSILON( 1.0_DP )
