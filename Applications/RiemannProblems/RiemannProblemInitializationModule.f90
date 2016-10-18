@@ -33,7 +33,8 @@ MODULE RiemannProblemInitializationModule
   PUBLIC :: InitializeRiemannProblem1D
   PUBLIC :: InitializeRiemannProblem1D_NuclearEOS
   PUBLIC :: InitializeSedov
-  PUBLIC :: InitializeInteractingBlastWaves1D  
+  PUBLIC :: InitializeInteractingBlastWaves1D
+  PUBLIC :: InitializeShockEntropyWaveInteraction1D
 
 CONTAINS
 
@@ -363,6 +364,81 @@ CONTAINS
   END SUBROUTINE InitializeInteractingBlastWaves1D
 
 
+  SUBROUTINE InitializeShockEntropyWaveInteraction1D
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNode
+    REAL(DP) :: X_D, Amplitude, Wavenumber, X1
+
+    X_D        = - 4.0_DP
+    Amplitude  = + 0.2_DP
+    Wavenumber = + 5.0_DP
+
+    WRITE(*,*)
+    WRITE(*,'(A2,A6,A)') &
+      '', 'INFO: ', TRIM( ProgramName )
+    WRITE(*,*)
+    WRITE(*,'(A7,A6,ES10.3E2)') &
+      '', 'X_D = ', X_D
+    WRITE(*,*)
+    WRITE(*,'(A7,A13,ES10.3E2)') '', 'Amplitude  = ', Amplitude
+    WRITE(*,'(A7,A13,ES10.3E2)') '', 'Wavenumber = ', Wavenumber
+    WRITE(*,*)
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+              DO iNodeX1 = 1, nNodesX(1)
+
+                X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+                iNode = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+                IF( X1 <= X_D )THEN
+
+                  ! -- Left State --
+
+                  uPF(iNode,iX1,iX2,iX3,iPF_D)  = 3.857143_DP
+                  uPF(iNode,iX1,iX2,iX3,iPF_V1) = 2.629369_DP
+                  uPF(iNode,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                  uPF(iNode,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  uAF(iNode,iX1,iX2,iX3,iAF_P)  = 10.333333_DP
+
+                ELSE
+
+                  ! -- Right State --
+
+                  uPF(iNode,iX1,iX2,iX3,iPF_D) &
+                    = 1.0_DP + Amplitude * SIN( WaveNumber * X1 )
+                  uPF(iNode,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+                  uPF(iNode,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                  uPF(iNode,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  uAF(iNode,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+
+                END IF
+
+                uPF(iNode,iX1,iX2,iX3,iPF_E) &
+                  = InternalEnergy_Auxiliary &
+                      ( uPF(iNode,iX1,iX2,iX3,:), uAF(iNode,iX1,iX2,iX3,:) )
+
+                uAF(iNode,iX1,iX2,iX3,:) &
+                  = Auxiliary_Fluid( uPF(iNode,iX1,iX2,iX3,:) )
+
+                uCF(iNode,iX1,iX2,iX3,:) &
+                  = Conserved( uPF(iNode,iX1,iX2,iX3,:) )
+
+              END DO
+            END DO
+          END DO
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeShockEntropyWaveInteraction1D
 
 
 END MODULE RiemannProblemInitializationModule
