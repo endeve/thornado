@@ -10,5 +10,6 @@ RadiationFieldsModule.o: \
 
 RadiationFieldsUtilitiesModule.o: \
   KindModule.o \
-  GeometryModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
   RadiationFieldsUtilitiesModule.f90
