@@ -14,10 +14,11 @@ MODULE FluidRadiationCouplingModule
     CoupleFluidRadiation => NULL()
 
   INTERFACE
-    SUBROUTINE CouplingProcedure( dt, iX_Begin, iX_End )
+    SUBROUTINE CouplingProcedure( dt, iX_Begin, iX_End, EvolveFluid_Option )
       USE KindModule, ONLY: DP
       REAL(DP),              INTENT(in) :: dt
       INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+      LOGICAL,               INTENT(in), OPTIONAL :: EvolveFluid_Option
     END SUBROUTINE CouplingProcedure
   END INTERFACE
 
@@ -62,10 +63,12 @@ CONTAINS
   END SUBROUTINE FinalizeFluidRadiationCoupling
 
 
-  SUBROUTINE CoupleFluidRadiation_Dummy( dt, iX_Begin, iX_End )
+  SUBROUTINE CoupleFluidRadiation_Dummy &
+               ( dt, iX_Begin, iX_End, EvolveFluid_Option )
 
     REAL(DP),              INTENT(in) :: dt
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    LOGICAL,               INTENT(in), OPTIONAL :: EvolveFluid_Option
 
     WRITE(*,*)
     WRITE(*,'(A4,A)') &

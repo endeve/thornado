@@ -44,6 +44,7 @@ MODULE FluidRadiationCouplingSolutionModule_Implicit
   IMPLICIT NONE
   PRIVATE
 
+  LOGICAL :: EvolveFluid = .TRUE.
   INTEGER :: nNodesX_G, nNodesE_G, iFRC_Ne, iFRC_E
   INTEGER, PARAMETER :: iOld = 0, iNew = 1
   REAL(DP), DIMENSION(:),     ALLOCATABLE :: E_N, W2_N, W3_N
@@ -63,10 +64,14 @@ CONTAINS
 
 
   SUBROUTINE CoupleFluidRadiation_Implicit_EmissionAbsorption &
-               ( dt, iX_Begin, iX_End )
+               ( dt, iX_Begin, iX_End, EvolveFluid_Option )
 
     REAL(DP),              INTENT(in) :: dt
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    LOGICAL,               INTENT(in), OPTIONAL :: EvolveFluid_Option
+
+    IF( PRESENT( EvolveFluid_Option ) ) &
+      EvolveFluid = EvolveFluid_Option
 
     CALL ComputePrimitive( iX_Begin = iX_Begin, iX_End = iX_End )
 
@@ -332,22 +337,26 @@ CONTAINS
       FVEC_FRC(iFRC_Ne,iX) &
         = ( U_FRC(iFRC_Ne,iX,iNew) - U_FRC(iFRC_Ne,iX,iOld) )
 
-      FVEC_FRC(iFRC_Ne,iX) &
-        = FVEC_FRC(iFRC_Ne,iX) &
-          + dt / hc3 &
-            * DOT_PRODUCT &
-              ( W2_N, Chi(:,iX) * ( FourPi * f_FD(:,iX) &
-                                    - U_FRC(1:nNodesE_G,iX,iNew) ) )
-
       FVEC_FRC(iFRC_E,iX) &
         = ( U_FRC(iFRC_E, iX,iNew) - U_FRC(iFRC_E, iX,iOld) )
 
-      FVEC_FRC(iFRC_E,iX) &
-        = FVEC_FRC(iFRC_E,iX) &
-          + dt / hc3 &
-            * DOT_PRODUCT &
-              ( W3_N, Chi(:,iX) * ( FourPi * f_FD(:,iX) &
-                                    - U_FRC(1:nNodesE_G,iX,iNew) ) )
+      IF( EvolveFluid )THEN
+
+        FVEC_FRC(iFRC_Ne,iX) &
+          = FVEC_FRC(iFRC_Ne,iX) &
+            + dt / hc3 &
+              * DOT_PRODUCT &
+                ( W2_N, Chi(:,iX) * ( FourPi * f_FD(:,iX) &
+                                      - U_FRC(1:nNodesE_G,iX,iNew) ) )
+
+        FVEC_FRC(iFRC_E,iX) &
+          = FVEC_FRC(iFRC_E,iX) &
+            + dt / hc3 &
+              * DOT_PRODUCT &
+                ( W3_N, Chi(:,iX) * ( FourPi * f_FD(:,iX) &
+                                      - U_FRC(1:nNodesE_G,iX,iNew) ) )
+
+      END IF
 
     END DO
 
@@ -382,75 +391,87 @@ CONTAINS
         FJAC_FRC(iE,iE,iX) &
           = 1.0_DP + dt * Chi(iE,iX)
 
-        ! --- Derivative wrt Electron Density:
-        FJAC_FRC(iE,iFRC_Ne,iX) &
-          = dt * ( ( U_FRC(iE,iX,iNew) &
-                     - FourPi * f_FD(iE,iX) ) * dChidYe(iE,iX) &
-                   - Chi(iE,iX) * FourPi * df_FDdYe(iE,iX) ) &
-               * ( mB / D(iX) )
+        IF( EvolveFluid )THEN
 
-        ! --- Derivative wrt Internal Energy Density:
-        FJAC_FRC(iE,iFRC_E, iX) &
-          = dt * ( ( U_FRC(iE,iX,iNew) &
-                     - FourPi * f_FD(iE,iX) ) * dChidT(iE,iX) &
-                   - Chi(iE,iX) * FourPi * df_FDdT(iE,iX) ) &
-               / ( dEdT(iX) * D(iX) )
+          ! --- Derivative wrt Electron Density:
+          FJAC_FRC(iE,iFRC_Ne,iX) &
+            = dt * ( ( U_FRC(iE,iX,iNew) &
+                       - FourPi * f_FD(iE,iX) ) * dChidYe(iE,iX) &
+                     - Chi(iE,iX) * FourPi * df_FDdYe(iE,iX) ) &
+                 * ( mB / D(iX) )
+
+          ! --- Derivative wrt Internal Energy Density:
+          FJAC_FRC(iE,iFRC_E, iX) &
+            = dt * ( ( U_FRC(iE,iX,iNew) &
+                       - FourPi * f_FD(iE,iX) ) * dChidT(iE,iX) &
+                     - Chi(iE,iX) * FourPi * df_FDdT(iE,iX) ) &
+                 / ( dEdT(iX) * D(iX) )
+
+        END IF
 
       END DO
 
       ! --- Electron Density Equation ---
 
-      FJAC_FRC(iFRC_Ne,1:nNodesE_G,iX) &
-        = - dt / hc3 * W2_N(:) * Chi(:,iX)
-
       FJAC_FRC(iFRC_Ne,iFRC_Ne,iX) &
         = 1.0_DP
 
-      FJAC_FRC(iFRC_Ne,iFRC_Ne,iX) &
-        = FJAC_FRC(iFRC_Ne,iFRC_Ne,iX) &
-            + dt / hc3 &
-              * DOT_PRODUCT &
-                ( W2_N, dChidYe(:,iX) &
-                        * ( FourPi * f_FD(:,iX) &
-                            - U_FRC(1:nNodesE_G,iX,iNew) ) &
-                        + Chi(:,iX) * FourPi * df_FDdYe(:,iX) ) &
-              * ( mB / D(iX) )
+      IF( EvolveFluid )THEN
 
-      FJAC_FRC(iFRC_Ne,iFRC_E, iX) &
-        = dt / hc3 &
-          * DOT_PRODUCT &
-            ( W2_N, dChidT(:,iX) &
-                    * ( FourPi * f_FD(:,iX) &
-                        - U_FRC(1:nNodesE_G,iX,iNew) ) &
-                    + Chi(:,iX) * FourPi * df_FDdT(:,iX) ) &
-          / ( dEdT(iX) * D(ix) )
+        FJAC_FRC(iFRC_Ne,1:nNodesE_G,iX) &
+          = - dt / hc3 * W2_N(:) * Chi(:,iX)
+
+        FJAC_FRC(iFRC_Ne,iFRC_Ne,iX) &
+          = FJAC_FRC(iFRC_Ne,iFRC_Ne,iX) &
+              + dt / hc3 &
+                * DOT_PRODUCT &
+                  ( W2_N, dChidYe(:,iX) &
+                          * ( FourPi * f_FD(:,iX) &
+                              - U_FRC(1:nNodesE_G,iX,iNew) ) &
+                          + Chi(:,iX) * FourPi * df_FDdYe(:,iX) ) &
+                * ( mB / D(iX) )
+
+        FJAC_FRC(iFRC_Ne,iFRC_E, iX) &
+          = dt / hc3 &
+            * DOT_PRODUCT &
+              ( W2_N, dChidT(:,iX) &
+                      * ( FourPi * f_FD(:,iX) &
+                          - U_FRC(1:nNodesE_G,iX,iNew) ) &
+                      + Chi(:,iX) * FourPi * df_FDdT(:,iX) ) &
+            / ( dEdT(iX) * D(ix) )
+
+      END IF
 
       ! --- Internal Energy Equation ---
 
-      FJAC_FRC(iFRC_E,1:nNodesE_G,iX) &
-        = - dt / hc3 * W3_N(:) * Chi(:,iX)
-
-      FJAC_FRC(iFRC_E, iFRC_Ne,iX) &
-        = dt / hc3 &
-          * DOT_PRODUCT &
-            ( W3_N, dChidYe(:,iX) &
-                    * ( FourPi * f_FD(:,iX) &
-                        - U_FRC(1:nNodesE_G,iX,iNew) ) &
-                    + Chi(:,iX) * FourPi * df_FDdYe(:,iX) ) &
-          * ( mB / D(iX) )
-
       FJAC_FRC(iFRC_E, iFRC_E, iX) &
         = 1.0_DP
 
-      FJAC_FRC(iFRC_E, iFRC_E, iX) &
-        = FJAC_FRC(iFRC_E, iFRC_E, iX) &
-            + dt / hc3 &
-              * DOT_PRODUCT &
-                ( W3_N, dChidT(:,iX) &
-                        * ( FourPi * f_FD(:,iX) &
-                            - U_FRC(1:nNodesE_G,iX,iNew) ) &
-                        + Chi(:,iX) * FourPi * df_FDdT(:,iX) ) &
-              / ( dEdT(iX) * D(ix) )
+      IF( EvolveFluid )THEN
+
+        FJAC_FRC(iFRC_E,1:nNodesE_G,iX) &
+          = - dt / hc3 * W3_N(:) * Chi(:,iX)
+
+        FJAC_FRC(iFRC_E, iFRC_Ne,iX) &
+          = dt / hc3 &
+            * DOT_PRODUCT &
+              ( W3_N, dChidYe(:,iX) &
+                      * ( FourPi * f_FD(:,iX) &
+                          - U_FRC(1:nNodesE_G,iX,iNew) ) &
+                      + Chi(:,iX) * FourPi * df_FDdYe(:,iX) ) &
+            * ( mB / D(iX) )
+
+        FJAC_FRC(iFRC_E, iFRC_E, iX) &
+          = FJAC_FRC(iFRC_E, iFRC_E, iX) &
+              + dt / hc3 &
+                * DOT_PRODUCT &
+                  ( W3_N, dChidT(:,iX) &
+                          * ( FourPi * f_FD(:,iX) &
+                              - U_FRC(1:nNodesE_G,iX,iNew) ) &
+                          + Chi(:,iX) * FourPi * df_FDdT(:,iX) ) &
+                / ( dEdT(iX) * D(ix) )
+
+      END IF
 
     END DO
 

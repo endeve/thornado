@@ -35,7 +35,7 @@ MODULE MomentEquationsLimiterModule_DG
   REAL(DP), PARAMETER                   :: BetaTVD = 2.00_DP
   REAL(DP), PARAMETER                   :: BetaTVB = 50.0_DP
   REAL(DP), PARAMETER                   :: Tol_TVD = 1.0d-2
-  REAL(DP), PARAMETER                   :: Tol_N = 1.0d-12
+  REAL(DP), PARAMETER                   :: Tol_N = 1.0d-100
   REAL(DP), PARAMETER                   :: Tol_G = 1.0d-12
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_E
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X1
@@ -299,7 +299,8 @@ CONTAINS
 
     INTEGER  :: iE, iX1, iX2, iX3, iS
     INTEGER  :: iCR, iPoint
-    REAL(DP) :: Theta, dN, dG1, dG2, dG3
+    REAL(DP) :: Theta_1, Theta_2
+    REAL(DP) :: dN, dG1, dG2, dG3
     REAL(DP) :: a, b, c, r1, r2
     REAL(DP), DIMENSION(nPoints) :: absG
     REAL(DP), DIMENSION(1:nCR)   :: uCR_K
@@ -347,23 +348,25 @@ CONTAINS
 
                 ! --- Ensure Positive Number Density ---
 
-                Theta = 1.0_DP
+                Theta_1 = 1.0_DP
                 DO iPoint = 1, nPoints
                   IF( uCR_P(iPoint,iCR_N) < Tol_N ) &
-                    Theta &
-                      = MIN( Theta, &
+                    Theta_1 &
+                      = MIN( Theta_1, &
                              ( Tol_N - uCR_K(iCR_N) ) &
                                / ( uCR_P(iPoint,iCR_N) - uCR_K(iCR_N) ) )
                 END DO
 
-                IF( Theta < 1.0_DP )THEN
+                IF( Theta_1 < 1.0_DP )THEN
+
+                  Theta_1 = ( 1.0_DP - SQRT( EPSILON( 1.0_DP ) ) ) * Theta_1
 
                   uCR_M(1,iCR_N) &
-                    = ( 1.0_DP - Theta ) * uCR_K(iCR_N) &
-                        + Theta * uCR_M(1,iCR_N)
+                    = ( 1.0_DP - Theta_1 ) * uCR_K(iCR_N) &
+                        + Theta_1 * uCR_M(1,iCR_N)
 
                   uCR_M(2:nDOF,iCR_N) &
-                    = Theta * uCR_M(2:nDOF,iCR_N)
+                    = Theta_1 * uCR_M(2:nDOF,iCR_N)
 
                   DO iPoint = 1, nPoints
 
@@ -382,7 +385,7 @@ CONTAINS
                   = SQRT( uCR_P(:,iCR_G1)**2 + uCR_P(:,iCR_G2)**2 &
                           + uCR_P(:,iCR_G3)**2 )
 
-                Theta = 1.0_DP
+                Theta_2 = 1.0_DP
                 DO iPoint = 1, nPoints
 
                   IF( uCR_P(iPoint,iCR_N) - absG(iPoint) < Tol_G )THEN
@@ -393,40 +396,45 @@ CONTAINS
                     dG3 = uCR_K(iCR_G3) - uCR_P(iPoint,iCR_G3)
 
                     a = dN**2 - ( dG1**2 + dG2**2 + dG3**2 )
+
                     b = - 2.0_DP * ( uCR_K(iCR_N) * dN &
                                        * ( 1.0_DP - Tol_G / uCR_K(iCR_N) ) &
                                      - ( uCR_K(iCR_G1) * dG1 &
                                          + uCR_K(iCR_G2) * dG2 &
                                          + uCR_K(iCR_G3) * dG3 ) )
+
                     c = uCR_K(iCR_N)**2 &
                           * ( 1.0_DP - 2.0_DP * Tol_G / uCR_K(iCR_N) ) &
                         + Tol_G**2 &
                         - ( uCR_K(iCR_G1)**2 + uCR_K(iCR_G2)**2 &
                             + uCR_K(iCR_G3)**2 )
 
-                    CALL GetRoots_Quadratic( a, b, c, r1, r2 )
+                    CALL GetRoots_Quadratic &
+                           ( a, b, c, r1, r2, Tol_Option = 0.0d-14 )
 
                     IF( r1 < 0.0_DP .AND. r2 < 0.0_DP )THEN
-                      Theta = 0.0_DP
+                      Theta_2 = 0.0_DP
                     ELSE
-                      IF( r1 > 0.0_DP ) Theta = MIN( r1, Theta )
-                      IF( r2 > 0.0_DP ) Theta = MIN( r2, Theta )
+                      IF( r1 > 0.0_DP ) Theta_2 = MIN( r1, Theta_2 )
+                      IF( r2 > 0.0_DP ) Theta_2 = MIN( r2, Theta_2 )
                     END IF
+
+                    Theta_2 = 0.0_DP ! --- DEBUG ---
 
                   END IF
 
                 END DO
 
-                IF( Theta < 1.0_DP )THEN
+                IF( Theta_2 < 1.0_DP )THEN
 
                   DO iCR = 1, nCR
 
                     uCR_M(1,iCR) &
-                      = ( 1.0_DP - Theta ) * uCR_K(iCR) &
-                          + Theta * uCR_M(1,iCR)
+                      = ( 1.0_DP - Theta_2 ) * uCR_K(iCR) &
+                          + Theta_2 * uCR_M(1,iCR)
 
                     uCR_M(2:nDOF,iCR) &
-                      = Theta * uCR_M(2:nDOF,iCR)
+                      = Theta_2 * uCR_M(2:nDOF,iCR)
 
                   END DO
 
@@ -469,21 +477,34 @@ CONTAINS
 
                     PRINT*
                     PRINT*, "ApplyPositivityLimiter_M1_DG"
+                    PRINT*
                     PRINT*, "  Problem with Positivity Limiter!"
-                    PRINT*, "    iX1, iX2, iX3 = ", iX1, iX2, iX3
-                    PRINT*, "    Theta = ", Theta
+                    PRINT*
+                    PRINT*, "    iE, iX1, iX2, iX3 = ", iE, iX1, iX2, iX3
+                    PRINT*, "    Theta_1 = ", Theta_1
+                    PRINT*, "    Theta_2 = ", Theta_2
                     PRINT*
                     PRINT*, "  Conserved Radiation Fields (Nodal):"
-                    PRINT*, "  N  = ", uCR_P(:,iCR_N)
-                    PRINT*, "  G1 = ", uCR_P(:,iCR_G1)
-                    PRINT*, "  G2 = ", uCR_P(:,iCR_G2)
-                    PRINT*, "  G3 = ", uCR_P(:,iCR_G3)
+                    PRINT*, "  N     = ", uCR_P(:,iCR_N)
+                    PRINT*, "  G1    = ", uCR_P(:,iCR_G1)
+                    PRINT*, "  G2    = ", uCR_P(:,iCR_G2)
+                    PRINT*, "  G3    = ", uCR_P(:,iCR_G3)
+                    PRINT*, "  N-|G| = ", &
+                      uCR_P(:,iCR_N) &
+                      - SQRT( uCR_P(:,iCR_G1)**2 &
+                              + uCR_P(:,iCR_G2)**2 &
+                              + uCR_P(:,iCR_G3)**2 )
                     PRINT*
                     PRINT*, "  Cell-Averages:"
-                    PRINT*, "  N_K  = ", uCR_K(iCR_N)
-                    PRINT*, "  G1_K = ", uCR_K(iCR_G1)
-                    PRINT*, "  G2_K = ", uCR_K(iCR_G2)
-                    PRINT*, "  G3_K = ", uCR_K(iCR_G3)
+                    PRINT*, "  N_K       = ", uCR_K(iCR_N)
+                    PRINT*, "  G1_K      = ", uCR_K(iCR_G1)
+                    PRINT*, "  G2_K      = ", uCR_K(iCR_G2)
+                    PRINT*, "  G3_K      = ", uCR_K(iCR_G3)
+                    PRINT*, "  N_K-|G_K| = ", &
+                      uCR_K(iCR_N) &
+                      - SQRT( uCR_K(iCR_G1)**2 &
+                              + uCR_K(iCR_G2)**2 &
+                              + uCR_K(iCR_G3)**2 )
                     PRINT*
 
                     STOP
