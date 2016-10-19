@@ -164,13 +164,18 @@ CONTAINS
   END SUBROUTINE Map1DTo4D
 
 
-  SUBROUTINE GetRoots_Quadratic( a, b, c, r1, r2 )
+  SUBROUTINE GetRoots_Quadratic( a, b, c, r1, r2, Tol_Option )
 
     REAL(DP), INTENT(in)  :: a, b, c
     REAL(DP), INTENT(out) :: r1, r2
+    REAL(DP), INTENT(in), OPTIONAL :: Tol_Option
 
-    REAL(DP)            :: delta, rq
-    REAL(DP), PARAMETER :: Tol = 1.0d-13
+    REAL(DP) :: delta, rq
+    REAL(DP) :: Tol
+
+    Tol = 1.0d-13
+    IF( PRESENT( Tol_Option ) ) &
+      Tol = Tol_Option
 
     IF( ABS( a ) <= Tol )THEN
       r1 = - c / b
