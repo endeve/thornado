@@ -842,12 +842,15 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
-      CALL ApplySlopeLimiter_Radiation
+!!$      CALL ApplySlopeLimiter_Radiation
+
+      CALL ApplyPositivityLimiter_Radiation
 
     END IF
 
     CALL CoupleFluidRadiation &
-           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+             EvolveFluid_Option = EvolveFluid )
 
     ! -- SI-RK Stage 2 --
 
@@ -866,7 +869,9 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
-      CALL ApplySlopeLimiter_Radiation
+!!$      CALL ApplySlopeLimiter_Radiation
+
+      CALL ApplyPositivityLimiter_Radiation
 
     END IF
 
@@ -875,23 +880,27 @@ CONTAINS
 
     ! -- Combine Steps --
 
-    DO iS = 1, nSpecies
-      DO iCR = 1, nCR
-        DO iX3 = 1, nX(3)
-          DO iX2 = 1, nX(2)
-            DO iX1 = 1, nX(1)
-              DO iE = 1, nE
+    IF( EvolveRadiation )THEN
 
-                uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
-                  = 0.5_DP * ( uCR_0(:,iE,iX1,iX2,iX3,iCR,iS) &
-                               + uCR(:,iE,iX1,iX2,iX3,iCR,iS) )
+      DO iS = 1, nSpecies
+        DO iCR = 1, nCR
+          DO iX3 = 1, nX(3)
+            DO iX2 = 1, nX(2)
+              DO iX1 = 1, nX(1)
+                DO iE = 1, nE
 
+                  uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
+                    = 0.5_DP * ( uCR_0(:,iE,iX1,iX2,iX3,iCR,iS) &
+                                 + uCR(:,iE,iX1,iX2,iX3,iCR,iS) )
+
+                END DO
               END DO
             END DO
           END DO
         END DO
       END DO
-    END DO
+
+    END IF
 
     CALL Finalize_SI_RK
 
