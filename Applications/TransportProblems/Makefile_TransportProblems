@@ -1,6 +1,15 @@
 include ../../../Build/Makefile_Build
 
-all: CoolingProblem1D
+all: HomogeneousSphere1D \
+     CoolingProblem1D
+
+HomogeneousSphere1D: \
+	$(thornado) TransportProblemsInitializationModule.o \
+	HomogeneousSphere1D.o
+	$(FLINKER) $(FLAGS) -o HomogeneousSphere1D_$(MACHINE) \
+	$(thornado) TransportProblemsInitializationModule.o \
+	HomogeneousSphere1D.o \
+	$(LIBRARIES)
 
 CoolingProblem1D: \
 	$(thornado) TransportProblemsInitializationModule.o \
@@ -14,7 +23,16 @@ clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
+	rm -f HomogeneousSphere1D_$(MACHINE)
 	rm -f CoolingProblem1D_$(MACHINE)
+
+HomogeneousSphere1D.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramInitializationModule.o \
+  TransportProblemsInitializationModule.o \
+  TimeSteppingModule.o \
+  HomogeneousSphere1D.f90
 
 CoolingProblem1D.o: \
   KindModule.o \

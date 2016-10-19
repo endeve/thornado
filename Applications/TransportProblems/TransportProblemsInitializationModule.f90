@@ -6,6 +6,7 @@ MODULE TransportProblemsInitializationModule
     Centimeter, &
     Gram, &
     Kelvin, &
+    MeV, &
     Kilometer, &
     BoltzmannConstant
   USE ProgramHeaderModule, ONLY: &
@@ -44,9 +45,135 @@ MODULE TransportProblemsInitializationModule
     REAL(DP), DIMENSION(:), ALLOCATABLE :: ElectronFraction
   END TYPE ProfileType
 
+  PUBLIC :: InitializeHomogeneousSphere1D
   PUBLIC :: InitializeCoolingProblem1D
 
 CONTAINS
+
+
+  SUBROUTINE InitializeHomogeneousSphere1D
+
+    INTEGER  :: iX1, iX2, iX3, iE
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeE
+    INTEGER  :: iNodeX, iNode
+    REAL(DP) :: X1, E
+    REAL(DP) :: Radius
+
+    Radius = 1.0d2 * Kilometer
+
+    WRITE(*,*)
+    WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
+    WRITE(*,*)
+
+    ! --- Initialize Fluid Fields ---
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+              DO iNodeX1 = 1, nNodesX(1)
+
+                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+                X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+                IF( X1 <= Radius )THEN
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                    = 3.0d11 * Gram / Centimeter**3
+
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                    = 4.0_DP * MeV
+
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                    = 0.2_DP
+
+                ELSE
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                    = 1.0d8 * Gram / Centimeter**3
+
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                    = 0.5_DP * MeV
+
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                    = 0.4643_DP
+
+                END IF
+
+              END DO
+            END DO
+          END DO
+
+          CALL ComputeThermodynamicStates_Primitive &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E), &
+                   uAF(:,iX1,iX2,iX3,iAF_E),  uPF(:,iX1,iX2,iX3,iPF_Ne) )
+
+        END DO
+      END DO
+    END DO
+
+    CALL ApplyEquationOfState
+
+    ! --- Initialize Radiation Fields ---
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          DO iE = 1, nE
+
+            DO iNodeX3 = 1, nNodesX(3)
+              DO iNodeX2 = 1, nNodesX(2)
+                DO iNodeX1 = 1, nNodesX(1)
+
+                  iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+                  ASSOCIATE &
+                    ( kT  => BoltzmannConstant &
+                               * uAF(iNodeX,iX1,iX2,iX3,iAF_T), &
+                      Mnu => uAF(iNodeX,iX1,iX2,iX3,iAF_Me) &
+                               + uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
+                               - uAF(iNodeX,iX1,iX2,iX3,iAF_Mn) )
+
+                  DO iNodeE = 1, nNodesE
+
+                    E = NodeCoordinate( MeshE, iE, iNodeE )
+
+                    iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_D,1) &
+                      = 4.0_DP * Pi &
+                          / ( EXP( ( E - Mnu ) / kT ) + 1.0_DP )
+
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,1) &
+                      = 0.0_DP
+
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,1) &
+                      = 0.0_DP
+
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,1) &
+                      = 0.0_DP
+
+                    uCR(iNode,iE,iX1,iX2,iX3,1:nCR,1) &
+                      = Conserved( uPR(iNode,iE,iX1,iX2,iX3,1:nPR,1) )
+
+                  END DO
+
+                  END ASSOCIATE ! kT, etc.
+
+                END DO
+              END DO
+            END DO
+
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeHomogeneousSphere1D
 
 
   SUBROUTINE InitializeCoolingProblem1D( ProfileName )
