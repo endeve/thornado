@@ -32,8 +32,8 @@ MODULE MomentEquationsLimiterModule_DG
 
   LOGICAL,  PARAMETER                   :: Debug = .TRUE.
   INTEGER                               :: nPoints
+  REAL(DP)                              :: BetaTVB = 50.0_DP
   REAL(DP), PARAMETER                   :: BetaTVD = 2.00_DP
-  REAL(DP), PARAMETER                   :: BetaTVB = 50.0_DP
   REAL(DP), PARAMETER                   :: Tol_TVD = 1.0d-2
   REAL(DP), PARAMETER                   :: Tol_N = 1.0d-100
   REAL(DP), PARAMETER                   :: Tol_G = 1.0d-12
@@ -51,10 +51,19 @@ MODULE MomentEquationsLimiterModule_DG
 CONTAINS
 
 
-  SUBROUTINE InitializeLimiters_M1_DG
+  SUBROUTINE InitializeLimiters_M1_DG( BetaTVB_Option )
+
+    REAL(DP), INTENT(in), OPTIONAL :: BetaTVB_Option
 
     INTEGER :: iNodeE, iNodeX1, iNodeX2, iNodeX3, iPoint
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
+
+    ! --- Limiter Parameters ---
+
+    IF( PRESENT( BetaTVB_Option ) ) &
+      BetaTVB = BetaTVB_Option
+
+    ! --- ---
 
     ALLOCATE( NodesX1(nNodesX(1)+2) )
 

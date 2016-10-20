@@ -1,5 +1,7 @@
 MODULE RadiationEvolutionModule
 
+  USE KindModule, ONLY: &
+    DP
   USE MomentEquationsSolutionModule_M1_DG, ONLY: &
     ComputeRHS_M1_DG
   USE MomentEquationsLimiterModule_DG, ONLY: &
@@ -36,9 +38,11 @@ MODULE RadiationEvolutionModule
 CONTAINS
 
 
-  SUBROUTINE InitializeRadiationEvolution( RadiationSolver_Option )
+  SUBROUTINE InitializeRadiationEvolution &
+               ( RadiationSolver_Option, BetaTVB_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RadiationSolver_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: BetaTVB_Option
 
     IF( PRESENT( RadiationSolver_Option ) )THEN
       RadiationSolver = TRIM( RadiationSolver_Option )
@@ -52,7 +56,8 @@ CONTAINS
           => ApplySlopeLimiter_M1_DG
         ApplyPositivityLimiter_Radiation &
           => ApplyPositivityLimiter_M1_DG
-        CALL InitializeLimiters_M1_DG
+        CALL InitializeLimiters_M1_DG &
+               ( BetaTVB_Option = BetaTVB_Option )
       CASE DEFAULT
         ComputeRHS_Radiation &
           => ComputeRHS_Dummy

@@ -31,8 +31,8 @@ MODULE EulerEquationsLimiterModule_DG
   PRIVATE
 
   INTEGER                               :: nPoints
+  REAL(DP)                              :: BetaTVB = 50.0_DP
   REAL(DP), PARAMETER                   :: BetaTVD = 2.00_DP
-  REAL(DP), PARAMETER                   :: BetaTVB = 50.0_DP
   REAL(DP), PARAMETER                   :: Tol_TVD = 1.0d-2
   REAL(DP), PARAMETER                   :: Tol_D = 1.0d-12
   REAL(DP), PARAMETER                   :: Tol_E = 1.0d-12
@@ -49,10 +49,19 @@ MODULE EulerEquationsLimiterModule_DG
 CONTAINS
 
 
-  SUBROUTINE InitializeLimiters_Euler_DG
+  SUBROUTINE InitializeLimiters_Euler_DG( BetaTVB_Option )
+
+    REAL(DP), INTENT(in), OPTIONAL :: BetaTVB_Option
 
     INTEGER :: iNodeX1, iNodeX2, iNodeX3, iPoint
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
+
+    ! --- Limiter Parameters ---
+
+    IF( PRESENT( BetaTVB_Option ) ) &
+      BetaTVB = BetaTVB_Option
+
+    ! --- ---
 
     ALLOCATE( NodesX1(nNodesX(1)+2) )
 

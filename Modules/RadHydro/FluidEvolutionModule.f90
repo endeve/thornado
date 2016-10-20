@@ -1,5 +1,7 @@
 MODULE FluidEvolutionModule
 
+  USE KindModule, ONLY: &
+    DP
   USE EulerEquationsSolutionModule_DG, ONLY: &
     ComputeRHS_Euler_DG
   USE EulerEquationsLimiterModule_DG, ONLY: &
@@ -36,9 +38,10 @@ MODULE FluidEvolutionModule
 CONTAINS
 
 
-  SUBROUTINE InitializeFluidEvolution( FluidSolver_Option )
+  SUBROUTINE InitializeFluidEvolution( FluidSolver_Option, BetaTVB_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: FluidSolver_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: BetaTVB_Option
 
     IF( PRESENT( FluidSolver_Option ) )THEN
       FluidSolver = FluidSolver_Option
@@ -52,7 +55,8 @@ CONTAINS
           => ApplySlopeLimiter_Euler_DG
         ApplyPositivityLimiter_Fluid &
           => ApplyPositivityLimiter_Euler_DG
-        CALL InitializeLimiters_Euler_DG
+        CALL InitializeLimiters_Euler_DG &
+               ( BetaTVB_Option = BetaTVB_Option )
       CASE DEFAULT
         ComputeRHS_Fluid &
           => ComputeRHS_Dummy

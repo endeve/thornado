@@ -77,8 +77,8 @@ CONTAINS
       Opacity_Option, OpacityTableName_Option, FluidSolver_Option, &
       RadiationSolver_Option, FluidRiemannSolver_Option, &
       RadiationRiemannSolver_Option, FluidRadiationCoupling_Option, &
-      EvolveFluid_Option, EvolveRadiation_Option, nStages_SSP_RK_Option, &
-      nStages_SI_RK_Option )
+      EvolveFluid_Option, EvolveRadiation_Option, BetaTVB_Option, &
+      nStages_SSP_RK_Option, nStages_SI_RK_Option )
 
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: ProgramName_Option
     INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: nX_Option
@@ -111,6 +111,7 @@ CONTAINS
       FluidRadiationCoupling_Option
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveFluid_Option
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveRadiation_Option
+    REAL(DP),               INTENT(in), OPTIONAL :: BetaTVB_Option
     INTEGER,                INTENT(in), OPTIONAL :: nStages_SSP_RK_Option
     INTEGER,                INTENT(in), OPTIONAL :: nStages_SI_RK_Option
 
@@ -290,12 +291,14 @@ CONTAINS
     ! --- Fluid Solver ---
 
     CALL InitializeFluidEvolution &
-           ( FluidSolver_Option = FluidSolver_Option )
+           ( FluidSolver_Option = FluidSolver_Option, &
+             BetaTVB_Option = BetaTVB_Option )
 
     ! --- Radiation Solver ---
 
     CALL InitializeRadiationEvolution &
-           ( RadiationSolver_Option = RadiationSolver_Option )
+           ( RadiationSolver_Option = RadiationSolver_Option, &
+             BetaTVB_Option = BetaTVB_Option )
 
     ! --- Riemann Solvers ---
 
