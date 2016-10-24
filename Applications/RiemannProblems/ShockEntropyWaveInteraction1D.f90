@@ -38,13 +38,15 @@ PROGRAM ShockEntropyWaveInteraction1D
              = 'HLLC', &
            EvolveFluid_Option &
              = .TRUE., &
+           BetaTVB_Option &
+             = 5.0d1, &
            nStages_SSP_RK_Option &
              = 1 )
 
   CALL InitializeShockEntropyWaveInteraction1D
 
   CALL EvolveFields &
-         ( t_begin = 0.0_DP, t_end = 1.8d-0, dt_write = 1.0d-1, &
+         ( t_begin = 0.0_DP, t_end = 1.8d-0, dt_write = 5.0d-2, &
            UpdateFields = SSP_RK )
 
   CALL FinalizeProgram
