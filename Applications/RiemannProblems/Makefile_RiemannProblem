@@ -2,6 +2,7 @@ include ../../../Build/Makefile_Build
 
 all: RiemannProblem1D \
      RiemannProblem1D_SphericalSymmetry \
+     RiemannProblem1D_CylindricalSymmetry \
      RiemannProblem1D_NuclearEOS \
      Sedov_SphericalSymmetry \
      InteractingBlastWaves1D \
@@ -21,6 +22,14 @@ RiemannProblem1D_SphericalSymmetry: \
 	RiemannProblem1D_SphericalSymmetry_$(MACHINE) \
 	$(thornado) RiemannProblemInitializationModule.o \
 	RiemannProblem1D_SphericalSymmetry.o $(LIBRARIES)
+
+RiemannProblem1D_CylindricalSymmetry: \
+	$(thornado) RiemannProblemInitializationModule.o \
+	RiemannProblem1D_CylindricalSymmetry.o
+	$(FLINKER) $(FLAGS) -o \
+	RiemannProblem1D_CylindricalSymmetry_$(MACHINE) \
+	$(thornado) RiemannProblemInitializationModule.o \
+	RiemannProblem1D_CylindricalSymmetry.o $(LIBRARIES) 
 
 RiemannProblem1D_NuclearEOS: \
 	$(thornado) RiemannProblemInitializationModule.o \
@@ -58,6 +67,7 @@ clean:
 clobber: clean
 	rm -f RiemannProblem1D_$(MACHINE)
 	rm -f RiemannProblem1D_SphericalSymmetry_$(MACHINE)
+	rm -f RiemannProblem1D_CylindricalSymmetry_$(MACHINE)
 	rm -f RiemannProblem1D_NuclearEOS_$(MACHINE)
 	rm -f Sedov_SphericalSymmetry_$(MACHINE)
 	rm -f InteractingBlastWaves1D_$(MACHINE)
@@ -76,6 +86,13 @@ RiemannProblem1D_SphericalSymmetry.o: \
   RiemannProblemInitializationModule.o \
   TimeSteppingModule.o \
   RiemannProblem1D_SphericalSymmetry.f90
+
+RiemannProblem1D_CylindricalSymmetry.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  RiemannProblemInitializationModule.o \
+  TimeSteppingModule.o \
+  RiemannProblem1D_CylindricalSymmetry.f90
 
 RiemannProblem1D_NuclearEOS.o: \
   KindModule.o \
