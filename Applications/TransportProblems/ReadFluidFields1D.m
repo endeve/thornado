@@ -41,7 +41,7 @@ function...
   uAF_Gm = FF(iO+1+19*nX:iO+20*nX);
   uAF_Cs = FF(iO+1+20*nX:iO+21*nX);
   
-  keyboard
+%   keyboard
 
 end
 

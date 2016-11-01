@@ -21,7 +21,7 @@ PROGRAM HomogeneousSphere1D
          ( ProgramName_Option &
              = 'HomogeneousSphere1D', &
            nX_Option &
-             = [ 64, 1, 1 ], &
+             = [ 100, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -67,7 +67,7 @@ PROGRAM HomogeneousSphere1D
 
   CALL EvolveFields &
          ( t_begin  = 0.0d+0 * Microsecond, &
-           t_end    = 1.0d+3 * Microsecond, &
+           t_end    = 1.0d+0 * Microsecond, &
            dt_write = 1.0d+1 * Microsecond, &
            UpdateFields = SI_RK )
 
