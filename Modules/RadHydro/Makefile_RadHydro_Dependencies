@@ -13,6 +13,7 @@ EulerEquationsSolutionModule_DG.o: \
   UtilitiesModule.o \
   PolynomialBasisModule_Lagrange.o \
   MeshModule.o \
+  GeometryModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
   RiemannSolverModule.o \

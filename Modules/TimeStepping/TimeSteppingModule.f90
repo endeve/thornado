@@ -649,6 +649,8 @@ CONTAINS
 
       CALL ApplySlopeLimiter_Radiation
 
+      CALL ApplyPositivityLimiter_Radiation
+
     END IF
 
     ! -- RK Stage 2 --
@@ -693,6 +695,8 @@ CONTAINS
 
       CALL ApplySlopeLimiter_Radiation
 
+      CALL ApplyPositivityLimiter_Radiation
+
     END IF
 
     ! -- RK Stage 3 --
@@ -736,6 +740,8 @@ CONTAINS
                dt = dt, alpha = 1.0_DP / 3.0_DP , beta = 2.0_DP / 3.0_DP )
 
       CALL ApplySlopeLimiter_Radiation
+
+      CALL ApplyPositivityLimiter_Radiation
 
     END IF
 

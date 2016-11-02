@@ -7,10 +7,11 @@ MODULE MomentEquationsLimiterModule_DG
     nX, nNodesX, &
     nE, nNodesE
   USE UtilitiesModule, ONLY: &
+    NodeNumber, &
     MinModB, &
     GetRoots_Quadratic
   USE PolynomialBasisModule_Lagrange, ONLY: &
-    evalL
+    evalL, L_E, L_X1, L_X2, L_X3
   USE PolynomialBasisModule_Legendre, ONLY: &
     evalP
   USE PolynomialBasisMappingModule, ONLY: &
@@ -30,7 +31,7 @@ MODULE MomentEquationsLimiterModule_DG
   IMPLICIT NONE
   PRIVATE
 
-  LOGICAL,  PARAMETER                   :: Debug = .TRUE.
+  LOGICAL,  PARAMETER                   :: Debug = .FALSE.
   INTEGER                               :: nPoints
   REAL(DP)                              :: BetaTVB = 50.0_DP
   REAL(DP), PARAMETER                   :: BetaTVD = 2.00_DP
@@ -43,6 +44,7 @@ MODULE MomentEquationsLimiterModule_DG
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X3
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCR_P
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCR_M
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange
 
   PUBLIC :: InitializeLimiters_M1_DG
   PUBLIC :: ApplySlopeLimiter_M1_DG
@@ -55,7 +57,7 @@ CONTAINS
 
     REAL(DP), INTENT(in), OPTIONAL :: BetaTVB_Option
 
-    INTEGER :: iNodeE, iNodeX1, iNodeX2, iNodeX3, iPoint
+    INTEGER :: iNodeE, iNodeX1, iNodeX2, iNodeX3, iPoint, iNode
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
 
     ! --- Limiter Parameters ---
@@ -175,6 +177,30 @@ CONTAINS
     END IF
 
     DEALLOCATE( NodesX1 )
+
+    ALLOCATE( Lagrange(nDOF,nPoints) )
+
+    DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+        DO iNodeX1 = 1, nNodesX(1)
+          DO iNodeE = 1, nNodesE
+
+            iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+
+            DO iPoint = 1, nPoints
+
+              Lagrange(iNode,iPoint) &
+                = L_E(iNodeE) % P( Points_E(iPoint) ) &
+                    * L_X1(iNodeX1) % P( Points_X1(iPoint) ) &
+                        * L_X2(iNodeX2) % P( Points_X2(iPoint) ) &
+                            * L_X3(iNodeX3) % P( Points_X3(iPoint) )
+
+            END DO
+
+          END DO
+        END DO
+      END DO
+    END DO
 
   END SUBROUTINE InitializeLimiters_M1_DG
 
@@ -327,9 +353,8 @@ CONTAINS
                 DO iPoint = 1, nPoints
 
                   uCR_P(iPoint,iCR) &
-                    = evalL( uCR(:,iE,iX1,iX2,iX3,iCR,iS), &
-                             Points_E (iPoint), Points_X1(iPoint), &
-                             Points_X2(iPoint), Points_X3(iPoint) )
+                    = DOT_PRODUCT &
+                        ( uCR(:,iE,iX1,iX2,iX3,iCR,iS), Lagrange(:,iPoint) )
 
                 END DO
               END DO
