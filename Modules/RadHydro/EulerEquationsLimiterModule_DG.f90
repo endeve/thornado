@@ -5,10 +5,11 @@ MODULE EulerEquationsLimiterModule_DG
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, nDOFX
   USE UtilitiesModule, ONLY: &
+    NodeNumberX, &
     MinModB, &
     GetRoots_Quadratic
   USE PolynomialBasisModule_Lagrange, ONLY: &
-    evalLX
+    evalLX, L_X1, L_X2, L_X3
   USE PolynomialBasisModule_Legendre, ONLY: &
     evalPX
   USE PolynomialBasisMappingModule, ONLY: &
@@ -41,6 +42,7 @@ MODULE EulerEquationsLimiterModule_DG
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X3
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCF_P, uPF_P, uAF_P
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCF_M
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange
 
   PUBLIC :: InitializeLimiters_Euler_DG
   PUBLIC :: ApplySlopeLimiter_Euler_DG
@@ -53,7 +55,7 @@ CONTAINS
 
     REAL(DP), INTENT(in), OPTIONAL :: BetaTVB_Option
 
-    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iPoint
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iPoint, iNodeX
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
 
     ! --- Limiter Parameters ---
@@ -156,6 +158,27 @@ CONTAINS
     END IF
 
     DEALLOCATE( NodesX1 )
+
+    ALLOCATE( Lagrange(nDOFX,nPoints) )
+
+    DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+        DO iNodeX1 = 1, nNodesX(1)
+
+          iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+          DO iPoint = 1, nPoints
+
+            Lagrange(iNodeX,iPoint) &
+              = L_X1(iNodeX1) % P( Points_X1(iPoint) ) &
+                  * L_X2(iNodeX2) % P( Points_X2(iPoint) ) &
+                      * L_X3(iNodeX3) % P( Points_X3(iPoint) )
+
+          END DO
+
+        END DO
+      END DO
+    END DO
 
   END SUBROUTINE InitializeLimiters_Euler_DG
 
@@ -301,8 +324,8 @@ CONTAINS
             DO iCF = 1, nCF
 
               uCF_P(iPoint,iCF) &
-                = evalLX( uCF(:,iX1,iX2,iX3,iCF), Points_X1(iPoint), &
-                          Points_X2(iPoint), Points_X3(iPoint) )
+                = DOT_PRODUCT &
+                    ( uCF(:,iX1,iX2,iX3,iCF), Lagrange(:,iPoint) )
 
             END DO
 
@@ -412,8 +435,8 @@ CONTAINS
               DO iCF = 1, nCF
 
                 uCF_P(iPoint,iCF) &
-                  = evalLX( uCF(:,iX1,iX2,iX3,iCF), Points_X1(iPoint), &
-                            Points_X2(iPoint), Points_X3(iPoint) )
+                  = DOT_PRODUCT &
+                      ( uCF(:,iX1,iX2,iX3,iCF), Lagrange(:,iPoint) )
 
               END DO
 
