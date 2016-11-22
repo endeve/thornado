@@ -13,17 +13,19 @@ MODULE MomentEquationsLimiterModule_DG
   USE PolynomialBasisModule_Lagrange, ONLY: &
     evalL, L_E, L_X1, L_X2, L_X3
   USE PolynomialBasisModule_Legendre, ONLY: &
-    evalP
+    evalP, P_E, P_X1, P_X2, P_X3, &
+    IndP_Q, MassP
   USE PolynomialBasisMappingModule, ONLY: &
     MapNodalToModal_Radiation, &
     MapModalToNodal_Radiation
   USE MeshModule, ONLY: &
     MeshE, &
     MeshX
-  USE GeometryModule, ONLY: &
-    VolJac
+  USE GeometryFieldsModule, ONLY: &
+    Vol, VolJac
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
+    WeightsR, &
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR
   USE RadiationFieldsUtilitiesModule, ONLY: &
     CellAverage
@@ -31,10 +33,12 @@ MODULE MomentEquationsLimiterModule_DG
   IMPLICIT NONE
   PRIVATE
 
-  LOGICAL,  PARAMETER                   :: Debug = .FALSE.
+  LOGICAL                               :: &
+    ApplyPositivityLimiter = .FALSE.
+  LOGICAL,  PARAMETER                   :: Debug = .TRUE.
   INTEGER                               :: nPoints
-  REAL(DP)                              :: BetaTVB = 50.0_DP
-  REAL(DP), PARAMETER                   :: BetaTVD = 2.00_DP
+  REAL(DP)                              :: BetaTVB = 1.0d-0
+  REAL(DP), PARAMETER                   :: BetaTVD = 2.0d+0
   REAL(DP), PARAMETER                   :: Tol_TVD = 1.0d-2
   REAL(DP), PARAMETER                   :: Tol_N = 1.0d-100
   REAL(DP), PARAMETER                   :: Tol_G = 1.0d-12
@@ -45,6 +49,7 @@ MODULE MomentEquationsLimiterModule_DG
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCR_P
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCR_M
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Legendre
 
   PUBLIC :: InitializeLimiters_M1_DG
   PUBLIC :: ApplySlopeLimiter_M1_DG
@@ -57,13 +62,40 @@ CONTAINS
 
     REAL(DP), INTENT(in), OPTIONAL :: BetaTVB_Option
 
-    INTEGER :: iNodeE, iNodeX1, iNodeX2, iNodeX3, iPoint, iNode
+    INTEGER :: iPol, iNodeE, iNodeX1, iNodeX2, iNodeX3, iPoint, iNode
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
 
     ! --- Limiter Parameters ---
 
+    BetaTVB = 1.0d-0
     IF( PRESENT( BetaTVB_Option ) ) &
       BetaTVB = BetaTVB_Option
+
+    ! --- Legendre Polynomials in Gaussian Quadrature Points ---
+
+    ALLOCATE( Legendre(nDOF,nDOF) )
+
+    DO iPol = 1, nDOF
+
+      DO iNodeX3 = 1, nNodesX(3)
+        DO iNodeX2 = 1, nNodesX(2)
+          DO iNodeX1 = 1, nNodesX(1)
+            DO iNodeE = 1, nNodesE
+
+              iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+
+              Legendre(iNode,iPol) &
+                = P_E   (IndP_Q(0,iPol)) % P( MeshE    % Nodes(iNodeE)  ) &
+                  * P_X1(IndP_Q(1,iPol)) % P( MeshX(1) % Nodes(iNodeX1) ) &
+                  * P_X2(IndP_Q(2,iPol)) % P( MeshX(2) % Nodes(iNodeX2) ) &
+                  * P_X3(IndP_Q(3,iPol)) % P( MeshX(3) % Nodes(iNodeX3) )
+
+            END DO
+          END DO
+        END DO
+      END DO
+
+    END DO
 
     ! --- ---
 
@@ -213,9 +245,7 @@ CONTAINS
     REAL(DP), DIMENSION(nDOF,nCR) :: uCR_M_P_X1, uCR_M_N_X1
     REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: uCR_X1, uCR_X1_T
 
-!!$    IF( nDOF == 1 ) RETURN
-
-    RETURN
+    IF( nDOF == 1 ) RETURN
 
     ALLOCATE &
       ( uCR_X1  (1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR), &
@@ -237,6 +267,8 @@ CONTAINS
 
               DO iCR = 1, nCR
 
+                ! --- Map To Modal Representation ---
+
                 CALL MapNodalToModal_Radiation &
                        ( uCR(:,iE,iX1-1,iX2,iX3,iCR,iS), uCR_M_P_X1(:,iCR) )
                 CALL MapNodalToModal_Radiation &
@@ -246,15 +278,16 @@ CONTAINS
 
               END DO
 
-              ! --- Cell-Averaged Moments ---
-
               uCR_A      = uCR_M     (1,1:nCR)
               uCR_A_P_X1 = uCR_M_P_X1(1,1:nCR)
               uCR_A_N_X1 = uCR_M_N_X1(1,1:nCR)
 
               ! --- Slope From Modal Representation ---
 
-              uCR_X1(iE,iX1,iX2,iX3,1:nCR) = uCR_M(iOS+2,1:nCR) ! X1-Dimension
+              uCR_X1(iE,iX1,iX2,iX3,1:nCR) &
+                = uCR_M(iOS+2,1:nCR) ! X1-Dimension
+
+              ! --- Compute Limited Slopes ---
 
               uCR_X1_T(iE,iX1,iX2,iX3,1:nCR) &
                 = MinModB &
@@ -273,48 +306,59 @@ CONTAINS
           DO iX1 = 1, nX(1)
             DO iE = 1, nE
 
-              LimitPolynomial = .FALSE.
-              LimitPolynomial &
-                = ANY( ABS( uCR_X1(iE,iX1,iX2,iX3,1:nCR) &
-                              - uCR_X1_T(iE,iX1,iX2,iX3,1:nCR) ) > Tol_TVD )
+              ! --- Component-wise limiting ---
 
-              IF( LimitPolynomial )THEN
+              DO iCR = 1, nCR
 
-                DO iCR = 1, nCR
+                LimitPolynomial = .FALSE.
+                LimitPolynomial &
+                  = ( ABS( uCR_X1(iE,iX1,iX2,iX3,iCR) &
+                           - uCR_X1_T(iE,iX1,iX2,iX3,iCR) ) > Tol_TVD )
+
+                IF( LimitPolynomial )THEN
+
+                  IF( Debug )THEN
+
+                    WRITE(*,*)
+                    WRITE(*,'(A4,A,1I2.2)') '', 'Limiting Radiation Field: ', iCR
+                    WRITE(*,'(A6,A,4I5.4)') '', &
+                      'iE, iX1, iX2, iX3 = ', iE, iX1, iX2, iX3
+                    WRITE(*,*)
+
+                    print*, " ux       = ", uCR_X1  (iE,iX1,iX2,iX3,iCR)
+                    print*, " ux_tilde = ", uCR_X1_T(iE,iX1,iX2,iX3,iCR)
+
+                  END IF
 
                   CALL MapNodalToModal_Radiation &
-                         ( uCR(:,iE,iX1,iX2,iX3,iCR,iS), uCR_M(:,iCR) )
+                         ( VolJac(:,iE,iX1,iX2,iX3) &
+                             * uCR(:,iE,iX1,iX2,iX3,iCR,iS), uCR_M(:,iCR) )
 
-                END DO
+                  ! --- Cell-Integrated Moments ---
 
-                ! --- Cell-Averaged Moments ---
+                  uCR_A = uCR_M(1,iCR)
 
-                uCR_A = uCR_M(1,1:nCR)
+                  uCR_M(:,iCR) = 0.0_DP
+                  uCR_M(1,iCR) &     ! -- Cell-Average
+                    = uCR_A(iCR)
+                  uCR_M(iOS+2,iCR) & ! -- Slope X1-Direction
+                    = uCR_X1_T(iE,iX1,iX2,iX3,iCR) &
+                        * DOT_PRODUCT &
+                            ( WeightsR(:) * VolJac(:,iE,iX1,iX2,iX3), &
+                              Legendre(:,iOS+2)**2 ) / MassP(iOS+2)
 
-                uCR_M(:,1:nCR) = 0.0_DP
-                uCR_M(1,1:nCR) &     ! -- Cell-Average
-                  = uCR_A(1:nCR)
-                uCR_M(iOS+2,1:nCR) & ! -- Slope X1-Direction
-                  = uCR_X1_T(iE,iX1,iX2,iX3,1:nCR)
-
-                ! --- Back to Nodal Representation ---
-
-                DO iCR = 1, nCR
+                  ! --- Back to Nodal Representation ---
 
                   CALL MapModalToNodal_Radiation &
                          ( uCR(:,iE,iX1,iX2,iX3,iCR,iS), uCR_M(:,iCR) )
 
-                END DO
+                  uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
+                    = uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
+                        / VolJac(:,iE,iX1,iX2,iX3)
 
-                PRINT*, "iE, iX1, iX2, iX3 = ", iE, iX1, iX2, iX3
-                PRINT*, "  uCR_X1   = ", uCR_X1  (iE,iX1,iX2,iX3,1:nCR)
-                PRINT*, "  uCR_X1_T = ", uCR_X1_T(iE,iX1,iX2,iX3,1:nCR)
-                PRINT*, "  ANY = ", &
-                  ( ABS( uCR_X1(iE,iX1,iX2,iX3,1:nCR) &
-                         - uCR_X1_T(iE,iX1,iX2,iX3,1:nCR) ) > Tol_TVD )
-                PRINT*
+                END IF
 
-              END IF
+              END DO
 
             END DO
           END DO
@@ -341,6 +385,8 @@ CONTAINS
     REAL(DP), DIMENSION(1:nCR)   :: uCR_K
 
     IF( nDOF == 1 ) RETURN
+
+    IF( .NOT. ApplyPositivityLimiter ) RETURN
 
     DO iS = 1, nSpecies
 

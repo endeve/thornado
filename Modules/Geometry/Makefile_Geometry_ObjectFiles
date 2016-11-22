@@ -1,2 +1,5 @@
 GEOMETRY = \
-  GeometryModule.o
+  GeometryFieldsModule.o \
+  GeometryBoundaryConditionsModule.o \
+  GeometryComputationModule.o \
+  GeometryInitializationModule.o

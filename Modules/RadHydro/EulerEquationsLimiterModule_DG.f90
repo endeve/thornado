@@ -9,7 +9,7 @@ MODULE EulerEquationsLimiterModule_DG
     MinModB, &
     GetRoots_Quadratic
   USE PolynomialBasisModule_Lagrange, ONLY: &
-    evalLX, L_X1, L_X2, L_X3
+    L_X1, L_X2, L_X3
   USE PolynomialBasisModule_Legendre, ONLY: &
     evalPX
   USE PolynomialBasisMappingModule, ONLY: &

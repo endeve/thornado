@@ -3,6 +3,7 @@ TimeSteppingModule.o: \
   UnitsModule.o \
   ProgramHeaderModule.o \
   MeshModule.o \
+  GeometryFieldsModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   EquationOfStateModule.o \

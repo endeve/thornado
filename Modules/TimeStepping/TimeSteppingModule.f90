@@ -9,7 +9,7 @@ MODULE TimeSteppingModule
     nE, nDOF
   USE MeshModule, ONLY: &
     MeshX
-  USE GeometryModule, ONLY: &
+  USE GeometryFieldsModule, ONLY: &
     a, b, c
   USE FluidFieldsModule, ONLY: &
     uCF, rhsCF, nCF, nPF, nAF, iPF_V1, iPF_V2, iPF_V3, iAF_Cs
@@ -396,7 +396,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation( Time = t )
+      CALL ApplyBoundaryConditions_Radiation( t )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -462,7 +462,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation( Time = t )
+      CALL ApplyBoundaryConditions_Radiation( t )
 
       CALL CPU_TIME( WT(0) )
 
@@ -503,6 +503,9 @@ CONTAINS
       CALL ApplyRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
+
+      CALL ApplyBoundaryConditions_Radiation &
+             ( t + dt, LimiterBC_Option = .TRUE. )
 
       CALL CPU_TIME( WT(0) )
 
@@ -538,7 +541,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation( Time = t + dt )
+      CALL ApplyBoundaryConditions_Radiation( t + dt )
 
       CALL CPU_TIME( WT(0) )
 
@@ -579,6 +582,9 @@ CONTAINS
       CALL ApplyRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.5_DP, beta = 0.5_DP )
+
+      CALL ApplyBoundaryConditions_Radiation &
+             ( t + dt, LimiterBC_Option = .TRUE. )
 
       CALL CPU_TIME( WT(0) )
 
@@ -620,7 +626,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation( Time = t )
+      CALL ApplyBoundaryConditions_Radiation( t )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -666,7 +672,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation( Time = t + dt )
+      CALL ApplyBoundaryConditions_Radiation( t + dt )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -712,7 +718,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation( Time = t + 0.5_DP * dt )
+      CALL ApplyBoundaryConditions_Radiation( t + 0.5_DP * dt )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -798,7 +804,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation( Time = t )
+      CALL ApplyBoundaryConditions_Radiation( t )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -813,10 +819,13 @@ CONTAINS
 
       CALL ApplySlopeLimiter_Radiation
 
+      CALL ApplyPositivityLimiter_Radiation
+
     END IF
 
     CALL CoupleFluidRadiation &
-           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+             EvolveFluid_Option = EvolveFluid )
 
     CALL Finalize_SI_RK
 
@@ -835,7 +844,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation( Time = t )
+      CALL ApplyBoundaryConditions_Radiation( t )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -848,7 +857,7 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
-!!$      CALL ApplySlopeLimiter_Radiation
+      CALL ApplySlopeLimiter_Radiation
 
       CALL ApplyPositivityLimiter_Radiation
 
@@ -862,7 +871,7 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyBoundaryConditions_Radiation( Time = t + dt )
+      CALL ApplyBoundaryConditions_Radiation( t + dt )
 
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -875,14 +884,15 @@ CONTAINS
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
                dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
 
-!!$      CALL ApplySlopeLimiter_Radiation
+      CALL ApplySlopeLimiter_Radiation
 
       CALL ApplyPositivityLimiter_Radiation
 
     END IF
 
     CALL CoupleFluidRadiation &
-           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+             EvolveFluid_Option = EvolveFluid )
 
     ! -- Combine Steps --
 

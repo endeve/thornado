@@ -11,7 +11,7 @@ MODULE EulerEquationsSolutionModule_DG
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
-  USE GeometryModule, ONLY: &
+  USE GeometryFieldsModule, ONLY: &
     CoordinateSystem, &
     a, b
   USE FluidFieldsModule, ONLY: &

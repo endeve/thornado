@@ -3,7 +3,8 @@ MODULE FluidRadiationCouplingModule
   USE KindModule, ONLY: &
     DP
   USE FluidRadiationCouplingSolutionModule_Implicit, ONLY: &
-    CoupleFluidRadiation_Implicit_EmissionAbsorption
+    CoupleFluidRadiation_Implicit_EmissionAbsorption, &
+    CoupleFluidRadiation_Implicit_ElasticScattering
 
   IMPLICIT NONE
   PRIVATE
@@ -43,7 +44,8 @@ CONTAINS
         CoupleFluidRadiation &
           => CoupleFluidRadiation_Implicit_EmissionAbsorption
       CASE( 'ElasticScattering' )
-
+        CoupleFluidRadiation &
+          => CoupleFluidRadiation_Implicit_ElasticScattering
       CASE( 'InelasticScattering' )
 
       CASE( 'Complete' )

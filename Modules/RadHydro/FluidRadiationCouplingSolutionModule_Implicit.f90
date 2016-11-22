@@ -8,7 +8,8 @@ MODULE FluidRadiationCouplingSolutionModule_Implicit
     PlanckConstant, &
     Gram, &
     Centimeter, &
-    Kelvin
+    Kelvin, &
+    MeV
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, nDOFX, &
     nE, nNodesE, nDOFE
@@ -52,6 +53,7 @@ MODULE FluidRadiationCouplingSolutionModule_Implicit
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: duAFdT_N, duAFdYe_N
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: Chi, dChidT, dChidYe
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: f_FD, df_FDdT, df_FDdYe
+  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: Kappa
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: uPR_N
 
   REAL(DP), DIMENSION(:),     ALLOCATABLE :: Floor_FRC
@@ -59,6 +61,7 @@ MODULE FluidRadiationCouplingSolutionModule_Implicit
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: U_FRC, FJAC_FRC
 
   PUBLIC :: CoupleFluidRadiation_Implicit_EmissionAbsorption
+  PUBLIC :: CoupleFluidRadiation_Implicit_ElasticScattering
 
 CONTAINS
 
@@ -75,13 +78,25 @@ CONTAINS
 
     CALL ComputePrimitive( iX_Begin = iX_Begin, iX_End = iX_End )
 
-    CALL InitializeFluidRadiationCoupling
+    IF( EvolveFluid )THEN
 
-    CALL CoupleFluidRadiation_EmissionAbsorption( dt )
+      CALL InitializeFluidRadiationCoupling
 
-    CALL FinalizeFluidRadiationCoupling
+      CALL CoupleFluidRadiation_EmissionAbsorption( dt )
 
-    CALL ApplyEquationOfState
+      CALL FinalizeFluidRadiationCoupling
+
+      CALL ApplyEquationOfState
+
+    ELSE
+
+      CALL InitializeFluidRadiationCoupling_ThermalReservoir
+
+      CALL CoupleFluidRadiation_EmissionAbsorption_ThermalReservoir( dt )
+
+      CALL FinalizeFluidRadiationCoupling_ThermalReservoir
+
+    END IF
 
     CALL ComputeConserved( iX_Begin = iX_Begin, iX_End = iX_End )
 
@@ -257,11 +272,35 @@ CONTAINS
 
     DO iX = 1, nNodesX_G
 
-      CALL ComputeAbsorptionCoefficients &
-             ( E_N, [ D_N(iX) ], [ T_N(iX) ], [ Ye_N(iX) ], &
-               Chi(:,iX), dChidT(:,iX), dChidYe(:,iX) )
+      ! --- Debug ---
+
+!!$      CALL ComputeAbsorptionCoefficients &
+!!$             ( E_N, [ D_N(iX) ], [ T_N(iX) ], [ Ye_N(iX) ], &
+!!$               Chi(:,iX), dChidT(:,iX), dChidYe(:,iX) )
+
+      IF( iX <= nNodesX_G / 2 )THEN
+
+        Chi    (:,iX) = 1.0d-5 / Centimeter
+        dChidT (:,iX) = 0.0d0
+        dChidYe(:,iX) = 0.0d0
+
+      ELSE
+
+        Chi    (:,iX) = 0.0d0
+        dChidT (:,iX) = 0.0d0
+        dChidYe(:,iX) = 0.0d0
+
+      END IF
 
     END DO
+
+!!$    CALL WriteVector( SIZE( E_N ), E_N / MeV, 'E_N.dat' )
+!!$    CALL WriteVector &
+!!$           ( SIZE( Chi(:,1) ), Chi(:,1)         * Centimeter, 'Chi_01.dat' )
+!!$    CALL WriteVector &
+!!$           ( SIZE( Chi(:,1) ), Chi(:,nNodesX_G) * Centimeter, 'Chi_02.dat' )
+!!$    CALL WriteVector &
+!!$           ( SIZE( Chi(1,:) ), Chi(1,:) * Centimeter, 'Chi_03.dat' )
 
     END ASSOCIATE ! D_N, etc.
 
@@ -519,7 +558,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: E, Mu, kT
 
-    FermiDirac = 1.0_DP / ( EXP( ( E - Mu ) / kT ) + 1.0_DP )
+    FermiDirac = 1.0_DP !/ ( EXP( ( E - Mu ) / kT ) + 1.0_DP )
 
     RETURN
   END FUNCTION FermiDirac
@@ -618,6 +657,231 @@ CONTAINS
     END DO
 
   END SUBROUTINE UpdateNumberFlux_EmissionAbsorption
+
+
+  SUBROUTINE InitializeFluidRadiationCoupling_ThermalReservoir
+
+    nNodesX_G = PRODUCT(nX) * nDOFX
+    nNodesE_G =         nE  * nDOFE
+
+    ALLOCATE( E_N(nNodesE_G) )
+    CALL InitializeNodes( E_N )
+
+    ALLOCATE( uPF_N(nPF, nNodesX_G) )
+    ALLOCATE( uAF_N(nAF, nNodesX_G) )
+    CALL InitializeFluidFields( uPF_N, uAF_N )
+
+    ALLOCATE( uPR_N(nNodesE_G, nPR, nNodesX_G) )
+    CALL InitializeRadiationFields( uPR_N )
+
+    ALLOCATE &
+      ( Chi (nNodesE_G, nNodesX_G), &
+        f_FD(nNodesE_G, nNodesX_G) )
+
+  END SUBROUTINE InitializeFluidRadiationCoupling_ThermalReservoir
+
+
+  SUBROUTINE FinalizeFluidRadiationCoupling_ThermalReservoir
+
+    DEALLOCATE( E_N )
+
+    CALL FinalizeFluidFields( uPF_N, uAF_N )
+    DEALLOCATE( uPF_N, uAF_N )
+
+    CALL FinalizeRadiationFields( uPR_N )
+    DEALLOCATE( uPR_N )
+
+    DEALLOCATE( Chi, f_FD )
+
+  END SUBROUTINE FinalizeFluidRadiationCoupling_ThermalReservoir
+
+
+  SUBROUTINE CoupleFluidRadiation_EmissionAbsorption_ThermalReservoir( dt )
+
+    REAL(DP), INTENT(in) :: dt
+
+    INTEGER :: iX, iE
+
+    call SetRates_EmissionAbsorption_ThermalReservoir
+
+    call SetEquilibrium_EmissionAbsorption_ThermalReservoir
+
+    DO iX = 1, nNodesX_G
+
+      DO iE = 1, nNodesE_G
+
+        ! --- Number Density ---
+
+        uPR_N(iE,iPR_D,iX) &
+          = ( uPR_N(iE,iPR_D,iX) + FourPi * dt * Chi(iE,iX) * f_FD(iE,iX) ) &
+            / ( 1.0_DP + dt * Chi(iE,iX) )
+
+        ! --- Number Flux Density (1) ---
+
+        uPR_N(iE,iPR_I1,iX) &
+          = uPR_N(iE,iPR_I1,iX) / ( 1.0_DP + dt * Chi(iE,iX) )
+
+        ! --- Number Flux Density (2) ---
+
+        uPR_N(iE,iPR_I2,iX) &
+          = uPR_N(iE,iPR_I2,iX) / ( 1.0_DP + dt * Chi(iE,iX) )
+
+        ! --- Number Flux Density (3) ---
+
+        uPR_N(iE,iPR_I3,iX) &
+          = uPR_N(iE,iPR_I3,iX) / ( 1.0_DP + dt * Chi(iE,iX) )
+
+      END DO
+
+    END DO
+
+  END SUBROUTINE CoupleFluidRadiation_EmissionAbsorption_ThermalReservoir
+
+
+  SUBROUTINE SetRates_EmissionAbsorption_ThermalReservoir
+
+    INTEGER :: iX
+
+    DO iX = 1, nNodesX_G
+
+      IF( iX <= nNodesX_G / 2 )THEN
+
+        Chi(:,iX) = 1.0d-4 * ( 1.0_DP / Centimeter )
+
+      ELSE
+
+        Chi(:,iX) = 0.0d-0 * ( 1.0_DP / Centimeter )
+
+      END IF
+
+    END DO
+
+  END SUBROUTINE SetRates_EmissionAbsorption_ThermalReservoir
+
+
+  SUBROUTINE SetEquilibrium_EmissionAbsorption_ThermalReservoir
+
+    INTEGER :: iX
+
+    DO iX = 1, nNodesX_G
+
+      f_FD(:,iX) = 1.0_DP
+
+    END DO
+
+  END SUBROUTINE SetEquilibrium_EmissionAbsorption_ThermalReservoir
+
+
+  ! ----------------------------------------------------------------------------
+  ! ----------------------------------------------------------------------------
+  ! ----------------------------------------------------------------------------
+
+
+  SUBROUTINE CoupleFluidRadiation_Implicit_ElasticScattering &
+               ( dt, iX_Begin, iX_End, EvolveFluid_Option )
+
+    REAL(DP),              INTENT(in) :: dt
+    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    LOGICAL,               INTENT(in), OPTIONAL :: EvolveFluid_Option
+
+    CALL ComputePrimitive( iX_Begin = iX_Begin, iX_End = iX_End )
+
+    CALL InitializeFluidRadiationCoupling_ElasticScattering
+
+    CALL CoupleFluidRadiation_ElasticScattering( dt )
+
+    CALL FinalizeFluidRadiationCoupling_ElasticScattering
+
+    CALL ComputeConserved( iX_Begin = iX_Begin, iX_End = iX_End )
+
+  END SUBROUTINE CoupleFluidRadiation_Implicit_ElasticScattering
+
+
+  SUBROUTINE InitializeFluidRadiationCoupling_ElasticScattering
+
+    nNodesX_G = PRODUCT(nX) * nDOFX
+    nNodesE_G =         nE  * nDOFE
+
+    ALLOCATE( E_N(nNodesE_G) )
+    CALL InitializeNodes( E_N )
+
+    ALLOCATE( uPF_N(nPF, nNodesX_G) )
+    ALLOCATE( uAF_N(nAF, nNodesX_G) )
+    CALL InitializeFluidFields( uPF_N, uAF_N )
+
+    ALLOCATE( uPR_N(nNodesE_G, nPR, nNodesX_G) )
+    CALL InitializeRadiationFields( uPR_N )
+
+    ALLOCATE( Kappa(nNodesE_G, nNodesX_G) )
+
+  END SUBROUTINE InitializeFluidRadiationCoupling_ElasticScattering
+
+
+  SUBROUTINE FinalizeFluidRadiationCoupling_ElasticScattering
+
+    DEALLOCATE( E_N )
+
+    CALL FinalizeFluidFields( uPF_N, uAF_N )
+    DEALLOCATE( uPF_N, uAF_N )
+
+    CALL FinalizeRadiationFields( uPR_N )
+    DEALLOCATE( uPR_N )
+
+    DEALLOCATE( Kappa )
+
+  END SUBROUTINE FinalizeFluidRadiationCoupling_ElasticScattering
+
+
+  SUBROUTINE CoupleFluidRadiation_ElasticScattering( dt )
+
+    REAL(DP), INTENT(in) :: dt
+
+    INTEGER :: iX, iE
+
+    call SetRates_ElasticScattering
+
+    DO iX = 1, nNodesX_G
+
+      DO iE = 1, nNodesE_G
+
+        ! --- Number Flux Density (1) ---
+
+        uPR_N(iE,iPR_I1,iX) &
+          = uPR_N(iE,iPR_I1,iX) / ( 1.0_DP + dt * Kappa(iE,iX) )
+
+        ! --- Number Flux Density (2) ---
+
+        uPR_N(iE,iPR_I2,iX) &
+          = uPR_N(iE,iPR_I2,iX) / ( 1.0_DP + dt * Kappa(iE,iX) )
+
+        ! --- Number Flux Density (3) ---
+
+        uPR_N(iE,iPR_I3,iX) &
+          = uPR_N(iE,iPR_I3,iX) / ( 1.0_DP + dt * Kappa(iE,iX) )
+
+      END DO
+
+    END DO
+
+  END SUBROUTINE CoupleFluidRadiation_ElasticScattering
+
+
+  SUBROUTINE SetRates_ElasticScattering
+
+    INTEGER :: iX
+
+    DO iX = 1, nNodesX_G
+
+      Kappa(:,iX) = 1.0d-5 * ( 1.0_DP / Centimeter )
+
+    END DO
+
+  END SUBROUTINE SetRates_ElasticScattering
+
+
+  ! ----------------------------------------------------------------------------
+  ! ----------------------------------------------------------------------------
+  ! ----------------------------------------------------------------------------
 
 
   PURE REAL(DP) FUNCTION ENORM( X )

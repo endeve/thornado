@@ -193,13 +193,15 @@ CONTAINS
   END SUBROUTINE ApplyBoundaryConditions_Fluid_X1
 
 
-  SUBROUTINE ApplyBoundaryConditions_Radiation( Time )
+  SUBROUTINE ApplyBoundaryConditions_Radiation( Time, LimiterBC_Option )
 
     REAL(DP), INTENT(in) :: Time
+    LOGICAL,  INTENT(in), OPTIONAL :: LimiterBC_Option
 
     IF( bcX(1) == 10 )THEN
 
-      CALL ApplyApplicationBoundaryConditions_Radiation_X1( Time )
+      CALL ApplyApplicationBoundaryConditions_Radiation_X1 &
+             ( Time, LimiterBC_Option )
 
     ELSE
 

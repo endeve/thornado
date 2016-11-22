@@ -1,6 +1,26 @@
-GeometryModule.o: \
+GeometryFieldsModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModule.f90
+
+GeometryBoundaryConditionsModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   MeshModule.o \
-  GeometryModule.f90
+  GeometryFieldsModule.o \
+  GeometryBoundaryConditionsModule.f90
+
+GeometryComputationModule.o: \
+  KindModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryBoundaryConditionsModule.o \
+  GeometryComputationModule.f90
+
+GeometryInitializationModule.o: \
+  KindModule.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  GeometryInitializationModule.f90

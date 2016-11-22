@@ -13,6 +13,8 @@ MODULE ProgramInitializationModule
     nDOFX,  nDOFE,  nDOF, &
     nNodesX, nNodesE, nNodes, &
     InitializeProgramHeader
+  USE UtilitiesModule, ONLY: &
+    InitializeWeights
   USE QuadratureModule, ONLY: &
     InitializeQuadratures
   USE PolynomialBasisModule_Lagrange, ONLY: &
@@ -25,18 +27,21 @@ MODULE ProgramInitializationModule
     MeshX, MeshE, &
     CreateMesh, &
     DestroyMesh
-  USE GeometryModule, ONLY: &
+  USE GeometryFieldsModule, ONLY: &
+    WeightsGX, WeightsG, &
+    CreateGeometryFields, &
+    DestroyGeometryFields
+  USE GeometryInitializationModule, ONLY: &
     InitializeGeometry, &
     FinalizeGeometry
   USE FluidFieldsModule, ONLY: &
+    WeightsF, &
     CreateFluidFields, &
     DestroyFluidFields
   USE RadiationFieldsModule, ONLY: &
+    WeightsR, &
     CreateRadiationFields, &
     DestroyRadiationFields
-  USE RadiationFieldsUtilitiesModule, ONLY: &
-    InitializeRadiationFieldsUtilities, &
-    FinalizeRadiationFieldsUtilities
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
@@ -254,19 +259,39 @@ CONTAINS
 
     ! --- Geometry ---
 
+    CALL CreateGeometryFields( nX, swX, nE, swE )
+
+    CALL InitializeWeights & ! --- For Integration in Elements
+           ( MeshX(1) % Weights, MeshX(2) % Weights, &
+             MeshX(3) % Weights, WeightsGX )
+
+    CALL InitializeWeights & ! --- For Integration in Elements
+           ( MeshE    % Weights, MeshX(1) % Weights, &
+             MeshX(2) % Weights, MeshX(3) % Weights, &
+             WeightsG )
+
     CALL InitializeGeometry &
-           ( nX, nNodesX, swX, MeshX, nE, nNodesE, swE, MeshE, &
+           ( nX, nNodesX, swX, nE, nNodesE, swE, &
              CoordinateSystem_Option = CoordinateSystem_Option )
 
     ! --- Physical Fields ---
 
+    ! --- Fluid Fields ---
+
     CALL CreateFluidFields( nX, swX )
+
+    CALL InitializeWeights & ! --- For Integration in Elements
+           ( MeshX(1) % Weights, MeshX(2) % Weights, &
+             MeshX(3) % Weights, WeightsF )
+
+    ! --- Radiation Fields ---
 
     CALL CreateRadiationFields( nX, swX, nE, swE )
 
-    CALL InitializeRadiationFieldsUtilities &
-           ( MeshE % Weights, MeshX(1) % Weights, MeshX(2) % Weights, &
-             MeshX(3) % Weights )
+    CALL InitializeWeights & ! --- For Integration in Elements
+           ( MeshE    % Weights, MeshX(1) % Weights, &
+             MeshX(2) % Weights, MeshX(3) % Weights, &
+             WeightsR )
 
     ! --- For Mapping Between Nodal and Modal Representations ---
 
@@ -343,6 +368,8 @@ CONTAINS
 
     ! --- Geometry ---
 
+    CALL DestroyGeometryFields
+
     CALL FinalizeGeometry
 
     ! --- Physical Fields ---
@@ -350,8 +377,6 @@ CONTAINS
     CALL DestroyFluidFields
 
     CALL DestroyRadiationFields
-
-    CALL FinalizeRadiationFieldsUtilities
 
     ! --- Equation of State ---
 

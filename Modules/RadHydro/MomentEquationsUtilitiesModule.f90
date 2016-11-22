@@ -4,7 +4,7 @@ MODULE MomentEquationsUtilitiesModule
     DP
   USE ProgramHeaderModule, ONLY: &
     nE, nDOF
-  USE GeometryModule, ONLY: &
+  USE GeometryFieldsModule, ONLY: &
     a, dlnadX1, dlnbdX1, dlncdX2
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
@@ -179,9 +179,14 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: h
 
+    ! Minerbo:
     EddingtonFactor &
       = 1.0_DP / 3.0_DP &
-          + ( 6.0_DP * h**2 - 2.0_DP * h**3 + 6.0_DP * h**4 ) / 15.0_DP
+          + 2.0_DP * h**2 * ( 3.0_DP - h + 3.0_DP * h**2 ) / 15.0_DP
+
+!!$    ! Levermore:
+!!$    eddingtonFactor &
+!!$      = ( 5.0_DP - 2.0_DP * SQRT( 4.0_DP - 3.0_DP * h**2 ) ) / 3.0_DP
 
     RETURN
   END FUNCTION EddingtonFactor

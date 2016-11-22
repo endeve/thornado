@@ -2,12 +2,13 @@ ProgramInitializationModule.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
+  UtilitiesModule.o \
   QuadratureModule.o \
   PolynomialBasisModule_Lagrange.o \
   PolynomialBasisModule_Legendre.o \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
-  GeometryModule.o \
+  GeometryInitializationModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   EquationOfStateModule.o \

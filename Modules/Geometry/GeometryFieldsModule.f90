@@ -1,22 +1,23 @@
-MODULE GeometryModule
+MODULE GeometryFieldsModule
 
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDOF
-  USE UtilitiesModule, ONLY: &
-    NodeNumberX, &
-    NodeNumber
-  USE MeshModule, ONLY: &
-    MeshType, &
-    MeshX, MeshE, &
-    NodeCoordinate
 
   IMPLICIT NONE
   PRIVATE
 
   CHARACTER(16), PUBLIC :: &
     CoordinateSystem = 'CARTESIAN'
+
+  REAL(DP), DIMENSION(:),         ALLOCATABLE, PUBLIC :: &
+    WeightsGX, &
+    WeightsG
+  REAL(DP), DIMENSION(:,:,:),     ALLOCATABLE, PUBLIC :: &
+    VolX
+  REAL(DP), DIMENSION(:,:,:,:),   ALLOCATABLE, PUBLIC :: &
+    Vol
   REAL(DP), DIMENSION(:,:,:,:),   ALLOCATABLE, PUBLIC :: &
     VolJacX
   REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
@@ -34,83 +35,40 @@ MODULE GeometryModule
   PROCEDURE (MetricFunction), POINTER, PUBLIC :: dlnbdX1
   PROCEDURE (MetricFunction), POINTER, PUBLIC :: dlncdX2
 
-  PUBLIC :: InitializeGeometry
-  PUBLIC :: FinalizeGeometry
+  PUBLIC :: CreateGeometryFields
+  PUBLIC :: DestroyGeometryFields
+  PUBLIC :: InitializeGeometryFields_CARTESIAN
+  PUBLIC :: InitializeGeometryFields_SPHERICAL
+  PUBLIC :: InitializeGeometryFields_CYLINDRICAL
+  PUBLIC :: FinalizeGeometryFields
 
 CONTAINS
 
 
-  SUBROUTINE InitializeGeometry &
-               ( nX, nNodesX, swX, MeshX, nE, nNodesE, swE, MeshE, &
-                 CoordinateSystem_Option )
+  SUBROUTINE CreateGeometryFields( nX, swX, nE, swE )
 
-    INTEGER,        DIMENSION(3), INTENT(in) :: nX, nNodesX, swX
-    TYPE(MeshType), DIMENSION(3), INTENT(in) :: MeshX
-    INTEGER,                      INTENT(in) :: nE, nNodesE, swE
-    TYPE(MeshType),               INTENT(in) :: MeshE
-    CHARACTER(LEN=*),             INTENT(in), OPTIONAL :: &
-      CoordinateSystem_Option
+    INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
+    INTEGER,               INTENT(in) :: nE, swE
 
-    IF( PRESENT( CoordinateSystem_Option ) )THEN
-      CoordinateSystem = TRIM( CoordinateSystem_Option )
-    END IF
+    ALLOCATE( WeightsGX(1:nDOFX) )
+    ALLOCATE( WeightsG (1:nDOF ) )
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A19,A)') &
-      '', 'Coordinate System: ', TRIM( CoordinateSystem )
-    WRITE(*,'(A5,A19)') &
-      '', '------------------ '
+    ALLOCATE &
+      ( VolX(1-swX(1):nX(1)+swX(1), &
+             1-swX(2):nX(2)+swX(2), &
+             1-swX(3):nX(3)+swX(3)) )
 
-    SELECT CASE ( TRIM( CoordinateSystem ) )
-      CASE ( 'CARTESIAN' )
-
-        a => a_CARTESIAN
-        b => b_CARTESIAN
-        c => c_CARTESIAN
-        d => SqrtDet_CARTESIAN
-
-        dlnadX1 => dlnadX1_CARTESIAN
-        dlnbdX1 => dlnbdX1_CARTESIAN
-        dlncdX2 => dlncdX2_CARTESIAN
-
-      CASE ( 'SPHERICAL' )
-
-        a => a_SPHERICAL
-        b => b_SPHERICAL
-        c => c_SPHERICAL
-        d => SqrtDet_SPHERICAL
-
-        dlnadX1 => dlnadX1_SPHERICAL
-        dlnbdX1 => dlnbdX1_SPHERICAL
-        dlncdX2 => dlncdX2_SPHERICAL
-
-      CASE ( 'CYLINDRICAL' )
-
-        a => a_CYLINDRICAL
-        b => b_CYLINDRICAL
-        c => c_CYLINDRICAL
-        d => SqrtDet_CYLINDRICAL
-
-        dlnadX1 => dlnadX1_CYLINDRICAL
-        dlnbdX1 => dlnbdX1_CYLINDRICAL
-        dlncdX2 => dlncdX2_CYLINDRICAL
-
-      CASE DEFAULT
-
-        WRITE(*,*)
-        WRITE(*,'(A5,A27,A)') &
-          '', 'Invalid Coordinate System: ', TRIM( CoordinateSystem )
-        STOP
-
-    END SELECT
+    ALLOCATE &
+      ( Vol(1-swE   :nE   +swE,    &
+            1-swX(1):nX(1)+swX(1), &
+            1-swX(2):nX(2)+swX(2), &
+            1-swX(3):nX(3)+swX(3)) )
 
     ALLOCATE &
       ( VolJacX(1:nDOFX, &
                 1-swX(1):nX(1)+swX(1), &
                 1-swX(2):nX(2)+swX(2), &
                 1-swX(3):nX(3)+swX(3)) )
-
-    CALL ComputeGeometryX( nX, nNodesX, MeshX )
 
     ALLOCATE &
       ( VolJac(1:nDOF, &
@@ -119,114 +77,68 @@ CONTAINS
                1-swX(2):nX(2)+swX(2), &
                1-swX(3):nX(3)+swX(3)) )
 
-    CALL ComputeGeometry( nX, nNodesX, MeshX, nE, nNodesE, MeshE )
-
-  END SUBROUTINE InitializeGeometry
+  END SUBROUTINE CreateGeometryFields
 
 
-  SUBROUTINE ComputeGeometryX( nX, nNodesX, MeshX )
+  SUBROUTINE DestroyGeometryFields
 
-    INTEGER,        DIMENSION(3), INTENT(in) :: nX, nNodesX
-    TYPE(MeshType), DIMENSION(3), INTENT(in) :: MeshX
+    DEALLOCATE( WeightsGX, WeightsG )
+    DEALLOCATE( VolX, Vol )
+    DEALLOCATE( VolJacX, VolJac  )
 
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
-    REAL(DP) :: X1, X2, X3
-
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
-
-          DO iNodeX3 = 1, nNodesX(3)
-
-            X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
-
-            DO iNodeX2 = 1, nNodesX(2)
-
-              X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
-
-              DO iNodeX1 = 1, nNodesX(1)
-
-                X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
-                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-
-                VolJacX(iNodeX,iX1,iX2,iX3) = d( [ X1, X2, X3 ] )
-
-              END DO
-
-            END DO
-
-          END DO
-
-        END DO
-      END DO
-    END DO
-
-  END SUBROUTINE ComputeGeometryX
+  END SUBROUTINE DestroyGeometryFields
 
 
-  SUBROUTINE ComputeGeometry( nX, nNodesX, MeshX, nE, nNodesE, MeshE )
-
-    INTEGER,        DIMENSION(3), INTENT(in) :: nX, nNodesX
-    TYPE(MeshType), DIMENSION(3), INTENT(in) :: MeshX
-    INTEGER,                      INTENT(in) :: nE, nNodesE
-    TYPE(MeshType),               INTENT(in) :: MeshE
-
-    INTEGER  :: iE, iX1, iX2, iX3
-    INTEGER  :: iNodeE, iNodeX1, iNodeX2, iNodeX3, iNode
-    REAL(DP) :: E, X1, X2, X3
-
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
-          DO iE = 1, nE
-
-            DO iNodeX3 = 1, nNodesX(3)
-
-              X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
-
-              DO iNodeX2 = 1, nNodesX(2)
-
-                X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
-
-                DO iNodeX1 = 1, nNodesX(1)
-
-                  X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
-                  DO iNodeE = 1, nNodesE
-
-                    E = NodeCoordinate( MeshE, iE, iNodeE )
-
-                    iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
-
-                    VolJac(iNode,iE,iX1,iX2,iX3) &
-                      = d( [ X1, X2, X3 ] ) * E**2
-
-                  END DO
-
-                END DO
-
-              END DO
-
-            END DO
-
-          END DO
-        END DO
-      END DO
-    END DO
-
-  END SUBROUTINE ComputeGeometry
+  ! --- Coordinate System Dependent Metric Functions ---
 
 
-  SUBROUTINE FinalizeGeometry
+  SUBROUTINE InitializeGeometryFields_CARTESIAN
+
+    a => a_CARTESIAN
+    b => b_CARTESIAN
+    c => c_CARTESIAN
+    d => SqrtDet_CARTESIAN
+
+    dlnadX1 => dlnadX1_CARTESIAN
+    dlnbdX1 => dlnbdX1_CARTESIAN
+    dlncdX2 => dlncdX2_CARTESIAN
+
+  END SUBROUTINE InitializeGeometryFields_CARTESIAN
+
+
+  SUBROUTINE InitializeGeometryFields_SPHERICAL
+
+    a => a_SPHERICAL
+    b => b_SPHERICAL
+    c => c_SPHERICAL
+    d => SqrtDet_SPHERICAL
+
+    dlnadX1 => dlnadX1_SPHERICAL
+    dlnbdX1 => dlnbdX1_SPHERICAL
+    dlncdX2 => dlncdX2_SPHERICAL
+
+  END SUBROUTINE InitializeGeometryFields_SPHERICAL
+
+
+  SUBROUTINE InitializeGeometryFields_CYLINDRICAL
+
+    a => a_CYLINDRICAL
+    b => b_CYLINDRICAL
+    c => c_CYLINDRICAL
+    d => SqrtDet_CYLINDRICAL
+
+    dlnadX1 => dlnadX1_CYLINDRICAL
+    dlnbdX1 => dlnbdX1_CYLINDRICAL
+    dlncdX2 => dlncdX2_CYLINDRICAL
+
+  END SUBROUTINE InitializeGeometryFields_CYLINDRICAL
+
+
+  SUBROUTINE FinalizeGeometryFields
 
     NULLIFY( a, b, c, d )
 
-    DEALLOCATE( VolJacX )
-    DEALLOCATE( VolJac  )
-
-  END SUBROUTINE FinalizeGeometry
+  END SUBROUTINE FinalizeGeometryFields
 
 
   ! --- Cartesian Coordinates ---
@@ -448,4 +360,4 @@ CONTAINS
   END FUNCTION dlncdX2_CYLINDRICAL
 
 
-END MODULE GeometryModule
+END MODULE GeometryFieldsModule

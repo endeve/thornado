@@ -4,6 +4,7 @@ RiemannSolverModule.o: \
 
 EulerEquationsUtilitiesModule.o: \
   KindModule.o \
+  GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EulerEquationsUtilitiesModule.f90
 
@@ -13,7 +14,7 @@ EulerEquationsSolutionModule_DG.o: \
   UtilitiesModule.o \
   PolynomialBasisModule_Lagrange.o \
   MeshModule.o \
-  GeometryModule.o \
+  GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
   RiemannSolverModule.o \
@@ -42,7 +43,7 @@ FluidEvolutionModule.o: \
 MomentEquationsUtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  GeometryModule.o \
+  GeometryFieldsModule.o \
   RadiationFieldsModule.o \
   MomentEquationsUtilitiesModule.f90
 
@@ -52,7 +53,7 @@ MomentEquationsSolutionModule_M1_DG.o: \
   UtilitiesModule.o \
   PolynomialBasisModule_Lagrange.o \
   MeshModule.o \
-  GeometryModule.o \
+  GeometryFieldsModule.o \
   RadiationFieldsModule.o \
   RiemannSolverModule.o \
   MomentEquationsUtilitiesModule.o \  
@@ -65,7 +66,7 @@ MomentEquationsLimiterModule_DG.o: \
   PolynomialBasisModule_Lagrange.o \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
-  GeometryModule.o \
+  GeometryFieldsModule.o \
   RadiationFieldsModule.o \
   RadiationFieldsUtilitiesModule.o \
   MomentEquationsLimiterModule_DG.f90

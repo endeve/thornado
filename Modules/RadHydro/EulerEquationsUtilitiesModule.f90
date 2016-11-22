@@ -2,11 +2,11 @@ MODULE EulerEquationsUtilitiesModule
 
   USE KindModule, ONLY: &
     DP
+  USE GeometryFieldsModule, ONLY: &
+    a, b, c, dlnadX1, dlnbdX1, dlncdX2
   USE FluidFieldsModule, ONLY: &
     uCF, nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE GeometryModule, ONLY: &
-    a, b, c, dlnadX1, dlnbdX1, dlncdX2
 
   IMPLICIT NONE
   PRIVATE
