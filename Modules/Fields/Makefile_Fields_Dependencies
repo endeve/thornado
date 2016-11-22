@@ -11,5 +11,5 @@ RadiationFieldsModule.o: \
 RadiationFieldsUtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  UtilitiesModule.o \
+  RadiationFieldsModule.o \
   RadiationFieldsUtilitiesModule.f90

@@ -10,6 +10,10 @@ MODULE RadiationFieldsModule
 
   INTEGER, PUBLIC, PARAMETER :: nSpecies = 1
 
+  ! --- Weights to Integrate RadiationFields ---
+
+  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsR
+
   ! --- Eulerian (Conserved) Radiation Fields ---
 
   INTEGER, PUBLIC, PARAMETER :: iCR_N  = 1  ! Eulerian Number Density
@@ -64,6 +68,8 @@ CONTAINS
 
     INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
     INTEGER,               INTENT(in) :: nE, swE
+
+    ALLOCATE( WeightsR(1:nDOF) )
 
     CALL CreateRadiationFields_Conserved( nX, swX, nE, swE )
     CALL CreateRadiationFields_Primitive( nX, swX, nE, swE )
@@ -157,6 +163,7 @@ CONTAINS
 
   SUBROUTINE DestroyRadiationFields
 
+    DEALLOCATE( WeightsR )
     DEALLOCATE( uCR, rhsCR, uPR, uAR )
 
   END SUBROUTINE DestroyRadiationFields

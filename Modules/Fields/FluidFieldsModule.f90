@@ -8,6 +8,10 @@ MODULE FluidFieldsModule
   IMPLICIT NONE
   PRIVATE
 
+  ! --- Weights to Integrate Fluid Fields ---
+
+  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsF
+
   ! --- Conserved Fluid Fields ---
 
   INTEGER, PUBLIC, PARAMETER :: iCF_D  = 1  ! Conserved Baryon Density
@@ -85,6 +89,8 @@ CONTAINS
   SUBROUTINE CreateFluidFields( nX, swX )
 
     INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
+
+    ALLOCATE( WeightsF(1:nDOFX) )
 
     CALL CreateFluidFields_Conserved( nX, swX )
     CALL CreateFluidFields_Primitive( nX, swX )
@@ -169,6 +175,7 @@ CONTAINS
 
   SUBROUTINE DestroyFluidFields
 
+    DEALLOCATE( WeightsF )
     DEALLOCATE( uCF, rhsCF, uPF, uAF )
 
   END SUBROUTINE DestroyFluidFields
