@@ -92,9 +92,9 @@ CONTAINS
 
   SUBROUTINE CreateGeometricMesh( N, SW, xL, xR, Center, Width, Zoom )
 
-    INTEGER, INTENT(in)                   :: N, SW
-    REAL(DP), INTENT(in)                  :: xL, xR, Zoom
-    REAL(DP), DIMENSION(N), INTENT(inout) :: Center, Width
+    INTEGER,                        INTENT(in)    :: N, SW
+    REAL(DP),                       INTENT(in)    :: xL, xR, Zoom
+    REAL(DP), DIMENSION(1-SW:N+SW), INTENT(inout) :: Center, Width
 
     INTEGER :: i
 
