@@ -29,7 +29,8 @@ MODULE PolynomialBasisMappingModule
 CONTAINS
 
 
-  SUBROUTINE InitializePolynomialBasisMapping( Nodes_E, Nodes_X1, Nodes_X2, Nodes_X3 )
+  SUBROUTINE InitializePolynomialBasisMapping &
+               ( Nodes_E, Nodes_X1, Nodes_X2, Nodes_X3 )
 
     REAL(DP), DIMENSION(:), INTENT(in) :: Nodes_E, Nodes_X1, Nodes_X2, Nodes_X3
 

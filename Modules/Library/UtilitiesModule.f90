@@ -11,6 +11,7 @@ MODULE UtilitiesModule
   PUBLIC :: Locate
   PUBLIC :: NodeNumber
   PUBLIC :: NodeNumberX
+  PUBLIC :: InitializeWeights
   PUBLIC :: Interpolate1D_Linear
   PUBLIC :: Interpolate1D_Log
   PUBLIC :: MapTo1D
@@ -19,6 +20,11 @@ MODULE UtilitiesModule
   PUBLIC :: MinModB
   PUBLIC :: WriteVector
   PUBLIC :: WriteMatrix
+
+  INTERFACE InitializeWeights
+    MODULE PROCEDURE InitializeWeights3D
+    MODULE PROCEDURE InitializeWeights4D
+  END INTERFACE InitializeWeights
 
   INTERFACE MapTo1D
     MODULE PROCEDURE Map4DTo1D
@@ -85,6 +91,52 @@ CONTAINS
 
     RETURN
   END FUNCTION NodeNumberX
+
+
+  SUBROUTINE InitializeWeights3D( w1, w2, w3, w3D )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: w1, w2, w3
+    REAL(DP), DIMENSION(:), INTENT(out) :: w3D
+
+    INTEGER :: i, i1, i2, i3
+
+    DO i3 = 1, SIZE( w3 )
+      DO i2 = 1, SIZE( w2 )
+        DO i1 = 1, SIZE( w1 )
+
+          i = NodeNumberX( i1, i2, i3 )
+
+          w3D(i) = w1(i1) * w2(i2) * w3(i3)
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeWeights3D
+
+
+  SUBROUTINE InitializeWeights4D( w1, w2, w3, w4, w4D )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: w1, w2, w3, w4
+    REAL(DP), DIMENSION(:), INTENT(out) :: w4D
+
+    INTEGER :: i, i1, i2, i3, i4
+
+    DO i4 = 1, SIZE( w4 )
+      DO i3 = 1, SIZE( w3 )
+        DO i2 = 1, SIZE( w2 )
+          DO i1 = 1, SIZE( w1 )
+
+            i = NodeNumber( i1, i2, i3, i4 )
+
+            w4D(i) = w1(i1) * w2(i2) * w3(i3) * w4(i4)
+
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeWeights4D
 
 
   PURE REAL(DP) FUNCTION Interpolate1D_Linear( x, xL, xR, uL, uR )
