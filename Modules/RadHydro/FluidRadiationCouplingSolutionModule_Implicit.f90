@@ -872,7 +872,7 @@ CONTAINS
 
     DO iX = 1, nNodesX_G
 
-      Kappa(:,iX) = 1.0d-5 * ( 1.0_DP / Centimeter )
+      Kappa(:,iX) = 1.0d-1 * ( 1.0_DP / Centimeter )
 
     END DO
 

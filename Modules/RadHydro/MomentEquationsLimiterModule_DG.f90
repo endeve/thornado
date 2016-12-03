@@ -33,12 +33,11 @@ MODULE MomentEquationsLimiterModule_DG
   IMPLICIT NONE
   PRIVATE
 
-  LOGICAL                               :: &
-    ApplyPositivityLimiter = .FALSE.
-  LOGICAL,  PARAMETER                   :: Debug = .TRUE.
+  LOGICAL,  PARAMETER                   :: Debug = .FALSE.
+  LOGICAL                               :: ApplyPositivityLimiter
   INTEGER                               :: nPoints
-  REAL(DP)                              :: BetaTVB = 1.0d-0
-  REAL(DP), PARAMETER                   :: BetaTVD = 2.0d+0
+  REAL(DP)                              :: BetaTVB
+  REAL(DP)                              :: BetaTVD
   REAL(DP), PARAMETER                   :: Tol_TVD = 1.0d-2
   REAL(DP), PARAMETER                   :: Tol_N = 1.0d-100
   REAL(DP), PARAMETER                   :: Tol_G = 1.0d-12
@@ -58,18 +57,38 @@ MODULE MomentEquationsLimiterModule_DG
 CONTAINS
 
 
-  SUBROUTINE InitializeLimiters_M1_DG( BetaTVB_Option )
+  SUBROUTINE InitializeLimiters_M1_DG &
+               ( BetaTVB_Option, BetaTVD_Option, ApplyPositivityLimiter_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: BetaTVB_Option
+    REAL(DP), INTENT(in), OPTIONAL :: BetaTVD_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: ApplyPositivityLimiter_Option
 
     INTEGER :: iPol, iNodeE, iNodeX1, iNodeX2, iNodeX3, iPoint, iNode
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
 
     ! --- Limiter Parameters ---
 
-    BetaTVB = 1.0d-0
+    BetaTVB = 1.0d0
     IF( PRESENT( BetaTVB_Option ) ) &
       BetaTVB = BetaTVB_Option
+
+    BetaTVD = 2.0d0
+    IF( PRESENT( BetaTVD_Option ) ) &
+      BetaTVD = BetaTVD_Option
+
+    ApplyPositivityLimiter = .TRUE.
+    IF( PRESENT( ApplyPositivityLimiter_Option ) ) &
+      ApplyPositivityLimiter = ApplyPositivityLimiter_Option
+
+    WRITE(*,*)
+    WRITE(*,'(A5,A)') '', 'InitializeLimiters_M1_DG'
+    WRITE(*,*)
+    WRITE(*,'(A7,A10,ES8.2E2)') '', 'BetaTVB = ', BetaTVB
+    WRITE(*,'(A7,A10,ES8.2E2)') '', 'BetaTVD = ', BetaTVD
+    WRITE(*,'(A7,A25,L1)') &
+      '', 'ApplyPositivityLimiter = ', ApplyPositivityLimiter
+    WRITE(*,*)
 
     ! --- Legendre Polynomials in Gaussian Quadrature Points ---
 
@@ -241,14 +260,21 @@ CONTAINS
 
     LOGICAL :: LimitPolynomial
     INTEGER :: iS, iE, iX1, iX2, iX3, iCR, iOS
-    REAL(DP), DIMENSION(nCR) :: uCR_A, uCR_A_P_X1, uCR_A_N_X1
+    REAL(DP), DIMENSION(nCR) :: uCR_A_P_X1, uCR_A_N_X1
     REAL(DP), DIMENSION(nDOF,nCR) :: uCR_M_P_X1, uCR_M_N_X1
-    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: uCR_X1, uCR_X1_T
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: uCR_A, uCR_X1, uCR_X1_T
 
     IF( nDOF == 1 ) RETURN
 
+    IF( Debug )THEN
+      WRITE(*,*)
+      WRITE(*,'(A6,A)') '', 'ApplySlopeLimiter_M1_DG'
+      WRITE(*,*)
+    END IF
+
     ALLOCATE &
-      ( uCR_X1  (1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR), &
+      ( uCR_A(1:nCR,1:nE,1:nX(1),1:nX(2),1:nX(3)), &
+        uCR_X1  (1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR), &
         uCR_X1_T(1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR) )
 
     ASSOCIATE( dX1 => MeshX(1) % Width(1:nX(1)) )
@@ -270,17 +296,20 @@ CONTAINS
                 ! --- Map To Modal Representation ---
 
                 CALL MapNodalToModal_Radiation &
-                       ( uCR(:,iE,iX1-1,iX2,iX3,iCR,iS), uCR_M_P_X1(:,iCR) )
+                       ( VolJac(:,iE,iX1-1,iX2,iX3) &
+                           * uCR(:,iE,iX1-1,iX2,iX3,iCR,iS), uCR_M_P_X1(:,iCR) )
                 CALL MapNodalToModal_Radiation &
-                       ( uCR(:,iE,iX1,  iX2,iX3,iCR,iS), uCR_M     (:,iCR) )
+                       ( VolJac(:,iE,iX1,  iX2,iX3) &
+                           * uCR(:,iE,iX1,  iX2,iX3,iCR,iS), uCR_M     (:,iCR) )
                 CALL MapNodalToModal_Radiation &
-                       ( uCR(:,iE,iX1+1,iX2,iX3,iCR,iS), uCR_M_N_X1(:,iCR) )
+                       ( VolJac(:,iE,iX1+1,iX2,iX3) &
+                           * uCR(:,iE,iX1+1,iX2,iX3,iCR,iS), uCR_M_N_X1(:,iCR) )
 
               END DO
 
-              uCR_A      = uCR_M     (1,1:nCR)
-              uCR_A_P_X1 = uCR_M_P_X1(1,1:nCR)
-              uCR_A_N_X1 = uCR_M_N_X1(1,1:nCR)
+              uCR_A(1:nCR,iE,iX1,iX2,iX3) = uCR_M     (1,1:nCR)
+              uCR_A_P_X1(1:nCR)           = uCR_M_P_X1(1,1:nCR)
+              uCR_A_N_X1(1:nCR)           = uCR_M_N_X1(1,1:nCR)
 
               ! --- Slope From Modal Representation ---
 
@@ -292,8 +321,8 @@ CONTAINS
               uCR_X1_T(iE,iX1,iX2,iX3,1:nCR) &
                 = MinModB &
                     ( uCR_X1(iE,iX1,iX2,iX3,1:nCR), &
-                      BetaTVD * ( uCR_A - uCR_A_P_X1 ), &
-                      BetaTVD * ( uCR_A_N_X1 - uCR_A ), &
+                      BetaTVD * ( uCR_A(1:nCR,iE,iX1,iX2,iX3) - uCR_A_P_X1 ), &
+                      BetaTVD * ( uCR_A_N_X1 - uCR_A(1:nCR,iE,iX1,iX2,iX3) ), &
                       dX1(iX1), BetaTVB )
 
             END DO
@@ -313,7 +342,8 @@ CONTAINS
                 LimitPolynomial = .FALSE.
                 LimitPolynomial &
                   = ( ABS( uCR_X1(iE,iX1,iX2,iX3,iCR) &
-                           - uCR_X1_T(iE,iX1,iX2,iX3,iCR) ) > Tol_TVD )
+                           - uCR_X1_T(iE,iX1,iX2,iX3,iCR) ) &
+                        / Vol(iE,iX1,iX2,iX3) > Tol_TVD )
 
                 IF( LimitPolynomial )THEN
 
@@ -336,16 +366,11 @@ CONTAINS
 
                   ! --- Cell-Integrated Moments ---
 
-                  uCR_A = uCR_M(1,iCR)
-
                   uCR_M(:,iCR) = 0.0_DP
                   uCR_M(1,iCR) &     ! -- Cell-Average
-                    = uCR_A(iCR)
+                    = uCR_A(iCR,iE,iX1,iX2,iX3)
                   uCR_M(iOS+2,iCR) & ! -- Slope X1-Direction
-                    = uCR_X1_T(iE,iX1,iX2,iX3,iCR) &
-                        * DOT_PRODUCT &
-                            ( WeightsR(:) * VolJac(:,iE,iX1,iX2,iX3), &
-                              Legendre(:,iOS+2)**2 ) / MassP(iOS+2)
+                    = uCR_X1_T(iE,iX1,iX2,iX3,iCR)
 
                   ! --- Back to Nodal Representation ---
 
@@ -369,7 +394,7 @@ CONTAINS
 
     END ASSOCIATE ! dX1, etc.
 
-    DEALLOCATE( uCR_X1, uCR_X1_T )
+    DEALLOCATE( uCR_A, uCR_X1, uCR_X1_T )
 
   END SUBROUTINE ApplySlopeLimiter_M1_DG
 

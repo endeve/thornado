@@ -31,9 +31,10 @@ MODULE EulerEquationsLimiterModule_DG
   IMPLICIT NONE
   PRIVATE
 
+  LOGICAL                               :: ApplyPositivityLimiter
   INTEGER                               :: nPoints
-  REAL(DP)                              :: BetaTVB = 50.0_DP
-  REAL(DP), PARAMETER                   :: BetaTVD = 2.00_DP
+  REAL(DP)                              :: BetaTVB
+  REAL(DP)                              :: BetaTVD
   REAL(DP), PARAMETER                   :: Tol_TVD = 1.0d-2
   REAL(DP), PARAMETER                   :: Tol_D = 1.0d-12
   REAL(DP), PARAMETER                   :: Tol_E = 1.0d-12
@@ -51,17 +52,38 @@ MODULE EulerEquationsLimiterModule_DG
 CONTAINS
 
 
-  SUBROUTINE InitializeLimiters_Euler_DG( BetaTVB_Option )
+  SUBROUTINE InitializeLimiters_Euler_DG &
+               ( BetaTVB_Option, BetaTVD_Option, ApplyPositivityLimiter_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: BetaTVB_Option
+    REAL(DP), INTENT(in), OPTIONAL :: BetaTVD_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: ApplyPositivityLimiter_Option
 
     INTEGER :: iNodeX1, iNodeX2, iNodeX3, iPoint, iNodeX
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
 
     ! --- Limiter Parameters ---
 
+    BetaTVB = 50.0_DP
     IF( PRESENT( BetaTVB_Option ) ) &
       BetaTVB = BetaTVB_Option
+
+    BetaTVD = 2.0d0
+    IF( PRESENT( BetaTVD_Option ) ) &
+      BetaTVD = BetaTVD_Option
+
+    ApplyPositivityLimiter = .TRUE.
+    IF( PRESENT( ApplyPositivityLimiter_Option ) ) &
+      ApplyPositivityLimiter = ApplyPositivityLimiter_Option
+
+    WRITE(*,*)
+    WRITE(*,'(A5,A)') '', 'InitializeLimiters_Euler_DG'
+    WRITE(*,*)
+    WRITE(*,'(A7,A10,ES8.2E2)') '', 'BetaTVB = ', BetaTVB
+    WRITE(*,'(A7,A10,ES8.2E2)') '', 'BetaTVD = ', BetaTVD
+    WRITE(*,'(A7,A25,L1)') &
+      '', 'ApplyPositivityLimiter = ', ApplyPositivityLimiter
+    WRITE(*,*)
 
     ! --- ---
 
@@ -315,6 +337,8 @@ CONTAINS
     REAL(DP), DIMENSION(1:nPF) :: uPF_A
 
     IF( nDOFX == 1 ) RETURN
+
+    IF( .NOT. ApplyPositivityLimiter ) RETURN
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)

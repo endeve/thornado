@@ -83,7 +83,8 @@ CONTAINS
       RadiationSolver_Option, FluidRiemannSolver_Option, &
       RadiationRiemannSolver_Option, FluidRadiationCoupling_Option, &
       EvolveFluid_Option, EvolveRadiation_Option, BetaTVB_Option, &
-      nStages_SSP_RK_Option, nStages_SI_RK_Option )
+      BetaTVD_Option, ApplyPositivityLimiter_Option, nStages_SSP_RK_Option, &
+      nStages_SI_RK_Option )
 
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: ProgramName_Option
     INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: nX_Option
@@ -117,6 +118,9 @@ CONTAINS
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveFluid_Option
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveRadiation_Option
     REAL(DP),               INTENT(in), OPTIONAL :: BetaTVB_Option
+    REAL(DP),               INTENT(in), OPTIONAL :: BetaTVD_Option
+    LOGICAL,                INTENT(in), OPTIONAL :: &
+      ApplyPositivityLimiter_Option
     INTEGER,                INTENT(in), OPTIONAL :: nStages_SSP_RK_Option
     INTEGER,                INTENT(in), OPTIONAL :: nStages_SI_RK_Option
 
@@ -317,13 +321,19 @@ CONTAINS
 
     CALL InitializeFluidEvolution &
            ( FluidSolver_Option = FluidSolver_Option, &
-             BetaTVB_Option = BetaTVB_Option )
+             BetaTVB_Option = BetaTVB_Option, &
+             BetaTVD_Option = BetaTVD_Option, &
+             ApplyPositivityLimiter_Option &
+               = ApplyPositivityLimiter_Option )
 
     ! --- Radiation Solver ---
 
     CALL InitializeRadiationEvolution &
            ( RadiationSolver_Option = RadiationSolver_Option, &
-             BetaTVB_Option = BetaTVB_Option )
+             BetaTVB_Option = BetaTVB_Option, &
+             BetaTVD_Option = BetaTVD_Option, &
+             ApplyPositivityLimiter_Option &
+               = ApplyPositivityLimiter_Option )
 
     ! --- Riemann Solvers ---
 
