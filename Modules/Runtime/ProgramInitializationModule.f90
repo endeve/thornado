@@ -309,7 +309,8 @@ CONTAINS
                = EquationOfState_Option, &
              EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
-             Gamma_IDEAL_Option = Gamma_IDEAL_Option )
+             Gamma_IDEAL_Option &
+               = Gamma_IDEAL_Option )
 
     ! --- Opacities ---
 
