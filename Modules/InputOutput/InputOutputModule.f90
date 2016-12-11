@@ -38,13 +38,29 @@ MODULE InputOutputModule
 CONTAINS
 
 
-  SUBROUTINE WriteFields1D( Time )
+  SUBROUTINE WriteFields1D &
+               ( Time, WriteFluidFields_Option, WriteRadiationFields_Option )
 
-    REAL(DP), INTENT(in) :: Time
+    REAL(DP), INTENT(in)           :: Time
+    LOGICAL,  INTENT(in), OPTIONAL :: WriteFluidFields_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: WriteRadiationFields_Option
 
-    CALL WriteFluidFields1D( Time )
+    LOGICAL :: WriteFluidFields
+    LOGICAL :: WriteRadiationFields
 
-    CALL WriteRadiationFields1D( Time )
+    WriteFluidFields = .TRUE.
+    IF( PRESENT( WriteFluidFields_Option ) ) &
+      WriteFluidFields = WriteFluidFields_Option
+
+    WriteRadiationFields = .TRUE.
+    IF( PRESENT( WriteRadiationFields_Option ) ) &
+      WriteRadiationFields = WriteRadiationFields_Option
+
+    IF( WriteFluidFields ) &
+      CALL WriteFluidFields1D( Time )
+
+    IF( WriteRadiationFields ) &
+      CALL WriteRadiationFields1D( Time )
 
     FileNumber = FileNumber + 1
 
