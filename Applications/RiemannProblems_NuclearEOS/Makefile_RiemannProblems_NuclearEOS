@@ -1,0 +1,36 @@
+include ../../../Build/Makefile_Build
+
+all: RiemannProblem1D_NuclearEOS
+
+RiemannProblem1D_NuclearEOS: \
+	$(thornado) RiemannProblemInitializationModule.o \
+	RiemannProblem1D_NuclearEOS.o
+	$(FLINKER) $(FLAGS) -o \
+	RiemannProblem1D_NuclearEOS_$(MACHINE) \
+	$(thornado) RiemannProblemInitializationModule.o \
+	RiemannProblem1D_NuclearEOS.o $(LIBRARIES)
+
+clean:
+	rm -f *.o *.mod *.ld
+
+clobber: clean
+	rm -f RiemannProblem1D_NuclearEOS_$(MACHINE)
+
+RiemannProblem1D_NuclearEOS.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramInitializationModule.o \
+  RiemannProblemInitializationModule.o \
+  TimeSteppingModule.o \
+  RiemannProblem1D_NuclearEOS.f90
+
+RiemannProblemInitializationModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  EulerEquationsUtilitiesModule.o \
+  RiemannProblemInitializationModule.f90
