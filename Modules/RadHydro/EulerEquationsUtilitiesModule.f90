@@ -5,8 +5,8 @@ MODULE EulerEquationsUtilitiesModule
   USE GeometryFieldsModule, ONLY: &
     a, b, c, dlnadX1, dlnbdX1, dlncdX2
   USE FluidFieldsModule, ONLY: &
-    uCF, nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
 
   IMPLICIT NONE
   PRIVATE
@@ -77,87 +77,58 @@ CONTAINS
   END FUNCTION Primitive
 
 
-  SUBROUTINE ComputeConserved( iX_Begin, iX_End )
+  SUBROUTINE ComputeConserved( uPF, uCF )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    REAL(DP), DIMENSION(:,:), INTENT(in)  :: uPF
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: uCF
 
-    INTEGER :: iX1, iX2, iX3
+    uCF(:,iCF_D) &
+      = uPF(:,iPF_D)
 
-    DO iX3 = iX_Begin(3), iX_End(3)
-      DO iX2 = iX_Begin(2), iX_End(2)
-        DO iX1 = iX_Begin(1), iX_End(1)
+    uCF(:,iCF_S1) &
+      = uCF(:,iCF_D) * uPF(:,iPF_V1)
 
-          uCF(:,iX1,iX2,iX3,iCF_D) &
-            = uPF(:,iX1,iX2,iX3,iPF_D)
+    uCF(:,iCF_S2) &
+      = uCF(:,iCF_D) * uPF(:,iPF_V2)
 
-          uCF(:,iX1,iX2,iX3,iCF_S1) &
-            = uCF(:,iX1,iX2,iX3,iCF_D) &
-                * uPF(:,iX1,iX2,iX3,iPF_V1)
+    uCF(:,iCF_S3) &
+      = uCF(:,iCF_D) * uPF(:,iPF_V3)
 
-          uCF(:,iX1,iX2,iX3,iCF_S2) &
-            = uCF(:,iX1,iX2,iX3,iCF_D) &
-                * uPF(:,iX1,iX2,iX3,iPF_V2)
+    uCF(:,iCF_E) &
+      = uPF(:,iPF_E) &
+        + 0.5_DP * uPF(:,iPF_D) &
+            * ( uPF(:,iPF_V1)**2 + uPF(:,iPF_V2)**2 + uPF(:,iPF_V3)**2 )
 
-          uCF(:,iX1,iX2,iX3,iCF_S3) &
-            = uCF(:,iX1,iX2,iX3,iCF_D) &
-                * uPF(:,iX1,iX2,iX3,iPF_V3)
-
-          uCF(:,iX1,iX2,iX3,iCF_E) &
-            = uPF(:,iX1,iX2,iX3,iPF_E) &
-                + 0.5_DP * uPF(:,iX1,iX2,iX3,iPF_D) &
-                    * ( uPF(:,iX1,iX2,iX3,iPF_V1)**2 &
-                        + uPF(:,iX1,iX2,iX3,iPF_V2)**2 &
-                        + uPF(:,iX1,iX2,iX3,iPF_V3)**2 )
-
-          uCF(:,iX1,iX2,iX3,iCF_Ne) &
-            = uPF(:,iX1,iX2,iX3,iPF_Ne)
-
-        END DO
-      END DO
-    END DO
+    uCF(:,iCF_Ne) &
+      = uPF(:,iPF_Ne)
 
   END SUBROUTINE ComputeConserved
 
 
-  SUBROUTINE ComputePrimitive( iX_Begin, iX_End )
+  SUBROUTINE ComputePrimitive( uCF, uPF )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    REAL(DP), DIMENSION(:,:), INTENT(in)  :: uCF
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: uPF
 
-    INTEGER :: iX1, iX2, iX3
+    uPF(:,iPF_D) &
+      = uCF(:,iCF_D)
 
-    DO iX3 = iX_Begin(3), iX_End(3)
-      DO iX2 = iX_Begin(2), iX_End(2)
-        DO iX1 = iX_Begin(1), iX_End(1)
+    uPF(:,iPF_V1) &
+      = uCF(:,iCF_S1) / uCF(:,iCF_D)
 
-          uPF(:,iX1,iX2,iX3,iPF_D) &
-            = uCF(:,iX1,iX2,iX3,iCF_D)
+    uPF(:,iPF_V2) &
+      = uCF(:,iCF_S2) / uCF(:,iCF_D)
 
-          uPF(:,iX1,iX2,iX3,iPF_V1) &
-            = uCF(:,iX1,iX2,iX3,iCF_S1) &
-                / uCF(:,iX1,iX2,iX3,iCF_D)
+    uPF(:,iPF_V3) &
+      = uCF(:,iCF_S3) / uCF(:,iCF_D)
 
-          uPF(:,iX1,iX2,iX3,iPF_V2) &
-            = uCF(:,iX1,iX2,iX3,iCF_S2) &
-                / uCF(:,iX1,iX2,iX3,iCF_D)
+    uPF(:,iPF_E) &
+      = uCF(:,iCF_E) &
+        - 0.5_DP * ( uCF(:,iCF_S1)**2 + uCF(:,iCF_S2)**2 &
+                     + uCF(:,iCF_S3)**2 ) / uCF(:,iCF_D)
 
-          uPF(:,iX1,iX2,iX3,iPF_V3) &
-            = uCF(:,iX1,iX2,iX3,iCF_S3) &
-                / uCF(:,iX1,iX2,iX3,iCF_D)
-
-          uPF(:,iX1,iX2,iX3,iPF_E) &
-            = uCF(:,iX1,iX2,iX3,iCF_E) &
-                - 0.5_DP &
-                    * ( uCF(:,iX1,iX2,iX3,iCF_S1)**2 &
-                        + uCF(:,iX1,iX2,iX3,iCF_S2)**2 &
-                        + uCF(:,iX1,iX2,iX3,iCF_S3)**2 ) &
-                      / uCF(:,iX1,iX2,iX3,iCF_D)
-
-          uPF(:,iX1,iX2,iX3,iPF_Ne) &
-            = uCF(:,iX1,iX2,iX3,iCF_Ne)
-
-        END DO
-      END DO
-    END DO
+    uPF(:,iPF_Ne) &
+      = uCF(:,iCF_Ne)
 
   END SUBROUTINE ComputePrimitive
 
@@ -173,89 +144,99 @@ CONTAINS
   END FUNCTION Eigenvalues
 
 
-  SUBROUTINE ComputeEigenvectors_L( V1, V2, V3, E, P, Cs, L1 )
+  SUBROUTINE ComputeEigenvectors_L( V1, V2, V3, E, P, Cs, L1, Componentwise )
 
     REAL(DP),                     INTENT(in)  :: V1, V2, V3, E, P, Cs
     REAL(DP), DIMENSION(nCF,nCF), INTENT(out) :: L1
+    LOGICAL,                      INTENT(in)  :: Componentwise
 
     REAL(DP) :: g, k, h, M1, M2, M3
 
-!!$    L1(:,1) = [ 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-!!$    L1(:,2) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-!!$    L1(:,3) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-!!$    L1(:,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
-!!$    L1(:,5) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
-!!$    L1(:,6) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
-!!$
-!!$    RETURN
+    IF( Componentwise )THEN
 
-    g = P / ( E * Cs )
-    k = 0.5_DP * ( V1**2 + V2**2 + V3**2 )
-    h = g * k / Cs
+      L1(:,1) = [ 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+      L1(:,2) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+      L1(:,3) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+      L1(:,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
+      L1(:,5) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
+      L1(:,6) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
 
-    M1 = V1 / Cs; M2 = V2 / Cs; M3 = V3 / Cs
+    ELSE
 
-    L1(:,1) &
-      = [ 0.5_DP * ( h + M1 ), &
-          1.0_DP - h, &
-          0.5_DP * ( h - M1 ), &
-          V2, - V3, 0.0_DP ]
+      g = P / ( E * Cs )
+      k = 0.5_DP * ( V1**2 + V2**2 + V3**2 )
+      h = g * k / Cs
 
-    L1(:,2) &
-      = [ - 0.5_DP * ( g * M1 + 1.0_DP / Cs ), &
-                       g * M1, &
-          - 0.5_DP * ( g * M1 - 1.0_DP / Cs ), &
+      M1 = V1 / Cs; M2 = V2 / Cs; M3 = V3 / Cs
+
+      L1(:,1) &
+        = [ 0.5_DP * ( h + M1 ), &
+            1.0_DP - h, &
+            0.5_DP * ( h - M1 ), &
+            V2, - V3, 0.0_DP ]
+
+      L1(:,2) &
+        = [ - 0.5_DP * ( g * M1 + 1.0_DP / Cs ), &
+                         g * M1, &
+            - 0.5_DP * ( g * M1 - 1.0_DP / Cs ), &
+              0.0_DP, 0.0_DP, 0.0_DP ]
+
+      L1(:,3) &
+        = [ - 0.5_DP * g * M2, &
+                       g * M2, &
+            - 0.5_DP * g * M2, &
+            - 1.0_DP, 0.0_DP, 0.0_DP ]
+
+      L1(:,4) &
+        = [ - 0.5_DP * g * M3, &
+                       g * M3, &
+            - 0.5_DP * g * M3, &
+              0.0_DP, 1.0_DP, 0.0_DP ]
+
+      L1(:,5) &
+        = [ 0.5_DP * g / Cs, &
+                   - g / Cs, &
+            0.5_DP * g / Cs, &
             0.0_DP, 0.0_DP, 0.0_DP ]
 
-    L1(:,3) &
-      = [ - 0.5_DP * g * M2, &
-                     g * M2, &
-          - 0.5_DP * g * M2, &
-          - 1.0_DP, 0.0_DP, 0.0_DP ]
+      L1(:,6) &
+        = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
 
-    L1(:,4) &
-      = [ - 0.5_DP * g * M3, &
-                     g * M3, &
-          - 0.5_DP * g * M3, &
-            0.0_DP, 1.0_DP, 0.0_DP ]
-
-    L1(:,5) &
-      = [ 0.5_DP * g / Cs, &
-                 - g / Cs, &
-          0.5_DP * g / Cs, &
-          0.0_DP, 0.0_DP, 0.0_DP ]
-
-    L1(:,6) &
-      = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
+    END IF
 
   END SUBROUTINE ComputeEigenvectors_L
 
 
-  SUBROUTINE ComputeEigenvectors_R( V1, V2, V3, E, P, Cs, R1 )
+  SUBROUTINE ComputeEigenvectors_R( V1, V2, V3, E, P, Cs, R1, Componentwise )
 
     REAL(DP),                     INTENT(in)  :: V1, V2, V3, E, P, Cs
     REAL(DP), DIMENSION(nCF,nCF), INTENT(out) :: R1
+    LOGICAL,                      INTENT(in)  :: Componentwise
 
     REAL(DP) :: k, h
 
-!!$    R1(:,1) = [ 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-!!$    R1(:,2) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-!!$    R1(:,3) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-!!$    R1(:,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
-!!$    R1(:,5) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
-!!$    R1(:,6) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
-!!$
-!!$    RETURN
+    IF( Componentwise )THEN
 
-    k = 0.5_DP * ( V1**2 + V2**2 + V3**2 )
-    h = Cs**2 * ( E / P ) + k
+      R1(:,1) = [ 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+      R1(:,2) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+      R1(:,3) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+      R1(:,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
+      R1(:,5) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
+      R1(:,6) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
 
-    R1(:,1) = [ 1.0_DP, V1 - Cs,       V2,     V3, h - Cs * V1, 0.0_DP ]
-    R1(:,2) = [ 1.0_DP,      V1,       V2,     V3,           k, 0.0_DP ]
-    R1(:,3) = [ 1.0_DP, V1 + Cs,       V2,     V3, h + Cs * V1, 0.0_DP ]
-    R1(:,4) = [ 0.0_DP,  0.0_DP, - 1.0_DP, 0.0_DP,        - V2, 0.0_DP ]
-    R1(:,5) = [ 0.0_DP,  0.0_DP,   0.0_DP, 1.0_DP,          V3, 0.0_DP ]
-    R1(:,6) = [ 0.0_DP,  0.0_DP,   0.0_DP, 0.0_DP,      0.0_DP, 1.0_DP ]
+    ELSE
+
+      k = 0.5_DP * ( V1**2 + V2**2 + V3**2 )
+      h = Cs**2 * ( E / P ) + k
+
+      R1(:,1) = [ 1.0_DP, V1 - Cs,       V2,     V3, h - Cs * V1, 0.0_DP ]
+      R1(:,2) = [ 1.0_DP,      V1,       V2,     V3,           k, 0.0_DP ]
+      R1(:,3) = [ 1.0_DP, V1 + Cs,       V2,     V3, h + Cs * V1, 0.0_DP ]
+      R1(:,4) = [ 0.0_DP,  0.0_DP, - 1.0_DP, 0.0_DP,        - V2, 0.0_DP ]
+      R1(:,5) = [ 0.0_DP,  0.0_DP,   0.0_DP, 1.0_DP,          V3, 0.0_DP ]
+      R1(:,6) = [ 0.0_DP,  0.0_DP,   0.0_DP, 0.0_DP,      0.0_DP, 1.0_DP ]
+
+    END IF
 
   END SUBROUTINE ComputeEigenvectors_R
 

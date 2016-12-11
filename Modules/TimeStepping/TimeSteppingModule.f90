@@ -12,15 +12,17 @@ MODULE TimeSteppingModule
   USE GeometryFieldsModule, ONLY: &
     a, b, c
   USE FluidFieldsModule, ONLY: &
-    uCF, rhsCF, nCF, nPF, nAF, iPF_V1, iPF_V2, iPF_V3, iAF_Cs
+    uCF, rhsCF, nCF, &
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
+    uAF, iAF_P, iAF_T, iAF_Ye, iAF_E, iAF_Gm, iAF_Cs, nAF
   USE RadiationFieldsModule, ONLY: &
     uCR, rhsCR, nCR, nSpecies
   USE EquationOfStateModule, ONLY: &
-    Auxiliary_Fluid
+    ComputeAuxiliary_Fluid
   USE InputOutputModule, ONLY: &
     WriteFields1D
   USE EulerEquationsUtilitiesModule, ONLY: &
-    Primitive, &
+    ComputePrimitive, &
     Eigenvalues
   USE FluidEvolutionModule, ONLY: &
     ComputeRHS_Fluid, &
@@ -181,7 +183,9 @@ CONTAINS
     t       = t_begin
     t_write = dt_write
 
-    CALL WriteFields1D( Time = t )
+    CALL WriteFields1D &
+           ( Time = t, WriteFluidFields_Option = EvolveFluid, &
+             WriteRadiationFields_Option = EvolveRadiation )
 
     CALL CPU_TIME( WallTime(0) )
 
@@ -226,7 +230,9 @@ CONTAINS
 
       IF( WriteOutput )THEN
 
-        CALL WriteFields1D( Time = t )
+        CALL WriteFields1D &
+               ( Time = t, WriteFluidFields_Option = EvolveFluid, &
+                 WriteRadiationFields_Option = EvolveRadiation )
 
         WriteOutput = .FALSE.
 
@@ -248,7 +254,9 @@ CONTAINS
       '', '  wt(PLM) = ', wtP / (WallTime(1)-WallTime(0))
     WRITE(*,*)
 
-    CALL WriteFields1D( Time = t )
+    CALL WriteFields1D &
+           ( Time = t, WriteFluidFields_Option = EvolveFluid, &
+             WriteRadiationFields_Option = EvolveRadiation )
 
     END ASSOCIATE ! U
 
@@ -288,7 +296,6 @@ CONTAINS
     INTEGER                    :: iX1, iX2, iX3, iNodeX
     REAL(DP)                   :: CFL, dt_X1, dt_X2, dt_X3
     REAL(DP), DIMENSION(1:nPF) :: uPF_N
-    REAL(DP), DIMENSION(1:nAF) :: uAF_N
 
     dt = HUGE( 1.0_DP )
 
@@ -304,24 +311,37 @@ CONTAINS
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
+
+          CALL ComputePrimitive &
+                 ( uCF(:,iX1,iX2,iX3,1:nCF), uPF(:,iX1,iX2,iX3,1:nPF) )
+
+          CALL ComputeAuxiliary_Fluid &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E ), &
+                   uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P ), &
+                   uAF(:,iX1,iX2,iX3,iAF_T ), uAF(:,iX1,iX2,iX3,iAF_Ye), &
+                   uAF(:,iX1,iX2,iX3,iAF_E ), uAF(:,iX1,iX2,iX3,iAF_Gm), &
+                   uAF(:,iX1,iX2,iX3,iAF_Cs) )
+
           DO iNodeX = 1, nDOFX
-
-            uPF_N = Primitive( uCF(iNodeX,iX1,ix2,ix3,1:nCF) )
-
-            uAF_N = Auxiliary_Fluid( uPF_N )
 
             dt_X1 &
               = CFL * dX1(iX1) &
-                   / MAXVAL(ABS(Eigenvalues( uPF_N(iPF_V1), uAF_N(iAF_Cs) )))
+                   / MAXVAL(ABS(Eigenvalues &
+                     ( uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                       uAF(iNodeX,iX1,iX2,iX3,iAF_Cs) )))
 
             dt_X2 &
               = CFL * dX2(iX2) * a([X1(iX1), X2(iX2), X3(iX3)]) &
-                    / MAXVAL(ABS(Eigenvalues( uPF_N(iPF_V2), uAF_N(iAF_Cs) )))
+                    / MAXVAL(ABS(Eigenvalues &
+                      ( uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                        uAF(iNodeX,iX1,iX2,iX3,iAF_Cs) )))
 
             dt_X3 &
               = CFL * dX3(iX3) * b([X1(iX1), X2(iX2), X3(iX3)]) &
                                * c([X1(iX1), X2(iX2), X3(iX3)]) &
-                   / MAXVAL(ABS(Eigenvalues( uPF_N(iPF_V3), uAF_N(iAF_Cs) )))
+                   / MAXVAL(ABS(Eigenvalues &
+                     ( uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                       uAF(iNodeX,iX1,iX2,iX3,iAF_Cs) )))
 
             dt = MIN( dt, dt_x1, dt_X2, dt_X3 )
 

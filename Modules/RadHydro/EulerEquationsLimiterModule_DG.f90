@@ -31,6 +31,8 @@ MODULE EulerEquationsLimiterModule_DG
   IMPLICIT NONE
   PRIVATE
 
+  LOGICAL,  PARAMETER                   :: Debug = .FALSE.
+  LOGICAL,  PARAMETER                   :: Componentwise = .FALSE.
   LOGICAL                               :: ApplyPositivityLimiter
   INTEGER                               :: nPoints
   REAL(DP)                              :: BetaTVB
@@ -207,20 +209,27 @@ CONTAINS
 
   SUBROUTINE ApplySlopeLimiter_Euler_DG
 
-    LOGICAL                  :: LimitPolynomial
-    INTEGER                  :: iX1, iX2, iX3, iCF, i
-    REAL(DP), DIMENSION(nCF) :: uCF_A, uCF_A_P, uCF_A_N
+    LOGICAL :: LimitPolynomial
+    INTEGER :: iX1, iX2, iX3, iCF, i
+    REAL(DP), DIMENSION(nCF) :: uCF_A_P, uCF_A_N
     REAL(DP), DIMENSION(nPF) :: uPF_A
     REAL(DP), DIMENSION(nAF) :: uAF_A
     REAL(DP), DIMENSION(nCF,nCF) :: L1, R1
     REAL(DP), DIMENSION(nDOFX,nCF) :: uCF_M_P, uCF_M_N
-    REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE :: &
-      uCF_1, uCF_1_T
+    REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE :: uCF_A, uCF_X1, uCF_X1_T
 
     IF( nDOFX == 1 ) RETURN
 
-    ALLOCATE( uCF_1  (nX(1),nX(2),nX(3),nCF), &
-              uCF_1_T(nX(1),nX(2),nX(3),nCF) )
+    IF( Debug )THEN
+      WRITE(*,*)
+      WRITE(*,'(A6,A)') '', 'ApplySlopeLimiter_Euler_DG'
+      WRITE(*,*)
+    END IF
+
+    ALLOCATE &
+      ( uCF_A(1:nCF,1:nX(1),1:nX(2),1:nX(3)), &
+        uCF_X1  (1:nX(1),1:nX(2),1:nX(3),1:nCF), &
+        uCF_X1_T(1:nX(1),1:nX(2),1:nX(3),1:nCF) )
 
     ASSOCIATE( dX1 => MeshX(1) % Width(1:nX(1)) )
 
@@ -243,28 +252,37 @@ CONTAINS
 
           ! --- Cell-Averaged Quantities ---
 
-          uCF_A = uCF_M(1,:)
-          uPF_A = Primitive( uCF_A )
-          uAF_A = Auxiliary_Fluid( uPF_A )
+          uCF_A(1:nCF,iX1,iX2,iX3) = uCF_M  (1,1:nCF)
+          uCF_A_P(1:nCF)           = uCF_M_P(1,1:nCF)
+          uCF_A_N(1:nCF)           = uCF_M_N(1,1:nCF)
 
-          uCF_A_P = uCF_M_P(1,:)
-          uCF_A_N = uCF_M_N(1,:)
+          uPF_A(1:nPF) = Primitive      ( uCF_A(1:nCF,iX1,iX2,iX3) )
+          uAF_A(1:nAF) = Auxiliary_Fluid( uPF_A(1:nPF) )
 
           ! --- Slope From Modal Representation ---
 
           CALL ComputeEigenvectors_L &
                  ( uPF_A(iPF_V1), uPF_A(iPF_V2), uPF_A(iPF_V3), &
-                   uPF_A(iPF_E), uAF_A(iAF_P), uAF_A(iAF_Cs), L1 )
+                   uPF_A(iPF_E ), uAF_A(iAF_P ), uAF_A(iAF_Cs), &
+                   L1, Componentwise )
 
-          uCF_1(iX1,iX2,iX3,1:nCF) &
+          uCF_X1(iX1,iX2,iX3,1:nCF) &
             = MATMUL( L1, uCF_M(2,1:nCF) ) ! X1-Dimension
 
-          uCF_1_T(iX1,iX2,iX2,1:nCF) &
+          uCF_X1_T(iX1,iX2,iX2,1:nCF) &
             = MinModB &
-                ( uCF_1(iX1,iX2,iX3,1:nCF), &
-                  BetaTVD * MATMUL( L1, ( uCF_A - uCF_A_P ) ), &
-                  BetaTVD * MATMUL( L1, ( uCF_A_N - uCF_A ) ), &
+                ( uCF_X1(iX1,iX2,iX3,1:nCF), &
+                  BetaTVD * MATMUL( L1,(uCF_A(1:nCF,iX1,iX2,iX3)-uCF_A_P) ), &
+                  BetaTVD * MATMUL( L1,(uCF_A_N-uCF_A(1:nCF,iX1,iX2,iX3)) ), &
                   dX1(iX1), BetaTVB )
+
+!!$          IF( Debug )THEN
+!!$
+!!$            PRINT*
+!!$            PRINT*, ""
+!!$            PRINT*
+!!$
+!!$          END IF
 
         END DO
       END DO
@@ -278,10 +296,22 @@ CONTAINS
 
           LimitPolynomial = .FALSE.
           LimitPolynomial &
-            = ANY( ABS( uCF_1(iX1,iX2,iX3,:) &
-                          - uCF_1_T(iX1,iX2,iX3,:) ) > Tol_TVD )
+            = ANY( ABS( uCF_X1(iX1,iX2,iX3,1:nCF) &
+                        - uCF_X1_T(iX1,iX2,iX3,1:nCF) ) &
+                   > Tol_TVD * ABS( uCF_A(1:nCF,iX1,iX2,iX3) ) )
 
           IF( LimitPolynomial )THEN
+
+            IF( Debug )THEN
+
+              PRINT*
+              PRINT*, "iX1, iX2, iX3 = ", iX1, iX2, iX3
+              PRINT*, "  uCF_X1    = ", uCF_X1(iX1,iX2,iX3,1:nCF)
+              PRINT*, "  uCF_X1_T  = ", uCF_X1_T(iX1,iX2,iX3,1:nCF)
+              PRINT*, "  Tol*uCF_A = ", Tol_TVD * uCF_A(1:nCF,iX1,iX2,iX3)
+              PRINT*
+
+            END IF
 
             DO iCF = 1, nCF
 
@@ -292,21 +322,21 @@ CONTAINS
 
             ! --- Cell-Averaged Quantities ---
 
-            uCF_A = uCF_M(1,:)
-            uPF_A = Primitive( uCF_A )
-            uAF_A = Auxiliary_Fluid( uPF_A )
+            uPF_A(1:nPF) = Primitive      ( uCF_A(1:nCF,iX1,iX2,iX3) )
+            uAF_A(1:nAF) = Auxiliary_Fluid( uPF_A(1:nPF) )
 
             ! --- Back to Conserved Variables ---
 
             CALL ComputeEigenvectors_R &
                    ( uPF_A(iPF_V1), uPF_A(iPF_V2), uPF_A(iPF_V3), &
-                     uPF_A(iPF_E), uAF_A(iAF_P), uAF_A(iAF_Cs), R1 )
+                     uPF_A(iPF_E ), uAF_A(iAF_P ), uAF_A(iAF_Cs), &
+                     R1, Componentwise )
 
             uCF_M(:,1:nCF) = 0.0_DP
             uCF_M(1,1:nCF) & ! -- Cell-Average
-              = uCF_A
+              = uCF_A(1:nCF,iX1,iX2,iX3)
             uCF_M(2,1:nCF) & ! -- Slope X1-Direction
-              = MATMUL( R1, uCF_1_T(iX1,iX2,iX3,1:nCF) )
+              = MATMUL( R1, uCF_X1_T(iX1,iX2,iX3,1:nCF) )
 
             ! --- Back to Nodal Representation ---
 
@@ -323,7 +353,7 @@ CONTAINS
       END DO
     END DO
 
-    DEALLOCATE( uCF_1, uCF_1_T )
+    DEALLOCATE( uCF_A, uCF_X1, uCF_X1_T )
 
   END SUBROUTINE ApplySlopeLimiter_Euler_DG
 
@@ -382,6 +412,15 @@ CONTAINS
 
             IF( Theta < 1.0_DP )THEN
 
+              IF( Debug )THEN
+                PRINT*
+                PRINT*, "iX1,iX2,iX3 = ", iX1, iX2, iX3
+                PRINT*, "Theta_1 = ", Theta
+                PRINT*, " D_K = ", uCF_M(1,iCF_D)
+                PRINT*, " D_p = ", uCF_P(:,iCF_D)
+                PRINT*
+              END IF
+
               uCF_M(2:nDOFX,iCF_D) &
                 = Theta * uCF_M(2:nDOFX,iCF_D)
 
@@ -434,6 +473,13 @@ CONTAINS
               END DO
 
               IF( Theta < 1.0_DP )THEN
+
+                IF( Debug )THEN
+                  PRINT*
+                  PRINT*, "iX1,iX2,iX3 = ", iX1, iX2, iX3
+                  PRINT*, "Theta_2 = ", Theta
+                  PRINT*
+                END IF
 
                 DO iCF = 1, nCF
                   uCF_M(2:nDOFX,iCF) &

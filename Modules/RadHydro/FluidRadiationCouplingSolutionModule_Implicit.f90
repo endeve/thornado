@@ -17,8 +17,9 @@ MODULE FluidRadiationCouplingSolutionModule_Implicit
     WriteVector, &
     WriteMatrix
   USE FluidFieldsModule, ONLY: &
-    iPF_D, iPF_E, iPF_Ne, nPF, &
-    iAF_T, iAF_E, iAF_Ye, iAF_Me, iAF_Mp, iAF_Mn, nAF
+    uPF, iPF_D, iPF_E, iPF_Ne, nPF, &
+    uAF, iAF_P, iAF_T, iAF_Ye, iAF_S, &
+    iAF_E, iAF_Me, iAF_Mp, iAF_Mn, iAF_Gm, nAF
   USE RadiationFieldsModule, ONLY: &
     iPR_D, iPR_I1, iPR_I2, iPR_I3, nPR
   USE MomentEquationsUtilitiesModule, ONLY: &
@@ -73,6 +74,8 @@ CONTAINS
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
     LOGICAL,               INTENT(in), OPTIONAL :: EvolveFluid_Option
 
+    INTEGER :: iX1, iX2, iX3
+
     IF( PRESENT( EvolveFluid_Option ) ) &
       EvolveFluid = EvolveFluid_Option
 
@@ -86,7 +89,25 @@ CONTAINS
 
       CALL FinalizeFluidRadiationCoupling
 
-      CALL ApplyEquationOfState
+      DO iX3 = iX_Begin(3), iX_End(3)
+        DO iX2 = iX_Begin(2), iX_End(2)
+          DO iX1 = iX_Begin(1), iX_End(1)
+
+            CALL ApplyEquationOfState &
+              ( uPF(1:nDOFX,iX1,iX2,iX3,iPF_D ),  &
+                uAF(1:nDOFX,iX1,iX2,iX3,iAF_T ),  &
+                uAF(1:nDOFX,iX1,iX2,iX3,iAF_Ye), &
+                uAF(1:nDOFX,iX1,iX2,iX3,iAF_P ),  &
+                uAF(1:nDOFX,iX1,iX2,iX3,iAF_S ),  &
+                uAF(1:nDOFX,iX1,iX2,iX3,iAF_E ),  &
+                uAF(1:nDOFX,iX1,iX2,iX3,iAF_Me), &
+                uAF(1:nDOFX,iX1,iX2,iX3,iAF_Mp), &
+                uAF(1:nDOFX,iX1,iX2,iX3,iAF_Mn), &
+                uAF(1:nDOFX,iX1,iX2,iX3,iAF_Gm) )
+
+          END DO
+        END DO
+      END DO
 
     ELSE
 

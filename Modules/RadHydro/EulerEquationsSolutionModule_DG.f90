@@ -16,9 +16,9 @@ MODULE EulerEquationsSolutionModule_DG
     a, b
   USE FluidFieldsModule, ONLY: &
     rhsCF, &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, nCF, iAF_P, &
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, nCF, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
-    uAF, iAF_P, iAF_Gm, iAF_Cs, nAF
+    uAF, iAF_P, iAF_T, iAF_Ye, iAF_E, iAF_Gm, iAF_Cs, nAF
   USE EquationOfStateModule, ONLY: &
     ComputeAuxiliary_Fluid, &
     Auxiliary_Fluid
@@ -47,9 +47,25 @@ CONTAINS
 
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
 
-    CALL ComputePrimitive( iX_Begin, iX_End )
+    INTEGER :: iX1, iX2, iX3
 
-    CALL ComputeAuxiliary_Fluid( iX_Begin, iX_End )
+    DO iX3 = iX_Begin(3), iX_End(3)
+      DO iX2 = iX_Begin(2), iX_End(2)
+        DO iX1 = iX_Begin(1), iX_End(1)
+
+          CALL ComputePrimitive &
+                 ( uCF(:,iX1,iX2,iX3,1:nCF), uPF(:,iX1,iX2,iX3,1:nPF) )
+
+          CALL ComputeAuxiliary_Fluid &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uPF(:,iX1,iX2,iX3,iPF_E),  &
+                   uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P),  &
+                   uAF(:,iX1,iX2,iX3,iAF_T),  uAF(:,iX1,iX2,iX3,iAF_Ye), &
+                   uAF(:,iX1,iX2,iX3,iAF_E),  uAF(:,iX1,iX2,iX3,iAF_Gm), &
+                   uAF(:,iX1,iX2,iX3,iAF_Cs) )
+
+        END DO
+      END DO
+    END DO
 
     CALL ComputeRHS_Euler_DG_X1( iX_Begin, iX_End )
 

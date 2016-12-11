@@ -1,5 +1,18 @@
+EquationOfStateModule_IDEAL.o: \
+  KindModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_IDEAL.f90
+
+EquationOfStateModule_TABLE.o: \
+  KindModule.o \
+  UnitsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_TABLE.f90
+
 EquationOfStateModule.o: \
   KindModule.o \
+  EquationOfStateModule_IDEAL.o \
+  EquationOfStateModule_TABLE.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
