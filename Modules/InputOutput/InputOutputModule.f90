@@ -14,8 +14,8 @@ MODULE InputOutputModule
     MeshX, &
     MeshE
   USE FluidFieldsModule, ONLY: &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, &
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, &
          iAF_Me, iAF_Mp, iAF_Mn, iAF_Gm, iAF_Cs
   USE RadiationFieldsModule, ONLY: &
@@ -97,6 +97,8 @@ CONTAINS
         / U % MomentumDensityUnit, &
       FluidField1D( uCF(:,1:nX(1),1,1,iCF_E ), nX(1) ) &
         / U % EnergyDensityUnit, &
+      FluidField1D( uCF(:,1:nX(1),1,1,iCF_Ne), nX(1) ) &
+        / U % ParticleDensityUnit, &
       FluidField1D( uPF(:,1:nX(1),1,1,iPF_D ), nX(1) ) &
         / U % MassDensityUnit, &
       FluidField1D( uPF(:,1:nX(1),1,1,iPF_V1), nX(1) ) &
@@ -107,6 +109,8 @@ CONTAINS
         / U % VelocityUnit, &
       FluidField1D( uPF(:,1:nX(1),1,1,iPF_E ), nX(1) ) &
         / U % EnergyDensityUnit, &
+      FluidField1D( uPF(:,1:nX(1),1,1,iPF_Ne), nX(1) ) &
+        / U % ParticleDensityUnit, &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_P ), nX(1) ) &
         / U % PressureUnit, &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_T ), nX(1) ) &
