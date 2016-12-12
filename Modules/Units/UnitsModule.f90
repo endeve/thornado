@@ -63,6 +63,7 @@ MODULE UnitsModule
     DisplayLabel_Time            = 'ms', &
     DisplayLabel_Mass            = 'M_sun', &
     DisplayLabel_MassDensity     = 'g/cm^3', &
+    DisplayLabel_ParticleDensity = '1/cm^3', &
     DisplayLabel_Velocity        = 'km/s', &
     DisplayLabel_Momentum        = 'g cm/s', &
     DisplayLabel_MomentumDensity = 'g/cm^2/s', &
@@ -76,6 +77,7 @@ MODULE UnitsModule
     DisplayUnit_Time            = Millisecond, &
     DisplayUnit_Mass            = SolarMass, &
     DisplayUnit_MassDensity     = Gram / Centimeter**3, &
+    DisplayUnit_ParticleDensity = 1.0_DP / Centimeter**3, &
     DisplayUnit_Velocity        = Kilometer / Second, &
     DisplayUnit_Momentum        = Gram * Centimeter / Second, &
     DisplayUnit_MomentumDensity = Gram / Centimeter**2 / Second, &
@@ -92,6 +94,7 @@ MODULE UnitsModule
       TimeLabel            = DisplayLabel_Null, &
       MassLabel            = DisplayLabel_Null, &
       MassDensityLabel     = DisplayLabel_Null, &
+      ParticleDensityLabel = DisplayLabel_Null, &
       VelocityLabel        = DisplayLabel_Null, &
       MomentumLabel        = DisplayLabel_Null, &
       MomentumDensityLabel = DisplayLabel_Null, &
@@ -104,6 +107,7 @@ MODULE UnitsModule
       TimeUnit            = 1.0_DP, &
       MassUnit            = 1.0_DP, &
       MassDensityUnit     = 1.0_DP, &
+      ParticleDensityUnit = 1.0_DP, &
       VelocityUnit        = 1.0_DP, &
       MomentumUnit        = 1.0_DP, &
       MomentumDensityUnit = 1.0_DP, &
@@ -129,6 +133,7 @@ CONTAINS
     UnitsDisplay % TimeLabel            = DisplayLabel_Time
     UnitsDisplay % MassLabel            = DisplayLabel_Mass
     UnitsDisplay % MassDensityLabel     = DisplayLabel_MassDensity
+    UnitsDisplay % ParticleDensityLabel = DisplayLabel_ParticleDensity
     UnitsDisplay % VelocityLabel        = DisplayLabel_Velocity
     UnitsDisplay % MomentumLabel        = DisplayLabel_Momentum
     UnitsDisplay % MomentumDensityLabel = DisplayLabel_MomentumDensity
@@ -141,6 +146,7 @@ CONTAINS
     UnitsDisplay % TimeUnit            = DisplayUnit_Time
     UnitsDisplay % MassUnit            = DisplayUnit_Mass
     UnitsDisplay % MassDensityUnit     = DisplayUnit_MassDensity
+    UnitsDisplay % ParticleDensityUnit = DisplayUnit_ParticleDensity
     UnitsDisplay % VelocityUnit        = DisplayUnit_Velocity
     UnitsDisplay % MomentumUnit        = DisplayUnit_Momentum
     UnitsDisplay % MomentumDensityUnit = DisplayUnit_MomentumDensity
@@ -172,6 +178,9 @@ CONTAINS
     WRITE(*,'(A7,A24,A)') &
       '', 'Mass Density Units: ', &
       TRIM( UnitsDisplay % MassDensityLabel )
+    WRITE(*,'(A7,A24,A)') &
+      '', 'Particle Density Units: ', &
+      TRIM( UnitsDisplay % ParticleDensityLabel )
     WRITE(*,'(A7,A24,A)') &
       '', 'Velocity Units: ', &
       TRIM( UnitsDisplay % VelocityLabel )
