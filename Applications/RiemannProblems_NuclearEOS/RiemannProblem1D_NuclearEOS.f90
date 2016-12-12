@@ -23,7 +23,7 @@ PROGRAM RiemannProblem1D_NuclearEOS
          ( ProgramName_Option &
              = 'RiemannProblem1D_NuclearEOS', &
            nX_Option &
-             = [ 256, 1, 1 ], &
+             = [ 200, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -46,23 +46,25 @@ PROGRAM RiemannProblem1D_NuclearEOS
              = 'HLLC', &
            EvolveFluid_Option &
              = .TRUE., &
+           ApplySlopeLimiter_Option &
+             = .TRUE., &
            BetaTVB_Option &
-             = 1.0d2, &
+             = 0.0d2, &
            BetaTVD_Option &
              = 2.0d0, &
            ApplyPositivityLimiter_Option &
-             = .TRUE., &
+             = .FALSE., &
            nStages_SSP_RK_Option &
              = 2 )
 
   CALL InitializeRiemannProblem1D_NuclearEOS &
-         ( D_L  = 1.0d12 * Gram / Centimeter**3, &
+         ( D_L  = 1.00d12 * Gram / Centimeter**3, &
            V_L  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer / Second, &
            P_L  = 1.0d32 * Erg / Centimeter**3, &
            Ye_L = 0.4_DP, &
            D_R  = 1.25d11 * Gram / Centimeter**3, &
            V_R  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer / Second, &
-           P_R  = 1.00d31 * Erg / Centimeter**3, &
+           P_R  = 1.0d31 * Erg / Centimeter**3, &
            Ye_R = 0.4_DP )
 
   CALL EvolveFields &
