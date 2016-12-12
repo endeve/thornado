@@ -298,6 +298,8 @@ CONTAINS
 
     REAL(DP), DIMENSION(1) :: TMP
 
+    Auxiliary_Fluid_TABLE(1:nAF) = 0.0_DP
+
     Auxiliary_Fluid_TABLE(iAF_E) &
       = PF(iPF_E) / PF(iPF_D)
 
