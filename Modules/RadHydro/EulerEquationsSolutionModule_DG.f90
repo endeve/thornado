@@ -16,7 +16,7 @@ MODULE EulerEquationsSolutionModule_DG
     a, b
   USE FluidFieldsModule, ONLY: &
     rhsCF, &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, nCF, &
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, nCF, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
     uAF, iAF_P, iAF_T, iAF_Ye, iAF_E, iAF_Gm, iAF_Cs, nAF
   USE EquationOfStateModule, ONLY: &
@@ -169,7 +169,7 @@ CONTAINS
                                        uPF_K(jNodeX,iPF_V3), &
                                        uPF_K(jNodeX,iPF_E ), &
                                        uAF_K(jNodeX,iAF_P ), &
-                                       uAF_K(jNodeX,iPF_Ne) ) &
+                                       uPF_K(jNodeX,iPF_Ne) ) &
                             * dL_X1_q(jNodeX1,iNodeX1)
 
                 END DO

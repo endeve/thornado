@@ -39,10 +39,12 @@ CONTAINS
 
 
   SUBROUTINE InitializeFluidEvolution &
-               ( FluidSolver_Option, BetaTVB_Option, BetaTVD_Option, &
+               ( FluidSolver_Option, ApplySlopeLimiter_Option, &
+                 BetaTVB_Option, BetaTVD_Option, &
                  ApplyPositivityLimiter_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: FluidSolver_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: ApplySlopeLimiter_Option
     REAL(DP),         INTENT(in), OPTIONAL :: BetaTVB_Option
     REAL(DP),         INTENT(in), OPTIONAL :: BetaTVD_Option
     LOGICAL,          INTENT(in), OPTIONAL :: ApplyPositivityLimiter_Option
@@ -60,7 +62,9 @@ CONTAINS
         ApplyPositivityLimiter_Fluid &
           => ApplyPositivityLimiter_Euler_DG
         CALL InitializeLimiters_Euler_DG &
-               ( BetaTVB_Option = BetaTVB_Option, &
+               ( ApplySlopeLimiter_Option &
+                   = ApplySlopeLimiter_Option, &
+                 BetaTVB_Option = BetaTVB_Option, &
                  BetaTVD_Option = BetaTVD_Option, &
                  ApplyPositivityLimiter_Option &
                    = ApplyPositivityLimiter_Option )

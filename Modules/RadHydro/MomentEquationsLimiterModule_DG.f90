@@ -34,6 +34,7 @@ MODULE MomentEquationsLimiterModule_DG
   PRIVATE
 
   LOGICAL,  PARAMETER                   :: Debug = .FALSE.
+  LOGICAL                               :: ApplySlopeLimiter
   LOGICAL                               :: ApplyPositivityLimiter
   INTEGER                               :: nPoints
   REAL(DP)                              :: BetaTVB
@@ -58,8 +59,10 @@ CONTAINS
 
 
   SUBROUTINE InitializeLimiters_M1_DG &
-               ( BetaTVB_Option, BetaTVD_Option, ApplyPositivityLimiter_Option )
+               ( ApplySlopeLimiter_Option, BetaTVB_Option, BetaTVD_Option, &
+                 ApplyPositivityLimiter_Option )
 
+    LOGICAL,  INTENT(in), OPTIONAL :: ApplySlopeLimiter_Option
     REAL(DP), INTENT(in), OPTIONAL :: BetaTVB_Option
     REAL(DP), INTENT(in), OPTIONAL :: BetaTVD_Option
     LOGICAL,  INTENT(in), OPTIONAL :: ApplyPositivityLimiter_Option
@@ -68,6 +71,10 @@ CONTAINS
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
 
     ! --- Limiter Parameters ---
+
+    ApplySlopeLimiter = .TRUE.
+    IF( PRESENT( ApplySlopeLimiter_Option ) ) &
+      ApplySlopeLimiter = ApplySlopeLimiter_Option
 
     BetaTVB = 1.0d0
     IF( PRESENT( BetaTVB_Option ) ) &
@@ -84,6 +91,8 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A5,A)') '', 'InitializeLimiters_M1_DG'
     WRITE(*,*)
+    WRITE(*,'(A7,A20,L1)') &
+      '', 'ApplySlopeLimiter = ', ApplySlopeLimiter
     WRITE(*,'(A7,A10,ES8.2E2)') '', 'BetaTVB = ', BetaTVB
     WRITE(*,'(A7,A10,ES8.2E2)') '', 'BetaTVD = ', BetaTVD
     WRITE(*,'(A7,A25,L1)') &
@@ -265,6 +274,8 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: uCR_A, uCR_X1, uCR_X1_T
 
     IF( nDOF == 1 ) RETURN
+
+    IF( .NOT. ApplySlopeLimiter ) RETURN
 
     IF( Debug )THEN
       WRITE(*,*)

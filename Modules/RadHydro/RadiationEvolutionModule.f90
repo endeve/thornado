@@ -39,10 +39,11 @@ CONTAINS
 
 
   SUBROUTINE InitializeRadiationEvolution &
-               ( RadiationSolver_Option, BetaTVB_Option, BetaTVD_Option, &
-                 ApplyPositivityLimiter_Option )
+               ( RadiationSolver_Option, ApplySlopeLimiter_Option, &
+                 BetaTVB_Option, BetaTVD_Option, ApplyPositivityLimiter_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RadiationSolver_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: ApplySlopeLimiter_Option
     REAL(DP),         INTENT(in), OPTIONAL :: BetaTVB_Option
     REAL(DP),         INTENT(in), OPTIONAL :: BetaTVD_Option
     LOGICAL,          INTENT(in), OPTIONAL :: ApplyPositivityLimiter_Option
@@ -60,7 +61,9 @@ CONTAINS
         ApplyPositivityLimiter_Radiation &
           => ApplyPositivityLimiter_M1_DG
         CALL InitializeLimiters_M1_DG &
-               ( BetaTVB_Option = BetaTVB_Option, &
+               ( ApplySlopeLimiter_Option &
+                   = ApplySlopeLimiter_Option, &
+                 BetaTVB_Option = BetaTVB_Option, &
                  BetaTVD_Option = BetaTVD_Option, &
                  ApplyPositivityLimiter_Option &
                    = ApplyPositivityLimiter_Option )

@@ -18,8 +18,8 @@ MODULE EulerEquationsLimiterModule_DG
   USE MeshModule, ONLY: &
     MeshX
   USE FluidFieldsModule, ONLY: &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, nCF, &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, nPF, &
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, nCF, &
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
     iAF_P, iAF_Cs, nAF
   USE EquationOfStateModule, ONLY: &
     Auxiliary_Fluid
@@ -33,13 +33,14 @@ MODULE EulerEquationsLimiterModule_DG
 
   LOGICAL,  PARAMETER                   :: Debug = .FALSE.
   LOGICAL,  PARAMETER                   :: Componentwise = .FALSE.
+  LOGICAL                               :: ApplySlopeLimiter
   LOGICAL                               :: ApplyPositivityLimiter
   INTEGER                               :: nPoints
   REAL(DP)                              :: BetaTVB
   REAL(DP)                              :: BetaTVD
   REAL(DP), PARAMETER                   :: Tol_TVD = 1.0d-2
   REAL(DP), PARAMETER                   :: Tol_D = 1.0d-12
-  REAL(DP), PARAMETER                   :: Tol_E = 1.0d-12
+  REAL(DP), PARAMETER                   :: Tol_E = 0.0d-12
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X1
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X2
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X3
@@ -55,8 +56,10 @@ CONTAINS
 
 
   SUBROUTINE InitializeLimiters_Euler_DG &
-               ( BetaTVB_Option, BetaTVD_Option, ApplyPositivityLimiter_Option )
+               ( ApplySlopeLimiter_Option, BetaTVB_Option, BetaTVD_Option, &
+                 ApplyPositivityLimiter_Option )
 
+    LOGICAL,  INTENT(in), OPTIONAL :: ApplySlopeLimiter_Option
     REAL(DP), INTENT(in), OPTIONAL :: BetaTVB_Option
     REAL(DP), INTENT(in), OPTIONAL :: BetaTVD_Option
     LOGICAL,  INTENT(in), OPTIONAL :: ApplyPositivityLimiter_Option
@@ -65,6 +68,10 @@ CONTAINS
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
 
     ! --- Limiter Parameters ---
+
+    ApplySlopeLimiter = .TRUE.
+    IF( PRESENT( ApplySlopeLimiter_Option ) ) &
+      ApplySlopeLimiter = ApplySlopeLimiter_Option
 
     BetaTVB = 50.0_DP
     IF( PRESENT( BetaTVB_Option ) ) &
@@ -81,6 +88,8 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A5,A)') '', 'InitializeLimiters_Euler_DG'
     WRITE(*,*)
+    WRITE(*,'(A7,A20,L1)') &
+      '', 'ApplySlopeLimiter = ', ApplySlopeLimiter
     WRITE(*,'(A7,A10,ES8.2E2)') '', 'BetaTVB = ', BetaTVB
     WRITE(*,'(A7,A10,ES8.2E2)') '', 'BetaTVD = ', BetaTVD
     WRITE(*,'(A7,A25,L1)') &
@@ -211,7 +220,7 @@ CONTAINS
 
     LOGICAL :: LimitPolynomial
     INTEGER :: iX1, iX2, iX3, iCF, i
-    REAL(DP), DIMENSION(nCF) :: uCF_A_P, uCF_A_N
+    REAL(DP), DIMENSION(nCF) :: uCF_A_P, uCF_A_N, SlopeDifference
     REAL(DP), DIMENSION(nPF) :: uPF_A
     REAL(DP), DIMENSION(nAF) :: uAF_A
     REAL(DP), DIMENSION(nCF,nCF) :: L1, R1
@@ -220,6 +229,8 @@ CONTAINS
 
     IF( nDOFX == 1 ) RETURN
 
+    IF( .NOT. ApplySlopeLimiter ) RETURN
+
     IF( Debug )THEN
       WRITE(*,*)
       WRITE(*,'(A6,A)') '', 'ApplySlopeLimiter_Euler_DG'
@@ -227,9 +238,9 @@ CONTAINS
     END IF
 
     ALLOCATE &
-      ( uCF_A(1:nCF,1:nX(1),1:nX(2),1:nX(3)), &
-        uCF_X1  (1:nX(1),1:nX(2),1:nX(3),1:nCF), &
-        uCF_X1_T(1:nX(1),1:nX(2),1:nX(3),1:nCF) )
+      ( uCF_A   (1:nCF,1:nX(1),1:nX(2),1:nX(3)), &
+        uCF_X1  (1:nCF,1:nX(1),1:nX(2),1:nX(3)), &
+        uCF_X1_T(1:nCF,1:nX(1),1:nX(2),1:nX(3)) )
 
     ASSOCIATE( dX1 => MeshX(1) % Width(1:nX(1)) )
 
@@ -252,9 +263,9 @@ CONTAINS
 
           ! --- Cell-Averaged Quantities ---
 
-          uCF_A(1:nCF,iX1,iX2,iX3) = uCF_M  (1,1:nCF)
-          uCF_A_P(1:nCF)           = uCF_M_P(1,1:nCF)
-          uCF_A_N(1:nCF)           = uCF_M_N(1,1:nCF)
+          uCF_A  (1:nCF,iX1,iX2,iX3) = uCF_M  (1,1:nCF)
+          uCF_A_P(1:nCF)             = uCF_M_P(1,1:nCF)
+          uCF_A_N(1:nCF)             = uCF_M_N(1,1:nCF)
 
           uPF_A(1:nPF) = Primitive      ( uCF_A(1:nCF,iX1,iX2,iX3) )
           uAF_A(1:nAF) = Auxiliary_Fluid( uPF_A(1:nPF) )
@@ -266,23 +277,15 @@ CONTAINS
                    uPF_A(iPF_E ), uAF_A(iAF_P ), uAF_A(iAF_Cs), &
                    L1, Componentwise )
 
-          uCF_X1(iX1,iX2,iX3,1:nCF) &
+          uCF_X1(1:nCF,iX1,iX2,iX3) &
             = MATMUL( L1, uCF_M(2,1:nCF) ) ! X1-Dimension
 
-          uCF_X1_T(iX1,iX2,iX2,1:nCF) &
+          uCF_X1_T(1:nCF,iX1,iX2,iX2) &
             = MinModB &
-                ( uCF_X1(iX1,iX2,iX3,1:nCF), &
+                ( uCF_X1(1:nCF,iX1,iX2,iX3), &
                   BetaTVD * MATMUL( L1,(uCF_A(1:nCF,iX1,iX2,iX3)-uCF_A_P) ), &
                   BetaTVD * MATMUL( L1,(uCF_A_N-uCF_A(1:nCF,iX1,iX2,iX3)) ), &
                   dX1(iX1), BetaTVB )
-
-!!$          IF( Debug )THEN
-!!$
-!!$            PRINT*
-!!$            PRINT*, ""
-!!$            PRINT*
-!!$
-!!$          END IF
 
         END DO
       END DO
@@ -294,11 +297,14 @@ CONTAINS
       DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
 
-          LimitPolynomial = .FALSE.
-          LimitPolynomial &
-            = ANY( ABS( uCF_X1(iX1,iX2,iX3,1:nCF) &
-                        - uCF_X1_T(iX1,iX2,iX3,1:nCF) ) &
-                   > Tol_TVD * ABS( uCF_A(1:nCF,iX1,iX2,iX3) ) )
+          DO iCF = 1, nCF
+            SlopeDifference(iCF) &
+              = ABS( uCF_X1(iCF,iX1,iX2,iX3) - uCF_X1_T(iCF,iX1,iX2,iX3) ) &
+                / MAX( ABS( uCF_X1  (iCF,iX1,iX2,iX3) ), &
+                       ABS( uCF_X1_T(iCF,iX1,iX2,iX3) ), TINY(1.0_DP) )
+          END DO
+
+          LimitPolynomial = ANY( SlopeDifference(1:nCF) > Tol_TVD )
 
           IF( LimitPolynomial )THEN
 
@@ -306,9 +312,8 @@ CONTAINS
 
               PRINT*
               PRINT*, "iX1, iX2, iX3 = ", iX1, iX2, iX3
-              PRINT*, "  uCF_X1    = ", uCF_X1(iX1,iX2,iX3,1:nCF)
-              PRINT*, "  uCF_X1_T  = ", uCF_X1_T(iX1,iX2,iX3,1:nCF)
-              PRINT*, "  Tol*uCF_A = ", Tol_TVD * uCF_A(1:nCF,iX1,iX2,iX3)
+              PRINT*, "  uCF_X1    = ", uCF_X1  (1:nCF,iX1,iX2,iX3)
+              PRINT*, "  uCF_X1_T  = ", uCF_X1_T(1:nCF,iX1,iX2,iX3)
               PRINT*
 
             END IF
@@ -336,7 +341,7 @@ CONTAINS
             uCF_M(1,1:nCF) & ! -- Cell-Average
               = uCF_A(1:nCF,iX1,iX2,iX3)
             uCF_M(2,1:nCF) & ! -- Slope X1-Direction
-              = MATMUL( R1, uCF_X1_T(iX1,iX2,iX3,1:nCF) )
+              = MATMUL( R1, uCF_X1_T(1:nCF,iX1,iX2,iX3) )
 
             ! --- Back to Nodal Representation ---
 
@@ -369,6 +374,12 @@ CONTAINS
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. ApplyPositivityLimiter ) RETURN
+
+    IF( Debug )THEN
+      WRITE(*,*)
+      WRITE(*,'(A6,A)') '', 'ApplyPositivityLimiter_Euler_DG'
+      WRITE(*,*)
+    END IF
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
@@ -424,6 +435,9 @@ CONTAINS
               uCF_M(2:nDOFX,iCF_D) &
                 = Theta * uCF_M(2:nDOFX,iCF_D)
 
+              uCF_M(2:nDOFX,iCF_Ne) &
+                = Theta * uCF_M(2:nDOFX,iCF_Ne)
+
               DO iPoint = 1, nPoints
                 DO iCF = 1, nCF
                   uCF_P(iPoint,iCF) &
@@ -478,6 +492,8 @@ CONTAINS
                   PRINT*
                   PRINT*, "iX1,iX2,iX3 = ", iX1, iX2, iX3
                   PRINT*, "Theta_2 = ", Theta
+                  PRINT*, " E_K = ", uCF_M(1,iCF_E)
+                  PRINT*, " E_p = ", uCF_P(:,iCF_E)
                   PRINT*
                 END IF
 
@@ -528,6 +544,7 @@ CONTAINS
               PRINT*, "  S2_N = ", uCF_P(:,iCF_S2)
               PRINT*, "  S3_N = ", uCF_P(:,iCF_S3)
               PRINT*, "  E_N  = ", uCF_P(:,iCF_E)
+              PRINT*, "  Ne_N = ", uCF_P(:,iCF_Ne)
               PRINT*
               PRINT*, "  Primitive Fields (Nodal):"
               PRINT*, "  D_N  = ", uPF_P(:,iPF_D)
@@ -535,6 +552,7 @@ CONTAINS
               PRINT*, "  V2_N = ", uPF_P(:,iPF_V2)
               PRINT*, "  V3_N = ", uPF_P(:,iPF_V3)
               PRINT*, "  E_N  = ", uPF_P(:,iPF_E)
+              PRINT*, "  Ne_N = ", uPF_P(:,iPF_Ne)
               PRINT*
               PRINT*, "  Cell-Averages (Conserved):"
               PRINT*, "  D_A  = ", uCF_M(1,iCF_D)
@@ -542,6 +560,7 @@ CONTAINS
               PRINT*, "  S2_A = ", uCF_M(1,iCF_S2)
               PRINT*, "  S3_A = ", uCF_M(1,iCF_S3)
               PRINT*, "  E_A  = ", uCF_M(1,iCF_E)
+              PRINT*, "  Ne_A = ", uCF_M(1,iCF_Ne)
               PRINT*
               PRINT*, "  Cell-Averages (Primitive):"
               PRINT*, "  D_A  = ", uPF_A(iPF_D)
@@ -549,6 +568,7 @@ CONTAINS
               PRINT*, "  V2_A = ", uPF_A(iPF_V2)
               PRINT*, "  V3_A = ", uPF_A(iPF_V3)
               PRINT*, "  E_A  = ", uPF_A(iPF_E)
+              PRINT*, "  Ne_A = ", uPF_A(iPF_Ne)
               PRINT*
 
               STOP
@@ -560,6 +580,12 @@ CONTAINS
         END DO
       END DO
     END DO
+
+    IF( Debug )THEN
+      WRITE(*,*)
+      WRITE(*,'(A6,A)') '', 'ApplyPositivityLimiter_Euler_DG Done'
+      WRITE(*,*)
+    END IF
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_DG
 
