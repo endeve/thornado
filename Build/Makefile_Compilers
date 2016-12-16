@@ -1,5 +1,6 @@
 FORTRAN_sn1987b      = mpif90
 FORTRAN_juliana      = gfortran
+FORTRAN_sjdunham     = mpif90
 FORTRAN_titan_gnu    = ftn
 FORTRAN_titan_cray   = ftn
 FORTRAN_darter_gnu   = ftn
@@ -9,6 +10,7 @@ FORTRAN              = $(FORTRAN_$(MACHINE))
 
 SUFFIX_f90_sn1987b      = 
 SUFFIX_f90_juliana      = 
+SUFFIX_f90_sjdunham     = 
 SUFFIX_f90_titan_gnu    = 
 SUFFIX_f90_titan_cray   = 
 SUFFIX_f90_darter_gnu   = 
@@ -18,6 +20,7 @@ SUFFIX_f90              = $(SUFFIX_f90_$(MACHINE))
 
 FLINKER_sn1987b      = mpif90
 FLINKER_juliana      = gfortran
+FLINKER_sjdunham     = mpif90
 FLINKER_titan_gnu    = ftn
 FLINKER_titan_cray   = ftn
 FLINKER_darter_gnu   = ftn
@@ -28,6 +31,7 @@ FLINKER              = $(FLINKER_$(MACHINE))
 FLAGS_DEBUG        = $(DEBUG)
 DEBUG_sn1987b      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_juliana      = -g -fbacktrace -fbounds-check
+DEBUG_sjdunham     = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_titan_gnu    = -g -ffpe-trap=invalid,zero -fcheck=bounds
 DEBUG_titan_cray   = -G0 -hfp0 -K trap=fp
 DEBUG_darter_gnu   = -g -ffpe-trap=invalid,zero -fcheck=bounds
@@ -38,6 +42,7 @@ DEBUG              = $(DEBUG_$(MACHINE))
 FLAGS_OPTIMIZE        = $(OPTIMIZE)
 OPTIMIZE_sn1987b      = -O2 -framework Accelerate
 OPTIMIZE_juliana      = -O2
+OPTIMIZE_sjdunham     = -O2 -framework Accelerate
 OPTIMIZE_titan_gnu    = -O2
 OPTIMIZE_titan_cray   = 
 OPTIMIZE_darter_gnu   = -O2
@@ -47,6 +52,7 @@ OPTIMIZE              = $(OPTIMIZE_$(MACHINE))
 
 INCLUDE_HDF5_sn1987b           = -I/usr/local/Cellar/hdf5/1.8.16_1/include
 INCLUDE_HDF5_juliana           = -I/usr/local/hdf5/include
+INCLUDE_HDF5_sjdunham          = 
 INCLUDE_HDF5_titan_gnu         = # Use Module Load
 INCLUDE_HDF5_titan_cray        = # Use Module Load
 INCLUDE_HDF5_darter_gnu        = # Use Module Load
@@ -56,6 +62,7 @@ INCLUDE_HDF5                   = $(INCLUDE_HDF5_$(MACHINE))
 
 INCLUDE_WEAKLIB_sn1987b        = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_juliana        = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
+INCLUDE_WEAKLIB_sjdunham       = 
 INCLUDE_WEAKLIB_titan_gnu      = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_titan_cray     = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_darter_gnu     = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
@@ -67,6 +74,7 @@ INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_WEAKLIB)
 
 LIBRARIES_HDF5_sn1987b         = -L/usr/local/Cellar/hdf5/1.8.16_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_juliana         = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_sjdunham        = 
 LIBRARIES_HDF5_titan_gnu       = # Use Module Load
 LIBRARIES_HDF5_titan_cray      = # Use Module Load
 LIBRARIES_HDF5_darter_gnu      = # Use Module Load
@@ -76,6 +84,7 @@ LIBRARIES_HDF5                 = $(LIBRARIES_HDF5_$(MACHINE))
 
 LIBRARIES_WEAKLIB_sn1987b      = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
 LIBRARIES_WEAKLIB_juliana      = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
+LIBRARIES_WEAKLIB_sjdunham     = 
 LIBRARIES_WEAKLIB_titan_gnu    = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
 LIBRARIES_WEAKLIB_titan_cray   = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
 LIBRARIES_WEAKLIB_darter_gnu   = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
