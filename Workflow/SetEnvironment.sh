@@ -35,6 +35,11 @@ elif [[ $THORNADO_MACHINE == sn1987b* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == sjdunham* ]]; then
+
+echo
+echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 fi
 
 
@@ -78,6 +83,10 @@ elif [[ $THORNADO_MACHINE == beacon_intel ]]; then
 elif [[ $THORNADO_MACHINE == sn1987b ]]; then
 
   echo
+
+elif [[ $THORNADO_MACHINE == sjdunham ]]; then
+
+echo
 
 else
 
