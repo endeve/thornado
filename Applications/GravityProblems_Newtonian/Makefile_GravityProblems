@@ -1,0 +1,32 @@
+include ../../../Build/Makefile_Build
+
+all: HomogeneousSphere1D
+
+HomogeneousSphere1D: \
+	$(thornado) GravityProblemsInitializationModule.o \
+	HomogeneousSphere1D.o
+	$(FLINKER) $(FLAGS) -o \
+	HomogeneousSphere1D_$(MACHINE) \
+	$(thornado) GravityProblemsInitializationModule.o \
+	HomogeneousSphere1D.o $(LIBRARIES)
+
+clean:
+	rm -f *.o *.mod *.ld
+
+clobber: clean
+	rm -f HomogeneousSphere1D_$(MACHINE)
+
+HomogeneousSphere1D.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramInitializationModule.o \
+  GravityProblemsInitializationModule.o \
+  HomogeneousSphere1D.f90
+
+GravityProblemsInitializationModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  FluidFieldsModule.o \
+  GravityProblemsInitializationModule.f90
