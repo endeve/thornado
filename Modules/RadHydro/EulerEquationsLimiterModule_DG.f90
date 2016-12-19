@@ -11,13 +11,17 @@ MODULE EulerEquationsLimiterModule_DG
   USE PolynomialBasisModule_Lagrange, ONLY: &
     L_X1, L_X2, L_X3
   USE PolynomialBasisModule_Legendre, ONLY: &
-    evalPX
+    evalPX, P_X1, P_X2, P_X3, &
+    IndPX_Q, MassPX
   USE PolynomialBasisMappingModule, ONLY: &
     MapNodalToModal_Fluid, &
     MapModalToNodal_Fluid
   USE MeshModule, ONLY: &
     MeshX
+  USE GeometryFieldsModule, ONLY: &
+    VolX, VolJacX
   USE FluidFieldsModule, ONLY: &
+    WeightsF, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, nCF, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
     iAF_P, iAF_Cs, nAF
@@ -47,6 +51,7 @@ MODULE EulerEquationsLimiterModule_DG
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCF_P, uPF_P, uAF_P
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCF_M
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Legendre
 
   PUBLIC :: InitializeLimiters_Euler_DG
   PUBLIC :: ApplySlopeLimiter_Euler_DG
@@ -64,7 +69,7 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: BetaTVD_Option
     LOGICAL,  INTENT(in), OPTIONAL :: ApplyPositivityLimiter_Option
 
-    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iPoint, iNodeX
+    INTEGER :: iPol, iNodeX1, iNodeX2, iNodeX3, iPoint, iNodeX
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
 
     ! --- Limiter Parameters ---
@@ -95,6 +100,29 @@ CONTAINS
     WRITE(*,'(A7,A25,L1)') &
       '', 'ApplyPositivityLimiter = ', ApplyPositivityLimiter
     WRITE(*,*)
+
+    ! --- Legendre Polynomials in Gaussian Quadrature Points ---
+
+    ALLOCATE( Legendre(nDOFX,nDOFX) )
+
+    DO iPol = 1, nDOFX
+
+      DO iNodeX3 = 1, nNodesX(3)
+        DO iNodeX2 = 1, nNodesX(2)
+          DO iNodeX1 = 1, nNodesX(1)
+
+            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+            Legendre(iNodeX,iPol) &
+                = P_X1  (IndPX_Q(1,iPol)) % P( MeshX(1) % Nodes(iNodeX1) ) &
+                  * P_X2(IndPX_Q(2,iPol)) % P( MeshX(2) % Nodes(iNodeX2) ) &
+                  * P_X3(IndPX_Q(3,iPol)) % P( MeshX(3) % Nodes(iNodeX3) )
+
+          END DO
+        END DO
+      END DO
+
+    END DO
 
     ! --- ---
 
@@ -219,13 +247,21 @@ CONTAINS
   SUBROUTINE ApplySlopeLimiter_Euler_DG
 
     LOGICAL :: LimitPolynomial
-    INTEGER :: iX1, iX2, iX3, iCF, i
-    REAL(DP), DIMENSION(nCF) :: uCF_A_P, uCF_A_N, SlopeDifference
+    INTEGER :: iX1, iX2, iX3, iCF
+    INTEGER :: LWORK, INFO
+    REAL(DP), DIMENSION(1)   :: d
+    REAL(DP), DIMENSION(2)   :: c
+    REAL(DP), DIMENSION(5)   :: WORK
+    REAL(DP), DIMENSION(2,2) :: A0, A
+    REAL(DP), DIMENSION(1,2) :: B0, B
+    REAL(DP), DIMENSION(nCF) :: uCF_A, uCF_A_P_X1, uCF_A_N_X1
+    REAL(DP), DIMENSION(nCF) :: SlopeDifference
+    REAL(DP), DIMENSION(nCF) :: uCF_K_0, uCF_K_1
     REAL(DP), DIMENSION(nPF) :: uPF_A
     REAL(DP), DIMENSION(nAF) :: uAF_A
     REAL(DP), DIMENSION(nCF,nCF) :: L1, R1
-    REAL(DP), DIMENSION(nDOFX,nCF) :: uCF_M_P, uCF_M_N
-    REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE :: uCF_A, uCF_X1, uCF_X1_T
+    REAL(DP), DIMENSION(nDOFX,nCF) :: uCF_M_P_X1, uCF_M_N_X1
+    REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE :: uCF_X1, uCF_X1_T
 
     IF( nDOFX == 1 ) RETURN
 
@@ -238,8 +274,7 @@ CONTAINS
     END IF
 
     ALLOCATE &
-      ( uCF_A   (1:nCF,1:nX(1),1:nX(2),1:nX(3)), &
-        uCF_X1  (1:nCF,1:nX(1),1:nX(2),1:nX(3)), &
+      ( uCF_X1  (1:nCF,1:nX(1),1:nX(2),1:nX(3)), &
         uCF_X1_T(1:nCF,1:nX(1),1:nX(2),1:nX(3)) )
 
     ASSOCIATE( dX1 => MeshX(1) % Width(1:nX(1)) )
@@ -252,22 +287,24 @@ CONTAINS
 
           DO iCF = 1, nCF
 
+            ! --- Map To Modal Representation ---
+
             CALL MapNodalToModal_Fluid &
-                   ( uCF(:,iX1-1,iX2,iX3,iCF), uCF_M_P(:,iCF) )
+                   ( uCF(:,iX1-1,iX2,iX3,iCF), uCF_M_P_X1(:,iCF) )
             CALL MapNodalToModal_Fluid &
-                   ( uCF(:,iX1,  iX2,iX3,iCF), uCF_M  (:,iCF) )
+                   ( uCF(:,iX1,  iX2,iX3,iCF), uCF_M     (:,iCF) )
             CALL MapNodalToModal_Fluid &
-                   ( uCF(:,iX1+1,iX2,iX3,iCF), uCF_M_N(:,iCF) )
+                   ( uCF(:,iX1+1,iX2,iX3,iCF), uCF_M_N_X1(:,iCF) )
 
           END DO
 
           ! --- Cell-Averaged Quantities ---
 
-          uCF_A  (1:nCF,iX1,iX2,iX3) = uCF_M  (1,1:nCF)
-          uCF_A_P(1:nCF)             = uCF_M_P(1,1:nCF)
-          uCF_A_N(1:nCF)             = uCF_M_N(1,1:nCF)
+          uCF_A     (1:nCF) = uCF_M     (1,1:nCF)
+          uCF_A_P_X1(1:nCF) = uCF_M_P_X1(1,1:nCF)
+          uCF_A_N_X1(1:nCF) = uCF_M_N_X1(1,1:nCF)
 
-          uPF_A(1:nPF) = Primitive      ( uCF_A(1:nCF,iX1,iX2,iX3) )
+          uPF_A(1:nPF) = Primitive      ( uCF_A(1:nCF) )
           uAF_A(1:nAF) = Auxiliary_Fluid( uPF_A(1:nPF) )
 
           ! --- Slope From Modal Representation ---
@@ -283,9 +320,21 @@ CONTAINS
           uCF_X1_T(1:nCF,iX1,iX2,iX2) &
             = MinModB &
                 ( uCF_X1(1:nCF,iX1,iX2,iX3), &
-                  BetaTVD * MATMUL( L1,(uCF_A(1:nCF,iX1,iX2,iX3)-uCF_A_P) ), &
-                  BetaTVD * MATMUL( L1,(uCF_A_N-uCF_A(1:nCF,iX1,iX2,iX3)) ), &
+                  BetaTVD * MATMUL( L1, uCF_A(1:nCF) - uCF_A_P_X1 ), &
+                  BetaTVD * MATMUL( L1, uCF_A_N_X1 - uCF_A(1:nCF) ), &
                   dX1(iX1), BetaTVB )
+
+          IF( Debug )THEN
+            PRINT*
+            PRINT*, "iX1, iX2, iX3 = ", iX1, iX2, iX3
+            PRINT*, "  uCF_X1   = ", uCF_X1(1:nCF,iX1,iX2,iX3)
+            PRINT*, "  uCF_X1_L = ", &
+              BetaTVD * MATMUL( L1, uCF_A(1:nCF) - uCF_A_P_X1 )
+            PRINT*, "  uCF_X1_R = ", &
+              BetaTVD * MATMUL( L1, uCF_A_N_X1 - uCF_A(1:nCF) )
+            PRINT*, "  uCF_X1_T = ", uCF_X1_T(1:nCF,iX1,iX2,iX2)
+            PRINT*
+          END IF
 
         END DO
       END DO
@@ -298,10 +347,12 @@ CONTAINS
         DO iX1 = 1, nX(1)
 
           DO iCF = 1, nCF
+
             SlopeDifference(iCF) &
               = ABS( uCF_X1(iCF,iX1,iX2,iX3) - uCF_X1_T(iCF,iX1,iX2,iX3) ) &
                 / MAX( ABS( uCF_X1  (iCF,iX1,iX2,iX3) ), &
                        ABS( uCF_X1_T(iCF,iX1,iX2,iX3) ), TINY(1.0_DP) )
+
           END DO
 
           LimitPolynomial = ANY( SlopeDifference(1:nCF) > Tol_TVD )
@@ -314,11 +365,18 @@ CONTAINS
               PRINT*, "iX1, iX2, iX3 = ", iX1, iX2, iX3
               PRINT*, "  uCF_X1    = ", uCF_X1  (1:nCF,iX1,iX2,iX3)
               PRINT*, "  uCF_X1_T  = ", uCF_X1_T(1:nCF,iX1,iX2,iX3)
+              PRINT*, "  slopeDiff = ", SlopeDifference
+              PRINT*, "  Legendre(:,1) = ", Legendre(:,1)
+              PRINT*, "  Legendre(:,2) = ", Legendre(:,2)
               PRINT*
 
             END IF
 
             DO iCF = 1, nCF
+
+              uCF_K_0(iCF) &
+                = SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF) &
+                         * VolJacX(:,iX1,iX2,iX3) )
 
               CALL MapNodalToModal_Fluid &
                      ( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
@@ -327,7 +385,8 @@ CONTAINS
 
             ! --- Cell-Averaged Quantities ---
 
-            uPF_A(1:nPF) = Primitive      ( uCF_A(1:nCF,iX1,iX2,iX3) )
+            uCF_A(1:nCF) = uCF_M(1,1:nCF)
+            uPF_A(1:nPF) = Primitive      ( uCF_A(1:nCF) )
             uAF_A(1:nAF) = Auxiliary_Fluid( uPF_A(1:nPF) )
 
             ! --- Back to Conserved Variables ---
@@ -339,9 +398,30 @@ CONTAINS
 
             uCF_M(:,1:nCF) = 0.0_DP
             uCF_M(1,1:nCF) & ! -- Cell-Average
-              = uCF_A(1:nCF,iX1,iX2,iX3)
+              = uCF_A(1:nCF)
             uCF_M(2,1:nCF) & ! -- Slope X1-Direction
               = MATMUL( R1, uCF_X1_T(1:nCF,iX1,iX2,iX3) )
+
+            ! --- Correct Modal Coefficients with Constrained Least Squares ---
+            ! --- to Presevre Conserved Quantities (i.e., D,S1,S2,S3,E,Ne)  ---
+
+            A0(1:2,1) = [ 1.0_DP, 0.0_DP ]
+            A0(1:2,2) = [ 0.0_DP, 1.0_DP ]
+            B0(1,1) = SUM( WeightsF(:) * Legendre(:,1) * VolJacX(:,iX1,iX2,iX3) )
+            B0(1,2) = SUM( WeightsF(:) * Legendre(:,2) * VolJacX(:,iX1,iX2,iX3) )
+            DO iCF = 1, nCF
+
+              A = A0
+              B = B0
+              c = uCF_M(1:2,iCF)
+              d = uCF_K_0  (iCF)
+
+              LWORK = SIZE( WORK )
+              CALL DGGLSE( SIZE( A, 1 ), SIZE( A, 2 ), SIZE( B, 1 ), &
+                           A, SIZE( A, 1 ), B, SIZE( B, 1 ), c, d, &
+                           uCF_M(1:2,iCF), WORK, LWORK, INFO )
+
+            END DO
 
             ! --- Back to Nodal Representation ---
 
@@ -350,7 +430,17 @@ CONTAINS
               CALL MapModalToNodal_Fluid &
                      ( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
 
+              uCF_K_1(iCF) &
+                = SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF) &
+                         * VolJacX(:,iX1,iX2,iX3) )
+
             END DO
+
+            IF( Debug )THEN
+              PRINT*
+              PRINT*, "  |duCF| = ", ABS( uCF_K_1(:) - uCF_K_0(:) )
+              PRINT*
+            END IF
 
           END IF
 
@@ -358,7 +448,13 @@ CONTAINS
       END DO
     END DO
 
-    DEALLOCATE( uCF_A, uCF_X1, uCF_X1_T )
+    DEALLOCATE( uCF_X1, uCF_X1_T )
+
+    IF( Debug )THEN
+      WRITE(*,*)
+      WRITE(*,'(A6,A)') '', 'ApplySlopeLimiter_Euler_DG Done'
+      WRITE(*,*)
+    END IF
 
   END SUBROUTINE ApplySlopeLimiter_Euler_DG
 

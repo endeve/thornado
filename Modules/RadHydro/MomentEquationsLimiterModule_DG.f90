@@ -361,7 +361,8 @@ CONTAINS
                   IF( Debug )THEN
 
                     WRITE(*,*)
-                    WRITE(*,'(A4,A,1I2.2)') '', 'Limiting Radiation Field: ', iCR
+                    WRITE(*,'(A4,A,1I2.2)') &
+                      '', 'Limiting Radiation Field: ', iCR
                     WRITE(*,'(A6,A,4I5.4)') '', &
                       'iE, iX1, iX2, iX3 = ', iE, iX1, iX2, iX3
                     WRITE(*,*)
