@@ -3,8 +3,6 @@ MODULE RadiationFieldsUtilitiesModule
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, &
-    nNodesE, &
     nDOF
   USE RadiationFieldsModule, ONLY: &
     WeightsR
@@ -25,6 +23,7 @@ CONTAINS
       = DOT_PRODUCT( WeightsR, uR * VJ ) &
         / DOT_PRODUCT( WeightsR, VJ )
 
+    RETURN
   END FUNCTION CellAverage
 
 

@@ -3,6 +3,12 @@ FluidFieldsModule.o: \
   ProgramHeaderModule.o \
   FluidFieldsModule.f90
 
+FluidFieldsUtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.o \
+  FluidFieldsUtilitiesModule.f90
+
 RadiationFieldsModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
