@@ -36,12 +36,6 @@ CONTAINS
       DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
 
-          PRINT*
-          PRINT*, "dX = ", dX1(iX1), dX2(iX2), dX3(iX3)
-          PRINT*, "VJ = ", VolJacX(:,iX1,iX2,iX3)
-          PRINT*, "D  = ", uPF(:,iX1,iX2,iX3,iPF_D)
-          PRINT*, "W  = ", WeightsF, SUM( WeightsF )
-
           Mass &
             = Mass &
                 + dX1(iX1) * dX2(iX2) * dX3(iX3) &
