@@ -9,7 +9,7 @@ MODULE FluidRadiationCouplingUtilitiesModule
     NodeNumberX, &
     NodeNumber
   USE MeshModule, ONLY: &
-    MeshE, &
+    MeshX, MeshE, &
     NodeCoordinate
   USE FluidFieldsModule, ONLY: &
     uPF, nPF, uAF, nAF
@@ -20,6 +20,7 @@ MODULE FluidRadiationCouplingUtilitiesModule
   PRIVATE
 
   PUBLIC :: InitializeNodes
+  PUBLIC :: InitializeNodesX
   PUBLIC :: InitializeWeights
   PUBLIC :: InitializeFluidFields
   PUBLIC :: FinalizeFluidFields
@@ -47,6 +48,37 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeNodes
+
+
+  SUBROUTINE InitializeNodesX( X_N )
+
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: X_N
+
+    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNodeX_G
+
+    iNodeX_G = 0
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+              DO iNodeX1 = 1, nNodesX(1)
+
+                iNodeX_G = iNodeX_G + 1
+
+                X_N(iNodeX_G,1) = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+                X_N(iNodeX_G,2) = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+                X_N(iNodeX_G,3) = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeNodesX
 
 
   SUBROUTINE InitializeWeights( W2_N, W3_N )

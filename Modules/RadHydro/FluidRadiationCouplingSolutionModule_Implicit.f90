@@ -8,6 +8,7 @@ MODULE FluidRadiationCouplingSolutionModule_Implicit
     PlanckConstant, &
     Gram, &
     Centimeter, &
+    Kilometer, &
     Kelvin, &
     MeV
   USE ProgramHeaderModule, ONLY: &
@@ -27,6 +28,7 @@ MODULE FluidRadiationCouplingSolutionModule_Implicit
     ComputePrimitive
   USE FluidRadiationCouplingUtilitiesModule, ONLY: &
     InitializeNodes, &
+    InitializeNodesX, &
     InitializeWeights, &
     InitializeFluidFields, &
     FinalizeFluidFields, &
@@ -50,7 +52,7 @@ MODULE FluidRadiationCouplingSolutionModule_Implicit
   INTEGER :: nNodesX_G, nNodesE_G, iFRC_Ne, iFRC_E
   INTEGER, PARAMETER :: iOld = 0, iNew = 1
   REAL(DP), DIMENSION(:),     ALLOCATABLE :: E_N, W2_N, W3_N
-  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: uPF_N, uAF_N
+  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: X_N, uPF_N, uAF_N
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: duAFdT_N, duAFdYe_N
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: Chi, dChidT, dChidYe
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: f_FD, df_FDdT, df_FDdYe
@@ -177,7 +179,7 @@ CONTAINS
     CALL FinalizeRadiationFields( uPR_N )
 
     DEALLOCATE( E_N, W2_N, W3_N )
-    DEALLOCATE( uPF_N, uPR_N )
+    DEALLOCATE( X_N, uPF_N, uPR_N )
     DEALLOCATE( uAF_N, duAFdT_N, duAFdYe_N )
     DEALLOCATE( Chi, dChidT, dChidYe )
     DEALLOCATE( f_FD, df_FDdT, df_FDdYe )
@@ -688,6 +690,9 @@ CONTAINS
     ALLOCATE( E_N(nNodesE_G) )
     CALL InitializeNodes( E_N )
 
+    ALLOCATE( X_N(nNodesX_G,3) )
+    CALL InitializeNodesX( X_N )
+
     ALLOCATE( uPF_N(nPF, nNodesX_G) )
     ALLOCATE( uAF_N(nAF, nNodesX_G) )
     CALL InitializeFluidFields( uPF_N, uAF_N )
@@ -704,7 +709,7 @@ CONTAINS
 
   SUBROUTINE FinalizeFluidRadiationCoupling_ThermalReservoir
 
-    DEALLOCATE( E_N )
+    DEALLOCATE( E_N, X_N )
 
     CALL FinalizeFluidFields( uPF_N, uAF_N )
     DEALLOCATE( uPF_N, uAF_N )
@@ -765,7 +770,7 @@ CONTAINS
 
     DO iX = 1, nNodesX_G
 
-      IF( iX <= nNodesX_G / 2 )THEN
+      IF( X_N(iX,1) <= 1.0d2 * Kilometer )THEN
 
         Chi(:,iX) = 1.0d-4 * ( 1.0_DP / Centimeter )
 
@@ -776,6 +781,9 @@ CONTAINS
       END IF
 
     END DO
+
+!!$    CALL WriteVector( nNodesX_G, X_N(:,1) / Kilometer,  'X1.dat'  )
+!!$    CALL WriteVector( nNodesX_G, Chi(1,:) * Centimeter, 'Chi.dat' )
 
   END SUBROUTINE SetRates_EmissionAbsorption_ThermalReservoir
 
