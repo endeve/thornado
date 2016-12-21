@@ -269,9 +269,17 @@ CONTAINS
 
     LOGICAL :: LimitPolynomial
     INTEGER :: iS, iE, iX1, iX2, iX3, iCR, iOS
-    REAL(DP), DIMENSION(nCR) :: uCR_A_P_X1, uCR_A_N_X1
+    INTEGER :: LWORK, INFO
+    REAL(DP), DIMENSION(1)   :: d
+    REAL(DP), DIMENSION(2)   :: c, x
+    REAL(DP), DIMENSION(5)   :: WORK
+    REAL(DP), DIMENSION(2,2) :: A0, A
+    REAL(DP), DIMENSION(1,2) :: B0, B
+    REAL(DP), DIMENSION(nCR) :: uCR_A, uCR_A_P_X1, uCR_A_N_X1
+    REAL(DP), DIMENSION(nCR) :: SlopeDifference
+    REAL(DP), DIMENSION(nCR) :: uCR_K_0, uCR_K_1
     REAL(DP), DIMENSION(nDOF,nCR) :: uCR_M_P_X1, uCR_M_N_X1
-    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: uCR_A, uCR_X1, uCR_X1_T
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: uCR_X1, uCR_X1_T
 
     IF( nDOF == 1 ) RETURN
 
@@ -284,9 +292,8 @@ CONTAINS
     END IF
 
     ALLOCATE &
-      ( uCR_A(1:nCR,1:nE,1:nX(1),1:nX(2),1:nX(3)), &
-        uCR_X1  (1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR), &
-        uCR_X1_T(1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR) )
+      ( uCR_X1  (1:nCR,1:nE,1:nX(1),1:nX(2),1:nX(3)), &
+        uCR_X1_T(1:nCR,1:nE,1:nX(1),1:nX(2),1:nX(3)) )
 
     ASSOCIATE( dX1 => MeshX(1) % Width(1:nX(1)) )
 
@@ -307,33 +314,30 @@ CONTAINS
                 ! --- Map To Modal Representation ---
 
                 CALL MapNodalToModal_Radiation &
-                       ( VolJac(:,iE,iX1-1,iX2,iX3) &
-                           * uCR(:,iE,iX1-1,iX2,iX3,iCR,iS), uCR_M_P_X1(:,iCR) )
+                       ( uCR(:,iE,iX1-1,iX2,iX3,iCR,iS), uCR_M_P_X1(:,iCR) )
                 CALL MapNodalToModal_Radiation &
-                       ( VolJac(:,iE,iX1,  iX2,iX3) &
-                           * uCR(:,iE,iX1,  iX2,iX3,iCR,iS), uCR_M     (:,iCR) )
+                       ( uCR(:,iE,iX1,  iX2,iX3,iCR,iS), uCR_M     (:,iCR) )
                 CALL MapNodalToModal_Radiation &
-                       ( VolJac(:,iE,iX1+1,iX2,iX3) &
-                           * uCR(:,iE,iX1+1,iX2,iX3,iCR,iS), uCR_M_N_X1(:,iCR) )
+                       ( uCR(:,iE,iX1+1,iX2,iX3,iCR,iS), uCR_M_N_X1(:,iCR) )
 
               END DO
 
-              uCR_A(1:nCR,iE,iX1,iX2,iX3) = uCR_M     (1,1:nCR)
-              uCR_A_P_X1(1:nCR)           = uCR_M_P_X1(1,1:nCR)
-              uCR_A_N_X1(1:nCR)           = uCR_M_N_X1(1,1:nCR)
+              uCR_A     (1:nCR) = uCR_M     (1,1:nCR)
+              uCR_A_P_X1(1:nCR) = uCR_M_P_X1(1,1:nCR)
+              uCR_A_N_X1(1:nCR) = uCR_M_N_X1(1,1:nCR)
 
               ! --- Slope From Modal Representation ---
 
-              uCR_X1(iE,iX1,iX2,iX3,1:nCR) &
+              uCR_X1(1:nCR,iE,iX1,iX2,iX3) &
                 = uCR_M(iOS+2,1:nCR) ! X1-Dimension
 
               ! --- Compute Limited Slopes ---
 
-              uCR_X1_T(iE,iX1,iX2,iX3,1:nCR) &
+              uCR_X1_T(1:nCR,iE,iX1,iX2,iX3) &
                 = MinModB &
-                    ( uCR_X1(iE,iX1,iX2,iX3,1:nCR), &
-                      BetaTVD * ( uCR_A(1:nCR,iE,iX1,iX2,iX3) - uCR_A_P_X1 ), &
-                      BetaTVD * ( uCR_A_N_X1 - uCR_A(1:nCR,iE,iX1,iX2,iX3) ), &
+                    ( uCR_X1(1:nCR,iE,iX1,iX2,iX3), &
+                      BetaTVD * ( uCR_A(1:nCR) - uCR_A_P_X1 ), &
+                      BetaTVD * ( uCR_A_N_X1 - uCR_A(1:nCR) ), &
                       dX1(iX1), BetaTVB )
 
             END DO
@@ -350,52 +354,100 @@ CONTAINS
 
               DO iCR = 1, nCR
 
-                LimitPolynomial = .FALSE.
-                LimitPolynomial &
-                  = ( ABS( uCR_X1(iE,iX1,iX2,iX3,iCR) &
-                           - uCR_X1_T(iE,iX1,iX2,iX3,iCR) ) &
-                        / Vol(iE,iX1,iX2,iX3) > Tol_TVD )
+                SlopeDifference(iCR) &
+                  = ABS( uCR_X1(iCR,iE,iX1,iX2,iX3) &
+                         - uCR_X1_T(iCR,iE,iX1,iX2,iX3) ) &
+                    / MAX( ABS( uCR_X1  (iCR,iE,iX1,iX2,iX3) ), &
+                           ABS( uCR_X1_T(iCR,iE,iX1,iX2,iX3) ), TINY(1.0_DP) )
 
-                IF( LimitPolynomial )THEN
+              END DO
 
-                  IF( Debug )THEN
+              LimitPolynomial = ANY( SlopeDifference(1:nCR) > Tol_TVD )
 
-                    WRITE(*,*)
-                    WRITE(*,'(A4,A,1I2.2)') &
-                      '', 'Limiting Radiation Field: ', iCR
-                    WRITE(*,'(A6,A,4I5.4)') '', &
-                      'iE, iX1, iX2, iX3 = ', iE, iX1, iX2, iX3
-                    WRITE(*,*)
+              IF( LimitPolynomial )THEN
 
-                    print*, " ux       = ", uCR_X1  (iE,iX1,iX2,iX3,iCR)
-                    print*, " ux_tilde = ", uCR_X1_T(iE,iX1,iX2,iX3,iCR)
+                IF( Debug )THEN
 
-                  END IF
+                  WRITE(*,*)
+                  WRITE(*,'(A4,A,1I2.2)') &
+                    '', 'Limiting Radiation Field: '
+                  WRITE(*,'(A6,A,4I5.4)') '', &
+                    'iE, iX1, iX2, iX3 = ', iE, iX1, iX2, iX3
+                  WRITE(*,*)
+                  PRINT*, "  uCR_X1    = ", uCR_X1  (1:nCR,iE,iX1,iX2,iX3)
+                  PRINT*, "  uCR_X1_T  = ", uCR_X1_T(1:nCR,iE,iX1,iX2,iX3)
+                  PRINT*, "  slopeDiff = ", SlopeDifference
+
+                END IF
+
+                DO iCR = 1, nCR
+
+                  uCR_K_0(iCR) &
+                    = SUM( WeightsR(:) * uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
+                             * VolJac(:,iE,iX1,iX2,iX3) )
 
                   CALL MapNodalToModal_Radiation &
-                         ( VolJac(:,iE,iX1,iX2,iX3) &
-                             * uCR(:,iE,iX1,iX2,iX3,iCR,iS), uCR_M(:,iCR) )
+                         ( uCR(:,iE,iX1,iX2,iX3,iCR,iS), uCR_M(:,iCR) )
 
-                  ! --- Cell-Integrated Moments ---
+                END DO
 
-                  uCR_M(:,iCR) = 0.0_DP
-                  uCR_M(1,iCR) &     ! -- Cell-Average
-                    = uCR_A(iCR,iE,iX1,iX2,iX3)
-                  uCR_M(iOS+2,iCR) & ! -- Slope X1-Direction
-                    = uCR_X1_T(iE,iX1,iX2,iX3,iCR)
+                ! --- Cell-Integrated Moments ---
 
-                  ! --- Back to Nodal Representation ---
+                uCR_A(1:nCR) = uCR_M(1,1:nCR)
+
+                uCR_M(:,1:nCR) = 0.0_DP
+                uCR_M(1,1:nCR) &     ! -- Cell-Average
+                  = uCR_A(1:nCR)
+                uCR_M(iOS+2,1:nCR) & ! -- Slope X1-Direction
+                  = uCR_X1_T(1:nCR,iE,iX1,iX2,iX3)
+
+                ! --- Correct Coefficients with Constrained Least Squares ---
+                ! --- to Presevre Conserved Quantities (i.e., N,G1,G2,G3) ---
+
+                A0(1:2,1) = [ 1.0_DP, 0.0_DP ]
+                A0(1:2,2) = [ 0.0_DP, 1.0_DP ]
+                B0(1,1) = SUM( WeightsR(:) * Legendre(:,1) &
+                                 * VolJac(:,iE,iX1,iX2,iX3) )
+                B0(1,2) = SUM( WeightsR(:) * Legendre(:,2) &
+                                 * VolJac(:,iE,iX1,iX2,iX3) )
+
+                DO iCR = 1, nCR
+
+                  A = A0
+                  B = B0
+                  c = [ uCR_M(1,iCR), uCR_M(iOS+2,iCR) ]
+                  d = uCR_K_0  (iCR)
+
+                  LWORK = SIZE( WORK )
+                  CALL DGGLSE( SIZE( A, 1 ), SIZE( A, 2 ), SIZE( B, 1 ), &
+                               A, SIZE( A, 1 ), B, SIZE( B, 1 ), c, d, &
+                               x, WORK, LWORK, INFO )
+
+                  uCR_M(    1,iCR) = x(1)
+                  uCR_M(iOS+2,iCR) = x(2)
+
+                END DO
+
+                ! --- Back to Nodal Representation ---
+
+                DO iCR = 1, nCR
 
                   CALL MapModalToNodal_Radiation &
                          ( uCR(:,iE,iX1,iX2,iX3,iCR,iS), uCR_M(:,iCR) )
 
-                  uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
-                    = uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
-                        / VolJac(:,iE,iX1,iX2,iX3)
+                  uCR_K_1(iCR) &
+                    = SUM( WeightsR(:) * uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
+                             * VolJac(:,iE,iX1,iX2,iX3) )
 
+                END DO
+
+                IF( Debug )THEN
+                  PRINT*
+                  PRINT*, "  |duCR| = ", ABS( uCR_K_1(:) - uCR_K_0(:) )
+                  PRINT*
                 END IF
 
-              END DO
+              END IF
 
             END DO
           END DO
@@ -406,7 +458,7 @@ CONTAINS
 
     END ASSOCIATE ! dX1, etc.
 
-    DEALLOCATE( uCR_A, uCR_X1, uCR_X1_T )
+    DEALLOCATE( uCR_X1, uCR_X1_T )
 
   END SUBROUTINE ApplySlopeLimiter_M1_DG
 
