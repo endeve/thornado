@@ -407,8 +407,10 @@ CONTAINS
 
             A0(1:2,1) = [ 1.0_DP, 0.0_DP ]
             A0(1:2,2) = [ 0.0_DP, 1.0_DP ]
-            B0(1,1) = SUM( WeightsF(:) * Legendre(:,1) * VolJacX(:,iX1,iX2,iX3) )
-            B0(1,2) = SUM( WeightsF(:) * Legendre(:,2) * VolJacX(:,iX1,iX2,iX3) )
+            B0(1,1) = SUM( WeightsF(:) * Legendre(:,1) &
+                             * VolJacX(:,iX1,iX2,iX3) )
+            B0(1,2) = SUM( WeightsF(:) * Legendre(:,2) &
+                             * VolJacX(:,iX1,iX2,iX3) )
             DO iCF = 1, nCF
 
               A = A0
