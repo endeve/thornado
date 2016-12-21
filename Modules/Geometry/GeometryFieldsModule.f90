@@ -11,17 +11,49 @@ MODULE GeometryFieldsModule
   CHARACTER(16), PUBLIC :: &
     CoordinateSystem = 'CARTESIAN'
 
+  ! --- Weights for 'Phase Space' Fields ---
+
   REAL(DP), DIMENSION(:),         ALLOCATABLE, PUBLIC :: &
-    WeightsGX, &
     WeightsG
-  REAL(DP), DIMENSION(:,:,:),     ALLOCATABLE, PUBLIC :: &
-    VolX
   REAL(DP), DIMENSION(:,:,:,:),   ALLOCATABLE, PUBLIC :: &
     Vol
-  REAL(DP), DIMENSION(:,:,:,:),   ALLOCATABLE, PUBLIC :: &
-    VolJacX
   REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
     VolJac
+
+  ! --- Weights for 'Position Space' Fields ---
+
+  REAL(DP), DIMENSION(:),       ALLOCATABLE, PUBLIC :: &
+    WeightsGX
+  REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, PUBLIC :: &
+    VolX
+  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: &
+    VolJacX
+
+  ! --- Spatial Geometry Fields ---
+
+  INTEGER, PUBLIC, PARAMETER :: iGF_Phi_N    = 1 ! Newtonian Potential
+  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_11 = 2 ! Spatial Metric Component 11
+  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_22 = 3 ! Spatial Metric Component 22
+  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_33 = 4 ! Spatial Metric Component 33
+  INTEGER, PUBLIC, PARAMETER :: iGF_Alpha    = 5 ! Lapse Function
+  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_1   = 6 ! Shift Vector 1
+  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_2   = 7 ! Shift Vector 2
+  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_3   = 8 ! Shift Vector 3
+  INTEGER, PUBLIC, PARAMETER :: iGF_CF       = 9 ! Conformal Factor
+  INTEGER, PUBLIC, PARAMETER :: nGF          = 9 ! n Geometry Fields
+
+  CHARACTER(32), DIMENSION(nGF), PUBLIC, PARAMETER :: &
+    namesGF = [ 'Newtonian Potential             ', &
+                'Spatial Metric Component (11)   ', &
+                'Spatial Metric Component (22)   ', &
+                'Spatial Metric Component (33)   ', &
+                'Lapse Function                  ', &
+                'Shift Vector (1)                ', &
+                'Shift Vector (2)                ', &
+                'Shift Vector (3)                ', &
+                'Conformal Factor                ' ]
+
+  REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: uGF
 
   INTERFACE
     PURE REAL(DP) FUNCTION MetricFunction( X )
@@ -50,43 +82,69 @@ CONTAINS
     INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
     INTEGER,               INTENT(in) :: nE, swE
 
-    ALLOCATE( WeightsGX(1:nDOFX) )
+    CALL CreateGeometryFieldsX( nX, swX )
+
     ALLOCATE( WeightsG (1:nDOF ) )
 
     ALLOCATE &
-      ( VolX(1-swX(1):nX(1)+swX(1), &
-             1-swX(2):nX(2)+swX(2), &
-             1-swX(3):nX(3)+swX(3)) )
-
-    ALLOCATE &
-      ( Vol(1-swE   :nE   +swE,    &
-            1-swX(1):nX(1)+swX(1), &
-            1-swX(2):nX(2)+swX(2), &
-            1-swX(3):nX(3)+swX(3)) )
-
-    ALLOCATE &
-      ( VolJacX(1:nDOFX, &
-                1-swX(1):nX(1)+swX(1), &
-                1-swX(2):nX(2)+swX(2), &
-                1-swX(3):nX(3)+swX(3)) )
+      ( Vol(1-swE   :nE   +swE,    1-swX(1):nX(1)+swX(1), &
+            1-swX(2):nX(2)+swX(2), 1-swX(3):nX(3)+swX(3)) )
 
     ALLOCATE &
       ( VolJac(1:nDOF, &
-               1-swE   :nE   +swE,    &
-               1-swX(1):nX(1)+swX(1), &
-               1-swX(2):nX(2)+swX(2), &
-               1-swX(3):nX(3)+swX(3)) )
+               1-swE   :nE   +swE,    1-swX(1):nX(1)+swX(1), &
+               1-swX(2):nX(2)+swX(2), 1-swX(3):nX(3)+swX(3)) )
 
   END SUBROUTINE CreateGeometryFields
 
 
+  SUBROUTINE CreateGeometryFieldsX( nX, swX )
+
+    INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
+
+    INTEGER :: iGF
+
+    ALLOCATE( WeightsGX(1:nDOFX) )
+
+    ALLOCATE &
+      ( VolX(1-swX(1):nX(1)+swX(1), 1-swX(2):nX(2)+swX(2), &
+             1-swX(3):nX(3)+swX(3)) )
+
+    ALLOCATE &
+      ( VolJacX(1:nDOFX, 1-swX(1):nX(1)+swX(1), &
+                1-swX(2):nX(2)+swX(2), 1-swX(3):nX(3)+swX(3)) )
+
+    WRITE(*,*)
+    WRITE(*,'(A5,A15)') '', 'Geometry Fields'
+    WRITE(*,*)
+    DO iGF = 1, nGF
+      WRITE(*,'(A5,A32)') '', TRIM( namesGF(iGF) )
+    END DO
+
+    ALLOCATE &
+      ( uGF(1:nDOFX, &
+            1-swX(1):nX(1)+swX(1), &
+            1-swX(2):nX(2)+swX(2), &
+            1-swX(3):nX(3)+swX(3), &
+            1:nGF) )
+
+  END SUBROUTINE CreateGeometryFieldsX
+
+
   SUBROUTINE DestroyGeometryFields
 
-    DEALLOCATE( WeightsGX, WeightsG )
-    DEALLOCATE( VolX, Vol )
-    DEALLOCATE( VolJacX, VolJac  )
+    CALL DestroyGeometryFieldsX
+
+    DEALLOCATE( WeightsG, Vol, VolJac  )
 
   END SUBROUTINE DestroyGeometryFields
+
+
+  SUBROUTINE DestroyGeometryFieldsX
+
+    DEALLOCATE( WeightsGX, VolX, VolJacX, uGF  )
+
+  END SUBROUTINE DestroyGeometryFieldsX
 
 
   ! --- Coordinate System Dependent Metric Functions ---

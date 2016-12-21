@@ -48,6 +48,9 @@ MODULE ProgramInitializationModule
   USE OpacityModule, ONLY: &
     InitializeOpacities, &
     FinalizeOpacities
+  USE GravitySolutionModule, ONLY: &
+    InitializeGravitySolver, &
+    FinalizeGravitySolver
   USE FluidEvolutionModule, ONLY: &
     InitializeFluidEvolution, &
     FinalizeFluidEvolution
@@ -79,12 +82,13 @@ CONTAINS
       eL_Option, eR_Option, zoomE_Option, CoordinateSystem_Option, &
       nNodes_Option, ActivateUnits_Option, EquationOfState_Option, &
       EquationOfStateTableName_Option, Gamma_IDEAL_Option, &
-      Opacity_Option, OpacityTableName_Option, FluidSolver_Option, &
-      RadiationSolver_Option, FluidRiemannSolver_Option, &
+      Opacity_Option, OpacityTableName_Option, GravitySolver_Option, &
+      FluidSolver_Option, RadiationSolver_Option, FluidRiemannSolver_Option, &
       RadiationRiemannSolver_Option, FluidRadiationCoupling_Option, &
-      EvolveFluid_Option, EvolveRadiation_Option, ApplySlopeLimiter_Option, &
-      BetaTVB_Option, BetaTVD_Option, ApplyPositivityLimiter_Option, &
-      nStages_SSP_RK_Option, nStages_SI_RK_Option )
+      SolveGravity_Option, EvolveFluid_Option, EvolveRadiation_Option, &
+      ApplySlopeLimiter_Option, BetaTVB_Option, BetaTVD_Option, &
+      ApplyPositivityLimiter_Option, nStages_SSP_RK_Option, &
+      nStages_SI_RK_Option )
 
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: ProgramName_Option
     INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: nX_Option
@@ -108,6 +112,7 @@ CONTAINS
     REAL(DP),               INTENT(in), OPTIONAL :: Gamma_IDEAL_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: Opacity_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: OpacityTableName_Option
+    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: GravitySolver_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: FluidSolver_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: RadiationSolver_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: FluidRiemannSolver_Option
@@ -115,6 +120,7 @@ CONTAINS
       RadiationRiemannSolver_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: &
       FluidRadiationCoupling_Option
+    LOGICAL,                INTENT(in), OPTIONAL :: SolveGravity_Option
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveFluid_Option
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveRadiation_Option
     LOGICAL,                INTENT(in), OPTIONAL :: ApplySlopeLimiter_Option
@@ -316,8 +322,16 @@ CONTAINS
     ! --- Opacities ---
 
     CALL InitializeOpacities &
-           ( Opacity_Option = Opacity_Option, &
-             OpacityTableName_Option = OpacityTableName_Option )
+           ( Opacity_Option &
+               = Opacity_Option, &
+             OpacityTableName_Option &
+               = OpacityTableName_Option )
+
+    ! --- Gravity Solver ---
+
+    CALL InitializeGravitySolver &
+           ( GravitySolver_Option &
+               = GravitySolver_Option )
 
     ! --- Fluid Solver ---
 
@@ -401,6 +415,10 @@ CONTAINS
     ! --- Opacities ---
 
     CALL FinalizeOpacities
+
+    ! --- Gravity Solver ---
+
+    CALL FinalizeGravitySolver
 
     ! --- Fluid Solver ---
 

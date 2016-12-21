@@ -1,3 +1,8 @@
+GravitySolutionModule.o: \
+  KindModule.o \
+  GravitySolutionModule_Newtonian_Poseidon.o \
+  GravitySolutionModule.f90
+
 RiemannSolverModule.o: \
   KindModule.o \
   RiemannSolverModule.f90

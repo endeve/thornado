@@ -13,6 +13,8 @@ MODULE InputOutputModule
   USE MeshModule, ONLY: &
     MeshX, &
     MeshE
+  USE GeometryFieldsModule, ONLY: &
+    uGF, iGF_Phi_N, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
@@ -27,6 +29,8 @@ MODULE InputOutputModule
 
   CHARACTER(9),  PARAMETER :: &
     OutputDirectory = '../Output'
+  CHARACTER(14), PARAMETER :: &
+    GeometrySuffix = 'GeometryFields'
   CHARACTER(11), PARAMETER :: &
     FluidSuffix = 'FluidFields'
   CHARACTER(15), PARAMETER :: &
@@ -39,22 +43,32 @@ CONTAINS
 
 
   SUBROUTINE WriteFields1D &
-               ( Time, WriteFluidFields_Option, WriteRadiationFields_Option )
+               ( Time, WriteGeometryFields_Option, WriteFluidFields_Option, &
+                 WriteRadiationFields_Option )
 
     REAL(DP), INTENT(in)           :: Time
+    LOGICAL,  INTENT(in), OPTIONAL :: WriteGeometryFields_Option
     LOGICAL,  INTENT(in), OPTIONAL :: WriteFluidFields_Option
     LOGICAL,  INTENT(in), OPTIONAL :: WriteRadiationFields_Option
 
+    LOGICAL :: WriteGeometryFields
     LOGICAL :: WriteFluidFields
     LOGICAL :: WriteRadiationFields
 
-    WriteFluidFields = .TRUE.
+    WriteGeometryFields = .FALSE.
+    IF( PRESENT( WriteGeometryFields_Option ) ) &
+      WriteGeometryFields = WriteGeometryFields_Option
+
+    WriteFluidFields = .FALSE.
     IF( PRESENT( WriteFluidFields_Option ) ) &
       WriteFluidFields = WriteFluidFields_Option
 
-    WriteRadiationFields = .TRUE.
+    WriteRadiationFields = .FALSE.
     IF( PRESENT( WriteRadiationFields_Option ) ) &
       WriteRadiationFields = WriteRadiationFields_Option
+
+    IF( WriteGeometryFields ) &
+      CALL WriteGeometryFields1D( Time )
 
     IF( WriteFluidFields ) &
       CALL WriteFluidFields1D( Time )
@@ -65,6 +79,38 @@ CONTAINS
     FileNumber = FileNumber + 1
 
   END SUBROUTINE WriteFields1D
+
+
+  SUBROUTINE WriteGeometryFields1D( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    INTEGER        :: FUNIT
+
+    WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+    FileName = OutputDirectory // '/' // TRIM( ProgramName ) // '_' // &
+                 GeometrySuffix // '_' // FileNumberString // '.dat'
+
+    ASSOCIATE( X1 => MeshX(1) % Center(1:nX(1)), &
+               U  => UnitsDisplay )
+
+    OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
+
+    WRITE( FUNIT, * ) &
+      Time / U % TimeUnit, nX(1), X1 / U % LengthUnit, &
+      GeometryField1D( uGF(:,1:nX(1),1,1,iGF_Phi_N    ), nX(1) ), &
+      GeometryField1D( uGF(:,1:nX(1),1,1,iGF_Gm_dd_11 ), nX(1) ), &
+      GeometryField1D( uGF(:,1:nX(1),1,1,iGF_Gm_dd_22 ), nX(1) ), &
+      GeometryField1D( uGF(:,1:nX(1),1,1,iGF_Gm_dd_33 ), nX(1) )
+
+    CLOSE( FUNIT )
+
+    END ASSOCIATE ! X1, etc.
+
+  END SUBROUTINE WriteGeometryFields1D
 
 
   SUBROUTINE WriteFluidFields1D( Time )
@@ -134,6 +180,23 @@ CONTAINS
     END ASSOCIATE ! X1, etc.
 
   END SUBROUTINE WriteFluidFields1D
+
+
+  FUNCTION GeometryField1D( u, nX1 )
+
+    REAL(DP), DIMENSION(nX1)             :: GeometryField1D
+    REAL(DP), DIMENSION(:,:), INTENT(in) :: u
+    INTEGER,                  INTENT(in) :: nX1
+
+    INTEGER :: iX1
+
+    DO iX1 = 1, nX1
+      GeometryField1D(iX1) &
+        = evalLX( u(:,iX1), 0.0_DP, 0.0_DP, 0.0_DP )
+    END DO
+
+    RETURN
+  END FUNCTION GeometryField1D
 
 
   FUNCTION FluidField1D( u, nX1 )
