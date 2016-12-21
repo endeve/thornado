@@ -1,3 +1,16 @@
+GravitySolutionUtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  GravitySolutionUtilitiesModule.f90
+
+GravitySolutionModule_Newtonian_Poseidon.o: \
+  KindModule.o \
+  GravitySolutionUtilitiesModule.o \
+  GravitySolutionModule_Newtonian_Poseidon.f90
+
 GravitySolutionModule.o: \
   KindModule.o \
   GravitySolutionModule_Newtonian_Poseidon.o \

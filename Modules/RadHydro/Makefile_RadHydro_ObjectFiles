@@ -1,4 +1,5 @@
 RAD_HYDRO = \
+  GravitySolutionUtilitiesModule.o \
   GravitySolutionModule_Newtonian_Poseidon.o \
   GravitySolutionModule.o \
   RiemannSolverModule.o \
