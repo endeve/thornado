@@ -35,7 +35,8 @@ MODULE EulerEquationsLimiterModule_DG
   IMPLICIT NONE
   PRIVATE
 
-  LOGICAL,  PARAMETER                   :: Debug = .FALSE.
+  LOGICAL,  PARAMETER                   :: Debug   = .FALSE.
+  LOGICAL,  PARAMETER                   :: Debug_P = .FALSE.
   LOGICAL,  PARAMETER                   :: Componentwise = .FALSE.
   LOGICAL                               :: ApplySlopeLimiter
   LOGICAL                               :: ApplyPositivityLimiter
@@ -44,7 +45,7 @@ MODULE EulerEquationsLimiterModule_DG
   REAL(DP)                              :: BetaTVD
   REAL(DP), PARAMETER                   :: Tol_TVD = 1.0d-2
   REAL(DP), PARAMETER                   :: Tol_D = 1.0d-12
-  REAL(DP), PARAMETER                   :: Tol_E = 0.0d-12
+  REAL(DP), PARAMETER                   :: Tol_E = 1.0d-12
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X1
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X2
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X3
@@ -467,6 +468,7 @@ CONTAINS
     INTEGER  :: iPoint, iCF, iNode
     REAL(DP) :: Theta, dD, dS1, dS2, dS3, dE
     REAL(DP) :: delta, a, b, c, r1, r2
+    REAL(DP), DIMENSION(1:nCF) :: uCF_K_0, uCF_K_1
     REAL(DP), DIMENSION(1:nPF) :: uPF_A
 
     IF( nDOFX == 1 ) RETURN
@@ -504,7 +506,14 @@ CONTAINS
             DO iCF = 1, nCF
 
               CALL MapNodalToModal_Fluid &
-                     ( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
+                     ( uCF(:,iX1,iX2,iX3,iCF) &
+                         * VolJacX(:,iX1,iX2,iX3), uCF_M(:,iCF) )
+
+              uCF_M(:,iCF) = uCF_M(:,iCF) / VolX(iX1,iX2,iX3)
+
+              uCF_K_0(iCF) &
+                = SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF) &
+                         * VolJacX(:,iX1,iX2,iX3) )
 
             END DO
 
@@ -521,7 +530,7 @@ CONTAINS
 
             IF( Theta < 1.0_DP )THEN
 
-              IF( Debug )THEN
+              IF( Debug_P )THEN
                 PRINT*
                 PRINT*, "iX1,iX2,iX3 = ", iX1, iX2, iX3
                 PRINT*, "Theta_1 = ", Theta
@@ -586,7 +595,7 @@ CONTAINS
 
               IF( Theta < 1.0_DP )THEN
 
-                IF( Debug )THEN
+                IF( Debug_P )THEN
                   PRINT*
                   PRINT*, "iX1,iX2,iX3 = ", iX1, iX2, iX3
                   PRINT*, "Theta_2 = ", Theta
@@ -611,7 +620,21 @@ CONTAINS
               CALL MapModalToNodal_Fluid &
                      ( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
 
+              uCF_K_1(iCF) &
+                = SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF) &
+                         * VolJacX(:,iX1,iX2,iX3) )
+
             END DO
+
+            ! --- Check Conservation ---
+
+            IF( Debug_P )THEN
+              PRINT*
+              PRINT*, '|duCF| = ', ABS( uCF_K_1 - uCF_K_0 )
+              PRINT*
+            END IF
+
+            ! --- Check Positivity ---
 
             uPF_A(1:nPF) = Primitive( uCF_M(1,1:nCF) )
 
@@ -678,12 +701,6 @@ CONTAINS
         END DO
       END DO
     END DO
-
-    IF( Debug )THEN
-      WRITE(*,*)
-      WRITE(*,'(A6,A)') '', 'ApplyPositivityLimiter_Euler_DG Done'
-      WRITE(*,*)
-    END IF
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_DG
 
