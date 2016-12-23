@@ -372,7 +372,8 @@ CONTAINS
     ! --- Time Stepping ---
 
     CALL InitializeTimeStepping &
-           ( EvolveFluid_Option = EvolveFluid_Option, &
+           ( SolveGravity_Option = SolveGravity_Option, &
+             EvolveFluid_Option = EvolveFluid_Option, &
              EvolveRadiation_Option = EvolveRadiation_Option, &
              nStages_SSP_RK_Option = nStages_SSP_RK_Option, &
              nStages_SI_RK_Option = nStages_SI_RK_Option )
