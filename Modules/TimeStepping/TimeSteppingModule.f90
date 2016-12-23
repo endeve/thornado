@@ -43,6 +43,7 @@ MODULE TimeSteppingModule
 
   REAL(DP) :: wtR, wtS, wtP
 
+  LOGICAL :: SolveGravity    = .FALSE.
   LOGICAL :: EvolveFluid     = .FALSE.
   LOGICAL :: EvolveRadiation = .FALSE.
   INTEGER :: nStages_SSP_RK  = 1
@@ -70,24 +71,34 @@ CONTAINS
 
 
   SUBROUTINE InitializeTimeStepping &
-               ( EvolveFluid_Option, EvolveRadiation_Option, &
-                 nStages_SSP_RK_Option, nStages_SI_RK_Option )
+               ( SolveGravity_Option, EvolveFluid_Option, &
+                 EvolveRadiation_Option, nStages_SSP_RK_Option, &
+                 nStages_SI_RK_Option )
 
+    LOGICAL, INTENT(in), OPTIONAL :: SolveGravity_Option
     LOGICAL, INTENT(in), OPTIONAL :: EvolveFluid_Option
     LOGICAL, INTENT(in), OPTIONAL :: EvolveRadiation_Option
     INTEGER, INTENT(in), OPTIONAL :: nStages_SSP_RK_Option
     INTEGER, INTENT(in), OPTIONAL :: nStages_SI_RK_Option
 
+    IF( PRESENT( SolveGravity_Option ) )THEN
+      SolveGravity = SolveGravity_Option
+    END IF
+    WRITE(*,*)
+    WRITE(*,'(A5,A19,L1)') '', &
+      'Solve Gravity = ', SolveGravity
+
     IF( PRESENT( EvolveFluid_Option ) )THEN
       EvolveFluid = EvolveFluid_Option
     END IF
-    WRITE(*,*)
-    WRITE(*,'(A5,A19,L1)') '', 'Evolve Fluid = ', EvolveFluid
+    WRITE(*,'(A5,A19,L1)') '', &
+      'Evolve Fluid = ', EvolveFluid
 
     IF( PRESENT( EvolveRadiation_Option ) )THEN
       EvolveRadiation = EvolveRadiation_Option
     END IF
-    WRITE(*,'(A5,A19,L1)') '', 'Evolve Radiation = ', EvolveRadiation
+    WRITE(*,'(A5,A19,L1)') '', &
+      'Evolve Radiation = ', EvolveRadiation
     WRITE(*,*)
 
     IF( PRESENT( nStages_SSP_RK_Option ) )THEN
