@@ -313,6 +313,7 @@ CONTAINS
     RETURN
   END FUNCTION Flux_X1
 
+
   PURE FUNCTION GeometrySources( D, S_1, S_2, S_3, P, X )
    
     REAL(DP)             :: GeometrySources(1:nCF)
@@ -343,5 +344,6 @@ CONTAINS
 
     RETURN
   END FUNCTION GeometrySources
+
 
 END MODULE EulerEquationsUtilitiesModule

@@ -380,6 +380,8 @@ CONTAINS
 
     IF( TRIM( CoordinateSystem ) == 'CARTESIAN' ) RETURN
 
+    ! --- Fictitious Forces ---
+
     DO iX3 = iX_Begin(3), iX_End(3)
       DO iX2 = iX_Begin(2), iX_End(2)
         DO iX1 = iX_Begin(1), iX_End(1)
@@ -418,6 +420,10 @@ CONTAINS
         END DO
       END DO 
     END DO
+
+    IF( TRIM( CoordinateSystem ) == 'CYLINDRICAL' ) RETURN
+
+    ! --- Gravitational Sources ---
 
   END SUBROUTINE ComputeRHS_Euler_DG_GeometrySources
 
