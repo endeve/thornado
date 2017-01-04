@@ -101,12 +101,11 @@ We will make two simplifying assumptions: the metric tensor is (1) diagonal and 
 Specifically we assume the following diagonal form
 \begin{equation}
   \gamma_{ij}
-  =\mbox{diag}\big[\,\gamma_{11},\,\gamma_{22}(x^{1}),\,\gamma_{33}(x^{1},x^{2})\,\big]
-  =\mbox{diag}\big[\,1,\,a(x^{1})^{2},\,b(x^{1})^{2}c(x^{2})^{2}\,\big], 
+  =\mbox{diag}\big[\,\gamma_{11},\,\gamma_{22}(x^{1}),\,\gamma_{33}(x^{1},x^{2})\,\big], 
   \label{eq:threeMetric}
 \end{equation}
 which is sufficiently general to accommodate Cartesian, cylindrical, and spherical polar coordinates (see Table~\ref{tab:metricFunctions} and Appendix~\ref{app:CurvilinearEuler}).  
-Moreover, $\gamma$ is the determinant of the metric tensor, and $\sqrt{\gamma}=abc$.  
+Moreover, $\gamma$ is the determinant of the metric tensor, and $\sqrt{\gamma}=\sqrt{\gamma_{11}\gamma_{22}\gamma_{33}}$.  
 The inverse of the spatial metric is denoted $\gamma^{ij}$, so that $\gamma^{ik}\gamma_{kj}=\delta^{i}_{~j}$.  
 We can use the spatial metric to raise and lower indices on spatial vectors and tensors; e.g., $\cH_{j}=\gamma_{jk}\,\cH^{k}$.  
 
@@ -114,8 +113,8 @@ The two-moment system contains the higher order moments $\cK^{ij}$ --- the symme
 In order to form a closed system of equations, the components of the stress tensor must be related to the lower order moments through a closure procedure.  
 Following \citet{levermore_1984}, we write
 \begin{equation}
-  \cK^{ij}
-  =\f{1}{2}\,\Big[\,(1-\psi)\,\gamma^{ij}+(3\,\psi-1)\,h^{i}\,h^{j}\,\Big]\,\cJ,
+  \cK^{i}_{~j}
+  =\f{1}{2}\,\Big[\,(1-\psi)\,\delta^{i}_{~j}+(3\,\psi-1)\,h^{i}\,h_{j}\,\Big]\,\cJ,
 \end{equation}
 where $\psi$ is the Eddington factor, $h^{i}=\cH^{i}/\cH$, and $\cH=\sqrt{\cH_{i}\cH^{i}}$.  
 We also define the flux factor $h=\cH/\cJ$, and use the analytic expression for the Eddington factor \citep{minerbo_1978} given by 
@@ -129,16 +128,16 @@ Specifically, we have $\psi(0)=1/3$ (diffusion limit) and $\psi(1)=1$ (streaming
 
 \begin{table}
   \begin{center}
-  \caption{Metric functions for Cartesian, Cylindrical, and Spherical coordinate systems.\label{tab:metricFunctions}}
+  \caption{Relevant metric functions for Cartesian, Cylindrical, and Spherical coordinate systems.\label{tab:metricFunctions}}
   \begin{tabular}{ccccccccccc}
     \midrule
-    Coordinates & $x^{1}$ & $x^{2}$ & $x^{3}$ & $a$ & $b$ & $c$ & $\sqrt{\gamma}$
-    & $\pderiv{a}{x^{1}}$ & $\pderiv{b}{x^{1}}$ & $\pderiv{c}{x^{2}}$ \\
+    Coordinates & $x^{1}$ & $x^{2}$ & $x^{3}$ & $\gamma_{11}$ & $\gamma_{22}$ & $\gamma_{33}$ & $\sqrt{\gamma}$
+    & $\f{1}{\gamma_{22}}\pderiv{\gamma_{22}}{x^{1}}$ & $\f{1}{\gamma_{33}}\pderiv{\gamma_{33}}{x^{1}}$ & $\f{1}{\gamma_{33}}\pderiv{\gamma_{33}}{x^{2}}$ \\
     \midrule
     \midrule
     Cartesian & $x$ & $y$ & $z$ & 1 & 1 & 1 & 1 & 0 & 0 & 0 \\
-    Cylindrical & $R$ & $z$ & $\phi$ & 1 & $R$ & 1 & $R$ & 0 & 1 & 0 \\
-    Spherical & $r$ & $\theta$ & $\phi$ & $r$ & $r$ & $\sin\theta$ & $r^{2}\sin\theta$ & 1 & 1 & $\cos\theta$ \\
+    Cylindrical & $R$ & $z$ & $\phi$ & 1 & 1 & $R^{2}$ & $R$ & 0 & $2/R$ & 0 \\
+    Spherical & $r$ & $\theta$ & $\phi$ & 1 & $r^{2}$ & $r^{2}\sin^{2}\theta$ & $r^{2}\sin\theta$ & $2/r$ & $2/r$ & $2\cot\theta$ \\
     \midrule
     \midrule
   \end{tabular}
@@ -150,12 +149,12 @@ We define the geometry sources in Eq.~\eqref{eq:momentEquationMomentum} by
   \cG_{j}
   =\f{1}{2}\,\cK^{ik}\,\pderiv{\gamma_{ik}}{x^{j}}.  
 \end{equation}
-Specifically, using the time-independent metric tensor in Eq.~\eqref{eq:threeMetric}, the components are
+Specifically, using the time-independent metric tensor in Eq.~\eqref{eq:threeMetric} and writing in terms of $\cK^{i}_{~j}$, the components are
 \begin{equation}
   \cG_{1}
-  =\f{1}{2}\,\Big(\,\cK^{22}\,\pderiv{\gamma_{22}}{x^{1}}+\cK^{33}\,\pderiv{\gamma_{33}}{x^{1}}\,\Big), \quad
+  =\f{1}{2}\,\Big(\,\cK^{2}_{~2}\,\f{1}{\gamma_{22}}\pderiv{\gamma_{22}}{x^{1}}+\cK^{3}_{~3}\,\f{1}{\gamma_{33}}\pderiv{\gamma_{33}}{x^{1}}\,\Big), \quad
   \cG_{2}
-  =\f{1}{2}\,\cK^{33}\,\pderiv{\gamma_{33}}{x^{2}}, \quad\text{and}\quad
+  =\f{1}{2}\,\cK^{3}_{~3}\,\f{1}{\gamma_{33}}\pderiv{\gamma_{33}}{x^{2}}, \quad\text{and}\quad
   \cG_{3}
   =0.
 \end{equation}
@@ -181,7 +180,7 @@ where basis functions $\ell_{\bi}(\bx)$, which we will take to be polynomials, b
 Here we do not consider relativistic effects, which would lead to energy advection terms in the moment equations \citep[cf.][]{cardall_etal_2013a}.  
 Thus, we treat the neutrino energy simply as a parameter, and do not introduce an expansion in the energy dimension.  
 
-Several books and review articles on the DG method are available now available \citep[see, e.g.,][]{cockburnShu_2001,hesthavenWarburton_2008}, and we will not go into too much detail here.  
+Several books and review articles on the DG method are now available \citep[see, e.g.,][]{cockburnShu_2001,hesthavenWarburton_2008}, and we will not go into too much detail here.  
 However, we review some key concepts to introduce notation, and, since multiple `flavors' of the DG method has emerged, we emphasize specific choices in our implementation.  
 
 \subsection{Basic Principles of the DG Method}
@@ -369,6 +368,7 @@ Equation~\eqref{eq:semidiscreteDiscretized} provides the basis for implementatio
 By defining the cell average
 \begin{equation}
   \bcM_{\bK}=\f{|\bK|}{V_{\bK}}\sum_{\bk=\vect{1}}^{\bN}w_{\bk}\,\sqrt{\gamma}_{\bk}\,\bcM_{\bk},
+  \label{eq:conservedCellAverage}
 \end{equation}
 we obtain the discrete equation for the cell average by multiplying Eq.~\eqref{eq:semidiscreteDiscretized} with $w_{\bk}\,\sqrt{\gamma}_{\bk}$ and summing over all $\bk$
 \begin{equation}
@@ -384,61 +384,119 @@ we obtain the discrete equation for the cell average by multiplying Eq.~\eqref{e
 where we have used $\sum_{i=1}^{N}\ell_{i}(\eta)=1$ and $\sum_{i=1}^{N}\partial\ell_{i}/\partial\eta=0$.  
 In the absence of sources, Eq.~\eqref{eq:semidiscreteDiscretizedCellAverage} is conservative.  
 
-We have now defined the spatial discretization of the moment equations.  
+This defines the spatial discretization of the moment equations.  
 
 \clearpage
 
 \section{Semi-Implicit Time Integration}
 
-\section{Slope Limiters}
+\clearpage
 
-\subsection{TVD and TVB Limiters}
+\section{Polynomial Limiting}
+
+During time integration we apply limiters that modify the polynomial representation in elements so as to prevent development and growth of nonphysical oscillations (slope limiters; Sec.~\ref{sec:slopeLimiters}) or nonphysical states (positivity limiters; Sec.~\ref{sec:positivityLimiters}).  
+
+\subsection{Slope Limiters}
+\label{sec:slopeLimiters}
 
 For slope limiting, we introduce the modal expansion
 \begin{equation}
-  (\sqrt{\gamma}\bcM)_{\DG}=\sum_{\bi=\vect{1}}^{\bN}(\widetilde{\sqrt{\gamma}\bcM})_{\bi}\,\phi_{\bi}(\bx),
+  \bcM_{\DG}(\bx)=\sum_{\bi=\vect{1}}^{\bN}\bcC_{\bi}\,\phi_{\bi}(\bx),
+  \label{eq:conservedModalExpansion}
 \end{equation}
-where $\{\phi_{\bi}\}_{\bi=\vect{1}}^{\bN}$ are elements of an orthogonal basis and $(\widetilde{\sqrt{\gamma}\bcM})_{\bi}$ are the corresponding expansion coefficients.  
-(Here, we let the orthogonal basis be given by normalized Legendre polynomials; $\{\phi_{k}(\eta)\}_{k=1}^{4}=\{\,1,\,\eta,\,\eta^{2}-1/12,\,\eta\,(\eta^{2}-3/20)\,\}$.)  
-By orthogonality of the basis functions, we have
+where $\{\phi_{\bi}\}_{\bi=\vect{1}}^{\bN}$ are elements of an orthogonal basis and $\bcC_{\bi}$ are the corresponding expansion coefficients (not to be confused with the collision term in Eq.~\eqref{eq:momentEquationsCompact}).  
+Here, we let the orthogonal basis be constructed from the tensor product of one-dimensional, normalized Legendre polynomials up to degree 3; i.e., $\{\phi_{k}(\eta)\}_{k=1}^{4}=\{\,1,\,\eta,\,\eta^{2}-1/12,\,\eta\,(\eta^{2}-3/20)\,\}$.  
+By orthogonality of the basis functions, the expansion coefficients are easily obtained by projection of the nodal representation in Eq.~\eqref{eq:conservedNodalExpansion} onto the modal basis in Eq.~\eqref{eq:conservedModalExpansion}; i.e.,
 \begin{equation}
-  (\widetilde{\sqrt{\gamma}\bcM})_{\bi}
-  =\cT_{\bi}^{-1}\int_{\bK}(\sqrt{\gamma}\bcM)_{\DG}\,\phi_{\bi}(\bx)\,d\bx,
+  \bcC_{\bi}
+  =\langle\,\phi_{\bi},\,\phi_{\bi}\,\rangle_{\bK}^{-1}\sum_{\bj=\vect{1}}^{\bN}\langle\,\phi_{\bi},\,\ell_{\bj}\,\rangle_{\bK}\,\bcM_{\bj}
 \end{equation}
 where
 \begin{equation}
-  \cT_{\bi}=\int_{\bK}\phi_{\bi}(\bx)\,\phi_{\bi}(\bx)\,d\bx,
+  \langle\phi_{\bi},\phi_{\bi}\rangle_{\bK}=\int_{\bK}\phi_{\bi}(\bx)\,\phi_{\bi}(\bx)\,d\bx
+  \quad\text{and}\quad
+  \langle\phi_{\bi},\ell_{\bj}\rangle_{\bK}=\int_{\bK}\phi_{\bi}(\bx)\,\ell_{\bj}(\bx)\,d\bx.
+  \label{eq:projectionIntegrals}
 \end{equation}
-and $\{\cT_{i}^{-1}\}_{i=1}^{4}=\{\,1,\,12,\,180,\,2800\,\}$.  
-\begin{equation}
-  (\widetilde{\sqrt{\gamma}\bcM})_{|\vect{1}|}
-  \to\text{minmodB}
-  \big(\,
-    (\widetilde{\sqrt{\gamma}\bcM})_{|\vect{1}|},\,
-    \beta\,((\widetilde{\sqrt{\gamma}\bcM})_{|\vect{0}|}-(\widetilde{\sqrt{\gamma}\bcM})_{|\vect{0}|}^{-}),\,
-    \beta\,((\widetilde{\sqrt{\gamma}\bcM})_{|\vect{0}|}^{+}-(\widetilde{\sqrt{\gamma}\bcM})_{|\vect{0}|})
-  \,\big),
-\end{equation}
-where $\beta\in[1,2]$.  
+The integrals in Eq.~\eqref{eq:projectionIntegrals} can be computed exactly with a sufficiently accurate quadrature rule.  
+The projection is a linear transformation, and the projection matrix integrals can be computed once and stored at program initialization.  
+Also note that the projection matrix does not depend on the metric function, and is therefore the same for all elements, which limits storage requirements.  
 
-\citet{cockburnShu_2001}
+The elements of the multidimensional modal basis are ordered by increasing polynomial degree; i.e., 
+\begin{equation}
+  \{\phi_{1}(\eta^{1})\phi_{1}(\eta^{2})\ldots\phi_{1}(\eta^{d}),\,\phi_{2}(\eta^{1})\phi_{1}(\eta^{2})\ldots\phi_{1}(\eta^{d}),\,\phi_{1}(\eta^{1})\phi_{2}(\eta^{2})\ldots\phi_{1}(\eta^{d}),\ldots\},
+\end{equation}
+so that the first expansion coefficient represents the average value of $\bcM$ in $\bK$, $\bcC_{|\vect{0}|}=\langle\bcM\rangle_{\bK}$ (the coefficient of the basis polynomial with total degree $0$).  
+The second expansion coefficient, $\bcC_{|\vect{1}|}^{1}$ (coefficient of the basis function with total degree $1$ varying in the first dimension), represents the first derivative of $\bcM$ in the first dimension, and so on.  
+
+The limiting procedure first computes, for each dimension $i=1,\ldots,d$, the limited slopes $\widetilde{\bcC}_{|\vect{1}|}^{i}$ by comparing the variation within $\bK$, $\bcC_{|\vect{1}|}^{i}$, with the variation in the cell average by considering the neighboring elements
+\begin{equation}
+  \widetilde{\bcC}_{|\vect{1}|}^{i}
+  =\text{minmodB}
+  \big(\,
+    \bcC_{|\vect{1}|}^{i},\,
+    \beta\,(\langle\bcM\rangle_{\bK}-\langle\bcM\rangle_{\bK}^{i,-}),\,
+    \beta\,(\langle\bcM\rangle_{\bK}^{i,+}-\langle\bcM\rangle_{\bK})
+  \,\big),
+  \label{eq:limitedSlopes}
+\end{equation}
+where the limiter parameter $\beta\in[1,2]$ controls how aggressive limiting is applied.  
+($\beta=2$ is the least aggressive, and, in many cases, leads to the most accurate results.)  
+The $\text{minmodB}$ function is given by \citet{cockburnShu_2001} as
 \begin{equation}
   \mbox{minmodB}(a,b,c)
   =\left\{\begin{array}{ll}
   a \quad\text{if}\quad |a|\le M\,\Delta x^{2} \\
-  \mbox{minmod}(a,b,c) \quad \text{otherwise}
-  \end{array}\right.,
+  \mbox{minmod}(a,b,c) \quad \text{otherwise},
+  \end{array}\right.
+  \label{eq:minmodB}
 \end{equation}
-where the minmod function is given by
+and the usual minmod function is given by
 \begin{equation}
   \mbox{minmod}(a,b,c)
   =\left\{\begin{array}{ll}
-  s\,\min[\,|a|,|b|,|c|\,] \quad\text{if}\quad $s=\mbox{sign}(a)=\mbox{sign}(b)=\mbox{sign}(c)$ \\
+  s\,\min[\,|a|,|b|,|c|\,] \quad\text{if}\quad s=\mbox{sign}(a)=\mbox{sign}(b)=\mbox{sign}(c) \\
   0 \quad \text{otherwise}.
-  \end{array}\right..
+  \end{array}\right.
+  \label{eq:minmod}
 \end{equation}
+In Eq.~\eqref{eq:minmodB}, the parameter $M>0$ is proportional to the second derivative, and can be adjusted to prevent clipping at smooth extrema.  
+For $M=0$, the $\text{minmodB}$ functions reduces to the usual minmod function in Eq.~\eqref{eq:minmod}.  
+In Eq.~\eqref{eq:limitedSlopes}, $\langle\bcM\rangle_{\bK}^{i,-/+}$ is the cell average in the element to the left/right in the $i$-th dimension of the element under consideration.  
+
+After computing the limited slopes in Eq.~\eqref{eq:limitedSlopes}, they are compared with the original slopes.  
+Then, if
+\begin{equation}
+  |\widetilde{\bcC}_{|\vect{1}|}^{i}-\bcC_{|\vect{1}|}^{i}|/\max\big(|\widetilde{\bcC}_{|\vect{1}|}^{i}|,|\bcC_{|\vect{1}|}^{i}|\big)>\text{tol},
+\end{equation}
+where we set $\text{tol}=10^{-2}$, we replace the modal expansion in Eq.~\eqref{eq:conservedModalExpansion} with the limited polynomial
+\begin{equation}
+  \bcM_{\DG}(\bx)
+  \to\widetilde{\bcM}_{\DG}(\bx)
+  =\langle\bcM\rangle_{\bK}+\sum_{i=1}^{d}\widetilde{\bcC}_{|\vect{1}|}^{i}\,\phi_{|\vect{1}|}^{i}(\bx).  
+  \label{eq:conservedModalExpansionLimited}
+\end{equation}
+We limit all the fields in $\bcM$ if the difference in any of the coefficients exceeds the tolerance.  
+This limiting procedure locally destroys the high-order accuracy of the DG method, but leads to non-oscillatory evolution when sharp features are present in the solution.  
+
+The limiting procedure described here operates on the coefficients of the modal expansion of $\bcM$, not that of $\sqrt{\gamma}\bcM$.  
+As a consequence, the average $\langle\bcM\rangle_{\bK}$ is preserved in the limiting process, and not the average given in Eq.~\eqref{eq:conservedCellAverage}, which defines the conserved quantities governed by the two-moment model in curvilinear coordinates.  
+(We have found that limiting a polynomial expansion of $\sqrt{\gamma}\bcM$ leads to inaccurate results, especially near coordinate singularities.)  
+To enforce conservation, we therefore introduce a correction step, similar in spirit to that discussed by \citet{radiceRezzolla_2011}.  
+To this end we define $\widetilde{\bcC}=\big(\bcC_{|\vect{0}|},\,\widetilde{\bcC}_{|\vect{1}|}^{1},\ldots,\,\widetilde{\bcC}_{|\vect{1}|}^{d}\big)^{T}$ and $\widehat{\bcC}=\big(\widehat{\bcC}_{|\vect{0}|},\,\widehat{\bcC}_{|\vect{1}|}^{1},\ldots,\,\widehat{\bcC}_{|\vect{1}|}^{d}\big)^{T}$, and find $\widehat{\bcC}$ by solving
+\begin{equation}
+  \min_{\widehat{\bcC}}\f{1}{2}||\widetilde{\bcC}-\widehat{\bcC}||^{2}
+\end{equation}
+subject to the constraint
+\begin{equation}
+  \widehat{\bcM}_{\bK}=\f{1}{V_{\bK}}\int_{\bK}\widehat{\bcM}_{\DG}\,\sqrt{\gamma}\,d\bx\equiv\bcM_{\bK}.  
+\end{equation}
+This linear equality-constrained least squares problem can be solved, e.g., using LAPACK's DGGLSE subroutine.  
 
 \subsection{Positivity Limiters}
+\label{sec:positivityLimiters}
+
+\clearpage
 
 \section{Benchmark Problems}
 
