@@ -3,7 +3,7 @@ MODULE FluidFieldsModule
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, nNodesX
 
   IMPLICIT NONE
   PRIVATE
@@ -11,6 +11,9 @@ MODULE FluidFieldsModule
   ! --- Weights to Integrate Fluid Fields ---
 
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsF
+  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsF_X1
+  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsF_X2
+  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsF_X3
 
   ! --- Conserved Fluid Fields ---
 
@@ -91,6 +94,9 @@ CONTAINS
     INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
 
     ALLOCATE( WeightsF(1:nDOFX) )
+    ALLOCATE( WeightsF_X1(1:nNodesX(2)*nNodesX(3)) )
+    ALLOCATE( WeightsF_X2(1:nNodesX(1)*nNodesX(3)) )
+    ALLOCATE( WeightsF_X3(1:nNodesX(1)*nNodesX(2)) )
 
     CALL CreateFluidFields_Conserved( nX, swX )
     CALL CreateFluidFields_Primitive( nX, swX )
@@ -175,7 +181,7 @@ CONTAINS
 
   SUBROUTINE DestroyFluidFields
 
-    DEALLOCATE( WeightsF )
+    DEALLOCATE( WeightsF, WeightsF_X1, WeightsF_X2, WeightsF_X3 )
     DEALLOCATE( uCF, rhsCF, uPF, uAF )
 
   END SUBROUTINE DestroyFluidFields
