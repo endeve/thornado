@@ -3,7 +3,7 @@ MODULE GeometryFieldsModule
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDOF
+    nDOFX, nNodesX, nDOF
 
   IMPLICIT NONE
   PRIVATE
@@ -23,7 +23,7 @@ MODULE GeometryFieldsModule
   ! --- Weights for 'Position Space' Fields ---
 
   REAL(DP), DIMENSION(:),       ALLOCATABLE, PUBLIC :: &
-    WeightsGX
+    WeightsGX, WeightsGX_X1, WeightsGX_X2, WeightsGX_X3
   REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, PUBLIC :: &
     VolX
   REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: &
@@ -105,6 +105,9 @@ CONTAINS
     INTEGER :: iGF
 
     ALLOCATE( WeightsGX(1:nDOFX) )
+    ALLOCATE( WeightsGX_X1(1:nNodesX(2)*nNodesX(3)))
+    ALLOCATE( WeightsGX_X2(1:nNodesX(1)*nNodesX(3)))
+    ALLOCATE( WeightsGX_X3(1:nNodesX(1)*nNodesX(2)))
 
     ALLOCATE &
       ( VolX(1-swX(1):nX(1)+swX(1), 1-swX(2):nX(2)+swX(2), &
@@ -142,7 +145,8 @@ CONTAINS
 
   SUBROUTINE DestroyGeometryFieldsX
 
-    DEALLOCATE( WeightsGX, VolX, VolJacX, uGF  )
+    DEALLOCATE( WeightsGX, WeightsGX_X1, WeightsGX_X2, WeightsGX_X3 )
+    DEALLOCATE( VolX, VolJacX, uGF  )
 
   END SUBROUTINE DestroyGeometryFieldsX
 
