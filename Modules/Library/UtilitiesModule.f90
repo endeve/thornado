@@ -11,6 +11,7 @@ MODULE UtilitiesModule
   PUBLIC :: Locate
   PUBLIC :: NodeNumber
   PUBLIC :: NodeNumberX
+  PUBLIC :: NodeNumberX_X1
   PUBLIC :: InitializeWeights
   PUBLIC :: Interpolate1D_Linear
   PUBLIC :: Interpolate1D_Log
@@ -93,10 +94,24 @@ CONTAINS
   END FUNCTION NodeNumberX
 
 
-  SUBROUTINE InitializeWeights3D( w1, w2, w3, w3D )
+  PURE INTEGER FUNCTION NodeNumberX_X1( iNodeX2, iNodeX3 )
+
+    INTEGER, INTENT(in) :: iNodeX2, iNodeX3
+
+    NodeNumberX_X1 &
+      = iNodeX2 + (iNodeX3-1) * nNodesX(2)
+
+    RETURN
+  END FUNCTION NodeNumberX_X1
+
+
+  SUBROUTINE InitializeWeights3D( w1, w2, w3, w3D, w2D_1, w2D_2, w2D_3 )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: w1, w2, w3
     REAL(DP), DIMENSION(:), INTENT(out) :: w3D
+    REAL(DP), DIMENSION(:), INTENT(out) :: w2D_1
+    REAL(DP), DIMENSION(:), INTENT(out) :: w2D_2
+    REAL(DP), DIMENSION(:), INTENT(out) :: w2D_3
 
     INTEGER :: i, i1, i2, i3
 
@@ -109,6 +124,16 @@ CONTAINS
           w3D(i) = w1(i1) * w2(i2) * w3(i3)
 
         END DO
+      END DO
+    END DO
+
+    DO i3 = 1, SIZE( w3 )
+      DO i2 = 1, SIZE( w2 )
+
+        i = NodeNumberX_X1( i2, i3 )
+
+        w2D_1(i) = w2(i2) * w3(i3)
+
       END DO
     END DO
 
