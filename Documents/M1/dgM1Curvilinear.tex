@@ -115,11 +115,13 @@ Following \citet{levermore_1984}, we write
 \begin{equation}
   \cK^{i}_{~j}
   =\f{1}{2}\,\Big[\,(1-\psi)\,\delta^{i}_{~j}+(3\,\psi-1)\,h^{i}\,h_{j}\,\Big]\,\cJ,
+  \label{eq:stressTensor}
 \end{equation}
 where $\psi$ is the Eddington factor, $h^{i}=\cH^{i}/\cH$, and $\cH=\sqrt{\cH_{i}\cH^{i}}$.  
 We also define the flux factor $h=\cH/\cJ$, and use the analytic expression for the Eddington factor \citep{minerbo_1978} given by 
 \begin{equation}
   \psi(h)=\f{1}{3}+\f{2}{3}\,\Big(\,h^{2}\,\big(\,3-h+3h^{2}\,\big)/5\,\Big),
+  \label{eq:eddingtonFactor}
 \end{equation}
 which approximates the low occupancy limit of the maximum entropy closure for Fermi-Dirac particles given by \citet{cernohorskyBludman_1994}.  
 Specifically, we have $\psi(0)=1/3$ (diffusion limit) and $\psi(1)=1$ (streaming limit).  
@@ -575,6 +577,25 @@ This problem is taken from \citet{pons_etal_2000}
 
 \subsection{Line Source}
 
+\subsection{Riemann Problem}
+
+To test the ability of the DG method to capture discontinuities, we solve the Riemann problem presented by \citet{OHF2012}.  
+To compare with their results, we use the Eddington factor due to Levermore \citep{levermore_1984}
+\begin{equation}
+  \psi(h)=\f{1}{3}\big(\,5-2\,\sqrt{4-3\,h^{2}}\,\big).  
+\end{equation}
+The computational domain extends from $x=-0.05$ to $x=0.1$, and a discontinuity is located at $x_{\mbox{\tiny d}}=0.0$.  
+The initial condition is given by
+\begin{equation}
+  \bcM(x,t=0)=
+  \left\{
+  \begin{array}{l}
+  \bcM_{\mbox{\tiny L}}=\big(1,0.9999,0,0\big)^{T} \quad\text{if}\quad x\le x_{\mbox{\tiny d}} \\
+  \bcM_{\mbox{\tiny R}}=\big(0.5,0,0,0\big)^{T} \quad\text{otherwise}.
+  \end{array}
+  \right.
+\end{equation}
+
 \subsection{Diffusion Problem}
 
 This problem is adapted from \citet{abdikamalov_etal_2012} \citep[see also][]{pons_etal_2000,sumiyoshiYamada_2012}.  
@@ -614,66 +635,175 @@ This problem is adapted from \citet{abdikamalov_etal_2012} \citep[see also][]{po
 
 \appendix
 
+\clearpage
+
+\section{Eigenvalues and Eigenvectors for the Two-Moment Model}
+\label{sec:eigenstructure}
+
+Here we list eigenvalues and eigenvectors for the flux Jacobian associated with the hyperbolic system in Eq.~\eqref{eq:momentEquationsCompact}.  
+To this end, we define the Eddington tensor
+\begin{equation}
+  k^{i}_{~j}=\cK^{i}_{~j}/\cJ,
+\end{equation}
+where $\cK^{i}_{~j}$ is given by Eq.~\eqref{eq:stressTensor}.  
+
+The flux Jacobian is given by
+\begin{equation}
+  \pderiv{\bcF^{i}(\bcM)}{\bcM}
+  =\left[
+  \begin{array}{cccc}
+    0 & \gamma^{i1} & \gamma^{i2} & \gamma^{i3} \\
+    k^{i}_{~1}+\cJ\,\pderiv{k^{i}_{~1}}{\cJ} & \cJ\,\pderiv{k^{i}_{~1}}{\cH_{1}} & \cJ\,\pderiv{k^{i}_{~1}}{\cH_{2}} & \cJ\,\pderiv{k^{i}_{~1}}{\cH_{3}} \\
+    k^{i}_{~2}+\cJ\,\pderiv{k^{i}_{~2}}{\cJ} & \cJ\,\pderiv{k^{i}_{~2}}{\cH_{1}} & \cJ\,\pderiv{k^{i}_{~2}}{\cH_{2}} & \cJ\,\pderiv{k^{i}_{~2}}{\cH_{3}} \\
+    k^{i}_{~3}+\cJ\,\pderiv{k^{i}_{~3}}{\cJ} & \cJ\,\pderiv{k^{i}_{~3}}{\cH_{1}} & \cJ\,\pderiv{k^{i}_{~3}}{\cH_{2}} & \cJ\,\pderiv{k^{i}_{~3}}{\cH_{3}}
+  \end{array}
+  \right].  
+\end{equation}
+We will need the derivatives
+\begin{equation}
+  \pderiv{\psi}{\cJ}=-\f{\cH}{\cJ^{2}}\pderiv{\psi}{h},
+  \quad
+  \pderiv{\psi}{\cH_{k}}=\f{h^{k}}{\cJ}\pderiv{\psi}{h},
+  \quad
+  \pderiv{h^{i}}{\cH_{k}}
+  =\f{1}{\cH}\big(\,\gamma^{ik}-h^{i}\,h^{k}\,\big),
+  \quad\text{and}\quad
+  \pderiv{h_{j}}{\cH_{k}}
+  =\f{1}{\cH}\big(\,\delta^{k}_{~j}-h^{k}\,h_{j}\,\big).
+\end{equation}
+Then, we have
+\begin{equation}
+  \cJ\,\pderiv{k^{i}_{~j}}{\cJ}
+  =\f{1}{2}\,\big[\,\delta^{i}_{~j}-3\,h^{i}\,h_{j}\,\big]\,h\,\pderiv{\psi}{h},
+\end{equation}
+and
+\begin{equation}
+  \cJ\,\pderiv{k^{i}_{~j}}{\cH_{k}}
+  =-\f{1}{2}\,\big[\,\delta^{i}_{~j}-3\,h^{i}\,h_{j}\,\big]\,h^{k}\,\pderiv{\psi}{h}
+  +\f{1}{2}(3\psi-1)\,\big[\,\big(\gamma^{ik}\,h_{j}+h^{i}\,\delta^{k}_{~j}\big)-2\,h^{i}\,h^{k}\,h_{j}\,\big]\,\f{1}{h}.  
+\end{equation}
+
+Computing the flux Jacobian in the $1$-dimension, using the metric tensor in Eq.~\eqref{eq:threeMetric} and simplifying by setting $h^{2},h^{3}=0$ so that $h^{1}h_{1}=1$, gives
+\begin{equation}
+  \pderiv{\bcF^{1}(\bcM)}{\bcM}
+  =\left[
+  \begin{array}{cccc}
+    0 & 1 & 0 & 0 \\
+    \psi-h\,\psi' & h^{1}\,\psi' & 0 & 0 \\
+    0 & 0 & \f{(3\,\psi-1)\,h^{1}}{2\,h} & 0 \\
+    0 & 0 & 0 & \f{(3\,\psi-1)\,h^{1}}{2\,h}
+  \end{array}
+  \right],
+\end{equation}
+where $\psi'=\partial\psi/\partial h$.  
+The characteristic polynomial is
+\begin{equation}
+  p(\lambda)=\Big[\,\lambda^{2}-h^{1}\,\psi'\,\lambda-\big(\,\psi-h\,\psi\,\big)\Big]\,\Big[\,\f{(3\,\psi-1)\,h^{1}}{2\,h}-\lambda\,\Big]^{2}
+\end{equation}
+so that the eigenvalues are
+\begin{equation}
+  \vect{\lambda}
+  =\{\,\lambda_{1},\,\lambda_{2},\,\lambda_{3},\,\lambda_{4}\,\}
+  =\big\{\,\f{1}{2}\,\big(h^{1}\,\psi'+\sqrt{\Delta}\big),\,\f{1}{2}\,\big(h^{1}\,\psi'-\sqrt{\Delta}\big),\,\f{(3\,\psi-1)\,h^{1}}{2\,h},\,\f{(3\,\psi-1)\,h^{1}}{2\,h}\,\big\},
+\end{equation}
+where $\Delta=(\psi'-2\,h)^{2}+4(\psi-h^{2})$ \citep[cf.][]{pons_etal_2000}.  
+With the Eddington factor in Eq.~\eqref{eq:eddingtonFactor}, we have
+\begin{equation}
+  \psi'(h)=2\,h\,\big(\,2-h+4\,h^{2}\,\big)/5.  
+\end{equation}
+We then have, as expected, $\vect{\lambda}(h=0)=\{\,\sqrt{1/3},\,-\sqrt{1/3},\,0,\,0\,\}$ (diffusion limit) and $\vect{\lambda}(h=1)=\{\,h^{1},\,h^{1},\,h^{1},\,h^{1}\,\}$ (streaming limit).  
+
+The corresponding right and left eigenvectors are given by the columns and rows, respectively of the matrices
+\begin{equation}
+  \cR^{1}
+  =\left[
+  \begin{array}{cccc}
+    1 & 1 & 0 & 0 \\
+    \lambda_{1} & \lambda_{2} & 0 & 0 \\
+    0 & 0 & 1 & 0 \\
+    0 & 0 & 0 & 1
+  \end{array}
+  \right]
+  \quad\text{and}\quad
+  \cL^{1}=(\cR^{1})^{-1}
+  =\left[
+  \begin{array}{cccc}
+  \lambda_{2}/(\lambda_{2}-\lambda_{1}) & 1/(\lambda_{1}-\lambda_{2}) & 0 & 0 \\
+  \lambda_{1}/(\lambda_{1}-\lambda_{2}) & 1/(\lambda_{2}-\lambda_{1}) & 0 & 0 \\
+  0 & 0 & 1 & 0 \\
+  0 & 0 & 0 & 1
+  \end{array}
+  \right].  
+\end{equation}
+
+\clearpage
+
 \section{Moment Equations in Commonly Used Coordinate Systems}
 \label{app:CurvilinearEuler}
 
 \subsection{Cylindrical Coordinates}
 
+Number conservation equation
 \begin{equation}
   \pderiv{\cJ}{t}
-  +\f{1}{R}\pderiv{}{R}\Big(R\,\cH_{R}\Big)
-  +\pderiv{}{z}\Big(\cH_{z}\Big)
-  +\f{1}{R}\pderiv{}{\phi}\Big(\cH_{\phi}\Big)=0,
+  +\f{1}{R}\pderiv{}{R}\Big(R\,\cH^{1}\Big)
+  +\pderiv{\cH^{2}}{z}
+  +\pderiv{\cH^{3}}{\phi}=0,
 \end{equation}
+number flux equation ($R$-component)
 \begin{equation}
-  \pderiv{\big(\rho\,v_{R}\big)}{t}
-  +\f{1}{R}\pderiv{}{R}\Big(R\,\big(\rho\,v_{R}\,v_{R}+p\big)\Big)
-  +\pderiv{}{z}\Big(\rho\,v_{R}\,v_{z}\Big)
-  +\f{1}{R}\pderiv{}{\phi}\Big(\rho\,v_{R}\,v_{\phi}\Big)
-  =\f{\big(\rho\,v_{\phi}^{2}+p\big)}{R},
+  \pderiv{\cH_{1}}{t}
+  +\f{1}{R}\pderiv{}{R}\Big(R\,\cK^{1}_{~1}\Big)
+  +\pderiv{\cK^{2}_{~1}}{z}
+  +\pderiv{\bcK^{3}_{~1}}{\phi}
+  =\f{\cK^{3}_{~3}}{R},
 \end{equation}
+number flux equation ($z$-component)
 \begin{equation}
-  \pderiv{\big(\rho\,v_{z}\big)}{t}
-  +\f{1}{R}\pderiv{}{R}\Big(R\,\rho\,v_{z}\,v_{R}\Big)
-  +\pderiv{}{z}\Big(\big(\rho\,v_{z}\,v_{z}+p\big)\Big)
-  +\f{1}{R}\pderiv{}{\phi}\Big(\rho\,v_{z}\,v_{\phi}\Big)=0,
+  \pderiv{\cH_{2}}{t}
+  +\f{1}{R}\pderiv{}{R}\Big(R\,\cK^{1}_{~2}\Big)
+  +\pderiv{\cK^{2}_{~2}}{z}
+  +\pderiv{\cK^{3}_{~3}}{\phi}=0,
 \end{equation}
+and the number flux equation ($\phi$-component)
 \begin{equation}
-  \pderiv{\big(\rho\,v_{\phi}\big)}{t}
-  +\f{1}{R}\pderiv{}{R}\Big(R\,\rho\,v_{\phi}\,v_{R}\Big)
-  +\pderiv{}{z}\Big(\rho\,v_{\phi}\,v_{z}\Big)
-  +\f{1}{R}\pderiv{}{\phi}\Big(\rho\,v_{\phi}\,v_{\phi}+p\Big)
-  =-\f{\rho\,v_{\phi}\,v_{R}}{R},
+  \pderiv{\cH_{3}}{t}
+  +\f{1}{R}\pderiv{}{R}\Big(R\,\cK^{1}_{~3}\Big)
+  +\pderiv{\cK^{2}_{~2}}{z}
+  +\pderiv{\cK^{3}_{3}}{\phi}=0.
 \end{equation}
 
 \subsection{Spherical Coordinates}
 
+Number conservation equation
 \begin{equation}
-  \pderiv{\rho}{t}
-  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\rho\,v_{r}\Big)
-  +\f{1}{r\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\rho\,v_{\theta}\Big)
-  +\f{1}{r\sin\theta}\pderiv{}{\phi}\Big(\rho\,v_{\phi}\Big)=0,
+  \pderiv{\cJ}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\cH^{1}\Big)
+  +\f{1}{\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\cH^{2}\Big)
+  +\pderiv{}{\phi}\Big(\cH^{3}\Big)=0,
 \end{equation}
+number flux equation ($r$-component)
 \begin{equation}
-  \pderiv{\big(\rho\,v_{r}\big)}{t}
-  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\big(\rho\,v_{r}\,v_{r}+p\big)\Big)
-  +\f{1}{r\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\rho\,v_{r}\,v_{\theta}\Big)
-  +\f{1}{r\sin\theta}\pderiv{}{\phi}\Big(\rho\,v_{r}\,v_{\phi}\Big)
-  =\rho\,\f{\big(v_{\theta}^{2}+v_{\phi}^{2}\big)}{r}+\f{2\,p}{r},
+  \pderiv{\cH_{1}}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\cK^{1}_{~1}\Big)
+  +\f{1}{\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\cK^{2}_{~1}\Big)
+  +\pderiv{\cK^{3}_{~1}}{\phi}
+  =\big(\cK^{2}_{~2}+\cK^{3}_{~3}\big)\f{1}{r},
 \end{equation}
+number flux equation ($\theta$-component)
 \begin{equation}
-  \pderiv{\big(\rho\,v_{\theta}\big)}{t}
-  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\rho\,v_{\theta}\,v_{r}\Big)
-  +\f{1}{r\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\big(\rho\,v_{\theta}\,v_{\theta}+p\big)\Big)
-  +\f{1}{r\sin\theta}\pderiv{}{\phi}\Big(\rho\,v_{\theta}\,v_{\phi}\Big)
-  =\cot\theta\,\f{\big(\rho\,v_{\phi}^{2}+p\big)}{r}-\rho\,\f{v_{r}\,v_{\theta}}{r},
+  \pderiv{\cH_{2}}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\cK^{1}_{~2}\Big)
+  +\f{1}{\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\cK^{2}_{~2}\Big)
+  +\pderiv{\cK^{3}_{~2}}{\phi}
+  =\cK^{3}_{~3}\cot\theta,
 \end{equation}
+number flux equation ($\phi$-component)
 \begin{equation}
-  \pderiv{\big(\rho\,v_{\phi}\big)}{t}
-  +\f{1}{r^{2}}\pderiv{}{r}\Big(\,r^{2}\,\rho\,v_{\phi}\,v_{r}\,\Big)
-  +\f{1}{r\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\rho\,v_{\phi}\,v_{\theta}\Big)
-  +\f{1}{r\sin\theta}\pderiv{}{\phi}\Big(\rho\,v_{\phi}\,v_{\phi}+p\Big)
-  =-\rho\,v_{\phi}\,\f{\big(v_{r}+v_{\theta}\,\cot\theta\big)}{r},
+  \pderiv{\cH_{3}}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(\,r^{2}\,\cK^{1}_{~3}\,\Big)
+  +\f{1}{\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\cK^{2}_{~3}\,\Big)
+  +\pderiv{\cK^{3}_{~3}}{\phi}=0.
 \end{equation}
 
 \end{document}
