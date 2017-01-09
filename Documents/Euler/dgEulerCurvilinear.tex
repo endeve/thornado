@@ -35,59 +35,73 @@
 
 \begin{document}
 
-\title{Nodal Discontinuous Galerkin Method for the Euler Equations with Curvilinear Coordinates and Nuclear Equation of State for Astrophysics Simulations}
-\author{Eirik Endeve\altaffilmark{1}}
-\altaffiltext{1}{Department of Computational and Applied Mathematics, Oak Ridge National Laboratory, Oak Ridge, TN 37831-6354, USA; endevee@ornl.gov}
+\title{Nodal Discontinuous Galerkin Method for the Euler Equations of Fluid Dynamics}
+\author{Eirik Endeve\altaffilmark{1}, et al.}
+\altaffiltext{1}{Computational and Applied Mathematics Group, Oak Ridge National Laboratory, Oak Ridge, TN 37831-6354, USA; endevee@ornl.gov}
 
 \begin{abstract}
-We explore the use of the nodal Discontinuous Galerkin (DG) method in astrophysical hydrodynamics.  
-We focus on issues related to core-collapse supernova dynamics, which include the use of curvilinear coordinates and a nuclear equation of state.  
+We present a nodal Discontinuous Galerkin (DG) method for the Euler equations with an eye towards astrophysical hydrodynamics.  
+We focus on issues related to core-collapse supernova dynamics, which include the use of curvilinear coordinates and a non-ideal (nuclear) equation of state.  
 \end{abstract}
+
+\tableofcontents
 
 \section{Introduction}
 
 \section{Euler Equations of Gas Dynamics in Curvilinear Coordinates}
 
-We consider evolution in three-dimensional position space and denote the position vector with for a point with coordinates $\bx=\{x^{1},x^{2},x^{3}\}$ with $\vect{r}(\vect{x})\in\mathbb{R}^{3}$, so that the displacement vector is $d\vect{r}=dx^{i}\,\vect{e}_{i}$ and the coordinate basis vectors are
-\begin{equation}
-  \vect{e}_{i}=\pderiv{\vect{r}}{x^{i}}.  
-\end{equation}
-The squared infinitesimal line-element is
-\begin{equation}
-  ds_{\vect{x}}^{2}=d\vect{r}\cdot d\vect{r}=\gamma_{ij}\,dx^{i}\,dx^{j},
-\end{equation}
-where the coordinate basis metric tensor is defined as $\gamma_{ij}=\vect{e}_{i}\cdot\vect{e}_{j}$.  
+\subsection{Basic Mathematical Model}
 
-For general curvilinear spatial coordinates, the Euler equations for gas dynamics are \citep{leveque_2002}
+For general curvilinear spatial coordinates, the non-relativistic Euler equations for gas dynamics are \citep[][see, e.g., \citet{} and references therein for a fully general relativistic treatment]{leveque_2002}
 \begin{equation}
   \pderiv{\rho}{t}
   +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\rho\,v^{i}\,\Big)=0,
+  \label{eq:massConservation}
 \end{equation}
 \begin{equation}
-  \pderiv{M_{j}}{t}
+  \pderiv{S_{j}}{t}
   +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,P^{i}_{~j}\,\Big)
   =\f{1}{2}\,P^{ik}\,\pderiv{\gamma_{ik}}{x^{j}}-\rho\,\pderiv{\Phi}{x^{j}},
+  \label{eq:momentumConservation}
 \end{equation}
 \begin{equation}
   \pderiv{E}{t}
   +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\big(E+p\big)\,v^{i}\,\Big)
-  =-M^{i}\,\pderiv{\Phi}{x^{i}},
+  =-S^{i}\,\pderiv{\Phi}{x^{i}},
+  \label{eq:energyConservation}
 \end{equation}
 \begin{equation}
   \pderiv{n_{e}}{t}
   +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,n_{e}\,v^{i}\,\Big)=0,
+  \label{eq:electronConservation}
 \end{equation}
-where $\rho$ is the (baryon) mass density, $M^{i}=\rho\,v^{i}$ is the momentum density, $P^{ij}=\rho\,v^{i}\,v^{j}+p\,\gamma^{ij}$ the stress tensor, $E=e+\f{1}{2}\,\rho\,v_{i}\,v^{i}$ the total (internal plus kinetic) energy density, and $n_{e}$ the electron density.  
+where $\rho$ is the (baryon) mass density, $S^{i}=\rho\,v^{i}$ is the momentum density, $P^{ij}=\rho\,v^{i}\,v^{j}+p\,\gamma^{ij}$ the stress tensor, $E=e+\f{1}{2}\,\rho\,v_{i}\,v^{i}$ the total (internal plus kinetic) energy density, and $n_{e}$ the electron density.  
 The pressure is related to the density, internal energy density, and electron density by an equation of state (EoS); i.e., $p=p(\rho,e,n_{e})$.  
 (We also define the specific internal energy by $\epsilon=e/\rho$.)
-
-We assume the following diagonal form of the spatial metric tensor
+The Newtonian gravitation potential, $\Phi$, is obtained from solving
 \begin{equation}
-  \gamma_{ij}=\mbox{diag}\big[\,1,a(x^{1})^{2},\,b(x^{1})^{2}c(x^{2})^{2}\,\big], 
+  \f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\gamma^{ij}\pderiv{\Phi}{x^{j}}\,\Big)=4\pi\,\rho.  
+  \label{eq:poisson}
+\end{equation}
+
+The model given by Eqs.~\eqref{eq:massConservation} - \eqref{eq:electronConservation} is non-relativistic (i.e., it does not include effects due to strong gravitational fields or relativistic fluid velocities), but is expressed in terms of curvilinear coordinates through the spatial metric tensor $\gamma_{ij}$, which gives squared infinitesimal line-element
+\begin{equation}
+  ds_{\vect{x}}^{2}=\gamma_{ij}\,dx^{i}\,dx^{j},
+\end{equation}
+where $\gamma_{ij}$ are the spatial components of the coordinate basis metric tensor.  
+We will make two simplifying assumptions: the metric tensor is (1) diagonal and (2) time-independent.  
+Specifically we assume the following diagonal form
+\begin{equation}
+  \gamma_{ij}
+  =\mbox{diag}\big[\,\gamma_{11},\,\gamma_{22}(x^{1}),\,\gamma_{33}(x^{1},x^{2})\,\big]
+  =\mbox{diag}\big[\,1,\,a(x^{1})^{2},\,b(x^{1})^{2}c(x^{2})^{2}\,\big], 
+  \label{eq:threeMetric}
 \end{equation}
 which is sufficiently general to accommodate Cartesian, cylindrical, and spherical polar coordinates (see Table~\ref{tab:metricFunctions} and Appendix~\ref{app:CurvilinearEuler}).  
-$\sqrt{\gamma}=abc$.  $w^{i}=e^{i}_{~j}\,\bar{w}^{j}$.  
-With $e^{i}_{~j}=\mbox{diag}\big[\,1,a(x^{1})^{-1},\,b(x^{1})^{-1}c(x^{2})^{-1}\,\big]$, we have $\{w^{i}\}_{i=1}^{3}=\{\bar{w}^{1},\,a^{-1}\,\bar{w}^{2},\,b^{-1}c^{-1}\,\bar{w}^{3}\}$.  
+Moreover, $\gamma$ is the determinant of the metric tensor, and $\sqrt{\gamma}=abc$.  
+The inverse of the spatial metric is denoted $\gamma^{ij}$, so that $\gamma^{ik}\gamma_{kj}=\delta^{i}_{~j}$.  
+We can use the spatial metric to raise and lower indices on spatial vectors and tensors; e.g., $S_{j}=\gamma_{jk}\,S^{k}$.  
+
 \begin{table}
   \begin{center}
   \caption{Metric functions for Cartesian, Cylindrical, and Spherical coordinate systems.\label{tab:metricFunctions}}
@@ -106,75 +120,41 @@ With $e^{i}_{~j}=\mbox{diag}\big[\,1,a(x^{1})^{-1},\,b(x^{1})^{-1}c(x^{2})^{-1}\
   \end{center}
 \end{table}
 
-The mass conservation equation
+\subsection{Euler Equations as a System of Conservation Laws with Sources}
+
+We define the geometry sources (fictitious plus gravitational sources) in Eq.~\eqref{eq:momentumConservation} by
 \begin{equation}
-  \pderiv{\rho}{t}
-  +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,\rho\,\bar{v}^{1}\,\Big)
-  +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,\rho\,\bar{v}^{2}\,\Big)
-  +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,\rho\,\bar{v}^{3}\,\Big)=0
+  G_{j}
+  =\f{1}{2}\,P^{ik}\,\pderiv{\gamma_{ik}}{x^{j}}-\rho\,\pderiv{\Phi}{x^{j}}.  
 \end{equation}
-Components of the momentum equation
+Specifically, using the time-independent metric tensor in Eq.~\eqref{eq:threeMetric}, the components are
 \begin{equation}
-  \pderiv{\bar{M}^{i}}{t}
-  +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,\bar{P}^{1i}\,\Big)
-  +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,\bar{P}^{2i}\,\Big)
-  +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,\bar{P}^{3i}\,\Big)
-  =\bar{S}^{i}+\bar{G}^{i},
+  G_{1}
+  =\f{1}{2}\,\Big(\,P^{22}\,\pderiv{\gamma_{22}}{x^{1}}+P^{33}\,\pderiv{\gamma_{33}}{x^{1}}\,\Big)-\rho\,\pderiv{\Phi}{x^{1}}, \quad
+  G_{2}
+  =\f{1}{2}\,P^{33}\,\pderiv{\gamma_{33}}{x^{2}}-\rho\,\pderiv{\Phi}{x^{2}}, \quad\text{and}\quad
+  G_{3}
+  =-\rho\,\pderiv{\Phi}{x^{3}}.
 \end{equation}
-where the ``geometry sources'' are given by
-\small
-\begin{equation}
-  \bar{S}^{1}
-  =\bar{P}^{22}\f{1}{a}\pderiv{a}{x^{1}}+\bar{P}^{33}\f{1}{b}\pderiv{b}{x^{1}}, \quad
-  \bar{S}^{2}
-  =\bar{P}^{33}\f{1}{ac}\pderiv{c}{x^{2}}-\bar{P}^{12}\f{1}{a}\pderiv{a}{x^{1}}, \quad
-  \bar{S}^{3}
-  =-\bar{P}^{13}\f{1}{b}\pderiv{b}{x^{1}}-\bar{P}^{23}\f{1}{ac}\pderiv{c}{x^{2}},
-\end{equation}
-\normalsize
-and the gravitational sources are
-\begin{equation}
-  \bar{G}^{1}
-  =-\rho\,\pderiv{\Phi}{x^{1}}, \quad
-  \bar{G}^{2}
-  =-\rho\,\f{1}{a}\pderiv{\Phi}{x^{2}}, \quad
-  \bar{G}^{3}
-  =-\rho\,\f{1}{bc}\pderiv{\Phi}{x^{3}}.
-\end{equation}
-The energy equation is given by
-\begin{equation}
-  \pderiv{E}{t}
-  +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,\big(E+p\big)\,\bar{v}^{1}\,\Big)
-  +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,\big(E+p\big)\,\bar{v}^{2}\,\Big)
-  +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,\big(E+p\big)\,\bar{v}^{3}\,\Big)=Q,  
-\end{equation}
-where the gravitational energy source is
-\begin{equation}
-  Q=-\Big(\,\bar{M}^{1}\pderiv{\Phi}{x^{1}}+\bar{M}^{2}\f{1}{a}\pderiv{\Phi}{x^{2}}+\bar{M}^{3}\f{1}{bc}\pderiv{\Phi}{x^{3}}\,\Big).
-\end{equation}
-Finally, the electron conservation equation
-\begin{equation}
-  \pderiv{n_{e}}{t}
-  +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,n_{e}\,\bar{v}^{1}\,\Big)
-  +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,n_{e}\,\bar{v}^{2}\,\Big)
-  +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,n_{e}\,\bar{v}^{3}\,\Big)=0
-\end{equation}
-By defining the vector of evolved variables $\bU=\big(\,\rho,\,\rho\,\bar{v}^{1},\,\rho\,\bar{v}^{2},\,\rho\,\bar{v}^{3},\,E,\,n_{e}\,\big)^{T}$, the vector of geometry sources $\vect{S}(\bU)=\big(\,0,\,\bar{S}^{1},\,\bar{S}^{2},\,\bar{S}^{3}\,,0,\,0\,\big)^{T}$, the vector of gravitational sources $\bG(\bU,\Phi)=\big(\,0,\bar{G}^{1},\bar{G}^{2},\bar{G}^{3},Q,0\,\big)^{T}$, and the vectors of flux vector components
+The gravitational energy source term in Eq.~\eqref{eq:energyConservation} is denoted with $G_{E}=-S^{i}\,\pd{\Phi}{x^{i}}$.  
+
+Then, by defining the vector of evolved variables $\bU=\big(\,\rho,\,S_{1},\,S_{2},\,S_{3},\,E,\,n_{e}\,\big)^{T}$, the vector of geometry sources $\bG(\bU)=\big(\,0,\,G_{1},\,G_{2},\,G_{3},\,G_{E},\,0\,\big)^{T}$, and the flux vector components
 \begin{equation}
   \vect{F}^{i}(\bU)
-  =\big(\,\rho\,\bar{v}^{i},\,\rho\,\bar{v}^{1}\,\bar{v}^{i}+p\,\delta^{1i},\,\rho\,\bar{v}^{2}\,\bar{v}^{i}+p\,\delta^{2i},\,\rho\,\bar{v}^{3}\,\bar{v}^{i}+p\,\delta^{3i},\,(E+p)\,\bar{v}^{i},\,n_{e}\,\bar{v}^{i}\,\big)^{T},
+  =\big(\,\rho\,v^{i},\,P_{~1}^{i},\,P_{~2}^{i},\,P_{~3}^{i},\,(E+p)\,\bar{v}^{i},\,n_{e}\,\bar{v}^{i}\,\big)^{T},
 \end{equation}
-we can write the system of equations in compact form
+we write the system of equations in the usual compact form
 \begin{equation}
-  \pderiv{\bU}{t}
-  +\f{1}{ab}\pderiv{}{x^{1}}\Big(\,ab\,\vect{F}^{1}(\bU)\,\Big)
-  +\f{1}{ac}\pderiv{}{x^{2}}\Big(\,c\,\vect{F}^{2}(\bU)\,\Big)
-  +\f{1}{bc}\pderiv{}{x^{3}}\Big(\,\vect{F}^{3}(\bU)\,\Big)
-  =\vect{S}(\bU)+\bG(\bU,\Phi).
+  \pd{\bU}{t}
+  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\vect{F}^{i}(\bU)\,\Big)
+  =\bG(\bU).
   \label{eq:extendedEulerCompact}
 \end{equation}
+Eq.~\eqref{eq:extendedEulerCompact} forms the basis for developing DG methods for the Euler equations.  
 
 \section{Discontinuous Galerkin Discretization}
+
+\subsection{Basic Principles of the DG Method}
 
 We divide the computational domain $D$ into a disjoint union $\mathcal{T}$ of open elements $\bK$, so that $D = \cup_{\bK \in \mathcal{T}}\bK$.  
 We require that each element is a box in the logical coordinates; i.e.,
@@ -279,18 +259,27 @@ Surface integrals are then evaluated as
 Inserting \eqref{eq:conservedNodalExpansion} into \eqref{eq:semidiscreteDG}, with $v(\bx)=\ell_{\bk}(\bx)$ and the quadratures defined above, we obtain
 \begin{align}
   \pd{}{t}\int_{\bK}\bU_{\DG}\,v\,dV
-  &\approx w_{\bk}\,\sqrt{\gamma}_{\bk}\,|\bK|\,\pd{}{t}\bU_{\bk} \nonumber \\
-  &\hspace{12pt}
-  =w_{\bk}\,a(x_{k_{1}}^{1})\,b(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})\,\dx^{1}\,\dx^{2}\,\dx^{3}\,\pd{}{t}\bU_{\bk}
+  &\approx w_{\bk}\,\sqrt{\gamma}_{\bk}\,\pd{}{t}\bU_{\bk}\,|\bK|
 \end{align}
 for the time derivative term, and
 \begin{align}
-  \int_{\bK}\bS(\bU_{\DG})\,v\,dV
-  &\approx w_{\bk}\,\sqrt{\gamma}_{\bk}\,|\bK|\,\bS(\bU_{\bk}) \nonumber \\
-  &\hspace{12pt}
-  =w_{\bk}\,a(x_{k_{1}}^{1})\,b(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})\,\dx^{1}\,\dx^{2}\,\dx^{3}\,\bS(\bU_{\bk})
+  \int_{\bK}\bG(\bU_{\DG})\,v\,dV
+  &\approx w_{\bk}\,\sqrt{\gamma}_{\bk}\,\bG(\bU_{\bk})\,|\bK|.
 \end{align}
 for the source term.  
+The gravitational source terms contain the derivative to the potential, which warrants some additional exposition.  
+We choose a local representation of the potential (obtained by evaluating the potential in the nodes in $\bK$ using the FEM solution); i.e.,
+\begin{equation}
+  \Phi(\bx)=\sum_{\bi=\vect{1}}^{\bN}\Phi_{\bi}\,\ell_{\bi}(\bx).  
+\end{equation}
+Differentiating with respect to $x^{j}$ gives
+\begin{equation}
+  \pderiv{\Phi}{x^{j}}\Big|_{\bx_{\bk}}
+  =\f{1}{|K^{j}|}\sum_{\bi=\vect{1}}^{\bN}\pderiv{\ell_{\bi}}{\eta^{j}}(\eta_{\bk})\,\Phi_{\bi}
+  =\f{1}{|K^{j}|}\sum_{i_{j}=1}^{N}\pderiv{\ell_{i_{j}}}{\eta^{j}}(\eta_{k_{j}}^{j})\,\Phi(x_{i_{j}}^{j},\tilde{\bx}_{\tilde{\bk}_{j}}^{j}).  
+\end{equation}
+This expression is used to evaluate the gravitational sources in the momentum and energy equations.  
+
 For the surface integrals, we obtain, e.g., 
 \begin{align}
   %
@@ -341,6 +330,8 @@ Finally, the `volume terms' become
   \pderiv{\ell_{k_{3}}}{\eta^{3}}(\eta_{q_{3}}^{3}).  
 \end{align}
 
+
+
 Combining the terms above with forward Euler time integration, we obtain
 \begin{align}
   \bU_{\bk}^{n+1}
@@ -378,6 +369,10 @@ Combining the terms above with forward Euler time integration, we obtain
   \pderiv{\ell_{k_{3}}}{\eta^{3}}(\eta_{q_{3}}^{3})
   +\dt\,\bS(\bU_{\bk}^{n}).  
 \end{align}
+
+\section{Time Integration}
+
+\section{Slope Limiters}
 
 \bibliographystyle{apj}
 \bibliography{../References/references.bib}
