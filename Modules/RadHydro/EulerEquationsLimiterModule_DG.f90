@@ -468,7 +468,7 @@ CONTAINS
     INTEGER  :: iPoint, iCF, iNode
     REAL(DP) :: Theta, dD, dS1, dS2, dS3, dE
     REAL(DP) :: delta, a, b, c, r1, r2
-    REAL(DP), DIMENSION(1:nCF) :: uCF_K_0, uCF_K_1
+    REAL(DP), DIMENSION(1:nCF) :: uCF_K, uCF_K_0, uCF_K_1
     REAL(DP), DIMENSION(1:nPF) :: uPF_A
 
     IF( nDOFX == 1 ) RETURN
@@ -506,10 +506,11 @@ CONTAINS
             DO iCF = 1, nCF
 
               CALL MapNodalToModal_Fluid &
-                     ( uCF(:,iX1,iX2,iX3,iCF) &
-                         * VolJacX(:,iX1,iX2,iX3), uCF_M(:,iCF) )
+                     ( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
 
-              uCF_M(:,iCF) = uCF_M(:,iCF) / VolX(iX1,iX2,iX3)
+              uCF_K(iCF) &
+                = SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF) &
+                         * VolJacX(:,iX1,iX2,iX3) ) / VolX(iX1,iX2,iX3)
 
               uCF_K_0(iCF) &
                 = SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF) &
@@ -524,8 +525,8 @@ CONTAINS
               IF( uCF_P(iPoint,iCF_D) < Tol_D ) &
                 Theta &
                   = MIN( Theta, &
-                         ( Tol_D - uCF_M(1,iCF_D) ) &
-                           / ( uCF_P(iPoint,iCF_D) - uCF_M(1,iCF_D) ) )
+                         ( Tol_D - uCF_K(iCF_D) ) &
+                           / ( uCF_P(iPoint,iCF_D) - uCF_K(iCF_D) ) )
             END DO
 
             IF( Theta < 1.0_DP )THEN
@@ -534,13 +535,21 @@ CONTAINS
                 PRINT*
                 PRINT*, "iX1,iX2,iX3 = ", iX1, iX2, iX3
                 PRINT*, "Theta_1 = ", Theta
-                PRINT*, " D_K = ", uCF_M(1,iCF_D)
+                PRINT*, " D_K = ", uCF_K(iCF_D)
                 PRINT*, " D_p = ", uCF_P(:,iCF_D)
                 PRINT*
               END IF
 
+              uCF_M(1,iCF_D) &
+                = Theta * uCF_M(1,iCF_D) &
+                    + (1.0_DP - Theta) * uCF_K(iCF_D)
+
               uCF_M(2:nDOFX,iCF_D) &
                 = Theta * uCF_M(2:nDOFX,iCF_D)
+
+              uCF_M(1,iCF_Ne) &
+                = Theta * uCF_M(1,iCF_Ne) &
+                    + (1.0_DP - Theta) * uCF_K(iCF_Ne)
 
               uCF_M(2:nDOFX,iCF_Ne) &
                 = Theta * uCF_M(2:nDOFX,iCF_Ne)
@@ -562,25 +571,25 @@ CONTAINS
 
             IF( ANY( uPF_P(:,iPF_E) < Tol_E ) )THEN
 
-              delta = MAX( Tol_E / uCF_M(1,iCF_E), Tol_E )
+              delta = MAX( Tol_E / uCF_K(iCF_E), Tol_E )
 
               Theta = 1.0_DP
               DO iPoint = 1, nPoints
 
-                dD  = uCF_P(iPoint,iCF_D)  - uCF_M(1,iCF_D)
-                dS1 = uCF_P(iPoint,iCF_S1) - uCF_M(1,iCF_S1)
-                dS2 = uCF_P(iPoint,iCF_S2) - uCF_M(1,iCF_S2)
-                dS3 = uCF_P(iPoint,iCF_S3) - uCF_M(1,iCF_S3)
-                dE  = uCF_P(iPoint,iCF_E)  - uCF_M(1,iCF_E)
+                dD  = uCF_P(iPoint,iCF_D)  - uCF_K(iCF_D)
+                dS1 = uCF_P(iPoint,iCF_S1) - uCF_K(iCF_S1)
+                dS2 = uCF_P(iPoint,iCF_S2) - uCF_K(iCF_S2)
+                dS3 = uCF_P(iPoint,iCF_S3) - uCF_K(iCF_S3)
+                dE  = uCF_P(iPoint,iCF_E)  - uCF_K(iCF_E)
 
                 a = dD * dE - 0.5_DP * ( dS1**2 + dS2**2 + dS3**3 )
-                b = dE * uCF_M(1,iCF_D) &
-                      + dD * uCF_M(1,iCF_E) * ( 1.0_DP - delta ) &
-                      - ( dS1 * uCF_M(1,iCF_S1) + dS2 * uCF_M(1,iCF_S2) &
-                            + dS3 * uCF_M(1,iCF_S3) )
-                c = uCF_M(1,iCF_D) * uCF_M(1,iCF_E) * ( 1.0_DP - delta ) &
-                      - 0.5_DP * ( uCF_M(1,iCF_S1)**2 + uCF_M(1,iCF_S2)**2 &
-                                     + uCF_M(1,iCF_S3)**2 )
+                b = dE * uCF_K(iCF_D) &
+                      + dD * uCF_K(iCF_E) * ( 1.0_DP - delta ) &
+                      - ( dS1 * uCF_K(iCF_S1) + dS2 * uCF_K(iCF_S2) &
+                            + dS3 * uCF_K(iCF_S3) )
+                c = uCF_K(iCF_D) * uCF_K(iCF_E) * ( 1.0_DP - delta ) &
+                      - 0.5_DP * ( uCF_K(iCF_S1)**2 + uCF_K(iCF_S2)**2 &
+                                     + uCF_K(iCF_S3)**2 )
 
                 CALL GetRoots_Quadratic( a, b, c, r1, r2 )
 
@@ -599,14 +608,21 @@ CONTAINS
                   PRINT*
                   PRINT*, "iX1,iX2,iX3 = ", iX1, iX2, iX3
                   PRINT*, "Theta_2 = ", Theta
-                  PRINT*, " E_K = ", uCF_M(1,iCF_E)
+                  PRINT*, "Tol_E   = ", Tol_E
+                  PRINT*, " E_K = ", uCF_K(iCF_E)
                   PRINT*, " E_p = ", uCF_P(:,iCF_E)
                   PRINT*
                 END IF
 
                 DO iCF = 1, nCF
+
+                  uCF_M(1,iCF) &
+                    = Theta * uCF_M(1,iCF) &
+                        + (1.0_DP - Theta) * uCF_K(iCF)
+
                   uCF_M(2:nDOFX,iCF) &
                     = Theta * uCF_M(2:nDOFX,iCF)
+
                 END DO
 
               END IF
@@ -632,6 +648,8 @@ CONTAINS
               PRINT*
               PRINT*, '|duCF| = ', ABS( uCF_K_1 - uCF_K_0 )
               PRINT*
+              IF( ANY( ABS( uCF_K_1 - uCF_K_0 ) > 1.0d-10 ) ) &
+                STOP
             END IF
 
             ! --- Check Positivity ---
