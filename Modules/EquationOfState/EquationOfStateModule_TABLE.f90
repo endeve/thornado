@@ -61,6 +61,7 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeThermodynamicStates_Auxiliary_TABLE
   PUBLIC :: ComputeAuxiliary_Fluid_TABLE
   PUBLIC :: Auxiliary_Fluid_TABLE
+  PUBLIC :: ComputePressure_TABLE
   PUBLIC :: ComputeSpecificInternalEnergy_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
   PUBLIC :: ComputeProtonChemicalPotential_TABLE
@@ -332,6 +333,43 @@ CONTAINS
 
     RETURN
   END FUNCTION Auxiliary_Fluid_TABLE
+
+
+  SUBROUTINE ComputePressure_TABLE & 
+               ( D, T, Y, P, dPdD_Option, dPdT_Option, dPdY_Option )
+
+    REAL(DP), DIMENSION(:), INTENT(in)            :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)           :: P   
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dPdD_Option
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dPdT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dPdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
+
+    ComputeDerivatives = .FALSE.
+    IF( ANY( [ PRESENT( dPdD_Option ), PRESENT( dPdT_Option ), & 
+               PRESENT( dPdY_Option ) ] ) ) ComputeDerivatives = .TRUE.
+
+    IF( ComputeDerivatives )THEN
+
+      CALL ComputeDependentVariableAndDerivatives_TABLE &
+             ( D(:), T(:), Y(:), P(:), TMP(:,1:3), iP_T, OS_P, &
+               Units_V = Dyne / Centimeter**2 )
+      
+       IF( PRESENT( dPdD_Option ) ) dPdD_Option(:) = TMP(:,1)
+       IF( PRESENT( dPdT_Option ) ) dPdT_Option(:) = TMP(:,2)
+       IF( PRESENT( dPdY_Option ) ) dPdY_Option(:) = TMP(:,3) 
+
+    ELSE
+
+      CALL ComputeDependentVariable_TABLE & 
+             ( D(:), T(:), Y(:), P(:), iP_T, OS_P, & 
+               Units_V = Dyne / Centimeter**2 )
+
+    END IF
+  
+  END SUBROUTINE ComputePressure_TABLE    
 
 
   SUBROUTINE ComputeSpecificInternalEnergy_TABLE &
