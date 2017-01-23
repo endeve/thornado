@@ -12,12 +12,10 @@ RiemannProblem1D_NuclearEOS: \
 	RiemannProblem1D_NuclearEOS.o $(LIBRARIES)
 
 ComputeEigensystem_NuclearEOS: \
-	$(thornado) RiemannProblemInitializationModule.o \
-	ComputeEigensystem_NuclearEOS.o \
+	$(thornado) ComputeEigensystem_NuclearEOS.o
 	$(FLINKER) $(FLAGS) -o \
 	ComputeEigensystem_NuclearEOS_$(MACHINE) \
-	$(thornado) RiemannProblemInitializationModule.o \
-	ComputeEigensystem_NuclearEOS.o $(LIBRARIES)
+	$(thornado) ComputeEigensystem_NuclearEOS.o $(LIBRARIES)
 
 clean:
 	rm -f *.o *.mod *.ld

@@ -1,6 +1,7 @@
 PROGRAM ComputeEigensystem_NuclearEOS
 
-  USE KindModule, ONLY: DP
+  USE KindModule, ONLY: &
+    DP
 
   IMPLICIT NONE
 
