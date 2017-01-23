@@ -1,6 +1,7 @@
 include ../../../Build/Makefile_Build
 
-all: RiemannProblem1D_NuclearEOS
+all: RiemannProblem1D_NuclearEOS \
+     ComputeEigensystem_NuclearEOS
 
 RiemannProblem1D_NuclearEOS: \
 	$(thornado) RiemannProblemInitializationModule.o \
@@ -10,11 +11,20 @@ RiemannProblem1D_NuclearEOS: \
 	$(thornado) RiemannProblemInitializationModule.o \
 	RiemannProblem1D_NuclearEOS.o $(LIBRARIES)
 
+ComputeEigensystem_NuclearEOS: \
+	$(thornado) RiemannProblemInitializationModule.o \
+	ComputeEigensystem_NuclearEOS.o \
+	$(FLINKER) $(FLAGS) -o \
+	ComputeEigensystem_NuclearEOS_$(MACHINE) \
+	$(thornado) RiemannProblemInitializationModule.o \
+	ComputeEigensystem_NuclearEOS.o $(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
 	rm -f RiemannProblem1D_NuclearEOS_$(MACHINE)
+	rm -f ComputeEigensystem_NuclearEOS_$(MACHINE)
 
 RiemannProblem1D_NuclearEOS.o: \
   KindModule.o \
@@ -23,6 +33,10 @@ RiemannProblem1D_NuclearEOS.o: \
   RiemannProblemInitializationModule.o \
   TimeSteppingModule.o \
   RiemannProblem1D_NuclearEOS.f90
+
+ComputeEigensystem_NuclearEOS.o: \
+  KindModule.o \
+  ComputeEigensystem_NuclearEOS.f90
 
 RiemannProblemInitializationModule.o: \
   KindModule.o \

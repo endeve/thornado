@@ -23,7 +23,7 @@ PROGRAM RiemannProblem1D_NuclearEOS
          ( ProgramName_Option &
              = 'RiemannProblem1D_NuclearEOS', &
            nX_Option &
-             = [ 200, 1, 1 ], &
+             = [ 128, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
