@@ -18,7 +18,6 @@ MODULE RiemannProblemInitializationModule
     ComputeInternalEnergyDensityFromPressure, &
     ComputeAuxiliary_Fluid
   USE EulerEquationsUtilitiesModule, ONLY: &
-    Conserved, &
     ComputeConserved
 
   IMPLICIT NONE
