@@ -25,7 +25,7 @@ PROGRAM Sedov_SphericalSymmetry
            xL_Option &
              = [ 0.0_DP, 0.0_DP, 0.0_DP ], &
            xR_Option &
-             = [ 1.2_DP, Pi, 2 * Pi ], &
+             = [ 1.2_DP, Pi,     4.0_DP ], &
            nNodes_Option &
              = 1, &
            CoordinateSystem_Option &
@@ -40,13 +40,23 @@ PROGRAM Sedov_SphericalSymmetry
              = 'HLLC', &
            EvolveFluid_Option &
              = .TRUE., &
+           ApplySlopeLimiter_Option &
+             = .TRUE., &
+           BetaTVB_Option &
+             = 1.0d2, &
+           BetaTVD_Option &
+             = 2.0d0, &
+           ApplyPositivityLimiter_Option &
+             = .TRUE., &
            nStages_SSP_RK_Option &
              = 1 )
   
   CALL InitializeSedov( E_0 = 1.0_DP, nDetonationCells_Option = 3 )
 
   CALL EvolveFields &
-         ( t_begin = 0.0_DP, t_end = 1.0_DP, dt_write = 0.05_DP, &
+         ( t_begin  = 0.00_DP, &
+           t_end    = 1.00_DP, &
+           dt_write = 0.05_DP, &
            UpdateFields = SSP_RK )
 
   CALL FinalizeProgram
