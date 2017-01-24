@@ -40,8 +40,8 @@ function...
   uAF_Me = FF(iO+1+18*nX:iO+19*nX);
   uAF_Mp = FF(iO+1+19*nX:iO+20*nX);
   uAF_Mn = FF(iO+1+20*nX:iO+21*nX);
-  uAF_Gm = FF(iO+1+21*nX:iO+22*nX);
-  uAF_Cs = FF(iO+1+22*nX:iO+23*nX);
+ % uAF_Gm = FF(iO+1+21*nX:iO+22*nX);
+%  uAF_Cs = FF(iO+1+22*nX:iO+23*nX);
   
   keyboard
 

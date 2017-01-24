@@ -34,6 +34,7 @@ RiemannProblem1D_NuclearEOS.o: \
 
 ComputeEigensystem_NuclearEOS.o: \
   KindModule.o \
+  EquationOfStateModule_TABLE.o \
   ComputeEigensystem_NuclearEOS.f90
 
 RiemannProblemInitializationModule.o: \
