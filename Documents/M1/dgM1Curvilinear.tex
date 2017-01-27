@@ -392,6 +392,15 @@ This defines the spatial discretization of the moment equations.
 
 \section{Semi-Implicit Time Integration}
 
+For time integration we employ the method lines.  
+Having specified the spatial discretization for the advection terms, we consider the discretized moment equations in Eq.~\eqref{eq:semidiscreteDiscretized} as a system of ordinary differential equations (ODEs) to evolve forward in time, and write
+\begin{equation}
+  d_{t}\bcM_{\bk}
+  =\bcF_{\bx}(\bcM)_{\bk}+\bcC(\bcM)_{\bk},
+  \label{eq:momentEquationsODEs}
+\end{equation}
+where the operator $\bcF_{\bx}:\bbR^{d+1}\to\bbR^{d+1}$ represents the discretization of the spatial divergence operator.  
+
 \clearpage
 
 \section{Polynomial Limiting}
@@ -498,6 +507,12 @@ This linear equality-constrained least squares problem can be solved, e.g., usin
 \subsection{Positivity Limiters}
 \label{sec:positivityLimiters}
 
+When solving the moment equations, we need to prevent non-physical states from developing.  
+In particular, from the definition of the moments in Eq.~\eqref{eq:angularMoments}, it is easy to show that a positive distribution function implies a positive density $\cJ>0$ and a limited flux density $\cJ-|\bcH|>0$.  
+Failure in maintaining these bounds can lead to an ill-posed closure problem and loss of hyperbolicity for the moment equations.  
+
+\section{Neutrino Opacities}
+
 \clearpage
 
 \section{Benchmark Problems}
@@ -583,6 +598,7 @@ To test the ability of the DG method to capture discontinuities, we solve the Ri
 To compare with their results, we use the Eddington factor due to Levermore \citep{levermore_1984}
 \begin{equation}
   \psi(h)=\f{1}{3}\big(\,5-2\,\sqrt{4-3\,h^{2}}\,\big).  
+  \label{eq:eddingtonFactorLevermore}
 \end{equation}
 The computational domain extends from $x=-0.05$ to $x=0.1$, and a discontinuity is located at $x_{\mbox{\tiny d}}=0.0$.  
 The initial condition is given by
@@ -594,7 +610,19 @@ The initial condition is given by
   \bcM_{\mbox{\tiny R}}=\big(0.5,0,0,0\big)^{T} \quad\text{otherwise}.
   \end{array}
   \right.
+  \label{eq:riemannProblem}
 \end{equation}
+Results for $t=0.1$ are shown in Figure~\ref{fig:riemannProblem}.  
+The discontinuities remain sharp, and oscillations around the discontinuities are controlled (in part due to limiting of characteristic variables; cf. Section~\ref{sec:slopeLimiters}).  
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[scale=0.5]{./Figures/RiemannProblem1D}
+  \end{center}
+  \caption{Results from the one-dimensional Riemann problem in Eq.~\eqref{eq:riemannProblem}, obtained with the DG(2)+RK3 method using $240$ elements, the HLL Riemann solver, and the Eddington factor in Eq.~\eqref{eq:eddingtonFactorLevermore}.  
+  The number density $\cJ$ (black) and the number flux density $\cH_{r}$ (red) are plotted for $t=0.1$.}
+  \label{fig:riemannProblem}
+\end{figure}
 
 \subsection{Diffusion Problem}
 
@@ -629,6 +657,56 @@ This problem is adapted from \citet{abdikamalov_etal_2012} \citep[see also][]{po
 \end{figure}
 
 \subsection{Homogeneous Sphere}
+
+The homogeneous sphere test \citep[cf.][]{smit_etal_1997} considers of a sphere with radius $R$.  
+Inside the sphere ($r<R$), the absorption opacity and equilibrium distribution function are set to constant values $\chi=\chi_{0}$ and $f_{0}=1$, respectively.  
+Outside the sphere, the absorption opacity is zero.  
+The steady state solution, obtained by solving the transport equation in spherical symetry, is given by
+\begin{equation}
+  f_{\mbox{\tiny A}}(r,\mu)=f_{0}\,\big(1-e^{-\chi_{0}\,s(r,\mu)}\big),
+  \label{distributionHomogeneousSphere}
+\end{equation}
+where
+\begin{equation}
+  s(r,\mu)
+  =\left\{
+  \begin{array}{lll}
+    r\,\mu+R\,g(r,\mu) & \mbox{if}\quad r<R, & \mu\in[-1,+1], \\
+    2\,R\,g(r,\mu) & \mbox{if}\quad r \ge R, & \mu\in[(1-(R/r)^{2})^{1/2},+1], \\
+    0 & \mbox{otherwise},
+  \end{array}
+  \right.
+\end{equation}
+and $g(r,\mu)=[1-(r/R)^{2}(1-\mu^{2})]^{1/2}$.  
+
+Similar to \citet{oConnor_2015}, we solve two versions of this test.  
+One where the absorption opacity is set to $\chi_{0}=10^{-4}$~cm$^{-1}$ (thick; similar to the electron capture opacity encountered in the center of a collapsed stellar core), and one where the absorption opacity is set to $\chi_{0}=10^{-6}$~cm$^{-1}$ (thin).  
+Both simulations are run with a computational domain with $r\in[0,500]$~km using 100 uniform elements $\Delta r=5$~km.  
+Thus, in the thick case, the Knudsen number is small, $\mbox{Kn}=(\chi_{0}\,\Delta r)^{-1}=0.02$, while it exceeds unity in the thin case, $\mbox{Kn}=2$.  
+The radius of the sphere is set to $R=100$~km.  
+
+Results are plotted in Figure~\ref{fig:homogeneousSphere1D}.  
+
+\begin{figure}
+  \begin{center}
+    \begin{tabular}{cc}
+      \includegraphics[scale=0.32]{./Figures/HomogeneousSphere1D_Chi_1e-4_Density} &
+      \includegraphics[scale=0.32]{./Figures/HomogeneousSphere1D_Chi_1e-6_Density} \\
+      \includegraphics[scale=0.32]{./Figures/HomogeneousSphere1D_Chi_1e-4_FluxFactor} &
+      \includegraphics[scale=0.32]{./Figures/HomogeneousSphere1D_Chi_1e-6_FluxFactor} \\
+      \includegraphics[scale=0.32]{./Figures/HomogeneousSphere1D_Chi_1e-4_EddingtonFactor} &
+      \includegraphics[scale=0.32]{./Figures/HomogeneousSphere1D_Chi_1e-6_EddingtonFactor}
+    \end{tabular}
+  \end{center}
+  \caption{Results from solving the Homogeneous sphere problem with the DG(2)+SIRK2 method using $100$ elements.  
+  In the left panels, the absorption opacity is set to $\chi_{0}=10^{-4}$~cm$^{-1}$, while in the right panels it is set to $\chi_{0}=10^{-6}$~cm$^{-1}$.  
+  The numerical results (dashed lines) are compared to the analytical solution (solid lines).}
+  \label{fig:homogeneousSphere1D}
+\end{figure}
+
+\subsection{Milne's Problem}
+
+\section{Mini-app: Transport Problems with Tabulated Neutrino Opacities}
 
 \bibliographystyle{apj}
 \bibliography{../References/references.bib}
