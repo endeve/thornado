@@ -1,52 +1,116 @@
-\documentclass[letterpaper,12pt]{article}
+\documentclass[10pt,preprint]{aastex}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{mathrsfs}
+\usepackage{cite}
+\usepackage{times}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{lineno}
+\usepackage{yhmath}
+\usepackage{natbib}
+\hypersetup{
+  bookmarksnumbered = true,
+  bookmarksopen=false,
+  pdfborder=0 0 0,         % make all links invisible, so the pdf looks good when printed
+  pdffitwindow=true,      % window fit to page when opened
+  pdfnewwindow=true, % links in new window
+  colorlinks=true,           % false: boxed links; true: colored links
+  linkcolor=blue,            % color of internal links
+  citecolor=magenta,    % color of links to bibliography
+  filecolor=magenta,     % color of file links
+  urlcolor=cyan              % color of external links
+}
 \usepackage{graphicx}
-%\extrafloats{100}%
 \graphicspath{ {figures/} }
-\author{Juliana Pulsinelli}
-\title{Benchmarking of the Non-Relativistic Hydrodynamics Alogorithms in thornado}
+
+\newcommand{\thornado}{\texttt{thornado}}
+
 \begin{document}
-\maketitle
+
+\title{Benchmarks of the Non-Relativistic Hydrodynamics Algorithms in \thornado}
+\author{Juliana Pulsinelli\altaffilmark{1} and Eirik Endeve\altaffilmark{2}}
+
+\altaffiltext{1}{Insert Juliana's affiliation and email}
+\altaffiltext{2}{Computational and Applied Mathematics Group, Oak Ridge National Laboratory, Oak Ridge, TN 37831-6354, USA; endevee@ornl.gov}
+
 \begin{abstract}
-
-The thornado project is astrophysical code based on the Euler equations for fluid dynamics. In this project, the algorithms were benchmarked for accuracy. A group of one-dimensional Riemann problems with known exact solutions were run, and the thornado results were graphed and compared to the exact solutions. 
-
+\thornado\ is a new astrophysical code for radiation-hydrodynamics based on high-order Runge-Kutta Discontinuous Galerkin (RKDG) methods.  
+It currently solves the Euler equations for fluid dynamics and the two-moment ($M_{1}$) approximation of the radiative transfer equation. 
+In this document, we benchmark the algorithms for solving the Euler equations.  
+An extensive set of one-dimensional Riemann problems with known exact solutions were run, and the \thornado\ results were graphed and compared to exact solutions in cases where they exist. 
 \end{abstract}
+
+\tableofcontents
+
 \section{Introduction}
+
 Astrophysical fluid dynamics models the movement of fluids in space. It yields very different solutions from terrestrial fluid dynamics, as the effect of gravity is reduced or removed. 
 Fluid dynamics play a major role in the formation of stars and neutron stars, as well as the movement of galaxies and numerous other astrophysical topics.  
 
-In this project, algorithms solving the Euler equations for fluid dynamics were tested using a variety of tests. The Euler equations for fluid dynamics are \cite{ZhangShu2010}:
+\section{Equations and Numerical Method}
 
+In this project, numerical algorithms for solving the Euler equations of fluid dynamics are tested against an extensive suite of standard problems taken from the literature.  
+In the following subsections we briefly describe the equations and the numerical methods used.  
 
+\subsection{Euler Equations of Gas Dynamics}
+
+The Euler equations for fluid dynamics \citep[see, e.g.,][for details]{Leveque2002} consists of the mass equation
 \begin{equation}
-	\frac{\partial \rho}{\partial t}  
-	+ \frac{\partial}{\partial x} \Big(\rho u\Big) = 0
+  \frac{\partial \rho}{\partial t}  
+  + \frac{\partial}{\partial x} \Big(\rho u\Big) = 0,
+  \label{eq:massConservation}
+\end{equation}
+the momentum equation
+\begin{equation}
+  \frac{\partial}{\partial t} \Big(\rho u\Big)
+  + \frac{\partial}{\partial x} \Big(\rho u^2 + p\Big) = 0,
+  \label{eq:momentumConservation}
+\end{equation}
+and the energy equation
+\begin{equation}
+  \frac{\partial E}{\partial t}
+  + \frac{\partial}{\partial x} \Big((E + p) u\Big) = 0.  
+  \label{eq:energyConservation}
+\end{equation}
+where $\rho$ represents mass density, $u$ the fluid velocity, $p$ the pressure of the fluid, and $E$ the energy.  
+Equation~\eqref{eq:massConservation} describes conservation of mass, Equation~\eqref{eq:momentumConservation} describes conservation of momentum, and equation \eqref{eq:energyConservation} describes conservation of energy.
+The equation of state
+\begin{equation}
+  p = (\gamma - 1)
+  \Big(E - \frac{1}{2} \rho u^2 \Big)
+  \label{eq:eos}
+\end{equation}
+closes the system of equations, and links the pressure to the quantities evolved in Equations \eqref{eq:massConservation}-\eqref{eq:energyConservation}. 
+The ratio of specific heats, $\gamma$, is taken to be a constant.  
+
+By defining the vector of conserved variables $\boldsymbol{U}=(\rho,\rho u,E)^{T}$ and the vector of fluxes $\boldsymbol{F}(\boldsymbol{U})=(\rho u,\rho u^{2}+p,(E+p)u)^{T}$ we write the Euler equations as system of conservation laws
+\begin{equation}
+  \partial_{t}\boldsymbol{U}
+  +\partial_{x}\boldsymbol{F}(\boldsymbol{U})
+  =0.
 \end{equation}
 
+\subsection{Runge-Kutta Discontinuous Galerkin Methods}
+
+In the Runge-Kutta Discontinuous Galerkin \citep[RKDG;][]{cockburnShu_2001} method the solution to the Euler equations is approximated by a polynomial expansion of the form
 \begin{equation}
-	\frac{\partial}{\partial t} \Big(\rho u\Big)
-	+ \frac{\partial}{\partial x} \Big(\rho u^2 + p\Big) = 0
+  \boldsymbol{U}(x,t)
+  \approx\boldsymbol{U}_{h}(x,t)=\sum_{j=0}^{k}\boldsymbol{C}_{j}(t)\,\phi_{j}(x),
 \end{equation}
+where $\{\phi_{j}(x)\}_{j=0}^{k}$ are polynomials of degree at most $k$ and .  
 
-\begin{equation}
-	\frac{\partial E}{\partial t}
-	+ \frac{\partial}{\partial x} \Big((E + p) u\Big) = 0
-\end{equation}
+\section{Numerical Experiments}
 
-\begin{equation}
-	p = (\gamma - 1)
-	\Big(E - \frac{1}{2} \rho u^2 \Big)
-\end{equation}
-
-where $\rho$ represents mass density, u represents fluid velocity, p represents pressure of the fluid, and E represents energy. 
-Equation 1 represents conservation of mass, equation 2 represents conservation of momentum, and equation 3 represents conservation of energy. Equation 4 is the equation of state, which links the other three equations. 
-
-The code was tested using Riemann problems. The Riemann problem models a fluid in an area of one-dimensional space. The initial data features one jump discontinuity, and is constant on either side of this discontinuity. The computational domain is divided into space and time cells. The conditions of each cell are advanced forward for all space cells, one time step at a time, according to the Euler equations for fluid dynamics. \cite{Leveque2002}
+The code was tested using Riemann problems. The Riemann problem models a fluid in an area of one-dimensional space. The initial data features one jump discontinuity, and is constant on either side of this discontinuity. The computational domain is divided into space and time cells. The conditions of each cell are advanced forward for all space cells, one time step at a time, according to the Euler equations for fluid dynamics. \citep{Leveque2002}
 
 %models an area with two fluids, each of which has different characteristics, which are separated from one another by a barrier. When the barrier is removed, the Riemann problem solver code models how the fluids mix, determining how different properties of the fluid change at various spatial locations over time. The fields are evolved forward over time based on the Euler equations.
 
-\section{Numerical Experiments}
-Several tests were used to assess the accuracy of the integration method \cite{LiskaWendroff2003}. 
+Several tests were used to assess the accuracy of the integration method \citep{LiskaWendroff2003}. 
 \begin{table}[h!]
 \begin{center}
 \begin{tabular}{ |c|c c c|c c c|c c| }
@@ -56,7 +120,7 @@ Several tests were used to assess the accuracy of the integration method \cite{L
  1 & 1 & 0 & 1 & 0.125 & 0 & 0.1 & 0.5 & 0.2 \\
  2 & 1 & 0.75 & 1 & 0.125 & 0 & 0.1 & 0.3 & 0.2 \\
  3 & 1 & -2 & 0.4 & 1 & 2 & 0.4 & 0.5 & 0.15 \\
- 4 & 1 & 1 & $10^-6$ & 1 & -1 & $10^-6$ & 0.5 & 1 \\
+ 4 & 1 & 1 & $10^{-6}$ & 1 & -1 & $10^{-6}$ & 0.5 & 1 \\
  5 & 1 & -19.59745 & 1000 & 1 & -19.59745 & 0.01 & 0.8 & 0.012 \\
  6 & 5.99924 & 19.5975 & 460.894 & 5.99242 & -6.19633 & 46.095 & 0.4 & 0.035 \\
  7 & 1.4 & 0 & 1 & 1 & 0 & 1 & 0.5 & 2 \\
@@ -70,9 +134,9 @@ Several tests were used to assess the accuracy of the integration method \cite{L
   \label{tab:testtable}
 \end{center}
 \end{table}
-$x_0$ refers to the position of the barrier. The computational domain is 0.0 to 1.0 in tests 1--8, 0.1 to 0.6 in test 9 \cite{LiskaWendroff2003}, -5 to 15 in test 10, and -15 to 5 in test 11 \cite{Leveque2002}. 
+$x_0$ refers to the position of the barrier. The computational domain is 0.0 to 1.0 in tests 1--8, 0.1 to 0.6 in test 9 \citep{LiskaWendroff2003}, -5 to 15 in test 10, and -15 to 5 in test 11 \citep{Leveque2002}. 
 
-Test 12 is an interacting blast waves test, computed on 0.0 to 1.0, with discontinuities at 0.1 and 0.9. At all positions, initial density is 1 and initial velocity is 0. Initial pressure is 1000 on the left, 0.01 in the center, and 100 on the right \cite{LiskaWendroff2003}.
+Test 12 is an interacting blast waves test, computed on 0.0 to 1.0, with discontinuities at 0.1 and 0.9. At all positions, initial density is 1 and initial velocity is 0. Initial pressure is 1000 on the left, 0.01 in the center, and 100 on the right \citep{LiskaWendroff2003}.
 %\clearpage
 \subsection{Test 1: Sod's Shock Tube} 
 
@@ -451,7 +515,7 @@ This test was first run with 1000 cells to see the solution with high resolution
   \label{fig:pvcellcomp}
 \end{figure}
 
-\bibliographystyle{siam}
+\bibliographystyle{apj}
 \bibliography{references.bib}
 
 \end{document}
