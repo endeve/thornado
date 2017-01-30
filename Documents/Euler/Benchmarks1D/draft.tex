@@ -47,7 +47,7 @@ The code was tested using Riemann problems. The Riemann problem models a fluid i
 
 \section{Numerical Experiments}
 Several tests were used to assess the accuracy of the integration method \cite{LiskaWendroff2003}. 
-\begin{table}
+\begin{table}[h!]
 \begin{center}
 \begin{tabular}{ |c|c c c|c c c|c c| }
  \hline
@@ -62,8 +62,8 @@ Several tests were used to assess the accuracy of the integration method \cite{L
  7 & 1.4 & 0 & 1 & 1 & 0 & 1 & 0.5 & 2 \\
  8 & 1.4 & 0.1 & 1 & 1 & 0.1 & 1 & 0.5 & 2 \\
  9 & 0.1261192 & 8.9047029 & 782.92899 & 6.591493 & 2.2654207 & 3.1544874 & 0.5 & 0.0039 \\
-10 & 5.6698 & 9.0299 & 100 & 1.0 & 0.0 & 1.0 & 0 & ? \\
-11 & 5.6698 & −1.4701 & 100 & 1.0 & -10.5 & 1.0 & 0 & ? \\
+10 & 5.6698 & 9.0299 & 100 & 1.0 & 0.0 & 1.0 & 0 & 1 \\
+11 & 5.6698 & −1.4701 & 100 & 1.0 & -10.5 & 1.0 & 0 & 1 \\
  \hline
 \end{tabular}
   \caption{table of tests}
@@ -73,11 +73,11 @@ Several tests were used to assess the accuracy of the integration method \cite{L
 $x_0$ refers to the position of the barrier. The computational domain is 0.0 to 1.0 in tests 1--8, 0.1 to 0.6 in test 9 \cite{LiskaWendroff2003}, -5 to 15 in test 10, and -15 to 5 in test 11 \cite{Leveque2002}. 
 
 Test 12 is an interacting blast waves test, computed on 0.0 to 1.0, with discontinuities at 0.1 and 0.9. At all positions, initial density is 1 and initial velocity is 0. Initial pressure is 1000 on the left, 0.01 in the center, and 100 on the right \cite{LiskaWendroff2003}.
-
+%\clearpage
 \subsection{Test 1: Sod's Shock Tube} 
 
-First, the tests were run with values computed at different intervals; the method of integration is the same in each test. Between the two endpoints, 128, 256, 512, and 1024 points were computed for on each respective test. Figures~\ref{fig:dencellcomp_20}--\ref{fig:velcellcomp_20} show results of these tests:
-\begin{figure}
+First, the tests were run with values computed at different intervals; the method of integration is the same in each test. Between the two endpoints, 128, 256, 512, and 1024 points were computed for on each respective test. Figures~\ref{fig:dencellcomp_20}--\ref{fig:pvcellcomp} show results of these tests:
+\begin{figure}[h!]
   \begin{center}
     \includegraphics[width=.95\textwidth]{dencellcomp_20}
   \end{center}
@@ -94,6 +94,7 @@ First, the tests were run with values computed at different intervals; the metho
 	\end{tabular}
   \end{center}
   \caption{pressure and velocity}
+  \label{fig:pvcellcomp}
 \end{figure}
 %\newpage
 
@@ -287,17 +288,17 @@ This test features an unusual situation--method 1 calculates the velocity exactl
 \subsection{Test 9}
 When finding density, method 1 falls considerably short of the maximum. On the pressure graph, method 3 features both a jump above and a dip below the graph between positions 0.1 and 0.2. Velocity shows a similar (but considerably larger) dip, followed by jump, in the vertical section of the graph between 0.1 and 0.2. Method 1 also overestimates the maximum velocity and is above both exact and method 3 in the middle horizontal section. 
 
-\begin{figure}[h]
-  \begin{center}
-	\begin{tabular}{cc}
-      \includegraphics[width=.4\textwidth]{den_T9.png} &
-	  \includegraphics[width=.4\textwidth]{denT9zoom.png} \\
-	  \includegraphics[width=.4\textwidth]{prs_T9.png} &	
-      \includegraphics[width=.4\textwidth]{vel_T9.png}\\
-	\end{tabular}	
-  \end{center}
-  \caption{}
-\end{figure}
+%\begin{figure}[h]
+ % \begin{center}
+	%\begin{tabular}{cc}
+     % \includegraphics[width=.4\textwidth]{den_T9.png} &
+	  %\includegraphics[width=.4\textwidth]{denT9zoom.png} \\
+	  %\includegraphics[width=.4\textwidth]{prs_T9.png} &	
+      %\includegraphics[width=.4\textwidth]{vel_T9.png}\\
+	%\end{tabular}	
+  %\end{center}
+ % \caption{}
+%\end{figure}
 
 \begin{figure}[h]
   \begin{center}
@@ -334,7 +335,7 @@ When finding density, method 1 falls considerably short of the maximum. On the p
       \includegraphics[width=.4\textwidth]{vel10zoom.png} \\
 	\end{tabular}	
   \end{center}
-  \caption{}
+  \caption{density, pressure, and velocity}
 \end{figure}
 
 
@@ -354,7 +355,7 @@ When finding density, method 1 falls considerably short of the maximum. On the p
       \includegraphics[width=.4\textwidth]{vel11zoom.png} \\
 	\end{tabular}	
   \end{center}
-  \caption{}
+  \caption{density, pressure, and velocity}
 \end{figure}
 
 \clearpage
@@ -402,6 +403,52 @@ This test was run for all three integration methods with both 400 cells and 2000
      \includegraphics[width=.78\textwidth]{vel_T12_2000.png}	
   \end{center}
   \caption{velocity (2000 cells)}
+\end{figure}
+
+\clearpage
+
+\subsection{Test 13: Shock Entropy Waves}
+
+This test was first run with 1000 cells to see the solution with high resolution. Subsequent tests all had 200 cells, with various values of the beta parameter. Again, the 3rd order, 1000 cell solution is called ``exact.''
+
+\begin{figure}[h]
+  \begin{center}
+     \includegraphics[width=.78\textwidth]{1000.png}	
+  \end{center}
+  \caption{density, 1000 cells}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+	\begin{tabular}{cc}
+      \includegraphics[width=.425\textwidth]{10.png} &
+	  \includegraphics[width=.425\textwidth]{10zoom.png}
+	\end{tabular}
+  \end{center}
+  \caption{density, beta=10}
+  \label{fig:pvcellcomp}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+	\begin{tabular}{cc}
+      \includegraphics[width=.425\textwidth]{50.png} &
+	  \includegraphics[width=.425\textwidth]{50zoom.png}
+	\end{tabular}
+  \end{center}
+  \caption{density, beta=50}
+  \label{fig:pvcellcomp}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+	\begin{tabular}{cc}
+      \includegraphics[width=.425\textwidth]{300.png} &
+	  \includegraphics[width=.425\textwidth]{300zoom.png}
+	\end{tabular}
+  \end{center}
+  \caption{density, beta=300}
+  \label{fig:pvcellcomp}
 \end{figure}
 
 \bibliographystyle{siam}
