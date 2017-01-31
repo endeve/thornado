@@ -97,12 +97,29 @@ By defining the vector of conserved variables $\boldsymbol{U}=(\rho,\rho u,E)^{T
 
 \subsection{Runge-Kutta Discontinuous Galerkin Methods}
 
-In the Runge-Kutta Discontinuous Galerkin \citep[RKDG;][]{cockburnShu_2001} method the solution to the Euler equations is approximated by a polynomial expansion of the form
+In the Runge-Kutta Discontinuous Galerkin \citep[RKDG; cf.][]{cockburnShu_2001} method the solution to the Euler equations is approximated by a local polynomial expansion of the form
 \begin{equation}
   \boldsymbol{U}(x,t)
   \approx\boldsymbol{U}_{h}(x,t)=\sum_{j=0}^{k}\boldsymbol{C}_{j}(t)\,\phi_{j}(x),
 \end{equation}
-where $\{\phi_{j}(x)\}_{j=0}^{k}$ are polynomials of degree at most $k$ and .  
+where $\{\phi_{j}(x)\}_{j=0}^{k}$ are polynomials of degree at most $k$ and $\boldsymbol{C}_{j}$ are expansion the coefficients to be solved for.  
+In \thornado, $\phi_{j}(x)$ are given by Lagrange polynomials.  
+
+The computational domain $D=\{x:x\in[x_{\mbox{\tiny L}},x_{\mbox{\tiny R}}]\}$ is subdivided into $N$ elements $I_{i}=\{x:x\in(x_{i-1/2},x_{i+1/2})\}$.  
+The width of element $I_{i}$ is then $\Delta x_{i}=x_{i+1/2}-x_{i-1/2}$.  
+The semi-discrete DG method is then to find $\boldsymbol{U}_{h}$ such that
+\begin{equation}
+  \partial_{t}\int_{I_{i}}\boldsymbol{U}_{h}\,\phi_{j}\,dx
+  +\big(\widehat{\boldsymbol{F}}\,\phi_{j}|_{i+1/2}-\widehat{\boldsymbol{F}}\,\phi_{j}|_{i-1/2}\big)
+  -\int_{I_{i}}\boldsymbol{F}(\boldsymbol{U}_{h})\,\partial_{x}\phi_{j}\,dx=0
+  \label{eq:semidiscreteDG}
+\end{equation}
+for all $\phi_{j}$ and all $I_{i}\in D$.  
+In Equation~\eqref{eq:semidiscreteDG}, $\widehat{\boldsymbol{F}}_{i\pm1/2}$ is a numerical flux approximating the flux across the interfaces connecting neighboring elements.  
+In \thornado, we have implemented the Local Lax-Friedrichs (LLF), the Harten-Lax-van Leer (HLL), and the HLLC Riemann solvers, but in the numerical experiments presented here, we only use the HLLC solver.  
+To complete the spatial discretization, we use Gaussian quadratures to evaluate the integrals in Eq.~\eqref{eq:semidiscreteDG}.  
+During time-integration, we apply limiters to the polynomial representation.  
+We use the TVB limiter of \citet{} to prevent oscillations near discontinuities and the positivity limiter of \citet{ZhangShu2010} to ensure that the density and pressure remain positive.  
 
 \section{Numerical Experiments}
 
