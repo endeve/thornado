@@ -195,7 +195,8 @@ Next, several tests were run of different integration methods; the number of poi
   \begin{center}
     \includegraphics[width=.78\textwidth]{den128comp_20}
   \end{center}
-  \caption{density}
+  \caption{Results showing the density for Sod's shock tube at $t=0.2$, computed with 128 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
+  \label{fig:den128comp}
 \end{figure}
 %\newpage
 
@@ -206,7 +207,8 @@ Next, several tests were run of different integration methods; the number of poi
 	  \includegraphics[width=.425\textwidth]{vel128comp_20}
 	\end{tabular}
   \end{center}
-  \caption{pressure and velocity}
+  \caption{Results from the same experiments as shown in Figure~\ref{fig:den128comp}:
+  velocity (left panel) and pressure (right panel).}
 \end{figure}
 
 
@@ -221,7 +223,8 @@ The graphs for the second test show a result common throughout many of the diffe
   \begin{center}
      \includegraphics[width=.78\textwidth]{den_T2.png}	
   \end{center}
-  \caption{density}
+  \caption{Results showing the density for test 2 at $t=0.2$, computed with 100 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
+  \label{fig:den_T2}
 \end{figure}
 
 \begin{figure}
@@ -231,7 +234,8 @@ The graphs for the second test show a result common throughout many of the diffe
 	  \includegraphics[width=.425\textwidth]{vel_T2.png}
 	\end{tabular}
   \end{center}
-  \caption{pressure and velocity}
+  \caption{Results from the same experiments as shown in Figure~\ref{fig:den_T2}:
+  velocity (left panel) and pressure (right panel).}
 \end{figure}
 
 
@@ -243,7 +247,8 @@ Test 3 shows results similar to Test 2. The deviation of experimental results fr
   \begin{center}
      \includegraphics[width=.78\textwidth]{den_T3.png}	
   \end{center}
-  \caption{density}
+  \caption{Results showing the density for test 3 at $t=0.15$, computed with 100 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
+  \label{fig:den_T3}
 \end{figure}
 
 \begin{figure}
@@ -253,7 +258,8 @@ Test 3 shows results similar to Test 2. The deviation of experimental results fr
 	  \includegraphics[width=.425\textwidth]{vel_T3.png}
 	\end{tabular}
   \end{center}
-  \caption{pressure and velocity}
+  \caption{Results from the same experiments as shown in Figure~\ref{fig:den_T3}:
+  velocity (left panel) and pressure (right panel).}
 \end{figure}
 
 \clearpage
@@ -266,7 +272,8 @@ This test obviously displays some difference from the exact solution in density.
   \begin{center}
      \includegraphics[width=.78\textwidth]{den_T4.png}	
   \end{center}
-  \caption{density}
+  \caption{Results showing the density for test 4 at $t=1$, computed with 100 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
+  \label{fig:den_T4}
 \end{figure}
 
 \begin{figure}
@@ -276,7 +283,8 @@ This test obviously displays some difference from the exact solution in density.
 	  \includegraphics[width=.425\textwidth]{vel_T4.png}
 	\end{tabular}
   \end{center}
-  \caption{pressure and velocity}
+  \caption{Results from the same experiments as shown in Figure~\ref{fig:den_T4}:
+  velocity (left panel) and pressure (right panel).}
 \end{figure}
 
 \clearpage
@@ -288,7 +296,8 @@ This test has interesting features in velocity. The first integration method und
   \begin{center}
      \includegraphics[width=.78\textwidth]{den_T5.png}	
   \end{center}
-  \caption{density}
+  \caption{Results showing the density for test 5 at $t=0.012$, computed with 200 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
+  \label{fig:den_T5}
 \end{figure}
 
 \begin{figure}
@@ -298,7 +307,8 @@ This test has interesting features in velocity. The first integration method und
 	  \includegraphics[width=.425\textwidth]{vel_T5.png}
 	\end{tabular}
   \end{center}
-  \caption{pressure and velocity}
+  \caption{Results from the same experiments as shown in Figure~\ref{fig:den_T5}:
+  velocity (left panel) and pressure (right panel).}
 \end{figure}
 \clearpage
 
@@ -309,7 +319,8 @@ For this test's pressures and velocity, all three integration methods give value
   \begin{center}
      \includegraphics[width=.78\textwidth]{den_T6.png}	
   \end{center}
-  \caption{density}
+  \caption{Results showing the density for test 6 at $t=0.035$, computed with 200 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
+  \label{fig:den_T6}
 \end{figure}
 
 \begin{figure}
@@ -319,7 +330,8 @@ For this test's pressures and velocity, all three integration methods give value
 	  \includegraphics[width=.425\textwidth]{vel_T6.png}
 	\end{tabular}
   \end{center}
-  \caption{pressure and velocity}
+  \caption{Results from the same experiments as shown in Figure~\ref{fig:den_T6}:
+  velocity (left panel) and pressure (right panel).}
 \end{figure}
 
 \clearpage
@@ -331,7 +343,8 @@ This test features an unusual situation--method 1 calculates the velocity exactl
   \begin{center}
      \includegraphics[width=.78\textwidth]{den_T7.png}	
   \end{center}
-  \caption{density}
+  \caption{Results showing the density for test 7 at $t=2$, computed with 100 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
+  \label{fig:den_T7}
 \end{figure}
 
 \begin{figure}
@@ -341,7 +354,8 @@ This test features an unusual situation--method 1 calculates the velocity exactl
 	  \includegraphics[width=.425\textwidth]{vel_T7.png}
 	\end{tabular}
   \end{center}
-  \caption{pressure and velocity}
+  \caption{Results from the same experiments as shown in Figure~\ref{fig:den_T7}:
+  velocity (left panel) and pressure (right panel).}
 \end{figure}
 
 \clearpage
@@ -352,7 +366,8 @@ This test features an unusual situation--method 1 calculates the velocity exactl
   \begin{center}
      \includegraphics[width=.78\textwidth]{den_T8.png}	
   \end{center}
-  \caption{density}
+  \caption{Results showing the density for test 8 at $t=2$, computed with 100 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
+  \label{fig:den_T8}
 \end{figure}
 
 \begin{figure}
@@ -362,7 +377,8 @@ This test features an unusual situation--method 1 calculates the velocity exactl
 	  \includegraphics[width=.425\textwidth]{vel_T8.png}
 	\end{tabular}
   \end{center}
-  \caption{pressure and velocity}
+  \caption{Results from the same experiments as shown in Figure~\ref{fig:den_T8}:
+  velocity (left panel) and pressure (right panel).}}
 \end{figure}
 
 \clearpage
