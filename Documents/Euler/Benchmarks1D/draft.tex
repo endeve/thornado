@@ -1,4 +1,4 @@
-\documentclass[10pt,preprint]{aastex}
+\documentclass[10pt]{article}
 
 \usepackage{amsfonts}
 \usepackage{amsmath}
@@ -33,10 +33,12 @@
 \begin{document}
 
 \title{Benchmarks of the Non-Relativistic Hydrodynamics Algorithms in \thornado}
-\author{Juliana Pulsinelli\altaffilmark{1} and Eirik Endeve\altaffilmark{2}}
+%\author{Juliana Pulsinelli\altaffilmark{1} and Eirik Endeve\altaffilmark{2}}
 
-\altaffiltext{1}{Bearden High School, Knoxville, TN 37919-5449, USA}
-\altaffiltext{2}{Computational and Applied Mathematics Group, Oak Ridge National Laboratory, Oak Ridge, TN 37831-6354, USA; endevee@ornl.gov}
+%\altaffiltext{1}{Bearden High School, Knoxville, TN 37919-5449, USA}
+%\altaffiltext{2}{Computational and Applied Mathematics Group, Oak Ridge National Laboratory, Oak Ridge, TN 37831-6354, USA; endevee@ornl.gov}
+
+\maketitle
 
 \begin{abstract}
 \thornado\ is a new astrophysical code for radiation-hydrodynamics based on high-order Runge-Kutta Discontinuous Galerkin (RKDG) methods.  
@@ -378,7 +380,7 @@ This test features an unusual situation--method 1 calculates the velocity exactl
 	\end{tabular}
   \end{center}
   \caption{Results from the same experiments as shown in Figure~\ref{fig:den_T8}:
-  velocity (left panel) and pressure (right panel).}}
+  velocity (left panel) and pressure (right panel).}
 \end{figure}
 
 \clearpage
