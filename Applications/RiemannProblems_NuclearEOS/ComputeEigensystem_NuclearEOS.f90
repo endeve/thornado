@@ -11,6 +11,8 @@ PROGRAM ComputeEigensystem_NuclearEOS
     Gram, Centimeter, Kelvin, &
     AtomicMassUnit, Dyne, Erg, &
     Second, MeV
+  USE PhysicalConstantsModule, ONLY: &
+    SpeedOfLightMKS
 
   IMPLICIT NONE
 
@@ -32,9 +34,9 @@ PROGRAM ComputeEigensystem_NuclearEOS
   INTEGER                  :: INFO, LWORK, i, k
 
   
-  D = [ 1.20d11 * Gram / Centimeter**3 ]
-  T = [ 7.6 * MeV ]
-  Y = [ 0.15 ]
+  D = [ 1.20d10 * Gram / Centimeter**3 ]
+  T = [ 3.1 * MeV ]
+  Y = [ 0.26 ]
   v = [ 0, 0, 0 ]
   Tau(1) = 1/D(1)
 
@@ -51,24 +53,24 @@ PROGRAM ComputeEigensystem_NuclearEOS
   H(1) = ( E(1) + 0.5*(v(1)**2 + v(2)**2 + v(3)**2) + P(1) * Tau(1) )
 
   print*,"D = ", D(1) / ( Gram / Centimeter**3 )
-  print*,"P = ", P(1) / (Dyne / Centimeter**2 )
-  print*,"tau = ",(1 / D(1)) / ( Centimeter**3 / Gram )
+!  print*,"P = ", P(1) / (Dyne / Centimeter**2 )
+!  print*,"tau = ",(1 / D(1)) / ( Centimeter**3 / Gram )
   print*,"Y = ", Y(1)
   print*,"T = ", T(1) / MeV
-  print*,"v = (", v(1),", ", v(2),", ", v(3),")"
-  print*,"E = ", E(1) / ( Erg / Gram )
-  print*,"n = ", N(1) * Centimeter**3 
-  print*,"dPdD = ", dPdD
-  print*,"dPdT = ", dPdT
-  print*,"dPdY = ", dPdY
-  print*,"dEdT = ", dEdT
-  print*, " "
-  print*,"dPdE = ", (1/dEdT(1)) * (dPdT(1))
-  print*,"dPdN = ", dPdN
-  print*,"dPdTau =", - dPdD(1) * (1/D(1))**(-2) 
-  print*,"H = ", H(1)
+!  print*,"v = (", v(1),", ", v(2),", ", v(3),")"
+!  print*,"E = ", E(1) / ( Erg / Gram )
+!  print*,"n = ", N(1) * Centimeter**3 
+!  print*,"dPdD = ", dPdD
+!  print*,"dPdT = ", dPdT
+!  print*,"dPdY = ", dPdY
+!  print*,"dEdT = ", dEdT
+!  print*, " "
+!  print*,"dPdE = ", (1/dEdT(1)) * (dPdT(1))
+!  print*,"dPdN = ", dPdN
+!  print*,"dPdTau =", - dPdD(1) * (1/D(1))**(-2) 
+!  print*,"H = ", H(1)
   print*," "
- ! Note to Self: E is epsilon.
+! ! Note to Self: E is epsilon.
 
   J(1,1) = 0
   J(1,2) = 1
@@ -127,13 +129,27 @@ PROGRAM ComputeEigensystem_NuclearEOS
   CALL DGEEV('V', 'V', 6, J, 6, WR, WI, VL, 6, VR, 6, WORK, LWORK, INFO)
 
   DO i = 1, 6
-    print*,"Eigenvalue",i,"is: ", WR(i) / (Centimeter / Second )
+    print*,"Eigenvalue",i,"is: ", WR(i) / ( SPeedOfLightMKS )
   END DO
 
   print*," "
-!  print*,"Analytical Sound Speed = ", sqrt( Tau(1) * ( N(1) * dPdN(1) * ( Dyne / Centimeter**2) & 
-!          + P(1)*dPdE(1)*Tau(1)*( Dyne / Centimeter**2) - dPdTau(1)*Tau(1)*(Dyne/Centimeter**2)) )  / (Centimeter / Second )
-  print*,"Analytical Sound Speed = ", sqrt( Tau(1) * ( N(1) * dPdN(1) + P(1) * dPdE(1) * Tau(1) - dPdTau(1)*Tau(1)) ) & 
-          / ( Centimeter / Second )
+!  print*,"Analytical Sound Speed = ", sqrt( Tau(1) * ( N(1) * dPdN(1) + P(1) * dPdE(1) * Tau(1) - dPdTau(1)*Tau(1)) ) & 
+!          / ( SpeedOfLightMKS )
+
+print*," "
+print*,"Left Eigenvectors"
+print*," "
+
+DO i = 1, 6
+    print*,VL(:,i)
+END DO
+
+print*," "
+print*,"Right Eigenvectors"
+print*," "
+
+DO i = 1, 6
+    print*,VR(:,i)
+END DO
 
 END PROGRAM ComputeEigensystem_NuclearEOS
