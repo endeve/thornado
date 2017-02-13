@@ -151,9 +151,9 @@ Several tests were used to assess the accuracy of the integration method \citep{
   \label{tab:testtable}
 \end{center}
 \end{table}
-$x_0$ refers to the position of the barrier. The computational domain is 0.0 to 1.0 in tests 1--8, 0.1 to 0.6 in test 9 \citep{LiskaWendroff2003}, -5 to 15 in test 10, and -15 to 5 in test 11 \citep{Leveque2002}. 
+$x_0$ refers to the position of the barrier. The computational domain is 0.0 to 1.0 in tests 1--8, 0.1 to 0.6 in test 9 \citep{LiskaWendroff2003}, -5 to 15 in test 10, and -15 to 5 in test 11 \citep{Leveque2003}. 
 
-Test 12 is an interacting blast waves test, computed on 0.0 to 1.0, with discontinuities at 0.1 and 0.9. At all positions, initial density is 1 and initial velocity is 0. Initial pressure is 1000 on the left, 0.01 in the center, and 100 on the right \citep{LiskaWendroff2003}.
+Test 12 is the Woodward-Collela blast wave problem, computed on 0.0 to 1.0, with discontinuities at 0.1 and 0.9. At all positions, initial density is 1 and initial velocity is 0. Initial pressure is 1000 on the left, 0.01 in the center, and 100 on the right, and the test is advanced to 0.038 seconds. \citep{LiskaWendroff2003}. Test 13 shows Shock Entropy Wave interactions, advanced to 1.8 seconds.
 %\clearpage
 \subsection{Test 1: Sod's Shock Tube} 
 
@@ -266,7 +266,7 @@ Test 3 shows results similar to Test 2. The deviation of experimental results fr
 
 \subsection{Test 4}
 
-This test obviously displays some difference from the exact solution in density. A depression appears in the center of the graph which is not part of the exact solution. This depression is most severe when method 1 is used, but it also appears with methods 2 and 3. 
+This test obviously displays some difference from the exact solution in density. A depression appears in the center of the graph which is not part of the exact solution. This depression is most severe when method 1 is used, but it also appears with methods 2 and 3. Additionally, all three solutions show many small oscillations along horizontal lines. 
 
 \begin{figure}[h]
   \begin{center}
@@ -361,7 +361,7 @@ This test features an unusual situation--method 1 calculates the velocity exactl
 \clearpage
 
 \subsection{Test 8}
-
+In density, this test shows a small blip around $x=0.7$ that is unique to the second order method. Velocity and pressure are both constant throughout. 
 \begin{figure}[h]
   \begin{center}
      \includegraphics[width=.95\textwidth]{den_T8.png}	
@@ -402,7 +402,7 @@ When finding density, method 1 falls considerably short of the maximum. On the p
 \clearpage
 
 \subsection{Test 10}
-
+Density, pressure, and velocity all show significant oscillations that follow the shock wave. These oscillations are not part of the exact solution, and appear to a different extend based on the integration method used. First order gives a few wide oscillations; higher order methods give more, taller, and thinner oscillations, with the third order giving the most. 
 \begin{figure}[h]
   \begin{center}
 	\begin{tabular}{cc}
@@ -422,7 +422,7 @@ When finding density, method 1 falls considerably short of the maximum. On the p
 \clearpage
 
 \subsection{Test 11}
-
+This test, like the previous one, shows significant oscilltions following the shock wave, particularly with higher order methods. However, these oscillations in the second and third order results appear to be more periodic than those in the previous test. 
 \begin{figure}[h]
   \begin{center}
 	\begin{tabular}{cc}
@@ -444,52 +444,48 @@ This test was run for all three integration methods with both 400 cells and 2000
 
 \begin{figure}[h]
   \begin{center}
+     \includegraphics[width=.95\textwidth]{den_T12_2000.png}	
+  \end{center}
+  \caption{Results showing the density for the Woodward-Collela blast wave problem at $t=0.038$, computed with 2000 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue).}
+  \label{fig:den_T12_2000}
+\end{figure}
+
+\begin{figure}[h]
+  \begin{center}
      \includegraphics[width=.95\textwidth]{den_T12_400.png}	
   \end{center}
-  \caption{Results showing the density for the Woodward-Collela blast wave problem at $t=0.038$, computed with 400 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The solution labelled ``exact' and given by the dash-dotted pink line is the results of the problem when computed using the third-order integration method with 2000 cells.}
+  \caption{Results for the density from the same experiments as shown in Figure~\ref{fig:den_T12_400}~computed with 400 cells. The solution labelled ``exact' and given by the dash-dotted pink line is the results of the problem when computed using the third-order integration method with 2000 cells.}
   \label{fig:den_T12_400}
 \end{figure}
 
 \begin{figure}[h]
   \begin{center}
-     \includegraphics[width=.95\textwidth]{den_T12_2000.png}	
+	\begin{tabular}{cc}
+     \includegraphics[width=.475\textwidth]{vel_T12_2000.png}
+     \includegraphics[width=.475\textwidth]{vel_T12_400.png}	
+    \end{tabular}
   \end{center}
-  \caption{Results for the density from the same experiments as shown in Figure~\ref{fig:den_T12_400}~computed with 2000 cells}
+  \caption{Results for the velocity from the same experiments as shown in Figure~\ref{fig:den_T12_2000} and Figure~\ref{fig:den_T12_400}, computed with 2000 cells (left) and 400 cells (right).}
 \end{figure}
 
 \begin{figure}[h]
   \begin{center}
-     \includegraphics[width=.95\textwidth]{vel_T12_400.png}	
+	\begin{tabular}{cc}
+     \includegraphics[width=.475\textwidth]{prs_T12_2000.png}
+     \includegraphics[width=.475\textwidth]{prs_T12_400.png}
+    \end{tabular}	
   \end{center}
-  \caption{Results for the velocity from the same experiments as shown in Figure~\ref{fig:den_T12_400}}
+  \caption{Results for the pressure from the same experiments as shown in Figure~\ref{fig:den_T12_2000} and Figure~\ref{fig:den_T12_400}, computed with 2000 cells (left) and 400 cells (right).}
 \end{figure}
 
-\begin{figure}[h]
-  \begin{center}
-     \includegraphics[width=.95\textwidth]{vel_T12_2000.png}	
-  \end{center}
-  \caption{Results for the velocity from the same experiments as shown in Figure~\ref{fig:den_T12_400}~computed with 2000 cells}
-\end{figure}
-
-\begin{figure}[h]
-  \begin{center}
-     \includegraphics[width=.95\textwidth]{prs_T12_400.png}	
-  \end{center}
-  \caption{Results for the pressure from the same experiments as shown in Figure~\ref{fig:den_T12_400}}
-\end{figure}
-
-\begin{figure}[h]
-  \begin{center}
-     \includegraphics[width=.95\textwidth]{prs_T12_2000.png}	
-  \end{center}
-  \caption{Results for the pressure from the same experiments as shown in Figure~\ref{fig:den_T12_400}~computed with 2000 cells}
-\end{figure}
 
 \clearpage
 
 \subsection{Test 13: Shock Entropy Waves}
 
 This test was first run with 1000 cells to see the solution with high resolution. Subsequent tests all had 200 cells, with various values of the beta parameter. Again, the 3rd order, 1000 cell solution is called ``exact.''
+
+This test features many oscillations that are part of the real solution. In the higher-resolution runs, at least the second order integration method was needed to show these oscillations. In the lower-resolutions, when beta was set to 10, 2nd and 3rd order yielded similar results, both greatly smoothing out the oscillations. When beta was 50, 3rd order outperformed 2nd, but both were still insufficient to model the oscillations. Beta set to 300 yielded the most accurate results, and the 3rd order results were especially accurate. 
 
 \begin{figure}[h]
   \begin{center}
