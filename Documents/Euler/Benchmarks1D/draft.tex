@@ -5,12 +5,13 @@
 \usepackage{amssymb}
 \usepackage{amsthm}
 \usepackage{booktabs}
-\usepackage{mathrsfs}
+%\usepackage{mathrsfs}
 \usepackage{cite}
 %\usepackage{times}
 \usepackage{url}
 %\usepackage{hyperref}
 \usepackage{natbib}
+\usepackage{color}
 %\hypersetup{
  % bookmarksnumbered = true,
   %bookmarksopen=false,
@@ -27,6 +28,7 @@
 \graphicspath{ {figures/} }
 
 \newcommand{\thornado}{\texttt{thornado}}
+\newcommand{\ee}[1]{{\color{blue} #1}}
 
 \begin{document}
 
@@ -121,6 +123,31 @@ To complete the spatial discretization, we use Gaussian quadratures to evaluate 
 During time-integration, we apply limiters to the polynomial representation.  
 We use the TVB limiter of \citet{} to prevent oscillations near discontinuities and the positivity limiter of \citet{ZhangShu2010} to ensure that the density and pressure remain positive.  
 
+We apply the method of lines approach to temporal discretization.  
+With the spatial discretization specified, the DG problem in Eq.~\eqref{eq:semidiscreteDG} can be viewed as a system of ordinary differential equations (ODEs) for the expansion coefficients $\boldsymbol{C}=\{\boldsymbol{C}_{j}\}_{j=0}^{k}$, i.e.,
+\begin{equation}
+  d_{t}\boldsymbol{C}
+  =\boldsymbol{L}(\boldsymbol{C}),
+\end{equation}
+which can be discretized in time.  
+To this end, we apply the strong stability-preserving Runge-Kutta (SSP-RK) methods of order 1 to 3 \citep{gottlieb_etal_2001}.  
+The 1st order method (SSP-RK1) is simply the forward Euler method, while the 2nd and 3rd order methods (SSP-RK2 and SSP-RK3, respectively) can be expressed as convex combinations of forward Euler steps.  
+A general $m$-stage Runge-Kutta method is given by
+\begin{align}
+  \boldsymbol{C}^{(0)}
+  &=\boldsymbol{C}^{n} \\
+  \boldsymbol{C}^{(i)}
+  &=\sum_{l=1}^{i-1}\alpha_{il}\,\big(\,\boldsymbol{C}^{(l)}+\beta_{il}\,\Delta t\,\boldsymbol{L}(\boldsymbol{C}^{(l)})\,\big)
+  \quad i=1,\ldots,m \\
+  \boldsymbol{C}^{n+1}
+  &=\boldsymbol{C}^{(m)},
+\end{align}
+where $\alpha_{il},\beta_{il}\ge0$ are given by Butcher tables.  
+During time integration, we apply slope and positivity limiters after each stage as a post-processing step.  
+
+In the numerical experiments presented below, we will vary the spatial and temporal order of the method.  
+The 1st order method (DG(0)+RK1) uses polynomials of degree $0$ in each element and the forward Euler time integration method, the second-order method (DG(1)+RK2) uses polynomials of degree $1$ combined SSP-RK2 time integration, while the 3rd order method (DG(2)+RK3) uses polynomials of degree $2$ combined SSP-RK3 time integration.  
+
 \section{Numerical Experiments}
 
 The code was tested using Riemann problems. The Riemann problem models a fluid in an area of one-dimensional space. The initial data features one jump discontinuity, and is constant on either side of this discontinuity. The computational domain is divided into space and time cells. The conditions of each cell are advanced forward for all space cells, one time step at a time, according to the Euler equations for fluid dynamics. \citep{Leveque2002}
@@ -147,11 +174,13 @@ Several tests were used to assess the accuracy of the integration method \citep{
 11 & 5.6698 & −1.4701 & 100 & 1.0 & -10.5 & 1.0 & 0 & 1 \\
  \hline
 \end{tabular}
-  \caption{table of tests}
+  \caption{table of tests \ee{Add more descriptive caption}}
   \label{tab:testtable}
 \end{center}
 \end{table}
-$x_0$ refers to the position of the barrier. The computational domain is 0.0 to 1.0 in tests 1--8, 0.1 to 0.6 in test 9 \citep{LiskaWendroff2003}, -5 to 15 in test 10, and -15 to 5 in test 11 \citep{Leveque2003}. 
+$x_0$ refers to the position of the barrier. 
+The computational domain $D$ is defined with $x_{\mbox{\tiny L}}=0.0$ and $x_{\mbox{\tiny R}}=1.0$ in tests 1--8, 0.1 to 0.6 in test 9 \citep{LiskaWendroff2003}, -5 to 15 in test 10, and -15 to 5 in test 11 \citep{Leveque2002}. 
+\ee{Provide more detailed description of the Riemann problems and refer to Table~\ref{tab:testtable}}
 
 Test 12 is the Woodward-Collela blast wave problem, computed on 0.0 to 1.0, with discontinuities at 0.1 and 0.9. At all positions, initial density is 1 and initial velocity is 0. Initial pressure is 1000 on the left, 0.01 in the center, and 100 on the right, and the test is advanced to 0.038 seconds. \citep{LiskaWendroff2003}. Test 13 shows Shock Entropy Wave interactions, advanced to 1.8 seconds.
 %\clearpage
