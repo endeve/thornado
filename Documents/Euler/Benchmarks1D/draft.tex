@@ -41,7 +41,7 @@
 \maketitle
 
 \begin{abstract}
-\thornado\ is a new astrophysical code for radiation-hydrodynamics based on high-order Runge-Kutta Discontinuous Galerkin (RKDG) methods.  
+The toolkit for high-order neutrino-radiation hydrodynamics (\thornado) is a code for astrophysical radiation-hydrodynamics based on high-order Runge-Kutta Discontinuous Galerkin (RKDG) methods.  
 It currently solves the Euler equations for fluid dynamics and the two-moment ($M_{1}$) approximation of the radiative transfer equation. 
 In this document, we benchmark the algorithms for solving the Euler equations.  
 An extensive set of one-dimensional Riemann problems with known exact solutions were run, and the \thornado\ results were graphed and compared to exact solutions in cases where they exist. 
@@ -159,7 +159,7 @@ Several tests were used to assess the accuracy of the integration method \citep{
 \begin{center}
 \begin{tabular}{ |c|c c c|c c c|c c| }
  \hline
- Test & $\rho_L$ & $u_L$ & $p_L$ & $\rho_R$ & $u_R$ & $p_R$ & $x_0$ & T \\
+ Test & $\rho_L$ & $u_L$ & $p_L$ & $\rho_R$ & $u_R$ & $p_R$ & $x_0$ & $T$ \\
  \hline
  1 & 1 & 0 & 1 & 0.125 & 0 & 0.1 & 0.5 & 0.2 \\
  2 & 1 & 0.75 & 1 & 0.125 & 0 & 0.1 & 0.3 & 0.2 \\
@@ -245,7 +245,10 @@ These graphs show that the combination of both the lowest order integration meth
 
 \clearpage
 
-\subsection{Test 2}
+\subsection{Test 2: Toro's Riemann Problem}
+
+This test is the same as Sod's shock tube from the previous section, except that there is a non-zero velocity to the left of the initial discontinuity.  
+As a result, a sonic point develops in the rarefaction wave.  
 For subsequent tests, the number of cells was consistent within each test, and the integration method was varied as in the first test. 
 The graphs for the second test show a result common throughout many of the different tests: The first order integration method is considerably far from the exact solution; the second and third order integration methods yield nearly identical results which are near, but not exactly equal to, the exact solution. 
 \begin{figure}[h]
@@ -510,7 +513,7 @@ This test was run for all three integration methods with both 400 cells and 2000
 
 \clearpage
 
-\subsection{Test 13: Shock Entropy Waves}
+\subsection{Test 13: Shock-Entropy Wave Interaction}
 
 This test was first run with 1000 cells to see the solution with high resolution. Subsequent tests all had 200 cells, with various values of the beta parameter. Again, the 3rd order, 1000 cell solution is called ``exact.''
 
