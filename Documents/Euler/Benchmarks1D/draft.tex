@@ -185,6 +185,7 @@ The computational domain $D$ is defined with $x_{\mbox{\tiny L}}=0.0$ and $x_{\m
 Test 12 is the Woodward-Collela blast wave problem, computed on 0.0 to 1.0, with discontinuities at 0.1 and 0.9. At all positions, initial density is 1 and initial velocity is 0. Initial pressure is 1000 on the left, 0.01 in the center, and 100 on the right, and the test is advanced to 0.038 seconds. \citep{LiskaWendroff2003}. Test 13 shows Shock Entropy Wave interactions, advanced to 1.8 seconds.
 %\clearpage
 \subsection{Test 1: Sod's Shock Tube} 
+The Sod's Shock tube test features examples of threee different types of waves. A shock wave appears around $x=0.85$. A contact discontinuity appears around $x=0.68$. A rarefaction wave appears between about $x=0.3$ and $x=0.5$. 
 
 First, the tests were run with values computed at different intervals; the method of integration is the same in each test. Between the two endpoints, 128, 256, 512, and 1024 points were computed for on each respective test. Figures~\ref{fig:dencellcomp_20}--\ref{fig:pvcellcomp} show results of these tests:
 \begin{figure}[h!]
@@ -273,13 +274,15 @@ The graphs for the second test show a result common throughout many of the diffe
 
 \clearpage
 
-\subsection{Test 3}
-Test 3 shows results similar to Test 2. The deviation of experimental results from exact is especially noticeable in velocity. Near the initial point of discontinuity, the exact results appear completely horizontal. Method 1 almost completely ignores this horizontal part, while Methods 2 and 3 smooth it out considerably. 
+\subsection{Test 3: Double Rarefaction}
+This test features two rarefaction waves. They are moving in opposite directions, away from the initial discontinuity in the center. 
+
+This test shows results similar to Toro's Riemann Problem. The deviation of experimental results from exact is especially noticeable in velocity. Near the initial point of discontinuity, the exact results appear completely horizontal. Method 1 almost completely ignores this horizontal part, while Methods 2 and 3 smooth it out considerably. 
 \begin{figure}[h]
   \begin{center}
      \includegraphics[width=.95\textwidth]{den_T3.png}	
   \end{center}
-  \caption{Results showing the density for test 3 at $t=0.15$, computed with 100 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
+  \caption{Results showing the density for the double rarefaction problem at $t=0.15$, computed with 100 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
   \label{fig:den_T3}
 \end{figure}
 
@@ -296,8 +299,8 @@ Test 3 shows results similar to Test 2. The deviation of experimental results fr
 
 \clearpage
 
-\subsection{Test 4}
-
+\subsection{Test 4: Noh}
+The Noh problem features two shock waves. One is located near $x=0.28$, while the other is near $x=.82$.
 This test obviously displays some difference from the exact solution in density. A depression appears in the center of the graph which is not part of the exact solution. This depression is most severe when method 1 is used, but it also appears with methods 2 and 3. Additionally, all three solutions show many small oscillations along horizontal lines. 
 
 \begin{figure}[h]
@@ -322,6 +325,8 @@ This test obviously displays some difference from the exact solution in density.
 \clearpage
 
 \subsection{Test 5}
+This test features three different types of waves. A shock wave appears around $x=0.85$. A contact discontinuity appears at $x=0.8$. A rarefaction wave appears between $x=0.1$ and $x=0.4$.
+
 This test has interesting features in velocity. The first integration method underestimates the velocity at positions between about 0.2 and 0.5. The second and third order methods find a bump in density at around 0.4, which is not present in the exact solution.
 
 \begin{figure}[h]
@@ -345,6 +350,7 @@ This test has interesting features in velocity. The first integration method und
 \clearpage
 
 \subsection{Test 6}
+This test features two shock waves, one around $x=0.85$ and the other around $x=0.42$. It also features a contact discontinutiy at $x=0.7$.
 For this test's pressures and velocity, all three integration methods give values very close to exact. However, method 1 proves to be quite bad--worse than usual--at computing the density for this test. 
 
 \begin{figure}[h]
@@ -368,14 +374,14 @@ For this test's pressures and velocity, all three integration methods give value
 
 \clearpage
 
-\subsection{Test 7}
-This test features an unusual situation--method 1 calculates the velocity exactly, while method 2 introduces more error and method 3 introduces the most. However, this graph only appears extreme because the intervals on its axis are so small. The numbers are always very close to zero, but very slight errors occur in some of the computations. 
+\subsection{Test 7: Stationary Contact Discontinuity}
+This test features a contact discontinuity at $x=0.5$. This test features an unusual situation--method 1 calculates the velocity exactly, while method 2 introduces more error and method 3 introduces the most. However, this graph only appears extreme because the intervals on its axis are so small. The numbers are always very close to zero, but very slight errors occur in some of the computations. 
 
 \begin{figure}[h]
   \begin{center}
      \includegraphics[width=.95\textwidth]{den_T7.png}	
   \end{center}
-  \caption{Results showing the density for test 7 at $t=2$, computed with 100 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
+  \caption{Results showing the density for the stationary contact discontinuity test at $t=2$, computed with 100 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
   \label{fig:den_T7}
 \end{figure}
 
@@ -392,13 +398,13 @@ This test features an unusual situation--method 1 calculates the velocity exactl
 
 \clearpage
 
-\subsection{Test 8}
-In density, this test shows a small blip around $x=0.7$ that is unique to the second order method. Velocity and pressure are both constant throughout. 
+\subsection{Test 8: Moving Contact Discontinuity}
+This test features a contact discontinuity at $x=0.7$. In density, this test shows a small blip around $x=0.7$ that is unique to the second order method. Velocity and pressure are both constant throughout. 
 \begin{figure}[h]
   \begin{center}
      \includegraphics[width=.95\textwidth]{den_T8.png}	
   \end{center}
-  \caption{Results showing the density for test 8 at $t=2$, computed with 100 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
+  \caption{Results showing the density the moving contact discontinuity test at $t=2$, computed with 100 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line.}
   \label{fig:den_T8}
 \end{figure}
 
@@ -415,7 +421,7 @@ In density, this test shows a small blip around $x=0.7$ that is unique to the se
 
 \clearpage
 
-\subsection{Test 9}
+\subsection{Test 9: Peak}
 When finding density, method 1 falls considerably short of the maximum. On the pressure graph, method 3 features both a jump above and a dip below the graph between positions 0.1 and 0.2. Velocity shows a similar (but considerably larger) dip, followed by jump, in the vertical section of the graph between 0.1 and 0.2. Method 1 also overestimates the maximum velocity and is above both exact and method 3 in the middle horizontal section. 
 
 \begin{figure}[h]
