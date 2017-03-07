@@ -782,9 +782,6 @@ CONTAINS
 
     END DO
 
-!!$    CALL WriteVector( nNodesX_G, X_N(:,1) / Kilometer,  'X1.dat'  )
-!!$    CALL WriteVector( nNodesX_G, Chi(1,:) * Centimeter, 'Chi.dat' )
-
   END SUBROUTINE SetRates_EmissionAbsorption_ThermalReservoir
 
 
