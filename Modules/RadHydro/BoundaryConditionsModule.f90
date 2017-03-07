@@ -13,6 +13,7 @@ MODULE BoundaryConditionsModule
   USE RadiationFieldsModule, ONLY: &
     uCR, nCR, nSpecies
   USE ApplicationBoundaryConditionsModule, ONLY: &
+    ApplyApplicationBoundaryConditions_Fluid_X1, &
     ApplyApplicationBoundaryConditions_Radiation_X1
 
   IMPLICIT NONE
@@ -26,7 +27,15 @@ CONTAINS
 
   SUBROUTINE ApplyBoundaryConditions_Fluid
 
-    CALL ApplyBoundaryConditions_Fluid_X1
+    IF( bcX(1) == 10 )THEN
+
+      CALL ApplyApplicationBoundaryConditions_Fluid_X1
+
+    ELSE
+
+      CALL ApplyBoundaryConditions_Fluid_X1
+
+    END IF
 
   END SUBROUTINE ApplyBoundaryConditions_Fluid
 
