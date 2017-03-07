@@ -58,6 +58,10 @@ MODULE RadiationFieldsModule
 
   REAL(DP), DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: uAR
 
+  ! --- Diagnostic Variables ---
+
+  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: Discontinuity
+
   PUBLIC :: CreateRadiationFields
   PUBLIC :: DestroyRadiationFields
 
@@ -74,6 +78,9 @@ CONTAINS
     CALL CreateRadiationFields_Conserved( nX, swX, nE, swE )
     CALL CreateRadiationFields_Primitive( nX, swX, nE, swE )
     CALL CreateRadiationFields_Auxiliary( nX, swX, nE, swE )
+
+    ALLOCATE( Discontinuity(1:nE,1:nX(1),1:nX(2),1:nX(3)) )
+    Discontinuity = 0.0_DP
 
   END SUBROUTINE CreateRadiationFields
 
@@ -165,6 +172,7 @@ CONTAINS
 
     DEALLOCATE( WeightsR )
     DEALLOCATE( uCR, rhsCR, uPR, uAR )
+    DEALLOCATE( Discontinuity )
 
   END SUBROUTINE DestroyRadiationFields
 

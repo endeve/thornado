@@ -83,6 +83,10 @@ MODULE FluidFieldsModule
 
   REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: uAF
 
+  ! --- Diagnostic Variables ---
+
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Shock
+
   PUBLIC :: CreateFluidFields
   PUBLIC :: DestroyFluidFields
 
@@ -101,6 +105,9 @@ CONTAINS
     CALL CreateFluidFields_Conserved( nX, swX )
     CALL CreateFluidFields_Primitive( nX, swX )
     CALL CreateFluidFields_Auxiliary( nX, swX )
+
+    ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
+    Shock = 0.0_DP
 
   END SUBROUTINE CreateFluidFields
 
@@ -183,6 +190,7 @@ CONTAINS
 
     DEALLOCATE( WeightsF, WeightsF_X1, WeightsF_X2, WeightsF_X3 )
     DEALLOCATE( uCF, rhsCF, uPF, uAF )
+    DEALLOCATE( Shock )
 
   END SUBROUTINE DestroyFluidFields
 
