@@ -19,10 +19,12 @@ MODULE InputOutputModule
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, &
-         iAF_Me, iAF_Mp, iAF_Mn, iAF_Gm, iAF_Cs
+    iAF_Me, iAF_Mp, iAF_Mn, iAF_Gm, iAF_Cs, &
+    Shock
   USE RadiationFieldsModule, ONLY: &
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
-    uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
+    uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
+    Discontinuity
 
   IMPLICIT NONE
   PRIVATE
@@ -173,7 +175,8 @@ CONTAINS
         / U % EnergyUnit, &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_Gm), nX(1) ), &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_Cs), nX(1) ) &
-        / U % VelocityUnit
+        / U % VelocityUnit, &
+      Shock(1:nX(1),1,1)
 
     CLOSE( FUNIT )
 
@@ -246,7 +249,8 @@ CONTAINS
       RadiationField1D( uPR(:,1:nE,1:nX(1),1,1,iPR_D, 1), nE, nX(1) ), &
       RadiationField1D( uCR(:,1:nE,1:nX(1),1,1,iPR_I1,1), nE, nX(1) ), &
       RadiationField1D( uCR(:,1:nE,1:nX(1),1,1,iPR_I2,1), nE, nX(1) ), &
-      RadiationField1D( uCR(:,1:nE,1:nX(1),1,1,iPR_I3,1), nE, nX(1) )
+      RadiationField1D( uCR(:,1:nE,1:nX(1),1,1,iPR_I3,1), nE, nX(1) ), &
+      Discontinuity(1:nE,1:nX(1),1,1)
 
     CLOSE( FUNIT )
 
