@@ -2,3 +2,5 @@
 
 .f90.o:
 	$(FORTRAN) -c $(FLAGS) $(INCLUDE) $(SUFFIX_f90) $<
+.F90.o:
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(INCLUDE) $(SUFFIX_f90) $<

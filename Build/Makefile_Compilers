@@ -70,7 +70,10 @@ INCLUDE_WEAKLIB_darter_cray    = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_beacon_intel   = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB                = $(INCLUDE_WEAKLIB_$(MACHINE))
 
-INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_WEAKLIB)
+INCLUDE_POSEIDON_sn1987b       = -I$(POSEIDON_DIR)/Obj
+INCLUDE_POSEIDON               = $(INCLUDE_POSEIDON_$(MACHINE))
+
+INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_WEAKLIB) $(INCLUDE_POSEIDON)
 
 LIBRARIES_HDF5_sn1987b         = -L/usr/local/Cellar/hdf5/1.8.16_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_juliana         = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
@@ -92,4 +95,11 @@ LIBRARIES_WEAKLIB_darter_cray  = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/we
 LIBRARIES_WEAKLIB_beacon_intel = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
 LIBRARIES_WEAKLIB              = $(LIBRARIES_WEAKLIB_$(MACHINE))
 
-LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_WEAKLIB)
+LIBRARIES_POSEIDON_sn1987b     = $(POSEIDON_DIR)/Obj/poseidon.a
+LIBRARIES_POSEIDON             = $(LIBRARIES_POSEIDON_$(MACHINE))
+
+LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_WEAKLIB) $(LIBRARIES_POSEIDON)
+
+DEFINES = \
+-DMICROPHYSICS_$(MICROPHYSICS) \
+-DGRAVITY_SOLVER_$(GRAVITY_SOLVER)
