@@ -28,7 +28,11 @@ MODULE ProgramInitializationModule
     CreateMesh, &
     DestroyMesh
   USE GeometryFieldsModule, ONLY: &
-    WeightsGX, WeightsG, &
+    WeightsGX, &
+    WeightsGX_X1, &
+    WeightsGX_X2, &
+    WeightsGX_X3, &
+    WeightsG, &
     CreateGeometryFields, &
     DestroyGeometryFields
   USE GeometryInitializationModule, ONLY: &
@@ -36,6 +40,9 @@ MODULE ProgramInitializationModule
     FinalizeGeometry
   USE FluidFieldsModule, ONLY: &
     WeightsF, &
+    WeightsF_X1, &
+    WeightsF_X2, &
+    WeightsF_X3, &
     CreateFluidFields, &
     DestroyFluidFields
   USE RadiationFieldsModule, ONLY: &
@@ -85,7 +92,7 @@ CONTAINS
       Opacity_Option, OpacityTableName_Option, GravitySolver_Option, &
       FluidSolver_Option, RadiationSolver_Option, FluidRiemannSolver_Option, &
       RadiationRiemannSolver_Option, FluidRadiationCoupling_Option, &
-      SolveGravity_Option, EvolveFluid_Option, EvolveRadiation_Option, &
+      EvolveGravity_Option, EvolveFluid_Option, EvolveRadiation_Option, &
       ApplySlopeLimiter_Option, BetaTVB_Option, BetaTVD_Option, &
       ApplyPositivityLimiter_Option, nStages_SSP_RK_Option, &
       nStages_SI_RK_Option )
@@ -120,7 +127,7 @@ CONTAINS
       RadiationRiemannSolver_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: &
       FluidRadiationCoupling_Option
-    LOGICAL,                INTENT(in), OPTIONAL :: SolveGravity_Option
+    LOGICAL,                INTENT(in), OPTIONAL :: EvolveGravity_Option
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveFluid_Option
     LOGICAL,                INTENT(in), OPTIONAL :: EvolveRadiation_Option
     LOGICAL,                INTENT(in), OPTIONAL :: ApplySlopeLimiter_Option
@@ -273,8 +280,10 @@ CONTAINS
     CALL CreateGeometryFields( nX, swX, nE, swE )
 
     CALL InitializeWeights & ! --- For Integration in Elements
-           ( MeshX(1) % Weights, MeshX(2) % Weights, &
-             MeshX(3) % Weights, WeightsGX )
+           ( MeshX(1) % Weights, &
+             MeshX(2) % Weights, &
+             MeshX(3) % Weights, &
+             WeightsGX, WeightsGX_X1, WeightsGX_X2, WeightsGX_X3 )
 
     CALL InitializeWeights & ! --- For Integration in Elements
            ( MeshE    % Weights, MeshX(1) % Weights, &
@@ -292,8 +301,10 @@ CONTAINS
     CALL CreateFluidFields( nX, swX )
 
     CALL InitializeWeights & ! --- For Integration in Elements
-           ( MeshX(1) % Weights, MeshX(2) % Weights, &
-             MeshX(3) % Weights, WeightsF )
+           ( MeshX(1) % Weights, &
+             MeshX(2) % Weights, &
+             MeshX(3) % Weights, &
+             WeightsF, WeightsF_X1, WeightsF_X2, WeightsF_X3 )
 
     ! --- Radiation Fields ---
 
@@ -372,7 +383,7 @@ CONTAINS
     ! --- Time Stepping ---
 
     CALL InitializeTimeStepping &
-           ( SolveGravity_Option = SolveGravity_Option, &
+           ( EvolveGravity_Option = EvolveGravity_Option, &
              EvolveFluid_Option = EvolveFluid_Option, &
              EvolveRadiation_Option = EvolveRadiation_Option, &
              nStages_SSP_RK_Option = nStages_SSP_RK_Option, &
