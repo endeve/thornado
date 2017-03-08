@@ -21,6 +21,11 @@ MODULE TimeSteppingModule
     ComputeAuxiliary_Fluid
   USE InputOutputModule, ONLY: &
     WriteFields1D
+  USE TallyModule, ONLY: &
+    InitializeGlobalTally, &
+    ComputeGlobalTally
+  USE GravitySolutionModule, ONLY: &
+    SolveGravity
   USE EulerEquationsUtilitiesModule, ONLY: &
     ComputePrimitive, &
     Eigenvalues
@@ -43,7 +48,7 @@ MODULE TimeSteppingModule
 
   REAL(DP) :: wtR, wtS, wtP
 
-  LOGICAL :: SolveGravity    = .FALSE.
+  LOGICAL :: EvolveGravity   = .FALSE.
   LOGICAL :: EvolveFluid     = .FALSE.
   LOGICAL :: EvolveRadiation = .FALSE.
   INTEGER :: nStages_SSP_RK  = 1
@@ -71,22 +76,22 @@ CONTAINS
 
 
   SUBROUTINE InitializeTimeStepping &
-               ( SolveGravity_Option, EvolveFluid_Option, &
+               ( EvolveGravity_Option, EvolveFluid_Option, &
                  EvolveRadiation_Option, nStages_SSP_RK_Option, &
                  nStages_SI_RK_Option )
 
-    LOGICAL, INTENT(in), OPTIONAL :: SolveGravity_Option
+    LOGICAL, INTENT(in), OPTIONAL :: EvolveGravity_Option
     LOGICAL, INTENT(in), OPTIONAL :: EvolveFluid_Option
     LOGICAL, INTENT(in), OPTIONAL :: EvolveRadiation_Option
     INTEGER, INTENT(in), OPTIONAL :: nStages_SSP_RK_Option
     INTEGER, INTENT(in), OPTIONAL :: nStages_SI_RK_Option
 
-    IF( PRESENT( SolveGravity_Option ) )THEN
-      SolveGravity = SolveGravity_Option
+    IF( PRESENT( EvolveGravity_Option ) )THEN
+      EvolveGravity = EvolveGravity_Option
     END IF
     WRITE(*,*)
     WRITE(*,'(A5,A19,L1)') '', &
-      'Solve Gravity = ', SolveGravity
+      'Evolve Gravity = ', EvolveGravity
 
     IF( PRESENT( EvolveFluid_Option ) )THEN
       EvolveFluid = EvolveFluid_Option
@@ -194,8 +199,33 @@ CONTAINS
     t       = t_begin
     t_write = dt_write
 
+    IF( EvolveFluid )THEN
+
+      CALL ApplyPositivityLimiter_Fluid
+
+    END IF
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyPositivityLimiter_Radiation
+
+    END IF
+
+    IF( EvolveGravity )THEN
+
+      CALL SolveGravity
+
+    END IF
+
+    CALL InitializeGlobalTally &
+           ( TallyGravity_Option = EvolveGravity, &
+             TallyFluid_Option = EvolveFluid,  &
+             TallyRadiation_Option = EvolveRadiation )
+
     CALL WriteFields1D &
-           ( Time = t, WriteFluidFields_Option = EvolveFluid, &
+           ( Time = t, &
+             WriteGeometryFields_Option = EvolveGravity, &
+             WriteFluidFields_Option = EvolveFluid, &
              WriteRadiationFields_Option = EvolveRadiation )
 
     CALL CPU_TIME( WallTime(0) )
@@ -233,6 +263,8 @@ CONTAINS
           '', 't = ', t / U % TimeUnit, '', TRIM( U % TimeLabel ), &
           '', 'dt = ', dt / U % TimeUnit, '', TRIM( U % TimeLabel )
 
+        CALL ComputeGlobalTally
+
       END IF
 
       CALL UpdateFields( t, dt )
@@ -242,7 +274,9 @@ CONTAINS
       IF( WriteOutput )THEN
 
         CALL WriteFields1D &
-               ( Time = t, WriteFluidFields_Option = EvolveFluid, &
+               ( Time = t, &
+                 WriteGeometryFields_Option = EvolveGravity, &
+                 WriteFluidFields_Option = EvolveFluid, &
                  WriteRadiationFields_Option = EvolveRadiation )
 
         WriteOutput = .FALSE.
@@ -266,7 +300,9 @@ CONTAINS
     WRITE(*,*)
 
     CALL WriteFields1D &
-           ( Time = t, WriteFluidFields_Option = EvolveFluid, &
+           ( Time = t, &
+             WriteGeometryFields_Option = EvolveGravity, &
+             WriteFluidFields_Option = EvolveFluid, &
              WriteRadiationFields_Option = EvolveRadiation )
 
     END ASSOCIATE ! U
@@ -526,6 +562,12 @@ CONTAINS
 
     END IF
 
+    IF( EvolveGravity )THEN
+
+      CALL SolveGravity
+
+    END IF
+
     IF( EvolveRadiation )THEN
 
       CALL ApplyRHS_Radiation &
@@ -602,6 +644,12 @@ CONTAINS
 
       CALL CPU_TIME( WT(1) )
       wtP = wtP + ( WT(1) - WT(0) )
+
+    END IF
+
+    IF( EvolveGravity )THEN
+
+      CALL SolveGravity
 
     END IF
 
@@ -675,6 +723,12 @@ CONTAINS
 
     END IF
 
+    IF( EvolveGravity )THEN
+
+      CALL SolveGravity
+
+    END IF
+
     IF( EvolveRadiation )THEN
 
       CALL ApplyRHS_Radiation &
@@ -724,6 +778,12 @@ CONTAINS
 
     END IF
 
+    IF( EvolveGravity )THEN
+
+      CALL SolveGravity
+
+    END IF
+
     IF( EvolveRadiation )THEN
 
       CALL ApplyRHS_Radiation &
@@ -770,6 +830,12 @@ CONTAINS
       CALL ApplySlopeLimiter_Fluid
 
       CALL ApplyPositivityLimiter_Fluid
+
+    END IF
+
+    IF( EvolveGravity )THEN
+
+      CALL SolveGravity
 
     END IF
 
