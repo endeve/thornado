@@ -24,7 +24,8 @@ MODULE EulerEquationsLimiterModule_DG
     WeightsF, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, nCF, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
-    iAF_P, iAF_Cs, nAF
+    iAF_P, iAF_Cs, nAF, &
+    Shock
   USE EquationOfStateModule, ONLY: &
     Auxiliary_Fluid
   USE EulerEquationsUtilitiesModule, ONLY: &
@@ -50,8 +51,9 @@ MODULE EulerEquationsLimiterModule_DG
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X2
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X3
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCF_P, uPF_P, uAF_P
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCF_M
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange_X1_P
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange_X1_M
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Legendre
 
   PUBLIC :: InitializeLimiters_Euler_DG
@@ -70,7 +72,10 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: BetaTVD_Option
     LOGICAL,  INTENT(in), OPTIONAL :: ApplyPositivityLimiter_Option
 
-    INTEGER :: iPol, iNodeX1, iNodeX2, iNodeX3, iPoint, iNodeX
+    INTEGER :: iPol, iPoint
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNodeX
+    INTEGER :: jNodeX1, jNodeX2, jNodeX3, jNodeX
+    REAL(DP) :: eta_X1, eta_X2, eta_X3
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
 
     ! --- Limiter Parameters ---
@@ -140,8 +145,6 @@ CONTAINS
       nPoints = nPoints + 2 * nNodesX(1) * nNodesX(2)
 
     ALLOCATE( uCF_P(nPoints,nCF), uPF_P(nPoints,nPF), uAF_P(nPoints,nAF) )
-
-    ALLOCATE( uCF_M(nDOFX,nCF) )
 
     ! --- Coordinates of Points Where Positivity is Required:
 
@@ -242,6 +245,44 @@ CONTAINS
       END DO
     END DO
 
+    ALLOCATE( Lagrange_X1_P(nDOFX,nDOFX) )
+    ALLOCATE( Lagrange_X1_M(nDOFX,nDOFX) )
+
+    DO jNodeX3 = 1, nNodesX(3)
+      DO jNodeX2 = 1, nNodesX(2)
+        DO jNodeX1 = 1, nNodesX(1)
+
+          jNodeX = NodeNumberX( jNodeX1, jNodeX2, jNodeX3 )
+
+          eta_X1 = MeshX(1) % Nodes(jNodeX1)
+          eta_X2 = MeshX(2) % Nodes(jNodeX2)
+          eta_X3 = MeshX(3) % Nodes(jNodeX3)
+
+          DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+              DO iNodeX1 = 1, nNodesX(1)
+
+                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+                Lagrange_X1_P(iNodeX,jNodeX) &
+                  = L_X1(iNodeX1) % P( eta_X1 + 1.0_DP ) &
+                    * L_X2(iNodeX2) % P( eta_X2 ) &
+                      * L_X3(iNodeX3) % P( eta_X3 )
+
+                Lagrange_X1_M(iNodeX,jNodeX) &
+                  = L_X1(iNodeX1) % P( eta_X1 - 1.0_DP ) &
+                    * L_X2(iNodeX2) % P( eta_X2 ) &
+                      * L_X3(iNodeX3) % P( eta_X3 )
+
+              END DO
+            END DO
+          END DO
+
+        END DO
+      END DO
+    END DO
+
+
   END SUBROUTINE InitializeLimiters_Euler_DG
 
 
@@ -261,12 +302,14 @@ CONTAINS
     REAL(DP), DIMENSION(nPF) :: uPF_A
     REAL(DP), DIMENSION(nAF) :: uAF_A
     REAL(DP), DIMENSION(nCF,nCF) :: L1, R1
-    REAL(DP), DIMENSION(nDOFX,nCF) :: uCF_M_P_X1, uCF_M_N_X1
+    REAL(DP), DIMENSION(nDOFX,nCF) :: uCF_M, uCF_M_P_X1, uCF_M_N_X1
     REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE :: uCF_X1, uCF_X1_T
 
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. ApplySlopeLimiter ) RETURN
+
+    CALL DetectDiscontinuities
 
     IF( Debug )THEN
       WRITE(*,*)
@@ -283,6 +326,13 @@ CONTAINS
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
+
+          ! --- Allow limiting if neighbors are marked as shock ---
+
+          IF( .NOT. ANY( [ Shock(MAX(1,    iX1-1),iX2,iX3), &
+                           Shock(          iX1,   iX2,iX3), &
+                           Shock(MIN(nX(1),iX1+1),iX2,iX3) ] == 1.0 ) ) &
+            CYCLE
 
           ! --- Limiting Using Modal Representation ---
 
@@ -346,6 +396,13 @@ CONTAINS
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
+
+          ! --- Allow limiting if neighbors are marked as shock ---
+
+          IF( .NOT. ANY( [ Shock(MAX(1,    iX1-1),iX2,iX3), &
+                           Shock(          iX1,   iX2,iX3), &
+                           Shock(MIN(nX(1),iX1+1),iX2,iX3) ] == 1.0 ) ) &
+            CYCLE
 
           DO iCF = 1, nCF
 
@@ -470,6 +527,7 @@ CONTAINS
     REAL(DP) :: delta, a, b, c, r1, r2
     REAL(DP), DIMENSION(1:nCF) :: uCF_K, uCF_K_0, uCF_K_1
     REAL(DP), DIMENSION(1:nPF) :: uPF_A
+    REAL(DP), DIMENSION(nDOFX,nCF) :: uCF_M
 
     IF( nDOFX == 1 ) RETURN
 
@@ -721,6 +779,85 @@ CONTAINS
     END DO
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_DG
+
+
+  SUBROUTINE DetectDiscontinuities
+
+    INTEGER :: iX1, iX2, iX3, iCF, k
+    REAL(DP) :: F_M, F_P
+    REAL(DP), DIMENSION(nCF) :: uCF_A
+    REAL(DP), DIMENSION(nDOFX,nCF) :: uCF_M
+    REAL(DP), DIMENSION(nDOFX,nCF) :: uCF_M_P_X1
+    REAL(DP), DIMENSION(nDOFX,nCF) :: uCF_M_N_X1
+    REAL(DP), PARAMETER :: alpha = 1.5_DP
+
+    Shock(:,:,:) = 0.0_DP
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          ! --- Map To Modal Representation ---
+
+          DO iCF = 1, nCF
+
+            CALL MapNodalToModal_Fluid &
+                   ( uCF(:,iX1-1,iX2,iX3,iCF), uCF_M_P_X1(:,iCF) )
+            CALL MapNodalToModal_Fluid &
+                   ( uCF(:,iX1,  iX2,iX3,iCF), uCF_M     (:,iCF) )
+            CALL MapNodalToModal_Fluid &
+                   ( uCF(:,iX1+1,iX2,iX3,iCF), uCF_M_N_X1(:,iCF) )
+
+          END DO
+
+          ! --- Cell-Averaged Quantities ---
+
+          uCF_A(1:nCF) = uCF_M(1,1:nCF)
+
+          ! --- Detect Discontinuity with Harten's Sub-Cell Method ---
+
+          LOOP: DO iCF = 1, nCF
+
+            IF( (iCF .NE. iCF_D) .AND. (iCF .NE. iCF_E) ) CYCLE LOOP
+
+            F_M = 0.0_DP
+            F_P = 0.0_DP
+            DO k = 1, nDOFX
+
+              F_M &
+                = F_M &
+                  + WeightsF(k) &
+                    * SUM( Lagrange_X1_M(:,k) * uCF(:,iX1+1,iX2,iX3,iCF) )
+
+              F_P &
+                = F_P &
+                  + WeightsF(k) &
+                    * SUM( Lagrange_X1_P(:,k) * uCF(:,iX1-1,iX2,iX3,iCF) )
+
+            END DO
+            F_M = F_M - uCF_A(iCF)
+            F_P = F_P - uCF_A(iCF)
+
+            IF( F_M * F_P <= 0.0_DP )THEN
+              DO k = 1, MIN( 2, nDOFX )
+                IF( ABS( uCF_M(k,iCF) ) &
+                    > alpha * ABS( uCF_M_P_X1(k,iCF) ) .AND. &
+                    ABS( uCF_M(k,iCF) ) &
+                    > alpha * ABS( uCF_M_N_X1(k,iCF) ) ) &
+                THEN
+                  Shock(iX1,iX2,iX3) = 1.0_DP
+                  EXIT LOOP
+                END IF
+              END DO
+            END IF
+
+          END DO LOOP
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE DetectDiscontinuities
 
 
 END MODULE EulerEquationsLimiterModule_DG
