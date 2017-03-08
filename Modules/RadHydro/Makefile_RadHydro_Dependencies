@@ -1,3 +1,7 @@
+TallyModule.o: \
+  KindModule.o \
+  TallyModule.f90
+
 GravitySolutionUtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -120,7 +124,9 @@ ApplicationBoundaryConditionsModule.o: \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   MeshModule.o \
+  FluidFieldsModule.o \
   RadiationFieldsModule.o \
+  EquationOfStateModule.o \
   ApplicationBoundaryConditionsModule.f90
 
 BoundaryConditionsModule.o: \
