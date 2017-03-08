@@ -2,11 +2,23 @@ MODULE EulerEquationsUtilitiesModule
 
   USE KindModule, ONLY: &
     DP
+  USE ProgramHeaderModule, ONLY: &
+    nX, nNodesX, nDOFX
+  USE UtilitiesModule, ONLY: &
+    NodeNumberX, &
+    NodeNumberX_X1
   USE GeometryFieldsModule, ONLY: &
+    WeightsGX, &
+    WeightsGX_X1, &
+    nGF, iGF_Phi_N, &
     a, b, c, dlnadX1, dlnbdX1, dlncdX2
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
+  USE GravitySolutionModule, ONLY: &
+    L_X1_L, L_X1_H, &
+    V_X1_L, V_X1_H, &
+    dVdX1, dVdX2, dVdX3
 
   IMPLICIT NONE
   PRIVATE
@@ -24,6 +36,7 @@ MODULE EulerEquationsUtilitiesModule
   PUBLIC :: AlphaC
   PUBLIC :: Flux_X1
   PUBLIC :: GeometrySources
+  PUBLIC :: ComputeGeometrySources_Gravity
 
 CONTAINS
 
@@ -58,18 +71,22 @@ CONTAINS
     REAL(DP), DIMENSION(1:nCF), INTENT(in) :: Conserved
     REAL(DP), DIMENSION(1:nPF)             :: Primitive
 
+    REAL(DP) :: CF_D
+
+    CF_D = MAX( Conserved(iCF_D), TINY( 1.0_DP ) )
+
     Primitive(iPF_D)  &
-      = Conserved(iCF_D)
+      = CF_D
     Primitive(iPF_V1) &
-      = Conserved(iCF_S1) / Conserved(iCF_D)
+      = Conserved(iCF_S1) / CF_D
     Primitive(iPF_V2) &
-      = Conserved(iCF_S2) / Conserved(iCF_D)
+      = Conserved(iCF_S2) / CF_D
     Primitive(iPF_V3) &
-      = Conserved(iCF_S3) / Conserved(iCF_D)
+      = Conserved(iCF_S3) / CF_D
     Primitive(iPF_E)  &
       = Conserved(iCF_E) &
           - 0.5_DP * ( Conserved(iCF_S1)**2 + Conserved(iCF_S2)**2 &
-                       + Conserved(iCF_S3)**2 ) / Conserved(iCF_D)
+                       + Conserved(iCF_S3)**2 ) / CF_D
     Primitive(iPF_Ne)  &
       = Conserved(iCF_Ne)
 
@@ -344,6 +361,85 @@ CONTAINS
 
     RETURN
   END FUNCTION GeometrySources
+
+
+  SUBROUTINE ComputeGeometrySources_Gravity &
+               ( dX, uCF, uGF, uGF_P_X1, uGF_N_X1, GS )
+
+    REAL(DP), DIMENSION(3),         INTENT(in)  :: dX
+    REAL(DP), DIMENSION(nDOFX,nCF), INTENT(in)  :: uCF
+    REAL(DP), DIMENSION(nDOFX,nGF), INTENT(in)  :: uGF, uGF_P_X1, uGF_N_X1
+    REAL(DP), DIMENSION(nDOFX,nCF), INTENT(out) :: GS
+
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNodeX
+    REAL(DP), DIMENSION(nDOFX) :: g_X1
+    REAL(DP), DIMENSION(nNodesX(2)*nNodesX(3)) :: Phi_X1_L, Phi_X1_H
+
+    Phi_X1_L = 0.0_DP
+    Phi_X1_H = 0.0_DP
+    DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+
+        iNodeX = NodeNumberX_X1( iNodeX2, iNodeX3 )
+
+        Phi_X1_L(iNodeX) &
+          = 0.5_DP * ( DOT_PRODUCT &
+                           ( L_X1_H(:,iNodeX), uGF_P_X1(:,iGF_Phi_N) ) &
+                       + DOT_PRODUCT &
+                           ( L_X1_L(:,iNodeX), uGF     (:,iGF_Phi_N) ) )
+
+        Phi_X1_H(iNodeX) &
+          = 0.5_DP * ( DOT_PRODUCT &
+                           ( L_X1_H(:,iNodeX), uGF     (:,iGF_Phi_N) ) &
+                       + DOT_PRODUCT &
+                           ( L_X1_L(:,iNodeX), uGF_N_X1(:,iGF_Phi_N) ) )
+
+      END DO
+    END DO
+
+    g_X1 = 0.0_DP
+    DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+        DO iNodeX1 = 1, nNodesX(1)
+
+          iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+          ! --- Volume Term ---
+
+          g_X1(iNodeX) &
+            = - SUM( WeightsGX(:) * dVdX1(:,iNodeX) * uGF(:,iGF_Phi_N) ) &
+                / ( WeightsGX(iNodeX) * dX(1) )
+
+          ! --- Surface Terms ---
+
+          g_X1(iNodeX) &
+            = g_X1(iNodeX) &
+              + ( SUM( WeightsGX_X1(:) * Phi_X1_H(:) * V_X1_H(:,iNodeX) ) &
+                  - SUM( WeightsGX_X1(:) * Phi_X1_L(:) * V_X1_L(:,iNodeX) ) ) &
+                / ( WeightsGX(iNodeX) * dX(1) )
+
+        END DO
+      END DO
+    END DO
+
+    GS = 0.0_DP
+    DO iNodeX = 1, nDOFX
+
+      GS(iNodeX,iCF_S1) &
+        = - uCF(iNodeX,iCF_D) * g_X1(iNodeX)
+
+      GS(iNodeX,iCF_S2) &
+        = 0.0_DP
+
+      GS(iNodeX,iCF_S3) &
+        = 0.0_DP
+
+      GS(iNodeX,iCF_E)  &
+        = - uCF(iNodeX,iCF_S1) * g_X1(iNodeX)
+
+    END DO
+
+  END SUBROUTINE ComputeGeometrySources_Gravity
 
 
 END MODULE EulerEquationsUtilitiesModule
