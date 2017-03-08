@@ -26,29 +26,36 @@ MODULE MomentEquationsLimiterModule_DG
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     WeightsR, &
-    uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR
+    uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR, &
+    Discontinuity
+  USE MomentEquationsUtilitiesModule, ONLY: &
+    ComputeEigenvectors_L, &
+    ComputeEigenvectors_R
   USE RadiationFieldsUtilitiesModule, ONLY: &
     CellAverage
 
   IMPLICIT NONE
   PRIVATE
 
-  LOGICAL,  PARAMETER                   :: Debug = .FALSE.
+  LOGICAL,  PARAMETER                   :: Debug   = .FALSE.
+  LOGICAL,  PARAMETER                   :: Debug_P = .FALSE.
+  LOGICAL,  PARAMETER                   :: Componentwise = .FALSE.
   LOGICAL                               :: ApplySlopeLimiter
   LOGICAL                               :: ApplyPositivityLimiter
   INTEGER                               :: nPoints
   REAL(DP)                              :: BetaTVB
   REAL(DP)                              :: BetaTVD
   REAL(DP), PARAMETER                   :: Tol_TVD = 1.0d-2
-  REAL(DP), PARAMETER                   :: Tol_N = 1.0d-100
+  REAL(DP), PARAMETER                   :: Tol_N = 1.0d-12
   REAL(DP), PARAMETER                   :: Tol_G = 1.0d-12
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_E
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X1
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X2
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: Points_X3
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCR_P
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: uCR_M
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange_X1_P
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange_X1_M
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Legendre
 
   PUBLIC :: InitializeLimiters_M1_DG
@@ -67,7 +74,10 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: BetaTVD_Option
     LOGICAL,  INTENT(in), OPTIONAL :: ApplyPositivityLimiter_Option
 
-    INTEGER :: iPol, iNodeE, iNodeX1, iNodeX2, iNodeX3, iPoint, iNode
+    INTEGER :: iPol, iPoint
+    INTEGER :: iNodeE, iNodeX1, iNodeX2, iNodeX3, iNode
+    INTEGER :: jNodeE, jNodeX1, jNodeX2, jNodeX3, jNode
+    REAL(DP) :: eta_E, eta_X1, eta_X2, eta_X3
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
 
     ! --- Limiter Parameters ---
@@ -140,8 +150,6 @@ CONTAINS
       nPoints = nPoints + 2 * nNodesE * nNodesX(2) * nNodesX(3)
 
     ALLOCATE( uCR_P(nPoints,nCR) )
-
-    ALLOCATE( uCR_M(nDOF,nCR) )
 
     ! --- Coordinates of Points Where Positivity is Required:
 
@@ -262,6 +270,50 @@ CONTAINS
       END DO
     END DO
 
+    ALLOCATE( Lagrange_X1_P(nDOF,nDOF) )
+    ALLOCATE( Lagrange_X1_M(nDOF,nDOF) )
+
+    DO jNodeX3 = 1, nNodesX(3)
+      DO jNodeX2 = 1, nNodesX(2)
+        DO jNodeX1 = 1, nNodesX(1)
+          DO jNodeE = 1, nNodesE
+
+            jNode = NodeNumber( jNodeE, jNodeX1, jNodeX2, jNodeX3 )
+
+            eta_E  = MeshE    % Nodes(jNodeE)
+            eta_X1 = MeshX(1) % Nodes(jNodeX1)
+            eta_X2 = MeshX(2) % Nodes(jNodeX2)
+            eta_X3 = MeshX(3) % Nodes(jNodeX3)
+
+            DO iNodeX3 = 1, nNodesX(3)
+              DO iNodeX2 = 1, nNodesX(2)
+                DO iNodeX1 = 1, nNodesX(1)
+                  DO iNodeE = 1, nNodesE
+
+                    iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+
+                    Lagrange_X1_P(iNode,jNode) &
+                      = L_E(iNodeE) % P( eta_E ) &
+                        * L_X1(iNodeX1) % P( eta_X1 + 1.0_DP ) &
+                          * L_X2(iNodeX2) % P( eta_X2 ) &
+                            * L_X3(iNodeX3) % P( eta_X3 )
+
+                    Lagrange_X1_M(iNode,jNode) &
+                      = L_E(iNodeE) % P( eta_E ) &
+                        * L_X1(iNodeX1) % P( eta_X1 - 1.0_DP ) &
+                          * L_X2(iNodeX2) % P( eta_X2 ) &
+                            * L_X3(iNodeX3) % P( eta_X3 )
+
+                  END DO
+                END DO
+              END DO
+            END DO
+
+          END DO
+        END DO
+      END DO
+    END DO
+
   END SUBROUTINE InitializeLimiters_M1_DG
 
 
@@ -278,12 +330,15 @@ CONTAINS
     REAL(DP), DIMENSION(nCR) :: uCR_A, uCR_A_P_X1, uCR_A_N_X1
     REAL(DP), DIMENSION(nCR) :: SlopeDifference
     REAL(DP), DIMENSION(nCR) :: uCR_K_0, uCR_K_1
-    REAL(DP), DIMENSION(nDOF,nCR) :: uCR_M_P_X1, uCR_M_N_X1
+    REAL(DP), DIMENSION(nCR,nCR) :: L1, R1
+    REAL(DP), DIMENSION(nDOF,nCR) :: uCR_M, uCR_M_P_X1, uCR_M_N_X1
     REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: uCR_X1, uCR_X1_T
 
     IF( nDOF == 1 ) RETURN
 
     IF( .NOT. ApplySlopeLimiter ) RETURN
+
+    CALL DetectDiscontinuities
 
     IF( Debug )THEN
       WRITE(*,*)
@@ -307,6 +362,11 @@ CONTAINS
           DO iX1 = 1, nX(1)
             DO iE = 1, nE
 
+              ! --- Allow limiting if element is tagged as discontinuity
+
+              IF( .NOT. ( Discontinuity(iE,iX1,iX2,iX3) == 1.0_DP ) ) &
+                CYCLE
+
               ! --- Limiting Using Modal Representation ---
 
               DO iCR = 1, nCR
@@ -322,23 +382,42 @@ CONTAINS
 
               END DO
 
+              ! --- Cell-Averaged Quantities ---
+
               uCR_A     (1:nCR) = uCR_M     (1,1:nCR)
               uCR_A_P_X1(1:nCR) = uCR_M_P_X1(1,1:nCR)
               uCR_A_N_X1(1:nCR) = uCR_M_N_X1(1,1:nCR)
 
               ! --- Slope From Modal Representation ---
 
+              CALL ComputeEigenvectors_L &
+                     ( uCR_A(iCR_N),  uCR_A(iCR_G1), &
+                       uCR_A(iCR_G2), uCR_A(iCR_G3), &
+                       L1, Componentwise )
+
               uCR_X1(1:nCR,iE,iX1,iX2,iX3) &
-                = uCR_M(iOS+2,1:nCR) ! X1-Dimension
+                = MATMUL( L1, uCR_M(iOS+2,1:nCR) ) ! X1-Dimension
 
               ! --- Compute Limited Slopes ---
 
               uCR_X1_T(1:nCR,iE,iX1,iX2,iX3) &
                 = MinModB &
                     ( uCR_X1(1:nCR,iE,iX1,iX2,iX3), &
-                      BetaTVD * ( uCR_A(1:nCR) - uCR_A_P_X1 ), &
-                      BetaTVD * ( uCR_A_N_X1 - uCR_A(1:nCR) ), &
+                      BetaTVD * MATMUL( L1, uCR_A(1:nCR) - uCR_A_P_X1 ), &
+                      BetaTVD * MATMUL( L1, uCR_A_N_X1 - uCR_A(1:nCR) ), &
                       dX1(iX1), BetaTVB )
+
+              IF( Debug )THEN
+                PRINT*
+                PRINT*, "iE, iX1, iX2, iX3 = ", iE, iX1, iX2, iX3
+                PRINT*, "  uCR_X1   = ", uCR_X1(1:nCR,iE,iX1,iX2,iX3)
+                PRINT*, "  uCR_X1_L = ", &
+                  BetaTVD * MATMUL( L1, uCR_A(1:nCR) - uCR_A_P_X1 )
+                PRINT*, "  uCR_X1_R = ", &
+                  BetaTVD * MATMUL( L1, uCR_A_N_X1 - uCR_A(1:nCR) )
+                PRINT*, "  uCR_X1_T = ", uCR_X1_T(1:nCR,iE,iX1,iX2,iX2)
+                PRINT*
+              END IF
 
             END DO
           END DO
@@ -350,7 +429,10 @@ CONTAINS
           DO iX1 = 1, nX(1)
             DO iE = 1, nE
 
-              ! --- Component-wise limiting ---
+              ! --- Allow limiting if element is tagged as discontinuity
+
+              IF( .NOT. ( Discontinuity(iE,iX1,iX2,iX3) == 1.0_DP ) ) &
+                CYCLE
 
               DO iCR = 1, nCR
 
@@ -391,15 +473,22 @@ CONTAINS
 
                 END DO
 
-                ! --- Cell-Integrated Moments ---
+                ! --- Cell-Averaged Quantities ---
 
                 uCR_A(1:nCR) = uCR_M(1,1:nCR)
+
+                ! --- Back to Conserved Variables ---
+
+                CALL ComputeEigenvectors_R &
+                       ( uCR_A(iCR_N),  uCR_A(iCR_G1), &
+                         uCR_A(iCR_G2), uCR_A(iCR_G3), &
+                         R1, Componentwise )
 
                 uCR_M(:,1:nCR) = 0.0_DP
                 uCR_M(1,1:nCR) &     ! -- Cell-Average
                   = uCR_A(1:nCR)
                 uCR_M(iOS+2,1:nCR) & ! -- Slope X1-Direction
-                  = uCR_X1_T(1:nCR,iE,iX1,iX2,iX3)
+                  = MATMUL( R1, uCR_X1_T(1:nCR,iE,iX1,iX2,iX3) )
 
                 ! --- Correct Coefficients with Constrained Least Squares ---
                 ! --- to Presevre Conserved Quantities (i.e., N,G1,G2,G3) ---
@@ -470,8 +559,9 @@ CONTAINS
     REAL(DP) :: Theta_1, Theta_2
     REAL(DP) :: dN, dG1, dG2, dG3
     REAL(DP) :: a, b, c, r1, r2
-    REAL(DP), DIMENSION(nPoints) :: absG
-    REAL(DP), DIMENSION(1:nCR)   :: uCR_K
+    REAL(DP), DIMENSION(nPoints)  :: absG
+    REAL(DP), DIMENSION(1:nCR)    :: uCR_K
+    REAL(DP), DIMENSION(nDOF,nCR) :: uCR_M
 
     IF( nDOF == 1 ) RETURN
 
@@ -528,11 +618,18 @@ CONTAINS
 
                 IF( Theta_1 < 1.0_DP )THEN
 
-                  Theta_1 = ( 1.0_DP - SQRT( EPSILON( 1.0_DP ) ) ) * Theta_1
+                  IF( Debug_P )THEN
+                    PRINT*
+                    PRINT*, "iE,iX1,iX2,iX3 = ", iE, iX1, iX2, iX3
+                    PRINT*, "Theta_1 = ", Theta_1
+                    PRINT*, " N_K = ", uCR_K(iCR_N)
+                    PRINT*, " N_p = ", uCR_P(:,iCR_N)
+                    PRINT*
+                  END IF
 
                   uCR_M(1,iCR_N) &
-                    = ( 1.0_DP - Theta_1 ) * uCR_K(iCR_N) &
-                        + Theta_1 * uCR_M(1,iCR_N)
+                    = Theta_1 * uCR_M(1,iCR_N) &
+                        + (1.0_DP - Theta_1) * uCR_K(iCR_N)
 
                   uCR_M(2:nDOF,iCR_N) &
                     = Theta_1 * uCR_M(2:nDOF,iCR_N)
@@ -588,19 +685,29 @@ CONTAINS
                       IF( r2 > 0.0_DP ) Theta_2 = MIN( r2, Theta_2 )
                     END IF
 
-                    Theta_2 = 0.0_DP ! --- DEBUG ---
-
                   END IF
 
                 END DO
 
                 IF( Theta_2 < 1.0_DP )THEN
 
+                  IF( Debug_P )THEN
+                    PRINT*
+                    PRINT*, "iE,iX1,iX2,iX3 = ", iE, iX1, iX2, iX3
+                    PRINT*, "Theta_2 = ", Theta_2
+                    PRINT*, "Tol_G   = ", Tol_G
+                    PRINT*, " G_K = ", uCR_K(iCR_N)-SQRT( uCR_K(iCR_G1)**2 &
+                                                          + uCR_K(iCR_G2)**2 &
+                                                          + uCR_K(iCR_G3)**2 )
+                    PRINT*, " G_p = ", uCR_P(:,iCR_N)-absG(:)
+                    PRINT*
+                  END IF
+
                   DO iCR = 1, nCR
 
                     uCR_M(1,iCR) &
-                      = ( 1.0_DP - Theta_2 ) * uCR_K(iCR) &
-                          + Theta_2 * uCR_M(1,iCR)
+                      = Theta_2 * uCR_M(1,iCR) &
+                          + (1.0_DP - Theta_2) * uCR_K(iCR)
 
                     uCR_M(2:nDOF,iCR) &
                       = Theta_2 * uCR_M(2:nDOF,iCR)
@@ -618,7 +725,7 @@ CONTAINS
 
                 END DO
 
-                IF( Debug )THEN
+                IF( Debug_P )THEN
 
                   DO iCR = 1, nCR
                     DO iPoint = 1, nPoints
@@ -680,7 +787,7 @@ CONTAINS
 
                   END IF
 
-                END IF ! Debug
+                END IF ! Debug_P
 
               END IF
 
@@ -692,6 +799,87 @@ CONTAINS
     END DO
 
   END SUBROUTINE ApplyPositivityLimiter_M1_DG
+
+
+  SUBROUTINE DetectDiscontinuities
+
+    INTEGER :: iS, iE, iX1, iX2, iX3, iCR, k
+    REAL(DP) :: F_M, F_P
+    REAL(DP), DIMENSION(nCR) :: uCR_A
+    REAL(DP), DIMENSION(nDOF,nCR) :: uCR_M
+    REAL(DP), DIMENSION(nDOF,nCR) :: uCR_M_P_X1
+    REAL(DP), DIMENSION(nDOF,nCR) :: uCR_M_N_X1
+    REAL(DP), PARAMETER :: alpha = 1.5_DP
+
+    Discontinuity(:,:,:,:) = 0.0_DP
+
+    DO iS = 1, nSpecies
+
+      DO iX3 = 1, nX(3)
+        DO iX2 = 1, nX(2)
+          DO iX1 = 1, nX(1)
+            DO iE = 1, nE
+
+              ! --- Map To Modal Representation ---
+
+              DO iCR = 1, nCR
+
+                CALL MapNodalToModal_Radiation &
+                       ( uCR(:,iE,iX1-1,iX2,iX3,iCR,iS), uCR_M_P_X1(:,iCR) )
+                CALL MapNodalToModal_Radiation &
+                       ( uCR(:,iE,iX1,  iX2,iX3,iCR,iS), uCR_M     (:,iCR) )
+                CALL MapNodalToModal_Radiation &
+                       ( uCR(:,iE,iX1+1,iX2,iX3,iCR,iS), uCR_M_N_X1(:,iCR) )
+
+              END DO
+
+              ! --- Cell-Averaged Quantities ---
+
+              uCR_A(1:nCR) = uCR_M(1,1:nCR)
+
+              ! --- Detect Discontinuity with Harten's Sub-Cell Method ---
+
+              F_M = 0.0_DP
+              F_P = 0.0_DP
+              DO k = 1, nDOF
+
+                F_M &
+                  = F_M &
+                    + WeightsR(k) &
+                      * SUM( Lagrange_X1_M(:,k) &
+                             * uCR(:,iE,iX1+1,iX2,iX3,iCR_N,iS) )
+
+                F_P &
+                  = F_P &
+                    + WeightsR(k) &
+                      * SUM( Lagrange_X1_P(:,k) &
+                             * uCR(:,iE,iX1-1,iX2,iX3,iCR_N,iS) )
+
+              END DO
+              F_M = F_M - uCR_A(iCR_N)
+              F_P = F_P - uCR_A(iCR_N)
+
+              IF( F_M * F_P <= 0.0_DP )THEN
+                LOOP: DO k = 1, nDOF
+                  IF( ABS( uCR_M(k,iCR_N) ) &
+                      > alpha * ABS( uCR_M_P_X1(k,iCR_N) ) .AND. &
+                      ABS( uCR_M(k,iCR_N) ) &
+                      > alpha * ABS( uCR_M_N_X1(k,iCR_N) ) ) &
+                  THEN
+                    Discontinuity(iE,iX1,iX2,iX3) = 1.0_DP
+                    EXIT LOOP
+                  END IF
+                END DO LOOP
+              END IF
+
+            END DO
+          END DO
+        END DO
+      END DO
+
+    END DO
+
+  END SUBROUTINE DetectDiscontinuities
 
 
 END MODULE MomentEquationsLimiterModule_DG

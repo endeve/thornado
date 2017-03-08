@@ -22,6 +22,9 @@ MODULE MomentEquationsSolutionModule_M1_DG
   USE RiemannSolverModule, ONLY: &
     NumericalFlux_Radiation
   USE MomentEquationsUtilitiesModule, ONLY: &
+    AlphaMax, &
+    AlphaP, &
+    AlphaM, &
     Flux_X1, &
     GeometrySources
   
@@ -52,6 +55,7 @@ CONTAINS
     INTEGER :: iS, iX1, iX2, iX3, iE
     INTEGER :: iNodeX1, jNodeX1, iNodeX2, iNodeX3, iNodeE
     INTEGER :: iNode, jNode, iCR
+    REAL(DP) :: Alpha, AlphaPls, AlphaMns
     REAL(DP), DIMENSION(1:nCR) :: VolumeTerm, Flux_L, Flux_R, Flux
     REAL(DP), DIMENSION(1:nCR) :: uCR_L, uCR_R
     REAL(DP), DIMENSION(nX(1)) :: a_X1_L, a_X1_R
@@ -194,9 +198,27 @@ CONTAINS
 
                       ! -- Numerical Flux --
 
+                      Alpha &
+                        = MAX( AlphaMax( uCR_L(iCR_N) , uCR_L(iCR_G1)  , &
+                                         uCR_L(iCR_G2), uCR_L(iCR_G3) ), &
+                               AlphaMax( uCR_R(iCR_N) , uCR_R(iCR_G1)  , &
+                                         uCR_R(iCR_G2), uCR_R(iCR_G3) ) )
+
+                      AlphaPls &
+                        = AlphaP( uCR_L(iCR_N) , uCR_L(iCR_G1), &
+                                  uCR_L(iCR_G2), uCR_L(iCR_G3), &
+                                  uCR_R(iCR_N) , uCR_R(iCR_G1), &
+                                  uCR_R(iCR_G2), uCR_R(iCR_G3) )
+
+                      AlphaMns &
+                        = AlphaM( uCR_L(iCR_N) , uCR_L(iCR_G1), &
+                                  uCR_L(iCR_G2), uCR_L(iCR_G3), &
+                                  uCR_R(iCR_N) , uCR_R(iCR_G1), &
+                                  uCR_R(iCR_G2), uCR_R(iCR_G3) )
+
                       Flux = NumericalFlux_Radiation &
                                ( uCR_L, uCR_R, Flux_L, Flux_R, &
-                                 1.0_DP, 1.0_DP, 1.0_DP, 1.0_DP, nCR )
+                                 Alpha, AlphaPls, AlphaMns, 1.0_DP, nCR )
 
                       ! -- Contribution to Right-Hand Side --
 
@@ -251,9 +273,27 @@ CONTAINS
 
                       ! -- Numerical Flux --
 
+                      Alpha &
+                        = MAX( AlphaMax( uCR_L(iCR_N),  uCR_L(iCR_G1),   &
+                                         uCR_L(iCR_G2), uCR_L(iCR_G3) ), &
+                               AlphaMax( uCR_R(iCR_N),  uCR_R(iCR_G1),   &
+                                         uCR_R(iCR_G2), uCR_R(iCR_G3) ) )
+
+                      AlphaPls &
+                        = AlphaP( uCR_L(iCR_N) , uCR_L(iCR_G1), &
+                                  uCR_L(iCR_G2), uCR_L(iCR_G3), &
+                                  uCR_R(iCR_N) , uCR_R(iCR_G1), &
+                                  uCR_R(iCR_G2), uCR_R(iCR_G3) )
+
+                      AlphaMns &
+                        = AlphaM( uCR_L(iCR_N) , uCR_L(iCR_G1), &
+                                  uCR_L(iCR_G2), uCR_L(iCR_G3), &
+                                  uCR_R(iCR_N) , uCR_R(iCR_G1), &
+                                  uCR_R(iCR_G2), uCR_R(iCR_G3) )
+
                       Flux = NumericalFlux_Radiation &
                                ( uCR_L, uCR_R, Flux_L, Flux_R, &
-                                 1.0_DP, 1.0_DP, 1.0_DP, 1.0_DP, nCR )
+                                 Alpha, AlphaPls, AlphaMns, 1.0_DP, nCR )
 
                       ! -- Contribution to Right-Hand Side --
 
