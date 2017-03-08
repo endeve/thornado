@@ -1,11 +1,12 @@
 MODULE EulerEquationsSolutionModule_DG
 
   USE KindModule, ONLY: &
-    DP
+    DP, Pi
   USE ProgramHeaderModule, ONLY: &
-    nX, nNodesX
+    nX, nNodesX, nDOFX
   USE UtilitiesModule, ONLY: &
-    NodeNumberX
+    NodeNumberX, &
+    WriteVector
   USE PolynomialBasisModule_Lagrange, ONLY: &
     L_X1, dL_X1
   USE MeshModule, ONLY: &
@@ -13,6 +14,7 @@ MODULE EulerEquationsSolutionModule_DG
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem, &
+    uGF, nGF, &
     a, b
   USE FluidFieldsModule, ONLY: &
     rhsCF, &
@@ -32,10 +34,10 @@ MODULE EulerEquationsSolutionModule_DG
     AlphaM, &
     AlphaC, &
     Flux_X1, &
-    GeometrySources
+    GeometrySources, &
+    ComputeGeometrySources_Gravity
 
   IMPLICIT NONE
-
   PRIVATE
 
   PUBLIC :: ComputeRHS_Euler_DG
@@ -373,15 +375,19 @@ CONTAINS
 
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
 
-    INTEGER :: iX1, iX2, iX3
-    INTEGER :: iNodeX1, iNodeX2, iNodeX3
-    INTEGER :: iNode
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
+    INTEGER  :: iCF, iX1_P, iX1_N, iNodeG
     REAL(DP) :: X1, X2, X3
+    REAL(DP), DIMENSION(nDOFX,nCF) :: GeometrySources_Gravity
+    REAL(DP), DIMENSION(nNodesX(1)*nX(1)) :: X1_G, Fg_G
+    REAL(DP), DIMENSION(nDOFX,nX(1)) :: X_1
 
     IF( TRIM( CoordinateSystem ) == 'CARTESIAN' ) RETURN
 
     ! --- Fictitious Forces ---
 
+    iNodeG = 1
     DO iX3 = iX_Begin(3), iX_End(3)
       DO iX2 = iX_Begin(2), iX_End(2)
         DO iX1 = iX_Begin(1), iX_End(1)
@@ -402,14 +408,17 @@ CONTAINS
 
                 X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-                iNode = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-                rhsCF(iNode,iX1,iX2,iX3,1:nCF) &
-                  = rhsCF(iNode,iX1,iX2,iX3,1:nCF) &
+                rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
+                  = rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
                       + GeometrySources &
-                          ( uCF_K(iNode,iCF_D),  uCF_K(iNode,iCF_S1), &
-                            uCF_K(iNode,iCF_S2), uCF_K(iNode,iCF_S3), &
-                            uAF_K(iNode,iAF_P), [ X1, X2, X3 ] )
+                          ( uCF_K(iNodeX,iCF_D),  uCF_K(iNodeX,iCF_S1), &
+                            uCF_K(iNodeX,iCF_S2), uCF_K(iNodeX,iCF_S3), &
+                            uAF_K(iNodeX,iAF_P), [ X1, X2, X3 ] )
+
+                X1_G(iNodeG) = X1; iNodeG = iNodeG+1
+                X_1(iNodeX,iX1) = X1
 
               END DO
             END DO
@@ -424,6 +433,35 @@ CONTAINS
     IF( TRIM( CoordinateSystem ) == 'CYLINDRICAL' ) RETURN
 
     ! --- Gravitational Sources ---
+
+    DO iX3 = iX_Begin(3), iX_End(3)
+      DO iX2 = iX_Begin(2), iX_End(2)
+        DO iX1 = iX_Begin(1), iX_End(1)
+
+          iX1_P = MAX( iX1 - 1, 1     ) ! Previous Element
+          iX1_N = MIN( iX1 + 1, nX(1) ) ! Next     Element
+
+          CALL ComputeGeometrySources_Gravity  &
+                 ( [ MeshX(1) % Width(iX1),    &
+                     MeshX(2) % Width(iX2),    &
+                     MeshX(3) % Width(iX3) ],  &
+                   uCF(:,iX1,  iX2,iX3,1:nCF), &
+                   uGF(:,iX1,  iX2,iX3,1:nGF), &
+                   uGF(:,iX1_P,iX2,iX3,1:nGF), &
+                   uGF(:,iX1_N,iX2,iX3,1:nGF), &
+                   GeometrySources_Gravity(1:nDOFX,1:nCF) )
+
+          DO iCF = 1, nCF
+
+            rhsCF(:,iX1,iX2,iX3,iCF) &
+              = rhsCF(:,iX1,iX2,iX3,iCF) &
+                  + GeometrySources_Gravity(:,iCF)
+
+          END DO
+
+        END DO
+      END DO
+    END DO
 
   END SUBROUTINE ComputeRHS_Euler_DG_GeometrySources
 
