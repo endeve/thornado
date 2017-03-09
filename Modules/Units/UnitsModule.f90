@@ -18,7 +18,7 @@ MODULE UnitsModule
     GravitationalConstant = 1.0_DP, &
     BoltzmannConstant     = 1.0_DP
 
-  ! --- Lenght ---
+  ! --- Length ---
 
   REAL(DP), PUBLIC, PARAMETER :: &
     Meter      = 1.0_DP, &
