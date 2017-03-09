@@ -56,6 +56,12 @@ EulerEquationsLimiterModule_DG.o: \
   EulerEquationsUtilitiesModule.o \
   EulerEquationsLimiterModule_DG.f90
 
+EulerEquationsUtilitiesModule_GR.o: \
+  KindModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EulerEquationsUtilitiesModule_GR.f90
+
 FluidEvolutionModule.o: \
   KindModule.o \
   EulerEquationsSolutionModule_DG.o \

@@ -17,6 +17,7 @@ MODULE EquationOfStateModule_IDEAL
   PUBLIC :: InitializeEquationOfState_IDEAL
   PUBLIC :: FinalizeEquationOfState_IDEAL
   PUBLIC :: ComputeInternalEnergyDensityFromPressure_IDEAL
+  PUBLIC :: ComputePressureFromSpecificInternalEnergy_IDEAL
   PUBLIC :: ComputeAuxiliary_Fluid_IDEAL
   PUBLIC :: Auxiliary_Fluid_IDEAL
 
@@ -47,6 +48,16 @@ CONTAINS
     Ev(:) = P(:) / ( Gamma_IDEAL - 1.0_DP )
 
   END SUBROUTINE ComputeInternalEnergyDensityFromPressure_IDEAL
+
+
+  SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Y, P )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Em, Y
+    REAL(DP), DIMENSION(:), INTENT(out) :: P
+
+    P(:) = ( Gamma_IDEAL - 1.0_DP ) * D(:) * Em(:)
+
+  END SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL
 
 
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne, P, T, Y, Em, Gm, Cs )

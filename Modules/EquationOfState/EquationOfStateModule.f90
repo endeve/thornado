@@ -5,6 +5,7 @@ MODULE EquationOfStateModule
   USE EquationOfStateModule_IDEAL, ONLY: &
     InitializeEquationOfState_IDEAL, &
     ComputeInternalEnergyDensityFromPressure_IDEAL, &
+    ComputePressureFromSpecificInternalEnergy_IDEAL, &
     ComputeAuxiliary_Fluid_IDEAL, &
     Auxiliary_Fluid_IDEAL
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -13,6 +14,7 @@ MODULE EquationOfStateModule
     ComputeTemperatureFromPressure_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE, &
     ComputeThermodynamicStates_Auxiliary_TABLE, &
+    ComputePressureFromSpecificInternalEnergy_TABLE, &
     ComputeAuxiliary_Fluid_TABLE, &
     Auxiliary_Fluid_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
@@ -91,22 +93,23 @@ MODULE EquationOfStateModule
   ! ---
 
   PROCEDURE (EosFunction),       POINTER, PUBLIC :: &
-    Auxiliary_Fluid                          => NULL()
+    Auxiliary_Fluid                           => NULL()
   PROCEDURE (EosSubroutine_1),   POINTER, PUBLIC :: &
-    ComputeInternalEnergyDensityFromPressure => NULL(), &
-    ComputeTemperatureFromPressure           => NULL()
+    ComputeInternalEnergyDensityFromPressure  => NULL(), &
+    ComputePressureFromSpecificInternalEnergy => NULL(), &
+    ComputeTemperatureFromPressure            => NULL()
   PROCEDURE (EosSubroutine_3),   POINTER, PUBLIC :: &
-    ComputeThermodynamicStates_Primitive     => NULL(), &
-    ComputeThermodynamicStates_Auxiliary     => NULL()
+    ComputeThermodynamicStates_Primitive      => NULL(), &
+    ComputeThermodynamicStates_Auxiliary      => NULL()
   PROCEDURE (EosSubroutine_6),   POINTER, PUBLIC :: &
-    ComputeAuxiliary_Fluid                   => NULL()
+    ComputeAuxiliary_Fluid                    => NULL()
   PROCEDURE (EosSubroutine_7),   POINTER, PUBLIC :: &
-    ApplyEquationOfState                     => NULL()
+    ApplyEquationOfState                      => NULL()
   PROCEDURE (EosSubroutine_1_3), POINTER, PUBLIC :: &
-    ComputeSpecificInternalEnergy            => NULL(), &
-    ComputeElectronChemicalPotential         => NULL(), &
-    ComputeProtonChemicalPotential           => NULL(), &
-    ComputeNeutronChemicalPotential          => NULL()
+    ComputeSpecificInternalEnergy             => NULL(), &
+    ComputeElectronChemicalPotential          => NULL(), &
+    ComputeProtonChemicalPotential            => NULL(), &
+    ComputeNeutronChemicalPotential           => NULL()
 
   PUBLIC :: InitializeEquationOfState
   PUBLIC :: FinalizeEquationOfState
@@ -142,6 +145,8 @@ CONTAINS
 
         ComputeInternalEnergyDensityFromPressure &
           => ComputeInternalEnergyDensityFromPressure_IDEAL
+        ComputePressureFromSpecificInternalEnergy &
+          => ComputePressureFromSpecificInternalEnergy_IDEAL
         ComputeAuxiliary_Fluid &
           => ComputeAuxiliary_Fluid_IDEAL
         Auxiliary_Fluid &
@@ -161,6 +166,8 @@ CONTAINS
           => ComputeThermodynamicStates_Primitive_TABLE
         ComputeThermodynamicStates_Auxiliary &
           => ComputeThermodynamicStates_Auxiliary_TABLE
+        ComputePressureFromSpecificInternalEnergy &
+          => ComputePressureFromSpecificInternalEnergy_TABLE
         ComputeAuxiliary_Fluid &
           => ComputeAuxiliary_Fluid_TABLE
         Auxiliary_Fluid &

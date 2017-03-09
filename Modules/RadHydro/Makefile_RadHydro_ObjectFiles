@@ -7,6 +7,7 @@ RAD_HYDRO = \
   EulerEquationsUtilitiesModule.o \
   EulerEquationsSolutionModule_DG.o \
   EulerEquationsLimiterModule_DG.o \
+  EulerEquationsUtilitiesModule_GR.o \
   FluidEvolutionModule.o \
   MomentEquationsUtilitiesModule.o \
   MomentEquationsSolutionModule_M1_DG.o \
