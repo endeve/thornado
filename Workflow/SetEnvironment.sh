@@ -2,7 +2,12 @@
 
 export THORNADO_MACHINE=$1
 
-if [[ $THORNADO_MACHINE == titan* ]]; then
+if [[ $THORNADO_MACHINE == mac* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+elif [[ $THORNADO_MACHINE == titan* ]]; then
 
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
@@ -42,8 +47,13 @@ echo "INFO: Setting environment for" $THORNADO_MACHINE
 
 fi
 
+if [[ $THORNADO_MACHINE == mac_gnu ]]; then
 
-if [[ $THORNADO_MACHINE == titan_gnu ]]; then
+  echo
+  export WEAKLIB_DIR=
+  export POSEIDON_DIR=
+
+elif [[ $THORNADO_MACHINE == titan_gnu ]]; then
 
   echo
 
