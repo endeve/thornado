@@ -25,9 +25,9 @@ MODULE GravitySolutionModule_Newtonian_Poseidon
     Poseidon_Newtonian_Potential_Output, &
     Poseidon_Close
 
-#endif
-
   ! -----------------------------------------
+
+#endif
 
   IMPLICIT NONE
   PRIVATE

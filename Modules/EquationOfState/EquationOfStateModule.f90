@@ -132,7 +132,7 @@ CONTAINS
     WRITE(*,'(A5,A19)') &
       '', '------------------ '
 
-    SELECT CASE ( EquationOfState )
+    SELECT CASE ( TRIM( EquationOfState ) )
 
       CASE ( 'IDEAL' )
 

@@ -1,5 +1,7 @@
 MODULE EquationOfStateModule_TABLE
 
+#ifdef MICROPHYSICS_WEAKLIB
+
   ! --- weaklib modules --------------------------
 
   USE wlIOModuleHDF, ONLY: &
@@ -16,6 +18,8 @@ MODULE EquationOfStateModule_TABLE
     ComputeTempFromPressure
 
   ! ----------------------------------------------
+
+#endif
 
   USE KindModule, ONLY: &
     DP
@@ -50,8 +54,10 @@ MODULE EquationOfStateModule_TABLE
     BaryonMass = AtomicMassUnit
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
     Ds_T, Ts_T, Ys_T
+#ifdef MICROPHYSICS_WEAKLIB
   TYPE(EquationOfStateTableType) :: &
     EOS
+#endif
 
   PUBLIC :: InitializeEquationOfState_TABLE
   PUBLIC :: FinalizeEquationOfState_TABLE
@@ -81,6 +87,8 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A7,A12,A)') &
       '', 'Table Name: ', TRIM( EquationOfStateTableName )
+
+#ifdef MICROPHYSICS_WEAKLIB
 
     CALL InitializeHDF( )
 
@@ -128,6 +136,8 @@ CONTAINS
     OS_Mp = EOS % DV % Offsets(iMp_T)
     OS_Mn = EOS % DV % Offsets(iMn_T)
     OS_Gm = EOS % DV % Offsets(iGm_T)
+
+#endif
 
   END SUBROUTINE InitializeEquationOfState_TABLE
 
@@ -199,6 +209,8 @@ CONTAINS
     INTEGER                :: iS
     REAL(DP), DIMENSION(1) :: TMP
 
+#ifdef MICROPHYSICS_WEAKLIB
+
     DO iS = 1, SIZE( D )
 
       CALL ComputeTempFromIntEnergy                &
@@ -211,6 +223,8 @@ CONTAINS
 
     END DO
 
+#endif
+
   END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE
 
 
@@ -221,6 +235,8 @@ CONTAINS
 
     INTEGER                :: iS
     REAL(DP), DIMENSION(1) :: TMP
+
+#ifdef MICROPHYSICS_WEAKLIB
 
     DO iS = 1, SIZE( D )
 
@@ -233,6 +249,8 @@ CONTAINS
       T(iS) = TMP(1) * Kelvin
 
     END DO
+
+#endif
 
   END SUBROUTINE ComputeTemperatureFromPressure_TABLE
 
@@ -529,12 +547,16 @@ CONTAINS
 
     REAL(DP), DIMENSION(1:SIZE( D )) :: TMP
 
+#ifdef MICROPHYSICS_WEAKLIB
+
     CALL LogInterpolateSingleVariable         &
            ( D(:) / ( Gram / Centimeter**3 ), &
              T(:) / Kelvin,                   &
              Y(:), Ds_T, Ts_T, Ys_T,          &
              LogInterp, OS_V,                 &
              EOS % DV % Variables(iV) % Values, TMP )
+
+#endif
 
     V(:) = TMP(:) * Units_V
 
@@ -553,6 +575,8 @@ CONTAINS
     REAL(DP), DIMENSION(1:SIZE( D ))     :: TMP
     REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: dTMP
 
+#ifdef MICROPHYSICS_WEAKLIB
+
     CALL LogInterpolateDifferentiateSingleVariable &
            ( D(:) / ( Gram / Centimeter**3 ),      &
              T(:) / Kelvin,                        &
@@ -560,6 +584,8 @@ CONTAINS
              LogInterp, OS_V,                      &
              EOS % DV % Variables(iV) % Values,    &
              TMP, dTMP )
+
+#endif
 
     V(:) = TMP(:) * Units_V
 
