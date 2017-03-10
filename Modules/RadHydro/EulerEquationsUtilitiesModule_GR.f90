@@ -69,7 +69,7 @@ CONTAINS
     INTEGER  :: i, nIter
     REAL(DP) :: Gm11, Gm22, Gm33, SSq, vSq, W, h
     REAL(DP) :: Pold, Pnew, FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-10
+    REAL(DP), PARAMETER :: TolP = 1.0d-12
 
     DO i = 1, SIZE( uPF, DIM = 1 )
 
@@ -98,15 +98,17 @@ CONTAINS
 
         IF( ABS( Pnew / Pold - 1.0_DP ) < TolP ) Converged = .TRUE.
 
-        Pold = Pnew
-
-        IF( nIter > 10 .AND. .NOT. Converged )THEN
+        IF( nIter > 10 )THEN
           PRINT*, "ComputePrimitive"
           PRINT*, "  nIter = ", nIter
           PRINT*, "  Pold, Pnew, dP = ", &
             Pold, Pnew, ABS( Pnew / Pold - 1.0_DP )
+          PRINT*, "  FunP = ", FunP
+          PRINT*, "  Converged = ", Converged
           IF( nIter > 100) STOP
         END IF
+
+        Pold = Pnew
 
       END DO
 
@@ -122,11 +124,11 @@ CONTAINS
 
       uPF(i,iPF_D)  = uCF(i,iCF_D) / W
 
-      uPF(i,iPF_V1) = uCF(i,iCF_S1) / ( uCF(i,iCF_E) + Pnew ) / Gm11
+      uPF(i,iPF_V1) = uCF(i,iCF_S1) / ( uCF(i,iCF_D) * h * W * Gm11 )
 
-      uPF(i,iPF_V2) = uCF(i,iCF_S2) / ( uCF(i,iCF_E) + Pnew ) / Gm22
+      uPF(i,iPF_V2) = uCF(i,iCF_S2) / ( uCF(i,iCF_D) * h * W * Gm22 )
 
-      uPF(i,iPF_V3) = uCF(i,iCF_S3) / ( uCF(i,iCF_E) + Pnew ) / Gm33
+      uPF(i,iPF_V3) = uCF(i,iCF_S3) / ( uCF(i,iCF_D) * h * W * Gm22 )
 
       uPF(i,iPF_E)  = uCF(i,iCF_D) * ( h - 1.0_DP ) / W - Pnew
 
@@ -137,7 +139,7 @@ CONTAINS
   END SUBROUTINE ComputePrimitive
 
 
-  PURE FUNCTION Flux_X1 &
+  FUNCTION Flux_X1 &
     ( D, V1, V2, V3, E, P, Ne, Alpha, Beta1, Gm11, Gm22, Gm33 )
 
     REAL(DP), INTENT(in)       :: D, V1, V2, V3, E, P, Ne
@@ -168,7 +170,7 @@ CONTAINS
       = ( D * h * W**2 - D * W ) * ( Alpha * V1 - Beta1 ) + Beta1 * P
 
     Flux_X1(iCF_Ne) &
-      = ( Alpha * V1 - Beta1 ) * W * Ne
+      = W * Ne * ( Alpha * V1 - Beta1 )
 
     RETURN
   END FUNCTION Flux_X1
