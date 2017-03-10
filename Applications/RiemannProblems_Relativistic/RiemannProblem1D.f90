@@ -17,7 +17,7 @@ PROGRAM RiemannProblem1D
          ( ProgramName_Option &
              = 'RiemannProblem1D_Relativistic', &
            nX_Option &
-             = [ 200, 1, 1 ], &
+             = [ 2000, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -56,10 +56,10 @@ PROGRAM RiemannProblem1D
 
   CALL EvolveFields &
          ( t_begin  = 0.0_DP, &
-           t_end    = 1.0d-1, &
-           dt_write = 1.0d-2, &
+           t_end    = 3.5d-1, &
+           dt_write = 3.5d-3, &
            UpdateFields = SSP_RK, &
-           dt_fixed_Option = 1.0d-3 )
+           dt_fixed_Option = 1.0d-4 )
 
   CALL FinalizeProgram
 
