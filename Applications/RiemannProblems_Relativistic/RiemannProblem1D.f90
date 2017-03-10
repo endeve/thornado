@@ -56,9 +56,10 @@ PROGRAM RiemannProblem1D
 
   CALL EvolveFields &
          ( t_begin  = 0.0_DP, &
-           t_end    = 0.0d-1, &
+           t_end    = 1.0d-1, &
            dt_write = 1.0d-2, &
-           UpdateFields = SSP_RK )
+           UpdateFields = SSP_RK, &
+           dt_fixed_Option = 1.0d-3 )
 
   CALL FinalizeProgram
 
