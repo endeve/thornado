@@ -8,6 +8,8 @@ MODULE FluidEvolutionModule
     InitializeLimiters_Euler_DG, &
     ApplySlopeLimiter_Euler_DG, &
     ApplyPositivityLimiter_Euler_DG
+  USE EulerEquationsSolutionModule_DG_GR, ONLY: &
+    ComputeRHS_Euler_DG_GR
 
   IMPLICIT NONE
   PRIVATE
@@ -54,7 +56,9 @@ CONTAINS
     END IF
 
     SELECT CASE ( TRIM( FluidSolver ) )
+
       CASE( 'Euler_DG' )
+
         ComputeRHS_Fluid &
           => ComputeRHS_Euler_DG
         ApplySlopeLimiter_Fluid &
@@ -68,13 +72,25 @@ CONTAINS
                  BetaTVD_Option = BetaTVD_Option, &
                  ApplyPositivityLimiter_Option &
                    = ApplyPositivityLimiter_Option )
-      CASE DEFAULT
+
+      CASE ( 'Euler_DG_GR' )
+
         ComputeRHS_Fluid &
-          => ComputeRHS_Dummy
-         ApplySlopeLimiter_Fluid &
+          => ComputeRHS_Euler_DG_GR
+        ApplySlopeLimiter_Fluid &
           => ApplyLimiter_Dummy
         ApplyPositivityLimiter_Fluid &
           => ApplyLimiter_Dummy
+
+      CASE DEFAULT
+
+        ComputeRHS_Fluid &
+          => ComputeRHS_Dummy
+        ApplySlopeLimiter_Fluid &
+          => ApplyLimiter_Dummy
+        ApplyPositivityLimiter_Fluid &
+          => ApplyLimiter_Dummy
+
     END SELECT
 
   END SUBROUTINE InitializeFluidEvolution
@@ -93,20 +109,14 @@ CONTAINS
 
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
 
-    WRITE(*,*)
-    WRITE(*,'(A4,A)') &
-      '', 'FluidEvolutionModule: ComputeRHS_Dummy'
-    WRITE(*,*)
+    RETURN
 
   END SUBROUTINE ComputeRHS_Dummy
 
 
   SUBROUTINE ApplyLimiter_Dummy
 
-    WRITE(*,*)
-    WRITE(*,'(A4,A)') &
-      '', 'FluidEvolutionModule: ApplyLimiter_Dummy'
-    WRITE(*,*)
+    RETURN
 
   END SUBROUTINE ApplyLimiter_Dummy
 

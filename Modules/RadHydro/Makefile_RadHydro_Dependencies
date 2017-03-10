@@ -62,10 +62,18 @@ EulerEquationsUtilitiesModule_GR.o: \
   FluidFieldsModule.o \
   EulerEquationsUtilitiesModule_GR.f90
 
+EulerEquationsSolutionModule_DG_GR.o: \
+  KindModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EulerEquationsUtilitiesModule_GR.o \
+  EulerEquationsSolutionModule_DG_GR.f90
+
 FluidEvolutionModule.o: \
   KindModule.o \
   EulerEquationsSolutionModule_DG.o \
   EulerEquationsLimiterModule_DG.o \
+  EulerEquationsSolutionModule_DG_GR.o \
   FluidEvolutionModule.f90
 
 MomentEquationsUtilitiesModule.o: \

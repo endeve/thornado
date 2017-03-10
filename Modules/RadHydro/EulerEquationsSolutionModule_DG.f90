@@ -1,7 +1,7 @@
 MODULE EulerEquationsSolutionModule_DG
 
   USE KindModule, ONLY: &
-    DP, Pi
+    DP
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, nDOFX
   USE UtilitiesModule, ONLY: &

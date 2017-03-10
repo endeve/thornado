@@ -15,6 +15,7 @@ MODULE EulerEquationsUtilitiesModule_GR
   PRIVATE
 
   PUBLIC :: ComputeConserved
+  PUBLIC :: ComputePrimitive
   PUBLIC :: Flux_X1
 
 CONTAINS
@@ -28,26 +29,26 @@ CONTAINS
     REAL(DP), DIMENSION(:,:), INTENT(out) :: uCF
 
     INTEGER  :: i
-    REAL(DP) :: Gm_11, Gm_22, Gm_33, vSq, W, h
+    REAL(DP) :: Gm11, Gm22, Gm33, vSq, W, h
 
     DO i = 1, SIZE( uCF, DIM = 1 )
 
-      Gm_11 = uGF(i,iGF_Gm_dd_11)
-      Gm_22 = uGF(i,iGF_Gm_dd_22)
-      Gm_33 = uGF(i,iGF_Gm_dd_33)
+      Gm11 = uGF(i,iGF_Gm_dd_11)
+      Gm22 = uGF(i,iGF_Gm_dd_22)
+      Gm33 = uGF(i,iGF_Gm_dd_33)
 
-      vSq = Gm_11 * uPF(i,iPF_V1)**2 &
-            + Gm_22 * uPF(i,iPF_V2)**2 &
-            + Gm_33 * uPF(i,iPF_V3)**2
+      vSq = Gm11 * uPF(i,iPF_V1)**2 &
+            + Gm22 * uPF(i,iPF_V2)**2 &
+            + Gm33 * uPF(i,iPF_V3)**2
 
       W = 1.0_DP / SQRT( 1.0_DP - vSq )
 
       h = 1.0_DP + ( uPF(i,iPF_E) + uAF(i,iAF_P) ) / uPF(i,iPF_D)
 
       uCF(i,iCF_D)  = W * uPF(i,iPF_D)
-      uCF(i,iCF_S1) = h * W**2 * Gm_11 * uPF(i,iPF_D) * uPF(i,iPF_V1)
-      uCF(i,iCF_S2) = h * W**2 * Gm_22 * uPF(i,iPF_D) * uPF(i,iPF_V2)
-      uCF(i,iCF_S3) = h * W**2 * Gm_33 * uPF(i,iPF_D) * uPF(i,iPF_V3)
+      uCF(i,iCF_S1) = h * W**2 * uPF(i,iPF_D) * Gm11 * uPF(i,iPF_V1)
+      uCF(i,iCF_S2) = h * W**2 * uPF(i,iPF_D) * Gm22 * uPF(i,iPF_V2)
+      uCF(i,iCF_S3) = h * W**2 * uPF(i,iPF_D) * Gm33 * uPF(i,iPF_V3)
       uCF(i,iCF_E)  = h * W**2 * uPF(i,iPF_D) - uAF(i,iAF_P) &
                         - W * uPF(i,iPF_D)
       uCF(i,iCF_Ne) = W * uPF(i,iPF_Ne)
@@ -66,7 +67,9 @@ CONTAINS
 
     LOGICAL  :: Converged
     INTEGER  :: i
-    REAL(DP) :: Gm11, Gm22, Gm33, SSq, P
+    REAL(DP) :: Gm11, Gm22, Gm33, SSq, vSq, W, h
+    REAL(DP) :: Pold, Pnew, FunP, JacP
+    REAL(DP), PARAMETER :: TolP = 1.0d-10
 
     DO i = 1, SIZE( uPF, DIM = 1 )
 
@@ -78,11 +81,45 @@ CONTAINS
             + Gm22 * uCF(i,iCF_S2)**2 &
             + Gm33 * uCF(i,iCF_S3)**2
 
-      P = uAF(i,iAF_P)
+      ! --- Find Pressure with Newton's Method ---
+
+      Pold = uAF(i,iAF_P) ! --- Initial Guess
+
       Converged = .FALSE.
       DO WHILE ( .NOT. Converged )
 
+        CALL ComputeFunJacP &
+               ( uCF(i,iCF_D), SSq, uCF(i,iCF_E), Pold, FunP, JacP )
+
+        Pnew = Pold - FunP / JacP
+
+        IF( ABS( Pnew / Pold - 1.0_DP ) < TolP ) Converged = .TRUE.
+
+        Pold = Pnew
+
       END DO
+
+      uAF(i,iAF_P) = Pnew
+
+      vSq = SSq / ( uCF(i,iCF_E) + Pnew + uCF(i,iCF_D) )**2
+
+      W = 1.0_DP / SQRT( 1.0_DP - vSq )
+
+      h = ( uCF(i,iCF_E) + Pnew + uCF(i,iCF_D) ) / ( W * uCF(i,iCF_D) )
+
+      ! --- Recover Primitive Variables ---
+
+      uPF(i,iPF_D)  = uCF(i,iCF_D) / W
+
+      uPF(i,iPF_V1) = uCF(i,iCF_S1) / ( uCF(i,iCF_E) + Pnew ) / Gm11
+
+      uPF(i,iPF_V2) = uCF(i,iCF_S2) / ( uCF(i,iCF_E) + Pnew ) / Gm22
+
+      uPF(i,iPF_V3) = uCF(i,iCF_S3) / ( uCF(i,iCF_E) + Pnew ) / Gm33
+
+      uPF(i,iPF_E)  = uCF(i,iCF_D) * ( h - 1.0_DP ) / W - Pnew
+
+      uPF(i,iPF_Ne) = uCF(i,iCF_Ne) / W
 
     END DO
 
@@ -126,10 +163,10 @@ CONTAINS
   END FUNCTION Flux_X1
 
 
-  SUBROUTINE ComputeFunJac_P( D, SSq, E, P, Fun_P, Jac_P )
+  SUBROUTINE ComputeFunJacP( D, SSq, E, P, FunP, JacP )
 
     REAL(DP), INTENT(in)  :: D, SSq, E, P
-    REAL(DP), INTENT(out) :: Fun_P, Jac_P
+    REAL(DP), INTENT(out) :: FunP, JacP
 
     REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS
     REAL(DP), DIMENSION(1) :: Pbar
@@ -143,14 +180,14 @@ CONTAINS
     CALL ComputePressureFromSpecificInternalEnergy &
            ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
 
-    Fun_P = P - Pbar(1)
+    FunP = P - Pbar(1)
 
     dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
     dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
 
-    Jac_P = 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS )
+    JacP = 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS )
 
-  END SUBROUTINE ComputeFunJac_P
+  END SUBROUTINE ComputeFunJacP
 
 
 END MODULE EulerEquationsUtilitiesModule_GR

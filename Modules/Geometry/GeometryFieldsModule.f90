@@ -131,6 +131,18 @@ CONTAINS
             1-swX(3):nX(3)+swX(3), &
             1:nGF) )
 
+    ! --- Initialize to Flat Spacetime (Cartesian) ---
+
+    uGF(:,:,:,:,iGF_Phi_N)    = 0.0_DP
+    uGF(:,:,:,:,iGF_Gm_dd_11) = 1.0_DP
+    uGF(:,:,:,:,iGF_Gm_dd_22) = 1.0_DP
+    uGF(:,:,:,:,iGF_Gm_dd_33) = 1.0_DP
+    uGF(:,:,:,:,iGF_Alpha)    = 1.0_DP
+    uGF(:,:,:,:,iGF_Beta_1)   = 0.0_DP
+    uGF(:,:,:,:,iGF_Beta_2)   = 0.0_DP
+    uGF(:,:,:,:,iGF_Beta_3)   = 0.0_DP
+    uGF(:,:,:,:,iGF_CF)       = 1.0_DP
+
   END SUBROUTINE CreateGeometryFieldsX
 
 
