@@ -77,7 +77,7 @@ CONTAINS
       Gm22 = uGF(i,iGF_Gm_dd_22)
       Gm33 = uGF(i,iGF_Gm_dd_33)
 
-      SSq = Gm11 * uCF(i,iCF_S1)**2 &
+      SSq =   Gm11 * uCF(i,iCF_S1)**2 &
             + Gm22 * uCF(i,iCF_S2)**2 &
             + Gm33 * uCF(i,iCF_S3)**2
 
@@ -128,7 +128,7 @@ CONTAINS
 
       uPF(i,iPF_V2) = uCF(i,iCF_S2) / ( uCF(i,iCF_D) * h * W * Gm22 )
 
-      uPF(i,iPF_V3) = uCF(i,iCF_S3) / ( uCF(i,iCF_D) * h * W * Gm22 )
+      uPF(i,iPF_V3) = uCF(i,iCF_S3) / ( uCF(i,iCF_D) * h * W * Gm33 )
 
       uPF(i,iPF_E)  = uCF(i,iCF_D) * ( h - 1.0_DP ) / W - Pnew
 
