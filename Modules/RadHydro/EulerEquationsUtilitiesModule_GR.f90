@@ -66,7 +66,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:), INTENT(out) :: uAF
 
     LOGICAL  :: Converged
-    INTEGER  :: i
+    INTEGER  :: i, nIter
     REAL(DP) :: Gm11, Gm22, Gm33, SSq, vSq, W, h
     REAL(DP) :: Pold, Pnew, FunP, JacP
     REAL(DP), PARAMETER :: TolP = 1.0d-10
@@ -86,7 +86,10 @@ CONTAINS
       Pold = uAF(i,iAF_P) ! --- Initial Guess
 
       Converged = .FALSE.
+      nIter     = 0
       DO WHILE ( .NOT. Converged )
+
+        nIter = nIter + 1
 
         CALL ComputeFunJacP &
                ( uCF(i,iCF_D), SSq, uCF(i,iCF_E), Pold, FunP, JacP )
@@ -96,6 +99,14 @@ CONTAINS
         IF( ABS( Pnew / Pold - 1.0_DP ) < TolP ) Converged = .TRUE.
 
         Pold = Pnew
+
+        IF( nIter > 10 .AND. .NOT. Converged )THEN
+          PRINT*, "ComputePrimitive"
+          PRINT*, "  nIter = ", nIter
+          PRINT*, "  Pold, Pnew, dP = ", &
+            Pold, Pnew, ABS( Pnew / Pold - 1.0_DP )
+          IF( nIter > 100) STOP
+        END IF
 
       END DO
 

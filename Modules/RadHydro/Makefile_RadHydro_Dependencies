@@ -64,6 +64,8 @@ EulerEquationsUtilitiesModule_GR.o: \
 
 EulerEquationsSolutionModule_DG_GR.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EulerEquationsUtilitiesModule_GR.o \
