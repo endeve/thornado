@@ -581,7 +581,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: E, Mu, kT
 
-    FermiDirac = 1.0_DP !/ ( EXP( ( E - Mu ) / kT ) + 1.0_DP )
+    FermiDirac = 1.0_DP / ( EXP( ( E - Mu ) / kT ) + 1.0_DP )
 
     RETURN
   END FUNCTION FermiDirac
@@ -739,7 +739,7 @@ CONTAINS
         ! --- Number Density ---
 
         uPR_N(iE,iPR_D,iX) &
-          = ( uPR_N(iE,iPR_D,iX) + FourPi * dt * Chi(iE,iX) * f_FD(iE,iX) ) &
+          = ( uPR_N(iE,iPR_D,iX) + dt * Chi(iE,iX) * FourPi * f_FD(iE,iX) ) &
             / ( 1.0_DP + dt * Chi(iE,iX) )
 
         ! --- Number Flux Density (1) ---
@@ -768,32 +768,63 @@ CONTAINS
 
     INTEGER :: iX
 
+    ASSOCIATE &
+      ( D_N  => uPF_N(iPF_D, 1:nNodesX_G), &
+        T_N  => uAF_N(iAF_T, 1:nNodesX_G), &
+        Ye_N => uAF_N(iAF_Ye,1:nNodesX_G) )
+
     DO iX = 1, nNodesX_G
 
-      IF( X_N(iX,1) <= 1.0d2 * Kilometer )THEN
+!!$      IF( X_N(iX,1) <= 1.0d2 * Kilometer )THEN
+!!$
+!!$        Chi(:,iX) = 1.0d-6 * ( 1.0_DP / Centimeter )
+!!$
+!!$      ELSE
+!!$
+!!$        Chi(:,iX) = 0.0d-0 * ( 1.0_DP / Centimeter )
+!!$
+!!$      END IF
 
-        Chi(:,iX) = 1.0d-4 * ( 1.0_DP / Centimeter )
-
-      ELSE
-
-        Chi(:,iX) = 0.0d-0 * ( 1.0_DP / Centimeter )
-
-      END IF
+      CALL ComputeAbsorptionCoefficients &
+             ( E_N(:), [ D_N(iX) ], [ T_N(iX) ], [ Ye_N(iX) ], Chi(:,iX) )
 
     END DO
+
+!!$    CALL WriteVector( SIZE( E_N(:)   ), E_N(:) / MeV,          'E_N.dat' )
+!!$    CALL WriteVector( SIZE( X_N(:,1) ), X_N(:,1) / Kilometer,  'X_N.dat' )
+!!$    CALL WriteMatrix( SIZE( Chi, DIM=1 ), SIZE( Chi, DIM = 2 ), &
+!!$                      Chi(:,:) * Centimeter, 'Chi_N.dat' )
+!!$    CALL WriteVector( SIZE( X_N(:,1) ), uAF_N(iAF_T,:) / MeV,  'T_N.dat' )
+!!$    CALL WriteVector &
+!!$           ( SIZE( X_N(:,1) ), &
+!!$             ( uAF_N(iAF_Me,:)+uAF_N(iAF_Mp,:)-uAF_N(iAF_Mn,:) )/ MeV, &
+!!$             'Mnu.dat' )
+
+    END ASSOCIATE ! D_N, etc.
 
   END SUBROUTINE SetRates_EmissionAbsorption_ThermalReservoir
 
 
   SUBROUTINE SetEquilibrium_EmissionAbsorption_ThermalReservoir
 
-    INTEGER :: iX
+    INTEGER  :: iX
+    REAL(DP) :: Mnu
+
+    ASSOCIATE &
+      ( T  => uAF_N(iAF_T, :), &
+        Me => uAF_N(iAF_Me,:), &
+        Mp => uAF_N(iAF_Mp,:), &
+        Mn => uAF_N(iAF_Mn,:) )
 
     DO iX = 1, nNodesX_G
 
-      f_FD(:,iX) = 1.0_DP
+      Mnu = Me(iX) + Mp(iX) - Mn(iX)
+
+      f_FD(:,iX) = FermiDirac( E_N, Mnu, BoltzmannConstant * T )
 
     END DO
+
+    END ASSOCIATE ! T, etc.
 
   END SUBROUTINE SetEquilibrium_EmissionAbsorption_ThermalReservoir
 
