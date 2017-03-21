@@ -491,7 +491,7 @@ This test features many oscillations that are part of the real solution. In the 
 
 
 \section{Conclusion}
-
+The thornado code was benchmarked using a large suite of Riemann problem tests. In all of these tests, the code was able to capture the structure of the problem well. In general, using a second order integration method instead of a first order integration method greatly increased the accuracy of the solution. For tests in which constant states were separated by a discontinuity, changing from second to third order brought little improvement. However, the difference between these methods was significant in the Shock Entropy Waves test—third order showed a much greater ability to follow oscillations when beta was set to 300. With smaller values of beta, the ability of the third order method to capture these oscillations was diminished, as was the difference between the second and third order methods. The tunable parameter beta is problematic because its optimal value is dependent on the features of the problem; it is impossible to choose a correct value of beta that can be used generally, in all situations. 
 
 \bibliographystyle{apj}
 \bibliography{references.bib}
