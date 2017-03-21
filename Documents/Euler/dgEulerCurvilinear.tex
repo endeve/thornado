@@ -181,7 +181,7 @@ Note that functions in $\mathbb{V}^{k}$ can be discontinuous across element inte
 The semi-discrete DG problem is to find $\bU_{\DG}\in\mathbb{V}^{k}$ (which approximates $\bU$) such that
 \begin{align}
   &\partial_{t}\int_{\bK}\bU_{\DG}\,v\,dV
-  +\sumx\int_{\pbK^{i}}\big(\,\sqrt{\gamma}\,\widehat{\vect{F}}^{i}(\bU_{\DG})\,v\big|_{\xH^{i}}-\sqrt{\gamma}\,\widehat{\vect{F}}^{i}(\bU_{\DG})\,v\big|_{\xL^{i}}\,\big)\,\tilde{\bx}^{i} \nonumber \\
+  +\sumx\int_{\pbK^{i}}\big(\,\sqrt{\gamma}\,\widehat{\vect{F}}^{i}(\bU_{\DG})\,v\big|_{\xH^{i}}-\sqrt{\gamma}\,\widehat{\vect{F}}^{i}(\bU_{\DG})\,v\big|_{\xL^{i}}\,\big)\,d\tilde{\bx}^{i} \nonumber \\
   &\hspace{24pt}
   -\sumx\int_{\bK}\vect{F}^{i}(\bU_{\DG})\,\pderiv{v}{x^{i}}\,dV
   =\int_{\bK}\bG(\bU_{\DG})\,v\,dV
@@ -220,6 +220,8 @@ This illustrates how the cell average (similar to finite volume methods) is evol
 Here we provide further details on the DG method in order to arrive at the equations that are actually implemented in our code.  
 We start by introducing some notation, defining the polynomial expansion for $\bcM_{\DG}$, and the quadrature rules used to evaluate the integrals in Equation~\eqref{eq:semidiscreteDG}.  
 Then, using these rules, we provide explicit expressions for each of the terms in Equation~\eqref{eq:semidiscreteDG}.  
+
+\subsubsection{Notation and Definitions}
 
 In each element $\bK$, we use a nodal representation in the conserved variables $\bU$; i.e.,
 \begin{equation}
@@ -263,123 +265,126 @@ Surface integrals are then evaluated as
   \equiv\sum_{\tilde{\bq}_{i}=\vect{1}}^{\bN}w_{\tilde{\bq}_{i}}\,P(x^{i},\tilde{\vect{\eta}}_{\tilde{\bq_{i}}}^{i}).  
 \end{equation}
 
+\subsubsection{Explicit Expressions}
+
 Inserting \eqref{eq:conservedNodalExpansion} into \eqref{eq:semidiscreteDG}, with $v(\bx)=\ell_{\bk}(\bx)$ and the quadratures defined above, we obtain
 \begin{align}
   \pd{}{t}\int_{\bK}\bU_{\DG}\,v\,dV
   &\approx w_{\bk}\,\sqrt{\gamma}_{\bk}\,\pd{}{t}\bU_{\bk}\,|\bK|
 \end{align}
-for the time derivative term, and
+for the time derivative term, where $|\bK|=\prod_{i=1}^{d}\Delta x^{i}$.  
+The integration is approximate since we use the Legendre-Gauss quadrature rule with the nodal points given by the expansion in Eq.~\eqref{eq:conservedNodalExpansion}.  
+This leads to a diagonal mass matrix, and simplifies the implementation.  
+Similarly, we obtain
 \begin{align}
   \int_{\bK}\bG(\bU_{\DG})\,v\,dV
   &\approx w_{\bk}\,\sqrt{\gamma}_{\bk}\,\bG(\bU_{\bk})\,|\bK|.
 \end{align}
 for the source term.  
-The gravitational source terms contain the derivative to the potential, which warrants some additional exposition.  
-We choose a local representation of the potential (obtained by evaluating the potential in the nodes in $\bK$ using the FEM solution); i.e.,
-\begin{equation}
-  \Phi(\bx)=\sum_{\bi=\vect{1}}^{\bN}\Phi_{\bi}\,\ell_{\bi}(\bx).  
-\end{equation}
-Differentiating with respect to $x^{j}$ gives
-\begin{equation}
-  \pderiv{\Phi}{x^{j}}\Big|_{\bx_{\bk}}
-  =\f{1}{|K^{j}|}\sum_{\bi=\vect{1}}^{\bN}\pderiv{\ell_{\bi}}{\eta^{j}}(\eta_{\bk})\,\Phi_{\bi}
-  =\f{1}{|K^{j}|}\sum_{i_{j}=1}^{N}\pderiv{\ell_{i_{j}}}{\eta^{j}}(\eta_{k_{j}}^{j})\,\Phi(x_{i_{j}}^{j},\tilde{\bx}_{\tilde{\bk}_{j}}^{j}).  
-\end{equation}
-This expression is used to evaluate the gravitational sources in the momentum and energy equations.  
+The gravitational source terms warrants some additional exposition, which we defer to Section~\ref{sec:sourceTerms}.  
 
 For the surface integrals, we obtain, e.g., 
+\begin{equation}
+  \int_{\pbK^{i}}\sqrt{\gamma}\,\widehat{\vect{F}}^{i}\,v\big|_{\xH^{i}}\,d\tilde{\bx}^{i}
+  \approx w_{\tilde{\bk}_{i}}\,\sqrt{\gamma}(x_{\Hgh}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,\widehat{\bF}^{i}(x_{\Hgh}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,\ell_{k_{i}}(\eta_{\Hgh}^{i})\,|\tilde{\bK}^{i}|,
+\end{equation}
+where $|\tilde{\bK}^{i}|=\prod_{j\ne i}\Delta x^{j}$.  
+(Note: we do not use Einstein's summation convention in the numerical expressions presented in this section.  
+Summation over indices will be explicitly indicated.)  
+Finally, the volume term becomes
+\begin{equation}
+  \int_{\bK}\bF^{i}\,\pderiv{v}{x^{i}}\,dV
+  \approx w_{\tilde{\bk}_{i}}\sum_{q_{i}=1}^{N}
+  w_{q_{i}}\,\sqrt{\gamma}(x_{q_{i}}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,\bF^{i}(x_{q_{i}}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,\pderiv{\ell_{k_{i}}}{\eta^{i}}(\eta_{q_{i}}^{i})\,|\tilde{\bK}^{i}|.
+\end{equation}
+Combining the terms and dividing though by $w_{\bk}\,\sqrt{\gamma}_{\bk}\,|\bK|$, we obtain the semi-discrete for of the Euler equations
 \begin{align}
-  %
-  \int_{\tilde{\bK}^{1}}v\,\widehat{\bF}^{1}|_{x_{\Hgh}^{1}}\,dA^{1}
-  &\approx w_{\tilde{\bk}_{1}}\,\ell_{k_{1}}(+1)\,\widehat{\bF}^{1}(x_{\Hgh}^{1},\tilde{x}_{\tilde{\bk}_{1}}^{1})\,
-  \tau^{1}(x_{\Hgh}^{1},\tilde{x}_{\tilde{\bk}_{1}}^{1})\,|\tilde{\bK}^{1}| \nonumber \\
-  &\hspace{12pt}
-  =w_{\tilde{\bk}_{1}}\,\ell_{k_{1}}(+1)\,\widehat{\bF}^{1}(x_{\Hgh}^{1},\tilde{x}_{\tilde{\bk}_{1}}^{1})\,
-  a(x_{\Hgh}^{1})\,b(x_{\Hgh}^{1})\,c(x_{k_{2}}^{2})\,\dx^{2}\,\dx^{3}, \\
-  %
-  \int_{\tilde{\bK}^{2}}v\,\widehat{\bF}^{2}|_{x_{\Hgh}^{2}}\,dA^{2}
-  &\approx w_{\tilde{\bk}_{2}}\,\ell_{k_{2}}(+1)\,\widehat{\bF}^{2}(x_{\Hgh}^{2},\tilde{x}_{\tilde{\bk}_{2}}^{2})\,
-  \tau^{2}(x_{\Hgh}^{2},\tilde{x}_{\tilde{\bk}_{2}}^{2})\,|\tilde{\bK}^{2}| \nonumber \\
-  &\hspace{12pt}
-  =w_{\tilde{\bk}_{2}}\,\ell_{k_{2}}(+1)\,\widehat{\bF}^{2}(x_{\Hgh}^{2},\tilde{x}_{\tilde{\bk}_{2}}^{2})\,
-  b(x_{k_{1}}^{1})\,c(x_{\Hgh}^{2})\,\dx^{1}\,\dx^{3}, \\
-  %
-  \int_{\tilde{\bK}^{3}}v\,\widehat{\bF}^{3}|_{x_{\Hgh}^{3}}\,dA^{3}
-  &\approx w_{\tilde{\bk}_{3}}\,\ell_{k_{3}}(+1)\,\widehat{\bF}^{3}(x_{\Hgh}^{3},\tilde{x}_{\tilde{\bk}_{3}}^{3})\,
-  \tau^{3}(x_{\Hgh}^{3},\tilde{x}_{\tilde{\bk}_{3}}^{3})\,|\tilde{\bK}^{3}| \nonumber \\
-  &\hspace{12pt}
-  =w_{\tilde{\bk}_{3}}\,\ell_{k_{3}}(+1)\,\widehat{\bF}^{3}(x_{\Hgh}^{3},\tilde{x}_{\tilde{\bk}_{3}}^{3})\,
-  a(x_{k_{1}}^{1})\,\dx^{1}\,\dx^{2}.  
-\end{align}
-Finally, the `volume terms' become
-\begin{align}
-  %
-  \int_{\bK}\bF^{1}\,\pderiv{v}{x^{1}}\,dV
-  &\approx w_{\tilde{\bk}_{1}}\sum_{q_{1}=1}^{N}w_{q_{1}}\,\bF^{1}(x_{q_{1}}^{1},\tilde{\bx}_{\tilde{\bk}_{1}}^{1})\,
-  \pderiv{\ell_{k_{1}}}{\eta^{1}}(\eta_{q_{1}}^{1})\,\sqrt{\gamma}(x_{q_{1}}^{1},\tilde{\bx}_{\tilde{\bk}_{1}}^{1})\,|\tilde{\bK}^{1}| \nonumber \\
-  &\hspace{12pt}
-  =w_{\tilde{\bk}_{1}}\,c(x_{k_{2}}^{2})\,\dx^{2}\,\dx^{3}
-  \sum_{q_{1}=1}^{N}w_{q_{1}}\,\bF^{1}(x_{q_{1}}^{1},\tilde{\bx}_{\tilde{\bk}_{1}}^{1})\,
-  \pderiv{\ell_{k_{1}}}{\eta^{1}}(\eta_{q_{1}}^{1})\,a(x_{q_{1}}^{1})\,b(x_{q_{1}}^{1}), \\
-  %
-  \int_{\bK}\bF^{2}\,\f{1}{a}\pderiv{v}{x^{2}}\,dV
-  &\approx w_{\tilde{\bk}_{2}}\sum_{q_{2}=1}^{N}w_{q_{2}}\,\bF^{2}(x_{q_{2}}^{2},\tilde{\bx}_{\tilde{\bk}_{2}}^{2})\,
-  \f{1}{a(x_{k_{1}}^{1})}\pderiv{\ell_{k_{2}}}{\eta^{2}}(\eta_{q_{2}}^{2})\,\sqrt{\gamma}(x_{q_{2}}^{2},\tilde{\bx}_{\tilde{\bk}_{2}}^{2})\,|\tilde{\bK}^{2}| \\
-  &\hspace{12pt}
-  =w_{\tilde{\bk}_{2}}\,b(x_{k_{1}}^{1})\,\dx^{1}\,\dx^{3}\sum_{q_{2}=1}^{N}w_{q_{2}}\,\bF^{2}(x_{q_{2}}^{2},\tilde{\bx}_{\tilde{\bk}_{2}}^{2})\,
-  \pderiv{\ell_{k_{2}}}{\eta^{2}}(\eta_{q_{2}}^{2})\,c(x_{q_{2}}^{2}), \\
-  %
-  \int_{\bK}\bF^{3}\,\f{1}{bc}\pderiv{v}{x^{3}}\,dV
-  &\approx w_{\tilde{\bk}_{3}}\sum_{q_{3}=1}^{N}w_{q_{3}}\,\bF^{3}(x_{q_{3}}^{3},\tilde{\bx}_{\tilde{\bk}_{3}}^{3})\,
-  \f{1}{b(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})}\pderiv{\ell_{k_{3}}}{\eta^{3}}(\eta_{q_{3}}^{3})\,\sqrt{\gamma}(x_{q_{3}}^{3},\tilde{\bx}_{\tilde{\bk}_{3}}^{3})\,|\tilde{\bK}^{3}| \nonumber \\
-  &\hspace{12pt}
-  =w_{\tilde{\bk}_{3}}\,a(x_{k_{1}}^{1})\,\dx^{1}\,\dx^{2}\sum_{q_{3}=1}^{N}w_{q_{3}}\,\bF^{3}(x_{q_{3}}^{3},\tilde{\bx}_{\tilde{\bk}_{3}}^{3})\,
-  \pderiv{\ell_{k_{3}}}{\eta^{3}}(\eta_{q_{3}}^{3}).  
-\end{align}
-
-
-
-Combining the terms above with forward Euler time integration, we obtain
-\begin{align}
-  \bU_{\bk}^{n+1}
-  &=\bU_{\bk}^{n} \nonumber \\
-  &\hspace{12pt}
-  -\f{\dt}{w_{k_{1}}\,a(x_{k_{1}}^{1})\,b(x_{k_{1}}^{1})\,\dx^{1}}
+  \pd{}{t}\bU_{\bk}
+  &=
+  -\f{1}{\sqrt{\gamma}_{\bk}}
+  \sum_{i=1}^{d}\f{1}{w_{k_{i}}\,\Delta x^{i}}\,
   \Big(\,
-    a(x_{\Hgh}^{1})\,b(x_{\Hgh}^{1})\,\widehat{\bF}^{1,n}(x_{\Hgh}^{1},\tilde{x}_{\tilde{\bk}_{1}}^{1})\,\ell_{k_{1}}(+1) \nonumber \\
-    &\hspace{128pt}
-    -a(x_{\Low}^{1})\,b(x_{\Low}^{1})\,\widehat{\bF}^{1,n}(x_{\Low}^{1},\tilde{x}_{\tilde{\bk}_{1}}^{1})\,\ell_{k_{1}}(-1)
+    \sqrt{\gamma}(x_{\Hgh}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,\widehat{\bF}^{i}(x_{\Hgh}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,\ell_{k_{i}}(\eta_{\Hgh}^{i})
+    -\sqrt{\gamma}(x_{\Low}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,\widehat{\bF}^{i}(x_{\Low}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,\ell_{k_{i}}(\eta_{\Low}^{i})
   \,\Big) \nonumber \\
   &\hspace{12pt}
-  +\f{\dt}{w_{k_{1}}\,a(x_{k_{1}}^{1})\,b(x_{k_{1}}^{1})\,\dx^{1}}
-  \sum_{q_{1}=1}^{N}w_{q_{1}}\,a(x_{q_{1}}^{1})\,b(x_{q_{1}}^{1})\,\bF^{1,n}(x_{q_{1}}^{1},\tilde{\bx}_{\tilde{\bk}_{1}}^{1})\,
-  \pderiv{\ell_{k_{1}}}{\eta^{1}}(\eta_{q_{1}}^{1}) \nonumber \\
-  &\hspace{12pt}
-  -\f{\dt}{w_{k_{2}}\,a(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})\,\dx^{2}}
-  \Big(\,
-    c(x_{\Hgh}^{2})\,\widehat{\bF}^{2,n}(x_{\Hgh}^{2},\tilde{x}_{\tilde{\bk}_{2}}^{2})\,\ell_{k_{2}}(+1) \nonumber \\
-    &\hspace{128pt}
-    -c(x_{\Low}^{2})\,\widehat{\bF}^{2,n}(x_{\Low}^{2},\tilde{x}_{\tilde{\bk}_{2}}^{2})\,\ell_{k_{2}}(-1)
-  \,\Big) \nonumber \\
-  &\hspace{12pt}
-  +\f{\dt}{w_{k_{2}}\,a(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})\,\dx^{2}}
-  \sum_{q_{2}=1}^{N}w_{q_{2}}\,\bF^{2}(x_{q_{2}}^{2},\tilde{\bx}_{\tilde{\bk}_{2}}^{2})\,\pderiv{\ell_{k_{2}}}{\eta^{2}}(\eta_{q_{2}}^{2})\,c(x_{q_{2}}^{2}) \nonumber \\
-  &\hspace{12pt}
-  -\f{\dt}{w_{k_{3}}\,b(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})\,\dx^{3}}
-  \Big(\,
-    \widehat{\bF}^{3,n}(x_{\Hgh}^{3},\tilde{x}_{\tilde{\bk}_{3}}^{3})\,\ell_{k_{3}}(+1)
-    -\widehat{\bF}^{3,n}(x_{\Low}^{3},\tilde{x}_{\tilde{\bk}_{3}}^{3})\,\ell_{k_{3}}(-1)
-  \,\Big) \nonumber \\
-  &\hspace{12pt}
-  +\f{\dt}{w_{k_{3}}\,b(x_{k_{1}}^{1})\,c(x_{k_{2}}^{2})\,\dx^{3}}
-  \sum_{q_{3}=1}^{N}w_{q_{3}}\,\bF^{3}(x_{q_{3}}^{3},\tilde{\bx}_{\tilde{\bk}_{3}}^{3})\,
-  \pderiv{\ell_{k_{3}}}{\eta^{3}}(\eta_{q_{3}}^{3})
-  +\dt\,\bS(\bU_{\bk}^{n}).  
+  +\f{1}{\sqrt{\gamma}_{\bk}}
+  \sum_{i=1}^{d}\f{1}{w_{k_{i}}\,\Delta x^{i}}\sum_{q_{i}=1}^{N}w_{q_{i}}\,\sqrt{\gamma}(x_{q_{i}}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,\bF^{i}(x_{q_{i}}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,\pderiv{\ell_{k_{i}}}{\eta^{i}}(\eta_{q_{i}}^{i})
+  +\bG(\bU_{\bk})
+  \label{eq:semidiscreteDiscretized}
 \end{align}
+Equation~\eqref{eq:semidiscreteDiscretized} provides the basis for implementation in our code.  
+
+\subsubsection{Reconstruction to Element interfaces}
+
+\begin{equation}
+  \bU_{\DG}(\eta_{\Low}^{i},\tilde{\vect{\eta}}_{\tilde{\bq}_{i}}^{i})
+  =\sum_{\bk=\vect{1}}^{\bN}\bU_{\bk}\,\ell_{\bk}(\eta_{\Low}^{i},\tilde{\vect{\eta}}_{\tilde{\bq}_{i}}^{i})
+  =\sum_{k_{i}=1}^{N}\sum_{\tilde{\bk}_{i}=\vect{1}}^{\bN}\bU_{(k_{i},\tilde{\bk}_{i})}\,\ell_{k_{i}}(\eta_{\Low}^{i})\,\ell_{\tilde{\bk}_{i}}(\tilde{\vect{\eta}}_{\tilde{\bq}_{i}}^{i})
+\end{equation}
+
+\subsubsection{The One-Dimensional Case}
+
+Here we simplify the DG discretization in Eq.~\eqref{eq:semidiscreteDiscretized} to the one-dimensional ($d=1$) case to make the notation more transparent.  
+With $d=1$, we substitute $\bk\to k_{d}\to k$, $x^{d}\to x$, $q_{i}\to q$, etc., so that Eq.~\eqref{eq:semidiscreteDiscretized} reduces to
+\begin{align}
+  \pd{}{t}\bU_{k}
+  &=-\f{1}{\sqrt{\gamma}_{k}}
+  \f{1}{w_{k}\,\Delta x}\,
+  \Big(\,
+    \sqrt{\gamma}(x_{\Hgh})\,\widehat{\bF}(x_{\Hgh})\,\ell_{k}(\eta_{\Hgh})
+    -\sqrt{\gamma}(x_{\Low})\,\widehat{\bF}(x_{\Low})\,\ell_{k}(\eta_{\Low})
+  \,\Big) \nonumber \\
+  & \hspace{12pt}
+  +\f{1}{\sqrt{\gamma}_{k}}
+  \f{1}{w_{k}\,\Delta x}\sum_{q=1}^{N}w_{q}\,\sqrt{\gamma}(x_{q})\,\bF(x_{q})\,\pderiv{\ell_{k}}{\eta}(\eta_{q})
+  +\bG(\bU_{k}).
+  \label{eq:semidiscreteDiscretized1D}
+\end{align}
+
+\subsection{Source Terms}
+\label{sec:sourceTerms}
 
 \section{Time Integration}
 
-\section{Slope Limiters}
+\section{Polynomial Limiting}
+
+\subsection{Slope Limiters}
+
+\subsection{Positivity Limiters}
+
+\section{Equation of State (EoS)}
+
+\section{Gravity Solver: Finite Element Method}
+
+To solve Poisson's equation given by Eq.~\eqref{eq:poisson}, we use the finite element method (FEM).  
+\ee{Nick fills in here}.  
+
+\section{Benchmark Problems}
+
+\subsection{Smooth Problem: Linear Waves}
+
+\subsection{Riemann Problems}
+
+\subsubsection{Interacting Blast Waves}
+
+\subsubsection{Shock-Entropy Wave Interaction}
+
+\subsubsection{Sedov Blast Wave}
+
+\subsubsection{Riemann Problem with Tabulated Nuclear EoS}
+
+\subsection{Gravity Problems}
+
+\subsubsection{Homogeneous Sphere}
+
+\subsubsection{Hydrostatic Polytrope}
+
+\subsubsection{Evrard's Collapse Test}
+
+\subsubsection{Stationary Accretion Shock}
+
+\section{Miniapp: Adiabatic Collapse of Stellar Iron Core}
 
 \bibliographystyle{apj}
 \bibliography{../References/references.bib}
