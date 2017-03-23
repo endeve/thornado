@@ -32,9 +32,20 @@ RiemannProblem1D_NuclearEOS.o: \
   TimeSteppingModule.o \
   RiemannProblem1D_NuclearEOS.f90
 
+UtilitiesModule.o: \
+  KindModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
+  UnitsModule.o \
+  PhysicalConstantsModule.o \
+  UtilitiesModule.f90
+
 ComputeEigensystem_NuclearEOS.o: \
   KindModule.o \
   EquationOfStateModule_TABLE.o \
+  UnitsModule.o \
+  PhysicalConstantsModule.o \
+  UtilitiesModule.o \
   ComputeEigensystem_NuclearEOS.f90
 
 RiemannProblemInitializationModule.o: \
