@@ -1,4 +1,4 @@
-MODULE UtilitiesModule
+MODULE UtilitiesModule_NuclearEOS
 
   USE KindModule, ONLY: &
     DP
@@ -172,4 +172,4 @@ CONTAINS
 
   END SUBROUTINE ComputeEigenvectors_L 
 
-END MODULE UtilitiesModule      
+END MODULE UtilitiesModule_NuclearEOS

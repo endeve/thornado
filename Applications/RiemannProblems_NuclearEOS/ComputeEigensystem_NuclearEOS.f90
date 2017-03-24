@@ -13,7 +13,7 @@ PROGRAM ComputeEigensystem_NuclearEOS
     Second, MeV, Meter
   USE PhysicalConstantsModule, ONLY: &
     SpeedOfLightMKS
-  USE UtilitiesModule, ONLY: &
+  USE UtilitiesModule_NuclearEOS, ONLY: &
     ComputeEigenvectors_L, &
     ComputeEigenvectors_R
 

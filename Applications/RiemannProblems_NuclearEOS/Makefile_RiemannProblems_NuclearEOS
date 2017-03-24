@@ -1,3 +1,5 @@
+MICROPHYSICS = WEAKLIB
+
 include ../../../Build/Makefile_Build
 
 all: RiemannProblem1D_NuclearEOS \
@@ -12,10 +14,12 @@ RiemannProblem1D_NuclearEOS: \
 	RiemannProblem1D_NuclearEOS.o $(LIBRARIES)
 
 ComputeEigensystem_NuclearEOS: \
-	$(thornado) ComputeEigensystem_NuclearEOS.o
+	$(thornado) UtilitiesModule_NuclearEOS.o \
+	ComputeEigensystem_NuclearEOS.o
 	$(FLINKER) $(FLAGS) -o \
 	ComputeEigensystem_NuclearEOS_$(MACHINE) \
-	$(thornado) ComputeEigensystem_NuclearEOS.o $(LIBRARIES)
+	$(thornado) UtilitiesModule_NuclearEOS.o \
+	ComputeEigensystem_NuclearEOS.o $(LIBRARIES)
 
 clean:
 	rm -f *.o *.mod *.ld
@@ -32,13 +36,13 @@ RiemannProblem1D_NuclearEOS.o: \
   TimeSteppingModule.o \
   RiemannProblem1D_NuclearEOS.f90
 
-UtilitiesModule.o: \
+UtilitiesModule_NuclearEOS.o: \
   KindModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_TABLE.o \
   UnitsModule.o \
   PhysicalConstantsModule.o \
-  UtilitiesModule.f90
+  UtilitiesModule_NuclearEOS.f90
 
 ComputeEigensystem_NuclearEOS.o: \
   KindModule.o \
