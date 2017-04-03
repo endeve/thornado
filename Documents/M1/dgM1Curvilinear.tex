@@ -575,6 +575,8 @@ Failure in maintaining these bounds can lead to an ill-posed closure problem and
 
 \section{Neutrino Opacities}
 
+\ee{Ran write about tabulated B85 absorption and scattering opacities.}
+
 \clearpage
 
 \section{Benchmark Problems}
@@ -783,10 +785,8 @@ Results are plotted in Figure~\ref{fig:homogeneousSphere1D}.
 
 \section{Mini-app: Transport Problems with Tabulated Neutrino Opacities}
 
-\subsection{Homogeneous Sphere}
-
 \begin{table}
-  \caption{Parameters for homogeneous sphere problem with tabulated opacities.}
+  \caption{Parameters used for problems with tabulated opacities. \label{tab:tabulatedModels}}
   \begin{tabular}{ccccc}
     Model & $\rho$ [g~cm$^{-3}$] & $T$ [MeV] & $Y_{e}$ & $\mu_{\nu}$ [MeV] \\
     \midrule \midrule
@@ -798,9 +798,56 @@ Results are plotted in Figure~\ref{fig:homogeneousSphere1D}.
   \end{tabular}
 \end{table}
 
+\subsection{Homogeneous Sphere}
+
+\begin{figure}
+  \begin{center}
+    \begin{tabular}{cc}
+      \includegraphics[scale=0.4]{./Figures/HomogeneousSphere_Opacities} &
+      \includegraphics[scale=0.4]{./Figures/HomogeneousSphere_BaseSpectra} \\
+      \includegraphics[scale=0.4]{./Figures/HomogeneousSphere_VsRadius_B} &
+      \includegraphics[scale=0.4]{./Figures/HomogeneousSphere_VsRadius_D}
+    \end{tabular}
+  \end{center}
+  \caption{Results from solving the multi-group Homogeneous sphere problem with the DG(1)+SIRK2 method using $100$ elements.
+    In the upper left panel we plot the absorption opacity versus energy $\epsilonNu$ using the values for $\rho$, $T$, and $Y_{e}$ listed in Table~\ref{tab:tabulatedModels}. In the upper right panel, we plot the spectral number density versus energy at the end of the computations for a radius of $52.5$~km solid lines.  The corresponding Fermi-Dirac spectrum is also plotted (dashed lines).  }
+  \label{fig:homogeneousSphere1D_weaklib}
+\end{figure}
+
 \subsection{Diffuse Scattering}
 
 \subsection{Deleptonization}
+
+We conclude with a problem mimicking the deleptonization of a collapsed stellar core.  
+To this end, we adopt an analytic density profile
+\begin{equation}
+  \rho(r)=\big[\,1-\Theta(r)\,\big]\,\rho_{1}(r)+\Theta(r)\,\rho_{2}(r)
+  \label{eq:densityProfile}
+\end{equation}
+where the function $\Theta(r)=0.5\times\big[\,1.0+\tanh\big(\,(r-r_{0})/R_{0}\,\big)\,\big]$ transitions smoothly between two density profiles, given by a Gaussian in the central region and a polynomial at larger radii; i.e.,
+\begin{align}
+  \rho_{1}(r)
+  &=\rho_{1,0}\times\exp\big[-(r/R_{1})^{2}\big]
+  \label{eq:densityProfile1} \\
+  \rho_{2}(r)
+  &=\rho_{2,0}\times\big(r/R_{2}\big)^{\alpha},
+  \label{eq:densityProfile2}
+\end{align}
+where $\rho_{1,0}>\rho_{2,0}$ and $\alpha<0$.  
+We set $\rho_{1,0}=4.5\times10^{14}$, $\rho_{1,0}=1.0\times10^{13}$, $\alpha=-4$, and $R_{1}=10$~km.  
+Then, by imposing $\rho_{1}(R_{2})=\rho_{2}(R_{2})$, we find $R_{2}=R_{1}\sqrt{\ln(\rho_{1,0}/\rho_{2,0})}\approx19.5$~km.  
+We also set $r_{0}=R_{2}$ and $R_{0}=1$~km.  
+With these parameters, the density profile given by Eqs~\eqref{eq:densityProfile}, \eqref{eq:densityProfile1}, and \eqref{eq:densityProfile2} provides a reasonable approximation to the density profile in the post-bounce phase of a supernova realistic model (cf. Figure~\ref{fig:analyticDensityProfile}).  
+
+\begin{figure}
+  \begin{center}
+      \includegraphics[scale=0.5]{./Figures/AnalyticDensityProfile}
+  \end{center}
+  \caption{Density profile used in the deleptonization problem (solid black line; cf. Eq.~\eqref{eq:densityProfile}).  
+  It is composed of a Gaussian profile for radii $\lesssim20$~km (dashed black line), and a power law, with $\rho\propto r^{-4}$, for larger radii (dotted black line).  
+  The density profile from a full physics core-collapse supernova simulation at $100$~ms after core bounce is also plotted (solid red line).  }
+  \label{fig:analyticDensityProfile}
+\end{figure}
 
 \bibliographystyle{apj}
 \bibliography{../References/references.bib}
