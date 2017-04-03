@@ -411,7 +411,9 @@ In this problem, a shock wave is present at about $x=0.5$.This test, like the pr
   \end{center}
   \caption{Results for test 11 at $t=1$, computed with 400 cells with methods of different orders: 1st (solid red), 2nd (dashed green) and 3rd (dotted blue). The exact solution, obtained with Toro's Riemann solver, is given by the dash-dotted pink line. Each pair of side-by-side panels shows the same results at different zoom levels. The top panels show density, the middle show velocity, and the bottom show pressure.}
 \end{figure}
-Subsequent runs of this test varied the values of $beta_TVB$ and $beta_TVD$, while maintaining the third order method. Lower values of $beta_TVB$ give more accurate results, with fewer, smaller oscillations appearing. Variations in $beta_TVD$ have some effect, but not a great one. A few of the oscillations appear larger with $beta_TVD$ set to 1.0, but the difference is not especially large.
+
+Subsequent runs of this test varied the values of $\beta_{\mbox{\tiny TVB}}$ and $\beta_{\mbox{\tiny TVD}}$, while maintaining the third order method. Lower values of $\beta_{\mbox{\tiny TVB}}$ give more accurate results, with fewer, smaller oscillations appearing. Variations in $\beta_{\mbox{\tiny TVD}}$ have some effect, but not a great one. A few of the oscillations appear larger with $\beta_{\mbox{\tiny TVD}}$ set to 1.0, but the difference is not especially large.
+
 \begin{figure}[h]
   \begin{center}
      \includegraphics[width=.95\textwidth]{11_300zoom.png}	
@@ -420,7 +422,7 @@ Subsequent runs of this test varied the values of $beta_TVB$ and $beta_TVD$, whi
      \includegraphics[width=.475\textwidth]{11_2zoom.png}	
     \end{tabular}
   \end{center}
-  \caption{Zoomed results for test 11 at $t=1$, computed with 400 cells and the third order method. The top panel shows results when $beta_TVB$ is set to 300, with varying values of $beta_TVD$: 1.0 (dotted blue), 1.5 (dashed green) and 2.0 (solid red). The bottom two panels show results when $beta_TVD$ is held constant, with varying values of $beta_TVB$: 0 (solid red), 10 (dashed green), 50 (dotted blue), and 300 (dash-dotted pink). $beta_TVD$ is set to 1.0 in the right panel and 2.0 in the left panel.}
+  \caption{Zoomed results for test 11 at $t=1$, computed with 400 cells and the third order method. The top panel shows results when $\beta_{\mbox{\tiny TVB}}$ is set to 300, with varying values of $\beta_{\mbox{\tiny TVD}}$: 1.0 (dotted blue), 1.5 (dashed green) and 2.0 (solid red). The bottom two panels show results when $\beta_{\mbox{\tiny TVD}}$ is held constant, with varying values of $\beta_{\mbox{\tiny TVB}}$: 0 (solid red), 10 (dashed green), 50 (dotted blue), and 300 (dash-dotted pink). $\beta_{\mbox{\tiny TVD}}$ is set to 1.0 in the right panel and 2.0 in the left panel.}
 \end{figure}
 \clearpage
 
