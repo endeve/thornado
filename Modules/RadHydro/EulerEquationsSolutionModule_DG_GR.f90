@@ -10,17 +10,17 @@ MODULE EulerEquationsSolutionModule_DG_GR
     MeshX
   USE GeometryFieldsModule, ONLY: &
     uGF, nGF, iGF_Alpha, iGF_Beta_1, &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_Gm_uu_11
   USE FluidFieldsModule, ONLY: &
     rhsCF, &
     uCF, nCF, &
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uAF, nAF, iAF_P
+    uAF, nAF, iAF_P, iAF_Cs
   USE RiemannSolverModule, ONLY: &
     NumericalFlux_Fluid
   USE EulerEquationsUtilitiesModule_GR, ONLY: &
-    ComputePrimitive, &
-    Flux_X1
+    ComputePrimitive, Eigenvalues, &
+    ComputeSoundSpeed, Flux_X1
 
   IMPLICIT NONE
   PRIVATE
@@ -59,8 +59,10 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iGF, iCF
     INTEGER :: iNodeX1, jNodeX1, iNodeX2, iNodeX3, iNodeX, jNodeX
-    REAL(DP) :: Alpha, AlphaPls, AlphaMns, AlphaMdl
+    REAL(DP) :: Alpha, AlphaPls, AlphaMns, AlphaMdl, AlphaL, AlphaR, &
+                Cs, Gamma
     REAL(DP), DIMENSION(1:nCF) :: Flux_L, Flux_R, Flux
+    REAL(DP), DIMENSION(1:5) :: EigVals_L, EigVals_R
     REAL(DP), DIMENSION(1:1,1:nGF) :: uGF_L, uGF_R
     REAL(DP), DIMENSION(1:1,1:nCF) :: uCF_L, uCF_R
     REAL(DP), DIMENSION(1:1,1:nPF) :: uPF_L, uPF_R
@@ -125,6 +127,21 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_L, uGF_L, uPF_L, uAF_L )
 
+!!!!!!! Need to figure out how to call this from Initialization file
+                Gamma = 1.67_DP
+
+                CALL ComputeSoundSpeed( uAF_L(iNodeX1, iAF_P), &
+                                        uPF_L(iNodeX1, iPF_E), &
+                                        uPF_L(iNodeX1, iPF_D), &
+                                        Gamma )
+
+                EigVals_L = Eigenvalues( uPF_L(iNodeX1,iPF_V1),        &
+                                         uGF_L(iNodeX1,iGF_Alpha),     &
+                                         uGF_L(iNodeX1,iGF_Beta_1),    &
+                                         uGF_L(iNodeX1,iGF_Gm_uu_11),  &
+                                         uGF_L(iNodeX1,iGF_Gm_dd_11),  &
+                                         Cs )
+
                 Flux_L &
                   = Flux_X1 &
                       ( uPF_L(iNodeX,iPF_D),        &
@@ -151,6 +168,17 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_R, uGF_R, uPF_R, uAF_R )
 
+                CALL ComputeSoundSpeed( uAF_R(iNodeX1, iAF_P), &
+                                        uPF_R(iNodeX1, iPF_E), &
+                                        uPF_R(iNodeX1, iPF_D), &
+                                        Gamma )
+
+                EigVals_R = Eigenvalues( uPF_R(iNodeX1,iPF_V1),        &
+                                         uGF_R(iNodeX1,iGF_Alpha),     &
+                                         uGF_R(iNodeX1,iGF_Beta_1),    &
+                                         uGF_R(iNodeX1,iGF_Gm_uu_11),  &
+                                         uGF_R(iNodeX1,iGF_Gm_dd_11),  &
+                                         Cs )
                 Flux_R &
                   = Flux_X1 &
                       ( uPF_R(iNodeX,iPF_D),        &
@@ -166,10 +194,19 @@ CONTAINS
                         uGF_R(iNodeX,iGF_Gm_dd_22), &
                         uGF_R(iNodeX,iGF_Gm_dd_33) )
 
-                Alpha    = 1.0_DP
-                AlphaPls = Alpha
-                AlphaMns = Alpha
-                AlphaMdl = Alpha
+                ! First Alpha will be the largest eigenvalue (absolute value) of the left and right state
+                AlphaL = MAXVAL( ABS( EigVals_L ) )
+                AlphaR = MAXVAL( ABS( EigVals_R ) )
+
+!                Alpha    = 1.0_DP
+!                AlphaMns = Alpha
+!                AlphaMdl = Alpha
+!                AlphaPls = Alpha
+
+                Alpha    = MAX( AlphaL, AlphaR )
+                AlphaMns = MAX( ABS( EigVals_L(1) ), ABS( EigVals_R(1) ) )
+                AlphaMdl = MAX( ABS( EigVals_L(2) ), ABS( EigVals_R(2) ) )
+                AlphaPls = MAX( ABS( EigVals_L(3) ), ABS( EigVals_R(3) ) )
 
                 Flux &
                   = NumericalFlux_Fluid &
@@ -207,6 +244,18 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_L, uGF_L, uPF_L, uAF_L )
 
+                CALL ComputeSoundSpeed( uAF_L(iNodeX1, iAF_P), &
+                                        uPF_L(iNodeX1, iPF_E), &
+                                        uPF_L(iNodeX1, iPF_D), &
+                                        Gamma )
+
+                EigVals_L = Eigenvalues( uPF_L(iNodeX1,iPF_V1),       &
+                                         uGF_L(iNodeX1,iGF_Alpha),    &
+                                         uGF_L(iNodeX1,iGF_Beta_1),   &
+                                         uGF_L(iNodeX1,iGF_Gm_uu_11), &
+                                         uGF_L(iNodeX1,iGF_Gm_dd_11), &
+                                         Cs )
+
                 Flux_L &
                   = Flux_X1 &
                       ( uPF_L(iNodeX,iPF_D),        &
@@ -233,6 +282,18 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_R, uGF_R, uPF_R, uAF_R )
 
+                CALL ComputeSoundSpeed( uAF_R(iNodeX1, iAF_P), &
+                                        uPF_R(iNodeX1, iPF_E), &
+                                        uPF_R(iNodeX1, iPF_D), &
+                                        Gamma )
+
+                EigVals_R = Eigenvalues( uPF_R(iNodeX1,iPF_V1),       &
+                                         uGF_R(iNodeX1,iGF_Alpha),    &
+                                         uGF_R(iNodeX1,iGF_Beta_1),   &
+                                         uGF_R(iNodeX1,iGF_Gm_uu_11), &
+                                         uGF_R(iNodeX1,iGF_Gm_dd_11), &
+                                         Cs )
+
                 Flux_R &
                   = Flux_X1 &
                       ( uPF_R(iNodeX,iPF_D),        &
@@ -248,10 +309,19 @@ CONTAINS
                         uGF_R(iNodeX,iGF_Gm_dd_22), &
                         uGF_R(iNodeX,iGF_Gm_dd_33) )
 
-                Alpha    = 1.0_DP
-                AlphaPls = Alpha
-                AlphaMns = Alpha
-                AlphaMdl = Alpha
+                ! First Alpha will be the largest eigenvalue (absolute value) of the left and right state
+                AlphaL = MAXVAL( ABS( EigVals_L ) )
+                AlphaR = MAXVAL( ABS( EigVals_R ) )
+
+!                Alpha    = 1.0_DP
+!                AlphaMns = Alpha
+!                AlphaMdl = Alpha 
+!                AlphaPls = Alpha 
+
+                Alpha    = MAX( AlphaL, AlphaR )
+                AlphaMns = MAX( ABS( EigVals_L(1) ), ABS( EigVals_R(1) ) )
+                AlphaMdl = MAX( ABS( EigVals_L(2) ), ABS( EigVals_R(2) ) )
+                AlphaPls = MAX( ABS( EigVals_L(3) ), ABS( EigVals_R(3) ) )
 
                 Flux &
                   = NumericalFlux_Fluid &
