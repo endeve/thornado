@@ -16,6 +16,8 @@ MODULE EulerEquationsUtilitiesModule_GR
 
   PUBLIC :: ComputeConserved
   PUBLIC :: ComputePrimitive
+  PUBLIC :: Eigenvalues
+  PUBLIC :: ComputeSoundSpeed
   PUBLIC :: Flux_X1
 
 CONTAINS
@@ -87,25 +89,28 @@ CONTAINS
 
       Converged = .FALSE.
       nIter     = 0
+
       DO WHILE ( .NOT. Converged )
 
         nIter = nIter + 1
+
+        IF( ISNAN( Pold ) )THEN
+          WRITE(*,*) 'Pold is ', Pold
+          WRITE(*,*) 'nIter:',nIter
+          STOP
+        END IF
 
         CALL ComputeFunJacP &
                ( uCF(i,iCF_D), SSq, uCF(i,iCF_E), Pold, FunP, JacP )
 
         Pnew = Pold - FunP / JacP
 
-        IF( ABS( Pnew / Pold - 1.0_DP ) < TolP ) Converged = .TRUE.
+        IF( ABS( Pnew / Pold - 1.0_DP ) <= TolP ) Converged = .TRUE.
 
-        IF( nIter > 10 )THEN
-          PRINT*, "ComputePrimitive"
-          PRINT*, "  nIter = ", nIter
-          PRINT*, "  Pold, Pnew, dP = ", &
-            Pold, Pnew, ABS( Pnew / Pold - 1.0_DP )
-          PRINT*, "  FunP = ", FunP
-          PRINT*, "  Converged = ", Converged
-          IF( nIter > 100) STOP
+        IF( nIter == 1000)THEN
+          PRINT*, "No convergence", ABS( Pnew / Pold - 1.0_DP )
+          STOP
+
         END IF
 
         Pold = Pnew
@@ -137,6 +142,48 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputePrimitive
+
+
+  PURE FUNCTION Eigenvalues( V1, Alpha, Beta1, Gm_uu_11, Gm_dd_11, Cs)
+
+    ! V1 is the contravariant component V^1
+    ! Beta1 is the contravariant component Beta^1
+
+    REAL(DP), INTENT(in) :: V1, Alpha, Beta1, Gm_uu_11, Gm_dd_11, Cs
+    REAL(DP) :: VSq
+    REAL(DP), DIMENSION(1:5) :: Eigenvalues
+
+    Vsq = Gm_dd_11 * V1 * V1
+
+    Eigenvalues(1:5) = &
+      [ Alpha / ( 1.0_DP - VSq * Cs**2 ) * ( V1 * ( 1.0_DP - Cs**2 ) - Cs &
+        * SQRT( ( 1.0_DP - VSq ) * ( Gm_uu_11 * ( 1.0_DP - VSq * Cs**2 )  &
+        - V1 * V1 * ( 1.0_DP - Cs**2 )))) - Beta1, &
+
+        Alpha * V1 - Beta1, &
+
+        Alpha / ( 1.0_DP - VSq * Cs**2 ) * ( V1 * ( 1.0_DP - Cs**2 ) + Cs &
+        * SQRT( ( 1.0_DP - VSq ) * ( Gm_uu_11 * ( 1.0_DP - VSq * Cs**2 )  &
+        - V1 * V1 * ( 1.0_DP - Cs**2 )))) - Beta1, &
+
+        Alpha * V1 - Beta1, &
+
+        Alpha * V1 - Beta1 ]
+
+    RETURN
+  END FUNCTION Eigenvalues
+
+
+  SUBROUTINE ComputeSoundSpeed( p, e, rho, Gamma )
+
+    REAL(DP), INTENT(in) :: p, e, rho, Gamma
+    REAL(DP) :: Cs, h
+    
+    h = 1.0_DP + ( e + p ) / rho
+
+    Cs = SQRT ( Gamma * p / ( rho * h ) )
+
+  END SUBROUTINE ComputeSoundSpeed
 
 
   FUNCTION Flux_X1 &
@@ -175,7 +222,6 @@ CONTAINS
     RETURN
   END FUNCTION Flux_X1
 
-
   SUBROUTINE ComputeFunJacP( D, SSq, E, P, FunP, JacP )
 
     REAL(DP), INTENT(in)  :: D, SSq, E, P
@@ -187,6 +233,7 @@ CONTAINS
     HSq = ( E + P + D )**2
 
     RHO = D * SQRT( HSq - SSq ) / SQRT( HSq )
+
     EPS = ( SQRT( HSq - SSq ) &
             - P * SQRT( HSq ) / SQRT( HSq - SSq ) - D ) / D
 
