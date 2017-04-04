@@ -31,27 +31,29 @@ MODULE GeometryFieldsModule
 
   ! --- Spatial Geometry Fields ---
 
-  INTEGER, PUBLIC, PARAMETER :: iGF_Phi_N    = 1 ! Newtonian Potential
-  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_11 = 2 ! Spatial Metric Component 11
-  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_22 = 3 ! Spatial Metric Component 22
-  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_33 = 4 ! Spatial Metric Component 33
-  INTEGER, PUBLIC, PARAMETER :: iGF_Alpha    = 5 ! Lapse Function
-  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_1   = 6 ! Shift Vector 1
-  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_2   = 7 ! Shift Vector 2
-  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_3   = 8 ! Shift Vector 3
-  INTEGER, PUBLIC, PARAMETER :: iGF_CF       = 9 ! Conformal Factor
-  INTEGER, PUBLIC, PARAMETER :: nGF          = 9 ! n Geometry Fields
+  INTEGER, PUBLIC, PARAMETER :: iGF_Phi_N    = 1  ! Newtonian Potential
+  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_11 = 2  ! Spatial Metric Component 11
+  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_22 = 3  ! Spatial Metric Component 22
+  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_33 = 4  ! Spatial Metric Component 33
+  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_uu_11 = 5  ! Contravariant Spatial Metric Component 11
+  INTEGER, PUBLIC, PARAMETER :: iGF_Alpha    = 6  ! Lapse Function
+  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_1   = 7  ! Shift Vector 1
+  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_2   = 8  ! Shift Vector 2
+  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_3   = 9  ! Shift Vector 3
+  INTEGER, PUBLIC, PARAMETER :: iGF_CF       = 10 ! Conformal Factor
+  INTEGER, PUBLIC, PARAMETER :: nGF          = 10 ! n Geometry Fields
 
   CHARACTER(32), DIMENSION(nGF), PUBLIC, PARAMETER :: &
-    namesGF = [ 'Newtonian Potential             ', &
-                'Spatial Metric Component (11)   ', &
-                'Spatial Metric Component (22)   ', &
-                'Spatial Metric Component (33)   ', &
-                'Lapse Function                  ', &
-                'Shift Vector (1)                ', &
-                'Shift Vector (2)                ', &
-                'Shift Vector (3)                ', &
-                'Conformal Factor                ' ]
+    namesGF = [ 'Newtonian Potential                         ', &
+                'Spatial Metric Component (11)               ', &
+                'Spatial Metric Component (22)               ', &
+                'Spatial Metric Component (33)               ', &
+                'Lapse Function                              ', &
+                'Shift Vector (1)                            ', &
+                'Shift Vector (2)                            ', &
+                'Shift Vector (3)                            ', &
+                'Conformal Factor                            ', &
+                'Contravariant Spatial Metric Component (11) ' ]
 
   REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: uGF
 
@@ -142,6 +144,7 @@ CONTAINS
     uGF(:,:,:,:,iGF_Beta_2)   = 0.0_DP
     uGF(:,:,:,:,iGF_Beta_3)   = 0.0_DP
     uGF(:,:,:,:,iGF_CF)       = 1.0_DP
+    uGF(:,:,:,:,iGF_Gm_uu_11) = 1.0_DP
 
   END SUBROUTINE CreateGeometryFieldsX
 
