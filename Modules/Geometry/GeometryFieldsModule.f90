@@ -48,12 +48,12 @@ MODULE GeometryFieldsModule
                 'Spatial Metric Component (11)               ', &
                 'Spatial Metric Component (22)               ', &
                 'Spatial Metric Component (33)               ', &
+                'Contravariant Spatial Metric Component (11) ', &
                 'Lapse Function                              ', &
                 'Shift Vector (1)                            ', &
                 'Shift Vector (2)                            ', &
                 'Shift Vector (3)                            ', &
-                'Conformal Factor                            ', &
-                'Contravariant Spatial Metric Component (11) ' ]
+                'Conformal Factor                            ' ]
 
   REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: uGF
 
