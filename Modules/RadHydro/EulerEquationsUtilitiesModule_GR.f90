@@ -94,12 +94,6 @@ CONTAINS
 
         nIter = nIter + 1
 
-        IF( ISNAN( Pold ) )THEN
-          WRITE(*,*) 'Pold is ', Pold
-          WRITE(*,*) 'nIter:',nIter
-          STOP
-        END IF
-
         CALL ComputeFunJacP &
                ( uCF(i,iCF_D), SSq, uCF(i,iCF_E), Pold, FunP, JacP )
 
@@ -107,10 +101,20 @@ CONTAINS
 
         IF( ABS( Pnew / Pold - 1.0_DP ) <= TolP ) Converged = .TRUE.
 
-        IF( nIter == 1000)THEN
-          PRINT*, "No convergence", ABS( Pnew / Pold - 1.0_DP )
+        IF( nIter .GT. 2 )THEN
+          WRITE(*,'(A6,1x,I2,3x,A10,E19.12)') 'nIter:',nIter,'|ERROR| =',ABS( Pnew / Pold - 1.0_DP )
+        END IF
+        IF( nIter == 10)THEN
+          PRINT*, "No convergence, ERROR:", ABS( Pnew / Pold - 1.0_DP )
           STOP
 
+        END IF
+
+        IF( ISNAN( Pnew ) )THEN
+          PRINT*, 'Pnew is NaN'
+          PRINT*, 'Pold is ', Pold
+          PRINT*, 'nIter:',nIter
+          STOP
         END IF
 
         Pold = Pnew
@@ -144,27 +148,29 @@ CONTAINS
   END SUBROUTINE ComputePrimitive
 
 
-  PURE FUNCTION Eigenvalues( V1, Alpha, Beta1, Gm_uu_11, Gm_dd_11, Cs)
+  PURE FUNCTION Eigenvalues( V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                              Gm_uu_11, Alpha, Beta1, Cs )
 
     ! V1 is the contravariant component V^1
     ! Beta1 is the contravariant component Beta^1
 
-    REAL(DP), INTENT(in) :: V1, Alpha, Beta1, Gm_uu_11, Gm_dd_11, Cs
+    REAL(DP), INTENT(in) :: V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                              Gm_uu_11, Alpha, Beta1, Cs
     REAL(DP) :: VSq
     REAL(DP), DIMENSION(1:5) :: Eigenvalues
 
-    Vsq = Gm_dd_11 * V1 * V1
+    Vsq = Gm_dd_11 * V1**2 + Gm_dd_22 * V2**2 + Gm_dd_33 * V3**2
 
     Eigenvalues(1:5) = &
       [ Alpha / ( 1.0_DP - VSq * Cs**2 ) * ( V1 * ( 1.0_DP - Cs**2 ) - Cs &
         * SQRT( ( 1.0_DP - VSq ) * ( Gm_uu_11 * ( 1.0_DP - VSq * Cs**2 )  &
-        - V1 * V1 * ( 1.0_DP - Cs**2 )))) - Beta1, &
+        - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
 
         Alpha * V1 - Beta1, &
 
         Alpha / ( 1.0_DP - VSq * Cs**2 ) * ( V1 * ( 1.0_DP - Cs**2 ) + Cs &
         * SQRT( ( 1.0_DP - VSq ) * ( Gm_uu_11 * ( 1.0_DP - VSq * Cs**2 )  &
-        - V1 * V1 * ( 1.0_DP - Cs**2 )))) - Beta1, &
+        - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
 
         Alpha * V1 - Beta1, &
 
@@ -227,23 +233,25 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, SSq, E, P
     REAL(DP), INTENT(out) :: FunP, JacP
 
-    REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS
+    REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS, MaxHSqSSq
     REAL(DP), DIMENSION(1) :: Pbar
 
     HSq = ( E + P + D )**2
 
-    RHO = D * SQRT( HSq - SSq ) / SQRT( HSq )
+    MaxHSqSSq = HSq - SSq
 
-    EPS = ( SQRT( HSq - SSq ) &
-            - P * SQRT( HSq ) / SQRT( HSq - SSq ) - D ) / D
+    RHO = D * SQRT( MaxHSqSSq ) / SQRT( HSq )
+
+    EPS = ( SQRT( MaxHSqSSq ) &
+            - P * SQRT( HSq ) / SQRT( MaxHSqSSq ) - D ) / D
 
     CALL ComputePressureFromSpecificInternalEnergy &
            ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
 
     FunP = P - Pbar(1)
 
-    dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
-    dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
+    dRHO = D * SSq / ( SQRT( MaxHSqSSq ) * HSq )
+    dEPS = P * SSq / ( ( MaxHSqSSq ) * SQRT( HSq ) * RHO )
 
     JacP = 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS )
 
@@ -251,3 +259,4 @@ CONTAINS
 
 
 END MODULE EulerEquationsUtilitiesModule_GR
+
