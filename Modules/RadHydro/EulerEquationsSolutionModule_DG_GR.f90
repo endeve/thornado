@@ -15,7 +15,7 @@ MODULE EulerEquationsSolutionModule_DG_GR
     rhsCF, &
     uCF, nCF, &
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uAF, nAF, iAF_P, iAF_Cs
+    uAF, nAF, iAF_P, iAF_Cs, iAF_Gm
   USE RiemannSolverModule, ONLY: &
     NumericalFlux_Fluid
   USE EulerEquationsUtilitiesModule_GR, ONLY: &
@@ -127,19 +127,20 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_L, uGF_L, uPF_L, uAF_L )
 
-!!!!!!! Need to figure out how to call this from Initialization file
-                Gamma = 1.67_DP
-
                 CALL ComputeSoundSpeed( uAF_L(iNodeX1, iAF_P), &
                                         uPF_L(iNodeX1, iPF_E), &
                                         uPF_L(iNodeX1, iPF_D), &
-                                        Gamma )
+                                        uAF_L(iNodeX1, iAF_Gm) )
 
-                EigVals_L = Eigenvalues( uPF_L(iNodeX1,iPF_V1),        &
-                                         uGF_L(iNodeX1,iGF_Alpha),     &
-                                         uGF_L(iNodeX1,iGF_Beta_1),    &
-                                         uGF_L(iNodeX1,iGF_Gm_uu_11),  &
-                                         uGF_L(iNodeX1,iGF_Gm_dd_11),  &
+                EigVals_L = Eigenvalues( uPF_L(iNodeX1, iPF_V1),       &
+                                         uPF_L(iNodeX1, iPF_V2),       &
+                                         uPF_L(iNodeX1, iPF_V3),       &
+                                         uGF_L(iNodeX1, iGF_Gm_dd_11), &
+                                         uGF_L(iNodeX1, iGF_Gm_dd_22), &
+                                         uGF_L(iNodeX1, iGF_Gm_dd_33), &
+                                         uGF_L(iNodeX1, iGF_Gm_uu_11), &
+                                         uGF_L(iNodeX1, iGF_Alpha),    &
+                                         uGF_L(iNodeX1, iGF_Beta_1),   &
                                          Cs )
 
                 Flux_L &
@@ -171,14 +172,19 @@ CONTAINS
                 CALL ComputeSoundSpeed( uAF_R(iNodeX1, iAF_P), &
                                         uPF_R(iNodeX1, iPF_E), &
                                         uPF_R(iNodeX1, iPF_D), &
-                                        Gamma )
+                                        uAF_R(iNodeX1, iAF_Gm) )
 
-                EigVals_R = Eigenvalues( uPF_R(iNodeX1,iPF_V1),        &
-                                         uGF_R(iNodeX1,iGF_Alpha),     &
-                                         uGF_R(iNodeX1,iGF_Beta_1),    &
-                                         uGF_R(iNodeX1,iGF_Gm_uu_11),  &
-                                         uGF_R(iNodeX1,iGF_Gm_dd_11),  &
+                EigVals_R = Eigenvalues( uPF_R(iNodeX1, iPF_V1),       &
+                                         uPF_R(iNodeX1, iPF_V2),       &
+                                         uPF_R(iNodeX1, iPF_V3),       &
+                                         uGF_R(iNodeX1, iGF_Gm_dd_11), &
+                                         uGF_R(iNodeX1, iGF_Gm_dd_22), &
+                                         uGF_R(iNodeX1, iGF_Gm_dd_33), &
+                                         uGF_R(iNodeX1, iGF_Gm_uu_11), &
+                                         uGF_R(iNodeX1, iGF_Alpha),    &
+                                         uGF_R(iNodeX1, iGF_Beta_1),   &
                                          Cs )
+
                 Flux_R &
                   = Flux_X1 &
                       ( uPF_R(iNodeX,iPF_D),        &
@@ -247,13 +253,17 @@ CONTAINS
                 CALL ComputeSoundSpeed( uAF_L(iNodeX1, iAF_P), &
                                         uPF_L(iNodeX1, iPF_E), &
                                         uPF_L(iNodeX1, iPF_D), &
-                                        Gamma )
+                                        uAF_L(iNodeX1, iAF_Gm) )
 
-                EigVals_L = Eigenvalues( uPF_L(iNodeX1,iPF_V1),       &
-                                         uGF_L(iNodeX1,iGF_Alpha),    &
-                                         uGF_L(iNodeX1,iGF_Beta_1),   &
-                                         uGF_L(iNodeX1,iGF_Gm_uu_11), &
-                                         uGF_L(iNodeX1,iGF_Gm_dd_11), &
+                EigVals_L = Eigenvalues( uPF_L(iNodeX1, iPF_V1),       &
+                                         uPF_L(iNodeX1, iPF_V2),       &
+                                         uPF_L(iNodeX1, iPF_V3),       &
+                                         uGF_L(iNodeX1, iGF_Gm_dd_11), &
+                                         uGF_L(iNodeX1, iGF_Gm_dd_22), &
+                                         uGF_L(iNodeX1, iGF_Gm_dd_33), &
+                                         uGF_L(iNodeX1, iGF_Gm_uu_11), &
+                                         uGF_L(iNodeX1, iGF_Alpha),    &
+                                         uGF_L(iNodeX1, iGF_Beta_1),   &
                                          Cs )
 
                 Flux_L &
@@ -285,13 +295,17 @@ CONTAINS
                 CALL ComputeSoundSpeed( uAF_R(iNodeX1, iAF_P), &
                                         uPF_R(iNodeX1, iPF_E), &
                                         uPF_R(iNodeX1, iPF_D), &
-                                        Gamma )
+                                        uAF_R(iNodeX1, iAF_Gm) )
 
-                EigVals_R = Eigenvalues( uPF_R(iNodeX1,iPF_V1),       &
-                                         uGF_R(iNodeX1,iGF_Alpha),    &
-                                         uGF_R(iNodeX1,iGF_Beta_1),   &
-                                         uGF_R(iNodeX1,iGF_Gm_uu_11), &
-                                         uGF_R(iNodeX1,iGF_Gm_dd_11), &
+                EigVals_R = Eigenvalues( uPF_R(iNodeX1, iPF_V1),       &
+                                         uPF_R(iNodeX1, iPF_V2),       &
+                                         uPF_R(iNodeX1, iPF_V3),       &
+                                         uGF_R(iNodeX1, iGF_Gm_dd_11), &
+                                         uGF_R(iNodeX1, iGF_Gm_dd_22), &
+                                         uGF_R(iNodeX1, iGF_Gm_dd_33), &
+                                         uGF_R(iNodeX1, iGF_Gm_uu_11), &
+                                         uGF_R(iNodeX1, iGF_Alpha),    &
+                                         uGF_R(iNodeX1, iGF_Beta_1),   &
                                          Cs )
 
                 Flux_R &
