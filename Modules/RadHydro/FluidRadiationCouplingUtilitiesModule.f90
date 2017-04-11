@@ -26,6 +26,10 @@ MODULE FluidRadiationCouplingUtilitiesModule
   PUBLIC :: FinalizeFluidFields
   PUBLIC :: InitializeRadiationFields
   PUBLIC :: FinalizeRadiationFields
+  PUBLIC :: FermiDirac
+  PUBLIC :: dFermiDiracdT
+  PUBLIC :: dFermiDiracdY
+  PUBLIC :: ENORM
 
 CONTAINS
 
@@ -282,6 +286,49 @@ CONTAINS
     END DO
 
   END SUBROUTINE FinalizeRadiationFields
+
+
+  PURE ELEMENTAL REAL(DP) FUNCTION FermiDirac( E, Mu, kT )
+
+    REAL(DP), INTENT(in) :: E, Mu, kT
+
+    FermiDirac = 1.0_DP / ( EXP( ( E - Mu ) / kT ) + 1.0_DP )
+
+    RETURN
+  END FUNCTION FermiDirac
+
+
+  PURE ELEMENTAL REAL(DP) FUNCTION dFermiDiracdT( E, Mu, kT, dMudT, T )
+
+    REAL(DP), INTENT(in) :: E, Mu, kT, dMudT, T
+
+    dFermiDiracdT &
+      = FermiDirac( E, Mu, kT )**2 * EXP( ( E - Mu ) / kT ) &
+          * ( dMudT + ( E - Mu ) / T ) / kT
+
+    RETURN
+  END FUNCTION dFermiDiracdT
+
+
+  PURE ELEMENTAL REAL(DP) FUNCTION dFermiDiracdY( E, Mu, kT, dMudY, T )
+
+    REAL(DP), INTENT(in) :: E, Mu, kT, dMudY, T
+
+    dFermiDiracdY &
+      = FermiDirac( E, Mu, kT )**2 * EXP( ( E - Mu ) / kT ) * dMudY / kT
+
+    RETURN
+  END FUNCTION dFermiDiracdY
+
+
+  PURE REAL(DP) FUNCTION ENORM( X )
+
+    REAL(DP), DIMENSION(:), INTENT(in) :: X
+
+    ENORM = SQRT( DOT_PRODUCT( X, X ) )
+
+    RETURN
+  END FUNCTION ENORM
 
 
 END MODULE FluidRadiationCouplingUtilitiesModule

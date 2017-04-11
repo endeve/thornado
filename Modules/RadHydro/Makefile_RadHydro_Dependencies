@@ -118,13 +118,39 @@ RadiationEvolutionModule.o: \
 FluidRadiationCouplingUtilitiesModule.o: \
   FluidRadiationCouplingUtilitiesModule.f90
 
-FluidRadiationCouplingSolutionModule_Implicit.o: \
+FluidRadiationCouplingSolutionModule_ThermalReservoir.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsUtilitiesModule.o \
+  FluidRadiationCouplingUtilitiesModule.o \
+  OpacityModule.o \
+  FluidRadiationCouplingSolutionModule_ThermalReservoir.f90
+
+FluidRadiationCouplingSolutionModule_EmissionAbsorption.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.o \
+  EulerEquationsUtilitiesModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsUtilitiesModule.o \
+  FluidRadiationCouplingUtilitiesModule.o \
+  EquationOfStateModule.o \
+  OpacityModule.o \
+  FluidRadiationCouplingSolutionModule_EmissionAbsorption.f90
+
+FluidRadiationCouplingSolutionModule_ElasticScattering.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
+  MomentEquationsUtilitiesModule.o \
   FluidRadiationCouplingUtilitiesModule.o \
-  FluidRadiationCouplingSolutionModule_Implicit.f90
+  OpacityModule.o \
+  FluidRadiationCouplingSolutionModule_ElasticScattering.f90
 
 FluidRadiationCouplingSolutionModule_Explicit.o: \
   KindModule.o \
@@ -132,7 +158,9 @@ FluidRadiationCouplingSolutionModule_Explicit.o: \
 
 FluidRadiationCouplingModule.o: \
   KindModule.o \
-  FluidRadiationCouplingSolutionModule_Implicit.o \
+  FluidRadiationCouplingSolutionModule_ThermalReservoir.o \
+  FluidRadiationCouplingSolutionModule_EmissionAbsorption.o \
+  FluidRadiationCouplingSolutionModule_ElasticScattering.o \
   FluidRadiationCouplingModule.f90
 
 ApplicationBoundaryConditionsModule.o: \

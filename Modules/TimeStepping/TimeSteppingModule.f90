@@ -346,12 +346,13 @@ CONTAINS
 
     dt = HUGE( 1.0_DP )
 
-    ASSOCIATE( dX1 => MeshX(1) % Width(1:nX(1)), &
-               dX2 => MeshX(2) % Width(1:nX(2)), &
-               dX3 => MeshX(3) % Width(1:nX(3)), &
-               X1 => MeshX(1) % Center(1:nX(1)), &
-               X2 => MeshX(2) % Center(1:nX(2)), &
-               X3 => MeshX(3) % Center(1:nX(3))  )
+    ASSOCIATE &
+      ( dX1 => MeshX(1) % Width (1:nX(1)), &
+        dX2 => MeshX(2) % Width (1:nX(2)), &
+        dX3 => MeshX(3) % Width (1:nX(3)), &
+        X1  => MeshX(1) % Center(1:nX(1)), &
+        X2  => MeshX(2) % Center(1:nX(2)), &
+        X3  => MeshX(3) % Center(1:nX(3))  )
 
     CFL = 0.2_DP / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) ! For Debugging
 
@@ -942,7 +943,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: t, dt
 
-    INTEGER :: iE, iX1, iX2, iX3, iCR, iS
+    INTEGER :: iE, iX1, iX2, iX3, iCF, iCR, iS
 
     CALL Initialize_SI_RK
 
@@ -1008,6 +1009,24 @@ CONTAINS
 
     ! -- Combine Steps --
 
+    IF( EvolveFluid )THEN
+
+      DO iCF = 1, nCF
+        DO iX3 = 1, nX(3)
+          DO iX2 = 1, nX(2)
+            DO iX1 = 1, nX(1)
+
+              uCF(:,iX1,iX2,iX3,iCF) &
+                = 0.5_DP * ( uCF_0(:,iX1,iX2,iX3,iCF) &
+                             + uCF(:,iX1,iX2,iX3,iCF) )
+
+            END DO
+          END DO
+        END DO
+      END DO
+
+    END IF
+
     IF( EvolveRadiation )THEN
 
       DO iS = 1, nSpecies
@@ -1037,6 +1056,15 @@ CONTAINS
 
   SUBROUTINE Initialize_SI_RK
 
+    IF( EvolveFluid )THEN
+
+      ALLOCATE( uCF_0(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF) )
+
+      uCF_0(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF) &
+        = uCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF)
+
+    END IF
+
     IF( EvolveRadiation )THEN
 
       ALLOCATE( uCR_0(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies) )
@@ -1050,6 +1078,12 @@ CONTAINS
 
 
   SUBROUTINE Finalize_SI_RK
+
+    IF( EvolveFluid )THEN
+
+      DEALLOCATE( uCF_0 )
+
+    END IF
 
     IF( EvolveRadiation )THEN
 

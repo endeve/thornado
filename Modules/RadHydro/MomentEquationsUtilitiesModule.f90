@@ -18,8 +18,8 @@ MODULE MomentEquationsUtilitiesModule
 
   PUBLIC :: Conserved
   PUBLIC :: Primitive
-  PUBLIC :: ComputeConserved
-  PUBLIC :: ComputePrimitive
+  PUBLIC :: ComputeConservedMoments
+  PUBLIC :: ComputePrimitiveMoments
   PUBLIC :: ComputeEigenvectors_L
   PUBLIC :: ComputeEigenvectors_R
   PUBLIC :: AlphaMax
@@ -59,7 +59,7 @@ CONTAINS
   END FUNCTION Primitive
 
 
-  SUBROUTINE ComputeConserved( iX_Begin, iX_End )
+  SUBROUTINE ComputeConservedMoments( iX_Begin, iX_End )
 
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
 
@@ -84,10 +84,10 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE ComputeConserved
+  END SUBROUTINE ComputeConservedMoments
 
 
-  SUBROUTINE ComputePrimitive( iX_Begin, iX_End )
+  SUBROUTINE ComputePrimitiveMoments( iX_Begin, iX_End )
 
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
 
@@ -112,7 +112,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE ComputePrimitive
+  END SUBROUTINE ComputePrimitiveMoments
 
 
   PURE FUNCTION Eigenvalues( N, G_1, G_2, G_3 )

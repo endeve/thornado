@@ -63,6 +63,7 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: FinalizeEquationOfState_TABLE
   PUBLIC :: ApplyEquationOfState_TABLE
   PUBLIC :: ComputeTemperatureFromPressure_TABLE
+  PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy_TABLE
   PUBLIC :: ComputeThermodynamicStates_Primitive_TABLE
   PUBLIC :: ComputeThermodynamicStates_Auxiliary_TABLE
   PUBLIC :: ComputePressureFromSpecificInternalEnergy_TABLE
@@ -395,8 +396,8 @@ CONTAINS
                Units_V = Dyne / Centimeter**2 )
 
     END IF
-  
-  END SUBROUTINE ComputePressure_TABLE    
+
+  END SUBROUTINE ComputePressure_TABLE
 
 
   SUBROUTINE ComputeSpecificInternalEnergy_TABLE &

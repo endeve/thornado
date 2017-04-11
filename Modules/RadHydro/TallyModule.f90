@@ -2,6 +2,9 @@ MODULE TallyModule
 
   USE KindModule, ONLY: &
     DP
+  USE UnitsModule, ONLY: &
+    PlanckConstant, &
+    SpeedOfLight
   USE ProgramHeaderModule, ONLY: &
     nE, &
     nX
@@ -274,6 +277,9 @@ CONTAINS
         dX2 => MeshX(2) % Width(1:nX(2)), &
         dX3 => MeshX(3) % Width(1:nX(3)) )
 
+    ASSOCIATE &
+      ( hc3 => ( PlanckConstant * SpeedOfLight )**3 )
+
     GlobalNumber_Radiation(iState) = 0.0_DP
     DO iS = 1, nSpecies
 
@@ -286,7 +292,7 @@ CONTAINS
                 = GlobalNumber_Radiation(iState) &
                     + dE(iE) * dX1(iX1) * dX2(iX2) * dX3(iX3) &
                         * SUM( WeightsG(:) * uCR(:,iE,iX1,iX2,iX3,iCR_N,iS) &
-                                 * VolJac(:,iE,iX1,iX2,iX3) )
+                                 * VolJac(:,iE,iX1,iX2,iX3) ) / hc3
 
             END DO
           END DO
@@ -294,6 +300,8 @@ CONTAINS
       END DO
 
     END DO
+
+    END ASSOCIATE ! hc3
 
     END ASSOCIATE ! dE, etc.
 

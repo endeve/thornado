@@ -19,8 +19,10 @@ MODULE PolynomialBasisMappingModule
 
   PUBLIC :: InitializePolynomialBasisMapping
   PUBLIC :: MapNodalToModal_Fluid
+  PUBLIC :: MapNodalToModal_Radiation_X
   PUBLIC :: MapNodalToModal_Radiation
   PUBLIC :: MapModalToNodal_Fluid
+  PUBLIC :: MapModalToNodal_Radiation_X
   PUBLIC :: MapModalToNodal_Radiation
 
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Kij_X, K_ij
@@ -125,6 +127,22 @@ CONTAINS
   END SUBROUTINE MapNodalToModal_Fluid
 
 
+  SUBROUTINE MapNodalToModal_Radiation_X( uN, uM )
+
+    REAL(DP), DIMENSION(nDOFX), INTENT(in)  :: uN
+    REAL(DP), DIMENSION(nDOFX), INTENT(out) :: uM
+
+    INTEGER :: i
+
+    uM = 0.0_DP
+    DO i = 1, nDOFX
+      uM(:) = uM(:) + Kij_X(:,i) * uN(i)
+    END DO
+    uM = MassPX * uM
+
+  END SUBROUTINE MapNodalToModal_Radiation_X
+
+
   SUBROUTINE MapNodalToModal_Radiation( uN, uM )
 
     REAL(DP), DIMENSION(nDOF), INTENT(in)  :: uN
@@ -154,6 +172,21 @@ CONTAINS
     END DO
 
   END SUBROUTINE MapModalToNodal_Fluid
+
+
+  SUBROUTINE MapModalToNodal_Radiation_X( uN, uM )
+
+    REAL(DP), DIMENSION(nDOFX), INTENT(out) :: uN
+    REAL(DP), DIMENSION(nDOFX), INTENT(in)  :: uM
+
+    INTEGER :: i
+
+    uN = 0.0_DP
+    DO i = 1, nDOFX
+      uN(:) = uN(:) + Pij_X(:,i) * uM(i)
+    END DO
+
+  END SUBROUTINE MapModalToNodal_Radiation_X
 
 
   SUBROUTINE MapModalToNodal_Radiation( uN, uM )

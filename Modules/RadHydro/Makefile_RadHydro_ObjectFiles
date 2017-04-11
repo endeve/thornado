@@ -15,7 +15,9 @@ RAD_HYDRO = \
   MomentEquationsLimiterModule_DG.o \
   RadiationEvolutionModule.o \
   FluidRadiationCouplingUtilitiesModule.o \
-  FluidRadiationCouplingSolutionModule_Implicit.o \
+  FluidRadiationCouplingSolutionModule_ThermalReservoir.o \
+  FluidRadiationCouplingSolutionModule_EmissionAbsorption.o \
+  FluidRadiationCouplingSolutionModule_ElasticScattering.o \
   FluidRadiationCouplingSolutionModule_Explicit.o \
   FluidRadiationCouplingModule.o \
   ApplicationBoundaryConditionsModule.o \

@@ -5,11 +5,13 @@ MODULE OpacityModule
   USE OpacityModule_IDEAL, ONLY: &
     InitializeOpacities_IDEAL, &
     FinalizeOpacities_IDEAL, &
-    ComputeAbsorptionCoefficients_IDEAL
+    ComputeAbsorptionOpacity_IDEAL, &
+    ComputeScatteringOpacity_ES_IDEAL
   USE OpacityModule_TABLE, ONLY: &
     InitializeOpacities_TABLE, &
     FinalizeOpacities_TABLE, &
-    ComputeAbsorptionCoefficients_TABLE
+    ComputeAbsorptionOpacity_TABLE, &
+    ComputeScatteringOpacity_ES_TABLE
 
   IMPLICIT NONE
   PRIVATE
@@ -37,7 +39,8 @@ MODULE OpacityModule
   ! ---
 
   PROCEDURE (ComputeOpacity_A), POINTER, PUBLIC :: &
-    ComputeAbsorptionCoefficients => NULL()
+    ComputeAbsorptionOpacity    => NULL(), &
+    ComputeScatteringOpacity_ES => NULL() ! --- Elastic Scattering
 
   PUBLIC :: InitializeOpacities
   PUBLIC :: FinalizeOpacities
@@ -66,8 +69,10 @@ CONTAINS
 
         CALL InitializeOpacities_IDEAL
 
-        ComputeAbsorptionCoefficients &
-          => ComputeAbsorptionCoefficients_IDEAL
+        ComputeAbsorptionOpacity &
+          => ComputeAbsorptionOpacity_IDEAL
+        ComputeScatteringOpacity_ES &
+          => ComputeScatteringOpacity_ES_IDEAL
 
       CASE( 'TABLE' )
 
@@ -75,8 +80,10 @@ CONTAINS
                ( OpacityTableName_Option &
                    = OpacityTableName_Option )
 
-        ComputeAbsorptionCoefficients &
-          => ComputeAbsorptionCoefficients_TABLE
+        ComputeAbsorptionOpacity &
+          => ComputeAbsorptionOpacity_TABLE
+        ComputeScatteringOpacity_ES &
+          => ComputeScatteringOpacity_ES_TABLE
 
       CASE DEFAULT
 
@@ -103,7 +110,9 @@ CONTAINS
 
     END SELECT
 
-    NULLIFY( ComputeAbsorptionCoefficients )
+    NULLIFY &
+      ( ComputeAbsorptionOpacity, &
+        ComputeScatteringOpacity_ES )
 
   END SUBROUTINE FinalizeOpacities
 

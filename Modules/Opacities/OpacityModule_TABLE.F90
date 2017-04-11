@@ -32,6 +32,10 @@ MODULE OpacityModule_TABLE
 
   CHARACTER(256) :: &
     OpacityTableName
+  INTEGER :: &
+    iD_T, iT_T, iY_T
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: &
+    Es_T, Ds_T, Ts_T, Ys_T
 #ifdef MICROPHYSICS_WEAKLIB
   TYPE(OpacityTableType) :: &
     OPACITIES
@@ -39,7 +43,8 @@ MODULE OpacityModule_TABLE
 
   PUBLIC :: InitializeOpacities_TABLE
   PUBLIC :: FinalizeOpacities_TABLE
-  PUBLIC :: ComputeAbsorptionCoefficients_TABLE
+  PUBLIC :: ComputeAbsorptionOpacity_TABLE
+  PUBLIC :: ComputeScatteringOpacity_ES_TABLE
 
 CONTAINS
 
@@ -65,6 +70,28 @@ CONTAINS
 
     CALL FinalizeHDF( )
 
+    ! --- Thermodynamic State Indices ---
+
+    iD_T = OPACITIES % TS % Indices % iRho
+    iT_T = OPACITIES % TS % Indices % iT
+    iY_T = OPACITIES % TS % Indices % iYe
+
+    ! --- Thermodynamic States ---
+
+    ALLOCATE( Ds_T(OPACITIES % TS % nPoints(iD_T)) )
+    Ds_T = OPACITIES % TS % States(iD_T) % Values
+
+    ALLOCATE( Ts_T(OPACITIES % TS % nPoints(iT_T)) )
+    Ts_T = OPACITIES % TS % States(iT_T) % Values
+
+    ALLOCATE( Ys_T(OPACITIES % TS % nPoints(iY_T)) )
+    Ys_T = OPACITIES % TS % States(iY_T) % Values
+
+    ! --- Energy Grid ---
+
+    ALLOCATE( Es_T(OPACITIES % EnergyGrid % nPoints) )
+    Es_T = OPACITIES % EnergyGrid  % Values
+
 #endif
 
   END SUBROUTINE InitializeOpacities_TABLE
@@ -72,10 +99,12 @@ CONTAINS
 
   SUBROUTINE FinalizeOpacities_TABLE
 
+    DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T )
+
   END SUBROUTINE FinalizeOpacities_TABLE
 
 
-  SUBROUTINE ComputeAbsorptionCoefficients_TABLE &
+  SUBROUTINE ComputeAbsorptionOpacity_TABLE &
                ( E, D, T, Y, Chi, dChidT_Option, dChidY_Option )
 
     REAL(DP), DIMENSION(:), INTENT(in)            :: E, D, T, Y
@@ -95,20 +124,6 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( EOS => OPACITIES % EOSTable )
-
-    ASSOCIATE &
-      ( iD_T => EOS % TS % Indices % iRho, &
-        iT_T => EOS % TS % Indices % iT,   &
-        iY_T => EOS % TS % Indices % iYe )
-
-    ASSOCIATE &
-      ( E_T => OPACITIES % EnergyGrid  % Values, &
-        D_T => EOS % TS % States(iD_T) % Values, &
-        T_T => EOS % TS % States(iT_T) % Values, &
-        Y_T => EOS % TS % States(iY_T) % Values )
-
-    ASSOCIATE &
       ( Chi_T => OPACITIES % ThermEmAb % Absorptivity(1) % Values )
 
     IF( ComputeDerivatives )THEN
@@ -117,7 +132,7 @@ CONTAINS
 
         CALL LogInterpolateDifferentiateSingleVariable &
                ( [ E(iE) ] / MeV, [ D ] / ( Gram / Centimeter**3 ), &
-                 [ T ] / Kelvin, [ Y ], E_T, D_T, T_T, Y_T, &
+                 [ T ] / Kelvin, [ Y ], Es_T, Ds_T, Ts_T, Ys_T, &
                  [ 1, 1, 1, 0 ], 1.0d-100, Chi_T, TMP, dTMP, debug = .FALSE. )
 
         Chi(iE) &
@@ -137,7 +152,7 @@ CONTAINS
 
         CALL LogInterpolateSingleVariable &
                ( [ E(iE) ] / MeV, [ D ] / ( Gram / Centimeter**3 ), &
-                 [ T ] / Kelvin, [ Y ], E_T, D_T, T_T, Y_T, &
+                 [ T ] / Kelvin, [ Y ], Es_T, Ds_T, Ts_T, Ys_T, &
                  [ 1, 1, 1, 0 ], 1.0d-100, Chi_T, TMP )
 
         Chi(iE) = TMP(1) * ( 1.0_DP / Centimeter )
@@ -147,12 +162,6 @@ CONTAINS
     END IF
 
     END ASSOCIATE ! Chi_T
-
-    END ASSOCIATE ! E_T, etc.
-
-    END ASSOCIATE ! iD_T, etc.
-
-    END ASSOCIATE ! EOS
 
 #else
 
@@ -167,7 +176,56 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE ComputeAbsorptionCoefficients_TABLE
+  END SUBROUTINE ComputeAbsorptionOpacity_TABLE
+
+
+  SUBROUTINE ComputeScatteringOpacity_ES_TABLE &
+               ( E, D, T, Y, Sigma, dSigmadT_Option, dSigmadY_Option )
+
+    REAL(DP), DIMENSION(:), INTENT(in)            :: E, D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)           :: Sigma
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dSigmadT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dSigmadY_Option
+
+    LOGICAL                :: ComputeDerivatives
+    INTEGER                :: iE
+    REAL(DP), DIMENSION(1) :: TMP
+
+    ComputeDerivatives = .FALSE.
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ASSOCIATE &
+      ( Sigma_T => OPACITIES % Scatt_Iso % Kernel(1) % Values(:,:,:,:,1), &
+        OS      => OPACITIES % Scatt_Iso % Offsets(1,1) )
+
+    DO iE = 1, SIZE( E )
+
+      CALL LogInterpolateSingleVariable &
+             ( [ E(iE) ] / MeV, [ D ] / ( Gram / Centimeter**3 ), &
+               [ T ] / Kelvin, [ Y ], Es_T, Ds_T, Ts_T, Ys_T, &
+               [ 1, 1, 1, 0 ], OS, Sigma_T, TMP )
+
+      Sigma(iE) = TMP(1) * ( 1.0_DP / Centimeter )
+
+    END DO
+
+    END ASSOCIATE ! Sigma_T, etc.
+
+#else
+
+    Sigma(:) = 0.0_DP
+
+    IF( ComputeDerivatives )THEN
+
+      dSigmadT_Option(:) = 0.0_DP
+      dSigmadY_Option(:) = 0.0_DP
+
+    END IF
+
+#endif
+
+  END SUBROUTINE ComputeScatteringOpacity_ES_TABLE
 
 
 END MODULE OpacityModule_TABLE

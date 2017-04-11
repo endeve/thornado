@@ -2,9 +2,12 @@ MODULE FluidRadiationCouplingModule
 
   USE KindModule, ONLY: &
     DP
-  USE FluidRadiationCouplingSolutionModule_Implicit, ONLY: &
-    CoupleFluidRadiation_Implicit_EmissionAbsorption, &
-    CoupleFluidRadiation_Implicit_ElasticScattering
+  USE FluidRadiationCouplingSolutionModule_ThermalReservoir, ONLY: &
+    CoupleFluidRadiation_ThermalReservoir
+  USE FluidRadiationCouplingSolutionModule_EmissionAbsorption, ONLY: &
+    CoupleFluidRadiation_EmissionAbsorption
+  USE FluidRadiationCouplingSolutionModule_ElasticScattering, ONLY: &
+    CoupleFluidRadiation_ElasticScattering
 
   IMPLICIT NONE
   PRIVATE
@@ -40,12 +43,22 @@ CONTAINS
     END IF
 
     SELECT CASE ( TRIM( FluidRadiationCoupling ) )
+
+      CASE( 'ThermalReservoir' )
+
+        CoupleFluidRadiation &
+          => CoupleFluidRadiation_ThermalReservoir
+
       CASE( 'EmissionAbsorption' )
+
         CoupleFluidRadiation &
-          => CoupleFluidRadiation_Implicit_EmissionAbsorption
+          => CoupleFluidRadiation_EmissionAbsorption
+
       CASE( 'ElasticScattering' )
+
         CoupleFluidRadiation &
-          => CoupleFluidRadiation_Implicit_ElasticScattering
+          => CoupleFluidRadiation_ElasticScattering
+
       CASE( 'InelasticScattering' )
 
       CASE( 'Complete' )
