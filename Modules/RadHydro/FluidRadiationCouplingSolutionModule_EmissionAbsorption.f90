@@ -289,7 +289,7 @@ CONTAINS
           MINVAL( ABS( FVEC(i_Y,:) ) ), ' / ', &
           MAXVAL( ABS( FVEC(i_Y,:) ) )
         WRITE(*,*)
-        WRITE(*,'(A12,A22,ES10.4E2,A3,ES10.4E2)'), &
+        WRITE(*,'(A12,A22,ES10.4E2,A3,ES10.4E2)') &
           '', 'MIN/MAX    ||dE/E|| = ', &
           MINVAL( ABS( dUVEC(i_E,:) / UVEC(i_E,:,iNew) ) ),' / ', &
           MAXVAL( ABS( dUVEC(i_E,:) / UVEC(i_E,:,iNew) ) )
