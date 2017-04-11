@@ -59,8 +59,7 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iGF, iCF
     INTEGER :: iNodeX1, jNodeX1, iNodeX2, iNodeX3, iNodeX, jNodeX
-    REAL(DP) :: Alpha, AlphaPls, AlphaMns, AlphaMdl, AlphaL, AlphaR, &
-                Cs, Gamma
+    REAL(DP) :: Alpha, AlphaPls, AlphaMns, AlphaMdl, AlphaL, AlphaR, Cs, gamma
     REAL(DP), DIMENSION(1:nCF) :: Flux_L, Flux_R, Flux
     REAL(DP), DIMENSION(1:5) :: EigVals_L, EigVals_R
     REAL(DP), DIMENSION(1:1,1:nGF) :: uGF_L, uGF_R
@@ -127,10 +126,12 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_L, uGF_L, uPF_L, uAF_L )
 
-                CALL ComputeSoundSpeed( uAF_L(iNodeX1, iAF_P), &
+                gamma = 1.67_DP
+
+                Cs = ComputeSoundSpeed( uAF_L(iNodeX1, iAF_P), &
                                         uPF_L(iNodeX1, iPF_E), &
                                         uPF_L(iNodeX1, iPF_D), &
-                                        uAF_L(iNodeX1, iAF_Gm) )
+                                        gamma )
 
                 EigVals_L = Eigenvalues( uPF_L(iNodeX1, iPF_V1),       &
                                          uPF_L(iNodeX1, iPF_V2),       &
@@ -169,10 +170,10 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_R, uGF_R, uPF_R, uAF_R )
 
-                CALL ComputeSoundSpeed( uAF_R(iNodeX1, iAF_P), &
+                Cs = ComputeSoundSpeed( uAF_R(iNodeX1, iAF_P), &
                                         uPF_R(iNodeX1, iPF_E), &
                                         uPF_R(iNodeX1, iPF_D), &
-                                        uAF_R(iNodeX1, iAF_Gm) )
+                                        gamma )
 
                 EigVals_R = Eigenvalues( uPF_R(iNodeX1, iPF_V1),       &
                                          uPF_R(iNodeX1, iPF_V2),       &
@@ -250,10 +251,10 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_L, uGF_L, uPF_L, uAF_L )
 
-                CALL ComputeSoundSpeed( uAF_L(iNodeX1, iAF_P), &
+                Cs = ComputeSoundSpeed( uAF_L(iNodeX1, iAF_P), &
                                         uPF_L(iNodeX1, iPF_E), &
                                         uPF_L(iNodeX1, iPF_D), &
-                                        uAF_L(iNodeX1, iAF_Gm) )
+                                        gamma )
 
                 EigVals_L = Eigenvalues( uPF_L(iNodeX1, iPF_V1),       &
                                          uPF_L(iNodeX1, iPF_V2),       &
@@ -292,10 +293,10 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_R, uGF_R, uPF_R, uAF_R )
 
-                CALL ComputeSoundSpeed( uAF_R(iNodeX1, iAF_P), &
+                Cs = ComputeSoundSpeed( uAF_R(iNodeX1, iAF_P), &
                                         uPF_R(iNodeX1, iPF_E), &
                                         uPF_R(iNodeX1, iPF_D), &
-                                        uAF_R(iNodeX1, iAF_Gm) )
+                                        gamma )
 
                 EigVals_R = Eigenvalues( uPF_R(iNodeX1, iPF_V1),       &
                                          uPF_R(iNodeX1, iPF_V2),       &
