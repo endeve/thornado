@@ -1,5 +1,5 @@
 function...
-  [ Time, E, X, uCR_N, uCR_G1, uPR_D, uPR_I1 ]...
+  [ Time, E, X, uCR_N, uCR_G1, uPR_D, uPR_I1, Shock ]...
     = ReadRadiationFields1D( AppName, FileNumber, Directory )
 
   if( exist( 'Directory', 'var' ) )
@@ -29,6 +29,7 @@ function...
   uPR_I1 = zeros( nE, nX );
   uPR_I2 = zeros( nE, nX );
   uPR_I3 = zeros( nE, nX );
+  Shock  = zeros( nE, nX );
   
   for i = 1 : nX
       
@@ -40,6 +41,7 @@ function...
     uPR_I1(:,i) = RF(iO+5*nE*nX+(i-1)*nE+1:iO+5*nE*nX+i*nE);
     uPR_I2(:,i) = RF(iO+6*nE*nX+(i-1)*nE+1:iO+6*nE*nX+i*nE);
     uPR_I3(:,i) = RF(iO+7*nE*nX+(i-1)*nE+1:iO+7*nE*nX+i*nE);
+    Shock (:,i) = RF(iO+8*nE*nX+(i-1)*nE+1:iO+8*nE*nX+i*nE);
 
   end
   

@@ -1,16 +1,18 @@
-PROGRAM HomogeneousSphere1D
+PROGRAM CoolingProblem1D
 
   USE KindModule, ONLY: &
-    DP, Pi, TwoPi
+    DP, Pi
   USE UnitsModule, ONLY: &
     Kilometer, &
     MeV, &
-    Microsecond
+    Kelvin, &
+    Microsecond, &
+    Millisecond
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
   USE TransportProblemsInitializationModule, ONLY: &
-    InitializeHomogeneousSphere1D
+    InitializeDeleptonizationProblem1D
   USE TimeSteppingModule, ONLY: &
     EvolveFields, &
     SI_RK
@@ -19,7 +21,7 @@ PROGRAM HomogeneousSphere1D
 
   CALL InitializeProgram &
          ( ProgramName_Option &
-             = 'HomogeneousSphere1D', &
+             = 'DeleptonizationProblem1D', &
            nX_Option &
              = [ 100, 1, 1 ], &
            swX_Option &
@@ -29,17 +31,17 @@ PROGRAM HomogeneousSphere1D
            xL_Option &
              = [ 0.0d0 * Kilometer, 0.0d0, 0.0d0 ], &
            xR_Option &
-             = [ 5.0d2 * Kilometer, Pi,    4.0d0 ], &
+             = [ 2.0d2 * Kilometer, Pi,    4.0d0 ], &
            nE_Option &
-             = 20, &
+             = 12, &
            eL_Option &
              = 0.0d0 * MeV, &
            eR_Option &
-             = 1.0d2 * MeV, &
+             = 5.0d1 * MeV, &
            ZoomE_Option &
              = 1.15_DP, &
            nNodes_Option &
-             = 4, &
+             = 3, &
            CoordinateSystem_Option &
              = 'SPHERICAL', &
            ActivateUnits_Option &
@@ -53,9 +55,9 @@ PROGRAM HomogeneousSphere1D
            OpacityTableName_Option &
              = 'OpacityTable.h5', &
            FluidRadiationCoupling_Option &
-             = 'ThermalReservoir', &
+             = 'EmissionAbsorption', &
            EvolveFluid_Option &
-             = .FALSE., &
+             = .TRUE., &
            RadiationSolver_Option &
              = 'M1_DG', &
            RadiationRiemannSolver_Option &
@@ -65,23 +67,26 @@ PROGRAM HomogeneousSphere1D
            ApplySlopeLimiter_Option &
              = .TRUE., &
            BetaTVB_Option &
-             = 0.0_DP, &
+             = 0.0d0, &
            BetaTVD_Option &
-             = 1.8_DP, &
+             = 1.8d0, &
            ApplyPositivityLimiter_Option &
              = .TRUE., &
            nStages_SI_RK_Option &
              = 2 )
 
-  CALL InitializeHomogeneousSphere1D &
-         ( CentralConditions_Option = '04' )
+  CALL InitializeDeleptonizationProblem1D &
+         ( Temperature_Option &
+             = 1.0d11 * Kelvin, &
+           ElectronFraction_Option &
+             = 0.3_DP )
 
   CALL EvolveFields &
-         ( t_begin  = 0.0d+0 * Microsecond, &
-           t_end    = 3.0d+3 * Microsecond, &
-           dt_write = 1.0d+2 * Microsecond, &
+         ( t_begin  = 0.0d+0 * Millisecond, &
+           t_end    = 1.0d+1 * Millisecond, &
+           dt_write = 1.0d-1 * Millisecond, &
            UpdateFields = SI_RK )
 
   CALL FinalizeProgram
 
-END PROGRAM HomogeneousSphere1D
+END PROGRAM CoolingProblem1D

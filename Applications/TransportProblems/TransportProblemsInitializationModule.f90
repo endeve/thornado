@@ -1,7 +1,7 @@
 MODULE TransportProblemsInitializationModule
 
   USE KindModule, ONLY: &
-    DP, Pi
+    DP, Pi, FourPi
   USE UnitsModule, ONLY: &
     Centimeter, &
     Gram, &
@@ -14,23 +14,27 @@ MODULE TransportProblemsInitializationModule
     nX, nNodesX, &
     nE, nNodesE
   USE UtilitiesModule, ONLY: &
-    Locate, &
     NodeNumberX, &
-    NodeNumber, &
-    Interpolate1D_Linear
+    NodeNumber
   USE MeshModule, ONLY: &
     MeshX, &
     MeshE, &
     NodeCoordinate
   USE FluidFieldsModule, ONLY: &
-    uPF, iPF_D, iPF_E, iPF_Ne, &
-    uAF, iAF_T, iAF_E, iAF_Ye, iAF_Me, iAF_Mp, iAF_Mn
+    uCF, nCF, &
+    uPF, nPF, iPF_D, iPF_E, iPF_Ne, &
+    uAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, &
+    iAF_Me, iAF_Mp, iAF_Mn, iAF_Gm, iAF_Cs
+  USE EulerEquationsUtilitiesModule, ONLY: &
+    ComputeConserved
   USE RadiationFieldsModule, ONLY: &
     uPR, nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
     uCR, nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE EquationOfStateModule, ONLY: &
     ApplyEquationOfState, &
     ComputeThermodynamicStates_Primitive
+  USE OpacityModule, ONLY: &
+    ComputeScatteringOpacity_ES
   USE MomentEquationsUtilitiesModule, ONLY: &
     Conserved
 
@@ -46,18 +50,26 @@ MODULE TransportProblemsInitializationModule
   END TYPE ProfileType
 
   PUBLIC :: InitializeHomogeneousSphere1D
-  PUBLIC :: InitializeCoolingProblem1D
+  PUBLIC :: InitializeGaussianSphericalDiffusion1D
+  PUBLIC :: InitializeDeleptonizationProblem1D
 
 CONTAINS
 
 
-  SUBROUTINE InitializeHomogeneousSphere1D
+  SUBROUTINE InitializeHomogeneousSphere1D( CentralConditions_Option )
 
-    INTEGER  :: iX1, iX2, iX3, iE
-    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeE
-    INTEGER  :: iNodeX, iNode
-    REAL(DP) :: X1, E
-    REAL(DP) :: Radius
+    CHARACTER(2), INTENT(in), OPTIONAL :: CentralConditions_Option
+
+    CHARACTER(2) :: CentralConditions
+    INTEGER      :: iX1, iX2, iX3, iE
+    INTEGER      :: iNodeX1, iNodeX2, iNodeX3, iNodeE
+    INTEGER      :: iNodeX, iNode
+    REAL(DP)     :: X1, E
+    REAL(DP)     :: Radius
+
+    CentralConditions = '02'
+    IF( PRESENT( CentralConditions_Option ) ) &
+      CentralConditions = CentralConditions_Option
 
     Radius = 1.0d2 * Kilometer
 
@@ -81,14 +93,64 @@ CONTAINS
 
                 IF( X1 <= Radius )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-                    = 3.0d11 * Gram / Centimeter**3
+                  SELECT CASE ( CentralConditions )
 
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
-                    = 4.0_DP * MeV
+                    CASE ( '01' )
 
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
-                    = 0.2_DP
+                      uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                        = 1.0d14 * Gram / Centimeter**3
+                      uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                        = 21.0_DP * MeV
+                      uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                        = 0.25_DP
+
+                    CASE ( '02' )
+
+                      uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                        = 1.0d13 * Gram / Centimeter**3
+                      uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                        = 16.0_DP * MeV
+                      uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                        = 0.14_DP
+
+                    CASE ( '03' )
+
+                      uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                        = 1.0d12 * Gram / Centimeter**3
+                      uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                        = 8.0_DP * MeV
+                      uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                        = 0.12_DP
+
+                    CASE ( '04' )
+
+                      uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                        = 1.0d11 * Gram / Centimeter**3
+                      uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                        = 8.0_DP * MeV
+                      uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                        = 0.15_DP
+
+                    CASE ( '05' )
+
+                      uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                        = 1.0d10 * Gram / Centimeter**3
+                      uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                        = 3.0_DP * MeV
+                      uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                        = 0.26_DP
+
+                    CASE DEFAULT
+
+                      uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                        = 1.0d13 * Gram / Centimeter**3
+                      uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                        = 16.0_DP * MeV
+                      uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                        = 0.14_DP
+
+                  END SELECT
+
 
                 ELSE
 
@@ -96,7 +158,7 @@ CONTAINS
                     = 1.0d8 * Gram / Centimeter**3
 
                   uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
-                    = 0.5_DP * MeV
+                    = 0.2_DP * MeV
 
                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
                     = 0.4643_DP
@@ -112,11 +174,16 @@ CONTAINS
                    uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E), &
                    uAF(:,iX1,iX2,iX3,iAF_E),  uPF(:,iX1,iX2,iX3,iPF_Ne) )
 
+          CALL ApplyEquationOfState &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_P ), &
+                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mp), &
+                   uAF(:,iX1,iX2,iX3,iAF_Mn), uAF(:,iX1,iX2,iX3,iAF_Gm) )
+
         END DO
       END DO
     END DO
-
-    CALL ApplyEquationOfState
 
     ! --- Initialize Radiation Fields ---
 
@@ -131,13 +198,6 @@ CONTAINS
 
                   iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-                  ASSOCIATE &
-                    ( kT  => BoltzmannConstant &
-                               * uAF(iNodeX,iX1,iX2,iX3,iAF_T), &
-                      Mnu => uAF(iNodeX,iX1,iX2,iX3,iAF_Me) &
-                               + uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
-                               - uAF(iNodeX,iX1,iX2,iX3,iAF_Mn) )
-
                   DO iNodeE = 1, nNodesE
 
                     E = NodeCoordinate( MeshE, iE, iNodeE )
@@ -145,8 +205,7 @@ CONTAINS
                     iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
                     uPR(iNode,iE,iX1,iX2,iX3,iPR_D,1) &
-                      = 4.0_DP * Pi &
-                          / ( EXP( ( E - Mnu ) / kT ) + 1.0_DP )
+                      = 1.0d-6
 
                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,1) &
                       = 0.0_DP
@@ -161,8 +220,6 @@ CONTAINS
                       = Conserved( uPR(iNode,iE,iX1,iX2,iX3,1:nPR,1) )
 
                   END DO
-
-                  END ASSOCIATE ! kT, etc.
 
                 END DO
               END DO
@@ -176,23 +233,217 @@ CONTAINS
   END SUBROUTINE InitializeHomogeneousSphere1D
 
 
-  SUBROUTINE InitializeCoolingProblem1D( ProfileName )
+  SUBROUTINE InitializeGaussianSphericalDiffusion1D &
+               ( t_0, BackgroundConditions_Option )
 
-    CHARACTER(LEN=*), INTENT(in) :: ProfileName
+    REAL(DP),     INTENT(in)           :: t_0
+    CHARACTER(2), INTENT(in), OPTIONAL :: BackgroundConditions_Option
 
-    INTEGER           :: iX1, iX2, iX3, iR, iE
-    INTEGER           :: iNodeX1, iNodeX2, iNodeX3, iNodeE
-    INTEGER           :: iNodeX, iNode
-    REAL(DP)          :: X1, E
-    TYPE(ProfileType) :: P
+    CHARACTER(2)           :: BackgroundConditions
+    INTEGER                :: iX1, iX2, iX3, iE
+    INTEGER                :: iNodeX1, iNodeX2, iNodeX3, iNodeE
+    INTEGER                :: iNodeX, iNode
+    REAL(DP)               :: X1, E_0, E
+    REAL(DP), DIMENSION(1) :: Kappa
+
+    BackgroundConditions = '02'
+    IF( PRESENT( BackgroundConditions_Option ) ) &
+      BackgroundConditions = BackgroundConditions_Option
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
     WRITE(*,*)
 
-    CALL CreateProfile( P, nLines( ProfileName ) )
+    ! --- Initialize Fluid Fields ---
 
-    CALL ReadProfile( P, ProfileName, Reverse_Option = .TRUE. )
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+              DO iNodeX1 = 1, nNodesX(1)
+
+                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+                SELECT CASE ( BackgroundConditions )
+
+                  CASE ( '01' )
+
+                    uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                      = 1.0d14 * Gram / Centimeter**3
+                    uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                      = 21.0_DP * MeV
+                    uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                      = 0.25_DP
+
+                  CASE ( '02' )
+
+                    uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                      = 1.0d13 * Gram / Centimeter**3
+                    uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                      = 16.0_DP * MeV
+                    uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                      = 0.14_DP
+
+                  CASE ( '03' )
+
+                    uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                      = 1.0d12 * Gram / Centimeter**3
+                    uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                      = 8.0_DP * MeV
+                    uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                      = 0.12_DP
+
+                  CASE ( '04' )
+
+                    uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                      = 1.0d11 * Gram / Centimeter**3
+                    uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                      = 8.0_DP * MeV
+                    uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                      = 0.15_DP
+
+                  CASE ( '05' )
+
+                    uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                      = 1.0d10 * Gram / Centimeter**3
+                    uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+                      = 3.0_DP * MeV
+                    uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                      = 0.26_DP
+
+                  END SELECT
+
+              END DO
+            END DO
+          END DO
+
+          CALL ComputeThermodynamicStates_Primitive &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E), &
+                   uAF(:,iX1,iX2,iX3,iAF_E),  uPF(:,iX1,iX2,iX3,iPF_Ne) )
+
+          CALL ApplyEquationOfState &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_P ), &
+                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mp), &
+                   uAF(:,iX1,iX2,iX3,iAF_Mn), uAF(:,iX1,iX2,iX3,iAF_Gm) )
+
+        END DO
+      END DO
+    END DO
+
+    ! --- Initialize Radiation Fields ---
+
+    E_0 = NodeCoordinate( MeshE, 1, 1 )
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          DO iE = 1, nE
+
+            DO iNodeX3 = 1, nNodesX(3)
+              DO iNodeX2 = 1, nNodesX(2)
+                DO iNodeX1 = 1, nNodesX(1)
+
+                  X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+                  iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+                  DO iNodeE = 1, nNodesE
+
+                    E = NodeCoordinate( MeshE, iE, iNodeE )
+
+                    iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+
+                    CALL ComputeScatteringOpacity_ES &
+                           ( [ E ], &
+                             [ uPF(iNodeX,iX1,iX2,iX3,iPF_D ) ], &
+                             [ uAF(iNodeX,iX1,iX2,iX3,iAF_T ) ], &
+                             [ uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) ], &
+                             Kappa )
+
+                    WRITE(*,'(A6,A10,ES12.4E2,A16,ES12.4E2)') &
+                      '', 'E [MeV] = ', E / MeV, &
+                      ' Kappa [1/cm] = ', Kappa / ( 1.0_DP / Centimeter )
+
+                    ! --- Number Density ---
+
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_D,1) &
+                      = EXP( - 3.0_DP * Kappa(1) * ( X1 * E_0 / E )**2 &
+                               / ( 4.0_DP * t_0 ) )
+
+                    ! --- Number Flux Density (1) ---
+
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,1) &
+                      = X1 * uPR(iNode,iE,iX1,iX2,iX3,iPR_D,1) &
+                          / ( 2.0_DP * t_0 )
+
+                    ! --- Number Flux Density (2) ---
+
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,1) &
+                      = 0.0_DP
+
+                    ! --- Number Flux Density (3) ---
+
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,1) &
+                      = 0.0_DP
+
+                    ! --- Compute Conserved Radiation Fields ---
+
+                    uCR(iNode,iE,iX1,iX2,iX3,1:nCR,1) &
+                      = Conserved( uPR(iNode,iE,iX1,iX2,iX3,1:nPR,1) )
+
+                  END DO
+
+                END DO
+              END DO
+            END DO
+
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeGaussianSphericalDiffusion1D
+
+
+  SUBROUTINE InitializeDeleptonizationProblem1D &
+               ( Temperature_Option, ElectronFraction_Option )
+
+    REAL(DP), INTENT(in), OPTIONAL :: Temperature_Option
+    REAL(DP), INTENT(in), OPTIONAL :: ElectronFraction_Option
+
+    INTEGER             :: iX1, iX2, iX3, iR, iE
+    INTEGER             :: iNodeX1, iNodeX2, iNodeX3, iNodeE
+    INTEGER             :: iNodeX, iNode
+    REAL(DP)            :: MassDensity
+    REAL(DP)            :: Temperature
+    REAL(DP)            :: ElectronFraction
+    REAL(DP)            :: X1, E, Mnu, kT
+    REAL(DP)            :: R_2, X1_0, Theta
+    REAL(DP), PARAMETER :: R_0   = 1.0d00 * Kilometer
+    REAL(DP), PARAMETER :: D_1   = 4.5d14 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: R_1   = 1.0d01 * Kilometer
+    REAL(DP), PARAMETER :: D_2   = 1.0d13 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: Alpha = - 4.0_DP
+
+    Temperature = 1.0d11 * Kelvin
+    IF( PRESENT( Temperature_Option ) ) &
+      Temperature = Temperature_Option
+
+    ElectronFraction = 0.3_DP
+    IF( PRESENT( ElectronFraction_Option ) ) &
+      ElectronFraction = ElectronFraction_Option
+
+    WRITE(*,*)
+    WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
+    WRITE(*,*)
+
+    R_2  = R_1 * SQRT( LOG( D_1 / D_2 ) )
+    X1_0 = R_2
 
     ! --- Initialize Fluid Fields with Profile ---
 
@@ -206,26 +457,23 @@ CONTAINS
 
                 X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-                iR = Locate( X1, P % Radius, P % nPoints )
+                Theta = 0.5_DP * ( 1.0_DP + TANH( ( X1 - X1_0 ) / R_0 ) )
 
                 iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
+                MassDensity &
+                  = (1.0_DP - Theta) * D_1 * EXP( - ( X1 / R_1 )**2 ) &
+                      + Theta * D_2 * ( X1 / R_2 )**Alpha
+
                 uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-                  = Interpolate1D_Linear &
-                      ( X1, P % Radius(iR), P % Radius(iR+1), &
-                        P % MassDensity(iR), P % MassDensity(iR+1) )
+                  = MassDensity
 
                 uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
-                  = 1.0d11 * Kelvin
-!!$                  = Interpolate1D_Linear &
-!!$                      ( X1, P % Radius(iR), P % Radius(iR+1), &
-!!$                        P % Temperature(iR), P % Temperature(iR+1) )
+                  = (1.0_DP - Theta) * Temperature &
+                      + Theta * Temperature * ( X1_0 / X1 )**1
 
                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
-                  = 0.3_DP
-!!$                  = Interpolate1D_Linear &
-!!$                      ( X1, P % Radius(iR), P % Radius(iR+1), &
-!!$                        P % ElectronFraction(iR), P % ElectronFraction(iR+1) )
+                  = ElectronFraction
 
               END DO
             END DO
@@ -236,11 +484,24 @@ CONTAINS
                    uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E), &
                    uAF(:,iX1,iX2,iX3,iAF_E),  uPF(:,iX1,iX2,iX3,iPF_Ne) )
 
+          CALL ComputeConserved &
+                 ( uPF(:,iX1,iX2,iX3,1:nPF), uCF(:,iX1,iX2,iX3,1:nCF) )
+
+          CALL ApplyEquationOfState &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_P ), &
+                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mp), &
+                   uAF(:,iX1,iX2,iX3,iAF_Mn), uAF(:,iX1,iX2,iX3,iAF_Gm) )
+
+          uAF(:,iX1,iX2,iX3,iAF_Cs) &
+            = SQRT( uAF(:,iX1,iX2,iX3,iAF_Gm) &
+                    * uAF(:,iX1,iX2,iX3,iAF_P) &
+                    / uPF(:,iX1,iX2,iX3,iPF_D) )
+
         END DO
       END DO
     END DO
-
-    CALL ApplyEquationOfState
 
     ! --- Initialize Radiation Fields ---
 
@@ -255,12 +516,12 @@ CONTAINS
 
                   iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-                  ASSOCIATE &
-                    ( kT  => BoltzmannConstant &
-                               * uAF(iNodeX,iX1,iX2,iX3,iAF_T), &
-                      Mnu => uAF(iNodeX,iX1,iX2,iX3,iAF_Me) &
-                               + uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
-                               - uAF(iNodeX,iX1,iX2,iX3,iAF_Mn) )
+                  kT  = BoltzmannConstant &
+                        * uAF(iNodeX,iX1,iX2,iX3,iAF_T)
+
+                  Mnu = uAF(iNodeX,iX1,iX2,iX3,iAF_Me) &
+                        + uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
+                        - uAF(iNodeX,iX1,iX2,iX3,iAF_Mn)
 
                   DO iNodeE = 1, nNodesE
 
@@ -269,8 +530,7 @@ CONTAINS
                     iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
                     uPR(iNode,iE,iX1,iX2,iX3,iPR_D,1) &
-                      = 4.0_DP * Pi &
-                          / ( EXP( ( E - Mnu ) / kT ) + 1.0_DP )
+                      = MAX( 1.0d-8, FourPi / ( EXP( (E-Mnu)/kT ) + 1.0_DP ) )
 
                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,1) &
                       = 0.0_DP
@@ -286,8 +546,6 @@ CONTAINS
 
                   END DO
 
-                  END ASSOCIATE ! kT, etc.
-
                 END DO
               END DO
             END DO
@@ -297,7 +555,7 @@ CONTAINS
       END DO
     END DO
 
-  END SUBROUTINE InitializeCoolingProblem1D
+  END SUBROUTINE InitializeDeleptonizationProblem1D
 
 
   SUBROUTINE CreateProfile( P, N )

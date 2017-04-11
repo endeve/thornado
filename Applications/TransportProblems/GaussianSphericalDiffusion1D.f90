@@ -1,21 +1,18 @@
-PROGRAM CoolingProblem1D
+PROGRAM GaussianSphericalDiffusion1D
 
   USE KindModule, ONLY: &
-    DP, Pi, TwoPi
+    DP, Pi
   USE UnitsModule, ONLY: &
+    Centimeter, &
     Kilometer, &
     MeV, &
-    Gram, &
-    Centimeter, &
-    Kelvin, &
     Microsecond, &
-    PlanckConstant, &
-    SpeedOfLight
+    Millisecond
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
   USE TransportProblemsInitializationModule, ONLY: &
-    InitializeCoolingProblem1D
+    InitializeGaussianSphericalDiffusion1D
   USE TimeSteppingModule, ONLY: &
     EvolveFields, &
     SI_RK
@@ -24,9 +21,9 @@ PROGRAM CoolingProblem1D
 
   CALL InitializeProgram &
          ( ProgramName_Option &
-             = 'CoolingProblem1D', &
+             = 'GaussianSphericalDiffusion1D', &
            nX_Option &
-             = [ 128, 1, 1 ], &
+             = [ 32, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -34,17 +31,17 @@ PROGRAM CoolingProblem1D
            xL_Option &
              = [ 0.0d0 * Kilometer, 0.0d0, 0.0d0 ], &
            xR_Option &
-             = [ 1.0d2 * Kilometer, Pi,    TwoPi ], &
+             = [ 5.0d1 * Kilometer, Pi,    4.0d0 ], &
            nE_Option &
-             = 20, &
+             = 1, &
            eL_Option &
              = 0.0d0 * MeV, &
            eR_Option &
-             = 1.0d2 * MeV, &
+             = 2.0d2 * MeV, &
            ZoomE_Option &
-             = 1.1_DP, &
+             = 1.0_DP, &
            nNodes_Option &
-             = 2, &
+             = 3, &
            CoordinateSystem_Option &
              = 'SPHERICAL', &
            ActivateUnits_Option &
@@ -58,25 +55,36 @@ PROGRAM CoolingProblem1D
            OpacityTableName_Option &
              = 'OpacityTable.h5', &
            FluidRadiationCoupling_Option &
-             = 'EmissionAbsorption', &
+             = 'ElasticScattering', &
            EvolveFluid_Option &
              = .FALSE., &
            RadiationSolver_Option &
              = 'M1_DG', &
+           RadiationRiemannSolver_Option &
+             = 'HLL', &
            EvolveRadiation_Option &
+             = .TRUE., &
+           ApplySlopeLimiter_Option &
+             = .TRUE., &
+           BetaTVB_Option &
+             = 0.0d0, &
+           BetaTVD_Option &
+             = 1.8d0, &
+           ApplyPositivityLimiter_Option &
              = .TRUE., &
            nStages_SI_RK_Option &
              = 2 )
 
-  CALL InitializeCoolingProblem1D &
-         ( ProfileName = 'Output100ms.d' )
+  CALL InitializeGaussianSphericalDiffusion1D &
+         ( t_0 = 3.0d-0 * Millisecond, &
+           BackgroundConditions_Option = '01' )
 
   CALL EvolveFields &
-         ( t_begin  = 0.0d+0 * Microsecond, &
-           t_end    = 1.0d+3 * Microsecond, &
-           dt_write = 1.0d+2 * Microsecond, &
+         ( t_begin  = 0.0d+0 * Millisecond, &
+           t_end    = 1.0d+1 * Millisecond, &
+           dt_write = 1.0d-0 * Millisecond, &
            UpdateFields = SI_RK )
 
   CALL FinalizeProgram
 
-END PROGRAM CoolingProblem1D
+END PROGRAM GaussianSphericalDiffusion1D

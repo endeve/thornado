@@ -1,7 +1,10 @@
+MICROPHYSICS = WEAKLIB
+
 include ../../../Build/Makefile_Build
 
 all: HomogeneousSphere1D \
-     CoolingProblem1D
+     GaussianSphericalDiffusion1D \
+     DeleptonizationProblem1D
 
 HomogeneousSphere1D: \
 	$(thornado) TransportProblemsInitializationModule.o \
@@ -11,12 +14,20 @@ HomogeneousSphere1D: \
 	HomogeneousSphere1D.o \
 	$(LIBRARIES)
 
-CoolingProblem1D: \
+GaussianSphericalDiffusion1D: \
 	$(thornado) TransportProblemsInitializationModule.o \
-	CoolingProblem1D.o
-	$(FLINKER) $(FLAGS) -o CoolingProblem1D_$(MACHINE) \
+	GaussianSphericalDiffusion1D.o
+	$(FLINKER) $(FLAGS) -o GaussianSphericalDiffusion1D_$(MACHINE) \
 	$(thornado) TransportProblemsInitializationModule.o \
-	CoolingProblem1D.o \
+	GaussianSphericalDiffusion1D.o \
+	$(LIBRARIES)
+
+DeleptonizationProblem1D: \
+	$(thornado) TransportProblemsInitializationModule.o \
+	DeleptonizationProblem1D.o
+	$(FLINKER) $(FLAGS) -o DeleptonizationProblem1D_$(MACHINE) \
+	$(thornado) TransportProblemsInitializationModule.o \
+	DeleptonizationProblem1D.o \
 	$(LIBRARIES)
 
 clean:
@@ -24,7 +35,8 @@ clean:
 
 clobber: clean
 	rm -f HomogeneousSphere1D_$(MACHINE)
-	rm -f CoolingProblem1D_$(MACHINE)
+	rm -f GaussianSphericalDiffusion1D_$(MACHINE)
+	rm -f DeleptonizationProblem1D_$(MACHINE)
 
 HomogeneousSphere1D.o: \
   KindModule.o \
@@ -34,13 +46,21 @@ HomogeneousSphere1D.o: \
   TimeSteppingModule.o \
   HomogeneousSphere1D.f90
 
-CoolingProblem1D.o: \
+GaussianSphericalDiffusion1D.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramInitializationModule.o \
   TransportProblemsInitializationModule.o \
   TimeSteppingModule.o \
-  CoolingProblem1D.f90
+  GaussianSphericalDiffusion1D.f90
+
+DeleptonizationProblem1D.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramInitializationModule.o \
+  TransportProblemsInitializationModule.o \
+  TimeSteppingModule.o \
+  DeleptonizationProblem1D.f90
 
 TransportProblemsInitializationModule.o: \
   KindModule.o \
@@ -51,5 +71,6 @@ TransportProblemsInitializationModule.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   EquationOfStateModule.o \
+  OpacityModule.o \
   MomentEquationsUtilitiesModule.o \
   TransportProblemsInitializationModule.f90
