@@ -101,11 +101,13 @@ CONTAINS
 
         IF( ABS( Pnew / Pold - 1.0_DP ) <= TolP ) Converged = .TRUE.
 
-        IF( nIter .GT. 2 )THEN
-          WRITE(*,'(A6,1x,I2,3x,A10,E19.12)') 'nIter:',nIter,'|ERROR| =',ABS( Pnew / Pold - 1.0_DP )
+        IF( nIter .GT. 3 )THEN
+          WRITE(*,'(A6,1x,I2,3x,A10,E27.20)') 'nIter:',nIter,'|ERROR| =',ABS( Pnew / Pold - 1.0_DP )
         END IF
-        IF( nIter == 10)THEN
-          PRINT*, "No convergence, ERROR:", ABS( Pnew / Pold - 1.0_DP )
+        IF( nIter == 100)THEN
+          PRINT*, "No convergence, |ERROR|:", ABS( Pnew / Pold - 1.0_DP )
+          PRINT*, "Pold:",Pold
+          PRINT*, "Pnew:",Pnew
           STOP
 
         END IF
@@ -114,6 +116,9 @@ CONTAINS
           PRINT*, 'Pnew is NaN'
           PRINT*, 'Pold is ', Pold
           PRINT*, 'nIter:',nIter
+          PRINT*, 'D:', uCF(i,iCF_D)
+          PRINT*, 'tau+D-sqrt(D^2+S^2):', &
+            uCF(i,iCF_E)+uCF(i,iCF_D)-SQRT(uCF(i,iCF_D)**2+SSq)
           STOP
         END IF
 
@@ -149,19 +154,19 @@ CONTAINS
 
 
   PURE FUNCTION Eigenvalues( V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                              Gm_uu_11, Alpha, Beta1, Cs )
+                              Gm_uu_11, Alpha, Beta1, Cs ) RESULT(EigVals)
 
-    ! V1 is the contravariant component V^1
+    ! Vi is the contravariant component V^i
     ! Beta1 is the contravariant component Beta^1
 
     REAL(DP), INTENT(in) :: V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                               Gm_uu_11, Alpha, Beta1, Cs
     REAL(DP) :: VSq
-    REAL(DP), DIMENSION(1:5) :: Eigenvalues
+    REAL(DP), DIMENSION(1:5) :: EigVals
 
     Vsq = Gm_dd_11 * V1**2 + Gm_dd_22 * V2**2 + Gm_dd_33 * V3**2
 
-    Eigenvalues(1:5) = &
+    EigVals(1:5) = &
       [ Alpha / ( 1.0_DP - VSq * Cs**2 ) * ( V1 * ( 1.0_DP - Cs**2 ) - Cs &
         * SQRT( ( 1.0_DP - VSq ) * ( Gm_uu_11 * ( 1.0_DP - VSq * Cs**2 )  &
         - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
@@ -180,16 +185,14 @@ CONTAINS
   END FUNCTION Eigenvalues
 
 
-  SUBROUTINE ComputeSoundSpeed( p, e, rho, Gamma )
+  PURE FUNCTION ComputeSoundSpeed( p, e, rho, Gamma ) RESULT(Cs)
 
     REAL(DP), INTENT(in) :: p, e, rho, Gamma
-    REAL(DP) :: Cs, h
-    
-    h = 1.0_DP + ( e + p ) / rho
+    REAL(DP) :: Cs
 
-    Cs = SQRT ( Gamma * p / ( rho * h ) )
+    Cs = SQRT ( Gamma * p / ( rho + e + p ) )
 
-  END SUBROUTINE ComputeSoundSpeed
+  END FUNCTION ComputeSoundSpeed
 
 
   FUNCTION Flux_X1 &
