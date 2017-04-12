@@ -149,19 +149,12 @@ CONTAINS
 
   SUBROUTINE SetRates
 
-    INTEGER :: iX
-
     ASSOCIATE &
       ( D_N => uPF_N(iPF_D, 1:nNodesX_G), &
         T_N => uAF_N(iAF_T, 1:nNodesX_G), &
         Y_N => uAF_N(iAF_Ye,1:nNodesX_G) )
 
-    DO iX = 1, nNodesX_G
-
-      CALL ComputeAbsorptionOpacity &
-             ( E_N(:), [ D_N(iX) ], [ T_N(iX) ], [ Y_N(iX) ], Chi(:,iX) )
-
-    END DO
+    CALL ComputeAbsorptionOpacity( E_N, D_N, T_N, Y_N, Chi )
 
     END ASSOCIATE ! D_N, etc.
 

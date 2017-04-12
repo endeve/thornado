@@ -1153,7 +1153,8 @@ CONTAINS
     REAL(DP), INTENT(in) :: t, dt
 
     CALL CoupleFluidRadiation &
-           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+             EvolveFluid_Option = EvolveFluid )
 
   END SUBROUTINE BackwardEuler
 

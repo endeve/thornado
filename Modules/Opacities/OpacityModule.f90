@@ -24,13 +24,10 @@ MODULE OpacityModule
   ! ---
 
   INTERFACE
-    SUBROUTINE ComputeOpacity_A &
-      ( E, D, T, Y, Opacity, dOpacitydT, dOpacitydY )
+    SUBROUTINE ComputeOpacity_A( E, D, T, Y, Opacity )
       USE KindModule, ONLY: DP
-      REAL(DP), DIMENSION(:), INTENT(in)            :: E, D, T, Y
-      REAL(DP), DIMENSION(:), INTENT(out)           :: Opacity
-      REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dOpacitydT
-      REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dOpacitydY
+      REAL(DP), DIMENSION(:),   INTENT(in)  :: E, D, T, Y
+      REAL(DP), DIMENSION(:,:), INTENT(out) :: Opacity
     END SUBROUTINE ComputeOpacity_A
   END INTERFACE
 

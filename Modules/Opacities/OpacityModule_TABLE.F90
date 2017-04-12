@@ -13,7 +13,7 @@ MODULE OpacityModule_TABLE
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable, &
-    LogInterpolateDifferentiateSingleVariable
+    LogInterpolateSingleVariable_1D3D
 
   ! ----------------------------------------------
 
@@ -99,99 +99,47 @@ CONTAINS
 
   SUBROUTINE FinalizeOpacities_TABLE
 
+#ifdef MICROPHYSICS_WEAKLIB
+
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T )
+
+#endif
 
   END SUBROUTINE FinalizeOpacities_TABLE
 
 
-  SUBROUTINE ComputeAbsorptionOpacity_TABLE &
-               ( E, D, T, Y, Chi, dChidT_Option, dChidY_Option )
+  SUBROUTINE ComputeAbsorptionOpacity_TABLE( E, D, T, Y, Chi )
 
-    REAL(DP), DIMENSION(:), INTENT(in)            :: E, D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)           :: Chi
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dChidT_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dChidY_Option
-
-    LOGICAL                  :: ComputeDerivatives
-    INTEGER                  :: iE
-    REAL(DP), DIMENSION(1)   :: TMP
-    REAL(DP), DIMENSION(1,4) :: dTMP
-
-    ComputeDerivatives = .FALSE.
-    IF( ALL( [ PRESENT( dChidT_Option ), PRESENT( dChidY_Option ) ] ) ) &
-      ComputeDerivatives = .TRUE.
+    REAL(DP), DIMENSION(:),   INTENT(in)  :: E, D, T, Y
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: Chi
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( Chi_T => OPACITIES % ThermEmAb % Absorptivity(1) % Values )
+      ( Chi_T => OPACITIES % ThermEmAb % Absorptivity(1) % Values, &
+        OS    => OPACITIES % ThermEmAb % Offsets(1) )
 
-    IF( ComputeDerivatives )THEN
+    CALL LogInterpolateSingleVariable_1D3D &
+           ( E / MeV, D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+             Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], OS, Chi_T, Chi )
 
-      DO iE = 1, SIZE( E )
+    Chi(:,:) = Chi(:,:) * ( 1.0_DP / Centimeter )
 
-        CALL LogInterpolateDifferentiateSingleVariable &
-               ( [ E(iE) ] / MeV, [ D ] / ( Gram / Centimeter**3 ), &
-                 [ T ] / Kelvin, [ Y ], Es_T, Ds_T, Ts_T, Ys_T, &
-                 [ 1, 1, 1, 0 ], 1.0d-100, Chi_T, TMP, dTMP, debug = .FALSE. )
-
-        Chi(iE) &
-          = TMP(1) * ( 1.0_DP / Centimeter )
-
-        dChidT_Option(iE) &
-          = dTMP(1,3) * ( 1.0_DP / Centimeter ) / Kelvin
-
-        dChidY_Option(iE) &
-          = dTMP(1,4) * ( 1.0_DP / Centimeter )
-
-      END DO
-
-    ELSE
-
-      DO iE = 1, SIZE( E )
-
-        CALL LogInterpolateSingleVariable &
-               ( [ E(iE) ] / MeV, [ D ] / ( Gram / Centimeter**3 ), &
-                 [ T ] / Kelvin, [ Y ], Es_T, Ds_T, Ts_T, Ys_T, &
-                 [ 1, 1, 1, 0 ], 1.0d-100, Chi_T, TMP )
-
-        Chi(iE) = TMP(1) * ( 1.0_DP / Centimeter )
-
-      END DO
-
-    END IF
-
-    END ASSOCIATE ! Chi_T
+    END ASSOCIATE ! Chi_T, etc.
 
 #else
 
-   Chi(:) = 0.0_DP
-
-   IF( ComputeDerivatives )THEN
-
-     dChidT_Option(:) = 0.0_DP
-     dChidY_Option(:) = 0.0_DP
-
-   END IF
+    Chi(:,:) = 0.0_DP
 
 #endif
 
   END SUBROUTINE ComputeAbsorptionOpacity_TABLE
 
 
-  SUBROUTINE ComputeScatteringOpacity_ES_TABLE &
-               ( E, D, T, Y, Sigma, dSigmadT_Option, dSigmadY_Option )
+  SUBROUTINE ComputeScatteringOpacity_ES_TABLE( E, D, T, Y, Sigma )
 
-    REAL(DP), DIMENSION(:), INTENT(in)            :: E, D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)           :: Sigma
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dSigmadT_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dSigmadY_Option
-
-    LOGICAL                :: ComputeDerivatives
-    INTEGER                :: iE
-    REAL(DP), DIMENSION(1) :: TMP
-
-    ComputeDerivatives = .FALSE.
+    REAL(DP), DIMENSION(:),   INTENT(in)  :: E, D, T, Y
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: Sigma
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -199,29 +147,17 @@ CONTAINS
       ( Sigma_T => OPACITIES % Scatt_Iso % Kernel(1) % Values(:,:,:,:,1), &
         OS      => OPACITIES % Scatt_Iso % Offsets(1,1) )
 
-    DO iE = 1, SIZE( E )
+    CALL LogInterpolateSingleVariable_1D3D &
+           ( E / MeV, D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+             Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], OS, Sigma_T, Sigma )
 
-      CALL LogInterpolateSingleVariable &
-             ( [ E(iE) ] / MeV, [ D ] / ( Gram / Centimeter**3 ), &
-               [ T ] / Kelvin, [ Y ], Es_T, Ds_T, Ts_T, Ys_T, &
-               [ 1, 1, 1, 0 ], OS, Sigma_T, TMP )
-
-      Sigma(iE) = TMP(1) * ( 1.0_DP / Centimeter )
-
-    END DO
+    Sigma(:,:) = Sigma(:,:) * ( 1.0_DP / Centimeter )
 
     END ASSOCIATE ! Sigma_T, etc.
 
 #else
 
-    Sigma(:) = 0.0_DP
-
-    IF( ComputeDerivatives )THEN
-
-      dSigmadT_Option(:) = 0.0_DP
-      dSigmadY_Option(:) = 0.0_DP
-
-    END IF
+    Sigma(:,:) = 0.0_DP
 
 #endif
 

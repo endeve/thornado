@@ -24,26 +24,20 @@ CONTAINS
   END SUBROUTINE FinalizeOpacities_IDEAL
 
 
-  SUBROUTINE ComputeAbsorptionOpacity_IDEAL &
-               ( E, D, T, Y, Chi, dChidT_Option, dChidY_Option )
+  SUBROUTINE ComputeAbsorptionOpacity_IDEAL( E, D, T, Y, Chi )
 
-    REAL(DP), DIMENSION(:), INTENT(in)            :: E, D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)           :: Chi
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dChidT_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dChidY_Option
+    REAL(DP), DIMENSION(:),   INTENT(in)  :: E, D, T, Y
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: Chi
 
     Chi = 0.0_DP
 
   END SUBROUTINE ComputeAbsorptionOpacity_IDEAL
 
 
-  SUBROUTINE ComputeScatteringOpacity_ES_IDEAL &
-               ( E, D, T, Y, Sigma, dSigmadT_Option, dSigmadY_Option )
+  SUBROUTINE ComputeScatteringOpacity_ES_IDEAL( E, D, T, Y, Sigma )
 
-    REAL(DP), DIMENSION(:), INTENT(in)            :: E, D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)           :: Sigma
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dSigmadT_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dSigmadY_Option
+    REAL(DP), DIMENSION(:),   INTENT(in)  :: E, D, T, Y
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: Sigma
 
     Sigma = 0.0_DP
 

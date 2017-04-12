@@ -53,13 +53,16 @@ CONTAINS
     END IF
 
     SELECT CASE ( TRIM( RadiationSolver ) )
+
       CASE ( 'M1_DG' )
+
         ComputeRHS_Radiation &
           => ComputeRHS_M1_DG
         ApplySlopeLimiter_Radiation &
           => ApplySlopeLimiter_M1_DG
         ApplyPositivityLimiter_Radiation &
           => ApplyPositivityLimiter_M1_DG
+
         CALL InitializeLimiters_M1_DG &
                ( ApplySlopeLimiter_Option &
                    = ApplySlopeLimiter_Option, &
@@ -67,13 +70,16 @@ CONTAINS
                  BetaTVD_Option = BetaTVD_Option, &
                  ApplyPositivityLimiter_Option &
                    = ApplyPositivityLimiter_Option )
+
       CASE DEFAULT
+
         ComputeRHS_Radiation &
           => ComputeRHS_Dummy
         ApplySlopeLimiter_Radiation &
           => ApplyLimiter_Dummy
         ApplyPositivityLimiter_Radiation &
           => ApplyLimiter_Dummy
+
     END SELECT
 
   END SUBROUTINE InitializeRadiationEvolution
@@ -90,20 +96,10 @@ CONTAINS
 
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
 
-    WRITE(*,*)
-    WRITE(*,'(A4,A)') &
-      '', 'RadiationEvolutionModule: ComputeRHS_Dummy'
-    WRITE(*,*)
-
   END SUBROUTINE ComputeRHS_Dummy
 
 
   SUBROUTINE ApplyLimiter_Dummy
-
-    WRITE(*,*)
-    WRITE(*,'(A4,A)') &
-      '', 'RadiationEvolutionModule: ApplyLimiter_Dummy'
-    WRITE(*,*)
 
   END SUBROUTINE ApplyLimiter_Dummy
 
