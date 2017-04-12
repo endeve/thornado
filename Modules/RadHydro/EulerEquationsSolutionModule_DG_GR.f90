@@ -10,8 +10,10 @@ MODULE EulerEquationsSolutionModule_DG_GR
     MeshX
   USE GeometryFieldsModule, ONLY: &
     uGF, nGF, iGF_Alpha, iGF_Beta_1, &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_Gm_uu_11
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    iGF_Gm_uu_11
   USE FluidFieldsModule, ONLY: &
+    WeightsF, &
     rhsCF, &
     uCF, nCF, &
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
@@ -59,7 +61,7 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iGF, iCF
     INTEGER :: iNodeX1, jNodeX1, iNodeX2, iNodeX3, iNodeX, jNodeX
-    REAL(DP) :: Alpha, AlphaPls, AlphaMns, AlphaMdl, AlphaL, AlphaR, Cs, gamma
+    REAL(DP) :: Alpha, AlphaPls, AlphaMns, AlphaMdl, AlphaL, AlphaR, Cs
     REAL(DP), DIMENSION(1:nCF) :: Flux_L, Flux_R, Flux
     REAL(DP), DIMENSION(1:5) :: EigVals_L, EigVals_R
     REAL(DP), DIMENSION(1:1,1:nGF) :: uGF_L, uGF_R
@@ -85,10 +87,26 @@ CONTAINS
 
           ! -- Fluid Fields ---
 
+          ! -- Conserved --
+
           ASSOCIATE &
             ( uCF_P => uCF(:,iX1-1,iX2,iX3,:), & ! Previous Element
               uCF_K => uCF(:,iX1  ,iX2,iX3,:), & ! This     Element
               uCF_N => uCF(:,iX1+1,iX2,iX3,:) )  ! Next     Element
+
+          ! -- Primitive --
+
+          ASSOCIATE &
+            ( uPF_P => uPF(:,iX1-1,iX2,iX3,:), & ! Previous Element
+              uPF_K => uPF(:,iX1  ,iX2,iX3,:), & ! This     Element
+              uPF_N => uPF(:,iX1+1,iX2,iX3,:) )  ! Next     Element
+
+          ! -- Auxiliary --
+
+          ASSOCIATE &
+            ( uAF_P => uAF(:,iX1-1,iX2,iX3,:), & ! Previous Element
+              uAF_K => uAF(:,iX1  ,iX2,iX3,:), & ! This     Element
+              uAF_N => uAF(:,iX1+1,iX2,iX3,:) )  ! Next     Element
 
           DO iNodeX3 = 1, nNodesX(3)
             DO iNodeX2 = 1, nNodesX(2)
@@ -124,24 +142,28 @@ CONTAINS
 
                 END DO
 
+                uAF_L(iNodeX1,iAF_P)  & ! -- Set to Cell-Average
+                  = DOT_PRODUCT( WeightsF, uAF_P(:,iAF_P) )
+
+                uAF_L(iNodeX1,iAF_Gm) & ! -- Set to Cell-Average
+                  = DOT_PRODUCT( WeightsF, uAF_P(:,iAF_Gm) )
+
                 CALL ComputePrimitive( uCF_L, uGF_L, uPF_L, uAF_L )
 
-                gamma = 1.67_DP
+                Cs = ComputeSoundSpeed( uAF_L(iNodeX1,iAF_P), &
+                                        uPF_L(iNodeX1,iPF_E), &
+                                        uPF_L(iNodeX1,iPF_D), &
+                                        uAF_L(iNodeX1,iAF_Gm) )
 
-                Cs = ComputeSoundSpeed( uAF_L(iNodeX1, iAF_P), &
-                                        uPF_L(iNodeX1, iPF_E), &
-                                        uPF_L(iNodeX1, iPF_D), &
-                                        gamma )
-
-                EigVals_L = Eigenvalues( uPF_L(iNodeX1, iPF_V1),       &
-                                         uPF_L(iNodeX1, iPF_V2),       &
-                                         uPF_L(iNodeX1, iPF_V3),       &
-                                         uGF_L(iNodeX1, iGF_Gm_dd_11), &
-                                         uGF_L(iNodeX1, iGF_Gm_dd_22), &
-                                         uGF_L(iNodeX1, iGF_Gm_dd_33), &
-                                         uGF_L(iNodeX1, iGF_Gm_uu_11), &
-                                         uGF_L(iNodeX1, iGF_Alpha),    &
-                                         uGF_L(iNodeX1, iGF_Beta_1),   &
+                EigVals_L = Eigenvalues( uPF_L(iNodeX1,iPF_V1),       &
+                                         uPF_L(iNodeX1,iPF_V2),       &
+                                         uPF_L(iNodeX1,iPF_V3),       &
+                                         uGF_L(iNodeX1,iGF_Gm_dd_11), &
+                                         uGF_L(iNodeX1,iGF_Gm_dd_22), &
+                                         uGF_L(iNodeX1,iGF_Gm_dd_33), &
+                                         uGF_L(iNodeX1,iGF_Gm_uu_11), &
+                                         uGF_L(iNodeX1,iGF_Alpha),    &
+                                         uGF_L(iNodeX1,iGF_Beta_1),   &
                                          Cs )
 
                 Flux_L &
@@ -168,22 +190,28 @@ CONTAINS
 
                 END DO
 
+                uAF_R(iNodeX1,iAF_P)  & ! -- Set to Cell-Average
+                  = DOT_PRODUCT( WeightsF, uAF_K(:,iAF_P) )
+
+                uAF_R(iNodeX1,iAF_Gm) & ! -- Set to Cell-Average
+                  = DOT_PRODUCT( WeightsF, uAF_K(:,iAF_Gm) )
+
                 CALL ComputePrimitive( uCF_R, uGF_R, uPF_R, uAF_R )
 
-                Cs = ComputeSoundSpeed( uAF_R(iNodeX1, iAF_P), &
-                                        uPF_R(iNodeX1, iPF_E), &
-                                        uPF_R(iNodeX1, iPF_D), &
-                                        gamma )
+                Cs = ComputeSoundSpeed( uAF_R(iNodeX1,iAF_P), &
+                                        uPF_R(iNodeX1,iPF_E), &
+                                        uPF_R(iNodeX1,iPF_D), &
+                                        uAF_R(iNodeX1,iAF_Gm) )
 
-                EigVals_R = Eigenvalues( uPF_R(iNodeX1, iPF_V1),       &
-                                         uPF_R(iNodeX1, iPF_V2),       &
-                                         uPF_R(iNodeX1, iPF_V3),       &
-                                         uGF_R(iNodeX1, iGF_Gm_dd_11), &
-                                         uGF_R(iNodeX1, iGF_Gm_dd_22), &
-                                         uGF_R(iNodeX1, iGF_Gm_dd_33), &
-                                         uGF_R(iNodeX1, iGF_Gm_uu_11), &
-                                         uGF_R(iNodeX1, iGF_Alpha),    &
-                                         uGF_R(iNodeX1, iGF_Beta_1),   &
+                EigVals_R = Eigenvalues( uPF_R(iNodeX1,iPF_V1),       &
+                                         uPF_R(iNodeX1,iPF_V2),       &
+                                         uPF_R(iNodeX1,iPF_V3),       &
+                                         uGF_R(iNodeX1,iGF_Gm_dd_11), &
+                                         uGF_R(iNodeX1,iGF_Gm_dd_22), &
+                                         uGF_R(iNodeX1,iGF_Gm_dd_33), &
+                                         uGF_R(iNodeX1,iGF_Gm_uu_11), &
+                                         uGF_R(iNodeX1,iGF_Alpha),    &
+                                         uGF_R(iNodeX1,iGF_Beta_1),   &
                                          Cs )
 
                 Flux_R &
@@ -249,22 +277,28 @@ CONTAINS
 
                 END DO
 
+                uAF_L(iNodeX1,iAF_P)  & ! -- Set to Cell-Average
+                  = DOT_PRODUCT( WeightsF, uAF_K(:,iAF_P) )
+
+                uAF_L(iNodeX1,iAF_Gm) & ! -- Set to Cell-Average
+                  = DOT_PRODUCT( WeightsF, uAF_K(:,iAF_Gm) )
+
                 CALL ComputePrimitive( uCF_L, uGF_L, uPF_L, uAF_L )
 
-                Cs = ComputeSoundSpeed( uAF_L(iNodeX1, iAF_P), &
-                                        uPF_L(iNodeX1, iPF_E), &
-                                        uPF_L(iNodeX1, iPF_D), &
-                                        gamma )
+                Cs = ComputeSoundSpeed( uAF_L(iNodeX1,iAF_P), &
+                                        uPF_L(iNodeX1,iPF_E), &
+                                        uPF_L(iNodeX1,iPF_D), &
+                                        uAF_L(iNodeX1,iAF_Gm) )
 
-                EigVals_L = Eigenvalues( uPF_L(iNodeX1, iPF_V1),       &
-                                         uPF_L(iNodeX1, iPF_V2),       &
-                                         uPF_L(iNodeX1, iPF_V3),       &
-                                         uGF_L(iNodeX1, iGF_Gm_dd_11), &
-                                         uGF_L(iNodeX1, iGF_Gm_dd_22), &
-                                         uGF_L(iNodeX1, iGF_Gm_dd_33), &
-                                         uGF_L(iNodeX1, iGF_Gm_uu_11), &
-                                         uGF_L(iNodeX1, iGF_Alpha),    &
-                                         uGF_L(iNodeX1, iGF_Beta_1),   &
+                EigVals_L = Eigenvalues( uPF_L(iNodeX1,iPF_V1),       &
+                                         uPF_L(iNodeX1,iPF_V2),       &
+                                         uPF_L(iNodeX1,iPF_V3),       &
+                                         uGF_L(iNodeX1,iGF_Gm_dd_11), &
+                                         uGF_L(iNodeX1,iGF_Gm_dd_22), &
+                                         uGF_L(iNodeX1,iGF_Gm_dd_33), &
+                                         uGF_L(iNodeX1,iGF_Gm_uu_11), &
+                                         uGF_L(iNodeX1,iGF_Alpha),    &
+                                         uGF_L(iNodeX1,iGF_Beta_1),   &
                                          Cs )
 
                 Flux_L &
@@ -291,22 +325,28 @@ CONTAINS
 
                 END DO
 
+                uAF_R(iNodeX1,iAF_P)  & ! -- Set to Cell-Average
+                  = DOT_PRODUCT( WeightsF, uAF_N(:,iAF_P) )
+
+                uAF_R(iNodeX1,iAF_Gm) & ! -- Set to Cell-Average
+                  = DOT_PRODUCT( WeightsF, uAF_N(:,iAF_Gm) )
+
                 CALL ComputePrimitive( uCF_R, uGF_R, uPF_R, uAF_R )
 
-                Cs = ComputeSoundSpeed( uAF_R(iNodeX1, iAF_P), &
-                                        uPF_R(iNodeX1, iPF_E), &
-                                        uPF_R(iNodeX1, iPF_D), &
-                                        gamma )
+                Cs = ComputeSoundSpeed( uAF_R(iNodeX1,iAF_P), &
+                                        uPF_R(iNodeX1,iPF_E), &
+                                        uPF_R(iNodeX1,iPF_D), &
+                                        uAF_R(iNodeX1,iAF_Gm) )
 
-                EigVals_R = Eigenvalues( uPF_R(iNodeX1, iPF_V1),       &
-                                         uPF_R(iNodeX1, iPF_V2),       &
-                                         uPF_R(iNodeX1, iPF_V3),       &
-                                         uGF_R(iNodeX1, iGF_Gm_dd_11), &
-                                         uGF_R(iNodeX1, iGF_Gm_dd_22), &
-                                         uGF_R(iNodeX1, iGF_Gm_dd_33), &
-                                         uGF_R(iNodeX1, iGF_Gm_uu_11), &
-                                         uGF_R(iNodeX1, iGF_Alpha),    &
-                                         uGF_R(iNodeX1, iGF_Beta_1),   &
+                EigVals_R = Eigenvalues( uPF_R(iNodeX1,iPF_V1),       &
+                                         uPF_R(iNodeX1,iPF_V2),       &
+                                         uPF_R(iNodeX1,iPF_V3),       &
+                                         uGF_R(iNodeX1,iGF_Gm_dd_11), &
+                                         uGF_R(iNodeX1,iGF_Gm_dd_22), &
+                                         uGF_R(iNodeX1,iGF_Gm_dd_33), &
+                                         uGF_R(iNodeX1,iGF_Gm_uu_11), &
+                                         uGF_R(iNodeX1,iGF_Alpha),    &
+                                         uGF_R(iNodeX1,iGF_Beta_1),   &
                                          Cs )
 
                 Flux_R &
@@ -354,6 +394,8 @@ CONTAINS
             END DO
           END DO
 
+          END ASSOCIATE ! uAF_P, etc.
+          END ASSOCIATE ! uPF_P, etc.
           END ASSOCIATE ! uCF_P, etc.
           END ASSOCIATE ! uGF_P, etc.
 

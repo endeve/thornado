@@ -71,7 +71,7 @@ CONTAINS
     INTEGER  :: i, nIter
     REAL(DP) :: Gm11, Gm22, Gm33, SSq, vSq, W, h
     REAL(DP) :: Pold, Pnew, FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-12
+    REAL(DP), PARAMETER :: TolP = 1.0d-10
 
     DO i = 1, SIZE( uPF, DIM = 1 )
 
