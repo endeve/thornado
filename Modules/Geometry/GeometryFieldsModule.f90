@@ -18,7 +18,8 @@ MODULE GeometryFieldsModule
   REAL(DP), DIMENSION(:,:,:,:),   ALLOCATABLE, PUBLIC :: &
     Vol
   REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
-    VolJac
+    VolJac, &
+    VolJacE
 
   ! --- Weights for 'Position Space' Fields ---
 
@@ -93,9 +94,16 @@ CONTAINS
             1-swX(2):nX(2)+swX(2), 1-swX(3):nX(3)+swX(3)) )
 
     ALLOCATE &
-      ( VolJac(1:nDOF, &
-               1-swE   :nE   +swE,    1-swX(1):nX(1)+swX(1), &
-               1-swX(2):nX(2)+swX(2), 1-swX(3):nX(3)+swX(3)) )
+      ( VolJac &
+          (1:nDOF, &
+           1-swE   :nE   +swE,    1-swX(1):nX(1)+swX(1), &
+           1-swX(2):nX(2)+swX(2), 1-swX(3):nX(3)+swX(3)) )
+
+    ALLOCATE &
+      ( VolJacE &
+          (1:nDOF, &
+           1-swE   :nE   +swE,    1-swX(1):nX(1)+swX(1), &
+           1-swX(2):nX(2)+swX(2), 1-swX(3):nX(3)+swX(3)) )
 
   END SUBROUTINE CreateGeometryFields
 
@@ -153,7 +161,7 @@ CONTAINS
 
     CALL DestroyGeometryFieldsX
 
-    DEALLOCATE( WeightsG, Vol, VolJac  )
+    DEALLOCATE( WeightsG, Vol, VolJac, VolJacE )
 
   END SUBROUTINE DestroyGeometryFields
 

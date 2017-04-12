@@ -11,7 +11,7 @@ MODULE GeometryComputationModule
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     WeightsGX, VolX, VolJacX, &
-    WeightsG,  Vol,  VolJac, d
+    WeightsG,  Vol,  VolJac, VolJacE, d
   USE GeometryBoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_GeometryX, &
     ApplyBoundaryConditions_Geometry
@@ -103,6 +103,9 @@ CONTAINS
 
                     VolJac(iNode,iE,iX1,iX2,iX3) &
                       = d( [ X1, X2, X3 ] ) * E**2
+
+                    VolJacE(iNode,iE,iX1,iX2,iX3) &
+                      = d( [ X1, X2, X3 ] ) * E**3
 
                   END DO
                 END DO
