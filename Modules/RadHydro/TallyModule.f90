@@ -13,7 +13,7 @@ MODULE TallyModule
     MeshX
   USE GeometryFieldsModule, ONLY: &
     WeightsGX, VolJacX, &
-    WeightsG,  VolJac,  &
+    WeightsG,  VolJac, VolJacE,  &
     uGF, iGF_Phi_N
   USE FluidFieldsModule, ONLY: &
     WeightsF, &
@@ -43,6 +43,7 @@ MODULE TallyModule
   ! --- Tallied Radiation Quantities ---
 
   REAL(DP), DIMENSION(0:1) :: GlobalNumber_Radiation
+  REAL(DP), DIMENSION(0:1) :: GlobalEnergy_Radiation
 
   PUBLIC :: InitializeGlobalTally
   PUBLIC :: ComputeGlobalTally
@@ -281,6 +282,7 @@ CONTAINS
       ( hc3 => ( PlanckConstant * SpeedOfLight )**3 )
 
     GlobalNumber_Radiation(iState) = 0.0_DP
+    GlobalEnergy_Radiation(iState) = 0.0_DP
     DO iS = 1, nSpecies
 
       DO iX3 = 1, nX(3) 
@@ -291,8 +293,14 @@ CONTAINS
               GlobalNumber_Radiation(iState) &
                 = GlobalNumber_Radiation(iState) &
                     + dE(iE) * dX1(iX1) * dX2(iX2) * dX3(iX3) &
-                        * SUM( WeightsG(:) * uCR(:,iE,iX1,iX2,iX3,iCR_N,iS) &
+                        * SUM( WeightsR(:) * uCR(:,iE,iX1,iX2,iX3,iCR_N,iS) &
                                  * VolJac(:,iE,iX1,iX2,iX3) ) / hc3
+
+              GlobalEnergy_Radiation(iState) &
+                = GlobalEnergy_Radiation(iState) &
+                    + dE(iE) * dX1(iX1) * dX2(iX2) * dX3(iX3) &
+                        * SUM( WeightsR(:) * uCR(:,iE,iX1,iX2,iX3,iCR_N,iS) &
+                                 * VolJacE(:,iE,iX1,iX2,iX3) ) / hc3
 
             END DO
           END DO
@@ -320,6 +328,14 @@ CONTAINS
       '', 'Change = ', &
       GlobalNumber_Radiation(1) &
         - GlobalNumber_Radiation(0)
+    WRITE(*,*)
+    WRITE(*,'(A8,A26,ES18.10E3)') &
+      '', 'Global Energy = ', &
+      GlobalEnergy_Radiation(1)
+    WRITE(*,'(A8,A26,ES18.10E3)') &
+      '', 'Change = ', &
+      GlobalEnergy_Radiation(1) &
+        - GlobalEnergy_Radiation(0)
     WRITE(*,*)
 
   END SUBROUTINE DisplayGlobalTally_Radiation
