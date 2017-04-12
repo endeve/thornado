@@ -239,12 +239,12 @@ CONTAINS
     REAL(DP),     INTENT(in)           :: t_0
     CHARACTER(2), INTENT(in), OPTIONAL :: BackgroundConditions_Option
 
-    CHARACTER(2)           :: BackgroundConditions
-    INTEGER                :: iX1, iX2, iX3, iE
-    INTEGER                :: iNodeX1, iNodeX2, iNodeX3, iNodeE
-    INTEGER                :: iNodeX, iNode
-    REAL(DP)               :: X1, E_0, E
-    REAL(DP), DIMENSION(1) :: Kappa
+    CHARACTER(2)             :: BackgroundConditions
+    INTEGER                  :: iX1, iX2, iX3, iE
+    INTEGER                  :: iNodeX1, iNodeX2, iNodeX3, iNodeE
+    INTEGER                  :: iNodeX, iNode
+    REAL(DP)                 :: X1, E_0, E
+    REAL(DP), DIMENSION(1,1) :: Kappa
 
     BackgroundConditions = '02'
     IF( PRESENT( BackgroundConditions_Option ) ) &
