@@ -1,4 +1,4 @@
-PROGRAM CoolingProblem1D
+PROGRAM DeleptonizationProblem1D
 
   USE KindModule, ONLY: &
     DP, Pi
@@ -83,10 +83,10 @@ PROGRAM CoolingProblem1D
 
   CALL EvolveFields &
          ( t_begin  = 0.0d+0 * Millisecond, &
-           t_end    = 1.0d+1 * Millisecond, &
-           dt_write = 1.0d-1 * Millisecond, &
+           t_end    = 2.5d-1 * Millisecond, &
+           dt_write = 5.0d-2 * Millisecond, &
            UpdateFields = SI_RK )
 
   CALL FinalizeProgram
 
-END PROGRAM CoolingProblem1D
+END PROGRAM DeleptonizationProblem1D
