@@ -229,23 +229,23 @@ CONTAINS
 !!$
 !!$    END DO
 
-!!$    CALL ComputeTempFromIntEnergy_Bisection  &
-!!$           ( D / ( Gram / Centimeter**3 ),   &
-!!$             E / ( Erg / Gram ),             &
-!!$             Y, Ds_T, Ts_T, Ys_T, LogInterp, &
-!!$             EOS % DV % Variables(iE_T) % Values, OS_E, &
-!!$             T_Bisection )
-!!$
-!!$    T = T_Bisection * Kelvin
-
-    CALL ComputeTempFromIntEnergy_Secant  &
+    CALL ComputeTempFromIntEnergy_Bisection  &
            ( D / ( Gram / Centimeter**3 ),   &
              E / ( Erg / Gram ),             &
              Y, Ds_T, Ts_T, Ys_T, LogInterp, &
              EOS % DV % Variables(iE_T) % Values, OS_E, &
-             T_Secant )
+             T_Bisection )
 
-    T = T_Secant * Kelvin
+    T = T_Bisection * Kelvin
+
+!!$    CALL ComputeTempFromIntEnergy_Secant  &
+!!$           ( D / ( Gram / Centimeter**3 ),   &
+!!$             E / ( Erg / Gram ),             &
+!!$             Y, Ds_T, Ts_T, Ys_T, LogInterp, &
+!!$             EOS % DV % Variables(iE_T) % Values, OS_E, &
+!!$             T_Secant )
+!!$
+!!$    T = T_Secant * Kelvin
 
 #endif
 
