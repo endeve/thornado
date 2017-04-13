@@ -3,7 +3,7 @@ MODULE GeometryBoundaryConditionsModule
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nX, nNodesX, &
+    nX, nNodesX, swX, &
     nE, nNodesE
   USE UtilitiesModule, ONLY: &
     NodeNumberX, &
@@ -37,6 +37,8 @@ CONTAINS
     INTEGER  :: iX2, iX3
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
     REAL(DP) :: X1, X2, X3
+
+    IF( swX(1) < 1 ) RETURN
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
@@ -97,6 +99,8 @@ CONTAINS
     INTEGER  :: iE, iX1, iX2, iX3
     INTEGER  :: iNodeE, iNodeX1, iNodeX2, iNodeX3, iNode
     REAL(DP) :: E, X1_Inner, X1_Outer, X2, X3
+
+    IF( swX(1) < 1 ) RETURN
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
