@@ -11,7 +11,8 @@ MODULE OpacityModule
     InitializeOpacities_TABLE, &
     FinalizeOpacities_TABLE, &
     ComputeAbsorptionOpacity_TABLE, &
-    ComputeScatteringOpacity_ES_TABLE
+    ComputeScatteringOpacity_ES_TABLE, &
+    ComputeScatteringOpacity_NES_TABLE
 
   IMPLICIT NONE
   PRIVATE
@@ -31,13 +32,23 @@ MODULE OpacityModule
     END SUBROUTINE ComputeOpacity_A
   END INTERFACE
 
+  INTERFACE
+    SUBROUTINE ComputeOpacity_B( E, T, Eta, R0_In, R0_Out )
+      USE KindModule, ONLY: DP
+      REAL(DP), DIMENSION(:),     INTENT(in)  :: E, T, Eta
+      REAL(DP), DIMENSION(:,:,:), INTENT(out) :: R0_In, R0_Out
+    END SUBROUTINE ComputeOpacity_B
+  END INTERFACE
+
   ! ---
   ! --- Declaration of Opacity Functions and Subroutines ---
   ! ---
 
   PROCEDURE (ComputeOpacity_A), POINTER, PUBLIC :: &
-    ComputeAbsorptionOpacity    => NULL(), &
-    ComputeScatteringOpacity_ES => NULL() ! --- Elastic Scattering
+    ComputeAbsorptionOpacity     => NULL(), &
+    ComputeScatteringOpacity_ES  => NULL() ! --- Elastic Scattering
+  PROCEDURE (ComputeOpacity_B), POINTER, PUBLIC :: &
+    ComputeScatteringOpacity_NES => NULL() ! --- Neutrino Electron Scattering
 
   PUBLIC :: InitializeOpacities
   PUBLIC :: FinalizeOpacities
@@ -81,6 +92,8 @@ CONTAINS
           => ComputeAbsorptionOpacity_TABLE
         ComputeScatteringOpacity_ES &
           => ComputeScatteringOpacity_ES_TABLE
+        ComputeScatteringOpacity_NES &
+          => ComputeScatteringOpacity_NES_TABLE
 
       CASE DEFAULT
 
@@ -101,15 +114,20 @@ CONTAINS
 
         CALL FinalizeOpacities_IDEAL
 
+        NULLIFY &
+          ( ComputeAbsorptionOpacity, &
+            ComputeScatteringOpacity_ES )
+
       CASE( 'TABLE' )
 
         CALL FinalizeOpacities_TABLE
 
-    END SELECT
+        NULLIFY &
+          ( ComputeAbsorptionOpacity, &
+            ComputeScatteringOpacity_ES, &
+            ComputeScatteringOpacity_NES )
 
-    NULLIFY &
-      ( ComputeAbsorptionOpacity, &
-        ComputeScatteringOpacity_ES )
+    END SELECT
 
   END SUBROUTINE FinalizeOpacities
 

@@ -13,7 +13,8 @@ MODULE OpacityModule_TABLE
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable, &
-    LogInterpolateSingleVariable_1D3D
+    LogInterpolateSingleVariable_1D3D, &
+    LogInterpolateSingleVariable_2D2D
 
   ! ----------------------------------------------
 
@@ -35,7 +36,7 @@ MODULE OpacityModule_TABLE
   INTEGER :: &
     iD_T, iT_T, iY_T
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
-    Es_T, Ds_T, Ts_T, Ys_T
+    Es_T, Ds_T, Ts_T, Ys_T, Etas_T
 #ifdef MICROPHYSICS_WEAKLIB
   TYPE(OpacityTableType) :: &
     OPACITIES
@@ -45,6 +46,7 @@ MODULE OpacityModule_TABLE
   PUBLIC :: FinalizeOpacities_TABLE
   PUBLIC :: ComputeAbsorptionOpacity_TABLE
   PUBLIC :: ComputeScatteringOpacity_ES_TABLE
+  PUBLIC :: ComputeScatteringOpacity_NES_TABLE
 
 CONTAINS
 
@@ -92,6 +94,11 @@ CONTAINS
     ALLOCATE( Es_T(OPACITIES % EnergyGrid % nPoints) )
     Es_T = OPACITIES % EnergyGrid  % Values
 
+    ! --- Eta Grid ---
+
+    ALLOCATE( Etas_T(OPACITIES % EtaGrid % nPoints) )
+    Etas_T = OPACITIES % EtaGrid  % Values
+
 #endif
 
   END SUBROUTINE InitializeOpacities_TABLE
@@ -101,7 +108,7 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T )
+    DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
 
 #endif
 
@@ -162,6 +169,44 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeScatteringOpacity_ES_TABLE
+
+
+  SUBROUTINE ComputeScatteringOpacity_NES_TABLE( E, T, Eta, R0_In, R0_Out )
+
+    REAL(DP), DIMENSION(:),     INTENT(in)  :: E, T, Eta
+    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: R0_In, R0_Out
+
+    INTEGER :: iX
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ASSOCIATE &
+      ( R0_Out_T => OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1), &
+        OS       => OPACITIES % Scatt_NES % Offsets(1,1) )
+
+    CALL LogInterpolateSingleVariable_2D2D      &
+           ( E / MeV, E / MeV, T / Kelvin, Eta, &
+             Es_T, Es_T, Ts_T, Etas_T,          &
+             [ 1, 1, 1, 1 ], OS, R0_Out_T, R0_Out )
+
+    END ASSOCIATE ! R0_Out_T, etc.
+
+    R0_Out = R0_Out / ( 1.0_DP / ( Centimeter * MeV**3 ) )
+
+    DO iX = 1, SIZE( T )
+
+      R0_In(:,:,iX) = TRANSPOSE( R0_Out(:,:,iX) )
+
+    END DO
+
+#else
+
+  R0_In (:,:,:) = 0.0_DP
+  R0_Out(:,:,:) = 0.0_DP
+
+#endif
+
+  END SUBROUTINE ComputeScatteringOpacity_NES_TABLE
 
 
 END MODULE OpacityModule_TABLE

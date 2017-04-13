@@ -8,6 +8,8 @@ MODULE FluidRadiationCouplingModule
     CoupleFluidRadiation_EmissionAbsorption
   USE FluidRadiationCouplingSolutionModule_ElasticScattering, ONLY: &
     CoupleFluidRadiation_ElasticScattering
+  USE FluidRadiationCouplingSolutionModule_NES, ONLY: &
+    CoupleFluidRadiation_NES
 
   IMPLICIT NONE
   PRIVATE
@@ -59,13 +61,18 @@ CONTAINS
         CoupleFluidRadiation &
           => CoupleFluidRadiation_ElasticScattering
 
-      CASE( 'InelasticScattering' )
+      CASE( 'NES' )
+
+        CoupleFluidRadiation &
+          => CoupleFluidRadiation_NES
 
       CASE( 'Complete' )
 
       CASE DEFAULT
+
         CoupleFluidRadiation &
           => CoupleFluidRadiation_Dummy
+
     END SELECT
 
   END SUBROUTINE InitializeFluidRadiationCoupling

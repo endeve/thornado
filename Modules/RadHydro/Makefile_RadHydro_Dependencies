@@ -152,6 +152,11 @@ FluidRadiationCouplingSolutionModule_ElasticScattering.o: \
   OpacityModule.o \
   FluidRadiationCouplingSolutionModule_ElasticScattering.f90
 
+FluidRadiationCouplingSolutionModule_NES.o: \
+  KindModule.o \
+  MomentEquationsUtilitiesModule.o \
+  FluidRadiationCouplingSolutionModule_NES.f90
+
 FluidRadiationCouplingSolutionModule_Explicit.o: \
   KindModule.o \
   FluidRadiationCouplingSolutionModule_Explicit.f90
