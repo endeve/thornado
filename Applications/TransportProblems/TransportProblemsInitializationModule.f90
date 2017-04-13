@@ -372,7 +372,7 @@ CONTAINS
                     ! --- Number Density ---
 
                     uPR(iNode,iE,iX1,iX2,iX3,iPR_D,1) &
-                      = EXP( - 3.0_DP * Kappa(1) * ( X1 * E_0 / E )**2 &
+                      = EXP( - 3.0_DP * Kappa(1,1) * ( X1 * E_0 / E )**2 &
                                / ( 4.0_DP * t_0 ) )
 
                     ! --- Number Flux Density (1) ---
