@@ -1,4 +1,4 @@
-PROGRAM RelaxationEmissionAbsorption
+PROGRAM RelaxationNES
 
   USE KindModule, ONLY: &
     DP
@@ -12,7 +12,7 @@ PROGRAM RelaxationEmissionAbsorption
     InitializeProgram, &
     FinalizeProgram
   USE FluidRadiationCouplingInitializationModule, ONLY: &
-    InitializeRelaxation
+    InitializeRelaxationNES
   USE TimeSteppingModule, ONLY: &
     EvolveFields, &
     BackwardEuler
@@ -21,7 +21,7 @@ PROGRAM RelaxationEmissionAbsorption
 
   CALL InitializeProgram &
          ( ProgramName_Option &
-             = 'RelaxationEmissionAbsorption', &
+             = 'RelaxationNES', &
            nX_Option &
              = [ 100, 1, 1 ], &
            swX_Option &
@@ -53,13 +53,13 @@ PROGRAM RelaxationEmissionAbsorption
            OpacityTableName_Option &
              = 'OpacityTable.h5', &
            FluidRadiationCoupling_Option &
-             = 'EmissionAbsorption', &
+             = 'NES', &
            EvolveFluid_Option &
              = .TRUE., &
            EvolveRadiation_Option &
              = .TRUE. )
 
-  CALL InitializeRelaxation &
+  CALL InitializeRelaxationNES &
          ( Density &
              = 1.0d14 * Gram / Centimeter**3, &
            Temperature &
@@ -76,4 +76,4 @@ PROGRAM RelaxationEmissionAbsorption
 
   CALL FinalizeProgram
 
-END PROGRAM RelaxationEmissionAbsorption
+END PROGRAM RelaxationNES
