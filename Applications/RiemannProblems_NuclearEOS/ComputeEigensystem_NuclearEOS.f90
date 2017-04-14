@@ -23,7 +23,7 @@ PROGRAM ComputeEigensystem_NuclearEOS
 
   REAL(DP), DIMENSION(1)   :: D, T, Y, P, E, H, Tau, N
   REAL(DP), DIMENSION(1)   :: TEMP
-  REAL(DP), DIMENSION(6,6) :: A, R, L
+  REAL(DP), DIMENSION(6,6) :: A, R, L, DD
   REAL(DP), DIMENSION(3)   :: v
   REAL(DP), DIMENSION(6)   :: lambda
 
@@ -52,11 +52,11 @@ PROGRAM ComputeEigensystem_NuclearEOS
 
   DD = 0.0d0
 
-  DO i = 1, 6
-   DD(i,i) = lambda(i)
-  END DO
+!  DO i = 1, 6
+!   DD(i,i) = lambda(i)
+!  END DO
 
-  print*,"AR' - DR' = ", matmul(A0, VR) - matmul(DD,VR)
+  print*,"AR' - DR' = ", matmul(A, R) - matmul(DD,R)
 
 !  DO i = 1, 6
 !    DO k = 1, 6

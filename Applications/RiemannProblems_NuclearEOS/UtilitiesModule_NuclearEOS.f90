@@ -34,7 +34,7 @@ CONTAINS
     REAL(DP), DIMENSION(1)                    :: dPdE, dPdN, dPdTau, dEdY, dEdD, dEdT, dPdY, dPdT, dPdD
     REAL(DP), DIMENSION(6,6)                  :: A
     REAL(DP), DIMENSION(6)                    :: WR, WI
-    REAL(DP), DIMENSION(1)                    :: E, P, Cs, Tau, TEMP, N
+    REAL(DP), DIMENSION(1)                    :: E, P, Cs, Tau, TEMP, N, H
     REAL(DP), ALLOCATABLE, DIMENSION(:)       :: WORK
     INTEGER                                   :: INFO, LWORK
 
@@ -122,13 +122,13 @@ CONTAINS
     REAL(DP), DIMENSION(6,6), INTENT(out)     :: VL, A0
 
     REAL(DP), DIMENSION(1)                    :: dPdE, dPdN, dPdTau, dEdY, dEdD, dEdT, dPdY, dPdT, dPdD
-    REAL(DP), DIMENSION(1)                    :: Tau, TEMP, N
+    REAL(DP), DIMENSION(1)                    :: Tau, TEMP, N, H
     REAL(DP), DIMENSION(6,6)                  :: A
     REAL(DP), DIMENSION(6)                    :: WR, WI
 
     LOGICAL,                      INTENT(in)  :: Componentwise
 
-    REAL(DP), DIMENSION(1)                    :: k, h, B, E, P, Cs
+    REAL(DP), DIMENSION(1)                    :: E, P, Cs
     REAL(DP), ALLOCATABLE, DIMENSION(:) :: WORK
     INTEGER                                   :: INFO, LWORK
 
