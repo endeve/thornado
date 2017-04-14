@@ -575,7 +575,37 @@ Failure in maintaining these bounds can lead to an ill-posed closure problem and
 
 \section{Neutrino Opacities}
 
-\ee{Ran write about tabulated B85 absorption and scattering opacities.}
+%\ee{Ran write about tabulated B85 absorption and scattering opacities.}
+
+Given by \citet{bruenn_1985}, the absorption opacity of neutrino $\chi$ 
+\begin{equation}
+  \chi(\epsilonNu,\bU) = \dfrac{1}{\lambda(\epsilonNu,\bU)} + j(\epsilonNu,\bU), 
+\end{equation}
+where $j(\epsilonNu,\bU) $ is the neutrino emissivity
+\begin{equation}
+j = j_{nucleon} + j_{nuclear},
+\end{equation}  
+and $\lambda(\epsilonNu,\bU)$ is the neutrino absorption mean free path.
+They have the following relation:
+\begin{equation}
+\dfrac{1}{\lambda(\epsilonNu,\bU)} = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T} j(\epsilonNu,\bU) .
+\end{equation}
+Therefore,
+\begin{equation}
+\dfrac{1}{\lambda} = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T} (j_{nucleon} + j_{nuclear} ) = (\dfrac{1}{\lambda})_{nucleon} + (\dfrac{1}{\lambda})_{nuclear}.
+\end{equation}
+The two terms of electron-neutrino absorption on nucleons are
+ \begin{align}
+    (\dfrac{1}{\lambda})_{nucleon}(\epsilonNu,\bU) & = \dfrac{G^2}{\pi} \eta_{np}(g_V^2+3g_A^2)[1-F_e(\varepsilon+Q)](\varepsilon+Q)^2[1-\dfrac{M^2_e}{(\varepsilon+Q)^2}]^{1/2},\\
+    j_{nucleon}(\epsilonNu,\bU) &= \dfrac{G^2}{\pi}\eta_{pn}(g_V^2+3g_A^2)F_e(\varepsilon+Q)(\varepsilon+Q)^2[1-\dfrac{M^2_e}{(\varepsilon+Q)^2}]^{1/2}.
+\end{align}
+And the two terms of electron-neutrino absorption on nuclear are
+\begin{align}
+    (\dfrac{1}{\lambda})_{nuclear}(\epsilonNu,\bU) & = \dfrac{G^2}{\pi} n_A e^{\beta (\mu_n -\mu_p -Q')} g^2_A \dfrac{2}{7} N_p(Z) N_n(N)[1-F_e(\varepsilon+Q')](\varepsilon+Q')^2[1-\dfrac{M_e^2}{(\varepsilon+Q')^2}]^{1/2} ,\\
+    j_{nuclear}(\epsilonNu,\bU) &=\dfrac{G^2}{\pi} n_A g^2_A \dfrac{2}{7} N_p(Z) N_n(N)F_e(\varepsilon+Q')(\varepsilon+Q')^2[1-\dfrac{M_e^2}{(\varepsilon+Q')^2}]^{1/2} .
+\end{align} 
+
+The total opacity $\kappa(\epsilonNu,\bU)=\chi(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$, and $\sigma(\epsilonNu,\bU)$ is the scattering opacities.
 
 \clearpage
 
