@@ -1,0 +1,32 @@
+MICROPHYSICS   = WEAKLIB
+GRAVITY_SOLVER = POSEIDON_NEWTON
+
+include ../../../Build/Makefile_Build
+
+all: GravitationalCollapse1D
+
+GravitationalCollapse1D: \
+	$(thornado) InitializationModule.o \
+	GravitationalCollapse1D.o
+	$(FLINKER) $(FLAGS) -o \
+	GravitationalCollapse1D_$(MACHINE) \
+	$(thornado) InitializationModule.o \
+	GravitationalCollapse1D.o $(LIBRARIES)
+
+clean:
+	rm -f *.o *.mod *.ld
+
+clobber: clean
+	rm -f GravitationalCollapse1D_$(MACHINE)
+
+GravitationalCollapse1D.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramInitializationModule.o \
+  InitializationModule.o \
+  TimeSteppingModule.o \
+  GravitationalCollapse1D.f90
+
+InitializationModule.o: \
+  KindModule.o \
+  InitializationModule.f90
