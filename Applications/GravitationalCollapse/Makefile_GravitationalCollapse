@@ -6,11 +6,11 @@ include ../../../Build/Makefile_Build
 all: GravitationalCollapse1D
 
 GravitationalCollapse1D: \
-	$(thornado) InitializationModule.o \
+	$(thornado) ProgenitorModule.o InitializationModule.o \
 	GravitationalCollapse1D.o
 	$(FLINKER) $(FLAGS) -o \
 	GravitationalCollapse1D_$(MACHINE) \
-	$(thornado) InitializationModule.o \
+	$(thornado) ProgenitorModule.o InitializationModule.o \
 	GravitationalCollapse1D.o $(LIBRARIES)
 
 clean:
@@ -29,4 +29,9 @@ GravitationalCollapse1D.o: \
 
 InitializationModule.o: \
   KindModule.o \
+  ProgenitorModule.o \
   InitializationModule.f90
+
+ProgenitorModule.o: \
+  KindModule.o \
+  ProgenitorModule.f90

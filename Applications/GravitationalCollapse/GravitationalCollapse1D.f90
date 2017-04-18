@@ -21,7 +21,7 @@ PROGRAM GravitationalCollapse1D
          ( ProgramName_Option &
             = 'GravitationalCollapse1D', &
            nX_Option &
-             = [ 512, 1, 1 ], &
+             = [ 256, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -29,9 +29,9 @@ PROGRAM GravitationalCollapse1D
            xL_Option &
              = [ 0.0d0 * Kilometer, 0.0_DP, 0.0_DP ], &
            xR_Option &
-             = [ 1.0d4 * Kilometer, Pi,     4.0_DP ], &
+             = [ 8.0d3 * Kilometer, Pi,     4.0_DP ], &
            zoomX_Option &
-             = [1.00878_DP, 1.0_DP, 1.0_DP ], &
+             = [ 1.020059256924853_DP, 1.0_DP, 1.0_DP ], &
            nE_Option &
              = 1, &
            eL_Option &
@@ -41,7 +41,7 @@ PROGRAM GravitationalCollapse1D
            ZoomE_Option &
              = 1.0_DP, &
            nNodes_Option &
-             = 1, &
+             = 2, &
            CoordinateSystem_Option &
              = 'SPHERICAL', &
            ActivateUnits_Option &
@@ -69,20 +69,21 @@ PROGRAM GravitationalCollapse1D
            BetaTVD_Option &
              = 1.0d0, &
            ApplyPositivityLimiter_Option &
-             = .TRUE., &
+             = .FALSE., &
            EvolveGravity_Option &
              = .TRUE., &
            GravitySolver_Option &
              = 'Newtonian_Poseidon', &
            nStages_SSP_RK_Option &
-             = 1 )
+             = 2 )
 
-  CALL InitializeGravitationalCollapse
+  CALL InitializeGravitationalCollapse &
+         ( ProgenitorFile = 'WH07_15M_Sun.h5' )
 
   CALL EvolveFields &
          ( t_begin  = 0.0d+0 * Millisecond, &
-           t_end    = 0.0d+0 * Millisecond, &
-           dt_write = 2.0d-1 * Millisecond, &
+           t_end    = 4.0d+2 * Millisecond, &
+           dt_write = 5.0d-1 * Millisecond, &
            UpdateFields = SSP_RK )
 
   CALL FinalizeProgram
