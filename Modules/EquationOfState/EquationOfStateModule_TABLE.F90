@@ -14,7 +14,7 @@ MODULE EquationOfStateModule_TABLE
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable, &
     LogInterpolateDifferentiateSingleVariable, &
-    ComputeTempFromIntEnergy, &
+    ComputeTempFromIntEnergy_Lookup, &
     ComputeTempFromIntEnergy_Bisection, &
     ComputeTempFromIntEnergy_Secant, &
     ComputeTempFromPressure
@@ -210,33 +210,29 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, E, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: T
 
-    INTEGER                      :: iS
-    REAL(DP), DIMENSION(1)       :: TMP
+    REAL(DP), DIMENSION(SIZE(T)) :: T_Lookup
     REAL(DP), DIMENSION(SIZE(T)) :: T_Bisection
     REAL(DP), DIMENSION(SIZE(T)) :: T_Secant
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-!!$    DO iS = 1, SIZE( D )
-!!$
-!!$      CALL ComputeTempFromIntEnergy                &
-!!$             ( D(iS) / ( Gram / Centimeter**3 ),   &
-!!$               E(iS) / ( Erg / Gram ),             &
-!!$               Y(iS), Ds_T, Ts_T, Ys_T, LogInterp, &
-!!$               EOS % DV % Variables(iE_T) % Values, OS_E, TMP )
-!!$
-!!$      T(iS) = TMP(1) * Kelvin
-!!$
-!!$    END DO
-
-    CALL ComputeTempFromIntEnergy_Bisection  &
+    CALL ComputeTempFromIntEnergy_Lookup     &
            ( D / ( Gram / Centimeter**3 ),   &
              E / ( Erg / Gram ),             &
              Y, Ds_T, Ts_T, Ys_T, LogInterp, &
              EOS % DV % Variables(iE_T) % Values, OS_E, &
-             T_Bisection )
+             T_Lookup )
 
-    T = T_Bisection * Kelvin
+    T = T_Lookup * Kelvin
+
+!!$    CALL ComputeTempFromIntEnergy_Bisection  &
+!!$           ( D / ( Gram / Centimeter**3 ),   &
+!!$             E / ( Erg / Gram ),             &
+!!$             Y, Ds_T, Ts_T, Ys_T, LogInterp, &
+!!$             EOS % DV % Variables(iE_T) % Values, OS_E, &
+!!$             T_Bisection )
+!!$
+!!$    T = T_Bisection * Kelvin
 
 !!$    CALL ComputeTempFromIntEnergy_Secant  &
 !!$           ( D / ( Gram / Centimeter**3 ),   &
