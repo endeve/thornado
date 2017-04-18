@@ -4,7 +4,8 @@ MODULE ProgramInitializationModule
     DP
   USE UnitsModule, ONLY: &
     ActivateUnitsDisplay, &
-    DescribeUnitsDisplay
+    DescribeUnitsDisplay, &
+    UnitsDisplay
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nX, swX, xL, xR, ZoomX, &
@@ -247,17 +248,22 @@ CONTAINS
 
       WRITE(*,'(A7,A3,I1,A4,ES8.2E2,A2,A3,I1,A4,&
                 &ES8.2E2,A2,A6,I1,A4,ES10.4E2)') &
-        '',   'xL(', iDim, ') = ', xL(iDim), &
-        ', ', 'xR(', iDim, ') = ', xR(iDim), &
+        '',   'xL(', iDim, ') = ', xL(iDim) / UnitsDisplay % LengthUnit, &
+        ', ', 'xR(', iDim, ') = ', xR(iDim) / UnitsDisplay % LengthUnit, &
         ', ', 'ZoomX(', iDim, ') = ', ZoomX(iDim)
       WRITE(*,*)
 
-      CALL CreateMesh( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
-                       xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
+               xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
 
       WRITE(*,'(A9,A11,I1,A4,ES8.2E2,A3,ES8.2E2)') &
         '', 'MIN/MAX dx(', iDim, ') = ', &
-        MINVAL( MeshX(iDim) % Width ), ' / ', MAXVAL( MeshX(iDim) % Width )
+        MINVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
+          / UnitsDisplay % LengthUnit, &
+        ' / ', &
+        MAXVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
+          / UnitsDisplay % LengthUnit
       WRITE(*,*)
 
     END DO
@@ -265,7 +271,8 @@ CONTAINS
     ! --- Spectral Grid ---
 
     WRITE(*,'(A7,A8,ES8.2E2,A2,A8,ES8.2E2,A2,A11,ES10.4E2)') &
-      '', 'eL    = ', eL, ', ', 'eR    = ', eR, &
+      '', 'eL    = ', eL / UnitsDisplay % EnergyUnit, ', ', &
+          'eR    = ', eR / UnitsDisplay % EnergyUnit, &
       ', ', 'ZoomE    = ', ZoomE
     WRITE(*,*)
 
@@ -273,7 +280,9 @@ CONTAINS
 
     WRITE(*,'(A9,A16,ES8.2E2,A3,ES8.2E2)') &
       '', 'MIN/MAX de    = ', &
-      MINVAL( MeshE % Width ), ' / ', MAXVAL( MeshE % Width )
+      MINVAL( MeshE % Width(1:nE) ) / UnitsDisplay % EnergyUnit, &
+      ' / ', &
+      MAXVAL( MeshE % Width(1:nE) ) / UnitsDisplay % EnergyUnit
 
     ! --- Geometry ---
 
