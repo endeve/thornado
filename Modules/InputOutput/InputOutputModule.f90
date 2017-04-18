@@ -103,7 +103,8 @@ CONTAINS
 
     WRITE( FUNIT, * ) &
       Time / U % TimeUnit, nX(1), X1 / U % LengthUnit, &
-      GeometryField1D( uGF(:,1:nX(1),1,1,iGF_Phi_N    ), nX(1) ), &
+      GeometryField1D( uGF(:,1:nX(1),1,1,iGF_Phi_N    ), nX(1) ) &
+        / ( U % EnergyDensityUnit / U % MassDensityUnit ), &
       GeometryField1D( uGF(:,1:nX(1),1,1,iGF_Gm_dd_11 ), nX(1) ), &
       GeometryField1D( uGF(:,1:nX(1),1,1,iGF_Gm_dd_22 ), nX(1) ), &
       GeometryField1D( uGF(:,1:nX(1),1,1,iGF_Gm_dd_33 ), nX(1) )
