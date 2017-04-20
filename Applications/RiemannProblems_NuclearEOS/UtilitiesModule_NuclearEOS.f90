@@ -34,9 +34,9 @@ CONTAINS
     REAL(DP), DIMENSION(1)                    :: dPdE, dPdN, dPdTau, dEdY, dEdD, dEdT, dPdY, dPdT, dPdD
     REAL(DP), DIMENSION(6,6)                  :: A
     REAL(DP), DIMENSION(6)                    :: WR, WI
-    REAL(DP), DIMENSION(1)                    :: E, P, Cs, Tau, TEMP, N, H
+    REAL(DP), DIMENSION(1)                    :: E, P, Tau, TEMP, N, H
     REAL(DP), ALLOCATABLE, DIMENSION(:)       :: WORK
-    INTEGER                                   :: INFO, LWORK
+    INTEGER                                   :: INFO, LWORK, i, k
 
     IF( Componentwise )THEN
 
@@ -46,6 +46,8 @@ CONTAINS
       A(:,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
       A(:,5) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
       A(:,6) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
+
+      A0 = A
 
     ELSE
       CALL ComputePressure_TABLE( D, T, Y, P, dPdD, dPdT, dPdY )
@@ -109,6 +111,10 @@ CONTAINS
 
       CALL DGEEV('N', 'V', 6, A, 6, WR, WI, 0, 6, VR, 6, WORK, LWORK, INFO) 
 
+      DO i = 1, 6
+          lambda(i) = WR(i) 
+      END DO
+
     END IF
 
 
@@ -118,6 +124,7 @@ CONTAINS
   SUBROUTINE ComputeEigenvectors_L(D, T, Y, V1, V2, V3, lambda, VL, A0, Componentwise)
 
     REAL(DP), DIMENSION(1),   INTENT(in)      :: D, T, Y, V1, V2, V3
+    LOGICAL,                  INTENT(in)      :: Componentwise
     REAL(DP), DIMENSION(6),   INTENT(out)     :: lambda
     REAL(DP), DIMENSION(6,6), INTENT(out)     :: VL, A0
 
@@ -125,12 +132,9 @@ CONTAINS
     REAL(DP), DIMENSION(1)                    :: Tau, TEMP, N, H
     REAL(DP), DIMENSION(6,6)                  :: A
     REAL(DP), DIMENSION(6)                    :: WR, WI
-
-    LOGICAL,                      INTENT(in)  :: Componentwise
-
-    REAL(DP), DIMENSION(1)                    :: E, P, Cs
+    REAL(DP), DIMENSION(1)                    :: E, P
     REAL(DP), ALLOCATABLE, DIMENSION(:) :: WORK
-    INTEGER                                   :: INFO, LWORK
+    INTEGER                                   :: INFO, LWORK, i
 
     IF( Componentwise )THEN
 
@@ -140,6 +144,8 @@ CONTAINS
       A(:,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
       A(:,5) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
       A(:,6) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
+
+      A0 = A
  
     ELSE
 
@@ -193,6 +199,8 @@ CONTAINS
       A(6,5) = 0.0_dp
       A(6,6) = V1(1)
 
+      A0 = A
+
       LWORK = -1
 
       CALL DGEEV('V', 'N', 6, A, 6, WR, WI, VL, 6, 0, 6, TEMP, LWORK, INFO)
@@ -201,6 +209,10 @@ CONTAINS
       ALLOCATE(WORK(LWORK))
 
       CALL DGEEV('V', 'N', 6, A, 6, WR, WI, VL, 6, 0, 6, WORK, LWORK, INFO)
+
+      DO i = 1, 6
+        lambda(i) = WR(i)
+      END DO
 
     END IF
 

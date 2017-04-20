@@ -16,6 +16,8 @@ PROGRAM ComputeEigensystem_NuclearEOS
   USE UtilitiesModule_NuclearEOS, ONLY: &
     ComputeEigenvectors_L, &
     ComputeEigenvectors_R
+  USE UtilitiesModule, ONLY: &
+    WriteMatrix
 
   IMPLICIT NONE
 
@@ -41,10 +43,27 @@ PROGRAM ComputeEigensystem_NuclearEOS
   CALL InitializeEquationOfState_TABLE( 'EquationOfStateTable.h5' ) 
   CALL ComputeEigenvectors_R(D, T, Y, v(1), v(2), v(3), lambda, R, A, .FALSE.)
 
+  DD = 0.0d0
 
   DO i = 1, 6
-   print*,"Eigenvalue",i,"is: ", lambda(i) / ( Meter / Second  ) / SpeedOfLightMKS
+    DD(i,i) = lambda(i)
   END DO
+
+  print*,"AR - RD = ", matmul(A,R) - matmul(R,DD)
+
+  CALL WriteMatrix(6, 6, A, 'A.dat')
+  CALL WriteMatrix(6, 6, R, 'R.dat')
+
+!  DO i = 1, 6
+!   print*,"Eigenvalue",i,"is: ", lambda(i) / ( Meter / Second  ) / SpeedOfLightMKS
+!  END DO
+
+  CALL ComputeEigenvectors_L(D, T, Y, v(1), v(2), v(3), lambda, L, A, .FALSE.)
+
+!  DO i = 1, 6
+!    print*,"Eigenvalue",i,"is: ", lambda(i) / ( Meter / Second  ) / SpeedOfLightMKS
+!  END DO
+
 
 !  print*,"Analytical Sound Speed = ", sqrt( Tau(1) * ( N(1) * dPdN(1) + P(1) * dPdE(1) * Tau(1) - dPdTau(1)*Tau(1))) &
 !                    / ( Meter / Second  ) / SpeedOfLightMKS
@@ -52,27 +71,19 @@ PROGRAM ComputeEigensystem_NuclearEOS
 
   DD = 0.0d0
 
-!  DO i = 1, 6
-!   DD(i,i) = lambda(i)
-!  END DO
+  DO i = 1, 6
+    DD(i,i) = lambda(i)
+  END DO
 
-  print*,"AR' - DR' = ", matmul(A, R) - matmul(DD,R)
+  print*," "
+  
+  print*,"L'J - DL' = ", matmul(transpose(L),A) - matmul(DD,transpose(L))
 
 !  DO i = 1, 6
 !    DO k = 1, 6
 !     print*, "A(",i,",",k,") = ", A(i,k)
 !    END DO
 !  END DO
-
-!  print*,"L'J - DL' = ", matmul(transpose(VL),J0) - matmul(DD,transpose(VL))
-
-!  DO i = 1, 6
-!    print*,"Eigenvalue",i,"is: ", WR(i) / ( 2.98*10**8 * (Meter / Second) )
-!  END DO
-!
-!  print*," "
-!  print*,"Analytical Sound Speed = ", sqrt( Tau(1) * ( N(1) * dPdN(1) + P(1) * dPdE(1) * Tau(1) - dPdTau(1)*Tau(1)) ) & 
-!          / ( 2.98*10**8 * (Meter / Second) )
 
 
 END PROGRAM ComputeEigensystem_NuclearEOS
