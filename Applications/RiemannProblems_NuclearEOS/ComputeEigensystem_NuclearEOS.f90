@@ -51,8 +51,8 @@ PROGRAM ComputeEigensystem_NuclearEOS
 
   print*,"AR - RD = ", matmul(A,R) - matmul(R,DD)
 
-  CALL WriteMatrix(6, 6, A, 'A.dat')
-  CALL WriteMatrix(6, 6, R, 'R.dat')
+!  CALL WriteMatrix(6, 6, A, 'A.dat')
+!  CALL WriteMatrix(6, 6, R, 'R.dat')
 
 !  DO i = 1, 6
 !   print*,"Eigenvalue",i,"is: ", lambda(i) / ( Meter / Second  ) / SpeedOfLightMKS
