@@ -15,7 +15,7 @@ MODULE RiemannProblemInitializationModule
   USE FluidFieldsModule, ONLY: &
     uCF, nCF, &
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uAF, nAF, iAF_P, iAF_T, iAF_Ye, iAF_E, iAF_Gm, iAF_Cs
+    uAF, nAF, iAF_P, iAF_T, iAF_S, iAF_Ye, iAF_E, iAF_Gm, iAF_Cs
   USE EquationOfStateModule, ONLY: &
     ComputeInternalEnergyDensityFromPressure, &
     ComputeAuxiliary_Fluid
@@ -102,11 +102,11 @@ CONTAINS
                    uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E) )
 
           CALL ComputeAuxiliary_Fluid &
-                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uPF(:,iX1,iX2,iX3,iPF_E),  &
-                   uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P),  &
-                   uAF(:,iX1,iX2,iX3,iAF_T),  uAF(:,iX1,iX2,iX3,iAF_Ye), &
-                   uAF(:,iX1,iX2,iX3,iAF_E),  uAF(:,iX1,iX2,iX3,iAF_Gm), &
-                   uAF(:,iX1,iX2,iX3,iAF_Cs) )
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E ), &
+                   uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P ), &
+                   uAF(:,iX1,iX2,iX3,iAF_T ), uAF(:,iX1,iX2,iX3,iAF_Ye), &
+                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Gm), uAF(:,iX1,iX2,iX3,iAF_Cs) )
 
           CALL ComputeConserved &
                  ( uPF(:,iX1,iX2,iX3,1:nPF), uAF(:,iX1,iX2,iX3,1:nAF), &
