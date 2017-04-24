@@ -239,17 +239,24 @@ CONTAINS
 
     CALL InitializePolynomialBasis_Legendre
 
+    ASSOCIATE( U => UnitsDisplay )
+
     ! --- Spatial Grid ---
 
-    WRITE(*,'(A5,A20)') '', 'Computational Domain'
-    WRITE(*,'(A5,A20)') '', '--------------------'
+    WRITE(*,'(A5,A)') '', 'Computational Domain'
+    WRITE(*,'(A5,A)') '', '--------------------'
+    WRITE(*,*)
+    WRITE(*,'(A7,A)') '', 'Spatial Domain:'
+    WRITE(*,'(A7,A)') '', '---------------'
     WRITE(*,*)
     DO iDim = 1, 3
 
-      WRITE(*,'(A7,A3,I1,A4,ES8.2E2,A2,A3,I1,A4,&
-                &ES8.2E2,A2,A6,I1,A4,ES10.4E2)') &
-        '',   'xL(', iDim, ') = ', xL(iDim) / UnitsDisplay % LengthUnit, &
-        ', ', 'xR(', iDim, ') = ', xR(iDim) / UnitsDisplay % LengthUnit, &
+      WRITE(*,'(A7,A3,I1,A4,ES8.2E2,A1,A,A2,A3,I1,A4,&
+                &ES8.2E2,A1,A,A2,A6,I1,A4,ES10.4E2)') &
+        '',   'xL(', iDim, ') = ', xL(iDim) / U % LengthUnit, &
+        '', TRIM( U % LengthLabel ), &
+        ', ', 'xR(', iDim, ') = ', xR(iDim) / U % LengthUnit, &
+        '', TRIM( U % LengthLabel ), &
         ', ', 'ZoomX(', iDim, ') = ', ZoomX(iDim)
       WRITE(*,*)
 
@@ -257,32 +264,42 @@ CONTAINS
              ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
                xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
 
-      WRITE(*,'(A9,A11,I1,A4,ES8.2E2,A3,ES8.2E2)') &
+      WRITE(*,'(A9,A11,I1,A4,ES8.2E2,A1,A,A3,ES8.2E2,A1,A)') &
         '', 'MIN/MAX dx(', iDim, ') = ', &
         MINVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
-          / UnitsDisplay % LengthUnit, &
+          / U % LengthUnit, '', TRIM( U % LengthLabel ), &
         ' / ', &
         MAXVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
-          / UnitsDisplay % LengthUnit
+          / U % LengthUnit, '', TRIM( U % LengthLabel )
       WRITE(*,*)
 
     END DO
 
     ! --- Spectral Grid ---
 
-    WRITE(*,'(A7,A8,ES8.2E2,A2,A8,ES8.2E2,A2,A11,ES10.4E2)') &
-      '', 'eL    = ', eL / UnitsDisplay % EnergyUnit, ', ', &
-          'eR    = ', eR / UnitsDisplay % EnergyUnit, &
-      ', ', 'ZoomE    = ', ZoomE
+    WRITE(*,*)
+    WRITE(*,'(A7,A)') '', 'Spectral Domain:'
+    WRITE(*,'(A7,A)') '', '----------------'
+    WRITE(*,*)
+
+    WRITE(*,'(A7,A5,ES8.2E2,A1,A,A2,A5,ES8.2E2,A1,A,A2,A8,ES10.4E2)') &
+      '', 'eL = ', eL / U % EnergyUnit, '', TRIM( U % EnergyLabel ), &
+      ', ', &
+          'eR = ', eR / U % EnergyUnit, '', TRIM( U % EnergyLabel ), &
+      ', ', 'ZoomE = ', ZoomE
     WRITE(*,*)
 
     CALL CreateMesh( MeshE, nE, nNodesE, swE, eL, eR, ZoomOption = ZoomE )
 
-    WRITE(*,'(A9,A16,ES8.2E2,A3,ES8.2E2)') &
-      '', 'MIN/MAX de    = ', &
-      MINVAL( MeshE % Width(1:nE) ) / UnitsDisplay % EnergyUnit, &
+    WRITE(*,'(A9,A13,ES8.2E2,A1,A,A3,ES8.2E2,A1,A)') &
+      '', 'MIN/MAX de = ', &
+      MINVAL( MeshE % Width(1:nE) ) / U % EnergyUnit, &
+      '', TRIM( U % EnergyLabel ), &
       ' / ', &
-      MAXVAL( MeshE % Width(1:nE) ) / UnitsDisplay % EnergyUnit
+      MAXVAL( MeshE % Width(1:nE) ) / U % EnergyUnit, &
+      '', TRIM( U % EnergyLabel )
+
+    END ASSOCIATE ! U
 
     ! --- Geometry ---
 
