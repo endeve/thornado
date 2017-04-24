@@ -49,9 +49,9 @@
 
 \begin{abstract}
 The toolkit for high-order neutrino-radiation hydrodynamics (\thornado) is a code for astrophysical radiation-hydrodynamics based on high-order Runge-Kutta Discontinuous Galerkin (RKDG) methods.  
-It currently solves the Euler equations for fluid dynamics and the two-moment ($M_{1}$) approximation of the radiative transfer equation. 
-In this document, we benchmark the algorithms for solving the Euler equations.  
-An extensive set of one-dimensional Riemann problems with known exact solutions were run, and the \thornado\ results were graphed and compared to exact solutions in cases where they exist. 
+It currently solves the Euler equations for fluid dynamics and the two-moment ($M_{1}$) approximation of the radiative transfer equation, both in the non-relativistic limits. 
+In this document, we benchmark the algorithms for solving the non-relativistic Euler equations.  
+Results from an extensive set of one-dimensional Riemann problems are compared to exact solutions in cases where they exist. We also show results for th interacting blast wave problem of Colella and Woodward and the shock entropy wave problem of Shu and Oster. 
 \end{abstract}
 
 \tableofcontents
@@ -68,33 +68,33 @@ In the following subsections we briefly describe the equations and the numerical
 
 \subsection{Euler Equations of Gas Dynamics}
 
-The Euler equations for fluid dynamics \citep[see, e.g.,][for details]{Leveque2002} consists of the mass equation
+The Euler equations for fluid dynamics \citep[see, e.g.,][for details]{Leveque2002} consists of the mass conservation equation
 \begin{equation}
   \frac{\partial \rho}{\partial t}  
   + \frac{\partial}{\partial x} \Big(\rho u\Big) = 0,
   \label{eq:massConservation}
 \end{equation}
-the momentum equation
+the momentum conservation equation
 \begin{equation}
   \frac{\partial}{\partial t} \Big(\rho u\Big)
   + \frac{\partial}{\partial x} \Big(\rho u^2 + p\Big) = 0,
   \label{eq:momentumConservation}
 \end{equation}
-and the energy equation
+and the energy conservation equation
 \begin{equation}
   \frac{\partial E}{\partial t}
   + \frac{\partial}{\partial x} \Big((E + p) u\Big) = 0.  
   \label{eq:energyConservation}
 \end{equation}
-where $\rho$ represents mass density, $u$ the fluid velocity, $p$ the pressure of the fluid, and $E$ the energy.  
-Equation~\eqref{eq:massConservation} describes conservation of mass, Equation~\eqref{eq:momentumConservation} describes conservation of momentum, and equation \eqref{eq:energyConservation} describes conservation of energy.
+where $\rho$ represents mass density, $u$ the fluid velocity, $p$ the fluid pressure, and $E=e+\frac{1}{2}\rho u^2$ the total energy (internal plus kinetic).  
+Equation~\eqref{eq:massConservation} expresses conservation of mass, Equation~\eqref{eq:momentumConservation} expresses conservation of momentum, and equation \eqref{eq:energyConservation} expresses conservation of energy.
 The equation of state
 \begin{equation}
   p = (\gamma - 1)
   \Big(E - \frac{1}{2} \rho u^2 \Big)
   \label{eq:eos}
 \end{equation}
-closes the system of equations, and links the pressure to the quantities evolved in Equations \eqref{eq:massConservation}-\eqref{eq:energyConservation}. 
+closes the system of equations, and links the pressure to the quantities evolved by Equations \eqref{eq:massConservation}-\eqref{eq:energyConservation}. 
 The ratio of specific heats, $\gamma$, is taken to be a constant.  
 
 By defining the vector of conserved variables $\boldsymbol{U}=(\rho,\rho u,E)^{T}$ and the vector of fluxes $\boldsymbol{F}(\boldsymbol{U})=(\rho u,\rho u^{2}+p,(E+p)u)^{T}$ we write the Euler equations as system of conservation laws
@@ -114,7 +114,7 @@ In the Runge-Kutta Discontinuous Galerkin \citep[RKDG; cf.][]{cockburnShu_2001} 
 where $\{\phi_{j}(x)\}_{j=0}^{k}$ are polynomials of degree at most $k$ and $\boldsymbol{C}_{j}$ are expansion the coefficients to be solved for.  
 In \thornado, $\phi_{j}(x)$ are given by Lagrange polynomials.  
 
-The computational domain $D=\{x:x\in[x_{\mbox{\tiny L}},x_{\mbox{\tiny R}}]\}$ is subdivided into $N$ elements $I_{i}=\{x:x\in(x_{i-1/2},x_{i+1/2})\}$.  
+The computational domain $D=\{x:x\in[x_{\mbox{\tiny L}},x_{\mbox{\tiny R}}]\}$ is subdivided into $N$ elements $I_{i}=\{x:x\in(x_{i-1/2},x_{i+1/2})\}$ for $i=1,\ldots,N$.  
 The width of element $I_{i}$ is then $\Delta x_{i}=x_{i+1/2}-x_{i-1/2}$.  
 The semi-discrete DG method is then to find $\boldsymbol{U}_{h}$ such that
 \begin{equation}
@@ -127,8 +127,6 @@ for all $\phi_{j}$ and all $I_{i}\in D$.
 In Equation~\eqref{eq:semidiscreteDG}, $\widehat{\boldsymbol{F}}_{i\pm1/2}$ is a numerical flux approximating the flux across the interfaces connecting neighboring elements.  
 In \thornado, we have implemented the Local Lax-Friedrichs (LLF), the Harten-Lax-van Leer (HLL), and the HLLC Riemann solvers, but in the numerical experiments presented here, we only use the HLLC solver.  
 To complete the spatial discretization, we use Gaussian quadratures to evaluate the integrals in Eq.~\eqref{eq:semidiscreteDG}.  
-During time-integration, we apply limiters to the polynomial representation.  
-We use the TVB limiter of \citet{} to prevent oscillations near discontinuities and the positivity limiter of \citet{ZhangShu2010} to ensure that the density and pressure remain positive.  
 
 We apply the method of lines approach to temporal discretization.  
 With the spatial discretization specified, the DG problem in Eq.~\eqref{eq:semidiscreteDG} can be viewed as a system of ordinary differential equations (ODEs) for the expansion coefficients $\boldsymbol{C}=\{\boldsymbol{C}_{j}\}_{j=0}^{k}$, i.e.,
@@ -149,19 +147,20 @@ A general $m$-stage Runge-Kutta method is given by
   \boldsymbol{C}^{n+1}
   &=\boldsymbol{C}^{(m)},
 \end{align}
-where $\alpha_{il},\beta_{il}\ge0$ are given by Butcher tables.  
-During time integration, we apply slope and positivity limiters after each stage as a post-processing step.  
+where $\alpha_{il},\beta_{il}\ge0$ are given by Butcher tables. During time-integration, we apply limiters to the polynomial representation after each stage as a post-processing step.  
+We use the TVB limiter of \citet{} to prevent oscillations near discontinuities and the positivity limiter of \citet{ZhangShu2010} to ensure that the density and pressure remain positive.  
+
 
 In the numerical experiments presented below, we will vary the spatial and temporal order of the method.  
 The 1st order method (DG(0)+RK1) uses polynomials of degree $0$ in each element and the forward Euler time integration method, the second-order method (DG(1)+RK2) uses polynomials of degree $1$ combined SSP-RK2 time integration, while the 3rd order method (DG(2)+RK3) uses polynomials of degree $2$ combined SSP-RK3 time integration.  
 
 \section{Numerical Experiments}
 
-The code was tested using Riemann problems. The Riemann problem models a fluid in an area of one-dimensional space. The initial data features one jump discontinuity, and is constant on either side of this discontinuity. The computational domain is divided into space and time cells. The conditions of each cell are advanced forward for all space cells, one time step at a time, according to the Euler equations for fluid dynamics. \citep{Leveque2002}
+The code was tested against a series of one-dimensional Riemann problems. The Riemann problem models a fluid in an area of one-dimensional space. The initial data features one jump discontinuity, and is constant on either side of this discontinuity. The computational domain is divided into space and time cells. The conditions of each cell are advanced forward for all space cells, one time step at a time, according to the Euler equations for fluid dynamics. \citep{Leveque2002}
 
 %models an area with two fluids, each of which has different characteristics, which are separated from one another by a barrier. When the barrier is removed, the Riemann problem solver code models how the fluids mix, determining how different properties of the fluid change at various spatial locations over time. The fields are evolved forward over time based on the Euler equations.
 
-Several tests were used to assess the accuracy of the integration method \citep{LiskaWendroff2003}. 
+Several tests were used to assess the accuracy of the RKDG method implemented in thornado \citep{LiskaWendroff2003}. 
 \begin{table}[h!]
 \begin{center}
 \begin{tabular}{ |c|c c c|c c c|c c| }
@@ -185,9 +184,9 @@ Several tests were used to assess the accuracy of the integration method \citep{
   \label{tab:testtable}
 \end{center}
 \end{table}
-$x_0$ refers to the position of the barrier. 
+TAble 1 dispplays the initial data for the Riemann problems. ($\rho_L$, $u_L$ , $p_L$) denote the mass density, velocity, and pressure to the left of the interface at $x=x_0$;($\rho_R$, $u_R$,  $p_R$) refer to these same quantities to the right of the interface. The problem is advanced to time T.
 The computational domain $D$ is defined with $x_{\mbox{\tiny L}}=0.0$ and $x_{\mbox{\tiny R}}=1.0$ in tests 1--8, $x_{\mbox{\tiny L}}=0.1$ and $x_{\mbox{\tiny R}}=0.6$ in test 9 \citep{LiskaWendroff2003}, $x_{\mbox{\tiny L}}=-5$ and $x_{\mbox{\tiny R}}=15$ in test 10, and $x_{\mbox{\tiny L}}=-15$ and $x_{\mbox{\tiny R}}=5$ in test 11 \citep{Leveque2002}. 
-\ee{Provide more detailed description of the Riemann problems and refer to Table~\ref{tab:testtable}}
+%\ee{Provide more detailed description of the Riemann problems and refer to Table~\ref{tab:testtable}}
 
 Test 12 is the Woodward-Collela blast wave problem, computed on 0.0 to 1.0, with discontinuities at 0.1 and 0.9. At all positions, initial density is 1 and initial velocity is 0. Initial pressure is 1000 on the left, 0.01 in the center, and 100 on the right, and the test is advanced to 0.038 seconds. \citep{LiskaWendroff2003}. Test 13 shows Shock Entropy Wave interactions, advanced to 1.8 seconds.
 %\clearpage
