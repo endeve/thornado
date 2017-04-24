@@ -10,7 +10,7 @@ MODULE GravitySolutionUtilitiesModule
     VolJacX
   USE FluidFieldsModule, ONLY: &
     WeightsF, &
-    uPF, iPF_D
+    uCF, iCF_D
 
   IMPLICIT NONE
   PRIVATE
@@ -39,7 +39,7 @@ CONTAINS
           Mass &
             = Mass &
                 + dX1(iX1) * dX2(iX2) * dX3(iX3) &
-                    * SUM( WeightsF(:) * uPF(:,iX1,iX2,iX3,iPF_D) &
+                    * SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF_D) &
                              * VolJacX(:,iX1,iX2,iX3) )
 
         END DO
