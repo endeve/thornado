@@ -17,7 +17,8 @@ MODULE EquationOfStateModule_TABLE
     ComputeTempFromIntEnergy_Lookup, &
     ComputeTempFromIntEnergy_Bisection, &
     ComputeTempFromIntEnergy_Secant, &
-    ComputeTempFromPressure
+    ComputeTempFromPressure, &
+    ComputeTempFromPressure_Bisection
 
   ! ----------------------------------------------
 
@@ -38,7 +39,7 @@ MODULE EquationOfStateModule_TABLE
     ! --- Primitive Fluid Fields:
     iPF_D, iPF_E, iPF_Ne, nPF, &
     ! --- Auxiliary Fluid Fields:
-    iAF_P, iAF_T, iAF_Ye, iAF_E, iAF_Gm, iAF_Cs, nAF
+    iAF_P, iAF_T, iAF_Ye, iAF_E, iAF_S, iAF_Gm, iAF_Cs, nAF
 
   IMPLICIT NONE
   PRIVATE
@@ -263,20 +264,30 @@ CONTAINS
 
     INTEGER                :: iS
     REAL(DP), DIMENSION(1) :: TMP
+    REAL(DP), DIMENSION(SIZE(T)) :: T_Bisection
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    DO iS = 1, SIZE( D )
+!!$    DO iS = 1, SIZE( D )
+!!$
+!!$      CALL ComputeTempFromPressure                 &
+!!$             ( D(iS) / ( Gram / Centimeter**3 ),   &
+!!$               P(iS) / ( Dyne / Centimeter**2 ),   &
+!!$               Y(iS), Ds_T, Ts_T, Ys_T, LogInterp, &
+!!$               EOS % DV % Variables(iP_T) % Values, OS_P, TMP )
+!!$
+!!$      T(iS) = TMP(1) * Kelvin
+!!$
+!!$    END DO
 
-      CALL ComputeTempFromPressure                 &
-             ( D(iS) / ( Gram / Centimeter**3 ),   &
-               P(iS) / ( Dyne / Centimeter**2 ),   &
-               Y(iS), Ds_T, Ts_T, Ys_T, LogInterp, &
-               EOS % DV % Variables(iP_T) % Values, OS_P, TMP )
+    CALL ComputeTempFromPressure_Bisection  &
+           ( D / ( Gram / Centimeter**3 ),   &
+             P / ( Dyne / Centimeter**2 ),             &
+             Y, Ds_T, Ts_T, Ys_T, LogInterp, &
+             EOS % DV % Variables(iP_T) % Values, OS_P, &
+             T_Bisection )
 
-      T(iS) = TMP(1) * Kelvin
-
-    END DO
+    T = T_Bisection * Kelvin
 
 #endif
 
@@ -314,10 +325,10 @@ CONTAINS
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE
 
 
-  SUBROUTINE ComputeAuxiliary_Fluid_TABLE( D, Ev, Ne, P, T, Y, Em, Gm, Cs )
+  SUBROUTINE ComputeAuxiliary_Fluid_TABLE( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: P, T, Y, Em, Gm, Cs
+    REAL(DP), DIMENSION(:), INTENT(out) :: P, T, Y, S, Em, Gm, Cs
 
     Em(:) = Ev(:) / D(:)
     Y (:) = Ne(:) * ( BaryonMass / D(:) )
@@ -328,6 +339,10 @@ CONTAINS
     CALL ComputeDependentVariable_TABLE &
            ( D(:), T(:), Y(:), P(:), iP_T, OS_P, &
              Units_V = Dyne / Centimeter**2 )
+
+    CALL ComputeDependentVariable_TABLE &
+           ( D(:), T(:), Y(:), S(:), iS_T, OS_S, &
+             Units_V = BoltzmannConstant )
 
     CALL ComputeDependentVariable_TABLE &
            ( D(:), T(:), Y(:), Gm(:), iGm_T, OS_Gm, &
@@ -365,6 +380,13 @@ CONTAINS
              Units_V = Dyne / Centimeter**2 )
 
     Auxiliary_Fluid_TABLE(iAF_P) = TMP(1)
+
+    CALL ComputeDependentVariable_TABLE &
+           ( [ PF(iPF_D) ], [ Auxiliary_Fluid_TABLE(iAF_T) ], &
+             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP, iS_T, OS_S, &
+             Units_V = BoltzmannConstant )
+
+    Auxiliary_Fluid_TABLE(iAF_S) = TMP(1)
 
     CALL ComputeDependentVariable_TABLE &
            ( [ PF(iPF_D) ], [ Auxiliary_Fluid_TABLE(iAF_T) ], &

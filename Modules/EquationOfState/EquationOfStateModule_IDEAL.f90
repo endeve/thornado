@@ -60,10 +60,10 @@ CONTAINS
   END SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL
 
 
-  SUBROUTINE ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne, P, T, Y, Em, Gm, Cs )
+  SUBROUTINE ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: P, T, Y, Em, Gm, Cs
+    REAL(DP), DIMENSION(:), INTENT(out) :: P, T, Y, S, Em, Gm, Cs
 
     P (:) = ( Gamma_IDEAL - 1.0_DP ) * Ev(:)
     Gm(:) = Gamma_IDEAL

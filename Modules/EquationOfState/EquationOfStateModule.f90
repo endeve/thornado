@@ -103,9 +103,8 @@ MODULE EquationOfStateModule
   PROCEDURE (EosSubroutine_3),   POINTER, PUBLIC :: &
     ComputeThermodynamicStates_Primitive         => NULL(), &
     ComputeThermodynamicStates_Auxiliary         => NULL()
-  PROCEDURE (EosSubroutine_6),   POINTER, PUBLIC :: &
-    ComputeAuxiliary_Fluid                       => NULL()
   PROCEDURE (EosSubroutine_7),   POINTER, PUBLIC :: &
+    ComputeAuxiliary_Fluid                       => NULL(), &
     ApplyEquationOfState                         => NULL()
   PROCEDURE (EosSubroutine_1_3), POINTER, PUBLIC :: &
     ComputeSpecificInternalEnergy                => NULL(), &
