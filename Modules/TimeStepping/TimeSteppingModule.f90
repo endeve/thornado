@@ -14,13 +14,14 @@ MODULE TimeSteppingModule
   USE FluidFieldsModule, ONLY: &
     uCF, rhsCF, nCF, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
-    uAF, iAF_P, iAF_T, iAF_Ye, iAF_E, iAF_Gm, iAF_Cs, nAF
+    uAF, iAF_P, iAF_T,  iAF_Ye, iAF_S,  iAF_E, iAF_Gm, iAF_Cs, nAF
   USE RadiationFieldsModule, ONLY: &
     uCR, rhsCR, nCR, nSpecies
   USE EquationOfStateModule, ONLY: &
     ComputeAuxiliary_Fluid
   USE InputOutputModule, ONLY: &
-    WriteFields1D
+    WriteFields1D, &
+    WriteFieldsRestart1D
   USE TallyModule, ONLY: &
     InitializeGlobalTally, &
     ComputeGlobalTally
@@ -197,7 +198,7 @@ CONTAINS
 
     iCycle  = 0
     t       = t_begin
-    t_write = dt_write
+    t_write = t_begin + dt_write
 
     IF( EvolveFluid )THEN
 
@@ -218,11 +219,18 @@ CONTAINS
     END IF
 
     CALL InitializeGlobalTally &
-           ( TallyGravity_Option = EvolveGravity, &
+           ( Time = t, &
+             TallyGravity_Option = EvolveGravity, &
              TallyFluid_Option = EvolveFluid,  &
              TallyRadiation_Option = EvolveRadiation )
 
     CALL WriteFields1D &
+           ( Time = t, &
+             WriteGeometryFields_Option = EvolveGravity, &
+             WriteFluidFields_Option = EvolveFluid, &
+             WriteRadiationFields_Option = EvolveRadiation )
+
+    CALL WriteFieldsRestart1D &
            ( Time = t, &
              WriteGeometryFields_Option = EvolveGravity, &
              WriteFluidFields_Option = EvolveFluid, &
@@ -256,14 +264,14 @@ CONTAINS
 
       END IF
 
-      IF( MOD( iCycle, 100 ) == 0 )THEN
+      IF( MOD( iCycle, 10 ) == 0 )THEN
 
         WRITE(*,'(A8,A8,I8.8,A2,A4,ES10.4E2,A1,A2,A2,A5,ES10.4E2,A1,A2)') &
           '', 'Cycle = ', iCycle, &
           '', 't = ', t / U % TimeUnit, '', TRIM( U % TimeLabel ), &
           '', 'dt = ', dt / U % TimeUnit, '', TRIM( U % TimeLabel )
 
-        CALL ComputeGlobalTally
+        CALL ComputeGlobalTally( Time = t )
 
       END IF
 
@@ -274,6 +282,12 @@ CONTAINS
       IF( WriteOutput )THEN
 
         CALL WriteFields1D &
+               ( Time = t, &
+                 WriteGeometryFields_Option = EvolveGravity, &
+                 WriteFluidFields_Option = EvolveFluid, &
+                 WriteRadiationFields_Option = EvolveRadiation )
+
+        CALL WriteFieldsRestart1D &
                ( Time = t, &
                  WriteGeometryFields_Option = EvolveGravity, &
                  WriteFluidFields_Option = EvolveFluid, &
@@ -300,6 +314,12 @@ CONTAINS
     WRITE(*,*)
 
     CALL WriteFields1D &
+           ( Time = t, &
+             WriteGeometryFields_Option = EvolveGravity, &
+             WriteFluidFields_Option = EvolveFluid, &
+             WriteRadiationFields_Option = EvolveRadiation )
+
+    CALL WriteFieldsRestart1D &
            ( Time = t, &
              WriteGeometryFields_Option = EvolveGravity, &
              WriteFluidFields_Option = EvolveFluid, &
@@ -367,8 +387,8 @@ CONTAINS
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E ), &
                    uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P ), &
                    uAF(:,iX1,iX2,iX3,iAF_T ), uAF(:,iX1,iX2,iX3,iAF_Ye), &
-                   uAF(:,iX1,iX2,iX3,iAF_E ), uAF(:,iX1,iX2,iX3,iAF_Gm), &
-                   uAF(:,iX1,iX2,iX3,iAF_Cs) )
+                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Gm), uAF(:,iX1,iX2,iX3,iAF_Cs) )
 
           DO iNodeX = 1, nDOFX
 
