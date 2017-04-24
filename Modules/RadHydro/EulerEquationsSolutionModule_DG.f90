@@ -5,8 +5,7 @@ MODULE EulerEquationsSolutionModule_DG
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, nDOFX
   USE UtilitiesModule, ONLY: &
-    NodeNumberX, &
-    WriteVector
+    NodeNumberX
   USE PolynomialBasisModule_Lagrange, ONLY: &
     L_X1, dL_X1
   USE MeshModule, ONLY: &
@@ -20,7 +19,7 @@ MODULE EulerEquationsSolutionModule_DG
     rhsCF, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, nCF, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
-    uAF, iAF_P, iAF_T, iAF_Ye, iAF_E, iAF_Gm, iAF_Cs, nAF
+    uAF, iAF_P, iAF_T,  iAF_Ye, iAF_S,  iAF_E, iAF_Gm, iAF_Cs, nAF
   USE EquationOfStateModule, ONLY: &
     ComputeAuxiliary_Fluid, &
     Auxiliary_Fluid
@@ -62,8 +61,8 @@ CONTAINS
                  ( uPF(:,iX1,iX2,iX3,iPF_D),  uPF(:,iX1,iX2,iX3,iPF_E),  &
                    uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P),  &
                    uAF(:,iX1,iX2,iX3,iAF_T),  uAF(:,iX1,iX2,iX3,iAF_Ye), &
-                   uAF(:,iX1,iX2,iX3,iAF_E),  uAF(:,iX1,iX2,iX3,iAF_Gm), &
-                   uAF(:,iX1,iX2,iX3,iAF_Cs) )
+                   uAF(:,iX1,iX2,iX3,iAF_S),  uAF(:,iX1,iX2,iX3,iAF_E),  &
+                   uAF(:,iX1,iX2,iX3,iAF_Gm), uAF(:,iX1,iX2,iX3,iAF_Cs) )
 
         END DO
       END DO
