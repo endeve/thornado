@@ -68,6 +68,7 @@ MODULE UnitsModule
     DisplayLabel_Momentum        = 'g cm/s', &
     DisplayLabel_MomentumDensity = 'g/cm^2/s', &
     DisplayLabel_Energy          = 'MeV', &
+    DisplayLabel_EnergyGlobal    = 'B', &
     DisplayLabel_EnergyDensity   = 'erg/cm^3', &
     DisplayLabel_Pressure        = 'erg/cm^3', &
     DisplayLabel_Temperature     = 'K'
@@ -82,6 +83,7 @@ MODULE UnitsModule
     DisplayUnit_Momentum        = Gram * Centimeter / Second, &
     DisplayUnit_MomentumDensity = Gram / Centimeter**2 / Second, &
     DisplayUnit_Energy          = MeV, &
+    DisplayUnit_EnergyGlobal    = Bethe, &
     DisplayUnit_EnergyDensity   = Erg / Centimeter**3, &
     DisplayUnit_Pressure        = Erg / Centimeter**3, &
     DisplayUnit_Temperature     = Kelvin
@@ -99,6 +101,7 @@ MODULE UnitsModule
       MomentumLabel        = DisplayLabel_Null, &
       MomentumDensityLabel = DisplayLabel_Null, &
       EnergyLabel          = DisplayLabel_Null, &
+      EnergyGlobalLabel    = DisplayLabel_Null, &
       EnergyDensityLabel   = DisplayLabel_Null, &
       PressureLabel        = DisplayLabel_Null, &
       TemperatureLabel     = DisplayLabel_Null
@@ -112,6 +115,7 @@ MODULE UnitsModule
       MomentumUnit        = 1.0_DP, &
       MomentumDensityUnit = 1.0_DP, &
       EnergyUnit          = 1.0_DP, &
+      EnergyGlobalUnit    = 1.0_DP, &
       EnergyDensityUnit   = 1.0_DP, &
       PressureUnit        = 1.0_DP, &
       TemperatureUnit     = 1.0_DP
@@ -138,6 +142,7 @@ CONTAINS
     UnitsDisplay % MomentumLabel        = DisplayLabel_Momentum
     UnitsDisplay % MomentumDensityLabel = DisplayLabel_MomentumDensity
     UnitsDisplay % EnergyLabel          = DisplayLabel_Energy
+    UnitsDisplay % EnergyGlobalLabel    = DisplayLabel_EnergyGlobal
     UnitsDisplay % EnergyDensityLabel   = DisplayLabel_EnergyDensity
     UnitsDisplay % PressureLabel        = DisplayLabel_Pressure
     UnitsDisplay % TemperatureLabel     = DisplayLabel_Temperature
@@ -151,6 +156,7 @@ CONTAINS
     UnitsDisplay % MomentumUnit        = DisplayUnit_Momentum
     UnitsDisplay % MomentumDensityUnit = DisplayUnit_MomentumDensity
     UnitsDisplay % EnergyUnit          = DisplayUnit_Energy
+    UnitsDisplay % EnergyGlobalUnit    = DisplayUnit_EnergyGlobal
     UnitsDisplay % EnergyDensityUnit   = DisplayUnit_EnergyDensity
     UnitsDisplay % PressureUnit        = DisplayUnit_Pressure
     UnitsDisplay % TemperatureUnit     = DisplayUnit_Temperature
@@ -193,6 +199,9 @@ CONTAINS
     WRITE(*,'(A7,A24,A)') &
       '', 'Energy Units: ', &
       TRIM( UnitsDisplay % EnergyLabel )
+    WRITE(*,'(A7,A24,A)') &
+      '', 'Energy Global Units: ', &
+      TRIM( UnitsDisplay % EnergyGlobalLabel )
     WRITE(*,'(A7,A24,A)') &
       '', 'Energy Density Units: ', &
       TRIM( UnitsDisplay % EnergyDensityLabel )
