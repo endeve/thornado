@@ -4,10 +4,11 @@ MODULE TallyModule
     DP
   USE UnitsModule, ONLY: &
     PlanckConstant, &
-    SpeedOfLight
+    SpeedOfLight, &
+    UnitsDisplay
   USE ProgramHeaderModule, ONLY: &
-    nE, &
-    nX
+    ProgramName, &
+    nE, nX
   USE MeshModule, ONLY: &
     MeshE, &
     MeshX
@@ -26,9 +27,10 @@ MODULE TallyModule
   IMPLICIT NONE
   PRIVATE
 
-  LOGICAL :: TallyGravity
-  LOGICAL :: TallyFluid
-  LOGICAL :: TallyRadiation
+  CHARACTER(80) :: TallyFileName
+  LOGICAL       :: TallyGravity
+  LOGICAL       :: TallyFluid
+  LOGICAL       :: TallyRadiation
 
   ! --- Tallied Gravity Quantities ---
 
@@ -36,6 +38,7 @@ MODULE TallyModule
 
   ! --- Tallied Fluid Quantites ---
 
+  REAL(DP)                 :: MaximumMassDensity
   REAL(DP), DIMENSION(0:1) :: GlobalBaryonMass_Fluid
   REAL(DP), DIMENSION(0:1) :: GlobalEnergy_Fluid
   REAL(DP), DIMENSION(0:1) :: GlobalElectronNumber_Fluid
@@ -52,12 +55,13 @@ CONTAINS
 
 
   SUBROUTINE InitializeGlobalTally &
-               ( TallyGravity_Option, TallyFluid_Option, &
+               ( Time, TallyGravity_Option, TallyFluid_Option, &
                  TallyRadiation_Option )
 
-    LOGICAL, INTENT(in), OPTIONAL :: TallyGravity_Option
-    LOGICAL, INTENT(in), OPTIONAL :: TallyFluid_Option
-    LOGICAL, INTENT(in), OPTIONAL :: TallyRadiation_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Time
+    LOGICAL,  INTENT(in), OPTIONAL :: TallyGravity_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: TallyFluid_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: TallyRadiation_Option
 
     TallyGravity = .FALSE.
     IF( PRESENT( TallyGravity_Option ) ) &
@@ -75,6 +79,8 @@ CONTAINS
 
       CALL ComputeGlobalTally_Gravity &
              ( iState_Option = 0 )
+      CALL ComputeGlobalTally_Gravity &
+             ( iState_Option = 1 )
 
     END IF
 
@@ -82,6 +88,8 @@ CONTAINS
 
       CALL ComputeGlobalTally_Fluid &
              ( iState_Option = 0 )
+      CALL ComputeGlobalTally_Fluid &
+             ( iState_Option = 1 )
 
     END IF
 
@@ -89,13 +97,22 @@ CONTAINS
 
       CALL ComputeGlobalTally_Radiation &
              ( iState_Option = 0 )
+      CALL ComputeGlobalTally_Radiation &
+             ( iState_Option = 1 )
 
     END IF
+
+    TallyFileName &
+      = '../Output/' // TRIM( ProgramName ) // '_GlobalTally.dat'
+
+    CALL WriteGlobalTally( Time )
 
   END SUBROUTINE InitializeGlobalTally
 
 
-  SUBROUTINE ComputeGlobalTally
+  SUBROUTINE ComputeGlobalTally( Time )
+
+    REAL(DP), INTENT(in) :: Time
 
     IF( TallyGravity )THEN
 
@@ -117,6 +134,8 @@ CONTAINS
       CALL DisplayGlobalTally_Radiation
 
     END IF
+
+    CALL WriteGlobalTally( Time, Append_Option = .TRUE. )
 
   END SUBROUTINE ComputeGlobalTally
 
@@ -164,17 +183,23 @@ CONTAINS
 
   SUBROUTINE DisplayGlobalTally_Gravity
 
+    ASSOCIATE( U => UnitsDisplay )
+
     WRITE(*,*)
     WRITE(*,'(A4,A)') '', 'INFO: Gravitational Tally'
     WRITE(*,*)
-    WRITE(*,'(A8,A26,ES18.10E3)') &
+    WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
       '', 'Global Potential Energy = ', &
-      GlobalEnergy_Gravity(1)
-    WRITE(*,'(A8,A26,ES18.10E3)') &
+      GlobalEnergy_Gravity(1) / U % EnergyGlobalUnit, &
+      '', U % EnergyGlobalLabel
+    WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
       '', 'Change = ', &
-      GlobalEnergy_Gravity(1) &
-        - GlobalEnergy_Gravity(0)
+      ( GlobalEnergy_Gravity(1) &
+        - GlobalEnergy_Gravity(0) ) / U % EnergyGlobalUnit, &
+      '', U % EnergyGlobalLabel
     WRITE(*,*)
+
+    END ASSOCIATE ! U
 
   END SUBROUTINE DisplayGlobalTally_Gravity
 
@@ -194,12 +219,17 @@ CONTAINS
         dX2 => MeshX(2) % Width(1:nX(2)), &
         dX3 => MeshX(3) % Width(1:nX(3)) )
 
+    MaximumMassDensity             = 0.0_DP
     GlobalBaryonMass_Fluid    (iS) = 0.0_DP
     GlobalEnergy_Fluid        (iS) = 0.0_DP
     GlobalElectronNumber_Fluid(iS) = 0.0_DP
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
+
+          MaximumMassDensity &
+            = MAX( MaximumMassDensity, &
+                   MAXVAL( uCF(:,iX1,iX2,iX3,iCF_D) ) )
 
           GlobalBaryonMass_Fluid(iS) &
             = GlobalBaryonMass_Fluid(iS) &
@@ -230,24 +260,39 @@ CONTAINS
 
   SUBROUTINE DisplayGlobalTally_Fluid
 
+    ASSOCIATE( U => UnitsDisplay )
+
     WRITE(*,*)
     WRITE(*,'(A4,A)') '', 'INFO: Fluid Tally'
     WRITE(*,*)
-    WRITE(*,'(A8,A26,ES18.10E3)') &
-      '', 'Global Baryon Mass = ', &
-      GlobalBaryonMass_Fluid(1)
-    WRITE(*,'(A8,A26,ES18.10E3)') &
-      '', 'Change = ', &
-      GlobalBaryonMass_Fluid(1) &
-        - GlobalBaryonMass_Fluid(0)
+    WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
+      '', 'Maximum Mass Density = ', &
+      MaximumMassDensity / U % MassDensityUnit, &
+      '', U % MassDensityLabel
     WRITE(*,*)
-    WRITE(*,'(A8,A26,ES18.10E3)') &
-      '', 'Global Energy = ', &
-      GlobalEnergy_Fluid(1)
-    WRITE(*,'(A8,A26,ES18.10E3)') &
+    WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
+      '', 'Global Baryon Mass = ', &
+      GlobalBaryonMass_Fluid(1) &
+      / U % MassUnit, &
+      '', U % MassLabel
+    WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
       '', 'Change = ', &
+      ( GlobalBaryonMass_Fluid(1) &
+        - GlobalBaryonMass_Fluid(0) ) &
+      / U % MassUnit, &
+      '', U % MassLabel
+    WRITE(*,*)
+    WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
+      '', 'Global Energy = ', &
       GlobalEnergy_Fluid(1) &
-        - GlobalEnergy_Fluid(0)
+      / U % EnergyGlobalUnit, &
+      '', U % EnergyGlobalLabel
+    WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
+      '', 'Change = ', &
+      ( GlobalEnergy_Fluid(1) &
+        - GlobalEnergy_Fluid(0) ) &
+      / U % EnergyGlobalUnit, &
+      '', U % EnergyGlobalLabel
     WRITE(*,*)
     WRITE(*,'(A8,A26,ES18.10E3)') &
       '', 'Global Electron Number = ', &
@@ -257,6 +302,8 @@ CONTAINS
       GlobalElectronNumber_Fluid(1) &
         - GlobalElectronNumber_Fluid(0)
     WRITE(*,*)
+
+    END ASSOCIATE ! U
 
   END SUBROUTINE DisplayGlobalTally_Fluid
 
@@ -339,6 +386,56 @@ CONTAINS
     WRITE(*,*)
 
   END SUBROUTINE DisplayGlobalTally_Radiation
+
+
+  SUBROUTINE WriteGlobalTally( Time, Append_Option )
+
+    REAL(DP), INTENT(in)           :: Time
+    LOGICAL,  INTENT(in), OPTIONAL :: Append_Option
+
+    LOGICAL :: Append
+    INTEGER :: FileUnit
+
+    Append = .FALSE.
+    IF( PRESENT( Append_Option ) ) &
+      Append = Append_Option
+
+    IF( .NOT. Append )THEN
+
+      OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ) )
+
+      WRITE( FileUnit, '(8(A14,x))' ) &
+        'Time', 'Max D', 'Total M', 'Change M', &
+        'Total E_f', 'Change E_f', 'Total E_g', 'Change E_g'
+
+    ELSE
+
+      OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ), &
+            ACCESS = 'APPEND' )
+
+    END IF
+
+    ASSOCIATE( U => UnitsDisplay )
+
+    WRITE( FileUnit, &
+           '(8(ES14.5,x))' ) &
+      Time / U % TimeUnit, &
+      MaximumMassDensity / U % MassDensityUnit, &
+      GlobalBaryonMass_Fluid(1) / U % MassUnit, &
+      ( GlobalBaryonMass_Fluid(1) - GlobalBaryonMass_Fluid(0) ) &
+        / U % MassUnit, &
+      GlobalEnergy_Fluid(1) / U % EnergyGlobalUnit, &
+      ( GlobalEnergy_Fluid(1) - GlobalEnergy_Fluid(0) ) &
+        / U % EnergyGlobalUnit, &
+      GlobalEnergy_Gravity(1) / U % EnergyGlobalUnit, &
+      ( GlobalEnergy_Gravity(1) - GlobalEnergy_Gravity(0) ) &
+        / U % EnergyGlobalUnit
+
+    END ASSOCIATE ! U
+
+    CLOSE( FileUnit )
+
+  END SUBROUTINE WriteGlobalTally
 
 
 END MODULE TallyModule
