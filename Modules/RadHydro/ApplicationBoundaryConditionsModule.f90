@@ -16,7 +16,7 @@ MODULE ApplicationBoundaryConditionsModule
   USE FluidFieldsModule, ONLY: &
     uCF, iCF_S1, nCF, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
-    uAF, iAF_P, iAF_T, iAF_Ye, iAF_E, iAF_Gm, iAF_Cs, nAF
+    uAF, iAF_P, iAF_T,  iAF_Ye, iAF_S,  iAF_E, iAF_Gm, iAF_Cs, nAF
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
@@ -146,8 +146,8 @@ CONTAINS
                ( uPF(:,nX(1)+1,iX2,iX3,iPF_D),  uPF(:,nX(1)+1,iX2,iX3,iPF_E),  &
                  uPF(:,nX(1)+1,iX2,iX3,iPF_Ne), uAF(:,nX(1)+1,iX2,iX3,iAF_P),  &
                  uAF(:,nX(1)+1,iX2,iX3,iAF_T),  uAF(:,nX(1)+1,iX2,iX3,iAF_Ye), &
-                 uAF(:,nX(1)+1,iX2,iX3,iAF_E),  uAF(:,nX(1)+1,iX2,iX3,iAF_Gm), &
-                 uAF(:,nX(1)+1,iX2,iX3,iAF_Cs) )
+                 uAF(:,nX(1)+1,iX2,iX3,iAF_S),  uAF(:,nX(1)+1,iX2,iX3,iAF_E),  &
+                 uAF(:,nX(1)+1,iX2,iX3,iAF_Gm), uAF(:,nX(1)+1,iX2,iX3,iAF_Cs) )
 
         CALL ComputeConserved &
                ( uPF(:,nX(1)+1,iX2,iX3,1:nPF), uCF(:,nX(1)+1,iX2,iX3,1:nCF) )
@@ -234,8 +234,8 @@ CONTAINS
                ( uPF(:,nX(1)+1,iX2,iX3,iPF_D),  uPF(:,nX(1)+1,iX2,iX3,iPF_E),  &
                  uPF(:,nX(1)+1,iX2,iX3,iPF_Ne), uAF(:,nX(1)+1,iX2,iX3,iAF_P),  &
                  uAF(:,nX(1)+1,iX2,iX3,iAF_T),  uAF(:,nX(1)+1,iX2,iX3,iAF_Ye), &
-                 uAF(:,nX(1)+1,iX2,iX3,iAF_E),  uAF(:,nX(1)+1,iX2,iX3,iAF_Gm), &
-                 uAF(:,nX(1)+1,iX2,iX3,iAF_Cs) )
+                 uAF(:,nX(1)+1,iX2,iX3,iAF_S),  uAF(:,nX(1)+1,iX2,iX3,iAF_E),  &
+                 uAF(:,nX(1)+1,iX2,iX3,iAF_Gm), uAF(:,nX(1)+1,iX2,iX3,iAF_Cs) )
 
         CALL ComputeConserved &
                ( uPF(:,nX(1)+1,iX2,iX3,1:nPF), uCF(:,nX(1)+1,iX2,iX3,1:nCF) )
