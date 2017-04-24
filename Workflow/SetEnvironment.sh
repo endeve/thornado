@@ -40,6 +40,11 @@ elif [[ $THORNADO_MACHINE == sn1987b* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == juliana* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 elif [[ $THORNADO_MACHINE == sjdunham* ]]; then
 
 echo
@@ -93,6 +98,12 @@ elif [[ $THORNADO_MACHINE == beacon_intel ]]; then
 elif [[ $THORNADO_MACHINE == sn1987b ]]; then
 
   echo
+
+elif [[ $THORNADO_MACHINE == juliana ]]; then
+
+  echo
+  export WEAKLIB_DIR=~/Desktop/thornado_files/weaklib
+  export THORNADO_DIR=~/Desktop/thornado_files/thornado_new
 
 elif [[ $THORNADO_MACHINE == sjdunham ]]; then
 
