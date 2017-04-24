@@ -6,13 +6,13 @@ MODULE InputOutputModule
     UnitsDisplay
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nX, nE
+    nX, nNodesX, nE
   USE PolynomialBasisModule_Lagrange, ONLY: &
     evalL, &
     evalLX
   USE MeshModule, ONLY: &
-    MeshX, &
-    MeshE
+    MeshX, MeshE, &
+    NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     uGF, iGF_Phi_N, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
@@ -38,8 +38,11 @@ MODULE InputOutputModule
   CHARACTER(15), PARAMETER :: &
     RadiationSuffix = 'RadiationFields'
   INTEGER :: FileNumber = 0
+  INTEGER :: RestartFileNumber = 0
 
   PUBLIC :: WriteFields1D
+  PUBLIC :: WriteFieldsRestart1D
+  PUBLIC :: ReadFluidFieldsRestart1D
 
 CONTAINS
 
@@ -277,6 +280,286 @@ CONTAINS
 
     RETURN
   END FUNCTION RadiationField1D
+
+
+  SUBROUTINE WriteFieldsRestart1D &
+               ( Time, WriteGeometryFields_Option, WriteFluidFields_Option, &
+                 WriteRadiationFields_Option )
+
+    REAL(DP), INTENT(in)           :: Time
+    LOGICAL,  INTENT(in), OPTIONAL :: WriteGeometryFields_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: WriteFluidFields_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: WriteRadiationFields_Option
+
+    LOGICAL :: WriteGeometryFields
+    LOGICAL :: WriteFluidFields
+    LOGICAL :: WriteRadiationFields
+
+    WriteGeometryFields = .FALSE.
+    IF( PRESENT( WriteGeometryFields_Option ) ) &
+      WriteGeometryFields = WriteGeometryFields_Option
+
+    WriteFluidFields = .FALSE.
+    IF( PRESENT( WriteFluidFields_Option ) ) &
+      WriteFluidFields = WriteFluidFields_Option
+
+    WriteRadiationFields = .FALSE.
+    IF( PRESENT( WriteRadiationFields_Option ) ) &
+      WriteRadiationFields = WriteRadiationFields_Option
+
+    IF( WriteFluidFields ) &
+      CALL WriteFluidFieldsRestart1D( Time )
+
+    RestartFileNumber = RestartFileNumber + 1
+
+  END SUBROUTINE WriteFieldsRestart1D
+
+
+  SUBROUTINE WriteFluidFieldsRestart1D( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    INTEGER        :: FUNIT
+
+    WRITE( FileNumberString, FMT='(i6.6)') RestartFileNumber
+
+    FileName = OutputDirectory // '/' // TRIM( ProgramName ) // '_' // &
+                 FluidSuffix // '_Restart_' // FileNumberString // '.dat'
+
+    ASSOCIATE( U => UnitsDisplay )
+
+    OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
+
+    WRITE( FUNIT, * ) RestartFileNumber
+    WRITE( FUNIT, * ) FileNumber
+    WRITE( FUNIT, * ) Time / U % TimeUnit 
+    WRITE( FUNIT, * ) nX(1)
+    WRITE( FUNIT, * ) nNodesX(1)
+
+    WRITE( FUNIT, * ) &
+      NodeCoordinatesX1( nX(1), nNodesX(1) ) / U % LengthUnit
+
+    WRITE( FUNIT, * ) & ! uPF_D
+      FluidFieldRestart1D_Out &
+        ( uPF(:,1:nX(1),1,1,iPF_D ), nX(1), nNodesX(1) ) &
+          / U % MassDensityUnit
+
+    WRITE( FUNIT, * ) & ! uPF_V1
+      FluidFieldRestart1D_Out &
+        ( uPF(:,1:nX(1),1,1,iPF_V1), nX(1), nNodesX(1) ) &
+          / U % VelocityUnit
+
+    WRITE( FUNIT, * ) & ! uPF_V2
+      FluidFieldRestart1D_Out &
+        ( uPF(:,1:nX(1),1,1,iPF_V2), nX(1), nNodesX(1) ) &
+          / U % VelocityUnit
+
+    WRITE( FUNIT, * ) & ! uPF_V3
+      FluidFieldRestart1D_Out &
+        ( uPF(:,1:nX(1),1,1,iPF_V3), nX(1), nNodesX(1) ) &
+          / U % VelocityUnit
+
+    WRITE( FUNIT, * ) & ! uPF_E
+      FluidFieldRestart1D_Out &
+        ( uPF(:,1:nX(1),1,1,iPF_E ), nX(1), nNodesX(1) ) &
+          / U % EnergyDensityUnit
+
+    WRITE( FUNIT, * ) & ! uPF_Ne
+      FluidFieldRestart1D_Out &
+        ( uPF(:,1:nX(1),1,1,iPF_Ne), nX(1), nNodesX(1) ) &
+          / U % ParticleDensityUnit
+
+    WRITE( FUNIT, * ) & ! uAF_P
+      FluidFieldRestart1D_Out &
+        ( uAF(:,1:nX(1),1,1,iAF_P ), nX(1), nNodesX(1) ) &
+          / U % PressureUnit
+
+    WRITE( FUNIT, * ) & ! uAF_T
+      FluidFieldRestart1D_Out &
+        ( uAF(:,1:nX(1),1,1,iAF_T ), nX(1), nNodesX(1) ) &
+          / U % TemperatureUnit
+
+    WRITE( FUNIT, * ) & ! uAF_Ye
+      FluidFieldRestart1D_Out &
+        ( uAF(:,1:nX(1),1,1,iAF_Ye), nX(1), nNodesX(1) )
+
+    CLOSE( FUNIT )
+
+    END ASSOCIATE ! U
+
+    WRITE(*,*)
+    WRITE(*,'(A6,A20,A)') &
+      '', 'Wrote Restart File: ', TRIM( FileName )
+    WRITE(*,*)
+
+  END SUBROUTINE WriteFluidFieldsRestart1D
+
+
+  FUNCTION NodeCoordinatesX1( nX1, nNodesX1 )
+
+    REAL(DP), DIMENSION(nX1*nNodesX1) :: NodeCoordinatesX1
+    INTEGER,               INTENT(in) :: nX1
+    INTEGER,               INTENT(in) :: nNodesX1
+
+    INTEGER :: iX1, iNodeX1, iNode
+
+    iNode = 0
+    DO iX1 = 1, nX1
+      DO iNodeX1 = 1, nNodesX1
+        iNode = iNode + 1
+        NodeCoordinatesX1(iNode) &
+          = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+      END DO
+    END DO
+
+    RETURN
+  END FUNCTION NodeCoordinatesX1
+
+
+  FUNCTION FluidFieldRestart1D_Out( u, nX1, nNodesX1 )
+
+    REAL(DP), DIMENSION(nX1*nNodesX1)    :: FluidFieldRestart1D_Out
+    REAL(DP), DIMENSION(:,:), INTENT(in) :: u
+    INTEGER,                  INTENT(in) :: nX1
+    INTEGER,                  INTENT(in) :: nNodesX1
+
+    INTEGER :: iX1, iNodeX1, iNode
+
+    iNode = 0
+    DO iX1 = 1, nX1
+      DO iNodeX1 = 1, nNodesX1
+        iNode = iNode + 1
+        FluidFieldRestart1D_Out(iNode) = u(iNodeX1,iX1)
+      END DO
+    END DO
+
+    RETURN
+  END FUNCTION FluidFieldRestart1D_Out
+
+
+  SUBROUTINE ReadFluidFieldsRestart1D( RestartNumber, Time )
+
+    INTEGER,  INTENT(in)  :: RestartNumber
+    REAL(DP), INTENT(out) :: Time
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    INTEGER        :: FUNIT
+    INTEGER        :: nElements, nNodes
+    REAL(DP), DIMENSION(:), ALLOCATABLE :: RealBuffer1D
+
+    WRITE( FileNumberString, FMT='(i6.6)') RestartNumber
+
+    FileName = OutputDirectory // '/' // TRIM( ProgramName ) // '_' // &
+                 FluidSuffix // '_Restart_' // FileNumberString // '.dat'
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A22,A)') &
+      '', 'Reading Restart File: ', TRIM( FileName )
+    WRITE(*,*)
+
+    ASSOCIATE( U => UnitsDisplay )
+
+    OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
+
+    READ( FUNIT, * ) RestartFileNumber
+    RestartFileNumber &
+      = RestartFileNumber + 1
+
+    READ( FUNIT, * ) FileNumber
+    FileNumber = FileNumber
+
+    READ( FUNIT, * ) Time
+    Time = Time * U % TimeUnit
+
+    READ( FUNIT, * ) nElements
+    READ( FUNIT, * ) nNodes
+
+    IF( nElements /= nX(1) .OR. nNodes /= nNodesX(1) )THEN
+      WRITE(*,*)
+      WRITE(*,'(A6,A)') '', 'Error in ReadFluidFieldsRestart1D'
+      WRITE(*,'(A6,A)') '', 'Incompatible Resolutions'
+      WRITE(*,'(A6,A11,I4.4,A5,I2.2)') &
+        '', 'nElements: ', nX(1),  ' vs. ', nElements
+      WRITE(*,'(A6,A11,I4.4,A5,I2.2)') &
+        '', '   nNodes: ', nNodes, ' vs. ', nNodesX(1)
+      WRITE(*,*)
+      STOP
+    END IF
+
+    ALLOCATE( RealBuffer1D(nElements*nNodes) )
+
+    READ( FUNIT, * ) RealBuffer1D ! Coordinates (Not Needed)
+
+    READ( FUNIT, * ) RealBuffer1D ! uPF_D
+    uPF(:,1:nX(1),1,1,iPF_D) &
+      = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
+          * U % MassDensityUnit
+    READ( FUNIT, * ) RealBuffer1D ! uPF_V1
+    uPF(:,1:nX(1),1,1,iPF_V1) &
+      = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
+          * U % VelocityUnit
+    READ( FUNIT, * ) RealBuffer1D ! uPF_V2
+    uPF(:,1:nX(1),1,1,iPF_V2) &
+      = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
+          * U % VelocityUnit
+    READ( FUNIT, * ) RealBuffer1D ! uPF_V3
+    uPF(:,1:nX(1),1,1,iPF_V3) &
+      = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
+          * U % VelocityUnit
+    READ( FUNIT, * ) RealBuffer1D ! uPF_E
+    uPF(:,1:nX(1),1,1,iPF_E) &
+      = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
+          * U % EnergyDensityUnit
+    READ( FUNIT, * ) RealBuffer1D ! uPF_Ne
+    uPF(:,1:nX(1),1,1,iPF_Ne) &
+      = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
+          * U % ParticleDensityUnit
+
+    READ( FUNIT, * ) RealBuffer1D ! uAF_P
+    uAF(:,1:nX(1),1,1,iAF_P) &
+      = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
+          * U % PressureUnit
+
+    READ( FUNIT, * ) RealBuffer1D ! uAF_T
+    uAF(:,1:nX(1),1,1,iAF_T) &
+      = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
+          * U % TemperatureUnit
+
+    READ( FUNIT, * ) RealBuffer1D ! uAF_Ye
+    uAF(:,1:nX(1),1,1,iAF_Ye) &
+      = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes )
+
+    DEALLOCATE( RealBuffer1D )
+
+    CLOSE( FUNIT )
+
+    END ASSOCIATE ! U
+
+  END SUBROUTINE ReadFluidFieldsRestart1D
+
+
+  FUNCTION FluidFieldRestart1D_In( u, nX1, nNodesX1 )
+
+    REAL(DP), DIMENSION(nNodesX1,nX1)  :: FluidFieldRestart1D_In
+    REAL(DP), DIMENSION(:), INTENT(in) :: u
+    INTEGER,                INTENT(in) :: nX1
+    INTEGER,                INTENT(in) :: nNodesX1
+
+    INTEGER :: iX1, iNodeX1, iNode
+
+    iNode = 0
+    DO iX1 = 1, nX1
+      DO iNodeX1 = 1, nNodesX1
+        iNode = iNode + 1
+        FluidFieldRestart1D_In(iNodeX1,iX1) = u(iNode)
+      END DO
+    END DO
+
+    RETURN
+  END FUNCTION FluidFieldRestart1D_In
 
 
 END MODULE InputOutputModule
