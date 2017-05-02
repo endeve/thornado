@@ -51,11 +51,11 @@ CONTAINS
     IF( PRESENT( ApplySlopeLimiter_Option ) ) &
       ApplySlopeLimiter = ApplySlopeLimiter_Option
 
-    BetaTVB = 50.0_DP
+    BetaTVB = 0.0_DP
     IF( PRESENT( BetaTVB_Option ) ) &
       BetaTVB = BetaTVB_Option
 
-    BetaTVD = 2.0d0
+    BetaTVD = 1.8_DP
     IF( PRESENT( BetaTVD_Option ) ) &
       BetaTVD = BetaTVD_Option
 
@@ -118,7 +118,6 @@ CONTAINS
 
     INTEGER :: iPoint
     INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNodeX
-    INTEGER :: jNodeX1, jNodeX2, jNodeX3, jNodeX
     REAL(DP), DIMENSION(:), ALLOCATABLE :: NodesX1
 
     ! --- Number of Points Where Positivity is Required ---
@@ -215,6 +214,8 @@ CONTAINS
     END IF
 
     DEALLOCATE( NodesX1 )
+
+    ! --- Lagrange Polynomials Evaluated in Positive Points ---
 
     ALLOCATE( Lagrange(nDOFX,nPositivePoints) )
 

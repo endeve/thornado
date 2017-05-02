@@ -348,8 +348,9 @@ CONTAINS
 
     INTEGER, INTENT(in), OPTIONAL :: iState_Option
 
-    INTEGER :: iState
-    INTEGER :: iS, iX1, iX2, iX3, iE
+    INTEGER  :: iState
+    INTEGER  :: iS, iX1, iX2, iX3, iE
+    REAL(DP) :: Scale
 
     iState = 1
     IF( PRESENT( iState_Option ) ) &
@@ -361,8 +362,9 @@ CONTAINS
         dX2 => MeshX(2) % Width(1:nX(2)), &
         dX3 => MeshX(3) % Width(1:nX(3)) )
 
-    ASSOCIATE &
-      ( hc3 => ( PlanckConstant * SpeedOfLight )**3 )
+    Scale = 1.0_DP
+    IF( UnitsDisplay % Active ) &
+      Scale = ( PlanckConstant * SpeedOfLight )**3
 
     GlobalNumber_Radiation(iState) = 0.0_DP
     GlobalEnergy_Radiation(iState) = 0.0_DP
@@ -377,13 +379,13 @@ CONTAINS
                 = GlobalNumber_Radiation(iState) &
                     + dE(iE) * dX1(iX1) * dX2(iX2) * dX3(iX3) &
                         * SUM( WeightsR(:) * uCR(:,iE,iX1,iX2,iX3,iCR_N,iS) &
-                                 * VolJac(:,iE,iX1,iX2,iX3) ) / hc3
+                                 * VolJac(:,iE,iX1,iX2,iX3) ) / Scale
 
               GlobalEnergy_Radiation(iState) &
                 = GlobalEnergy_Radiation(iState) &
                     + dE(iE) * dX1(iX1) * dX2(iX2) * dX3(iX3) &
                         * SUM( WeightsR(:) * uCR(:,iE,iX1,iX2,iX3,iCR_N,iS) &
-                                 * VolJacE(:,iE,iX1,iX2,iX3) ) / hc3
+                                 * VolJacE(:,iE,iX1,iX2,iX3) ) / Scale
 
             END DO
           END DO
@@ -391,8 +393,6 @@ CONTAINS
       END DO
 
     END DO
-
-    END ASSOCIATE ! hc3
 
     END ASSOCIATE ! dE, etc.
 

@@ -211,13 +211,13 @@ CONTAINS
         Converged = .TRUE.
 
       IF( Iter > MaxIter .AND. .NOT. Converged )THEN
-          WRITE(*,*)
-          WRITE(*,'(A4,A)') &
-            '', 'SolveTheta_Bisection'
-          WRITE(*,'(A6,A21,I4.4,A11)') &
-            '', 'No Convergence After ', Iter, ' Iterations'
-          WRITE(*,*)
-        END IF
+        WRITE(*,*)
+        WRITE(*,'(A4,A)') &
+          '', 'SolveTheta_Bisection (Euler Equations)'
+        WRITE(*,'(A6,A21,I4.4,A11)') &
+          '', 'No Convergence After ', Iter, ' Iterations'
+        WRITE(*,*)
+      END IF
 
     END DO
 
@@ -239,6 +239,7 @@ CONTAINS
                      [S1_K+Theta*dS1,S2_K+Theta*dS2,S3_K+Theta*dS3] ) &
           / ( D_K+Theta*dD ) - Tol_E
 
+    RETURN
   END FUNCTION ThetaFun
 
 

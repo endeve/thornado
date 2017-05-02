@@ -170,17 +170,50 @@ MomentEquationsSolutionModule_M1_DG.o: \
   MomentEquationsUtilitiesModule.o \  
   MomentEquationsSolutionModule_M1_DG.f90
 
-MomentEquationsLimiterModule_DG.o: \
+MomentEquationsLimiterUtilitiesModule_DG.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   PolynomialBasisModule_Lagrange.o \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsLimiterUtilitiesModule_DG.f90
+
+MomentEquationsLimiterModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModule_Legendre.o \
+  MeshModule.o \
+  MomentEquationsLimiterUtilitiesModule_DG.o \
+  MomentEquationsLimiterModule_DG.f90
+
+MomentEquationsSlopeLimiterModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
   GeometryFieldsModule.o \
   RadiationFieldsModule.o \
-  RadiationFieldsUtilitiesModule.o \
-  MomentEquationsLimiterModule_DG.f90
+  MomentEquationsUtilitiesModule.o \
+  MomentEquationsLimiterUtilitiesModule_DG.o \
+  MomentEquationsLimiterModule_DG.o \
+  MomentEquationsSlopeLimiterModule_DG.f90
+
+MomentEquationsPositivityLimiterModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.o \
+  GeometryFieldsModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsLimiterUtilitiesModule_DG.o \
+  MomentEquationsLimiterModule_DG.o \
+  MomentEquationsPositivityLimiterModule_DG.f90
 
 RadiationEvolutionModule.o: \
   KindModule.o \

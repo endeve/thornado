@@ -5,8 +5,10 @@ MODULE RadiationEvolutionModule
   USE MomentEquationsSolutionModule_M1_DG, ONLY: &
     ComputeRHS_M1_DG
   USE MomentEquationsLimiterModule_DG, ONLY: &
-    InitializeLimiters_M1_DG, &
-    ApplySlopeLimiter_M1_DG, &
+    InitializeLimiters_M1_DG
+  USE MomentEquationsSlopeLimiterModule_DG, ONLY: &
+    ApplySlopeLimiter_M1_DG
+  USE MomentEquationsPositivityLimiterModule_DG, ONLY: &
     ApplyPositivityLimiter_M1_DG
 
   IMPLICIT NONE
