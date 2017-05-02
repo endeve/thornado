@@ -440,9 +440,10 @@ CONTAINS
 
       OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ) )
 
-      WRITE( FileUnit, '(8(A14,x))' ) &
+      WRITE( FileUnit, '(10(A14,x))' ) &
         'Time', 'Max D', 'Total M', 'Change M', &
-        'Total E_f', 'Change E_f', 'Total E_g', 'Change E_g'
+        'Total E_f', 'Total E_f (i)', 'Total E_f (k)', 'Change E_f', &
+        'Total E_g', 'Change E_g'
 
     ELSE
 
@@ -454,13 +455,15 @@ CONTAINS
     ASSOCIATE( U => UnitsDisplay )
 
     WRITE( FileUnit, &
-           '(8(ES14.5,x))' ) &
+           '(10(ES14.5,x))' ) &
       Time / U % TimeUnit, &
       MaximumMassDensity / U % MassDensityUnit, &
       GlobalBaryonMass_Fluid(1) / U % MassUnit, &
       ( GlobalBaryonMass_Fluid(1) - GlobalBaryonMass_Fluid(0) ) &
         / U % MassUnit, &
       GlobalEnergy_Fluid(1) / U % EnergyGlobalUnit, &
+      GlobalInternalEnergy_Fluid(1) / U % EnergyGlobalUnit, &
+      GlobalKineticEnergy_Fluid(1) / U % EnergyGlobalUnit, &
       ( GlobalEnergy_Fluid(1) - GlobalEnergy_Fluid(0) ) &
         / U % EnergyGlobalUnit, &
       GlobalEnergy_Gravity(1) / U % EnergyGlobalUnit, &
