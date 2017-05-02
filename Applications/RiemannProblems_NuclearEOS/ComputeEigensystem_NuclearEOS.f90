@@ -2,88 +2,104 @@ PROGRAM ComputeEigensystem_NuclearEOS
 
   USE KindModule, ONLY: &
     DP
-  USE EquationOfStateModule_TABLE, ONLY: &
-    InitializeEquationOfState_TABLE, & 
-    ComputePressure_TABLE, & 
-    ComputeSpecificInternalEnergy_TABLE, &
-    InitializeEquationOfState_TABLE
   USE UnitsModule, ONLY: &
     Gram, Centimeter, Kelvin, &
     AtomicMassUnit, Dyne, Erg, &
     Second, MeV, Meter
   USE PhysicalConstantsModule, ONLY: &
     SpeedOfLightMKS
-  USE UtilitiesModule_NuclearEOS, ONLY: &
-    ComputeEigenvectors_L, &
-    ComputeEigenvectors_R
   USE UtilitiesModule, ONLY: &
     WriteMatrix
+  USE EquationOfStateModule_TABLE, ONLY: &
+    InitializeEquationOfState_TABLE, &
+    ApplyEquationOfState_TABLE
+  USE EulerEquationsUtilitiesModule_TABLE, ONLY: &
+    ComputeEigenvectors_L, &
+    ComputeEigenvectors_R
 
   IMPLICIT NONE
 
   REAL(DP) :: BaryonMass = AtomicMassUnit
 
-  REAL(DP), DIMENSION(1)   :: D, T, Y, P, E, H, Tau, N
-  REAL(DP), DIMENSION(1)   :: TEMP
-  REAL(DP), DIMENSION(6,6) :: A, R, L, DD
-  REAL(DP), DIMENSION(3)   :: v
+  REAL(DP), DIMENSION(1)   :: D, T, Y, P, S, E, Me, Mp, Mn, Gm, Tau, N
+  REAL(DP), DIMENSION(6,6) :: dFdU, L, R, Matrix, DD, RL, LR
+  REAL(DP), DIMENSION(3)   :: V
   REAL(DP), DIMENSION(6)   :: lambda
 
-  REAL(DP), ALLOCATABLE, DIMENSION(:) :: WORK
-
-  INTEGER                  :: INFO, LWORK, i, k
-
+  INTEGER :: i, k
   
-  D = [ 1.20d10 * Gram / Centimeter**3 ]
-  T = [ 3.1 * MeV ]
-  Y = [ 0.26 ]
-  v = [ 0, 0, 0 ]
-  Tau = 1/D
+  D   = [ 1.20d10 * Gram / Centimeter**3 ]
+  T   = [ 3.1_DP * MeV ]
+  Y   = [ 0.26_DP ]
+  v   = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+  Tau = 1.0_DP / D
 
-  CALL InitializeEquationOfState_TABLE( 'EquationOfStateTable.h5' ) 
-  CALL ComputeEigenvectors_R(D, T, Y, v(1), v(2), v(3), lambda, R, A, .FALSE.)
+  CALL InitializeEquationOfState_TABLE &
+         ( 'EquationOfStateTable.h5' ) 
+
+  CALL ApplyEquationOfState_TABLE( D, T, Y, P, S, E, Me, Mp, Mn, Gm )
+
+  CALL ComputeEigenvectors_L &
+         ( D, T, Y, v(1), v(2), v(3), lambda, L, dFdU, .FALSE. )
 
   DD = 0.0d0
-
   DO i = 1, 6
     DD(i,i) = lambda(i)
   END DO
 
-  print*,"AR - RD = ", matmul(A,R) - matmul(R,DD)
+  Matrix = MATMUL( L, dFdU ) - MATMUL( DD, L )
 
-!  CALL WriteMatrix(6, 6, A, 'A.dat')
-!  CALL WriteMatrix(6, 6, R, 'R.dat')
+  WRITE(*,*)
+  WRITE(*,'(A8,A)') '', 'L^T dFdU - D L^T:'
+  WRITE(*,*)
+  DO i = 1, 6
+    WRITE(*,'(A8,6ES20.10E3)') '', Matrix(i,:)
+  END DO
 
-!  DO i = 1, 6
-!   print*,"Eigenvalue",i,"is: ", lambda(i) / ( Meter / Second  ) / SpeedOfLightMKS
-!  END DO
+  WRITE(*,*)
+  WRITE(*,'(A8,A)') '', 'Eigenvalues (L):'
+  WRITE(*,*)
+  DO i = 1, 6
+    WRITE(*,'(A11,I2.2,A1,ES20.10E3)') '', i, '', lambda(i)
+  END DO
 
-  CALL ComputeEigenvectors_L(D, T, Y, v(1), v(2), v(3), lambda, L, A, .FALSE.)
+  WRITE(*,*)
+  WRITE(*,'(A8,A)') '', 'Sound Speed (Table):'
+  WRITE(*,*)
+  WRITE(*,'(A8,ES20.10E3)') '', SQRT( Gm * P / D )
+  WRITE(*,*)
 
-!  DO i = 1, 6
-!    print*,"Eigenvalue",i,"is: ", lambda(i) / ( Meter / Second  ) / SpeedOfLightMKS
-!  END DO
-
-
-!  print*,"Analytical Sound Speed = ", sqrt( Tau(1) * ( N(1) * dPdN(1) + P(1) * dPdE(1) * Tau(1) - dPdTau(1)*Tau(1))) &
-!                    / ( Meter / Second  ) / SpeedOfLightMKS
-
+  CALL ComputeEigenvectors_R &
+         ( D, T, Y, v(1), v(2), v(3), lambda, R, dFdU, .FALSE. )
 
   DD = 0.0d0
-
   DO i = 1, 6
     DD(i,i) = lambda(i)
   END DO
 
-  print*," "
-  
-  print*,"L'J - DL' = ", matmul(transpose(L),A) - matmul(DD,transpose(L))
+  WRITE(*,*)
+  WRITE(*,'(A8,A)') '', 'Eigenvalues (R):'
+  WRITE(*,*)
+  DO i = 1, 6
+    WRITE(*,'(A11,I2.2,A1,ES20.10E3)') '', i, '', lambda(i)
+  END DO
 
-!  DO i = 1, 6
-!    DO k = 1, 6
-!     print*, "A(",i,",",k,") = ", A(i,k)
-!    END DO
-!  END DO
+  RL = MATMUL( R, L )
+  LR = MATMUL( L, R )
 
+  WRITE(*,*)
+  WRITE(*,'(A8,A)') '', 'R L: '
+  WRITE(*,*)
+  DO i = 1, 6
+    WRITE(*,'(A8,6ES20.10E3)') '', RL(i,:)
+  END DO
+
+  WRITE(*,*)
+  WRITE(*,'(A8,A)') '', 'L R: '
+  WRITE(*,*)
+  DO i = 1, 6
+    WRITE(*,'(A8,6ES20.10E3)') '', LR(i,:)
+  END DO
+  WRITE(*,*)
 
 END PROGRAM ComputeEigensystem_NuclearEOS

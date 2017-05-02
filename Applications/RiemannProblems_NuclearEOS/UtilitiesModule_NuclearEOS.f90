@@ -2,200 +2,62 @@ MODULE UtilitiesModule_NuclearEOS
 
   USE KindModule, ONLY: &
     DP
-  USE EquationOfStateModule_TABLE, ONLY: &
-    InitializeEquationOfState_TABLE, &
-    ComputePressure_TABLE, &
-    ComputeSpecificInternalEnergy_TABLE, &
-    InitializeEquationOfState_TABLE
-  USE UnitsModule, ONLY: &
-    Gram, Centimeter, Kelvin, &
-    AtomicMassUnit, Dyne, Erg, &
-    Second, MeV, Meter
-  USE PhysicalConstantsModule, ONLY: &
-    SpeedOfLightMKS
-  USE UtilitiesModule, ONLY: &
-    WriteMatrix
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ComputeEigenvectors_R
-  PUBLIC :: ComputeEigenvectors_L
+  PUBLIC :: ComputeFVEC
+  PUBLIC :: ComputeFJAC
 
 CONTAINS
 
-  SUBROUTINE ComputeEigenvectors_R & 
-                  (D, T, Y, V1, V2, V3, lambda, VR, A0, Componentwise)
-    
-    REAL(DP), DIMENSION(1),       INTENT(in)  :: D, T, Y, V1, V2, V3
-    LOGICAL,                      INTENT(in)  :: Componentwise
-    REAL(DP), DIMENSION(6),       INTENT(out) :: lambda
-    REAL(DP), DIMENSION(6,6),     INTENT(out) :: VR, A0
 
-    REAL(DP), DIMENSION(1)                    :: dPdE, dPdN, dPdTau, dEdY
-    REAL(DP), DIMENSION(1)                    :: dEdD, dEdT, dPdY, dPdT, dPdD
-    REAL(DP), DIMENSION(6,6)                  :: A
-    REAL(DP), DIMENSION(6)                    :: WR, WI
-    REAL(DP), DIMENSION(1)                    :: E, P, Tau, TEMP, N, H
-    REAL(DP), ALLOCATABLE, DIMENSION(:)       :: WORK
-    INTEGER                                   :: INFO, LWORK, i, k
+  SUBROUTINE ComputeFVEC &
+               ( D_R, V_R, P_R, E_R, Y_R, D_L, V_L, P_L, E_L, Y_L, V_Sh, FVEC )
 
-    IF( Componentwise )THEN
+    REAL(DP),               INTENT(in)  :: D_R, V_R, P_R, E_R, Y_R
+    REAL(DP),               INTENT(in)  :: D_L, V_L, P_L, E_L, Y_L, V_Sh
+    REAL(DP), DIMENSION(4), INTENT(out) :: FVEC
 
-      A(:,1) = [ 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-      A(:,2) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-      A(:,3) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-      A(:,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
-      A(:,5) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
-      A(:,6) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
+    FVEC(1) = D_L * ( V_Sh - V_L ) - V_Sh * D_R
+    FVEC(2) = P_L - V_L * V_Sh * D_R - P_R
+    FVEC(3) = E_L + 0.5_DP * V_L**2 - P_L * V_L / ( V_Sh * D_R ) - E_R
+    FVEC(4) = Y_L - Y_R
 
-      A0 = A
-
-    ELSE
-      CALL ComputePressure_TABLE & 
-              ( D, T, Y, P, dPdD, dPdT, dPdY )
-      CALL ComputeSpecificInternalEnergy_TABLE & 
-              ( D, T, Y, E, dEdD, dEdT, dEdY )    
-
-      Tau(1) = 1/D(1)
-
-      dPdE(1) = (1/dEdT(1)) * (dPdT(1)) 
-      dPdN(1) = ( AtomicMassUnit * Tau(1) ) &
-              * ( dPdY(1) - dEdY(1) * dPdE(1) )
-      dPdTau(1) = (-Tau(1)**(-2)) * (dPdD(1) - (Y(1)/AtomicMassUnit)*(dPdN(1)) &
-              - dEdD(1) * dPdE(1) )      
-      N(1) = ( ( D(1) / AtomicMassUnit ) * Y(1) )
-      H(1) =  (E(1) + 0.5*V1(1)**2 + V2(1)**2 + V3(1)**2 + P(1) *Tau(1) )
-
-      A(1,:) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-      A(2,1) = -V1(1)**2 - (Tau(1)**2)*dPdTau(1) - Tau(1) * dPdE(1) &
-               * (E(1) - 0.5*(V1(1)**2 + V2(1)**2 + V3(1)**2 ) ) 
-      A(2,2) = V1(1)*( 2 - Tau(1) * dPdE(1) )
-      A(2,3) = - dPdE(1) * V2(1) * Tau(1)
-      A(2,4) = - dPdE(1) * V3(1) * Tau(1)
-      A(2,5) = dPdE(1) * Tau(1)
-      A(2,6) = dPdN(1)
-      A(3,:) = [ - V1(1) * V2(1), V2(1), V1(1), 0.0_DP, 0.0_DP, 0.0_DP ]
-      A(4,:) = [ - V1(1) * V3(1), V3(1), 0.0_DP, V1(1), 0.0_DP, 0.0_DP ]
-      A(5,1) = V1(1) * ( -H(1) - dPdTau(1) * (Tau(1)**2) - Tau(1) * dPdE(1) &
-               * ( E(1)  - 0.5 * (V1(1)**2 + V2(1)**2 + V3(1)**2)) )
-      A(5,2) = H(1) - dPdE(1) * V1(1)**2 * Tau(1)
-      A(5,3) = - dPdE(1) * V1(1) * V2(1) * Tau(1)
-      A(5,4) = - dPdE(1) * V1(1) * V3(1) * Tau(1)
-      A(5,5) = V1(1) * ( 1 + dPdE(1) * Tau(1) )
-      A(5,6) = V1(1) * dPdN(1)
-      A(6,:) = [ - ( V1(1) / AtomicMassUnit ) * Y(1), Y(1) / (AtomicMassUnit), & 
-                 0.0_DP, 0.0_DP, 0.0_DP, V1(1) ]
-!      A(6,1) = - ( V1(1) / AtomicMassUnit ) * Y(1)
-!      A(6,2) = Y(1) / (AtomicMassUnit)
-!      A(6,3) = 0.0_DP
-!      A(6,4) = 0.0_DP
-!      A(6,5) = 0.0_DP
-!      A(6,6) = V1(1)
-
-      A0 = A
-
-      LWORK = -1
-
-      CALL DGEEV('N', 'V', 6, A, 6, WR, WI, 0, 6, VR, 6, TEMP, LWORK, INFO)
-
-      LWORK = TEMP(1)
-      ALLOCATE(WORK(LWORK))
-
-      CALL DGEEV('N', 'V', 6, A, 6, WR, WI, 0, 6, VR, 6, WORK, LWORK, INFO) 
-
-      DO i = 1, 6
-          lambda(i) = WR(i) 
-      END DO
-
-    END IF
+  END SUBROUTINE ComputeFVEC
 
 
-  END SUBROUTINE ComputeEigenvectors_R
+  SUBROUTINE ComputeFJAC &
+               ( D_R, V_R, P_R, E_R, Y_R, D_L, V_L, P_L, E_L, Y_L, &
+                 dPdD, dPdT, dPdY, dEdD, dEdT, dEdY, V_Sh, FJAC )
 
+    REAL(DP),                 INTENT(in)  :: D_R, V_R, P_R, E_R, Y_R
+    REAL(DP),                 INTENT(in)  :: D_L, V_L, P_L, E_L, Y_L, V_Sh
+    REAL(DP),                 INTENT(in)  :: dPdD, dPdT, dPdY
+    REAL(DP),                 INTENT(in)  :: dEdD, dEdT, dEdY
+    REAL(DP), DIMENSION(4,4), INTENT(out) :: FJAC
 
-  SUBROUTINE ComputeEigenvectors_L & 
-                  (D, T, Y, V1, V2, V3, lambda, VL, A0, Componentwise)
+    FJAC(1,1) = ( V_Sh - V_L )
+    FJAC(1,2) = - D_L
+    FJAC(1,3) = 0.0_DP
+    FJAC(1,4) = 0.0_DP
 
-    REAL(DP), DIMENSION(1),   INTENT(in)      :: D, T, Y, V1, V2, V3
-    LOGICAL,                  INTENT(in)      :: Componentwise
-    REAL(DP), DIMENSION(6),   INTENT(out)     :: lambda
-    REAL(DP), DIMENSION(6,6), INTENT(out)     :: VL, A0
+    FJAC(2,1) = dPdD
+    FJAC(2,2) = - V_Sh * D_R
+    FJAC(2,3) = dPdT
+    FJAC(2,4) = dPdY
 
-    REAL(DP), DIMENSION(1)                    :: dPdE, dPdN, dPdTau, dEdY
-    REAL(DP), DIMENSION(1)                    :: dEdD, dEdT, dPdY, dPdT, dPdD
-    REAL(DP), DIMENSION(1)                    :: Tau, TEMP, N, H
-    REAL(DP), DIMENSION(6,6)                  :: A
-    REAL(DP), DIMENSION(6)                    :: WR, WI
-    REAL(DP), DIMENSION(1)                    :: E, P
-    REAL(DP), ALLOCATABLE, DIMENSION(:) :: WORK
-    INTEGER                                   :: INFO, LWORK, i
+    FJAC(3,1) = dEdD - dPdD * V_L / ( V_Sh * D_R )
+    FJAC(3,2) = V_L - P_L / ( V_Sh * D_R )
+    FJAC(3,3) = dEdT - dPdT * V_L / ( V_Sh * D_R )
+    FJAC(3,4) = dEdY - dPdY * V_L / ( V_Sh * D_R )
 
-    IF( Componentwise )THEN
+    FJAC(4,1) = 0.0_DP
+    FJAC(4,2) = 0.0_DP
+    FJAC(4,3) = 0.0_DP
+    FJAC(4,4) = 1.0_DP
 
-      A(:,1) = [ 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-      A(:,2) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-      A(:,3) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-      A(:,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
-      A(:,5) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
-      A(:,6) = [ 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
+  END SUBROUTINE ComputeFJAC
 
-      A0 = A
- 
-    ELSE
-
-      CALL ComputePressure_TABLE & 
-              ( D, T, Y, P, dPdD, dPdT, dPdY )
-      CALL ComputeSpecificInternalEnergy_TABLE & 
-              ( D, T, Y, E, dEdD, dEdT, dEdY )
-
-      Tau(1) = 1/D(1)
-
-      dPdE(1) = (1/dEdT(1)) * (dPdT(1))
-      dPdN(1) = ( AtomicMassUnit * Tau(1) ) &
-              * ( dPdY(1) - dEdY(1) * dPdE(1) )
-      dPdTau(1) = (-Tau(1)**(-2)) * (dPdD(1) - (Y(1)/AtomicMassUnit)*(dPdN(1)) &
-              - dEdD(1) * dPdE(1) )
-      N(1) = ( ( D(1) / AtomicMassUnit ) * Y(1) )
-      H(1) =  (E(1) + 0.5*V1(1)**2 + V2(1)**2 + V3(1)**2 + P(1) *Tau(1) ) 
-
-      A(1,:) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-      A(2,1) = -V1(1)**2 - (Tau(1)**2)*dPdTau(1) - Tau(1) * dPdE(1) &
-               * (E(1) - 0.5*(V1(1)**2 + V2(1)**2 + V3(1)**2 ) )
-      A(2,2) = V1(1)*( 2 - Tau(1) * dPdE(1) )
-      A(2,3) = - dPdE(1) * V2(1) * Tau(1)
-      A(2,4) = - dPdE(1) * V3(1) * Tau(1)
-      A(2,5) = dPdE(1) * Tau(1)
-      A(2,6) = dPdN(1)
-      A(3,:) = [ - V1(1) * V2(1), V2(1), V1(1), 0.0_DP, 0.0_DP, 0.0_DP ]
-      A(4,:) = [ - V1(1) * V3(1), V3(1), 0.0_DP, V1(1), 0.0_DP, 0.0_DP ]      
-      A(5,1) = V1(1) * ( -H(1) - dPdTau(1) * (Tau(1)**2) - Tau(1) * dPdE(1) &
-               * ( E(1)  - 0.5 * (V1(1)**2 + V2(1)**2 + V3(1)**2)) )
-      A(5,2) = H(1) - dPdE(1) * V1(1)**2 * Tau(1)
-      A(5,3) = - dPdE(1) * V1(1) * V2(1) * Tau(1)
-      A(5,4) = - dPdE(1) * V1(1) * V3(1) * Tau(1)
-      A(5,5) = V1(1) * ( 1 + dPdE(1) * Tau(1) )
-      A(5,6) = V1(1) * dPdN(1)
-      A(6,:) = [ - ( V1(1) / AtomicMassUnit ) * Y(1), Y(1) / (AtomicMassUnit), &
-                 0.0_DP, 0.0_DP, 0.0_DP, V1(1) ]      
-
-      A0 = A
-
-      LWORK = -1
-
-      CALL DGEEV('V', 'N', 6, A, 6, WR, WI, VL, 6, 0, 6, TEMP, LWORK, INFO)
-
-      LWORK = TEMP(1)
-      ALLOCATE(WORK(LWORK))
-
-      CALL DGEEV('V', 'N', 6, A, 6, WR, WI, VL, 6, 0, 6, WORK, LWORK, INFO)
-
-      DO i = 1, 6
-        lambda(i) = WR(i)
-      END DO
-
-    END IF
-
-  END SUBROUTINE ComputeEigenvectors_L 
 
 END MODULE UtilitiesModule_NuclearEOS

@@ -3,7 +3,9 @@ MICROPHYSICS = WEAKLIB
 include ../../../Build/Makefile_Build
 
 all: RiemannProblem1D_NuclearEOS \
-     ComputeEigensystem_NuclearEOS
+     ShockEntropyWaveInteraction1D_NuclearEOS \
+     ComputeEigensystem_NuclearEOS \
+     ComputeLeftState_NuclearEOS
 
 RiemannProblem1D_NuclearEOS: \
 	$(thornado) RiemannProblemInitializationModule.o \
@@ -13,20 +15,36 @@ RiemannProblem1D_NuclearEOS: \
 	$(thornado) RiemannProblemInitializationModule.o \
 	RiemannProblem1D_NuclearEOS.o $(LIBRARIES)
 
+ShockEntropyWaveInteraction1D_NuclearEOS: \
+	$(thornado) RiemannProblemInitializationModule.o \
+	ShockEntropyWaveInteraction1D_NuclearEOS.o
+	$(FLINKER) $(FLAGS) -o \
+	ShockEntropyWaveInteraction1D_NuclearEOS_$(MACHINE) \
+	$(thornado) RiemannProblemInitializationModule.o \
+	ShockEntropyWaveInteraction1D_NuclearEOS.o $(LIBRARIES)
+
 ComputeEigensystem_NuclearEOS: \
-	$(thornado) UtilitiesModule_NuclearEOS.o \
-	ComputeEigensystem_NuclearEOS.o
+	$(thornado) ComputeEigensystem_NuclearEOS.o
 	$(FLINKER) $(FLAGS) -o \
 	ComputeEigensystem_NuclearEOS_$(MACHINE) \
+	$(thornado) ComputeEigensystem_NuclearEOS.o $(LIBRARIES)
+
+ComputeLeftState_NuclearEOS: \
 	$(thornado) UtilitiesModule_NuclearEOS.o \
-	ComputeEigensystem_NuclearEOS.o $(LIBRARIES)
+	ComputeLeftState_NuclearEOS.o
+	$(FLINKER) $(FLAGS) -o \
+	ComputeLeftState_NuclearEOS_$(MACHINE) \
+	$(thornado) UtilitiesModule_NuclearEOS.o \
+	ComputeLeftState_NuclearEOS.o $(LIBRARIES)
 
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
 	rm -f RiemannProblem1D_NuclearEOS_$(MACHINE)
+	rm -f ShockEntropyWaveInteraction1D_NuclearEOS_$(MACHINE)
 	rm -f ComputeEigensystem_NuclearEOS_$(MACHINE)
+	rm -f ComputeLeftState_NuclearEOS_$(MACHINE)
 
 RiemannProblem1D_NuclearEOS.o: \
   KindModule.o \
@@ -36,12 +54,16 @@ RiemannProblem1D_NuclearEOS.o: \
   TimeSteppingModule.o \
   RiemannProblem1D_NuclearEOS.f90
 
+ShockEntropyWaveInteraction1D_NuclearEOS.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramInitializationModule.o \
+  RiemannProblemInitializationModule.o \
+  TimeSteppingModule.o \
+  ShockEntropyWaveInteraction1D_NuclearEOS.f90
+
 UtilitiesModule_NuclearEOS.o: \
   KindModule.o \
-  FluidFieldsModule.o \
-  EquationOfStateModule_TABLE.o \
-  UnitsModule.o \
-  PhysicalConstantsModule.o \
   UtilitiesModule_NuclearEOS.f90
 
 ComputeEigensystem_NuclearEOS.o: \
@@ -51,6 +73,13 @@ ComputeEigensystem_NuclearEOS.o: \
   PhysicalConstantsModule.o \
   UtilitiesModule.o \
   ComputeEigensystem_NuclearEOS.f90
+
+ComputeLeftState_NuclearEOS.o: \
+  KindModule.o \
+  UnitsModule.o \
+  EquationOfStateModule_TABLE.o \
+  UtilitiesModule_NuclearEOS.o \
+  ComputeLeftState_NuclearEOS.f90
 
 RiemannProblemInitializationModule.o: \
   KindModule.o \
