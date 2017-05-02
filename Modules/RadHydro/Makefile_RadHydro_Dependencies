@@ -30,6 +30,12 @@ EulerEquationsUtilitiesModule.o: \
   FluidFieldsModule.o \
   EulerEquationsUtilitiesModule.f90
 
+EulerEquationsUtilitiesModule_TABLE.o: \
+  KindModule.o \
+  UnitsModule.o \
+  EquationOfStateModule_TABLE.o \
+  EulerEquationsUtilitiesModule_TABLE.f90
+
 EulerEquationsSolutionModule_DG.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -43,18 +49,80 @@ EulerEquationsSolutionModule_DG.o: \
   EulerEquationsUtilitiesModule.o \
   EulerEquationsSolutionModule_DG.f90
 
+EulerEquationsLimiterUtilitiesModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisMappingModule.o \
+  FluidFieldsModule.o \
+  EulerEquationsLimiterUtilitiesModule_DG.f90
+
 EulerEquationsLimiterModule_DG.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   PolynomialBasisModule_Lagrange.o \
   PolynomialBasisModule_Legendre.o \
-  PolynomialBasisMappingModule.o \
   MeshModule.o \
+  EulerEquationsLimiterUtilitiesModule_DG.o \
+  EulerEquationsLimiterModule_DG.f90
+
+EulerEquationsSlopeLimiterModule_DG_IDEAL.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  PolynomialBasisMappingModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
   EulerEquationsUtilitiesModule.o \
-  EulerEquationsLimiterModule_DG.f90
+  EulerEquationsLimiterUtilitiesModule_DG.o \
+  EulerEquationsLimiterModule_DG.o \
+  EulerEquationsSlopeLimiterModule_DG_IDEAL.f90
+
+EulerEquationsPositivityLimiterModule_DG_IDEAL.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EulerEquationsUtilitiesModule.o \
+  EulerEquationsLimiterUtilitiesModule_DG.o \
+  EulerEquationsLimiterModule_DG.o \
+  EulerEquationsPositivityLimiterModule_DG_IDEAL.f90
+
+EulerEquationsSlopeLimiterModule_DG_TABLE.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  PolynomialBasisMappingModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  EulerEquationsUtilitiesModule.o \
+  EulerEquationsUtilitiesModule_TABLE.o \
+  EulerEquationsLimiterUtilitiesModule_DG.o \
+  EulerEquationsLimiterModule_DG.o \
+  EulerEquationsSlopeLimiterModule_DG_TABLE.f90
+
+EulerEquationsPositivityLimiterModule_DG_TABLE.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
+  EulerEquationsUtilitiesModule.o \
+  EulerEquationsLimiterUtilitiesModule_DG.o \
+  EulerEquationsLimiterModule_DG.o \
+  EulerEquationsPositivityLimiterModule_DG_TABLE.f90
 
 EulerEquationsUtilitiesModule_GR.o: \
   KindModule.o \
@@ -73,8 +141,13 @@ EulerEquationsSolutionModule_DG_GR.o: \
 
 FluidEvolutionModule.o: \
   KindModule.o \
+  EquationOfStateModule.o \
   EulerEquationsSolutionModule_DG.o \
   EulerEquationsLimiterModule_DG.o \
+  EulerEquationsSlopeLimiterModule_DG_IDEAL.o \
+  EulerEquationsPositivityLimiterModule_DG_IDEAL.o \
+  EulerEquationsSlopeLimiterModule_DG_TABLE.o \
+  EulerEquationsPositivityLimiterModule_DG_TABLE.o \
   EulerEquationsSolutionModule_DG_GR.o \
   FluidEvolutionModule.f90
 

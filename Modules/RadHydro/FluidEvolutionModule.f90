@@ -2,12 +2,20 @@ MODULE FluidEvolutionModule
 
   USE KindModule, ONLY: &
     DP
+  USE EquationOfStateModule, ONLY: &
+    EquationOfState
   USE EulerEquationsSolutionModule_DG, ONLY: &
     ComputeRHS_Euler_DG
   USE EulerEquationsLimiterModule_DG, ONLY: &
-    InitializeLimiters_Euler_DG, &
-    ApplySlopeLimiter_Euler_DG, &
-    ApplyPositivityLimiter_Euler_DG
+    InitializeLimiters_Euler_DG
+  USE EulerEquationsSlopeLimiterModule_DG_IDEAL, ONLY: &
+    ApplySlopeLimiter_Euler_DG_IDEAL
+  USE EulerEquationsPositivityLimiterModule_DG_IDEAL, ONLY: &
+    ApplyPositivityLimiter_Euler_DG_IDEAL
+  USE EulerEquationsSlopeLimiterModule_DG_TABLE, ONLY: &
+    ApplySlopeLimiter_Euler_DG_TABLE
+  USE EulerEquationsPositivityLimiterModule_DG_TABLE, ONLY: &
+    ApplyPositivityLimiter_Euler_DG_TABLE
   USE EulerEquationsSolutionModule_DG_GR, ONLY: &
     ComputeRHS_Euler_DG_GR
 
@@ -41,8 +49,8 @@ CONTAINS
 
 
   SUBROUTINE InitializeFluidEvolution &
-               ( FluidSolver_Option, ApplySlopeLimiter_Option, &
-                 BetaTVB_Option, BetaTVD_Option, &
+               ( FluidSolver_Option, &
+                 ApplySlopeLimiter_Option, BetaTVB_Option, BetaTVD_Option, &
                  ApplyPositivityLimiter_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: FluidSolver_Option
@@ -61,10 +69,25 @@ CONTAINS
 
         ComputeRHS_Fluid &
           => ComputeRHS_Euler_DG
-        ApplySlopeLimiter_Fluid &
-          => ApplySlopeLimiter_Euler_DG
-        ApplyPositivityLimiter_Fluid &
-          => ApplyPositivityLimiter_Euler_DG
+
+        SELECT CASE ( TRIM( EquationOfState ) )
+
+          CASE( 'IDEAL' )
+
+            ApplySlopeLimiter_Fluid &
+              => ApplySlopeLimiter_Euler_DG_IDEAL
+            ApplyPositivityLimiter_Fluid &
+              => ApplyPositivityLimiter_Euler_DG_IDEAL
+
+          CASE( 'TABLE' )
+
+            ApplySlopeLimiter_Fluid &
+              => ApplySlopeLimiter_Euler_DG_TABLE
+            ApplyPositivityLimiter_Fluid &
+              => ApplyPositivityLimiter_Euler_DG_TABLE
+
+        END SELECT
+
         CALL InitializeLimiters_Euler_DG &
                ( ApplySlopeLimiter_Option &
                    = ApplySlopeLimiter_Option, &

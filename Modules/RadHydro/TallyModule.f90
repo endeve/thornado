@@ -8,7 +8,7 @@ MODULE TallyModule
     UnitsDisplay
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nE, nX
+    nE, nX, nDOFX
   USE MeshModule, ONLY: &
     MeshE, &
     MeshX
@@ -18,7 +18,7 @@ MODULE TallyModule
     uGF, iGF_Phi_N
   USE FluidFieldsModule, ONLY: &
     WeightsF, &
-    uCF, iCF_D, iCF_E, iCF_Ne
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
   USE RadiationFieldsModule, ONLY: &
     WeightsR, &
     nSpecies, &
@@ -41,6 +41,8 @@ MODULE TallyModule
   REAL(DP)                 :: MaximumMassDensity
   REAL(DP), DIMENSION(0:1) :: GlobalBaryonMass_Fluid
   REAL(DP), DIMENSION(0:1) :: GlobalEnergy_Fluid
+  REAL(DP), DIMENSION(0:1) :: GlobalInternalEnergy_Fluid
+  REAL(DP), DIMENSION(0:1) :: GlobalKineticEnergy_Fluid
   REAL(DP), DIMENSION(0:1) :: GlobalElectronNumber_Fluid
 
   ! --- Tallied Radiation Quantities ---
@@ -209,6 +211,7 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: iState_Option
  
     INTEGER :: iS, iX1, iX2, iX3
+    REAL(DP), DIMENSION(nDOFX) :: Eint, Ekin
 
     iS = 1
     IF( PRESENT( iState_Option ) ) &
@@ -222,7 +225,10 @@ CONTAINS
     MaximumMassDensity             = 0.0_DP
     GlobalBaryonMass_Fluid    (iS) = 0.0_DP
     GlobalEnergy_Fluid        (iS) = 0.0_DP
+    GlobalInternalEnergy_Fluid(iS) = 0.0_DP
+    GlobalKineticEnergy_Fluid (iS) = 0.0_DP
     GlobalElectronNumber_Fluid(iS) = 0.0_DP
+
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
@@ -242,6 +248,23 @@ CONTAINS
                 + dX1(iX1) * dX2(iX2) * dX3(iX3) &
                     * SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF_E) &
                              * VolJacX(:,iX1,iX2,iX3) )
+
+          Ekin(:) = 0.5_DP * ( uCF(:,iX1,iX2,iX3,iCF_S1)**2 &
+                               + uCF(:,iX1,iX2,iX3,iCF_S2)**2 &
+                               + uCF(:,iX1,iX2,iX3,iCF_S3)**2 ) &
+                    / uCF(:,iX1,iX2,iX3,iCF_D)
+
+          Eint(:) = uCF(:,iX1,iX2,iX3,iCF_E) - Ekin(:)
+
+          GlobalInternalEnergy_Fluid(iS) &
+            = GlobalInternalEnergy_Fluid(iS) &
+                + dX1(iX1) * dX2(iX2) * dX3(iX3) &
+                    * SUM( WeightsF(:) * Eint(:) * VolJacX(:,iX1,iX2,iX3) )
+
+          GlobalKineticEnergy_Fluid(iS) &
+            = GlobalKineticEnergy_Fluid(iS) &
+                + dX1(iX1) * dX2(iX2) * dX3(iX3) &
+                    * SUM( WeightsF(:) * Ekin(:) * VolJacX(:,iX1,iX2,iX3) )
 
           GlobalElectronNumber_Fluid(iS) &
             = GlobalElectronNumber_Fluid(iS) &
@@ -287,6 +310,19 @@ CONTAINS
       GlobalEnergy_Fluid(1) &
       / U % EnergyGlobalUnit, &
       '', U % EnergyGlobalLabel
+
+    WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
+      '', '  Internal Energy = ', &
+      GlobalInternalEnergy_Fluid(1) &
+      / U % EnergyGlobalUnit, &
+      '', U % EnergyGlobalLabel
+
+    WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
+      '', '  Kinetic Energy = ', &
+      GlobalKineticEnergy_Fluid(1) &
+      / U % EnergyGlobalUnit, &
+      '', U % EnergyGlobalLabel
+
     WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
       '', 'Change = ', &
       ( GlobalEnergy_Fluid(1) &

@@ -5,8 +5,14 @@ RAD_HYDRO = \
   GravitySolutionModule.o \
   RiemannSolverModule.o \
   EulerEquationsUtilitiesModule.o \
+  EulerEquationsUtilitiesModule_TABLE.o \
   EulerEquationsSolutionModule_DG.o \
+  EulerEquationsLimiterUtilitiesModule_DG.o \
   EulerEquationsLimiterModule_DG.o \
+  EulerEquationsSlopeLimiterModule_DG_IDEAL.o \
+  EulerEquationsPositivityLimiterModule_DG_IDEAL.o \
+  EulerEquationsSlopeLimiterModule_DG_TABLE.o \
+  EulerEquationsPositivityLimiterModule_DG_TABLE.o \
   EulerEquationsUtilitiesModule_GR.o \
   EulerEquationsSolutionModule_DG_GR.o \
   FluidEvolutionModule.o \
