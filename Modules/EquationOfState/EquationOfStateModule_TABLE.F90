@@ -62,6 +62,9 @@ MODULE EquationOfStateModule_TABLE
     EOS
 #endif
 
+  REAL(DP), PUBLIC :: MinD, MinT, MinY
+  REAL(DP), PUBLIC :: MaxD, MaxT, MaxY
+
   PUBLIC :: InitializeEquationOfState_TABLE
   PUBLIC :: FinalizeEquationOfState_TABLE
   PUBLIC :: ApplyEquationOfState_TABLE
@@ -113,11 +116,20 @@ CONTAINS
     ALLOCATE( Ds_T(EOS % TS % nPoints(iD_T)) )
     Ds_T = EOS % TS % States(iD_T) % Values
 
+    MinD = MINVAL( Ds_T ) * Gram / Centimeter**3
+    MaxD = MAXVAL( Ds_T ) * Gram / Centimeter**3
+
     ALLOCATE( Ts_T(EOS % TS % nPoints(iT_T)) )
     Ts_T = EOS % TS % States(iT_T) % Values
 
+    MinT = MINVAL( Ts_T ) * Kelvin
+    MaxT = MAXVAL( Ts_T ) * Kelvin
+
     ALLOCATE( Ys_T(EOS % TS % nPoints(iY_T)) )
     Ys_T = EOS % TS % States(iY_T) % Values
+
+    MinY = MINVAL( Ys_T )
+    MaxY = MAXVAL( Ys_T )
 
     LogInterp &
       = EOS % TS % LogInterp

@@ -28,7 +28,7 @@ MODULE EquationOfStateModule
   IMPLICIT NONE
   PRIVATE
 
-  CHARACTER(5) :: &
+  CHARACTER(5), PUBLIC :: &
     EquationOfState
   REAL(DP), PUBLIC, PARAMETER :: &
     BaryonMass = AtomicMassUnit
