@@ -108,7 +108,9 @@ CONTAINS
     WRITE(*,*)
 
     IF( PRESENT( nStages_SSP_RK_Option ) )THEN
+
       nStages_SSP_RK = nStages_SSP_RK_Option
+
     END IF
 
     SELECT CASE ( nStages_SSP_RK )
@@ -134,7 +136,9 @@ CONTAINS
     END SELECT
 
     IF( PRESENT( nStages_SI_RK_Option ) )THEN
+
       nStages_SI_RK = nStages_SI_RK_Option
+
     END IF
 
     SELECT CASE ( nStages_SI_RK )
@@ -266,7 +270,7 @@ CONTAINS
 
       IF( MOD( iCycle, 10 ) == 0 )THEN
 
-        WRITE(*,'(A8,A8,I8.8,A2,A4,ES10.4E2,A1,A2,A2,A5,ES10.4E2,A1,A2)') &
+        WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A2,A2,A5,ES12.6E2,A1,A2)') &
           '', 'Cycle = ', iCycle, &
           '', 't = ', t / U % TimeUnit, '', TRIM( U % TimeLabel ), &
           '', 'dt = ', dt / U % TimeUnit, '', TRIM( U % TimeLabel )
