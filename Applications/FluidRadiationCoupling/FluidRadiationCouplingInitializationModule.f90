@@ -26,7 +26,10 @@ MODULE FluidRadiationCouplingInitializationModule
   USE EulerEquationsUtilitiesModule, ONLY: &
     ComputeConserved
   USE RadiationFieldsModule, ONLY: &
-    uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
+    uCR, nCR, &
+    uPR, nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
+  USE MomentEquationsUtilitiesModule, ONLY: &
+    Conserved
   USE EquationOfStateModule, ONLY: &
     ApplyEquationOfState, &
     ComputeThermodynamicStates_Primitive
@@ -155,9 +158,13 @@ CONTAINS
     REAL(DP), INTENT(in) :: Temperature
     REAL(DP), INTENT(in) :: ElectronFraction
 
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX1, iNodeX2, iNodeX3
-    INTEGER  :: iNodeX
+    INTEGER  :: iX1, iX2, iX3, iE
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeE
+    INTEGER  :: iNodeX, iNode
+    REAL(DP) :: E
+    REAL(DP), PARAMETER :: E_0 = 1.0d2 * MeV
+    REAL(DP), PARAMETER :: L_0 = 3.0d1 * MeV
+    REAL(DP), PARAMETER :: D_0 = 0.75_DP
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') &
@@ -207,6 +214,47 @@ CONTAINS
                    uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mp), &
                    uAF(:,iX1,iX2,iX3,iAF_Mn), uAF(:,iX1,iX2,iX3,iAF_Gm) )
 
+        END DO
+      END DO
+    END DO
+
+    ! --- Initialize Radiation Fields ---
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          DO iE = 1, nE
+
+            DO iNodeX3 = 1, nNodesX(3)
+              DO iNodeX2 = 1, nNodesX(2)
+                DO iNodeX1 = 1, nNodesX(1)
+                  DO iNodeE = 1, nNodesE
+
+                    E = NodeCoordinate( MeshE, iE, iNodeE )
+
+                    iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_D,1) &
+                      = D_0 * EXP( - ( ( E - E_0 ) / L_0 )**2 )
+
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,1) &
+                      = 0.0_DP
+
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,1) &
+                      = 0.0_DP
+
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,1) &
+                      = 0.0_DP
+
+                    uCR(iNode,iE,iX1,iX2,iX3,1:nCR,1) &
+                      = Conserved( uPR(iNode,iE,iX1,iX2,iX3,1:nPR,1) )
+
+                  END DO
+                END DO
+              END DO
+            END DO
+
+          END DO
         END DO
       END DO
     END DO
