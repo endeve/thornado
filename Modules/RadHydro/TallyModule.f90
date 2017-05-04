@@ -434,8 +434,9 @@ CONTAINS
     REAL(DP), INTENT(in)           :: Time
     LOGICAL,  INTENT(in), OPTIONAL :: Append_Option
 
-    LOGICAL :: Append
-    INTEGER :: FileUnit
+    CHARACTER(6) :: AccessOption = 'APPEND'
+    LOGICAL      :: Append
+    INTEGER      :: FileUnit
 
     Append = .FALSE.
     IF( PRESENT( Append_Option ) ) &
@@ -446,19 +447,20 @@ CONTAINS
       OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ) )
 
       WRITE( FileUnit, '(16(A14,x))' ) &
-        'Time', 'Max D',               &
-        'Total M', 'Change M',         &
-        'Total E_F', 'Total E_F (I)',  &
+        'Time',          'Max D',      &
+        'Total M',       'Change M',   &
+        'Total E_F',                   &
+        'Total E_F (I)',               &
         'Total E_F (K)', 'Change E_F', &
-        'Total N_F', 'Change N_F',     &
-        'Total E_G', 'Change E_G',     &
-        'Total N_R', 'Change N_R',     &
-        'Total E_R', 'Change E_R'
+        'Total N_F',     'Change N_F', &
+        'Total E_G',     'Change E_G', &
+        'Total N_R',     'Change N_R', &
+        'Total E_R',     'Change E_R'
 
     ELSE
 
       OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ), &
-            ACCESS = 'APPEND' )
+            ACCESS = AccessOption )
 
     END IF
 
