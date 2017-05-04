@@ -23,7 +23,7 @@ PROGRAM RelaxationNES
          ( ProgramName_Option &
              = 'RelaxationNES', &
            nX_Option &
-             = [ 100, 1, 1 ], &
+             = [ 10, 1, 1 ], &
            swX_Option &
              = [ 0, 0, 0 ], &
            bcX_Option &
@@ -39,7 +39,7 @@ PROGRAM RelaxationNES
            eR_Option &
              = 3.0d2 * MeV, &
            ZoomE_Option &
-             = 1.2_DP, &
+             = 1.181888412440656_DP, &
            nNodes_Option &
              = 3, &
            ActivateUnits_Option &
@@ -61,18 +61,18 @@ PROGRAM RelaxationNES
 
   CALL InitializeRelaxationNES &
          ( Density &
-             = 1.0d14 * Gram / Centimeter**3, &
+             = 1.0d12 * Gram / Centimeter**3, &
            Temperature &
-             = 2.1d1 * MeV, &
+             = 8.0d0 * MeV, &
            ElectronFraction &
-             = 0.25_DP )
+             = 0.12_DP )
 
   CALL EvolveFields &
          ( t_begin         = 0.0d+0 * Millisecond, &
-           t_end           = 2.0d+0 * Millisecond, &
+           t_end           = 1.0d-0 * Millisecond, &
            dt_write        = 1.0d-2 * Millisecond, &
            UpdateFields    = BackwardEuler, &
-           dt_fixed_Option = 1.0d-3 * Millisecond )
+           dt_fixed_Option = 1.0d-4 * Millisecond )
 
   CALL FinalizeProgram
 
