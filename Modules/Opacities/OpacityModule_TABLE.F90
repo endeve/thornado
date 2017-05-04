@@ -191,7 +191,7 @@ CONTAINS
 
     END ASSOCIATE ! R0_Out_T, etc.
 
-    R0_Out = R0_Out / ( 1.0_DP / ( Centimeter * MeV**3 ) )
+    R0_Out = R0_Out * ( 1.0_DP / ( Centimeter * MeV**3 ) )
 
     DO iX = 1, SIZE( T )
 
