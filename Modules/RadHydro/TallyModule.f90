@@ -310,19 +310,16 @@ CONTAINS
       GlobalEnergy_Fluid(1) &
       / U % EnergyGlobalUnit, &
       '', U % EnergyGlobalLabel
-
     WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
       '', '  Internal Energy = ', &
       GlobalInternalEnergy_Fluid(1) &
       / U % EnergyGlobalUnit, &
       '', U % EnergyGlobalLabel
-
     WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
       '', '  Kinetic Energy = ', &
       GlobalKineticEnergy_Fluid(1) &
       / U % EnergyGlobalUnit, &
       '', U % EnergyGlobalLabel
-
     WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
       '', 'Change = ', &
       ( GlobalEnergy_Fluid(1) &
@@ -401,6 +398,8 @@ CONTAINS
 
   SUBROUTINE DisplayGlobalTally_Radiation
 
+    ASSOCIATE( U => UnitsDisplay )
+
     WRITE(*,*)
     WRITE(*,'(A4,A)') '', 'INFO: Radiation Tally'
     WRITE(*,*)
@@ -412,14 +411,20 @@ CONTAINS
       GlobalNumber_Radiation(1) &
         - GlobalNumber_Radiation(0)
     WRITE(*,*)
-    WRITE(*,'(A8,A26,ES18.10E3)') &
+    WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
       '', 'Global Energy = ', &
-      GlobalEnergy_Radiation(1)
-    WRITE(*,'(A8,A26,ES18.10E3)') &
-      '', 'Change = ', &
       GlobalEnergy_Radiation(1) &
-        - GlobalEnergy_Radiation(0)
+      / U % EnergyGlobalUnit, &
+      '', U % EnergyGlobalLabel
+    WRITE(*,'(A8,A26,ES18.10E3,A1,A)') &
+      '', 'Change = ', &
+      ( GlobalEnergy_Radiation(1) &
+        - GlobalEnergy_Radiation(0) ) &
+      / U % EnergyGlobalUnit, &
+      '', U % EnergyGlobalLabel
     WRITE(*,*)
+
+    END ASSOCIATE ! U
 
   END SUBROUTINE DisplayGlobalTally_Radiation
 
@@ -440,10 +445,15 @@ CONTAINS
 
       OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ) )
 
-      WRITE( FileUnit, '(10(A14,x))' ) &
-        'Time', 'Max D', 'Total M', 'Change M', &
-        'Total E_f', 'Total E_f (i)', 'Total E_f (k)', 'Change E_f', &
-        'Total E_g', 'Change E_g'
+      WRITE( FileUnit, '(16(A14,x))' ) &
+        'Time', 'Max D',               &
+        'Total M', 'Change M',         &
+        'Total E_F', 'Total E_F (I)',  &
+        'Total E_F (K)', 'Change E_F', &
+        'Total N_F', 'Change N_F',     &
+        'Total E_G', 'Change E_G',     &
+        'Total N_R', 'Change N_R',     &
+        'Total E_R', 'Change E_R'
 
     ELSE
 
@@ -454,21 +464,41 @@ CONTAINS
 
     ASSOCIATE( U => UnitsDisplay )
 
-    WRITE( FileUnit, &
-           '(10(ES14.5,x))' ) &
-      Time / U % TimeUnit, &
-      MaximumMassDensity / U % MassDensityUnit, &
-      GlobalBaryonMass_Fluid(1) / U % MassUnit, &
-      ( GlobalBaryonMass_Fluid(1) - GlobalBaryonMass_Fluid(0) ) &
-        / U % MassUnit, &
-      GlobalEnergy_Fluid(1) / U % EnergyGlobalUnit, &
-      GlobalInternalEnergy_Fluid(1) / U % EnergyGlobalUnit, &
-      GlobalKineticEnergy_Fluid(1) / U % EnergyGlobalUnit, &
-      ( GlobalEnergy_Fluid(1) - GlobalEnergy_Fluid(0) ) &
-        / U % EnergyGlobalUnit, &
-      GlobalEnergy_Gravity(1) / U % EnergyGlobalUnit, &
-      ( GlobalEnergy_Gravity(1) - GlobalEnergy_Gravity(0) ) &
-        / U % EnergyGlobalUnit
+    WRITE( FileUnit,                       &
+           '(16(ES14.5,x))' )              &
+      Time / U % TimeUnit,                 &
+      MaximumMassDensity                   &
+      / U % MassDensityUnit,               &
+      GlobalBaryonMass_Fluid(1)            &
+      / U % MassUnit,                      &
+      ( GlobalBaryonMass_Fluid(1)          &
+        - GlobalBaryonMass_Fluid(0) )      &
+      / U % MassUnit,                      &
+      GlobalEnergy_Fluid(1)                &
+      / U % EnergyGlobalUnit,              &
+      GlobalInternalEnergy_Fluid(1)        &
+      / U % EnergyGlobalUnit,              &
+      GlobalKineticEnergy_Fluid(1)         &
+      / U % EnergyGlobalUnit,              &
+      ( GlobalEnergy_Fluid(1)              &
+        - GlobalEnergy_Fluid(0) )          &
+      / U % EnergyGlobalUnit,              &
+      GlobalElectronNumber_Fluid(1),       &
+      ( GlobalElectronNumber_Fluid(1)      &
+        - GlobalElectronNumber_Fluid(0) ), &
+      GlobalEnergy_Gravity(1)              &
+      / U % EnergyGlobalUnit,              &
+      ( GlobalEnergy_Gravity(1)            &
+        - GlobalEnergy_Gravity(0) )        &
+      / U % EnergyGlobalUnit,              &
+      GlobalNumber_Radiation(1),           &
+      ( GlobalNumber_Radiation(1)          &
+        - GlobalNumber_Radiation(0) ),     &
+      GlobalEnergy_Radiation(1)            &
+      / U % EnergyGlobalUnit,              &
+      ( GlobalEnergy_Radiation(1)          &
+        - GlobalEnergy_Radiation(0) )      &
+      / U % EnergyGlobalUnit
 
     END ASSOCIATE ! U
 
