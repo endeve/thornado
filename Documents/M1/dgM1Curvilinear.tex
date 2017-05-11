@@ -579,34 +579,85 @@ Failure in maintaining these bounds can lead to an ill-posed closure problem and
 
 Given by \citet{bruenn_1985}, the absorption opacity of neutrino $\chi$ 
 \begin{equation}
-  \chi(\epsilonNu,\bU) = \dfrac{1}{\lambda(\epsilonNu,\bU)} + j(\epsilonNu,\bU), 
+  \tilde{\chi}(\epsilonNu,\bU) = \chi(\epsilonNu,\bU) + \eta(\epsilonNu,\bU), 
 \end{equation}
-where $j(\epsilonNu,\bU) $ is the neutrino emissivity
+where $\eta(\epsilonNu,\bU) $ is the neutrino emissivity
 \begin{equation}
-j = j_{nucleon} + j_{nuclear},
+\eta = \eta_{nucleon} + \eta_{nuclear},
 \end{equation}  
-and $\lambda(\epsilonNu,\bU)$ is the neutrino absorption mean free path.
+and $ \chi(\epsilonNu,\bU)$ is the neutrino absorptivity, which is the inverse of neutrino absorption mean free path.
 They have the following relation:
 \begin{equation}
-\dfrac{1}{\lambda(\epsilonNu,\bU)} = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T} j(\epsilonNu,\bU) .
+\chi(\epsilonNu,\bU) = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T} \eta(\epsilonNu,\bU). 
 \end{equation}
+
 Therefore,
 \begin{equation}
-\dfrac{1}{\lambda} = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T} (j_{nucleon} + j_{nuclear} ) = (\dfrac{1}{\lambda})_{nucleon} + (\dfrac{1}{\lambda})_{nuclear}.
+\chi = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T} (\eta_{nucleon} + \eta_{nuclear} ) = \chi_{nucleon} + \chi_{nuclear}.
 \end{equation}
 The two terms of electron-neutrino absorption on nucleons are
  \begin{align}
-    (\dfrac{1}{\lambda})_{nucleon}(\epsilonNu,\bU) & = \dfrac{G^2}{\pi} \eta_{np}(g_V^2+3g_A^2)[1-F_e(\varepsilon+Q)](\varepsilon+Q)^2[1-\dfrac{M^2_e}{(\varepsilon+Q)^2}]^{1/2},\\
-    j_{nucleon}(\epsilonNu,\bU) &= \dfrac{G^2}{\pi}\eta_{pn}(g_V^2+3g_A^2)F_e(\varepsilon+Q)(\varepsilon+Q)^2[1-\dfrac{M^2_e}{(\varepsilon+Q)^2}]^{1/2}.
+    \chi_{nucleon}(\epsilonNu,\bU) & = \dfrac{G^2}{\pi} \eta_{np}(g_V^2+3g_A^2)[1-F_e(\varepsilon+Q)](\varepsilon+Q)^2[1-\dfrac{M^2_e}{(\varepsilon+Q)^2}]^{1/2} \label{eq:nucleonabsorption} ,\\
+    \eta_{nucleon}(\epsilonNu,\bU) &= \dfrac{G^2}{\pi}\eta_{pn}(g_V^2+3g_A^2)F_e(\varepsilon+Q)(\varepsilon+Q)^2[1-\dfrac{M^2_e}{(\varepsilon+Q)^2}]^{1/2} \label{eq:nucleonemissivity} ,
 \end{align}
-And the two terms of electron-neutrino absorption on nuclear are
+and the two terms of electron-neutrino absorption on nuclear are
 \begin{align}
-    (\dfrac{1}{\lambda})_{nuclear}(\epsilonNu,\bU) & = \dfrac{G^2}{\pi} n_A e^{\beta (\mu_n -\mu_p -Q')} g^2_A \dfrac{2}{7} N_p(Z) N_n(N)[1-F_e(\varepsilon+Q')](\varepsilon+Q')^2[1-\dfrac{M_e^2}{(\varepsilon+Q')^2}]^{1/2} ,\\
-    j_{nuclear}(\epsilonNu,\bU) &=\dfrac{G^2}{\pi} n_A g^2_A \dfrac{2}{7} N_p(Z) N_n(N)F_e(\varepsilon+Q')(\varepsilon+Q')^2[1-\dfrac{M_e^2}{(\varepsilon+Q')^2}]^{1/2} .
+    \chi_{nuclear}(\epsilonNu,\bU) & = \dfrac{G^2}{\pi} n_A e^{(\mu_n -\mu_p -Q')/k_B T} g^2_A \dfrac{2}{7} N_p(Z) N_h(N)[1-F_e(\varepsilon+Q')](\varepsilon+Q')^2[1-\dfrac{M_e^2}{(\varepsilon+Q')^2}]^{1/2} \label{eq:nuclearabsorption} ,\\
+    \eta_{nuclear}(\epsilonNu,\bU) &=\dfrac{G^2}{\pi} n_A g^2_A \dfrac{2}{7} N_p(Z) N_h(N)F_e(\varepsilon+Q')(\varepsilon+Q')^2[1-\dfrac{M_e^2}{(\varepsilon+Q')^2}]^{1/2} \label{eq:nuclearemissivity},
 \end{align} 
+where $g_V = 1$ and $g_A =1.23$ are form factors resulting from virtual strong-interaction processes, $M_e = 0.511$ MeV is the electron rest energy, $Q = 1.2935$ MeV is the difference between the neutron and proton rest energies, $\mu_n$ and $\mu_p$ are the neutron and proton chemical potential, respectively. And $Q'$ is defined by $Q' = \mu_n -\mu_p + \Delta$, where $\Delta=3$MeV is the energy of the $1f_{5/2}$ level above the ground state.  
 
-The total opacity $\kappa(\epsilonNu,\bU)=\chi(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$, and $\sigma(\epsilonNu,\bU)$ is the scattering opacities.
+In Eq.~\eqref{eq:nucleonabsorption}, ~\eqref{eq:nucleonemissivity}, ~\eqref{eq:nuclearabsorption} and ~\eqref{eq:nuclearemissivity}, $F_e(E)$ is the Fermi-Dirac distribution function:
+\begin{align}
+F_e(E) = \dfrac{1}{e^{(E-\mu_e)/k_B T} + 1},
+\end{align}
+where $\mu_e$ is the electron chemical potential.
 
+In Eq.~\eqref{eq:nucleonabsorption} and ~\eqref{eq:nucleonemissivity}, $\eta_{np}$ and $\eta_{pn}$ take into account the nucleon final-state blocking and equal to $n_n$ and $n_p$, the nucleon number density, when the nucleons are nondegenerate, respectively.
+\begin{align}
+n_p & =  \dfrac{X_p \rho}{m_p} \\
+n_n & =  \dfrac{X_n \rho}{m_n},
+\end{align}
+where $X_p$ and $X_n$ are the proton and neutron fractions, respectively.
+
+In Eq.~\eqref{eq:nuclearabsorption} and ~\eqref{eq:nuclearemissivity}, $n_A$ is the nuclei number density and $n_A = \dfrac{\rho X_H}{m_B A}$. The function $N_p$ is the number of protons in the single-particle $1f_{7/2}$ level and $N_h$ is the number of neutron holes in the single-particle $1f_{5/2}$ level. As a crude estimate of $N_p$ and $N_h$, a zero-order shell model predicts that
+\[   
+N_p(Z) = 
+     \begin{cases}
+       0, &\quad Z<20\\
+       Z-20, &\quad 20<Z<28 \\
+       8, &\quad Z>28,\\
+     \end{cases}
+\]
+and
+\[   
+N_h(N) = 
+     \begin{cases}
+       6, &\quad N<34\\
+       40-N, &\quad 34<N<40 \\
+       0, &\quad N>40.\\
+     \end{cases}
+\]
+
+The factor $G^2$ in Eq.~\eqref{eq:nucleonabsorption}, ~\eqref{eq:nucleonemissivity}, ~\eqref{eq:nuclearabsorption} and ~\eqref{eq:nuclearemissivity} is the Fermi constant [$G=(1.015\pm 0.03)\time 10^5 M_p^{-2}$] with the value
+\begin{equation}
+	G^2 = \left[ \dfrac{1}{(\hbar c)^4} \right] G^2 = 5.18 \times 10^{-44} MeV^{-2}cm^2, 
+\end{equation}
+giving $\chi$ and $\eta$ the required units of $cm^{-1}$.
+
+The sum of Eq.~\eqref{eq:nucleonabsorption}, ~\eqref{eq:nucleonemissivity}, ~\eqref{eq:nuclearabsorption} and ~\eqref{eq:nuclearemissivity} gives the explicit expression of the absorption opacity of neutrino $\chi$ .
+
+The total opacity $\kappa(\epsilonNu,\bU)=\chi(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$, and $\sigma(\epsilonNu,\bU)$ is the scattering opacities. The scattering opacities $\sigma(\epsilonNu,\bU)$ contains isoenergetic scattering opacities and have a integral form in the Boltzmann equation: if we include emission, absorption, and isoenergetic scattering of neutrino by nucleons and nuclei, the simplified Boltzmann equation is
+\begin{align}
+\dfrac{\partial f(\epsilonNu,\bU)}{\partial t} = \eta(\epsilonNu,\bU) - \tilde{\chi}(\epsilonNu,\bU)f(\epsilonNu,\bU) & + \dfrac{1}{h^3} \epsilonNu^2 \int d\mu^\prime_0 R_{IS}( \mu^\prime_0, \mu_0,\epsilonNu, \bU) f(\mu^\prime_0, \epsilonNu,\bU) \nonumber \\
+	& - \dfrac{1}{h^3} \epsilonNu^2 f(\epsilonNu,\bU)\int d\mu^\prime_0 R_{IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) .
+\end{align}
+
+The last two terms are contributions from isoenergetic scattering of neutrino by nucleons and nuclei. The isoenergetic scattering kernel $R_{IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU)$ has the following relation:
+\begin{align}
+R_{IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) & = R_{IS}^{nucleons}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) +  R_{IS}^{nuclei}(\mu_0, \mu^\prime_0, \epsilonNu,\bU)\\
+& = \int_{0}^{2\pi}d
+\end{align}
 \clearpage
 
 \section{Benchmark Problems}
