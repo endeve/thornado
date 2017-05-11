@@ -14,7 +14,8 @@ MODULE OpacityModule_TABLE
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable, &
     LogInterpolateSingleVariable_1D3D, &
-    LogInterpolateSingleVariable_2D2D
+    LogInterpolateSingleVariable_2D2D, &
+    LinInterpolateSingleVariable_2D2D
 
   ! ----------------------------------------------
 
@@ -30,6 +31,8 @@ MODULE OpacityModule_TABLE
 
   IMPLICIT NONE
   PRIVATE
+
+  LOGICAL, PARAMETER :: LinInterp = .FALSE.
 
   CHARACTER(256) :: &
     OpacityTableName
@@ -98,6 +101,17 @@ CONTAINS
 
     ALLOCATE( Etas_T(OPACITIES % EtaGrid % nPoints) )
     Etas_T = OPACITIES % EtaGrid  % Values
+
+
+    IF( LinInterp )THEN
+
+      ! --- Performance Test: Anti-Log NES Kernel ---
+
+      OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1) &
+        = 10**( OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1) ) &
+          - OPACITIES % Scatt_NES % Offsets(1,1)
+
+    END IF
 
 #endif
 
@@ -184,10 +198,20 @@ CONTAINS
       ( R0_Out_T => OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1), &
         OS       => OPACITIES % Scatt_NES % Offsets(1,1) )
 
-    CALL LogInterpolateSingleVariable_2D2D      &
-           ( E / MeV, E / MeV, T / Kelvin, Eta, &
-             Es_T, Es_T, Ts_T, Etas_T,          &
-             [ 1, 1, 1, 1 ], OS, R0_Out_T, R0_Out )
+    IF( .NOT. LinInterp )THEN
+
+      CALL LogInterpolateSingleVariable_2D2D      &
+             ( E / MeV, E / MeV, T / Kelvin, Eta, &
+               Es_T, Es_T, Ts_T, Etas_T,          &
+               [ 1, 1, 1, 1 ], OS, R0_Out_T, R0_Out )
+
+    ELSE
+
+      CALL LinInterpolateSingleVariable_2D2D      &
+             ( E / MeV, E / MeV, T / Kelvin, Eta, &
+               Es_T, Es_T, Ts_T, Etas_T, R0_Out_T, R0_Out )
+
+    END IF
 
     END ASSOCIATE ! R0_Out_T, etc.
 
