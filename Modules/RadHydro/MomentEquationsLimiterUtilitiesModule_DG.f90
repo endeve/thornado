@@ -235,6 +235,7 @@ CONTAINS
     LOGICAL  :: Converged
     INTEGER  :: Iter
     REAL(DP) :: a, b, c, ab, Phi_a, Phi_b, Phi_c, Phi_0
+    REAL(DP) :: Phi_a0, Phi_b0
     INTEGER,  PARAMETER :: MaxIter = 128
     REAL(DP), PARAMETER :: Tol_ab  = 1.0d-8
     REAL(DP), PARAMETER :: Tol_Phi = 1.0d-8
@@ -244,10 +245,16 @@ CONTAINS
       = ThetaFun &
           ( N_K, G1_K, G2_K, G3_K, dN, dG1, dG2, dG3, Tol_G, a )
 
+    Phi_a0 &
+      = Phi_a
+
     b = 1.0_DP
     Phi_b &
       = ThetaFun &
           ( N_K, G1_K, G2_K, G3_K, dN, dG1, dG2, dG3, Tol_G, b )
+
+    Phi_b0 &
+      = Phi_b
 
     Phi_0 = Phi_a
     ab    = b - a
@@ -287,6 +294,12 @@ CONTAINS
         WRITE(*,'(A6,A21,I4.4,A11)') &
           '', 'No Convergence After ', Iter, ' Iterations'
         WRITE(*,*)
+        WRITE(*,*) '  a, b, ab = ', a, b, ab
+        WRITE(*,*) '  Phi_a0, Phi_b0 = ', Phi_a0, Phi_b0
+        WRITE(*,*) '  Phi_ai, Phi_bi = ', Phi_a,  Phi_b
+        WRITE(*,*) '  N_K, G_K = ', N_K, G1_K, G2_K, G3_K
+        WRITE(*,'(A8,ES20.6e3)') 'Tol_G = ', Tol_G
+        STOP
       END IF
 
     END DO
