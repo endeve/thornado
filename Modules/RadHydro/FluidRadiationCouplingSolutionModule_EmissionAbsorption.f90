@@ -8,7 +8,8 @@ MODULE FluidRadiationCouplingSolutionModule_EmissionAbsorption
     PlanckConstant, &
     Gram, &
     Centimeter, &
-    Kelvin
+    Kelvin, &
+    MeV
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, nDOFX, &
     nE, nNodesE, nDOFE
@@ -16,7 +17,7 @@ MODULE FluidRadiationCouplingSolutionModule_EmissionAbsorption
     uCF, nCF, &
     uPF, nPF, iPF_D, iPF_E, iPF_Ne, &
     uAF, nAF, iAF_P, iAF_T, iAF_Ye, iAF_S, &
-    iAF_E, iAF_Me, iAF_Mp, iAF_Mn, iAF_Gm
+    iAF_E, iAF_Me, iAF_Mp, iAF_Mn, iAF_Gm, iAF_Cs
   USE EulerEquationsUtilitiesModule, ONLY: &
     ComputeConserved, &
     ComputePrimitive
@@ -43,6 +44,7 @@ MODULE FluidRadiationCouplingSolutionModule_EmissionAbsorption
     ComputeElectronChemicalPotential, &
     ComputeProtonChemicalPotential, &
     ComputeNeutronChemicalPotential, &
+    ComputeAuxiliary_Fluid, &
     ApplyEquationOfState, &
     ComputeThermodynamicStates_Primitive
   USE OpacityModule, ONLY: &
@@ -92,6 +94,13 @@ CONTAINS
 
           CALL ComputePrimitive &
                  ( uCF(:,iX1,iX2,iX3,1:nCF), uPF(:,iX1,iX2,iX3,1:nPF) )
+
+          CALL ComputeAuxiliary_Fluid &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E ), &
+                   uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P ), &
+                   uAF(:,iX1,iX2,iX3,iAF_T ), uAF(:,iX1,iX2,iX3,iAF_Ye), &
+                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Gm), uAF(:,iX1,iX2,iX3,iAF_Cs) )
 
         END DO
       END DO
@@ -204,11 +213,11 @@ CONTAINS
     LOGICAL, DIMENSION(1:nNodesX_G) :: Converged
     INTEGER                         :: iter, iX, iX_MAX
     REAL(DP)                        :: Norm, MaxNorm
-    REAL(DP),             PARAMETER :: NewtonTol = 1.0d-8
+    REAL(DP),             PARAMETER :: NewtonTol = 1.0d-10
 
     CALL SetUVEC( uAF_N(iAF_Ye,:), uAF_N(iAF_E,:), iOld )
 
-    ! --- Compute Absoption Opacities ---
+    ! --- Compute Absorption Opacities ---
 
     CALL SetRates
 
@@ -434,8 +443,8 @@ CONTAINS
       ( hc3 => ( PlanckConstant * SpeedOfLight )**3 )
 
     ASSOCIATE &
-      ( mB   => BaryonMass, &
-        D    => uPF_N(iPF_D,:) )
+      ( mB  => BaryonMass, &
+        D_N => uPF_N(iPF_D,:) )
 
     FVEC = 0.0_DP
 
@@ -447,7 +456,7 @@ CONTAINS
         = dt * Chi(1:nNodesE_G,iX) &
             / ( 1.0_DP + dt * Chi(1:nNodesE_G,iX) )
 
-      ! --- Electron Fraction
+      ! --- Electron Fraction Equation ---
 
       FVEC(i_Y,iX) &
         = ( UVEC(i_Y,iX,iNew) - UVEC(i_Y,iX,iOld) )
@@ -456,13 +465,13 @@ CONTAINS
 
         FVEC(i_Y,iX) &
           = FVEC(i_Y,iX) &
-              + ( mB / D(iX) ) / hc3 &
+              + ( mB / D_N(iX) ) / hc3 &
                   * SUM( W2_N(:) * GammaT(:) &
                            * ( FourPi * FD(:,iX) - uPR_N(:,iPR_D,iX) ) )
 
       END IF
 
-      ! --- Specific Internal Energy
+      ! --- Energy Equation ---
 
       FVEC(i_E,iX) &
         = ( UVEC(i_E,iX,iNew) - UVEC(i_E,iX,iOld) )
@@ -471,7 +480,7 @@ CONTAINS
 
         FVEC(i_E,iX) &
           = FVEC(i_E,iX) &
-              + ( 1.0_DP / D(iX) ) / hc3 &
+              + ( 1.0_DP / D_N(iX) ) / hc3 &
                   * SUM( W3_N(:) * GammaT(:) &
                            * ( FourPi * FD(:,iX) - uPR_N(:,iPR_D,iX) ) )
 
@@ -479,7 +488,7 @@ CONTAINS
 
     END DO
 
-    END ASSOCIATE ! mB, etc.
+    END ASSOCIATE ! mB, D_N
 
     END ASSOCIATE ! hc3
 
