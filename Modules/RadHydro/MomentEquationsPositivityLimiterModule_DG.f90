@@ -30,7 +30,7 @@ MODULE MomentEquationsPositivityLimiterModule_DG
   IMPLICIT NONE
   PRIVATE
 
-  LOGICAL,  PARAMETER :: Debug = .FALSE.  
+  LOGICAL,  PARAMETER :: Debug = .FALSE.
   REAL(DP), PARAMETER :: Tol_N = SQRT(TINY(1.0_DP))
   REAL(DP), PARAMETER :: Tol_G = SQRT(TINY(1.0_DP))
 
