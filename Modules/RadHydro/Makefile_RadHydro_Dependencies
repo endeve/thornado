@@ -263,6 +263,10 @@ FluidRadiationCouplingSolutionModule_NES.o: \
   MomentEquationsUtilitiesModule.o \
   FluidRadiationCouplingSolutionModule_NES.f90
 
+FluidRadiationCouplingSolutionModule_B85.o: \
+  KindModule.o \
+  FluidRadiationCouplingSolutionModule_B85.f90
+
 FluidRadiationCouplingSolutionModule_Explicit.o: \
   KindModule.o \
   FluidRadiationCouplingSolutionModule_Explicit.f90
@@ -272,6 +276,8 @@ FluidRadiationCouplingModule.o: \
   FluidRadiationCouplingSolutionModule_ThermalReservoir.o \
   FluidRadiationCouplingSolutionModule_EmissionAbsorption.o \
   FluidRadiationCouplingSolutionModule_ElasticScattering.o \
+  FluidRadiationCouplingSolutionModule_NES.o \
+  FluidRadiationCouplingSolutionModule_B85.o \
   FluidRadiationCouplingModule.f90
 
 ApplicationBoundaryConditionsModule.o: \

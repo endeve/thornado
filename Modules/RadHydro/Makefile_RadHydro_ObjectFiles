@@ -28,6 +28,7 @@ RAD_HYDRO = \
   FluidRadiationCouplingSolutionModule_EmissionAbsorption.o \
   FluidRadiationCouplingSolutionModule_ElasticScattering.o \
   FluidRadiationCouplingSolutionModule_NES.o \
+  FluidRadiationCouplingSolutionModule_B85.o \
   FluidRadiationCouplingSolutionModule_Explicit.o \
   FluidRadiationCouplingModule.o \
   ApplicationBoundaryConditionsModule.o \
