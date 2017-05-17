@@ -10,6 +10,8 @@ MODULE FluidRadiationCouplingModule
     CoupleFluidRadiation_ElasticScattering
   USE FluidRadiationCouplingSolutionModule_NES, ONLY: &
     CoupleFluidRadiation_NES
+  USE FluidRadiationCouplingSolutionModule_B85, ONLY: &
+    CoupleFluidRadiation_B85
 
   IMPLICIT NONE
   PRIVATE
@@ -65,6 +67,11 @@ CONTAINS
 
         CoupleFluidRadiation &
           => CoupleFluidRadiation_NES
+
+      CASE( 'B85' )
+
+        CoupleFluidRadiation &
+          => CoupleFluidRadiation_B85
 
       CASE( 'Complete' )
 
