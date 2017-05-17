@@ -335,6 +335,14 @@ CONTAINS
 
         CALL ApplyBC_Radiation_X1_OutflowSphericalSymmetry
 
+      CASE ( 'DeleptonizationProblem1D_B85' )
+
+        CALL ApplyBC_Radiation_X1_OutflowSphericalSymmetry
+
+      CASE ( 'GravitationalCollapse1D' )
+
+        CALL ApplyBC_Radiation_X1_OutflowSphericalSymmetry
+
       CASE DEFAULT
 
         WRITE(*,*)
