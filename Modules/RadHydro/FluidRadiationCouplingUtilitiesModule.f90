@@ -292,7 +292,14 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: E, Mu, kT
 
-    FermiDirac = 1.0_DP / ( EXP( ( E - Mu ) / kT ) + 1.0_DP )
+    REAL(DP) :: Exponent
+
+    Exponent = ( E - Mu ) / kT
+    Exponent = MAX( Exponent, - LOG( 1.0d100 ) )
+    Exponent = MIN( Exponent, + LOG( 1.0d100 ) )
+
+    FermiDirac &
+      = 1.0_DP / ( EXP( Exponent ) + 1.0_DP )
 
     RETURN
   END FUNCTION FermiDirac
@@ -302,9 +309,16 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: E, Mu, kT, dMudT, T
 
+    REAL(DP) :: Exponent, FD
+
+    Exponent = ( E - Mu ) / kT
+    Exponent = MAX( Exponent, - LOG( 1.0d100 ) )
+    Exponent = MIN( Exponent, + LOG( 1.0d100 ) )
+
+    FD = FermiDirac( E, Mu, kT )
+
     dFermiDiracdT &
-      = FermiDirac( E, Mu, kT )**2 * EXP( ( E - Mu ) / kT ) &
-          * ( dMudT + ( E - Mu ) / T ) / kT
+      = ( FD * EXP( Exponent ) ) * FD * ( dMudT + ( E - Mu ) / T ) / kT
 
     RETURN
   END FUNCTION dFermiDiracdT
@@ -314,8 +328,16 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: E, Mu, kT, dMudY, T
 
+    REAL(DP) :: Exponent, FD
+
+    Exponent = ( E - Mu ) / kT
+    Exponent = MAX( Exponent, - LOG( 1.0d100 ) )
+    Exponent = MIN( Exponent, + LOG( 1.0d100 ) )
+
+    FD = FermiDirac( E, Mu, kT )
+
     dFermiDiracdY &
-      = FermiDirac( E, Mu, kT )**2 * EXP( ( E - Mu ) / kT ) * dMudY / kT
+      = ( FD * EXP( Exponent ) ) * FD * dMudY / kT
 
     RETURN
   END FUNCTION dFermiDiracdY
