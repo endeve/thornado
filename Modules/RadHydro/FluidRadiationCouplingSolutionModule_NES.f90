@@ -209,7 +209,7 @@ CONTAINS
         UVEC(:,iX,iNew) = UVEC(:,iX,iNew) + dUVEC(:,iX)
 
         Norm = ENORM( dUVEC(:,iX) / ( UVEC(:,iX,iNew) + EPSILON(1.0_DP) ) )
-        IF( Norm <= NewtonTol ) Converged = .TRUE.
+        IF( Norm <= NewtonTol ) Converged(iX) = .TRUE.
 
         IF( Norm >= MaxNorm )THEN
 
@@ -223,7 +223,7 @@ CONTAINS
       IF( iter > 9 )THEN
 
         WRITE(*,*)
-        WRITE(*,'(A8,A)') ' ', 'NES'
+        WRITE(*,'(A8,A)') ' ', 'CoupleFluidRadiation_NES'
         WRITE(*,*)
         WRITE(*,'(A10,A12,I6.6,A2,A11,ES10.4E2,A2,A9,I6.6)') &
           ' ', 'Iteration = ', iter, &
@@ -270,6 +270,13 @@ CONTAINS
 
     CALL ComputeScatteringOpacity_NES &
            ( E_N, T_N, Eta_N, R0_In, R0_Out )
+
+!!$    CALL WriteVector &
+!!$           ( SIZE( E_N ), E_N, 'E.dat' )
+!!$    CALL WriteMatrix &
+!!$           ( SIZE( E_N ), SIZE( E_N ), R0_In (:,:,1), 'R_In.dat' )
+!!$    CALL WriteMatrix &
+!!$           ( SIZE( E_N ), SIZE( E_N ), R0_Out(:,:,1), 'R_Ot.dat' )
 
     END ASSOCIATE ! T_N, etc.
     END ASSOCIATE ! kT
