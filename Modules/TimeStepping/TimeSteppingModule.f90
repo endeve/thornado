@@ -268,7 +268,7 @@ CONTAINS
 
       END IF
 
-      IF( MOD( iCycle, 10 ) == 0 )THEN
+      IF( MOD( iCycle, 100 ) == 0 )THEN
 
         WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A2,A2,A5,ES12.6E2,A1,A2)') &
           '', 'Cycle = ', iCycle, &
@@ -1001,6 +1001,12 @@ CONTAINS
            ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
              EvolveFluid_Option = EvolveFluid )
 
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyPositivityLimiter_Radiation
+
+    END IF
+
     ! -- SI-RK Stage 2 --
 
     IF( EvolveRadiation )THEN
@@ -1030,6 +1036,12 @@ CONTAINS
     CALL CoupleFluidRadiation &
            ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
              EvolveFluid_Option = EvolveFluid )
+
+    IF( EvolveRadiation )THEN
+
+      CALL ApplyPositivityLimiter_Radiation
+
+    END IF
 
     ! -- Combine Steps --
 
