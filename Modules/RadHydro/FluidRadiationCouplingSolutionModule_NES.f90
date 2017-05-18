@@ -45,7 +45,6 @@ MODULE FluidRadiationCouplingSolutionModule_NES
   INTEGER :: nNodesX_G, nNodesE_G
   INTEGER,  PARAMETER :: iOld = 1
   INTEGER,  PARAMETER :: iNew = 2
-  REAL(DP), PARAMETER :: Theta = 1.0_DP
   REAL(DP), DIMENSION(:),     ALLOCATABLE :: E_N, W2_N, W3_N
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: uPF_N, uAF_N
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: FVEC, dUVEC
@@ -359,8 +358,10 @@ CONTAINS
       DO iE = 1, nNodesE_G
 
         FJAC(iE,iE,iX) &
-          = 1.0_DP + dt*Theta*SUM(W2_N(:)*R0_In(:,iE,iX)*UVEC(:,iX,iNew)) &
-            + dt*SUM(W2_N(:)*R0_Out(:,iE,iX)*(FourPi-Theta*UVEC(:,iX,iNew)))
+          = 1.0_DP &
+            + dt * SUM( W2_N(:) &
+                        * ( R0_In(:,iE,iX) * UVEC(:,iX,iNew) &
+                            + R0_Out(:,iE,iX) * (FourPi-UVEC(:,iX,iNew)) ) )
 
       END DO
 
@@ -370,8 +371,9 @@ CONTAINS
 
         FJAC(:,iE,iX) &
           = FJAC(:,iE,iX) &
-              - dt*(FourPi-Theta*UVEC(:,iX,iNew))*W2_N(iE)*R0_Out(:,iE,iX) &
-              - dt*Theta*UVEC(:,iX,iNew)*W2_N(iE)*R0_Out(:,iE,iX)
+             - dt * W2_N(iE) &
+               * ( (FourPi-UVEC(:,iX,iNew)) * R0_Out(:,iE,iX) &
+                   + UVEC(:,iX,iNew) * R0_Out(:,iE,iX) )
 
       END DO
 
@@ -444,9 +446,9 @@ CONTAINS
 
       RHSVEC(i) &
         ! --- In-Scattering Term ---
-        = ( FourPi - Theta * D(i) ) * SUM( W(:) * R_In(:,i) * D(:) ) &
+        = ( FourPi - D(i) ) * SUM( W(:) * R_In(:,i) * D(:) ) &
         ! --- Out-Scattering Term ---
-          - D(i) * SUM( W(:) * R_Out(:,i) * ( FourPi - Theta * D(:) ) )
+          - D(i) * SUM( W(:) * R_Out(:,i) * ( FourPi - D(:) ) )
 
     END DO
 
