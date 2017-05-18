@@ -14,7 +14,8 @@ MODULE OpacityModule_TABLE
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable, &
     LogInterpolateSingleVariable_1D3D, &
-    LogInterpolateSingleVariable_2D2D
+    LogInterpolateSingleVariable_2D2D, &
+    LogInterpolateSingleVariable_2D2D_Custom
 
   ! ----------------------------------------------
 
@@ -31,12 +32,14 @@ MODULE OpacityModule_TABLE
   IMPLICIT NONE
   PRIVATE
 
+  LOGICAL, PARAMETER :: InterpTest = .TRUE.
   CHARACTER(256) :: &
     OpacityTableName
   INTEGER :: &
     iD_T, iT_T, iY_T
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
-    Es_T, Ds_T, Ts_T, Ys_T, Etas_T
+    Es_T, Ds_T, Ts_T, Ys_T, Etas_T, &
+    LogEs_T, LogDs_T, LogTs_T, LogEtas_T
 #ifdef MICROPHYSICS_WEAKLIB
   TYPE(OpacityTableType) :: &
     OPACITIES
@@ -80,11 +83,23 @@ CONTAINS
 
     ! --- Thermodynamic States ---
 
+    ! --- Density ---
+
     ALLOCATE( Ds_T(OPACITIES % TS % nPoints(iD_T)) )
     Ds_T = OPACITIES % TS % States(iD_T) % Values
 
+    ALLOCATE( LogDs_T(SIZE( Ds_T )) )
+    LogDs_T = LOG10( Ds_T )
+
+    ! --- Temperature ---
+
     ALLOCATE( Ts_T(OPACITIES % TS % nPoints(iT_T)) )
     Ts_T = OPACITIES % TS % States(iT_T) % Values
+
+    ALLOCATE( LogTs_T(SIZE( Ts_T )) )
+    LogTs_T = LOG10( Ts_T )
+
+    ! --- Electron Fraction ---
 
     ALLOCATE( Ys_T(OPACITIES % TS % nPoints(iY_T)) )
     Ys_T = OPACITIES % TS % States(iY_T) % Values
@@ -94,10 +109,23 @@ CONTAINS
     ALLOCATE( Es_T(OPACITIES % EnergyGrid % nPoints) )
     Es_T = OPACITIES % EnergyGrid  % Values
 
+    ALLOCATE( LogEs_T(SIZE( Es_T )) )
+    LogEs_T = LOG10( Es_T )
+
     ! --- Eta Grid ---
 
     ALLOCATE( Etas_T(OPACITIES % EtaGrid % nPoints) )
     Etas_T = OPACITIES % EtaGrid  % Values
+
+    ALLOCATE( LogEtas_T(SIZE( Etas_T )) )
+    LogEtas_T = LOG10( Etas_T )
+
+    IF( InterpTest )THEN
+
+      OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1) &
+        = 10_DP**( OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1) )
+
+    END IF
 
 #endif
 
@@ -177,6 +205,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), INTENT(out) :: R0_In, R0_Out
 
     INTEGER :: iX
+    REAL(DP), DIMENSION(SIZE(E)) :: LogE
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -184,10 +213,29 @@ CONTAINS
       ( R0_Out_T => OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1), &
         OS       => OPACITIES % Scatt_NES % Offsets(1,1) )
 
-    CALL LogInterpolateSingleVariable_2D2D      &
-           ( E / MeV, E / MeV, T / Kelvin, Eta, &
-             Es_T, Es_T, Ts_T, Etas_T,          &
-             [ 1, 1, 1, 1 ], OS, R0_Out_T, R0_Out )
+    IF( .NOT. InterpTest )THEN
+
+      CALL LogInterpolateSingleVariable_2D2D      &
+             ( E / MeV, E / MeV, T / Kelvin, Eta, &
+               Es_T, Es_T, Ts_T, Etas_T,          &
+               [ 1, 1, 1, 1 ], OS, R0_Out_T, R0_Out )
+
+    ELSE
+
+      LogE = LOG10( E / MeV )
+
+      CALL LogInterpolateSingleVariable_2D2D_Custom      &
+             ( LogE, &
+               LogE, &
+               LOG10( T / Kelvin), &
+               LOG10( Eta ), &
+               LogEs_T, &
+               LogEs_T, &
+               LogTs_T, &
+               LogEtas_T,          &
+               R0_Out_T, R0_Out )
+
+    END IF
 
     END ASSOCIATE ! R0_Out_T, etc.
 
