@@ -120,13 +120,6 @@ CONTAINS
     ALLOCATE( LogEtas_T(SIZE( Etas_T )) )
     LogEtas_T = LOG10( Etas_T )
 
-    IF( InterpTest )THEN
-
-      OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1) &
-        = 10_DP**( OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1) )
-
-    END IF
-
 #endif
 
   END SUBROUTINE InitializeOpacities_TABLE
@@ -233,7 +226,7 @@ CONTAINS
                LogEs_T, &
                LogTs_T, &
                LogEtas_T,          &
-               R0_Out_T, R0_Out )
+               OS, R0_Out_T, R0_Out )
 
     END IF
 
