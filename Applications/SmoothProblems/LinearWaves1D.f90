@@ -5,11 +5,14 @@ PROGRAM LinearWaves1D
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
-  USE SmoothProblemsInitializationModule, ONLY: &
-    InitializeLinearWaves1D
   USE TimeSteppingModule, ONLY: &
     EvolveFields, &
     SSP_RK
+  USE SmoothProblemsInitializationModule, ONLY: &
+    InitializeLinearWaves1D
+  USE SmoothProblemsErrorAnalysisModule, ONLY: &
+    InitializeErrorAnalysis, &
+    FinalizeErrorAnalysis
 
   IMPLICIT NONE
 
@@ -43,7 +46,7 @@ PROGRAM LinearWaves1D
            BetaTVB_Option &
              = 0.0d0, &
            BetaTVD_Option &
-             = 1.0d0, &
+             = 1.8d0, &
            ApplyPositivityLimiter_Option &
              = .FALSE., &
            nStages_SSP_RK_Option &
@@ -52,11 +55,15 @@ PROGRAM LinearWaves1D
   CALL InitializeLinearWaves1D &
          ( 'AcousticWaves', Amplitude_Option = 1.0d-5 )
 
+  CALL InitializeErrorAnalysis
+
   CALL EvolveFields &
          ( t_begin  = 0.0d-0, &
            t_end    = 1.0d+1, &
            dt_write = 1.0d-1, &
            UpdateFields = SSP_RK )
+
+  CALL FinalizeErrorAnalysis
 
   CALL FinalizeProgram
 

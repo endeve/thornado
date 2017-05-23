@@ -3,9 +3,11 @@ include ../../../Build/Makefile_Build
 all: LinearWaves1D
 
 LinearWaves1D: \
-	$(thornado) SmoothProblemsInitializationModule.o LinearWaves1D.o
+	$(thornado) SmoothProblemsInitializationModule.o \
+	SmoothProblemsErrorAnalysisModule.o LinearWaves1D.o
 	$(FLINKER) $(FLAGS) -o LinearWaves1D_$(MACHINE) \
-	$(thornado) SmoothProblemsInitializationModule.o LinearWaves1D.o \
+	$(thornado) SmoothProblemsInitializationModule.o \
+	SmoothProblemsErrorAnalysisModule.o LinearWaves1D.o \
 	$(LIBRARIES)
 
 clean:
@@ -17,8 +19,9 @@ clobber: clean
 LinearWaves1D.o: \
   KindModule.o \
   ProgramInitializationModule.o \
-  SmoothProblemsInitializationModule.o \
   TimeSteppingModule.o \
+  SmoothProblemsInitializationModule.o \
+  SmoothProblemsErrorAnalysisModule.o \
   LinearWaves1D.f90
 
 SmoothProblemsInitializationModule.o: \
@@ -29,3 +32,6 @@ SmoothProblemsInitializationModule.o: \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
   SmoothProblemsInitializationModule.f90
+
+SmoothProblemsErrorAnalysisModule.o: \
+  SmoothProblemsErrorAnalysisModule.f90
