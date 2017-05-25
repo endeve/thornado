@@ -22,6 +22,8 @@ GravitySolutionModule.o: \
 
 RiemannSolverModule.o: \
   KindModule.o \
+  FluidFieldsModule.o \
+  GeometryFieldsModule.o \
   RiemannSolverModule.f90
 
 EulerEquationsUtilitiesModule.o: \
@@ -45,7 +47,7 @@ EulerEquationsSolutionModule_DG.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
-  RiemannSolverModule.o \
+  RiemannSolverModule_GR.o \
   EulerEquationsUtilitiesModule.o \
   EulerEquationsSolutionModule_DG.f90
 

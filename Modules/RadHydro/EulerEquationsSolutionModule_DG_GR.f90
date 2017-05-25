@@ -19,10 +19,10 @@ MODULE EulerEquationsSolutionModule_DG_GR
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uAF, nAF, iAF_P, iAF_Cs, iAF_Gm
   USE RiemannSolverModule, ONLY: &
-    NumericalFlux_Fluid
+    NumericalFlux_Fluid_GR
   USE EulerEquationsUtilitiesModule_GR, ONLY: &
     ComputePrimitive, Eigenvalues, &
-    ComputeSoundSpeed, Flux_X1
+    ComputeSoundSpeed, Flux_X1, AlphaC
 
   IMPLICIT NONE
   PRIVATE
@@ -59,11 +59,11 @@ CONTAINS
 
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
 
-    INTEGER :: iX1, iX2, iX3, iGF, iCF
+    INTEGER :: iX1, iX2, iX3, iGF, iCF, iAF
     INTEGER :: iNodeX1, jNodeX1, iNodeX2, iNodeX3, iNodeX, jNodeX
     REAL(DP) :: Alpha, AlphaPls, AlphaMns, AlphaMdl, AlphaL, AlphaR, Cs
-    REAL(DP), DIMENSION(1:nCF) :: Flux_L, Flux_R, Flux
-    REAL(DP), DIMENSION(1:5) :: EigVals_L, EigVals_R
+    REAL(DP), DIMENSION(1:nCF) :: Flux_L, Flux_R, Flux, U_HLL, F_HLL 
+    REAL(DP), DIMENSION(1:5)   :: EigVals_L, EigVals_R
     REAL(DP), DIMENSION(1:1,1:nGF) :: uGF_L, uGF_R
     REAL(DP), DIMENSION(1:1,1:nCF) :: uCF_L, uCF_R
     REAL(DP), DIMENSION(1:1,1:nPF) :: uPF_L, uPF_R
@@ -150,36 +150,36 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_L, uGF_L, uPF_L, uAF_L )
 
-                Cs = ComputeSoundSpeed( uAF_L(iNodeX1,iAF_P), &
-                                        uPF_L(iNodeX1,iPF_E), &
-                                        uPF_L(iNodeX1,iPF_D), &
-                                        uAF_L(iNodeX1,iAF_Gm) )
+                Cs = ComputeSoundSpeed( uAF_L( iNodeX, iAF_P  ), &
+                                        uPF_L( iNodeX, iPF_E  ), &
+                                        uPF_L( iNodeX, iPF_D  ), &
+                                        uAF_L( iNodeX, iAF_Gm ) )
 
-                EigVals_L = Eigenvalues( uPF_L(iNodeX1,iPF_V1),       &
-                                         uPF_L(iNodeX1,iPF_V2),       &
-                                         uPF_L(iNodeX1,iPF_V3),       &
-                                         uGF_L(iNodeX1,iGF_Gm_dd_11), &
-                                         uGF_L(iNodeX1,iGF_Gm_dd_22), &
-                                         uGF_L(iNodeX1,iGF_Gm_dd_33), &
-                                         uGF_L(iNodeX1,iGF_Gm_uu_11), &
-                                         uGF_L(iNodeX1,iGF_Alpha),    &
-                                         uGF_L(iNodeX1,iGF_Beta_1),   &
+                EigVals_L = Eigenvalues( uPF_L( iNodeX, iPF_V1 ),       &
+                                         uPF_L( iNodeX, iPF_V2 ),       &
+                                         uPF_L( iNodeX, iPF_V3 ),       &
+                                         uGF_L( iNodeX, iGF_Gm_dd_11 ), &
+                                         uGF_L( iNodeX, iGF_Gm_dd_22 ), &
+                                         uGF_L( iNodeX, iGF_Gm_dd_33 ), &
+                                         uGF_L( iNodeX, iGF_Gm_uu_11 ), &
+                                         uGF_L( iNodeX, iGF_Alpha ),    &
+                                         uGF_L( iNodeX, iGF_Beta_1 ),   &
                                          Cs )
 
                 Flux_L &
                   = Flux_X1 &
-                      ( uPF_L(iNodeX,iPF_D),        &
-                        uPF_L(iNodeX,iPF_V1),       &
-                        uPF_L(iNodeX,iPF_V2),       &
-                        uPF_L(iNodeX,iPF_V3),       &
-                        uPF_L(iNodeX,iPF_E),        &
-                        uAF_L(iNodeX,iAF_P),        &
-                        uPF_L(iNodeX,iPF_Ne),       &
-                        uGF_L(iNodeX,iGF_Alpha),    &
-                        uGF_L(iNodeX,iGF_Beta_1),   &
-                        uGF_L(iNodeX,iGF_Gm_dd_11), &
-                        uGF_L(iNodeX,iGF_Gm_dd_22), &
-                        uGF_L(iNodeX,iGF_Gm_dd_33) )
+                      ( uPF_L( iNodeX, iPF_D ),        &
+                        uPF_L( iNodeX, iPF_V1 ),       &
+                        uPF_L( iNodeX, iPF_V2 ),       &
+                        uPF_L( iNodeX, iPF_V3 ),       &
+                        uPF_L( iNodeX, iPF_E ),        &
+                        uAF_L( iNodeX, iAF_P ),        &
+                        uPF_L( iNodeX, iPF_Ne ),       &
+                        uGF_L( iNodeX, iGF_Alpha ),    &
+                        uGF_L( iNodeX, iGF_Beta_1 ),   &
+                        uGF_L( iNodeX, iGF_Gm_dd_11 ), &
+                        uGF_L( iNodeX, iGF_Gm_dd_22 ), &
+                        uGF_L( iNodeX, iGF_Gm_dd_33 ) )
 
                 ! -- Right Fluid State --
 
@@ -198,38 +198,39 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_R, uGF_R, uPF_R, uAF_R )
 
-                Cs = ComputeSoundSpeed( uAF_R(iNodeX1,iAF_P), &
-                                        uPF_R(iNodeX1,iPF_E), &
-                                        uPF_R(iNodeX1,iPF_D), &
-                                        uAF_R(iNodeX1,iAF_Gm) )
+                Cs = ComputeSoundSpeed( uAF_R( iNodeX, iAF_P  ), &
+                                        uPF_R( iNodeX, iPF_E  ), &
+                                        uPF_R( iNodeX, iPF_D  ), &
+                                        uAF_R( iNodeX, iAF_Gm ) )
 
-                EigVals_R = Eigenvalues( uPF_R(iNodeX1,iPF_V1),       &
-                                         uPF_R(iNodeX1,iPF_V2),       &
-                                         uPF_R(iNodeX1,iPF_V3),       &
-                                         uGF_R(iNodeX1,iGF_Gm_dd_11), &
-                                         uGF_R(iNodeX1,iGF_Gm_dd_22), &
-                                         uGF_R(iNodeX1,iGF_Gm_dd_33), &
-                                         uGF_R(iNodeX1,iGF_Gm_uu_11), &
-                                         uGF_R(iNodeX1,iGF_Alpha),    &
-                                         uGF_R(iNodeX1,iGF_Beta_1),   &
+                EigVals_R = Eigenvalues( uPF_R( iNodeX, iPF_V1 ),       &
+                                         uPF_R( iNodeX, iPF_V2 ),       &
+                                         uPF_R( iNodeX, iPF_V3 ),       &
+                                         uGF_R( iNodeX, iGF_Gm_dd_11 ), &
+                                         uGF_R( iNodeX, iGF_Gm_dd_22 ), &
+                                         uGF_R( iNodeX, iGF_Gm_dd_33 ), &
+                                         uGF_R( iNodeX, iGF_Gm_uu_11 ), &
+                                         uGF_R( iNodeX, iGF_Alpha ),    &
+                                         uGF_R( iNodeX, iGF_Beta_1 ),   &
                                          Cs )
 
                 Flux_R &
                   = Flux_X1 &
-                      ( uPF_R(iNodeX,iPF_D),        &
-                        uPF_R(iNodeX,iPF_V1),       &
-                        uPF_R(iNodeX,iPF_V2),       &
-                        uPF_R(iNodeX,iPF_V3),       &
-                        uPF_R(iNodeX,iPF_E),        &
-                        uAF_R(iNodeX,iAF_P),        &
-                        uPF_R(iNodeX,iPF_Ne),       &
-                        uGF_R(iNodeX,iGF_Alpha),    &
-                        uGF_R(iNodeX,iGF_Beta_1),   &
-                        uGF_R(iNodeX,iGF_Gm_dd_11), &
-                        uGF_R(iNodeX,iGF_Gm_dd_22), &
-                        uGF_R(iNodeX,iGF_Gm_dd_33) )
+                      ( uPF_R( iNodeX, iPF_D ),        &
+                        uPF_R( iNodeX, iPF_V1 ),       &
+                        uPF_R( iNodeX, iPF_V2 ),       &
+                        uPF_R( iNodeX, iPF_V3 ),       &
+                        uPF_R( iNodeX, iPF_E ),        &
+                        uAF_R( iNodeX, iAF_P ),        &
+                        uPF_R( iNodeX, iPF_Ne ),       &
+                        uGF_R( iNodeX, iGF_Alpha ),    &
+                        uGF_R( iNodeX, iGF_Beta_1 ),   &
+                        uGF_R( iNodeX, iGF_Gm_dd_11 ), &
+                        uGF_R( iNodeX, iGF_Gm_dd_22 ), &
+                        uGF_R( iNodeX, iGF_Gm_dd_33 ) )
 
-                ! First Alpha will be the largest eigenvalue (absolute value) of the left and right state
+                ! First Alpha will be the largest eigenvalue (absolute value) 
+                ! of the left and right state
                 AlphaL = MAXVAL( ABS( EigVals_L ) )
                 AlphaR = MAXVAL( ABS( EigVals_R ) )
 
@@ -240,14 +241,37 @@ CONTAINS
 
                 Alpha    = MAX( AlphaL, AlphaR )
                 AlphaMns = MAX( ABS( EigVals_L(1) ), ABS( EigVals_R(1) ) )
-                AlphaMdl = MAX( ABS( EigVals_L(2) ), ABS( EigVals_R(2) ) )
                 AlphaPls = MAX( ABS( EigVals_L(3) ), ABS( EigVals_R(3) ) )
 
+                AlphaMdl = AlphaC( uCF_L( iNodeX, 1:nCF ),      &
+                                   uCF_R( iNodeX, 1:nCF ),      &
+                                   Flux_L( 1:nCF),              &
+                                   Flux_R( 1:nCF ),             &
+                                   AlphaPls,                    &
+                                   AlphaMns,                    &
+                                   uPF_L( iNodeX, iPF_V1 ),     &
+                                   uPF_R( iNodeX, iPF_V1 ),     &
+                                   uGF_L( iNodeX, iGF_Beta_1 ), &
+                                   uGF_R( iNodeX, iGF_Beta_1 ), &
+                                   uGF_L( iNodeX, iGF_Beta_1 ), &
+                                   uGF_L( iNodeX, iGF_Gm_dd_11 ) )
+
+
                 Flux &
-                  = NumericalFlux_Fluid &
-                      ( uCF_L(iNodeX,1:nCF), uCF_R(iNodeX,1:nCF), &
-                        Flux_L(1:nCF), Flux_R(1:nCF), &
-                        Alpha, AlphaPls, AlphaMns, AlphaMdl, nCF )
+                  = NumericalFlux_Fluid_GR                        &
+                      ( uCF_L( iNodeX, 1:nCF ),                   &
+                        uCF_R( iNodeX,1:nCF ),                    &
+                        Flux_L( 1:nCF ),                          &
+                        Flux_R( 1:nCF ),                          &
+                        Alpha, AlphaPls, AlphaMns, AlphaMdl, nCF, &
+                        uPF_L( iNodeX, iPF_V1 ),                  &
+                        uPF_R( iNodeX, iPF_V1 ),                  &
+                        uAF_L( iNodeX, iAF_P ),                   &
+                        uAF_R( iNodeX, iAF_P ),                   &
+                        uGF_L( iNodeX, iGF_Beta_1 ),              &
+                        uGF_R( iNodeX, iGF_Beta_1 ),              &
+                        uGF_L( iNodeX, iGF_Gm_uu_11 ),            &
+                        uGF_R( iNodeX, iGF_Gm_uu_11 ) )
 
                 ! -- Contribution to Right-Hand Side --
 
@@ -285,36 +309,36 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_L, uGF_L, uPF_L, uAF_L )
 
-                Cs = ComputeSoundSpeed( uAF_L(iNodeX1,iAF_P), &
-                                        uPF_L(iNodeX1,iPF_E), &
-                                        uPF_L(iNodeX1,iPF_D), &
-                                        uAF_L(iNodeX1,iAF_Gm) )
+                Cs = ComputeSoundSpeed( uAF_L( iNodeX, iAF_P ), &
+                                        uPF_L( iNodeX, iPF_E ), &
+                                        uPF_L( iNodeX, iPF_D ), &
+                                        uAF_L( iNodeX, iAF_Gm ) )
 
-                EigVals_L = Eigenvalues( uPF_L(iNodeX1,iPF_V1),       &
-                                         uPF_L(iNodeX1,iPF_V2),       &
-                                         uPF_L(iNodeX1,iPF_V3),       &
-                                         uGF_L(iNodeX1,iGF_Gm_dd_11), &
-                                         uGF_L(iNodeX1,iGF_Gm_dd_22), &
-                                         uGF_L(iNodeX1,iGF_Gm_dd_33), &
-                                         uGF_L(iNodeX1,iGF_Gm_uu_11), &
-                                         uGF_L(iNodeX1,iGF_Alpha),    &
-                                         uGF_L(iNodeX1,iGF_Beta_1),   &
+                EigVals_L = Eigenvalues( uPF_L( iNodeX, iPF_V1 ),       &
+                                         uPF_L( iNodeX, iPF_V2 ),       &
+                                         uPF_L( iNodeX, iPF_V3 ),       &
+                                         uGF_L( iNodeX, iGF_Gm_dd_11 ), &
+                                         uGF_L( iNodeX, iGF_Gm_dd_22 ), &
+                                         uGF_L( iNodeX, iGF_Gm_dd_33 ), &
+                                         uGF_L( iNodeX, iGF_Gm_uu_11 ), &
+                                         uGF_L( iNodeX, iGF_Alpha ),    &
+                                         uGF_L( iNodeX, iGF_Beta_1 ),   &
                                          Cs )
 
                 Flux_L &
                   = Flux_X1 &
-                      ( uPF_L(iNodeX,iPF_D),        &
-                        uPF_L(iNodeX,iPF_V1),       &
-                        uPF_L(iNodeX,iPF_V2),       &
-                        uPF_L(iNodeX,iPF_V3),       &
-                        uPF_L(iNodeX,iPF_E),        &
-                        uAF_L(iNodeX,iAF_P),        &
-                        uPF_L(iNodeX,iPF_Ne),       &
-                        uGF_L(iNodeX,iGF_Alpha),    &
-                        uGF_L(iNodeX,iGF_Beta_1),   &
-                        uGF_L(iNodeX,iGF_Gm_dd_11), &
-                        uGF_L(iNodeX,iGF_Gm_dd_22), &
-                        uGF_L(iNodeX,iGF_Gm_dd_33) )
+                      ( uPF_L( iNodeX, iPF_D ),        &
+                        uPF_L( iNodeX, iPF_V1 ),       &
+                        uPF_L( iNodeX, iPF_V2 ),       &
+                        uPF_L( iNodeX, iPF_V3 ),       &
+                        uPF_L( iNodeX, iPF_E ),        &
+                        uAF_L( iNodeX, iAF_P ),        &
+                        uPF_L( iNodeX, iPF_Ne ),       &
+                        uGF_L( iNodeX, iGF_Alpha ),    &
+                        uGF_L( iNodeX, iGF_Beta_1 ),   &
+                        uGF_L( iNodeX, iGF_Gm_dd_11 ), &
+                        uGF_L( iNodeX, iGF_Gm_dd_22 ), &
+                        uGF_L( iNodeX, iGF_Gm_dd_33 ) )
 
                 ! -- Right Fluid State --
 
@@ -333,36 +357,36 @@ CONTAINS
 
                 CALL ComputePrimitive( uCF_R, uGF_R, uPF_R, uAF_R )
 
-                Cs = ComputeSoundSpeed( uAF_R(iNodeX1,iAF_P), &
-                                        uPF_R(iNodeX1,iPF_E), &
-                                        uPF_R(iNodeX1,iPF_D), &
-                                        uAF_R(iNodeX1,iAF_Gm) )
+                Cs = ComputeSoundSpeed( uAF_R( iNodeX, iAF_P ), &
+                                        uPF_R( iNodeX, iPF_E ), &
+                                        uPF_R( iNodeX, iPF_D ), &
+                                        uAF_R( iNodeX, iAF_Gm ) )
 
-                EigVals_R = Eigenvalues( uPF_R(iNodeX1,iPF_V1),       &
-                                         uPF_R(iNodeX1,iPF_V2),       &
-                                         uPF_R(iNodeX1,iPF_V3),       &
-                                         uGF_R(iNodeX1,iGF_Gm_dd_11), &
-                                         uGF_R(iNodeX1,iGF_Gm_dd_22), &
-                                         uGF_R(iNodeX1,iGF_Gm_dd_33), &
-                                         uGF_R(iNodeX1,iGF_Gm_uu_11), &
-                                         uGF_R(iNodeX1,iGF_Alpha),    &
-                                         uGF_R(iNodeX1,iGF_Beta_1),   &
+                EigVals_R = Eigenvalues( uPF_R( iNodeX, iPF_V1 ),       &
+                                         uPF_R( iNodeX, iPF_V2 ),       &
+                                         uPF_R( iNodeX, iPF_V3 ),       &
+                                         uGF_R( iNodeX, iGF_Gm_dd_11 ), &
+                                         uGF_R( iNodeX, iGF_Gm_dd_22 ), &
+                                         uGF_R( iNodeX, iGF_Gm_dd_33 ), &
+                                         uGF_R( iNodeX, iGF_Gm_uu_11 ), &
+                                         uGF_R( iNodeX, iGF_Alpha ),    &
+                                         uGF_R( iNodeX, iGF_Beta_1 ),   &
                                          Cs )
 
                 Flux_R &
                   = Flux_X1 &
-                      ( uPF_R(iNodeX,iPF_D),        &
-                        uPF_R(iNodeX,iPF_V1),       &
-                        uPF_R(iNodeX,iPF_V2),       &
-                        uPF_R(iNodeX,iPF_V3),       &
-                        uPF_R(iNodeX,iPF_E),        &
-                        uAF_R(iNodeX,iAF_P),        &
-                        uPF_R(iNodeX,iPF_Ne),       &
-                        uGF_R(iNodeX,iGF_Alpha),    &
-                        uGF_R(iNodeX,iGF_Beta_1),   &
-                        uGF_R(iNodeX,iGF_Gm_dd_11), &
-                        uGF_R(iNodeX,iGF_Gm_dd_22), &
-                        uGF_R(iNodeX,iGF_Gm_dd_33) )
+                      ( uPF_R( iNodeX, iPF_D ),        &
+                        uPF_R( iNodeX, iPF_V1 ),       &
+                        uPF_R( iNodeX, iPF_V2 ),       &
+                        uPF_R( iNodeX, iPF_V3 ),       &
+                        uPF_R( iNodeX, iPF_E ),        &
+                        uAF_R( iNodeX, iAF_P ),        &
+                        uPF_R( iNodeX, iPF_Ne ),       &
+                        uGF_R( iNodeX, iGF_Alpha ),    &
+                        uGF_R( iNodeX, iGF_Beta_1 ),   &
+                        uGF_R( iNodeX, iGF_Gm_dd_11 ), &
+                        uGF_R( iNodeX, iGF_Gm_dd_22 ), &
+                        uGF_R( iNodeX, iGF_Gm_dd_33 ) )
 
                 ! First Alpha will be the largest eigenvalue (absolute value) of the left and right state
                 AlphaL = MAXVAL( ABS( EigVals_L ) )
@@ -375,14 +399,37 @@ CONTAINS
 
                 Alpha    = MAX( AlphaL, AlphaR )
                 AlphaMns = MAX( ABS( EigVals_L(1) ), ABS( EigVals_R(1) ) )
-                AlphaMdl = MAX( ABS( EigVals_L(2) ), ABS( EigVals_R(2) ) )
                 AlphaPls = MAX( ABS( EigVals_L(3) ), ABS( EigVals_R(3) ) )
 
+                AlphaMdl = AlphaC( uCF_L( iNodeX, 1:nCF ),      &
+                                   uCF_R( iNodeX, 1:nCF ),      &
+                                   Flux_L( 1:nCF),              &
+                                   Flux_R( 1:nCF ),             &
+                                   AlphaPls,                    &
+                                   AlphaMns,                    &
+                                   uPF_L( iNodeX, iPF_V1 ),     &
+                                   uPF_R( iNodeX, iPF_V1 ),     &
+                                   uGF_L( iNodeX, iGF_Beta_1 ), &
+                                   uGF_R( iNodeX, iGF_Beta_1 ), &
+                                   uGF_R( iNodeX, iGF_Beta_1 ), &
+                                   uGF_L( iNodeX, iGF_Gm_dd_11 ) )
+
+
                 Flux &
-                  = NumericalFlux_Fluid &
-                      ( uCF_L(iNodeX,1:nCF), uCF_R(iNodeX,1:nCF), &
-                        Flux_L(1:nCF), Flux_R(1:nCF), &
-                        Alpha, AlphaPls, AlphaMns, AlphaMdl, nCF )
+                  = NumericalFlux_Fluid_GR                        &
+                      ( uCF_L( iNodeX, 1:nCF ),                   &
+                        uCF_R( iNodeX,1:nCF ),                    &
+                        Flux_L( 1:nCF ),                          &
+                        Flux_R( 1:nCF ),                          &
+                        Alpha, AlphaPls, AlphaMns, AlphaMdl, nCF, &
+                        uPF_L( iNodeX, iPF_V1 ),                  &
+                        uPF_R( iNodeX, iPF_V1 ),                  &
+                        uAF_L( iNodeX, iAF_P ),                   &
+                        uAF_R( iNodeX, iAF_P ),                   &
+                        uGF_L( iNodeX, iGF_Beta_1 ),              &
+                        uGF_R( iNodeX, iGF_Beta_1 ),              &
+                        uGF_L( iNodeX, iGF_Gm_uu_11 ),            &
+                        uGF_R( iNodeX, iGF_Gm_uu_11 ) )
 
                 ! -- Contribution to Right-Hand Side --
 
@@ -409,3 +456,4 @@ CONTAINS
 
 
 END MODULE EulerEquationsSolutionModule_DG_GR
+

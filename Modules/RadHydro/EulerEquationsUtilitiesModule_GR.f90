@@ -19,6 +19,7 @@ MODULE EulerEquationsUtilitiesModule_GR
   PUBLIC :: Eigenvalues
   PUBLIC :: ComputeSoundSpeed
   PUBLIC :: Flux_X1
+  PUBLIC :: AlphaC
 
 CONTAINS
 
@@ -44,7 +45,6 @@ CONTAINS
             + Gm33 * uPF(i,iPF_V3)**2
 
       W = 1.0_DP / SQRT( 1.0_DP - vSq )
-
       h = 1.0_DP + ( uPF(i,iPF_E) + uAF(i,iAF_P) ) / uPF(i,iPF_D)
 
       uCF(i,iCF_D)  = W * uPF(i,iPF_D)
@@ -71,7 +71,7 @@ CONTAINS
     INTEGER  :: i, nIter
     REAL(DP) :: Gm11, Gm22, Gm33, SSq, vSq, W, h
     REAL(DP) :: Pold, Pnew, FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-10
+    REAL(DP), PARAMETER :: TolP = 1.0d-5
 
     DO i = 1, SIZE( uPF, DIM = 1 )
 
@@ -101,9 +101,9 @@ CONTAINS
 
         IF( ABS( Pnew / Pold - 1.0_DP ) <= TolP ) Converged = .TRUE.
 
-        IF( nIter .GT. 3 )THEN
-          WRITE(*,'(A6,1x,I2,3x,A10,E27.20)') 'nIter:',nIter,'|ERROR| =',ABS( Pnew / Pold - 1.0_DP )
-        END IF
+!        IF( nIter .GT. 3 )THEN
+!          WRITE(*,'(A6,1x,I2,3x,A10,E27.20)') 'nIter:',nIter,'|ERROR| =',ABS( Pnew / Pold - 1.0_DP )
+!        END IF
         IF( nIter == 100)THEN
           PRINT*, "No convergence, |ERROR|:", ABS( Pnew / Pold - 1.0_DP )
           PRINT*, "Pold:",Pold
@@ -260,6 +260,45 @@ CONTAINS
 
   END SUBROUTINE ComputeFunJacP
 
+
+  REAL(DP) FUNCTION AlphaC( U_L, U_R, F_L, F_R, aP, aM,         &
+                                 V1_L, V1_R, Beta_u_1_L, Beta_u_1_R, &
+                                 Beta_u_1, Gm_dd_11 )
+
+    ! --- Middle Wavespeed as Suggested by Mignone and Bodo (2005) ---
+
+    REAL(DP), DIMENSION(1:nCF), INTENT(in) :: U_L, U_R, F_L, F_R
+    REAL(DP),                   INTENT(in) :: aP, aM, V1_L, V1_R,     &
+                                              Beta_u_1_L, Beta_u_1_R, &
+                                              Beta_u_1, Gm_dd_11
+    REAL(DP), DIMENSION(1:nCF)             :: U, F, U_LL, U_RR, F_LL, F_RR
+
+    ! --- Make sure that tau -> E for conserved variables and fluxes
+    ! --- E = tau + D
+
+    U_LL( iCF_E ) = U_L( iCF_E ) + U_L( iCF_D )
+    U_RR( iCF_E ) = U_R( iCF_E ) + U_R( iCF_D )
+
+    F_LL( iCF_E ) = F_L( iCF_E ) + U_L( iCF_D ) * ( V1_L - Beta_u_1_L )
+    F_RR( iCF_E ) = F_R( iCF_E ) + U_R( iCF_D ) * ( V1_R - Beta_u_1_R )
+
+    ! --- Calculate the HLL conserved variable vector and flux
+    ! --- Mignone & Bodo (2005)
+
+    U = ( aP * U_RR - aM * U_LL + F_LL - F_RR ) / ( aP - aM )
+    F = ( aP * F_LL - aM * F_RR + aP * aM * (U_RR - U_LL ) ) / ( aP - aM )
+
+    AlphaC = ( Gm_dd_11 * ( U( iCF_E ) + F( iCF_S1 ) + Beta_u_1 *          &
+             U( iCF_S1 ) ) - SQRT( Gm_dd_11**2 * ( U( iCF_E ) +            &
+             F( iCF_S1 ) + Beta_u_1 * U( iCF_S1 ) )**2 - 4 * Gm_dd_11**2 * &
+             ( F( iCF_E ) - Beta_u_1 * U( iCF_E ) ) * U( iCF_S1 ) ) ) /    &
+             ( 2.0_DP * Gm_dd_11**2 * ( F( iCF_E ) - Beta_u_1 * U( iCF_E ) ) )
+
+    WRITE(*,*) 'U',U
+    WRITE(*,*) 'F',F
+
+    RETURN
+  END FUNCTION AlphaC
 
 END MODULE EulerEquationsUtilitiesModule_GR
 
