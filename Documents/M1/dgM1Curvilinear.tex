@@ -917,7 +917,7 @@ Integrals of radiation quantities over energy space are then evaluated as
   \approx\sum_{i=1}^{N^{\epsilonNu}}|K_{i}^{\epsilonNu}|\sum_{q=1}^{N}w_{q}\,g_{q}=\sum_{j=1}^{M^{\epsilonNu}} W_{j}\,g_{j}=\vect{W}\cdot\vect{g},
 \end{equation}
 where $w_{q}$ are Gaussian quadrature weights (normalized such that $\sum_{q=1}^{N}w_{q}=1$) and $M^{\epsilonNu}=N^{\epsilonNu}\times N$.  
-In constructing the vectors $\vect{W},\vect{g}\in\bbR^{M^{\epsilonNu}}$, the elements are sorted with monotonically increasing energy; e.g., $W_{j}=|K_{i}^{\epsilonNu}|\,w_{q}$, where $j=(i-1)\times N+q$, ($i=1,\ldots,N^{\epsilonNu}$, $q=1,\ldots,N$).  
+In constructing the vectors $\vect{W},\vect{g}\in\bbR^{M^{\epsilonNu}}$, their elements are sorted with energy monotonically increasing with $j$; e.g., $\epsilonNu_{j}=\epsilonNu_{i-1/2}+|K_{i}|\times(1/2+\eta_{q}^{\epsilonNu})$ and $W_{j}=|K_{i}^{\epsilonNu}|\,w_{q}$, where $\eta_{q}^{\epsilonNu}$ is the Gaussian quadrature point on the local reference element ($\eta^{\epsilonNu}\in[-1/2,1/2]$), and $j=(i-1)\times N+q$, ($i=1,\ldots,N^{\epsilonNu}$, $q=1,\ldots,N$).  
 
 \subsection{Fluid-Radiation Coupling}
 
@@ -945,7 +945,7 @@ The radiation energy density is updated from
   \cJ_{j}^{n+1}=\f{\cJ_{j}^{n}+\gamma_{j}^{n}\,\cJ_{0,j}^{n+1}}{1+\gamma_{j}^{n}}, 
   \label{eq:momentEquationEnergyEmAbDiscrete}
 \end{equation}
-which, when inserted into Eqs.~\eqref{eq:electronFractionEmAbDiscrete0}-\eqref{eq:internalEnergyEmAbDiscrete0}, results in a nonlinear system for the unknowns $Y^{n+1}$ and $\epsilonNu^{n+1}$
+which, when inserted into Eqs.~\eqref{eq:electronFractionEmAbDiscrete0}-\eqref{eq:internalEnergyEmAbDiscrete0}, results in a nonlinear system for the unknowns $Y^{n+1}$ and $\epsilon^{n+1}$
 \begin{align}
   Y_{e}^{n+1}-Y_{e}^{n}
   &=-\f{m_{\mbox{\tiny B}}}{\rho}\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(2)}\,\tilde{\gamma}_{j}^{n}\,\big(\cJ_{0,j}^{n+1}-\cJ_{j}^{n}\big), \label{eq:electronFractionEmAbDiscrete} \\
@@ -953,7 +953,7 @@ which, when inserted into Eqs.~\eqref{eq:electronFractionEmAbDiscrete0}-\eqref{e
   &=-\f{1}{\rho}\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(3)}\,\tilde{\gamma}_{j}^{n}\,\big(\cJ_{0,j}^{n+1}-\cJ_{j}^{n}\big), \label{eq:internalEnergyEmAbDiscrete}
 \end{align}
 where $\tilde{\gamma}_{j}^{n}=\gamma_{j}^{n}/(1+\gamma_{j}^{n})$.  
-Since the equilibrium density $\cJ_{0,j}$ is a nonlinear function of $Y_{e}$ and $\epsilon$, Eqs.~\label{eq:electronFractionEmAbDiscrete}-\label{eq:internalEnergyEmAbDiscrete} are solved using Newton's method.  
+Since the equilibrium density $\cJ_{0,j}$ is a nonlinear function of $Y_{e}$ and $\epsilon$, Eqs.~\eqref{eq:electronFractionEmAbDiscrete}-\eqref{eq:internalEnergyEmAbDiscrete} are solved using Newton's method.  
 Once $Y_{e}^{n+1}$ and $\epsilon^{n+1}$ are obtained, the radiation density is obtained from Eq.~\eqref{eq:momentEquationEnergyEmAbDiscrete}, while the flux is given by
 \begin{equation}
   \bcH_{j}^{n+1}=\bcH_{j}^{n}/(1+\gamma_{j}^{n}).  
