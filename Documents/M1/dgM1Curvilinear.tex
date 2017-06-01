@@ -32,6 +32,7 @@
 \newcommand{\pbK}{\partial\mathbf{K}}
 \newcommand{\UDG}{\bU_{\mbox{\tiny DG}}}
 \newcommand{\sumx}{\sum_{i=1}^{d}}
+\newcommand{\NES}{\mbox{\tiny NES}}
 
 \begin{document}
 
@@ -55,17 +56,23 @@ We will use inits in which the speed of light is unity ($c=1$).
 \subsection{Basic Mathematical Model}
 
 For general curvilinear spatial coordinates $\{x^{i}\}$, the two-moment model for radiation transport takes the form \citep[see, e.g.,][for fully general relativistic treatments]{shibata_etal_2011,cardall_etal_2013a}
-\begin{equation}
-  \f{1}{\sqrt{\gamma}}\pderiv{}{t}\Big(\,\sqrt{\gamma}\,\cJ\,\Big)
-  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\cH^{i}\,\Big)=\chi\,\big(\cJ_{0}-\cJ\big),
+\begin{align}
+  &\f{1}{\sqrt{\gamma}}\pderiv{}{t}\Big(\,\sqrt{\gamma}\,\cJ\,\Big)
+  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\cH^{i}\,\Big)
+  =\tilde{\chi}\,\big(\cJ_{0}-\cJ\big) \nonumber \\
+  &\hspace{12pt}
+  +\big(4\pi-\cJ\big)\int_{\bbR^{+}}R^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')\,dV_{\epsilonNu'}
+  -\cJ\int_{\bbR^{+}}R^{\Out}(\epsilonNu,\epsilonNu')\,\big(4\pi-\cJ(\epsilonNu')\big)\,dV_{\epsilonNu'},
   \label{eq:momentEquationEnergy}
-\end{equation}
-\begin{equation}
-  \f{1}{\sqrt{\gamma}}\pderiv{}{t}\Big(\,\sqrt{\gamma}\,\cH_{j}\,\Big)
+\end{align}
+\begin{align}
+  &\f{1}{\sqrt{\gamma}}\pderiv{}{t}\Big(\,\sqrt{\gamma}\,\cH_{j}\,\Big)
   +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\cK^{i}_{~j}\,\Big)
-  =\f{1}{2}\,\cK^{ik}\,\pderiv{\gamma_{ik}}{x^{j}}-\kappa\,\cH_{j},
+  =\f{1}{2}\,\cK^{ik}\,\pderiv{\gamma_{ik}}{x^{j}}-\kappa\,\cH_{j} \nonumber \\
+  &\hspace{12pt}
+  -\cH_{j}\int_{\bbR^{+}}\big[\,R^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')+R^{\Out}(\epsilonNu,\epsilonNu')\big(4\pi-\cJ(\epsilonNu')\big)\,\big]\,dV_{\epsilonNu'},
   \label{eq:momentEquationMomentum}
-\end{equation}
+\end{align}
 where $\cJ$, $\cH^{i}$, and $\cK^{ij}$ are defined as angular moments of a positive neutrino distribution function $f(\omegaNu,\epsilonNu,\bx,t)$
 \begin{equation}
   \big\{\,\cJ,\,\cH^{i},\,\cK^{ij}\,\big\}(\epsilonNu,\bx,t)
@@ -82,15 +89,19 @@ In forming the angular moments in Eq.~\eqref{eq:angularMoments}, the integrals e
 The angular moments are related to the neutrino energy density, momentum density, and stress ($\cJ$, $\cH^{i}$, and $\cK^{ij}$, respectively).  
 They are functions of the neutrino energy $\epsilonNu$, spatial position $\{x^{i}\}$, and time $t$.  
 
-To model neutrino matter interactions, we include emission and absorption, and isotropic, elastic scattering on nucleons and nuclei.  
-On the right-hand sides of Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}, $\chi(\epsilonNu,\bU)$ and $\kappa(\epsilonNu,\bU)=\chi(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$ are absorption and total (absorption plus scattering) opacities, respectively.  
+To model neutrino matter interactions, we include emission and absorption, (isotropic) elastic scattering on nucleons and nuclei, and neutrino-electron scattering (NES).  
+On the right-hand sides of Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}, $\tilde{\chi}(\epsilonNu,\bU)$ and $\kappa(\epsilonNu,\bU)=\tilde{\chi}(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$ are absorption and total (absorption plus scattering) opacities, respectively.  
+The absorption opacity $\tilde{\chi}$ is corrected for stimulated absorption \citep[cf.][]{mezzacappaBruenn_1993a}.  
+The NES rates $R^{\In}$ and $R^{\Out}$ are obtained by expanding the full kernels in a Legendre series, retaining only the isotropic part \citep[see, e.g.,][]{cernohorsky_1994}, and the integrals extend over all energies $\bbR^{+}=\{\epsilonNu~|~\epsilonNu\in[0,\infty)\}$.  
+The energy volume element is $dV_{\epsilonNu}=\epsilonNu^{2}d\epsilonNu$.  
 The opacities depend on the neutrino energy and the local thermodynamic state of the fluid $\bU=(\rho,T,Y_{e})^{T}$, where $\rho$ is the (baryon) mass density, $T$ the temperature, and $Y_{e}$ the electron fraction.  
-We use the opacities given by \citet{bruenn_1985}.  
+For simplicity we consider a single neutrino species (electron neutrinos), and we use opacities given by \citet{bruenn_1985}; see Section~\ref{sec:opacities} for further details.  
 In Eq.~\eqref{eq:momentEquationEnergy}, the equilibrium density $\cJ_{0}=4\pi\,f_{0}(\epsilonNu,\bU)$ is computed from the angular moment of the isotropic Fermi-Dirac distribution
 \begin{equation}
   f_{0}(\epsilonNu,\bU)=\f{1}{e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T}+1},
 \end{equation}
-where $k_{\mbox{\tiny B}}$ is Boltzmann's constant, and $\mu_{\nu}$ is the neutrino chemical potential.  
+where $k_{\mbox{\tiny B}}$ is Boltzmann's constant, and $\mu_{\nu}=\mu_{p}-\mu_{n}+\mu_{e}$ is the neutrino chemical potential.  
+(The chemical potentials of protons, neutrons, and electrons are denoted by $\mu_{p}$, $\mu_{n}$, and $\mu_{e}$, respectively.)
 
 The model given by Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum} is non-relativistic (i.e., it does not include effects due to strong gravitational fields or interactions with a moving fluid), but is expressed in terms of curvilinear coordinates through the spatial metric tensor $\gamma_{ij}$, which gives squared infinitesimal line-element
 \begin{equation}
@@ -146,7 +157,8 @@ Specifically, we have $\psi(0)=1/3$ (diffusion limit) and $\psi(1)=1$ (streaming
   \end{center}
 \end{table}
 
-We define the geometry sources in Eq.~\eqref{eq:momentEquationMomentum} by
+For the forthcoming description it is useful to write the moment equations in a more compact form.  
+To this end, we define the geometry sources in Eq.~\eqref{eq:momentEquationMomentum} by
 \begin{equation}
   \cG_{j}
   =\f{1}{2}\,\cK^{ik}\,\pderiv{\gamma_{ik}}{x^{j}}.  
@@ -160,16 +172,16 @@ Specifically, using the time-independent metric tensor in Eq.~\eqref{eq:threeMet
   \cG_{3}
   =0.
 \end{equation}
-Then, by defining the vector of evolved moments $\bcM=\big(\,\cJ,\,\cH_{1},\,\cH_{2},\,\cH_{3}\,\big)^{T}$, the vector of geometry sources $\bcG(\bcM)=\big(\,0,\,\cG_{1},\,\cG_{2},\,\cG_{3}\,\big)^{T}$, the vector of collision sources $\bcC(\bcM)=\big(\,\chi\,(\cJ_{0}-\cJ),\,-\kappa\,\cH_{1},\,-\kappa\,\cH_{2},\,-\kappa\,\cH_{3}\,\big)^{T}$, and the flux vectors $\bcF^{i}(\bcM)=\big(\,\cH^{i},\,\cK_{~1}^{i},\,\cK_{~2}^{i},\,\cK_{~3}^{i}\,\big)^{T}$, we write the system of equations in compact form
+(Explicit expressions for metric functions appearing in the geometry sources are listed in Table~\ref{tab:metricFunctions}.)  
+Then, by defining the vector of evolved moments $\bcM=\big(\,\cJ,\,\bcH\,\big)^{T}$, the vector of geometry sources $\bcG(\bcM)=\big(\,0,\,\cG_{1},\,\cG_{2},\,\cG_{3}\,\big)^{T}$, the vector of collision sources $\bcC(\bcM)=\big(\,\chi\,(\cJ_{0}-\cJ)+\cL_{\NES},\,-(\kappa+\kappa_{\NES})\,\bcH\,\big)^{T}$, and the flux vectors $\bcF^{i}(\bcM)=\big(\,\cH^{i},\,\cK_{~1}^{i},\,\cK_{~2}^{i},\,\cK_{~3}^{i}\,\big)^{T}$, we write the system of equations in compact form
 \begin{equation}
   \f{1}{\sqrt{\gamma}}\pderiv{}{t}\Big(\,\sqrt{\gamma}\,\bcM\,\Big)
   +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\bcF^{i}(\bcM)\,\Big)
   =\bcG(\bcM)+\bcC(\bcM).
   \label{eq:momentEquationsCompact}
 \end{equation}
+Here, $\cL_{\NES}$ and $\kappa_{\NES}$ represent the integral operators appearing in Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}, respectively.  
 Eq.~\eqref{eq:momentEquationsCompact} forms the basis for developing DG methods for neutrino transport.  
-
-\clearpage
 
 \section{Discontinuous Galerkin Discretization}
 
@@ -393,8 +405,6 @@ In the absence of sources, Eq.~\eqref{eq:semidiscreteDiscretizedCellAverage} is 
 
 This defines the spatial discretization of the moment equations.  
 
-\clearpage
-
 \section{Time Integration}
 
 For time integration we employ the method lines.  
@@ -462,8 +472,6 @@ As discussed by \citet{chertock_etal_2015}, the time-integration method using Eq
 To increase the temporal accuracy to second order, \citet{chertock_etal_2015} propose a correction step to be applied after the last stage.  
 We defer the development of the correction step, and use the first-order accurate time integrator for stiff problems.  
 We note that the SIRK method reduces to the SSP-RK methods in Section~\ref{sec:explicitTime} when $\bcC=0$.  
-
-\clearpage
 
 \section{Polynomial Limiting}
 
@@ -574,6 +582,7 @@ In particular, from the definition of the moments in Eq.~\eqref{eq:angularMoment
 Failure in maintaining these bounds can lead to an ill-posed closure problem and loss of hyperbolicity for the moment equations.  
 
 \section{Neutrino Opacities}
+\label{sec:opacities}
 
 %\ee{Ran write about tabulated B85 absorption and scattering opacities.}
 
@@ -658,7 +667,6 @@ The last two terms are contributions from isoenergetic scattering of neutrino by
 R_{IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) & = R_{IS}^{nucleons}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) +  R_{IS}^{nuclei}(\mu_0, \mu^\prime_0, \epsilonNu,\bU)\\
 & = \int_{0}^{2\pi}d
 \end{align}
-\clearpage
 
 \section{Benchmark Problems}
 
@@ -677,12 +685,21 @@ We let the initial condition be given by
   \cJ(x,t=0)=\cH_{x}(x,t=0)=1+\sin\big(2\pi\,x\big).  
 \end{equation}
 Results are shown in Figure~\ref{fig:streamingSineWave} and Table~\ref{tab:streamingSineWave}.  
+In Figure~\ref{fig:streamingSineWave}, results obtained using the TVD limiter (cf. Eq.~\eqref{eq:minmodB} with $M=0$) with various $\beta$ values are shown.  
+With this limiter, the accuracy of the scheme is severely compromised.  
+The accuracy can be significantly improved with the TVB limiter ($M>0$), but the proper value for $M$ is problem dependent, and difficult to set a priori.  
+Instead, we have implemented the discontinuity detector based on Harten's subcell resolution method as a ``troubled-cell'' indicator \citep{harten_1989,qiuShu_2005}, which prevents limiting in smooth regions.  
+Results using the detector (black open circles) show a significant improvement.  
+In Table~\ref{tab:streamingSineWave} we list convergence results for this latter method, which demonstrates high-order accuracy (i.e., better than second-order) when expected.  
+Unless otherwise noted, we continue to use the discontinuity detector in the remaining numerical experiments.  
 
 \begin{figure}
   \begin{center}
-    \includegraphics[scale=0.38]{./Figures/StreamingSineWave1D}
+    \includegraphics[scale=0.78]{./Figures/StreamingSineWave1D}
   \end{center}
-  \caption{Energy density versus position after ten grid crossings ($t=10$) for the streaming sine wave problem computed with the DG(2)+RK3 scheme using 16 elements.  We compare results obtained using various limiter parameters (see text for details) with the analytic solution (dotted line).}
+  \caption{Particle density versus position after ten grid crossings ($t=10$) for the streaming sine wave problem computed with the DG(2)+RK3 scheme using 16 elements.  
+  We compare results obtained using various limiter parameters (open circles; see text for details) with the analytic solution (dotted line).  
+  Results obtained using the discontinuity detector (D) is denoted with black open circles.}
   \label{fig:streamingSineWave}
 \end{figure}
 
@@ -719,10 +736,13 @@ We let the boundary conditions be given by the analytical solution, and integrat
 
 Snapshots of the solution ($\cJ$ versus $r$), obtained with the DG(2)+RK3 scheme, are shown in Figure~\ref{fig:sphericalWave} for $t=\{2.5,3.5,5.0,7.0\}$ (open circles).  
 For comparison, the analytical solution is plotted with dotted lines.  
+There is good agreement between the numerical and analytical solutions.  
+In Table~\ref{tab:sphericalWave} we list convergence results obtained with the various schemes.  
+High-order accuracy is achieved with the DG(2)+RK3 and DG(3)+RK3 schemes.  
 
 \begin{figure}
   \begin{center}
-    \includegraphics[scale=0.38]{./Figures/GaussianSphericalWave1D}
+    \includegraphics[scale=0.78]{./Figures/GaussianSphericalWave1D}
   \end{center}
   \caption{Energy density versus radius at various times for the spherical wave problem computed with the DG(2)+RK3 scheme using 32 elements.  The numerical solution (open circles) is compared to the analytical solution (dotted lines).  }
   \label{fig:sphericalWave}
@@ -731,6 +751,7 @@ For comparison, the analytical solution is plotted with dotted lines.
 \begin{table}
   \begin{center}
   \caption{$L^{\infty}$ error and convergence rates for the spherical wave problem.}
+  \label{tab:sphericalWave}
   \begin{tabular}{ccccccccc}
     & \multicolumn{4}{c}{SSP-RK2} & \multicolumn{4}{c}{SSP-RK3} \\
     \cmidrule(r){2-5} \cmidrule(r){6-9}
@@ -749,8 +770,9 @@ For comparison, the analytical solution is plotted with dotted lines.
 
 \subsection{Riemann Problem}
 
-To test the ability of the DG method to capture discontinuities, we solve the Riemann problem presented by \citet{OHF2012}.  
-To compare with their results, we use the Eddington factor due to Levermore \citep{levermore_1984}
+To test the ability of the DG method to capture discontinuities without spurious oscillations, we solve the Riemann problem presented by \citet{OHF2012}.  
+This problem is also challenging because the condition $\cJ-|\bcH|>0$ can be violated.  
+To compare with the results of \citet{OHF2012}, we use the Eddington factor due to Levermore \citep{levermore_1984}
 \begin{equation}
   \psi(h)=\f{1}{3}\big(\,5-2\,\sqrt{4-3\,h^{2}}\,\big).  
   \label{eq:eddingtonFactorLevermore}
@@ -768,7 +790,12 @@ The initial condition is given by
   \label{eq:riemannProblem}
 \end{equation}
 Results for $t=0.1$ are shown in Figure~\ref{fig:riemannProblem}.  
+In the left panel we plot the number density and flux, obtained with the third-order method (DG(2)+RK3).  
 The discontinuities remain sharp, and oscillations around the discontinuities are controlled (in part due to limiting of characteristic variables; cf. Section~\ref{sec:slopeLimiters}).  
+In the right panel we plot the number density for three computations: limiting triggered everywhere (blue), no slope limiting (positivity limiting only; red), and limiting triggered by the discontinuity detector (black).  
+In the plot we have zoomed in on the discontinuity around $x=0.075$.  
+Without limiting, significant oscillations are present in the solution.  
+With the slope limiter, the oscillations are essentially removed, while using the discontinuity detector to trigger limiting maintains a sharper discontinuity than when limiting is permitted everywhere.  
 
 \begin{figure}
   \begin{center}
@@ -778,40 +805,45 @@ The discontinuities remain sharp, and oscillations around the discontinuities ar
     \end{tabular}
   \end{center}
   \caption{Results from the one-dimensional Riemann problem in Eq.~\eqref{eq:riemannProblem}, obtained with the DG(2)+RK3 method using $240$ elements, the HLL Riemann solver, and the Eddington factor in Eq.~\eqref{eq:eddingtonFactorLevermore}.  
-  The number density $\cJ$ (black) and the number flux density $\cH_{r}$ (red) are plotted for $t=0.1$.}
+  The number density $\cJ$ (black) and the number flux density $\cH_{1}$ (red) are plotted for $t=0.1$.}
   \label{fig:riemannProblem}
 \end{figure}
 
-\subsection{Diffusion Problem}
+\subsection{Spherical Diffusion}
 
+Next, we consider a diffusion problem in spherical symmetry, which involves a constant scattering opacity $\sigma$.  
 This problem is adapted from \citet{abdikamalov_etal_2012} \citep[see also][]{pons_etal_2000,sumiyoshiYamada_2012}.  
-
+For sufficiently high scattering opacity, the moment equations limit to a diffusion equation for the radiation number density.  
+With a Gaussian initial distribution for the energy density $\cJ_{0}(x)=\exp(-3\,\sigma\,r^{2}/(4\,t_{0}))$, the analytical solution to the limiting diffusion equation is given by
 \begin{equation}
-  \cJ(r,t)=\Big(\f{t_{0}}{t_{0}+t}\Big)^{3/2}\,\exp\Big\{\,-\f{3\,\sigma\,r^{2}}{4\,(t_{0}+t)}\,\Big\}
+  \cJ(r,t)=\Big(\f{t_{0}}{t_{0}+t}\Big)^{3/2}\,\exp\Big\{\,-\f{3\,\sigma\,r^{2}}{4\,(t_{0}+t)}\,\Big\},
 \end{equation}
+while the number flux is obtained from $\cH_{r}=-\pd{\cJ}{r}/(3\,\sigma)$.  
+
+We present two versions of this test:  one with $\sigma=10^{-5}$~cm$^{-1}$ (thin test), and one with $\sigma=10^{-1}$~cm$^{-1}$ (thick test).  
+In the thin test, the computational domain extends over $r\in[0,100]$~km, $t_{0}=0.3$~ms, and is run until $t=1$~ms.  
+In the thick test, the computational domain extends over $r\in[0,50]$~km and $t_{0}=0.3$~s, and is run until $t=1$~s.  
+In both tests we use 32 elements and the DG(2)+SIRK2 scheme.  
+With the mean-free path defined as $\lambda=1/\sigma$, the ratio of the mean-free path to the cell width $\Delta r$ is $0.32$ in the thin test, and $6.4\times10^{-5}$ in the thick test.  
+
+Results are plotted in Figure~\ref{fig:diffusionProblem}.  
+There is good agreement between the numerical and analytical solutions, for both the thin and thick cases.  
 
 \begin{figure}
   \begin{center}
     \begin{tabular}{cc}
       \includegraphics[scale=0.38]{./Figures/GaussianSphericalDiffusion_Kappa_1e-5_Density} &
-      \includegraphics[scale=0.38]{./Figures/GaussianSphericalDiffusion_Kappa_1e-5_Flux}
-    \end{tabular}
-  \end{center}
-  \caption{Results from the one-dimensional diffusion problem in spherical symmetry with $\sigma=10^{-5}$~cm$^{-1}$, obtained with the DG(2)+SIRK2 method using $24$ elements.  
-  The number density $\cJ$ (left panel) and the number flux density $\cH_{r}$ (right panel) are plotted for $t=0,0.3,1.0$~ms (red, blue, and black curves, respectively).  
-  Solid lines represent the analytical solution while open circles represent the element center value of the numerical solution.}
-  \label{fig:diffusionProblem1e-5}
-\end{figure}
-
-\begin{figure}
-  \begin{center}
-    \begin{tabular}{cc}
+      \includegraphics[scale=0.38]{./Figures/GaussianSphericalDiffusion_Kappa_1e-5_Flux} \\
       \includegraphics[scale=0.38]{./Figures/GaussianSphericalDiffusion_Kappa_1e-1_Density} &
       \includegraphics[scale=0.38]{./Figures/GaussianSphericalDiffusion_Kappa_1e-1_Flux}
     \end{tabular}
   \end{center}
-  \caption{Results similar to those displayed in Figure~\ref{fig:diffusionProblem1e-5}, but with $\sigma=10^{-1}$~cm$^{-1}$.}
-  \label{fig:diffusionProblem1e-1}
+  \caption{Results from the one-dimensional diffusion problem in spherical symmetry, obtained with the DG(2)+SIRK2 method using $32$ elements.  
+  The number density $\cJ$ (left panel) and the number flux density $\cH_{r}$ (right panel) are plotted.  
+  In the upper panels $\sigma=10^{-5}$~cm$^{-1}$, with results plotted for $t=0,0.3,1.0$~ms (red, blue, and black curves, respectively).  
+  In the lower panels $\sigma=10^{-1}$~cm$^{-1}$, with results plotted for $t=0,0.4,1.0$~s (red, blue, and black curves, respectively).  
+  Solid lines represent the analytical solution while open circles represent the element center value of the numerical solution.}
+  \label{fig:diffusionProblem}
 \end{figure}
 
 \subsection{Homogeneous Sphere}
@@ -866,6 +898,72 @@ Results are plotted in Figure~\ref{fig:homogeneousSphere1D}.
 
 \section{Mini-app: Transport Problems with Tabulated Neutrino Opacities}
 
+For the tests in this section we employ the tabulated opacities described in Section~\ref{sec:opacities}.  
+We present two tests from the previous section (the homogeneous sphere and spherical diffusion problems), where the background is kept fixed.  
+Then we present a relaxation problem involving neutrino-electron scattering (NES) with a homogeneous background.  
+Finally, we present a deleptonization problem where the background density mimics that of a collapsed stellar core.  
+The first deleptonization problem (Em/Ab) involves emission and absorption only, while the second deleptonization problem (Full) involves the full set of opacities described in Section~\ref{sec:opacities}.  
+
+When coupling neutrinos to the background fluid, the gain/loss terms involve integrals of the right-hand sides in Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum} over energy space.  
+To simulate multi-group neutrino transport and compute the lepton and energy exchange with the fluid, the infinite energy domain $\bbR^{+}$ is replaced with a finite domain $D^{\epsilonNu}=\{\epsilonNu~|~\epsilonNu\in[0,\epsilonNu_{\mbox{\tiny max}}]\}$.  
+The domain $D^{\epsilonNu}$ is then split up into $N_{\epsilonNu}$ energy bins $K_{i}^{\epsilonNu}=\{\epsilonNu~|~\epsilonNu\in[\epsilonNu_{i-1/2},\epsilonNu_{i+1/2}]\}$, where the width of the $i$th bin is $|K_{i}^{\epsilonNu}|=(\epsilonNu_{i+1/2}-\epsilonNu_{i-1/2})$.  
+Within each bin, we employ a polynomial representation of the radiation fields and solve for nodal values collocated in Gaussian quadrature points.  
+The number of quadrature points $N$ then increases with the degree $k$ of the polynomial representation ($N=k+1$).  
+Integrals of radiation quantities over energy space are then evaluated as
+\begin{equation}
+  \int_{\bbR^{+}}g(\epsilonNu)\,d\epsilonNu
+  \approx\int_{D^{\epsilonNu}}g(\epsilonNu)\,d\epsilonNu
+  =\sum_{i=1}^{N^{\epsilonNu}}\int_{K_{i}^{\epsilonNu}}g(\epsilonNu)\,d\epsilonNu
+  \approx\sum_{i=1}^{N^{\epsilonNu}}|K_{i}^{\epsilonNu}|\sum_{q=1}^{N}w_{q}\,g_{q}=\sum_{j=1}^{M^{\epsilonNu}} W_{j}\,g_{j}=\vect{W}\cdot\vect{g},
+\end{equation}
+where $w_{q}$ are Gaussian quadrature weights (normalized such that $\sum_{q=1}^{N}w_{q}=1$) and $M^{\epsilonNu}=N^{\epsilonNu}\times N$.  
+In constructing the vectors $\vect{W},\vect{g}\in\bbR^{M^{\epsilonNu}}$, the elements are sorted with monotonically increasing energy; e.g., $W_{j}=|K_{i}^{\epsilonNu}|\,w_{q}$, where $j=(i-1)\times N+q$, ($i=1,\ldots,N^{\epsilonNu}$, $q=1,\ldots,N$).  
+
+\subsection{Fluid-Radiation Coupling}
+
+\subsubsection{Emission and Absorption}
+
+Electron capture on nucleons and nuclei results in changes to the electron fraction and internal energy of the fluid given by
+\begin{align}
+  d_{t}Y_{e}
+  &=-\f{m_{\mbox{\tiny B}}}{\rho}\int_{\bbR^{+}}\tilde{\chi}\,\big(\cJ_{0}-\cJ\big)\,dV_{\epsilonNu}, \label{eq:electronFractionEmAb} \\
+  d_{t}\epsilon
+  &=-\f{1}{\rho}\int_{\bbR^{+}}\tilde{\chi}\,\big(\cJ_{0}-\cJ\big)\,\epsilonNu\,dV_{\epsilonNu}, \label{eq:internalEnergyEmAb}
+\end{align}
+where $m_{\mbox{\tiny B}}$ is the baryon mass and $\epsilon$ is the specific internal energy.  
+In each implicit step in the SIRK2 scheme discussed in Section~\ref{sec:semiImplicitTime} we solve Eqs.~\eqref{eq:electronFractionEmAb}-\eqref{eq:internalEnergyEmAb} coupled to the collision part of the moment equations.  
+\begin{align}
+  Y_{e}^{n+1}-Y_{e}^{n}
+  &=-\f{m_{\mbox{\tiny B}}}{\rho}\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(2)}\,\gamma_{j}^{n}\,\big(\cJ_{0,j}^{n+1}-\cJ_{j}^{n+1}\big), \label{eq:electronFractionEmAbDiscrete0} \\
+  \epsilon^{n+1}-\epsilon^{n}
+  &=-\f{1}{\rho}\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(3)}\,\gamma_{j}^{n}\,\big(\cJ_{0,j}^{n+1}-\cJ_{j}^{n+1}\big), \label{eq:internalEnergyEmAbDiscrete0}
+\end{align}
+where $W_{j}^{(2,3)}=w_{q}\,\epsilonNu_{i,q}^{2,3}\,\Delta\epsilonNu_{i}$ and $\gamma_{j}^{n}=\dt\,\tilde{\chi}_{j}^{n}$.  
+Note that the absorption opacity is defined at the known time level $t^{n}$, which avoids computation of derivatives with respect to temperature and electron fraction.  
+The radiation energy density is updated from
+\begin{equation}
+  \cJ_{j}^{n+1}=\f{\cJ_{j}^{n}+\gamma_{j}^{n}\,\cJ_{0,j}^{n+1}}{1+\gamma_{j}^{n}}, 
+  \label{eq:momentEquationEnergyEmAbDiscrete}
+\end{equation}
+which, when inserted into Eqs.~\eqref{eq:electronFractionEmAbDiscrete0}-\eqref{eq:internalEnergyEmAbDiscrete0}, results in a nonlinear system for the unknowns $Y^{n+1}$ and $\epsilonNu^{n+1}$
+\begin{align}
+  Y_{e}^{n+1}-Y_{e}^{n}
+  &=-\f{m_{\mbox{\tiny B}}}{\rho}\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(2)}\,\tilde{\gamma}_{j}^{n}\,\big(\cJ_{0,j}^{n+1}-\cJ_{j}^{n}\big), \label{eq:electronFractionEmAbDiscrete} \\
+  \epsilon^{n+1}-\epsilon^{n}
+  &=-\f{1}{\rho}\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(3)}\,\tilde{\gamma}_{j}^{n}\,\big(\cJ_{0,j}^{n+1}-\cJ_{j}^{n}\big), \label{eq:internalEnergyEmAbDiscrete}
+\end{align}
+where $\tilde{\gamma}_{j}^{n}=\gamma_{j}^{n}/(1+\gamma_{j}^{n})$.  
+Since the equilibrium density $\cJ_{0,j}$ is a nonlinear function of $Y_{e}$ and $\epsilon$, Eqs.~\label{eq:electronFractionEmAbDiscrete}-\label{eq:internalEnergyEmAbDiscrete} are solved using Newton's method.  
+Once $Y_{e}^{n+1}$ and $\epsilon^{n+1}$ are obtained, the radiation density is obtained from Eq.~\eqref{eq:momentEquationEnergyEmAbDiscrete}, while the flux is given by
+\begin{equation}
+  \bcH_{j}^{n+1}=\bcH_{j}^{n}/(1+\gamma_{j}^{n}).  
+  \label{eq:momentEquationMomentumEmAbDiscrete}
+\end{equation}
+
+\subsubsection{Neutrino-Electron Scattering}
+
+\subsubsection{Full Interaction Set}
+
 \begin{table}
   \caption{Parameters used for problems with tabulated opacities. \label{tab:tabulatedModels}}
   \begin{tabular}{ccccc}
@@ -897,6 +995,8 @@ Results are plotted in Figure~\ref{fig:homogeneousSphere1D}.
 
 \subsection{Diffuse Scattering}
 
+\subsection{Relaxation}
+
 \subsection{Deleptonization}
 
 We conclude with a problem mimicking the deleptonization of a collapsed stellar core.  
@@ -918,11 +1018,11 @@ where $\rho_{1,0}>\rho_{2,0}$ and $\alpha<0$.
 We set $\rho_{1,0}=4.5\times10^{14}$, $\rho_{1,0}=1.0\times10^{13}$, $\alpha=-4$, and $R_{1}=10$~km.  
 Then, by imposing $\rho_{1}(R_{2})=\rho_{2}(R_{2})$, we find $R_{2}=R_{1}\sqrt{\ln(\rho_{1,0}/\rho_{2,0})}\approx19.5$~km.  
 We also set $r_{0}=R_{2}$ and $R_{0}=1$~km.  
-With these parameters, the density profile given by Eqs~\eqref{eq:densityProfile}, \eqref{eq:densityProfile1}, and \eqref{eq:densityProfile2} provides a reasonable approximation to the density profile in the post-bounce phase of a supernova realistic model (cf. Figure~\ref{fig:analyticDensityProfile}).  
+With these parameters, the density profile given by Eqs~\eqref{eq:densityProfile}, \eqref{eq:densityProfile1}, and \eqref{eq:densityProfile2} provides a reasonable approximation to the density profile in the post-bounce phase of a realistic supernova model (cf. Figure~\ref{fig:analyticDensityProfile}).  
 
 \begin{figure}
   \begin{center}
-      \includegraphics[scale=0.5]{./Figures/AnalyticDensityProfile}
+      \includegraphics[scale=0.78]{./Figures/AnalyticDensityProfile}
   \end{center}
   \caption{Density profile used in the deleptonization problem (solid black line; cf. Eq.~\eqref{eq:densityProfile}).  
   It is composed of a Gaussian profile for radii $\lesssim20$~km (dashed black line), and a power law, with $\rho\propto r^{-4}$, for larger radii (dotted black line).  
