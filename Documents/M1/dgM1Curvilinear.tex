@@ -707,6 +707,107 @@ For nondegenerate, nonrelativistic nucleons, $\eta_{pp}$ and $\eta_{nn}$ are giv
 &\eta_{nn} = n_n.
 \end{align}
 
+Expanding the isoenergetic scattering kernel in the first two terms of a Legendre series yields
+\begin{align}
+R^{0}_{IS}(\omega, \omega, \cos\theta) \approx \dfrac{1}{2} \Phi_{0,IS}(\omega) + \dfrac{3}{2}\Phi_{1,IS}(\omega)\cos\theta
+\end{align}
+
+\subsection{The neutrino-electron scattering kernel}
+Given by \citet{bruenn_1985}, for $\epsilonNu \neq \epsilonNu^\prime$, the neutrino-electron scattering kernels are written as
+\begin{align}
+    R^{out}_{NES}(\epsilonNu,\epsilonNu^\prime,\omega, \bU) = & R^{out}_{NES}(\epsilonNu,\epsilonNu^\prime,\mu_0,\mu^\prime_0,\phi_0, \bU) \nonumber \\
+     = &\dfrac{1}{2}\dfrac{1}{(2\pi)^3}\dfrac{\pi \sigma_0 c}{(m_e c^2)^2}\dfrac{1}{\epsilonNu, \epsilonNu^\prime} [ \beta_1I_1(\epsilonNu,\epsilonNu^\prime,\omega,\bU) + \beta_2I_2(\epsilonNu,\epsilonNu^\prime,\omega, \bU) \nonumber \\
+    & +  \beta_3I_3(\epsilonNu,\epsilonNu^\prime,\omega, \bU)] 
+\end{align}
+where $\beta_1 = (C_V + C_A)^2$, $\beta_2 = (C_V -C_A)^2$, $\beta_3 = C_A^2 - C_V^2$, $\sigma_0 = 1.746 \times 10^{-44} cm^{-2}$, and
+\begin{align}
+\omega = \mu_0 \mu_0^\prime + [(1-\mu_0^2)(1-\mu_0^{\prime 2})]^{1/2}\cos\phi_0
+\end{align}
+and where the function $I_{1,2,3}(\epsilonNu,\epsilonNu^\prime,\omega, \bU)$ are defined by 
+\begin{align}
+I_1(\epsilonNu, \epsilonNu^\prime, \omega, \bU) = & \dfrac{2\pi T \epsilonNu^2 \epsilonNu^{\prime 2}(1-\omega)^2}{\Delta^5} f_\gamma(\epsilonNu^\prime - \epsilonNu) \cdot \\
+& \left\lbrace  A T^2 [G_2(y_0)+2y_0G_1(y_0)+y_0^2G_0(y_0)] \right.\nonumber\\
+& + \left. BT[G_1(y_0)+y_0G_0(y_0)] + CG_0(y_0)\right\rbrace,
+\end{align}
+\begin{align}
+I_2(\epsilonNu, \epsilonNu^\prime, \omega, \bU)  = I_1(\epsilonNu \rightarrow -\epsilonNu^\prime, \epsilonNu^\prime\rightarrow -\epsilonNu, \omega, \bU) 
+\end{align}
+\begin{align}
+I_3(\epsilonNu, \epsilonNu^\prime, \omega, \bU)  = \dfrac{2\pi T \epsilonNu \epsilonNu^{\prime}(1-\omega)(m_ec^2)^2}{\Delta} f_\gamma(\epsilonNu^\prime - \epsilonNu) G_0(y_0)
+\end{align}
+with
+\begin{align}
+\Delta = (\epsilonNu^2 + \epsilonNu^{\prime 2} - 2\epsilonNu \epsilonNu^\prime
+\omega)^{1/2}
+\end{align}
+\begin{align}
+y_0 = \dfrac{1}{T}\left\lbrace - \dfrac{\epsilonNu -\epsilonNu^\prime}{2} + \dfrac{\Delta}{2} \left[1+\dfrac{2(m_e c^2)^2}{\epsilonNu \epsilonNu^\prime (1-\omega)}\right]^{1/2} \right\rbrace 
+\end{align}
+\begin{align}
+A &= \epsilonNu^2 + \epsilonNu^{\prime 2} + \epsilonNu \epsilonNu^\prime(3+\omega),\\
+B &= \epsilonNu \left[ 2\epsilonNu^2 + \epsilonNu \epsilonNu^\prime(3-\omega) - E^{\prime 2}_0(1+3\omega) \right] \\
+C &= \epsilonNu^2\left[ (\epsilonNu -\epsilonNu^\prime \omega)^2 - \dfrac{E^{\prime 2}_0 (1-\omega^2)}{2} - \dfrac{(1+\omega)(m_e c^2)^2 \Delta^2}{2(1-\omega)\epsilonNu^2} \right] 
+\end{align}
+\begin{align}
+f_{\gamma}(x) = \dfrac{1}{e^{x/T} - 1}
+\end{align}
+and the function $G_n(y)$ are defined in terms of Fermi integrals:
+\begin{align}
+G_n(y) = F_n(\eta^\prime - y) - F_n(\eta - y)
+\end{align}
+where
+\begin{align}
+\eta &= \dfrac{\mu_e}{T} \\
+\eta^\prime &= \eta - \dfrac{\epsilonNu - \epsilonNu^\prime}{T} \\
+F_n(\eta) &= \int_{0}^{\infty} \dfrac{x^n dx}{e^{x-\eta}+1}
+\end{align}
+
+For $\epsilonNu = \epsilonNu^\prime$, the functions
+\begin{align}
+I_1(\epsilonNu, \epsilonNu^\prime, \omega, \bU) = I_1(\epsilonNu, \omega, \bU) &= \dfrac{2\pi T \epsilonNu^4 (1-\omega)^2}{\Delta^5}\cdot \\
+& \left\lbrace  A T^2 [2F_1(\eta -y_0)+2y_0F_0(\eta-y_0)+y_0^2F_{-1}(\eta-y_0)] \right.\nonumber\\
+& + \left. BT[F_0(\eta-y_0)+y_0F_{-1}(\eta-y_0)] + CF_{-1}(\eta-y_0)\right\rbrace,
+\end{align}
+\begin{align}
+I_2(\epsilonNu, \epsilonNu^\prime, \omega, \bU)  = I_2(\epsilonNu, \omega, \bU)&=I_1(\epsilonNu, \omega, \bU) 
+\end{align}
+\begin{align}
+I_3(\epsilonNu, \epsilonNu^\prime, \omega,\bU)  = I_3(\epsilonNu, \omega, \bU)=\dfrac{2\pi T \epsilonNu^2(1-\omega)(m_ec^2)^2}{\Delta}F_{-1}(\eta - y_0)
+\end{align}
+with
+\begin{align}
+\Delta = (\epsilonNu^2 + \epsilonNu^{\prime 2} - 2\epsilonNu \epsilonNu^\prime
+\omega)^{1/2} = \epsilonNu(2 - 2\omega)^{1/2}
+\end{align}
+\begin{align}
+y_0 = \dfrac{1}{T}\left\lbrace \dfrac{\Delta}{2} \left[1+\dfrac{2(m_e c^2)^2}{\epsilonNu^2 (1-\omega)}\right]^{1/2} \right\rbrace 
+\end{align}
+\begin{align}
+A &= \epsilonNu ^2(5+\omega),\\
+B &= \epsilonNu^3 (4-4\omega),\\
+C &= \epsilonNu^2\left[\dfrac{E^{2}_0 (1-\omega^2)}{2} - \dfrac{(1+\omega)(m_e c^2)^2 \Delta^2}{2(1-\omega)\epsilonNu^2} \right] 
+\end{align}
+\begin{align}
+F_{-1} (\eta) &= \dfrac{1}{e^{-\eta} + 1} 
+\end{align}
+
+Therefore, $R^{out}_{NES}(\epsilonNu,\epsilonNu^\prime, \omega)$ is known. 
+    
+Expand the scattering kernel in a Legendre series:
+\begin{align}
+R^{out}_{NES}(\epsilonNu,\epsilonNu^\prime, \omega, \bU) = \sum_{l=0}^{\infty} \dfrac{2l+1}{2} R^{out}_{{NES}, l}(\epsilonNu,\epsilonNu^\prime, \bU) P_l(\omega),
+\end{align}
+where the Legendre coefficients $R^{out}_{{NES}, l}(\epsilonNu,\epsilonNu^\prime)$ are given by
+\begin{align}
+R^{out}_{{NES}, l}(\epsilonNu,\epsilonNu^\prime, \bU) = \int_{-1}^{1} d\omega P_l(\omega) R^{out}_{NES}(\epsilonNu,\epsilonNu^\prime, \omega, \bU).
+\end{align}
+   
+Expanding the neutrino-electron scattering kernels in the first two terms of Legendre series yields
+\begin{align}
+R^{in/out}_{NES}(\omega, \omega^{\prime}, \cos\theta, \bU) & = \dfrac{1}{2} \sum_{l} (2l+1)\Phi^{in/out}_{l,NES}(\omega,\omega^{\prime},\bU)P_l(\cos\theta) \\
+& \approx \dfrac{1}{2}\Phi_{0,NES}^{in/out}(\omega,\omega^{\prime}, \bU) + \dfrac{3}{2}\Phi^{in/out}_{1,NES}(\omega,\omega^{\prime}, \bU)\cos\theta
+\end{align}
+
 \section{Benchmark Problems}
 
 We benchmark the DG implementation against a series of test problems.  
