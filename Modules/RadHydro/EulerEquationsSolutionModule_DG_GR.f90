@@ -19,7 +19,7 @@ MODULE EulerEquationsSolutionModule_DG_GR
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uAF, nAF, iAF_P, iAF_Cs, iAF_Gm
   USE RiemannSolverModule, ONLY: &
-    NumericalFlux_Fluid_GR
+     NumericalFlux_Fluid_GR, &
   USE EulerEquationsUtilitiesModule_GR, ONLY: &
     ComputePrimitive, Eigenvalues, &
     ComputeSoundSpeed, Flux_X1, AlphaC
@@ -62,7 +62,7 @@ CONTAINS
     INTEGER :: iX1, iX2, iX3, iGF, iCF, iAF
     INTEGER :: iNodeX1, jNodeX1, iNodeX2, iNodeX3, iNodeX, jNodeX
     REAL(DP) :: Alpha, AlphaPls, AlphaMns, AlphaMdl, AlphaL, AlphaR, Cs
-    REAL(DP), DIMENSION(1:nCF) :: Flux_L, Flux_R, Flux, U_HLL, F_HLL 
+    REAL(DP), DIMENSION(1:nCF) :: Flux_L, Flux_R, Flux
     REAL(DP), DIMENSION(1:5)   :: EigVals_L, EigVals_R
     REAL(DP), DIMENSION(1:1,1:nGF) :: uGF_L, uGF_R
     REAL(DP), DIMENSION(1:1,1:nCF) :: uCF_L, uCF_R
@@ -232,16 +232,13 @@ CONTAINS
                 ! First Alpha will be the largest eigenvalue (absolute value) 
                 ! of the left and right state
                 AlphaL = MAXVAL( ABS( EigVals_L ) )
-                AlphaR = MAXVAL( ABS( EigVals_R ) )
-
-!                Alpha    = 1.0_DP
-!                AlphaMns = Alpha
-!                AlphaMdl = Alpha
-!                AlphaPls = Alpha
+                AlphaR =  MAXVAL( ABS( EigVals_R ) )
 
                 Alpha    = MAX( AlphaL, AlphaR )
-                AlphaMns = MAX( ABS( EigVals_L(1) ), ABS( EigVals_R(1) ) )
-                AlphaPls = MAX( ABS( EigVals_L(3) ), ABS( EigVals_R(3) ) )
+                AlphaMns = MAX( 0.0_DP, &
+                     MAXVAL( - EigVals_L ), MAXVAL( - EigVals_R ) )
+                AlphaPls = MAX( 0.0_DP, &
+                     MAXVAL( + EigVals_L ), MAXVAL( + EigVals_R ) )
 
                 AlphaMdl = AlphaC( uCF_L( iNodeX, 1:nCF ),      &
                                    uCF_R( iNodeX, 1:nCF ),      &
@@ -256,7 +253,6 @@ CONTAINS
                                    uGF_L( iNodeX, iGF_Beta_1 ), &
                                    uGF_L( iNodeX, iGF_Gm_dd_11 ) )
 
-
                 Flux &
                   = NumericalFlux_Fluid_GR                        &
                       ( uCF_L( iNodeX, 1:nCF ),                   &
@@ -269,9 +265,8 @@ CONTAINS
                         uAF_L( iNodeX, iAF_P ),                   &
                         uAF_R( iNodeX, iAF_P ),                   &
                         uGF_L( iNodeX, iGF_Beta_1 ),              &
-                        uGF_R( iNodeX, iGF_Beta_1 ),              &
                         uGF_L( iNodeX, iGF_Gm_uu_11 ),            &
-                        uGF_R( iNodeX, iGF_Gm_uu_11 ) )
+                        uGF_L( iNodeX, iGF_Gm_dd_11 ) )
 
                 ! -- Contribution to Right-Hand Side --
 
@@ -388,18 +383,16 @@ CONTAINS
                         uGF_R( iNodeX, iGF_Gm_dd_22 ), &
                         uGF_R( iNodeX, iGF_Gm_dd_33 ) )
 
-                ! First Alpha will be the largest eigenvalue (absolute value) of the left and right state
+                ! First Alpha will be the largest eigenvalue (absolute value)
+                ! of the left and right state
                 AlphaL = MAXVAL( ABS( EigVals_L ) )
                 AlphaR = MAXVAL( ABS( EigVals_R ) )
 
-!                Alpha    = 1.0_DP
-!                AlphaMns = Alpha
-!                AlphaMdl = Alpha 
-!                AlphaPls = Alpha 
-
                 Alpha    = MAX( AlphaL, AlphaR )
-                AlphaMns = MAX( ABS( EigVals_L(1) ), ABS( EigVals_R(1) ) )
-                AlphaPls = MAX( ABS( EigVals_L(3) ), ABS( EigVals_R(3) ) )
+                AlphaMns = MAX( 0.0_DP, &
+                     MAXVAL( - EigVals_L ), MAXVAL( - EigVals_R ) )
+                AlphaPls = MAX( 0.0_DP, &
+                     MAXVAL( + EigVals_L ), MAXVAL( + EigVals_R ) )
 
                 AlphaMdl = AlphaC( uCF_L( iNodeX, 1:nCF ),      &
                                    uCF_R( iNodeX, 1:nCF ),      &
@@ -412,8 +405,7 @@ CONTAINS
                                    uGF_L( iNodeX, iGF_Beta_1 ), &
                                    uGF_R( iNodeX, iGF_Beta_1 ), &
                                    uGF_R( iNodeX, iGF_Beta_1 ), &
-                                   uGF_L( iNodeX, iGF_Gm_dd_11 ) )
-
+                                   uGF_R( iNodeX, iGF_Gm_dd_11 ) )
 
                 Flux &
                   = NumericalFlux_Fluid_GR                        &
@@ -426,10 +418,9 @@ CONTAINS
                         uPF_R( iNodeX, iPF_V1 ),                  &
                         uAF_L( iNodeX, iAF_P ),                   &
                         uAF_R( iNodeX, iAF_P ),                   &
-                        uGF_L( iNodeX, iGF_Beta_1 ),              &
                         uGF_R( iNodeX, iGF_Beta_1 ),              &
-                        uGF_L( iNodeX, iGF_Gm_uu_11 ),            &
-                        uGF_R( iNodeX, iGF_Gm_uu_11 ) )
+                        uGF_R( iNodeX, iGF_Gm_uu_11 ),            &
+                        uGF_R( iNodeX, iGF_Gm_dd_11 ) )
 
                 ! -- Contribution to Right-Hand Side --
 

@@ -19,6 +19,8 @@ IMPLICIT NONE
   PROCEDURE (FluidRiemannSolver_GR), POINTER, PUBLIC :: &
     NumericalFlux_Fluid_GR  => NULL()
 
+  PUBLIC :: NumericalFlux_Fluid_GR_HLL
+  
   INTERFACE
     PURE FUNCTION RiemannSolver &
       ( u_L, u_R, Flux_L, Flux_R, a, aP, aM, aC, nF )
@@ -33,25 +35,16 @@ IMPLICIT NONE
   INTERFACE
     PURE FUNCTION FluidRiemannSolver_GR &
       ( u_L, u_R, Flux_L, Flux_R, a, aP, aM, aC, nF, &
-        V1_L, V1_R, p_L, p_R, Beta_u_1_L, Beta_u_1_R, Gm_uu_11_L, Gm_uu_11_R )
+        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_uu_11, Gm_dd_11 )
 
-    USE KindModule,           ONLY: &
-      DP
-    USE FluidFieldsModule,    ONLY: &
-      iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iPF_V1, iAF_P
-    USE GeometryFieldsModule, ONLY: &
-      iGF_Gm_uu_11, iGF_Beta_1
-
-    INTEGER,  INTENT(in)                   :: nF
-    REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
-    REAL(DP), INTENT(in)                   :: a, aP, aM, aC, V1_L, V1_R, &
-                                              p_L, p_R, Beta_u_1_L,      &
-                                              Beta_u_1_R, Gm_uu_11_L,    &
-                                              Gm_uu_11_R
-    REAL(DP)                               :: p, D, S1, S2, S3, E, Ne,   &
-                                              Beta_u_1, Gm_dd_11, Gm_uu_11
-    REAL(DP), DIMENSION(1:nF)              :: FluidRiemannSolver_GR
-
+    USE KindModule, ONLY: DP
+    INTEGER,  INTENT(in)                  :: nF
+    REAL(DP), DIMENSION(1:nF), INTENT(in) :: u_L, u_R, Flux_L, Flux_R
+    REAL(DP), INTENT(in)                  :: a, aP, aM, aC, V1_L, V1_R,    &
+                                             p_L, p_R, Beta_u_1, Gm_uu_11, &
+                                             Gm_dd_11
+    REAL(DP)                              :: p, D, S1, S2, S3, E, Ne
+    REAL(DP), DIMENSION(1:nF)             :: FluidRiemannSolver_GR
     END FUNCTION FluidRiemannSolver_GR
   END INTERFACE
 
@@ -235,17 +228,15 @@ CONTAINS
 
   PURE FUNCTION NumericalFlux_Fluid_GR_LLF &
       ( u_L, u_R, Flux_L, Flux_R, alpha, alpha_P, alpha_M, alpha_C, nF, &
-        V1_L, V1_R, p_L, p_R, Beta_u_1_L, Beta_u_1_R, Gm_uu_11_L, Gm_uu_11_R )
+        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_uu_11, Gm_dd_11 )
 
     INTEGER,  INTENT(in)                   :: nF
     REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
-    REAL(DP), INTENT(in)                   :: alpha, alpha_P, alpha_M,   &
-                                              alpha_C, V1_L, V1_R,       &
-                                              p_L, p_R, Beta_u_1_L,      &
-                                              Beta_u_1_R, Gm_uu_11_L,    &
-                                              Gm_uu_11_R
-    REAL(DP)                               :: p, D, S1, S2, S3, E, Ne,   &
-                                              Beta_u_1, Gm_dd_11, Gm_uu_11
+    REAL(DP), INTENT(in)                   :: alpha, alpha_P, alpha_M,      &
+                                              alpha_C, V1_L, V1_R,          &
+                                              p_L, p_R, Beta_u_1, Gm_uu_11, &
+                                              Gm_dd_11
+    REAL(DP)                               :: p, D, S1, S2, S3, E, Ne
     REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_Fluid_GR_LLF
 
     NumericalFlux_Fluid_GR_LLF = NumericalFlux_LLF( u_L, u_R, Flux_L, Flux_R, &
@@ -257,17 +248,15 @@ CONTAINS
 
   PURE FUNCTION NumericalFlux_Fluid_GR_HLL &
       ( u_L, u_R, Flux_L, Flux_R, alpha, alpha_P, alpha_M, alpha_C, nF, &
-        V1_L, V1_R, p_L, p_R, Beta_u_1_L, Beta_u_1_R, Gm_uu_11_L, Gm_uu_11_R )
+        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_uu_11, Gm_dd_11 )
 
     INTEGER,  INTENT(in)                   :: nF
     REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
-    REAL(DP), INTENT(in)                   :: alpha, alpha_P, alpha_M,   &
-                                              alpha_C, V1_L, V1_R,       &
-                                              p_L, p_R, Beta_u_1_L,      &
-                                              Beta_u_1_R, Gm_uu_11_L,    &
-                                              Gm_uu_11_R
-    REAL(DP)                               :: p, D, S1, S2, S3, E, Ne,   &
-                                              Beta_u_1, Gm_dd_11, Gm_uu_11
+    REAL(DP), INTENT(in)                   :: alpha, alpha_P, alpha_M,      &
+                                              alpha_C, V1_L, V1_R,          &
+                                              p_L, p_R, Beta_u_1, Gm_uu_11, &
+                                              Gm_dd_11
+    REAL(DP)                               :: p, D, S1, S2, S3, E, Ne
     REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_Fluid_GR_HLL
 
     NumericalFlux_Fluid_GR_HLL = NumericalFlux_HLL( u_L, u_R, Flux_L, Flux_R, &
@@ -279,98 +268,102 @@ CONTAINS
 
   PURE FUNCTION NumericalFlux_Fluid_GR_HLLC &
       ( u_L, u_R, Flux_L, Flux_R, alpha, alpha_P, alpha_M, alpha_C, nF, &
-        V1_L, V1_R, p_L, p_R, Beta_u_1_L, Beta_u_1_R, Gm_uu_11_L, Gm_uu_11_R )
+        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_uu_11, Gm_dd_11 )
 
     INTEGER,  INTENT(in)                   :: nF
     REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
-    REAL(DP), INTENT(in)                   :: alpha, alpha_P, alpha_M,   &
-                                              alpha_C, V1_L, V1_R,       &
-                                              p_L, p_R, Beta_u_1_L,      &
-                                              Beta_u_1_R, Gm_uu_11_L,    &
-                                              Gm_uu_11_R
-    REAL(DP)                               :: p, D, S1, S2, S3, E, Ne,   &
-                                              Beta_u_1, Gm_dd_11, Gm_uu_11
+    REAL(DP), INTENT(in)                   :: alpha, alpha_P, alpha_M,      &
+                                              alpha_C, V1_L, V1_R,          &
+                                              p_L, p_R, Beta_u_1, Gm_uu_11, &
+                                              Gm_dd_11
+    REAL(DP)                               :: p, D, S1, S2, S3, E, Ne
     REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_Fluid_GR_HLLC
 
-
-    IF( alpha_M .GE. 0.0_DP )THEN
+    IF( alpha_M .EQ. 0.0_DP )THEN
 
       NumericalFlux_Fluid_GR_HLLC = Flux_L
 
-    ELSEIF( alpha_P .LE. 0.0_DP )THEN
+    ELSEIF( alpha_P .EQ. 0.0_DP )THEN
 
      NumericalFlux_Fluid_GR_HLLC = Flux_R
 
     ELSE
 
-      IF( alpha_C .GE. 0.0_DP )THEN
+      ! --- Note the sign change on alpha_M which is due to it being
+      ! --- read in as positive but the formulae assuming it is negative
+
+      IF( alpha_C .GE. 0.0_DP )THEN    
 
         ! -- UL_star
 
-        p = ( ( ( alpha_M + Beta_u_1_L ) * ( u_L( iCF_E ) + u_L( iCF_D ) ) - &
-            Gm_uu_11_L * u_L( iCF_S1 ) ) * Gm_dd_11 * alpha_C -              &
-            ( alpha_M - V1_L + Beta_u_1_L ) * u_L( iCF_S1 ) ) /              &
-            ( 1.0_DP - Gm_uu_11 * alpha_C * ( alpha_M + Beta_u_1 ) )
+        p  = ( Gm_dd_11 * alpha_C * ( u_L( iCF_E ) + u_L( iCF_D ) ) &
+             * ( -alpha_M + Beta_u_1 ) - u_L( iCF_S1 ) * ( alpha_C  &
+             - alpha_M - V1_L + Beta_u_1 ) + p_L ) / ( 1.0_DP       &
+             - Gm_dd_11 * alpha_C * ( -alpha_M + Beta_u_1 ) )
 
+        D  = u_L( iCF_D  ) *  ( -alpha_M - V1_L    + Beta_u_1 ) &
+                           /  ( -alpha_M - alpha_C + Beta_u_1 )
 
-        D  = u_L( iCF_D ) * ( alpha_M - V1_L      + Beta_u_1_L ) / &
-                            ( alpha_M - alpha_C   + Beta_u_1   )
+        S1 = u_L( iCF_S1 ) *  ( -alpha_M - V1_L    + Beta_u_1 ) &
+                           /  ( -alpha_M - alpha_C + Beta_u_1 ) &
+             + ( p - p_L ) /  ( -alpha_M - alpha_C + Beta_u_1 )
 
-        S1 = u_L( iCF_S1 ) * ( alpha_M - V1_L      + Beta_u_1_L ) / &
-                             ( alpha_M - alpha_C   + Beta_u_1   ) + &
-             ( p - p_L )  /  ( alpha_M - alpha_C   + Beta_u_1 )
+        S2 = u_L( iCF_S2 ) *  ( -alpha_M - V1_L    + Beta_u_1 ) &
+                           /  ( -alpha_M - alpha_C + Beta_u_1 )
 
-        S2 = u_L( iCF_S2 ) * ( alpha_M - V1_L      + Beta_u_1_L ) / &
-                             ( alpha_M - alpha_C   + Beta_u_1   )
+        S3 = u_L( iCF_S3 ) *  ( -alpha_M - V1_L    + Beta_u_1 ) &
+                           /  ( -alpha_M - alpha_C + Beta_u_1 )
 
-        S3 = u_L( iCF_S3 ) * ( alpha_M - V1_L      + Beta_u_1_L ) / &
-                             ( alpha_M - alpha_C   + Beta_u_1   )
+        E  = ( ( u_L( iCF_E ) + u_L( iCF_D ) ) * ( -alpha_M + Beta_u_1 ) &
+             + Gm_uu_11 * S1 - Gm_uu_11 * u_L( iCF_S1 ) )                &
+             / ( -alpha_M + Beta_u_1 )
 
-        E  = ( ( u_L( iCF_E ) + u_L( iCF_D ) ) *                               &
-             ( alpha_M - V1_L    + Beta_u_1_L ) + p * alpha_C - p_L * V1_L ) / &
-             ( alpha_M - alpha_C + Beta_u_1 )
+        Ne = u_L( iCF_Ne ) *  ( -alpha_M - V1_L    + Beta_u_1 ) &
+                           /  ( -alpha_M - alpha_C + Beta_u_1 )
 
       ELSE
 
         ! -- UR_star
 
-        p = ( ( ( alpha_P + Beta_u_1_R ) * ( u_R( iCF_E ) + u_R( iCF_D ) ) - &
-            Gm_uu_11_R * u_R( iCF_S1 ) ) * Gm_dd_11 * alpha_C -              &
-            ( alpha_P - V1_R + Beta_u_1_R ) * u_R( iCF_S1 ) ) /              &
-            ( 1.0_DP - Gm_uu_11 * alpha_C * ( alpha_P + Beta_u_1 ) )
+        p  = ( Gm_dd_11 * alpha_C * ( u_R( iCF_E ) + u_R( iCF_D ) ) &
+             * ( alpha_P + Beta_u_1 ) - u_R( iCF_S1 ) * ( alpha_C   &
+             + alpha_P - V1_R + Beta_u_1 ) + p_R ) / ( 1.0_DP       &
+             - Gm_dd_11 * alpha_C * ( alpha_P + Beta_u_1 ) )
 
-        D  = u_R( iCF_D ) * ( alpha_P - V1_R      + Beta_u_1_R ) /  &
-                            ( alpha_P - alpha_C   + Beta_u_1   )
+        D  = u_R( iCF_D  ) *  ( alpha_P - V1_R    + Beta_u_1 ) &
+                           /  ( alpha_P - alpha_C + Beta_u_1 )
 
-        S1 = u_R( iCF_S1 ) * ( alpha_P - V1_R      + Beta_u_1_R ) / &
-                             ( alpha_P - alpha_C   + Beta_u_1   ) + &
-             ( p - p_R )  /  ( alpha_P - alpha_C   + Beta_u_1 )
+        S1 = u_R( iCF_S1 ) *  ( alpha_P - V1_R    + Beta_u_1 ) &
+                           /  ( alpha_P - alpha_C + Beta_u_1 ) &
+             + ( p - p_R ) /  ( alpha_P - alpha_C + Beta_u_1 )
 
-        S2 = u_R( iCF_S2 ) * ( alpha_P - V1_R      + Beta_u_1_R ) / &
-                             ( alpha_P - alpha_C   + Beta_u_1   )
+        S2 = u_R( iCF_S2 ) *  ( alpha_P - V1_R    + Beta_u_1 ) &
+                           /  ( alpha_P - alpha_C + Beta_u_1 )
 
-        S3 = u_R( iCF_S3 ) * ( alpha_P - V1_R      + Beta_u_1_R ) / &
-                             ( alpha_P - alpha_C   + Beta_u_1   )
+        S3 = u_R( iCF_S3 ) *  ( alpha_P - V1_R    + Beta_u_1 ) &
+                           /  ( alpha_P - alpha_C + Beta_u_1 )
 
-        E  = ( ( u_L( iCF_E ) + u_R( iCF_D ) ) *                               &
-             ( alpha_P - V1_R    + Beta_u_1_R ) + p * alpha_C - p_R * V1_R ) / &
-             ( alpha_P - alpha_C + Beta_u_1 )
+        E  = ( ( u_R( iCF_E ) + u_R( iCF_D ) ) * ( alpha_P + Beta_u_1 ) &
+             + Gm_uu_11 * S1 - Gm_uu_11 * u_R( iCF_S1 ) )               &
+             / ( alpha_P + Beta_u_1 )
 
+        Ne  = u_R( iCF_Ne ) *  ( alpha_P - V1_R    + Beta_u_1 ) &
+                            /  ( alpha_P - alpha_C + Beta_u_1 )
 
       END IF
 
-      NumericalFlux_Fluid_GR_HLLC(iCF_D) &
-        = D * ( alpha_C - Beta_u_1 )
-      NumericalFlux_Fluid_GR_HLLC(iCF_S1) &
+      NumericalFlux_Fluid_GR_HLLC( iCF_D  ) &
+        = D  * ( alpha_C - Beta_u_1 )
+      NumericalFlux_Fluid_GR_HLLC( iCF_S1 ) &
         = S1 * ( alpha_C - Beta_u_1 ) + p
-      NumericalFlux_Fluid_GR_HLLC(iCF_S2) &
-        = -Beta_u_1 * S2
-      NumericalFlux_Fluid_GR_HLLC(iCF_S3) &
-        = -Beta_u_1 * S3
-      NumericalFlux_Fluid_GR_HLLC(iCF_E) &
-        = Gm_uu_11 * S1 - Beta_u_1 * E - D * ( alpha_C - Beta_u_1 )
-      NumericalFlux_Fluid_GR_HLLC(iCF_Ne) &
-        = Ne ! Not sure what to do here
+      NumericalFlux_Fluid_GR_HLLC( iCF_S2 ) &
+        = S2 * ( alpha_C - Beta_u_1 )
+      NumericalFlux_Fluid_GR_HLLC( iCF_S3 ) &
+        = S3 * ( alpha_C - Beta_u_1 )
+      NumericalFlux_Fluid_GR_HLLC( iCF_E  ) &
+        = Gm_uu_11 * S1 - Beta_u_1 * ( E - D ) - alpha_C * D
+      NumericalFlux_Fluid_GR_HLLC( iCF_Ne ) &
+        = Ne * ( alpha_C - Beta_u_1 )
 
     END IF
 
