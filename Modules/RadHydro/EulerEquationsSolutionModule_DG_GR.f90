@@ -19,7 +19,7 @@ MODULE EulerEquationsSolutionModule_DG_GR
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uAF, nAF, iAF_P, iAF_Cs, iAF_Gm
   USE RiemannSolverModule, ONLY: &
-     NumericalFlux_Fluid_GR, &
+     NumericalFlux_Fluid_GR
   USE EulerEquationsUtilitiesModule_GR, ONLY: &
     ComputePrimitive, Eigenvalues, &
     ComputeSoundSpeed, Flux_X1, AlphaC
