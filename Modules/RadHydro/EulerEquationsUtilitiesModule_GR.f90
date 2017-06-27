@@ -71,7 +71,7 @@ CONTAINS
     INTEGER  :: i, nIter
     REAL(DP) :: Gm11, Gm22, Gm33, SSq, vSq, W, h
     REAL(DP) :: Pold, Pnew, FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-5
+    REAL(DP), PARAMETER :: TolP = 1.0d-12
 
     DO i = 1, SIZE( uPF, DIM = 1 )
 
@@ -92,7 +92,7 @@ CONTAINS
 
       DO WHILE ( .NOT. Converged )
 
-       nIter = nIter + 1
+        nIter = nIter + 1
 
        CALL ComputeFunJacP &
                ( uCF(i,iCF_D), SSq, uCF(i,iCF_E), Pold, FunP, JacP )
@@ -101,24 +101,26 @@ CONTAINS
 
         IF( ABS( Pnew / Pold - 1.0_DP ) <= TolP ) Converged = .TRUE.
 
-!        IF( nIter .GT. 3 )THEN
-!          WRITE(*,'(A6,1x,I2,3x,A10,E27.20)') 'nIter:', &
-!          nIter,'|ERROR| =',ABS( Pnew / Pold - 1.0_DP )
-!        END IF
+        IF( 1 == 1 )THEN
+          IF( nIter .GT. 10 )THEN
+          WRITE(*,'(A6,1x,I2,3x,A10,E27.20)') 'nIter:', &
+                nIter,'|ERROR| =',ABS( Pnew / Pold - 1.0_DP )
+          END IF
+        END IF
         
         IF( nIter == 100)THEN
-          PRINT*, "No convergence, |ERROR|:", ABS( Pnew / Pold - 1.0_DP )
-          PRINT*, "Pold:",Pold
-          PRINT*, "Pnew:",Pnew
+          WRITE(*,*) 'No convergence, |ERROR|:', ABS( Pnew / Pold - 1.0_DP )
+          WRITE(*,*) 'Pold:                   ', Pold
+          WRITE(*,*) 'Pnew:                   ', Pnew
           STOP
         END IF
 
         IF( ISNAN( Pnew ) )THEN
-          PRINT*, 'nIter:', nIter
-          PRINT*, 'Pold is ', Pold
-          PRINT*, 'Pnew is ', Pnew
-          PRINT*, 'D:', uCF(i,iCF_D)
-          PRINT*, 'tau+D-sqrt(D^2+S^2):', &
+          WRITE(*,*) 'nIter:              ', nIter
+          WRITE(*,*) 'Pold:               ', Pold
+          WRITE(*,*) 'Pnew:               ', Pnew
+          WRITE(*,*) 'D:                  ', uCF(i,iCF_D)
+          WRITE(*,*) 'tau+D-sqrt(D^2+S^2):', &
             uCF( i, iCF_E )+uCF( i, iCF_D )-SQRT( uCF( i, iCF_D )**2 + SSq )
           STOP
         END IF
@@ -238,42 +240,41 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, SSq, E, P
     REAL(DP), INTENT(out) :: FunP, JacP
 
-    REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS, MaxHSqSSq
+    REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS
     REAL(DP), DIMENSION(1) :: Pbar
 
     HSq = ( E + P + D )**2
 
-    MaxHSqSSq = HSq - SSq
+    RHO = D * SQRT( HSq - SSq ) / SQRT( HSq )
 
-    RHO = D * SQRT( MaxHSqSSq ) / SQRT( HSq )
-
-    EPS = ( SQRT( MaxHSqSSq ) &
-            - P * SQRT( HSq ) / SQRT( MaxHSqSSq ) - D ) / D
+    EPS = ( SQRT( HSq - SSq ) &
+            - P * SQRT( HSq ) / SQRT( HSq - SSq ) - D ) / D
 
     CALL ComputePressureFromSpecificInternalEnergy &
            ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
 
     FunP = P - Pbar(1)
 
-    dRHO = D * SSq / ( SQRT( MaxHSqSSq ) * HSq )
-    dEPS = P * SSq / ( ( MaxHSqSSq ) * SQRT( HSq ) * RHO )
+    dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
+    dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
  
     JacP = 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS )
 
   END SUBROUTINE ComputeFunJacP
 
 
-  REAL(DP) FUNCTION AlphaC( U_L, U_R, F_L, F_R, aP, aM,         &
-                                 V1_L, V1_R, Beta_u_1_L, Beta_u_1_R, &
-                                 Beta_u_1, Gm_dd_11 )
+  REAL(DP) FUNCTION AlphaC( U_L, U_R, F_L, F_R, aP, aM, &
+                            V1_L, V1_R, Beta_u_1, Gm_dd_11 )
 
     ! --- Middle Wavespeed as Suggested by Mignone and Bodo (2005) ---
 
     REAL(DP), DIMENSION(1:nCF), INTENT(in) :: U_L, U_R, F_L, F_R
-    REAL(DP),                   INTENT(in) :: aP, aM, V1_L, V1_R,     &
-                                              Beta_u_1_L, Beta_u_1_R, &
+    REAL(DP),                   INTENT(in) :: aP, aM, V1_L, V1_R, &
                                               Beta_u_1, Gm_dd_11
     REAL(DP), DIMENSION(1:nCF)             :: U, F, U_LL, U_RR, F_LL, F_RR
+    REAL(DP)                               :: A, B, C, eps
+
+    eps = TINY( 1.0_DP )
 
     ! --- Make sure that tau -> E for conserved variables and fluxes
 
@@ -288,8 +289,8 @@ CONTAINS
     U_RR( iCF_E ) = U_R( iCF_E ) + U_R( iCF_D )
 
     ! --- F_E = F_tau + D * ( V1 - Beta1 )
-    F_LL( iCF_E ) = F_L( iCF_E ) + U_L( iCF_D ) * ( V1_L - Beta_u_1_L )
-    F_RR( iCF_E ) = F_R( iCF_E ) + U_R( iCF_D ) * ( V1_R - Beta_u_1_R )
+    F_LL( iCF_E ) = F_L( iCF_E ) + U_L( iCF_D ) * ( V1_L - Beta_u_1 )
+    F_RR( iCF_E ) = F_R( iCF_E ) + U_R( iCF_D ) * ( V1_R - Beta_u_1 )
 
     ! --- Calculate the HLL conserved variable vector and flux
     ! --- Mignone & Bodo (2005) (Note the sign change on aM which is due
@@ -299,22 +300,33 @@ CONTAINS
     U = aP * U_RR + aM * U_LL + F_LL - F_RR
     F = aP * F_LL + aM * F_RR - aP * aM * (U_RR - U_LL )
 
-    IF( ( ABS( F( iCF_E ) ) .LT. 1.0d-16 ) .AND. ( ABS( U( iCF_S1 ) ) &
-          .LT. 1.0d-16 ) )THEN
-       AlphaC = 0.0_DP
+    A = Gm_dd_11**2 * ( F( iCF_E ) + Beta_u_1 * U( iCF_E ) )
+    B = -Gm_dd_11 * ( U( iCF_E ) + F( iCF_S1 ) + Beta_u_1 * U( iCF_S1 ) )
+    C = U( iCF_S1 )
+
+    ! --- Accounting for special cases of the solution to a
+    ! --- quadratic equation when A = 0
+
+    IF     ( ( ABS( A ) .LT. eps ) .AND. ( ABS( B ) .LT. eps ) &
+            .AND. ( ABS( C ) .LT. eps ) )THEN
+      WRITE(*,*) 'AlphaC is undefined'
+      AlphaC = 0.0_DP
+    ELSE IF( ( ABS( A ) .LT. eps ) .AND. ( ABS( B ) .LT. eps ) )THEN
+      WRITE(*,*) 'AlphaC is undefined'
+      WRITE(*,*) 'C:', C
+      AlphaC = 0.0_DP
+    ELSE IF( ( ABS( A ) .LT. eps ) .AND. ( ABS( C ) .LT. eps ) )THEN
+      AlphaC = 0.0_DP
+    ELSE IF( ABS( A ) .LT. eps )THEN
+      AlphaC = 0.0_DP
     ELSE
-      AlphaC = ( Gm_dd_11 * ( U( iCF_E ) + F( iCF_S1 ) + Beta_u_1 &
-               * U( iCF_S1 ) ) - SQRT( Gm_dd_11**2 * ( U( iCF_E ) &
-               + F( iCF_S1 ) + Beta_u_1 * U( iCF_S1 ) )**2        &
-               - 4.0_DP * Gm_dd_11**2 * ( F( iCF_E )              &
-               + Beta_u_1 * U( iCF_E ) ) * U( iCF_S1 ) ) )        &
-               / ( 2.0_DP * Gm_dd_11**2 * ( F( iCF_E ) + Beta_u_1 &
-               * U( iCF_E ) ) )
-    ENDIF
+      AlphaC = ( -B - SQRT( B**2 - 4.0_DP * A * C ) ) / ( 2.0_DP * A )
+    END IF
 
     RETURN
     
   END FUNCTION AlphaC
+
 
 END MODULE EulerEquationsUtilitiesModule_GR
 
