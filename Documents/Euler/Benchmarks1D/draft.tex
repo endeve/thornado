@@ -184,14 +184,42 @@ Several tests were used to assess the accuracy of the RKDG method implemented in
   \label{tab:testtable}
 \end{center}
 \end{table}
-TAble 1 dispplays the initial data for the Riemann problems. ($\rho_L$, $u_L$ , $p_L$) denote the mass density, velocity, and pressure to the left of the interface at $x=x_0$;($\rho_R$, $u_R$,  $p_R$) refer to these same quantities to the right of the interface. The problem is advanced to time T.
+Table 1 dispplays the initial data for the Riemann problems. ($\rho_L$, $u_L$ , $p_L$) denote the mass density, velocity, and pressure to the left of the interface at $x=x_0$;($\rho_R$, $u_R$,  $p_R$) refer to these same quantities to the right of the interface. The problem is advanced to time T.
 The computational domain $D$ is defined with $x_{\mbox{\tiny L}}=0.0$ and $x_{\mbox{\tiny R}}=1.0$ in tests 1--8, $x_{\mbox{\tiny L}}=0.1$ and $x_{\mbox{\tiny R}}=0.6$ in test 9 \citep{LiskaWendroff2003}, $x_{\mbox{\tiny L}}=-5$ and $x_{\mbox{\tiny R}}=15$ in test 10, and $x_{\mbox{\tiny L}}=-15$ and $x_{\mbox{\tiny R}}=5$ in test 11 \citep{Leveque2002}. 
 %\ee{Provide more detailed description of the Riemann problems and refer to Table~\ref{tab:testtable}}
 
 Test 12 is the Woodward-Collela blast wave problem, computed on 0.0 to 1.0, with discontinuities at 0.1 and 0.9. At all positions, initial density is 1 and initial velocity is 0. Initial pressure is 1000 on the left, 0.01 in the center, and 100 on the right, and the test is advanced to 0.038 seconds. \citep{LiskaWendroff2003}. Test 13 shows Shock Entropy Wave interactions, advanced to 1.8 seconds.
 %\clearpage
+\subsection{Linear Waves Tests}
+
+\begin{figure}
+  \begin{center}
+	\includegraphics[width=.975\textwidth]{lw1den.png}
+	\begin{tabular}{cc}
+	  \includegraphics[width=.475\textwidth]{lw1vel.png} &
+	  \includegraphics[width=.475\textwidth]{lw1prs.png}
+	\end{tabular}
+  \end{center}
+  \caption{Results from linear waves tests, showing density (top), velocity (bottom left) and pressure (bottom right) computed at various times after a disturbance.}
+  \label{fig:lw1}
+\end{figure}
+\clearpage
+
+\begin{figure}
+  \begin{center}
+	\includegraphics[width=.975\textwidth]{lw2den.png}
+	\begin{tabular}{cc}
+	  \includegraphics[width=.475\textwidth]{lw2vel.png} &
+	  \includegraphics[width=.475\textwidth]{lw2prs.png}
+	\end{tabular}
+  \end{center}
+  \caption{Results from linear waves tests, showing density (top), velocity (bottom left) and pressure (bottom right) computed using different integration methods and compared with an initial condition.}
+  \label{fig:lw2}
+\end{figure}
+\clearpage
+
 \subsection{Test 1: Sod's Shock Tube} 
-The Sod's Shock tube test features examples of threee different types of waves. A shock wave appears around $x=0.85$. A contact discontinuity appears around $x=0.68$. A rarefaction wave appears between about $x=0.3$ and $x=0.5$. 
+The Sod's Shock tube test features examples of three different types of waves. A shock wave appears around $x=0.85$. A contact discontinuity appears around $x=0.68$. A rarefaction wave appears between about $x=0.3$ and $x=0.5$. 
 
 First, the tests were run with values computed at different intervals; the method of integration is the same in each test. Between the two endpoints, 128, 256, 512, and 1024 points were computed for on each respective test. Figure~\ref{fig:dencellcomp_20} shows results of these tests:
 \begin{figure}[h!]
