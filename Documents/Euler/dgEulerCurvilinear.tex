@@ -47,11 +47,13 @@ We focus on issues related to core-collapse supernova dynamics, which include th
 
 \section{Introduction}
 
+\clearpage
+
 \section{Euler Equations of Gas Dynamics in Curvilinear Coordinates}
 
 \subsection{Basic Mathematical Model}
 
-For general curvilinear spatial coordinates, the non-relativistic Euler equations for gas dynamics are \citep[][see, e.g., \citet{} and references therein for a fully general relativistic treatment]{leveque_2002}
+For general curvilinear spatial coordinates, the non-relativistic Euler equations for gas dynamics are %\citep[][see, e.g., \citet{} and references therein for a fully general relativistic treatment]{leveque_2002}
 \begin{equation}
   \pderiv{\rho}{t}
   +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\rho\,v^{i}\,\Big)=0,
@@ -347,13 +349,25 @@ With $d=1$, we substitute $\bk\to k_{d}\to k$, $x^{d}\to x$, $q_{i}\to q$, etc.,
 
 \section{Time Integration}
 
+\section{Equation of State (EoS)}
+
 \section{Polynomial Limiting}
 
 \subsection{Slope Limiters}
 
 \subsection{Positivity Limiters}
 
-\section{Equation of State (EoS)}
+In the case of the nuclear EoS, the thermodynamic quantities (e.g, pressure) are tabulated in terms of mass density $\rho$, temperature $T$, and electron fraction $Y_{e}$.  
+Obviously, the tables are of finite extent in these independent variables; i.e., $\rho\in[\rho_{0},\rho_{1}]$, $T\in[T_{0},T_{1}]$, and $Y_{e}\in[Y_{e,0},Y_{e,1}]$.  
+During stellar core-collapse, the internal energy density has a dominant contribution from degenerate electrons, which is independent of the temperature.  
+During core bounce and shock formation, we have found that the numerical scheme (e.g., during reconstruction of element interfaces) can lead to internal energy densities that fall below the lower boundary of the tabulated data and failure to obtain a temperature, which is needed to evaluate the pressure.  
+(Extending the table to lower values of temperature does not help since the internal energy density is practically independent of the temperature.)
+
+For the solution to the Euler equations, we define the set of physically admissible states as
+\begin{equation}
+  \cG=\big\{\,\bU~|~\rho\ge\rho_{0}, e\ge e_{0}(\rho,T_{0},n_{e}),n_{e}\ge n_{e,0}(\rho,Y_{e,0})\,\big\}
+\end{equation}
+
 
 \section{Gravity Solver: Finite Element Method}
 
