@@ -14,7 +14,7 @@ MODULE EulerEquationsLimiterUtilitiesModule_DG
     MapNodalToModal_Fluid
   USE FluidFieldsModule, ONLY: &
     WeightsF, &
-    uCF, iCF_D, iCF_E, nCF, &
+    uCF, iCF_S1, iCF_S2, iCF_S3, nCF, &
     Shock
 
   IMPLICIT NONE
@@ -113,7 +113,7 @@ CONTAINS
 
           LOOP: DO iCF = 1, nCF
 
-            IF( (iCF .NE. iCF_D) .AND. (iCF .NE. iCF_E) ) CYCLE LOOP
+            IF( ANY( iCF == [ iCF_S1, iCF_S2, iCF_S3 ] ) ) CYCLE LOOP
 
             F_M = 0.0_DP
             F_P = 0.0_DP
