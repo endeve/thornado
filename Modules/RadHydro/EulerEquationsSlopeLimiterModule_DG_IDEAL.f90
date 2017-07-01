@@ -64,8 +64,6 @@ CONTAINS
     REAL(DP), DIMENSION(nDOFX,nCF) :: uCF_M, uCF_M_P_X1, uCF_M_N_X1
     REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE :: uCF_X1, uCF_X1_T
 
-
-
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. ApplySlopeLimiter ) RETURN
@@ -88,12 +86,9 @@ CONTAINS
       DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
 
-          ! --- Allow limiting if neighbors are marked as shock ---
+          ! --- Allow limiting if element marked as shock ---
 
-          IF( .NOT. ANY( [ Shock(MAX(1,    iX1-1),iX2,iX3), &
-                           Shock(          iX1,   iX2,iX3), &
-                           Shock(MIN(nX(1),iX1+1),iX2,iX3) ] == 1.0 ) ) &
-            CYCLE
+          IF( .NOT. Shock(iX1,iX2,iX3) == 1.0 ) CYCLE
 
           ! --- Limiting Using Modal Representation ---
 
@@ -158,12 +153,9 @@ CONTAINS
       DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
 
-          ! --- Allow limiting if neighbors are marked as shock ---
+          ! --- Allow limiting if element marked as shock ---
 
-          IF( .NOT. ANY( [ Shock(MAX(1,    iX1-1),iX2,iX3), &
-                           Shock(          iX1,   iX2,iX3), &
-                           Shock(MIN(nX(1),iX1+1),iX2,iX3) ] == 1.0 ) ) &
-            CYCLE
+          IF( .NOT. Shock(iX1,iX2,iX3) == 1.0 ) CYCLE
 
           DO iCF = 1, nCF
 

@@ -88,12 +88,9 @@ CONTAINS
       DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
 
-          ! --- Allow limiting if neighbors are marked as shock ---
+          ! --- Allow limiting if element marked as shock ---
 
-          IF( .NOT. ANY( [ Shock(MAX(1,    iX1-1),iX2,iX3), &
-                           Shock(          iX1,   iX2,iX3), &
-                           Shock(MIN(nX(1),iX1+1),iX2,iX3) ] == 1.0 ) ) &
-            CYCLE
+          IF( .NOT. Shock(iX1,iX2,iX3) == 1.0 ) CYCLE
 
           ! --- Limiting Using Modal Representation ---
 
@@ -120,11 +117,6 @@ CONTAINS
           uAF_A(1:nAF) = Auxiliary_Fluid( uPF_A(1:nPF) )
 
           ! --- Slope From Modal Representation ---
-
-!!$          CALL ComputeEigenvectors_L &
-!!$                 ( uPF_A(iPF_V1), uPF_A(iPF_V2), uPF_A(iPF_V3), &
-!!$                   uPF_A(iPF_E ), uAF_A(iAF_P ), uAF_A(iAF_Cs), &
-!!$                   L1, Componentwise )
 
           CALL ComputeEigenvectors_L &
                  ( [ uPF_A(iPF_D ) ], [ uAF_A(iAF_T ) ], [ uAF_A(iAF_Ye) ], &
@@ -163,12 +155,9 @@ CONTAINS
       DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
 
-          ! --- Allow limiting if neighbors are marked as shock ---
+          ! --- Allow limiting if element marked as shock ---
 
-          IF( .NOT. ANY( [ Shock(MAX(1,    iX1-1),iX2,iX3), &
-                           Shock(          iX1,   iX2,iX3), &
-                           Shock(MIN(nX(1),iX1+1),iX2,iX3) ] == 1.0 ) ) &
-            CYCLE
+          IF( .NOT. Shock(iX1,iX2,iX3) == 1.0 ) CYCLE
 
           DO iCF = 1, nCF
 
@@ -214,11 +203,6 @@ CONTAINS
             uAF_A(1:nAF) = Auxiliary_Fluid( uPF_A(1:nPF) )
 
             ! --- Back to Conserved Variables ---
-
-!!$            CALL ComputeEigenvectors_R &
-!!$                   ( uPF_A(iPF_V1), uPF_A(iPF_V2), uPF_A(iPF_V3), &
-!!$                     uPF_A(iPF_E ), uAF_A(iAF_P ), uAF_A(iAF_Cs), &
-!!$                     R1, Componentwise )
 
             CALL ComputeEigenvectors_R &
                  ( [ uPF_A(iPF_D ) ], [ uAF_A(iAF_T ) ], [ uAF_A(iAF_Ye) ], &
