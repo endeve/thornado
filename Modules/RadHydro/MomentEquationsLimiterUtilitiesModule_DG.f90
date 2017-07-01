@@ -32,6 +32,7 @@ MODULE MomentEquationsLimiterUtilitiesModule_DG
   PUBLIC :: UnpackSpatialNodes
   PUBLIC :: SolveTheta_Bisection
 
+  LOGICAL, PARAMETER :: UseDiscontinuityDetector = .TRUE.
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange_X1_P
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange_X1_M
 
@@ -102,6 +103,13 @@ CONTAINS
     REAL(DP), PARAMETER :: alpha = 1.5_DP
 
     Discontinuity(:,:,:,:) = 0.0_DP
+
+    IF( .NOT. UseDiscontinuityDetector )THEN
+
+      Discontinuity(:,:,:,:) = 1.0_DP
+      RETURN
+
+    END IF
 
     DO iS = 1, nSpecies
 
