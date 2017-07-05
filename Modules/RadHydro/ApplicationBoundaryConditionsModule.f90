@@ -73,7 +73,7 @@ CONTAINS
     INTEGER  :: iNodeX1, jNodeX1, iNodeX2, iNodeX3
     INTEGER  :: iNodeX, jNodeX
     INTEGER  :: iCF, iPF, iAF
-    REAL(DP) :: D_M, Kappa, Gamma
+    REAL(DP) :: D_C, D_M, Kappa, Gamma, Alpha, X1
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
@@ -128,15 +128,34 @@ CONTAINS
 
         ! --- Outer Boundary (Dirichlet) ---
 
+        D_C   = 1.0_DP
         D_M   = 1.0d-6
         Kappa = 2.0_DP / Pi
         Gamma = 2.0_DP
+        Alpha = Pi
 
-        uPF(:,nX(1)+1,iX2,iX3,iPF_D)  = D_M
-        uPF(:,nX(1)+1,iX2,iX3,iPF_V1) = 0.0_DP
-        uPF(:,nX(1)+1,iX2,iX3,iPF_V2) = 0.0_DP
-        uPF(:,nX(1)+1,iX2,iX3,iPF_V3) = 0.0_DP
-        uAF(:,nX(1)+1,iX2,iX3,iAF_P)  = Kappa * D_M**Gamma
+        DO iNodeX3 = 1, nNodesX(3)
+          DO iNodeX2 = 1, nNodesX(2)
+            DO iNodeX1 = 1, nNodesX(1)
+
+              X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNodeX1 )
+
+              iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+              uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_D)  &
+                = MAX( D_C * SIN( Alpha * X1 ) / ( Alpha * X1 ), D_M )
+              uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_V1) &
+                = 0.0_DP
+              uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_V2) &
+                = 0.0_DP
+              uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_V3) &
+                = 0.0_DP
+              uAF(iNodeX,nX(1)+1,iX2,iX3,iAF_P)  &
+                = Kappa * uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_D)**Gamma
+
+            END DO
+          END DO
+        END DO
 
         CALL ComputeInternalEnergyDensityFromPressure &
                ( uPF(:,nX(1)+1,iX2,iX3,iPF_D),  uAF(:,nX(1)+1,iX2,iX3,iAF_P), &
