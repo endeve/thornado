@@ -3,9 +3,13 @@ MODULE GravitySolutionModule_Newtonian_Poseidon
   USE KindModule, ONLY: &
     DP, Pi
   USE ProgramHeaderModule, ONLY: &
-    nX, nNodes, xL, xR
+    nX, nNodesX, &
+    nNodes, xL, xR
+  USE UtilitiesModule, ONLY: &
+    NodeNumberX
   USE MeshModule, ONLY: &
-    MeshX
+    MeshX, &
+    NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     uGF, iGF_Phi_N
   USE FluidFieldsModule, ONLY: &
@@ -107,7 +111,61 @@ CONTAINS
 
 #endif
 
+    CALL SetBoundaryConditions( BaryonMass )
+
   END SUBROUTINE SolveGravity_Newtonian_Poseidon
+
+
+  SUBROUTINE SetBoundaryConditions( BaryonMass )
+
+    REAL(DP), INTENT(in) :: BaryonMass
+
+    CALL SetBoundaryConditions_X1( BaryonMass )
+
+  END SUBROUTINE SetBoundaryConditions
+
+
+  SUBROUTINE SetBoundaryConditions_X1( BaryonMass )
+
+    REAL(DP), INTENT(in) :: BaryonMass
+
+    INTEGER  :: iX2, iX3
+    INTEGER  :: iNodeX1, jNodeX1, iNodeX2, iNodeX3
+    INTEGER  :: iNodeX, jNodeX
+    REAL(DP) :: X1
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+
+        DO iNodeX3 = 1, nNodesX(3)
+          DO iNodeX2 = 1, nNodesX(2)
+            DO iNodeX1 = 1, nNodesX(1)
+
+              ! --- Inner Boundary: Reflecting ---
+
+              jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+
+              iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+              jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+
+              uGF(iNodeX,0,iX2,iX3,iGF_Phi_N) &
+                = uGF(jNodeX,1,iX2,iX3,iGF_Phi_N)
+
+              ! --- Outer Boundary: Dirichlet ---
+
+              X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNodeX1 )
+
+              uGF(iNodeX,nX(1)+1,iX2,iX3,iGF_Phi_N) &
+                = - BaryonMass / X1
+
+            END DO
+          END DO
+        END DO
+
+      END DO
+    END DO
+
+  END SUBROUTINE SetBoundaryConditions_X1
 
 
 END MODULE GravitySolutionModule_Newtonian_Poseidon
