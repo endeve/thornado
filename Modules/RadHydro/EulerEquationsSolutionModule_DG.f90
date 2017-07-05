@@ -376,7 +376,7 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
-    INTEGER  :: iCF, iX1_P, iX1_N, iNodeG
+    INTEGER  :: iCF, iNodeG
     REAL(DP) :: X1, X2, X3
     REAL(DP), DIMENSION(nDOFX,nCF) :: GeometrySources_Gravity
     REAL(DP), DIMENSION(nNodesX(1)*nX(1)) :: X1_G, Fg_G
@@ -437,17 +437,14 @@ CONTAINS
       DO iX2 = iX_Begin(2), iX_End(2)
         DO iX1 = iX_Begin(1), iX_End(1)
 
-          iX1_P = MAX( iX1 - 1, 1     ) ! Previous Element
-          iX1_N = MIN( iX1 + 1, nX(1) ) ! Next     Element
-
           CALL ComputeGeometrySources_Gravity  &
                  ( [ MeshX(1) % Width(iX1),    &
                      MeshX(2) % Width(iX2),    &
                      MeshX(3) % Width(iX3) ],  &
                    uCF(:,iX1,  iX2,iX3,1:nCF), &
                    uGF(:,iX1,  iX2,iX3,1:nGF), &
-                   uGF(:,iX1_P,iX2,iX3,1:nGF), &
-                   uGF(:,iX1_N,iX2,iX3,1:nGF), &
+                   uGF(:,iX1-1,iX2,iX3,1:nGF), &
+                   uGF(:,iX1+1,iX2,iX3,1:nGF), &
                    GeometrySources_Gravity(1:nDOFX,1:nCF) )
 
           DO iCF = 1, nCF
