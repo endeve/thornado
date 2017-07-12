@@ -1,0 +1,34 @@
+include ../../../Build/Makefile_Build
+
+all: StandingAccretionShock1D
+
+StandingAccretionShock1D: \
+	$(thornado) InitializationModule.o \
+	StandingAccretionShock1D.o
+	$(FLINKER) $(FLAGS) -o StandingAccretionShock1D_$(MACHINE) \
+	$(thornado) InitializationModule.o \
+	StandingAccretionShock1D.o \
+	$(LIBRARIES)
+
+clean:
+	rm -f *.o *.mod *.ld
+
+clobber: clean
+	rm -f StandingAccretionShock1D_$(MACHINE)
+
+StandingAccretionShock1D.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  InitializationModule.o \
+  TimeSteppingModule.o \
+  GravitySolutionModule.o \
+  StandingAccretionShock1D.f90
+
+InitializationModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  InitializationModule.f90
