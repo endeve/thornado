@@ -91,9 +91,10 @@ CONTAINS
       nNodes_Option, ActivateUnits_Option, EquationOfState_Option, &
       EquationOfStateTableName_Option, Gamma_IDEAL_Option, &
       Opacity_Option, OpacityTableName_Option, GravitySolver_Option, &
-      FluidSolver_Option, RadiationSolver_Option, FluidRiemannSolver_Option, &
-      RadiationRiemannSolver_Option, FluidRadiationCoupling_Option, &
-      EvolveGravity_Option, EvolveFluid_Option, EvolveRadiation_Option, &
+      PointMass_Option, FluidSolver_Option, RadiationSolver_Option, &
+      FluidRiemannSolver_Option, RadiationRiemannSolver_Option, &
+      FluidRadiationCoupling_Option, EvolveGravity_Option, &
+      EvolveFluid_Option, EvolveRadiation_Option, &
       ApplySlopeLimiter_Option, BetaTVB_Option, BetaTVD_Option, &
       ApplyPositivityLimiter_Option, nStages_SSP_RK_Option, &
       nStages_SI_RK_Option )
@@ -121,6 +122,7 @@ CONTAINS
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: Opacity_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: OpacityTableName_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: GravitySolver_Option
+    REAL(DP),               INTENT(in), OPTIONAL :: PointMass_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: FluidSolver_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: RadiationSolver_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: FluidRiemannSolver_Option
@@ -391,7 +393,9 @@ CONTAINS
 
     CALL InitializeGravitySolver &
            ( GravitySolver_Option &
-               = GravitySolver_Option )
+               = GravitySolver_Option, &
+             PointMass_Option &
+               = PointMass_Option )
 
     ! --- Fluid Solver ---
 
