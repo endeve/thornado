@@ -1,6 +1,7 @@
 RAD_HYDRO = \
   TallyModule.o \
   GravitySolutionUtilitiesModule.o \
+  GravitySolutionModule_Newtonian_PointMass.o \
   GravitySolutionModule_Newtonian_Poseidon.o \
   GravitySolutionModule.o \
   RiemannSolverModule.o \

@@ -12,6 +12,10 @@ MODULE GravitySolutionModule
     dL_X1, dL_X2, dL_X3
   USE MeshModule, ONLY: &
     MeshX
+  USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
+    InitializeGravitySolver_Newtonian_PointMass, &
+    FinalizeGravitySolver_Newtonian_PointMass, &
+    SolveGravity_Newtonian_PointMass
   USE GravitySolutionModule_Newtonian_Poseidon, ONLY: &
     InitializeGravitySolver_Newtonian_Poseidon, &
     FinalizeGravitySolver_Newtonian_Poseidon, &
@@ -43,9 +47,10 @@ MODULE GravitySolutionModule
 CONTAINS
 
 
-  SUBROUTINE InitializeGravitySolver( GravitySolver_Option )
+  SUBROUTINE InitializeGravitySolver( GravitySolver_Option, PointMass_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: GravitySolver_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: PointMass_Option
 
     INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNodeX
     INTEGER :: jNodeX1, jNodeX2, jNodeX3, jNodeX
@@ -54,7 +59,20 @@ CONTAINS
     IF( PRESENT( GravitySolver_Option ) ) &
       GravitySolver = GravitySolver_Option
 
+    WRITE(*,*)
+    WRITE(*,'(A5,A16,A)') &
+      '', 'Gravity Solver: ', TRIM( GravitySolver )
+    WRITE(*,'(A5,A16)') &
+      '', '--------------- '
+
     SELECT CASE ( TRIM( GravitySolver ) )
+
+      CASE ( 'Newtonian_PointMass' )
+
+        CALL InitializeGravitySolver_Newtonian_PointMass &
+               ( PointMass_Option = PointMass_Option )
+        SolveGravity &
+          => SolveGravity_Newtonian_PointMass
 
       CASE ( 'Newtonian_Poseidon' )
 
@@ -157,6 +175,10 @@ CONTAINS
   SUBROUTINE FinalizeGravitySolver
 
     SELECT CASE ( TRIM( GravitySolver ) )
+
+      CASE ( 'Newtonian_PointMass' )
+
+        CALL FinalizeGravitySolver_Newtonian_PointMass
 
       CASE ( 'Newtonian_Poseidon' )
 

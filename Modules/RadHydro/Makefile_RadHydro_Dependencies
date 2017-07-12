@@ -10,6 +10,10 @@ GravitySolutionUtilitiesModule.o: \
   FluidFieldsModule.o \
   GravitySolutionUtilitiesModule.f90
 
+GravitySolutionModule_Newtonian_PointMass.o: \
+  KindModule.o \
+  GravitySolutionModule_Newtonian_PointMass.f90
+
 GravitySolutionModule_Newtonian_Poseidon.o: \
   KindModule.o \
   GravitySolutionUtilitiesModule.o \
@@ -17,6 +21,7 @@ GravitySolutionModule_Newtonian_Poseidon.o: \
 
 GravitySolutionModule.o: \
   KindModule.o \
+  GravitySolutionModule_Newtonian_PointMass.o \
   GravitySolutionModule_Newtonian_Poseidon.o \
   GravitySolutionModule.f90
 
