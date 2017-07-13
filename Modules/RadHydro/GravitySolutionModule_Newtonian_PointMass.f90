@@ -80,7 +80,55 @@ CONTAINS
       END DO
     END DO
 
+    CALL SetBoundaryConditions
+
   END SUBROUTINE SolveGravity_Newtonian_PointMass
+
+
+  SUBROUTINE SetBoundaryConditions
+
+    CALL SetBoundaryConditions_X1
+
+  END SUBROUTINE SetBoundaryConditions
+
+
+  SUBROUTINE SetBoundaryConditions_X1
+
+    INTEGER  :: iX2, iX3
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
+    REAL(DP) :: X1
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+
+        DO iNodeX3 = 1, nNodesX(3)
+          DO iNodeX2 = 1, nNodesX(2)
+            DO iNodeX1 = 1, nNodesX(1)
+
+              iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+              ! --- Inner Boundary: Dirichlet ---
+
+              X1 = NodeCoordinate( MeshX(1), 0, iNodeX1 )
+
+              uGF(iNodeX,0,iX2,iX3,iGF_Phi_N) &
+                = - PointMass / X1
+
+              ! --- Outer Boundary: Dirichlet ---
+
+              X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNodeX1 )
+
+              uGF(iNodeX,nX(1)+1,iX2,iX3,iGF_Phi_N) &
+                = - PointMass / X1
+
+            END DO
+          END DO
+        END DO
+
+      END DO
+    END DO
+
+  END SUBROUTINE SetBoundaryConditions_X1
 
 
 END MODULE GravitySolutionModule_Newtonian_PointMass
