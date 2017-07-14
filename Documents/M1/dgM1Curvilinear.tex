@@ -627,15 +627,23 @@ Therefore,
 
 The two terms of electron-neutrino absorption on nucleons are
 \begin{align}
-\chi_{nucleon}(\epsilonNu,\bU) & = \dfrac{G^2}{\pi} \eta_{np}(g_V^2+3g_A^2)[1-F_e(\varepsilon+Q)](\varepsilon+Q)^2[1-\dfrac{M^2_e}{(\varepsilon+Q)^2}]^{1/2} \label{eq:nucleonabsorption} ,\\
-\eta_{nucleon}(\epsilonNu,\bU) &= \dfrac{G^2}{\pi}\eta_{pn}(g_V^2+3g_A^2)F_e(\varepsilon+Q)(\varepsilon+Q)^2[1-\dfrac{M^2_e}{(\varepsilon+Q)^2}]^{1/2} \label{eq:nucleonemissivity} ,
+\chi_{nucleon}(\epsilonNu,\bU) & = \dfrac{G^2_F}{\pi} \eta_{np}(g_V^2+3g_A^2)[1-F_e(\varepsilon+Q)](\varepsilon+Q)^2[1-\dfrac{M^2_e}{(\varepsilon+Q)^2}]^{1/2} \label{eq:nucleonabsorption} ,\\
+\eta_{nucleon}(\epsilonNu,\bU) &= \dfrac{G^2_F}{\pi}\eta_{pn}(g_V^2+3g_A^2)F_e(\varepsilon+Q)(\varepsilon+Q)^2[1-\dfrac{M^2_e}{(\varepsilon+Q)^2}]^{1/2} \label{eq:nucleonemissivity} ,
 \end{align}
 and the two terms of electron-neutrino absorption on nuclear are
 \begin{align}
-\chi_{nuclear}(\epsilonNu,\bU) & = \dfrac{G^2}{\pi} n_A e^{(\mu_n -\mu_p -Q')/k_B T} g^2_A \dfrac{2}{7} N_p(Z) N_h(N)[1-F_e(\varepsilon+Q')](\varepsilon+Q')^2[1-\dfrac{M_e^2}{(\varepsilon+Q')^2}]^{1/2} \label{eq:nuclearabsorption} ,\\
-\eta_{nuclear}(\epsilonNu,\bU) &=\dfrac{G^2}{\pi} n_A g^2_A \dfrac{2}{7} N_p(Z) N_h(N)F_e(\varepsilon+Q')(\varepsilon+Q')^2[1-\dfrac{M_e^2}{(\varepsilon+Q')^2}]^{1/2} \label{eq:nuclearemissivity},
+\chi_{nuclear}(\epsilonNu,\bU) & = \dfrac{G^2_F}{\pi} n_A e^{(\mu_n -\mu_p -Q')/k_B T} g^2_A \dfrac{2}{7} N_p(Z) N_h(N)[1-F_e(\varepsilon+Q')](\varepsilon+Q')^2[1-\dfrac{M_e^2}{(\varepsilon+Q')^2}]^{1/2} \label{eq:nuclearabsorption} ,\\
+\eta_{nuclear}(\epsilonNu,\bU) &=\dfrac{G^2_F}{\pi} n_A g^2_A \dfrac{2}{7} N_p(Z) N_h(N)F_e(\varepsilon+Q')(\varepsilon+Q')^2[1-\dfrac{M_e^2}{(\varepsilon+Q')^2}]^{1/2} \label{eq:nuclearemissivity},
 \end{align} 
 where $g_V = 1$ and $g_A =1.23$ are form factors resulting from virtual strong-interaction processes, $M_e = 0.511$ MeV is the electron rest energy, $Q = 1.2935$ MeV is the difference between the neutron and proton rest energies, $\mu_n$ and $\mu_p$ are the neutron and proton chemical potential, respectively. And $Q'$ is defined by $Q' = \mu_n -\mu_p + \Delta$, where $\Delta=3$MeV is the energy of the $1f_{5/2}$ level above the ground state.  
+
+
+
+The factor $G^2_F$ in Eq.~\eqref{eq:nucleonabsorption}, ~\eqref{eq:nucleonemissivity}, ~\eqref{eq:nuclearabsorption} and ~\eqref{eq:nuclearemissivity} is the Fermi constant [$G=(1.015\pm 0.03)\time 10^5 M_p^{-2}$] with the value
+\begin{equation}
+G^2_F = \left[ \dfrac{1}{(\hbar c)^4} \right] G^2 = 5.18 \times 10^{-44} MeV^{-2}cm^2, 
+\end{equation}
+giving $\chi$ and $\eta$ the required units of $cm^{-1}$.
 
 In Eq.~\eqref{eq:nucleonabsorption}, ~\eqref{eq:nucleonemissivity}, ~\eqref{eq:nuclearabsorption} and ~\eqref{eq:nuclearemissivity}, $F_e(E)$ is the Fermi-Dirac distribution function:
 \begin{align}
@@ -643,7 +651,13 @@ F_e(E) = \dfrac{1}{e^{(E-\mu_e)/k_B T} + 1},
 \end{align}
 where $\mu_e$ is the electron chemical potential.
 
-In Eq.~\eqref{eq:nucleonabsorption} and ~\eqref{eq:nucleonemissivity}, $\eta_{np}$ and $\eta_{pn}$ take into account the nucleon final-state blocking and equal to $n_n$ and $n_p$, the nucleon number density, when the nucleons are nondegenerate, respectively.
+In Eq.~\eqref{eq:nucleonabsorption} and ~\eqref{eq:nucleonemissivity}, $\eta_{np}$ and $\eta_{pn}$ take into account the nucleon final-state blocking. 
+\begin{align}
+\eta_{pn} = \dfrac{2}{h^3 c^3} \int d^3 p F_p (E)[1-F_n(E)] = (n_n - n_p) \dfrac{1}{e^{(\mu_n^0 - \mu_p^0)/k_bT}-1},\\
+\eta_{np} = \dfrac{2}{h^3 c^3} \int d^3 p F_n (E)[1-F_p(E)] = (n_p - n_n) \dfrac{1}{e^{(\mu_p^0 - \mu_n^0)/k_bT}-1}.
+\end{align}
+
+The factors $\eta_{np}$ and $\eta_{pn}$ equal to $n_n$ and $n_p$, the nucleon number density, when the nucleons are non-degenerate, respectively.
 \begin{align}
 n_p & =  \dfrac{X_p \rho}{m_p} \\
 n_n & =  \dfrac{X_n \rho}{m_n},
@@ -669,11 +683,7 @@ N_h(N) =
      \end{cases}
 \]
 
-The factor $G^2$ in Eq.~\eqref{eq:nucleonabsorption}, ~\eqref{eq:nucleonemissivity}, ~\eqref{eq:nuclearabsorption} and ~\eqref{eq:nuclearemissivity} is the Fermi constant [$G=(1.015\pm 0.03)\time 10^5 M_p^{-2}$] with the value
-\begin{equation}
-G^2 = \left[ \dfrac{1}{(\hbar c)^4} \right] G^2 = 5.18 \times 10^{-44} MeV^{-2}cm^2, 
-\end{equation}
-giving $\chi$ and $\eta$ the required units of $cm^{-1}$.
+
 
 The sum of Eq.~\eqref{eq:nucleonabsorption}, ~\eqref{eq:nucleonemissivity}, ~\eqref{eq:nuclearabsorption} and ~\eqref{eq:nuclearemissivity} gives the explicit expression of the absorption opacity of neutrino $\chi(\epsilonNu,\bU)$ .
 
@@ -701,6 +711,16 @@ R^{nuclei}_{IS}(\cos\theta,\epsilonNu,\bU)  = \dfrac{(2\pi)^2 G_F^2}{h}\dfrac{\r
 \end{align}
 $h^p_V$, $h^n_V$, $h^p_A$ and $h^n_A$, are the nucleon neutral current form factors arising from virtual strong-interaction processes: $h_V^p = \dfrac{1}{2} - 2 \sin^2\theta_W$, $h^n_V = - \dfrac{1}{2}$, $h_A^p = \dfrac{1}{2}g_A$, and $h^n_A = - \dfrac{1}{2} g_A$, where $\theta_W$ is the Weinberg angle. The constants, $C_{V0}$ and $C_{V1}$, are defined in terms of $h_V^p$ and $h_V^n$: $C_{V0} = \dfrac{1}{2}(h_V^p + h_V^n)$ and $C_{V1} = h_V^p - h_V^n$. The quantity $b$ is given by $b = 4.8 \times 10^{-6} A^{2/3}$. 
 
+The factors $\eta_{pp}$ and $\eta_{nn}$ account for the nucleon final-state blocking,
+\begin{align}
+\eta_{pp} = T \dfrac{\partial n_p}{\partial \mu_p} = n_p \dfrac{3T/2\epsilon^p_F}{[1+(3T/2\epsilon^p_F)^2]^{1/2}}, \\
+\eta_{nn} = T \dfrac{\partial n_n}{\partial \mu_n}=n_n \dfrac{3T/2\epsilon^n_F}{[1+(3T/2\epsilon^n_F)^2]^{1/2}},
+\end{align}
+where $\epsilon^p_F$ and $\epsilon^n_F$ are the proton and neutron Fermi energies, respectively,
+\begin{align}
+\epsilon^p_F = \dfrac{h^2}{8 \pi^2 m_B}(3\pi^2n_p)^{2/3},\\
+\epsilon^n_F = \dfrac{h^2}{8\pi^2m_B}(3\pi^2n_n)^{2/3}.
+\end{align}
 For nondegenerate, nonrelativistic nucleons, $\eta_{pp}$ and $\eta_{nn}$ are given by
 \begin{align}
 &\eta_{pp} = n_p \\
@@ -709,7 +729,7 @@ For nondegenerate, nonrelativistic nucleons, $\eta_{pp}$ and $\eta_{nn}$ are giv
 
 Expanding the isoenergetic scattering kernel in the first two terms of a Legendre series yields
 \begin{align}
-R^{0}_{IS}(\omega, \omega, \cos\theta) \approx \dfrac{1}{2} \Phi_{0,IS}(\omega) + \dfrac{3}{2}\Phi_{1,IS}(\omega)\cos\theta
+R_{IS}(\omega, \omega, \cos\theta) \approx \dfrac{1}{2} \Phi_{0,IS}(\omega) + \dfrac{3}{2}\Phi_{1,IS}(\omega)\cos\theta
 \end{align}
 
 \subsection{The neutrino-electron scattering kernel}
@@ -804,7 +824,7 @@ R^{out}_{{NES}, l}(\epsilonNu,\epsilonNu^\prime, \bU) = \int_{-1}^{1} d\omega P_
    
 Expanding the neutrino-electron scattering kernels in the first two terms of Legendre series yields
 \begin{align}
-R^{in/out}_{NES}(\omega, \omega^{\prime}, \cos\theta, \bU) & = \dfrac{1}{2} \sum_{l} (2l+1)\Phi^{in/out}_{l,NES}(\omega,\omega^{\prime},\bU)P_l(\cos\theta) \\
+R^{in/out}_{NES}(\omega, \omega^{\prime}, \cos\theta, \bU) & = \sum_{l=0}^{1} \dfrac{ 2l+1}{2}\Phi^{in/out}_{l,NES}(\omega,\omega^{\prime},\bU)P_l(\cos\theta) \\
 & \approx \dfrac{1}{2}\Phi_{0,NES}^{in/out}(\omega,\omega^{\prime}, \bU) + \dfrac{3}{2}\Phi^{in/out}_{1,NES}(\omega,\omega^{\prime}, \bU)\cos\theta
 \end{align}
 
