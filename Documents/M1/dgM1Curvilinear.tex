@@ -90,7 +90,7 @@ The angular moments are related to the neutrino energy density, momentum density
 They are functions of the neutrino energy $\epsilonNu$, spatial position $\{x^{i}\}$, and time $t$.  
 
 To model neutrino matter interactions, we include emission and absorption, (isotropic) elastic scattering on nucleons and nuclei, and neutrino-electron scattering (NES).  
-On the right-hand sides of Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}, $\tilde{\chi}(\epsilonNu,\bU)$ and $\kappa(\epsilonNu,\bU)=\tilde{\chi}(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$ are absorption and total (absorption plus scattering) opacities, respectively.  
+On the right-hand sides of Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}, $\tilde{\chi}(\epsilonNu,\bU)$ and $\kappa(\epsilonNu,\bU)=\tilde{\chi}(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$ are absorption and transport (absorption plus elastic scattering) opacities, respectively.  
 The absorption opacity $\tilde{\chi}$ is corrected for stimulated absorption \citep[cf.][]{mezzacappaBruenn_1993a}.  
 The NES rates $R^{\In}$ and $R^{\Out}$ are obtained by expanding the full kernels in a Legendre series, retaining only the isotropic part \citep[see, e.g.,][]{cernohorsky_1994}, and the integrals extend over all energies $\bbR^{+}=\{\epsilonNu~|~\epsilonNu\in[0,\infty)\}$.  
 The energy volume element is $dV_{\epsilonNu}=\epsilonNu^{2}d\epsilonNu$.  
@@ -173,7 +173,7 @@ Specifically, using the time-independent metric tensor in Eq.~\eqref{eq:threeMet
   =0.
 \end{equation}
 (Explicit expressions for metric functions appearing in the geometry sources are listed in Table~\ref{tab:metricFunctions}.)  
-Then, by defining the vector of evolved moments $\bcM=\big(\,\cJ,\,\bcH\,\big)^{T}$, the vector of geometry sources $\bcG(\bcM)=\big(\,0,\,\cG_{1},\,\cG_{2},\,\cG_{3}\,\big)^{T}$, the vector of collision sources $\bcC(\bcM)=\big(\,\chi\,(\cJ_{0}-\cJ)+\cL_{\NES},\,-(\kappa+\kappa_{\NES})\,\bcH\,\big)^{T}$, and the flux vectors $\bcF^{i}(\bcM)=\big(\,\cH^{i},\,\cK_{~1}^{i},\,\cK_{~2}^{i},\,\cK_{~3}^{i}\,\big)^{T}$, we write the system of equations in compact form
+Then, by defining the vector of evolved moments $\bcM=\big(\,\cJ,\,\bcH\,\big)^{T}$, the vector of geometry sources $\bcG(\bcM)=\big(\,0,\,\cG_{1},\,\cG_{2},\,\cG_{3}\,\big)^{T}$, the vector of collision sources $\bcC(\bcM)=\big(\,\tilde{\chi}\,(\cJ_{0}-\cJ)+\cL_{\NES},\,-(\kappa+\kappa_{\NES})\,\bcH\,\big)^{T}$, and the flux vectors $\bcF^{i}(\bcM)=\big(\,\cH^{i},\,\cK_{~1}^{i},\,\cK_{~2}^{i},\,\cK_{~3}^{i}\,\big)^{T}$, we write the system of equations in compact form
 \begin{equation}
   \f{1}{\sqrt{\gamma}}\pderiv{}{t}\Big(\,\sqrt{\gamma}\,\bcM\,\Big)
   +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\bcF^{i}(\bcM)\,\Big)
@@ -421,12 +421,12 @@ where the operator $\bcF_{\bx},\bcC:\bbR^{d+1}\to\bbR^{d+1}$ represents the disc
 \subsection{Explicit Integration Scheme: SSP-RK Methods}
 \label{sec:explicitTime}
 
-For non-stiff problems, we employ the strong stability-preserving Runge-Kutta (SSP-RK) methods \citep[e.g.,][]{gottlieb_etal_2001}, which, for evolving the moments from $t^{n}$ to $t^{n+1}=t^{n}+\dt$ ($\bcM^{n}\to\bcM^{n+1}$), take the general form
+For non-stiff problems, we employ the strong stability-preserving Runge-Kutta (SSP-RK) methods \citep[e.g.,][]{gottlieb_etal_2001}, which, for evolving the moments from $t^{n}$ to $t^{n+1}=t^{n}+\dt$ ($\bcM^{n}\to\bcM^{n+1}$) using $m$ stages, take the general form
 \begin{align}
   \bcM^{(0)}
   &=\bcM^{n}, \\
   \bcM^{(i)}
-  &=\sum_{k=1}^{i-1}\alpha_{ik}\,\big[\,\bcM^{(k)}+\beta_{ik}\,\dt\,\bcL(\bcM^{(k)})\,\big], \quad i=1,\ldots,m 
+  &=\sum_{k=0}^{i-1}\alpha_{ik}\,\big[\,\bcM^{(k)}+\beta_{ik}\,\dt\,\bcL(\bcM^{(k)})\,\big], \quad i=1,\ldots,m 
   \label{eq:ssprkStages} \\
   \bcM^{n+1}
   &=\bcM^{(m)}.  
@@ -470,12 +470,12 @@ The semi-implicit Runge-Kutta (SIRK) method is obtained by substituting $\bcM_{i
 \end{equation}
 As discussed by \citet{chertock_etal_2015}, the time-integration method using Eq.~\eqref{eq:ssprkStages}, with $\bcM_{ik}^{\mbox{\tiny FE}}$ replaced by $\bcM_{ik}^{\mbox{\tiny SI}}$, is at most first-order accurate in time.  
 To increase the temporal accuracy to second order, \citet{chertock_etal_2015} propose a correction step to be applied after the last stage.  
-We defer the development of the correction step, and use the first-order accurate time integrator for stiff problems.  
+We defer the development of the correction step \citep[see, e.g.][]{endeveHauck_2017}, and use the first-order accurate time integrator for stiff problems.  
 We note that the SIRK method reduces to the SSP-RK methods in Section~\ref{sec:explicitTime} when $\bcC=0$.  
 
 \section{Polynomial Limiting}
 
-During time integration we apply limiters that modify the polynomial representation in elements so as to prevent development and growth of nonphysical oscillations (slope limiters; Sec.~\ref{sec:slopeLimiters}) or nonphysical states (positivity limiters; Sec.~\ref{sec:positivityLimiters}).  
+During time integration we apply limiters that modify the polynomial representation in elements in order to prevent development and growth of nonphysical oscillations (slope limiters; Sec.~\ref{sec:slopeLimiters}), or nonphysical states (positivity limiters; Sec.~\ref{sec:positivityLimiters}).  
 
 \subsection{Slope Limiters}
 \label{sec:slopeLimiters}
@@ -559,6 +559,7 @@ where we set $\text{tol}=10^{-2}$, we replace the modal expansion in Eq.~\eqref{
 \end{equation}
 We limit all the fields in $\bcM$ if the difference in any of the coefficients exceeds the tolerance.  
 This limiting procedure locally destroys the high-order accuracy of the DG method, but leads to non-oscillatory evolution when sharp features are present in the solution.  
+(In our implementation we apply the limiting to characteristic variables, using the eigenvectors given in Appendix~\ref{sec:eigenstructure}, which gives somewhat better results near discontinuities.)
 
 The limiting procedure described here operates on the coefficients of the modal expansion of $\bcM$, not that of $\sqrt{\gamma}\bcM$.  
 As a consequence, the average $\langle\bcM\rangle_{\bK}$ is preserved in the limiting process, and not the average given in Eq.~\eqref{eq:conservedCellAverage}, which defines the conserved quantities governed by the two-moment model in curvilinear coordinates.  
@@ -574,12 +575,48 @@ subject to the constraint
 \end{equation}
 This linear equality-constrained least squares problem can be solved, e.g., using LAPACK's DGGLSE subroutine.  
 
+\ee{Discuss discontinuity detection using Harten's sub-cell resolution method.}
+
 \subsection{Positivity Limiters}
 \label{sec:positivityLimiters}
 
 When solving the moment equations, we need to prevent non-physical states from developing.  
 In particular, from the definition of the moments in Eq.~\eqref{eq:angularMoments}, it is easy to show that a positive distribution function implies a positive density $\cJ>0$ and a limited flux density $\cJ-|\bcH|>0$.  
 Failure in maintaining these bounds can lead to an ill-posed closure problem and loss of hyperbolicity for the moment equations.  
+In order to maintain these bounds we adopt the framework of \citet{ZS2010b}, developed for the Euler equations of gas dynamics \citep[see also][]{ZS2010a,ZS2011,OHF2012}.  
+The full details of the application of this framework to the multi-dimensional two-moment method for radiation transfer will be presented elsewhere \citep{endeveHauck_2017}.  
+We give only a brief description here.  
+The bound-preserving methodology introduces the realizable set
+\begin{equation}
+  \cR=\big\{\bcM=\big(\cJ,\bcH\big)^{\mbox{\tiny T}}~|~\cJ\ge\epsilon\quad\text{and}\quad\gamma(\bcM)=\cJ-|\bcH|\ge\epsilon\big\},
+  \label{eq:realizableSet}
+\end{equation}
+where $\epsilon$ is an arbitrarily small positive parameter.  
+The realizable set in Eq.~\eqref{eq:realizableSet} is a convex cone \citep{OHF2012}.  
+Key to the \emph{realizability-preserving} (RP) scheme is to express the updated cell-averages of the moments as positive combinations of elements in $\cR$.  
+Realizability of the cell-average of the updated moments is then guaranteed by convexity arguments.  
+Sufficient conditions include: (i) the polynomial representation of the moments are realizable in a finite set of quadrature points in each element $\bK$, and (ii) the timestep $\dt$ is restricted by a CFL-like condition, which is somewhat stricter than that required for stability.  
+
+Since the RP scheme only guarantees realizability of the cell-averages, polynomial limiting is needed after each timestep (and after each stage in the Runge-Kutta method) to enforce realizability in the quadrature points.  
+This limiting procedure is similar to that described by \citet{ZS2010a} for the Euler equations \citep[see also][]{liuOsher_1996}, and consists of two steps.  
+First, if $\cJ<\epsilon$ for any of the quadrature points, we replace $\cJ_{\DG}\to\widehat{\cJ}_{\DG}$, where the new polynomial representation is given by
+\begin{equation}
+  \widehat{\cJ}_{\DG}=\theta_{1}\,\cJ_{\DG}+(1-\theta_{1})\,\cJ_{\bK},
+\end{equation}
+where
+\begin{equation}
+  \theta_{1}=\min\Big\{1,\f{\cJ_{\bK}-\epsilon}{\cJ_{\bK}-\cJ_{\mbox{\tiny min}}}\Big\},
+\end{equation}
+and $\cJ_{\mbox{\tiny min}}$ is the minimum density in all the quadrature points.  
+(Note that the limiting procedure is conservative, since it leaves the cell average unchanged.)  
+In the second step, we let $\widehat{\bcM}_{\DG}=(\widehat{\cJ}_{\DG},\bcH_{\DG})^{\mbox{\tiny T}}$.  
+Then, if $\widehat{\bcM}_{\DG}$ lies outside $\cR$ for any quadrature point (i.e., $\gamma(\widehat{\bcM}_{\DG})<\epsilon$), there exists an intersection point of the straight line connecting $\bcM_{\bK}\in\cR$ and $\widehat{\bcM}_{\DG}$ evaluated in the troubled quadrature point (denoted $\widehat{\bcM}_{q}$), and the surface of $\cR$.  
+Any point on this line is given by the convex combination $\bs_{q}(\xi)=(1-\xi)\,\bcM_{\bK}+\xi\,\widehat{\bcM}_{q}$, where $\xi\in[0,1]$, and the intersection point is obtained by solving the equation $\gamma(\bs_{q}(\xi))=\epsilon$ for $\xi$.  
+We then replace the polynomial representation $\widehat{\bcM}_{\DG}\to\widetilde{\bcM}_{\DG}$, where
+\begin{equation}
+  \widetilde{\bcM}_{\DG}=\theta_{2}\,\widehat{\bcM}_{\DG}+(1-\theta_{2})\,\bcM_{\DG},
+\end{equation}
+and $\theta_{2}$ is the smallest $\xi$ obtained in the element by considering all the troubled quadrature points.  
 
 \section{Neutrino Opacities}
 \label{sec:opacities}
@@ -828,7 +865,7 @@ R^{in/out}_{NES}(\omega, \omega^{\prime}, \cos\theta, \bU) & = \sum_{l=0}^{1} \d
 & \approx \dfrac{1}{2}\Phi_{0,NES}^{in/out}(\omega,\omega^{\prime}, \bU) + \dfrac{3}{2}\Phi^{in/out}_{1,NES}(\omega,\omega^{\prime}, \bU)\cos\theta
 \end{align}
 
-\section{Benchmark Problems}
+\section{Basic Benchmark Problems}
 
 We benchmark the DG implementation against a series of test problems.  
 We will vary the degree $k$ of the polynomial representation used in DG method from 0 to 3, which we then denote DG($k$).  
@@ -1056,7 +1093,74 @@ Results are plotted in Figure~\ref{fig:homogeneousSphere1D}.
 
 \subsection{Milne's Problem}
 
-\section{Mini-app: Transport Problems with Tabulated Neutrino Opacities}
+The Milne problem \citep[see, e.g.,][for details]{hummerRybicki_1971} considers isotropic radiation emanating from a source with radius $r=R_{\mbox{\tiny min}}$, propagating through a purely (elastic) scattering atmosphere with an outer boundary at $r=R_{\mbox{\tiny max}}$.  
+Thus, the absorption opacity is zero $\tilde{\chi}=0$, and the scattering opacity is given by a power law in radius
+\begin{equation}
+  \sigma=r^{-n}.  
+  \label{eq:opacityMilne}
+\end{equation}
+\citet{hummerRybicki_1971} computed steady-state solutions for $n=3/2$, $2$, and $3$, and different values of $R_{\mbox{\tiny max}}$ by solving the radiative transfer equation.  
+Here we compare results obtained with the two-moment model with solutions given by \citet{hummerRybicki_1971}.  
+
+With the scattering opacity in Eq.~\eqref{eq:opacityMilne}, the optical depth at radius $r$ is given by
+\begin{equation}
+  \tau(r)=\f{1}{n-1}\big[\,1/r^{n-1}-1/R_{\mbox{\tiny max}}^{n-1}\,\big].
+\end{equation}
+\citet{hummerRybicki_1971} also provide asymptotic solutions for the energy density in the optically thick and thin regimes, which we use to set initial values and boundary conditions when solving the two-moment equations.  
+In the optically thick regime (large $\tau$), the asymptotic value for the energy density is
+\begin{equation}
+  \cJ_{\mbox{\tiny thick}}(r)
+  =\f{3}{r^{2}}\,\Big(\,\f{n-1}{n+1}\,\Big)\,[\,\tau+K\,], 
+  \label{eq:MilneThick}
+\end{equation}
+where $K$ is a constant.  
+In the optically thin regime (small $\tau$), the asymptotic value is
+\begin{equation}
+  \cJ_{\mbox{\tiny thin}}(r)
+  =\f{1}{r^{2}}\,[\,1+\tau\,].  
+\end{equation}
+Our initial condition for the energy density is then set as
+\begin{equation}
+  \cJ_{0}(r)
+  =(1-e^{-\tau(r)})\,\cJ_{\mbox{\tiny thick}}(r)+e^{-\tau(r)}\,\cJ_{\mbox{\tiny thin}}(r),
+\end{equation}
+while the initial momentum density is set as $\cH_{r,0}(r)=1/r^{2}$.  
+These expressions are also used to set boundary conditions, which are held fixed during the computations.  
+(We use solutions provided by \citet{hummerRybicki_1971} in the thick regime to determine values for the constant $K$ in Eq.~\eqref{eq:MilneThick}.)
+With the specified initial and boundary conditions, we evolve the moment equations until a steady state is reached.  
+
+\begin{figure}
+  \begin{center}
+    \begin{tabular}{cc}
+      \includegraphics[scale=0.4]{./Figures/MilneProblem1D_n20.png} &
+      \includegraphics[scale=0.4]{./Figures/MilneProblem1D_n20_EddingtonFactors.png} \\
+      \includegraphics[scale=0.4]{./Figures/MilneProblem1D_n15.png} &
+      \includegraphics[scale=0.4]{./Figures/MilneProblem1D_n30.png}
+    \end{tabular}
+  \end{center}
+  \caption{Results of the Milne problem obtained with the two-moment model (solid lines), obtained with the DG(2)+SIRK2 scheme, compared with solutions provided by \citep{hummerRybicki_1971} (boxes).  See text for details.}
+  \label{fig:milneProblem1D}
+\end{figure}
+
+Results for various combinations of $n$ and $R_{\mbox{\tiny max}}$, obtained with the DG2+SIRK2 scheme, are plotted in Figure~\ref{fig:milneProblem1D}.  
+The radius of the inner boundary is $R_{\mbox{\tiny min}}=0.01$ in all the models.  
+We use 64 elements for the models with $R_{\mbox{\tiny max}}=0.1$, and 128 elements for the models with $R_{\mbox{\tiny max}}=10$, $30$, and $100$.  
+The size of the innermost (smallest) element is $\Delta r=10^{-3}$, which increases geometrically with radius.  
+
+In the upper left panel in Figure~\ref{fig:milneProblem1D}, we plot $\cJ\times r^{2}$ versus radius for $n=2$, where $R_{\mbox{\tiny max}}=0.1$ (solid black lines) and $R_{\mbox{\tiny max}}=30$ (solid blue lines).  
+These results are compared with solutions given by \citet{hummerRybicki_1971} (black and blue boxes).  
+We also plot the asymptotic values in the thick regime (dashed lines), while the radius where $\tau=1$ is indicated with dotted vertical lines.  
+The the two lower panels show similar results using different values of $n$ and $R_{\mbox{\tiny max}}$.  
+In the lower left panel we plot results for $n=3/2$, with $R_{\mbox{\tiny max}}=0.1$ (black lines) and $R_{\mbox{\tiny max}}=100$.  
+In the lower right panel we plot results for $n=3$, with $R_{\mbox{\tiny max}}=0.1$ (black lines) and $R_{\mbox{\tiny max}}=10$.  
+In the upper right panel we plot flux factors ($\cH_{r}/\cJ$, black lines) and Eddington factors ($\psi$, blue lines) for a model with $n=2$ and $R_{\mbox{\tiny max}}=10$, and compare with results given \citet{hummerRybicki_1971} (their Table~I; boxes).  
+For this model, we computed results with the Minerbo closure (cf. Eq.~\eqref{eq:eddingtonFactor}; solid lines) and the Levermore closure (cf. Eq.~\eqref{eq:eddingtonFactorLevermore}; dashed lines).  
+As can be seen, there is very little difference between the closure methods, but the results obtained with the Levermore closure are somewhat closer to the results given by \citet{hummerRybicki_1971}.  
+
+Overall, there is quite good agreement between the results obtained with the two-moment model and the transport solutions of \citet{hummerRybicki_1971} when $R_{\mbox{\tiny max}}/R_{\mbox{\tiny min}}=10$.  
+For larger values of this ratio, the agreement is worse, but seems to improve with increasing value of the index $n$ (cf. the blue lines in the lower two panels in Figure~\ref{fig:milneProblem1D}).  
+
+\section{Transport Problems with Tabulated Neutrino Opacities}
 
 For the tests in this section we employ the tabulated opacities described in Section~\ref{sec:opacities}.  
 We present two tests from the previous section (the homogeneous sphere and spherical diffusion problems), where the background is kept fixed.  
@@ -1120,7 +1224,51 @@ Once $Y_{e}^{n+1}$ and $\epsilon^{n+1}$ are obtained, the radiation density is o
   \label{eq:momentEquationMomentumEmAbDiscrete}
 \end{equation}
 
-\subsubsection{Neutrino-Electron Scattering}
+\subsubsection{Neutrino-Electron Scattering (NES)}
+
+When NES is included the internal energy of the fluid evolves according to
+\begin{align}
+  \rho\,d_{t}\epsilon
+  &=-\int_{\bbR^{+}}\int_{\bbR^{+}}\big(4\pi-\cJ(\epsilonNu)\big)R^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')\,dV_{\epsilonNu'}\,\epsilonNu\,dV_{\epsilonNu} \\
+  &\hspace{12pt}
+  +\int_{\bbR^{+}}\int_{\bbR^{+}}\cJ(\epsilonNu)\,R^{\Out}(\epsilonNu,\epsilonNu')\,\big(4\pi-\cJ(\epsilonNu)\big)\,dV_{\epsilonNu'}\,\epsilonNu\,dV_{\epsilonNu}.  
+\end{align}
+With the semi-implicit approximation (evaluating the NES scattering rates using fluid properties at $t^{n}$), the neutrino number density can be solved for without iterative coupling to the thermodynamic state of the fluid.  
+We first define the solution vector $\bcJ=(\cJ_{1},\ldots,\cJ_{M^{\epsilonNu}})^{\mbox{\tiny T}}$, and solve the nonlinear system of equations
+\begin{equation}
+  \bF(\bcJ^{n+1})=0
+  \label{eq:NonlinearSystemNES}
+\end{equation}
+using Newton's method.  
+Here, the $j$th component of the nonlinear system of equations is given by
+\begin{equation}
+  F_{j}(\bcJ^{n+1})
+  =\big(\cJ_{j}^{n+1}-\cJ_{j}^{n}\big)
+  -\dt\,\Big\{\,
+    \big(4\pi-\cJ_{j}^{n+1}\big)\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\In,n}\,\cJ_{k}^{n+1}
+    -\cJ_{j}^{n+1}\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\Out,n}\,\big(4\pi-\cJ_{k}^{n+1}\big)\,\Big\},
+\end{equation}
+and the Jacobian matrix is
+\begin{align}
+  \pderiv{\bF}{\bcJ}
+  =\pderiv{F_{j}}{\cJ_{k}}
+  &=\delta_{jk}\,\Big(1+\dt\,\Big\{\sum_{l=1}^{M^{\epsilonNu}}W_{l}^{(2)}\,R_{jl}^{\In,n}\,\cJ_{l}
+  +\sum_{l=1}^{M^{\epsilonNu}}W_{l}^{(2)}\,R_{jl}^{\Out,n}\,\big(4\pi-\cJ_{l}\big)\Big\}\Big) \nonumber \\
+  &\hspace{12pt}
+  -\dt\,\Big\{\big(4\pi-\cJ_{j}\big)\,W_{k}^{(2)}\,R_{jk}^{\In,n}+\cJ_{j}\,W_{k}^{(2)}\,R_{jk}^{\Out,n}\Big\}.
+\end{align}
+When Eq.~\eqref{eq:NonlinearSystemNES} is converged to give $\bcJ^{n+1}$, the fluid energy density is updated as
+\begin{align}
+  \epsilon^{n+1}
+  &=\epsilon^{n}-\f{\dt}{\rho}
+  \Big\{\,
+    \sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(3)}\big(4\pi-\cJ_{j}^{n+1}\big)
+    \sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\In,n}\,\cJ_{k}^{n+1} \nonumber \\
+    &\hspace{56pt}
+    -\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(3)}\,\cJ_{j}^{n+1}
+    \sum_{k=1}^{M^{\epsilonNu}}W^{(2)}\,R_{jk}^{\Out,n}\,\big(4\pi-\cJ_{k}^{n+1}\big)
+  \,\Big\}.
+\end{align}
 
 \subsubsection{Full Interaction Set}
 
@@ -1157,6 +1305,38 @@ Once $Y_{e}^{n+1}$ and $\epsilon^{n+1}$ are obtained, the radiation density is o
 
 \subsection{Relaxation}
 
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.75\textwidth]{./Figures/RelaxationEmissionAbsorption_Spectra_ModelA}
+  \end{center}
+  \caption{Results from solving an emission/absorption relaxation problem with initial material properties given by Model A in Table~\ref{tab:tabulatedModels}.  
+  The neutrino energy spectrum is plotted for various times as the radiation field approaches equilibrium.}
+  \label{fig:RelaxationEmissionAbsorption}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.85\textwidth]{./Figures/RelaxationNES_Spectra.png}
+    \begin{tabular}{cc}
+      \includegraphics[width=0.475\textwidth]{./Figures/RelaxationNES_DensitiesVsTime.png} &
+      \includegraphics[width=0.475\textwidth]{./Figures/RelaxationNES_EnergiesVsTime.png}
+    \end{tabular}
+  \end{center}
+  \caption{Results from solving an NES relaxation problem with initial material properties given by Model C in Table~\ref{tab:tabulatedModels}.}
+  \label{fig:RelaxationNES}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+    \begin{tabular}{cc}
+      \includegraphics[width=0.475\textwidth]{./Figures/RelaxationNES_DensitiesVsTime_Timestep.png} &
+      \includegraphics[width=0.475\textwidth]{./Figures/RelaxationNES_EnergiesVsTime_Timestep.png}
+    \end{tabular}
+  \end{center}
+  \caption{Results from the NES relaxation problem with initial material properties given by Model C in Table~\ref{tab:tabulatedModels}, where the timestep $\dt$ has been set to $10^{-5}$~ms (solid lines), $10^{-4}$~ms (dashed lines), and $10^{-3}$~ms (dotted lines).  In the left panel we plot the occupation density versus time for $\epsilonNu=11.2$~MeV (red lines) and $\epsilonNu=97.5$~MeV (blue lines).  In the right panel we plot the fluid energy versus time.}
+  \label{fig:RelaxationNES_Timestep}
+\end{figure}
+
 \subsection{Deleptonization}
 
 We conclude with a problem mimicking the deleptonization of a collapsed stellar core.  
@@ -1189,6 +1369,70 @@ With these parameters, the density profile given by Eqs~\eqref{eq:densityProfile
   The density profile from a full physics core-collapse supernova simulation at $100$~ms after core bounce is also plotted (solid red line).  }
   \label{fig:analyticDensityProfile}
 \end{figure}
+
+\begin{figure}
+  \begin{center}
+	\includegraphics[width=.85\textwidth]{./Figures/DeleptonizationProblem1D_ElectronFraction.png}
+	\begin{tabular}{cc}
+	  \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_Temperature.png} &
+	  \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_EntropyPerBaryon.png}
+	\end{tabular}
+  \end{center}
+  \caption{Fluid quantities from the deleptonization problem.  Plotted versus radius for various times are electron fraction (top), temperature (bottom left), and entropy per baryon (bottom right).}
+  \label{fig:}
+\end{figure}
+
+\begin{equation}
+  J=\int_{\bbR^{+}}\cJ\,dV_{\epsilonNu}
+\end{equation}
+
+\begin{equation}
+  f_{r}=\f{1}{J}\int_{\bbR^{+}}\cH_{r}\,dV_{\epsilonNu}
+\end{equation}
+
+\begin{equation}
+  \bar{\epsilonNu}=\f{1}{J}\int_{\bbR^{+}}\cJ\,\epsilonNu\,dV_{\epsilonNu}
+\end{equation}
+
+\begin{equation}
+  L_{r}=4\pi\,r^{2}\,\int_{\bbR^{+}}\cH_{r}\,\epsilonNu\,dV_{\epsilonNu}
+\end{equation}
+
+\begin{figure}
+  \begin{center}
+    \begin{tabular}{cc}
+      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_NumberDensity.png} &
+      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_FluxFactor.png} \\
+      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_MeanEnergy.png} &
+      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_Luminosity.png}
+    \end{tabular}
+  \end{center}
+  \caption{Radiation quantities from the deleptonization problem.  Plotted versus radius for various times are neutrino number density (top left), flux factor (top right), mean energy (bottom left), and luminosity (bottom right).}
+  \label{fig:}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+      \includegraphics[scale=0.78]{./Figures/DeleptonizationProblem1D_Spectra.png}
+  \end{center}
+  \caption{Neutrino energy spectra at various radii for $t=100$~ms (solid lines).  The dashed lines represent equilibrium spectra, computed using local thermodynamic conditions.}
+  \label{fig:}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+    \begin{tabular}{cc}
+      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_ElectronFraction_SpatialResolution.png} &
+      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_MeanEnergy_SpatialResolution.png} \\
+      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_ElectronFraction_SpectralResolution.png} &
+      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_MeanEnergy_SpectralResolution.png}
+    \end{tabular}
+  \end{center}
+  \caption{Results for the deleptonization problem where the spatial and spectral resolution has been varied: the electron fraction (left panels) and mean energy (right panel) are plotted versus radius for $t=100$~ms.}
+  \label{fig:}
+\end{figure}
+
+\section{Miniapp: Collapse of Stellar Iron Core}
 
 \bibliographystyle{apj}
 \bibliography{../References/references.bib}
