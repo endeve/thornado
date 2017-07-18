@@ -43,6 +43,10 @@ CONTAINS
 
         CALL ApplyBC_Fluid_X1_HydrostaticPolytrope1D
 
+      CASE ( 'HomologousCollapse1D' )
+
+        CALL ApplyBC_Fluid_X1_HomologousCollapse1D
+
       CASE ( 'EvrardsCollapse1D' )
 
         CALL ApplyBC_Fluid_X1_EvrardsCollapse1D
@@ -175,6 +179,111 @@ CONTAINS
     END DO
 
   END SUBROUTINE ApplyBC_Fluid_X1_HydrostaticPolytrope1D
+
+
+  SUBROUTINE ApplyBC_Fluid_X1_HomologousCollapse1D
+
+    INTEGER  :: iX2, iX3
+    INTEGER  :: iNodeX1, jNodeX1, iNodeX2, iNodeX3
+    INTEGER  :: iNodeX, jNodeX
+    INTEGER  :: iCF, iPF, iAF
+    REAL(DP) :: Kappa, Gamma
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+
+        ! --- Inner Boundary (Reflecting) ---
+
+        DO iNodeX3 = 1, nNodesX(3)
+          DO iNodeX2 = 1, nNodesX(2)
+            DO iNodeX1 = 1, nNodesX(1)
+
+              jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+
+              iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+              jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+
+              ! -- Conserved --
+
+              DO iCF = 1, nCF
+
+                uCF(iNodeX,0,iX2,iX3,iCF) &
+                  = uCF(jNodeX,1,iX2,iX3,iCF)
+
+              END DO
+
+              uCF(iNodeX,0,iX2,iX3,iCF_S1) &
+                = - uCF(jNodeX,1,iX2,iX3,iCF_S1)
+
+              ! -- Primitive --
+
+              DO iPF = 1, nPF
+
+                uPF(iNodeX,0,iX2,iX3,iPF) &
+                  = uPF(jNodeX,1,iX2,iX3,iPF)
+
+              END DO
+
+              uPF(iNodeX,0,iX2,iX3,iPF_V1) &
+                = - uPF(jNodeX,1,iX2,iX3,iPF_V1)
+
+              ! -- Auxiliary --
+
+              DO iAF = 1, nAF
+
+                uAF(iNodeX,0,iX2,iX3,iAF) &
+                  = uAF(jNodeX,1,iX2,iX3,iAF)
+
+              END DO
+
+            END DO
+          END DO
+        END DO
+
+        ! --- Outer Boundary (Dirichlet) ---
+
+        Gamma = 4.0_DP / 3.0_DP
+        Kappa = 1.0_DP / Gamma
+
+        DO iNodeX3 = 1, nNodesX(3)
+          DO iNodeX2 = 1, nNodesX(2)
+            DO iNodeX1 = 1, nNodesX(1)
+
+              iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+              uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_D)  &
+                = 1.0d-6
+              uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_V1) &
+                = 0.0_DP
+              uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_V2) &
+                = 0.0_DP
+              uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_V3) &
+                = 0.0_DP
+              uAF(iNodeX,nX(1)+1,iX2,iX3,iAF_P)  &
+                = Kappa * uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_D)**Gamma
+
+            END DO
+          END DO
+        END DO
+
+        CALL ComputeInternalEnergyDensityFromPressure &
+               ( uPF(:,nX(1)+1,iX2,iX3,iPF_D),  uAF(:,nX(1)+1,iX2,iX3,iAF_P), &
+                 uAF(:,nX(1)+1,iX2,iX3,iAF_Ye), uPF(:,nX(1)+1,iX2,iX3,iPF_E) )
+
+        CALL ComputeAuxiliary_Fluid &
+               ( uPF(:,nX(1)+1,iX2,iX3,iPF_D),  uPF(:,nX(1)+1,iX2,iX3,iPF_E),  &
+                 uPF(:,nX(1)+1,iX2,iX3,iPF_Ne), uAF(:,nX(1)+1,iX2,iX3,iAF_P),  &
+                 uAF(:,nX(1)+1,iX2,iX3,iAF_T),  uAF(:,nX(1)+1,iX2,iX3,iAF_Ye), &
+                 uAF(:,nX(1)+1,iX2,iX3,iAF_S),  uAF(:,nX(1)+1,iX2,iX3,iAF_E),  &
+                 uAF(:,nX(1)+1,iX2,iX3,iAF_Gm), uAF(:,nX(1)+1,iX2,iX3,iAF_Cs) )
+
+        CALL ComputeConserved &
+               ( uPF(:,nX(1)+1,iX2,iX3,1:nPF), uCF(:,nX(1)+1,iX2,iX3,1:nCF) )
+
+      END DO
+    END DO
+
+  END SUBROUTINE ApplyBC_Fluid_X1_HomologousCollapse1D
 
 
   SUBROUTINE ApplyBC_Fluid_X1_EvrardsCollapse1D
@@ -349,6 +458,10 @@ CONTAINS
       CASE ( 'GaussianSphericalDiffusion1D' )
 
         CALL ApplyBC_Radiation_X1_OutflowSphericalSymmetry
+
+      CASE ( 'MilneProblem1D' )
+
+        ! --- Set during Initialization ---
 
       CASE ( 'DeleptonizationProblem1D' )
 
