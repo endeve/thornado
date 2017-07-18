@@ -1,17 +1,14 @@
 PROGRAM HomogeneousSphere1D
 
   USE KindModule, ONLY: &
-    DP
-  USE UnitsModule, ONLY: &
-    Centimeter, &
-    Kilometer, &
-    Gram, &
-    Second, &
-    Microsecond, &
-    Erg
+    DP, Pi
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
+  USE GravitySolutionModule, ONLY: &
+    SolveGravity
+  USE InputOutputModule, ONLY: &
+    WriteFields1D
   USE GravityProblemsInitializationModule, ONLY: &
     InitializeHomogeneousSphere
 
@@ -29,13 +26,21 @@ PROGRAM HomogeneousSphere1D
            xL_Option &
              = [ 0.0_DP, 0.0_DP, 0.0_DP ], &
            xR_Option &
-             = [ 1.0_DP, 1.0_DP, 1.0_DP ], &
+             = [ 2.0_DP, Pi,     4.0_DP ], &
            nNodes_Option &
-             = 2, &
+             = 3, &
            CoordinateSystem_Option &
-             = 'SPHERICAL' )
+             = 'SPHERICAL', &
+           GravitySolver_Option &
+             = 'Newtonian_Poseidon' )
 
-  CALL InitializeHomogeneousSphere
+  CALL InitializeHomogeneousSphere &
+         ( SphereRadius_Option = 1.0_DP )
+
+  CALL SolveGravity
+
+  CALL WriteFields1D &
+         ( Time = 0.0_DP, WriteGeometryFields_Option = .TRUE. )
 
   CALL FinalizeProgram
 
