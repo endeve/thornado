@@ -381,7 +381,33 @@ To solve Poisson's equation given by Eq.~\eqref{eq:poisson}, we use the finite e
 
 \subsection{Smooth Problem: Linear Waves}
 
+\subsubsection{Entropy Waves (Accuracy Test)}
+
+\begin{table}
+  \begin{center}
+  \caption{$L^{\infty}$ error and convergence rates for the entropy wave problem.}
+  \label{tab:streamingSineWave}
+  \begin{tabular}{ccccccccc}
+    & \multicolumn{4}{c}{SSP-RK2} & \multicolumn{4}{c}{SSP-RK3} \\
+    \cmidrule(r){2-5} \cmidrule(r){6-9}
+    $N$ & DG(1) & Rate & DG(2) & Rate & DG(2) & Rate & DG(3) & Rate \\
+    \midrule \midrule
+    8     & $x.xxx\times10^{-x}$ & ---  & $x.xxx\times10^{-x}$ & ---  & $x.xxx\times10^{-x}$ & ---  & $x.xxx\times10^{-x}$  & --- \\
+    16   & $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx \\
+    32   & $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx \\
+    64   & $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx \\
+    128 & $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx \\
+    256 & $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx& $x.xxx\times10^{-x}$ &x.xx \\
+    \midrule \midrule
+  \end{tabular}
+  \end{center}
+\end{table}
+
+\subsubsection{Sound Waves}
+
 \subsection{Riemann Problems}
+
+\subsubsection{Shock Tube}
 
 \begin{figure}[h]
   \begin{center}
@@ -431,6 +457,8 @@ To solve Poisson's equation given by Eq.~\eqref{eq:poisson}, we use the finite e
 \subsubsection{Homogeneous Sphere}
 
 \subsubsection{Hydrostatic Polytrope}
+
+\subsubsection{Homologous Collapse}
 
 \subsubsection{Evrard's Collapse Test}
 
