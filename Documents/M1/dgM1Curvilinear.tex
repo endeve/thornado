@@ -630,13 +630,15 @@ The absorption opacity of neutrino $\tilde{\chi}(\epsilonNu,\bU)$
   \tilde{\chi}(\epsilonNu,\bU) = \chi(\epsilonNu,\bU) + \eta(\epsilonNu,\bU), 
 \end{equation}
  is the sum of the neutrino emissivity $\eta(\epsilonNu,\bU) $ and the neutrino absorptivity  $ \chi(\epsilonNu,\bU)$. The scattering opacities $\sigma(\epsilonNu,\bU)$ contains isoenergetic scattering opacities, neutrino-electron scattering opacities and have a integral form in the Boltzmann equation: if we include emission, absorption, isoenergetic scattering of neutrino by nucleons and nuclei, and neutrino electron scattering, the simplified Boltzmann equation is
+
+ 
 \begin{align}
-\dfrac{1}{c}\dfrac{\partial f(\epsilonNu,\bU)}{\partial t} = 
+\dfrac{1}{c}\dfrac{\partial f(\omegaNu,\epsilonNu,\bx,t)}{\partial t} = 
 &  \eta(\epsilonNu,\bU) - \tilde{\chi}(\epsilonNu,\bU)f(\epsilonNu,\bU) \nonumber \\
-& + \dfrac{1}{c(hc)^3} \epsilonNu^2 \int d\mu^\prime_0 R_{IS}( \mu^\prime_0, \mu_0,\epsilonNu, \bU) f(\mu^\prime_0, \epsilonNu,\bU) \nonumber \\
-& - \dfrac{1}{c(hc)^3} \epsilonNu^2 f(\epsilonNu,\bU)\int d\mu^\prime_0 R_{IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) \nonumber \\
-& + \dfrac{1}{c(hc)^3} [1- f(\epsilonNu,\bU)] \int d\epsilonNu^{\prime} \epsilonNu^{\prime 2} \int d\mu^\prime_0 R^{in}_{NES} (\mu_0,\mu^\prime_0,\epsilonNu,\epsilonNu^{\prime} )f(\mu^\prime_0,\epsilonNu^{\prime} ) \nonumber \\
-& - \dfrac{1}{c(hc)^3} f(\epsilonNu,\bU) \int d\epsilonNu^{\prime} \epsilonNu^{\prime 2} \int d\mu^\prime R^{out}_{NES} (\mu_0,\mu^\prime_0,\epsilonNu,\epsilonNu^{\prime} ) [1-f(\mu^\prime_0,\epsilonNu^{\prime} )] .
+& + \dfrac{1}{c(hc)^3} \epsilonNu^2 \int d\mu^\prime_0 R_{\IS}( \mu^\prime_0, \mu_0,\epsilonNu, \bU) f(\mu^\prime_0, \epsilonNu,\bU) \nonumber \\
+& - \dfrac{1}{c(hc)^3} \epsilonNu^2 f(\omegaNu,\epsilonNu,\bx,t)\int d\mu^\prime_0 R_{\IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) \nonumber \\
+& + \dfrac{1}{c(hc)^3} [1- f(\omegaNu,\epsilonNu,\bx,t)] \int d\epsilonNu^{\prime} \epsilonNu^{\prime 2} \int d\mu^\prime_0 R^{\In}_{\NES} (\mu_0,\mu^\prime_0,\epsilonNu,\epsilonNu^{\prime} )f(\mu^\prime_0,\epsilonNu^{\prime} ) \nonumber \\
+& - \dfrac{1}{c(hc)^3} f(\omegaNu,\epsilonNu,\bx,t) \int d\epsilonNu^{\prime} \epsilonNu^{\prime 2} \int d\mu^\prime R^{\Out}_{\NES} (\mu_0,\mu^\prime_0,\epsilonNu,\epsilonNu^{\prime} ) [1-f(\mu^\prime_0,\epsilonNu^{\prime} )].
 \end{align}
 
 The third and fourth terms are contributions from isoenergetic scattering of neutrino by nucleons and nuclei. The last two terms are contributions from neutrino-electron scattering. 
@@ -662,72 +664,12 @@ Therefore,
 \chi = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T} (\eta_{nucleon} + \eta_{nuclear} ) = \chi_{nucleon} + \chi_{nuclear}.
 \end{equation}
 
-The two terms of electron-neutrino absorption on nucleons are
-\begin{align}
-\chi_{nucleon}(\epsilonNu,\bU) & = \dfrac{G^2_F}{\pi} \eta_{np}(g_V^2+3g_A^2)[1-F_e(\varepsilon+Q)](\varepsilon+Q)^2[1-\dfrac{M^2_e}{(\varepsilon+Q)^2}]^{1/2} \label{eq:nucleonabsorption} ,\\
-\eta_{nucleon}(\epsilonNu,\bU) &= \dfrac{G^2_F}{\pi}\eta_{pn}(g_V^2+3g_A^2)F_e(\varepsilon+Q)(\varepsilon+Q)^2[1-\dfrac{M^2_e}{(\varepsilon+Q)^2}]^{1/2} \label{eq:nucleonemissivity} ,
-\end{align}
-and the two terms of electron-neutrino absorption on nuclear are
-\begin{align}
-\chi_{nuclear}(\epsilonNu,\bU) & = \dfrac{G^2_F}{\pi} n_A e^{(\mu_n -\mu_p -Q')/k_B T} g^2_A \dfrac{2}{7} N_p(Z) N_h(N)[1-F_e(\varepsilon+Q')](\varepsilon+Q')^2[1-\dfrac{M_e^2}{(\varepsilon+Q')^2}]^{1/2} \label{eq:nuclearabsorption} ,\\
-\eta_{nuclear}(\epsilonNu,\bU) &=\dfrac{G^2_F}{\pi} n_A g^2_A \dfrac{2}{7} N_p(Z) N_h(N)F_e(\varepsilon+Q')(\varepsilon+Q')^2[1-\dfrac{M_e^2}{(\varepsilon+Q')^2}]^{1/2} \label{eq:nuclearemissivity},
-\end{align} 
-where $g_V = 1$ and $g_A =1.23$ are form factors resulting from virtual strong-interaction processes, $M_e = 0.511$ MeV is the electron rest energy, $Q = 1.2935$ MeV is the difference between the neutron and proton rest energies, $\mu_n$ and $\mu_p$ are the neutron and proton chemical potential, respectively. And $Q'$ is defined by $Q' = \mu_n -\mu_p + \Delta$, where $\Delta=3$MeV is the energy of the $1f_{5/2}$ level above the ground state.  
-
-
-
-The factor $G^2_F$ in Eq.~\eqref{eq:nucleonabsorption}, ~\eqref{eq:nucleonemissivity}, ~\eqref{eq:nuclearabsorption} and ~\eqref{eq:nuclearemissivity} is the Fermi constant [$G=(1.015\pm 0.03)\time 10^5 M_p^{-2}$] with the value
-\begin{equation}
-G^2_F = \left[ \dfrac{1}{(\hbar c)^4} \right] G^2 = 5.18 \times 10^{-44} MeV^{-2}cm^2, 
-\end{equation}
-giving $\chi$ and $\eta$ the required units of $cm^{-1}$.
-
-In Eq.~\eqref{eq:nucleonabsorption}, ~\eqref{eq:nucleonemissivity}, ~\eqref{eq:nuclearabsorption} and ~\eqref{eq:nuclearemissivity}, $F_e(E)$ is the Fermi-Dirac distribution function:
-\begin{align}
-F_e(E) = \dfrac{1}{e^{(E-\mu_e)/k_B T} + 1},
-\end{align}
-where $\mu_e$ is the electron chemical potential.
-
-In Eq.~\eqref{eq:nucleonabsorption} and ~\eqref{eq:nucleonemissivity}, $\eta_{np}$ and $\eta_{pn}$ take into account the nucleon final-state blocking. 
-\begin{align}
-\eta_{pn} = \dfrac{2}{h^3 c^3} \int d^3 p F_p (E)[1-F_n(E)] = (n_n - n_p) \dfrac{1}{e^{(\mu_n^0 - \mu_p^0)/k_bT}-1},\\
-\eta_{np} = \dfrac{2}{h^3 c^3} \int d^3 p F_n (E)[1-F_p(E)] = (n_p - n_n) \dfrac{1}{e^{(\mu_p^0 - \mu_n^0)/k_bT}-1}.
-\end{align}
-
-The factors $\eta_{np}$ and $\eta_{pn}$ equal to $n_n$ and $n_p$, the nucleon number density, when the nucleons are non-degenerate, respectively.
-\begin{align}
-n_p & =  \dfrac{X_p \rho}{m_p} \\
-n_n & =  \dfrac{X_n \rho}{m_n},
-\end{align}
-where $X_p$ and $X_n$ are the proton and neutron fractions, respectively.
-
-In Eq.~\eqref{eq:nuclearabsorption} and ~\eqref{eq:nuclearemissivity}, $n_A$ is the nuclei number density and $n_A = \dfrac{\rho X_H}{m_B A}$. The function $N_p$ is the number of protons in the single-particle $1f_{7/2}$ level and $N_h$ is the number of neutron holes in the single-particle $1f_{5/2}$ level. As a crude estimate of $N_p$ and $N_h$, a zero-order shell model predicts that
-\[   
-N_p(Z) = 
-     \begin{cases}
-       0, &\quad Z<20\\
-       Z-20, &\quad 20<Z<28 \\
-       8, &\quad Z>28,\\
-     \end{cases}
-\]
-and
-\[   
-N_h(N) = 
-     \begin{cases}
-       6, &\quad N<34\\
-       40-N, &\quad 34<N<40 \\
-       0, &\quad N>40.\\
-     \end{cases}
-\]
-
-
-
-The sum of Eq.~\eqref{eq:nucleonabsorption}, ~\eqref{eq:nucleonemissivity}, ~\eqref{eq:nuclearabsorption} and ~\eqref{eq:nuclearemissivity} gives the explicit expression of the absorption opacity of neutrino $\chi(\epsilonNu,\bU)$ .
+The two terms of electron-neutrino absorption on nucleons $\chi_{nucleon}(\epsilonNu,\bU)$ and $\eta_{nucleon}(\epsilonNu,\bU)$ are given by Eq. (C13) and Eq. (C15) in \citet{bruenn_1985}  and the two terms of electron-neutrino absorption $\chi_{nuclear}(\epsilonNu,\bU)$ and $\eta_{nuclear}(\epsilonNu,\bU)$ on nuclear are given by Eq. (C29) and Eq. (C27) in \citet{bruenn_1985}. They all have units of $cm^{-1}$.
 
 \subsection{The isoenergetic scattering kernel}
-The isoenergetic scattering kernel $R_{IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU)$ has the following relation:
+The isoenergetic scattering kernel $R_{\IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU)$ has the following relation:
 \begin{align}
-R_{IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) & = R_{IS}^{nucleons}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) +  R_{IS}^{nuclei}(\mu_0, \mu^\prime_0, \epsilonNu,\bU),
+R_{\IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) & = R_{\IS}^{nucleons}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) +  R_{\IS}^{nuclei}(\mu_0, \mu^\prime_0, \epsilonNu,\bU),
 \end{align}
 where
 \begin{align}
@@ -735,134 +677,33 @@ where
 \end{align}
 and
 \begin{align}
-R_{IS}(\cos\theta, \epsilonNu, \bU) = R^{nucleons}(\cos\theta,\epsilonNu, \bU) + R^{nuclei}_{IS}(\cos\theta, \epsilonNu, \bU)
+R_{\IS}(\cos\theta, \epsilonNu, \bU) = R^{nucleons}(\cos\theta,\epsilonNu, \bU) + R^{nuclei}_{\IS}(\cos\theta, \epsilonNu, \bU)
 \end{align}
-where
-\begin{align}
-& R^{nucleons}_{IS} (\cos\theta,\epsilonNu, \bU) = \dfrac{(2\pi)^2 G_F^2}{h} \nonumber \\
-& \cdot \left\lbrace  \eta_{nn}\left[ (h^n_V)^2 + 3(h^n_A)^2\right] + \eta_{pp} \left[ (h^p_V)^2 + 3(h^p_A)^2\right] +\eta_{nn}\left[ (h^n_V)^2 - (h^n_A)^2\right]\cos\theta + \eta_{pp}\left[ (h^p_V)^2 - (h^p_A)^2\right]\cos\theta \right\rbrace 
-\end{align}
-and
-\begin{align}
-R^{nuclei}_{IS}(\cos\theta,\epsilonNu,\bU)  = \dfrac{(2\pi)^2 G_F^2}{h}\dfrac{\rho X_H}{m_B}A\left(  C_{V0} - \dfrac{1}{2}\dfrac{N-Z}{A} C_{V1}\right)^2(1+\cos\theta)e^{-4b\epsilonNu^2(1-\cos\theta)}.
-\end{align}
-$h^p_V$, $h^n_V$, $h^p_A$ and $h^n_A$, are the nucleon neutral current form factors arising from virtual strong-interaction processes: $h_V^p = \dfrac{1}{2} - 2 \sin^2\theta_W$, $h^n_V = - \dfrac{1}{2}$, $h_A^p = \dfrac{1}{2}g_A$, and $h^n_A = - \dfrac{1}{2} g_A$, where $\theta_W$ is the Weinberg angle. The constants, $C_{V0}$ and $C_{V1}$, are defined in terms of $h_V^p$ and $h_V^n$: $C_{V0} = \dfrac{1}{2}(h_V^p + h_V^n)$ and $C_{V1} = h_V^p - h_V^n$. The quantity $b$ is given by $b = 4.8 \times 10^{-6} A^{2/3}$. 
-
-The factors $\eta_{pp}$ and $\eta_{nn}$ account for the nucleon final-state blocking,
-\begin{align}
-\eta_{pp} = T \dfrac{\partial n_p}{\partial \mu_p} = n_p \dfrac{3T/2\epsilon^p_F}{[1+(3T/2\epsilon^p_F)^2]^{1/2}}, \\
-\eta_{nn} = T \dfrac{\partial n_n}{\partial \mu_n}=n_n \dfrac{3T/2\epsilon^n_F}{[1+(3T/2\epsilon^n_F)^2]^{1/2}},
-\end{align}
-where $\epsilon^p_F$ and $\epsilon^n_F$ are the proton and neutron Fermi energies, respectively,
-\begin{align}
-\epsilon^p_F = \dfrac{h^2}{8 \pi^2 m_B}(3\pi^2n_p)^{2/3},\\
-\epsilon^n_F = \dfrac{h^2}{8\pi^2m_B}(3\pi^2n_n)^{2/3}.
-\end{align}
-For nondegenerate, nonrelativistic nucleons, $\eta_{pp}$ and $\eta_{nn}$ are given by
-\begin{align}
-&\eta_{pp} = n_p \\
-&\eta_{nn} = n_n.
-\end{align}
+where $R^{nucleons}_{\IS} (\cos\theta,\epsilonNu, \bU)$ and $R^{nuclei}_{\IS}(\cos\theta,\epsilonNu,\bU)$ are given by Eq. (35) and Eq. (36) in \citet{mezzacappaBruenn_1993a}.
 
 Expanding the isoenergetic scattering kernel in the first two terms of a Legendre series yields
 \begin{align}
-R_{IS}(\omega, \omega, \cos\theta) \approx \dfrac{1}{2} \Phi_{0,IS}(\omega) + \dfrac{3}{2}\Phi_{1,IS}(\omega)\cos\theta
+R_{\IS}(\omega, \omega, \cos\theta) \approx \dfrac{1}{2} \Phi_{0,\IS}(\omega) + \dfrac{3}{2}\Phi_{1,\IS}(\omega)\cos\theta
 \end{align}
 
 \subsection{The neutrino-electron scattering kernel}
-Given by \citet{bruenn_1985}, for $\epsilonNu \neq \epsilonNu^\prime$, the neutrino-electron scattering kernels are written as
-\begin{align}
-    R^{out}_{NES}(\epsilonNu,\epsilonNu^\prime,\omega, \bU) = & R^{out}_{NES}(\epsilonNu,\epsilonNu^\prime,\mu_0,\mu^\prime_0,\phi_0, \bU) \nonumber \\
-     = &\dfrac{1}{2}\dfrac{1}{(2\pi)^3}\dfrac{\pi \sigma_0 c}{(m_e c^2)^2}\dfrac{1}{\epsilonNu, \epsilonNu^\prime} [ \beta_1I_1(\epsilonNu,\epsilonNu^\prime,\omega,\bU) + \beta_2I_2(\epsilonNu,\epsilonNu^\prime,\omega, \bU) \nonumber \\
-    & +  \beta_3I_3(\epsilonNu,\epsilonNu^\prime,\omega, \bU)] 
-\end{align}
-where $\beta_1 = (C_V + C_A)^2$, $\beta_2 = (C_V -C_A)^2$, $\beta_3 = C_A^2 - C_V^2$, $\sigma_0 = 1.746 \times 10^{-44} cm^{-2}$, and
-\begin{align}
-\omega = \mu_0 \mu_0^\prime + [(1-\mu_0^2)(1-\mu_0^{\prime 2})]^{1/2}\cos\phi_0
-\end{align}
-and where the function $I_{1,2,3}(\epsilonNu,\epsilonNu^\prime,\omega, \bU)$ are defined by 
-\begin{align}
-I_1(\epsilonNu, \epsilonNu^\prime, \omega, \bU) = & \dfrac{2\pi T \epsilonNu^2 \epsilonNu^{\prime 2}(1-\omega)^2}{\Delta^5} f_\gamma(\epsilonNu^\prime - \epsilonNu) \cdot \\
-& \left\lbrace  A T^2 [G_2(y_0)+2y_0G_1(y_0)+y_0^2G_0(y_0)] \right.\nonumber\\
-& + \left. BT[G_1(y_0)+y_0G_0(y_0)] + CG_0(y_0)\right\rbrace,
-\end{align}
-\begin{align}
-I_2(\epsilonNu, \epsilonNu^\prime, \omega, \bU)  = I_1(\epsilonNu \rightarrow -\epsilonNu^\prime, \epsilonNu^\prime\rightarrow -\epsilonNu, \omega, \bU) 
-\end{align}
-\begin{align}
-I_3(\epsilonNu, \epsilonNu^\prime, \omega, \bU)  = \dfrac{2\pi T \epsilonNu \epsilonNu^{\prime}(1-\omega)(m_ec^2)^2}{\Delta} f_\gamma(\epsilonNu^\prime - \epsilonNu) G_0(y_0)
-\end{align}
-with
-\begin{align}
-\Delta = (\epsilonNu^2 + \epsilonNu^{\prime 2} - 2\epsilonNu \epsilonNu^\prime
-\omega)^{1/2}
-\end{align}
-\begin{align}
-y_0 = \dfrac{1}{T}\left\lbrace - \dfrac{\epsilonNu -\epsilonNu^\prime}{2} + \dfrac{\Delta}{2} \left[1+\dfrac{2(m_e c^2)^2}{\epsilonNu \epsilonNu^\prime (1-\omega)}\right]^{1/2} \right\rbrace 
-\end{align}
-\begin{align}
-A &= \epsilonNu^2 + \epsilonNu^{\prime 2} + \epsilonNu \epsilonNu^\prime(3+\omega),\\
-B &= \epsilonNu \left[ 2\epsilonNu^2 + \epsilonNu \epsilonNu^\prime(3-\omega) - E^{\prime 2}_0(1+3\omega) \right] \\
-C &= \epsilonNu^2\left[ (\epsilonNu -\epsilonNu^\prime \omega)^2 - \dfrac{E^{\prime 2}_0 (1-\omega^2)}{2} - \dfrac{(1+\omega)(m_e c^2)^2 \Delta^2}{2(1-\omega)\epsilonNu^2} \right] 
-\end{align}
-\begin{align}
-f_{\gamma}(x) = \dfrac{1}{e^{x/T} - 1}
-\end{align}
-and the function $G_n(y)$ are defined in terms of Fermi integrals:
-\begin{align}
-G_n(y) = F_n(\eta^\prime - y) - F_n(\eta - y)
-\end{align}
-where
-\begin{align}
-\eta &= \dfrac{\mu_e}{T} \\
-\eta^\prime &= \eta - \dfrac{\epsilonNu - \epsilonNu^\prime}{T} \\
-F_n(\eta) &= \int_{0}^{\infty} \dfrac{x^n dx}{e^{x-\eta}+1}
-\end{align}
+The neutrino-electron scattering kernels are given by Eq.(9) and Eq.(28) in \citet{mezzacappaBruenn_1993c}.
 
-For $\epsilonNu = \epsilonNu^\prime$, the functions
-\begin{align}
-I_1(\epsilonNu, \epsilonNu^\prime, \omega, \bU) = I_1(\epsilonNu, \omega, \bU) &= \dfrac{2\pi T \epsilonNu^4 (1-\omega)^2}{\Delta^5}\cdot \\
-& \left\lbrace  A T^2 [2F_1(\eta -y_0)+2y_0F_0(\eta-y_0)+y_0^2F_{-1}(\eta-y_0)] \right.\nonumber\\
-& + \left. BT[F_0(\eta-y_0)+y_0F_{-1}(\eta-y_0)] + CF_{-1}(\eta-y_0)\right\rbrace,
-\end{align}
-\begin{align}
-I_2(\epsilonNu, \epsilonNu^\prime, \omega, \bU)  = I_2(\epsilonNu, \omega, \bU)&=I_1(\epsilonNu, \omega, \bU) 
-\end{align}
-\begin{align}
-I_3(\epsilonNu, \epsilonNu^\prime, \omega,\bU)  = I_3(\epsilonNu, \omega, \bU)=\dfrac{2\pi T \epsilonNu^2(1-\omega)(m_ec^2)^2}{\Delta}F_{-1}(\eta - y_0)
-\end{align}
-with
-\begin{align}
-\Delta = (\epsilonNu^2 + \epsilonNu^{\prime 2} - 2\epsilonNu \epsilonNu^\prime
-\omega)^{1/2} = \epsilonNu(2 - 2\omega)^{1/2}
-\end{align}
-\begin{align}
-y_0 = \dfrac{1}{T}\left\lbrace \dfrac{\Delta}{2} \left[1+\dfrac{2(m_e c^2)^2}{\epsilonNu^2 (1-\omega)}\right]^{1/2} \right\rbrace 
-\end{align}
-\begin{align}
-A &= \epsilonNu ^2(5+\omega),\\
-B &= \epsilonNu^3 (4-4\omega),\\
-C &= \epsilonNu^2\left[\dfrac{E^{2}_0 (1-\omega^2)}{2} - \dfrac{(1+\omega)(m_e c^2)^2 \Delta^2}{2(1-\omega)\epsilonNu^2} \right] 
-\end{align}
-\begin{align}
-F_{-1} (\eta) &= \dfrac{1}{e^{-\eta} + 1} 
-\end{align}
-
-Therefore, $R^{out}_{NES}(\epsilonNu,\epsilonNu^\prime, \omega)$ is known. 
+Therefore, $R^{\Out}_{\NES}(\epsilonNu,\epsilonNu^\prime, \omega)$ is known. 
     
 Expand the scattering kernel in a Legendre series:
 \begin{align}
-R^{out}_{NES}(\epsilonNu,\epsilonNu^\prime, \omega, \bU) = \sum_{l=0}^{\infty} \dfrac{2l+1}{2} R^{out}_{{NES}, l}(\epsilonNu,\epsilonNu^\prime, \bU) P_l(\omega),
+R^{\Out}_{\NES}(\epsilonNu,\epsilonNu^\prime, \omega, \bU) = \sum_{l=0}^{\infty} \dfrac{2l+1}{2} R^{\Out}_{{\NES}, l}(\epsilonNu,\epsilonNu^\prime, \bU) P_l(\omega),
 \end{align}
-where the Legendre coefficients $R^{out}_{{NES}, l}(\epsilonNu,\epsilonNu^\prime)$ are given by
+where the Legendre coefficients $R^{\Out}_{{\NES}, l}(\epsilonNu,\epsilonNu^\prime)$ are given by
 \begin{align}
-R^{out}_{{NES}, l}(\epsilonNu,\epsilonNu^\prime, \bU) = \int_{-1}^{1} d\omega P_l(\omega) R^{out}_{NES}(\epsilonNu,\epsilonNu^\prime, \omega, \bU).
+R^{\Out}_{{\NES}, l}(\epsilonNu,\epsilonNu^\prime, \bU) = \int_{-1}^{1} d\omega P_l(\omega) R^{\Out}_{\NES}(\epsilonNu,\epsilonNu^\prime, \omega, \bU).
 \end{align}
    
 Expanding the neutrino-electron scattering kernels in the first two terms of Legendre series yields
 \begin{align}
-R^{in/out}_{NES}(\omega, \omega^{\prime}, \cos\theta, \bU) & = \sum_{l=0}^{1} \dfrac{ 2l+1}{2}\Phi^{in/out}_{l,NES}(\omega,\omega^{\prime},\bU)P_l(\cos\theta) \\
-& \approx \dfrac{1}{2}\Phi_{0,NES}^{in/out}(\omega,\omega^{\prime}, \bU) + \dfrac{3}{2}\Phi^{in/out}_{1,NES}(\omega,\omega^{\prime}, \bU)\cos\theta
+R^{\In/\Out}_{\NES}(\omega, \omega^{\prime}, \cos\theta, \bU) & = \sum_{l=0}^{1} \dfrac{ 2l+1}{2}\Phi^{\In/\Out}_{l,\NES}(\omega,\omega^{\prime},\bU)P_l(\cos\theta) \\
+& \approx \dfrac{1}{2}\Phi_{0,\NES}^{\In/\Out}(\omega,\omega^{\prime}, \bU) + \dfrac{3}{2}\Phi^{\In/\Out}_{1,\NES}(\omega,\omega^{\prime}, \bU)\cos\theta
 \end{align}
 
 \section{Basic Benchmark Problems}
