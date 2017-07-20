@@ -52,6 +52,7 @@ The method --- ultimately targeted for simulations of core-collapse supernovae -
 We will use inits in which the speed of light is unity ($c=1$).  
 
 \section{Two-Moment Model for Neutrino Transport}
+\label{sec:twoMomentModel}
 
 \subsection{Basic Mathematical Model}
 
@@ -621,15 +622,14 @@ and $\theta_{2}$ is the smallest $\xi$ obtained in the element by considering al
 \section{Neutrino Opacities}
 \label{sec:opacities}
 
-%\ee{Ran write about tabulated B85 absorption and scattering opacities.}
 In this section, we bring the speed of light $c$ back.
 
-The total opacity $\kappa(\epsilonNu,\bU)=\tilde{\chi}(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$, where $\tilde{\chi}(\epsilonNu,\bU)$ is the absorption opacity of neutrino and  $\sigma(\epsilonNu,\bU)$ is the scattering opacities. 
-The absorption opacity of neutrino $\tilde{\chi}(\epsilonNu,\bU)$ 
+As we mentioned in Section~\ref{sec:twoMomentModel}, the total opacity $\kappa(\epsilonNu,\bU)=\tilde{\chi}(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$.
+The absorption opacity of neutrino $\tilde{\chi}(\epsilonNu,\bU)$ is the sum of the neutrino emissivity $\eta(\epsilonNu,\bU) $ and the neutrino absorptivity  $ \chi(\epsilonNu,\bU)$:
 \begin{equation}
-  \tilde{\chi}(\epsilonNu,\bU) = \chi(\epsilonNu,\bU) + \eta(\epsilonNu,\bU), 
+  \tilde{\chi}(\epsilonNu,\bU) = \eta(\epsilonNu,\bU) + \chi(\epsilonNu,\bU). 
 \end{equation}
- is the sum of the neutrino emissivity $\eta(\epsilonNu,\bU) $ and the neutrino absorptivity  $ \chi(\epsilonNu,\bU)$. The scattering opacities $\sigma(\epsilonNu,\bU)$ contains isoenergetic scattering opacities, neutrino-electron scattering opacities and have a integral form in the Boltzmann equation: if we include emission, absorption, isoenergetic scattering of neutrino by nucleons and nuclei, and neutrino electron scattering, the simplified Boltzmann equation is
+ The scattering opacities $\sigma(\epsilonNu,\bU)$ contains (isotropic) elastic scattering opacities, neutrino-electron scattering opacities and have a integral form in the Boltzmann equation: the simplified Boltzmann equation is
 
  
 \begin{align}
@@ -641,7 +641,7 @@ The absorption opacity of neutrino $\tilde{\chi}(\epsilonNu,\bU)$
 & - \dfrac{1}{c(hc)^3} f(\omegaNu,\epsilonNu,\bx,t) \int d\epsilonNu^{\prime} \epsilonNu^{\prime 2} \int d\mu^\prime R^{\Out}_{\NES} (\mu_0,\mu^\prime_0,\epsilonNu,\epsilonNu^{\prime} ) [1-f(\mu^\prime_0,\epsilonNu^{\prime} )].
 \end{align}
 
-The third and fourth terms are contributions from isoenergetic scattering of neutrino by nucleons and nuclei. The last two terms are contributions from neutrino-electron scattering. 
+The third and fourth terms are contributions from (isotropic) elastic scattering of neutrino by nucleons and nuclei. The last two terms are contributions from neutrino-electron scattering.
 
 \subsection{The neutrino absorptivity}
 
@@ -666,8 +666,8 @@ Therefore,
 
 The two terms of electron-neutrino absorption on nucleons $\chi_{nucleon}(\epsilonNu,\bU)$ and $\eta_{nucleon}(\epsilonNu,\bU)$ are given by Eq. (C13) and Eq. (C15) in \citet{bruenn_1985}  and the two terms of electron-neutrino absorption $\chi_{nuclear}(\epsilonNu,\bU)$ and $\eta_{nuclear}(\epsilonNu,\bU)$ on nuclear are given by Eq. (C29) and Eq. (C27) in \citet{bruenn_1985}. They all have units of $cm^{-1}$.
 
-\subsection{The isoenergetic scattering kernel}
-The isoenergetic scattering kernel $R_{\IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU)$ has the following relation:
+\subsection{The isotropic elastic scattering kernel}
+The isotropic elastic scattering kernel $R_{\IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU)$ has the following relation:
 \begin{align}
 R_{\IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) & = R_{\IS}^{nucleons}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) +  R_{\IS}^{nuclei}(\mu_0, \mu^\prime_0, \epsilonNu,\bU),
 \end{align}
@@ -681,7 +681,7 @@ R_{\IS}(\cos\theta, \epsilonNu, \bU) = R^{nucleons}(\cos\theta,\epsilonNu, \bU) 
 \end{align}
 where $R^{nucleons}_{\IS} (\cos\theta,\epsilonNu, \bU)$ and $R^{nuclei}_{\IS}(\cos\theta,\epsilonNu,\bU)$ are given by Eq. (35) and Eq. (36) in \citet{mezzacappaBruenn_1993a}.
 
-Expanding the isoenergetic scattering kernel in the first two terms of a Legendre series yields
+Expanding the isotropic elastic scattering kernel in the first two terms of a Legendre series yields
 \begin{align}
 R_{\IS}(\omega, \omega, \cos\theta) \approx \dfrac{1}{2} \Phi_{0,\IS}(\omega) + \dfrac{3}{2}\Phi_{1,\IS}(\omega)\cos\theta
 \end{align}
@@ -705,6 +705,8 @@ Expanding the neutrino-electron scattering kernels in the first two terms of Leg
 R^{\In/\Out}_{\NES}(\omega, \omega^{\prime}, \cos\theta, \bU) & = \sum_{l=0}^{1} \dfrac{ 2l+1}{2}\Phi^{\In/\Out}_{l,\NES}(\omega,\omega^{\prime},\bU)P_l(\cos\theta) \\
 & \approx \dfrac{1}{2}\Phi_{0,\NES}^{\In/\Out}(\omega,\omega^{\prime}, \bU) + \dfrac{3}{2}\Phi^{\In/\Out}_{1,\NES}(\omega,\omega^{\prime}, \bU)\cos\theta
 \end{align}
+
+The isotropic term $\dfrac{1}{2}\Phi_{0,\NES}^{\In/\Out}(\omega,\omega^{\prime}, \bU)$ is the $R^{\In}$ and $R^{\Out}$  in Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}. 
 
 \section{Basic Benchmark Problems}
 
