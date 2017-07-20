@@ -35,7 +35,9 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNode
-    REAL(DP) :: X1
+    REAL(DP) :: X1, Alpha, D_prime, V1_prime, P_prime
+
+    Alpha = 4 * Gamma/((Gamma + 1)*(Gamma - 1))*((Gamma - 1)/(Gamma + 1))**Gamma
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') &
@@ -56,16 +58,25 @@ CONTAINS
 
                 IF( X1 <= rShock )THEN
 
-                  uPF(iNode,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNode,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNode,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNode,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNode,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+                  CALL ComputeSettlingSpeed_Bisection(X1, Alpha, Gamma, Mass, uPF(iNode,iX1,iX2,iX3,iPF_V1))                 
+                   
+                  uPF(iNode,iX1,iX2,iX3,iPF_D)  &
+                    = (mDot/FourPi) * (-uPF(iNode,iX1,iX2,iX3,iPF_V1))**(-1.0_DP) * X1**(-2.0_DP)
+                  
+                  V1_prime &
+                    = (gamma - 1_DP)/(gamma + 1.0_DP) * SQRT(2.0_DP * Mass/rShock)
+                  D_prime  &
+                    = (mDot/FourPi) * (1.0_DP/V1_prime) * rShock**(-2.0_DP)
+                  P_prime  &
+                    = 2/(gamma + 1.0_DP) * (mDot/FourPi) * SQRT(2 * Mass) * rShock**(-5.0_DP/2.0_DP)
+                  
+                  uAF(iNode,iX1,iX2,iX3,iAF_P)  &
+                    = P_prime * (uPF(iNode,iX1,iX2,iX3,iPF_D)/D_prime)**gamma
 
                 ELSE
 
                   uPF(iNode,iX1,iX2,iX3,iPF_D)  &
-                    = ( mDot / FourPi ) / SQRT( 2.0_DP * Mass ) / X1**1.5_DP 
+                    = ( mDot / FourPi ) / SQRT( 2.0_DP * Mass ) / (X1**1.5_DP) 
                   uPF(iNode,iX1,iX2,iX3,iPF_V1) &
                     = - SQRT( 2.0_DP * Mass / X1 )
                   uPF(iNode,iX1,iX2,iX3,iPF_V2) &
@@ -73,7 +84,7 @@ CONTAINS
                   uPF(iNode,iX1,iX2,iX3,iPF_V3) &
                     = 0.0_DP
                   uAF(iNode,iX1,iX2,iX3,iAF_P)  &
-                    = 1.0_DP
+                    = uPF(iNode,iX1,iX2,iX3,iPF_D)/gamma * (-uPF(iNode,iX1,iX2,iX3,iPF_V1)/Mach)**2.0_DP
 
                 END IF
 
@@ -102,9 +113,57 @@ CONTAINS
   END SUBROUTINE InitializeStandingAccretionShock
 
 
-  SUBROUTINE ComputeSettlingSpeed_Bisection( r, alpha, gamma, mass )
+  SUBROUTINE  ComputeSettlingSpeed_Bisection( r, alpha, gamma, mass, V1 )
 
     REAL(DP), INTENT(in) :: r, alpha, gamma, mass
+    
+    LOGICAL :: Converged
+    INTEGER :: Iter
+    REAL(DP) :: a, b, c, ab, F_a, F_b, F_c, F_0
+    INTEGER, PARAMETER :: MaxIter = 128
+    REAL(DP), PARAMETER :: Tol_ab = 1.0d-8
+    REAL(DP), PARAMETER :: Tol_F = 1.0d-8
+
+    REAL(DP), INTENT(out) :: V1
+
+    a = 1.0d-6
+    F_a = SettlingSpeedFun(a, r, alpha, gamma, mass)
+
+    b = 1.0_DP
+    F_b = SettlingSpeedFun(b, r, alpha, gamma, mass)
+
+    F_0 = F_a
+    ab = b - a
+
+    Converged = .FALSE.
+    Iter = 0
+   
+    DO WHILE ( .NOT. Converged)
+
+      Iter = Iter + 1
+
+      ab = 0.5_DP * ab
+      c = a + ab
+      
+      F_c = SettlingSpeedFun(c, r, alpha, gamma, mass)
+
+      IF( F_a * F_c < 0.0_DP ) THEN
+     
+        b   = c
+        F_b = F_c
+
+      ELSE
+ 
+        a   = c
+        F_a = F_c
+
+      END IF
+
+      IF( ab < Tol_ab .AND. ABS( F_a ) / F_0 < Tol_F) Converged = .TRUE.
+
+    END DO
+
+    V1 = -a
 
   END SUBROUTINE ComputeSettlingSpeed_Bisection
 
