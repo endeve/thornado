@@ -634,11 +634,11 @@ The absorption opacity of neutrino $\tilde{\chi}(\epsilonNu,\bU)$ is the sum of 
  
 \begin{align}
 \dfrac{1}{c}\dfrac{\partial f(\omegaNu,\epsilonNu,\bx,t)}{\partial t} = 
-&  \eta(\epsilonNu,\bU) - \tilde{\chi}(\epsilonNu,\bU)f(\epsilonNu,\bU) \nonumber \\
-& + \dfrac{1}{c(hc)^3} \epsilonNu^2 \int d\mu^\prime_0 R_{\IS}( \mu^\prime_0, \mu_0,\epsilonNu, \bU) f(\mu^\prime_0, \epsilonNu,\bU) \nonumber \\
-& - \dfrac{1}{c(hc)^3} \epsilonNu^2 f(\omegaNu,\epsilonNu,\bx,t)\int d\mu^\prime_0 R_{\IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) \nonumber \\
-& + \dfrac{1}{c(hc)^3} [1- f(\omegaNu,\epsilonNu,\bx,t)] \int d\epsilonNu^{\prime} \epsilonNu^{\prime 2} \int d\mu^\prime_0 R^{\In}_{\NES} (\mu_0,\mu^\prime_0,\epsilonNu,\epsilonNu^{\prime} )f(\mu^\prime_0,\epsilonNu^{\prime} ) \nonumber \\
-& - \dfrac{1}{c(hc)^3} f(\omegaNu,\epsilonNu,\bx,t) \int d\epsilonNu^{\prime} \epsilonNu^{\prime 2} \int d\mu^\prime R^{\Out}_{\NES} (\mu_0,\mu^\prime_0,\epsilonNu,\epsilonNu^{\prime} ) [1-f(\mu^\prime_0,\epsilonNu^{\prime} )].
+&  \eta(\epsilonNu,\bU) - \tilde{\chi}(\epsilonNu,\bU)f(\omegaNu,\epsilonNu,\bx,t) \nonumber \\
+& + \dfrac{1}{c(hc)^3} \epsilonNu^2 \int d\mu'_0 R_{\IS}( \omega', \omega,\epsilonNu, \bU) f(\omega', \epsilonNu,\bx,t) \nonumber \\
+& - \dfrac{1}{c(hc)^3} \epsilonNu^2 f(\omegaNu,\epsilonNu,\bx,t)\int d\omega' R_{\IS}(\omega, \omega', \epsilonNu,\bU) \nonumber \\
+& + \dfrac{1}{c(hc)^3} [1- f(\omegaNu,\epsilonNu,\bx,t)] \int d\epsilonNu^{\prime} \epsilonNu^{\prime 2} \int d\omega' R^{\In}_{\NES} (\omega,\omega',\epsilonNu,\epsilonNu^{\prime},\bU)f(\omega',\epsilonNu^{\prime},\bx,t ) \nonumber \\
+& - \dfrac{1}{c(hc)^3} f(\omegaNu,\epsilonNu,\bx,t) \int d\epsilonNu^{\prime} \epsilonNu^{\prime 2} \int d\mu' R^{\Out}_{\NES} (\omega,\omega',\epsilonNu,\epsilonNu^{\prime},\bU) [1-f(\omega',\epsilonNu^{\prime},\bx,t )].
 \end{align}
 
 The third and fourth terms are contributions from (isotropic) elastic scattering of neutrino by nucleons and nuclei. The last two terms are contributions from neutrino-electron scattering.
@@ -667,46 +667,44 @@ Therefore,
 The two terms of electron-neutrino absorption on nucleons $\chi_{nucleon}(\epsilonNu,\bU)$ and $\eta_{nucleon}(\epsilonNu,\bU)$ are given by Eq. (C13) and Eq. (C15) in \citet{bruenn_1985}  and the two terms of electron-neutrino absorption $\chi_{nuclear}(\epsilonNu,\bU)$ and $\eta_{nuclear}(\epsilonNu,\bU)$ on nuclear are given by Eq. (C29) and Eq. (C27) in \citet{bruenn_1985}. They all have units of $cm^{-1}$.
 
 \subsection{The isotropic elastic scattering kernel}
-The isotropic elastic scattering kernel $R_{\IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU)$ has the following relation:
+The isotropic elastic scattering kernel $R_{\IS}(\omega, \omega', \epsilonNu,\bU)$ has the following relation:
 \begin{align}
-R_{\IS}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) & = R_{\IS}^{nucleons}(\mu_0, \mu^\prime_0, \epsilonNu,\bU) +  R_{\IS}^{nuclei}(\mu_0, \mu^\prime_0, \epsilonNu,\bU),
+R_{\IS}(\omega, \omega', \epsilonNu,\bU) & = R_{\IS}^{nucleons}(\omega, \omega', \epsilonNu,\bU) +  R_{\IS}^{nuclei}(\omega, \omega', \epsilonNu,\bU),
 \end{align}
 where
 \begin{align}
-\cos\theta = \mu_0\mu^\prime_0 + [(1-\mu_0^2)(1-\mu_0^{\prime 2})]^{1/2}\cos\theta,
+\cos\theta = \omega\omega' + [(1-\omega^2)(1-\omega^{\prime 2})]^{1/2}\cos\theta,
 \end{align}
 and
 \begin{align}
 R_{\IS}(\cos\theta, \epsilonNu, \bU) = R^{nucleons}(\cos\theta,\epsilonNu, \bU) + R^{nuclei}_{\IS}(\cos\theta, \epsilonNu, \bU)
 \end{align}
-where $R^{nucleons}_{\IS} (\cos\theta,\epsilonNu, \bU)$ and $R^{nuclei}_{\IS}(\cos\theta,\epsilonNu,\bU)$ are given by Eq. (35) and Eq. (36) in \citet{mezzacappaBruenn_1993a}.
+where $R^{nucleons}_{\IS} (\cos\theta,\epsilonNu, \bU)$ and $R^{nuclei}_{\IS}(\cos\theta,\epsilonNu,\bU)$ are given by Eq. (35) and Eq. (36) in \citet{mezzacappaBruenn_1993a}, respectively.
 
 Expanding the isotropic elastic scattering kernel in the first two terms of a Legendre series yields
 \begin{align}
-R_{\IS}(\omega, \omega, \cos\theta) \approx \dfrac{1}{2} \Phi_{0,\IS}(\omega) + \dfrac{3}{2}\Phi_{1,\IS}(\omega)\cos\theta
+R_{\IS}(\cos\theta,\epsilonNu) \approx \dfrac{1}{2} \Phi_{0,\IS}(\epsilonNu) + \dfrac{3}{2}\Phi_{1,\IS}(\epsilonNu)\cos\theta
 \end{align}
 
 \subsection{The neutrino-electron scattering kernel}
 The neutrino-electron scattering kernels are given by Eq.(9) and Eq.(28) in \citet{mezzacappaBruenn_1993c}.
-
-Therefore, $R^{\Out}_{\NES}(\epsilonNu,\epsilonNu^\prime, \omega)$ is known. 
     
-Expand the scattering kernel in a Legendre series:
+Expand the neutrino-electron out scattering kernel $R^{\Out}_{\NES}(\epsilonNu,\epsilonNu', \omega)$ in a Legendre series:
 \begin{align}
-R^{\Out}_{\NES}(\epsilonNu,\epsilonNu^\prime, \omega, \bU) = \sum_{l=0}^{\infty} \dfrac{2l+1}{2} R^{\Out}_{{\NES}, l}(\epsilonNu,\epsilonNu^\prime, \bU) P_l(\omega),
+R^{\Out}_{\NES}(\epsilonNu,\epsilonNu', \omega, \bU) = \sum_{l=0}^{\infty} \dfrac{2l+1}{2} R^{\Out}_{{\NES}, l}(\epsilonNu,\epsilonNu', \bU) P_l(\omega),
 \end{align}
-where the Legendre coefficients $R^{\Out}_{{\NES}, l}(\epsilonNu,\epsilonNu^\prime)$ are given by
+where the Legendre coefficients $R^{\Out}_{{\NES}, l}(\epsilonNu,\epsilonNu')$ are given by
 \begin{align}
-R^{\Out}_{{\NES}, l}(\epsilonNu,\epsilonNu^\prime, \bU) = \int_{-1}^{1} d\omega P_l(\omega) R^{\Out}_{\NES}(\epsilonNu,\epsilonNu^\prime, \omega, \bU).
+R^{\Out}_{{\NES}, l}(\epsilonNu,\epsilonNu', \bU) = \int_{-1}^{1} d\omega P_l(\omega) R^{\Out}_{\NES}(\epsilonNu,\epsilonNu', \omega, \bU).
 \end{align}
    
 Expanding the neutrino-electron scattering kernels in the first two terms of Legendre series yields
 \begin{align}
-R^{\In/\Out}_{\NES}(\omega, \omega^{\prime}, \cos\theta, \bU) & = \sum_{l=0}^{1} \dfrac{ 2l+1}{2}\Phi^{\In/\Out}_{l,\NES}(\omega,\omega^{\prime},\bU)P_l(\cos\theta) \\
-& \approx \dfrac{1}{2}\Phi_{0,\NES}^{\In/\Out}(\omega,\omega^{\prime}, \bU) + \dfrac{3}{2}\Phi^{\In/\Out}_{1,\NES}(\omega,\omega^{\prime}, \bU)\cos\theta
+R^{\In/\Out}_{\NES}(\epsilonNu, \epsilonNu^{\prime}, \cos\theta, \bU) & = \sum_{l=0}^{1} \dfrac{ 2l+1}{2}\Phi^{\In/\Out}_{l,\NES}(\epsilonNu,\epsilonNu^{\prime},\bU)P_l(\cos\theta) \\
+& \approx \dfrac{1}{2}\Phi_{0,\NES}^{\In/\Out}(\epsilonNu,\epsilonNu^{\prime}, \bU) + \dfrac{3}{2}\Phi^{\In/\Out}_{1,\NES}(\epsilonNu,\epsilonNu^{\prime}, \bU)\cos\theta
 \end{align}
 
-The isotropic term $\dfrac{1}{2}\Phi_{0,\NES}^{\In/\Out}(\omega,\omega^{\prime}, \bU)$ is the $R^{\In}$ and $R^{\Out}$  in Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}. 
+The isotropic term $\dfrac{1}{2}\Phi_{0,\NES}^{\In/\Out}(\epsilonNu,\epsilonNu^{\prime}, \bU)$ is the $R^{\In}(\epsilonNu,\epsilonNu')$ and $R^{\Out}(\epsilonNu,\epsilonNu')$  in Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}. 
 
 \section{Basic Benchmark Problems}
 
