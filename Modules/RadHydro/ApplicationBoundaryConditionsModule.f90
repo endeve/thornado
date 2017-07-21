@@ -51,6 +51,10 @@ CONTAINS
 
         CALL ApplyBC_Fluid_X1_EvrardsCollapse1D
 
+      CASE ( 'StandingAccretionShock1D' )
+
+        CALL ApplyBC_Fluid_X1_StandingAccretionShock1D
+
       CASE ( 'GravitationalCollapse1D' )
 
         CALL ApplyBC_Fluid_X1_GravitationalCollapse1D
@@ -252,7 +256,7 @@ CONTAINS
               iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
               uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_D)  &
-                = 1.0d-6
+                = 1.0d-8
               uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_V1) &
                 = 0.0_DP
               uPF(iNodeX,nX(1)+1,iX2,iX3,iPF_V2) &
@@ -373,6 +377,12 @@ CONTAINS
 
   END SUBROUTINE ApplyBC_Fluid_X1_EvrardsCollapse1D
 
+
+  SUBROUTINE ApplyBC_Fluid_X1_StandingAccretionShock1D
+
+    ! --- Boundary Conditions Set During Initialization ---
+
+  END SUBROUTINE ApplyBC_Fluid_X1_StandingAccretionShock1D
 
   SUBROUTINE ApplyBC_Fluid_X1_GravitationalCollapse1D
 
