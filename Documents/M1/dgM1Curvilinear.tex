@@ -658,8 +658,14 @@ In the scattering kernels, $\bl(\omegaNu)=(\cos\vartheta,\sin\vartheta\cos\varph
 \end{equation}
 is the cosine of the angle between incoming and outgoing neutrino is the scattering process.  
 In Eq.~\eqref{eq:homogeneousBoltzmann}, the first two terms are due to emission and absorption, the third and fourth terms are due to elastic (isoenergetic) neutrino scattering on nucleons and nuclei, and the last two terms are due to inelastic (non-isoenergetic) neutrino-electron scattering.  
+
 In the following subsections we separately give the collision terms for the two-moment model by taking angular moments of Eq.~\eqref{eq:homogeneousBoltzmann}.  
-The total collision term in the two-moment model is then given by the sum of the separate terms.  
+(The total collision term in the two-moment model is then given by the sum of the separate terms.)  
+The opacities are computed using the SFHo equation of state \citep{steiner_etal_2013}, and tabulated for densities $\rho\in[1.66\times10^{4},3.16\times10^{15}]$~g~cm$^{-3}$, temperatures $T\in[1.16\times10^{9},1.84\times10^{12}]$~K, and electron fractions $Y_{e}\in[0.01,0.6]$.  
+The neutrino energies are in the range $\epsilonNu\in[0.1,300]$~MeV.  
+We use logarithmic grids to cover the range in density $N_{\rho}=308$, temperature ($N_{T}=129$), and the neutrino energy ($N_{\epsilonNu}=40$), and a linear grid to cover the range in electron fraction ($N_{Y_{e}}=60$).  
+The neutrino electron scattering rates are tabulated in terms of neutrino energies ($\epsilonNu$ and $\epsilonNu'$), temperature, and $\eta=\mu_{\nu}/(k_{\mbox{\tiny B}}T)$.  
+Here we use a logarithmic grid in $\eta\in[1.0\times10^{-8},2.5\times10^{3}]$~MeV, using $N_{\eta}=100$ points.  
 
 \subsection{Emission and Absorption}
 
@@ -685,13 +691,13 @@ and
 \begin{equation}
   \eta-\tilde{\chi}\,f=\tilde{\chi}\,\big(\,\eta/\tilde{\chi}-f\,\big)=\tilde{\chi}\,\big(\,f_{0}-f\,\big).  
 \end{equation}
-Thus, the corresponding moment equations are
+Thus, the corresponding terms in the moment equations are
 \begin{equation}
   \f{1}{c}\deriv{\cJ}{t}=\tilde{\chi}\,\big(\,\cJ_{0}-\cJ\,\big)
   \quad\text{and}\quad
   \f{1}{c}\deriv{\bcH}{t}=-\tilde{\chi}\,\bcH.  
 \end{equation}
-We use the electron-neutrino nucleon absorption opacity $\chi_{\mbox{\tiny nucleon}}$ and emissivity $\eta_{\mbox{\tiny nucleon}}$ as given by Eq.~(C13) and Eq.~(C15), respectively, in \citet{bruenn_1985}, and the electron-neutrino nuclei absorption opacity $\chi_{\mbox{\tiny nuclei}}$ and emissivity $\eta_{\mbox{\tiny nuclei}}$ as given by Eq.~(C29) and Eq.~(C27), respectively, in \citet{bruenn_1985}.  
+We use the electron neutrino nucleon absorption opacity $\chi_{\mbox{\tiny nucleon}}$ and emissivity $\eta_{\mbox{\tiny nucleon}}$ as given by Eq.~(C13) and Eq.~(C15), respectively, in \citet{bruenn_1985}, and the electron-neutrino nuclei absorption opacity $\chi_{\mbox{\tiny nuclei}}$ and emissivity $\eta_{\mbox{\tiny nuclei}}$ as given by Eq.~(C29) and Eq.~(C27), respectively, in \citet{bruenn_1985}.  
 We only tabulate the corrected absorption opacity $\tilde{\chi}$, which has units cm$^{-1}$.  
 
 \subsection{Elastic Scattering}
@@ -710,6 +716,7 @@ By orthogonality of the Legendre polynomials ($P_{0}(x)=1,P_{1}(x)=x$), the expa
   \Phi_{\IS,\ell}(\epsilonNu)
   =\int_{-1}^{+1}R_{\IS}(\cos\alpha,\epsilonNu)\,P_{\ell}(\cos\alpha)\,d\cos\alpha \quad (\ell=0,1).  
 \end{equation}
+These integrals are performed numerically using a ??-point Gauss-Legendre quadrature rule.  (\ee{Ran: Fill in the number of quadrature points}.)
 Inserting the Legendre expansion into Eq.~\eqref{eq:homogeneousBoltzmann} and taking the angular moments gives no contribution to the equation for $\cJ$ (energy conservation), while the contribution to the equation for $\bcH$ is
 \begin{equation}
   \f{1}{c}\deriv{\bcH}{t}
@@ -735,6 +742,7 @@ where
   \Phi_{\NES,\ell}^{\Out}(\epsilonNu,\epsilonNu')
   =\int_{-1}^{+1}R_{\NES}^{\Out}(\cos\alpha,\epsilonNu,\epsilonNu')\,P_{\ell}(\cos\alpha)\,d\cos\alpha \quad (\ell=0,1).  
 \end{equation}
+(Again, these integrals are computed numerically using a ??-point Gauss-Legendre quadrature.  (\ee{Ran: Fill in the number of quadrature points}.))
 The in-scattering kernels $\Phi_{\NES,\ell}^{\In}(\epsilonNu,\epsilonNu')$ are obtained from symmetry properties \citep{cernohorsky_1994}
 \begin{equation}
   \Phi_{\NES,\ell}^{\In}(\epsilonNu,\epsilonNu')=\Phi_{\NES,\ell}^{\Out}(\epsilonNu',\epsilonNu)
