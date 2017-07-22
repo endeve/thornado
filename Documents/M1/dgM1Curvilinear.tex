@@ -622,91 +622,158 @@ and $\theta_{2}$ is the smallest $\xi$ obtained in the element by considering al
 \section{Neutrino Opacities}
 \label{sec:opacities}
 
-In this section, we bring the speed of light $c$ back.
+To model neutrino-matter interactions, we have tabulated a basic --- but important --- set of neutrino opacities for inclusion in simulations presented in Section~\ref{sec:numericalTableOpacities}.  
+We consider a single neutrino specie (electron-type neutrinos), and include the relevant rates due to electron capture on nucleons and nuclei, iso-energetic (elastic) scattering on nucleons and nuclei, and elastic neutrino-electron scattering (NES).  
+For completeness, we provide sufficient detail to arrive at the tabulates opacities relevant for the two-moment model.  
+For further details on the specific opacities we use, see \citet{bruenn_1985}, \citet{mezzacappaBruenn_1993a}, and \citet{mezzacappaBruenn_1993c}.  
 
-As we mentioned in Section~\ref{sec:twoMomentModel}, the total opacity $\kappa(\epsilonNu,\bU)=\tilde{\chi}(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$.
-The absorption opacity of neutrino $\tilde{\chi}(\epsilonNu,\bU)$ is the sum of the neutrino emissivity $\eta(\epsilonNu,\bU) $ and the neutrino absorptivity  $ \chi(\epsilonNu,\bU)$:
+As we mentioned in Section~\ref{sec:twoMomentModel} when discussing Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}, the total opacity (excluding NES) is $\kappa(\epsilonNu,\bU)=\tilde{\chi}(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$, where the absorption opacity $\tilde{\chi}(\epsilonNu,\bU)$, corrected for stimulated absorption, is given by the sum of the neutrino emissivity $\eta(\epsilonNu,\bU)$ and the neutrino absorptivity $\chi(\epsilonNu,\bU)$
 \begin{equation}
   \tilde{\chi}(\epsilonNu,\bU) = \eta(\epsilonNu,\bU) + \chi(\epsilonNu,\bU). 
 \end{equation}
- The scattering opacities $\sigma(\epsilonNu,\bU)$ contains (isotropic) elastic scattering opacities, neutrino-electron scattering opacities and have a integral form in the Boltzmann equation: the simplified Boltzmann equation is
-
- 
+The scattering opacity $\sigma(\epsilonNu,\bU)$ is due to (isotropic) elastic scattering.   
+Neutrino-electron scattering gives rise to the integral operators involving the rates $R^{\In}(\epsilonNu,\epsilonNu',\bU)$ and $R^{\In}(\epsilonNu,\epsilonNu',\bU)$.  
+(In the following, to simplify the notation, we will drop the explicit spatial dependence and dependence on material properties $\bU$.)  
+To arrive at the collision terms for the two-moment model, we consider the space-homogeneous Boltzmann equation \citep[e.g., Eq.~(7) in][]{mezzacappaBruenn_1993c}
 \begin{align}
-\dfrac{1}{c}\dfrac{\partial f(\omegaNu,\epsilonNu,\bx,t)}{\partial t} = 
-&  \eta(\epsilonNu,\bU) - \tilde{\chi}(\epsilonNu,\bU)f(\omegaNu,\epsilonNu,\bx,t) \nonumber \\
-& + \dfrac{1}{c(hc)^3} \epsilonNu^2 \int d\mu'_0 R_{\IS}( \omega', \omega,\epsilonNu, \bU) f(\omega', \epsilonNu,\bx,t) \nonumber \\
-& - \dfrac{1}{c(hc)^3} \epsilonNu^2 f(\omegaNu,\epsilonNu,\bx,t)\int d\omega' R_{\IS}(\omega, \omega', \epsilonNu,\bU) \nonumber \\
-& + \dfrac{1}{c(hc)^3} [1- f(\omegaNu,\epsilonNu,\bx,t)] \int d\epsilonNu^{\prime} \epsilonNu^{\prime 2} \int d\omega' R^{\In}_{\NES} (\omega,\omega',\epsilonNu,\epsilonNu^{\prime},\bU)f(\omega',\epsilonNu^{\prime},\bx,t ) \nonumber \\
-& - \dfrac{1}{c(hc)^3} f(\omegaNu,\epsilonNu,\bx,t) \int d\epsilonNu^{\prime} \epsilonNu^{\prime 2} \int d\mu' R^{\Out}_{\NES} (\omega,\omega',\epsilonNu,\epsilonNu^{\prime},\bU) [1-f(\omega',\epsilonNu^{\prime},\bx,t )].
+  \f{1}{c}\deriv{f}{t}(\omegaNu,\epsilonNu,t)
+  & = \eta(\epsilonNu) - \tilde{\chi}(\epsilonNu)\,f(\omegaNu,\epsilonNu,t) \nonumber \\
+  & \hspace{12pt}
+  + \frac{\epsilonNu^2}{c\,(hc)^3} \int_{\bbS^{2}} R_{\IS}(\bl'\cdot\bl,\epsilonNu)\,f(\omega', \epsilonNu,t)\,d\omegaNu'
+  - \frac{\epsilonNu^2}{c\,(hc)^3} f(\omegaNu,\epsilonNu,t) \int_{\bbS^{2}} R_{\IS}(\bl'\cdot\bl,\epsilonNu)\,d\omega' \nonumber \\
+  & \hspace{12pt} 
+  + \frac{1}{c\,(hc)^3}\big(1- f(\omegaNu,\epsilonNu)\big) \, 
+  \int_{\bbR^{+}} \int_{\bbS^{2}}  R^{\In}_{\NES} (\bl'\cdot\bl,\epsilonNu,\epsilonNu')\,f(\omega',\epsilonNu',t)\,d\epsilonNu' \epsilonNu'^{2}\,d\omega' \nonumber \\
+  & \hspace{12pt} 
+  - \frac{1}{c\,(hc)^3} f(\omegaNu,\epsilonNu,t) \int_{\bbR^{+}} 
+  \int_{\bbS^{2}}  R^{\Out}_{\NES} (\bl'\cdot\bl,\epsilonNu,\epsilonNu^{\prime})\,\big(1-f(\omegaNu',\epsilonNu',t )\big)\,d\epsilonNu' \epsilonNu'^{2}\,d\omegaNu',
+  \label{eq:homogeneousBoltzmann}
 \end{align}
-
-The third and fourth terms are contributions from (isotropic) elastic scattering of neutrino by nucleons and nuclei. The last two terms are contributions from neutrino-electron scattering.
-
-\subsection{The neutrino absorptivity}
-
-Given by \citet{bruenn_1985}, the absorption opacity of neutrino $\tilde{\chi}(\epsilonNu,\bU)$ 
+where we have brought back physical constants; i.e., the speed of light $c$ and the Planck constant $h$.  
+In the scattering kernels, $\bl(\omegaNu)=(\cos\vartheta,\sin\vartheta\cos\varphi,\sin\vartheta\sin\varphi)^{\mbox{\tiny T}}$, so that
 \begin{equation}
-\tilde{\chi}(\epsilonNu,\bU) = \chi(\epsilonNu,\bU) + \eta(\epsilonNu,\bU), 
+ \bl'\cdot\bl  = \mu\mu' + [(1-\mu^2)(1-\mu'^{2})]^{1/2}\cos(\phiNu-\phiNu')
+ \equiv \cos\alpha,
+ \quad(\mu=\cos\thetaNu)
 \end{equation}
-where $\eta(\epsilonNu,\bU) $ is the neutrino emissivity
-\begin{equation}
-\eta = \eta_{nucleon} + \eta_{nuclear},
-\end{equation}  
-and $ \chi(\epsilonNu,\bU)$ is the neutrino absorptivity, which is the inverse of neutrino absorption mean free path.
-They have the following relation:
-\begin{equation}
-\chi(\epsilonNu,\bU) = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T} \eta(\epsilonNu,\bU). 
-\end{equation}
+is the cosine of the angle between incoming and outgoing neutrino is the scattering process.  
+In Eq.~\eqref{eq:homogeneousBoltzmann}, the first two terms are due to emission and absorption, the third and fourth terms are due to elastic (isoenergetic) neutrino scattering on nucleons and nuclei, and the last two terms are due to inelastic (non-isoenergetic) neutrino-electron scattering.  
+In the following subsections we separately give the collision terms for the two-moment model by taking angular moments of Eq.~\eqref{eq:homogeneousBoltzmann}.  
+The total collision term in the two-moment model is then given by the sum of the separate terms.  
 
+\subsection{Emission and Absorption}
+
+Electron capture on nucleons and nuclei ($p+e^{-}\rightleftharpoons n+\nu_{e}$) is governed by the corrected absorption opacity $\tilde{\chi}(\epsilonNu)$ 
+\begin{equation}
+  \tilde{\chi}(\epsilonNu) = \chi(\epsilonNu) + \eta(\epsilonNu), 
+\end{equation}
+where $\eta(\epsilonNu)$ is the emissivity (taken as the sum of contributions from nucleons and nuclei)
+\begin{equation}
+  \eta = \eta_{\mbox{\tiny nucleon}} + \eta_{\mbox{\tiny nuclei}},
+\end{equation}
+and $ \chi(\epsilonNu)$ is the absorption opacity.  
+They are related by equilibrium condition
+\begin{equation}
+  \chi(\epsilonNu) = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T}\,\eta(\epsilonNu). 
+\end{equation}
 Therefore,
 \begin{equation}
-\chi = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T} (\eta_{nucleon} + \eta_{nuclear} ) = \chi_{nucleon} + \chi_{nuclear}.
+  \chi = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T}\,(\eta_{\mbox{\tiny nucleon}} + \eta_{\mbox{\tiny nuclei}}) 
+  \equiv \chi_{\mbox{\tiny nucleon}} + \chi_{\mbox{\tiny nuclei}},
 \end{equation}
-
-The two terms of electron-neutrino absorption on nucleons $\chi_{nucleon}(\epsilonNu,\bU)$ and $\eta_{nucleon}(\epsilonNu,\bU)$ are given by Eq. (C13) and Eq. (C15) in \citet{bruenn_1985}  and the two terms of electron-neutrino absorption $\chi_{nuclear}(\epsilonNu,\bU)$ and $\eta_{nuclear}(\epsilonNu,\bU)$ on nuclear are given by Eq. (C29) and Eq. (C27) in \citet{bruenn_1985}. They all have units of $cm^{-1}$.
-
-\subsection{The isotropic elastic scattering kernel}
-The isotropic elastic scattering kernel $R_{\IS}(\omega, \omega', \epsilonNu,\bU)$ has the following relation:
-\begin{align}
-R_{\IS}(\omega, \omega', \epsilonNu,\bU) & = R_{\IS}^{nucleons}(\omega, \omega', \epsilonNu,\bU) +  R_{\IS}^{nuclei}(\omega, \omega', \epsilonNu,\bU),
-\end{align}
-where
-\begin{align}
-\cos\theta = \omega\omega' + [(1-\omega^2)(1-\omega^{\prime 2})]^{1/2}\cos\theta,
-\end{align}
 and
-\begin{align}
-R_{\IS}(\cos\theta, \epsilonNu, \bU) = R^{nucleons}(\cos\theta,\epsilonNu, \bU) + R^{nuclei}_{\IS}(\cos\theta, \epsilonNu, \bU)
-\end{align}
-where $R^{nucleons}_{\IS} (\cos\theta,\epsilonNu, \bU)$ and $R^{nuclei}_{\IS}(\cos\theta,\epsilonNu,\bU)$ are given by Eq. (35) and Eq. (36) in \citet{mezzacappaBruenn_1993a}, respectively.
+\begin{equation}
+  \eta-\tilde{\chi}\,f=\tilde{\chi}\,\big(\,\eta/\tilde{\chi}-f\,\big)=\tilde{\chi}\,\big(\,f_{0}-f\,\big).  
+\end{equation}
+Thus, the corresponding moment equations are
+\begin{equation}
+  \f{1}{c}\deriv{\cJ}{t}=\tilde{\chi}\,\big(\,\cJ_{0}-\cJ\,\big)
+  \quad\text{and}\quad
+  \f{1}{c}\deriv{\bcH}{t}=-\tilde{\chi}\,\bcH.  
+\end{equation}
+We use the electron-neutrino nucleon absorption opacity $\chi_{\mbox{\tiny nucleon}}$ and emissivity $\eta_{\mbox{\tiny nucleon}}$ as given by Eq.~(C13) and Eq.~(C15), respectively, in \citet{bruenn_1985}, and the electron-neutrino nuclei absorption opacity $\chi_{\mbox{\tiny nuclei}}$ and emissivity $\eta_{\mbox{\tiny nuclei}}$ as given by Eq.~(C29) and Eq.~(C27), respectively, in \citet{bruenn_1985}.  
+We only tabulate the corrected absorption opacity $\tilde{\chi}$, which has units cm$^{-1}$.  
 
-Expanding the isotropic elastic scattering kernel in the first two terms of a Legendre series yields
-\begin{align}
-R_{\IS}(\cos\theta,\epsilonNu) \approx \dfrac{1}{2} \Phi_{0,\IS}(\epsilonNu) + \dfrac{3}{2}\Phi_{1,\IS}(\epsilonNu)\cos\theta
-\end{align}
+\subsection{Elastic Scattering}
 
-\subsection{The neutrino-electron scattering kernel}
-The neutrino-electron scattering kernels are given by Eq.(9) and Eq.(28) in \citet{mezzacappaBruenn_1993c}.
-    
-Expand the neutrino-electron out scattering kernel $R^{\Out}_{\NES}(\epsilonNu,\epsilonNu', \omega)$ in a Legendre series:
+The isoenergetic scattering kernel $R_{\IS}(\bl'\cdot\bl,\epsilonNu)$ is taken as the sum of contributions from scattering on nucleons and nuclei
+\begin{equation}
+  R_{\IS}(\bl'\cdot\bl,\epsilonNu,\epsilonNu) = R_{\IS}^{\mbox{\tiny nucleon}}(\bl'\cdot\bl,\epsilonNu) + R_{\IS}^{\mbox{\tiny nuclei}}(\bl'\cdot\bl,\epsilonNu),
+\end{equation}
+where $R_{\IS}^{\mbox{\tiny nucleon}}$ and $R_{\IS}^{\mbox{\tiny nuclei}}$ are given by Eq. (35) and Eq. (36), respectively, in \citet{mezzacappaBruenn_1993a}.  
+For inclusion in the two-moment model, these kernels are approximated by a two-term Legendre series
 \begin{align}
-R^{\Out}_{\NES}(\epsilonNu,\epsilonNu', \omega, \bU) = \sum_{l=0}^{\infty} \dfrac{2l+1}{2} R^{\Out}_{{\NES}, l}(\epsilonNu,\epsilonNu', \bU) P_l(\omega),
+  R_{\IS}(\cos\alpha,\epsilonNu) \approx \f{1}{2} \Phi_{\IS,0}(\epsilonNu) + \f{3}{2}\Phi_{\IS,1}(\epsilonNu)\,\cos\alpha.
 \end{align}
-where the Legendre coefficients $R^{\Out}_{{\NES}, l}(\epsilonNu,\epsilonNu')$ are given by
-\begin{align}
-R^{\Out}_{{\NES}, l}(\epsilonNu,\epsilonNu', \bU) = \int_{-1}^{1} d\omega P_l(\omega) R^{\Out}_{\NES}(\epsilonNu,\epsilonNu', \omega, \bU).
-\end{align}
-   
-Expanding the neutrino-electron scattering kernels in the first two terms of Legendre series yields
-\begin{align}
-R^{\In/\Out}_{\NES}(\epsilonNu, \epsilonNu^{\prime}, \cos\theta, \bU) & = \sum_{l=0}^{1} \dfrac{ 2l+1}{2}\Phi^{\In/\Out}_{l,\NES}(\epsilonNu,\epsilonNu^{\prime},\bU)P_l(\cos\theta) \\
-& \approx \dfrac{1}{2}\Phi_{0,\NES}^{\In/\Out}(\epsilonNu,\epsilonNu^{\prime}, \bU) + \dfrac{3}{2}\Phi^{\In/\Out}_{1,\NES}(\epsilonNu,\epsilonNu^{\prime}, \bU)\cos\theta
-\end{align}
+By orthogonality of the Legendre polynomials ($P_{0}(x)=1,P_{1}(x)=x$), the expansion coefficients are given by
+\begin{equation}
+  \Phi_{\IS,\ell}(\epsilonNu)
+  =\int_{-1}^{+1}R_{\IS}(\cos\alpha,\epsilonNu)\,P_{\ell}(\cos\alpha)\,d\cos\alpha \quad (\ell=0,1).  
+\end{equation}
+Inserting the Legendre expansion into Eq.~\eqref{eq:homogeneousBoltzmann} and taking the angular moments gives no contribution to the equation for $\cJ$ (energy conservation), while the contribution to the equation for $\bcH$ is
+\begin{equation}
+  \f{1}{c}\deriv{\bcH}{t}
+  =-\big(\,\sigma_{\IS,0}-\sigma_{\IS,1}\big)\,\bcH,
+\end{equation}
+where we have defined
+\begin{equation}
+  \sigma_{\IS,\ell}(\epsilonNu)
+  =\f{2\pi\,\epsilonNu^{2}}{c\,(hc)^{3}}\,\Phi_{\IS,\ell}(\epsilonNu) \quad (\ell=0,1).  
+\end{equation}
+We tabulate the scattering opacities $\sigma_{\IS,0}$ and $\sigma_{\IS,1}$, which have units cm$^{-1}$, but use only $\sigma_{\IS,0}$ in the numerical experiments in Section~\ref{sec:numericalTableOpacities}, where $\sigma=\sigma_{\IS,0}$ in Equation~\eqref{eq:momentEquationMomentum}.  
 
-The isotropic term $\dfrac{1}{2}\Phi_{0,\NES}^{\In/\Out}(\epsilonNu,\epsilonNu^{\prime}, \bU)$ is the $R^{\In}(\epsilonNu,\epsilonNu')$ and $R^{\Out}(\epsilonNu,\epsilonNu')$  in Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}. 
+\subsection{Neutrino-Electron Scattering}
+
+The NES scattering kernel $R_{\NES}^{\Out}(\cos\alpha,\epsilonNu,\epsilonNu')$ is given by Eq.~(9) in \citet{mezzacappaBruenn_1993c}.  
+As we did in the isoenergetic scattering case, we approximate the angular dependence of the scattering kernels by a two-term Legendre expansion; e.g.,
+\begin{equation}
+  R^{\Out}_{\NES}(\cos\alpha,\epsilonNu,\epsilonNu') 
+  \approx \f{1}{2} \Phi_{\NES,0}^{\Out}(\epsilonNu,\epsilonNu') + \f{3}{2}\Phi^{\Out}_{\NES,1}(\epsilonNu,\epsilonNu')\,\cos\alpha,
+\end{equation}
+where
+\begin{equation}
+  \Phi_{\NES,\ell}^{\Out}(\epsilonNu,\epsilonNu')
+  =\int_{-1}^{+1}R_{\NES}^{\Out}(\cos\alpha,\epsilonNu,\epsilonNu')\,P_{\ell}(\cos\alpha)\,d\cos\alpha \quad (\ell=0,1).  
+\end{equation}
+The in-scattering kernels $\Phi_{\NES,\ell}^{\In}(\epsilonNu,\epsilonNu')$ are obtained from symmetry properties \citep{cernohorsky_1994}
+\begin{equation}
+  \Phi_{\NES,\ell}^{\In}(\epsilonNu,\epsilonNu')=\Phi_{\NES,\ell}^{\Out}(\epsilonNu',\epsilonNu)
+  \quad\text{and}\quad
+  \Phi_{\NES,\ell}^{\Out}(\epsilonNu',\epsilonNu)
+  =e^{-(\epsilonNu-\epsilonNu')/k_{\mbox{\tiny B}}T}\,\Phi_{\NES,\ell}^{\Out}(\epsilonNu,\epsilonNu').
+  \label{eq:symmetryNES}
+\end{equation}
+Inserting the Legendre expansion into Eq.~\eqref{eq:homogeneousBoltzmann}, and taking the zeroth moment (number equation), gives
+\begin{align}
+  \f{1}{c}\deriv{\cJ}{t}
+  &=\big(\,4\pi-\cJ(\epsilonNu)\,\big)\int_{\bbR^{+}}R_{\NES,0}^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')\,dV_{\epsilonNu'}
+  -\bcH(\epsilonNu)\cdot\int_{\bbR^{+}}R_{\NES,1}^{\In}(\epsilonNu,\epsilonNu')\,\bcH(\epsilonNu')\,dV_{\epsilonNu'} \nonumber \\
+  & \hspace{12pt}
+  -\cJ(\epsilonNu)\int_{\bbR^{+}}R_{\NES,0}^{\Out}(\epsilonNu,\epsilonNu')\,\big(\,4\pi-\cJ(\epsilonNu')\,\big)\,dV_{\epsilonNu'}
+  +\bcH(\epsilonNu)\cdot\int_{\bbR^{+}}R_{\NES,1}^{\Out}(\epsilonNu,\epsilonNu')\,\bcH(\epsilonNu')\,dV_{\epsilonNu'}.  
+\end{align}
+Similarly, taking the first moment (number flux) of Eq.~\eqref{eq:homogeneousBoltzmann} results in
+\begin{align}
+  \f{1}{c}\deriv{\bcH}{t}
+  &=-\bcH(\epsilonNu)\int_{\bbR^{+}}R_{\NES,0}^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')\,dV_{\epsilonNu'}
+  +\big(\,(4\pi/3)\,\bI-\bcK\,\big)\cdot\int_{\bbR^{+}}R_{\NES,1}^{\In}(\epsilonNu,\epsilonNu')\,\bcH(\epsilonNu')\,dV_{\epsilonNu'} \nonumber \\
+  & \hspace{12pt}
+  -\bcH\int_{\bbR^{+}}R_{\NES,0}^{\Out}(\epsilonNu,\epsilonNu')\,\big(\,4\pi-\cJ(\epsilonNu')\,\big)\,dV_{\epsilonNu'}
+  +\bcK\cdot\int_{\bbR^{+}}R_{\NES,1}^{\Out}(\epsilonNu,\epsilonNu')\,\bcH(\epsilonNu')\,dV_{\epsilonNu'},
+\end{align}
+where we have defined
+\begin{equation}
+  R_{\NES,0}^{\In/\Out}
+  =\f{1}{c\,(hc)^{3}}\,\f{1}{2}\,\Phi_{\NES,0}^{\In/\Out}(\epsilonNu,\epsilonNu')
+  \quad\text{and}\quad
+  R_{\NES,1}^{\In/\Out}
+  =\f{1}{c\,(hc)^{3}}\,\f{3}{2}\,\Phi_{\NES,1}^{\In/\Out}(\epsilonNu,\epsilonNu').  
+\end{equation}
+We tabulate the scattering kernels $R_{\NES,0}^{\Out}$ and $R_{\NES,1}^{\Out}$, which have units MeV$^{-3}$ cm$^{-1}$, and obtain the in-scattering rates from the symmetry properties in Eq.~\eqref{eq:symmetryNES}.  
+We only use $R_{\NES,0}^{\In/\Out}$ in the numerical experiments in Section~\ref{sec:numericalTableOpacities}, so that $R^{\In/\Out}=R_{\NES,0}^{\In/\Out}$ in Eqs~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}.  
 
 \section{Basic Benchmark Problems}
+\label{sec:numericalBasic}
 
 We benchmark the DG implementation against a series of test problems.  
 We will vary the degree $k$ of the polynomial representation used in DG method from 0 to 3, which we then denote DG($k$).  
@@ -1002,6 +1069,7 @@ Overall, there is quite good agreement between the results obtained with the two
 For larger values of this ratio, the agreement is worse, but seems to improve with increasing value of the index $n$ (cf. the blue lines in the lower two panels in Figure~\ref{fig:milneProblem1D}).  
 
 \section{Transport Problems with Tabulated Neutrino Opacities}
+\label{sec:numericalTableOpacities}
 
 For the tests in this section we employ the tabulated opacities described in Section~\ref{sec:opacities}.  
 We present two tests from the previous section (the homogeneous sphere and spherical diffusion problems), where the background is kept fixed.  
@@ -1126,21 +1194,57 @@ When Eq.~\eqref{eq:NonlinearSystemNES} is converged to give $\bcJ^{n+1}$, the fl
   \end{tabular}
 \end{table}
 
+\begin{figure}
+  \begin{center}
+    \includegraphics[scale=0.8]{./Figures/HomogeneousSphere_Opacities}
+  \end{center}
+  \caption{Absorption opacityies versus energy $\epsilonNu$ using values for $\rho$, $T$, and $Y_{e}$ listed in Table~\ref{tab:tabulatedModels}.}
+  \label{fig:absorptionOpacities_weaklib}
+\end{figure}
+
 \subsection{Homogeneous Sphere}
 
 \begin{figure}
   \begin{center}
     \begin{tabular}{cc}
-      \includegraphics[scale=0.4]{./Figures/HomogeneousSphere_Opacities} &
-      \includegraphics[scale=0.4]{./Figures/HomogeneousSphere_BaseSpectra} \\
-      \includegraphics[scale=0.4]{./Figures/HomogeneousSphere_VsRadius_B} &
-      \includegraphics[scale=0.4]{./Figures/HomogeneousSphere_VsRadius_D}
+      \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_B_Density} &
+      \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_B_EddingtonFactor} \\
+      \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_B_FluxFactor} &
+      \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_B_MeanEnergy}
     \end{tabular}
   \end{center}
-  \caption{Results from solving the multi-group Homogeneous sphere problem with the DG(1)+SIRK2 method using $100$ elements.
-    In the upper left panel we plot the absorption opacity versus energy $\epsilonNu$ using the values for $\rho$, $T$, and $Y_{e}$ listed in Table~\ref{tab:tabulatedModels}. In the upper right panel, we plot the spectral number density versus energy at the end of the computations for a radius of $52.5$~km solid lines.  The corresponding Fermi-Dirac spectrum is also plotted (dashed lines).  }
-  \label{fig:homogeneousSphere1D_weaklib}
+  \caption{Results from solving the multi-group Homogeneous sphere problem with the DG(2)+SIRK2 method using $100$ spatial elements and $24$ energy groups, and using material properties from Model~D in Table~\ref{tab:tabulatedModels} to compute the neutrino absorption opacities.
+    We plot the energy-averaged neutrino density (upper left), flux factor (lower left), Eddington factor (upper right), and mean neutrino energy (lower right) versus radius.  
+    The analytical solution is represented by the solid lines, while the numerical solution is given by the dashed lines.}
+  \label{fig:homogeneousSphere1D_weaklib_B}
 \end{figure}
+
+\begin{figure}
+  \begin{center}
+    \begin{tabular}{cc}
+      \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_D_Density} &
+      \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_D_EddingtonFactor} \\
+      \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_D_FluxFactor} &
+      \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_D_MeanEnergy}
+    \end{tabular}
+  \end{center}
+  \caption{Same as in Figure~\ref{fig:homogeneousSphere1D_weaklib_B}, but using material properties from Model~D in Table~\ref{tab:tabulatedModels} to compute the neutrino absorption opacities.}
+  \label{fig:homogeneousSphere1D_weaklib_D}
+\end{figure}
+
+%\begin{figure}
+%  \begin{center}
+%    \begin{tabular}{cc}
+%      \includegraphics[scale=0.4]{./Figures/HomogeneousSphere_Opacities} &
+%      \includegraphics[scale=0.4]{./Figures/HomogeneousSphere_BaseSpectra} \\
+%      \includegraphics[scale=0.4]{./Figures/HomogeneousSphere_VsRadius_B} &
+%      \includegraphics[scale=0.4]{./Figures/HomogeneousSphere_VsRadius_D}
+%    \end{tabular}
+%  \end{center}
+%  \caption{Results from solving the multi-group Homogeneous sphere problem with the DG(1)+SIRK2 method using $100$ elements.
+%    In the upper left panel we plot the absorption opacity versus energy $\epsilonNu$ using the values for $\rho$, $T$, and $Y_{e}$ listed in Table~\ref{tab:tabulatedModels}. In the upper right panel, we plot the spectral number density versus energy at the end of the computations for a radius of $52.5$~km solid lines.  The corresponding Fermi-Dirac spectrum is also plotted (dashed lines).  }
+%  \label{fig:homogeneousSphere1D_weaklib}
+%\end{figure}
 
 \subsection{Diffuse Scattering}
 
