@@ -21,7 +21,7 @@ PROGRAM StandingAccretionShock1D
   REAL(DP), PARAMETER :: GravitationalMass = 0.5_DP
   REAL(DP), PARAMETER :: ShockRadius       = 1.0_DP
   REAL(DP), PARAMETER :: PolytropicGamma   = 4.0_DP / 3.0_DP
-  REAL(DP), PARAMETER :: MachNumber        = 3.0d2
+  REAL(DP), PARAMETER :: MachNumber        = 3.0d1
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -39,7 +39,7 @@ PROGRAM StandingAccretionShock1D
            zoomX_Option &
              = [ 1.0_DP, 1.0_DP, 1.0_DP ], &
            nNodes_Option &
-             = 3, &
+             = 2, &
            CoordinateSystem_Option &
              = 'SPHERICAL', &
            EquationOfState_Option &
@@ -67,7 +67,7 @@ PROGRAM StandingAccretionShock1D
            PointMass_Option &
              = GravitationalMass, &
            nStages_SSP_RK_Option &
-             = 3 )
+             = 2 )
 
   CALL InitializeStandingAccretionShock &
          ( AccretionRate, &
@@ -79,9 +79,9 @@ PROGRAM StandingAccretionShock1D
   CALL SolveGravity
 
   CALL EvolveFields &
-         ( t_begin  = 0.0_DP, &
-           t_end    = 5.0_DP, &
-           dt_write = 0.1_DP, &
+         ( t_begin  = 0.00_DP, &
+           t_end    = 5.00_DP, &
+           dt_write = 0.50_DP, &
            UpdateFields = SSP_RK )
 
   CALL FinalizeProgram
