@@ -88,17 +88,21 @@ CONTAINS
 
                 ELSE
 
+                  Speed &
+                    = SQRT &
+                        (1.0_DP/(1.0_DP+2.0_DP/((Gamma-1.0_DP)*Mach**2))/X1)
+
                   uPF(iNode,iX1,iX2,iX3,iPF_D)  &
-                    = (mDot/FourPi) / SQRT(2.0_DP * Mass) / X1**1.5_DP
+                    = mDot / ( FourPi * X1**2 * Speed ) 
                   uPF(iNode,iX1,iX2,iX3,iPF_V1) &
-                    = - SQRT( 2.0_DP * Mass / X1 )
+                    = - Speed
                   uPF(iNode,iX1,iX2,iX3,iPF_V2) &
                     = 0.0_DP
                   uPF(iNode,iX1,iX2,iX3,iPF_V3) &
                     = 0.0_DP
                   uAF(iNode,iX1,iX2,iX3,iAF_P)  &
                     = uPF(iNode,iX1,iX2,iX3,iPF_D) / Gamma &
-                        * (-uPF(iNode,iX1,iX2,iX3,iPF_V1)/Mach)**2.0_DP
+                        * ( Speed / Mach )**2.0_DP
 
                 END IF
 
@@ -111,10 +115,10 @@ CONTAINS
                    uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E) )
 
           CALL ComputeAuxiliary_Fluid &
-                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E ),  &
-                   uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P ),  &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E ), &
+                   uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P ), &
                    uAF(:,iX1,iX2,iX3,iAF_T ), uAF(:,iX1,iX2,iX3,iAF_Ye), &
-                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ),  &
+                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
                    uAF(:,iX1,iX2,iX3,iAF_Gm), uAF(:,iX1,iX2,iX3,iAF_Cs) )
 
           CALL ComputeConserved &
