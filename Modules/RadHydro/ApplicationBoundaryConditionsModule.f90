@@ -24,7 +24,8 @@ MODULE ApplicationBoundaryConditionsModule
     ComputeInternalEnergyDensityFromPressure, &
     ComputeAuxiliary_Fluid
   USE EulerEquationsUtilitiesModule, ONLY: &
-    ComputeConserved
+    ComputeConserved, &
+    Primitive
 
   IMPLICIT NONE
   PRIVATE
@@ -380,9 +381,61 @@ CONTAINS
 
   SUBROUTINE ApplyBC_Fluid_X1_StandingAccretionShock1D
 
-    ! --- Boundary Conditions Set During Initialization ---
+    INTEGER  :: iX2, iX3
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX_0, iNodeX_1
+    REAL(DP) :: X1_0, X1_1, D_1, P_1, Gamma
+    REAL(DP), DIMENSION(nPF) :: uPF_1
+
+    Gamma = 4.0_DP / 3.0_DP
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+
+        ! --- Inner Boundary ---
+
+        DO iNodeX3 = 1, nNodesX(3)
+          DO iNodeX2 = 1, nNodesX(2)
+            DO iNodeX1 = 1, nNodesX(1)
+
+              iNodeX_0 = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+              iNodeX_1 = NodeNumberX( 1,       iNodeX2, iNodeX3 )
+
+              X1_0 = NodeCoordinate( MeshX(1), 0, iNodeX1 )
+              X1_1 = NodeCoordinate( MeshX(1), 1, 1 )
+
+              uPF_1 = Primitive( uCF(iNodeX_1,1,iX2,iX3,:) )
+              D_1   = uPF_1(iPF_D)
+              P_1   = uPF_1(iPF_E) / ( Gamma - 1.0_DP )
+
+              uPF(iNodeX_0,0,iX2,iX3,iPF_D) &
+                = D_1 * ( X1_1 / X1_0 )**3
+
+              uPF(iNodeX_0,0,iX2,iX3,iAF_P) &
+                = P_1 * ( X1_1 / X1_0 )**4
+
+            END DO
+          END DO
+        END DO
+
+        CALL ComputeInternalEnergyDensityFromPressure &
+               ( uPF(:,0,iX2,iX3,iPF_D ), uAF(:,0,iX2,iX3,iAF_P), &
+                 uAF(:,0,iX2,iX3,iAF_Ye), uPF(:,0,iX2,iX3,iPF_E) )
+
+        CALL ComputeAuxiliary_Fluid &
+               ( uPF(:,0,iX2,iX3,iPF_D ), uPF(:,0,iX2,iX3,iPF_E ), &
+                 uPF(:,0,iX2,iX3,iPF_Ne), uAF(:,0,iX2,iX3,iAF_P ), &
+                 uAF(:,0,iX2,iX3,iAF_T ), uAF(:,0,iX2,iX3,iAF_Ye), &
+                 uAF(:,0,iX2,iX3,iAF_S ), uAF(:,0,iX2,iX3,iAF_E ), &
+                 uAF(:,0,iX2,iX3,iAF_Gm), uAF(:,0,iX2,iX3,iAF_Cs) )
+
+        CALL ComputeConserved &
+               ( uPF(:,0,iX2,iX3,1:nPF), uCF(:,0,iX2,iX3,1:nCF) )
+
+      END DO
+    END DO
 
   END SUBROUTINE ApplyBC_Fluid_X1_StandingAccretionShock1D
+
 
   SUBROUTINE ApplyBC_Fluid_X1_GravitationalCollapse1D
 
