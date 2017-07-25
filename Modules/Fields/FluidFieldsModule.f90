@@ -57,17 +57,21 @@ MODULE FluidFieldsModule
 
   ! --- Auxiliary Fluid Fields ---
 
-  INTEGER, PUBLIC, PARAMETER :: iAF_P  = 1  ! Pressure
-  INTEGER, PUBLIC, PARAMETER :: iAF_T  = 2  ! Temperature
-  INTEGER, PUBLIC, PARAMETER :: iAF_Ye = 3  ! Electron Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAF_S  = 4  ! Entropy Per Baryon
-  INTEGER, PUBLIC, PARAMETER :: iAF_E  = 5  ! Specific Internal Energy
-  INTEGER, PUBLIC, PARAMETER :: iAF_Me = 6  ! Electron Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAF_Mp = 7  ! Proton Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAF_Mn = 8  ! Neutron Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAF_Gm = 9  ! Ratio of Specific Heats
-  INTEGER, PUBLIC, PARAMETER :: iAF_Cs = 10 ! Sound Speed
-  INTEGER, PUBLIC, PARAMETER :: nAF    = 10 ! n Auxiliary Fluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iAF_P  = 01 ! Pressure
+  INTEGER, PUBLIC, PARAMETER :: iAF_T  = 02 ! Temperature
+  INTEGER, PUBLIC, PARAMETER :: iAF_Ye = 03 ! Electron Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAF_S  = 04 ! Entropy Per Baryon
+  INTEGER, PUBLIC, PARAMETER :: iAF_E  = 05 ! Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: iAF_Me = 06 ! Electron Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAF_Mp = 07 ! Proton Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAF_Mn = 08 ! Neutron Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAF_Xp = 09 ! Proton Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAF_Xn = 10 ! Neutron Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAF_Xa = 11 ! Alpha Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAF_Xh = 12 ! Heavy Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAF_Gm = 13 ! Ratio of Specific Heats
+  INTEGER, PUBLIC, PARAMETER :: iAF_Cs = 14 ! Sound Speed
+  INTEGER, PUBLIC, PARAMETER :: nAF    = 14 ! n Auxiliary Fluid Fields
 
   CHARACTER(32), DIMENSION(nAF), PUBLIC, PARAMETER :: &
     namesAF = [ 'Pressure                        ', &
@@ -78,6 +82,10 @@ MODULE FluidFieldsModule
                 'Electron Chemical Potential     ', &
                 'Proton Chemical Potential       ', &
                 'Neutron Chemical Potential      ', &
+                'Proton Mass Fraction            ', &
+                'Neutron Mass Fraction           ', &
+                'Alpha Mass Fraction             ', &
+                'Heavy Mass Fraction             ', &
                 'Ratio of Specific Heats (Gamma) ', &
                 'Sound Speed                     ' ]
 
