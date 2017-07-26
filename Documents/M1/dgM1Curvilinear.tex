@@ -240,12 +240,13 @@ For example, the simple Lax-Friedrichs (LF) flux, which we have implemented, is 
   =\f{1}{2}\,\big(\,\bcF^{i}(\bcM^{-})+\bcF^{i}(\bcM^{+})-\alpha^{i}\,(\,\bcM^{+}-\bcM^{-}\,)\,\big),
 \end{equation}
 where $\alpha^{i}=||\mbox{eig}\big(\partial\bcF^{i}/\partial\bcM\big)||_{\infty}$ is the largest eigenvalue of the flux jacobian.  
-For classical neutrinos, which propagate at the speed of light, we take $\alpha^{i}=1$ (i.e., the global LF flux).  
-We have also implemented the Harten-Lax-van Leer (HLL) flux
+For classical neutrinos, which propagate at the speed of light, we can take $\alpha^{i}=1$ (i.e., the global LF flux).  
+We have also implemented the Harten-Lax-van Leer (HLL) flux \citep{harten_etal_1983}
 \begin{equation}
   \vect{f}^{\mbox{\tiny HLL},i}(\bcM^{-},\bcM^{+})
-  =
+  =\f{\alpha^{+,i}\,\bcF^{i}(\bcM^{-})+\alpha^{-,i}\,\bcF^{i}(\bcM^{+})-\alpha^{-,i}\alpha^{+,i}(\,\bcM^{+}-\bcM^{-}\,)}{\alpha^{-,i}+\alpha^{+,i}},
 \end{equation}
+where $\alpha^{-,i}$ and $\alpha^{+,i}$ are estimates for the largest (in absolute value) wave speed for left-moving and right-moving waves, respectively.  
 
 The approximation space $\mathbb{V}^{k}$ contains the constant functions, and the choice $v=1$ in Eq.~\eqref{eq:semidiscreteDG} gives
 \begin{equation}
@@ -665,7 +666,7 @@ In the following subsections we separately give the collision terms for the two-
 (The total collision term in the two-moment model is then given by the sum of the separate terms.)  
 The opacities are computed using the SFHo equation of state \citep{steiner_etal_2013}, and tabulated for densities $\rho\in[1.66\times10^{4},3.16\times10^{15}]$~g~cm$^{-3}$, temperatures $T\in[1.16\times10^{9},1.84\times10^{12}]$~K, and electron fractions $Y_{e}\in[0.01,0.6]$.  
 The neutrino energies are in the range $\epsilonNu\in[0.1,300]$~MeV.  
-We use logarithmic grids to cover the range in density $N_{\rho}=308$, temperature ($N_{T}=129$), and the neutrino energy ($N_{\epsilonNu}=40$), and a linear grid to cover the range in electron fraction ($N_{Y_{e}}=60$).  
+We use logarithmic grids to cover the range in density $N_{\rho}=308$, temperature ($N_{T}=161$), and the neutrino energy ($N_{\epsilonNu}=40$), and a linear grid to cover the range in electron fraction ($N_{Y_{e}}=60$).  
 The neutrino electron scattering rates are tabulated in terms of neutrino energies ($\epsilonNu$ and $\epsilonNu'$), temperature, and $\eta=\mu_{\nu}/(k_{\mbox{\tiny B}}T)$.  
 Here we use a logarithmic grid in $\eta\in[1.0\times10^{-8},2.5\times10^{3}]$~MeV, using $N_{\eta}=100$ points.  
 
@@ -1088,7 +1089,7 @@ With the specified initial and boundary conditions, we evolve the moment equatio
       \includegraphics[scale=0.4]{./Figures/MilneProblem1D_n30.png}
     \end{tabular}
   \end{center}
-  \caption{Results of the Milne problem obtained with the two-moment model (solid lines), obtained with the DG(2)+SIRK2 scheme, compared with solutions provided by \citep{hummerRybicki_1971} (boxes).  See text for details.}
+  \caption{Results of the Milne problem obtained with the two-moment model (solid lines), using the DG(2)+SIRK2 scheme, compared with solutions provided by \citep{hummerRybicki_1971} (boxes).  See text for details.}
   \label{fig:milneProblem1D}
 \end{figure}
 
@@ -1174,6 +1175,7 @@ Once $Y_{e}^{n+1}$ and $\epsilon^{n+1}$ are obtained, the radiation density is o
   \bcH_{j}^{n+1}=\bcH_{j}^{n}/(1+\gamma_{j}^{n}).  
   \label{eq:momentEquationMomentumEmAbDiscrete}
 \end{equation}
+When elastic scattering is included, the above description remains unchanged, except for $\gamma_{j}^{n}\to\dt\big(\tilde{\chi}_{j}^{n}+\sigma_{j}^{n}\big)$ in Eq.~\eqref{eq:momentEquationMomentumEmAbDiscrete}.  
 
 \subsubsection{Neutrino-Electron Scattering (NES)}
 
@@ -1222,6 +1224,65 @@ When Eq.~\eqref{eq:NonlinearSystemNES} is converged to give $\bcJ^{n+1}$, the fl
 \end{align}
 
 \subsubsection{Full Interaction Set}
+
+With the complete interaction set considered in this paper (i.e., emission and absorption, elastic scattering, and NES), the electron fraction and fluid internal energy evolve according to
+\begin{align}
+  d_{t}Y_{e}
+  &=-\f{m_{\mbox{\tiny B}}}{\rho}\int_{\bbR^{+}}\tilde{\chi}\,\big(\cJ_{0}-\cJ\big)\,dV_{\epsilonNu}, \\
+  \rho\,d_{t}\epsilon
+  &=-\int_{\bbR^{+}}\tilde{\chi}\,\big(\cJ_{0}-\cJ\big)\,\epsilonNu\,dV_{\epsilonNu} \nonumber \\
+  &\hspace{12pt}
+  -\int_{\bbR^{+}}\int_{\bbR^{+}}\big(4\pi-\cJ(\epsilonNu)\big)R^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')\,dV_{\epsilonNu'}\,\epsilonNu\,dV_{\epsilonNu} \nonumber \\
+  &\hspace{12pt}
+  +\int_{\bbR^{+}}\int_{\bbR^{+}}\cJ(\epsilonNu)\,R^{\Out}(\epsilonNu,\epsilonNu')\,\big(4\pi-\cJ(\epsilonNu)\big)\,dV_{\epsilonNu'}\,\epsilonNu\,dV_{\epsilonNu},
+\end{align}
+and the conserved quantities are the total lepton number
+\begin{equation}
+  d_{t}\big(\,\f{\rho}{m_{\mbox{\tiny B}}}Y_{e}+\int_{\bbR^{+}}\cJ\,dV_{\epsilonNu}\,\big)=0,
+  \label{eq:leptonConservationFull}
+\end{equation}
+and the total (fluid plus radiation) energy
+\begin{equation}
+  d_{t}\big(\,\rho\,\epsilon+\int_{\bbR^{+}}\cJ\,\epsilonNu\,dV_{\epsilonNu}\,\big)=0.  
+  \label{eq:energyConservationFull}
+\end{equation}
+
+In the solution to the coupled system, we use Eqs.~\eqref{eq:leptonConservationFull} and \eqref{eq:energyConservationFull} together with the equation for the neutrino number density to form a system of nonlinear equations for the solution vector $\bU=(\bcJ,Y_{e},\epsilon)^{\mbox{\tiny T}}$, i.e.,
+\begin{equation}
+  \bF(\bU^{n+1})=0,
+  \label{eq:nonlinearSystemFull}
+\end{equation}
+where, for $j=1,\ldots,M^{\epsilonNu}$,
+\begin{align}
+  F_{j}(\bU^{n+1})
+  &=\big(\cJ_{j}^{n+1}-\cJ_{j}^{n}\big)-\dt\,\tilde{\chi}_{j}^{n}\big(\,\cJ_{0,j}^{n+1}-\cJ_{j}^{n+1}\,\big) \nonumber \\
+  &\hspace{12pt}
+  -\dt\,\Big\{\,
+    \big(4\pi-\cJ_{j}^{n+1}\big)\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\In,n}\,\cJ_{k}^{n+1}
+    -\cJ_{j}^{n+1}\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\Out,n}\,\big(4\pi-\cJ_{k}^{n+1}\big)\,\Big\}.
+\end{align}
+The electron fraction is constrained by
+\begin{equation}
+  F_{M^{\epsilonNu}+1}(\bU^{n+1})
+  =Y_{e}^{n+1}-Y_{e}^{n}+\f{m_{\mbox{\tiny B}}}{\rho}\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\big(\,\cJ_{k}^{n+1}-\cJ_{k}^{n}\,\big),
+\end{equation}
+while the internal energy is constrained by
+\begin{equation}
+  F_{M^{\epsilonNu}+2}(\bU^{n+1})
+  =\epsilon^{n+1}-\epsilon^{n}+\f{1}{\rho}\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(3)}\big(\,\cJ_{k}^{n+1}-\cJ_{k}^{n}\,\big).  
+\end{equation}
+The system given by Eq.~\eqref{eq:nonlinearSystemFull} is solved using Newton's method, where $\bU^{n}$ is taken as an initial guess.  
+The dense Jacobian matrix is computed analytically, except for derivatives of the equilibrium density $\cJ_{0}$, which are computed numerically by taking derivatives of table interpolation functions.  
+The radiation flux is subsequently obtained from
+\begin{equation}
+  \bcH_{j}^{n+1}-\bcH_{j}^{n}
+  =-\dt\,\big(\,\tilde{\chi}_{j}^{n}+\sigma_{j}^{n}+\sigma_{\NES,j}^{n}\,\big)\,\bcH_{j}^{n+1},
+\end{equation}
+where
+\begin{equation}
+  \sigma_{\NES,j}^{n}
+  =\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\big[\,R_{jk}^{\In,n}\,\cJ_{k}^{n+1}+R_{jk}^{\Out,n}\big(4\pi-\cJ_{k}^{n+1}\big)\,\big].
+\end{equation}
 
 \begin{table}
   \caption{Parameters used for problems with tabulated opacities. \label{tab:tabulatedModels}}
