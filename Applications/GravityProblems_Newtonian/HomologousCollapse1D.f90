@@ -19,7 +19,7 @@ PROGRAM HomologousCollapse1D
          ( ProgramName_Option &
             = 'HomologousCollapse1D', &
            nX_Option &
-             = [ 64, 1, 1 ], &
+             = [ 128, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -27,15 +27,17 @@ PROGRAM HomologousCollapse1D
            xL_Option &
              = [ 0.000_DP, 0.0_DP, 0.0_DP ], &
            xR_Option &
-             = [ 3.245_DP, Pi,     4.0_DP ], &
+             = [ 3.315_DP, Pi,     4.0_DP ], &
+           zoomX_Option &
+             = [ 1.0_DP, 1.0_DP, 1.0_DP ], &
            nNodes_Option &
-             = 3, &
+             = 2, &
            CoordinateSystem_Option &
              = 'SPHERICAL', &
            EquationOfState_Option &
              = 'IDEAL', &
            Gamma_IDEAL_Option &
-             = 4.0_DP/3.0_DP, &
+             = 4.0_DP / 3.0_DP, &
            FluidSolver_Option &
              = 'Euler_DG', &
            FluidRiemannSolver_Option &
@@ -55,7 +57,7 @@ PROGRAM HomologousCollapse1D
            GravitySolver_Option &
              = 'Newtonian_Poseidon', &
            nStages_SSP_RK_Option &
-             = 3 )
+             = 2 )
 
   CALL InitializeHomologousCollapse
 
@@ -63,8 +65,8 @@ PROGRAM HomologousCollapse1D
 
   CALL EvolveFields &
          ( t_begin  = 0.0_DP, &
-           t_end    = 1.0d+2, &
-           dt_write = 1.0d+0, &
+           t_end    = 1.0d-1, &
+           dt_write = 1.0d-2, &
            UpdateFields = SSP_RK )
 
   CALL FinalizeProgram

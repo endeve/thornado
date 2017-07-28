@@ -198,7 +198,8 @@ CONTAINS
                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
                   = 0.0_DP
                 uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
-                  = Interpolate1D( Radius, Pressure, nR, X1 )
+                  = Interpolate1D( Radius, Pressure, nR, X1 ) &
+                    * ( 1.0_DP - 0.0d-3 * EXP( - X1 / 3.0_DP ) )
 
               END DO
             END DO
