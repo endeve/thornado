@@ -7,6 +7,9 @@ PROGRAM HydrostaticPolytrope1D
     FinalizeProgram
   USE GravityProblemsInitializationModule, ONLY: &
     InitializeHydrostaticPolytrope
+  USE ErrorAnalysisModule, ONLY: &
+    InitializeErrorAnalysis, &
+    FinalizeErrorAnalysis
   USE TimeSteppingModule, ONLY: &
     EvolveFields, &
     SSP_RK
@@ -61,11 +64,15 @@ PROGRAM HydrostaticPolytrope1D
 
   CALL SolveGravity
 
+  CALL InitializeErrorAnalysis
+
   CALL EvolveFields &
          ( t_begin  = 0.0_DP, &
            t_end    = 1.0d+1, &
            dt_write = 1.0d-1, &
            UpdateFields = SSP_RK )
+
+  CALL FinalizeErrorAnalysis
 
   CALL FinalizeProgram
 

@@ -17,11 +17,11 @@ HomogeneousSphere1D: \
 
 HydrostaticPolytrope1D: \
 	$(thornado) GravityProblemsInitializationModule.o \
-	HydrostaticPolytrope1D.o
+	ErrorAnalysisModule.o HydrostaticPolytrope1D.o
 	$(FLINKER) $(FLAGS) -o \
 	HydrostaticPolytrope1D_$(MACHINE) \
 	$(thornado) GravityProblemsInitializationModule.o \
-	HydrostaticPolytrope1D.o $(LIBRARIES)
+	ErrorAnalysisModule.o HydrostaticPolytrope1D.o $(LIBRARIES)
 
 HomologousCollapse1D: \
 	$(thornado) GravityProblemsInitializationModule.o \
