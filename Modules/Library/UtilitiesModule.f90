@@ -10,6 +10,7 @@ MODULE UtilitiesModule
 
   PUBLIC :: Locate
   PUBLIC :: NodeNumber
+  PUBLIC :: NodeNumber_X1
   PUBLIC :: NodeNumberX
   PUBLIC :: NodeNumberX_X1
   PUBLIC :: InitializeWeights
@@ -80,6 +81,18 @@ CONTAINS
 
     RETURN
   END FUNCTION NodeNumber
+
+
+  PURE INTEGER FUNCTION NodeNumber_X1( iNodeE, iNodeX2, iNodeX3 )
+
+    INTEGER, INTENT(in) :: iNodeE, iNodeX2, iNodeX3
+
+    NodeNumber_X1 &
+      = iNodeE &
+        + ( (iNodeX2-1) + (iNodeX3-1) * nNodesX(2) ) * nNodesE
+
+    RETURN
+  END FUNCTION NodeNumber_X1
 
 
   PURE INTEGER FUNCTION NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
