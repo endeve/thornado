@@ -27,6 +27,7 @@ MODULE FluidRadiationCouplingSolutionModule_B85
     ComputePrimitiveMoments
   USE FluidRadiationCouplingUtilitiesModule, ONLY: &
     InitializeNodes, &
+    InitializeNodesX, &
     InitializeWeights, &
     InitializeFluidFields, &
     InitializeRadiationFields, &
@@ -58,7 +59,7 @@ MODULE FluidRadiationCouplingSolutionModule_B85
   INTEGER            :: i_Y, i_E
   INTEGER, PARAMETER :: iOld = 1, iNew = 2
   REAL(DP), DIMENSION(:),     ALLOCATABLE :: E_N, W2_N, W3_N
-  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: uPF_N, uAF_N
+  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: X_N, uPF_N, uAF_N
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: Chi, FD
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: dFDdY_E
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: dFDdE_Y
@@ -152,6 +153,9 @@ CONTAINS
     ALLOCATE( W2_N(nNodesE_G), W3_N(nNodesE_G) )
     CALL InitializeWeights( W2_N, W3_N )
 
+    ALLOCATE( X_N(nNodesX_G,3) )
+    CALL InitializeNodesX( X_N )
+
     ALLOCATE( uPF_N(nPF, nNodesX_G) )
     ALLOCATE( uAF_N(nAF, nNodesX_G) )
     CALL InitializeFluidFields( uPF_N, uAF_N )
@@ -189,7 +193,7 @@ CONTAINS
     CALL FinalizeRadiationFields( uPR_N )
 
     DEALLOCATE( E_N, W2_N, W3_N )
-    DEALLOCATE( uPF_N, uAF_N, uPR_N )
+    DEALLOCATE( X_N, uPF_N, uAF_N, uPR_N )
 
     DEALLOCATE( FD, dFDdY_E, dFDdE_Y )
 
@@ -207,7 +211,7 @@ CONTAINS
     LOGICAL,  DIMENSION(nNodesX_G) :: Converged
     INTEGER                        :: iter, iX, iE, iX_Max
     REAL(DP)                       :: Norm, MaxNorm, RES
-    REAL(DP),            PARAMETER :: NewtonTol = 1.0d-8
+    REAL(DP),            PARAMETER :: NewtonTol = 1.0d-10
     REAL(DP),            PARAMETER :: ResTol    = 1.0d-8
     REAL(DP), DIMENSION(nNodesX_G) :: RES_0
     REAL(DP), DIMENSION(nNodesE_G,nNodesX_G) :: absI
@@ -328,6 +332,17 @@ CONTAINS
           '', '        ||FVEC(E)|| = ', ABS( FVEC(i_E,iX_MAX) )
         WRITE(*,*)
 
+        IF( iter > 99 )THEN
+
+          CALL WriteVector &
+                 ( nNodesE_G, E_N,    'EVEC.dat' )
+          CALL WriteVector &
+                 ( nNodesE_G, UVEC(1:nNodesE_G,iX_MAX,iNew), 'UVEC.dat' )
+          PRINT*, 'absI = ', absI(:,iX_MAX)
+
+          STOP
+        END IF
+
       END IF
 
     END DO
@@ -390,13 +405,13 @@ CONTAINS
         Eta_N => uAF_N(iAF_Me,1:nNodesX_G) / kT )
 
     CALL ComputeAbsorptionOpacity &
-           ( E_N, D_N, T_N, Y_N, Chi )
+           ( E_N, D_N, T_N, Y_N, X_N(:,1), X_N(:,2), X_N(:,3), Chi )
 
     CALL ComputeScatteringOpacity_ES &
-           ( E_N, D_N, T_N, Y_N, Sigma )
+           ( E_N, D_N, T_N, Y_N, X_N(:,1), X_N(:,2), X_N(:,3), Sigma )
 
-    CALL ComputeScatteringOpacity_NES &
-           ( E_N, T_N, Eta_N, R0_In, R0_Out )
+!    CALL ComputeScatteringOpacity_NES &
+!           ( E_N, T_N, Eta_N, R0_In, R0_Out )
 
     END ASSOCIATE ! D_N, etc.
     END ASSOCIATE ! kT

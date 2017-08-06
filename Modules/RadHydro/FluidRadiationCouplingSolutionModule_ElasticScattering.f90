@@ -15,6 +15,7 @@ MODULE FluidRadiationCouplingSolutionModule_ElasticScattering
     ComputePrimitiveMoments
   USE FluidRadiationCouplingUtilitiesModule, ONLY: &
     InitializeNodes, &
+    InitializeNodesX, &
     InitializeFluidFields, &
     InitializeRadiationFields, &
     FinalizeFluidFields, &
@@ -27,6 +28,7 @@ MODULE FluidRadiationCouplingSolutionModule_ElasticScattering
 
   INTEGER :: nNodesX_G, nNodesE_G
   REAL(DP), DIMENSION(:),     ALLOCATABLE :: E_N
+  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: X_N
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: uPF_N, uAF_N
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: Kappa
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: uPR_N
@@ -66,6 +68,9 @@ CONTAINS
     ALLOCATE( E_N(nNodesE_G) )
     CALL InitializeNodes( E_N )
 
+    ALLOCATE( X_N(nNodesX_G,3) )
+    CALL InitializeNodesX( X_N )
+
     ALLOCATE( uPF_N(nPF, nNodesX_G) )
     ALLOCATE( uAF_N(nAF, nNodesX_G) )
     CALL InitializeFluidFields( uPF_N, uAF_N )
@@ -80,7 +85,7 @@ CONTAINS
 
   SUBROUTINE FinalizeFluidRadiationCoupling
 
-    DEALLOCATE( E_N )
+    DEALLOCATE( E_N, X_N )
 
     CALL FinalizeFluidFields( uPF_N, uAF_N )
     DEALLOCATE( uPF_N, uAF_N )
@@ -136,7 +141,8 @@ CONTAINS
 
 !!$      Kappa = 1.0d-1 * ( 1.0_DP / Centimeter )
 
-    CALL ComputeScatteringOpacity_ES( E_N, D_N, T_N, Y_N, Kappa )
+    CALL ComputeScatteringOpacity_ES &
+           ( E_N, D_N, T_N, Y_N, X_N(:,1), X_N(:,2), X_N(:,3), Kappa )
 
     END ASSOCIATE ! D_N, etc.
 

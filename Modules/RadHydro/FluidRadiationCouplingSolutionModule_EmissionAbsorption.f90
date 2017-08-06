@@ -16,8 +16,9 @@ MODULE FluidRadiationCouplingSolutionModule_EmissionAbsorption
   USE FluidFieldsModule, ONLY: &
     uCF, nCF, &
     uPF, nPF, iPF_D, iPF_E, iPF_Ne, &
-    uAF, nAF, iAF_P, iAF_T, iAF_Ye, iAF_S, &
-    iAF_E, iAF_Me, iAF_Mp, iAF_Mn, iAF_Gm, iAF_Cs
+    uAF, nAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, &
+    iAF_Me, iAF_Mp, iAF_Mn, iAF_Xp, iAF_Xn, iAF_Xa, &
+    iAF_Xh, iAF_Gm, iAF_Cs
   USE EulerEquationsUtilitiesModule, ONLY: &
     ComputeConserved, &
     ComputePrimitive
@@ -28,6 +29,7 @@ MODULE FluidRadiationCouplingSolutionModule_EmissionAbsorption
     ComputePrimitiveMoments
   USE FluidRadiationCouplingUtilitiesModule, ONLY: &
     InitializeNodes, &
+    InitializeNodesX, &
     InitializeWeights, &
     InitializeFluidFields, &
     InitializeRadiationFields, &
@@ -48,7 +50,8 @@ MODULE FluidRadiationCouplingSolutionModule_EmissionAbsorption
     ApplyEquationOfState, &
     ComputeThermodynamicStates_Primitive
   USE OpacityModule, ONLY: &
-    ComputeAbsorptionOpacity
+    ComputeAbsorptionOpacity, &
+    ComputeScatteringOpacity_ES
 
   IMPLICIT NONE
   PRIVATE
@@ -60,7 +63,7 @@ MODULE FluidRadiationCouplingSolutionModule_EmissionAbsorption
   REAL(DP), DIMENSION(:),     ALLOCATABLE :: E_N, W2_N, W3_N
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: X_N, uPF_N, uAF_N
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: duAFdY_N, duAFdT_N
-  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: Chi, FD
+  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: Chi, FD, Sigma
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: dFDdT_Y, dFDdY_T
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: dFDdE_Y, dFDdY_E
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: FVEC, dUVEC
@@ -126,6 +129,10 @@ CONTAINS
                    uAF(1:nDOFX,iX1,iX2,iX3,iAF_Me), &
                    uAF(1:nDOFX,iX1,iX2,iX3,iAF_Mp), &
                    uAF(1:nDOFX,iX1,iX2,iX3,iAF_Mn), &
+                   uAF(1:nDOFX,iX1,iX2,iX3,iAF_Xp), &
+                   uAF(1:nDOFX,iX1,iX2,iX3,iAF_Xn), &
+                   uAF(1:nDOFX,iX1,iX2,iX3,iAF_Xa), &
+                   uAF(1:nDOFX,iX1,iX2,iX3,iAF_Xh), &
                    uAF(1:nDOFX,iX1,iX2,iX3,iAF_Gm) )
 
           CALL ComputeThermodynamicStates_Primitive &
@@ -160,6 +167,9 @@ CONTAINS
     ALLOCATE( W2_N(nNodesE_G), W3_N(nNodesE_G) )
     CALL InitializeWeights( W2_N, W3_N )
 
+    ALLOCATE( X_N(nNodesX_G,3) )
+    CALL InitializeNodesX( X_N )
+
     ALLOCATE( uPF_N(nPF, nNodesX_G) )
     ALLOCATE( uAF_N(nAF, nNodesX_G) )
     CALL InitializeFluidFields( uPF_N, uAF_N )
@@ -171,7 +181,8 @@ CONTAINS
     CALL InitializeRadiationFields( uPR_N )
 
     ALLOCATE &
-      ( Chi(nNodesE_G, nNodesX_G) )
+      ( Chi  (nNodesE_G, nNodesX_G), &
+        Sigma(nNodesE_G, nNodesX_G) )
 
     ALLOCATE &
       ( FD     (nNodesE_G, nNodesX_G), & ! --- Fermi-Dirac (FD) Distribution
@@ -195,9 +206,9 @@ CONTAINS
     CALL FinalizeRadiationFields( uPR_N )
 
     DEALLOCATE( E_N, W2_N, W3_N )
-    DEALLOCATE( uPF_N, uPR_N )
+    DEALLOCATE( X_N, uPF_N, uPR_N )
     DEALLOCATE( uAF_N, duAFdT_N, duAFdY_N )
-    DEALLOCATE( Chi, FD )
+    DEALLOCATE( Chi, FD, Sigma )
     DEALLOCATE( dFDdT_Y, dFDdY_T )
     DEALLOCATE( dFDdE_Y, dFDdY_E )
 
@@ -359,7 +370,11 @@ CONTAINS
         T_N => uAF_N(iAF_T, 1:nNodesX_G), &
         Y_N => uAF_N(iAF_Ye,1:nNodesX_G) )
 
-    CALL ComputeAbsorptionOpacity( E_N, D_N, T_N, Y_N, Chi )
+    CALL ComputeAbsorptionOpacity &
+           ( E_N, D_N, T_N, Y_N, X_N(:,1), X_N(:,2), X_N(:,3), Chi )
+
+    CALL ComputeScatteringOpacity_ES &
+           ( E_N, D_N, T_N, Y_N, X_N(:,1), X_N(:,2), X_N(:,3), Sigma )
 
     END ASSOCIATE ! D_N, etc.
 
@@ -601,25 +616,26 @@ CONTAINS
     REAL(DP), INTENT(in) :: dt
 
     INTEGER  :: iX, iE
-    REAL(DP) :: Gamma
+    REAL(DP) :: Gamma, Gamma_T
 
     DO iX = 1, nNodesX_G
       DO iE = 1, nNodesE_G
 
-        Gamma = dt * Chi(iE,iX)
+        Gamma   = dt * Chi(iE,iX)
+        Gamma_T = Gamma + dt * Sigma(iE,iX)
 
         uPR_N(iE,iPR_D,iX) &
           = ( uPR_N(iE,iPR_D,iX) &
               + Gamma * FourPi * FD(iE,iX) ) / ( 1.0_DP + Gamma )
 
         uPR_N(iE,iPR_I1,iX) &
-          = uPR_N(iE,iPR_I1,iX) / ( 1.0_DP + Gamma )
+          = uPR_N(iE,iPR_I1,iX) / ( 1.0_DP + Gamma_T )
 
         uPR_N(iE,iPR_I2,iX) &
-          = uPR_N(iE,iPR_I2,iX) / ( 1.0_DP + Gamma )
+          = uPR_N(iE,iPR_I2,iX) / ( 1.0_DP + Gamma_T )
 
         uPR_N(iE,iPR_I3,iX) &
-          = uPR_N(iE,iPR_I3,iX) / ( 1.0_DP + Gamma )
+          = uPR_N(iE,iPR_I3,iX) / ( 1.0_DP + Gamma_T )
 
       END DO
     END DO

@@ -6,7 +6,7 @@ MODULE RiemannSolverModule
     iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     iPF_V1, iAF_P
 
-IMPLICIT NONE
+  IMPLICIT NONE
   PRIVATE
 
   CHARACTER(32) :: FluidRiemannSolver     = 'LLF'

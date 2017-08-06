@@ -154,7 +154,8 @@ CONTAINS
         T_N => uAF_N(iAF_T, 1:nNodesX_G), &
         Y_N => uAF_N(iAF_Ye,1:nNodesX_G) )
 
-    CALL ComputeAbsorptionOpacity( E_N, D_N, T_N, Y_N, Chi )
+    CALL ComputeAbsorptionOpacity &
+           ( E_N, D_N, T_N, Y_N, X_N(:,1), X_N(:,2), X_N(:,3), Chi )
 
     END ASSOCIATE ! D_N, etc.
 

@@ -24,6 +24,7 @@ MODULE EulerEquationsLimiterUtilitiesModule_DG
   PUBLIC :: DetectDiscontinuities
   PUBLIC :: SolveTheta_Bisection
 
+  LOGICAL, PARAMETER :: UseDiscontinuityDetector = .TRUE.
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange_X1_P
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Lagrange_X1_M
 
@@ -87,6 +88,13 @@ CONTAINS
     REAL(DP), DIMENSION(nDOFX,nCF) :: uCF_M_N_X1
 
     Shock(:,:,:) = 0.0_DP
+
+    IF( .NOT. UseDiscontinuityDetector )THEN
+
+      Shock(:,:,:) = 1.0_DP
+      RETURN
+
+    END IF
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
