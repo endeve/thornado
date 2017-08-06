@@ -79,6 +79,16 @@ MODULE EquationOfStateModule
   END INTERFACE
 
   INTERFACE
+    SUBROUTINE EosSubroutine_11 &
+                 ( X, Y, Z, V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11 )
+      USE KindModule, ONLY: DP
+      REAL(DP), DIMENSION(:), INTENT(in)  :: X, Y, Z
+      REAL(DP), DIMENSION(:), INTENT(out) :: V1, V2, V3, V4, V5, V6
+      REAL(DP), DIMENSION(:), INTENT(out) :: V7, V8, V9, V10, V11
+    END SUBROUTINE EosSubroutine_11
+  END INTERFACE
+
+  INTERFACE
     SUBROUTINE EosSubroutine_1_3( X, Y, Z, V, dVdX, dVdY, dVdZ )
       USE KindModule, ONLY: DP
       REAL(DP), DIMENSION(:), INTENT(in)            :: X, Y, Z
@@ -104,7 +114,8 @@ MODULE EquationOfStateModule
     ComputeThermodynamicStates_Primitive         => NULL(), &
     ComputeThermodynamicStates_Auxiliary         => NULL()
   PROCEDURE (EosSubroutine_7),   POINTER, PUBLIC :: &
-    ComputeAuxiliary_Fluid                       => NULL(), &
+    ComputeAuxiliary_Fluid                       => NULL()
+  PROCEDURE (EosSubroutine_11),  POINTER, PUBLIC :: &
     ApplyEquationOfState                         => NULL()
   PROCEDURE (EosSubroutine_1_3), POINTER, PUBLIC :: &
     ComputeSpecificInternalEnergy                => NULL(), &

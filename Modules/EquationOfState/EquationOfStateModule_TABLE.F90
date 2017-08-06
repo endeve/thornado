@@ -48,11 +48,13 @@ MODULE EquationOfStateModule_TABLE
     EquationOfStateTableName
   INTEGER :: &
     iD_T, iT_T, iY_T, &
-    iP_T, iS_T, iE_T, iMe_T, iMp_T, iMn_T, iGm_T
+    iP_T, iS_T, iE_T, iMe_T, iMp_T, iMn_T, &
+    iXp_T, iXn_T, iXa_T, iXh_T, iGm_T
   INTEGER, DIMENSION(3) :: &
     LogInterp
   REAL(DP) :: &
-    OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Gm
+    OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, &
+    OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm
   REAL(DP), PARAMETER :: &
     BaryonMass = AtomicMassUnit
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
@@ -142,6 +144,10 @@ CONTAINS
     iMe_T = EOS % DV % Indices % iElectronChemicalPotential
     iMp_T = EOS % DV % Indices % iProtonChemicalPotential
     iMn_T = EOS % DV % Indices % iNeutronChemicalPotential
+    iXp_T = EOS % DV % Indices % iProtonMassFraction
+    iXn_T = EOS % DV % Indices % iNeutronMassFraction
+    iXa_T = EOS % DV % Indices % iAlphaMassFraction
+    iXh_T = EOS % DV % Indices % iHeavyMassFraction
     iGm_T = EOS % DV % Indices % iGamma1
 
     ! --- Dependent Variables Offsets ---
@@ -152,6 +158,10 @@ CONTAINS
     OS_Me = EOS % DV % Offsets(iMe_T)
     OS_Mp = EOS % DV % Offsets(iMp_T)
     OS_Mn = EOS % DV % Offsets(iMn_T)
+    OS_Xp = EOS % DV % Offsets(iXp_T)
+    OS_Xn = EOS % DV % Offsets(iXn_T)
+    OS_Xa = EOS % DV % Offsets(iXa_T)
+    OS_Xh = EOS % DV % Offsets(iXh_T)
     OS_Gm = EOS % DV % Offsets(iGm_T)
 
 #endif
@@ -166,10 +176,12 @@ CONTAINS
   END SUBROUTINE FinalizeEquationOfState_TABLE
 
 
-  SUBROUTINE ApplyEquationOfState_TABLE( D, T, Y, P, S, E, Me, Mp, Mn, Gm )
+  SUBROUTINE ApplyEquationOfState_TABLE &
+               ( D, T, Y, P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out) :: P, S, E, Me, Mp, Mn, Gm
+    REAL(DP), DIMENSION(:), INTENT(out) :: P, S, E, Me, Mp, Mn
+    REAL(DP), DIMENSION(:), INTENT(out) :: Xp, Xn, Xa, Xh, Gm
 
     REAL(DP), DIMENSION(SIZE( D )) :: TMP
 
@@ -208,6 +220,30 @@ CONTAINS
     CALL ComputeDependentVariable_TABLE &
            ( D(:), T(:), Y(:), Mn(:), iMn_T, OS_Mn, &
              Units_V = MeV )
+
+    ! --- Interpolate Proton Mass Fraction ----------------------------
+
+    CALL ComputeDependentVariable_TABLE &
+           ( D(:), T(:), Y(:), Xp(:), iXp_T, OS_Xp, &
+             Units_V = 1.0_DP )
+
+    ! --- Interpolate Neutron Mass Fraction ---------------------------
+
+    CALL ComputeDependentVariable_TABLE &
+           ( D(:), T(:), Y(:), Xn(:), iXn_T, OS_Xn, &
+             Units_V = 1.0_DP )
+
+    ! --- Interpolate Alpha Mass Fraction -----------------------------
+
+    CALL ComputeDependentVariable_TABLE &
+           ( D(:), T(:), Y(:), Xa(:), iXa_T, OS_Xa, &
+             Units_V = 1.0_DP )
+
+    ! --- Interpolate Heavy Mass Fraction -----------------------------
+
+    CALL ComputeDependentVariable_TABLE &
+           ( D(:), T(:), Y(:), Xh(:), iXh_T, OS_Xh, &
+             Units_V = 1.0_DP )
 
     ! --- Gamma1 ------------------------------------------------------
 
