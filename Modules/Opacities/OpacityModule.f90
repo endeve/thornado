@@ -25,9 +25,9 @@ MODULE OpacityModule
   ! ---
 
   INTERFACE
-    SUBROUTINE ComputeOpacity_A( E, D, T, Y, Opacity )
+    SUBROUTINE ComputeOpacity_A( E, D, T, Y, X1, X2, X3, Opacity )
       USE KindModule, ONLY: DP
-      REAL(DP), DIMENSION(:),   INTENT(in)  :: E, D, T, Y
+      REAL(DP), DIMENSION(:),   INTENT(in)  :: E, D, T, Y, X1, X2, X3
       REAL(DP), DIMENSION(:,:), INTENT(out) :: Opacity
     END SUBROUTINE ComputeOpacity_A
   END INTERFACE

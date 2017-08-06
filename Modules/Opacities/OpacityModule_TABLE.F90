@@ -12,8 +12,8 @@ MODULE OpacityModule_TABLE
   USE wlOpacityTableModule, ONLY: &
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
-    LogInterpolateSingleVariable, &
     LogInterpolateSingleVariable_1D3D, &
+    LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_2D2D, &
     LogInterpolateSingleVariable_2D2D_Custom
 
@@ -130,16 +130,20 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
+    DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
 
 #endif
 
   END SUBROUTINE FinalizeOpacities_TABLE
 
 
-  SUBROUTINE ComputeAbsorptionOpacity_TABLE( E, D, T, Y, Chi )
+  SUBROUTINE ComputeAbsorptionOpacity_TABLE &
+               ( E, D, T, Y, X1, X2, X3, Chi )
 
-    REAL(DP), DIMENSION(:),   INTENT(in)  :: E, D, T, Y
+    REAL(DP), DIMENSION(:),   INTENT(in)  :: E, D, T, Y, X1, X2, X3
     REAL(DP), DIMENSION(:,:), INTENT(out) :: Chi
+
+    REAL(DP), DIMENSION(SIZE(E)) :: LogE
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -147,9 +151,23 @@ CONTAINS
       ( Chi_T => OPACITIES % ThermEmAb % Absorptivity(1) % Values, &
         OS    => OPACITIES % ThermEmAb % Offsets(1) )
 
-    CALL LogInterpolateSingleVariable_1D3D &
-           ( E / MeV, D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
-             Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], OS, Chi_T, Chi )
+    IF( .NOT. InterpTest )THEN
+
+      CALL LogInterpolateSingleVariable_1D3D &
+             ( E / MeV, D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+               Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], OS, Chi_T, Chi )
+
+    ELSE
+
+      LogE = LOG10( E / MeV )
+
+      CALL LogInterpolateSingleVariable_1D3D_Custom           &
+             ( LogE, LOG10( D / ( Gram / Centimeter**3 ) ), &
+               LOG10( T / Kelvin ), Y, &
+               LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, &
+               Chi_T, Chi )
+
+    END IF
 
     Chi(:,:) = Chi(:,:) * ( 1.0_DP / Centimeter )
 
@@ -164,10 +182,13 @@ CONTAINS
   END SUBROUTINE ComputeAbsorptionOpacity_TABLE
 
 
-  SUBROUTINE ComputeScatteringOpacity_ES_TABLE( E, D, T, Y, Sigma )
+  SUBROUTINE ComputeScatteringOpacity_ES_TABLE &
+               ( E, D, T, Y, X1, X2, X3, Sigma )
 
-    REAL(DP), DIMENSION(:),   INTENT(in)  :: E, D, T, Y
+    REAL(DP), DIMENSION(:),   INTENT(in)  :: E, D, T, Y, X1, X2, X3
     REAL(DP), DIMENSION(:,:), INTENT(out) :: Sigma
+
+    REAL(DP), DIMENSION(SIZE(E)) :: LogE
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -175,9 +196,23 @@ CONTAINS
       ( Sigma_T => OPACITIES % Scatt_Iso % Kernel(1) % Values(:,:,:,:,1), &
         OS      => OPACITIES % Scatt_Iso % Offsets(1,1) )
 
-    CALL LogInterpolateSingleVariable_1D3D &
-           ( E / MeV, D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
-             Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], OS, Sigma_T, Sigma )
+    IF( .NOT. InterpTest )THEN
+
+      CALL LogInterpolateSingleVariable_1D3D &
+             ( E / MeV, D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
+               Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], OS, Sigma_T, Sigma )
+
+    ELSE
+
+      LogE = LOG10( E / MeV )
+
+      CALL LogInterpolateSingleVariable_1D3D_Custom         &
+             ( LogE, LOG10( D / ( Gram / Centimeter**3 ) ), &
+               LOG10( T / Kelvin ), Y, &
+               LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, &
+               Sigma_T, Sigma )
+
+    END IF
 
     Sigma(:,:) = Sigma(:,:) * ( 1.0_DP / Centimeter )
 
@@ -202,35 +237,27 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    ASSOCIATE &
-      ( R0_Out_T => OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1), &
-        OS       => OPACITIES % Scatt_NES % Offsets(1,1) )
-
     IF( .NOT. InterpTest )THEN
 
-      CALL LogInterpolateSingleVariable_2D2D      &
+      CALL LogInterpolateSingleVariable_2D2D &
              ( E / MeV, E / MeV, T / Kelvin, Eta, &
-               Es_T, Es_T, Ts_T, Etas_T,          &
-               [ 1, 1, 1, 1 ], OS, R0_Out_T, R0_Out )
+               Es_T, Es_T, Ts_T, Etas_T, [ 1, 1, 1, 1 ], &
+               OPACITIES % Scatt_NES % Offsets(1,1), &
+               OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1), &
+               R0_Out )
 
     ELSE
 
       LogE = LOG10( E / MeV )
 
-      CALL LogInterpolateSingleVariable_2D2D_Custom      &
-             ( LogE, &
-               LogE, &
-               LOG10( T / Kelvin), &
-               LOG10( Eta ), &
-               LogEs_T, &
-               LogEs_T, &
-               LogTs_T, &
-               LogEtas_T,          &
-               OS, R0_Out_T, R0_Out )
+      CALL LogInterpolateSingleVariable_2D2D_Custom &
+             ( LogE, LogE, LOG10( T / Kelvin ), LOG10( Eta ), &
+               LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
+               OPACITIES % Scatt_NES % Offsets(1,1), &
+               OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1), &
+               R0_Out )
 
     END IF
-
-    END ASSOCIATE ! R0_Out_T, etc.
 
     R0_Out = R0_Out * ( 1.0_DP / ( Centimeter * MeV**3 ) )
 
