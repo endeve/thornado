@@ -18,8 +18,8 @@ MODULE InputOutputModule
   USE FluidFieldsModule, ONLY: &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, &
-    iAF_Me, iAF_Mp, iAF_Mn, iAF_Gm, iAF_Cs, &
+    uAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, iAF_Me, iAF_Mp, &
+    iAF_Mn, iAF_Xp, iAF_Xn, iAF_Xa, iAF_Xh, iAF_Gm, iAF_Cs, &
     Shock
   USE RadiationFieldsModule, ONLY: &
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
@@ -177,6 +177,10 @@ CONTAINS
         / U % EnergyUnit, &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_Mn), nX(1) ) &
         / U % EnergyUnit, &
+      FluidField1D( uAF(:,1:nX(1),1,1,iAF_Xp), nX(1) ), &
+      FluidField1D( uAF(:,1:nX(1),1,1,iAF_Xn), nX(1) ), &
+      FluidField1D( uAF(:,1:nX(1),1,1,iAF_Xa), nX(1) ), &
+      FluidField1D( uAF(:,1:nX(1),1,1,iAF_Xh), nX(1) ), &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_Gm), nX(1) ), &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_Cs), nX(1) ) &
         / U % VelocityUnit, &
