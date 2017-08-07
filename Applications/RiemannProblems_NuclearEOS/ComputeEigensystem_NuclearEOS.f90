@@ -21,7 +21,8 @@ PROGRAM ComputeEigensystem_NuclearEOS
 
   REAL(DP) :: BaryonMass = AtomicMassUnit
 
-  REAL(DP), DIMENSION(1)   :: D, T, Y, P, S, E, Me, Mp, Mn, Gm, Tau, N
+  REAL(DP), DIMENSION(1)   :: D, T, Y, P, S, E, Me, Mp, Mn
+  REAL(DP), DIMENSION(1)   :: Xp, Xn, Xa, Xh, Gm, Tau, N
   REAL(DP), DIMENSION(6,6) :: dFdU, L, R, Matrix, DD, RL, LR
   REAL(DP), DIMENSION(3)   :: V
   REAL(DP), DIMENSION(6)   :: lambda
@@ -37,7 +38,8 @@ PROGRAM ComputeEigensystem_NuclearEOS
   CALL InitializeEquationOfState_TABLE &
          ( 'EquationOfStateTable.h5' ) 
 
-  CALL ApplyEquationOfState_TABLE( D, T, Y, P, S, E, Me, Mp, Mn, Gm )
+  CALL ApplyEquationOfState_TABLE &
+         ( D, T, Y, P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm )
 
   CALL ComputeEigenvectors_L &
          ( D, T, Y, v(1), v(2), v(3), lambda, L, dFdU, .FALSE. )
