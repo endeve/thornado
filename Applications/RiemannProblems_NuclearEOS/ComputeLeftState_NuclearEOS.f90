@@ -128,8 +128,10 @@ PROGRAM ComputeLeftState_NuclearEOS
 
     WRITE(*,*)
     WRITE(*,'(A6,A12,I2.2)') '', 'Iteration: ', Iter
-    WRITE(*,'(A6,A12,4ES20.10E3)') '', '|FVEC| = ', ABS( FVEC )
-    WRITE(*,'(A6,A12,4ES20.10E3)') '', '|dU/U| = ', ABS(  dUVEC / ( UVEC + TINY(1.0_DP) ) )
+    WRITE(*,'(A6,A12,4ES20.10E3)') '', '|FVEC| = ', &
+      ABS( FVEC )
+    WRITE(*,'(A6,A12,4ES20.10E3)') '', '|dU/U| = ', &
+      ABS(  dUVEC / ( UVEC + TINY(1.0_DP) ) )
     WRITE(*,*)
 
     D_L(1) = UVEC(1) - dUVEC(1)
