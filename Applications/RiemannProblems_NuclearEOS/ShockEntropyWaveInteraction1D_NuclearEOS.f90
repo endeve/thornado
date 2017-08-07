@@ -22,7 +22,7 @@ PROGRAM ShockEntropyWaveInteraction1D_NuclearEOS
          ( ProgramName_Option &
              = 'ShockEntropyWaveInteraction1D_NuclearEOS', &
            nX_Option &
-             = [ 200, 1, 1 ], &
+             = [ 100, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -46,7 +46,7 @@ PROGRAM ShockEntropyWaveInteraction1D_NuclearEOS
            EvolveFluid_Option &
              = .TRUE., &
            ApplySlopeLimiter_Option &
-             = .FALSE., &
+             = .TRUE., &
            BetaTVB_Option &
              = 0.0d2, &
            BetaTVD_Option &
