@@ -1,0 +1,19 @@
+MICROPHYSICS = WEAKLIB
+
+include ../../../Build/Makefile_Build
+
+all: TransportPenalization1D
+
+TransportPenalization1D: \
+	$(thornado) InitializationModule.o \
+	TransportPenalization1D.o
+	$(FLINKER) $(FLAGS) -o TransportPenalization1D_$(MACHINE) \
+	$(thornado) InitializationModule.o \
+	TransportPenalization1D.o \
+	$(LIBRARIES)
+
+clean:
+	rm -f *.o *.mod *.ld
+
+clobber: clean
+	rm -f TransportPenalization1D_$(MACHINE)
