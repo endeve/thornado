@@ -1,6 +1,7 @@
 FORTRAN_mac_gnu      = gfortran
 FORTRAN_sn1987b      = mpif90
 FORTRAN_juliana      = gfortran
+FORTRAN_ranchu       = gfortran
 FORTRAN_sjdunham     = mpif90
 FORTRAN_titan_gnu    = ftn
 FORTRAN_titan_cray   = ftn
@@ -10,6 +11,7 @@ FORTRAN              = $(FORTRAN_$(MACHINE))
 SUFFIX_f90_mac_gnu      = 
 SUFFIX_f90_sn1987b      = 
 SUFFIX_f90_juliana      = 
+SUFFIX_f90_ranchu       = 
 SUFFIX_f90_sjdunham     = 
 SUFFIX_f90_titan_gnu    = 
 SUFFIX_f90_titan_cray   = 
@@ -19,6 +21,7 @@ SUFFIX_f90              = $(SUFFIX_f90_$(MACHINE))
 FLINKER_mac_gnu      = gfortran
 FLINKER_sn1987b      = mpif90
 FLINKER_juliana      = gfortran
+FLINKER_ranchu       = gfortran
 FLINKER_sjdunham     = mpif90
 FLINKER_titan_gnu    = ftn
 FLINKER_titan_cray   = ftn
@@ -29,6 +32,7 @@ FLAGS_DEBUG        = $(DEBUG)
 DEBUG_mac_gnu      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_sn1987b      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_juliana      = -g -fbacktrace -fbounds-check
+DEBUG_ranchu       = -g 
 DEBUG_sjdunham     = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_titan_gnu    = -g -ffpe-trap=invalid,zero -fcheck=bounds
 DEBUG_titan_cray   = -G0 -hfp0 -K trap=fp
@@ -39,6 +43,7 @@ FLAGS_OPTIMIZE        = $(OPTIMIZE)
 OPTIMIZE_mac_gnu      = -O2 -framework Accelerate
 OPTIMIZE_sn1987b      = -O2 -framework Accelerate
 OPTIMIZE_juliana      = -O2
+OPTIMIZE_ranchu       = -O2
 OPTIMIZE_sjdunham     = -O2 -framework Accelerate
 OPTIMIZE_titan_gnu    = -O2
 OPTIMIZE_titan_cray   = 
@@ -48,6 +53,7 @@ OPTIMIZE              = $(OPTIMIZE_$(MACHINE))
 INCLUDE_HDF5_mac_gnu           = 
 INCLUDE_HDF5_sn1987b           = -I/usr/local/Cellar/hdf5/1.8.16_1/include
 INCLUDE_HDF5_juliana           = -I/usr/local/hdf5/include
+INCLUDE_HDF5_ranchu            = -I/usr/lib/x86_64-linux-gnu/hdf5/serial/include
 INCLUDE_HDF5_sjdunham          = 
 INCLUDE_HDF5_titan_gnu         = # Use Module Load
 INCLUDE_HDF5_titan_cray        = # Use Module Load
@@ -57,6 +63,7 @@ INCLUDE_HDF5                   = $(INCLUDE_HDF5_$(MACHINE))
 INCLUDE_WEAKLIB_mac_gnu        = 
 INCLUDE_WEAKLIB_sn1987b        = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_juliana        = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
+INCLUDE_WEAKLIB_ranchu         = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_sjdunham       = 
 INCLUDE_WEAKLIB_titan_gnu      = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_titan_cray     = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
@@ -67,11 +74,15 @@ INCLUDE_POSEIDON_mac_gnu       =
 INCLUDE_POSEIDON_sn1987b       = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON               = $(INCLUDE_POSEIDON_$(MACHINE))
 
-INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_WEAKLIB) $(INCLUDE_POSEIDON)
+INCLUDE_LAPACK_ranchu          = -I/usr/include
+INCLUDE_LAPACK                 = $(INCLUDE_LAPACK_$(MACHINE))
+
+INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_WEAKLIB) $(INCLUDE_POSEIDON)
 
 LIBRARIES_HDF5_mac_gnu         = 
 LIBRARIES_HDF5_sn1987b         = -L/usr/local/Cellar/hdf5/1.8.16_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_juliana         = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_ranchu          = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_sjdunham        = 
 LIBRARIES_HDF5_titan_gnu       = # Use Module Load
 LIBRARIES_HDF5_titan_cray      = # Use Module Load
@@ -83,6 +94,7 @@ LIBRARIES_HDF5                 = $(LIBRARIES_HDF5_$(MACHINE))
 LIBRARIES_WEAKLIB_mac_gnu      = 
 LIBRARIES_WEAKLIB_sn1987b      = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
 LIBRARIES_WEAKLIB_juliana      = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
+LIBRARIES_WEAKLIB_ranchu       = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
 LIBRARIES_WEAKLIB_sjdunham     = 
 LIBRARIES_WEAKLIB_titan_gnu    = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
 LIBRARIES_WEAKLIB_titan_cray   = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
@@ -95,7 +107,10 @@ LIBRARIES_POSEIDON_mac_gnu     =
 LIBRARIES_POSEIDON_sn1987b     = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON             = $(LIBRARIES_POSEIDON_$(MACHINE))
 
-LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_WEAKLIB) $(LIBRARIES_POSEIDON)
+LIBRARIES_LAPACK_ranchu        = -L/usr/lib -llapacke -lblas -llapack
+LIBRARIES_LAPACK               = $(LIBRARIES_LAPACK_$(MACHINE))
+
+LIBRARIES                      = $(LIBRARIES_HDF5)  $(LIBRARIES_LAPACK) $(LIBRARIES_WEAKLIB) $(LIBRARIES_POSEIDON)
 
 DEFINES = \
 -DMICROPHYSICS_$(MICROPHYSICS) \
