@@ -5,10 +5,12 @@ include ../../../Build/Makefile_Build
 all: TransportPenalization1D
 
 TransportPenalization1D: \
-	$(thornado) InitializationModule.o \
+	$(thornado) FluidRadiationCouplingSolutionModule_Penalization.o \
+	TimeSteppingModule_Penalization.o InitializationModule.o \
 	TransportPenalization1D.o
 	$(FLINKER) $(FLAGS) -o TransportPenalization1D_$(MACHINE) \
-	$(thornado) InitializationModule.o \
+	$(thornado) FluidRadiationCouplingSolutionModule_Penalization.o \
+	TimeSteppingModule_Penalization.o InitializationModule.o \
 	TransportPenalization1D.o \
 	$(LIBRARIES)
 
