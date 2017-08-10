@@ -15,8 +15,17 @@ PROGRAM TransportPenalization1D
     InitializeTransportProblem1D
   USE InputOutputModule, ONLY: &
     WriteFields1D
+  USE FluidRadiationCouplingSolutionModule_Penalization
+  USE TimeSteppingModule_Penalization
+
+  USE HDF5
 
   IMPLICIT NONE
+
+  INTEGER :: hdferr
+
+  CALL h5open_f( hdferr )
+  CALL h5close_f( hdferr )
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -73,6 +82,9 @@ PROGRAM TransportPenalization1D
   CALL WriteFields1D &
          ( Time = 0.0_DP, WriteFluidFields_Option = .TRUE., &
            WriteRadiationFields_Option = .TRUE. )
+  
+  CALL EvolveFields( t_begin = 0.0d+0, t_end = 1.0d-0, &
+                     dt_write = 1.0d-1, dt_fixed_Option = 1.0_DP )
 
   CALL FinalizeProgram
 
