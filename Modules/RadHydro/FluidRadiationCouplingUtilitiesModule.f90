@@ -26,6 +26,10 @@ MODULE FluidRadiationCouplingUtilitiesModule
   PUBLIC :: FinalizeFluidFields
   PUBLIC :: InitializeRadiationFields
   PUBLIC :: FinalizeRadiationFields
+  PUBLIC :: MapForward_FluidField
+  PUBLIC :: MapBackward_FluidField
+  PUBLIC :: MapForward_RadiationField
+  PUBLIC :: MapBackward_RadiationField
   PUBLIC :: FermiDirac
   PUBLIC :: dFermiDiracdT
   PUBLIC :: dFermiDiracdY
@@ -286,6 +290,38 @@ CONTAINS
     END DO
 
   END SUBROUTINE FinalizeRadiationFields
+
+
+  SUBROUTINE MapForward_FluidField( FF, FF_N )
+
+    REAL(DP), DIMENSION(:,:,:,:), INTENT(in)  :: FF
+    REAL(DP), DIMENSION(:),       INTENT(out) :: FF_N
+
+  END SUBROUTINE MapForward_FluidField
+
+
+  SUBROUTINE MapBackward_FluidField( FF, FF_N )
+
+    REAL(DP), DIMENSION(:,:,:,:), INTENT(out) :: FF
+    REAL(DP), DIMENSION(:),       INTENT(in)  :: FF_N
+
+  END SUBROUTINE MapBackward_FluidField
+
+
+  SUBROUTINE MapForward_RadiationField( RF, RF_N )
+
+    REAL(DP), DIMENSION(:,:,:,:,:), INTENT(in)  :: RF
+    REAL(DP), DIMENSION(:,:),       INTENT(out) :: RF_N
+
+  END SUBROUTINE MapForward_RadiationField
+
+
+  SUBROUTINE MapBackward_RadiationField( RF, RF_N )
+
+    REAL(DP), DIMENSION(:,:,:,:,:), INTENT(out) :: RF
+    REAL(DP), DIMENSION(:,:),       INTENT(in)  :: RF_N
+
+  END SUBROUTINE MapBackward_RadiationField
 
 
   PURE ELEMENTAL REAL(DP) FUNCTION FermiDirac( E, Mu, kT )
