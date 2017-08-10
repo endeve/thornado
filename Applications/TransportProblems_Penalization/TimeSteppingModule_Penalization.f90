@@ -5,6 +5,8 @@ MODULE TimeSteppingModule_Penalization
   USE UnitsModule, ONLY: &
     UnitsDisplay, &
     Millisecond
+  USE ProgramHeaderModule, ONLY: &
+    nX
   USE InputOutputModule, ONLY: &
     WriteFields1D
   USE FluidRadiationCouplingSolutionModule_Penalization, ONLY: &
@@ -130,9 +132,10 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: t, dt
 
-!    CALL Initialized_Penalization
+    CALL ComputeRHS_Penalization &
+           ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
 
-!    CALL ApplyBoundaryConditions_Fluid
+!    CALL Initialized_Penalization
 
 !    CALL ComputeRHS_Penalization
 
