@@ -7,6 +7,9 @@ MODULE TimeSteppingModule_Penalization
     Millisecond
   USE InputOutputModule, ONLY: &
     WriteFields1D
+  USE FluidRadiationCouplingSolutionModule_Penalization, ONLY: &
+    ComputeRHS_Penalization
+
 
   IMPLICIT NONE
   PRIVATE
@@ -126,6 +129,53 @@ CONTAINS
   SUBROUTINE UpdateFields( t, dt )
 
     REAL(DP), INTENT(in) :: t, dt
+
+!    CALL Initialized_Penalization
+
+!    CALL ApplyBoundaryConditions_Fluid
+
+!    CALL ComputeRHS_Penalization
+
+!   IF( EvolveRadiation )THEN
+
+!      CALL ApplyBoundaryConditions_Radiation( t )
+
+!      CALL ComputeRHS_Radiation &
+!             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+
+!    END IF
+
+!    IF( EvolveFluid )THEN
+!
+!      CALL ApplyRHS_Fluid &
+!             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+!               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
+!
+!      CALL ApplyBoundaryConditions_Fluid
+!
+!      CALL ApplySlopeLimiter_Fluid
+!
+!      CALL ApplyPositivityLimiter_Fluid
+!
+!    END IF
+!
+!    IF( EvolveRadiation )THEN
+!
+!      CALL ApplyRHS_Radiation &
+!             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+!               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
+!
+!      CALL ApplyBoundaryConditions_Radiation &
+!             ( t + dt, LimiterBC_Option = .TRUE. )
+!
+!      CALL ApplySlopeLimiter_Radiation
+!
+!      CALL ApplyPositivityLimiter_Radiation
+!
+!    END IF
+!
+!    CALL Finalize_SSP_RK
+!
 
   END SUBROUTINE UpdateFields
 

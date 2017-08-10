@@ -79,10 +79,6 @@ PROGRAM TransportPenalization1D
 
   CALL InitializeTransportProblem1D
 
-  CALL WriteFields1D &
-         ( Time = 0.0_DP, WriteFluidFields_Option = .TRUE., &
-           WriteRadiationFields_Option = .TRUE. )
-  
   CALL EvolveFields &
          ( t_begin  = 0.0d+0 * Millisecond, &
            t_end    = 1.0d-0 * Millisecond, &
