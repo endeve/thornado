@@ -16,13 +16,14 @@ PROGRAM HydrostaticPolytrope1D
   USE GravitySolutionModule, ONLY: &
     SolveGravity
 
+
   IMPLICIT NONE
 
   CALL InitializeProgram &
          ( ProgramName_Option &
             = 'HydrostaticPolytrope1D', &
            nX_Option &
-             = [ 32, 1, 1 ], &
+             = [ 16, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
