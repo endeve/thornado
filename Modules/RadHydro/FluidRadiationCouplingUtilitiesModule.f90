@@ -297,6 +297,30 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:,:), INTENT(in)  :: FF
     REAL(DP), DIMENSION(:),       INTENT(out) :: FF_N
 
+    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNodeX, iNodeX_G
+
+    iNodeX_G = 0
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+              DO iNodeX1 = 1, nNodesX(1)
+
+                iNodeX_G = iNodeX_G + 1
+
+                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+                FF_N( iNodeX_G ) = FF( iNodeX, iX1, iX2, iX3 )
+                    
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
   END SUBROUTINE MapForward_FluidField
 
 
@@ -304,6 +328,30 @@ CONTAINS
 
     REAL(DP), DIMENSION(:,:,:,:), INTENT(out) :: FF
     REAL(DP), DIMENSION(:),       INTENT(in)  :: FF_N
+
+    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNodeX, iNodeX_G
+
+    iNodeX_G = 0
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+              DO iNodeX1 = 1, nNodesX(1)
+
+                iNodeX_G = iNodeX_G + 1
+
+                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+                FF(iNodeX,iX1,iX2,iX3) = FF_N(iNodeX_G)
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
 
   END SUBROUTINE MapBackward_FluidField
 
@@ -313,6 +361,41 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:,:,:), INTENT(in)  :: RF
     REAL(DP), DIMENSION(:,:),       INTENT(out) :: RF_N
 
+    INTEGER :: iE, iX1, iX2, iX3
+    INTEGER :: iNodeE, iNode, iNodeE_G
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNodeX, iNodeX_G
+
+    iNodeX_G = 0
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+              DO iNodeX1 = 1, nNodesX(1)
+
+                iNodeX_G = iNodeX_G + 1
+
+                iNodeE_G = 0
+                DO iE = 1, nE
+                  DO iNodeE = 1, nNodesE
+
+                    iNodeE_G = iNodeE_G + 1
+
+                    iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+
+                    RF_N(iNodeE_G,iNodeX_G) &
+                          = RF(iNode,iE,iX1,iX2,iX3)
+
+                  END DO
+                END DO
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
   END SUBROUTINE MapForward_RadiationField
 
 
@@ -320,6 +403,41 @@ CONTAINS
 
     REAL(DP), DIMENSION(:,:,:,:,:), INTENT(out) :: RF
     REAL(DP), DIMENSION(:,:),       INTENT(in)  :: RF_N
+
+    INTEGER :: iE, iX1, iX2, iX3
+    INTEGER :: iNodeE, iNode, iNodeE_G
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNodeX, iNodeX_G
+
+    iNodeX_G = 0
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+              DO iNodeX1 = 1, nNodesX(1)
+
+                iNodeX_G = iNodeX_G + 1
+
+                iNodeE_G = 0
+                DO iE = 1, nE
+                  DO iNodeE = 1, nNodesE
+
+                    iNodeE_G = iNodeE_G + 1
+
+                    iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+
+                    RF(iNode,iE,iX1,iX2,iX3) &
+                          = RF_N(iNodeE_G,iNodeX_G)
+
+                  END DO
+                END DO
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
 
   END SUBROUTINE MapBackward_RadiationField
 
