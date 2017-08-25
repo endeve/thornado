@@ -384,7 +384,7 @@ CONTAINS
                     iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
                     RF_N(iNodeE_G,iNodeX_G) &
-                          = RF(iNode,iE,iX1,iX2,iX3)
+                      = RF(iNode,iE,iX1,iX2,iX3)
 
                   END DO
                 END DO
@@ -427,7 +427,7 @@ CONTAINS
                     iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
                     RF(iNode,iE,iX1,iX2,iX3) &
-                          = RF_N(iNodeE_G,iNodeX_G)
+                      = RF_N(iNodeE_G,iNodeX_G)
 
                   END DO
                 END DO
