@@ -7,6 +7,7 @@ MODULE PolynomialBasisMappingModule
   USE QuadratureModule, ONLY: &
     xG5, wG5
   USE UtilitiesModule, ONLY: &
+    WriteVector, &
     WriteMatrix
   USE PolynomialBasisModule_Lagrange, ONLY: &
     IndL_Q, IndLX_Q, L_E, L_X1, L_X2, L_X3
@@ -87,12 +88,12 @@ CONTAINS
                       + wG5(qE) * wG5(qX1) * wG5(qX2) * wG5(qX3) &
                           * P_E(IndP_Q(0,i)) % P( xG5(qE) ) &
                               * P_X1(IndP_Q(1,i)) % P( xG5(qX1) ) &
-                                  * P_X2(IndP_Q(2,i)) % P( xG5(qX1) ) &
-                                      * P_X3(IndP_Q(3,i)) % P( xG5(qX1) ) &
+                                  * P_X2(IndP_Q(2,i)) % P( xG5(qX2) ) &
+                                      * P_X3(IndP_Q(3,i)) % P( xG5(qX3) ) &
                           * L_E(IndL_Q(0,j)) % P( xG5(qE) ) &
                               * L_X1(IndL_Q(1,j)) % P( xG5(qX1) ) &
-                                  * L_X2(IndL_Q(2,j)) % P( xG5(qX1) ) &
-                                      * L_X3(IndL_Q(3,j)) % P( xG5(qX1) )
+                                  * L_X2(IndL_Q(2,j)) % P( xG5(qX2) ) &
+                                      * L_X3(IndL_Q(3,j)) % P( xG5(qX3) )
 
               END DO
             END DO
@@ -116,13 +117,7 @@ CONTAINS
     REAL(DP), DIMENSION(nDOFX), INTENT(in)  :: uN
     REAL(DP), DIMENSION(nDOFX), INTENT(out) :: uM
 
-    INTEGER :: i
-
-    uM = 0.0_DP
-    DO i = 1, nDOFX
-      uM(:) = uM(:) + Kij_X(:,i) * uN(i)
-    END DO
-    uM = MassPX * uM
+    uM = MassPX * MATMUL( Kij_X, uN )
 
   END SUBROUTINE MapNodalToModal_Fluid
 
@@ -132,13 +127,7 @@ CONTAINS
     REAL(DP), DIMENSION(nDOFX), INTENT(in)  :: uN
     REAL(DP), DIMENSION(nDOFX), INTENT(out) :: uM
 
-    INTEGER :: i
-
-    uM = 0.0_DP
-    DO i = 1, nDOFX
-      uM(:) = uM(:) + Kij_X(:,i) * uN(i)
-    END DO
-    uM = MassPX * uM
+    uM = MassPX * MATMUL( Kij_X, uN )
 
   END SUBROUTINE MapNodalToModal_Radiation_X
 
@@ -148,13 +137,7 @@ CONTAINS
     REAL(DP), DIMENSION(nDOF), INTENT(in)  :: uN
     REAL(DP), DIMENSION(nDOF), INTENT(out) :: uM
 
-    INTEGER :: i
-
-    uM = 0.0_DP
-    DO i = 1, nDOF
-      uM(:) = uM(:) + K_ij(:,i) * uN(i)
-    END DO
-    uM = MassP * uM
+    uM = MassP * MATMUL( K_ij, uN )
 
   END SUBROUTINE MapNodalToModal_Radiation
 
@@ -164,12 +147,7 @@ CONTAINS
     REAL(DP), DIMENSION(nDOFX), INTENT(out) :: uN
     REAL(DP), DIMENSION(nDOFX), INTENT(in)  :: uM
 
-    INTEGER :: i
-
-    uN = 0.0_DP
-    DO i = 1, nDOFX
-      uN(:) = uN(:) + Pij_X(:,i) * uM(i)
-    END DO
+    uN = MATMUL( Pij_X, uM )
 
   END SUBROUTINE MapModalToNodal_Fluid
 
@@ -179,12 +157,7 @@ CONTAINS
     REAL(DP), DIMENSION(nDOFX), INTENT(out) :: uN
     REAL(DP), DIMENSION(nDOFX), INTENT(in)  :: uM
 
-    INTEGER :: i
-
-    uN = 0.0_DP
-    DO i = 1, nDOFX
-      uN(:) = uN(:) + Pij_X(:,i) * uM(i)
-    END DO
+    uN = MATMUL( Pij_X, uM )
 
   END SUBROUTINE MapModalToNodal_Radiation_X
 
@@ -194,12 +167,7 @@ CONTAINS
     REAL(DP), DIMENSION(nDOF), INTENT(out) :: uN
     REAL(DP), DIMENSION(nDOF), INTENT(in)  :: uM
 
-    INTEGER :: i
-
-    uN = 0.0_DP
-    DO i = 1, nDOF
-      uN(:) = uN(:) + P_ij(:,i) * uM(i)
-    END DO
+    uN = MATMUL( P_ij, uM )
 
   END SUBROUTINE MapModalToNodal_Radiation
 
