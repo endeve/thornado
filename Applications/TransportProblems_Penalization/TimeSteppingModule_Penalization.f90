@@ -6,12 +6,24 @@ MODULE TimeSteppingModule_Penalization
     UnitsDisplay, &
     Millisecond
   USE ProgramHeaderModule, ONLY: &
-    nX
+    nX, nNodesX, nDOFX, &
+    nE, nNodesE, nDOFE, &
+    nDOF
+  USE RadiationFieldsModule, ONLY: &
+    iPR_D
   USE InputOutputModule, ONLY: &
     WriteFields1D
+  USE FluidRadiationCouplingUtilitiesModule, ONLY: &
+    FinalizeFluidFields, &
+    FinalizeRadiationFields
   USE FluidRadiationCouplingSolutionModule_Penalization, ONLY: &
-    ComputeRHS_Penalization
-
+    CoupleFluidRadiation, &
+    InitializeFluidRadiationCoupling, &
+    FinalizeFluidRadiationCoupling, &
+    SetRates, RHSLAMP, &
+    R0_In, R0_Out, Neq, &
+    nNodesX_G, nNodesE_G, &
+    uPR_N, uPF_N, uAF_N
 
   IMPLICIT NONE
   PRIVATE
@@ -19,7 +31,6 @@ MODULE TimeSteppingModule_Penalization
   PUBLIC :: EvolveFields
 
 CONTAINS
-
 
   SUBROUTINE EvolveFields &
                ( t_begin, t_end, dt_write, dt_fixed_Option, &
@@ -54,15 +65,22 @@ CONTAINS
            ( Time = t, WriteFluidFields_Option = .TRUE., &
              WriteRadiationFields_Option = .TRUE. )
 
+    CALL InitializeFluidRadiationCoupling
+  
     DO WHILE( t < t_end )
 
       iCycle = iCycle + 1
 
+      CALL SetRates
 
       IF( FixedTimeStep )THEN
+
         dt = dt_fixed
+
       ELSE
+
         CALL ComputeTimeStep( dt )
+
       END IF
 
       IF( t + dt > t_end )THEN
@@ -88,11 +106,14 @@ CONTAINS
 
       END IF
  
-      CALL UpdateFields( t, dt )
+      CALL UpdateFields( dt )
 
       t = t + dt
 
       IF( WriteOutput )THEN
+
+        CALL FinalizeFluidFields( uPF_N, uAF_N )
+        CALL FinalizeRadiationFields( uPR_N )
 
         CALL WriteFields1D &
                ( Time = t, WriteFluidFields_Option = .TRUE., &
@@ -111,6 +132,8 @@ CONTAINS
     WRITE(*,*)
 
     END ASSOCIATE ! U
+ 
+    CALL FinalizeFluidRadiationCoupling
 
     CALL WriteFields1D &
            ( Time = t, WriteFluidFields_Option = .TRUE., &
@@ -122,63 +145,79 @@ CONTAINS
   SUBROUTINE ComputeTimestep( dt )
 
     REAL(DP), INTENT(out) :: dt
+   
+    REAL(DP)  :: LAMP
+    REAL(DP)  :: dt_Fluid, dt_Radiation
 
     dt = 1.0d-2 * Millisecond
+    dt_Fluid = 1.0d-2 * Millisecond    
+
+    CALL ComputeTimestepPenalization &
+         ( dt_Radiation, dt_max = 1.0d-2 * Millisecond, Diff = 1.0d-5 )
+
+    dt = MIN( dt_Fluid, dt_Radiation )
 
   END SUBROUTINE ComputeTimestep
 
 
-  SUBROUTINE UpdateFields( t, dt )
+  SUBROUTINE ComputeTimestepPenalization( dt, dt_max, Diff )
 
-    REAL(DP), INTENT(in) :: t, dt
+    REAL(DP),                 INTENT(inout) :: dt
+    REAL(DP),                 INTENT(in)  :: dt_max, Diff
+   
+    REAL(DP)                  :: LAMP, invLAMP, lim, dt_0, LLN, dt_1
+    REAL(DP), DIMENSION(nNodesE) :: NN, Collision, &
+                                lim1sign, lim1, lim1p, &
+                                lim2sign, lim2, lim2p
 
-    CALL ComputeRHS_Penalization &
-           ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+    INTEGER :: iX
 
-!    CALL Initialized_Penalization
+    dt = 1.0d-2 * Millisecond
 
-!    CALL ComputeRHS_Penalization
+!    DO iX = 1, nNodesX_G
+!
+!      NN = uPR_N(:,iPR_D,iX)
+!
+!      LAMP = RHSLAMP &
+!             ( nNodesE_G, R0_In(:,:,iX), R0_Out(:,:,iX), Neq(:,iX) )
+!
+!      invLAMP = 1.0 / LAMP
+!
+!      ! --- Boundary Limit ---
+!    
+!      lim = MINVAL( lim1p + lim2p )    
+!
+!      IF( lim < invLAMP )THEN
+!        dt_0 = lim / ( 1.0 - lim * LAMP )
+!      ELSE
+!        dt_0 = dt_max
+!      END IF
+!
+!   
+!      dt = MIN( dt_0, dt*1.05, dt_max )
+!   
+!      ! --- Accuracy Limit ---
+!    
+!      LLN = MAXVAL( ABS( Collision ) ) ! NEEDS CHANGE
+!  
+!      dt_1 = Diff / ( 2.0 * LLN ) + &
+!             SQRT( Diff / ( LAMP * LLN ) + &
+!                   Diff**2 / ( 4.0 * LLN**2 ) )
+!                                         
+!      dt = MIN( dt, dt_1 )
+!
+!      PRINT*, 'new dt: ', dt 
+!
+!   END DO
 
-!   IF( EvolveRadiation )THEN
+  END SUBROUTINE ComputeTimestepPenalization
 
-!      CALL ApplyBoundaryConditions_Radiation( t )
 
-!      CALL ComputeRHS_Radiation &
-!             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+  SUBROUTINE UpdateFields( dt )
 
-!    END IF
+    REAL(DP), INTENT(in) :: dt
 
-!    IF( EvolveFluid )THEN
-!
-!      CALL ApplyRHS_Fluid &
-!             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-!               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
-!
-!      CALL ApplyBoundaryConditions_Fluid
-!
-!      CALL ApplySlopeLimiter_Fluid
-!
-!      CALL ApplyPositivityLimiter_Fluid
-!
-!    END IF
-!
-!    IF( EvolveRadiation )THEN
-!
-!      CALL ApplyRHS_Radiation &
-!             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
-!               dt = dt, alpha = 0.0_DP, beta = 1.0_DP )
-!
-!      CALL ApplyBoundaryConditions_Radiation &
-!             ( t + dt, LimiterBC_Option = .TRUE. )
-!
-!      CALL ApplySlopeLimiter_Radiation
-!
-!      CALL ApplyPositivityLimiter_Radiation
-!
-!    END IF
-!
-!    CALL Finalize_SSP_RK
-!
+    CALL CoupleFluidRadiation( dt )
 
   END SUBROUTINE UpdateFields
 
