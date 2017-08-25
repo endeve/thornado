@@ -3,7 +3,7 @@ MODULE PolynomialBasisModule_Lagrange
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nDOFE, nDOFX, nDOF, &
+    nDOFX, nDOF, &
     nNodesE, nNodesX, nNodes
   USE QuadratureModule, ONLY: &
     xG1, xG2, xG3, xG4
