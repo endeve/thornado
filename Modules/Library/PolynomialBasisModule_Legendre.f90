@@ -241,29 +241,19 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: u(1:nDOF), E, X1, X2, X3
 
-    INTEGER  :: i, iE, iX1, iX2, iX3
-    REAL(DP) :: TMP_X1, TMP_X2, TMP_X3
+    INTEGER  :: i
 
-    i = 1
     evalP = 0.0_DP
-    DO iX3 = 1, nNodesX(3)
-      TMP_X3 = P_X3(iX3) % P( X3 )
-      DO iX2 = 1, nNodesX(2)
-        TMP_X2 = P_X2(iX2) % P( X2 )
-        DO iX1 = 1, nNodesX(1)
-          TMP_X1 = P_X1(iX1) % P( X1 )
-          DO iE = 1, nNodesE
+    DO i = 1, nDOF
 
-            evalP &
-              = evalP &
-                + P_E(iE) % P( E ) * u(i) &
-                    * TMP_X1 * TMP_X2 * TMP_X3
+      evalP &
+        = evalP &
+            + P_E (IndP_Q(0,i)) % P( E  ) &
+            * P_X1(IndP_Q(1,i)) % P( X1 ) &
+            * P_X2(IndP_Q(2,i)) % P( X2 ) &
+            * P_X3(IndP_Q(3,i)) % P( X3 ) &
+            * u(i)
 
-            i = i + 1
-
-          END DO
-        END DO
-      END DO
     END DO
 
     RETURN
@@ -274,26 +264,18 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: u(1:nDOFX), X1, X2, X3
 
-    INTEGER  :: i, iX1, iX2, iX3
-    REAL(DP) :: TMP_X2, TMP_X3
+    INTEGER  :: i
 
-    i = 1
     evalPX = 0.0_DP
-    DO iX3 = 1, nNodesX(3)
-      TMP_X3 = P_X3(iX3) % P( X3 )
-      DO iX2 = 1, nNodesX(2)
-        TMP_X2 = P_X2(iX2) % P( X2 )
-        DO iX1 = 1, nNodesX(1)
+    DO i = 1, nDOFX
 
-          evalPX &
-            = evalPX &
-              + P_X1(iX1) % P( X1 ) * u(i) &
-                  * TMP_X2 * TMP_X3
+      evalPX &
+        = evalPX &
+            + P_X1(IndPX_Q(1,i)) % P( X1 ) &
+            * P_X2(IndPX_Q(2,i)) % P( X2 ) &
+            * P_X3(IndPX_Q(3,i)) % P( X3 ) &
+            * u(i)
 
-          i = i + 1
-
-        END DO
-      END DO
     END DO
 
     RETURN
