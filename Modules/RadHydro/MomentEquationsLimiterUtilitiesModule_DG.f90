@@ -115,6 +115,9 @@ CONTAINS
 
       DO iX3 = 1, nX(3)
         DO iX2 = 1, nX(2)
+          !$OMP PARALLEL DO PRIVATE &
+          !$OMP&              ( iX1, iE, iCR, k, F_M, F_P, uCR_A, &
+          !$OMP&                uCR_M_P_X1, uCR_M, uCR_M_N_X1 )
           DO iX1 = 1, nX(1)
             DO iE = 1, nE
 
@@ -177,12 +180,13 @@ CONTAINS
                 END DO LOOP
               END IF
 
-            END DO
-          END DO
-        END DO
-      END DO
+            END DO ! iE
+          END DO ! iX1
+          !$OMP END PARALLEL DO
+        END DO ! iX2
+      END DO ! iX3
 
-    END DO
+    END DO ! iS
 
   END SUBROUTINE DetectDiscontinuities
 
