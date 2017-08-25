@@ -132,7 +132,7 @@ CONTAINS
     xL5(2) = - SQRT( 21.0_DP ) / 14.0_DP
     xL5(3) =   0.0_DP
     xL5(4) =   SQRT( 21.0_DP ) / 14.0_DP
-    xL5(5) =   0.5
+    xL5(5) =   0.5_DP
 
     wL5(1) =  1.0_DP /  20.0_DP
     wL5(2) = 49.0_DP / 180.0_DP
