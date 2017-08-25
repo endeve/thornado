@@ -17,13 +17,10 @@ MODULE TimeSteppingModule_Penalization
     FinalizeFluidFields, &
     FinalizeRadiationFields
   USE FluidRadiationCouplingSolutionModule_Penalization, ONLY: &
-    CoupleFluidRadiation, &
+    absLambda, rhsCR_C, &
     InitializeFluidRadiationCoupling, &
     FinalizeFluidRadiationCoupling, &
-    SetRates, RHSLAMP, &
-    R0_In, R0_Out, Neq, &
-    nNodesX_G, nNodesE_G, &
-    uPR_N, uPF_N, uAF_N
+    ComputeRHS_C
 
   IMPLICIT NONE
   PRIVATE
@@ -31,6 +28,7 @@ MODULE TimeSteppingModule_Penalization
   PUBLIC :: EvolveFields
 
 CONTAINS
+
 
   SUBROUTINE EvolveFields &
                ( t_begin, t_end, dt_write, dt_fixed_Option, &
@@ -71,8 +69,6 @@ CONTAINS
 
       iCycle = iCycle + 1
 
-      CALL SetRates
-
       IF( FixedTimeStep )THEN
 
         dt = dt_fixed
@@ -112,9 +108,6 @@ CONTAINS
 
       IF( WriteOutput )THEN
 
-        CALL FinalizeFluidFields( uPF_N, uAF_N )
-        CALL FinalizeRadiationFields( uPR_N )
-
         CALL WriteFields1D &
                ( Time = t, WriteFluidFields_Option = .TRUE., &
                  WriteRadiationFields_Option = .TRUE. )
@@ -125,6 +118,8 @@ CONTAINS
 
     END DO ! WHILE
 
+    CALL FinalizeFluidRadiationCoupling
+
     WRITE(*,*)
     WRITE(*,'(A6,A15,ES10.4E2,A1,A2,A6,I8.8,A7,A4,ES10.4E2,A2)') &
       '', 'Evolved to t = ', t / U % TimeUnit, '', TRIM( U % TimeLabel ), &
@@ -133,9 +128,7 @@ CONTAINS
 
     END ASSOCIATE ! U
  
-    CALL FinalizeFluidRadiationCoupling
-
-    CALL WriteFields1D &
+     CALL WriteFields1D &
            ( Time = t, WriteFluidFields_Option = .TRUE., &
              WriteRadiationFields_Option = .TRUE. )
 
@@ -217,7 +210,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: dt
 
-    CALL CoupleFluidRadiation( dt )
+    CALL ComputeRHS_C
 
   END SUBROUTINE UpdateFields
 
