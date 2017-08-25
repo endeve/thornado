@@ -159,6 +159,12 @@ CONTAINS
 
               IF( F_M * F_P <= 0.0_DP )THEN
                 LOOP: DO k = 1, nDOF
+
+                  IF( ALL( [ ABS( uCR_M     (k,iCR_N) ), &
+                             ABS( uCR_M_P_X1(k,iCR_N) ), &
+                             ABS( uCR_M_N_X1(k,iCR_N) ) ] * 1.0d12 &
+                           < 1.0_DP ) ) CYCLE LOOP
+
                   IF( ABS( uCR_M(k,iCR_N) ) &
                       > alpha * ABS( uCR_M_P_X1(k,iCR_N) ) .AND. &
                       ABS( uCR_M(k,iCR_N) ) &
@@ -167,6 +173,7 @@ CONTAINS
                     Discontinuity(iE,iX1,iX2,iX3) = 1.0_DP
                     EXIT LOOP
                   END IF
+
                 END DO LOOP
               END IF
 
