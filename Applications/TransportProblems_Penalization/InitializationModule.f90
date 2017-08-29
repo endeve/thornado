@@ -51,6 +51,7 @@ CONTAINS
     INTEGER             :: iNodeX1, iNodeX2, iNodeX3, iNodeE
     INTEGER             :: iNodeX, iNode
     REAL(DP)            :: X1, E, Mnu, kT
+    REAL(DP)            :: temp, Pert_ratio = 0.5 ! perturbation ratio [0,1]
     REAL(DP), PARAMETER :: MinD = 1.0d08 * Gram / Centimeter**3
     REAL(DP), PARAMETER :: MaxD = 4.0d14 * Gram / Centimeter**3
     REAL(DP), PARAMETER :: X1_D = 2.0d01 * Kilometer
@@ -153,9 +154,13 @@ CONTAINS
 
                     iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
+                    CALL RANDOM_NUMBER( temp )
+
                     uPR(iNode,iE,iX1,iX2,iX3,iPR_D,1) &
                       = MAX( 1.0d-100, &
-                             FourPi / ( EXP( (E-Mnu)/kT ) + 1.0_DP ) )
+                           ( 1.0 - Pert_ratio ) * &
+                               FourPi / ( EXP( (E-Mnu)/kT ) + 1.0_DP ) &
+                           + Pert_ratio * FourPi * temp )
 
                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,1) &
                       = 0.0_DP
