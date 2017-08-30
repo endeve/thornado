@@ -158,50 +158,68 @@ CONTAINS
     REAL(DP),                 INTENT(inout) :: dt
     REAL(DP),                 INTENT(in)  :: dt_max, Diff
    
-    REAL(DP)                  :: LAMP, invLAMP, lim, dt_0, LLN, dt_1
-    REAL(DP), DIMENSION(nNodesE) :: NN, Collision, &
-                                lim1sign, lim1, lim1p, &
-                                lim2sign, lim2, lim2p
+    REAL(DP)                  :: dt_old, dt_i, dt_1, dt_2, &
+                                 LAMB, invLAMB, LNMax, lim
+!    REAL(DP), DIMENSION(nNodesE_G) :: NN, Collision, &
+!                                      lim1sign, lim1, lim1p, &
+!                                      lim2sign, lim2, lim2p
 
-    INTEGER :: iX
+    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNodeX_G
+
+    dt_old = dt
 
     dt = 1.0d-2 * Millisecond
+    
+    dt_i = dt_old
 
-!    DO iX = 1, nNodesX_G
+    iNodeX_G = 0
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+              DO iNodeX1 = 1, nNodesX(1)
+                
+                iNodeX_G = iNodeX_G + 1
+!                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+!                Collision = RHS_J(:,iNodeX_G)
+
+!                LAMB = absLambda(iNodeX,iX1,iX2,iX3)
+
+!                NN = uPR_N(:,iPR_D,iX)
 !
-!      NN = uPR_N(:,iPR_D,iX)
+                invLAMB = 1.0 / LAMB
 !
-!      LAMP = RHSLAMP &
-!             ( nNodesE_G, R0_In(:,:,iX), R0_Out(:,:,iX), Neq(:,iX) )
-!
-!      invLAMP = 1.0 / LAMP
-!
-!      ! --- Boundary Limit ---
+!               ! --- Boundary Limit ---
 !    
-!      lim = MINVAL( lim1p + lim2p )    
+!                lim = MINVAL( lim1p + lim2p )    
 !
-!      IF( lim < invLAMP )THEN
-!        dt_0 = lim / ( 1.0 - lim * LAMP )
-!      ELSE
-!        dt_0 = dt_max
-!      END IF
-!
-!   
-!      dt = MIN( dt_0, dt*1.05, dt_max )
-!   
-!      ! --- Accuracy Limit ---
-!    
-!      LLN = MAXVAL( ABS( Collision ) ) ! NEEDS CHANGE
-!  
-!      dt_1 = Diff / ( 2.0 * LLN ) + &
-!             SQRT( Diff / ( LAMP * LLN ) + &
-!                   Diff**2 / ( 4.0 * LLN**2 ) )
-!                                         
-!      dt = MIN( dt, dt_1 )
-!
-!      PRINT*, 'new dt: ', dt 
-!
-!   END DO
+                IF( lim < invLAMB )THEN
+                  dt_1 = lim / ( 1.0 - lim * LAMB )
+                ELSE
+                  dt_1 = dt_max
+                END IF
+             
+                ! --- Accuracy Limit ---
+              
+!                LNMax = MAXVAL( ABS( MATMUL(Collision,NN) / NN ) )
+!            
+                dt_2 = Diff / ( 2.0 * LNMax ) + &
+                       SQRT( Diff / ( LAMB * LNMax ) + &
+                             Diff**2 / ( 4.0 * LNMax**2 ) )
+                                                   
+                dt_i = MIN( dt_i, dt_max, dt_1, dt_2 )
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    dt = MIN( dt_i, 1.05*dt_old )
 
   END SUBROUTINE ComputeTimestepPenalization
 
