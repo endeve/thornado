@@ -204,46 +204,49 @@ CONTAINS
 
   SUBROUTINE SetAbsLambda
 
-    INTEGER :: iX, i
+    INTEGER :: iX, iE, jE
+    INTEGER :: INFO, LWORK
+    REAL(DP), DIMENSION(1)                   :: TEMP
+    REAL(DP), DIMENSION(nNodesE_G)           :: TMP, LambdaRe, LambdaIm
+    REAL(DP), DIMENSION(:),      ALLOCATABLE :: WORK
+    REAL(DP), DIMENSION(1,1)                 :: DUMMY
+    REAL(DP), DIMENSION(nNodesE_G,nNodesE_G) :: dC
 
-    INTEGER :: INFO, WORKL
-    REAL(DP), DIMENSION(:), ALLOCATABLE:: WORK
-    REAL(DP), DIMENSION(1,nNodesE_G) :: doummy
-  
-    REAL(DP), DIMENSION(nNodesE_G) :: dV, EigendC, EigendC_R, EigendC_I
-    REAL(DP), DIMENSION(nNodesE_G,nNodesE_G) :: diag_dV, dC, diag_FD, &
-                                                R_In_H, R_Out_H
+    LWORK = - 1
+    CALL DGEEV( 'N', 'N', nNodesE_G, dC, nNodesE_G, &
+                LambdaRe, LambdaIm, 0, 1, 0, 1, TEMP, LWORK, INFO )
 
-    diag_dV = 0.0_DP
-    DO i = 1, nNodesE_G
-      diag_dV(i,i) = W2_N(i)
-    END DO
+    LWORK = TEMP(1)
+    ALLOCATE( WORK(LWORK) )
 
     DO iX = 1, nNodesX_G
 
-      diag_FD = 0.0_DP
-      DO i = 1, nNodesE_G
-        diag_FD(i,i) = FD(i,iX)
+      DO jE = 1, nNodesE_G
+        DO iE = 1, nNodesE_G
+
+          dC(iE,jE) &
+            = W2_N(jE) * ( (FourPi-FD(iE,iX)) * R0_In(iE,jE,iX) &
+                           + FD(iE,iX) * R0_Out(iE,jE,iX) )
+
+        END DO
       END DO
 
-      R_In_H  = MATMUL( R0_In(:,:,iX),  diag_dV )
-      R_Out_H = MATMUL( R0_Out(:,:,iX), diag_dV )   
+      TMP = MATMUL( R0_In(:,:,iX), W2_N(:) * FD(:,iX) )
+      TMP = TMP + MATMUL( R0_Out(:,:,iX), W2_N(:) * (FourPi-FD(:,iX)) )
+      DO iE = 1, nNodesE_G
 
-      dC = L_FUN( FD(:,iX), R_In_H, R_Out_H ) &
-             -  MATMUL( diag_FD, R_In_H - R_Out_H )
+        dC(iE,iE) = dC(iE,iE) - TMP(iE)
 
-      WORKL = 4 * nNodesE_G
-      ALLOCATE( WORK( WORKL ) )
+      END DO
 
-      CALL dgeev("N","N",nNodesE_G,dC,nNodesE_G,EigendC_R,EigendC_I,&
-                 doummy, 1, doummy, 1,WORK, WORKL,INFO)
-      DEALLOCATE( WORK )
+      CALL DGEEV( 'N', 'N', nNodesE_G, dC, nNodesE_G, &
+                  LambdaRe, LambdaIm, 0, 1, 0, 1, WORK, LWORK, INFO )
 
-      EigendC = EigendC_R
-
-      absLambda_N(iX) = MAXVAL( ABS( EigendC ) )
+      absLambda_N(iX) = MAXVAL( ABS( LambdaRe ) )
 
     END DO
+
+    DEALLOCATE( WORK )
  
   END SUBROUTINE SetAbsLambda
 
@@ -263,30 +266,6 @@ CONTAINS
     END DO
 
   END SUBROUTINE SetRHS
-
-
-  PURE FUNCTION L_FUN( N, R_In_H, R_Out_H )
-
-    REAL(DP), DIMENSION(nNodesE_G),       INTENT(in) :: N
-    REAL(DP), DIMENSION(nNodesE_G,nNodesE_G), INTENT(in) :: R_In_H, R_Out_H
-
-    REAL(DP), DIMENSION(nNodesE_G,nNodesE_G) :: L_FUN
-    REAL(DP), DIMENSION(nNodesE_G,nNodesE_G) :: diag_K, Rinout_H
-
-    INTEGER :: i
-
-    Rinout_H = R_In_H - R_Out_H
-
-    diag_K = 0.0_DP
-    DO i = 1, nNodesE_G
-        diag_K(i,i) = SUM( R_Out_H(i,:) ) + SUM( Rinout_H(i,:) * N(:) )
-    END DO
-
-    L_FUN = R_In_H - diag_K
-
-    RETURN
-
-  END FUNCTION L_FUN
 
 
 END MODULE FluidRadiationCouplingSolutionModule_Penalization
