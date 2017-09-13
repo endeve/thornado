@@ -60,7 +60,9 @@ MODULE FluidRadiationCouplingSolutionModule_Penalization
 
   PUBLIC :: InitializeFluidRadiationCoupling
   PUBLIC :: FinalizeFluidRadiationCoupling
-  PUBLIC :: ComputeRHS_C
+  PUBLIC :: ComputeRHS_C_J
+  PUBLIC :: ComputeRHS_C_H
+  
  
 CONTAINS
 
@@ -68,7 +70,8 @@ CONTAINS
   SUBROUTINE InitializeFluidRadiationCoupling
 
     ALLOCATE( absLambda(nDOFX,nX(1),nX(2),nX(3)) )
-    ALLOCATE( rhsCR_C(nDOF,nE,nX(1),nX(2),nX(3),nCR,nSpecies) )
+    ALLOCATE( Kappa  (nDOF,nE,nX(1),nX(2),nX(3)) )
+    ALLOCATE( C_J    (nDOF,nE,nX(1),nX(2),nX(3),nSpecies) )
 
     nNodesX_G = PRODUCT(nX) * nDOFX
     nNodesE_G =         nE  * nDOFE
@@ -121,7 +124,7 @@ CONTAINS
   END SUBROUTINE FinalizeFluidRadiationCoupling
 
 
-  SUBROUTINE ComputeRHS_C
+  SUBROUTINE ComputeRHS_C_J
 
     CALL ComputePrimitiveMoments &
            ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
@@ -169,7 +172,14 @@ CONTAINS
            ( rhsCR_C(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),iCR_N,1), &
              RHS_J(1:nNodesE_G,1:nNodesX_G) )
 
-  END SUBROUTINE ComputeRHS_C
+  END SUBROUTINE ComputeRHS_C_J
+
+
+  SUBROUTINE ComputeRHS_C_H( dt )
+
+    REAL(DP), INTENT(in) :: dt
+
+  END SUBROUTINE ComputeRHS_C_H
 
 
   SUBROUTINE SetRates

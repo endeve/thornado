@@ -81,7 +81,7 @@ CONTAINS
 
       iCycle = iCycle + 1
 
-      CALL ComputeRHS_C
+      CALL ComputeRHS_C_J
 
       IF( FixedTimeStep )THEN
 
@@ -101,7 +101,6 @@ CONTAINS
 
       IF( t + dt > t_write )THEN
 
-!        dt          = t_write - t
         t_write     = t_write + dt_write
         WriteOutput = .TRUE.
 
@@ -116,6 +115,8 @@ CONTAINS
           '', SmallestPosition
 
       END IF
+
+      CALL ComputeRHS_C_H( dt )
  
       CALL UpdateFields( dt, .true. )
 
