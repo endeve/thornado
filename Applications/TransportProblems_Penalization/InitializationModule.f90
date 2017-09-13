@@ -51,7 +51,7 @@ CONTAINS
     INTEGER             :: iNodeX1, iNodeX2, iNodeX3, iNodeE
     INTEGER             :: iNodeX, iNode
     REAL(DP)            :: X1, E, Mnu, kT
-    REAL(DP)            :: temp, Pert_ratio = 0.0 ! perturbation ratio [0,1]
+    REAL(DP)            :: temp, Pert_ratio = 0.08 ! perturbation ratio [0,1]
     REAL(DP), PARAMETER :: MinD = 1.0d08 * Gram / Centimeter**3
     REAL(DP), PARAMETER :: MaxD = 4.0d14 * Gram / Centimeter**3
     REAL(DP), PARAMETER :: X1_D = 2.0d01 * Kilometer
