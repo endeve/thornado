@@ -22,10 +22,11 @@ MODULE TimeSteppingModule_Penalization
     FinalizeFluidFields, &
     FinalizeRadiationFields
   USE FluidRadiationCouplingSolutionModule_Penalization, ONLY: &
-    absLambda, rhsCR_C, &
+    absLambda, C_J, &
     InitializeFluidRadiationCoupling, &
     FinalizeFluidRadiationCoupling, &
-    ComputeRHS_C
+    ComputeRHS_C_J, &
+    ComputeRHS_C_H
 
   IMPLICIT NONE
   PRIVATE
@@ -73,7 +74,7 @@ CONTAINS
 
     CALL InitializeFluidRadiationCoupling
   
-    OPEN(unit = out_unit, file = "tvsdt", action = "write", status = "replace" )
+!    OPEN(unit = out_unit, file = "tvsdt", action = "write", status = "replace" )
 
     dt = 1.d-8 * Millisecond 
 
@@ -124,7 +125,7 @@ CONTAINS
 
       IF( WriteOutput )THEN
 
-        WRITE( out_unit, '(2E15.6,4I4)' ) t/MilliSecond, dt/MilliSecond, SmallestPosition
+!        WRITE( out_unit, '(2E15.6,4I4)' ) t/MilliSecond, dt/MilliSecond, SmallestPosition
 
         CALL WriteFields1D &
                ( Time = t, WriteFluidFields_Option = .TRUE., &
@@ -136,7 +137,7 @@ CONTAINS
 
     END DO ! WHILE
 
-    CLOSE( out_unit )
+!    CLOSE( out_unit )
 
     CALL FinalizeFluidRadiationCoupling
 
@@ -148,9 +149,9 @@ CONTAINS
 
     END ASSOCIATE ! U
  
-     CALL WriteFields1D &
-           ( Time = t, WriteFluidFields_Option = .TRUE., &
-             WriteRadiationFields_Option = .TRUE. )
+    CALL WriteFields1D &
+          ( Time = t, WriteFluidFields_Option = .TRUE., &
+            WriteRadiationFields_Option = .TRUE. )
 
   END SUBROUTINE EvolveFields
 
@@ -193,7 +194,7 @@ CONTAINS
 
   WRITE( FileNumberString, FMT='(i12.12)') INT(t/MilliSecond*1.d7)
   FileName = 'o.dtdis'// FileNumberString
-  OPEN( NEWUNIT = out_unit_debug, file = FileName, action = "write", status = "replace" )
+! OPEN( NEWUNIT = out_unit_debug, file = FileName, action = "write", status = "replace" )
     
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
@@ -211,7 +212,7 @@ CONTAINS
 
                     iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
-                    Coll = rhsCR_C(iNode,iE,iX1,iX2,iX3,iCR_N,1) 
+                    Coll = C_J(iNode,iE,iX1,iX2,iX3,1) 
                     NN   = uCR    (iNode,iE,iX1,iX2,iX3,iCR_N,1)
 
                     ! --- Boundary Limit ---
@@ -240,7 +241,7 @@ CONTAINS
                     END IF
  
                     dt = MIN( dt, dt_1, dt_2 )
-                    WRITE(out_unit_debug,'(5I4,E15.6)'), iNode, iE, iX1, iX2, iX3, dt/ MilliSecond                   
+!                   WRITE(out_unit_debug,'(5I4,E15.6)'), iNode, iE, iX1, iX2, iX3, dt/ MilliSecond                   
 
                   END DO
 
@@ -253,7 +254,7 @@ CONTAINS
       END DO
     END DO
 
-    CLOSE( out_unit_debug )
+!   CLOSE( out_unit_debug )
 
     IF( dt < 1.0d-15 * Millisecond ) THEN
       PRINT*,"dt too small: ", dt / MilliSecond, "ms"
@@ -289,7 +290,7 @@ CONTAINS
 
                     iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
-                    Coll = rhsCR_C(iNode,iE,iX1,iX2,iX3,iCR_N,1)
+                    Coll = C_J(iNode,iE,iX1,iX2,iX3,1)
 
                     NN   = uCR    (iNode,iE,iX1,iX2,iX3,iCR_N,1)
 
@@ -324,7 +325,7 @@ CONTAINS
     REAL(DP) :: LAMB
 
     IF( PenalizationMethod_flag )THEN
-    DO iS = 1, nSpecies
+     DO iS = 1, nSpecies
 
       DO iCR = 1, nCR
 
@@ -351,7 +352,7 @@ CONTAINS
 
                         uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) &
                           = uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) &
-                              + (dt/(1.d0 +dt*LAMB)) * rhsCR_C(iNode,iE,iX1,iX2,iX3,iCR,iS)
+                              + (dt/(1.d0 +dt*LAMB)) * C_J(iNode,iE,iX1,iX2,iX3,iS)
 
                       END DO
                     END DO
@@ -365,7 +366,7 @@ CONTAINS
 
       END DO
 
-    END DO
+     END DO
 
     ELSE
 
@@ -396,7 +397,7 @@ CONTAINS
 
                         uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) &
                           = uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) &
-                              + dt * rhsCR_C(iNode,iE,iX1,iX2,iX3,iCR,iS)
+                              + dt * C_J(iNode,iE,iX1,iX2,iX3,iS)
 
                       END DO
                     END DO
@@ -410,7 +411,7 @@ CONTAINS
 
       END DO
 
-    END DO
+     END DO
     END IF
 
   END SUBROUTINE UpdateFields
