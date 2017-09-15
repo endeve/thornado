@@ -44,7 +44,8 @@ MODULE FluidRadiationCouplingSolutionModule_Penalization
   PRIVATE
 
   REAL(DP), DIMENSION(:,:,:,:),       ALLOCATABLE, PUBLIC :: absLambda
-  REAL(DP), DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: rhsCR_C
+  REAL(DP), DIMENSION(:,:,:,:,:),     ALLOCATABLE, PUBLIC :: Kappa
+  REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: C_J
 
   INTEGER                                 :: nNodesX_G
   INTEGER                                 :: nNodesE_G
@@ -55,7 +56,7 @@ MODULE FluidRadiationCouplingSolutionModule_Penalization
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: X_N
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: FD
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: J_N, H1_N, H2_N, H3_N
-  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: RHS_J
+  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: RHS_J, RHS_H
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: R0_In, R0_Out
 
   PUBLIC :: InitializeFluidRadiationCoupling
@@ -98,6 +99,7 @@ CONTAINS
     ALLOCATE( H2_N (nNodesE_G, nNodesX_G) )
     ALLOCATE( H3_N (nNodesE_G, nNodesX_G) )
     ALLOCATE( RHS_J(nNodesE_G, nNodesX_G) )
+    ALLOCATE( RHS_H(nNodesE_G, nNodesX_G) )
 
     ALLOCATE &
       ( R0_In (nNodesE_G,nNodesE_G,nNodesX_G), &
@@ -109,7 +111,8 @@ CONTAINS
   SUBROUTINE FinalizeFluidRadiationCoupling
 
     DEALLOCATE( absLambda )
-    DEALLOCATE( rhsCR_C )
+    DEALLOCATE( Kappa )
+    DEALLOCATE( C_J )
 
     DEALLOCATE( E_N, W2_N, W3_N )
     DEALLOCATE( X_N )
@@ -118,7 +121,7 @@ CONTAINS
     DEALLOCATE( absLambda_N )
     DEALLOCATE( FD )
     DEALLOCATE( J_N, H1_N, H2_N, H3_N )
-    DEALLOCATE( RHS_J )
+    DEALLOCATE( RHS_J, RHS_H )
     DEALLOCATE( R0_In, R0_Out )
 
   END SUBROUTINE FinalizeFluidRadiationCoupling
@@ -169,7 +172,7 @@ CONTAINS
              absLambda_N(1:nNodesX_G) ) 
 
     CALL MapBackward_RadiationField &
-           ( rhsCR_C(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),iCR_N,1), &
+           ( C_J(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1), &
              RHS_J(1:nNodesE_G,1:nNodesX_G) )
 
   END SUBROUTINE ComputeRHS_C_J
@@ -178,6 +181,22 @@ CONTAINS
   SUBROUTINE ComputeRHS_C_H( dt )
 
     REAL(DP), INTENT(in) :: dt
+
+    INTEGER  :: iX, iE
+
+    DO iX = 1, nNodesX_G
+      DO iE = 1, nNodesE_G
+
+        RHS_H(iE,iX) &
+          = SUM( W2_N(:)*( R0_In(:,iE,iX)*J_N(:,iX)  &
+                         + R0_Out(:,iE,iX)*(FourPi-J_N(:,iX)) ) )
+
+      END DO
+    END DO
+
+    CALL MapBackward_RadiationField &
+           ( Kappa(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3)), &
+             RHS_H(1:nNodesE_G,1:nNodesX_G) )
 
   END SUBROUTINE ComputeRHS_C_H
 
