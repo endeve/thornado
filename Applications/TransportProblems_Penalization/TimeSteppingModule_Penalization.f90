@@ -22,7 +22,7 @@ MODULE TimeSteppingModule_Penalization
     FinalizeFluidFields, &
     FinalizeRadiationFields
   USE FluidRadiationCouplingSolutionModule_Penalization, ONLY: &
-    absLambda, C_J, &
+    absLambda, C_J, Kappa, &
     InitializeFluidRadiationCoupling, &
     FinalizeFluidRadiationCoupling, &
     ComputeRHS_C_J, &
@@ -119,7 +119,7 @@ CONTAINS
 
       CALL ComputeRHS_C_H( dt )
  
-      CALL UpdateFields( dt, .true. )
+      CALL UpdateFields( dt )
 
       t = t + dt
 
@@ -314,20 +314,55 @@ CONTAINS
   END SUBROUTINE ComputeTimestepForwardEuler
 
 
-  SUBROUTINE UpdateFields( dt, PenalizationMethod_flag )
+  SUBROUTINE UpdateFields( dt )
 
     REAL(DP), INTENT(in) :: dt
-    LOGICAL,  INTENT(in) :: PenalizationMethod_flag
 
     INTEGER  :: iE, iX1, iX2, iX3, iS, iCR
     INTEGER  :: iNodeE, iNodeX1, iNodeX2, iNodeX3
     INTEGER  :: iNode, iNodeX
     REAL(DP) :: LAMB
 
-    IF( PenalizationMethod_flag )THEN
      DO iS = 1, nSpecies
 
-      DO iCR = 1, nCR
+      iCR = iCR_N
+
+        DO iX3 = 1, nX(3)
+          DO iX2 = 1, nX(2)
+            DO iX1 = 1, nX(1)
+              DO iE = 1, nE
+
+                DO iNodeX3 = 1, nNodesX(3)
+                  DO iNodeX2 = 1, nNodesX(2)
+                    DO iNodeX1 = 1, nNodesX(1)
+
+                      iNodeX &
+                        = NodeNumberX &
+                            ( iNodeX1, iNodeX2, iNodeX3 )
+                      LAMB   &
+                        = MAX( absLambda(iNodeX,iX1,iX2,iX3), 1.0d-100 )
+
+                      DO iNodeE = 1, nNodesE
+
+                        iNode &
+                          = NodeNumber &
+                              ( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+
+                        uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) &
+                          = uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) &
+                              / ( 1.d0 + dt * Kappa(iNode,iE,iX1,iX2,iX3) )
+
+                      END DO
+                    END DO
+                  END DO
+                END DO
+
+              END DO
+            END DO
+          END DO
+        END DO
+
+      DO iCR = iCR_N, nCR
 
         DO iX3 = 1, nX(3)
           DO iX2 = 1, nX(2)
@@ -367,52 +402,6 @@ CONTAINS
       END DO
 
      END DO
-
-    ELSE
-
-     DO iS = 1, nSpecies
-
-      DO iCR = 1, nCR
-
-        DO iX3 = 1, nX(3)
-          DO iX2 = 1, nX(2)
-            DO iX1 = 1, nX(1)
-              DO iE = 1, nE
-
-                DO iNodeX3 = 1, nNodesX(3)
-                  DO iNodeX2 = 1, nNodesX(2)
-                    DO iNodeX1 = 1, nNodesX(1)
-
-                      iNodeX &
-                        = NodeNumberX &
-                            ( iNodeX1, iNodeX2, iNodeX3 )
-                      LAMB   &
-                        = MAX( absLambda(iNodeX,iX1,iX2,iX3), 1.0d-100 )
-
-                      DO iNodeE = 1, nNodesE
-
-                        iNode &
-                          = NodeNumber &
-                              ( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
-
-                        uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) &
-                          = uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) &
-                              + dt * C_J(iNode,iE,iX1,iX2,iX3,iS)
-
-                      END DO
-                    END DO
-                  END DO
-                END DO
-
-              END DO
-            END DO
-          END DO
-        END DO
-
-      END DO
-
-     END DO
-    END IF
 
   END SUBROUTINE UpdateFields
 
