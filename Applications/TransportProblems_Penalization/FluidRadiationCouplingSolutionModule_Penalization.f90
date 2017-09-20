@@ -56,7 +56,7 @@ MODULE FluidRadiationCouplingSolutionModule_Penalization
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: X_N
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: FD
   REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: J_N, H1_N, H2_N, H3_N
-  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: RHS_J, RHS_H
+  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: RHS_J, RHS_kappa
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: R0_In, R0_Out
 
   PUBLIC :: InitializeFluidRadiationCoupling
@@ -99,7 +99,7 @@ CONTAINS
     ALLOCATE( H2_N (nNodesE_G, nNodesX_G) )
     ALLOCATE( H3_N (nNodesE_G, nNodesX_G) )
     ALLOCATE( RHS_J(nNodesE_G, nNodesX_G) )
-    ALLOCATE( RHS_H(nNodesE_G, nNodesX_G) )
+    ALLOCATE( RHS_kappa(nNodesE_G, nNodesX_G) )
 
     ALLOCATE &
       ( R0_In (nNodesE_G,nNodesE_G,nNodesX_G), &
@@ -121,7 +121,7 @@ CONTAINS
     DEALLOCATE( absLambda_N )
     DEALLOCATE( FD )
     DEALLOCATE( J_N, H1_N, H2_N, H3_N )
-    DEALLOCATE( RHS_J, RHS_H )
+    DEALLOCATE( RHS_J, RHS_kappa )
     DEALLOCATE( R0_In, R0_Out )
 
   END SUBROUTINE FinalizeFluidRadiationCoupling
@@ -187,7 +187,7 @@ CONTAINS
     DO iX = 1, nNodesX_G
       DO iE = 1, nNodesE_G
 
-        RHS_H(iE,iX) &
+        RHS_kappa(iE,iX) &
           = SUM( W2_N(:)*( R0_In(:,iE,iX)*J_N(:,iX)  &
                          + R0_Out(:,iE,iX)*(FourPi-J_N(:,iX)) ) )
 
@@ -196,7 +196,7 @@ CONTAINS
 
     CALL MapBackward_RadiationField &
            ( Kappa(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3)), &
-             RHS_H(1:nNodesE_G,1:nNodesX_G) )
+             RHS_kappa(1:nNodesE_G,1:nNodesX_G) )
 
   END SUBROUTINE ComputeRHS_C_H
 
