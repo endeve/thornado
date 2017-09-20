@@ -23,6 +23,8 @@ MODULE TimeSteppingModule_Penalization
     iCR_N, iCR_G1, iCR_G2, iCR_G3, uCR, nCR, &
     iPR_D, uPR, &
     nSpecies, rhsCR
+  USE RadiationEvolutionModule, ONLY: &
+    ApplyPositivityLimiter_Radiation
   USE InputOutputModule, ONLY: &
     WriteFields1D
   USE MomentEquationsSolutionModule_M1_DG, ONLY: &
@@ -36,6 +38,8 @@ MODULE TimeSteppingModule_Penalization
     FinalizeFluidRadiationCoupling, &
     ComputeRHS_C_J, &
     ComputeRHS_C_H
+  USE BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Radiation
 
   IMPLICIT NONE
   PRIVATE
@@ -72,6 +76,8 @@ CONTAINS
       iDisplayCycle = iDisplayCycle_Option
 
     ASSOCIATE( U => UnitsDisplay )
+
+    CALL ApplyPositivityLimiter_Radiation
 
     iCycle  = 0
     t       = t_begin
@@ -126,6 +132,8 @@ CONTAINS
 
       END IF
 
+      CALL ApplyBoundaryConditions_Radiation( t )
+
       CALL ComputeRHS_M1_DG( [1,1,1], [nX(1),nX(2),nX(3)] )
 
 !      PRINT*,"max( abs(rhsCR(iCR_N,:)) )", MAXVAL( ABS(rhsCR(:,:,:,:,:,iCR_N,1) ) )
@@ -136,6 +144,8 @@ CONTAINS
       CALL UpdateFields( dt )
 
       t = t + dt
+
+      CALL ApplyPositivityLimiter_Radiation
 
       IF( dt < 1.d-30 * Millisecond ) THEN
          WriteOutput = .TRUE.
@@ -399,7 +409,6 @@ CONTAINS
 
     DO iS = 1, nSpecies
   
-     DO iCR = 1, nCR
       DO iX3 = 1, nX(3)
         DO iX2 = 1, nX(2)
           DO iX1 = 1, nX(1)
@@ -418,27 +427,30 @@ CONTAINS
                     DO iNodeE = 1, nNodesE
 
                       iNode &
-                        = NodeNumber &
-                            ( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+                        = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
                       uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
                         = uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
-                            + (dt/(1.d0 +dt*LAMB)) * C_J(iNode,iE,iX1,iX2,iX3,iS)
+                            + ( dt / (1.d0+dt*LAMB) ) &
+                              * ( rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
+                                  + C_J(iNode,iE,iX1,iX2,iX3,iS) )
 
                       temp = 1.d0 / ( 1.d0 + dt * Kappa(iNode,iE,iX1,iX2,iX3) )
 
                       uCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS) &
-                        = uCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS) * temp
+                        = temp &
+                          * ( uCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS) &
+                              + dt * rhsCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS) )
 
                       uCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS) &
-                        = uCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS) * temp
+                        = temp &
+                          * ( uCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS) &
+                              + dt * rhsCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS) )
 
                       uCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS) &
-                        = uCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS) * temp
-
-                      uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) &
-                        = uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) + &
-                          dt * rhsCR(iNode,iE,iX1,iX2,iX3,iCR,iS)
+                        = temp &
+                          * ( uCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS) &
+                              + dt * rhsCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS) )
 
                     END DO
 
@@ -450,7 +462,7 @@ CONTAINS
           END DO
         END DO
       END DO
-     END DO
+
     END DO
 
     IF( MINVAL( uCR(:,:,:,:,:,iCR_N,:) ) < 0.d0 )THEN
@@ -458,7 +470,7 @@ CONTAINS
       PRINT*,"ERROR in UpdateFields"
       PRINT*,"NEGATIVE uCR(:,iCR_N) "
       PRINT*,''
-      STOP
+!      STOP
     END IF
 
   END SUBROUTINE UpdateFields

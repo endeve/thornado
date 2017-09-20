@@ -82,9 +82,8 @@ PROGRAM TransportPenalization1D
   CALL EvolveFields &
          ( t_begin  = 0.0d+0 * Millisecond, &
            t_end    = 1.0d-0 * Millisecond, &
-           dt_write = 1.0d-4 * Millisecond &     
-           )      
-!          , dt_fixed_Option = 1.0d-8 * Millisecond )
+           dt_write = 1.0d-3 * Millisecond )!, &
+!           dt_fixed_Option = 1.0d-5 * Millisecond )
 
   CALL FinalizeProgram
 
