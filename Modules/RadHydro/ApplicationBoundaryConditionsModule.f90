@@ -538,6 +538,10 @@ CONTAINS
 
         CALL ApplyBC_Radiation_X1_OutflowSphericalSymmetry
 
+      CASE ( 'TransportPenalization1D' )
+
+        CALL ApplyBC_Radiation_X1_OutflowSphericalSymmetry
+
       CASE DEFAULT
 
         WRITE(*,*)
