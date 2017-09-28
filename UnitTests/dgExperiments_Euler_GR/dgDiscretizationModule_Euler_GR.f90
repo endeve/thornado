@@ -24,8 +24,12 @@ MODULE dgDiscretizationModule_Euler_GR
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     rhsCF, uAF, nAF, iAF_P, iAF_Gm
   USE EulerEquationsUtilitiesModule_Beta_GR, ONLY:  &
-    ComputePrimitive_GR, Eigenvalues_GR, AlphaC_GR, &
-    Flux_X1_GR, NumericalFlux_X1_HLLC_GR
+    ComputePrimitive_GR, &
+    Eigenvalues_GR, &
+    ComputeSoundSpeed_GR, &
+    AlphaC_GR, &
+    Flux_X1_GR, &
+    NumericalFlux_X1_HLLC_GR
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromSpecificInternalEnergy
 

@@ -54,9 +54,9 @@ PROGRAM rhsTest_GR
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL ComputeGeometryX( [ 32, 1, 1 ], [ 4, 4, 4 ], [ 1, 1, 1 ] )
+  CALL ComputeGeometryX
 
-  CALL InitializeFields
+  CALL InitializeFields_GR
 
   CALL ComputeRHS_Euler_GR
 
