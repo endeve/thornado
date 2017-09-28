@@ -36,7 +36,7 @@ MODULE GeometryFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_11 = 2  ! Spatial Metric Component 11
   INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_22 = 3  ! Spatial Metric Component 22
   INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_33 = 4  ! Spatial Metric Component 33
-  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_uu_11 = 5  ! Contravariant Spatial Metric Component 11
+  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_uu_11 = 5  ! Spatial Metric Component 11
   INTEGER, PUBLIC, PARAMETER :: iGF_Alpha    = 6  ! Lapse Function
   INTEGER, PUBLIC, PARAMETER :: iGF_Beta_1   = 7  ! Shift Vector 1
   INTEGER, PUBLIC, PARAMETER :: iGF_Beta_2   = 8  ! Shift Vector 2
@@ -147,12 +147,12 @@ CONTAINS
     uGF(:,:,:,:,iGF_Gm_dd_11) = 1.0_DP
     uGF(:,:,:,:,iGF_Gm_dd_22) = 1.0_DP
     uGF(:,:,:,:,iGF_Gm_dd_33) = 1.0_DP
+    uGF(:,:,:,:,iGF_Gm_uu_11) = 1.0_DP
     uGF(:,:,:,:,iGF_Alpha)    = 1.0_DP
     uGF(:,:,:,:,iGF_Beta_1)   = 0.0_DP
     uGF(:,:,:,:,iGF_Beta_2)   = 0.0_DP
     uGF(:,:,:,:,iGF_Beta_3)   = 0.0_DP
     uGF(:,:,:,:,iGF_CF)       = 1.0_DP
-    uGF(:,:,:,:,iGF_Gm_uu_11) = 1.0_DP
 
   END SUBROUTINE CreateGeometryFieldsX
 

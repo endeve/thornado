@@ -61,8 +61,7 @@ CONTAINS
 
     END SELECT
 
-    CALL ComputeGeometryX &
-           ( nX, nNodesX, swX )
+    CALL ComputeGeometryX
 
     CALL ComputeGeometry &
            ( nX, nNodesX, swX, nE, nNodesE, swE )
