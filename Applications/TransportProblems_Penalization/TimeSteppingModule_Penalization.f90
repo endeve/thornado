@@ -23,6 +23,8 @@ MODULE TimeSteppingModule_Penalization
     iCR_N, iCR_G1, iCR_G2, iCR_G3, uCR, nCR, &
     iPR_D, uPR, &
     nSpecies, rhsCR
+  USE MomentEquationsUtilitiesModule, ONLY: &
+    ComputePrimitiveMoments
   USE RadiationEvolutionModule, ONLY: &
     ApplyPositivityLimiter_Radiation
   USE InputOutputModule, ONLY: &
@@ -44,7 +46,7 @@ MODULE TimeSteppingModule_Penalization
   IMPLICIT NONE
   PRIVATE
 
-  REAL(DP), PARAMETER :: Diff_FE = 1.0d-3
+  REAL(DP), PARAMETER :: Diff_FE = 1.0d-2
 
   PUBLIC :: EvolveFields
 
@@ -90,8 +92,11 @@ CONTAINS
 
     CALL InitializeFluidRadiationCoupling
   
-    OPEN(unit = out_unit, file = "tvsdt", action = "write", status = "replace" )
-    WRITE( out_unit, '(A1,7A15)')'#','time', 'dt','dt_stream','dt_accur','dt_upper', 'dt_lower','Position'
+    OPEN( unit = out_unit, file = "tvsdt", action = "write", &
+          status = "replace" )
+    WRITE( out_unit, '(A1,7A15)') '#', 'time', 'dt', 'dt_stream', &
+      'dt_accur','dt_upper', 'dt_lower','Position'
+
     dt = 1.d-8 * Millisecond 
 
     DO WHILE( t < t_end )
@@ -100,13 +105,20 @@ CONTAINS
 
       CALL ComputeRHS_C_J
 
+      CALL ApplyBoundaryConditions_Radiation( t )
+
+      CALL ComputeRHS_M1_DG &
+             ( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
+
       IF( FixedTimeStep )THEN
 
         dt = dt_fixed
 
       ELSE
 
-        CALL ComputeTimeStep( t, dt, SmallestPosition, dt_stream, dt_accur, dt_boundary, dt_lower )
+        CALL ComputeTimeStep &
+               ( t, dt, SmallestPosition, dt_stream, dt_accur, &
+                 dt_boundary, dt_lower )
 
       END IF
 
@@ -133,17 +145,16 @@ CONTAINS
 
       END IF
 
-      CALL ApplyBoundaryConditions_Radiation( t )
-
-      CALL ComputeRHS_M1_DG( [1,1,1], [nX(1),nX(2),nX(3)] )
-
       CALL ComputeRHS_C_H( dt )
  
       CALL UpdateFields( dt )
 
-      t = t + dt
-
       CALL ApplyPositivityLimiter_Radiation
+
+      CALL ComputePrimitiveMoments &
+           ( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
+
+      t = t + dt
 
       IF( dt < 1.d-30 * Millisecond ) THEN
          WriteOutput = .TRUE.
@@ -157,10 +168,11 @@ CONTAINS
 
       IF( WriteOutput )THEN
 
-        WRITE( out_unit, '(6E15.6,4I4)' ) t/MilliSecond, dt/MilliSecond, &
-                                         dt_stream/MilliSecond, dt_accur/Millisecond, &
-                                         dt_boundary/Millisecond, dt_lower/Millisecond, &
-                                         SmallestPosition
+        WRITE( out_unit, '(6E15.6,4I4)' ) &
+          t / MilliSecond, dt / MilliSecond, &
+          dt_stream / MilliSecond, dt_accur / Millisecond, &
+          dt_boundary/Millisecond, dt_lower/Millisecond, &
+          SmallestPosition
 
         CALL WriteFields1D &
                ( Time = t, WriteFluidFields_Option = .TRUE., &
@@ -191,7 +203,9 @@ CONTAINS
   END SUBROUTINE EvolveFields
 
 
-  SUBROUTINE ComputeTimestep( t, dt, SmallestPosition, dt_streams, dt_accur, dt_boundary, dt_lower )
+  SUBROUTINE ComputeTimestep &
+               ( t, dt, SmallestPosition, dt_streams, dt_accur, &
+                 dt_boundary, dt_lower )
 
     REAL(DP), INTENT(in) :: t
     INTEGER, DIMENSION(4), INTENT(out) :: SmallestPosition 
@@ -219,7 +233,8 @@ CONTAINS
   END SUBROUTINE ComputeTimestep
 
 
-  SUBROUTINE ComputeTimestepPenalization( dt, dt_max, t, SmallestPosition, dt_accur, dt_boundary, dt_lower )
+  SUBROUTINE ComputeTimestepPenalization &
+    ( dt, dt_max, t, SmallestPosition, dt_accur, dt_boundary, dt_lower )
 
     REAL(DP), INTENT(in)  :: dt_max, t
     REAL(DP), INTENT(out) :: dt, dt_accur, dt_lower, dt_boundary
@@ -245,10 +260,10 @@ CONTAINS
                dX2 => MeshX(2) % Width (1:nX(2)), &
                dX3 => MeshX(3) % Width (1:nX(3)) )
 
-      mindx = MIN( MINVAL(dX1), MINVAL(dX2), MINVAL(dX3) )
+    mindx = MIN( MINVAL(dX1), MINVAL(dX2), MINVAL(dX3) )
  
     END ASSOCIATE
- 
+
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
@@ -262,6 +277,7 @@ CONTAINS
                   LAMB   = absLambda(iNodeX,iX1,iX2,iX3)
                   dt_dx = 0.5d0 * mindx / ( 1.0d0 - 0.5d0 * LAMB * mindx )
                   IF( dt_dx < 0.0d0 ) dt_dx = HUGE( 1.0_DP )
+                  dt_dx = HUGE( 1.0_DP )
 
                   DO iNodeE = 1, nNodesE
 
@@ -283,20 +299,21 @@ CONTAINS
 
                     ! --- Boundary Limit (lower) ---
 
-                    
-                    lim_W = ( rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,1) - Coll ) / NN - LAMB
-                  
+                    lim_W = ( rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,1) - Coll ) &
+                            / NN - LAMB
+
                     IF( lim_W > 0.0d0 ) dt_lower = 1.0d0 / lim_W
-              
+
                     dt_1 = MIN( dt_lower, dt_1 )
 
                     ! --- Accuracy Limit ---
               
-                    LNMax = ABS( CpS / NN )
+                    LNMax = ABS( CpS ) / MAX( NN, 1.0d-16 )
 
                     dt_2 = Diff_FE / ( 2.0d0 * LNMax ) + &
                            SQRT( Diff_FE / ( LAMB * LNMax ) + &
                                  Diff_FE * Diff_FE / ( 4.0d0 * LNMax * LNMax ) )
+
                     dt_accur = MIN( dt_accur, dt_2 )
 
                     IF( dt >= MIN( dt_1, dt_2 ) )THEN 

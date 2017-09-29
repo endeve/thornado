@@ -43,8 +43,8 @@ MODULE FluidRadiationCouplingSolutionModule_Penalization
   IMPLICIT NONE
   PRIVATE
 
-  REAL(DP), DIMENSION(:,:,:,:),       ALLOCATABLE, PUBLIC :: absLambda
-  REAL(DP), DIMENSION(:,:,:,:,:),     ALLOCATABLE, PUBLIC :: Kappa
+  REAL(DP), DIMENSION(:,:,:,:),     ALLOCATABLE, PUBLIC :: absLambda
+  REAL(DP), DIMENSION(:,:,:,:,:),   ALLOCATABLE, PUBLIC :: Kappa
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: C_J
 
   INTEGER                                 :: nNodesX_G

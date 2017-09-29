@@ -157,7 +157,7 @@ CONTAINS
                     CALL RANDOM_NUMBER( temp )
 
                     uPR(iNode,iE,iX1,iX2,iX3,iPR_D,1) &
-                      = MAX( 1.0d-100, &
+                      = MAX( 1.0d-32, &
                            ( 1.0 - Pert_ratio ) * &
                                FourPi / ( EXP( (E-Mnu)/kT ) + 1.0_DP ) &
                            + Pert_ratio * FourPi * temp )

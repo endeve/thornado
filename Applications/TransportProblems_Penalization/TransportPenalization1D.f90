@@ -51,7 +51,7 @@ PROGRAM TransportPenalization1D
            ZoomE_Option &
              = 1.239020750754000_DP, &
            nNodes_Option &
-             = 2, &
+             = 1, &
            CoordinateSystem_Option &
              = 'SPHERICAL', &
            ActivateUnits_Option &
@@ -82,7 +82,7 @@ PROGRAM TransportPenalization1D
   CALL EvolveFields &
          ( t_begin  = 0.0d+0 * Millisecond, &
            t_end    = 1.0d-0 * Millisecond, &
-           dt_write = 1.0d-3 * Millisecond )!, &
+           dt_write = 1.0d-2 * Millisecond )!, &
 !           dt_fixed_Option = 1.0d-5 * Millisecond )
 
   CALL FinalizeProgram
