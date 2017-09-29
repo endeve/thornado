@@ -256,11 +256,9 @@ CONTAINS
     dt_lower = dt
 
     SmallestPosition = (/0,0,0,0/)
-    ASSOCIATE( dX1 => MeshX(1) % Width (1:nX(1)), &
-               dX2 => MeshX(2) % Width (1:nX(2)), &
-               dX3 => MeshX(3) % Width (1:nX(3)) )
+    ASSOCIATE( dX1 => MeshX(1) % Width (1:nX(1)) )
 
-    mindx = MIN( MINVAL(dX1), MINVAL(dX2), MINVAL(dX3) )
+    mindx = MINVAL( dX1 )
  
     END ASSOCIATE
 
@@ -277,7 +275,6 @@ CONTAINS
                   LAMB   = absLambda(iNodeX,iX1,iX2,iX3)
                   dt_dx = 0.5d0 * mindx / ( 1.0d0 - 0.5d0 * LAMB * mindx )
                   IF( dt_dx < 0.0d0 ) dt_dx = HUGE( 1.0_DP )
-                  dt_dx = HUGE( 1.0_DP )
 
                   DO iNodeE = 1, nNodesE
 
@@ -312,7 +309,8 @@ CONTAINS
 
                     dt_2 = Diff_FE / ( 2.0d0 * LNMax ) + &
                            SQRT( Diff_FE / ( LAMB * LNMax ) + &
-                                 Diff_FE * Diff_FE / ( 4.0d0 * LNMax * LNMax ) )
+                                 Diff_FE * Diff_FE &
+                                 / ( 4.0d0 * LNMax * LNMax ) )
 
                     dt_accur = MIN( dt_accur, dt_2 )
 
