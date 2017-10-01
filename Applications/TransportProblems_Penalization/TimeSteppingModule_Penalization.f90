@@ -47,6 +47,7 @@ MODULE TimeSteppingModule_Penalization
   PRIVATE
 
   REAL(DP), PARAMETER :: Diff_FE = 1.0d-2
+  REAL(DP), PARAMETER :: Min_dt  = 1.0d-30 * MilliSecond
 
   PUBLIC :: EvolveFields
 
@@ -95,7 +96,7 @@ CONTAINS
     OPEN( unit = out_unit, file = "tvsdt", action = "write", &
           status = "replace" )
     WRITE( out_unit, '(A1,7A15)') '#', 'time', 'dt', 'dt_stream', &
-      'dt_accur','dt_upper', 'dt_lower','Position'
+      'dt_accur','dt_boundary', 'dt_lower','Position'
 
     dt = 1.d-8 * Millisecond 
 
@@ -143,6 +144,12 @@ CONTAINS
           '', 'dt = ', dt / U % TimeUnit, '', TRIM( U % TimeLabel ), &
           '', SmallestPosition
 
+        WRITE( out_unit, '(6E15.6,4I4)' ) &
+          t / MilliSecond, dt / MilliSecond, &
+          dt_stream / MilliSecond, dt_accur / MilliSecond, &
+          dt_boundary / MilliSecond, dt_lower / MilliSecond, &
+          SmallestPosition
+
       END IF
 
       CALL ComputeRHS_C_H( dt )
@@ -156,23 +163,18 @@ CONTAINS
 
       t = t + dt
 
-      IF( dt < 1.d-30 * Millisecond ) THEN
+      IF( dt < Min_dt ) THEN
          WriteOutput = .TRUE.
          WRITE(*,*)
-         WRITE(*,'(A6,A15,ES10.4E2,A1,A2,A6,I8.8,A7,A4,ES10.4E2,A2)') &
-           '', 'Evolved to t = ', t / U % TimeUnit, '', TRIM( U % TimeLabel ), &
-           ' with ', iCycle, ' cycles'
+         WRITE(*,'(A8,A42,ES10.4E2,A1,A2,A6,ES10.4E2,A1,A2,A6,I8.8,A7,A4,ES10.4E2,A2)' ) &
+           '','ERROR: dt too small! Impose to end at t = ', t / U % TimeUnit, &
+           '', TRIM( U % TimeLabel ),' dt = ',dt / U % TimeUnit,&
+           '', TRIM( U % TimeLabel ),' with ', iCycle, ' cycles'
          WRITE(*,*)
-         STOP 
+         RETURN
       END IF
 
       IF( WriteOutput )THEN
-
-        WRITE( out_unit, '(6E15.6,4I4)' ) &
-          t / MilliSecond, dt / MilliSecond, &
-          dt_stream / MilliSecond, dt_accur / Millisecond, &
-          dt_boundary/Millisecond, dt_lower/Millisecond, &
-          SmallestPosition
 
         CALL WriteFields1D &
                ( Time = t, WriteFluidFields_Option = .TRUE., &
@@ -224,10 +226,11 @@ CONTAINS
  
     dt = MIN( dt_Radiation, dt_max, dt_Stream, dt*1.1d0 )
 
-    IF( dt < 1.0d-30 * Millisecond ) THEN
-      PRINT*,"In ComputeTimestep, dt too small: ", dt / MilliSecond, "ms"
-      PRINT*,"dt_Stream ", dt_Stream / Millisecond, "ms"
-      PRINT*,"dt_Radiation ", dt_Radiation / Millisecond, "ms"
+    IF( dt < Min_dt ) THEN
+      PRINT*,''
+      PRINT*,'In ComputeTimestep, dt too small: ', dt / MilliSecond, 'ms'
+      PRINT*,'dt_Stream ', dt_Stream / Millisecond, 'ms'
+      PRINT*,'dt_Radiation ', dt_Radiation / Millisecond, 'ms'
     END IF
 
   END SUBROUTINE ComputeTimestep
@@ -374,56 +377,6 @@ CONTAINS
   END SUBROUTINE ComputeTimeStep_Streaming
 
 
-  SUBROUTINE ComputeTimestepForwardEuler( dt )
-
-    REAL(DP), INTENT(out) :: dt
-
-    INTEGER  :: iE, iX1, iX2, iX3
-    INTEGER  :: iNodeE, iNode
-    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
-    REAL(DP) :: Coll, NN
-
-    dt = HUGE( 1.0_DP )
-
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
-          DO iE = 1, nE
-
-            DO iNodeX3 = 1, nNodesX(3)
-              DO iNodeX2 = 1, nNodesX(2)
-                DO iNodeX1 = 1, nNodesX(1)
-
-                  iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-
-                  DO iNodeE = 1, nNodesE
-
-                    iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
-
-                    Coll = C_J(iNode,iE,iX1,iX2,iX3,1)
-
-                    NN   = uCR    (iNode,iE,iX1,iX2,iX3,iCR_N,1)
-
-                    IF( Coll > 0.d0 ) THEN
-                      dt = MIN( dt, ( 1.d0 - NN ) / Coll )
-                    ELSE IF( Coll < 0.d0 ) THEN
-                      dt = MIN( dt, - NN / Coll )
-                    END IF
-
-                  END DO
-
-                END DO
-              END DO
-            END DO
-
-          END DO
-        END DO
-      END DO
-    END DO
-
-  END SUBROUTINE ComputeTimestepForwardEuler
-
-
   SUBROUTINE UpdateFields( dt )
 
     REAL(DP), INTENT(inout) :: dt
@@ -512,6 +465,5 @@ CONTAINS
     END IF
 
   END SUBROUTINE UpdateFields
-
 
 END MODULE TimeSteppingModule_Penalization
