@@ -47,7 +47,7 @@ MODULE TimeSteppingModule_Penalization
   PRIVATE
 
   REAL(DP), PARAMETER :: Diff_FE = 1.0d-2
-  REAL(DP), PARAMETER :: Min_dt  = 1.0d-30 * MilliSecond
+  REAL(DP), PARAMETER :: Min_dt  = 1.0d-20 * MilliSecond
 
   PUBLIC :: EvolveFields
 
@@ -171,6 +171,12 @@ CONTAINS
            '', TRIM( U % TimeLabel ),' dt = ',dt / U % TimeUnit,&
            '', TRIM( U % TimeLabel ),' with ', iCycle, ' cycles'
          WRITE(*,*)
+         WRITE( out_unit, '(6E15.6,4I4)' ) &
+           t / MilliSecond, dt / MilliSecond, &
+           dt_stream / MilliSecond, dt_accur / MilliSecond, &
+           dt_boundary / MilliSecond, dt_lower / MilliSecond, &
+           SmallestPosition
+         CLOSE( out_unit )
          RETURN
       END IF
 
@@ -231,6 +237,9 @@ CONTAINS
       PRINT*,'In ComputeTimestep, dt too small: ', dt / MilliSecond, 'ms'
       PRINT*,'dt_Stream ', dt_Stream / Millisecond, 'ms'
       PRINT*,'dt_Radiation ', dt_Radiation / Millisecond, 'ms'
+      PRINT*,'    dt_accur ', dt_accur     / Millisecond, 'ms'
+      PRINT*,'    dt_bound ', dt_boundary  / Millisecond, 'ms'
+      PRINT*,'    dt_lower ', dt_lower     / Millisecond, 'ms'
     END IF
 
   END SUBROUTINE ComputeTimestep
@@ -249,7 +258,7 @@ CONTAINS
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
     CHARACTER(12)  :: FileNumberString
     CHARACTER(19)   :: FileName
-    REAL(DP) :: dt_1, dt_2, LAMB, LNMax, lim, dt_dx, lim_W
+    REAL(DP) :: LAMB, LNMax, lim, dt_dx, lim_W, dt_buffer
     REAL(DP) :: NN, Coll, CpS
     REAL(DP) :: mindx
 
@@ -289,40 +298,42 @@ CONTAINS
                     ! --- Boundary Limit ---
 
                     lim = 0.0d0
-                    IF( Coll < 0.0d0 ) lim = - NN / Coll
-                    IF( Coll > 0.0d0 ) lim = ( FourPi - NN ) / Coll 
-                    dt_1  = 0.5d0 * lim / ( 1.0d0 - 0.5d0 * LAMB * lim )
-                    IF( dt_1 <= 0.0d0 ) dt_1 = HUGE( 1.0_DP )
+                    IF( Coll < 0.0d0 ) lim = ABS( NN / Coll )
+                    IF( Coll > 0.0d0 ) lim = ABS( ( FourPi - NN ) / Coll )
+                    dt_buffer  = 0.5d0 * lim / ( 1.0d0 - 0.5d0 * LAMB * lim )
+                    IF( dt_buffer <= 0.0d0 ) dt_buffer = HUGE( 1.0_DP )
 
-                    dt_1 = MIN( dt_1, dt_dx )
-                    dt_boundary = MIN( dt_boundary, dt_1 )
+                    dt_buffer = MIN( dt_buffer, dt_dx )
+                    dt_boundary = MIN( dt_boundary, dt_buffer )
 
                     ! --- Boundary Limit (lower) ---
 
-                    lim_W = ( rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,1) - Coll ) &
+                    lim_W = ( - rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,1) - Coll ) &
                             / NN - LAMB
 
-                    IF( lim_W > 0.0d0 ) dt_lower = 1.0d0 / lim_W
+                    dt_buffer = HUGE( 1.0_DP )
+                    IF( lim_W > 0.0d0 ) dt_buffer = 1.0d0 / lim_W
 
-                    dt_1 = MIN( dt_lower, dt_1 )
+                    dt_lower = MIN( dt_lower, dt_buffer )
 
                     ! --- Accuracy Limit ---
               
                     LNMax = ABS( CpS ) / MAX( NN, 1.0d-16 )
 
-                    dt_2 = Diff_FE / ( 2.0d0 * LNMax ) + &
+                    dt_buffer = Diff_FE / ( 2.0d0 * LNMax ) + &
                            SQRT( Diff_FE / ( LAMB * LNMax ) + &
                                  Diff_FE * Diff_FE &
                                  / ( 4.0d0 * LNMax * LNMax ) )
 
-                    dt_accur = MIN( dt_accur, dt_2 )
+                    dt_accur = MIN( dt_accur, dt_buffer )
 
-                    IF( dt >= MIN( dt_1, dt_2 ) )THEN 
+                    dt_buffer = MIN( dt_boundary, dt_lower, dt_accur )
+
+                    IF( dt > dt_buffer )THEN
+                      dt = dt_buffer 
                       SmallestPosition = (/iE, iX1, iX2, iX3/)
                     END IF
  
-                    dt = MIN( dt, dt_1, dt_2 )
-
                   END DO
 
                 END DO
