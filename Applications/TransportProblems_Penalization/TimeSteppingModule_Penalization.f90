@@ -46,8 +46,11 @@ MODULE TimeSteppingModule_Penalization
   IMPLICIT NONE
   PRIVATE
 
-  REAL(DP), PARAMETER :: Diff_FE = 1.0d-2
-  REAL(DP), PARAMETER :: Min_dt  = 1.0d-20 * MilliSecond
+  REAL(DP), PARAMETER :: Diff_FE = 1.0d-3
+  REAL(DP), PARAMETER :: Min_dt  = 1.0d-300 * MilliSecond
+  REAL(DP), PARAMETER :: Min_N   = 1.0d-32 
+  REAL(DP), PARAMETER :: dt_incf = 1.1_DP
+  REAL(DP), PARAMETER :: dt_shrf = 0.2_DP
 
   PUBLIC :: EvolveFields
 
@@ -75,7 +78,7 @@ CONTAINS
       dt_fixed = dt_fixed_Option
     END IF
 
-    iDisplayCycle = 10
+    iDisplayCycle = 10000
     IF( PRESENT( iDisplayCycle_Option ) ) &
       iDisplayCycle = iDisplayCycle_Option
 
@@ -92,7 +95,14 @@ CONTAINS
              WriteRadiationFields_Option = .TRUE. )
 
     CALL InitializeFluidRadiationCoupling
-  
+
+    WRITE(*,'(A10,ES10.3)') 'Diff_FE =', Diff_FE 
+    WRITE(*,'(A10,ES10.3)') 'Min_dt  =', Min_dt
+    WRITE(*,'(A10,ES10.3)') 'Min_N   =', Min_N   
+    WRITE(*,'(A10,ES10.3)') 'dt_incf =', dt_incf 
+    WRITE(*,'(A10,ES10.3)') 'dt_shrf =', dt_shrf 
+    WRITE(*,*) '' 
+ 
     OPEN( unit = out_unit, file = "tvsdt", action = "write", &
           status = "replace" )
     WRITE( out_unit, '(A1,7A15)') '#', 'time', 'dt', 'dt_stream', &
@@ -138,7 +148,7 @@ CONTAINS
 
       IF( MOD( iCycle, iDisplayCycle ) == 0 )THEN
 
-        WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A2,A2,A5,ES12.6E2,A1,A2,A1,4I4)') &
+        WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A2,A2,A5,ES13.6E3,A1,A2,A1,4I4)') &
           '', 'Cycle = ', iCycle, &
           '', 't = ', t / U % TimeUnit, '', TRIM( U % TimeLabel ), &
           '', 'dt = ', dt / U % TimeUnit, '', TRIM( U % TimeLabel ), &
@@ -166,17 +176,23 @@ CONTAINS
       IF( dt < Min_dt ) THEN
          WriteOutput = .TRUE.
          WRITE(*,*)
-         WRITE(*,'(A8,A42,ES10.4E2,A1,A2,A6,ES10.4E2,A1,A2,A6,I8.8,A7,A4,ES10.4E2,A2)' ) &
+         WRITE(*,'(A8,A42,ES10.4E2,A1,A2,A6,ES13.4E3,A1,A2,A6,I8.8)' ) &
            '','ERROR: dt too small! Impose to end at t = ', t / U % TimeUnit, &
            '', TRIM( U % TimeLabel ),' dt = ',dt / U % TimeUnit,&
            '', TRIM( U % TimeLabel ),' with ', iCycle, ' cycles'
          WRITE(*,*)
+
          WRITE( out_unit, '(6E15.6,4I4)' ) &
            t / MilliSecond, dt / MilliSecond, &
            dt_stream / MilliSecond, dt_accur / MilliSecond, &
            dt_boundary / MilliSecond, dt_lower / MilliSecond, &
            SmallestPosition
          CLOSE( out_unit )
+
+        CALL WriteFields1D &
+               ( Time = t, WriteFluidFields_Option = .TRUE., &
+                 WriteRadiationFields_Option = .TRUE. )
+
          RETURN
       END IF
 
@@ -220,7 +236,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: dt
     REAL(DP), INTENT(out) ::  dt_streams, dt_accur, dt_boundary, dt_lower
    
-    REAL(DP)  :: dt_Radiation, dt_max, dt_Stream
+    REAL(DP)  :: dt_Radiation, dt_max, dt_Stream, dt_buffer
 
     dt_max = 1.0d-2 * Millisecond
 
@@ -229,8 +245,10 @@ CONTAINS
 
     CALL ComputeTimeStep_Streaming( dt_Stream )
     dt_streams = dt_Stream
- 
-    dt = MIN( dt_Radiation, dt_max, dt_Stream, dt*1.1d0 )
+
+    dt_buffer =  dt * dt_incf
+    dt_Radiation = dt_Radiation * dt_shrf
+    dt = MIN( dt_Radiation, dt_max, dt_Stream, dt_buffer )
 
     IF( dt < Min_dt ) THEN
       PRINT*,''
@@ -240,6 +258,8 @@ CONTAINS
       PRINT*,'    dt_accur ', dt_accur     / Millisecond, 'ms'
       PRINT*,'    dt_bound ', dt_boundary  / Millisecond, 'ms'
       PRINT*,'    dt_lower ', dt_lower     / Millisecond, 'ms'
+      PRINT*,'Smallest pos ', SmallestPosition
+      RETURN
     END IF
 
   END SUBROUTINE ComputeTimestep
@@ -316,6 +336,14 @@ CONTAINS
 
                     dt_lower = MIN( dt_lower, dt_buffer )
 
+!                    IF( dt_lower < Min_dt ) THEN
+!                      PRINT*, ''
+!                      PRINT*, 'dt_buffer =', dt_buffer / MilliSecond
+!                      PRINT*, 'dt_lower  =', dt_lower / MilliSecond
+!                      PRINT*, 'lim_W=', lim_W
+!                      PRINT*, ''
+!                      STOP
+!                    END IF
                     ! --- Accuracy Limit ---
               
                     LNMax = ABS( CpS ) / MAX( NN, 1.0d-16 )
@@ -419,23 +447,30 @@ CONTAINS
                       iNode &
                         = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
-                      uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
+                      temp &
                         = uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
                             + ( dt / (1.d0+dt*LAMB) ) &
                               * ( rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
                                   + C_J(iNode,iE,iX1,iX2,iX3,iS) )
-                      IF( uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) < 0.0 ) THEN
+
+                      IF( temp <= 0.0 ) THEN
                         PRINT*, ''
-                        PRINT*, 'negative uCR= ', uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS),'at',iE, iX1, iX2, iX3
-                        PRINT*, 'W - 1/dt should be negative or zero:', &
-                                    ( rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) -  C_J(iNode,iE,iX1,iX2,iX3,iS) ) &
+                        WRITE(*,'(A4,A25,ES15.6E3,A3,4I4)') '', 'negative uCR(:,iCR_N) = ',&
+                          uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS),' at',iE, iX1, iX2, iX3
+                        WRITE(*,'(A4,A12,ES15.6E3)') '','with temp = ', temp
+                        WRITE(*,'(A4,A36,ES15.6E3)') '', 'W - 1/dt should be negative or zero:', &
+                                    ( - rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) -  C_J(iNode,iE,iX1,iX2,iX3,iS) ) &
                                      / uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
                                      - absLambda(iNodeX,iX1,iX2,iX3) - 1.0/dt
-                        PRINT*, 'W should be positive :', &
-                                    ( rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) -  C_J(iNode,iE,iX1,iX2,iX3,iS) ) &
+                        WRITE(*,'(A4,A36,ES15.6E3)') '', 'W should be positive :', &
+                            ( - rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) -  C_J(iNode,iE,iX1,iX2,iX3,iS) ) &
                                      / uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
-                                     - absLambda(iNodeX,iX1,iX2,iX3) 
+                                     - absLambda(iNodeX,iX1,iX2,iX3)
+                        STOP
                       END IF
+
+                      uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
+                        = MAX( temp, Min_N )
 
                       temp = 1.d0 / ( 1.d0 + dt * Kappa(iNode,iE,iX1,iX2,iX3) )
 
@@ -467,12 +502,15 @@ CONTAINS
 
     END DO
 
-    IF( MINVAL( uCR(:,:,:,:,:,iCR_N,:) ) < 0.d0 )THEN
+    IF( MINVAL( uCR(:,:,:,:,:,iCR_N,:) ) <= 1.d-33 )THEN
       PRINT*,''
-      PRINT*,"ERROR in UpdateFields"
-      PRINT*,"NEGATIVE uCR(:,iCR_N) "
+      PRINT*,'ERROR in UpdateFields'
+      PRINT*,'NEGATIVE or ZERO uCR(:,iCR_N):',MINVAL( uCR(:,:,:,:,:,iCR_N,:) )
+      PRINT*,'dt =', dt
       PRINT*,''
-      STOP
+      !STOP
+      IF( ISNAN( MAXVAL( uCR(:,:,:,:,:,iCR_N,:) ) ) .or. &
+          MINVAL( uCR(:,:,:,:,:,iCR_N,:) ) <= 0.0_DP ) STOP
     END IF
 
   END SUBROUTINE UpdateFields
