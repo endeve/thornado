@@ -241,7 +241,8 @@ CONTAINS
     dt_max = 1.0d-2 * Millisecond
 
     CALL ComputeTimestepPenalization &
-           ( dt_Radiation, dt_max, t, SmallestPosition, dt_accur, dt_boundary, dt_lower )
+           ( dt_Radiation, dt_max, t, SmallestPosition, dt_accur, &
+             dt_boundary, dt_lower )
 
     CALL ComputeTimeStep_Streaming( dt_Stream )
     dt_streams = dt_Stream
@@ -336,14 +337,6 @@ CONTAINS
 
                     dt_lower = MIN( dt_lower, dt_buffer )
 
-!                    IF( dt_lower < Min_dt ) THEN
-!                      PRINT*, ''
-!                      PRINT*, 'dt_buffer =', dt_buffer / MilliSecond
-!                      PRINT*, 'dt_lower  =', dt_lower / MilliSecond
-!                      PRINT*, 'lim_W=', lim_W
-!                      PRINT*, ''
-!                      STOP
-!                    END IF
                     ! --- Accuracy Limit ---
               
                     LNMax = ABS( CpS ) / MAX( NN, 1.0d-16 )
@@ -455,17 +448,23 @@ CONTAINS
 
                       IF( temp <= 0.0 ) THEN
                         PRINT*, ''
-                        WRITE(*,'(A4,A25,ES15.6E3,A3,4I4)') '', 'negative uCR(:,iCR_N) = ',&
-                          uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS),' at',iE, iX1, iX2, iX3
+                        WRITE(*,'(A4,A25,ES15.6E3,A3,4I4)') &
+                          '', 'negative uCR(:,iCR_N) = ',&
+                          uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS),' at', &
+                          iE, iX1, iX2, iX3
                         WRITE(*,'(A4,A12,ES15.6E3)') '','with temp = ', temp
-                        WRITE(*,'(A4,A36,ES15.6E3)') '', 'W - 1/dt should be negative or zero:', &
-                                    ( - rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) -  C_J(iNode,iE,iX1,iX2,iX3,iS) ) &
-                                     / uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
-                                     - absLambda(iNodeX,iX1,iX2,iX3) - 1.0/dt
-                        WRITE(*,'(A4,A36,ES15.6E3)') '', 'W should be positive :', &
-                            ( - rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) -  C_J(iNode,iE,iX1,iX2,iX3,iS) ) &
-                                     / uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
-                                     - absLambda(iNodeX,iX1,iX2,iX3)
+                        WRITE(*,'(A4,A36,ES15.6E3)') &
+                          '', 'W - 1/dt should be negative or zero:', &
+                          ( - rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
+                             -  C_J(iNode,iE,iX1,iX2,iX3,iS) ) &
+                              / uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
+                          - absLambda(iNodeX,iX1,iX2,iX3) - 1.0/dt
+                        WRITE(*,'(A4,A36,ES15.6E3)') &
+                          '', 'W should be positive :', &
+                          ( - rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
+                             -  C_J(iNode,iE,iX1,iX2,iX3,iS) ) &
+                              / uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
+                          - absLambda(iNodeX,iX1,iX2,iX3)
                         STOP
                       END IF
 
