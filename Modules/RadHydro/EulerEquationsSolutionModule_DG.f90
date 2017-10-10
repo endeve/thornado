@@ -1,7 +1,7 @@
 MODULE EulerEquationsSolutionModule_DG
 
   USE KindModule, ONLY: &
-    DP
+    DP, Zero, Half, One
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, nDOFX
   USE UtilitiesModule, ONLY: &
@@ -28,7 +28,7 @@ MODULE EulerEquationsSolutionModule_DG
   USE EulerEquationsUtilitiesModule, ONLY: &
     ComputePrimitive, &
     Primitive, &
-    AlphaMax, &
+    Eigenvalues, &
     AlphaP, &
     AlphaM, &
     AlphaC, &
@@ -39,7 +39,20 @@ MODULE EulerEquationsSolutionModule_DG
   IMPLICIT NONE
   PRIVATE
 
+  INCLUDE 'mpif.h'
+
+  INTEGER,  DIMENSION(:,:,:), ALLOCATABLE :: NodeNumberTableX
+  REAL(DP), DIMENSION(:),     ALLOCATABLE :: L_X1_Dn, L_X1_Up
+  REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: dL_X1_q
+
   PUBLIC :: ComputeRHS_Euler_DG
+
+  LOGICAL, PARAMETER :: DisplayTimers = .FALSE.
+  REAL(DP) :: Timer_RHS
+  REAL(DP) :: Timer_GEO
+  REAL(DP) :: Timer_AUX
+  REAL(DP) :: Timer_INIT
+  REAL(DP) :: Timer_FIN
 
 CONTAINS
 
@@ -50,8 +63,11 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3
 
+    CALL Timer_Start( Timer_AUX )
+
     DO iX3 = iX_Begin(3), iX_End(3)
       DO iX2 = iX_Begin(2), iX_End(2)
+        !$OMP PARALLEL DO PRIVATE ( iX1 )
         DO iX1 = iX_Begin(1), iX_End(1)
 
           CALL ComputePrimitive &
@@ -65,12 +81,60 @@ CONTAINS
                    uAF(:,iX1,iX2,iX3,iAF_Gm), uAF(:,iX1,iX2,iX3,iAF_Cs) )
 
         END DO
+        !$OMP END PARALLEL DO
       END DO
     END DO
 
+    CALL Timer_Stop( Timer_AUX )
+
+    CALL Timer_Start( Timer_INIT )
+
+    CALL InitializeRHS
+
+    CALL Timer_Stop( Timer_INIT )
+
+    CALL Timer_Start( Timer_RHS )
+
     CALL ComputeRHS_Euler_DG_X1( iX_Begin, iX_End )
 
+    CALL Timer_Stop( Timer_RHS )
+
+    CALL Timer_Start( Timer_GEO )
+
     CALL ComputeRHS_Euler_DG_GeometrySources( iX_Begin, iX_End )
+
+    CALL Timer_Stop( Timer_GEO )
+
+    CALL Timer_Start( Timer_FIN )
+
+    CALL FinalizeRHS
+
+    CALL Timer_Stop( Timer_FIN )
+
+    IF( DisplayTimers )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A4,A)') &
+        '', 'Timers:'
+      WRITE(*,*)
+      WRITE(*,'(A4,A16,ES10.4E2)') &
+        '', 'ComputeRHS: ', Timer_RHS
+      WRITE(*,'(A4,A16,ES10.4E2)') &
+        '', 'ComputeGEO: ', Timer_GEO
+      WRITE(*,'(A4,A16,ES10.4E2)') &
+        '', 'ComputeAUX: ', Timer_AUX
+      WRITE(*,'(A4,A16,ES10.4E2)') &
+        '', 'Initialize: ', Timer_INIT
+      WRITE(*,'(A4,A16,ES10.4E2)') &
+        '', 'Finalize: ', Timer_FIN
+      WRITE(*,*)
+      WRITE(*,'(A4,A16,ES16.6E2)') &
+        '', 'SUM = ', SUM( rhsCF )
+      WRITE(*,*)
+
+      STOP
+
+    END IF
 
   END SUBROUTINE ComputeRHS_Euler_DG
 
@@ -79,55 +143,47 @@ CONTAINS
 
     INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
 
-    INTEGER :: iX1, iX2, iX3, iCF
-    INTEGER :: iNodeX1, jNodeX1, iNodeX2, iNodeX3, iNodeX, jNodeX
+    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iNodeX1, jNodeX1, iNodeX2, iNodeX3
+    INTEGER :: iNodeX, jNodeX, iCF
+    REAL(DP) :: X1C, dX1
     REAL(DP) :: Alpha, AlphaPls, AlphaMns, AlphaMdl
     REAL(DP), DIMENSION(1:nCF) :: VolumeTerm, Flux_L, Flux_R, Flux
     REAL(DP), DIMENSION(1:nCF) :: uCF_L, uCF_R
+    REAL(DP), DIMENSION(1:nCF) :: Lambda_L, Lambda_R
     REAL(DP), DIMENSION(1:nPF) :: uPF_L, uPF_R
     REAL(DP), DIMENSION(1:nAF) :: uAF_L, uAF_R
     REAL(DP), DIMENSION(nX(1)) :: a_X1_L, a_X1_R
     REAL(DP), DIMENSION(nX(1)) :: b_X1_L, b_X1_R
-    REAL(DP), DIMENSION(nNodesX(1)) :: L_X1_L, L_X1_R
-    REAL(DP), DIMENSION(nNodesX(1), nX(1)) :: a_X1_q
-    REAL(DP), DIMENSION(nNodesX(1), nX(1)) :: b_X1_q
-    REAL(DP), DIMENSION(nNodesX(1),nNodesX(1)) :: dL_X1_q
+    REAL(DP), DIMENSION(1:nNodesX(1)) :: x_q, w_q
+    REAL(DP), DIMENSION(1:nNodesX(1),1:nX(1)) :: a_X1_q
+    REAL(DP), DIMENSION(1:nNodesX(1),1:nX(1)) :: b_X1_q
+    REAL(DP), DIMENSION(1:nDOFX,1:nCF) :: uCF_P, uCF_K, uCF_N
+    REAL(DP), DIMENSION(1:nDOFX,1:nCF) :: Flux_X1_q
+    REAL(DP), DIMENSION(1:nDOFX,1:nPF) :: uPF_K
+    REAL(DP), DIMENSION(1:nDOFX,1:nAF) :: uAF_K
 
-    ASSOCIATE &
-      ( x_q => MeshX(1) % Nodes, &
-        w_q => MeshX(1) % Weights, &
-        X1C => MeshX(1) % Center(1:nX(1)), &
-        dX1 => MeshX(1) % Width(1:nX(1)) )
-
-    ! -- Precomute Lagrange Polynomials --
-
-    DO jNodeX1 = 1, nNodesX(1)
-      L_X1_L(jNodeX1) &
-        = L_X1(jNodeX1) % P( - 0.5_DP )
-      L_X1_R(jNodeX1) &
-        = L_X1(jNodeX1) % P( + 0.5_DP )
-      DO iNodeX1 = 1, nNodesX(1)
-        dL_X1_q(iNodeX1,jNodeX1) &
-          = dL_X1(jNodeX1) % P( x_q(iNodeX1) )
-      END DO
-    END DO
+    x_q = MeshX(1) % Nodes
+    w_q = MeshX(1) % Weights
 
     ! -- Precompute Metric Functions --
 
     DO iX1 = iX_Begin(1), iX_End(1)
+      X1C = MeshX(1) % Center(iX1)
+      dX1 = MeshX(1) % Width (iX1)
       a_X1_L(iX1) &
-        = a( [ X1C(iX1) - 0.5_DP * dX1(iX1), 0.0_DP, 0.0_DP ] )
+        = a( [ X1C - 0.5_DP * dX1, 0.0_DP, 0.0_DP ] )
       a_X1_R(iX1) &
-        = a( [ X1C(iX1) + 0.5_DP * dX1(iX1), 0.0_DP, 0.0_DP ] )
+        = a( [ X1C + 0.5_DP * dX1, 0.0_DP, 0.0_DP ] )
       b_X1_L(iX1) &
-        = b( [ X1C(iX1) - 0.5_DP * dX1(iX1), 0.0_DP, 0.0_DP ] )
+        = b( [ X1C - 0.5_DP * dX1, 0.0_DP, 0.0_DP ] )
       b_X1_R(iX1) &
-        = b( [ X1C(iX1) + 0.5_DP * dX1(iX1), 0.0_DP, 0.0_DP ] )
+        = b( [ X1C + 0.5_DP * dX1, 0.0_DP, 0.0_DP ] )
       DO iNodeX1 = 1, nNodesX(1)
         a_X1_q(iNodeX1,iX1) &
-          = a( [ X1C(iX1) + dX1(iX1) * x_q(iNodeX1), 0.0_DP, 0.0_DP ] )
+          = a( [ X1C + dX1 * x_q(iNodeX1), 0.0_DP, 0.0_DP ] )
         b_X1_q(iNodeX1,iX1) &
-          = b( [ X1C(iX1) + dX1(iX1) * x_q(iNodeX1), 0.0_DP, 0.0_DP ] )
+          = b( [ X1C + dX1 * x_q(iNodeX1), 0.0_DP, 0.0_DP ] )
       END DO
     END DO
 
@@ -135,42 +191,63 @@ CONTAINS
 
     DO iX3 = iX_Begin(3), iX_End(3)
       DO iX2 = iX_Begin(2), iX_End(2)
+        !$OMP PARALLEL DO PRIVATE &
+        !$OMP&              ( iX1, iNodeX1, iNodeX2, iNodeX3, iNodeX, &
+        !$OMP&                jNodeX1, jNodeX, uCF_P, uCF_K, uCF_N,   &
+        !$OMP&                uPF_K, uAF_K, Flux_X1_q, VolumeTerm,    &
+        !$OMP&                dX1, iCF, uCF_L, uCF_R, uPF_L, uPF_R,   &
+        !$OMP&                uAF_L, uAF_R, Lambda_L, Lambda_R,       &
+        !$OMP&                AlphaPls, AlphaMns, Alpha, AlphaMdl,    &
+        !$OMP&                Flux_L, Flux_R, Flux )
         DO iX1 = iX_Begin(1), iX_End(1)
 
-          ASSOCIATE &
-            ( uCF_P => uCF(:,iX1-1,iX2,iX3,:), & ! Previous Element
-              uCF_K => uCF(:,iX1  ,iX2,iX3,:), & ! This     Element
-              uCF_N => uCF(:,iX1+1,iX2,iX3,:), & ! Next     Element
-              uPF_K => uPF(:,iX1  ,iX2,iX3,:), & ! This     Element
-              uAF_K => uAF(:,iX1  ,iX2,iX3,:) )  ! This     Element
+          dX1 = MeshX(1) % Width (iX1)
+
+          uCF_P = uCF(:,iX1-1,iX2,iX3,:) ! Previous Element
+          uCF_K = uCF(:,iX1  ,iX2,iX3,:) ! This     Element
+          uCF_N = uCF(:,iX1+1,iX2,iX3,:) ! Next     Element
+
+          uPF_K = uPF(:,iX1,iX2,iX3,:) ! Primitive This Element
+          uAF_K = uAF(:,iX1,iX2,iX3,:) ! Auxiliary This Element
+
+          DO iNodeX = 1, nDOFX
+
+            Flux_X1_q(iNodeX,1:nCF) &
+              = Flux_X1 &
+                  ( uPF_K(iNodeX,iPF_D ), uPF_K(iNodeX,iPF_V1), &
+                    uPF_K(iNodeX,iPF_V2), uPF_K(iNodeX,iPF_V3), &
+                    uPF_K(iNodeX,iPF_E ), uAF_K(iNodeX,iAF_P ), &
+                    uPF_K(iNodeX,iPF_Ne) )
+
+          END DO
+
+          rhsCF(1:nDOFX,iX1,iX2,iX3,1:nCF) = Zero
 
           DO iNodeX3 = 1, nNodesX(3)
             DO iNodeX2 = 1, nNodesX(2)
               DO iNodeX1 = 1, nNodesX(1)
 
-                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+                iNodeX &
+                  = NodeNumberTableX &
+                      ( iNodeX1, iNodeX2, iNodeX3 )
 
-                rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) = 0.0_DP
-
+                ! -----------------
                 ! -- Volume Term --
+                ! -----------------
 
-                VolumeTerm = 0.0_DP
+                VolumeTerm = Zero
                 DO jNodeX1 = 1, nNodesX(1)
 
-                  jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+                  jNodeX &
+                    = NodeNumberTableX &
+                        ( jNodeX1, iNodeX2, iNodeX3 )
 
                   VolumeTerm(1:nCF) &
                     = VolumeTerm(1:nCF) &
                         + w_q(jNodeX1) &
                             * a_X1_q(jNodeX1,iX1) &
                             * b_X1_q(jNodeX1,iX1) &
-                            * Flux_X1( uPF_K(jNodeX,iPF_D ), &
-                                       uPF_K(jNodeX,iPF_V1), &
-                                       uPF_K(jNodeX,iPF_V2), &
-                                       uPF_K(jNodeX,iPF_V3), &
-                                       uPF_K(jNodeX,iPF_E ), &
-                                       uAF_K(jNodeX,iAF_P ), &
-                                       uPF_K(jNodeX,iPF_Ne) ) &
+                            * Flux_X1_q(jNodeX,1:nCF) &
                             * dL_X1_q(jNodeX1,iNodeX1)
 
                 END DO
@@ -179,75 +256,69 @@ CONTAINS
                   = rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
                       + VolumeTerm(1:nCF) &
                           / ( w_q(iNodeX1) * a_X1_q(iNodeX1,iX1) &
-                                * b_X1_q(iNodeX1,iX1) * dX1(iX1) )
+                                * b_X1_q(iNodeX1,iX1) * dX1 )
+
+                ! -------------------
+                ! -- Surface Terms --
+                ! -------------------
 
                 ! -- Left Face -- 
 
-                ! -- Left State -- 
+                ! -- Interpolate Left and Right State -- 
 
                 DO iCF = 1, nCF
 
-                  uCF_L(iCF) = 0.0_DP
+                  uCF_L(iCF) = Zero
+                  uCF_R(iCF) = Zero
                   DO jNodeX1 = 1, nNodesX(1)
 
-                    jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+                    jNodeX = NodeNumberTableX( jNodeX1, iNodeX2, iNodeX3 )
 
                     uCF_L(iCF) &
                       = uCF_L(iCF) &
-                          + L_X1_R(jNodeX1) * uCF_P(jNodeX,iCF)
+                          + L_X1_Up(jNodeX1) * uCF_P(jNodeX,iCF)
+
+                    uCF_R(iCF) &
+                      = uCF_R(iCF) &
+                          + L_X1_Dn(jNodeX1) * uCF_K(jNodeX,iCF)
 
                   END DO
 
                 END DO
+
+                ! -- Numerical Flux --
 
                 uPF_L = Primitive( uCF_L )
 
                 uAF_L = Auxiliary_Fluid( uPF_L )
 
                 Flux_L &
-                  = Flux_X1( uPF_L(iPF_D), uPF_L(iPF_V1), uPF_L(iPF_V2), &
-                             uPF_L(iPF_V3), uPF_L(iPF_E), uAF_L(iAF_P),  &
-                             uPF_L(iPF_Ne) )
+                  = Flux_X1 &
+                      ( uPF_L(iPF_D), uPF_L(iPF_V1), uPF_L(iPF_V2), &
+                        uPF_L(iPF_V3), uPF_L(iPF_E), uAF_L(iAF_P),  &
+                        uPF_L(iPF_Ne) )
 
-                ! -- Right State --
-
-                DO iCF = 1, nCF
-
-                  uCF_R(iCF) = 0.0_DP
-                  DO jNodeX1 = 1, nNodesX(1)
-
-                    jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
-
-                    uCF_R(iCF) &
-                      = uCF_R(iCF) &
-                          + L_X1_L(jNodeX1) * uCF_K(jNodeX,iCF)
-
-                  END DO
-
-                END DO
+                Lambda_L &
+                  = Eigenvalues &
+                      ( uPF_L(iPF_V1), uAF_L(iAF_Cs) )
 
                 uPF_R = Primitive( uCF_R )
 
                 uAF_R = Auxiliary_Fluid( uPF_R )
 
                 Flux_R &
-                  = Flux_X1( uPF_R(iPF_D), uPF_R(iPF_V1), uPF_R(iPF_V2), &
-                             uPF_R(iPF_V3), uPF_R(iPF_E), uAF_R(iAF_P),  &
-                             uPF_R(iPF_Ne) )
+                  = Flux_X1 &
+                      ( uPF_R(iPF_D), uPF_R(iPF_V1), uPF_R(iPF_V2), &
+                        uPF_R(iPF_V3), uPF_R(iPF_E), uAF_R(iAF_P),  &
+                        uPF_R(iPF_Ne) )
 
-                ! -- Numerical Flux --
+                Lambda_R &
+                  = Eigenvalues &
+                      ( uPF_R(iPF_V1), uAF_R(iAF_Cs) )
 
-                Alpha &
-                  = MAX( AlphaMax( uPF_L(iPF_V1), uAF_L(iAF_Cs) ), &
-                         AlphaMax( uPF_R(iPF_V1), uAF_R(iAF_Cs) ) )
-
-                AlphaPls &
-                  = AlphaP( uPF_L(iPF_V1), uAF_L(iAF_Cs), &
-                            uPF_R(iPF_V1), uAF_R(iAF_Cs) )
-
-                AlphaMns &
-                  = AlphaM( uPF_L(iPF_V1), uAF_L(iAF_Cs), &
-                            uPF_R(iPF_V1), uAF_R(iAF_Cs) )
+                AlphaPls = AlphaP( Lambda_L, Lambda_R )
+                AlphaMns = AlphaM( Lambda_L, Lambda_R )
+                Alpha    = MAX( AlphaPls, AlphaMns )
 
                 AlphaMdl &
                   = AlphaC &
@@ -257,32 +328,40 @@ CONTAINS
                         [ Flux_R(iCF_D), Flux_R(iCF_S1) ], &
                         AlphaPls, AlphaMns )
 
-                Flux = NumericalFlux_Fluid &
-                         ( uCF_L, uCF_R, Flux_L, Flux_R, &
-                           Alpha, AlphaPls, AlphaMns, AlphaMdl, nCF )
+                Flux &
+                  = NumericalFlux_Fluid &
+                      ( uCF_L, uCF_R, Flux_L, Flux_R, &
+                        Alpha, AlphaPls, AlphaMns, AlphaMdl, nCF )
 
                 ! -- Contribution to Right-Hand Side --
 
                 rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
                   = rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
                       + a_X1_L(iX1) * b_X1_L(iX1) &
-                          * Flux(1:nCF) * L_X1_L(iNodeX1) &
+                          * Flux(1:nCF) * L_X1_Dn(iNodeX1) &
                               / ( w_q(iNodeX1) * a_X1_q(iNodeX1,iX1) &
-                                    * b_X1_q(iNodeX1,iX1) * dX1(iX1) )
+                                    * b_X1_q(iNodeX1,iX1) * dX1 )
 
                 ! -- Right Face --
 
-                ! -- Left State --
+                ! -- Interpolate Left and Right State --
 
                 DO iCF = 1, nCF
-                  uCF_L(iCF) = 0.0_DP
+                  uCF_L(iCF) = Zero
+                  uCF_R(iCF) = Zero
                   DO jNodeX1 = 1, nNodesX(1)
 
-                    jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+                    jNodeX &
+                      = NodeNumberTableX &
+                          ( jNodeX1, iNodeX2, iNodeX3 )
 
                     uCF_L(iCF) &
                       = uCF_L(iCF) &
-                          + L_X1_R(jNodeX1) * uCF_K(jNodeX,iCF)
+                          + L_X1_Up(jNodeX1) * uCF_K(jNodeX,iCF)
+
+                    uCF_R(iCF) &
+                      = uCF_R(iCF) &
+                          + L_X1_Dn(jNodeX1) * uCF_N(jNodeX,iCF)
 
                   END DO
                 END DO
@@ -292,47 +371,34 @@ CONTAINS
                 uAF_L = Auxiliary_Fluid( uPF_L )
 
                 Flux_L &
-                  = Flux_X1( uPF_L(iPF_D), uPF_L(iPF_V1), uPF_L(iPF_V2), &
-                             uPF_L(iPF_V3), uPF_L(iPF_E), uAF_L(iAF_P),  &
-                             uPF_L(iPF_Ne) )
+                  = Flux_X1 &
+                      ( uPF_L(iPF_D), uPF_L(iPF_V1), uPF_L(iPF_V2), &
+                        uPF_L(iPF_V3), uPF_L(iPF_E), uAF_L(iAF_P),  &
+                        uPF_L(iPF_Ne) )
 
-                ! -- Right State --
-
-                DO iCF = 1, nCF
-                  uCF_R(iCF) = 0.0_DP
-                  DO jNodeX1 = 1, nNodesX(1)
-
-                    jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
-
-                    uCF_R(iCF) &
-                      = uCF_R(iCF) &
-                          + L_X1_L(jNodeX1) * uCF_N(jNodeX,iCF)
-
-                  END DO
-                END DO
+                Lambda_L &
+                  = Eigenvalues &
+                      ( uPF_L(iPF_V1), uAF_L(iAF_Cs) )
 
                 uPF_R = Primitive( uCF_R )
 
                 uAF_R = Auxiliary_Fluid( uPF_R )
 
                 Flux_R &
-                  = Flux_X1( uPF_R(iPF_D), uPF_R(iPF_V1), uPF_R(iPF_V2), &
-                             uPF_R(iPF_V3), uPF_R(iPF_E), uAF_R(iAF_P),  &
-                             uPF_R(iPF_Ne) )
+                  = Flux_X1 &
+                      ( uPF_R(iPF_D), uPF_R(iPF_V1), uPF_R(iPF_V2), &
+                        uPF_R(iPF_V3), uPF_R(iPF_E), uAF_R(iAF_P),  &
+                        uPF_R(iPF_Ne) )
+
+                Lambda_R &
+                  = Eigenvalues &
+                      ( uPF_R(iPF_V1), uAF_R(iAF_Cs) )
 
                 ! -- Numerical Flux --
 
-                Alpha &
-                  = MAX( AlphaMax( uPF_L(iPF_V1), uAF_L(iAF_Cs) ), &
-                         AlphaMax( uPF_R(iPF_V1), uAF_R(iAF_Cs) ) )
-
-                AlphaPls &
-                  = AlphaP( uPF_L(iPF_V1), uAF_L(iAF_Cs), &
-                            uPF_R(iPF_V1), uAF_R(iAF_Cs) )
-
-                AlphaMns &
-                  = AlphaM( uPF_L(iPF_V1), uAF_L(iAF_Cs), &
-                            uPF_R(iPF_V1), uAF_R(iAF_Cs) )
+                AlphaPls = AlphaP( Lambda_L, Lambda_R )
+                AlphaMns = AlphaM( Lambda_L, Lambda_R )
+                Alpha    = MAX( AlphaPls, AlphaMns )
 
                 AlphaMdl &
                   = AlphaC &
@@ -342,30 +408,28 @@ CONTAINS
                         [ Flux_R(iCF_D), Flux_R(iCF_S1) ], &
                         AlphaPls, AlphaMns )
 
-                Flux = NumericalFlux_Fluid &
-                         ( uCF_L, uCF_R, Flux_L, Flux_R, &
-                           Alpha, AlphaPls, AlphaMns, AlphaMdl, nCF )
+                Flux &
+                  = NumericalFlux_Fluid &
+                      ( uCF_L, uCF_R, Flux_L, Flux_R, &
+                        Alpha, AlphaPls, AlphaMns, AlphaMdl, nCF )
 
                 ! -- Contribution to Right-Hand Side --
 
                 rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
                   = rhsCF(iNodeX,iX1,iX2,iX3,1:nCF) &
                       - a_X1_R(iX1) * b_X1_R(iX1) &
-                          * Flux(1:nCF) * L_X1_R(iNodeX1) &
+                          * Flux(1:nCF) * L_X1_Up(iNodeX1) &
                               / ( w_q(iNodeX1) * a_X1_q(iNodeX1,iX1) &
-                                    * b_X1_q(iNodeX1,iX1) * dX1(iX1) )
+                                    * b_X1_q(iNodeX1,iX1) * dX1 )
 
               END DO
             END DO
           END DO
 
-          END ASSOCIATE ! uCF_P, etc.
-
         END DO
+        !$OMP END PARALLEL DO
       END DO
     END DO
-
-    END ASSOCIATE ! x_q, etc.
 
   END SUBROUTINE ComputeRHS_Euler_DG_X1
 
@@ -460,6 +524,90 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeRHS_Euler_DG_GeometrySources
+
+
+  SUBROUTINE InitializeRHS
+
+    INTEGER :: iNodeX, iNodeX1, jNodeX1, iNodeX2, iNodeX3
+    REAL(DP), DIMENSION(nNodesX(1)) :: x_q
+
+    ALLOCATE( NodeNumberTableX(nNodesX(1),nNodesX(2),nNodesX(3)) )
+
+    iNodeX = 1
+    DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+        DO iNodeX1 = 1, nNodesX(1)
+
+          NodeNumberTableX(iNodeX1,iNodeX2,iNodeX3) &
+            = iNodeX
+
+          iNodeX = iNodeX + 1
+
+        END DO
+      END DO
+    END DO
+
+    ALLOCATE( L_X1_Dn(nNodesX(1)) )
+    ALLOCATE( L_X1_Up(nNodesX(1)) )
+    ALLOCATE( dL_X1_q(nNodesX(1),nNodesX(1)) )
+
+    x_q = MeshX(1) % Nodes
+    DO jNodeX1 = 1, nNodesX(1)
+      L_X1_Dn(jNodeX1) &
+        = L_X1(jNodeX1) % P( - 0.5_DP )
+      L_X1_Up(jNodeX1) &
+        = L_X1(jNodeX1) % P( + 0.5_DP )
+      DO iNodeX1 = 1, nNodesX(1)
+        dL_X1_q(iNodeX1,jNodeX1) &
+          = dL_X1(jNodeX1) % P( x_q(iNodeX1) )
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeRHS
+
+
+  SUBROUTINE FinalizeRHS
+
+    DEALLOCATE( NodeNumberTableX )
+
+    DEALLOCATE( L_X1_Dn )
+    DEALLOCATE( L_X1_Up )
+    DEALLOCATE( dL_X1_q )
+
+  END SUBROUTINE FinalizeRHS
+
+
+  SUBROUTINE Timer_Start( Timer )
+
+    REAL(DP) :: Timer
+
+    IF( .NOT. DisplayTimers ) RETURN
+
+    Timer = MPI_WTIME( )
+
+  END SUBROUTINE Timer_Start
+
+
+  SUBROUTINE Timer_Stop( Timer )
+
+    REAL(DP) :: Timer
+
+    IF( .NOT. DisplayTimers ) RETURN
+
+    Timer = MPI_WTIME( ) - Timer
+
+  END SUBROUTINE Timer_Stop
+
+
+  SUBROUTINE Timer_Add( Timer, dT )
+
+    REAL(DP) :: Timer, dT
+
+    IF( .NOT. DisplayTimers ) RETURN
+
+    Timer = Timer + dT
+
+  END SUBROUTINE Timer_Add
 
 
 END MODULE EulerEquationsSolutionModule_DG

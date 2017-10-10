@@ -1,7 +1,7 @@
 MODULE EulerEquationsUtilitiesModule
 
   USE KindModule, ONLY: &
-    DP
+    DP, Zero, Half
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, nDOFX
   USE UtilitiesModule, ONLY: &
@@ -56,7 +56,7 @@ CONTAINS
       = Primitive(iPF_D) * Primitive(iPF_V3)
     Conserved(iCF_E)  &
       = Primitive(iPF_E) &
-          + 0.5_DP * Primitive(iPF_D) &
+          + Half * Primitive(iPF_D) &
               * ( Primitive(iPF_V1)**2 + Primitive(iPF_V2)**2 &
                     + Primitive(iPF_V3)**2 )
     Conserved(iCF_Ne) &
@@ -85,8 +85,8 @@ CONTAINS
       = Conserved(iCF_S3) / CF_D
     Primitive(iPF_E)  &
       = Conserved(iCF_E) &
-          - 0.5_DP * ( Conserved(iCF_S1)**2 + Conserved(iCF_S2)**2 &
-                       + Conserved(iCF_S3)**2 ) / CF_D
+          - Half * ( Conserved(iCF_S1)**2 + Conserved(iCF_S2)**2 &
+                     + Conserved(iCF_S3)**2 ) / CF_D
     Primitive(iPF_Ne)  &
       = Conserved(iCF_Ne)
 
@@ -113,7 +113,7 @@ CONTAINS
 
     uCF(:,iCF_E) &
       = uPF(:,iPF_E) &
-        + 0.5_DP * uPF(:,iPF_D) &
+        + Half * uPF(:,iPF_D) &
             * ( uPF(:,iPF_V1)**2 + uPF(:,iPF_V2)**2 + uPF(:,iPF_V3)**2 )
 
     uCF(:,iCF_Ne) &
@@ -141,8 +141,8 @@ CONTAINS
 
     uPF(:,iPF_E) &
       = uCF(:,iCF_E) &
-        - 0.5_DP * ( uCF(:,iCF_S1)**2 + uCF(:,iCF_S2)**2 &
-                     + uCF(:,iCF_S3)**2 ) / uCF(:,iCF_D)
+        - Half * ( uCF(:,iCF_S1)**2 + uCF(:,iCF_S2)**2 &
+                   + uCF(:,iCF_S3)**2 ) / uCF(:,iCF_D)
 
     uPF(:,iPF_Ne) &
       = uCF(:,iCF_Ne)
@@ -153,9 +153,9 @@ CONTAINS
   PURE FUNCTION Eigenvalues( V, Cs )
 
     REAL(DP), INTENT(in)     :: V, Cs
-    REAL(DP), DIMENSION(1:5) :: Eigenvalues
+    REAL(DP), DIMENSION(nCF) :: Eigenvalues
 
-    Eigenvalues(1:5) = [ V - Cs, V, V + Cs, V, V ]
+    Eigenvalues(1:nCF) = [ V - Cs, V, V, V, V, V + Cs ]
 
     RETURN
   END FUNCTION Eigenvalues
@@ -268,27 +268,21 @@ CONTAINS
   END FUNCTION AlphaMax
 
 
-  PURE REAL(DP) FUNCTION AlphaP( V_L, Cs_L, V_R, Cs_R )
+  PURE REAL(DP) FUNCTION AlphaP( Lambda_L, Lambda_R )
 
-    REAL(DP), INTENT(in) :: V_L, Cs_L, V_R, Cs_R
+    REAL(DP), DIMENSION(nCF), INTENT(in) :: Lambda_L, Lambda_R
 
-    AlphaP &
-      = MAX( 0.0_DP, &
-             MAXVAL( + Eigenvalues( V_L, Cs_L ) ), &
-             MAXVAL( + Eigenvalues( V_R, Cs_R ) ) )
+    AlphaP = MAX( Zero, MAXVAL( + Lambda_L ), MAXVAL( + Lambda_R ) )
 
     RETURN
   END FUNCTION AlphaP
 
 
-  PURE REAL(DP) FUNCTION AlphaM( V_L, Cs_L, V_R, Cs_R )
+  PURE REAL(DP) FUNCTION AlphaM( Lambda_L, Lambda_R )
 
-    REAL(DP), INTENT(in) :: V_L, Cs_L, V_R, Cs_R
+    REAL(DP), DIMENSION(nCF), INTENT(in) :: Lambda_L, Lambda_R
 
-    AlphaM &
-      = MAX( 0.0_DP, &
-             MAXVAL( - Eigenvalues( V_L, Cs_L ) ), &
-             MAXVAL( - Eigenvalues( V_R, Cs_R ) ) )
+    AlphaM = MAX( Zero, MAXVAL( - Lambda_L ), MAXVAL( - Lambda_R ) )
 
     RETURN
   END FUNCTION AlphaM
@@ -303,8 +297,8 @@ CONTAINS
     REAL(DP),               INTENT(in) :: aP, aM
 
     AlphaC &
-      = ( aP * U_R(2) + aM * U_L(2) - ( F_R(2) - F_L(2) ) ) &
-          / ( aP * U_R(1) + aM * U_L(1) - ( F_R(1) - F_L(1) ) )
+      = ( aP * U_R(2) + aM * U_L(2) + ( F_L(2) - F_R(2) ) ) &
+          / ( aP * U_R(1) + aM * U_L(1) + ( F_L(1) - F_R(1) ) )
 
     RETURN
   END FUNCTION AlphaC
@@ -323,7 +317,7 @@ CONTAINS
 
     Flux_X1(iCF_S3) = D * V3 * V1
 
-    Flux_X1(iCF_E)  = ( E + 0.5_DP * D * ( V1**2 + V2**2 + V3**2 ) + P ) * V1
+    Flux_X1(iCF_E)  = ( E + Half * D * ( V1**2 + V2**2 + V3**2 ) + P ) * V1
 
     Flux_X1(iCF_Ne) = Ne * V1
 
