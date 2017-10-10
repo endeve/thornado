@@ -78,6 +78,10 @@ MODULE ProgramInitializationModule
   IMPLICIT NONE
   PRIVATE
 
+  INCLUDE 'mpif.h'
+
+  INTEGER :: mpierr
+
   PUBLIC :: InitializeProgram
   PUBLIC :: FinalizeProgram
 
@@ -143,6 +147,8 @@ CONTAINS
 
     LOGICAL :: ActivateUnits
     INTEGER :: iDim
+
+    CALL MPI_INIT( mpierr )
 
     CALL InitializeProgramHeader     &
            ( ProgramName_Option      &
@@ -515,6 +521,8 @@ CONTAINS
     ! --- Time Stepping ---
 
     CALL FinalizeTimeStepping
+
+    CALL MPI_FINALIZE( mpierr )
 
   END SUBROUTINE FinalizeProgram
 
