@@ -47,7 +47,7 @@ MODULE TimeSteppingModule
   IMPLICIT NONE
   PRIVATE
 
-  REAL(DP) :: wtR, wtS, wtP
+  INCLUDE 'mpif.h'
 
   LOGICAL :: EvolveGravity   = .FALSE.
   LOGICAL :: EvolveFluid     = .FALSE.
@@ -240,9 +240,7 @@ CONTAINS
              WriteFluidFields_Option = EvolveFluid, &
              WriteRadiationFields_Option = EvolveRadiation )
 
-    CALL CPU_TIME( WallTime(0) )
-
-    wtR = 0.0_DP; wtS = 0.0_DP; wtP = 0.0_DP
+    WallTime(0) = MPI_WTIME( )
 
     DO WHILE( t < t_end )
 
@@ -303,18 +301,13 @@ CONTAINS
 
     END DO
 
-    CALL CPU_TIME( WallTime(1) )
+    WallTime(1) = MPI_WTIME( )
 
     WRITE(*,*)
     WRITE(*,'(A6,A15,ES10.4E2,A1,A2,A6,I8.8,A7,A4,ES10.4E2,A2)') &
       '', 'Evolved to t = ', t / U % TimeUnit, '', TRIM( U % TimeLabel ), &
       ' with ', iCycle, ' cycles', &
       ' in ', WallTime(1)-WallTime(0), ' s'
-    WRITE(*,*)
-    WRITE(*,'(A6,A12,ES10.4E2,A2,A12,ES10.4E2,A2,A12,ES10.4E2)') &
-      '', '  wt(RHS) = ', wtR / (WallTime(1)-WallTime(0)), &
-      '', '  wt(SLM) = ', wtS / (WallTime(1)-WallTime(0)), &
-      '', '  wt(PLM) = ', wtP / (WallTime(1)-WallTime(0))
     WRITE(*,*)
 
     CALL WriteFields1D &
@@ -529,8 +522,6 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: t, dt
 
-    REAL(DP), DIMENSION(0:1) :: WT
-
     CALL Initialize_SSP_RK
 
     ! -- RK Stage 1 --
@@ -539,13 +530,8 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Fluid
 
-      CALL CPU_TIME( WT(0) )
-
       CALL ComputeRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
-
-      CALL CPU_TIME( WT(1) )
-      wtR = wtR + ( WT(1) - WT(0) )
 
     END IF
 
@@ -553,13 +539,8 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Radiation( t )
 
-      CALL CPU_TIME( WT(0) )
-
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
-
-      CALL CPU_TIME( WT(1) )
-      wtR = wtR + ( WT(1) - WT(0) )
 
     END IF
 
@@ -571,19 +552,9 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Fluid
 
-      CALL CPU_TIME( WT(0) )
-
       CALL ApplySlopeLimiter_Fluid
 
-      CALL CPU_TIME( WT(1) )
-      wtS = wtS + ( WT(1) - WT(0) )
-
-      CALL CPU_TIME( WT(0) )
-
       CALL ApplyPositivityLimiter_Fluid
-
-      CALL CPU_TIME( WT(1) )
-      wtP = wtP + ( WT(1) - WT(0) )
 
     END IF
 
@@ -602,19 +573,9 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( t + dt, LimiterBC_Option = .TRUE. )
 
-      CALL CPU_TIME( WT(0) )
-
       CALL ApplySlopeLimiter_Radiation
 
-      CALL CPU_TIME( WT(1) )
-      wtS = wtS + ( WT(1) - WT(0) )
-
-      CALL CPU_TIME( WT(0) )
-
       CALL ApplyPositivityLimiter_Radiation
-
-      CALL CPU_TIME( WT(1) )
-      wtP = wtP + ( WT(1) - WT(0) )
 
     END IF
 
@@ -624,13 +585,8 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Fluid
 
-      CALL CPU_TIME( WT(0) )
-
       CALL ComputeRHS_Fluid &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
-
-      CALL CPU_TIME( WT(1) )
-      wtR = wtR + ( WT(1) - WT(0) )
 
     END IF
 
@@ -638,13 +594,8 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Radiation( t + dt )
 
-      CALL CPU_TIME( WT(0) )
-
       CALL ComputeRHS_Radiation &
              ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
-
-      CALL CPU_TIME( WT(1) )
-      wtR = wtR + ( WT(1) - WT(0) )
 
     END IF
 
@@ -656,19 +607,9 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Fluid
 
-      CALL CPU_TIME( WT(0) )
-
       CALL ApplySlopeLimiter_Fluid
 
-      CALL CPU_TIME( WT(1) )
-      wtS = wtS + ( WT(1) - WT(0) )
-
-      CALL CPU_TIME( WT(0) )
-
       CALL ApplyPositivityLimiter_Fluid
-
-      CALL CPU_TIME( WT(1) )
-      wtP = wtP + ( WT(1) - WT(0) )
 
     END IF
 
@@ -687,19 +628,9 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( t + dt, LimiterBC_Option = .TRUE. )
 
-      CALL CPU_TIME( WT(0) )
-
       CALL ApplySlopeLimiter_Radiation
 
-      CALL CPU_TIME( WT(1) )
-      wtS = wtS + ( WT(1) - WT(0) )
-
-      CALL CPU_TIME( WT(0) )
-
       CALL ApplyPositivityLimiter_Radiation
-
-      CALL CPU_TIME( WT(1) )
-      wtP = wtP + ( WT(1) - WT(0) )
 
     END IF
 
