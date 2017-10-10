@@ -94,13 +94,13 @@ CONTAINS
 
   SUBROUTINE DetectDiscontinuities
 
-    INTEGER :: iS, iE, iX1, iX2, iX3, iCR, k
+    INTEGER  :: iS, iE, iX1, iX2, iX3, iCR, k
     REAL(DP) :: F_M, F_P
-    REAL(DP), DIMENSION(nCR) :: uCR_A
+    REAL(DP), PARAMETER :: alpha = 1.5_DP
+    REAL(DP), DIMENSION(nCR)      :: uCR_A
     REAL(DP), DIMENSION(nDOF,nCR) :: uCR_M
     REAL(DP), DIMENSION(nDOF,nCR) :: uCR_M_P_X1
     REAL(DP), DIMENSION(nDOF,nCR) :: uCR_M_N_X1
-    REAL(DP), PARAMETER :: alpha = 1.5_DP
 
     Discontinuity(:,:,:,:) = 0.0_DP
 
