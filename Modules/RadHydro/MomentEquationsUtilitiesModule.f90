@@ -1,7 +1,8 @@
 MODULE MomentEquationsUtilitiesModule
 
   USE KindModule, ONLY: &
-    DP
+    DP, Zero, Fifth, Third, Half, &
+    One, Two, Three, Four, Five
   USE ProgramHeaderModule, ONLY: &
     nE, nDOF
   USE GeometryFieldsModule, ONLY: &
@@ -20,6 +21,7 @@ MODULE MomentEquationsUtilitiesModule
   PUBLIC :: Primitive
   PUBLIC :: ComputeConservedMoments
   PUBLIC :: ComputePrimitiveMoments
+  PUBLIC :: Eigenvalues
   PUBLIC :: ComputeEigenvectors_L
   PUBLIC :: ComputeEigenvectors_R
   PUBLIC :: AlphaMax
@@ -27,6 +29,8 @@ MODULE MomentEquationsUtilitiesModule
   PUBLIC :: AlphaM
   PUBLIC :: Flux_X1
   PUBLIC :: GeometrySources
+  PUBLIC :: FluxFactor
+  PUBLIC :: EddingtonFactor
 
 CONTAINS
 
@@ -115,27 +119,24 @@ CONTAINS
   END SUBROUTINE ComputePrimitiveMoments
 
 
-  PURE FUNCTION Eigenvalues( N, G_1, G_2, G_3 )
+  PURE FUNCTION Eigenvalues( N, G_1, G_2, G_3, FF, EF )
 
-    REAL(DP), INTENT(in)     :: N, G_1, G_2, G_3
+    REAL(DP), INTENT(in)     :: N, G_1, G_2, G_3, FF, EF
     REAL(DP), DIMENSION(1:4) :: Eigenvalues
 
-    REAL(DP) :: h, h1, Xi, dXi, D, sqrtD
+    REAL(DP) :: G1, dEF, Xi, dXi, D, sqrtD
 
-    h  = Length( ReducedFlux( N, [ G_1, G_2, G_3 ] ) )
-    h1 = G_1 / Length( [ G_1, G_2, G_3 ] )
+    dEF = EddingtonFactorDerivative( FF )
 
-    Xi  = EddingtonFactor( h )
-    dXi = EddingtonFactorDerivative( h )
+    sqrtD &
+      = SQRT( MAX( ( dEF - Two * FF )**2 + Four * ( EF - FF**2 ), Zero ) )
 
-    D = MAX( ( dXi - 2.0_DP * h )**2 + 4.0_DP * ( Xi - h**2 ), 0.0_DP )
-    sqrtD = SQRT( D )
+    G1 = G_1 / ( MAX( N * FF, TINY( One ) ) )
 
-    Eigenvalues(1:4) &
-      = [ 0.5_DP * ( h1 * dXi + sqrtD ), &
-          0.5_DP * ( h1 * dXi - sqrtD ), &
-          0.5_DP * ( 3.0 * Xi - 1.0_DP ) / h, &
-          0.5_DP * ( 3.0 * Xi - 1.0_DP ) / h ]
+    Eigenvalues(1) = Half * ( G1 * dEF + sqrtD )
+    Eigenvalues(2) = Half * ( G1 * dEF - sqrtD )
+    Eigenvalues(3) = Half * ( Three * EF - One ) / EF
+    Eigenvalues(4) = Half * ( Three * EF - One ) / EF
 
     RETURN
   END FUNCTION Eigenvalues
@@ -147,10 +148,14 @@ CONTAINS
     REAL(DP), DIMENSION(nCR,nCR), INTENT(out) :: L1
     LOGICAL,                      INTENT(in)  :: Componentwise
 
-    REAL(DP)                 :: dLambda
+    REAL(DP)                 :: FF, EF, dLambda
     REAL(DP), DIMENSION(1:4) :: Lambda
 
-    Lambda = Eigenvalues( N, G_1, G_2, G_3 )
+    FF = FluxFactor( N, G_1, G_2, G_3 )
+
+    EF = EddingtonFactor( FF )
+
+    Lambda = Eigenvalues( N, G_1, G_2, G_3, FF, EF )
 
     IF( ABS( Lambda(1) - Lambda(2) ) < 1.0d-8 .OR. Componentwise )THEN
 
@@ -179,9 +184,14 @@ CONTAINS
     REAL(DP), DIMENSION(nCR,nCR), INTENT(out) :: R1
     LOGICAL,                      INTENT(in)  :: Componentwise
 
+    REAL(DP)                 :: FF, EF
     REAL(DP), DIMENSION(1:4) :: Lambda
 
-    Lambda = Eigenvalues( N, G_1, G_2, G_3 )
+    FF = FluxFactor( N, G_1, G_2, G_3 )
+
+    EF = EddingtonFactor( FF )
+
+    Lambda = Eigenvalues( N, G_1, G_2, G_3, FF, EF )
 
     IF( ABS( Lambda(1) - Lambda(2) ) < 1.0d-8 .OR. Componentwise )THEN
 
@@ -202,93 +212,81 @@ CONTAINS
   END SUBROUTINE ComputeEigenvectors_R
 
 
-  PURE REAL(DP) FUNCTION AlphaMax( N, G_1, G_2, G_3 )
+  PURE REAL(DP) FUNCTION AlphaMax( Lambda )
 
-    REAL(DP), INTENT(in) :: N, G_1, G_2, G_3
+    REAL(DP), DIMENSION(4), INTENT(in) :: Lambda
 
-    AlphaMax = MAXVAL( ABS( Eigenvalues( N, G_1, G_2, G_3 ) ) )
+    AlphaMax = MAXVAL( ABS( Lambda ) )
 
     RETURN
   END FUNCTION AlphaMax
 
 
-  PURE REAL(DP) FUNCTION AlphaP &
-    ( N_L, G_1_L, G_2_L, G_3_L, N_R, G_1_R, G_2_R, G_3_R )
+  PURE REAL(DP) FUNCTION AlphaP( Lambda_L, Lambda_R )
 
-    REAL(DP), INTENT(in) :: N_L, G_1_L, G_2_L, G_3_L
-    REAL(DP), INTENT(in) :: N_R, G_1_R, G_2_R, G_3_R
+    REAL(DP), DIMENSION(4), INTENT(in) :: Lambda_L, Lambda_R
 
-    AlphaP &
-      = MAX( 0.0_DP, &
-             MAXVAL( + Eigenvalues( N_L, G_1_L, G_2_L, G_3_L ) ), &
-             MAXVAL( + Eigenvalues( N_R, G_1_R, G_2_R, G_3_R ) ) )
+    AlphaP = MAX( Zero, MAXVAL( + Lambda_L ), MAXVAL( + Lambda_R ) )
 
     RETURN
   END FUNCTION AlphaP
 
 
-  PURE REAL(DP) FUNCTION AlphaM &
-    ( N_L, G_1_L, G_2_L, G_3_L, N_R, G_1_R, G_2_R, G_3_R )
+  PURE REAL(DP) FUNCTION AlphaM( Lambda_L, Lambda_R )
 
-    REAL(DP), INTENT(in) :: N_L, G_1_L, G_2_L, G_3_L
-    REAL(DP), INTENT(in) :: N_R, G_1_R, G_2_R, G_3_R
+    REAL(DP), DIMENSION(4), INTENT(in) :: Lambda_L, Lambda_R
 
-    AlphaM &
-      = MAX( 0.0_DP, &
-             MAXVAL( - Eigenvalues( N_L, G_1_L, G_2_L, G_3_L ) ), &
-             MAXVAL( - Eigenvalues( N_R, G_1_R, G_2_R, G_3_R ) ) )
+    AlphaM = MAX( Zero, MAXVAL( - Lambda_L ), MAXVAL( - Lambda_R ) )
 
     RETURN
   END FUNCTION AlphaM
 
 
-  PURE FUNCTION Flux_X1( N, G_1, G_2, G_3 )
+  PURE FUNCTION Flux_X1( N, G_1, G_2, G_3, FF, EF )
 
     REAL(DP)             :: Flux_X1(1:4)
-    REAL(DP), INTENT(in) :: N, G_1, G_2, G_3
+    REAL(DP), INTENT(in) :: N, G_1, G_2, G_3, FF, EF
 
-    REAL(DP) :: Xi, G2
+    REAL(DP) :: G2
 
-    Xi = EddingtonFactor &
-           ( Length( ReducedFlux( N, [ G_1, G_2, G_3 ] ) ) )
-
-    G2 = Length( [ G_1, G_2, G_3 ] )**2
+    G2 = MAX( ( FF * N )**2, TINY( One ) )
 
     Flux_X1(1) &
       = G_1
 
     Flux_X1(2) &
-      = N * 0.5_DP * ( (3.0_DP*Xi - 1.0_DP)*G_1*G_1/G2 + (1.0_DP - Xi) )
+      = N * Half * ( (Three*EF - One)*G_1*G_1/G2 + (One - EF) )
 
     Flux_X1(3) &
-      = N * 0.5_DP * ( (3.0_DP*Xi - 1.0_DP)*G_2*G_1/G2 )
+      = N * Half * ( (Three*EF - One)*G_2*G_1/G2 )
 
     Flux_X1(4) &
-      = N * 0.5_DP * ( (3.0_DP*Xi - 1.0_DP)*G_3*G_1/G2 )
+      = N * Half * ( (Three*EF - One)*G_3*G_1/G2 )
 
     RETURN
   END FUNCTION Flux_X1
 
 
-  PURE FUNCTION GeometrySources( N, G_1, G_2, G_3, X )
+  FUNCTION GeometrySources( N, G_1, G_2, G_3, X )
 
     REAL(DP)             :: GeometrySources(1:4)
     REAL(DP), INTENT(in) :: N, G_1, G_2, G_3, X(1:3)
 
-    REAL(DP) :: Xi, G2
+    REAL(DP) :: FF, EF, G2
 
-    Xi = EddingtonFactor &
-           ( Length( ReducedFlux( N, [ G_1, G_2, G_3 ] ) ) )
+    FF = FluxFactor( N, G_1, G_2, G_3 )
 
-    G2 = Length( [ G_1, G_2, G_3 ] )**2
+    EF = EddingtonFactor( FF )
+
+    G2 = MAX( ( FF * N )**2, TINY( One ) )
 
     GeometrySources(1) &
       = 0.0_DP
 
     GeometrySources(2) &
-      = N * 0.5_DP * ( (3.0_DP*Xi - 1.0_DP)*G_2*G_2/G2 + (1.0_DP - Xi) ) &
+      = N * Half * ( (Three*EF - One)*G_2*G_2/G2 + (One - EF) ) &
           * dlnadX1( X ) &
-        + N * 0.5_DP * ( (3.0_DP*Xi - 1.0_DP)*G_3*G_3/G2 + (1.0_DP - Xi) ) &
+        + N * Half * ( (Three*EF - One)*G_3*G_3/G2 + (One - EF) ) &
             * dlnbdX1( X )
 
     GeometrySources(3) &
@@ -309,22 +307,32 @@ CONTAINS
   END FUNCTION GeometrySources
 
 
-  PURE REAL(DP) FUNCTION EddingtonFactor( h )
+  PURE REAL(DP) FUNCTION FluxFactor( N, G_1, G_2, G_3 )
 
-    REAL(DP), INTENT(in) :: h
+    REAL(DP), INTENT(in) :: N, G_1, G_2, G_3
+
+    FluxFactor &
+      = MAX( Zero, MIN( SQRT( G_1**2 + G_2**2 + G_3**2 ) / N, One ) )
+      
+    RETURN
+  END FUNCTION FluxFactor
+
+
+  PURE REAL(DP) FUNCTION EddingtonFactor( FF )
+
+    REAL(DP), INTENT(in) :: FF
 
     IF( Closure_Minerbo )THEN
 
       ! Minerbo:
       EddingtonFactor &
-        = 1.0_DP / 3.0_DP &
-            + 2.0_DP * h**2 * ( 3.0_DP - h + 3.0_DP * h**2 ) / 15.0_DP
+        = Third + Two * FF**2 * ( One - Third * FF + FF**2 ) * Fifth
 
     ELSE
 
       ! Levermore:
       eddingtonFactor &
-        = ( 5.0_DP - 2.0_DP * SQRT( 4.0_DP - 3.0_DP * h**2 ) ) / 3.0_DP
+        = ( Five - Two * SQRT( Four - Three * FF**2 ) ) * Third
 
     END IF
 
@@ -332,47 +340,26 @@ CONTAINS
   END FUNCTION EddingtonFactor
 
 
-  PURE REAL(DP) FUNCTION EddingtonFactorDerivative( h )
+  PURE REAL(DP) FUNCTION EddingtonFactorDerivative( FF )
 
-    REAL(DP), INTENT(in) :: h
+    REAL(DP), INTENT(in) :: FF
 
     IF( Closure_Minerbo )THEN
 
       ! Minerbo:
       EddingtonFactorDerivative &
-        = 2.0_DP * h * ( 2.0_DP - h + 4.0_DP * h**2 ) / 5.0_DP
+        = Four * FF * ( One - Half * FF + Two * FF**2 ) * Fifth
 
     ELSE
 
       ! Levermore:
       EddingtonFactorDerivative &
-        = 2.0_DP * h / SQRT( 4.0_DP - 3.0_DP * h**2 )
+        = Two * FF / SQRT( Four - Three * FF**2 )
 
     END IF
 
     RETURN
   END FUNCTION EddingtonFactorDerivative
-
-
-  PURE FUNCTION ReducedFlux( N, G )
-
-    REAL(DP)             :: ReducedFlux(1:3)
-    REAL(DP), INTENT(in) :: N, G(1:3)
-
-    ReducedFlux(1:3) = G(1:3) / N
-
-    RETURN
-  END FUNCTION ReducedFlux
-
-
-  PURE REAL(DP) FUNCTION Length( V )
-
-    REAL(DP), INTENT(in) :: V(1:3)
-
-    Length = SQRT( MAX( DOT_PRODUCT( V, V ), TINY( 1.0_DP ) ) )
-
-    RETURN
-  END FUNCTION Length
 
 
 END MODULE MomentEquationsUtilitiesModule
