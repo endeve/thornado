@@ -218,8 +218,8 @@ CONTAINS
                     = SQRT( uCR_P(:,iCR_G1)**2 + uCR_P(:,iCR_G2)**2 &
                             + uCR_P(:,iCR_G3)**2 )
 
-                  IF( ANY( uCR_P(:,iCR_N) < 0.0_DP ) .OR. &
-                      ANY( uCR_P(:,iCR_N) - absG_P(:) < 0.0_DP ) )THEN
+                  IF( ANY( uCR_P(:,iCR_N) < Tol_N ) .OR. &
+                      ANY( uCR_P(:,iCR_N) - absG_P(:) < Tol_G ) )THEN
 
                     PRINT*
                     PRINT*, "ApplyPositivityLimiter_M1_DG"
@@ -229,6 +229,8 @@ CONTAINS
                     PRINT*, "    iE, iX1, iX2, iX3 = ", iE, iX1, iX2, iX3
                     PRINT*, "    Theta_1 = ", Theta_1
                     PRINT*, "    Theta_2 = ", Theta_2
+                    PRINT*, "    Tol_N   = ", Tol_N
+                    PRINT*, "    Tol_G   = ", Tol_G
                     PRINT*
                     PRINT*, "  Conserved Radiation Fields (Nodal):"
                     PRINT*, "  N     = ", uCR_P(:,iCR_N)
@@ -252,8 +254,6 @@ CONTAINS
                               + uCR_K(iCR_G2)**2 &
                               + uCR_K(iCR_G3)**2 )
                     PRINT*
-
-                    STOP
 
                   END IF
 
