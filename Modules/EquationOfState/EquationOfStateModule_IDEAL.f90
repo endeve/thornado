@@ -17,7 +17,9 @@ MODULE EquationOfStateModule_IDEAL
   PUBLIC :: InitializeEquationOfState_IDEAL
   PUBLIC :: FinalizeEquationOfState_IDEAL
   PUBLIC :: ComputeInternalEnergyDensityFromPressure_IDEAL
+  PUBLIC :: ComputePressureFromPrimitive_IDEAL
   PUBLIC :: ComputePressureFromSpecificInternalEnergy_IDEAL
+  PUBLIC :: ComputeSoundSpeedFromPrimitive_IDEAL
   PUBLIC :: ComputeAuxiliary_Fluid_IDEAL
   PUBLIC :: Auxiliary_Fluid_IDEAL
 
@@ -50,6 +52,16 @@ CONTAINS
   END SUBROUTINE ComputeInternalEnergyDensityFromPressure_IDEAL
 
 
+  SUBROUTINE ComputePressureFromPrimitive_IDEAL( D, Ev, Ne, P )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), DIMENSION(:), INTENT(out) :: P
+
+    P(:) = ( Gamma_IDEAL - 1.0_DP ) * Ev(:)
+
+  END SUBROUTINE ComputePressureFromPrimitive_IDEAL
+
+
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Y, P )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Em, Y
@@ -58,6 +70,16 @@ CONTAINS
     P(:) = ( Gamma_IDEAL - 1.0_DP ) * D(:) * Em(:)
 
   END SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL
+
+
+  SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), DIMENSION(:), INTENT(out) :: Cs
+
+    Cs(:) = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - 1.0_DP ) * Ev(:) / D(:) )
+
+  END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL
 
 
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )

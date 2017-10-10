@@ -5,7 +5,9 @@ MODULE EquationOfStateModule
   USE EquationOfStateModule_IDEAL, ONLY: &
     InitializeEquationOfState_IDEAL, &
     ComputeInternalEnergyDensityFromPressure_IDEAL, &
+    ComputePressureFromPrimitive_IDEAL, &
     ComputePressureFromSpecificInternalEnergy_IDEAL, &
+    ComputeSoundSpeedFromPrimitive_IDEAL, &
     ComputeAuxiliary_Fluid_IDEAL, &
     Auxiliary_Fluid_IDEAL
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -15,7 +17,9 @@ MODULE EquationOfStateModule
     ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE, &
     ComputeThermodynamicStates_Auxiliary_TABLE, &
+    ComputePressureFromPrimitive_TABLE, &
     ComputePressureFromSpecificInternalEnergy_TABLE, &
+    ComputeSoundSpeedFromPrimitive_TABLE, &
     ComputeAuxiliary_Fluid_TABLE, &
     Auxiliary_Fluid_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
@@ -107,9 +111,11 @@ MODULE EquationOfStateModule
     Auxiliary_Fluid                              => NULL()
   PROCEDURE (EosSubroutine_1),   POINTER, PUBLIC :: &
     ComputeInternalEnergyDensityFromPressure     => NULL(), &
+    ComputePressureFromPrimitive                 => NULL(), &
     ComputePressureFromSpecificInternalEnergy    => NULL(), &
     ComputeTemperatureFromPressure               => NULL(), &
-    ComputeTemperatureFromSpecificInternalEnergy => NULL()
+    ComputeTemperatureFromSpecificInternalEnergy => NULL(), &
+    ComputeSoundSpeedFromPrimitive               => NULL()
   PROCEDURE (EosSubroutine_3),   POINTER, PUBLIC :: &
     ComputeThermodynamicStates_Primitive         => NULL(), &
     ComputeThermodynamicStates_Auxiliary         => NULL()
@@ -157,8 +163,12 @@ CONTAINS
 
         ComputeInternalEnergyDensityFromPressure &
           => ComputeInternalEnergyDensityFromPressure_IDEAL
+        ComputePressureFromPrimitive &
+          => ComputePressureFromPrimitive_IDEAL
         ComputePressureFromSpecificInternalEnergy &
           => ComputePressureFromSpecificInternalEnergy_IDEAL
+        ComputeSoundSpeedFromPrimitive &
+          => ComputeSoundSpeedFromPrimitive_IDEAL
         ComputeAuxiliary_Fluid &
           => ComputeAuxiliary_Fluid_IDEAL
         Auxiliary_Fluid &
@@ -180,8 +190,12 @@ CONTAINS
           => ComputeThermodynamicStates_Primitive_TABLE
         ComputeThermodynamicStates_Auxiliary &
           => ComputeThermodynamicStates_Auxiliary_TABLE
+        ComputePressureFromPrimitive &
+          => ComputePressureFromPrimitive_TABLE
         ComputePressureFromSpecificInternalEnergy &
           => ComputePressureFromSpecificInternalEnergy_TABLE
+        ComputeSoundSpeedFromPrimitive &
+          => ComputeSoundSpeedFromPrimitive_TABLE
         ComputeAuxiliary_Fluid &
           => ComputeAuxiliary_Fluid_TABLE
         Auxiliary_Fluid &
@@ -214,6 +228,9 @@ CONTAINS
       CASE ( 'IDEAL' )
 
         NULLIFY( ComputeInternalEnergyDensityFromPressure )
+        NULLIFY( ComputePressureFromPrimitive )
+        NULLIFY( ComputePressureFromSpecificInternalEnergy )
+        NULLIFY( ComputeSoundSpeedFromPrimitive )
         NULLIFY( ComputeAuxiliary_Fluid )
         NULLIFY( Auxiliary_Fluid )
 
@@ -224,6 +241,9 @@ CONTAINS
         NULLIFY( ComputeTemperatureFromSpecificInternalEnergy )
         NULLIFY( ComputeThermodynamicStates_Primitive )
         NULLIFY( ComputeThermodynamicStates_Auxiliary )
+        NULLIFY( ComputePressureFromPrimitive )
+        NULLIFY( ComputePressureFromSpecificInternalEnergy )
+        NULLIFY( ComputeSoundSpeedFromPrimitive )
         NULLIFY( ComputeAuxiliary_Fluid )
         NULLIFY( Auxiliary_Fluid )
         NULLIFY( ComputeSpecificInternalEnergy )

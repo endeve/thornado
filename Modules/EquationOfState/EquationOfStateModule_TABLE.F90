@@ -74,7 +74,9 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy_TABLE
   PUBLIC :: ComputeThermodynamicStates_Primitive_TABLE
   PUBLIC :: ComputeThermodynamicStates_Auxiliary_TABLE
+  PUBLIC :: ComputePressureFromPrimitive_TABLE
   PUBLIC :: ComputePressureFromSpecificInternalEnergy_TABLE
+  PUBLIC :: ComputeSoundSpeedFromPrimitive_TABLE
   PUBLIC :: ComputeAuxiliary_Fluid_TABLE
   PUBLIC :: Auxiliary_Fluid_TABLE
   PUBLIC :: ComputePressure_TABLE
@@ -297,12 +299,49 @@ CONTAINS
   END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE
 
 
+  SUBROUTINE ComputePressureFromPrimitive_TABLE( D, Ev, Ne, P )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), DIMENSION(:), INTENT(out) :: P
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A)') &
+      '', 'ComputePressureFromPrimitive_TABLE Not Implemented'
+    WRITE(*,*)
+
+    STOP
+
+  END SUBROUTINE ComputePressureFromPrimitive_TABLE
+
+
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE( D, E, Y, P )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, E, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: P
 
+    WRITE(*,*)
+    WRITE(*,'(A4,A)') &
+      '', 'ComputePressureFromSpecificInternalEnergy_TABLE Not Implemented'
+    WRITE(*,*)
+
+    STOP
+
   END SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE
+
+
+  SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE( D, Ev, Ne, Cs )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), DIMENSION(:), INTENT(out) :: Cs
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A)') &
+      '', 'ComputeSoundSpeedFromPrimitive_TABLE Not Implemented'
+    WRITE(*,*)
+
+    STOP
+
+  END SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE
 
 
   SUBROUTINE ComputeTemperatureFromPressure_TABLE( D, P, Y, T )
