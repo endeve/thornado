@@ -79,7 +79,7 @@ CONTAINS
 
   SUBROUTINE DetectDiscontinuities
 
-    INTEGER :: iX1, iX2, iX3, iCF, k
+    INTEGER  :: iX1, iX2, iX3, iCF, k
     REAL(DP) :: F_M, F_P
     REAL(DP), PARAMETER :: alpha = 1.5_DP
     REAL(DP), DIMENSION(nCF)       :: uCF_A
@@ -98,6 +98,9 @@ CONTAINS
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
+        !$OMP PARALLEL DO PRIVATE &
+        !$OMP&              ( iX1, iCF, k, F_M, F_P, uCF_A, &
+        !$OMP&                uCF_M_P_X1, uCF_M, uCF_M_N_X1 )
         DO iX1 = 1, nX(1)
 
           ! --- Map To Modal Representation ---
@@ -157,6 +160,7 @@ CONTAINS
           END DO LOOP
 
         END DO
+        !$OMP END PARALLEL DO
       END DO
     END DO
 
