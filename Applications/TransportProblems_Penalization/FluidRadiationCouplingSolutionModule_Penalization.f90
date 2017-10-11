@@ -163,13 +163,13 @@ CONTAINS
 
     CALL SetEquilibrium
 
-    CALL SetAbsLambda
+!    CALL SetAbsLambda
 
     CALL SetRHS
 
-    CALL MapBackward_FluidField &
-           ( absLambda(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), &
-             absLambda_N(1:nNodesX_G) ) 
+!    CALL MapBackward_FluidField &
+!           ( absLambda(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), &
+!             absLambda_N(1:nNodesX_G) ) 
 
     CALL MapBackward_RadiationField &
            ( C_J(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1), &
@@ -178,11 +178,12 @@ CONTAINS
   END SUBROUTINE ComputeRHS_C_J
 
 
-  SUBROUTINE ComputeRHS_C_H( dt )
-
-    REAL(DP), INTENT(in) :: dt
+  SUBROUTINE ComputeRHS_C_H
 
     INTEGER  :: iX, iE
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeE, iNode
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
 
     DO iX = 1, nNodesX_G
       DO iE = 1, nNodesE_G
@@ -192,11 +193,18 @@ CONTAINS
                          + R0_Out(:,iE,iX)*(FourPi-J_N(:,iX)) ) )
 
       END DO
+
+      absLambda_N(iX) = MAXVAL( RHS_kappa(:,iX) )
+
     END DO
 
     CALL MapBackward_RadiationField &
            ( Kappa(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3)), &
              RHS_kappa(1:nNodesE_G,1:nNodesX_G) )
+
+    CALL MapBackward_FluidField &
+           ( absLambda(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), &
+             absLambda_N(1:nNodesX_G) )
 
   END SUBROUTINE ComputeRHS_C_H
 
