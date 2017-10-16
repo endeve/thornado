@@ -163,13 +163,7 @@ CONTAINS
 
     CALL SetEquilibrium
 
-!    CALL SetAbsLambda
-
     CALL SetRHS
-
-!    CALL MapBackward_FluidField &
-!           ( absLambda(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), &
-!             absLambda_N(1:nNodesX_G) ) 
 
     CALL MapBackward_RadiationField &
            ( C_J(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1), &
@@ -303,6 +297,5 @@ CONTAINS
     END DO
 
   END SUBROUTINE SetRHS
-
 
 END MODULE FluidRadiationCouplingSolutionModule_Penalization
