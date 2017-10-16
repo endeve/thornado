@@ -46,7 +46,7 @@ MODULE TimeSteppingModule_Penalization
   IMPLICIT NONE
   PRIVATE
 
-  REAL(DP), PARAMETER :: Diff_FE = 1.0d-1
+  REAL(DP), PARAMETER :: Diff_FE = 2.5d-2
   REAL(DP), PARAMETER :: Min_dt  = 1.0d-10 * MilliSecond
   REAL(DP), PARAMETER :: Min_N   = 0.0_DP 
   REAL(DP), PARAMETER :: dt_incf = 1.1_DP
@@ -240,14 +240,15 @@ CONTAINS
    
     REAL(DP)  :: dt_Radiation, dt_max, dt_Stream, dt_buffer
 
-    dt_max = 5.0d-3 * Millisecond
+    dt_max = 1.0d-2 * Millisecond
 
     CALL ComputeTimestepPenalization &
            ( dt_Radiation, dt_max, t, SmallestPosition, dt_accur, &
              dt_boundary, dt_lower, dt_upper )
 
-    CALL ComputeTimeStep_Streaming( dt_Stream )
-    dt_streams = dt_Stream
+!    CALL ComputeTimeStep_Streaming( dt_Stream )
+!    dt_streams = dt_Stream
+    dt_streams = HUGE( 1.d0 )
 
     dt_buffer =  dt * dt_incf
     dt_Radiation = dt_Radiation * dt_shrf
@@ -312,9 +313,6 @@ CONTAINS
                   iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
                   LAMB   = absLambda(iNodeX,iX1,iX2,iX3)
 
-                  dt_dx = 0.5d0 * mindx / ( 1.0d0 - 0.5d0 * LAMB * mindx )
-                  IF( dt_dx < 0.0d0 ) dt_dx = HUGE( 1.0_DP )
-
                   DO iNodeE = 1, nNodesE
 
                     iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
@@ -325,13 +323,13 @@ CONTAINS
 
                     ! --- Boundary Limit ---
 
-                    lim = 0.0d0
-                    IF( Coll < 0.0d0 ) lim = ABS( NN / Coll )
-                    IF( Coll > 0.0d0 ) lim = ABS( ( FourPi - NN ) / Coll )
-                    dt_buffer  = 0.5d0 * lim / ( 1.0d0 - 0.5d0 * LAMB * lim )
-                    IF( dt_buffer <= 0.0d0 ) dt_buffer = HUGE( 1.0_DP )
+                    lim = CpS + NN * Kappa(iNode,iE,iX1,iX2,iX3) 
+                    IF( lim < 0.0d0 ) lim_W = - CpS / NN - LAMB
+                    IF( lim > 0.0d0 ) lim_W = CpS / ( FourPi - NN ) - LAMB
 
-                    dt_buffer = MIN( dt_buffer, dt_dx )
+                    dt_buffer = HUGE( 1.0_DP )
+                    IF( lim_W > 0.0d0 ) dt_buffer = 1 / lim_W
+
                     dt_boundary = MIN( dt_boundary, dt_buffer )
 
                     ! --- Boundary Limit (lower) ---
@@ -362,9 +360,7 @@ CONTAINS
 
                     dt_accur = MIN( dt_accur, dt_buffer )
 
-                  !  dt_buffer = MIN( dt_boundary, dt_lower, dt_upper, dt_accur )
-                  !  dt_buffer = MIN( dt_upper, dt_lower, dt_accur )
-                    dt_buffer = MIN( dt_upper, dt_lower, dt_accur )
+                    dt_buffer = MIN( dt_boundary,  dt_upper, dt_lower, dt_accur )
 
                     IF( dt > dt_buffer )THEN
                       dt = dt_buffer 
@@ -452,7 +448,6 @@ CONTAINS
 
                     LAMB = MAX( absLambda(iNodeX,iX1,iX2,iX3), 1.d-100 )
 
-
                     DO iNodeE = 1, nNodesE
 
                       iNode &
@@ -467,21 +462,27 @@ CONTAINS
                       uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
                         = MAX( temp, Min_N )
 
-                      temp = 1.d0 / ( 1.d0 + dt * Kappa(iNode,iE,iX1,iX2,iX3) )
+                      temp = 1.d0 / ( 1.d0 + dt * LAMB )
 
                       uCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS) &
                         = temp &
                           * ( uCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS) &
+                               * ( 1.d0 + dt * LAMB - &
+                                   dt * Kappa(iNode,iE,iX1,iX2,iX3) ) &
                               + dt * rhsCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS) )
 
                       uCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS) &
                         = temp &
                           * ( uCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS) &
+                               * ( 1.d0 + dt * LAMB - &
+                                   dt * Kappa(iNode,iE,iX1,iX2,iX3) ) &
                               + dt * rhsCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS) )
 
                       uCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS) &
                         = temp &
                           * ( uCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS) &
+                               * ( 1.d0 + dt * LAMB - &
+                                   dt * Kappa(iNode,iE,iX1,iX2,iX3) ) &
                               + dt * rhsCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS) )
 
                     END DO
