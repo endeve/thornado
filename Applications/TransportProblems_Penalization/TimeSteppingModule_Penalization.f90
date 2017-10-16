@@ -46,11 +46,11 @@ MODULE TimeSteppingModule_Penalization
   IMPLICIT NONE
   PRIVATE
 
-  REAL(DP), PARAMETER :: Diff_FE = 1.0d-3
-  REAL(DP), PARAMETER :: Min_dt  = 1.0d-300 * MilliSecond
-  REAL(DP), PARAMETER :: Min_N   = 1.0d-32 
+  REAL(DP), PARAMETER :: Diff_FE = 1.0d-1
+  REAL(DP), PARAMETER :: Min_dt  = 1.0d-10 * MilliSecond
+  REAL(DP), PARAMETER :: Min_N   = 0.0_DP 
   REAL(DP), PARAMETER :: dt_incf = 1.1_DP
-  REAL(DP), PARAMETER :: dt_shrf = 0.2_DP
+  REAL(DP), PARAMETER :: dt_shrf = 1.0_DP
 
   PUBLIC :: EvolveFields
 
@@ -70,7 +70,7 @@ CONTAINS
     INTEGER, PARAMETER :: out_unit = 20
     INTEGER, DIMENSION(4) :: SmallestPosition 
     REAL(DP) :: t, t_write, dt, dt_fixed, &
-                dt_stream, dt_accur, dt_boundary, dt_lower
+                dt_stream, dt_accur, dt_boundary, dt_lower, dt_upper
 
     FixedTimeStep = .FALSE.
     IF( PRESENT( dt_fixed_Option ) )THEN
@@ -78,7 +78,7 @@ CONTAINS
       dt_fixed = dt_fixed_Option
     END IF
 
-    iDisplayCycle = 10000
+    iDisplayCycle = 10
     IF( PRESENT( iDisplayCycle_Option ) ) &
       iDisplayCycle = iDisplayCycle_Option
 
@@ -105,8 +105,8 @@ CONTAINS
  
     OPEN( unit = out_unit, file = "tvsdt", action = "write", &
           status = "replace" )
-    WRITE( out_unit, '(A1,7A15)') '#', 'time', 'dt', 'dt_stream', &
-      'dt_accur','dt_boundary', 'dt_lower','Position'
+    WRITE( out_unit, '(A1,8A15)') '#', 'time', 'dt', 'dt_stream', &
+      'dt_accur','dt_boundary', 'dt_lower','dt_upper','Position'
 
     dt = 1.d-8 * Millisecond 
 
@@ -114,12 +114,14 @@ CONTAINS
 
       iCycle = iCycle + 1
 
-      CALL ComputeRHS_C_J
+      CALL ComputeRHS_C_J  ! compute absLambda and C_J
 
       CALL ApplyBoundaryConditions_Radiation( t )
 
       CALL ComputeRHS_M1_DG &
              ( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
+
+      CALL ComputeRHS_C_H ! compute Kappa
 
       IF( FixedTimeStep )THEN
 
@@ -129,7 +131,7 @@ CONTAINS
 
         CALL ComputeTimeStep &
                ( t, dt, SmallestPosition, dt_stream, dt_accur, &
-                 dt_boundary, dt_lower )
+                 dt_boundary, dt_lower, dt_upper )
 
       END IF
 
@@ -154,17 +156,15 @@ CONTAINS
           '', 'dt = ', dt / U % TimeUnit, '', TRIM( U % TimeLabel ), &
           '', SmallestPosition
 
-        WRITE( out_unit, '(6E15.6,4I4)' ) &
+        WRITE( out_unit, '(7E15.6,4I4)' ) &
           t / MilliSecond, dt / MilliSecond, &
           dt_stream / MilliSecond, dt_accur / MilliSecond, &
           dt_boundary / MilliSecond, dt_lower / MilliSecond, &
-          SmallestPosition
+          dt_upper / MilliSecond, SmallestPosition
 
       END IF
 
-      CALL ComputeRHS_C_H( dt )
- 
-      CALL UpdateFields( dt )
+      CALL UpdateFields( dt, iCycle )
 
       CALL ApplyPositivityLimiter_Radiation
 
@@ -176,17 +176,18 @@ CONTAINS
       IF( dt < Min_dt ) THEN
          WriteOutput = .TRUE.
          WRITE(*,*)
-         WRITE(*,'(A8,A42,ES10.4E2,A1,A2,A6,ES13.4E3,A1,A2,A6,I8.8)' ) &
+         WRITE(*,'(A1,A42,ES10.4E2,A1,A2,A6,ES13.4E3,A1,A2,A6,I8,A10)' ) &
            '','ERROR: dt too small! Impose to end at t = ', t / U % TimeUnit, &
            '', TRIM( U % TimeLabel ),' dt = ',dt / U % TimeUnit,&
-           '', TRIM( U % TimeLabel ),' with ', iCycle, ' cycles'
+           '', TRIM( U % TimeLabel ),' with ', iCycle, ' cycles.'
+         WRITE(*,*) 'Write out and end the loop. '
          WRITE(*,*)
 
          WRITE( out_unit, '(6E15.6,4I4)' ) &
            t / MilliSecond, dt / MilliSecond, &
            dt_stream / MilliSecond, dt_accur / MilliSecond, &
            dt_boundary / MilliSecond, dt_lower / MilliSecond, &
-           SmallestPosition
+           dt_upper / MilliSecond, SmallestPosition
          CLOSE( out_unit )
 
         CALL WriteFields1D &
@@ -229,27 +230,29 @@ CONTAINS
 
   SUBROUTINE ComputeTimestep &
                ( t, dt, SmallestPosition, dt_streams, dt_accur, &
-                 dt_boundary, dt_lower )
+                 dt_boundary, dt_lower, dt_upper )
 
     REAL(DP), INTENT(in) :: t
     INTEGER, DIMENSION(4), INTENT(out) :: SmallestPosition 
     REAL(DP), INTENT(inout) :: dt
-    REAL(DP), INTENT(out) ::  dt_streams, dt_accur, dt_boundary, dt_lower
+    REAL(DP), INTENT(out) ::  dt_streams, dt_accur, dt_boundary,&
+                              dt_lower, dt_upper
    
     REAL(DP)  :: dt_Radiation, dt_max, dt_Stream, dt_buffer
 
-    dt_max = 1.0d-2 * Millisecond
+    dt_max = 5.0d-3 * Millisecond
 
     CALL ComputeTimestepPenalization &
            ( dt_Radiation, dt_max, t, SmallestPosition, dt_accur, &
-             dt_boundary, dt_lower )
+             dt_boundary, dt_lower, dt_upper )
 
     CALL ComputeTimeStep_Streaming( dt_Stream )
     dt_streams = dt_Stream
 
     dt_buffer =  dt * dt_incf
     dt_Radiation = dt_Radiation * dt_shrf
-    dt = MIN( dt_Radiation, dt_max, dt_Stream, dt_buffer )
+   ! dt = MIN( dt_Radiation, dt_max, dt_Stream, dt_buffer )
+    dt = MIN( dt_max, dt_Radiation, dt_buffer )
 
     IF( dt < Min_dt ) THEN
       PRINT*,''
@@ -259,6 +262,7 @@ CONTAINS
       PRINT*,'    dt_accur ', dt_accur     / Millisecond, 'ms'
       PRINT*,'    dt_bound ', dt_boundary  / Millisecond, 'ms'
       PRINT*,'    dt_lower ', dt_lower     / Millisecond, 'ms'
+      PRINT*,'    dt_upper ', dt_upper     / Millisecond, 'ms'
       PRINT*,'Smallest pos ', SmallestPosition
       RETURN
     END IF
@@ -267,10 +271,10 @@ CONTAINS
 
 
   SUBROUTINE ComputeTimestepPenalization &
-    ( dt, dt_max, t, SmallestPosition, dt_accur, dt_boundary, dt_lower )
+  ( dt, dt_max, t, SmallestPosition, dt_accur, dt_boundary, dt_lower, dt_upper )
 
     REAL(DP), INTENT(in)  :: dt_max, t
-    REAL(DP), INTENT(out) :: dt, dt_accur, dt_lower, dt_boundary
+    REAL(DP), INTENT(out) :: dt, dt_accur, dt_lower, dt_upper, dt_boundary
     INTEGER, DIMENSION(4), INTENT(out) :: SmallestPosition 
 
     INTEGER  :: out_unit_debug
@@ -287,6 +291,7 @@ CONTAINS
     dt_accur = dt
     dt_boundary = dt
     dt_lower = dt
+    dt_upper = dt
 
     SmallestPosition = (/0,0,0,0/)
     ASSOCIATE( dX1 => MeshX(1) % Width (1:nX(1)) )
@@ -306,12 +311,14 @@ CONTAINS
 
                   iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
                   LAMB   = absLambda(iNodeX,iX1,iX2,iX3)
+
                   dt_dx = 0.5d0 * mindx / ( 1.0d0 - 0.5d0 * LAMB * mindx )
                   IF( dt_dx < 0.0d0 ) dt_dx = HUGE( 1.0_DP )
 
                   DO iNodeE = 1, nNodesE
 
                     iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+
                     Coll = C_J(iNode,iE,iX1,iX2,iX3,1)
                     CpS  = Coll + rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,1)
                     NN   = uCR(iNode,iE,iX1,iX2,iX3,iCR_N,1)
@@ -329,13 +336,20 @@ CONTAINS
 
                     ! --- Boundary Limit (lower) ---
 
-                    lim_W = ( - rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,1) - Coll ) &
-                            / NN - LAMB
+                    lim_W = - CpS / NN - LAMB
 
                     dt_buffer = HUGE( 1.0_DP )
                     IF( lim_W > 0.0d0 ) dt_buffer = 1.0d0 / lim_W
 
                     dt_lower = MIN( dt_lower, dt_buffer )
+
+                    ! --- Boundary Limit (upper) ---
+                    lim_W = CpS / ( FourPi - NN ) - LAMB
+
+                    dt_buffer = HUGE( 1.0_DP )
+                    IF( lim_W > 0.0d0 ) dt_buffer = 1.0d0 / lim_W
+
+                    dt_upper = MIN( dt_upper, dt_buffer )
 
                     ! --- Accuracy Limit ---
               
@@ -348,7 +362,9 @@ CONTAINS
 
                     dt_accur = MIN( dt_accur, dt_buffer )
 
-                    dt_buffer = MIN( dt_boundary, dt_lower, dt_accur )
+                  !  dt_buffer = MIN( dt_boundary, dt_lower, dt_upper, dt_accur )
+                  !  dt_buffer = MIN( dt_upper, dt_lower, dt_accur )
+                    dt_buffer = MIN( dt_upper, dt_lower, dt_accur )
 
                     IF( dt > dt_buffer )THEN
                       dt = dt_buffer 
@@ -409,8 +425,9 @@ CONTAINS
   END SUBROUTINE ComputeTimeStep_Streaming
 
 
-  SUBROUTINE UpdateFields( dt )
+  SUBROUTINE UpdateFields( dt, iCycle )
 
+    INTEGER,  INTENT(in)    :: iCycle
     REAL(DP), INTENT(inout) :: dt
 
     INTEGER  :: iE, iX1, iX2, iX3, iS, iCR
@@ -432,8 +449,9 @@ CONTAINS
                     iNodeX &
                       = NodeNumberX &
                           ( iNodeX1, iNodeX2, iNodeX3 )
-                    LAMB   &
-                      = MAX( absLambda(iNodeX,iX1,iX2,iX3), 1.0d-100 )
+
+                    LAMB = MAX( absLambda(iNodeX,iX1,iX2,iX3), 1.d-100 )
+
 
                     DO iNodeE = 1, nNodesE
 
@@ -445,28 +463,6 @@ CONTAINS
                             + ( dt / (1.d0+dt*LAMB) ) &
                               * ( rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
                                   + C_J(iNode,iE,iX1,iX2,iX3,iS) )
-
-                      IF( temp <= 0.0 ) THEN
-                        PRINT*, ''
-                        WRITE(*,'(A4,A25,ES15.6E3,A3,4I4)') &
-                          '', 'negative uCR(:,iCR_N) = ',&
-                          uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS),' at', &
-                          iE, iX1, iX2, iX3
-                        WRITE(*,'(A4,A12,ES15.6E3)') '','with temp = ', temp
-                        WRITE(*,'(A4,A36,ES15.6E3)') &
-                          '', 'W - 1/dt should be negative or zero:', &
-                          ( - rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
-                             -  C_J(iNode,iE,iX1,iX2,iX3,iS) ) &
-                              / uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
-                          - absLambda(iNodeX,iX1,iX2,iX3) - 1.0/dt
-                        WRITE(*,'(A4,A36,ES15.6E3)') &
-                          '', 'W should be positive :', &
-                          ( - rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
-                             -  C_J(iNode,iE,iX1,iX2,iX3,iS) ) &
-                              / uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
-                          - absLambda(iNodeX,iX1,iX2,iX3)
-                        STOP
-                      END IF
 
                       uCR(iNode,iE,iX1,iX2,iX3,iCR_N,iS) &
                         = MAX( temp, Min_N )
@@ -501,15 +497,14 @@ CONTAINS
 
     END DO
 
-    IF( MINVAL( uCR(:,:,:,:,:,iCR_N,:) ) <= 1.d-33 )THEN
+    IF( MINVAL( uCR(:,:,:,:,:,iCR_N,:) ) < Min_N )THEN
       PRINT*,''
       PRINT*,'ERROR in UpdateFields'
       PRINT*,'NEGATIVE or ZERO uCR(:,iCR_N):',MINVAL( uCR(:,:,:,:,:,iCR_N,:) )
       PRINT*,'dt =', dt
+      PRINT*,'iCycle = ', iCycle
       PRINT*,''
-      !STOP
-      IF( ISNAN( MAXVAL( uCR(:,:,:,:,:,iCR_N,:) ) ) .or. &
-          MINVAL( uCR(:,:,:,:,:,iCR_N,:) ) <= 0.0_DP ) STOP
+      STOP
     END IF
 
   END SUBROUTINE UpdateFields
