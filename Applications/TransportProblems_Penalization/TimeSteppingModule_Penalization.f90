@@ -246,14 +246,12 @@ CONTAINS
            ( dt_Radiation, dt_max, t, SmallestPosition, dt_accur, &
              dt_boundary, dt_lower, dt_upper )
 
-!    CALL ComputeTimeStep_Streaming( dt_Stream )
-!    dt_streams = dt_Stream
-    dt_streams = HUGE( 1.d0 )
+    CALL ComputeTimeStep_Streaming( dt_Stream )
+    dt_streams = dt_Stream
 
     dt_buffer =  dt * dt_incf
     dt_Radiation = dt_Radiation * dt_shrf
-   ! dt = MIN( dt_Radiation, dt_max, dt_Stream, dt_buffer )
-    dt = MIN( dt_max, dt_Radiation, dt_buffer )
+    dt = MIN( dt_Radiation, dt_max, dt_Stream, dt_buffer )
 
     IF( dt < Min_dt ) THEN
       PRINT*,''
@@ -286,7 +284,7 @@ CONTAINS
     CHARACTER(19)   :: FileName
     REAL(DP) :: LAMB, LNMax, lim, dt_dx, lim_W, dt_buffer
     REAL(DP) :: NN, Coll, CpS
-    REAL(DP) :: mindx
+    REAL(DP) :: Invmindx
 
     dt = HUGE( 1.0_DP )
     dt_accur = dt
@@ -297,7 +295,7 @@ CONTAINS
     SmallestPosition = (/0,0,0,0/)
     ASSOCIATE( dX1 => MeshX(1) % Width (1:nX(1)) )
 
-    mindx = MINVAL( dX1 )
+    Invmindx = 1.d0 / MINVAL( dX1 )
  
     END ASSOCIATE
 
@@ -321,20 +319,9 @@ CONTAINS
                     CpS  = Coll + rhsCR(iNode,iE,iX1,iX2,iX3,iCR_N,1)
                     NN   = uCR(iNode,iE,iX1,iX2,iX3,iCR_N,1)
 
-                    ! --- Boundary Limit ---
-
-                    lim = CpS + NN * Kappa(iNode,iE,iX1,iX2,iX3) 
-                    IF( lim < 0.0d0 ) lim_W = - CpS / NN - LAMB
-                    IF( lim > 0.0d0 ) lim_W = CpS / ( FourPi - NN ) - LAMB
-
-                    dt_buffer = HUGE( 1.0_DP )
-                    IF( lim_W > 0.0d0 ) dt_buffer = 1 / lim_W
-
-                    dt_boundary = MIN( dt_boundary, dt_buffer )
-
                     ! --- Boundary Limit (lower) ---
 
-                    lim_W = - CpS / NN - LAMB
+                    lim_W = Invmindx - LAMB - Coll / NN
 
                     dt_buffer = HUGE( 1.0_DP )
                     IF( lim_W > 0.0d0 ) dt_buffer = 1.0d0 / lim_W
@@ -342,25 +329,29 @@ CONTAINS
                     dt_lower = MIN( dt_lower, dt_buffer )
 
                     ! --- Boundary Limit (upper) ---
-                    lim_W = CpS / ( FourPi - NN ) - LAMB
+                    lim_W = Invmindx - LAMB + Coll / ( FourPi - NN )
 
                     dt_buffer = HUGE( 1.0_DP )
                     IF( lim_W > 0.0d0 ) dt_buffer = 1.0d0 / lim_W
 
                     dt_upper = MIN( dt_upper, dt_buffer )
 
+                    ! --- Boundary Limit ---
+
+                    dt_boundary = MIN( dt_boundary, dt_upper, dt_lower )
+
                     ! --- Accuracy Limit ---
               
-                    LNMax = ABS( CpS ) / MAX( NN, 1.0d-16 )
+!                    LNMax = ABS( CpS ) / MAX( NN, 1.0d-16 )
+!
+!                    dt_buffer = Diff_FE / ( 2.0d0 * LNMax ) + &
+!                           SQRT( Diff_FE / ( LAMB * LNMax ) + &
+!                                 Diff_FE * Diff_FE &
+!                                 / ( 4.0d0 * LNMax * LNMax ) )
+!
+!                    dt_accur = MIN( dt_accur, dt_buffer )
 
-                    dt_buffer = Diff_FE / ( 2.0d0 * LNMax ) + &
-                           SQRT( Diff_FE / ( LAMB * LNMax ) + &
-                                 Diff_FE * Diff_FE &
-                                 / ( 4.0d0 * LNMax * LNMax ) )
-
-                    dt_accur = MIN( dt_accur, dt_buffer )
-
-                    dt_buffer = MIN( dt_boundary,  dt_upper, dt_lower, dt_accur )
+                    dt_buffer = MIN( dt_boundary, dt_accur )
 
                     IF( dt > dt_buffer )THEN
                       dt = dt_buffer 
