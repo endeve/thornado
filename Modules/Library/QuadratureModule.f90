@@ -12,6 +12,7 @@ MODULE QuadratureModule
   REAL(DP), PUBLIC, DIMENSION(1:4) :: xG4, wG4 ! 4-Point Gauss
   REAL(DP), PUBLIC, DIMENSION(1:5) :: xG5, wG5 ! 5-Point Gauss
 
+  REAL(DP), PUBLIC, DIMENSION(1:1) :: xL1, wL1 ! 1-Point Lobatto (Gauss)
   REAL(DP), PUBLIC, DIMENSION(1:2) :: xL2, wL2 ! 2-Point Lobatto
   REAL(DP), PUBLIC, DIMENSION(1:3) :: xL3, wL3 ! 3-Point Lobatto
   REAL(DP), PUBLIC, DIMENSION(1:4) :: xL4, wL4 ! 4-Point Lobatto
@@ -88,8 +89,16 @@ CONTAINS
     wG5(4) = wG5(2)
     wG5(5) = wG5(1)
 
+    !**********************************************
+    ! 1-Point Gauss-Lobatto Quadrature
+    !**********************************************
+
+    xL1(1) = 0.0_DP
+
+    wL1(1) = 1.0_DP
+
     !*************************************************
-    ! 2-Point Gauss-Lobatto-Quadrature
+    ! 2-Point Gauss-Lobatto Quadrature
     !*************************************************
 
     xL2(1) = - 0.5_DP
@@ -99,7 +108,7 @@ CONTAINS
     wL2(2) = 0.5_DP
 
     !*************************************************
-    ! 3-Point Gauss-Lobatto-Quadrature
+    ! 3-Point Gauss-Lobatto Quadrature
     !*************************************************
 
     xL3(1) = - 0.5_DP
@@ -111,7 +120,7 @@ CONTAINS
     wL3(3) = 1.0_DP / 6.0_DP
 
     !*************************************************
-    ! 4-Point Gauss-Lobatto-Quadrature
+    ! 4-Point Gauss-Lobatto Quadrature
     !*************************************************
 
     xL4(1) = - 0.5_DP
@@ -125,7 +134,7 @@ CONTAINS
     wL4(4) = 1.0_DP / 12.0_DP
 
     !*************************************************
-    ! 5-Point Gauss-Lobatto-Quadrature
+    ! 5-Point Gauss-Lobatto Quadrature
     !*************************************************
 
     xL5(1) = - 0.5_DP
@@ -143,19 +152,19 @@ CONTAINS
   END SUBROUTINE InitializeQuadratures
 
 
-  SUBROUTINE GetQuadrature( nQ, xQ, wQ, QuadratureNameOption )
+  SUBROUTINE GetQuadrature( nQ, xQ, wQ, QuadratureName_Option )
 
     INTEGER, INTENT(in)                    :: nQ
     REAL(DP), DIMENSION(nQ), INTENT(inout) :: xQ, wQ
-    CHARACTER(32), INTENT(in), OPTIONAL    :: QuadratureNameOption
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL    :: QuadratureName_Option
 
     CHARACTER(32) :: QuadratureName
 
     CALL InitializeQuadratures
 
     QuadratureName = 'Gaussian'
-    IF( PRESENT( QuadratureNameOption ) ) &
-      QuadratureName = TRIM( QuadratureNameOption )
+    IF( PRESENT( QuadratureName_Option ) ) &
+      QuadratureName = TRIM( QuadratureName_Option )
 
     SELECT CASE ( TRIM( QuadratureName ) )
       CASE ( 'Gaussian' )

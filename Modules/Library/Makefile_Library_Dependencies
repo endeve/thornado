@@ -7,6 +7,12 @@ UtilitiesModule.o: \
   ProgramHeaderModule.o \
   UtilitiesModule.f90
 
+ReferenceElementModule.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModule.f90
+
 PolynomialBasisModule_Lagrange.o: \
   KindModule.o \
   ProgramHeaderModule.o \
