@@ -1,0 +1,27 @@
+include ../../../Build/Makefile_Build
+
+all: SineWaveDiffusion1D \
+     SineWaveDamping1D
+
+SineWaveDiffusion1D: \
+	$(thornado) InitializationModule.o \
+	ErrorAnalysisModule.o SineWaveDiffusion1D.o
+	$(FLINKER) $(FLAGS) -o SineWaveDiffusion1D_$(MACHINE) \
+	$(thornado) InitializationModule.o \
+	ErrorAnalysisModule.o SineWaveDiffusion1D.o \
+	$(LIBRARIES)
+
+SineWaveDamping1D: \
+	$(thornado) InitializationModule.o \
+	ErrorAnalysisModule.o SineWaveDamping1D.o
+	$(FLINKER) $(FLAGS) -o SineWaveDamping1D_$(MACHINE) \
+	$(thornado) InitializationModule.o \
+	ErrorAnalysisModule.o SineWaveDamping1D.o \
+	$(LIBRARIES)
+
+clean:
+	rm -f *.o *.mod *.ld
+
+clobber: clean
+	rm -f SineWaveDiffusion1D_$(MACHINE)
+	rm -f SineWaveDamping1D_$(MACHINE)
