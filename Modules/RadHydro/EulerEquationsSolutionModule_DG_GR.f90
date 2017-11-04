@@ -248,8 +248,8 @@ CONTAINS
                                    AlphaMns,                    &
                                    uPF_L( iNodeX, iPF_V1 ),     &
                                    uPF_R( iNodeX, iPF_V1 ),     &
-                                   uGF_L( iNodeX, iGF_Beta_1 ), &
-                                   uGF_R( iNodeX, iGF_Beta_1 ), &
+!                                   uGF_L( iNodeX, iGF_Beta_1 ), &
+!                                   uGF_R( iNodeX, iGF_Beta_1 ), &
                                    uGF_L( iNodeX, iGF_Beta_1 ), &
                                    uGF_L( iNodeX, iGF_Gm_dd_11 ) )
 
@@ -402,8 +402,8 @@ CONTAINS
                                    AlphaMns,                    &
                                    uPF_L( iNodeX, iPF_V1 ),     &
                                    uPF_R( iNodeX, iPF_V1 ),     &
-                                   uGF_L( iNodeX, iGF_Beta_1 ), &
-                                   uGF_R( iNodeX, iGF_Beta_1 ), &
+!                                   uGF_L( iNodeX, iGF_Beta_1 ), &
+!                                   uGF_R( iNodeX, iGF_Beta_1 ), &
                                    uGF_R( iNodeX, iGF_Beta_1 ), &
                                    uGF_R( iNodeX, iGF_Gm_dd_11 ) )
 
