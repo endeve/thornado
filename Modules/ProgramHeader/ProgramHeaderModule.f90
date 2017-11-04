@@ -8,12 +8,16 @@ MODULE ProgramHeaderModule
   CHARACTER(LEN=32), PUBLIC :: ProgramName = 'thornado'
 
   CHARACTER(LEN=*), PUBLIC, PARAMETER :: &
-    GeometryName = 'Cartesian'
+    GeometryName = 'CARTESIAN'
 
   INTEGER,  DIMENSION(3), PUBLIC :: nX      = [ 8, 1, 1 ]
   INTEGER,  DIMENSION(3), PUBLIC :: nNodesX = [ 1, 1, 1 ]
   INTEGER,  DIMENSION(3), PUBLIC :: swX     = [ 1, 0, 0 ]
   INTEGER,  DIMENSION(3), PUBLIC :: bcX     = [ 1, 0, 0 ]
+  INTEGER,  DIMENSION(3), PUBLIC :: iX_B0
+  INTEGER,  DIMENSION(3), PUBLIC :: iX_B1
+  INTEGER,  DIMENSION(3), PUBLIC :: iX_E0
+  INTEGER,  DIMENSION(3), PUBLIC :: iX_E1
   REAL(DP), DIMENSION(3), PUBLIC :: xL      = [ 0.0d0, 0.0d0, 0.0d0 ]
   REAL(DP), DIMENSION(3), PUBLIC :: xR      = [ 1.0d0, 1.0d0, 1.0d0 ]
   REAL(DP), DIMENSION(3), PUBLIC :: zoomX   = [ 1.0d0, 1.0d0, 1.0d0 ]
@@ -22,6 +26,10 @@ MODULE ProgramHeaderModule
   INTEGER,  PUBLIC :: nNodesE = 1
   INTEGER,  PUBLIC :: swE     = 0
   INTEGER,  PUBLIC :: bcE     = 0
+  INTEGER,  PUBLIC :: iE_B0
+  INTEGER,  PUBLIC :: iE_B1
+  INTEGER,  PUBLIC :: iE_E0
+  INTEGER,  PUBLIC :: iE_E1
   REAL(DP), PUBLIC :: eL      = 0.0d0
   REAL(DP), PUBLIC :: eR      = 1.0d0
   REAL(DP), PUBLIC :: ZoomE   = 1.0d0
@@ -74,6 +82,9 @@ CONTAINS
       swX = swX_Option
     END IF
 
+    iX_B0 = 1;  iX_B1 = 1  - swX
+    iX_E0 = nX; iX_E1 = nX + swX
+
     IF( PRESENT( bcX_Option ) )THEN
       bcX = bcX_Option
     END IF
@@ -97,6 +108,9 @@ CONTAINS
     IF( PRESENT( swE_Option ) )THEN
       swE = swE_Option
     END IF
+
+    iE_B0 = 1;  iE_B1 = 1 - swE
+    iE_E0 = nE; iE_E1 = nE 
 
     IF( PRESENT( bcE_Option ) )THEN
       bcE = bcE_Option
