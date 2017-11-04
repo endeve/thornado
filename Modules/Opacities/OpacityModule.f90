@@ -5,6 +5,7 @@ MODULE OpacityModule
   USE OpacityModule_IDEAL, ONLY: &
     InitializeOpacities_IDEAL, &
     FinalizeOpacities_IDEAL, &
+    ComputeEmissivity_IDEAL, &
     ComputeAbsorptionOpacity_IDEAL, &
     ComputeScatteringOpacity_ES_IDEAL
   USE OpacityModule_TABLE, ONLY: &
@@ -45,6 +46,7 @@ MODULE OpacityModule
   ! ---
 
   PROCEDURE (ComputeOpacity_A), POINTER, PUBLIC :: &
+    ComputeEmissivity            => NULL(), &
     ComputeAbsorptionOpacity     => NULL(), &
     ComputeScatteringOpacity_ES  => NULL() ! --- Elastic Scattering
   PROCEDURE (ComputeOpacity_B), POINTER, PUBLIC :: &
@@ -77,6 +79,8 @@ CONTAINS
 
         CALL InitializeOpacities_IDEAL
 
+        ComputeEmissivity &
+          => ComputeEmissivity_IDEAL
         ComputeAbsorptionOpacity &
           => ComputeAbsorptionOpacity_IDEAL
         ComputeScatteringOpacity_ES &
@@ -115,7 +119,8 @@ CONTAINS
         CALL FinalizeOpacities_IDEAL
 
         NULLIFY &
-          ( ComputeAbsorptionOpacity, &
+          ( ComputeEmissivity, &
+            ComputeAbsorptionOpacity, &
             ComputeScatteringOpacity_ES )
 
       CASE( 'TABLE' )
