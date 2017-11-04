@@ -18,6 +18,8 @@ MODULE ProgramInitializationModule
     InitializeWeights
   USE QuadratureModule, ONLY: &
     InitializeQuadratures
+  USE ReferenceElementModule, ONLY: &
+    InitializeReferenceElement
   USE PolynomialBasisModule_Lagrange, ONLY: &
     InitializePolynomialBasis_Lagrange
   USE PolynomialBasisModule_Legendre, ONLY: &
@@ -101,7 +103,7 @@ CONTAINS
       EvolveFluid_Option, EvolveRadiation_Option, &
       ApplySlopeLimiter_Option, BetaTVB_Option, BetaTVD_Option, &
       ApplyPositivityLimiter_Option, nStages_SSP_RK_Option, &
-      nStages_SI_RK_Option )
+      nStages_SI_RK_Option, IMEX_Scheme_Option )
 
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: ProgramName_Option
     INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: nX_Option
@@ -144,6 +146,7 @@ CONTAINS
       ApplyPositivityLimiter_Option
     INTEGER,                INTENT(in), OPTIONAL :: nStages_SSP_RK_Option
     INTEGER,                INTENT(in), OPTIONAL :: nStages_SI_RK_Option
+    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: IMEX_Scheme_Option
 
     LOGICAL :: ActivateUnits
     INTEGER :: iDim
@@ -260,6 +263,10 @@ CONTAINS
     ! --- Quadratures ---
 
     CALL InitializeQuadratures
+
+    ! --- Reference Element ---
+
+    CALL InitializeReferenceElement
 
     ! --- Polynomial Basis ---
 
@@ -457,7 +464,9 @@ CONTAINS
              nStages_SSP_RK_Option &
                = nStages_SSP_RK_Option, &
              nStages_SI_RK_Option &
-               = nStages_SI_RK_Option )
+               = nStages_SI_RK_Option, &
+             IMEX_Scheme_Option &
+               = IMEX_Scheme_Option )
 
   END SUBROUTINE InitializeProgram
 

@@ -4,6 +4,7 @@ ProgramInitializationModule.o: \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   QuadratureModule.o \
+  ReferenceElementModule.o \
   PolynomialBasisModule_Lagrange.o \
   PolynomialBasisModule_Legendre.o \
   PolynomialBasisMappingModule.o \
