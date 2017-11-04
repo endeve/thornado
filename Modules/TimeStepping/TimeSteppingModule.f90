@@ -1,12 +1,14 @@
 MODULE TimeSteppingModule
 
   USE KindModule, ONLY: &
-    DP
+    DP, Zero, Fourth, Third
   USE UnitsModule, ONLY: &
     UnitsDisplay
   USE ProgramHeaderModule, ONLY: &
     nX, nDOFX, nNodes, &
-    nE, nDOF
+    nE, nDOF, &
+    iX_B0, iX_E0, &
+    iX_B1, iX_E1
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
@@ -36,10 +38,12 @@ MODULE TimeSteppingModule
     ApplyPositivityLimiter_Fluid
   USE RadiationEvolutionModule, ONLY: &
     ComputeRHS_Radiation, &
+    ComputeExplicitIncrement_Radiation, &
     ApplySlopeLimiter_Radiation, &
     ApplyPositivityLimiter_Radiation
   USE FluidRadiationCouplingModule, ONLY: &
-    CoupleFluidRadiation
+    CoupleFluidRadiation, &
+    ComputeImplicitIncrement_FluidRadiation
   USE BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Fluid, &
     ApplyBoundaryConditions_Radiation
@@ -54,12 +58,27 @@ MODULE TimeSteppingModule
   LOGICAL :: EvolveRadiation = .FALSE.
   INTEGER :: nStages_SSP_RK  = 1
   INTEGER :: nStages_SI_RK   = 1
+  INTEGER :: nDOF_SSP        = 0
+  INTEGER :: nStages_IMEX    = 1
+  INTEGER :: nDOF_IMEX       = 0
+  REAL(DP), DIMENSION(:),             ALLOCATABLE :: c_SSP
+  REAL(DP), DIMENSION(:),             ALLOCATABLE :: w_SSP
+  REAL(DP), DIMENSION(:),             ALLOCATABLE :: U_SSP
+  REAL(DP), DIMENSION(:,:),           ALLOCATABLE :: a_SSP
+  REAL(DP), DIMENSION(:,:),           ALLOCATABLE :: F_SSP
+  REAL(DP), DIMENSION(:),             ALLOCATABLE :: c_IM, c_EX
+  REAL(DP), DIMENSION(:),             ALLOCATABLE :: w_IM, w_EX
+  REAL(DP), DIMENSION(:),             ALLOCATABLE :: U_IMEX
+  REAL(DP), DIMENSION(:,:),           ALLOCATABLE :: a_IM, a_EX
+  REAL(DP), DIMENSION(:,:),           ALLOCATABLE :: F_IM, F_EX
   REAL(DP), DIMENSION(:,:,:,:,:),     ALLOCATABLE :: uCF_0
   REAL(DP), DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE :: uCR_0
 
   PROCEDURE (TimeStepper), POINTER, PUBLIC :: &
     SSP_RK => NULL(), &
-    SI_RK  => NULL()
+    SI_RK  => NULL(), &
+    SSPRKs => NULL(), &
+    IMEX   => NULL()
 
   INTERFACE
     SUBROUTINE TimeStepper( t, dt )
@@ -79,13 +98,16 @@ CONTAINS
   SUBROUTINE InitializeTimeStepping &
                ( EvolveGravity_Option, EvolveFluid_Option, &
                  EvolveRadiation_Option, nStages_SSP_RK_Option, &
-                 nStages_SI_RK_Option )
+                 nStages_SI_RK_Option, IMEX_Scheme_Option )
 
-    LOGICAL, INTENT(in), OPTIONAL :: EvolveGravity_Option
-    LOGICAL, INTENT(in), OPTIONAL :: EvolveFluid_Option
-    LOGICAL, INTENT(in), OPTIONAL :: EvolveRadiation_Option
-    INTEGER, INTENT(in), OPTIONAL :: nStages_SSP_RK_Option
-    INTEGER, INTENT(in), OPTIONAL :: nStages_SI_RK_Option
+    LOGICAL,      INTENT(in), OPTIONAL :: EvolveGravity_Option
+    LOGICAL,      INTENT(in), OPTIONAL :: EvolveFluid_Option
+    LOGICAL,      INTENT(in), OPTIONAL :: EvolveRadiation_Option
+    INTEGER,      INTENT(in), OPTIONAL :: nStages_SSP_RK_Option
+    INTEGER,      INTENT(in), OPTIONAL :: nStages_SI_RK_Option
+    CHARACTER(*), INTENT(in), OPTIONAL :: IMEX_Scheme_Option
+
+    CHARACTER(32) :: IMEX_Scheme
 
     IF( PRESENT( EvolveGravity_Option ) )THEN
       EvolveGravity = EvolveGravity_Option
@@ -106,6 +128,8 @@ CONTAINS
     WRITE(*,'(A5,A19,L1)') '', &
       'Evolve Radiation = ', EvolveRadiation
     WRITE(*,*)
+
+    nStages_SSP_RK = 0
 
     IF( PRESENT( nStages_SSP_RK_Option ) )THEN
 
@@ -159,14 +183,36 @@ CONTAINS
 
     END SELECT
 
+    CALL InitializeTimeStepper_SSPRK( nStages_SSP_RK )
+
+    IMEX_Scheme = 'DUMMY'
+    IF( PRESENT( IMEX_Scheme_Option ) )THEN
+
+      IMEX_Scheme = TRIM( IMEX_Scheme_Option )
+
+    END IF
+
+    CALL InitializeTimeStepper_IMEX( IMEX_Scheme )
+
   END SUBROUTINE InitializeTimeStepping
 
 
   SUBROUTINE FinalizeTimeStepping
 
-    NULLIFY( SSP_RK, SI_RK )
+    NULLIFY( SSP_RK, SI_RK, IMEX )
 
   END SUBROUTINE FinalizeTimeStepping
+
+
+  SUBROUTINE TimeStepper_DUMMY( t, dt )
+
+    REAL(DP), INTENT(in) :: t, dt
+
+    WRITE(*,*)
+    WRITE(*,'(A5,A)') '', 'TimeStepper_DUMMY'
+    WRITE(*,*)
+
+  END SUBROUTINE TimeStepper_DUMMY
 
 
   SUBROUTINE EvolveFields &
@@ -188,16 +234,19 @@ CONTAINS
       dt_fixed = dt_fixed_Option
     END IF
 
-    ASSOCIATE( U => UnitsDisplay )
+    ASSOCIATE( UD => UnitsDisplay )
 
     WRITE(*,*)
     WRITE(*,'(A4,A21)') '', 'INFO: Evolving Fields'
     WRITE(*,*)
     WRITE(*,'(A6,A10,ES10.4E2,A1,2A2,A8,ES10.4E2,&
               &A1,2A2,A11,ES10.4E2,A1,A2)') &
-      '', 't_begin = ',  t_begin  / U % TimeUnit, '', TRIM( U % TimeLabel ), &
-      '', 't_end = ',    t_end    / U % TimeUnit, '', TRIM( U % TimeLabel ), &
-      '', 'dt_write = ', dt_write / U % TimeUnit, '', TRIM( U % TimeLabel )
+      '', 't_begin = ',  &
+      t_begin  / UD % TimeUnit, '', TRIM( UD % TimeLabel ), &
+      '', 't_end = ',    &
+      t_end    / UD % TimeUnit, '', TRIM( UD % TimeLabel ), &
+      '', 'dt_write = ', &
+      dt_write / UD % TimeUnit, '', TRIM( UD % TimeLabel )
     WRITE(*,*)
 
     iCycle  = 0
@@ -212,7 +261,10 @@ CONTAINS
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
     END IF
 
@@ -270,8 +322,8 @@ CONTAINS
 
         WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A2,A2,A5,ES12.6E2,A1,A2)') &
           '', 'Cycle = ', iCycle, &
-          '', 't = ', t / U % TimeUnit, '', TRIM( U % TimeLabel ), &
-          '', 'dt = ', dt / U % TimeUnit, '', TRIM( U % TimeLabel )
+          '', 't = ',  t  / UD % TimeUnit, '', TRIM( UD % TimeLabel ), &
+          '', 'dt = ', dt / UD % TimeUnit, '', TRIM( UD % TimeLabel )
 
         CALL ComputeGlobalTally( Time = t )
 
@@ -305,7 +357,7 @@ CONTAINS
 
     WRITE(*,*)
     WRITE(*,'(A6,A15,ES10.4E2,A1,A2,A6,I8.8,A7,A4,ES10.4E2,A2)') &
-      '', 'Evolved to t = ', t / U % TimeUnit, '', TRIM( U % TimeLabel ), &
+      '', 'Evolved to t = ', t / UD % TimeUnit, '', TRIM( UD % TimeLabel ), &
       ' with ', iCycle, ' cycles', &
       ' in ', WallTime(1)-WallTime(0), ' s'
     WRITE(*,*)
@@ -322,7 +374,7 @@ CONTAINS
              WriteFluidFields_Option = EvolveFluid, &
              WriteRadiationFields_Option = EvolveRadiation )
 
-    END ASSOCIATE ! U
+    END ASSOCIATE ! UD
 
   END SUBROUTINE EvolveFields
 
@@ -480,7 +532,9 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation( t )
 
       CALL ComputeRHS_Radiation &
-             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR, dU = rhsCR )
 
     END IF
 
@@ -507,9 +561,15 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( t + dt, LimiterBC_Option = .TRUE. )
 
-      CALL ApplySlopeLimiter_Radiation
+      CALL ApplySlopeLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
     END IF
 
@@ -540,7 +600,9 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation( t )
 
       CALL ComputeRHS_Radiation &
-             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR, dU = rhsCR )
 
     END IF
 
@@ -573,9 +635,15 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( t + dt, LimiterBC_Option = .TRUE. )
 
-      CALL ApplySlopeLimiter_Radiation
+      CALL ApplySlopeLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
     END IF
 
@@ -595,7 +663,9 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation( t + dt )
 
       CALL ComputeRHS_Radiation &
-             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR, dU = rhsCR )
 
     END IF
 
@@ -628,9 +698,15 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( t + dt, LimiterBC_Option = .TRUE. )
 
-      CALL ApplySlopeLimiter_Radiation
+      CALL ApplySlopeLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
     END IF
 
@@ -661,7 +737,9 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation( t )
 
       CALL ComputeRHS_Radiation &
-             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR, dU = rhsCR )
 
     END IF
 
@@ -694,9 +772,15 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( t + dt, LimiterBC_Option = .TRUE. )
 
-      CALL ApplySlopeLimiter_Radiation
+      CALL ApplySlopeLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
     END IF
 
@@ -716,7 +800,9 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation( t + dt )
 
       CALL ComputeRHS_Radiation &
-             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR, dU = rhsCR )
 
     END IF
 
@@ -749,9 +835,15 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( t + 0.5_DP * dt, LimiterBC_Option = .TRUE. )
 
-      CALL ApplySlopeLimiter_Radiation
+      CALL ApplySlopeLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
     END IF
 
@@ -771,7 +863,9 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation( t + 0.5_DP * dt )
 
       CALL ComputeRHS_Radiation &
-             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR, dU = rhsCR )
 
     END IF
 
@@ -804,9 +898,15 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( t + dt, LimiterBC_Option = .TRUE. )
 
-      CALL ApplySlopeLimiter_Radiation
+      CALL ApplySlopeLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
     END IF
 
@@ -866,7 +966,9 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation( t )
 
       CALL ComputeRHS_Radiation &
-             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR, dU = rhsCR )
 
     END IF
 
@@ -879,14 +981,24 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( t + dt, LimiterBC_Option = .TRUE. )
 
-      CALL ApplySlopeLimiter_Radiation
+      CALL ApplySlopeLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
     END IF
 
     CALL CoupleFluidRadiation &
-           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+           ( dt = dt, &
+             iX_B0 = iX_B0, iX_E0 = iX_E0, &
+             iX_B1 = iX_B1, iX_E1 = iX_E1, &
+             U_F = uCF, dU_F = rhsCF, &
+             U_R = uCR, dU_R = rhsCR, &
              EvolveFluid_Option = EvolveFluid )
 
     CALL Finalize_SI_RK
@@ -909,7 +1021,9 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation( t )
 
       CALL ComputeRHS_Radiation &
-             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR, dU = rhsCR )
 
     END IF
 
@@ -922,19 +1036,32 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( t + dt, LimiterBC_Option = .TRUE. )
 
-      CALL ApplySlopeLimiter_Radiation
+      CALL ApplySlopeLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
     END IF
 
     CALL CoupleFluidRadiation &
-           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+           ( dt = dt, &
+             iX_B0 = iX_B0, iX_E0 = iX_E0, &
+             iX_B1 = iX_B1, iX_E1 = iX_E1, &
+             U_F = uCF, dU_F = rhsCF, &
+             U_R = uCR, dU_R = rhsCR, &
              EvolveFluid_Option = EvolveFluid )
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
     END IF
 
@@ -945,7 +1072,9 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation( t + dt )
 
       CALL ComputeRHS_Radiation &
-             ( iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ] )
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR, dU = rhsCR )
 
     END IF
 
@@ -958,19 +1087,32 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation &
              ( t + dt, LimiterBC_Option = .TRUE. )
 
-      CALL ApplySlopeLimiter_Radiation
+      CALL ApplySlopeLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
     END IF
 
     CALL CoupleFluidRadiation &
-           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+           ( dt = dt, &
+             iX_B0 = iX_B0, iX_E0 = iX_E0, &
+             iX_B1 = iX_B1, iX_E1 = iX_E1, &
+             U_F = uCF, dU_F = rhsCF, &
+             U_R = uCR, dU_R = rhsCR, &
              EvolveFluid_Option = EvolveFluid )
 
     IF( EvolveRadiation )THEN
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
 
     END IF
 
@@ -1120,10 +1262,584 @@ CONTAINS
     REAL(DP), INTENT(in) :: t, dt
 
     CALL CoupleFluidRadiation &
-           ( dt, iX_Begin = [ 1, 1, 1 ], iX_End = [ nX(1), nX(2), nX(3) ], &
+           ( dt = dt, &
+             iX_B0 = iX_B0, iX_E0 = iX_E0, &
+             iX_B1 = iX_B1, iX_E1 = iX_E1, &
+             U_F = uCF, dU_F = rhsCF, &
+             U_R = uCR, dU_R = rhsCR, &
              EvolveFluid_Option = EvolveFluid )
 
   END SUBROUTINE BackwardEuler
+
+
+  SUBROUTINE InitializeTimeStepper_SSPRK( nStages )
+
+    INTEGER, INTENT(in) :: nStages
+
+    INTEGER :: i
+
+    IF( nStages == 0 )THEN
+
+      SSPRKs => TimeStepper_DUMMY
+      RETURN
+
+    ELSE
+
+      CALL InitializeSSPRK_Scheme( nStages )
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A)') '', 'Butcher Table:'
+      WRITE(*,'(A5,A)') '', '--------------'
+      DO i = 1, nStages
+        WRITE(*,'(A5,4ES14.4E3)') '', c_SSP(i), a_SSP(i,1:nStages)
+      END DO
+      WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_SSP(1:nStages)
+
+      nDOF_SSP = 0
+
+      IF( EvolveRadiation )THEN
+
+        nDOF_SSP &
+          = nDOF_SSP &
+              + nDOF * nE * PRODUCT( nX ) * nCR * nSpecies
+
+      END IF
+
+      IF( EvolveFluid )THEN
+
+        nDOF_SSP &
+          = nDOF_SSP &
+              + nDOFX * PRODUCT( nX ) * nCF
+
+      END IF
+
+      ALLOCATE( U_SSP(nDOF_SSP) )
+      ALLOCATE( F_SSP(nDOF_SSP,nStages) )
+
+      SSPRKs => SSPRKs_Radiation
+
+    END IF
+
+  END SUBROUTINE InitializeTimeStepper_SSPRK
+
+
+  SUBROUTINE InitializeSSPRK_Scheme( nStages )
+
+    INTEGER, INTENT(in) :: nStages
+
+    INTEGER :: iS
+
+    CALL AllocateButcherTables_SSPRK( nStages )
+
+    SELECT CASE ( nStages )
+      CASE ( 1 )
+
+        a_SSP(1,1) = 0.0_DP
+        w_SSP(1)   = 1.0_DP
+
+      CASE ( 2 )
+
+        a_SSP(1,1:2) = [ 0.0_DP, 0.0_DP ]
+        a_SSP(2,1:2) = [ 1.0_DP, 0.0_DP ]
+        w_SSP(1:2)   = [ 0.5_DP, 0.5_DP ]
+
+      CASE ( 3 )
+
+        a_SSP(1,1:3) = [ 0.00_DP, 0.00_DP, 0.00_DP ]
+        a_SSP(2,1:3) = [ 1.00_DP, 0.00_DP, 0.00_DP ]
+        a_SSP(3,1:3) = [ 0.25_DP, 0.25_DP, 0.00_DP ]
+        w_SSP(1:3)   = [ 1.0_DP / 6.0_DP, &
+                         1.0_DP / 6.0_DP, &
+                         2.0_DP / 3.0_DP ]
+
+    END SELECT
+
+    DO iS = 1, nStages
+      c_SSP(iS) = SUM( a_SSP(iS,1:iS-1) )
+    END DO
+
+  END SUBROUTINE InitializeSSPRK_Scheme
+
+
+  SUBROUTINE AllocateButcherTables_SSPRK( nStages )
+
+    INTEGER, INTENT(in) :: nStages
+
+    ALLOCATE( a_SSP(nStages,nStages) )
+    ALLOCATE( c_SSP(nStages) )
+    ALLOCATE( w_SSP(nStages) )
+
+    a_SSP = Zero
+    c_SSP = Zero
+    w_SSP = Zero
+
+  END SUBROUTINE AllocateButcherTables_SSPRK
+
+
+  SUBROUTINE InitializeSSPRK_Step
+
+    ALLOCATE( uCR_0(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies) )
+
+    uCR_0(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies) &
+      = uCR(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies)
+
+    U_SSP = Zero
+    F_SSP = Zero
+
+  END SUBROUTINE InitializeSSPRK_Step
+
+
+  SUBROUTINE FinalizeSSPRK_Step
+
+    DEALLOCATE( uCR_0 )
+
+  END SUBROUTINE FinalizeSSPRK_Step
+
+
+  SUBROUTINE SSPRKs_Radiation( t, dt )
+
+    REAL(DP), INTENT(in) :: t, dt
+
+    INTEGER :: iS, jS
+
+    CALL InitializeSSPRK_Step
+
+    DO iS = 1, nStages_SSP_RK
+
+      CALL MapToStage_Radiation( iX_B0, uCR_0, U_SSP )
+
+      DO jS = 1, iS - 1
+
+        IF( a_SSP(iS,jS) .NE. Zero )THEN
+
+          U_SSP(:) = U_SSP(:) + dt * a_SSP(iS,jS) * F_SSP(:,jS)
+
+        END IF
+
+      END DO
+
+      IF( iS > 1 )THEN
+
+        ! --- Apply Limiters ---
+
+        CALL MapFromStage_Radiation( iX_B1, uCR, U_SSP )
+
+        CALL ApplyBoundaryConditions_Radiation &
+               ( t + c_SSP(iS) * dt )
+
+        CALL ApplySlopeLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
+
+        CALL ApplyPositivityLimiter_Radiation &
+             ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+               iX_B1 = iX_B1, iX_E1 = iX_E1, &
+               U = uCR )
+
+        CALL MapToStage_Radiation( iX_B1, uCR, U_SSP )
+
+      END IF
+
+      IF( ANY( a_SSP(:,iS) .NE. Zero ) .OR. ( w_SSP(iS) .NE. Zero ) )THEN
+
+        ! --- Explicit Solve ---
+
+        CALL MapFromStage_Radiation( iX_B1, uCR, U_SSP )
+
+        CALL ApplyBoundaryConditions_Radiation &
+               ( t + c_SSP(iS) * dt )
+
+        CALL ComputeExplicitIncrement_Radiation &
+               ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+                 iX_B1 = iX_B1, iX_E1 = iX_E1, &
+                 U = uCR, dU = rhsCR )
+
+        CALL MapToStage_Radiation( iX_B0, rhsCR, F_SSP(:,iS) )
+
+      END IF
+
+    END DO
+
+    CALL MapToStage_Radiation( iX_B0, uCR_0, U_SSP )
+
+    DO iS = 1, nStages_SSP_RK
+
+      IF( w_SSP(iS) .NE. Zero )THEN
+
+        U_SSP(:) = U_SSP(:) + dt * w_SSP(iS) * F_SSP(:,iS)
+
+      END IF
+
+    END DO
+
+    CALL MapFromStage_Radiation( iX_B1, uCR, U_SSP )
+
+    ! --- Apply Limiters ---
+
+    CALL ApplyBoundaryConditions_Radiation &
+           ( t + dt )
+
+    CALL ApplySlopeLimiter_Radiation &
+           ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+             iX_B1 = iX_B1, iX_E1 = iX_E1, &
+             U = uCR )
+
+    CALL ApplyPositivityLimiter_Radiation &
+           ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+             iX_B1 = iX_B1, iX_E1 = iX_E1, &
+             U = uCR )
+
+    CALL FinalizeSSPRK_Step
+
+  END SUBROUTINE SSPRKs_Radiation
+
+
+  SUBROUTINE InitializeTimeStepper_IMEX( Scheme )
+
+    CHARACTER(LEN=*), INTENT(in) :: Scheme
+
+    INTEGER :: i
+
+    IF( TRIM( Scheme ) == 'DUMMY' )THEN
+
+      IMEX => TimeStepper_DUMMY
+      RETURN
+
+    ELSE
+
+      CALL InitializeIMEX_Scheme( TRIM( Scheme ) )
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A,A)') '', 'IMEX Scheme: ', TRIM( Scheme )
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A)') '', 'Implicit Butcher Table:'
+      WRITE(*,'(A5,A)') '', '-----------------------'
+      DO i = 1, nStages_IMEX
+        WRITE(*,'(A5,4ES14.4E3)') '', c_IM(i), a_IM(i,1:nStages_IMEX)
+      END DO
+      WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_IM(1:nStages_IMEX)
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A)') '', 'Explicit Butcher Table:'
+      WRITE(*,'(A5,A)') '', '-----------------------'
+      DO i = 1, nStages_IMEX
+        WRITE(*,'(A5,4ES14.4E3)') '', c_EX(i), a_EX(i,1:nStages_IMEX)
+      END DO
+      WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_EX(1:nStages_IMEX)
+
+      nDOF_IMEX = 0
+
+      IF( EvolveRadiation )THEN
+
+        nDOF_IMEX &
+          = nDOF_IMEX &
+              + nDOF * nE * PRODUCT( nX ) * nCR * nSpecies
+
+      END IF
+
+      IF( EvolveFluid )THEN
+
+        nDOF_IMEX &
+          = nDOF_IMEX &
+              + nDOFX * PRODUCT( nX ) * nCF
+
+      END IF
+
+      ALLOCATE( U_IMEX(nDOF_IMEX) )
+      ALLOCATE( F_IM  (nDOF_IMEX,nStages_IMEX) )
+      ALLOCATE( F_EX  (nDOF_IMEX,nStages_IMEX) )
+
+      IMEX => IMEX_Radiation
+
+    END IF
+
+  END SUBROUTINE InitializeTimeStepper_IMEX
+
+
+  SUBROUTINE InitializeIMEX_Scheme( Scheme )
+
+    CHARACTER(LEN=*), INTENT(in) :: Scheme
+
+    INTEGER :: i
+
+    SELECT CASE( TRIM( Scheme ) )
+      CASE ( 'IMEX_SIRK2' )
+
+        nStages_IMEX = 3
+
+        CALL AllocateButcherTables_IMEX( nStages_IMEX )
+
+        a_IM(1,1:3) = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        a_IM(2,1:3) = [ 0.0_DP, 1.0_DP, 0.0_DP ]
+        a_IM(3,1:3) = [ 0.0_DP, 1.0_DP, 1.0_DP ]
+        w_IM(1:3)   = [ 0.0_DP, 0.5_DP, 0.5_DP ]
+        DO i = 1, nStages_IMEX
+          c_IM(i) = SUM( a_IM(i,1:i) )
+        END DO
+
+        a_EX(1,1:3) = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        a_EX(2,1:3) = [ 1.0_DP, 0.0_DP, 0.0_DP ]
+        a_EX(3,1:3) = [ 1.0_DP, 1.0_DP, 0.0_DP ]
+        w_EX(1:3)   = [ 0.5_DP, 0.5_DP, 0.0_DP ]
+        DO i = 1, nStages_IMEX
+          c_EX(i) = SUM( a_EX(i,1:i-1) )
+        END DO
+
+      CASE( 'IMEX_2332' )
+
+        nStages_IMEX = 3
+
+        CALL AllocateButcherTables_IMEX( nStages_IMEX )
+
+        ! --- 2332: Pareschi & Russo (2005) ---
+
+        a_IM(1,1:3) = [ Fourth, 0.0_DP, 0.0_DP ]
+        a_IM(2,1:3) = [ 0.0_DP, Fourth, 0.0_DP ]
+        a_IM(3,1:3) = [ Third,  Third,  Third  ]
+        w_IM(1:3)   = [ Third,  Third,  Third  ]
+        DO i = 1, nStages_IMEX
+          c_IM(i) = SUM( a_IM(i,1:i) )
+        END DO
+
+        a_EX(1,1:3) = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        a_EX(2,1:3) = [ 0.5_DP, 0.0_DP, 0.0_DP ]
+        a_EX(3,1:3) = [ 0.5_DP, 0.5_DP, 0.0_DP ]
+        w_EX(1:3)   = [ Third,  Third,  Third  ]
+        DO i = 1, nStages_IMEX
+          c_EX(i) = SUM( a_EX(i,1:i-1) )
+        END DO
+
+      CASE( 'IMEX_RKCB2' )
+
+        nStages_IMEX = 3
+
+        CALL AllocateButcherTables_IMEX( nStages_IMEX )
+
+        ! --- RKCB2: Cavaglieri & Bewley (2015) ---
+
+        a_IM(1,1:3) = [ 0.0_DP, 0.0_DP,          0.0_DP ]
+        a_IM(2,1:3) = [ 0.0_DP, 0.4_DP,          0.0_DP ]
+        a_IM(3,1:3) = [ 0.0_DP, 5.0_DP / 6.0_DP, 1.0_DP / 6.0_DP ]
+        w_IM(1:3)   = [ 0.0_DP, 5.0_DP / 6.0_DP, 1.0_DP / 6.0_DP ]
+        DO i = 1, nStages_IMEX
+          c_IM(i) = SUM( a_IM(i,1:i) )
+        END DO
+
+        a_EX(1,1:3) = [ 0.0_DP, 0.0_DP,          0.0_DP ]
+        a_EX(2,1:3) = [ 0.4_DP, 0.0_DP,          0.0_DP ]
+        a_EX(3,1:3) = [ 0.0_DP, 1.0_DP,          0.0_DP ]
+        w_EX(1:3)   = [ 0.0_DP, 5.0_DP / 6.0_DP, 1.0_DP / 6.0_DP ]
+        DO i = 1, nStages_IMEX
+          c_EX(i) = SUM( a_EX(i,1:i-1) )
+        END DO
+
+    END SELECT
+
+  END SUBROUTINE InitializeIMEX_Scheme
+
+
+  SUBROUTINE AllocateButcherTables_IMEX( nStages )
+
+    INTEGER, INTENT(in) :: nStages
+
+    ALLOCATE( a_IM(nStages,nStages) )
+    ALLOCATE( a_EX(nStages,nStages) )
+
+    ALLOCATE( c_IM(nStages) )
+    ALLOCATE( c_EX(nStages) )
+
+    ALLOCATE( w_IM(nStages) )
+    ALLOCATE( w_EX(nStages) )
+
+    a_IM = Zero; a_EX = Zero
+    c_IM = Zero; c_EX = Zero
+    w_IM = Zero; w_EX = Zero
+
+  END SUBROUTINE AllocateButcherTables_IMEX
+
+
+  SUBROUTINE InitializeIMEX_Step
+
+    ALLOCATE( uCR_0(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies) )
+
+    uCR_0(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies) &
+      = uCR(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies)
+
+    U_IMEX = Zero
+    F_IM   = Zero
+    F_EX   = Zero
+
+  END SUBROUTINE InitializeIMEX_Step
+
+
+  SUBROUTINE FinalizeIMEX_Step
+
+    DEALLOCATE( uCR_0 )
+
+  END SUBROUTINE FinalizeIMEX_Step
+
+
+  SUBROUTINE IMEX_Radiation( t, dt )
+
+    REAL(DP), INTENT(in) :: t, dt
+
+    INTEGER :: iS, jS
+
+    CALL InitializeIMEX_Step
+
+    DO iS = 1, nStages_IMEX
+
+      CALL MapToStage_Radiation( iX_B0, uCR_0, U_IMEX )
+
+      DO jS = 1, iS - 1
+
+        IF( a_IM(iS,jS) .NE. Zero )THEN
+
+          U_IMEX(:) = U_IMEX(:) + dt * a_IM(iS,jS) * F_IM(:,jS)
+
+        END IF
+
+        IF( a_EX(iS,jS) .NE. Zero )THEN
+
+          U_IMEX(:) = U_IMEX(:) + dt * a_EX(iS,jS) * F_EX(:,jS)
+
+        END IF
+
+      END DO
+
+      IF( ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero ) )THEN
+
+        ! --- Implicit Solve ---
+
+        CALL MapFromStage_Radiation( iX_B1, uCR, U_IMEX )
+
+        CALL ComputeImplicitIncrement_FluidRadiation &
+               ( dt = a_IM(iS,iS) * dt, &
+                 iX_B0 = iX_B0, iX_E0 = iX_E0, &
+                 iX_B1 = iX_B1, iX_E1 = iX_E1, &
+                 U_F = uCF, dU_F = rhsCF, &
+                 U_R = uCR, dU_R = rhsCR )
+
+        CALL MapToStage_Radiation( iX_B0, rhsCR, F_IM(:,iS) )
+
+        U_IMEX(:) = U_IMEX(:) + dt * a_IM(iS,iS) * F_IM(:,iS)
+
+      END IF
+
+      IF( ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero ) )THEN
+
+        ! --- Explicit Solve ---
+
+        CALL MapFromStage_Radiation( iX_B1, uCR, U_IMEX )
+
+        CALL ApplyBoundaryConditions_Radiation &
+               ( t + c_EX(iS) * dt )
+
+        CALL ComputeExplicitIncrement_Radiation &
+               ( iX_B0 = iX_B0, iX_E0 = iX_E0, &
+                 iX_B1 = iX_B1, iX_E1 = iX_E1, &
+                 U = uCR, dU = rhsCR )
+
+        CALL MapToStage_Radiation( iX_B0, rhsCR, F_EX(:,iS) )
+
+      END IF
+
+    END DO
+
+    CALL MapToStage_Radiation( iX_B0, uCR_0, U_IMEX )
+
+    DO iS = 1, nStages_IMEX
+
+      IF( w_IM(iS) .NE. Zero )THEN
+
+        U_IMEX(:) = U_IMEX(:) + dt * w_IM(iS) * F_IM(:,iS)
+
+      END IF
+
+      IF( w_EX(iS) .NE. Zero )THEN
+
+        U_IMEX(:) = U_IMEX(:) + dt * w_EX(iS) * F_EX(:,iS)
+
+      END IF
+
+    END DO
+
+    CALL MapFromStage_Radiation( iX_B1, uCR, U_IMEX )
+
+    CALL FinalizeIMEX_Step
+
+  END SUBROUTINE IMEX_Radiation
+
+
+  SUBROUTINE MapToStage_Radiation( iX_B, U_R, U )
+
+    INTEGER,  INTENT(in)  :: iX_B(3)
+    REAL(DP), INTENT(in)  :: U_R(:,:,iX_B(1):,iX_B(2):,iX_B(3):,:,:)
+    REAL(DP), INTENT(out) :: U(:)
+
+    INTEGER :: i, iNode, iE, iX1, iX2, iX3, iCR, iS
+
+    i = 1
+
+    DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+        DO iX3 = 1, nX(3)
+          DO iX2 = 1, nX(2)
+            DO iX1 = 1, nX(1)
+              DO iE = 1, nE
+                DO iNode = 1, nDOF
+
+                  U(i) = U_R(iNode,iE,iX1,iX2,iX3,iCR,iS)
+
+                  i = i + 1
+
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE MapToStage_Radiation
+
+
+  SUBROUTINE MapFromStage_Radiation( iX_B, U_R, U )
+
+    INTEGER,  INTENT(in)  :: iX_B(3)
+    REAL(DP), INTENT(out) :: U_R(:,:,iX_B(1):,iX_B(2):,iX_B(3):,:,:)
+    REAL(DP), INTENT(in)  :: U(:)
+
+    INTEGER :: i, iNode, iE, iX1, iX2, iX3, iCR, iS
+
+    i = 1
+
+    DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+        DO iX3 = 1, nX(3)
+          DO iX2 = 1, nX(2)
+            DO iX1 = 1, nX(1)
+              DO iE = 1, nE
+                DO iNode = 1, nDOF
+
+                  U_R(iNode,iE,iX1,iX2,iX3,iCR,iS) = U(i)
+
+                  i = i + 1
+
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE MapFromStage_Radiation
 
 
 END MODULE TimeSteppingModule
