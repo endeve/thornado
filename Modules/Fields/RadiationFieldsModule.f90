@@ -79,6 +79,9 @@ CONTAINS
     CALL CreateRadiationFields_Primitive( nX, swX, nE, swE )
     CALL CreateRadiationFields_Auxiliary( nX, swX, nE, swE )
 
+    ALLOCATE &
+      ( rhsCR(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),1:nCR,1:nSpecies) )
+
     ALLOCATE( Discontinuity(1:nE,1:nX(1),1:nX(2),1:nX(3)) )
     Discontinuity = 0.0_DP
 
@@ -100,14 +103,6 @@ CONTAINS
     END DO
 
     ALLOCATE( uCR &
-                (1:nDOF, &
-                 1-swE:nE+swE, &
-                 1-swX(1):nX(1)+swX(1), &
-                 1-swX(2):nX(2)+swX(2), &
-                 1-swX(3):nX(3)+swX(3), &
-                 1:nCR, 1:nSpecies) )
-
-    ALLOCATE( rhsCR &
                 (1:nDOF, &
                  1-swE:nE+swE, &
                  1-swX(1):nX(1)+swX(1), &
