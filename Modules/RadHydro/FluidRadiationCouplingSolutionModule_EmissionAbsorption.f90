@@ -76,11 +76,23 @@ CONTAINS
 
 
   SUBROUTINE CoupleFluidRadiation_EmissionAbsorption &
-               ( dt, iX_Begin, iX_End, EvolveFluid_Option )
+               ( dt, iX_B0, iX_E0, iX_B1, iX_E1, U_F, dU_F, U_R, dU_R, &
+                 EvolveFluid_Option )
 
-    REAL(DP),              INTENT(in) :: dt
-    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
-    LOGICAL,               INTENT(in), OPTIONAL :: EvolveFluid_Option
+    REAL(DP), INTENT(in)  :: &
+      dt
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_B1(3), iX_E0(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      U_F (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out) :: &
+      dU_F(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(in)  :: &
+      U_R (1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+    REAL(DP), INTENT(out) :: &
+      dU_R(1:,1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,1:)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      EvolveFluid_Option
 
     INTEGER :: iX1, iX2, iX3
 
@@ -89,11 +101,11 @@ CONTAINS
       EvolveFluid = EvolveFluid_Option
 
     CALL ComputePrimitiveMoments &
-           ( iX_Begin = iX_Begin, iX_End = iX_End )
+           ( iX_Begin = iX_B0, iX_End = iX_E0 )
 
-    DO iX3 = iX_Begin(3), iX_End(3)
-      DO iX2 = iX_Begin(2), iX_End(2)
-        DO iX1 = iX_Begin(1), iX_End(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
 
           CALL ComputePrimitive &
                  ( uCF(:,iX1,iX2,iX3,1:nCF), uPF(:,iX1,iX2,iX3,1:nPF) )
@@ -115,9 +127,9 @@ CONTAINS
 
     CALL FinalizeFluidRadiationCoupling
 
-    DO iX3 = iX_Begin(3), iX_End(3)
-      DO iX2 = iX_Begin(2), iX_End(2)
-        DO iX1 = iX_Begin(1), iX_End(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
 
           CALL ApplyEquationOfState &
                  ( uPF(1:nDOFX,iX1,iX2,iX3,iPF_D ), &
@@ -151,7 +163,7 @@ CONTAINS
     END DO
 
     CALL ComputeConservedMoments &
-           ( iX_Begin = iX_Begin, iX_End = iX_End )
+           ( iX_Begin = iX_B0, iX_End = iX_E0 )
 
   END SUBROUTINE CoupleFluidRadiation_EmissionAbsorption
 

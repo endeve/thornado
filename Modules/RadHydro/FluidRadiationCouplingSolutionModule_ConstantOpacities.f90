@@ -1,4 +1,4 @@
-MODULE FluidRadiationCouplingSolutionModule_ElasticScattering
+MODULE FluidRadiationCouplingSolutionModule_ConstantOpacities
 
   USE KindModule, ONLY: &
     DP, Zero
@@ -13,7 +13,6 @@ MODULE FluidRadiationCouplingSolutionModule_ElasticScattering
     uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
     rhsCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE MomentEquationsUtilitiesModule, ONLY: &
-    ComputeConservedMoments, &
     ComputePrimitiveMoments
   USE FluidRadiationCouplingUtilitiesModule, ONLY: &
     InitializeNodes, &
@@ -36,12 +35,12 @@ MODULE FluidRadiationCouplingSolutionModule_ElasticScattering
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: Eta, Chi, Sigma
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: dJ_N, dH1_N, dH2_N, dH3_N
 
-  PUBLIC :: CoupleFluidRadiation_ElasticScattering
+  PUBLIC :: CoupleFluidRadiation_ConstantOpacities
 
 CONTAINS
 
 
-  SUBROUTINE CoupleFluidRadiation_ElasticScattering &
+  SUBROUTINE CoupleFluidRadiation_ConstantOpacities &
                ( dt, iX_B0, iX_E0, iX_B1, iX_E1, U_F, dU_F, U_R, dU_R, &
                  EvolveFluid_Option )
 
@@ -69,7 +68,7 @@ CONTAINS
 
     CALL FinalizeFluidRadiationCoupling
 
-  END SUBROUTINE CoupleFluidRadiation_ElasticScattering
+  END SUBROUTINE CoupleFluidRadiation_ConstantOpacities
 
 
   SUBROUTINE InitializeFluidRadiationCoupling
@@ -234,4 +233,4 @@ CONTAINS
   END SUBROUTINE SetRates
 
 
-END MODULE FluidRadiationCouplingSolutionModule_ElasticScattering
+END MODULE FluidRadiationCouplingSolutionModule_ConstantOpacities

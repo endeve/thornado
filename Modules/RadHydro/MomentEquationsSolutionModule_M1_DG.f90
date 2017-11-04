@@ -4,7 +4,7 @@ MODULE MomentEquationsSolutionModule_M1_DG
     DP, Zero, Half, One
   USE ProgramHeaderModule, ONLY: &
     nDOF, &
-    nX, nNodesX, &
+    nX, swX, nNodesX, &
     nE, nNodesE
   USE UtilitiesModule, ONLY: &
     NodeNumber
@@ -18,8 +18,7 @@ MODULE MomentEquationsSolutionModule_M1_DG
     a, b
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    rhsCR, &
-    uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR
+    iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR
   USE RiemannSolverModule, ONLY: &
     NumericalFlux_Radiation
   USE MomentEquationsUtilitiesModule, ONLY: &
@@ -49,24 +48,36 @@ MODULE MomentEquationsSolutionModule_M1_DG
 CONTAINS
 
 
-  SUBROUTINE ComputeRHS_M1_DG( iX_Begin, iX_End )
+  SUBROUTINE ComputeRHS_M1_DG( iX_B0, iX_E0, iX_B1, iX_E1, U, dU )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    INTEGER, INTENT(in) :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      U (1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+    REAL(DP), INTENT(out) :: &
+      dU(1:,1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,1:)
 
     CALL InitializeRHS
 
-    CALL ComputeRHS_M1_DG_X1( iX_Begin, iX_End )
+    CALL ComputeRHS_M1_DG_X1 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U, dU )
 
-    CALL ComputeRHS_M1_DG_GeometrySources( iX_Begin, iX_End )
+    CALL ComputeRHS_M1_DG_GeometrySources &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U, dU )
 
     CALL FinalizeRHS
 
   END SUBROUTINE ComputeRHS_M1_DG
 
 
-  SUBROUTINE ComputeRHS_M1_DG_X1( iX_Begin, iX_End )
+  SUBROUTINE ComputeRHS_M1_DG_X1( iX_B0, iX_E0, iX_B1, iX_E1, U, dU )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      U (1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+    REAL(DP), INTENT(out) :: &
+      dU(1:,1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,1:)
 
     INTEGER :: iE, iX1, iX2, iX3, iS
     INTEGER :: iNodeE, iNodeX1, jNodeX1, iNodeX2, iNodeX3
@@ -94,7 +105,7 @@ CONTAINS
 
     ! -- Precompute Metric Functions --
 
-    DO iX1 = iX_Begin(1), iX_End(1)
+    DO iX1 = iX_B0(1), iX_E0(1)
       X1C = MeshX(1) % Center(iX1)
       dX1 = MeshX(1) % Width (iX1)
       a_X1_L(iX1) &
@@ -117,8 +128,8 @@ CONTAINS
 
     DO iS = 1, nSpecies
 
-      DO iX3 = iX_Begin(3), iX_End(3)
-        DO iX2 = iX_Begin(2), iX_End(2)
+      DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
           !$OMP PARALLEL DO PRIVATE &
           !$OMP&              ( iX1, iE, iNodeX1, iNodeX2, iNodeX3, iNodeE,  &
           !$OMP&                iNode, jNodeX1, jNode, uCR_P, uCR_K, uCR_N,  &
@@ -126,13 +137,13 @@ CONTAINS
           !$OMP&                uCR_L, uCR_R, AlphaPls, AlphaMns, Alpha,     &
           !$OMP&                FF_L, EF_L, Flux_L, Lambda_L, Flux,          &
           !$OMP&                FF_R, EF_R, Flux_R, Lambda_R )
-          DO iX1 = iX_Begin(1), iX_End(1)
+          DO iX1 = iX_B0(1), iX_E0(1)
             dX1 = MeshX(1) % Width (iX1)
             DO iE = 1, nE
 
-              uCR_P = uCR(1:nDOF,iE,iX1-1,iX2,iX3,1:nCR,iS) ! Previous Element
-              uCR_K = uCR(1:nDOF,iE,iX1,  iX2,iX3,1:nCR,iS) ! This     Element
-              uCR_N = uCR(1:nDOF,iE,iX1+1,iX2,iX3,1:nCR,iS) ! Next     Element
+              uCR_P = U(1:nDOF,iE,iX1-1,iX2,iX3,1:nCR,iS) ! Previous Element
+              uCR_K = U(1:nDOF,iE,iX1,  iX2,iX3,1:nCR,iS) ! This     Element
+              uCR_N = U(1:nDOF,iE,iX1+1,iX2,iX3,1:nCR,iS) ! Next     Element
 
               DO iNode = 1, nDOF
 
@@ -150,7 +161,7 @@ CONTAINS
 
               END DO
 
-              rhsCR(1:nDOF,iE,iX1,iX2,iX3,1:nCR,iS) = Zero
+              dU(1:nDOF,iE,iX1,iX2,iX3,1:nCR,iS) = Zero
 
               DO iNodeX3 = 1, nNodesX(3)
                 DO iNodeX2 = 1, nNodesX(2)
@@ -182,8 +193,8 @@ CONTAINS
 
                       END DO
 
-                      rhsCR(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
-                        = rhsCR(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
+                      dU(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
+                        = dU(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
                             + VolumeTerm(1:nCR) &
                                 / ( w_q(iNodeX1) * a_X1_q(iNodeX1,iX1) &
                                       * b_X1_q(iNodeX1,iX1) * dX1 )
@@ -260,8 +271,8 @@ CONTAINS
 
                       ! -- Contribution to Right-Hand Side --
 
-                      rhsCR(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
-                        = rhsCR(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
+                      dU(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
+                        = dU(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
                             + a_X1_L(iX1) * b_X1_L(iX1) &
                                 * Flux(1:nCR) * L_X1_Dn(iNodeX1) &
                                     / ( w_q(iNodeX1) * a_X1_q(iNodeX1,iX1) &
@@ -335,8 +346,8 @@ CONTAINS
 
                       ! -- Contribution to Right-Hand Side --
 
-                      rhsCR(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
-                        = rhsCR(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
+                      dU(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
+                        = dU(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
                             -  a_X1_R(iX1) * b_X1_R(iX1) &
                                  * Flux(1:nCR) * L_X1_Up(iNodeX1) &
                                      / ( w_q(iNodeX1) * a_X1_q(iNodeX1,iX1) &
@@ -367,7 +378,7 @@ CONTAINS
         '', 'ComputeDIV: ', Timer_DIV
       WRITE(*,*)
       WRITE(*,'(A4,A16,ES16.6E2)') &
-        '', 'SUM = ', SUM( rhsCR )
+        '', 'SUM = ', SUM( dU )
       WRITE(*,*)
 
     END IF
@@ -375,9 +386,15 @@ CONTAINS
   END SUBROUTINE ComputeRHS_M1_DG_X1
 
 
-  SUBROUTINE ComputeRHS_M1_DG_GeometrySources( iX_Begin, iX_End )
+  SUBROUTINE ComputeRHS_M1_DG_GeometrySources &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, U, dU )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      U (1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+    REAL(DP), INTENT(out) :: &
+      dU(1:,1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,1:)
 
     INTEGER                           :: iE, iX1, iX2, iX3, iS
     INTEGER                           :: iNodeX1, iNodeX2, iNodeX3, iNodeE
@@ -391,15 +408,15 @@ CONTAINS
 
     DO iS = 1, nSpecies
 
-      DO iX3 = iX_Begin(3), iX_End(3)
-        DO iX2 = iX_Begin(2), iX_End(2)
+      DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
           !$OMP PARALLEL DO PRIVATE &
           !$OMP&              ( iX1, iE, iNodeX1, iNodeX2, iNodeX3, iNodeE, &
           !$OMP&                iNode, uCR_K, X1, X2, X3 )
-          DO iX1 = iX_Begin(1), iX_End(1)
+          DO iX1 = iX_B0(1), iX_E0(1)
             DO iE = 1, nE
 
-              uCR_K = uCR(1:nDOF,iE,iX1,iX2,iX3,1:nCR,iS) ! This Element
+              uCR_K = U(1:nDOF,iE,iX1,iX2,iX3,1:nCR,iS) ! This Element
 
               DO iNodeX3 = 1, nNodesX(3)
 
@@ -418,8 +435,8 @@ CONTAINS
                       iNode = NodeNumberTable &
                                 ( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
-                      rhsCR(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
-                        = rhsCR(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
+                      dU(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
+                        = dU(iNode,iE,iX1,iX2,iX3,1:nCR,iS) &
                             + GeometrySources &
                                 ( uCR_K(iNode,iCR_N),  uCR_K(iNode,iCR_G1), &
                                   uCR_K(iNode,iCR_G2), uCR_K(iNode,iCR_G3), &
@@ -450,7 +467,7 @@ CONTAINS
         '', 'ComputeSRC: ', Timer_SRC
       WRITE(*,*)
       WRITE(*,'(A4,A16,ES16.6E2)') &
-        '', 'SUM = ', SUM( rhsCR )
+        '', 'SUM = ', SUM( dU )
       WRITE(*,*)
 
     END IF

@@ -96,8 +96,9 @@ CONTAINS
     INTEGER  :: iE, iNodeE, iNode
     REAL(DP) :: E_N
 
-    ASSOCIATE( dE => MeshE % Width(1:nE), &
-               wE => MeshE % Weights(1:nNodesE) )
+    ASSOCIATE &
+      ( dE => MeshE % Width(1:nE), &
+        wE => MeshE % Weights(1:nNodesE) )
 
     iNode = 0
     DO iE = 1, nE

@@ -2,6 +2,8 @@ MODULE FluidRadiationCouplingModule
 
   USE KindModule, ONLY: &
     DP
+  USE FluidRadiationCouplingSolutionModule_ConstantOpacities, ONLY: &
+    CoupleFluidRadiation_ConstantOpacities
   USE FluidRadiationCouplingSolutionModule_ThermalReservoir, ONLY: &
     CoupleFluidRadiation_ThermalReservoir
   USE FluidRadiationCouplingSolutionModule_EmissionAbsorption, ONLY: &
@@ -19,14 +21,28 @@ MODULE FluidRadiationCouplingModule
   CHARACTER(32) :: FluidRadiationCoupling = 'Dummy'
 
   PROCEDURE (CouplingProcedure), POINTER, PUBLIC :: &
-    CoupleFluidRadiation => NULL()
+    CoupleFluidRadiation => NULL(), &
+    ComputeImplicitIncrement_FluidRadiation => NULL()
 
   INTERFACE
-    SUBROUTINE CouplingProcedure( dt, iX_Begin, iX_End, EvolveFluid_Option )
+    SUBROUTINE CouplingProcedure &
+                 ( dt, iX_B0, iX_E0, iX_B1, iX_E1, U_F, dU_F, U_R, dU_R, &
+                   EvolveFluid_Option )
       USE KindModule, ONLY: DP
-      REAL(DP),              INTENT(in) :: dt
-      INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
-      LOGICAL,               INTENT(in), OPTIONAL :: EvolveFluid_Option
+      REAL(DP), INTENT(in)  :: &
+        dt
+      INTEGER,  INTENT(in)  :: &
+        iX_B0(3), iX_B1(3), iX_E0(3), iX_E1(3)
+      REAL(DP), INTENT(in)  :: &
+        U_F (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      REAL(DP), INTENT(out) :: &
+        dU_F(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      REAL(DP), INTENT(in)  :: &
+        U_R (1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+      REAL(DP), INTENT(out) :: &
+        dU_R(1:,1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,1:)
+      LOGICAL,  INTENT(in), OPTIONAL :: &
+        EvolveFluid_Option
     END SUBROUTINE CouplingProcedure
   END INTERFACE
 
@@ -47,6 +63,13 @@ CONTAINS
     END IF
 
     SELECT CASE ( TRIM( FluidRadiationCoupling ) )
+
+      CASE( 'ConstantOpacities' )
+
+        CoupleFluidRadiation &
+          => CoupleFluidRadiation_ConstantOpacities
+        ComputeImplicitIncrement_FluidRadiation &
+          => CoupleFluidRadiation_ConstantOpacities
 
       CASE( 'ThermalReservoir' )
 
@@ -88,16 +111,29 @@ CONTAINS
   SUBROUTINE FinalizeFluidRadiationCoupling
 
     NULLIFY( CoupleFluidRadiation )
+    NULLIFY( ComputeImplicitIncrement_FluidRadiation )
 
   END SUBROUTINE FinalizeFluidRadiationCoupling
 
 
   SUBROUTINE CoupleFluidRadiation_Dummy &
-               ( dt, iX_Begin, iX_End, EvolveFluid_Option )
+               ( dt, iX_B0, iX_E0, iX_B1, iX_E1, U_F, dU_F, U_R, dU_R, &
+                 EvolveFluid_Option )
 
-    REAL(DP),              INTENT(in) :: dt
-    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
-    LOGICAL,               INTENT(in), OPTIONAL :: EvolveFluid_Option
+    REAL(DP), INTENT(in)  :: &
+      dt
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_B1(3), iX_E0(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      U_F (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out) :: &
+      dU_F(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(in)  :: &
+      U_R (1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+    REAL(DP), INTENT(out) :: &
+      dU_R(1:,1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,1:)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      EvolveFluid_Option
 
     WRITE(*,*)
     WRITE(*,'(A4,A)') &

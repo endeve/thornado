@@ -41,14 +41,26 @@ CONTAINS
 
 
   SUBROUTINE CoupleFluidRadiation_ThermalReservoir &
-               ( dt, iX_Begin, iX_End, EvolveFluid_Option )
+               ( dt, iX_B0, iX_E0, iX_B1, iX_E1, U_F, dU_F, U_R, dU_R, &
+                 EvolveFluid_Option )
 
-    REAL(DP),              INTENT(in) :: dt
-    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
-    LOGICAL,               INTENT(in), OPTIONAL :: EvolveFluid_Option
+    REAL(DP), INTENT(in)  :: &
+      dt
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      U_F (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out) :: &
+      dU_F(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(in)  :: &
+      U_R (1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+    REAL(DP), INTENT(out) :: &
+      dU_R(1:,1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,1:)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      EvolveFluid_Option
 
     CALL ComputePrimitiveMoments &
-           ( iX_Begin = iX_Begin, iX_End = iX_End )
+           ( iX_Begin = iX_B0, iX_End = iX_E0 )
 
     CALL InitializeFluidRadiationCoupling
 
@@ -57,7 +69,7 @@ CONTAINS
     CALL FinalizeFluidRadiationCoupling
 
     CALL ComputeConservedMoments &
-           ( iX_Begin = iX_Begin, iX_End = iX_End )
+           ( iX_Begin = iX_B0, iX_End = iX_E0 )
 
   END SUBROUTINE CoupleFluidRadiation_ThermalReservoir
 

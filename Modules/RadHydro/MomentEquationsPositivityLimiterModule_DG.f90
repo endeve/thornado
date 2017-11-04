@@ -18,7 +18,7 @@ MODULE MomentEquationsPositivityLimiterModule_DG
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     WeightsR, &
-    uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR
+    iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR
   USE MomentEquationsLimiterUtilitiesModule_DG, ONLY: &
     SolveTheta_Bisection
   USE MomentEquationsLimiterModule_DG, ONLY: &
@@ -39,7 +39,12 @@ MODULE MomentEquationsPositivityLimiterModule_DG
 CONTAINS
 
 
-  SUBROUTINE ApplyPositivityLimiter_M1_DG
+  SUBROUTINE ApplyPositivityLimiter_M1_DG( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      U(1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
 
     INTEGER  :: iE, iX1, iX2, iX3, iS
     INTEGER  :: iCR, iPoint
@@ -66,7 +71,7 @@ CONTAINS
 
                   uCR_P(iPoint,iCR) &
                     = DOT_PRODUCT &
-                        ( uCR(:,iE,iX1,iX2,iX3,iCR,iS), Lagrange(:,iPoint) )
+                        ( U(:,iE,iX1,iX2,iX3,iCR,iS), Lagrange(:,iPoint) )
 
                 END DO
               END DO
@@ -84,10 +89,10 @@ CONTAINS
                 DO iCR = 1, nCR
 
                   CALL MapNodalToModal_Radiation &
-                         ( uCR(:,iE,iX1,iX2,iX3,iCR,iS), uCR_M(:,iCR) )
+                         ( U(:,iE,iX1,iX2,iX3,iCR,iS), uCR_M(:,iCR) )
 
                   uCR_K(iCR) &
-                    = SUM( WeightsR(:) * uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
+                    = SUM( WeightsR(:) * U(:,iE,iX1,iX2,iX3,iCR,iS) &
                            * VolJac(:,iE,iX1,iX2,iX3) ) / Vol(iE,iX1,iX2,iX3)
 
                 END DO
@@ -192,7 +197,7 @@ CONTAINS
                 DO iCR = 1, nCR
 
                   CALL MapModalToNodal_Radiation &
-                         ( uCR(:,iE,iX1,iX2,iX3,iCR,iS), uCR_M(:,iCR) )
+                         ( U(:,iE,iX1,iX2,iX3,iCR,iS), uCR_M(:,iCR) )
 
                 END DO
 
@@ -202,14 +207,14 @@ CONTAINS
                     DO iPoint = 1, nPositivePoints
 
                       uCR_P(iPoint,iCR) &
-                        = evalL( uCR(:,iE,iX1,iX2,iX3,iCR,iS), &
+                        = evalL( U(:,iE,iX1,iX2,iX3,iCR,iS), &
                                  Points_E (iPoint), Points_X1(iPoint), &
                                  Points_X2(iPoint), Points_X3(iPoint) )
 
                     END DO
 
                     uCR_K(iCR) &
-                      = SUM( WeightsR(:) * uCR(:,iE,iX1,iX2,iX3,iCR,iS) &
+                      = SUM( WeightsR(:) * U(:,iE,iX1,iX2,iX3,iCR,iS) &
                            * VolJac(:,iE,iX1,iX2,iX3) ) / Vol(iE,iX1,iX2,iX3)
 
                   END DO

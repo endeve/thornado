@@ -17,11 +17,18 @@ MODULE RadiationEvolutionModule
   CHARACTER(32) :: RadiationSolver = 'Dummy'
 
   PROCEDURE (ComputeRHS), POINTER, PUBLIC :: &
-    ComputeRHS_Radiation => NULL()
+    ComputeRHS_Radiation => NULL(), &
+    ComputeExplicitIncrement_Radiation => NULL()
 
   INTERFACE
-    SUBROUTINE ComputeRHS( iX_Begin, iX_End )
-      INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    SUBROUTINE ComputeRHS( iX_B0, iX_E0, iX_B1, iX_E1, U, dU )
+      USE KindModule, ONLY: DP
+      INTEGER, INTENT(in)  :: &
+        iX_B0(3), iX_B1(3), iX_E0(3), iX_E1(3)
+      REAL(DP), INTENT(in) :: &
+        U (1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+      REAL(DP), INTENT(out) :: &
+        dU(1:,1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,1:)
     END SUBROUTINE ComputeRHS
   END INTERFACE
 
@@ -30,7 +37,12 @@ MODULE RadiationEvolutionModule
     ApplyPositivityLimiter_Radiation => NULL()
 
   INTERFACE
-    SUBROUTINE ApplyLimiter
+    SUBROUTINE ApplyLimiter( iX_B0, iX_E0, iX_B1, iX_E1, U )
+      USE KindModule, ONLY: DP
+      INTEGER,  INTENT(in)    :: &
+        iX_B0(3), iX_B1(3), iX_E0(3), iX_E1(3)
+      REAL(DP), INTENT(inout) :: &
+        U(1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
     END SUBROUTINE ApplyLimiter
   END INTERFACE
 
@@ -59,6 +71,8 @@ CONTAINS
       CASE ( 'M1_DG' )
 
         ComputeRHS_Radiation &
+          => ComputeRHS_M1_DG
+        ComputeExplicitIncrement_Radiation &
           => ComputeRHS_M1_DG
         ApplySlopeLimiter_Radiation &
           => ApplySlopeLimiter_M1_DG
@@ -90,18 +104,29 @@ CONTAINS
   SUBROUTINE FinalizeRadiationEvolution
 
     NULLIFY( ComputeRHS_Radiation )
+    NULLIFY( ComputeExplicitIncrement_Radiation )
 
   END SUBROUTINE FinalizeRadiationEvolution
 
 
-  SUBROUTINE ComputeRHS_Dummy( iX_Begin, iX_End )
+  SUBROUTINE ComputeRHS_Dummy( iX_B0, iX_E0, iX_B1, iX_E1, U, dU )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: iX_Begin, iX_End
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      U (1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+    REAL(DP), INTENT(out) :: &
+      dU(1:,1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,1:)
 
   END SUBROUTINE ComputeRHS_Dummy
 
 
-  SUBROUTINE ApplyLimiter_Dummy
+  SUBROUTINE ApplyLimiter_Dummy( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      U(1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
 
   END SUBROUTINE ApplyLimiter_Dummy
 

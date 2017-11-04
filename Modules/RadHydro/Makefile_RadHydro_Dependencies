@@ -232,6 +232,9 @@ FluidRadiationCouplingUtilitiesModule.o: \
   FluidRadiationCouplingUtilitiesModule.f90
 
 FluidRadiationCouplingSolutionModule_ThermalReservoir.o: \
+  FluidRadiationCouplingSolutionModule_ThermalReservoir.f90
+
+FluidRadiationCouplingSolutionModule_ThermalReservoir.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \

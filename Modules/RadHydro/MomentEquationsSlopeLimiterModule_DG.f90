@@ -19,7 +19,7 @@ MODULE MomentEquationsSlopeLimiterModule_DG
     VolJacX, VolX
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR, &
+    iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR, &
     Discontinuity
   USE MomentEquationsUtilitiesModule, ONLY: &
     ComputeEigenvectors_L, &
@@ -46,7 +46,12 @@ MODULE MomentEquationsSlopeLimiterModule_DG
 CONTAINS
 
 
-  SUBROUTINE ApplySlopeLimiter_M1_DG
+  SUBROUTINE ApplySlopeLimiter_M1_DG( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      U(1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
 
     LOGICAL :: LimitPolynomial
     INTEGER :: iS, iE, iX1, iX2, iX3, iCR
@@ -100,13 +105,13 @@ CONTAINS
                 DO iCR = 1, nCR
 
                   CALL PackSpatialNodes &
-                         ( iNodeE, uCR(:,iE,iX1-1,iX2,iX3,iCR,iS), &
+                         ( iNodeE, U(:,iE,iX1-1,iX2,iX3,iCR,iS), &
                            uCR_X_P_X1(:,iCR) )
                   CALL PackSpatialNodes &
-                         ( iNodeE, uCR(:,iE,iX1,  iX2,iX3,iCR,iS), &
+                         ( iNodeE, U(:,iE,iX1,  iX2,iX3,iCR,iS), &
                            uCR_X     (:,iCR) )
                   CALL PackSpatialNodes &
-                         ( iNodeE, uCR(:,iE,iX1+1,iX2,iX3,iCR,iS), &
+                         ( iNodeE, U(:,iE,iX1+1,iX2,iX3,iCR,iS), &
                            uCR_X_N_X1(:,iCR) )
 
                 END DO
@@ -222,7 +227,7 @@ CONTAINS
                   DO iCR = 1, nCR
 
                     CALL PackSpatialNodes &
-                           ( iNodeE, uCR(:,iE,iX1,iX2,iX3,iCR,iS), &
+                           ( iNodeE, U(:,iE,iX1,iX2,iX3,iCR,iS), &
                              uCR_X(:,iCR) )
 
                     uCR_K_0(iCR) &
@@ -289,7 +294,7 @@ CONTAINS
                                * VolJacX(:,iX1,iX2,iX3) ) / VolX(iX1,iX2,iX3)
 
                     CALL UnpackSpatialNodes &
-                           ( iNodeE, uCR(:,iE,iX1,iX2,iX3,iCR,iS), &
+                           ( iNodeE, U(:,iE,iX1,iX2,iX3,iCR,iS), &
                              uCR_X(:,iCR) )
 
                   END DO
