@@ -20,6 +20,8 @@ MODULE TimeSteppingModule_Penalization
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, nDOFX, &
     nE, nNodesE, nDOFE, &
+    iX_B0, iX_B1, &
+    iX_E0, iX_E1, &
     nDOF
   USE RadiationFieldsModule, ONLY: &
     iCR_N, iCR_G1, iCR_G2, iCR_G3, uCR, nCR, &
@@ -88,9 +90,7 @@ CONTAINS
     ASSOCIATE( U => UnitsDisplay )
 
     CALL ApplyPositivityLimiter_Radiation &
-	   ( [1,1,1], [nX(1)+0,nX(2)+0,nX(3)+0], &
-	     [0,0,0], [nX(1)+1,nX(2)+1,nX(3)+1], &
-	     uCR )
+	   ( iX_B0, iX_E0, iX_B1, iX_E1, uCR )
 
     iCycle  = 0
     t       = t_begin
@@ -125,9 +125,7 @@ CONTAINS
       CALL ApplyBoundaryConditions_Radiation( t )
 
       CALL ComputeRHS_M1_DG  &
-	   ( [1,1,1], [nX(1)+0,nX(2)+0,nX(3)+0], &
-	     [0,0,0], [nX(1)+1,nX(2)+1,nX(3)+1], &
-	     uCR, rhsCR )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uCR, rhsCR )
 
       CALL ComputeRHS_C_H ! compute Kappa
 
@@ -179,9 +177,7 @@ CONTAINS
       CALL UpdateFields( dt, iCycle )
 
       CALL ApplyPositivityLimiter_Radiation &
-	   ( [1,1,1], [nX(1)+0,nX(2)+0,nX(3)+0], &
-	     [0,0,0], [nX(1)+1,nX(2)+1,nX(3)+1], &
-	     uCR )
+	     ( iX_B0, iX_E0, iX_B1, iX_E1, uCR )
 
       CALL ComputePrimitiveMoments &
            ( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
