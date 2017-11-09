@@ -4,6 +4,8 @@ MODULE TimeSteppingModule_Penalization
     DP, FourPi
   USE UnitsModule, ONLY: &
     UnitsDisplay, &
+    Kilometer, &
+    Second, &
     Millisecond
   USE UtilitiesModule, ONLY: &
     NodeNumberX, &
@@ -46,11 +48,12 @@ MODULE TimeSteppingModule_Penalization
   IMPLICIT NONE
   PRIVATE
 
-  REAL(DP), PARAMETER :: Diff_FE = 2.5d-2
+  REAL(DP), PARAMETER :: Diff_FE = 1.0d-2
   REAL(DP), PARAMETER :: Min_dt  = 1.0d-10 * MilliSecond
   REAL(DP), PARAMETER :: Min_N   = 0.0_DP 
   REAL(DP), PARAMETER :: dt_incf = 1.1_DP
   REAL(DP), PARAMETER :: dt_shrf = 1.0_DP
+  REAL(DP), PARAMETER :: dt_init = 1.0d-5  * MilliSecond
 
   PUBLIC :: EvolveFields
 
@@ -84,7 +87,10 @@ CONTAINS
 
     ASSOCIATE( U => UnitsDisplay )
 
-    CALL ApplyPositivityLimiter_Radiation
+    CALL ApplyPositivityLimiter_Radiation &
+	   ( [1,1,1], [nX(1)+0,nX(2)+0,nX(3)+0], &
+	     [0,0,0], [nX(1)+1,nX(2)+1,nX(3)+1], &
+	     uCR )
 
     iCycle  = 0
     t       = t_begin
@@ -108,7 +114,7 @@ CONTAINS
     WRITE( out_unit, '(A1,8A15)') '#', 'time', 'dt', 'dt_stream', &
       'dt_accur','dt_boundary', 'dt_lower','dt_upper','Position'
 
-    dt = 1.d-8 * Millisecond 
+    dt =  dt_init
 
     DO WHILE( t < t_end )
 
@@ -118,12 +124,18 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Radiation( t )
 
-      CALL ComputeRHS_M1_DG &
-             ( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
+      CALL ComputeRHS_M1_DG  &
+	   ( [1,1,1], [nX(1)+0,nX(2)+0,nX(3)+0], &
+	     [0,0,0], [nX(1)+1,nX(2)+1,nX(3)+1], &
+	     uCR, rhsCR )
 
       CALL ComputeRHS_C_H ! compute Kappa
 
       IF( FixedTimeStep )THEN
+
+        CALL ComputeTimeStep &
+               ( t, dt, SmallestPosition, dt_stream, dt_accur, &
+                 dt_boundary, dt_lower, dt_upper )
 
         dt = dt_fixed
 
@@ -158,7 +170,7 @@ CONTAINS
 
         WRITE( out_unit, '(7E15.6,4I4)' ) &
           t / MilliSecond, dt / MilliSecond, &
-          dt_stream / MilliSecond, dt_accur / MilliSecond, &
+          dt_stream / MilliSecond, dt_accur / (Second*Kilometer), &
           dt_boundary / MilliSecond, dt_lower / MilliSecond, &
           dt_upper / MilliSecond, SmallestPosition
 
@@ -166,7 +178,10 @@ CONTAINS
 
       CALL UpdateFields( dt, iCycle )
 
-      CALL ApplyPositivityLimiter_Radiation
+      CALL ApplyPositivityLimiter_Radiation &
+	   ( [1,1,1], [nX(1)+0,nX(2)+0,nX(3)+0], &
+	     [0,0,0], [nX(1)+1,nX(2)+1,nX(3)+1], &
+	     uCR )
 
       CALL ComputePrimitiveMoments &
            ( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
@@ -185,7 +200,7 @@ CONTAINS
 
          WRITE( out_unit, '(6E15.6,4I4)' ) &
            t / MilliSecond, dt / MilliSecond, &
-           dt_stream / MilliSecond, dt_accur / MilliSecond, &
+           dt_stream / MilliSecond, dt_accur / (Second*Kilometer), &
            dt_boundary / MilliSecond, dt_lower / MilliSecond, &
            dt_upper / MilliSecond, SmallestPosition
          CLOSE( out_unit )
@@ -270,10 +285,12 @@ CONTAINS
 
 
   SUBROUTINE ComputeTimestepPenalization &
-  ( dt, dt_max, t, SmallestPosition, dt_accur, dt_boundary, dt_lower, dt_upper )
+  ( dt, dt_max, t, SmallestPosition, Cri_kappadx, dt_boundary, dt_lower, dt_upper )
+!  ( dt, dt_max, t, SmallestPosition, dt_accur, dt_boundary, dt_lower, dt_upper )
 
     REAL(DP), INTENT(in)  :: dt_max, t
-    REAL(DP), INTENT(out) :: dt, dt_accur, dt_lower, dt_upper, dt_boundary
+    REAL(DP), INTENT(out) :: dt, Cri_kappadx, dt_lower, dt_upper, dt_boundary
+  !  REAL(DP), INTENT(out) :: dt, dt_accur, dt_lower, dt_upper, dt_boundary
     INTEGER, DIMENSION(4), INTENT(out) :: SmallestPosition 
 
     INTEGER  :: out_unit_debug
@@ -284,18 +301,22 @@ CONTAINS
     CHARACTER(19)   :: FileName
     REAL(DP) :: LAMB, LNMax, lim, dt_dx, lim_W, dt_buffer
     REAL(DP) :: NN, Coll, CpS
-    REAL(DP) :: Invmindx
+    REAL(DP) :: Invmindx, maxdx, dt_accur
+    !REAL(DP) :: Invmindx
 
     dt = HUGE( 1.0_DP )
     dt_accur = dt
     dt_boundary = dt
     dt_lower = dt
     dt_upper = dt
+   
+    Cri_kappadx = 0.0
 
     SmallestPosition = (/0,0,0,0/)
     ASSOCIATE( dX1 => MeshX(1) % Width (1:nX(1)) )
 
     Invmindx = 1.d0 / MINVAL( dX1 )
+    maxdx    = MAXVAL( dX1 )
  
     END ASSOCIATE
 
@@ -310,6 +331,8 @@ CONTAINS
 
                   iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
                   LAMB   = absLambda(iNodeX,iX1,iX2,iX3)
+
+                  Cri_kappadx = MAX( LAMB*maxdx, Cri_kappadx )
 
                   DO iNodeE = 1, nNodesE
 
@@ -369,6 +392,7 @@ CONTAINS
       END DO
     END DO
 
+   
   END SUBROUTINE ComputeTimestepPenalization
 
 
@@ -388,7 +412,7 @@ CONTAINS
                X2  => MeshX(2) % Center(1:nX(2)), &
                X3  => MeshX(3) % Center(1:nX(3)) )
 
-    CFL = 0.2_DP / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) ! For Debugging
+    CFL = 0.4_DP / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) ! For Debugging
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
@@ -498,6 +522,17 @@ CONTAINS
       PRINT*,''
       STOP
     END IF
+
+    IF( MAXVAL( uCR(:,:,:,:,:,iCR_N,:) ) > FourPi )THEN
+      PRINT*,''
+      PRINT*,'ERROR in UpdateFields'
+      PRINT*,'uCR(:,iCR_N) beyond 4Pi',MAXVAL( uCR(:,:,:,:,:,iCR_N,:) )
+      PRINT*,'dt =', dt / Millisecond, 'ms'
+      PRINT*,'iCycle = ', iCycle
+      PRINT*,''
+    !  STOP
+    END IF
+
 
   END SUBROUTINE UpdateFields
 
