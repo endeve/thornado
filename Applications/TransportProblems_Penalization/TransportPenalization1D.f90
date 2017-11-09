@@ -31,7 +31,7 @@ PROGRAM TransportPenalization1D
          ( ProgramName_Option &
              = 'TransportPenalization1D', &
            nX_Option &
-             = [ 64, 1, 1 ], &
+             = [ 32, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -75,15 +75,16 @@ PROGRAM TransportPenalization1D
            ApplySlopeLimiter_Option &
              = .TRUE., &
            ApplyPositivityLimiter_Option &
-             = .TRUE. )
+             = .TRUE., &
+           nStages_SSP_RK_Option = 1 )
 
   CALL InitializeTransportProblem1D
 
   CALL EvolveFields &
          ( t_begin  = 0.0d+0 * Millisecond, &
-           t_end    = 1.0d-0 * Millisecond, &
-           dt_write = 1.0d-2 * Millisecond )!, &
-!           dt_fixed_Option = 1.0d-5 * Millisecond )
+           t_end    = 1.0d+1 * Millisecond, &
+           dt_write = 5.0d-3 * Millisecond)!, &
+           !dt_fixed_Option = 1.0d-5 * Millisecond )
 
   CALL FinalizeProgram
 
