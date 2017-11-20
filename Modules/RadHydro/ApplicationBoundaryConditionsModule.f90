@@ -405,12 +405,12 @@ CONTAINS
 
               uPF_1 = Primitive( uCF(iNodeX_1,1,iX2,iX3,:) )
               D_1   = uPF_1(iPF_D)
-              P_1   = uPF_1(iPF_E) / ( Gamma - 1.0_DP )
+              P_1   = uPF_1(iPF_E) * ( Gamma - 1.0_DP )
 
               uPF(iNodeX_0,0,iX2,iX3,iPF_D) &
                 = D_1 * ( X1_1 / X1_0 )**3
 
-              uPF(iNodeX_0,0,iX2,iX3,iAF_P) &
+              uAF(iNodeX_0,0,iX2,iX3,iAF_P) &
                 = P_1 * ( X1_1 / X1_0 )**4
 
             END DO
