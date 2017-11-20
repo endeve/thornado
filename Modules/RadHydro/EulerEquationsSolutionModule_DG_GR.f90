@@ -10,8 +10,7 @@ MODULE EulerEquationsSolutionModule_DG_GR
     MeshX
   USE GeometryFieldsModule, ONLY: &
     uGF, nGF, iGF_Alpha, iGF_Beta_1, &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
-    iGF_Gm_uu_11
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
     WeightsF, &
     rhsCF, &
@@ -45,7 +44,7 @@ CONTAINS
           CALL ComputePrimitive &
                  ( uCF(:,iX1,iX2,iX3,1:nCF), uGF(:,iX1,iX2,iX3,1:nGF), &
                    uPF(:,iX1,iX2,iX3,1:nPF), uAF(:,iX1,iX2,iX3,1:nAF) )
-
+          
         END DO
       END DO
     END DO
@@ -161,7 +160,6 @@ CONTAINS
                                          uGF_L( iNodeX, iGF_Gm_dd_11 ), &
                                          uGF_L( iNodeX, iGF_Gm_dd_22 ), &
                                          uGF_L( iNodeX, iGF_Gm_dd_33 ), &
-                                         uGF_L( iNodeX, iGF_Gm_uu_11 ), &
                                          uGF_L( iNodeX, iGF_Alpha ),    &
                                          uGF_L( iNodeX, iGF_Beta_1 ),   &
                                          Cs )
@@ -197,7 +195,7 @@ CONTAINS
                   = DOT_PRODUCT( WeightsF, uAF_K(:,iAF_Gm) )
 
                 CALL ComputePrimitive( uCF_R, uGF_R, uPF_R, uAF_R )
-
+                
                 Cs = ComputeSoundSpeed( uAF_R( iNodeX, iAF_P  ), &
                                         uPF_R( iNodeX, iPF_E  ), &
                                         uPF_R( iNodeX, iPF_D  ), &
@@ -209,7 +207,6 @@ CONTAINS
                                          uGF_R( iNodeX, iGF_Gm_dd_11 ), &
                                          uGF_R( iNodeX, iGF_Gm_dd_22 ), &
                                          uGF_R( iNodeX, iGF_Gm_dd_33 ), &
-                                         uGF_R( iNodeX, iGF_Gm_uu_11 ), &
                                          uGF_R( iNodeX, iGF_Alpha ),    &
                                          uGF_R( iNodeX, iGF_Beta_1 ),   &
                                          Cs )
@@ -232,7 +229,7 @@ CONTAINS
                 ! First Alpha will be the largest eigenvalue (absolute value) 
                 ! of the left and right state
                 AlphaL = MAXVAL( ABS( EigVals_L ) )
-                AlphaR =  MAXVAL( ABS( EigVals_R ) )
+                AlphaR = MAXVAL( ABS( EigVals_R ) )
 
                 Alpha    = MAX( AlphaL, AlphaR )
                 AlphaMns = MAX( 0.0_DP, &
@@ -248,10 +245,13 @@ CONTAINS
                                    AlphaMns,                    &
                                    uPF_L( iNodeX, iPF_V1 ),     &
                                    uPF_R( iNodeX, iPF_V1 ),     &
-!                                   uGF_L( iNodeX, iGF_Beta_1 ), &
-!                                   uGF_R( iNodeX, iGF_Beta_1 ), &
                                    uGF_L( iNodeX, iGF_Beta_1 ), &
+!                                   uGF_R( iNodeX, iGF_Beta_1 ), &
+!                                   uGF_L( iNodeX, iGF_Beta_1 ), &
                                    uGF_L( iNodeX, iGF_Gm_dd_11 ) )
+                !IF( iX1 .LT. 50 )THEN
+                !    WRITE(*,*) iX1, AlphaMdl
+                !END IF
 
                 Flux &
                   = NumericalFlux_Fluid_GR                        &
@@ -265,7 +265,6 @@ CONTAINS
                         uAF_L( iNodeX, iAF_P ),                   &
                         uAF_R( iNodeX, iAF_P ),                   &
                         uGF_L( iNodeX, iGF_Beta_1 ),              &
-                        uGF_L( iNodeX, iGF_Gm_uu_11 ),            &
                         uGF_L( iNodeX, iGF_Gm_dd_11 ) )
 
                 ! -- Contribution to Right-Hand Side --
@@ -303,7 +302,7 @@ CONTAINS
                   = DOT_PRODUCT( WeightsF, uAF_K(:,iAF_Gm) )
 
                 CALL ComputePrimitive( uCF_L, uGF_L, uPF_L, uAF_L )
-
+                
                 Cs = ComputeSoundSpeed( uAF_L( iNodeX, iAF_P ), &
                                         uPF_L( iNodeX, iPF_E ), &
                                         uPF_L( iNodeX, iPF_D ), &
@@ -315,7 +314,6 @@ CONTAINS
                                          uGF_L( iNodeX, iGF_Gm_dd_11 ), &
                                          uGF_L( iNodeX, iGF_Gm_dd_22 ), &
                                          uGF_L( iNodeX, iGF_Gm_dd_33 ), &
-                                         uGF_L( iNodeX, iGF_Gm_uu_11 ), &
                                          uGF_L( iNodeX, iGF_Alpha ),    &
                                          uGF_L( iNodeX, iGF_Beta_1 ),   &
                                          Cs )
@@ -351,7 +349,7 @@ CONTAINS
                   = DOT_PRODUCT( WeightsF, uAF_N(:,iAF_Gm) )
 
                 CALL ComputePrimitive( uCF_R, uGF_R, uPF_R, uAF_R )
-
+                
                 Cs = ComputeSoundSpeed( uAF_R( iNodeX, iAF_P ), &
                                         uPF_R( iNodeX, iPF_E ), &
                                         uPF_R( iNodeX, iPF_D ), &
@@ -363,7 +361,6 @@ CONTAINS
                                          uGF_R( iNodeX, iGF_Gm_dd_11 ), &
                                          uGF_R( iNodeX, iGF_Gm_dd_22 ), &
                                          uGF_R( iNodeX, iGF_Gm_dd_33 ), &
-                                         uGF_R( iNodeX, iGF_Gm_uu_11 ), &
                                          uGF_R( iNodeX, iGF_Alpha ),    &
                                          uGF_R( iNodeX, iGF_Beta_1 ),   &
                                          Cs )
@@ -402,9 +399,9 @@ CONTAINS
                                    AlphaMns,                    &
                                    uPF_L( iNodeX, iPF_V1 ),     &
                                    uPF_R( iNodeX, iPF_V1 ),     &
-!                                   uGF_L( iNodeX, iGF_Beta_1 ), &
+                                   uGF_L( iNodeX, iGF_Beta_1 ), &
 !                                   uGF_R( iNodeX, iGF_Beta_1 ), &
-                                   uGF_R( iNodeX, iGF_Beta_1 ), &
+!                                   uGF_R( iNodeX, iGF_Beta_1 ), &
                                    uGF_R( iNodeX, iGF_Gm_dd_11 ) )
 
                 Flux &
@@ -419,7 +416,6 @@ CONTAINS
                         uAF_L( iNodeX, iAF_P ),                   &
                         uAF_R( iNodeX, iAF_P ),                   &
                         uGF_R( iNodeX, iGF_Beta_1 ),              &
-                        uGF_R( iNodeX, iGF_Gm_uu_11 ),            &
                         uGF_R( iNodeX, iGF_Gm_dd_11 ) )
 
                 ! -- Contribution to Right-Hand Side --
