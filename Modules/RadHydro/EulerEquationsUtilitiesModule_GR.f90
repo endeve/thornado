@@ -71,7 +71,7 @@ CONTAINS
     INTEGER  :: i, nIter
     REAL(DP) :: Gm11, Gm22, Gm33, SSq, vSq, W, h
     REAL(DP) :: Pold, Pnew, FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-12
+    REAL(DP), PARAMETER :: TolP = 1.0d-11
 
     DO i = 1, SIZE( uPF, DIM = 1 )
 
@@ -121,7 +121,7 @@ CONTAINS
           WRITE(*,*) 'Pnew:               ', Pnew
           WRITE(*,*) 'D:                  ', uCF(i,iCF_D)
           WRITE(*,*) 'tau+D-sqrt(D^2+S^2):', &
-            uCF( i, iCF_E )+uCF( i, iCF_D )-SQRT( uCF( i, iCF_D )**2 + SSq )
+            uCF( i, iCF_E ) + uCF( i, iCF_D ) - SQRT( uCF( i, iCF_D )**2 + SSq )
           STOP
         END IF
 
@@ -157,14 +157,14 @@ CONTAINS
 
 
   PURE FUNCTION Eigenvalues( V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                              Gm_uu_11, Alpha, Beta1, Cs )
+                              Alpha, Beta1, Cs )
 
     ! Alpha is the lapse function
     ! Vi is the contravariant component V^i
     ! Beta1 is the contravariant component Beta^1
 
     REAL(DP), INTENT(in) :: V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                              Gm_uu_11, Alpha, Beta1, Cs
+                              Alpha, Beta1, Cs
     REAL(DP) :: VSq
     REAL(DP), DIMENSION(1:5) :: Eigenvalues
 
@@ -172,14 +172,14 @@ CONTAINS
 
     Eigenvalues(1:5) = &
       [ Alpha / ( 1.0_DP - VSq * Cs**2 ) * ( V1 * ( 1.0_DP - Cs**2 ) - Cs &
-        * SQRT( ( 1.0_DP - VSq ) * ( Gm_uu_11 * ( 1.0_DP - VSq * Cs**2 )  &
-        - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
+        * SQRT( ( 1.0_DP - VSq ) * ( 1.0_DP / Gm_dd_11 &
+        * ( 1.0_DP - VSq * Cs**2 ) - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
 
         Alpha * V1 - Beta1, &
 
         Alpha / ( 1.0_DP - VSq * Cs**2 ) * ( V1 * ( 1.0_DP - Cs**2 ) + Cs &
-        * SQRT( ( 1.0_DP - VSq ) * ( Gm_uu_11 * ( 1.0_DP - VSq * Cs**2 )  &
-        - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
+        * SQRT( ( 1.0_DP - VSq ) * ( 1.0_DP / Gm_dd_11 &
+        * ( 1.0_DP - VSq * Cs**2 ) - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
 
         Alpha * V1 - Beta1, &
 
@@ -318,7 +318,7 @@ CONTAINS
     ELSE IF( ( ABS( A ) .LT. eps ) .AND. ( ABS( C ) .LT. eps ) )THEN
       AlphaC = 0.0_DP
     ELSE IF( ABS( A ) .LT. eps )THEN
-      AlphaC = 0.0_DP
+      AlphaC = -C / B
     ELSE
       AlphaC = ( -B - SQRT( B**2 - 4.0_DP * A * C ) ) / ( 2.0_DP * A )
     END IF
