@@ -30,26 +30,36 @@ MODULE GeometryFieldsModule
   REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: &
     VolJacX
 
+  ! --- Degrees of Freedom per Element ---
+
+  INTEGER, PUBLIC :: nDOF_G
+
   ! --- Spatial Geometry Fields ---
 
   INTEGER, PUBLIC, PARAMETER :: iGF_Phi_N    = 1  ! Newtonian Potential
-  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_11 = 2  ! Spatial Metric Component 11
-  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_22 = 3  ! Spatial Metric Component 22
-  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_33 = 4  ! Spatial Metric Component 33
-  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_uu_11 = 5  ! Spatial Metric Component 11
-  INTEGER, PUBLIC, PARAMETER :: iGF_Alpha    = 6  ! Lapse Function
-  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_1   = 7  ! Shift Vector 1
-  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_2   = 8  ! Shift Vector 2
-  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_3   = 9  ! Shift Vector 3
-  INTEGER, PUBLIC, PARAMETER :: iGF_CF       = 10 ! Conformal Factor
-  INTEGER, PUBLIC, PARAMETER :: nGF          = 10 ! n Geometry Fields
+  INTEGER, PUBLIC, PARAMETER :: iGF_h_1      = 2  ! Spatial Scale Factor 1
+  INTEGER, PUBLIC, PARAMETER :: iGF_h_2      = 3  ! Spatial Scale Factor 2
+  INTEGER, PUBLIC, PARAMETER :: iGF_h_3      = 4  ! Spatial Scale Factor 3
+  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_11 = 5  ! Spatial Metric Component 11
+  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_22 = 6  ! Spatial Metric Component 22
+  INTEGER, PUBLIC, PARAMETER :: iGF_Gm_dd_33 = 7  ! Spatial Metric Component 33
+  INTEGER, PUBLIC, PARAMETER :: iGF_SqrtGm   = 8  ! Sqrt of Metric Determinant
+  INTEGER, PUBLIC, PARAMETER :: iGF_Alpha    = 9  ! Lapse Function
+  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_1   = 10 ! Shift Vector 1
+  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_2   = 11 ! Shift Vector 2
+  INTEGER, PUBLIC, PARAMETER :: iGF_Beta_3   = 12 ! Shift Vector 3
+  INTEGER, PUBLIC, PARAMETER :: iGF_CF       = 13 ! Conformal Factor
+  INTEGER, PUBLIC, PARAMETER :: nGF          = 13 ! n Geometry Fields
 
   CHARACTER(32), DIMENSION(nGF), PUBLIC, PARAMETER :: &
     namesGF = [ 'Newtonian Potential                         ', &
+                'Spatial Scale Factor (1)                    ', &
+                'Spatial Scale Factor (2)                    ', &
+                'Spatial Scale Factor (3)                    ', &
                 'Spatial Metric Component (11)               ', &
                 'Spatial Metric Component (22)               ', &
                 'Spatial Metric Component (33)               ', &
-                'Contravariant Spatial Metric Component (11) ', &
+                'Sqrt of Spatial Metric Determinant          ', &
                 'Lapse Function                              ', &
                 'Shift Vector (1)                            ', &
                 'Shift Vector (2)                            ', &
@@ -144,10 +154,13 @@ CONTAINS
     ! --- Initialize to Flat Spacetime (Cartesian) ---
 
     uGF(:,:,:,:,iGF_Phi_N)    = 0.0_DP
+    uGF(:,:,:,:,iGF_h_1)      = 1.0_DP
+    uGF(:,:,:,:,iGF_h_2)      = 1.0_DP
+    uGF(:,:,:,:,iGF_h_3)      = 1.0_DP
     uGF(:,:,:,:,iGF_Gm_dd_11) = 1.0_DP
     uGF(:,:,:,:,iGF_Gm_dd_22) = 1.0_DP
     uGF(:,:,:,:,iGF_Gm_dd_33) = 1.0_DP
-    uGF(:,:,:,:,iGF_Gm_uu_11) = 1.0_DP
+    uGF(:,:,:,:,iGF_SqrtGm)   = 1.0_DP
     uGF(:,:,:,:,iGF_Alpha)    = 1.0_DP
     uGF(:,:,:,:,iGF_Beta_1)   = 0.0_DP
     uGF(:,:,:,:,iGF_Beta_2)   = 0.0_DP
