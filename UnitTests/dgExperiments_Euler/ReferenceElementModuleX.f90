@@ -22,8 +22,14 @@ MODULE ReferenceElementModuleX
   REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: NodesX2, WeightsX2
   REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: NodesX3, WeightsX3
   REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: WeightsX_X1
+  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: WeightsX_X2
+  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: WeightsX_X3
   REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: WeightsX_q
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: NodesX_q
+  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: NodesLX1, WeightsLX1
+  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: NodesLX2, WeightsLX2
+  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: NodesLX3, WeightsLX3
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: NodesLX_q
 
   PUBLIC :: InitializeReferenceElementX
   PUBLIC :: FinalizeReferenceElementX
@@ -97,6 +103,8 @@ CONTAINS
       END DO
     END DO
 
+    ! --- Gaussian Quadrature Points and Weights ---
+
     ALLOCATE( NodesX1(nNodesX(1)), WeightsX1(nNodesX(1)) )
     ALLOCATE( NodesX2(nNodesX(2)), WeightsX2(nNodesX(2)) )
     ALLOCATE( NodesX3(nNodesX(3)), WeightsX3(nNodesX(3)) )
@@ -113,6 +121,28 @@ CONTAINS
       iNodeX3 = NodeNumberTableX_X1(2,iNodeX)
 
       WeightsX_X1(iNodeX) = WeightsX2(iNodeX2) * WeightsX3(iNodeX3)
+
+    END DO
+
+    ALLOCATE( WeightsX_X2(nDOFX_X2) )
+
+    DO iNodeX = 1, nDOFX_X2
+
+      iNodeX1 = NodeNumberTableX_X2(1,iNodeX)
+      iNodeX3 = NodeNumberTableX_X2(2,iNodeX)
+
+      WeightsX_X2(iNodeX) = WeightsX1(iNodeX1) * WeightsX3(iNodeX3)
+
+    END DO
+
+    ALLOCATE( WeightsX_X3(nDOFX_X3) )
+
+    DO iNodeX = 1, nDOFX_X3
+
+      iNodeX1 = NodeNumberTableX_X3(1,iNodeX)
+      iNodeX2 = NodeNumberTableX_X3(2,iNodeX)
+
+      WeightsX_X3(iNodeX) = WeightsX1(iNodeX1) * WeightsX2(iNodeX2)
 
     END DO
 
@@ -133,6 +163,29 @@ CONTAINS
 
     END DO
 
+    ! --- Lobatto Quadrature Points ---
+
+    ALLOCATE( NodesLX1(nNodesX(1)), WeightsLX1(nNodesX(1)) )
+    ALLOCATE( NodesLX2(nNodesX(2)), WeightsLX2(nNodesX(2)) )
+    ALLOCATE( NodesLX3(nNodesX(3)), WeightsLX3(nNodesX(3)) )
+
+    CALL GetQuadrature( nNodesX(1), NodesLX1, WeightsLX1, 'Lobatto' )
+    CALL GetQuadrature( nNodesX(2), NodesLX2, WeightsLX2, 'Lobatto' )
+    CALL GetQuadrature( nNodesX(3), NodesLX3, WeightsLX3, 'Lobatto' )
+
+    ALLOCATE( NodesLX_q(3,nDOFX) )
+
+    DO iNodeX = 1, nDOFX
+
+      iNodeX1 = NodeNumberTableX(1,iNodeX)
+      iNodeX2 = NodeNumberTableX(2,iNodeX)
+      iNodeX3 = NodeNumberTableX(3,iNodeX)
+
+      NodesLX_q(1:3,iNodeX) &
+        = [ NodesLX1(iNodeX1), NodesLX2(iNodeX2), NodesLX3(iNodeX3) ]
+
+    END DO
+
   END SUBROUTINE InitializeReferenceElementX
 
 
@@ -146,6 +199,8 @@ CONTAINS
     DEALLOCATE( NodesX2, WeightsX2 )
     DEALLOCATE( NodesX3, WeightsX3 )
     DEALLOCATE( WeightsX_X1 )
+    DEALLOCATE( WeightsX_X2 )
+    DEALLOCATE( WeightsX_X3 )
     DEALLOCATE( WeightsX_q )
     DEALLOCATE( NodesX_q )
 

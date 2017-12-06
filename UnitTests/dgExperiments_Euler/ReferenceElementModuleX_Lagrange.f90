@@ -9,7 +9,8 @@ MODULE ReferenceElementModuleX_Lagrange
     WriteMatrix
   USE PolynomialBasisModule_Lagrange, ONLY: &
      L_X1,  L_X2,  L_X3, &
-    dL_X1, dL_X2, dL_X3
+    dL_X1, dL_X2, dL_X3, &
+    LagrangeP
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
@@ -18,9 +19,8 @@ MODULE ReferenceElementModuleX_Lagrange
     NodeNumberTableX_X1, &
     NodeNumberTableX_X2, &
     NodeNumberTableX_X3, &
-    NodesX1, &
-    NodesX2, &
-    NodesX3
+    NodesX1,  NodesX2,  NodesX3, &
+    NodesLX1, NodesLX2, NodesLX3
 
   IMPLICIT NONE
   PRIVATE
@@ -34,6 +34,7 @@ MODULE ReferenceElementModuleX_Lagrange
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: dLXdX1_q
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: dLXdX2_q
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: dLXdX3_q
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: LX_L2G
 
   PUBLIC :: InitializeReferenceElementX_Lagrange
   PUBLIC :: FinalizeReferenceElementX_Lagrange
@@ -168,6 +169,29 @@ CONTAINS
 
     END DO
 
+    ALLOCATE( LX_L2G(nDOFX,nDOFX) )
+
+    DO jNodeX = 1, nDOFX
+
+      jNodeX1 = NodeNumberTableX(1,jNodeX)
+      jNodeX2 = NodeNumberTableX(2,jNodeX)
+      jNodeX3 = NodeNumberTableX(3,jNodeX)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+        iNodeX3 = NodeNumberTableX(3,iNodeX)
+
+        LX_L2G(iNodeX,jNodeX) &
+          = LagrangeP  ( NodesX1(iNodeX1), jNodeX1, NodesLX1, nNodesX(1) ) &
+            * LagrangeP( NodesX2(iNodeX2), jNodeX2, NodesLX2, nNodesX(2) ) &
+            * LagrangeP( NodesX3(iNodeX3), jNodeX3, NodesLX3, nNodesX(3) )
+
+      END DO
+
+    END DO
+
     CALL WriteMatrix( nDOFX_X1, nDOFX, LX_X1_Dn, 'LX_X1_Dn.dat' )
     CALL WriteMatrix( nDOFX_X1, nDOFX, LX_X1_Up, 'LX_X1_Up.dat' )
     CALL WriteMatrix( nDOFX_X2, nDOFX, LX_X2_Dn, 'LX_X2_Dn.dat' )
@@ -178,6 +202,8 @@ CONTAINS
     CALL WriteMatrix( nDOFX, nDOFX, dLXdX1_q, 'dLXdX1_q.dat' )
     CALL WriteMatrix( nDOFX, nDOFX, dLXdX2_q, 'dLXdX2_q.dat' )
     CALL WriteMatrix( nDOFX, nDOFX, dLXdX3_q, 'dLXdX3_q.dat' )
+
+    CALL WriteMatrix( nDOFX, nDOFX, LX_L2G, 'LX_L2G.dat' )
 
   END SUBROUTINE InitializeReferenceElementX_Lagrange
 
@@ -193,6 +219,7 @@ CONTAINS
     DEALLOCATE( dLXdX1_q )
     DEALLOCATE( dLXdX2_q )
     DEALLOCATE( dLXdX3_q )
+    DEALLOCATE( LX_L2G )
 
   END SUBROUTINE FinalizeReferenceElementX_Lagrange
 

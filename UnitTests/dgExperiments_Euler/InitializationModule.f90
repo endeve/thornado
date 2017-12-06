@@ -48,15 +48,15 @@ CONTAINS
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
             uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-              = One + Half * SIN( TwoPi * X1 )
+              = One! + Half * SIN( TwoPi * X1 )
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-              = One
+              = Zero!One
             uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
               = Zero
             uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
               = Zero
             uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-              = One
+              = 1.5_DP
 
           END DO
 

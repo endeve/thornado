@@ -6,6 +6,7 @@ rhsTest: \
 	$(thornado) \
 	ReferenceElementModuleX.o \
 	ReferenceElementModuleX_Lagrange.o \
+	GeometryComputationModule_Beta.o \
 	EulerEquationsUtilitiesModule_Beta.o \
 	InitializationModule.o \
 	dgDiscretizationModule_Euler.o \
@@ -14,6 +15,7 @@ rhsTest: \
 	$(thornado) \
 	ReferenceElementModuleX.o \
 	ReferenceElementModuleX_Lagrange.o \
+	GeometryComputationModule_Beta.o \
 	EulerEquationsUtilitiesModule_Beta.o \
 	InitializationModule.o \
 	dgDiscretizationModule_Euler.o \
