@@ -1,7 +1,7 @@
 MODULE EquationOfStateModule_IDEAL
 
   USE KindModule, ONLY: &
-    DP
+    DP, One
   USE FluidFieldsModule, ONLY: &
     ! --- Primitive Fluid Fields:
     iPF_D, iPF_E, iPF_Ne, nPF, &
@@ -20,6 +20,7 @@ MODULE EquationOfStateModule_IDEAL
   PUBLIC :: ComputePressureFromPrimitive_IDEAL
   PUBLIC :: ComputePressureFromSpecificInternalEnergy_IDEAL
   PUBLIC :: ComputeSoundSpeedFromPrimitive_IDEAL
+  PUBLIC :: ComputeSoundSpeedFromPrimitive_GR_IDEAL
   PUBLIC :: ComputeAuxiliary_Fluid_IDEAL
   PUBLIC :: Auxiliary_Fluid_IDEAL
 
@@ -77,9 +78,20 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: Cs
 
-    Cs(:) = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - 1.0_DP ) * Ev(:) / D(:) )
+    Cs(:) = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev(:) / D(:) )
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL
+
+
+  SUBROUTINE ComputeSoundSpeedFromPrimitive_GR_IDEAL( D, Ev, Ne, Cs )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), DIMENSION(:), INTENT(out) :: Cs
+
+    Cs(:) = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev(:) &
+                    / ( D(:) + Gamma_IDEAL * Ev(:) ) )
+
+  END SUBROUTINE ComputeSoundSpeedFromPrimitive_GR_IDEAL
 
 
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )

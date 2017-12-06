@@ -8,6 +8,7 @@ MODULE EquationOfStateModule
     ComputePressureFromPrimitive_IDEAL, &
     ComputePressureFromSpecificInternalEnergy_IDEAL, &
     ComputeSoundSpeedFromPrimitive_IDEAL, &
+    ComputeSoundSpeedFromPrimitive_GR_IDEAL, &
     ComputeAuxiliary_Fluid_IDEAL, &
     Auxiliary_Fluid_IDEAL
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -115,7 +116,8 @@ MODULE EquationOfStateModule
     ComputePressureFromSpecificInternalEnergy    => NULL(), &
     ComputeTemperatureFromPressure               => NULL(), &
     ComputeTemperatureFromSpecificInternalEnergy => NULL(), &
-    ComputeSoundSpeedFromPrimitive               => NULL()
+    ComputeSoundSpeedFromPrimitive               => NULL(), &
+    ComputeSoundSpeedFromPrimitive_GR            => NULL()
   PROCEDURE (EosSubroutine_3),   POINTER, PUBLIC :: &
     ComputeThermodynamicStates_Primitive         => NULL(), &
     ComputeThermodynamicStates_Auxiliary         => NULL()
@@ -169,6 +171,8 @@ CONTAINS
           => ComputePressureFromSpecificInternalEnergy_IDEAL
         ComputeSoundSpeedFromPrimitive &
           => ComputeSoundSpeedFromPrimitive_IDEAL
+        ComputeSoundSpeedFromPrimitive_GR &
+          => ComputeSoundSpeedFromPrimitive_GR_IDEAL
         ComputeAuxiliary_Fluid &
           => ComputeAuxiliary_Fluid_IDEAL
         Auxiliary_Fluid &
