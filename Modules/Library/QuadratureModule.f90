@@ -187,6 +187,8 @@ CONTAINS
         END SELECT
       CASE ( 'Lobatto' )
         SELECT CASE ( nQ )
+          CASE ( 1 )
+            xQ = xL1; wQ = wL1
           CASE ( 2 )
             xQ = xL2; wQ = wL2
           CASE ( 3 )

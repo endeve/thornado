@@ -39,6 +39,8 @@ MODULE PolynomialBasisModule_Lagrange
   PUBLIC :: evalL_X1
   PUBLIC :: evalLX
   PUBLIC :: evalLX_X1
+  PUBLIC :: LagrangeP
+  PUBLIC :: dLagrangeP
 
 CONTAINS
 
@@ -374,6 +376,23 @@ CONTAINS
   END FUNCTION Lagrange
 
 
+  PURE REAL(DP) FUNCTION LagrangeP( x, i, xx, nn )
+
+    INTEGER,  INTENT(in) :: i, nn
+    REAL(DP), INTENT(in) :: x, xx(nn)
+
+    INTEGER :: j
+
+    LagrangeP = 1.0_DP
+    DO j = 1, nn
+      IF( j == i ) CYCLE
+      LagrangeP = LagrangeP * ( x - xx(j) ) / ( xx(i) - xx(j) )
+    END DO
+
+    RETURN
+  END FUNCTION LagrangeP
+
+
   !***************************************************************************
   !  Derivative of Lagrange Polynomial Basis
   !***************************************************************************
@@ -448,6 +467,35 @@ CONTAINS
     END DO
 
   END FUNCTION dLagrange
+
+
+  PURE REAL(DP) FUNCTION dLagrangeP( x, i, xx, nn )
+
+    INTEGER,  INTENT(in) :: i, nn
+    REAL(DP), INTENT(in) :: x, xx(nn)
+
+    INTEGER  :: j, k
+    REAL(DP) :: Denominator, Numerator
+
+    Denominator = 1.0_DP
+    DO j = 1, nn
+      IF( j == i ) CYCLE
+      Denominator = Denominator * ( xx(i) - xx(j) )
+    END DO
+
+    dLagrangeP = 0.0_DP
+    DO j = 1, nn
+      IF( j == i ) CYCLE
+      Numerator = 1.0_DP
+      DO k = 1, nn
+        IF( k == i .OR. k == j ) CYCLE
+        Numerator = Numerator * ( x - xx(k) )
+      END DO
+      dLagrangeP = dLagrangeP + Numerator / Denominator
+    END DO
+
+    RETURN
+  END FUNCTION dLagrangeP
 
 
 END MODULE PolynomialBasisModule_Lagrange
