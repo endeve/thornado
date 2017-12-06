@@ -48,7 +48,7 @@ MODULE GeometryFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iGF_Beta_1   = 10 ! Shift Vector 1
   INTEGER, PUBLIC, PARAMETER :: iGF_Beta_2   = 11 ! Shift Vector 2
   INTEGER, PUBLIC, PARAMETER :: iGF_Beta_3   = 12 ! Shift Vector 3
-  INTEGER, PUBLIC, PARAMETER :: iGF_CF       = 13 ! Conformal Factor
+  INTEGER, PUBLIC, PARAMETER :: iGF_Psi      = 13 ! Conformal Factor
   INTEGER, PUBLIC, PARAMETER :: nGF          = 13 ! n Geometry Fields
 
   CHARACTER(32), DIMENSION(nGF), PUBLIC, PARAMETER :: &
@@ -165,7 +165,7 @@ CONTAINS
     uGF(:,:,:,:,iGF_Beta_1)   = 0.0_DP
     uGF(:,:,:,:,iGF_Beta_2)   = 0.0_DP
     uGF(:,:,:,:,iGF_Beta_3)   = 0.0_DP
-    uGF(:,:,:,:,iGF_CF)       = 1.0_DP
+    uGF(:,:,:,:,iGF_Psi)      = 1.0_DP
 
   END SUBROUTINE CreateGeometryFieldsX
 
