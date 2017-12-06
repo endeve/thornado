@@ -206,6 +206,7 @@ For example, the simple Lax-Friedrichs flux is given by
   =\f{1}{2}\,\big(\,\bF^{i}(\bU^{-})+\bF^{i}(\bU^{+})-\alpha^{i}\,(\,\bU^{+}-\bU^{-}\,)\,\big),
 \end{equation}
 where $\alpha^{i}=||\mbox{eig}\big(\partial\bF^{i}/\partial\bU\big)||_{\infty}$ is the largest eigenvalue of the flux jacobian.  
+We have implemented the Local Lax-Friedrichs flux, the Harten-Lax-van Leer (HLL) flux, and the HLLC flux, but use the HLLC flux for all the numerical experiments presented in Sections~\ref{sec:NumericalExperiments} and \ref{sec:MiniApp}.  
 
 The approximation space $\mathbb{V}^{k}$ contains the constant functions, and the choice $v=1$ in Eq.~\eqref{eq:semidiscreteDG} gives
 \begin{equation}
@@ -351,6 +352,20 @@ With $d=1$, we substitute $\bk\to k_{d}\to k$, $x^{d}\to x$, $q_{i}\to q$, etc.,
 \label{sec:sourceTerms}
 
 \section{Time Integration}
+\label{sec:TimeIntegration}
+
+For time integration, we employ the strong stability-preserving Runge-Kutta (SSP-RK) methods \citep[e.g.,][]{gottlieb_etal_2001}, which, for evolving the Euler equations from $t^{n}$ to $t^{n+1}=t^{n}+\dt$ ($\bU^{n}\to\bU^{n+1}$) using $m$ stages, take the general form
+\begin{align}
+  \bU^{(0)}
+  &=\bU^{n}, \\
+  \bU^{(i)}
+  &=\sum_{k=0}^{i-1}\alpha_{ik}\,\big[\,\bU^{(k)}+\beta_{ik}\,\dt\,\bcL(\bU^{(k)})\,\big], \quad i=1,\ldots,m 
+  \label{eq:ssprkStages} \\
+  \bU^{n+1}
+  &=\bU^{(m)}.  
+\end{align}
+For second- and third-order temporal accuracy (denoted SSP-RK2 and SSP-RK3, respectively), the coefficient matrices $\alpha_{ik}$ and $\beta_{ik}$ are given by \citep{shuOsher_1988}.  
+Note that $\alpha_{ik},\beta_{ik}\ge0$ and $\sum_{k}\alpha_{ik}=1~\forall i$, so that the RK stages in Eq.~\eqref{eq:ssprkStages} are simply convex combinations of forward Euler steps with time step $\beta_{ik}\,\dt$.  
 
 \section{Equation of State (EoS)}
 
@@ -373,11 +388,20 @@ For the solution to the Euler equations, we define the set of physically admissi
 
 
 \section{Gravity Solver: Finite Element Method}
+\label{sec:FiniteElementMethod}
 
 To solve Poisson's equation given by Eq.~\eqref{eq:poisson}, we use the finite element method (FEM).  
 \ee{Nick fills in here}.  
 
 \section{Benchmark Problems}
+\label{sec:NumericalExperiments}
+
+We benchmark the DG implementation against a series of test problems.  
+We will vary the degree $k$ of the polynomial representation from 0 to 3, which we then denote DG($k$).  
+IWe use the explicit SSP-RK time integrators in Section~\ref{sec:explicitTime}.  
+The 2-stage and 3-stage methods are denoted SSP-RK2 and SSP-RK3, respectively.  
+As an example, an expected third-order accurate method (for problems with smooth solutions), using DG(2) and SSP-RK3, will then be denoted DG(2)+RK3.  
+We use the finite element method in Section~\ref{sec:FiniteElementMethod} with the same polynomial degree as the DG method for problems involving self-gravity.  
 
 \subsection{Smooth Problem: Linear Waves}
 
@@ -465,6 +489,9 @@ To solve Poisson's equation given by Eq.~\eqref{eq:poisson}, we use the finite e
 \subsubsection{Stationary Accretion Shock}
 
 \section{Miniapp: Adiabatic Collapse of Stellar Iron Core}
+\label{sec:MiniApp}
+
+\section{Summary and Conclusions}
 
 \bibliographystyle{apj}
 \bibliography{../References/references.bib}
