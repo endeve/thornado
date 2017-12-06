@@ -15,6 +15,10 @@ MODULE FluidFieldsModule
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsF_X2
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsF_X3
 
+  ! --- Degrees of Freedom per Element ---
+
+  INTEGER, PUBLIC :: nDOF_F
+
   ! --- Conserved Fluid Fields ---
 
   INTEGER, PUBLIC, PARAMETER :: iCF_D  = 1  ! Conserved Baryon Density
@@ -114,6 +118,8 @@ CONTAINS
     CALL CreateFluidFields_Primitive( nX, swX )
     CALL CreateFluidFields_Auxiliary( nX, swX )
 
+    ALLOCATE( rhsCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF) )
+
     ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
     Shock = 0.0_DP
 
@@ -134,13 +140,6 @@ CONTAINS
     END DO
 
     ALLOCATE( uCF &
-                (1:nDOFX, &
-                 1-swX(1):nX(1)+swX(1), &
-                 1-swX(2):nX(2)+swX(2), &
-                 1-swX(3):nX(3)+swX(3), &
-                 1:nCF) )
-
-    ALLOCATE( rhsCF &
                 (1:nDOFX, &
                  1-swX(1):nX(1)+swX(1), &
                  1-swX(2):nX(2)+swX(2), &

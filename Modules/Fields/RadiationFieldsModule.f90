@@ -14,6 +14,10 @@ MODULE RadiationFieldsModule
 
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsR
 
+  ! --- Degrees of Freedom per Element ---
+
+  INTEGER, PUBLIC :: nDOF_R
+
   ! --- Eulerian (Conserved) Radiation Fields ---
 
   INTEGER, PUBLIC, PARAMETER :: iCR_N  = 1  ! Eulerian Number Density
