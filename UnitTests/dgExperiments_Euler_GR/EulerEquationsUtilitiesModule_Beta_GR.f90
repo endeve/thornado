@@ -3,7 +3,7 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   USE ProgramHeaderModule, ONLY: &
     nX
   USE KindModule, ONLY: &
-    DP, Zero, Half
+    DP, Zero, Half, One
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
 
@@ -14,32 +14,31 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   PUBLIC :: ComputeConserved_GR
   PUBLIC :: Eigenvalues_GR
   PUBLIC :: AlphaC_GR
-  PUBLIC :: ComputeSoundSpeed_GR
   PUBLIC :: Flux_X1_GR
   PUBLIC :: NumericalFlux_X1_HLLC_GR
 
 CONTAINS
 
 
-  SUBROUTINE ComputePrimitive_GR( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-                                  PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-                                  GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
-                                  AF_P, K )
+  SUBROUTINE ComputePrimitive_GR &
+              ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+                PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+                AF_P, GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, &
                                            CF_E, CF_Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, &
                                            PF_E, PF_Ne
+    REAL(DP), DIMENSION(:), INTENT(out) :: AF_P
     REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
-    REAL(DP), DIMENSION( 1 : K ), INTENT(out) :: AF_P
 
     LOGICAL :: Converged
-    INTEGER  :: K, i, nIter, nNodes
+    INTEGER :: i, nIter, nNodes
 
-    REAL(DP), DIMENSION( 1 : K ) :: SSq, Pold, vSq, W, h, Pnew
+    REAL(DP), DIMENSION( 1 : SIZE( CF_D ) ) :: SSq, Pold, vSq, W, h, Pnew
 
     REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-12
+    REAL(DP), PARAMETER :: TolP = 1.0d-8
 
     SSq = GF_Gm_dd_11 * CF_S1**2 &
         + GF_Gm_dd_22 * CF_S2**2 &
@@ -169,50 +168,45 @@ CONTAINS
   END SUBROUTINE ComputeFunJacP
 
   
-  SUBROUTINE Eigenvalues_GR( V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                                Alpha, Beta1, Cs )
+  PURE FUNCTION Eigenvalues_GR &
+    ( V_1, V_2, V_3, V_i, Cs, Gm_11, Gm_22, Gm_33, Gm_ii, Alpha, Beta_i )
 
     ! Alpha is the lapse function
     ! Vi is the contravariant component V^i
     ! Beta1 is the contravariant component Beta^1
 
-    REAL(DP), INTENT(in) :: V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                            Alpha, Beta1, Cs
+    REAL(DP)             :: Eigenvalues_GR(1:nCF)
+    REAL(DP), INTENT(in) :: V_1, V_2, V_3, V_i, Cs
+    REAL(DP), INTENT(in) :: Gm_11, Gm_22, Gm_33, Gm_ii, Alpha, Beta_i
+
     REAL(DP) :: VSq
-    INTEGER :: i
-    REAL(DP), DIMENSION(1:nX(1), 1:5) :: Eigvals_GR
 
-    VSq = Gm_dd_11 * V1**2 + Gm_dd_22 * V2**2 + Gm_dd_33 * V3**2
+    VSq = Gm_11 * V_1**2 + Gm_22 * V_2**2 + Gm_33 * V_3**2
 
-    DO i = 1, nX(1)
+    Eigenvalues_GR(1) &
+      = Alpha / ( One - VSq * Cs**2 ) * ( V_i * ( One - Cs**2 ) &
+        - Cs * SQRT( ( One - VSq ) * ( ( One - VSq * Cs**2 ) / Gm_ii &
+           - V_i**2 * ( One - Cs**2 ) ) ) ) - Beta_i
 
-       Eigvals_GR(i, 1:5) = &
-          [ Alpha / ( 1.0_DP - VSq * Cs**2 ) * ( V1 * ( 1.0_DP - Cs**2 ) - Cs &
-          * SQRT( ( 1.0_DP - VSq ) * ( 1.0_DP / Gm_dd_11                      &
-          * ( 1.0_DP - VSq * Cs**2 ) - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
+    Eigenvalues_GR(2) &
+      = Alpha * V_i - Beta_i
 
-          Alpha * V1 - Beta1, &
+    Eigenvalues_GR(3) &
+      = Alpha / ( One - VSq * Cs**2 ) * ( V_i * ( One - Cs**2 ) &
+        + Cs * SQRT( ( One - VSq ) * ( ( One - VSq * Cs**2 ) / Gm_ii &
+           - V_i**2 * ( One - Cs**2 ) ) ) ) - Beta_i
 
-          Alpha / ( 1.0_DP - VSq * Cs**2 ) * ( V1 * ( 1.0_DP - Cs**2 ) + Cs   &
-          * SQRT( ( 1.0_DP - VSq ) * ( 1.0_DP / Gm_dd_11                      &
-          * ( 1.0_DP - VSq * Cs**2 ) - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
+    Eigenvalues_GR(4) &
+      = Alpha * V_i - Beta_i
 
-          Alpha * V1 - Beta1, &
+    Eigenvalues_GR(5) &
+      = Alpha * V_i - Beta_i
 
-          Alpha * V1 - Beta1 ]
-    END DO
+    Eigenvalues_GR(6) &
+      = Alpha * V_i - Beta_i
 
-  END SUBROUTINE Eigenvalues_GR
-
-
-  SUBROUTINE ComputeSoundSpeed_GR( p, e, rho, Gamma )
-
-    REAL(DP), DIMENSION(:), INTENT(in) :: p, e, rho, Gamma
-    REAL(DP), DIMENSION( 1 : nX( 1 ) ) :: Cs
-
-    Cs = SQRT ( Gamma * p / ( rho + e + p ) )
-
-  END SUBROUTINE ComputeSoundSpeed_GR
+    RETURN
+  END FUNCTION Eigenvalues_GR
 
 
   FUNCTION Flux_X1_GR &
@@ -252,18 +246,20 @@ CONTAINS
   END FUNCTION Flux_X1_GR
 
 
-  REAL(DP) FUNCTION AlphaC_GR( U_L, U_R, F_L, F_R, aP, aM, &
-                               V1_L, V1_R, Beta_u_1, Gm_dd_11 )
+  REAL(DP) FUNCTION AlphaC_GR &
+             ( U_L, F_L, U_R, F_R, Gm_dd_11, Beta_u_1, aP, aM )
 
     ! --- Middle Wavespeed as suggested by Mignone and Bodo (2005) ---
 
     REAL(DP), DIMENSION(1:nCF), INTENT(in) :: U_L, U_R, F_L, F_R
-    REAL(DP),                   INTENT(in) :: aP, aM, V1_L, V1_R, &
-                                              Beta_u_1, Gm_dd_11
+    REAL(DP),                   INTENT(in) :: Gm_dd_11, Beta_u_1, aP, aM
+
     REAL(DP), DIMENSION(1:nCF)             :: U, F, U_LL, U_RR, F_LL, F_RR
     REAL(DP)                               :: A, B, C, eps
 
     eps = TINY( 1.0_DP )
+
+    ! --- CLEAN UP!!! ---
 
     ! --- Make sure that tau -> E for conserved variables and fluxes
 
@@ -277,9 +273,9 @@ CONTAINS
     U_LL( iCF_E ) = U_L( iCF_E ) + U_L( iCF_D )
     U_RR( iCF_E ) = U_R( iCF_E ) + U_R( iCF_D )
 
-    ! --- F_E = F_tau + D * ( V1 - Beta1 )
-    F_LL( iCF_E ) = F_L( iCF_E ) + U_L( iCF_D ) * ( V1_L - Beta_u_1 )
-    F_RR( iCF_E ) = F_R( iCF_E ) + U_R( iCF_D ) * ( V1_R - Beta_u_1 )
+    ! --- F_E = F_tau + F_D
+    F_LL( iCF_E ) = F_L( iCF_E ) + F_L( iCF_D )
+    F_RR( iCF_E ) = F_R( iCF_E ) + F_R( iCF_D )
 
     ! --- Calculate the HLL conserved variable vector and flux
     ! --- Mignone & Bodo (2005) (Note the sign change on aM which is due
@@ -318,12 +314,12 @@ CONTAINS
 
 
   PURE FUNCTION NumericalFlux_X1_HLLC_GR &
-      ( u_L, u_R, Flux_L, Flux_R, alpha, alpha_P, alpha_M, alpha_C, nF, &
+      ( u_L, u_R, Flux_L, Flux_R, alpha_P, alpha_M, alpha_C, nF, &
         V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_dd_11 )
 
     INTEGER,  INTENT(in)                   :: nF
     REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
-    REAL(DP), INTENT(in)                   :: alpha, alpha_P, alpha_M,      &
+    REAL(DP), INTENT(in)                   :: alpha_P, alpha_M,      &
                                               alpha_C, V1_L, V1_R,          &
                                               p_L, p_R, Beta_u_1, Gm_dd_11
     REAL(DP)                               :: p, D, S1, S2, S3, E, Ne

@@ -3,7 +3,7 @@ PROGRAM rhsTest_GR
   USE KindModule, ONLY: &
     DP, Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
-    nX, nDOFX
+    iX_B0, iX_B1, iX_E0, iX_E1
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -13,38 +13,36 @@ PROGRAM rhsTest_GR
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange, &
     FinalizeReferenceElementX_Lagrange
-  USE GeometryComputationModule, ONLY: &
+  USE GeometryFieldsModule, ONLY: &
+    uGF
+  USE GeometryComputationModule_Beta, ONLY: &
     ComputeGeometryX
+  USE FluidFieldsModule, ONLY: &
+    uCF, rhsCF
   USE InitializationModule_GR, ONLY: &
     InitializeFields_GR
   USE dgDiscretizationModule_Euler_GR, ONLY: &
-    ComputeRHS_Euler_GR
+    ComputeIncrement_Euler_GR_DG_Explicit
 
   IMPLICIT NONE
-
-  INCLUDE 'mpif.h'
-
-  INTEGER :: mpierr
-
-  CALL MPI_INIT( mpierr )
 
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'rhsTest_GR', &
            nX_Option &
-             = [ 64, 1, 1 ], &
+             = [ 32, 16, 32 ], &
            swX_Option &
              = [ 1, 1, 1 ], &
            bcX_Option &
              = [ 1, 1, 1 ], &
            xL_Option &
-             = [ 0.0d0, 0.0d0, 0.0d0 ], &
+             = [ 0.2d0, 0.0d0, 0.0d0 ], &
            xR_Option &
-             = [ 1.0d0, 1.0d0, 1.0d0 ], &
+             = [ 1.2d0,    Pi, TwoPi ], &
            nNodes_Option &
-             = 4, &
+             = 3, &
            CoordinateSystem_Option &
-             = 'CARTESIAN', &
+             = 'SPHERICAL', &
            EquationOfState_Option &
              = 'IDEAL', &
            Gamma_IDEAL_Option &
@@ -58,18 +56,18 @@ PROGRAM rhsTest_GR
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL ComputeGeometryX
+  CALL ComputeGeometryX &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = 0.05_DP )
 
   CALL InitializeFields_GR
 
-  CALL ComputeRHS_Euler_GR
+  CALL ComputeIncrement_Euler_GR_DG_Explicit &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, rhsCF )
 
   CALL FinalizeReferenceElementX
 
   CALL FinalizeReferenceElementX_Lagrange
 
   CALL FinalizeProgram
-
-  CALL MPI_FINALIZE( mpierr )
 
 END PROGRAM rhsTest_GR
