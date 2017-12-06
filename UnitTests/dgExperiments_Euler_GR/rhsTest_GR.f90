@@ -32,7 +32,7 @@ PROGRAM rhsTest_GR
          ( ProgramName_Option &
              = 'rhsTest_GR', &
            nX_Option &
-             = [ 32, 1, 1 ], &
+             = [ 64, 1, 1 ], &
            swX_Option &
              = [ 1, 1, 1 ], &
            bcX_Option &
@@ -47,8 +47,12 @@ PROGRAM rhsTest_GR
              = 'CARTESIAN', &
            EquationOfState_Option &
              = 'IDEAL', &
+           Gamma_IDEAL_Option &
+             = 4.0_DP / 3.0_DP, &
            Opacity_Option &
-             = 'IDEAL' )
+             = 'IDEAL', &
+           nStages_SSP_RK_Option &
+             = 1 )
 
   CALL InitializeReferenceElementX
 

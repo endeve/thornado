@@ -6,73 +6,40 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
     DP, Zero, Half
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
-  USE EquationOfStateModule, ONLY: &
-    ComputePressureFromSpecificInternalEnergy    
-
 
   IMPLICIT NONE
-  PRIVATE
+  PRIVATE :: ComputeFunJacP
 
-  PUBLIC :: ComputeConserved_GR
   PUBLIC :: ComputePrimitive_GR
+  PUBLIC :: ComputeConserved_GR
   PUBLIC :: Eigenvalues_GR
+  PUBLIC :: AlphaC_GR
   PUBLIC :: ComputeSoundSpeed_GR
   PUBLIC :: Flux_X1_GR
-  PUBLIC :: AlphaC_GR
   PUBLIC :: NumericalFlux_X1_HLLC_GR
 
 CONTAINS
 
 
-  SUBROUTINE ComputeConserved_GR( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-                                  AF_P,                                   &
-                                  GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
-                                  CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne )
-
-
-    REAL(DP), DIMENSION(:), INTENT(in)  :: PF_D, PF_V1, PF_V2, PF_V3, &
-                                           PF_E, PF_Ne
-    REAL(DP), DIMENSION(:), INTENT(in)  :: AF_P
-    REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
-    REAL(DP), DIMENSION(:), INTENT(out) :: CF_D, CF_S1, CF_S2, CF_S3, &
-                                           CF_E, CF_Ne
-
-    REAL(DP), DIMENSION( 1 : nX( 1 ) ) :: vSq, W, h
-
-    vSq = GF_Gm_dd_11 * PF_V1**2 &
-        + GF_Gm_dd_22 * PF_V2**2 &
-        + GF_Gm_dd_33 * PF_V3**2
-
-    W = 1.0_DP / SQRT( 1.0_DP - vSq )
-    h = 1.0_DP + ( PF_E + AF_P ) / PF_D
-    
-    CF_D   = W * PF_D
-    CF_S1  = h * W**2 * PF_D * GF_Gm_dd_11 * PF_V1
-    CF_S2  = h * W**2 * PF_D * GF_Gm_dd_22 * PF_V2
-    CF_S3  = h * W**2 * PF_D * GF_Gm_dd_33 * PF_V3
-    CF_E   = h * W**2 * PF_D - AF_P - W * PF_D
-    CF_Ne  = W * PF_Ne
-
-  END SUBROUTINE ComputeConserved_GR
-  
-
   SUBROUTINE ComputePrimitive_GR( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-                                  GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
                                   PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-                                  AF_P )
+                                  GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
+                                  AF_P, K )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, &
                                            CF_E, CF_Ne
-    REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
     REAL(DP), DIMENSION(:), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, &
                                            PF_E, PF_Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: AF_P
+    REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
+    REAL(DP), DIMENSION( 1 : K ), INTENT(out) :: AF_P
 
     LOGICAL :: Converged
-    INTEGER  :: i, nIter
-    REAL(DP), DIMENSION( 1 : nX( 1 ) ) :: SSq, Pold, vSq, W, h, Pnew
+    INTEGER  :: K, i, nIter, nNodes
+
+    REAL(DP), DIMENSION( 1 : K ) :: SSq, Pold, vSq, W, h, Pnew
+
     REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-11
+    REAL(DP), PARAMETER :: TolP = 1.0d-12
 
     SSq = GF_Gm_dd_11 * CF_S1**2 &
         + GF_Gm_dd_22 * CF_S2**2 &
@@ -80,10 +47,12 @@ CONTAINS
 
     ! --- Find Pressure with Newton's Method ---
 
-    Pold = AF_P ! --- Initial Guess
-
-    DO i = 1, nX( 1 )
-
+    Pold = AF_P ! -- Initial guess
+    nNodes = SIZE( Pold )
+    
+    ! Loop through all the nodes
+    DO i = 1, nNodes
+       
       Converged = .FALSE.
       nIter     = 0
 
@@ -95,9 +64,11 @@ CONTAINS
 
         Pnew(i) = Pold(i) - FunP / JacP
 
+        ! Check if Newton's method has converged
         IF( ABS( Pnew(i) / Pold(i) - 1.0_DP ) <= TolP ) Converged = .TRUE.
 
-        IF( nIter == 100)THEN
+        ! For de-bugging
+        IF( nIter == 10)THEN
           WRITE(*,*) 'No convergence, |ERROR|:', &
                       ABS( Pnew(i) / Pold(i) - 1.0_DP )
           WRITE(*,*) 'Pold:                   ', Pold(i)
@@ -105,11 +76,10 @@ CONTAINS
           STOP
         END IF
 
-
         Pold(i) = Pnew(i)
 
       END DO
-     
+
     END DO
 
     AF_P = Pnew
@@ -137,6 +107,37 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_GR
 
 
+  SUBROUTINE ComputeConserved_GR( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+                                  CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+                                  GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
+                                  AF_P )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: PF_D, PF_V1, PF_V2, PF_V3, &
+                                           PF_E, PF_Ne
+    REAL(DP), DIMENSION(:), INTENT(out) :: CF_D, CF_S1, CF_S2, CF_S3, &
+                                           CF_E, CF_Ne
+    REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
+    REAL(DP), DIMENSION(:), INTENT(in)  :: AF_P
+
+    REAL(DP), DIMENSION( 1 : nX( 1 ) ) :: vSq, W, h
+
+    vSq = GF_Gm_dd_11 * PF_V1**2 &
+        + GF_Gm_dd_22 * PF_V2**2 &
+        + GF_Gm_dd_33 * PF_V3**2
+
+    W = 1.0_DP / SQRT( 1.0_DP - vSq )
+    h = 1.0_DP + ( PF_E + AF_P ) / PF_D
+    
+    CF_D   = W * PF_D
+    CF_S1  = h * W**2 * PF_D * GF_Gm_dd_11 * PF_V1
+    CF_S2  = h * W**2 * PF_D * GF_Gm_dd_22 * PF_V2
+    CF_S3  = h * W**2 * PF_D * GF_Gm_dd_33 * PF_V3
+    CF_E   = h * W**2 * PF_D - AF_P - W * PF_D
+    CF_Ne  = W * PF_Ne
+
+  END SUBROUTINE ComputeConserved_GR
+  
+
   SUBROUTINE ComputeFunJacP( D, SSq, E, P, FunP, JacP )
 
     REAL(DP), INTENT(in)  :: D, SSq, E, P
@@ -152,8 +153,11 @@ CONTAINS
     EPS = ( SQRT( HSq - SSq ) &
             - P * SQRT( HSq ) / SQRT( HSq - SSq ) - D ) / D
 
-    CALL ComputePressureFromSpecificInternalEnergy &
-           ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
+!    CALL ComputePressureFromSpecificInternalEnergy &
+!         ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
+!    FunP = P - Pbar(1)
+    
+    Pbar(1) = ( 4.0_DP / 3.0_DP - 1.0_DP ) * RHO * EPS
 
     FunP = P - Pbar(1)
 
@@ -164,15 +168,16 @@ CONTAINS
 
   END SUBROUTINE ComputeFunJacP
 
+  
   SUBROUTINE Eigenvalues_GR( V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                                Gm_uu_11, Alpha, Beta1, Cs )
+                                Alpha, Beta1, Cs )
 
     ! Alpha is the lapse function
     ! Vi is the contravariant component V^i
     ! Beta1 is the contravariant component Beta^1
 
     REAL(DP), INTENT(in) :: V1, V2, V3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                            Gm_uu_11, Alpha, Beta1, Cs
+                            Alpha, Beta1, Cs
     REAL(DP) :: VSq
     INTEGER :: i
     REAL(DP), DIMENSION(1:nX(1), 1:5) :: Eigvals_GR
@@ -183,14 +188,14 @@ CONTAINS
 
        Eigvals_GR(i, 1:5) = &
           [ Alpha / ( 1.0_DP - VSq * Cs**2 ) * ( V1 * ( 1.0_DP - Cs**2 ) - Cs &
-          * SQRT( ( 1.0_DP - VSq ) * ( Gm_uu_11 * ( 1.0_DP - VSq * Cs**2 )  &
-          - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
+          * SQRT( ( 1.0_DP - VSq ) * ( 1.0_DP / Gm_dd_11                      &
+          * ( 1.0_DP - VSq * Cs**2 ) - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
 
           Alpha * V1 - Beta1, &
 
-          Alpha / ( 1.0_DP - VSq * Cs**2 ) * ( V1 * ( 1.0_DP - Cs**2 ) + Cs &
-          * SQRT( ( 1.0_DP - VSq ) * ( Gm_uu_11 * ( 1.0_DP - VSq * Cs**2 )  &
-          - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
+          Alpha / ( 1.0_DP - VSq * Cs**2 ) * ( V1 * ( 1.0_DP - Cs**2 ) + Cs   &
+          * SQRT( ( 1.0_DP - VSq ) * ( 1.0_DP / Gm_dd_11                      &
+          * ( 1.0_DP - VSq * Cs**2 ) - V1**2 * ( 1.0_DP - Cs**2 )))) - Beta1, &
 
           Alpha * V1 - Beta1, &
 
@@ -211,7 +216,7 @@ CONTAINS
 
 
   FUNCTION Flux_X1_GR &
-    ( D, V1, V2, V3, E, P, Ne, Alpha, Beta1, Gm11, Gm22, Gm33 )
+    ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Alpha, Beta1 )
 
     REAL(DP), INTENT(in)       :: D, V1, V2, V3, E, P, Ne
     REAL(DP), INTENT(in)       :: Alpha, Beta1, Gm11, Gm22, Gm33
@@ -314,14 +319,13 @@ CONTAINS
 
   PURE FUNCTION NumericalFlux_X1_HLLC_GR &
       ( u_L, u_R, Flux_L, Flux_R, alpha, alpha_P, alpha_M, alpha_C, nF, &
-        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_uu_11, Gm_dd_11 )
+        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_dd_11 )
 
     INTEGER,  INTENT(in)                   :: nF
     REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
     REAL(DP), INTENT(in)                   :: alpha, alpha_P, alpha_M,      &
                                               alpha_C, V1_L, V1_R,          &
-                                              p_L, p_R, Beta_u_1, Gm_uu_11, &
-                                              Gm_dd_11
+                                              p_L, p_R, Beta_u_1, Gm_dd_11
     REAL(DP)                               :: p, D, S1, S2, S3, E, Ne
     REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_X1_HLLC_GR
 
@@ -360,8 +364,8 @@ CONTAINS
         S3 = u_L( iCF_S3 ) *  ( -alpha_M - V1_L    + Beta_u_1 ) &
                            /  ( -alpha_M - alpha_C + Beta_u_1 )
 
-        E  = ( ( u_L( iCF_E ) + u_L( iCF_D ) ) * ( -alpha_M + Beta_u_1 ) &
-             + Gm_uu_11 * S1 - Gm_uu_11 * u_L( iCF_S1 ) )                &
+        E  = ( ( u_L( iCF_E ) + u_L( iCF_D ) ) * ( -alpha_M + Beta_u_1 )    &
+             + 1.0_DP / Gm_dd_11 * S1 - 1.0_DP / Gm_dd_11 * u_L( iCF_S1 ) ) &
              / ( -alpha_M + Beta_u_1 )
 
         Ne = u_L( iCF_Ne ) *  ( -alpha_M - V1_L    + Beta_u_1 ) &
@@ -389,8 +393,8 @@ CONTAINS
         S3 = u_R( iCF_S3 ) *  ( alpha_P - V1_R    + Beta_u_1 ) &
                            /  ( alpha_P - alpha_C + Beta_u_1 )
 
-        E  = ( ( u_R( iCF_E ) + u_R( iCF_D ) ) * ( alpha_P + Beta_u_1 ) &
-             + Gm_uu_11 * S1 - Gm_uu_11 * u_R( iCF_S1 ) )               &
+        E  = ( ( u_R( iCF_E ) + u_R( iCF_D ) ) * ( alpha_P + Beta_u_1 )     &
+             + 1.0_DP / Gm_dd_11 * S1 - 1.0_DP / Gm_dd_11 * u_R( iCF_S1 ) ) &
              / ( alpha_P + Beta_u_1 )
 
         Ne  = u_R( iCF_Ne ) *  ( alpha_P - V1_R    + Beta_u_1 ) &
@@ -407,14 +411,13 @@ CONTAINS
       NumericalFlux_X1_HLLC_GR( iCF_S3 ) &
         = S3 * ( alpha_C - Beta_u_1 )
       NumericalFlux_X1_HLLC_GR( iCF_E  ) &
-        = Gm_uu_11 * S1 - Beta_u_1 * ( E - D ) - alpha_C * D
+        = 1.0_DP / Gm_dd_11 * S1 - Beta_u_1 * ( E - D ) - alpha_C * D
       NumericalFlux_X1_HLLC_GR( iCF_Ne ) &
         = Ne * ( alpha_C - Beta_u_1 )
 
     END IF
 
     RETURN
-
 
   END FUNCTION NumericalFlux_X1_HLLC_GR
 

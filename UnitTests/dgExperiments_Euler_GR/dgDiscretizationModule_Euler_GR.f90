@@ -17,7 +17,7 @@ MODULE dgDiscretizationModule_Euler_GR
     LX_X1_Dn, &
     LX_X1_Up
   USE GeometryFieldsModule, ONLY: &
-    uGF, nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_Gm_uu_11, &
+    uGF, nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
     iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
     uCF, nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
@@ -63,7 +63,7 @@ CONTAINS
     REAL(DP), DIMENSION(nDOFX_X1,nGF) :: uGF_L, uGF_R
     REAL(DP), DIMENSION(nDOFX_X1,nAF) :: uAF_L, uAF_R    
     REAL(DP), DIMENSION(nDOFX_X1,nCF) :: Flux_X1_L_GR, Flux_X1_R_GR
-    REAL(DP), DIMENSION(nDOFX_X1) :: AlphaMns, AlphaMdl, AlphaPls, &
+    REAL(DP), DIMENSION(nDOFX_X1)     :: AlphaMns, AlphaMdl, AlphaPls, &
                                          AlphaL, AlphaR, AlphaMAX
     REAL(DP), DIMENSION(nDOFX_X1,nCF) :: EigVals_L, EigVals_R, EigVals_GR
     REAL(DP), DIMENSION(nDOFX_X1,nCF) :: NumericalFlux_GR
@@ -100,7 +100,7 @@ CONTAINS
 
           END DO
 
-          DO iAF = 1, nAF
+          DO iAF = 1, nAF ! Probably only need to do this for pressure and gamma
 
             uAF_P(:,iAF) = uAF(:,iX1-1,iX2,iX3,iAF)
             uAF_K(:,iAF) = uAF(:,iX1,  iX2,iX3,iAF)
@@ -114,30 +114,29 @@ CONTAINS
           CALL ComputePrimitive_GR &
                  ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                    uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uGF_K(:,iGF_Gm_dd_11), &
                    uGF_K(:,iGF_Gm_dd_22), &
                    uGF_K(:,iGF_Gm_dd_33), &
-                   uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                   uAF_K(:,iAF_P) )
-
+                   uAF_K(:,iAF_P), nDOFX )
 
           DO iNodeX = 1, nDOFX
 
-            Flux_X1_q_GR(iNodeX,1:nCF) &
-              = Flux_X1_GR &
-                  ( uPF_K(iNodeX,iPF_D ), &
-                    uPF_K(iNodeX,iPF_V1), &
-                    uPF_K(iNodeX,iPF_V2), &
-                    uPF_K(iNodeX,iPF_V3), &
-                    uPF_K(iNodeX,iPF_E), &                    
-                    uAF_K(iNodeX,iAF_P ), &                    
-                    uPF_K(iNodeX,iPF_Ne), &
-                    uGF_K(iNodeX,iGF_Alpha), &
-                    uGF_K(iNodeX,iGF_Beta_1), &                    
+            Flux_X1_q_GR(iNodeX,1:nCF)          &
+              = Flux_X1_GR                      &
+                  ( uPF_K(iNodeX,iPF_D ),       &
+                    uPF_K(iNodeX,iPF_V1),       &
+                    uPF_K(iNodeX,iPF_V2),       &
+                    uPF_K(iNodeX,iPF_V3),       &
+                    uPF_K(iNodeX,iPF_E ),       &                    
+                    uPF_K(iNodeX,iPF_Ne),       &
+                    uAF_K(iNodeX,iAF_P ),       &                    
                     uGF_K(iNodeX,iGF_Gm_dd_11), &
                     uGF_K(iNodeX,iGF_Gm_dd_22), &
-                    uGF_K(iNodeX,iGF_Gm_dd_33) )
+                    uGF_K(iNodeX,iGF_Gm_dd_33), &
+                    uGF_K(iNodeX,iGF_Alpha),    &
+                    uGF_K(iNodeX,iGF_Beta_1) )                  
 
           END DO
 
@@ -250,12 +249,12 @@ CONTAINS
           CALL ComputePrimitive_GR &
                  ( uCF_L(:,iCF_D ), uCF_L(:,iCF_S1), uCF_L(:,iCF_S2), &
                    uCF_L(:,iCF_S3), uCF_L(:,iCF_E ), uCF_L(:,iCF_Ne), &
+                   uPF_L(:,iPF_D ), uPF_L(:,iPF_V1), uPF_L(:,iPF_V2), &
+                   uPF_L(:,iPF_V3), uPF_L(:,iPF_E ), uPF_L(:,iPF_Ne), &
                    uGF_L(:,iGF_Gm_dd_11), &
                    uGF_L(:,iGF_Gm_dd_22), &
                    uGF_L(:,iGF_Gm_dd_33), &
-                   uPF_L(:,iPF_D ), uPF_L(:,iPF_V1), uPF_L(:,iPF_V2), &
-                   uPF_L(:,iPF_V3), uPF_L(:,iPF_E ), uPF_L(:,iPF_Ne), &
-                   uAF_L(:,iAF_P) )
+                   uAF_L(:,iAF_P), nDOFX_X1 )
 
           CALL ComputeSoundSpeed_GR &
                  ( uAF_L(:,iAF_P), uPF_L(:,iPF_E), uPF_L(:,iPF_D), &
@@ -264,32 +263,31 @@ CONTAINS
           DO iNodeX_X1 = 1, nDOFX_X1
 
             CALL Eigenvalues_GR( uPF_L( iNodeX_X1, iPF_V1 ),       &
-                                   uPF_L( iNodeX_X1, iPF_V2 ),       &
-                                   uPF_L( iNodeX_X1, iPF_V3 ),       &
-                                   uGF_L( iNodeX_X1, iGF_Gm_dd_11 ), &
-                                   uGF_L( iNodeX_X1, iGF_Gm_dd_22 ), &
-                                   uGF_L( iNodeX_X1, iGF_Gm_dd_33 ), &
-                                   uGF_L( iNodeX_X1, iGF_Gm_uu_11 ), &
-                                   uGF_L( iNodeX_X1, iGF_Alpha ),    &
-                                   uGF_L( iNodeX_X1, iGF_Beta_1 ),   &
-                                   Cs(    iNodeX_X1 ) )
+                                 uPF_L( iNodeX_X1, iPF_V2 ),       &
+                                 uPF_L( iNodeX_X1, iPF_V3 ),       &
+                                 uGF_L( iNodeX_X1, iGF_Gm_dd_11 ), &
+                                 uGF_L( iNodeX_X1, iGF_Gm_dd_22 ), &
+                                 uGF_L( iNodeX_X1, iGF_Gm_dd_33 ), &
+                                 uGF_L( iNodeX_X1, iGF_Alpha ),    &
+                                 uGF_L( iNodeX_X1, iGF_Beta_1 ),   &
+                                 Cs(    iNodeX_X1 ) )
 
 
 
-            Flux_X1_L_GR(iNodeX_X1,1:nCF) &
-              = Flux_X1_GR &
-                  ( uPF_L(iNodeX_X1,iPF_D ), &
-                    uPF_L(iNodeX_X1,iPF_V1), &
-                    uPF_L(iNodeX_X1,iPF_V2), &
-                    uPF_L(iNodeX_X1,iPF_V3), &
-                    uPF_L(iNodeX_X1,iPF_E ), &
-                    uAF_L(iNodeX_X1,iAF_P ), &
-                    uPF_L(iNodeX_X1,iPF_Ne), &
-                    uGF_L(iNodeX_X1,iGF_Alpha), &
-                    uGF_L(iNodeX_X1,iGF_Beta_1), &
+            Flux_X1_L_GR(iNodeX_X1,1:nCF)          &
+              = Flux_X1_GR                         &
+                  ( uPF_L(iNodeX_X1,iPF_D ),       &
+                    uPF_L(iNodeX_X1,iPF_V1),       &
+                    uPF_L(iNodeX_X1,iPF_V2),       &
+                    uPF_L(iNodeX_X1,iPF_V3),       &
+                    uPF_L(iNodeX_X1,iPF_E ),       &
+                    uPF_L(iNodeX_X1,iPF_Ne),       &
+                    uAF_L(iNodeX_X1,iAF_P ),       &
                     uGF_L(iNodeX_X1,iGF_Gm_dd_11), &
                     uGF_L(iNodeX_X1,iGF_Gm_dd_22), &
-                    uGF_L(iNodeX_X1,iGF_Gm_dd_33) )
+                    uGF_L(iNodeX_X1,iGF_Gm_dd_33), &
+                    uGF_L(iNodeX_X1,iGF_Alpha),    &
+                    uGF_L(iNodeX_X1,iGF_Beta_1) )
 
           END DO
 
@@ -300,12 +298,12 @@ CONTAINS
           CALL ComputePrimitive_GR &
                  ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
                    uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
+                   uPF_R(:,iPF_D ), uPF_R(:,iPF_V1), uPF_R(:,iPF_V2), &
+                   uPF_R(:,iPF_V3), uPF_R(:,iPF_E ), uPF_R(:,iPF_Ne), &
                    uGF_R(:,iGF_Gm_dd_11), &
                    uGF_R(:,iGF_Gm_dd_22), &
                    uGF_R(:,iGF_Gm_dd_33), &
-                   uPF_R(:,iPF_D ), uPF_R(:,iPF_V1), uPF_R(:,iPF_V2), &
-                   uPF_R(:,iPF_V3), uPF_R(:,iPF_E ), uPF_R(:,iPF_Ne), &
-                   uAF_R(:,iAF_P) )
+                   uAF_R(:,iAF_P), nDOFX_X1 )
 
           CALL ComputeSoundSpeed_GR &
                  ( uAF_R(:,iAF_P), uPF_R(:,iPF_E), uPF_R(:,iPF_D), &
@@ -314,33 +312,32 @@ CONTAINS
           DO iNodeX_X1 = 1, nDOFX_X1
 
             CALL Eigenvalues_GR( uPF_R( iNodeX_X1, iPF_V1 ),       &
-                                   uPF_R( iNodeX_X1, iPF_V2 ),       &
-                                   uPF_R( iNodeX_X1, iPF_V3 ),       &
-                                   uGF_R( iNodeX_X1, iGF_Gm_dd_11 ), &
-                                   uGF_R( iNodeX_X1, iGF_Gm_dd_22 ), &
-                                   uGF_R( iNodeX_X1, iGF_Gm_dd_33 ), &
-                                   uGF_R( iNodeX_X1, iGF_Gm_uu_11 ), &
-                                   uGF_R( iNodeX_X1, iGF_Alpha ),    &
-                                   uGF_R( iNodeX_X1, iGF_Beta_1 ),   &
-                                   Cs(    iNodeX_X1 ) )
+                                 uPF_R( iNodeX_X1, iPF_V2 ),       &
+                                 uPF_R( iNodeX_X1, iPF_V3 ),       &
+                                 uGF_R( iNodeX_X1, iGF_Gm_dd_11 ), &
+                                 uGF_R( iNodeX_X1, iGF_Gm_dd_22 ), &
+                                 uGF_R( iNodeX_X1, iGF_Gm_dd_33 ), &
+                                 uGF_R( iNodeX_X1, iGF_Alpha ),    &
+                                 uGF_R( iNodeX_X1, iGF_Beta_1 ),   &
+                                 Cs(    iNodeX_X1 ) )
 
-            Flux_X1_R_GR(iNodeX_X1,1:nCF) &
-              = Flux_X1_GR &
-                  ( uPF_R(iNodeX_X1,iPF_D ), &
-                    uPF_R(iNodeX_X1,iPF_V1), &
-                    uPF_R(iNodeX_X1,iPF_V2), &
-                    uPF_R(iNodeX_X1,iPF_V3), &
-                    uPF_R(iNodeX_X1,iPF_E ), &
-                    uAF_L(iNodeX_X1,iAF_P ), &
-                    uPF_R(iNodeX_X1,iPF_Ne), &
-                    uGF_R(iNodeX_X1,iGF_Alpha), &
-                    uGF_R(iNodeX_X1,iGF_Beta_1), &
+            Flux_X1_R_GR(iNodeX_X1,1:nCF)          &
+              = Flux_X1_GR                         &
+                  ( uPF_R(iNodeX_X1,iPF_D ),       &
+                    uPF_R(iNodeX_X1,iPF_V1),       &
+                    uPF_R(iNodeX_X1,iPF_V2),       &
+                    uPF_R(iNodeX_X1,iPF_V3),       &
+                    uPF_R(iNodeX_X1,iPF_E ),       &
+                    uPF_R(iNodeX_X1,iPF_Ne),       &
+                    uAF_L(iNodeX_X1,iAF_P ),       &
                     uGF_R(iNodeX_X1,iGF_Gm_dd_11), &
                     uGF_R(iNodeX_X1,iGF_Gm_dd_22), &
-                    uGF_R(iNodeX_X1,iGF_Gm_dd_33) )
+                    uGF_R(iNodeX_X1,iGF_Gm_dd_33), &
+                    uGF_R(iNodeX_X1,iGF_Alpha),    &
+                    uGF_R(iNodeX_X1,iGF_Beta_1) )
 
 
-         END DO
+        END DO
           EigVals_R = EigVals_GR
 
           ! --- Numerical Flux ---
@@ -349,8 +346,8 @@ CONTAINS
 
           DO iNodeX_X1 = 1, nDOFX_X1
 
-                ! First Alpha will be the largest eigenvalue (absolute value)
-                ! of the left and right state
+            ! First Alpha will be the largest eigenvalue (absolute value)
+            ! of the left and right state
             AlphaL = MAXVAL( ABS( EigVals_L( iNodeX_X1, : ) ) )
             AlphaR = MAXVAL( ABS( EigVals_R( iNodeX_X1, : ) ) )
 
@@ -360,30 +357,30 @@ CONTAINS
             AlphaPls = MAX( 0.0_DP, &
                  MAXVAL( + EigVals_L ), MAXVAL( + EigVals_R ) )
 
-            AlphaMdl = AlphaC_GR( uCF_L( iNodeX_X1, 1:nCF ),      &
-                               uCF_R( iNodeX_X1, 1:nCF ),      &
-                               Flux_X1_L_GR( iNodeX_X1,1:nCF),           &
-                               Flux_X1_R_GR( iNodeX_X1,1:nCF ),          &
-                               AlphaPls(iNodeX_X1),                       &
-                               AlphaMns(iNodeX_X1),                       &
-                               uPF_L( iNodeX_X1, iPF_V1 ),     &
-                               uPF_R( iNodeX_X1, iPF_V1 ),     &
-                               uGF_L( iNodeX_X1, iGF_Beta_1 ), &
-                               uGF_L( iNodeX_X1, iGF_Gm_dd_11 ) )
+            AlphaMdl = AlphaC_GR( uCF_L( iNodeX_X1, 1:nCF ),       &
+                                  uCF_R( iNodeX_X1, 1:nCF ),       &
+                                  Flux_X1_L_GR( iNodeX_X1,1:nCF),  &
+                                  Flux_X1_R_GR( iNodeX_X1,1:nCF ), &
+                                  AlphaPls(iNodeX_X1),             &
+                                  AlphaMns(iNodeX_X1),             &
+                                  uPF_L( iNodeX_X1, iPF_V1 ),      &
+                                  uPF_R( iNodeX_X1, iPF_V1 ),      &
+                                  uGF_L( iNodeX_X1, iGF_Beta_1 ),  &
+                                  uGF_L( iNodeX_X1, iGF_Gm_dd_11 ) )
 
-            NumericalFlux_GR( iNodeX_X1,:) &
-              = NumericalFlux_X1_HLLC_GR                      &
-                  ( uCF_L( iNodeX_X1, 1:nCF ),                &
-                    uCF_R( iNodeX_X1,1:nCF ),                 &
-                    Flux_X1_L_GR( iNodeX_X1,1:nCF ),                    &
-                    Flux_X1_R_GR( iNodeX_X1,1:nCF ),                    &
-                    AlphaMAX(iNodeX_X1), AlphaPls(iNodeX_X1), AlphaMns(iNodeX_X1), AlphaMdl(iNodeX_X1), nCF, &
-                    uPF_L( iNodeX_X1, iPF_V1 ),               &
-                    uPF_R( iNodeX_X1, iPF_V1 ),               &
-                    uAF_L( iNodeX_X1, iAF_P ),                &
-                    uAF_R( iNodeX_X1, iAF_P ),                &
-                    uGF_R( iNodeX_X1, iGF_Beta_1 ),           &
-                    uGF_R( iNodeX_X1, iGF_Gm_uu_11 ),         &
+            NumericalFlux_GR( iNodeX_X1,:)                         &
+              = NumericalFlux_X1_HLLC_GR                           &
+                  ( uCF_L( iNodeX_X1, 1:nCF ),                     &
+                    uCF_R( iNodeX_X1,1:nCF ),                      &
+                    Flux_X1_L_GR( iNodeX_X1,1:nCF ),               &
+                    Flux_X1_R_GR( iNodeX_X1,1:nCF ),               &
+                    AlphaMAX(iNodeX_X1), AlphaPls(iNodeX_X1),      &
+                    AlphaMns(iNodeX_X1), AlphaMdl(iNodeX_X1), nCF, &
+                    uPF_L( iNodeX_X1, iPF_V1 ),                    &
+                    uPF_R( iNodeX_X1, iPF_V1 ),                    &
+                    uAF_L( iNodeX_X1, iAF_P ),                     &
+                    uAF_R( iNodeX_X1, iAF_P ),                     &
+                    uGF_R( iNodeX_X1, iGF_Beta_1 ),                &
                     uGF_R( iNodeX_X1, iGF_Gm_dd_11 ) )
 
 
@@ -441,7 +438,7 @@ CONTAINS
           DO iX1 = 1, nX(1)
 
             rhsCF(:,iX1,iX2,iX3,iCF) &
-              = rhsCF(:,iX1,iX2,iX3,iCF) &
+              = rhsCF(:,iX1,iX2,iX3,iPF_D) &
                   / ( WeightsX_q(:) * MeshX(1) % Width(iX1) )
 
           END DO
@@ -496,8 +493,9 @@ CONTAINS
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
             Error &
-              = ABS( - Pi * COS( TwoPi * X1 ) &
-                     - rhsCF(iNodeX,iX1,iX2,iX3,1) )
+              = ABS( - ( 1.0_DP - 0.01_DP )**( -0.5_DP ) * 0.1_DP &
+                     * Pi * COS( TwoPi * X1 ) &
+                     - rhsCF(iNodeX,iX1,iX2,iX3,iCF_D) )
 
             ErrorL1 = ErrorL1 + Error
             ErrorIn = MAX( ErrorIn, Error )
