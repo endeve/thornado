@@ -16,7 +16,8 @@ MODULE GeometryComputationModule
     WeightsGX, VolX, VolJacX, &
     WeightsG,  Vol,  VolJac, VolJacE, &
     a, b, c, d, &
-    uGF, nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    uGF, nGF, iGF_h_1, iGF_h_2, iGF_h_3, &
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE GeometryBoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_GeometryX, &
     ApplyBoundaryConditions_Geometry
@@ -31,10 +32,6 @@ CONTAINS
 
 
   SUBROUTINE ComputeGeometryX
-
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
-    REAL(DP) :: X1, X2, X3
 
     SELECT CASE ( TRIM( CoordinateSystem ) )
 
