@@ -109,8 +109,8 @@ CONTAINS
       swE = swE_Option
     END IF
 
-    iE_B0 = 1;  iE_B1 = 1 - swE
-    iE_E0 = nE; iE_E1 = nE 
+    iE_B0 = 1;  iE_B1 = 1  - swE
+    iE_E0 = nE; iE_E1 = nE + swE
 
     IF( PRESENT( bcE_Option ) )THEN
       bcE = bcE_Option
