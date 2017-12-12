@@ -2,4 +2,5 @@ GEOMETRY = \
   GeometryFieldsModule.o \
   GeometryBoundaryConditionsModule.o \
   GeometryComputationModule.o \
-  GeometryInitializationModule.o
+  GeometryInitializationModule.o \
+  GeometryFieldsModuleE.o

@@ -24,3 +24,8 @@ GeometryInitializationModule.o: \
   GeometryFieldsModule.o \
   GeometryComputationModule.o \
   GeometryInitializationModule.f90
+
+GeometryFieldsModuleE.o
+  KindModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModuleE.f90
