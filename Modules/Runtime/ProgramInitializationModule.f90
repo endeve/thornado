@@ -41,6 +41,9 @@ MODULE ProgramInitializationModule
   USE GeometryInitializationModule, ONLY: &
     InitializeGeometry, &
     FinalizeGeometry
+  USE GeometryFieldsModuleE, ONLY: &
+    CreateGeometryFieldsE, &
+    DestroyGeometryFieldsE
   USE FluidFieldsModule, ONLY: &
     WeightsF, &
     WeightsF_X1, &
@@ -337,7 +340,7 @@ CONTAINS
 
     END ASSOCIATE ! U
 
-    ! --- Geometry ---
+    ! --- Geometry (Position Space) ---
 
     CALL CreateGeometryFields( nX, swX, nE, swE )
 
@@ -356,6 +359,10 @@ CONTAINS
            ( nX, nNodesX, swX, nE, nNodesE, swE, &
              CoordinateSystem_Option &
                = CoordinateSystem_Option )
+
+    ! --- Geometry (Energy Space) ---
+
+    CALL CreateGeometryFieldsE( nE, swE )
 
     ! --- Physical Fields ---
 
@@ -490,6 +497,8 @@ CONTAINS
     ! --- Geometry ---
 
     CALL DestroyGeometryFields
+
+    CALL DestroyGeometryFieldsE
 
     CALL FinalizeGeometry
 

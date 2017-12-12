@@ -9,7 +9,9 @@ ProgramInitializationModule.o: \
   PolynomialBasisModule_Legendre.o \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
+  GeometryFieldsModule.o \
   GeometryInitializationModule.o \
+  GeometryFieldsModuleE.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   EquationOfStateModule.o \
