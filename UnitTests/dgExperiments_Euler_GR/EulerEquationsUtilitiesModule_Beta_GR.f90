@@ -5,8 +5,10 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   USE KindModule, ONLY: &
     DP, Zero, Half, One
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
-
+     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
+  USE EquationOfStateModule, ONLY: &
+       ComputePressureFromSpecificInternalEnergy
+  
   IMPLICIT NONE
   PRIVATE :: ComputeFunJacP
 
@@ -103,6 +105,8 @@ CONTAINS
 
     PF_Ne = CF_Ne / W
 
+    WRITE(*,*) nIter
+
   END SUBROUTINE ComputePrimitive_GR
 
 
@@ -152,14 +156,10 @@ CONTAINS
     EPS = ( SQRT( HSq - SSq ) &
             - P * SQRT( HSq ) / SQRT( HSq - SSq ) - D ) / D
 
-!    CALL ComputePressureFromSpecificInternalEnergy &
-!         ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
-!    FunP = P - Pbar(1)
-    
-    Pbar(1) = ( 4.0_DP / 3.0_DP - 1.0_DP ) * RHO * EPS
-
+    CALL ComputePressureFromSpecificInternalEnergy &
+         ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
     FunP = P - Pbar(1)
-
+    
     dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
     dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
  
