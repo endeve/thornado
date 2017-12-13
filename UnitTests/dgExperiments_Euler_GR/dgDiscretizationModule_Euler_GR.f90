@@ -76,7 +76,9 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF
+    REAL(DP) :: ErrorL1, ErrorIn, Error, X1
+
+    INTEGER  :: iX1, iX2, iX3, iCF, iNodeX, iNodeX1
     REAL(DP) :: dX1, dX2, dX3
 
     dU = Zero
@@ -109,6 +111,44 @@ CONTAINS
       END DO
     END DO
 
+    ! --- Compute Error ---
+
+    ErrorL1 = 0.0_DP
+    ErrorIn = 0.0_DP
+    
+    DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            Error &
+              = ABS( - ( 1.0_DP - 0.01_DP )**( -0.5_DP ) * 0.1_DP &
+                     * Pi * COS( TwoPi * X1 ) &
+                     - dU(iNodeX,iX1,iX2,iX3,iCF_D) )
+
+            ErrorL1 = ErrorL1 + Error
+            ErrorIn = MAX( ErrorIn, Error )
+
+          END DO
+
+        END DO
+      END DO
+    END DO
+
+    ErrorL1 = ErrorL1 / REAL( nDOFX*nX(1)*nX(2)*nX(3) )
+
+    WRITE(*,*)
+    WRITE(*,'(A6,A,ES10.4E2)') &
+      '', 'ErrorL1: ', ErrorL1
+    WRITE(*,'(A6,A,ES10.4E2)') &
+      '', 'ErrorIn: ', ErrorIn
+    WRITE(*,*)
+
     CALL ComputeIncrement_Geometry &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
@@ -130,7 +170,6 @@ CONTAINS
     REAL(DP) :: dX2, dX3
     REAL(DP) :: Alpha, Beta_1, Beta_2, Beta_3
     REAL(DP) :: AlphaMns, AlphaMdl, AlphaPls
-    REAL(DP) :: ErrorL1, ErrorIn, Error, X1
     REAL(DP), DIMENSION(nDOFX_X1)     :: Cs_L, Cs_R
     REAL(DP), DIMENSION(nCF,nDOFX_X1) :: Lambda_L, Lambda_R
     REAL(DP), DIMENSION(nDOFX_X1,nPF) :: uPF_L, uPF_R
@@ -548,44 +587,6 @@ CONTAINS
         + Timer_INT_G_GR + Timer_FLX_N_GR
 
     END IF
-
-    ! --- Compute Error ---
-
-    ErrorL1 = 0.0_DP
-    ErrorIn = 0.0_DP
-
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
-
-          DO iNodeX = 1, nDOFX
-
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
-            Error &
-              = ABS( - ( 1.0_DP - 0.01_DP )**( -0.5_DP ) * 0.1_DP &
-                     * Pi * COS( TwoPi * X1 ) &
-                     - rhsCF(iNodeX,iX1,iX2,iX3,iCF_D) )
-
-            ErrorL1 = ErrorL1 + Error
-            ErrorIn = MAX( ErrorIn, Error )
-
-          END DO
-
-        END DO
-      END DO
-    END DO
-
-    ErrorL1 = ErrorL1 / REAL( nDOFX*nX(1)*nX(2)*nX(3) )
-
-    WRITE(*,*)
-    WRITE(*,'(A6,A,ES10.4E2)') &
-      '', 'ErrorL1: ', ErrorL1
-    WRITE(*,'(A6,A,ES10.4E2)') &
-      '', 'ErrorIn: ', ErrorIn
-    WRITE(*,*)
 
   END SUBROUTINE ComputeIncrement_Divergence_X1
 
