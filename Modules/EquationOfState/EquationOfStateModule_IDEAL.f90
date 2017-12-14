@@ -11,7 +11,7 @@ MODULE EquationOfStateModule_IDEAL
   IMPLICIT NONE
   PRIVATE
 
-  REAL(DP) :: &
+  REAL(DP), PUBLIC :: &
     Gamma_IDEAL
 
   PUBLIC :: InitializeEquationOfState_IDEAL
