@@ -3,7 +3,7 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   USE ProgramHeaderModule, ONLY: &
     nX
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, Zero, Half, One, SqrtTiny
   USE FluidFieldsModule, ONLY: &
      nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
   USE EquationOfStateModule, ONLY: &
@@ -284,37 +284,34 @@ CONTAINS
     REAL(DP), DIMENSION(1:nCF)             :: U, F, U_LL, U_RR, F_LL, F_RR
     REAL(DP)                               :: A, B, C, eps
 
-    eps = TINY( 1.0_DP )
+    eps = SqrtTiny
 
-    ! --- CLEAN UP!!! ---
-
-    ! --- Make sure that tau -> E for conserved variables and fluxes
-
-    U_LL = U_L
-    U_RR = U_R
-
-    F_LL = F_L
-    F_RR = F_R
-    
+    ! --- Calculate the HLL conserved variable vector and flux a la
+    ! --- Mignone & Bodo (2005).
+    ! --- Note the sign change on aM which is due
+    ! --- to it being read in as positive but Mignone assuming
+    ! --- it is negative. Also note we use tau instead of E, where
     ! --- E = tau + D
-    U_LL( iCF_E ) = U_L( iCF_E ) + U_L( iCF_D )
-    U_RR( iCF_E ) = U_R( iCF_E ) + U_R( iCF_D )
+    ! --- F_E = F_tau + F_D + Beta_u_1 * tau
 
-    ! --- F_E = F_tau + F_D
-    F_LL( iCF_E ) = F_L( iCF_E ) + F_L( iCF_D )
-    F_RR( iCF_E ) = F_R( iCF_E ) + F_R( iCF_D )
+    U_S1 = aP * U_R(iCF_S1) + aM * U_L(iCF_S1) + F_L(iCF_S1) - F_R(iCF_S1)
 
-    ! --- Calculate the HLL conserved variable vector and flux
-    ! --- Mignone & Bodo (2005) (Note the sign change on aM which is due
-    ! --- to it being read in as positive but the formulae assuming
-    ! --- it is negative)
+    U_E  = aP * ( U_R(iCF_E) + U_R(iCF_D) ) + aM * ( U_L(iCF_E) + U_L(iCF_D) ) &
+          + ( F_L(iCF_E) + F_L(iCF_D) + Beta_u_1 * U_L(iCF_E) ) &
+          - ( F_R(iCF_E) + F_R(iCF_D) + Beta_u_1 * U_R(iCF_E) )
 
-    U = aP * U_RR + aM * U_LL + F_LL - F_RR
-    F = aP * F_LL + aM * F_RR - aP * aM * (U_RR - U_LL )
+    F_S1 =  aP * F_L(iCF_S1) + aM * F_R(iCF_S1) &
+          - aP * aM * ( U_R(iCF_S1) - U_L(iCF_S1 ) )
 
-    A = Gm_dd_11**2 * ( F( iCF_E ) + Beta_u_1 * U( iCF_E ) )
-    B = -Gm_dd_11 * ( U( iCF_E ) + F( iCF_S1 ) + Beta_u_1 * U( iCF_S1 ) )
-    C = U( iCF_S1 )
+    F_E  =  aP * ( F_L(iCF_E) + F_L(iCF_D) + Beta_u_1 * U_L(iCF_E) ) &
+          + aM * ( F_R(iCF_E) + F_R(iCF_D) + Beta_u_1 * U_R(iCF_E) ) &
+          - aP * aM * ( ( U_R(iCF_E) + U_R(iCF_D) ) &
+          - ( U_L(iCF_E) + U_L(iCF_D) ) )
+
+    ! --- A, B, and C from quadratic equation
+    A = Gm_dd_11**2 * ( F_E + Beta_u_1 * U_E )
+    B = -Gm_dd_11 * ( U_E + F_S1 + Beta_u_1 * U_S1 )
+    C = U_S1
 
     ! --- Accounting for special cases of the solution to a
     ! --- quadratic equation when A = 0
