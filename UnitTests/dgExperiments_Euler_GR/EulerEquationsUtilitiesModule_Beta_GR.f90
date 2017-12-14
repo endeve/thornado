@@ -17,9 +17,24 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   PUBLIC :: Eigenvalues_GR
   PUBLIC :: AlphaC_GR
   PUBLIC :: Flux_X1_GR
+  PUBLIC :: StressTensor_Diagonal
   PUBLIC :: NumericalFlux_X1_HLLC_GR
 
 CONTAINS
+
+
+  SUBROUTINE ComputeFromConserved( iX_B, iX_E, G, U, P, A )
+
+    INTEGER, INTENT(in)   :: &
+      iX_B(3), iX_E(3)
+    REAL(DP), INTENT(in)  :: &
+      G(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
+      U(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+    REAL(DP), INTENT(out) :: &
+      P(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
+      A(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+
+  END SUBROUTINE ComputeFromConserved
 
 
   SUBROUTINE ComputePrimitive_GR &
@@ -42,15 +57,15 @@ CONTAINS
     REAL(DP) :: FunP, JacP
     REAL(DP), PARAMETER :: TolP = 1.0d-8
 
-    SSq = GF_Gm_dd_11 * CF_S1**2 &
-        + GF_Gm_dd_22 * CF_S2**2 &
-        + GF_Gm_dd_33 * CF_S3**2
+    SSq = CF_S1**2 / GF_Gm_dd_11 &
+          + CF_S2**2 / GF_Gm_dd_22 &
+          + CF_S3**2 / GF_Gm_dd_33
 
     ! --- Find Pressure with Newton's Method ---
 
     Pold = AF_P ! -- Initial guess
     nNodes = SIZE( Pold )
-    
+
     ! Loop through all the nodes
     DO i = 1, nNodes
        
@@ -105,8 +120,6 @@ CONTAINS
 
     PF_Ne = CF_Ne / W
 
-    WRITE(*,*) nIter
-
   END SUBROUTINE ComputePrimitive_GR
 
 
@@ -122,7 +135,7 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
     REAL(DP), DIMENSION(:), INTENT(in)  :: AF_P
 
-    REAL(DP), DIMENSION( 1 : nX( 1 ) ) :: vSq, W, h
+    REAL(DP), DIMENSION( 1 : SIZE(PF_D) ) :: vSq, W, h
 
     vSq = GF_Gm_dd_11 * PF_V1**2 &
         + GF_Gm_dd_22 * PF_V2**2 &
@@ -158,6 +171,7 @@ CONTAINS
 
     CALL ComputePressureFromSpecificInternalEnergy &
          ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
+
     FunP = P - Pbar(1)
     
     dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
@@ -244,6 +258,19 @@ CONTAINS
 
     RETURN
   END FUNCTION Flux_X1_GR
+
+
+  PURE FUNCTION StressTensor_Diagonal( S_1, S_2, S_3, V_1, V_2, V_3, P )
+
+    REAL(DP)             :: StressTensor_Diagonal(1:3)
+    REAL(DP), INTENT(in) :: S_1, S_2, S_3, V_1, V_2, V_3, P
+
+    StressTensor_Diagonal(1) = S_1 * V_1 + P
+    StressTensor_Diagonal(2) = S_2 * V_2 + P
+    StressTensor_Diagonal(3) = S_3 * V_3 + P
+
+    RETURN
+  END FUNCTION StressTensor_Diagonal
 
 
   REAL(DP) FUNCTION AlphaC_GR &

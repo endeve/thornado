@@ -41,6 +41,7 @@ MODULE dgDiscretizationModule_Euler_GR
     Eigenvalues_GR, &
     AlphaC_GR, &
     Flux_X1_GR, &
+    StressTensor_Diagonal, &
     NumericalFlux_X1_HLLC_GR
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromSpecificInternalEnergy, &
@@ -53,7 +54,7 @@ MODULE dgDiscretizationModule_Euler_GR
 
   PUBLIC :: ComputeIncrement_Euler_GR_DG_Explicit
 
-  LOGICAL, PARAMETER :: DisplayTimers = .TRUE.
+  LOGICAL, PARAMETER :: DisplayTimers = .FALSE.
   REAL(DP) :: Timer_RHS_GR
   REAL(DP) :: Timer_RHS_1_GR, dT_RHS_1_GR
   REAL(DP) :: Timer_RHS_2_GR, dT_RHS_2_GR
@@ -61,6 +62,7 @@ MODULE dgDiscretizationModule_Euler_GR
   REAL(DP) :: Timer_INT_F_GR, dT_INT_F_GR
   REAL(DP) :: Timer_INT_G_GR, dT_INT_G_GR
   REAL(DP) :: Timer_FLX_N_GR, dT_FLX_N_GR
+  REAL(DP) :: Timer_Geo
 
 CONTAINS
 
@@ -110,44 +112,6 @@ CONTAINS
         END DO
       END DO
     END DO
-
-    ! --- Compute Error ---
-
-    ErrorL1 = 0.0_DP
-    ErrorIn = 0.0_DP
-    
-    DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
-
-          DO iNodeX = 1, nDOFX
-
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
-            Error &
-              = ABS( - ( 1.0_DP - 0.01_DP )**( -0.5_DP ) * 0.1_DP &
-                     * Pi * COS( TwoPi * X1 ) &
-                     - dU(iNodeX,iX1,iX2,iX3,iCF_D) )
-
-            ErrorL1 = ErrorL1 + Error
-            ErrorIn = MAX( ErrorIn, Error )
-
-          END DO
-
-        END DO
-      END DO
-    END DO
-
-    ErrorL1 = ErrorL1 / REAL( nDOFX*nX(1)*nX(2)*nX(3) )
-
-    WRITE(*,*)
-    WRITE(*,'(A6,A,ES10.4E2)') &
-      '', 'ErrorL1: ', ErrorL1
-    WRITE(*,'(A6,A,ES10.4E2)') &
-      '', 'ErrorIn: ', ErrorIn
-    WRITE(*,*)
 
     CALL ComputeIncrement_Geometry &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
@@ -204,6 +168,8 @@ CONTAINS
         dX2 = MeshX(2) % Width(iX2)
 
         DO iX1 = iX_B0(1), iX_E0(1) + 1
+
+!          PRINT*, "iX1, iX2, iX3 = ", iX1, iX2, iX3
 
           DO iCF = 1, nCF
 
@@ -426,7 +392,6 @@ CONTAINS
 
           DO iNodeX_X1 = 1, nDOFX_X1
 
-
             Lambda_R(:,iNodeX_X1) &
               = Eigenvalues_GR &
                   ( uPF_R(iNodeX_X1,iPF_V1),       &
@@ -440,7 +405,6 @@ CONTAINS
                     G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                     G_F  (iNodeX_X1,iGF_Alpha),    &
                     G_F  (iNodeX_X1,iGF_Beta_1) )
-
 
             Flux_X1_R(iNodeX_X1,1:nCF) &
               = Flux_X1_GR                         &
@@ -601,6 +565,207 @@ CONTAINS
       U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX
+    REAL(DP) :: dX1, dX2, dX3
+    REAL(DP) :: P_K(nDOFX)
+    REAL(DP) :: dh1dX1(nDOFX), dh2dX1(nDOFX), dh3dX1(nDOFX)
+    REAL(DP) :: dadx1(nDOFX)
+    REAL(DP) :: Stress(nDOFX,3)
+    REAL(DP) :: uCF_K(nDOFX,nCF)
+    REAL(DP) :: uPF_K(nDOFX,nPF)
+    REAL(DP) :: G_K(nDOFX,nGF)
+    REAL(DP) :: G_P_X1(nDOFX,nGF), G_N_X1(nDOFX,nGF)
+    REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF)
+
+    CALL Timer_Start( Timer_Geo )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+
+      dX3 = MeshX(3) % Width(iX3)
+
+      DO iX2 = iX_B0(2), iX_E0(2)
+
+        dX2 = MeshX(2) % Width(iX2)
+
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          dX1 = MeshX(1) % Width(iX1)
+
+!          PRINT*, "iX1, iX2, iX3 = ", iX1, iX2, iX3
+
+          DO iCF = 1, nCF
+
+            uCF_K(:,iCF) = U(:,iX1,iX2,iX3,iCF)
+
+          END DO
+
+          DO iGF = 1, nGF
+
+            G_P_X1(:,iGF) = G(:,iX1-1,iX2,iX3,iGF)
+            G_K   (:,iGF) = G(:,iX1,  iX2,iX3,iGF)
+            G_N_X1(:,iGF) = G(:,iX1+1,iX2,iX3,iGF)
+
+          END DO
+
+          P_K(:) = uAF(:,iX1,iX2,iX3,iAF_P)
+
+          CALL ComputePrimitive_GR &
+                 ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   P_K(:), &
+                   G_K(:,iGF_Gm_dd_11), &
+                   G_K(:,iGF_Gm_dd_22), &
+                   G_K(:,iGF_Gm_dd_33) )
+
+          DO iNodeX = 1, nDOFX
+
+            Stress(iNodeX,1:3) &
+              = StressTensor_Diagonal &
+                  ( uCF_K(iNodeX,iCF_S1), &
+                    uCF_K(iNodeX,iCF_S2), &
+                    uCF_K(iNodeX,iCF_S3), &
+                    uPF_K(iNodeX,iPF_V1), &
+                    uPF_K(iNodeX,iPF_V2), &
+                    uPF_K(iNodeX,iPF_V3), &
+                    P_K  (iNodeX) )
+
+          END DO
+
+          ! --- Scale Factor Derivatives wrt X1 ---
+
+          ! --- Face States (Average of Left and Right States) ---
+
+          DO iGF = iGF_h_1, iGF_h_3
+
+            CALL DGEMV &
+                   ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+                     G_P_X1(:,iGF), 1, Zero, G_X1_Dn(:,iGF), 1 )
+            CALL DGEMV &
+                   ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+                     G_K   (:,iGF), 1, Half, G_X1_Dn(:,iGF), 1 )
+
+            G_X1_Dn(1:nDOFX_X1,iGF) &
+              = MAX( G_X1_Dn(1:nDOFX_X1,iGF), SqrtTiny )
+
+            CALL DGEMV &
+                   ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+                     G_K   (:,iGF), 1, Zero, G_X1_Up(:,iGF), 1 )
+            CALL DGEMV &
+                   ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+                     G_N_X1(:,iGF), 1, Half, G_X1_Up(:,iGF), 1 )
+
+            G_X1_Up(1:nDOFX_X1,iGF) &
+              = MAX( G_X1_Up(1:nDOFX_X1,iGF), SqrtTiny )
+
+          END DO
+
+          ! --- dh1dx1 ---
+
+          CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
+                      WeightsX_X1(:) * G_X1_Up(:,iGF_h_1), 1, Zero, dh1dX1, 1 )
+          CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
+                      WeightsX_X1(:) * G_X1_Dn(:,iGF_h_1), 1,  One, dh1dX1, 1 )
+          CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
+                      WeightsX_q (:) * G_K    (:,iGF_h_1), 1,  One, dh1dX1, 1 )
+
+          dh1dx1 = dh1dx1 / ( WeightsX_q(:) * dX1 )
+
+          ! --- dh2dx1 ---
+
+          CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
+                      WeightsX_X1(:) * G_X1_Up(:,iGF_h_2), 1, Zero, dh2dX1, 1 )
+          CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
+                      WeightsX_X1(:) * G_X1_Dn(:,iGF_h_2), 1,  One, dh2dX1, 1 )
+          CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
+                      WeightsX_q (:) * G_K    (:,iGF_h_2), 1,  One, dh2dX1, 1 )
+
+          dh2dx1 = dh2dx1 / ( WeightsX_q(:) * dX1 )
+
+          ! --- dh3dx1 ---
+
+          CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
+                      WeightsX_X1(:) * G_X1_Up(:,iGF_h_3), 1, Zero, dh3dX1, 1 )
+          CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
+                      WeightsX_X1(:) * G_X1_Dn(:,iGF_h_3), 1,  One, dh3dX1, 1 )
+          CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
+                      WeightsX_q (:) * G_K    (:,iGF_h_3), 1,  One, dh3dX1, 1 )
+
+          dh3dx1 = dh3dx1 / ( WeightsX_q(:) * dX1 )
+
+          ! --- Lapse Function Derivative wrt X1 ---
+
+          ! --- Face States (Average of Left and Right States) ---
+
+          iGF = iGF_Alpha
+
+          CALL DGEMV &
+                 ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+                   G_P_X1(:,iGF), 1, Zero, G_X1_Dn(:,iGF), 1 )
+          CALL DGEMV &
+                 ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+                   G_K   (:,iGF), 1, Half, G_X1_Dn(:,iGF), 1 )
+
+          G_X1_Dn(1:nDOFX_X1,iGF) &
+            = MAX( G_X1_Dn(1:nDOFX_X1,iGF), SqrtTiny )
+
+          CALL DGEMV &
+                 ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+                   G_K   (:,iGF), 1, Zero, G_X1_Up(:,iGF), 1 )
+          CALL DGEMV &
+                 ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+                   G_N_X1(:,iGF), 1, Half, G_X1_Up(:,iGF), 1 )
+
+          G_X1_Up(1:nDOFX_X1,iGF) &
+            = MAX( G_X1_Up(1:nDOFX_X1,iGF), SqrtTiny )
+
+          ! --- dadx1 ---
+
+          CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
+                      WeightsX_X1(:) * G_X1_Up(:,iGF_Alpha), 1, Zero,  &
+                      dadX1, 1 )
+          CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
+                      WeightsX_X1(:) * G_X1_Dn(:,iGF_Alpha), 1,  One,  &
+                      dadX1, 1 )
+          CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
+                      WeightsX_q (:) * G_K    (:,iGF_Alpha), 1,  One,  &
+                      dadX1, 1 )
+
+          dadx1 = dadx1 / ( WeightsX_q(:) * dX1 )
+
+          ! --- Compute Increments ---
+
+          dU(:,iX1,iX2,iX3,iCF_S1) &
+            = dU(:,iX1,iX2,iX3,iCF_S1) &
+                + G_K(:,iGF_Alpha) &
+                    * ( ( Stress(:,1) * dh1dX1(:) ) / G_K(:,iGF_h_1)  &
+                        + ( Stress(:,2) * dh2dX1(:) ) / G_K(:,iGF_h_2)  &
+                        + ( Stress(:,3) * dh3dX1(:) ) / G_K(:,iGF_h_3) ) &
+
+                - ( uCF_K(:,iCF_D) + uCF_K(:,iCF_E) ) * dadx1(:)
+
+          dU(:,iX1,iX2,iX3,iCF_E) &
+            = dU(:,iX1,iX2,iX3,iCF_E) &
+                - ( uCF_K(:,iCF_S1) / G_K(:,iGF_Gm_dd_11) ) * dadx1(:)
+
+        END DO
+      END DO
+    END DO
+
+    CALL Timer_Stop( Timer_Geo )
+
+    IF( DisplayTimers )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A4,A)') &
+        '', 'Timers:'
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,ES10.4E2)') &
+        '', 'ComputeIncrement_Geometry: ', Timer_Geo
+
+    END IF
 
   END SUBROUTINE ComputeIncrement_Geometry
 
