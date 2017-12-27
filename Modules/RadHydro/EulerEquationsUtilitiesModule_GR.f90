@@ -1,7 +1,7 @@
 MODULE EulerEquationsUtilitiesModule_GR
 
   USE KindModule, ONLY: &
-    DP
+    DP, SqrtTiny
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
@@ -71,7 +71,7 @@ CONTAINS
     INTEGER  :: i, nIter
     REAL(DP) :: Gm11, Gm22, Gm33, SSq, vSq, W, h
     REAL(DP) :: Pold, Pnew, FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-11
+    REAL(DP), PARAMETER :: TolP = 1.0d-10
 
     DO i = 1, SIZE( uPF, DIM = 1 )
 
@@ -79,25 +79,29 @@ CONTAINS
       Gm22 = uGF(i,iGF_Gm_dd_22)
       Gm33 = uGF(i,iGF_Gm_dd_33)
 
-      SSq =   Gm11 * uCF(i,iCF_S1)**2 &
-            + Gm22 * uCF(i,iCF_S2)**2 &
-            + Gm33 * uCF(i,iCF_S3)**2
+      SSq =  uCF(i,iCF_S1)**2 / Gm11 &
+           + uCF(i,iCF_S2)**2 / Gm22 &
+           + uCF(i,iCF_S3)**2 / Gm33
 
       ! --- Find Pressure with Newton's Method ---
 
-      Pold = uAF(i,iAF_P) ! --- Initial Guess
+      ! --- Approximation for pressure assuming h^2=1
+      Pold = SQRT( SSq + uCF(i,iCF_D)**2 ) - uCF(i,iCF_D) - uCF(i,iCF_E)
+      ! --- Converges ~4 iterations
+      
+      !Pold = uAF(i,iAF_P) ! --- Initial Guess ! 1-3 iterations
 
       Converged = .FALSE.
       nIter     = 0
 
       DO WHILE ( .NOT. Converged )
 
-        nIter = nIter + 1
+         nIter = nIter + 1
 
        CALL ComputeFunJacP &
-               ( uCF(i,iCF_D), SSq, uCF(i,iCF_E), Pold, FunP, JacP )
+            ( uCF(i,iCF_D), SSq, uCF(i,iCF_E), Pold, FunP, JacP )
 
-        Pnew = Pold - FunP / JacP
+       Pnew = Pold - FunP / JacP
 
         IF( ABS( Pnew / Pold - 1.0_DP ) <= TolP ) Converged = .TRUE.
 
@@ -116,18 +120,18 @@ CONTAINS
         END IF
 
         IF( ISNAN( Pnew ) )THEN
-          WRITE(*,*) 'nIter:              ', nIter
-          WRITE(*,*) 'Pold:               ', Pold
-          WRITE(*,*) 'Pnew:               ', Pnew
-          WRITE(*,*) 'D:                  ', uCF(i,iCF_D)
-          WRITE(*,*) 'tau+D-sqrt(D^2+S^2):', &
-            uCF( i, iCF_E ) + uCF( i, iCF_D ) - SQRT( uCF( i, iCF_D )**2 + SSq )
+          WRITE(*,'(A6,1x,I2)') 'nIter:' , nIter
+          WRITE(*,'(A6,1x,E9.2)') 'Pold:', Pold
+          WRITE(*,'(A6,1x,E9.2)') 'Pnew:', Pnew
+          WRITE(*,'(A6,1x,E9.2)') 'D:'   , uCF(i,iCF_D)
           STOP
         END IF
 
         Pold = Pnew
 
       END DO
+
+      WRITE(*,'(A18,1x,I2,1x,A10)') 'Convergence after:' , nIter , 'iterations'
 
       uAF(i,iAF_P) = Pnew
 
@@ -257,7 +261,7 @@ CONTAINS
 
     dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
     dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
- 
+
     JacP = 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS )
 
   END SUBROUTINE ComputeFunJacP
@@ -268,41 +272,37 @@ CONTAINS
 
     ! --- Middle Wavespeed as Suggested by Mignone and Bodo (2005) ---
 
-    REAL(DP), DIMENSION(1:nCF), INTENT(in) :: U_L, U_R, F_L, F_R
-    REAL(DP),                   INTENT(in) :: aP, aM, V1_L, V1_R, &
+    REAL(DP), INTENT(in) :: U_L(nCF), U_R(nCF), F_L(nCF), F_R(nCF), &
+    REAL(DP), INTENT(in) :: aP, aM, V1_L, V1_R
                                               Beta_u_1, Gm_dd_11
-    REAL(DP), DIMENSION(1:nCF)             :: U, F, U_LL, U_RR, F_LL, F_RR
+    REAL(DP)                               :: U_S1, U_E, F_S1, F_E
     REAL(DP)                               :: A, B, C, eps
 
-    eps = TINY( 1.0_DP )
+    eps = SqrtTiny
 
-    ! --- Make sure that tau -> E for conserved variables and fluxes
-
-    U_LL = U_L
-    U_RR = U_R
-
-    F_LL = F_L
-    F_RR = F_R
-    
-    ! --- E = tau + D
-    U_LL( iCF_E ) = U_L( iCF_E ) + U_L( iCF_D )
-    U_RR( iCF_E ) = U_R( iCF_E ) + U_R( iCF_D )
-
-    ! --- F_E = F_tau + D * ( V1 - Beta1 )
-    F_LL( iCF_E ) = F_L( iCF_E ) + U_L( iCF_D ) * ( V1_L - Beta_u_1 )
-    F_RR( iCF_E ) = F_R( iCF_E ) + U_R( iCF_D ) * ( V1_R - Beta_u_1 )
-
-    ! --- Calculate the HLL conserved variable vector and flux
-    ! --- Mignone & Bodo (2005) (Note the sign change on aM which is due
+    ! --- Note the sign change on aM which is due
     ! --- to it being read in as positive but the formulae assuming
-    ! --- it is negative)
+    ! --- it is negative
+    ! --- Also note that we use tau instead of E
 
-    U = aP * U_RR + aM * U_LL + F_LL - F_RR
-    F = aP * F_LL + aM * F_RR - aP * aM * (U_RR - U_LL )
+    U_S1 = aP * U_R(iCF_S1) + aM * U_L(iCF_S1) + F_L(iCF_S1) - F_R(iCF_S1)
 
-    A = Gm_dd_11**2 * ( F( iCF_E ) + Beta_u_1 * U( iCF_E ) )
-    B = -Gm_dd_11 * ( U( iCF_E ) + F( iCF_S1 ) + Beta_u_1 * U( iCF_S1 ) )
-    C = U( iCF_S1 )
+    U_E  = aP * ( U_R(iCF_E) + U_R(iCF_D) ) + aM * ( U_L(iCF_E) + U_L(iCF_D) ) &
+          + ( F_L(iCF_E) + F_L(iCF_D) + Beta_u_1 * U_L(iCF_E) ) &
+          - ( F_R(iCF_E) + F_R(iCF_D) + Beta_u_1 * U_R(iCF_E) )
+
+    F_S1 =  aP * F_L(iCF_S1) + aM * F_R(iCF_S1) &
+          - aP * aM * ( U_R(iCF_S1) - U_L(iCF_S1 ) )
+
+    F_E  =  aP * ( F_L(iCF_E) + F_L(iCF_D) + Beta_u_1 * U_L(iCF_E) ) &
+          + aM * ( F_R(iCF_E) + F_R(iCF_D) + Beta_u_1 * U_R(iCF_E) ) &
+          - aP * aM * ( ( U_R(iCF_E) + U_R(iCF_D) ) &
+          - ( U_L(iCF_E) + U_L(iCF_D) ) )
+
+    ! --- A, B, and C from quadratic equation
+    A = Gm_dd_11**2 * ( F_E + Beta_u_1 * U_E )
+    B = -Gm_dd_11 * ( U_E + F_S1 + Beta_u_1 * U_S1 )
+    C = U_S1
 
     ! --- Accounting for special cases of the solution to a
     ! --- quadratic equation when A = 0
