@@ -163,7 +163,7 @@ CONTAINS
 
     END DO
 
-    ! --- Lobatto Quadrature Points ---
+    ! --- Lobatto Quadrature Points and Weights ---
 
     ALLOCATE( NodesLX1(nNodesX(1)), WeightsLX1(nNodesX(1)) )
     ALLOCATE( NodesLX2(nNodesX(2)), WeightsLX2(nNodesX(2)) )

@@ -120,9 +120,9 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       Mass
 
+    INTEGER  :: iX1, iX2, iX3, iNodeX
     REAL(DP) :: XC(3), dX(3), xL_q(3), xG_q(3)
     REAL(DP) :: G_L(nDOFX,nGF)
-    INTEGER  :: iX1, iX2, iX3, iNodeX
 
     DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -272,7 +272,8 @@ CONTAINS
     ! --- Schwarzschild Metric in Isotropic Coordinates ---
 
     LapseFunction &
-      = ( R - Half * M ) / ( R + Half * M )
+      = ( One - Half * M / MAX( R, SqrtTiny ) ) &
+        / ( One + Half * M / MAX( R, SqrtTiny ) )
 
     RETURN
   END FUNCTION LapseFunction
