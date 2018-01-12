@@ -201,7 +201,7 @@ CONTAINS
     END DO
 
   END SUBROUTINE UpdateFluid_SSPRK
-
+ 
 
   SUBROUTINE AddIncrement_Fluid( alpha, U, beta, D )
 
@@ -214,6 +214,7 @@ CONTAINS
 
     INTEGER :: iCF, iX1, iX2, iX3
 
+    ! --- Why do we need the iCF loop? Can we just add as arrays?
     DO iCF = 1, nCF
       DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)

@@ -5,13 +5,19 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   USE KindModule, ONLY: &
     DP, Zero, Half, One, SqrtTiny
   USE FluidFieldsModule, ONLY: &
-     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
+     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
+     uAF, iAF_P, iAF_Cs
+  USE GeometryFieldsModule, ONLY: &
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE EquationOfStateModule, ONLY: &
-       ComputePressureFromSpecificInternalEnergy
+       ComputePressureFromSpecificInternalEnergy, &
+       ComputeSoundSpeedFromPrimitive_GR
   
   IMPLICIT NONE
   PRIVATE :: ComputeFunJacP
 
+  PUBLIC :: ComputeFromConserved
   PUBLIC :: ComputePrimitive_GR
   PUBLIC :: ComputeConserved_GR
   PUBLIC :: Eigenvalues_GR
@@ -19,20 +25,51 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   PUBLIC :: Flux_X1_GR
   PUBLIC :: StressTensor_Diagonal
   PUBLIC :: NumericalFlux_X1_HLLC_GR
+  PUBLIC :: NumericalFlux_X1_LLF_GR
 
 CONTAINS
 
 
   SUBROUTINE ComputeFromConserved( iX_B, iX_E, G, U, P, A )
 
-    INTEGER, INTENT(in)   :: &
+    INTEGER, INTENT(in)  :: &
       iX_B(3), iX_E(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in) :: &
       G(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
       U(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout)  :: &
       P(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
       A(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+    INTEGER :: iX1, iX2, iX3
+
+    ! --- Update primitive variables, pressure, and sound speed
+    DO iX3 = iX_B(3), iX_E(3)
+      DO iX2 = iX_B(2), iX_E(2)
+        DO iX1 = iX_B(1), iX_E(1)
+          CALL ComputePrimitive_GR &
+            ( U(1:,iX1,iX2,iX3,iCF_D),  &
+              U(1:,iX1,iX2,iX3,iCF_S1), &
+              U(1:,iX1,iX2,iX3,iCF_S2), &
+              U(1:,iX1,iX2,iX3,iCF_S3), &
+              U(1:,iX1,iX2,iX3,iCF_E),  &
+              U(1:,iX1,iX2,iX3,iCF_Ne), &
+              P(1:,iX1,iX2,iX3,iPF_D),  &
+              P(1:,iX1,iX2,iX3,iPF_V1), &
+              P(1:,iX1,iX2,iX3,iPF_V2), &
+              P(1:,iX1,iX2,iX3,iPF_V3), &
+              P(1:,iX1,iX2,iX3,iPF_E),  &
+              P(1:,iX1,iX2,iX3,iPF_Ne), &
+              A(1:,iX1,iX2,iX3,iAF_P),  &
+              G(1:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+              G(1:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+              G(1:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+          CALL ComputeSoundSpeedFromPrimitive_GR &
+                 ( P(1:,iX1,iX2,iX3,iPF_D), P(1:,iX1,iX2,iX3,iPF_E), &
+                   P(1:,iX1,iX2,iX3,iPF_Ne), A(1:,iX1,iX2,iX3,iAF_Cs) )
+        END DO
+      END DO
+    END DO
 
   END SUBROUTINE ComputeFromConserved
 
@@ -84,7 +121,7 @@ CONTAINS
         IF( ABS( Pnew(i) / Pold(i) - 1.0_DP ) <= TolP ) Converged = .TRUE.
 
         ! For de-bugging
-        IF( nIter == 10)THEN
+        IF( nIter == 10 )THEN
           WRITE(*,*) 'No convergence, |ERROR|:', &
                       ABS( Pnew(i) / Pold(i) - 1.0_DP )
           WRITE(*,*) 'Pold:                   ', Pold(i)
@@ -186,8 +223,8 @@ CONTAINS
     ( V_1, V_2, V_3, V_i, Cs, Gm_11, Gm_22, Gm_33, Gm_ii, Alpha, Beta_i )
 
     ! Alpha is the lapse function
-    ! Vi is the contravariant component V^i
-    ! Beta1 is the contravariant component Beta^1
+    ! V_i is the contravariant component V^i
+    ! Beta_1 is the contravariant component Beta^1
 
     REAL(DP)             :: Eigenvalues_GR(1:nCF)
     REAL(DP), INTENT(in) :: V_1, V_2, V_3, V_i, Cs
@@ -273,16 +310,13 @@ CONTAINS
   END FUNCTION StressTensor_Diagonal
 
 
-  REAL(DP) FUNCTION AlphaC_GR &
-             ( U_L, F_L, U_R, F_R, Gm_dd_11, Beta_u_1, aP, aM )
+  REAL(DP) FUNCTION AlphaC_GR( U_L, F_L, U_R, F_R, aP, aM, Gm_dd_11, Beta_u_1 )
 
     ! --- Middle Wavespeed as suggested by Mignone and Bodo (2005) ---
 
-    REAL(DP), DIMENSION(1:nCF), INTENT(in) :: U_L, U_R, F_L, F_R
-    REAL(DP),                   INTENT(in) :: Gm_dd_11, Beta_u_1, aP, aM
-
-    REAL(DP), DIMENSION(1:nCF)             :: U, F, U_LL, U_RR, F_LL, F_RR
-    REAL(DP)                               :: A, B, C, eps
+    REAL(DP), INTENT(in) :: U_L(nCF), F_L(nCF), U_R(nCF), F_R(nCF), &
+                            aP, aM, Gm_dd_11, Beta_u_1
+    REAL(DP)             :: U_S1, F_S1, U_E, F_E, A, B, C, eps
 
     eps = SqrtTiny
 
@@ -292,19 +326,18 @@ CONTAINS
     ! --- to it being read in as positive but Mignone assuming
     ! --- it is negative. Also note we use tau instead of E, where
     ! --- E = tau + D
-    ! --- F_E = F_tau + F_D + Beta_u_1 * tau
+    ! --- F_E = F_tau + F_D
 
     U_S1 = aP * U_R(iCF_S1) + aM * U_L(iCF_S1) + F_L(iCF_S1) - F_R(iCF_S1)
 
     U_E  = aP * ( U_R(iCF_E) + U_R(iCF_D) ) + aM * ( U_L(iCF_E) + U_L(iCF_D) ) &
-          + ( F_L(iCF_E) + F_L(iCF_D) + Beta_u_1 * U_L(iCF_E) ) &
-          - ( F_R(iCF_E) + F_R(iCF_D) + Beta_u_1 * U_R(iCF_E) )
+          + ( F_L(iCF_E) + F_L(iCF_D) ) - ( F_R(iCF_E) + F_R(iCF_D) )
 
     F_S1 =  aP * F_L(iCF_S1) + aM * F_R(iCF_S1) &
           - aP * aM * ( U_R(iCF_S1) - U_L(iCF_S1 ) )
 
-    F_E  =  aP * ( F_L(iCF_E) + F_L(iCF_D) + Beta_u_1 * U_L(iCF_E) ) &
-          + aM * ( F_R(iCF_E) + F_R(iCF_D) + Beta_u_1 * U_R(iCF_E) ) &
+    F_E  =  aP * ( F_L(iCF_E) + F_L(iCF_D) ) &
+          + aM * ( F_R(iCF_E) + F_R(iCF_D) ) &
           - aP * aM * ( ( U_R(iCF_E) + U_R(iCF_D) ) &
           - ( U_L(iCF_E) + U_L(iCF_D) ) )
 
@@ -359,6 +392,7 @@ CONTAINS
 
     ELSE
 
+      ! --- From Mignone & Bodo (2005)
       ! --- Note the sign change on alpha_M which is due to it being
       ! --- read in as positive but the formulae assuming it is negative
 
@@ -440,6 +474,29 @@ CONTAINS
     RETURN
 
   END FUNCTION NumericalFlux_X1_HLLC_GR
+
+  
+  PURE FUNCTION NumericalFlux_X1_LLF_GR &
+      ( u_L, u_R, Flux_L, Flux_R, alpha_P, alpha_M, alpha_C, nF, &
+        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_dd_11 )    
+
+    ! --- Local Lax-Friedrichs Flux ---
+
+    INTEGER,  INTENT(in)                   :: nF
+    REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
+    REAL(DP), INTENT(in)                   :: alpha_P, alpha_M,      &
+                                              alpha_C, V1_L, V1_R,          &
+                                              p_L, p_R, Beta_u_1, Gm_dd_11
+    REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_X1_LLF_GR(1:nF)
+    REAL(DP) :: alpha
+
+    alpha    = MAX( alpha_m, alpha_p )
+
+    NumericalFlux_X1_LLF_GR &
+      = 0.5_DP * ( flux_L + flux_R - alpha * ( u_R - u_L ) )
+
+    RETURN
+  END FUNCTION NumericalFlux_X1_LLF_GR
 
 
 END MODULE EulerEquationsUtilitiesModule_Beta_GR

@@ -18,7 +18,7 @@ PROGRAM RiemannProblem
   USE GeometryComputationModule_Beta, ONLY: &
     ComputeGeometryX
   USE FluidFieldsModule, ONLY: &
-    uCF, rhsCF
+    uCF, rhsCF, uPF, uAF, iAF_P, iAF_Cs
   USE InputOutputModule, ONLY: &
     WriteFields1D
   USE InitializationModule_GR, ONLY: &
@@ -28,32 +28,37 @@ PROGRAM RiemannProblem
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
   USE dgDiscretizationModule_Euler_GR, ONLY: &
-    ComputeIncrement_Euler_GR_DG_Explicit
+     ComputeIncrement_Euler_GR_DG_Explicit
+  USE EulerEquationsUtilitiesModule_Beta_GR, ONLY: &
+    ComputeFromConserved
+
 
   IMPLICIT NONE
 
-  INTEGER  :: iCycle, iCycleD, iCycleW
-  REAL(DP) :: t, dt, t_end
+  INTEGER  :: iCycle, iCycleD, iCycleW, nX = 512
+  REAL(DP) :: t, dt, t_end, c = 1.0_DP, L = 1.0_DP, CFL = 0.5_DP
 
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'RiemannProblem', &
            nX_Option &
-             = [ 64, 1, 1 ], &
+             = [ nX, 1, 1 ], &
            swX_Option &
-             = [ 01, 0, 0 ], &
+             = [ 1, 0, 0 ], &
            bcX_Option &
-             = [ 1, 1, 1 ], &
+             = [ 2, 0, 0 ], &
            xL_Option &
              = [ 0.0d0, 0.0d0, 0.0d0 ], &
            xR_Option &
-             = [ 1.0d0, 1.0d0, 1.0d0 ], &
+             = [ L, 1.0d0, 1.0d0 ], &
            nNodes_Option &
              = 1, &
            CoordinateSystem_Option &
              = 'CARTESIAN', &
            EquationOfState_Option &
              = 'IDEAL', &
+           FluidRiemannSolver_Option & ! --- Hard-coded
+             = 'HLLC', &
            Gamma_IDEAL_Option &
              = 4.0_DP / 3.0_DP, &
            Opacity_Option &
@@ -62,10 +67,10 @@ PROGRAM RiemannProblem
              = 1 )
 
   t       = 0.0_DP
-  dt      = 0.001_DP
-  t_end   = 1.0_DP
-  iCycleD = 100
-  iCycleW = 10
+  dt      = CFL * L / ( c * nX )
+  t_end   = 0.2_DP
+  iCycleD = 10
+  iCycleW = 1
 
   CALL InitializeReferenceElementX
 
@@ -75,8 +80,8 @@ PROGRAM RiemannProblem
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   CALL InitializeFields_RiemannProblem &
-         ( D_L = 1.000_DP, V_L = [ 0.1_DP, 0.0_DP, 0.0_DP], P_L = 1.0d+0, &
-           D_R = 0.125_DP, V_R = [ 0.0_DP, 0.0_DP, 0.0_DP], P_R = 1.0d+0, &
+         ( D_L = 1.000_DP, V_L = [ 0.0_DP, 0.0_DP, 0.0_DP], P_L = 1.0d+0, &
+           D_R = 0.125_DP, V_R = [ 0.0_DP, 0.0_DP, 0.0_DP], P_R = 1.0d-1, &
            X_D_Option = 0.5_DP )
 
   CALL WriteFields1D( t, .TRUE., .TRUE. )
@@ -97,7 +102,10 @@ PROGRAM RiemannProblem
     END IF
 
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
+         ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
+
+    ! --- Update primitive fluid variables, pressure, and sound speed
+    CALL ComputeFromConserved( iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
     t = t + dt
 
