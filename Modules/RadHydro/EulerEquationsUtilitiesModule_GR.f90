@@ -267,16 +267,12 @@ CONTAINS
   END SUBROUTINE ComputeFunJacP
 
 
-  REAL(DP) FUNCTION AlphaC( U_L, U_R, F_L, F_R, aP, aM, &
-                            V1_L, V1_R, Beta_u_1, Gm_dd_11 )
+  REAL(DP) FUNCTION AlphaC( U_L, U_R, F_L, F_R, aP, aM, Gm_dd_11, Beta_u_1 )
 
     ! --- Middle Wavespeed as Suggested by Mignone and Bodo (2005) ---
 
-    REAL(DP), INTENT(in) :: U_L(nCF), U_R(nCF), F_L(nCF), F_R(nCF), &
-    REAL(DP), INTENT(in) :: aP, aM, V1_L, V1_R
-                                              Beta_u_1, Gm_dd_11
-    REAL(DP)                               :: U_S1, U_E, F_S1, F_E
-    REAL(DP)                               :: A, B, C, eps
+    REAL(DP), INTENT(in) :: U_L(nCF), U_R(nCF), F_L(nCF), F_R(nCF), aP, aM, Gm_dd_11, Beta_u_1
+    REAL(DP)             :: U_S1, U_E, F_S1, F_E, A, B, C, eps
 
     eps = SqrtTiny
 

@@ -237,21 +237,14 @@ CONTAINS
                 AlphaPls = MAX( 0.0_DP, &
                      MAXVAL( + EigVals_L ), MAXVAL( + EigVals_R ) )
 
-                AlphaMdl = AlphaC( uCF_L( iNodeX, 1:nCF ),      &
-                                   uCF_R( iNodeX, 1:nCF ),      &
-                                   Flux_L( 1:nCF),              &
-                                   Flux_R( 1:nCF ),             &
-                                   AlphaPls,                    &
-                                   AlphaMns,                    &
-                                   uPF_L( iNodeX, iPF_V1 ),     &
-                                   uPF_R( iNodeX, iPF_V1 ),     &
-                                   uGF_L( iNodeX, iGF_Beta_1 ), &
-!                                   uGF_R( iNodeX, iGF_Beta_1 ), &
-!                                   uGF_L( iNodeX, iGF_Beta_1 ), &
-                                   uGF_L( iNodeX, iGF_Gm_dd_11 ) )
-                !IF( iX1 .LT. 50 )THEN
-                !    WRITE(*,*) iX1, AlphaMdl
-                !END IF
+                AlphaMdl = AlphaC( uCF_L( iNodeX, 1:nCF ),        &
+                                   Flux_L( 1:nCF),                &
+                                   uCF_R( iNodeX, 1:nCF ),        &
+                                   Flux_R( 1:nCF ),               &
+                                   AlphaPls,                      &
+                                   AlphaMns,                      &
+                                   uGF_L( iNodeX, iGF_Gm_dd_11 ), &
+                                   uGF_L( iNodeX, iGF_Beta_1 ) )
 
                 Flux &
                   = NumericalFlux_Fluid_GR                        &
@@ -391,18 +384,14 @@ CONTAINS
                 AlphaPls = MAX( 0.0_DP, &
                      MAXVAL( + EigVals_L ), MAXVAL( + EigVals_R ) )
 
-                AlphaMdl = AlphaC( uCF_L( iNodeX, 1:nCF ),      &
-                                   uCF_R( iNodeX, 1:nCF ),      &
-                                   Flux_L( 1:nCF),              &
-                                   Flux_R( 1:nCF ),             &
-                                   AlphaPls,                    &
-                                   AlphaMns,                    &
-                                   uPF_L( iNodeX, iPF_V1 ),     &
-                                   uPF_R( iNodeX, iPF_V1 ),     &
-                                   uGF_L( iNodeX, iGF_Beta_1 ), &
-!                                   uGF_R( iNodeX, iGF_Beta_1 ), &
-!                                   uGF_R( iNodeX, iGF_Beta_1 ), &
-                                   uGF_R( iNodeX, iGF_Gm_dd_11 ) )
+                AlphaMdl = AlphaC( uCF_L( iNodeX, 1:nCF ),        &
+                                   Flux_L( 1:nCF),                &
+                                   uCF_R( iNodeX, 1:nCF ),        &
+                                   Flux_R( 1:nCF ),               &
+                                   AlphaPls,                      &
+                                   AlphaMns,                      &
+                                   uGF_R( iNodeX, iGF_Gm_dd_11 ), &
+                                   uGF_L( iNodeX, iGF_Beta_1 ) )
 
                 Flux &
                   = NumericalFlux_Fluid_GR                        &
