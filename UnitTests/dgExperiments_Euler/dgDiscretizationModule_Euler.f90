@@ -429,9 +429,10 @@ CONTAINS
 
             DO iCF = 1, nCF
 
-              CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Dn, nDOFX_X1, &
-                          NumericalFlux(:,iCF), 1, One, &
-                          dU(:,iX1,iX2,iX3,iCF), 1 )
+              CALL DGEMV &
+                     ( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Dn, nDOFX_X1, &
+                       NumericalFlux(:,iCF), 1, One, &
+                       dU(:,iX1,iX2,iX3,iCF), 1 )
 
             END DO
 
@@ -449,9 +450,10 @@ CONTAINS
 
             DO iCF = 1, nCF
 
-              CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Up, nDOFX_X1, &
-                          NumericalFlux(:,iCF), 1, &
-                          One, dU(:,iX1-1,iX2,iX3,iCF), 1 )
+              CALL DGEMV &
+                     ( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Up, nDOFX_X1, &
+                       NumericalFlux(:,iCF), 1, One, &
+                       dU(:,iX1-1,iX2,iX3,iCF), 1 )
 
             END DO
 
