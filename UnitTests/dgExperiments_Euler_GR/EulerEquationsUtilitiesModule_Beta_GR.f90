@@ -100,7 +100,11 @@ CONTAINS
 
     ! --- Find Pressure with Newton's Method ---
 
-    Pold = AF_P ! -- Initial guess
+    !Pold = AF_P ! -- Initial guess
+
+    ! --- Approximation for pressure assuming h^2=1
+    Pold = SQRT( SSq + CF_D**2 ) - CF_D - CF_E
+
     nNodes = SIZE( Pold )
 
     ! Loop through all the nodes
