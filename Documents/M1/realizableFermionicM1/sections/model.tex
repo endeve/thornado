@@ -1,5 +1,22 @@
 \section{Mathematical Model}
 
-  - Boltzmann Equation with emission and absorption, and isotropic scattering
+\subsection{Boltzmann Equation}
 
-  - Angular moments and moment equations
+In this paper, we consider approximate solutions to the Boltzmann equation for radiation transport
+\begin{equation}
+  \pd{f}{t}+\vect{\ell}\cdot\nabla f
+  =\sigma_{\Ab}\,\big(\,f_{0}-f\,\big)
+  +\sigma_{\Scatt}\,\big(\,\f{1}{4\pi}\int_{\bbS^{2}}f\,d\omegaNu-f\,\big),
+  \label{eq:boltzmann}
+\end{equation}
+where the distribution function $f(\omegaNu,\epsilonNu,x,t):\bbS^{2}\times\bbR^{+}\times\bbR^{3}\times\bbR^{+}\to\bbR^{+}$ gives the number of particles propagating in direction $\omegaNu\in\bbS^{2}:=\{\,\omegaNu=(\thetaNu,\phiNu)~|~\thetaNu\in[0,\pi],\phiNu\in[0,2\pi)\,\}$, with energy $\epsilonNu\in\bbR^{+}$, at position $x\in\bbR^{3}$ and time $t\in\bbR^{+}$.  
+The unit vector $\vect{\ell}(\omegaNu)\in\bbR^{3}$ is parallel to the particle three-momentum.  
+On the right-hand side of Eq.~\eqref{eq:boltzmann}, $\sigma_{\Ab}(\epsilonNu,x)$ and $\sigma_{\Scatt}(\epsilonNu,x)$ are the absorption and scattering opacities, respectively, and $f_{0}(\epsilonNu,x)$ is the equilibrium distribution distribution function.  
+
+\subsection{Angular Moment Equations}
+
+The boltzmann equation is often too expensive to solve directly.  
+Instead, equations for angular moments of the distribution function are solved instead.  
+\begin{equation}
+  \big\{\,\cJ,\vect{\cH},\vect{\cK}\,\big\}(z,t)=\f{1}{4\pi}\int_{\bbS}f(\omegaNu,z,t)\,\{\,1,\vect{\ell},\vect{\ell}\otimes\vect{\ell}\,\}\,d\omegaNu
+\end{equation}
