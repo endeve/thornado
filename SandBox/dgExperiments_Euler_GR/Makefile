@@ -31,7 +31,6 @@ RiemannProblem: \
 	InitializationModule_GR.o \
 	TimeSteppingModule_SSPRK.o \
 	dgDiscretizationModule_Euler_GR.o \
-	RiemannProblemInitializer.o \
 	RiemannProblem.o
 	$(FLINKER) $(FLAGS) -o RiemannProblem_$(MACHINE) \
 	$(thornado) \
@@ -42,7 +41,6 @@ RiemannProblem: \
 	InitializationModule_GR.o \
 	TimeSteppingModule_SSPRK.o \
 	dgDiscretizationModule_Euler_GR.o \
-	RiemannProblemInitializer.o \
 	RiemannProblem.o \
 	$(LIBRARIES)
 
