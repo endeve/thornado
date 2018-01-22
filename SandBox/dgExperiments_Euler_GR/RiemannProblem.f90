@@ -31,18 +31,27 @@ PROGRAM RiemannProblem
      ComputeIncrement_Euler_GR_DG_Explicit
   USE EulerEquationsUtilitiesModule_Beta_GR, ONLY: &
     ComputeFromConserved
+  USE RiemannProblemInitializer, ONLY: &
+    RiemannProblemChoice
 
 
   IMPLICIT NONE
 
-  INTEGER  :: iCycle, iCycleD, iCycleW, nX = 512
-  REAL(DP) :: t, dt, t_end, c = 1.0_DP, L = 1.0_DP, CFL = 0.5_DP
+  INTEGER  :: iCycle, iCycleD, iCycleW, K
+  REAL(DP) :: t, dt, t_end, xR, x_D, CFL, Gamma, c = 1.0_DP
+  REAL(DP) :: D_L, V_L(3), P_L, D_R, V_R(3), P_R
+
+  OPEN(  10 , FILE = 'nIter.dat' )
+
+  CALL RiemannProblemChoice &
+         ( D_L, V_L, P_L, D_R, V_R, P_R, &
+           xR, x_D, K, t, t_end, CFL, Gamma, iRP = 0 )
 
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'RiemannProblem', &
            nX_Option &
-             = [ nX, 1, 1 ], &
+             = [ K, 1, 1 ], &
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
@@ -50,7 +59,7 @@ PROGRAM RiemannProblem
            xL_Option &
              = [ 0.0d0, 0.0d0, 0.0d0 ], &
            xR_Option &
-             = [ L, 1.0d0, 1.0d0 ], &
+             = [ xR, 1.0d0, 1.0d0 ], &
            nNodes_Option &
              = 1, &
            CoordinateSystem_Option &
@@ -60,17 +69,15 @@ PROGRAM RiemannProblem
            FluidRiemannSolver_Option & ! --- Hard-coded
              = 'HLLC', &
            Gamma_IDEAL_Option &
-             = 4.0_DP / 3.0_DP, &
+             = Gamma, &
            Opacity_Option &
              = 'IDEAL', &
            nStages_SSP_RK_Option &
              = 1 )
 
-  t       = 0.0_DP
-  dt      = CFL * L / ( c * nX )
-  t_end   = 0.2_DP
-  iCycleD = 10
-  iCycleW = 1
+  dt      = CFL * xR / ( c * K )
+  iCycleD = 100 * t_end
+  iCycleW = 10  * t_end
 
   CALL InitializeReferenceElementX
 
@@ -80,9 +87,9 @@ PROGRAM RiemannProblem
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   CALL InitializeFields_RiemannProblem &
-         ( D_L = 1.000_DP, V_L = [ 0.0_DP, 0.0_DP, 0.0_DP], P_L = 1.0d+0, &
-           D_R = 0.125_DP, V_R = [ 0.0_DP, 0.0_DP, 0.0_DP], P_R = 1.0d-1, &
-           X_D_Option = 0.5_DP )
+         ( D_L = D_L, V_L = V_L, P_L = P_L, &
+           D_R = D_R, V_R = V_R, P_R = P_R, &
+           X_D_Option = x_D )
 
   CALL WriteFields1D( t, .TRUE., .TRUE. )
 
@@ -126,5 +133,7 @@ PROGRAM RiemannProblem
   CALL FinalizeReferenceElementX_Lagrange
 
   CALL FinalizeProgram
+
+  CLOSE(10)
 
 END PROGRAM RiemannProblem
