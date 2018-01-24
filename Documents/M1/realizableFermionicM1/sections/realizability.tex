@@ -1,0 +1,57 @@
+\section{Moment Realizability and Closures for Fermion}
+\label{sec:realizability}
+
+Our goal is to design a numerical method for solving the system of equations given by Eq.~\eqref{eq:momentEquations}, which approximates Eq.~\eqref{eq:boltzmann}.  
+To this end, we want to obtain solutions that preserve features of the original problem.  
+
+\subsection{Moment Realizability}
+
+\begin{define}
+  The moments $\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}$ are realizable if they are consistent with a distribution function satisfying $0\le f \le 1$.
+\end{define}
+\begin{lemma}
+  Let the distribution function $f$ be bounded by $0\le f \le1$.  
+  Then $0\le\cJ\le1$ and $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$
+\end{lemma}
+\begin{proof}
+  Prove this
+\end{proof}
+
+We now define the realizable set $\cR$
+\begin{equation}
+  \cR:=\big\{\,\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}~|~\cJ\in[0,1]~\text{and}~(1-\cJ)\cJ-|\vect{\cH}|\ge0\,\big\}
+  \label{eq:realizableSet}
+\end{equation}
+
+\begin{lemma}
+  The set $\cR$, defined in Eq.~\eqref{eq:realizableSet}, is convex.  
+\end{lemma}
+\begin{proof}
+  Prove this
+\end{proof}
+
+Include figure to illustrate the convex set.  
+
+\begin{lemma}
+  Let $\big\{\cJ_{a},\vect{\cH}_{a},\vect{\cK}_{a}\big\}$ be defined as in Eq.~\eqref{eq:angularMoments} with distribution function $f_{a}\in[0,1]$.  
+  Similarly, $\big\{\cJ_{b},\vect{\cH}_{b},\vect{\cK}_{b}\big\}$ be moments of a distribution function $f_{b}\in[0,1]$.  
+  Let $\Phi^{\pm}(\vect{\cM})=\f{1}{2}\big(\vect{\cM}\pm\widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cM})\big)$, where $\widehat{\vect{e}}\in\bbR^{3}$ is an arbitrary unit vector.  
+  Then
+  \begin{equation}
+    \Phi^{+}(\vect{\cM}_{a})+\Phi^{-}(\vect{\cM}_{b})\in\cR.
+  \end{equation}
+\end{lemma}
+\begin{proof}
+  Prove this.
+\end{proof}
+
+\subsection{Moment Closures}
+
+\subsubsection{Maximum Entropy Closure}
+Basic principles
+Chernohorsky \& Bludman
+Banach \& Larecki
+
+\subsubsection{Kershaw Closure}
+Basic principles
+Banach \& Larecki

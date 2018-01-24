@@ -1,6 +1,6 @@
 \section{Mathematical Model}
 
-In this section we give a brief summary of the mathematical model.  
+In this section we give a summary of the mathematical model we employ.  
 
 \subsection{Boltzmann Equation}
 
@@ -19,8 +19,9 @@ On the right-hand side of Eq.~\eqref{eq:boltzmann}, $\sigma_{\Ab}(\vect{z})\ge0$
 Here, we consider transport of Fermions (e.g., neutrinos), so that the equilibrium distribution function takes the form
 \begin{equation}
   f_{0}(\vect{z})=\f{1}{e^{(\epsilonNu-\mu(\vect{x}))/T(\vect{x})}+1},  
+  \label{eq:fermiDirac}
 \end{equation}
-where temperature $T$ and the chemical potential $\mu$ are properties of the background.  
+where the temperature $T$ and the chemical potential $\mu$ are properties of the background.  
 
 \subsection{Angular Moment Equations}
 
@@ -48,9 +49,9 @@ Taking the zeroth and first moments of Eq.~\eqref{eq:boltzmann} gives the two-mo
 where $\vect{\cM}=(\cJ,\vect{\cH})^{T}$, the components of the flux vector $\vect{\cF}$ are $\vect{\cF}^{i}=\vect{e}_{i}\cdot\vect{\cF}=(\vect{e}_{i}\cdot\vect{\cH},\vect{e}_{i}\cdot\vect{\cK})^{T}$, where $\vect{e}_{i}$ is the unit vector in the $i$th coordinate direction, and $\vect{\cC}=\vect{\cQ}-\vect{\cD}\,\vect{\cM}$.  
 Here we have also defined $\vect{\cQ}=(\sigma_{\Ab}\cJ_{0},\vect{0})^{T}$, where $\cJ_{0}=f_{0}$, and $\vect{\cD}=\mbox{diag}(\sigma_{\Ab},\vect{I}\sigma_{\Tot})$, where $\sigma_{\Tot}=\sigma_{\Ab}+\sigma_{\Scatt}$, and $\vect{I}$ is the identity matrix.  
 In order to close the system of equations, the stress tensor $\vect{\cK}$ must be related to the lower moments by a closure procedure.  
-To this end, Levermove \cite{levermore_1984} defines $\vect{k}=\vect{\cK}/\cJ$, assumes that the radiation field is symmetric about a preferred direction $\vect{h}=\vect{\cH}/|\vect{\cH}|$, and writes
+To this end, Levermore \cite{levermore_1984} defines the Eddington tensor $\vect{k}=\vect{\cK}/\cJ$, assumes that the radiation field is symmetric about a preferred direction $\widehat{\vect{h}}=\vect{\cH}/|\vect{\cH}|$, and writes
 \begin{equation}
-  \vect{k}=\f{1}{2}\big[\,\big(1-\chi\big)\,\vect{I}+\big(3\,\chi-1\big)\,\vect{h}\otimes\vect{h}\,\big],
+  \vect{k}=\f{1}{2}\big[\,\big(1-\chi\big)\,\vect{I}+\big(3\,\chi-1\big)\,\widehat{\vect{h}}\otimes\widehat{\vect{h}}\,\big],
 \end{equation}
 where $\chi=\chi(\cJ,|\vect{\cH}|)$ is the Eddington factor.  
 We will return to the issue of determining the Eddington factor in Section~\ref{sec:realizability}.  
