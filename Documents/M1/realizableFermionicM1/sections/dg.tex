@@ -1,1 +1,56 @@
 \section{Discontinuous Galerkin Method}
+\label{sec:dg}
+
+Here we briefly outline the DG method for the moment equations.  
+We do not include any physics that couple the energy dimension.  
+Thus, the particle energy $\epsilonNu$ is simply treated as a parameter.  
+For notational convenience, we will suppress explicit energy dependence of the moments.  
+Employing Cartesian coordinates, we write the moment equations in $d$ spatial dimensions as
+\begin{equation}
+  \pd{\vect{\cM}}{t}+\sum_{i=1}^{d}\pderiv{}{x^{i}}\big(\,\vect{\cF}^{i}(\vect{\cM})\,\big)=\vect{\cC}(\vect{\cM}).  
+  \label{eq:angularMomentsCartesian}
+\end{equation}
+We divide the spatial domain $D$ into a disjoint union $\cT$ of open elements $\bK$, so that $D = \cup_{\bK \in \cT}\bK$.  
+We require that each element is a $d$-dimensional box in the logical coordinates; i.e.,
+\begin{equation}
+  \bK=\{\,\vect{x} : x^{i} \in K^{i} := (\xL^{i},\xH^{i}),~|~i=1,\ldots,d\,\}, 
+\end{equation}
+with surface elements denoted $\tilde{\bK}^{i}=\otimes_{j\ne i}K^{j}$.  
+We let $|\bK|$ denote the volume of an element
+\begin{equation}
+  |\bK| = \int_{\bK}d\vect{x}, \quad\text{where}\quad d\vect{x} = \prod_{i=1}^{d}dx^{i}.  
+\end{equation}
+We also define the coordinates orthogonal to the $i$th dimension, $\tilde{\vect{x}}^{i}$, so that $\vect{x}=\{\tilde{\vect{x}}^{i},x^{i}\}$.  
+The with of an element in the $i$th dimension is $|K^{i}|=\xH^{i}-\xL^{i}$.  
+
+We let the approximation space for the DG method, $\mathbb{V}^{k}$, to be constructed from the tensor product of one-dimensional polynomials of maximal degree $k$.  
+Note that functions in $\mathbb{V}^{k}$ can be discontinuous across element interfaces.  
+The semi-discrete DG problem is to find $\bcM_{h}\in\mathbb{V}^{k}$ (which approximates $\bcM$ in Eq.~\eqref{eq:angularMomentsCartesian}) such that
+\begin{align}
+  &\pd{}{t}\int_{\bK}\bcM_{h}\,v\,d\vect{x}
+  +\sum_{i=1}^{d}\int_{\tilde{\bK}^{i}}
+  \big(\,
+    \widehat{\bcF}^{i}(\bcM_{h})\,v\big|_{\xH^{i}}
+    -\widehat{\bcF}^{i}(\bcM_{h})\,v\big|_{\xL^{i}}
+  \,\big)\,d\tilde{\bx}^{i} \nonumber \\
+  &\hspace{24pt}
+  -\sum_{i=1}^{d}\int_{\bK}\bcF^{i}(\bcM_{h})\,\pderiv{v}{x^{i}}\,d\vect{x}
+  =\int_{\bK}\bcC(\bcM_{h})\,v\,d\vect{x},
+  \label{eq:semidiscreteDG}
+\end{align}
+for all $v\in\mathbb{V}^{k}$ and all $\bK\in\cT$.  
+
+In Eq.~\eqref{eq:semidiscreteDG}, $\widehat{\bcF}^{i}(\bcM_{h})$ is a numerical flux, approximating the flux on the $i$th surface of $\bK$, and is evaluated with a flux function $\widehat{\mathfrak{F}}^{i}$ using the DG approximation from both sides of the element interface; i.e.,
+\begin{equation}
+  \widehat{\bcF}^{i}(\bcM_{h})\big|_{x^{i}}=\vect{\mathfrak{F}}^{i}(\bcM_{h}(x^{i,-},\tilde{\bx}^{i}),\bcM_{h}(x^{i,+},\tilde{\bx}^{i})),
+\end{equation}
+where superscripts $-/+$ in the arguments of $\bcM_{h}(x^{i,-/+},\tilde{\bx}^{i})$ indicate that the function is evaluated to the immediate left/right of $x^{i}$.  
+In this paper we use the simple Lax-Friedrichs (LF) flux given by
+\begin{equation}
+  \vect{\mathfrak{F}}_{\mbox{\tiny LF}}^{i}(\bcA,\bcB)
+  =\f{1}{2}\,\big(\,\bcF^{i}(\bcA)+\bcF^{i}(\bcB)-\alpha^{i}\,(\,\bcA-\bcB\,)\,\big),
+\end{equation}
+where $\alpha^{i}=||\mbox{eig}\big(\partial\bcF^{i}/\partial\bcM\big)||_{\infty}$ is the largest eigenvalue of the flux Jacobian.  
+For particles propagating at the speed of light, we can simply take $\alpha^{i}=1$ (i.e., the global LF flux).  
+
+For simplicity, we will approximate the opacities $\sigma_{\Ab}$ and $\sigma_{\Scatt}$ appearing in the collision term on the right-hand side of Eq.~\eqref{eq:angularMomentsCartesian} with constants in each element; i.e., $\sigma_{\Ab},\sigma_{\Scatt}\in\bbV^{0}$.  
