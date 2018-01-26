@@ -4,110 +4,54 @@
 Our goal is to design a numerical method for solving the system of equations given by Eq.~\eqref{eq:momentEquations}, which approximates Eq.~\eqref{eq:boltzmann}.  
 To this end, we want to obtain solutions that preserve features of the original problem. 
 
+Since we only consider the angular dependence of the distribution function in this section, we simplify the notation by suppressing the $\vect{z}$ and $t$ dependence, and write $f(\omegaNu,\vect{z},t)=f(\omegaNu)$.  
+
 \subsection{Moment Realizability}
 
 \begin{define}
-  The moments $\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}$ are realizable if they are consistent with a distribution function satisfying $0\le f \le 1$.
+  The moments $\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}$ are realizable if they are consistent with a distribution function satisfying $0\le f(\omegaNu) \le 1$.
 \end{define}
+
+We begin by stating the bounds on the moments by restating results from Theorem~7.1 in \cite{banachLarecki_2017} in the following Lemma.  
 \begin{lemma}
-  Let the distribution function $f$ be bounded by $0\le f \le1$.  
-  Then $0\le\cJ\le1$ and $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$
+  Let the distribution function be bounded by $0\le f(\omegaNu) \le1$ for all $\omegaNu\in\bbS^{2}$.  
+  Then $0\le\cJ\le1$ and $\big(1-\cJ\big)\,\cJ-|\vect{\cH}|\ge0$.  
 \end{lemma}
 \begin{proof}
-  Since this lemma is independent from $\vect{z}$ and t, we can drop $\vect{z}$ and t from the expressions for this proof.
-  Let's prove $0\le\cJ\le1$.
-  
-  Since $f$ is positive, we have
-    \begin{equation}
-      \cJ=\f{1}{4\pi}\int_{\bbS^{2}}f(\omegaNu)\,d\omegaNu\ge0.
-    \end{equation}
-    
-  Since $1-f$ is positive, we have
-    \begin{equation}
-      1-\cJ=\f{1}{4\pi}\int_{\bbS^{2}}(1-f(\omegaNu))\,d\omegaNu\ge0.
-    \end{equation}
-    Therefore, $0\le\cJ\le1$.
-
-    For $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$, we can prove it's valid with 1-dimension $\vect{\cH}$ first.
-    In 1-dimension, $\vect{\ell}(\omegaNu) = \omegaNu$ and
-    \begin{equation}
-    \vect{\cH}
-      =\f{1}{4\pi}\int_{\bbS^{2}}f(\omegaNu) \omegaNu d\omegaNu = \f{1}{2}\int_{-1}^{1}f(\omegaNu) \omegaNu d\omegaNu.
-    \end{equation}
-    Following Banach \& Larecki \cite{banachLarecki_2017}, we can rewrite it to be
-    \begin{align}
-    \vect{\cH}
-        &=(1-\cJ)\,\cJ \nonumber \\
-        &-\Big\{\,
-          \f{1}{2}\int_{-1}^{1-2\cJ}(1-2\cJ-\omegaNu)f(\omegaNu)\,d\omegaNu
-          +\f{1}{2}\int_{1-2\cJ}^{1}(2\cJ-1+\omegaNu)[1-f(\omegaNu)]\,d\omegaNu
-        \,\Big\}.
-        \label{eq:momentumRewrite1}
-    \end{align}
-    Since $(1-2\cJ-\omegaNu)f(\omegaNu)$ is positive when $-1\leq\omegaNu\leq1-2\cJ$ and $(2\cJ-1+\omegaNu)[1-f(\omegaNu)]$ is positive when $1-2\cJ\leq\omegaNu\leq1$,
-    \begin{align}
-    \vect{\cH} \leq (1-\cJ)\,\cJ.
-    \label{eq:HupBry1D}
-    \end{align}
-    Similarly, we can also rewrite $\vect{\cH}$ as
-    \begin{align}
-     \vect{\cH}
-        &=-(1-\cJ)\,\cJ \nonumber \\
-        &-\Big\{\,
-          \f{1}{2}\int_{-1}^{2\cJ-1}(1-2\cJ+\omegaNu)[1-f(\omegaNu)]\,d\omegaNu
-          +\f{1}{2}\int_{2\cJ-1}^{1}(2\cJ-1-\omegaNu)f(\omegaNu)\,d\omegaNu
-        \,\Big\}.
-        \label{eq:momentumRewrite2}
-    \end{align}
-    Since $(1-2\cJ+\omegaNu)[1-f(\omegaNu)]$ is negative when $-1\leq\omegaNu\leq2\cJ-1$ and $(2\cJ-1-\omegaNu)f(\omegaNu)$ is negative when $2\cJ-1\leq\omegaNu\leq1$,
-    \begin{align}
-    \vect{\cH} \geq -(1-\cJ)\,\cJ.
-     \label{eq:HlowBry1D}
-    \end{align}
-    Combining Eq.~\eqref{eq:HupBry1D} and ~\eqref{eq:HlowBry1D} gives $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$ in 1-dimension.
-    
-    To prove $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$ for 3-dimensional $\vect{\cH}$, let's introduce a unit vector $\bn$ with a arbitrary direction.
-    Then 
-    \begin{equation}
-    \vect{\cH} \cdot \bn = |\vect{\cH}| \cos\alpha,
-    \end{equation}
-    with $\alpha$ be the angle between $\vect{\cH}$ and $\bn$. 
-    We know that $-|\vect{\cH}|\leq\vect{\cH} \cdot \bn\leq|\vect{\cH}|$ since $-1\leq\cos\alpha\leq1$.
-    While given by definition,
-    \begin{align}
-    \vect{\cH} \cdot \bn & = \f{1}{4\pi}\int_{\bbS^{2}}f(\omegaNu)\ \bl(\omegaNu) d\omegaNu \cdot \bn \nonumber \\
-     &= \f{1}{4\pi}\int_{\bbS^{2}}f(\omegaNu)\ \bl(\omegaNu) \cdot \bn d\omegaNu \nonumber \\
-     &= \f{1}{4\pi}\int_{0}^{\pi}\int_{0}^{2\pi}f(\theta,\phi)\ \cos \theta \sin\theta d\theta d\phi
-    \end{align}
-    while $\theta$ is the angle between $\bl$ and $\bn$, and the coordinate are rotated so that the $\theta$ from $\omegaNu(\theta,\phi)$ is the same with the angle between $\bl$ and $\bn$.
-    Note the above expression can also be rewritten by changing variables as
-    \begin{align}
-    \vect{\cH} \cdot \bn & = \f{1}{2}\int_{0}^{\pi} \f{1}{2\pi}\int_{0}^{2\pi}f(\theta,\phi)\ d\phi \cdot \cos \theta \sin\theta d\theta  \\
-    & =  \f{1}{2}\int_{-1}^{1} \f{1}{2\pi}\int_{0}^{2\pi}f(\mu,\phi)\ d\phi \mu d\mu.
-    \end{align}
-    Besides,
-    \begin{align}
-    \cJ = \f{1}{4\pi}\int_{\bbS^{2}}f(\omegaNu)\,d\omegaNu = \f{1}{2}\int_{-1}^{1} \f{1}{2\pi}\int_{0}^{2\pi}f(\mu,\phi)\ d\phi d\mu.
-    \end{align}
-    If we define $f(\mu) =  \f{1}{2\pi}\int_{0}^{2\pi}f(\mu,\phi)\ d\phi$, then
-    \begin{align}
-    \cJ &= \f{1}{2}\int_{-1}^{1} f(\mu) d\mu, \\
-    \vect{\cH} \cdot \bn  &= \f{1}{2}\int_{-1}^{1} f(\mu) \mu d\mu.
-    \end{align}
-    We know $0\leq\,f(\mu)\leq1$.
-    Recall the proof we gave for 1-dimensional $\vect{\cH}$, we have
-    \begin{equation}
-     \big(1-\cJ\big)\cJ-\vect{\cH} \cdot \bn\ge0.
-    \end{equation}
-    Note this inequality is valid for all the possible $\bn$ which includes the special case with $\cos\alpha=1$ and
-    \begin{equation}
-    \big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0.
-    \end{equation} 
+  First, let $\mu=\cos\thetaNu$ and write
+  \begin{equation}
+    \cJ=\f{1}{2}\int_{\bbS^{1}}\mathfrak{f}(\mu)\,d\mu,
+    \quad\text{where}\quad
+    \mathfrak{f}(\mu)=\f{1}{2\pi}\int_{0}^{2\pi}f(\mu,\phiNu)\,d\phiNu.  
+  \end{equation}  
+  Since $f(\omegaNu)\in[0,1]$, we have $\mathfrak{f}(\mu)\in[0,1]$, which implies $\cJ\in[0,1]$.  
+  Next we need to show that $|\vect{\cH}|\le(1-\cJ)\,\cJ$.  
+  Let $\widehat{\vect{n}}\in\bbR^{3}$ (independent of $\omegaNu$) be an arbitrary unit vector, and write
+  \begin{equation}
+    \widehat{\vect{n}}\cdot\vect{\cH}
+    =\int_{\bbS^{1}}\mathfrak{f}(\mu)\,\mu\,d\mu,
+    \label{eq:NdotH}
+  \end{equation}
+  where we have aligned the polar axis of the spherical momentum space coordinate system with $\widehat{\vect{n}}$; i.e., $\widehat{\vect{n}}\cdot\vect{\ell}(\omega)=\mu$.  
+  First, following \cite{banachLarecki_2017}, we can write the integral on the right-hand side of Eq.~\eqref{eq:NdotH} as
+  \begin{equation*}
+    (1-\cJ)\cJ - \f{1}{2}\int_{-1}^{1-2\cJ}(1-2\cJ-\mu)\,\mathfrak{f}(\mu)\,d\mu
+    -\f{1}{2}\int_{1-2\cJ}^{1}(2\cJ-1+\mu)\,[1-\mathfrak{f}(\mu)]\,d\mu.  
+  \end{equation*}
+  Since $\mathfrak{f}\in[0,1]$, $(1-2\cJ-\mu)$ is nonnegative on the interval $\mu\in[-1,1-2\cJ]$, and $(2\cJ-1+\mu)$ is nonnegative on the interval $\mu\in[1-2\cJ,1]$, we have $\widehat{\vect{n}}\cdot\vect{\cH}\le(1-\cJ)\,\cJ$.  
+  In a similar manner, we can also write the integral on the right-hand side of Eq.~\eqref{eq:NdotH} as
+  \begin{equation*}
+    -(1-\cJ)\cJ-\f{1}{2}\int_{-1}^{2\cJ-1}(1-2\cJ+\mu)\,[1-\mathfrak{f}(\mu)]\,d\mu
+    -\f{1}{2}\int_{2\cJ-1}^{1}(2\cJ-1-\mu)\,\mathfrak{f}(\mu)\,d\mu.  
+  \end{equation*}
+  Then, since $\mathfrak{f}\in[0,1]$, $(1-2\cJ+\mu)$ is nonpositive on the interval $\mu\in[-1,2\cJ-1]$, and $(2\cJ-1-\mu)$ is nonpositive on the interval $\mu\in[2\cJ-1,1]$, we have $\widehat{\vect{n}}\cdot\vect{\cH}\ge-(1-\cJ)\,\cJ$.  
+  We therefore have $-(1-\cJ)\,\cJ\le\widehat{\vect{n}}\cdot\vect{\cH}\le(1-\cJ)\,\cJ$.  
+  Since this holds for any unit vector $\widehat{\vect{n}}\in\bbR^{3}$, we must have $|\vect{\cH}|\le(1-\cJ)\,\cJ$.  
 \end{proof}
 
 We now define the realizable set $\cR$
 \begin{equation}
-  \cR:=\big\{\,\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}~|~\cJ\in[0,1]~\text{and}~(1-\cJ)\cJ-|\vect{\cH}|\ge0\,\big\}
+  \cR:=\big\{\,\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}~|~\cJ\in[0,1]~\text{and}~\gamma(\vect{\cM})\equiv(1-\cJ)\cJ-|\vect{\cH}|\ge0\,\big\}
   \label{eq:realizableSet}
 \end{equation}
 
