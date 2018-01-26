@@ -2,7 +2,7 @@
 \label{sec:realizability}
 
 Our goal is to design a numerical method for solving the system of equations given by Eq.~\eqref{eq:momentEquations}, which approximates Eq.~\eqref{eq:boltzmann}.  
-To this end, we want to obtain solutions that preserve features of the original problem.  
+To this end, we want to obtain solutions that preserve features of the original problem. 
 
 \subsection{Moment Realizability}
 
@@ -14,7 +14,57 @@ To this end, we want to obtain solutions that preserve features of the original 
   Then $0\le\cJ\le1$ and $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$
 \end{lemma}
 \begin{proof}
-  Prove this
+  Since this lemma is independent from $\vect{z}$ and t, we can drop them from the expression for convenience.
+  Let's proof $0\le\cJ\le1$.
+  
+  Since $f$ is positive, we have
+    \begin{equation}
+      \cJ=\f{1}{4\pi}\int_{\bbS^{2}}f(\omegaNu)\,d\omegaNu\ge0.
+    \end{equation}
+    
+  Since $1-f$ is positive, we have
+    \begin{equation}
+      1-\cJ=\f{1}{4\pi}\int_{\bbS^{2}}(1-f(\omegaNu))\,d\omegaNu\ge0.
+    \end{equation}
+    Therefore, $0\le\cJ\le1$.
+
+    For $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$, we can proof it's valid with 1-dimension $\vect{\cH}$ first.
+    In 1-dimension, $\vect{\ell}(\omegaNu) = \omegaNu$ and
+    \begin{equation}
+    \vect{\cH}
+      =\f{1}{4\pi}\int_{\bbS^{2}}f(\omegaNu) \omegaNu d\omegaNu = \f{1}{2}\int_{-1}^{1}f(\omegaNu) \omegaNu d\omegaNu.
+    \end{equation}
+    Following Banach \& Larecki \cite{banachLarecki_2017}, we can rewrite it to be
+    \begin{align}
+    \vect{\cH}
+        &=(1-\cJ)\,\cJ \nonumber \\
+        &-\Big\{\,
+          \f{1}{2}\int_{-1}^{1-2\cJ}(1-2\cJ-\omegaNu)f(\omegaNu)\,d\omegaNu
+          +\f{1}{2}\int_{1-2\cJ}^{1}(2\cJ-1+\omegaNu)[1-f(\omegaNu)]\,d\omegaNu
+        \,\Big\}.
+        \label{eq:momentumRewrite1}
+    \end{align}
+    Since $(1-2\cJ-\omegaNu)f(\omegaNu)$ is positive when $-1\leq\omegaNu\leq1-2\cJ$ and $(2\cJ-1+\omegaNu)[1-f(\omegaNu)]$ is positive when $1-2\cJ\leq\omegaNu\leq1$,
+    \begin{align}
+    \vect{\cH} \leq (1-\cJ)\,\cJ.
+    \label{eq:HupBry1D}
+    \end{align}
+    Similarly, we can also rewrite $\vect{\cH}$ as
+    \begin{align}
+     \vect{\cH}
+        &=-(1-\cJ)\,\cJ \nonumber \\
+        &-\Big\{\,
+          \f{1}{2}\int_{-1}^{2\cJ-1}(1-2\cJ+\omegaNu)[1-f(\omegaNu)]\,d\omegaNu
+          +\f{1}{2}\int_{2\cJ-1}^{1}(2\cJ-1-\omegaNu)f(\omegaNu)\,d\omegaNu
+        \,\Big\}.
+        \label{eq:momentumRewrite2}
+    \end{align}
+    Since $(1-2\cJ+\omegaNu)[1-f(\omegaNu)]$ is negative when $-1\leq\omegaNu\leq2\cJ-1$ and $(2\cJ-1-\omegaNu)f(\omegaNu)$ is negative when $2\cJ-1\leq\omegaNu\leq1$,
+    \begin{align}
+    \vect{\cH} \geq -(1-\cJ)\,\cJ.
+     \label{eq:HlowBry1D}
+    \end{align}
+    Combining Eq.~\eqref{eq:HupBry1D} and ~\eqref{eq:HlowBry1D} gives $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$ in 1-dimension.
 \end{proof}
 
 We now define the realizable set $\cR$
