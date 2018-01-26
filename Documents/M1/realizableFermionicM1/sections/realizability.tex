@@ -14,8 +14,8 @@ To this end, we want to obtain solutions that preserve features of the original 
   Then $0\le\cJ\le1$ and $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$
 \end{lemma}
 \begin{proof}
-  Since this lemma is independent from $\vect{z}$ and t, we can drop them from the expression for convenience.
-  Let's proof $0\le\cJ\le1$.
+  Since this lemma is independent from $\vect{z}$ and t, we can drop $\vect{z}$ and t from the expressions for this proof.
+  Let's prove $0\le\cJ\le1$.
   
   Since $f$ is positive, we have
     \begin{equation}
@@ -28,7 +28,7 @@ To this end, we want to obtain solutions that preserve features of the original 
     \end{equation}
     Therefore, $0\le\cJ\le1$.
 
-    For $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$, we can proof it's valid with 1-dimension $\vect{\cH}$ first.
+    For $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$, we can prove it's valid with 1-dimension $\vect{\cH}$ first.
     In 1-dimension, $\vect{\ell}(\omegaNu) = \omegaNu$ and
     \begin{equation}
     \vect{\cH}
@@ -65,6 +65,44 @@ To this end, we want to obtain solutions that preserve features of the original 
      \label{eq:HlowBry1D}
     \end{align}
     Combining Eq.~\eqref{eq:HupBry1D} and ~\eqref{eq:HlowBry1D} gives $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$ in 1-dimension.
+    
+    To prove $\big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0$ for 3-dimensional $\vect{\cH}$, let's introduce a unit vector $\bn$ with a arbitrary direction.
+    Then 
+    \begin{equation}
+    \vect{\cH} \cdot \bn = |\vect{\cH}| \cos\alpha,
+    \end{equation}
+    with $\alpha$ be the angle between $\vect{\cH}$ and $\bn$. 
+    We know that $-|\vect{\cH}|\leq\vect{\cH} \cdot \bn\leq|\vect{\cH}|$ since $-1\leq\cos\alpha\leq1$.
+    While given by definition,
+    \begin{align}
+    \vect{\cH} \cdot \bn & = \f{1}{4\pi}\int_{\bbS^{2}}f(\omegaNu)\ \bl(\omegaNu) d\omegaNu \cdot \bn \nonumber \\
+     &= \f{1}{4\pi}\int_{\bbS^{2}}f(\omegaNu)\ \bl(\omegaNu) \cdot \bn d\omegaNu \nonumber \\
+     &= \f{1}{4\pi}\int_{0}^{\pi}\int_{0}^{2\pi}f(\theta,\phi)\ \cos \theta \sin\theta d\theta d\phi
+    \end{align}
+    while $\theta$ is the angle between $\bl$ and $\bn$, and the coordinate are rotated so that the $\theta$ from $\omegaNu(\theta,\phi)$ is the same with the angle between $\bl$ and $\bn$.
+    Note the above expression can also be rewritten by changing variables as
+    \begin{align}
+    \vect{\cH} \cdot \bn & = \f{1}{2}\int_{0}^{\pi} \f{1}{2\pi}\int_{0}^{2\pi}f(\theta,\phi)\ d\phi \cdot \cos \theta \sin\theta d\theta  \\
+    & =  \f{1}{2}\int_{-1}^{1} \f{1}{2\pi}\int_{0}^{2\pi}f(\mu,\phi)\ d\phi \mu d\mu.
+    \end{align}
+    Besides,
+    \begin{align}
+    \cJ = \f{1}{4\pi}\int_{\bbS^{2}}f(\omegaNu)\,d\omegaNu = \f{1}{2}\int_{-1}^{1} \f{1}{2\pi}\int_{0}^{2\pi}f(\mu,\phi)\ d\phi d\mu.
+    \end{align}
+    If we define $f(\mu) =  \f{1}{2\pi}\int_{0}^{2\pi}f(\mu,\phi)\ d\phi$, then
+    \begin{align}
+    \cJ &= \f{1}{2}\int_{-1}^{1} f(\mu) d\mu, \\
+    \vect{\cH} \cdot \bn  &= \f{1}{2}\int_{-1}^{1} f(\mu) \mu d\mu.
+    \end{align}
+    We know $0\leq\,f(\mu)\leq1$.
+    Recall the proof we gave for 1-dimension $\vect{\cH}$, we have
+    \begin{equation}
+     \big(1-\cJ\big)\cJ-\vect{\cH} \cdot \bn\ge0.
+    \end{equation}
+    Note this inequality is valid for all the possible $\bn$ which includes the special case with $\cos\alpha=1$ and
+    \begin{equation}
+    \big(1-\cJ\big)\cJ-|\vect{\cH}|\ge0.
+    \end{equation} 
 \end{proof}
 
 We now define the realizable set $\cR$
