@@ -109,11 +109,29 @@ Include figure to illustrate the convex set.
 
 \subsection{Moment Closures}
 
+Flux factor $h=|\vect{\cH}|/\cJ$
+\begin{equation}
+  \chi(\cJ,h)=\f{1}{3}+\f{2\,(1-\cJ)\,(1-2\cJ)}{3}\,\Theta\Big(\f{h}{1-\cJ}\Big)
+\end{equation}
+
 \subsubsection{Maximum Entropy Closure}
 Basic principles
-Chernohorsky \& Bludman
+Chernohorsky \& Bludman \cite{cernohorskyBludman_1994}
+\begin{equation}
+  \Theta_{\mbox{\tiny ME}}^{\mbox{\tiny CB}}(x)
+  =x^{2}\,\big(\,3-x+3\,x^{2}\,\big)
+\end{equation}
 Banach \& Larecki
+\begin{equation}
+  \Theta_{\mbox{\tiny ME}}^{\mbox{\tiny BL}}(x)
+  =\f{1}{8}\,\big(\,9\,x^{2}-5+\sqrt{33\,x^{4}-42\,x^{2}+25}\,\big)
+\end{equation}
 
 \subsubsection{Kershaw Closure}
 Basic principles
-Banach \& Larecki
+Banach \& Larecki \cite{banachLarecki_2017}
+\begin{equation}
+  \Theta_{\mbox{\tiny K}}^{\mbox{\tiny BL}}(x)=x^{2}
+\end{equation}
+
+\subsubsection{Low Occupancy Limit}
