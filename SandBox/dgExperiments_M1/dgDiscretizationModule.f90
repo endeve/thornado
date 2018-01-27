@@ -56,13 +56,13 @@ MODULE dgDiscretizationModule
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
+  USE ClosureModule_M1, ONLY: &
+    FluxFactor, &
+    EddingtonFactor
   USE BoundaryConditionsModule_Beta, ONLY: &
     ApplyBoundaryConditions_Radiation
   USE MomentEquationsUtilitiesModule_Beta, ONLY: &
     ComputePrimitive, &
-    Eigenvalues, &
-    FluxFactor, &
-    EddingtonFactor, &
     Flux_X1, &
     Flux_X2, &
     NumericalFlux_LLF
@@ -76,7 +76,7 @@ MODULE dgDiscretizationModule
 
   PUBLIC :: ComputeIncrement_M1_DG_Explicit
 
-  LOGICAL, PARAMETER :: DisplayTimers = .TRUE.
+  LOGICAL, PARAMETER :: DisplayTimers = .FALSE.
   REAL(DP) :: Timer
   REAL(DP) :: Timer_RHS
   REAL(DP) :: Timer_VOL, dT_VOL
@@ -114,33 +114,21 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS
     REAL(DP) :: dZ(4), Tau(nDOF)
 
-    PRINT*, "ComputeIncrement_M1_DG_Explicit"
-
     dU = Zero
-
-    print*, "BC"
 
     CALL ApplyBoundaryConditions_Radiation &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
-    print*, "X1"
-
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
-    print*, "X2"
-
     CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
-
-    print*, "X3"
 
     CALL ComputeIncrement_Divergence_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
     ! --- Multiply Inverse Mass Matrix ---
-
-    print*, "Mass"
 
     CALL Timer_Start( Timer_INV )
 
@@ -210,9 +198,9 @@ CONTAINS
       dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
-    INTEGER  :: iNode, iNode_X1
+    INTEGER  :: iNode
     INTEGER  :: iGF, iCR
-    REAL(DP) :: dE, dX2, dX3
+    REAL(DP) :: dZ(4)
     REAL(DP) :: FF, EF
     REAL(DP) :: GX_P(nDOFX,   nGF)
     REAL(DP) :: GX_K(nDOFX,   nGF)
@@ -249,11 +237,11 @@ CONTAINS
     DO iS = 1, nSpecies
       DO iZ4 = iZ_B0(4), iZ_E0(4)
 
-        dX3 = MeshX(3) % Width(iZ4)
+        dZ(4) = MeshX(3) % Width(iZ4)
 
         DO iZ3 = iZ_B0(3), iZ_E0(3)
 
-          dX2 = MeshX(2) % Width(iZ3)
+          dZ(3) = MeshX(2) % Width(iZ3)
 
           DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
 
@@ -321,7 +309,7 @@ CONTAINS
 
             DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-              dE = MeshE % Width(iZ1)
+              dZ(1) = MeshE % Width(iZ1)
 
               ! --- Volume Jacobian in Energy-Position Element ---
 
@@ -384,7 +372,7 @@ CONTAINS
                 DO iCR = 1, nCR
 
                   Flux_X1_q(:,iCR) &
-                    = dE * dX2 * dX3 * Weights_q(:) &
+                    = dZ(1) * dZ(3) * dZ(4) * Weights_q(:) &
                         * G_K(:,iGF_Alpha) * Tau(:) * Flux_X1_q(:,iCR)
 
                   CALL DGEMV &
@@ -447,27 +435,27 @@ CONTAINS
 
               CALL Timer_Start( dT_LFT )
 
-              DO iNode_X1 = 1, nDOF_X1
+              DO iNode = 1, nDOF_X1
 
                 FF = FluxFactor &
-                       ( uPR_L(iNode_X1,iPR_D ), uPR_L(iNode_X1,iPR_I1), &
-                         uPR_L(iNode_X1,iPR_I2), uPR_L(iNode_X1,iPR_I3), &
-                         G_F(iNode_X1,iGF_Gm_dd_11), &
-                         G_F(iNode_X1,iGF_Gm_dd_22), &
-                         G_F(iNode_X1,iGF_Gm_dd_33) )
+                       ( uPR_L(iNode,iPR_D ), uPR_L(iNode,iPR_I1), &
+                         uPR_L(iNode,iPR_I2), uPR_L(iNode,iPR_I3), &
+                         G_F(iNode,iGF_Gm_dd_11), &
+                         G_F(iNode,iGF_Gm_dd_22), &
+                         G_F(iNode,iGF_Gm_dd_33) )
 
-                EF = EddingtonFactor( uPR_L(iNode_X1,iPR_D), FF )
+                EF = EddingtonFactor( uPR_L(iNode,iPR_D), FF )
 
-                Flux_X1_L(iNode_X1,1:nCR) &
+                Flux_X1_L(iNode,1:nCR) &
                   = Flux_X1 &
-                      ( uPR_L(iNode_X1,iPR_D ), uPR_L(iNode_X1,iPR_I1), &
-                        uPR_L(iNode_X1,iPR_I2), uPR_L(iNode_X1,iPR_I3), &
+                      ( uPR_L(iNode,iPR_D ), uPR_L(iNode,iPR_I1), &
+                        uPR_L(iNode,iPR_I2), uPR_L(iNode,iPR_I3), &
                         FF, EF, &
-                        G_F(iNode_X1,iGF_Gm_dd_11), &
-                        G_F(iNode_X1,iGF_Gm_dd_22), &
-                        G_F(iNode_X1,iGF_Gm_dd_33) )
+                        G_F(iNode,iGF_Gm_dd_11), &
+                        G_F(iNode,iGF_Gm_dd_22), &
+                        G_F(iNode,iGF_Gm_dd_33) )
 
-                absLambda_L(iNode_X1) = 1.0_DP
+                absLambda_L(iNode) = 1.0_DP
 
               END DO
 
@@ -488,27 +476,27 @@ CONTAINS
 
               CALL Timer_Start( dT_RGT )
 
-              DO iNode_X1 = 1, nDOF_X1
+              DO iNode = 1, nDOF_X1
 
                 FF = FluxFactor &
-                       ( uPR_R(iNode_X1,iPR_D ), uPR_R(iNode_X1,iPR_I1), &
-                         uPR_R(iNode_X1,iPR_I2), uPR_R(iNode_X1,iPR_I3), &
-                         G_F(iNode_X1,iGF_Gm_dd_11), &
-                         G_F(iNode_X1,iGF_Gm_dd_22), &
-                         G_F(iNode_X1,iGF_Gm_dd_33) )
+                       ( uPR_R(iNode,iPR_D ), uPR_R(iNode,iPR_I1), &
+                         uPR_R(iNode,iPR_I2), uPR_R(iNode,iPR_I3), &
+                         G_F(iNode,iGF_Gm_dd_11), &
+                         G_F(iNode,iGF_Gm_dd_22), &
+                         G_F(iNode,iGF_Gm_dd_33) )
 
-                EF = EddingtonFactor( uPR_R(iNode_X1,iPR_D), FF )
+                EF = EddingtonFactor( uPR_R(iNode,iPR_D), FF )
 
-                Flux_X1_R(iNode_X1,1:nCR) &
+                Flux_X1_R(iNode,1:nCR) &
                   = Flux_X1 &
-                      ( uPR_R(iNode_X1,iPR_D ), uPR_R(iNode_X1,iPR_I1), &
-                        uPR_R(iNode_X1,iPR_I2), uPR_R(iNode_X1,iPR_I3), &
+                      ( uPR_R(iNode,iPR_D ), uPR_R(iNode,iPR_I1), &
+                        uPR_R(iNode,iPR_I2), uPR_R(iNode,iPR_I3), &
                         FF, EF, &
-                        G_F(iNode_X1,iGF_Gm_dd_11), &
-                        G_F(iNode_X1,iGF_Gm_dd_22), &
-                        G_F(iNode_X1,iGF_Gm_dd_33) )
+                        G_F(iNode,iGF_Gm_dd_11), &
+                        G_F(iNode,iGF_Gm_dd_22), &
+                        G_F(iNode,iGF_Gm_dd_33) )
 
-                absLambda_R(iNode_X1) = 1.0_DP
+                absLambda_R(iNode) = 1.0_DP
 
               END DO
 
@@ -532,7 +520,7 @@ CONTAINS
                         Flux_X1_R(:,iCR), alpha(:) )
 
                 NumericalFlux(:,iCR) &
-                  = dE * dX2 * dX3 * Weights_X1(:) &
+                  = dZ(1) * dZ(3) * dZ(4) * Weights_X1(:) &
                       * G_F(:,iGF_Alpha) * Tau_X1(:) * NumericalFlux(:,iCR)
 
               END DO
@@ -587,11 +575,11 @@ CONTAINS
 
               CALL Timer_Add( Timer_SUR, dT_SUR )
 
-            END DO
-          END DO
-        END DO
-      END DO
-    END DO
+            END DO ! iZ1
+          END DO ! iZ2
+        END DO ! iZ3
+      END DO ! iZ4
+    END DO ! iS
 
     CALL Timer_Stop( Timer_RHS )
 
@@ -742,7 +730,7 @@ CONTAINS
                    ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                      GX_K(:,iGF_Alpha), 1, Half, GX_F(:,iGF_Alpha), 1 )
 
-            GX_F(1:nDOFX_X1,iGF_Alpha) &
+            GX_F(1:nDOFX_X2,iGF_Alpha) &
               = MAX( GX_F(1:nDOFX_X2,iGF_Alpha), SqrtTiny )
 
             G_F(1:nDOF_X2,iGF_Alpha) &

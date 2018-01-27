@@ -24,6 +24,7 @@ MODULE dgDiscretizationModule_Collisions
   PUBLIC :: InitializeCollisions
   PUBLIC :: FinalizeCollisions
   PUBLIC :: ComputeIncrement_M1_DG_Implicit
+  PUBLIC :: ComputeCorrection_M1_DG_Implicit
 
 CONTAINS
 
@@ -126,6 +127,27 @@ CONTAINS
 !!$    PRINT*, "Backward: ", wTime
 
   END SUBROUTINE ComputeIncrement_M1_DG_Implicit
+
+
+  SUBROUTINE ComputeCorrection_M1_DG_Implicit &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U, dU )
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      dt
+    REAL(DP), INTENT(in)    :: &
+      GE(1:,iZ_B1(1):,1:)
+    REAL(DP), INTENT(in)    :: &
+      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+    REAL(DP), INTENT(inout) :: &
+      U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+    REAL(DP), INTENT(inout) :: &
+      dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+
+    dU = Zero
+
+  END SUBROUTINE ComputeCorrection_M1_DG_Implicit
 
 
   SUBROUTINE InitializeCollisions( N0_Option, SigmaA_Option, SigmaS_Option )

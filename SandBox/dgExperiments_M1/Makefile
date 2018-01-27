@@ -1,8 +1,10 @@
+MOMENT_CLOSURE = MINERBO
+
 include ../../../Build/Makefile_Build
 
-all: rhsTest
+all: StreamingSineWave
 
-rhsTest: \
+StreamingSineWave: \
 	$(thornado) \
 	ReferenceElementModuleX.o \
 	ReferenceElementModuleX_Lagrange.o \
@@ -11,12 +13,15 @@ rhsTest: \
 	ReferenceElementModuleE_Lagrange.o \
 	GeometryComputationModuleE_Beta.o \
 	ReferenceElementModule_Lagrange.o \
+	TimeSteppingModule_IMEX_RK.o \
+	ClosureModule_M1.o \
 	MomentEquationsUtilitiesModule_Beta.o \
 	InitializationModule.o \
 	BoundaryConditionsModule_Beta.o \
 	dgDiscretizationModule.o \
-	rhsTest.o
-	$(FLINKER) $(FLAGS) -o rhsTest_$(MACHINE) \
+	dgDiscretizationModule_Collisions.o \
+	StreamingSineWave.o
+	$(FLINKER) $(FLAGS) -o StreamingSineWave_$(MACHINE) \
 	$(thornado) \
 	ReferenceElementModuleX.o \
 	ReferenceElementModuleX_Lagrange.o \
@@ -25,15 +30,18 @@ rhsTest: \
 	ReferenceElementModuleE_Lagrange.o \
 	GeometryComputationModuleE_Beta.o \
 	ReferenceElementModule_Lagrange.o \
+	TimeSteppingModule_IMEX_RK.o \
+	ClosureModule_M1.o \
 	MomentEquationsUtilitiesModule_Beta.o \
 	InitializationModule.o \
 	BoundaryConditionsModule_Beta.o \
 	dgDiscretizationModule.o \
-	rhsTest.o \
+	dgDiscretizationModule_Collisions.o \
+	StreamingSineWave.o \
 	$(LIBRARIES)
 
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
-	rm -f rhsTest_$(MACHINE)
+	rm -f StreamingSineWave_$(MACHINE)

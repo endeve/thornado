@@ -316,7 +316,8 @@ CONTAINS
 
 
   SUBROUTINE Update_IMEX_RK &
-    ( dt, GE, GX, U, ComputeIncrement_Explicit, ComputeIncrement_Implicit )
+    ( dt, GE, GX, U, ComputeIncrement_Explicit, &
+      ComputeIncrement_Implicit, ComputeCorrection_Implicit )
 
     REAL(DP), INTENT(in)         :: &
       dt
@@ -329,7 +330,8 @@ CONTAINS
     PROCEDURE(IncrementExplicit) :: &
       ComputeIncrement_Explicit
     PROCEDURE(IncrementImplicit) :: &
-      ComputeIncrement_Implicit
+      ComputeIncrement_Implicit, &
+      ComputeCorrection_Implicit
 
     INTEGER :: iS, jS
 
@@ -362,8 +364,8 @@ CONTAINS
         CALL MapFromStage( iZ_B1, U, U_IMEX )
 
         CALL ComputeIncrement_Implicit &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), &
-                 GE, GX, U, dU )
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+                 dt * a_IM(iS,iS), GE, GX, U, dU )
 
         CALL MapToStage( iZ_B0, dU, dU_IM(:,iS) )
 
@@ -387,25 +389,45 @@ CONTAINS
 
     END DO
 
-    CALL MapToStage( iZ_B0, U0, U_IMEX )
+    IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) &
+          .OR. ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
 
-    DO iS = 1, nStages
+      CALL MapToStage( iZ_B0, U0, U_IMEX )
 
-      IF( w_IM(iS) .NE. Zero )THEN
+      DO iS = 1, nStages
 
-        U_IMEX(:) = U_IMEX(:) + dt * w_IM(iS) * dU_IM(:,iS)
+        IF( w_IM(iS) .NE. Zero )THEN
 
-      END IF
+          U_IMEX(:) = U_IMEX(:) + dt * w_IM(iS) * dU_IM(:,iS)
 
-      IF( w_EX(iS) .NE. Zero )THEN
+        END IF
 
-        U_IMEX(:) = U_IMEX(:) + dt * w_EX(iS) * dU_EX(:,iS)
+        IF( w_EX(iS) .NE. Zero )THEN
 
-      END IF
+          U_IMEX(:) = U_IMEX(:) + dt * w_EX(iS) * dU_EX(:,iS)
 
-    END DO
+        END IF
+
+      END DO
+
+    END IF
 
     CALL MapFromStage( iZ_B1, U, U_IMEX )
+
+    IF( alpha > Zero )THEN
+
+      CALL ComputeCorrection_Implicit &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+               alpha * dt**2, GE, GX, U, dU )
+
+      U(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:) &
+        = U(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+              iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:) &
+          + dU(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+                 iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:)
+
+    END IF
 
   END SUBROUTINE Update_IMEX_RK
 
