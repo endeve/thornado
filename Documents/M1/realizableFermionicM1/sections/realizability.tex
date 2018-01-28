@@ -60,36 +60,27 @@ We now define the realizable set $\cR$
 \end{lemma}
 \begin{proof}
   A convex set $Q$ is a set has the following property: 
-  \begin{align}
-  \theta a + (1-\theta)b \in Q, \text{\space} \text{for } \forall a, b \in Q \text{ and } 0\leq\,\theta\,\leq1. 
-  \end{align} 
+  \begin{equation*}
+  \theta a + (1-\theta)b \in Q,~\text{for}~\forall a, b \in Q~\text{and}~0\leq\,\theta\,\leq1. 
+  \end{equation*} 
   Let $\vect{\cM}_{a}=\big(\cJ_{a},\vect{\cH}_{a}\big)^{T}$ and $\vect{\cM}_{b}=\big(\cJ_{b},\vect{\cH}_{b}\big)^{T}$ to be two arbitrary elements of $\cR$.
   If $\cR$ is convex, we will have $\vect{\cM}_{ab} = \big(\cJ_{ab},\vect{\cH}_{ab}\big)^{T} = \theta \vect{\cM}_{a} + (1-\theta)\vect{\cM}_{b}$ in $\cR$ with $0\leq\theta\leq1$.
-  Let's prove it is true.
-  
-  For the first component
-  \begin{align}
-  \cJ_{ab} = \theta \cJ_{a} + (1-\theta)\cJ_{b},
-  \end{align}
-  since $\theta$, $\cJ_{a}$, $1-\theta$ and $\cJ_{b}$ are all nonnegative, $\cJ_{ab}$ is also nonnegative ($\cJ_{ab}\geq0$).
-  Meanwhile, since $\cJ_{a}\leq1$ and $\cJ_{b}\leq1$, 
-  \begin{align}
-  \cJ_{ab} \leq \theta \cdot 1 + (1-\theta) \cdot 1 = 1.
-  \end{align}
-  Therefore, $\cJ_{ab} \in [0,1]$.
-  
-  For the second component,
-  \begin{align}
+  The first component of $\vect{\cM}_{ab}$ is
+  \begin{equation*}
+  \cJ_{ab} = \theta \cJ_{a} + (1-\theta)\cJ_{b}.
+  \end{equation*}
+  Since $\theta$, $\cJ_{a}$, $1-\theta$ and $\cJ_{b}$ are all nonnegative, $\cJ_{ab}$ is also nonnegative.
+  Meanwhile, since $\cJ_{a}\leq1$ and $\cJ_{b}\leq1$, $\cJ_{ab}\leq1$.
+  That's $\cJ_{ab} \in [0,1]$.
+  The second component is
+  \begin{equation*}
   \vect{\cH}_{ab} 
-  & = \theta \vect{\cH}_{a} + (1-\theta)\vect{\cH}_{b} \nonumber\\
-  & = \f{1}{4\pi}\int_{\bbS^{2}} \left[ \theta\,f_{a}(\omegaNu) + (1-\theta) f_{b}(\omegaNu) \right] \bl(\omegaNu) d\omegaNu. 
-  \end{align}
-  Since $\theta\,f_{a}(\omegaNu) + (1-\theta) f_{b}(\omegaNu) \in [0,1]$, we can define $\tilde{f} = \theta\,f_{a}(\omegaNu) + (1-\theta) f_{b}(\omegaNu)$.
-  $\tilde{f} \ in [0,1]$ and 
-  \begin{align}
-  \cJ_{ab} = \f{1}{4\pi}\int_{\bbS^{2}} \tilde{f} d\omegaNu \\
-  \vect{\cH}_{ab} = 
-  \end{align}
+  = \theta \vect{\cH}_{a} + (1-\theta)\vect{\cH}_{b}.
+  \end{equation*}
+  Using Jensen's inequality,
+  \begin{equation*}
+  \gamma(\vect{\cM_{ab}}) \leq \theta\gamma(\vect{\cM_{a}}) + (1-\theta)\gamma(\vect{\cM_{b}}) \leq 0.
+  \end{equation*}
 \end{proof}
 
 Include figure to illustrate the convex set.  
