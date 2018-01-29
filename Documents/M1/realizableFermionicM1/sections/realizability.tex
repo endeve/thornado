@@ -100,34 +100,26 @@ Total 1000,000 $\mathfrak{f}(\mu)$ were sampled for making this plot.}
 \begin{lemma}
   Let $\big\{\cJ_{a},\vect{\cH}_{a},\vect{\cK}_{a}\big\}$ be defined as in Eq.~\eqref{eq:angularMoments} with distribution function $f_{a}\in[0,1]$.  
   Similarly, $\big\{\cJ_{b},\vect{\cH}_{b},\vect{\cK}_{b}\big\}$ be moments of a distribution function $f_{b}\in[0,1]$.  
-  Let $\Phi^{\pm}(\vect{\cM})=\f{1}{2}\big(\vect{\cM}\pm\widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cM})\big)$, where $\widehat{\vect{e}}\in\bbR^{3}$ is an arbitrary unit vector.  
+  Let $\Phi^{\pm}(\vect{\cM})=\f{1}{2}\big(\vect{\cM}\pm\widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cM})\big)$, where $\widehat{\vect{e}}\in\bbR^{3}$ is an arbitrary unit vector and $\vect{\cF}(\vect{\cM})=\big(\vect{\cH},\vect{\cK}\big)^{T}$.  
   Then
   \begin{equation}
-    \Phi^{+}(\vect{\cM}_{a})+\Phi^{-}(\vect{\cM}_{b})\in\cR.
+    \vect{\cM}_{ab} \equiv \Phi^{+}(\vect{\cM}_{a})+\Phi^{-}(\vect{\cM}_{b})\in\cR.
   \end{equation}
 \end{lemma}
 \begin{proof}
-  The first component of $\Phi^{+}(\vect{\cM}_{a})+\Phi^{-}(\vect{\cM}_{b})$ is
-  \begin{equation*} 
-    \f{1}{2}\big(\vect{\cJ_{a}} + \widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cJ_{a}})+\vect{\cJ_{b}} - \widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cJ_{b}})\big) = \f{1}{2}\big(\vect{\cJ_{a}} + \widehat{\vect{e}}\cdot\vect{\cH_{a}}+\vect{\cJ_{b}} - \widehat{\vect{e}}\cdot\vect{\cH_{b}}\big).
-  \end{equation*}
-  Using the same treatment we made in proof of Lemma~\ref{lem: MomentRealizable}, we can rewrite the first component as
+  Using the same treatment we made in proof of Lemma~\ref{lem: MomentRealizable}, we can rewrite the first component of $\vect{\cM}_{ab}$ as
   \begin{align*}
-  &\f{1}{2} \left\lbrace \f{1}{2}\int_{\bbS^{1}}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right] \,d\mu \right\rbrace \\
-  \equiv  &\f{1}{2}\int_{\bbS^{1}} \mathfrak{f}_{ab}(\mu)\,d\mu \\
-  \text{where}&~\mathfrak{f}_{ab}(\mu) \equiv \f{1}{2}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right].
+  \f{1}{2}\big(\vect{\cJ_{a}} + \widehat{\vect{e}}\cdot\vect{\cH_{a}}+\vect{\cJ_{b}} - \widehat{\vect{e}}\cdot\vect{\cH_{b}}\big) = &\f{1}{2} \left\lbrace \f{1}{2}\int_{\bbS^{1}}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right] \,d\mu \right\rbrace \\
+  \equiv  &\f{1}{2}\int_{\bbS^{1}} \mathfrak{f}_{ab}(\mu)\,d\mu
   \end{align*}
-  We know that $\f{1}{2}(1\pm\mu)\in[0,1]$, $\mathfrak{f}_{a}(\mu)\in[0,1]$ and $\mathfrak{f}_{b}(\mu)\in[0,1]$, therefore $\mathfrak{f}_{ab}(\mu)\in[0,1]$ and the first component is also in $[0,1]$.
-  The second component
-  \begin{equation*} 
-    \f{1}{2}\big(\vect{\cH_{a}} + \widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cH_{a}})+\vect{\cH_{b}} - \widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cH_{b}})\big) = \f{1}{2}\big(\vect{\cH_{a}} + \widehat{\vect{e}}\cdot\vect{\cK_{a}}+\vect{\cH_{b}} - \widehat{\vect{e}}\cdot\vect{\cK_{b}}\big)
-  \end{equation*}  
-  has three subcomponents and each of them can also be rewritten as
-  \begin{align*}
-    \f{1}{2} \left\lbrace \f{1}{2}\int_{\bbS^{1}}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right]\mu \,d\mu \right\rbrace
-     \equiv  &\f{1}{2}\int_{\bbS^{1}} \mathfrak{f}_{ab}(\mu)\,\mu d\mu. 
+  where $\mathfrak{f}_{ab}(\mu) \equiv \f{1}{2}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right]$ and $\mathfrak{f}_{ab}(\mu)\in[0,1]$.
+  And the second component is
+  \begin{align*} 
+   \f{1}{2}\big(\vect{\cH_{a}} + \widehat{\vect{e}}\cdot\vect{\cK_{a}}+\vect{\cH_{b}} - \widehat{\vect{e}}\cdot\vect{\cK_{b}}\big) =
+   &\f{1}{2} \left\lbrace \f{1}{2}\int_{\bbS^{1}}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right]\mu \,d\mu \right\rbrace \\
+   \equiv  &\f{1}{2}\int_{\bbS^{1}} \mathfrak{f}_{ab}(\mu)\,\mu d\mu. 
   \end{align*}
-  Therefore, using Lemma~\ref{lem: MomentRealizable} we know that $\Phi^{+}(\vect{\cM}_{a})+\Phi^{-}(\vect{\cM}_{b})\in\cR$.
+  Applying Lemma~\ref{lem: MomentRealizable}, we know that $\vect{\cM}_{ab}\in\cR$.
 \end{proof}
 
 \subsection{Moment Closures}
