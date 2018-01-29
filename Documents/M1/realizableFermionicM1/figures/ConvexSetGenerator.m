@@ -12,8 +12,8 @@ for iPt = 1 : nPts
 end
 
 nMu = 256;
-MuL = - 0.999999;
-MuR = + 0.999999;
+MuL = - 1.0;
+MuR = + 1.0;
 Mu  = linspace( MuL, MuR, nMu )';
 dMu = ( MuR - MuL ) / nMu;
 
@@ -44,16 +44,16 @@ end
 toc
 
 fig = figure;
-plot( H_FD, J_FD, '.k', 'MarkerSize', 6 );hold on
+plot( H_FD, J_FD, '.','Color',[0.7 0.8 1.0], 'MarkerSize', 5.5 );hold on
 yy = linspace(0.0,1.0,1024)';
 xxP_FD = + yy.*(1.0-yy);
 xxM_FD = - yy.*(1.0-yy);
 xxP_MB = + yy;
 xxM_MB = - yy;
-plot( xxP_MB, yy, '-r', 'linewidth', 3 )
-plot( xxM_MB, yy, '-r', 'linewidth', 3 )
-plot( xxP_FD, yy, '-b', 'linewidth', 3 )
-plot( xxM_FD, yy, '-b', 'linewidth', 3 )
+plot( xxP_MB, yy, '-r', 'linewidth', 2 )
+plot( xxM_MB, yy, '-r', 'linewidth', 2 )
+plot( xxP_FD, yy, '-k', 'linewidth', 2 )
+plot( xxM_FD, yy, '-k', 'linewidth', 2 )
 hold off
 axis([-0.5 0.5 0.0 1.0]);
 xlabel('Angular Moment |H|');

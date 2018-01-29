@@ -73,26 +73,26 @@ We now define the realizable set $\cR$
   Since $\theta$, $\cJ_{a}$, $1-\theta$ and $\cJ_{b}$ are all nonnegative, $\cJ_{ab}$ is also nonnegative.
   Meanwhile, since $\cJ_{a}\leq1$ and $\cJ_{b}\leq1$, $\cJ_{ab}\leq1$.
   That's $\cJ_{ab} \in [0,1]$.
-  The second component is
+  Since the second derivative of $\gamma(\vect{\cM})$ is $-2$ which is always negative, $\gamma(\vect{\cM})$ is a concave function.
+  Using Jensen's inequality, we have
   \begin{equation*}
-  \vect{\cH}_{ab} 
-  = \theta \vect{\cH}_{a} + (1-\theta)\vect{\cH}_{b}.
-  \end{equation*}
-  Using Jensen's inequality,
-  \begin{equation*}
-  \gamma(\vect{\cM_{ab}}) \leq \theta\gamma(\vect{\cM_{a}}) + (1-\theta)\gamma(\vect{\cM_{b}}) \leq 0.
+  \gamma(\vect{\cM_{ab}}) \geq \theta\gamma(\vect{\cM_{a}}) + (1-\theta)\gamma(\vect{\cM_{b}}) \ge0.
   \end{equation*}
 \end{proof}
 
-The Fig.~\ref{fig:RealizableSetFermionic} illustrates how the convex realizable set $\cR$ looks like in $|\vect{\cH}| - \cJ$ coordinates.  
+The Fig.~\ref{fig:RealizableSetFermionic} illustrates how the convex realizable set $\cR$ looks like in $|\vect{\cH}| - \cJ$ coordinates.
+Total 1000,000 distribution functions having form $\mathfrak{f}(\mu;a,b) = \dfrac{1}{e^{a+b\mu}+1}$ were evaluated.
+The parameters, $a$ and $b$, were chosen from $[-100,100]$ independently.
+The variable $\mu$ ranges from $-1$ to $1$ with $d\mu=\f{1}{128}$.
+And the integrals in angular moment expressions are calculated using Trapezoid rule.
 \begin{figure}
 \centering
-\includegraphics[width=0.7\linewidth]{figures/RealizableSetFermionic}
+\includegraphics[width=1.0\linewidth]{figures/RealizableSetFermionic}
 \caption[Numerical plot of the convex realizable set $\cR$.]{
 A numerical plot of the convex realizable set $\cR$.
-The blue line are the boundary given by $\gamma(\vect{\cM}) = 0$. 
+The black line are the boundary given by $\gamma(\vect{\cM}) = 0$. 
 The red line are the boundary given by $|\vect{\cH}| = \cJ$.
-Every black dot represents a sample whose distribution function $\mathfrak{f}(\mu)$ is an arbitrary Fermi-Dirac function and its angular moments were given by integrals using Trapezoid rule.
+Every light-blue dot represents a sample whose distribution function $\mathfrak{f}(\mu)$ is an arbitrary Fermi-Dirac function and its angular moments were given by integrals using Trapezoid rule.
 Total 1000,000 $\mathfrak{f}(\mu)$ were sampled for making this plot.}
 \label{fig:RealizableSetFermionic}
 \end{figure}
