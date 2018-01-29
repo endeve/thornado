@@ -15,7 +15,8 @@ Since we only consider the angular dependence of the distribution function in th
 We begin by stating the bounds on the moments by restating results from Theorem~7.1 in \cite{banachLarecki_2017} in the following Lemma.  
 \begin{lemma}
   Let the distribution function be bounded by $0\le f(\omegaNu) \le1$ for all $\omegaNu\in\bbS^{2}$.  
-  Then $0\le\cJ\le1$ and $\big(1-\cJ\big)\,\cJ-|\vect{\cH}|\ge0$.  
+  Then $0\le\cJ\le1$ and $\big(1-\cJ\big)\,\cJ-|\vect{\cH}|\ge0$. 
+  \label{lem: MomentRealizable} 
 \end{lemma}
 \begin{proof}
   First, let $\mu=\cos\thetaNu$ and write
@@ -82,8 +83,16 @@ We now define the realizable set $\cR$
   \gamma(\vect{\cM_{ab}}) \leq \theta\gamma(\vect{\cM_{a}}) + (1-\theta)\gamma(\vect{\cM_{b}}) \leq 0.
   \end{equation*}
 \end{proof}
+The Fig.~\ref{fig:RealizableSetFermionic} illustrates how the convex realizable set $\cR$ looks like in $|\vect{\cH}| - \cJ$ coordinates.  
+\begin{figure}
+\centering
+\includegraphics[width=0.7\linewidth]{figures/RealizableSetFermionic}
+\caption[Numerical plot of the convex realizable set $\cR$.]{
+Numerical plot of the convex realizable set $\cR$.
+The blue line are the boundary given by $\gamma(\vect{\cM}) = 0$. The red line are the boundary given by $|\vect{\cH}| = \cJ$. Every black dot represents a sample whose distribution function $\mathfrak{f}(\mu)$ is an arbitrary Fermi-Dirac function. Total 1000,000 $\mathfrak{f}(\mu)$ were sampled for this diagram.}
+\label{fig:RealizableSetFermionic}
+\end{figure}
 
-Include figure to illustrate the convex set.  
 
 \begin{lemma}
   Let $\big\{\cJ_{a},\vect{\cH}_{a},\vect{\cK}_{a}\big\}$ be defined as in Eq.~\eqref{eq:angularMoments} with distribution function $f_{a}\in[0,1]$.  
@@ -95,7 +104,27 @@ Include figure to illustrate the convex set.
   \end{equation}
 \end{lemma}
 \begin{proof}
-  Prove this.
+  The first component of $\Phi^{+}(\vect{\cM}_{a})+\Phi^{-}(\vect{\cM}_{b})$ is
+  \begin{equation*} 
+    \f{1}{2}\big(\vect{\cJ_{a}} + \widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cJ_{a}})+\vect{\cJ_{b}} - \widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cJ_{b}})\big) = \f{1}{2}\big(\vect{\cJ_{a}} + \widehat{\vect{e}}\cdot\vect{\cH_{a}}+\vect{\cJ_{b}} - \widehat{\vect{e}}\cdot\vect{\cH_{b}}\big).
+  \end{equation*}
+  Using the same treatment we made in proof of Lemma~\ref{lem: MomentRealizable}, we can rewrite the first component as
+  \begin{align*}
+  &\f{1}{2} \left\lbrace \f{1}{2}\int_{\bbS^{1}}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right] \,d\mu \right\rbrace \\
+  \equiv  &\f{1}{2}\int_{\bbS^{1}} \mathfrak{f}_{ab}(\mu)\,d\mu \\
+  \text{where}&~\mathfrak{f}_{ab}(\mu) \equiv \f{1}{2}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right].
+  \end{align*}
+  We know that $\f{1}{2}(1\pm\mu)\in[0,1]$, $\mathfrak{f}_{a}(\mu)\in[0,1]$ and $\mathfrak{f}_{b}(\mu)\in[0,1]$, therefore $\mathfrak{f}_{ab}(\mu)\in[0,1]$ and the first component is also in $[0,1]$.
+  The second component
+  \begin{equation*} 
+    \f{1}{2}\big(\vect{\cH_{a}} + \widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cH_{a}})+\vect{\cH_{b}} - \widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cH_{b}})\big) = \f{1}{2}\big(\vect{\cH_{a}} + \widehat{\vect{e}}\cdot\vect{\cK_{a}}+\vect{\cH_{b}} - \widehat{\vect{e}}\cdot\vect{\cK_{b}}\big)
+  \end{equation*}  
+  has three subcomponents and each of them can also be rewritten as
+  \begin{align*}
+    \f{1}{2} \left\lbrace \f{1}{2}\int_{\bbS^{1}}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right]\mu \,d\mu \right\rbrace
+     \equiv  &\f{1}{2}\int_{\bbS^{1}} \mathfrak{f}_{ab}(\mu)\,\mu d\mu. 
+  \end{align*}
+  Therefore, using Lemma~\ref{lem: MomentRealizable} we know that $\Phi^{+}(\vect{\cM}_{a})+\Phi^{-}(\vect{\cM}_{b})\in\cR$.
 \end{proof}
 
 \subsection{Moment Closures}

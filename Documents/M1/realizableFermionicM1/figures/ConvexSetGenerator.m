@@ -43,7 +43,7 @@ for iPt = 1 : nPts
 end
 toc
 
-clf
+fig = figure;
 plot( H_FD, J_FD, '.k', 'MarkerSize', 6 );hold on
 yy = linspace(0.0,1.0,1024)';
 xxP_FD = + yy.*(1.0-yy);
@@ -56,6 +56,7 @@ plot( xxP_FD, yy, '-b', 'linewidth', 3 )
 plot( xxM_FD, yy, '-b', 'linewidth', 3 )
 hold off
 axis([-0.5 0.5 0.0 1.0]);
-xlabel('Angular Moment H');
+xlabel('Angular Moment |H|');
 ylabel('Angular Moment J');
 title('Realizble Set R');
+saveas(fig,'RealizableSetFermionic.png');
