@@ -29,6 +29,8 @@ MODULE dgDiscretizationModule_Euler_GR
     uCF, nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     rhsCF, uAF, nAF, iAF_P, iAF_Gm
+  USE BoundaryConditionsModule_Beta, ONLY: &
+    ApplyBoundaryConditions_Fluid
   USE EulerEquationsUtilitiesModule_Beta_GR, ONLY:  &
     ComputeFromConserved,     &
     ComputePrimitive_GR,      &
@@ -38,6 +40,8 @@ MODULE dgDiscretizationModule_Euler_GR
     StressTensor_Diagonal,    &
     NumericalFlux_X1_HLLC_GR, &
     NumericalFlux_X1_LLF_GR
+  USE SlopeLimiterModule_Euler_GR, ONLY: &
+    ApplySlopeLimiter_Euler_GR
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromSpecificInternalEnergy, &
     ComputeSoundSpeedFromPrimitive_GR
@@ -65,12 +69,13 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_GR_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-    INTEGER, INTENT(in)   :: &
+    INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+    REAL(DP), INTENT(in)    :: &
+      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
       U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)   :: &
       dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     REAL(DP) :: ErrorL1, ErrorIn, Error, X1
@@ -79,6 +84,14 @@ CONTAINS
     REAL(DP) :: dX1, dX2, dX3
 
     dU = Zero
+
+    ! --- Apply Slope Limiter ---
+
+    CALL ApplySlopeLimiter_Euler_GR &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    CALL ApplyBoundaryConditions_Fluid &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     ! --- Update primitive and auxiliary fluid variables
     CALL ComputeFromConserved( iX_B1, iX_E1, G, U, uPF, uAF )

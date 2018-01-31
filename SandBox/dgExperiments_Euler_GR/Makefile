@@ -1,25 +1,29 @@
 include ../../../Build/Makefile_Build
 
-all: rhsTest_GR RiemannProblem
+all: ApplicationDriver RiemannProblem
 
-rhsTest_GR: \
+ApplicationDriver: \
 	$(thornado) \
 	ReferenceElementModuleX.o \
 	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
+	SlopeLimiterModule_Euler_GR.o \
 	InitializationModule_GR.o \
+	BoundaryConditionsModule_Beta.o \
 	dgDiscretizationModule_Euler_GR.o \
-	rhsTest_GR.o
-	$(FLINKER) $(FLAGS) -o rhsTest_GR_$(MACHINE) \
+	ApplicationDriver.o
+	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
 	ReferenceElementModuleX.o \
 	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
+	SlopeLimiterModule_Euler_GR.o \
 	InitializationModule_GR.o \
+	BoundaryConditionsModule_Beta.o \
 	dgDiscretizationModule_Euler_GR.o \
-	rhsTest_GR.o \
+	ApplicationDriver.o \
 	$(LIBRARIES)
 
 RiemannProblem: \
@@ -28,7 +32,9 @@ RiemannProblem: \
 	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
+	SlopeLimiterModule_Euler_GR.o \
 	InitializationModule_GR.o \
+	BoundaryConditionsModule_Beta.o \
 	TimeSteppingModule_SSPRK.o \
 	dgDiscretizationModule_Euler_GR.o \
 	RiemannProblemInitializer.o \
@@ -39,7 +45,9 @@ RiemannProblem: \
 	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
+	SlopeLimiterModule_Euler_GR.o \
 	InitializationModule_GR.o \
+	BoundaryConditionsModule_Beta.o \
 	TimeSteppingModule_SSPRK.o \
 	dgDiscretizationModule_Euler_GR.o \
 	RiemannProblemInitializer.o \
@@ -50,5 +58,5 @@ clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
-	rm -f rhsTest_GR_$(MACHINE)
+	rm -f ApplicationDriver_$(MACHINE)
 	rm -f RiemannProblem_$(MACHINE)

@@ -1,4 +1,4 @@
-PROGRAM rhsTest_GR
+PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
     DP, Pi, TwoPi
@@ -26,9 +26,13 @@ PROGRAM rhsTest_GR
 
   IMPLICIT NONE
 
+  CHARACTER(32) :: ProgramName
+
+  ProgramName = 'RiemannProblem'
+
   CALL InitializeProgram &
          ( ProgramName_Option &
-             = 'rhsTest_GR', &
+             = TRIM( ProgramName ), &
            nX_Option &
              = [ 32, 16, 32 ], &
            swX_Option &
@@ -70,4 +74,4 @@ PROGRAM rhsTest_GR
 
   CALL FinalizeProgram
 
-END PROGRAM rhsTest_GR
+END PROGRAM ApplicationDriver

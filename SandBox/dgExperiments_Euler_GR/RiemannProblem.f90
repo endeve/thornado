@@ -27,8 +27,11 @@ PROGRAM RiemannProblem
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
+  USE SlopeLimiterModule_Euler_GR, ONLY: &
+    InitializeSlopeLimiter, &
+    FinalizeSlopeLimiter
   USE dgDiscretizationModule_Euler_GR, ONLY: &
-     ComputeIncrement_Euler_GR_DG_Explicit
+    ComputeIncrement_Euler_GR_DG_Explicit
   USE EulerEquationsUtilitiesModule_Beta_GR, ONLY: &
     ComputeFromConserved
   USE RiemannProblemInitializer, ONLY: &
@@ -55,7 +58,7 @@ PROGRAM RiemannProblem
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
-             = [ 2, 0, 0 ], &
+             = [ 1, 0, 0 ], &
            xL_Option &
              = [ 0.0d0, 0.0d0, 0.0d0 ], &
            xR_Option &
@@ -93,7 +96,9 @@ PROGRAM RiemannProblem
 
   CALL WriteFields1D( t, .TRUE., .TRUE. )
 
-  CALL InitializeFluid_SSPRK( nStages = 1 )
+  CALL InitializeFluid_SSPRK( nStages = 2 )
+
+  CALL InitializeSlopeLimiter
 
   iCycle = 0
 
@@ -125,6 +130,8 @@ PROGRAM RiemannProblem
   END DO
 
   CALL WriteFields1D( t, .TRUE., .TRUE. )
+
+  CALL FinalizeSlopeLimiter
 
   CALL FinalizeFluid_SSPRK
 

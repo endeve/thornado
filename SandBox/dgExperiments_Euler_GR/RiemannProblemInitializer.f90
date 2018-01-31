@@ -34,11 +34,11 @@ CONTAINS
         P_R = 1.0d-1
 
         t     = 0.0_DP
-        t_end = 2.0d-1
-        CFL   = 0.5_DP
+        t_end = 1.0d+1
+        CFL   = 0.1_DP
         xR    = 1.0d0
         x_D   = 0.5_DP
-        K     = 400
+        K     = 128
         Gamma = 4.0_DP / 3.0_DP
 
       CASE( 1 )

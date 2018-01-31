@@ -130,29 +130,37 @@ CONTAINS
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) ! Physical coordinate
 
-            IF( X1 <= X_D )THEN
+!!$            IF( X1 <= X_D )THEN
+!!$
+!!$              ! -- Left State --
+!!$
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = D_L
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_L(1)
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_L(2)
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_L(3)
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = P_L / (Gamma_IDEAL-One)
+!!$              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = P_L
+!!$
+!!$            ELSE
+!!$
+!!$              ! -- Right State --
+!!$
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = D_R
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_R(1)
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_R(2)
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_R(3)
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = P_R / (Gamma_IDEAL-One)
+!!$              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = P_R
+!!$
+!!$            END IF
 
-              ! -- Left State --
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = D_L
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_L(1)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_L(2)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_L(3)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = P_L / (Gamma_IDEAL-One)
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = P_L
-
-            ELSE
-
-              ! -- Right State --
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = D_R
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_R(1)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_R(2)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_R(3)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = P_R / (Gamma_IDEAL-One)
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = P_R
-
-            END IF
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  &
+              = 1.0_DP + 0.1_DP * SIN( TwoPi * X1 )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.01_DP / (Gamma_IDEAL-One)
+            uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.01_DP
 
           END DO
 
