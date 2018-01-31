@@ -66,28 +66,21 @@ toc
 f_FD = 0;
 f_MB = 0;
 
-ClosureName = {'FD', 'BLKS', 'CBME', 'BLME','MI'};
+ClosureName = {'BLKS', 'CBME', 'BLME','MI'};
 
 for ii = 1:max(size(ClosureName))
     
 Closure = ClosureName{ii}; % 
 
 switch Closure
-    case 'FD'
-        K_plot = K_FD;
-        col = [0.7 0.8 1.0];
     case 'MI'
         K_plot = K_MI;
-        col = [0.1 0.2 1.0];
     case 'CBME'
         K_plot = K_CB;
-        col = [0.7 0.3 1.0];
     case 'BLME'
         K_plot = K_BL;
-        col = [1.0 0.8 1.0];
     case 'BLKS'
         K_plot = K_KS;
-        col = [0.5 0.5 1.0];
 end
 
 M1 = 0.5 .* ( J_FD(1:end-1) +   H_FD(1:end-1) ...
@@ -96,7 +89,7 @@ M2 = 0.5 .* ( H_FD(1:end-1) + K_plot(1:end-1)...
             + H_FD(2:end)   - K_plot(2:end) );
 
 fig = figure;
-plot( M2, M1, '.','Color',col, 'MarkerSize', 5.5 );hold on
+plot( M2, M1, '.','Color',[0.7 0.8 1.0], 'MarkerSize', 5.5 );hold on
 yy = linspace(0.0,1.0,1024)';
 xxP_FD = + yy.*(1.0-yy);
 xxM_FD = - yy.*(1.0-yy);
@@ -106,8 +99,9 @@ plot( xxP_FD, yy, '-k', 'linewidth', 2 )
 plot( xxM_FD, yy, '-k', 'linewidth', 2 )
 hold off
 axis([-0.5 0.5 0.0 1.0]);
-xlabel('Second component of M_{ab}');
-ylabel('First component of M_{ab}');
+xlabel('H_{ab}');
+ylabel('J_{ab}');
 title(['M_{ab} with ', Closure,' closure']);
+pause(1)
 saveas(fig,['MabWith', Closure,'.png']);
 end
