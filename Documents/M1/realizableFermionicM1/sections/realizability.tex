@@ -119,7 +119,7 @@ Total 1000,000 $\mathfrak{f}(\mu)$ were sampled for making this plot.}
    &\f{1}{2} \left\lbrace \f{1}{2}\int_{\bbS^{1}}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right]\mu \,d\mu \right\rbrace \\
    \equiv  &\f{1}{2}\int_{\bbS^{1}} \mathfrak{f}_{ab}(\mu)\,\mu d\mu. 
   \end{align*}
-  Applying Lemma~\ref{lem: MomentRealizable}, we know that $\vect{\cM}_{ab}\in\cR$.
+  Using Lemma~\ref{lem: MomentRealizable}, we know that $\vect{\cM}_{ab}\in\cR$ and can be written as $\vect{\cM}_{ab}(\cJ_{ab},\vect{\cH}_{ab})$.
 \end{proof}
 
 \subsection{Moment Closures}
@@ -150,3 +150,25 @@ Banach \& Larecki \cite{banachLarecki_2017}
 \end{equation}
 
 \subsubsection{Low Occupancy Limit}
+
+
+\begin{figure}[h!]
+  \begin{subfigure}[b]{0.5\textwidth}
+    \includegraphics[width=\textwidth]{figures/MabWithMI}
+    \caption{$\vect{\cM}_{ab}$ with Minerbo closure.}
+  \end{subfigure}
+  %
+  \begin{subfigure}[b]{0.5\textwidth}
+    \includegraphics[width=\textwidth]{figures/MabWithBLKS}
+    \caption{$\vect{\cM}_{ab}$ with Kershaw closure.}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.5\textwidth}
+    \includegraphics[width=\textwidth]{figures/MabWithCBME}
+    \caption{$\vect{\cM}_{ab}$ with Chernohorsky \& Bludman maximum entropy closure.}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.5\textwidth}
+    \includegraphics[width=\textwidth]{figures/MabWithBLME}
+    \caption{$\vect{\cM}_{ab}$ with Banach \& Larecki maximum entropy closure.}
+  \end{subfigure}
+  \label{fig:MabWithDifferentClosure}
+\end{figure}
