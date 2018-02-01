@@ -156,9 +156,16 @@ CONTAINS
 
     CALL MPI_INIT( mpierr )
 
+    WRITE(*,*)
+    WRITE(*,'(A2,A28,A)') &
+      '', 'INFO: Initializing Program: ', TRIM( ProgramName )
+    WRITE(*,*)
+
     CALL InitializeProgramHeader     &
            ( ProgramName_Option      &
                = ProgramName_Option, &
+             nNodes_Option           &
+               = nNodes_Option,      &
              nX_Option               &
                = nX_Option,          &
              swX_Option              &
@@ -182,14 +189,7 @@ CONTAINS
              eR_Option               &
                = eR_Option,          &
              zoomE_Option            &
-               = zoomE_Option,       &
-             nNodes_Option           &
-               = nNodes_Option )
-
-    WRITE(*,*)
-    WRITE(*,'(A2,A28,A)') &
-      '', 'INFO: Initializing Program: ', TRIM( ProgramName )
-    WRITE(*,*)
+               = zoomE_Option )
 
     ! --- Units ---
 
@@ -203,26 +203,6 @@ CONTAINS
       CALL DescribeUnitsDisplay
 
     END IF
-
-    ! --- Problem Dimensionality ---
-
-    nDimsX = 0
-    DO iDim = 1, 3
-      nNodesX(iDim) = 1
-      IF( nX(iDim) > 1 )THEN
-        nDimsX = nDimsX + 1
-        nNodesX(iDim) = nNodes
-      END IF
-    END DO
-
-    nDimsE  = 0
-    nNodesE = 1
-    IF( nE > 1 )THEN
-      nDimsE  = 1
-      nNodesE = nNodes
-    END IF
-
-    nDims = nDimsX + nDimsE
 
     WRITE(*,'(A5,A17,I1)') &
       '', 'Dimensionality = ', nDims
@@ -240,12 +220,6 @@ CONTAINS
       '', 'swX(1) = ', swX(1), '', 'swX(2) = ', swX(2), &
       '', 'swX(3) = ', swX(3), '', 'swE = ', swE
     WRITE(*,*)
-
-    ! --- Degrees of Freedom Per Element Per Physical Field ---
-
-    nDOFX = nNodes**nDimsX
-    nDOFE = nNodes**nDimsE
-    nDOF  = nNodes**nDims
 
     WRITE(*,'(A5,A36)') '', 'Degrees of Freedom / Element / Field'
     WRITE(*,*)
@@ -289,8 +263,8 @@ CONTAINS
     WRITE(*,*)
     DO iDim = 1, 3
 
-      WRITE(*,'(A7,A3,I1,A4,ES8.2E2,A1,A,A2,A3,I1,A4,&
-                &ES8.2E2,A1,A,A2,A6,I1,A4,ES10.4E2)') &
+      WRITE(*,'(A7,A3,I1,A4,ES9.2E2,A1,A,A2,A3,I1,A4,&
+                &ES9.2E2,A1,A,A2,A6,I1,A4,ES10.4E2)') &
         '',   'xL(', iDim, ') = ', xL(iDim) / U % LengthUnit, &
         '', TRIM( U % LengthLabel ), &
         ', ', 'xR(', iDim, ') = ', xR(iDim) / U % LengthUnit, &
@@ -302,7 +276,7 @@ CONTAINS
              ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
                xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
 
-      WRITE(*,'(A9,A11,I1,A4,ES8.2E2,A1,A,A3,ES8.2E2,A1,A)') &
+      WRITE(*,'(A9,A11,I1,A4,ES9.2E2,A1,A,A3,ES9.2E2,A1,A)') &
         '', 'MIN/MAX dx(', iDim, ') = ', &
         MINVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
           / U % LengthUnit, '', TRIM( U % LengthLabel ), &
