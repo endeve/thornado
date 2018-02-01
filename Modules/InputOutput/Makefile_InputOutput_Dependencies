@@ -1,3 +1,8 @@
+InputOutputUtilitiesModule.o: \
+  KindModule.o \
+  MeshModule.o \
+  InputOutputUtilitiesModule.f90
+
 InputOutputModule.o: \
   KindModule.o \
   UnitsModule.o \
@@ -8,3 +13,7 @@ InputOutputModule.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   InputOutputModule.f90
+
+InputOutputModuleHDF.o: \
+  KindModule.o \
+  InputOutputModuleHDF.f90

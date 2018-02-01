@@ -7,13 +7,17 @@ MODULE InputOutputModule
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nX, nNodesX, &
-    nE, nNodesE
+    nE, nNodesE, &
+    nDOF
   USE UtilitiesModule, ONLY: &
     NodeNumber
+  USE ReferenceElementModule_Beta, ONLY: &
+    NodeNumberTable
   USE PolynomialBasisModule_Lagrange, ONLY: &
     evalL, &
     evalLX
   USE MeshModule, ONLY: &
+    MeshType, &
     MeshX, MeshE, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
@@ -46,6 +50,7 @@ MODULE InputOutputModule
   PUBLIC :: WriteFields1D
   PUBLIC :: WriteFieldsRestart1D
   PUBLIC :: ReadFluidFieldsRestart1D
+  PUBLIC :: WriteRadiationFields
 
 CONTAINS
 
@@ -363,6 +368,82 @@ CONTAINS
     END ASSOCIATE ! X1, E
 
   END SUBROUTINE WriteRadiationFields1D
+
+
+  SUBROUTINE WriteRadiationFields( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    INTEGER        :: FUNIT
+
+    WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+    FileName &
+      = OutputDirectory // '/' // &
+        TRIM( ProgramName ) // '_' // &
+        RadiationSuffix // '_' // &
+        FileNumberString // '.dat'
+
+    OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
+
+    WRITE( FUNIT, * ) &
+      Time, &
+      nE * nNodesE, &
+      nX(1) * nNodesX(1), &
+      nX(2) * nNodesX(2), &
+      nX(3) * nNodesX(3), &
+      NodeCoordinates( MeshE, nE, nNodesE ), &
+      NodeCoordinates( MeshX(1), nX(1), nNodesX(1) ), &
+      NodeCoordinates( MeshX(2), nX(2), nNodesX(2) ), &
+      NodeCoordinates( MeshX(3), nX(3), nNodesX(3) )
+!!$    WRITE( FUNIT, * ) &
+!!$      RadiationField( uCR(:,1:nE,1:nX(1),1:nX(2),1:nX(3),iCR_N,1) )
+
+    CLOSE( FUNIT )
+
+    PRINT*, "Wrote ", TRIM( FileName )
+
+  END SUBROUTINE WriteRadiationFields
+
+
+  FUNCTION RadiationField( u )
+
+    REAL(DP) :: &
+      RadiationField &
+        (1:nNodesE   *nE,   1:nNodesX(1)*nX(1), &
+         1:nNodesX(2)*nX(2),1:nNodesX(3)*nX(3))
+    REAL(DP), INTENT(in) :: &
+      u(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3))
+
+    INTEGER :: iE, iX1, iX2, iX3, iNode
+    INTEGER :: iNodeE, iNodeX1, iNodeX2, iNodeX3
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+          DO iE = 1, nE
+            DO iNode = 1, nDOF
+
+              iNodeE  = NodeNumberTable(1,iNode)
+              iNodeX1 = NodeNumberTable(2,iNode)
+              iNodeX2 = NodeNumberTable(3,iNode)
+              iNodeX3 = NodeNumberTable(4,iNode)
+
+              RadiationField &
+                ((iE-1) *nNodesE   +iNodeE, (iX1-1)*nNodesX(1)+iNodeX1, &
+                 (iX2-1)*nNodesX(2)+iNodeX2,(iX3-1)*nNodesX(3)+iNodeX3) &
+                = u(iNode,iE,iX1,iX2,iX3)
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    RETURN
+  END FUNCTION RadiationField
 
 
   FUNCTION RadiationField1D( u, nE, nX1 )
@@ -719,6 +800,28 @@ CONTAINS
 
     RETURN
   END FUNCTION FluidFieldRestart1D_In
+
+
+  FUNCTION NodeCoordinates( Mesh, nElements, nNodes )
+
+    REAL(DP) :: NodeCoordinates(nElements*nNodes)
+    TYPE(MeshType), INTENT(in) :: Mesh
+    INTEGER,        INTENT(in) :: nElements
+    INTEGER,        INTENT(in) :: nNodes
+
+    INTEGER :: i, j, iNode
+
+    iNode = 0
+    DO j = 1, nElements
+      DO i = 1, nNodes
+        iNode = iNode + 1
+        NodeCoordinates(iNode) &
+          = NodeCoordinate( Mesh, j, i )
+      END DO
+    END DO
+
+    RETURN
+  END FUNCTION NodeCoordinates
 
 
   FUNCTION NodeCoordinatesE( nE, nNodesE )
