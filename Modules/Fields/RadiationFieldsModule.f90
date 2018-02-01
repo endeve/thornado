@@ -8,7 +8,7 @@ MODULE RadiationFieldsModule
   IMPLICIT NONE
   PRIVATE
 
-  INTEGER, PUBLIC, PARAMETER :: nSpecies = 1
+  INTEGER, PUBLIC :: nSpecies = 1
 
   ! --- Weights to Integrate RadiationFields ---
 
@@ -72,10 +72,15 @@ MODULE RadiationFieldsModule
 CONTAINS
 
 
-  SUBROUTINE CreateRadiationFields( nX, swX, nE, swE )
+  SUBROUTINE CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
-    INTEGER,               INTENT(in) :: nE, swE
+    INTEGER, INTENT(in) :: nX(3), swX(3)
+    INTEGER, INTENT(in) :: nE,    swE
+    INTEGER, INTENT(in), OPTIONAL :: nSpecies_Option
+
+    nSpecies = 1
+    IF( PRESENT( nSpecies_Option ) ) &
+      nSpecies = nSpecies_Option
 
     ALLOCATE( WeightsR(1:nDOF) )
 
@@ -106,13 +111,13 @@ CONTAINS
       WRITE(*,'(A5,A)') '', TRIM( namesCR(iCR) )
     END DO
 
-    ALLOCATE( uCR &
-                (1:nDOF, &
-                 1-swE:nE+swE, &
-                 1-swX(1):nX(1)+swX(1), &
-                 1-swX(2):nX(2)+swX(2), &
-                 1-swX(3):nX(3)+swX(3), &
-                 1:nCR, 1:nSpecies) )
+    ALLOCATE &
+      ( uCR(1:nDOF, &
+            1-swE:nE+swE, &
+            1-swX(1):nX(1)+swX(1), &
+            1-swX(2):nX(2)+swX(2), &
+            1-swX(3):nX(3)+swX(3), &
+            1:nCR, 1:nSpecies) )
 
   END SUBROUTINE CreateRadiationFields_Conserved
 
@@ -131,13 +136,13 @@ CONTAINS
       WRITE(*,'(A5,A)') '', TRIM( namesPR(iPR) )
     END DO
 
-    ALLOCATE( uPR &
-                (1:nDOF, &
-                 1-swE:nE+swE, &
-                 1-swX(1):nX(1)+swX(1), &
-                 1-swX(2):nX(2)+swX(2), &
-                 1-swX(3):nX(3)+swX(3), &
-                 1:nPR, 1:nSpecies) )
+    ALLOCATE &
+      ( uPR(1:nDOF, &
+            1-swE:nE+swE, &
+            1-swX(1):nX(1)+swX(1), &
+            1-swX(2):nX(2)+swX(2), &
+            1-swX(3):nX(3)+swX(3), &
+            1:nPR, 1:nSpecies) )
 
   END SUBROUTINE CreateRadiationFields_Primitive
 
@@ -156,13 +161,13 @@ CONTAINS
       WRITE(*,'(A5,A)') '', TRIM( namesAR(iAR) )
     END DO
 
-    ALLOCATE( uAR &
-                (1:nDOF, &
-                 1-swE:nE+swE, &
-                 1-swX(1):nX(1)+swX(1), &
-                 1-swX(2):nX(2)+swX(2), &
-                 1-swX(3):nX(3)+swX(3), &
-                 1:nAR, 1:nSpecies) )
+    ALLOCATE &
+      ( uAR(1:nDOF, &
+            1-swE:nE+swE, &
+            1-swX(1):nX(1)+swX(1), &
+            1-swX(2):nX(2)+swX(2), &
+            1-swX(3):nX(3)+swX(3), &
+            1:nAR, 1:nSpecies) )
 
   END SUBROUTINE CreateRadiationFields_Auxiliary
 
