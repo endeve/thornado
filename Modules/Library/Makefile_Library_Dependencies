@@ -13,6 +13,12 @@ ReferenceElementModule.o: \
   ProgramHeaderModule.o \
   ReferenceElementModule.f90
 
+ReferenceElementModule_Beta.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModule_Beta.f90
+
 PolynomialBasisModule_Lagrange.o: \
   KindModule.o \
   ProgramHeaderModule.o \
