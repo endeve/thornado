@@ -216,6 +216,10 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Radiation_X1
 
+      CALL ApplyBoundaryConditions_Radiation_X2
+
+      CALL ApplyBoundaryConditions_Radiation_X3
+
     END IF
 
   END SUBROUTINE ApplyBoundaryConditions_Radiation
@@ -283,6 +287,134 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE ApplyBoundaryConditions_Radiation_X1
+
+
+  SUBROUTINE ApplyBoundaryConditions_Radiation_X2
+
+    INTEGER :: iS, iX2, iX3, iE, iCR
+
+    SELECT CASE ( bcX(2) )
+
+      CASE ( 0 ) ! No Boundary Condition
+
+      CASE ( 1 ) ! Periodic
+
+!!$        DO iS = 1, nSpecies
+!!$          DO iX3 = 1, nX(3)
+!!$            DO iX2 = 1, nX(2)
+!!$              DO iE = 1, nE
+!!$
+!!$                DO iCR = 1, nCR
+!!$
+!!$                  uCR(:,iE,0,iX2,iX3,iCR,iS) &
+!!$                    = uCR(:,iE,nX(1),iX2,iX3,iCR,iS)
+!!$
+!!$                  uCR(:,iE,nX(1)+1,iX2,iX3,iCR,iS) &
+!!$                    = uCR(:,iE,1,iX2,iX3,iCR,iS)
+!!$
+!!$                END DO
+!!$
+!!$              END DO
+!!$            END DO
+!!$          END DO
+!!$        END DO
+
+      CASE ( 2 ) ! Homogeneous
+
+!!$        DO iS = 1, nSpecies
+!!$          DO iX3 = 1, nX(3)
+!!$            DO iX2 = 1, nX(2)
+!!$              DO iE = 1, nE
+!!$
+!!$                DO iCR = 1, nCR
+!!$
+!!$                  uCR(:,iE,0,iX2,iX3,iCR,iS) &
+!!$                    = uCR(:,iE,1,iX2,iX3,iCR,iS)
+!!$
+!!$                  uCR(:,iE,nX(1)+1,iX2,iX3,iCR,iS) &
+!!$                    = uCR(:,iE,nX(1),iX2,iX3,iCR,iS)
+!!$
+!!$                END DO
+!!$
+!!$              END DO
+!!$            END DO
+!!$          END DO
+!!$        END DO
+
+      CASE DEFAULT
+
+        WRITE(*,*)
+        WRITE(*,'(A5,A45,I2.2)') &
+          '', 'Invalid Boundary Condition for Radiation X2: ', bcX(2)
+        STOP
+
+    END SELECT
+
+  END SUBROUTINE ApplyBoundaryConditions_Radiation_X2
+
+
+  SUBROUTINE ApplyBoundaryConditions_Radiation_X3
+
+    INTEGER :: iS, iX2, iX3, iE, iCR
+
+    SELECT CASE ( bcX(3) )
+
+      CASE ( 0 ) ! No Boundary Condition
+
+      CASE ( 1 ) ! Periodic
+
+!!$        DO iS = 1, nSpecies
+!!$          DO iX3 = 1, nX(3)
+!!$            DO iX2 = 1, nX(2)
+!!$              DO iE = 1, nE
+!!$
+!!$                DO iCR = 1, nCR
+!!$
+!!$                  uCR(:,iE,0,iX2,iX3,iCR,iS) &
+!!$                    = uCR(:,iE,nX(1),iX2,iX3,iCR,iS)
+!!$
+!!$                  uCR(:,iE,nX(1)+1,iX2,iX3,iCR,iS) &
+!!$                    = uCR(:,iE,1,iX2,iX3,iCR,iS)
+!!$
+!!$                END DO
+!!$
+!!$              END DO
+!!$            END DO
+!!$          END DO
+!!$        END DO
+
+      CASE ( 2 ) ! Homogeneous
+
+!!$        DO iS = 1, nSpecies
+!!$          DO iX3 = 1, nX(3)
+!!$            DO iX2 = 1, nX(2)
+!!$              DO iE = 1, nE
+!!$
+!!$                DO iCR = 1, nCR
+!!$
+!!$                  uCR(:,iE,0,iX2,iX3,iCR,iS) &
+!!$                    = uCR(:,iE,1,iX2,iX3,iCR,iS)
+!!$
+!!$                  uCR(:,iE,nX(1)+1,iX2,iX3,iCR,iS) &
+!!$                    = uCR(:,iE,nX(1),iX2,iX3,iCR,iS)
+!!$
+!!$                END DO
+!!$
+!!$              END DO
+!!$            END DO
+!!$          END DO
+!!$        END DO
+
+      CASE DEFAULT
+
+        WRITE(*,*)
+        WRITE(*,'(A5,A45,I2.2)') &
+          '', 'Invalid Boundary Condition for Radiation X3: ', bcX(3)
+        STOP
+
+    END SELECT
+
+  END SUBROUTINE ApplyBoundaryConditions_Radiation_X3
 
 
 END MODULE BoundaryConditionsModule
