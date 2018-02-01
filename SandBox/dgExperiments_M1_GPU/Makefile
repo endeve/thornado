@@ -1,4 +1,4 @@
-MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
+MOMENT_CLOSURE = MINERBO
 
 include ../../../Build/Makefile_Build
 

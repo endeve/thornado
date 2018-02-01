@@ -69,19 +69,19 @@ PROGRAM StreamingSineWave
   REAL(DP)      :: eL,    eR
   REAL(DP)      :: N0, SigmaA, SigmaS
 
-  ProgramName = 'SineWaveDiffusion'
+  ProgramName = 'SineWaveStreaming'
   SELECT CASE ( TRIM( ProgramName ) )
 
     CASE( 'SineWaveStreaming' )
 
       ! --- Minerbo Closure Only ---
 
-      Direction = 'XY'
+      Direction = 'X'
 
-      nX = [ 8, 8, 1 ]
-      nE = 1
+      nX = [ 8, 8, 8 ]
+      nE = 20
 
-      nNodes = 3
+      nNodes = 2
 
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
@@ -89,13 +89,13 @@ PROGRAM StreamingSineWave
       eL = 0.0_DP
       eR = 1.0_DP
 
-      TimeSteppingScheme = 'SSPRK3'
+      TimeSteppingScheme = 'SSPRK2'
 
       N0     = 0.0_DP
       SigmaA = 0.0_DP
       SigmaS = 0.0_DP
 
-      t_end     = SQRT( 2.0d+0 )
+      t_end     = 1.0d+0
       iCycleD   = 10
       iCycleW   = 10
       maxCycles = 10000
@@ -258,8 +258,8 @@ PROGRAM StreamingSineWave
 
   wTime = MPI_WTIME( )
 
-  t         = 0.0d-0
-  dt        = 0.2_DP / (2.0_DP*DBLE(nNodes-1)+1.0_DP) / DBLE(nX(1))
+  t  = 0.0d-0
+  dt = 0.2_DP / (2.0_DP*DBLE(nNodes-1)+1.0_DP) / DBLE(nX(1))
 
   iCycle = 0
   DO WHILE( t < t_end .AND. iCycle < maxCycles )

@@ -25,8 +25,6 @@ function...
   uPR_I1 = h5read( FileName, '/Radiation Fields/Species_01/Primitive/Lagrangian Number Flux Density (1)' );
   uPR_I2 = h5read( FileName, '/Radiation Fields/Species_01/Primitive/Lagrangian Number Flux Density (2)' );
   uPR_I3 = h5read( FileName, '/Radiation Fields/Species_01/Primitive/Lagrangian Number Flux Density (3)' );
-  
-  keyboard
 
 end
 
