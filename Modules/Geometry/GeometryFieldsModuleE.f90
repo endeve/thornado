@@ -10,13 +10,17 @@ MODULE GeometryFieldsModuleE
 
   ! --- 1D Momentum Space (Energy) Geometry Fields ---
 
-  INTEGER, PUBLIC, PARAMETER :: iGE_Esq = 1 ! E^2
-  INTEGER, PUBLIC, PARAMETER :: iGE_Ecb = 2 ! E^3
-  INTEGER, PUBLIC, PARAMETER :: nGE     = 2
+  INTEGER, PUBLIC, PARAMETER :: iGE_Ep0 = 1 ! E**0
+  INTEGER, PUBLIC, PARAMETER :: iGE_Ep1 = 2 ! E**1
+  INTEGER, PUBLIC, PARAMETER :: iGE_Ep2 = 3 ! E**2
+  INTEGER, PUBLIC, PARAMETER :: iGE_Ep3 = 4 ! E**3
+  INTEGER, PUBLIC, PARAMETER :: nGE     = 4
 
   CHARACTER(32), DIMENSION(nGE), PUBLIC, PARAMETER :: &
-    namesGE = [ 'Energy Squared                              ', &
-                'Energy Cubed                                ' ]
+    namesGE = [ 'Energy Power 0                              ', &
+                'Energy Power 1                              ', &
+                'Energy Power 2                              ', &
+                'Energy Power 3                              ' ]
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: uGE
 
@@ -41,8 +45,10 @@ CONTAINS
 
     ALLOCATE( uGE(1:nDOFE,1-swE:nE+swE,1:nGE) )
 
-    uGE(:,:,iGE_Esq) = 0.0_DP
-    uGE(:,:,iGE_Ecb) = 0.0_DP
+    uGE(:,:,iGE_Ep0) = 0.0_DP
+    uGE(:,:,iGE_Ep1) = 0.0_DP
+    uGE(:,:,iGE_Ep2) = 0.0_DP
+    uGE(:,:,iGE_Ep3) = 0.0_DP
 
   END SUBROUTINE CreateGeometryFieldsE
 
