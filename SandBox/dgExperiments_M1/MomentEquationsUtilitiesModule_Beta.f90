@@ -4,22 +4,15 @@ MODULE MomentEquationsUtilitiesModule_Beta
     DP, &
     Zero, &
     SqrtTiny, &
-    Fifth, &
-    Third, &
     Half, &
     One, &
-    Two, &
-    Three, &
-    Four
+    Three
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: ComputePrimitive
   PUBLIC :: ComputeConserved
-  PUBLIC :: Eigenvalues
-  PUBLIC :: FluxFactor
-  PUBLIC :: EddingtonFactor
   PUBLIC :: Flux_X1
   PUBLIC :: Flux_X2
   PUBLIC :: NumericalFlux_LLF
@@ -55,71 +48,6 @@ CONTAINS
     G_3 = Gm_dd_33 * I_3
 
   END SUBROUTINE ComputeConserved
-
-
-  PURE FUNCTION Eigenvalues( D, I_1, I_2, I_3, FF, EF )
-
-    REAL(DP), INTENT(in)     :: D, I_1, I_2, I_3, FF, EF
-    REAL(DP), DIMENSION(1:4) :: Eigenvalues
-
-    REAL(DP) :: I1, dEF, sqrtD
-
-    dEF = EddingtonFactorDerivative( FF )
-
-    sqrtD &
-      = SQRT( MAX( ( dEF - Two * FF )**2 + Four * ( EF - FF**2 ), Zero ) )
-
-    I1 = I_1 / ( D * FF )
-
-    Eigenvalues(1) = Half * ( I1 * dEF + sqrtD )
-    Eigenvalues(2) = Half * ( I1 * dEF - sqrtD )
-    Eigenvalues(3) = Half * ( Three * EF - One ) / FF
-    Eigenvalues(4) = Half * ( Three * EF - One ) / FF
-
-    RETURN
-  END FUNCTION Eigenvalues
-
-
-  PURE REAL(DP) ELEMENTAL FUNCTION FluxFactor &
-    ( D, I_1, I_2, I_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-    REAL(DP), INTENT(in) :: D, I_1, I_2, I_3
-    REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-
-    FluxFactor &
-      = MAX( SQRT( Gm_dd_11 * I_1**2 &
-                   + Gm_dd_22 * I_2**2 &
-                   + Gm_dd_33 * I_3**2 ) &
-             / MAX( D, SqrtTiny ), SqrtTiny )
-
-    RETURN
-  END FUNCTION FluxFactor
-
-
-  PURE REAL(DP) ELEMENTAL FUNCTION EddingtonFactor( D, FF )
-
-    REAL(DP), INTENT(in) :: D, FF
-
-    ! --- Minerbo Closure ---
-
-    EddingtonFactor &
-      = Third + Two * FF**2 * ( One - Third * FF + FF**2 ) * Fifth
-
-    RETURN
-  END FUNCTION EddingtonFactor
-
-
-  PURE REAL(DP) FUNCTION EddingtonFactorDerivative( FF )
-
-    REAL(DP), INTENT(in) :: FF
-
-    ! --- Minerbo Closure ---
-
-    EddingtonFactorDerivative &
-      = Four * FF * ( One - Half * FF + Two * FF**2 ) * Fifth
-
-    RETURN
-  END FUNCTION EddingtonFactorDerivative
 
 
   PURE FUNCTION Flux_X1 &
@@ -174,10 +102,10 @@ CONTAINS
       = I_2
 
     Flux_X2(2) &
-      = D * Half * ( (Three*EF - One) * h_u_2 * h_d_1 + (One - EF) )
+      = D * Half * ( (Three*EF - One) * h_u_2 * h_d_1 )
 
     Flux_X2(3) &
-      = D * Half * ( (Three*EF - One) * h_u_2 * h_d_2 )
+      = D * Half * ( (Three*EF - One) * h_u_2 * h_d_2 + (One - EF) )
 
     Flux_X2(4) &
       = D * Half * ( (Three*EF - One) * h_u_2 * h_d_3 )

@@ -424,8 +424,9 @@ CONTAINS
           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:) &
         = U(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
               iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:) &
-          + dU(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                 iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:)
+          - alpha * dt**2 &
+            * dU(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+                   iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:)
 
     END IF
 

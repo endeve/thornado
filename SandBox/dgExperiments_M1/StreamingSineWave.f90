@@ -59,13 +59,128 @@ PROGRAM StreamingSineWave
 
   INCLUDE 'mpif.h'
 
-  INTEGER  :: iCycle, iCycleD, iCycleW, maxCycles
-  INTEGER, PARAMETER :: nE = 1, nX(3) = [ 32, 1, 1 ], nNodes = 2
-  REAL(DP) :: t, dt, t_end, wTime
+  CHARACTER(8)  :: Direction
+  CHARACTER(32) :: ProgramName
+  CHARACTER(32) :: TimeSteppingScheme
+  INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
+  INTEGER       :: nE, nX(3), nNodes
+  REAL(DP)      :: t, dt, t_end, wTime
+  REAL(DP)      :: xL(3), xR(3)
+  REAL(DP)      :: eL,    eR
+  REAL(DP)      :: N0, SigmaA, SigmaS
+
+  ProgramName = 'SineWaveDiffusion'
+  SELECT CASE ( TRIM( ProgramName ) )
+
+    CASE( 'SineWaveStreaming' )
+
+      ! --- Minerbo Closure Only ---
+
+      Direction = 'XY'
+
+      nX = [ 8, 8, 1 ]
+      nE = 1
+
+      nNodes = 3
+
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      eL = 0.0_DP
+      eR = 1.0_DP
+
+      TimeSteppingScheme = 'SSPRK3'
+
+      N0     = 0.0_DP
+      SigmaA = 0.0_DP
+      SigmaS = 0.0_DP
+
+      t_end     = SQRT( 2.0d+0 )
+      iCycleD   = 10
+      iCycleW   = 10
+      maxCycles = 10000
+
+    CASE( 'SineWaveDamping' )
+
+      ! --- Minerbo Closure Only ---
+
+      nX = [ 16, 1, 1 ]
+      nE = 1
+
+      nNodes = 3
+
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      eL = 0.0_DP
+      eR = 1.0_DP
+
+      TimeSteppingScheme = 'IMEX_P_A2'
+
+      N0     = 0.0_DP
+      SigmaA = 1.0_DP
+      SigmaS = 0.0_DP
+
+      t_end     = 1.0d+1
+      iCycleD   = 10
+      iCycleW   = 100
+      maxCycles = 10000
+
+    CASE( 'SineWaveDiffusion' )
+
+      nX = [ 16, 1, 1 ]
+      nE = 1
+
+      nNodes = 3
+
+      xL = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ + 3.0_DP, 1.0_DP, 1.0_DP ]
+
+      eL = 0.0_DP
+      eR = 1.0_DP
+
+      TimeSteppingScheme = 'IMEX_P_A2'
+
+      N0     = 0.0_DP
+      SigmaA = 0.0_DP
+      SigmaS = 1.0d+2
+
+      t_end     = 1.0d+2
+      iCycleD   = 10
+      iCycleW   = 1000
+      maxCycles = 100000
+
+    CASE( 'LineSource' )
+
+      nX = [ 128, 128, 1 ]
+      nE = 1
+
+      nNodes = 1
+
+      xL = [ - 1.25_DP, - 1.25_DP, 0.0_DP ]
+      xR = [ + 1.25_DP, + 1.25_DP, 1.0_DP ]
+
+      eL = 0.0_DP
+      eR = 1.0_DP
+
+      TimeSteppingScheme = 'SSPRK2'
+
+      N0     = 0.0_DP
+      SigmaA = 0.0_DP
+      SigmaS = 0.0_DP
+
+      t_end     = 1.0d+0
+      iCycleD   = 10
+      iCycleW   = 10
+      maxCycles = 10000
+
+    CASE( 'HomogeneousSphere' )
+
+  END SELECT
 
   CALL InitializeProgram &
          ( ProgramName_Option &
-             = 'StreamingSineWave', &
+             = TRIM( ProgramName ), &
            nX_Option &
              = nX, &
            swX_Option &
@@ -73,15 +188,15 @@ PROGRAM StreamingSineWave
            bcX_Option &
              = [ 1, 1, 1 ], &
            xL_Option &
-             = [ 0.0d0, 0.0d0, 0.0d0 ], &
+             = xL, &
            xR_Option &
-             = [ 1.0d0, 1.0d0, 1.0d0 ], &
+             = xR, &
            nE_Option &
              = nE, &
            eL_Option &
-             = 0.0d0, &
+             = eL, &
            eR_Option &
-             = 1.0d0, &
+             = eR, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -100,7 +215,7 @@ PROGRAM StreamingSineWave
   CALL InitializeReferenceElementX_Lagrange
 
   CALL ComputeGeometryX &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = 0.0_DP )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   ! --- Energy Space Reference Element and Geometry ---
 
@@ -119,7 +234,7 @@ PROGRAM StreamingSineWave
 
   ! --- Initialize Time Stepper ---
 
-  CALL Initialize_IMEX_RK( 'IMEX_P_A2' )
+  CALL Initialize_IMEX_RK( TRIM( TimeSteppingScheme ) )
 
   ! --- Initialize Moment Closure ---
 
@@ -128,12 +243,12 @@ PROGRAM StreamingSineWave
   ! --- Initialize Implicit Solver ---
 
   CALL InitializeCollisions &
-         ( N0_Option = 0.0d0, SigmaA_Option = 0.0d0, SigmaS_Option = 0.0d0 )
+         ( N0_Option = N0, SigmaA_Option = SigmaA, SigmaS_Option = SigmaS )
 
   ! --- Set Initial Condition ---
 
   CALL InitializeFields &
-         ( Direction_Option = 'X' )
+         ( Direction_Option = TRIM( Direction ) )
 
   ! --- Write Initial Condition ---
 
@@ -145,10 +260,6 @@ PROGRAM StreamingSineWave
 
   t         = 0.0d-0
   dt        = 0.2_DP / (2.0_DP*DBLE(nNodes-1)+1.0_DP) / DBLE(nX(1))
-  t_end     = 1.0d+0
-  iCycleD   = 10
-  iCycleW   = 10
-  maxCycles = 10000
 
   iCycle = 0
   DO WHILE( t < t_end .AND. iCycle < maxCycles )

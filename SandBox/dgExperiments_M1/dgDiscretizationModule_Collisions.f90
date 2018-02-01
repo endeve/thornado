@@ -84,17 +84,39 @@ CONTAINS
     DO iX_G = 1, nX_G
       DO iS = 1, nSpecies
 
-        dU_N(:,iCR_N, iS,iX_G) &
-          = GammaA * ( N0 - U_N(:,iCR_N, iS,iX_G) ) / ( One + GammaA )
+        ! --- Number Density ---
 
-        dU_N(:,iCR_G1,iS,iX_G) &
-          = - GammaT * U_N(:,iCR_G1,iS,iX_G) / ( One + GammaT )
+        U_N(:,iCR_N, iS,iX_G) &
+          = ( GammaA * N0 + U_N(:,iCR_N, iS,iX_G) ) / ( One + GammaA )
 
-        dU_N(:,iCR_G2,iS,iX_G) &
-          = - GammaT * U_N(:,iCR_G2,iS,iX_G) / ( One + GammaT )
+        ! --- Number Flux (1) ---
+
+        U_N(:,iCR_G1,iS,iX_G) &
+          = U_N(:,iCR_G1,iS,iX_G) / ( One + GammaT )
+
+        ! --- Number Flux (2) ---
+
+        U_N(:,iCR_G2,iS,iX_G) &
+          = U_N(:,iCR_G2,iS,iX_G) / ( One + GammaT )
+
+        ! --- Number Flux (3) ---
 
         dU_N(:,iCR_G3,iS,iX_G) &
-          = - GammaT * U_N(:,iCR_G3,iS,iX_G) / ( One + GammaT )
+          = U_N(:,iCR_G3,iS,iX_G) / ( One + GammaT )
+
+        ! --- Increments ---
+
+        dU_N(:,iCR_N, iS,iX_G) &
+          = SigmaA * ( N0 - U_N(:,iCR_N, iS,iX_G) )
+
+        dU_N(:,iCR_G1,iS,iX_G) &
+          = - SigmaT * U_N(:,iCR_G1,iS,iX_G)
+
+        dU_N(:,iCR_G2,iS,iX_G) &
+          = - SigmaT * U_N(:,iCR_G2,iS,iX_G)
+
+        dU_N(:,iCR_G3,iS,iX_G) &
+          = - SigmaT * U_N(:,iCR_G3,iS,iX_G)
 
       END DO
     END DO
@@ -105,7 +127,7 @@ CONTAINS
 !!$    PRINT*
 !!$    PRINT*, " Update: ", wTime
 
-    ! --- Map Solution Back ---
+    ! --- Map Increment Back ---
 
     wTime = MPI_WTIME( )
 
@@ -121,6 +143,8 @@ CONTAINS
       END DO
     END DO
 
+!!$    print*,"MAXVAL(dU) = ", MAXVAL(ABS(dU))
+
     wTime = MPI_WTIME( ) - wTime
 
 !!$    PRINT*
@@ -130,12 +154,12 @@ CONTAINS
 
 
   SUBROUTINE ComputeCorrection_M1_DG_Implicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U, dU )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt2, GE, GX, U, dU )
 
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)    :: &
-      dt
+      dt2
     REAL(DP), INTENT(in)    :: &
       GE(1:,iZ_B1(1):,1:)
     REAL(DP), INTENT(in)    :: &
@@ -145,7 +169,83 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
 
-    dU = Zero
+    INTEGER  :: iCR, iS, iX_G
+    REAL(DP) :: GammaA2, GammaT2
+
+    ! --- Map Data for Collision Update ---
+
+    DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+
+        CALL MapForward_R &
+               ( iZ_B0, iZ_E0, &
+                 U(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iCR,iS), &
+                 U_N(1:nE_G,iCR,iS,1:nX_G) )
+
+      END DO
+    END DO
+
+    GammaA2 = dt2 * SigmaA**2
+    GammaT2 = dt2 * SigmaT**2
+
+    !$OMP PARALLEL DO PRIVATE ( iX_G, iS )
+    DO iX_G = 1, nX_G
+      DO iS = 1, nSpecies
+
+        ! --- Number Density ---
+
+        U_N(:,iCR_N, iS,iX_G) &
+          = ( GammaA2 * N0 + U_N(:,iCR_N, iS,iX_G) ) / ( One + GammaA2 )
+
+        ! --- Number Flux Density (1) ---
+
+        U_N(:,iCR_G1,iS,iX_G) &
+          = U_N(:,iCR_G1,iS,iX_G) / ( One + GammaT2 )
+
+        ! --- Number Flux Density (2) ---
+
+        U_N(:,iCR_G2,iS,iX_G) &
+          = U_N(:,iCR_G2,iS,iX_G) / ( One + GammaT2 )
+
+        ! --- Number Flux Density (3) ---
+
+        U_N(:,iCR_G3,iS,iX_G) &
+          = U_N(:,iCR_G3,iS,iX_G) / ( One + GammaT2 )
+
+        ! --- Corrections ---
+
+        dU_N(:,iCR_N, iS,iX_G) &
+          = - SigmaA**2 * ( N0 - U_N(:,iCR_N, iS,iX_G) )
+
+        dU_N(:,iCR_G1,iS,iX_G) &
+          = SigmaT**2 * U_N(:,iCR_G1,iS,iX_G)
+
+        dU_N(:,iCR_G2,iS,iX_G) &
+          = SigmaT**2 * U_N(:,iCR_G2,iS,iX_G)
+
+        dU_N(:,iCR_G3,iS,iX_G) &
+          = SigmaT**2 * U_N(:,iCR_G3,iS,iX_G)
+
+      END DO
+    END DO
+    !$OMP END PARALLEL DO
+
+    ! --- Map Correction Back ---
+
+    DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+
+        CALL MapBackward_R &
+               ( iZ_B0, iZ_E0, &
+                 dU(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iCR,iS), &
+                 dU_N(1:nE_G,iCR,iS,1:nX_G) )
+
+      END DO
+    END DO
+
+!!$    print*,"MAXVAL(dC) = ", MAXVAL(ABS(dU))
 
   END SUBROUTINE ComputeCorrection_M1_DG_Implicit
 
