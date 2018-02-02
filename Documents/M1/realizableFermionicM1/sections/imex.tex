@@ -5,14 +5,18 @@ The semi-discretization of the moment equations with the DG method given in Eq.~
 \begin{equation}
   \dot{\vect{u}}
   =\vect{\cT}(\vect{u})+\f{1}{\tau}\,\vect{\cQ}(\vect{u}),
+  \label{eq:ode}
 \end{equation}
-where $\vect{u}$ are the degrees of freedom evolved with the DG method (e.g., expansion coefficients resulting from a modal expansion).  
+where $\vect{u}$ are the degrees of freedom evolved with the DG method; i.e., for a test space spanned by $\{\phi_{i}(\vect{x})\}_{i=1}^{N}\in\bbV^{k}$, we let
+\begin{equation}
+  \vect{u}=\f{1}{|\bK|}\Big(\,\int_{\bK}\vect{\cM}_{h}\,\phi_{1}\,d\vect{x},\int_{\bK}\vect{\cM}_{h}\,\phi_{2}\,d\vect{x},\ldots,\int_{\bK}\vect{\cM}_{h}\,\phi_{N}\,d\vect{x}\,\Big)^{T}.
+\end{equation}
 The transport term $\vect{\cT}$ is due to the second and third term in the left-hand side of Eq.~\eqref{eq:semidiscreteDG}, while the collision term $\vect{\cQ}$ is due to the right-hand side of Eq.~\eqref{eq:semidiscreteDG}.  
 
 In the application of interest to us, the collision term is stiff ($\tau\ll1$) and must be treated with implicit methods, while we can resolve the time scales induced by the transport term, which we will treat with explicit methods; i.e., we will use IMEX methods \cite{pareschiRusso_2005}.  
 Until recently, high-order (second or higher order temporal accuracy) positivity-preserving IMEX methods with time step restrictions solely due to the transport operator were not known.  
 Chertock et al. \cite{chertock_etal_2015} presented second order accurate IMEX schemes with a correction step.  
-The correction step includes the transport operator, and positivity is subject to a time step restriction that scales with $1/\sqrt{\tau}$.  
+The correction step includes the transport operator, and positivity is subject to a time step restriction $\dt\propto1/\sqrt{\tau}$.  
 More recently, Hu et al. \cite{hu_etal_2017}, presented new IMEX schemes for a class of BGK-type collision operators with a correction step that does not include the transport operator.  
 In this case, positivity is only subject to time step restrictions stemming from the transport operator.  
 These IMEX schemes take the following form \cite{hu_etal_2017}
@@ -21,11 +25,21 @@ These IMEX schemes take the following form \cite{hu_etal_2017}
   &=\vect{u}^{n}
   +\dt\sum_{i=1}^{j-1}\tilde{\alpha}_{ij}\,\vect{\cT}(\vect{u}^{(j)})
   +\dt\sum_{i=1}^{j}\alpha_{ij}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(j)}),
-  \quad i=1,\ldots,s, \\
+  \quad i=1,\ldots,s, \label{imexStages} \\
   \tilde{\vect{u}}^{n+1}
   &=\vect{u}^{n}
   +\dt\sum_{i=1}^{s}\tilde{w}_{i}\,\vect{\cT}(\vect{u}^{(i)})
-  +\dt\sum_{i=1}^{s}w_{i}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}), \\
+  +\dt\sum_{i=1}^{s}w_{i}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}), \label{imexIntermediate} \\
   \vect{u}^{n+1}
-  &=\tilde{\vect{u}}^{n+1}-\alpha\,\dt^{2}\,\f{1}{\tau^{2}}\,\vect{\cQ}'(\vect{u}^{*})\,\vect{\cQ}(\vect{u}^{n+1}), 
+  &=\tilde{\vect{u}}^{n+1}-\alpha\,\dt^{2}\,\f{1}{\tau^{2}}\,\vect{\cQ}'(\vect{u}^{*})\,\vect{\cQ}(\vect{u}^{n+1}), \label{eq:imexCorrection}
 \end{align}
+To prove the positivity-preserving property of the IMEX scheme, Hu et al. \cite{hu_etal_2017} rewrite the stage values in Eq.~\eqref{imexStages} as
+\begin{equation}
+  \vect{u}^{(i)}
+  =c_{i0}\,\vect{u}^{n}+\sum_{j=1}^{i-1}c_{ij}\Big[\,\vect{u}^{(j)}+\hat{c}_{ij}\,\dt\,\vect{\cT}(\vect{u}^{(j)})\,\Big]
+  +a_{ii}\,\dt\,\f{1}{\tau}\,\vect{Q}(\vect{u}^{(i)}),
+  \label{eq:imexStagesRewrite}
+\end{equation}
+where $c_{i0}+\sum_{j=1}^{i-1}c_{ij}=1$.  
+
+For globally stiffly accurate (GSA) IMEX schemes $\tilde{\vect{u}}^{n+1}=\vect{u}^{(s)}$

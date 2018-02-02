@@ -1,2 +1,70 @@
 \section{Realizability-Preserving DG-IMEX Scheme}
 \label{sec:realizableDGIMEX}
+
+The realizability preserving DG scheme is designed to ensure realizability of the cell averages in each element $\bK$, defined as
+\begin{equation}
+  \vect{\cM}_{\bK}
+  =\f{1}{|\bK|}\int_{\bK}\vect{\cM}_{h}\,d\bx.  
+\end{equation}
+Then, with $v=1$ in Eq.~\eqref{eq:semidiscreteDG}, the stage values for the cell average in the IMEX scheme in Eq.~\eqref{eq:imexStagesRewrite} are given by
+\begin{equation}
+  \vect{\cM}_{\bK}^{(i)}
+  =c_{i0}\,\vect{\cM}_{\bK}^{n}
+  +\sum_{j=1}^{i-1}c_{ij}\,\vect{\cM}_{\bK}^{(ij)}
+  +a_{ii}\,\dt\,\f{1}{\tau}\,\big(\,\vect{\eta}-\vect{\cD}\,\vect{\cM}_{\bK}^{(i)}\,\big),
+  \label{eq:imexStagesCellAverage}
+\end{equation}
+where we have defined
+\begin{equation}
+  \vect{\cM}_{\bK}^{(ij)}
+  =\vect{\cM}_{\bK}^{(j)}-\hat{c}_{ij}\,\dt\,\big\langle\,\nabla\cdot\vect{\cF}(\vect{\cM}_{h}^{(j)})\,\big\rangle_{\bK},
+\end{equation}
+and the cell average of the divergence operator is (cf. Section~\ref{sec:dg})
+\begin{equation}
+  \big\langle\,\nabla\cdot\vect{\cF}(\vect{\cM}_{h})\,\big\rangle_{\bK}
+  =\f{1}{|\bK|}\sum_{i=1}^{d}\int_{\tilde{\bK}^{i}}
+  \big(\,\widehat{\bcF}^{i}(\vect{\cM}_{h})\big|_{\xH^{i}}-\widehat{\bcF}^{i}(\vect{\cM}_{h})\big|_{\xL^{i}}\,\big)\,d\tilde{\vect{x}}^{i}.  
+\end{equation}
+
+\begin{lemma}
+  Let $\vect{\cM}_{\bK}^{(i)}$ satisfy Eq.~\eqref{eq:imexStagesCellAverage}.
+  Assume that $\vect{\cM}_{\bK}^{n}\in\cR$ and $\vect{\cM}_{\bK}^{(ij)}\in\cR\,\forall\,j\le i-1$.  
+  Then, $\vect{\cM}_{\bK}^{(i)}\in\cR$.  
+\end{lemma}
+\begin{proof}
+  The first two terms on the right-hand side of Eq.~\eqref{eq:imexStagesCellAverage} constitute a convex combination of elements in $\cR$; i.e.,
+  \begin{equation*}
+    c_{i0}\,\vect{\cM}_{\bK}^{n}+\sum_{j=1}^{i-1}c_{ij}\,\vect{\cM}_{\bK}^{(ij)}\in\cR.
+  \end{equation*}
+  Since $a_{ii}\,\dt/\tau>0$, it follows from Lemma~\ref{lem:implicitStep} that $\vect{\cM}_{\bK}^{(i)}\in\cR$.  
+\end{proof}
+
+We proceed to establish conditions for which $\vect{\cM}_{\bK}^{(ij)}\in\cR$.  
+To this end, to simplify notation, we consider the moments
+\begin{equation}
+  \vect{\cM}_{\bK}^{*}
+  =\vect{\cM}_{\bK}-\hat{c}\,\dt\,\big\langle\,\nabla\cdot\vect{\cF}(\vect{\cM}_{h})\,\big\rangle_{\bK},
+\end{equation}
+where $\vect{\cM}_{\bK}$ is the cell average of $\vect{\cM}_{h}\in\bbV^{k}$ and $\hat{c}\ge0$.  
+\begin{lemma}
+  Let $\{s_{i}\}_{i=1}^{d}$ be a set of positive constants satisfying $\sum_{i=1}^{d}=1$.  
+  If for each $i\in\{1,\ldots,d\}$, 
+  \begin{equation}
+    \Gamma^{i}\big[\vect{\cM}_{h}\big](\tilde{\vect{x}}^{i})
+    :=\f{1}{|K^{i}|}
+    \Big[\,\int_{K^{i}}\vect{\cM}_{h}\,dx^{i}-\f{\hat{c}\,\dt}{s_{i}}\big(\,\widehat{\bcF}^{i}(\vect{\cM}_{h})\big|_{\xH^{i}}-\widehat{\bcF}^{i}(\vect{\cM}_{h})\big|_{\xL^{i}}\,\big)\,\Big]\in\cR,
+    \label{eq:realizableGamma}
+  \end{equation}
+  then $\vect{\cM}_{\bK}^{*}\in\cR$.  
+\end{lemma}
+\begin{proof}
+  It is easy to show that $\vect{\cM}_{\bK}^{*}$ can be expressed as the convex combination
+  \begin{equation}
+    \sum_{i=1}^{d}s_{i}\,\f{1}{|\tilde{\vect{\bK}}^{i}|}\int_{\tilde{\bK}^{i}}\Gamma^{i}\big[\vect{\cM}_{h}\big]\,d\tilde{\vect{x}}^{i}.  
+    \label{eq:cellAverageInTermsOfGamma}
+  \end{equation}
+  The result follows immediately.  
+\end{proof}
+\begin{rem}
+  If a quadrature rule $\tilde{\vect{Q}}^{i}:C^{0}\to\bbR$, with positive weights, and points defined by the set $\tilde{\vect{S}}^{i}$, is used to approximate the integral over $\tilde{\bK}^{i}$ in \eqref{eq:cellAverageInTermsOfGamma}, it is sufficient for \eqref{eq:realizableGamma} to hold in the quadrature points $\tilde{\vect{S}}^{i}\subset\tilde{\bK}^{i}$.  
+\end{rem}
