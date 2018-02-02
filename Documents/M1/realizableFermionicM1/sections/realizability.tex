@@ -113,13 +113,16 @@ For the realizability-preserving scheme, we state some additional results.
 
 \subsection{Algebraic Moment Closures}
 
-Flux factor $h=|\vect{\cH}|/\cJ$
+Algebraic moment closures for the two-moment model are computationally efficient as they provide the Eddington factor in Eq.~\eqref{eq:eddingtonTensor} in closed form as a function of the density $\cJ$ and the flux factor $h=|\vect{\cH}|/\cJ$.  
+The family of algebraic closures we consider in this paper can be written in the form \cite{cernohorskyBludman_1994}
 \begin{equation}
-  \chi(\cJ,h)=\f{1}{3}+\f{2\,(1-\cJ)\,(1-2\cJ)}{3}\,\Theta\Big(\f{h}{1-\cJ}\Big)
+  \chi(\cJ,h)=\f{1}{3}+\f{2\,(1-\cJ)\,(1-2\cJ)}{3}\,\Theta\Big(\f{h}{1-\cJ}\Big),
 \end{equation}
+where the closure function $\Theta(x)$ varies with the specifics of the closure procedure.  
+We will consider two basic closure procedures in more detail below: the maximum entropy (ME) closure and the Kershaw (K) closure.  
 
 \subsubsection{Maximum Entropy Closure}
-Basic principles
+Basic principles.  
 Chernohorsky \& Bludman \cite{cernohorskyBludman_1994}
 \begin{equation}
   \Theta_{\mbox{\tiny ME}}^{\mbox{\tiny CB}}(x)
@@ -132,7 +135,7 @@ Banach \& Larecki
 \end{equation}
 
 \subsubsection{Kershaw Closure}
-Basic principles
+Basic principles.  
 Banach \& Larecki \cite{banachLarecki_2017}
 \begin{equation}
   \Theta_{\mbox{\tiny K}}^{\mbox{\tiny BL}}(x)=x^{2}
