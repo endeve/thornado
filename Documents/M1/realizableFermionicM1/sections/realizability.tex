@@ -122,14 +122,6 @@ For the realizability-preserving scheme, we state some additional results.
   \label{lem:implicitStep}
 \end{lemma}
 
-%\begin{lemma}
-%  For any $\vect{\cM}_{a}=(\cJ_{a},\vect{\cH}_{a})^{T}\in\cR$ and $\alpha>0$,
-%  \begin{equation*}
-%    \vect{\cM}_{b}\equiv\vect{\cM}_{a}+\alpha\,\vect{\cC}(\vect{\cM}_{b})\in\cR
-%  \end{equation*}
-%  where $\vect{\cC}(\vect{\cM})$ is the collision term in Eq.~\eqref{eq:collisionTermMoments}.
-%\end{lemma}
-
 \begin{proof}
   The first component of $\vect{\cM}_{b}$ can be written as
   \begin{equation}
@@ -173,12 +165,22 @@ where the closure function $\Theta(x)$ varies with the specifics of the closure 
 We will consider two basic closure procedures in more detail below: the maximum entropy (ME) closure and the Kershaw (K) closure.  
 
 \subsubsection{Maximum Entropy Closure}
-Basic principles.  
+The basic principle behind the maximum entropy closure is that one can approximate the real fermion distribution with a distribution which having the Fermi-Dirac distribution form 
+\begin{equation}
+f(\omega)=\f{1}{e^{a + b\omega}+1}, 
+\end{equation} 
+meanwhile, maximizing the entropy function
+\begin{equation}
+S[f(\omega)] = (1-f)\log(1-f) + f\log f.
+\end{equation} 
+Given moments $\cJ$ and $\vect{\cH}$, a distribution satisfying the above requirements can be found, hence $\vect{\cK}$.
+
 Chernohorsky \& Bludman \cite{cernohorskyBludman_1994}
 \begin{equation}
   \Theta_{\mbox{\tiny ME}}^{\mbox{\tiny CB}}(x)
   =x^{2}\,\big(\,3-x+3\,x^{2}\,\big)
 \end{equation}
+
 Banach \& Larecki
 \begin{equation}
   \Theta_{\mbox{\tiny ME}}^{\mbox{\tiny BL}}(x)
@@ -194,6 +196,7 @@ Banach \& Larecki \cite{banachLarecki_2017}
 
 \subsubsection{Low Occupancy Limit}
 
+Figure~\ref{fig:MabWithDifferentClosure} illustrates the behavior of these four closure.
 \begin{figure}[h]
   \centering
   \begin{tabular}{cc}
