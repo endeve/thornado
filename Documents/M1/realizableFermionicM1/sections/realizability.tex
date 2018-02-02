@@ -5,7 +5,7 @@ Our goal is to simulate a gas of massless fermions (i.e., classical neutrinos) a
 The principal objective is to obtain the fermionic distribution function $f$ (or moments of $f$ as in the two-moment model employed here).  
 The Pauli exclusion principle requires the distribution function to satisfy the condition $0 \le f \le 1$, which puts restrictions on the admissible values for the moments of $f$.  
 In this paper, we seek to design a numerical method for solving the system of moment equations given by Eq.~\eqref{eq:momentEquations}, which preserves realizability of the moments; i.e., the moments evolve within the set of admissible values as dictated by Pauli's exclusion principle.  
-(Since are concerned with the angular dependence of $f$ in this section, we simplify notation by suppressing the $\vect{z}$ and $t$ dependence and write $f(\omegaNu,\vect{z},t)=f(\omegaNu)$.)  
+(Since we only concern with the angular dependence of $f$ in this section, we simplify the notation by suppressing the $\vect{z}$ and $t$ dependence and write $f(\omegaNu,\vect{z},t)=f(\omegaNu)$.)  
 
 \subsection{Moment Realizability}
 
@@ -33,7 +33,7 @@ We proceed by stating the bounds on the moments by restating (with slightly modi
   Let $\widehat{\vect{n}}\in\bbR^{3}$ (independent of $\omegaNu$) be an arbitrary unit vector, and write
   \begin{equation}
     \widehat{\vect{n}}\cdot\vect{\cH}
-    =\int_{\bbS^{1}}\mathfrak{f}(\mu)\,\mu\,d\mu,
+    =\f{1}{2} \int_{\bbS^{1}}\mathfrak{f}(\mu)\,\mu\,d\mu,
     \label{eq:NdotH}
   \end{equation}
   where we have aligned the polar axis of the spherical momentum space coordinate system with $\widehat{\vect{n}}$; i.e., $\widehat{\vect{n}}\cdot\vect{\ell}(\omega)=\mu$.  
@@ -53,17 +53,17 @@ We proceed by stating the bounds on the moments by restating (with slightly modi
   Since this holds for any unit vector $\widehat{\vect{n}}\in\bbR^{3}$, we must have $|\vect{\cH}|\le(1-\cJ)\,\cJ$.  
 \end{proof}
 
-We now define the realizable set $\cR$
+We now define the realizable set $\cR$:
 \begin{equation}
-  \cR:=\big\{\,\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}~|~\cJ\in[0,1]~\text{and}~\gamma(\vect{\cM})\equiv(1-\cJ)\cJ-|\vect{\cH}|\ge0\,\big\}
+  \cR:=\big\{\,\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}~|~\cJ\in[0,1]~\text{and}~\gamma(\vect{\cM})\equiv(1-\cJ)\cJ-|\vect{\cH}|\ge0\,\big\}.
   \label{eq:realizableSet}
 \end{equation}
 
 \begin{lemma}
-  The set $\cR$, defined in Eq.~\eqref{eq:realizableSet}, is convex.  
+  The realizable set $\cR$, defined in Eq.~\eqref{eq:realizableSet}, is convex.  
 \end{lemma}
 \begin{proof}
-  In order to prove that $\cR$ is convex, we must show that a convex combination of elements in $\cR$ also belongs to $\cR$.  
+  In order to prove that $\cR$ is convex, we must show that any convex combination of elements in $\cR$ also belongs to $\cR$.  
   Let $\vect{\cM}_{a}=\big(\cJ_{a},\vect{\cH}_{a}\big)^{T}$ and $\vect{\cM}_{b}=\big(\cJ_{b},\vect{\cH}_{b}\big)^{T}$ to be two arbitrary elements in $\cR$.  
   Let $\vect{\cM}_{ab} = \theta\,\vect{\cM}_{a} + (1-\theta)\,\vect{\cM}_{b}$, with $0\leq\theta\leq1$.
   The first component of $\vect{\cM}_{ab}$ is
@@ -80,13 +80,13 @@ We now define the realizable set $\cR$
 
 Figure~\ref{fig:RealizableSetFermionic} illustrates the geometry of the convex set $\cR$ in $|\vect{\cH}| - \cJ$ coordinates (light blue region).
 To make this plot, a total of $10^{6}$ distribution functions of the form $\mathfrak{f}(\mu;a,b) = \dfrac{1}{e^{a+b\mu}+1}$ ($\mu\in[-1,1]$) were generated, where the parameters $a$ and $b$ were chosen randomly and independently in the range $a,b\in[-10^{2},10^{2}]$.  
-A uniform $\mu$-grid with $\Delta\mu=1/128$, was used to represent the distribution functions, and the angular moments were calculated using the trapezoid rule.  
-\begin{figure}
+A uniform $\mu$-grid with $\Delta\mu=1/128$ was used to represent the distribution functions. And the angular moments were calculated using the trapezoid rule.  
+\begin{figure}[h]
   \centering
   \includegraphics[width=1.0\linewidth]{figures/RealizableSetFermionic}
   \caption{Illustration of the realizable set $\cR$ defined in Eq.~\eqref{eq:realizableSet}.  
   Each of the $10^{6}$ light-blue points in the figure represents a set of moments $\vect{\cM}=(\cJ,\vect{\cH})$, computed from a random Fermi-Dirac distribution (see text for details).  
-  Black lines define the boundary of $\cR$; $\gamma(\vect{\cM}) = 0$.}
+  Black lines define the boundary of $\cR$: $\gamma(\vect{\cM}) = 0$.}
   \label{fig:RealizableSetFermionic}
 \end{figure}
 
@@ -119,6 +119,15 @@ For the realizability-preserving scheme, we state some additional results.
   where $\vect{\cC}(\vect{\cM})$ is the collision term in Eq.~\eqref{eq:collisionTermMoments}.  
   Then $\vect{\cM}_{b}\in\cR$.  
 \end{lemma}
+
+\begin{lemma}
+  For any $\vect{\cM}_{a}=(\cJ_{a},\vect{\cH}_{a})^{T}\in\cR$ and $\alpha>0$,
+  \begin{equation*}
+    \vect{\cM}_{b}\equiv\vect{\cM}_{a}+\alpha\,\vect{\cC}(\vect{\cM}_{b})\in\cR
+  \end{equation*}
+  where $\vect{\cC}(\vect{\cM})$ is the collision term in Eq.~\eqref{eq:collisionTermMoments}.
+\end{lemma}
+
 \begin{proof}
   The first component of $\vect{\cM}_{b}$ can be written as
   \begin{equation}
