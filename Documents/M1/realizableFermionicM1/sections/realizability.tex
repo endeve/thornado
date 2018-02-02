@@ -1,25 +1,28 @@
-\section{Moment Realizability and Closures for Fermion}
+\section{Moment Realizability and Algebraic Closures for the Fermionic Two-Moment Model}
 \label{sec:realizability}
 
-Our goal is to design a numerical method for solving the system of equations given by Eq.~\eqref{eq:momentEquations}, which approximates Eq.~\eqref{eq:boltzmann}.  
-To this end, we want to obtain solutions that preserve features of the original problem. 
-
-Since we only consider the angular dependence of the distribution function in this section, we simplify the notation by suppressing the $\vect{z}$ and $t$ dependence, and write $f(\omegaNu,\vect{z},t)=f(\omegaNu)$.  
+Our goal is to simulate a gas of massless fermions (i.e., classical neutrinos) and study their interactions with matter.  
+The principal objective is to obtain the fermionic distribution function $f$ (or moments of $f$ as in the two-moment model employed here).  
+The Pauli exclusion principle requires the distribution function to satisfy the condition $0 \le f \le 1$, which puts restrictions on the admissible values for the moments of $f$.  
+In this paper, we seek to design a numerical method for solving the system of moment equations given by Eq.~\eqref{eq:momentEquations}, which preserves realizability of the moments; i.e., the moments evolve within the set of admissible values as dictated by Pauli's exclusion principle.  
+(Since are concerned with the angular dependence of $f$ in this section, we simplify notation by suppressing the $\vect{z}$ and $t$ dependence and write $f(\omegaNu,\vect{z},t)=f(\omegaNu)$.)  
 
 \subsection{Moment Realizability}
 
+We begin with the following definition of moment realizability.  
 \begin{define}
-  The moments $\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}$ are realizable if they are consistent with a distribution function satisfying $0\le f(\omegaNu) \le 1$.
+  The moments $\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}$ are realizable if they can be obtained from a distribution function satisfying $0\le f(\omegaNu) \le 1~\forall~\omegaNu\in\bbS^{2}$.
 \end{define}
 
-We begin by stating the bounds on the moments by restating results from Theorem~7.1 in \cite{banachLarecki_2017} in the following Lemma.  
+Obviously, realizable moments must satisfy the bounds imposed by $f$.  
+We proceed by stating the bounds on the moments by restating (with slightly modified proof) results from Theorem~7.1 in \cite{banachLarecki_2017} in the following Lemma.  
 \begin{lemma}
-  Let the distribution function be bounded by $0\le f(\omegaNu) \le1$ for all $\omegaNu\in\bbS^{2}$.  
-  Then $0\le\cJ\le1$ and $\big(1-\cJ\big)\,\cJ-|\vect{\cH}|\ge0$. 
-  \label{lem: MomentRealizable} 
+  Let the distribution function be bounded by $0\le f(\omegaNu) \le1~\forall~\omegaNu\in\bbS^{2}$.  
+  Then the moments $\vect{\cM}=(\cJ,\vect{\cH})^{T}$, defined as in Eq.~\eqref{eq:angularMoments}, satisfy $0\le\cJ\le1$ and $\big(1-\cJ\big)\,\cJ-|\vect{\cH}|\ge0$. 
+  \label{lem:MomentRealizable} 
 \end{lemma}
 \begin{proof}
-  First, let $\mu=\cos\thetaNu$ and write
+  First, let $\mu=\cos\thetaNu$ and $\bbS^{1}:=\{\,\mu\,|\,\mu\in[-1,1]\,\}$, and write
   \begin{equation}
     \cJ=\f{1}{2}\int_{\bbS^{1}}\mathfrak{f}(\mu)\,d\mu,
     \quad\text{where}\quad
@@ -60,66 +63,52 @@ We now define the realizable set $\cR$
   The set $\cR$, defined in Eq.~\eqref{eq:realizableSet}, is convex.  
 \end{lemma}
 \begin{proof}
-  A convex set $Q$ is a set has the following property: 
-  \begin{equation*}
-  \theta a + (1-\theta)b \in Q,~\text{for}~\forall a, b \in Q~\text{and}~0\leq\,\theta\,\leq1. 
-  \end{equation*} 
-  Let $\vect{\cM}_{a}=\big(\cJ_{a},\vect{\cH}_{a}\big)^{T}$ and $\vect{\cM}_{b}=\big(\cJ_{b},\vect{\cH}_{b}\big)^{T}$ to be two arbitrary elements of $\cR$.
-  If $\cR$ is convex, we will have $\vect{\cM}_{ab} = \big(\cJ_{ab},\vect{\cH}_{ab}\big)^{T} = \theta \vect{\cM}_{a} + (1-\theta)\vect{\cM}_{b}$ in $\cR$ with $0\leq\theta\leq1$.
+  In order to prove that $\cR$ is convex, we must show that a convex combination of elements in $\cR$ also belongs to $\cR$.  
+  Let $\vect{\cM}_{a}=\big(\cJ_{a},\vect{\cH}_{a}\big)^{T}$ and $\vect{\cM}_{b}=\big(\cJ_{b},\vect{\cH}_{b}\big)^{T}$ to be two arbitrary elements in $\cR$.  
+  Let $\vect{\cM}_{ab} = \theta\,\vect{\cM}_{a} + (1-\theta)\,\vect{\cM}_{b}$, with $0\leq\theta\leq1$.
   The first component of $\vect{\cM}_{ab}$ is
   \begin{equation*}
-  \cJ_{ab} = \theta \cJ_{a} + (1-\theta)\cJ_{b}.
+    \cJ_{ab} = \theta\,\cJ_{a} + (1-\theta)\,\cJ_{b}.
   \end{equation*}
-  Since $\theta$, $\cJ_{a}$, $1-\theta$ and $\cJ_{b}$ are all nonnegative, $\cJ_{ab}$ is also nonnegative.
-  Meanwhile, since $\cJ_{a}\leq1$ and $\cJ_{b}\leq1$, $\cJ_{ab}\leq1$.
-  That's $\cJ_{ab} \in [0,1]$.
-  Since the second derivative of $\gamma(\vect{\cM})$ is $-2$ which is always negative, $\gamma(\vect{\cM})$ is a concave function.
-  Using Jensen's inequality, we have
+  Since $\theta,\cJ_{a},\cJ_{b}\in[0,1]$, we have $\cJ_{ab} \in [0,1]$.  
+  It is straightforward to verify that $\gamma(\vect{\cM})$ is a concave function of $\bcM$ if $\cJ\in[0,1]$.
+  Jensen's inequality implies
   \begin{equation*}
-  \gamma(\vect{\cM_{ab}}) \geq \theta\gamma(\vect{\cM_{a}}) + (1-\theta)\gamma(\vect{\cM_{b}}) \ge0.
+  \gamma(\vect{\cM}_{ab}) \geq \theta\,\gamma(\vect{\cM}_{a}) + (1-\theta)\,\gamma(\vect{\cM}_{b}) \ge0.
   \end{equation*}
 \end{proof}
 
-The Fig.~\ref{fig:RealizableSetFermionic} illustrates how the convex realizable set $\cR$ looks like in $|\vect{\cH}| - \cJ$ coordinates.
-Total 1000,000 distribution functions having form $\mathfrak{f}(\mu;a,b) = \dfrac{1}{e^{a+b\mu}+1}$ were evaluated.
-The parameters, $a$ and $b$, were chosen from $[-100,100]$ independently.
-The variable $\mu$ ranges from $-1$ to $1$ with $d\mu=\f{1}{128}$.
-And the integrals in angular moment expressions are calculated using Trapezoid rule.
+Figure~\ref{fig:RealizableSetFermionic} illustrates the geometry of the convex set $\cR$ in $|\vect{\cH}| - \cJ$ coordinates (light blue region).
+To make this plot, a total of $10^{6}$ distribution functions of the form $\mathfrak{f}(\mu;a,b) = \dfrac{1}{e^{a+b\mu}+1}$ ($\mu\in[-1,1]$) were generated, where the parameters $a$ and $b$ were chosen randomly and independently in the range $a,b\in[-10^{2},10^{2}]$.  
+A uniform $\mu$-grid with $\Delta\mu=1/128$, was used to represent the distribution functions, and the angular moments were calculated using the trapezoid rule.  
 \begin{figure}
-\centering
-\includegraphics[width=1.0\linewidth]{figures/RealizableSetFermionic}
-\caption[Numerical plot of the convex realizable set $\cR$.]{
-A numerical plot of the convex realizable set $\cR$.
-The black line are the boundary given by $\gamma(\vect{\cM}) = 0$. 
-The red line are the boundary given by $|\vect{\cH}| = \cJ$.
-Every light-blue dot represents a sample whose distribution function $\mathfrak{f}(\mu)$ is an arbitrary Fermi-Dirac function and its angular moments were given by integrals using Trapezoid rule.
-Total 1000,000 $\mathfrak{f}(\mu)$ were sampled for making this plot.}
-\label{fig:RealizableSetFermionic}
+  \centering
+  \includegraphics[width=1.0\linewidth]{figures/RealizableSetFermionic}
+  \caption{Illustration of the realizable set $\cR$ defined in Eq.~\eqref{eq:realizableSet}.  
+  Each of the $10^{6}$ light-blue points in the figure represents a set of moments $\vect{\cM}=(\cJ,\vect{\cH})$, computed from a random Fermi-Dirac distribution (see text for details).  
+  Black lines define the boundary of $\cR$; $\gamma(\vect{\cM}) = 0$.}
+  \label{fig:RealizableSetFermionic}
 \end{figure}
 
+For the realizability-preserving scheme, we state some additional results.  
 \begin{lemma}
-  Let $\big\{\cJ_{a},\vect{\cH}_{a},\vect{\cK}_{a}\big\}$ be defined as in Eq.~\eqref{eq:angularMoments} with distribution function $f_{a}\in[0,1]$.  
-  Similarly, $\big\{\cJ_{b},\vect{\cH}_{b},\vect{\cK}_{b}\big\}$ be moments of a distribution function $f_{b}\in[0,1]$.  
-  Let $\Phi^{\pm}(\vect{\cM})=\f{1}{2}\big(\vect{\cM}\pm\widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cM})\big)$, where $\widehat{\vect{e}}\in\bbR^{3}$ is an arbitrary unit vector and $\vect{\cF}(\vect{\cM})=\big(\vect{\cH},\vect{\cK}\big)^{T}$.  
+  Let $\big\{\cJ_{a},\vect{\cH}_{a},\vect{\cK}_{a}\big\}$ be defined as in Eq.~\eqref{eq:angularMoments} with distribution function $f_{a}(\omegaNu)\in[0,1]\,\forall\,\omegaNu\in\bbS^{2}$.  
+  Similarly, let $\big\{\cJ_{b},\vect{\cH}_{b},\vect{\cK}_{b}\big\}$ be moments of a distribution function $f_{b}\in[0,1]\,\forall\,\omegaNu\in\bbS^{2}$.  
+  Let $\Phi^{\pm}(\vect{\cM})=\f{1}{2}\big(\vect{\cM}\pm\widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cM})\big)$, where $\widehat{\vect{e}}\in\bbR^{3}$ is an arbitrary unit vector, and $\widehat{\vect{e}}\cdot\vect{\cF}(\vect{\cM})=\big(\widehat{\vect{e}}\cdot\vect{\cH},\widehat{\vect{e}}\cdot\vect{\cK}\big)^{T}$.  
   Then
-  \begin{equation}
-    \vect{\cM}_{ab} \equiv \Phi^{+}(\vect{\cM}_{a})+\Phi^{-}(\vect{\cM}_{b})\in\cR.
-  \end{equation}
+  \begin{equation*}
+    \vect{\cM}_{ab} = \big(\cJ_{ab},\vect{\cH}_{ab}\big)^{T} \equiv \Phi^{+}(\vect{\cM}_{a})+\Phi^{-}(\vect{\cM}_{b})\in\cR.
+  \end{equation*}
 \end{lemma}
 \begin{proof}
-  Using the same treatment we made in proof of Lemma~\ref{lem: MomentRealizable}, we can rewrite the first component of $\vect{\cM}_{ab}$ as
-  \begin{align*}
-  \f{1}{2}\big(\vect{\cJ_{a}} + \widehat{\vect{e}}\cdot\vect{\cH_{a}}+\vect{\cJ_{b}} - \widehat{\vect{e}}\cdot\vect{\cH_{b}}\big) = &\f{1}{2} \left\lbrace \f{1}{2}\int_{\bbS^{1}}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right] \,d\mu \right\rbrace \\
-  \equiv  &\f{1}{2}\int_{\bbS^{1}} \mathfrak{f}_{ab}(\mu)\,d\mu
-  \end{align*}
-  where $\mathfrak{f}_{ab}(\mu) \equiv \f{1}{2}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right]$ and $\mathfrak{f}_{ab}(\mu)\in[0,1]$.
-  And the second component is
-  \begin{align*} 
-   \f{1}{2}\big(\vect{\cH_{a}} + \widehat{\vect{e}}\cdot\vect{\cK_{a}}+\vect{\cH_{b}} - \widehat{\vect{e}}\cdot\vect{\cK_{b}}\big) =
-   &\f{1}{2} \left\lbrace \f{1}{2}\int_{\bbS^{1}}\left[ \mathfrak{f}_{a}(\mu)\,(1+\mu) + \mathfrak{f}_{b}(\mu)\,(1-\mu)\right]\mu \,d\mu \right\rbrace \\
-   \equiv  &\f{1}{2}\int_{\bbS^{1}} \mathfrak{f}_{ab}(\mu)\,\mu d\mu. 
-  \end{align*}
-  Using Lemma~\ref{lem: MomentRealizable}, we know that $\vect{\cM}_{ab}\in\cR$ and can be written as $\vect{\cM}_{ab}(\cJ_{ab},\vect{\cH}_{ab})$.
+  It is straightforward to rewrite the components of $\vect{\cM}_{ab}$ as
+  \begin{equation*}
+    \cJ_{ab}=\f{1}{4\pi}\int_{\bbS^{2}}f_{ab}(\omegaNu)\,d\omegaNu
+    \quad\text{and}\quad
+    \vect{\cH}_{ab}=\f{1}{4\pi}\int_{\bbS^{2}}f_{ab}(\omegaNu)\,\vect{\ell}(\omegaNu)\,d\omegaNu,
+  \end{equation*}
+  where $f_{ab}(\omegaNu)=\theta\,f_{a}+(1-\theta)\,f_{b}$ and $\theta(\omegaNu)=(1+\widehat{\vect{e}}\cdot\vect{\ell}(\omegaNu))/2\in[0,1]$.  
+  Then, since $f_{ab}(\omegaNu)\in[0,1]\,\forall\,\omegaNu\in\bbS^{2}$, we have from Lemma~\ref{lem:MomentRealizable} that $\vect{\cM}_{ab}\in\cR$.  
 \end{proof}
 
 \subsection{Algebraic Moment Closures}
@@ -151,24 +140,35 @@ Banach \& Larecki \cite{banachLarecki_2017}
 
 \subsubsection{Low Occupancy Limit}
 
-
-\begin{figure}[h!]
-  \begin{subfigure}[b]{0.5\textwidth}
-    \includegraphics[width=\textwidth]{figures/MabWithMI}
-    \caption{$\vect{\cM}_{ab}$ with Minerbo closure.}
-  \end{subfigure}
-  %
-  \begin{subfigure}[b]{0.5\textwidth}
-    \includegraphics[width=\textwidth]{figures/MabWithBLKS}
-    \caption{$\vect{\cM}_{ab}$ with Kershaw closure.}
-  \end{subfigure}
-  \begin{subfigure}[b]{0.5\textwidth}
-    \includegraphics[width=\textwidth]{figures/MabWithCBME}
-    \caption{$\vect{\cM}_{ab}$ with Chernohorsky \& Bludman maximum entropy closure.}
-  \end{subfigure}
-  \begin{subfigure}[b]{0.5\textwidth}
-    \includegraphics[width=\textwidth]{figures/MabWithBLME}
-    \caption{$\vect{\cM}_{ab}$ with Banach \& Larecki maximum entropy closure.}
-  \end{subfigure}
+\begin{figure}
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[width=0.5\textwidth]{figures/MabWithBLME}
+    \includegraphics[width=0.5\textwidth]{figures/MabWithCBME} \\
+    \includegraphics[width=0.5\textwidth]{figures/MabWithBLKS}
+    \includegraphics[width=0.5\textwidth]{figures/MabWithMI}
+  \end{tabular}
+  \caption{}
   \label{fig:MabWithDifferentClosure}
 \end{figure}
+
+%\begin{figure}[h!]
+%  \begin{subfigure}[b]{0.5\textwidth}
+%    \includegraphics[width=\textwidth]{figures/MabWithMI}
+%    \caption{$\vect{\cM}_{ab}$ with Minerbo closure.}
+%  \end{subfigure}
+%  %
+%  \begin{subfigure}[b]{0.5\textwidth}
+%    \includegraphics[width=\textwidth]{figures/MabWithBLKS}
+%    \caption{$\vect{\cM}_{ab}$ with Kershaw closure.}
+%  \end{subfigure}
+%  \begin{subfigure}[b]{0.5\textwidth}
+%    \includegraphics[width=\textwidth]{figures/MabWithCBME}
+%    \caption{$\vect{\cM}_{ab}$ with Chernohorsky \& Bludman maximum entropy closure.}
+%  \end{subfigure}
+%  \begin{subfigure}[b]{0.5\textwidth}
+%    \includegraphics[width=\textwidth]{figures/MabWithBLME}
+%    \caption{$\vect{\cM}_{ab}$ with Banach \& Larecki maximum entropy closure.}
+%  \end{subfigure}
+%  \label{fig:MabWithDifferentClosure}
+%\end{figure}
