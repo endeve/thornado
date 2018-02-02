@@ -107,9 +107,10 @@ For the realizability-preserving scheme, we state some additional results.
     \quad\text{and}\quad
     \vect{\cH}_{ab}=\f{1}{4\pi}\int_{\bbS^{2}}f_{ab}(\omegaNu)\,\vect{\ell}(\omegaNu)\,d\omegaNu,
   \end{equation*}
-  where $f_{ab}(\omegaNu)=\theta\,f_{a}+(1-\theta)\,f_{b}$ and $\theta(\omegaNu)=(1+\widehat{\vect{e}}\cdot\vect{\ell}(\omegaNu))/2\in[0,1]$.  
+  where $f_{ab}(\omegaNu)=\theta\,f_{a}(\omegaNu)+(1-\theta)\,f_{b}(\omegaNu)$ and $\theta(\omegaNu)=(1+\widehat{\vect{e}}\cdot\vect{\ell}(\omegaNu))/2\in[0,1]$.  
   Then, since $f_{ab}(\omegaNu)\in[0,1]\,\forall\,\omegaNu\in\bbS^{2}$, we have from Lemma~\ref{lem:MomentRealizable} that $\vect{\cM}_{ab}\in\cR$.  
 \end{proof}
+
 \begin{lemma}
   Let $\vect{\cM}_{a}=(\cJ_{a},\vect{\cH}_{a})^{T}\in\cR$ and $\alpha>0$.  
   Let $\vect{\cM}_{b}=(\cJ_{b},\vect{\cH}_{b})^{T}$ satisfy
@@ -118,15 +119,16 @@ For the realizability-preserving scheme, we state some additional results.
   \end{equation*}
   where $\vect{\cC}(\vect{\cM})$ is the collision term in Eq.~\eqref{eq:collisionTermMoments}.  
   Then $\vect{\cM}_{b}\in\cR$.  
+  \label{lem:implicitStep}
 \end{lemma}
 
-\begin{lemma}
-  For any $\vect{\cM}_{a}=(\cJ_{a},\vect{\cH}_{a})^{T}\in\cR$ and $\alpha>0$,
-  \begin{equation*}
-    \vect{\cM}_{b}\equiv\vect{\cM}_{a}+\alpha\,\vect{\cC}(\vect{\cM}_{b})\in\cR
-  \end{equation*}
-  where $\vect{\cC}(\vect{\cM})$ is the collision term in Eq.~\eqref{eq:collisionTermMoments}.
-\end{lemma}
+%\begin{lemma}
+%  For any $\vect{\cM}_{a}=(\cJ_{a},\vect{\cH}_{a})^{T}\in\cR$ and $\alpha>0$,
+%  \begin{equation*}
+%    \vect{\cM}_{b}\equiv\vect{\cM}_{a}+\alpha\,\vect{\cC}(\vect{\cM}_{b})\in\cR
+%  \end{equation*}
+%  where $\vect{\cC}(\vect{\cM})$ is the collision term in Eq.~\eqref{eq:collisionTermMoments}.
+%\end{lemma}
 
 \begin{proof}
   The first component of $\vect{\cM}_{b}$ can be written as
@@ -144,6 +146,21 @@ For the realizability-preserving scheme, we state some additional results.
   It follows from Lemma~\ref{lem:MomentRealizable} that $\widetilde{\vect{\bcM}}_{b}=(\cJ_{b},\widetilde{\vect{\cH}}_{b})^{T}\in\cR$.  
   Then, since $0\le\xi\le1$, we have $|\vect{\cH}_{b}|\le|\widetilde{\vect{\cH}}_{b}|\le(1-\cJ_{b})\,\cJ_{b}$.  
 \end{proof}
+
+\begin{lemma}
+  Let $\vect{\cM}_{a}$ and $\alpha$ be given as in Lemma~\ref{lem:implicitStep}, and let $\vect{\cM}_{b}$ satisfy
+  \begin{equation*}
+    \vect{\cM}_{b}=\vect{\cM}_{a}+\alpha\,\vect{\cD}\,\vect{\cC}(\vect{\cM}_{b}),    
+  \end{equation*}
+  where $\vect{\cD}$ and $\vect{\cC}(\vect{\cM})$ are given by Eq.~\eqref{eq:collisionTermMoments}.  
+  Then $\vect{\cM}_{b}\in\cR$.  
+  \label{lem:correctionStep}
+\end{lemma}
+
+\begin{proof}
+  The proof follows along the same lines as the proof of Lemma~\ref{lem:implicitStep}.  
+\end{proof}
+
 
 \subsection{Algebraic Moment Closures}
 
