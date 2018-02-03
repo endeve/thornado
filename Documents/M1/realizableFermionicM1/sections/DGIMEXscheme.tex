@@ -50,7 +50,7 @@ where $\vect{\cM}_{\bK}$ is the cell average of $\vect{\cM}_{h}\in\bbV^{k}$ and 
   Let $\{s_{i}\}_{i=1}^{d}$ be a set of positive constants satisfying $\sum_{i=1}^{d}=1$.  
   If for each $i\in\{1,\ldots,d\}$, 
   \begin{equation}
-    \Gamma^{i}\big[\vect{\cM}_{h}\big](\tilde{\vect{x}}^{i})
+    \vect{\Gamma}^{i}\big[\vect{\cM}_{h}\big](\tilde{\vect{x}}^{i})
     :=\f{1}{|K^{i}|}
     \Big[\,\int_{K^{i}}\vect{\cM}_{h}\,dx^{i}-\f{\hat{c}\,\dt}{s_{i}}\big(\,\widehat{\bcF}^{i}(\vect{\cM}_{h})\big|_{\xH^{i}}-\widehat{\bcF}^{i}(\vect{\cM}_{h})\big|_{\xL^{i}}\,\big)\,\Big]\in\cR,
     \label{eq:realizableGamma}
@@ -60,7 +60,7 @@ where $\vect{\cM}_{\bK}$ is the cell average of $\vect{\cM}_{h}\in\bbV^{k}$ and 
 \begin{proof}
   It is easy to show that $\vect{\cM}_{\bK}^{*}$ can be expressed as the convex combination
   \begin{equation}
-    \sum_{i=1}^{d}s_{i}\,\f{1}{|\tilde{\vect{\bK}}^{i}|}\int_{\tilde{\bK}^{i}}\Gamma^{i}\big[\vect{\cM}_{h}\big]\,d\tilde{\vect{x}}^{i}.  
+    \sum_{i=1}^{d}s_{i}\,\f{1}{|\tilde{\vect{\bK}}^{i}|}\int_{\tilde{\bK}^{i}}\vect{\Gamma}^{i}\big[\vect{\cM}_{h}\big]\,d\tilde{\vect{x}}^{i}.  
     \label{eq:cellAverageInTermsOfGamma}
   \end{equation}
   The result follows immediately.  
@@ -68,3 +68,14 @@ where $\vect{\cM}_{\bK}$ is the cell average of $\vect{\cM}_{h}\in\bbV^{k}$ and 
 \begin{rem}
   If a quadrature rule $\tilde{\vect{Q}}^{i}:C^{0}\to\bbR$, with positive weights, and points defined by the set $\tilde{\vect{S}}^{i}$, is used to approximate the integral over $\tilde{\bK}^{i}$ in \eqref{eq:cellAverageInTermsOfGamma}, it is sufficient for \eqref{eq:realizableGamma} to hold in the quadrature points $\tilde{\vect{S}}^{i}\subset\tilde{\bK}^{i}$.  
 \end{rem}
+
+Next, we establish conditions for which \eqref{eq:realizableGamma} holds.  
+To simplify the notation, we temporarily drop the dimension index $i$, setting $x^{i}=x$, $K^{i}=K$, $\vect{\Gamma}^{i}=\vect{\Gamma}$, etc.  
+We let $\hat{Q}_{N}$ denote the $N$-point \emph{Gauss-Lobatto} quadrature rule on the interval $K=(x_{\Low},x_{\Hgh})$, with points
+\begin{equation}
+  \hat{S}=\left\{x_{\Low}=\hat{x}_{1},\cdots,\hat{x}_{N}=x_{\Hgh}\right\}, 
+  \label{eq:quadraturePointsGL}
+\end{equation}
+and weights $\hat{w}_{q} \in (0,1]$, normalized so that $\sum_{q=1}^{N} \hat{w}_{q} = 1$.  
+(The hat is used to denote the Gauss-Lobatto rule, which includes the endpoints of the interval $K$.)
+This quadrature integrates polynomials in $x \in \bbR$ with degree $\le2N-3$ exactly.  

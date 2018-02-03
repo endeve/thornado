@@ -1,6 +1,7 @@
 \section{Positivity-Preserving IMEX Schemes}
 \label{sec:imex}
 
+In this section we summarize the IMEX scheme used for the realizability-preserving DG-IMEX method for the two-moment model developed in Section~\ref{sec:realizableDGIMEX}.  
 The semi-discretization of the moment equations with the DG method given in Eq.~\eqref{eq:semidiscreteDG} results in a system of ordinary differential equations (ODEs) in each element of the form
 \begin{equation}
   \dot{\vect{u}}
@@ -19,7 +20,7 @@ Chertock et al. \cite{chertock_etal_2015} presented second order accurate IMEX s
 The correction step includes the transport operator, and positivity is subject to a time step restriction $\dt\propto1/\sqrt{\tau}$.  
 More recently, Hu et al. \cite{hu_etal_2017}, presented new IMEX schemes for a class of BGK-type collision operators with a correction step that does not include the transport operator.  
 In this case, positivity is only subject to time step restrictions stemming from the transport operator.  
-These IMEX schemes take the following form \cite{hu_etal_2017}
+These $s$-stage IMEX schemes take the following form \cite{hu_etal_2017}
 \begin{align}
   \vect{u}^{(i)}
   &=\vect{u}^{n}
@@ -33,6 +34,9 @@ These IMEX schemes take the following form \cite{hu_etal_2017}
   \vect{u}^{n+1}
   &=\tilde{\vect{u}}^{n+1}-\alpha\,\dt^{2}\,\f{1}{\tau^{2}}\,\vect{\cQ}'(\vect{u}^{*})\,\vect{\cQ}(\vect{u}^{n+1}), \label{eq:imexCorrection}
 \end{align}
+where, as in standard IMEX schemes, $(\tilde{a}_{ij})$ and $(a_{ij})$, components of $s\times s$ matrices, and the vectors $(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $(w_{1},\ldots,w_{s})^{T}$ must satisfy certain order conditions \cite{pareschiRusso_2005}.  
+The coefficient in the correction step is positive, $\alpha>0$.  
+For globally stiffly accurate (GSA) IMEX schemes, $\tilde{w}_{i}=\tilde{a}_{si}$ and $w_{i}=a_{si}$ for $i=\{1,\ldots,s\}$, so that $\tilde{\vect{u}}^{n+1}=\vect{u}^{(s)}$.  
 To prove the positivity-preserving property of the IMEX scheme, Hu et al. \cite{hu_etal_2017} rewrite the stage values in Eq.~\eqref{imexStages} as
 \begin{equation}
   \vect{u}^{(i)}
@@ -40,6 +44,6 @@ To prove the positivity-preserving property of the IMEX scheme, Hu et al. \cite{
   +a_{ii}\,\dt\,\f{1}{\tau}\,\vect{Q}(\vect{u}^{(i)}),
   \label{eq:imexStagesRewrite}
 \end{equation}
-where $c_{i0}+\sum_{j=1}^{i-1}c_{ij}=1$.  
-
-For globally stiffly accurate (GSA) IMEX schemes $\tilde{\vect{u}}^{n+1}=\vect{u}^{(s)}$
+where $c_{i0}$, $c_{ij}$, and $\hat{c}_{ij}=\tilde{c}_{ij}/c_{ij}$ are computed from $\tilde{a}_{ij}$ and $a_{ij}$ (see \cite{hu_etal_2017} for details).  
+Importantly, $c_{i0}+\sum_{j=1}^{i-1}c_{ij}=1$.  
+The positivity-preserving property follows from requiring $a_{ii}>0$ and $c_{i0}\ge0$, for $i=1,\ldots,s$, and $c_{ij},\tilde{c}_{ij}\ge0$, for $i=2,\ldots,s$, $j=1,\ldots,s-1$.  
