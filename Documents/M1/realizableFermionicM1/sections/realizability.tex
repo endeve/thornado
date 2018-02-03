@@ -160,9 +160,17 @@ Algebraic moment closures for the two-moment model are computationally efficient
 The family of algebraic closures we consider in this paper can be written in the form \cite{cernohorskyBludman_1994}
 \begin{equation}
   \chi(\cJ,h)=\f{1}{3}+\f{2\,(1-\cJ)\,(1-2\cJ)}{3}\,\Theta\Big(\f{h}{1-\cJ}\Big),
+  \label{eq:eddingtonFactor}
 \end{equation}
 where the closure function $\Theta(x)$ varies with the specifics of the closure procedure.  
 We will consider two basic closure procedures in more detail below: the maximum entropy (ME) closure and the Kershaw (K) closure.  
+
+\paragraph{Low Occupancy Limit}
+We note in passing that in the low occupancy limit ($\cJ\ll1$), the Eddington factor in Eq.~\eqref{eq:eddingtonFactor} becomes independent of $\cJ$; i.e.,
+\begin{equation}
+  \chi(\cJ,h)\to\chi_{0}(h)=\f{1}{3}+\f{2}{3}\,\Theta\big(h\big).  
+  \label{eq:eddingtonFactorLow}
+\end{equation}
 
 \subsubsection{Maximum Entropy Closure}
 The basic principle behind the maximum entropy closure is that one can approximate the real fermion distribution with a distribution which having the Fermi-Dirac distribution form 
@@ -195,8 +203,6 @@ Banach \& Larecki \cite{banachLarecki_2017a}
 \begin{equation}
   \Theta_{\mbox{\tiny K}}^{\mbox{\tiny BL}}(x)=x^{2}
 \end{equation}
-
-\subsubsection{Low Occupancy Limit}
 
 Figure~\ref{fig:MabWithDifferentClosure} illustrates the behavior of these four closure.
 \begin{figure}[h]
