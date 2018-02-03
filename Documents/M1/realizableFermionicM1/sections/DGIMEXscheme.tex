@@ -71,11 +71,61 @@ where $\vect{\cM}_{\bK}$ is the cell average of $\vect{\cM}_{h}\in\bbV^{k}$ and 
 
 Next, we establish conditions for which \eqref{eq:realizableGamma} holds.  
 To simplify the notation, we temporarily drop the dimension index $i$, setting $x^{i}=x$, $K^{i}=K$, $\vect{\Gamma}^{i}=\vect{\Gamma}$, etc.  
-We let $\hat{Q}_{N}$ denote the $N$-point \emph{Gauss-Lobatto} quadrature rule on the interval $K=(x_{\Low},x_{\Hgh})$, with points
+We let $\hat{Q}_{N}$ denote the $N$-point \emph{Gauss-Lobatto (GL)} quadrature rule on the interval $K=(x_{\Low},x_{\Hgh})$, with points
 \begin{equation}
   \hat{S}=\left\{x_{\Low}=\hat{x}_{1},\cdots,\hat{x}_{N}=x_{\Hgh}\right\}, 
   \label{eq:quadraturePointsGL}
 \end{equation}
 and weights $\hat{w}_{q} \in (0,1]$, normalized so that $\sum_{q=1}^{N} \hat{w}_{q} = 1$.  
-(The hat is used to denote the Gauss-Lobatto rule, which includes the endpoints of the interval $K$.)
+(The hat is used to denote the GL rule, which includes the endpoints of the interval $K$.)
 This quadrature integrates polynomials in $x \in \bbR$ with degree $\le2N-3$ exactly.  
+Then, if $\vect{\cM}_{h}$ is represented by such polynomials we have
+\begin{equation}
+  \int_{K} \bcM_{h}\,dx = \hat{Q}_{N}[\bcM_{h}] \equiv
+  |K| \sum_{q=1}^{N} \hat{w}_{q}\,\hat{\bcM}_{q}
+  \label{eq:quadratureRuleGL}
+\end{equation}
+where $\hat{\bcM}_{q} := \bcM_{h}(\hat{x}_q,\tilde{\vect{x}})$.  
+In each element, $\hat{\vect{\cM}}_{1}=\vect{\cM}_{\Low}^{+}$ and $\hat{\vect{\cM}}_{N}=\vect{\cM}_{\Hgh}^{-}$.  
+
+With the GL quadrature rule in \eqref{eq:quadratureRuleGL} (note $\hat{w}_{1}=\hat{w}_{N}$), we can write $\vect{\Gamma}$ as the convex combination
+\begin{equation}
+  \vect{\Gamma}\big[\bcM_{h}\big]
+  =\sum_{q=2}^{N-1}\hat{w}_{q}\,\hat{\vect{\cM}}_{q}
+  +2\,\hat{w}_{N}\,\Phi(\vect{\cM}_{\Low}^{-},\vect{\cM}_{\Low}^{+},\vect{\cM}_{\Hgh}^{-},\vect{\cM}_{\Hgh}^{+}),
+  \label{eq:realizableGammaConvex}
+\end{equation}
+where we have defined
+\begin{align}
+  &\Phi(\vect{\cM}_{\Low}^{-},\vect{\cM}_{\Low}^{+},\vect{\cM}_{\Hgh}^{-},\vect{\cM}_{\Hgh}^{+}) \nonumber \\
+  &\hspace{12pt}
+  =\f{1}{2}\big(\,\vect{\cM}_{\Low}^{+}+\lambda\,\mathscr{F}(\vect{\cM}_{\Low}^{-},\vect{\cM}_{\Low}^{+})\,\big)
+  +\f{1}{2}\big(\,\vect{\cM}_{\Hgh}^{-}-\lambda\,\mathscr{F}(\vect{\cM}_{\Hgh}^{-},\vect{\cM}_{\Hgh}^{+})\,\big),
+\end{align}
+with $\lambda=\hat{c}\,\dt/(s\,\hat{w}_{N}\,|K|)$.  
+The following Lemma establishes sufficient conditions for realizability of $\vect{\Gamma}$, and hence $\vect{\cM}_{\bK}^{*}$.  
+\begin{lemma}
+  Assume that $\hat{\vect{\cM}}_{q}\in\cR$ for all $q=1,\ldots,N$ and all $\bK\in\mathscr{T}$.  
+  Let the time step $\dt$ be chosen so that $\lambda\le1$.  
+  Let the numerical flux be given by the Lax-Friedrichs flux in Eq.~\eqref{eq:fluxFunctionLF} with $\alpha=1$.  
+  Then $\vect{\Gamma}[\bcM_{h}]\in\cR$.  
+\end{lemma}
+\begin{proof}
+  In Eq.~\eqref{eq:realizableGammaConvex}, $\vect{\Gamma}[\vect{\cM}_{h}]$ is expressed as a convex combination.  
+  By assumption, $\hat{\vect{\cM}}_{q}\in\cR$ ($q=2,\ldots,N-1$).  
+  It remains to show $\Phi(\vect{\cM}_{\Low}^{-},\vect{\cM}_{\Low}^{+},\vect{\cM}_{\Hgh}^{-},\vect{\cM}_{\Hgh}^{+})\in\cR$.  
+  Using the Lax-Friedrichs flux with $\alpha=1$, it is straightforward to show that
+  \begin{align}
+    &\Phi(\vect{\cM}_{\Low}^{-},\vect{\cM}_{\Low}^{+},\vect{\cM}_{\Hgh}^{-},\vect{\cM}_{\Hgh}^{+})
+    =(1-\lambda)\,\f{1}{2}\,\big(\,\vect{\cM}_{\Low}^{+}+\vect{\cM}_{\Hgh}^{-}\,\big) \nonumber \\
+    &\hspace{12pt}
+    +\f{1}{2}\,\lambda\,\big(\,\Phi^{+}(\vect{\cM}_{\Low}^{-})+\Phi^{-}(\vect{\cM}_{\Hgh}^{-})\,\big)
+    +\f{1}{2}\,\lambda\,\big(\,\Phi^{+}(\vect{\cM}_{\Low}^{+})+\Phi^{-}(\vect{\cM}_{\Hgh}^{+})\,\big),
+    \label{eq:phiConvex}
+  \end{align}
+  where $\Phi^{\pm}(\vect{\cM})=\f{1}{2}\,\big(\vect{\cM}\pm\vect{e}\cdot\vect{\cF}(\vect{\cM})\big)$.  
+  Since $\lambda\le1$, $\Phi$ is expressed as a convex combination of three terms.  
+  By assumption, $\vect{\cM}_{\Low}^{-},\vect{\cM}_{\Low}^{+},\vect{\cM}_{\Hgh}^{-},\vect{\cM}_{\Hgh}^{+}\in\cR$, which immediately implies realizability of the first term on the right-hand side of Eq.~\eqref{eq:phiConvex}.  
+  Realizability of the second and third terms follows by invoking Lemma~\ref{lem:explicitStep}.  
+  This completes the proof.  
+\end{proof}
