@@ -85,6 +85,7 @@ MODULE ProgramInitializationModule
 
   INCLUDE 'mpif.h'
 
+  LOGICAL :: BasicInitialization
   INTEGER :: mpierr
 
   PUBLIC :: InitializeProgram
@@ -106,7 +107,7 @@ CONTAINS
       EvolveFluid_Option, EvolveRadiation_Option, &
       ApplySlopeLimiter_Option, BetaTVB_Option, BetaTVD_Option, &
       ApplyPositivityLimiter_Option, nStages_SSP_RK_Option, &
-      nStages_SI_RK_Option, IMEX_Scheme_Option )
+      nStages_SI_RK_Option, IMEX_Scheme_Option, BasicInitialization_Option )
 
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: ProgramName_Option
     INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: nX_Option
@@ -150,6 +151,7 @@ CONTAINS
     INTEGER,                INTENT(in), OPTIONAL :: nStages_SSP_RK_Option
     INTEGER,                INTENT(in), OPTIONAL :: nStages_SI_RK_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: IMEX_Scheme_Option
+    LOGICAL,                INTENT(in), OPTIONAL :: BasicInitialization_Option
 
     LOGICAL :: ActivateUnits
     INTEGER :: iDim
@@ -160,6 +162,17 @@ CONTAINS
     WRITE(*,'(A2,A28,A)') &
       '', 'INFO: Initializing Program: ', TRIM( ProgramName )
     WRITE(*,*)
+
+    BasicInitialization = .FALSE.
+    IF( PRESENT( BasicInitialization_Option ) ) &
+      BasicInitialization = BasicInitialization_Option
+
+    IF( BasicInitialization )THEN
+
+      WRITE(*,'(A4,A20)') '', 'Basic Initialization'
+      WRITE(*,*)
+
+    END IF
 
     CALL InitializeProgramHeader     &
            ( ProgramName_Option      &
@@ -365,6 +378,8 @@ CONTAINS
            ( MeshE    % Nodes, MeshX(1) % Nodes, &
              MeshX(2) % Nodes, MeshX(3) % Nodes )
 
+    IF( BasicInitialization ) RETURN
+
     ! --- Equation of State ---
 
     CALL InitializeEquationOfState &
@@ -481,6 +496,14 @@ CONTAINS
     CALL DestroyFluidFields
 
     CALL DestroyRadiationFields
+
+    IF( BasicInitialization )THEN
+
+      CALL MPI_FINALIZE( mpierr )
+
+      RETURN
+
+    END IF
 
     ! --- Equation of State ---
 
