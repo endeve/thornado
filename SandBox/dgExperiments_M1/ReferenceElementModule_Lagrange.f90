@@ -30,9 +30,6 @@ MODULE ReferenceElementModule_Lagrange
   INCLUDE 'mpif.h'
 
   REAL(DP) :: wTime
-  INTEGER,  DIMENSION(:),   ALLOCATABLE, PUBLIC :: i_L_X1
-  INTEGER,  DIMENSION(:),   ALLOCATABLE, PUBLIC :: j_L_X1
-  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: L_X1_Dn_CRS
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: L_X1_Dn
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: L_X1_Up
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: L_X2_Dn
@@ -51,7 +48,6 @@ CONTAINS
 
   SUBROUTINE InitializeReferenceElement_Lagrange
 
-    INTEGER :: k
     INTEGER :: iNode, iNodeE, iNodeX1, iNodeX2, iNodeX3
     INTEGER :: jNode, jNodeE, jNodeX1, jNodeX2, jNodeX3
     INTEGER :: iNode_X1, iNodeE_X1, iNodeX2_X1, iNodeX3_X1
@@ -59,10 +55,6 @@ CONTAINS
     INTEGER :: iNode_X3, iNodeE_X3, iNodeX1_X3, iNodeX2_X3
 
     wTime = MPI_WTIME( )
-
-    ALLOCATE( i_L_X1(nDOF) )
-    ALLOCATE( j_L_X1(nDOF) )
-    ALLOCATE( L_X1_Dn_CRS(nDOF) )
 
     ALLOCATE( L_X1_Dn(nDOF_X1,nDOF) )
     ALLOCATE( L_X1_Up(nDOF_X1,nDOF) )
@@ -73,7 +65,6 @@ CONTAINS
     ALLOCATE( L_X3_Dn(nDOF_X3,nDOF) )
     ALLOCATE( L_X3_Up(nDOF_X3,nDOF) )
 
-    k = 1
     !$OMP PARALLEL DO PRIVATE &
     !$OMP&              ( iNode,iNodeE,iNodeX1,iNodeX2,iNodeX3, &
     !$OMP&                iNode_X1,iNodeE_X1,iNodeX2_X1,iNodeX3_X1 )
@@ -96,24 +87,6 @@ CONTAINS
             * L_X2(iNodeX2) % P( NodesX2(iNodeX2_X1) ) &
             * L_X3(iNodeX3) % P( NodesX3(iNodeX3_X1) )
 
-        IF( iNodeE  == iNodeE_X1  .AND. &
-            iNodeX2 == iNodeX2_X1 .AND. &
-            iNodeX3 == iNodeX3_X1 ) &
-        THEN
-
-          L_X1_Dn_CRS(k) &
-            = L_E(iNodeE) % P( NodesE(iNodeE_X1) ) &
-              * L_X1(iNodeX1) % P( - Half ) &
-              * L_X2(iNodeX2) % P( NodesX2(iNodeX2_X1) ) &
-              * L_X3(iNodeX3) % P( NodesX3(iNodeX3_X1) )
-
-          i_L_X1(k) = iNode_X1
-          j_L_X1(k) = iNode
-
-          k = k + 1
-
-        END IF
-
         L_X1_Up(iNode_X1,iNode) &
           = L_E(iNodeE) % P( NodesE(iNodeE_X1) ) &
             * L_X1(iNodeX1) % P( + Half ) &
@@ -125,10 +98,6 @@ CONTAINS
     END DO
     !$OMP END PARALLEL DO
 
-!    PRINT*,"MAX/MIN L_X1_CRS = ", &
-!      MAXVAL( ABS( L_X1_Dn_CRS ) ), MINVAL( ABS( L_X1_Dn_CRS ) )
-
-    k = 1
     !$OMP PARALLEL DO PRIVATE &
     !$OMP&              ( iNode,iNodeE,iNodeX1,iNodeX2,iNodeX3,  &
     !$OMP&                iNode_X2,iNodeE_X2,iNodeX1_X2,iNodeX3_X2, &
@@ -248,10 +217,6 @@ CONTAINS
 
 
   SUBROUTINE FinalizeReferenceElement_Lagrange
-
-    DEALLOCATE( i_L_X1 )
-    DEALLOCATE( j_L_X1 )
-    DEALLOCATE( L_X1_Dn_CRS )
 
     DEALLOCATE( L_X1_Dn )
     DEALLOCATE( L_X1_Up )

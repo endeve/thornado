@@ -15,6 +15,7 @@ MODULE MomentEquationsUtilitiesModule_Beta
   PUBLIC :: ComputeConserved
   PUBLIC :: Flux_X1
   PUBLIC :: Flux_X2
+  PUBLIC :: Flux_X3
   PUBLIC :: NumericalFlux_LLF
 
 CONTAINS
@@ -112,6 +113,38 @@ CONTAINS
 
     RETURN
   END FUNCTION Flux_X2
+
+
+  PURE FUNCTION Flux_X3 &
+    ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    REAL(DP)             :: Flux_X3(1:4)
+    REAL(DP), INTENT(in) :: D, I_1, I_2, I_3, FF, EF
+    REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+    REAL(DP) :: h_u_3
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+
+    h_u_3 = I_3 / ( FF * D )
+
+    h_d_1 = Gm_dd_11 * I_1 / ( FF * D )
+    h_d_2 = Gm_dd_22 * I_2 / ( FF * D )
+    h_d_3 = Gm_dd_33 * I_3 / ( FF * D )
+
+    Flux_X3(1) &
+      = I_3
+
+    Flux_X3(2) &
+      = D * Half * ( (Three*EF - One) * h_u_3 * h_d_1 )
+
+    Flux_X3(3) &
+      = D * Half * ( (Three*EF - One) * h_u_3 * h_d_2 )
+
+    Flux_X3(4) &
+      = D * Half * ( (Three*EF - One) * h_u_3 * h_d_3 + (One - EF) )
+
+    RETURN
+  END FUNCTION Flux_X3
 
 
   REAL(DP) PURE ELEMENTAL FUNCTION NumericalFlux_LLF &

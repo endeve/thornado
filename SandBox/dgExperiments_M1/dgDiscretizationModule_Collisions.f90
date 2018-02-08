@@ -5,7 +5,12 @@ MODULE dgDiscretizationModule_Collisions
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, nDOF
   USE ReferenceElementModule_Beta, ONLY: &
-    NodeNumberTable4D
+    NodeNumberTable, &
+    NodeNumberTable4D, &
+    Weights_q
+  USE MeshModule, ONLY: &
+    MeshX, &
+    NodeCoordinate
   USE RadiationFieldsModule, ONLY: &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nSpecies
@@ -16,8 +21,11 @@ MODULE dgDiscretizationModule_Collisions
   INCLUDE 'mpif.h'
 
   INTEGER  :: nE_G, nX_G
-  REAL(DP) :: N0, SigmaA, SigmaS, SigmaT
   REAL(DP) :: wTime
+  REAL(DP) :: N0, SigmaA0, SigmaS0, SigmaT0
+  REAL(DP), ALLOCATABLE :: SigmaA(:,:)
+  REAL(DP), ALLOCATABLE :: SigmaS(:,:)
+  REAL(DP), ALLOCATABLE :: SigmaT(:,:)
   REAL(DP), ALLOCATABLE ::  U_N(:,:,:,:)
   REAL(DP), ALLOCATABLE :: dU_N(:,:,:,:)
 
@@ -48,13 +56,8 @@ CONTAINS
       dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
 
     INTEGER  :: iCR, iS, iX_G
-    REAL(DP) :: GammaA, GammaT
-
-!!$    PRINT*, "ComputeIncrement_M1_DG_Implicit"
 
     ! --- Map Data for Collision Update ---
-
-    wTime = MPI_WTIME( )
 
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
@@ -68,17 +71,7 @@ CONTAINS
       END DO
     END DO
 
-    wTime = MPI_WTIME( ) - wTime
-
-!!$    PRINT*
-!!$    PRINT*, " Forward: ", wTime
-
     ! --- Implicit Update ---
-
-    wTime = MPI_WTIME( )
-
-    GammaA = dt * SigmaA
-    GammaT = dt * SigmaT
 
     !$OMP PARALLEL DO PRIVATE ( iX_G, iS )
     DO iX_G = 1, nX_G
@@ -87,49 +80,43 @@ CONTAINS
         ! --- Number Density ---
 
         U_N(:,iCR_N, iS,iX_G) &
-          = ( GammaA * N0 + U_N(:,iCR_N, iS,iX_G) ) / ( One + GammaA )
+          = ( dt * SigmaA(:,iX_G) * N0 + U_N(:,iCR_N, iS,iX_G) ) &
+            / ( One + dt * SigmaA(:,iX_G) )
 
         ! --- Number Flux (1) ---
 
         U_N(:,iCR_G1,iS,iX_G) &
-          = U_N(:,iCR_G1,iS,iX_G) / ( One + GammaT )
+          = U_N(:,iCR_G1,iS,iX_G) / ( One + dt * SigmaT(:,iX_G) )
 
         ! --- Number Flux (2) ---
 
         U_N(:,iCR_G2,iS,iX_G) &
-          = U_N(:,iCR_G2,iS,iX_G) / ( One + GammaT )
+          = U_N(:,iCR_G2,iS,iX_G) / ( One + dt * SigmaT(:,iX_G) )
 
         ! --- Number Flux (3) ---
 
         dU_N(:,iCR_G3,iS,iX_G) &
-          = U_N(:,iCR_G3,iS,iX_G) / ( One + GammaT )
+          = U_N(:,iCR_G3,iS,iX_G) / ( One + dt * SigmaT(:,iX_G) )
 
         ! --- Increments ---
 
         dU_N(:,iCR_N, iS,iX_G) &
-          = SigmaA * ( N0 - U_N(:,iCR_N, iS,iX_G) )
+          = SigmaA(:,iX_G) * ( N0 - U_N(:,iCR_N, iS,iX_G) )
 
         dU_N(:,iCR_G1,iS,iX_G) &
-          = - SigmaT * U_N(:,iCR_G1,iS,iX_G)
+          = - SigmaT(:,iX_G) * U_N(:,iCR_G1,iS,iX_G)
 
         dU_N(:,iCR_G2,iS,iX_G) &
-          = - SigmaT * U_N(:,iCR_G2,iS,iX_G)
+          = - SigmaT(:,iX_G) * U_N(:,iCR_G2,iS,iX_G)
 
         dU_N(:,iCR_G3,iS,iX_G) &
-          = - SigmaT * U_N(:,iCR_G3,iS,iX_G)
+          = - SigmaT(:,iX_G) * U_N(:,iCR_G3,iS,iX_G)
 
       END DO
     END DO
     !$OMP END PARALLEL DO
 
-    wTime = MPI_WTIME( ) - wTime
-
-!!$    PRINT*
-!!$    PRINT*, " Update: ", wTime
-
     ! --- Map Increment Back ---
-
-    wTime = MPI_WTIME( )
 
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
@@ -142,13 +129,6 @@ CONTAINS
 
       END DO
     END DO
-
-!!$    print*,"MAXVAL(dU) = ", MAXVAL(ABS(dU))
-
-    wTime = MPI_WTIME( ) - wTime
-
-!!$    PRINT*
-!!$    PRINT*, "Backward: ", wTime
 
   END SUBROUTINE ComputeIncrement_M1_DG_Implicit
 
@@ -170,7 +150,6 @@ CONTAINS
       dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
 
     INTEGER  :: iCR, iS, iX_G
-    REAL(DP) :: GammaA2, GammaT2
 
     ! --- Map Data for Collision Update ---
 
@@ -186,9 +165,6 @@ CONTAINS
       END DO
     END DO
 
-    GammaA2 = dt2 * SigmaA**2
-    GammaT2 = dt2 * SigmaT**2
-
     !$OMP PARALLEL DO PRIVATE ( iX_G, iS )
     DO iX_G = 1, nX_G
       DO iS = 1, nSpecies
@@ -196,36 +172,37 @@ CONTAINS
         ! --- Number Density ---
 
         U_N(:,iCR_N, iS,iX_G) &
-          = ( GammaA2 * N0 + U_N(:,iCR_N, iS,iX_G) ) / ( One + GammaA2 )
+          = ( dt2 * SigmaA(:,iX_G)**2 * N0 + U_N(:,iCR_N, iS,iX_G) ) &
+              / ( One + dt2 * SigmaA(:,iX_G)**2 )
 
         ! --- Number Flux Density (1) ---
 
         U_N(:,iCR_G1,iS,iX_G) &
-          = U_N(:,iCR_G1,iS,iX_G) / ( One + GammaT2 )
+          = U_N(:,iCR_G1,iS,iX_G) / ( One + dt2 * SigmaT(:,iX_G)**2 )
 
         ! --- Number Flux Density (2) ---
 
         U_N(:,iCR_G2,iS,iX_G) &
-          = U_N(:,iCR_G2,iS,iX_G) / ( One + GammaT2 )
+          = U_N(:,iCR_G2,iS,iX_G) / ( One + dt2 * SigmaT(:,iX_G)**2 )
 
         ! --- Number Flux Density (3) ---
 
         U_N(:,iCR_G3,iS,iX_G) &
-          = U_N(:,iCR_G3,iS,iX_G) / ( One + GammaT2 )
+          = U_N(:,iCR_G3,iS,iX_G) / ( One + dt2 * SigmaT(:,iX_G)**2 )
 
         ! --- Corrections ---
 
         dU_N(:,iCR_N, iS,iX_G) &
-          = - SigmaA**2 * ( N0 - U_N(:,iCR_N, iS,iX_G) )
+          = - SigmaA(:,iX_G)**2 * ( N0 - U_N(:,iCR_N, iS,iX_G) )
 
         dU_N(:,iCR_G1,iS,iX_G) &
-          = SigmaT**2 * U_N(:,iCR_G1,iS,iX_G)
+          = SigmaT(:,iX_G)**2 * U_N(:,iCR_G1,iS,iX_G)
 
         dU_N(:,iCR_G2,iS,iX_G) &
-          = SigmaT**2 * U_N(:,iCR_G2,iS,iX_G)
+          = SigmaT(:,iX_G)**2 * U_N(:,iCR_G2,iS,iX_G)
 
         dU_N(:,iCR_G3,iS,iX_G) &
-          = SigmaT**2 * U_N(:,iCR_G3,iS,iX_G)
+          = SigmaT(:,iX_G)**2 * U_N(:,iCR_G3,iS,iX_G)
 
       END DO
     END DO
@@ -245,49 +222,125 @@ CONTAINS
       END DO
     END DO
 
-!!$    print*,"MAXVAL(dC) = ", MAXVAL(ABS(dU))
-
   END SUBROUTINE ComputeCorrection_M1_DG_Implicit
 
 
-  SUBROUTINE InitializeCollisions( N0_Option, SigmaA_Option, SigmaS_Option )
+  SUBROUTINE InitializeCollisions &
+    ( N0_Option, SigmaA0_Option, SigmaS0_Option, Radius_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: N0_Option
-    REAL(DP), INTENT(in), OPTIONAL :: SigmaA_Option
-    REAL(DP), INTENT(in), OPTIONAL :: SigmaS_Option
+    REAL(DP), INTENT(in), OPTIONAL :: SigmaA0_Option
+    REAL(DP), INTENT(in), OPTIONAL :: SigmaS0_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Radius_Option
+
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4
+    INTEGER  :: iNodeZ1, iNodeZ2
+    INTEGER  :: iNodeZ3, iNodeZ4, iNode
+    REAL(DP) :: X1, X2, X3, R, Radius
+    REAL(DP), ALLOCATABLE :: SigmaTmp1(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: SigmaTmp2(:,:,:,:,:)
 
     N0 = Zero
     IF( PRESENT( N0_Option ) ) &
       N0 = N0_Option
 
-    SigmaA = Zero
-    IF( PRESENT( SigmaA_Option ) ) &
-      SigmaA = SigmaA_Option
+    SigmaA0 = Zero
+    IF( PRESENT( SigmaA0_Option ) ) &
+      SigmaA0 = SigmaA0_Option
 
-    SigmaS = Zero
-    IF( PRESENT( SigmaS_Option ) ) &
-      SigmaS = SigmaS_Option
+    SigmaS0 = Zero
+    IF( PRESENT( SigmaS0_Option ) ) &
+      SigmaS0 = SigmaS0_Option
 
-    SigmaT = SigmaA + SigmaS
+    Radius = HUGE( One )
+    IF( PRESENT( Radius_Option ) ) &
+      Radius = Radius_Option
+
+    SigmaT0 = SigmaA0 + SigmaS0
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'InitializeCollisions'
     WRITE(*,*)
-    WRITE(*,'(A6,A,ES10.4E2)') '', 'Sigma_A = ', SigmaA
-    WRITE(*,'(A6,A,ES10.4E2)') '', 'Sigma_S = ', SigmaS
-    WRITE(*,'(A6,A,ES10.4E2)') '', 'Sigma_T = ', SigmaT
-    WRITE(*,*)
+    WRITE(*,'(A6,A,ES10.4E2)') '', 'Sigma_A = ', SigmaA0
+    WRITE(*,'(A6,A,ES10.4E2)') '', 'Sigma_S = ', SigmaS0
+    WRITE(*,'(A6,A,ES10.4E2)') '', 'Sigma_T = ', SigmaT0
+    WRITE(*,'(A6,A,ES10.4E2)') '', 'Radius  = ', Radius
 
     nE_G = nNodesZ(1) * nZ(1)
     nX_G = PRODUCT( nNodesZ(2:4) * nZ(2:4) )
 
+    ALLOCATE( SigmaA(nE_G,nX_G) )
+    ALLOCATE( SigmaS(nE_G,nX_G) )
+    ALLOCATE( SigmaT(nE_G,nX_G) )
+
     ALLOCATE(  U_N(nE_G,nCR,nSpecies,nX_G) )
     ALLOCATE( dU_N(nE_G,nCR,nSpecies,nX_G) )
+
+    SigmaA = SigmaA0
+    SigmaS = SigmaS0
+    SigmaT = SigmaT0
+
+    ALLOCATE( SigmaTmp1(nDOF,nZ(1),nZ(2),nZ(3),nZ(4)) )
+    ALLOCATE( SigmaTmp2(nDOF,nZ(1),nZ(2),nZ(3),nZ(4)) )
+
+    DO iZ4 = 1, nZ(4)
+      DO iZ3 = 1, nZ(3)
+        DO iZ2 = 1, nZ(2)
+          DO iZ1 = 1, nZ(1)
+
+            DO iNode = 1, nDOF
+
+              iNodeZ2 = NodeNumberTable(2,iNode)
+              iNodeZ3 = NodeNumberTable(3,iNode)
+              iNodeZ4 = NodeNumberTable(4,iNode)
+
+              X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
+              X2 = NodeCoordinate( MeshX(2), iZ3, iNodeZ3 )
+              X3 = NodeCoordinate( MeshX(3), iZ4, iNodeZ4 )
+
+              R = SQRT( X1**2 + X2**2 + X3**2 )
+
+              IF( R < Radius )THEN
+
+                SigmaTmp1(iNode,iZ1,iZ2,iZ3,iZ4) = SigmaA0
+                SigmaTmp2(iNode,iZ1,iZ2,iZ3,iZ4) = SigmaS0
+
+              ELSE
+
+                SigmaTmp1(iNode,iZ1,iZ2,iZ3,iZ4) = Zero
+                SigmaTmp2(iNode,iZ1,iZ2,iZ3,iZ4) = Zero
+
+              END IF
+
+            END DO
+
+            ! --- Cell Average ---
+
+            SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) &
+              = DOT_PRODUCT( Weights_q, SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) )
+
+            SigmaTmp2(:,iZ1,iZ2,iZ3,iZ4) &
+              = DOT_PRODUCT( Weights_q, SigmaTmp2(:,iZ1,iZ2,iZ3,iZ4) )
+
+          END DO
+        END DO
+      END DO
+    END DO
+
+    CALL MapForward_R( [1,1,1,1], nZ, SigmaTmp1, SigmaA )
+    CALL MapForward_R( [1,1,1,1], nZ, SigmaTmp2, SigmaS )
+
+    SigmaT = SigmaA + SigmaS
+
+    DEALLOCATE( SigmaTmp1 )
+    DEALLOCATE( SigmaTmp2 )
 
   END SUBROUTINE InitializeCollisions
 
 
   SUBROUTINE FinalizeCollisions
+
+    DEALLOCATE( SigmaA, SigmaS, SigmaT )
 
     DEALLOCATE( U_N, dU_N )
 

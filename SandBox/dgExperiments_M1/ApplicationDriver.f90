@@ -1,7 +1,7 @@
-PROGRAM StreamingSineWave
+PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, Pi, TwoPi
+    DP, Zero, One, Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
@@ -46,7 +46,12 @@ PROGRAM StreamingSineWave
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE InitializationModule, ONLY: &
-    InitializeFields
+    InitializeFields, &
+    ComputeError
+  USE PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter, &
+    FinalizePositivityLimiter, &
+    ApplyPositivityLimiter
   USE dgDiscretizationModule, ONLY: &
     ComputeIncrement_M1_DG_Explicit
   USE dgDiscretizationModule_Collisions, ONLY: &
@@ -62,32 +67,37 @@ PROGRAM StreamingSineWave
   CHARACTER(8)  :: Direction
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: TimeSteppingScheme
+  LOGICAL       :: UsePositivityLimiter
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
-  INTEGER       :: nE, nX(3), nNodes
+  INTEGER       :: nE, nX(3), bcX(3), nNodes
   REAL(DP)      :: t, dt, t_end, wTime
   REAL(DP)      :: xL(3), xR(3)
   REAL(DP)      :: eL,    eR
   REAL(DP)      :: N0, SigmaA, SigmaS
+  REAL(DP)      :: Radius = 1.0d16
+  REAL(DP)      :: Min_1, Max_1, Min_2
 
-  ProgramName = 'SineWaveDiffusion'
+  ProgramName = 'SineWaveStreaming'
+
   SELECT CASE ( TRIM( ProgramName ) )
 
     CASE( 'SineWaveStreaming' )
 
       ! --- Minerbo Closure Only ---
 
-      Direction = 'XY'
+      Direction = 'X'
 
-      nX = [ 8, 8, 1 ]
-      nE = 1
-
-      nNodes = 3
-
+      nX = [ 8, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
+      bcX = [ 1, 1, 1 ]
+
+      nE = 1
       eL = 0.0_DP
       eR = 1.0_DP
+
+      nNodes = 3
 
       TimeSteppingScheme = 'SSPRK3'
 
@@ -95,7 +105,13 @@ PROGRAM StreamingSineWave
       SigmaA = 0.0_DP
       SigmaS = 0.0_DP
 
-      t_end     = SQRT( 2.0d+0 )
+      UsePositivityLimiter = .FALSE.
+
+      Min_1 = - HUGE( One ) ! --- Min Density
+      Max_1 = + HUGE( One ) ! --- Max Density
+      Min_2 = - HUGE( One ) ! --- Min "Gamma"
+
+      t_end     = 1.0d+1
       iCycleD   = 10
       iCycleW   = 10
       maxCycles = 10000
@@ -104,22 +120,29 @@ PROGRAM StreamingSineWave
 
       ! --- Minerbo Closure Only ---
 
-      nX = [ 16, 1, 1 ]
-      nE = 1
-
-      nNodes = 3
-
+      nX = [ 8, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
+      bcX = [ 1, 1, 1 ]
+
+      nE = 1
       eL = 0.0_DP
       eR = 1.0_DP
+
+      nNodes = 3
 
       TimeSteppingScheme = 'IMEX_P_A2'
 
       N0     = 0.0_DP
       SigmaA = 1.0_DP
       SigmaS = 0.0_DP
+
+      UsePositivityLimiter = .FALSE.
+
+      Min_1 = - HUGE( One ) ! --- Min Density
+      Max_1 = + HUGE( One ) ! --- Max Density
+      Min_2 = - HUGE( One ) ! --- Min "Gamma"
 
       t_end     = 1.0d+1
       iCycleD   = 10
@@ -128,22 +151,29 @@ PROGRAM StreamingSineWave
 
     CASE( 'SineWaveDiffusion' )
 
-      nX = [ 16, 1, 1 ]
-      nE = 1
-
-      nNodes = 3
-
+      nX = [ 32, 1, 1 ]
       xL = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ + 3.0_DP, 1.0_DP, 1.0_DP ]
 
+      bcX = [ 1, 1, 1 ]
+
+      nE = 1
       eL = 0.0_DP
       eR = 1.0_DP
+
+      nNodes = 3
 
       TimeSteppingScheme = 'IMEX_P_A2'
 
       N0     = 0.0_DP
       SigmaA = 0.0_DP
       SigmaS = 1.0d+2
+
+      UsePositivityLimiter = .FALSE.
+
+      Min_1 = - HUGE( One ) ! --- Min Density
+      Max_1 = + HUGE( One ) ! --- Max Density
+      Min_2 = - HUGE( One ) ! --- Min "Gamma"
 
       t_end     = 1.0d+2
       iCycleD   = 10
@@ -153,15 +183,16 @@ PROGRAM StreamingSineWave
     CASE( 'LineSource' )
 
       nX = [ 128, 128, 1 ]
-      nE = 1
-
-      nNodes = 1
-
-      xL = [ - 1.25_DP, - 1.25_DP, 0.0_DP ]
+      xL = [   0.00_DP,   0.00_DP, 0.0_DP ]
       xR = [ + 1.25_DP, + 1.25_DP, 1.0_DP ]
 
+      bcX = [ 32, 32, 1 ]
+
+      nE = 1
       eL = 0.0_DP
       eR = 1.0_DP
+
+      nNodes = 2
 
       TimeSteppingScheme = 'SSPRK2'
 
@@ -169,12 +200,48 @@ PROGRAM StreamingSineWave
       SigmaA = 0.0_DP
       SigmaS = 0.0_DP
 
+      UsePositivityLimiter = .TRUE.
+
+      Min_1 = Zero ! --- Min Density
+      Max_1 = One  ! --- Max Density
+      Min_2 = Zero ! --- Min "Gamma"
+
       t_end     = 1.0d+0
       iCycleD   = 10
       iCycleW   = 10
       maxCycles = 10000
 
     CASE( 'HomogeneousSphere' )
+
+      nX = [ 48, 48, 48 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 2.0_DP, 2.0_DP, 2.0_DP ]
+
+      bcX = [ 32, 32, 32 ]
+
+      nE = 1
+      eL = 0.0_DP
+      eR = 1.0_DP
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_P_A2'
+
+      N0     = 1.00_DP
+      SigmaA = 20.0_DP
+      SigmaS = 0.00_DP
+      Radius = 1.00_DP
+
+      UsePositivityLimiter = .TRUE.
+
+      Min_1 = Zero ! --- Min Density
+      Max_1 = One  ! --- Max Density
+      Min_2 = Zero ! --- Min "Gamma"
+
+      t_end     = 4.0d-0
+      iCycleD   = 10
+      iCycleW   = 10
+      maxCycles = 10000
 
   END SELECT
 
@@ -186,7 +253,7 @@ PROGRAM StreamingSineWave
            swX_Option &
              = [ 1, 1, 1 ], &
            bcX_Option &
-             = [ 1, 1, 1 ], &
+             = bcX, &
            xL_Option &
              = xL, &
            xR_Option &
@@ -201,12 +268,8 @@ PROGRAM StreamingSineWave
              = nNodes, &
            CoordinateSystem_Option &
              = 'CARTESIAN', &
-           EquationOfState_Option &
-             = 'IDEAL', &
-           Opacity_Option &
-             = 'IDEAL', &
-           nStages_SSP_RK_Option &
-             = 1 )
+           BasicInitialization_Option &
+             = .TRUE. )
 
   ! --- Position Space Reference Element and Geometry ---
 
@@ -243,12 +306,22 @@ PROGRAM StreamingSineWave
   ! --- Initialize Implicit Solver ---
 
   CALL InitializeCollisions &
-         ( N0_Option = N0, SigmaA_Option = SigmaA, SigmaS_Option = SigmaS )
+         ( N0_Option = N0, SigmaA0_Option = SigmaA, &
+           SigmaS0_Option = SigmaS, Radius_Option = Radius )
 
   ! --- Set Initial Condition ---
 
   CALL InitializeFields &
          ( Direction_Option = TRIM( Direction ) )
+
+  ! --- Initialize Positivity Limiter ---
+
+  CALL InitializePositivityLimiter &
+         ( Min_1_Option = Min_1, Max_1_Option = Max_1, Min_2_Option = Min_2, &
+           UsePositivityLimiter_Option = UsePositivityLimiter )
+
+  CALL ApplyPositivityLimiter &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
 
   ! --- Write Initial Condition ---
 
@@ -258,8 +331,14 @@ PROGRAM StreamingSineWave
 
   wTime = MPI_WTIME( )
 
-  t         = 0.0d-0
-  dt        = 0.2_DP / (2.0_DP*DBLE(nNodes-1)+1.0_DP) / DBLE(nX(1))
+  t  = 0.0d-0
+  dt = 0.2_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
+       / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+
+  WRITE(*,*)
+  WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
+    '', 'Evolving from t = ', t, ' to t = ', t_end
+  WRITE(*,*)
 
   iCycle = 0
   DO WHILE( t < t_end .AND. iCycle < maxCycles )
@@ -304,6 +383,8 @@ PROGRAM StreamingSineWave
     '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
   WRITE(*,*)
 
+  CALL ComputeError( Time = t )
+
   CALL FinalizeReferenceElementX
 
   CALL FinalizeReferenceElementX_Lagrange
@@ -320,6 +401,8 @@ PROGRAM StreamingSineWave
 
   CALL FinalizeCollisions
 
+  CALL FinalizePositivityLimiter
+
   CALL FinalizeProgram
 
-END PROGRAM StreamingSineWave
+END PROGRAM ApplicationDriver

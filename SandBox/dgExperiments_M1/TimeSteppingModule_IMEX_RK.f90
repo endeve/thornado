@@ -6,6 +6,8 @@ MODULE TimeSteppingModule_IMEX_RK
     iZ_B0, iZ_B1, iZ_E0, iZ_E1, nDOF
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies
+  USE PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter
 
   IMPLICIT NONE
   PRIVATE
@@ -131,6 +133,33 @@ CONTAINS
 
         alpha = 0.2797373792_DP
 
+      CASE ( 'IMEX_P_A2_RC' )
+
+        nStages = 3
+        CALL AllocateButcherTables( nStages )
+
+        ! --- Coefficients from Ran Chu (2018) ---
+
+        a_EX(2,1) = 0.909090909090909_DP
+        a_EX(3,1) = 0.450000000000000_DP
+        a_EX(3,2) = 0.550000000000000_DP
+
+        w_EX(1)   = a_EX(3,1)
+        w_EX(2)   = a_EX(3,2)
+
+        a_IM(1,1) = 0.521932391842510_DP
+        a_IM(2,1) = 0.479820781424967_DP
+        a_IM(2,2) = 0.002234534340252_DP
+        a_IM(3,1) = 0.499900000000000_DP
+        a_IM(3,2) = 0.001100000000000_DP
+        a_IM(3,3) = 0.499000000000000_DP
+
+        w_IM(1)   = a_IM(3,1)
+        w_IM(2)   = a_IM(3,2)
+        w_IM(3)   = a_IM(3,3)
+
+        alpha = 0.260444263529413_DP
+
       CASE ( 'IMEX_P_ARS2' )
 
         nStages = 4
@@ -158,6 +187,33 @@ CONTAINS
         w_IM(4)   = a_IM(4,4)
 
         alpha = 0.8_DP
+
+      CASE ( 'IMEX_P_ARS2_RC' )
+
+        nStages = 4
+        CALL AllocateButcherTables( nStages )
+
+        ! --- Coefficients from Ran Chu (2018) ---
+
+        a_EX(3,1) = 1.0_DP
+        a_EX(4,1) = 0.5_DP
+        a_EX(4,3) = 0.5_DP
+
+        w_EX(1)   = a_EX(4,1)
+        w_EX(3)   = a_EX(4,3)
+
+        a_IM(2,2) = 4.062494753449722_DP
+        a_IM(3,2) = 0.001699788261156_DP
+        a_IM(3,3) = 0.998300211738844_DP
+        a_IM(4,2) = 0.500000000000000_DP
+        a_IM(4,3) = 0.499110102279259_DP
+        a_IM(4,4) = 0.000889897720741_DP
+
+        w_IM(2)   = a_IM(4,2)
+        w_IM(3)   = a_IM(4,3)
+        w_IM(4)   = a_IM(4,4)
+
+        alpha = 2.031247376724861_DP
 
       CASE ( 'IMEX_SSP2332' )
 
@@ -413,6 +469,9 @@ CONTAINS
     END IF
 
     CALL MapFromStage( iZ_B1, U, U_IMEX )
+
+    CALL ApplyPositivityLimiter &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
 
     IF( alpha > Zero )THEN
 
