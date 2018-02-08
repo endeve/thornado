@@ -279,7 +279,9 @@ CONTAINS
         WRITE(*,'(A6,A)') '', 'SSPRK2'
         WRITE(*,'(A6,A)') '', 'SSPRK3'
         WRITE(*,'(A6,A)') '', 'IMEX_P_A2'
+        WRITE(*,'(A6,A)') '', 'IMEX_P_A2_RC'
         WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2'
+        WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2_RC'
         WRITE(*,'(A6,A)') '', 'IMEX_SSP2332'
         WRITE(*,'(A6,A)') '', 'IMEX_RKCB2'
 
