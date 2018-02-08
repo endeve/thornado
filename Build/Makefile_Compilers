@@ -1,5 +1,5 @@
 FORTRAN_mac_gnu      = gfortran
-FORTRAN_sn1987b      = mpif90
+FORTRAN_sn1987b      = mpif90 -fopenmp
 FORTRAN_juliana      = gfortran
 FORTRAN_ranchu       = mpif90 
 FORTRAN_sjdunham     = mpif90
@@ -19,7 +19,7 @@ SUFFIX_f90_beacon_intel =
 SUFFIX_f90              = $(SUFFIX_f90_$(MACHINE))
 
 FLINKER_mac_gnu      = gfortran
-FLINKER_sn1987b      = mpif90
+FLINKER_sn1987b      = mpif90 -fopenmp
 FLINKER_juliana      = gfortran
 FLINKER_ranchu       = mpif90
 FLINKER_sjdunham     = mpif90
@@ -114,4 +114,5 @@ LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARI
 
 DEFINES = \
 -DMICROPHYSICS_$(MICROPHYSICS) \
+-DMOMENT_CLOSURE_$(MOMENT_CLOSURE) \
 -DGRAVITY_SOLVER_$(GRAVITY_SOLVER)
