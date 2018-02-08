@@ -133,7 +133,7 @@ CONTAINS
 
     ALLOCATE &
       ( V_X1_L(nNodesX(2)*nNodesX(3),nDOFX), &
-        V_X1_H(nNodesX(2)*nNodesX(2),nDOFX) )
+        V_X1_H(nNodesX(2)*nNodesX(3),nDOFX) )
 
     DO jNodeX3 = 1, nNodesX(3)
       DO jNodeX2 = 1, nNodesX(2)
