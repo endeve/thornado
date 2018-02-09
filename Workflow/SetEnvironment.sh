@@ -50,6 +50,11 @@ elif [[ $THORNADO_MACHINE == sjdunham* ]]; then
 echo
 echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == mcarpe21* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 fi
 
 if [[ $THORNADO_MACHINE == mac_gnu ]]; then
@@ -108,6 +113,12 @@ elif [[ $THORNADO_MACHINE == juliana ]]; then
 elif [[ $THORNADO_MACHINE == sjdunham ]]; then
 
 echo
+
+elif [[ $THORNADO_MACHINE == mcarpe21 ]]; then
+
+  echo
+  export THORNADO_DIR=~/thornado
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/hdf5/lib/
 
 else
 

@@ -6,7 +6,9 @@ FORTRAN_sjdunham     = mpif90
 FORTRAN_titan_gnu    = ftn
 FORTRAN_titan_cray   = ftn
 FORTRAN_beacon_intel = mpiifort -mkl
+FORTRAN_mcarpe21     = mpiifort
 FORTRAN              = $(FORTRAN_$(MACHINE))
+
 
 SUFFIX_f90_mac_gnu      = 
 SUFFIX_f90_sn1987b      = 
@@ -26,6 +28,7 @@ FLINKER_sjdunham     = mpif90
 FLINKER_titan_gnu    = ftn
 FLINKER_titan_cray   = ftn
 FLINKER_beacon_intel = mpiifort -mkl
+FLINKER_mcarpe21     = mpiifort
 FLINKER              = $(FLINKER_$(MACHINE))
 
 FLAGS_DEBUG        = $(DEBUG)
@@ -37,6 +40,7 @@ DEBUG_sjdunham     = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zer
 DEBUG_titan_gnu    = -g -ffpe-trap=invalid,zero -fcheck=bounds
 DEBUG_titan_cray   = -G0 -hfp0 -K trap=fp
 DEBUG_beacon_intel = -g -warn all -fpe0 -fpe-all=0 -ftrapuv -traceback -CB
+DEBUG_mcarpe21     = -g
 DEBUG              = $(DEBUG_$(MACHINE))
 
 FLAGS_OPTIMIZE        = $(OPTIMIZE)
@@ -48,6 +52,7 @@ OPTIMIZE_sjdunham     = -O2 -framework Accelerate
 OPTIMIZE_titan_gnu    = -O2
 OPTIMIZE_titan_cray   = 
 OPTIMIZE_beacon_intel = -fast
+OPTIMIZE_mcarpe21     = -O2
 OPTIMIZE              = $(OPTIMIZE_$(MACHINE))
 
 INCLUDE_HDF5_mac_gnu           = 
@@ -58,6 +63,7 @@ INCLUDE_HDF5_sjdunham          =
 INCLUDE_HDF5_titan_gnu         = # Use Module Load
 INCLUDE_HDF5_titan_cray        = # Use Module Load
 INCLUDE_HDF5_beacon_intel      = ${HDF5_INC}
+INCLUDE_HDF5_mcarpe21	       = -I/opt/hdf5/include
 INCLUDE_HDF5                   = $(INCLUDE_HDF5_$(MACHINE))
 
 INCLUDE_WEAKLIB_mac_gnu        = 
@@ -68,6 +74,7 @@ INCLUDE_WEAKLIB_sjdunham       =
 INCLUDE_WEAKLIB_titan_gnu      = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_titan_cray     = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_beacon_intel   = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
+INCLUDE_WEAKLIB		       = 
 INCLUDE_WEAKLIB                = $(INCLUDE_WEAKLIB_$(MACHINE))
 
 INCLUDE_POSEIDON_mac_gnu       = 
@@ -89,6 +96,7 @@ LIBRARIES_HDF5_titan_cray      = # Use Module Load
 LIBRARIES_HDF5_darter_gnu      = # Use Module Load
 LIBRARIES_HDF5_darter_cray     = # Use Module Load
 LIBRARIES_HDF5_beacon_intel    = ${HDF5_LIB} -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_mcarpe21	       = -L/opt/hdf5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5                 = $(LIBRARIES_HDF5_$(MACHINE))
 
 LIBRARIES_WEAKLIB_mac_gnu      = 
@@ -108,6 +116,8 @@ LIBRARIES_POSEIDON_sn1987b     = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON             = $(LIBRARIES_POSEIDON_$(MACHINE))
 
 LIBRARIES_LAPACK_ranchu        = -L/usr/lib -llapack -lblas
+LIBRARIES_LAPACK_mcarpe21      = -L/usr/lib/lapack -llapack \
+				 -L/usr/lib/libblas -lblas
 LIBRARIES_LAPACK               = $(LIBRARIES_LAPACK_$(MACHINE))
 
 LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_WEAKLIB) $(LIBRARIES_POSEIDON)
