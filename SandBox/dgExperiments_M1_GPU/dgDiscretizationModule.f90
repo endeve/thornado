@@ -119,7 +119,10 @@ CONTAINS
     CALL ApplyBoundaryConditions_Radiation &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
-    CALL ComputeIncrement_Divergence_X1 &
+!!$    CALL ComputeIncrement_Divergence_X1 &
+!!$           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    CALL ComputeIncrement_Divergence_X1_GPU &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
     ! --- Multiply Inverse Mass Matrix ---
@@ -173,6 +176,82 @@ CONTAINS
     END IF
 
   END SUBROUTINE ComputeIncrement_M1_DG_Explicit
+
+
+  SUBROUTINE ComputeIncrement_Divergence_X1_GPU &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      GE(1:,iZ_B1(1):,1:)
+    REAL(DP), INTENT(in)    :: &
+      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+    REAL(DP), INTENT(inout) :: &
+      U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+    REAL(DP), INTENT(inout) :: &
+      dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+
+    INTEGER  :: nK, iK, nZ(4), iNode
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
+    REAL(DP) :: Ones_q(nDOF)
+    REAL(DP) :: P_q(1:nDOF,1:nPR), FF_q(1:nDOF), EF_q(1:nDOF)
+    REAL(DP), ALLOCATABLE :: Flux_X1_q(:,:,:)
+
+    nZ = iZ_E0 - iZ_B0 + 1
+    nK = PRODUCT( nZ )
+
+    ALLOCATE( Flux_X1_q(1:nDOF,1:nK,1:nCR) )
+
+    DO iS = 1, nSpecies
+
+      iK = 0
+
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+              iK = iK + 1
+
+              CALL ComputePrimitive &
+                       ( U(:,iZ1,iZ2,iZ3,iZ4,iCR_N, iS), &
+                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                         P_q(:,iPR_D ), P_q(:,iPR_I1), &
+                         P_q(:,iPR_I2), P_q(:,iPR_I3), &
+                         Ones_q(:), Ones_q(:), Ones_q(:) )
+
+              FF_q = FluxFactor &
+                       ( P_q(:,iPR_D ), P_q(:,iPR_I1), &
+                         P_q(:,iPR_I2), P_q(:,iPR_I3), &
+                         Ones_q(:), Ones_q(:), Ones_q(:) )
+
+              EF_q = EddingtonFactor( P_q(:,iPR_D), FF_q )
+
+              DO iNode = 1, nDOF
+
+                Flux_X1_q(iNode,iK,1:nCR) &
+                  = Flux_X1 &
+                      ( P_q(iNode,iPR_D ), P_q(iNode,iPR_I1), &
+                        P_q(iNode,iPR_I2), P_q(iNode,iPR_I3), &
+                        FF_q(iNode), EF_q(iNode), &
+                        One, One, One )
+
+              END DO
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    DEALLOCATE( Flux_X1_q )
+
+  END SUBROUTINE ComputeIncrement_Divergence_X1_GPU
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &

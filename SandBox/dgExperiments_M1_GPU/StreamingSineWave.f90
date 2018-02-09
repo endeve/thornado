@@ -78,7 +78,7 @@ PROGRAM StreamingSineWave
 
       Direction = 'X'
 
-      nX = [ 8, 8, 8 ]
+      nX = [ 16, 16, 16 ]
       nE = 20
 
       nNodes = 2
