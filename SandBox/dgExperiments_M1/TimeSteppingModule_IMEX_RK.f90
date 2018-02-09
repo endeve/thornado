@@ -215,6 +215,37 @@ CONTAINS
 
         alpha = 2.031247376724861_DP
 
+      CASE ( 'IMEX_P_ARS2_RC2' )
+
+        nStages = 4
+        CALL AllocateButcherTables( nStages )
+
+        ! --- Coefficients from Ran Chu (2018) ---
+
+        a_EX(2,1) = 0.025819295974486_DP
+        a_EX(3,1) = 1.556487769284859_DP
+        a_EX(3,2) = 0.040322522993018_DP
+        a_EX(4,1) = 0.579878574268125_DP
+        a_EX(4,2) = 0.108755694346525_DP
+        a_EX(4,3) = 0.311365731385350_DP
+
+        w_EX(1)   = a_EX(4,1)
+        w_EX(2)   = a_EX(4,2)
+        w_EX(3)   = a_EX(4,3)
+
+        a_IM(2,2) = 0.959327206951534_DP
+        a_IM(3,2) = 0.322105700620029_DP
+        a_IM(3,3) = 0.948643336989347_DP
+        a_IM(4,2) = 0.579878574268125_DP
+        a_IM(4,3) = 0.108755694346525_DP
+        a_IM(4,4) = 0.311365731385350_DP
+
+        w_IM(2)   = a_IM(4,2)
+        w_IM(3)   = a_IM(4,3)
+        w_IM(4)   = a_IM(4,4)
+
+        alpha = 0.505860218334414_DP
+
       CASE ( 'IMEX_SSP2332' )
 
         ! --- Coefficients from Pareschi & Russo (2005) ---
@@ -326,6 +357,7 @@ CONTAINS
         WRITE(*,'(A6,A)') '', 'IMEX_P_A2_RC'
         WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2'
         WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2_RC'
+        WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2_RC2'
         WRITE(*,'(A6,A)') '', 'IMEX_SSP2332'
         WRITE(*,'(A6,A)') '', 'IMEX_RKCB2'
         WRITE(*,'(A6,A)') '', 'IMEX_SIRK2'
