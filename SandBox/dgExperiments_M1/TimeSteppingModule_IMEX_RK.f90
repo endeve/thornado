@@ -266,6 +266,50 @@ CONTAINS
 
         alpha = 0.0_DP
 
+      CASE ( 'IMEX_SIRK2' )
+
+        ! --- Scheme from Chertock et al. (2015; no correction!) ---
+        ! --- SIAM J. Numer. Anal. 53, 2008-2029 -------------------
+
+        nStages = 3
+        CALL AllocateButcherTables( nStages )
+
+        a_EX(2,1) = 1.0_DP
+        a_EX(3,1) = 1.0_DP
+        a_EX(3,2) = 1.0_DP
+
+        w_EX(1)   = 0.5_DP
+        w_EX(2)   = 0.5_DP
+
+        a_IM(2,2) = 1.0_DP
+        a_IM(3,2) = 1.0_DP
+        a_IM(3,3) = 1.0_DP
+
+        w_IM(2)   = 0.5_DP
+        w_IM(3)   = 0.5_DP
+
+        alpha = 0.0_DP
+
+      CASE ( 'IMEX_PC2' )
+
+        ! --- Scheme from McClarren et al. (2008) ---
+        ! --- JCP, 227, 7561-7586 -------------------
+
+        nStages = 3
+        CALL AllocateButcherTables( nStages )
+
+        a_EX(2,1) = 0.5_DP
+        a_EX(3,2) = 1.0_DP
+
+        w_EX(2)   = a_EX(3,2)
+
+        a_IM(2,2) = 0.5_DP
+        a_IM(3,3) = 1.0_DP
+
+        w_IM(3)   = a_IM(3,3)
+
+        alpha = 0.0_DP
+
       CASE DEFAULT
 
         WRITE(*,*)
@@ -284,6 +328,8 @@ CONTAINS
         WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2_RC'
         WRITE(*,'(A6,A)') '', 'IMEX_SSP2332'
         WRITE(*,'(A6,A)') '', 'IMEX_RKCB2'
+        WRITE(*,'(A6,A)') '', 'IMEX_SIRK2'
+        WRITE(*,'(A6,A)') '', 'IMEX_PC2'
 
         WRITE(*,*)
         STOP
