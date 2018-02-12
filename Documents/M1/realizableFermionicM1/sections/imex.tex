@@ -24,8 +24,8 @@ These $s$-stage IMEX schemes take the following form \cite{hu_etal_2017}
 \begin{align}
   \vect{u}^{(i)}
   &=\vect{u}^{n}
-  +\dt\sum_{i=1}^{j-1}\tilde{a}_{ij}\,\vect{\cT}(\vect{u}^{(j)})
-  +\dt\sum_{i=1}^{j}a_{ij}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(j)}),
+  +\dt\sum_{j=1}^{i-1}\tilde{a}_{ij}\,\vect{\cT}(\vect{u}^{(j)})
+  +\dt\sum_{j=1}^{i}a_{ij}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(j)}),
   \quad i=1,\ldots,s, \label{imexStages} \\
   \tilde{\vect{u}}^{n+1}
   &=\vect{u}^{n}
