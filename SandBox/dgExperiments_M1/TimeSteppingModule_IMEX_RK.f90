@@ -15,7 +15,7 @@ MODULE TimeSteppingModule_IMEX_RK
   INCLUDE 'mpif.h'
 
   INTEGER               :: nStages
-  REAL(DP)              :: alpha
+  REAL(DP)              :: alpha_IM, alpha_EX
   REAL(DP), ALLOCATABLE :: c_IM(:), w_IM(:), a_IM(:,:)
   REAL(DP), ALLOCATABLE :: c_EX(:), w_EX(:), a_EX(:,:)
   REAL(DP), ALLOCATABLE :: U_IMEX(:), dU_IM(:,:), dU_EX(:,:)
@@ -60,6 +60,27 @@ MODULE TimeSteppingModule_IMEX_RK
       REAL(DP), INTENT(inout) :: &
         dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
     END SUBROUTINE IncrementImplicit
+  END INTERFACE
+
+  INTERFACE
+    SUBROUTINE IncrementCorrection &
+      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, alpha_EX, alpha_IM, GE, GX, U, dU )
+      USE KindModule, ONLY: DP
+      INTEGER, INTENT(in)     :: &
+        iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+      REAL(DP), INTENT(in)    :: &
+        dt, &
+        alpha_EX, &
+        alpha_IM
+      REAL(DP), INTENT(in)    :: &
+        GE(1:,iZ_B1(1):,1:)
+      REAL(DP), INTENT(in)    :: &
+        GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      REAL(DP), INTENT(inout) :: &
+        U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      REAL(DP), INTENT(inout) :: &
+        dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+    END SUBROUTINE IncrementCorrection
   END INTERFACE
 
 CONTAINS
@@ -131,7 +152,7 @@ CONTAINS
         w_IM(2)   = a_IM(3,2)
         w_IM(3)   = a_IM(3,3)
 
-        alpha = 0.2797373792_DP
+        alpha_IM = 0.2797373792_DP
 
       CASE ( 'IMEX_P_A2_RC' )
 
@@ -158,7 +179,7 @@ CONTAINS
         w_IM(2)   = a_IM(3,2)
         w_IM(3)   = a_IM(3,3)
 
-        alpha = 0.260444263529413_DP
+        alpha_IM = 0.260444263529413_DP
 
       CASE ( 'IMEX_P_ARS2' )
 
@@ -186,7 +207,7 @@ CONTAINS
         w_IM(3)   = a_IM(4,3)
         w_IM(4)   = a_IM(4,4)
 
-        alpha = 0.8_DP
+        alpha_IM = 0.8_DP
 
       CASE ( 'IMEX_P_ARS2_RC' )
 
@@ -213,7 +234,7 @@ CONTAINS
         w_IM(3)   = a_IM(4,3)
         w_IM(4)   = a_IM(4,4)
 
-        alpha = 2.031247376724861_DP
+        alpha_IM = 2.031247376724861_DP
 
       CASE ( 'IMEX_P_ARS2_RC2' )
 
@@ -244,7 +265,7 @@ CONTAINS
         w_IM(3)   = a_IM(4,3)
         w_IM(4)   = a_IM(4,4)
 
-        alpha = 0.505860218334414_DP
+        alpha_IM = 0.505860218334414_DP
 
       CASE ( 'IMEX_SSP2332' )
 
@@ -272,8 +293,6 @@ CONTAINS
         w_IM(2)   = a_IM(3,2)
         w_IM(3)   = a_IM(3,3)
 
-        alpha = 0.0_DP
-
       CASE ( 'IMEX_RKCB2' )
 
         ! --- Coefficients from Cavaglieri & Bewley (2015) ---
@@ -295,12 +314,10 @@ CONTAINS
         w_IM(2)   = 5.0_DP / 6.0_DP
         w_IM(3)   = 1.0_DP / 6.0_DP
 
-        alpha = 0.0_DP
-
       CASE ( 'IMEX_SIRK2' )
 
-        ! --- Scheme from Chertock et al. (2015; no correction!) ---
-        ! --- SIAM J. Numer. Anal. 53, 2008-2029 -------------------
+        ! --- Scheme from Chertock et al. (2015) ---
+        ! --- SIAM J. Numer. Anal. 53, 2008-2029 ---
 
         nStages = 3
         CALL AllocateButcherTables( nStages )
@@ -312,6 +329,8 @@ CONTAINS
         w_EX(1)   = 0.5_DP
         w_EX(2)   = 0.5_DP
 
+        alpha_EX = 1.0_DP
+
         a_IM(2,2) = 1.0_DP
         a_IM(3,2) = 1.0_DP
         a_IM(3,3) = 1.0_DP
@@ -319,7 +338,7 @@ CONTAINS
         w_IM(2)   = 0.5_DP
         w_IM(3)   = 0.5_DP
 
-        alpha = 0.0_DP
+        alpha_IM = 1.0_DP
 
       CASE ( 'IMEX_PC2' )
 
@@ -338,8 +357,6 @@ CONTAINS
         a_IM(3,3) = 1.0_DP
 
         w_IM(3)   = a_IM(3,3)
-
-        alpha = 0.0_DP
 
       CASE DEFAULT
 
@@ -381,7 +398,7 @@ CONTAINS
     END DO
     WRITE(*,'(A6,A14,4ES14.4E3)') '', '', w_IM(1:nStages)
     WRITE(*,*)
-    WRITE(*,'(A6,A8,ES11.4E3)') '', 'alpha = ', alpha
+    WRITE(*,'(A6,A8,ES11.4E3)') '', 'alpha = ', alpha_IM
 
     WRITE(*,*)
     WRITE(*,'(A6,A)') '', 'Explicit Butcher Table:'
@@ -390,6 +407,8 @@ CONTAINS
       WRITE(*,'(A6,5ES14.4E3)') '', c_EX(i), a_EX(i,1:nStages)
     END DO
     WRITE(*,'(A6,A14,4ES14.4E3)') '', '', w_EX(1:nStages)
+    WRITE(*,*)
+    WRITE(*,'(A6,A8,ES11.4E3)') '', 'alpha = ', alpha_EX
 
     ALLOCATE &
       ( U0(1:nDOF, &
@@ -430,7 +449,9 @@ CONTAINS
 
     INTEGER, INTENT(in) :: nStages
 
-    alpha = Zero
+    ! --- Implicit Coefficients ---
+
+    alpha_IM = Zero
 
     ALLOCATE( c_IM(nStages) )
     ALLOCATE( w_IM(nStages) )
@@ -439,6 +460,10 @@ CONTAINS
     c_IM = Zero
     w_IM = Zero
     a_IM = Zero
+
+    ! --- Explicit Coefficients ---
+
+    alpha_EX = Zero
 
     ALLOCATE( c_EX(nStages) )
     ALLOCATE( w_EX(nStages) )
@@ -455,18 +480,19 @@ CONTAINS
     ( dt, GE, GX, U, ComputeIncrement_Explicit, &
       ComputeIncrement_Implicit, ComputeCorrection_Implicit )
 
-    REAL(DP), INTENT(in)         :: &
+    REAL(DP), INTENT(in)           :: &
       dt
-    REAL(DP), INTENT(in)         :: &
+    REAL(DP), INTENT(in)           :: &
       GE(1:,iZ_B1(1):,1:)
-    REAL(DP), INTENT(in)         :: &
+    REAL(DP), INTENT(in)           :: &
       GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
-    REAL(DP), INTENT(inout)      :: &
+    REAL(DP), INTENT(inout)        :: &
       U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
-    PROCEDURE(IncrementExplicit) :: &
+    PROCEDURE(IncrementExplicit)   :: &
       ComputeIncrement_Explicit
-    PROCEDURE(IncrementImplicit) :: &
-      ComputeIncrement_Implicit, &
+    PROCEDURE(IncrementImplicit)   :: &
+      ComputeIncrement_Implicit
+    PROCEDURE(IncrementCorrection) :: &
       ComputeCorrection_Implicit
 
     INTEGER :: iS, jS
@@ -551,21 +577,27 @@ CONTAINS
     CALL MapFromStage( iZ_B1, U, U_IMEX )
 
     CALL ApplyPositivityLimiter &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U ) ! Possibly move this
 
-    IF( alpha > Zero )THEN
+    IF( ANY( [ alpha_IM, alpha_EX ] > Zero ) )THEN
+
+      IF( alpha_EX > Zero )THEN
+
+        CALL ComputeIncrement_Explicit &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+      END IF
 
       CALL ComputeCorrection_Implicit &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-               alpha * dt**2, GE, GX, U, dU )
+               dt, alpha_EX, alpha_IM, GE, GX, U, dU )
 
       U(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
           iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:) &
         = U(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
               iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:) &
-          - alpha * dt**2 &
-            * dU(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                   iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:)
+          + dt**2 * dU(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+                         iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:)
 
     END IF
 
