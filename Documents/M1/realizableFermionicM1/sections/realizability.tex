@@ -76,6 +76,7 @@ We now define the realizable set $\cR$:
   \begin{equation*}
   \gamma(\vect{\cM}_{ab}) \geq \theta\,\gamma(\vect{\cM}_{a}) + (1-\theta)\,\gamma(\vect{\cM}_{b}) \ge0.
   \end{equation*}
+  Hence, $\vect{\cM}_{ab}\in\cR$.
 \end{proof}
 
 Figure~\ref{fig:RealizableSetFermionic} illustrates the geometry of the convex set $\cR$ in $|\vect{\cH}| - \cJ$ coordinates (light blue region).
@@ -145,8 +146,7 @@ For the realizability-preserving scheme, we state some additional results.
   \begin{equation*}
     \vect{\cM}_{b}=\vect{\cM}_{a}+\alpha\,\vect{\cD}\,\vect{\cC}(\vect{\cM}_{b}),    
   \end{equation*}
-  where $\vect{\cD}$ and $\vect{\cC}(\vect{\cM})$ are given by Eq.~\eqref{eq:collisionTermMoments}.  
-  Then $\vect{\cM}_{b}\in\cR$.  
+  where $\vect{\cD}$ and $\vect{\cC}(\vect{\cM})$ are given by Eq.~\eqref{eq:collisionTermMoments},  then $\vect{\cM}_{b}\in\cR$.  
   \label{lem:correctionStep}
 \end{lemma}
 The proof follows along the same lines as the proof of Lemma~\ref{lem:implicitStep} and is omitted.  
@@ -170,39 +170,41 @@ We note in passing that in the low occupancy limit ($\cJ\ll1$), the Eddington fa
 \end{equation}
 
 \subsubsection{Maximum Entropy Closure}
-The basic principle behind the maximum entropy closure is that one can approximate the real fermion distribution with a distribution which having the Fermi-Dirac distribution form 
+The basic principle behind the maximum entropy closure is that one can approximate the real fermion distribution with a distribution which have the Fermi-Dirac distribution form 
 \begin{equation}
 f(\omega)=\f{1}{e^{a + b\omega}+1}, 
 \end{equation} 
-meanwhile, maximizing the entropy function
+meanwhile maximize the entropy function
 \begin{equation}
 S[f(\omega)] = (1-f)\log(1-f) + f\log f.
 \end{equation} 
-Given moments $\cJ$ and $\vect{\cH}$, a distribution satisfying above requirements can be found. Hence, $\vect{\cK}$.
+Given moments $\cJ$ and $\vect{\cH}$, a distribution satisfying above requirements can be found. 
+Therefore, the stress tensor $\vect{\cK}$.
 
-Chernohorsky \& Bludman \cite{cernohorskyBludman_1994}
+One ME closure given by Chernohorsky \& Bludman \cite{cernohorskyBludman_1994} is
 \begin{equation}
   \Theta_{\mbox{\tiny ME}}^{\mbox{\tiny CB}}(x)
-  =x^{2}\,\big(\,3-x+3\,x^{2}\,\big)
+  =x^{2}\,\big(\,3-x+3\,x^{2}\,\big).
 \end{equation}
 
-Banach \& Larecki \cite{banachLarecki_2017b}
+Another ME closure given by Banach \& Larecki \cite{banachLarecki_2017b} is
 \begin{equation}
   \Theta_{\mbox{\tiny ME}}^{\mbox{\tiny BL}}(x)
-  =\f{1}{8}\,\big(\,9\,x^{2}-5+\sqrt{33\,x^{4}-42\,x^{2}+25}\,\big)
+  =\f{1}{8}\,\big(\,9\,x^{2}-5+\sqrt{33\,x^{4}-42\,x^{2}+25}\,\big).
 \end{equation}
 
 \subsubsection{Kershaw Closure}
-The basic principles behind Kershaw closure is that since $\cR$ is convex and bounded, every element in $\cR$ can be written as a convex combination of the elements on the realization boundary. 
-In other words, Kershaw closure satisfies realizability inherently.
+The basic principle behind Kershaw closure is derived from the fact that $\cR$ is convex.
+Due to the convexity, one can write any element in $\cR$ as a convex combination of the elements on the realization boundary. 
+Therefore, Kershaw closure satisfies realizability inherently.
 For fermionic radiation, the boundary is based on the Heaviside step functions.
-
-Banach \& Larecki \cite{banachLarecki_2017a}
+Here we introduce a closure function $\Theta(x)$ given by Banach \& Larecki \cite{banachLarecki_2017a}:
 \begin{equation}
   \Theta_{\mbox{\tiny K}}^{\mbox{\tiny BL}}(x)=x^{2}
 \end{equation}
 
 Figure~\ref{fig:MabWithDifferentClosure} illustrates the behavior of these four closure.
+As it shows, Minerbo closure (right bottom) is the only one among those four closures that does not preserve realizability.
 \begin{figure}[h]
   \centering
   \begin{tabular}{cc}
