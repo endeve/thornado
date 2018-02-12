@@ -134,12 +134,14 @@ CONTAINS
 
 
   SUBROUTINE ComputeCorrection_M1_DG_Implicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt2, GE, GX, U, dU )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, alpha_EX, alpha_IM, GE, GX, U, dU )
 
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)    :: &
-      dt2
+      dt, &
+      alpha_EX, &
+      alpha_IM
     REAL(DP), INTENT(in)    :: &
       GE(1:,iZ_B1(1):,1:)
     REAL(DP), INTENT(in)    :: &
@@ -162,6 +164,16 @@ CONTAINS
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iCR,iS), &
                  U_N(1:nE_G,iCR,iS,1:nX_G) )
 
+        IF( alpha_EX > Zero )THEN
+
+          CALL MapForward_R &
+                 ( iZ_B0, iZ_E0, &
+                   dU(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+                        iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iCR,iS), &
+                   dU_N(1:nE_G,iCR,iS,1:nX_G) )
+
+        END IF
+
       END DO
     END DO
 
@@ -171,38 +183,67 @@ CONTAINS
 
         ! --- Number Density ---
 
-        U_N(:,iCR_N, iS,iX_G) &
-          = ( dt2 * SigmaA(:,iX_G)**2 * N0 + U_N(:,iCR_N, iS,iX_G) ) &
-              / ( One + dt2 * SigmaA(:,iX_G)**2 )
+        U_N(:,iCR_N,iS,iX_G) &
+          = U_N(:,iCR_N,iS,iX_G) &
+              + alpha_EX * dt**2 * SigmaA(:,iX_G) * dU_N(:,iCR_N,iS,iX_G)
+
+        U_N(:,iCR_N,iS,iX_G) &
+          = ( alpha_IM * ( dt * SigmaA(:,iX_G) )**2 * N0 &
+              + U_N(:,iCR_N,iS,iX_G) ) &
+              / ( One + alpha_IM * ( dt * SigmaA(:,iX_G) )**2 )
 
         ! --- Number Flux Density (1) ---
 
         U_N(:,iCR_G1,iS,iX_G) &
-          = U_N(:,iCR_G1,iS,iX_G) / ( One + dt2 * SigmaT(:,iX_G)**2 )
+          = U_N(:,iCR_G1,iS,iX_G) &
+              + alpha_EX * dt**2 * SigmaT(:,iX_G) * dU_N(:,iCR_G1,iS,iX_G)
+
+        U_N(:,iCR_G1,iS,iX_G) &
+          = U_N(:,iCR_G1,iS,iX_G) &
+              / ( One + alpha_IM * ( dt * SigmaT(:,iX_G) )**2 )
 
         ! --- Number Flux Density (2) ---
 
         U_N(:,iCR_G2,iS,iX_G) &
-          = U_N(:,iCR_G2,iS,iX_G) / ( One + dt2 * SigmaT(:,iX_G)**2 )
+          = U_N(:,iCR_G2,iS,iX_G) &
+              + alpha_EX * dt**2 * SigmaT(:,iX_G) * dU_N(:,iCR_G2,iS,iX_G)
+
+        U_N(:,iCR_G2,iS,iX_G) &
+          = U_N(:,iCR_G2,iS,iX_G) &
+              / ( One + alpha_IM * ( dt * SigmaT(:,iX_G) )**2 )
 
         ! --- Number Flux Density (3) ---
 
         U_N(:,iCR_G3,iS,iX_G) &
-          = U_N(:,iCR_G3,iS,iX_G) / ( One + dt2 * SigmaT(:,iX_G)**2 )
+          = U_N(:,iCR_G3,iS,iX_G) &
+              + alpha_EX * dt**2 * SigmaT(:,iX_G) * dU_N(:,iCR_G3,iS,iX_G)
+
+        U_N(:,iCR_G3,iS,iX_G) &
+          = U_N(:,iCR_G3,iS,iX_G) &
+              / ( One + alpha_IM * ( dt * SigmaT(:,iX_G) )**2 )
 
         ! --- Corrections ---
 
-        dU_N(:,iCR_N, iS,iX_G) &
-          = - SigmaA(:,iX_G)**2 * ( N0 - U_N(:,iCR_N, iS,iX_G) )
+        dU_N(:,iCR_N,iS,iX_G) &
+          = SigmaA(:,iX_G) &
+              * ( alpha_EX * dU_N(:,iCR_N,iS,iX_G) &
+                  + alpha_IM * SigmaA(:,iX_G) &
+                      * ( N0 - U_N(:,iCR_N, iS,iX_G) ) )
 
         dU_N(:,iCR_G1,iS,iX_G) &
-          = SigmaT(:,iX_G)**2 * U_N(:,iCR_G1,iS,iX_G)
+          = SigmaT(:,iX_G) &
+              * ( alpha_EX * dU_N(:,iCR_G1,iS,iX_G) &
+                  - alpha_IM * SigmaT(:,iX_G) * U_N(:,iCR_G1,iS,iX_G) )
 
         dU_N(:,iCR_G2,iS,iX_G) &
-          = SigmaT(:,iX_G)**2 * U_N(:,iCR_G2,iS,iX_G)
+          = SigmaT(:,iX_G) &
+              * ( alpha_EX * dU_N(:,iCR_G2,iS,iX_G) &
+                  - alpha_IM * SigmaT(:,iX_G) * U_N(:,iCR_G2,iS,iX_G) )
 
         dU_N(:,iCR_G3,iS,iX_G) &
-          = SigmaT(:,iX_G)**2 * U_N(:,iCR_G3,iS,iX_G)
+          = SigmaT(:,iX_G) &
+              * ( alpha_EX * dU_N(:,iCR_G3,iS,iX_G) &
+                  - alpha_IM * SigmaT(:,iX_G) * U_N(:,iCR_G3,iS,iX_G) )
 
       END DO
     END DO
