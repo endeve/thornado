@@ -175,6 +175,8 @@ CONTAINS
 
     END IF
 
+    PRINT*, "SUM(dU) = ", SUM( dU )
+
   END SUBROUTINE ComputeIncrement_M1_DG_Explicit
 
 
@@ -189,30 +191,51 @@ CONTAINS
       GE(1:,iZ_B1(1):,1:)
     REAL(DP), INTENT(in)    :: &
       GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(in)    :: &
       U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
     REAL(DP), INTENT(inout) :: &
       dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
 
     INTEGER  :: nK, iK, nZ(4), iNode
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
-    REAL(DP) :: Ones_q(nDOF)
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iCR
+    REAL(DP) :: wTime
+    REAL(DP) :: Ones_q(nDOF), dZ(4)
     REAL(DP) :: P_q(1:nDOF,1:nPR), FF_q(1:nDOF), EF_q(1:nDOF)
-    REAL(DP), ALLOCATABLE :: Flux_X1_q(:,:,:)
+    REAL(DP), ALLOCATABLE :: Flux_X1_q(:,:,:), dU_q(:,:,:)
+
+    print*, "ComputeIncrement_Divergence_X1_GPU (Begin)"
 
     nZ = iZ_E0 - iZ_B0 + 1
     nK = PRODUCT( nZ )
 
+    Ones_q = One
+
     ALLOCATE( Flux_X1_q(1:nDOF,1:nK,1:nCR) )
+    ALLOCATE( dU_q     (1:nDOF,1:nK,1:nCR) )
+
+    PRINT*, "  nDOF, nK = ", nDOF, nK
 
     DO iS = 1, nSpecies
 
       iK = 0
 
+      wTime = MPI_WTIME( )
+
       DO iZ4 = iZ_B0(4), iZ_E0(4)
+
+        dZ(4) = MeshX(3) % Width(iZ4)
+
         DO iZ3 = iZ_B0(3), iZ_E0(3)
+
+          dZ(3) = MeshX(2) % Width(iZ3)
+
           DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+            dZ(2) = MeshX(1) % Width(iZ2)
+
             DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+              dZ(1) = MeshE % Width(iZ1)
 
               iK = iK + 1
 
@@ -243,13 +266,42 @@ CONTAINS
 
               END DO
 
+              DO iCR = 1, nCR
+
+                Flux_X1_q(:,iK,iCR) &
+                  = dZ(1) * dZ(3) * dZ(4) * Weights_q(:) &
+                      * Flux_X1_q(:,iK,iCR)
+
+              END DO
+
             END DO
           END DO
         END DO
       END DO
+
+      wTime = MPI_WTIME( ) - wTime
+
+      print*, "Prep Time = ", wTime
+
+      wTime = MPI_WTIME( )
+
+      DO iCR = 1, nCR
+
+        CALL DGEMM &
+               ( 'T', 'N', nDOF, nK, nDOF, One, dLdX1_q(:,:), nDOF, &
+                 Flux_X1_q(:,:,iCR), nDOF, Zero, dU_q(:,:,iCR), nDOF )
+
+      END DO
+
+      wTime = MPI_WTIME( ) - wTime
+
+      print*, "Comp Time = ", wTime
+
     END DO
 
-    DEALLOCATE( Flux_X1_q )
+    DEALLOCATE( Flux_X1_q, dU_q )
+
+    print*, "ComputeIncrement_Divergence_X1_GPU (End)"
 
   END SUBROUTINE ComputeIncrement_Divergence_X1_GPU
 
