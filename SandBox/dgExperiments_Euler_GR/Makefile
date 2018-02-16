@@ -60,3 +60,5 @@ clean:
 clobber: clean
 	rm -f ApplicationDriver_$(MACHINE)
 	rm -f RiemannProblem_$(MACHINE)
+	rm -f *.dat
+	rm -rf *.dSYM

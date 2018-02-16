@@ -26,9 +26,9 @@ MODULE dgDiscretizationModule_Euler_GR
   USE GeometryComputationModule_Beta, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE FluidFieldsModule, ONLY: &
-    uCF, nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    rhsCF, uAF, nAF, iAF_P, iAF_Gm
+    uAF, nAF, iAF_P, iAF_Gm
   USE BoundaryConditionsModule_Beta, ONLY: &
     ApplyBoundaryConditions_Fluid
   USE EulerEquationsUtilitiesModule_Beta_GR, ONLY:  &
@@ -87,17 +87,14 @@ CONTAINS
 
     ! --- Apply Slope Limiter ---
 
-    CALL ApplySlopeLimiter_Euler_GR &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+!    CALL ApplySlopeLimiter_Euler_GR &
+!           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-    ! --- Update primitive and auxiliary fluid variables
-    CALL ComputeFromConserved( iX_B1, iX_E1, G, U, uPF, uAF )
-
     CALL ComputeIncrement_Divergence_X1 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -117,15 +114,15 @@ CONTAINS
             dU(:,iX1,iX2,iX3,iCF)                                 &
               = dU(:,iX1,iX2,iX3,iCF)                             &
                   / ( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                        * dX1 * dX2 * dX3 )
-
+                  * dX1 * dX2 * dX3 )
+            
           END DO
         END DO
       END DO
     END DO
 
-    CALL ComputeIncrement_Geometry &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+!!$    CALL ComputeIncrement_Geometry &
+!!$         ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
   END SUBROUTINE ComputeIncrement_Euler_GR_DG_Explicit
 
@@ -180,6 +177,8 @@ CONTAINS
 
         DO iX1 = iX_B0(1), iX_E0(1) + 1
 
+!           WRITE(*,*) 'iX1, iX2, iX3:' , iX1, iX2, iX3
+
           DO iCF = 1, nCF
 
             uCF_P(:,iCF) = U(:,iX1-1,iX2,iX3,iCF)
@@ -202,14 +201,21 @@ CONTAINS
           !--------------------
 
           IF( iX1 < iX_E0(1) + 1 )THEN
-
+            WRITE(*,*)
+            WRITE(*,*) 'Volume term'
+            WRITE(*,*) 'iX1:' , iX1
+            WRITE(*,*) 'D:   ' , uCF_K(:,iCF_D)
+            WRITE(*,*) 'S1:  ' , uCF_K(:,iCF_S1)
+            WRITE(*,*) 'E:   ' , uCF_K(:,iCF_E)
+            
             CALL ComputePrimitive_GR &
                ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                  uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                  uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                  uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                 P_K(:),                                            &
-                 G_K(:,iGF_Gm_dd_11), G_K(:,iGF_Gm_dd_22), G_K(:,iGF_Gm_dd_33) )
+                 G_K(:,iGF_Gm_dd_11),                               &
+                 G_K(:,iGF_Gm_dd_22),                               &
+                 G_K(:,iGF_Gm_dd_33), P_K(:) )
 
             DO iNodeX = 1, nDOFX
 
@@ -260,7 +266,6 @@ CONTAINS
 
           DO iCF = 1, nCF
 
-
             ! --- Left States ---
 
             CALL DGEMV &
@@ -295,9 +300,9 @@ CONTAINS
 
           CALL Timer_Start( dT_INT_G_GR )
 
-          G_F = Zero
-
           ! --- Face States (Average of Left and Right States) ---
+
+          G_F = Zero
 
           ! --- Scale Factors ---
 
@@ -338,15 +343,21 @@ CONTAINS
           ! --- Could maybe replace the next two subroutine calls with
           ! --- one call to ComputeFromConserved
 
+          WRITE(*,*)
+          WRITE(*,*) 'Divergence term, Left State Primitive'
+          WRITE(*,*) 'iX1: ' , iX1
+          WRITE(*,*) 'D:   ' , uCF_L(:,iCF_D)
+          WRITE(*,*) 'S1:  ' , uCF_L(:,iCF_S1)
+          WRITE(*,*) 'E:   ' , uCF_L(:,iCF_E)
+
           CALL ComputePrimitive_GR &
                  ( uCF_L(:,iCF_D ), uCF_L(:,iCF_S1), uCF_L(:,iCF_S2), &
                    uCF_L(:,iCF_S3), uCF_L(:,iCF_E ), uCF_L(:,iCF_Ne), &
                    uPF_L(:,iPF_D ), uPF_L(:,iPF_V1), uPF_L(:,iPF_V2), &
                    uPF_L(:,iPF_V3), uPF_L(:,iPF_E ), uPF_L(:,iPF_Ne), &
-                   uAF_L(:,iAF_P),                                    &
                    G_F(:,iGF_Gm_dd_11),                               &
                    G_F(:,iGF_Gm_dd_22),                               &
-                   G_F(:,iGF_Gm_dd_33) )
+                   G_F(:,iGF_Gm_dd_33), uAF_L(:,iAF_P) )
 
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L(:) )
@@ -367,33 +378,40 @@ CONTAINS
                     G_F  (iNodeX_X1,iGF_Alpha),    &
                     G_F  (iNodeX_X1,iGF_Beta_1) )
 
-
-            Flux_X1_L(iNodeX_X1,1:nCF)           &
-              = Flux_X1_GR                       &
-                  ( uPF_L(iNodeX_X1,iPF_D ),     &
-                    uPF_L(iNodeX_X1,iPF_V1),     &
-                    uPF_L(iNodeX_X1,iPF_V2),     &
-                    uPF_L(iNodeX_X1,iPF_V3),     &
-                    uPF_L(iNodeX_X1,iPF_E ),     &
-                    uPF_L(iNodeX_X1,iPF_Ne),     &
-                    uAF_L(iNodeX_X1,iAF_P ),     &
-                    G_F(iNodeX_X1,iGF_Gm_dd_11), &
-                    G_F(iNodeX_X1,iGF_Gm_dd_22), &
-                    G_F(iNodeX_X1,iGF_Gm_dd_33), &
-                    G_F(iNodeX_X1,iGF_Alpha),    &
-                    G_F(iNodeX_X1,iGF_Beta_1) )
+            Flux_X1_L(iNodeX_X1,1:nCF)             &
+              = Flux_X1_GR                         &
+                  ( uPF_L(iNodeX_X1,iPF_D ),       &
+                    uPF_L(iNodeX_X1,iPF_V1),       &
+                    uPF_L(iNodeX_X1,iPF_V2),       &
+                    uPF_L(iNodeX_X1,iPF_V3),       &
+                    uPF_L(iNodeX_X1,iPF_E ),       &
+                    uPF_L(iNodeX_X1,iPF_Ne),       &
+                    uAF_L(iNodeX_X1,iAF_P ),       &
+                    G_F  (iNodeX_X1,iGF_Gm_dd_11), &
+                    G_F  (iNodeX_X1,iGF_Gm_dd_22), &
+                    G_F  (iNodeX_X1,iGF_Gm_dd_33), &
+                    G_F  (iNodeX_X1,iGF_Alpha),    &
+                    G_F  (iNodeX_X1,iGF_Beta_1) )
 
           END DO
 
           ! --- Right State Primitive, etc. ---
+
+          WRITE(*,*)
+          WRITE(*,*) 'Divergence term, Right State Primitive'
+          WRITE(*,*) 'iX1: ' , iX1
+          WRITE(*,*) 'D:   ' , uCF_R(:,iCF_D)
+          WRITE(*,*) 'S1:  ' , uCF_R(:,iCF_S1)
+          WRITE(*,*) 'E:   ' , uCF_R(:,iCF_E)
 
           CALL ComputePrimitive_GR &
                ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
                  uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
                  uPF_R(:,iPF_D ), uPF_R(:,iPF_V1), uPF_R(:,iPF_V2), &
                  uPF_R(:,iPF_V3), uPF_R(:,iPF_E ), uPF_R(:,iPF_Ne), &
-                 uAF_R(:,iAF_P),                                    &
-                 G_F(:,iGF_Gm_dd_11), G_F(:,iGF_Gm_dd_22), G_F(:,iGF_Gm_dd_33) )
+                 G_F(:,iGF_Gm_dd_11),                               &
+                 G_F(:,iGF_Gm_dd_22),                               &
+                 G_F(:,iGF_Gm_dd_33), uAF_R(:,iAF_P) )
 
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R(:) )
@@ -456,7 +474,7 @@ CONTAINS
                     G_F  (iNodeX_X1,iGF_Beta_1) )
 
             NumericalFlux( iNodeX_X1,:)                &
-              = NumericalFlux_X1_HLLC_GR               &
+              = NumericalFlux_X1_LLF_GR               &
                   ( uCF_L(iNodeX_X1,1:nCF),            &
                     uCF_R(iNodeX_X1,1:nCF),            &
                     Flux_X1_L(iNodeX_X1,1:nCF),        &
@@ -615,13 +633,21 @@ CONTAINS
 
           P_K(:) = uAF(:,iX1,iX2,iX3,iAF_P)
 
+          WRITE(*,*)
+          WRITE(*,*) 'In ComputeIncrementGeometry'
+          WRITE(*,*) 'iX1: ' , iX1
+          WRITE(*,*) 'D:   ' , uCF_K(:,iCF_D)
+          WRITE(*,*) 'S1:  ' , uCF_K(:,iCF_S1)
+          WRITE(*,*) 'E:   ' , uCF_K(:,iCF_E)
+
           CALL ComputePrimitive_GR &
                ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                  uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                  uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                  uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                 P_K(:),                                            &
-                 G_K(:,iGF_Gm_dd_11), G_K(:,iGF_Gm_dd_22), G_K(:,iGF_Gm_dd_33) )
+                 G_K(:,iGF_Gm_dd_11),                               &
+                 G_K(:,iGF_Gm_dd_22),                               &
+                 G_K(:,iGF_Gm_dd_33), P_K(:) )
 
           DO iNodeX = 1, nDOFX
 
@@ -640,6 +666,9 @@ CONTAINS
           ! --- Scale Factor Derivatives wrt X1 ---
 
           ! --- Face States (Average of Left and Right States) ---
+
+          !G_X1_Dn = Zero ! Tried this, didn't fix bug
+          !G_X1_Up = Zero
 
           DO iGF = iGF_h_1, iGF_h_3
 

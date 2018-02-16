@@ -27,14 +27,14 @@ CONTAINS
 
         D_L = 1.0_DP
         V_L = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-        P_L = 1.0d0
+        P_L = 1.0_DP
 
         D_R = 0.125_DP
         V_R = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-        P_R = 1.0d-1
+        P_R = 0.1_DP
 
         t     = 0.0_DP
-        t_end = 1.0d+1
+        t_end = 10.0_DP
         CFL   = 0.1_DP
         xR    = 1.0d0
         x_D   = 0.5_DP

@@ -177,6 +177,8 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
+        WRITE(*,*) 'Calling ComputeIncrement_Fluid'
+        WRITE(*,*) 'jS: ' , jS
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
@@ -190,7 +192,9 @@ CONTAINS
     DO iS = 1, nStages_SSPRK
 
       IF( w_SSPRK(iS) .NE. Zero )THEN
-
+          
+        WRITE(*,*) 'Calling AddIncrement_Fluid'
+        WRITE(*,*) 'iS:' , iS
         CALL AddIncrement_Fluid &
                ( One, &
                  U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &

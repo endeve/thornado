@@ -30,39 +30,48 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
 CONTAINS
 
 
-  SUBROUTINE ComputeFromConserved( iX_B, iX_E, G, U, P, A )
+  SUBROUTINE ComputeFromConserved( iX_B0, iX_E0, G, U, P, A )
 
     INTEGER, INTENT(in)  :: &
-      iX_B(3), iX_E(3)
+      iX_B0(3), iX_E0(3)
     REAL(DP), INTENT(in) :: &
-      G(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
-      U(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:), &
+      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(inout)  :: &
-      P(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
-      A(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      P(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:), &
+      A(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     INTEGER :: iX1, iX2, iX3
 
     ! --- Update primitive variables, pressure, and sound speed
-    DO iX3 = iX_B(3), iX_E(3)
-      DO iX2 = iX_B(2), iX_E(2)
-        DO iX1 = iX_B(1), iX_E(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+          WRITE(*,*)
+          WRITE(*,*) 'In ComputeFromConserved'
+          WRITE(*,*) 'iX1: ' , iX1
+          WRITE(*,*) 'D:   ' , U(1:,iX1,iX2,iX3,iCF_D)
+          WRITE(*,*) 'S1:  ' , U(1:,iX1,iX2,iX3,iCF_S1)
+          WRITE(*,*) 'E:   ' , U(1:,iX1,iX2,iX3,iCF_E)
+          WRITE(*,*) 'Gm11:' , G(1:,iX1,iX2,iX3,iGF_Gm_dd_11)
+          WRITE(*,*) 'Gm22:' , G(1:,iX1,iX2,iX3,iGF_Gm_dd_22)
+          WRITE(*,*) 'Gm33:' , G(1:,iX1,iX2,iX3,iGF_Gm_dd_33)
           CALL ComputePrimitive_GR &
-            ( U(1:,iX1,iX2,iX3,iCF_D),  &
-              U(1:,iX1,iX2,iX3,iCF_S1), &
-              U(1:,iX1,iX2,iX3,iCF_S2), &
-              U(1:,iX1,iX2,iX3,iCF_S3), &
-              U(1:,iX1,iX2,iX3,iCF_E),  &
-              U(1:,iX1,iX2,iX3,iCF_Ne), &
-              P(1:,iX1,iX2,iX3,iPF_D),  &
-              P(1:,iX1,iX2,iX3,iPF_V1), &
-              P(1:,iX1,iX2,iX3,iPF_V2), &
-              P(1:,iX1,iX2,iX3,iPF_V3), &
-              P(1:,iX1,iX2,iX3,iPF_E),  &
-              P(1:,iX1,iX2,iX3,iPF_Ne), &
-              A(1:,iX1,iX2,iX3,iAF_P),  &
+            ( U(1:,iX1,iX2,iX3,iCF_D),        &
+              U(1:,iX1,iX2,iX3,iCF_S1),       &
+              U(1:,iX1,iX2,iX3,iCF_S2),       &
+              U(1:,iX1,iX2,iX3,iCF_S3),       &
+              U(1:,iX1,iX2,iX3,iCF_E),        &
+              U(1:,iX1,iX2,iX3,iCF_Ne),       &
+              P(1:,iX1,iX2,iX3,iPF_D),        &
+              P(1:,iX1,iX2,iX3,iPF_V1),       &
+              P(1:,iX1,iX2,iX3,iPF_V2),       &
+              P(1:,iX1,iX2,iX3,iPF_V3),       &
+              P(1:,iX1,iX2,iX3,iPF_E),        &
+              P(1:,iX1,iX2,iX3,iPF_Ne),       &
               G(1:,iX1,iX2,iX3,iGF_Gm_dd_11), &
               G(1:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-              G(1:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+              G(1:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+              A(1:,iX1,iX2,iX3,iAF_P) )
 
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( P(1:,iX1,iX2,iX3,iPF_D), P(1:,iX1,iX2,iX3,iPF_E), &
@@ -77,91 +86,115 @@ CONTAINS
   SUBROUTINE ComputePrimitive_GR &
               ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
                 PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-                AF_P, GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, AF_P )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, &
-                                           CF_E, CF_Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, &
-                                           PF_E, PF_Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: AF_P
+    REAL(DP), DIMENSION(:), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
+    REAL(DP), DIMENSION(:), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
     REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
+    REAL(DP), DIMENSION(:), INTENT(out) :: AF_P
 
     LOGICAL :: Converged
     INTEGER :: i, nIter, nNodes
 
-    REAL(DP), DIMENSION( 1 : SIZE( CF_D ) ) :: SSq, Pold, vSq, W, h, Pnew
+    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew
 
     REAL(DP) :: FunP, JacP
     REAL(DP), PARAMETER :: TolP = 1.0d-8
 
-    SSq = CF_S1**2 / GF_Gm_dd_11 &
-          + CF_S2**2 / GF_Gm_dd_22 &
-          + CF_S3**2 / GF_Gm_dd_33
-
-    ! --- Find Pressure with Newton's Method ---
-
-    Pold = AF_P ! -- Initial guess
-
-    ! --- Approximation for pressure assuming h^2=1
-    !Pold = SQRT( SSq + CF_D**2 ) - CF_D - CF_E
-
-    nNodes = SIZE( Pold )
+    nNodes = SIZE( CF_D )
 
     ! Loop through all the nodes
     DO i = 1, nNodes
-       
+
       Converged = .FALSE.
       nIter     = 0
+
+      SSq = CF_S1(i)**2 / GF_Gm_dd_11(i) &
+            + CF_S2(i)**2 / GF_Gm_dd_22(i) &
+              + CF_S3(i)**2 / GF_Gm_dd_33(i)
+
+!!$      WRITE(*,*)
+!!$      WRITE(*,*) 'In ComputePrimitive_GR subroutine'
+      WRITE(*,*)
+      WRITE(*,'(A6,I1,A1,I1)') ' Node ' , i , '/' , nNodes
+      WRITE(*,*) 'CF_D(i): ' , CF_D(i)
+      WRITE(*,*) 'CF_S1(i):' , CF_S1(i)
+      WRITE(*,*) 'CF_S2(i):' , CF_S2(i)
+      WRITE(*,*) 'CF_S3(i):' , CF_S3(i)
+      WRITE(*,*) 'CF_E(i): ' , CF_E(i)
+      WRITE(*,*)
+      
+      ! --- Find Pressure with Newton's Method ---
+      Pold = AF_P(i) ! -- Initial guess
+
+      ! --- Approximation for pressure assuming h^2=1
+      !Pold = SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i)
 
       DO WHILE ( .NOT. Converged )
 
         nIter = nIter + 1
+        WRITE(*,*) 'nIter: ' , nIter
 
-        CALL ComputeFunJacP( CF_D(i), SSq(i), CF_E(i), Pold(i), FunP, JacP )
+        CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
 
-        Pnew(i) = Pold(i) - FunP / JacP
+        WRITE(*,*) 'JacP:' , JacP
+
+        Pnew = Pold - FunP / JacP
 
         ! Check if Newton's method has converged
-        IF( ABS( Pnew(i) / Pold(i) - 1.0_DP ) <= TolP ) Converged = .TRUE.
+        IF( ABS( Pnew / Pold - 1.0_DP ) <= TolP ) Converged = .TRUE.
 
         ! For de-bugging
         IF( nIter == 10 )THEN
+          WRITE(*,*) 'nIter = 10'
           WRITE(*,*) 'No convergence, |ERROR|:', &
-                      ABS( Pnew(i) / Pold(i) - 1.0_DP )
-          WRITE(*,*) 'Pold:                   ', Pold(i)
-          WRITE(*,*) 'Pnew:                   ', Pnew(i)
+                      ABS( Pnew / Pold - 1.0_DP )
+          WRITE(*,*) 'Pold:                   ', Pold
+          WRITE(*,*) 'Pnew:                   ', Pnew
           STOP
         END IF
 
-        Pold(i) = Pnew(i)
+        Pold = Pnew
 
       END DO
 
-    WRITE(10,'(I1)') nIter
+      AF_P(i) = Pnew
+
+      vSq = SSq / ( CF_E(i) + Pnew + CF_D(i) )**2
+
+      W = 1.0_DP / SQRT( 1.0_DP - vSq )
+
+      h = ( CF_E(i) + Pnew + CF_D(i) ) / ( W * CF_D(i) )
+
+      ! --- Recover Primitive Variables ---
+
+      PF_D(i)  = CF_D(i) / W
+
+      PF_V1(i) = CF_S1(i) / ( CF_D(i) * h * W * GF_Gm_dd_11(i) )
+
+      PF_V2(i) = CF_S2(i) / ( CF_D(i) * h * W * GF_Gm_dd_22(i) )
+
+      PF_V3(i) = CF_S3(i) / ( CF_D(i) * h * W * GF_Gm_dd_33(i) )
+
+      PF_E(i)  = CF_D(i) * ( h - 1.0_DP ) / W - Pnew
+
+      PF_Ne(i) = CF_Ne(i) / W
+
+
+      WRITE(*,*)
+      WRITE(*,*) 'h:       ' , h
+      WRITE(*,*) 'Pnew:    ' , Pnew
+      WRITE(*,*) 'Primitive'
+      WRITE(*,*) 'PF_D(i): ' , PF_D(i)
+      WRITE(*,*) 'PF_V1(i):' , PF_V1(i)
+      WRITE(*,*) 'PF_V2(i):' , PF_V2(i)
+      WRITE(*,*) 'PF_V3(i):' , PF_V3(i)
+      WRITE(*,*) 'PF_E(i): ' , PF_E(i)
+      WRITE(*,*)
+      
+!      WRITE(10,'(I1)') nIter
 
     END DO
-
-    AF_P = Pnew
-
-    vSq = SSq / ( CF_E + Pnew + CF_D )**2
-
-    W = 1.0_DP / SQRT( 1.0_DP - vSq )
-
-    h = ( CF_E + Pnew + CF_D ) / ( W * CF_D )
-
-    ! --- Recover Primitive Variables ---
-
-    PF_D  = CF_D / W
-
-    PF_V1 = CF_S1 / ( CF_D * h * W * GF_Gm_dd_11 )
-
-    PF_V2 = CF_S2 / ( CF_D * h * W * GF_Gm_dd_22 )
-
-    PF_V3 = CF_S3 / ( CF_D * h * W * GF_Gm_dd_33 )
-
-    PF_E  = CF_D * ( h - 1.0_DP ) / W - Pnew
-
-    PF_Ne = CF_Ne / W
 
   END SUBROUTINE ComputePrimitive_GR
 
@@ -181,8 +214,8 @@ CONTAINS
     REAL(DP), DIMENSION( 1 : SIZE(PF_D) ) :: vSq, W, h
 
     vSq = GF_Gm_dd_11 * PF_V1**2 &
-        + GF_Gm_dd_22 * PF_V2**2 &
-        + GF_Gm_dd_33 * PF_V3**2
+          + GF_Gm_dd_22 * PF_V2**2 &
+            + GF_Gm_dd_33 * PF_V3**2
 
     W = 1.0_DP / SQRT( 1.0_DP - vSq )
     h = 1.0_DP + ( PF_E + AF_P ) / PF_D
@@ -197,15 +230,17 @@ CONTAINS
   END SUBROUTINE ComputeConserved_GR
   
 
-  SUBROUTINE ComputeFunJacP( D, SSq, E, P, FunP, JacP )
+  SUBROUTINE ComputeFunJacP( D, E, SSq, P, FunP, JacP )
 
-    REAL(DP), INTENT(in)  :: D, SSq, E, P
+    REAL(DP), INTENT(in)  :: D, E, SSq, P
     REAL(DP), INTENT(out) :: FunP, JacP
 
     REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS
     REAL(DP), DIMENSION(1) :: Pbar
 
     HSq = ( E + P + D )**2
+
+    WRITE(*,*) 'HSq, SSq:' , HSq , SSq
 
     RHO = D * SQRT( HSq - SSq ) / SQRT( HSq )
 

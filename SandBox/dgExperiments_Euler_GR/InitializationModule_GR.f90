@@ -154,13 +154,15 @@ CONTAINS
 !!$
 !!$            END IF
 
+            ! --- Smooth solution ---
+
             uPF(iNodeX,iX1,iX2,iX3,iPF_D)  &
               = 1.0_DP + 0.1_DP * SIN( TwoPi * X1 )
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
             uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
             uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-            uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.01_DP / (Gamma_IDEAL-One)
-            uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.01_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0d-6 / (Gamma_IDEAL-One)
+            uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d-6
 
           END DO
 
