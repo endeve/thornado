@@ -181,6 +181,35 @@ CONTAINS
 
         alpha_IM = 0.260444263529413_DP
 
+      CASE ( 'IMEX_P_A2_RC2' )
+
+        nStages = 3
+        CALL AllocateButcherTables( nStages )
+
+        ! --- Coefficients from Ran Chu (2018) ---
+
+        a_EX(2,1) = 1.063612014417258_DP
+        a_EX(3,1) = 0.529903768270289_DP
+        a_EX(3,2) = 0.470096231729711_DP
+
+        w_EX(1)   = a_EX(3,1)
+        w_EX(2)   = a_EX(3,2)
+
+        alpha_EX = 0.377549414083044_DP
+
+        a_IM(1,1) = 0.231157005614910_DP
+        a_IM(2,1) = 0.226956591610883_DP
+        a_IM(2,2) = 0.576089691643813_DP
+        a_IM(3,1) = 0.138355033665218_DP
+        a_IM(3,2) = 0.250022702377217_DP
+        a_IM(3,3) = 0.611622263957565_DP
+
+        w_IM(1)   = a_IM(3,1)
+        w_IM(2)   = a_IM(3,2)
+        w_IM(3)   = a_IM(3,3)
+
+        alpha_IM = 0.344383801124686_DP
+
       CASE ( 'IMEX_P_ARS2' )
 
         nStages = 4
@@ -293,6 +322,29 @@ CONTAINS
         w_IM(2)   = a_IM(3,2)
         w_IM(3)   = a_IM(3,3)
 
+      CASE ( 'IMEX_SSP2322' )
+
+        ! --- Coefficients from Pareschi & Russo (2005) ---
+        ! --- J. Sci. Comput. 25, 129-154 -----------------
+
+        nStages = 3
+        CALL AllocateButcherTables( nStages )
+
+        a_EX(3,2) = 1.0_DP
+
+        w_EX(2)   =  0.5_DP
+        w_EX(3)   =  0.5_DP
+
+        a_IM(1,1) =  0.5_DP
+        a_IM(2,1) = -0.5_DP
+        a_IM(2,2) =  0.5_DP
+        a_IM(3,2) =  0.5_DP
+        a_IM(3,3) =  0.5_DP
+
+        w_IM(1)   = a_IM(3,1)
+        w_IM(2)   = a_IM(3,2)
+        w_IM(3)   = a_IM(3,3)
+
       CASE ( 'IMEX_RKCB2' )
 
         ! --- Coefficients from Cavaglieri & Bewley (2015) ---
@@ -376,6 +428,7 @@ CONTAINS
         WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2_RC'
         WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2_RC2'
         WRITE(*,'(A6,A)') '', 'IMEX_SSP2332'
+        WRITE(*,'(A6,A)') '', 'IMEX_SSP2322'
         WRITE(*,'(A6,A)') '', 'IMEX_RKCB2'
         WRITE(*,'(A6,A)') '', 'IMEX_SIRK2'
         WRITE(*,'(A6,A)') '', 'IMEX_PC2'
