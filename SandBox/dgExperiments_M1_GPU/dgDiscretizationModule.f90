@@ -196,28 +196,33 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
 
-    INTEGER  :: nK, iK, nZ(4), iNode
+    INTEGER  :: nK, iK, nF, iF, nZ(4), iNode
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iCR
     REAL(DP) :: wTime
     REAL(DP) :: Ones_q(nDOF), dZ(4)
     REAL(DP) :: P_q(1:nDOF,1:nPR), FF_q(1:nDOF), EF_q(1:nDOF)
     REAL(DP), ALLOCATABLE :: Flux_X1_q(:,:,:), dU_q(:,:,:)
+    REAL(DP), ALLOCATABLE :: U_P(:,:,:), U_K(:,:,:)
 
     print*, "ComputeIncrement_Divergence_X1_GPU (Begin)"
 
     nZ = iZ_E0 - iZ_B0 + 1
     nK = PRODUCT( nZ )
+    nF = PRODUCT( nZ + [0,1,0,0] )
 
     Ones_q = One
 
     ALLOCATE( Flux_X1_q(1:nDOF,1:nK,1:nCR) )
     ALLOCATE( dU_q     (1:nDOF,1:nK,1:nCR) )
+    ALLOCATE( U_P      (1:nDOF,1:nF,1:nCR) )
+    ALLOCATE( U_K      (1:nDOF,1:nF,1:nCR) )
 
     PRINT*, "  nDOF, nK = ", nDOF, nK
 
     DO iS = 1, nSpecies
 
       iK = 0
+      iF = 0
 
       wTime = MPI_WTIME( )
 
@@ -229,7 +234,7 @@ CONTAINS
 
           dZ(3) = MeshX(2) % Width(iZ3)
 
-          DO iZ2 = iZ_B0(2), iZ_E0(2)
+          DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
 
             dZ(2) = MeshX(1) % Width(iZ2)
 
@@ -237,42 +242,51 @@ CONTAINS
 
               dZ(1) = MeshE % Width(iZ1)
 
-              iK = iK + 1
+              IF( iZ2 < iZ_E0(2) + 1 )THEN
 
-              CALL ComputePrimitive &
-                       ( U(:,iZ1,iZ2,iZ3,iZ4,iCR_N, iS), &
-                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
-                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
-                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                         P_q(:,iPR_D ), P_q(:,iPR_I1), &
-                         P_q(:,iPR_I2), P_q(:,iPR_I3), &
-                         Ones_q(:), Ones_q(:), Ones_q(:) )
+                iK = iK + 1
 
-              FF_q = FluxFactor &
-                       ( P_q(:,iPR_D ), P_q(:,iPR_I1), &
-                         P_q(:,iPR_I2), P_q(:,iPR_I3), &
-                         Ones_q(:), Ones_q(:), Ones_q(:) )
+                CALL ComputePrimitive &
+                         ( U(:,iZ1,iZ2,iZ3,iZ4,iCR_N, iS), &
+                           U(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                           U(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                           U(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                           P_q(:,iPR_D ), P_q(:,iPR_I1), &
+                           P_q(:,iPR_I2), P_q(:,iPR_I3), &
+                           Ones_q(:), Ones_q(:), Ones_q(:) )
 
-              EF_q = EddingtonFactor( P_q(:,iPR_D), FF_q )
+                FF_q = FluxFactor &
+                         ( P_q(:,iPR_D ), P_q(:,iPR_I1), &
+                           P_q(:,iPR_I2), P_q(:,iPR_I3), &
+                           Ones_q(:), Ones_q(:), Ones_q(:) )
 
-              DO iNode = 1, nDOF
+                EF_q = EddingtonFactor( P_q(:,iPR_D), FF_q )
 
-                Flux_X1_q(iNode,iK,1:nCR) &
-                  = Flux_X1 &
-                      ( P_q(iNode,iPR_D ), P_q(iNode,iPR_I1), &
-                        P_q(iNode,iPR_I2), P_q(iNode,iPR_I3), &
-                        FF_q(iNode), EF_q(iNode), &
-                        One, One, One )
+                DO iNode = 1, nDOF
 
-              END DO
+                  Flux_X1_q(iNode,iK,1:nCR) &
+                    = Flux_X1 &
+                        ( P_q(iNode,iPR_D ), P_q(iNode,iPR_I1), &
+                          P_q(iNode,iPR_I2), P_q(iNode,iPR_I3), &
+                          FF_q(iNode), EF_q(iNode), &
+                          One, One, One )
 
-              DO iCR = 1, nCR
+                END DO
 
-                Flux_X1_q(:,iK,iCR) &
-                  = dZ(1) * dZ(3) * dZ(4) * Weights_q(:) &
-                      * Flux_X1_q(:,iK,iCR)
+                DO iCR = 1, nCR
 
-              END DO
+                  Flux_X1_q(:,iK,iCR) &
+                    = dZ(1) * dZ(3) * dZ(4) * Weights_q(:) &
+                        * Flux_X1_q(:,iK,iCR)
+
+                END DO
+
+              END IF
+
+              iF = iF + 1
+
+              U_P(:,iF,1:nCR) = U(:,iZ1,iZ2-1,iZ3,iZ4,1:nCR,iS)
+              U_K(:,iF,1:nCR) = U(:,iZ1,iZ2,  iZ3,iZ4,1:nCR,iS)
 
             END DO
           END DO
@@ -299,7 +313,7 @@ CONTAINS
 
     END DO
 
-    DEALLOCATE( Flux_X1_q, dU_q )
+    DEALLOCATE( Flux_X1_q, dU_q, U_P, U_K )
 
     print*, "ComputeIncrement_Divergence_X1_GPU (End)"
 
