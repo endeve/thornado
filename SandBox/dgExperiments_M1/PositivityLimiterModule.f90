@@ -35,6 +35,7 @@ MODULE PositivityLimiterModule
   INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
   INTEGER               :: nPT      ! Number of Positive Points
   REAL(DP)              :: Min_1, Max_1, Min_2
+  REAL(DP)              :: Theta_FD
   REAL(DP), ALLOCATABLE :: U_PP(:,:)
 
 CONTAINS
@@ -66,15 +67,20 @@ CONTAINS
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
       UsePositivityLimiter = UsePositivityLimiter_Option
 
+    Theta_FD = One
+    IF( Max_1 > One ) &
+      Theta_FD = Zero
+
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'InitializePositivityLimiter'
     WRITE(*,*)
     WRITE(*,'(A6,A,L1)') &
       '', 'Use Positivity Limiter: ', UsePositivityLimiter 
     WRITE(*,*)
-    WRITE(*,'(A6,A,ES12.4E3)') '', 'Min_1 = ', Min_1
-    WRITE(*,'(A6,A,ES12.4E3)') '', 'Max_1 = ', Max_1
-    WRITE(*,'(A6,A,ES12.4E3)') '', 'Min_2 = ', Min_2
+    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
+    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_1 = ', Max_1
+    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
+    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Theta_FD = ', Theta_FD
 
     nPP = 0
     nPP(1) = PRODUCT( nNodesZ )
@@ -316,7 +322,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: N, G1, G2, G3
 
-    GammaFun = ( One - N ) * N - SQRT( G1**2 + G2**2 + G3**2 )
+    GammaFun = ( One - Theta_FD * N ) * N - SQRT( G1**2 + G2**2 + G3**2 )
 
     RETURN
   END FUNCTION GammaFun
