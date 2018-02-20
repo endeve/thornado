@@ -579,8 +579,7 @@ CONTAINS
         CALL MapFromStage( iZ_B1, U, U_IMEX )
 
         CALL ComputeIncrement_Implicit &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-                 dt * a_IM(iS,iS), GE, GX, U, dU )
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, U, dU )
 
         CALL MapToStage( iZ_B0, dU, dU_IM(:,iS) )
 
@@ -595,8 +594,7 @@ CONTAINS
         CALL MapFromStage( iZ_B1, U, U_IMEX )
 
         CALL ComputeIncrement_Explicit &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-                 GE, GX, U, dU )
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
         CALL MapToStage( iZ_B0, dU, dU_EX(:,iS) )
 
