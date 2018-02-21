@@ -14,10 +14,17 @@ MODULE InputOutputModuleHDF
   USE InputOutputUtilitiesModule, ONLY: &
     NodeCoordinates, &
     Field4D
+  USE GeometryFieldsModule, ONLY: &
+    uGF, nGF, namesGF
+  USE FluidFieldsModule, ONLY: &
+    uCF, nCF, namesCF, &
+    uPF, nPF, namesPF, &
+    uAF, nAF, namesAF
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     uCR, nCR, namesCR, &
-    uPR, nPR, namesPR
+    uPR, nPR, namesPR, &
+    uAR, nAR, namesAR
 
   USE HDF5
 
@@ -26,6 +33,10 @@ MODULE InputOutputModuleHDF
 
   CHARACTER(9),  PARAMETER :: &
     OutputDirectory = '../Output'
+  CHARACTER(14), PARAMETER :: &
+    GeometrySuffix  = 'GeometryFields'
+  CHARACTER(11), PARAMETER :: &
+    FluidSuffix     = 'FluidFields'
   CHARACTER(15), PARAMETER :: &
     RadiationSuffix = 'RadiationFields'
   INTEGER :: FileNumber = 0
@@ -61,6 +72,18 @@ CONTAINS
     IF( PRESENT( WriteRF_Option ) ) &
       WriteRF = WriteRF_Option
 
+    IF( WriteGF )THEN
+
+      CALL WriteGeometryFieldsHDF( Time )
+
+    END IF
+
+    IF( WriteFF )THEN
+
+      CALL WriteFluidFieldsHDF( Time )
+
+    END IF
+
     IF( WriteRF )THEN
 
       CALL WriteRadiationFieldsHDF( Time )
@@ -70,6 +93,197 @@ CONTAINS
     FileNumber = FileNumber + 1
 
   END SUBROUTINE WriteFieldsHDF
+
+
+  SUBROUTINE WriteGeometryFieldsHDF( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: GroupName
+    CHARACTER(256) :: DatasetName
+    INTEGER        :: iGF
+    INTEGER(HID_T) :: FILE_ID
+    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
+
+    WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+    FileName &
+      = OutputDirectory // '/' // &
+        TRIM( ProgramName ) // '_' // &
+        GeometrySuffix // '_' // &
+        FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
+
+    ! --- Write Time ---
+
+    DatasetName = '/Time'
+
+    CALL WriteDataset1DHDF &
+           ( [ Time ], DatasetName, FILE_ID )
+
+    ! --- Write Spatial Grid ---
+
+    GroupName = 'Spatial Grid'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ) , FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X1'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)), &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)), &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)), &
+             DatasetName, FILE_ID )
+
+    ! --- Write Geometry Variables ---
+
+    GroupName = 'Geometry Fields'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    DO iGF = 1, nGF
+
+      DatasetName = TRIM( GroupName ) // '/' // TRIM( namesGF(iGF) )
+
+      CALL WriteDataset3DHDF &
+             ( Dummy3D, DatasetName, FILE_ID )
+
+    END DO
+
+    CALL H5FCLOSE_F( FILE_ID, HDFERR )
+
+    CALL H5CLOSE_F( HDFERR )
+
+  END SUBROUTINE WriteGeometryFieldsHDF
+
+
+  SUBROUTINE WriteFluidFieldsHDF( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: GroupName
+    CHARACTER(256) :: GroupName2
+    CHARACTER(256) :: DatasetName
+    INTEGER        :: iFF
+    INTEGER(HID_T) :: FILE_ID
+    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
+
+    WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+    FileName &
+      = OutputDirectory // '/' // &
+        TRIM( ProgramName ) // '_' // &
+        FluidSuffix // '_' // &
+        FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
+
+    ! --- Write Time ---
+
+    DatasetName = '/Time'
+
+    CALL WriteDataset1DHDF &
+           ( [ Time ], DatasetName, FILE_ID )
+
+    ! --- Write Spatial Grid ---
+
+    GroupName = 'Spatial Grid'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ) , FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X1'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)), &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)), &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)), &
+             DatasetName, FILE_ID )
+
+    ! --- Write Fluid Variables ---
+
+    GroupName = 'Fluid Fields'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    ! --- Conserved ---
+
+    GroupName2 = TRIM( GroupName ) // '/Conserved'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName2 ), FILE_ID )
+
+    DO iFF = 1, nCF
+
+      DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesCF(iFF) )
+
+      CALL WriteDataset3DHDF &
+               ( Dummy3D, DatasetName, FILE_ID )
+
+    END DO
+
+    ! --- Primitive ---
+
+    GroupName2 = TRIM( GroupName ) // '/Primitive'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName2 ), FILE_ID )
+
+    DO iFF = 1, nPF
+
+      DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesPF(iFF) )
+
+      CALL WriteDataset3DHDF &
+               ( Dummy3D, DatasetName, FILE_ID )
+
+    END DO
+
+    ! --- Auxiliary ---
+
+    GroupName2 = TRIM( GroupName ) // '/Auxiliary'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName2 ), FILE_ID )
+
+    DO iFF = 1, nAF
+
+      DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesAF(iFF) )
+
+      CALL WriteDataset3DHDF &
+               ( Dummy3D, DatasetName, FILE_ID )
+
+    END DO
+
+    CALL H5FCLOSE_F( FILE_ID, HDFERR )
+
+    CALL H5CLOSE_F( HDFERR )
+
+  END SUBROUTINE WriteFluidFieldsHDF
 
 
   SUBROUTINE WriteRadiationFieldsHDF( Time )
@@ -191,6 +405,25 @@ CONTAINS
 
       END DO
 
+      ! --- Auxiliary ---
+
+      GroupName = TRIM( GroupNameSpecies  ) // '/Auxiliary'
+
+      CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+      DO iRF = 1, nAR
+
+        DatasetName = TRIM( GroupName ) // '/' // TRIM( namesAR(iRF) )
+
+        CALL WriteDataset4DHDF &
+               ( Field4D &
+                   ( uAR(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),iRF,iS), &
+                     [ nE, nX(1), nX(2), nX(3) ],                     &
+                     [ nNodesE, nNodesX(1), nNodesX(2), nNodesX(3) ], &
+                     nDOF, NodeNumberTable ), DatasetName, FILE_ID )
+
+      END DO
+
     END DO
 
     CALL H5FCLOSE_F( FILE_ID, HDFERR )
@@ -244,6 +477,37 @@ CONTAINS
     call H5DCLOSE_F( DATASET_ID, HDFERR )
 
   END SUBROUTINE WriteDataset1DHDF
+
+
+  SUBROUTINE WriteDataset3DHDF( Dataset, DatasetName, FILE_ID )
+
+    REAL(DP),         INTENT(in) :: Dataset(:,:,:)
+    CHARACTER(LEN=*), INTENT(in) :: DatasetName
+    INTEGER(HID_T),   INTENT(in) :: FILE_ID
+
+    INTEGER(HSIZE_T) :: DATASIZE(3)
+    INTEGER(HID_T)   :: DATASPACE_ID
+    INTEGER(HID_T)   :: DATASET_ID
+
+    DATASIZE = SHAPE( Dataset )
+
+    CALL H5SCREATE_F( H5S_SIMPLE_F, DATASPACE_ID, HDFERR )
+
+    CALL H5SSET_EXTENT_SIMPLE_F &
+           ( DATASPACE_ID, 3, DATASIZE, DATASIZE, HDFERR )
+
+    CALL H5DCREATE_F &
+           ( FILE_ID, TRIM( DatasetName ), H5T_NATIVE_DOUBLE, &
+             DATASPACE_ID, DATASET_ID, HDFERR )
+
+    call H5DWRITE_F &
+           ( DATASET_ID, H5T_NATIVE_DOUBLE, Dataset, DATASIZE, HDFERR )
+
+    call H5SCLOSE_F( DATASPACE_ID, HDFERR )
+
+    call H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE WriteDataset3DHDF
 
 
   SUBROUTINE WriteDataset4DHDF( Dataset, DatasetName, FILE_ID )
