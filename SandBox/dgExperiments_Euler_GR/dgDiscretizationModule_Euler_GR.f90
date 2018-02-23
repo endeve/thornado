@@ -87,8 +87,11 @@ CONTAINS
 
     ! --- Apply Slope Limiter ---
 
-!    CALL ApplySlopeLimiter_Euler_GR &
-!           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+    CALL ApplyBoundaryConditions_Fluid &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    CALL ApplySlopeLimiter_Euler_GR &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
@@ -121,8 +124,8 @@ CONTAINS
       END DO
     END DO
 
-!!$    CALL ComputeIncrement_Geometry &
-!!$         ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    CALL ComputeIncrement_Geometry &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
   END SUBROUTINE ComputeIncrement_Euler_GR_DG_Explicit
 
@@ -177,8 +180,6 @@ CONTAINS
 
         DO iX1 = iX_B0(1), iX_E0(1) + 1
 
-!           WRITE(*,*) 'iX1, iX2, iX3:' , iX1, iX2, iX3
-
           DO iCF = 1, nCF
 
             uCF_P(:,iCF) = U(:,iX1-1,iX2,iX3,iCF)
@@ -201,21 +202,16 @@ CONTAINS
           !--------------------
 
           IF( iX1 < iX_E0(1) + 1 )THEN
-            WRITE(*,*)
-            WRITE(*,*) 'Volume term'
-            WRITE(*,*) 'iX1:' , iX1
-            WRITE(*,*) 'D:   ' , uCF_K(:,iCF_D)
-            WRITE(*,*) 'S1:  ' , uCF_K(:,iCF_S1)
-            WRITE(*,*) 'E:   ' , uCF_K(:,iCF_E)
             
             CALL ComputePrimitive_GR &
                ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                  uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                  uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                  uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                 P_K(:),                                            &
                  G_K(:,iGF_Gm_dd_11),                               &
                  G_K(:,iGF_Gm_dd_22),                               &
-                 G_K(:,iGF_Gm_dd_33), P_K(:) )
+                 G_K(:,iGF_Gm_dd_33) )
 
             DO iNodeX = 1, nDOFX
 
@@ -227,7 +223,7 @@ CONTAINS
                       uPF_K(iNodeX,iPF_V3),     &
                       uPF_K(iNodeX,iPF_E ),     &                    
                       uPF_K(iNodeX,iPF_Ne),     &
-                      uAF_K(iNodeX,iAF_P ),     &                    
+                      P_K(iNodeX),     &                    
                       G_K(iNodeX,iGF_Gm_dd_11), &
                       G_K(iNodeX,iGF_Gm_dd_22), &
                       G_K(iNodeX,iGF_Gm_dd_33), &
@@ -340,24 +336,15 @@ CONTAINS
 
           ! --- Left State Primitive, etc. ---
 
-          ! --- Could maybe replace the next two subroutine calls with
-          ! --- one call to ComputeFromConserved
-
-          WRITE(*,*)
-          WRITE(*,*) 'Divergence term, Left State Primitive'
-          WRITE(*,*) 'iX1: ' , iX1
-          WRITE(*,*) 'D:   ' , uCF_L(:,iCF_D)
-          WRITE(*,*) 'S1:  ' , uCF_L(:,iCF_S1)
-          WRITE(*,*) 'E:   ' , uCF_L(:,iCF_E)
-
           CALL ComputePrimitive_GR &
                  ( uCF_L(:,iCF_D ), uCF_L(:,iCF_S1), uCF_L(:,iCF_S2), &
                    uCF_L(:,iCF_S3), uCF_L(:,iCF_E ), uCF_L(:,iCF_Ne), &
                    uPF_L(:,iPF_D ), uPF_L(:,iPF_V1), uPF_L(:,iPF_V2), &
                    uPF_L(:,iPF_V3), uPF_L(:,iPF_E ), uPF_L(:,iPF_Ne), &
+                   uAF_L(:,iAF_P),                                    &
                    G_F(:,iGF_Gm_dd_11),                               &
                    G_F(:,iGF_Gm_dd_22),                               &
-                   G_F(:,iGF_Gm_dd_33), uAF_L(:,iAF_P) )
+                   G_F(:,iGF_Gm_dd_33) )
 
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L(:) )
@@ -397,21 +384,15 @@ CONTAINS
 
           ! --- Right State Primitive, etc. ---
 
-          WRITE(*,*)
-          WRITE(*,*) 'Divergence term, Right State Primitive'
-          WRITE(*,*) 'iX1: ' , iX1
-          WRITE(*,*) 'D:   ' , uCF_R(:,iCF_D)
-          WRITE(*,*) 'S1:  ' , uCF_R(:,iCF_S1)
-          WRITE(*,*) 'E:   ' , uCF_R(:,iCF_E)
-
           CALL ComputePrimitive_GR &
                ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
                  uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
                  uPF_R(:,iPF_D ), uPF_R(:,iPF_V1), uPF_R(:,iPF_V2), &
                  uPF_R(:,iPF_V3), uPF_R(:,iPF_E ), uPF_R(:,iPF_Ne), &
+                 uAF_R(:,iAF_P),                                    &
                  G_F(:,iGF_Gm_dd_11),                               &
                  G_F(:,iGF_Gm_dd_22),                               &
-                 G_F(:,iGF_Gm_dd_33), uAF_R(:,iAF_P) )
+                 G_F(:,iGF_Gm_dd_33) )
 
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R(:) )
@@ -633,21 +614,15 @@ CONTAINS
 
           P_K(:) = uAF(:,iX1,iX2,iX3,iAF_P)
 
-          WRITE(*,*)
-          WRITE(*,*) 'In ComputeIncrementGeometry'
-          WRITE(*,*) 'iX1: ' , iX1
-          WRITE(*,*) 'D:   ' , uCF_K(:,iCF_D)
-          WRITE(*,*) 'S1:  ' , uCF_K(:,iCF_S1)
-          WRITE(*,*) 'E:   ' , uCF_K(:,iCF_E)
-
           CALL ComputePrimitive_GR &
                ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                  uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                  uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                  uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                 P_K(:),                                            &
                  G_K(:,iGF_Gm_dd_11),                               &
                  G_K(:,iGF_Gm_dd_22),                               &
-                 G_K(:,iGF_Gm_dd_33), P_K(:) )
+                 G_K(:,iGF_Gm_dd_33) )
 
           DO iNodeX = 1, nDOFX
 
@@ -666,9 +641,6 @@ CONTAINS
           ! --- Scale Factor Derivatives wrt X1 ---
 
           ! --- Face States (Average of Left and Right States) ---
-
-          !G_X1_Dn = Zero ! Tried this, didn't fix bug
-          !G_X1_Up = Zero
 
           DO iGF = iGF_h_1, iGF_h_3
 

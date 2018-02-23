@@ -44,11 +44,9 @@ PROGRAM RiemannProblem
   REAL(DP) :: t, dt, t_end, xR, x_D, CFL, Gamma, c = 1.0_DP
   REAL(DP) :: D_L, V_L(3), P_L, D_R, V_R(3), P_R
 
-!  OPEN(  10 , FILE = 'nIter.dat' )
-
   CALL RiemannProblemChoice &
          ( D_L, V_L, P_L, D_R, V_R, P_R, &
-           xR, x_D, K, t, t_end, CFL, Gamma, iRP = 0 )
+           xR, x_D, K, t, t_end, CFL, Gamma, iRP = 8 )
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -64,7 +62,7 @@ PROGRAM RiemannProblem
            xR_Option &
              = [ xR, 1.0d0, 1.0d0 ], &
            nNodes_Option &
-             = 2, &
+             = 1, &
            CoordinateSystem_Option &
              = 'CARTESIAN', &
            EquationOfState_Option &
@@ -96,15 +94,20 @@ PROGRAM RiemannProblem
 
   CALL WriteFields1D( t, .TRUE., .TRUE. )
 
-  CALL InitializeFluid_SSPRK( nStages = 2 )
+  CALL InitializeFluid_SSPRK( nStages = 3 )
 
-!  CALL InitializeSlopeLimiter
+  CALL InitializeSlopeLimiter
 
   iCycle = 0
 
   DO WHILE ( t < t_end )
 
-    WRITE(*,*) 't:' , t
+    IF( t + dt < t_end )THEN
+       t = t + dt
+    ELSE
+       dt = t_end - t
+       t = t_end
+    END IF
 
     iCycle = iCycle + 1
 
@@ -119,12 +122,7 @@ PROGRAM RiemannProblem
          ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
 
     ! --- Update primitive fluid variables, pressure, and sound speed
-    !CALL ComputeFromConserved( iX_B0, iX_E0, uGF, uCF, uPF, uAF )
-
-!    WRITE(*,*) 'Finished first time step, stopping...'
-!    STOP
-
-    t = t + dt
+    CALL ComputeFromConserved( iX_B0, iX_E0, uGF, uCF, uPF, uAF )
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
@@ -136,7 +134,7 @@ PROGRAM RiemannProblem
 
   CALL WriteFields1D( t, .TRUE., .TRUE. )
 
-!  CALL FinalizeSlopeLimiter
+  CALL FinalizeSlopeLimiter
 
   CALL FinalizeFluid_SSPRK
 
@@ -145,7 +143,5 @@ PROGRAM RiemannProblem
   CALL FinalizeReferenceElementX_Lagrange
 
   CALL FinalizeProgram
-
-!  CLOSE(10)
 
 END PROGRAM RiemannProblem

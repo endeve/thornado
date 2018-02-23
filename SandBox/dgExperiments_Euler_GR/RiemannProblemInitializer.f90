@@ -34,8 +34,8 @@ CONTAINS
         P_R = 0.1_DP
 
         t     = 0.0_DP
-        t_end = 10.0_DP
-        CFL   = 0.1_DP
+        t_end = 0.2_DP
+        CFL   = 0.5_DP
         xR    = 1.0d0
         x_D   = 0.5_DP
         K     = 128
@@ -181,7 +181,27 @@ CONTAINS
         K     = 400
         Gamma = 5.0_DP / 3.0_DP
 
-      CASE DEFAULT
+      CASE( 8 )
+
+        WRITE(*,*) 'Smooth Problem'
+
+        D_L = 1.0_DP
+        V_L = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        P_L = 1.0_DP
+
+        D_R = 0.125_DP
+        V_R = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        P_R = 0.1_DP
+
+        t     = 0.0_DP
+        t_end = 5.0_DP
+        CFL   = 0.1_DP
+        xR    = 1.0d0
+        x_D   = 0.5_DP
+        K     = 128
+        Gamma = 4.0_DP / 3.0_DP
+
+     CASE DEFAULT
 
         WRITE(*,*) 'Invalid choice for iRP, exiting...'
         STOP

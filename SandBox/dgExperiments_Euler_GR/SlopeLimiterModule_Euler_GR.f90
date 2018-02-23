@@ -195,7 +195,7 @@ CONTAINS
 
           IF( Shock(iX1,iX2,iX3) < LimiterThreshold ) CYCLE
 
-          PRINT*, "iX1,iX2,iX3 = ", iX1, iX2, iX3
+!          PRINT*, "iX1,iX2,iX3 = ", iX1, iX2, iX3
 
           DO iCF = 1, nCF
 
@@ -249,8 +249,8 @@ CONTAINS
 
           END IF
 
-          PRINT*, "dU(:,1)    = ", dU(:,1)
-          PRINT*, "U_M(:,0,2) = ", U_M(:,0,2)
+!          PRINT*, "dU(:,1)    = ", dU(:,1)
+!          PRINT*, "U_M(:,0,2) = ", U_M(:,0,2)
 
           DO iCF = 1, nCF
 
@@ -279,7 +279,7 @@ CONTAINS
 
             END IF
 
-            PRINT*, "iCF, SlopeDifference = ", iCF, SlopeDifference
+!            PRINT*, "iCF, SlopeDifference = ", iCF, SlopeDifference
 
             IF( SlopeDifference > SlopeTolerance )THEN
 
@@ -305,8 +305,6 @@ CONTAINS
     END DO
 
     wTime = MPI_WTIME( ) - wTime
-
-    PRINT*, "wTime = ", wTime
 
   END SUBROUTINE ApplySlopeLimiter_Euler_GR
 
