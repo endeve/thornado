@@ -3,37 +3,88 @@
 
 \subsection{Problems with Known Smooth Solutions}
 
+To compare the accuracy of the IMEX schemes, we present results from smooth problems in streaming, absorption, and scattering dominated regimes in one spatial dimension.  
+In all tests, we employ the maximum entropy closure in the low occupancy limit (i.e., the Minerbo closure).  
+
 \subsubsection{Sine Wave: Streaming}
+
+Periodic domain $D=\{x:x\in[0,1]\}$.  
+The initial condition is given by
+\begin{equation}
+  \cJ(x,t=0)=\cH_{x}(x,t=0)=0.5+0.49\times\sin\big(2\pi\,x\big).  
+\end{equation}
 
 \subsubsection{Sine Wave: Damping}
 
+Periodic domain $D=\{x:x\in[0,1]\}$.  
+
 \subsubsection{Sine Wave: Diffusion}
 
+\subsection{Packed Beam}
+
+Next we consider a one-dimensional test with discontinuous initial conditions.  
+The computational domain is $D=\{x:x\in[-1,1]\}$, and the initial condition is obtained from a distribution function given by
+\begin{equation}
+  f(x,\mu)
+  =\left\{
+  \begin{array}{cl}
+    1        & \text{if} ~ x\le x_{\mbox{\tiny D}}, ~ \mu\ge\mu_{\mbox{\tiny D}} \\
+    \delta & \text{if} ~ x\le x_{\mbox{\tiny D}}, ~ \mu<   \mu_{\mbox{\tiny D}} \\
+    \delta & \text{otherwise},
+  \end{array}
+  \right.
+\end{equation}
+so that $\vect{\cM}=\big(0.5\,(1+\delta),0.25\,(1-\delta)\big)^{T}$ for $x\le x_{\mbox{\tiny D}}$, and $\vect{\cM}=\big(\delta,0\big)^{T}$ for $x> x_{\mbox{\tiny D}}$.  
+We let $\delta=10^{-8}$.  
+\begin{figure}[h]
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[width=0.5\textwidth]{figures/PackedBeam_ME_CB}
+    \includegraphics[width=0.5\textwidth]{figures/PackedBeam_ME_MI}
+  \end{tabular}
+   \caption{Packed Beam}
+  \label{fig:PackedBeam}
+\end{figure}
+
 \subsection{Line Source}
+
+The line source benchmark \citep[cf.][]{brunner_2002,garrettHauck_2013} is a challenging test for approximate transport algorithms.  
+In cylindrical coordinates, it consists of an initial delta function particle distribution in radius; i.e., $f_{0}=\delta(R)/4\,\pi$.  
+For $t>0$, a cylindrical radiation front propagates radially.  
+Apart from capturing details of the exact transport solution, maintaining realizability ($\bcM\in\cR$ cf. Eq.~\eqref{eq:realizableSet}) of the two-moment solution is challenging.  
+
+This test is computed on a two-dimensional domain with $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,1.25], x^{2}\in[0,1.25]\}$.  
+We follow the initialization procedure in \citet{garrettHauck_2013}, and approximate the initial condition with an isotropic Gaussian distribution function
+\begin{equation}
+  f_{\mbox{\tiny G},0}
+  =\max\Big[\,\f{1}{8\,\pi\,\sigma_{\mbox{\tiny G}}^{2}}\,e^{-R^{2}/(2\,\sigma_{\mbox{\tiny G}}^{2})},10^{-4}\,\Big],
+\end{equation}
+where $R=|\vect{x}|$, and we use $\sigma_{\mbox{\tiny G}}=0.03$.  
+We run this test to a final time $t=1.0$.  
 
 \subsection{Homogeneous Sphere}
 
 The homogeneous sphere test (e.g., \cite{smit_etal_1997}) considers of a sphere with radius $R$.  
 Inside the sphere (radius $<R$), the absorption opacity $\sigma_{\Ab}$ and the equilibrium distribution function $f_{0}$ are set to constant values.  
 The scattering opacity $\sigma_{\Scatt}$ is set to zero in this test (i.e., $\xi=1$).  
-%Outside the sphere, the absorption opacity is zero.  
-%The steady state solution, obtained by solving the transport equation in spherical symmetry, is given by
-%\begin{equation}
-%  f_{\mbox{\tiny A}}(r,\mu)=f_{0}\,\big(1-e^{-\chi_{0}\,s(r,\mu)}\big),
-%  \label{distributionHomogeneousSphere}
-%\end{equation}
-%where
-%\begin{equation}
-%  s(r,\mu)
-%  =\left\{
-%  \begin{array}{lll}
-%    r\,\mu+R\,g(r,\mu) & \mbox{if}\quad r<R, & \mu\in[-1,+1], \\
-%    2\,R\,g(r,\mu) & \mbox{if}\quad r \ge R, & \mu\in[(1-(R/r)^{2})^{1/2},+1], \\
-%    0 & \mbox{otherwise},
-%  \end{array}
-%  \right.
-%\end{equation}
-%and $g(r,\mu)=[1-(r/R)^{2}(1-\mu^{2})]^{1/2}$.  
+Outside the sphere, the absorption opacity is zero.  
+The steady state solution, obtained by solving the transport equation in spherical symmetry, is given by
+\begin{equation}
+  f_{\mbox{\tiny A}}(r,\mu)=f_{0}\,\big(1-e^{-\chi_{0}\,s(r,\mu)}\big),
+  \label{eq:distributionHomogeneousSphere}
+\end{equation}
+where
+\begin{equation}
+  s(r,\mu)
+  =\left\{
+  \begin{array}{lll}
+    r\,\mu+R\,g(r,\mu) & \mbox{if}\quad r<R, & \mu\in[-1,+1], \\
+    2\,R\,g(r,\mu) & \mbox{if}\quad r \ge R, & \mu\in[(1-(R/r)^{2})^{1/2},+1], \\
+    0 & \mbox{otherwise},
+  \end{array}
+  \right.
+\end{equation}
+and $g(r,\mu)=[1-(r/R)^{2}(1-\mu^{2})]^{1/2}$.  
 
 \begin{figure}[h]
   \centering

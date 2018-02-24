@@ -32,7 +32,7 @@ These $s$-stage IMEX schemes take the following form \cite{hu_etal_2017}
   +\dt\sum_{i=1}^{s}\tilde{w}_{i}\,\vect{\cT}(\vect{u}^{(i)})
   +\dt\sum_{i=1}^{s}w_{i}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}), \label{imexIntermediate} \\
   \vect{u}^{n+1}
-  &=\tilde{\vect{u}}^{n+1}-\dt^{2}\,\f{1}{\tau}\,\vect{\cQ}'(\vect{u}^{*})\,\Big(\,\tilde{\alpha}\,\vect{\cT}(\tilde{\vect{u}}^{n+1})+\alpha\,\f{1}{\tau}\vect{\cQ}(\vect{u}^{n+1})\,\Big), \label{eq:imexCorrection}
+  &=\tilde{\vect{u}}^{n+1}-\dt^{2}\,\f{1}{\tau}\,\vect{\cQ}'(\vect{u}^{*})\,\Big(\,\sum_{i=1}^{s}\tilde{\alpha}_{i}\,\vect{\cT}(\vect{u}^{(i)})+\alpha\,\f{1}{\tau}\vect{\cQ}(\vect{u}^{n+1})\,\Big), \label{eq:imexCorrection}
 \end{align}
 where, as in standard IMEX schemes, $(\tilde{a}_{ij})$ and $(a_{ij})$, components of $s\times s$ matrices, and the vectors $(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $(w_{1},\ldots,w_{s})^{T}$ must satisfy certain order conditions \cite{pareschiRusso_2005}.  
 The coefficient in the correction step is positive, $\alpha>0$.  
