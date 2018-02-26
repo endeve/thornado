@@ -153,15 +153,10 @@ CONTAINS
 
                 U_K(iCR_N) = DOT_PRODUCT( Weights_q, U_q(:,iCR_N) )
 
-                Theta_1 = One
-                DO iP = 1, nPT
-
-                  Theta_1 &
-                    = MIN( Theta_1, &
-                           ( Min_1 - U_K(iCR_N) ) / ( Min_K - U_K(iCR_N) ), &
-                           ( Max_1 - U_K(iCR_N) ) / ( Max_K - U_K(iCR_N) ) )
-
-                END DO
+                Theta_1 &
+                  = MIN( One, &
+                         ABS( (Min_1-U_K(iCR_N)) / (Min_K-U_K(iCR_N)) ), &
+                         ABS( (Max_1-U_K(iCR_N)) / (Max_K-U_K(iCR_N)) ) )
 
                 ! --- Limit Density Towards Cell Average ---
 
@@ -203,6 +198,8 @@ CONTAINS
                   END IF
 
                 END DO
+
+                ! --- Limit Towards Cell Average ---
 
                 DO iCR = 1, nCR
 
