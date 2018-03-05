@@ -6,13 +6,16 @@ MODULE InputOutputModuleHDF
     ProgramName, &
     nE, nNodesE, &
     nX, nNodesX, &
-    nDOF
+    nDOF, nDOFX
+  USE ReferenceElementModuleX, ONLY: &
+    NodeNumberTableX
   USE ReferenceElementModule_Beta, ONLY: &
     NodeNumberTable
   USE MeshModule, ONLY: &
     MeshE, MeshX
   USE InputOutputUtilitiesModule, ONLY: &
     NodeCoordinates, &
+    Field3D, &
     Field4D
   USE GeometryFieldsModule, ONLY: &
     uGF, nGF, namesGF
@@ -161,7 +164,9 @@ CONTAINS
       DatasetName = TRIM( GroupName ) // '/' // TRIM( namesGF(iGF) )
 
       CALL WriteDataset3DHDF &
-             ( Dummy3D, DatasetName, FILE_ID )
+             ( Field3D &
+                 ( uGF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iGF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
 
     END DO
 
@@ -245,7 +250,9 @@ CONTAINS
       DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesCF(iFF) )
 
       CALL WriteDataset3DHDF &
-               ( Dummy3D, DatasetName, FILE_ID )
+             ( Field3D &
+                 ( uCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
 
     END DO
 
@@ -260,7 +267,9 @@ CONTAINS
       DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesPF(iFF) )
 
       CALL WriteDataset3DHDF &
-               ( Dummy3D, DatasetName, FILE_ID )
+             ( Field3D &
+                 ( uPF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
 
     END DO
 
@@ -275,7 +284,9 @@ CONTAINS
       DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesAF(iFF) )
 
       CALL WriteDataset3DHDF &
-               ( Dummy3D, DatasetName, FILE_ID )
+             ( Field3D &
+                 ( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
 
     END DO
 
