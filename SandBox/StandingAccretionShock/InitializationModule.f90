@@ -27,21 +27,31 @@ MODULE InitializationModule
 CONTAINS
 
 
-  SUBROUTINE InitializeFields(mDot, Mass, rShock, Gamma, Mach )
+  SUBROUTINE InitializeFields( mDot, Mass, rShock, Gamma, Mach )
 
     REAL(DP), INTENT(in) :: mDot, Mass, rShock, Gamma, Mach
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
     REAL(DP) :: X1, Alpha, Speed, D_prime, V1_prime, P_prime
-   
-    Alpha = 4.0_DP * Gamma / ( (Gamma + 1.0_DP) * (Gamma - 1.0_DP) ) &
-              * ( (Gamma - 1.0_DP) / (Gamma + 1.0_DP) )**Gamma
-
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
     WRITE(*,*)
+    WRITE(*,'(A4,A10,ES12.6E2)') &
+      '', 'mDot = ', mDot
+    WRITE(*,'(A4,A10,ES12.6E2)') &
+      '', 'Mass = ', Mass
+    WRITE(*,'(A4,A10,ES12.6E2)') &
+      '', 'rShock = ', rShock
+    WRITE(*,'(A4,A10,ES12.6E2)') &
+      '', 'Gamma = ', Gamma
+    WRITE(*,'(A4,A10,ES12.6E2)') &
+      '', 'Mach = ', Mach
+    WRITE(*,*)
+
+    Alpha = 4.0_DP * Gamma / ( (Gamma + 1.0_DP) * (Gamma - 1.0_DP) ) &
+              * ( (Gamma - 1.0_DP) / (Gamma + 1.0_DP) )**Gamma
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
@@ -56,13 +66,13 @@ CONTAINS
             IF( X1 <= rShock )THEN
                 
               CALL ComputeSettlingSpeed_Bisection &
-                     ( X1, Alpha, Gamma, Mass, Speed)
+                     ( X1, Alpha, Gamma, Mass, Speed )
 
               uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
                 = (mDot/FourPi) * Speed**(-1.0_DP) * X1**(-2.0_DP)
 
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-                = -Speed
+                = - Speed
 
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
                 = 0.0_DP
@@ -74,11 +84,10 @@ CONTAINS
 
               V1_prime &
                 = (Gamma - 1.0_DP)/(Gamma + 1.0_DP) &
-                   * SQRT(2.0_DP * Mass/ rShock)
+                   * SQRT( 2.0_DP * Mass / rShock )
 
               D_prime  &
-                = (mDot/FourPi) * (1.0_DP/V1_prime) &
-                   * rShock**(-2.0_DP)
+                = (mDot/FourPi) * (1.0_DP/V1_prime) * rShock**(-2.0_DP)
 
               P_prime  &
                 = 2.0_DP /(Gamma + 1.0_DP) * (mDot/FourPi) &
@@ -87,8 +96,8 @@ CONTAINS
              
               uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
                 = P_prime &
-                  * ( uPF(iNodeX, iX1, iX2, iX3, iPF_D) &
-                     /D_prime)**Gamma /(Gamma-1.0_DP)
+                    * ( uPF(iNodeX,iX1,iX2,iX3,iPF_D) / D_prime )**Gamma &    
+                      / ( Gamma-1.0_DP )
 
            ELSE 
              
@@ -110,6 +119,7 @@ CONTAINS
  
  
            END IF
+
           END DO
 
           CALL ComputeConserved &
@@ -129,7 +139,8 @@ CONTAINS
 
   END SUBROUTINE InitializeFields
 
-  SUBROUTINE ComputeSettlingSpeed_Bisection(r, alpha, gamma, mass, V1)
+
+  SUBROUTINE ComputeSettlingSpeed_Bisection( r, alpha, gamma, mass, V1 )
 
     REAL(DP), INTENT(in) :: r, alpha, gamma, mass
 
@@ -183,6 +194,7 @@ CONTAINS
 
 END SUBROUTINE ComputeSettlingSpeed_Bisection
 
+
 REAL(DP) FUNCTION SettlingSpeedFun( u, r, alpha, gamma, mass )
 
   REAL(DP), INTENT(in) :: u, r, alpha, gamma, mass
@@ -193,5 +205,6 @@ REAL(DP) FUNCTION SettlingSpeedFun( u, r, alpha, gamma, mass )
       - 2.0_DP * mass
   RETURN
 END FUNCTION SettlingSpeedFun
+
 
 END MODULE InitializationModule

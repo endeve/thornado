@@ -54,7 +54,8 @@ PROGRAM ApplicationDriver
 
   CALL ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
-  CALL InitializeFields( 4.0_DP * Pi, 0.5_DP, 1.0_DP, 4.0_DP/ 3.0_DP, 3.0d2) 
+  CALL InitializeFields &
+         ( 4.0_DP * Pi, 0.5_DP, 1.0_DP, 4.0_DP/ 3.0_DP, 3.0d2) 
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
