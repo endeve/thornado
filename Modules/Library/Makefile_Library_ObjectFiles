@@ -1,6 +1,7 @@
 LIBRARY = \
   QuadratureModule.o \
   UtilitiesModule.o \
+  ReferenceElementModuleX.o \
   ReferenceElementModule.o \
   ReferenceElementModule_Beta.o \
   PolynomialBasisModule_Lagrange.o \

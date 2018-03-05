@@ -7,6 +7,12 @@ UtilitiesModule.o: \
   ProgramHeaderModule.o \
   UtilitiesModule.f90
 
+ReferenceElementModuleX.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.f90
+
 ReferenceElementModule.o: \
   KindModule.o \
   QuadratureModule.o \
