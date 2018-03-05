@@ -239,6 +239,64 @@ CONTAINS
 
         alpha_IM = 0.449518308497898_DP
 
+      CASE ( 'IMEX_P_A2_RC4' )
+
+        nStages = 3
+        CALL AllocateButcherTables( nStages )
+
+        ! --- Coefficients from Ran Chu (2018) ---
+
+        a_EX(2,1) = 0.975992486704880_DP
+        a_EX(3,1) = 0.487700974330154_DP
+        a_EX(3,2) = 0.512299025669846_DP
+
+        w_EX(1)   = a_EX(3,1)
+        w_EX(2)   = a_EX(3,2)
+
+        alpha_EX = 0.445978165340310_DP
+
+        a_IM(1,1) = 0.390570636268524_DP
+        a_IM(2,1) = 0.104174290767753_DP
+        a_IM(2,2) = 0.500000819154403_DP
+        a_IM(3,1) = 0.052692998443186_DP
+        a_IM(3,2) = 0.055350847885380_DP
+        a_IM(3,3) = 0.891956153671434_DP
+
+        w_IM(1)   = a_IM(3,1)
+        w_IM(2)   = a_IM(3,2)
+        w_IM(3)   = a_IM(3,3)
+
+        alpha_IM = 0.445978096205720_DP
+
+      CASE ( 'IMEX_P_A2_RC5' )
+
+        nStages = 3
+        CALL AllocateButcherTables( nStages )
+
+        ! --- Coefficients from Ran Chu (2018) ---
+
+        a_EX(2,1) = 0.726393726720026_DP
+        a_EX(3,1) = 0.311668064291096_DP
+        a_EX(3,2) = 0.688331935708904_DP
+
+        w_EX(1)   = a_EX(3,1)
+        w_EX(2)   = a_EX(3,2)
+
+        alpha_EX = 0.295233192284502_DP
+
+        a_IM(1,1) = 0.292971931709409_DP
+        a_IM(2,1) = 0.286422870538316_DP
+        a_IM(2,2) = 0.307316841293593_DP
+        a_IM(3,1) = 0.170547969724994_DP
+        a_IM(3,2) = 0.125065984709675_DP
+        a_IM(3,3) = 0.704386045565331_DP
+
+        w_IM(1)   = a_IM(3,1)
+        w_IM(2)   = a_IM(3,2)
+        w_IM(3)   = a_IM(3,3)
+
+        alpha_IM = 0.328608455426277_DP
+
       CASE ( 'IMEX_P_ARS2' )
 
         nStages = 4
