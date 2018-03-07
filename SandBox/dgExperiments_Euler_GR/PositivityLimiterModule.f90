@@ -203,7 +203,7 @@ CONTAINS
              NegativeStates(1) = .FALSE.
 
           END IF
-           
+
           IF( NegativeStates(1) )THEN
 
             U(1:nDOF,iX1,iX2,iX3,iCF_D) &

@@ -24,6 +24,8 @@ PROGRAM RiemannProblem
     uCF, rhsCF, uPF, uAF, iAF_P, iAF_Cs
   USE InputOutputModule, ONLY: &
     WriteFields1D
+  USE InputOutputModuleHDF, ONLY: &
+    WriteFieldsHDF
   USE InitializationModule_GR, ONLY: &
     InitializeFields_RiemannProblem
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -95,16 +97,21 @@ PROGRAM RiemannProblem
            D_R = D_R, V_R = V_R, P_R = P_R, &
            X_D_Option = x_D )
 
+  CALL WriteFieldsHDF &
+         ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
   CALL WriteFields1D( t, .TRUE., .TRUE. )
 
   CALL InitializeFluid_SSPRK( nStages = 3 )
 
   CALL InitializeSlopeLimiter &
-         ( UseSlopeLimiter_Option = .TRUE. , &
-             UseTroubledCellIndicator_Option = .TRUE. )
+         ( BetaTVD_Option = 2.00_DP, &
+           UseSlopeLimiter_Option = .TRUE. , &
+           UseTroubledCellIndicator_Option = .TRUE. )
 
   CALL InitializePositivityLimiter &
-         ( Min_1_Option = 1.0d-16 , Min_2_Option = 1.0d-16 )
+         ( Min_1_Option = 1.0d-16 , Min_2_Option = 1.0d-16, &
+           UsePositivityLimiter_Option = .TRUE. )
   
   iCycle = 0
 
@@ -134,11 +141,17 @@ PROGRAM RiemannProblem
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
+      CALL WriteFieldsHDF &
+             ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
       CALL WriteFields1D( t, .TRUE., .TRUE. )
 
     END IF
 
   END DO
+
+  CALL WriteFieldsHDF &
+         ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
   CALL WriteFields1D( t, .TRUE., .TRUE. )
 

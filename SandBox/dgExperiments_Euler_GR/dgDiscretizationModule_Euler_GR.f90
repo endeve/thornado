@@ -99,7 +99,7 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL ComputeIncrement_Divergence_X1 &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -119,7 +119,7 @@ CONTAINS
             dU(:,iX1,iX2,iX3,iCF)                                 &
               = dU(:,iX1,iX2,iX3,iCF)                             &
                   / ( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                  * dX1 * dX2 * dX3 )
+                        * dX1 * dX2 * dX3 )
             
           END DO
         END DO
@@ -127,7 +127,7 @@ CONTAINS
     END DO
 
     CALL ComputeIncrement_Geometry &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
   END SUBROUTINE ComputeIncrement_Euler_GR_DG_Explicit
 

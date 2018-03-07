@@ -60,7 +60,8 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: &
       SlopeTolerance_Option
     LOGICAL, INTENT(in), OPTIONAL :: &
-      UseTroubledCellIndicator_Option, UseSlopeLimiter_Option
+      UseTroubledCellIndicator_Option, &
+      UseSlopeLimiter_Option
 
     INTEGER  :: iNodeX1, iNodex2, iNodeX3, iNode
     INTEGER  :: jNodeX1, jNodex2, jNodeX3, jNode
@@ -206,7 +207,7 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3, iCF
     REAL(DP) :: dX1, dX2, dX3
-    REAL(DP) :: SlopeDifference
+    REAL(DP) :: SlopeDifference(nCF)
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
 
@@ -227,9 +228,6 @@ CONTAINS
           dX1 = MeshX(1) % Width(iX1)
 
           IF( Shock(iX1,iX2,iX3) < LimiterThreshold ) CYCLE
-
-          WRITE(*,'(A,1x,I3,1x,I3,1x,I3,1x,E13.6)') &
-            "iX1,iX2,iX3,slope = ", iX1, iX2, iX3, Shock(iX1,iX2,iX3)
 
           DO iCF = 1, nCF
 
@@ -283,20 +281,17 @@ CONTAINS
 
           END IF
 
-!          WRITE(*,*) "dU(:,1)    = ", dU(:,1)
-!          WRITE(*,*), "U_M(:,0,2) = ", U_M(:,0,2)
-
           DO iCF = 1, nCF
 
-            SlopeDifference &
+            SlopeDifference(iCF) &
               = ABS( U_M(iCF,0,2) - dU(iCF,1) ) &
                 / MAXVAL( [ ABS( U_M(iCF,0,2) ), &
                             ABS( dU (iCF,1) ), SqrtTiny ] )
 
             IF( nDimsX > 1 )THEN
 
-              SlopeDifference &
-                = MAX( SlopeDifference, &
+              SlopeDifference(iCF) &
+                = MAX( SlopeDifference(iCF), &
                        ABS( U_M(iCF,0,3) - dU(iCF,2) ) &
                        / MAXVAL( [ ABS( U_M(iCF,0,3) ), &
                                    ABS( dU (iCF,2)), SqrtTiny ] ) )
@@ -305,19 +300,21 @@ CONTAINS
 
             IF( nDimsX > 2 )THEN
 
-              SlopeDifference &
-                = MAX( SlopeDifference, &
+              SlopeDifference(iCF) &
+                = MAX( SlopeDifference(iCF), &
                        ABS( U_M(iCF,0,4) - dU(iCF,3) ) &
                        / MAXVAL( [ ABS( U_M(iCF,0,4) ), &
                                    ABS( dU (iCF,3)), SqrtTiny ] ) )
 
             END IF
 
-            WRITE(*,*) "iCF, SlopeDifference = ", iCF, SlopeDifference
+          END DO
 
-            IF( SlopeDifference > SlopeTolerance )THEN
+          IF( ANY( SlopeDifference > SlopeTolerance ) )THEN
 
-              U_M(iCF,0,2:) = Zero
+            DO iCF = 1, nCF
+
+              U_M(iCF,0,2:nDOFX) = Zero
 
               U_M(iCF,0,2) = dU(iCF,1)
 
@@ -327,12 +324,12 @@ CONTAINS
               IF( nDimsX > 2 ) &
                 U_M(iCF,0,4) = dU(iCF,3)
 
-            END IF
+              CALL MapModalToNodal_Fluid &
+                     ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
 
-            CALL MapModalToNodal_Fluid &
-                   ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+            END DO
 
-          END DO
+          END IF
 
         END DO
       END DO
@@ -359,7 +356,10 @@ CONTAINS
 
     Shock = Zero
     
-    IF ( .NOT. UseTroubledCellIndicator ) RETURN
+    IF ( .NOT. UseTroubledCellIndicator ) THEN
+      Shock = 1.1_DP * LimiterThreshold
+      RETURN
+    END IF
 
     ! --- Using troubled-cell indicator from Fu, Shu (2017) ---
     
@@ -371,12 +371,10 @@ CONTAINS
                      ( WeightsX_q(:), G(:,iX1,  iX2,iX3,iGF_SqrtGm) )
 
           V_K(1) = DOT_PRODUCT &
-!                     ( WeightsX_q(:), G(:,iX1-1,iX2,iX3,iGF_SqrtGm) )
-                     ( WeightsX_X1_N(:), G(:,iX1-1,iX2,iX3,iGF_SqrtGm) )
+                     ( WeightsX_q(:), G(:,iX1-1,iX2,iX3,iGF_SqrtGm) )
 
           V_K(2) = DOT_PRODUCT &
-!                     ( WeightsX_q(:), G(:,iX1+1,iX2,iX3,iGF_SqrtGm) )
-                     ( WeightsX_X1_P(:), G(:,iX1+1,iX2,iX3,iGF_SqrtGm) )
+                     ( WeightsX_q(:), G(:,iX1+1,iX2,iX3,iGF_SqrtGm) )
 
           DO iCF = 1, nCF
 
@@ -388,29 +386,25 @@ CONTAINS
 
             U_K(1,iCF) &
               = DOT_PRODUCT &
-!                  ( WeightsX_q(:), &
-                  ( WeightsX_X1_N(:), &
+                  ( WeightsX_q(:), &
                     G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
                       * U(:,iX1-1,iX2,iX3,iCF) ) / V_K(1)
 
             U_K0(1,iCF) &
               = DOT_PRODUCT &
-!                  ( WeightsX_X1_P(:), &
-                  ( WeightsX_q(:), &
+                  ( WeightsX_X1_P(:), &
                     G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
                       * U(:,iX1-1,iX2,iX3,iCF) ) / V_K(0)
 
             U_K(2,iCF) &
               = DOT_PRODUCT &
-!                  ( WeightsX_q(:), &
-                  ( WeightsX_X1_P(:), &
+                  ( WeightsX_q(:), &
                     G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
                       * U(:,iX1+1,iX2,iX3,iCF) ) / V_K(2)
 
             U_K0(2,iCF) &
               = DOT_PRODUCT &
-!                  ( WeightsX_X1_N(:), &
-                  ( WeightsX_q(:), &
+                  ( WeightsX_X1_N(:), &
                     G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
                       * U(:,iX1+1,iX2,iX3,iCF) ) / V_K(0)
 
