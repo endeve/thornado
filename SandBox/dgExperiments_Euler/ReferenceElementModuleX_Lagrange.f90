@@ -192,18 +192,18 @@ CONTAINS
 
     END DO
 
-    CALL WriteMatrix( nDOFX_X1, nDOFX, LX_X1_Dn, 'LX_X1_Dn.dat' )
-    CALL WriteMatrix( nDOFX_X1, nDOFX, LX_X1_Up, 'LX_X1_Up.dat' )
-    CALL WriteMatrix( nDOFX_X2, nDOFX, LX_X2_Dn, 'LX_X2_Dn.dat' )
-    CALL WriteMatrix( nDOFX_X2, nDOFX, LX_X2_Up, 'LX_X2_Up.dat' )
-    CALL WriteMatrix( nDOFX_X3, nDOFX, LX_X3_Dn, 'LX_X3_Dn.dat' )
-    CALL WriteMatrix( nDOFX_X3, nDOFX, LX_X3_Up, 'LX_X3_Up.dat' )
-
-    CALL WriteMatrix( nDOFX, nDOFX, dLXdX1_q, 'dLXdX1_q.dat' )
-    CALL WriteMatrix( nDOFX, nDOFX, dLXdX2_q, 'dLXdX2_q.dat' )
-    CALL WriteMatrix( nDOFX, nDOFX, dLXdX3_q, 'dLXdX3_q.dat' )
-
-    CALL WriteMatrix( nDOFX, nDOFX, LX_L2G, 'LX_L2G.dat' )
+!!$    CALL WriteMatrix( nDOFX_X1, nDOFX, LX_X1_Dn, 'LX_X1_Dn.dat' )
+!!$    CALL WriteMatrix( nDOFX_X1, nDOFX, LX_X1_Up, 'LX_X1_Up.dat' )
+!!$    CALL WriteMatrix( nDOFX_X2, nDOFX, LX_X2_Dn, 'LX_X2_Dn.dat' )
+!!$    CALL WriteMatrix( nDOFX_X2, nDOFX, LX_X2_Up, 'LX_X2_Up.dat' )
+!!$    CALL WriteMatrix( nDOFX_X3, nDOFX, LX_X3_Dn, 'LX_X3_Dn.dat' )
+!!$    CALL WriteMatrix( nDOFX_X3, nDOFX, LX_X3_Up, 'LX_X3_Up.dat' )
+!!$
+!!$    CALL WriteMatrix( nDOFX, nDOFX, dLXdX1_q, 'dLXdX1_q.dat' )
+!!$    CALL WriteMatrix( nDOFX, nDOFX, dLXdX2_q, 'dLXdX2_q.dat' )
+!!$    CALL WriteMatrix( nDOFX, nDOFX, dLXdX3_q, 'dLXdX3_q.dat' )
+!!$
+!!$    CALL WriteMatrix( nDOFX, nDOFX, LX_L2G, 'LX_L2G.dat' )
 
   END SUBROUTINE InitializeReferenceElementX_Lagrange
 

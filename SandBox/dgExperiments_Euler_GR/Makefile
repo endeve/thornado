@@ -4,9 +4,9 @@ all: ApplicationDriver RiemannProblem
 
 ApplicationDriver: \
 	$(thornado) \
-	ReferenceElementModuleX.o \
 	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
+	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
 	SlopeLimiterModule_Euler_GR.o \
 	InitializationModule_GR.o \
@@ -15,9 +15,9 @@ ApplicationDriver: \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
-	ReferenceElementModuleX.o \
 	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
+	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
 	SlopeLimiterModule_Euler_GR.o \
 	InitializationModule_GR.o \
@@ -28,28 +28,28 @@ ApplicationDriver: \
 
 RiemannProblem: \
 	$(thornado) \
-	ReferenceElementModuleX.o \
 	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
+	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
 	SlopeLimiterModule_Euler_GR.o \
 	InitializationModule_GR.o \
 	BoundaryConditionsModule_Beta.o \
-	TimeSteppingModule_SSPRK.o \
 	dgDiscretizationModule_Euler_GR.o \
+	TimeSteppingModule_SSPRK.o \
 	RiemannProblemInitializer.o \
 	RiemannProblem.o
 	$(FLINKER) $(FLAGS) -o RiemannProblem_$(MACHINE) \
 	$(thornado) \
-	ReferenceElementModuleX.o \
 	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
+	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
 	SlopeLimiterModule_Euler_GR.o \
 	InitializationModule_GR.o \
 	BoundaryConditionsModule_Beta.o \
-	TimeSteppingModule_SSPRK.o \
 	dgDiscretizationModule_Euler_GR.o \
+	TimeSteppingModule_SSPRK.o \
 	RiemannProblemInitializer.o \
 	RiemannProblem.o \
 	$(LIBRARIES)

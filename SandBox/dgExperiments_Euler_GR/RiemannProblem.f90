@@ -13,6 +13,9 @@ PROGRAM RiemannProblem
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange, &
     FinalizeReferenceElementX_Lagrange
+  USE PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter, &
+    FinalizePositivityLimiter
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE GeometryComputationModule_Beta, ONLY: &
@@ -62,23 +65,23 @@ PROGRAM RiemannProblem
            xR_Option &
              = [ xR, 1.0d0, 1.0d0 ], &
            nNodes_Option &
-             = 1, &
+             = 2, &
            CoordinateSystem_Option &
              = 'CARTESIAN', &
            EquationOfState_Option &
              = 'IDEAL', &
-           FluidRiemannSolver_Option & ! --- Hard-coded
+           FluidRiemannSolver_Option & ! --- Dummy ---
              = 'HLLC', &
            Gamma_IDEAL_Option &
              = Gamma, &
            Opacity_Option &
              = 'IDEAL', &
-           nStages_SSP_RK_Option &
+           nStages_SSP_RK_Option & ! --- Dummy ---
              = 1 )
 
   dt      = CFL * xR / ( c * K )
-  iCycleD = 100 * t_end
-  iCycleW = 10  * t_end
+  iCycleD = 1!00 * t_end
+  iCycleW = 1!0  * t_end
 
   CALL InitializeReferenceElementX
 
@@ -96,8 +99,13 @@ PROGRAM RiemannProblem
 
   CALL InitializeFluid_SSPRK( nStages = 3 )
 
-  CALL InitializeSlopeLimiter
+  CALL InitializeSlopeLimiter &
+         ( UseSlopeLimiter_Option = .TRUE. , &
+             UseTroubledCellIndicator_Option = .TRUE. )
 
+  CALL InitializePositivityLimiter &
+         ( Min_1_Option = 1.0d-16 , Min_2_Option = 1.0d-16 )
+  
   iCycle = 0
 
   DO WHILE ( t < t_end )
@@ -133,6 +141,8 @@ PROGRAM RiemannProblem
   END DO
 
   CALL WriteFields1D( t, .TRUE., .TRUE. )
+
+  CALL FinalizePositivityLimiter
 
   CALL FinalizeSlopeLimiter
 

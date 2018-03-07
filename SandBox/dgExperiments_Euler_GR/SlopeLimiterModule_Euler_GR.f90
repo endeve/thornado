@@ -37,6 +37,7 @@ MODULE SlopeLimiterModule_Euler_GR
 
   REAL(DP) :: wTime
 
+  LOGICAL  :: UseTroubledCellIndicator, UseSlopeLimiter
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: LimiterThreshold
   REAL(DP) :: SlopeTolerance
@@ -49,7 +50,8 @@ CONTAINS
 
   SUBROUTINE InitializeSlopeLimiter &
     ( BetaTVD_Option, BetaTVB_Option, LimiterThreshold_Option, &
-      SlopeTolerance_Option )
+      SlopeTolerance_Option, UseSlopeLimiter_Option, &
+      UseTroubledCellIndicator_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
@@ -57,6 +59,8 @@ CONTAINS
       LimiterThreshold_Option
     REAL(DP), INTENT(in), OPTIONAL :: &
       SlopeTolerance_Option
+    LOGICAL, INTENT(in), OPTIONAL :: &
+      UseTroubledCellIndicator_Option, UseSlopeLimiter_Option
 
     INTEGER  :: iNodeX1, iNodex2, iNodeX3, iNode
     INTEGER  :: jNodeX1, jNodex2, jNodeX3, jNode
@@ -77,6 +81,33 @@ CONTAINS
     SlopeTolerance = 1.0d-3
     IF( PRESENT( SlopeTolerance_Option ) ) &
       SlopeTolerance = SlopeTolerance_Option
+
+    UseSlopeLimiter = .TRUE.
+    IF( PRESENT( UseSlopeLimiter_Option ) ) &
+         UseSlopeLimiter = UseSlopeLimiter_Option
+
+    UseTroubledCellIndicator = .TRUE.
+    IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
+         UseTroubledCellIndicator = UseTroubledCellIndicator_Option
+
+    WRITE(*,*)
+    WRITE(*,'(A31)') '  INFO: InitializeSlopeLimiter:'
+    WRITE(*,'(A31)') '  -----------------------------'
+    WRITE(*,*)
+    WRITE(*,'(A30,L1)'   ) '    UseSlopeLimiter: ' , &
+      UseSlopeLimiter
+    WRITE(*,'(A30,L1)'   ) '    UseTroubledCellIndicator: ' , &
+      UseTroubledCellIndicator
+    WRITE(*,*)
+    WRITE(*,'(A24,F5.3)' ) '      BetaTVD:          ' , &
+      BetaTVD
+    WRITE(*,'(A24,F5.3)' ) '      BetaTVB:          ' , &
+      BetaTVB
+    WRITE(*,'(A24,F5.3)' ) '      LimiterThreshold: ' , &
+      LimiterThreshold
+    WRITE(*,'(A24,F5.3)' ) '      SlopeTolerance:   ' , &
+      SlopeTolerance
+    WRITE(*,*)
 
     ALLOCATE( WeightsX_X1_P(nDOFX), WeightsX_X1_N(nDOFX) )
     ALLOCATE( WeightsX_X2_P(nDOFX), WeightsX_X2_N(nDOFX) )
@@ -179,6 +210,8 @@ CONTAINS
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
 
+    IF( .NOT. UseSlopeLimiter ) RETURN
+    
     IF( nDOFX == 1 ) RETURN
 
     wTime = MPI_WTIME( )
@@ -195,7 +228,8 @@ CONTAINS
 
           IF( Shock(iX1,iX2,iX3) < LimiterThreshold ) CYCLE
 
-!          PRINT*, "iX1,iX2,iX3 = ", iX1, iX2, iX3
+          WRITE(*,'(A,1x,I3,1x,I3,1x,I3,1x,E13.6)') &
+            "iX1,iX2,iX3,slope = ", iX1, iX2, iX3, Shock(iX1,iX2,iX3)
 
           DO iCF = 1, nCF
 
@@ -249,8 +283,8 @@ CONTAINS
 
           END IF
 
-!          PRINT*, "dU(:,1)    = ", dU(:,1)
-!          PRINT*, "U_M(:,0,2) = ", U_M(:,0,2)
+!          WRITE(*,*) "dU(:,1)    = ", dU(:,1)
+!          WRITE(*,*), "U_M(:,0,2) = ", U_M(:,0,2)
 
           DO iCF = 1, nCF
 
@@ -279,7 +313,7 @@ CONTAINS
 
             END IF
 
-!            PRINT*, "iCF, SlopeDifference = ", iCF, SlopeDifference
+            WRITE(*,*) "iCF, SlopeDifference = ", iCF, SlopeDifference
 
             IF( SlopeDifference > SlopeTolerance )THEN
 
@@ -302,7 +336,7 @@ CONTAINS
 
         END DO
       END DO
-    END DO
+   END DO
 
     wTime = MPI_WTIME( ) - wTime
 
@@ -315,8 +349,7 @@ CONTAINS
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in) :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(in) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &         
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iX1, iX2, iX3, iCF
@@ -324,6 +357,12 @@ CONTAINS
     REAL(DP) :: U_K (0:2*nDimsX,nCF)
     REAL(DP) :: U_K0(0:2*nDimsX,nCF)
 
+    Shock = Zero
+    
+    IF ( .NOT. UseTroubledCellIndicator ) RETURN
+
+    ! --- Using troubled-cell indicator from Fu, Shu (2017) ---
+    
     DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
@@ -332,10 +371,12 @@ CONTAINS
                      ( WeightsX_q(:), G(:,iX1,  iX2,iX3,iGF_SqrtGm) )
 
           V_K(1) = DOT_PRODUCT &
-                     ( WeightsX_q(:), G(:,iX1-1,iX2,iX3,iGF_SqrtGm) )
+!                     ( WeightsX_q(:), G(:,iX1-1,iX2,iX3,iGF_SqrtGm) )
+                     ( WeightsX_X1_N(:), G(:,iX1-1,iX2,iX3,iGF_SqrtGm) )
 
           V_K(2) = DOT_PRODUCT &
-                     ( WeightsX_q(:), G(:,iX1+1,iX2,iX3,iGF_SqrtGm) )
+!                     ( WeightsX_q(:), G(:,iX1+1,iX2,iX3,iGF_SqrtGm) )
+                     ( WeightsX_X1_P(:), G(:,iX1+1,iX2,iX3,iGF_SqrtGm) )
 
           DO iCF = 1, nCF
 
@@ -347,25 +388,29 @@ CONTAINS
 
             U_K(1,iCF) &
               = DOT_PRODUCT &
-                  ( WeightsX_q(:), &
+!                  ( WeightsX_q(:), &
+                  ( WeightsX_X1_N(:), &
                     G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
                       * U(:,iX1-1,iX2,iX3,iCF) ) / V_K(1)
 
             U_K0(1,iCF) &
               = DOT_PRODUCT &
-                  ( WeightsX_X1_P(:), &
+!                  ( WeightsX_X1_P(:), &
+                  ( WeightsX_q(:), &
                     G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
                       * U(:,iX1-1,iX2,iX3,iCF) ) / V_K(0)
 
             U_K(2,iCF) &
               = DOT_PRODUCT &
-                  ( WeightsX_q(:), &
+!                  ( WeightsX_q(:), &
+                  ( WeightsX_X1_P(:), &
                     G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
                       * U(:,iX1+1,iX2,iX3,iCF) ) / V_K(2)
 
             U_K0(2,iCF) &
               = DOT_PRODUCT &
-                  ( WeightsX_X1_N(:), &
+!                  ( WeightsX_X1_N(:), &
+                  ( WeightsX_q(:), &
                     G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
                       * U(:,iX1+1,iX2,iX3,iCF) ) / V_K(0)
 
@@ -454,7 +499,7 @@ CONTAINS
           Shock(iX1,iX2,iX3) &
             = MAX( Shock(iX1,iX2,iX3), &
                    SUM( ABS( U_K(0,iCF_E) - U_K0(1:2*nDimsX,iCF_E) ) ) &
-                     / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_E) ) ) )
+                   / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_E) ) ) )
 
         END DO
       END DO

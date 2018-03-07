@@ -32,7 +32,6 @@ MODULE dgDiscretizationModule_Euler_GR
   USE BoundaryConditionsModule_Beta, ONLY: &
     ApplyBoundaryConditions_Fluid
   USE EulerEquationsUtilitiesModule_Beta_GR, ONLY:  &
-    ComputeFromConserved,     &
     ComputePrimitive_GR,      &
     Eigenvalues_GR,           &
     AlphaC_GR,                &
@@ -42,6 +41,8 @@ MODULE dgDiscretizationModule_Euler_GR
     NumericalFlux_X1_LLF_GR
   USE SlopeLimiterModule_Euler_GR, ONLY: &
     ApplySlopeLimiter_Euler_GR
+  USE PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromSpecificInternalEnergy, &
     ComputeSoundSpeedFromPrimitive_GR
@@ -85,12 +86,13 @@ CONTAINS
 
     dU = Zero
 
-    ! --- Apply Slope Limiter ---
-
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL ApplySlopeLimiter_Euler_GR &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    CALL ApplyPositivityLimiter &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     CALL ApplyBoundaryConditions_Fluid &
@@ -202,7 +204,7 @@ CONTAINS
           !--------------------
 
           IF( iX1 < iX_E0(1) + 1 )THEN
-            
+
             CALL ComputePrimitive_GR &
                ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                  uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
@@ -455,7 +457,7 @@ CONTAINS
                     G_F  (iNodeX_X1,iGF_Beta_1) )
 
             NumericalFlux( iNodeX_X1,:)                &
-              = NumericalFlux_X1_LLF_GR               &
+              = NumericalFlux_X1_HLLC_GR               &
                   ( uCF_L(iNodeX_X1,1:nCF),            &
                     uCF_R(iNodeX_X1,1:nCF),            &
                     Flux_X1_L(iNodeX_X1,1:nCF),        &

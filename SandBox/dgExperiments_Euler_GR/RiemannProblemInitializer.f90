@@ -35,7 +35,7 @@ CONTAINS
 
         t     = 0.0_DP
         t_end = 0.2_DP
-        CFL   = 0.5_DP
+        CFL   = 0.1_DP
         xR    = 1.0d0
         x_D   = 0.5_DP
         K     = 128
@@ -154,7 +154,7 @@ CONTAINS
         P_R = 2.0d+1
 
         t     = 0.0d+0
-        t_end = 4.0d-1
+        t_end = 4.0d+0
         CFL   = 0.8d+0
         xR    = 1.0d0
         x_D   = 0.5d+0
@@ -194,11 +194,11 @@ CONTAINS
         P_R = 0.1_DP
 
         t     = 0.0_DP
-        t_end = 5.0_DP
         CFL   = 0.1_DP
         xR    = 1.0d0
         x_D   = 0.5_DP
         K     = 128
+        t_end = 1.0d0 * CFL * xR / ( 1.0d0 * K )
         Gamma = 4.0_DP / 3.0_DP
 
      CASE DEFAULT

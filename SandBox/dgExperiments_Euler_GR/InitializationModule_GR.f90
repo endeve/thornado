@@ -123,8 +123,8 @@ CONTAINS
       DO iX2 = iX_B1(2), iX_E1(2)
         DO iX1 = iX_B1(1), iX_E1(1)
 
-           ! Loop over all nodes in an element
-           DO iNodeX = 1, nDOFX
+          ! Loop over all nodes in an element
+          DO iNodeX = 1, nDOFX
 
             iNodeX1 = NodeNumberTableX(1,iNodeX) ! Particular node
 
@@ -154,10 +154,24 @@ CONTAINS
 !!$
 !!$            END IF
 
-            ! --- Smooth solution ---
+!!$            ! --- Smooth solution ---
+!!$
+!!$            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  &
+!!$              = 1.0_DP + 0.1_DP * SIN( TwoPi * X1 )
+!!$            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+!!$            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+!!$            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+!!$            uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0d-6 / (Gamma_IDEAL-One)
+!!$            uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d-6
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  &
-              = 1.0_DP + 0.1_DP * SIN( TwoPi * X1 )
+            ! --- Contact discontinuity solution (Top-hat) ---
+
+            IF( ( X1 <= 0.25d0 ) .OR. ( X1 >= 0.75d0 ) )THEN
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) = 1.0d0
+            ELSE
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) = 2.0d0
+            END IF
+
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
             uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
             uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP

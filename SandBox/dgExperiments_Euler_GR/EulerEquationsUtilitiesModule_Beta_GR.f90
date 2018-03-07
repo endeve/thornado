@@ -87,6 +87,7 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
     LOGICAL :: Converged
+
     INTEGER :: i, nIter, nNodes
 
     REAL(DP) :: SSq, Pold, vSq, W, h, Pnew
@@ -105,7 +106,7 @@ CONTAINS
       SSq = CF_S1(i)**2 / GF_Gm_dd_11(i) &
             + CF_S2(i)**2 / GF_Gm_dd_22(i) &
               + CF_S3(i)**2 / GF_Gm_dd_33(i)
-      
+
       ! --- Find Pressure with Newton's Method ---
       !Pold = AF_P(i) ! -- Initial guess
 
@@ -159,7 +160,7 @@ CONTAINS
 
       PF_Ne(i) = CF_Ne(i) / W
 
-    END DO
+   END DO
 
   END SUBROUTINE ComputePrimitive_GR
 
