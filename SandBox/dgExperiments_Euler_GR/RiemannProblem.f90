@@ -51,7 +51,7 @@ PROGRAM RiemannProblem
 
   CALL RiemannProblemChoice &
          ( D_L, V_L, P_L, D_R, V_R, P_R, &
-           xR, x_D, K, t, t_end, CFL, Gamma, iRP = 8 )
+           xR, x_D, K, t, t_end, CFL, Gamma, iRP = 0 )
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -100,7 +100,7 @@ PROGRAM RiemannProblem
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL WriteFields1D( t, .TRUE., .TRUE. )
+!  CALL WriteFields1D( t, .TRUE., .TRUE. )
 
   CALL InitializeFluid_SSPRK( nStages = 3 )
 
@@ -144,7 +144,7 @@ PROGRAM RiemannProblem
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-      CALL WriteFields1D( t, .TRUE., .TRUE. )
+!      CALL WriteFields1D( t, .TRUE., .TRUE. )
 
     END IF
 
@@ -153,7 +153,7 @@ PROGRAM RiemannProblem
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL WriteFields1D( t, .TRUE., .TRUE. )
+!  CALL WriteFields1D( t, .TRUE., .TRUE. )
 
   CALL FinalizePositivityLimiter
 

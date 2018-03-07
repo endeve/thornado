@@ -41,6 +41,7 @@ StandingAccretionShock: \
 	BoundaryConditionsModule_Beta.o \
 	dgDiscretizationModule_Euler_GR.o \
 	TimeSteppingModule_SSPRK.o \
+	DataFileReaderModule.o \
 	StandingAccretionShock.o
 	$(FLINKER) $(FLAGS) -o StandingAccretionShock_$(MACHINE) \
 	$(thornado) \
@@ -53,6 +54,7 @@ StandingAccretionShock: \
 	BoundaryConditionsModule_Beta.o \
 	dgDiscretizationModule_Euler_GR.o \
 	TimeSteppingModule_SSPRK.o \
+	DataFileReaderModule.o \
 	StandingAccretionShock.o \
 	$(LIBRARIES)
 

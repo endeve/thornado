@@ -1,7 +1,7 @@
 PROGRAM StandingAccretionShock
 
   USE KindModule, ONLY: &
-    DP, Pi, TwoPi
+    DP, Pi, TwoPi, Two
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_B1, iX_E0, iX_E1
   USE ProgramInitializationModule, ONLY: &
@@ -32,8 +32,18 @@ PROGRAM StandingAccretionShock
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
+  USE DataFileReader, ONLY: &
+    ReadData, ReadParameters
 
+  
   IMPLICIT NONE
+
+  REAL(DP), ALLOCATABLE  :: FluidFieldData(:,:), FluidFieldParameters(:)
+
+  CALL ReadParameters &
+         ( '../StandingAccretionShock_Parameters.dat', FluidFieldParameters )
+  CALL ReadData &
+         ( '../StandingAccretionShock_Data.dat', FluidFieldData )
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -45,9 +55,9 @@ PROGRAM StandingAccretionShock
            bcX_Option &
              = [ 1, 1, 0 ], &
            xL_Option &
-             = [ 2.0d-1, 0.0d0, 0.0d0 ], &
+             = [ FluidFieldParameters(3), 0.0d0, 0.0d0 ], &
            xR_Option &
-             = [ 2.0d+0, Pi,    TwoPi ], &
+             = [ Two * FluidFieldParameters(4), Pi,    TwoPi ], &
            nNodes_Option &
              = 2, &
            CoordinateSystem_Option &
@@ -81,6 +91,8 @@ PROGRAM StandingAccretionShock
            UsePositivityLimiter_Option = .TRUE. )
 
   ! --- 
+
+  DEALLOCATE( FluidFieldParameters, FluidFieldData )
 
   CALL FinalizePositivityLimiter
 
