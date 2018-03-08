@@ -203,8 +203,11 @@ CONTAINS
     REAL(DP) :: P_q(1:nDOF,1:nPR), FF_q(1:nDOF), EF_q(1:nDOF)
     REAL(DP), ALLOCATABLE :: Flux_X1_q(:,:,:), dU_q(:,:,:)
     REAL(DP), ALLOCATABLE :: U_P(:,:,:), U_K(:,:,:)
-    REAL(DP), ALLOCATABLE :: U_L(:,:,:), U_R(:,:,:)
-    REAL(DP), ALLOCATABLE :: P_L(:,:,:), P_R(:,:,:)
+    REAL(DP), ALLOCATABLE :: U_L(:,:,:), Flux_L(:,:,:)
+    REAL(DP), ALLOCATABLE :: U_R(:,:,:), Flux_R(:,:,:)
+    REAL(DP), ALLOCATABLE :: NumericalFlux(:,:,:), dU_P(:,:,:), dU_K(:,:,:)
+    REAL(DP) :: P_L(1:nDOF_X1,1:nPR), FF_L(1:nDOF_X1), EF_L(1:nDOF_X1)
+    REAL(DP) :: P_R(1:nDOF_X1,1:nPR), FF_R(1:nDOF_X1), EF_R(1:nDOF_X1)
 
     print*, "ComputeIncrement_Divergence_X1_GPU (Begin)"
 
@@ -225,8 +228,13 @@ CONTAINS
     ALLOCATE( U_L(1:nDOF_X1,1:nF,1:nCR) )
     ALLOCATE( U_R(1:nDOF_X1,1:nF,1:nCR) )
 
-    ALLOCATE( P_L(1:nDOF_X1,1:nF,1:nPR) )
-    ALLOCATE( P_R(1:nDOF_X1,1:nF,1:nPR) )
+    ALLOCATE( Flux_L(1:nDOF_X1,1:nF,1:nPR) )
+    ALLOCATE( Flux_R(1:nDOF_X1,1:nF,1:nPR) )
+
+    ALLOCATE( NumericalFlux(1:nDOF_X1,1:nF,1:nCR) )
+
+    ALLOCATE( dU_P(1:nDOF,1:nF,1:nCR) )
+    ALLOCATE( dU_K(1:nDOF,1:nF,1:nCR) )
 
     PRINT*, "  nDOF, nK = ", nDOF, nK
 
@@ -258,13 +266,13 @@ CONTAINS
                 iK = iK + 1
 
                 CALL ComputePrimitive &
-                         ( U(:,iZ1,iZ2,iZ3,iZ4,iCR_N, iS), &
-                           U(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
-                           U(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
-                           U(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                           P_q(:,iPR_D ), P_q(:,iPR_I1), &
-                           P_q(:,iPR_I2), P_q(:,iPR_I3), &
-                           Ones_q(:), Ones_q(:), Ones_q(:) )
+                       ( U(:,iZ1,iZ2,iZ3,iZ4,iCR_N, iS), &
+                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                         P_q(:,iPR_D ), P_q(:,iPR_I1), &
+                         P_q(:,iPR_I2), P_q(:,iPR_I3), &
+                         Ones_q(:), Ones_q(:), Ones_q(:) )
 
                 FF_q = FluxFactor &
                          ( P_q(:,iPR_D ), P_q(:,iPR_I1), &
@@ -279,8 +287,7 @@ CONTAINS
                     = Flux_X1 &
                         ( P_q(iNode,iPR_D ), P_q(iNode,iPR_I1), &
                           P_q(iNode,iPR_I2), P_q(iNode,iPR_I3), &
-                          FF_q(iNode), EF_q(iNode), &
-                          One, One, One )
+                          FF_q(iNode), EF_q(iNode), One, One, One )
 
                 END DO
 
@@ -298,6 +305,13 @@ CONTAINS
 
               U_P(:,iF,1:nCR) = U(:,iZ1,iZ2-1,iZ3,iZ4,1:nCR,iS)
               U_K(:,iF,1:nCR) = U(:,iZ1,iZ2,  iZ3,iZ4,1:nCR,iS)
+
+              DO iCR = 1, nCR
+
+                NumericalFlux(:,iF,iCR) &
+                  = dZ(1) * dZ(3) * dZ(4) * Weights_X1(:)
+
+              END DO
 
             END DO
           END DO
@@ -328,32 +342,142 @@ CONTAINS
 
       DO iF = 1,nF
 
-         CALL ComputePrimitive &
-                 ( U_L(:,iF, iCR_N), U_L(:,iF,iCR_G1), &
-                   U_L(:,iF,iCR_G2), U_L(:,iF,iCR_G3), &
-                   P_L(:,iF,iPR_D ), P_L(:,iF,iPR_I1), &
-                   P_L(:,iF,iPR_I2), P_L(:,iF,iPR_I3), &
+        ! --- Left State Primitive, etc. ---
+
+        CALL ComputePrimitive &
+               ( U_L(:,iF,iCR_N ), U_L(:,iF,iCR_G1), &
+                 U_L(:,iF,iCR_G2), U_L(:,iF,iCR_G3), &
+                 P_L(:,   iPR_D ), P_L(:,   iPR_I1), &
+                 P_L(:,   iPR_I2), P_L(:,   iPR_I3), &
+                 Ones_RL(:), Ones_RL(:), Ones_RL(:) )
+
+        FF_L = FluxFactor &
+                 ( P_L(:,iPR_D ), P_L(:,iPR_I1), &
+                   P_L(:,iPR_I2), P_L(:,iPR_I3), &
                    Ones_RL(:), Ones_RL(:), Ones_RL(:) )
 
-           CALL ComputePrimitive &
-                 ( U_R(:,iF, iCR_N), U_R(:,iF,iCR_G1), &
-                   U_R(:,iF,iCR_G2), U_R(:,iF,iCR_G3), &
-                   P_R(:,iF,iPR_D ), P_R(:,iF,iPR_I1), &
-                   P_R(:,iF,iPR_I2), P_R(:,iF,iPR_I3), &
+        EF_L = EddingtonFactor( P_L(:,iPR_D), FF_L )
+
+        DO iNode = 1, nDOF_X1
+
+          Flux_L(iNode,iF,1:nCR) &
+            = Flux_X1 &
+                ( P_L(iNode,iPR_D ), P_L(iNode,iPR_I1), &
+                  P_L(iNode,iPR_I2), P_L(iNode,iPR_I3), &
+                  FF_L(iNode), EF_L(iNode), One, One, One )
+
+        END DO
+
+        ! --- Right State Primitive, etc. ---
+
+        CALL ComputePrimitive &
+               ( U_R(:,iF,iCR_N ), U_R(:,iF,iCR_G1), &
+                 U_R(:,iF,iCR_G2), U_R(:,iF,iCR_G3), &
+                 P_R(:,   iPR_D ), P_R(:,   iPR_I1), &
+                 P_R(:,   iPR_I2), P_R(:,   iPR_I3), &
+                 Ones_RL(:), Ones_RL(:), Ones_RL(:) )
+
+        FF_R = FluxFactor &
+                 ( P_R(:,iPR_D ), P_R(:,iPR_I1), &
+                   P_R(:,iPR_I2), P_R(:,iPR_I3), &
                    Ones_RL(:), Ones_RL(:), Ones_RL(:) )
 
+        EF_R = EddingtonFactor( P_R(:,iPR_D), FF_R )
 
+        DO iNode = 1, nDOF_X1
+
+          Flux_R(iNode,iF,1:nCR) &
+            = Flux_X1 &
+                ( P_R(iNode,iPR_D ), P_R(iNode,iPR_I1), &
+                  P_R(iNode,iPR_I2), P_R(iNode,iPR_I3), &
+                  FF_R(iNode), EF_R(iNode), One, One, One )
+
+        END DO
+
+        ! --- Numerical Flux ---
+
+        DO iCR = 1, nCR
+
+          NumericalFlux(:,iF,iCR) &
+            = NumericalFlux_LLF &
+                ( U_L   (:,iF,iCR), U_R   (:,iF,iCR), &
+                  Flux_L(:,iF,iCR), Flux_R(:,iF,iCR), &
+                  Ones_RL(:) ) * NumericalFlux(:,iF,iCR)
+
+        END DO
+
+      END DO ! --- iF
+
+      DO iCR = 1, nCR
+
+        CALL DGEMM &
+               ( 'T', 'N', nDOF, nF, nDOF_X1, One, L_X1_Dn, nDOF_X1, &
+                 NumericalFlux(:,:,iCR), nDOF_X1, Zero, dU_K(:,:,iCR), nDOF )
+
+        CALL DGEMM &
+               ( 'T', 'N', nDOF, nF, nDOF_X1, One, L_X1_Up, nDOF_X1, &
+                 NumericalFlux(:,:,iCR), nDOF_X1, Zero, dU_P(:,:,iCR), nDOF )
+
+      END DO
+
+      iK = 0
+      iF = 0
+
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+              IF( iZ2 < iZ_E0(2) + 1 )THEN
+
+                ! --- Volume Term ---
+
+                iK = iK + 1
+
+                dU(:,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
+                  = dU(:,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
+                      + dU_q(:,iK,1:nCR)
+
+              END IF
+
+              IF = iF + 1
+
+              ! --- Flux Terms ---
+
+              IF( iZ2 < iZ_E0(2) + 1 )THEN
+
+                ! --- Contribution to this Element ---
+
+                dU(:,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
+                  = dU(:,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
+                      + dU_K(:,iF,1:nCR)
+
+              END IF
+
+              IF( iZ2 > iZ_B0(2) )THEN
+
+                ! --- Contribution to this Element ---
+
+                dU(:,iZ1,iZ2-1,iZ3,iZ4,1:nCR,iS) &
+                  = dU(:,iZ1,iZ2-1,iZ3,iZ4,1:nCR,iS) &
+                      - dU_P(:,iF,1:nCR)
+
+              END IF
+
+            END DO
+          END DO
+        END DO
       END DO
 
       wTime = MPI_WTIME( ) - wTime
 
       print*, "Comp Time = ", wTime
 
-    END DO
+    END DO ! --- nSpecies
 
-    DEALLOCATE( Flux_X1_q, dU_q, U_P, U_K, P_L, P_R )
+    DEALLOCATE( Flux_X1_q, dU_q, U_P, U_K )
 
-    DEALLOCATE( U_L, U_R )
+    DEALLOCATE( U_L, U_R, Flux_L, Flux_R, NumericalFlux, dU_P, dU_K )
 
     print*, "ComputeIncrement_Divergence_X1_GPU (End)"
 
