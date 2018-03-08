@@ -203,6 +203,7 @@ CONTAINS
     REAL(DP) :: P_q(1:nDOF,1:nPR), FF_q(1:nDOF), EF_q(1:nDOF)
     REAL(DP), ALLOCATABLE :: Flux_X1_q(:,:,:), dU_q(:,:,:)
     REAL(DP), ALLOCATABLE :: U_P(:,:,:), U_K(:,:,:)
+    REAL(DP), ALLOCATABLE :: U_L(:,:,:), U_R(:,:,:)
 
     print*, "ComputeIncrement_Divergence_X1_GPU (Begin)"
 
@@ -214,8 +215,12 @@ CONTAINS
 
     ALLOCATE( Flux_X1_q(1:nDOF,1:nK,1:nCR) )
     ALLOCATE( dU_q     (1:nDOF,1:nK,1:nCR) )
-    ALLOCATE( U_P      (1:nDOF,1:nF,1:nCR) )
-    ALLOCATE( U_K      (1:nDOF,1:nF,1:nCR) )
+
+    ALLOCATE( U_P(1:nDOF,1:nF,1:nCR) )
+    ALLOCATE( U_K(1:nDOF,1:nF,1:nCR) )
+
+    ALLOCATE( U_L(1:nDOF_X1,1:nF,1:nCR) )
+    ALLOCATE( U_R(1:nDOF_X1,1:nF,1:nCR) )
 
     PRINT*, "  nDOF, nK = ", nDOF, nK
 
@@ -305,6 +310,14 @@ CONTAINS
                ( 'T', 'N', nDOF, nK, nDOF, One, dLdX1_q(:,:), nDOF, &
                  Flux_X1_q(:,:,iCR), nDOF, Zero, dU_q(:,:,iCR), nDOF )
 
+        CALL DGEMM &
+               ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Up(:,:), nDOF_X1, &
+                 U_P(:,:,iCR), nDOF, Zero, U_L(:,:,iCR), nDOF_X1 )
+
+        CALL DGEMM &
+               ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Dn(:,:), nDOF_X1, &
+                 U_K(:,:,iCR), nDOF, Zero, U_R(:,:,iCR), nDOF_X1 )
+
       END DO
 
       wTime = MPI_WTIME( ) - wTime
@@ -314,6 +327,8 @@ CONTAINS
     END DO
 
     DEALLOCATE( Flux_X1_q, dU_q, U_P, U_K )
+
+    DEALLOCATE( U_L, U_R )
 
     print*, "ComputeIncrement_Divergence_X1_GPU (End)"
 
