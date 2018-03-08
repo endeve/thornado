@@ -4,14 +4,8 @@ MODULE PositivityLimiterModule
     DP, Zero, Half, One
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, nDOF
-  USE PolynomialBasisModule_Lagrange, ONLY: &
-    L_E,  L_X1,  L_X2,  L_X3
   USE ReferenceElementModule_Beta, ONLY: &
-    NodesE, &
-    nDOF_X1, NodesX1, NodeNumberTable_X1, &
-    nDOF_X2, NodesX2, NodeNumberTable_X2, &
-    nDOF_X3, NodesX3, NodeNumberTable_X3, &
-    NodeNumberTable, &
+    nDOF_X1, nDOF_X2, nDOF_X3, &
     Weights_q
   USE ReferenceElementModule_Lagrange, ONLY: &
     L_X1_Dn, L_X1_Up, &
