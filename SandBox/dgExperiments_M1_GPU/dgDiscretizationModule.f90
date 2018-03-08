@@ -199,11 +199,12 @@ CONTAINS
     INTEGER  :: nK, iK, nF, iF, nZ(4), iNode
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iCR
     REAL(DP) :: wTime
-    REAL(DP) :: Ones_q(nDOF), dZ(4)
+    REAL(DP) :: Ones_q(nDOF), Ones_RL(nDOF_X1), dZ(4)
     REAL(DP) :: P_q(1:nDOF,1:nPR), FF_q(1:nDOF), EF_q(1:nDOF)
     REAL(DP), ALLOCATABLE :: Flux_X1_q(:,:,:), dU_q(:,:,:)
     REAL(DP), ALLOCATABLE :: U_P(:,:,:), U_K(:,:,:)
     REAL(DP), ALLOCATABLE :: U_L(:,:,:), U_R(:,:,:)
+    REAL(DP), ALLOCATABLE :: P_L(:,:,:), P_R(:,:,:)
 
     print*, "ComputeIncrement_Divergence_X1_GPU (Begin)"
 
@@ -213,6 +214,8 @@ CONTAINS
 
     Ones_q = One
 
+    Ones_RL = One
+
     ALLOCATE( Flux_X1_q(1:nDOF,1:nK,1:nCR) )
     ALLOCATE( dU_q     (1:nDOF,1:nK,1:nCR) )
 
@@ -221,6 +224,9 @@ CONTAINS
 
     ALLOCATE( U_L(1:nDOF_X1,1:nF,1:nCR) )
     ALLOCATE( U_R(1:nDOF_X1,1:nF,1:nCR) )
+
+    ALLOCATE( P_L(1:nDOF_X1,1:nF,1:nPR) )
+    ALLOCATE( P_R(1:nDOF_X1,1:nF,1:nPR) )
 
     PRINT*, "  nDOF, nK = ", nDOF, nK
 
@@ -320,13 +326,32 @@ CONTAINS
 
       END DO
 
+      DO iF = 1,nF
+
+         CALL ComputePrimitive &
+                 ( U_L(:,iF, iCR_N), U_L(:,iF,iCR_G1), &
+                   U_L(:,iF,iCR_G2), U_L(:,iF,iCR_G3), &
+                   P_L(:,iF,iPR_D ), P_L(:,iF,iPR_I1), &
+                   P_L(:,iF,iPR_I2), P_L(:,iF,iPR_I3), &
+                   Ones_RL(:), Ones_RL(:), Ones_RL(:) )
+
+           CALL ComputePrimitive &
+                 ( U_R(:,iF, iCR_N), U_R(:,iF,iCR_G1), &
+                   U_R(:,iF,iCR_G2), U_R(:,iF,iCR_G3), &
+                   P_R(:,iF,iPR_D ), P_R(:,iF,iPR_I1), &
+                   P_R(:,iF,iPR_I2), P_R(:,iF,iPR_I3), &
+                   Ones_RL(:), Ones_RL(:), Ones_RL(:) )
+
+
+      END DO
+
       wTime = MPI_WTIME( ) - wTime
 
       print*, "Comp Time = ", wTime
 
     END DO
 
-    DEALLOCATE( Flux_X1_q, dU_q, U_P, U_K )
+    DEALLOCATE( Flux_X1_q, dU_q, U_P, U_K, P_L, P_R )
 
     DEALLOCATE( U_L, U_R )
 
