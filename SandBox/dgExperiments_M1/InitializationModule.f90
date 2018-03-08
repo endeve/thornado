@@ -408,6 +408,7 @@ CONTAINS
     INTEGER   :: iNodeX1
     INTEGER   :: iNode
     REAL(DP)  :: X1, Mu_MP
+    REAL(DP)  :: Delta
     REAL(DP)  :: Gm_dd_11(nDOF)
     REAL(DP)  :: Gm_dd_22(nDOF)
     REAL(DP)  :: Gm_dd_33(nDOF)
@@ -416,6 +417,7 @@ CONTAINS
     Ones = 1.0_DP
 
     Mu_MP = 0.0_DP
+    Delta = 1.0d-8
 
     DO iS = 1, nSpecies
       DO iX3 = iX_B0(3), iX_E0(3)
@@ -445,15 +447,15 @@ CONTAINS
                 IF( X1 .LE. ZERO )THEN
 
                   uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
-                    = 0.50000_DP * ( 1.0_DP - Mu_MP**1 )
+                    = 0.50_DP * ( 1.0_DP + Delta )
 
                   uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
-                    = 0.24999_DP * ( 1.0_DP - Mu_MP**2 )
+                    = 0.25_DP * ( 1.0_DP - Delta )
 
                 ELSE
 
                   uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
-                    = 1.0d-6
+                    = Delta
 
                   uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
                     = 0.0d-0
