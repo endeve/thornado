@@ -6,7 +6,6 @@ all: StreamingSineWave
 
 StreamingSineWave: \
 	$(thornado) \
-	ReferenceElementModuleX.o \
 	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
 	ReferenceElementModuleE.o \
@@ -23,7 +22,6 @@ StreamingSineWave: \
 	StreamingSineWave.o
 	$(FLINKER) $(FLAGS) -o StreamingSineWave_$(MACHINE) \
 	$(thornado) \
-	ReferenceElementModuleX.o \
 	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
 	ReferenceElementModuleE.o \
