@@ -47,7 +47,7 @@ To this end, to simplify notation, we consider the moments
 \end{equation}
 where $\vect{\cM}_{\bK}$ is the cell average of $\vect{\cM}_{h}\in\bbV^{k}$ and $\hat{c}\ge0$.  
 \begin{lemma}
-  Let $\{s_{i}\}_{i=1}^{d}$ be a set of positive constants satisfying $\sum_{i=1}^{d}=1$.  
+  Let $\{s_{i}\}_{i=1}^{d}$ be a set of positive constants satisfying $\sum_{i=1}^{d}s_{i}=1$.  
   If for each $i\in\{1,\ldots,d\}$, 
   \begin{equation}
     \vect{\Gamma}^{i}\big[\vect{\cM}_{h}\big](\tilde{\vect{x}}^{i})
@@ -118,7 +118,7 @@ The following Lemma establishes sufficient conditions for realizability of $\vec
   Using the Lax-Friedrichs flux with $\alpha=1$, it is straightforward to show that
   \begin{align}
     &\Phi(\vect{\cM}_{\Low}^{-},\vect{\cM}_{\Low}^{+},\vect{\cM}_{\Hgh}^{-},\vect{\cM}_{\Hgh}^{+})
-    =(1-\lambda)\,\f{1}{2}\,\big(\,\vect{\cM}_{\Low}^{+}+\vect{\cM}_{\Hgh}^{-}\,\big) \nonumber \\
+    =(1-\lambda)\,\big(\,\f{1}{2}\,\vect{\cM}_{\Low}^{+}+\f{1}{2}\,\vect{\cM}_{\Hgh}^{-}\,\big) \nonumber \\
     &\hspace{12pt}
     +\f{1}{2}\,\lambda\,\big(\,\Phi^{+}(\vect{\cM}_{\Low}^{-})+\Phi^{-}(\vect{\cM}_{\Hgh}^{-})\,\big)
     +\f{1}{2}\,\lambda\,\big(\,\Phi^{+}(\vect{\cM}_{\Low}^{+})+\Phi^{-}(\vect{\cM}_{\Hgh}^{+})\,\big),
