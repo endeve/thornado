@@ -119,11 +119,11 @@ CONTAINS
     CALL ApplyBoundaryConditions_Radiation &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
-!!$    CALL ComputeIncrement_Divergence_X1 &
-!!$           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+!!    CALL ComputeIncrement_Divergence_X1 &
+!!           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
     CALL ComputeIncrement_Divergence_X1_GPU &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -208,8 +208,18 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: NumericalFlux(:,:,:), dU_P(:,:,:), dU_K(:,:,:)
     REAL(DP) :: P_L(1:nDOF_X1,1:nPR), FF_L(1:nDOF_X1), EF_L(1:nDOF_X1)
     REAL(DP) :: P_R(1:nDOF_X1,1:nPR), FF_R(1:nDOF_X1), EF_R(1:nDOF_X1)
+   
+    ! Temporary fix
+    REAL(DP) :: Tau(1:nDOF)
+    REAL(DP) :: Tau_X1(1:nDOF_X1)
+
 
     print*, "ComputeIncrement_Divergence_X1_GPU (Begin)"
+
+
+    ! Temporary fix
+    Tau = 0.25d0
+    Tau_X1 = 0.25d0
 
     nZ = iZ_E0 - iZ_B0 + 1
     nK = PRODUCT( nZ )
@@ -279,7 +289,12 @@ CONTAINS
                            P_q(:,iPR_I2), P_q(:,iPR_I3), &
                            Ones_q(:), Ones_q(:), Ones_q(:) )
 
+                  
+
                 EF_q = EddingtonFactor( P_q(:,iPR_D), FF_q )
+
+                
+                ! Error between these two comments
 
                 DO iNode = 1, nDOF
 
@@ -289,15 +304,29 @@ CONTAINS
                           P_q(iNode,iPR_I2), P_q(iNode,iPR_I3), &
                           FF_q(iNode), EF_q(iNode), One, One, One )
 
+                  !PRINT *, Flux_X1_q(iNode,iK,1:nCR)
+
                 END DO
+
+                !STOP
 
                 DO iCR = 1, nCR
 
                   Flux_X1_q(:,iK,iCR) &
                     = dZ(1) * dZ(3) * dZ(4) * Weights_q(:) &
-                        * Flux_X1_q(:,iK,iCR)
+                        * Tau(:) * Flux_X1_q(:,iK,iCR)
+
+                  PRINT *, Flux_X1_q(:,iK,iCR)
 
                 END DO
+
+                PRINT *, ""
+                PRINT *, Weights_q
+
+
+                ! End error section
+
+
 
               END IF
 
@@ -309,7 +338,7 @@ CONTAINS
               DO iCR = 1, nCR
 
                 NumericalFlux(:,iF,iCR) &
-                  = dZ(1) * dZ(3) * dZ(4) * Weights_X1(:)
+                  = dZ(1) * dZ(3) * dZ(4) * Weights_X1(:) * Tau_X1(:)
 
               END DO
 
@@ -657,6 +686,7 @@ CONTAINS
                            G_K(iNode,iGF_Gm_dd_22), &
                            G_K(iNode,iGF_Gm_dd_33) )
 
+
                   EF = EddingtonFactor( uPR_K(iNode,iPR_D), FF )
 
                   Flux_X1_q(iNode,1:nCR) &
@@ -668,7 +698,13 @@ CONTAINS
                           G_K(iNode,iGF_Gm_dd_22), &
                           G_K(iNode,iGF_Gm_dd_33) )
 
+                  !PRINT *, Flux_X1_q(iNode,1:nCR)
+
                 END DO
+
+                !STOP
+
+                
 
                 CALL Timer_Start( dT_AD1 )
 
@@ -678,12 +714,19 @@ CONTAINS
                     = dZ(1) * dZ(3) * dZ(4) * Weights_q(:) &
                         * G_K(:,iGF_Alpha) * Tau(:) * Flux_X1_q(:,iCR)
 
+                  PRINT *, Flux_X1_q(:,iCR)
+
                   CALL DGEMV &
                          ( 'T', nDOF, nDOF, One, dLdX1_q, nDOF, &
                            Flux_X1_q(:,iCR), 1, One, &
                            dU(:,iZ1,iZ2,iZ3,iZ4,iCR,iS), 1 )
 
                 END DO
+
+                PRINT *, ""
+
+                PRINT *, Tau
+                PRINT *, Weights_q
 
                 CALL Timer_Stop( dT_AD1 )
 
