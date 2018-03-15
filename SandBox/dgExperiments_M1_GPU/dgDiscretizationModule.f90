@@ -114,13 +114,13 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS
     REAL(DP) :: dZ(4), Tau(nDOF)
 
-    dU = Zero
+    dU  = Zero
 
     CALL ApplyBoundaryConditions_Radiation &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
-!!    CALL ComputeIncrement_Divergence_X1 &
-!!           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+!!$    CALL ComputeIncrement_Divergence_X1 &
+!!$           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
     CALL ComputeIncrement_Divergence_X1_GPU &
           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
@@ -175,8 +175,6 @@ CONTAINS
 
     END IF
 
-    PRINT*, "SUM(dU) = ", SUM( dU )
-
   END SUBROUTINE ComputeIncrement_M1_DG_Explicit
 
 
@@ -200,6 +198,7 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iCR
     REAL(DP) :: wTime
     REAL(DP) :: Ones_q(nDOF), Ones_RL(nDOF_X1), dZ(4)
+    REAL(DP) :: Tau(1:nDOF), Tau_X1(1:nDOF_X1)
     REAL(DP) :: P_q(1:nDOF,1:nPR), FF_q(1:nDOF), EF_q(1:nDOF)
     REAL(DP), ALLOCATABLE :: Flux_X1_q(:,:,:), dU_q(:,:,:)
     REAL(DP), ALLOCATABLE :: U_P(:,:,:), U_K(:,:,:)
@@ -208,18 +207,6 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: NumericalFlux(:,:,:), dU_P(:,:,:), dU_K(:,:,:)
     REAL(DP) :: P_L(1:nDOF_X1,1:nPR), FF_L(1:nDOF_X1), EF_L(1:nDOF_X1)
     REAL(DP) :: P_R(1:nDOF_X1,1:nPR), FF_R(1:nDOF_X1), EF_R(1:nDOF_X1)
-   
-    ! Temporary fix
-    REAL(DP) :: Tau(1:nDOF)
-    REAL(DP) :: Tau_X1(1:nDOF_X1)
-
-
-    print*, "ComputeIncrement_Divergence_X1_GPU (Begin)"
-
-
-    ! Temporary fix
-    Tau = 0.25d0
-    Tau_X1 = 0.25d0
 
     nZ = iZ_E0 - iZ_B0 + 1
     nK = PRODUCT( nZ )
@@ -246,8 +233,6 @@ CONTAINS
     ALLOCATE( dU_P(1:nDOF,1:nF,1:nCR) )
     ALLOCATE( dU_K(1:nDOF,1:nF,1:nCR) )
 
-    PRINT*, "  nDOF, nK = ", nDOF, nK
-
     DO iS = 1, nSpecies
 
       iK = 0
@@ -271,6 +256,14 @@ CONTAINS
 
               dZ(1) = MeshE % Width(iZ1)
 
+              Tau(1:nDOF) &
+                = OuterProduct1D3D &
+                    ( GE(:,iZ1,iGE_Ep2), nDOFE, Ones_q(1:nDOFX), nDOFX )
+
+              Tau_X1(1:nDOF_X1) &
+                = OuterProduct1D3D &
+                    ( GE(:,iZ1,iGE_Ep2), nDOFE, Ones_q(1:nDOFX_X1), nDOFX_X1 )
+
               IF( iZ2 < iZ_E0(2) + 1 )THEN
 
                 iK = iK + 1
@@ -293,9 +286,6 @@ CONTAINS
 
                 EF_q = EddingtonFactor( P_q(:,iPR_D), FF_q )
 
-                
-                ! Error between these two comments
-
                 DO iNode = 1, nDOF
 
                   Flux_X1_q(iNode,iK,1:nCR) &
@@ -304,11 +294,7 @@ CONTAINS
                           P_q(iNode,iPR_I2), P_q(iNode,iPR_I3), &
                           FF_q(iNode), EF_q(iNode), One, One, One )
 
-                  !PRINT *, Flux_X1_q(iNode,iK,1:nCR)
-
                 END DO
-
-                !STOP
 
                 DO iCR = 1, nCR
 
@@ -316,17 +302,7 @@ CONTAINS
                     = dZ(1) * dZ(3) * dZ(4) * Weights_q(:) &
                         * Tau(:) * Flux_X1_q(:,iK,iCR)
 
-                  PRINT *, Flux_X1_q(:,iK,iCR)
-
                 END DO
-
-                PRINT *, ""
-                PRINT *, Weights_q
-
-
-                ! End error section
-
-
 
               END IF
 
@@ -349,7 +325,7 @@ CONTAINS
 
       wTime = MPI_WTIME( ) - wTime
 
-      print*, "Prep Time = ", wTime
+!      print*, "Prep Time = ", wTime
 
       wTime = MPI_WTIME( )
 
@@ -500,15 +476,13 @@ CONTAINS
 
       wTime = MPI_WTIME( ) - wTime
 
-      print*, "Comp Time = ", wTime
+!      print*, "Comp Time = ", wTime
 
     END DO ! --- nSpecies
 
     DEALLOCATE( Flux_X1_q, dU_q, U_P, U_K )
 
     DEALLOCATE( U_L, U_R, Flux_L, Flux_R, NumericalFlux, dU_P, dU_K )
-
-    print*, "ComputeIncrement_Divergence_X1_GPU (End)"
 
   END SUBROUTINE ComputeIncrement_Divergence_X1_GPU
 
@@ -698,13 +672,7 @@ CONTAINS
                           G_K(iNode,iGF_Gm_dd_22), &
                           G_K(iNode,iGF_Gm_dd_33) )
 
-                  !PRINT *, Flux_X1_q(iNode,1:nCR)
-
                 END DO
-
-                !STOP
-
-                
 
                 CALL Timer_Start( dT_AD1 )
 
@@ -714,19 +682,12 @@ CONTAINS
                     = dZ(1) * dZ(3) * dZ(4) * Weights_q(:) &
                         * G_K(:,iGF_Alpha) * Tau(:) * Flux_X1_q(:,iCR)
 
-                  PRINT *, Flux_X1_q(:,iCR)
-
                   CALL DGEMV &
                          ( 'T', nDOF, nDOF, One, dLdX1_q, nDOF, &
                            Flux_X1_q(:,iCR), 1, One, &
                            dU(:,iZ1,iZ2,iZ3,iZ4,iCR,iS), 1 )
 
                 END DO
-
-                PRINT *, ""
-
-                PRINT *, Tau
-                PRINT *, Weights_q
 
                 CALL Timer_Stop( dT_AD1 )
 
