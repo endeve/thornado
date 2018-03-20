@@ -7,7 +7,6 @@ MODULE ProgramInitializationModule
     DescribeUnitsDisplay, &
     UnitsDisplay
   USE ProgramHeaderModule, ONLY: &
-    ProgramName, &
     nX, swX, xL, xR, ZoomX, &
     nE, swE, eL, eR, ZoomE, &
     nDimsX, nDimsE, nDims, &
@@ -158,22 +157,6 @@ CONTAINS
 
     CALL MPI_INIT( mpierr )
 
-    WRITE(*,*)
-    WRITE(*,'(A2,A28,A)') &
-      '', 'INFO: Initializing Program: ', TRIM( ProgramName )
-    WRITE(*,*)
-
-    BasicInitialization = .FALSE.
-    IF( PRESENT( BasicInitialization_Option ) ) &
-      BasicInitialization = BasicInitialization_Option
-
-    IF( BasicInitialization )THEN
-
-      WRITE(*,'(A4,A20)') '', 'Basic Initialization'
-      WRITE(*,*)
-
-    END IF
-
     CALL InitializeProgramHeader     &
            ( ProgramName_Option      &
                = ProgramName_Option, &
@@ -203,6 +186,17 @@ CONTAINS
                = eR_Option,          &
              zoomE_Option            &
                = zoomE_Option )
+
+    BasicInitialization = .FALSE.
+    IF( PRESENT( BasicInitialization_Option ) ) &
+      BasicInitialization = BasicInitialization_Option
+
+    IF( BasicInitialization )THEN
+
+      WRITE(*,'(A5,A20)') '', 'Basic Initialization'
+      WRITE(*,*)
+
+    END IF
 
     ! --- Units ---
 

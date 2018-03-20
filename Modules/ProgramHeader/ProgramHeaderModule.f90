@@ -92,6 +92,11 @@ CONTAINS
     IF( PRESENT( ProgramName_Option ) ) &
       ProgramName = TRIM( ProgramName_Option )
 
+    WRITE(*,*)
+    WRITE(*,'(A2,A28,A)') &
+      '', 'INFO: Initializing Program: ', TRIM( ProgramName )
+    WRITE(*,*)
+
     nNodes = 1
     IF( PRESENT( nNodes_Option ) ) &
       nNodes = nNodes_Option
