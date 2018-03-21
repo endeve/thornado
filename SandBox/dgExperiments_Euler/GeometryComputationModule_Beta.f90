@@ -183,6 +183,10 @@ CONTAINS
                  ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
                    G_L(:,iGF_Alpha), 1, Zero, G(:,iX1,iX2,iX3,iGF_Alpha), 1 )
 
+          CALL DGEMV &
+                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+                   G_L(:,iGF_Psi),   1, Zero, G(:,iX1,iX2,iX3,iGF_Psi),   1 )
+
         END DO
       END DO
     END DO
