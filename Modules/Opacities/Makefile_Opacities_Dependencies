@@ -12,3 +12,10 @@ OpacityModule.o: \
   OpacityModule_IDEAL.o \
   OpacityModule_TABLE.o \
   OpacityModule.f90
+
+NeutrinoOpacitiesModule.o: \
+  KindModule.o \
+  NeutrinoOpacitiesModule.f90
+
+NeutrinoOpacitiesComputationModule.o: \
+  NeutrinoOpacitiesComputationModule.f90
