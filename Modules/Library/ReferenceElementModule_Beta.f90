@@ -16,6 +16,7 @@ MODULE ReferenceElementModule_Beta
   INTEGER,               PUBLIC :: nDOF_X1
   INTEGER,               PUBLIC :: nDOF_X2
   INTEGER,               PUBLIC :: nDOF_X3
+  INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumbersX(:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable(:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable_X1(:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable_X2(:,:)
@@ -40,11 +41,33 @@ CONTAINS
 
   SUBROUTINE InitializeReferenceElement
 
-    INTEGER :: iNodeE, iNodeX1, iNodeX2, iNodeX3, iNode
+    INTEGER :: iNode, iNodeX
+    INTEGER :: iNodeE, iNodeX1, iNodeX2, iNodeX3
 
     nDOF_X1 = nNodesX(2) * nNodesX(3) * nNodesE
     nDOF_X2 = nNodesX(1) * nNodesX(3) * nNodesE
     nDOF_X3 = nNodesX(1) * nNodesX(2) * nNodesE
+
+    ALLOCATE( NodeNumbersX(nDOF) )
+
+    iNode  = 0
+    iNodeX = 0
+    DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+        DO iNodeX1 = 1, nNodesX(1)
+
+          iNodeX = iNodeX + 1
+
+          DO iNodeE = 1, nNodesE
+
+            iNode = iNode + 1
+
+            NodeNumbersX(iNode) = iNodeX
+
+          END DO
+        END DO
+      END DO
+    END DO
 
     ALLOCATE( NodeNumberTable(4,nDOF) )
     ALLOCATE( NodeNumberTable4D(nNodesZ(1),nNodesZ(2),nNodesZ(3),nNodesZ(4)) )
@@ -190,6 +213,7 @@ CONTAINS
 
   SUBROUTINE FinalizeReferenceElement
 
+    DEALLOCATE( NodeNumbersX )
     DEALLOCATE( NodeNumberTable )
     DEALLOCATE( NodeNumberTable_X1 )
     DEALLOCATE( NodeNumberTable_X2 )
