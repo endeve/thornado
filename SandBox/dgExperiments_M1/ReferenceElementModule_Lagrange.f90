@@ -6,11 +6,9 @@ MODULE ReferenceElementModule_Lagrange
     nNodesE, &
     nNodesX, &
     nDOF
-  USE UtilitiesModule, ONLY: &
-    WriteMatrix
   USE PolynomialBasisModule_Lagrange, ONLY: &
-    L_E,  L_X1,  L_X2,  L_X3, &
-         dL_X1, dL_X2, dL_X3
+    L_E, L_X1, L_X2, L_X3, &
+    dL_X1, dL_X2, dL_X3
   USE ReferenceElementModule_Beta, ONLY: &
     nDOF_X1, &
     nDOF_X2, &
@@ -27,9 +25,6 @@ MODULE ReferenceElementModule_Lagrange
   IMPLICIT NONE
   PRIVATE
 
-  INCLUDE 'mpif.h'
-
-  REAL(DP) :: wTime
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: L_X1_Dn
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: L_X1_Up
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: L_X2_Dn
@@ -53,8 +48,6 @@ CONTAINS
     INTEGER :: iNode_X1, iNodeE_X1, iNodeX2_X1, iNodeX3_X1
     INTEGER :: iNode_X2, iNodeE_X2, iNodeX1_X2, iNodeX3_X2
     INTEGER :: iNode_X3, iNodeE_X3, iNodeX1_X3, iNodeX2_X3
-
-    wTime = MPI_WTIME( )
 
     ALLOCATE( L_X1_Dn(nDOF_X1,nDOF) )
     ALLOCATE( L_X1_Up(nDOF_X1,nDOF) )
@@ -194,24 +187,6 @@ CONTAINS
 
     END DO
     !$OMP END PARALLEL DO
-
-    wTime = MPI_WTIME( ) - wTime
-
-    WRITE(*,*)
-    WRITE(*,'(A4,A,ES10.4E2)') &
-      '', 'InitializeReferenceElement_Lagrange: ', wTime
-    WRITE(*,*)
-
-    CALL WriteMatrix( nDOF_X1, nDOF, L_X1_Dn, 'L_X1_Dn.dat' )
-    CALL WriteMatrix( nDOF_X1, nDOF, L_X1_Up, 'L_X1_Up.dat' )
-    CALL WriteMatrix( nDOF_X2, nDOF, L_X2_Dn, 'L_X2_Dn.dat' )
-    CALL WriteMatrix( nDOF_X2, nDOF, L_X2_Up, 'L_X2_Up.dat' )
-    CALL WriteMatrix( nDOF_X3, nDOF, L_X3_Dn, 'L_X3_Dn.dat' )
-    CALL WriteMatrix( nDOF_X3, nDOF, L_X3_Up, 'L_X3_Up.dat' )
-
-    CALL WriteMatrix( nDOF, nDOF, dLdX1_q, 'dLdX1_q.dat' )
-    CALL WriteMatrix( nDOF, nDOF, dLdX2_q, 'dLdX2_q.dat' )
-    CALL WriteMatrix( nDOF, nDOF, dLdX3_q, 'dLdX3_q.dat' )
 
   END SUBROUTINE InitializeReferenceElement_Lagrange
 
