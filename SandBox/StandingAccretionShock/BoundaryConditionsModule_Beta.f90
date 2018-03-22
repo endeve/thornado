@@ -1,144 +1,186 @@
-MODULE ApplicationBoundaryConditionsModule_Beta  
+MODULE BoundaryConditionsModule_Beta
 
   USE KindModule, ONLY: &
-    DP, Pi
+    DP
   USE ProgramHeaderModule, ONLY: &
-    ProgramName, &
-    xL, xR, &
-    nX, nNodesX, &
-    nE, nNodesE
-  USE UtilitiesModule, ONLY: &
-    NodeNumberX, &
-    NodeNumber,  &
-    WriteVector
-  USE MeshModule, ONLY: &
-    MeshX, &
-    NodeCoordinate
+    bcX, swX
   USE FluidFieldsModule, ONLY: &
-    uCF, iCF_S1, nCF, &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
-    uAF, iAF_P, iAF_T,  iAF_Ye, iAF_S,  iAF_E, iAF_Gm, iAF_Cs, nAF
-  USE EquationOfStateModule, ONLY: &
-    ComputeInternalEnergyDensityFromPressure, &
-    ComputeAuxiliary_Fluid
-  USE EulerEquationsUtilitiesModule, ONLY: &
-    Primitive
+    nCF
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ApplyApplicationBoundaryConditions_Fluid_X1
+  PUBLIC :: ApplyBoundaryConditions_Fluid
 
 CONTAINS
 
-  SUBROUTINE ApplyApplicationBoundaryConditions_Fluid_X1
 
-    SELECT CASE ( TRIM( ProgramName ) )
-      
-      CASE ( 'ApplicationDriver' )
+  SUBROUTINE ApplyBoundaryConditions_Fluid &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-        CALL ApplyBC_Fluid_X1_ApplicationDriver
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-      CASE DEFAULT
+    CALL ApplyBC_Fluid_X1 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-        WRITE(*,*)
-        WRITE(*,'(A5,A38)') &
-          '', 'Application Boundary Condition Missing'
-        WRITE(*,*)
-        WRITE(*,'(A7,A)') &
-          '', TRIM( ProgramName )
-        WRITE(*,*)
-        STOP
+    CALL ApplyBC_Fluid_X2 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    CALL ApplyBC_Fluid_X3 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+  END SUBROUTINE ApplyBoundaryConditions_Fluid
+
+
+  SUBROUTINE ApplyBC_Fluid_X1( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iCF, iX1, iX2, iX3
+
+    SELECT CASE ( bcX(1) )
+
+    CASE ( 0 ) ! No Boundary Condition
+
+    CASE ( 1 ) ! Periodic
+
+      DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+            DO iX1 = 1, swX(1)
+
+              ! --- Inner Boundary ---
+
+              U(:,iX_B0(1)-iX1,iX2,iX3,iCF) &
+                = U(:,iX_E0(1)-(iX1-1),iX2,iX3,iCF)
+
+              ! --- Outer Boundary ---
+
+              U(:,iX_E0(1)+iX1,iX2,iX3,iCF) &
+                = U(:,iX_B0(1)+(iX1-1),iX2,iX3,iCF)
+
+            END DO
+          END DO
+        END DO
+      END DO
+
+    CASE ( 2 ) ! Homogeneous
+
+      DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+            DO iX1 = 1, swX(1)
+
+              ! --- Inner Boundary ---
+
+              U(:,iX_B0(1)-iX1,iX2,iX3,iCF) &
+                = U(:,iX_B0(1),iX2,iX3,iCF)
+
+              ! --- Outer Boundary ---
+
+              U(:,iX_E0(1)+iX1,iX2,iX3,iCF) &
+                = U(:,iX_E0(1),iX2,iX3,iCF)
+
+            END DO
+          END DO
+        END DO
+      END DO
+
+    CASE DEFAULT
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A45,I2.2)') &
+        '', 'Invalid Boundary Condition for Fluid X1: ', bcX(1)
+      STOP
 
     END SELECT
 
-  END SUBROUTINE ApplyApplicationBoundaryConditions_Fluid_X1
+  END SUBROUTINE ApplyBC_Fluid_X1
 
-  SUBROUTINE ApplyBC_Fluid_X1_ApplicationDriver
 
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX_0, iNodeX_1, iNodeX_q, i_q
-    INTEGER, PARAMETER :: N_q = 1
-    REAL(DP) :: X1_0, X1_1, Beta, Gamma, Numerator_D, Numerator_E, Denominator_D, Denominator_E, K_D, K_E
-    REAL(DP), DIMENSION(N_q * nNodesX(1))   :: X1_q, D_q, E_q
-    REAL(DP), DIMENSION(nCF) :: uCF_q
+  SUBROUTINE ApplyBC_Fluid_X2( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-    Gamma = 4.0_DP / 3.0_DP
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        ! --- Inner Boundary ---
+    INTEGER :: iCF, iX1, iX2, iX3
 
-        DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-        ! Pull coeffecient calculations into separate subroutine. 
-            i_q = 1
-            Numerator_D = 0
-            Denominator_D = 0
+    SELECT CASE ( bcX(2) )
 
-            Numerator_E = 0
-            Denominator_E = 0
+    CASE ( 0 ) ! No Boundary Condition
 
-            K_D = 0
-            K_E = 0 
+    CASE ( 1 ) ! Periodic
 
-            DO iX1 = 1, N_q
-              DO iNodeX1 = 1, nNodesX(1) 
-              
-                 X1_q(i_q) = NodeCoordinate( MeshX(1), iX1, iNodeX1)
-                
-                 iNodeX_q = NodeNumberX(iNodeX1, iNodeX2, iNodeX3)
-                
-                 uCF_q = uCF(iNodeX_q, iX1, iX2, iX3,:)
+      DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = 1, swX(2)
+            DO iX1 = iX_B0(1), iX_E0(1)
 
-                 D_q(i_q) = uCF_q(iCF_D)
+              ! --- Inner Boundary ---
 
-                 E_q(i_q) = uCF_q(iCF_E)
-              
-                 Numerator_D = Numerator_D + D_q(i_q)/X1_q(i_q)**3
-                 Denominator_D = Denominator_D + 1.0_DP/X1_q(i_q)**6
-                                 
-                 Numerator_E = Numerator_E + E_q(i_q)/X1_q(i_q)**Beta
-                 Denominator_E = Denominator_E + 1.0_DP/X1_q(i_q)**(2 * Beta) 
+              U(:,iX1,iX_B0(2)-iX2,iX3,iCF) &
+                = U(:,iX1,iX_E0(2)-(iX2-1),iX3,iCF)
 
-                 i_q = i_q + 1
+              ! --- Outer Boundary ---
 
-              END DO
+              U(:,iX1,iX_E0(2)+iX2,iX3,iCF) &
+                = U(:,iX1,iX_B0(2)+(iX2-1),iX3,iCF)
+
             END DO
-               
-            K_D = Numerator_D/Denominator_D
-            K_E = Numerator_P/Denominator_E
-
-            DO iNodeX1 = 1, nNodesX(1)
-
-              iNodeX_0 = NodeNumberX( iNodeX1, iNodeX2, iNodeX3)
-
-              X1_0 = NodeCoordinate( MeshX(1), 0, iNodeX1 )
-         
-              uCF(iNodeX_0,0,iX2,iX3,iCF_D) &
-                = K_D / X1_0**3
-
-              uCF(iNodeX_0,0,iX2,iX3,iCF_E) &
-                = K_E / X1_0**Beta
-
-            END DO           
           END DO
         END DO
-
-        CALL ComputeInternalEnergyDensityFromPressure &
-               ( uPF(:,0,iX2,iX3,iPF_D ), uAF(:,0,iX2,iX3,iAF_P), &
-                 uAF(:,0,iX2,iX3,iAF_Ye), uPF(:,0,iX2,iX3,iPF_E) )
-
-        CALL ComputeAuxiliary_Fluid &
-               ( uPF(:,0,iX2,iX3,iPF_D ), uPF(:,0,iX2,iX3,iPF_E ), &
-                 uPF(:,0,iX2,iX3,iPF_Ne), uAF(:,0,iX2,iX3,iAF_P ), &
-                 uAF(:,0,iX2,iX3,iAF_T ), uAF(:,0,iX2,iX3,iAF_Ye), &
-                 uAF(:,0,iX2,iX3,iAF_S ), uAF(:,0,iX2,iX3,iAF_E ), &
-                 uAF(:,0,iX2,iX3,iAF_Gm), uAF(:,0,iX2,iX3,iAF_Cs) )
-
       END DO
-    END DO
 
-  END SUBROUTINE ApplyBC_Fluid_X1_StandingAccretionShock1D
+    CASE ( 2 ) ! Homogeneous
 
-END MODULE ApplicationBoundaryConditionsModule
+      DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = 1, swX(2)
+            DO iX1 = iX_B0(1), iX_E0(1)
+
+              ! --- Inner Boundary ---
+
+              U(:,iX1,iX_B0(2)-iX2,iX3,iCF) &
+                = U(:,iX1,iX_B0(2),iX3,iCF)
+
+              ! --- Outer Boundary ---
+
+              U(:,iX1,iX_E0(2)+iX2,iX3,iCF) &
+                = U(:,iX1,iX_E0(2),iX3,iCF)
+
+            END DO
+          END DO
+        END DO
+      END DO
+
+    CASE DEFAULT
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A45,I2.2)') &
+        '', 'Invalid Boundary Condition for Fluid X2: ', bcX(2)
+      STOP
+
+    END SELECT
+
+  END SUBROUTINE ApplyBC_Fluid_X2
+
+
+  SUBROUTINE ApplyBC_Fluid_X3( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+  END SUBROUTINE ApplyBC_Fluid_X3
+
+
+END MODULE BoundaryConditionsModule_Beta

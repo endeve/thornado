@@ -19,6 +19,9 @@ PROGRAM ApplicationDriver
     ComputeGeometryX
   USE GeometryFieldsModule, ONLY: &
     uGF
+  USE EquationOfStateModule, ONLY: &
+    InitializeEquationOfState, &
+    FinalizeEquationOfState
   USE InitializationModule, ONLY: &
     InitializeFields
 
@@ -27,6 +30,7 @@ PROGRAM ApplicationDriver
   INCLUDE 'mpif.h'
 
   REAL(DP) :: wTime
+  REAL(DP), PARAMETER :: Gamma = 4.0_DP / 3.0_DP
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -54,17 +58,25 @@ PROGRAM ApplicationDriver
 
   CALL ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
+  CALL InitializeEquationOfState &
+         ( EquationOfState_Option = 'IDEAL', &
+           Gamma_IDEAL_Option = Gamma )
+
   CALL InitializeFields &
-         ( 4.0_DP * Pi, 0.5_DP, 1.0_DP, 4.0_DP/ 3.0_DP, 3.0d2) 
+         ( 4.0_DP * Pi, 0.5_DP, 1.0_DP, Gamma, 3.0d2 ) 
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
 !!$  ! --- Main Part of Code Will Go Here
 
+  ! --- Finalize ---
+
   CALL FinalizeReferenceElementX
 
   CALL FinalizeReferenceElementX_Lagrange
+
+  CALL FinalizeEquationOfState
 
   CALL FinalizeProgram
 
