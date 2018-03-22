@@ -5,7 +5,7 @@ MODULE BoundaryConditionsModule_Beta
   USE ProgramHeaderModule, ONLY: &
     bcZ, swZ, &
     nNodesZ
-  USE ReferenceElementModule_Beta, ONLY: &
+  USE ReferenceElementModule, ONLY: &
     NodeNumberTable4D
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &

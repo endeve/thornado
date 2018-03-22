@@ -1,3 +1,4 @@
+MICROPHYSICS = WEAKLIB
 MOMENT_CLOSURE = MINERBO
 #MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
 #MOMENT_CLOSURE = MAXIMUM_ENTROPY_BL
@@ -5,17 +6,12 @@ MOMENT_CLOSURE = MINERBO
 
 include ../../../Build/Makefile_Build
 
-all: ApplicationDriver
+all: ApplicationDriver DeleptonizationWave
 
 ApplicationDriver: \
 	$(thornado) \
-	ReferenceElementModuleX.o \
-	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
-	ReferenceElementModuleE.o \
-	ReferenceElementModuleE_Lagrange.o \
 	GeometryComputationModuleE_Beta.o \
-	ReferenceElementModule_Lagrange.o \
 	PositivityLimiterModule.o \
 	TimeSteppingModule_IMEX_RK.o \
 	ClosureModule_M1.o \
@@ -27,13 +23,8 @@ ApplicationDriver: \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
-	ReferenceElementModuleX.o \
-	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
-	ReferenceElementModuleE.o \
-	ReferenceElementModuleE_Lagrange.o \
 	GeometryComputationModuleE_Beta.o \
-	ReferenceElementModule_Lagrange.o \
 	PositivityLimiterModule.o \
 	TimeSteppingModule_IMEX_RK.o \
 	ClosureModule_M1.o \
@@ -45,8 +36,33 @@ ApplicationDriver: \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
+DeleptonizationWave: \
+	$(thornado) \
+	GeometryComputationModule_Beta.o \
+	GeometryComputationModuleE_Beta.o \
+	MomentEquationsUtilitiesModule_Beta.o \
+	ClosureModule_M1.o \
+	PositivityLimiterModule.o \
+	TimeSteppingModule_IMEX_RK.o \
+	InitializationModule.o \
+	dgDiscretizationModule_Collisions_Neutrinos.o \
+	DeleptonizationWave.o
+	$(FLINKER) $(FLAGS) -o DeleptonizationWave_$(MACHINE) \
+	$(thornado) \
+	GeometryComputationModule_Beta.o \
+	GeometryComputationModuleE_Beta.o \
+	MomentEquationsUtilitiesModule_Beta.o \
+	ClosureModule_M1.o \
+	PositivityLimiterModule.o \
+	TimeSteppingModule_IMEX_RK.o \
+	InitializationModule.o \
+	dgDiscretizationModule_Collisions_Neutrinos.o \
+	DeleptonizationWave.o \
+	$(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
 	rm -f ApplicationDriver_$(MACHINE)
+	rm -f DeleptonizationWave_$(MACHINE)

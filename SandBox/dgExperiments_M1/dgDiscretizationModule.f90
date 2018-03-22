@@ -24,7 +24,7 @@ MODULE dgDiscretizationModule
     LX_X2_Up, &
     LX_X3_Dn, &
     LX_X3_Up
-  USE ReferenceElementModule_Beta, ONLY: &
+  USE ReferenceElementModule, ONLY: &
     nDOF_X1, &
     nDOF_X2, &
     nDOF_X3, &

@@ -4,7 +4,7 @@ MODULE PositivityLimiterModule
     DP, Zero, Half, One
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, nDOF
-  USE ReferenceElementModule_Beta, ONLY: &
+  USE ReferenceElementModule, ONLY: &
     nDOF_X1, nDOF_X2, nDOF_X3, &
     Weights_q
   USE ReferenceElementModule_Lagrange, ONLY: &

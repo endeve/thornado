@@ -4,7 +4,7 @@ MODULE dgDiscretizationModule_Collisions
     DP, Zero, One
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, nDOF
-  USE ReferenceElementModule_Beta, ONLY: &
+  USE ReferenceElementModule, ONLY: &
     NodeNumberTable, &
     NodeNumberTable4D, &
     Weights_q
@@ -55,7 +55,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
 
-    INTEGER  :: iCR, iS, iX_G
+    INTEGER :: iCR, iS, iX_G
 
     ! --- Map Data for Collision Update ---
 

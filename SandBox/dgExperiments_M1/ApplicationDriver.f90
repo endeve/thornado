@@ -21,7 +21,7 @@ PROGRAM ApplicationDriver
   USE ReferenceElementModuleE_Lagrange, ONLY: &
     InitializeReferenceElementE_Lagrange, &
     FinalizeReferenceElementE_Lagrange
-  USE ReferenceElementModule_Beta, ONLY: &
+  USE ReferenceElementModule, ONLY: &
     InitializeReferenceElement, &
     FinalizeReferenceElement
   USE ReferenceElementModule_Lagrange, ONLY: &
@@ -77,7 +77,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: Radius = 1.0d16
   REAL(DP)      :: Min_1, Max_1, Min_2
 
-  ProgramName = 'SineWaveStreaming'
+  ProgramName = 'SineWaveDamping'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -87,7 +87,7 @@ PROGRAM ApplicationDriver
 
       Direction = 'X'
 
-      nX = [ 8, 1, 1 ]
+      nX = [ 16, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -120,7 +120,7 @@ PROGRAM ApplicationDriver
 
       ! --- Minerbo Closure Only ---
 
-      nX = [ 8, 1, 1 ]
+      nX = [ 32, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -147,11 +147,11 @@ PROGRAM ApplicationDriver
       t_end     = 1.0d+1
       iCycleD   = 10
       iCycleW   = 100
-      maxCycles = 10000
+      maxCycles = 100000
 
     CASE( 'SineWaveDiffusion' )
 
-      nX = [ 32, 1, 1 ]
+      nX = [ 16, 1, 1 ]
       xL = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ + 3.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -163,7 +163,7 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      TimeSteppingScheme = 'IMEX_P_A2'
+      TimeSteppingScheme = 'IMEX_SIRK2'
 
       N0     = 0.0_DP
       SigmaA = 0.0_DP
@@ -177,8 +177,39 @@ PROGRAM ApplicationDriver
 
       t_end     = 1.0d+2
       iCycleD   = 10
-      iCycleW   = 1000
+      iCycleW   = 2000
       maxCycles = 100000
+
+    CASE( 'PackedBeam' )
+
+      nX = [ 400, 1, 1 ]
+      xL = [ - 1.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ + 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      bcX = [ 2, 0, 0 ]
+
+      nE = 1
+      eL = 0.0_DP
+      eR = 1.0_DP
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'SSPRK3'
+
+      N0     = 0.0_DP
+      SigmaA = 0.0_DP
+      SigmaS = 0.0_DP
+
+      UsePositivityLimiter = .TRUE.
+
+      Min_1 = Zero ! --- Min Density
+      Max_1 = One  ! --- Max Density
+      Min_2 = Zero ! --- Min "Gamma"
+
+      t_end     = 8.5d-1
+      iCycleD   = 10
+      iCycleW   = 10
+      maxCycles = 10000
 
     CASE( 'LineSource' )
 
@@ -213,7 +244,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'HomogeneousSphere' )
 
-      nX = [ 48, 48, 48 ]
+      nX = [ 64, 64, 64 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 2.0_DP, 2.0_DP, 2.0_DP ]
 
@@ -228,7 +259,7 @@ PROGRAM ApplicationDriver
       TimeSteppingScheme = 'IMEX_P_A2'
 
       N0     = 1.00_DP
-      SigmaA = 20.0_DP
+      SigmaA = 10.0_DP
       SigmaS = 0.00_DP
       Radius = 1.00_DP
 
@@ -238,10 +269,10 @@ PROGRAM ApplicationDriver
       Max_1 = One  ! --- Max Density
       Min_2 = Zero ! --- Min "Gamma"
 
-      t_end     = 4.0d-0
+      t_end     = 5.0d-0
       iCycleD   = 10
-      iCycleW   = 10
-      maxCycles = 10000
+      iCycleW   = 50
+      maxCycles = 100000
 
   END SELECT
 
@@ -325,7 +356,8 @@ PROGRAM ApplicationDriver
 
   ! --- Write Initial Condition ---
 
-  CALL WriteFieldsHDF( Time = 0.0_DP, WriteRF_Option = .TRUE. )
+  CALL WriteFieldsHDF &
+         ( Time = 0.0_DP, WriteRF_Option = .TRUE. )
 
   ! --- Evolve ---
 

@@ -21,8 +21,6 @@ CONTAINS
 
   SUBROUTINE InitializeReferenceElementE
 
-    PRINT*, "InitializeReferenceElementE"
-
     ! --- Gaussian Quadrature Points and Weights ---
 
     ALLOCATE( NodesE(nNodesE), WeightsE(nNodesE) )
