@@ -3,10 +3,12 @@ MODULE GeometryFieldsModuleE
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nDOFE, nNodesE
+    nDOFE
 
   IMPLICIT NONE
   PRIVATE
+
+  LOGICAL :: Verbose
 
   ! --- 1D Momentum Space (Energy) Geometry Fields ---
 
@@ -30,18 +32,25 @@ MODULE GeometryFieldsModuleE
 CONTAINS
 
 
-  SUBROUTINE CreateGeometryFieldsE( nE, swE )
+  SUBROUTINE CreateGeometryFieldsE( nE, swE, Verbose_Option )
 
-    INTEGER, INTENT(in) :: nE, swE
+    INTEGER, INTENT(in)           :: nE, swE
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: iGE
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A)') '', 'Geometry Fields (Energy)'
-    WRITE(*,*)
-    DO iGE = 1, nGE
-      WRITE(*,'(A5,A32)') '', TRIM( namesGE(iGE) )
-    END DO
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A)') '', 'Geometry Fields (Energy)'
+      WRITE(*,*)
+      DO iGE = 1, nGE
+        WRITE(*,'(A5,A32)') '', TRIM( namesGE(iGE) )
+      END DO
+    END IF
 
     ALLOCATE( uGE(1:nDOFE,1-swE:nE+swE,1:nGE) )
 

@@ -5,31 +5,31 @@ MODULE ReferenceElementModuleX
   USE QuadratureModule, ONLY: &
     GetQuadrature
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, &
-    nDOFX
+    nNodesX, nDOFX
 
   IMPLICIT NONE
   PRIVATE
 
-  INTEGER,                               PUBLIC :: nDOFX_X1
-  INTEGER,                               PUBLIC :: nDOFX_X2
-  INTEGER,                               PUBLIC :: nDOFX_X3
-  INTEGER,  DIMENSION(:,:), ALLOCATABLE, PUBLIC :: NodeNumberTableX
-  INTEGER,  DIMENSION(:,:), ALLOCATABLE, PUBLIC :: NodeNumberTableX_X1
-  INTEGER,  DIMENSION(:,:), ALLOCATABLE, PUBLIC :: NodeNumberTableX_X2
-  INTEGER,  DIMENSION(:,:), ALLOCATABLE, PUBLIC :: NodeNumberTableX_X3
-  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: NodesX1, WeightsX1
-  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: NodesX2, WeightsX2
-  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: NodesX3, WeightsX3
-  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: WeightsX_X1
-  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: WeightsX_X2
-  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: WeightsX_X3
-  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: WeightsX_q
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: NodesX_q
-  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: NodesLX1, WeightsLX1
-  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: NodesLX2, WeightsLX2
-  REAL(DP), DIMENSION(:),   ALLOCATABLE, PUBLIC :: NodesLX3, WeightsLX3
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: NodesLX_q
+  INTEGER,               PUBLIC :: nDOFX_X1
+  INTEGER,               PUBLIC :: nDOFX_X2
+  INTEGER,               PUBLIC :: nDOFX_X3
+  INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTableX(:,:)
+  INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTableX_X1(:,:)
+  INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTableX_X2(:,:)
+  INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTableX_X3(:,:)
+  INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTableX3D(:,:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: NodesX1(:), WeightsX1(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: NodesX2(:), WeightsX2(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: NodesX3(:), WeightsX3(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: WeightsX_X1(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: WeightsX_X2(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: WeightsX_X3(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: WeightsX_q(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: NodesX_q(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: NodesLX1(:), WeightsLX1(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: NodesLX2(:), WeightsLX2(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: NodesLX3(:), WeightsLX3(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: NodesLX_q(:,:)
 
   PUBLIC :: InitializeReferenceElementX
   PUBLIC :: FinalizeReferenceElementX
@@ -45,17 +45,23 @@ CONTAINS
     nDOFX_X2 = nNodesX(1) * nNodesX(3)
     nDOFX_X3 = nNodesX(1) * nNodesX(2)
 
-    ALLOCATE( NodeNumberTableX(3,nDOFX) )
+    ALLOCATE &
+      ( NodeNumberTableX(3,nDOFX) )
+    ALLOCATE &
+      ( NodeNumberTableX3D(nNodesX(1),nNodesX(2),nNodesX(3)) )
 
-    iNodeX = 1
+    iNodeX = 0
     DO iNodeX3 = 1, nNodesX(3)
       DO iNodeX2 = 1, nNodesX(2)
         DO iNodeX1 = 1, nNodesX(1)
 
+          iNodeX = iNodeX + 1
+
           NodeNumberTableX(1:3,iNodeX) &
             = [ iNodeX1, iNodeX2, iNodeX3 ]
 
-          iNodeX = iNodeX + 1
+          NodeNumberTableX3D(iNodeX1,iNodeX2,iNodeX3) &
+            = iNodeX
 
         END DO
       END DO
@@ -195,6 +201,7 @@ CONTAINS
     DEALLOCATE( NodeNumberTableX_X1 )
     DEALLOCATE( NodeNumberTableX_X2 )
     DEALLOCATE( NodeNumberTableX_X3 )
+    DEALLOCATE( NodeNumberTableX3D )
     DEALLOCATE( NodesX1, WeightsX1 )
     DEALLOCATE( NodesX2, WeightsX2 )
     DEALLOCATE( NodesX3, WeightsX3 )

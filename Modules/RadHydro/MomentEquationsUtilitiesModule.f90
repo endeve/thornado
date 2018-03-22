@@ -5,8 +5,6 @@ MODULE MomentEquationsUtilitiesModule
     One, Two, Three, Four, Five
   USE ProgramHeaderModule, ONLY: &
     nE, nDOF
-  USE GeometryFieldsModule, ONLY: &
-    a, dlnadX1, dlnbdX1, dlncdX2
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     uCR, nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
@@ -274,6 +272,11 @@ CONTAINS
 
     REAL(DP) :: FF, EF, G2
 
+    WRITE(*,*)
+    WRITE(*,'(A4,A)') '', 'WARNING: GeometrySources Obsolete'
+    WRITE(*,*)
+    STOP
+
     FF = FluxFactor( N, G_1, G_2, G_3 )
 
     EF = EddingtonFactor( FF )
@@ -284,10 +287,11 @@ CONTAINS
       = 0.0_DP
 
     GeometrySources(2) &
-      = N * Half * ( (Three*EF - One)*G_2*G_2/G2 + (One - EF) ) &
-          * dlnadX1( X ) &
-        + N * Half * ( (Three*EF - One)*G_3*G_3/G2 + (One - EF) ) &
-            * dlnbdX1( X )
+      = 0.0_DP
+!!$      = N * Half * ( (Three*EF - One)*G_2*G_2/G2 + (One - EF) ) &
+!!$          * dlnadX1( X ) &
+!!$        + N * Half * ( (Three*EF - One)*G_3*G_3/G2 + (One - EF) ) &
+!!$            * dlnbdX1( X )
 
     GeometrySources(3) &
       = 0.0_DP

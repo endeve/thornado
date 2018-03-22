@@ -6,15 +6,16 @@ MODULE EulerEquationsSlopeLimiterModule_DG_IDEAL
     nX, nDOFX
   USE UtilitiesModule, ONLY: &
     MinModB
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX_q
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    VolJacX
+    uGF, iGF_SqrtGm
   USE PolynomialBasisMappingModule, ONLY: &
     MapNodalToModal_Fluid, &
     MapModalToNodal_Fluid
   USE FluidFieldsModule, ONLY: &
-    WeightsF, &
     uCF, nCF, &
     nPF, iPF_V1, iPF_V2, iPF_V3, iPF_E, &
     nAF, iAF_P, iAF_Cs, &
@@ -186,8 +187,8 @@ CONTAINS
             DO iCF = 1, nCF
 
               uCF_K_0(iCF) &
-                = SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF) &
-                         * VolJacX(:,iX1,iX2,iX3) )
+                = SUM( WeightsX_q(:) * uCF(:,iX1,iX2,iX3,iCF) &
+                         * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
               CALL MapNodalToModal_Fluid &
                      ( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
@@ -218,10 +219,10 @@ CONTAINS
 
             A0(1:2,1) = [ 1.0_DP, 0.0_DP ]
             A0(1:2,2) = [ 0.0_DP, 1.0_DP ]
-            B0(1,1) = SUM( WeightsF(:) * Legendre(:,1) &
-                             * VolJacX(:,iX1,iX2,iX3) )
-            B0(1,2) = SUM( WeightsF(:) * Legendre(:,2) &
-                             * VolJacX(:,iX1,iX2,iX3) )
+            B0(1,1) = SUM( WeightsX_q(:) * Legendre(:,1) &
+                             * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
+            B0(1,2) = SUM( WeightsX_q(:) * Legendre(:,2) &
+                             * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
             DO iCF = 1, nCF
 
               A = A0
@@ -244,8 +245,8 @@ CONTAINS
                      ( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
 
               uCF_K_1(iCF) &
-                = SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF) &
-                         * VolJacX(:,iX1,iX2,iX3) )
+                = SUM( WeightsX_q(:) * uCF(:,iX1,iX2,iX3,iCF) &
+                         * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
             END DO
 

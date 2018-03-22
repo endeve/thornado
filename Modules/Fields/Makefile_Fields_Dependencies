@@ -6,7 +6,6 @@ FluidFieldsModule.o: \
 FluidFieldsUtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  FluidFieldsModule.o \
   FluidFieldsUtilitiesModule.f90
 
 RadiationFieldsModule.o: \

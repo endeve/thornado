@@ -4,8 +4,6 @@ MODULE FluidFieldsUtilitiesModule
     DP
   USE ProgramHeaderModule, ONLY: &
     nDOFX
-  USE FluidFieldsModule, ONLY: &
-    WeightsF
 
   IMPLICIT NONE
   PRIVATE
@@ -17,9 +15,9 @@ CONTAINS
 
     REAL(DP), DIMENSION(1:nDOFX), INTENT(in) :: uF, VJ
 
-    CellAverage &
-      = DOT_PRODUCT( WeightsF, uF * VJ ) &
-        / DOT_PRODUCT( WeightsF, VJ )
+!!$    CellAverage &
+!!$      = DOT_PRODUCT( WeightsF, uF * VJ ) &
+!!$        / DOT_PRODUCT( WeightsF, VJ )
 
     RETURN
   END FUNCTION CellAverage

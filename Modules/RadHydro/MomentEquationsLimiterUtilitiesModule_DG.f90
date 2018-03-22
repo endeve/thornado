@@ -6,6 +6,8 @@ MODULE MomentEquationsLimiterUtilitiesModule_DG
     nDOFX, nDOF, &
     nX, nNodesX, &
     nE, nNodesE
+  USE ReferenceElementModule, ONLY: &
+    Weights_q
   USE UtilitiesModule, ONLY: &
     NodeNumberX, &
     NodeNumber
@@ -19,7 +21,6 @@ MODULE MomentEquationsLimiterUtilitiesModule_DG
     MeshX
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    WeightsR, &
     uCR, iCR_N, nCR, &
     Discontinuity
 
@@ -146,13 +147,13 @@ CONTAINS
 
                 F_M &
                   = F_M &
-                    + WeightsR(k) &
+                    + Weights_q(k) &
                       * SUM( Lagrange_X1_M(:,k) &
                              * uCR(:,iE,iX1+1,iX2,iX3,iCR_N,iS) )
 
                 F_P &
                   = F_P &
-                    + WeightsR(k) &
+                    + Weights_q(k) &
                       * SUM( Lagrange_X1_P(:,k) &
                              * uCR(:,iE,iX1-1,iX2,iX3,iCR_N,iS) )
 

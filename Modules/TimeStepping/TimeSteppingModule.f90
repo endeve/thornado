@@ -11,8 +11,6 @@ MODULE TimeSteppingModule
     iX_B1, iX_E1
   USE MeshModule, ONLY: &
     MeshX
-  USE GeometryFieldsModule, ONLY: &
-    a, b, c
   USE FluidFieldsModule, ONLY: &
     uCF, rhsCF, nCF, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
@@ -448,14 +446,13 @@ CONTAINS
                        uAF(iNodeX,iX1,iX2,iX3,iAF_Cs) )))
 
             dt_X2 &
-              = CFL * dX2(iX2) * a([X1(iX1), X2(iX2), X3(iX3)]) &
+              = CFL * dX2(iX2) &
                     / MAXVAL(ABS(Eigenvalues &
                       ( uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
                         uAF(iNodeX,iX1,iX2,iX3,iAF_Cs) )))
 
             dt_X3 &
-              = CFL * dX3(iX3) * b([X1(iX1), X2(iX2), X3(iX3)]) &
-                               * c([X1(iX1), X2(iX2), X3(iX3)]) &
+              = CFL * dX3(iX3) &
                    / MAXVAL(ABS(Eigenvalues &
                      ( uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                        uAF(iNodeX,iX1,iX2,iX3,iAF_Cs) )))
@@ -495,11 +492,8 @@ CONTAINS
         DO iX1 = 1, nX(1)
 
           dt_X1 = CFL * dX1(iX1)
-          dt_X2 = CFL * a( [ X1(iX1), X2(iX2), X3(iX3) ] ) &
-                      * dX2(iX2)
-          dt_X3 = CFL * b( [ X1(iX1), X2(iX2), X3(iX3) ] ) &
-                      * c( [ X1(iX1), X2(iX2), X3(iX3) ] ) &
-                      * dX3(iX3)
+          dt_X2 = CFL * dX2(iX2)
+          dt_X3 = CFL * dX3(iX3)
 
           dt = MIN( dt, dt_x1, dt_X2, dt_X3 )
 

@@ -10,54 +10,54 @@ MODULE ProgramHeaderModule
 
   ! --- Position Space ---
 
-  INTEGER,  DIMENSION(3), PUBLIC :: nX
-  INTEGER,  DIMENSION(3), PUBLIC :: nNodesX
-  INTEGER,  DIMENSION(3), PUBLIC :: swX
-  INTEGER,  DIMENSION(3), PUBLIC :: bcX
-  INTEGER,  DIMENSION(3), PUBLIC :: iX_B0
-  INTEGER,  DIMENSION(3), PUBLIC :: iX_B1
-  INTEGER,  DIMENSION(3), PUBLIC :: iX_E0
-  INTEGER,  DIMENSION(3), PUBLIC :: iX_E1
-  REAL(DP), DIMENSION(3), PUBLIC :: xL
-  REAL(DP), DIMENSION(3), PUBLIC :: xR
-  REAL(DP), DIMENSION(3), PUBLIC :: zoomX
+  INTEGER,  PUBLIC :: nX(3)
+  INTEGER,  PUBLIC :: swX(3)
+  INTEGER,  PUBLIC :: bcX(3)
+  INTEGER,  PUBLIC :: iX_B0(3)
+  INTEGER,  PUBLIC :: iX_B1(3)
+  INTEGER,  PUBLIC :: iX_E0(3)
+  INTEGER,  PUBLIC :: iX_E1(3)
+  REAL(DP), PUBLIC :: xL(3)
+  REAL(DP), PUBLIC :: xR(3)
+  REAL(DP), PUBLIC :: zoomX(3)
 
-  INTEGER,                PUBLIC :: nDimsX
-  INTEGER,                PUBLIC :: nDOFX
+  INTEGER,  PUBLIC :: nNodesX(3)
+  INTEGER,  PUBLIC :: nDimsX
+  INTEGER,  PUBLIC :: nDOFX
 
   ! --- Energy Space ---
 
-  INTEGER,                PUBLIC :: nE
-  INTEGER,                PUBLIC :: nNodesE
-  INTEGER,                PUBLIC :: swE
-  INTEGER,                PUBLIC :: bcE
-  INTEGER,                PUBLIC :: iE_B0
-  INTEGER,                PUBLIC :: iE_B1
-  INTEGER,                PUBLIC :: iE_E0
-  INTEGER,                PUBLIC :: iE_E1
-  REAL(DP),               PUBLIC :: eL
-  REAL(DP),               PUBLIC :: eR
-  REAL(DP),               PUBLIC :: ZoomE
+  INTEGER,  PUBLIC :: nE
+  INTEGER,  PUBLIC :: swE
+  INTEGER,  PUBLIC :: bcE
+  INTEGER,  PUBLIC :: iE_B0
+  INTEGER,  PUBLIC :: iE_B1
+  INTEGER,  PUBLIC :: iE_E0
+  INTEGER,  PUBLIC :: iE_E1
+  REAL(DP), PUBLIC :: eL
+  REAL(DP), PUBLIC :: eR
+  REAL(DP), PUBLIC :: ZoomE
 
-  INTEGER,                PUBLIC :: nDimsE
-  INTEGER,                PUBLIC :: nDOFE
+  INTEGER,  PUBLIC :: nNodesE
+  INTEGER,  PUBLIC :: nDimsE
+  INTEGER,  PUBLIC :: nDOFE
 
   ! --- Energy-Position Space ---
 
-  INTEGER,  DIMENSION(4), PUBLIC :: nZ
-  INTEGER,  DIMENSION(4), PUBLIC :: nNodesZ
-  INTEGER,  DIMENSION(4), PUBLIC :: swZ
-  INTEGER,  DIMENSION(4), PUBLIC :: bcZ
-  INTEGER,  DIMENSION(4), PUBLIC :: iZ_B0
-  INTEGER,  DIMENSION(4), PUBLIC :: iZ_B1
-  INTEGER,  DIMENSION(4), PUBLIC :: iZ_E0
-  INTEGER,  DIMENSION(4), PUBLIC :: iZ_E1
-  REAL(DP), DIMENSION(4), PUBLIC :: zL
-  REAL(DP), DIMENSION(4), PUBLIC :: zR
-  REAL(DP), DIMENSION(4), PUBLIC :: zoomZ
+  INTEGER,  PUBLIC :: nZ(4)
+  INTEGER,  PUBLIC :: swZ(4)
+  INTEGER,  PUBLIC :: bcZ(4)
+  INTEGER,  PUBLIC :: iZ_B0(4)
+  INTEGER,  PUBLIC :: iZ_B1(4)
+  INTEGER,  PUBLIC :: iZ_E0(4)
+  INTEGER,  PUBLIC :: iZ_E1(4)
+  REAL(DP), PUBLIC :: zL(4)
+  REAL(DP), PUBLIC :: zR(4)
+  REAL(DP), PUBLIC :: zoomZ(4)
 
-  INTEGER,                PUBLIC :: nDims
-  INTEGER,                PUBLIC :: nDOF
+  INTEGER,  PUBLIC :: nNodesZ(4)
+  INTEGER,  PUBLIC :: nDims
+  INTEGER,  PUBLIC :: nDOF
 
   REAL(DP), PUBLIC, PARAMETER :: NewtonTol = 1.0d-12
 
@@ -71,20 +71,20 @@ CONTAINS
       bcX_Option, xL_Option, xR_Option, zoomX_Option, nE_Option, &
       swE_Option, bcE_Option, eL_Option, eR_Option, zoomE_Option )
 
-    CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: ProgramName_Option
-    INTEGER,                INTENT(in), OPTIONAL :: nNodes_Option
-    INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: nX_Option
-    INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: swX_Option
-    INTEGER,  DIMENSION(3), INTENT(in), OPTIONAL :: bcX_Option
-    REAL(DP), DIMENSION(3), INTENT(in), OPTIONAL :: xL_Option
-    REAL(DP), DIMENSION(3), INTENT(in), OPTIONAL :: xR_Option
-    REAL(DP), DIMENSION(3), INTENT(in), OPTIONAL :: zoomX_Option
-    INTEGER,                INTENT(in), OPTIONAL :: nE_Option
-    INTEGER,                INTENT(in), OPTIONAL :: swE_Option
-    INTEGER,                INTENT(in), OPTIONAL :: bcE_Option
-    REAL(DP),               INTENT(in), OPTIONAL :: eL_Option
-    REAL(DP),               INTENT(in), OPTIONAL :: eR_Option
-    REAL(DP),               INTENT(in), OPTIONAL :: zoomE_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: ProgramName_Option
+    INTEGER,          INTENT(in), OPTIONAL :: nNodes_Option
+    INTEGER,          INTENT(in), OPTIONAL :: nX_Option(3)
+    INTEGER,          INTENT(in), OPTIONAL :: swX_Option(3)
+    INTEGER,          INTENT(in), OPTIONAL :: bcX_Option(3)
+    REAL(DP),         INTENT(in), OPTIONAL :: xL_Option(3)
+    REAL(DP),         INTENT(in), OPTIONAL :: xR_Option(3)
+    REAL(DP),         INTENT(in), OPTIONAL :: zoomX_Option(3)
+    INTEGER,          INTENT(in), OPTIONAL :: nE_Option
+    INTEGER,          INTENT(in), OPTIONAL :: swE_Option
+    INTEGER,          INTENT(in), OPTIONAL :: bcE_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: eL_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: eR_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: zoomE_Option
 
     INTEGER :: iDim
 
@@ -92,10 +92,14 @@ CONTAINS
     IF( PRESENT( ProgramName_Option ) ) &
       ProgramName = TRIM( ProgramName_Option )
 
-    WRITE(*,*)
-    WRITE(*,'(A2,A28,A)') &
-      '', 'INFO: Initializing Program: ', TRIM( ProgramName )
-    WRITE(*,*)
+    IF( LEN_TRIM( ProgramName ) > 0 )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A2,A28,A)') &
+        '', 'INFO: Initializing Program: ', TRIM( ProgramName )
+      WRITE(*,*)
+
+    END IF
 
     nNodes = 1
     IF( PRESENT( nNodes_Option ) ) &

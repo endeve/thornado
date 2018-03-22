@@ -9,7 +9,7 @@ MODULE InputOutputModuleHDF
     nDOF, nDOFX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
-  USE ReferenceElementModule_Beta, ONLY: &
+  USE ReferenceElementModule, ONLY: &
     NodeNumberTable
   USE MeshModule, ONLY: &
     MeshE, MeshX

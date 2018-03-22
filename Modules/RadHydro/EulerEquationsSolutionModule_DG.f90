@@ -6,6 +6,8 @@ MODULE EulerEquationsSolutionModule_DG
     nX, nNodesX, nDOFX
   USE UtilitiesModule, ONLY: &
     NodeNumberX
+  USE ReferenceElementModuleX, ONLY: &
+    NodesX1, WeightsX1
   USE PolynomialBasisModule_Lagrange, ONLY: &
     L_X1, dL_X1
   USE MeshModule, ONLY: &
@@ -13,8 +15,7 @@ MODULE EulerEquationsSolutionModule_DG
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem, &
-    uGF, nGF, &
-    a, b
+    uGF, nGF
   USE FluidFieldsModule, ONLY: &
     rhsCF, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, nCF, &
@@ -163,8 +164,8 @@ CONTAINS
     REAL(DP), DIMENSION(1:nDOFX,1:nPF) :: uPF_K
     REAL(DP), DIMENSION(1:nDOFX,1:nAF) :: uAF_K
 
-    x_q = MeshX(1) % Nodes
-    w_q = MeshX(1) % Weights
+    x_q = NodesX1
+    w_q = WeightsX1
 
     ! -- Precompute Metric Functions --
 
@@ -172,18 +173,18 @@ CONTAINS
       X1C = MeshX(1) % Center(iX1)
       dX1 = MeshX(1) % Width (iX1)
       a_X1_L(iX1) &
-        = a( [ X1C - 0.5_DP * dX1, 0.0_DP, 0.0_DP ] )
+        = One!a( [ X1C - 0.5_DP * dX1, 0.0_DP, 0.0_DP ] )
       a_X1_R(iX1) &
-        = a( [ X1C + 0.5_DP * dX1, 0.0_DP, 0.0_DP ] )
+        = One!a( [ X1C + 0.5_DP * dX1, 0.0_DP, 0.0_DP ] )
       b_X1_L(iX1) &
-        = b( [ X1C - 0.5_DP * dX1, 0.0_DP, 0.0_DP ] )
+        = One!b( [ X1C - 0.5_DP * dX1, 0.0_DP, 0.0_DP ] )
       b_X1_R(iX1) &
-        = b( [ X1C + 0.5_DP * dX1, 0.0_DP, 0.0_DP ] )
+        = One!b( [ X1C + 0.5_DP * dX1, 0.0_DP, 0.0_DP ] )
       DO iNodeX1 = 1, nNodesX(1)
         a_X1_q(iNodeX1,iX1) &
-          = a( [ X1C + dX1 * x_q(iNodeX1), 0.0_DP, 0.0_DP ] )
+          = One!a( [ X1C + dX1 * x_q(iNodeX1), 0.0_DP, 0.0_DP ] )
         b_X1_q(iNodeX1,iX1) &
-          = b( [ X1C + dX1 * x_q(iNodeX1), 0.0_DP, 0.0_DP ] )
+          = One!b( [ X1C + dX1 * x_q(iNodeX1), 0.0_DP, 0.0_DP ] )
       END DO
     END DO
 

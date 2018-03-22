@@ -13,10 +13,9 @@ MODULE MeshModule
     REAL(DP), DIMENSION(:), ALLOCATABLE :: Center
     REAL(DP), DIMENSION(:), ALLOCATABLE :: Width
     REAL(DP), DIMENSION(:), ALLOCATABLE :: Nodes
-    REAL(DP), DIMENSION(:), ALLOCATABLE :: Weights
   END type MeshType
 
-  TYPE(MeshType), DIMENSION(3), PUBLIC :: MeshX ! Spatial Mesh
+  TYPE(MeshType), DIMENSION(3), PUBLIC :: MeshX ! Spatial  Mesh
   TYPE(MeshType),               PUBLIC :: MeshE ! Spectral Mesh
 
   PUBLIC :: CreateMesh
@@ -57,9 +56,6 @@ CONTAINS
 
     ALLOCATE( Mesh % Nodes  (1:nN) )
     Mesh % Nodes = xQ
-
-    ALLOCATE( Mesh % Weights(1:nN) )
-    Mesh % Weights = wQ
 
   END SUBROUTINE CreateMesh
 

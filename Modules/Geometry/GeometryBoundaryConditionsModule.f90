@@ -14,8 +14,6 @@ MODULE GeometryBoundaryConditionsModule
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem, &
-    WeightsGX, VolX, VolJacX, &
-    WeightsG,  Vol,  VolJac, d, &
     uGF, nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
 
   IMPLICIT NONE
@@ -80,9 +78,6 @@ CONTAINS
 
               ! --- Inner Boundary ---
 
-              VolJacX(iNodeX,0,iX2,iX3) &
-                = One
-
               uGF(iNodeX,0,iX2,iX3,iGF_Gm_dd_11) &
                 = One
               uGF(iNodeX,0,iX2,iX3,iGF_Gm_dd_22) &
@@ -91,9 +86,6 @@ CONTAINS
                 = One
 
               ! --- Outer Boundary ---
-
-              VolJacX(iNodeX,nX(1)+1,iX2,iX3) &
-                = One
 
               uGF(iNodeX,nX(1)+1,iX2,iX3,iGF_Gm_dd_11) &
                 = One
@@ -105,16 +97,6 @@ CONTAINS
             END DO
           END DO
         END DO
-
-        ! --- Inner Boundary ---
-
-        VolX(0,      iX2,iX3) &
-          = DOT_PRODUCT( WeightsGX(:), VolJacX(:,0,      iX2,iX3) )
-
-        ! --- Outer Boundary ---
-
-        VolX(nX(1)+1,iX2,iX3) &
-          = DOT_PRODUCT( WeightsGX(:), VolJacX(:,nX(1)+1,iX2,iX3) )
 
       END DO
     END DO
@@ -144,9 +126,6 @@ CONTAINS
 
               X1 = NodeCoordinate( MeshX(1), 0, iNodeX1 )
 
-              VolJacX(iNodeX,0,iX2,iX3) &
-                = X1**2 * SIN( X2 )
-
               uGF(iNodeX,0,iX2,iX3,iGF_Gm_dd_11) &
                 = One
               uGF(iNodeX,0,iX2,iX3,iGF_Gm_dd_22) &
@@ -158,9 +137,6 @@ CONTAINS
 
               X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNodeX1 )
 
-              VolJacX(iNodeX,nX(1)+1,iX2,iX3) &
-                = X1**2 * SIN( X2 )
-
               uGF(iNodeX,nX(1)+1,iX2,iX3,iGF_Gm_dd_11) &
                 = One
               uGF(iNodeX,nX(1)+1,iX2,iX3,iGF_Gm_dd_22) &
@@ -171,16 +147,6 @@ CONTAINS
             END DO
           END DO
         END DO
-
-        ! --- Inner Boundary ---
-
-        VolX(0,      iX2,iX3) &
-          = DOT_PRODUCT( WeightsGX(:), VolJacX(:,0,      iX2,iX3) )
-
-        ! --- Outer Boundary ---
-
-        VolX(nX(1)+1,iX2,iX3) &
-          = DOT_PRODUCT( WeightsGX(:), VolJacX(:,nX(1)+1,iX2,iX3) )
 
       END DO
     END DO
@@ -207,9 +173,6 @@ CONTAINS
 
               X1 = NodeCoordinate( MeshX(1), 0, iNodeX1 )
 
-              VolJacX(iNodeX,0,iX2,iX3) &
-                = SQRT( X1**2 )
-
               uGF(iNodeX,0,iX2,iX3,iGF_Gm_dd_11) &
                 = One
               uGF(iNodeX,0,iX2,iX3,iGF_Gm_dd_22) &
@@ -221,9 +184,6 @@ CONTAINS
 
               X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNodeX1 )
 
-              VolJacX(iNodeX,nX(1)+1,iX2,iX3) &
-                = SQRT( X1**2 )
-
               uGF(iNodeX,nX(1)+1,iX2,iX3,iGF_Gm_dd_11) &
                 = One
               uGF(iNodeX,nX(1)+1,iX2,iX3,iGF_Gm_dd_22) &
@@ -234,16 +194,6 @@ CONTAINS
             END DO
           END DO
         END DO
-
-        ! --- Inner Boundary ---
-
-        VolX(0,      iX2,iX3) &
-          = DOT_PRODUCT( WeightsGX(:), VolJacX(:,0,      iX2,iX3) )
-
-        ! --- Outer Boundary ---
-
-        VolX(nX(1)+1,iX2,iX3) &
-          = DOT_PRODUCT( WeightsGX(:), VolJacX(:,nX(1)+1,iX2,iX3) )
 
       END DO
     END DO
@@ -289,30 +239,10 @@ CONTAINS
 
                   iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
-                  ! --- Inner Boundary ---
-
-                  VolJac(iNode,iE,0,      iX2,iX3) &
-                    = d( [ ABS( X1_Inner ), X2, X3 ] ) * E**2
-
-                  ! --- Outer Boundary ---
-
-                  VolJac(iNode,iE,nX(1)+1,iX2,iX3) &
-                    = d( [ X1_Outer,        X2, X3 ] ) * E**2
-
                 END DO
               END DO
             END DO
           END DO
-
-          ! --- Inner Boundary ---
-
-          Vol(iE,0,      iX2,iX3) &
-            = DOT_PRODUCT( WeightsG(:), VolJac(:,iE,0,      iX2,iX3) )
-
-          ! --- Outer Boundary ---
-
-          Vol(iE,nX(1)+1,iX2,iX3) &
-            = DOT_PRODUCT( WeightsG(:), VolJac(:,iE,nX(1)+1,iX2,iX3) )
 
         END DO
       END DO

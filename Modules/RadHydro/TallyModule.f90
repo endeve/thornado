@@ -9,18 +9,18 @@ MODULE TallyModule
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nE, nX, nDOFX
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX_q
+  USE ReferenceElementModule, ONLY: &
+    Weights_q
   USE MeshModule, ONLY: &
     MeshE, &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    WeightsGX, VolJacX, &
-    WeightsG,  VolJac, VolJacE,  &
-    uGF, iGF_Phi_N
+    uGF, iGF_Phi_N, iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    WeightsF, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
   USE RadiationFieldsModule, ONLY: &
-    WeightsR, &
     nSpecies, &
     uCR, iCR_N
 
@@ -167,9 +167,9 @@ CONTAINS
           GlobalEnergy_Gravity(iS) &
             = GlobalEnergy_Gravity(iS) &
                 + dX1(iX1) * dX2(iX2) * dX3(iX3) &
-                    * SUM( WeightsGX(:) * uCF(:,iX1,iX2,iX3,iCF_D) &
+                    * SUM( WeightsX_q(:) * uCF(:,iX1,iX2,iX3,iCF_D) &
                              * uGF(:,iX1,iX2,iX3,iGF_Phi_N) &
-                             * VolJacX(:,iX1,iX2,iX3) )
+                             * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
         END DO
       END DO
@@ -240,14 +240,14 @@ CONTAINS
           GlobalBaryonMass_Fluid(iS) &
             = GlobalBaryonMass_Fluid(iS) &
                 + dX1(iX1) * dX2(iX2) * dX3(iX3) &
-                    * SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF_D) &
-                             * VolJacX(:,iX1,iX2,iX3) )
+                    * SUM( WeightsX_q(:) * uCF(:,iX1,iX2,iX3,iCF_D) &
+                             * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
           GlobalEnergy_Fluid(iS) &
             = GlobalEnergy_Fluid(iS) &
                 + dX1(iX1) * dX2(iX2) * dX3(iX3) &
-                    * SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF_E) &
-                             * VolJacX(:,iX1,iX2,iX3) )
+                    * SUM( WeightsX_q(:) * uCF(:,iX1,iX2,iX3,iCF_E) &
+                             * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
           Ekin(:) = 0.5_DP * ( uCF(:,iX1,iX2,iX3,iCF_S1)**2 &
                                + uCF(:,iX1,iX2,iX3,iCF_S2)**2 &
@@ -259,18 +259,20 @@ CONTAINS
           GlobalInternalEnergy_Fluid(iS) &
             = GlobalInternalEnergy_Fluid(iS) &
                 + dX1(iX1) * dX2(iX2) * dX3(iX3) &
-                    * SUM( WeightsF(:) * Eint(:) * VolJacX(:,iX1,iX2,iX3) )
+                    * SUM( WeightsX_q(:) * Eint(:) &
+                             * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
           GlobalKineticEnergy_Fluid(iS) &
             = GlobalKineticEnergy_Fluid(iS) &
                 + dX1(iX1) * dX2(iX2) * dX3(iX3) &
-                    * SUM( WeightsF(:) * Ekin(:) * VolJacX(:,iX1,iX2,iX3) )
+                    * SUM( WeightsX_q(:) * Ekin(:) &
+                             * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
           GlobalElectronNumber_Fluid(iS) &
             = GlobalElectronNumber_Fluid(iS) &
                 + dX1(iX1) * dX2(iX2) * dX3(iX3) &
-                    * SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF_Ne) &
-                             * VolJacX(:,iX1,iX2,iX3) )
+                    * SUM( WeightsX_q(:) * uCF(:,iX1,iX2,iX3,iCF_Ne) &
+                             * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
         END DO
       END DO
@@ -375,14 +377,14 @@ CONTAINS
               GlobalNumber_Radiation(iState) &
                 = GlobalNumber_Radiation(iState) &
                     + dE(iE) * dX1(iX1) * dX2(iX2) * dX3(iX3) &
-                        * SUM( WeightsR(:) * uCR(:,iE,iX1,iX2,iX3,iCR_N,iS) &
-                                 * VolJac(:,iE,iX1,iX2,iX3) ) / Scale
+                        * SUM( Weights_q(:) &
+                                 * uCR(:,iE,iX1,iX2,iX3,iCR_N,iS) ) / Scale
 
               GlobalEnergy_Radiation(iState) &
                 = GlobalEnergy_Radiation(iState) &
                     + dE(iE) * dX1(iX1) * dX2(iX2) * dX3(iX3) &
-                        * SUM( WeightsR(:) * uCR(:,iE,iX1,iX2,iX3,iCR_N,iS) &
-                                 * VolJacE(:,iE,iX1,iX2,iX3) ) / Scale
+                        * SUM( Weights_q(:) &
+                                 * uCR(:,iE,iX1,iX2,iX3,iCR_N,iS) ) / Scale
 
             END DO
           END DO

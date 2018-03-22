@@ -4,12 +4,13 @@ MODULE GravitySolutionUtilitiesModule
     DP
   USE ProgramHeaderModule, ONLY: &
     nX
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX_q
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    VolJacX
+    uGF, iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    WeightsF, &
     uCF, iCF_D
 
   IMPLICIT NONE
@@ -39,8 +40,8 @@ CONTAINS
           Mass &
             = Mass &
                 + dX1(iX1) * dX2(iX2) * dX3(iX3) &
-                    * SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF_D) &
-                             * VolJacX(:,iX1,iX2,iX3) )
+                    * SUM( WeightsX_q(:) * uCF(:,iX1,iX2,iX3,iCF_D) &
+                             * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
         END DO
       END DO

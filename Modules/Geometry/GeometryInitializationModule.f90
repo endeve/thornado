@@ -3,11 +3,7 @@ MODULE GeometryInitializationModule
   USE KindModule, ONLY: &
     DP
   USE GeometryFieldsModule, ONLY: &
-    CoordinateSystem, &
-    InitializeGeometryFields_CARTESIAN, &
-    InitializeGeometryFields_SPHERICAL, &
-    InitializeGeometryFields_CYLINDRICAL, &
-    FinalizeGeometryFields
+    CoordinateSystem
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX, &
     ComputeGeometry
@@ -42,15 +38,15 @@ CONTAINS
     SELECT CASE ( TRIM( CoordinateSystem ) )
       CASE ( 'CARTESIAN' )
 
-        CALL InitializeGeometryFields_CARTESIAN
+!!$        CALL InitializeGeometryFields_CARTESIAN
 
       CASE ( 'SPHERICAL' )
 
-        CALL InitializeGeometryFields_SPHERICAL
+!!$        CALL InitializeGeometryFields_SPHERICAL
 
       CASE ( 'CYLINDRICAL' )
 
-        CALL InitializeGeometryFields_CYLINDRICAL
+!!$        CALL InitializeGeometryFields_CYLINDRICAL
 
       CASE DEFAULT
 
@@ -70,8 +66,6 @@ CONTAINS
 
 
   SUBROUTINE FinalizeGeometry
-
-    CALL FinalizeGeometryFields
 
   END SUBROUTINE FinalizeGeometry
 

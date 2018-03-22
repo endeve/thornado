@@ -4,8 +4,6 @@ MODULE RadiationFieldsUtilitiesModule
     DP
   USE ProgramHeaderModule, ONLY: &
     nDOF
-  USE RadiationFieldsModule, ONLY: &
-    WeightsR
 
   IMPLICIT NONE
   PRIVATE
@@ -19,9 +17,9 @@ CONTAINS
 
     REAL(DP), DIMENSION(1:nDOF), INTENT(in) :: uR, VJ
 
-    CellAverage &
-      = DOT_PRODUCT( WeightsR, uR * VJ ) &
-        / DOT_PRODUCT( WeightsR, VJ )
+!!$    CellAverage &
+!!$      = DOT_PRODUCT( WeightsR, uR * VJ ) &
+!!$        / DOT_PRODUCT( WeightsR, VJ )
 
     RETURN
   END FUNCTION CellAverage

@@ -10,15 +10,16 @@ MODULE EulerEquationsPositivityLimiterModule_DG_TABLE
     Kelvin
   USE ProgramHeaderModule, ONLY: &
     nX, nDOFX
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX_q
   USE PolynomialBasisModule_Legendre, ONLY: &
     evalPX
   USE PolynomialBasisMappingModule, ONLY: &
     MapNodalToModal_Fluid, &
     MapModalToNodal_Fluid
   USE GeometryFieldsModule, ONLY: &
-    VolX, VolJacX
+    uGF, iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    WeightsF, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, nCF, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_T, iAF_E, iAF_Ye
@@ -98,8 +99,9 @@ CONTAINS
                    ( uCF(:,iX1,iX2,iX3,iCF_D), uCF_M(:,iCF_D) )
 
             uCF_K(iCF_D) &
-              = SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF_D) &
-                       * VolJacX(:,iX1,iX2,iX3) ) / VolX(iX1,iX2,iX3)
+              = SUM( WeightsX_q(:) * uCF(:,iX1,iX2,iX3,iCF_D) &
+                       * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                  / SUM( WeightsX_q(:) * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
             Theta = 1.0_DP
             DO iPoint = 1, nPositivePoints
@@ -161,8 +163,9 @@ CONTAINS
                    ( uCF(:,iX1,iX2,iX3,iCF_Ne), uCF_M(:,iCF_Ne) )
 
             uCF_K(iCF_Ne) &
-              = SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF_Ne) &
-                       * VolJacX(:,iX1,iX2,iX3) ) / VolX(iX1,iX2,iX3)
+              = SUM( WeightsX_q(:) * uCF(:,iX1,iX2,iX3,iCF_Ne) &
+                       * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                / SUM( WeightsX_q(:) * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
             Theta = 1.0_DP
             DO iPoint = 1, nPositivePoints
@@ -234,8 +237,9 @@ CONTAINS
                      ( uCF(:,iX1,iX2,iX3,iCF), uCF_M(:,iCF) )
 
               uCF_K(iCF) &
-                = SUM( WeightsF(:) * uCF(:,iX1,iX2,iX3,iCF) &
-                         * VolJacX(:,iX1,iX2,iX3) ) / VolX(iX1,iX2,iX3)
+                = SUM( WeightsX_q(:) * uCF(:,iX1,iX2,iX3,iCF) &
+                         * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                  / SUM( WeightsX_q(:) * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
             END DO
 

@@ -5,6 +5,8 @@ MODULE FluidRadiationCouplingUtilitiesModule
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, &
     nE, nNodesE
+  USE ReferenceElementModuleE, ONLY: &
+    WeightsE
   USE UtilitiesModule, ONLY: &
     NodeNumberX, &
     NodeNumber
@@ -97,8 +99,7 @@ CONTAINS
     REAL(DP) :: E_N
 
     ASSOCIATE &
-      ( dE => MeshE % Width(1:nE), &
-        wE => MeshE % Weights(1:nNodesE) )
+      ( dE => MeshE % Width(1:nE) )
 
     iNode = 0
     DO iE = 1, nE
@@ -108,13 +109,13 @@ CONTAINS
 
         E_N = NodeCoordinate( MeshE, iE, iNodeE )
 
-        W2_N(iNode) = dE(iE) * wE(iNodeE) * E_N**2
-        W3_N(iNode) = dE(iE) * wE(iNodeE) * E_N**3
+        W2_N(iNode) = dE(iE) * WeightsE(iNodeE) * E_N**2
+        W3_N(iNode) = dE(iE) * WeightsE(iNodeE) * E_N**3
 
       END DO
     END DO
 
-    END ASSOCIATE ! dE, wE
+    END ASSOCIATE ! dE
 
   END SUBROUTINE InitializeWeights
 

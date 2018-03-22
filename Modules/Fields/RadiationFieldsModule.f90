@@ -8,15 +8,9 @@ MODULE RadiationFieldsModule
   IMPLICIT NONE
   PRIVATE
 
+  LOGICAL :: Verbose
+
   INTEGER, PUBLIC :: nSpecies = 1
-
-  ! --- Weights to Integrate RadiationFields ---
-
-  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsR
-
-  ! --- Degrees of Freedom per Element ---
-
-  INTEGER, PUBLIC :: nDOF_R
 
   ! --- Eulerian (Conserved) Radiation Fields ---
 
@@ -32,7 +26,8 @@ MODULE RadiationFieldsModule
                 'Eulerian Number Flux Density (2)', &
                 'Eulerian Number Flux Density (3)' ]
 
-  REAL(DP), DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: uCR, rhsCR
+  REAL(DP), ALLOCATABLE, PUBLIC :: uCR  (:,:,:,:,:,:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: rhsCR(:,:,:,:,:,:,:)
 
   ! --- Lagrangian (Primitive) Radiation Fields ---
 
@@ -48,7 +43,7 @@ MODULE RadiationFieldsModule
                 'Lagrangian Number Flux Density (2)', &
                 'Lagrangian Number Flux Density (3)' ]
 
-  REAL(DP), DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: uPR
+  REAL(DP), ALLOCATABLE, PUBLIC :: uPR(:,:,:,:,:,:,:)
 
   ! --- Auxiliary Radiation Fields ---
 
@@ -60,11 +55,11 @@ MODULE RadiationFieldsModule
     namesAR = [ 'Lagrangian Flux Factor          ', &
                 'Lagrangian Eddington Factor     ' ]
 
-  REAL(DP), DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: uAR
+  REAL(DP), ALLOCATABLE, PUBLIC :: uAR(:,:,:,:,:,:,:)
 
   ! --- Diagnostic Variables ---
 
-  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: Discontinuity
+  REAL(DP), ALLOCATABLE, PUBLIC :: Discontinuity(:,:,:,:)
 
   PUBLIC :: CreateRadiationFields
   PUBLIC :: DestroyRadiationFields
@@ -72,17 +67,21 @@ MODULE RadiationFieldsModule
 CONTAINS
 
 
-  SUBROUTINE CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option )
+  SUBROUTINE CreateRadiationFields &
+    ( nX, swX, nE, swE, nSpecies_Option, Verbose_Option )
 
     INTEGER, INTENT(in) :: nX(3), swX(3)
     INTEGER, INTENT(in) :: nE,    swE
     INTEGER, INTENT(in), OPTIONAL :: nSpecies_Option
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
     nSpecies = 1
     IF( PRESENT( nSpecies_Option ) ) &
       nSpecies = nSpecies_Option
 
-    ALLOCATE( WeightsR(1:nDOF) )
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
     CALL CreateRadiationFields_Conserved( nX, swX, nE, swE )
     CALL CreateRadiationFields_Primitive( nX, swX, nE, swE )
@@ -99,17 +98,19 @@ CONTAINS
 
   SUBROUTINE CreateRadiationFields_Conserved( nX, swX, nE, swE )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
-    INTEGER,               INTENT(in) :: nE, swE
+    INTEGER, INTENT(in) :: nX(3), swX(3)
+    INTEGER, INTENT(in) :: nE,    swE
 
     INTEGER :: iCR
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A28)') '', 'Radiation Fields (Conserved)'
-    WRITE(*,*)
-    DO iCR = 1, nCR
-      WRITE(*,'(A5,A)') '', TRIM( namesCR(iCR) )
-    END DO
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A28)') '', 'Radiation Fields (Conserved)'
+      WRITE(*,*)
+      DO iCR = 1, nCR
+        WRITE(*,'(A5,A)') '', TRIM( namesCR(iCR) )
+      END DO
+    END IF
 
     ALLOCATE &
       ( uCR(1:nDOF, &
@@ -124,17 +125,19 @@ CONTAINS
 
   SUBROUTINE CreateRadiationFields_Primitive( nX, swX, nE, swE )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
-    INTEGER,               INTENT(in) :: nE, swE
+    INTEGER, INTENT(in) :: nX(3), swX(3)
+    INTEGER, INTENT(in) :: nE,    swE
 
     INTEGER :: iPR
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A28)') '', 'Radiation Fields (Primitive)'
-    WRITE(*,*)
-    DO iPR = 1, nPR
-      WRITE(*,'(A5,A)') '', TRIM( namesPR(iPR) )
-    END DO
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A28)') '', 'Radiation Fields (Primitive)'
+      WRITE(*,*)
+      DO iPR = 1, nPR
+        WRITE(*,'(A5,A)') '', TRIM( namesPR(iPR) )
+      END DO
+    END IF
 
     ALLOCATE &
       ( uPR(1:nDOF, &
@@ -149,17 +152,19 @@ CONTAINS
 
   SUBROUTINE CreateRadiationFields_Auxiliary( nX, swX, nE, swE )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
-    INTEGER,               INTENT(in) :: nE, swE
+    INTEGER, INTENT(in) :: nX(3), swX(3)
+    INTEGER, INTENT(in) :: nE, swE
 
     INTEGER :: iAR
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A28)') '', 'Radiation Fields (Auxiliary)'
-    WRITE(*,*)
-    DO iAR = 1, nAR
-      WRITE(*,'(A5,A)') '', TRIM( namesAR(iAR) )
-    END DO
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A28)') '', 'Radiation Fields (Auxiliary)'
+      WRITE(*,*)
+      DO iAR = 1, nAR
+        WRITE(*,'(A5,A)') '', TRIM( namesAR(iAR) )
+      END DO
+    END IF
 
     ALLOCATE &
       ( uAR(1:nDOF, &
@@ -174,7 +179,6 @@ CONTAINS
 
   SUBROUTINE DestroyRadiationFields
 
-    DEALLOCATE( WeightsR )
     DEALLOCATE( uCR, rhsCR, uPR, uAR )
     DEALLOCATE( Discontinuity )
 

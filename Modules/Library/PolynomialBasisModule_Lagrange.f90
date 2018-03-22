@@ -7,10 +7,10 @@ MODULE PolynomialBasisModule_Lagrange
     nNodesE, nNodesX, nNodes
   USE QuadratureModule, ONLY: &
     xG1, xG2, xG3, xG4
-  USE UtilitiesModule, ONLY: &
-    NodeNumber, &
-    NodeNumberX, &
-    WriteMatrix
+  USE ReferenceElementModuleX, ONLY: &
+    NodeNumberTableX3D
+  USE ReferenceElementModule, ONLY: &
+    NodeNumberTable4D
 
   IMPLICIT NONE
   PRIVATE
@@ -26,13 +26,13 @@ MODULE PolynomialBasisModule_Lagrange
     PROCEDURE (Basis), POINTER, NOPASS :: P
   END TYPE PolynomialBasisType
 
-  REAL(DP),                  DIMENSION(:,:), ALLOCATABLE         :: nodes
-  INTEGER,                   DIMENSION(:,:), ALLOCATABLE, PUBLIC :: IndL_Q
-  INTEGER,                   DIMENSION(:,:), ALLOCATABLE, PUBLIC :: IndLx_Q
-  TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: L_E,  dL_E
-  TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: L_X1, dL_X1
-  TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: L_X2, dL_X2
-  TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: L_X3, dL_X3
+  REAL(DP),                  ALLOCATABLE         :: nodes(:,:)
+  INTEGER,                   ALLOCATABLE, PUBLIC :: IndL_Q (:,:)
+  INTEGER,                   ALLOCATABLE, PUBLIC :: IndLx_Q(:,:)
+  TYPE(PolynomialBasisType), ALLOCATABLE, PUBLIC :: L_E (:), dL_E (:)
+  TYPE(PolynomialBasisType), ALLOCATABLE, PUBLIC :: L_X1(:), dL_X1(:)
+  TYPE(PolynomialBasisType), ALLOCATABLE, PUBLIC :: L_X2(:), dL_X2(:)
+  TYPE(PolynomialBasisType), ALLOCATABLE, PUBLIC :: L_X3(:), dL_X3(:)
 
   PUBLIC :: InitializePolynomialBasis_Lagrange
   PUBLIC :: evalL
@@ -257,7 +257,7 @@ CONTAINS
     evalL_X1 = 0.0_DP
     DO iX1 = 1, nNodesX(1)
 
-      iNode = NodeNumber( iE, iX1, iX2, iX3 )
+      iNode = NodeNumberTable4D( iE, iX1, iX2, iX3 )
 
       evalL_X1 &
         = evalL_X1 &
@@ -309,7 +309,7 @@ CONTAINS
     evalLX_X1 = 0.0_DP
     DO iX1 = 1, nNodesX(1)
 
-      iNode = NodeNumberX( iX1, iX2, iX3 )
+      iNode = NodeNumberTableX3D( iX1, iX2, iX3 )
 
       evalLX_X1 &
         = evalLX_X1 &

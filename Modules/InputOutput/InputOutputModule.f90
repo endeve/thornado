@@ -11,7 +11,7 @@ MODULE InputOutputModule
     nDOF
   USE UtilitiesModule, ONLY: &
     NodeNumber
-  USE ReferenceElementModule_Beta, ONLY: &
+  USE ReferenceElementModule, ONLY: &
     NodeNumberTable
   USE PolynomialBasisModule_Lagrange, ONLY: &
     evalL, &

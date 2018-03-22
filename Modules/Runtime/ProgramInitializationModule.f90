@@ -30,11 +30,6 @@ MODULE ProgramInitializationModule
     CreateMesh, &
     DestroyMesh
   USE GeometryFieldsModule, ONLY: &
-    WeightsGX, &
-    WeightsGX_X1, &
-    WeightsGX_X2, &
-    WeightsGX_X3, &
-    WeightsG, &
     CreateGeometryFields, &
     DestroyGeometryFields
   USE GeometryInitializationModule, ONLY: &
@@ -44,14 +39,9 @@ MODULE ProgramInitializationModule
     CreateGeometryFieldsE, &
     DestroyGeometryFieldsE
   USE FluidFieldsModule, ONLY: &
-    WeightsF, &
-    WeightsF_X1, &
-    WeightsF_X2, &
-    WeightsF_X3, &
     CreateFluidFields, &
     DestroyFluidFields
   USE RadiationFieldsModule, ONLY: &
-    WeightsR, &
     CreateRadiationFields, &
     DestroyRadiationFields
   USE EquationOfStateModule, ONLY: &
@@ -248,10 +238,6 @@ CONTAINS
 
     CALL InitializeQuadratures
 
-    ! --- Reference Element ---
-
-    CALL InitializeReferenceElement
-
     ! --- Polynomial Basis ---
 
     CALL InitializePolynomialBasis_Lagrange
@@ -323,18 +309,7 @@ CONTAINS
 
     ! --- Geometry (Position Space) ---
 
-    CALL CreateGeometryFields( nX, swX, nE, swE )
-
-    CALL InitializeWeights & ! --- For Integration in Elements
-           ( MeshX(1) % Weights, &
-             MeshX(2) % Weights, &
-             MeshX(3) % Weights, &
-             WeightsGX, WeightsGX_X1, WeightsGX_X2, WeightsGX_X3 )
-
-    CALL InitializeWeights & ! --- For Integration in Elements
-           ( MeshE    % Weights, MeshX(1) % Weights, &
-             MeshX(2) % Weights, MeshX(3) % Weights, &
-             WeightsG )
+    CALL CreateGeometryFields( nX, swX )
 
     CALL InitializeGeometry &
            ( nX, nNodesX, swX, nE, nNodesE, swE, &
@@ -351,20 +326,9 @@ CONTAINS
 
     CALL CreateFluidFields( nX, swX )
 
-    CALL InitializeWeights & ! --- For Integration in Elements
-           ( MeshX(1) % Weights, &
-             MeshX(2) % Weights, &
-             MeshX(3) % Weights, &
-             WeightsF, WeightsF_X1, WeightsF_X2, WeightsF_X3 )
-
     ! --- Radiation Fields ---
 
     CALL CreateRadiationFields( nX, swX, nE, swE )
-
-    CALL InitializeWeights & ! --- For Integration in Elements
-           ( MeshE    % Weights, MeshX(1) % Weights, &
-             MeshX(2) % Weights, MeshX(3) % Weights, &
-             WeightsR )
 
     ! --- For Mapping Between Nodal and Modal Representations ---
 

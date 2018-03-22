@@ -7,11 +7,10 @@ MODULE EulerEquationsUtilitiesModule
   USE UtilitiesModule, ONLY: &
     NodeNumberX, &
     NodeNumberX_X1
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX_q, WeightsX_X1
   USE GeometryFieldsModule, ONLY: &
-    WeightsGX, &
-    WeightsGX_X1, &
-    nGF, iGF_Phi_N, &
-    a, b, c, dlnadX1, dlnbdX1, dlncdX2
+    nGF, iGF_Phi_N
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
@@ -325,17 +324,23 @@ CONTAINS
   END FUNCTION Flux_X1
 
 
-  PURE FUNCTION GeometrySources( D, S_1, S_2, S_3, P, X )
+  FUNCTION GeometrySources( D, S_1, S_2, S_3, P, X )
    
     REAL(DP)             :: GeometrySources(1:nCF)
     REAL(DP), INTENT(in) :: D, S_1, S_2, S_3, P, X(1:3)
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A)') '', 'WARNING: GeometrySources Obsolete'
+    WRITE(*,*)
+    STOP
 
     GeometrySources(iCF_D) &
       = 0.0_DP
 
     GeometrySources(iCF_S1) &
-      = ( S_2**2 / D + P ) * dlnadX1( X ) &
-        + ( S_3**2 / D + P ) * dlnbdX1( X )
+      = 0.0_DP
+!!$      = ( S_2**2 / D + P ) * dlnadX1( X ) &
+!!$        + ( S_3**2 / D + P ) * dlnbdX1( X )
 
     GeometrySources(iCF_S2) &
       = 0.0_DP
@@ -401,16 +406,16 @@ CONTAINS
           ! --- Volume Term ---
 
           g_X1(iNodeX) &
-            = - SUM( WeightsGX(:) * dVdX1(:,iNodeX) * uGF(:,iGF_Phi_N) ) &
-                / ( WeightsGX(iNodeX) * dX(1) )
+            = - SUM( WeightsX_q(:) * dVdX1(:,iNodeX) * uGF(:,iGF_Phi_N) ) &
+                / ( WeightsX_q(iNodeX) * dX(1) )
 
           ! --- Surface Terms ---
 
           g_X1(iNodeX) &
             = g_X1(iNodeX) &
-              + ( SUM( WeightsGX_X1(:) * Phi_X1_H(:) * V_X1_H(:,iNodeX) ) &
-                  - SUM( WeightsGX_X1(:) * Phi_X1_L(:) * V_X1_L(:,iNodeX) ) ) &
-                / ( WeightsGX(iNodeX) * dX(1) )
+              + ( SUM( WeightsX_X1(:) * Phi_X1_H(:) * V_X1_H(:,iNodeX) ) &
+                  - SUM( WeightsX_X1(:) * Phi_X1_L(:) * V_X1_L(:,iNodeX) ) ) &
+                / ( WeightsX_q(iNodeX) * dX(1) )
 
         END DO
       END DO

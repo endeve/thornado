@@ -13,9 +13,6 @@ MODULE GeometryComputationModule
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem, &
-    WeightsGX, VolX, VolJacX, &
-    WeightsG,  Vol,  VolJac, VolJacE, &
-    a, b, c, d, &
     uGF, nGF, iGF_h_1, iGF_h_2, iGF_h_3, &
     iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE GeometryBoundaryConditionsModule, ONLY: &
@@ -76,9 +73,6 @@ CONTAINS
 
                 iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-                VolJacX(iNodeX,iX1,iX2,iX3) &
-                  = One
-
                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &
                   = One
                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
@@ -89,9 +83,6 @@ CONTAINS
               END DO
             END DO
           END DO
-
-          VolX(iX1,iX2,iX3) &
-            = DOT_PRODUCT( WeightsGX(:), VolJacX(:,iX1,iX2,iX3) )
 
         END DO
       END DO
@@ -122,9 +113,6 @@ CONTAINS
 
                 iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-                VolJacX(iNodeX,iX1,iX2,iX3) &
-                  = X1**2 * SIN( X2 )
-
                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &
                   = One
                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
@@ -135,9 +123,6 @@ CONTAINS
               END DO
             END DO
           END DO
-
-          VolX(iX1,iX2,iX3) &
-            = DOT_PRODUCT( WeightsGX(:), VolJacX(:,iX1,iX2,iX3) )
 
         END DO
       END DO
@@ -164,9 +149,6 @@ CONTAINS
 
                 iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-                VolJacX(iNodeX,iX1,iX2,iX3) &
-                  = X1
-
                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &
                   = One
                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
@@ -177,9 +159,6 @@ CONTAINS
               END DO
             END DO
           END DO
-
-          VolX(iX1,iX2,iX3) &
-            = DOT_PRODUCT( WeightsGX(:), VolJacX(:,iX1,iX2,iX3) )
 
         END DO
       END DO
@@ -220,19 +199,10 @@ CONTAINS
 
                     iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
 
-                    VolJac(iNode,iE,iX1,iX2,iX3) &
-                      = d( [ X1, X2, X3 ] ) * E**2
-
-                    VolJacE(iNode,iE,iX1,iX2,iX3) &
-                      = d( [ X1, X2, X3 ] ) * E**3
-
                   END DO
                 END DO
               END DO
             END DO
-
-            Vol(iE,iX1,iX2,iX3) &
-              = DOT_PRODUCT( WeightsG(:), VolJac(:,iE,iX1,iX2,iX3) )
 
           END DO
         END DO

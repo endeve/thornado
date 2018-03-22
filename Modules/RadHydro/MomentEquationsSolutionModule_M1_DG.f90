@@ -6,6 +6,8 @@ MODULE MomentEquationsSolutionModule_M1_DG
     nDOF, &
     nX, swX, nNodesX, &
     nE, nNodesE
+  USE ReferenceElementModule, ONLY: &
+    NodesX1, WeightsX1
   USE UtilitiesModule, ONLY: &
     NodeNumber
   USE PolynomialBasisModule_Lagrange, ONLY: &
@@ -14,8 +16,7 @@ MODULE MomentEquationsSolutionModule_M1_DG
     MeshX, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-    CoordinateSystem, &
-    a, b
+    CoordinateSystem
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR
@@ -100,8 +101,8 @@ CONTAINS
 
     CALL Timer_Start( Timer_DIV )
 
-    x_q = MeshX(1) % Nodes
-    w_q = MeshX(1) % Weights
+    x_q = NodesX1
+    w_q = WeightsX1
 
     ! -- Precompute Metric Functions --
 
@@ -109,18 +110,18 @@ CONTAINS
       X1C = MeshX(1) % Center(iX1)
       dX1 = MeshX(1) % Width (iX1)
       a_X1_L(iX1) &
-        = a( [ X1C - Half * dX1, Zero, Zero ] )
+        = 1.0_DP!a( [ X1C - Half * dX1, Zero, Zero ] )
       a_X1_R(iX1) &
-        = a( [ X1C + Half * dX1, Zero, Zero ] )
+        = 1.0_DP!a( [ X1C + Half * dX1, Zero, Zero ] )
       b_X1_L(iX1) &
-        = b( [ X1C - Half * dX1, Zero, Zero ] )
+        = 1.0_DP!b( [ X1C - Half * dX1, Zero, Zero ] )
       b_X1_R(iX1) &
-        = b( [ X1C + Half * dX1, Zero, Zero ] )
+        = 1.0_DP!b( [ X1C + Half * dX1, Zero, Zero ] )
       DO iNodeX1 = 1, nNodesX(1)
         a_X1_q(iNodeX1,iX1) &
-          = a( [ X1C + dX1 * x_q(iNodeX1), Zero, Zero ] )
+          = 1.0_DP!a( [ X1C + dX1 * x_q(iNodeX1), Zero, Zero ] )
         b_X1_q(iNodeX1,iX1) &
-          = b( [ X1C + dX1 * x_q(iNodeX1), Zero, Zero ] )
+          = 1.0_DP!b( [ X1C + dX1 * x_q(iNodeX1), Zero, Zero ] )
       END DO
     END DO
 

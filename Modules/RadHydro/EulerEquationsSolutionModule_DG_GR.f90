@@ -6,13 +6,14 @@ MODULE EulerEquationsSolutionModule_DG_GR
     nX, nNodesX
   USE UtilitiesModule, ONLY: &
     NodeNumberX
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX_q
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
     uGF, nGF, iGF_Alpha, iGF_Beta_1, &
     iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    WeightsF, &
     rhsCF, &
     uCF, nCF, &
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
@@ -142,10 +143,10 @@ CONTAINS
                 END DO
 
                 uAF_L(iNodeX1,iAF_P)  & ! -- Set to Cell-Average
-                  = DOT_PRODUCT( WeightsF, uAF_P(:,iAF_P) )
+                  = DOT_PRODUCT( WeightsX_q, uAF_P(:,iAF_P) )
 
                 uAF_L(iNodeX1,iAF_Gm) & ! -- Set to Cell-Average
-                  = DOT_PRODUCT( WeightsF, uAF_P(:,iAF_Gm) )
+                  = DOT_PRODUCT( WeightsX_q, uAF_P(:,iAF_Gm) )
 
                 CALL ComputePrimitive( uCF_L, uGF_L, uPF_L, uAF_L )
 
@@ -189,10 +190,7 @@ CONTAINS
                 END DO
 
                 uAF_R(iNodeX1,iAF_P)  & ! -- Set to Cell-Average
-                  = DOT_PRODUCT( WeightsF, uAF_K(:,iAF_P) )
-
-                uAF_R(iNodeX1,iAF_Gm) & ! -- Set to Cell-Average
-                  = DOT_PRODUCT( WeightsF, uAF_K(:,iAF_Gm) )
+                  = DOT_PRODUCT( WeightsX_q, uAF_K(:,iAF_Gm) )
 
                 CALL ComputePrimitive( uCF_R, uGF_R, uPF_R, uAF_R )
                 
@@ -289,10 +287,10 @@ CONTAINS
                 END DO
 
                 uAF_L(iNodeX1,iAF_P)  & ! -- Set to Cell-Average
-                  = DOT_PRODUCT( WeightsF, uAF_K(:,iAF_P) )
+                  = DOT_PRODUCT( WeightsX_q, uAF_K(:,iAF_P) )
 
                 uAF_L(iNodeX1,iAF_Gm) & ! -- Set to Cell-Average
-                  = DOT_PRODUCT( WeightsF, uAF_K(:,iAF_Gm) )
+                  = DOT_PRODUCT( WeightsX_q, uAF_K(:,iAF_Gm) )
 
                 CALL ComputePrimitive( uCF_L, uGF_L, uPF_L, uAF_L )
                 
@@ -336,10 +334,10 @@ CONTAINS
                 END DO
 
                 uAF_R(iNodeX1,iAF_P)  & ! -- Set to Cell-Average
-                  = DOT_PRODUCT( WeightsF, uAF_N(:,iAF_P) )
+                  = DOT_PRODUCT( WeightsX_q, uAF_N(:,iAF_P) )
 
                 uAF_R(iNodeX1,iAF_Gm) & ! -- Set to Cell-Average
-                  = DOT_PRODUCT( WeightsF, uAF_N(:,iAF_Gm) )
+                  = DOT_PRODUCT( WeightsX_q, uAF_N(:,iAF_Gm) )
 
                 CALL ComputePrimitive( uCF_R, uGF_R, uPF_R, uAF_R )
                 

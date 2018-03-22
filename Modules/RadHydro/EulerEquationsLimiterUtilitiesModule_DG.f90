@@ -6,6 +6,8 @@ MODULE EulerEquationsLimiterUtilitiesModule_DG
     nX, nNodesX, nDOFX
   USE UtilitiesModule, ONLY: &
     NodeNumberX
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX_q
   USE MeshModule, ONLY: &
     MeshX
   USE PolynomialBasisModule_Lagrange, ONLY: &
@@ -13,7 +15,6 @@ MODULE EulerEquationsLimiterUtilitiesModule_DG
   USE PolynomialBasisMappingModule, ONLY: &
     MapNodalToModal_Fluid
   USE FluidFieldsModule, ONLY: &
-    WeightsF, &
     uCF, iCF_S1, iCF_S2, iCF_S3, nCF, &
     Shock
 
@@ -132,12 +133,12 @@ CONTAINS
 
               F_M &
                 = F_M &
-                  + WeightsF(k) &
+                  + WeightsX_q(k) &
                     * SUM( Lagrange_X1_M(:,k) * uCF(:,iX1+1,iX2,iX3,iCF) )
 
               F_P &
                 = F_P &
-                  + WeightsF(k) &
+                  + WeightsX_q(k) &
                     * SUM( Lagrange_X1_P(:,k) * uCF(:,iX1-1,iX2,iX3,iCF) )
 
             END DO

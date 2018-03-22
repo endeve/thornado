@@ -3,21 +3,12 @@ MODULE FluidFieldsModule
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nNodesX
+    nDOFX
 
   IMPLICIT NONE
   PRIVATE
 
-  ! --- Weights to Integrate Fluid Fields ---
-
-  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsF
-  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsF_X1
-  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsF_X2
-  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: WeightsF_X3
-
-  ! --- Degrees of Freedom per Element ---
-
-  INTEGER, PUBLIC :: nDOF_F
+  LOGICAL :: Verbose
 
   ! --- Conserved Fluid Fields ---
 
@@ -105,14 +96,14 @@ MODULE FluidFieldsModule
 CONTAINS
 
 
-  SUBROUTINE CreateFluidFields( nX, swX )
+  SUBROUTINE CreateFluidFields( nX, swX, Verbose_Option )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
+    INTEGER, INTENT(in)           :: nX(3), swX(3)
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
-    ALLOCATE( WeightsF(1:nDOFX) )
-    ALLOCATE( WeightsF_X1(1:nNodesX(2)*nNodesX(3)) )
-    ALLOCATE( WeightsF_X2(1:nNodesX(1)*nNodesX(3)) )
-    ALLOCATE( WeightsF_X3(1:nNodesX(1)*nNodesX(2)) )
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
     CALL CreateFluidFields_Conserved( nX, swX )
     CALL CreateFluidFields_Primitive( nX, swX )
@@ -128,16 +119,18 @@ CONTAINS
 
   SUBROUTINE CreateFluidFields_Conserved( nX, swX )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
+    INTEGER, INTENT(in) :: nX(3), swX(3)
 
     INTEGER :: iCF
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A24)') '', 'Fluid Fields (Conserved)'
-    WRITE(*,*)
-    DO iCF = 1, nCF
-      WRITE(*,'(A5,A32)') '', TRIM( namesCF(iCF) )
-    END DO
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Conserved)'
+      WRITE(*,*)
+      DO iCF = 1, nCF
+        WRITE(*,'(A5,A32)') '', TRIM( namesCF(iCF) )
+      END DO
+    END IF
 
     ALLOCATE( uCF &
                 (1:nDOFX, &
@@ -151,16 +144,18 @@ CONTAINS
 
   SUBROUTINE CreateFluidFields_Primitive( nX, swX )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
+    INTEGER, INTENT(in) :: nX(3), swX(3)
 
     INTEGER :: iPF
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A24)') '', 'Fluid Fields (Primitive)'
-    WRITE(*,*)
-    DO iPF = 1, nPF
-      WRITE(*,'(A5,A32)') '', TRIM( namesPF(iPF) )
-    END DO
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Primitive)'
+      WRITE(*,*)
+      DO iPF = 1, nPF
+        WRITE(*,'(A5,A32)') '', TRIM( namesPF(iPF) )
+      END DO
+    END IF
 
     ALLOCATE( uPF(1:nDOFX, &
                   1-swX(1):nX(1)+swX(1), &
@@ -173,16 +168,18 @@ CONTAINS
 
   SUBROUTINE CreateFluidFields_Auxiliary( nX, swX )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: nX, swX
+    INTEGER, INTENT(in) :: nX(3), swX(3)
 
     INTEGER :: iAF
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A24)') '', 'Fluid Fields (Auxiliary)'
-    WRITE(*,*)
-    DO iAF = 1, nAF
-      WRITE(*,'(A5,A32)') '', TRIM( namesAF(iAF) )
-    END DO
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Auxiliary)'
+      WRITE(*,*)
+      DO iAF = 1, nAF
+        WRITE(*,'(A5,A32)') '', TRIM( namesAF(iAF) )
+      END DO
+    END IF
 
     ALLOCATE( uAF(1:nDOFX, &
                   1-swX(1):nX(1)+swX(1), &
@@ -195,7 +192,6 @@ CONTAINS
 
   SUBROUTINE DestroyFluidFields
 
-    DEALLOCATE( WeightsF, WeightsF_X1, WeightsF_X2, WeightsF_X3 )
     DEALLOCATE( uCF, rhsCF, uPF, uAF )
     DEALLOCATE( Shock )
 

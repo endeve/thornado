@@ -6,6 +6,10 @@ MODULE MomentEquationsSlopeLimiterModule_DG
     nDOFX, nDOF, &
     nX, nNodesX, &
     nE, nNodesE
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX_q
+  USE ReferenceElementModule, ONLY: &
+    Weights_q
   USE UtilitiesModule, ONLY: &
     MinModB
   USE PolynomialBasisMappingModule, ONLY: &
@@ -15,8 +19,7 @@ MODULE MomentEquationsSlopeLimiterModule_DG
     MeshE, &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    WeightsGX, &
-    VolJacX, VolX
+    uGF, iGF_SqrtGm
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR, &
@@ -231,8 +234,9 @@ CONTAINS
                              uCR_X(:,iCR) )
 
                     uCR_K_0(iCR) &
-                      = SUM( WeightsGX(:) * uCR_X(:,iCR) &
-                               * VolJacX(:,iX1,iX2,iX3) ) / VolX(iX1,iX2,iX3)
+                      = SUM( WeightsX_q(:) * uCR_X(:,iCR) &
+                               * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                        / SUM( WeightsX_q(:) * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
                     CALL MapNodalToModal_Radiation_X &
                            ( uCR_X(:,iCR), uCR_M(:,iCR) )
@@ -262,11 +266,13 @@ CONTAINS
                   A0(1:2,1) = [ 1.0_DP, 0.0_DP ]
                   A0(1:2,2) = [ 0.0_DP, 1.0_DP ]
                   B0(1,1) &
-                    = SUM( WeightsGX(:) * LegendreX(:,1) &
-                             * VolJacX(:,iX1,iX2,iX3) ) / VolX(iX1,iX2,iX3)
+                    = SUM( WeightsX_q(:) * LegendreX(:,1) &
+                             * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                      / SUM( WeightsX_q(:) * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
                   B0(1,2) &
-                    = SUM( WeightsGX(:) * LegendreX(:,2) &
-                             * VolJacX(:,iX1,iX2,iX3) ) / VolX(iX1,iX2,iX3)
+                    = SUM( WeightsX_q(:) * LegendreX(:,2) &
+                             * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                      / SUM( WeightsX_q(:) * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
                   DO iCR = 1, nCR
 
@@ -290,8 +296,9 @@ CONTAINS
                            ( uCR_X(:,iCR), uCR_M(:,iCR) )
 
                     uCR_K_1(iCR) &
-                      = SUM( WeightsGX(:) * uCR_X(:,iCR) &
-                               * VolJacX(:,iX1,iX2,iX3) ) / VolX(iX1,iX2,iX3)
+                      = SUM( WeightsX_q(:) * uCR_X(:,iCR) &
+                               * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                        / SUM( WeightsX_q(:) * uGF(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
                     CALL UnpackSpatialNodes &
                            ( iNodeE, U(:,iE,iX1,iX2,iX3,iCR,iS), &

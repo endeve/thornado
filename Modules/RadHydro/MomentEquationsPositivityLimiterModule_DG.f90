@@ -6,6 +6,8 @@ MODULE MomentEquationsPositivityLimiterModule_DG
     nDOF, &
     nX, nNodesX, &
     nE, nNodesE
+  USE ReferenceElementModule, ONLY: &
+    Weights_q
   USE PolynomialBasisModule_Lagrange, ONLY: &
     evalL
   USE PolynomialBasisModule_Legendre, ONLY: &
@@ -14,10 +16,9 @@ MODULE MomentEquationsPositivityLimiterModule_DG
     MapNodalToModal_Radiation, &
     MapModalToNodal_Radiation
   USE GeometryFieldsModule, ONLY: &
-    Vol, VolJac
+    uGF, iGF_SqrtGm
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    WeightsR, &
     iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR
   USE MomentEquationsLimiterUtilitiesModule_DG, ONLY: &
     SolveTheta_Bisection
@@ -92,8 +93,7 @@ CONTAINS
                          ( U(:,iE,iX1,iX2,iX3,iCR,iS), uCR_M(:,iCR) )
 
                   uCR_K(iCR) &
-                    = SUM( WeightsR(:) * U(:,iE,iX1,iX2,iX3,iCR,iS) &
-                           * VolJac(:,iE,iX1,iX2,iX3) ) / Vol(iE,iX1,iX2,iX3)
+                    = SUM( Weights_q(:) * U(:,iE,iX1,iX2,iX3,iCR,iS) )
 
                 END DO
 
@@ -214,8 +214,7 @@ CONTAINS
                     END DO
 
                     uCR_K(iCR) &
-                      = SUM( WeightsR(:) * U(:,iE,iX1,iX2,iX3,iCR,iS) &
-                           * VolJac(:,iE,iX1,iX2,iX3) ) / Vol(iE,iX1,iX2,iX3)
+                      = SUM( Weights_q(:) * U(:,iE,iX1,iX2,iX3,iCR,iS) )
 
                   END DO
 
