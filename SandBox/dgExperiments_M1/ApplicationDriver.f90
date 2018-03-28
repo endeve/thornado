@@ -77,7 +77,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: Radius = 1.0d16
   REAL(DP)      :: Min_1, Max_1, Min_2
 
-  ProgramName = 'SineWaveDamping'
+  ProgramName = 'SineWaveStreaming'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -194,7 +194,7 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      TimeSteppingScheme = 'SSPRK3'
+      TimeSteppingScheme = 'IMEX_PC2'
 
       N0     = 0.0_DP
       SigmaA = 0.0_DP
@@ -364,7 +364,7 @@ PROGRAM ApplicationDriver
   wTime = MPI_WTIME( )
 
   t  = 0.0d-0
-  dt = 0.2_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
+  dt = 0.5_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
        / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
   WRITE(*,*)
@@ -415,7 +415,7 @@ PROGRAM ApplicationDriver
     '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
   WRITE(*,*)
 
-  CALL ComputeError( Time = t )
+  CALL ComputeError( Time = t, SigmaA = SigmaA, SigmaS = SigmaS )
 
   CALL FinalizeReferenceElementX
 
