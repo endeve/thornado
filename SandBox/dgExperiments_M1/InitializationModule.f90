@@ -656,9 +656,11 @@ CONTAINS
   END SUBROUTINE InitializeFields_HomogeneousSphere
 
 
-  SUBROUTINE ComputeError( Time )
+  SUBROUTINE ComputeError( Time, SigmaA, SigmaS )
 
     REAL(DP), INTENT(in) :: Time
+    REAL(DP), INTENT(in) :: SigmaA
+    REAL(DP), INTENT(in) :: SigmaS
 
     LOGICAL  :: ReportError
     REAL(DP) :: Error_One(nCR)
@@ -678,7 +680,7 @@ CONTAINS
         ReportError = .TRUE.
 
         CALL ComputeError_SineWaveDamping &
-               ( Time, Error_One, Error_Inf )
+               ( Time, SigmaA, Error_One, Error_Inf )
 
       CASE ( 'SineWaveDiffusion' )
 
@@ -798,9 +800,10 @@ CONTAINS
   END SUBROUTINE ComputeError_SineWaveStreaming
 
 
-  SUBROUTINE ComputeError_SineWaveDamping( Time, Error_One, Error_Inf )
+  SUBROUTINE ComputeError_SineWaveDamping( Time, SigmaA, Error_One, Error_Inf )
 
     REAL(DP), INTENT(in)  :: Time
+    REAL(DP), INTENT(in)  :: SigmaA
     REAL(DP), INTENT(out) :: Error_One(nCR)
     REAL(DP), INTENT(out) :: Error_Inf(nCR)
 
@@ -824,7 +827,7 @@ CONTAINS
                 X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
                 N_A  = ( 0.50_DP + 0.49_DP * SIN( TwoPi * ( X1 - Time ) ) ) &
-                         * EXP( - Time )
+                         * EXP( - SigmaA * Time )
                 G1_A = N_A
                 G2_A = Zero
                 G3_A = Zero
