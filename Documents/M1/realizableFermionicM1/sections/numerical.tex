@@ -8,11 +8,16 @@ In all tests, we employ the maximum entropy closure in the low occupancy limit (
 
 \subsubsection{Sine Wave: Streaming}
 
-Periodic domain $D=\{x:x\in[0,1]\}$.  
-The initial condition is given by
+The first test involves the streaming part only, and does not include any collisions ($\sigma_{\Ab}=\sigma_{\Scatt}=0$).  
+We consider a periodic domain $D=\{x:x\in[0,1]\}$, and let the initial condition be given by
 \begin{equation}
   \cJ(x,t=0)=\cH_{x}(x,t=0)=0.5+0.49\times\sin\big(2\pi\,x\big).  
 \end{equation}
+We evolve until $t=10$, when the sine wave has completed 10 crossings of the computational domain.  
+We use polynomials of degree $k=2$ for the spatial discretization (third-order spatial accuracy), and set the time step as $\Delta t = $.  
+We vary the number of elements from $??$ to $??$ and compute errors for various time stepping schemes.  
+
+\ee{Include figure of error versus number of elements for various schemes.}
 
 \subsubsection{Sine Wave: Damping}
 
@@ -34,7 +39,7 @@ The computational domain is $D=\{x:x\in[-1,1]\}$, and the initial condition is o
   \end{array}
   \right.
 \end{equation}
-so that $\vect{\cM}=\big(0.5\,(1+\delta),0.25\,(1-\delta)\big)^{T}$ for $x\le x_{\mbox{\tiny D}}$, and $\vect{\cM}=\big(\delta,0\big)^{T}$ for $x> x_{\mbox{\tiny D}}$.  
+so that $\vect{\cM}=\big(0.5\,(1+\delta),0.25\,(1-\delta)\big)^{T}$ for $x\le x_{\mbox{\tiny D}}$, and $\vect{\cM}=\big(\delta,0\big)^{T}$ for $x> x_{\mbox{\tiny D}}$, where $\delta>0$ is a small parameter ($\delta\ll1$).  
 We let $\delta=10^{-8}$.  
 \begin{figure}[h]
   \centering
@@ -48,13 +53,13 @@ We let $\delta=10^{-8}$.
 
 \subsection{Line Source}
 
-The line source benchmark \citep[cf.][]{brunner_2002,garrettHauck_2013} is a challenging test for approximate transport algorithms.  
+The line source benchmark (cf. \cite{brunner_2002,garrettHauck_2013}) is a challenging test for approximate transport algorithms.  
 In cylindrical coordinates, it consists of an initial delta function particle distribution in radius; i.e., $f_{0}=\delta(R)/4\,\pi$.  
 For $t>0$, a cylindrical radiation front propagates radially.  
 Apart from capturing details of the exact transport solution, maintaining realizability ($\bcM\in\cR$ cf. Eq.~\eqref{eq:realizableSet}) of the two-moment solution is challenging.  
 
 This test is computed on a two-dimensional domain with $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,1.25], x^{2}\in[0,1.25]\}$.  
-We follow the initialization procedure in \citet{garrettHauck_2013}, and approximate the initial condition with an isotropic Gaussian distribution function
+We follow the initialization procedure in \cite{garrettHauck_2013}, and approximate the initial condition with an isotropic Gaussian distribution function
 \begin{equation}
   f_{\mbox{\tiny G},0}
   =\max\Big[\,\f{1}{8\,\pi\,\sigma_{\mbox{\tiny G}}^{2}}\,e^{-R^{2}/(2\,\sigma_{\mbox{\tiny G}}^{2})},10^{-4}\,\Big],
