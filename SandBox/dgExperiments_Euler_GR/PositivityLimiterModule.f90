@@ -1,7 +1,7 @@
 MODULE PositivityLimiterModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, Zero, Half, One, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nNodesX, nDOF
   USE ReferenceElementModuleX, ONLY: &
@@ -17,9 +17,13 @@ MODULE PositivityLimiterModule
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
+  USE GeometryComputationModule_Beta, ONLY: &
+    ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
     nGF, &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    iGF_h_1, iGF_h_2, iGF_h_3, &
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    iGF_SqrtGm
 
   IMPLICIT NONE
   PRIVATE
@@ -33,8 +37,8 @@ MODULE PositivityLimiterModule
   LOGICAL               :: UsePositivityLimiter
   INTEGER, PARAMETER    :: nPS = 7  ! Number of Positive Point Sets
   INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
-  INTEGER               :: nPT      ! Number of Positive Points
-  REAL(DP)              :: Min_1, Min_2
+  INTEGER               :: nPT      ! Total number of Positive Points
+  REAL(DP)              :: Min_1, Min_2, Den
   REAL(DP), ALLOCATABLE :: U_PP(:,:), G_PP(:,:)
 
 CONTAINS
@@ -73,7 +77,6 @@ CONTAINS
     nPP = 0
     nPP(1) = PRODUCT( nNodesX )
 
-    ! Not sure about this loop
     DO i = 1, 3
 
       IF( nNodesX(i) > 1 )THEN
@@ -114,7 +117,7 @@ CONTAINS
     LOGICAL  :: NegativeStates(2)
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
     REAL(DP) :: Min_K, Theta_1, Theta_2, Theta_P
-    REAL(DP) :: U_q(nDOF,nCF), U_K(nCF), q(nPT)
+    REAL(DP) :: U_q(nDOF,nCF), G_q(nDOF,nGF), U_K(nCF), G_K(nGF), q(nPT)
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
@@ -125,12 +128,13 @@ CONTAINS
           U_q(1:nDOF,1:nCF) &
             = U(1:nDOF,iX1,iX2,iX3,1:nCF)
 
+          G_q(1:nDOF,1:nGF) &
+            = G(1:nDOF,iX1,iX2,iX3,1:nGF)
+
           NegativeStates = .FALSE.
 
-          CALL ComputePointValues( U_q, U_PP, nCF )
-
-          ! --- Assuming flat spacetime ---
-          G_PP = One
+          CALL ComputePointValues_Fluid   ( U_q, U_PP )
+          CALL ComputePointValues_Geometry( G_q, G_PP )
 
           ! --- Ensure Positive Density ---
 
@@ -139,14 +143,15 @@ CONTAINS
           IF( Min_K < Min_1 )THEN
 
             ! --- Cell Average ---
+             U_K(iCF_D) &
+               = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
+                                / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
 
-            ! --- Will change for non-flat spacetime ---
-            U_K(iCF_D) = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) )
-
+            Den = MAX( ABS( Min_K - U_K(iCF_D) ), SqrtTiny )
+             
             Theta_1 &
-              = MIN( One, ABS( (Min_1-U_K(iCF_D)) / (Min_K-U_K(iCF_D)) ) )
-            
-            ! --- For de-bugging, can set Theta_1 = 0.0d0 ---
+              = MIN( One, Den )
+!              = MIN( One, ABS( (Min_1-U_K(iCF_D)) / (Min_K-U_K(iCF_D)) ) )
 
             ! --- Limit Density Towards Cell Average ---
 
@@ -155,7 +160,8 @@ CONTAINS
 
             ! --- Recompute Point Values ---
 
-            CALL ComputePointValues( U_q, U_PP, nCF )
+            CALL ComputePointValues_Fluid   ( U_q, U_PP )
+            CALL ComputePointValues_Geometry( G_q, G_PP )
 
             NegativeStates(1) = .TRUE.
 
@@ -170,8 +176,17 @@ CONTAINS
 
             DO iCF = 1, nCF
 
-              U_K(iCF) = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) )
+              U_K(iCF) &
+                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
+                                / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
 
+            END DO
+
+            DO iGF = 1, nGF
+
+              G_K(iGF) &
+                = DOT_PRODUCT( WeightsX_q, G_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
+                                / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
             END DO
 
 !!$            Theta_2 = One
@@ -185,11 +200,11 @@ CONTAINS
 !!$
 !!$                  Theta_2 = MIN( Theta_2, Theta_P )
 !!$
-!!$                END IF
+!!$               END IF
 !!$
-!!$             END DO
+!!$            END DO
 
-             Theta_2 = Zero
+            Theta_2 = Zero
              
              ! --- Limit Towards Cell Average ----
 
@@ -223,17 +238,16 @@ CONTAINS
   END SUBROUTINE ApplyPositivityLimiter
 
 
-  SUBROUTINE ComputePointValues( U_Q, U_P, n )
+  SUBROUTINE ComputePointValues_Fluid( U_Q, U_P )
 
-    INTEGER,  INTENT(in)  :: n
-    REAL(DP), INTENT(in)  :: U_Q(nDOF,n)
-    REAL(DP), INTENT(out) :: U_P(nPT, n)
+    REAL(DP), INTENT(in)  :: U_Q(nDOF,nCF)
+    REAL(DP), INTENT(out) :: U_P(nPT, nCF)
 
-    INTEGER :: iOS, iFl
+    INTEGER :: iOS, iCF
     
-    DO iFl = 1, n
+    DO iCF = 1, nCF
 
-      U_P(1:nDOF,iFl) = U_Q(1:nDOF,iFl)
+      U_P(1:nDOF,iCF) = U_Q(1:nDOF,iCF)
 
       IF( SUM( nPP(2:3) ) > 0 )THEN
 
@@ -243,13 +257,13 @@ CONTAINS
 
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOF, One, LX_X1_Dn, nDOFX_X1, &
-                 U_Q(1:nDOF,iFl), 1, Zero, U_P(iOS+1:iOS+nDOFX_X1,iFl), 1 )
+                 U_Q(1:nDOF,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X1,iCF), 1 )
 
         iOS = iOS + nPP(2)
 
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOF, One, LX_X1_Up, nDOFX_X1, &
-                 U_Q(1:nDOF,iFl), 1, Zero, U_P(iOS+1:iOS+nDOFX_X1,iFl), 1 )
+                 U_Q(1:nDOF,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X1,iCF), 1 )
 
       END IF
 
@@ -261,13 +275,13 @@ CONTAINS
 
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOF, One, LX_X2_Dn, nDOFX_X2, &
-                 U_Q(1:nDOF,iFl), 1, Zero, U_P(iOS+1:iOS+nDOFX_X2,iFl), 1 )
+                 U_Q(1:nDOF,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X2,iCF), 1 )
 
         iOS = iOS + nPP(4)
 
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOF, One, LX_X2_Up, nDOFX_X2, &
-                 U_Q(1:nDOF,iFl), 1, Zero, U_P(iOS+1:iOS+nDOFX_X2,iFl), 1 )
+                 U_Q(1:nDOF,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X2,iCF), 1 )
 
       END IF
 
@@ -279,19 +293,92 @@ CONTAINS
 
         CALL DGEMV &
                ( 'N', nDOFX_X3, nDOF, One, LX_X3_Dn, nDOFX_X3, &
-                 U_Q(1:nDOF,iFl), 1, Zero, U_P(iOS+1:iOS+nDOFX_X3,iFl), 1 )
+                 U_Q(1:nDOF,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X3,iCF), 1 )
 
         iOS = iOS + nPP(6)
 
         CALL DGEMV &
                ( 'N', nDOFX_X3, nDOF, One, LX_X3_Up, nDOFX_X3, &
-                 U_Q(1:nDOF,iFl), 1, Zero, U_P(iOS+1:iOS+nDOFX_X3,iFl), 1 )
+                 U_Q(1:nDOF,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X3,iCF), 1 )
 
       END IF
 
     END DO
 
-  END SUBROUTINE ComputePointValues    
+  END SUBROUTINE ComputePointValues_Fluid
+
+
+  SUBROUTINE ComputePointValues_Geometry( G_Q, G_P )
+
+    REAL(DP), INTENT(in)  :: G_Q(nDOF,nGF)
+    REAL(DP), INTENT(out) :: G_P(nPT, nGF)
+
+    INTEGER :: iOS, iGF
+    
+    DO iGF = iGF_h_1, iGF_h_3
+
+      G_P(1:nDOF,iGF) = G_Q(1:nDOF,iGF)
+
+      IF( SUM( nPP(2:3) ) > 0 )THEN
+
+        ! --- X1 ---
+
+        iOS = nPP(1)
+
+        CALL DGEMV &
+               ( 'N', nDOFX_X1, nDOF, One, LX_X1_Dn, nDOFX_X1, &
+                 G_Q(1:nDOF,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X1,iGF), 1 )
+
+        iOS = iOS + nPP(2)
+
+        CALL DGEMV &
+               ( 'N', nDOFX_X1, nDOF, One, LX_X1_Up, nDOFX_X1, &
+                 G_Q(1:nDOF,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X1,iGF), 1 )
+
+      END IF
+
+      IF( SUM( nPP(4:5) ) > 0 )THEN
+
+        ! --- X2 ---
+
+        iOS = SUM( nPP(1:3) )
+
+        CALL DGEMV &
+               ( 'N', nDOFX_X2, nDOF, One, LX_X2_Dn, nDOFX_X2, &
+                 G_Q(1:nDOF,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X2,iGF), 1 )
+
+        iOS = iOS + nPP(4)
+
+        CALL DGEMV &
+               ( 'N', nDOFX_X2, nDOF, One, LX_X2_Up, nDOFX_X2, &
+                 G_Q(1:nDOF,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X2,iGF), 1 )
+
+      END IF
+
+      IF( SUM( nPP(6:7) ) > 0 )THEN
+
+        ! --- X3 ---
+
+        iOS = SUM( nPP(1:5) )
+
+        CALL DGEMV &
+               ( 'N', nDOFX_X3, nDOF, One, LX_X3_Dn, nDOFX_X3, &
+                 G_Q(1:nDOF,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X3,iGF), 1 )
+
+        iOS = iOS + nPP(6)
+
+        CALL DGEMV &
+               ( 'N', nDOFX_X3, nDOF, One, LX_X3_Up, nDOFX_X3, &
+                 G_Q(1:nDOF,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X3,iGF), 1 )
+
+      END IF
+
+    END DO
+
+    CALL ComputeGeometryX_FromScaleFactors( G_P )
+
+    RETURN
+  END SUBROUTINE ComputePointValues_Geometry
 
 
   SUBROUTINE Computeq( N, U, G, q )
@@ -307,14 +394,14 @@ CONTAINS
   END SUBROUTINE Computeq
 
 
-  PURE REAL(DP) ELEMENTAL FUNCTION qFun( D, S1, S2, S3, E, Gm11, Gm22, Gm33 )
+  PURE REAL(DP) ELEMENTAL FUNCTION qFun( D, S1, S2, S3, tau, Gm11, Gm22, Gm33 )
     
-    REAL(DP), INTENT(in) :: D, S1, S2, S3, E, Gm11, Gm22, Gm33
+    REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, Gm11, Gm22, Gm33
     REAL(DP)             :: SSq
 
     SSq = S1**2 / Gm11 + S2**2 / Gm22 + S3**2 / Gm33
 
-    qFun = E + D - SQRT( D**2 + SSq )
+    qFun = tau + D - SQRT( D**2 + SSq )
 
     RETURN
   END FUNCTION qFun
@@ -326,6 +413,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: Theta_P
 
     INTEGER,  PARAMETER :: MAX_IT = 19
+!    REAL(DP), PARAMETER :: dx_min = 1.0d-2 ! Needed for shock reflection Riemann problem
     REAL(DP), PARAMETER :: dx_min = 1.0d-3
 
     LOGICAL  :: CONVERGED
@@ -360,7 +448,7 @@ CONTAINS
     IF( .NOT. f_a * f_b < 0 )THEN
 
       WRITE(*,'(A6,A)') &
-        '', 'SolveTheta_Bisection (M1):'
+        '', 'SolveTheta_Bisection (Euler_GR):'
       WRITE(*,'(A8,A,I3.3)') &
         '', 'Error: No Root in Interval'
       WRITE(*,'(A8,A,2ES15.6e3)') &
@@ -410,7 +498,7 @@ CONTAINS
       IF( ITERATION > MAX_IT .AND. .NOT. CONVERGED )THEN
 
         WRITE(*,'(A6,A)') &
-          '', 'SolveTheta_Bisection (M1):'
+          '', 'SolveTheta_Bisection (Euler_GR):'
         WRITE(*,'(A8,A,I3.3)') &
           '', 'ITERATION ', ITERATION
         WRITE(*,'(A8,A,4ES15.6e3)') &

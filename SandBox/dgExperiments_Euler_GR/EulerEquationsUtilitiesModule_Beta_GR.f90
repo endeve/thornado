@@ -93,7 +93,7 @@ CONTAINS
     REAL(DP) :: SSq, Pold, vSq, W, h, Pnew
 
     REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-8
+    REAL(DP), PARAMETER :: TolP = 1.0d-7
 
     nNodes = SIZE( CF_D )
 
@@ -112,7 +112,6 @@ CONTAINS
 
       ! --- Approximation for pressure assuming h^2=1
       Pold = SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i)
-
       DO WHILE ( .NOT. Converged )
 
         nIter = nIter + 1
@@ -210,12 +209,12 @@ CONTAINS
 
     EPS = ( SQRT( HSq - SSq ) &
             - P * SQRT( HSq ) / SQRT( HSq - SSq ) - D ) / D
+    EPS = MAX( EPS, SqrtTiny )
 
     CALL ComputePressureFromSpecificInternalEnergy &
          ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
 
     FunP = P - Pbar(1)
-    
     dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
     dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
  

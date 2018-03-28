@@ -45,13 +45,13 @@ PROGRAM RiemannProblem
 
   IMPLICIT NONE
 
-  INTEGER  :: iCycle, iCycleD, iCycleW, K
-  REAL(DP) :: t, dt, t_end, xR, x_D, CFL, Gamma, c = 1.0_DP
+  INTEGER  :: iCycle, iCycleD, iCycleW, K, bcX(3)
+  REAL(DP) :: t, dt, t_end, xL, xR, x_D, CFL, Gamma, c = 1.0_DP
   REAL(DP) :: D_L, V_L(3), P_L, D_R, V_R(3), P_R
 
   CALL RiemannProblemChoice &
          ( D_L, V_L, P_L, D_R, V_R, P_R, &
-           xR, x_D, K, t, t_end, CFL, Gamma, iRP = 0 )
+             xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, iRP = 10 )
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -61,13 +61,13 @@ PROGRAM RiemannProblem
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
-             = [ 1, 0, 0 ], &
+             = bcX, &
            xL_Option &
-             = [ 0.0d0, 0.0d0, 0.0d0 ], &
+             = [ xL, 0.0d0, 0.0d0 ], &
            xR_Option &
              = [ xR, 1.0d0, 1.0d0 ], &
            nNodes_Option &
-             = 2, &
+             = 3, &
            CoordinateSystem_Option &
              = 'CARTESIAN', &
            EquationOfState_Option &
@@ -81,9 +81,9 @@ PROGRAM RiemannProblem
            nStages_SSP_RK_Option & ! --- Dummy ---
              = 1 )
 
-  dt      = CFL * xR / ( c * K )
-  iCycleD = 1!00 * t_end
-  iCycleW = 1!0  * t_end
+  dt      = CFL * ( xR - xL ) / ( c * K )
+  iCycleD = 100 * t_end
+  iCycleW = 10  * t_end
 
   CALL InitializeReferenceElementX
 
@@ -100,12 +100,12 @@ PROGRAM RiemannProblem
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-!  CALL WriteFields1D( t, .TRUE., .TRUE. )
-
   CALL InitializeFluid_SSPRK( nStages = 3 )
 
   CALL InitializeSlopeLimiter &
-         ( BetaTVD_Option = 2.00_DP, &
+         ( BetaTVD_Option = 1.5_DP, BetaTVB_Option = 0.0_DP, &
+           LimiterThreshold_Option = 0.001_DP, &
+           SlopeTolerance_Option = 0.1_DP, &
            UseSlopeLimiter_Option = .TRUE. , &
            UseTroubledCellIndicator_Option = .TRUE. )
 
@@ -144,16 +144,12 @@ PROGRAM RiemannProblem
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-!      CALL WriteFields1D( t, .TRUE., .TRUE. )
-
     END IF
 
   END DO
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
-
-!  CALL WriteFields1D( t, .TRUE., .TRUE. )
 
   CALL FinalizePositivityLimiter
 

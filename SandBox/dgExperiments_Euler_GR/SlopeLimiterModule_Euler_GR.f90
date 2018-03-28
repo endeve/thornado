@@ -100,13 +100,13 @@ CONTAINS
     WRITE(*,'(A30,L1)'   ) '    UseTroubledCellIndicator: ' , &
       UseTroubledCellIndicator
     WRITE(*,*)
-    WRITE(*,'(A24,F5.3)' ) '      BetaTVD:          ' , &
+    WRITE(*,'(A24,ES10.3E3)' ) '      BetaTVD:          ' , &
       BetaTVD
-    WRITE(*,'(A24,F5.3)' ) '      BetaTVB:          ' , &
+    WRITE(*,'(A24,ES10.3E3)' ) '      BetaTVB:          ' , &
       BetaTVB
-    WRITE(*,'(A24,F5.3)' ) '      LimiterThreshold: ' , &
+    WRITE(*,'(A24,ES10.3E3)' ) '      LimiterThreshold: ' , &
       LimiterThreshold
-    WRITE(*,'(A24,F5.3)' ) '      SlopeTolerance:   ' , &
+    WRITE(*,'(A24,ES10.3E3)' ) '      SlopeTolerance:   ' , &
       SlopeTolerance
     WRITE(*,*)
 
