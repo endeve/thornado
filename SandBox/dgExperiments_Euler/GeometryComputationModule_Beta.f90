@@ -73,11 +73,6 @@ CONTAINS
 
     END SELECT
 
-    ! Set Boundary Conditions for Geometry Fields Here
-    PRINT*
-    PRINT*, "Boundary Conditions Not Set in ComputeGeometryX"
-    PRINT*
-
   END SUBROUTINE ComputeGeometryX
 
 
@@ -124,13 +119,13 @@ CONTAINS
     REAL(DP) :: XC(3), dX(3), xL_q(3), xG_q(3)
     REAL(DP) :: G_L(nDOFX,nGF)
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
 
         XC(2) = MeshX(2) % Center(iX2)
         dX(2) = MeshX(2) % Width (iX2)
 
-        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iX1 = iX_B1(1), iX_E1(1)
 
           XC(1) = MeshX(1) % Center(iX1)
           dX(1) = MeshX(1) % Width (iX1)
@@ -159,9 +154,9 @@ CONTAINS
             G_L(iNodeX,iGF_h_1) &
               = G_L(iNodeX,iGF_Psi)**2
             G_L(iNodeX,iGF_h_2) &
-              = G_L(iNodeX,iGF_Psi)**2 * xG_q(1)
+              = G_L(iNodeX,iGF_Psi)**2 * ABS( xG_q(1) )
             G_L(iNodeX,iGF_h_3) &
-              = G_L(iNodeX,iGF_Psi)**2 * xG_q(1) * MAX( SIN( xG_q(2) ), Zero )
+              = G_L(iNodeX,iGF_Psi)**2 * ABS( xG_q(1) * SIN( xG_q(2) ) )
 
           END DO
 
