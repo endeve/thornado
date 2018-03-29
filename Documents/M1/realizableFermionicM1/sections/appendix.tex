@@ -33,11 +33,22 @@ For this scheme, the non-zero components of $\tilde{A}$ and $A$ are given by
   a_{21} &= 0.2431004655, \quad a_{22} = 0.1959392570, \nonumber \\
   a_{31} &= 0.4803651051, \quad a_{32} = 0.0746432814, \quad a_{33} = 0.4449916135. \nonumber
 \end{align}
-The coefficient in the correction step is $\alpha = 0.2797373792$.  
+The coefficient in the correction step is $\alpha = 0.2797373792$ and the CFL constant is $c_{sch} = 0.5247457524$.
 This scheme is globally stiffly accurate (GSA), so that $\tilde{w}_{i}=\tilde{a}_{3i}$ and $w_{i}=a_{3i}$ for $i\le3$.
 
 \paragraph{IMEX PA2+}
 
+We here give another second-order accurate, sitivity-preserving IMEX scheme of type $A$, named IMEX PA2+, which has a lager $c_{sch}$ than IMEX PA2.
+It was chosen from $10^{6}$ coefficient groups that satisfy both the second-order accuracy requirement and the positivity-preserving requirement.
+IMEX PA2+ is the one has the largest ($C_{sch} = 0.895041066934$). Its non-zero components of $\tilde{A}$ and $A$ are given by
+\begin{align}
+  \tilde{a}_{21} &= 0.909090909090909, \nonumber \\
+  \tilde{a}_{31} &= 0.450000000000000, \quad \tilde{a}_{32} = 0.550000000000000, \nonumber \\
+  a_{11} &= 0.521932391842510, \nonumber \\
+  a_{21} &= 0.479820781424967, \quad a_{22} = 0.002234534340252, \nonumber \\
+  a_{31} &= 0.499900000000000, \quad a_{32} = 0.001100000000000, \quad a_{33} = 0.499000000000000. \nonumber
+\end{align}
+The coefficient in the correction step is $\alpha = 0.260444263529413$.  
 \paragraph{IMEX PC2}
 
 \paragraph{IMEX RKCB2}
