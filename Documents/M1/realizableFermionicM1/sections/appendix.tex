@@ -68,6 +68,17 @@ A common choice of this scheme is $c_{sch} = 0.3$.
 
 \paragraph{IMEX RKCB2}
 
+A second-order accurate, diffusion accurate, L-stable, strong-stability-preserving IMEX scheme was given in \cite{cavaglieriBewley2015}.  
+We refer to this scheme as IMEX RKCB2.  
+Its non-zero components of  $\tilde{A}$ and $A$ are given by
+\begin{align}
+  \tilde{a}_{21} &= 2/5, \nonumber \\
+  \tilde{a}_{32} &= 1, \nonumber \\
+  a_{22} &= 2/5, \nonumber \\
+  a_{32} &= 5/6, \quad a_{33} = 1/6. \nonumber
+\end{align}
+And $w_{i} = a_{3i} = \tilde{w}_{i}$ for stiff accuracy.
+CFL ...
 
 \paragraph{IMEX SSP2332}
 
