@@ -70,7 +70,7 @@ A common choice of this scheme is $c_{sch} = 0.3$.
 
 A second-order accurate, diffusion accurate, L-stable, strong-stability-preserving IMEX scheme was given in \cite{cavaglieriBewley2015}.  
 We refer to this scheme as IMEX RKCB2.  
-Its non-zero components of  $\tilde{A}$ and $A$ are given by
+Its non-zero components of $\tilde{A}$ and $A$ are given by
 \begin{align}
   \tilde{a}_{21} &= 2/5, \nonumber \\
   \tilde{a}_{32} &= 1, \nonumber \\
@@ -82,6 +82,17 @@ CFL ...
 
 \paragraph{IMEX SSP2332}
 
+A second-order accurate, diffusion accurate, L-stable, strong-stability-preserving IMEX scheme was given in \cite{pareschiRusso_2005}.  
+We refer to this scheme as IMEX SSP2332.  
+Its non-zero components of $\tilde{A}$ and $A$ are given by
+\begin{align}
+  \tilde{a}_{21} &= 1/2, \nonumber \\
+  \tilde{a}_{31} &= 1/2, \quad \tilde{a}_{32} = 1/2, \nonumber \\
+  a_{11} &= 1/4, \nonumber \\
+  a_{22} &= 1/4, \nonumber \\
+  a_{31} &= 1/3, \quad a_{32} = 1/3, \quad a_{33} = 1/3. \nonumber
+\end{align}
+And $w_{i} = a_{3i} = \tilde{w}_{i}$ for stiff accuracy.
+CFL ...
 
 \paragraph{SSPRK2 and SSPRK3}
-
