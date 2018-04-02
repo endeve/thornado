@@ -96,3 +96,16 @@ And $w_{i} = a_{3i} = \tilde{w}_{i}$ for stiff accuracy.
 CFL ...
 
 \paragraph{SSPRK2 and SSPRK3}
+
+A second-order accurate, strong-stability-preserving explicit Runge-Kutta scheme, referred as SSPRK2, has the following non-zero components:
+\begin{align}
+  \tilde{a}_{21} &= 1, \nonumber \\
+  \tilde{w}_{1} &= 1/2, \quad \tilde{w}_{2} = 1/2. \nonumber 
+\end{align}
+A third-order accurate, strong-stability-preserving explicit Runge-Kutta scheme, was referred as SSPRK3.
+It has the following non-zero components:
+\begin{align}
+  \tilde{a}_{21} &= 1, \nonumber \\
+  \tilde{a}_{31} &= 1/4, \quad \tilde{a}_{32} = 1/4, \nonumber \\
+  \tilde{w}_{1} &= 1/6, \quad \tilde{w}_{2} = 1/6, \quad \tilde{w}_{3} =2/3 \nonumber
+\end{align}
