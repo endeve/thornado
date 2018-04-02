@@ -38,10 +38,11 @@ This scheme is globally stiffly accurate (GSA), so that $\tilde{w}_{i}=\tilde{a}
 
 \paragraph{IMEX PA2+}
 
-We here give another second-order accurate, sitivity-preserving IMEX scheme of type $A$, named IMEX PA2+, which has a lager $c_{sch}$ than IMEX PA2.
-It was chosen from $10^{6}$ coefficient groups that satisfy both the second-order accuracy requirement and the positivity-preserving requirement.
-IMEX PA2+ is the one has the largest ($c_{sch} = 0.895041066934$). 
-Its non-zero components of $\tilde{A}$ and $A$ are given by
+We have found another second-order accurate, positivity-preserving IMEX scheme of type $A$, which we refer to as IMEX PA2+.  
+This scheme allows for has a larger $c_{sch}$ than IMEX PA2 (i.e., a larger time step for positivity).  
+The scheme chosen by random sampling of the parameter space, and was the scheme with the largest $c_{sch}$ that satisfied both the order conditions for second order accuracy and possessed the positivity-preserving property.  
+For IMEX PA2+, ($c_{sch} = 0.895041066934$). 
+The non-zero components of $\tilde{A}$ and $A$ are given by
 \begin{align}
   \tilde{a}_{21} &= 0.909090909090909, \nonumber \\
   \tilde{a}_{31} &= 0.450000000000000, \quad \tilde{a}_{32} = 0.550000000000000, \nonumber \\
@@ -50,7 +51,7 @@ Its non-zero components of $\tilde{A}$ and $A$ are given by
   a_{31} &= 0.499900000000000, \quad a_{32} = 0.001100000000000, \quad a_{33} = 0.499000000000000. \nonumber
 \end{align}
 The coefficient in the correction step is $\alpha = 0.260444263529413$.  
-This scheme is also a GSA scheme: $\tilde{w}_{i}=\tilde{a}_{3i}$ and $w_{i}=a_{3i}$ for $i\le3$.
+This scheme is also GSA; $\tilde{w}_{i}=\tilde{a}_{3i}$ and $w_{i}=a_{3i}$ for $i\le3$.
 
 \paragraph{IMEX PC2}
 
