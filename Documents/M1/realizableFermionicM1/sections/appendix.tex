@@ -39,8 +39,8 @@ This scheme is globally stiffly accurate (GSA), so that $\tilde{w}_{i}=\tilde{a}
 \paragraph{IMEX PA2+}
 
 We have found another second-order accurate, positivity-preserving IMEX scheme of type $A$, which we refer to as IMEX PA2+.  
-This scheme allows for has a larger $c_{sch}$ than IMEX PA2 (i.e., a larger time step for positivity).  
-The scheme chosen by random sampling of the parameter space, and was the scheme with the largest $c_{sch}$ that satisfied both the order conditions for second order accuracy and possessed the positivity-preserving property.  
+This scheme allows for has a larger $c_{sch}$ than IMEX PA2 (i.e., a larger time step while still maintaining positivity).  
+The scheme chosen from random sampling of the IMEX parameter space, and was the scheme with the largest $c_{sch}$ that satisfied both the order conditions for second order accuracy and possessed the positivity-preserving property.  
 For IMEX PA2+, ($c_{sch} = 0.895041066934$). 
 The non-zero components of $\tilde{A}$ and $A$ are given by
 \begin{align}
@@ -55,9 +55,9 @@ This scheme is also GSA; $\tilde{w}_{i}=\tilde{a}_{3i}$ and $w_{i}=a_{3i}$ for $
 
 \paragraph{IMEX PC2}
 
-A second-order accurate, positivity-preserving, diffusion accurate IMEX scheme was given in \cite{mcclareen_2008}.  
-We refer to this scheme as IMEX PC2.  
-Its non-zero components of $\tilde{A}$ and $A$ are given by
+Another positivity-preserving IMEX scheme was given in \cite{mcclareen_2008} (referred to as a semi-implicit predictor-corrector method in \cite{mcclareen_2008}).  
+This scheme can be written in the double Butcher tableau form, and we refer to this scheme as IMEX PC2.  
+The non-zero components of $\tilde{A}$ and $A$ are given by
 \begin{align}
   \tilde{a}_{21} &= 0.5, \nonumber \\
   \tilde{a}_{32} &= 1, \nonumber \\
@@ -69,9 +69,10 @@ A common choice of this scheme is $c_{sch} = 0.3$.
 
 \paragraph{IMEX RKCB2}
 
-A second-order accurate, diffusion accurate, L-stable, strong-stability-preserving IMEX scheme was given in \cite{cavaglieriBewley2015}.  
+We compare the performance of the positivity-preserving IMEX schemes with two other, non-positive, schemes.  
+The first one is the second-order accurate IMEX scheme given in \cite{cavaglieriBewley2015}.  
 We refer to this scheme as IMEX RKCB2.  
-Its non-zero components of $\tilde{A}$ and $A$ are given by
+The non-zero components of $\tilde{A}$ and $A$ are given by
 \begin{align}
   \tilde{a}_{21} &= 2/5, \nonumber \\
   \tilde{a}_{32} &= 1, \nonumber \\
@@ -83,9 +84,9 @@ CFL ...
 
 \paragraph{IMEX SSP2332}
 
-A second-order accurate, diffusion accurate, L-stable, strong-stability-preserving IMEX scheme was given in \cite{pareschiRusso_2005}.  
+The second scheme we use for comparison is the second-order accurate IMEX scheme given in \cite{pareschiRusso_2005}.  
 We refer to this scheme as IMEX SSP2332.  
-Its non-zero components of $\tilde{A}$ and $A$ are given by
+The non-zero components of $\tilde{A}$ and $A$ are given by
 \begin{align}
   \tilde{a}_{21} &= 1/2, \nonumber \\
   \tilde{a}_{31} &= 1/2, \quad \tilde{a}_{32} = 1/2, \nonumber \\
