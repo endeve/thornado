@@ -4,7 +4,8 @@ MODULE ThornadoInitializationModule
     DP
   USE ProgramHeaderModule, ONLY: &
     InitializeProgramHeader, &
-    nNodesX, nNodesE
+    nNodesX, nNodesE, &
+    iE_B0, iE_E0, iE_B1, iE_E1
   USE QuadratureModule, ONLY: &
     InitializeQuadratures
   USE ReferenceElementModuleX, ONLY: &
@@ -33,10 +34,18 @@ MODULE ThornadoInitializationModule
     DestroyFluidFields
   USE GeometryFieldsModuleE, ONLY: &
     CreateGeometryFieldsE, &
-    DestroyGeometryFieldsE
+    DestroyGeometryFieldsE, &
+    uGE
+  USE GeometryComputationModuleE, ONLY: &
+    ComputeGeometryE
   USE RadiationFieldsModule, ONLY: &
     CreateRadiationFields, &
     DestroyRadiationFields
+  USE TwoMoment_ClosureModule, ONLY: &
+    InitializeClosure_TwoMoment
+  USE TwoMoment_PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter_TwoMoment, &
+    FinalizePositivityLimiter_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
@@ -121,8 +130,23 @@ CONTAINS
     CALL CreateGeometryFieldsE &
            ( nE, swE, Verbose_Option = .FALSE. )
 
+    CALL ComputeGeometryE &
+           ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
+
     CALL CreateRadiationFields &
            ( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
+             Verbose_Option = .FALSE. )
+
+    ! --- Two-Moment Solver ---
+
+    CALL InitializeClosure_TwoMoment &
+           ( Verbose_Option = .FALSE. )
+
+    CALL InitializePositivityLimiter_TwoMoment &
+           ( Min_1_Option = - HUGE( 1.0_DP ), &
+             Max_1_Option = + HUGE( 1.0_DP ), &
+             Min_2_Option = - HUGE( 1.0_DP ), &
+             UsePositivityLimiter_Option = .FALSE., &
              Verbose_Option = .FALSE. )
 
   END SUBROUTINE InitThornado_Patch
@@ -147,6 +171,10 @@ CONTAINS
     CALL DestroyGeometryFieldsE
 
     CALL DestroyRadiationFields
+
+    ! --- Two-Moment Solver ---
+
+    CALL FinalizePositivityLimiter_TwoMoment
 
   END SUBROUTINE FreeThornado_Patch
 

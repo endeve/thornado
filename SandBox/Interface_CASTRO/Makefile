@@ -3,8 +3,8 @@ MACHINE = $(THORNADO_MACHINE)
 OPT_LEVEL = OPTIMIZE
 FLAGS     = $(FLAGS_$(OPT_LEVEL))
 
-#MOMENT_CLOSURE = MINERBO
-MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
+MOMENT_CLOSURE = MINERBO
+#MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
 #MOMENT_CLOSURE = MAXIMUM_ENTROPY_BL
 #MOMENT_CLOSURE = KERSHAW_BL
 
@@ -17,6 +17,7 @@ $(THORNADO_DIR)/Modules/Library: \
 $(THORNADO_DIR)/Modules/Mesh: \
 $(THORNADO_DIR)/Modules/Geometry: \
 $(THORNADO_DIR)/Modules/Fields: \
+$(THORNADO_DIR)/Modules/TwoMoment: \
 .
 
 all: Driver
@@ -34,10 +35,19 @@ Driver: \
 	ReferenceElementModule_Lagrange.o \
 	MeshModule.o \
 	GeometryFieldsModule.o \
+	GeometryComputationModule.o \
 	FluidFieldsModule.o \
 	GeometryFieldsModuleE.o \
+	GeometryComputationModuleE.o \
 	RadiationFieldsModule.o \
+	TwoMoment_ClosureModule.o \
+	TwoMoment_BoundaryConditionsModule.o \
+	TwoMoment_UtilitiesModule.o \
+	TwoMoment_PositivityLimiterModule.o \
+	TwoMoment_DiscretizationModule_Streaming.o \
 	ThornadoInitializationModule.o \
+	DiscretizationModule_Dummy.o \
+	TimeSteppingModule_Castro.o \
 	Driver.o
 	$(FLINKER) $(FLAGS) -o Driver_$(MACHINE) \
 	KindModule.o \
@@ -52,10 +62,19 @@ Driver: \
 	ReferenceElementModule_Lagrange.o \
 	MeshModule.o \
 	GeometryFieldsModule.o \
+	GeometryComputationModule.o \
 	FluidFieldsModule.o \
 	GeometryFieldsModuleE.o \
+	GeometryComputationModuleE.o \
 	RadiationFieldsModule.o \
+	TwoMoment_ClosureModule.o \
+	TwoMoment_BoundaryConditionsModule.o \
+	TwoMoment_UtilitiesModule.o \
+	TwoMoment_PositivityLimiterModule.o \
+	TwoMoment_DiscretizationModule_Streaming.o \
 	ThornadoInitializationModule.o \
+	DiscretizationModule_Dummy.o \
+	TimeSteppingModule_Castro.o \
 	Driver.o \
 	$(LIBRARIES)
 
