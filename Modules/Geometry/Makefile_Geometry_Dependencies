@@ -3,29 +3,26 @@ GeometryFieldsModule.o: \
   ProgramHeaderModule.o \
   GeometryFieldsModule.f90
 
-GeometryBoundaryConditionsModule.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  UtilitiesModule.o \
-  MeshModule.o \
-  GeometryFieldsModule.o \
-  GeometryBoundaryConditionsModule.f90
-
 GeometryComputationModule.o: \
   KindModule.o \
-  UtilitiesModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
   MeshModule.o \
   GeometryFieldsModule.o \
-  GeometryBoundaryConditionsModule.o \
   GeometryComputationModule.f90
-
-GeometryInitializationModule.o: \
-  KindModule.o \
-  GeometryFieldsModule.o \
-  GeometryComputationModule.o \
-  GeometryInitializationModule.f90
 
 GeometryFieldsModuleE.o
   KindModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModuleE.f90
+
+GeometryComputationModuleE.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleE_Lagrange.o \
+  MeshModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryComputationModuleE.f90
+  

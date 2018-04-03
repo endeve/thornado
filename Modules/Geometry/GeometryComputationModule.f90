@@ -1,48 +1,68 @@
 MODULE GeometryComputationModule
 
   USE KindModule, ONLY: &
-    DP, One
+    DP, Zero, Half, One, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
-    nX, nNodesX
-  USE UtilitiesModule, ONLY: &
-    NodeNumberX, &
-    NodeNumber
+    nDOFX
+  USE ReferenceElementModuleX, ONLY: &
+    NodesLX_q
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    LX_L2G
   USE MeshModule, ONLY: &
-    MeshX, &
-    MeshE, &
-    NodeCoordinate
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem, &
-    uGF, nGF, iGF_h_1, iGF_h_2, iGF_h_3, &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
-  USE GeometryBoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_GeometryX, &
-    ApplyBoundaryConditions_Geometry
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
+    iGF_SqrtGm, &
+    iGF_Alpha, &
+    iGF_Psi, &
+    nGF
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: ComputeGeometryX
-  PUBLIC :: ComputeGeometry
+  PUBLIC :: ComputeGeometryX_FromScaleFactors
 
 CONTAINS
 
 
-  SUBROUTINE ComputeGeometryX
+  SUBROUTINE ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option )
+
+    INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      Mass_Option
+
+    REAL(DP) :: Mass
+
+    Mass = Zero
+    IF( PRESENT( Mass_Option ) ) &
+      Mass = Mass_Option
 
     SELECT CASE ( TRIM( CoordinateSystem ) )
 
       CASE ( 'CARTESIAN' )
 
-        CALL ComputeGeometryX_CARTESIAN
+        CALL ComputeGeometryX_CARTESIAN &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
 
       CASE ( 'SPHERICAL' )
 
-        CALL ComputeGeometryX_SPHERICAL
+        CALL ComputeGeometryX_SPHERICAL &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
 
       CASE ( 'CYLINDRICAL' )
 
-        CALL ComputeGeometryX_CYLINDRICAL
+        CALL ComputeGeometryX_CYLINDRICAL &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
 
       CASE DEFAULT
 
@@ -53,36 +73,30 @@ CONTAINS
 
     END SELECT
 
-    CALL ApplyBoundaryConditions_GeometryX
-
   END SUBROUTINE ComputeGeometryX
 
 
-  SUBROUTINE ComputeGeometryX_CARTESIAN
+  SUBROUTINE ComputeGeometryX_CARTESIAN &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
 
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
+    INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)    :: &
+      Mass
 
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
+    INTEGER :: iX1, iX2, iX3
 
-          DO iNodeX3 = 1, nNodesX(3)
-            DO iNodeX2 = 1, nNodesX(2)
-              DO iNodeX1 = 1, nNodesX(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
 
-                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+          G(:,iX1,iX2,iX3,iGF_h_1) = One
+          G(:,iX1,iX2,iX3,iGF_h_2) = One
+          G(:,iX1,iX2,iX3,iGF_h_3) = One
 
-                uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-                  = One
-                uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                  = One
-                uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                  = One
-
-              END DO
-            END DO
-          END DO
+          CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
 
         END DO
       END DO
@@ -91,38 +105,82 @@ CONTAINS
   END SUBROUTINE ComputeGeometryX_CARTESIAN
 
 
-  SUBROUTINE ComputeGeometryX_SPHERICAL
+  SUBROUTINE ComputeGeometryX_SPHERICAL &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
 
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
-    REAL(DP) :: X1, X2
+    INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)    :: &
+      Mass
 
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
+    INTEGER  :: iX1, iX2, iX3, iNodeX
+    REAL(DP) :: XC(3), dX(3), xL_q(3), xG_q(3)
+    REAL(DP) :: G_L(nDOFX,nGF)
 
-          DO iNodeX3 = 1, nNodesX(3)
+    DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
 
-            DO iNodeX2 = 1, nNodesX(2)
+        XC(2) = MeshX(2) % Center(iX2)
+        dX(2) = MeshX(2) % Width (iX2)
 
-              X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+        DO iX1 = iX_B1(1), iX_E1(1)
 
-              DO iNodeX1 = 1, nNodesX(1)
+          XC(1) = MeshX(1) % Center(iX1)
+          dX(1) = MeshX(1) % Width (iX1)
 
-                X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+          ! --- Compute Geometry Fields in Lobatto Points ---
 
-                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+          DO iNodeX = 1, nDOFX
 
-                uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-                  = One
-                uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                  = X1**2
-                uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                  = ( X1 * SIN( X2 ) )**2
+            ! --- Local Coordinates (Lobatto Points) ---
 
-              END DO
-            END DO
+            xL_q = NodesLX_q(1:3,iNodeX)
+
+            ! --- Global Coordinates ---
+
+            xG_q = XC + dX * xL_q
+
+            ! --- Compute Lapse Function and Conformal Factor ---
+
+            G_L(iNodeX,iGF_Alpha) &
+              = LapseFunction  ( xG_q(1), Mass )
+            G_L(iNodeX,iGF_Psi) &
+              = ConformalFactor( xG_q(1), Mass )
+
+            ! --- Set Geometry in Lobatto Points ---
+
+            G_L(iNodeX,iGF_h_1) &
+              = G_L(iNodeX,iGF_Psi)**2
+            G_L(iNodeX,iGF_h_2) &
+              = G_L(iNodeX,iGF_Psi)**2 * ABS( xG_q(1) )
+            G_L(iNodeX,iGF_h_3) &
+              = G_L(iNodeX,iGF_Psi)**2 * ABS( xG_q(1) * SIN( xG_q(2) ) )
+
           END DO
+
+          ! --- Interpolate from Lobatto to Gaussian Points ---
+
+          CALL DGEMV &
+                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+                   G_L(:,iGF_h_1), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_1), 1 )
+          CALL DGEMV &
+                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+                   G_L(:,iGF_h_2), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_2), 1 )
+          CALL DGEMV &
+                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+                   G_L(:,iGF_h_3), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_3), 1 )
+
+          CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+
+          CALL DGEMV &
+                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+                   G_L(:,iGF_Alpha), 1, Zero, G(:,iX1,iX2,iX3,iGF_Alpha), 1 )
+
+          CALL DGEMV &
+                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+                   G_L(:,iGF_Psi),   1, Zero, G(:,iX1,iX2,iX3,iGF_Psi),   1 )
 
         END DO
       END DO
@@ -131,34 +189,60 @@ CONTAINS
   END SUBROUTINE ComputeGeometryX_SPHERICAL
 
 
-  SUBROUTINE ComputeGeometryX_CYLINDRICAL
+  SUBROUTINE ComputeGeometryX_CYLINDRICAL &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
 
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
-    REAL(DP) :: X1
+    INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)    :: &
+      Mass
 
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
+    REAL(DP) :: XC(3), dX(3), xL_q(3), xG_q(3)
+    REAL(DP) :: G_L(nDOFX,nGF)
+    INTEGER  :: iX1, iX2, iX3, iNodeX
 
-          DO iNodeX3 = 1, nNodesX(3)
-            DO iNodeX2 = 1, nNodesX(2)
-              DO iNodeX1 = 1, nNodesX(1)
+    PRINT*, "ComputeGeometryX_CYLINDRICAL"
 
-                X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+    DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
 
-                iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+          XC(1) = MeshX(1) % Center(iX1)
+          dX(1) = MeshX(1) % Width (iX1)
 
-                uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-                  = One
-                uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                  = One
-                uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                  = X1**2
+          DO iNodeX = 1, nDOFX
 
-              END DO
-            END DO
+            ! --- Local Coordinates (Lobatto Points) ---
+
+            xL_q = NodesLX_q(1:3,iNodeX)
+
+            ! --- Global Coordinates ---
+
+            xG_q = XC + dX * xL_q
+
+            ! --- Set Geometry in Lobatto Points ---
+
+            G_L(iNodeX,iGF_h_1) = One
+            G_L(iNodeX,iGF_h_2) = One
+            G_L(iNodeX,iGF_h_3) = xG_q(1)
+
           END DO
+
+          ! --- Interpolate from Lobatto to Gaussian Points ---
+
+          CALL DGEMV &
+                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+                   G_L(:,iGF_h_1), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_1), 1 )
+          CALL DGEMV &
+                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+                   G_L(:,iGF_h_2), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_2), 1 )
+          CALL DGEMV &
+                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+                   G_L(:,iGF_h_3), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_3), 1 )
+
+          CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
 
         END DO
       END DO
@@ -167,51 +251,44 @@ CONTAINS
   END SUBROUTINE ComputeGeometryX_CYLINDRICAL
 
 
-  SUBROUTINE ComputeGeometry( nX, nNodesX, swX, nE, nNodesE, swE )
+  SUBROUTINE ComputeGeometryX_FromScaleFactors( G )
 
-    INTEGER, DIMENSION(3), INTENT(in) :: nX, nNodesX, swX
-    INTEGER,               INTENT(in) :: nE, nNodesE, swE
+    REAL(DP), INTENT(inout) :: G(1:,1:)
 
-    INTEGER  :: iE, iX1, iX2, iX3
-    INTEGER  :: iNodeE, iNodeX1, iNodeX2, iNodeX3, iNode
-    REAL(DP) :: E, X1, X2, X3
+    G(:,iGF_Gm_dd_11) = G(:,iGF_h_1)**2
+    G(:,iGF_Gm_dd_22) = G(:,iGF_h_2)**2
+    G(:,iGF_Gm_dd_33) = G(:,iGF_h_3)**2
 
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
-          DO iE = 1, nE
+    G(:,iGF_SqrtGm) = G(:,iGF_h_1) * G(:,iGF_h_2) * G(:,iGF_h_3)
 
-            DO iNodeX3 = 1, nNodesX(3)
+  END SUBROUTINE ComputeGeometryX_FromScaleFactors
 
-              X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
 
-              DO iNodeX2 = 1, nNodesX(2)
+  PURE REAL(DP) FUNCTION LapseFunction( R, M )
 
-                X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+    REAL(DP), INTENT(in) :: R, M
 
-                DO iNodeX1 = 1, nNodesX(1)
+    ! --- Schwarzschild Metric in Isotropic Coordinates ---
 
-                  X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+    LapseFunction &
+      = ( One - Half * M / MAX( R, SqrtTiny ) ) &
+        / ( One + Half * M / MAX( R, SqrtTiny ) )
 
-                  DO iNodeE = 1, nNodesE
+    RETURN
+  END FUNCTION LapseFunction
 
-                    E = NodeCoordinate( MeshE, iE, iNodeE )
 
-                    iNode = NodeNumber( iNodeE, iNodeX1, iNodeX2, iNodeX3 )
+  PURE REAL(DP) FUNCTION ConformalFactor( R, M )
 
-                  END DO
-                END DO
-              END DO
-            END DO
+    REAL(DP), INTENT(in) :: R, M
 
-          END DO
-        END DO
-      END DO
-    END DO
+    ! --- Schwarzschild Metric in Isotropic Coordinates ---
 
-    CALL ApplyBoundaryConditions_Geometry
+    ConformalFactor &
+      = One + Half * M / MAX( R, SqrtTiny )
 
-  END SUBROUTINE ComputeGeometry
+    RETURN
+  END FUNCTION ConformalFactor
 
 
 END MODULE GeometryComputationModule
