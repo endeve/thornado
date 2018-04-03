@@ -36,13 +36,16 @@ CONTAINS
 
 
   SUBROUTINE InitializePositivityLimiter_TwoMoment &
-    ( Min_1_Option, Max_1_Option, Min_2_Option, UsePositivityLimiter_Option )
+    ( Min_1_Option, Max_1_Option, Min_2_Option, &
+      UsePositivityLimiter_Option, Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
     REAL(DP), INTENT(in), OPTIONAL :: Max_1_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_2_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
 
+    LOGICAL :: Verbose
     INTEGER :: i
 
     Min_1 = - HUGE( One )
@@ -61,20 +64,28 @@ CONTAINS
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
       UsePositivityLimiter = UsePositivityLimiter_Option
 
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
     Theta_FD = One
     IF( Max_1 > One ) &
       Theta_FD = Zero
 
-    WRITE(*,*)
-    WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'InitializePositivityLimiter'
-    WRITE(*,*)
-    WRITE(*,'(A6,A,L1)') &
-      '', 'Use Positivity Limiter: ', UsePositivityLimiter 
-    WRITE(*,*)
-    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
-    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_1 = ', Max_1
-    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
-    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Theta_FD = ', Theta_FD
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'InitializePositivityLimiter'
+      WRITE(*,*)
+      WRITE(*,'(A6,A,L1)') &
+        '', 'Use Positivity Limiter: ', UsePositivityLimiter 
+      WRITE(*,*)
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_1 = ', Max_1
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Theta_FD = ', Theta_FD
+
+    END IF
 
     nPP = 0
     nPP(1) = PRODUCT( nNodesZ )

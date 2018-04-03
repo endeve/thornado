@@ -8,46 +8,70 @@ MODULE TwoMoment_ClosureModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializeMomentClosure
+  PUBLIC :: InitializeClosure_TwoMoment
   PUBLIC :: FluxFactor
   PUBLIC :: EddingtonFactor
 
 CONTAINS
 
 
-  SUBROUTINE InitializeMomentClosure
+  SUBROUTINE InitializeClosure_TwoMoment( Verbose_Option )
+
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
+
+    LOGICAL :: Verbose
+
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
 #ifdef MOMENT_CLOSURE_MINERBO
 
     ! --- Maximum Entropy (ME) Minerbo Closure ---
 
-    WRITE(*,*)
-    WRITE(*,'(A6,A)') &
-      '', 'Two-Moment Closure: Maximum Entropy (Minerbo)'
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A6,A)') &
+        '', 'Two-Moment Closure: Maximum Entropy (Minerbo)'
+
+    END IF
 
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
 
     ! --- Cernohorsky-Bludman ME Closure ---
 
-    WRITE(*,*)
-    WRITE(*,'(A6,A)') &
-      '', 'Two-Moment Closure: Maximum Entropy (Cernohorsky & Bludman)'
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A6,A)') &
+        '', 'Two-Moment Closure: Maximum Entropy (Cernohorsky & Bludman)'
+
+    END IF
 
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_BL
 
     ! --- Banach-Larecki ME Closure ---
 
-    WRITE(*,*)
-    WRITE(*,'(A6,A)') &
-      '', 'Two-Moment Closure: Maximum Entropy (Banach & Larecki)'
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A6,A)') &
+        '', 'Two-Moment Closure: Maximum Entropy (Banach & Larecki)'
+
+    END IF
 
 #elif  MOMENT_CLOSURE_KERSHAW_BL
 
     ! --- Banach-Larecki Kershaw Closure ---
 
-    WRITE(*,*)
-    WRITE(*,'(A6,A)') &
-      '', 'Two-Moment Closure: Kershaw (Banach & Larecki)'
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A6,A)') &
+        '', 'Two-Moment Closure: Kershaw (Banach & Larecki)'
+
+    END IF
 
 #else
 
@@ -59,7 +83,7 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE InitializeMomentClosure
+  END SUBROUTINE InitializeClosure_TwoMoment
 
 
   ! --- Flux Factor ---
