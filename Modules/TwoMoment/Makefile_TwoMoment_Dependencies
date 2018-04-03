@@ -1,0 +1,40 @@
+TwoMoment_ClosureModule.o: \
+  KindModule.o \
+  TwoMoment_ClosureModule.F90
+
+TwoMoment_UtilitiesModule.o: \
+  KindModule.o \
+  TwoMoment_UtilitiesModule.f90
+
+TwoMoment_BoundaryConditionsModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_BoundaryConditionsModule.f90
+
+TwoMoment_PositivityLimiterModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  RadiationFieldsModule.o \
+  TwoMoment_PositivityLimiterModule.f90
+
+TwoMoment_DiscretizationModule_Streaming.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  GeometryFieldsModuleE.o \
+  RadiationFieldsModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_BoundaryConditionsModule.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_PositivityLimiterModule.o \
+  TwoMoment_DiscretizationModule_Streaming.f90
