@@ -32,9 +32,6 @@ MODULE ProgramInitializationModule
   USE GeometryFieldsModule, ONLY: &
     CreateGeometryFields, &
     DestroyGeometryFields
-  USE GeometryInitializationModule, ONLY: &
-    InitializeGeometry, &
-    FinalizeGeometry
   USE GeometryFieldsModuleE, ONLY: &
     CreateGeometryFieldsE, &
     DestroyGeometryFieldsE
@@ -311,11 +308,6 @@ CONTAINS
 
     CALL CreateGeometryFields( nX, swX )
 
-    CALL InitializeGeometry &
-           ( nX, nNodesX, swX, nE, nNodesE, swE, &
-             CoordinateSystem_Option &
-               = CoordinateSystem_Option )
-
     ! --- Geometry (Energy Space) ---
 
     CALL CreateGeometryFieldsE( nE, swE )
@@ -446,8 +438,6 @@ CONTAINS
     CALL DestroyGeometryFields
 
     CALL DestroyGeometryFieldsE
-
-    CALL FinalizeGeometry
 
     ! --- Physical Fields ---
 

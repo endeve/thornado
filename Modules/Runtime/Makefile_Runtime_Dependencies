@@ -10,7 +10,6 @@ ProgramInitializationModule.o: \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
   GeometryFieldsModule.o \
-  GeometryInitializationModule.o \
   GeometryFieldsModuleE.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
