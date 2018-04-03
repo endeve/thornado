@@ -37,8 +37,8 @@ MODULE InitializationModule
   USE EquationOfStateModule, ONLY: &
     ApplyEquationOfState, &
     ComputeThermodynamicStates_Primitive
-  USE MomentEquationsUtilitiesModule_Beta, ONLY: &
-    ComputeConserved
+  USE TwoMoment_UtilitiesModule, ONLY: &
+    ComputeConserved_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
@@ -258,7 +258,7 @@ CONTAINS
 
               END SELECT
 
-              CALL ComputeConserved &
+              CALL ComputeConserved_TwoMoment &
                      ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS), &
@@ -330,7 +330,7 @@ CONTAINS
 
               END DO
 
-              CALL ComputeConserved &
+              CALL ComputeConserved_TwoMoment &
                      ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS), &
@@ -402,7 +402,7 @@ CONTAINS
 
               END DO
 
-              CALL ComputeConserved &
+              CALL ComputeConserved_TwoMoment &
                      ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS), &
@@ -490,7 +490,7 @@ CONTAINS
 
               END DO
 
-              CALL ComputeConserved &
+              CALL ComputeConserved_TwoMoment &
                      ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS), &
@@ -567,7 +567,7 @@ CONTAINS
 
               END DO
 
-              CALL ComputeConserved &
+              CALL ComputeConserved_TwoMoment &
                      ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS), &
@@ -636,7 +636,7 @@ CONTAINS
 
               END DO
 
-              CALL ComputeConserved &
+              CALL ComputeConserved_TwoMoment &
                      ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS), &
@@ -687,7 +687,7 @@ CONTAINS
         ReportError = .TRUE.
 
         CALL ComputeError_SineWaveDiffusion &
-               ( Time, Error_One, Error_Inf )
+               ( Time, SigmaS, Error_One, Error_Inf )
 
       CASE DEFAULT
 
@@ -881,9 +881,11 @@ CONTAINS
   END SUBROUTINE ComputeError_SineWaveDamping
 
 
-  SUBROUTINE ComputeError_SineWaveDiffusion( Time, Error_One, Error_Inf )
+  SUBROUTINE ComputeError_SineWaveDiffusion &
+    ( Time, SigmaS, Error_One, Error_Inf )
 
     REAL(DP), INTENT(in)  :: Time
+    REAL(DP), INTENT(in)  :: SigmaS
     REAL(DP), INTENT(out) :: Error_One(nCR)
     REAL(DP), INTENT(out) :: Error_Inf(nCR)
 
@@ -907,9 +909,10 @@ CONTAINS
                 X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
                 N_A  = ( 0.50_DP + 0.49_DP * SIN( Third * Pi * X1 ) &
-                                     * EXP( - Pi**2 * Time / 2.7d3 ) )
-                G1_A = - ( 0.49_DP * Pi / 9.0d2 ) * COS( Third * Pi * X1 ) &
-                           * EXP( - Pi**2 * Time / 2.7d3 )
+                         * EXP( - Pi**2 * Time / ( 2.7d1 * SigmaS ) ) )
+                G1_A = - ( 0.49_DP * Pi / ( 9.0_DP * SigmaS ) ) &
+                         * COS( Third * Pi * X1 ) &
+                         * EXP( - Pi**2 * Time / ( 2.7d1 * SigmaS ) )
                 G2_A = Zero
                 G3_A = Zero
 
@@ -1099,7 +1102,7 @@ CONTAINS
 
               END DO
 
-              CALL ComputeConserved &
+              CALL ComputeConserved_TwoMoment &
                      ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS), &
                        uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS), &

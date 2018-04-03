@@ -1,4 +1,4 @@
-MICROPHYSICS = WEAKLIB
+#MICROPHYSICS = WEAKLIB
 MOMENT_CLOSURE = MINERBO
 #MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
 #MOMENT_CLOSURE = MAXIMUM_ENTROPY_BL
@@ -10,28 +10,14 @@ all: ApplicationDriver DeleptonizationWave
 
 ApplicationDriver: \
 	$(thornado) \
-	GeometryComputationModule_Beta.o \
-	GeometryComputationModuleE_Beta.o \
-	PositivityLimiterModule.o \
 	TimeSteppingModule_IMEX_RK.o \
-	ClosureModule_M1.o \
-	MomentEquationsUtilitiesModule_Beta.o \
 	InitializationModule.o \
-	BoundaryConditionsModule_Beta.o \
-	dgDiscretizationModule.o \
 	dgDiscretizationModule_Collisions.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
-	GeometryComputationModule_Beta.o \
-	GeometryComputationModuleE_Beta.o \
-	PositivityLimiterModule.o \
 	TimeSteppingModule_IMEX_RK.o \
-	ClosureModule_M1.o \
-	MomentEquationsUtilitiesModule_Beta.o \
 	InitializationModule.o \
-	BoundaryConditionsModule_Beta.o \
-	dgDiscretizationModule.o \
 	dgDiscretizationModule_Collisions.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)

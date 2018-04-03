@@ -6,8 +6,8 @@ MODULE TimeSteppingModule_IMEX_RK
     iZ_B0, iZ_B1, iZ_E0, iZ_E1, nDOF
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies
-  USE PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter
+  USE TwoMoment_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
@@ -714,7 +714,7 @@ CONTAINS
 
     CALL MapFromStage( iZ_B1, U, U_IMEX )
 
-    CALL ApplyPositivityLimiter &
+    CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U ) ! Possibly move this
 
     IF( ANY( [ alpha_IM, alpha_EX ] > Zero ) )THEN

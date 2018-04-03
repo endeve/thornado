@@ -31,15 +31,13 @@ PROGRAM ApplicationDriver
     Initialize_IMEX_RK, &
     Finalize_IMEX_RK, &
     Update_IMEX_RK
-  USE ClosureModule_M1, ONLY: &
-    InitializeMomentClosure
   USE GeometryFieldsModule, ONLY: &
     uGF
-  USE GeometryComputationModule_Beta, ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE GeometryFieldsModuleE, ONLY: &
     uGE
-  USE GeometryComputationModuleE_Beta, ONLY: &
+  USE GeometryComputationModuleE, ONLY: &
     ComputeGeometryE
   USE RadiationFieldsModule, ONLY: &
     uCR, rhsCR
@@ -48,12 +46,14 @@ PROGRAM ApplicationDriver
   USE InitializationModule, ONLY: &
     InitializeFields, &
     ComputeError
-  USE PositivityLimiterModule, ONLY: &
-    InitializePositivityLimiter, &
-    FinalizePositivityLimiter, &
-    ApplyPositivityLimiter
-  USE dgDiscretizationModule, ONLY: &
-    ComputeIncrement_M1_DG_Explicit
+  USE TwoMoment_ClosureModule, ONLY: &
+    InitializeMomentClosure
+  USE TwoMoment_PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter_TwoMoment, &
+    FinalizePositivityLimiter_TwoMoment, &
+    ApplyPositivityLimiter_TwoMoment
+  USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
+    ComputeIncrement_TwoMoment_Explicit
   USE dgDiscretizationModule_Collisions, ONLY: &
     InitializeCollisions, &
     FinalizeCollisions, &
@@ -77,7 +77,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: Radius = 1.0d16
   REAL(DP)      :: Min_1, Max_1, Min_2
 
-  ProgramName = 'SineWaveStreaming'
+  ProgramName = 'SineWaveDiffusion'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -163,7 +163,7 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      TimeSteppingScheme = 'IMEX_SIRK2'
+      TimeSteppingScheme = 'IMEX_PC2'
 
       N0     = 0.0_DP
       SigmaA = 0.0_DP
@@ -347,11 +347,11 @@ PROGRAM ApplicationDriver
 
   ! --- Initialize Positivity Limiter ---
 
-  CALL InitializePositivityLimiter &
+  CALL InitializePositivityLimiter_TwoMoment &
          ( Min_1_Option = Min_1, Max_1_Option = Max_1, Min_2_Option = Min_2, &
            UsePositivityLimiter_Option = UsePositivityLimiter )
 
-  CALL ApplyPositivityLimiter &
+  CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
 
   ! --- Write Initial Condition ---
@@ -392,7 +392,7 @@ PROGRAM ApplicationDriver
 
     CALL Update_IMEX_RK &
            ( dt, uGE, uGF, uCR, &
-             ComputeIncrement_M1_DG_Explicit, &
+             ComputeIncrement_TwoMoment_Explicit, &
              ComputeIncrement_M1_DG_Implicit, &
              ComputeCorrection_M1_DG_Implicit )
 
@@ -433,7 +433,7 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeCollisions
 
-  CALL FinalizePositivityLimiter
+  CALL FinalizePositivityLimiter_TwoMoment
 
   CALL FinalizeProgram
 
