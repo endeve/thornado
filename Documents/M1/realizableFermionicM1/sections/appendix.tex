@@ -99,15 +99,16 @@ CFL ...
 
 \paragraph{SSPRK2 and SSPRK3}
 
-A second-order accurate, strong-stability-preserving explicit Runge-Kutta scheme, referred as SSPRK2, has the following non-zero components:
+To compare the performance of the IMEX schemes in the streaming limit (no collisions), we also compute results with explicit strong stability-preserving Runge-Kutta methods \cite{gottlieb_etal_2001}.  
+(All elements of the implicit Butcher tableau are zero.)  
+The optimal second-order accurate, strong-stability-preserving Runge-Kutta scheme (SSPRK2) has the following non-zero components
 \begin{align}
   \tilde{a}_{21} &= 1, \nonumber \\
   \tilde{w}_{1} &= 1/2, \quad \tilde{w}_{2} = 1/2. \nonumber 
 \end{align}
-A third-order accurate, strong-stability-preserving explicit Runge-Kutta scheme, was referred as SSPRK3.
-It has the following non-zero components:
+The optimal third-order accurate, strong-stability-preserving Runge-Kutta scheme (SSPRK3) has the following non-zero components
 \begin{align}
   \tilde{a}_{21} &= 1, \nonumber \\
   \tilde{a}_{31} &= 1/4, \quad \tilde{a}_{32} = 1/4, \nonumber \\
-  \tilde{w}_{1} &= 1/6, \quad \tilde{w}_{2} = 1/6, \quad \tilde{w}_{3} =2/3 \nonumber
+  \tilde{w}_{1} &= 1/6, \quad \tilde{w}_{2} = 1/6, \quad \tilde{w}_{3} =2/3. \nonumber
 \end{align}
