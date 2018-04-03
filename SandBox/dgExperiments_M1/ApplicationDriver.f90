@@ -47,7 +47,7 @@ PROGRAM ApplicationDriver
     InitializeFields, &
     ComputeError
   USE TwoMoment_ClosureModule, ONLY: &
-    InitializeMomentClosure
+    InitializeClosure_TwoMoment
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment, &
@@ -332,7 +332,7 @@ PROGRAM ApplicationDriver
 
   ! --- Initialize Moment Closure ---
 
-  CALL InitializeMomentClosure
+  CALL InitializeClosure_TwoMoment
 
   ! --- Initialize Implicit Solver ---
 
