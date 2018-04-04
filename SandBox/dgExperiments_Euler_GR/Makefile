@@ -1,6 +1,6 @@
 include ../../../Build/Makefile_Build
 
-all: RiemannProblem StandingAccretionShock
+all: RiemannProblem StandingAccretionShock ComputePrimitiveTest
 
 RiemannProblem: \
 	$(thornado) \
@@ -30,7 +30,6 @@ RiemannProblem: \
 
 StandingAccretionShock: \
 	$(thornado) \
-	GeometryComputationModule_Beta.o \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
 	SlopeLimiterModule_Euler_GR.o \
@@ -42,7 +41,6 @@ StandingAccretionShock: \
 	StandingAccretionShock.o
 	$(FLINKER) $(FLAGS) -o StandingAccretionShock_$(MACHINE) \
 	$(thornado) \
-	GeometryComputationModule_Beta.o \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
 	SlopeLimiterModule_Euler_GR.o \
@@ -54,11 +52,22 @@ StandingAccretionShock: \
 	StandingAccretionShock.o \
 	$(LIBRARIES)
 
+ComputePrimitiveTest: \
+	$(thornado) \
+	EulerEquationsUtilitiesModule_Beta_GR.o \
+	ComputePrimitiveTest.o
+	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_$(MACHINE) \
+	$(thornado) \
+	EulerEquationsUtilitiesModule_Beta_GR.o \
+	ComputePrimitiveTest.o \
+	$(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
 	rm -f RiemannProblem_$(MACHINE)
 	rm -f StandingAccretionShock_$(MACHINE)
+	rm -f ComputePrimitiveTest_$(MACHINE)
 	rm -f *.dat
 	rm -rf *.dSYM

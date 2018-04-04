@@ -1,7 +1,5 @@
 MODULE EulerEquationsUtilitiesModule_Beta_GR
 
-  USE ProgramHeaderModule, ONLY: &
-    nX
   USE KindModule, ONLY: &
     DP, Zero, Half, One, SqrtTiny
   USE FluidFieldsModule, ONLY: &

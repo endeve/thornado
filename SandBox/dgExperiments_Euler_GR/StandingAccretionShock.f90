@@ -20,7 +20,7 @@ PROGRAM StandingAccretionShock
     FinalizePositivityLimiter
   USE GeometryFieldsModule, ONLY: &
     uGF
-  USE GeometryComputationModule_Beta, ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE FluidFieldsModule, ONLY: &
     uCF, uPF, uAF
