@@ -306,7 +306,8 @@ CONTAINS
 
     ! --- Geometry (Position Space) ---
 
-    CALL CreateGeometryFields( nX, swX )
+    CALL CreateGeometryFields &
+           ( nX, swX, CoordinateSystem_Option = CoordinateSystem_Option )
 
     ! --- Geometry (Energy Space) ---
 
