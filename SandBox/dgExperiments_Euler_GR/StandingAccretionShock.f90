@@ -3,7 +3,7 @@ PROGRAM StandingAccretionShock
   USE KindModule, ONLY: &
     DP, Pi, TwoPi, Two
   USE UnitsModule, ONLY: &
-    Meter, Second, SpeedOfLight
+    Meter, Second, SpeedOfLight, Millisecond
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_B1, iX_E0, iX_E1
   USE ProgramInitializationModule, ONLY: &
@@ -48,10 +48,10 @@ PROGRAM StandingAccretionShock
   IMPLICIT NONE
 
   REAL(DP), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
-  REAL(DP), ALLOCATABLE :: r(:), rho(:), v(:), e(:)  
+  REAL(DP), ALLOCATABLE :: r(:), rho(:), v(:), e(:)
   INTEGER               :: nLines, iCycle, iCycleD, iCycleW, K
   REAL(DP)              :: M_PNS, gamma, Ri, R_PNS, R_shock, Rf, Mdot
-  REAL(DP)              :: t, dt, t_end, CFL, xL, xR
+  REAL(DP)              :: t, dt, t_end, CFL, xL, xR, dt_write
 
   CALL ReadParameters &
          ( '../StandingAccretionShock_Parameters.dat', FluidFieldParameters )
@@ -74,7 +74,7 @@ PROGRAM StandingAccretionShock
 
   xL = R_PNS
   xR = Two * R_shock
-  K  = 64
+  K  = 512
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'StandingAccretionShock', &
@@ -83,7 +83,7 @@ PROGRAM StandingAccretionShock
            swX_Option &
              = [ 1, 0, 0 ], &
            bcX_Option &
-             = [ 0, 0, 0 ], &
+             = [ 10, 3, 1 ], &
            xL_Option &
              = [ xL, 0.0_DP, 0.0_DP ], &
            xR_Option &
@@ -101,11 +101,13 @@ PROGRAM StandingAccretionShock
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
-  CFL     = 0.1
-  t_end   = 1.0d-3 * Second
-  dt      = CFL * ( xR - xL ) / ( SpeedOfLight * K )
-  iCycleD = 10
-  iCycleW = 10
+  CFL      = 0.4d0
+  t_end    = 1.0d2 * Millisecond
+  dt       = CFL * ( xR - xL ) / ( SpeedOfLight * K )
+  dt_write = 0.1d0 * Millisecond
+
+  iCycleD = dt_write / dt
+  iCycleW = dt_write / dt
 
   CALL InitializeReferenceElementX
 
@@ -113,6 +115,14 @@ PROGRAM StandingAccretionShock
 
   CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = M_PNS )
+
+!!$  WRITE(*,*) 'Min/Max SqrtGm:' , MINVAL( uGF(:,:,:,:,8) ) / R_shock**2, &
+!!$                                 MAXVAL( uGF(:,:,:,:,8) ) / R_shock**2
+!!$  WRITE(*,*) 'Min/Max Alpha: ' , MINVAL( uGF(:,:,:,:,9) ), &
+!!$                                 MAXVAL( uGF(:,:,:,:,9) )
+!!$  WRITE(*,*) 'Min/Max Psi:   ' , MINVAL( uGF(:,:,:,:,13) ), &
+!!$                                 MAXVAL( uGF(:,:,:,:,13) )
+!!$  
 
   CALL InitializeFields_StandingAccretionShock
 
@@ -145,17 +155,29 @@ PROGRAM StandingAccretionShock
 
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
-      WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
-          '', 'Cycle = ', iCycle, '', 't = ',  t, '', 'dt = ', dt
+      WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A3,A5,ES13.6E3,A2)') &
+             '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, 'ms ', &
+               'dt = ', dt / Millisecond, 'ms'
 
     END IF
 
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
 
-    ! --- Update primitive fluid variables, pressure, and sound speed
+    ! --- Update primitive fluid variables, pressure, and sound speed ---
     CALL ComputeFromConserved( iX_B0, iX_E0, uGF, uCF, uPF, uAF )
 
+!!$    WRITE(*,*) 'CALL ComputeGeometryX'
+!!$    CALL ComputeGeometryX &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = M_PNS )
+!!$
+!!$    WRITE(*,*) 'Min/Max SqrtGm:' , MINVAL( uGF(:,:,:,:,8) ) / R_shock**2, &
+!!$                                   MAXVAL( uGF(:,:,:,:,8) ) / R_shock**2
+!!$    WRITE(*,*) 'Min/Max Alpha: ' , MINVAL( uGF(:,:,:,:,9) ), &
+!!$                                   MAXVAL( uGF(:,:,:,:,9) )
+!!$    WRITE(*,*) 'Min/Max Psi:   ' , MINVAL( uGF(:,:,:,:,13) ), &
+!!$                                   MAXVAL( uGF(:,:,:,:,13) )
+  
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
       CALL WriteFieldsHDF &

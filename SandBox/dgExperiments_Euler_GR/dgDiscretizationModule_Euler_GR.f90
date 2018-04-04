@@ -86,18 +86,23 @@ CONTAINS
 
     dU = Zero
 
+!    WRITE(*,*) 'CALL ApplyBoundaryConditions_Fluid 1'
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
+!    WRITE(*,*) 'CALL ApplySlopeLimiter_Euler_GR'
     CALL ApplySlopeLimiter_Euler_GR &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
+!    WRITE(*,*) 'CALL ApplyPositivityLimiter'
     CALL ApplyPositivityLimiter &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
+!    WRITE(*,*) 'CALL ApplyBoundaryConditions_Fluid 2'
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
+!    WRITE(*,*) 'CALL ComputeIncrement_Divergence_X1'
     CALL ComputeIncrement_Divergence_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
@@ -126,6 +131,7 @@ CONTAINS
       END DO
     END DO
 
+!    WRITE(*,*) 'CALL ComputeIncrement_Geometry'
     CALL ComputeIncrement_Geometry &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
@@ -182,6 +188,8 @@ CONTAINS
 
         DO iX1 = iX_B0(1), iX_E0(1) + 1
 
+!          WRITE(*,*) 'iX1,iX2,iX3' , iX1,iX2,iX3
+           
           DO iCF = 1, nCF
 
             uCF_P(:,iCF) = U(:,iX1-1,iX2,iX3,iCF)
@@ -386,6 +394,8 @@ CONTAINS
 
           ! --- Right State Primitive, etc. ---
 
+!          WRITE(*,*) 'Right State Primitive'
+!          WRITE(*,*) '  CALL ComputePrimitive'
           CALL ComputePrimitive_GR &
                ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
                  uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
@@ -396,6 +406,7 @@ CONTAINS
                  G_F(:,iGF_Gm_dd_22),                               &
                  G_F(:,iGF_Gm_dd_33) )
 
+!          WRITE(*,*) 'CALL ComputeSoundSpeedFromPrimitive_GR'
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R(:) )
 

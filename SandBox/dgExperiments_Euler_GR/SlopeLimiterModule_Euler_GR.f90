@@ -211,9 +211,9 @@ CONTAINS
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
 
-    IF( .NOT. UseSlopeLimiter ) RETURN
-    
     IF( nDOFX == 1 ) RETURN
+    
+    IF( .NOT. UseSlopeLimiter ) RETURN    
 
     wTime = MPI_WTIME( )
 

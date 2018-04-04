@@ -5,14 +5,14 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   USE KindModule, ONLY: &
     DP, Zero, Half, One, SqrtTiny
   USE FluidFieldsModule, ONLY: &
-     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-     uAF, iAF_P, iAF_Cs
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
+    uAF, iAF_P, iAF_Cs
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE EquationOfStateModule, ONLY: &
-       ComputePressureFromSpecificInternalEnergy, &
-       ComputeSoundSpeedFromPrimitive_GR
+    ComputePressureFromSpecificInternalEnergy, &
+    ComputeSoundSpeedFromPrimitive_GR
   
   IMPLICIT NONE
   PRIVATE :: ComputeFunJacP
@@ -47,27 +47,28 @@ CONTAINS
       DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
-           CALL ComputePrimitive_GR &
-            ( U(1:,iX1,iX2,iX3,iCF_D),        &
-              U(1:,iX1,iX2,iX3,iCF_S1),       &
-              U(1:,iX1,iX2,iX3,iCF_S2),       &
-              U(1:,iX1,iX2,iX3,iCF_S3),       &
-              U(1:,iX1,iX2,iX3,iCF_E),        &
-              U(1:,iX1,iX2,iX3,iCF_Ne),       &
-              P(1:,iX1,iX2,iX3,iPF_D),        &
-              P(1:,iX1,iX2,iX3,iPF_V1),       &
-              P(1:,iX1,iX2,iX3,iPF_V2),       &
-              P(1:,iX1,iX2,iX3,iPF_V3),       &
-              P(1:,iX1,iX2,iX3,iPF_E),        &
-              P(1:,iX1,iX2,iX3,iPF_Ne),       &
-              A(1:,iX1,iX2,iX3,iAF_P),        &
-              G(1:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-              G(1:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-              G(1:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+          CALL ComputePrimitive_GR &
+                 ( U(1:,iX1,iX2,iX3,iCF_D),        &
+                   U(1:,iX1,iX2,iX3,iCF_S1),       &
+                   U(1:,iX1,iX2,iX3,iCF_S2),       &
+                   U(1:,iX1,iX2,iX3,iCF_S3),       &
+                   U(1:,iX1,iX2,iX3,iCF_E),        &
+                   U(1:,iX1,iX2,iX3,iCF_Ne),       &
+                   P(1:,iX1,iX2,iX3,iPF_D),        &
+                   P(1:,iX1,iX2,iX3,iPF_V1),       &
+                   P(1:,iX1,iX2,iX3,iPF_V2),       &
+                   P(1:,iX1,iX2,iX3,iPF_V3),       &
+                   P(1:,iX1,iX2,iX3,iPF_E),        &
+                   P(1:,iX1,iX2,iX3,iPF_Ne),       &
+                   A(1:,iX1,iX2,iX3,iAF_P),        &
+                   G(1:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   G(1:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   G(1:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( P(1:,iX1,iX2,iX3,iPF_D), P(1:,iX1,iX2,iX3,iPF_E), &
-                   P(1:,iX1,iX2,iX3,iPF_Ne), A(1:,iX1,iX2,iX3,iAF_Cs) )
+                     P(1:,iX1,iX2,iX3,iPF_Ne), A(1:,iX1,iX2,iX3,iAF_Cs) )
+
         END DO
       END DO
     END DO
@@ -108,17 +109,20 @@ CONTAINS
               + CF_S3(i)**2 / GF_Gm_dd_33(i)
 
       ! --- Find Pressure with Newton's Method ---
-      !Pold = AF_P(i) ! -- Initial guess
 
       ! --- Approximation for pressure assuming h^2=1
       Pold = SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i)
+
       DO WHILE ( .NOT. Converged )
 
         nIter = nIter + 1
 
+!        WRITE(*,*) '    CALL ComputeFunJacP'
         CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
 
         Pnew = Pold - FunP / JacP
+!        WRITE(*,*) '      Pold',Pold
+!        WRITE(*,*) '      Pnew',Pnew
 
         ! Check if Newton's method has converged
         IF( ABS( Pnew / Pold - 1.0_DP ) <= TolP ) Converged = .TRUE.
@@ -148,7 +152,7 @@ CONTAINS
       ! --- Recover Primitive Variables ---
 
       PF_D(i)  = CF_D(i) / W
-
+      
       PF_V1(i) = CF_S1(i) / ( CF_D(i) * h * W * GF_Gm_dd_11(i) )
 
       PF_V2(i) = CF_S2(i) / ( CF_D(i) * h * W * GF_Gm_dd_22(i) )
@@ -209,6 +213,7 @@ CONTAINS
 
     EPS = ( SQRT( HSq - SSq ) &
             - P * SQRT( HSq ) / SQRT( HSq - SSq ) - D ) / D
+
     EPS = MAX( EPS, SqrtTiny )
 
     CALL ComputePressureFromSpecificInternalEnergy &
@@ -217,7 +222,7 @@ CONTAINS
     FunP = P - Pbar(1)
     dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
     dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
- 
+
     JacP = 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS )
 
   END SUBROUTINE ComputeFunJacP

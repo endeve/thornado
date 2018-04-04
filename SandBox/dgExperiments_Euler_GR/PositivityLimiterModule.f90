@@ -3,7 +3,7 @@ MODULE PositivityLimiterModule
   USE KindModule, ONLY: &
     DP, Zero, Half, One, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, nDOF
+    nNodesX, nDOFX
   USE ReferenceElementModuleX, ONLY: &
     NodesX_q, &
     nDOFX_X1, NodesX1, &
@@ -117,19 +117,21 @@ CONTAINS
     LOGICAL  :: NegativeStates(2)
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
     REAL(DP) :: Min_K, Theta_1, Theta_2, Theta_P
-    REAL(DP) :: U_q(nDOF,nCF), G_q(nDOF,nGF), U_K(nCF), G_K(nGF), q(nPT)
+    REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), G_K(nGF), q(nPT)
 
+    IF( nDOFX == 1 ) RETURN
+    
     IF( .NOT. UsePositivityLimiter ) RETURN
 
     DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
-          U_q(1:nDOF,1:nCF) &
-            = U(1:nDOF,iX1,iX2,iX3,1:nCF)
+          U_q(1:nDOFX,1:nCF) &
+            = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
 
-          G_q(1:nDOF,1:nGF) &
-            = G(1:nDOF,iX1,iX2,iX3,1:nGF)
+          G_q(1:nDOFX,1:nGF) &
+            = G(1:nDOFX,iX1,iX2,iX3,1:nGF)
 
           NegativeStates = .FALSE.
 
@@ -144,14 +146,12 @@ CONTAINS
 
             ! --- Cell Average ---
              U_K(iCF_D) &
-               = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
-                                / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+               = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) )
+!               = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
+!                                / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
 
-            Den = MAX( ABS( Min_K - U_K(iCF_D) ), SqrtTiny )
-             
             Theta_1 &
-              = MIN( One, Den )
-!              = MIN( One, ABS( (Min_1-U_K(iCF_D)) / (Min_K-U_K(iCF_D)) ) )
+              = MIN( One, ABS( (Min_1-U_K(iCF_D)) / (Min_K-U_K(iCF_D)) ) )
 
             ! --- Limit Density Towards Cell Average ---
 
@@ -221,13 +221,13 @@ CONTAINS
 
           IF( NegativeStates(1) )THEN
 
-            U(1:nDOF,iX1,iX2,iX3,iCF_D) &
-              = U_q(1:nDOF,iCF_D)
+            U(1:nDOFX,iX1,iX2,iX3,iCF_D) &
+              = U_q(1:nDOFX,iCF_D)
 
           ELSEIF( NegativeStates(2) )THEN
 
-            U(1:nDOF,iX1,iX2,iX3,1:nCF) &
-              = U_q(1:nDOF,1:nCF)
+            U(1:nDOFX,iX1,iX2,iX3,1:nCF) &
+              = U_q(1:nDOFX,1:nCF)
 
           END IF
             
@@ -240,14 +240,14 @@ CONTAINS
 
   SUBROUTINE ComputePointValues_Fluid( U_Q, U_P )
 
-    REAL(DP), INTENT(in)  :: U_Q(nDOF,nCF)
+    REAL(DP), INTENT(in)  :: U_Q(nDOFX,nCF)
     REAL(DP), INTENT(out) :: U_P(nPT, nCF)
 
     INTEGER :: iOS, iCF
     
     DO iCF = 1, nCF
 
-      U_P(1:nDOF,iCF) = U_Q(1:nDOF,iCF)
+      U_P(1:nDOFX,iCF) = U_Q(1:nDOFX,iCF)
 
       IF( SUM( nPP(2:3) ) > 0 )THEN
 
@@ -256,14 +256,14 @@ CONTAINS
         iOS = nPP(1)
 
         CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOF, One, LX_X1_Dn, nDOFX_X1, &
-                 U_Q(1:nDOF,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X1,iCF), 1 )
+               ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
+                 U_Q(1:nDOFX,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X1,iCF), 1 )
 
         iOS = iOS + nPP(2)
 
         CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOF, One, LX_X1_Up, nDOFX_X1, &
-                 U_Q(1:nDOF,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X1,iCF), 1 )
+               ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Up, nDOFX_X1, &
+                 U_Q(1:nDOFX,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X1,iCF), 1 )
 
       END IF
 
@@ -274,14 +274,14 @@ CONTAINS
         iOS = SUM( nPP(1:3) )
 
         CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOF, One, LX_X2_Dn, nDOFX_X2, &
-                 U_Q(1:nDOF,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X2,iCF), 1 )
+               ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
+                 U_Q(1:nDOFX,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X2,iCF), 1 )
 
         iOS = iOS + nPP(4)
 
         CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOF, One, LX_X2_Up, nDOFX_X2, &
-                 U_Q(1:nDOF,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X2,iCF), 1 )
+               ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Up, nDOFX_X2, &
+                 U_Q(1:nDOFX,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X2,iCF), 1 )
 
       END IF
 
@@ -292,14 +292,14 @@ CONTAINS
         iOS = SUM( nPP(1:5) )
 
         CALL DGEMV &
-               ( 'N', nDOFX_X3, nDOF, One, LX_X3_Dn, nDOFX_X3, &
-                 U_Q(1:nDOF,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X3,iCF), 1 )
+               ( 'N', nDOFX_X3, nDOFX, One, LX_X3_Dn, nDOFX_X3, &
+                 U_Q(1:nDOFX,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X3,iCF), 1 )
 
         iOS = iOS + nPP(6)
 
         CALL DGEMV &
-               ( 'N', nDOFX_X3, nDOF, One, LX_X3_Up, nDOFX_X3, &
-                 U_Q(1:nDOF,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X3,iCF), 1 )
+               ( 'N', nDOFX_X3, nDOFX, One, LX_X3_Up, nDOFX_X3, &
+                 U_Q(1:nDOFX,iCF), 1, Zero, U_P(iOS+1:iOS+nDOFX_X3,iCF), 1 )
 
       END IF
 
@@ -310,14 +310,14 @@ CONTAINS
 
   SUBROUTINE ComputePointValues_Geometry( G_Q, G_P )
 
-    REAL(DP), INTENT(in)  :: G_Q(nDOF,nGF)
+    REAL(DP), INTENT(in)  :: G_Q(nDOFX,nGF)
     REAL(DP), INTENT(out) :: G_P(nPT, nGF)
 
     INTEGER :: iOS, iGF
     
     DO iGF = iGF_h_1, iGF_h_3
 
-      G_P(1:nDOF,iGF) = G_Q(1:nDOF,iGF)
+      G_P(1:nDOFX,iGF) = G_Q(1:nDOFX,iGF)
 
       IF( SUM( nPP(2:3) ) > 0 )THEN
 
@@ -326,14 +326,14 @@ CONTAINS
         iOS = nPP(1)
 
         CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOF, One, LX_X1_Dn, nDOFX_X1, &
-                 G_Q(1:nDOF,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X1,iGF), 1 )
+               ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
+                 G_Q(1:nDOFX,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X1,iGF), 1 )
 
         iOS = iOS + nPP(2)
 
         CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOF, One, LX_X1_Up, nDOFX_X1, &
-                 G_Q(1:nDOF,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X1,iGF), 1 )
+               ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Up, nDOFX_X1, &
+                 G_Q(1:nDOFX,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X1,iGF), 1 )
 
       END IF
 
@@ -344,14 +344,14 @@ CONTAINS
         iOS = SUM( nPP(1:3) )
 
         CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOF, One, LX_X2_Dn, nDOFX_X2, &
-                 G_Q(1:nDOF,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X2,iGF), 1 )
+               ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
+                 G_Q(1:nDOFX,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X2,iGF), 1 )
 
         iOS = iOS + nPP(4)
 
         CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOF, One, LX_X2_Up, nDOFX_X2, &
-                 G_Q(1:nDOF,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X2,iGF), 1 )
+               ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Up, nDOFX_X2, &
+                 G_Q(1:nDOFX,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X2,iGF), 1 )
 
       END IF
 
@@ -362,14 +362,14 @@ CONTAINS
         iOS = SUM( nPP(1:5) )
 
         CALL DGEMV &
-               ( 'N', nDOFX_X3, nDOF, One, LX_X3_Dn, nDOFX_X3, &
-                 G_Q(1:nDOF,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X3,iGF), 1 )
+               ( 'N', nDOFX_X3, nDOFX, One, LX_X3_Dn, nDOFX_X3, &
+                 G_Q(1:nDOFX,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X3,iGF), 1 )
 
         iOS = iOS + nPP(6)
 
         CALL DGEMV &
-               ( 'N', nDOFX_X3, nDOF, One, LX_X3_Up, nDOFX_X3, &
-                 G_Q(1:nDOF,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X3,iGF), 1 )
+               ( 'N', nDOFX_X3, nDOFX, One, LX_X3_Up, nDOFX_X3, &
+                 G_Q(1:nDOFX,iGF), 1, Zero, G_P(iOS+1:iOS+nDOFX_X3,iGF), 1 )
 
       END IF
 
