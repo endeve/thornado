@@ -155,9 +155,9 @@ PROGRAM StandingAccretionShock
 
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
-      WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A3,A5,ES13.6E3,A2)') &
-             '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, 'ms ', &
-               'dt = ', dt / Millisecond, 'ms'
+      WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A5,A5,ES13.6E3,A3)') &
+             '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, ' ms, ', &
+               'dt = ', dt / Millisecond, ' ms'
 
     END IF
 

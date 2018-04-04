@@ -150,8 +150,6 @@ CONTAINS
               = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
                   / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
 
-            PRINT*, "D_K = ", U_K(iCF_D) 
-
             Theta_1 &
               = MIN( One, ABS( (Min_1-U_K(iCF_D)) / (Min_K-U_K(iCF_D)) ) )
 
