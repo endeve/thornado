@@ -18,7 +18,7 @@ PROGRAM RiemannProblem
     FinalizePositivityLimiter
   USE GeometryFieldsModule, ONLY: &
     uGF
-  USE GeometryComputationModule_Beta, ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE FluidFieldsModule, ONLY: &
     uCF, rhsCF, uPF, uAF, iAF_P, iAF_Cs

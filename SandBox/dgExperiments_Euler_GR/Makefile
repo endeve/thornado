@@ -4,8 +4,6 @@ all: RiemannProblem StandingAccretionShock
 
 RiemannProblem: \
 	$(thornado) \
-	ReferenceElementModuleX_Lagrange.o \
-	GeometryComputationModule_Beta.o \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
 	SlopeLimiterModule_Euler_GR.o \
@@ -18,8 +16,6 @@ RiemannProblem: \
 	RiemannProblem.o
 	$(FLINKER) $(FLAGS) -o RiemannProblem_$(MACHINE) \
 	$(thornado) \
-	ReferenceElementModuleX_Lagrange.o \
-	GeometryComputationModule_Beta.o \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
 	SlopeLimiterModule_Euler_GR.o \
@@ -34,7 +30,6 @@ RiemannProblem: \
 
 StandingAccretionShock: \
 	$(thornado) \
-	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
@@ -47,7 +42,6 @@ StandingAccretionShock: \
 	StandingAccretionShock.o
 	$(FLINKER) $(FLAGS) -o StandingAccretionShock_$(MACHINE) \
 	$(thornado) \
-	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \

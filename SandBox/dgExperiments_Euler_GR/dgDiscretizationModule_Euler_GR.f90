@@ -23,7 +23,7 @@ MODULE dgDiscretizationModule_Euler_GR
     iGF_SqrtGm,                               &
     iGF_Alpha,                                &
     iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
-  USE GeometryComputationModule_Beta, ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &

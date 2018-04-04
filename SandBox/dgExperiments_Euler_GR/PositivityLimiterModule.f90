@@ -17,7 +17,7 @@ MODULE PositivityLimiterModule
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
-  USE GeometryComputationModule_Beta, ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
     nGF, &
@@ -145,10 +145,12 @@ CONTAINS
           IF( Min_K < Min_1 )THEN
 
             ! --- Cell Average ---
-             U_K(iCF_D) &
-               = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) )
-!               = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
-!                                / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+
+            U_K(iCF_D) &
+              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
+                  / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+
+            PRINT*, "D_K = ", U_K(iCF_D) 
 
             Theta_1 &
               = MIN( One, ABS( (Min_1-U_K(iCF_D)) / (Min_K-U_K(iCF_D)) ) )
@@ -168,6 +170,7 @@ CONTAINS
           END IF
 
           ! --- Ensure positive q(u) (Wu & Tang (2015) Eq.(2.5))
+
           CALL Computeq( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), q(1:nPT) )
 
           IF( ANY( q(:) < Min_2 ) )THEN
@@ -177,18 +180,18 @@ CONTAINS
             DO iCF = 1, nCF
 
               U_K(iCF) &
-                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
-                                / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
+                    / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
 
             END DO
 
-            DO iGF = 1, nGF
-
-              G_K(iGF) &
-                = DOT_PRODUCT( WeightsX_q, G_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
-                                / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
-            END DO
-
+!!$            DO iGF = 1, nGF
+!!$
+!!$              G_K(iGF) &
+!!$                = DOT_PRODUCT( WeightsX_q, G_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
+!!$                                / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+!!$            END DO
+!!$
 !!$            Theta_2 = One
 !!$            DO iP = 1, nPT
 !!$
@@ -205,17 +208,17 @@ CONTAINS
 !!$            END DO
 
             Theta_2 = Zero
-             
-             ! --- Limit Towards Cell Average ----
 
-             DO iCF = 1, nCF
+            ! --- Limit Towards Cell Average ----
 
-               U_q(:,iCF) = Theta_2 * U_q(:,iCF) + ( One - Theta_2 ) * U_K(iCF)
+            DO iCF = 1, nCF
 
-             END DO
+              U_q(:,iCF) = Theta_2 * U_q(:,iCF) + ( One - Theta_2 ) * U_K(iCF)
 
-             NegativeStates(2) = .TRUE.
-             NegativeStates(1) = .FALSE.
+            END DO
+
+            NegativeStates(2) = .TRUE.
+            NegativeStates(1) = .FALSE.
 
           END IF
 

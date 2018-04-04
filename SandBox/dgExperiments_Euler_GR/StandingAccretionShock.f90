@@ -67,14 +67,14 @@ PROGRAM StandingAccretionShock
   CALL ReadData &
          ( '../StandingAccretionShock_Data.dat', nLines, FluidFieldData )
 
-  r   = FluidFieldData(1,:)
-  rho = FluidFieldData(2,:)
-  v   = FluidFieldData(3,:)
-  e   = FluidFieldData(4,:)
+  r   = FluidFieldData(:,1)
+  rho = FluidFieldData(:,2)
+  v   = FluidFieldData(:,3)
+  e   = FluidFieldData(:,4)
 
   xL = R_PNS
   xR = Two * R_shock
-  K  = 512
+  K  = 128
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'StandingAccretionShock', &
@@ -89,7 +89,7 @@ PROGRAM StandingAccretionShock
            xR_Option &
              = [ xR, Pi, 4.0_DP ], &
            nNodes_Option &
-             = 1, &
+             = 2, &
            CoordinateSystem_Option &
              = 'SPHERICAL', &
            ActivateUnits_Option &
@@ -101,7 +101,7 @@ PROGRAM StandingAccretionShock
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
-  CFL      = 0.4d0
+  CFL      = 0.1d0
   t_end    = 1.0d2 * Millisecond
   dt       = CFL * ( xR - xL ) / ( SpeedOfLight * K )
   dt_write = 0.1d0 * Millisecond
@@ -137,7 +137,7 @@ PROGRAM StandingAccretionShock
            UseTroubledCellIndicator_Option = .TRUE. )
 
   CALL InitializePositivityLimiter &
-         ( Min_1_Option = 1.0d-16 , Min_2_Option = 1.0d-16, &
+         ( Min_1_Option = 0.0d-16 , Min_2_Option = 0.0d-16, &
            UsePositivityLimiter_Option = .TRUE. )
 
   iCycle = 0
