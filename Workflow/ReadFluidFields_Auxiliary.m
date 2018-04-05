@@ -18,17 +18,17 @@ function...
   
   uAF_P  = h5read( FileName, '/Fluid Fields/Auxiliary/Pressure' );
   uAF_T  = h5read( FileName, '/Fluid Fields/Auxiliary/Temperature' );
-  uAF_Ye  = h5read( FileName, '/Fluid Fields/Auxiliary/Electron Fraction' );
+  uAF_Ye = h5read( FileName, '/Fluid Fields/Auxiliary/Electron Fraction' );
   uAF_S  = h5read( FileName, '/Fluid Fields/Auxiliary/Entropy Per Baryon' );
   uAF_E  = h5read( FileName, '/Fluid Fields/Auxiliary/Specific Internal Energy' );
-  uAF_Me  = h5read( FileName, '/Fluid Fields/Auxiliary/Electron Chemical Potential' );
-  uAF_Mp  = h5read( FileName, '/Fluid Fields/Auxiliary/Proton Chemical Potential' );
-  uAF_Mn  = h5read( FileName, '/Fluid Fields/Auxiliary/Neutron Chemical Potential' );
-  uAF_Yp  = h5read( FileName, '/Fluid Fields/Auxiliary/Proton Mass Fraction' );
-  uAF_Yn  = h5read( FileName, '/Fluid Fields/Auxiliary/Neutron Mass Fraction' );
-  uAF_Ya  = h5read( FileName, '/Fluid Fields/Auxiliary/Alpha Mass Fraction' );
-  uAF_Yh  = h5read( FileName, '/Fluid Fields/Auxiliary/Heavy Mass Fraction' );
-  uAF_Gm  = h5read( FileName, '/Fluid Fields/Auxiliary/Ratio of Specific Heats (Gamma)' );
-  uAF_Cs  = h5read( FileName, '/Fluid Fields/Auxiliary/Sound Speed' );
+  uAF_Me = h5read( FileName, '/Fluid Fields/Auxiliary/Electron Chemical Potential' );
+  uAF_Mp = h5read( FileName, '/Fluid Fields/Auxiliary/Proton Chemical Potential' );
+  uAF_Mn = h5read( FileName, '/Fluid Fields/Auxiliary/Neutron Chemical Potential' );
+  uAF_Yp = h5read( FileName, '/Fluid Fields/Auxiliary/Proton Mass Fraction' );
+  uAF_Yn = h5read( FileName, '/Fluid Fields/Auxiliary/Neutron Mass Fraction' );
+  uAF_Ya = h5read( FileName, '/Fluid Fields/Auxiliary/Alpha Mass Fraction' );
+  uAF_Yh = h5read( FileName, '/Fluid Fields/Auxiliary/Heavy Mass Fraction' );
+  uAF_Gm = h5read( FileName, '/Fluid Fields/Auxiliary/Ratio of Specific Heats (Gamma)' );
+  uAF_Cs = h5read( FileName, '/Fluid Fields/Auxiliary/Sound Speed' );
   
 end

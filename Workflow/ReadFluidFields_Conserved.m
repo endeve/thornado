@@ -22,7 +22,5 @@ function...
   uCF_S3 = h5read( FileName, '/Fluid Fields/Conserved/Conserved Momentum Density (3)' );
   uCF_E  = h5read( FileName, '/Fluid Fields/Conserved/Conserved Energy Density' );
   uCF_Ne = h5read( FileName, '/Fluid Fields/Conserved/Conserved Electron Density' );
-
-  keyboard
   
 end
