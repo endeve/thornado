@@ -6,12 +6,6 @@ all: StreamingSineWave
 
 StreamingSineWave: \
 	$(thornado) \
-	ReferenceElementModuleX_Lagrange.o \
-	GeometryComputationModule_Beta.o \
-	ReferenceElementModuleE.o \
-	ReferenceElementModuleE_Lagrange.o \
-	GeometryComputationModuleE_Beta.o \
-	ReferenceElementModule_Lagrange.o \
 	TimeSteppingModule_IMEX_RK.o \
 	ClosureModule_M1.o \
 	MomentEquationsUtilitiesModule_Beta.o \
@@ -22,12 +16,6 @@ StreamingSineWave: \
 	StreamingSineWave.o
 	$(FLINKER) $(FLAGS) -o StreamingSineWave_$(MACHINE) \
 	$(thornado) \
-	ReferenceElementModuleX_Lagrange.o \
-	GeometryComputationModule_Beta.o \
-	ReferenceElementModuleE.o \
-	ReferenceElementModuleE_Lagrange.o \
-	GeometryComputationModuleE_Beta.o \
-	ReferenceElementModule_Lagrange.o \
 	TimeSteppingModule_IMEX_RK.o \
 	ClosureModule_M1.o \
 	MomentEquationsUtilitiesModule_Beta.o \

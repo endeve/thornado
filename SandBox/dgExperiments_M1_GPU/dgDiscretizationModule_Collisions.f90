@@ -4,7 +4,7 @@ MODULE dgDiscretizationModule_Collisions
     DP, Zero, One
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, nDOF
-  USE ReferenceElementModule_Beta, ONLY: &
+  USE ReferenceElementModule, ONLY: &
     NodeNumberTable4D
   USE RadiationFieldsModule, ONLY: &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &

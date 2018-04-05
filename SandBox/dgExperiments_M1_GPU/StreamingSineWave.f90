@@ -5,7 +5,8 @@ PROGRAM StreamingSineWave
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
-    iZ_B0, iZ_E0, iZ_B1, iZ_E1
+    iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    nDOF
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -21,7 +22,7 @@ PROGRAM StreamingSineWave
   USE ReferenceElementModuleE_Lagrange, ONLY: &
     InitializeReferenceElementE_Lagrange, &
     FinalizeReferenceElementE_Lagrange
-  USE ReferenceElementModule_Beta, ONLY: &
+  USE ReferenceElementModule, ONLY: &
     InitializeReferenceElement, &
     FinalizeReferenceElement
   USE ReferenceElementModule_Lagrange, ONLY: &
@@ -35,14 +36,14 @@ PROGRAM StreamingSineWave
     InitializeMomentClosure
   USE GeometryFieldsModule, ONLY: &
     uGF
-  USE GeometryComputationModule_Beta, ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE GeometryFieldsModuleE, ONLY: &
     uGE
-  USE GeometryComputationModuleE_Beta, ONLY: &
+  USE GeometryComputationModuleE, ONLY: &
     ComputeGeometryE
   USE RadiationFieldsModule, ONLY: &
-    uCR, rhsCR
+    uCR, iCR_N
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE InitializationModule, ONLY: &
@@ -64,10 +65,12 @@ PROGRAM StreamingSineWave
   CHARACTER(32) :: TimeSteppingScheme
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   INTEGER       :: nE, nX(3), nNodes
-  REAL(DP)      :: t, dt, t_end, wTime
+  REAL(DP)      :: t, dt, t_end, wTime, Error
   REAL(DP)      :: xL(3), xR(3)
   REAL(DP)      :: eL,    eR
   REAL(DP)      :: N0, SigmaA, SigmaS
+  
+  REAL(DP), ALLOCATABLE :: uCR_N(:,:,:,:,:)
 
   ProgramName = 'SineWaveStreaming'
   SELECT CASE ( TRIM( ProgramName ) )
@@ -250,6 +253,10 @@ PROGRAM StreamingSineWave
   CALL InitializeFields &
          ( Direction_Option = TRIM( Direction ) )
 
+  ALLOCATE( uCR_N(nDOF,nE,nX(1),nX(2),nX(3)) )
+
+  uCR_N = uCR(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),iCR_N,1)
+
   ! --- Write Initial Condition ---
   ! --- Temporarily Removed Due to HDF5 ifort Incompatibility --- 
   !CALL WriteFieldsHDF( Time = 0.0_DP, WriteRF_Option = .TRUE. )
@@ -303,6 +310,11 @@ PROGRAM StreamingSineWave
   WRITE(*,*)
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
     '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
+  WRITE(*,*)
+
+  Error = MAXVAL( ABS( uCR(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3),iCR_N,1) - uCR_N ) )
+
+  WRITE(*,'(A8,A,ES16.10E2)') '', 'Error = ', Error
   WRITE(*,*)
 
   CALL FinalizeReferenceElementX

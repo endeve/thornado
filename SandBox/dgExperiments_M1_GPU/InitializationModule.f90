@@ -10,7 +10,7 @@ MODULE InitializationModule
     nDOF, nDOFX, nDOFE
   USE UtilitiesModule, ONLY: &
     NodeNumber
-  USE ReferenceElementModule_Beta, ONLY: &
+  USE ReferenceElementModule, ONLY: &
     NodeNumberTable, &
     OuterProduct1D3D
   USE MeshModule, ONLY: &

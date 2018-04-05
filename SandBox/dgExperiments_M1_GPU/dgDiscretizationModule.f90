@@ -21,7 +21,7 @@ MODULE dgDiscretizationModule
     LX_X1_Up, &
     LX_X2_Dn, &
     LX_X2_Up
-  USE ReferenceElementModule_Beta, ONLY: &
+  USE ReferenceElementModule, ONLY: &
     nDOF_X1, &
     nDOF_X2, &
     Weights_q, &
@@ -46,7 +46,7 @@ MODULE dgDiscretizationModule
     iGF_Gm_dd_33, &
     iGF_SqrtGm, &
     iGF_Alpha
-  USE GeometryComputationModule_Beta, ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModuleE, ONLY: &
     nGE, &
