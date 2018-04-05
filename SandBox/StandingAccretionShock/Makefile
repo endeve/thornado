@@ -4,17 +4,19 @@ all: ApplicationDriver
 
 ApplicationDriver: \
 	$(thornado) \
-	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
 	EulerEquationsUtilitiesModule_Beta.o \
         InitializationModule.o \
+	BoundaryConditionsModule_Beta.o \
+	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
-	ReferenceElementModuleX_Lagrange.o \
 	GeometryComputationModule_Beta.o \
 	EulerEquationsUtilitiesModule_Beta.o \
         InitializationModule.o \
+	BoundaryConditionsModule_Beta.o \
+	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
