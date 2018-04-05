@@ -251,8 +251,8 @@ PROGRAM StreamingSineWave
          ( Direction_Option = TRIM( Direction ) )
 
   ! --- Write Initial Condition ---
-
-  CALL WriteFieldsHDF( Time = 0.0_DP, WriteRF_Option = .TRUE. )
+  ! --- Temporarily Removed Due to HDF5 ifort Incompatibility --- 
+  !CALL WriteFieldsHDF( Time = 0.0_DP, WriteRF_Option = .TRUE. )
 
   ! --- Evolve ---
 
@@ -288,14 +288,15 @@ PROGRAM StreamingSineWave
     t = t + dt
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
-
-      CALL WriteFieldsHDF( Time = t, WriteRF_Option = .TRUE. )
+      ! --- Temporarily Removed Due to HDF5 ifort Incompatibility --- 
+      !CALL WriteFieldsHDF( Time = t, WriteRF_Option = .TRUE. )
 
     END IF
 
   END DO
 
-  CALL WriteFieldsHDF( Time = t, WriteRF_Option = .TRUE. )
+  ! --- Temporarily Removed Due to HDF5 ifort Incompatibility --- 
+  !CALL WriteFieldsHDF( Time = t, WriteRF_Option = .TRUE. )
 
   wTime = MPI_WTIME( ) - wTime
 

@@ -6,7 +6,7 @@ FORTRAN_sjdunham     = mpif90
 FORTRAN_titan_gnu    = ftn
 FORTRAN_titan_cray   = ftn
 FORTRAN_beacon_intel = mpiifort -mkl
-FORTRAN_mcarpe21     = mpif90
+FORTRAN_mcarpe21     = mpiifort
 FORTRAN              = $(FORTRAN_$(MACHINE))
 
 
@@ -28,7 +28,7 @@ FLINKER_sjdunham     = mpif90
 FLINKER_titan_gnu    = ftn
 FLINKER_titan_cray   = ftn
 FLINKER_beacon_intel = mpiifort -mkl
-FLINKER_mcarpe21     = mpif90
+FLINKER_mcarpe21     = mpiifort
 FLINKER              = $(FLINKER_$(MACHINE))
 
 FLAGS_DEBUG        = $(DEBUG)
@@ -63,7 +63,7 @@ INCLUDE_HDF5_sjdunham          =
 INCLUDE_HDF5_titan_gnu         = # Use Module Load
 INCLUDE_HDF5_titan_cray        = # Use Module Load
 INCLUDE_HDF5_beacon_intel      = ${HDF5_INC}
-INCLUDE_HDF5_mcarpe21	       = -I/usr/include/hdf5/mpich/
+INCLUDE_HDF5_mcarpe21	       = -I/opt/hdf5/include
 INCLUDE_HDF5                   = $(INCLUDE_HDF5_$(MACHINE))
 
 INCLUDE_WEAKLIB_mac_gnu        = 
@@ -96,7 +96,7 @@ LIBRARIES_HDF5_titan_cray      = # Use Module Load
 LIBRARIES_HDF5_darter_gnu      = # Use Module Load
 LIBRARIES_HDF5_darter_cray     = # Use Module Load
 LIBRARIES_HDF5_beacon_intel    = ${HDF5_LIB} -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_mcarpe21	       = -L/usr/lib/x86_64-linux-gnu/hdf5/mpich/ \
+LIBRARIES_HDF5_mcarpe21	       = -L/opt/hdf5/lib \
 				 -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5                 = $(LIBRARIES_HDF5_$(MACHINE))
 
