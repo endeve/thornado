@@ -22,7 +22,8 @@ MODULE InputOutputModuleHDF
   USE FluidFieldsModule, ONLY: &
     uCF, nCF, namesCF, &
     uPF, nPF, namesPF, &
-    uAF, nAF, namesAF
+    uAF, nAF, namesAF, &
+    Shock
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     uCR, nCR, namesCR, &
@@ -233,6 +234,23 @@ CONTAINS
            ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)), &
              DatasetName, FILE_ID )
 
+    ! --- Write Cell Center Coordinates ---
+
+    DatasetName = TRIM( GroupName ) // '/X1_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(1) % Center(1:nX(1)), DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(2) % Center(1:nX(2)), DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(3) % Center(1:nX(3)), DatasetName, FILE_ID )
+
     ! --- Write Fluid Variables ---
 
     GroupName = 'Fluid Fields'
@@ -289,6 +307,17 @@ CONTAINS
                    nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
 
     END DO
+
+    ! --- Shock Detector ---
+
+    GroupName = 'Shock Detector'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ) , FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/Shock'
+
+    CALL WriteDataset3DHDF &
+           ( Shock(1:nX(1),1:nX(2),1:nX(3)), DatasetName, FILE_ID )
 
     CALL H5FCLOSE_F( FILE_ID, HDFERR )
 
