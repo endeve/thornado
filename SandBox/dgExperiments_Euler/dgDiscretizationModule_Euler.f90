@@ -33,13 +33,17 @@ MODULE dgDiscretizationModule_Euler
     iGF_Gm_dd_33, &
     iGF_SqrtGm, &
     CoordinateSystem
-  USE GeometryComputationModule_Beta, ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE BoundaryConditionsModule_Beta, ONLY: &
     ApplyBoundaryConditions_Fluid
+  USE SlopeLimiterModule_Euler, ONLY: &
+    ApplySlopeLimiter_Euler
+  USE PositivityLimiterModule_Euler, ONLY: &
+    ApplyPositivityLimiter_Euler
   USE EulerEquationsUtilitiesModule_Beta, ONLY: &
     ComputePrimitive, &
     Eigenvalues, &
@@ -49,6 +53,7 @@ MODULE dgDiscretizationModule_Euler
     Flux_X1, &
     Flux_X2, &
     StressTensor_Diagonal, &
+    NumericalFlux_HLL, &
     NumericalFlux_X1_HLLC, &
     NumericalFlux_X2_HLLC, &
     NumericalFlux_X3_HLLC
@@ -63,7 +68,7 @@ MODULE dgDiscretizationModule_Euler
 
   PUBLIC :: ComputeIncrement_Euler_DG_Explicit
 
-  LOGICAL, PARAMETER :: DisplayTimers = .TRUE.
+  LOGICAL, PARAMETER :: DisplayTimers = .FALSE.
   REAL(DP) :: Timer_RHS
   REAL(DP) :: Timer_RHS_1, dT_RHS_1
   REAL(DP) :: Timer_RHS_2, dT_RHS_2
@@ -80,18 +85,25 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-    INTEGER, INTENT(in)   :: &
+    INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+    REAL(DP), INTENT(in)    :: &
+      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
       U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)   :: &
       dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     INTEGER  :: iX1, iX2, iX3, iCF
     REAL(DP) :: dX1, dX2, dX3
 
     dU = Zero
+
+    CALL ApplySlopeLimiter_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    CALL ApplyPositivityLimiter_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
@@ -153,7 +165,6 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X1, iNodeX1
     REAL(DP) :: dX2, dX3
     REAL(DP) :: AlphaPls, AlphaMns, AlphaMdl
-    REAL(DP) :: ErrorL1, ErrorIn, Error, X1
     REAL(DP), DIMENSION(nDOFX_X1)     :: P_L, Cs_L, Lambda_L
     REAL(DP), DIMENSION(nDOFX_X1)     :: P_R, Cs_R, Lambda_R
     REAL(DP), DIMENSION(nDOFX)        :: P_K
@@ -167,6 +178,8 @@ CONTAINS
     REAL(DP), DIMENSION(nDOFX,   nCF) :: Flux_X1_q
     REAL(DP), DIMENSION(nDOFX_X1,nPF) :: uPF_L, uPF_R
     REAL(DP), DIMENSION(nDOFX,   nPF) :: uPF_K
+
+    IF( iX_E0(1) == iX_B0(1) ) RETURN
 
     Timer_RHS_1 = 0.0_DP
     Timer_RHS_2 = 0.0_DP
@@ -408,6 +421,7 @@ CONTAINS
 
             NumericalFlux(iNodeX_X1,:) &
               = NumericalFlux_X1_HLLC &
+!              = NumericalFlux_HLL &
                   ( uCF_L(iNodeX_X1,:), Flux_X1_L(iNodeX_X1,:), &
                     uCF_R(iNodeX_X1,:), Flux_X1_R(iNodeX_X1,:), &
                     AlphaPls, AlphaMns, AlphaMdl, G_F(iNodeX_X1,iGF_Gm_dd_11) )
@@ -503,43 +517,6 @@ CONTAINS
 
     END IF
 
-    ! --- Compute Error ---
-
-    ErrorL1 = 0.0_DP
-    ErrorIn = 0.0_DP
-
-    DO iX3 = iX_B0(1), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
-
-          DO iNodeX = 1, nDOFX
-
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
-            Error &
-              = ABS( - Pi * COS( TwoPi * X1 ) &
-                     - dU(iNodeX,iX1,iX2,iX3,1) )
-
-            ErrorL1 = ErrorL1 + Error
-            ErrorIn = MAX( ErrorIn, Error )
-
-          END DO
-
-        END DO
-      END DO
-    END DO
-
-    ErrorL1 = ErrorL1 / REAL( nDOFX*iX_E0(1)*iX_E0(2)*iX_E0(3) )
-
-    WRITE(*,*)
-    WRITE(*,'(A6,A,ES10.4E2)') &
-      '', 'ErrorL1: ', ErrorL1
-    WRITE(*,'(A6,A,ES10.4E2)') &
-      '', 'ErrorIn: ', ErrorIn
-    WRITE(*,*)
-
   END SUBROUTINE ComputeIncrement_Divergence_X1
 
 
@@ -574,6 +551,8 @@ CONTAINS
     REAL(DP) :: Flux_X2_L(nDOFX_X2,nCF)
     REAL(DP) :: Flux_X2_R(nDOFX_X2,nCF)
     REAL(DP) :: NumericalFlux(nDOFX_X2,nCF)
+
+    IF( iX_E0(2) == iX_B0(2) ) RETURN
 
     CALL Timer_Start( Timer_Div_X2 )
 
@@ -781,6 +760,7 @@ CONTAINS
 
             NumericalFlux(iNodeX_X2,:) &
               = NumericalFlux_X2_HLLC &
+!              = NumericalFlux_HLL &
                   ( uCF_L(iNodeX_X2,:), Flux_X2_L(iNodeX_X2,:), &
                     uCF_R(iNodeX_X2,:), Flux_X2_R(iNodeX_X2,:), &
                     AlphaPls, AlphaMns, AlphaMdl, G_F(iNodeX_X2,iGF_Gm_dd_22) )
@@ -853,6 +833,8 @@ CONTAINS
       U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+
+    IF( iX_E0(3) == iX_B0(3) ) RETURN
 
   END SUBROUTINE ComputeIncrement_Divergence_X3
 

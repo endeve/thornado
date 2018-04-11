@@ -1,29 +1,31 @@
 include ../../../Build/Makefile_Build
 
-all: rhsTest
+all: ApplicationDriver
 
-rhsTest: \
+ApplicationDriver: \
 	$(thornado) \
-	ReferenceElementModuleX.o \
-	ReferenceElementModuleX_Lagrange.o \
-	GeometryComputationModule_Beta.o \
 	EulerEquationsUtilitiesModule_Beta.o \
 	InitializationModule.o \
+	BoundaryConditionsModule_Beta.o \
+	SlopeLimiterModule_Euler.o \
+	PositivityLimiterModule_Euler.o \
 	dgDiscretizationModule_Euler.o \
-	rhsTest.o
-	$(FLINKER) $(FLAGS) -o rhsTest_$(MACHINE) \
+	TimeSteppingModule_SSPRK.o \
+	ApplicationDriver.o
+	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
-	ReferenceElementModuleX.o \
-	ReferenceElementModuleX_Lagrange.o \
-	GeometryComputationModule_Beta.o \
 	EulerEquationsUtilitiesModule_Beta.o \
 	InitializationModule.o \
+	BoundaryConditionsModule_Beta.o \
+	SlopeLimiterModule_Euler.o \
+	PositivityLimiterModule_Euler.o \
 	dgDiscretizationModule_Euler.o \
-	rhsTest.o \
+	TimeSteppingModule_SSPRK.o \
+	ApplicationDriver.o \
 	$(LIBRARIES)
 
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
-	rm -f rhsTest_$(MACHINE)
+	rm -f ApplicationDriver_$(MACHINE)

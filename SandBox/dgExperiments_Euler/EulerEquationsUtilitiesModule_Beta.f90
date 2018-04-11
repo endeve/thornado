@@ -2,14 +2,22 @@ MODULE EulerEquationsUtilitiesModule_Beta
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One
+  USE GeometryFieldsModule, ONLY: &
+    nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
+    nAF, iAF_P, iAF_Cs
+  USE EquationOfStateModule, ONLY: &
+    ComputePressureFromPrimitive, &
+    ComputeSoundSpeedFromPrimitive
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: ComputePrimitive
   PUBLIC :: ComputeConserved
+  PUBLIC :: ComputeFromConserved
   PUBLIC :: Eigenvalues
   PUBLIC :: AlphaPlus
   PUBLIC :: AlphaMinus
@@ -18,6 +26,7 @@ MODULE EulerEquationsUtilitiesModule_Beta
   PUBLIC :: Flux_X2
   PUBLIC :: Flux_X3
   PUBLIC :: StressTensor_Diagonal
+  PUBLIC :: NumericalFlux_HLL
   PUBLIC :: NumericalFlux_X1_HLLC
   PUBLIC :: NumericalFlux_X2_HLLC
   PUBLIC :: NumericalFlux_X3_HLLC
@@ -69,6 +78,49 @@ CONTAINS
     Ne  = De
 
   END SUBROUTINE ComputeConserved
+
+
+  SUBROUTINE ComputeFromConserved( iX_B, iX_E, G, U, P, A )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B(3), iX_E(3)
+    REAL(DP), INTENT(in)  :: &
+      G(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
+      U(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+    REAL(DP), INTENT(out) :: &
+      P(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
+      A(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+
+    INTEGER :: iX1, iX2, iX3
+
+    DO iX3 = iX_B(3), iX_E(3)
+      DO iX2 = iX_B(2), iX_E(2)
+        DO iX1 = iX_B(1), iX_E(1)
+
+          CALL ComputePrimitive &
+                 ( U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
+                   U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
+                   U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
+                   P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_V1), &
+                   P(:,iX1,iX2,iX3,iPF_V2), P(:,iX1,iX2,iX3,iPF_V3), &
+                   P(:,iX1,iX2,iX3,iPF_E ), P(:,iX1,iX2,iX3,iPF_Ne), &
+                   G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+          CALL ComputePressureFromPrimitive &
+                 ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E), &
+                   P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_P) )
+
+          CALL ComputeSoundSpeedFromPrimitive &
+                 ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E ), &
+                   P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_Cs) )
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE ComputeFromConserved
 
 
   PURE FUNCTION Eigenvalues( V, Cs )
@@ -202,6 +254,19 @@ CONTAINS
 
     RETURN
   END FUNCTION StressTensor_Diagonal
+
+
+  PURE FUNCTION NumericalFlux_HLL( uL, FluxL, uR, FluxR, aP, aM, aC, Gm_dd )
+
+    REAL(DP),                 INTENT(in) :: aP, aM, aC, Gm_dd
+    REAL(DP), DIMENSION(nCF), INTENT(in) :: uL, FluxL, uR, FluxR
+    REAL(DP), DIMENSION(nCF)             :: NumericalFlux_HLL
+
+    NumericalFlux_HLL &
+      = ( aP * FluxL + aM * FluxR - aP * aM * ( uR - uL ) ) / ( aP + aM )
+
+    RETURN
+  END FUNCTION NumericalFlux_HLL
 
 
   PURE FUNCTION NumericalFlux_X1_HLLC &
