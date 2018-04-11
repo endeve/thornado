@@ -1,7 +1,7 @@
 \section{Positivity-Preserving IMEX Schemes}
 \label{sec:imex}
 
-In this section we summarize and discuss the class of IMEX schemes we consider for the realizability-preserving DG-IMEX method for the two-moment model developed in Section~\ref{sec:realizableDGIMEX}.  
+In this section we summarize and discuss the class of IMEX schemes we consider for the realizability-preserving DG-IMEX method for the two-moment model developed in Section~\ref{sec:realizableDGIMEX} (see also \ref{app:butcherTables} for additional details).  
 The semi-discretization of the moment equations with the DG method given by Eq.~\eqref{eq:semidiscreteDG} results in a system of ordinary differential equations (ODEs) in each element of the form
 \begin{equation}
   \dot{\vect{u}}
@@ -40,6 +40,7 @@ The coefficient in the correction step is positive, $\alpha>0$, and $\vect{\cQ}'
 For second order temporal accuracy, the order conditions are
 \begin{equation}
   \sum_{i=1}^{s}\tilde{w}_{i}=\sum_{i=1}^{s}w_{i}=1,
+  \label{orderConditions1}
 \end{equation}
 and
 \begin{equation}
@@ -47,6 +48,7 @@ and
   =\sum_{i=1}^{s}\tilde{w}_{i}\,c_{i}
   =\sum_{i=1}^{s}w_{i}\,\tilde{c}_{i}
   =\sum_{i=1}^{s}w_{i}\,c_{i}-\alpha=\f{1}{2}, 
+  \label{orderConditions2}
 \end{equation}
 where $\tilde{c}_{i}$ and $c_{i}$ are given in \ref{app:butcherTables}.  
 For globally stiffly accurate (GSA) IMEX schemes, $\tilde{w}_{i}=\tilde{a}_{si}$ and $w_{i}=a_{si}$ for $i=\{1,\ldots,s\}$, so that $\tilde{\vect{u}}^{n+1}=\vect{u}^{(s)}$.  
@@ -62,22 +64,45 @@ where $c_{ij}$, and $\hat{c}_{ij}=\tilde{c}_{ij}/c_{ij}$ are computed from $\til
 In Eq.~\eqref{eq:imexStagesRewrite}, $\vect{u}^{(0)}=\vect{u}^{n}$.  
 Two types of IMEX schemes are considered: type A and type ARS.  
 For IMEX schemes of type A, the matrix $A$ is invertible.  
-For IMEX schemes of type ARS, the first column of $A$ is zero and the submatrix consisting of the last $s-1$ rows and columns of $A$ is invertible.  
+For IMEX schemes of type ARS, the first column of $A$ is zero and the submatrix consisting of the last $s-1$ rows and columns of $A$, $\hat{A}$, is invertible.  
 For type A schemes, $\tilde{c}_{i0}=0$, and the positivity-preserving property follows from requiring $a_{ii}>0$ and $c_{i0}\ge0$ for $i=1,\ldots,s$, and $c_{ij},\tilde{c}_{ij}\ge0$, for $i=2,\ldots,s$, $j=1,\ldots,s-1$.  
 For type ARS schemes, $c_{i1}=\tilde{c}_{i1}=0$, and positivity follows from requiring $a_{ii}>0$ and $c_{i0},\tilde{c}_{i0}\ge0$ for $i=1,\ldots,s$, and $c_{ij},\tilde{c}_{ij}\ge0$ for $i=3,\ldots,s$, $j=2,\ldots,i-1$.  
 Such coefficients were given in \cite{hu_etal_2017} for GSA schemes of type A with $s=3$ and type ARS with $s=4$.  
-Importantly, the coefficients $c_{ij}$ satisfy $\sum_{j=0}^{i-1}c_{ij}=1$, which implies that, if the expression inside the square brackets in Eq.~\eqref{eq:imexStagesRewrite} is positive for all $i=2,\ldots,s$, $j=0,\ldots,i-1$, positivity of the entire sum on the right-hand side of Eq.~\eqref{eq:imexStagesRewrite} follows from convexity arguments.  
+
+Importantly, the coefficients $c_{ij}$ in Eq.~\eqref{eq:imexStagesRewrite} satisfy $\sum_{j=0}^{i-1}c_{ij}=1$.  
+This implies that, if the expression inside the square brackets in Eq.~\eqref{eq:imexStagesRewrite} is positive for all $i=2,\ldots,s$, $j=0,\ldots,i-1$, positivity of the entire sum on the right-hand side of Eq.~\eqref{eq:imexStagesRewrite} follows from convexity arguments.  
 Thus, if the explicit update with the transport operator is positive for a time step $\dt_{\mbox{\tiny Ex}}$, the IMEX scheme is positivity preserving for a time step $\dt\le c_{\mbox{\tiny Sch}}\,\dt_{\mbox{\tiny Ex}}$, where
 \begin{equation}
   c_{\mbox{\tiny Sch}}=\min_{ij}\,\f{1}{\hat{c}_{ij}}.  
+  \label{eq:imexCFL}
 \end{equation}
+It is desirable to make $c_{\mbox{\tiny Sch}}$ as large (close to $1$) as possible.  
 (Positivity of $\vect{u}^{(i)}$ requires the implicit solve to preserve positivity.)  
-Hu et al. provide examples of GSA positivity-preserving IMEX schemes of type A (see scheme PA2 in \ref{app:butcherTables}) and type ARS.  
-In \ref{app:butcherTables}, we provide another example of a type A scheme (scheme PA2+), but with a significantly larger $c_{\mbox{\tiny Sch}}$.  
+In \cite{hu_etal_2017}, Hu et al. provide examples of GSA, positivity-preserving IMEX schemes of type A (see scheme PA2 in \ref{app:butcherTables}) and type ARS.  
+In \ref{app:butcherTables}, we provide another example of a type A scheme (scheme PA2+), with a significantly larger $c_{\mbox{\tiny Sch}}$.  
 
-Unfortunately, the correction step in Eq.~\eqref{eq:imexCorrection} deteriorates the accuracy of the IMEX scheme when applied to the moment equations in the diffusion limit.  
-This is because in the diffusion limit, to leading order in $\tau$, we have $\vect{\cH}=-\f{1}{3}\,\tau\,\nabla\cJ$, which is due to a balance between the transport term and the collision term in the equation for the particle flux.  
+Unfortunately, the correction step in Eq.~\eqref{eq:imexCorrection} deteriorates the accuracy of the IMEX scheme when applied to the moment equations in the diffusion limit ($\xi=0$, $\tau\ll 1$).  
+In the diffusion limit, to leading order in $\tau$, we have $\vect{\cH}\approx-\f{1}{3}\,\tau\,\nabla\cJ$, which is due to a balance between the transport term and the collision term in the equation for the particle flux $\vect{\cH}$.  
 The absence of the transport operator in the correction step, destroys this balance.  
-(We demonstrate the inferior performance of IMEX schemes with the correction step given by Eq.~\eqref{eq:imexCorrection} in the diffusion limit in Section~\ref{sec:smoothProblems}.)  
+We demonstrate the inferior performance of IMEX schemes with the correction step given by Eq.~\eqref{eq:imexCorrection} in the diffusion limit in Section~\ref{sec:smoothProblems}.  
+We have also implemented one of IMEX schemes in Chertock et al. \cite{chertock_etal_2015}, where the transport operator is included in the correction step, and found it to perform very well in the diffusion limit.  
+However, we have not been able to prove sufficiently general realizability-preserving properties with this approach, without invoking a too severe time step restriction.  
 
-\ee{Can we prove that it is impossible to find a second-order accurate, positivity-preserving IMEX scheme that is accurate in the diffusion limit?}
+We therefore proceed to design positivity-preserving IMEX schemes, without the correction step, that perform better in the diffusion limit.  
+To this end we define the vectors $\vec{\cJ}=(\cJ^{(1)},\ldots,\cJ^{(s)})^{T}$ and $\vec{\vect{\cH}}=(\vect{\cH}^{(1)},\ldots,\vect{\cH}^{(s)})^{T}$.  
+In the context of IMEX schemes, the diffusion limit balance implies that the relation $A\,\vec{\vect{\cH}}=-\f{1}{3}\,\tau\,\tilde{A}\,\nabla\vec{\cJ}$ must hold for the stage values in Eq.~\eqref{imexStages}.  
+For the final stage (i=s), 
+\begin{equation}
+  \vect{\cH}^{(s)}=-\f{1}{3}\,\tau\,\vect{e}_{s}^{T}A^{-1}\tilde{A}\vect{e}\,\nabla\cJ^{n}+\cO(\dt\,\tau),
+\end{equation}
+where $\vect{e}_{s}=(0,\ldots,0,1)^{T}$ and $\vect{e}=(1,\ldots,1)^{T}$.  
+Thus, for $\vect{\cH}^{(s)}$ to be accurate in the diffusion limit, we require the IMEX coefficients to satisfy
+\begin{equation}
+  \vect{e}_{s}^{T}A^{-1}\tilde{A}\vect{e} = 1.
+  \label{eq:diffusionCondition}
+\end{equation}
+Unfortunately, this requirement, together with the order conditions given by Eqs.~\eqref{orderConditions1} and \eqref{orderConditions2} (with $\alpha=0$) and the positivity conditions on $c_{ij}$ and $\tilde{c}_{ij}$ results in too many constraints.  
+(\ee{Can we prove that it is impossible to find a second-order accurate, positivity-preserving IMEX scheme that is accurate in the diffusion limit?})
+To reduce the number of constraints, we relax the requirement of overall second order accuracy of the IMEX scheme.  
+Instead, we only require the scheme to be second order accurate in the streaming limit ($\vect{\cQ}=0$).  
+This is similar to the IMEX scheme given in \cite{mcclareen_2008} (see scheme PC2 in \ref{app:butcherTables}).  
