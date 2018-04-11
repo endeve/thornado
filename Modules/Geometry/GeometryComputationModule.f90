@@ -88,9 +88,9 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+        DO iX1 = iX_B1(1), iX_E1(1)
 
           G(:,iX1,iX2,iX3,iGF_h_1) = One
           G(:,iX1,iX2,iX3,iGF_h_2) = One
@@ -202,8 +202,6 @@ CONTAINS
     REAL(DP) :: XC(3), dX(3), xL_q(3), xG_q(3)
     REAL(DP) :: G_L(nDOFX,nGF)
     INTEGER  :: iX1, iX2, iX3, iNodeX
-
-    PRINT*, "ComputeGeometryX_CYLINDRICAL"
 
     DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
