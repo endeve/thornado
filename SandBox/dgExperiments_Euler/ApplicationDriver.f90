@@ -160,7 +160,8 @@ PROGRAM ApplicationDriver
            BetaTVB_Option = BetaTVB, &
            SlopeTolerance_Option = 1.0d-2, &
            UseSlopeLimiter_Option = .TRUE., &
-           UseTroubledCellIndicator_Option = .FALSE. )
+           UseTroubledCellIndicator_Option = .FALSE., &
+           LimiterThresholdParameter_Option = 0.03_DP )
 
   CALL InitializePositivityLimiter_Euler &
          ( Min_1_Option = 1.0d-12, &

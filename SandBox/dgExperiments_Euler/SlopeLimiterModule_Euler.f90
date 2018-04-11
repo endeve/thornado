@@ -39,6 +39,7 @@ MODULE SlopeLimiterModule_Euler
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
   REAL(DP) :: LimiterThreshold
+  REAL(DP) :: LimiterThresholdParameter
   REAL(DP), ALLOCATABLE :: WeightsX_X1_P(:), WeightsX_X1_N(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X2_P(:), WeightsX_X2_N(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X3_P(:), WeightsX_X3_N(:)
@@ -48,7 +49,8 @@ CONTAINS
 
   SUBROUTINE InitializeSlopeLimiter_Euler &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
-      UseSlopeLimiter_Option, UseTroubledCellIndicator_Option )
+      UseSlopeLimiter_Option, UseTroubledCellIndicator_Option, &
+      LimiterThresholdParameter_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
@@ -57,6 +59,8 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: &
       UseSlopeLimiter_Option, &
       UseTroubledCellIndicator_Option
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      LimiterThresholdParameter_Option
 
     BetaTVD = One
     IF( PRESENT( BetaTVD_Option ) ) &
@@ -76,9 +80,15 @@ CONTAINS
 
     UseTroubledCellIndicator = .TRUE.
     IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
-      UseTroubledCellIndicator = UseTroubledCellIndicator_Option
+      UseTroubledCellIndicator &
+        = UseTroubledCellIndicator_Option
 
-    LimiterThreshold = 0.03_DP * 2.0_DP**( nNodes - 2 )
+    LimiterThresholdParameter = 0.03_DP
+    IF( PRESENT( LimiterThresholdParameter_Option ) ) &
+      LimiterThresholdParameter &
+        = LimiterThresholdParameter_Option
+
+    LimiterThreshold = LimiterThresholdParameter * 2.0_DP**( nNodes - 2 )
 
     WRITE(*,*)
     WRITE(*,'(A)') '  INFO: InitializeSlopeLimiter_Euler:'
