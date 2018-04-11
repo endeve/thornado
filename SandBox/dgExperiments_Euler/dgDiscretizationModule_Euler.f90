@@ -420,8 +420,8 @@ CONTAINS
                     AlphaPls, AlphaMns, G_F(iNodeX_X1,iGF_Gm_dd_11) )
 
             NumericalFlux(iNodeX_X1,:) &
-              = NumericalFlux_X1_HLLC &
-!              = NumericalFlux_HLL &
+!              = NumericalFlux_X1_HLLC &
+              = NumericalFlux_HLL &
                   ( uCF_L(iNodeX_X1,:), Flux_X1_L(iNodeX_X1,:), &
                     uCF_R(iNodeX_X1,:), Flux_X1_R(iNodeX_X1,:), &
                     AlphaPls, AlphaMns, AlphaMdl, G_F(iNodeX_X1,iGF_Gm_dd_11) )
@@ -759,8 +759,8 @@ CONTAINS
                     AlphaPls, AlphaMns, G_F(iNodeX_X2,iGF_Gm_dd_22) )
 
             NumericalFlux(iNodeX_X2,:) &
-              = NumericalFlux_X2_HLLC &
-!              = NumericalFlux_HLL &
+!              = NumericalFlux_X2_HLLC &
+              = NumericalFlux_HLL &
                   ( uCF_L(iNodeX_X2,:), Flux_X2_L(iNodeX_X2,:), &
                     uCF_R(iNodeX_X2,:), Flux_X2_R(iNodeX_X2,:), &
                     AlphaPls, AlphaMns, AlphaMdl, G_F(iNodeX_X2,iGF_Gm_dd_22) )
