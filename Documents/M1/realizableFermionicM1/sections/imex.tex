@@ -12,16 +12,17 @@ where $\vect{u}$ are the degrees of freedom evolved with the DG method; i.e., fo
 \begin{equation}
   \vect{u}=\f{1}{|\bK|}\Big(\,\int_{\bK}\vect{\cM}_{h}\,\phi_{1}\,d\vect{x},\int_{\bK}\vect{\cM}_{h}\,\phi_{2}\,d\vect{x},\ldots,\int_{\bK}\vect{\cM}_{h}\,\phi_{N}\,d\vect{x}\,\Big)^{T}.
 \end{equation}
-The transport term $\vect{\cT}$ is due to the second and third term in the left-hand side of Eq.~\eqref{eq:semidiscreteDG}, while the collision term $\vect{\cQ}$ is due to the right-hand side of Eq.~\eqref{eq:semidiscreteDG}.  
+Thus, for $\phi_{1}=1$, the first components of $\vect{u}$ are the cell averaged moments.  
+In Eq.~\eqref{eq:ode}, the transport term $\vect{\cT}$ is due to the second and third term in the left-hand side of Eq.~\eqref{eq:semidiscreteDG}, while the collision term $\vect{\cQ}$ is due to the right-hand side of Eq.~\eqref{eq:semidiscreteDG}.  
 
-In the application of interest to us, the collision term is stiff ($\tau\ll1$) in regions of the computational domain and must be treated with implicit methods, while we can resolve the time scales induced by the transport term, which we will treat with explicit methods; i.e., we will use IMEX methods \cite{pareschiRusso_2005}.  
+In the applications of interest to us, the collision term is stiff ($\tau\ll1$) in regions of the computational domain and must be treated with implicit methods, while we can resolve the time scales induced by the transport term, which we will treat with explicit methods; i.e., we will use IMEX methods \cite{pareschiRusso_2005}.  
 We would like to employ IMEX schemes that preserve realizability of the moments (subject to a time step governed by the transport term).  
 Until recently, high-order (second or higher order temporal accuracy) positivity-preserving IMEX methods with time step restrictions solely due to the transport operator were not known.  
-Chertock et al. \cite{chertock_etal_2015} presented second order accurate IMEX schemes with a correction step.  
+Chertock et al. \cite{chertock_etal_2015} presented second-order accurate IMEX schemes with a correction step.  
 The correction step in \cite{chertock_etal_2015} includes the transport operator, and we have found that realizability is then subject to a time step restriction that scales as $\dt\propto1/\sqrt{\tau}$, which may become too restrictive.  
 More recently, Hu et al. \cite{hu_etal_2017}, presented similar IMEX schemes for problems involving BGK-type collision operators, but with a correction step that does not include the transport operator.  
 In this case, positivity is only subject to time step restrictions stemming from the transport operator, which is more attractive for our target application.  
-These second order accurate, $s$-stage IMEX schemes take the following form \cite{hu_etal_2017}
+These second-order accurate, $s$-stage IMEX schemes take the following form \cite{hu_etal_2017}
 \begin{align}
   \vect{u}^{(i)}
   &=\vect{u}^{n}
@@ -36,8 +37,9 @@ These second order accurate, $s$-stage IMEX schemes take the following form \cit
   &=\tilde{\vect{u}}^{n+1}-\alpha\,\dt^{2}\,\f{1}{\tau^{2}}\,\vect{\cQ}'(\vect{u}^{*})\,\vect{\cQ}(\vect{u}^{n+1}), \label{eq:imexCorrection}
 \end{align}
 where, as in standard IMEX schemes, $(\tilde{a}_{ij})$ and $(a_{ij})$, components of $s\times s$ matrices $\tilde{A}$ and $A$, respectively, and the vectors $\vect{w}^{T}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ must satisfy certain order conditions \cite{pareschiRusso_2005}.  
-The coefficient in the correction step is positive, $\alpha>0$, and $\vect{\cQ}'$ is the Frechet derivative of the collision term, and can be evaluated using any of the stage values ($\vect{u}^{n}$, $\vect{u}^{(i)}$, or $\tilde{\vect{u}}^{n+1}$).  
-For second order temporal accuracy, the order conditions are
+The coefficient in the correction step is positive, $\alpha>0$, and $\vect{\cQ}'$ is the Fr{\'e}chet derivative of the collision term evaluated at $\vect{u}^{*}$.  
+For second-order accuracy, $\vect{Q}$ can be evaluated using any of the stage values ($\vect{u}^{n}$, $\vect{u}^{(i)}$, or $\tilde{\vect{u}}^{n+1}$).  
+For second-order temporal accuracy, the order conditions are
 \begin{equation}
   \sum_{i=1}^{s}\tilde{w}_{i}=\sum_{i=1}^{s}w_{i}=1,
   \label{orderConditions1}
@@ -51,7 +53,7 @@ and
   \label{orderConditions2}
 \end{equation}
 where $\tilde{c}_{i}$ and $c_{i}$ are given in \ref{app:butcherTables}.  
-For globally stiffly accurate (GSA) IMEX schemes, $\tilde{w}_{i}=\tilde{a}_{si}$ and $w_{i}=a_{si}$ for $i=\{1,\ldots,s\}$, so that $\tilde{\vect{u}}^{n+1}=\vect{u}^{(s)}$.  
+For globally stiffly accurate (GSA) IMEX schemes, $\tilde{w}_{i}=\tilde{a}_{si}$ and $w_{i}=a_{si}$ for $i=1,\ldots,s$, so that $\tilde{\vect{u}}^{n+1}=\vect{u}^{(s)}$.  
 
 To prove the positivity-preserving property of the IMEX scheme, Hu et al. \cite{hu_etal_2017} rewrite the stage values in Eq.~\eqref{imexStages} in the following form
 \begin{equation}
@@ -68,6 +70,7 @@ For IMEX schemes of type ARS, the first column of $A$ is zero and the submatrix 
 For type A schemes, $\tilde{c}_{i0}=0$, and the positivity-preserving property follows from requiring $a_{ii}>0$ and $c_{i0}\ge0$ for $i=1,\ldots,s$, and $c_{ij},\tilde{c}_{ij}\ge0$, for $i=2,\ldots,s$, $j=1,\ldots,s-1$.  
 For type ARS schemes, $c_{i1}=\tilde{c}_{i1}=0$, and positivity follows from requiring $a_{ii}>0$ and $c_{i0},\tilde{c}_{i0}\ge0$ for $i=1,\ldots,s$, and $c_{ij},\tilde{c}_{ij}\ge0$ for $i=3,\ldots,s$, $j=2,\ldots,i-1$.  
 Such coefficients were given in \cite{hu_etal_2017} for GSA schemes of type A with $s=3$ and type ARS with $s=4$.  
+It was also proven that $s=3$ and $s=4$ are the necessary number of stages for GSA second-order positivity-preserving IMEX schemes of type A and type ARS, respectively.  
 
 Importantly, the coefficients $c_{ij}$ in Eq.~\eqref{eq:imexStagesRewrite} satisfy $\sum_{j=0}^{i-1}c_{ij}=1$.  
 This implies that, if the expression inside the square brackets in Eq.~\eqref{eq:imexStagesRewrite} is positive for all $i=2,\ldots,s$, $j=0,\ldots,i-1$, positivity of the entire sum on the right-hand side of Eq.~\eqref{eq:imexStagesRewrite} follows from convexity arguments.  
@@ -79,7 +82,7 @@ Thus, if the explicit update with the transport operator is positive for a time 
 It is desirable to make $c_{\mbox{\tiny Sch}}$ as large (close to $1$) as possible.  
 (Positivity of $\vect{u}^{(i)}$ requires the implicit solve to preserve positivity.)  
 In \cite{hu_etal_2017}, Hu et al. provide examples of GSA, positivity-preserving IMEX schemes of type A (see scheme PA2 in \ref{app:butcherTables}) and type ARS.  
-In \ref{app:butcherTables}, we provide another example of a type A scheme (scheme PA2+), with a significantly larger $c_{\mbox{\tiny Sch}}$.  
+In \ref{app:butcherTables}, we provide another example of a type A scheme (scheme PA2+), with a significantly larger $c_{\mbox{\tiny Sch}}$ (a factor of about $1.7$).  
 
 Unfortunately, the correction step in Eq.~\eqref{eq:imexCorrection} deteriorates the accuracy of the IMEX scheme when applied to the moment equations in the diffusion limit ($\xi=0$, $\tau\ll 1$).  
 In the diffusion limit, to leading order in $\tau$, we have $\vect{\cH}\approx-\f{1}{3}\,\tau\,\nabla\cJ$, which is due to a balance between the transport term and the collision term in the equation for the particle flux $\vect{\cH}$.  
@@ -88,10 +91,10 @@ We demonstrate the inferior performance of IMEX schemes with the correction step
 We have also implemented one of IMEX schemes in Chertock et al. \cite{chertock_etal_2015}, where the transport operator is included in the correction step, and found it to perform very well in the diffusion limit.  
 However, we have not been able to prove sufficiently general realizability-preserving properties with this approach, without invoking a too severe time step restriction.  
 
-We therefore proceed to design positivity-preserving IMEX schemes, without the correction step, that perform better in the diffusion limit.  
+We therefore proceed to design GSA positivity-preserving IMEX schemes, without the correction step, that perform better in the diffusion limit.  
 To this end we define the vectors $\vec{\cJ}=(\cJ^{(1)},\ldots,\cJ^{(s)})^{T}$ and $\vec{\vect{\cH}}=(\vect{\cH}^{(1)},\ldots,\vect{\cH}^{(s)})^{T}$.  
-In the context of IMEX schemes, the diffusion limit balance implies that the relation $A\,\vec{\vect{\cH}}=-\f{1}{3}\,\tau\,\tilde{A}\,\nabla\vec{\cJ}$ must hold for the stage values in Eq.~\eqref{imexStages}.  
-For the final stage (i=s), 
+In the context of IMEX schemes, the diffusion limit balance implies that the relation $A\,\vec{\vect{\cH}}=-\f{1}{3}\,\tau\,\tilde{A}\,\nabla\vec{\cJ}$ should hold to relate the stage values in Eq.~\eqref{imexStages}.  
+For the final stage ($i=s$), 
 \begin{equation}
   \vect{\cH}^{(s)}=-\f{1}{3}\,\tau\,\vect{e}_{s}^{T}A^{-1}\tilde{A}\vect{e}\,\nabla\cJ^{n}+\cO(\dt\,\tau),
 \end{equation}
@@ -101,8 +104,26 @@ Thus, for $\vect{\cH}^{(s)}$ to be accurate in the diffusion limit, we require t
   \vect{e}_{s}^{T}A^{-1}\tilde{A}\vect{e} = 1.
   \label{eq:diffusionCondition}
 \end{equation}
-Unfortunately, this requirement, together with the order conditions given by Eqs.~\eqref{orderConditions1} and \eqref{orderConditions2} (with $\alpha=0$) and the positivity conditions on $c_{ij}$ and $\tilde{c}_{ij}$ results in too many constraints.  
-(\ee{Can we prove that it is impossible to find a second-order accurate, positivity-preserving IMEX scheme that is accurate in the diffusion limit?})
-To reduce the number of constraints, we relax the requirement of overall second order accuracy of the IMEX scheme.  
-Instead, we only require the scheme to be second order accurate in the streaming limit ($\vect{\cQ}=0$).  
-This is similar to the IMEX scheme given in \cite{mcclareen_2008} (see scheme PC2 in \ref{app:butcherTables}).  
+Unfortunately, this requirement, together with the order conditions given by Eqs.~\eqref{orderConditions1} and \eqref{orderConditions2} (with $\alpha=0$), and the positivity conditions on $c_{ij}$ and $\tilde{c}_{ij}$ results in too many constraints.  
+(\ee{Can we prove that it is impossible to find a second-order accurate, positivity-preserving IMEX scheme that is accurate in the diffusion limit?  Does the answer to this depend on $s$?})
+(We are concerned about increasing the number of stages, and implicit solves, since the implicit solve will dominate the computational cost of the IMEX scheme with a more realistic collision operator.)
+To reduce the number of constraints, and accommodate accuracy in the diffusion limit, we relax the requirement of overall second-order accuracy of the IMEX scheme.  
+Instead, we only require the scheme to be second-order accurate in the streaming limit ($\vect{\cQ}=0$).  
+This gives the order conditions
+\begin{equation}
+  \sum_{i=1}^{s}\tilde{w}_{i}=1
+  \quad\text{and}\quad
+  \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}=\f{1}{2}.  
+  \label{eq:orderConditionsEx}
+\end{equation}
+We then seek to design a GSA IMEX scheme with the following properties
+\begin{itemize}
+  \item Second-order in the streaming limit; i.e., satisfies Eq.~\eqref{eq:orderConditionsEx}.
+  \item Well-behaved in the diffusion limit; i.e., satisfies Eq.~\eqref{eq:diffusionCondition}.
+  \item Positivity-preserving (conditions given by \cite{hu_etal_2017}; with $c_{\mbox{\tiny Sch}}$ maximal).
+  \item Few implicit stages.
+\end{itemize}
+Fortunately, IMEX schemes satisfying these properties are easy to find, and we provide an example of type ARS with $s=3$ (two implicit solves) in \ref{app:butcherTables} (scheme PARSD).  
+This scheme is similar to the scheme given in \cite{mcclareen_2008} (see scheme PC2 in \ref{app:butcherTables}), which is also a GSA IMEX scheme of type ARS with $s=3$.  
+Scheme PC2 is second-order in the streaming limit, has been demonstrated to work well in the diffusion limit \cite{mcclareen_2008,radice_etal_2013}, and satisfies the positivity conditions, but $c_{\mbox{\tiny Sch}}=0$ (our primary motivation for finding an alternative).  
+In Section~\ref{sec:numerical}, we show numerically that the accuracy of scheme PARSD is practically identical to the accuracy of scheme PC2.  
