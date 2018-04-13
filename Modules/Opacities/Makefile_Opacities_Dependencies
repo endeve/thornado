@@ -18,4 +18,5 @@ NeutrinoOpacitiesModule.o: \
   NeutrinoOpacitiesModule.f90
 
 NeutrinoOpacitiesComputationModule.o: \
+  NeutrinoOpacitiesModule.o \
   NeutrinoOpacitiesComputationModule.f90
