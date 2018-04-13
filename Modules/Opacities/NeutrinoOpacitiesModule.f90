@@ -6,27 +6,29 @@ MODULE NeutrinoOpacitiesModule
   IMPLICIT NONE
   PRIVATE
 
+  LOGICAL :: Verbose
+
   ! --- Electron Capture Opacities ---
 
-  CHARACTER(32) :: namesEC = 'Electron Capture Opacities'
+  CHARACTER(32), PUBLIC :: namesEC = 'Electron Capture Opacities'
 
   REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, PUBLIC :: opEC
 
   ! --- Elastic Scattering Opacities ---
 
-  CHARACTER(32) :: namesES = 'Elastic Scattering Opacities'
+  CHARACTER(32), PUBLIC :: namesES = 'Elastic Scattering Opacities'
 
   REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, PUBLIC :: opES
 
   ! --- Inelastic Scattering Opacities ---
 
-  CHARACTER(32) :: namesIS = 'Inelastic Scattering Opacities'
+  CHARACTER(32), PUBLIC :: namesIS = 'Inelastic Scattering Opacities'
 
   REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: opIS
 
   ! --- Pair Processes Opacities ---
 
-  CHARACTER(32) :: namesPP = 'Pair Process Opacities'
+  CHARACTER(32), PUBLIC :: namesPP = 'Pair Process Opacities'
 
   REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: opPP
 
@@ -37,15 +39,25 @@ MODULE NeutrinoOpacitiesModule
 CONTAINS
 
 
-  SUBROUTINE CreateNeutrinoOpacities( nZ, nNodesZ, nSpecies )
+  SUBROUTINE CreateNeutrinoOpacities( nZ, nNodesZ, nSpecies, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER, INTENT(in) :: nZ(4), nNodesZ(4), nSpecies
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
-    ALLOCATE( opEC(nZ(1)*nNodesZ(1),PRODUCT(nZ(2:4)*nNodesZ(2:4)),nSpecies) )
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
-    PRINT*,"SHAPE(opEC) = ", SHAPE( opEC )
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A4,A)') '', 'Neutrino Opacities:'
+      WRITE(*,*)
+      WRITE(*,'(A6,A)') '', TRIM( namesEC )
+    END IF
+
+    ALLOCATE( opEC(nZ(1)*nNodesZ(1),nSpecies,PRODUCT(nZ(2:4)*nNodesZ(2:4))) )
 
   END SUBROUTINE CreateNeutrinoOpacities
 
