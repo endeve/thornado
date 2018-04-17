@@ -22,6 +22,8 @@ MODULE SlopeLimiterModule_Euler_GR
     MeshX
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm
+  USE BoundaryConditionsModule_Beta, ONLY: &
+    ApplyBoundaryConditions_Fluid
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
     Shock
@@ -214,6 +216,9 @@ CONTAINS
     IF( nDOFX == 1 ) RETURN
     
     IF( .NOT. UseSlopeLimiter ) RETURN    
+
+    CALL ApplyBoundaryConditions_Fluid &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     wTime = MPI_WTIME( )
 

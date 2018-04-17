@@ -6,10 +6,10 @@ RiemannProblem: \
 	$(thornado) \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
+	BoundaryConditionsModule_Beta.o \
 	SlopeLimiterModule_Euler_GR.o \
 	DataFileReaderModule.o \
 	InitializationModule_GR.o \
-	BoundaryConditionsModule_Beta.o \
 	dgDiscretizationModule_Euler_GR.o \
 	TimeSteppingModule_SSPRK.o \
 	RiemannProblemInitializer.o \
@@ -18,10 +18,10 @@ RiemannProblem: \
 	$(thornado) \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
+	BoundaryConditionsModule_Beta.o \
 	SlopeLimiterModule_Euler_GR.o \
 	DataFileReaderModule.o \
 	InitializationModule_GR.o \
-	BoundaryConditionsModule_Beta.o \
 	dgDiscretizationModule_Euler_GR.o \
 	TimeSteppingModule_SSPRK.o \
 	RiemannProblemInitializer.o \
@@ -32,10 +32,10 @@ StandingAccretionShock: \
 	$(thornado) \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
+	BoundaryConditionsModule_Beta.o \
 	SlopeLimiterModule_Euler_GR.o \
 	DataFileReaderModule.o \
 	InitializationModule_GR.o \
-	BoundaryConditionsModule_Beta.o \
 	dgDiscretizationModule_Euler_GR.o \
 	TimeSteppingModule_SSPRK.o \
 	StandingAccretionShock.o
@@ -43,10 +43,10 @@ StandingAccretionShock: \
 	$(thornado) \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
+	BoundaryConditionsModule_Beta.o \
 	SlopeLimiterModule_Euler_GR.o \
 	DataFileReaderModule.o \
 	InitializationModule_GR.o \
-	BoundaryConditionsModule_Beta.o \
 	dgDiscretizationModule_Euler_GR.o \
 	TimeSteppingModule_SSPRK.o \
 	StandingAccretionShock.o \

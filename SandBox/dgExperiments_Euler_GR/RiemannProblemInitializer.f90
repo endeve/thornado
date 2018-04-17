@@ -127,7 +127,7 @@ CONTAINS
         P_R = 1.0d-2
 
         t     = 0.0_DP
-        t_end = 7.5d-1
+        t_end = 7.0d-1
         CFL   = 0.1_DP
         xL    = 0.0d0
         xR    = 1.0d0
@@ -208,7 +208,7 @@ CONTAINS
 
       CASE( 8 )
 
-        WRITE(*,*) 'Smooth problem, sine wave'
+        WRITE(*,*) 'Smooth problem: advected sine wave'
 
         ! --- Fluid variables here are dummies, they are set in
         !     InitializationModule_GR.f90 ---
@@ -275,7 +275,7 @@ CONTAINS
         xL    = 0.0d0
         xR    = 1.0d0
         x_D   = 0.5_DP
-        K     = 1000
+        K     = 128
         t_end = 3.5d-1
         Gamma = 5.0_DP / 3.0_DP
 

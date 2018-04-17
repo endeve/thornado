@@ -147,11 +147,13 @@ CONTAINS
             ! --- Cell Average ---
 
             U_K(iCF_D) &
-              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
-                  / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) )
+!              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
+!                  / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
 
             Theta_1 &
-              = MIN( One, ABS( (Min_1-U_K(iCF_D)) / (Min_K-U_K(iCF_D)) ) )
+              = MIN( One, ABS( (Min_1-U_K(iCF_D) ) / (Min_K-U_K(iCF_D)) ) )
+            Theta_1 = Zero
 
             ! --- Limit Density Towards Cell Average ---
 
@@ -178,8 +180,9 @@ CONTAINS
             DO iCF = 1, nCF
 
               U_K(iCF) &
-                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
-                    / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) )
+!                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
+!                    / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
 
             END DO
 
@@ -389,7 +392,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: q(N)
 
     q = qFun( U(:,iCF_D), U(:,iCF_S1), U(:,iCF_S2), U(:,iCF_S3), U(:,iCF_E), &
-                G(:,iGF_Gm_dd_11), G(:,iGF_Gm_dd_22), G(:,iGF_Gm_dd_33) )
+         G(:,iGF_Gm_dd_11), G(:,iGF_Gm_dd_22), G(:,iGF_Gm_dd_33) )
 
     RETURN
   END SUBROUTINE Computeq

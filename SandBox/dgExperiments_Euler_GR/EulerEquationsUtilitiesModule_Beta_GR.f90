@@ -92,7 +92,7 @@ CONTAINS
     REAL(DP) :: SSq, Pold, vSq, W, h, Pnew
 
     REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-7
+    REAL(DP), PARAMETER :: TolP = 1.0d-10, TolFunP = 1.0d-10
 
     nNodes = SIZE( CF_D )
 
@@ -108,27 +108,36 @@ CONTAINS
 
       ! --- Find Pressure with Newton's Method ---
 
-      ! --- Approximation for pressure assuming h^2=1
+      ! --- Approximation for pressure assuming h^2~=1
       Pold = SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i)
 
       DO WHILE ( .NOT. Converged )
 
         nIter = nIter + 1
 
-!        WRITE(*,*) '    CALL ComputeFunJacP'
         CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
 
         Pnew = Pold - FunP / JacP
-!        WRITE(*,*) '      Pold',Pold
-!        WRITE(*,*) '      Pnew',Pnew
 
-        ! Check if Newton's method has converged
-        IF( ABS( Pnew / Pold - 1.0_DP ) <= TolP ) Converged = .TRUE.
+        ! --- Check if Newton's method has converged ---
+        IF( ( ABS( Pnew - Pold ) / ( 1.0_DP + ABS( Pnew ) ) ) .LE. TolP ) THEN
+          CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP )
+          IF( ABS( FunP ) .LT. TolFunP ) THEN
+            Converged = .TRUE.
+          ELSE
+            Converged = .FALSE.
+            WRITE(*,*) 'No convergence, |Pnew/Pold - 1|:', &
+                         ABS( Pnew / Pold - 1.0_DP )
+            WRITE(*,*) 'Pold:                   ', Pold
+            WRITE(*,*) 'Pnew:                   ', Pnew
+            STOP
+          END IF
+        END IF
 
-        ! For de-bugging
-        IF( nIter == 10 )THEN
-          WRITE(*,*) 'nIter = 10'
-          WRITE(*,*) 'No convergence, |ERROR|:', &
+        ! --- STOP after 100 iterations ---
+        IF( nIter == 100 )THEN
+          WRITE(*,*) 'Max allowed iterations reached, no convergence'
+          WRITE(*,*) 'No convergence, |Pnew/Pold - 1|:', &
                       ABS( Pnew / Pold - 1.0_DP )
           WRITE(*,*) 'Pold:                   ', Pold
           WRITE(*,*) 'Pnew:                   ', Pnew
@@ -141,11 +150,18 @@ CONTAINS
 
       AF_P(i) = Pnew
 
-      vSq = SSq / ( CF_E(i) + Pnew + CF_D(i) )**2
+      vSq = SSq / ( CF_E(i) + AF_P(i) + CF_D(i) )**2
 
       W = 1.0_DP / SQRT( 1.0_DP - vSq )
 
-      h = ( CF_E(i) + Pnew + CF_D(i) ) / ( W * CF_D(i) )
+      h = ( CF_E(i) + AF_P(i) + CF_D(i) ) / ( W * CF_D(i) )
+      WRITE(*,'(A3,ES18.10E3)') 'h:' , h
+      WRITE(*,'(A3,ES18.10E3)') 'q:' , &
+                                  CF_E(i) + CF_D(i) - SQRT( CF_D(i)**2 &
+                                    + CF_S1(i)**2 / GF_Gm_dd_11(i)     &
+                                    + CF_S2(i)**2 / GF_Gm_dd_22(i)     &
+                                    + CF_S3(i)**2 / GF_Gm_dd_33(i) )
+!      h = MAX( h , 1.0_DP )
 
       ! --- Recover Primitive Variables ---
 
@@ -157,8 +173,8 @@ CONTAINS
 
       PF_V3(i) = CF_S3(i) / ( CF_D(i) * h * W * GF_Gm_dd_33(i) )
 
-      PF_E(i)  = CF_D(i) * ( h - 1.0_DP ) / W - Pnew
-
+      PF_E(i)  = CF_D(i) * ( h - 1.0_DP ) / W - AF_P(i)
+      
       PF_Ne(i) = CF_Ne(i) / W
 
    END DO
@@ -166,6 +182,35 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_GR
 
 
+  SUBROUTINE ComputeFunJacP( D, E, SSq, P, FunP, JacP )
+
+    REAL(DP), INTENT(in)  :: D, E, SSq, P
+    REAL(DP), INTENT(out) :: FunP, JacP
+
+    REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS
+    REAL(DP), DIMENSION(1) :: Pbar
+
+    HSq = ( E + P + D )**2
+
+    RHO = D * SQRT( HSq - SSq ) / SQRT( HSq )
+
+    EPS = ( SQRT( HSq - SSq ) &
+            - P * SQRT( HSq ) / SQRT( HSq - SSq ) - D ) / D
+
+    EPS = MAX( EPS, SqrtTiny )
+
+    CALL ComputePressureFromSpecificInternalEnergy &
+         ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
+
+    FunP = P - Pbar(1)
+    dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
+    dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
+
+    JacP = 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS )
+
+  END SUBROUTINE ComputeFunJacP
+
+  
   SUBROUTINE ComputeConserved_GR( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
                                   CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
                                   GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
@@ -197,35 +242,6 @@ CONTAINS
   END SUBROUTINE ComputeConserved_GR
   
 
-  SUBROUTINE ComputeFunJacP( D, E, SSq, P, FunP, JacP )
-
-    REAL(DP), INTENT(in)  :: D, E, SSq, P
-    REAL(DP), INTENT(out) :: FunP, JacP
-
-    REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS
-    REAL(DP), DIMENSION(1) :: Pbar
-
-    HSq = ( E + P + D )**2
-
-    RHO = D * SQRT( HSq - SSq ) / SQRT( HSq )
-
-    EPS = ( SQRT( HSq - SSq ) &
-            - P * SQRT( HSq ) / SQRT( HSq - SSq ) - D ) / D
-
-    EPS = MAX( EPS, SqrtTiny )
-
-    CALL ComputePressureFromSpecificInternalEnergy &
-         ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
-
-    FunP = P - Pbar(1)
-    dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
-    dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
-
-    JacP = 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS )
-
-  END SUBROUTINE ComputeFunJacP
-
-  
   PURE FUNCTION Eigenvalues_GR &
     ( V_1, V_2, V_3, V_i, Cs, Gm_11, Gm_22, Gm_33, Gm_ii, Alpha, Beta_i )
 

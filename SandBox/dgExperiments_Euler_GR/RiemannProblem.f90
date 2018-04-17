@@ -21,9 +21,7 @@ PROGRAM RiemannProblem
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE FluidFieldsModule, ONLY: &
-    uCF, rhsCF, uPF, uAF, iAF_P, iAF_Cs
-  USE InputOutputModule, ONLY: &
-    WriteFields1D
+    uCF, uPF, uAF
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE InitializationModule_GR, ONLY: &
@@ -45,13 +43,39 @@ PROGRAM RiemannProblem
 
   IMPLICIT NONE
 
-  INTEGER  :: iCycle, iCycleD, iCycleW, K, bcX(3)
+  INTEGER  :: iCycle, iCycleD, iCycleW, K,  bcX(3)
   REAL(DP) :: t, dt, t_end, xL, xR, x_D, CFL, Gamma, c = 1.0_DP
   REAL(DP) :: D_L, V_L(3), P_L, D_R, V_R(3), P_R
+
+  REAL(DP)             :: LT
+  CHARACTER( len = 4 ) :: arg
+  INTEGER              :: argv(2), nNodes, i
+  LOGICAL              :: ConvergenceRate = .TRUE.
 
   CALL RiemannProblemChoice &
          ( D_L, V_L, P_L, D_R, V_R, P_R, &
              xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, iRP = 10 )
+
+  IF ( ConvergenceRate ) THEN
+    DO i = 1 , IARGC()
+      CALL GETARG( i , arg )
+      READ( arg , * ) argv(i)
+    END DO
+    nNodes = argv(1)
+    K      = argv(2)
+  ELSE
+     nNodes = 2
+  END IF
+  
+  IF      ( nNodes == 1 ) THEN
+    LT = 0.001_DP
+  ELSE IF ( nNodes == 2 ) THEN
+    LT = 0.05_DP
+  ELSE IF ( nNodes == 3 ) THEN
+    LT = 0.1_DP
+  ELSE
+    LT = 1.0_DP
+  END IF
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -67,7 +91,7 @@ PROGRAM RiemannProblem
            xR_Option &
              = [ xR, 1.0d0, 1.0d0 ], &
            nNodes_Option &
-             = 3, &
+             = nNodes, &
            CoordinateSystem_Option &
              = 'CARTESIAN', &
            EquationOfState_Option &
@@ -79,11 +103,11 @@ PROGRAM RiemannProblem
            Opacity_Option &
              = 'IDEAL', &
            nStages_SSP_RK_Option & ! --- Dummy ---
-             = 1 )
+             = 3 )
 
   dt      = CFL * ( xR - xL ) / ( c * K )
-  iCycleD = 100 * t_end
-  iCycleW = 10  * t_end
+  iCycleD = 100
+  iCycleW = 100
 
   CALL InitializeReferenceElementX
 
@@ -104,8 +128,7 @@ PROGRAM RiemannProblem
 
   CALL InitializeSlopeLimiter &
          ( BetaTVD_Option = 1.5_DP, BetaTVB_Option = 0.0_DP, &
-           LimiterThreshold_Option = 0.001_DP, &
-           SlopeTolerance_Option = 0.1_DP, &
+           LimiterThreshold_Option = LT, &
            UseSlopeLimiter_Option = .TRUE. , &
            UseTroubledCellIndicator_Option = .TRUE. )
 
@@ -118,10 +141,10 @@ PROGRAM RiemannProblem
   DO WHILE ( t < t_end )
 
     IF( t + dt < t_end )THEN
-       t = t + dt
+      t = t + dt
     ELSE
-       dt = t_end - t
-       t = t_end
+      dt = t_end - t
+      t  = t_end
     END IF
 
     iCycle = iCycle + 1

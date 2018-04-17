@@ -1,7 +1,7 @@
 PROGRAM StandingAccretionShock
 
   USE KindModule, ONLY: &
-    DP, Pi, TwoPi, Two
+    DP, Pi, TwoPi, Two, SqrtTiny
   USE UnitsModule, ONLY: &
     Meter, Second, SpeedOfLight, Millisecond
   USE ProgramHeaderModule, ONLY: &
@@ -49,9 +49,22 @@ PROGRAM StandingAccretionShock
 
   REAL(DP), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
   REAL(DP), ALLOCATABLE :: r(:), rho(:), v(:), e(:)
-  INTEGER               :: nLines, iCycle, iCycleD, iCycleW, K
+  INTEGER               :: nLines, iCycle, iCycleD, iCycleW, K, nNodes
   REAL(DP)              :: M_PNS, gamma, Ri, R_PNS, R_shock, Rf, Mdot
   REAL(DP)              :: t, dt, t_end, CFL, xL, xR, dt_write
+  REAL(DP)              :: LT
+
+  nNodes = 2
+  K      = 64  
+  IF      ( nNodes == 1 ) THEN
+    LT = 0.001_DP
+  ELSE IF ( nNodes == 2 ) THEN
+    LT = 0.05_DP
+  ELSE IF ( nNodes == 3 ) THEN
+    LT = 0.1_DP
+  ELSE
+    LT = 1.0_DP
+  END IF
 
   CALL ReadParameters &
          ( '../StandingAccretionShock_Parameters.dat', FluidFieldParameters )
@@ -74,7 +87,6 @@ PROGRAM StandingAccretionShock
 
   xL = R_PNS
   xR = Two * R_shock
-  K  = 128
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'StandingAccretionShock', &
@@ -89,7 +101,7 @@ PROGRAM StandingAccretionShock
            xR_Option &
              = [ xR, Pi, 4.0_DP ], &
            nNodes_Option &
-             = 2, &
+             = nNodes, &
            CoordinateSystem_Option &
              = 'SPHERICAL', &
            ActivateUnits_Option &
@@ -102,7 +114,7 @@ PROGRAM StandingAccretionShock
            Gamma_IDEAL_Option = Gamma )
 
   CFL      = 0.1d0
-  t_end    = 1.0d2 * Millisecond
+  t_end    = 3.0d2 * Millisecond
   dt       = CFL * ( xR - xL ) / ( SpeedOfLight * K )
   dt_write = 0.1d0 * Millisecond
 
@@ -116,14 +128,6 @@ PROGRAM StandingAccretionShock
   CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = M_PNS )
 
-!!$  WRITE(*,*) 'Min/Max SqrtGm:' , MINVAL( uGF(:,:,:,:,8) ) / R_shock**2, &
-!!$                                 MAXVAL( uGF(:,:,:,:,8) ) / R_shock**2
-!!$  WRITE(*,*) 'Min/Max Alpha: ' , MINVAL( uGF(:,:,:,:,9) ), &
-!!$                                 MAXVAL( uGF(:,:,:,:,9) )
-!!$  WRITE(*,*) 'Min/Max Psi:   ' , MINVAL( uGF(:,:,:,:,13) ), &
-!!$                                 MAXVAL( uGF(:,:,:,:,13) )
-!!$  
-
   CALL InitializeFields_StandingAccretionShock
 
   CALL WriteFieldsHDF &
@@ -134,10 +138,11 @@ PROGRAM StandingAccretionShock
   CALL InitializeSlopeLimiter &
          ( BetaTVD_Option = 1.5_DP, &
            UseSlopeLimiter_Option = .TRUE., &
+           LimiterThreshold_Option = LT, &
            UseTroubledCellIndicator_Option = .TRUE. )
 
   CALL InitializePositivityLimiter &
-         ( Min_1_Option = 0.0d-16 , Min_2_Option = 0.0d-16, &
+         ( Min_1_Option = SqrtTiny , Min_2_Option = SqrtTiny, &
            UsePositivityLimiter_Option = .TRUE. )
 
   iCycle = 0
@@ -158,7 +163,7 @@ PROGRAM StandingAccretionShock
       WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A5,A5,ES13.6E3,A3)') &
              '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, ' ms, ', &
                'dt = ', dt / Millisecond, ' ms'
-
+      
     END IF
 
     CALL UpdateFluid_SSPRK &
@@ -167,17 +172,6 @@ PROGRAM StandingAccretionShock
     ! --- Update primitive fluid variables, pressure, and sound speed ---
     CALL ComputeFromConserved( iX_B0, iX_E0, uGF, uCF, uPF, uAF )
 
-!!$    WRITE(*,*) 'CALL ComputeGeometryX'
-!!$    CALL ComputeGeometryX &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = M_PNS )
-!!$
-!!$    WRITE(*,*) 'Min/Max SqrtGm:' , MINVAL( uGF(:,:,:,:,8) ) / R_shock**2, &
-!!$                                   MAXVAL( uGF(:,:,:,:,8) ) / R_shock**2
-!!$    WRITE(*,*) 'Min/Max Alpha: ' , MINVAL( uGF(:,:,:,:,9) ), &
-!!$                                   MAXVAL( uGF(:,:,:,:,9) )
-!!$    WRITE(*,*) 'Min/Max Psi:   ' , MINVAL( uGF(:,:,:,:,13) ), &
-!!$                                   MAXVAL( uGF(:,:,:,:,13) )
-  
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
       CALL WriteFieldsHDF &
