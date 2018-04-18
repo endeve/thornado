@@ -67,6 +67,19 @@ The non-zero components of $\tilde{A}$ and $A$ are given by
 \end{align}
 And $\tilde{w}_{i}=\tilde{a}_{3i} = w_{i}=a_{3i}$ for $i\le3$.
 
+\paragraph{IMEX PARSD}
+
+We have found a second-order accurate in the streaming limit, diffusion accurate, positivity-preserving IMEX scheme of type $ARS$, which we refer to as IMEX PARSD.  
+This scheme allows for has a $c_{sch}= 1 - 2\epsilon$ which can arbitrary close to 1 by setting $\epsilon$ a arbitrary small positive value.
+Here we give an example by setting $\epsilon=0.1$.
+\begin{align}
+  \tilde{a}_{21} & = 1.0, \nonumber \\
+  \tilde{a}_{31} & = 0.5, \quad \tilde{a}_{32} = 0.5, \nonumber \\
+  a_{22} & = 1.0, \nonumber \\
+  a_{32} & = 0.4 \,( = 0.5 - \epsilon\,), \quad a_{33} = 0.6 \,( = 0.5 + \epsilon\,). \nonumber
+\end{align} 
+This scheme is also GSA and needs only two compute for implicit terms each time-step.
+
 \paragraph{IMEX RKCB2}
 
 We compare the performance of the positivity-preserving IMEX schemes with two other, non-positive, schemes.  
