@@ -18,7 +18,9 @@ MODULE NeutrinoOpacitiesComputationModule
     ComputeProtonChemicalPotential_TABLE, &
     ComputeNeutronChemicalPotential_TABLE
   USE OpacityModule_TABLE, ONLY: &
+#ifdef MICROPHYSICS_WEAKLIB
     OPACITIES, &
+#endif
     LogEs_T, LogDs_T, LogTs_T, Ys_T
   USE NeutrinoOpacitiesModule, ONLY: &
     f_EQ, opEC, opES, opIS, opPP
