@@ -1,7 +1,7 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, Pi, TwoPi
+    DP, Half, One, Pi, TwoPi, FourPi
   USE UnitsModule, ONLY: &
     Second
   USE ProgramHeaderModule, ONLY: &
@@ -17,9 +17,11 @@ PROGRAM ApplicationDriver
     FinalizeReferenceElementX_Lagrange
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
-  USE GeometryComputationModule_Beta, ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
-    USE FluidFieldsModule, ONLY: &
+  USE GravitySolutionModule_Newtonian_PointMass_Beta, ONLY: &
+    ComputeGravitationalPotential
+  USE FluidFieldsModule, ONLY: &
     uCF, uPF, uAF
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
@@ -37,7 +39,12 @@ PROGRAM ApplicationDriver
   INCLUDE 'mpif.h'
 
   REAL(DP)            :: wTime
-  REAL(DP), PARAMETER :: Gamma = 4.0_DP / 3.0_DP
+  REAL(DP), PARAMETER :: mDot   = FourPi
+  REAL(DP), PARAMETER :: Mass   = Half
+  REAL(DP), PARAMETER :: rShock = One
+  REAL(DP), PARAMETER :: Gamma  = 4.0_DP / 3.0_DP
+  REAL(DP), PARAMETER :: Mach   = 1.0d2
+
   INTEGER             :: iCycle, iCycleD, iCycleW
   REAL(DP)            :: t, dt, t_end
 
@@ -71,7 +78,11 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+  CALL ComputeGeometryX &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+  CALL ComputeGravitationalPotential &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass )
 
   CALL InitializeFluid_SSPRK( nStages = 1 )
 
@@ -80,12 +91,10 @@ PROGRAM ApplicationDriver
            Gamma_IDEAL_Option = Gamma )
 
   CALL InitializeFields &
-         ( 4.0_DP * Pi, 0.5_DP, 1.0_DP, Gamma, 3.0d2 ) 
+         ( mDot, Mass, rShock, Gamma, Mach ) 
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
-
-!!$  ! --- Main Part of Code Will Go Here
 
   iCycle = 0
 

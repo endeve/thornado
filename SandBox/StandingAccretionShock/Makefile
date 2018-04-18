@@ -4,7 +4,7 @@ all: ApplicationDriver
 
 ApplicationDriver: \
 	$(thornado) \
-	GeometryComputationModule_Beta.o \
+	GravitySolutionModule_Newtonian_PointMass_Beta.o \
 	EulerEquationsUtilitiesModule_Beta.o \
         InitializationModule.o \
 	BoundaryConditionsModule_Beta.o \
@@ -12,7 +12,7 @@ ApplicationDriver: \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
-	GeometryComputationModule_Beta.o \
+	GravitySolutionModule_Newtonian_PointMass_Beta.o \
 	EulerEquationsUtilitiesModule_Beta.o \
         InitializationModule.o \
 	BoundaryConditionsModule_Beta.o \
