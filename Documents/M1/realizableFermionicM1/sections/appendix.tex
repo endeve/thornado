@@ -60,10 +60,8 @@ Another positivity-preserving IMEX scheme was given in \cite{mcclareen_2008} (re
 This scheme can be written in the double Butcher tableau form, and we refer to this scheme as IMEX PC2.  
 The non-zero components of $\tilde{A}$ and $A$ are given by
 \begin{align}
-  \tilde{a}_{21} &= 0.5, \nonumber \\
-  \tilde{a}_{32} &= 1, \nonumber \\
-  a_{22} &= 0.5, \nonumber \\
-  a_{33} &= 1.0. \nonumber
+  \tilde{a}_{21} &= 0.5, \quad \tilde{a}_{32} = 1, \nonumber \\
+  a_{22} &= 0.5, \quad a_{33} = 1.0. \nonumber
 \end{align}
 And $\tilde{w}_{i}=\tilde{a}_{3i} = w_{i}=a_{3i}$ for $i\le3$.
 
@@ -87,8 +85,7 @@ The first one is the second-order accurate IMEX scheme given in \cite{cavaglieri
 We refer to this scheme as IMEX RKCB2.  
 The non-zero components of $\tilde{A}$ and $A$ are given by
 \begin{align}
-  \tilde{a}_{21} &= 2/5, \nonumber \\
-  \tilde{a}_{32} &= 1, \nonumber \\
+  \tilde{a}_{21} &= 2/5, \quad \tilde{a}_{32} = 1, \nonumber \\
   a_{22} &= 2/5, \nonumber \\
   a_{32} &= 5/6, \quad a_{33} = 1/6. \nonumber
 \end{align}
@@ -114,8 +111,8 @@ To compare the performance of the IMEX schemes in the streaming limit (no collis
 (All elements of the implicit Butcher tableau are zero.)  
 The optimal second-order accurate, strong-stability-preserving Runge-Kutta scheme (SSPRK2) has the following non-zero components
 \begin{align}
-  \tilde{a}_{21} &= 1, \nonumber \\
-  \tilde{w}_{1} &= 1/2, \quad \tilde{w}_{2} = 1/2. \nonumber 
+  \tilde{a}_{21} &= 1, \nonumber \\ 
+  \tilde{w}_{1}  &= 1/2, \quad \tilde{w}_{2} = 1/2. \nonumber 
 \end{align}
 The optimal third-order accurate, strong-stability-preserving Runge-Kutta scheme (SSPRK3) has the following non-zero components
 \begin{align}
