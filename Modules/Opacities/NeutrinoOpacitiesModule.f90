@@ -8,30 +8,30 @@ MODULE NeutrinoOpacitiesModule
 
   LOGICAL :: Verbose
 
+  ! --- Equilibrium Distributions ---
+
+  CHARACTER(32), PARAMETER, PUBLIC :: namesEQ = 'Equilibrium Distribution'
+  REAL(DP),    ALLOCATABLE, PUBLIC :: f_EQ(:,:,:)
+
   ! --- Electron Capture Opacities ---
 
-  CHARACTER(32), PUBLIC :: namesEC = 'Electron Capture Opacities'
-
-  REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, PUBLIC :: opEC
+  CHARACTER(32), PARAMETER, PUBLIC :: namesEC = 'Electron Capture Opacities'
+  REAL(DP),    ALLOCATABLE, PUBLIC :: opEC(:,:,:)
 
   ! --- Elastic Scattering Opacities ---
 
-  CHARACTER(32), PUBLIC :: namesES = 'Elastic Scattering Opacities'
-
-  REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, PUBLIC :: opES
+  CHARACTER(32), PARAMETER, PUBLIC :: namesES = 'Elastic Scattering Opacities'
+  REAL(DP),    ALLOCATABLE, PUBLIC :: opES(:,:,:)
 
   ! --- Inelastic Scattering Opacities ---
 
-  CHARACTER(32), PUBLIC :: namesIS = 'Inelastic Scattering Opacities'
-
-  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: opIS
+  CHARACTER(32), PARAMETER, PUBLIC :: namesIS = 'Inelastic Scattering Opacities'
+  REAL(DP),    ALLOCATABLE, PUBLIC :: opIS(:,:,:,:)
 
   ! --- Pair Processes Opacities ---
 
-  CHARACTER(32), PUBLIC :: namesPP = 'Pair Process Opacities'
-
-  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: opPP
-
+  CHARACTER(32), PARAMETER, PUBLIC :: namesPP = 'Pair Process Opacities'
+  REAL(DP),    ALLOCATABLE, PUBLIC :: opPP(:,:,:,:)
 
   PUBLIC :: CreateNeutrinoOpacities
   PUBLIC :: DestroyNeutrinoOpacities
@@ -54,17 +54,21 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A4,A)') '', 'Neutrino Opacities:'
       WRITE(*,*)
+      WRITE(*,'(A6,A)') '', TRIM( namesEQ )
       WRITE(*,'(A6,A)') '', TRIM( namesEC )
+      WRITE(*,'(A6,A)') '', TRIM( namesES )
     END IF
 
+    ALLOCATE( f_EQ(nZ(1)*nNodesZ(1),nSpecies,PRODUCT(nZ(2:4)*nNodesZ(2:4))) )
     ALLOCATE( opEC(nZ(1)*nNodesZ(1),nSpecies,PRODUCT(nZ(2:4)*nNodesZ(2:4))) )
+    ALLOCATE( opES(nZ(1)*nNodesZ(1),nSpecies,PRODUCT(nZ(2:4)*nNodesZ(2:4))) )
 
   END SUBROUTINE CreateNeutrinoOpacities
 
 
   SUBROUTINE DestroyNeutrinoOpacities
 
-    DEALLOCATE( opEC )
+    DEALLOCATE( f_EQ, opEC, opES )
 
   END SUBROUTINE DestroyNeutrinoOpacities
 

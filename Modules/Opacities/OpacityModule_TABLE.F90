@@ -37,11 +37,11 @@ MODULE OpacityModule_TABLE
     OpacityTableName
   INTEGER :: &
     iD_T, iT_T, iY_T
-  REAL(DP), DIMENSION(:), ALLOCATABLE :: &
+  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
     Es_T, Ds_T, Ts_T, Ys_T, Etas_T, &
     LogEs_T, LogDs_T, LogTs_T, LogEtas_T
 #ifdef MICROPHYSICS_WEAKLIB
-  TYPE(OpacityTableType) :: &
+  TYPE(OpacityTableType), PUBLIC :: &
     OPACITIES
 #endif
 
