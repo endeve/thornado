@@ -1,8 +1,9 @@
 \section{Realizability-Preserving DG-IMEX Scheme}
 \label{sec:realizableDGIMEX}
 
-Here we proceed to develop realizability-preserving DG schemes for the two-moment model based on the IMEX schemes discussed in the previous section.  
-The realizability-preserving DG scheme is designed to preserve realizability of cell averages over a time step in each element $\bK$.  
+We proceed to develop realizability-preserving DG schemes for the two-moment model based on the IMEX schemes discussed in the previous section (cf. Eqs.~\eqref{imexStages}-\eqref{eq:imexCorrection}).  
+The realizability-preserving DG scheme is designed to preserve realizability of cell averages over a time step $\dt$ in each element $\bK$.  
+Following the framework in \cite{zhangShu_2010b}, for high-order DG schemes, realizability of the cell average is leveraged to limit the polynomial approximation $\vect{\cM}_{h}$, if $\vect{\cM}_{h}$ is not realizable in a finite number of points in $\bK$ (Section~\ref{sec:limiter}).  
 The cell average of the moments is defined as
 \begin{equation}
   \vect{\cM}_{\bK}
@@ -12,15 +13,16 @@ Then, with $v=1$ in Eq.~\eqref{eq:semidiscreteDG}, the stage values for the cell
 \begin{equation}
   \vect{\cM}_{\bK}^{(i)}
   =\sum_{j=0}^{i-1}c_{ij}\,\vect{\cM}_{\bK}^{(ij)}
-  +a_{ii}\,\dt\,\f{1}{\tau}\,\big(\,\vect{\eta}-\vect{\cD}\,\vect{\cM}_{\bK}^{(i)}\,\big),
+  +a_{ii}\,\dt\,\f{1}{\tau}\,\big(\,\vect{\eta}-\vect{\cD}\,\vect{\cM}_{\bK}^{(i)}\,\big), \quad i=1,\ldots,s,
   \label{eq:imexStagesCellAverage}
 \end{equation}
-where we have defined
+where $c_{ij}\ge0$, $a_{ii}>0$, and $\sum_{j=0}^{i-1}c_{ij}=1$, and we have defined
 \begin{equation}
   \vect{\cM}_{\bK}^{(ij)}
   =\vect{\cM}_{\bK}^{(j)}-\hat{c}_{ij}\,\dt\,\big\langle\,\nabla\cdot\vect{\cF}(\vect{\cM}_{h}^{(j)})\,\big\rangle_{\bK},
 \end{equation}
-with $\cM_{\bK}^{(0)}=\cM_{\bK}^{n}$, and the cell average of the divergence operator is (cf. Section~\ref{sec:dg})
+with $\cM_{\bK}^{(0)}=\cM_{\bK}^{n}$.  
+The cell average of the divergence operator is (cf. Section~\ref{sec:dg})
 \begin{equation}
   \big\langle\,\nabla\cdot\vect{\cF}(\vect{\cM}_{h})\,\big\rangle_{\bK}
   =\f{1}{|\bK|}\sum_{i=1}^{d}\int_{\tilde{\bK}^{i}}
@@ -29,15 +31,15 @@ with $\cM_{\bK}^{(0)}=\cM_{\bK}^{n}$, and the cell average of the divergence ope
 
 \begin{lemma}
   Let $\vect{\cM}_{\bK}^{(i)}$ satisfy Eq.~\eqref{eq:imexStagesCellAverage}.
-  Assume that $\vect{\cM}_{\bK}^{n}\in\cR$ and $\vect{\cM}_{\bK}^{(ij)}\in\cR\,\forall\,j\le i-1$.  
-  Then, $\vect{\cM}_{\bK}^{(i)}\in\cR$.  
+  Assume that $\vect{\cM}_{\bK}^{(ij)}\in\cR\,\forall\,i=1,\ldots,s,\,j\le i-1$.  
+  Then, $\vect{\cM}_{\bK}^{(i)}\in\cR$, for $i=1,\ldots,s$.  
 \end{lemma}
 \begin{proof}
-  The first two terms on the right-hand side of Eq.~\eqref{eq:imexStagesCellAverage} constitute a convex combination of elements in $\cR$; i.e.,
+  For $i=1,\ldots,s$, the first term on the right-hand side of Eq.~\eqref{eq:imexStagesCellAverage} constitutes a convex combination of elements in $\cR$; i.e.,
   \begin{equation*}
-    c_{i0}\,\vect{\cM}_{\bK}^{n}+\sum_{j=1}^{i-1}c_{ij}\,\vect{\cM}_{\bK}^{(ij)}\in\cR.
+    \sum_{j=0}^{i-1}c_{ij}\,\vect{\cM}_{\bK}^{(ij)}\in\cR.
   \end{equation*}
-  Since $a_{ii}\,\dt/\tau>0$, it follows from Lemma~\ref{lem:implicitStep} that $\vect{\cM}_{\bK}^{(i)}\in\cR$.  
+  Since $a_{ii}\,\dt/\tau>0$, it follows from Lemma~\ref{lem:implicitStep} that $\vect{\cM}_{\bK}^{(i)}\in\cR$, for $i=1,\ldots,s$.  
 \end{proof}
 
 We proceed to establish conditions for which $\vect{\cM}_{\bK}^{(ij)}\in\cR$.  
@@ -68,10 +70,10 @@ where $\vect{\cM}_{\bK}$ is the cell average of $\vect{\cM}_{h}\in\bbV^{k}$ and 
   The result follows immediately.  
 \end{proof}
 \begin{rem}
-  If a quadrature rule $\tilde{\vect{Q}}^{i}:C^{0}\to\bbR$, with positive weights, and points defined by the set $\tilde{\vect{S}}^{i}$, is used to approximate the integral over $\tilde{\bK}^{i}$ in \eqref{eq:cellAverageInTermsOfGamma}, it is sufficient for \eqref{eq:realizableGamma} to hold in the quadrature points $\tilde{\vect{S}}^{i}\subset\tilde{\bK}^{i}$.  
+  If a quadrature rule $\tilde{\vect{Q}}^{i}:C^{0}\to\bbR$, with positive weights, and points defined by the set $\tilde{\vect{S}}^{i}$, is used to approximate the integral over $\tilde{\bK}^{i}$ in Eq.~\eqref{eq:cellAverageInTermsOfGamma}, it is sufficient for Eq.~\eqref{eq:realizableGamma} to hold in the quadrature points $\tilde{\vect{S}}^{i}\subset\tilde{\bK}^{i}$.  
 \end{rem}
 
-Next, we establish conditions for which \eqref{eq:realizableGamma} holds.  
+Next, we establish conditions for which Eq.~\eqref{eq:realizableGamma} holds.  
 To simplify the notation, we temporarily drop the dimension index $i$, setting $x^{i}=x$, $K^{i}=K$, $\vect{\Gamma}^{i}=\vect{\Gamma}$, etc.  
 We let $\hat{Q}_{N}$ denote the $N$-point \emph{Gauss-Lobatto (GL)} quadrature rule on the interval $K=(x_{\Low},x_{\Hgh})$, with points
 \begin{equation}
@@ -90,7 +92,7 @@ Then, if $\vect{\cM}_{h}$ is represented by such polynomials we have
 where $\hat{\bcM}_{q} := \bcM_{h}(\hat{x}_q,\tilde{\vect{x}})$.  
 In each element, $\hat{\vect{\cM}}_{1}=\vect{\cM}_{\Low}^{+}$ and $\hat{\vect{\cM}}_{N}=\vect{\cM}_{\Hgh}^{-}$.  
 
-With the GL quadrature rule in \eqref{eq:quadratureRuleGL} (note $\hat{w}_{1}=\hat{w}_{N}$), we can write $\vect{\Gamma}$ as the convex combination
+With the GL quadrature rule in Eq.~\eqref{eq:quadratureRuleGL} (note $\hat{w}_{1}=\hat{w}_{N}$), we can write $\vect{\Gamma}$ as the convex combination
 \begin{equation}
   \vect{\Gamma}\big[\bcM_{h}\big]
   =\sum_{q=2}^{N-1}\hat{w}_{q}\,\hat{\vect{\cM}}_{q}

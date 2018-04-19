@@ -125,7 +125,7 @@ We then seek to design GSA IMEX schemes with the following properties
   \item Second-order in the streaming limit; i.e., satisfies Eq.~\eqref{eq:orderConditionsEx}.
   \item Well-behaved in the diffusion limit; i.e., satisfies Eq.~\eqref{eq:diffusionCondition}.
   \item Positivity-preserving (conditions given by \cite{hu_etal_2017}; with $c_{\mbox{\tiny Sch}}$ maximal).
-  \item Few implicit stages.
+  \item Few ($\le3$) implicit stages.
 \end{itemize}
 Fortunately, IMEX schemes satisfying these properties are easy to find, and we provide an example of type ARS with $s=3$ (two implicit solves) in \ref{app:butcherTables} (scheme PARSD).  
 In the streaming limit, this scheme is identical to the optimal second-order accurate strong-stability preserving Runge-Kutta method \cite{gottlieb_etal_2001}.  
