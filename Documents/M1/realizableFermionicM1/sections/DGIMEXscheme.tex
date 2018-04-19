@@ -1,7 +1,9 @@
 \section{Realizability-Preserving DG-IMEX Scheme}
 \label{sec:realizableDGIMEX}
 
-The realizability preserving DG scheme is designed to ensure realizability of the cell averages in each element $\bK$, defined as
+Here we proceed to develop realizability-preserving DG schemes for the two-moment model based on the IMEX schemes discussed in the previous section.  
+The realizability-preserving DG scheme is designed to preserve realizability of cell averages over a time step in each element $\bK$.  
+The cell average of the moments is defined as
 \begin{equation}
   \vect{\cM}_{\bK}
   =\f{1}{|\bK|}\int_{\bK}\vect{\cM}_{h}\,d\bx.  
@@ -9,8 +11,7 @@ The realizability preserving DG scheme is designed to ensure realizability of th
 Then, with $v=1$ in Eq.~\eqref{eq:semidiscreteDG}, the stage values for the cell average in the IMEX scheme in Eq.~\eqref{eq:imexStagesRewrite} are given by
 \begin{equation}
   \vect{\cM}_{\bK}^{(i)}
-  =c_{i0}\,\vect{\cM}_{\bK}^{n}
-  +\sum_{j=1}^{i-1}c_{ij}\,\vect{\cM}_{\bK}^{(ij)}
+  =\sum_{j=0}^{i-1}c_{ij}\,\vect{\cM}_{\bK}^{(ij)}
   +a_{ii}\,\dt\,\f{1}{\tau}\,\big(\,\vect{\eta}-\vect{\cD}\,\vect{\cM}_{\bK}^{(i)}\,\big),
   \label{eq:imexStagesCellAverage}
 \end{equation}
@@ -19,7 +20,7 @@ where we have defined
   \vect{\cM}_{\bK}^{(ij)}
   =\vect{\cM}_{\bK}^{(j)}-\hat{c}_{ij}\,\dt\,\big\langle\,\nabla\cdot\vect{\cF}(\vect{\cM}_{h}^{(j)})\,\big\rangle_{\bK},
 \end{equation}
-and the cell average of the divergence operator is (cf. Section~\ref{sec:dg})
+with $\cM_{\bK}^{(0)}=\cM_{\bK}^{n}$, and the cell average of the divergence operator is (cf. Section~\ref{sec:dg})
 \begin{equation}
   \big\langle\,\nabla\cdot\vect{\cF}(\vect{\cM}_{h})\,\big\rangle_{\bK}
   =\f{1}{|\bK|}\sum_{i=1}^{d}\int_{\tilde{\bK}^{i}}
