@@ -12,6 +12,7 @@ MODULE InputOutputUtilitiesModule
   PUBLIC :: NodeCoordinates
   PUBLIC :: Field3D
   PUBLIC :: Field4D
+  PUBLIC :: Opacity4D
 
 CONTAINS
 
@@ -111,6 +112,48 @@ CONTAINS
 
     RETURN
   END FUNCTION Field4D
+
+
+  FUNCTION Opacity4D( O, nE, nNE, nDOFE, nX, nNX, nDOFX, TabX )
+
+    INTEGER,  INTENT(in) :: &
+      nE,    nNE,    nDOFE
+    INTEGER,  INTENT(in) :: &
+      nX(3), nNX(3), nDOFX, TabX(3,nDOFX)
+    REAL(DP), INTENT(in) :: &
+      O(nE*nNE,PRODUCT( nX*nNX ))
+    REAL(DP)             :: &
+      Opacity4D(nE*nNE,nX(1)*nNX(1),nX(2)*nNX(2),nX(3)*nNX(3))
+
+    INTEGER :: iE, iX1, iX2, iX3, iOS_X
+    INTEGER :: iNX1, iNX2, iNX3, iNodeX
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNX1 = TabX(1,iNodeX)
+            iNX2 = TabX(2,iNodeX)
+            iNX3 = TabX(3,iNodeX)
+
+            iOS_X = ( (iX3-1)*nX(2)*nX(1) + (iX2-1)*nX(1) + (iX1-1) ) * nDOFX
+
+            Opacity4D &
+              (:,(iX1-1)*nNX(1)+iNX1, &
+                 (iX2-1)*nNX(2)+iNX2, &
+                 (iX3-1)*nNX(3)+iNX3) &
+              = O(:,iOS_X+iNodeX)
+
+          END DO
+
+        END DO
+      END DO
+    END DO
+
+    RETURN
+  END FUNCTION Opacity4D
 
 
 END MODULE InputOutputUtilitiesModule

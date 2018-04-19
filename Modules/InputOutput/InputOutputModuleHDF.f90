@@ -4,9 +4,9 @@ MODULE InputOutputModuleHDF
     DP
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nE, nNodesE, &
-    nX, nNodesX, &
-    nDOF, nDOFX
+    nE, nNodesE, nDOFE, &
+    nX, nNodesX, nDOFX, &
+    nDOF
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE ReferenceElementModule, ONLY: &
@@ -16,7 +16,8 @@ MODULE InputOutputModuleHDF
   USE InputOutputUtilitiesModule, ONLY: &
     NodeCoordinates, &
     Field3D, &
-    Field4D
+    Field4D, &
+    Opacity4D
   USE GeometryFieldsModule, ONLY: &
     uGF, nGF, namesGF
   USE FluidFieldsModule, ONLY: &
@@ -29,6 +30,12 @@ MODULE InputOutputModuleHDF
     uCR, nCR, namesCR, &
     uPR, nPR, namesPR, &
     uAR, nAR, namesAR
+  USE NeutrinoOpacitiesModule, ONLY: &
+    f_EQ, namesEQ, &
+    opEC, namesEC, &
+    opES, namesES, &
+    opIS, namesIS, &
+    opPP, namesPP
 
   USE HDF5
 
@@ -43,6 +50,8 @@ MODULE InputOutputModuleHDF
     FluidSuffix     = 'FluidFields'
   CHARACTER(15), PARAMETER :: &
     RadiationSuffix = 'RadiationFields'
+  CHARACTER(9),  PARAMETER :: &
+    OpacitySuffix   = 'Opacities'
   INTEGER :: FileNumber = 0
 
   INTEGER :: HDFERR
@@ -53,16 +62,18 @@ CONTAINS
 
 
   SUBROUTINE WriteFieldsHDF &
-              ( Time, WriteGF_Option, WriteFF_Option, WriteRF_Option )
+    ( Time, WriteGF_Option, WriteFF_Option, WriteRF_Option, WriteOP_Option )
 
     REAL(DP), INTENT(in) :: Time
     LOGICAL,  INTENT(in), OPTIONAL :: WriteGF_Option
     LOGICAL,  INTENT(in), OPTIONAL :: WriteFF_Option
     LOGICAL,  INTENT(in), OPTIONAL :: WriteRF_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: WriteOP_Option
 
     LOGICAL :: WriteGF
     LOGICAL :: WriteFF
     LOGICAL :: WriteRF
+    LOGICAL :: WriteOP
 
     WriteGF = .FALSE.
     IF( PRESENT( WriteGF_Option ) ) &
@@ -75,6 +86,10 @@ CONTAINS
     WriteRF = .FALSE.
     IF( PRESENT( WriteRF_Option ) ) &
       WriteRF = WriteRF_Option
+
+    WriteOP = .FALSE.
+    IF( PRESENT( WriteOP_Option ) ) &
+      WriteOP = WriteOP_Option
 
     IF( WriteGF )THEN
 
@@ -91,6 +106,12 @@ CONTAINS
     IF( WriteRF )THEN
 
       CALL WriteRadiationFieldsHDF( Time )
+
+    END IF
+
+    IF( WriteOP )THEN
+
+      CALL WriteNeutrinoOpacitiesHDF( Time )
 
     END IF
 
@@ -471,6 +492,123 @@ CONTAINS
     CALL H5CLOSE_F( HDFERR )
 
   END SUBROUTINE WriteRadiationFieldsHDF
+
+
+  SUBROUTINE WriteNeutrinoOpacitiesHDF( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+    CHARACTER(2)   :: String2
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: GroupName
+    CHARACTER(256) :: GroupNameSpecies
+    CHARACTER(256) :: DatasetName
+    INTEGER        :: iS
+    INTEGER(HID_T) :: FILE_ID
+
+    WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+    FileName &
+      = OutputDirectory // '/' // &
+        TRIM( ProgramName ) // '_' // &
+        OpacitySuffix // '_' // &
+        FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
+
+    ! --- Write Time ---
+
+    DatasetName = '/Time'
+
+    CALL WriteDataset1DHDF &
+           ( [ Time ], DatasetName, FILE_ID )
+
+    ! --- Write Spatial Grid ---
+
+    GroupName = 'Spatial Grid'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ) , FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X1'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)), &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)), &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)), &
+             DatasetName, FILE_ID )
+
+    ! --- Write Energy Grid ---
+
+    GroupName = 'Energy Grid'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/E'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshE,nE,nNodesE), DatasetName, FILE_ID )
+
+    ! --- Write Radiation Variables ---
+
+    GroupName = 'Opacities'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    DO iS = 1, nSpecies
+
+      WRITE( String2, FMT='(i2.2)') iS
+
+      GroupNameSpecies = TRIM( GroupName ) // '/Species_' // String2
+
+      CALL CreateGroupHDF( FileName, TRIM( GroupNameSpecies ), FILE_ID )
+
+      ! --- Equilibrium Distribution ---
+
+      DatasetName = TRIM( GroupNameSpecies ) // '/' // TRIM( namesEQ )
+
+      CALL WriteDataset4DHDF &
+             ( Opacity4D &
+                 ( f_EQ(:,iS,:), nE, nNodesE, nDOFE, nX, nNodesX, nDOFX, &
+                   NodeNumberTableX ), DatasetName, FILE_ID )
+
+      ! --- Electron Capture Opacities ---
+
+      DatasetName = TRIM( GroupNameSpecies ) // '/' // TRIM( namesEC )
+
+      CALL WriteDataset4DHDF &
+             ( Opacity4D &
+                 ( opEC(:,iS,:), nE, nNodesE, nDOFE, nX, nNodesX, nDOFX, &
+                   NodeNumberTableX ), DatasetName, FILE_ID )
+
+      ! --- Elastic Scattering Opacities ---
+
+      DatasetName = TRIM( GroupNameSpecies ) // '/' // TRIM( namesES )
+
+      CALL WriteDataset4DHDF &
+             ( Opacity4D &
+                 ( opES(:,iS,:), nE, nNodesE, nDOFE, nX, nNodesX, nDOFX, &
+                   NodeNumberTableX ), DatasetName, FILE_ID )
+
+    END DO
+
+    CALL H5FCLOSE_F( FILE_ID, HDFERR )
+
+    CALL H5CLOSE_F( HDFERR )
+
+  END SUBROUTINE WriteNeutrinoOpacitiesHDF
 
 
   SUBROUTINE CreateGroupHDF( FileName, GroupName, FILE_ID )
