@@ -13,7 +13,6 @@ MODULE TimeSteppingModule_Castro
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
   USE DiscretizationModule_Dummy, ONLY: &
-    ComputeIncrement_Explicit, &
     ComputeIncrement_Implicit
 
   IMPLICIT NONE
