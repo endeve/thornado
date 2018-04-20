@@ -64,13 +64,52 @@ To prove the positivity-preserving property of the IMEX scheme, Hu et al. \cite{
   +a_{ii}\,\dt\,\f{1}{\tau}\,\vect{Q}(\vect{u}^{(i)}),\quad i=1,\ldots,s,
   \label{eq:imexStagesRewrite}
 \end{equation}
-where $c_{ij}$, and $\hat{c}_{ij}=\tilde{c}_{ij}/c_{ij}$ are computed from $\tilde{a}_{ij}$ and $a_{ij}$ (see \cite{hu_etal_2017} for details).  
+where $c_{ij}$, and $\hat{c}_{ij}=\tilde{c}_{ij}/c_{ij}$ are computed from $\tilde{a}_{ij}$ and $a_{ij}$.
 (In Eq.~\eqref{eq:imexStagesRewrite}, $\vect{u}^{(0)}=\vect{u}^{n}$.)  
 Two types of IMEX schemes are considered: \emph{type A} and \emph{type ARS}.  
 For IMEX schemes of type A, the matrix $A$ is invertible.  
-For IMEX schemes of type ARS, the first column of $A$ is zero and the submatrix consisting of the last $s-1$ rows and columns of $A$, $\hat{A}$, is invertible.  
-For type A schemes, $\tilde{c}_{i0}=0$, and the positivity-preserving property follows from requiring $a_{ii}>0$ and $c_{i0}\ge0$ for $i=1,\ldots,s$, and $c_{ij},\tilde{c}_{ij}\ge0$, for $i=2,\ldots,s$, $j=1,\ldots,s-1$.  
-For type ARS schemes, $c_{i1}=\tilde{c}_{i1}=0$, and positivity follows from requiring $a_{ii}>0$ and $c_{i0},\tilde{c}_{i0}\ge0$ for $i=1,\ldots,s$, and $c_{ij},\tilde{c}_{ij}\ge0$ for $i=3,\ldots,s$, $j=2,\ldots,i-1$.  
+For IMEX schemes of type ARS, the matrix $A$ can be written as
+\[\left( 
+   \begin{matrix} 
+       0 & 0 \\ 
+       0 & \hat{A}
+   \end{matrix}
+\right)\]
+with $\hat{A}$ be invertible.
+For $i=1,\ldots,s$, the coefficients
+\begin{align*}
+  c_{i0}
+  =&\left\{
+  \begin{array}{cl}
+    1 - \sum_{j=1}^{i-1}c_{ij}  & \text{for type $A$,} \\
+    1 - \sum_{j=2}^{i-1}c_{ij}  & \text{for type $ARS$;}
+  \end{array}
+  \right.\\
+  \tilde{c}_{i0}
+  =&\left\{
+  \begin{array}{cl}
+    0  & \text{for type $A$,} \\
+   \tilde{a}_{i1} + \sum_{l=2}^{i-1}a_{il}\tilde{b}_{l1}  & \text{for type $ARS$;}
+  \end{array}
+  \right.\\
+  c_{i1}
+    =&\left\{
+    \begin{array}{cl}
+      \sum_{l =1}^{i-1} a_{il}b_{l1} & \text{for type $A$,} \\
+      0  & \text{for type $ARS$;}
+    \end{array}
+    \right.\\
+    \tilde{c}_{i1}
+    =&\left\{
+      \begin{array}{cl}
+       \tilde{a}_{i1} + \sum_{l=2}^{i-1}a_{il}\tilde{b}_{l1} & \text{for type $A$,} \\
+       0  & \text{for type $ARS$;}
+      \end{array}
+      \right.
+\end{align*}
+and the rest coefficients were defined as in \cite{hu_etal_2017}.
+For type A schemes, the positivity-preserving property follows from requiring $a_{ii}>0$ and $c_{i0}\ge0$ for $i=1,\ldots,s$, and $c_{ij},\tilde{c}_{ij}\ge0$, for $i=2,\ldots,s$, $j=1,\ldots,s-1$.  
+For type ARS schemes, the positivity follows from requiring $a_{ii}>0$ and $c_{i0},\tilde{c}_{i0}\ge0$ for $i=2,\ldots,s$, and $c_{ij},\tilde{c}_{ij}\ge0$ for $i=3,\ldots,s$, $j=2,\ldots,i-1$.  
 Such coefficients were given in \cite{hu_etal_2017} for GSA schemes of type A with $s=3$ and type ARS with $s=4$.  
 (It was also proven that $s=3$ and $s=4$ are the necessary number of stages needed for GSA second-order positivity-preserving IMEX schemes of type A and type ARS, respectively.)  
 
