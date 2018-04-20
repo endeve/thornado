@@ -81,8 +81,8 @@ For $i=1,\ldots,s$, the coefficients
   c_{i0}
   =&\left\{
   \begin{array}{cl}
-    1 - \sum_{j=1}^{i-1}c_{ij}  & \text{for type $A$,} \\
-    1 - \sum_{j=2}^{i-1}c_{ij}  & \text{for type $ARS$;}
+    1 - \sum_{j=1}^{i-1}c_{ij}  & \qquad \text{for type $A$,} \\
+    1 - \sum_{j=2}^{i-1}c_{ij}  & \qquad \text{for type $ARS$;}
   \end{array}
   \right.\\
   \tilde{c}_{i0}
@@ -95,8 +95,8 @@ For $i=1,\ldots,s$, the coefficients
   c_{i1}
     =&\left\{
     \begin{array}{cl}
-      \sum_{l =1}^{i-1} a_{il}b_{l1} & \text{for type $A$,} \\
-      0  & \text{for type $ARS$;}
+      \sum_{l =1}^{i-1} a_{il}b_{l1} & \qquad ~\text{for type $A$,} \\
+      0  & \qquad ~\text{for type $ARS$;}
     \end{array}
     \right.\\
     \tilde{c}_{i1}
@@ -137,14 +137,29 @@ However, we have not been able to prove sufficiently general realizability-prese
 We therefore proceed to design GSA positivity-preserving IMEX schemes, without the correction step, that perform better in the diffusion limit.  
 To this end we define the vectors $\vec{\cJ}=(\cJ^{(1)},\ldots,\cJ^{(s)})^{T}$ and $\vec{\vect{\cH}}=(\vect{\cH}^{(1)},\ldots,\vect{\cH}^{(s)})^{T}$.  
 In the context of IMEX schemes, the diffusion limit balance implies that the relation $A\,\vec{\vect{\cH}}=-\f{1}{3}\,\tau\,\tilde{A}\,\nabla\vec{\cJ}$ should hold to relate the stage values in Eq.~\eqref{imexStages}.  
+Define
+\begin{align*}
+    \mathcal{A}^{-1}
+    =&\left\{
+      \begin{array}{cl}
+       A^{-1} & \text{for type $A$,} \vspace{4pt} \\ 
+       \left( 
+          \begin{matrix} 
+              0 & 0 \\ 
+              0 & \hat{A}^{-1}
+          \end{matrix}
+       \right)  & \text{for type $ARS$.}
+      \end{array}
+      \right.
+\end{align*}
 For the final stage ($i=s$), 
 \begin{equation}
-  \vect{\cH}^{(s)}=-\f{1}{3}\,\tau\,\vect{e}_{s}^{T}A^{-1}\tilde{A}\vect{e}\,\nabla\cJ^{n}+\cO(\dt\,\tau),
+  \vect{\cH}^{(s)}=-\f{1}{3}\,\tau\,\vect{e}_{s}^{T}\mathcal{A}^{-1}\tilde{A}\vect{e}\,\nabla\cJ^{n}+\cO(\dt\,\tau),
 \end{equation}
 where $\vect{e}_{s}=(0,\ldots,0,1)^{T}$ and $\vect{e}=(1,\ldots,1)^{T}$.  
 Thus, for $\vect{\cH}^{(s)}$ to be accurate in the diffusion limit, we require the IMEX coefficients to satisfy
 \begin{equation}
-  \vect{e}_{s}^{T}A^{-1}\tilde{A}\vect{e} = 1.
+  \vect{e}_{s}^{T}\mathcal{A}^{-1}\tilde{A}\vect{e} = 1.
   \label{eq:diffusionCondition}
 \end{equation}
 Unfortunately, this requirement, together with the order conditions given by Eqs.~\eqref{orderConditions1} and \eqref{orderConditions2} (with $\alpha=0$), and the positivity conditions on $c_{ij}$ and $\tilde{c}_{ij}$, result in too many constraints.  
