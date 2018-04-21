@@ -151,7 +151,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'SineWaveDiffusion' )
 
-      nX = [ 16, 1, 1 ]
+      nX = [ 8, 1, 1 ]
       xL = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ + 3.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -163,11 +163,11 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      TimeSteppingScheme = 'IMEX_PC2'
+      TimeSteppingScheme = 'IMEX_PARSD'
 
       N0     = 0.0_DP
       SigmaA = 0.0_DP
-      SigmaS = 1.0d+2
+      SigmaS = 1.0d+4
 
       UsePositivityLimiter = .FALSE.
 
@@ -175,10 +175,10 @@ PROGRAM ApplicationDriver
       Max_1 = + HUGE( One ) ! --- Max Density
       Min_2 = - HUGE( One ) ! --- Min "Gamma"
 
-      t_end     = 1.0d+2
+      t_end     = 1.0d+4
       iCycleD   = 10
       iCycleW   = 2000
-      maxCycles = 100000
+      maxCycles = 1000000
 
     CASE( 'PackedBeam' )
 
@@ -343,7 +343,9 @@ PROGRAM ApplicationDriver
   ! --- Set Initial Condition ---
 
   CALL InitializeFields &
-         ( Direction_Option = TRIM( Direction ) )
+         ( Direction_Option = TRIM( Direction ), &
+           SigmaA_Option = SigmaA, &
+           SigmaS_Option = SigmaS )
 
   ! --- Initialize Positivity Limiter ---
 

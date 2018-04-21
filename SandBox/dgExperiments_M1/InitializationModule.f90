@@ -51,10 +51,14 @@ MODULE InitializationModule
 CONTAINS
 
 
-  SUBROUTINE InitializeFields( Direction_Option )
+  SUBROUTINE InitializeFields( Direction_Option, SigmaA_Option, SigmaS_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       Direction_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: &
+      SigmaA_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: &
+      SigmaS_Option
 
     REAL(DP) :: wTime
 
@@ -76,7 +80,8 @@ CONTAINS
 
       CASE ( 'SineWaveDiffusion' )
 
-        CALL InitializeFields_SineWaveDiffusion
+        CALL InitializeFields_SineWaveDiffusion &
+               ( SigmaS_Option = SigmaS_Option )
 
       CASE ( 'PackedBeam' )
 
@@ -350,16 +355,24 @@ CONTAINS
   END SUBROUTINE InitializeFields_SineWaveDamping
 
 
-  SUBROUTINE InitializeFields_SineWaveDiffusion
+  SUBROUTINE InitializeFields_SineWaveDiffusion( SigmaS_Option )
+
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      SigmaS_Option
 
     INTEGER      :: iE, iX1, iX2, iX3, iS, iK
     INTEGER      :: iNodeX1
     INTEGER      :: iNode
+    REAL(DP) :: SigmaS
     REAL(DP)     :: X1
     REAL(DP)     :: Gm_dd_11(nDOF)
     REAL(DP)     :: Gm_dd_22(nDOF)
     REAL(DP)     :: Gm_dd_33(nDOF)
     REAL(DP)     :: Ones(nDOFE)
+
+    SigmaS = 1.0d2
+    IF( PRESENT( SigmaS_Option ) ) &
+      SigmaS = SigmaS_Option
 
     Ones = 1.0_DP
 
@@ -392,7 +405,7 @@ CONTAINS
                   = 0.49_DP * SIN( Third * Pi * X1 ) + 0.5_DP
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
-                  = - ( 0.49_DP * Pi / 9.0d2 ) * COS( Third * Pi * X1 )
+                  = - ( 0.49_DP * Pi / ( 9.0_DP * SigmaS ) ) * COS( Third * Pi * X1 )
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) &
                   = 0.0_DP
@@ -979,18 +992,24 @@ CONTAINS
     ! --- Density Profile ---
     REAL(DP), PARAMETER :: MinD = 1.0d08 * Gram / Centimeter**3
     REAL(DP), PARAMETER :: MaxD = 4.0d14 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: C_D  = 7.5_DP
     REAL(DP), PARAMETER :: R_D  = 2.0d01 * Kilometer
-    REAL(DP), PARAMETER :: H_D  = 1.0d01 * Kilometer
+!    REAL(DP), PARAMETER :: H_D  = 1.0d01 * Kilometer
+    REAL(DP), PARAMETER :: H_D  = 5.0d00 * Kilometer
     ! --- Temperature Profile ---
     REAL(DP), PARAMETER :: MinT = 5.0d09 * Kelvin
-    REAL(DP), PARAMETER :: MaxT = 2.6d11 * Kelvin
+    REAL(DP), PARAMETER :: MaxT = 1.5d11 * Kelvin
+    REAL(DP), PARAMETER :: C_T  = 1.0_DP
     REAL(DP), PARAMETER :: R_T  = 2.5d01 * Kilometer
-    REAL(DP), PARAMETER :: H_T  = 2.0d01 * Kilometer
+!    REAL(DP), PARAMETER :: H_T  = 2.0d01 * Kilometer
+    REAL(DP), PARAMETER :: H_T  = 5.0d01 * Kilometer
     ! --- Electron Fraction Profile ---
-    REAL(DP), PARAMETER :: MinY = 3.0d-1
+    REAL(DP), PARAMETER :: MinY = 2.5d-1
     REAL(DP), PARAMETER :: MaxY = 4.6d-1
+    REAL(DP), PARAMETER :: C_Y  = 1.0_DP
     REAL(DP), PARAMETER :: R_Y  = 4.5d01 * Kilometer
-    REAL(DP), PARAMETER :: H_Y  = 1.0d01 * Kilometer
+!    REAL(DP), PARAMETER :: H_Y  = 1.0d01 * Kilometer
+    REAL(DP), PARAMETER :: H_Y  = 5.0d01 * Kilometer
 
     INTEGER  :: iX1, iX2, iX3, iNodeX
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3
@@ -1013,16 +1032,19 @@ CONTAINS
             R = SQRT( X1**2 + X2**2 + X3**2 )
 
             uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-              = Half * ( MaxD * ( One - TANH( (R-R_D)/H_D ) ) &
-                         + MinD * ( One - TANH( (R_D-R)/H_D ) ) )
+!!$              = Half * ( MaxD * ( One - TANH( (R-R_D)/H_D ) ) &
+!!$                         + MinD * ( One - TANH( (R_D-R)/H_D ) ) )
+              = MaxD * C_D / ( C_D + ( R / H_D )**4 )
 
             uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
-              = Half * ( MaxT * ( One - TANH( (R-R_T)/H_T ) ) &
-                         + MinT * ( One - TANH( (R_T-R)/H_T ) ) )
+!!$              = Half * ( MaxT * ( One - TANH( (R-R_T)/H_T ) ) &
+!!$                         + MinT * ( One - TANH( (R_T-R)/H_T ) ) )
+              = MaxT * C_T / ( C_T + ( R / H_T )**2 )
 
             uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
-              = Half * ( MinY * ( One - TANH( (R-R_Y)/H_Y ) ) &
-                         + MaxY * ( One - TANH( (R_Y-R)/H_Y ) ) )
+!!$              = Half * ( MinY * ( One - TANH( (R-R_Y)/H_Y ) ) &
+!!$                         + MaxY * ( One - TANH( (R_Y-R)/H_Y ) ) )
+              = MinY * ( One + C_Y / ( C_Y + ( R / H_Y )**(-12) ) )
 
           END DO
 
@@ -1088,8 +1110,8 @@ CONTAINS
                 E = NodeCoordinate( MeshE, iE, iNodeE )
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
-                  = MAX( One / ( EXP( (E-Mnu(iNode))/kT(iNode) ) + One ), &
-                         1.0d-32 )
+                  = 1.0d-99!MAX( One / ( EXP( (E-Mnu(iNode))/kT(iNode) ) + One ), &
+!                         1.0d-32 )
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
                   = Zero
