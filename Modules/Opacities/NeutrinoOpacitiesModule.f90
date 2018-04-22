@@ -11,26 +11,31 @@ MODULE NeutrinoOpacitiesModule
   ! --- Equilibrium Distributions ---
 
   CHARACTER(32), PARAMETER, PUBLIC :: namesEQ = 'Equilibrium Distribution'
+  REAL(DP),                 PUBLIC :: unitsEQ
   REAL(DP),    ALLOCATABLE, PUBLIC :: f_EQ(:,:,:)
 
   ! --- Electron Capture Opacities ---
 
   CHARACTER(32), PARAMETER, PUBLIC :: namesEC = 'Electron Capture Opacities'
+  REAL(DP),                 PUBLIC :: unitsEC
   REAL(DP),    ALLOCATABLE, PUBLIC :: opEC(:,:,:)
 
   ! --- Elastic Scattering Opacities ---
 
   CHARACTER(32), PARAMETER, PUBLIC :: namesES = 'Elastic Scattering Opacities'
+  REAL(DP),                 PUBLIC :: unitsES
   REAL(DP),    ALLOCATABLE, PUBLIC :: opES(:,:,:)
 
   ! --- Inelastic Scattering Opacities ---
 
   CHARACTER(32), PARAMETER, PUBLIC :: namesIS = 'Inelastic Scattering Opacities'
+  REAL(DP),                 PUBLIC :: unitsIS
   REAL(DP),    ALLOCATABLE, PUBLIC :: opIS(:,:,:,:)
 
   ! --- Pair Processes Opacities ---
 
   CHARACTER(32), PARAMETER, PUBLIC :: namesPP = 'Pair Process Opacities'
+  REAL(DP),                 PUBLIC :: unitsPP
   REAL(DP),    ALLOCATABLE, PUBLIC :: opPP(:,:,:,:)
 
   PUBLIC :: CreateNeutrinoOpacities
@@ -63,6 +68,8 @@ CONTAINS
     ALLOCATE( opEC(nZ(1)*nNodesZ(1),nSpecies,PRODUCT(nZ(2:4)*nNodesZ(2:4))) )
     ALLOCATE( opES(nZ(1)*nNodesZ(1),nSpecies,PRODUCT(nZ(2:4)*nNodesZ(2:4))) )
 
+    CALL SetUnitsNeutrinoOpacities
+
   END SUBROUTINE CreateNeutrinoOpacities
 
 
@@ -71,6 +78,33 @@ CONTAINS
     DEALLOCATE( f_EQ, opEC, opES )
 
   END SUBROUTINE DestroyNeutrinoOpacities
+
+
+  SUBROUTINE SetUnitsNeutrinoOpacities
+
+    USE UnitsModule, ONLY: &
+      UnitsActive, &
+      Centimeter
+
+    IF( UnitsActive )THEN
+
+      unitsEQ = 1.0_DP
+      unitsEC = 1.0_DP / Centimeter
+      unitsES = 1.0_DP / Centimeter
+      unitsIS = 1.0_DP ! --- Not Set Yet
+      unitsPP = 1.0_DP ! --- Not Set Yet
+
+    ELSE
+
+      unitsEQ = 1.0_DP
+      unitsEC = 1.0_DP
+      unitsES = 1.0_DP
+      unitsIS = 1.0_DP
+      unitsPP = 1.0_DP
+
+    END IF
+
+  END SUBROUTINE SetUnitsNeutrinoOpacities
 
 
 END MODULE NeutrinoOpacitiesModule
