@@ -26,6 +26,8 @@ MODULE RadiationFieldsModule
                 'Eulerian Number Flux Density (2)', &
                 'Eulerian Number Flux Density (3)' ]
 
+  REAL(DP), DIMENSION(nCR), PUBLIC :: unitsCR
+
   REAL(DP), ALLOCATABLE, PUBLIC :: uCR  (:,:,:,:,:,:,:)
   REAL(DP), ALLOCATABLE, PUBLIC :: rhsCR(:,:,:,:,:,:,:)
 
@@ -43,6 +45,8 @@ MODULE RadiationFieldsModule
                 'Lagrangian Number Flux Density (2)', &
                 'Lagrangian Number Flux Density (3)' ]
 
+  REAL(DP), DIMENSION(nPR), PUBLIC :: unitsPR
+
   REAL(DP), ALLOCATABLE, PUBLIC :: uPR(:,:,:,:,:,:,:)
 
   ! --- Auxiliary Radiation Fields ---
@@ -54,6 +58,8 @@ MODULE RadiationFieldsModule
   CHARACTER(32), DIMENSION(nAR), PUBLIC, PARAMETER :: &
     namesAR = [ 'Lagrangian Flux Factor          ', &
                 'Lagrangian Eddington Factor     ' ]
+
+  REAL(DP), DIMENSION(nAR), PUBLIC :: unitsAR
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uAR(:,:,:,:,:,:,:)
 
@@ -92,6 +98,8 @@ CONTAINS
 
     ALLOCATE( Discontinuity(1:nE,1:nX(1),1:nX(2),1:nX(3)) )
     Discontinuity = 0.0_DP
+
+    CALL SetUnitsRadiationFields
 
   END SUBROUTINE CreateRadiationFields
 
@@ -183,6 +191,28 @@ CONTAINS
     DEALLOCATE( Discontinuity )
 
   END SUBROUTINE DestroyRadiationFields
+
+
+  SUBROUTINE SetUnitsRadiationFields
+
+    USE UnitsModule, ONLY: &
+      UnitsActive
+
+    IF( UnitsActive )THEN
+
+      unitsCR = 1.0_DP
+      unitsPR = 1.0_DP
+      unitsAR = 1.0_DP
+
+    ELSE
+
+      unitsCR = 1.0_DP
+      unitsPR = 1.0_DP
+      unitsAR = 1.0_DP
+
+    END IF
+
+  END SUBROUTINE SetUnitsRadiationFields
 
 
 END MODULE RadiationFieldsModule
