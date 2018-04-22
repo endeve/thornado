@@ -45,7 +45,8 @@ MODULE GeometryFieldsModule
                 'Shift Vector (3)                            ', &
                 'Conformal Factor                            ' ]
 
-  REAL(DP), ALLOCATABLE, PUBLIC :: uGF(:,:,:,:,:)
+  REAL(DP), DIMENSION(nGF), PUBLIC :: unitsGF
+  REAL(DP), ALLOCATABLE,    PUBLIC :: uGF(:,:,:,:,:)
 
   PUBLIC :: CreateGeometryFields
   PUBLIC :: DestroyGeometryFields
@@ -89,6 +90,8 @@ CONTAINS
             1-swX(3):nX(3)+swX(3), &
             1:nGF) )
 
+    CALL SetUnitsGeometryFields
+
     ! --- Initialize to Flat Spacetime (Cartesian) ---
 
     uGF(:,:,:,:,iGF_Phi_N)    = 0.0_DP
@@ -113,6 +116,38 @@ CONTAINS
     DEALLOCATE( uGF )
 
   END SUBROUTINE DestroyGeometryFields
+
+
+  SUBROUTINE SetUnitsGeometryFields
+
+    USE UnitsModule, ONLY: &
+      UnitsActive, &
+      Erg, &
+      Gram
+
+    IF( UnitsActive )THEN
+
+      unitsGF(iGF_Phi_N)    = Erg / Gram
+      unitsGF(iGF_h_1)      = 1.0_DP
+      unitsGF(iGF_h_2)      = 1.0_DP
+      unitsGF(iGF_h_3)      = 1.0_DP
+      unitsGF(iGF_Gm_dd_11) = 1.0_DP
+      unitsGF(iGF_Gm_dd_22) = 1.0_DP
+      unitsGF(iGF_Gm_dd_33) = 1.0_DP
+      unitsGF(iGF_SqrtGm)   = 1.0_DP
+      unitsGF(iGF_Alpha)    = 1.0_DP
+      unitsGF(iGF_Beta_1)   = 1.0_DP
+      unitsGF(iGF_Beta_2)   = 1.0_DP
+      unitsGF(iGF_Beta_3)   = 1.0_DP
+      unitsGF(iGF_Psi)      = 1.0_DP
+
+    ELSE
+
+      unitsGF = 1.0_DP
+
+    END IF
+
+  END SUBROUTINE SetUnitsGeometryFields
 
 
 END MODULE GeometryFieldsModule
