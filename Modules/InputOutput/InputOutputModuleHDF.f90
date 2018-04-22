@@ -2,6 +2,8 @@ MODULE InputOutputModuleHDF
 
   USE KindModule, ONLY: &
     DP
+  USE UnitsModule, ONLY: &
+    UnitsDisplay
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nE, nNodesE, nDOFE, &
@@ -19,23 +21,23 @@ MODULE InputOutputModuleHDF
     Field4D, &
     Opacity4D
   USE GeometryFieldsModule, ONLY: &
-    uGF, nGF, namesGF
+    uGF, nGF, namesGF, unitsGF
   USE FluidFieldsModule, ONLY: &
-    uCF, nCF, namesCF, &
-    uPF, nPF, namesPF, &
-    uAF, nAF, namesAF, &
+    uCF, nCF, namesCF, unitsCF, &
+    uPF, nPF, namesPF, unitsPF, &
+    uAF, nAF, namesAF, unitsAF, &
     Shock
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    uCR, nCR, namesCR, &
-    uPR, nPR, namesPR, &
-    uAR, nAR, namesAR
+    uCR, nCR, namesCR, unitsCR, &
+    uPR, nPR, namesPR, unitsPR, &
+    uAR, nAR, namesAR, unitsAR
   USE NeutrinoOpacitiesModule, ONLY: &
-    f_EQ, namesEQ, &
-    opEC, namesEC, &
-    opES, namesES, &
-    opIS, namesIS, &
-    opPP, namesPP
+    f_EQ, namesEQ, unitsEQ, &
+    opEC, namesEC, unitsEC, &
+    opES, namesES, unitsES, &
+    opIS, namesIS, unitsIS, &
+    opPP, namesPP, unitsPP
 
   USE HDF5
 
@@ -144,12 +146,14 @@ CONTAINS
 
     CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
 
+    ASSOCIATE( U => UnitsDisplay )
+
     ! --- Write Time ---
 
     DatasetName = '/Time'
 
     CALL WriteDataset1DHDF &
-           ( [ Time ], DatasetName, FILE_ID )
+           ( [ Time ] / U % TimeUnit, DatasetName, FILE_ID )
 
     ! --- Write Spatial Grid ---
 
@@ -160,20 +164,22 @@ CONTAINS
     DatasetName = TRIM( GroupName ) // '/X1'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)), &
-             DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)) &
+               / U % LengthUnit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X2'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)), &
-             DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)) &
+               / U % LengthUnit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X3'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)), &
-             DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
+               / U % LengthUnit, DatasetName, FILE_ID )
+
+    END ASSOCIATE ! U
 
     ! --- Write Geometry Variables ---
 
@@ -188,7 +194,8 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uGF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iGF), nX, nNodesX, &
-                   nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
+                   nDOFX, NodeNumberTableX ) / unitsGF(iGF), &
+               DatasetName, FILE_ID )
 
     END DO
 
@@ -224,12 +231,14 @@ CONTAINS
 
     CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
 
+    ASSOCIATE( U => UnitsDisplay )
+
     ! --- Write Time ---
 
     DatasetName = '/Time'
 
     CALL WriteDataset1DHDF &
-           ( [ Time ], DatasetName, FILE_ID )
+           ( [ Time ] / U % TimeUnit, DatasetName, FILE_ID )
 
     ! --- Write Spatial Grid ---
 
@@ -240,37 +249,42 @@ CONTAINS
     DatasetName = TRIM( GroupName ) // '/X1'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)), &
-             DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)) &
+               / U % LengthUnit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X2'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)), &
-             DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)) &
+               / U % LengthUnit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X3'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)), &
-             DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
+               / U % LengthUnit, DatasetName, FILE_ID )
 
     ! --- Write Cell Center Coordinates ---
 
     DatasetName = TRIM( GroupName ) // '/X1_C'
 
     CALL WriteDataset1DHDF &
-           ( MeshX(1) % Center(1:nX(1)), DatasetName, FILE_ID )
+           ( MeshX(1) % Center(1:nX(1)) / U % LengthUnit, &
+             DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X2_C'
 
     CALL WriteDataset1DHDF &
-           ( MeshX(2) % Center(1:nX(2)), DatasetName, FILE_ID )
+           ( MeshX(2) % Center(1:nX(2)) / U % LengthUnit, &
+             DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X3_C'
 
     CALL WriteDataset1DHDF &
-           ( MeshX(3) % Center(1:nX(3)), DatasetName, FILE_ID )
+           ( MeshX(3) % Center(1:nX(3)) / U % LengthUnit, &
+             DatasetName, FILE_ID )
+
+    END ASSOCIATE ! U
 
     ! --- Write Fluid Variables ---
 
@@ -291,7 +305,8 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
-                   nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
+                   nDOFX, NodeNumberTableX ) / unitsCF(iFF), &
+               DatasetName, FILE_ID )
 
     END DO
 
@@ -308,7 +323,8 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uPF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
-                   nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
+                   nDOFX, NodeNumberTableX ) / unitsPF(iFF), &
+               DatasetName, FILE_ID )
 
     END DO
 
@@ -325,7 +341,8 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
-                   nDOFX, NodeNumberTableX ), DatasetName, FILE_ID )
+                   nDOFX, NodeNumberTableX ) / unitsAF(iFF), &
+               DatasetName, FILE_ID )
 
     END DO
 
@@ -372,12 +389,14 @@ CONTAINS
 
     CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
 
+    ASSOCIATE( U => UnitsDisplay )
+
     ! --- Write Time ---
 
     DatasetName = '/Time'
 
     CALL WriteDataset1DHDF &
-           ( [ Time ], DatasetName, FILE_ID )
+           ( [ Time ] / U % TimeUnit, DatasetName, FILE_ID )
 
     ! --- Write Spatial Grid ---
 
@@ -388,20 +407,20 @@ CONTAINS
     DatasetName = TRIM( GroupName ) // '/X1'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)), &
-             DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)) &
+               / U % LengthUnit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X2'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)), &
-             DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)) &
+               / U % LengthUnit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X3'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)), &
-             DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
+               / U % LengthUnit, DatasetName, FILE_ID )
 
     ! --- Write Energy Grid ---
 
@@ -412,7 +431,10 @@ CONTAINS
     DatasetName = TRIM( GroupName ) // '/E'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshE,nE,nNodesE), DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshE,nE,nNodesE) &
+               / U % EnergyUnit, DatasetName, FILE_ID )
+
+    END ASSOCIATE ! U
 
     ! --- Write Radiation Variables ---
 
@@ -519,12 +541,14 @@ CONTAINS
 
     CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
 
+    ASSOCIATE( U => UnitsDisplay )
+
     ! --- Write Time ---
 
     DatasetName = '/Time'
 
     CALL WriteDataset1DHDF &
-           ( [ Time ], DatasetName, FILE_ID )
+           ( [ Time ] / U % TimeUnit, DatasetName, FILE_ID )
 
     ! --- Write Spatial Grid ---
 
@@ -535,20 +559,20 @@ CONTAINS
     DatasetName = TRIM( GroupName ) // '/X1'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)), &
-             DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)) &
+               / U % LengthUnit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X2'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)), &
-             DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)) &
+               / U % LengthUnit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X3'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)), &
-             DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
+               / U % LengthUnit, DatasetName, FILE_ID )
 
     ! --- Write Energy Grid ---
 
@@ -559,9 +583,12 @@ CONTAINS
     DatasetName = TRIM( GroupName ) // '/E'
 
     CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshE,nE,nNodesE), DatasetName, FILE_ID )
+           ( NodeCoordinates(MeshE,nE,nNodesE) &
+               / U % EnergyUnit, DatasetName, FILE_ID )
 
-    ! --- Write Radiation Variables ---
+    END ASSOCIATE ! U
+
+    ! --- Write Neutrino Opacities ---
 
     GroupName = 'Opacities'
 
@@ -582,7 +609,7 @@ CONTAINS
       CALL WriteDataset4DHDF &
              ( Opacity4D &
                  ( f_EQ(:,iS,:), nE, nNodesE, nDOFE, nX, nNodesX, nDOFX, &
-                   NodeNumberTableX ), DatasetName, FILE_ID )
+                   NodeNumberTableX ) / unitsEQ, DatasetName, FILE_ID )
 
       ! --- Electron Capture Opacities ---
 
@@ -591,7 +618,7 @@ CONTAINS
       CALL WriteDataset4DHDF &
              ( Opacity4D &
                  ( opEC(:,iS,:), nE, nNodesE, nDOFE, nX, nNodesX, nDOFX, &
-                   NodeNumberTableX ), DatasetName, FILE_ID )
+                   NodeNumberTableX ) / unitsEC , DatasetName, FILE_ID )
 
       ! --- Elastic Scattering Opacities ---
 
@@ -600,7 +627,7 @@ CONTAINS
       CALL WriteDataset4DHDF &
              ( Opacity4D &
                  ( opES(:,iS,:), nE, nNodesE, nDOFE, nX, nNodesX, nDOFX, &
-                   NodeNumberTableX ), DatasetName, FILE_ID )
+                   NodeNumberTableX ) / unitsES, DatasetName, FILE_ID )
 
     END DO
 
