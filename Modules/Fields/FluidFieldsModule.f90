@@ -28,7 +28,10 @@ MODULE FluidFieldsModule
                 'Conserved Energy Density        ', &
                 'Conserved Electron Density      ' ]
 
-  REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: uCF, rhsCF
+  REAL(DP), DIMENSION(nCF), PUBLIC :: unitsCF
+
+  REAL(DP), ALLOCATABLE, PUBLIC :: uCF  (:,:,:,:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: rhsCF(:,:,:,:,:)
 
   ! --- Primitive Fluid Fields ---
 
@@ -48,7 +51,9 @@ MODULE FluidFieldsModule
                 'Internal Energy Density         ', &
                 'Comoving Electron Density       ' ]
 
-  REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: uPF
+  REAL(DP), DIMENSION(nPF), PUBLIC :: unitsPF
+
+  REAL(DP), ALLOCATABLE, PUBLIC :: uPF(:,:,:,:,:)
 
   ! --- Auxiliary Fluid Fields ---
 
@@ -84,7 +89,9 @@ MODULE FluidFieldsModule
                 'Ratio of Specific Heats (Gamma) ', &
                 'Sound Speed                     ' ]
 
-  REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: uAF
+  REAL(DP), DIMENSION(nAF), PUBLIC :: unitsAF
+
+  REAL(DP), ALLOCATABLE, PUBLIC :: uAF(:,:,:,:,:)
 
   ! --- Diagnostic Variables ---
 
@@ -113,6 +120,8 @@ CONTAINS
 
     ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
     Shock = 0.0_DP
+
+    CALL SetUnitsFluidFields
 
   END SUBROUTINE CreateFluidFields
 
@@ -196,6 +205,67 @@ CONTAINS
     DEALLOCATE( Shock )
 
   END SUBROUTINE DestroyFluidFields
+
+
+  SUBROUTINE SetUnitsFluidFields
+
+    USE UnitsModule, ONLY: &
+      UnitsActive, &
+      Gram, &
+      Centimeter, &
+      Kilometer, &
+      Second, &
+      Kelvin, &
+      MeV, &
+      Erg, &
+      BoltzmannConstant
+
+    IF( UnitsActive )THEN
+
+      ! --- Conserved ---
+
+      unitsCF(iCF_D)  = Gram / Centimeter**3
+      unitsCF(iCF_S1) = Gram / Centimeter**2 / Second
+      unitsCF(iCF_S2) = Gram / Centimeter**2 / Second
+      unitsCF(iCF_S3) = Gram / Centimeter**2 / Second
+      unitsCF(iCF_E)  = Erg / Centimeter**3
+      unitsCF(iCF_Ne) = 1.0_DP / Centimeter**3
+
+      ! --- Primitive ---
+
+      unitsPF(iPF_D)  = Gram / Centimeter**3
+      unitsPF(iPF_V1) = Kilometer / Second
+      unitsPF(iPF_V1) = Kilometer / Second
+      unitsPF(iPF_V1) = Kilometer / Second
+      unitsPF(iPF_E)  = Erg / Centimeter**3
+      unitsPF(iPF_Ne) = 1.0_DP / Centimeter**3
+
+      ! --- Auxiliary ---
+
+      unitsAF(iAF_P)  = Erg / Centimeter**3
+      unitsAF(iAF_T)  = Kelvin
+      unitsAF(iAF_Ye) = 1.0_DP
+      unitsAF(iAF_S)  = BoltzmannConstant
+      unitsAF(iAF_E)  = Erg / Gram
+      unitsAF(iAF_Me) = MeV
+      unitsAF(iAF_Mp) = MeV
+      unitsAF(iAF_Mn) = MeV
+      unitsAF(iAF_Xp) = 1.0_DP
+      unitsAF(iAF_Xn) = 1.0_DP
+      unitsAF(iAF_Xa) = 1.0_DP
+      unitsAF(iAF_Xh) = 1.0_DP
+      unitsAF(iAF_Gm) = 1.0_DP
+      unitsAF(iAF_Cs) = Kilometer / Second
+
+    ELSE
+
+      unitsCF = 1.0_DP
+      unitsPF = 1.0_DP
+      unitsAF = 1.0_DP
+
+    END IF
+
+  END SUBROUTINE SetUnitsFluidFields
 
 
 END MODULE FluidFieldsModule
