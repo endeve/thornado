@@ -13,6 +13,8 @@ MODULE UnitsModule
   IMPLICIT NONE
   PRIVATE
 
+  LOGICAL, PUBLIC :: UnitsActive = .FALSE.
+
   REAL(DP), PUBLIC, PARAMETER :: &
     SpeedOfLight          = 1.0_DP, &
     GravitationalConstant = 1.0_DP, &
@@ -130,6 +132,8 @@ CONTAINS
 
 
   SUBROUTINE ActivateUnitsDisplay
+
+    UnitsActive = .TRUE.
 
     UnitsDisplay % Active = .TRUE.
 
