@@ -2,6 +2,7 @@
 \label{sec:algebraicClosure}
 
 Algebraic moment closures for the two-moment model are computationally efficient as they provide the Eddington factor in Eq.~\eqref{eq:eddingtonTensor} in closed form as a function of the density $\cJ$ and the flux factor $h=|\vect{\cH}|/\cJ$.  
+For this reason they are widely used in applications where radiation transport plays an important role --- including simulation of neutrino transport in core-collapse supernovae \cite{roberts_etal_2016} and compact binary mergers \cite{foucart_etal_2015}.  
 The family of algebraic closures we consider in this paper can be written in the form \cite{cernohorskyBludman_1994}
 \begin{equation}
   \chi(\cJ,h)=\f{1}{3}+\f{2\,(1-\cJ)\,(1-2\cJ)}{3}\,\Theta\Big(\f{h}{1-\cJ}\Big),
@@ -17,32 +18,48 @@ We note in passing that in the low occupancy limit ($\cJ\ll1$), the Eddington fa
   \label{eq:eddingtonFactorLow}
 \end{equation}
 
-\subsection{Maximum Entropy Closure}
+\subsection{Maximum Entropy (ME) Closure}
 
-The basic principle behind the maximum entropy closure is that one can approximate the real fermion distribution with a distribution which have the Fermi-Dirac distribution form 
+For the two-moment model, the ME closure constructs the least biased distribution function based on the limited information available \cite{cernohorskyBludman_1994} --- namely $\cJ$ and $\vect{\cH}$.  
+The ME distribution function $f_{\mbox{\tiny ME}}(\omega)$ is found by maximizing the entropy functional for particles obeying Fermi-Dirac statistics
 \begin{equation}
-f(\omega)=\f{1}{e^{a + b\omega}+1}, 
+  S[f_{\mbox{\tiny ME}}] 
+  = \int_{\bbS^{2}}\big[\,(1-f_{\mbox{\tiny ME}})\log(1-f_{\mbox{\tiny ME}}) + f_{\mbox{\tiny ME}}\log f_{\mbox{\tiny ME}}\,]\,d\omega,
+  \label{eq:entropyFunctional}
 \end{equation} 
-meanwhile maximize the entropy function
+subject to the constraints
 \begin{equation}
-S[f(\omega)] = (1-f)\log(1-f) + f\log f.
-\end{equation} 
-Given moments $\cJ$ and $\vect{\cH}$, a distribution satisfying above requirements can be found. 
-Therefore, the stress tensor $\vect{\cK}$.
+  \f{1}{4\pi}\int_{\bbS^{2}}f_{\mbox{\tiny ME}}(\omega)\,d\omega=\cJ
+  \quad\text{and}\quad
+  \f{1}{4\pi}\int_{\bbS^{2}}f_{\mbox{\tiny ME}}(\omega)\,\vect{\ell}(\omega)\,d\omega=\vect{\cH}.  
+  \label{eq:closureConstraints}
+\end{equation}
+From the variation of the entropy functional in Eq.~\eqref{eq:entropyFunctional} with respect to $f_{\mbox{\tiny ME}}$, and introducing Lagrange multipliers to enforce the constraints in Eq.~\eqref{eq:closureConstraints}, the ME distribution takes the general form
+\begin{equation}
+  f_{\mbox{\tiny ME}}(\omega;a,\vect{b})=\f{1}{e^{a + \vect{b}\cdot\vect{\ell}}+1}, 
+  \label{eq:fME}
+\end{equation}
+which can be further simplified by a change of coordinates so that $a + \vect{b}\cdot\vect{\ell}=a + b\,\mu$ ($b=|\vect{b}|$ and $\mu\in[-1,1]$).  
+The Lagrange multipliers are then implicit functions of $\cJ$ and $|\vect{\cH}|$.  
+The ME distribution function satisfies $0 \le f_{\mbox{\tiny ME}} \le 1$, but $a$ and $b$ are unconstrained.  
 
-One ME closure given by Chernohorsky \& Bludman \cite{cernohorskyBludman_1994} is
+Chernohorsky \& Bludman \cite{cernohorskyBludman_1994} postulate (see however \cite{lareckiBanach_2011}) that, as a function of the so-called flux saturation $h/(1-\cJ)$, the closure function $\Theta$ is independent of $\cJ$ and can be written explicitly in terms of the inverse Langevin function.  
+They also provide a polynomial fit (accurate to $2\%$) given by
 \begin{equation}
   \Theta_{\mbox{\tiny ME}}^{\mbox{\tiny CB}}(x)
   =x^{2}\,\big(\,3-x+3\,x^{2}\,\big).
+  \label{eq:closureMECB}
 \end{equation}
-
-Another ME closure given by Banach \& Larecki \cite{banachLarecki_2017b} is
+More recently, Larecki \& Banach \cite{lareckiBanach_2011} have shown that the explicit expression given in \cite{cernohorskyBludman_1994} is not exact, and provide another approximate expression
 \begin{equation}
   \Theta_{\mbox{\tiny ME}}^{\mbox{\tiny BL}}(x)
-  =\f{1}{8}\,\big(\,9\,x^{2}-5+\sqrt{33\,x^{4}-42\,x^{2}+25}\,\big).
+  =\f{1}{8}\,\big(\,9\,x^{2}-5+\sqrt{33\,x^{4}-42\,x^{2}+25}\,\big),
+  \label{eq:closureMEBL}
 \end{equation}
+which is accurate to within $0.35\%$.  
 
-\subsection{Kershaw Closure}
+\subsection{Kershaw (K) Closure}
+
 The basic principle behind Kershaw closure is derived from the fact that $\cR$ is convex.
 Due to the convexity, one can write any element in $\cR$ as a convex combination of the elements on the realization boundary. 
 Therefore, Kershaw closure satisfies realizability inherently.
