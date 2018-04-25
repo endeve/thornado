@@ -56,7 +56,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: xL(3), xR(3), Gamma
   REAL(DP)      :: BetaTVD, BetaTVB
 
-  ProgramName = 'Advection'
+  ProgramName = 'RiemannProblem'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -108,20 +108,20 @@ PROGRAM ApplicationDriver
 
       Gamma = 5.0_DP / 3.0_DP
 
-      nX = [ 128, 128, 1 ]
+      nX = [ 256, 256, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
       bcX = [ 1, 1, 0 ]
 
-      nNodes = 2
+      nNodes = 1
 
       BetaTVD = 1.80_DP
-      BetaTVB = 1.0d+00
+      BetaTVB = 0.0d+00
 
       iCycleD = 10
       t_end   = 3.500_DP
-      dt_wrt  = 0.035_DP
+      dt_wrt  = 0.050_DP
 
   END SELECT
 

@@ -26,6 +26,8 @@ MODULE SlopeLimiterModule_Euler
     Shock
   USE BoundaryConditionsModule_Beta, ONLY: &
     ApplyBoundaryConditions_Fluid
+  USE CharacteristicDecompositionModule, ONLY: &
+    ComputeCharacteristicDecomposition
 
   IMPLICIT NONE
   PRIVATE
@@ -145,6 +147,7 @@ CONTAINS
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
     REAL(DP) :: U_K(nCF,0:1)
+    REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
 
     IF( nDOFX == 1 ) RETURN
 
@@ -205,6 +208,11 @@ CONTAINS
             END IF
 
           END DO
+
+          ! --- Compute Eigenvectors ---
+
+          CALL ComputeCharacteristicDecomposition &
+                 ( 1, U_M(:,0,1), R_X1, invR_X1 )
 
           ! --- Compute Limited Slopes ---
 

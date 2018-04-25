@@ -5,6 +5,7 @@ all: ApplicationDriver
 ApplicationDriver: \
 	$(thornado) \
 	EulerEquationsUtilitiesModule_Beta.o \
+	CharacteristicDecompositionModule.o \
 	InitializationModule.o \
 	BoundaryConditionsModule_Beta.o \
 	SlopeLimiterModule_Euler.o \
@@ -15,6 +16,7 @@ ApplicationDriver: \
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
 	EulerEquationsUtilitiesModule_Beta.o \
+	CharacteristicDecompositionModule.o \
 	InitializationModule.o \
 	BoundaryConditionsModule_Beta.o \
 	SlopeLimiterModule_Euler.o \
