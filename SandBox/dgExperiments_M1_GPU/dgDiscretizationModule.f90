@@ -691,23 +691,17 @@ CONTAINS
       ! Added to accomodate ranges and make iK dependent on iZ
       size_range = iZ_E0 - iZ_B0 + Ones_size
 
-      !$OMP PARALLEL DO ORDERED DEFAULT(SHARED) PRIVATE(iZ4, iZ3, iZ2, iZ1, dZ, &
+      !$OMP PARALLEL DO COLLAPSE(4) PRIVATE(iZ4, iZ3, iZ2, iZ1, dZ, &
       !$OMP& FF_q, EF_q, Tau, Tau_X1, P_q) FIRSTPRIVATE(iK, iF)
       DO iZ4 = iZ_B0(4), iZ_E0(4)
-
-        dZ(4) = MeshX(3) % Width(iZ4)
-
         DO iZ3 = iZ_B0(3), iZ_E0(3)
-
-          dZ(3) = MeshX(2) % Width(iZ3)
-
           DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
-
-            dZ(2) = MeshX(1) % Width(iZ2)
-
             DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-              dZ(1) = MeshE % Width(iZ1)
+              dZ(1) = MeshE    % Width(iZ1)
+              dZ(2) = MeshX(1) % Width(iZ2)
+              dZ(3) = MeshX(2) % Width(iZ3)
+              dZ(4) = MeshX(3) % Width(iZ4)
 
               Tau(1:nDOF) &
                 = OuterProduct1D3D &
@@ -801,12 +795,8 @@ CONTAINS
 
               !PRINT *, "iF: ", iF
 
-              !$OMP ORDERED 
-
               U_P(:,iF,1:nCR) = U(:,iZ1,iZ2-1,iZ3,iZ4,1:nCR,iS)
               U_K(:,iF,1:nCR) = U(:,iZ1,iZ2,  iZ3,iZ4,1:nCR,iS)
-
-              !$OMP END ORDERED
 
               ! Timing
               copy_prev_t = copy_prev_t + MPI_Wtime() - start_t
@@ -827,7 +817,7 @@ CONTAINS
           END DO
         END DO
       END DO
-      !$OMP END PARALLEL DO  
+      !$OMP END PARALLEL DO
 
       wTime = MPI_WTIME( ) - wTime
 
