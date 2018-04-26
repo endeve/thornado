@@ -1,9 +1,21 @@
 MODULE GravitySolutionModule_Newtonian_PointMass_Beta
 
   USE KindModule, ONLY: &
-    DP
+    DP, Zero, One
+  USE UnitsModule, ONLY: &
+    GravitationalConstant
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX
+  USE ReferenceElementModuleX, ONLY: &
+    NodesLX_q
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    LX_L2G
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
-    CoordinateSystem
+    CoordinateSystem, &
+    iGF_Phi_N, &
+    nGF
 
   IMPLICIT NONE
   PRIVATE
@@ -74,6 +86,37 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
       Mass
+    
+    INTEGER  :: iX1, iX2, iX3, iNodeX
+    REAL(DP) :: XC, dX, xL_q, xG_q
+    REAL(DP) :: G_L(nDOFX,nGF)
+
+    DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+        DO iX1 = iX_B1(1), iX_E1(1)
+
+          XC = MeshX(1) % Center(iX1)
+          dX = MeshX(1) % Width (iX1)
+
+          DO iNodeX = 1, nDOFX
+
+            xL_q = NodesLX_q(1,iNodeX)
+         
+            xG_q = XC + dX * xL_q
+
+            ! --- Compute Newtonian Potential 
+               
+            G_L(iNodeX,iGF_Phi_N) = - GravitationalConstant * Mass / xG_q
+
+          END DO
+          
+          CALL DGEMV &
+                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+                   G_L(:,iGF_Phi_N), 1, Zero, G(:,iX1,iX2,iX3,iGF_Phi_N), 1 )
+          
+          END DO
+        END DO
+      END DO
 
   END SUBROUTINE ComputeGravitationalPotential_SPHERICAL
 
