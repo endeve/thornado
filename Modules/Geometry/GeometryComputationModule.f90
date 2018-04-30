@@ -154,9 +154,11 @@ CONTAINS
             G_L(iNodeX,iGF_h_1) &
               = G_L(iNodeX,iGF_Psi)**2
             G_L(iNodeX,iGF_h_2) &
-              = G_L(iNodeX,iGF_Psi)**2 * ABS( xG_q(1) )
+              = G_L(iNodeX,iGF_Psi)**2 &
+                  * MAX( ABS( xG_q(1) ), SqrtTiny )
             G_L(iNodeX,iGF_h_3) &
-              = G_L(iNodeX,iGF_Psi)**2 * ABS( xG_q(1) * SIN( xG_q(2) ) )
+              = G_L(iNodeX,iGF_Psi)**2 &
+                  * MAX( ABS( xG_q(1) * SIN( xG_q(2) ) ), SqrtTiny )
 
           END DO
 
