@@ -101,43 +101,37 @@ CONTAINS
     
     CASE ( 11 ) ! Custom BCs for Accretion Problem
 
-      R_0 = MeshX(1) % Center(1) 
+      R_0 = MeshX(1) % Center(1) &
+              + MeshX(1) % Width(1) &
+                  * MeshX(1) % Nodes(1)
 
       DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
-          
-          D_0 = DOT_PRODUCT( WeightsX_q(:), U(:,1,iX2,iX3,iCF_D) )
-          E_0 = DOT_PRODUCT( WeightsX_q(:), U(:,1,iX2,iX3,iCF_E) )
-          
+
+          D_0 = U(1,1,iX2,iX3,iCF_D)
+          E_0 = U(1,1,iX2,iX3,iCF_E)
+
           DO iX1 = 1, swX(1)
 
             ! --- Inner Boundary ---            
-        
+
             DO iNode = 1, nDOFX
              
-              iNodeX1 = NodeNumberTableX(1, iNode)
+              iNodeX1 = NodeNumberTableX(1,iNode)
 
-              R_q = NodeCoordinate( MeshX(1), iX1, iNodeX1 )            
+              R_q = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNodeX1 )            
 
               U(iNode,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
-                = D_0 * ( R_0 / R_q ) ** 3 
-       
-              U(iNode,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
-                = 0.0_DP
-
-              U(iNode,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
-                = 0.0_DP
-            
-              U(iNode,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
-                = 0.0_DP
+                = D_0 * ( R_0 / R_q ) ** 3
  
               U(iNode,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
-                = E_0 * ( R_0 / R_q ) ** 4 
+                = E_0 * ( R_0 / R_q ) ** 4
 
             END DO
-         END DO
-       END DO
-     END DO 
+
+          END DO
+        END DO
+      END DO 
 
     CASE DEFAULT
 
