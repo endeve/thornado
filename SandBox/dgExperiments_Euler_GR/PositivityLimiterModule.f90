@@ -117,7 +117,7 @@ CONTAINS
     LOGICAL  :: NegativeStates(2)
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
     REAL(DP) :: Min_K, Theta_1, Theta_2, Theta_P
-    REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), G_K(nGF), q(nPT)
+    REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), G_K(nGF), q(nPT), q1(nDOFX)
 
     IF( nDOFX == 1 ) RETURN
     
@@ -147,13 +147,13 @@ CONTAINS
             ! --- Cell Average ---
 
             U_K(iCF_D) &
-              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) )
-!              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
-!                  / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+!              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) )
+              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
+                  / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
 
             Theta_1 &
               = MIN( One, ABS( (Min_1-U_K(iCF_D) ) / (Min_K-U_K(iCF_D)) ) )
-            Theta_1 = Zero
+!            Theta_1 = Zero
 
             ! --- Limit Density Towards Cell Average ---
 
@@ -169,7 +169,7 @@ CONTAINS
 
           END IF
 
-          ! --- Ensure positive q(u) (Wu & Tang (2015) Eq.(2.5))
+          ! --- Ensure positive q(u) (Wu & Tang (2015) Eq.(2.5)) ---
 
           CALL Computeq( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), q(1:nPT) )
 
@@ -180,33 +180,35 @@ CONTAINS
             DO iCF = 1, nCF
 
               U_K(iCF) &
-                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) )
-!                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
-!                    / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
+                    / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+!                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) )
 
             END DO
 
-!!$            DO iGF = 1, nGF
-!!$
-!!$              G_K(iGF) &
-!!$                = DOT_PRODUCT( WeightsX_q, G_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
-!!$                                / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
-!!$            END DO
-!!$
-!!$            Theta_2 = One
-!!$            DO iP = 1, nPT
-!!$
-!!$               IF( q(iP) < Min_2 ) THEN
-!!$
-!!$                  CALL SolveTheta_Bisection &
-!!$                         ( U_PP(iP,1:nCF), U_K(1:nCF), &
-!!$                             G_PP(iP,1:nGF), G_K(1:nGF), Min_2, Theta_P )
-!!$
-!!$                  Theta_2 = MIN( Theta_2, Theta_P )
-!!$
-!!$               END IF
-!!$
-!!$            END DO
+            DO iGF = 1, nGF
+
+              G_K(iGF) &
+                = DOT_PRODUCT( WeightsX_q, G_q(:,iGF) * G_q(:,iGF_SqrtGm) ) &
+                    / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+!                = DOT_PRODUCT( WeightsX_q, G_q(:,iGF)
+
+            END DO
+
+            Theta_2 = One
+            DO iP = 1, nPT
+
+               IF( q(iP) < Min_2 ) THEN
+
+                  CALL SolveTheta_Bisection &
+                         ( U_PP(iP,1:nCF), U_K(1:nCF), &
+                             G_PP(iP,1:nGF), G_K(1:nGF), Min_2, Theta_P )
+
+                  Theta_2 = MIN( Theta_2, Theta_P )
+
+               END IF
+
+            END DO
 
             Theta_2 = Zero
 
@@ -403,7 +405,9 @@ CONTAINS
     REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, Gm11, Gm22, Gm33
     REAL(DP)             :: SSq
 
-    SSq = S1**2 / Gm11 + S2**2 / Gm22 + S3**2 / Gm33
+    SSq = S1**2 / Gm11 &
+          + S2**2 / MAX( Gm22, SqrtTiny ) & ! possibly remove this after updating
+          + S3**2 / MAX( ABS( Gm33 ), SqrtTiny )
 
     qFun = tau + D - SQRT( D**2 + SSq )
 

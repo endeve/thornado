@@ -271,8 +271,7 @@ CONTAINS
     ! --- Schwarzschild Metric in Isotropic Coordinates ---
 
     LapseFunction &
-      = ( One - Half * M / MAX( R, SqrtTiny ) ) &
-        / ( One + Half * M / MAX( R, SqrtTiny ) )
+      = ( R - Half * M ) / ( R + Half * M )
 
     RETURN
   END FUNCTION LapseFunction

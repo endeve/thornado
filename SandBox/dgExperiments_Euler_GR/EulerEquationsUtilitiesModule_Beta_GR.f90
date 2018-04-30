@@ -89,16 +89,23 @@ CONTAINS
 
     INTEGER :: i, nIter, nNodes
 
-    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew
+    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q(SIZE(CF_D))
 
     REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-10, TolFunP = 1.0d-10
+    REAL(DP), PARAMETER :: TolP = 1.0d-12, TolFunP = 1.0d-12
+
+    q = CF_E(:) + CF_D(:) - SQRT( CF_D(:)**2 &
+                                + CF_S1(:)**2 / GF_Gm_dd_11(:)  &
+                                + CF_S2(:)**2 / GF_Gm_dd_22(:)  &
+                                + CF_S3(:)**2 / GF_Gm_dd_33(:) )
 
     nNodes = SIZE( CF_D )
 
     ! Loop through all the nodes
     DO i = 1, nNodes
 
+      IF( q(i) .LT. Zero ) WRITE(*,'(A6,ES18.10E3)') 'q(i): ', q(i)
+    
       Converged = .FALSE.
       nIter     = 0
 
@@ -108,20 +115,22 @@ CONTAINS
 
       ! --- Find Pressure with Newton's Method ---
 
-      ! --- Approximation for pressure assuming h^2~=1
+      ! --- Approximation for pressure assuming h^2~=1 ---
       Pold = SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i)
 
       DO WHILE ( .NOT. Converged )
 
         nIter = nIter + 1
 
+        ! If nIter == 1, save FunP as FunP0
         CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
 
         Pnew = Pold - FunP / JacP
 
         ! --- Check if Newton's method has converged ---
-        IF( ( ABS( Pnew - Pold ) / ( 1.0_DP + ABS( Pnew ) ) ) .LE. TolP ) THEN
-          CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP )
+        IF( ( ABS( Pnew - Pold ) / ( 1.0_DP + ABS( Pnew ) ) ) .LT. TolP ) THEN
+           CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP )
+           ! Maybe compare FunP to FunP0
           IF( ABS( FunP ) .LT. TolFunP ) THEN
             Converged = .TRUE.
           ELSE
@@ -130,6 +139,7 @@ CONTAINS
                          ABS( Pnew / Pold - 1.0_DP )
             WRITE(*,*) 'Pold:                   ', Pold
             WRITE(*,*) 'Pnew:                   ', Pnew
+            WRITE(*,*) 'FunP:                   ', FunP
             STOP
           END IF
         END IF
@@ -141,7 +151,7 @@ CONTAINS
                       ABS( Pnew / Pold - 1.0_DP )
           WRITE(*,*) 'Pold:                   ', Pold
           WRITE(*,*) 'Pnew:                   ', Pnew
-          STOP
+          IF( nIter == 103 ) STOP
         END IF
 
         Pold = Pnew
@@ -155,13 +165,8 @@ CONTAINS
       W = 1.0_DP / SQRT( 1.0_DP - vSq )
 
       h = ( CF_E(i) + AF_P(i) + CF_D(i) ) / ( W * CF_D(i) )
-      WRITE(*,'(A3,ES18.10E3)') 'h:' , h
-      WRITE(*,'(A3,ES18.10E3)') 'q:' , &
-                                  CF_E(i) + CF_D(i) - SQRT( CF_D(i)**2 &
-                                    + CF_S1(i)**2 / GF_Gm_dd_11(i)     &
-                                    + CF_S2(i)**2 / GF_Gm_dd_22(i)     &
-                                    + CF_S3(i)**2 / GF_Gm_dd_33(i) )
-!      h = MAX( h , 1.0_DP )
+
+      IF( h .LT. 1.0_DP ) WRITE(*,'(A6,ES18.10E3)') 'h:    ', h
 
       ! --- Recover Primitive Variables ---
 

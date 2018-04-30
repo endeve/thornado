@@ -46,6 +46,8 @@ MODULE dgDiscretizationModule_Euler_GR
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromSpecificInternalEnergy, &
     ComputeSoundSpeedFromPrimitive_GR
+  USE UnitsModule, ONLY: &
+    SolarMass
 
   IMPLICIT NONE
   PRIVATE
@@ -94,7 +96,7 @@ CONTAINS
     CALL ApplyPositivityLimiter &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
-    IF( DEBUG ) WRITE(*,*) 'CALL ApplyBoundaryConditions_Fluid 2'
+    IF( DEBUG ) WRITE(*,*) 'CALL ApplyBoundaryConditions_Fluid'
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
@@ -184,7 +186,7 @@ CONTAINS
 
         DO iX1 = iX_B0(1), iX_E0(1) + 1
 
-          WRITE(*,*) 'iX1,iX2,iX3' , iX1,iX2,iX3
+!          WRITE(*,*) 'iX1,iX2,iX3' , iX1,iX2,iX3
            
           DO iCF = 1, nCF
 
@@ -209,8 +211,8 @@ CONTAINS
 
           IF( iX1 < iX_E0(1) + 1 )THEN
 
-            IF( DEBUG ) WRITE(*,*) 'Volume Term'
-            IF( DEBUG ) WRITE(*,*) '  CALL ComputePrimitive_GR'
+            IF( DEBUG ) WRITE(*,*) '  Volume Term'
+            IF( DEBUG ) WRITE(*,*) '    CALL ComputePrimitive_GR'
             CALL ComputePrimitive_GR &
                ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                  uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
@@ -264,7 +266,7 @@ CONTAINS
           ! --- Divergence Term ---
           !------------------------
 
-          IF( DEBUG ) WRITE(*,*) 'Divergence Term'
+          IF( DEBUG ) WRITE(*,*) '  Divergence Term'
           ! --- Interpolate Fluid Fields ---
 
           CALL Timer_Start( dT_INT_F_GR )
@@ -345,8 +347,8 @@ CONTAINS
 
           ! --- Left State Primitive, etc. ---
 
-          IF( DEBUG ) WRITE(*,*) '  Left State Primitive'
-          IF( DEBUG ) WRITE(*,*) '    CALL ComputePrimitive_GR'
+          IF( DEBUG ) WRITE(*,*) '    Left State Primitive'
+          IF( DEBUG ) WRITE(*,*) '      CALL ComputePrimitive_GR'
           CALL ComputePrimitive_GR &
                  ( uCF_L(:,iCF_D ), uCF_L(:,iCF_S1), uCF_L(:,iCF_S2), &
                    uCF_L(:,iCF_S3), uCF_L(:,iCF_E ), uCF_L(:,iCF_Ne), &
@@ -357,8 +359,8 @@ CONTAINS
                    G_F(:,iGF_Gm_dd_22),                               &
                    G_F(:,iGF_Gm_dd_33) )
 
-          IF( DEBUG ) WRITE(*,*) '    CALL ComputeSoundSpeedFromPrimitive_GR'
-          IF( DEBUG ) WRITE(*,*) '      PF_E:', uPF_L(:,iPF_E)
+          IF( DEBUG ) WRITE(*,*) '      CALL ComputeSoundSpeedFromPrimitive_GR'
+          IF( DEBUG ) WRITE(*,*) '        PF_E:', uPF_L(:,iPF_E)
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L(:) )
 
@@ -397,8 +399,8 @@ CONTAINS
 
           ! --- Right State Primitive, etc. ---
 
-          IF( DEBUG ) WRITE(*,*) '  Right State Primitive'
-          IF( DEBUG ) WRITE(*,*) '    CALL ComputePrimitive'
+          IF( DEBUG ) WRITE(*,*) '    Right State Primitive'
+          IF( DEBUG ) WRITE(*,*) '      CALL ComputePrimitive'
           CALL ComputePrimitive_GR &
                ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
                  uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
@@ -409,7 +411,7 @@ CONTAINS
                  G_F(:,iGF_Gm_dd_22),                               &
                  G_F(:,iGF_Gm_dd_33) )
 
-          IF( DEBUG ) WRITE(*,*) '    CALL ComputeSoundSpeedFromPrimitive_GR'
+          IF( DEBUG ) WRITE(*,*) '      CALL ComputeSoundSpeedFromPrimitive_GR'
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R(:) )
 

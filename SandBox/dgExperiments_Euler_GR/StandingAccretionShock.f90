@@ -1,7 +1,7 @@
 PROGRAM StandingAccretionShock
 
   USE KindModule, ONLY: &
-    DP, Pi, TwoPi, Two, SqrtTiny
+    DP, Pi, TwoPi, Two, SqrtTiny, Zero
   USE UnitsModule, ONLY: &
     Meter, Second, SpeedOfLight, Millisecond
   USE ProgramHeaderModule, ONLY: &
@@ -55,7 +55,7 @@ PROGRAM StandingAccretionShock
   REAL(DP)              :: LT
 
   nNodes = 2
-  K      = 64  
+  K      = 64
   IF      ( nNodes == 1 ) THEN
     LT = 0.001_DP
   ELSE IF ( nNodes == 2 ) THEN
@@ -127,11 +127,11 @@ PROGRAM StandingAccretionShock
 
   CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = M_PNS )
-
   CALL InitializeFields_StandingAccretionShock
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+  STOP
 
   CALL InitializeFluid_SSPRK( nStages = 3 )
 
@@ -142,7 +142,7 @@ PROGRAM StandingAccretionShock
            UseTroubledCellIndicator_Option = .TRUE. )
 
   CALL InitializePositivityLimiter &
-         ( Min_1_Option = SqrtTiny , Min_2_Option = SqrtTiny, &
+         ( Min_1_Option = Zero , Min_2_Option = Zero, &
            UsePositivityLimiter_Option = .TRUE. )
 
   iCycle = 0

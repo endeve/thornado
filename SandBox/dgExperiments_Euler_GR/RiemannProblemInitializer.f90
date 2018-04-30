@@ -281,7 +281,55 @@ CONTAINS
 
         bcX = [ 2, 0, 0 ]        
 
-      CASE DEFAULT
+      CASE( 11 )
+
+        WRITE(*,*) 'Acoustics problem in spherical symmetry'
+
+        ! --- Fluid variables here are dummies, they are set in
+        !     InitializationModule.f90 ---
+        D_L = 999.0_DP
+        V_L = [ 999.0_DP, 999.0_DP, 999.0_DP ]
+        P_L = 999.0_DP
+
+        D_R = 999.0_DP
+        V_R = [ 999.0_DP, 999.0_DP, 999.0_DP ]
+        P_R = 999.0_DP
+
+        t     = 0.0d+0
+        t_end = 0.5d+0
+        CFL   = 0.5d+0
+        xL    = 0.0d0
+        xR    = 1.0d0
+        x_D   = 0.5d+0
+        K     = 64
+        Gamma = 4.0_DP / 3.0_DP
+
+        bcX = [ 2, 0, 0 ]
+
+      CASE( 12 )
+
+        WRITE(*,*) 'Sods Shock Tube, Spherical'
+
+        D_L = 1.0_DP
+        V_L = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        P_L = 1.0_DP
+
+        D_R = 0.125_DP
+        V_R = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        P_R = 0.1_DP
+
+        t     = 0.0_DP
+        t_end = 0.5_DP
+        CFL   = 0.1_DP
+        xL    = 0.0_DP
+        xR    = 2.0_DP
+        x_D   = 1.0_DP
+        K     = 128
+        Gamma = 5.0_DP / 3.0_DP
+
+        bcX = [ 2, 0, 0 ]
+
+     CASE DEFAULT
 
         WRITE(*,*) 'Invalid choice for iRP, exiting...'
         STOP

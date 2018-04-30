@@ -1,7 +1,7 @@
 PROGRAM RiemannProblem
 
   USE KindModule, ONLY: &
-    DP
+    DP, Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_B1, iX_E0, iX_E1
   USE ProgramInitializationModule, ONLY: &
@@ -50,11 +50,11 @@ PROGRAM RiemannProblem
   REAL(DP)             :: LT
   CHARACTER( len = 4 ) :: arg
   INTEGER              :: argv(2), nNodes, i
-  LOGICAL              :: ConvergenceRate = .TRUE.
+  LOGICAL              :: ConvergenceRate = .FALSE.
 
   CALL RiemannProblemChoice &
          ( D_L, V_L, P_L, D_R, V_R, P_R, &
-             xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, iRP = 10 )
+             xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, iRP = 12 )
 
   IF ( ConvergenceRate ) THEN
     DO i = 1 , IARGC()
@@ -64,7 +64,8 @@ PROGRAM RiemannProblem
     nNodes = argv(1)
     K      = argv(2)
   ELSE
-     nNodes = 2
+     nNodes = 1
+     K      = 1024
   END IF
   
   IF      ( nNodes == 1 ) THEN
@@ -89,11 +90,11 @@ PROGRAM RiemannProblem
            xL_Option &
              = [ xL, 0.0d0, 0.0d0 ], &
            xR_Option &
-             = [ xR, 1.0d0, 1.0d0 ], &
+             = [ xR, Pi, TwoPi ], &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
-             = 'CARTESIAN', &
+             = 'SPHERICAL', &
            EquationOfState_Option &
              = 'IDEAL', &
            FluidRiemannSolver_Option & ! --- Dummy ---
