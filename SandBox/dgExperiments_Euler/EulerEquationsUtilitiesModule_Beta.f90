@@ -1,9 +1,14 @@
 MODULE EulerEquationsUtilitiesModule_Beta
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, Zero, Half, One, SqrtTiny
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
-    nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    nGF, iGF_h_1, iGF_h_2, iGF_h_3, &
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
@@ -18,6 +23,7 @@ MODULE EulerEquationsUtilitiesModule_Beta
   PUBLIC :: ComputePrimitive
   PUBLIC :: ComputeConserved
   PUBLIC :: ComputeFromConserved
+  PUBLIC :: ComputeTimeStep
   PUBLIC :: Eigenvalues
   PUBLIC :: AlphaPlus
   PUBLIC :: AlphaMinus
@@ -121,6 +127,72 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeFromConserved
+
+
+  SUBROUTINE ComputeTimeStep( iX_B, iX_E, G, U, CFL, TimeStep )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B(3), iX_E(3)
+    REAL(DP), INTENT(in)  :: &
+      G(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
+      U(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+    REAL(DP), INTENT(in)  :: &
+      CFL
+    REAL(DP), INTENT(out) :: &
+      TimeStep
+
+    INTEGER  :: iX1, iX2, iX3
+    REAL(DP) :: dX(3), dt_X(nDOFX,3)
+    REAL(DP) :: P(nDOFX,nPF)
+    REAL(DP) :: A(nDOFX,nAF)
+
+    TimeStep = HUGE( One )
+
+    DO iX3 = iX_B(3), iX_E(3)
+      DO iX2 = iX_B(2), iX_E(2)
+        DO iX1 = iX_B(1), iX_E(1)
+
+          dX(1) = MeshX(1) % Width(iX1)
+          dX(2) = MeshX(2) % Width(iX2)
+          dX(3) = MeshX(3) % Width(iX3)
+
+          CALL ComputePrimitive &
+                 ( U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
+                   U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
+                   U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
+                   P(:,iPF_D), P(:,iPF_V1), P(:,iPF_V2), P(:,iPF_V3), &
+                   P(:,iPF_E), P(:,iPF_Ne), &
+                   G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+          CALL ComputePressureFromPrimitive &
+                 ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_P) )
+
+          CALL ComputeSoundSpeedFromPrimitive &
+                 ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_Cs) )
+
+          dt_X(:,1) &
+            = dX(1) * G(:,iX1,iX2,iX3,iGF_h_1) &
+                / MAX( ABS( P(:,iPF_V1) ) + A(:,iAF_Cs), SqrtTiny )
+
+          dt_X(:,2) &
+            = dX(2) * G(:,iX1,iX2,iX3,iGF_h_2) &
+                / MAX( ABS( P(:,iPF_V2) ) + A(:,iAF_Cs), SqrtTiny )
+
+          dt_X(:,3) &
+            = dX(3) * G(:,iX1,iX2,iX3,iGF_h_3) &
+                / MAX( ABS( P(:,iPF_V3) ) + A(:,iAF_Cs), SqrtTiny )
+
+          TimeStep = MIN( TimeStep, MINVAL( dt_X ) )
+
+        END DO
+      END DO
+    END DO
+
+    TimeStep = CFL * TimeStep
+
+  END SUBROUTINE ComputeTimeStep
 
 
   PURE FUNCTION Eigenvalues( V, Cs )
