@@ -4,7 +4,7 @@ MODULE InitializationModule
     DP, Zero, Half, One, TwoPi, FourPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nX, nNodesX, &
+    iX_B1, iX_E1, &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
@@ -53,9 +53,9 @@ CONTAINS
     Alpha = 4.0_DP * Gamma / ( (Gamma + 1.0_DP) * (Gamma - 1.0_DP) ) &
               * ( (Gamma - 1.0_DP) / (Gamma + 1.0_DP) )**Gamma
 
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
+    DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+        DO iX1 = iX_B1(1), iX_E1(1)
 
           DO iNodeX = 1, nDOFX
 
