@@ -20,8 +20,8 @@ We note in passing that in the low occupancy limit ($\cJ\ll1$), the Eddington fa
 
 \subsection{Maximum Entropy (ME) Closure}
 
-For the two-moment model, the ME closure constructs the least biased distribution function based on the limited information available \cite{cernohorskyBludman_1994} --- namely $\cJ$ and $\vect{\cH}$.  
-The ME distribution function $f_{\mbox{\tiny ME}}(\omega)$ is found by maximizing the entropy functional for particles obeying Fermi-Dirac statistics
+For the two-moment model, the ME closure constructs the least biased angular distribution based on the limited information available (i.e., $\cJ$ and $\vect{\cH}$) \cite{cernohorskyBludman_1994}.  
+The ME distribution $f_{\mbox{\tiny ME}}(\omega)$ is found by maximizing the entropy functional, which for particles obeying Fermi-Dirac statistics is given by
 \begin{equation}
   S[f_{\mbox{\tiny ME}}] 
   = \int_{\bbS^{2}}\big[\,(1-f_{\mbox{\tiny ME}})\log(1-f_{\mbox{\tiny ME}}) + f_{\mbox{\tiny ME}}\log f_{\mbox{\tiny ME}}\,]\,d\omega,
@@ -39,11 +39,11 @@ From the variation of the entropy functional in Eq.~\eqref{eq:entropyFunctional}
   f_{\mbox{\tiny ME}}(\omega;a,\vect{b})=\f{1}{e^{a + \vect{b}\cdot\vect{\ell}}+1}, 
   \label{eq:fME}
 \end{equation}
-which can be further simplified by a change of coordinates so that $a + \vect{b}\cdot\vect{\ell}=a + b\,\mu$ ($b=|\vect{b}|$ and $\mu\in[-1,1]$).  
-The Lagrange multipliers are then implicit functions of $\cJ$ and $|\vect{\cH}|$.  
+which can be further simplified by a change of coordinates $a + \vect{b}\cdot\vect{\ell}=a + b\,\mu$, where $b=|\vect{b}|$, and $\mu\in[-1,1]$ is the cosine of the angle between $\vect{b}$ and $\vect{\ell}$.  
+The Lagrange multipliers are implicit functions of $\cJ$ and $|\vect{\cH}|$.  
 The ME distribution function satisfies $0 \le f_{\mbox{\tiny ME}} \le 1$, but $a$ and $b$ are unconstrained.  
 
-Chernohorsky \& Bludman \cite{cernohorskyBludman_1994} postulate (see however \cite{lareckiBanach_2011}) that, as a function of the so-called flux saturation $h/(1-\cJ)$, the closure function $\Theta$ is independent of $\cJ$ and can be written explicitly in terms of the inverse Langevin function.  
+Chernohorsky \& Bludman \cite{cernohorskyBludman_1994} postulate (but see \cite{lareckiBanach_2011}) that, as a function of the so-called flux saturation $x=h/(1-\cJ)$, the closure function $\Theta(x)$ is independent of $\cJ$ and can be written explicitly in terms of the inverse Langevin function.  
 They also provide a polynomial fit (accurate to $2\%$) given by
 \begin{equation}
   \Theta_{\mbox{\tiny ME}}^{\mbox{\tiny CB}}(x)
@@ -57,6 +57,7 @@ More recently, Larecki \& Banach \cite{lareckiBanach_2011} have shown that the e
   \label{eq:closureMEBL}
 \end{equation}
 which is accurate to within $0.35\%$.  
+On the interval $x\in[0,1]$, the curves given by Eqs.~\eqref{eq:closureMECB} and \eqref{eq:closureMEBL} lie practically on top of each other.  
 
 \subsection{Kershaw (K) Closure}
 
