@@ -270,8 +270,11 @@ CONTAINS
 
     ! --- Schwarzschild Metric in Isotropic Coordinates ---
 
-    LapseFunction &
-      = ( R - Half * M ) / ( R + Half * M )
+    IF( M .LT. SqrtTiny )THEN ! --- Only relevant for Riemann problems ---
+      LapseFunction = One
+    ELSE
+      LapseFunction = ABS( ( ABS( R ) - Half * M ) / ( ABS( R ) + Half * M ) )
+    END IF
 
     RETURN
   END FUNCTION LapseFunction
@@ -283,8 +286,11 @@ CONTAINS
 
     ! --- Schwarzschild Metric in Isotropic Coordinates ---
 
-    ConformalFactor &
-      = One + Half * M / MAX( R, SqrtTiny )
+    IF( M .LT. SqrtTiny )THEN ! --- Only relevant for Riemann problems ---
+      ConformalFactor = One
+    ELSE
+      ConformalFactor = One + Half * M / MAX( ABS( R ), SqrtTiny )
+    END IF
 
     RETURN
   END FUNCTION ConformalFactor
