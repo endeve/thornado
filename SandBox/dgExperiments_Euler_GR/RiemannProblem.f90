@@ -70,8 +70,8 @@ PROGRAM RiemannProblem
   
   IF      ( nNodes == 1 ) THEN
     LT = 0.001_DP
-  ELSE IF ( nNodes == 2 ) THEN
-    LT = 0.05_DP
+  ELSE IF ( nNodes == 2 ) THEN ! Experimentally found to be the best
+    LT = 0.1_DP
   ELSE IF ( nNodes == 3 ) THEN
     LT = 0.1_DP
   ELSE
@@ -128,7 +128,7 @@ PROGRAM RiemannProblem
   CALL InitializeFluid_SSPRK( nStages = 3 )
 
   CALL InitializeSlopeLimiter &
-         ( BetaTVD_Option = 1.5_DP, BetaTVB_Option = 0.0_DP, &
+         ( BetaTVD_Option = 1.7_DP, BetaTVB_Option = 0.0_DP, &
            LimiterThreshold_Option = LT, &
            UseSlopeLimiter_Option = .TRUE. , &
            UseTroubledCellIndicator_Option = .TRUE. )
