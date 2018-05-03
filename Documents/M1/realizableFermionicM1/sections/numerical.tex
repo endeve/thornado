@@ -13,6 +13,7 @@ The first test involves the streaming part only, and does not include any collis
 We consider a periodic domain $D=\{x:x\in[0,1]\}$, and let the initial condition be given by
 \begin{equation}
   \cJ(x,t=0)=\cH_{x}(x,t=0)=0.5+0.49\times\sin\big(2\pi\,x\big).  
+  \label{eq:initialConditionStreaming}
 \end{equation}
 We evolve until $t=10$, when the sine wave has completed 10 crossings of the computational domain.  
 We use polynomials of degree $k=2$ for the spatial discretization (third-order spatial accuracy), and set the time step as $\Delta t = $.  
@@ -22,23 +23,46 @@ We vary the number of elements from $??$ to $??$ and compute errors for various 
 
 \begin{figure}[h]
   \centering
-    \includegraphics[width=0.7\textwidth]{figures/SineWaveStreaming}
+    \includegraphics[width=\textwidth]{figures/SineWaveStreaming}
    \caption{Sine Wave Streaming}
   \label{fig:SineWaveStreaming}
 \end{figure}
 
 \subsubsection{Sine Wave: Damping}
 
-Periodic domain $D=\{x:x\in[0,1]\}$.  
+The next test we consider, adapted from \cite{skinnerOstriker_2013}, consists of a sine wave propagating with unit speed in a purely absorbing medium ($f_{0}=0$, $\sigma_{\Scatt}=0$), which results in exponential damping of the wave amplitude.  
+We consider a periodic domain $D=\{x:x\in[0,1]\}$, and let the initial condition ($t=0$) be given as in Eq.~\eqref{eq:initialConditionStreaming}.  
+For a constant absorption opacity $\sigma_{\Ab}$, the analytical solution at $t>0$ is given by
+\begin{equation}
+  \cJ(x,t)=\cJ_{0}(x-t)\times\exp(-\sigma_{\Ab} t)
+  \quad\text{and}\quad
+  \cH_{x}(x,t)=\cJ(x,t),
+\end{equation}
+where $\cJ_{0}(x)=\cJ(x,0)$.  
+
+We compute numerical solutions for three values of the absorption opacity ($\sigma_{\Ab}=0.1$, $1$, and $10$), and adjust the end time $t_{\mbox{\tiny end}}$ so that $\sigma_{\Ab}t_{\mbox{\tiny end}}=10$, and the initial condition has been damped by factor $e^{-10}$.  
+Thus, for $\sigma_{\Ab}=0.1$ the sine wave crosses the domain 100 times, while for $\sigma_{\Ab}=10$, it crosses the grid once.  
+
+Figure~\ref{fig:SineWaveDamping} shows convergence results obtained for the various values of $\sigma_{\Ab}$, using various IMEX schemes.  
+Results for $\sigma_{\Ab}=0.1$, $1$, and $10$ are plotted with red, green, and blue lines, respectively.  
 
 \begin{figure}[h]
   \centering
-    \includegraphics[width=1\textwidth]{figures/SineWaveDamping}
+    \includegraphics[width=\textwidth]{figures/SineWaveDamping}
    \caption{Sine Wave Damping}
   \label{fig:SineWaveDamping}
 \end{figure}
 
 \subsubsection{Sine Wave: Diffusion}
+
+The final test with known smooth solutions, adopted from \cite{radice_etal_2013}, is diffusion of a sine wave in a purely scattering medium ($f_{0}=0$, $\sigma_{\Ab}=0$).  
+The computational domain $D=\{x:x\in[-3,3]\}$ is periodic, and the initial condition is given by
+\begin{equation}
+  \cJ_{0}(x)=0.5+0.49\times\sin\big(\pi\,x/3\big)
+  \quad\text{and}\quad
+  \cH_{x,0}
+  =-\f{1}{3\sigma_{\Scatt}}\pderiv{\cJ_{0}}{x}.  
+\end{equation}
 
 \subsection{Packed Beam}
 
