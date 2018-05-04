@@ -5,7 +5,27 @@
 \label{sec:smoothProblems}
 
 To compare the accuracy of the IMEX schemes, we present results from smooth problems in streaming, absorption, and scattering dominated regimes in one spatial dimension.  
-In all tests, we employ the maximum entropy closure in the low occupancy limit (i.e., the Minerbo closure).  
+In all tests, we use third order accurate spatial discretization (polynomials of degree $k=2$) and we employ the maximum entropy closure in the low occupancy limit (i.e., the Minerbo closure).  
+We compare results obtained using IMEX schemes proposed here (PA2+ and PARSD) with IMEX schemes from Hu et al. \cite{hu_etal_2017} (PA2), McClarren et al. \cite{mcclarren_etal_2008} (PC2), Pareschi \& Russo \cite{pareschiRusso_2005} (SSP2332), and Cavaglieri \& Bewley \cite{cavaglieriBewley2015} (RKCB2).  
+In the streaming test, we also include results obtained with second-order and third-order accurate explicit strong stability-preserving Runge-Kutta methods \cite{gottlieb_etal_2001} in the comparison (SSPRK2 and SSPRK3, respectively).  
+See \ref{app:butcherTables} for further details.  
+The time step is set to $\dt=0.1\times\dx$.  
+
+When comparing the numerical results to analytic solutions, errors are computed in the $L^{1}$-error norm.  
+We compare results either in the absolute error ($E_{\mbox{\tiny Abs}}^{1}$) or the relative error ($E_{\mbox{\tiny Rel}}^{1}$), defined for a scalar quantity $u_{h}$ (approximating $u$) as
+\begin{equation}
+  E_{\mbox{\tiny Abs}}^{1}[u_{h}](t)
+  =\f{1}{|D|}\sum_{\bK\in\mathscr{T}}\int_{\bK}|u_{h}(\vect{x},t)-u(\vect{x},t)|\,d\vect{x}
+  \label{eq:errorNormAbsolute}
+\end{equation}
+and
+\begin{equation}
+  E_{\mbox{\tiny Rel}}^{1}[u_{h}](t)
+  =\f{1}{|D|}\sum_{\bK\in\mathscr{T}}\int_{\bK}|u_{h}(\vect{x},t)-u(\vect{x},t)|/|u(\vect{x},t)|\,d\vect{x},
+  \label{eq:errorNormRelative}
+\end{equation}
+respectively.  
+The integrals in Eqs.~\eqref{eq:errorNormAbsolute} and \eqref{eq:errorNormRelative} are computed with a $3$-point Gaussian quadrature.  
 
 \subsubsection{Sine Wave: Streaming}
 
@@ -16,17 +36,20 @@ We consider a periodic domain $D=\{x:x\in[0,1]\}$, and let the initial condition
   \label{eq:initialConditionStreaming}
 \end{equation}
 We evolve until $t=10$, when the sine wave has completed 10 crossings of the computational domain.  
-We use polynomials of degree $k=2$ for the spatial discretization (third-order spatial accuracy), and set the time step as $\Delta t = $.  
-We vary the number of elements from $??$ to $??$ and compute errors for various time stepping schemes.  
+We vary the number of elements ($N$) from $8$ to $128$ and compute errors for various time stepping schemes.  
 
-\ee{Include figure of error versus number of elements for various schemes.}
-
+In Figure~\ref{fig:SineWaveStreaming}, the absolute error for the number density $E_{\mbox{\tiny Abs}}^{1}[\cJ_{h}](t=10)$ is plotted versus $N$ (see figure caption for details).  
+Errors obtained with SSPRK3 are smallest and decrease as $N^{-3}$ (cf. bottom black dash-dot reference line), as expected for a scheme combining third-order accurate time stepping with third-order accurate spatial discretization.  
+For all the other schemes, using second-order accurate explicit time stepping, the error decreases as $N^{-2}$.  
+Among the second-order accurate methods, SSP2332 has the smallest error, followed by RKCB2.  
+The error for the remaining schemes (including SSPRK2) are indistinguishable on the plot.  
 \begin{figure}[h]
   \centering
     \includegraphics[width=\textwidth]{figures/SineWaveStreaming}
-   \caption{Sine Wave Streaming}
+   \caption{Absolute error (cf. Eq.~\eqref{eq:errorNormAbsolute}) versus number of elements $N$ for the streaming sine wave test.  Results employing various time stepping schemes are compared: SSPRK2 (cyan triangles pointing up), SSPRK3 (cyan triangles pointing down), PA2 (red), PA2+ (purple), PC2 (blue), RKCB2 (black), SSP2332 (green), and PARSD (light red circles).  Black dash-dot reference lines are proportional to $N^{-1}$ (top), $N^{-2}$ (middle), and $N^{-3}$ (bottom), respectively.}
   \label{fig:SineWaveStreaming}
 \end{figure}
+
 
 \subsubsection{Sine Wave: Damping}
 

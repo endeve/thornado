@@ -183,6 +183,6 @@ We then seek to design GSA IMEX schemes with the following properties
 \end{itemize}
 Fortunately, IMEX schemes satisfying these properties are easy to find, and we provide an example of type ARS with $s=3$ (two implicit solves) in \ref{app:butcherTables} (scheme PARSD).  
 In the streaming limit, this scheme is identical to the optimal second-order accurate strong-stability preserving Runge-Kutta method \cite{gottlieb_etal_2001}.  
-It is also very similar to the scheme given in \cite{mcclareen_2008} (see scheme PC2 in \ref{app:butcherTables}), which is also a GSA IMEX scheme of type ARS with $s=3$.  
-Scheme PC2 is second-order in the streaming limit, has been demonstrated to work well in the diffusion limit \cite{mcclareen_2008,radice_etal_2013}, and satisfies the positivity conditions, but $c_{\mbox{\tiny Sch}}=0$ (our primary motivation for finding an alternative).  
+It is also very similar to the scheme given in \cite{mcclarren_etal_2008} (see scheme PC2 in \ref{app:butcherTables}), which is also a GSA IMEX scheme of type ARS with $s=3$.  
+Scheme PC2 is second-order in the streaming limit, has been demonstrated to work well in the diffusion limit \cite{mcclarren_etal_2008,radice_etal_2013}, and satisfies the positivity conditions, but $c_{\mbox{\tiny Sch}}=0$ (our primary motivation for finding an alternative).  
 In Section~\ref{sec:numerical}, we show numerically that the accuracy of scheme PARSD is practically identical to the accuracy of scheme PC2.  
