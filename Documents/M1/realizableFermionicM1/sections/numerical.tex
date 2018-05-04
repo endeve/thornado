@@ -42,7 +42,7 @@ In Figure~\ref{fig:SineWaveStreaming}, the absolute error for the number density
 Errors obtained with SSPRK3 are smallest and decrease as $N^{-3}$ (cf. bottom black dash-dot reference line), as expected for a scheme combining third-order accurate time stepping with third-order accurate spatial discretization.  
 For all the other schemes, using second-order accurate explicit time stepping, the error decreases as $N^{-2}$.  
 Among the second-order accurate methods, SSP2332 has the smallest error, followed by RKCB2.  
-The error for the remaining schemes (including SSPRK2) are indistinguishable on the plot.  
+Errors for the remaining schemes (including SSPRK2) are indistinguishable on the plot.  
 \begin{figure}[h]
   \centering
     \includegraphics[width=\textwidth]{figures/SineWaveStreaming}
@@ -66,13 +66,17 @@ where $\cJ_{0}(x)=\cJ(x,0)$.
 We compute numerical solutions for three values of the absorption opacity ($\sigma_{\Ab}=0.1$, $1$, and $10$), and adjust the end time $t_{\mbox{\tiny end}}$ so that $\sigma_{\Ab}t_{\mbox{\tiny end}}=10$, and the initial condition has been damped by factor $e^{-10}$.  
 Thus, for $\sigma_{\Ab}=0.1$ the sine wave crosses the domain 100 times, while for $\sigma_{\Ab}=10$, it crosses the grid once.  
 
-Figure~\ref{fig:SineWaveDamping} shows convergence results obtained for the various values of $\sigma_{\Ab}$, using various IMEX schemes.  
-Results for $\sigma_{\Ab}=0.1$, $1$, and $10$ are plotted with red, green, and blue lines, respectively.  
+Figure~\ref{fig:SineWaveDamping} shows convergence results, obtained using different values of $\sigma_{\Ab}$, for various IMEX schemes.  
+Results for $\sigma_{\Ab}=0.1$, $1$, and $10$ are plotted with red, green, and blue lines, respectively (see figure caption for further details).  
+All the second-order accurate schemes (PA2, PA2+, RKCB2, and SSP2332) display second-order accurate convergence rates.  
+For $\sigma_{\Ab}=0.1$, SSP2332 is the most accurate among these schemes, while PA2+ is the most accurate for $\sigma_{\Ab}=10$.  
+On the other hand, PC2 and PARSD are indistinguishable and display at most first-order accurate convergence, as expected.  
+(For $\sigma_{\Ab}=0.1$, PC2 and PARSD are the most accurate schemes for $N=8$ and $N=16$.)
 
 \begin{figure}[h]
   \centering
     \includegraphics[width=\textwidth]{figures/SineWaveDamping}
-   \caption{Sine Wave Damping}
+   \caption{Relative error (cf. Eq.~\eqref{eq:errorNormRelative}) versus number of elements for the damping sine wave test.  Results for different values of the absorption opacity $\sigma_{\Ab}$, employing various IMEX time stepping schemes, are compared.  Errors for $\sigma_{\Ab}=0.1$, $1$, and $10$ are plotted with red, green, and blue lines, respectively.  The IMEX schemes employed are: PA2 (triangles pointing left), PA2+ (triangles pointing right), PC2 (asterisk), RKCB2 ($\times$), SSP2332 ($+$), and PARSD (circles).  Black dash-dot reference lines are proportional to $N^{-1}$ (top) and $N^{-2}$ (bottom), respectively.}
   \label{fig:SineWaveDamping}
 \end{figure}
 
