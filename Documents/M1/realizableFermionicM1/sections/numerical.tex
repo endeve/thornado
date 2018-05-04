@@ -66,7 +66,7 @@ where $\cJ_{0}(x)=\cJ(x,0)$.
 We compute numerical solutions for three values of the absorption opacity ($\sigma_{\Ab}=0.1$, $1$, and $10$), and adjust the end time $t_{\mbox{\tiny end}}$ so that $\sigma_{\Ab}t_{\mbox{\tiny end}}=10$, and the initial condition has been damped by factor $e^{-10}$.  
 Thus, for $\sigma_{\Ab}=0.1$ the sine wave crosses the domain 100 times, while for $\sigma_{\Ab}=10$, it crosses the grid once.  
 
-Figure~\ref{fig:SineWaveDamping} shows convergence results, obtained using different values of $\sigma_{\Ab}$, for various IMEX schemes.  
+Figure~\ref{fig:SineWaveDamping} shows convergence results, obtained using different values of $\sigma_{\Ab}$, for various IMEX schemes at $t=t_{\mbox{\tiny end}}$.  
 Results for $\sigma_{\Ab}=0.1$, $1$, and $10$ are plotted with red, green, and blue lines, respectively (see figure caption for further details).  
 All the second-order accurate schemes (PA2, PA2+, RKCB2, and SSP2332) display second-order accurate convergence rates.  
 For $\sigma_{\Ab}=0.1$, SSP2332 is the most accurate among these schemes, while PA2+ is the most accurate for $\sigma_{\Ab}=10$.  
@@ -89,7 +89,17 @@ The computational domain $D=\{x:x\in[-3,3]\}$ is periodic, and the initial condi
   \quad\text{and}\quad
   \cH_{x,0}
   =-\f{1}{3\sigma_{\Scatt}}\pderiv{\cJ_{0}}{x}.  
+  \label{eq:initialConditionDiffusion}
 \end{equation}
+For a sufficiently high scattering opacity, the moment equations limit to a diffusion equation for the number density (deviations appear at the $1/\sigma_{\Scatt}^{2}$-level).  
+With the initial conditions in Eq.~\eqref{eq:initialConditionDiffusion}, the analytical solution to the limiting diffusion equation is given by
+\begin{equation}
+  \cJ(x,t)=\cJ_{0}(x)\times\exp\big(-\pi^{2}\,t/(27\,\sigma_{\Scatt})\big),
+\end{equation}
+and $\cH_{x}=(3\,\sigma_{\Scatt})^{-1}\pd{\cJ}{x}$.  
+When computing errors for this test, we compare the numerical results obtained with the two-moment model to the analytical solution to the limiting diffusion equation.  
+We compute numerical solutions using three values of the scattering opacity ($\sigma_{\Scatt}=10^{2}$, $10^{3}$, and $10^{4}$), and adjust the end time so that $t_{\mbox{\tiny end}}/\sigma_{\Scatt}=1$.  
+The initial amplitude of the sine wave has then been reduced by a factor $e^{-\pi^{2}/27}$ for all values of $\sigma_{\Scatt}$.  
 
 \begin{figure}[h]
   \centering
@@ -97,9 +107,18 @@ The computational domain $D=\{x:x\in[-3,3]\}$ is periodic, and the initial condi
     \includegraphics[width=0.5\textwidth]{figures/SineWaveDiffusionN} &
     \includegraphics[width=0.5\textwidth]{figures/SineWaveDiffusionG}
     \end{tabular}
-   \caption{Sine Wave Diffusion}
+   \caption{Absolute error (cf. Eq.~\eqref{eq:errorNormAbsolute}) versus number of elements for the sine wave diffusion test.  Results with different values of the scattering opacity $\sigma_{\Scatt}$, employing different IMEX schemes, are compared.  Errors with $\sigma_{\Scatt}=10^{2}$, $10^{3}$, and $10^{4}$ are plotted with red, green, and blue lines, respectively.  The IMEX schemes employed are: PA2 (triangles pointing left), PA2+ (triangles pointing right), PARSD (asterisk), RKCB2 (circles), and SSP2332 (?).  Black dash-dot reference lines are proportional to $N^{-1}$ (top) and $N^{-2}$ (bottom), respectively.}
   \label{fig:SineWaveDiffusion}
 \end{figure}
+
+In Figure~\ref{fig:SineWaveDiffusion} we plot the absolute error, obtained using different values of $\sigma_{\Ab}$, for various IMEX schemes at $t=t_{\mbox{\tiny end}}$.  
+Results for $\sigma_{\Scatt}=10^{2}$, $10^{3}$, and $10^{4}$ are plotted with red, green, and blue lines, respectively (see figure caption for further details).  
+(Scheme PC2 has been shown to work well for this test \cite{radice_etal_2013}, and is omitted here.)
+Schemes PARSD, RKCB2, and SSP2332 are accurate for this test, and display third-order accuracy for the number density $\cJ$ and second-oder accuracy for $\cH_{x}$ in this test.  
+For $\sigma=10^{2}$, the errors do not drop below $10^{-6}$ because of differences between the two-moment model and the diffusion equation used to obtain the analytic solution.  
+For larger values of the scattering opacity, we observe convergence over the entire range of $N$.  
+Schemes PA2 and PA2+ do not perform well on this test (for reasons discussed in Section~\ref{sec:imex}).  
+For $\sigma_{\Scatt}=10^{2}$, errors in $\cJ$ and $\cH_{x}$ decrease with increasing $N$, but for $\sigma_{\Scatt}=10^{4}$, errors remain constant with increasing $N$ over the entire range.  
 
 \subsection{Packed Beam}
 
