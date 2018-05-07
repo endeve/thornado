@@ -112,8 +112,8 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     LOGICAL  :: NegativeStates(2)
-    INTEGER  :: iX1, iX2, iX3, iCF
-    REAL(DP) :: Min_K, Theta_1, Theta_2
+    INTEGER  :: iX1, iX2, iX3, iCF, iP
+    REAL(DP) :: Min_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF), IntE(nPT)
 
     IF( nDOFX == 1 ) RETURN
@@ -145,7 +145,7 @@ CONTAINS
             ! --- Limit Density Towards Cell Average ---
 
             U_q(:,iCF_D) = Theta_1 * U_q(:,iCF_D) &
-                           + (One - Theta_1 ) * U_K(iCF_D)
+                           + ( One - Theta_1 ) * U_K(iCF_D)
 
             ! --- Recompute Point Values ---
 
@@ -172,7 +172,19 @@ CONTAINS
 
             END DO
 
-            Theta_2 = Zero
+            Theta_2 = One
+            DO iP = 1, nPT
+
+              IF( IntE(iP) < Min_2 )THEN
+
+                CALL SolveTheta_Bisection &
+                       ( U_PP(iP,1:nCF), U_K(1:nCF), Min_2, Theta_P )
+
+                Theta_2 = MIN( Theta_2, Theta_P )
+
+              END IF
+
+            END DO
 
             ! --- Limit Towards Cell Average ---
 
@@ -299,6 +311,106 @@ CONTAINS
 
     RETURN
   END FUNCTION eFun
+
+
+  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, MinE, Theta_P )
+
+    REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), MinE
+    REAL(DP), INTENT(out) :: Theta_P
+
+    INTEGER,  PARAMETER :: MAX_IT = 19
+    REAL(DP), PARAMETER :: dx_min = 1.0d-3
+
+    LOGICAL  :: CONVERGED
+    INTEGER  :: ITERATION
+    REAL(DP) :: x_a, x_b, x_c, dx
+    REAL(DP) :: f_a, f_b, f_c
+
+    x_a = Zero
+    f_a = eFun &
+            ( x_a * U_Q(iCF_D)  + ( One - x_a ) * U_K(iCF_D),  &
+              x_a * U_Q(iCF_S1) + ( One - x_a ) * U_K(iCF_S1), &
+              x_a * U_Q(iCF_S2) + ( One - x_a ) * U_K(iCF_S2), &
+              x_a * U_Q(iCF_S3) + ( One - x_a ) * U_K(iCF_S3), &
+              x_a * U_Q(iCF_E)  + ( One - x_a ) * U_K(iCF_E) ) &
+          - MinE
+
+    x_b = One
+    f_b = eFun &
+            ( x_b * U_Q(iCF_D)  + ( One - x_b ) * U_K(iCF_D),  &
+              x_b * U_Q(iCF_S1) + ( One - x_b ) * U_K(iCF_S1), &
+              x_b * U_Q(iCF_S2) + ( One - x_b ) * U_K(iCF_S2), &
+              x_b * U_Q(iCF_S3) + ( One - x_b ) * U_K(iCF_S3), &
+              x_b * U_Q(iCF_E)  + ( One - x_b ) * U_K(iCF_E) ) &
+          - MinE
+
+    IF( .NOT. f_a * f_b < 0 )THEN
+
+      WRITE(*,'(A6,A)') &
+        '', 'SolveTheta_Bisection (Euler):'
+      WRITE(*,'(A8,A,I3.3)') &
+        '', 'Error: No Root in Interval'
+      WRITE(*,'(A8,A,2ES15.6e3)') &
+        '', 'x_a, x_b = ', x_a, x_b
+      WRITE(*,'(A8,A,2ES15.6e3)') &
+        '', 'f_a, f_b = ', f_a, f_b
+      STOP
+
+    END IF
+
+    dx = x_b - x_a
+
+    ITERATION = 0
+    CONVERGED = .FALSE.
+    DO WHILE ( .NOT. CONVERGED )
+
+      ITERATION = ITERATION + 1
+
+      dx = Half * dx
+      x_c = x_a + dx
+
+      f_c = eFun &
+              ( x_c * U_Q(iCF_D)  + ( One - x_c ) * U_K(iCF_D),  &
+                x_c * U_Q(iCF_S1) + ( One - x_c ) * U_K(iCF_S1), &
+                x_c * U_Q(iCF_S2) + ( One - x_c ) * U_K(iCF_S2), &
+                x_c * U_Q(iCF_S3) + ( One - x_c ) * U_K(iCF_S3), &
+                x_c * U_Q(iCF_E)  + ( One - x_c ) * U_K(iCF_E) ) &
+            - MinE
+
+      IF( f_a * f_c < Zero )THEN
+
+        x_b = x_c
+        f_b = f_c
+
+      ELSE
+
+        x_a = x_c
+        f_a = f_c
+
+      END IF
+
+      IF( dx < dx_min ) CONVERGED = .TRUE.
+
+      IF( ITERATION > MAX_IT .AND. .NOT. CONVERGED )THEN
+
+        WRITE(*,'(A6,A)') &
+          '', 'SolveTheta_Bisection (Euler):'
+        WRITE(*,'(A8,A,I3.3)') &
+          '', 'ITERATION ', ITERATION
+        WRITE(*,'(A8,A,4ES15.6e3)') &
+          '', 'x_a, x_c, x_b, dx = ', x_a, x_c, x_b, dx
+        WRITE(*,'(A8,A,3ES15.6e3)') &
+          '', 'f_a, f_c, f_b     = ', f_a, f_c, f_b
+
+        IF( ITERATION > MAX_IT + 3 ) STOP
+
+      END IF
+
+    END DO
+
+    Theta_P = x_a
+
+  END SUBROUTINE SolveTheta_Bisection
 
 
 END MODULE PositivityLimiterModule_Euler
