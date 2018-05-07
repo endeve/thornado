@@ -93,7 +93,7 @@ PROGRAM StandingAccretionShock
            nX_Option &
              = [ K, 1, 1 ], &
            swX_Option &
-             = [ 1, 0, 0 ], &
+             = [ 1, 1, 1 ], &
            bcX_Option &
              = [ 10, 3, 1 ], &
            xL_Option &
@@ -127,11 +127,11 @@ PROGRAM StandingAccretionShock
 
   CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = M_PNS )
+
   CALL InitializeFields_StandingAccretionShock
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
-  STOP
 
   CALL InitializeFluid_SSPRK( nStages = 3 )
 
@@ -139,7 +139,7 @@ PROGRAM StandingAccretionShock
          ( BetaTVD_Option = 1.5_DP, &
            UseSlopeLimiter_Option = .TRUE., &
            LimiterThreshold_Option = LT, &
-           UseTroubledCellIndicator_Option = .TRUE. )
+           UseTroubledCellIndicator_Option = .FALSE. )
 
   CALL InitializePositivityLimiter &
          ( Min_1_Option = Zero , Min_2_Option = Zero, &
