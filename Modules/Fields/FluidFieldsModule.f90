@@ -235,8 +235,8 @@ CONTAINS
 
       unitsPF(iPF_D)  = Gram / Centimeter**3
       unitsPF(iPF_V1) = Kilometer / Second
-      unitsPF(iPF_V1) = Kilometer / Second
-      unitsPF(iPF_V1) = Kilometer / Second
+      unitsPF(iPF_V2) = Kilometer / Second
+      unitsPF(iPF_V3) = Kilometer / Second
       unitsPF(iPF_E)  = Erg / Centimeter**3
       unitsPF(iPF_Ne) = 1.0_DP / Centimeter**3
 
