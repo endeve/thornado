@@ -1,7 +1,7 @@
 MODULE RiemannProblemInitializer
 
   USE KindModule, ONLY: &
-    DP
+    DP, Pi, TwoPi
 
   IMPLICIT NONE
   PRIVATE
@@ -12,13 +12,14 @@ CONTAINS
 
   SUBROUTINE RiemannProblemChoice &
                ( D_L, V_L, P_L, D_R, V_R, P_R, &
-                 xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, iRP )
+                 xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, CS, iRP )
     
     REAL(DP), INTENT(out) :: D_L, V_L(3), P_L, D_R, V_R(3), P_R
-    REAL(DP), INTENT(out) :: xL, xR, x_D, CFL, t, t_end, Gamma
+    REAL(DP), INTENT(out) :: xL(3), xR(3), x_D, CFL, t, t_end, Gamma
     INTEGER,  INTENT(out) :: bcX(3)
     INTEGER,  INTENT(in)  :: iRP
     INTEGER,  INTENT(out) :: K
+    CHARACTER( LEN = 11 ) , INTENT(out) :: CS
 
     SELECT CASE( iRP )
 
@@ -35,15 +36,17 @@ CONTAINS
         P_R = 0.1_DP
 
         t     = 0.0_DP
-        t_end = 0.2_DP
-        CFL   = 0.1_DP
-        xL    = 0.0d0
-        xR    = 1.0d0
+        t_end = 0.4_DP
+        CFL   = 0.8_DP
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
         x_D   = 0.5_DP
         K     = 128
         Gamma = 4.0_DP / 3.0_DP
 
         bcX = [ 2, 0, 0 ]
+
+        CS = 'CARTESIAN'
 
       CASE( 1 )
 
@@ -60,13 +63,15 @@ CONTAINS
         t     = 0.0_DP
         t_end = 4.0d-1
         CFL   = 0.5_DP
-        xL    = 0.0d0
-        xR    = 1.0d0
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
         x_D   = 0.5_DP
         K     = 400
         Gamma = 5.0_DP / 3.0_DP
 
         bcX = [ 2, 0, 0 ]
+
+        CS = 'CARTESIAN'
 
       CASE( 2 )
 
@@ -83,13 +88,15 @@ CONTAINS
         t     = 0.0_DP
         t_end = 3.5d-1
         CFL   = 0.5_DP
-        xL    = 0.0d0
-        xR    = 1.0d0
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
         x_D   = 0.5_DP
         K     = 400
         Gamma = 5.0_DP / 3.0_DP
 
         bcX = [ 2, 0, 0 ]
+
+        CS = 'CARTESIAN'
 
       CASE( 3 )
 
@@ -106,13 +113,15 @@ CONTAINS
         t     = 0.0_DP
         t_end = 3.0d-1
         CFL   = 0.5_DP
-        xL    = 0.0d0
-        xR    = 1.0d0
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
         x_D   = 0.5_DP
         K     = 400
         Gamma = 4.0_DP / 3.0_DP
 
         bcX = [ 2, 0, 0 ]
+
+        CS = 'CARTESIAN'
 
       CASE( 4 )
 
@@ -129,13 +138,15 @@ CONTAINS
         t     = 0.0_DP
         t_end = 7.0d-1
         CFL   = 0.1_DP
-        xL    = 0.0d0
-        xR    = 1.0d0
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
         x_D   = 1.0_DP
         K     = 250
         Gamma = 5.0_DP / 3.0_DP
 
         bcX = [ 3, 0, 0 ]
+
+        CS = 'CARTESIAN'
 
       CASE( 5 )
 
@@ -152,13 +163,15 @@ CONTAINS
         t     = 0.0_DP
         t_end = 4.0d-1
         CFL   = 0.8_DP
-        xL    = 0.0d0
-        xR    = 1.0d0
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
         x_D   = 0.5_DP
         K     = 100
         Gamma = 4.0_DP / 3.0_DP
 
         bcX = [ 2, 0, 0 ]
+
+        CS = 'CARTESIAN'
 
       CASE( 6 )
 
@@ -175,13 +188,15 @@ CONTAINS
         t     = 0.0d+0
         t_end = 4.0d+0
         CFL   = 0.8d+0
-        xL    = 0.0d0
-        xR    = 1.0d0
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
         x_D   = 0.5d+0
         K     = 100
         Gamma = 4.0_DP / 3.0_DP
 
         bcX = [ 2, 0, 0 ]
+
+        CS = 'CARTESIAN'
 
       CASE( 7 )
 
@@ -198,13 +213,15 @@ CONTAINS
         t     = 0.0d+0
         t_end = 6.0d-1
         CFL   = 0.15d+0
-        xL    = 0.0d0
-        xR    = 1.0d0
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
         x_D   = 0.5d+0
         K     = 400
         Gamma = 5.0_DP / 3.0_DP
 
         bcX = [ 2, 0, 0 ]
+
+        CS = 'CARTESIAN'
 
       CASE( 8 )
 
@@ -222,14 +239,16 @@ CONTAINS
 
         t     = 0.0_DP
         CFL   = 0.1_DP
-        xL    = 0.0d0
-        xR    = 1.0d0
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
         x_D   = 0.5_DP
         K     = 128
         t_end = 1.0d1! * CFL * xR / ( 1.0d0 * K )
         Gamma = 4.0_DP / 3.0_DP
 
         bcX = [ 1, 0, 0 ]        
+
+        CS = 'CARTESIAN'
 
       CASE( 9 )
 
@@ -247,14 +266,16 @@ CONTAINS
 
         t     = 0.0_DP
         CFL   = 0.1_DP
-        xL    = 0.0d0
-        xR    = 1.0d0
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
         x_D   = 0.5_DP
         K     = 128
         t_end = 1.0d1
         Gamma = 4.0_DP / 3.0_DP
 
         bcX = [ 1, 0, 0 ]
+
+        CS = 'CARTESIAN'
         
       CASE( 10 )
 
@@ -272,14 +293,16 @@ CONTAINS
 
         t     = 0.0_DP
         CFL   = 0.1_DP
-        xL    = 0.0d0
-        xR    = 1.0d0
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
         x_D   = 0.5_DP
         K     = 128
         t_end = 3.5d-1
         Gamma = 5.0_DP / 3.0_DP
 
         bcX = [ 2, 0, 0 ]        
+
+        CS = 'CARTESIAN'
 
       CASE( 11 )
 
@@ -298,13 +321,15 @@ CONTAINS
         t     = 0.0d+0
         t_end = 0.5d+0
         CFL   = 0.5d+0
-        xL    = 0.0d0
-        xR    = 1.0d0
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, Pi, TwoPi ]
         x_D   = 0.5d+0
         K     = 64
         Gamma = 4.0_DP / 3.0_DP
 
         bcX = [ 2, 0, 0 ]
+
+        CS = 'SPHERICAL'
 
       CASE( 12 )
 
@@ -312,22 +337,26 @@ CONTAINS
 
         D_L = 1.0_DP
         V_L = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-        P_L = 1.0_DP
+!        P_L = 1.0_DP
+        P_L = 0.1_DP
 
-        D_R = 0.125_DP
+!        D_R = 0.125_DP
+        D_R = 1.0_DP
         V_R = [ 0.0_DP, 0.0_DP, 0.0_DP ]
         P_R = 0.1_DP
 
         t     = 0.0_DP
         t_end = 0.5_DP
         CFL   = 0.1_DP
-        xL    = 0.0_DP
-        xR    = 2.0_DP
+        xL    = [ 0.0001d0, 0.0d0, 0.0d0 ]
+        xR    = [ 2.0d0, Pi, TwoPi ]
         x_D   = 1.0_DP
         K     = 128
-        Gamma = 5.0_DP / 3.0_DP
+        Gamma = 4.0_DP / 3.0_DP
 
         bcX = [ 2, 0, 0 ]
+
+        CS = 'SPHERICAL'
 
      CASE DEFAULT
 

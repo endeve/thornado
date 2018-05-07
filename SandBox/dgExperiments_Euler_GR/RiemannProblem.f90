@@ -44,8 +44,9 @@ PROGRAM RiemannProblem
   IMPLICIT NONE
 
   INTEGER  :: iCycle, iCycleD, iCycleW, K,  bcX(3)
-  REAL(DP) :: t, dt, t_end, xL, xR, x_D, CFL, Gamma, c = 1.0_DP
+  REAL(DP) :: t, dt, t_end, xL(3), xR(3), x_D, CFL, Gamma, c = 1.0_DP
   REAL(DP) :: D_L, V_L(3), P_L, D_R, V_R(3), P_R
+  CHARACTER( LEN = 11 ) :: CS
 
   REAL(DP)             :: LT
   CHARACTER( len = 4 ) :: arg
@@ -54,7 +55,7 @@ PROGRAM RiemannProblem
 
   CALL RiemannProblemChoice &
          ( D_L, V_L, P_L, D_R, V_R, P_R, &
-             xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, iRP = 12 )
+             xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, CS, iRP = 12 )
 
   IF ( ConvergenceRate ) THEN
     DO i = 1 , IARGC()
@@ -64,13 +65,13 @@ PROGRAM RiemannProblem
     nNodes = argv(1)
     K      = argv(2)
   ELSE
-     nNodes = 1
-     K      = 1024
+    nNodes = 2
+    K      = 64
   END IF
   
   IF      ( nNodes == 1 ) THEN
-    LT = 0.001_DP
-  ELSE IF ( nNodes == 2 ) THEN ! Experimentally found to be the best
+    LT = 0.0001_DP
+  ELSE IF ( nNodes == 2 ) THEN
     LT = 0.1_DP
   ELSE IF ( nNodes == 3 ) THEN
     LT = 0.1_DP
@@ -88,13 +89,13 @@ PROGRAM RiemannProblem
            bcX_Option &
              = bcX, &
            xL_Option &
-             = [ xL, 0.0d0, 0.0d0 ], &
+             = xL, &
            xR_Option &
-             = [ xR, Pi, TwoPi ], &
+             = xR, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
-             = 'SPHERICAL', &
+             = TRIM( CS ), &
            EquationOfState_Option &
              = 'IDEAL', &
            FluidRiemannSolver_Option & ! --- Dummy ---
@@ -106,9 +107,9 @@ PROGRAM RiemannProblem
            nStages_SSP_RK_Option & ! --- Dummy ---
              = 3 )
 
-  dt      = CFL * ( xR - xL ) / ( c * K )
+  dt      = CFL * ( xR(1) - xL(1) ) / ( c * K )
   iCycleD = 100
-  iCycleW = 100
+  iCycleW = 1
 
   CALL InitializeReferenceElementX
 
@@ -130,13 +131,13 @@ PROGRAM RiemannProblem
   CALL InitializeSlopeLimiter &
          ( BetaTVD_Option = 1.7_DP, BetaTVB_Option = 0.0_DP, &
            LimiterThreshold_Option = LT, &
-           UseSlopeLimiter_Option = .TRUE. , &
+           UseSlopeLimiter_Option = .TRUE., &
            UseTroubledCellIndicator_Option = .TRUE. )
 
   CALL InitializePositivityLimiter &
          ( Min_1_Option = 1.0d-16 , Min_2_Option = 1.0d-16, &
            UsePositivityLimiter_Option = .TRUE. )
-  
+
   iCycle = 0
 
   DO WHILE ( t < t_end )
@@ -170,6 +171,8 @@ PROGRAM RiemannProblem
 
     END IF
 
+    !STOP
+    IF( iCycle .EQ. 100 ) STOP
   END DO
 
   CALL WriteFieldsHDF &
