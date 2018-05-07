@@ -160,13 +160,14 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     DO iX3 = iX_B0(3), iX_E0(3)
-      dX3 = MeshX(3) % Width(iX3)
       DO iX2 = iX_B0(2), iX_E0(2)
-        dX2 = MeshX(2) % Width(iX2)
         DO iX1 = iX_B0(1), iX_E0(1)
-          dX1 = MeshX(1) % Width(iX1)
 
           IF( Shock(iX1,iX2,iX3) < LimiterThreshold ) CYCLE
+
+          dX1 = MeshX(1) % Width(iX1)
+          dX2 = MeshX(2) % Width(iX2)
+          dX3 = MeshX(3) % Width(iX3)
 
           ! --- Map to Modal Representation ---
 
@@ -247,17 +248,13 @@ CONTAINS
           DO iCF = 1, nCF
 
             SlopeDifference(iCF) &
-              = ABS( U_M(iCF,0,2) - dU(iCF,1) ) &
-                / MAXVAL( [ ABS( U_M(iCF,0,2) ), &
-                            ABS( dU (iCF,1) ), 1.0d-12 ] )
+              = ABS( U_M(iCF,0,2) - dU(iCF,1) )
 
             IF( nDimsX > 1 )THEN
 
               SlopeDifference(iCF) &
                 = MAX( SlopeDifference(iCF), &
-                       ABS( U_M(iCF,0,3) - dU(iCF,2) ) &
-                       / MAXVAL( [ ABS( U_M(iCF,0,3) ), &
-                                   ABS( dU (iCF,2)), 1.0d-12 ] ) )
+                       ABS( U_M(iCF,0,3) - dU(iCF,2) ) )
 
             END IF
 
@@ -265,9 +262,7 @@ CONTAINS
 
               SlopeDifference(iCF) &
                 = MAX( SlopeDifference(iCF), &
-                       ABS( U_M(iCF,0,4) - dU(iCF,3) ) &
-                       / MAXVAL( [ ABS( U_M(iCF,0,4) ), &
-                                   ABS( dU (iCF,3)), 1.0d-12 ] ) )
+                       ABS( U_M(iCF,0,4) - dU(iCF,3) ) )
 
             END IF
 
@@ -278,7 +273,8 @@ CONTAINS
 
           DO iCF = 1, nCF
 
-            IF( SlopeDifference(iCF) >= SlopeTolerance )THEN
+            IF( SlopeDifference(iCF) &
+                  > SlopeTolerance * ABS( U_M(iCF,0,1) ) )THEN
 
               U_M(iCF,0,2:nDOFX) = Zero
 
