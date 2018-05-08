@@ -25,6 +25,8 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   PUBLIC :: NumericalFlux_X1_HLLC_GR
   PUBLIC :: NumericalFlux_X1_LLF_GR
 
+  LOGICAL, PARAMETER :: DEBUG = .TRUE.
+
 CONTAINS
 
 
@@ -101,17 +103,24 @@ CONTAINS
 
     nNodes = SIZE( CF_D )
 
-    ! Loop through all the nodes
+    ! --- Loop through all the nodes ---
     DO i = 1, nNodes
 
-      IF( q(i) .LT. Zero ) WRITE(*,'(A6,ES18.10E3)') 'q(i): ', q(i)
+      IF( DEBUG )THEN
+         IF( q(i) .LT. Zero )THEN
+           WRITE(*,'(A6,ES18.10E3)') 'q(i): ', q(i)
+!           WRITE(*,'(A6,ES18.10E3)') 'Gm11: ', GF_Gm_dd_11(:)
+!           WRITE(*,'(A6,ES18.10E3)') 'Gm22: ', GF_Gm_dd_22(:)
+!           WRITE(*,'(A6,ES18.10E3)') 'Gm33: ', GF_Gm_dd_33(:)
+         END IF
+      END IF
     
       Converged = .FALSE.
       nIter     = 0
 
       SSq = CF_S1(i)**2 / GF_Gm_dd_11(i) &
             + CF_S2(i)**2 / GF_Gm_dd_22(i) &
-              + CF_S3(i)**2 / GF_Gm_dd_33(i)
+            + CF_S3(i)**2 / GF_Gm_dd_33(i)
 
       ! --- Find Pressure with Newton's Method ---
 
@@ -122,35 +131,30 @@ CONTAINS
 
         nIter = nIter + 1
 
-        ! If nIter == 1, save FunP as FunP0
         CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
 
         Pnew = Pold - FunP / JacP
 
         ! --- Check if Newton's method has converged ---
-        IF( ( ABS( Pnew - Pold ) / ( 1.0_DP + ABS( Pnew ) ) ) .LT. TolP ) THEN
-           CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP )
-           ! Maybe compare FunP to FunP0
+        IF( ABS( Pnew - Pold ) .LT. TolP * ( 1.0_DP + ABS( Pnew ) ) )THEN
+          CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP )
           IF( ABS( FunP ) .LT. TolFunP ) THEN
             Converged = .TRUE.
           ELSE
-            Converged = .FALSE.
-            WRITE(*,*) 'No convergence, |Pnew/Pold - 1|:', &
-                         ABS( Pnew / Pold - 1.0_DP )
-            WRITE(*,*) 'Pold:                   ', Pold
-            WRITE(*,*) 'Pnew:                   ', Pnew
-            WRITE(*,*) 'FunP:                   ', FunP
+            WRITE(*,'(A)') 'No convergence...'
+            WRITE(*,'(A7,ES24.16E3)') 'Pold:  ', Pold
+            WRITE(*,'(A7,ES24.16E3)') 'Pnew:  ', Pnew
+            WRITE(*,'(A7,ES24.16E3)') 'FunP:  ', FunP
             STOP
           END IF
         END IF
 
         ! --- STOP after 100 iterations ---
         IF( nIter == 100 )THEN
-          WRITE(*,*) 'Max allowed iterations reached, no convergence'
-          WRITE(*,*) 'No convergence, |Pnew/Pold - 1|:', &
-                      ABS( Pnew / Pold - 1.0_DP )
-          WRITE(*,*) 'Pold:                   ', Pold
-          WRITE(*,*) 'Pnew:                   ', Pnew
+          WRITE(*,'(A)') 'Max allowed iterations reached, no convergence...'
+          WRITE(*,'(A7,ES24.16E3)') 'Pold:  ', Pold
+          WRITE(*,'(A7,ES24.16E3)') 'Pnew:  ', Pnew
+          WRITE(*,'(A7,ES24.16E3)') 'FunP:  ', FunP
           IF( nIter == 103 ) STOP
         END IF
 
@@ -166,7 +170,9 @@ CONTAINS
 
       h = ( CF_E(i) + AF_P(i) + CF_D(i) ) / ( W * CF_D(i) )
 
-      IF( h .LT. 1.0_DP ) WRITE(*,'(A6,ES18.10E3)') 'h:    ', h
+      IF( DEBUG )THEN
+        IF( h .LT. 1.0_DP ) WRITE(*,'(A6,ES18.10E3)') 'h:    ', h
+      END IF
 
       ! --- Recover Primitive Variables ---
 

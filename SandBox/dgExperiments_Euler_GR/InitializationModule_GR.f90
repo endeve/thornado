@@ -76,30 +76,30 @@ CONTAINS
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) ! Physical coordinate
 
-            ! --- Riemann Problems ---
-            IF( X1 <= X_D )THEN
-
-              ! -- Left State --
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = D_L
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_L(1)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_L(2)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_L(3)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = P_L / (Gamma_IDEAL-One)
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = P_L
-
-            ELSE
-
-              ! -- Right State --
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = D_R
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_R(1)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_R(2)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_R(3)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = P_R / (Gamma_IDEAL-One)
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = P_R
-
-            END IF
+!!$            ! --- Riemann Problems ---
+!!$            IF( X1 <= X_D )THEN
+!!$
+!!$              ! -- Left State --
+!!$
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = D_L
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_L(1)
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_L(2)
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_L(3)
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = P_L / (Gamma_IDEAL-One)
+!!$              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = P_L
+!!$
+!!$            ELSE
+!!$
+!!$              ! -- Right State --
+!!$
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = D_R
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_R(1)
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_R(2)
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_R(3)
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = P_R / (Gamma_IDEAL-One)
+!!$              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = P_R
+!!$
+!!$            END IF
 
 !!$            ! --- Smooth solution, advected sine wave ---
 !!$
@@ -125,31 +125,31 @@ CONTAINS
 !!$            uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0d-6 / (Gamma_IDEAL-One)
 !!$            uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d-6
 
-!!$            ! --- Perturbed shock tube ---
-!!$            IF( X1 <= X_D )THEN
-!!$
-!!$              ! -- Left State --
-!!$
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 5.0d0
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0d0
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0d0
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0d0
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 50.0d0 / (Gamma_IDEAL-One)
-!!$              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 50.0d0
-!!$
-!!$            ELSE
-!!$
-!!$              ! -- Right State --
-!!$
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 2.0d0 + 0.3d0 * SIN( 50.0d0 * X1 )
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0d0
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0d0
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0d0
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 5.0d0 / (Gamma_IDEAL-One)
-!!$              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 5.0d0
-!!$
-!!$            END IF
-!!$
+            ! --- Perturbed shock tube ---
+            IF( X1 <= X_D )THEN
+
+              ! -- Left State --
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 5.0d0
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0d0
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0d0
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0d0
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 50.0d0 / (Gamma_IDEAL-One)
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 50.0d0
+
+            ELSE
+
+              ! -- Right State --
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 2.0d0 + 0.3d0 * SIN( 50.0d0 * X1 )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0d0
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0d0
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0d0
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 5.0d0 / (Gamma_IDEAL-One)
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 5.0d0
+
+            END IF
+
 
 !!$            ! --- Acoustic problem, spherical symmetry ---
 !!$
@@ -253,7 +253,7 @@ CONTAINS
 
             ! --- Compute pressure from internal energy density ---
             uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
-              = ( Gamma_IDEAL - 1.0_DP ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E )
+              = ( Gamma_IDEAL - 1.0_DP ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
 
           END DO
 

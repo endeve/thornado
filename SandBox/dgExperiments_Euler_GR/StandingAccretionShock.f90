@@ -47,24 +47,16 @@ PROGRAM StandingAccretionShock
 
   IMPLICIT NONE
 
-  REAL(DP), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
+  INTEGER               :: iCycle, iCycleD, iCycleW, K, nNodes, nLines
+  REAL(DP)              :: t, dt, t_end, xL, xR, CFL, dt_write
+  REAL(DP)              :: M_PNS, Gamma, Ri, R_PNS, R_shock, Rf, Mdot
+  REAL(DP), ALLOCATABLE :: FluidFieldParameters(:), FluidFieldData(:,:)
   REAL(DP), ALLOCATABLE :: r(:), rho(:), v(:), e(:)
-  INTEGER               :: nLines, iCycle, iCycleD, iCycleW, K, nNodes
-  REAL(DP)              :: M_PNS, gamma, Ri, R_PNS, R_shock, Rf, Mdot
-  REAL(DP)              :: t, dt, t_end, CFL, xL, xR, dt_write
   REAL(DP)              :: LT
 
   nNodes = 2
   K      = 64
-  IF      ( nNodes == 1 ) THEN
-    LT = 0.001_DP
-  ELSE IF ( nNodes == 2 ) THEN
-    LT = 0.05_DP
-  ELSE IF ( nNodes == 3 ) THEN
-    LT = 0.1_DP
-  ELSE
-    LT = 1.0_DP
-  END IF
+  LT     = 0.03_DP
 
   CALL ReadParameters &
          ( '../StandingAccretionShock_Parameters.dat', FluidFieldParameters )
@@ -93,7 +85,7 @@ PROGRAM StandingAccretionShock
            nX_Option &
              = [ K, 1, 1 ], &
            swX_Option &
-             = [ 1, 1, 1 ], &
+             = [ 1, 0, 0 ], &
            bcX_Option &
              = [ 10, 3, 1 ], &
            xL_Option &
@@ -113,13 +105,13 @@ PROGRAM StandingAccretionShock
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
-  CFL      = 0.1d0
-  t_end    = 3.0d2 * Millisecond
+  CFL      = 0.5d0
+  t_end    = 1.0d2 * Millisecond
   dt       = CFL * ( xR - xL ) / ( SpeedOfLight * K )
   dt_write = 0.1d0 * Millisecond
 
-  iCycleD = dt_write / dt
-  iCycleW = dt_write / dt
+  iCycleD = INT( dt_write / dt )
+  iCycleW = INT( dt_write / dt )
 
   CALL InitializeReferenceElementX
 
@@ -127,22 +119,24 @@ PROGRAM StandingAccretionShock
 
   CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = M_PNS )
-
   CALL InitializeFields_StandingAccretionShock
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+  STOP
 
-  CALL InitializeFluid_SSPRK( nStages = 3 )
+  CALL InitializeFluid_SSPRK( nStages = 1 )
 
   CALL InitializeSlopeLimiter &
          ( BetaTVD_Option = 1.5_DP, &
+           BetaTVB_Option = 0.0_DP, &
+           SlopeTolerance_Option = 1.0d-2, &
            UseSlopeLimiter_Option = .TRUE., &
-           LimiterThreshold_Option = LT, &
-           UseTroubledCellIndicator_Option = .FALSE. )
+           UseTroubledCellIndicator_Option = .FALSE., &
+           LimiterThresholdParameter_Option = LT )
 
   CALL InitializePositivityLimiter &
-         ( Min_1_Option = Zero , Min_2_Option = Zero, &
+         ( Min_1_Option = 1.0d-25, Min_2_Option = 1.0d-25, &
            UsePositivityLimiter_Option = .TRUE. )
 
   iCycle = 0
@@ -150,10 +144,10 @@ PROGRAM StandingAccretionShock
   DO WHILE ( t < t_end )
 
     IF( t + dt < t_end )THEN
-       t = t + dt
+      t = t + dt
     ELSE
-       dt = t_end - t
-       t = t_end
+      dt = t_end - t
+      t  = t_end
     END IF
 
     iCycle = iCycle + 1
@@ -162,7 +156,7 @@ PROGRAM StandingAccretionShock
 
       WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A5,A5,ES13.6E3,A3)') &
              '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, ' ms, ', &
-               'dt = ', dt / Millisecond, ' ms'
+             'dt = ', dt / Millisecond, ' ms'
       
     END IF
 
@@ -179,6 +173,8 @@ PROGRAM StandingAccretionShock
 
     END IF
 
+    !STOP
+    IF( iCycle .EQ. 100 ) STOP
   END DO
 
   CALL WriteFieldsHDF &

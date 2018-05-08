@@ -55,7 +55,7 @@ PROGRAM RiemannProblem
 
   CALL RiemannProblemChoice &
          ( D_L, V_L, P_L, D_R, V_R, P_R, &
-             xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, CS, iRP = 12 )
+             xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, CS, iRP = 10 )
 
   IF ( ConvergenceRate ) THEN
     DO i = 1 , IARGC()
@@ -66,19 +66,10 @@ PROGRAM RiemannProblem
     K      = argv(2)
   ELSE
     nNodes = 2
-    K      = 64
+    K      = 128
+    LT     = 0.1_DP
   END IF
   
-  IF      ( nNodes == 1 ) THEN
-    LT = 0.0001_DP
-  ELSE IF ( nNodes == 2 ) THEN
-    LT = 0.1_DP
-  ELSE IF ( nNodes == 3 ) THEN
-    LT = 0.1_DP
-  ELSE
-    LT = 1.0_DP
-  END IF
-
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'RiemannProblem', &
@@ -108,7 +99,7 @@ PROGRAM RiemannProblem
              = 3 )
 
   dt      = CFL * ( xR(1) - xL(1) ) / ( c * K )
-  iCycleD = 100
+  iCycleD = 1
   iCycleW = 1
 
   CALL InitializeReferenceElementX
@@ -129,10 +120,12 @@ PROGRAM RiemannProblem
   CALL InitializeFluid_SSPRK( nStages = 3 )
 
   CALL InitializeSlopeLimiter &
-         ( BetaTVD_Option = 1.7_DP, BetaTVB_Option = 0.0_DP, &
-           LimiterThreshold_Option = LT, &
+         ( BetaTVD_Option = 1.5_DP, &
+           BetaTVB_Option = 0.0_DP, &
+           SlopeTolerance_Option = 1.0d-3, &
            UseSlopeLimiter_Option = .TRUE., &
-           UseTroubledCellIndicator_Option = .TRUE. )
+           UseTroubledCellIndicator_Option = .TRUE., &
+           LimiterThresholdParameter_Option = LT )
 
   CALL InitializePositivityLimiter &
          ( Min_1_Option = 1.0d-16 , Min_2_Option = 1.0d-16, &
@@ -171,8 +164,6 @@ PROGRAM RiemannProblem
 
     END IF
 
-    !STOP
-    IF( iCycle .EQ. 100 ) STOP
   END DO
 
   CALL WriteFieldsHDF &

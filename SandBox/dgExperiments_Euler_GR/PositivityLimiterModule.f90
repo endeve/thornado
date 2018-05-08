@@ -34,7 +34,7 @@ MODULE PositivityLimiterModule
   PUBLIC :: FinalizePositivityLimiter
   PUBLIC :: ApplyPositivityLimiter
 
-  LOGICAL               :: UsePositivityLimiter
+  LOGICAL               :: UsePositivityLimiter, DEBUG = .FALSE.
   INTEGER, PARAMETER    :: nPS = 7  ! Number of Positive Point Sets
   INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
   INTEGER               :: nPT      ! Total number of Positive Points
@@ -127,6 +127,10 @@ CONTAINS
       DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
+          IF( DEBUG ) THEN
+            WRITE(*,*)
+            WRITE(*,'(A,3I4)') 'iX1,iX2,iX3',iX1,iX2,iX3
+          END IF
           U_q(1:nDOFX,1:nCF) &
             = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
 
@@ -135,7 +139,9 @@ CONTAINS
 
           NegativeStates = .FALSE.
 
+          IF( DEBUG ) WRITE(*,*) 'CALL ComputePointValues_Fluid (1)'
           CALL ComputePointValues_Fluid   ( U_q, U_PP )
+          IF( DEBUG ) WRITE(*,*) 'CALL ComputePointValues_Geometry (1)'
           CALL ComputePointValues_Geometry( G_q, G_PP )
 
           ! --- Ensure Positive Density ---
@@ -146,14 +152,15 @@ CONTAINS
 
             ! --- Cell Average ---
 
+            IF( DEBUG ) WRITE(*,*) 'Compute Cell average'
             U_K(iCF_D) &
-!              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) )
-              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
-                  / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) )
+!              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
+!                  / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
 
             Theta_1 &
-              = MIN( One, ABS( (Min_1-U_K(iCF_D) ) / (Min_K-U_K(iCF_D)) ) )
-!            Theta_1 = Zero
+!              = MIN( One, ABS( (Min_1-U_K(iCF_D) ) / (Min_K-U_K(iCF_D)) ) )
+              = Zero
 
             ! --- Limit Density Towards Cell Average ---
 
@@ -162,7 +169,9 @@ CONTAINS
 
             ! --- Recompute Point Values ---
 
+            IF( DEBUG ) WRITE(*,*) 'CALL ComputePointValues_Fluid (2)'
             CALL ComputePointValues_Fluid   ( U_q, U_PP )
+            IF( DEBUG ) WRITE(*,*) 'CALL ComputePointValues_Geometry (2)'
             CALL ComputePointValues_Geometry( G_q, G_PP )
 
             NegativeStates(1) = .TRUE.
@@ -171,6 +180,7 @@ CONTAINS
 
           ! --- Ensure positive q(u) (Wu & Tang (2015) Eq.(2.5)) ---
 
+          IF( DEBUG ) WRITE(*,*) 'CALL Computeq'
           CALL Computeq( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), q(1:nPT) )
 
           IF( ANY( q(:) < Min_2 ) )THEN
@@ -180,18 +190,18 @@ CONTAINS
             DO iCF = 1, nCF
 
               U_K(iCF) &
-                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
-                    / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
-!                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) )
+!                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
+!                    / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) )
 
             END DO
 
             DO iGF = 1, nGF
 
               G_K(iGF) &
-                = DOT_PRODUCT( WeightsX_q, G_q(:,iGF) * G_q(:,iGF_SqrtGm) ) &
-                    / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
-!                = DOT_PRODUCT( WeightsX_q, G_q(:,iGF)
+!                = DOT_PRODUCT( WeightsX_q, G_q(:,iGF) * G_q(:,iGF_SqrtGm) ) &
+!                    / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
+                = DOT_PRODUCT( WeightsX_q, G_q(:,iGF) )
 
             END DO
 
@@ -209,7 +219,6 @@ CONTAINS
                END IF
 
             END DO
-
             Theta_2 = Zero
 
             ! --- Limit Towards Cell Average ----
@@ -396,6 +405,14 @@ CONTAINS
     q = qFun( U(:,iCF_D), U(:,iCF_S1), U(:,iCF_S2), U(:,iCF_S3), U(:,iCF_E), &
          G(:,iGF_Gm_dd_11), G(:,iGF_Gm_dd_22), G(:,iGF_Gm_dd_33) )
 
+    IF( DEBUG )THEN
+       WRITE(*,*) 'CF_D:',U(:,iCF_D)
+       WRITE(*,*) 'CF_S1:',U(:,iCF_S1)
+       WRITE(*,*) 'CF_E:',U(:,iCF_E)
+       WRITE(*,*) 'Gm11:',G(:,iGF_Gm_dd_11)
+       WRITE(*,*) 'Gm22:',G(:,iGF_Gm_dd_22)
+       WRITE(*,*) 'Gm33:',G(:,iGF_Gm_dd_33)
+    END IF
     RETURN
   END SUBROUTINE Computeq
 
@@ -405,9 +422,9 @@ CONTAINS
     REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, Gm11, Gm22, Gm33
     REAL(DP)             :: SSq
 
-    SSq = S1**2 / Gm11 &
-          + S2**2 / MAX( Gm22, SqrtTiny ) & ! possibly remove this after updating
-          + S3**2 / MAX( ABS( Gm33 ), SqrtTiny )
+    SSq = S1**2 / MAX( Gm11, SqrtTiny ) &
+          + S2**2 / MAX( Gm22, SqrtTiny ) &
+          + S3**2 / MAX( Gm33, SqrtTiny )
 
     qFun = tau + D - SQRT( D**2 + SSq )
 
@@ -421,7 +438,6 @@ CONTAINS
     REAL(DP), INTENT(out) :: Theta_P
 
     INTEGER,  PARAMETER :: MAX_IT = 19
-!    REAL(DP), PARAMETER :: dx_min = 1.0d-2 ! Needed for shock reflection Riemann problem
     REAL(DP), PARAMETER :: dx_min = 1.0d-3
 
     LOGICAL  :: CONVERGED
