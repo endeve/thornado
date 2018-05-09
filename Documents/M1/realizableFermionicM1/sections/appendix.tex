@@ -68,7 +68,7 @@ And $\tilde{w}_{i}=\tilde{a}_{3i} = w_{i}=a_{3i}$ for $i\le3$.
 \paragraph{IMEX PARSD}
 
 We have found a second-order accurate in the streaming limit, diffusion accurate, positivity-preserving IMEX scheme of type $ARS$, which we refer to as IMEX PARSD.  
-This scheme allows for has a $c_{sch}= 1 - 2\epsilon$ which can arbitrary close to 1 by setting $\epsilon$ a arbitrary small positive value.
+This scheme allows for has a $c_{sch}= 1 - 2\epsilon$ with $\epsilon \in [0, 1/2)$.
 Here we give an example by setting $\epsilon=0.1$.
 \begin{align}
   \tilde{a}_{21} & = 1.0, \nonumber \\
@@ -157,7 +157,7 @@ Find $(\tilde{a}_{21}, \tilde{a}_{31}, \tilde{a}_{32}, \tilde{w}_{1}, \tilde{w}_
  \text{(diffusion accurate)} \qquad & e^{T}_iA^{-1}\tilde{A}e = 1, ~\text{for} ~ i = 2,3, \\
  \text{(affordable)} \qquad & c_{sch} > 0.
 \end{align*}
-This problem can be simplified as:
+Imposing those equality constraints (including all the constraints exclude those from the positivity-preserving and affordable requirements), the Butcher tableau can be simplified as:
 \begin{equation}
   \begin{array}{c | c c c}
   	     0       & 0            & 0 & 0 \\
@@ -173,11 +173,13 @@ This problem can be simplified as:
   	             & 0 & 1-y          & y
   \end{array}.
 \end{equation}
+And the rest inequalities and the problem were left to be: \\
 Find $(x,y)$ such that
 \begin{align*}
 \text{maximize} ~ c_{sch} = &\min \{ 2x, \dfrac{1-2x(1-y)}{y-x}, 2(1-y)\}\\
  \text{under these constraints:} \qquad & x > 0, ~ 1 \geq y > 0, \\
  & x \leq y, ~\dfrac{1}{2x} \geq 1-y.
 \end{align*}
-It can be shown that the solution is $x=\frac{1}{2}$, $y=\frac{1}{2} + \epsilon$ with $\epsilon \rightarrow 0$ and $c_{sch} = 1 - 2\epsilon$.
-And the PARSD scheme follows.
+A solution family is $x=\frac{1}{2}$, $y=\frac{1}{2} + \epsilon$ with $\epsilon \in [0, \frac{1}{2})$ and $c_{sch} = 1 - 2\epsilon$.
+The PARSD scheme follows.
+It's clear that $\epsilon = 0$ and $c_{sch} = 1$ is the most optimized solution.
