@@ -62,18 +62,23 @@ On the interval $x\in[0,1]$, the curves given by Eqs.~\eqref{eq:closureMECB} and
 \subsection{Kershaw (K) Closure}
 
 The basic principle behind Kershaw closure is derived from the fact that the realizable set defined by $(\cJ, \vect{\cH}, \vect{K})$ is convex.
-Due to the convexity, it's sufficient and necessary for an element in the convex set be expressed as a convex combination of two elements that on the set boundary.
-The Kershaw closure assumes that the convex combination has a constant coefficient $\beta$ which is independent from $(\cJ,h)$:
+Due to the convexity, any element in the convex set be expressed as a convex combination of two elements that on the set boundary, and vice versa.
+That is,
 \begin{align}
  \chi(\cJ,h) = \beta  \chi_{L}(\cJ,h) + (1-\beta) \chi_{U}(\cJ,h),
 \end{align}
-where $\chi_{L}$ and $\chi_{U}$ are the boundary functions given by the Heaviside function with Fermi-Dirac statistic function.
-Therefore, using the lower occupancy limit,
+with $\chi_{L}$ and $\chi_{U}$ be the boundary elements, and $\beta \in [0,1]$. 
+The Kershaw closure uses a convex combination that determined by the isotropic distribution case to approximate $\chi(\cJ,h)$:
 \begin{align}
- \chi(\cJ,0) = \dfrac{1}{3},
+ \chi(\cJ,0)  &= \dfrac{1}{3},\\
+\chi_{L}(\cJ,h) & = \dfrac{1}{3}\cJ^2 + h^2, \\
+\chi_{U}(\cJ,h) & = \left( 1 - \cJ + \dfrac{1}{3}\cJ^2 \right) - \dfrac{h^2 \cJ}{1-\cJ},
 \end{align}
-one can determine the coefficient $\beta$ and apply the convex combination as an approximation.
-Here we introduce a closure function $\Theta(x)$ given by Banach \& Larecki \cite{banachLarecki_2017a}:
+$\chi_{L}$ and $\chi_{U}$ are given by the Heaviside function with Fermi-Dirac statistic function, and
+\begin{align}
+\beta = \dfrac{2 - \cJ}{3}.
+\end{align}
+Then the Kershaw closure function $\Theta(x)$ reads (Banach \& Larecki \cite{banachLarecki_2017a}):
 \begin{equation}
   \Theta_{\mbox{\tiny K}}^{\mbox{\tiny BL}}(x)=x^{2}
 \end{equation}
