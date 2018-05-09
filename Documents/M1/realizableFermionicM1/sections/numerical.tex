@@ -152,8 +152,8 @@ For the results obtained with the Minerbo closure, which is not based on Fermi-D
 \begin{figure}[h]
   \centering
   \begin{tabular}{cc}
-    \includegraphics[width=0.5\textwidth]{figures/PackedBeam_ME_CB}
-    \includegraphics[width=0.5\textwidth]{figures/PackedBeam_ME_MI}
+    \includegraphics[width=0.485\textwidth]{figures/PackedBeam_ME_CB} &
+    \includegraphics[width=0.485\textwidth]{figures/PackedBeam_ME_MI}
   \end{tabular}
    \caption{Numerical results from the packed beam problem at various times: $t=0$ (cyan), $t=0.2$ (magenta), $t=0.4$ (blue), and $t=0.8$ (black).  Results obtained with the Cernohorsky \& Bludman closure are displayed in the left panels, while results obtained with the Minerbo closure are displayed in the right panels.  The analytical solution (dashed lines) is also plotted.}
   \label{fig:PackedBeam}
@@ -167,28 +167,43 @@ We point out that simply using the realizability-preserving limiter described in
 \begin{figure}[h]
   \centering
   \begin{tabular}{cc}
-    \includegraphics[width=0.5\textwidth]{figures/PackedBeam_Realizability}
-    \includegraphics[width=0.5\textwidth]{figures/PackedBeam_RealizableDomain}
+    \includegraphics[width=0.485\textwidth]{figures/PackedBeam_Realizability} &
+    \includegraphics[width=0.485\textwidth]{figures/PackedBeam_RealizableDomain}
   \end{tabular}
    \caption{In the left panel, $\gamma(\vect{\cM})=(1-\cJ)\,\cJ-|\vect{\cH}|$ is plotted versus $x$ for various times in the packed beam problem: $t=0$ (cyan), $t=0.2$ (magenta), $t=0.4$ (blue), and $t=0.8$ (black).  Results obtained with the CB closure, which remain positive throughout the evolution, are plotted with solid lines, while results obtained with the Minerbo closure are plotted with dashed lines.  In the right panel, the moments are plotted in $(\cJ,\cH)$-space for the same times as in the left panel.  Results obtained with the CB and Minerbo closures are plotted in blue and magenta, respectively.  The solid black and red lines are contour where $(1-\cJ)\,\cJ=\cH$ and $\cJ=\cH$, respectively.}
   \label{fig:PackedBeam_Realizability}
 \end{figure}
 
-\subsection{Line Source}
+\subsection{Fermion Implosion}
 
-The line source benchmark (cf. \cite{brunner_2002,garrettHauck_2013}) is a challenging test for approximate transport algorithms.  
-In cylindrical coordinates, it consists of an initial delta function particle distribution in radius; i.e., $f_{0}=\delta(R)/4\,\pi$.  
-For $t>0$, a cylindrical radiation front propagates radially.  
-Apart from capturing details of the exact transport solution, maintaining realizability ($\bcM\in\cR$ cf. Eq.~\eqref{eq:realizableSet}) of the two-moment solution is challenging.  
+The next test is inspired by line source benchmark (cf. \cite{brunner_2002,garrettHauck_2013}), which is a challenging test for approximate transport algorithms.  
+The original line source test consists of an initial delta function particle distribution in radius $R=|\vect{x}|$; i.e., $f_{0}=\delta(R)/4\,\pi$.  
+For $t>0$, a radiation front propagates in the radial direction, away from the initial source.  
+Apart from capturing details of the exact transport solution, maintaining realizability of the two-moment solution is challenging.  
 
-This test is computed on a two-dimensional domain with $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,1.25], x^{2}\in[0,1.25]\}$.  
-We follow the initialization procedure in \cite{garrettHauck_2013}, and approximate the initial condition with an isotropic Gaussian distribution function
+Here, a modified version of the line source --- dubbed \emph{Fermion Implosion},  designed to test the realizability-preserving properties of the two moment model for fermionic transport --- is computed on a two-dimensional domain with $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[-1.28,1.28], x^{2}\in[-1.28,1.28]\}$.  
+Instead of initializing with a delta function, we follow the initialization procedure in \cite{garrettHauck_2013}, and approximate the initial condition with an isotropic Gaussian distribution function.  
+Morover, the initial distribution function is bounded $f_{\mbox{\tiny G},0}\in(0,1)$ and reaches a minimum in the center of the computational domain (hence implosion)
 \begin{equation}
   f_{\mbox{\tiny G},0}
-  =\max\Big[\,\f{1}{8\,\pi\,\sigma_{\mbox{\tiny G}}^{2}}\,e^{-R^{2}/(2\,\sigma_{\mbox{\tiny G}}^{2})},10^{-4}\,\Big],
+  =1-\max\Big[\,e^{-R^{2}/(2\,\sigma_{\mbox{\tiny G}}^{2})},10^{-8}\,\Big].  
 \end{equation}
-where $R=|\vect{x}|$, and we use $\sigma_{\mbox{\tiny G}}=0.03$.  
-We run this test to a final time $t=1.0$.  
+We set $\sigma_{\mbox{\tiny G}}=0.03$, and run this test to a final time of $t=1.0$.  
+We run this test using a grid of $512^{2}$ elements, polynomials of degree $k=1$, and the SSPRK2 time stepping scheme.  
+(There are no collisions in this test; i.e., $\sigma_{\Ab}=\sigma_{\Scatt}=0$.)  
+We present results using both the algebraic closure of Cernohorsky \& Bludman and the Minerbo closure.  
+
+\begin{figure}[h]
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[width=0.495\textwidth]{figures/Implosion_Image} &
+    \includegraphics[width=0.495\textwidth]{figures/Implosion_Lineout} \\
+    \includegraphics[width=0.495\textwidth]{figures/Implosion_RealizableDomain} &
+    \includegraphics[width=0.495\textwidth]{figures/Implosion_LimiterParameters}
+  \end{tabular}
+   \caption{}
+  \label{fig:Implosion}
+\end{figure}
 
 \subsection{Homogeneous Sphere}
 
