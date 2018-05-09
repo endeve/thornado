@@ -186,7 +186,7 @@ CONTAINS
 
         DO iX1 = iX_B0(1), iX_E0(1) + 1
 
-!          WRITE(*,*) 'iX1,iX2,iX3' , iX1,iX2,iX3
+          IF( DEBUG ) WRITE(*,*) 'iX1,iX2,iX3' , iX1,iX2,iX3
            
           DO iCF = 1, nCF
 

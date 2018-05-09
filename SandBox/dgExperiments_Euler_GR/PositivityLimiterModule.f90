@@ -149,6 +149,7 @@ CONTAINS
           Min_K = MINVAL( U_PP(:,iCF_D) )
 
           IF( Min_K < Min_1 )THEN
+             IF( DEBUG ) WRITE(*,*) 'Ensuring positive density'
 
             ! --- Cell Average ---
 
@@ -184,6 +185,7 @@ CONTAINS
           CALL Computeq( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), q(1:nPT) )
 
           IF( ANY( q(:) < Min_2 ) )THEN
+             IF( DEBUG ) WRITE(*,*) 'Ensuring positive q'
 
             ! --- Cell Average ---
 
@@ -205,20 +207,20 @@ CONTAINS
 
             END DO
 
-            Theta_2 = One
-            DO iP = 1, nPT
-
-               IF( q(iP) < Min_2 ) THEN
-
-                  CALL SolveTheta_Bisection &
-                         ( U_PP(iP,1:nCF), U_K(1:nCF), &
-                             G_PP(iP,1:nGF), G_K(1:nGF), Min_2, Theta_P )
-
-                  Theta_2 = MIN( Theta_2, Theta_P )
-
-               END IF
-
-            END DO
+!!$            Theta_2 = One
+!!$            DO iP = 1, nPT
+!!$
+!!$               IF( q(iP) < Min_2 ) THEN
+!!$
+!!$                  CALL SolveTheta_Bisection &
+!!$                         ( U_PP(iP,1:nCF), U_K(1:nCF), &
+!!$                             G_PP(iP,1:nGF), G_K(1:nGF), Min_2, Theta_P )
+!!$
+!!$                  Theta_2 = MIN( Theta_2, Theta_P )
+!!$
+!!$               END IF
+!!$
+!!$            END DO
             Theta_2 = Zero
 
             ! --- Limit Towards Cell Average ----
@@ -326,10 +328,12 @@ CONTAINS
   SUBROUTINE ComputePointValues_Geometry( G_Q, G_P )
 
     REAL(DP), INTENT(in)  :: G_Q(nDOFX,nGF)
-    REAL(DP), INTENT(out) :: G_P(nPT, nGF)
+    REAL(DP), INTENT(out) :: G_P(nPT,  nGF)
 
     INTEGER :: iOS, iGF
-    
+
+    ! --- Interpolate scale factors to cell faces ---
+
     DO iGF = iGF_h_1, iGF_h_3
 
       G_P(1:nDOFX,iGF) = G_Q(1:nDOFX,iGF)

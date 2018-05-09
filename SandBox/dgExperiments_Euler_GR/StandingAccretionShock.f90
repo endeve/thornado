@@ -105,8 +105,8 @@ PROGRAM StandingAccretionShock
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
-  CFL      = 0.5d0
-  t_end    = 1.0d2 * Millisecond
+  CFL      = 0.1d0
+  t_end    = 3.0d2 * Millisecond
   dt       = CFL * ( xR - xL ) / ( SpeedOfLight * K )
   dt_write = 0.1d0 * Millisecond
 
@@ -123,12 +123,11 @@ PROGRAM StandingAccretionShock
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
-  STOP
 
   CALL InitializeFluid_SSPRK( nStages = 1 )
 
   CALL InitializeSlopeLimiter &
-         ( BetaTVD_Option = 1.5_DP, &
+         ( BetaTVD_Option = 1.15_DP, &
            BetaTVB_Option = 0.0_DP, &
            SlopeTolerance_Option = 1.0d-2, &
            UseSlopeLimiter_Option = .TRUE., &
@@ -173,8 +172,6 @@ PROGRAM StandingAccretionShock
 
     END IF
 
-    !STOP
-    IF( iCycle .EQ. 100 ) STOP
   END DO
 
   CALL WriteFieldsHDF &
