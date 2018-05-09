@@ -105,7 +105,7 @@ PROGRAM ApplicationDriver
            Gamma_IDEAL_Option = Gamma )
 
   CALL InitializeSlopeLimiter_Euler &
-         ( BetaTVD_Option = 1.8_DP, &
+         ( BetaTVD_Option = 1.15_DP, &
            BetaTVB_Option = 0.0_DP, &
            SlopeTolerance_Option = 1.0d-2, &
            UseSlopeLimiter_Option = .TRUE., &
