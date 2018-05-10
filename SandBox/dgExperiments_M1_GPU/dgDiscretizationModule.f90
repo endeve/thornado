@@ -821,10 +821,11 @@ CONTAINS
 
       wTime = MPI_WTIME( ) - wTime
 
-      print*, "Prep Time = ", wTime
+      PRINT *, "Prep Time: ", wTime
 
-      PRINT *, "Printing prep time proportions:"
-      PRINT *, "primitive: ", primitive_t, "ff: ", ff_t, "ef: ", ef_t
+      !PRINT *, "Printing prep time proportions:"
+      PRINT *, "primitive: ", primitive_t, "ff: ", ff_t
+      PRINT *, "ef: ", ef_t
       PRINT *, "flux_x1_q: ", flux_x1_q_t, "copy left/right: ", copy_prev_t
       PRINT *, "numerical flux: ", num_flux_t
       PRINT *, ""
@@ -1007,20 +1008,23 @@ CONTAINS
       ! Timing
       update_t = update_t + MPI_Wtime() - start_t
 
-      PRINT *, "Printing calculation times:"
-      PRINT *, "first dgemm calls: ", f_dgemm_t, "left flux: ", l_flux_t, "right flux: ", r_flux_t
-      PRINT *, "second num flux update: ", s_num_flux_t, "second dgemm calls: ", s_dgemm_t
+      !PRINT *, "Printing calculation times:"
+      PRINT *, "first dgemm calls: ", f_dgemm_t, "left flux: ", l_flux_t
+      PRINT *, "right flux: ", r_flux_t
+      PRINT *, "second num flux update: ", s_num_flux_t
+      PRINT *, "second dgemm calls: ", s_dgemm_t
       PRINT *, "update of result: ", update_t
       PRINT *, ""
 
       wTime = MPI_WTIME( ) - wTime
 
+      PRINT *,  "Comp Time: ", wTime
+
+
       PRINT *, "Total time: ", MPI_Wtime() - total_t
       PRINT *, ""
       PRINT *, ""
-
-      print*, "Comp Time = ", wTime
-
+    
     END DO ! --- nSpecies
 
     DEALLOCATE( Flux_X1_q, dU_q, U_P, U_K )
