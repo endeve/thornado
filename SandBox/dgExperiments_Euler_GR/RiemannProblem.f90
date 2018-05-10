@@ -39,7 +39,9 @@ PROGRAM RiemannProblem
     ComputeFromConserved
   USE RiemannProblemInitializer, ONLY: &
     RiemannProblemChoice
-
+  USE EquationOfStateModule, ONLY: &
+    InitializeEquationOfState, &
+    FinalizeEquationOfState
 
   IMPLICIT NONE
 
@@ -59,8 +61,8 @@ PROGRAM RiemannProblem
 
   IF ( ConvergenceRate ) THEN
     DO i = 1 , IARGC()
-      CALL GETARG( i , arg )
-      READ( arg , * ) argv(i)
+      CALL GETARG( i, arg )
+      READ( arg, * ) argv(i)
     END DO
     nNodes = argv(1)
     K      = argv(2)
@@ -87,16 +89,12 @@ PROGRAM RiemannProblem
              = nNodes, &
            CoordinateSystem_Option &
              = TRIM( CS ), &
-           EquationOfState_Option &
-             = 'IDEAL', &
-           FluidRiemannSolver_Option & ! --- Dummy ---
-             = 'HLLC', &
-           Gamma_IDEAL_Option &
-             = Gamma, &
-           Opacity_Option &
-             = 'IDEAL', &
-           nStages_SSP_RK_Option & ! --- Dummy ---
-             = 3 )
+           BasicInitialization_Option &
+             = .TRUE. )
+
+  CALL InitializeEquationOfState &
+         ( EquationOfState_Option = 'IDEAL', &
+           Gamma_IDEAL_Option = Gamma )
 
   dt      = CFL * ( xR(1) - xL(1) ) / ( c * K )
   iCycleD = 1
@@ -178,6 +176,8 @@ PROGRAM RiemannProblem
   CALL FinalizeReferenceElementX
 
   CALL FinalizeReferenceElementX_Lagrange
+
+  CALL FinalizeEquationOfState
 
   CALL FinalizeProgram
 
