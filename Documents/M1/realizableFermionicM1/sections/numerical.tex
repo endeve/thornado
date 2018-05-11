@@ -190,21 +190,21 @@ We point out that simply using the realizability-preserving limiter described in
 \subsection{Fermion Implosion}
 
 The next test is inspired by line source benchmark (cf. \cite{brunner_2002,garrettHauck_2013}), which is a challenging test for approximate transport algorithms.  
-The original line source test consists of an initial delta function particle distribution in radius $R=|\vect{x}|$; i.e., $f_{0}=\delta(R)/4\,\pi$.  
-For $t>0$, a radiation front propagates in the radial direction, away from the initial source.  
+The original line source test consists of an initial delta function particle distribution in radius $R=|\vect{x}|$; i.e., $f_{0}=\delta(R)$.  
+For $t>0$, a radiation front propagates in the radial direction, away from $R=0$.  
 Apart from capturing details of the exact transport solution, maintaining realizability of the two-moment solution is challenging.  
 
-Here, a modified version of the line source --- dubbed \emph{Fermion Implosion},  designed to test the realizability-preserving properties of the two moment model for fermionic transport --- is computed on a two-dimensional domain with $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[-1.28,1.28], x^{2}\in[-1.28,1.28]\}$.  
-Instead of initializing with a delta function, we follow the initialization procedure in \cite{garrettHauck_2013}, and approximate the initial condition with an isotropic Gaussian distribution function.  
-Morover, the initial distribution function is bounded $f_{\mbox{\tiny G},0}\in(0,1)$ and reaches a minimum in the center of the computational domain (hence implosion)
+Here, a modified version of the line source --- dubbed \emph{Fermion Implosion},  designed to test the realizability-preserving properties of the two moment model for fermionic transport --- is computed on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[-1.28,1.28], x^{2}\in[-1.28,1.28]\}$.  
+Instead of initializing with a delta function, we follow the initialization procedure in \cite{garrettHauck_2013}, and approximate the initial condition using an isotropic Gaussian distribution function.  
+However, different from \cite{garrettHauck_2013}, the initial distribution function is bounded $f_{0}\in(0,1)$, and reaches a minimum in the center of the computational domain (hence implosion)
 \begin{equation}
-  f_{\mbox{\tiny G},0}
-  =1-\max\Big[\,e^{-R^{2}/(2\,\sigma_{\mbox{\tiny G}}^{2})},10^{-8}\,\Big].  
+  f_{0}
+  =1-\max\Big[\,e^{-R^{2}/(2\,\sigma_{0}^{2})},10^{-8}\,\Big].  
 \end{equation}
-We set $\sigma_{\mbox{\tiny G}}=0.03$, and run this test to a final time of $t=1.0$.  
-We run this test using a grid of $512^{2}$ elements, polynomials of degree $k=1$, and the SSPRK2 time stepping scheme; a second-order accurate scheme.  
-(There are no collisions in this test; i.e., $\sigma_{\Ab}=\sigma_{\Scatt}=0$.)  
-We present results using both the algebraic closure of Cernohorsky \& Bludman and the Minerbo closure.  
+We set $\sigma_{0}=0.03$, and evolve to a final time of $t=1.0$.  
+We run this test using a grid of $512^{2}$ elements, polynomials of degree $k=1$, and the SSPRK2 time stepping scheme with $\dt=0.1\times\dx^{1}$; a second-order accurate scheme.  
+(There are no collisions included in this test; i.e., $\sigma_{\Ab}=\sigma_{\Scatt}=0$.)  
+For comparison, we present results using the algebraic closures of Cernohorsky \& Bludman (CB) and Minerbo.  
 
 \begin{figure}[h]
   \centering
@@ -214,9 +214,31 @@ We present results using both the algebraic closure of Cernohorsky \& Bludman an
     \includegraphics[width=0.495\textwidth]{figures/Implosion_RealizableDomain} &
     \includegraphics[width=0.495\textwidth]{figures/Implosion_LimiterParameters}
   \end{tabular}
-   \caption{}
+   \caption{Numerical results for the Fermion Implosion problem, computed both the CB and Minerbo closures.  Spatial distribution of the number density $\cJ$ (CB closure only) at $t=1$ (upper left panel).  Number density $\cJ$ versus radius $R=|\vect{x}|$ for various times ($t=0$, $0.1$, $0.2$, and $0.4$) for the CB (blue) and the Minerbo (magenta) closures (upper right panel).  (The initial condition, same for both models, is plotted with cyan.)  Numerical solutions in the $(\cH_{x},\cJ)$-plane (lower left panel), for the same times as plotted in the upper right panel.  Limiter parameters $\vartheta_{1}$ (solid) and $\vartheta_{2}$ (dashed) in Section~\ref{sec:limiter} (minimum over the whole computational domain) versus time (lower right panel).}
   \label{fig:Implosion}
 \end{figure}
+
+Numerical results for the Fermion Implosion problem are plotted in Figure~\ref{fig:Implosion}.  
+For $t>0$, the low-density region in the center of the computational domain is quickly filled in, and a cylindrical perturbation propagates radially away from the center.  
+For the model with the CB closure, this perturbation, seen as a depression in the density relative to the ambient medium, has reached $R\approx1$ for $t=1$ (upper left panel in Figure~\ref{fig:Implosion}).  
+The right panel in Figure~\ref{fig:Implosion} illustrates the difference in dynamics resulting from the two closures.  
+With the CB closure (blue lines), the central density increases towards the maximum value of unity, and an low-density pulse propagates radially.  
+The amplitude of the pulse decreases with time due to the geometry of the problem.  
+For $t=0.4$, the peak depression in located around $R=0.34$ (with $\cJ\approx0.96$).  
+With the Minerbo closure, the central density continues to increase beyond unity, and reaches a maximum of about $\cJ\approx1.37$ at $t=0.1$.  
+The central density starts to decrease beyond this point in time, and a steepening pulse propagates radially away from the center.  
+(This pulse is trailing the pulse in the model computed with the CB closure.)  
+At $t=0.4$, a discontinuity appears to have formed around $R=0.2$, resulting in numerical oscillations.  
+Except for the positivity limiter (which is not triggered for this model), no limiters are used to prevent numerical oscillations.  
+In the lower left panel in Figure~\ref{fig:Implosion}, the moments are plotted in the $(\cH_{x},\cJ)$-plane for the same times as plotted in the upper left panel.  
+(Each dot represents the moments at a specific spatial point and time.)  
+Initially, $\vect{\cH}=0$, and all the moments lie on on the line connecting $(0,0)$ and $(0,1)$; cyan points.  
+With the CB closure (blue points), the moments are confined to evolve inside the realizable domain $\cR$ (black), while with the Minerbo closure, the moments are not confined to $\cR$, but to the region above the red lines (the realizable domain for moments of positive distribution functions), and this is the reason for the difference in dynamics in the two models.  
+For the model with the CB closure, some moments evolve very close to the boundary of the realizable domain, and the positivity limiter is continuously triggered to damp these moments towards the cell average, which is realizable by the design of our numerical scheme.  
+In the lower right panel in Figure~\ref{fig:Implosion} we plot the limiter parameters $\vartheta_{1}$ (solid) and $\vartheta_{2}$ (dashed) (cf. \eqref{eq:limitDensity} and \eqref{eq:limitMoments}) versus time for the CB closure model (blue) and the Minerbo closure model (magenta); the minimum over the whole computational domain is plotted.  
+For the CB closure model, the limiter is triggered to prevent both density overshoots and $\gamma(\cM)<0$.  
+Late in the simulation ($t\gtrsim0.7$), the minimum value of $\vartheta_{2}$ is around $0.1$.  
+For the model using the Minerbo closure, the limiter is not triggered ($\vartheta_{1}=\vartheta_{2}=1$).  
 
 \subsection{Homogeneous Sphere}
 

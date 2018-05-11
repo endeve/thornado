@@ -8,6 +8,7 @@ We replace the polynomial $\cJ_{h}^{n}(\vect{z})$ with the limited polynomial
 \begin{equation}
   \tilde{\cJ}_{h}^{n}(\vect{z})
   =\vartheta_{1}\,\cJ_{h}^{n}(\vect{z})+(1-\vartheta_{1})\,\cJ_{\bK}^{n},
+  \label{eq:limitDensity}
 \end{equation}
 where the limiter parameter $\vartheta_{1}$ is given by
 \begin{equation}
@@ -32,6 +33,7 @@ where $\xi\in[0,1]$, and the intersection point $\xi_{q}$ is obtained by solving
 We then replace the polynomial representation $\widetilde{\vect{\cM}}_{h}^{n}\to\widehat{\vect{\cM}}_{h}^{n}$, where
 \begin{equation}
   \widehat{\vect{\cM}}_{h}^{n}(\vect{z})=\vartheta_{2}\,\widetilde{\vect{\cM}}_{h}^{n}(\vect{z})+(1-\vartheta_{2})\,\vect{\cM}_{\bK}^{n},
+  \label{eq:limitMoments}
 \end{equation}
 and $\vartheta_{2}=\min_{q}\xi_{q}$ is the smallest $\xi$ obtained in the element by considering all the troubled quadrature points.  
 
