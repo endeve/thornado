@@ -50,8 +50,8 @@ xxP_FD = + yy.*(1.0-yy);
 xxM_FD = - yy.*(1.0-yy);
 xxP_MB = + yy;
 xxM_MB = - yy;
-plot( xxP_MB, yy, '--r', 'linewidth', 2 )
-plot( xxM_MB, yy, '--r', 'linewidth', 2 )
+plot( xxP_MB, yy, '-r', 'linewidth', 2 )
+plot( xxM_MB, yy, '-r', 'linewidth', 2 )
 plot( xxP_FD, yy, '-k', 'linewidth', 3 )
 plot( xxM_FD, yy, '-k', 'linewidth', 3 )
 fill([xxP_FD flip(xxP_FD)],[yy zeros(size(yy))],[0.7 0.8 1.0],'LineStyle','none')
