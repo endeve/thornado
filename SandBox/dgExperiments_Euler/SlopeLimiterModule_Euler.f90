@@ -191,7 +191,7 @@ CONTAINS
               U_M(iCF,3,1) &
                 = DOT_PRODUCT( WeightsX_q(:), U(:,iX1,iX2-1,iX3,iCF) )
 
-              U_M(iCF,4,:) &
+              U_M(iCF,4,1) &
                 = DOT_PRODUCT( WeightsX_q(:), U(:,iX1,iX2+1,iX3,iCF) )
 
             END IF
