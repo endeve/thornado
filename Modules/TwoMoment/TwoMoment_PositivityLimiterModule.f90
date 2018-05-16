@@ -23,13 +23,16 @@ MODULE TwoMoment_PositivityLimiterModule
   PUBLIC :: InitializePositivityLimiter_TwoMoment
   PUBLIC :: FinalizePositivityLimiter_TwoMoment
   PUBLIC :: ApplyPositivityLimiter_TwoMoment
+  PUBLIC :: TallyPositivityLimiter_TwoMoment
 
+  CHARACTER(256)        :: TallyFileName
   LOGICAL               :: UsePositivityLimiter
-  INTEGER, PARAMETER    :: nPS = 9  ! Number of Positive Point Sets
+  LOGICAL               :: UsePositivityLimiterTally
+  INTEGER,    PARAMETER :: nPS = 9  ! Number of Positive Point Sets
   INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
   INTEGER               :: nPT      ! Number of Positive Points
   REAL(DP)              :: Min_1, Max_1, Min_2
-  REAL(DP)              :: Theta_FD
+  REAL(DP)              :: Theta_FD, MinTheta_1, MinTheta_2
   REAL(DP), ALLOCATABLE :: U_PP(:,:)
 
 CONTAINS
@@ -37,16 +40,18 @@ CONTAINS
 
   SUBROUTINE InitializePositivityLimiter_TwoMoment &
     ( Min_1_Option, Max_1_Option, Min_2_Option, &
-      UsePositivityLimiter_Option, Verbose_Option )
+      UsePositivityLimiter_Option, &
+      UsePositivityLimiterTally_Option, Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
     REAL(DP), INTENT(in), OPTIONAL :: Max_1_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_2_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiterTally_Option
     LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: Verbose
-    INTEGER :: i
+    INTEGER :: i, FileUnit
 
     Min_1 = - HUGE( One )
     IF( PRESENT( Min_1_Option ) ) &
@@ -63,6 +68,10 @@ CONTAINS
     UsePositivityLimiter = .TRUE.
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
       UsePositivityLimiter = UsePositivityLimiter_Option
+
+    UsePositivityLimiterTally = .FALSE.
+    IF( PRESENT( UsePositivityLimiterTally_Option ) ) &
+      UsePositivityLimiterTally = UsePositivityLimiterTally_Option
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -105,6 +114,20 @@ CONTAINS
 
     ALLOCATE( U_PP(nPT,nCR) )
 
+    ! --- For Tally of Positivity Limiter ---
+
+    IF( UsePositivityLimiterTally )THEN
+
+      TallyFileName = '../Output/PositivityLimiterTally.dat'
+
+      OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ) )
+
+      WRITE( FileUnit, '(3(A14,x))' ) 'Time', 'MinTheta_1', 'MinTheta_2'
+
+      CLOSE( FileUnit )
+
+    END IF
+
   END SUBROUTINE InitializePositivityLimiter_TwoMoment
 
 
@@ -133,6 +156,9 @@ CONTAINS
     REAL(DP) :: U_q(nDOF,nCR), U_K(nCR), Gamma(nPT)
 
     IF( .NOT. UsePositivityLimiter ) RETURN
+
+    MinTheta_1 = One
+    MinTheta_2 = One
 
     DO iS = 1, nSpecies
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -173,6 +199,8 @@ CONTAINS
                 CALL ComputePointValues( U_q, U_PP )
 
                 NegativeStates(1) = .TRUE.
+
+                MinTheta_1 = MIN( Theta_1, MinTheta_1 )
 
               END IF
 
@@ -216,6 +244,8 @@ CONTAINS
                 NegativeStates(2) = .TRUE.
                 NegativeStates(1) = .FALSE.
 
+                MinTheta_2 = MIN( Theta_2, MinTheta_2 )
+
               END IF
 
               IF( NegativeStates(1) )THEN
@@ -237,6 +267,23 @@ CONTAINS
     END DO
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
+
+
+  SUBROUTINE TallyPositivityLimiter_TwoMoment( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+    INTEGER :: FileUnit
+
+    IF( .NOT. UsePositivityLimiterTally ) RETURN
+
+    OPEN( NEWUNIT=FileUnit, FILE=TRIM( TallyFileName ), ACCESS='APPEND' )
+
+    WRITE( FileUnit, '(3(ES14.5,x))' ) Time, MinTheta_1, MinTheta_2
+
+    CLOSE( FileUnit )
+
+  END SUBROUTINE TallyPositivityLimiter_TwoMoment
 
 
   SUBROUTINE ComputePointValues( U_Q, U_P )
@@ -361,6 +408,7 @@ CONTAINS
 
     IF( .NOT. f_a * f_b < 0 )THEN
 
+      WRITE(*,*)
       WRITE(*,'(A6,A)') &
         '', 'SolveTheta_Bisection (M1):'
       WRITE(*,'(A8,A,I3.3)') &
@@ -369,6 +417,17 @@ CONTAINS
         '', 'x_a, x_b = ', x_a, x_b
       WRITE(*,'(A8,A,2ES15.6e3)') &
         '', 'f_a, f_b = ', f_a, f_b
+      WRITE(*,*)
+      WRITE(*,'(A8,A,ES20.12e3)') &
+        '', 'N_K  = ', U_K(iCR_N)
+      WRITE(*,'(A8,A,ES20.12e3)') &
+        '', 'G1_K = ', U_K(iCR_G1)
+      WRITE(*,'(A8,A,ES20.12e3)') &
+        '', 'G2_K = ', U_K(iCR_G2)
+      WRITE(*,'(A8,A,ES20.12e3)') &
+        '', 'G3_K = ', U_K(iCR_G3)
+      WRITE(*,*)
+
       STOP
 
     END IF
