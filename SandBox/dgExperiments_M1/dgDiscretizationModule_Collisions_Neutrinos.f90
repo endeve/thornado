@@ -1,7 +1,7 @@
 MODULE dgDiscretizationModule_Collisions_Neutrinos
 
   USE KindModule, ONLY: &
-    DP
+    DP, One
   USE ProgramHeaderModule, ONLY: &
     nNodesZ
   USE ReferenceElementModule, ONLY: &
@@ -9,6 +9,10 @@ MODULE dgDiscretizationModule_Collisions_Neutrinos
   USE RadiationFieldsModule, ONLY: &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nSpecies
+  USE TwoMoment_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_TwoMoment
+  USE NeutrinoOpacitiesModule, ONLY: &
+    f_EQ, opEC, opES
 
   IMPLICIT NONE
   PRIVATE
@@ -18,10 +22,12 @@ MODULE dgDiscretizationModule_Collisions_Neutrinos
   PUBLIC :: InitializeCollisions
   PUBLIC :: FinalizeCollisions
   PUBLIC :: ComputeIncrement_M1_DG_Implicit
+  PUBLIC :: ComputeCorrection_M1_DG_Implicit
 
   INTEGER  :: nE_G, nX_G
   REAL(DP) :: wTime
-  REAL(DP), ALLOCATABLE :: R_N(:,:,:,:)
+  REAL(DP), ALLOCATABLE ::  R_N(:,:,:,:)
+  REAL(DP), ALLOCATABLE :: dR_N(:,:,:,:)
 
 CONTAINS
 
@@ -46,9 +52,8 @@ CONTAINS
 
     INTEGER :: iCR, iS, iX_G
 
-    WRITE(*,*)
-    WRITE(*,'(A4,A)') '', 'ComputeIncrement_M1_DG_Implicit'
-    WRITE(*,*)
+    CALL ApplyPositivityLimiter_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_R )
 
     wTime = MPI_WTIME( )
 
@@ -56,7 +61,7 @@ CONTAINS
 
     wTime = MPI_WTIME( ) - wTime
 
-    WRITE(*,'(A4,A32,ES10.4E2)') '', 'InitializeCollisions: ', wTime
+!    WRITE(*,'(A4,A32,ES10.4E2)') '', 'InitializeCollisions: ', wTime
 
     ! --- Map Radiation Data for Collision Update ---
 
@@ -76,14 +81,97 @@ CONTAINS
 
     wTime = MPI_WTIME( ) - wTime
 
-    WRITE(*,'(A4,A32,ES10.4E2)') '', 'MapForward_R: ', wTime
+!    WRITE(*,'(A4,A32,ES10.4E2)') '', 'MapForward_R: ', wTime
+
+    ! --- Implicit Update ---
+
+    DO iX_G = 1, nX_G
+      DO iS = 1, nSpecies
+
+        ! --- Number Density ---
+
+        R_N(:,iCR_N,iS,iX_G) &
+          = ( dt * opEC(:,iS,iX_G) * f_EQ(:,iS,iX_G) &
+              + R_N(:,iCR_N,iS,iX_G) ) / ( One + dt * opEC(:,iS,iX_G) )
+
+        ! --- Number Flux (1) ---
+
+        R_N(:,iCR_G1,iS,iX_G) &
+          = R_N(:,iCR_G1,iS,iX_G) &
+              / ( One + dt * ( opEC(:,iS,iX_G) + opES(:,iS,iX_G) ) )
+
+        ! --- Number Flux (2) ---
+
+        R_N(:,iCR_G2,iS,iX_G) &
+          = R_N(:,iCR_G2,iS,iX_G) &
+              / ( One + dt * ( opEC(:,iS,iX_G) + opES(:,iS,iX_G) ) )
+
+        ! --- Number Flux (3) ---
+
+        R_N(:,iCR_G3,iS,iX_G) &
+          = R_N(:,iCR_G3,iS,iX_G) &
+              / ( One + dt * ( opEC(:,iS,iX_G) + opES(:,iS,iX_G) ) )
+
+        ! --- Increments ---
+
+        dR_N(:,iCR_N,iS,iX_G) &
+          = opEC(:,iS,iX_G) * ( f_EQ(:,iS,iX_G) - R_N(:,iCR_N,iS,iX_G) )
+
+        dR_N(:,iCR_G1,iS,iX_G) &
+          = - ( opEC(:,iS,iX_G) + opES(:,iS,iX_G) ) * R_N(:,iCR_G1,iS,iX_G)
+
+        dR_N(:,iCR_G2,iS,iX_G) &
+          = - ( opEC(:,iS,iX_G) + opES(:,iS,iX_G) ) * R_N(:,iCR_G2,iS,iX_G)
+
+        dR_N(:,iCR_G3,iS,iX_G) &
+          = - ( opEC(:,iS,iX_G) + opES(:,iS,iX_G) ) * R_N(:,iCR_G3,iS,iX_G)
+
+      END DO
+    END DO
+
+    ! --- Map Increment Back ---
+
+    DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+
+        CALL MapBackward_R &
+               ( iZ_B0, iZ_E0, &
+                 dU_R(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+                        iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iCR,iS), &
+                 dR_N(1:nE_G,iCR,iS,1:nX_G) )
+
+      END DO
+    END DO
 
     CALL FinalizeCollisions
 
-    WRITE(*,*)
-    STOP
-
   END SUBROUTINE ComputeIncrement_M1_DG_Implicit
+
+
+  SUBROUTINE ComputeCorrection_M1_DG_Implicit &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, alpha_EX, alpha_IM, GE, GX, U, dU )
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      dt, &
+      alpha_EX, &
+      alpha_IM
+    REAL(DP), INTENT(in)    :: &
+      GE(1:,iZ_B1(1):,1:)
+    REAL(DP), INTENT(in)    :: &
+      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+    REAL(DP), INTENT(inout) :: &
+      U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+    REAL(DP), INTENT(inout) :: &
+      dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+
+    WRITE(*,*)
+    WRITE(*,'(A6,A)') &
+      '', 'WARNING: ComputeCorrection_M1_DG_Implicit not implemented'
+    WRITE(*,*)
+
+  END SUBROUTINE ComputeCorrection_M1_DG_Implicit
 
 
   SUBROUTINE InitializeCollisions( iZ_B, iZ_E )
@@ -97,14 +185,15 @@ CONTAINS
     nE_G = nZ(1) * nNodesZ(1)
     nX_G = PRODUCT( nZ(2:4) * nNodesZ(2:4) )
 
-    ALLOCATE( R_N(nE_G,nCR,nSpecies,nX_G) )
+    ALLOCATE(  R_N(nE_G,nCR,nSpecies,nX_G) )
+    ALLOCATE( dR_N(nE_G,nCR,nSpecies,nX_G) )
 
   END SUBROUTINE InitializeCollisions
 
 
   SUBROUTINE FinalizeCollisions
 
-    DEALLOCATE( R_N )
+    DEALLOCATE( R_N, dR_N )
 
   END SUBROUTINE FinalizeCollisions
 

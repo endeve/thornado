@@ -51,9 +51,13 @@ PROGRAM ApplicationDriver
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment, &
-    ApplyPositivityLimiter_TwoMoment
+    ApplyPositivityLimiter_TwoMoment, &
+    TallyPositivityLimiter_TwoMoment
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
+  USE TwoMoment_TallyModule, ONLY: &
+    InitializeTally_TwoMoment, &
+    ComputeTally_TwoMoment
   USE dgDiscretizationModule_Collisions, ONLY: &
     InitializeCollisions, &
     FinalizeCollisions, &
@@ -68,7 +72,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: TimeSteppingScheme
   LOGICAL       :: UsePositivityLimiter
-  INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
+  INTEGER       :: iCycle, iCycleD, iCycleW, iCycleT, maxCycles
   INTEGER       :: nE, nX(3), bcX(3), nNodes
   REAL(DP)      :: t, dt, t_end, wTime
   REAL(DP)      :: xL(3), xR(3)
@@ -77,7 +81,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: Radius = 1.0d16
   REAL(DP)      :: Min_1, Max_1, Min_2
 
-  ProgramName = 'SineWaveDiffusion'
+  ProgramName = 'HomogeneousSphere'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -114,6 +118,7 @@ PROGRAM ApplicationDriver
       t_end     = 1.0d+1
       iCycleD   = 10
       iCycleW   = 10
+      iCycleT   = 10
       maxCycles = 10000
 
     CASE( 'SineWaveDamping' )
@@ -147,6 +152,7 @@ PROGRAM ApplicationDriver
       t_end     = 1.0d+1
       iCycleD   = 10
       iCycleW   = 100
+      iCycleT   = 10
       maxCycles = 100000
 
     CASE( 'SineWaveDiffusion' )
@@ -161,7 +167,7 @@ PROGRAM ApplicationDriver
       eL = 0.0_DP
       eR = 1.0_DP
 
-      nNodes = 3
+      nNodes = 4
 
       TimeSteppingScheme = 'IMEX_PARSD'
 
@@ -178,6 +184,7 @@ PROGRAM ApplicationDriver
       t_end     = 1.0d+4
       iCycleD   = 10
       iCycleW   = 2000
+      iCycleT   = 10
       maxCycles = 1000000
 
     CASE( 'PackedBeam' )
@@ -209,15 +216,16 @@ PROGRAM ApplicationDriver
       t_end     = 8.5d-1
       iCycleD   = 10
       iCycleW   = 10
+      iCycleT   = 10
       maxCycles = 10000
 
     CASE( 'LineSource' )
 
-      nX = [ 128, 128, 1 ]
-      xL = [   0.00_DP,   0.00_DP, 0.0_DP ]
-      xR = [ + 1.25_DP, + 1.25_DP, 1.0_DP ]
+      nX = [ 512, 512, 1 ]
+      xL = [ - 1.28_DP, - 1.28_DP, 0.0_DP ]
+      xR = [ + 1.28_DP, + 1.28_DP, 1.0_DP ]
 
-      bcX = [ 32, 32, 1 ]
+      bcX = [ 1, 1, 1 ]
 
       nE = 1
       eL = 0.0_DP
@@ -239,8 +247,9 @@ PROGRAM ApplicationDriver
 
       t_end     = 1.0d+0
       iCycleD   = 10
-      iCycleW   = 10
-      maxCycles = 10000
+      iCycleW   = 50
+      iCycleT   = 10
+      maxCycles = 1000000
 
     CASE( 'HomogeneousSphere' )
 
@@ -256,22 +265,23 @@ PROGRAM ApplicationDriver
 
       nNodes = 2
 
-      TimeSteppingScheme = 'IMEX_P_A2'
+      TimeSteppingScheme = 'IMEX_PARSD'
 
-      N0     = 1.00_DP
-      SigmaA = 10.0_DP
+      N0     = 1.00_DP - 1.0d-12
+      SigmaA = 1000.0_DP
       SigmaS = 0.00_DP
       Radius = 1.00_DP
 
       UsePositivityLimiter = .TRUE.
 
-      Min_1 = Zero ! --- Min Density
-      Max_1 = One  ! --- Max Density
+      Min_1 = Zero + 1.0d-14 ! --- Min Density
+      Max_1 = One  - 1.0d-14 ! --- Max Density
       Min_2 = Zero ! --- Min "Gamma"
 
       t_end     = 5.0d-0
       iCycleD   = 10
-      iCycleW   = 50
+      iCycleW   = 500
+      iCycleT   = 10
       maxCycles = 100000
 
   END SELECT
@@ -350,8 +360,13 @@ PROGRAM ApplicationDriver
   ! --- Initialize Positivity Limiter ---
 
   CALL InitializePositivityLimiter_TwoMoment &
-         ( Min_1_Option = Min_1, Max_1_Option = Max_1, Min_2_Option = Min_2, &
-           UsePositivityLimiter_Option = UsePositivityLimiter )
+         ( Min_1_Option = Min_1, &
+           Max_1_Option = Max_1, &
+           Min_2_Option = Min_2, &
+           UsePositivityLimiter_Option &
+             = UsePositivityLimiter, &
+           UsePositivityLimiterTally_Option &
+             = .TRUE. )
 
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
@@ -361,12 +376,17 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( Time = 0.0_DP, WriteRF_Option = .TRUE. )
 
+  ! --- Tally ---
+
+  CALL InitializeTally_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
+
   ! --- Evolve ---
 
   wTime = MPI_WTIME( )
 
   t  = 0.0d-0
-  dt = 0.5_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
+  dt = 0.05_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
        / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
   WRITE(*,*)
@@ -399,6 +419,16 @@ PROGRAM ApplicationDriver
              ComputeCorrection_M1_DG_Implicit )
 
     t = t + dt
+
+    IF( MOD( iCycle, iCycleT ) == 0 )THEN
+
+      CALL TallyPositivityLimiter_TwoMoment( t )
+
+      CALL ComputeTally_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR, t, &
+             iState_Option = 1, DisplayTally_Option = .TRUE. )
+
+    END IF
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 

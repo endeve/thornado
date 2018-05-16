@@ -343,12 +343,14 @@ CONTAINS
 
               IF( R < Radius )THEN
 
-                SigmaTmp1(iNode,iZ1,iZ2,iZ3,iZ4) = SigmaA0
+                SigmaTmp1(iNode,iZ1,iZ2,iZ3,iZ4) &
+                  = SigmaA0 / ( (R/0.85_DP)**40 + One )
                 SigmaTmp2(iNode,iZ1,iZ2,iZ3,iZ4) = SigmaS0
 
               ELSE
 
-                SigmaTmp1(iNode,iZ1,iZ2,iZ3,iZ4) = Zero
+                SigmaTmp1(iNode,iZ1,iZ2,iZ3,iZ4) &
+                  = SigmaA0 / ( (R/0.85_DP)**40 + One )
                 SigmaTmp2(iNode,iZ1,iZ2,iZ3,iZ4) = Zero
 
               END IF

@@ -567,7 +567,8 @@ CONTAINS
                 R  = SQRT( X1**2 + X2**2 )
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
-                  = MAX( EXP( - 0.5_DP * ( R / 0.03_DP )**2 ), 1.0d-4 )
+                  = 1.0_DP &
+                    - MAX( EXP( - 0.5_DP * ( R / 0.03_DP )**2 ), 1.0d-8 )
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
                   = 0.0_DP
@@ -636,7 +637,7 @@ CONTAINS
               DO iNode = 1, nDOF
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
-                  = 1.0d-6
+                  = 1.0d-12
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
                   = 0.0_DP
@@ -1110,8 +1111,7 @@ CONTAINS
                 E = NodeCoordinate( MeshE, iE, iNodeE )
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
-                  = 1.0d-99!MAX( One / ( EXP( (E-Mnu(iNode))/kT(iNode) ) + One ), &
-!                         1.0d-32 )
+                  = 1.0d-99
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
                   = Zero

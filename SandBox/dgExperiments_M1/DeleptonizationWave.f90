@@ -1,7 +1,7 @@
 PROGRAM DeleptonizationWave
 
   USE KindModule, ONLY: &
-    DP
+    DP, Third
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -9,6 +9,7 @@ PROGRAM DeleptonizationWave
     iZ_B0, iZ_E0, iZ_B1, iZ_E1
   USE UnitsModule, ONLY: &
     Kilometer, &
+    Millisecond, &
     MeV
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
@@ -39,10 +40,11 @@ PROGRAM DeleptonizationWave
     uGE
   USE GeometryComputationModuleE_Beta, ONLY: &
     ComputeGeometryE
+  USE FluidFieldsModule, ONLY: &
+    uPF, iPF_D, &
+    uAF, iAF_T, iAF_Ye
   USE RadiationFieldsModule, ONLY: &
     uCR, rhsCR, nSpecies
-  USE ClosureModule_M1, ONLY: &
-    InitializeMomentClosure
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
@@ -52,42 +54,71 @@ PROGRAM DeleptonizationWave
   USE NeutrinoOpacitiesModule, ONLY: &
     CreateNeutrinoOpacities, &
     DestroyNeutrinoOpacities
-  USE PositivityLimiterModule, ONLY: &
-    InitializePositivityLimiter, &
-    FinalizePositivityLimiter
+  USE NeutrinoOpacitiesComputationModule, ONLY: &
+    ComputeNeutrinoOpacities
   USE TimeSteppingModule_IMEX_RK, ONLY: &
     Initialize_IMEX_RK, &
-    Finalize_IMEX_RK
+    Finalize_IMEX_RK, &
+    Update_IMEX_RK
   USE InitializationModule, ONLY: &
     InitializeFields
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
+  USE TwoMoment_ClosureModule, ONLY: &
+    InitializeClosure_TwoMoment
+  USE TwoMoment_PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter_TwoMoment, &
+    FinalizePositivityLimiter_TwoMoment, &
+    ApplyPositivityLimiter_TwoMoment
+  USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
+    ComputeIncrement_TwoMoment_Explicit
   USE dgDiscretizationModule_Collisions_Neutrinos, ONLY: &
-    ComputeIncrement_M1_DG_Implicit
+    ComputeIncrement_M1_DG_Implicit, &
+    ComputeCorrection_M1_DG_Implicit
 
   IMPLICIT NONE
+
+  INCLUDE 'mpif.h'
+
+  INTEGER  :: iCycle, iCycleD, iCycleW
+  INTEGER  :: nE, nX(3), nNodes
+  REAL(DP) :: t, dt, t_end, wTime
+  REAL(DP) :: eL, eR
+  REAL(DP) :: xL(3), xR(3)
+
+  nNodes = 2
+
+  nX = [ 128, 128, 1 ]
+  xL = [ 0.0d0, 0.0d0, - 1.0d2 ] * Kilometer
+  xR = [ 2.0d2, 2.0d2, + 1.0d2 ] * Kilometer
+
+  nE = 10
+  eL = 0.0d0 * MeV
+  eR = 3.0d2 * MeV
 
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'DeleptonizationWave', &
            nX_Option &
-             = [ 64, 64, 01 ], &
+             = nX, &
            swX_Option &
              = [ 01, 01, 01 ], &
            bcX_Option &
-             = [ 32, 32, 01 ], &
+             = [ 32, 32, 32 ], &
            xL_Option &
-             = [ 0.0d0, 0.0d0, - 0.5d0 ] * Kilometer, &
+             = xL, &
            xR_Option &
-             = [ 1.0d2, 1.0d2, + 0.5d0 ] * Kilometer, &
+             = xR, &
            nE_Option &
-             = 16, &
+             = nE, &
            eL_Option &
-             = 0.0d0 * MeV, &
+             = eL, &
            eR_Option &
-             = 1.0d2 * MeV, &
+             = eR, &
+           ZoomE_Option &
+             = 1.414649066384746_DP, &
            nNodes_Option &
-             = 2, &
+             = nNodes, &
            CoordinateSystem_Option &
              = 'CARTESIAN', &
            ActivateUnits_Option &
@@ -121,7 +152,7 @@ PROGRAM DeleptonizationWave
 
   ! --- Initialize Moment Closure ---
 
-  CALL InitializeMomentClosure
+  CALL InitializeClosure_TwoMoment
 
   ! --- Initialize Equation of State ---
 
@@ -141,14 +172,13 @@ PROGRAM DeleptonizationWave
 
   ! --- Create Neutrino Opacities ---
 
-  CALL CreateNeutrinoOpacities &
-         ( nZ, [ nNodesZ(1), 1, 1, 1 ], nSpecies )
+  CALL CreateNeutrinoOpacities( nZ, nNodesZ, nSpecies )
 
   ! --- Initialize Positivity Limiter ---
 
-  CALL InitializePositivityLimiter &
+  CALL InitializePositivityLimiter_TwoMoment &
          ( Min_1_Option = 0.0d-00, &
-           Max_1_Option = 1.0d-00, &
+           Max_1_Option = 1.0d+99, &
            Min_2_Option = 0.0d-00, &
            UsePositivityLimiter_Option &
              = .TRUE. )
@@ -156,11 +186,20 @@ PROGRAM DeleptonizationWave
   ! --- Initialize Time Stepper ---
 
   CALL Initialize_IMEX_RK &
-         ( Scheme = 'IMEX_PC2' )
+         ( Scheme = 'IMEX_PARSD' )
 
   ! --- Set Initial Condition ---
 
   CALL InitializeFields
+
+  CALL ApplyPositivityLimiter_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
+
+  CALL ComputeNeutrinoOpacities &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+           uPF(:,:,:,:,iPF_D), &
+           uAF(:,:,:,:,iAF_T), &
+           uAF(:,:,:,:,iAF_Ye) )
 
   ! --- Write Initial Condition ---
 
@@ -168,12 +207,83 @@ PROGRAM DeleptonizationWave
          ( Time = 0.0_DP, &
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
-           WriteRF_Option = .TRUE. )
+           WriteRF_Option = .TRUE., &
+           WriteOP_Option = .TRUE. )
 
-  ! --- 
+  ! --- Evolve ---
 
-  CALL ComputeIncrement_M1_DG_Implicit &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, 1.0d-4, uGE, uGF, uCR, rhsCR )
+  wTime = MPI_WTIME( )
+
+  t     = 0.0_DP
+  t_end = 5.0_DP * Millisecond
+  dt    = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+
+  iCycleD = 10
+  iCycleW = 200
+
+  WRITE(*,*)
+  WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
+    '', 'Evolving from t = ', t / Millisecond, &
+    ' to t = ', t_end / Millisecond
+  WRITE(*,*)
+
+  iCycle = 0
+  DO WHILE( t < t_end )
+
+    iCycle = iCycle + 1
+
+    IF( t + dt > t_end )THEN
+
+      dt = t_end - t
+
+    END IF
+
+    IF( MOD( iCycle, iCycleD ) == 0 )THEN
+
+      WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A5,ES12.6E2)') &
+          '', 'Cycle = ', iCycle, &
+          '', 't = ',  t / Millisecond, &
+          '', 'dt = ', dt / Millisecond
+
+    END IF
+
+    CALL Update_IMEX_RK &
+           ( dt, uGE, uGF, uCR, &
+             ComputeIncrement_TwoMoment_Explicit, &
+             ComputeIncrement_M1_DG_Implicit, &
+             ComputeCorrection_M1_DG_Implicit )
+
+    t = t + dt
+
+    IF( MOD( iCycle, iCycleW ) == 0 )THEN
+
+      CALL WriteFieldsHDF &
+             ( Time = t, &
+               WriteGF_Option = .TRUE., &
+               WriteFF_Option = .TRUE., &
+               WriteRF_Option = .TRUE., &
+               WriteOP_Option = .TRUE. )
+
+    END IF
+
+  END DO
+
+  ! --- Write Final Solution ---
+
+  CALL WriteFieldsHDF &
+         ( Time = 0.0_DP, &
+           WriteGF_Option = .TRUE., &
+           WriteFF_Option = .TRUE., &
+           WriteRF_Option = .TRUE., &
+           WriteOP_Option = .TRUE. )
+
+  wTime = MPI_WTIME( ) - wTime
+
+  WRITE(*,*)
+  WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
+    '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
+  WRITE(*,*)
 
   ! --- Finalize ---
 
@@ -195,7 +305,7 @@ PROGRAM DeleptonizationWave
 
   CALL DestroyNeutrinoOpacities
 
-  CALL FinalizePositivityLimiter
+  CALL FinalizePositivityLimiter_TwoMoment
 
   CALL Finalize_IMEX_RK
 

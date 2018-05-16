@@ -1,8 +1,8 @@
-#MICROPHYSICS = WEAKLIB
-MOMENT_CLOSURE = MINERBO
+MICROPHYSICS = WEAKLIB
+#MOMENT_CLOSURE = MINERBO
 #MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
 #MOMENT_CLOSURE = MAXIMUM_ENTROPY_BL
-#MOMENT_CLOSURE = KERSHAW_BL
+MOMENT_CLOSURE = KERSHAW_BL
 
 include ../../../Build/Makefile_Build
 
@@ -10,12 +10,14 @@ all: ApplicationDriver DeleptonizationWave
 
 ApplicationDriver: \
 	$(thornado) \
+	TwoMoment_TallyModule.o \
 	TimeSteppingModule_IMEX_RK.o \
 	InitializationModule.o \
 	dgDiscretizationModule_Collisions.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
+	TwoMoment_TallyModule.o \
 	TimeSteppingModule_IMEX_RK.o \
 	InitializationModule.o \
 	dgDiscretizationModule_Collisions.o \
