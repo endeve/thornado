@@ -38,7 +38,7 @@ PROGRAM ApplicationDriver
     InitializeEquationOfState, &
     FinalizeEquationOfState
   USE InitializationModule, ONLY: &
-    InitializeFields
+    InitializeFields, ApplyPerturbations
   USE EulerEquationsUtilitiesModule_Beta, ONLY: &
     ComputeFromConserved, &
     ComputeTimeStep
@@ -119,6 +119,8 @@ PROGRAM ApplicationDriver
 
   CALL InitializeFields &
          ( mDot, Mass, rShock, Gamma, Mach )
+
+  CALL ApplyPerturbations( 1.4_DP, 1.6_DP, 0, 2.0_DP )
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
