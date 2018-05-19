@@ -1,7 +1,7 @@
 % close all
 clear all
 
-nPts = 1000000;
+nPts = 10;
 
 
 PolynomialCB = @(x) x^2 * ( 3.0 - abs(x) + 3.0 * x^2 ) / 5.0;
