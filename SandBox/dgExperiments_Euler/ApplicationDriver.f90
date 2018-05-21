@@ -56,7 +56,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: xL(3), xR(3), Gamma
   REAL(DP)      :: BetaTVD, BetaTVB
 
-  ProgramName = 'RiemannProblem'
+  ProgramName = 'Implosion'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -122,6 +122,23 @@ PROGRAM ApplicationDriver
       iCycleD = 10
       t_end   = 3.500_DP
       dt_wrt  = 0.050_DP
+
+    CASE( 'Implosion' )
+
+      Gamma = 1.4_DP
+      
+      nX = [ 256, 256, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 0.3_DP, 0.3_DP, 1.0_DP ]
+
+      bcX = [ 3, 3, 0 ]
+
+      nNodes = 1
+
+      iCycleD = 10
+      t_end   = 3.500_DP
+      dt_wrt  = 0.050_DP      
+
 
   END SELECT
 

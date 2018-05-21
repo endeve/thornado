@@ -60,6 +60,10 @@ CONTAINS
 
         CALL InitializeFields_KelvinHelmholtz
 
+      CASE( 'Implosion' )
+
+        CALL InitializeFields_Implosion   
+
     END SELECT
 
 
@@ -408,5 +412,67 @@ CONTAINS
 
   END SUBROUTINE InitializeFields_KelvinHelmholtz
 
+
+  SUBROUTINE InitializeFields_Implosion
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2, D_M, V_M
+    REAL(DP), PARAMETER :: D_0 = 0.125_DP
+    REAL(DP), PARAMETER :: D_1 = 1.0_DP
+    REAL(DP), PARAMETER :: E_0 = + 2.5_DP
+    REAL(DP), PARAMETER :: E_1 = - 0.35_DP
+
+
+    DO iX2 = 1, nX(2)
+      DO iX1 = 1, nX(1)
+
+        DO iNodeX = 1, nDOFX
+
+         iNodeX1 = NodeNumberTableX(1,iNodeX)
+         iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+         X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+         IF( X1 + X2 .LE. 0.15 )THEN
+   
+           uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+             = D_0
+           uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+             = E_0
+           
+         ELSEIF( X1 + X2 .GE. 0.15 )THEN
+
+           uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+             = D_1
+           uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+             = E_1
+
+         ENDIF
+
+         uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+           = Zero
+         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+           = Zero
+         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+           = Zero
+
+       END DO
+
+       CALL ComputeConserved &
+              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Implosion
 
 END MODULE InitializationModule
