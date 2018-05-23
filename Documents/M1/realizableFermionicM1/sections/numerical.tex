@@ -240,6 +240,8 @@ For the CB closure model, the limiter is triggered to prevent both density overs
 Late in the simulation ($t\gtrsim0.7$), the minimum value of $\vartheta_{2}$ is around $0.1$.  
 For the model using the Minerbo closure, the limiter is not triggered ($\vartheta_{1}=\vartheta_{2}=1$).  
 
+\clearpage
+
 \subsection{Homogeneous Sphere}
 
 The homogeneous sphere test (e.g., \cite{smit_etal_1997}) considers of a sphere with radius $R$.  
@@ -251,7 +253,7 @@ The steady state solution, obtained by solving the transport equation in spheric
   f_{\mbox{\tiny A}}(r,\mu)=f_{0}\,\big(1-e^{-\chi_{0}\,s(r,\mu)}\big),
   \label{eq:distributionHomogeneousSphere}
 \end{equation}
-where
+where $r=|\vect{x}|$ and
 \begin{equation}
   s(r,\mu)
   =\left\{
@@ -263,6 +265,20 @@ where
   \right.
 \end{equation}
 and $g(r,\mu)=[1-(r/R)^{2}(1-\mu^{2})]^{1/2}$.  
+For $f_{0}\in[0,1]$, the solution remains bounded between $0$ and $1$.  
+
+This test is computed on a three-dimensional domain $D=\{\vect{x}\in\bbR^{3}:x^{1}\in[0,2], x^{2}\in[0,2], x^{3}\in[0,2]\}$.  
+Because of the symmetry of the problem, and to save computational resources, we only compute the solution in one octant.  
+On the inner boundaries, we impose reflecting boundary conditions, while we impose homogeneous boundary conditions on the outer boundary in all three coordinate dimensions.  
+Since this test is computed using Cartesian using a relatively low spatial resolution ($64^{3}$), we have found it necessary to smooth out the opacity over a finite radial extent to avoid numerical artifacts due to a discontinuous absorption opacity.  
+Specifically, we use an absorption opacity of the following form
+\begin{equation}
+  \sigma_{\Ab}(r)=\f{\sigma_{\Ab,0}}{(r/R_{0})^{p}+1}.  
+\end{equation}
+We set $f_{0}=1$, and compute two versions of this test: one with $\sigma_{\Ab,0}=10$, $R_{0}=1$, and $p=80$ (Test A), and one with $\sigma_{\Ab}=10^{3}$, $R_{0}=0.85$, and $p=40$ (Test B).  
+(These values for $R_{0}$ and $p$ result in similar radius for where the optical depth equals $2/3$ in both tests.)
+We compute until $t=5$, when the system has reached a steady state.  
+The main purpose of this test is to compare the results obtained using the different algebraic closures discussed in Section~\ref{sec:algebraicClosure}.  
 
 \begin{figure}[h]
   \centering
@@ -273,3 +289,5 @@ and $g(r,\mu)=[1-(r/R)^{2}(1-\mu^{2})]^{1/2}$.
    \caption{Homogeneous sphere problem}
   \label{fig:HomogeneousSphere}
 \end{figure}
+
+\clearpage
