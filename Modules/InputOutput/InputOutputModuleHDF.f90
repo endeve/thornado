@@ -77,21 +77,29 @@ CONTAINS
     LOGICAL :: WriteRF
     LOGICAL :: WriteOP
 
-    WriteGF = .FALSE.
-    IF( PRESENT( WriteGF_Option ) ) &
+    IF( PRESENT( WriteGF_Option ) )THEN
       WriteGF = WriteGF_Option
+    ELSE
+      WriteGF = .FALSE.
+    END IF
 
-    WriteFF = .FALSE.
-    IF( PRESENT( WriteFF_Option ) ) &
+    IF( PRESENT( WriteFF_Option ) )THEN
       WriteFF = WriteFF_Option
+    ELSE
+      WriteFF = .FALSE.
+    END IF
 
-    WriteRF = .FALSE.
-    IF( PRESENT( WriteRF_Option ) ) &
+    IF( PRESENT( WriteRF_Option ) )THEN
       WriteRF = WriteRF_Option
+    ELSE
+      WriteRF = .FALSE.
+    END IF
 
-    WriteOP = .FALSE.
-    IF( PRESENT( WriteOP_Option ) ) &
+    IF( PRESENT( WriteOP_Option ) )THEN
       WriteOP = WriteOP_Option
+    ELSE
+      WriteOP = .FALSE.
+    END IF
 
     IF( WriteGF )THEN
 
