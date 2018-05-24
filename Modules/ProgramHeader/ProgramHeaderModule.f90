@@ -88,9 +88,11 @@ CONTAINS
 
     INTEGER :: iDim
 
-    ProgramName = 'thornado'
-    IF( PRESENT( ProgramName_Option ) ) &
+    IF( PRESENT( ProgramName_Option ) )THEN
       ProgramName = TRIM( ProgramName_Option )
+    ELSE
+      ProgramName = 'thornado'
+    END IF
 
     IF( LEN_TRIM( ProgramName ) > 0 )THEN
 
@@ -101,39 +103,52 @@ CONTAINS
 
     END IF
 
-    nNodes = 1
-    IF( PRESENT( nNodes_Option ) ) &
+    IF( PRESENT( nNodes_Option ) )THEN
       nNodes = nNodes_Option
+    ELSE
+      nNodes = 1
+    END IF
 
     ! --- Position Space ---
 
-    nX = [ 1, 1, 1 ]
-    IF( PRESENT( nX_Option ) ) &
+    IF( PRESENT( nX_Option ) )THEN
       nX = nX_Option
+    ELSE
+      nX = [ 1, 1, 1 ]
+    END IF
 
-    swX = [ 1, 0, 0 ]
-    IF( PRESENT( swX_Option ) ) &
+    IF( PRESENT( swX_Option ) )THEN
       swX = swX_Option
+    ELSE
+      swX = [ 1, 0, 0 ]
+    END IF
 
-    bcX = [ 0, 0, 0 ]
     IF( PRESENT( bcX_Option ) )THEN
       bcX = bcX_Option
+    ELSE
+      bcX = [ 0, 0, 0 ]
     END IF
 
     iX_B0 = 1;  iX_B1 = 1  - swX
     iX_E0 = nX; iX_E1 = nX + swX
 
-    xL = [ 0.0d0, 0.0d0, 0.0d0 ]
-    IF( PRESENT( xL_Option ) ) &
+    IF( PRESENT( xL_Option ) )THEN
       xL = xL_Option
+    ELSE
+      xL = [ 0.0d0, 0.0d0, 0.0d0 ]
+    END IF
 
-    xR = [ 1.0d0, 1.0d0, 1.0d0 ]
-    IF( PRESENT( xR_Option ) ) &
+    IF( PRESENT( xR_Option ) )THEN
       xR = xR_Option
+    ELSE
+      xR = [ 1.0d0, 1.0d0, 1.0d0 ]
+    END IF
 
-    zoomX = [ 1.0d0, 1.0d0, 1.0d0 ]
-    IF( PRESENT( zoomX_Option ) ) &
+    IF( PRESENT( zoomX_Option ) )THEN
       zoomX = zoomX_Option
+    ELSE
+      zoomX = [ 1.0d0, 1.0d0, 1.0d0 ]
+    END IF
 
     nDimsX = 0
     DO iDim = 1, 3
@@ -148,32 +163,44 @@ CONTAINS
 
     ! --- Energy Space ---
 
-    nE = 1
-    IF( PRESENT( nE_Option ) ) &
+    IF( PRESENT( nE_Option ) )THEN
       nE = nE_Option
+    ELSE
+      nE = 1
+    END IF
 
-    swE = 0
-    IF( PRESENT( swE_Option ) ) &
+    IF( PRESENT( swE_Option ) )THEN
       swE = swE_Option
+    ELSE
+      swE = 0
+    END IF
 
-    bcE = 0
-    IF( PRESENT( bcE_Option ) ) &
+    IF( PRESENT( bcE_Option ) )THEN
       bcE = bcE_Option
+    ELSE
+      bcE = 0
+    END IF
 
     iE_B0 = 1;  iE_B1 = 1  - swE
     iE_E0 = nE; iE_E1 = nE + swE
 
-    eL = 0.0d0
-    IF( PRESENT( eL_Option ) ) &
+    IF( PRESENT( eL_Option ) )THEN
       eL = eL_Option
+    ELSE
+      eL = 0.0d0
+    END IF
 
-    eR = 1.0d0
-    IF( PRESENT( eR_Option ) ) &
+    IF( PRESENT( eR_Option ) )THEN
       eR = eR_Option
+    ELSE
+      eR = 1.0d0
+    END IF
 
-    zoomE = 1.0d0
-    IF( PRESENT( zoomE_Option ) ) &
+    IF( PRESENT( zoomE_Option ) )THEN
       zoomE = zoomE_Option
+    ELSE
+      zoomE = 1.0d0
+    END IF
 
     nDimsE  = 0
     nNodesE = 1

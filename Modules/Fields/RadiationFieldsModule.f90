@@ -81,13 +81,17 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: nSpecies_Option
     LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
-    nSpecies = 1
-    IF( PRESENT( nSpecies_Option ) ) &
+    IF( PRESENT( nSpecies_Option ) )THEN
       nSpecies = nSpecies_Option
+    ELSE
+      nSpecies = 1
+    END IF
 
-    Verbose = .TRUE.
-    IF( PRESENT( Verbose_Option ) ) &
+    IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
 
     CALL CreateRadiationFields_Conserved( nX, swX, nE, swE )
     CALL CreateRadiationFields_Primitive( nX, swX, nE, swE )
