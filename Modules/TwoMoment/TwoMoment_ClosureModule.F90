@@ -21,9 +21,11 @@ CONTAINS
 
     LOGICAL :: Verbose
 
-    Verbose = .TRUE.
-    IF( PRESENT( Verbose_Option ) ) &
+    IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
 
 #ifdef MOMENT_CLOSURE_MINERBO
 

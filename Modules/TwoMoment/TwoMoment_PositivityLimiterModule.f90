@@ -53,29 +53,41 @@ CONTAINS
     LOGICAL :: Verbose
     INTEGER :: i, FileUnit
 
-    Min_1 = - HUGE( One )
-    IF( PRESENT( Min_1_Option ) ) &
+    IF( PRESENT( Min_1_Option ) )THEN
       Min_1 = Min_1_Option
+    ELSE
+      Min_1 = - HUGE( One )
+    END IF
 
-    Max_1 = + HUGE( One )
-    IF( PRESENT( Max_1_Option ) ) &
+    IF( PRESENT( Max_1_Option ) )THEN
       Max_1 = Max_1_Option
+    ELSE
+      Max_1 = + HUGE( One )
+    END IF
 
-    Min_2 = - HUGE( One )
-    IF( PRESENT( Min_2_Option ) ) &
+    IF( PRESENT( Min_2_Option ) )THEN
       Min_2 = Min_2_Option
+    ELSE
+      Min_2 = - HUGE( One )
+    END IF
 
-    UsePositivityLimiter = .TRUE.
-    IF( PRESENT( UsePositivityLimiter_Option ) ) &
+    IF( PRESENT( UsePositivityLimiter_Option ) )THEN
       UsePositivityLimiter = UsePositivityLimiter_Option
+    ELSE
+      UsePositivityLimiter = .TRUE.
+    END IF
 
-    UsePositivityLimiterTally = .FALSE.
-    IF( PRESENT( UsePositivityLimiterTally_Option ) ) &
+    IF( PRESENT( UsePositivityLimiterTally_Option ) )THEN
       UsePositivityLimiterTally = UsePositivityLimiterTally_Option
+    ELSE
+      UsePositivityLimiterTally = .FALSE.
+    END IF
 
-    Verbose = .TRUE.
-    IF( PRESENT( Verbose_Option ) ) &
+    IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
 
     Theta_FD = One
     IF( Max_1 > One ) &
