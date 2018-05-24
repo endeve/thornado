@@ -56,6 +56,10 @@ CONTAINS
                ( RiemannProblemName_Option &
                    = RiemannProblemName_Option )
 
+      CASE ( 'RiemannProblemSpherical' )
+
+        CALL InitializeFields_RiemannProblemSpherical
+
       CASE( 'KelvinHelmholtz' )
 
         CALL InitializeFields_KelvinHelmholtz
@@ -328,6 +332,60 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_RiemannProblem
+
+
+  SUBROUTINE InitializeFields_RiemannProblemSpherical
+
+    INTEGER       :: iX1, iX2, iX3
+    INTEGER       :: iNodeX, iNodeX1
+    REAL(DP)      :: X1
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            IF( X1 <= One )THEN
+
+              uPF(iNodeX1,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX1,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX1,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX1,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uPF(iNodeX1,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
+
+            ELSE
+
+              uPF(iNodeX1,iX1,iX2,iX3,iPF_D)  = 0.125_DP
+              uPF(iNodeX1,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX1,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX1,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uPF(iNodeX1,iX1,iX2,iX3,iPF_E)  = 0.1_DP / 0.4_DP
+
+            END IF
+
+          END DO
+
+          CALL ComputeConserved &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_RiemannProblemSpherical
 
 
   SUBROUTINE InitializeFields_KelvinHelmholtz

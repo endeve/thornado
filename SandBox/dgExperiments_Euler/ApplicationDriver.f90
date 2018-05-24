@@ -49,12 +49,15 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: AdvectionProfile
   CHARACTER(32) :: Direction
   CHARACTER(32) :: RiemannProblemName
+  CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
   INTEGER       :: iCycle, iCycleD
   INTEGER       :: nX(3), bcX(3), nNodes
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, wTime
   REAL(DP)      :: xL(3), xR(3), Gamma
   REAL(DP)      :: BetaTVD, BetaTVB
+
+  CoordinateSystem = 'CARTESIAN'
 
   ProgramName = 'Implosion'
 
@@ -104,6 +107,27 @@ PROGRAM ApplicationDriver
       t_end   = 2.0d-1
       dt_wrt  = 1.0d-2
 
+   CASE( 'RiemannProblemSpherical' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      Gamma = 1.4_DP
+
+      nX = [ 256, 1, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 2.0_DP, Pi,     TwoPi  ]
+
+      bcX = [ 2, 0, 0 ]
+
+      nNodes = 2
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      iCycleD = 1
+      t_end   = 5.0d-1
+      dt_wrt  = 1.0d-2
+
     CASE( 'KelvinHelmholtz' )
 
       Gamma = 5.0_DP / 3.0_DP
@@ -137,8 +161,7 @@ PROGRAM ApplicationDriver
 
       iCycleD = 10
       t_end   = 3.500_DP
-      dt_wrt  = 0.050_DP      
-
+      dt_wrt  = 0.050_DP
 
   END SELECT
 
@@ -158,7 +181,7 @@ PROGRAM ApplicationDriver
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
-             = 'CARTESIAN', &
+             = TRIM( CoordinateSystem ), &
            BasicInitialization_Option &
              = .TRUE. )
 
