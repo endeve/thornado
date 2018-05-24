@@ -162,9 +162,11 @@ CONTAINS
 
     CALL InitializeQuadratures
 
-    QuadratureName = 'Gaussian'
-    IF( PRESENT( QuadratureName_Option ) ) &
+    IF( PRESENT( QuadratureName_Option ) )THEN
       QuadratureName = TRIM( QuadratureName_Option )
+    ELSE
+      QuadratureName = 'Gaussian'
+    END IF
 
     SELECT CASE ( TRIM( QuadratureName ) )
       CASE ( 'Gaussian' )
