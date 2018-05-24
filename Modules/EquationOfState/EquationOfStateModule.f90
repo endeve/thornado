@@ -145,9 +145,11 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Gamma_IDEAL_Option
 
-    EquationOfState = 'IDEAL'
-    IF( PRESENT( EquationOfState_Option ) ) &
+    IF( PRESENT( EquationOfState_Option ) )THEN
       EquationOfState = EquationOfState_Option
+    ELSE
+      EquationOfState = 'IDEAL'
+    END IF
 
     WRITE(*,*)
     WRITE(*,'(A5,A19,A)') &

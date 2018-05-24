@@ -31,9 +31,11 @@ CONTAINS
 
     REAL(DP), INTENT(in), OPTIONAL :: Gamma_IDEAL_Option
 
-    Gamma_IDEAL = 5.0_DP / 3.0_DP
-    IF( PRESENT( Gamma_IDEAL_Option ) ) &
+    IF( PRESENT( Gamma_IDEAL_Option ) )THEN
       Gamma_IDEAL = Gamma_IDEAL_Option
+    ELSE
+      Gamma_IDEAL = 5.0_DP / 3.0_DP
+    END IF
 
   END SUBROUTINE InitializeEquationOfState_IDEAL
 

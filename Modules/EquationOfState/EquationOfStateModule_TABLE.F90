@@ -92,9 +92,11 @@ CONTAINS
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
 
-    EquationOfStateTableName = 'EquationOfStateTable.h5'
-    IF( PRESENT( EquationOfStateTableName_Option ) ) &
+    IF( PRESENT( EquationOfStateTableName_Option ) )THEN
       EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
+    ELSE
+      EquationOfStateTableName = 'EquationOfStateTable.h5'
+    END IF
 
     WRITE(*,*)
     WRITE(*,'(A7,A12,A)') &
