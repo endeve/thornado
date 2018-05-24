@@ -1,6 +1,6 @@
 MACHINE = $(THORNADO_MACHINE)
 
-OPT_LEVEL = OPTIMIZE
+OPT_LEVEL = DEBUG
 FLAGS     = $(FLAGS_$(OPT_LEVEL))
 
 MOMENT_CLOSURE = MINERBO
@@ -12,6 +12,7 @@ include ../../Build/Makefile_Build
 
 VPATH = \
 $(THORNADO_DIR)/Modules/Numbers: \
+$(THORNADO_DIR)/Modules/Units: \
 $(THORNADO_DIR)/Modules/ProgramHeader: \
 $(THORNADO_DIR)/Modules/Library: \
 $(THORNADO_DIR)/Modules/Mesh: \
@@ -24,6 +25,8 @@ all: Driver
 
 Driver: \
 	KindModule.o \
+	PhysicalConstantsModule.o \
+	UnitsModule.o \
 	ProgramHeaderModule.o \
 	QuadratureModule.o \
 	ReferenceElementModuleX.o \
@@ -45,12 +48,14 @@ Driver: \
 	TwoMoment_UtilitiesModule.o \
 	TwoMoment_PositivityLimiterModule.o \
 	TwoMoment_DiscretizationModule_Streaming.o \
-	ThornadoInitializationModule.o \
+	ThornadoInitializationModule_New.o \
 	DiscretizationModule_Dummy.o \
 	TimeSteppingModule_Castro.o \
 	Driver.o
 	$(FLINKER) $(FLAGS) -o Driver_$(MACHINE) \
 	KindModule.o \
+	PhysicalConstantsModule.o \
+	UnitsModule.o \
 	ProgramHeaderModule.o \
 	QuadratureModule.o \
 	ReferenceElementModuleX.o \
@@ -72,7 +77,7 @@ Driver: \
 	TwoMoment_UtilitiesModule.o \
 	TwoMoment_PositivityLimiterModule.o \
 	TwoMoment_DiscretizationModule_Streaming.o \
-	ThornadoInitializationModule.o \
+	ThornadoInitializationModule_New.o \
 	DiscretizationModule_Dummy.o \
 	TimeSteppingModule_Castro.o \
 	Driver.o \

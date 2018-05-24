@@ -10,7 +10,7 @@ PROGRAM Driver
     uCF
   USE RadiationFieldsModule, ONLY: &
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
-  USE ThornadoInitializationModule, ONLY: &
+  USE ThornadoInitializationModule_New, ONLY: &
     InitThornado, &       ! --- To be called once
     InitThornado_Patch, & ! --- To be called once per patch
     FreeThornado_Patch    ! --- To be called once per parch
@@ -30,7 +30,7 @@ PROGRAM Driver
 
   wTime = MPI_WTIME( )
 
-  CALL InitThornado( nDimsX = 3, nDimsE = 1 )
+  CALL InitThornado( nDimsX = 3, nE = 16, nSpeciesIn = 2 )
 
   wTime = MPI_WTIME( ) - wTime
 
@@ -47,11 +47,9 @@ PROGRAM Driver
              swX = [ 2, 2, 2 ], &
              xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ], &
              xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ], &
-             nE  = 16, &
              swE = 0, &
              eL  = 0.0_DP, &
-             eR  = 1.0_DP, &
-             nSpecies = 1 )
+             eR  = 1.0_DP )
 
     dt = 1.0d-4
 
