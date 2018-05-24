@@ -240,8 +240,6 @@ For the CB closure model, the limiter is triggered to prevent both density overs
 Late in the simulation ($t\gtrsim0.7$), the minimum value of $\vartheta_{2}$ is around $0.1$.  
 For the model using the Minerbo closure, the limiter is not triggered ($\vartheta_{1}=\vartheta_{2}=1$).  
 
-\clearpage
-
 \subsection{Homogeneous Sphere}
 
 The homogeneous sphere test (e.g., \cite{smit_etal_1997}) considers of a sphere with radius $R$.  
@@ -265,29 +263,69 @@ where $r=|\vect{x}|$ and
   \right.
 \end{equation}
 and $g(r,\mu)=[1-(r/R)^{2}(1-\mu^{2})]^{1/2}$.  
-For $f_{0}\in[0,1]$, the solution remains bounded between $0$ and $1$.  
+For $f_{0}\in[0,1]$, the analytical solution is bounded $f_{\mbox{\tiny A}}\in[0,1]$.  
 
-This test is computed on a three-dimensional domain $D=\{\vect{x}\in\bbR^{3}:x^{1}\in[0,2], x^{2}\in[0,2], x^{3}\in[0,2]\}$.  
+Here, this test is computed on a three-dimensional Cartesian domain $D=\{\vect{x}\in\bbR^{3}:x^{1}\in[0,2], x^{2}\in[0,2], x^{3}\in[0,2]\}$.  
 Because of the symmetry of the problem, and to save computational resources, we only compute the solution in one octant.  
-On the inner boundaries, we impose reflecting boundary conditions, while we impose homogeneous boundary conditions on the outer boundary in all three coordinate dimensions.  
-Since this test is computed using Cartesian using a relatively low spatial resolution ($64^{3}$), we have found it necessary to smooth out the opacity over a finite radial extent to avoid numerical artifacts due to a discontinuous absorption opacity.  
+On the inner boundaries, we impose reflecting boundary conditions, while we impose 'homogeneous' boundary conditions on the outer boundary in all three coordinate dimensions; i.e., values for all moments in a boundary element are set equal to the corresponding values in the nearest element just inside $D$.  
+Since this test is computed with Cartesian coordinates using a relatively low spatial resolution ($64^{3}$), we have found it necessary to smooth out the opacity over a finite radial extent to avoid numerical artifacts due to a discontinuous absorption opacity.  
 Specifically, we use an absorption opacity of the following form
 \begin{equation}
   \sigma_{\Ab}(r)=\f{\sigma_{\Ab,0}}{(r/R_{0})^{p}+1}.  
 \end{equation}
-We set $f_{0}=1$, and compute two versions of this test: one with $\sigma_{\Ab,0}=10$, $R_{0}=1$, and $p=80$ (Test A), and one with $\sigma_{\Ab}=10^{3}$, $R_{0}=0.85$, and $p=40$ (Test B).  
-(These values for $R_{0}$ and $p$ result in similar radius for where the optical depth equals $2/3$ in both tests.)
-We compute until $t=5$, when the system has reached a steady state.  
+We set $f_{0}=1$, and compute three versions of this test: one with $\sigma_{\Ab,0}=1$, $R_{0}=1$, and $p=80$ (Test~A), one with $\sigma_{\Ab,0}=10$, $R_{0}=1$, and $p=80$ (Test~B), and one with $\sigma_{\Ab}=10^{3}$, $R_{0}=0.85$, and $p=40$ (Test~C).  
+(These values for $R_{0}$ and $p$ result in similar radius for where the optical depth equals $2/3$ in Test~B and Test~C.)
+We compute until $t=5$, when the system has reached an approximate steady state.  
+We use the IMEX scheme PARSD in all the tests.  
 The main purpose of this test is to compare the results obtained using the different algebraic closures discussed in Section~\ref{sec:algebraicClosure}.  
 
+In Figure~\ref{fig:HomogeneousSphere}, we plot results obtained for all tests at $t=5$: Test~A (top panels), Test~B (middle panels), and Test~C (bottom panels).  
+The particle density $\cJ$ and the flux factor $h=|\vect{\cH}|/\cJ$ are plotted versus radius $r=|\vect{x}|$ (left and right panels, respectively).  
+In each panel, results obtained with the various algebraic closures discussed in Section~\ref{sec:algebraicClosure} are plotted: Minerbo (magenta), CB (blue), BL (green), and Kershaw (cyan).  
+The analytical solution is also plotted (dashed black lines).  
 \begin{figure}[h]
   \centering
   \begin{tabular}{cc}
-    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_ClosureComparison_Density}
-    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_ClosureComparison_FluxFactor}
+    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_ClosureComparison_Chi_1e0_Density}
+    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_ClosureComparison_Chi_1e0_FluxFactor} \\
+    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_ClosureComparison_Chi_1e1_Density}
+    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_ClosureComparison_Chi_1e1_FluxFactor} \\
+    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_ClosureComparison_Chi_1e3_Density}
+    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_ClosureComparison_Chi_1e3_FluxFactor}
   \end{tabular}
-   \caption{Homogeneous sphere problem}
+   \caption{Results obtained for the homogeneous sphere problem with the two-moment model for different values of the absorption opacity $\sigma_{\Ab,0}$: $1$ (top panels), $10$, (middle panels), and $1000$ (bottom panels).  The particle density (left panels) and the flux factor (right panels) are plotted versus radius.  Numerical results obtained with the algebraic closures of Minerbo (magenta), CB (blue), BL (green), and Kershaw (cyan) are compared with the analytic solution (dashed black lines).}
   \label{fig:HomogeneousSphere}
 \end{figure}
 
-\clearpage
+We find good overall agreement between the results obtained with the two-moment model and the analytical solution.  
+Partly due to the smoothing of the absorption opacity around the surface, the numerical and analytical solutions naturally differ around $r=1$.  
+Aside from some differences discussed in more detail below, the numerical and analytical solutions --- for all values of the absorption opacity $\sigma_{\Ab,0}$ and all closures --- agree well as $r$ tends to zero, as well as when $r\gg1$.  
+The results obtained with the maximum entropy closures CB and BL are practically indistinguishable on the plots.  
+This is consistent with the similarity of the Eddington factors for these two closures plotted in Figure~\ref{fig:EddingtonFactorsWithDifferentClosure}.  
+We also find that the results obtained with the fermionic Kershaw closure agree well with the maximum entropy closures based on Fermi-Dirac statistics (CB and BL).  
+From the plots of the particle density (left panels in Figure~\ref{fig:HomogeneousSphere}), the results obtained with all the closures, including Minerbo, appear very similar.  
+The particle density obtained with the Minerbo closure deviates the most from the analytic solution inside $r\approx0.75$ for Test~A ($\sigma_{\Ab,0}=1$; upper left panel).  
+From the plots of the flux factor (right panels in Figure~\ref{fig:HomogeneousSphere}), it is evident that the results obtained with the Minerbo closure --- the only closure not based on Fermo-Dirac statistics --- deviates the most from the analytic solution outside $r=1$, where the flux factor is consistently higher than the analytical solution for all values of $\sigma_{\Ab,0}$.  
+The fermionic closures (CB, BL, and Kershaw) track the analytic solution better.  
+Similar agreement between the numerical and analytical solutions was reported by Smit et al. \cite{smit_etal_1997}, when using the CB maximum entropy closure, with $f_{0}=0.8$ and an unsmoothed absorption opacity $\sigma_{\Ab}=4$.  
+We also note that our results are at odds with the results recently reported by Murchikova et al. \cite{murchikova_etal_2017}, who compared results obtained with with the two-moment model using a large number of algebraic closures for this same problem (albeit using an unsmoothed and slightly different value for the absorption opacity).  
+Murchikova et al. do not plot the particle density, but find essentially no difference in the flux factor and the Eddington factor when comparing results obtained with the maximum entropy closures of Minerbo and Cernohorsky \& Bludman (CB).  
+
+In Figure~\ref{fig:HomogeneousSphereRealizability}, we further compare the results obtained when using the Minerbo and CB closures by plotting the solutions to the homogeneous sphere problem for Test~C at $t=5$ in the $(\cH_{1},\cJ)$-plane (cf. the realizable domain in Figure~\ref{fig:RealizableSetFermionic}):  The numerical solution in each spatial point is represented by a magenta dot in the panels.  
+Results obtained using the CB closure are plotted in the upper left panel, while results obtained using the Minerbo closure are plotted in the upper right panel.  
+In the lower two panel we zoom in on the results obtained with the Minerbo closure around the top and lower right regions of the realizable domain (lower left and lower right panel, respectively; cf. blue boxes in the upper right panel).  
+\begin{figure}[h]
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_Realizability_Chi_1e3_CB}
+    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_Realizability_Chi_1e3_Minerbo} \\
+    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_Realizability_Chi_1e3_Minerbo_Box1}
+    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_Realizability_Chi_1e3_Minerbo_Box2}
+  \end{tabular}
+   \caption{Plots of the numerical solution to the homogeneous sphere problem for Test~C in the $(\cH_{1},\cJ)$-plane.  Results obtained with the CB and Minerbo closures are plotted in the upper left and upper right panels, respectively.  Zoom-ins on the solutions obtained with the Minerbo closure are plotted in the lower two panels (cf. blue boxes in the upper right panel).  The boundaries of the realizable domains $\cR$ and $\cR^{+}$ are indicated with solid black and solid red curves, respectively.  See text for further details.  }
+  \label{fig:HomogeneousSphereRealizability}
+\end{figure}
+As can be seen in the upper panels in Figure~\ref{fig:HomogeneousSphereRealizability}, the solution to the homogeneous sphere problem covers a large fraction of the right half of the realizable domain $\cR$, whose boundary is indicated by solid black curves in each panel.  
+When using the CB closure, the realizability-preserving DG-IMEX scheme developed here maintains solutions within $\cR$.  
+When using the Minerbo closure, the appropriate realizable domain is given by $\cR^{+}$ (cf. Eq.~\eqref{eq:realizableSetPositive}), whose boundary is indicated by solid red lines in Figure~\ref{fig:HomogeneousSphereRealizability}, and we find that the numerical solution ventures outside $\cR$.  
+Near the surface around $r=1$, the number density slightly exceeds unity (lower left panel), while for larger radii, the computed flux may exceed the value allowed by Fermi-Dirac statistics (lower right panel).  
