@@ -39,9 +39,11 @@ CONTAINS
 
     INTEGER :: iGE
 
-    Verbose = .TRUE.
-    IF( PRESENT( Verbose_Option ) ) &
+    IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
 
     IF( Verbose )THEN
       WRITE(*,*)

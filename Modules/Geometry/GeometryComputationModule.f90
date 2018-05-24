@@ -43,9 +43,11 @@ CONTAINS
 
     REAL(DP) :: Mass
 
-    Mass = Zero
-    IF( PRESENT( Mass_Option ) ) &
+    IF( PRESENT( Mass_Option ) )THEN
       Mass = Mass_Option
+    ELSE
+      Mass = Zero
+    END IF
 
     SELECT CASE ( TRIM( CoordinateSystem ) )
 

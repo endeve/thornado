@@ -63,13 +63,17 @@ CONTAINS
 
     INTEGER :: iGF
 
-    CoordinateSystem = 'CARTESIAN'
-    IF( PRESENT( CoordinateSystem_Option ) ) &
+    IF( PRESENT( CoordinateSystem_Option ) )THEN
       CoordinateSystem = CoordinateSystem_Option
+    ELSE
+      CoordinateSystem = 'CARTESIAN'
+    END IF
 
-    Verbose = .TRUE.
-    IF( PRESENT( Verbose_Option ) ) &
+    IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
 
     IF( Verbose )THEN
       WRITE(*,*)
