@@ -32,18 +32,24 @@ CONTAINS
     REAL(DP), INTENT(in)           :: xL, xR
     REAL(DP), INTENT(in), OPTIONAL :: ZoomOption
 
-    REAL(DP), DIMENSION(nN) :: xQ, wQ
+    REAL(DP) :: Zoom
+    REAL(DP) :: xQ(nN), wQ(nN)
+
+    IF( PRESENT( ZoomOption ) )THEN
+      Zoom = ZoomOption
+    ELSE
+      Zoom = 1.0_DP
+    END IF
 
     Mesh % Length = xR - xL
 
     ALLOCATE( Mesh % Center(1-SW:N+SW) )
     ALLOCATE( Mesh % Width (1-SW:N+SW) )
 
-    IF( PRESENT( ZoomOption ) .AND. ZoomOption > 1.0_DP )THEN
+    IF( Zoom > 1.0_DP )THEN
 
       CALL CreateGeometricMesh &
-             ( N, SW, xL, xR, Mesh % Center, Mesh % Width, &
-               Zoom = ZoomOption )
+             ( N, SW, xL, xR, Mesh % Center, Mesh % Width, Zoom )
 
     ELSE
 
