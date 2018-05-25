@@ -51,9 +51,11 @@ CONTAINS
     INTEGER, INTENT(in) :: nZ(4), nNodesZ(4), nSpecies
     LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
-    Verbose = .TRUE.
-    IF( PRESENT( Verbose_Option ) ) &
+    IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
 
     IF( Verbose )THEN
       WRITE(*,*)
