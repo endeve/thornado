@@ -79,27 +79,9 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   IMPLICIT NONE
   PRIVATE
 
-  INCLUDE 'mpif.h'
-
   REAL(DP), PARAMETER :: Ones(16) = One
 
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit
-
-  LOGICAL, PARAMETER :: DisplayTimers = .FALSE.
-  REAL(DP) :: Timer
-  REAL(DP) :: Timer_RHS
-  REAL(DP) :: Timer_VOL, dT_VOL
-  REAL(DP) :: Timer_AD1, dT_AD1
-  REAL(DP) :: Timer_SUR, dT_SUR
-  REAL(DP) :: Timer_INT, dT_INT
-  REAL(DP) :: Timer_INT_G, dT_INT_G
-  REAL(DP) :: Timer_LFT, dT_LFT
-  REAL(DP) :: Timer_RGT, dT_RGT
-  REAL(DP) :: Timer_FLX, dT_FLX
-  REAL(DP) :: Timer_AD2, dT_AD2
-  REAL(DP) :: Timer_AD3, dT_AD3
-  REAL(DP) :: Timer_Div_X2
-  REAL(DP) :: Timer_INV
 
 CONTAINS
 
@@ -122,44 +104,25 @@ CONTAINS
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS
     REAL(DP) :: dZ(4), Tau(nDOF)
-    REAL(DP) :: wTime
 
     dU = Zero
 
-    wTime = MPI_WTIME( )
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
-    wTime = MPI_WTIME( ) - wTime
-!    PRINT*
-!    PRINT*, "           ApplyPositivityLimiter_TwoMoment:", wTime
 
-    wTime = MPI_WTIME( )
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
-    wTime = MPI_WTIME( ) - wTime
-!    PRINT*, "ApplyBoundaryConditions_TwoMoment:", wTime
 
-    wTime = MPI_WTIME( )
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
-    wTime = MPI_WTIME( ) - wTime
-!    PRINT*, "   ComputeIncrement_Divergence_X1:", wTime
 
-    wTime = MPI_WTIME( )
     CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
-    wTime = MPI_WTIME( ) - wTime
-!    PRINT*, "   ComputeIncrement_Divergence_X2:", wTime
 
-    wTime = MPI_WTIME( )
     CALL ComputeIncrement_Divergence_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
-    wTime = MPI_WTIME( ) - wTime
-!    PRINT*, "   ComputeIncrement_Divergence_X3:", wTime
 
     ! --- Multiply Inverse Mass Matrix ---
-
-    CALL Timer_Start( Timer_INV )
 
     !$OMP PARALLEL DO PRIVATE &
     !$OMP& ( iZ1, iZ2, iZ3, iZ4, iCR, iS, dZ, Tau )
@@ -192,20 +155,6 @@ CONTAINS
       END DO
     END DO
     !$OMP END PARALLEL DO
-
-    CALL Timer_Stop( Timer_INV )
-
-    IF( DisplayTimers )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(A4,A)') &
-        '', 'Timers:'
-      WRITE(*,*)
-      WRITE(*,'(A4,A16,ES10.4E2)') &
-        '', 'Inverse Mass: ', Timer_INV
-      WRITE(*,*)
-
-    END IF
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit
 
@@ -252,19 +201,6 @@ CONTAINS
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
 
-    Timer_VOL   = 0.0_DP
-    Timer_AD1   = 0.0_DP
-    Timer_SUR   = 0.0_DP
-    Timer_INT   = 0.0_DP
-    Timer_INT_G = 0.0_DP
-    Timer_LFT   = 0.0_DP
-    Timer_RGT   = 0.0_DP
-    Timer_FLX   = 0.0_DP
-    Timer_AD2   = 0.0_DP
-    Timer_AD3   = 0.0_DP
-
-    CALL Timer_Start( Timer_RHS )
-
     DO iS = 1, nSpecies
       DO iZ4 = iZ_B0(4), iZ_E0(4)
 
@@ -290,8 +226,6 @@ CONTAINS
             END DO
 
             ! --- Interpolate Geometry Fields on Shared Face ---
-
-            CALL Timer_Start( dT_INT_G )
 
             ! --- Face States (Average of Left and Right States) ---
 
@@ -334,10 +268,6 @@ CONTAINS
                   ( Ones(1:nDOFE), nDOFE, &
                     GX_F(1:nDOFX_X1,iGF_Alpha), nDOFX_X1 )
 
-            CALL Timer_Stop( dT_INT_G )
-
-            CALL Timer_Add( Timer_INT_G, dT_INT_G )
-
             DO iZ1 = iZ_B0(1), iZ_E0(1)
 
               dZ(1) = MeshE % Width(iZ1)
@@ -364,8 +294,6 @@ CONTAINS
               !--------------------
 
               IF( iZ2 < iZ_E0(2) + 1 )THEN
-
-                CALL Timer_Start( dT_VOL )
 
                 CALL ComputePrimitive_TwoMoment &
                        ( uCR_K(:,iCR_N ), uCR_K(:,iCR_G1), &
@@ -398,8 +326,6 @@ CONTAINS
 
                 END DO
 
-                CALL Timer_Start( dT_AD1 )
-
                 DO iCR = 1, nCR
 
                   Flux_X1_q(:,iCR) &
@@ -413,23 +339,11 @@ CONTAINS
 
                 END DO
 
-                CALL Timer_Stop( dT_AD1 )
-
-                CALL Timer_Add( Timer_AD1, dT_AD1 )
-
-                CALL Timer_Stop( dT_VOL )
-
-                CALL Timer_Add( Timer_VOL, dT_VOL )
-
               END IF
 
               !---------------------
               ! --- Surface Term ---
               !---------------------
-
-              CALL Timer_Start( dT_SUR )
-
-              CALL Timer_Start( dT_INT )
 
               ! --- Interpolate Radiation Fields ---
 
@@ -449,10 +363,6 @@ CONTAINS
 
               END DO
 
-              CALL Timer_Stop( dT_INT )
-
-              CALL Timer_Add( Timer_INT, dT_INT )
-
               ! --- Left State Primitive, etc. ---
 
               CALL ComputePrimitive_TwoMoment &
@@ -463,8 +373,6 @@ CONTAINS
                        G_F(:,iGF_Gm_dd_11), &
                        G_F(:,iGF_Gm_dd_22), &
                        G_F(:,iGF_Gm_dd_33) )
-
-              CALL Timer_Start( dT_LFT )
 
               DO iNode = 1, nDOF_X1
 
@@ -490,10 +398,6 @@ CONTAINS
 
               END DO
 
-              CALL Timer_Stop( dT_LFT )
-
-              CALL Timer_Add( Timer_LFT, dT_LFT )
-
               ! --- Right State Primitive, etc. ---
 
               CALL ComputePrimitive_TwoMoment &
@@ -504,8 +408,6 @@ CONTAINS
                        G_F(:,iGF_Gm_dd_11), &
                        G_F(:,iGF_Gm_dd_22), &
                        G_F(:,iGF_Gm_dd_33) )
-
-              CALL Timer_Start( dT_RGT )
 
               DO iNode = 1, nDOF_X1
 
@@ -531,13 +433,7 @@ CONTAINS
 
               END DO
 
-              CALL Timer_Stop( dT_RGT )
-
-              CALL Timer_Add( Timer_RGT, dT_RGT )
-
               ! --- Numerical Flux ---
-
-              CALL Timer_Start( dT_FLX )
 
               alpha = MAX( absLambda_L, absLambda_R )
 
@@ -556,13 +452,7 @@ CONTAINS
 
               END DO
 
-              CALL Timer_Stop( dT_FLX )
-
-              CALL Timer_Add( Timer_FLX, dT_FLX )
-
               ! --- Contribution to this Element ---
-
-              CALL Timer_Start( dT_AD2 )
 
               IF( iZ2 < iZ_E0(2) + 1 )THEN
 
@@ -577,13 +467,7 @@ CONTAINS
 
               END IF
 
-              CALL Timer_Stop( dT_AD2 )
-
-              CALL Timer_Add( Timer_AD2, dT_AD2 )
-
               ! --- Contribution to Previous Element ---
-
-              CALL Timer_Start( dT_AD3 )
 
               IF( iZ2 > iZ_B0(2) )THEN
 
@@ -598,62 +482,11 @@ CONTAINS
 
               END IF
 
-              CALL Timer_Stop( dT_AD3 )
-
-              CALL Timer_Add( Timer_AD3, dT_AD3 )
-
-              CALL Timer_Stop( dT_SUR )
-
-              CALL Timer_Add( Timer_SUR, dT_SUR )
-
             END DO ! iZ1
           END DO ! iZ2
         END DO ! iZ3
       END DO ! iZ4
     END DO ! iS
-
-    CALL Timer_Stop( Timer_RHS )
-
-    IF( DisplayTimers )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(A4,A)') &
-        '', 'Timers:'
-      WRITE(*,*)
-      WRITE(*,'(A4,A16,ES10.4E2)') &
-        '', 'ComputeRHS: ', Timer_RHS
-      WRITE(*,*)
-      WRITE(*,'(A4,A16,ES10.4E2)') &
-        '', 'Volume Term: ', Timer_VOL
-      WRITE(*,*)
-      WRITE(*,'(A6,A10,ES10.4E2)') &
-        '', 'Add 1: ', Timer_AD1
-      WRITE(*,*)
-      WRITE(*,'(A4,A16,ES10.4E2)') &
-        '', 'Surface Term: ', Timer_SUR
-      WRITE(*,*)
-      WRITE(*,'(A6,A10,ES10.4E2)') &
-        '', 'Interp: ', Timer_INT
-      WRITE(*,'(A6,A10,ES10.4E2)') &
-        '', 'Int (G): ', Timer_INT_G
-      WRITE(*,'(A6,A10,ES10.4E2)') &
-        '', 'Left: ', Timer_LFT
-      WRITE(*,'(A6,A10,ES10.4E2)') &
-        '', 'Right: ', Timer_RGT
-      WRITE(*,'(A6,A10,ES10.4E2)') &
-        '', 'Flux: ', Timer_FLX
-      WRITE(*,'(A6,A10,ES10.4E2)') &
-        '', 'Add 2: ', Timer_AD2
-      WRITE(*,'(A6,A10,ES10.4E2)') &
-        '', 'Add 3: ', Timer_AD3
-      WRITE(*,*)
-      WRITE(*,'(A4,A16,ES10.4E2)') &
-        '', 'Inverse Mass: ', Timer_INV
-      WRITE(*,*)
-      WRITE(*,'(A4,A16,ES10.4E2)') &
-        '', 'Sum: ', Timer_VOL + Timer_SUR + Timer_INV
-
-    END IF
 
   END SUBROUTINE ComputeIncrement_Divergence_X1
 
@@ -702,8 +535,6 @@ CONTAINS
     REAL(DP) :: NumericalFlux(nDOF_X2,nCR)
 
     IF( iZ_E0(3) .EQ. iZ_B0(3) ) RETURN
-
-    CALL Timer_Start( Timer_Div_X2 )
 
     DO iS = 1, nSpecies
 
@@ -997,19 +828,6 @@ CONTAINS
         END DO ! iZ3
       END DO ! iZ4
     END DO ! iS
-
-    CALL Timer_Stop( Timer_Div_X2 )
-
-    IF( DisplayTimers )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(A4,A)') &
-        '', 'Timers:'
-      WRITE(*,*)
-      WRITE(*,'(A4,A32,ES10.4E2)') &
-        '', 'ComputeIncrement_Divergence_X2: ', Timer_Div_X2
-
-    END IF
 
   END SUBROUTINE ComputeIncrement_Divergence_X2
 
@@ -1353,39 +1171,6 @@ CONTAINS
     END DO ! iS
 
   END SUBROUTINE ComputeIncrement_Divergence_X3
-
-
-  SUBROUTINE Timer_Start( Timer )
-
-    REAL(DP) :: Timer
-
-    IF( .NOT. DisplayTimers ) RETURN
-
-    Timer = MPI_WTIME( )
-
-  END SUBROUTINE Timer_Start
-
-
-  SUBROUTINE Timer_Stop( Timer )
-
-    REAL(DP) :: Timer
-
-    IF( .NOT. DisplayTimers ) RETURN
-
-    Timer = MPI_WTIME( ) - Timer
-
-  END SUBROUTINE Timer_Stop
-
-
-  SUBROUTINE Timer_Add( Timer, dT )
-
-    REAL(DP) :: Timer, dT
-
-    IF( .NOT. DisplayTimers ) RETURN
-
-    Timer = Timer + dT
-
-  END SUBROUTINE Timer_Add
 
 
 END MODULE TwoMoment_DiscretizationModule_Streaming

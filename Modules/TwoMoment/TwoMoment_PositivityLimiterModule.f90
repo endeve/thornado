@@ -18,8 +18,6 @@ MODULE TwoMoment_PositivityLimiterModule
   IMPLICIT NONE
   PRIVATE
 
-  INCLUDE 'mpif.h'
-
   PUBLIC :: InitializePositivityLimiter_TwoMoment
   PUBLIC :: FinalizePositivityLimiter_TwoMoment
   PUBLIC :: ApplyPositivityLimiter_TwoMoment
