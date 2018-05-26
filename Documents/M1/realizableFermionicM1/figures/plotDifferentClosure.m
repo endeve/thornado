@@ -29,14 +29,21 @@ plot(h,MEBL,'--','linewidth', 2);
 plot(h,Minerbo,'-.','linewidth', 2);
 plot(h,bryup,'-k','linewidth', 2);
 plot(h,brydown,'-k','linewidth', 2);
-lgnd = legend({'Kershaw','MECB','MEBL','Minerbo'},...
+lgnd = legend({'Kershaw','ME(CB)','ME(BL)','Minerbo'},...
     'Location','best');
-set(lgnd,'FontSize',10);
+set(lgnd,'FontSize',12);
 xlim([0,1-J]);
-xlabel('Flux factor h','FontSize',12);
-ylabel('Eddington factor \chi','FontSize',12);
-title(['J = ',num2str(J)],'FontSize',12);
-saveas(fig,['Closures', num2str(J),'.png']);
+set(gca,'FontSize',12)
+xlabel('Flux factor h','FontSize',15);
+ylabel('Eddington factor \chi','FontSize',15);
+title(['J = ',num2str(J)],'FontSize',15);
+
+x0=10;
+y0=5;
+width=400;
+height=320;
+set(gcf,'units','points','position',[x0,y0,width,height])
+saveas(fig,['Closures0_', num2str(J*100),'.png']);
 
 function [ value ] = Closure( J, h, theta_fun )
 
