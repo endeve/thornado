@@ -70,7 +70,8 @@ xxM_MB = - yy;
 plot( xxP_FD, yy, '-k', 'linewidth', 2 )
 plot( xxM_FD, yy, '-k', 'linewidth', 2 )
 hold off
-axis([-0.3 0.3 0.0-1.d-2 1.0+1.d-2]);
+axis([-0.3 0.300001 0.0-1.d-2 1.0+1.d-2]);
+set(gca,'FontSize',13);
 xlabel('H_{ab}');
 ylabel('J_{ab}');
 title([ Closure ]);
