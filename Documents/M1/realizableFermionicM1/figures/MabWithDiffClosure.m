@@ -1,4 +1,4 @@
-% close all
+close all
 clear all
 
 PolynomialCB = @(x) x^2 * ( 3.0 - abs(x) + 3.0 * x^2 ) / 5.0;
@@ -37,20 +37,21 @@ for iPt = 1 : nPts
 end
 toc
 
-ClosureName = {'BLKS', 'CBME', 'BLME','MI'};
+ClosureName = {'Kershaw', 'ME(CB)', 'ME(BL)','Minerbo'};
+ClosureSaveName = {'BLKS','CBME','BLME','MI'};
 
 for ii = 1:max(size(ClosureName))
     
 Closure = ClosureName{ii}; % 
-
+FileName = ClosureSaveName{ii};
 switch Closure
-    case 'MI'
+    case 'Minerbo'
         K_plot = K_MI;
-    case 'CBME'
+    case 'ME(CB)'
         K_plot = K_CB;
-    case 'BLME'
+    case 'ME(BL)'
         K_plot = K_BL;
-    case 'BLKS'
+    case 'Kershaw'
         K_plot = K_KS;
 end
 
@@ -69,10 +70,15 @@ xxM_MB = - yy;
 plot( xxP_FD, yy, '-k', 'linewidth', 2 )
 plot( xxM_FD, yy, '-k', 'linewidth', 2 )
 hold off
-axis([-0.5 0.5 0.0 1.0]);
+axis([-0.3 0.3 0.0-1.d-2 1.0+1.d-2]);
 xlabel('H_{ab}');
 ylabel('J_{ab}');
-title(['M_{ab} with ', Closure,' closure']);
+title([ Closure ]);
+x0=10;
+y0=5;
+width=400;
+height=320;
+set(gcf,'units','points','position',[x0,y0,width,height])
 pause(1)
-saveas(fig,['MabWith', Closure,'.png']);
+saveas(fig,['MabWith', FileName,'.png']);
 end
