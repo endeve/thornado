@@ -276,7 +276,7 @@ Specifically, we use an absorption opacity of the following form
 We set $f_{0}=1$, and compute three versions of this test: one with $\sigma_{\Ab,0}=1$, $R_{0}=1$, and $p=80$ (Test~A), one with $\sigma_{\Ab,0}=10$, $R_{0}=1$, and $p=80$ (Test~B), and one with $\sigma_{\Ab}=10^{3}$, $R_{0}=0.85$, and $p=40$ (Test~C).  
 (These values for $R_{0}$ and $p$ result in similar radius for where the optical depth equals $2/3$ in Test~B and Test~C.)
 We compute until $t=5$, when the system has reached an approximate steady state.  
-We use the IMEX scheme PARSD in all the tests.  
+We use the IMEX scheme PARSD --- the least compute-intensive of the realizability-preserving IMEX schemes presented here --- in all the tests.  
 The main purpose of this test is to compare the results obtained using the different algebraic closures discussed in Section~\ref{sec:algebraicClosure}.  
 
 In Figure~\ref{fig:HomogeneousSphere}, we plot results obtained for all tests at $t=5$: Test~A (top panels), Test~B (middle panels), and Test~C (bottom panels).  
@@ -304,7 +304,7 @@ The results obtained with the maximum entropy closures CB and BL are practically
 This is consistent with the similarity of the Eddington factors for these two closures plotted in Figure~\ref{fig:EddingtonFactorsWithDifferentClosure}.  
 We also find that the results obtained with the fermionic Kershaw closure agree well with the maximum entropy closures based on Fermi-Dirac statistics (CB and BL).  
 From the plots of the particle density (left panels in Figure~\ref{fig:HomogeneousSphere}), the results obtained with all the closures, including Minerbo, appear very similar.  
-The particle density obtained with the Minerbo closure deviates the most from the analytic solution inside $r\approx0.75$ for Test~A ($\sigma_{\Ab,0}=1$; upper left panel).  
+(For Test~A, the particle density obtained with the Minerbo closure deviates the most from the analytic solution inside $r\approx0.75$; upper left panel).  
 From the plots of the flux factor (right panels in Figure~\ref{fig:HomogeneousSphere}), it is evident that the results obtained with the Minerbo closure --- the only closure not based on Fermo-Dirac statistics --- deviates the most from the analytic solution outside $r=1$, where the flux factor is consistently higher than the analytical solution for all values of $\sigma_{\Ab,0}$.  
 The fermionic closures (CB, BL, and Kershaw) track the analytic solution better.  
 Similar agreement between the numerical and analytical solutions was reported by Smit et al. \cite{smit_etal_1997}, when using the CB maximum entropy closure, with $f_{0}=0.8$ and an unsmoothed absorption opacity $\sigma_{\Ab}=4$.  

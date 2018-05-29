@@ -5,7 +5,8 @@ The two-moment model given by Eq.~\eqref{eq:angularMoments} is not closed becaus
 Algebraic moment closures for the two-moment model are computationally efficient as they provide the Eddington factor in Eq.~\eqref{eq:eddingtonTensor} in closed form as a function of the density $\cJ$ and the flux factor $h=|\vect{\cH}|/\cJ$.  
 For this reason they are widely used in applications where radiation transport plays an important role --- including simulation of neutrino transport in core-collapse supernovae \cite{roberts_etal_2016} and compact binary mergers \cite{foucart_etal_2015}.  
 Algebraic moment closures in the context of these aforementioned applications have also been discussed elsewhere (e.g., \cite{janka_etal_1992,pons_etal_2000,smit_etal_2000,just_etal_2015,murchikova_etal_2017}).  
-The family of algebraic closures we consider in this paper can be written in the form \cite{cernohorskyBludman_1994}
+Here we focus on properties of the algebraic closures that are critical to the development of numerical methods for the two-moment model of fermion transport.  
+The family of algebraic closures we consider can be written in the form \cite{cernohorskyBludman_1994}
 \begin{equation}
   \chi(\cJ,h)=\f{1}{3}+\f{2\,(1-\cJ)\,(1-2\cJ)}{3}\,\Theta\Big(\f{h}{1-\cJ}\Big),
   \label{eq:eddingtonFactor}
@@ -93,23 +94,23 @@ By convexity, the convex combination
 \end{equation}
 with $\beta\in[0,1]$, is realizable for realizable moments $(\cJ,\cH)^{T}\in\cR$.  
 The Kershaw closure for the two-moment model is then obtained from the ansatz in Eq.~\eqref{eq:kershawAnsatz} with the additional requirement that it be correct in the limit of isotropic distribution functions; i.e., $\cK(\beta,\cJ,0)=\cJ/3$.  
-This occurs when $\beta=(2-\cJ)/3$, so that $\cK_{\mbox{\tiny K}}(\cJ,h)=\chi_{\mbox{\tiny K}}(\cJ,h)\,\cJ$, where
+One choice for $\beta$, which leads to a strictly hyperbolic and causal two-moment model (and a particularly simple closure function) \cite{banachLarecki_2017a}, is $\beta=(2-\cJ)/3$, so that $\cK_{\mbox{\tiny K}}(\cJ,h)=\chi_{\mbox{\tiny K}}(\cJ,h)\,\cJ$, where
 \begin{equation}
   \chi_{\mbox{\tiny K}}(\cJ,h)=\f{1}{3}+\f{2\,(1-\cJ)\,(1-2\cJ)}{3}\,\Theta_{\mbox{\tiny K}}\Big(\f{h}{1-\cJ}\Big),
   \label{eq:eddingtonFactorKershaw}
 \end{equation}
-and the Kershaw closure function is given by \cite{banachLarecki_2017a}
+and the Kershaw closure function is given by
 \begin{equation}
   \Theta_{\mbox{\tiny K}}(x)=x^{2}.  
 \end{equation}
 For multidimensional problems, the Kershaw closure is obtained by using the Eddington factor in Eq.~\eqref{eq:eddingtonFactorKershaw} in Eq.~\eqref{eq:eddingtonTensor}.  
-We point out that for the Kershaw closure (see \cite{banachLarecki_2017a} for details), a distribution function $f_{\mbox{\tiny K}}$, satisfying $0\le f_{\mbox{\tiny K}}(\vect{\ell},\cJ,\vect{\cH})\le1$ and reproducing the moments $\cJ$, $\vect{\cH}$, and $\vect{\cK}$, can be written explicitly in terms of Heaviside functions.  
+Finally, we point out that for the two-moment Kershaw closure (see \cite{banachLarecki_2017a} for details), a distribution function $f_{\mbox{\tiny K}}(\vect{\ell},\cJ,\vect{\cH})$, satisfying $0\le f_{\mbox{\tiny K}}\le1$, and reproducing the moments $\cJ$, $\vect{\cH}$, and $\vect{\cK}$, can be written explicitly in terms of Heaviside functions.  
 
 \subsection{Realizability of Algebraic Moment Closures}
 
-It is not immediately obvious that all the algebraic moment closures discussed above are suitable for the design of a realizability-preserving method for the two-moment model of fermion transport.  
+It is not immediately obvious that all the algebraic moment closures discussed above are suitable for designing realizability-preserving methods for the two-moment model of fermion transport.  
 In particular, the realizability-preserving scheme developed in this paper is based on the result in Lemma~\ref{lem:explicitStep}, which must hold for the adapted closure.  
-The Kershaw closure is consistent with a bounded distribution, $f_{_{\mbox{\tiny K}}}\in[0,1]$, and should be well suited, but the algebraic ME closures are based on approximations to the closure function, and we must make sure that these approximate closures remain consistent with the assumed bounds on the underlying distribution function.  
+The Kershaw closure is consistent with a bounded distribution, $f_{_{\mbox{\tiny K}}}\in[0,1]$, and should be well suited, but the algebraic ME closures are based on approximations to the closure function, and we need to consider if these approximate closures remain consistent with the assumed bounds on the underlying distribution function.  
 To this end, we rely on results due to \cite{levermore_1984,lareckiBanach_2011} (see also \cite{kershaw_1976,shohatTamarkin_1943}):  Realizability of the moment triplet $\{\cJ,\vect{\cH},\vect{\cK}\}$ (i.e., they are consistent with a bounded distribution function $0 \le f<1$), with $\vect{\cM}=(\cJ,\vect{\cH})^{T}\in\cR$ and $\vect{\cK}$ given by Eq.~\eqref{eq:eddingtonTensor}, is equivalent to the following requirement for the Eddington factor
 \begin{equation}
   \chi_{\mbox{\tiny min}}
@@ -117,15 +118,16 @@ To this end, we rely on results due to \cite{levermore_1984,lareckiBanach_2011} 
   <\chi<\min\big(1,\f{1}{3\cJ}-\f{\cJ}{1-\cJ}h^{2}\big)=\chi_{\mbox{\tiny max}}.  
   \label{eq:eddingtonFactorBounds}
 \end{equation}
-(Note that for $\cJ\ll1$ this limits to the bounds for positive distributions given by Levermore \cite{levermore_1984}; i.e., $h^{2}\le\chi\le1.$)
+Fortunately, these bounds are satisfied by the algebraic closures based on Fermi-Dirac statistics.  
+(Note that for $\cJ\ll1$ the bounds in Eq.~\eqref{eq:eddingtonFactorBounds} limit to the bounds for positive distributions given by Levermore \cite{levermore_1984}; i.e., $h^{2}\le\chi\le1.$)
 
 In Figure~\ref{fig:EddingtonFactorsWithDifferentClosure}, we plot the Eddington factor $\chi$ versus the flux factor $h\,(\le 1-\cJ)$ for the various algebraic closures discussed above and for different values of $\cJ\in(0,1)$: $0.01$ (upper left panel), $0.4$ (upper right panel), $0.6$ (lower left panel), and $0.99$ (lower right panel).  
 The maximum entropy closures of CB and BL are plotted with solid red and dashed orange lines respectively.  
-The Kershaw closure is plotted with dash-dot purple lines, while the Minerbo closure is plotted with solid blue lines.  
+The Kershaw closure is plotted with solid blue lines, while the Minerbo closure is plotted with dash-dot purple lines.  
 The lower and upper bounds on the Eddington factor for realizable closures for fermion particle systems ($\chi_{\mbox{\tiny min}}$ and $\chi_{\mbox{\tiny max}}$, respectively) are plotted with solid black lines.  
 We note that for all the closures, the Eddington factor $\chi\to1/3$ as $h\to0^{+}$.  
 For $\cJ=0.01$, the maximum entropy closures (CB, BL, and Minerbo) are practically indistinguishable, while the Eddington factor of the Kershaw closure is clearly larger than that of the other closures over most of the domain.  
-For $\cJ=0.4$, the Eddington factor for the closures based on Fermi-Dirac statistics (CB, BL, and Kershaw) remain close together, while the Eddington factor for the Minerbo closure is clearly above the other closures for $h\gtrsim0.2$.  
+For $\cJ=0.4$, the Eddington factor for the closures based on Fermi-Dirac statistics (CB, BL, and Kershaw) remain close together, while the Eddington factor for the Minerbo closure is clearly larger than the other closures for $h\gtrsim0.2$.  
 All closures remain between $\chi_{\mbox{\tiny min}}$ and $\chi_{\mbox{\tiny max}}$ for $\cJ=0.01$ and $\cJ=0.4$.  
 For $\cJ=0.6$, the Eddington factor for the closures based on Fermi-Dirac statistics remain close together and within the bounds in Eq.~\eqref{eq:eddingtonFactorBounds}.  
 The dependence of the Eddington factor on $h$ of the Minerbo closure is clearly different from the other closures (i.e., increases vs decreases with increasing $h$), and exceeds $\chi_{\mbox{\tiny max}}$ for $h\gtrsim0.34$.  
@@ -150,7 +152,7 @@ In each of the four panels, representing the algebraic closures discussed above,
 Results for the maximum entropy closures of BL and CB are plotted in the upper panels (left and right panel, respectively).  
 Results for the Kershaw closure are plotted in the lower left panel, while results for the Minerbo closure are plotted in the lower right panel.  
 As expected for closures consistent with moments of a Fermi-Dirac distribution function, we find $\vect{\cM}_{ab}\in\cR$ for the CB, BL, and Kershaw closures.  
-For the Minerbo closure (right bottom), which is consistent with positive distributions, $\vect{\cM}_{ab}$ is not confined to $\cR$.
+For the Minerbo closure (right bottom), which is consistent with positive distributions, $\vect{\cM}_{ab}$ is not confined to $\cR$.  
 \begin{figure}[h]
   \centering
   \begin{tabular}{cc}

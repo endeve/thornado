@@ -72,7 +72,7 @@ Next we define the realizable set $\cR$ for the fermion two-moment model
   \end{equation*}
   Since $\theta,\cJ_{a},\cJ_{b}\in[0,1]$, we have $\cJ_{c} \in [0,1]$.  
   It is straightforward to verify that $\gamma(\vect{\cM})$ is a concave function of $\bcM$ if $\cJ\in[0,1]$.
-  Jensen's inequality implies
+  Then Jensen's inequality implies
   \begin{equation*}
   \gamma(\vect{\cM}_{c}) \geq \theta\,\gamma(\vect{\cM}_{a}) + (1-\theta)\,\gamma(\vect{\cM}_{b}) \ge0.
   \end{equation*}
@@ -86,8 +86,9 @@ The realizable domain of positive distribution functions, $\cR^{+}$ (no upper bo
   \cR^{+}:=\big\{\,\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}~|~\cJ\ge0~\text{and}~\cJ\ge|\vect{\cH}|\,\big\}, 
   \label{eq:realizableSetPositive}
 \end{equation}
-is partially shown as the region above the red lines.  
-(A Realizability-preserving method, with respect to $\cR^{+}$, for the two-moment model in one spatial dimension was developed in \cite{olbrant_etal_2012}.)
+is partially shown as the region above the red lines, which mark the boundary of $\cR^{+}$ (denoted $\partial\cR^{+}$).  
+(A Realizability-preserving method, with respect to $\cR^{+}$, for the two-moment model in one spatial dimension was developed in \cite{olbrant_etal_2012}.)  
+The realizable domains $\cR$ and $\cR^{+}$ overlap for for low particle densities ($\cJ\ll1$), but for larger values of $\cJ$, the realizable domain of particles governed by Fermi-Dirac statistics is much more restricted than that of particles described by positive distribution functions with no upper bound.  
 
 \begin{figure}[h]
   \centering
@@ -97,7 +98,7 @@ is partially shown as the region above the red lines.
   \label{fig:RealizableSetFermionic}
 \end{figure}
 
-For the realizability-preserving scheme, we state some additional results.  
+For the realizability-preserving scheme developed in later sections, we state some additional results.  
 \begin{lemma}
   Let $\big\{\cJ_{a},\vect{\cH}_{a},\vect{\cK}_{a}\big\}$ be defined as in Eq.~\eqref{eq:angularMoments} with distribution function $f_{a}(\omegaNu)\in[0,1]\,\forall\,\omegaNu\in\bbS^{2}$.  
   Similarly, let $\big\{\cJ_{b},\vect{\cH}_{b},\vect{\cK}_{b}\big\}$ be moments of a distribution function $f_{b}\in[0,1]\,\forall\,\omegaNu\in\bbS^{2}$.  
@@ -155,4 +156,4 @@ For the realizability-preserving scheme, we state some additional results.
   where $\vect{\cD}$ and $\vect{\cC}(\vect{\cM})$ are given by Eq.~\eqref{eq:collisionTermMoments},  then $\vect{\cM}_{b}\in\cR$.  
   \label{lem:correctionStep}
 \end{lemma}
-The proof follows along the same lines as the proof of Lemma~\ref{lem:implicitStep} and is omitted.  
+The proof of Lemma~\ref{lem:correctionStep} follows along the same lines as the proof of Lemma~\ref{lem:implicitStep} and is omitted.  

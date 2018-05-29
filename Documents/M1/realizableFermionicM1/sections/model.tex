@@ -4,32 +4,33 @@ In this section we give a summary of the mathematical model we employ.
 
 \subsection{Boltzmann Equation}
 
-In this paper we consider approximate solutions to the Boltzmann equation for radiation transport in slab geometry, which after scaling to dimensionless units can be written as
+In this paper we consider approximate solutions to the Boltzmann equation for transport of massless particles in slab geometry, which, after scaling to dimensionless units, can be written as
 \begin{equation}
   \pd{f}{t}+\vect{\ell}\cdot\nabla f
   =\f{1}{\tau}\,\cC(f),
   \label{eq:boltzmann}
 \end{equation}
-where the distribution function $f(\omegaNu,\epsilonNu,\vect{x},t):\bbS^{2}\times\bbR^{+}\times\bbR^{3}\times\bbR^{+}\to\bbR^{+}$ gives the number of particles propagating in direction $\omegaNu\in\bbS^{2}:=\{\,\omegaNu=(\thetaNu,\phiNu)~|~\thetaNu\in[0,\pi],\phiNu\in[0,2\pi)\,\}$, with energy $\epsilonNu\in\bbR^{+}$, at position $\vect{x}\in\bbR^{3}$ and time $t\in\bbR^{+}$; i.e., we use spherical momentum space coordinates $(\omegaNu,\epsilonNu)$.  
-We also define the energy-position coordinates $\vect{z}:=\{\epsilonNu,\vect{x}\}\in\bbR^{+}\times\bbR^{3}$.  
-The unit vector $\vect{\ell}(\omegaNu)\in\bbR^{3}$ (independent of $\vect{z}$) is parallel to the particle three-momentum.  
-On the right-hand side of Eq.~\eqref{eq:boltzmann}, $\tau$ is the ratio of the particle mean-free path (due to interactions with a background) to some characteristic length scale of the problem; in opaque regions, $\tau\ll1$, while for free streaming radiation, $\tau\gg1$.  
-The collision term is given by
+where the distribution function $f(\omega,\varepsilon,\vect{x},t):\bbS^{2}\times\bbR^{+}\times\bbR^{3}\times\bbR^{+}\to\bbR^{+}$ gives the number of particles propagating in direction $\omega\in\bbS^{2}:=\{\,\omega=(\thetaNu,\phiNu)~|~\thetaNu\in[0,\pi],\phiNu\in[0,2\pi)\,\}$, with energy $\varepsilon\in\bbR^{+}$, at position $\vect{x}\in\bbR^{3}$ and time $t\in\bbR^{+}$.  
+Here we use spherical momentum space coordinates $(\varepsilon,\omega)$, and the unit vector $\vect{\ell}(\omega)\in\bbR^{3}$ (independent of $\varepsilon$ and $\vect{x}$) is parallel to the particle three-momentum $\vect{p}=\varepsilon\,\vect{\ell}$.  
+We also define the energy-position coordinates $\vect{z}:=\{\varepsilon,\vect{x}\}\in\bbR^{+}\times\bbR^{3}$.  
+On the right-hand side of Eq.~\eqref{eq:boltzmann}, $\tau$ is the ratio of the particle mean-free path (due to interactions with a background) to some characteristic length scale of the problem.  
+In opaque regions, $\tau\ll1$, while for free streaming radiation, $\tau\gg1$.  
+The collision term, due to emission, absorption, and isotropic and elastic scattering, is given by
 \begin{equation}
   \cC(f)=\xi\,\big(\,f_{0}-f\,\big)
-  +(1-\xi)\,\big(\,\f{1}{4\pi}\int_{\bbS^{2}}f\,d\omegaNu-f\,\big),
+  +(1-\xi)\,\big(\,\f{1}{4\pi}\int_{\bbS^{2}}f\,d\omega-f\,\big),
   \label{eq:collisionTerm}
 \end{equation}
 where $\xi\in[0,1]$ is the ratio of the absorption opacity $\sigma_{\Ab}\,(\ge0)$ to the total opacity $\sigma_{\Tot}=\sigma_{\Ab}+\sigma_{\Scatt}$, and $\sigma_{\Scatt}\,(\ge0)$ is the scattering opacity.  
 Then, $\xi=1$ models pure emission and absorption, while $\xi=0$ models pure scattering.  
-In general, $\sigma_{\Ab}(\vect{z})$ and $\sigma_{\Scatt}$ (and $\tau$ and $\xi$) depend on $\vect{z}$.  
-The equilibrium distribution function is denoted $f_{0}(\vect{z})$.  
-Here, we consider transport of Fermions (e.g., neutrinos), so that the equilibrium distribution function takes the form
+In general, $\sigma_{\Ab}$ and $\sigma_{\Scatt}$ (and $\tau$ and $\xi$) depend on $\vect{z}$.  
+The equilibrium distribution function is denoted by $f_{0}(\vect{z})$.  
+Here, we consider transport of Fermions (e.g., neutrinos), and the equilibrium distribution function takes the form
 \begin{equation}
-  f_{0}(\vect{z})=\f{1}{e^{(\epsilonNu-\mu(\vect{x}))/T(\vect{x})}+1},  
+  f_{0}(\vect{z})=\f{1}{e^{(\varepsilon-\mu(\vect{x}))/T(\vect{x})}+1},  
   \label{eq:fermiDirac}
 \end{equation}
-where the temperature $T$ and the chemical potential $\mu$ are properties of the background.  
+where $T$ is the temperature of the background, and the chemical potential $\mu$ also depends on properties of the background.  
 
 \subsection{Angular Moment Equations: Two-Moment Model}
 
@@ -38,7 +39,7 @@ Instead, equations for angular moments of the distribution function can be solve
 To this end, we define the angular moments of the distribution function
 \begin{equation}
   \big\{\,\cJ,\vect{\cH},\vect{\cK}\,\big\}(\vect{z},t)
-  =\f{1}{4\pi}\int_{\bbS^{2}}f(\omegaNu,\vect{z},t)\,\{\,1,\vect{\ell},\vect{\ell}\otimes\vect{\ell}\,\}\,d\omegaNu,
+  =\f{1}{4\pi}\int_{\bbS^{2}}f(\omega,\vect{z},t)\,\{\,1,\vect{\ell},\vect{\ell}\otimes\vect{\ell}\,\}\,d\omega,
   \label{eq:angularMoments}
 \end{equation}
 where we will refer to $\cJ$ (zeroth moment) as the particle density, $\vect{\cH}$ (first moment) as the particle flux, and $\vect{\cK}$ (second moment) as the stress tensor.  
@@ -46,7 +47,7 @@ Note that the moments defined in Eq.~\eqref{eq:angularMoments} are \emph{spectra
 The \emph{grey moments} (depending only on position and time) are obtained by integration over energy as
 \begin{equation}
   \big\{\,J,\vect{H},\vect{K}\,\big\}(\vect{x},t)
-  =\int_{\bbR^{+}}\big\{\,\cJ,\vect{\cH},\vect{\cK}\,\big\}(\epsilonNu,\vect{x},t)\,\epsilonNu^{2}d\epsilonNu.  
+  =\int_{\bbR^{+}}\big\{\,\cJ,\vect{\cH},\vect{\cK}\,\big\}(\varepsilon,\vect{x},t)\,\varepsilon^{2}d\varepsilon.  
 \end{equation}
 
 Taking the zeroth and first moments of Eq.~\eqref{eq:boltzmann} gives the two-moment model, comprising of a system of conservation laws with sources
