@@ -186,3 +186,22 @@ In the streaming limit, this scheme is identical to the optimal second-order acc
 It is also very similar to the scheme given in \cite{mcclarren_etal_2008} (see scheme PC2 in \ref{app:butcherTables}), which is also a GSA IMEX scheme of type ARS with $s=3$.  
 Scheme PC2 is second-order in the streaming limit, has been demonstrated to work well in the diffusion limit \cite{mcclarren_etal_2008,radice_etal_2013}, and satisfies the positivity conditions, but $c_{\mbox{\tiny Sch}}=0$ (our primary motivation for finding an alternative).  
 In Section~\ref{sec:numerical}, we show numerically that the accuracy of scheme PARSD is practically identical to the accuracy of scheme PC2.  
+
+\subsection{Absolute Stability}
+
+The absolute stabilities of the proposed IMEX schemes,  PA2+ and PARSD (given in \ref{app:butcherTables}), are analyzed following form \cite{hu_etal_2017}.
+An IMEX scheme can be written as $\vect{u}^{n+1} =P(z_1,z_2)\vect{u}^{n}$, where $P(z_1,z_2)$ is the amplification factor of the scheme, $z_1 = x +iy$ corresponds to the explicit part of the scheme, and $z_2 < 0$ corresponds to the implicit part.
+The absolute stability requires $|P|\leq 1$. 
+The stability regions of PA2+ and PARSD are plotted in Figure~\ref{fig:AbsoluteStability}.
+As can be seen form the figure, the absolute stability region increase with $|z_2|$ increasing for both schemes.
+Thus, a time step that satisfies the absolute stability for the explicit part of the IMEX scheme, $|z_2| = 0$, fulfill the stability requirement for the whole IMEX scheme, $|z_2| \geq 0$. 
+This conclusion is valid for all PARSD $\epsilon\in [0,0.5)$.
+\begin{figure}[h]
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[width=0.5\textwidth]{figures/AbsoluteStabilityPARSD}
+    \includegraphics[width=0.5\textwidth]{figures/AbsoluteStabilityPA2+}
+  \end{tabular}
+   \caption{Boundary of the absolute stability region for different values of $z_2$. Left: PARSD with $\epsilon = 0.1$. Right: PA2+.}
+  \label{fig:AbsoluteStability}
+\end{figure}

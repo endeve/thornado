@@ -150,9 +150,9 @@ Find $(\tilde{a}_{21}, \tilde{a}_{31}, \tilde{a}_{32}, \tilde{w}_{1}, \tilde{w}_
 \begin{align*}
 \text{maximize} ~ c_{sch} = &\min \{ \dfrac{c_{20}}{\tilde{c}_{20}}, \dfrac{c_{30}}{\tilde{c}_{30}}, \dfrac{c_{32}}{\tilde{c}_{32}}\}\\
  \text{under these constraints:} \qquad & \\
- \text{(GSA)} \qquad\ &\tilde{w}_{i} = \tilde{a}_{3i}, \quad w_{i} = a_{3i},\\
+ \text{(GSA)} \qquad\ &\tilde{w}_{i} = \tilde{a}_{3i}, \quad w_{i} = a_{3i}, ~\text{for} ~ i = 1,2,3\\
  \text{(2nd-order accuracy)} \qquad\ &\sum_{i=1}^{3}  \tilde{w}_{i} = 1, \quad \sum_{i=1}^{3}  \tilde{w}_{i}\tilde{c}_{i} = 1/2, \\
- \text{(positivity-preserving)} \qquad & a_{ii} > 0, c_{i0} \geq 0, \tilde{c}_{i0} \geq 0 ~\text{for} ~ i = 2,3 \\
+ \text{(positivity-preserving)} \qquad & a_{ii} > 0, c_{i0} \geq 0, \tilde{c}_{i0} \geq 0, ~\text{for} ~ i = 2,3 \\
  & c_{32} \geq 0, \tilde{c}_{32} \geq 0, \\
  \text{(diffusion accurate)} \qquad & e^{T}_iA^{-1}\tilde{A}e = 1, ~\text{for} ~ i = 2,3, \\
  \text{(affordable)} \qquad & c_{sch} > 0.
