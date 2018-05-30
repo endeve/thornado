@@ -193,8 +193,8 @@ The absolute stabilities of the proposed IMEX schemes,  PA2+ and PARSD (given in
 An IMEX scheme can be written as $\vect{u}^{n+1} =P(z_1,z_2)\vect{u}^{n}$, where $P(z_1,z_2)$ is the amplification factor of the scheme, $z_1 = x +iy$ is the eigenvalue corresponding to the explicit part of the scheme, and $z_2 < 0$ corresponds to that of the implicit part.
 The absolute stability of IMEX scheme requires $|P(z_1,z_2)|\leq 1$. 
 The stability regions of PA2+ and PARSD are plotted in Figure~\ref{fig:AbsoluteStability}.
-As can be seen form the figures, the absolute stability regions of both schemes increase with $|z_2|$.
-Thus, a time step that satisfies the absolute stability for the explicit part of the IMEX scheme, $|z_2| = 0$, fulfill the stability requirement for the whole IMEX scheme, $|z_2| \geq 0$. 
+As can be seen from the figures, the absolute stability regions of both schemes increase with $|z_2|$.
+Thus, a time step that satisfies the absolute stability for the explicit part of the IMEX scheme ($|z_2| = 0$) fulfill the stability requirement for the whole IMEX scheme ($|z_2| \geq 0$). 
 This conclusion is valid for all PARSD $\epsilon\in [0,0.5)$.
 \begin{figure}[h]
   \centering
