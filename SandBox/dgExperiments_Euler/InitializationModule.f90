@@ -478,8 +478,8 @@ CONTAINS
     REAL(DP) :: X1, X2, D_M, V_M
     REAL(DP), PARAMETER :: D_0 = 0.125_DP
     REAL(DP), PARAMETER :: D_1 = 1.0_DP
-    REAL(DP), PARAMETER :: E_0 = 2.5_DP
-    REAL(DP), PARAMETER :: E_1 = 0.35_DP
+    REAL(DP), PARAMETER :: E_0 = 0.35_DP
+    REAL(DP), PARAMETER :: E_1 = 2.5_DP
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
