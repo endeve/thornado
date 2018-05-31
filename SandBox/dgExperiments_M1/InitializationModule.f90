@@ -87,6 +87,10 @@ CONTAINS
 
         CALL InitializeFields_PackedBeam
 
+      CASE ( 'CrossingBeams' )
+
+        CALL InitializeFields_CrossingBeams
+
       CASE ( 'LineSource' )
 
         CALL InitializeFields_LineSource
@@ -521,6 +525,56 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_PackedBeam
+
+
+  SUBROUTINE InitializeFields_CrossingBeams
+
+    INTEGER  :: iE, iX1, iX2, iX3, iS
+    INTEGER  :: iNode
+    REAL(DP) :: Ones(nDOF)
+
+    Ones = 1.0_DP
+
+    DO iS = 1, nSpecies
+      DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = iX_B0(1), iX_E0(1)
+            DO iE = iE_B0, iE_E0
+
+              DO iNode = 1, nDOF
+
+                uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
+                  = 1.0d-12
+
+                uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
+                  = 0.0_DP
+
+                uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) &
+                  = 0.0_DP
+
+                uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) &
+                  = 0.0_DP
+
+              END DO
+
+              CALL ComputeConserved_TwoMoment &
+                     ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &
+                       uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                       uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                       uPR(:,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                       uCR(:,iE,iX1,iX2,iX3,iCR_N, iS), &
+                       uCR(:,iE,iX1,iX2,iX3,iCR_G1,iS), &
+                       uCR(:,iE,iX1,iX2,iX3,iCR_G2,iS), &
+                       uCR(:,iE,iX1,iX2,iX3,iCR_G3,iS), &
+                       Ones(:), Ones(:), Ones(:) )
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_CrossingBeams
 
 
   SUBROUTINE InitializeFields_LineSource
