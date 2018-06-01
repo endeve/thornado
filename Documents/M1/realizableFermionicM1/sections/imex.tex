@@ -69,7 +69,7 @@ To prove the positivity-preserving property of the IMEX scheme, Hu et al. \cite{
 \end{equation}
 where $c_{ij}$, and $\hat{c}_{ij}=\tilde{c}_{ij}/c_{ij}$ are computed from $\tilde{a}_{ij}$ and $a_{ij}$.
 (In Eq.~\eqref{eq:imexStagesRewrite}, $\vect{u}^{(0)}=\vect{u}^{n}$.)  
-Two types of IMEX schemes are considered: \emph{type~A} (\ee{Insert reference to the origin of Type~A schemes}) and \emph{type~ARS} \cite{ascher_etal_1997}.  
+Two types of IMEX schemes are considered: \emph{type~A} \cite{pareschiRusso_2005} and \emph{type~ARS} \cite{ascher_etal_1997}.  
 For IMEX schemes of type~A, the matrix $A$ is invertible.  
 For IMEX schemes of type~ARS, the matrix $A$ can be written as
 \[\left( 
@@ -80,15 +80,9 @@ For IMEX schemes of type~ARS, the matrix $A$ can be written as
 \right)\]
 where $\hat{A}$ is invertible.
 In writing the stages in the IMEX scheme in the general form given by Eq.~\eqref{eq:imexStagesRewrite}, it should be noted that $\tilde{c}_{i0}=0$ for IMEX schemes of Type~A, and $c_{i1}=\tilde{c}_{i1}=0$ for IMEX schemes of Type~ARS \cite{hu_etal_2018}.  
+%The coefficients are defined as $c_{i0} = 1 - \sum_{j=1}^{i-1}c_{ij} $, 
 %For $i=1,\ldots,s$, the coefficients
 %\begin{align*}
-%  c_{i0}
-%  =&\left\{
-%  \begin{array}{cl}
-%    1 - \sum_{j=1}^{i-1}c_{ij}  & \qquad \text{for type $A$,} \\
-%    1 - \sum_{j=2}^{i-1}c_{ij}  & \qquad \text{for type $ARS$;}
-%  \end{array}
-%  \right.\\
 %  \tilde{c}_{i0}
 %  =&\left\{
 %  \begin{array}{cl}
@@ -96,13 +90,6 @@ In writing the stages in the IMEX scheme in the general form given by Eq.~\eqref
 %   \tilde{a}_{i1} + \sum_{l=2}^{i-1}a_{il}\tilde{b}_{l1}  & \text{for type $ARS$;}
 %  \end{array}
 %  \right.\\
-%  c_{i1}
-%    =&\left\{
-%    \begin{array}{cl}
-%      \sum_{l =1}^{i-1} a_{il}b_{l1} & \qquad ~\text{for type $A$,} \\
-%      \qquad ~ 0  & \qquad ~\text{for type $ARS$;}
-%    \end{array}
-%    \right.\\
 %    \tilde{c}_{i1}
 %    =&\left\{
 %      \begin{array}{cl}
@@ -121,7 +108,9 @@ Importantly, the coefficients $c_{ij}$ in Eq.~\eqref{eq:imexStagesRewrite} satis
 Thus, if the expression inside the square brackets in Eq.~\eqref{eq:imexStagesRewrite} --- which is in the form of a forward Euler update with time step $\hat{c}_{ij}\,\dt$ --- is positive for all $i=1,\ldots,s$, $j=0,\ldots,i-1$, positivity of the entire sum on the right-hand side of Eq.~\eqref{eq:imexStagesRewrite} follows from convexity arguments.  
 Thus, if the explicit update with the transport operator is positive for a time step $\dt_{\mbox{\tiny Ex}}$, the IMEX scheme is positivity-preserving for a time step $\dt\le c_{\mbox{\tiny Sch}}\,\dt_{\mbox{\tiny Ex}}$, where
 \begin{equation}
-  c_{\mbox{\tiny Sch}}=\min_{ij}\,\f{1}{\hat{c}_{ij}}.  
+  c_{\mbox{\tiny Sch}}=\min_{\substack{i = 2,\ldots,s \\ 
+       j = 1,\ldots,i-1}}\,\f{1}{\hat{c}_{ij}} \quad \text{(Type A)}, \quad  c_{\mbox{\tiny Sch}}=\min_{\substack{i = 2,\ldots,s \\ 
+              j = 0,2,\ldots,i-1}}\,\f{1}{\hat{c}_{ij}} \quad \text{(Type ARS)}.
   \label{eq:imexCFL}
 \end{equation}
 It is desirable to make $c_{\mbox{\tiny Sch}}$ as large (close to $1$) as possible.  
