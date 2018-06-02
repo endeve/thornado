@@ -129,7 +129,7 @@ CONTAINS
                   END DO
 
                   U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
-                    = - U(jNodeX,iX_E0(1),iX2,iX3,iCF_S1)
+                    = - U(jNodeX,iX_B0(1),iX2,iX3,iCF_S1)
 
                   U(iNodeX,iX_E0(1)+iX1,iX2,iX3,iCF_S1) &
                     = - U(jNodeX,iX_E0(1),iX2,iX3,iCF_S1)
