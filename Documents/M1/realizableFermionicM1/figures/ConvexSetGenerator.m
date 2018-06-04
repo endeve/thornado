@@ -22,8 +22,8 @@ plot( xxP_FD, yy, '-k', 'linewidth', 2 )
 plot( xxM_FD, yy, '-k', 'linewidth', 2 )
 hold off
 axis([-0.5 0.5 0.0 1.0]);
-xlabel('Angular Moment H');
-ylabel('Angular Moment J');
+xlabel('{\bf Angular Moment} $\mathcal{H}$','Interpreter','LaTeX','Fontsize',12);
+ylabel('{\bf Angular Moment} $\mathcal{J}$','Interpreter','LaTeX','Fontsize',12);
 title('$\mathcal{R}$','Interpreter','LaTeX','Fontsize',15)
 box on
 set(gca, 'Layer', 'top')
