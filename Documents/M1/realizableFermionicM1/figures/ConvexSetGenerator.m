@@ -22,9 +22,11 @@ plot( xxP_FD, yy, '-k', 'linewidth', 2 )
 plot( xxM_FD, yy, '-k', 'linewidth', 2 )
 hold off
 axis([-0.5 0.5 0.0 1.0]);
+set(gca,'FontSize',10)
+set(gca,'xtick',-0.5:0.1:0.5);
 xlabel('{\bf Angular Moment} $\mathcal{H}$','Interpreter','LaTeX','Fontsize',12);
 ylabel('{\bf Angular Moment} $\mathcal{J}$','Interpreter','LaTeX','Fontsize',12);
-title('$\mathcal{R}$','Interpreter','LaTeX','Fontsize',15)
+title('{\bf Realizable set} $\mathcal{R}$','Interpreter','LaTeX','Fontsize',14)
 box on
 set(gca, 'Layer', 'top')
 saveas(fig,'RealizableSetFermionic.png');
