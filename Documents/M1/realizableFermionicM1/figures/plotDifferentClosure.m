@@ -6,7 +6,7 @@ theta_MECB = @(x) x.*x.*(3-x+3.*x.*x)./5;
 theta_MEBL = @(x) (9.*x.*x-5+sqrt(33.*x.^4 - 42.*x.*x+25))/8;
 
 nPts = 1024;
-J = 0.01;
+J = 0.99;
 h = linspace(0.0,1.0 - J,nPts);
 
 Kershaw = zeros(nPts,1);
@@ -34,8 +34,8 @@ lgnd = legend({'Kershaw','CB','BL','Minerbo'},...
 set(lgnd,'FontSize',14);
 xlim([0,1-J]);
 set(gca,'FontSize',14)
-xlabel('Flux factor $h$','Interpreter','LaTeX','FontSize',19);
-ylabel('Eddington factor $\chi$','Interpreter','LaTeX','FontSize',19);
+xlabel('{\bf Flux factor} $h$','Interpreter','LaTeX','FontSize',19);
+ylabel('{\bf Eddington factor} $\chi$','Interpreter','LaTeX','FontSize',19);
 title(['$\mathcal{J}$ = ',num2str(J)],'Interpreter','LaTeX','FontSize',19);
 
 x0=10;
