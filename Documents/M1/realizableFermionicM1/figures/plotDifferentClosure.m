@@ -6,7 +6,7 @@ theta_MECB = @(x) x.*x.*(3-x+3.*x.*x)./5;
 theta_MEBL = @(x) (9.*x.*x-5+sqrt(33.*x.^4 - 42.*x.*x+25))/8;
 
 nPts = 1024;
-J = 0.4;
+J = 0.01;
 h = linspace(0.0,1.0 - J,nPts);
 
 Kershaw = zeros(nPts,1);
@@ -29,14 +29,14 @@ plot(h,MEBL,'--','linewidth', 2);
 plot(h,Minerbo,'-.','linewidth', 2);
 plot(h,bryup,'-k','linewidth', 2);
 plot(h,brydown,'-k','linewidth', 2);
-lgnd = legend({'Kershaw','ME(CB)','ME(BL)','Minerbo'},...
+lgnd = legend({'Kershaw','CB','BL','Minerbo'},...
     'Location','best');
-set(lgnd,'FontSize',12);
+set(lgnd,'FontSize',14);
 xlim([0,1-J]);
-set(gca,'FontSize',12)
-xlabel('Flux factor h','FontSize',15);
-ylabel('Eddington factor \chi','FontSize',15);
-title(['$\mathcal{J}$ = ',num2str(J)],'Interpreter','LaTeX','FontSize',15);
+set(gca,'FontSize',14)
+xlabel('Flux factor $h$','Interpreter','LaTeX','FontSize',19);
+ylabel('Eddington factor $\chi$','Interpreter','LaTeX','FontSize',19);
+title(['$\mathcal{J}$ = ',num2str(J)],'Interpreter','LaTeX','FontSize',19);
 
 x0=10;
 y0=5;
