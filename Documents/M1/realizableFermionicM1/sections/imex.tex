@@ -109,7 +109,8 @@ We demonstrate the inferior performance of IMEX schemes with the correction step
 We have also implemented and tested one of the IMEX schemes in Chertock et al. \cite{chertock_etal_2015}, where the transport operator is included in the correction step, and found it to perform very well in the diffusion limit.  
 However, we have not been able to prove sufficiently general realizability-preserving properties with this approach, without invoking a too severe time step restriction.  
 We therefore proceed to design positivity-preserving IMEX schemes, without the correction step, that perform better in the diffusion limit.  
-We will limit the scope to IMEX schemes of type~ARS.  
+We limit the scope to IMEX schemes of type~ARS.  
+(It can be shown that IMEX schemes of type~A satisfying the conditions we list below Eq.~\eqref{eq:orderConditionsEx} do not exist.)
 
 To this end we take a heuristic approach and define the vectors 
 \begin{equation}
@@ -162,8 +163,8 @@ We then seek to design GSA IMEX schemes of Type~ARS with the following propertie
 \begin{itemize}
   \item Second-order in the streaming limit; i.e., satisfies Eq.~\eqref{eq:orderConditionsEx}.
   \item Well-behaved in the diffusion limit; i.e., satisfies Eq.~\eqref{eq:diffusionCondition}.
-  \item Positivity-preserving (conditions given by \cite{hu_etal_2018}; with $c_{\mbox{\tiny Sch}}$ maximal).
-  \item Few ($\le3$) implicit stages.
+  \item Positivity-preserving (conditions given by \cite{hu_etal_2018}; with $c_{\mbox{\tiny Sch}}>0$ and maximal).
+  \item Few stages ($s\le3$).
 \end{itemize}
 Fortunately, IMEX schemes satisfying these properties are easy to find, and we provide an example with $s=3$ (two implicit solves) in \ref{app:butcherTables} (scheme PARSD; see \ref{app:PARSD} for details).  
 In the streaming limit, this scheme is identical to the optimal second-order accurate strong-stability preserving Runge-Kutta method \cite{gottlieb_etal_2001}.  
