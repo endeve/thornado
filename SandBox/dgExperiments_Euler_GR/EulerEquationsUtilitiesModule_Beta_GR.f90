@@ -25,7 +25,8 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   PUBLIC :: NumericalFlux_X1_HLLC_GR
   PUBLIC :: NumericalFlux_X1_LLF_GR
 
-  LOGICAL, PARAMETER :: DEBUG = .TRUE.
+  LOGICAL, PARAMETER :: DEBUG = .FALSE.
+  INTEGER, PARAMETER :: MAX_IT = 100
 
 CONTAINS
 
@@ -87,14 +88,14 @@ CONTAINS
                                            PF_E, PF_Ne, AF_P
     REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
-    LOGICAL :: Converged
+    LOGICAL :: CONVERGED
 
-    INTEGER :: i, nIter, nNodes
+    INTEGER :: i, ITERATION, nNodes
 
     REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q(SIZE(CF_D))
 
     REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-12, TolFunP = 1.0d-12
+    REAL(DP), PARAMETER :: TolP = 1.0d-8, TolFunP = 1.0d-12
 
     q = CF_E(:) + CF_D(:) - SQRT( CF_D(:)**2 &
                                 + CF_S1(:)**2 / GF_Gm_dd_11(:)  &
@@ -106,17 +107,17 @@ CONTAINS
     ! --- Loop through all the nodes ---
     DO i = 1, nNodes
 
-      IF( DEBUG )THEN
+      !IF( DEBUG )THEN
          IF( q(i) .LT. Zero )THEN
            WRITE(*,'(A6,ES18.10E3)') 'q(i): ', q(i)
 !           WRITE(*,'(A6,ES18.10E3)') 'Gm11: ', GF_Gm_dd_11(:)
 !           WRITE(*,'(A6,ES18.10E3)') 'Gm22: ', GF_Gm_dd_22(:)
 !           WRITE(*,'(A6,ES18.10E3)') 'Gm33: ', GF_Gm_dd_33(:)
          END IF
-      END IF
+      !END IF
     
-      Converged = .FALSE.
-      nIter     = 0
+      CONVERGED = .FALSE.
+      ITERATION = 0
 
       SSq = CF_S1(i)**2 / GF_Gm_dd_11(i) &
             + CF_S2(i)**2 / GF_Gm_dd_22(i) &
@@ -125,37 +126,54 @@ CONTAINS
       ! --- Find Pressure with Newton's Method ---
 
       ! --- Approximation for pressure assuming h^2~=1 ---
-      Pold = SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i)
+      Pold = MAX( SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i), SqrtTiny )
+!      Pold = SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i)
 
-      DO WHILE ( .NOT. Converged )
+      DO WHILE ( .NOT. CONVERGED )
 
-        nIter = nIter + 1
+        ITERATION = ITERATION + 1
 
         CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
 
         Pnew = Pold - FunP / JacP
 
         ! --- Check if Newton's method has converged ---
-        IF( ABS( Pnew - Pold ) .LT. TolP * ( 1.0_DP + ABS( Pnew ) ) )THEN
+        IF( ABS( Pnew - Pold ) / ABS( Pnew ) .LT. TolP )THEN
           CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP )
           IF( ABS( FunP ) .LT. TolFunP ) THEN
-            Converged = .TRUE.
+            CONVERGED = .TRUE.
           ELSE
             WRITE(*,'(A)') 'No convergence...'
             WRITE(*,'(A7,ES24.16E3)') 'Pold:  ', Pold
             WRITE(*,'(A7,ES24.16E3)') 'Pnew:  ', Pnew
             WRITE(*,'(A7,ES24.16E3)') 'FunP:  ', FunP
+            WRITE(*,'(A)') 'Stopping...'
             STOP
           END IF
         END IF
 
-        ! --- STOP after 100 iterations ---
-        IF( nIter == 100 )THEN
-          WRITE(*,'(A)') 'Max allowed iterations reached, no convergence...'
-          WRITE(*,'(A7,ES24.16E3)') 'Pold:  ', Pold
-          WRITE(*,'(A7,ES24.16E3)') 'Pnew:  ', Pnew
-          WRITE(*,'(A7,ES24.16E3)') 'FunP:  ', FunP
-          IF( nIter == 103 ) STOP
+        ! --- STOP after MAX_IT iterations ---
+        IF( ITERATION .GE. MAX_IT )THEN
+           
+          WRITE(*,*) 'CF_D:   ', CF_D(:)
+          WRITE(*,*) 'CF_S1:  ', CF_S1(:)
+          WRITE(*,*) 'CF_S2:  ', CF_S2(:)
+          WRITE(*,*) 'CF_S3:  ', CF_S3(:)
+          WRITE(*,*) 'CF_E:   ', CF_E(:)
+          WRITE(*,*) 'Gm11:   ', GF_Gm_dd_11(:)
+          WRITE(*,*) 'Gm22:   ', GF_Gm_dd_22(:)
+          WRITE(*,*) 'Gm33:   ', GF_Gm_dd_33(:)
+           
+          WRITE(*,'(A,ES24.16E3)') 'Pold:  ', Pold
+          WRITE(*,'(A,ES24.16E3)') 'Pnew:  ', Pnew
+          WRITE(*,'(A,ES24.16E3)') 'FunP:  ', FunP
+          WRITE(*,'(A,ES24.16E3)') &
+                  '|Pnew-Pold|/|Pnew|: ', ABS( Pnew - Pold ) / ABS( Pnew )
+          IF( ITERATION == MAX_IT + 3 )THEN
+            WRITE(*,'(A)') &
+                   'Max allowed iterations reached, no convergence. Stopping...'
+            STOP
+          END IF
         END IF
 
         Pold = Pnew
@@ -164,15 +182,16 @@ CONTAINS
 
       AF_P(i) = Pnew
 
+      IF( AF_P(i) .LT. Zero ) WRITE(*,'(A3,ES24.10E3)') 'P: ', AF_P(i)
       vSq = SSq / ( CF_E(i) + AF_P(i) + CF_D(i) )**2
 
       W = 1.0_DP / SQRT( 1.0_DP - vSq )
 
       h = ( CF_E(i) + AF_P(i) + CF_D(i) ) / ( W * CF_D(i) )
 
-      IF( DEBUG )THEN
+      !IF( DEBUG )THEN
         IF( h .LT. 1.0_DP ) WRITE(*,'(A6,ES18.10E3)') 'h:    ', h
-      END IF
+      !END IF
 
       ! --- Recover Primitive Variables ---
 
@@ -208,16 +227,17 @@ CONTAINS
     EPS = ( SQRT( HSq - SSq ) &
             - P * SQRT( HSq ) / SQRT( HSq - SSq ) - D ) / D
 
-    EPS = MAX( EPS, SqrtTiny )
-
+    !EPS = MAX( EPS, SqrtTiny )
     CALL ComputePressureFromSpecificInternalEnergy &
          ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
 
     FunP = P - Pbar(1)
+!    FunP = 1.0_DP - Pbar(1) / P
     dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
     dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
 
     JacP = 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS )
+!    JacP = Pbar(1) / P * ( 1.0_DP / P - dRHO / RHO - dEPS / EPS )
 
   END SUBROUTINE ComputeFunJacP
 
@@ -310,22 +330,23 @@ CONTAINS
     h   = 1.0_DP + ( E + P ) / D
 
     Flux_X1_GR(iCF_D)  &
-      = W * D * ( Alpha * V1 - Beta1 )
+      = W * D * ( V1 - Beta1 / Alpha )
 
     Flux_X1_GR(iCF_S1) &
-      = D * h * W**2 * Gm11 * V1 * ( Alpha * V1 - Beta1 ) + Alpha * P
+      = D * h * W**2 * Gm11 * V1 * ( V1 - Beta1 / Alpha ) + P
 
     Flux_X1_GR(iCF_S2) &
-      = D * h * W**2 * Gm22 * V2 * ( Alpha * V1 - Beta1 )
+      = D * h * W**2 * Gm22 * V2 * ( Alpha * V1 - Beta1 / Alpha )
 
     Flux_X1_GR(iCF_S3) &
-      = D * h * W**2 * Gm33 * V3 * ( Alpha * V1 - Beta1 )
+      = D * h * W**2 * Gm33 * V3 * ( Alpha * V1 - Beta1 / Alpha )
 
     Flux_X1_GR(iCF_E)  &
-      = ( D * h * W**2 - D * W ) * ( Alpha * V1 - Beta1 ) + Beta1 * P
+      = ( D * h * W**2 - D * W ) * ( Alpha * V1 - Beta1 / Alpha ) &
+          + Beta1 / Alpha * P
 
     Flux_X1_GR(iCF_Ne) &
-      = W * Ne * ( Alpha * V1 - Beta1 )
+      = W * Ne * ( V1 - Beta1 / Alpha )
 
     RETURN
   END FUNCTION Flux_X1_GR
