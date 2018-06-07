@@ -53,11 +53,13 @@ PROGRAM ApplicationDriver
   LOGICAL       :: wrt
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
+  LOGICAL       :: UseTroubledCellIndicator
   INTEGER       :: iCycle, iCycleD
   INTEGER       :: nX(3), bcX(3), nNodes
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, wTime
   REAL(DP)      :: xL(3), xR(3), Gamma
   REAL(DP)      :: BetaTVD, BetaTVB
+  REAL(DP)      :: LimiterThresholdParameter
 
   CoordinateSystem = 'CARTESIAN'
 
@@ -107,6 +109,9 @@ PROGRAM ApplicationDriver
 
       UseSlopeLimiter           = .TRUE.
       UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 0.03_DP
 
       iCycleD = 1
       t_end   = 2.0d-1
@@ -173,6 +178,9 @@ PROGRAM ApplicationDriver
       UseSlopeLimiter           = .TRUE.
       UseCharacteristicLimiting = .TRUE.
 
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 0.03_DP
+
       iCycleD = 10
       t_end   = 2.500_DP
       dt_wrt  = 0.045_DP
@@ -219,9 +227,9 @@ PROGRAM ApplicationDriver
            UseCharacteristicLimiting_Option &
              = UseCharacteristicLimiting, &
            UseTroubledCellIndicator_Option &
-             = .TRUE., &
+             = UseTroubledCellIndicator, &
            LimiterThresholdParameter_Option &
-             = 0.03_DP )
+             = LimiterThresholdParameter )
 
   CALL InitializePositivityLimiter_Euler &
          ( Min_1_Option = 1.0d-12, &
