@@ -51,6 +51,8 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
+  LOGICAL       :: UseSlopeLimiter
+  LOGICAL       :: UseCharacteristicLimiting
   INTEGER       :: iCycle, iCycleD
   INTEGER       :: nX(3), bcX(3), nNodes
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, wTime
@@ -98,10 +100,13 @@ PROGRAM ApplicationDriver
 
       bcX = [ 2, 0, 0 ]
 
-      nNodes = 2
+      nNodes = 3
 
-      BetaTVD = 1.75_DP
+      BetaTVD = 2.00_DP
       BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .TRUE.
 
       iCycleD = 1
       t_end   = 2.0d-1
@@ -132,36 +137,45 @@ PROGRAM ApplicationDriver
 
       Gamma = 5.0_DP / 3.0_DP
 
-      nX = [ 256, 256, 1 ]
+      nX = [ 48, 48, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
       bcX = [ 1, 1, 0 ]
 
-      nNodes = 1
+      nNodes = 3
 
-      BetaTVD = 1.80_DP
-      BetaTVB = 0.0d+00
+      BetaTVD = 2.00_DP
+      BetaTVB = 3.0d+02
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .TRUE.
 
       iCycleD = 10
-      t_end   = 3.500_DP
-      dt_wrt  = 0.050_DP
+      t_end   = 1.500_DP
+      dt_wrt  = 0.150_DP
 
     CASE( 'Implosion' )
 
       Gamma = 1.4_DP
       
-      nX = [ 256, 256, 1 ]
+      nX = [ 128, 128, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 0.3_DP, 0.3_DP, 1.0_DP ]
 
       bcX = [ 3, 3, 0 ]
 
-      nNodes = 1
+      nNodes = 3
+
+      BetaTVD = 2.00_DP
+      BetaTVB = 0.0d+02
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .TRUE.
 
       iCycleD = 10
-      t_end   = 3.500_DP
-      dt_wrt  = 0.050_DP
+      t_end   = 2.500_DP
+      dt_wrt  = 0.045_DP
 
   END SELECT
 
@@ -198,15 +212,21 @@ PROGRAM ApplicationDriver
   CALL InitializeSlopeLimiter_Euler &
          ( BetaTVD_Option = BetaTVD, &
            BetaTVB_Option = BetaTVB, &
-           SlopeTolerance_Option = 1.0d-2, &
-           UseSlopeLimiter_Option = .TRUE., &
-           UseTroubledCellIndicator_Option = .FALSE., &
-           LimiterThresholdParameter_Option = 0.03_DP )
+           SlopeTolerance_Option &
+             = 1.0d-2, &
+           UseSlopeLimiter_Option &
+             = UseSlopeLimiter, &
+           UseCharacteristicLimiting_Option &
+             = UseCharacteristicLimiting, &
+           UseTroubledCellIndicator_Option &
+             = .TRUE., &
+           LimiterThresholdParameter_Option &
+             = 0.03_DP )
 
   CALL InitializePositivityLimiter_Euler &
          ( Min_1_Option = 1.0d-12, &
            Min_2_Option = 1.0d-12, &
-           UsePositivityLimiter_Option = .FALSE. )
+           UsePositivityLimiter_Option = .TRUE. )
 
   CALL InitializeFields &
          ( AdvectionProfile_Option &
@@ -219,7 +239,7 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL InitializeFluid_SSPRK( nStages = 2 )
+  CALL InitializeFluid_SSPRK( nStages = 3 )
 
   ! --- Evolve ---
 

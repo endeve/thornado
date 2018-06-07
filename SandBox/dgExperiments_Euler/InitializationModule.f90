@@ -475,11 +475,11 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1, iNodeX2
-    REAL(DP) :: X1, X2, D_M, V_M
+    REAL(DP) :: X1, X2
     REAL(DP), PARAMETER :: D_0 = 0.125_DP
-    REAL(DP), PARAMETER :: D_1 = 1.0_DP
-    REAL(DP), PARAMETER :: E_0 = 0.35_DP
-    REAL(DP), PARAMETER :: E_1 = 2.5_DP
+    REAL(DP), PARAMETER :: E_0 = 0.350_DP
+    REAL(DP), PARAMETER :: D_1 = 1.000_DP
+    REAL(DP), PARAMETER :: E_1 = 2.500_DP
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
@@ -493,14 +493,14 @@ CONTAINS
            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-           IF( X1 + X2 .LE. 0.15 )THEN
+           IF( X1 + X2 .LT. 0.15_DP )THEN
    
              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
                = D_0
              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
                = E_0
            
-           ELSEIF( X1 + X2 .GE. 0.15 )THEN
+           ELSE
 
              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
                = D_1
@@ -533,5 +533,6 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_Implosion
+
 
 END MODULE InitializationModule

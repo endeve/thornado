@@ -37,11 +37,13 @@ MODULE SlopeLimiterModule_Euler
   PUBLIC :: ApplySlopeLimiter_Euler
 
   LOGICAL  :: UseSlopeLimiter
+  LOGICAL  :: UseCharacteristicLimiting
   LOGICAL  :: UseTroubledCellIndicator
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
   REAL(DP) :: LimiterThreshold
   REAL(DP) :: LimiterThresholdParameter
+  REAL(DP) :: I_6x6(1:6,1:6)
   REAL(DP), ALLOCATABLE :: WeightsX_X1_P(:), WeightsX_X1_N(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X2_P(:), WeightsX_X2_N(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X3_P(:), WeightsX_X3_N(:)
@@ -51,8 +53,8 @@ CONTAINS
 
   SUBROUTINE InitializeSlopeLimiter_Euler &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
-      UseSlopeLimiter_Option, UseTroubledCellIndicator_Option, &
-      LimiterThresholdParameter_Option )
+      UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
+      UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
@@ -60,35 +62,54 @@ CONTAINS
       SlopeTolerance_Option
     LOGICAL,  INTENT(in), OPTIONAL :: &
       UseSlopeLimiter_Option, &
+      UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option
     REAL(DP), INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
 
-    BetaTVD = One
-    IF( PRESENT( BetaTVD_Option ) ) &
+    INTEGER :: i
+
+    IF( PRESENT( BetaTVD_Option ) )THEN
       BetaTVD = BetaTVD_Option
+    ELSE
+      BetaTVD = One
+    END IF
 
-    BetaTVB = Zero
-    IF( PRESENT( BetaTVB_Option ) ) &
+    IF( PRESENT( BetaTVB_Option ) )THEN
       BetaTVB = BetaTVB_Option
+    ELSE
+      BetaTVB = Zero
+    END IF
 
-    SlopeTolerance = 1.0d-3
-    IF( PRESENT( SlopeTolerance_Option ) ) &
+    IF( PRESENT( SlopeTolerance_Option ) )THEN
       SlopeTolerance = SlopeTolerance_Option
+    ELSE
+      SlopeTolerance = 1.0d-3
+    END IF
 
-    UseSlopeLimiter = .TRUE.
-    IF( PRESENT( UseSlopeLimiter_Option ) ) &
+    IF( PRESENT( UseSlopeLimiter_Option ) )THEN
       UseSlopeLimiter = UseSlopeLimiter_Option
+    ELSE
+      UseSlopeLimiter = .TRUE.
+    END IF
 
-    UseTroubledCellIndicator = .TRUE.
-    IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
-      UseTroubledCellIndicator &
-        = UseTroubledCellIndicator_Option
+    IF( PRESENT( UseCharacteristicLimiting_Option ) )THEN
+      UseCharacteristicLimiting = UseCharacteristicLimiting_Option
+    ELSE
+      UseCharacteristicLimiting = .FALSE.
+    END IF
 
-    LimiterThresholdParameter = 0.03_DP
-    IF( PRESENT( LimiterThresholdParameter_Option ) ) &
-      LimiterThresholdParameter &
-        = LimiterThresholdParameter_Option
+    IF( PRESENT( UseTroubledCellIndicator_Option ) )THEN
+      UseTroubledCellIndicator = UseTroubledCellIndicator_Option
+    ELSE
+      UseTroubledCellIndicator = .TRUE.
+    END IF
+
+    IF( PRESENT( LimiterThresholdParameter_Option ) )THEN
+      LimiterThresholdParameter = LimiterThresholdParameter_Option
+    ELSE
+      LimiterThresholdParameter = 0.03_DP
+    END IF
 
     LimiterThreshold = LimiterThresholdParameter * 2.0_DP**( nNodes - 2 )
 
@@ -96,20 +117,22 @@ CONTAINS
     WRITE(*,'(A)') '  INFO: InitializeSlopeLimiter_Euler:'
     WRITE(*,'(A)') '  -----------------------------------'
     WRITE(*,*)
-    WRITE(*,'(A4,A26,L1)'   ) '', 'UseSlopeLimiter: ' , &
+    WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
       UseSlopeLimiter
     WRITE(*,*)
-    WRITE(*,'(A4,A26,ES9.3E2)' ) '', 'BetaTVD: ' , &
+    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVD: ' , &
       BetaTVD
-    WRITE(*,'(A4,A26,ES9.3E2)' ) '', 'BetaTVB: ' , &
+    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVB: ' , &
       BetaTVB
-    WRITE(*,'(A4,A26,ES9.3E2)' ) '', 'SlopeTolerance: ' , &
+    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'SlopeTolerance: ' , &
       SlopeTolerance
+    WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
+      UseCharacteristicLimiting
     WRITE(*,*)
-    WRITE(*,'(A4,A26,L1)'   ) '', 'UseTroubledCellIndicator: ' , &
+    WRITE(*,'(A4,A27,L1)'      ) '', 'UseTroubledCellIndicator: ' , &
       UseTroubledCellIndicator
     WRITE(*,*)
-    WRITE(*,'(A4,A26,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
+    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
       LimiterThreshold
 
     IF( UseTroubledCellIndicator )THEN
@@ -117,6 +140,11 @@ CONTAINS
       CALL InitializeTroubledCellIndicator
 
     END IF
+
+    I_6x6 = Zero
+    DO i = 1, 6
+      I_6x6(i,i) = One
+    END DO
 
   END SUBROUTINE InitializeSlopeLimiter_Euler
 
@@ -141,13 +169,16 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF
+    LOGICAL  :: LimitPolynomial
+    INTEGER  :: iX1, iX2, iX3, iCF, iDimX
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
     REAL(DP) :: U_K(nCF,0:1)
     REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
+    REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
+    REAL(DP) :: R_X3(nCF,nCF), invR_X3(nCF,nCF)
 
     IF( nDOFX == 1 ) RETURN
 
@@ -210,36 +241,71 @@ CONTAINS
 
           END DO
 
-          ! --- Compute Eigenvectors ---
+          IF( UseCharacteristicLimiting )THEN
 
-          CALL ComputeCharacteristicDecomposition &
-                 ( 1, U_M(:,0,1), R_X1, invR_X1 )
+            ! --- Compute Eigenvectors ---
+
+            CALL ComputeCharacteristicDecomposition &
+                   ( 1, U_M(:,0,1), R_X1, invR_X1 )
+
+            U_M(:,0,2) = MATMUL( invR_X1, U_M(:,0,2) )
+
+            IF( nDimsX > 1 )THEN
+
+              CALL ComputeCharacteristicDecomposition &
+                   ( 2, U_M(:,0,1), R_X2, invR_X2 )
+
+              U_M(:,0,3) = MATMUL( invR_X2, U_M(:,0,3) )
+
+            END IF
+
+            IF( nDimsX > 2 )THEN
+
+              CALL ComputeCharacteristicDecomposition &
+                   ( 3, U_M(:,0,1), R_X3, invR_X3 )
+
+              U_M(:,0,4) = MATMUL( invR_X3, U_M(:,0,4) )
+
+            END IF
+
+          ELSE
+
+            ! --- Componentwise Limiting ---
+
+            R_X1 = I_6x6; invR_X1 = I_6x6
+            R_X2 = I_6x6; invR_X2 = I_6x6
+            R_X3 = I_6x6; invR_X3 = I_6x6
+
+          END IF
 
           ! --- Compute Limited Slopes ---
 
-          dU(:,1) = MinModB &
-                      ( U_M(:,0,2), &
-                        BetaTVD * ( U_M(:,0,1) - U_M(:,1,1) ), &
-                        BetaTVD * ( U_M(:,2,1) - U_M(:,0,1) ), &
-                        dX1, BetaTVB )
+          dU(:,1) &
+            = MinModB &
+                ( U_M(:,0,2), &
+                  BetaTVD * MATMUL( invR_X1, (U_M(:,0,1)-U_M(:,1,1)) ), &
+                  BetaTVD * MATMUL( invR_X1, (U_M(:,2,1)-U_M(:,0,1)) ), &
+                  dX1, BetaTVB )
 
           IF( nDimsX > 1 )THEN
 
-            dU(:,2) = MinModB &
-                        ( U_M(:,0,3), &
-                          BetaTVD * ( U_M(:,0,1) - U_M(:,3,1) ), &
-                          BetaTVD * ( U_M(:,4,1) - U_M(:,0,1) ), &
-                          dX2, BetaTVB )
+            dU(:,2) &
+              = MinModB &
+                  ( U_M(:,0,3), &
+                    BetaTVD * MATMUL( invR_X2, (U_M(:,0,1)-U_M(:,3,1)) ), &
+                    BetaTVD * MATMUL( invR_X2, (U_M(:,4,1)-U_M(:,0,1)) ), &
+                    dX2, BetaTVB )
 
           END IF
 
           IF( nDimsX > 2 )THEN
 
-            dU(:,3) = MinModB &
-                        ( U_M(:,0,4), &
-                          BetaTVD * ( U_M(:,0,1) - U_M(:,5,1) ), &
-                          BetaTVD * ( U_M(:,6,1) - U_M(:,0,1) ), &
-                          dX3, BetaTVB )
+            dU(:,3) &
+              = MinModB &
+                  ( U_M(:,0,4), &
+                    BetaTVD * MATMUL( invR_X3, (U_M(:,0,1)-U_M(:,5,1)) ), &
+                    BetaTVD * MATMUL( invR_X3, (U_M(:,6,1)-U_M(:,0,1)) ), &
+                    dX3, BetaTVB )
 
           END IF
 
@@ -271,27 +337,70 @@ CONTAINS
           ! --- Replace Slopes and Discard High-Order Components ---
           ! --- if Limited Slopes Deviate too Much from Original ---
 
-          DO iCF = 1, nCF
+          IF( UseCharacteristicLimiting )THEN
 
-            IF( SlopeDifference(iCF) &
-                  > SlopeTolerance * ABS( U_M(iCF,0,1) ) )THEN
+            LimitPolynomial = .FALSE.
 
-              U_M(iCF,0,2:nDOFX) = Zero
+            DO iDimX = 1, nDimsX
 
-              U_M(iCF,0,2) = dU(iCF,1)
+              IF( ANY( ABS( U_M(:,0,1+iDimX) - dU(:,iDimX) ) &
+                       > SlopeTolerance * ABS( U_M(:,0,1+iDimX) ) ) ) &
+              THEN
+
+                LimitPolynomial = .TRUE.
+
+              END IF
+
+            END DO
+
+            IF( LimitPolynomial )THEN
+
+              U_M(:,0,2:nDOFX) = Zero
+
+              U_M(:,0,2) = MATMUL( R_X1(:,:), dU(:,1) )
 
               IF( nDimsX > 1 ) &
-                U_M(iCF,0,3) = dU(iCF,2)
+                U_M(:,0,3) = MATMUL( R_X2(:,:), dU(:,2) )
 
               IF( nDimsX > 2 ) &
-                U_M(iCF,0,4) = dU(iCF,3)
+                U_M(:,0,4) = MATMUL( R_X3(:,:), dU(:,3) )
 
-              CALL MapModalToNodal_Fluid &
-                     ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+              DO iCF = 1, nCF
+
+                CALL MapModalToNodal_Fluid &
+                       ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+
+              END DO
 
             END IF
 
-          END DO
+          ELSE
+
+            ! --- Componentwise Limiting ---
+
+            DO iCF = 1, nCF
+
+              IF( SlopeDifference(iCF) &
+                    > SlopeTolerance * ABS( U_M(iCF,0,1) ) )THEN
+
+                U_M(iCF,0,2:nDOFX) = Zero
+
+                U_M(:,0,2) = dU(:,1)
+
+                IF( nDimsX > 1 ) &
+                  U_M(iCF,0,3) = dU(iCF,2)
+
+                IF( nDimsX > 2 ) &
+                  U_M(iCF,0,4) = dU(iCF,3)
+
+                CALL MapModalToNodal_Fluid &
+                       ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+
+              END IF
+
+            END DO
+
+          END IF
 
         END DO
       END DO
