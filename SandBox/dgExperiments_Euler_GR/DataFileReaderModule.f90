@@ -24,7 +24,7 @@ CONTAINS
     ! --- Get number of parameters ---
     nParams = 0
     OPEN( 100, FILE = TRIM( FILEIN ) )
-    READ( 100, * )
+    READ( 100, * ) ! --- Skip the header ---
     DO
       READ( 100, *, END = 10 )
       nParams = nParams + 1
@@ -35,12 +35,13 @@ CONTAINS
     ALLOCATE( FluidFieldParameters(nParams) )
     
     OPEN( 100, FILE = TRIM( FILEIN ) )
-    READ( 100, * )
+    READ( 100, * ) ! --- Skip the header ---
     DO i = 1, nParams
-       READ( 100, '(E17.10)' ) FluidFieldParameters(i)
+       READ( 100, '(ES23.16E2)' ) FluidFieldParameters(i)
     END DO
     CLOSE( 100 )
 
+    ! --- Convert from physical-units to code-units ---
     FluidFieldParameters(1) = FluidFieldParameters(1) * Kilogram
     FluidFieldParameters(2) = FluidFieldParameters(2)
     FluidFieldParameters(3) = FluidFieldParameters(3) * Meter
@@ -62,7 +63,7 @@ CONTAINS
     ! --- Get number of lines in data file ---
     nLines = 0
     OPEN( 100, FILE = TRIM( FILEIN ) )
-    READ( 100, * )
+    READ( 100, * ) ! --- Skip the header ---
     DO
       READ( 100, *, END = 10 )
       nLines = nLines + 1
@@ -73,12 +74,20 @@ CONTAINS
     ALLOCATE( FluidFieldData( 1:nLines, 4 ) )
 
     OPEN( 100, FILE = TRIM( FILEIN ) )
-    READ( 100, * )
+    READ( 100, * ) ! --- Skip the header ---
     DO i = 1, nLines
-      READ( 100, '(4E17.10)' ) FluidFieldData(i,:)
+       READ( 100, '(4ES23.16E2)' ) FluidFieldData(i,:)
     END DO
     CLOSE( 100 )
 
+    !WRITE(*,*) nLines ! 20,000
+    !STOP
+
+    !WRITE(*,*) SHAPE(FluidFieldData)
+    !WRITE(*,*) SIZE(FluidFieldData(:,1))
+    !STOP
+
+    ! --- Convert from physical-units to code-units ---
     FluidFieldData(:,1) = FluidFieldData(:,1) * Meter
     FluidFieldData(:,2) = FluidFieldData(:,2) * Kilogram / Meter**3
     FluidFieldData(:,3) = FluidFieldData(:,3) * Meter / Second

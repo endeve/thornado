@@ -74,7 +74,7 @@ CONTAINS
 
             iNodeX1 = NodeNumberTableX(1,iNodeX) ! Particular node
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) ! Physical coordinate
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
 !!$            ! --- Riemann Problems ---
 !!$            IF( X1 <= X_D )THEN
@@ -199,7 +199,7 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
     INTEGER  :: i_r = 1, i_D = 2, i_V1 = 3, i_E = 4
-    INTEGER  :: iU, iL, nLines
+    INTEGER  :: iL, nLines
     REAL(DP) :: X1
     REAL(DP), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
 
@@ -212,50 +212,55 @@ CONTAINS
     CALL ReadData &
            ( '../StandingAccretionShock_Data.dat', nLines, FluidFieldData )
 
-    ! Loop over elements
+    ! --- Interpolate initial conditions onto grid ---
+    WRITE(*,'(A)') 'Interpolating initial conditions onto grid'
+
+    ! --- Loop over all elements ---
     DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
         DO iX1 = iX_B1(1), iX_E1(1)
 
-          ! Loop over all nodes in an element
+          ! --- Loop over all nodes in an element ---
           DO iNodeX = 1, nDOFX
 
-            ! Particular node
+            ! --- Particular node ---
             iNodeX1 = NodeNumberTableX(1,iNodeX)
 
-            ! Physical coordinate of iNodeX1
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) 
-            
-            ! --- Interpolate initial conditions onto the grid ---
+            ! --- Physical coordinate of iNodeX1 ---
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            ! --- Get lower index of input array
+            !     (FluidFieldData) corresponding to physical coordinate (X1) ---
             iL = Locate( X1, FluidFieldData(:,i_r), nLines )
-            iU = iL + 1
+
+            IF( iX2 == 1 .AND. iX3 == 1 ) &
+              WRITE(*,*) FluidFieldData(iL,i_r), FluidFieldData(iL+1,i_r)
+
+            ! --- Interpolate to the physical point X1 ---
 
             uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-              = ( FluidFieldData(iU,i_D) - FluidFieldData(iL,i_D) ) &
-                  / ( FluidFieldData(iU,i_r) - FluidFieldData(iL,i_r) ) &
-                  * ( X1 - FluidFieldData(iL,i_r) ) + FluidFieldData(iL,i_D)
+              = InterpolateInitialConditionsOntoGrid &
+                  ( i_D, i_r, iL, X1, FluidFieldData )
 
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-              = ( FluidFieldData(iU,i_V1) - FluidFieldData(iL,i_V1) ) &
-                  / ( FluidFieldData(iU,i_r) - FluidFieldData(iL,i_r) ) &
-                  * ( X1 - FluidFieldData(iL,i_r) ) + FluidFieldData(iL,i_V1)
+              = InterpolateInitialConditionsOntoGrid &
+                  ( i_V1, i_r, iL, X1, FluidFieldData )
 
             uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
 
             uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-              = ( FluidFieldData(iU,i_E) - FluidFieldData(iL,i_E) ) &
-                  / ( FluidFieldData(iU,i_r) - FluidFieldData(iL,i_r) ) &
-                  * ( X1 - FluidFieldData(iL,i_r) ) + FluidFieldData(iL,i_E)
-
             uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = Zero
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+              = InterpolateInitialConditionsOntoGrid &
+                  ( i_E, i_r, iL, X1, FluidFieldData )
 
             ! --- Compute pressure from internal energy density ---
             uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
-              = ( Gamma_IDEAL - 1.0_DP ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
+              = ( Gamma_IDEAL - 1.0_DP ) * uPF(iNodeX1,iX1,iX2,iX3,iPF_E)
 
-          END DO
+          END DO ! --- Loop over nodes ---
 
           CALL ComputeConserved_GR &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
@@ -273,7 +278,38 @@ CONTAINS
       END DO
     END DO
 
+    WRITE(*,'(A,2ES25.16E3)') 'V1: ', MINVAL( uPF(:,:,1,1,iPF_V1) ), MAXVAL( uPF(:,:,1,1,iPF_V1) )
+    STOP
   END SUBROUTINE InitializeFields_StandingAccretionShock
+
+
+  REAL(DP) FUNCTION InterpolateInitialConditionsOntoGrid &
+                      (iVar, i_r, iL, X, FluidFieldData) RESULT( yInterp )
+
+    INTEGER,  INTENT(in) :: iL, iVar, i_r
+    REAL(DP), INTENT(in) :: X
+    REAL(DP), INTENT(in) :: FluidFieldData(:,:)
+    REAL(DP)             :: m, X1, X2, Y1, Y2
+
+    X1 = FluidFieldData(iL,i_r)
+    X2 = FLuidFieldData(iL+1,i_r)
+    Y1 = FluidFieldData(iL,iVar)
+    Y2 = FluidFieldData(iL+1,iVar)
+
+    m = ( Y2 - Y1 ) / ( X2 - X1 )
+
+    ! --- Using only lower limit for slope ---
+!    yInterp = m * ( X - X1 ) + Y1
+
+    ! --- Using average slope ---
+    ! --- Only changes accuracy in 12th decimal place ---
+    yInterp = ( 2.0_DP * m * ( X - X1 ) * ( X2 - X ) + ( Y1 * X2 + Y2 * X1 ) &
+                - X * ( Y1 + Y2 ) ) / ( X1 + X2 - 2.0_DP * X )
+
+
+
+    RETURN
+  END FUNCTION InterpolateInitialConditionsOntoGrid
 
 
 END MODULE InitializationModule_GR

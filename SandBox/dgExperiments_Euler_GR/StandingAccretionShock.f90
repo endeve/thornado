@@ -54,8 +54,8 @@ PROGRAM StandingAccretionShock
   REAL(DP), ALLOCATABLE :: r(:), rho(:), v(:), e(:)
   REAL(DP)              :: LT
 
-  nNodes = 2
-  K      = 64
+  nNodes = 1
+  K      = 1024
   LT     = 0.03_DP
 
   CALL ReadParameters &
@@ -79,6 +79,8 @@ PROGRAM StandingAccretionShock
 
   xL = R_PNS
   xR = Two * R_shock
+!  xL = r(1000)
+!  xR = r(19999)
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'StandingAccretionShock', &
@@ -106,7 +108,7 @@ PROGRAM StandingAccretionShock
            Gamma_IDEAL_Option = Gamma )
 
   CFL      = 0.1d0
-  t_end    = 3.0d2 * Millisecond
+  t_end    = 1.0d2 * Millisecond
   dt       = CFL * ( xR - xL ) / ( SpeedOfLight * K )
   dt_write = 0.1d0 * Millisecond
 
@@ -119,12 +121,25 @@ PROGRAM StandingAccretionShock
 
   CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = M_PNS )
+
   CALL InitializeFields_StandingAccretionShock
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL InitializeFluid_SSPRK( nStages = 1 )
+  WRITE(*,'(A,2ES25.16E3)') 'V1: ',MINVAL(uPF(:,:,1,1,2)),MAXVAL(uPF(:,:,1,1,2))
+
+  WRITE(*,'(A)') 'Wrote initial conditions to file. Exiting...'
+
+!!$  OPEN(100,FILE = 'Output_CodeUnits.dat')
+!!$  WRITE(100,'(1026ES19.10E3)') uGF(1,:,1,1,13)
+!!$  WRITE(100,'(1026ES19.10E3)') uGF(1,:,1,1,9)
+!!$  WRITE(100,'(1026ES19.10E3)') uPF(1,:,1,1,1)
+!!$  WRITE(100,'(1026ES19.10E3)') uPF(1,:,1,1,2)
+!!$  CLOSE(100)
+  STOP
+
+  CALL InitializeFluid_SSPRK( nStages = 2 )
 
   CALL InitializeSlopeLimiter &
          ( BetaTVD_Option = 1.15_DP, &
