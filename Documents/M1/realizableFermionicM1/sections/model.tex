@@ -4,7 +4,7 @@ In this section we give a summary of the mathematical model.
 
 \subsection{Boltzmann Equation}
 
-We consider approximate solutions to the Boltzmann equation for transport of massless particles through a material in Cartesian geometry, which, after scaling to dimensionless units, can be written as
+We consider approximate solutions to the Boltzmann equation for transport of massless particles through a static material in Cartesian geometry, which, after scaling to dimensionless units, can be written as
 \begin{equation}
   \pd{f}{t}+\vect{\ell}\cdot\nabla f
   =\f{1}{\tau}\,\cC(f),
@@ -14,7 +14,7 @@ where the distribution function $f\colon(\omega,\varepsilon,\vect{x},t)\in\bbS^{
 Here we use spherical momentum space coordinates $(\varepsilon,\omega)$, and the unit vector $\vect{\ell}(\omega)\in\bbR^{3}$ (independent of $\varepsilon$ and $\vect{x}$) is parallel to the particle three-momentum $\vect{p}=\varepsilon\,\vect{\ell}$.  
 We also define the energy-position coordinates $\vect{z}:=\{\varepsilon,\vect{x}\}\in\bbR^{+}\times\bbR^{3}$.  
 On the right-hand side of Eq.~\eqref{eq:boltzmann}, $\tau$ is the ratio of the particle mean-free path (due to interactions with a background) to some characteristic length scale of the problem.  
-In opaque regions, $\tau\ll1$, while for free streaming radiation, $\tau\gg1$.  
+In opaque regions, $\tau\ll1$, while for free streaming particles, $\tau\gg1$.  
 The collision term, due to emission, absorption, and isotropic and elastic scattering, is given by
 \begin{equation}
   \cC(f)=\xi\,\big(\,f_{0}-f\,\big)
@@ -50,7 +50,7 @@ The \emph{grey moments} (depending only on position and time) are obtained by in
   =\int_{\bbR^{+}}\big\{\,\cJ,\vect{\cH},\vect{\cK}\,\big\}(\varepsilon,\vect{x},t)\,\varepsilon^{2}d\varepsilon.  
 \end{equation}
 
-Taking the zeroth and first moments of Eq.~\eqref{eq:boltzmann} gives the two-moment model, comprising of a system of conservation laws with sources
+Taking the zeroth and first moments of Eq.~\eqref{eq:boltzmann} gives the two-moment model, comprising a system of conservation laws with sources
 \begin{equation}
   \pd{\vect{\cM}}{t}+\nabla\cdot\vect{\cF}=\f{1}{\tau}\,\vect{\cC}(\vect{\cM}),
   \label{eq:momentEquations}
