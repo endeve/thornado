@@ -312,6 +312,24 @@ CONTAINS
 
               CASE( 'ShockEntropyWave' )
 
+                IF( X1 < 4.0_DP )THEN
+
+                  uPF(iNodeX1,iX1,iX2,iX3,iPF_D)  = 1.4_DP
+                  uPF(iNodeX1,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+                  uPF(iNodeX1,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                  uPF(iNodeX1,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  uPF(iNodeX1,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
+
+                ELSE
+
+                  uPF(iNodeX1,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+                  uPF(iNodeX1,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+                  uPF(iNodeX1,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                  uPF(iNodeX1,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  uPF(iNodeX1,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
+
+                END IF
+
             END SELECT
 
           END DO
