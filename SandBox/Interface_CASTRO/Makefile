@@ -48,7 +48,7 @@ Driver: \
 	TwoMoment_UtilitiesModule.o \
 	TwoMoment_PositivityLimiterModule.o \
 	TwoMoment_DiscretizationModule_Streaming.o \
-	ThornadoInitializationModule_New.o \
+	ThornadoInitializationModule.o \
 	DiscretizationModule_Dummy.o \
 	TimeSteppingModule_Castro.o \
 	Driver.o
@@ -77,7 +77,7 @@ Driver: \
 	TwoMoment_UtilitiesModule.o \
 	TwoMoment_PositivityLimiterModule.o \
 	TwoMoment_DiscretizationModule_Streaming.o \
-	ThornadoInitializationModule_New.o \
+	ThornadoInitializationModule.o \
 	DiscretizationModule_Dummy.o \
 	TimeSteppingModule_Castro.o \
 	Driver.o \

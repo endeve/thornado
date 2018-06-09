@@ -10,7 +10,7 @@ PROGRAM Driver
     uCF
   USE RadiationFieldsModule, ONLY: &
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
-  USE ThornadoInitializationModule_New, ONLY: &
+  USE ThornadoInitializationModule, ONLY: &
     InitThornado, &       ! --- To be called once
     InitThornado_Patch, & ! --- To be called once per patch
     FreeThornado_Patch    ! --- To be called once per parch
