@@ -23,16 +23,15 @@ MODULE TimeSteppingModule_Castro
 CONTAINS
 
 
-  SUBROUTINE Update_IMEX_PC2( dt, GE, GX, U_F, U_R )
+  SUBROUTINE Update_IMEX_PC2( dt, U_F, U_R )
+
+    use GeometryFieldsModuleE, only : uGE
+    use GeometryFieldsModule, only : uGF
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     REAL(DP), INTENT(in)    :: &
       dt
-    REAL(DP), INTENT(in)    :: &
-      GE (1:,iZ_B1(1):,1:)
-    REAL(DP), INTENT(in)    :: &
-      GX (1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
     REAL(DP), INTENT(inout) :: &
       U_F(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
     REAL(DP), INTENT(inout) :: &
@@ -84,7 +83,7 @@ CONTAINS
 
     CALL ComputeIncrement_TwoMoment_Explicit &
            ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
-             GE, GX, &
+             uGE, uGF, &
              U_R, dU_R &
                     (1:nDOF, &
                      iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
@@ -101,7 +100,7 @@ CONTAINS
     CALL ComputeIncrement_Implicit &
            ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
              Half * dt, &
-             GE, GX, &
+             uGE, uGF, &
              U_F, dU_F &
                     (1:nDOFX, &
                      iX_B0(1)-iX_SW(1):iX_E0(1)+iX_SW(1), &
@@ -133,7 +132,7 @@ CONTAINS
 
     CALL ComputeIncrement_TwoMoment_Explicit &
            ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
-             GE, GX, &
+             uGE, uGF, &
              U_R, dU_R &
                     (1:nDOF, &
                      iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
@@ -150,7 +149,7 @@ CONTAINS
     CALL ComputeIncrement_Implicit &
            ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
              dt, &
-             GE, GX, &
+             uGE, uGF, &
              U_F, dU_F &
                     (1:nDOFX, &
                      iX_B0(1)-iX_SW(1):iX_E0(1)+iX_SW(1), &

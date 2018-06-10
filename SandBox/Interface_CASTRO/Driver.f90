@@ -58,7 +58,7 @@ PROGRAM Driver
     uCR(:,:,:,:,:,iCR_G2,:) = 0.0_DP
     uCR(:,:,:,:,:,iCR_G3,:) = 0.0_DP
 
-    CALL Update_IMEX_PC2( dt, uGE, uGF, uCF, uCR )
+    CALL Update_IMEX_PC2( dt, uCF, uCR )
 
     CALL FreeThornado_Patch
 
