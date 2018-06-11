@@ -184,3 +184,50 @@ Find $(x,y)$ such that
 A solution family is $x=\frac{1}{2}$, $y=\frac{1}{2} + \epsilon$ with $\epsilon \in [0, \frac{1}{2})$ and $c_{sch} = 1 - 2\epsilon$.
 The PARSD scheme follows.
 It's clear that $\epsilon = 0$ and $c_{sch} = 1$ is the most optimized solution.
+
+\section{Proof of nonexistence of 3-stage Type A ...}
+
+Proof of GSA IMEX schemes of Type~A with 3 stages and the following properties does not exist
+\begin{itemize}
+  \item Second-order in the streaming limit;
+  \item Well-behaved in the diffusion limit;
+  \item Positivity-preserving.
+\end{itemize}
+First of all, the GSA IMEX scheme of Type A with 3 stages have the following form:
+\begin{equation*}
+  \begin{array}{c | c c c}
+  	      0       & 0              & 0              & 0 \\
+  	\tilde{c}_{2} & \tilde{a}_{21} & 0              & 0 \\
+  	\tilde{c}_{3} & \tilde{a}_{31} & \tilde{a}_{32} & 0 \\ \hline
+  	              & \tilde{a}_{31} & \tilde{a}_{32} & 0
+  \end{array}
+  \qquad
+  \begin{array}{c | c c c}
+    c_{1} & a_{11} & 0      & 0      \\
+  	c_{2} & a_{21} & a_{22} & 0      \\
+  	c_{3} & a_{31} & a_{32} & a_{33} \\ \hline
+  	      & a_{31} & a_{32} & a_{33}
+  \end{array}.
+\end{equation*}
+The second-order in the streaming limit requires
+\begin{align*}
+\tilde{a}_{31} + \tilde{a}_{32} = 1, \quad a_{31} + a_{32} + a_{33} = 1, \quad \tilde{a}_{32}\cdot \tilde{a}_{21} =  \frac{1}{2}.
+\end{align*}
+The diffusion accurate Eq.~\eqref{eq:diffusionCondition} requires 
+\begin{align*}
+\tilde{a}_{21} = a_{22}, \quad -\dfrac{a_{32} \tilde{a}_{21}}{a_{22}a_{33}} + \dfrac{1}{a_{33}} =1.
+\end{align*}
+That's 
+\begin{align*}
+\tilde{a}_{21} = a_{22}, \quad a_{31} = 0.
+\end{align*}
+Positivity-preserving requires
+\begin{align*}
+& a_{11} > 0, ~ a_{22} >0, ~ a_{33}>0,\\
+& c_{20} = 1 - \frac{a_{21}}{a_{11}} \geq 0, ~ c_{30} = 1-\frac{a_{31}}{a_{11}} + \frac{a_{32}a_{21}}{a_{22}a_{11}} - \frac{a_{32}}{a_{22}}\geq 0, \\
+& c_{21} = \frac{a_{21}}{a_{11}} \geq 0, ~ c_{31} = \frac{a_{31}}{a_{11}} - \frac{a_{32}a_{21}}{a_{22}a_{11}} \geq 0, ~ c_{32} = \frac{a_{32}}{a_{22}} \geq 0,\\
+& \tilde{c}_{21} = \tilde{a}_{21} \geq 0, \tilde{c}_{31} = \tilde{a}_{31} - \frac{a_{32}\tilde{a}_{21}}{a_{22}} \geq 0, \tilde{c}_{32} = \tilde{a}_{32} \geq 0.
+\end{align*}
+Note that since $a_{31} = 0$, $a_{21} \geq 0$, $a_{32} \geq 0$, $a_{22} > 0$ and $a_{11} >0$, $c_{31} \geq 0$ only holds for $c_{31} = 0$.
+Unfortunately, $c_{31} = 0$ will drag $c_{\mbox{\tiny Sch}} = 0$ since $c_{\mbox{\tiny Sch}} = \min \left\lbrace \dfrac{c_{21}}{\tilde{c}_{21}}, \dfrac{c_{31}}{\tilde{c}_{31}}, \dfrac{c_{32}}{\tilde{c}_{32}}\right\rbrace $.
+Therefore, GSA IMEX schemes of Type~A with 3 stages and the above properties does not exist.
