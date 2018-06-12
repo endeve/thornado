@@ -312,18 +312,18 @@ CONTAINS
 
               CASE( 'ShockEntropyWave' )
 
-                IF( X1 < 4.0_DP )THEN
+                IF( X1 < -4.0_DP )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.4_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 3.857143_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 2.629369_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 10.333333_DP / 0.4_DP
 
                 ELSE
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP + 0.2 * SIN(5*X1)
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
