@@ -1,10 +1,10 @@
 \section{Moment Realizability for the Fermionic Two-Moment Model}
 \label{sec:realizability}
 
-Our goal is to simulate a gas of massless fermions (i.e., classical neutrinos) and study their interactions with matter.  
+Our goal is to simulate massless fermions (e.g., neutrinos) and study their interactions with matter.  
 The principal objective is to obtain the fermionic distribution function $f$ (or moments of $f$ as in the two-moment model employed here).  
 The Pauli exclusion principle requires the distribution function to satisfy the condition $0 \le f \le 1$, which puts restrictions on the admissible values for the moments of $f$.  
-In this paper, we seek to design a numerical method for solving the system of moment equations given by Eq.~\eqref{eq:momentEquations}, which preserves realizability of the moments; i.e., the moments evolve within the set of admissible values as dictated by Pauli's exclusion principle.  
+In this paper, we seek to design a numerical method for solving the system of moment equations given by Eq.~\eqref{eq:momentEquations} that preserves realizability of the moments; i.e., the moments evolve within the set of admissible values as dictated by Pauli's exclusion principle.  
 (Since we are only concerned with the angular dependence of $f$ in this section, we simplify the notation by suppressing the $\vect{z}$ and $t$ dependence and write $f(\omegaNu,\vect{z},t)=f(\omegaNu)$.)  
 
 We begin with the following definition of moment realizability.  
@@ -12,15 +12,15 @@ We begin with the following definition of moment realizability.
   The moments $\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}$ are realizable if they can be obtained from a distribution function satisfying $0\le f(\omegaNu) \le 1~\forall~\omegaNu\in\bbS^{2}$.
 \end{define}
 
-Realizable moments must satisfy the bounds imposed by $f$.  
-We proceed by stating the bounds on the moments by restating results from Theorem~7.1 in \cite{banachLarecki_2017a} in the following Lemma.  
+Realizable moments must satisfy algebraic constraints.  
+We proceed by stating the constraints on the moments by restating results from Theorem~7.1 in \cite{banachLarecki_2017a} in the following Lemma.  
+The proof is given in \cite{banachLarecki_2017a}.  
+(See also \cite{lareckiBanach_2011,banachLarecki_2013}.)
 \begin{lemma}
-  Let the distribution function be bounded by $0\le f(\omegaNu) \le1~\forall~\omegaNu\in\bbS^{2}$.  
+  Suppose that $0\le f(\omegaNu) \le1~\forall~\omegaNu\in\bbS^{2}$.  
   Then the moments $\vect{\cM}=(\cJ,\vect{\cH})^{T}$, defined as in Eq.~\eqref{eq:angularMoments}, satisfy $0\le\cJ\le1$ and $\big(1-\cJ\big)\,\cJ-|\vect{\cH}|\ge0$. 
   \label{lem:MomentRealizable} 
 \end{lemma}
-The proof is given in \cite{banachLarecki_2017a} and is omitted.  
-(See also \cite{lareckiBanach_2011,banachLarecki_2013}.)
 %\begin{proof}
 %  First, let $\mu=\cos\thetaNu$ and $\bbS^{1}:=\{\,\mu\,|\,\mu\in[-1,1]\,\}$, and write
 %  \begin{equation}
@@ -53,18 +53,20 @@ The proof is given in \cite{banachLarecki_2017a} and is omitted.
 %  Since this holds for any unit vector $\widehat{\vect{n}}\in\bbR^{3}$, we must have $|\vect{\cH}|\le(1-\cJ)\,\cJ$.  
 %\end{proof}
 
-Next we define the realizable set $\cR$ for the fermion two-moment model
-\begin{equation}
-  \cR:=\big\{\,\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}~|~\cJ\in[0,1]~\text{and}~\gamma(\vect{\cM})\equiv(1-\cJ)\cJ-|\vect{\cH}|\ge0\,\big\}.
-  \label{eq:realizableSet}
-\end{equation}
+\begin{define}
+  The realizable set $\cR$ for the fermion two-moment model is given by
+  \begin{equation}
+    \cR:=\big\{\,\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}~|~\cJ\in[0,1]~\text{and}~\gamma(\vect{\cM})\equiv(1-\cJ)\cJ-|\vect{\cH}|\ge0\,\big\}.
+    \label{eq:realizableSet}
+  \end{equation}
+\end{define}
 
 \begin{lemma}
   The realizable set $\cR$, defined in Eq.~\eqref{eq:realizableSet}, is convex.  
 \end{lemma}
 \begin{proof}
   In order to prove that $\cR$ is convex, we must show that any convex combination of elements in $\cR$ also belongs to $\cR$.  
-  Let $\vect{\cM}_{a}=\big(\cJ_{a},\vect{\cH}_{a}\big)^{T}$ and $\vect{\cM}_{b}=\big(\cJ_{b},\vect{\cH}_{b}\big)^{T}$ to be two arbitrary elements in $\cR$.  
+  Let $\vect{\cM}_{a}=\big(\cJ_{a},\vect{\cH}_{a}\big)^{T}$ and $\vect{\cM}_{b}=\big(\cJ_{b},\vect{\cH}_{b}\big)^{T}$ be two arbitrary elements in $\cR$.  
   Consider the convex combination $\vect{\cM}_{c} = \theta\,\vect{\cM}_{a} + (1-\theta)\,\vect{\cM}_{b}$, with $0\leq\theta\leq1$.
   The first component of $\vect{\cM}_{c}$ is
   \begin{equation*}
@@ -81,24 +83,25 @@ Next we define the realizable set $\cR$ for the fermion two-moment model
 
 Figure~\ref{fig:RealizableSetFermionic} illustrates the geometry of the convex set $\cR$ in the $(\cH,\cJ)$-plane (light blue region).  
 The boundary of $\cR$, $\partial\cR$ (black curves), is given by $\gamma(\vect{\cM})=0$.  
-The realizable domain of positive distribution functions, $\cR^{+}$ (no upper bound on $f$), a convex cone defined by
+The realizable domain of positive distribution functions, $\cR^{+}$ (no upper bound on $f$), which is a convex cone defined by
 \begin{equation}
   \cR^{+}:=\big\{\,\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}~|~\cJ\ge0~\text{and}~\cJ\ge|\vect{\cH}|\,\big\}, 
   \label{eq:realizableSetPositive}
 \end{equation}
-is partially shown as the region above the red lines, which mark the boundary of $\cR^{+}$ (denoted $\partial\cR^{+}$).  
-(A Realizability-preserving method, with respect to $\cR^{+}$, for the two-moment model in one spatial dimension was developed in \cite{olbrant_etal_2012}.)  
-The realizable domains $\cR$ and $\cR^{+}$ overlap for for low particle densities ($\cJ\ll1$), but for larger values of $\cJ$, the realizable domain of particles governed by Fermi-Dirac statistics is much more restricted than that of particles described by positive distribution functions with no upper bound.  
+is partially shown as the light red region above the red lines, which mark the boundary of $\cR^{+}$ (denoted $\partial\cR^{+}$).  
+(A realizability-preserving method, with respect to $\cR^{+}$, for the two-moment model in one spatial dimension was developed in \cite{olbrant_etal_2012}.)  
+The realizable domains $\cR$ and $\cR^{+}$ overlap for low particle densities ($\cJ\ll1$), but for larger values of $\cJ$, the realizable domain of particles governed by Fermi-Dirac statistics is much more restricted than that of particles described by positive distribution functions with no upper bound.  
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=1.0\linewidth]{figures/RealizableSetFermionic}
-  \caption{Illustration of the realizable set $\cR$ defined in Eq.~\eqref{eq:realizableSet}.  
-  The black lines define the boundary of $\cR$, $\partial\cR$ ($\gamma(\vect{\cM}) = 0$), while the red lines indicate the boundary of the realizable set of positive distributions with no upper bound; cf. Eq.~\eqref{eq:realizableSetPositive}.}
+  \caption{Illustration of the realizable set $\cR$ (light blue region) defined in Eq.~\eqref{eq:realizableSet}.  
+  The black lines define the boundary of $\cR$, $\partial\cR$ ($\gamma(\vect{\cM}) = 0$), while the red lines indicate the boundary of the realizable set of positive distributions with no upper bound (light red region); cf. Eq.~\eqref{eq:realizableSetPositive}.}
   \label{fig:RealizableSetFermionic}
 \end{figure}
 
-For the realizability-preserving scheme developed in later sections, we state some additional results.  
+For the realizability-preserving scheme developed in Section~\ref{sec:realizableDGIMEX}, we state some additional results.  
+Lemma~\ref{lem:explicitStep} is used to help prove the realizability-preserving property of explicit steps in the IMEX scheme, while Lemmas~\ref{lem:implicitStep} and \ref{lem:correctionStep} are used to prove realizability-preserving properties of implicit steps.  
 \begin{lemma}
   Let $\big\{\cJ_{a},\vect{\cH}_{a},\vect{\cK}_{a}\big\}$ be defined as in Eq.~\eqref{eq:angularMoments} with distribution function $f_{a}(\omegaNu)\in[0,1]\,\forall\,\omegaNu\in\bbS^{2}$.  
   Similarly, let $\big\{\cJ_{b},\vect{\cH}_{b},\vect{\cK}_{b}\big\}$ be moments of a distribution function $f_{b}\in[0,1]\,\forall\,\omegaNu\in\bbS^{2}$.  
