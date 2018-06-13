@@ -12,7 +12,7 @@ MODULE InitializationModule
     MeshX, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-    uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    uGF, iGF_Phi_N, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
@@ -63,6 +63,10 @@ CONTAINS
       CASE( 'KelvinHelmholtz' )
 
         CALL InitializeFields_KelvinHelmholtz
+
+      CASE( 'RayleighTaylor' )
+
+        CALL InitializeFields_RayleighTaylor
 
       CASE( 'Implosion' )
 
@@ -487,6 +491,15 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_KelvinHelmholtz
+
+
+  SUBROUTINE InitializeFields_RayleighTaylor
+
+    ! --- Initialize Density, Velocity, Internal Energy Density
+    ! --- Also Initialize Newtonian Gravitational Potential
+    ! --- uGF(:,iX1,iX2,iX3,iGF_Phi_N)
+
+  END SUBROUTINE InitializeFields_RayleighTaylor
 
 
   SUBROUTINE InitializeFields_Implosion
