@@ -63,7 +63,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'Implosion'
+  ProgramName = 'RayleighTaylor'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -123,16 +123,22 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
 
-      nX = [ 256, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 2.0_DP, Pi,     TwoPi  ]
+      nX = [ 128, 4, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] + 1.0d-16
+      xR = [ 2.0_DP, Pi,     TwoPi  ] - 1.0d-16
 
-      bcX = [ 2, 0, 0 ]
+      bcX = [ 3, 3, 0 ]
 
       nNodes = 2
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .FALSE.
+      UseCharacteristicLimiting = .FALSE.
+
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 0.03_DP
 
       iCycleD = 1
       t_end   = 5.0d-1
@@ -156,9 +162,37 @@ PROGRAM ApplicationDriver
       UseSlopeLimiter           = .TRUE.
       UseCharacteristicLimiting = .TRUE.
 
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 0.03_DP
+
       iCycleD = 10
       t_end   = 1.500_DP
       dt_wrt  = 0.150_DP
+
+    CASE( 'RayleighTaylor' )
+
+      Gamma = 1.4_DP
+
+      nX = [ 16, 48, 1 ]
+      xL = [ - 0.25_DP, + 0.25_DP, 0.0_DP ]
+      xR = [ - 0.75_DP, + 0.75_DP, 1.0_DP ]
+
+      bcX = [ 1, 3, 0 ]
+
+      nNodes = 3
+
+      BetaTVD = 2.00_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 0.03_DP
+
+      iCycleD = 10
+      t_end   = 8.5_DP
+      dt_wrt  = 0.1_DP
 
     CASE( 'Implosion' )
 
@@ -176,7 +210,7 @@ PROGRAM ApplicationDriver
       BetaTVB = 0.0d+02
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .TRUE.
+      UseCharacteristicLimiting = .FALSE.
 
       UseTroubledCellIndicator  = .TRUE.
       LimiterThresholdParameter = 0.03_DP
