@@ -5,24 +5,26 @@ We proceed to develop realizability-preserving DG schemes for the two-moment mod
 Following the framework in \cite{zhangShu_2010b} for high-order DG schemes, the realizability-preserving DG-IMEX scheme is designed to preserve realizability of cell averages over a time step $\dt$ in each element $\bK$.  
 Realizability of the cell average is leveraged to limit the polynomial approximation $\vect{\cM}_{h}$ in the stages of the IMEX scheme.  
 If the polynomial approximation $\vect{\cM}_{h}$ is not realizable in a finite number of points in $\bK$, the high-order components are damped (see Section~\ref{sec:limiter}).  
+The main result of this section is stated in Theorem~\ref{the:realizableDGIMEX}.  
+
 The cell average of the moments is defined as
 \begin{equation}
   \vect{\cM}_{\bK}
   =\f{1}{|\bK|}\int_{\bK}\vect{\cM}_{h}\,d\bx.  
 \end{equation}
-Then, with $v=1$ in Eq.~\eqref{eq:semidiscreteDG}, the stage values for the cell average in the IMEX scheme in Eq.~\eqref{eq:imexStagesRewrite} are given by
+Then, with $v=1$ in Eq.~\eqref{eq:semidiscreteDG}, and invoking the form in Eq.~\eqref{eq:imexStagesRewrite}, the stage values for the cell average in the IMEX scheme are given by
 \begin{equation}
   \vect{\cM}_{\bK}^{(i)}
   =\sum_{j=0}^{i-1}c_{ij}\,\vect{\cM}_{\bK}^{(ij)}
   +a_{ii}\,\dt\,\f{1}{\tau}\,\big(\,\vect{\eta}-\vect{\cD}\,\vect{\cM}_{\bK}^{(i)}\,\big), \quad i=1,\ldots,s,
   \label{eq:imexStagesCellAverage}
 \end{equation}
-where $c_{ij}\ge0$, $a_{ii}>0$, and $\sum_{j=0}^{i-1}c_{ij}=1$, and we have defined
+where $c_{ij}\ge0$, $\sum_{j=0}^{i-1}c_{ij}=1$, and $a_{ii}>0$, and we have defined
 \begin{equation}
   \vect{\cM}_{\bK}^{(ij)}
   =\vect{\cM}_{\bK}^{(j)}-\hat{c}_{ij}\,\dt\,\big\langle\,\nabla\cdot\vect{\cF}(\vect{\cM}_{h}^{(j)})\,\big\rangle_{\bK},
 \end{equation}
-with $\cM_{\bK}^{(0)}=\cM_{\bK}^{n}$.  
+with $\cM_{\bK}^{(0)}=\cM_{\bK}^{n}$, and where $\hat{c}_{ij}\ge0$.  
 The cell average of the divergence operator is (cf. Section~\ref{sec:dg})
 \begin{equation}
   \big\langle\,\nabla\cdot\vect{\cF}(\vect{\cM}_{h}^{(j)})\,\big\rangle_{\bK}
@@ -71,7 +73,6 @@ We proceed to establish conditions for which $\vect{\cM}_{\bK}^{(ij)}\in\cR$.
 \end{rem}
 
 Next, we establish conditions for which Eq.~\eqref{eq:realizableGamma} holds.  
-%To simplify the notation, we temporarily drop the dimension index $i$, setting $x^{i}=x$, $K^{i}=K$, $\vect{\Gamma}^{i}=\vect{\Gamma}$, etc.  
 We let $\hat{Q}^{k}\colon C^{0}(K^{k})\to\bbR$ denote the $N$-point \emph{Gauss-Lobatto (GL)} quadrature rule on the interval $K^{k}=(x_{\Low}^{k},x_{\Hgh}^{k})$, with points
 \begin{equation}
   \hat{S}^{k}=\left\{x_{\Low}^{k}=\hat{x}_{1}^{k},\ldots,\hat{x}_{N}^{k}=x_{\Hgh}^{k}\right\}, 
@@ -122,7 +123,7 @@ The following Lemma establishes sufficient conditions for realizability of $\vec
   \begin{equation*}
     \Phi\big[\,\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,-}),\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,+}),\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,-}),\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,+});\hat{c}_{ij}\,\big]\in\cR.  
   \end{equation*}
-  Using the Lax-Friedrichs flux with $\alpha=1$, it is straightforward to show that
+  Using the Lax-Friedrichs flux in Eq.~\eqref{eq:fluxFunctionLF}, with $\alpha^{k}=1$ ($k=\{1,\ldots,d\}$), it is straightforward to show that
   \begin{align}
     &\Phi\big[\,\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,-}),\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,+}),\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,-}),\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,+});\hat{c}_{ij}\,\big] \nonumber \\
     &=(1-\lambda_{ij}^{k})\,\big(\,\f{1}{2}\,\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,+})+\f{1}{2}\,\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,-})\,\big) \nonumber \\
@@ -140,17 +141,26 @@ The following Lemma establishes sufficient conditions for realizability of $\vec
 \end{proof}
 
 \begin{rem}
+  For the IMEX scheme to be realizability-preserving it is sufficient to set the time step such that
+  \begin{equation}
+    \dt = c_{\mbox{\tiny Sch}}\,\min_{k} \Big(\, \beta_{k}\,\hat{w}_{N}\,|K^{k}| \,\Big),
+    \label{eq:imexTimeStep}
+  \end{equation}
+  where $c_{\mbox{\tiny Sch}}$ is defined in \eqref{eq:imexCFL}.  
+\end{rem}
+
+\begin{rem}
   Lemma~\eqref{lem:realizableGamma} is proven without specification of $\tilde{\vect{x}}^{k}$.  
-  In the numerical scheme, we need $\vect{\Gamma}^{k}\big[\bcM_{h}^{(j)};\hat{c}_{ij}\big]$ to be realizable in the quadrature set $\tilde{\vect{S}}^{k}$ used to approximate the integral over $\tilde{\bK}^{k}$ in Eq.~\eqref{eq:realizableGamma}.  
+  In the numerical scheme, we need $\vect{\Gamma}^{k}\big[\bcM_{h}^{(j)};\hat{c}_{ij}\big]$ to be realizable in the quadrature set $\tilde{\vect{S}}^{k}$ used to approximate the integral over $\tilde{\bK}^{k}$ in Eq.~\eqref{eq:realizableGamma}; typically the Legendre-Gauss quadrature points.  
   We thus require $\vect{\cM}_{h}^{(j)}$ to be realizable in the quadrature set $\hat{\vect{S}}^{k}=\tilde{\vect{S}}^{k}\otimes\hat{S}^{k}\subset\bK$, where $\tilde{\vect{S}}^{k}\subset\tilde{\bK}^{k}$, and $\hat{S}^{k}\subset K^{k}$ are the GL quadrature points.  
 \end{rem}
 
 \begin{rem}
   Lemmas~\ref{lem:imexStagesCellAverage}, \ref{lem:realizableMij}, and \ref{lem:realizableGamma} establish sufficient conditions for realizability of the cell average of each IMEX stage $\vect{\cM}_{\bK}^{(i)}$, for $i=1,\ldots,s$.  
-  Within (and after) each IMEX stage, the realizability-preserving limiter discussed in Section~\ref{sec:limiter} is invoked to ensure that the numerical solution is realizable in the quadrature points $\hat{\vect{S}}^{k}$, for $k=1,\ldots,k$.  
-  For GSA IMEX schemes, $\tilde{\vect{\cM}}_{\bK}^{n+1}=\vect{\cM}_{\bK}^{(s)}$.  
+  Within (and after) each IMEX stage, the realizability-enforcing limiter discussed in Section~\ref{sec:limiter} is invoked to ensure that the numerical solution $\vect{\cM}_{h}^{(i)}(\vect{x})$ is realizable in the quadrature points $\hat{\vect{S}}^{k}$, for $k=1,\ldots,d$.  
 \end{rem}
 
+For GSA IMEX schemes, $\tilde{\vect{\cM}}_{\bK}^{n+1}=\vect{\cM}_{\bK}^{(s)}$.  
 For IMEX schemes incorporating the correction step in Eq.~\eqref{eq:imexCorrection}, the cell average at $t^{n+1}$ is obtained by solving
 \begin{equation}
   \vect{\cM}_{\bK}^{n+1}=\tilde{\vect{\cM}}_{\bK}^{n+1}+\alpha\,\f{\dt^{2}}{\tau^{2}}\,\vect{\cD}\,\big(\,\vect{\eta}-\vect{\cD}\,\vect{\cM}_{\bK}^{n+1}\,\big),
@@ -159,13 +169,14 @@ For IMEX schemes incorporating the correction step in Eq.~\eqref{eq:imexCorrecti
 where $\vect{\eta}$ and $\vect{\cD}$ are defined in Eq.~\eqref{eq:collisionTermMoments}.  
 For these IMEX schemes, realizability of $\vect{\cM}_{\bK}^{n+1}$ is established by the following lemma.  
 \begin{lemma}
-  Suppose that $\tilde{\vect{\cM}}_{\bK}^{n+1}\in\cR$ and $\vect{\cM}_{\bK}^{n+1}$ is obtained by solving Eq.~\eqref{eq:imexCorrectionCellAverage} with $\beta:=\alpha\,\dt^{2}/\tau^{2}\ge0$.  
+  Suppose that $\tilde{\vect{\cM}}_{\bK}^{n+1}\in\cR$ and $\vect{\cM}_{\bK}^{n+1}$ is obtained by solving Eq.~\eqref{eq:imexCorrectionCellAverage} with $\hat{\alpha}:=\alpha\,\dt^{2}/\tau^{2}\ge0$.  
   Then $\vect{\cM}_{\bK}^{n+1}\in\cR$.  
+  \label{lem:imexCorrectionCellAverage}
 \end{lemma}
 \begin{proof}
   With the collision term in Eq.~\eqref{eq:collisionTermMoments}, Eq.~\eqref{eq:imexCorrectionCellAverage} can be rewritten in the form
   \begin{equation*}
-    \vect{\cM}_{\bK}^{n+1}=\tilde{\vect{\cM}}_{\bK}^{n+1}+\beta\,\vect{\cD}\,\vect{\cC}(\vect{\cM}_{\bK}^{n+1}).  
+    \vect{\cM}_{\bK}^{n+1}=\tilde{\vect{\cM}}_{\bK}^{n+1}+\hat{\alpha}\,\vect{\cD}\,\vect{\cC}(\vect{\cM}_{\bK}^{n+1}).  
   \end{equation*}
   The proof is completed by invoking Lemma~\ref{lem:correctionStep}.  
 \end{proof}
@@ -176,5 +187,30 @@ For these IMEX schemes, realizability of $\vect{\cM}_{\bK}^{n+1}$ is established
 
 We are now ready to state the main result of this section.  
 \begin{theorem}
-  Let
+  Suppose that
+  \begin{itemize}
+    \item[1.] For all $k\in\{1,\ldots,d\}$, the Gauss-Lobatto quadrature rule $\hat{Q}^{k}$ is chosen such that Eq.~\eqref{eq:quadratureRuleGL} holds.  
+    \item[2.] For all $k\in\{1,\ldots,d\}$ and all $\vect{x}\in\hat{\vect{S}}^{k}$, $\vect{\cM}_{h}^{n}(\vect{x})\in\cR$.
+    \item[3.] The time step $\dt$ is chosen such that Eq.~\eqref{eq:imexTimeStep} holds.  
+    \item[4.] If $\vect{\cM}_{\bK}^{(i)}\in\cR$, a limiter can be invoked to enforce $\vect{\cM}_{h}^{(i)}(\vect{x})\in\cR$ for all $\vect{x}\in\hat{\vect{S}}^{k}$ and all $k\in\{1,\ldots,d\}$.
+  \end{itemize}
+  Then $\vect{\cM}_{\bK}^{n+1}\in\cR$.  
+  \label{the:realizableDGIMEX}
 \end{theorem}
+\begin{proof}
+  For $i=1$, the cell average $\vect{\cM}_{\bK}^{(1)}$ is obtained by solving (cf. Eq.~\eqref{eq:imexStagesCellAverage})
+  \begin{equation*}
+    \vect{\cM}_{\bK}^{(1)}=c_{10}\,\vect{\cM}_{\bK}^{(10)}+a_{11}\,\f{\dt}{\tau}\big(\,\vect{\eta}-\vect{\cD}\,\vect{\cM}_{\bK}^{(1)}\,\big),
+  \end{equation*}
+  where, after invoking the quadrature rule $\tilde{\vect{Q}}^{k}$ to integrate over $\tilde{\bK}^{k}$ in Eq.~\eqref{eq:cellAverageInTermsOfGamma},
+  \begin{equation*}
+    \vect{\cM}_{\bK}^{(10)}
+    =\sum_{k=1}^{d}\f{\beta_{k}}{|\tilde{\bK}^{k}|}\tilde{\vect{Q}}^{k}\big(\vect{\Gamma}^{k}\big[\vect{\cM}_{h}^{n};\hat{c}_{10}\big]\big).  
+  \end{equation*}
+  Since $\vect{\cM}_{h}^{n}\in\cR$ on $\hat{\vect{S}}^{k}$, for each $k\in\{1,\ldots,d\}$, it follows from Lemma~\ref{lem:realizableGamma} that $\vect{\Gamma}^{k}\big[\vect{\cM}_{h}^{n};\hat{c}_{10}\big]\in\cR$ on $\tilde{\vect{S}}^{k}$.  
+  Then, realizability of $\vect{\cM}_{\bK}^{(10)}$ follows from Lemma~\ref{lem:realizableMij}, while $\vect{\cM}_{\bK}^{(1)}\in\cR$ follows by invoking Lemma~\ref{lem:imexStagesCellAverage}.  
+  By invoking a realizability-enforcing limiter, $\vect{\cM}_{h}^{(1)}(\vect{x})\in\cR$ for all $\vect{x}\in\hat{\vect{S}}^{k}$ and all $k\in\{1,\ldots,d\}$.  
+  Repeated application of these steps give $\vect{\cM}_{\bK}^{(s)}\in\cR$.  
+  Since the IMEX scheme is GSA, it follows that $\tilde{\vect{\cM}}_{\bK}^{n+1}\in\cR$.  
+  The proof is completed by invoking Lemma~\ref{lem:imexCorrectionCellAverage}.  
+\end{proof}
