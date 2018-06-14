@@ -210,17 +210,24 @@ First of all, the GSA IMEX scheme of Type A with 3 stages have the following for
   \end{array}.
 \end{equation*}
 The second-order in the streaming limit requires
-\begin{align*}
-\tilde{a}_{31} + \tilde{a}_{32} = 1, \quad a_{31} + a_{32} + a_{33} = 1, \quad \tilde{a}_{32}\cdot \tilde{a}_{21} =  \frac{1}{2}.
-\end{align*}
+\begin{align}
+\tilde{a}_{31} + \tilde{a}_{32} = 1, \quad \tilde{a}_{32}\cdot \tilde{a}_{21} =  \frac{1}{2}.
+\end{align}
+An implicit property, the first-order in general transport condition, requires
+\begin{align}
+ \quad a_{31} + a_{32} + a_{33} = 1.
+ \label{eq:1stOrderGeneral}
+\end{align}
 The diffusion accurate Eq.~\eqref{eq:diffusionCondition} requires 
-\begin{align*}
+\begin{align}
 \tilde{a}_{21} = a_{22}, \quad -\dfrac{a_{32} \tilde{a}_{21}}{a_{22}a_{33}} + \dfrac{1}{a_{33}} =1.
-\end{align*}
-That's 
-\begin{align*}
+\label{eq:diffusionAccurate}
+\end{align}
+Substituting Eq.~\eqref{eq:1stOrderGeneral} into Eq.~\eqref{eq:diffusionAccurate} gives
+\begin{align}
 \tilde{a}_{21} = a_{22}, \quad a_{31} = 0.
-\end{align*}
+\label{eq:a31is0}
+\end{align}
 Positivity-preserving requires
 \begin{align*}
 & a_{11} > 0, ~ a_{22} >0, ~ a_{33}>0,\\
