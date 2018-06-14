@@ -214,7 +214,7 @@ For comparison, we present results using the algebraic closures of Cernohorsky \
     \includegraphics[width=0.495\textwidth]{figures/Implosion_RealizableDomain} &
     \includegraphics[width=0.495\textwidth]{figures/Implosion_LimiterParameters}
   \end{tabular}
-   \caption{Numerical results for the Fermion Implosion problem, computed both the CB and Minerbo closures.  Spatial distribution of the number density $\cJ$ (CB closure only) at $t=1$ (upper left panel).  Number density $\cJ$ versus radius $R=|\vect{x}|$ for various times ($t=0$, $0.1$, $0.2$, and $0.4$) for the CB (blue) and the Minerbo (magenta) closures (upper right panel).  (The initial condition, same for both models, is plotted with cyan.)  Numerical solutions in the $(\cH_{x},\cJ)$-plane (lower left panel), for the same times as plotted in the upper right panel.  Limiter parameters $\vartheta_{1}$ (solid) and $\vartheta_{2}$ (dashed) in Section~\ref{sec:limiter} (minimum over the whole computational domain) versus time (lower right panel).}
+   \caption{Numerical results for the Fermion Implosion problem, computed both the CB and Minerbo closures.  Spatial distribution of the number density $\cJ$ (CB closure only) at $t=1$ (upper left panel).  In the upper right panel we plot the number density $\cJ$ versus radius $R=|\vect{x}|$ for various times ($t=0$, $0.1$, $0.2$, and $0.4$) for the CB (blue), the Minerbo (magenta) closures, and the reference transport solution (dashed black lines).  (The initial condition, which is the same for all models, is plotted with cyan.)  Numerical solutions in the $(\cH_{x},\cJ)$-plane (lower left panel), for the same times as plotted in the upper right panel are plotted for CB and Minerbo.  Limiter parameters $\vartheta_{1}$ (solid) and $\vartheta_{2}$ (dashed) in Section~\ref{sec:limiter} (minimum over the whole computational domain) versus time (lower right panel).}
   \label{fig:Implosion}
 \end{figure}
 
@@ -222,6 +222,7 @@ Numerical results for the Fermion Implosion problem are plotted in Figure~\ref{f
 For $t>0$, the low-density region in the center of the computational domain is quickly filled in, and a cylindrical perturbation propagates radially away from the center.  
 For the model with the CB closure, this perturbation, seen as a depression in the density relative to the ambient medium, has reached $R\approx1$ for $t=1$ (upper left panel in Figure~\ref{fig:Implosion}).  
 The right panel in Figure~\ref{fig:Implosion} illustrates the difference in dynamics resulting from the two closures.  
+(We also plot a reference transport solution obtained using the filtered spherical harmonics scheme described in \cite{garrettHauck_2013}; dashed black lines.)  
 With the CB closure (blue lines), the central density increases towards the maximum value of unity, and an low-density pulse propagates radially.  
 The amplitude of the pulse decreases with time due to the geometry of the problem.  
 For $t=0.4$, the peak depression in located around $R=0.34$ (with $\cJ\approx0.96$).  
@@ -230,6 +231,7 @@ The central density starts to decrease beyond this point in time, and a steepeni
 (This pulse is trailing the pulse in the model computed with the CB closure.)  
 At $t=0.4$, a discontinuity appears to have formed around $R=0.2$, resulting in numerical oscillations.  
 Except for the positivity limiter (which is not triggered for this model), no limiters are used to prevent numerical oscillations.  
+Although the solutions obtained with the two-moment model differ from the reference transport solution, the results obtained with the CB closure are in closer agreement with the transport solution.  
 In the lower left panel in Figure~\ref{fig:Implosion}, the moments are plotted in the $(\cH_{x},\cJ)$-plane for the same times as plotted in the upper left panel.  
 (Each dot represents the moments at a specific spatial point and time.)  
 Initially, $\vect{\cH}=0$, and all the moments lie on on the line connecting $(0,0)$ and $(0,1)$; cyan points.  
