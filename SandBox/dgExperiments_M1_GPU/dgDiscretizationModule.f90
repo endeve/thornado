@@ -183,423 +183,8 @@ CONTAINS
     END IF
 
   END SUBROUTINE ComputeIncrement_M1_DG_Explicit
-
-
+ 
   SUBROUTINE ComputeIncrement_Divergence_X1_GPU &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
-
-    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
-
-    INTEGER,  INTENT(in)    :: &
-      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in)    :: &
-      GE(1:,iZ_B1(1):,1:)
-    REAL(DP), INTENT(in)    :: &
-      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
-    REAL(DP), INTENT(in)    :: &
-      U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
-    REAL(DP), INTENT(inout) :: &
-      dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
-
-    INTEGER  :: nK, iK, nF, iF, nZ(4), iNode
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iCR
-    
-    REAL(DP) :: wTime, start_t, end_t
-    REAL(DP) :: primitive_t, ff_t, ef_t, flux_x1_q_t
-    REAL(DP) :: copy_prev_t, num_flux_t, f_dgemm_t
-    REAL(DP) :: l_flux_t, r_flux_t, s_num_flux_t
-    REAL(DP) :: s_dgemm_t, update_t, total_t
-    
-    REAL(DP) :: Ones_q(nDOF), Ones_RL(nDOF_X1), dZ(4)
-    REAL(DP) :: Tau(1:nDOF), Tau_X1(1:nDOF_X1)
-    REAL(DP) :: P_q(1:nDOF,1:nPR), FF_q(1:nDOF), EF_q(1:nDOF)
-    REAL(DP), ALLOCATABLE :: Flux_X1_q(:,:,:), dU_q(:,:,:)
-    REAL(DP), ALLOCATABLE :: U_P(:,:,:), U_K(:,:,:)
-    REAL(DP), ALLOCATABLE :: U_L(:,:,:), Flux_L(:,:,:)
-    REAL(DP), ALLOCATABLE :: U_R(:,:,:), Flux_R(:,:,:)
-    REAL(DP), ALLOCATABLE :: NumericalFlux(:,:,:), dU_P(:,:,:), dU_K(:,:,:)
-    REAL(DP) :: P_L(1:nDOF_X1,1:nPR), FF_L(1:nDOF_X1), EF_L(1:nDOF_X1)
-    REAL(DP) :: P_R(1:nDOF_X1,1:nPR), FF_R(1:nDOF_X1), EF_R(1:nDOF_X1)
-
-    nZ = iZ_E0 - iZ_B0 + 1
-    nK = PRODUCT( nZ )
-    nF = PRODUCT( nZ + [0,1,0,0] )
-
-    Ones_q = One
-
-    Ones_RL = One
-
-    ALLOCATE( Flux_X1_q(1:nDOF,1:nK,1:nCR) )
-    ALLOCATE( dU_q     (1:nDOF,1:nK,1:nCR) )
-
-    ALLOCATE( U_P(1:nDOF,1:nF,1:nCR) )
-    ALLOCATE( U_K(1:nDOF,1:nF,1:nCR) )
-
-    ALLOCATE( U_L(1:nDOF_X1,1:nF,1:nCR) )
-    ALLOCATE( U_R(1:nDOF_X1,1:nF,1:nCR) )
-
-    ALLOCATE( Flux_L(1:nDOF_X1,1:nF,1:nPR) )
-    ALLOCATE( Flux_R(1:nDOF_X1,1:nF,1:nPR) )
-
-    ALLOCATE( NumericalFlux(1:nDOF_X1,1:nF,1:nCR) )
-
-    ALLOCATE( dU_P(1:nDOF,1:nF,1:nCR) )
-    ALLOCATE( dU_K(1:nDOF,1:nF,1:nCR) )
-
-    ! Init timing summation variables
-    primitive_t  = 0.0d0
-    ff_t         = 0.0d0
-    ef_t         = 0.0d0
-    flux_x1_q_t  = 0.0d0
-    copy_prev_t  = 0.0d0
-    num_flux_t   = 0.0d0
-    f_dgemm_t    = 0.0d0
-    l_flux_t     = 0.0d0
-    r_flux_t     = 0.0d0
-    s_num_flux_t = 0.0d0
-    s_dgemm_t    = 0.0d0
-    update_t     = 0.0d0
-
-    total_t = MPI_Wtime()
-
-    DO iS = 1, nSpecies
-
-      iK = 0
-      iF = 0
-
-      wTime = MPI_WTIME( )
-
-      DO iZ4 = iZ_B0(4), iZ_E0(4)
-
-        dZ(4) = MeshX(3) % Width(iZ4)
-
-        DO iZ3 = iZ_B0(3), iZ_E0(3)
-
-          dZ(3) = MeshX(2) % Width(iZ3)
-
-          DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
-
-            dZ(2) = MeshX(1) % Width(iZ2)
-
-            DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-              dZ(1) = MeshE % Width(iZ1)
-
-              Tau(1:nDOF) &
-                = OuterProduct1D3D &
-                    ( GE(:,iZ1,iGE_Ep2), nDOFE, Ones_q(1:nDOFX), nDOFX )
-
-              Tau_X1(1:nDOF_X1) &
-                = OuterProduct1D3D &
-                    ( GE(:,iZ1,iGE_Ep2), nDOFE, Ones_q(1:nDOFX_X1), nDOFX_X1 )
-
-              IF( iZ2 < iZ_E0(2) + 1 )THEN
-
-                iK = iK + 1
-
-                !PRINT *, iK
-
-                ! Timing
-                start_t = MPI_Wtime()
-
-
-                CALL ComputePrimitive &
-                       ( U(:,iZ1,iZ2,iZ3,iZ4,iCR_N, iS), &
-                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
-                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
-                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                         P_q(:,iPR_D ), P_q(:,iPR_I1), &
-                         P_q(:,iPR_I2), P_q(:,iPR_I3), &
-                         Ones_q(:), Ones_q(:), Ones_q(:) )
-
-                ! Timing
-                primitive_t = primitive_t + MPI_Wtime() - start_t
-
-                start_t = MPI_Wtime()
-
-
-                FF_q = FluxFactor &
-                         ( P_q(:,iPR_D ), P_q(:,iPR_I1), &
-                           P_q(:,iPR_I2), P_q(:,iPR_I3), &
-                           Ones_q(:), Ones_q(:), Ones_q(:) )
-
-                ! Timing
-                ff_t = ff_t + MPI_Wtime() - start_t
-
-                start_t = MPI_Wtime()
-
-                
-                EF_q = EddingtonFactor( P_q(:,iPR_D), FF_q )
-
-                ! Timing
-                ef_t = ef_t + MPI_Wtime() - start_t
-
-                start_t = MPI_Wtime()
-
-                DO iNode = 1, nDOF
-
-                  Flux_X1_q(iNode,iK,1:nCR) &
-                    = Flux_X1 &
-                        ( P_q(iNode,iPR_D ), P_q(iNode,iPR_I1), &
-                          P_q(iNode,iPR_I2), P_q(iNode,iPR_I3), &
-                          FF_q(iNode), EF_q(iNode), One, One, One )
-
-                END DO
-
-                DO iCR = 1, nCR
-
-                  Flux_X1_q(:,iK,iCR) &
-                    = dZ(1) * dZ(3) * dZ(4) * Weights_q(:) &
-                        * Tau(:) * Flux_X1_q(:,iK,iCR)
-
-                END DO
-
-                ! Timing
-                flux_x1_q_t = flux_x1_q_t + MPI_Wtime() - start_t
-
-              END IF
-
-              ! Timing
-              start_t = MPI_Wtime()
-
-              iF = iF + 1
-
-              !PRINT *, "iF: ", iF
-
-              U_P(:,iF,1:nCR) = U(:,iZ1,iZ2-1,iZ3,iZ4,1:nCR,iS)
-              U_K(:,iF,1:nCR) = U(:,iZ1,iZ2,  iZ3,iZ4,1:nCR,iS)
-
-              ! Timing
-              copy_prev_t = copy_prev_t + MPI_Wtime() - start_t
-
-              start_t = MPI_Wtime()
-
-              DO iCR = 1, nCR
-
-                NumericalFlux(:,iF,iCR) &
-                  = dZ(1) * dZ(3) * dZ(4) * Weights_X1(:) * Tau_X1(:)
-
-              END DO
-
-              ! Timing
-              num_flux_t = num_flux_t + MPI_Wtime() - start_t
-
-            END DO
-          END DO
-        END DO
-      END DO
-
-      wTime = MPI_WTIME( ) - wTime
-
-      print*, "Prep Time = ", wTime
-
-      PRINT *, "Printing prep time proportions:"
-      PRINT *, "primitive: ", primitive_t, "ff: ", ff_t, "ef: ", ef_t
-      PRINT *, "flux_x1_q: ", flux_x1_q_t, "copy left/right: ", copy_prev_t
-      PRINT *, "numerical flux: ", num_flux_t
-      PRINT *, ""
-
-      wTime = MPI_WTIME( )
-
-      start_t = MPI_Wtime()
-
-      DO iCR = 1, nCR
-
-        CALL DGEMM &
-               ( 'T', 'N', nDOF, nK, nDOF, One, dLdX1_q(:,:), nDOF, &
-                 Flux_X1_q(:,:,iCR), nDOF, Zero, dU_q(:,:,iCR), nDOF )
-
-        CALL DGEMM &
-               ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Up(:,:), nDOF_X1, &
-                 U_P(:,:,iCR), nDOF, Zero, U_L(:,:,iCR), nDOF_X1 )
-
-        CALL DGEMM &
-               ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Dn(:,:), nDOF_X1, &
-                 U_K(:,:,iCR), nDOF, Zero, U_R(:,:,iCR), nDOF_X1 )
-
-      END DO
-
-      ! Timing
-      f_dgemm_t = f_dgemm_t + MPI_Wtime() - start_t
-
-      DO iF = 1,nF
-
-        ! --- Left State Primitive, etc. ---
-
-        start_t = MPI_Wtime()
-
-        CALL ComputePrimitive &
-               ( U_L(:,iF,iCR_N ), U_L(:,iF,iCR_G1), &
-                 U_L(:,iF,iCR_G2), U_L(:,iF,iCR_G3), &
-                 P_L(:,   iPR_D ), P_L(:,   iPR_I1), &
-                 P_L(:,   iPR_I2), P_L(:,   iPR_I3), &
-                 Ones_RL(:), Ones_RL(:), Ones_RL(:) )
-
-        FF_L = FluxFactor &
-                 ( P_L(:,iPR_D ), P_L(:,iPR_I1), &
-                   P_L(:,iPR_I2), P_L(:,iPR_I3), &
-                   Ones_RL(:), Ones_RL(:), Ones_RL(:) )
-
-        EF_L = EddingtonFactor( P_L(:,iPR_D), FF_L )
-
-        DO iNode = 1, nDOF_X1
-
-          Flux_L(iNode,iF,1:nCR) &
-            = Flux_X1 &
-                ( P_L(iNode,iPR_D ), P_L(iNode,iPR_I1), &
-                  P_L(iNode,iPR_I2), P_L(iNode,iPR_I3), &
-                  FF_L(iNode), EF_L(iNode), One, One, One )
-
-        END DO
-
-        ! Timing
-        l_flux_t = l_flux_t + MPI_Wtime() - start_t
-
-        start_t = MPI_Wtime()
-
-        ! --- Right State Primitive, etc. ---
-
-        CALL ComputePrimitive &
-               ( U_R(:,iF,iCR_N ), U_R(:,iF,iCR_G1), &
-                 U_R(:,iF,iCR_G2), U_R(:,iF,iCR_G3), &
-                 P_R(:,   iPR_D ), P_R(:,   iPR_I1), &
-                 P_R(:,   iPR_I2), P_R(:,   iPR_I3), &
-                 Ones_RL(:), Ones_RL(:), Ones_RL(:) )
-
-        FF_R = FluxFactor &
-                 ( P_R(:,iPR_D ), P_R(:,iPR_I1), &
-                   P_R(:,iPR_I2), P_R(:,iPR_I3), &
-                   Ones_RL(:), Ones_RL(:), Ones_RL(:) )
-
-        EF_R = EddingtonFactor( P_R(:,iPR_D), FF_R )
-
-        DO iNode = 1, nDOF_X1
-
-          Flux_R(iNode,iF,1:nCR) &
-            = Flux_X1 &
-                ( P_R(iNode,iPR_D ), P_R(iNode,iPR_I1), &
-                  P_R(iNode,iPR_I2), P_R(iNode,iPR_I3), &
-                  FF_R(iNode), EF_R(iNode), One, One, One )
-
-        END DO
-
-        ! Timing
-        r_flux_t = r_flux_t + MPI_Wtime() - start_t
-
-        start_t = MPI_Wtime()
-
-        ! --- Numerical Flux ---
-
-        DO iCR = 1, nCR
-
-          NumericalFlux(:,iF,iCR) &
-            = NumericalFlux_LLF &
-                ( U_L   (:,iF,iCR), U_R   (:,iF,iCR), &
-                  Flux_L(:,iF,iCR), Flux_R(:,iF,iCR), &
-                  Ones_RL(:) ) * NumericalFlux(:,iF,iCR)
-
-        END DO
-
-        ! Timing
-        s_num_flux_t = s_num_flux_t + MPI_Wtime() - start_t
-
-      END DO ! --- iF
-
-      ! Timing
-      start_t = MPI_Wtime()
-
-      DO iCR = 1, nCR
-
-        CALL DGEMM &
-               ( 'T', 'N', nDOF, nF, nDOF_X1, One, L_X1_Dn, nDOF_X1, &
-                 NumericalFlux(:,:,iCR), nDOF_X1, Zero, dU_K(:,:,iCR), nDOF )
-
-        CALL DGEMM &
-               ( 'T', 'N', nDOF, nF, nDOF_X1, One, L_X1_Up, nDOF_X1, &
-                 NumericalFlux(:,:,iCR), nDOF_X1, Zero, dU_P(:,:,iCR), nDOF )
-
-      END DO
-
-      ! Timing
-      s_dgemm_t = s_dgemm_t + MPI_Wtime() - start_t
-
-      start_t = MPI_Wtime()
-
-      iK = 0
-      iF = 0
-
-      DO iZ4 = iZ_B0(4), iZ_E0(4)
-        DO iZ3 = iZ_B0(3), iZ_E0(3)
-          DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
-            DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-              IF( iZ2 < iZ_E0(2) + 1 )THEN
-
-                ! --- Volume Term ---
-
-                iK = iK + 1
-
-                dU(:,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
-                  = dU(:,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
-                      + dU_q(:,iK,1:nCR)
-
-              END IF
-
-              IF = iF + 1
-
-              ! --- Flux Terms ---
-
-              IF( iZ2 < iZ_E0(2) + 1 )THEN
-
-                ! --- Contribution to this Element ---
-
-                dU(:,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
-                  = dU(:,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
-                      + dU_K(:,iF,1:nCR)
-
-              END IF
-
-              IF( iZ2 > iZ_B0(2) )THEN
-
-                ! --- Contribution to this Element ---
-
-                dU(:,iZ1,iZ2-1,iZ3,iZ4,1:nCR,iS) &
-                  = dU(:,iZ1,iZ2-1,iZ3,iZ4,1:nCR,iS) &
-                      - dU_P(:,iF,1:nCR)
-
-              END IF
-
-            END DO
-          END DO
-        END DO
-      END DO
-
-      ! Timing
-      update_t = update_t + MPI_Wtime() - start_t
-
-      PRINT *, "Printing calculation times:"
-      PRINT *, "first dgemm calls: ", f_dgemm_t, "left flux: ", l_flux_t, "right flux: ", r_flux_t
-      PRINT *, "second num flux update: ", s_num_flux_t, "second dgemm calls: ", s_dgemm_t
-      PRINT *, "update of result: ", update_t
-      PRINT *, ""
-
-      wTime = MPI_WTIME( ) - wTime
-
-      PRINT *, "Total time: ", MPI_Wtime() - total_t
-      PRINT *, ""
-      PRINT *, ""
-
-      print*, "Comp Time = ", wTime
-
-    END DO ! --- nSpecies
-
-    DEALLOCATE( Flux_X1_q, dU_q, U_P, U_K )
-
-    DEALLOCATE( U_L, U_R, Flux_L, Flux_R, NumericalFlux, dU_P, dU_K )
-
-  END SUBROUTINE ComputeIncrement_Divergence_X1_GPU
-  
-  SUBROUTINE ComputeIncrement_Divergence_X1_GPU_TEST &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
@@ -818,6 +403,442 @@ CONTAINS
         END DO
       END DO
       !$OMP END PARALLEL DO
+
+      wTime = MPI_WTIME( ) - wTime
+
+      PRINT *, "Prep Time: ", wTime
+
+      !PRINT *, "Printing prep time proportions:"
+      PRINT *, "primitive: ", primitive_t, "ff: ", ff_t
+      PRINT *, "ef: ", ef_t
+      PRINT *, "flux_x1_q: ", flux_x1_q_t, "copy left/right: ", copy_prev_t
+      PRINT *, "numerical flux: ", num_flux_t
+      PRINT *, ""
+
+      wTime = MPI_WTIME( )
+
+      start_t = MPI_Wtime()
+
+      DO iCR = 1, nCR
+
+        CALL DGEMM &
+               ( 'T', 'N', nDOF, nK, nDOF, One, dLdX1_q(:,:), nDOF, &
+                 Flux_X1_q(:,:,iCR), nDOF, Zero, dU_q(:,:,iCR), nDOF )
+
+        CALL DGEMM &
+               ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Up(:,:), nDOF_X1, &
+                 U_P(:,:,iCR), nDOF, Zero, U_L(:,:,iCR), nDOF_X1 )
+
+        CALL DGEMM &
+               ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Dn(:,:), nDOF_X1, &
+                 U_K(:,:,iCR), nDOF, Zero, U_R(:,:,iCR), nDOF_X1 )
+
+      END DO
+
+      ! Timing
+      f_dgemm_t = f_dgemm_t + MPI_Wtime() - start_t
+
+      DO iF = 1,nF
+
+        ! --- Left State Primitive, etc. ---
+
+        start_t = MPI_Wtime()
+
+        CALL ComputePrimitive &
+               ( U_L(:,iF,iCR_N ), U_L(:,iF,iCR_G1), &
+                 U_L(:,iF,iCR_G2), U_L(:,iF,iCR_G3), &
+                 P_L(:,   iPR_D ), P_L(:,   iPR_I1), &
+                 P_L(:,   iPR_I2), P_L(:,   iPR_I3), &
+                 Ones_RL(:), Ones_RL(:), Ones_RL(:) )
+
+        FF_L = FluxFactor &
+                 ( P_L(:,iPR_D ), P_L(:,iPR_I1), &
+                   P_L(:,iPR_I2), P_L(:,iPR_I3), &
+                   Ones_RL(:), Ones_RL(:), Ones_RL(:) )
+
+        EF_L = EddingtonFactor( P_L(:,iPR_D), FF_L )
+
+        DO iNode = 1, nDOF_X1
+
+          Flux_L(iNode,iF,1:nCR) &
+            = Flux_X1 &
+                ( P_L(iNode,iPR_D ), P_L(iNode,iPR_I1), &
+                  P_L(iNode,iPR_I2), P_L(iNode,iPR_I3), &
+                  FF_L(iNode), EF_L(iNode), One, One, One )
+
+        END DO
+
+        ! Timing
+        l_flux_t = l_flux_t + MPI_Wtime() - start_t
+
+        start_t = MPI_Wtime()
+
+        ! --- Right State Primitive, etc. ---
+
+        CALL ComputePrimitive &
+               ( U_R(:,iF,iCR_N ), U_R(:,iF,iCR_G1), &
+                 U_R(:,iF,iCR_G2), U_R(:,iF,iCR_G3), &
+                 P_R(:,   iPR_D ), P_R(:,   iPR_I1), &
+                 P_R(:,   iPR_I2), P_R(:,   iPR_I3), &
+                 Ones_RL(:), Ones_RL(:), Ones_RL(:) )
+
+        FF_R = FluxFactor &
+                 ( P_R(:,iPR_D ), P_R(:,iPR_I1), &
+                   P_R(:,iPR_I2), P_R(:,iPR_I3), &
+                   Ones_RL(:), Ones_RL(:), Ones_RL(:) )
+
+        EF_R = EddingtonFactor( P_R(:,iPR_D), FF_R )
+
+        DO iNode = 1, nDOF_X1
+
+          Flux_R(iNode,iF,1:nCR) &
+            = Flux_X1 &
+                ( P_R(iNode,iPR_D ), P_R(iNode,iPR_I1), &
+                  P_R(iNode,iPR_I2), P_R(iNode,iPR_I3), &
+                  FF_R(iNode), EF_R(iNode), One, One, One )
+
+        END DO
+
+        ! Timing
+        r_flux_t = r_flux_t + MPI_Wtime() - start_t
+
+        start_t = MPI_Wtime()
+
+        ! --- Numerical Flux ---
+
+        DO iCR = 1, nCR
+
+          NumericalFlux(:,iF,iCR) &
+            = NumericalFlux_LLF &
+                ( U_L   (:,iF,iCR), U_R   (:,iF,iCR), &
+                  Flux_L(:,iF,iCR), Flux_R(:,iF,iCR), &
+                  Ones_RL(:) ) * NumericalFlux(:,iF,iCR)
+
+        END DO
+
+        ! Timing
+        s_num_flux_t = s_num_flux_t + MPI_Wtime() - start_t
+
+      END DO ! --- iF
+
+      ! Timing
+      start_t = MPI_Wtime()
+
+      DO iCR = 1, nCR
+
+        CALL DGEMM &
+               ( 'T', 'N', nDOF, nF, nDOF_X1, One, L_X1_Dn, nDOF_X1, &
+                 NumericalFlux(:,:,iCR), nDOF_X1, Zero, dU_K(:,:,iCR), nDOF )
+
+        CALL DGEMM &
+               ( 'T', 'N', nDOF, nF, nDOF_X1, One, L_X1_Up, nDOF_X1, &
+                 NumericalFlux(:,:,iCR), nDOF_X1, Zero, dU_P(:,:,iCR), nDOF )
+
+      END DO
+
+      ! Timing
+      s_dgemm_t = s_dgemm_t + MPI_Wtime() - start_t
+
+      start_t = MPI_Wtime()
+
+      iK = 0
+      iF = 0
+
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+              IF( iZ2 < iZ_E0(2) + 1 )THEN
+
+                ! --- Volume Term ---
+
+                iK = iK + 1
+
+                dU(:,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
+                  = dU(:,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
+                      + dU_q(:,iK,1:nCR)
+
+              END IF
+
+              IF = iF + 1
+
+              ! --- Flux Terms ---
+
+              IF( iZ2 < iZ_E0(2) + 1 )THEN
+
+                ! --- Contribution to this Element ---
+
+                dU(:,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
+                  = dU(:,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
+                      + dU_K(:,iF,1:nCR)
+
+              END IF
+
+              IF( iZ2 > iZ_B0(2) )THEN
+
+                ! --- Contribution to this Element ---
+
+                dU(:,iZ1,iZ2-1,iZ3,iZ4,1:nCR,iS) &
+                  = dU(:,iZ1,iZ2-1,iZ3,iZ4,1:nCR,iS) &
+                      - dU_P(:,iF,1:nCR)
+
+              END IF
+
+            END DO
+          END DO
+        END DO
+      END DO
+
+      ! Timing
+      update_t = update_t + MPI_Wtime() - start_t
+
+      !PRINT *, "Printing calculation times:"
+      PRINT *, "first dgemm calls: ", f_dgemm_t, "left flux: ", l_flux_t
+      PRINT *, "right flux: ", r_flux_t
+      PRINT *, "second num flux update: ", s_num_flux_t
+      PRINT *, "second dgemm calls: ", s_dgemm_t
+      PRINT *, "update of result: ", update_t
+      PRINT *, ""
+
+      wTime = MPI_WTIME( ) - wTime
+
+      PRINT *,  "Comp Time: ", wTime
+
+
+      PRINT *, "Total time: ", MPI_Wtime() - total_t
+      PRINT *, ""
+      PRINT *, ""
+    
+    END DO ! --- nSpecies
+
+    DEALLOCATE( Flux_X1_q, dU_q, U_P, U_K )
+
+    DEALLOCATE( U_L, U_R, Flux_L, Flux_R, NumericalFlux, dU_P, dU_K )
+
+  END SUBROUTINE ComputeIncrement_Divergence_X1_GPU
+
+  SUBROUTINE ComputeIncrement_Divergence_X1_GPU_TEST &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      GE(1:,iZ_B1(1):,1:)
+    REAL(DP), INTENT(in)    :: &
+      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+    REAL(DP), INTENT(in)    :: &
+      U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+    REAL(DP), INTENT(inout) :: &
+      dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+
+    INTEGER  :: nK, iK, nF, iF, nZ(4), iNode
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iCR
+    
+    INTEGER  :: size_range(1:4)
+    INTEGER  :: Ones_size(1:4)
+
+    REAL(DP) :: wTime, start_t, end_t
+    REAL(DP) :: primitive_t, ff_t, ef_t, flux_x1_q_t
+    REAL(DP) :: copy_prev_t, num_flux_t, f_dgemm_t
+    REAL(DP) :: l_flux_t, r_flux_t, s_num_flux_t
+    REAL(DP) :: s_dgemm_t, update_t, total_t
+    
+    REAL(DP) :: Ones_q(nDOF), Ones_RL(nDOF_X1), dZ(4)
+    REAL(DP) :: Tau(1:nDOF), Tau_X1(1:nDOF_X1)
+    REAL(DP) :: P_q(1:nDOF,1:nPR), FF_q(1:nDOF), EF_q(1:nDOF)
+    REAL(DP), ALLOCATABLE :: Flux_X1_q(:,:,:), dU_q(:,:,:)
+    REAL(DP), ALLOCATABLE :: U_P(:,:,:), U_K(:,:,:)
+    REAL(DP), ALLOCATABLE :: U_L(:,:,:), Flux_L(:,:,:)
+    REAL(DP), ALLOCATABLE :: U_R(:,:,:), Flux_R(:,:,:)
+    REAL(DP), ALLOCATABLE :: NumericalFlux(:,:,:), dU_P(:,:,:), dU_K(:,:,:)
+    REAL(DP) :: P_L(1:nDOF_X1,1:nPR), FF_L(1:nDOF_X1), EF_L(1:nDOF_X1)
+    REAL(DP) :: P_R(1:nDOF_X1,1:nPR), FF_R(1:nDOF_X1), EF_R(1:nDOF_X1)
+
+    nZ = iZ_E0 - iZ_B0 + 1
+    nK = PRODUCT( nZ )
+    nF = PRODUCT( nZ + [0,1,0,0] )
+
+    Ones_q = One
+
+    Ones_RL = One
+
+    Ones_size = One
+
+    ALLOCATE( Flux_X1_q(1:nDOF,1:nK,1:nCR) )
+    ALLOCATE( dU_q     (1:nDOF,1:nK,1:nCR) )
+
+    ALLOCATE( U_P(1:nDOF,1:nF,1:nCR) )
+    ALLOCATE( U_K(1:nDOF,1:nF,1:nCR) )
+
+    ALLOCATE( U_L(1:nDOF_X1,1:nF,1:nCR) )
+    ALLOCATE( U_R(1:nDOF_X1,1:nF,1:nCR) )
+
+    ALLOCATE( Flux_L(1:nDOF_X1,1:nF,1:nPR) )
+    ALLOCATE( Flux_R(1:nDOF_X1,1:nF,1:nPR) )
+
+    ALLOCATE( NumericalFlux(1:nDOF_X1,1:nF,1:nCR) )
+
+    ALLOCATE( dU_P(1:nDOF,1:nF,1:nCR) )
+    ALLOCATE( dU_K(1:nDOF,1:nF,1:nCR) )
+
+    ! Init timing summation variables
+    primitive_t  = 0.0d0
+    ff_t         = 0.0d0
+    ef_t         = 0.0d0
+    flux_x1_q_t  = 0.0d0
+    copy_prev_t  = 0.0d0
+    num_flux_t   = 0.0d0
+    f_dgemm_t    = 0.0d0
+    l_flux_t     = 0.0d0
+    r_flux_t     = 0.0d0
+    s_num_flux_t = 0.0d0
+    s_dgemm_t    = 0.0d0
+    update_t     = 0.0d0
+
+    total_t = MPI_Wtime()
+
+    DO iS = 1, nSpecies
+
+      iK = 0
+      iF = 0
+
+      wTime = MPI_WTIME( )
+
+      ! Added to accomodate ranges and make iK dependent on iZ
+      size_range = iZ_E0 - iZ_B0 + Ones_size
+
+      !$OMP TARGET MAP(alloc:) MAP(tofrom: )
+
+      !$OMP TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(4) PRIVATE(iZ4, iZ3, iZ2, iZ1, dZ, &
+      !$OMP& FF_q, EF_q, Tau, Tau_X1, P_q) FIRSTPRIVATE(iK, iF)
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+              dZ(1) = MeshE    % Width(iZ1)
+              dZ(2) = MeshX(1) % Width(iZ2)
+              dZ(3) = MeshX(2) % Width(iZ3)
+              dZ(4) = MeshX(3) % Width(iZ4)
+
+              Tau(1:nDOF) &
+                = OuterProduct1D3D &
+                    ( GE(:,iZ1,iGE_Ep2), nDOFE, Ones_q(1:nDOFX), nDOFX )
+
+              Tau_X1(1:nDOF_X1) &
+                = OuterProduct1D3D &
+                    ( GE(:,iZ1,iGE_Ep2), nDOFE, Ones_q(1:nDOFX_X1), nDOFX_X1 )
+
+              IF( iZ2 < iZ_E0(2) + 1 )THEN
+
+                !iK = iK + 1
+                iK = (iZ1 - iZ_B0(1) + 1) + (iZ2 - iZ_B0(2)) * size_range(1) +&
+                        (iZ3 - iZ_B0(3)) * size_range(2) * size_range(1) + &
+                        (iZ4 - iZ_B0(4)) * size_range(3) * size_range(2) * size_range(1)
+
+                !PRINT *, "iK: ", iK
+                !PRINT *, "iZ1: ", iZ1, "iZ_B0(1): ", iZ_B0(1), "iZ_E0(1): ", iZ_E0(1)
+                !PRINT *, "iZ2: ", iZ2, "iZ_B0(2): ", iZ_B0(2), "iZ_E0(2): ", iZ_E0(2)
+                !PRINT *, "iZ3: ", iZ3, "iZ_B0(3): ", iZ_B0(3), "iZ_E0(3): ", iZ_E0(3)
+                !PRINT *, "iZ4: ", iZ4, "iZ_B0(4): ", iZ_B0(4), "iZ_E0(4): ", iZ_E0(4)
+                !PRINT *, "Sizes: ", size_range
+
+                ! Timing
+                !start_t = MPI_Wtime()
+
+
+                CALL ComputePrimitive &
+                       ( U(:,iZ1,iZ2,iZ3,iZ4,iCR_N, iS), &
+                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                         U(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                         P_q(:,iPR_D ), P_q(:,iPR_I1), &
+                         P_q(:,iPR_I2), P_q(:,iPR_I3), &
+                         Ones_q(:), Ones_q(:), Ones_q(:) )
+
+                ! Timing
+                !primitive_t = primitive_t + MPI_Wtime() - start_t
+
+                !start_t = MPI_Wtime()
+
+
+                FF_q = FluxFactor &
+                         ( P_q(:,iPR_D ), P_q(:,iPR_I1), &
+                           P_q(:,iPR_I2), P_q(:,iPR_I3), &
+                           Ones_q(:), Ones_q(:), Ones_q(:) )
+
+                ! Timing
+                !ff_t = ff_t + MPI_Wtime() - start_t
+
+                !start_t = MPI_Wtime()
+
+                
+                EF_q = EddingtonFactor( P_q(:,iPR_D), FF_q )
+
+                ! Timing
+                !ef_t = ef_t + MPI_Wtime() - start_t
+
+                !start_t = MPI_Wtime()
+
+                DO iNode = 1, nDOF
+
+                  Flux_X1_q(iNode,iK,1:nCR) &
+                    = Flux_X1 &
+                        ( P_q(iNode,iPR_D ), P_q(iNode,iPR_I1), &
+                          P_q(iNode,iPR_I2), P_q(iNode,iPR_I3), &
+                          FF_q(iNode), EF_q(iNode), One, One, One )
+
+                END DO
+
+                DO iCR = 1, nCR
+
+                  Flux_X1_q(:,iK,iCR) &
+                    = dZ(1) * dZ(3) * dZ(4) * Weights_q(:) &
+                        * Tau(:) * Flux_X1_q(:,iK,iCR)
+
+                END DO
+
+                ! Timing
+                !flux_x1_q_t = flux_x1_q_t + MPI_Wtime() - start_t
+
+              END IF
+
+              ! Timing
+              !start_t = MPI_Wtime()
+
+              !iF = iF + 1
+              iF = (iZ1 - iZ_B0(1) + 1) + (iZ2 - iZ_B0(2)) * size_range(1) +&
+                        (iZ3 - iZ_B0(3)) * (size_range(2) + 1) * size_range(1) + &
+                        (iZ4 - iZ_B0(4)) * size_range(3) * (size_range(2) + 1) * size_range(1)
+
+              !PRINT *, "iF: ", iF
+
+              U_P(:,iF,1:nCR) = U(:,iZ1,iZ2-1,iZ3,iZ4,1:nCR,iS)
+              U_K(:,iF,1:nCR) = U(:,iZ1,iZ2,  iZ3,iZ4,1:nCR,iS)
+
+              ! Timing
+              !copy_prev_t = copy_prev_t + MPI_Wtime() - start_t
+
+              !start_t = MPI_Wtime()
+
+              DO iCR = 1, nCR
+
+                NumericalFlux(:,iF,iCR) &
+                  = dZ(1) * dZ(3) * dZ(4) * Weights_X1(:) * Tau_X1(:)
+
+              END DO
+
+              ! Timing
+              !num_flux_t = num_flux_t + MPI_Wtime() - start_t
+
+            END DO
+          END DO
+        END DO
+      END DO
+      !$OMP END TARGET
 
       wTime = MPI_WTIME( ) - wTime
 

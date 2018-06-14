@@ -4,11 +4,12 @@ import matplotlib.pyplot as plt
 import re
 import sys
 
-if( len( sys.argv ) < 2 ):
+if( len( sys.argv ) < 3 ):
     print('Please use 2 command line arguments')
     sys.exit()
 
 thread_num = sys.argv[1]
+mkl_thread_num = sys.argv[2]
 
 fp = open('data.txt', 'r')
 
@@ -63,7 +64,7 @@ for key in myData.keys():
     
 fp = open('output.txt', 'a+')
 
-fp.write('{}\t'.format(thread_num))
+fp.write('{},{}\t'.format(thread_num,mkl_thread_num))
 
 if( len(output_order) != len(myData.keys()) ):
     print('error with not including all keys')
