@@ -133,12 +133,15 @@ Lemma~\ref{lem:explicitStep} is used to help prove the realizability-preserving 
   Then $\vect{\cM}_{b}\in\cR$.  
   \label{lem:implicitStep}
 \end{lemma}
-
 \begin{proof}
+  Solving for $\vect{\cM}_{b}$ gives
+  \begin{equation*}
+    \vect{\cM}_{b} = \big(\vect{I}+\alpha\,\vect{\cD}\big)^{-1}\big(\vect{\cM}_{a}+\alpha\,\vect{\eta}\big).  
+  \end{equation*}
   The first component of $\vect{\cM}_{b}$ can be written as
-  \begin{equation}
+  \begin{equation*}
     \cJ_{b}=\f{1}{4\pi}\int_{\bbS}f_{b}(\omegaNu)\,d\omegaNu,
-  \end{equation}
+  \end{equation*}
   where $f_{b}(\omegaNu)=\theta\,f_{a}(\omegaNu)+(1-\theta)\,f_{0}$ and $\theta=1/(1+\alpha\,\xi)\in[0,1]$.  
   Then, since $f_{b}(\omegaNu)\in[0,1]\,\forall\,\omegaNu\in\bbS^{2}$, $\cJ_{b}\in[0,1]$.  
   Similarly, we can write
