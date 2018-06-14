@@ -70,7 +70,7 @@ To prove the positivity-preserving property of the IMEX scheme, Hu et al. \cite{
 where $c_{ij}$, and $\hat{c}_{ij}=\tilde{c}_{ij}/c_{ij}$ are computed from $\tilde{a}_{ij}$ and $a_{ij}$.
 Such that, $c_{i0} = 1 - \sum_{j=1}^{i-1}c_{ij}$, $c_{ij} = \sum_{l=j}^{i-1}a_{il}b_{lj}$, $\tilde{c}_{i0} = \tilde{a}_{i1} + \sum_{j=2}^{i-1} a_{ij}\tilde{b}_{j1}$,$\tilde{c}_{ij} = \tilde{a}_{ij} + \sum_{l=j+1}^{i-1} a_{il}\tilde{b}_{lj}$ $b_{ij} = - \frac{1}{a_{ii}} \sum_{l = j}^{i-1}a_{il}b_{lj}$, $b_{ii} = \frac{1}{a_{ii}}$, $\tilde{b}_{ij} = \frac{1}{a_{ii}}\big( -\tilde{a}_{ij} - \sum_{l = j+1}^{i-1}a_{il}\tilde{b}_{lj}\big)$. 
 (In Eq.~\eqref{eq:imexStagesRewrite}, $\vect{u}^{(0)}=\vect{u}^{n}$.)  
-Two types of IMEX schemes are considered: \emph{type~A} \cite{pareschiRusso_2005} and \emph{type~ARS} \cite{ascher_etal_1997}.  
+Two types of IMEX schemes are considered: \emph{type~A} \cite{pareschiRusso_2005,dimarcoPareschi2013} and \emph{type~ARS} \cite{ascher_etal_1997}.  
 For IMEX schemes of type~A, the matrix $A$ is invertible.  
 For IMEX schemes of type~ARS, the matrix $A$ can be written as
 \[\left( 
