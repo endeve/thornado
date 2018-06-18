@@ -1,7 +1,7 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, Pi, TwoPi
+    DP, One, Two, Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_B1, iX_E0, iX_E1
   USE ProgramInitializationModule, ONLY: &
@@ -37,7 +37,8 @@ PROGRAM ApplicationDriver
     InitializePositivityLimiter_Euler, &
     FinalizePositivityLimiter_Euler
   USE EulerEquationsUtilitiesModule_Beta, ONLY: &
-    ComputeFromConserved
+    ComputeFromConserved, &
+    ComputeTimeStep
   USE dgDiscretizationModule_Euler, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
 
@@ -63,7 +64,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'RayleighTaylor'
+  ProgramName = 'RiemannProblemSpherical'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -123,7 +124,7 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
 
-      nX = [ 128, 4, 1 ]
+      nX = [ 128, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] + 1.0d-16
       xR = [ 2.0_DP, Pi,     TwoPi  ] - 1.0d-16
 
@@ -134,15 +135,15 @@ PROGRAM ApplicationDriver
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
 
-      UseSlopeLimiter           = .FALSE.
-      UseCharacteristicLimiting = .FALSE.
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .TRUE.
 
       UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 0.03_DP
 
       iCycleD = 1
       t_end   = 5.0d-1
-      dt_wrt  = 1.0d-2
+      dt_wrt  = 2.0d-4
 
     CASE( 'KelvinHelmholtz' )
 
@@ -296,8 +297,11 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    dt = 0.1_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
-         / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+    CALL ComputeTimeStep &
+           ( iX_B0, iX_E0, &
+             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             CFL = 0.3_DP / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
 
     IF( t + dt > t_end )THEN
 
