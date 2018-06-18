@@ -20,6 +20,10 @@ MODULE SlopeLimiterModule_Euler
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
+    nGF, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
@@ -170,9 +174,10 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     LOGICAL  :: LimitPolynomial
-    INTEGER  :: iX1, iX2, iX3, iCF, iDimX
+    INTEGER  :: iX1, iX2, iX3, iGF, iCF, iDimX
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
+    REAL(DP) :: G_K(nGF)
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
     REAL(DP) :: U_K(nCF,0:1)
@@ -199,6 +204,14 @@ CONTAINS
           dX1 = MeshX(1) % Width(iX1)
           dX2 = MeshX(2) % Width(iX2)
           dX3 = MeshX(3) % Width(iX3)
+
+          ! --- Cell Average of Geometry (Spatial Metric Only) ---
+
+          DO iGF = iGF_Gm_dd_11, iGF_Gm_dd_33
+
+            G_K(iGF) = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF) )
+
+          END DO
 
           ! --- Map to Modal Representation ---
 
@@ -246,14 +259,14 @@ CONTAINS
             ! --- Compute Eigenvectors ---
 
             CALL ComputeCharacteristicDecomposition &
-                   ( 1, U_M(:,0,1), R_X1, invR_X1 )
+                   ( 1, G_K(:), U_M(:,0,1), R_X1, invR_X1 )
 
             U_M(:,0,2) = MATMUL( invR_X1, U_M(:,0,2) )
 
             IF( nDimsX > 1 )THEN
 
               CALL ComputeCharacteristicDecomposition &
-                   ( 2, U_M(:,0,1), R_X2, invR_X2 )
+                   ( 2, G_K(:), U_M(:,0,1), R_X2, invR_X2 )
 
               U_M(:,0,3) = MATMUL( invR_X2, U_M(:,0,3) )
 
@@ -262,7 +275,7 @@ CONTAINS
             IF( nDimsX > 2 )THEN
 
               CALL ComputeCharacteristicDecomposition &
-                   ( 3, U_M(:,0,1), R_X3, invR_X3 )
+                   ( 3, G_K(:), U_M(:,0,1), R_X3, invR_X3 )
 
               U_M(:,0,4) = MATMUL( invR_X3, U_M(:,0,4) )
 
