@@ -99,7 +99,7 @@ Note that positivity of $\vect{u}^{(i)}$ also requires the implicit solve (equiv
 In \cite{hu_etal_2018}, Hu et al. provide examples of GSA, positivity-preserving IMEX schemes of type A (see scheme PA2 in \ref{app:butcherTables}) and type ARS.  
 In \ref{app:butcherTables}, we provide another example of a GSA, positivity-preserving IMEX scheme of type A (scheme PA2+), with a larger $c_{\mbox{\tiny Sch}}$ (a factor of about $1.7$ larger).  
 
-\subsection{Diffusion Accurate, Positivity-Preserving IMEX Schemes}
+\subsection{Positivity-Preserving, Diffusion Accurate IMEX Schemes}
 
 Unfortunately, the correction step in Eq.~\eqref{eq:imexCorrection} deteriorates the accuracy of the IMEX scheme when applied to the moment equations in the diffusion limit ($\xi=0$, $\tau\ll 1$), where $\vect{\cK}\approx\f{1}{3}\,\cJ\,\vect{I}$.  
 In the diffusion limit, to leading order in $\tau$, we then have $\vect{\cH}\approx-\f{1}{3}\,\tau\,\nabla\cJ$, which is due to a balance between the transport term and the collision term in the equation for the particle flux $\vect{\cH}$.  
@@ -159,14 +159,22 @@ This gives the order conditions
   \label{eq:orderConditionsEx}
 \end{equation}
 where the first condition (consistency condition) is required for first-order accuracy.  
-We then seek to design GSA IMEX schemes of Type~ARS conforming to the following definition
+We then seek to design IMEX schemes of Type~ARS conforming to the following working definition
 \begin{define}
-  A diffusion accurate, positivity-preserving IMEX scheme satisfies the following properties
+  Let PD-IMEX be a consistent, positivity-preserving, diffusion accurate, and low-stage GSA IMEX scheme satisfying the following properties
   \begin{itemize}
+    \item Consistency of the implicit coefficients
+    \begin{equation*}
+      \sum_{i=1}^{s}w_{i}=1.
+    \end{equation*}
     \item Second-order in the streaming limit; i.e., satisfies Eq.~\eqref{eq:orderConditionsEx}.
+    \item Positivity-preserving (conditions given by \cite{hu_etal_2018}; with $c_{\mbox{\tiny Sch}}>0$).
     \item Well-behaved in the diffusion limit; i.e., satisfies Eq.~\eqref{eq:diffusionCondition}.
-    \item Positivity-preserving (conditions given by \cite{hu_etal_2018}; with $c_{\mbox{\tiny Sch}}>0$ and maximal).
     \item Few stages ($s\le3$).
+    \item Globally stiffly accurate (GSA)
+    \begin{equation*}
+      a_{si}=w_{i}\quad\text{and}\quad\tilde{a}_{si}=\tilde{w}_{i},\quad i=1,\ldots,s.
+    \end{equation*}
   \end{itemize}
   \label{def:DIMEXP}
 \end{define}
