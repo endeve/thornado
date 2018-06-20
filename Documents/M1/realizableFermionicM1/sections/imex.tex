@@ -178,15 +178,15 @@ We then seek to design IMEX schemes of Type~ARS conforming to the following work
   \end{itemize}
   \label{def:DIMEXP}
 \end{define}
-Fortunately, IMEX schemes satisfying these properties are easy to find, and we provide an example with $s=3$ (two implicit solves) in \ref{app:butcherTables} (scheme PARSD; see \ref{app:PARSD} for details).  
+Fortunately, IMEX schemes satisfying these properties are easy to find, and we provide an example with $s=3$ (two implicit solves) in \ref{app:butcherTables} (scheme PD-ARS; see \ref{app:PD-ARS} for details).  
 In the streaming limit, this scheme is identical to the optimal second-order accurate strong-stability preserving Runge-Kutta method \cite{gottlieb_etal_2001}.  
 It is also very similar to the scheme given in \cite{mcclarren_etal_2008} (see scheme PC2 in \ref{app:butcherTables}), which is also a GSA IMEX scheme of type ARS with $s=3$.  
 Scheme PC2 is second-order in the streaming limit, has been demonstrated to work well in the diffusion limit \cite{mcclarren_etal_2008,radice_etal_2013}, and satisfies the positivity conditions, but $c_{\mbox{\tiny Sch}}=0$ (our primary motivation for finding an alternative).  
-In Section~\ref{sec:numerical}, we show numerically that the accuracy of scheme PARSD is comparable to the accuracy of scheme PC2.  
+In Section~\ref{sec:numerical}, we show numerically that the accuracy of scheme PD-ARS is comparable to the accuracy of scheme PC2.  
 
 \subsection{Absolute Stability}
 
-Here we analyze the absolute stability of the proposed IMEX schemes, PA2+ and PARSD (given in \ref{app:butcherTables}), following \cite{hu_etal_2018}.  
+Here we analyze the absolute stability of the proposed IMEX schemes, PA2+ and PD-ARS (given in \ref{app:butcherTables}), following \cite{hu_etal_2018}.  
 As is commonly done, we do this in the context of the linear scalar equation
 \begin{equation}
   \dot{u}=\lambda_{1}\,u+\lambda_{2}\,u,
@@ -196,17 +196,17 @@ where $\lambda_{1}\in\mathbb{C}$ and real $\lambda_{2}\le0$.
 On the right-hand side of Eq.~\eqref{eq:scalarODE}, the first (oscillatory) term is treated explicitly, while the second (damping) term is treated implicitly.  
 The IMEX schemes can then be written as $u^{n+1} =P(z_{1},z_{2})\,u^{n}$, where $P(z_{1},z_{2})$ is the amplification factor of the scheme, $z_{1}=\dt\,\lambda_{1} = x +iy$, and $z_{2} = \dt\,\lambda_{2} < 0$.  
 Stability of the IMEX scheme requires $|P(z_1,z_2)|\leq 1$.  
-The stability regions of PA2+ and PARSD are plotted in Figure~\ref{fig:AbsoluteStability}.  
+The stability regions of PA2+ and PD-ARS are plotted in Figure~\ref{fig:AbsoluteStability}.  
 As can be seen from the figures, the absolute stability region of both schemes increases with increasing $|z_{2}|$.  
-For a given $|z_{2}|>0$, the stability region of PARSD is larger than that of PA2+.  
+For a given $|z_{2}|>0$, the stability region of PD-ARS is larger than that of PA2+.  
 In the linear case, a time step that satisfies the absolute stability for the explicit part of the IMEX scheme ($|z_2| = 0$) fulfills the stability requirement for the IMEX scheme as whole ($|z_2| \geq 0$).  
-This conclusion is valid for all PARSD schemes with $\epsilon\in [0,0.5)$.
+This conclusion is valid for all PD-ARS schemes with $\epsilon\in [0,0.5)$.
 \begin{figure}[h]
   \centering
   \begin{tabular}{cc}
     \includegraphics[width=0.5\textwidth]{figures/AbsoluteStabilityPARSD}
     \includegraphics[width=0.5\textwidth]{figures/AbsoluteStabilityPA2+}
   \end{tabular}
-   \caption{Boundary of the absolute stability region for different values of $z_2$ for PARSD with $\epsilon = 0.1$ (left panel) and PA2+ (right panel).}
+   \caption{Boundary of the absolute stability region for different values of $z_2$ for PD-ARS with $\epsilon = 0.1$ (left panel) and PA2+ (right panel).}
   \label{fig:AbsoluteStability}
 \end{figure}

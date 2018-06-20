@@ -93,9 +93,9 @@ The non-zero components of $\tilde{A}$ and $A$ are given by
 \end{align*}
 $\alpha=0$, and $\tilde{w}_{i}=\tilde{a}_{3i} = w_{i}=a_{3i}$ for $i\le3$.
 
-\paragraph{IMEX PARSD}
+\paragraph{IMEX PD-ARS}
 
-We have found diffusion accurate, positivity-preserving IMEX schemes of type ARS that are second-order accurate in the streaming limit, which we refer to as IMEX PARSD; see \ref{app:PARSD}.  
+We have found diffusion accurate, positivity-preserving IMEX schemes of type ARS that are second-order accurate in the streaming limit, which we refer to as IMEX PD-ARS; see \ref{app:PD-ARS}.  
 For these schemes, $c_{\mbox{\tiny Sch}}= 1 - 2\epsilon$ with $\epsilon \in [0, 1/2)$.
 Here we give an example by setting $\epsilon=0.1$.
 \begin{align*}
@@ -150,8 +150,8 @@ The optimal third-order accurate, strong-stability-preserving Runge-Kutta scheme
 \end{align}
 
 \newpage 
-\section{Construction of PARSD}
-\label{app:PARSD}
+\section{Construction of PD-ARS}
+\label{app:PD-ARS}
 
 It can be shown that no 2-stage positivity-preserving IMEX exist \cite{hu_etal_2018}.
 Hence we considered 3-stage IMEX scheme.
@@ -211,7 +211,7 @@ Find $(x,y)$ such that
  & x \leq y, ~\dfrac{1}{2x} \geq 1-y.
 \end{align*}
 A solution family is $x=\frac{1}{2}$, $y=\frac{1}{2} + \epsilon$ with $\epsilon \in [0, \frac{1}{2})$ and $c_{sch} = 1 - 2\epsilon$.
-The PARSD scheme follows.
+The PD-ARS scheme follows.
 It's clear that $\epsilon = 0$ and $c_{sch} = 1$ is the most optimized solution.
 
 \section{Proof of nonexistence of 3-stage Type A ...}

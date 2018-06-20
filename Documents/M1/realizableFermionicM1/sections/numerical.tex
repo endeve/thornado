@@ -6,7 +6,7 @@
 
 To compare the accuracy of the IMEX schemes, we present results from smooth problems in streaming, absorption, and scattering dominated regimes in one spatial dimension.  
 For all tests in this subsection, we use third order accurate spatial discretization (polynomials of degree $k=2$) and we employ the maximum entropy closure in the low occupancy limit (i.e., the Minerbo closure).  
-We compare results obtained using IMEX schemes proposed here (PA2+ and PARSD) with IMEX schemes from Hu et al. \cite{hu_etal_2018} (PA2), McClarren et al. \cite{mcclarren_etal_2008} (PC2), Pareschi \& Russo \cite{pareschiRusso_2005} (SSP2332), and Cavaglieri \& Bewley \cite{cavaglieriBewley2015} (RKCB2).  
+We compare results obtained using IMEX schemes proposed here (PA2+ and PD-ARS) with IMEX schemes from Hu et al. \cite{hu_etal_2018} (PA2), McClarren et al. \cite{mcclarren_etal_2008} (PC2), Pareschi \& Russo \cite{pareschiRusso_2005} (SSP2332), and Cavaglieri \& Bewley \cite{cavaglieriBewley2015} (RKCB2).  
 In the streaming test, we also include results obtained with second-order and third-order accurate explicit strong stability-preserving Runge-Kutta methods \cite{gottlieb_etal_2001} in the comparison (SSPRK2 and SSPRK3, respectively).  
 See \ref{app:butcherTables} for further details.  
 The time step is set to $\dt=0.1\times\dx$.  
@@ -46,7 +46,7 @@ Errors for the remaining schemes (including SSPRK2) are indistinguishable on the
 \begin{figure}[h]
   \centering
     \includegraphics[width=\textwidth]{figures/SineWaveStreaming}
-   \caption{Absolute error (cf. Eq.~\eqref{eq:errorNormAbsolute}) versus number of elements $N$ for the streaming sine wave test.  Results employing various time stepping schemes are compared: SSPRK2 (cyan triangles pointing up), SSPRK3 (cyan triangles pointing down), PA2 (red), PA2+ (purple), PC2 (blue), RKCB2 (dark green), SSP2332 (green), and PARSD (light red circles).  Black dash-dot reference lines are proportional to $N^{-1}$ (top), $N^{-2}$ (middle), and $N^{-3}$ (bottom), respectively.}
+   \caption{Absolute error (cf. Eq.~\eqref{eq:errorNormAbsolute}) versus number of elements $N$ for the streaming sine wave test.  Results employing various time stepping schemes are compared: SSPRK2 (cyan triangles pointing up), SSPRK3 (cyan triangles pointing down), PA2 (red), PA2+ (purple), PC2 (blue), RKCB2 (dark green), SSP2332 (green), and PD-ARS (light red circles).  Black dash-dot reference lines are proportional to $N^{-1}$ (top), $N^{-2}$ (middle), and $N^{-3}$ (bottom), respectively.}
   \label{fig:SineWaveStreaming}
 \end{figure}
 
@@ -70,13 +70,13 @@ Figure~\ref{fig:SineWaveDamping} shows convergence results, obtained using diffe
 Results for $\sigma_{\Ab}=0.1$, $1$, and $10$ are plotted with red, green, and blue lines, respectively (see figure caption for further details).  
 All the second-order accurate schemes (PA2, PA2+, RKCB2, and SSP2332) display second-order accurate convergence rates (cf. bottom, black dash-dot reference line).  
 For $\sigma_{\Ab}=0.1$, SSP2332 is the most accurate among these schemes, while PA2+ is the most accurate for $\sigma_{\Ab}=10$.  
-On the other hand, PC2 and PARSD are indistinguishable and display at most first-order accurate convergence, as expected.  
-(For $\sigma_{\Ab}=0.1$, PC2 and PARSD are the most accurate schemes for $N=8$ and $N=16$.)
+On the other hand, PC2 and PD-ARS are indistinguishable and display at most first-order accurate convergence, as expected.  
+(For $\sigma_{\Ab}=0.1$, PC2 and PD-ARS are the most accurate schemes for $N=8$ and $N=16$.)
 
 \begin{figure}[h]
   \centering
     \includegraphics[width=\textwidth]{figures/SineWaveDamping}
-   \caption{Relative error (cf. Eq.~\eqref{eq:errorNormRelative}) versus number of elements for the damping sine wave test.  Results for different values of the absorption opacity $\sigma_{\Ab}$, employing various IMEX time stepping schemes, are compared.  Errors for $\sigma_{\Ab}=0.1$, $1$, and $10$ are plotted with red, green, and blue lines, respectively.  The IMEX schemes employed are: PA2 (triangles pointing left), PA2+ (triangles pointing right), PC2 (asterisk), RKCB2 ($\times$), SSP2332 ($+$), and PARSD (circles).  Black dash-dot reference lines are proportional to $N^{-1}$ (top) and $N^{-2}$ (bottom), respectively.}
+   \caption{Relative error (cf. Eq.~\eqref{eq:errorNormRelative}) versus number of elements for the damping sine wave test.  Results for different values of the absorption opacity $\sigma_{\Ab}$, employing various IMEX time stepping schemes, are compared.  Errors for $\sigma_{\Ab}=0.1$, $1$, and $10$ are plotted with red, green, and blue lines, respectively.  The IMEX schemes employed are: PA2 (triangles pointing left), PA2+ (triangles pointing right), PC2 (asterisk), RKCB2 ($\times$), SSP2332 ($+$), and PD-ARS (circles).  Black dash-dot reference lines are proportional to $N^{-1}$ (top) and $N^{-2}$ (bottom), respectively.}
   \label{fig:SineWaveDamping}
 \end{figure}
 
@@ -104,7 +104,7 @@ The initial amplitude of the sine wave has then been reduced by a factor $e^{-\p
 \begin{figure}[h]
   \centering
   \includegraphics[width=1.0\textwidth]{figures/SineWaveDiffusionN}
-   \caption{Absolute error (cf. Eq.~\eqref{eq:errorNormAbsolute}) for the number density $\cJ$ versus number of elements for the sine wave diffusion test.  Results with different values of the scattering opacity $\sigma_{\Scatt}$, employing different IMEX schemes, are compared.  Errors with $\sigma_{\Scatt}=10^{2}$, $10^{3}$, and $10^{4}$ are plotted with red, green, and blue lines, respectively.  The IMEX schemes employed are: PA2 (triangle pointing left), PA2+ (triangle pointing right), PC2 (asterisk), RKCB2 (cross), SSP2332 (plus), and PARSD (circle).  Black dash-dot reference lines are proportional to $N^{-1}$ (top) and $N^{-2}$ (bottom), respectively.}
+   \caption{Absolute error (cf. Eq.~\eqref{eq:errorNormAbsolute}) for the number density $\cJ$ versus number of elements for the sine wave diffusion test.  Results with different values of the scattering opacity $\sigma_{\Scatt}$, employing different IMEX schemes, are compared.  Errors with $\sigma_{\Scatt}=10^{2}$, $10^{3}$, and $10^{4}$ are plotted with red, green, and blue lines, respectively.  The IMEX schemes employed are: PA2 (triangle pointing left), PA2+ (triangle pointing right), PC2 (asterisk), RKCB2 (cross), SSP2332 (plus), and PD-ARS (circle).  Black dash-dot reference lines are proportional to $N^{-1}$ (top) and $N^{-2}$ (bottom), respectively.}
   \label{fig:SineWaveDiffusionJ}
 \end{figure}
 
@@ -118,7 +118,7 @@ The initial amplitude of the sine wave has then been reduced by a factor $e^{-\p
 In Figures~\ref{fig:SineWaveDiffusionJ} and \ref{fig:SineWaveDiffusionJ} we plot the absolute error, obtained using different values of $\sigma_{\Scatt}$, for various IMEX schemes at $t=t_{\mbox{\tiny end}}$.  
 Results for $\sigma_{\Scatt}=10^{2}$, $10^{3}$, and $10^{4}$ are plotted with red, green, and blue lines, respectively (see figure caption for further details).  
 (Scheme PC2 has been shown to work well for this test \cite{radice_etal_2013}, but is included here for comparison with the other IMEX schemes.)
-Schemes PARSD, RKCB2, and SSP2332 are accurate for this test, and display third-order accuracy for the number density $\cJ$ and second-oder accuracy for $\cH_{x}$.  
+Schemes PD-ARS, RKCB2, and SSP2332 are accurate for this test, and display third-order accuracy for the number density $\cJ$ and second-oder accuracy for $\cH_{x}$.  
 For $\sigma=10^{2}$, the errors do not drop below $10^{-6}$ because of differences between the two-moment model and the diffusion equation used to obtain the analytic solution.  
 For larger values of the scattering opacity, the two-moment model agrees better with the diffusion model, and we observe convergence over the entire range of $N$.  
 Schemes PA2 and PA2+ do not perform well on this test (for reasons discussed in Section~\ref{sec:imex}).  
@@ -278,7 +278,7 @@ Specifically, we use an absorption opacity of the following form
 We set $f_{0}=1$, and compute three versions of this test: one with $\sigma_{\Ab,0}=1$, $R_{0}=1$, and $p=80$ (Test~A), one with $\sigma_{\Ab,0}=10$, $R_{0}=1$, and $p=80$ (Test~B), and one with $\sigma_{\Ab}=10^{3}$, $R_{0}=0.85$, and $p=40$ (Test~C).  
 (These values for $R_{0}$ and $p$ result in similar radius for where the optical depth equals $2/3$ in Test~B and Test~C.)
 We compute until $t=5$, when the system has reached an approximate steady state.  
-We use the IMEX scheme PARSD --- the least compute-intensive of the realizability-preserving IMEX schemes presented here --- in all the tests.  
+We use the IMEX scheme PD-ARS --- the least compute-intensive of the realizability-preserving IMEX schemes presented here --- in all the tests.  
 The main purpose of this test is to compare the results obtained using the different algebraic closures discussed in Section~\ref{sec:algebraicClosure}.  
 
 In Figure~\ref{fig:HomogeneousSphere}, we plot results obtained for all tests at $t=5$: Test~A (top panels), Test~B (middle panels), and Test~C (bottom panels).  
