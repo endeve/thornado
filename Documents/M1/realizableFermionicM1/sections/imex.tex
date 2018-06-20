@@ -20,7 +20,7 @@ In Eq.~\eqref{eq:ode}, the transport operator $\vect{\cT}$ is due to the second 
 In the applications of interest to us, collisions with a background induce stiffness ($\tau\ll1$) in regions of the computational domain and must be treated with implicit methods, while we can resolve the time scales induced by the transport term, which we then can treat with explicit methods.  
 This motivates the use of IMEX methods \cite{ascher_etal_1997,pareschiRusso_2005}.  
 Furthermore, we would like to employ IMEX schemes that preserve realizability of the moments --- subject only to a time step governed by the explicit transport operator, and comparable to the time step required for numerical stability of the explicit scheme.  
-(The realizability-preserving and positivity-preserving properties of an IMEX scheme are intimately related, and we use two phrases interchangeably.)  
+(The realizability-preserving and positivity-preserving properties of an IMEX scheme are intimately related, and we use the two phrases interchangeably.)  
 Until recently, high-order (second or higher order temporal accuracy) positivity-preserving IMEX methods with time step restrictions solely due to the transport operator were not known.  
 Chertock et al. \cite{chertock_etal_2015} presented second-order accurate IMEX schemes with a correction step.  
 However, the correction step in \cite{chertock_etal_2015} involves both the transport and collision operators, and we have found that realizability is then subject to a time step restriction that depends on $\tau$, which may become too restrictive for stiff problems.  
@@ -67,9 +67,8 @@ To prove the positivity-preserving property of the IMEX scheme, Hu et al. \cite{
   +a_{ii}\,\dt\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}),\quad i=1,\ldots,s,
   \label{eq:imexStagesRewrite}
 \end{equation}
-where $c_{ij}$, and $\hat{c}_{ij}=\tilde{c}_{ij}/c_{ij}$ are computed from $\tilde{a}_{ij}$ and $a_{ij}$.
-Such that, $c_{i0} = 1 - \sum_{j=1}^{i-1}c_{ij}$, $c_{ij} = \sum_{l=j}^{i-1}a_{il}b_{lj}$, $\tilde{c}_{i0} = \tilde{a}_{i1} + \sum_{j=2}^{i-1} a_{ij}\tilde{b}_{j1}$,$\tilde{c}_{ij} = \tilde{a}_{ij} + \sum_{l=j+1}^{i-1} a_{il}\tilde{b}_{lj}$ $b_{ij} = - \frac{1}{a_{ii}} \sum_{l = j}^{i-1}a_{il}b_{lj}$, $b_{ii} = \frac{1}{a_{ii}}$, $\tilde{b}_{ij} = \frac{1}{a_{ii}}\big( -\tilde{a}_{ij} - \sum_{l = j+1}^{i-1}a_{il}\tilde{b}_{lj}\big)$. 
-(In Eq.~\eqref{eq:imexStagesRewrite}, $\vect{u}^{(0)}=\vect{u}^{n}$.)  
+where $c_{ij}$, and $\hat{c}_{ij}=\tilde{c}_{ij}/c_{ij}$ are computed from $\tilde{a}_{ij}$ and $a_{ij}$ (see \ref{app:butcherTables}).  
+In Eq.~\eqref{eq:imexStagesRewrite}, $\vect{u}^{(0)}=\vect{u}^{n}$.  
 Two types of IMEX schemes are considered: \emph{type~A} \cite{pareschiRusso_2005,dimarcoPareschi2013} and \emph{type~ARS} \cite{ascher_etal_1997}.  
 For IMEX schemes of type~A, the matrix $A$ is invertible.  
 For IMEX schemes of type~ARS, the matrix $A$ can be written as
@@ -79,15 +78,15 @@ For IMEX schemes of type~ARS, the matrix $A$ can be written as
        0 & \hat{A}
    \end{matrix}
 \right)\]
-where $\hat{A}$ is invertible.
+where $\hat{A}$ is invertible.  
 In writing the stages in the IMEX scheme in the general form given by Eq.~\eqref{eq:imexStagesRewrite}, it should be noted that $\tilde{c}_{i0}=0$ for IMEX schemes of Type~A, and $c_{i1}=\tilde{c}_{i1}=0$ for IMEX schemes of Type~ARS \cite{hu_etal_2018}.  
 For type A schemes, the positivity-preserving property follows from requiring $a_{ii}>0$ and $c_{i0}\ge0$ for $i=1,\ldots,s$, and $c_{ij},\tilde{c}_{ij}\ge0$, for $i=2,\ldots,s$, $j=1,\ldots,s-1$.  
-For type ARS schemes, the positivity follows from requiring $a_{ii}>0$ and $c_{i0},\tilde{c}_{i0}\ge0$ for $i=2,\ldots,s$, and $c_{ij},\tilde{c}_{ij}\ge0$ for $i=3,\ldots,s$, $j=2,\ldots,i-1$.  
+For type ARS schemes, positivity follows from requiring $a_{ii}>0$ and $c_{i0},\tilde{c}_{i0}\ge0$ for $i=2,\ldots,s$, and $c_{ij},\tilde{c}_{ij}\ge0$ for $i=3,\ldots,s$, $j=2,\ldots,i-1$.  
 Such coefficients were given in \cite{hu_etal_2018} for GSA schemes of type A with $s=3$ and type ARS with $s=4$.  
 (It was also proven that $s=3$ and $s=4$ are the necessary number of stages needed for GSA second-order positivity-preserving IMEX schemes of type A and type ARS, respectively.)  
 
-Importantly, the coefficients $c_{ij}$ in Eq.~\eqref{eq:imexStagesRewrite} satisfy $\sum_{j=0}^{i-1}c_{ij}=1$, which implies the so-called Shu-Osher form.  
-Thus, if the expression inside the square brackets in Eq.~\eqref{eq:imexStagesRewrite} --- which is in the form of a forward Euler update with time step $\hat{c}_{ij}\,\dt$ --- is positive for all $i=1,\ldots,s$, $j=0,\ldots,i-1$, positivity of the entire sum on the right-hand side of Eq.~\eqref{eq:imexStagesRewrite} follows from convexity arguments.  
+Importantly, the coefficients $c_{ij}$ in Eq.~\eqref{eq:imexStagesRewrite} satisfy $\sum_{j=0}^{i-1}c_{ij}=1$, which implies the so-called Shu-Osher form of the explicit part \cite{shuOsher_1988}.  
+If the expression inside the square brackets in Eq.~\eqref{eq:imexStagesRewrite} --- which is in the form of a forward Euler update with time step $\hat{c}_{ij}\,\dt$ --- is positive for all $i=1,\ldots,s$, $j=0,\ldots,i-1$, positivity of the entire sum on the right-hand side of Eq.~\eqref{eq:imexStagesRewrite} follows from convexity arguments.  
 Thus, if the explicit update with the transport operator is positive for a time step $\dt_{\mbox{\tiny Ex}}$, the IMEX scheme is positivity-preserving for a time step $\dt\le c_{\mbox{\tiny Sch}}\,\dt_{\mbox{\tiny Ex}}$, where
 \begin{equation}
   c_{\mbox{\tiny Sch}}=\min_{\substack{i = 2,\ldots,s \\ 
@@ -96,9 +95,9 @@ Thus, if the explicit update with the transport operator is positive for a time 
   \label{eq:imexCFL}
 \end{equation}
 It is desirable to make $c_{\mbox{\tiny Sch}}$ as large (close to $1$) as possible.  
-(Positivity of $\vect{u}^{(i)}$ also requires the implicit solve to preserve positivity.)  
+Note that positivity of $\vect{u}^{(i)}$ also requires the implicit solve (equivalent to implicit Euler) to preserve positivity.  
 In \cite{hu_etal_2018}, Hu et al. provide examples of GSA, positivity-preserving IMEX schemes of type A (see scheme PA2 in \ref{app:butcherTables}) and type ARS.  
-In \ref{app:butcherTables}, we provide another example of a GSA, positivity-preserving IMEX scheme of type A (scheme PA2+), with a significantly larger $c_{\mbox{\tiny Sch}}$ (a factor of about $1.7$ larger).  
+In \ref{app:butcherTables}, we provide another example of a GSA, positivity-preserving IMEX scheme of type A (scheme PA2+), with a larger $c_{\mbox{\tiny Sch}}$ (a factor of about $1.7$ larger).  
 
 \subsection{Diffusion Accurate, Positivity-Preserving IMEX Schemes}
 
@@ -107,10 +106,10 @@ In the diffusion limit, to leading order in $\tau$, we then have $\vect{\cH}\app
 The absence of the transport operator in the correction step, destroys this balance.  
 We demonstrate the inferior performance of IMEX schemes with the correction step given by Eq.~\eqref{eq:imexCorrection} in the diffusion limit in Section~\ref{sec:smoothProblems}.  
 We have also implemented and tested one of the IMEX schemes in Chertock et al. \cite{chertock_etal_2015}, where the transport operator is included in the correction step, and found it to perform very well in the diffusion limit.  
-However, we have not been able to prove sufficiently general realizability-preserving properties with this approach, without invoking a too severe time step restriction.  
+However, we have not been able to prove the realizability-preserving property with this approach without invoking a too severe time step restriction.  
 We therefore proceed to design positivity-preserving IMEX schemes, without the correction step, that perform better in the diffusion limit.  
 We limit the scope to IMEX schemes of type~ARS.  
-(It can be shown that IMEX schemes of type~A satisfying the conditions we list below Eq.~\eqref{eq:orderConditionsEx} do not exist.)
+(It can be shown that IMEX schemes of type~A conforming to Definition~\ref{def:DIMEXP} below do not exist; cf. \ref{app:noTypeA}.)
 
 To this end we take a heuristic approach and define the vectors 
 \begin{equation}
@@ -156,16 +155,21 @@ This gives the order conditions
 \begin{equation}
   \sum_{i=1}^{s}\tilde{w}_{i}=1
   \quad\text{and}\quad
-  \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}=\f{1}{2}.  
+  \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}=\f{1}{2},
   \label{eq:orderConditionsEx}
 \end{equation}
-We then seek to design GSA IMEX schemes of Type~ARS with the following properties
-\begin{itemize}
-  \item Second-order in the streaming limit; i.e., satisfies Eq.~\eqref{eq:orderConditionsEx}.
-  \item Well-behaved in the diffusion limit; i.e., satisfies Eq.~\eqref{eq:diffusionCondition}.
-  \item Positivity-preserving (conditions given by \cite{hu_etal_2018}; with $c_{\mbox{\tiny Sch}}>0$ and maximal).
-  \item Few stages ($s\le3$).
-\end{itemize}
+where the first condition (consistency condition) is required for first-order accuracy.  
+We then seek to design GSA IMEX schemes of Type~ARS conforming to the following definition
+\begin{define}
+  A diffusion accurate, positivity-preserving IMEX scheme satisfies the following properties
+  \begin{itemize}
+    \item Second-order in the streaming limit; i.e., satisfies Eq.~\eqref{eq:orderConditionsEx}.
+    \item Well-behaved in the diffusion limit; i.e., satisfies Eq.~\eqref{eq:diffusionCondition}.
+    \item Positivity-preserving (conditions given by \cite{hu_etal_2018}; with $c_{\mbox{\tiny Sch}}>0$ and maximal).
+    \item Few stages ($s\le3$).
+  \end{itemize}
+  \label{def:DIMEXP}
+\end{define}
 Fortunately, IMEX schemes satisfying these properties are easy to find, and we provide an example with $s=3$ (two implicit solves) in \ref{app:butcherTables} (scheme PARSD; see \ref{app:PARSD} for details).  
 In the streaming limit, this scheme is identical to the optimal second-order accurate strong-stability preserving Runge-Kutta method \cite{gottlieb_etal_2001}.  
 It is also very similar to the scheme given in \cite{mcclarren_etal_2008} (see scheme PC2 in \ref{app:butcherTables}), which is also a GSA IMEX scheme of type ARS with $s=3$.  
@@ -186,7 +190,7 @@ The IMEX schemes can then be written as $u^{n+1} =P(z_{1},z_{2})\,u^{n}$, where 
 Stability of the IMEX scheme requires $|P(z_1,z_2)|\leq 1$.  
 The stability regions of PA2+ and PARSD are plotted in Figure~\ref{fig:AbsoluteStability}.  
 As can be seen from the figures, the absolute stability region of both schemes increases with increasing $|z_{2}|$.  
-For a given $|z_{2}|>0$, the stability region of PARSD is larger than that for PA2+.  
+For a given $|z_{2}|>0$, the stability region of PARSD is larger than that of PA2+.  
 In the linear case, a time step that satisfies the absolute stability for the explicit part of the IMEX scheme ($|z_2| = 0$) fulfills the stability requirement for the IMEX scheme as whole ($|z_2| \geq 0$).  
 This conclusion is valid for all PARSD schemes with $\epsilon\in [0,0.5)$.
 \begin{figure}[h]

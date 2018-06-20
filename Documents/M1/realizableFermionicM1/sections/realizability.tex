@@ -54,7 +54,7 @@ The proof is given in \cite{banachLarecki_2017a}.
 %\end{proof}
 
 \begin{define}
-  The realizable set $\cR$ for the fermion two-moment model is given by
+  For the fermion two-moment model, the realizable set is
   \begin{equation}
     \cR:=\big\{\,\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}~|~\cJ\in[0,1]~\text{and}~\gamma(\vect{\cM})\equiv(1-\cJ)\cJ-|\vect{\cH}|\ge0\,\big\}.
     \label{eq:realizableSet}
@@ -65,16 +65,15 @@ The proof is given in \cite{banachLarecki_2017a}.
   The realizable set $\cR$, defined in Eq.~\eqref{eq:realizableSet}, is convex.  
 \end{lemma}
 \begin{proof}
-  In order to prove that $\cR$ is convex, we must show that any convex combination of elements in $\cR$ also belongs to $\cR$.  
+  In order to prove that $\cR$ is convex, it is sufficient to show that any convex combination of elements in $\cR$ also belongs to $\cR$.  
   Let $\vect{\cM}_{a}=\big(\cJ_{a},\vect{\cH}_{a}\big)^{T}$ and $\vect{\cM}_{b}=\big(\cJ_{b},\vect{\cH}_{b}\big)^{T}$ be two arbitrary elements in $\cR$.  
   Consider the convex combination $\vect{\cM}_{c} = \theta\,\vect{\cM}_{a} + (1-\theta)\,\vect{\cM}_{b}$, with $0\leq\theta\leq1$.
   The first component of $\vect{\cM}_{c}$ is
   \begin{equation*}
     \cJ_{c} = \theta\,\cJ_{a} + (1-\theta)\,\cJ_{b}.
   \end{equation*}
-  Since $\theta,\cJ_{a},\cJ_{b}\in[0,1]$, we have $\cJ_{c} \in [0,1]$.  
-  It is straightforward to verify that $\gamma(\vect{\cM})$ is a concave function of $\bcM$ if $\cJ\in[0,1]$.
-  Then Jensen's inequality implies
+  Since $\cJ_{a},\cJ_{b}\in[0,1]$, it follows that $\cJ_{c} \in [0,1]$.  
+  Since $\cJ_{a},\cJ_{b}\in[0,1]$, it is straightforward to verify that
   \begin{equation*}
   \gamma(\vect{\cM}_{c}) \geq \theta\,\gamma(\vect{\cM}_{a}) + (1-\theta)\,\gamma(\vect{\cM}_{b}) \ge0.
   \end{equation*}
@@ -82,7 +81,7 @@ The proof is given in \cite{banachLarecki_2017a}.
 \end{proof}
 
 Figure~\ref{fig:RealizableSetFermionic} illustrates the geometry of the convex set $\cR$ in the $(\cH,\cJ)$-plane (light blue region).  
-The boundary of $\cR$, $\partial\cR$ (black curves), is given by $\gamma(\vect{\cM})=0$.  
+The boundary $\partial\cR$ (black curves) is given by $\gamma(\vect{\cM})=0$.  
 The realizable domain of positive distribution functions, $\cR^{+}$ (no upper bound on $f$), which is a convex cone defined by
 \begin{equation}
   \cR^{+}:=\big\{\,\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}~|~\cJ\ge0~\text{and}~\cJ\ge|\vect{\cH}|\,\big\}, 
@@ -96,7 +95,7 @@ The realizable domains $\cR$ and $\cR^{+}$ overlap for low particle densities ($
   \centering
   \includegraphics[width=1.0\linewidth]{figures/RealizableSetFermionic}
   \caption{Illustration of the realizable set $\cR$ (light blue region) defined in Eq.~\eqref{eq:realizableSet}.  
-  The black lines define the boundary of $\cR$, $\partial\cR$ ($\gamma(\vect{\cM}) = 0$), while the red lines indicate the boundary of the realizable set of positive distributions with no upper bound (light red region); cf. Eq.~\eqref{eq:realizableSetPositive}.}
+  The black lines define the boundary $\partial\cR$, while the red lines indicate the boundary of the realizable set $\cR^{+}$ (light red region) defined in Eq.~\eqref{eq:realizableSetPositive}.}
   \label{fig:RealizableSetFermionic}
 \end{figure}
 
@@ -119,7 +118,7 @@ Lemma~\ref{lem:explicitStep} is used to help prove the realizability-preserving 
     \quad\text{and}\quad
     \vect{\cH}_{ab}=\f{1}{4\pi}\int_{\bbS^{2}}f_{ab}(\omegaNu)\,\vect{\ell}(\omegaNu)\,d\omegaNu,
   \end{equation*}
-  where $f_{ab}(\omegaNu)=\theta\,f_{a}(\omegaNu)+(1-\theta)\,f_{b}(\omegaNu)$ and $\theta(\omegaNu)=(1+\widehat{\vect{e}}\cdot\vect{\ell}(\omegaNu))/2\in[0,1]$.  
+  where $f_{ab}(\omegaNu)=\vartheta\,f_{a}(\omegaNu)+(1-\vartheta)\,f_{b}(\omegaNu)$ and $\vartheta(\omegaNu)=(1+\widehat{\vect{e}}\cdot\vect{\ell}(\omegaNu))/2\in[0,1]$.  
   Then, since $f_{ab}(\omegaNu)\in[0,1]\,\forall\,\omegaNu\in\bbS^{2}$, we have from Lemma~\ref{lem:MomentRealizable} that $\vect{\cM}_{ab}\in\cR$.  
 \end{proof}
 
@@ -134,15 +133,12 @@ Lemma~\ref{lem:explicitStep} is used to help prove the realizability-preserving 
   \label{lem:implicitStep}
 \end{lemma}
 \begin{proof}
-  Solving for $\vect{\cM}_{b}$ gives
-  \begin{equation*}
-    \vect{\cM}_{b} = \big(\vect{I}+\alpha\,\vect{\cD}\big)^{-1}\big(\vect{\cM}_{a}+\alpha\,\vect{\eta}\big).  
-  \end{equation*}
+  Solving for $\vect{\cM}_{b}$ gives $\vect{\cM}_{b} = \big(\vect{I}+\alpha\,\vect{\cD}\big)^{-1}\big(\vect{\cM}_{a}+\alpha\,\vect{\eta}\big)$.  
   The first component of $\vect{\cM}_{b}$ can be written as
   \begin{equation*}
     \cJ_{b}=\f{1}{4\pi}\int_{\bbS}f_{b}(\omegaNu)\,d\omegaNu,
   \end{equation*}
-  where $f_{b}(\omegaNu)=\theta\,f_{a}(\omegaNu)+(1-\theta)\,f_{0}$ and $\theta=1/(1+\alpha\,\xi)\in[0,1]$.  
+  where $f_{b}(\omegaNu)=\zeta\,f_{a}(\omegaNu)+(1-\zeta)\,f_{0}$, $\zeta=1/(1+\alpha\,\xi)\in[0,1]$, and $f_{0}$ and $\xi$ are defined in Section~\ref{sec:model}.  
   Then, since $f_{b}(\omegaNu)\in[0,1]\,\forall\,\omegaNu\in\bbS^{2}$, $\cJ_{b}\in[0,1]$.  
   Similarly, we can write
   \begin{equation*}

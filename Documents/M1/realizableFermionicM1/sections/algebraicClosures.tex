@@ -3,7 +3,7 @@
 
 The two-moment model given by Eq.~\eqref{eq:angularMoments} is not closed because of the appearance of the second moments $\vect{\cK}$ (the normalized pressure tensor).  
 Algebraic moment closures for the two-moment model are computationally efficient as they provide the Eddington factor in Eq.~\eqref{eq:eddingtonTensor} in closed form as a function of the density $\cJ$ and the flux factor $h=|\vect{\cH}|/\cJ$.  
-For this reason they are widely used in applications where radiation transport plays an important role --- including simulation of neutrino transport in core-collapse supernovae \cite{roberts_etal_2016} and compact binary mergers \cite{foucart_etal_2015}.  
+For this reason they are used in applications where transport plays an important role, but where limited computational resources precludes the use of higher fidelity models --- including simulation of neutrino transport in core-collapse supernovae \cite{roberts_etal_2016} and compact binary mergers \cite{foucart_etal_2015}.  
 Algebraic moment closures in the context of these aforementioned applications have also been discussed elsewhere (e.g., \cite{janka_etal_1992,pons_etal_2000,smit_etal_2000,just_etal_2015,murchikova_etal_2017}).  
 Here we focus on properties of the algebraic closures that are critical to the development of numerical methods for the two-moment model of fermion transport.  
 The family of algebraic closures we consider can be written in the form \cite{cernohorskyBludman_1994}
@@ -11,11 +11,10 @@ The family of algebraic closures we consider can be written in the form \cite{ce
   \chi(\cJ,h)=\f{1}{3}+\f{2\,(1-\cJ)\,(1-2\cJ)}{3}\,\Theta\Big(\f{h}{1-\cJ}\Big),
   \label{eq:eddingtonFactor}
 \end{equation}
-where the \emph{closure function} $\Theta(x)$ varies with the specifics of the closure procedure.  
+where the \emph{closure function} $\Theta(x)$ depends on the specifics of the closure procedure.  
 We will consider two basic closure procedures in more detail below: the maximum entropy (ME) closure and the Kershaw (K) closure.  
 
-\paragraph{Low Occupancy Limit}
-We note in passing that in the low occupancy limit ($\cJ\ll1$), the Eddington factor in Eq.~\eqref{eq:eddingtonFactor} depends solely on $h$; i.e.,
+In the low occupancy limit ($\cJ\ll1$), the Eddington factor in Eq.~\eqref{eq:eddingtonFactor} depends solely on $h$; i.e.,
 \begin{equation}
   \chi(\cJ,h)\to\chi_{0}(h)=\f{1}{3}+\f{2}{3}\,\Theta\big(h\big).  
   \label{eq:eddingtonFactorLow}
@@ -24,7 +23,7 @@ This is also a form of algebraic moment closure suitable for particle systems ob
 
 \subsection{Maximum Entropy (ME) Closure}
 
-For the two-moment model, the ME closure constructs the least biased angular distribution based on the limited information available (i.e., $\cJ$ and $\vect{\cH}$) \cite{cernohorskyBludman_1994,lareckiBanach_2011}.  
+For the two-moment model, the ME closure attempts to construct the angular distribution based on the limited information available (i.e., $\cJ$ and $\vect{\cH}$) \cite{cernohorskyBludman_1994,lareckiBanach_2011}.  
 The ME distribution $f_{\mbox{\tiny ME}}(\omega)$ is found by maximizing the entropy functional, which for particles obeying Fermi-Dirac statistics is given by
 \begin{equation}
   S[f_{\mbox{\tiny ME}}] 
@@ -38,7 +37,7 @@ subject to the constraints
   \f{1}{4\pi}\int_{\bbS^{2}}f_{\mbox{\tiny ME}}(\omega)\,\vect{\ell}(\omega)\,d\omega=\vect{\cH}.  
   \label{eq:closureConstraints}
 \end{equation}
-From the variation of the entropy functional in Eq.~\eqref{eq:entropyFunctional} with respect to $f_{\mbox{\tiny ME}}$, and introducing Lagrange multipliers ($a$ and $\vect{b}$) to enforce the constraints in Eq.~\eqref{eq:closureConstraints}, the ME distribution takes the general form
+From the variation of the entropy functional in Eq.~\eqref{eq:entropyFunctional} with respect to $f_{\mbox{\tiny ME}}$ and introducing Lagrange multipliers ($a$ and $\vect{b}$) to enforce the constraints in Eq.~\eqref{eq:closureConstraints}, the ME distribution takes the general form \cite{cernohorskyBludman_1994}
 \begin{equation}
   f_{\mbox{\tiny ME}}(\omega;a,\vect{b})=\f{1}{e^{a + \vect{b}\cdot\vect{\ell}(\omega)}+1}.  
   \label{eq:fME}
@@ -46,9 +45,14 @@ From the variation of the entropy functional in Eq.~\eqref{eq:entropyFunctional}
 The Lagrange multipliers are implicit functions of $\cJ$ and $\vect{\cH}$.  
 The ME distribution function satisfies $0 \le f_{\mbox{\tiny ME}} \le 1$, but $a$ and $\vect{b}$ are unconstrained.  
 Specification of $a$ and $\vect{b}$ from $\vect{\cM}=(\cJ,\vect{\cH})^{T}$ gives $f_{\mbox{\tiny ME}}$, and any number of moments can in principle be computed.  
-Importantly, we note that for the maximum entropy problem to be soluble, we must have $\vect{\cM}\in\cR$ \cite{lareckiBanach_2011}.  
+Importantly, for the maximum entropy problem to be solvable, we must have $\vect{\cM}\in\cR$ \cite{lareckiBanach_2011}.  
 
-To arrive at the algebraic form of the ME closure, Chernohorsky \& Bludman \cite{cernohorskyBludman_1994} postulate (but see \cite{lareckiBanach_2011}) that, as a function of the so-called flux saturation $x=h/(1-\cJ)$, the closure function $\Theta(x)$ is independent of $\cJ$ and can be written explicitly in terms of the inverse Langevin function.  
+To arrive at an algebraic form of the ME closure, Cernohorsky \& Bludman \cite{cernohorskyBludman_1994} postulate (but see \cite{lareckiBanach_2011}) that, as a function of the flux saturation
+\begin{equation}
+  x := h/(1-\cJ),
+  \label{eq:fluxSaturation}
+\end{equation} 
+the closure function $\Theta(x)$ is independent of $\cJ$ and can be written explicitly in terms of the inverse Langevin function.  
 To avoid inverting the Langevin function for $\Theta(x)$, they provide a polynomial fit (accurate to $2\%$) given by
 \begin{equation}
   \Theta_{\mbox{\tiny ME}}^{\mbox{\tiny CB}}(x)
@@ -66,7 +70,7 @@ On the interval $x\in[0,1]$, the curves given by Eqs.~\eqref{eq:closureMECB} and
 The closure functions given by Eqs.~\eqref{eq:closureMECB} and \eqref{eq:closureMEBL}, together with the Eddington factor in Eq.~\eqref{eq:eddingtonFactor} and the pressure tensor in Eq~\eqref{eq:eddingtonTensor}, constitute the algebraic maximum entropy closures for fermionic particle systems considered in this paper.  
 We will refer to the ME closures with $\Theta_{\mbox{\tiny ME}}^{\mbox{\tiny CB}}$ and $\Theta_{\mbox{\tiny ME}}^{\mbox{\tiny BL}}$ as the CB (Cernohorsky \& Bludman) and BL (Banach \& Larecki) closures, respectively.  
 
-We also note that using the closure function given by Eq.~\eqref{eq:closureMECB} with the low occupancy Eddington factor in Eq~\eqref{eq:eddingtonFactorLow} results in the algebraic maximum entropy closure attributed to Minerbo \cite{minerbo_1978}, which is currently in widespread use in simulation of neutrino (fermion) transport in the aforementioned nuclear astrophysics applications.  
+We also note that using the closure function given by Eq.~\eqref{eq:closureMECB} with the low occupancy Eddington factor in Eq~\eqref{eq:eddingtonFactorLow} results in the algebraic maximum entropy closure attributed to Minerbo \cite{minerbo_1978}, which is currently in use in simulation of neutrino (fermion) transport in the aforementioned nuclear astrophysics applications.  
 In a recent comparison of algebraic (or analytic) closures for the two-moment model applied to neutrino transport around proto-neutron stars, Murchikova et al. \cite{murchikova_etal_2017} obtained nearly identical results when using the closures of CB and Minerbo.  
 For these reasons, we include the Minerbo closure in the subsequent discussion and in the numerical tests in Section~\ref{sec:numerical}.  
 
@@ -141,7 +145,7 @@ The Eddington factor of the Minerbo closure is nearly flat, and exceeds $\chi_{\
     \includegraphics[width=0.5\textwidth]{figures/Closures0_60}
     \includegraphics[width=0.5\textwidth]{figures/Closures0_99}
   \end{tabular}
-   \caption{Plot of Eddington factors $\chi$ versus flux factor $h$ for different values of $\cJ$ for various algebraic closures: $\cJ=0.01$ (upper left panel), $\cJ=0.4$ (upper right panel), $\cJ=0.6$ (lower left panel), and $\cJ=0.99$ (lower right panel).  In each panel we plot the Eddington factors of Kershaw (solid blue lines), Chernohorsky \& Bludman (CB, solid red lines), Banach \& Larecki (BL, dashed orange lines), and Minerbo (dash-dot purple lines).  We also plot $\chi_{\mbox{\tiny min}}$ and $\chi_{\mbox{\tiny max}}$ (lower and upper solid black lines, respectively).}
+   \caption{Plot of Eddington factors $\chi$ versus flux factor $h$ for different values of $\cJ$ for various algebraic closures: $\cJ=0.01$ (upper left panel), $\cJ=0.4$ (upper right panel), $\cJ=0.6$ (lower left panel), and $\cJ=0.99$ (lower right panel).  In each panel we plot the Eddington factors of Kershaw (solid blue lines), Cernohorsky \& Bludman (CB, solid red lines), Banach \& Larecki (BL, dashed orange lines), and Minerbo (dash-dot purple lines).  We also plot $\chi_{\mbox{\tiny min}}$ and $\chi_{\mbox{\tiny max}}$ (lower and upper solid black lines, respectively).}
   \label{fig:EddingtonFactorsWithDifferentClosure}
 \end{figure}
 We have also checked that for all the algebraic closures based on Fermi-Dirac statistics (CB, BL, and Kershaw), the bounds on the Eddington factor in Eq.~\eqref{eq:eddingtonFactorBounds} holds for all $\vect{\cM}\in\cR$.  
@@ -161,6 +165,6 @@ For the Minerbo closure (right bottom), which is consistent with positive distri
     \includegraphics[width=0.5\textwidth]{figures/MabWithBLKS}
     \includegraphics[width=0.5\textwidth]{figures/MabWithMI}
   \end{tabular}
-   \caption{Illustration of $\vect{\cM}_{ab}$, as defined in Lemma~\ref{lem:explicitStep}, computed with different algebraic closures: the maximum entropy closures of Banach \& Larecki (top left) and Chernohorsky \& Bludman (top right), the Kershaw closure (bottom left), and the maximum entropy closure of Minerbo (bottom right).  In each panel, $\vect{\cM}_{ab}$ was computed using the respective closure, using $10^{6}$ random pairs ($\vect{\cM}_{a},\vect{\cM}_{b}\in\cR$), and plotted as a light-blue point.  The solid black lines mark the boundary of $\cR$: $\gamma(\vect{\cM}) = 0$.}
+   \caption{Illustration of $\vect{\cM}_{ab}$, as defined in Lemma~\ref{lem:explicitStep}, computed with different algebraic closures: the maximum entropy closures of Banach \& Larecki (top left) and Cernohorsky \& Bludman (top right), the Kershaw closure (bottom left), and the maximum entropy closure of Minerbo (bottom right).  In each panel, $\vect{\cM}_{ab}$ was computed using the respective closure, using $10^{6}$ random pairs ($\vect{\cM}_{a},\vect{\cM}_{b}\in\cR$), and plotted as a light-blue point.  The solid black lines mark the boundary of $\cR$: $\gamma(\vect{\cM}) = 0$.}
   \label{fig:MabWithDifferentClosure}
 \end{figure}
