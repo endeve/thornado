@@ -109,7 +109,7 @@ We have also implemented and tested one of the IMEX schemes in Chertock et al. \
 However, we have not been able to prove the realizability-preserving property with this approach without invoking a too severe time step restriction.  
 We therefore proceed to design positivity-preserving IMEX schemes, without the correction step, that perform better in the diffusion limit.  
 We limit the scope to IMEX schemes of type~ARS.  
-(It can be shown that IMEX schemes of type~A conforming to Definition~\ref{def:DIMEXP} below do not exist; cf. \ref{app:noTypeA}.)
+(It can be shown that IMEX schemes of type~A conforming to Definition~\ref{def:PD-IMEX} below do not exist; cf. \ref{app:noTypeA}.)
 
 To this end we take a heuristic approach and define the vectors 
 \begin{equation}
@@ -164,9 +164,10 @@ We then seek to design IMEX schemes of Type~ARS conforming to the following work
   Let PD-IMEX be a consistent, positivity-preserving, diffusion accurate, and low-stage GSA IMEX scheme satisfying the following properties
   \begin{itemize}
     \item Consistency of the implicit coefficients
-    \begin{equation*}
+    \begin{equation}
       \sum_{i=1}^{s}w_{i}=1.
-    \end{equation*}
+      \label{eq:implicitConsistency}
+    \end{equation}
     \item Second-order in the streaming limit; i.e., satisfies Eq.~\eqref{eq:orderConditionsEx}.
     \item Positivity-preserving (conditions given by \cite{hu_etal_2018}; with $c_{\mbox{\tiny Sch}}>0$).
     \item Well-behaved in the diffusion limit; i.e., satisfies Eq.~\eqref{eq:diffusionCondition}.
@@ -176,7 +177,7 @@ We then seek to design IMEX schemes of Type~ARS conforming to the following work
       a_{si}=w_{i}\quad\text{and}\quad\tilde{a}_{si}=\tilde{w}_{i},\quad i=1,\ldots,s.
     \end{equation*}
   \end{itemize}
-  \label{def:DIMEXP}
+  \label{def:PD-IMEX}
 \end{define}
 Fortunately, IMEX schemes satisfying these properties are easy to find, and we provide an example with $s=3$ (two implicit solves) in \ref{app:butcherTables} (scheme PD-ARS; see \ref{app:PD-ARS} for details).  
 In the streaming limit, this scheme is identical to the optimal second-order accurate strong-stability preserving Runge-Kutta method \cite{gottlieb_etal_2001}.  
