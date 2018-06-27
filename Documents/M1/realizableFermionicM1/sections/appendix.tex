@@ -160,16 +160,16 @@ We refer to the resulting IMEX scheme as PD-ARS.
 The double Butcher tableau is
 \begin{equation}
   \begin{array}{c | c c c}
-  	         0           & 0                 & 0                   & 0                    \\
-  	\tilde{c}_{2} & \tilde{a}_{21} & 0                   & 0                    \\
-  	\tilde{c}_{3} & \tilde{a}_{31} & \tilde{a}_{32} & 0                    \\ \hline
+  	         0           & 0                 & 0                   & 0  \\
+  	\tilde{c}_{2} & \tilde{a}_{21} & 0                   & 0  \\
+  	\tilde{c}_{3} & \tilde{a}_{31} & \tilde{a}_{32} & 0  \\ \hline
   	                   & \tilde{a}_{31} & \tilde{a}_{32} & 0
   \end{array}
   \qquad
   \begin{array}{c | c c c}
-  	     0  & 0  & 0         & 0            \\
-  	c_{2} & 0 & a_{22} & 0            \\
-  	c_{3} & 0 & a_{32} & a_{33}       \\ \hline
+  	     0  & 0  & 0         & 0          \\
+  	c_{2} & 0 & a_{22} & 0          \\
+  	c_{3} & 0 & a_{32} & a_{33}  \\ \hline
   	         & 0 & a_{32} & a_{33}
   \end{array}
 \end{equation}
@@ -218,27 +218,13 @@ We chose $x=\f{1}{2}$, so that the explicit part of the IMEX scheme is equivalen
 Then, $y=\f{1}{2} + \epsilon$, where $\epsilon \in [0, \frac{1}{2})$ and $c_{\mbox{\tiny Sch}} = 1 - 2\epsilon$, results in the PD-ARS IMEX scheme.  
 Setting $\epsilon = 0$ gives the optimal scheme with $c_{\mbox{\tiny Sch}} = 1$.  
 
-%It remains to find And the rest inequalities and the problem were left to be: \\
-%Find $(x,y)$ such that
-%\begin{align*}
-%\text{maximize} ~ c_{sch} = &\min \{ 2x, \dfrac{1-2x(1-y)}{y-x}, 2(1-y)\}\\
-% \text{under these constraints:} \qquad & x > 0, ~ 1 \geq y > 0, \\
-% & x \leq y, ~\dfrac{1}{2x} \geq 1-y.
-%\end{align*}
-%A solution family is $x=\frac{1}{2}$, $y=\frac{1}{2} + \epsilon$ with $\epsilon \in [0, \frac{1}{2})$ and $c_{sch} = 1 - 2\epsilon$.
-%The PD-ARS scheme follows.
-%It's clear that $\epsilon = 0$ and $c_{sch} = 1$ is the most optimized solution.
+\clearpage
 
-\section{Proof of nonexistence of 3-stage Type A ...}
+\section{Nonexistence of a three-stage PD-IMEX Scheme of Type~A}
 \label{app:noTypeA}
 
-Proof of GSA IMEX schemes of Type~A with 3 stages and the following properties does not exist
-\begin{itemize}
-  \item Second-order in the streaming limit;
-  \item Well-behaved in the diffusion limit;
-  \item Positivity-preserving.
-\end{itemize}
-First of all, the GSA IMEX scheme of Type A with 3 stages have the following form:
+Here we prove that a PD-IMEX scheme (i.e., conforming to Definition~\ref{def:PD-IMEX}) of type~A does not exist.  
+First, for a three-stage, GSA IMEX scheme of type~A the double Butcher tableau is
 \begin{equation*}
   \begin{array}{c | c c c}
   	      0       & 0              & 0              & 0 \\
@@ -254,32 +240,34 @@ First of all, the GSA IMEX scheme of Type A with 3 stages have the following for
   	      & a_{31} & a_{32} & a_{33}
   \end{array}.
 \end{equation*}
-The consistency of the discrete system to the continuous system requires
+First we consider the equality constraints.  
+Consistency of the implicit coefficients and second-order accuracy in the streaming limit (Eqs.~\eqref{eq:implicitConsistency} and \eqref{eq:orderConditionsEx}, respectively) give
 \begin{align}
- \tilde{a}_{31} + \tilde{a}_{32} = 1, \quad \quad a_{31} + a_{32} + a_{33} = 1.
- \label{eq:1stOrderGeneral}
+  a_{31} + a_{32} + a_{33} = 1, \quad \tilde{a}_{31} + \tilde{a}_{32} = 1, \quad \text{and}\quad \tilde{a}_{32}\,\tilde{a}_{21} =  \f{1}{2}.
+  \label{eq:1stOrderGeneral}
 \end{align}
-The second-order in the streaming limit requires
+Accuracy in the diffusion limit (Eq.~\eqref{eq:diffusionCondition}) requires 
 \begin{align}
-\tilde{a}_{32}\cdot \tilde{a}_{21} =  \frac{1}{2}.
-\end{align}
-The diffusion accurate Eq.~\eqref{eq:diffusionCondition} requires 
-\begin{align}
-\tilde{a}_{21} = a_{22}, \quad -\dfrac{a_{32} \tilde{a}_{21}}{a_{22}a_{33}} + \dfrac{1}{a_{33}} =1.
+  \tilde{a}_{21} = a_{22}
+  \quad\text{and}\quad 
+  -\f{a_{32} \tilde{a}_{21}}{a_{22}a_{33}} + \f{1}{a_{33}} =1.
 \label{eq:diffusionAccurate}
 \end{align}
-Substituting the second equation in Eq.~\eqref{eq:1stOrderGeneral} into Eq.~\eqref{eq:diffusionAccurate} gives
+The first constraint in Eq.~\eqref{eq:1stOrderGeneral} together with the constraints in Eq.~\eqref{eq:diffusionAccurate} gives
 \begin{align}
-\tilde{a}_{21} = a_{22}, \quad a_{31} = 0.
-\label{eq:a31is0}
+  a_{31} = 0.
+  \label{eq:a31is0}
 \end{align}
-Positivity-preserving requires
+The positivity-preserving property requires $a_{11}, a_{22}, a_{33}>0$ and the inequality constraints
 \begin{align*}
-& a_{11} > 0, ~ a_{22} >0, ~ a_{33}>0,\\
-& c_{20} = 1 - \frac{a_{21}}{a_{11}} \geq 0, ~ c_{30} = 1-\frac{a_{31}}{a_{11}} + \frac{a_{32}a_{21}}{a_{22}a_{11}} - \frac{a_{32}}{a_{22}}\geq 0, \\
-& c_{21} = \frac{a_{21}}{a_{11}} \geq 0, ~ c_{31} = \frac{a_{31}}{a_{11}} - \frac{a_{32}a_{21}}{a_{22}a_{11}} \geq 0, ~ c_{32} = \frac{a_{32}}{a_{22}} \geq 0,\\
-& \tilde{c}_{21} = \tilde{a}_{21} \geq 0, \tilde{c}_{31} = \tilde{a}_{31} - \frac{a_{32}\tilde{a}_{21}}{a_{22}} \geq 0, \tilde{c}_{32} = \tilde{a}_{32} \geq 0.
+  & c_{20} = 1 - \frac{a_{21}}{a_{11}} \geq 0, \quad c_{30} = 1-\frac{a_{31}}{a_{11}} + \frac{a_{32}a_{21}}{a_{22}a_{11}} - \frac{a_{32}}{a_{22}}\geq 0, \\
+  & c_{21} = \frac{a_{21}}{a_{11}} \geq 0, \quad c_{31} = \frac{a_{31}}{a_{11}} - \frac{a_{32}a_{21}}{a_{22}a_{11}} \geq 0, \quad c_{32} = \frac{a_{32}}{a_{22}} \geq 0,\\
+  & \tilde{c}_{21} = \tilde{a}_{21} \geq 0, \quad \tilde{c}_{31} = \tilde{a}_{31} - \frac{a_{32}\tilde{a}_{21}}{a_{22}} \geq 0, \quad \tilde{c}_{32} = \tilde{a}_{32} \geq 0.
 \end{align*}
-Note that since $a_{31} = 0$, $a_{21} \geq 0$, $a_{32} \geq 0$, $a_{22} > 0$ and $a_{11} >0$, $c_{31} \geq 0$ only holds for $c_{31} = 0$.
-Unfortunately, $c_{31} = 0$ will drag $c_{\mbox{\tiny Sch}} = 0$ since $c_{\mbox{\tiny Sch}} = \min \left\lbrace \dfrac{c_{21}}{\tilde{c}_{21}}, \dfrac{c_{31}}{\tilde{c}_{31}}, \dfrac{c_{32}}{\tilde{c}_{32}}\right\rbrace $.
-Therefore, GSA IMEX schemes of Type~A with 3 stages and the above properties does not exist.
+Since $a_{31} = 0$, we have
+\begin{equation*}
+  c_{31} = - \frac{a_{32}a_{21}}{a_{22}a_{11}}.  
+\end{equation*}
+Since $a_{21} \geq 0$, $a_{32} \geq 0$, $a_{22} > 0$ and $a_{11} >0$, we have $c_{31} \leq 0$, and the inequality constraints hold only for $c_{31} = 0$.
+Unfortunately, $c_{31} = 0$ gives $c_{\mbox{\tiny Sch}} = \min \Big\{\,\f{c_{21}}{\tilde{c}_{21}}, \f{c_{31}}{\tilde{c}_{31}}, \f{c_{32}}{\tilde{c}_{32}}\Big\} = 0$.
+Therefore, a three-stage PD-IMEX scheme (Definition~\ref{def:PD-IMEX}) of type~A does not exist.
