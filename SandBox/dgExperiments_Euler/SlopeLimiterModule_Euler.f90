@@ -173,14 +173,12 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    LOGICAL  :: LimitPolynomial
     INTEGER  :: iX1, iX2, iX3, iGF, iCF, iDimX
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
     REAL(DP) :: G_K(nGF)
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
-    REAL(DP) :: U_K(nCF,0:1)
     REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
     REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
     REAL(DP) :: R_X3(nCF,nCF), invR_X3(nCF,nCF)
@@ -261,23 +259,17 @@ CONTAINS
             CALL ComputeCharacteristicDecomposition &
                    ( 1, G_K(:), U_M(:,0,1), R_X1, invR_X1 )
 
-            U_M(:,0,2) = MATMUL( invR_X1, U_M(:,0,2) )
-
             IF( nDimsX > 1 )THEN
 
               CALL ComputeCharacteristicDecomposition &
-                   ( 2, G_K(:), U_M(:,0,1), R_X2, invR_X2 )
-
-              U_M(:,0,3) = MATMUL( invR_X2, U_M(:,0,3) )
+                     ( 2, G_K(:), U_M(:,0,1), R_X2, invR_X2 )
 
             END IF
 
             IF( nDimsX > 2 )THEN
 
               CALL ComputeCharacteristicDecomposition &
-                   ( 3, G_K(:), U_M(:,0,1), R_X3, invR_X3 )
-
-              U_M(:,0,4) = MATMUL( invR_X3, U_M(:,0,4) )
+                     ( 3, G_K(:), U_M(:,0,1), R_X3, invR_X3 )
 
             END IF
 
@@ -295,7 +287,7 @@ CONTAINS
 
           dU(:,1) &
             = MinModB &
-                ( U_M(:,0,2), &
+                ( MATMUL( invR_X1, U_M(:,0,2) ), &
                   BetaTVD * MATMUL( invR_X1, (U_M(:,0,1)-U_M(:,1,1)) ), &
                   BetaTVD * MATMUL( invR_X1, (U_M(:,2,1)-U_M(:,0,1)) ), &
                   dX1, BetaTVB )
@@ -304,7 +296,7 @@ CONTAINS
 
             dU(:,2) &
               = MinModB &
-                  ( U_M(:,0,3), &
+                  ( MATMUL( invR_X2, U_M(:,0,3) ), &
                     BetaTVD * MATMUL( invR_X2, (U_M(:,0,1)-U_M(:,3,1)) ), &
                     BetaTVD * MATMUL( invR_X2, (U_M(:,4,1)-U_M(:,0,1)) ), &
                     dX2, BetaTVB )
@@ -315,10 +307,30 @@ CONTAINS
 
             dU(:,3) &
               = MinModB &
-                  ( U_M(:,0,4), &
+                  ( MATMUL( invR_X3, U_M(:,0,4) ), &
                     BetaTVD * MATMUL( invR_X3, (U_M(:,0,1)-U_M(:,5,1)) ), &
                     BetaTVD * MATMUL( invR_X3, (U_M(:,6,1)-U_M(:,0,1)) ), &
                     dX3, BetaTVB )
+
+          END IF
+
+          IF( UseCharacteristicLimiting )THEN
+
+            ! --- Transform Back from Characteristic Variables ---
+
+            dU(:,1) = MATMUL( R_X1, dU(:,1) )
+
+            IF( nDimsX > 1 )THEN
+
+              dU(:,2) = MATMUL( R_X2, dU(:,2) )
+
+            END IF
+
+            IF( nDimsX > 2 )THEN
+
+              dU(:,3) = MATMUL( R_X3, dU(:,3) )
+
+            END IF
 
           END IF
 
@@ -350,70 +362,27 @@ CONTAINS
           ! --- Replace Slopes and Discard High-Order Components ---
           ! --- if Limited Slopes Deviate too Much from Original ---
 
-          IF( UseCharacteristicLimiting )THEN
+          DO iCF = 1, nCF
 
-            LimitPolynomial = .FALSE.
+            IF( SlopeDifference(iCF) &
+                  > SlopeTolerance * ABS( U_M(iCF,0,1) ) )THEN
 
-            DO iDimX = 1, nDimsX
+              U_M(iCF,0,2:nDOFX) = Zero
 
-              IF( ANY( ABS( U_M(:,0,1+iDimX) - dU(:,iDimX) ) &
-                       > SlopeTolerance * ABS( U_M(:,0,1+iDimX) ) ) ) &
-              THEN
-
-                LimitPolynomial = .TRUE.
-
-              END IF
-
-            END DO
-
-            IF( LimitPolynomial )THEN
-
-              U_M(:,0,2:nDOFX) = Zero
-
-              U_M(:,0,2) = MATMUL( R_X1(:,:), dU(:,1) )
+              U_M(:,0,2) = dU(:,1)
 
               IF( nDimsX > 1 ) &
-                U_M(:,0,3) = MATMUL( R_X2(:,:), dU(:,2) )
+                U_M(iCF,0,3) = dU(iCF,2)
 
               IF( nDimsX > 2 ) &
-                U_M(:,0,4) = MATMUL( R_X3(:,:), dU(:,3) )
+                U_M(iCF,0,4) = dU(iCF,3)
 
-              DO iCF = 1, nCF
-
-                CALL MapModalToNodal_Fluid &
-                       ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
-
-              END DO
+              CALL MapModalToNodal_Fluid &
+                     ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
 
             END IF
 
-          ELSE
-
-            ! --- Componentwise Limiting ---
-
-            DO iCF = 1, nCF
-
-              IF( SlopeDifference(iCF) &
-                    > SlopeTolerance * ABS( U_M(iCF,0,1) ) )THEN
-
-                U_M(iCF,0,2:nDOFX) = Zero
-
-                U_M(:,0,2) = dU(:,1)
-
-                IF( nDimsX > 1 ) &
-                  U_M(iCF,0,3) = dU(iCF,2)
-
-                IF( nDimsX > 2 ) &
-                  U_M(iCF,0,4) = dU(iCF,3)
-
-                CALL MapModalToNodal_Fluid &
-                       ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
-
-              END IF
-
-            END DO
-
-          END IF
+          END DO
 
         END DO
       END DO
