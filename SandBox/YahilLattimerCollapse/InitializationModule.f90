@@ -41,7 +41,7 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1, i_Lo, i_Hi
-    INTEGER, PARAMETER :: N = 203
+    INTEGER  :: N = 0
     REAL(DP) :: Kappa, C_X, C_D, C_V, R_q, X_q
     REAL(DP) :: w_Lo, w_Hi
     REAL(DP), ALLOCATABLE :: X(:), D(:), V(:)
@@ -60,6 +60,7 @@ CONTAINS
             * CollapseTime**( 1.0_DP - Gamma )
 
     ! --- Get Array Size Here ---
+    call length(FileName,N)
 
     ALLOCATE( X(N), D(N), V(N) )
 
@@ -85,8 +86,26 @@ CONTAINS
 
             uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
               = ( D(i_Lo) * w_Lo + D(i_Hi) * w_Hi ) * C_D
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = ( V(i_Lo) * w_Lo + V(i_Hi) * w_Hi ) * C_V
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+            UPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+              = (Kappa * ( ( D(i_Lo) * w_Lo + D(i_Hi) * w_Hi ) &
+                * C_D ) ** Gamma)/(Gamma - 1)
 
           END DO
+
+          CALL ComputeConserved &
+               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                 uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                 uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         END DO
       END DO
@@ -95,7 +114,33 @@ CONTAINS
     DEALLOCATE( X, D, V )
 
   END SUBROUTINE InitializeFields
+  
+  subroutine length(file, N)
 
+    !===========================================
+    !                    Length
+    !===========================================
+    !  Purpose: Given a file name, it will return the 
+    !           number of line in the file
+    !  Author: Kristopher Andrew
+    !  Date: 7/3/18                              
+    !===========================================
+
+    character(len=*), intent(in) :: file
+    integer, intent(out) :: N
+    integer :: stat
+
+    OPEN(UNIT=1,FILE=file,FORM="FORMATTED",STATUS="OLD",ACTION="READ")
+    DO
+       READ(1,*,IOSTAT = stat)
+       IF(stat /= 0)THEN
+          CLOSE(UNIT=1)
+          RETURN
+       END IF
+       N = N+1
+    END DO
+  
+  END SUBROUTINE length
 
   SUBROUTINE ReadYahilProfile( FILE_NAME, N, X, D, V )
 
@@ -119,7 +164,7 @@ CONTAINS
 
     !--- Read all the files. Discard the header
     READ(1, *)
-    DO i = 1, N
+    DO i = 2, N
       READ(1, *) X(i), D(i), V(i)
     END DO
 
