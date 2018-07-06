@@ -41,6 +41,18 @@ MODULE TimeSteppingModule_SSPRK
     END SUBROUTINE FluidIncrement
   END INTERFACE
 
+  INTERFACE
+    SUBROUTINE GravitySolver( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+      USE KindModule, ONLY: DP
+      INTEGER, INTENT(in)     :: &
+        iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+      REAL(DP), INTENT(inout) :: &
+        G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      REAL(DP), INTENT(in)    :: &
+        U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    END SUBROUTINE GravitySolver
+  END INTERFACE
+
 CONTAINS
 
 
@@ -145,18 +157,28 @@ CONTAINS
   END SUBROUTINE AllocateButcherTables_SSPRK
 
 
-  SUBROUTINE UpdateFluid_SSPRK( t, dt, G, U, ComputeIncrement_Fluid )
+  SUBROUTINE UpdateFluid_SSPRK &
+    ( t, dt, G, U, ComputeIncrement_Fluid, ComputeGravitationalPotential )
 
     REAL(DP), INTENT(in) :: &
       t, dt
-    REAL(DP), INTENT(in) :: &
+    REAL(DP), INTENT(inout) :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    PROCEDURE (FluidIncrement) :: &
+    PROCEDURE(FluidIncrement) :: &
       ComputeIncrement_Fluid
+    PROCEDURE(GravitySolver), OPTIONAL :: &
+      ComputeGravitationalPotential
 
+    LOGICAL :: SolveGravity
     INTEGER :: iS, jS
+
+    IF( PRESENT( ComputeGravitationalPotential ) )THEN
+      SolveGravity = .TRUE.
+    ELSE
+      SolveGravity = .FALSE.
+    END IF
 
     U_SSPRK = Zero ! --- State
     D_SSPRK = Zero ! --- Increment
@@ -181,6 +203,15 @@ CONTAINS
 
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
+
+        IF( SolveGravity )THEN
+
+          CALL ComputeGravitationalPotential &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, &
+                   G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+                   U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+
+        END IF
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -216,6 +247,14 @@ CONTAINS
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
+    IF( SolveGravity )THEN
+
+      CALL ComputeGravitationalPotential &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, &
+               G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+               U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+
+    END IF
 
   END SUBROUTINE UpdateFluid_SSPRK
  
