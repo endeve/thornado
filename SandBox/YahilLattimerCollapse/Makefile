@@ -1,9 +1,12 @@
+GRAVITY_SOLVER = POSEIDON_NEWTON
+
 include ../../../Build/Makefile_Build
 
 all: ApplicationDriver
 
 ApplicationDriver: \
 	$(thornado) \
+	GravitySolutionModule_Newtonian_Poseidon_Beta.o \
 	EulerEquationsUtilitiesModule_Beta.o \
 	CharacteristicDecompositionModule.o \
         InitializationModule.o \
@@ -14,6 +17,7 @@ ApplicationDriver: \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
+	GravitySolutionModule_Newtonian_Poseidon_Beta.o \
 	EulerEquationsUtilitiesModule_Beta.o \
 	CharacteristicDecompositionModule.o \
         InitializationModule.o \

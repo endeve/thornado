@@ -39,14 +39,13 @@ CONTAINS
     REAL(DP),     INTENT(in) :: CentralDensity
     REAL(DP),     INTENT(in) :: CentralPressure
 
-    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iX1, iX2, iX3, N
     INTEGER  :: iNodeX, iNodeX1, i_Lo, i_Hi
-    INTEGER  :: N = 0
     REAL(DP) :: Kappa, C_X, C_D, C_V, R_q, X_q
     REAL(DP) :: w_Lo, w_Hi
     REAL(DP), ALLOCATABLE :: X(:), D(:), V(:)
 
-    Kappa = CentralPressure / CentralDensity**Gamma
+    Kappa = CentralPressure / CentralDensity**( Gamma )
 
     C_X = SQRT( Kappa ) &
             * GravitationalConstant**( 0.5_DP * ( 1.0_DP - Gamma ) ) &
@@ -59,8 +58,7 @@ CONTAINS
             * GravitationalConstant**( 0.5_DP * ( 1.0_DP - Gamma ) ) &
             * CollapseTime**( 1.0_DP - Gamma )
 
-    ! --- Get Array Size Here ---
-    call length(FileName,N)
+    CALL length( FileName, N )
 
     ALLOCATE( X(N), D(N), V(N) )
 
@@ -86,13 +84,17 @@ CONTAINS
 
             uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
               = ( D(i_Lo) * w_Lo + D(i_Hi) * w_Hi ) * C_D
+
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
               = ( V(i_Lo) * w_Lo + V(i_Hi) * w_Hi ) * C_V
+
             uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+
             uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-            UPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-              = (Kappa * ( ( D(i_Lo) * w_Lo + D(i_Hi) * w_Hi ) &
-                * C_D ) ** Gamma)/(Gamma - 1)
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+              = Kappa * uPF(iNodeX,iX1,iX2,iX3,iPF_D) ** Gamma &
+                  / ( Gamma - 1.0_DP )
 
           END DO
 
@@ -115,7 +117,7 @@ CONTAINS
 
   END SUBROUTINE InitializeFields
   
-  subroutine length(file, N)
+  subroutine length( file, N )
 
     !===========================================
     !                    Length
@@ -126,11 +128,16 @@ CONTAINS
     !  Date: 7/3/18                              
     !===========================================
 
-    character(len=*), intent(in) :: file
-    integer, intent(out) :: N
+    character(len=*), intent(in)  :: file
+    integer,          intent(out) :: N
+
     integer :: stat
 
+    N = 0
+
     OPEN(UNIT=1,FILE=file,FORM="FORMATTED",STATUS="OLD",ACTION="READ")
+
+    READ(1, *) ! --- Ignore First Line
     DO
        READ(1,*,IOSTAT = stat)
        IF(stat /= 0)THEN
@@ -141,6 +148,7 @@ CONTAINS
     END DO
   
   END SUBROUTINE length
+
 
   SUBROUTINE ReadYahilProfile( FILE_NAME, N, X, D, V )
 
@@ -164,7 +172,7 @@ CONTAINS
 
     !--- Read all the files. Discard the header
     READ(1, *)
-    DO i = 2, N
+    DO i = 1, N
       READ(1, *) X(i), D(i), V(i)
     END DO
 

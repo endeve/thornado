@@ -23,6 +23,12 @@ PROGRAM ApplicationDriver
     WriteFieldsHDF
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
+
+  USE GravitySolutionModule_Newtonian_Poseidon_Beta, ONLY: &
+    InitializeGravitySolver, &
+    FinalizeGravitySolver, &
+    ComputeGravitationalPotential
+
   USE FluidFieldsModule, ONLY: &
     uCF, uPF, uAF
   USE SlopeLimiterModule_Euler, ONLY: &
@@ -48,18 +54,20 @@ PROGRAM ApplicationDriver
 
   CHARACTER(64), PARAMETER :: FileName = 'YahilHomologousCollapse_Gm_130.dat'
   REAL(DP),      PARAMETER :: Gamma           = 1.3_DP
-  REAL(DP),      PARAMETER :: CollapseTime    = 200_DP * Millisecond
+  REAL(DP),      PARAMETER :: CollapseTime    = 0.5_DP * Millisecond
   REAL(DP),      PARAMETER :: CentralDensity  = 7.0d9 * Gram / Centimeter**3
   REAL(DP),      PARAMETER :: CentralPressure = 6.0d27 * Erg / Centimeter**3
   REAL(DP),      PARAMETER :: CoreRadius      = 1.0d4 * Kilometer
 
   INTEGER             :: iCycle, iCycleD, iCycleW
   INTEGER             :: nX(3), nNodes
+  REAL(DP)            :: xL(3), xR(3)
   REAL(DP)            :: t, dt, t_end
 
-  nX = [ 128, 1, 1 ]
-
+  nX     = [ 128, 1, 1 ]
   nNodes = 3
+  xL     = [ 0.0d0,      0.0d0, 0.0d0 ]
+  xR     = [ CoreRadius, Pi,    TwoPi ]
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -71,9 +79,11 @@ PROGRAM ApplicationDriver
            bcX_Option &
              = [ 11, 3, 1 ], &
            xL_Option &
-             = [ 0.0d0,      0.0d0, 0.0d0 ], &
+             = xL, &
            xR_Option &
-             = [ CoreRadius, Pi,    TwoPi ], &
+             = xR, &
+           zoomX_Option &
+             = [ 1.04_DP, 1.0_DP, 1.0_DP ], &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -94,6 +104,8 @@ PROGRAM ApplicationDriver
   CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
+  CALL InitializeGravitySolver
+
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
@@ -113,6 +125,9 @@ PROGRAM ApplicationDriver
 
   CALL InitializeFields &
          ( FileName, Gamma, CollapseTime, CentralDensity, CentralPressure )
+
+  CALL ComputeGravitationalPotential &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
@@ -173,6 +188,8 @@ PROGRAM ApplicationDriver
   CALL FinalizeSlopeLimiter_Euler
 
   CALL FinalizeEquationOfState
+
+  CALL FinalizeGravitySolver
 
   CALL FinalizeReferenceElementX_Lagrange
 
