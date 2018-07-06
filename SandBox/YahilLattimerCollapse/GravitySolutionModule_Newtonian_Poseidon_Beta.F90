@@ -46,8 +46,6 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_NEWTON
 
-    PRINT*, "InitializeGravitySolver"
-
     CALL Poseidon_Initialize &
          ( FEM_Degree_Input          &
              = MAX( 1, nNodes - 1 ), &
@@ -68,8 +66,6 @@ CONTAINS
   SUBROUTINE FinalizeGravitySolver
 
 #ifdef GRAVITY_SOLVER_POSEIDON_NEWTON
-
-    PRINT*, "FinalizeGravitySolver"
 
     CALL Poseidon_Close
 
@@ -136,7 +132,8 @@ CONTAINS
 
 #endif
 
-    CALL SetBoundaryConditions( BaryonMass )
+    CALL SetBoundaryConditions &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, BaryonMass )
 
   END SUBROUTINE ComputeGravitationalPotential
 
@@ -203,54 +200,67 @@ CONTAINS
   END SUBROUTINE ComputeTotalBaryonMass
 
 
-  SUBROUTINE SetBoundaryConditions( BaryonMass )
+  SUBROUTINE SetBoundaryConditions &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, BaryonMass )
 
-    REAL(DP), INTENT(in) :: BaryonMass
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)    :: &
+      BaryonMass
 
-    CALL SetBoundaryConditions_X1( BaryonMass )
+    CALL SetBoundaryConditions_X1 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, BaryonMass )
 
   END SUBROUTINE SetBoundaryConditions
 
 
-  SUBROUTINE SetBoundaryConditions_X1( BaryonMass )
+  SUBROUTINE SetBoundaryConditions_X1 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, BaryonMass )
 
-    REAL(DP), INTENT(in) :: BaryonMass
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)    :: &
+      BaryonMass
 
-!!$    INTEGER  :: iX2, iX3
-!!$    INTEGER  :: iNodeX1, jNodeX1, iNodeX2, iNodeX3
-!!$    INTEGER  :: iNodeX, jNodeX
-!!$    REAL(DP) :: X1
-!!$
-!!$    DO iX3 = 1, nX(3)
-!!$      DO iX2 = 1, nX(2)
-!!$
-!!$        DO iNodeX3 = 1, nNodesX(3)
-!!$          DO iNodeX2 = 1, nNodesX(2)
-!!$            DO iNodeX1 = 1, nNodesX(1)
-!!$
-!!$              ! --- Inner Boundary: Reflecting ---
-!!$
-!!$              jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
-!!$
-!!$              iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-!!$              jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
-!!$
-!!$              uGF(iNodeX,0,iX2,iX3,iGF_Phi_N) &
-!!$                = uGF(jNodeX,1,iX2,iX3,iGF_Phi_N)
-!!$
-!!$              ! --- Outer Boundary: Dirichlet ---
-!!$
-!!$              X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNodeX1 )
-!!$
-!!$              uGF(iNodeX,nX(1)+1,iX2,iX3,iGF_Phi_N) &
-!!$                = - BaryonMass / X1
-!!$
-!!$            END DO
-!!$          END DO
-!!$        END DO
-!!$
-!!$      END DO
-!!$    END DO
+    INTEGER  :: iX2, iX3
+    INTEGER  :: iNodeX1, jNodeX1, iNodeX2, iNodeX3
+    INTEGER  :: iNodeX, jNodeX
+    REAL(DP) :: X1
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+
+        DO iNodeX3 = 1, nNodesX(3)
+          DO iNodeX2 = 1, nNodesX(2)
+            DO iNodeX1 = 1, nNodesX(1)
+
+              ! --- Inner Boundary: Reflecting ---
+
+              jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+
+              iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+              jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+
+              G(iNodeX,0,iX2,iX3,iGF_Phi_N) &
+                = G(jNodeX,1,iX2,iX3,iGF_Phi_N)
+
+              ! --- Outer Boundary: Dirichlet ---
+
+              X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNodeX1 )
+
+              G(iNodeX,nX(1)+1,iX2,iX3,iGF_Phi_N) &
+                = - BaryonMass / X1
+
+            END DO
+          END DO
+        END DO
+
+      END DO
+    END DO
 
   END SUBROUTINE SetBoundaryConditions_X1
 

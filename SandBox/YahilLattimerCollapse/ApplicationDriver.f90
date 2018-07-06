@@ -44,6 +44,12 @@ PROGRAM ApplicationDriver
     FinalizeEquationOfState
   USE InitializationModule, ONLY: &
     InitializeFields
+
+  USE TimeSteppingModule_SSPRK, ONLY: &
+    InitializeFluid_SSPRK, &
+    FinalizeFluid_SSPRK, &
+    UpdateFluid_SSPRK
+
   USE EulerEquationsUtilitiesModule_Beta, ONLY: &
     ComputeFromConserved, &
     ComputeTimeStep
@@ -54,7 +60,7 @@ PROGRAM ApplicationDriver
 
   CHARACTER(64), PARAMETER :: FileName = 'YahilHomologousCollapse_Gm_130.dat'
   REAL(DP),      PARAMETER :: Gamma           = 1.3_DP
-  REAL(DP),      PARAMETER :: CollapseTime    = 0.5_DP * Millisecond
+  REAL(DP),      PARAMETER :: CollapseTime    = 150_DP * Millisecond
   REAL(DP),      PARAMETER :: CentralDensity  = 7.0d9 * Gram / Centimeter**3
   REAL(DP),      PARAMETER :: CentralPressure = 6.0d27 * Erg / Centimeter**3
   REAL(DP),      PARAMETER :: CoreRadius      = 1.0d4 * Kilometer
@@ -77,7 +83,7 @@ PROGRAM ApplicationDriver
            swX_Option &
              = [ 1, 1, 1 ], &
            bcX_Option &
-             = [ 11, 3, 1 ], &
+             = [ 30, 3, 1 ], &
            xL_Option &
              = xL, &
            xR_Option &
@@ -93,8 +99,8 @@ PROGRAM ApplicationDriver
            BasicInitialization_Option &
              = .TRUE. )
 
-  t_end   = 1.0d+2
-  iCycleD = 10
+  t_end   = 0.99_DP * CollapseTime
+  iCycleD = 1
   iCycleW = 1000
 
   CALL InitializeReferenceElementX
@@ -132,54 +138,69 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-!!$  ! --- Evolve ---
-!!$
-!!$  t = 0.0_DP
-!!$
-!!$  iCycle = 0
-!!$  DO WHILE ( t < t_end )
-!!$
-!!$    iCycle = iCycle + 1
-!!$
-!!$    CALL ComputeTimeStep &
-!!$           ( iX_B0, iX_E0, &
-!!$             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-!!$             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-!!$             CFL = 0.3_DP / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
-!!$
-!!$    IF( t + dt > t_end )THEN
-!!$
-!!$      dt = t_end - t
-!!$
-!!$    END IF
-!!$
-!!$    IF( MOD( iCycle, iCycleD ) == 0 )THEN
-!!$
-!!$      WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
-!!$          '', 'Cycle = ', iCycle, '', 't = ',  t, '', 'dt = ', dt
-!!$
-!!$    END IF
-!!$
-!!$    CALL UpdateFluid_SSPRK &
-!!$           ( t, dt, uGF, uCF, ComputeIncrement_Euler_DG_Explicit )
-!!$
-!!$    t = t + dt
-!!$
-!!$    IF( MOD( iCycle, iCycleW ) == 0 )THEN
-!!$
-!!$      CALL ComputeFromConserved &
-!!$             ( iX_B0, iX_E0, &
-!!$               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-!!$               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-!!$               uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-!!$               uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
-!!$
-!!$      CALL WriteFieldsHDF &
-!!$             ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
-!!$
-!!$    END IF
-!!$
-!!$  END DO
+  CALL InitializeFluid_SSPRK( nStages = 3 )
+
+  ! --- Evolve ---
+
+  t = 0.0_DP
+
+  iCycle = 0
+  DO WHILE ( t < t_end )
+
+    iCycle = iCycle + 1
+
+    CALL ComputeTimeStep &
+           ( iX_B0, iX_E0, &
+             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             CFL = 0.3_DP / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
+
+    IF( t + dt > t_end )THEN
+
+      dt = t_end - t
+
+    END IF
+
+    IF( MOD( iCycle, iCycleD ) == 0 )THEN
+
+      WRITE(*,'(A8,A8,I8.8,A2,A9,ES13.6E3,A1,A10,ES13.6E3)') &
+          '', 'Cycle = ', iCycle, &
+          '', 't [ms] = ',  t / Millisecond, &
+          '', 'dt [ms] = ', dt / Millisecond
+
+    END IF
+
+    CALL UpdateFluid_SSPRK &
+           ( t, dt, uGF, uCF, ComputeIncrement_Euler_DG_Explicit, &
+             ComputeGravitationalPotential )
+
+    t = t + dt
+
+    IF( MOD( iCycle, iCycleW ) == 0 )THEN
+
+      CALL ComputeFromConserved &
+             ( iX_B0, iX_E0, &
+               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+
+      CALL WriteFieldsHDF &
+             ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
+    END IF
+
+  END DO
+
+  CALL ComputeFromConserved &
+         ( iX_B0, iX_E0, &
+           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+
+  CALL WriteFieldsHDF &
+         ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
   ! --- Finalize ---
 
@@ -188,6 +209,8 @@ PROGRAM ApplicationDriver
   CALL FinalizeSlopeLimiter_Euler
 
   CALL FinalizeEquationOfState
+
+  CALL FinalizeFluid_SSPRK
 
   CALL FinalizeGravitySolver
 
