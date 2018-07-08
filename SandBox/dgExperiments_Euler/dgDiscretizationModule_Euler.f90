@@ -41,10 +41,6 @@ MODULE dgDiscretizationModule_Euler
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE BoundaryConditionsModule_Beta, ONLY: &
     ApplyBoundaryConditions_Fluid
-  USE SlopeLimiterModule_Euler, ONLY: &
-    ApplySlopeLimiter_Euler
-  USE PositivityLimiterModule_Euler, ONLY: &
-    ApplyPositivityLimiter_Euler
   USE EulerEquationsUtilitiesModule_Beta, ONLY: &
     ComputePrimitive, &
     Eigenvalues, &
@@ -99,12 +95,6 @@ CONTAINS
     REAL(DP) :: dX1, dX2, dX3
 
     dU = Zero
-
-    CALL ApplySlopeLimiter_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
-
-    CALL ApplyPositivityLimiter_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
