@@ -32,15 +32,21 @@ PROGRAM ApplicationDriver
     UpdateFluid_SSPRK
   USE SlopeLimiterModule_Euler, ONLY: &
     InitializeSlopeLimiter_Euler, &
-    FinalizeSlopeLimiter_Euler
+    FinalizeSlopeLimiter_Euler, &
+    ApplySlopeLimiter_Euler
   USE PositivityLimiterModule_Euler, ONLY: &
     InitializePositivityLimiter_Euler, &
-    FinalizePositivityLimiter_Euler
+    FinalizePositivityLimiter_Euler, &
+    ApplyPositivityLimiter_Euler
   USE EulerEquationsUtilitiesModule_Beta, ONLY: &
     ComputeFromConserved, &
     ComputeTimeStep
   USE dgDiscretizationModule_Euler, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
+  USE Euler_TallyModule, ONLY: &
+    InitializeTally_Euler, &
+    FinalizeTally_Euler, &
+    ComputeTally_Euler
 
   IMPLICIT NONE
 
@@ -64,7 +70,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'RiemannProblemSpherical'
+  ProgramName = 'KelvinHelmholtz'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -111,7 +117,7 @@ PROGRAM ApplicationDriver
       UseSlopeLimiter           = .TRUE.
       UseCharacteristicLimiting = .TRUE.
 
-      UseTroubledCellIndicator  = .TRUE.
+      UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 0.03_DP
 
       iCycleD = 1
@@ -125,12 +131,12 @@ PROGRAM ApplicationDriver
       Gamma = 1.4_DP
 
       nX = [ 128, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] + 1.0d-16
-      xR = [ 2.0_DP, Pi,     TwoPi  ] - 1.0d-16
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 2.0_DP, Pi,     TwoPi  ]
 
       bcX = [ 3, 3, 0 ]
 
-      nNodes = 2
+      nNodes = 3
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
@@ -143,13 +149,13 @@ PROGRAM ApplicationDriver
 
       iCycleD = 1
       t_end   = 5.0d-1
-      dt_wrt  = 2.0d-4
+      dt_wrt  = 2.5d-2
 
     CASE( 'KelvinHelmholtz' )
 
       Gamma = 5.0_DP / 3.0_DP
 
-      nX = [ 48, 48, 1 ]
+      nX = [ 128, 128, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -158,17 +164,17 @@ PROGRAM ApplicationDriver
       nNodes = 3
 
       BetaTVD = 2.00_DP
-      BetaTVB = 3.0d+02
+      BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
       UseCharacteristicLimiting = .TRUE.
 
-      UseTroubledCellIndicator  = .FALSE.
+      UseTroubledCellIndicator  = .TRUE.
       LimiterThresholdParameter = 0.03_DP
 
       iCycleD = 10
-      t_end   = 1.500_DP
-      dt_wrt  = 0.150_DP
+      t_end   = 1.50_DP
+      dt_wrt  = 0.15_DP
 
     CASE( 'RayleighTaylor' )
 
@@ -211,7 +217,7 @@ PROGRAM ApplicationDriver
       BetaTVB = 0.0d+02
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
 
       UseTroubledCellIndicator  = .TRUE.
       LimiterThresholdParameter = 0.03_DP
@@ -256,7 +262,7 @@ PROGRAM ApplicationDriver
          ( BetaTVD_Option = BetaTVD, &
            BetaTVB_Option = BetaTVB, &
            SlopeTolerance_Option &
-             = 1.0d-2, &
+             = 1.0d-6, &
            UseSlopeLimiter_Option &
              = UseSlopeLimiter, &
            UseCharacteristicLimiting_Option &
@@ -279,6 +285,23 @@ PROGRAM ApplicationDriver
            RiemannProblemName_Option &
              = TRIM( RiemannProblemName ) )
 
+  CALL ApplySlopeLimiter_Euler &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, &
+           uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+           uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+
+  CALL ApplyPositivityLimiter_Euler &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, &
+           uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+           uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+
+  CALL ComputeFromConserved &
+         ( iX_B0, iX_E0, &
+           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
@@ -291,6 +314,11 @@ PROGRAM ApplicationDriver
   t     = 0.0_DP
   t_wrt = dt_wrt
   wrt   = .FALSE.
+
+  CALL InitializeTally_Euler &
+         ( iX_B0, iX_E0, &
+           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
 
   iCycle = 0
   DO WHILE ( t < t_end )
@@ -341,6 +369,12 @@ PROGRAM ApplicationDriver
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
+      CALL ComputeTally_Euler &
+           ( iX_B0, iX_E0, &
+             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+
       wrt = .FALSE.
 
     END IF
@@ -356,6 +390,14 @@ PROGRAM ApplicationDriver
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
+  CALL ComputeTally_Euler &
+         ( iX_B0, iX_E0, &
+           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+
+  CALL FinalizeTally_Euler
 
   wTime = MPI_WTIME( ) - wTime
 
