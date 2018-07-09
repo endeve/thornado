@@ -13,6 +13,7 @@ ApplicationDriver: \
         PositivityLimiterModule_Euler.o \
 	dgDiscretizationModule_Euler.o \
 	TimeSteppingModule_SSPRK.o \
+	Euler_TallyModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
@@ -25,6 +26,7 @@ ApplicationDriver: \
         PositivityLimiterModule_Euler.o \
 	dgDiscretizationModule_Euler.o \
 	TimeSteppingModule_SSPRK.o \
+	Euler_TallyModule.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
