@@ -187,9 +187,11 @@ CONTAINS
 
     ! --- Units ---
 
-    ActivateUnits = .FALSE.
-    IF( PRESENT( ActivateUnits_Option ) ) &
+    IF( PRESENT( ActivateUnits_Option ) )THEN
       ActivateUnits = ActivateUnits_Option
+    ELSE
+      ActivateUnits = .FALSE.
+    END IF
 
     IF( ActivateUnits )THEN
 
