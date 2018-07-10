@@ -2,6 +2,8 @@ MODULE Euler_TallyModule
 
   USE KindModule, ONLY: &
     DP, Zero
+  USE UnitsModule, ONLY: &
+    UnitsDisplay
   USE ProgramHeaderModule, ONLY: &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
@@ -182,6 +184,7 @@ CONTAINS
             = EulerTally(iTally_E_g,iState) &
                 + SUM( WeightsX_q(:) &
                          * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
+                         * 0.5_DP &
                          * U(:,iX1,iX2,iX3,iCF_D) &
                          * G(:,iX1,iX2,iX3,iGF_Phi_N) ) &
                     * dX1(iX1) * dX2(iX2) * dX3(iX3)
@@ -207,20 +210,24 @@ CONTAINS
 
     INTEGER :: FileUnit
 
+    ASSOCIATE( U => UnitsDisplay )
+
     OPEN( NEWUNIT=FileUnit, FILE=TRIM( TallyFileName ), ACCESS='APPEND' )
 
     WRITE( FileUnit, '(9(ES20.12,x))' ) &
-      Time, &
-      EulerTally(iCF_D,     1), &
-      EulerTally(iCF_S1,    1), &
-      EulerTally(iCF_S2,    1), &
-      EulerTally(iCF_S3,    1), &
-      EulerTally(iCF_E,     1), &
-      EulerTally(iTally_E_i,1), &
-      EulerTally(iTally_E_k,1), &
-      EulerTally(iTally_E_g,1)
+      Time / U % TimeUnit, &
+      EulerTally(iCF_D,     1) / U % MassUnit, &
+      EulerTally(iCF_S1,    1) / U % MomentumUnit, &
+      EulerTally(iCF_S2,    1) / U % MomentumUnit, &
+      EulerTally(iCF_S3,    1) / U % MomentumUnit, &
+      EulerTally(iCF_E,     1) / U % EnergyGlobalUnit, &
+      EulerTally(iTally_E_i,1) / U % EnergyGlobalUnit, &
+      EulerTally(iTally_E_k,1) / U % EnergyGlobalUnit, &
+      EulerTally(iTally_E_g,1) / U % EnergyGlobalUnit
 
     CLOSE( FileUnit )
+
+    END ASSOCIATE ! U
 
   END SUBROUTINE WriteTally_Euler
 
