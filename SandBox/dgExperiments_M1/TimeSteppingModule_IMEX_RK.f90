@@ -479,7 +479,7 @@ CONTAINS
 
         alpha_IM = 1.0_DP
 
-      CASE ( 'IMEX_PARSD' )
+      CASE ( 'IMEX_PDARS_3' )
 
         ! --- Scheme from Ran Chu (2018) ---
 
