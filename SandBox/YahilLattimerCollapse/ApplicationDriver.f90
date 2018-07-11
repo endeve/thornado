@@ -96,7 +96,7 @@ PROGRAM ApplicationDriver
            xR_Option &
              = xR, &
            zoomX_Option &
-             = [ 1.049719985023263_DP, 1.0_DP, 1.0_DP ], &
+             = [ 1.071835456828339_DP, 1.0_DP, 1.0_DP ], &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
