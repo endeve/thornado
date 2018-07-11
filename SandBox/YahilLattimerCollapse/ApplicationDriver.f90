@@ -69,7 +69,7 @@ PROGRAM ApplicationDriver
   REAL(DP),      PARAMETER :: CollapseTime    = 150_DP * Millisecond
   REAL(DP),      PARAMETER :: CentralDensity  = 7.0d9 * Gram / Centimeter**3
   REAL(DP),      PARAMETER :: CentralPressure = 6.0d27 * Erg / Centimeter**3
-  REAL(DP),      PARAMETER :: CoreRadius      = 1.0d4 * Kilometer
+  REAL(DP),      PARAMETER :: CoreRadius      = 1.0d5 * Kilometer
 
   LOGICAL  :: wrt
   INTEGER  :: iCycle, iCycleD
