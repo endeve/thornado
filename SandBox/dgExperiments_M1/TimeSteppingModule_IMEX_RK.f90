@@ -504,6 +504,39 @@ CONTAINS
 
         alpha_IM = 0.0_DP
 
+      CASE ( 'IMEX_PDARS_4' )
+
+        ! --- Scheme from Ran Chu (2018) ---
+
+        nStages = 4
+        CALL AllocateButcherTables( nStages )
+
+        a_EX(2,1) = 1.0_DP
+        a_EX(3,1) = 0.25_DP
+        a_EX(3,2) = 0.25_DP
+        a_EX(4,1) = 1.0_DP / 6.0_DP
+        a_EX(4,2) = 1.0_DP / 6.0_DP
+        a_EX(4,3) = 2.0_DP / 3.0_DP
+
+        w_EX(1)   = 1.0_DP / 6.0_DP
+        w_EX(2)   = 1.0_DP / 6.0_DP
+        w_EX(3)   = 2.0_DP / 3.0_DP
+
+        alpha_EX = 0.0_DP
+
+        a_IM(2,2) = 1.0_DP
+        a_IM(3,2) = 0.25_DP
+        a_IM(3,3) = 0.25_DP
+        a_IM(4,2) = 1.0_DP / 6.0_DP - (1.d-6)/4.0_DP
+        a_IM(4,3) = 1.0_DP / 6.0_DP - (1.d-3)/4.0_DP
+        a_IM(4,4) = 2.0_DP / 3.0_DP + (1.d-3)/4.0_DP + (1.d-6)/4.0_DP
+
+        w_IM(2)   = a_IM(4,2)
+        w_IM(3)   = a_IM(4,3)
+        w_IM(4)   = a_IM(4,4)
+
+        alpha_IM = 0.0_DP
+
       CASE ( 'IMEX_PC2' )
 
         ! --- Scheme from McClarren et al. (2008) ---
