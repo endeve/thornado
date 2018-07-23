@@ -17,6 +17,9 @@ MODULE PositivityLimiterModule_Euler
     LX_X2_Dn, LX_X2_Up, &
     LX_X3_Dn, LX_X3_Up
 
+  USE GeometryFieldsModule, ONLY: &
+    iGF_SqrtGm
+
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
 
@@ -138,7 +141,8 @@ CONTAINS
 
             ! --- Cell Average ---
 
-            U_K(iCF_D) = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) )
+            U_K(iCF_D) = SUM( WeightsX_q(:) * U_q(:,iCF_D) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                           / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
             Theta_1 = MIN( One, (U_K(iCF_D)-Min_1)/(U_K(iCF_D)-Min_K) )
 
@@ -168,7 +172,8 @@ CONTAINS
 
             DO iCF = 1, nCF
 
-              U_K(iCF) = DOT_PRODUCT( WeightsX_q(:), U_q(:,iCF) )
+              U_K(iCF) = SUM( WeightsX_q(:) * U_q(:,iCF) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                           / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
             END DO
 
