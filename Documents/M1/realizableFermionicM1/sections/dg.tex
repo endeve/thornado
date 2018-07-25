@@ -45,14 +45,14 @@ In Eq.~\eqref{eq:semidiscreteDG}, $\widehat{\bcF}^{i}(\vect{\cM}_{h})$ is a nume
 \begin{equation}
   \widehat{\bcF}^{i}(\vect{\cM}_{h})\big|_{x^{i}}=\vect{\mathscr{F}}^{i}(\vect{\cM}_{h}(x^{i,-},\tilde{\bx}^{i}),\vect{\cM}_{h}(x^{i,+},\tilde{\bx}^{i})),
 \end{equation}
-where superscripts $-/+$ in the arguments of $\vect{\cM}_{h}(x^{i,-/+},\tilde{\bx}^{i})$ indicate that the function is evaluated to the immediate left/right of $x^{i}$.  
+where superscripts $-/+$ in the arguments of $\vect{\cM}_{h}$ indicate that the function is evaluated to the immediate left/right of $x^{i}$.  
 In this paper we use the simple Lax-Friedrichs (LF) flux given by
 \begin{equation}
   \vect{\mathscr{F}}_{\mbox{\tiny LF}}^{i}(\vect{\cM}_{a},\vect{\cM}_{b})
   =\f{1}{2}\,\big(\,\bcF^{i}(\vect{\cM}_{a})+\bcF^{i}(\vect{\cM}_{b})-\alpha^{i}\,(\,\vect{\cM}_{b}-\vect{\cM}_{a}\,)\,\big),
   \label{eq:fluxFunctionLF}
 \end{equation}
-where $\alpha^{i}=||\mbox{eig}\big(\partial\bcF^{i}/\partial\vect{\cM}\big)||_{\infty}$ is the largest eigenvalue (in absolute value) of the flux Jacobian.  
+where $\alpha^{i}$ is the largest eigenvalue (in absolute value) of the flux Jacobian $\partial\bcF^{i}/\partial\vect{\cM}$.  
 For particles propagating at the speed of light, we can simply take $\alpha^{i}=1$ (i.e., the global LF flux).  
 
 \begin{rem}
