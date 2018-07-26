@@ -151,6 +151,33 @@ PROGRAM ApplicationDriver
       t_end   = 5.0d-1
       dt_wrt  = 2.5d-2
 
+   CASE( 'SphericalSedov' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      Gamma = 1.4_DP
+
+      nX = [ 128, 1, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 1.2_DP, Pi,     TwoPi  ]
+
+      bcX = [ 2, 0, 0 ]
+
+      nNodes = 3
+
+      BetaTVD = 2.0d+00
+      BetaTVB = 0.0d+00
+ 
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .FALSE.
+
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 0.03_DP
+
+      iCycleD = 1
+      t_end   = 1.0d+0
+      dt_wrt  = 5.0d-2
+
     CASE( 'KelvinHelmholtz' )
 
       Gamma = 5.0_DP / 3.0_DP
