@@ -1,7 +1,7 @@
 MODULE InitializationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, TwoPi, FourPi
+    DP, Zero, Half, One, Pi, TwoPi, FourPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nX, nNodesX, &
@@ -28,7 +28,7 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields &
-    ( AdvectionProfile_Option, Direction_Option, RiemannProblemName_Option )
+    ( AdvectionProfile_Option, Direction_Option, RiemannProblemName_Option, SedovEnergy_Option, nDetCells_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       AdvectionProfile_Option
@@ -36,6 +36,10 @@ CONTAINS
       Direction_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       RiemannProblemName_Option
+
+    REAL(DP), INTENT(in), OPTIONAL :: SedovEnergy_Option
+      
+    INTEGER, INTENT(in), OPTIONAL :: nDetCells_Option
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
@@ -59,6 +63,14 @@ CONTAINS
       CASE ( 'RiemannProblemSpherical' )
 
         CALL InitializeFields_RiemannProblemSpherical
+
+      CASE ( 'SphericalSedov' )
+       
+        CALL InitializeFields_SphericalSedov &
+               ( SedovEnergy_Option &
+                   = SedovEnergy_Option, &
+                 nDetCells_Option &
+                   = nDetCells_Option )
 
       CASE( 'KelvinHelmholtz' )
 
@@ -408,6 +420,75 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_RiemannProblemSpherical
+
+
+  SUBROUTINE InitializeFields_SphericalSedov( SedovEnergy_Option, nDetCells_Option )
+
+    REAL(DP), INTENT(in), OPTIONAL :: SedovEnergy_Option
+    INTEGER, INTENT(in), OPTIONAL :: nDetCells_Option
+
+    INTEGER  :: iX1, iX2, iX3, nDetCells
+    INTEGER  :: iNodeX, iNodeX1
+    REAL(DP) :: X1, R_0, E_0
+
+    nDetCells = 1
+    IF( PRESENT( nDetCells_Option ) ) &
+      nDetCells = nDetCells_Option
+
+    E_0 = 1.0_DP
+    IF( PRESENT( SedovEnergy_Option ) ) &
+      E_0 = SedovEnergy_Option
+
+    R_0 = REAL( nDetCells ) * MeshX(1) % Width(1)
+  
+    WRITE(*,*)
+    WRITE(*,'(A7,A,ES10.3E2,A2,I2.2,A2,ES10.3E2)') &
+      '', 'E_0, # of Detonation Cells, R_0 = ', E_0, ', ', nDetCells, ',', R_0 
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+
+            IF( X1 < R_0 )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E) = 3.0_DP * E_0 &
+                                            / ( 4.0_DP * Pi * R_0**3 )
+
+            ELSE 
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E) = 1.0d-5
+
+            END IF
+
+          END DO
+
+          CALL ComputeConserved &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE
 
 
   SUBROUTINE InitializeFields_KelvinHelmholtz
