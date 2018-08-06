@@ -703,7 +703,7 @@ CONTAINS
     LOGICAL, INTENT(in)     :: &
       LimitedCell(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
 
-    LOGICAL :: UseCorrection
+    LOGICAL :: UseCorrection1, UseCorrection2
     INTEGER :: iX1, iX2, iX3, iCF
     INTEGER :: LWORK, INFO
     INTEGER :: i, iPol
@@ -739,9 +739,9 @@ CONTAINS
     ! --- Correct Coefficients with Constratined Least Squares ---
     ! ---          to Preserve Conserved Quantities            ---
 
-    UseCorrection = .TRUE.
+    UseCorrection1 = .FALSE.
 
-    IF( UseCorrection )THEN
+    IF( UseCorrection1 )THEN
 
       DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -822,6 +822,39 @@ CONTAINS
                 END IF
               
               END DO            
+
+          END DO
+        END DO
+      END DO
+
+    END IF
+
+    UseCorrection2 = .TRUE.
+    
+    IF( UseCorrection2 )THEN
+      
+      DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = iX_B0(1), iX_E0(1)
+
+            DO iCF = 1, nCF
+
+              IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
+
+                  CALL MapNodalToModal_Fluid &
+                      ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+
+                  U_M(iCF,0,1) = U_K(iCF,iX1,iX2,iX3) - ( 1 / V_K(iX1,iX2,iX3) ) & 
+                                   * ( U_M(iCF,0,2) * SUM( WeightsX_q(:) * LegendreX(:,2) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                                       + U_M(iCF,0,3) * SUM( WeightsX_q(:) * LegendreX(:,3) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                                       + U_M(iCF,0,4) * SUM( WeightsX_q(:) * LegendreX(:,4) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) )
+
+                  CALL MapModalToNodal_Fluid &
+                      ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+
+              END IF
+
+            END DO
 
           END DO
         END DO
