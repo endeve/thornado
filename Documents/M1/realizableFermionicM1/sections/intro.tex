@@ -11,31 +11,30 @@ The distribution function, a phase space density depending on momentum $\vect{p}
 The evolution of the distribution function is governed by the Boltzmann equation, which states a balance between phase space advection and collisions (see, e.g., \cite{braginskii_1965,chapmanCowling_1970,lifshitzPitaevskii_1981}).  
 
 Solving the Boltzmann equation numerically for $f$ is challenging, in part due to the high dimensionality of phase space.  
-To reduce the dimensionality of the problem and make it more computationally tractable, one may instead solve for a finite number of angular moments $\{m^{(k)}\}_{k=0}^{N}$ of the distribution function, defined as
+To reduce the dimensionality of the problem and make it more computationally tractable, one may instead solve for a finite number of angular moments $\vect{m}_{N}=(m^{(0)},m^{(1)},\ldots,m^{(N)})^{T}$ of the distribution function, defined as
 \begin{equation}
   m^{(k)}(\varepsilon,\vect{x},t)=\f{1}{4\pi}\int_{\bbS^{2}}f(\omega,\varepsilon,\vect{x},t)\,g^{(k)}(\omega)\,d\omega,
 \end{equation}
 where $\varepsilon=|\vect{p}|$ is the particle energy, $\omega$ is a point on the unit sphere $\bbS^{2}$ indicating the particle propagation direction, and $g^{(k)}$ are momentum space angular weighing functions.  
 In problems where collisions are sufficiently frequent, solving a \emph{truncated moment problem} can provide significant reductions in computational cost since only a few moments are needed to represent the solution accurately.  
-On the other hand, in problems where collisions do not sufficiently isotropize the angular dependence of the distribution function, more moments may be needed.  
-In the two-moment model considered here, angular moments representing the particle density and flux (or energy density and momentum) are solved for.  
+On the other hand, in problems where collisions do not sufficiently isotropize the distribution function, more moments may be needed.  
+In the two-moment model considered here ($N=1$), angular moments representing the particle density and flux (or energy density and momentum) are solved for.  
 Two-moment models for relativistic systems appropriate for nuclear astrophysics applications have been discussed in, e.g., \cite{lindquist_1966,andersonSpiegel_1972,thorne_1981,shibata_etal_2011,cardall_etal_2013a}.  
 However, in this paper, for simplicity (and clarity), we consider a non-relativistic model, leaving extensions to relativistic systems for future work.  
 
-When solving a truncated moment problem, the equation governing the evolution of the $N$-th order moment $m^{(N)}$ contains higher order moments $\{m^{(k)}\}_{k=N+1}^{M}$ ($M>N$), which must be specified to form a closed system of equations.  
+In a truncated moment model, the equation governing the evolution of the $N$-th order moment $m^{(N)}$ contains higher order moments $\{m^{(k)}\}_{k=N+1}^{M}$ ($M>N$), which must be specified to form a closed system of equations.  
 For the two-moment model, the symmetric rank-two Eddington tensor (proportional to the pressure tensor) must be specified.  
-Solutions to the closure problem include setting $m^{(k)}=0$, for $k>N$, Eddington approximation, Kershaw-type closure, and maximum entropy closure.  
-The closure procedure often results in a system of nonlinear hyperbolic conservation laws, which can be solved using suitable numerical methods.  
-One challenge in solving the closure problem is constructing a sequence of moments that are consistent with a positive distribution function, which typically implies algebraic constraints on the moments.  
-Moments satisfying these constraints are called \emph{realizable moments}.  
-
-When solving the Boltzmann equations approximately by a truncated moment model, maintaining realizable moments is necessary in order to ensure the well-posedness of the closure procedure, and may also be necessary to guarantee other desirable properties of the model, including hyperbolicity and (mathematical) entropy dissipation.  
+Solutions to the closure problem include setting $m^{(k)}=0$, for $k>N$, Eddington approximation, Kershaw-type closure \cite{kershaw_1976}, and maximum entropy closure \cite{minerbo_1978,cernohorskyBludman_1994}.  
+The closure procedure often results in a system of nonlinear hyperbolic conservation laws, which can be solved using suitable numerical methods (e.g., \cite{leveque_1992}).  
+One challenge in solving the closure problem is constructing a sequence of moments that are consistent with a positive distribution function, which typically implies algebraic constraints on the moments \cite{kershaw_1976,levermore_1984}.  
+Moments satisfying these constraints are called \emph{realizable moments} (e.g., \cite{levermore_1996}).  
+When evolving a truncated moment model numerically, maintaining realizable moments is necessary in order to ensure the well-posedness of the closure procedure, and may also be necessary to guarantee other desirable properties of the model, including hyperbolicity and (mathematical) entropy dissipation.  
 Failure to maintain moment realizability in a numerical model may then require ad hoc post-processing steps with undesirable consequences such as loss of conservation.  
-For the two-moment model for particles governed by Maxwell-Boltzmann statistics (``classical'' particles with $f\ge0$), the particle density is nonnegative, the magnitude of the flux vector is bounded by the particle density, and there are further constraints on the components of the Eddington tensor \cite{levermore_1984}.  
-Furthermore, the realizable set of moments spanned by the particle density and flux vector constitute a convex cone \cite{olbrant_etal_2012}.  
 
-In this paper we consider the two-moment model for particles governed by Fermi-Dirac statistics.  
-In this case, there is also an upper bound on the distribution function because of Pauli's exclusion principle, which prevents particles (fermions) from occupying the same microscopic state.  
+In this paper we consider a two-moment model for particles governed by Fermi-Dirac statistics.  
+For a two-moment model for particles governed by Maxwell-Boltzmann statistics (``classical'' particles with $f\ge0$), the particle density is nonnegative, the magnitude of the flux vector is bounded by the particle density, and there are further constraints on the components of the Eddington tensor \cite{levermore_1984}.  
+Furthermore, the realizable set of moments spanned by the particle density and flux vector constitute a convex cone \cite{olbrant_etal_2012}.  
+In the fermionic case, there is also an upper bound on the distribution function because of Pauli's exclusion principle, which prevents particles from occupying the same microscopic state.  
 The fermionic two-moment model was recently studied theoretically in the context of maximum entropy closures \cite{lareckiBanach_2011,banachLarecki_2013,banachLarecki_2017b} and Kershaw-type closures \cite{banachLarecki_2017a}.  
 Because of the upper bound on the distribution function, the algebraic constraints on the realizable moments are modified when compared to the classical case with no upper bound, and can lead to significantly different dynamics when the occupancy is high (i.e., when $f$ is close to its upper bound).  
 In the fermionic case, the set of realizable moments (particle density and flux vector) is also convex, and resembles a ``pinched'' cone.  
