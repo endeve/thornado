@@ -1,7 +1,8 @@
 MODULE InitializationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Pi, TwoPi, FourPi
+    DP, Zero, Half, One, Three, &
+    Pi, TwoPi, FourPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nX, nNodesX, &
@@ -576,9 +577,70 @@ CONTAINS
 
   SUBROUTINE InitializeFields_RayleighTaylor
 
-    ! --- Initialize Density, Velocity, Internal Energy Density
-    ! --- Also Initialize Newtonian Gravitational Potential
-    ! --- uGF(:,iX1,iX2,iX3,iGF_Phi_N)
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2
+
+    REAL(DP), PARAMETER :: D_1  = 1.0_DP
+    REAL(DP), PARAMETER :: D_2  = 2.0_DP
+    REAL(DP), PARAMETER :: X1_b = - 0.75_DP
+    REAL(DP), PARAMETER :: E_b  = 2.5_DP / 0.4_DP
+    REAL(DP), PARAMETER :: g    = 0.1_DP
+
+    DO iX3 = 1, nX(3)
+       DO iX2 = 1, nX(2)
+          DO iX1 = 0, nX(1) + 1
+             
+             DO iNodeX = 1, nDOFX
+                
+                iNodeX1 = NodeNumberTableX(1,iNodeX)
+                iNodeX2 = NodeNumberTableX(2,iNodeX)
+                
+                X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+                X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+                IF( X1 .LE. 0.0_DP )THEN
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D) = D_1
+
+                ELSE
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D) = D_2
+
+                END IF
+                
+                uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                  = 0.0025_DP * ( One + COS( FourPi * X2 ) ) &
+                      * ( One + COS( Three * Pi * X1 ) )
+                uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                  = 0.0_DP
+                uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                  = 0.0_DP
+
+                uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+                  = E_b - g * D_1 * ( MIN( X1, 0.0_DP ) - X1_b ) &
+                        - g * D_2 * MAX( X1, 0.0_DP )
+
+                uGF(iNodeX,iX1,iX2,iX3,iGF_Phi_N) &
+                  = g * X1
+
+             END DO
+             
+             CALL ComputeConserved &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+          END DO
+       END DO
+    END DO
+
 
   END SUBROUTINE InitializeFields_RayleighTaylor
 
