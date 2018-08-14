@@ -131,6 +131,8 @@ CONTAINS
             WRITE(*,*)
             WRITE(*,'(A,3I4)') 'iX1,iX2,iX3',iX1,iX2,iX3
           END IF
+          !WRITE(*,'(A,3I4)') 'iX1,iX2,iX3',iX1,iX2,iX3
+
           U_q(1:nDOFX,1:nCF) &
             = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
 
@@ -159,9 +161,9 @@ CONTAINS
 !              = DOT_PRODUCT( WeightsX_q, U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
 !                  / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
 
-            Theta_1 &
+!            Theta_1 &
 !              = MIN( One, ABS( (Min_1-U_K(iCF_D) ) / (Min_K-U_K(iCF_D)) ) )
-              = Zero
+            Theta_1 = Zero
 
             ! --- Limit Density Towards Cell Average ---
 
@@ -179,10 +181,13 @@ CONTAINS
 
           END IF
 
-          ! --- Ensure positive q(u) (Wu & Tang (2015) Eq.(2.5)) ---
+          ! --- Ensure positive q(u) a la Wu & Tang (2015), JCP, 298, 539 ---
 
           IF( DEBUG ) WRITE(*,*) 'CALL Computeq'
           CALL Computeq( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), q(1:nPT) )
+          !IF( DEBUG )THEN
+            IF( ANY( q(:) < Min_2 ) ) WRITE(*,'(A3,4ES19.10E3)') 'q: ', q
+          !END IF
 
           IF( ANY( q(:) < Min_2 ) )THEN
              IF( DEBUG ) WRITE(*,*) 'Ensuring positive q'
@@ -192,33 +197,33 @@ CONTAINS
             DO iCF = 1, nCF
 
               U_K(iCF) &
+                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) )
 !                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
 !                    / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
-                = DOT_PRODUCT( WeightsX_q, U_q(:,iCF) )
 
             END DO
 
             DO iGF = 1, nGF
 
               G_K(iGF) &
+                = DOT_PRODUCT( WeightsX_q, G_q(:,iGF) )
 !                = DOT_PRODUCT( WeightsX_q, G_q(:,iGF) * G_q(:,iGF_SqrtGm) ) &
 !                    / DOT_PRODUCT( WeightsX_q, G_q(:,iGF_SqrtGm) )
-                = DOT_PRODUCT( WeightsX_q, G_q(:,iGF) )
 
             END DO
 
 !!$            Theta_2 = One
 !!$            DO iP = 1, nPT
 !!$
-!!$               IF( q(iP) < Min_2 ) THEN
+!!$              IF( q(iP) < Min_2 ) THEN
 !!$
-!!$                  CALL SolveTheta_Bisection &
-!!$                         ( U_PP(iP,1:nCF), U_K(1:nCF), &
-!!$                             G_PP(iP,1:nGF), G_K(1:nGF), Min_2, Theta_P )
+!!$                CALL SolveTheta_Bisection &
+!!$                       ( U_PP(iP,1:nCF), U_K(1:nCF), &
+!!$                           G_PP(iP,1:nGF), G_K(1:nGF), Min_2, Theta_P )
 !!$
-!!$                  Theta_2 = MIN( Theta_2, Theta_P )
+!!$                Theta_2 = MIN( Theta_2, Theta_P )
 !!$
-!!$               END IF
+!!$              END IF
 !!$
 !!$            END DO
             Theta_2 = Zero
@@ -247,7 +252,31 @@ CONTAINS
               = U_q(1:nDOFX,1:nCF)
 
           END IF
-            
+
+          IF( DEBUG )THEN
+            IF( MINVAL( U(1:nDOFX,iX1,iX2,iX3,1) ) < Zero )THEN
+              WRITE(*,*) 'Negative density'
+            END IF
+            IF( MINVAL( U(1:nDOFX,iX1,iX2,iX3,5) ) < Zero )THEN
+              WRITE(*,*) 'Negative energy'
+            END IF
+          END IF
+
+          ! --- Check q value AFTER limiting ---
+          U_q(1:nDOFX,1:nCF) &
+            = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
+          G_q(1:nDOFX,1:nGF) &
+            = G(1:nDOFX,iX1,iX2,iX3,1:nGF)
+          CALL ComputePointValues_Fluid   ( U_q, U_PP )
+          CALL ComputePointValues_Geometry( G_q, G_PP )
+          CALL Computeq( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), q(1:nPT) )
+          IF( ANY( q .LT. Min_2 ) )THEN
+            WRITE(*,'(A)') 'q<Min_2 after limiting.'
+            WRITE(*,'(A3,4ES19.10E3)') 'q: ', q
+            WRITE(*,'(A)') 'Stopping...'
+            STOP
+          END IF
+
         END DO
       END DO
     END DO
@@ -409,14 +438,6 @@ CONTAINS
     q = qFun( U(:,iCF_D), U(:,iCF_S1), U(:,iCF_S2), U(:,iCF_S3), U(:,iCF_E), &
          G(:,iGF_Gm_dd_11), G(:,iGF_Gm_dd_22), G(:,iGF_Gm_dd_33) )
 
-    IF( DEBUG )THEN
-       WRITE(*,*) 'CF_D:',U(:,iCF_D)
-       WRITE(*,*) 'CF_S1:',U(:,iCF_S1)
-       WRITE(*,*) 'CF_E:',U(:,iCF_E)
-       WRITE(*,*) 'Gm11:',G(:,iGF_Gm_dd_11)
-       WRITE(*,*) 'Gm22:',G(:,iGF_Gm_dd_22)
-       WRITE(*,*) 'Gm33:',G(:,iGF_Gm_dd_33)
-    END IF
     RETURN
   END SUBROUTINE Computeq
 
@@ -424,13 +445,8 @@ CONTAINS
   PURE REAL(DP) ELEMENTAL FUNCTION qFun( D, S1, S2, S3, tau, Gm11, Gm22, Gm33 )
     
     REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, Gm11, Gm22, Gm33
-    REAL(DP)             :: SSq
 
-    SSq = S1**2 / MAX( Gm11, SqrtTiny ) &
-          + S2**2 / MAX( Gm22, SqrtTiny ) &
-          + S3**2 / MAX( Gm33, SqrtTiny )
-
-    qFun = tau + D - SQRT( D**2 + SSq )
+    qFun = tau + D - SQRT( D**2 + S1**2 / Gm11 + S2**2 / Gm22 + S3**2 / Gm33 )
 
     RETURN
   END FUNCTION qFun

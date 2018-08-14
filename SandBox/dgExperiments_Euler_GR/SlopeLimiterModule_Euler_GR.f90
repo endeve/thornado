@@ -3,129 +3,161 @@ MODULE SlopeLimiterModule_Euler_GR
   USE KindModule, ONLY: &
     DP, Zero, One, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX, nNodes
+    nDOFX, nDimsX, nNodes, nNodesX
   USE ReferenceElementModuleX, ONLY: &
+    NodeNumberTableX, &
     NodesX1, WeightsX1, &
     NodesX2, WeightsX2, &
     NodesX3, WeightsX3, &
-    WeightsX_q, &
-    NodeNumberTableX
+    WeightsX_q
   USE UtilitiesModule, ONLY: &
-    MinModB
+    MinModB, NodeNumberX
   USE PolynomialBasisModule_Lagrange, ONLY: &
     L_X1, L_X2, L_X3
+  USE PolynomialBasisModule_Legendre, ONLY: &
+    P_X1, P_X2, P_X3, IndPX_Q
   USE PolynomialBasisMappingModule, ONLY: &
     MapNodalToModal_Fluid, &
     MapModalToNodal_Fluid
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
+    nGF, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
     Shock
   USE BoundaryConditionsModule_Beta, ONLY: &
     ApplyBoundaryConditions_Fluid
+  USE CharacteristicDecompositionModule_GR, ONLY: &
+    ComputeCharacteristicDecomposition_GR
 
   IMPLICIT NONE
   PRIVATE
 
-  INCLUDE 'mpif.h' ! Doesn't appear in non-relativistic version
-
-  PUBLIC :: InitializeSlopeLimiter
-  PUBLIC :: FinalizeSlopeLimiter
+  PUBLIC :: InitializeSlopeLimiter_Euler_GR
+  PUBLIC :: FinalizeSlopeLimiter_Euler_GR
   PUBLIC :: ApplySlopeLimiter_Euler_GR
 
-  REAL(DP) :: wTime
-
   LOGICAL  :: UseSlopeLimiter
+  LOGICAL  :: UseCharacteristicLimiting
+  LOGICAL  :: UseCorrection
   LOGICAL  :: UseTroubledCellIndicator
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
   REAL(DP) :: LimiterThreshold
   REAL(DP) :: LimiterThresholdParameter
+  REAL(DP) :: I_6x6(1:6,1:6)
   REAL(DP), ALLOCATABLE :: WeightsX_X1_P(:), WeightsX_X1_N(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X2_P(:), WeightsX_X2_N(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X3_P(:), WeightsX_X3_N(:)
 
+
 CONTAINS
 
 
-  SUBROUTINE InitializeSlopeLimiter &
+  SUBROUTINE InitializeSlopeLimiter_Euler_GR &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
-      UseSlopeLimiter_Option, UseTroubledCellIndicator_Option, &
-      LimiterThresholdParameter_Option )
+      UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
+      UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
     REAL(DP), INTENT(in), OPTIONAL :: &
       SlopeTolerance_Option
-    LOGICAL, INTENT(in), OPTIONAL :: &
+    LOGICAL,  INTENT(in), OPTIONAL :: &
       UseSlopeLimiter_Option, &
+      UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option
     REAL(DP), INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
 
-    INTEGER  :: iNodeX1, iNodex2, iNodeX3, iNode
-    INTEGER  :: jNodeX1, jNodex2, jNodeX3, jNode
-    REAL(DP) :: WeightX
-
-    BetaTVD = One
-    IF( PRESENT( BetaTVD_Option ) ) &
+    INTEGER :: i
+ 
+    IF( PRESENT( BetaTVD_Option ) )THEN
       BetaTVD = BetaTVD_Option
+    ELSE
+      BetaTVD = One
+    END IF
 
-    BetaTVB = Zero
-    IF( PRESENT( BetaTVB_Option ) ) &
+    IF( PRESENT( BetaTVB_Option ) )THEN
       BetaTVB = BetaTVB_Option
+    ELSE
+      BetaTVB = Zero
+    END IF
 
-    SlopeTolerance = 1.0d-3
-    IF( PRESENT( SlopeTolerance_Option ) ) &
+    IF( PRESENT( SlopeTolerance_Option ) )THEN
       SlopeTolerance = SlopeTolerance_Option
+    ELSE
+      SlopeTolerance = 1.0d-3
+    END IF
 
-    UseSlopeLimiter = .TRUE.
-    IF( PRESENT( UseSlopeLimiter_Option ) ) &
+    IF( PRESENT( UseSlopeLimiter_Option ) )THEN
       UseSlopeLimiter = UseSlopeLimiter_Option
+    ELSE
+      UseSlopeLimiter = .TRUE.
+    END IF
 
-    UseTroubledCellIndicator = .TRUE.
-    IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
+    IF( PRESENT( UseCharacteristicLimiting_Option ) )THEN
+      UseCharacteristicLimiting = UseCharacteristicLimiting_Option
+    ELSE
+      UseCharacteristicLimiting = .FALSE.
+    END IF
+
+    IF( PRESENT( UseTroubledCellIndicator_Option ) )THEN
       UseTroubledCellIndicator = UseTroubledCellIndicator_Option
+    ELSE
+      UseTroubledCellIndicator = .TRUE.
+    END IF
 
-    LimiterThresholdParameter = 0.03_DP
-    IF( PRESENT( LimiterThresholdParameter_Option ) ) &
+    IF( PRESENT( LimiterThresholdParameter_Option ) )THEN
       LimiterThresholdParameter = LimiterThresholdParameter_Option
+    ELSE
+      LimiterThresholdParameter = 0.03_DP
+    END IF
 
     LimiterThreshold = LimiterThresholdParameter * 2.0_DP**( nNodes - 2 )
 
     WRITE(*,*)
-    WRITE(*,'(A)') '  INFO: InitializeSlopeLimiter:'
-    WRITE(*,'(A)') '  -----------------------------'
+    WRITE(*,'(A)') '  INFO: InitializeSlopeLimiter_Euler_GR:'
+    WRITE(*,'(A)') '  --------------------------------------'
     WRITE(*,*)
-    WRITE(*,'(A4,A26,L1)'   ) '', 'UseSlopeLimiter: ' , &
+    WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
       UseSlopeLimiter
     WRITE(*,*)
-    WRITE(*,'(A4,A26,ES9.3E2)' ) '', 'BetaTVD: ' , &
+    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVD: ' , &
       BetaTVD
-    WRITE(*,'(A4,A26,ES9.3E2)' ) '', 'BetaTVB: ' , &
+    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVB: ' , &
       BetaTVB
-    WRITE(*,'(A4,A26,ES9.3E2)' ) '', 'SlopeTolerance: ' , &
+    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'SlopeTolerance: ' , &
       SlopeTolerance
+    WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
+      UseCharacteristicLimiting
     WRITE(*,*)
-    WRITE(*,'(A4,A26,L1)'   ) '', 'UseTroubledCellIndicator: ' , &
+    WRITE(*,'(A4,A27,L1)'      ) '', 'UseTroubledCellIndicator: ' , &
       UseTroubledCellIndicator
     WRITE(*,*)
-    WRITE(*,'(A4,A26,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
+    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
       LimiterThreshold
 
-    IF( UseTroubledCellIndicator) THEN
+    IF( UseTroubledCellIndicator )THEN
 
-       CALL InitializeTroubledCellIndicator
+      CALL InitializeTroubledCellIndicator
 
-    END IF    
+    END IF
 
-  END SUBROUTINE InitializeSlopeLimiter
+    I_6x6 = Zero
+    DO i = 1, 6
+      I_6x6(i,i) = One
+    END DO
+
+  END SUBROUTINE InitializeSlopeLimiter_Euler_GR
 
 
-  SUBROUTINE FinalizeSlopeLimiter
+  SUBROUTINE FinalizeSlopeLimiter_Euler_GR
 
     IF( UseTroubledCellIndicator )THEN
 
@@ -133,11 +165,10 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE FinalizeSlopeLimiter
+  END SUBROUTINE FinalizeSlopeLimiter_Euler_GR
 
 
-  SUBROUTINE ApplySlopeLimiter_Euler_GR &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+  SUBROUTINE ApplySlopeLimiter_Euler_GR( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -146,23 +177,30 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF
+    LOGICAL  :: LimitedCell(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+    INTEGER  :: iX1, iX2, iX3, iGF, iCF, iDimX
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
+    REAL(DP) :: G_K(nGF) 
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
-
-    IF( nDOFX == 1 ) RETURN
+    REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
+    REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
+    REAL(DP) :: R_X3(nCF,nCF), invR_X3(nCF,nCF)
+    REAL(DP) :: V_K(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+    REAL(DP) :: U_K(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     
-    IF( .NOT. UseSlopeLimiter ) RETURN    
+    IF( nDOFX == 1 ) RETURN
+
+    IF( .NOT. UseSlopeLimiter ) RETURN
 
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-    wTime = MPI_WTIME( )
-
     CALL DetectTroubledCells &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    LimitedCell = .FALSE.
 
     DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -170,17 +208,38 @@ CONTAINS
 
           IF( Shock(iX1,iX2,iX3) < LimiterThreshold ) CYCLE
 
-          dX3 = MeshX(3) % Width(iX3)
-          dX2 = MeshX(2) % Width(iX2)
           dX1 = MeshX(1) % Width(iX1)
+          dX2 = MeshX(2) % Width(iX2)
+          dX3 = MeshX(3) % Width(iX3)
+
+          ! --- Cell Volume ---
+
+          V_K(iX1,iX2,iX3) = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF_SqrtGm) )  
+
+          ! --- Cell Average of Conserved Fluid ---
+
+          DO iCF = 1, nCF
+
+            U_K(iCF,iX1,iX2,iX3) &
+              = SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
+                       * U(:,iX1,iX2,iX3,iCF) ) / V_K(iX1,iX2,iX3)
+          
+          END DO
+
+          ! --- Cell Average of Geometry (Spatial Metric Only) ---
+
+          DO iGF = iGF_Gm_dd_11, iGF_Gm_dd_33
+
+            G_K(iGF) = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF) )
+
+          END DO
 
           ! --- Map to Modal Representation ---
-          ! --- MODIFY FOR CURVILINEAR COORDINATES? ---
 
           DO iCF = 1, nCF
 
             CALL MapNodalToModal_Fluid &
-                   ( U(:,iX1,  iX2,iX3,iCF), U_M(iCF,0,:) )
+                   ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
 
             ! --- Cell Average of Neighbors in X1 Direction ---
 
@@ -216,43 +275,100 @@ CONTAINS
 
           END DO
 
-          dU(:,1) = MinModB( U_M(:,0,2), &
-                             BetaTVD * ( U_M(:,0,1) - U_M(:,1,1) ), &
-                             BetaTVD * ( U_M(:,2,1) - U_M(:,0,1) ), &
-                             dX1, BetaTVB )
+          IF( UseCharacteristicLimiting )THEN
+
+            ! --- Compute Eigenvectors ---
+
+            CALL ComputeCharacteristicDecomposition_GR &
+                   ( 1, G_K(:), U_M(:,0,1), R_X1, invR_X1 )
+
+            IF( nDimsX > 1 )THEN
+
+              CALL ComputeCharacteristicDecomposition_GR &
+                     ( 2, G_K(:), U_M(:,0,1), R_X2, invR_X2 )
+
+            END IF
+
+            IF( nDimsX > 2 )THEN
+
+              CALL ComputeCharacteristicDecomposition_GR &
+                     ( 3, G_K(:), U_M(:,0,1), R_X3, invR_X3 )
+
+            END IF
+
+          ELSE
+
+            ! --- Componentwise Limiting ---
+
+            R_X1 = I_6x6; invR_X1 = I_6x6
+            R_X2 = I_6x6; invR_X2 = I_6x6
+            R_X3 = I_6x6; invR_X3 = I_6x6
+
+          END IF
+
+          ! --- Compute Limited Slopes ---
+
+          dU(:,1) &
+            = MinModB &
+                ( MATMUL( invR_X1, U_M(:,0,2) ), &
+                  BetaTVD * MATMUL( invR_X1, (U_M(:,0,1)-U_M(:,1,1)) ), &
+                  BetaTVD * MATMUL( invR_X1, (U_M(:,2,1)-U_M(:,0,1)) ), &
+                  dX1, BetaTVB )
 
           IF( nDimsX > 1 )THEN
 
-            dU(:,2) = MinModB( U_M(:,0,3), &
-                               BetaTVD * ( U_M(:,0,1) - U_M(:,3,1) ), &
-                               BetaTVD * ( U_M(:,4,1) - U_M(:,0,1) ), &
-                               dX2, BetaTVB )
+            dU(:,2) &
+              = MinModB &
+                  ( MATMUL( invR_X2, U_M(:,0,3) ), &
+                    BetaTVD * MATMUL( invR_X2, (U_M(:,0,1)-U_M(:,3,1)) ), &
+                    BetaTVD * MATMUL( invR_X2, (U_M(:,4,1)-U_M(:,0,1)) ), &
+                    dX2, BetaTVB )
 
           END IF
 
           IF( nDimsX > 2 )THEN
 
-            dU(:,3) = MinModB( U_M(:,0,4), &
-                               BetaTVD * ( U_M(:,0,1) - U_M(:,5,1) ), &
-                               BetaTVD * ( U_M(:,6,1) - U_M(:,0,1) ), &
-                               dX3, BetaTVB )
+            dU(:,3) &
+              = MinModB &
+                  ( MATMUL( invR_X3, U_M(:,0,4) ), &
+                    BetaTVD * MATMUL( invR_X3, (U_M(:,0,1)-U_M(:,5,1)) ), &
+                    BetaTVD * MATMUL( invR_X3, (U_M(:,6,1)-U_M(:,0,1)) ), &
+                    dX3, BetaTVB )
 
           END IF
+
+          IF( UseCharacteristicLimiting )THEN
+
+            ! --- Transform Back from Characteristic Variables ---
+
+            dU(:,1) = MATMUL( R_X1, dU(:,1) )
+
+            IF( nDimsX > 1 )THEN
+
+              dU(:,2) = MATMUL( R_X2, dU(:,2) )
+
+            END IF
+
+            IF( nDimsX > 2 )THEN
+
+              dU(:,3) = MATMUL( R_X3, dU(:,3) )
+
+            END IF
+
+          END IF
+
+          ! --- Compare Limited Slopes to Original Slopes ---
 
           DO iCF = 1, nCF
 
             SlopeDifference(iCF) &
-              = ABS( U_M(iCF,0,2) - dU(iCF,1) ) &
-                / MAXVAL( [ ABS( U_M(iCF,0,2) ), &
-                            ABS( dU (iCF,1) ), SqrtTiny ] )
+              = ABS( U_M(iCF,0,2) - dU(iCF,1) )
 
             IF( nDimsX > 1 )THEN
 
               SlopeDifference(iCF) &
                 = MAX( SlopeDifference(iCF), &
-                       ABS( U_M(iCF,0,3) - dU(iCF,2) ) &
-                       / MAXVAL( [ ABS( U_M(iCF,0,3) ), &
-                                   ABS( dU (iCF,2)), SqrtTiny ] ) )
+                       ABS( U_M(iCF,0,3) - dU(iCF,2) ) )
 
             END IF
 
@@ -260,14 +376,11 @@ CONTAINS
 
               SlopeDifference(iCF) &
                 = MAX( SlopeDifference(iCF), &
-                       ABS( U_M(iCF,0,4) - dU(iCF,3) ) &
-                       / MAXVAL( [ ABS( U_M(iCF,0,4) ), &
-                                   ABS( dU (iCF,3)), SqrtTiny ] ) )
+                       ABS( U_M(iCF,0,4) - dU(iCF,3) ) )
 
             END IF
 
           END DO
-
 
           ! --- Replace Slopes and Discard High-Order Components ---
           ! --- if Limited Slopes Deviate too Much from Original ---
@@ -279,7 +392,7 @@ CONTAINS
 
               U_M(iCF,0,2:nDOFX) = Zero
 
-              U_M(iCF,0,2) = dU(iCF,1)
+              U_M(:,0,2) = dU(:,1)
 
               IF( nDimsX > 1 ) &
                 U_M(iCF,0,3) = dU(iCF,2)
@@ -288,7 +401,9 @@ CONTAINS
                 U_M(iCF,0,4) = dU(iCF,3)
 
               CALL MapModalToNodal_Fluid &
-                   ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+                     ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+
+              LimitedCell(iCF,iX1,iX2,iX3) = .TRUE.
 
             END IF
 
@@ -298,15 +413,17 @@ CONTAINS
       END DO
     END DO
 
-    wTime = MPI_WTIME( ) - wTime
+    !IF( UseCharacteristicLimiting ) &
+    !     CALL ApplyConservativeCorrection &
+    !            ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
   END SUBROUTINE ApplySlopeLimiter_Euler_GR
 
 
   SUBROUTINE InitializeTroubledCellIndicator
 
-    INTEGER  :: iNodeX1, iNodex2, iNodeX3, iNode
-    INTEGER  :: jNodeX1, jNodex2, jNodeX3, jNode
+    INTEGER  :: iNode, iNodeX1, iNodeX2, iNodeX3
+    INTEGER  :: jNode, jNodeX1, jNodeX2, jNodeX3
     REAL(DP) :: WeightX
 
     ALLOCATE( WeightsX_X1_P(nDOFX), WeightsX_X1_N(nDOFX) )
@@ -382,9 +499,10 @@ CONTAINS
 
       END DO
 
-   END DO
-   
+    END DO
+
   END SUBROUTINE InitializeTroubledCellIndicator
+
 
   SUBROUTINE FinalizeTroubledCellIndicator
 
@@ -395,8 +513,7 @@ CONTAINS
   END SUBROUTINE FinalizeTroubledCellIndicator
 
 
-  SUBROUTINE DetectTroubledCells &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+  SUBROUTINE DetectTroubledCells( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -410,8 +527,8 @@ CONTAINS
     REAL(DP) :: U_K0(0:2*nDimsX,nCF)
 
     Shock = Zero
-    
-    IF ( .NOT. UseTroubledCellIndicator ) THEN
+
+    IF( .NOT. UseTroubledCellIndicator )THEN
 
       Shock = 1.1_DP * LimiterThreshold
       RETURN
@@ -420,7 +537,7 @@ CONTAINS
 
     ! --- Troubled-Cell Indicator from Fu & Shu (2017) ---
     ! --- JCP, 347, 305 - 327 ----------------------------
-    
+
     DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
@@ -564,13 +681,195 @@ CONTAINS
           Shock(iX1,iX2,iX3) &
             = MAX( Shock(iX1,iX2,iX3), &
                    SUM( ABS( U_K(0,iCF_E) - U_K0(1:2*nDimsX,iCF_E) ) ) &
-                   / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_E) ) ) )
+                     / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_E) ) ) )
 
         END DO
       END DO
     END DO
 
   END SUBROUTINE DetectTroubledCells
+
+
+  SUBROUTINE ApplyConservativeCorrection &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
+
+    INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)    :: &
+      V_K(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(in)    :: &
+      U_K(1:nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+    REAL(DP), INTENT(inout) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    LOGICAL, INTENT(in)     :: &
+      LimitedCell(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+
+    LOGICAL :: UseCorrection1, UseCorrection2
+    INTEGER :: iX1, iX2, iX3, iCF
+    INTEGER :: LWORK, INFO
+    INTEGER :: i, iPol
+    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNode, iNodeX
+
+    REAL(DP) :: d 
+    REAL(DP), DIMENSION(nDimsX+1):: c
+    REAL(DP), DIMENSION(2*nDimsX+3) :: WORK
+    REAL(DP), DIMENSION(1,nDimsX+1) :: B0, B
+    REAL(DP), DIMENSION(nDimsX+1,nDimsX+1) :: A0, A
+    REAL(DP), DIMENSION(nDOFX,nDOFX) :: LegendreX
+    REAL(DP) :: U_M(nCF,0:2**nDimsX,nDOFX)
+
+    DO iPol = 1, nDOFX
+
+      DO iNodeX3 = 1, nNodesX(3)
+        DO iNodeX2 = 1, nNodesX(2)
+          DO iNodeX1 = 1, nNodesX(1)
+
+            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+            LegendreX(iNodeX,iPol) &
+                = P_X1(IndPX_Q(1,iPol)) % P( MeshX(1) % Nodes(iNodeX1) ) &
+                    * P_X2(IndPX_Q(2,iPol)) % P( MeshX(2) % Nodes(iNodeX2) ) &
+                      * P_X3(IndPX_Q(3,iPol)) % P( MeshX(3) % Nodes(iNodeX3) )
+
+          END DO
+        END DO
+      END DO
+
+    END DO
+
+    ! --- Correct Coefficients with Constratined Least Squares ---
+    ! ---          to Preserve Conserved Quantities            ---
+
+    UseCorrection1 = .FALSE.
+
+    IF( UseCorrection1 )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = iX_B0(1), iX_E0(1)
+
+              A0(1:2,1) = [ 1.0_DP, 0.0_DP ]
+              A0(1:2,2) = [ 0.0_DP, 1.0_DP ]
+     
+              B0(1,1) &
+                = SUM( WeightsX_q(:) * LegendreX(:,1) &
+                         * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
+
+              B0(1,2) &
+                = SUM( WeightsX_q(:) * LegendreX(:,2) &
+                         * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
+
+              IF( nDimsX > 1 )THEN
+
+                A0(1:3,1) = [ 1.0_DP, 0.0_DP, 0.0_DP ]
+                A0(1:3,2) = [ 0.0_DP, 1.0_DP, 0.0_DP ]
+                A0(1:3,3) = [ 0.0_DP, 0.0_DP, 1.0_DP ]
+
+                B0(1,1) &
+                  = SUM( WeightsX_q(:) * LegendreX(:,1) &
+                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
+                B0(1,2) &
+                  = SUM( WeightsX_q(:) * LegendreX(:,2) &
+                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
+                B0(1,3) &
+                  = SUM( WeightsX_q(:) * LegendreX(:,3) &
+                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
+
+              END IF
+
+              IF (nDimsX > 2) THEN 
+
+                A0(1:4,1) = [ 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+                A0(1:4,2) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
+                A0(1:4,3) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
+                A0(1:4,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
+
+                B0(1,1) &
+                  = SUM( WeightsX_q(:) * LegendreX(:,1) &
+                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
+                B0(1,2) &
+                  = SUM( WeightsX_q(:) * LegendreX(:,2) &
+                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
+                B0(1,3) &
+                  = SUM( WeightsX_q(:) * LegendreX(:,3) &
+                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
+                B0(1,4) &
+                  = SUM( WeightsX_q(:) * LegendreX(:,4) &
+                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
+
+              END IF
+             
+              DO iCF = 1, nCF
+         
+                IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
+
+                  CALL MapNodalToModal_Fluid &
+                      ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+
+                  A = A0
+                  B = B0 
+                  c = U_M(iCF,0,1:1+nDimsX)
+                  d = U_K(iCF,iX1,iX2,iX3)
+           
+                  LWORK = SIZE( WORK )
+                  CALL DGGLSE( SIZE( A, 1 ), SIZE( A, 2 ), SIZE( B, 1 ), &
+                                   A, SIZE( A, 1 ), B, SIZE( B, 1 ), c, d, &
+                                   U_M(iCF,0,1:1+nDimsX), WORK, LWORK, INFO )
+            
+
+                  CALL MapModalToNodal_Fluid &
+                       ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+          
+                END IF
+              
+              END DO            
+
+          END DO
+        END DO
+      END DO
+
+    END IF
+
+    UseCorrection2 = .TRUE.
+    
+    IF( UseCorrection2 )THEN
+      
+      DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = iX_B0(1), iX_E0(1)
+
+            DO iCF = 1, nCF
+
+              IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
+
+                  CALL MapNodalToModal_Fluid &
+                      ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+
+                  U_M(iCF,0,1) &
+                    = U_K(iCF,iX1,iX2,iX3) - ( One / V_K(iX1,iX2,iX3) ) & 
+                        * ( U_M(iCF,0,2) * SUM( WeightsX_q(:) &
+                          * LegendreX(:,2) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                            + U_M(iCF,0,3) * SUM( WeightsX_q(:) &
+                          * LegendreX(:,3) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                            + U_M(iCF,0,4) * SUM( WeightsX_q(:) &
+                          * LegendreX(:,4) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) )
+
+                  CALL MapModalToNodal_Fluid &
+                      ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+
+              END IF
+
+            END DO
+
+          END DO
+        END DO
+      END DO
+
+    END IF
+
+  END SUBROUTINE ApplyConservativeCorrection
 
 
 END MODULE SlopeLimiterModule_Euler_GR

@@ -33,8 +33,8 @@ PROGRAM StandingAccretionShock
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
   USE SlopeLimiterModule_Euler_GR, ONLY: &
-    InitializeSlopeLimiter, &
-    FinalizeSlopeLimiter
+    InitializeSlopeLimiter_Euler_GR, &
+    FinalizeSlopeLimiter_Euler_GR
   USE dgDiscretizationModule_Euler_GR, ONLY: &
     ComputeIncrement_Euler_GR_DG_Explicit
   USE EulerEquationsUtilitiesModule_Beta_GR, ONLY: &
@@ -54,8 +54,8 @@ PROGRAM StandingAccretionShock
   REAL(DP), ALLOCATABLE :: r(:), rho(:), v(:), e(:)
   REAL(DP)              :: LT
 
-  nNodes = 1
-  K      = 1024
+  nNodes = 2
+  K      = 256
   LT     = 0.03_DP
 
   CALL ReadParameters &
@@ -79,15 +79,13 @@ PROGRAM StandingAccretionShock
 
   xL = R_PNS
   xR = Two * R_shock
-!  xL = r(1000)
-!  xR = r(19999)
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'StandingAccretionShock', &
            nX_Option &
              = [ K, 1, 1 ], &
            swX_Option &
-             = [ 1, 0, 0 ], &
+             = [ 1, 1, 1 ], &
            bcX_Option &
              = [ 10, 3, 1 ], &
            xL_Option &
@@ -108,7 +106,7 @@ PROGRAM StandingAccretionShock
            Gamma_IDEAL_Option = Gamma )
 
   CFL      = 0.1d0
-  t_end    = 1.0d2 * Millisecond
+  t_end    = 2.0d2 * Millisecond
   dt       = CFL * ( xR - xL ) / ( SpeedOfLight * K )
   dt_write = 0.1d0 * Millisecond
 
@@ -127,21 +125,25 @@ PROGRAM StandingAccretionShock
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  WRITE(*,'(A,2ES25.16E3)') 'V1: ',MINVAL(uPF(:,:,1,1,2)),MAXVAL(uPF(:,:,1,1,2))
+!!$  WRITE(*,'(A,2ES25.16E3)') 'V1: ', &
+!!$    MINVAL(uPF(:,:,1,1,2)), MAXVAL(uPF(:,:,1,1,2))
+!!$  WRITE(*,'(A,2ES25.16E3)') 'D:  ', &
+!!$    MINVAL(uPF(:,:,1,1,1)), MAXVAL(uPF(:,:,1,1,1))
 
   WRITE(*,'(A)') 'Wrote initial conditions to file. Exiting...'
+!  STOP
 
 !!$  OPEN(100,FILE = 'Output_CodeUnits.dat')
-!!$  WRITE(100,'(1026ES19.10E3)') uGF(1,:,1,1,13)
-!!$  WRITE(100,'(1026ES19.10E3)') uGF(1,:,1,1,9)
-!!$  WRITE(100,'(1026ES19.10E3)') uPF(1,:,1,1,1)
-!!$  WRITE(100,'(1026ES19.10E3)') uPF(1,:,1,1,2)
+!!$  WRITE(100,*) uGF(:,:,1,1,13) ! CF
+!!$  WRITE(100,*) uGF(:,:,1,1,9) ! Lapse
+!!$  WRITE(100,*) uPF(:,:,1,1,1) ! PF_D
+!!$  WRITE(100,*) uPF(:,:,1,1,2) ! PF_V1
 !!$  CLOSE(100)
-  STOP
+!!$  STOP
 
   CALL InitializeFluid_SSPRK( nStages = 2 )
 
-  CALL InitializeSlopeLimiter &
+  CALL InitializeSlopeLimiter_Euler_GR &
          ( BetaTVD_Option = 1.15_DP, &
            BetaTVB_Option = 0.0_DP, &
            SlopeTolerance_Option = 1.0d-2, &
@@ -150,7 +152,8 @@ PROGRAM StandingAccretionShock
            LimiterThresholdParameter_Option = LT )
 
   CALL InitializePositivityLimiter &
-         ( Min_1_Option = 1.0d-25, Min_2_Option = 1.0d-25, &
+!         ( Min_1_Option = 1.0d-25, Min_2_Option = 1.0d-25, &
+         ( Min_1_Option = 0.0d-25, Min_2_Option = 0.0d-25, &
            UsePositivityLimiter_Option = .TRUE. )
 
   iCycle = 0
@@ -194,7 +197,7 @@ PROGRAM StandingAccretionShock
 
   CALL FinalizePositivityLimiter
 
-  CALL FinalizeSlopeLimiter
+  CALL FinalizeSlopeLimiter_Euler_GR
 
   CALL FinalizeFluid_SSPRK
 

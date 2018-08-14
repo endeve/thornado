@@ -32,13 +32,14 @@ MODULE dgDiscretizationModule_Euler_GR
   USE BoundaryConditionsModule_Beta, ONLY: &
     ApplyBoundaryConditions_Fluid
   USE EulerEquationsUtilitiesModule_Beta_GR, ONLY:  &
-    ComputePrimitive_GR,      &
-    Eigenvalues_GR,           &
-    AlphaC_GR,                &
-    Flux_X1_GR,               &
-    StressTensor_Diagonal,    &
-    NumericalFlux_X1_HLLC_GR, &
-    NumericalFlux_X1_LLF_GR
+    ComputePrimitive_GR,     &
+    Eigenvalues_GR,          &
+    AlphaC_GR,               &
+    Flux_X1_GR,              &
+    StressTensor_Diagonal,   &
+    NumericalFlux_X1_LLF_GR, &
+    NumericalFlux_X1_HLL_GR, &
+    NumericalFlux_X1_HLLC_GR
   USE SlopeLimiterModule_Euler_GR, ONLY: &
     ApplySlopeLimiter_Euler_GR
   USE PositivityLimiterModule, ONLY: &
@@ -187,6 +188,7 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1) + 1
 
           IF( DEBUG ) WRITE(*,*) 'iX1,iX2,iX3' , iX1,iX2,iX3
+          !WRITE(*,*) 'iX1,iX2,iX3' , iX1,iX2,iX3
            
           DO iCF = 1, nCF
 
@@ -470,9 +472,11 @@ CONTAINS
                     uCF_R(iNodeX_X1,1:nCF), Flux_X1_R(iNodeX_X1,1:nCF), &
                     AlphaPls, AlphaMns,                                 &
                     G_F  (iNodeX_X1,iGF_Gm_dd_11),                      &
-                    G_F  (iNodeX_X1,iGF_Beta_1) )
+                    G_F  (iNodeX_X1,iGF_Beta_1),                        &
+                    G_F  (iNodeX_X1,iGF_Alpha) )
 
             NumericalFlux( iNodeX_X1,:)                &
+!              = NumericalFlux_X1_HLL_GR               &
               = NumericalFlux_X1_HLLC_GR               &
                   ( uCF_L(iNodeX_X1,1:nCF),            &
                     uCF_R(iNodeX_X1,1:nCF),            &
