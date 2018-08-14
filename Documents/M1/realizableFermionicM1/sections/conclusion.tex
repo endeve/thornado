@@ -1,2 +1,21 @@
 \section{Conclusions}
 \label{sec:conclusions}
+
+We develop a realizability-preserving scheme which includes a suitable CFL condition, a realizability-preserving limiter, a realizability-preserving closure procedure and a realizability-preserving IMEX time integrator.
+Thanks for the meaningful result domain being a convex set, the realizability-preservation of the limiter and the IMEX time integrator can be ensured by requiring they have convex combination forms.
+And a realizability-preserving closure procedure can be obtained by any closure procedure building on Fermi-Dirac statistics.
+In the physics which we interested, the transport system introduces a stiff problem: the collision term has much larger eigenvalues than that the advection term has.
+Therefore, requiring the scheme be streaming accurate and diffusion accurate is an essential and achievable goal than being overall accurate.
+We purpose our PD-ARS scheme. It is 2nd-order accurate and strong stability preserving in the streaming limit and works well in the diffusion limit. Numerical examples are provided to demonstrate those properties.
+
+It's widely known that a realizability-preserving scheme is required for solving the approximating transport problems with conservation law, including the two-moment model.
+However, few people are aware of the significance of realizability-preserving closure procedure: the Minerbo closure, which is not built on Fermi-Dirac distribution, is widely used.
+We highly recommend the CB closure other than the Minerbo closure because the CB closure not only preserves the realizability but also requires no more calculation than the Minerbo closure.
+ 
+The realizability-preservation of our IMEX scheme is universal: it can be implemented to any problems where the physical constraints confine its meaningful result to a convex set and the diffusion limit is important. 
+
+To build this work, we assume an easy collision term and no relativistic term on the left-hand side of the transport equation.
+Hence, to solve a more realistic problem, a complex collision term and some relativistic terms should be taken into consideration.
+Besides, a higher order accurate method is always desired.
+Moreover, there is no reason to restrict the time integrator to be IMEX.
+They all bring the remained open problems which require the future contribution. 
