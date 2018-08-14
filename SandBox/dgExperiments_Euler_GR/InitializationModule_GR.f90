@@ -33,6 +33,7 @@ MODULE InitializationModule_GR
   PUBLIC :: InitializeFields_RiemannProblem
   PUBLIC :: InitializeFields_StandingAccretionShock
 
+  INTEGER :: iL_Debug
 CONTAINS
 
   SUBROUTINE InitializeFields_RiemannProblem &
@@ -76,30 +77,30 @@ CONTAINS
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-!!$            ! --- Riemann Problems ---
-!!$            IF( X1 <= X_D )THEN
-!!$
-!!$              ! -- Left State --
-!!$
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = D_L
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_L(1)
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_L(2)
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_L(3)
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = P_L / (Gamma_IDEAL-One)
-!!$              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = P_L
-!!$
-!!$            ELSE
-!!$
-!!$              ! -- Right State --
-!!$
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = D_R
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_R(1)
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_R(2)
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_R(3)
-!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = P_R / (Gamma_IDEAL-One)
-!!$              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = P_R
-!!$
-!!$            END IF
+            ! --- Riemann Problems ---
+            IF( X1 <= X_D )THEN
+
+              ! -- Left State --
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = D_L
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_L(1)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_L(2)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_L(3)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = P_L / (Gamma_IDEAL-One)
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = P_L
+
+            ELSE
+
+              ! -- Right State --
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = D_R
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_R(1)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_R(2)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_R(3)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = P_R / (Gamma_IDEAL-One)
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = P_R
+
+            END IF
 
 !!$            ! --- Smooth solution, advected sine wave ---
 !!$
@@ -125,30 +126,30 @@ CONTAINS
 !!$            uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0d-6 / (Gamma_IDEAL-One)
 !!$            uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d-6
 
-            ! --- Perturbed shock tube ---
-            IF( X1 <= X_D )THEN
-
-              ! -- Left State --
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 5.0d0
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0d0
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0d0
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0d0
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 50.0d0 / (Gamma_IDEAL-One)
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 50.0d0
-
-            ELSE
-
-              ! -- Right State --
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 2.0d0 + 0.3d0 * SIN( 50.0d0 * X1 )
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0d0
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0d0
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0d0
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 5.0d0 / (Gamma_IDEAL-One)
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 5.0d0
-
-            END IF
+!!$            ! --- Perturbed shock tube ---
+!!$            IF( X1 <= X_D )THEN
+!!$
+!!$              ! -- Left State --
+!!$
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 5.0d0
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0d0
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0d0
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0d0
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 50.0d0 / (Gamma_IDEAL-One)
+!!$              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 50.0d0
+!!$
+!!$            ELSE
+!!$
+!!$              ! -- Right State --
+!!$
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 2.0d0 + 0.3d0 * SIN( 50.0d0 * X1 )
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0d0
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0d0
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0d0
+!!$              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 5.0d0 / (Gamma_IDEAL-One)
+!!$              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 5.0d0
+!!$
+!!$            END IF
 
 
 !!$            ! --- Acoustic problem, spherical symmetry ---
@@ -198,8 +199,8 @@ CONTAINS
     REAL(DP) :: D, V(3), P
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
-    INTEGER  :: i_r = 1, i_D = 2, i_V1 = 3, i_E = 4
-    INTEGER  :: iL, nLines
+    INTEGER, PARAMETER :: i_r = 1, i_D = 2, i_V1 = 3, i_E = 4
+    INTEGER  :: iL, nLines, iX1_Debug = 800
     REAL(DP) :: X1
     REAL(DP), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
 
@@ -233,8 +234,7 @@ CONTAINS
             !     (FluidFieldData) corresponding to physical coordinate (X1) ---
             iL = Locate( X1, FluidFieldData(:,i_r), nLines )
 
-            IF( iX2 == 1 .AND. iX3 == 1 ) &
-              WRITE(*,*) FluidFieldData(iL,i_r), FluidFieldData(iL+1,i_r)
+            IF( iX1 == iX1_Debug ) iL_Debug = iL
 
             ! --- Interpolate to the physical point X1 ---
 
@@ -258,7 +258,7 @@ CONTAINS
 
             ! --- Compute pressure from internal energy density ---
             uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
-              = ( Gamma_IDEAL - 1.0_DP ) * uPF(iNodeX1,iX1,iX2,iX3,iPF_E)
+              = ( Gamma_IDEAL - 1.0_DP ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
 
           END DO ! --- Loop over nodes ---
 
@@ -278,8 +278,12 @@ CONTAINS
       END DO
     END DO
 
-    WRITE(*,'(A,2ES25.16E3)') 'V1: ', MINVAL( uPF(:,:,1,1,iPF_V1) ), MAXVAL( uPF(:,:,1,1,iPF_V1) )
-    STOP
+!!$    WRITE(*,*) iL_Debug, iX1_Debug
+!!$    WRITE(*,'(A,ES22.16E2)') 'rhoL: ', uPF(1,iX1_Debug,1,1,iPF_D )
+!!$    WRITE(*,'(A,ES22.16E2)') 'rhoU: ', uPF(1,iX1_Debug,1,1,iPF_D )
+!!$    WRITE(*,'(A)') 'Stopping...'
+!!$    STOP
+
   END SUBROUTINE InitializeFields_StandingAccretionShock
 
 
@@ -299,14 +303,21 @@ CONTAINS
     m = ( Y2 - Y1 ) / ( X2 - X1 )
 
     ! --- Using only lower limit for slope ---
-!    yInterp = m * ( X - X1 ) + Y1
+    yInterp = m * ( X - X1 ) + Y1
 
     ! --- Using average slope ---
     ! --- Only changes accuracy in 12th decimal place ---
-    yInterp = ( 2.0_DP * m * ( X - X1 ) * ( X2 - X ) + ( Y1 * X2 + Y2 * X1 ) &
-                - X * ( Y1 + Y2 ) ) / ( X1 + X2 - 2.0_DP * X )
+!    yInterp = ( 2.0_DP * m * ( X - X1 ) * ( X2 - X ) + ( Y1 * X2 + Y2 * X1 ) &
+!                - X * ( Y1 + Y2 ) ) / ( X1 + X2 - 2.0_DP * X )
 
-
+    IF( iL == iL_Debug  .AND. iVar == iPF_D ) THEN
+      WRITE(*,'(A,ES24.16E3)') 'X1: ', X1
+      WRITE(*,'(A,ES24.16E3)') 'X2: ', X2
+      WRITE(*,'(A,ES24.16E3)') 'Y1: ', Y1
+      WRITE(*,'(A,ES24.16E3)') 'Y2: ', Y2
+      WRITE(*,'(A,ES24.16E3)') 'm:  ', m
+      WRITE(*,'(A,ES24.16E3)') 'yInterp: ', yInterp
+    END IF
 
     RETURN
   END FUNCTION InterpolateInitialConditionsOntoGrid

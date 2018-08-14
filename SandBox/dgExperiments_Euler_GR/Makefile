@@ -6,6 +6,7 @@ RiemannProblem: \
 	$(thornado) \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
+	CharacteristicDecompositionModule_GR.o \
 	BoundaryConditionsModule_Beta.o \
 	SlopeLimiterModule_Euler_GR.o \
 	DataFileReaderModule.o \
@@ -18,6 +19,7 @@ RiemannProblem: \
 	$(thornado) \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
+	CharacteristicDecompositionModule_GR.o \
 	BoundaryConditionsModule_Beta.o \
 	SlopeLimiterModule_Euler_GR.o \
 	DataFileReaderModule.o \
@@ -32,6 +34,7 @@ StandingAccretionShock: \
 	$(thornado) \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
+	CharacteristicDecompositionModule_GR.o \
 	BoundaryConditionsModule_Beta.o \
 	SlopeLimiterModule_Euler_GR.o \
 	DataFileReaderModule.o \
@@ -43,6 +46,7 @@ StandingAccretionShock: \
 	$(thornado) \
 	PositivityLimiterModule.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
+	CharacteristicDecompositionModule_GR.o \
 	BoundaryConditionsModule_Beta.o \
 	SlopeLimiterModule_Euler_GR.o \
 	DataFileReaderModule.o \

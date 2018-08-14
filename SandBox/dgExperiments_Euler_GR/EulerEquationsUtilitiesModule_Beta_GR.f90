@@ -19,11 +19,12 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   PUBLIC :: ComputePrimitive_GR
   PUBLIC :: ComputeConserved_GR
   PUBLIC :: Eigenvalues_GR
-  PUBLIC :: AlphaC_GR
   PUBLIC :: Flux_X1_GR
   PUBLIC :: StressTensor_Diagonal
-  PUBLIC :: NumericalFlux_X1_HLLC_GR
+  PUBLIC :: AlphaC_GR
   PUBLIC :: NumericalFlux_X1_LLF_GR
+  PUBLIC :: NumericalFlux_X1_HLL_GR
+  PUBLIC :: NumericalFlux_X1_HLLC_GR
 
   LOGICAL, PARAMETER :: DEBUG = .FALSE.
   INTEGER, PARAMETER :: MAX_IT = 100
@@ -126,8 +127,8 @@ CONTAINS
       ! --- Find Pressure with Newton's Method ---
 
       ! --- Approximation for pressure assuming h^2~=1 ---
-      Pold = MAX( SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i), SqrtTiny )
-!      Pold = SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i)
+!      Pold = MAX( SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i), SqrtTiny )
+      Pold = MAX( -q(i), SqrtTiny )
 
       DO WHILE ( .NOT. CONVERGED )
 
@@ -138,7 +139,8 @@ CONTAINS
         Pnew = Pold - FunP / JacP
 
         ! --- Check if Newton's method has converged ---
-        IF( ABS( Pnew - Pold ) / ABS( Pnew ) .LT. TolP )THEN
+        IF( ABS( FunP / JacP ) / ABS( Pnew ) .LT. TolP )THEN
+!        IF( ABS( Pnew - Pold ) / ABS( Pnew ) .LT. TolP )THEN
           CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP )
           IF( ABS( FunP ) .LT. TolFunP ) THEN
             CONVERGED = .TRUE.
@@ -155,11 +157,18 @@ CONTAINS
         ! --- STOP after MAX_IT iterations ---
         IF( ITERATION .GE. MAX_IT )THEN
            
+          WRITE(*,*) 'PF_D:   ', PF_D(:)
+          WRITE(*,*) 'PF_V1:  ', PF_V1(:)
+          WRITE(*,*) 'PF_V2:  ', PF_V2(:)
+          WRITE(*,*) 'PF_V3:  ', PF_V3(:)
+          WRITE(*,*) 'PF_E:   ', PF_E(:)
+
           WRITE(*,*) 'CF_D:   ', CF_D(:)
           WRITE(*,*) 'CF_S1:  ', CF_S1(:)
           WRITE(*,*) 'CF_S2:  ', CF_S2(:)
           WRITE(*,*) 'CF_S3:  ', CF_S3(:)
           WRITE(*,*) 'CF_E:   ', CF_E(:)
+
           WRITE(*,*) 'Gm11:   ', GF_Gm_dd_11(:)
           WRITE(*,*) 'Gm22:   ', GF_Gm_dd_22(:)
           WRITE(*,*) 'Gm33:   ', GF_Gm_dd_33(:)
@@ -330,23 +339,22 @@ CONTAINS
     h   = 1.0_DP + ( E + P ) / D
 
     Flux_X1_GR(iCF_D)  &
-      = W * D * ( V1 - Beta1 / Alpha )
+      = D * W * ( V1 - Beta1 / Alpha )
 
     Flux_X1_GR(iCF_S1) &
       = D * h * W**2 * Gm11 * V1 * ( V1 - Beta1 / Alpha ) + P
 
     Flux_X1_GR(iCF_S2) &
-      = D * h * W**2 * Gm22 * V2 * ( Alpha * V1 - Beta1 / Alpha )
+      = D * h * W**2 * Gm22 * V2 * ( V1 - Beta1 / Alpha )
 
     Flux_X1_GR(iCF_S3) &
-      = D * h * W**2 * Gm33 * V3 * ( Alpha * V1 - Beta1 / Alpha )
+      = D * h * W**2 * Gm33 * V3 * ( V1 - Beta1 / Alpha )
 
     Flux_X1_GR(iCF_E)  &
-      = ( D * h * W**2 - D * W ) * ( Alpha * V1 - Beta1 / Alpha ) &
-          + Beta1 / Alpha * P
+      = D * W * ( h * W - One ) * ( V1 - Beta1 / Alpha ) + Beta1 / Alpha * P
 
     Flux_X1_GR(iCF_Ne) &
-      = W * Ne * ( V1 - Beta1 / Alpha )
+      = Ne * W * ( V1 - Beta1 / Alpha )
 
     RETURN
   END FUNCTION Flux_X1_GR
@@ -365,23 +373,20 @@ CONTAINS
   END FUNCTION StressTensor_Diagonal
 
 
-  REAL(DP) FUNCTION AlphaC_GR( U_L, F_L, U_R, F_R, aP, aM, Gm_dd_11, Beta_u_1 )
+  REAL(DP) FUNCTION AlphaC_GR &
+             ( U_L, F_L, U_R, F_R, aP, aM, Gm_dd_11, Beta_u_1, LapseFunction )
 
     ! --- Middle Wavespeed as suggested by Mignone and Bodo (2005) ---
 
     REAL(DP), INTENT(in) :: U_L(nCF), F_L(nCF), U_R(nCF), F_R(nCF), &
-                            aP, aM, Gm_dd_11, Beta_u_1
+                            aP, aM, Gm_dd_11, Beta_u_1, LapseFunction
     REAL(DP)             :: U_S1, F_S1, U_E, F_E, A, B, C, eps
 
     eps = SqrtTiny
 
-    ! --- Calculate the HLL conserved variable vector and flux a la
-    ! --- Mignone & Bodo (2005).
     ! --- Note the sign change on aM which is due
-    ! --- to it being read in as positive but Mignone assuming
-    ! --- it is negative. Also note we use tau instead of E, where
-    ! --- E = tau + D
-    ! --- F_E = F_tau + F_D
+    !     to it being read in as positive but Mignone assuming
+    !     it is negative ---
 
     U_S1 = aP * U_R(iCF_S1) + aM * U_L(iCF_S1) + F_L(iCF_S1) - F_R(iCF_S1)
 
@@ -396,13 +401,13 @@ CONTAINS
           - aP * aM * ( ( U_R(iCF_E) + U_R(iCF_D) ) &
           - ( U_L(iCF_E) + U_L(iCF_D) ) )
 
-    ! --- A, B, and C from quadratic equation
+    ! --- A, B, and C from quadratic equation ---
     A = Gm_dd_11**2 * ( F_E + Beta_u_1 * U_E )
-    B = -Gm_dd_11 * ( U_E + F_S1 + Beta_u_1 * U_S1 )
-    C = U_S1
+    B = -Gm_dd_11 * ( LapseFunction * U_E + F_S1 + Beta_u_1 * U_S1 )
+    C = LapseFunction * U_S1
 
     ! --- Accounting for special cases of the solution to a
-    ! --- quadratic equation when A = 0
+    !     quadratic equation when A = 0 ---
 
     IF     ( ( ABS( A ) .LT. eps ) .AND. ( ABS( B ) .LT. eps ) &
             .AND. ( ABS( C ) .LT. eps ) )THEN
@@ -423,6 +428,47 @@ CONTAINS
     RETURN
     
   END FUNCTION AlphaC_GR
+
+
+  PURE FUNCTION NumericalFlux_X1_LLF_GR &
+      ( u_L, u_R, Flux_L, Flux_R, alpha_P, alpha_M, alpha_C, nF, &
+        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_dd_11 )    
+
+    ! --- Local Lax-Friedrichs Flux ---
+
+    INTEGER,  INTENT(in)                   :: nF
+    REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
+    REAL(DP), INTENT(in)                   :: alpha_P, alpha_M,      &
+                                              alpha_C, V1_L, V1_R,          &
+                                              p_L, p_R, Beta_u_1, Gm_dd_11
+    REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_X1_LLF_GR(1:nF)
+    REAL(DP) :: alpha
+
+    alpha    = MAX( alpha_m, alpha_p )
+
+    NumericalFlux_X1_LLF_GR &
+      = 0.5_DP * ( flux_L + flux_R - alpha * ( u_R - u_L ) )
+
+    RETURN
+  END FUNCTION NumericalFlux_X1_LLF_GR
+
+
+  PURE FUNCTION NumericalFlux_X1_HLL_GR &
+      ( u_L, u_R, Flux_L, Flux_R, alpha_P, alpha_M, alpha_C, nF, &
+        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_dd_11 )
+
+    INTEGER,  INTENT(in)                   :: nF
+    REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
+    REAL(DP), INTENT(in)                   :: alpha_P, alpha_M,    &
+                                              alpha_C, V1_L, V1_R, &
+                                              p_L, p_R, Beta_u_1, Gm_dd_11
+    REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_X1_HLL_GR(1:nF)
+
+    NumericalFlux_X1_HLL_GR &
+      = ( alpha_P * flux_L + alpha_M * flux_R &
+            - alpha_P * alpha_M * ( u_R - u_L ) ) / ( alpha_P + alpha_M )
+
+  END FUNCTION NumericalFlux_X1_HLL_GR
 
 
   PURE FUNCTION NumericalFlux_X1_HLLC_GR &
@@ -529,29 +575,6 @@ CONTAINS
     RETURN
 
   END FUNCTION NumericalFlux_X1_HLLC_GR
-
-  
-  PURE FUNCTION NumericalFlux_X1_LLF_GR &
-      ( u_L, u_R, Flux_L, Flux_R, alpha_P, alpha_M, alpha_C, nF, &
-        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_dd_11 )    
-
-    ! --- Local Lax-Friedrichs Flux ---
-
-    INTEGER,  INTENT(in)                   :: nF
-    REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
-    REAL(DP), INTENT(in)                   :: alpha_P, alpha_M,      &
-                                              alpha_C, V1_L, V1_R,          &
-                                              p_L, p_R, Beta_u_1, Gm_dd_11
-    REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_X1_LLF_GR(1:nF)
-    REAL(DP) :: alpha
-
-    alpha    = MAX( alpha_m, alpha_p )
-
-    NumericalFlux_X1_LLF_GR &
-      = 0.5_DP * ( flux_L + flux_R - alpha * ( u_R - u_L ) )
-
-    RETURN
-  END FUNCTION NumericalFlux_X1_LLF_GR
 
 
 END MODULE EulerEquationsUtilitiesModule_Beta_GR

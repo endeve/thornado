@@ -15,7 +15,7 @@ CONTAINS
                  xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, CS, iRP )
     
     REAL(DP), INTENT(out) :: D_L, V_L(3), P_L, D_R, V_R(3), P_R
-    REAL(DP), INTENT(out) :: xL(3), xR(3), x_D, CFL, t, t_end, Gamma
+    REAL(DP), INTENT(out) :: xL(3), xR(3), x_D, t, t_end, CFL, Gamma
     INTEGER,  INTENT(out) :: bcX(3)
     INTEGER,  INTENT(in)  :: iRP
     INTEGER,  INTENT(out) :: K
@@ -37,7 +37,7 @@ CONTAINS
 
         t     = 0.0_DP
         t_end = 0.4_DP
-        CFL   = 0.8_DP
+        CFL   = 0.1_DP
         xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
         xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
         x_D   = 0.5_DP
@@ -357,6 +357,32 @@ CONTAINS
         bcX = [ 2, 0, 0 ]
 
         CS = 'SPHERICAL'
+
+      CASE( 13 )
+
+        WRITE(*,*) &
+              'Stationary Contact Discontinuity (Test 5) (Liska & Wendroff (2003))'
+         
+        D_L = 1.4_DP
+        V_L = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        P_L = 1.0d+0
+
+        D_R = 1.0_DP
+        V_R = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        P_R = 1.0d+0
+
+        t     = 0.0_DP
+        t_end = 2.0d0
+        CFL   = 0.8_DP
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR    = [ 1.0d0, 1.0d0, 1.0d0 ]
+        x_D   = 0.5_DP
+        K     = 128
+        Gamma = 1.4_DP
+
+        bcX = [ 2, 0, 0 ]
+
+        CS = 'CARTESIAN'
 
      CASE DEFAULT
 

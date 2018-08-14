@@ -31,8 +31,8 @@ PROGRAM RiemannProblem
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
   USE SlopeLimiterModule_Euler_GR, ONLY: &
-    InitializeSlopeLimiter, &
-    FinalizeSlopeLimiter
+    InitializeSlopeLimiter_Euler_GR, &
+    FinalizeSlopeLimiter_Euler_GR
   USE dgDiscretizationModule_Euler_GR, ONLY: &
     ComputeIncrement_Euler_GR_DG_Explicit
   USE EulerEquationsUtilitiesModule_Beta_GR, ONLY: &
@@ -45,30 +45,29 @@ PROGRAM RiemannProblem
 
   IMPLICIT NONE
 
-  INTEGER  :: iCycle, iCycleD, iCycleW, K,  bcX(3)
+  INTEGER  :: iCycle, iCycleD, iCycleW, K, bcX(3)
   REAL(DP) :: t, dt, t_end, xL(3), xR(3), x_D, CFL, Gamma, c = 1.0_DP
   REAL(DP) :: D_L, V_L(3), P_L, D_R, V_R(3), P_R
   CHARACTER( LEN = 11 ) :: CS
 
   REAL(DP)             :: LT
-  CHARACTER( len = 4 ) :: arg
+  CHARACTER( LEN = 4 ) :: arg
   INTEGER              :: argv(2), nNodes, i
   LOGICAL              :: ConvergenceRate = .FALSE.
 
   CALL RiemannProblemChoice &
          ( D_L, V_L, P_L, D_R, V_R, P_R, &
-             xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, CS, iRP = 10 )
+             xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, CS, iRP = 0 )
 
   IF ( ConvergenceRate ) THEN
-    DO i = 1 , IARGC()
+    DO i = 1, IARGC()
       CALL GETARG( i, arg )
       READ( arg, * ) argv(i)
     END DO
     nNodes = argv(1)
     K      = argv(2)
   ELSE
-    nNodes = 2
-    K      = 128
+    nNodes = 3
     LT     = 0.1_DP
   END IF
   
@@ -117,12 +116,13 @@ PROGRAM RiemannProblem
 
   CALL InitializeFluid_SSPRK( nStages = 3 )
 
-  CALL InitializeSlopeLimiter &
-         ( BetaTVD_Option = 1.5_DP, &
+  CALL InitializeSlopeLimiter_Euler_GR &
+         ( BetaTVD_Option = 1.7_DP, &
            BetaTVB_Option = 0.0_DP, &
            SlopeTolerance_Option = 1.0d-3, &
            UseSlopeLimiter_Option = .TRUE., &
-           UseTroubledCellIndicator_Option = .TRUE., &
+           UseCharacteristicLimiting_Option = .TRUE., &
+           UseTroubledCellIndicator_Option = .FALSE., &
            LimiterThresholdParameter_Option = LT )
 
   CALL InitializePositivityLimiter &
@@ -152,7 +152,7 @@ PROGRAM RiemannProblem
     CALL UpdateFluid_SSPRK &
          ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
 
-    ! --- Update primitive fluid variables, pressure, and sound speed
+    ! --- Update primitive fluid variables, pressure, and sound speed ---
     CALL ComputeFromConserved( iX_B0, iX_E0, uGF, uCF, uPF, uAF )
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
@@ -169,7 +169,7 @@ PROGRAM RiemannProblem
 
   CALL FinalizePositivityLimiter
 
-  CALL FinalizeSlopeLimiter
+  CALL FinalizeSlopeLimiter_Euler_GR
 
   CALL FinalizeFluid_SSPRK
 
