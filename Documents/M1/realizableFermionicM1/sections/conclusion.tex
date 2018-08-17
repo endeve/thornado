@@ -1,21 +1,34 @@
 \section{Conclusions}
 \label{sec:conclusions}
 
-We develop a realizability-preserving scheme which includes a suitable CFL condition, a realizability-preserving limiter, a realizability-preserving closure procedure and a realizability-preserving IMEX time integrator.
-Thanks for the meaningful result domain being a convex set, the realizability-preservation of the limiter and the IMEX time integrator can be ensured by requiring they have convex combination forms.
-And a realizability-preserving closure procedure can be obtained by any closure procedure building on Fermi-Dirac statistics.
-In the physics which we interested, the transport system introduces a stiff problem: the collision term has much larger eigenvalues than that the advection term has.
-Therefore, requiring the scheme be streaming accurate and diffusion accurate is an essential and achievable goal than being overall accurate.
-We purpose our PD-ARS scheme. It is 2nd-order accurate and strong stability preserving in the streaming limit and works well in the diffusion limit. Numerical examples are provided to demonstrate those properties.
+We have developed a realizability-preserving DG-IMEX scheme for the two-moment method of fermion transport.
+The scheme includes a suitable CFL condition, a realizability-preserving limiter, a realizable closure procedure and a realizability-preserving IMEX time integrator.
+Its suitable CFL condition is limited by the phase space advection term only and can be as large as the CFL condition of the forward Euler time stepping scheme. 
+The limiter enforces the spacial space discretization be constraint preserving for DG scheme.
+The closure provides a realizable moment approximation.
+And the IMEX time integrator, which can be written as a combination of forward Euler method and a backward Euler method, enforces each time step and each stage inside a time step be realizable.
+Since the realizable domain is a convex set, the realizability-preserving property of the limiter and the IMEX time integrator can be ensured by requiring they have convex combination forms.
+And a realizable closure procedure can be a closure procedure based on Fermi-Dirac statistics.
 
-It's widely known that a realizability-preserving scheme is required for solving the approximating transport problems with conservation law, including the two-moment model.
-However, few people are aware of the significance of realizability-preserving closure procedure: the Minerbo closure, which is not built on Fermi-Dirac distribution, is widely used.
-We highly recommend the CB closure other than the Minerbo closure because the CB closure not only preserves the realizability but also requires no more calculation than the Minerbo closure.
+The collision term is stiff on time scale of interest: in a small domain, the transport is dominate by the diffusion; other than that, the streaming governed.
+We tried first to build a formally second order IMEX scheme.
+However, a correction step is needed which result a restricted CFL condition.
+As an alternation, we separate the accuracy properties and require the scheme be second order in the streaming limit and first order in the diffusion limit.
+This is an essential and more achievable goal.
+Here we purpose our PD-ARS scheme. 
+It is formally first order accurate but reduces to the optimal second-order strong-stability-preserving Runge-Kutta scheme in the streaming limit and works well in the diffusion limit. 
+Numerical examples are provided to demonstrate those properties.
+
+The constraint-preserving property of PD-ARS scheme is applicable to a wide class of problems where the physical constraints confine its meaningful result to a convex set and the diffusion limit is important.
+
+It's known that a realizability-preserving scheme is required for solving the approximating transport problems with conservation law, including the two-moment model.
+A break of the constraint-preserving property, such as implementing a non-realizable closure, the Minerbo closure for example, puts the conservation law in danger.
+Among the simple realizable algebraic closures we discussed(CB, BL and Kershaw closure), we recommend the CB closure (reason ... ).
  
-The realizability-preservation of our IMEX scheme is universal: it can be implemented to any problems where the physical constraints confine its meaningful result to a convex set and the diffusion limit is important. 
 
-To build this work, we assume an easy collision term and no relativistic term on the left-hand side of the transport equation.
-Hence, to solve a more realistic problem, a complex collision term and some relativistic terms should be taken into consideration.
+In this work, we adapted a relatively simple model. 
+We assume a linear collision term with fixed background, only elastic scattering exists, and no relativistic term on the left-hand side of the transport equation.
+Hence, to solve a more scientific problem, a complex collision term and some relativistic terms should be taken into consideration.
 Besides, a higher order accurate method is always desired.
 Moreover, there is no reason to restrict the time integrator to be IMEX.
-They all bring the remained open problems which require the future contribution. 
+In the context of constraint-preserving schemes, these extension provide additional challenge suitable for future investigations.
