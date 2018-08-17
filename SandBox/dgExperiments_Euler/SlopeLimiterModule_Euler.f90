@@ -703,7 +703,7 @@ CONTAINS
     LOGICAL, INTENT(in)     :: &
       LimitedCell(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
 
-    LOGICAL :: UseCorrection1, UseCorrection2
+    LOGICAL :: UseCorrection
     INTEGER :: iX1, iX2, iX3, iCF
     INTEGER :: LWORK, INFO
     INTEGER :: i, iPol
@@ -736,103 +736,13 @@ CONTAINS
 
     END DO
 
-    ! --- Correct Coefficients with Constratined Least Squares ---
-    ! ---          to Preserve Conserved Quantities            ---
-
-    UseCorrection1 = .FALSE.
-
-    IF( UseCorrection1 )THEN
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-          DO iX1 = iX_B0(1), iX_E0(1)
-
-              A0(1:2,1) = [ 1.0_DP, 0.0_DP ]
-              A0(1:2,2) = [ 0.0_DP, 1.0_DP ]
-     
-              B0(1,1) &
-                = SUM( WeightsX_q(:) * LegendreX(:,1) &
-                         * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-
-              B0(1,2) &
-                = SUM( WeightsX_q(:) * LegendreX(:,2) &
-                         * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-
-              IF( nDimsX > 1 )THEN
-
-                A0(1:3,1) = [ 1.0_DP, 0.0_DP, 0.0_DP ]
-                A0(1:3,2) = [ 0.0_DP, 1.0_DP, 0.0_DP ]
-                A0(1:3,3) = [ 0.0_DP, 0.0_DP, 1.0_DP ]
-
-                B0(1,1) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,1) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-                B0(1,2) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,2) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-                B0(1,3) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,3) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-
-              END IF
-
-              IF (nDimsX > 2) THEN 
-
-                A0(1:4,1) = [ 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-                A0(1:4,2) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
-                A0(1:4,3) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
-                A0(1:4,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
-
-                B0(1,1) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,1) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-                B0(1,2) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,2) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-                B0(1,3) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,3) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-                B0(1,4) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,4) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-
-              END IF
-             
-              DO iCF = 1, nCF
-         
-                IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
-
-                  CALL MapNodalToModal_Fluid &
-                      ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
-
-                  A = A0
-                  B = B0 
-                  c = U_M(iCF,0,1:1+nDimsX)
-                  d = U_K(iCF,iX1,iX2,iX3)
-           
-                  LWORK = SIZE( WORK )
-                  CALL DGGLSE( SIZE( A, 1 ), SIZE( A, 2 ), SIZE( B, 1 ), &
-                                   A, SIZE( A, 1 ), B, SIZE( B, 1 ), c, d, &
-                                   U_M(iCF,0,1:1+nDimsX), WORK, LWORK, INFO )
-            
-
-                  CALL MapModalToNodal_Fluid &
-                       ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
-          
-                END IF
-              
-              END DO            
-
-          END DO
-        END DO
-      END DO
-
-    END IF
-
-    UseCorrection2 = .TRUE.
+    UseCorrection = .TRUE.
     
-    IF( UseCorrection2 )THEN
+    IF( UseCorrection )THEN
       
+      ! --- Applies a correction to the 0-th order ---
+      ! --- mode to maintain the cell average.     ---
+
       DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
           DO iX1 = iX_B0(1), iX_E0(1)
