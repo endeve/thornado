@@ -38,3 +38,11 @@ TwoMoment_DiscretizationModule_Streaming.o: \
   TwoMoment_UtilitiesModule.o \
   TwoMoment_PositivityLimiterModule.o \
   TwoMoment_DiscretizationModule_Streaming.f90
+
+TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
+  KindModule.o \
+  ProgramHeader.o \
+  ReferenceElementModule.o \
+  RadiationFieldsModule.o \
+  NeutrinoOpacitiesModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.f90
