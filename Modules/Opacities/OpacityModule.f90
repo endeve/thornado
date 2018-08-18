@@ -90,7 +90,8 @@ CONTAINS
 
         CALL InitializeOpacities_TABLE &
                ( OpacityTableName_Option &
-                   = OpacityTableName_Option )
+                   = OpacityTableName_Option, &
+                 Verbose_Option = .TRUE. )
 
         ComputeAbsorptionOpacity &
           => ComputeAbsorptionOpacity_TABLE

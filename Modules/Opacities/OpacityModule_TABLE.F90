@@ -54,17 +54,31 @@ MODULE OpacityModule_TABLE
 CONTAINS
 
 
-  SUBROUTINE InitializeOpacities_TABLE( OpacityTableName_Option )
+  SUBROUTINE InitializeOpacities_TABLE &
+    ( OpacityTableName_Option, Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
-    OpacityTableName = 'OpacityTable.h5'
-    IF( PRESENT( OpacityTableName_Option ) ) &
+    LOGICAL :: Verbose
+
+    IF( PRESENT( OpacityTableName_Option ) )THEN
       OpacityTableName = TRIM( OpacityTableName_Option )
+    ELSE
+      OpacityTableName = 'OpacityTable.h5'
+    END IF
 
-    WRITE(*,*)
-    WRITE(*,'(A7,A12,A)') &
-      '', 'Table Name: ', TRIM( OpacityTableName )
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .FALSE.
+    END IF
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A7,A12,A)') &
+        '', 'Table Name: ', TRIM( OpacityTableName )
+    END IF
 
 #ifdef MICROPHYSICS_WEAKLIB
 
