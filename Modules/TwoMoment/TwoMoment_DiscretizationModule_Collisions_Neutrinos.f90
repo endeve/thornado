@@ -654,7 +654,7 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iX_B(3), iX_E(3)
     REAL(DP), INTENT(in)  :: &
-      GX(:,:,:,:)
+      GX(:,iX_B(1):,iX_B(2):,iX_B(3):)
     REAL(DP), INTENT(out) :: &
       GX_N(:)
 
@@ -690,7 +690,7 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iX_B(3), iX_E(3)
     REAL(DP), INTENT(in)  :: &
-      FF(:,:,:,:)
+      FF(:,iX_B(1):,iX_B(2):,iX_B(3):)
     REAL(DP), INTENT(out) :: &
       FF_N(:)
 
@@ -726,7 +726,7 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iX_B(3), iX_E(3)
     REAL(DP), INTENT(out) :: &
-      FF(:,:,:,:)
+      FF(:,iX_B(1):,iX_B(2):,iX_B(3):)
     REAL(DP), INTENT(in)  :: &
       FF_N(:)
 
@@ -762,7 +762,7 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iZ_B(4), iZ_E(4)
     REAL(DP), INTENT(in)  :: &
-      RF(:,:,:,:,:)
+      RF(:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):)
     REAL(DP), INTENT(out) :: &
       RF_N(:,:)
 
@@ -807,7 +807,7 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iZ_B(4), iZ_E(4)
     REAL(DP), INTENT(out) :: &
-      RF(:,:,:,:,:)
+      RF(:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):)
     REAL(DP), INTENT(in)  :: &
       RF_N(:,:)
 
