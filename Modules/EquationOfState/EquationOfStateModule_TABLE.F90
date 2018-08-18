@@ -88,9 +88,13 @@ MODULE EquationOfStateModule_TABLE
 CONTAINS
 
 
-  SUBROUTINE InitializeEquationOfState_TABLE( EquationOfStateTableName_Option )
+  SUBROUTINE InitializeEquationOfState_TABLE &
+    ( EquationOfStateTableName_Option, Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
+
+    LOGICAL :: Verbose
 
     IF( PRESENT( EquationOfStateTableName_Option ) )THEN
       EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
@@ -98,9 +102,17 @@ CONTAINS
       EquationOfStateTableName = 'EquationOfStateTable.h5'
     END IF
 
-    WRITE(*,*)
-    WRITE(*,'(A7,A12,A)') &
-      '', 'Table Name: ', TRIM( EquationOfStateTableName )
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .FALSE.
+    END IF
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A7,A12,A)') &
+        '', 'Table Name: ', TRIM( EquationOfStateTableName )
+    END IF
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -394,8 +406,8 @@ CONTAINS
            ( D(:), T(:), Y(:), Em(:), iE_T, OS_E, &
              Units_V = Erg / Gram )
 
-    Ev(:) = Em (:) * D(:)              ! --- Internal Energy per Unit Volume
-    Ne(:) = Y  (:) * D(:) / BaryonMass ! --- Electrons per Unit Volume
+    Ev(:) = Em(:) * D(:)              ! --- Internal Energy per Unit Volume
+    Ne(:) = Y (:) * D(:) / BaryonMass ! --- Electrons per Unit Volume
 
   END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE
 
@@ -406,7 +418,7 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(out) :: T, Em, Y
 
     Em(:) = Ev(:) / D(:)              ! --- Internal Energy per Mass
-    Y(:)  = Ne(:) / D(:) * BaryonMass ! --- Electron Fraction
+    Y (:) = Ne(:) / D(:) * BaryonMass ! --- Electron Fraction
 
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
            ( D(:), Em(:), Y(:), T(:) )

@@ -184,7 +184,8 @@ CONTAINS
 
         CALL InitializeEquationOfState_TABLE &
                ( EquationOfStateTableName_Option &
-                   = EquationOfStateTableName_Option )
+                   = EquationOfStateTableName_Option, &
+                 Verbose_Option = .TRUE. )
 
         ApplyEquationOfState &
           => ApplyEquationOfState_TABLE
