@@ -3,6 +3,7 @@ MODULE NeutrinoOpacitiesComputationModule
   USE KindModule, ONLY: &
     DP, Zero, One
   USE UnitsModule, ONLY: &
+    BoltzmannConstant, &
     Centimeter, &
     Gram, &
     Kelvin, &
@@ -44,6 +45,12 @@ MODULE NeutrinoOpacitiesComputationModule
   INCLUDE 'mpif.h'
 
   PUBLIC :: ComputeNeutrinoOpacities
+  PUBLIC :: ComputeNeutrinoOpacities_EC_Point
+  PUBLIC :: ComputeNeutrinoOpacities_ES_Point
+  PUBLIC :: ComputeEquilibriumDistributions_Point
+  PUBLIC :: FermiDirac
+  PUBLIC :: dFermiDiracdT
+  PUBLIC :: dFermiDiracdY
 
   REAL(DP), PARAMETER :: Log1d100 = LOG( 1.0d100 )
   REAL(DP), PARAMETER :: UnitD    = Gram / Centimeter**3
@@ -165,6 +172,56 @@ CONTAINS
   END SUBROUTINE ComputeEquilibriumDistributions
 
 
+  SUBROUTINE ComputeEquilibriumDistributions_Point &
+    ( iE_B, iE_E, E, D, T, Y, f_EQ_Point, iSpecies )
+
+    ! --- Equilibrium Neutrino Distributions (Single D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(out) :: f_EQ_Point(iE_B:iE_E)
+    INTEGER,  INTENT(in)  :: iSpecies
+
+    REAL(DP) :: Me(1), Mp(1), Mn(1), Mnu
+
+    ! --- Compute Chemical Potentials ---
+
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( [ D ], [ T ], [ Y ], Me )
+
+    CALL ComputeProtonChemicalPotential_TABLE &
+           ( [ D ], [ T ], [ Y ], Mp )
+
+    CALL ComputeNeutronChemicalPotential_TABLE &
+           ( [ D ], [ T ], [ Y ], Mn )
+
+    IF    ( iSpecies .EQ. 1 )THEN
+
+      ! --- Electron Neutrinos ---
+
+      Mnu = ( Me(1) + Mp(1) ) - Mn(1)
+
+    ELSEIF( iSpecies .EQ. 2 )THEN
+
+      ! --- Electron Antineutrino ---
+
+      Mnu = Mn(1) - ( Me(1) + Mp(1) )
+
+    ELSE
+
+      WRITE(*,*)
+      WRITE(*,'(A4,A)') '', 'ERROR (ComputeEquilibriumDistributions_Point):'
+      WRITE(*,'(A4,A,I2.2)') '', 'Unknown Species: ', iSpecies
+      WRITE(*,*)
+
+    END IF
+
+    f_EQ_Point = FermiDirac( E, Mnu, BoltzmannConstant * T )
+
+  END SUBROUTINE ComputeEquilibriumDistributions_Point
+
+
   SUBROUTINE ComputeNeutrinoOpacities_EC( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y )
 
     ! --- Electron Capture Opacities ---
@@ -238,6 +295,45 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_EC
+
+
+  SUBROUTINE ComputeNeutrinoOpacities_EC_Point &
+    ( iE_B, iE_E, E, D, T, Y, opEC_Point, iSpecies )
+
+    ! --- Electron Capture Opacities (Single D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(out) :: opEC_Point(iE_B:iE_E)
+    INTEGER,  INTENT(in)  :: iSpecies
+
+    REAL(DP) :: tmp(iE_B:iE_E,1)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ASSOCIATE &
+      ( opEC_T => OPACITIES % ThermEmAb &
+                    % Absorptivity(iSpecies) % Values, &
+        OS     => OPACITIES % ThermEmAb &
+                    % Offsets(iSpecies) )
+
+    CALL LogInterpolateSingleVariable_1D3D_Custom &
+           ( LOG10( [ E ] / UnitE ), LOG10( [ D ] / UnitD ), &
+             LOG10( [ T ] / UnitT ),      ( [ Y ] / UnitY ), &
+             LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opEC_T, tmp )
+
+    opEC_Point(:) = tmp(:,1) * UnitEC
+
+    END ASSOCIATE ! opEC_T, etc.
+
+#else
+
+    opEC_Point(:) = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_EC_Point
 
 
   SUBROUTINE ComputeNeutrinoOpacities_ES( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y )
@@ -315,21 +411,92 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacities_ES
 
 
+  SUBROUTINE ComputeNeutrinoOpacities_ES_Point &
+    ( iE_B, iE_E, E, D, T, Y, opES_Point, iSpecies )
+
+    ! --- Elastic Scattering Opacities (Single D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(out) :: opES_Point(iE_B:iE_E)
+    INTEGER,  INTENT(in)  :: iSpecies
+
+    REAL(DP) :: tmp(iE_B:iE_E,1)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ASSOCIATE &
+      ( opES_T => OPACITIES % Scatt_Iso &
+                    % Kernel(iSpecies) % Values(:,:,:,:,1), &
+        OS     => OPACITIES % Scatt_Iso &
+                    % Offsets(iSpecies,1) )
+
+    CALL LogInterpolateSingleVariable_1D3D_Custom &
+           ( LOG10( [ E ] / UnitE ), LOG10( [ D ] / UnitD ), &
+             LOG10( [ T ] / UnitT ),      ( [ Y ] / UnitY ), &
+             LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opES_T, tmp )
+
+    opES_Point(:) = tmp(:,1) * UnitES
+
+    END ASSOCIATE ! opEC_T, etc.
+
+#else
+
+    opES_Point(:) = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_ES_Point
+
+
   PURE ELEMENTAL REAL(DP) FUNCTION FermiDirac( E, Mu, kT )
 
     REAL(DP), INTENT(in) :: E, Mu, kT
 
     REAL(DP) :: Exponent
 
-    Exponent = ( E - Mu ) / kT
-    Exponent = MAX( Exponent, - Log1d100 )
-    Exponent = MIN( Exponent, + Log1d100 )
+    Exponent = MIN( MAX( ( E - Mu ) / kT, - Log1d100 ), + Log1d100 )
 
     FermiDirac &
       = One / ( EXP( Exponent ) + One )
 
     RETURN
   END FUNCTION FermiDirac
+
+
+  PURE ELEMENTAL REAL(DP) FUNCTION dFermiDiracdT( E, Mu, kT, dMudT, T )
+
+    REAL(DP), INTENT(in) :: E, Mu, kT, dMudT, T
+
+    REAL(DP) :: Exponent, FD
+
+    Exponent = MIN( MAX( ( E - Mu ) / kT, - Log1d100 ), + Log1d100 )
+
+    FD = FermiDirac( E, Mu, kT )
+
+    dFermiDiracdT &
+      = ( FD * EXP( Exponent ) ) * FD * ( dMudT + ( E - Mu ) / T ) / kT
+
+    RETURN
+  END FUNCTION dFermiDiracdT
+
+
+  PURE ELEMENTAL REAL(DP) FUNCTION dFermiDiracdY( E, Mu, kT, dMudY, T )
+
+    REAL(DP), INTENT(in) :: E, Mu, kT, dMudY, T
+
+    REAL(DP) :: Exponent, FD
+
+    Exponent = MIN( MAX( ( E - Mu ) / kT, - Log1d100 ), + Log1d100 )
+
+    FD = FermiDirac( E, Mu, kT )
+
+    dFermiDiracdY &
+      = ( FD * EXP( Exponent ) ) * FD * dMudY / kT
+
+    RETURN
+  END FUNCTION dFermiDiracdY
 
 
 END MODULE NeutrinoOpacitiesComputationModule
