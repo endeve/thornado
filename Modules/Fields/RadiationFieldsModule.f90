@@ -10,7 +10,11 @@ MODULE RadiationFieldsModule
 
   LOGICAL :: Verbose
 
-  INTEGER, PUBLIC :: nSpecies = 1
+  INTEGER, PUBLIC            :: nSpecies = 1
+  INTEGER, PUBLIC, PARAMETER :: iNuE     = 1
+  INTEGER, PUBLIC, PARAMETER :: iNuE_Bar = 2
+  INTEGER, PUBLIC, PARAMETER :: iNuX     = 3
+  INTEGER, PUBLIC, PARAMETER :: iNuX_Bar = 4
 
   ! --- Eulerian (Conserved) Radiation Fields ---
 
