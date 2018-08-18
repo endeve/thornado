@@ -32,28 +32,6 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU_R(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
 
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iCR, iS
-
-    DO iS = 1, nSpecies
-      DO iCR = 1, nCR
-
-        DO iZ4 = iZ_B0(4), iZ_E0(4)
-          DO iZ3 = iZ_B0(3), iZ_E0(3)
-            DO iZ2 = iZ_B0(2), iZ_E0(2)
-              DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-                dU_R(:,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-                  = 0.0_DP * U_R(:,iZ1,iZ2+1,iZ3,iZ4,iCR,iS) &
-                      - 0.0_DP * U_R(:,iZ1,iZ2-1,iZ3,iZ4,iCR,iS)
-
-              END DO
-            END DO
-          END DO
-        END DO
-
-      END DO
-    END DO
-
   END SUBROUTINE ComputeIncrement_Explicit
 
 
@@ -78,42 +56,6 @@ CONTAINS
       U_R (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
     REAL(DP), INTENT(inout) :: &
       dU_R(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
-
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iCF, iCR, iS
-
-    DO iS = 1, nSpecies
-      DO iCR = 1, nCR
-
-        DO iZ4 = iZ_B0(4), iZ_E0(4)
-          DO iZ3 = iZ_B0(3), iZ_E0(3)
-            DO iZ2 = iZ_B0(2), iZ_E0(2)
-              DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-                dU_R(:,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-                  = 0.0_DP
-
-              END DO
-            END DO
-          END DO
-        END DO
-
-      END DO
-    END DO
-
-
-    DO iCF = 1, nCF
-
-      DO iZ4 = iZ_B0(4), iZ_E0(4)
-        DO iZ3 = iZ_B0(3), iZ_E0(3)
-          DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-            dU_F(:,iZ2,iZ3,iZ4,iCF) = 0.0_DP
-
-          END DO
-        END DO
-      END DO
-
-    END DO
 
   END SUBROUTINE ComputeIncrement_Implicit
 
