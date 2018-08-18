@@ -73,8 +73,6 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     Flux_X2, &
     Flux_X3, &
     NumericalFlux_LLF
-  USE TwoMoment_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
@@ -106,9 +104,6 @@ CONTAINS
     REAL(DP) :: dZ(4), Tau(nDOF)
 
     dU = Zero
-
-    CALL ApplyPositivityLimiter_TwoMoment &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
 
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
