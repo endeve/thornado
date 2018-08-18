@@ -3,14 +3,20 @@ MACHINE = $(THORNADO_MACHINE)
 OPT_LEVEL = DEBUG
 FLAGS     = $(FLAGS_$(OPT_LEVEL))
 
-MOMENT_CLOSURE = MINERBO
-#MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
+#MOMENT_CLOSURE = MINERBO
+MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
 #MOMENT_CLOSURE = MAXIMUM_ENTROPY_BL
 #MOMENT_CLOSURE = KERSHAW_BL
 
+MICROPHYSICS = WEAKLIB
+
+include ./Makefile_WeakLib
 include ../../Build/Makefile_Build
 
 VPATH = \
+$(THORNADO_DIR)/WeakLib/Distributions/Library: \
+$(THORNADO_DIR)/WeakLib/Distributions/EOSSource: \
+$(THORNADO_DIR)/WeakLib/Distributions/OpacitySource: \
 $(THORNADO_DIR)/Modules/Numbers: \
 $(THORNADO_DIR)/Modules/Units: \
 $(THORNADO_DIR)/Modules/ProgramHeader: \
@@ -18,12 +24,14 @@ $(THORNADO_DIR)/Modules/Library: \
 $(THORNADO_DIR)/Modules/Mesh: \
 $(THORNADO_DIR)/Modules/Geometry: \
 $(THORNADO_DIR)/Modules/Fields: \
+$(THORNADO_DIR)/Modules/EquationOfState: \
+$(THORNADO_DIR)/Modules/Opacities: \
 $(THORNADO_DIR)/Modules/TwoMoment: \
 .
 
 all: Driver
 
-Driver: \
+Driver: $(weaklib) \
 	KindModule.o \
 	PhysicalConstantsModule.o \
 	UnitsModule.o \
@@ -43,16 +51,22 @@ Driver: \
 	GeometryFieldsModuleE.o \
 	GeometryComputationModuleE.o \
 	RadiationFieldsModule.o \
+	EquationOfStateModule_TABLE.o \
+	OpacityModule_TABLE.o \
+	NeutrinoOpacitiesModule.o \
+	NeutrinoOpacitiesComputationModule.o \
 	TwoMoment_ClosureModule.o \
 	TwoMoment_BoundaryConditionsModule.o \
 	TwoMoment_UtilitiesModule.o \
 	TwoMoment_PositivityLimiterModule.o \
 	TwoMoment_DiscretizationModule_Streaming.o \
+	TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
 	ThornadoInitializationModule.o \
 	DiscretizationModule_Dummy.o \
 	TimeSteppingModule_Castro.o \
 	Driver.o
 	$(FLINKER) $(FLAGS) -o Driver_$(MACHINE) \
+	$(weaklib) \
 	KindModule.o \
 	PhysicalConstantsModule.o \
 	UnitsModule.o \
@@ -72,11 +86,16 @@ Driver: \
 	GeometryFieldsModuleE.o \
 	GeometryComputationModuleE.o \
 	RadiationFieldsModule.o \
+	EquationOfStateModule_TABLE.o \
+	OpacityModule_TABLE.o \
+	NeutrinoOpacitiesModule.o \
+	NeutrinoOpacitiesComputationModule.o \
 	TwoMoment_ClosureModule.o \
 	TwoMoment_BoundaryConditionsModule.o \
 	TwoMoment_UtilitiesModule.o \
 	TwoMoment_PositivityLimiterModule.o \
 	TwoMoment_DiscretizationModule_Streaming.o \
+	TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
 	ThornadoInitializationModule.o \
 	DiscretizationModule_Dummy.o \
 	TimeSteppingModule_Castro.o \

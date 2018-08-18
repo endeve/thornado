@@ -15,7 +15,7 @@ PROGRAM Driver
     InitThornado_Patch, & ! --- To be called once per patch
     FreeThornado_Patch    ! --- To be called once per parch
   USE TimeSteppingModule_Castro, ONLY: &
-    Update_IMEX_PC2
+    Update_IMEX_PDARS
 
   IMPLICIT NONE
 
@@ -30,7 +30,7 @@ PROGRAM Driver
 
   wTime = MPI_WTIME( )
 
-  CALL InitThornado( nDimsX = 3, nE = 16, nSpeciesIn = 2 )
+  CALL InitThornado( nDimsX = 3, nE = 16, nSpeciesIn = 1 )
 
   wTime = MPI_WTIME( ) - wTime
 
@@ -53,13 +53,13 @@ PROGRAM Driver
 
     dt = 1.0d-4
 
-    uCR(:,:,:,:,:,iCR_N,:)  = 1.0_DP
+    uCR(:,:,:,:,:,iCR_N, :) = 1.0_DP
     uCR(:,:,:,:,:,iCR_G1,:) = 0.0_DP
     uCR(:,:,:,:,:,iCR_G2,:) = 0.0_DP
     uCR(:,:,:,:,:,iCR_G3,:) = 0.0_DP
-
-    CALL Update_IMEX_PC2( dt, uCF, uCR )
-
+!!$
+!!$    CALL Update_IMEX_PDARS( dt, uCF, uCR )
+!!$
     CALL FreeThornado_Patch
 
   END DO
