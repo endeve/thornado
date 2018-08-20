@@ -26,6 +26,10 @@ MODULE SlopeLimiterModule_Euler_GR
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
+    iGF_Alpha,    &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
@@ -233,6 +237,9 @@ CONTAINS
             G_K(iGF) = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF) )
 
           END DO
+          DO iGF = iGF_Alpha, iGF_Beta_3
+             G_K(iGF) = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF))
+          END DO
 
           ! --- Map to Modal Representation ---
 
@@ -413,9 +420,9 @@ CONTAINS
       END DO
     END DO
 
-    !IF( UseCharacteristicLimiting ) &
-    !     CALL ApplyConservativeCorrection &
-    !            ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
+    IF( UseCharacteristicLimiting ) &
+         CALL ApplyConservativeCorrection &
+                ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
   END SUBROUTINE ApplySlopeLimiter_Euler_GR
 

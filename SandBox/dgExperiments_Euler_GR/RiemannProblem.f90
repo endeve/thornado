@@ -57,7 +57,7 @@ PROGRAM RiemannProblem
 
   CALL RiemannProblemChoice &
          ( D_L, V_L, P_L, D_R, V_R, P_R, &
-             xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, CS, iRP = 0 )
+             xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, CS, iRP = 10 )
 
   IF ( ConvergenceRate ) THEN
     DO i = 1, IARGC()
@@ -117,12 +117,12 @@ PROGRAM RiemannProblem
   CALL InitializeFluid_SSPRK( nStages = 3 )
 
   CALL InitializeSlopeLimiter_Euler_GR &
-         ( BetaTVD_Option = 1.7_DP, &
+         ( BetaTVD_Option = 2.0_DP, &
            BetaTVB_Option = 0.0_DP, &
-           SlopeTolerance_Option = 1.0d-3, &
+           SlopeTolerance_Option = 1.0d-6, &
            UseSlopeLimiter_Option = .TRUE., &
-           UseCharacteristicLimiting_Option = .TRUE., &
-           UseTroubledCellIndicator_Option = .FALSE., &
+           UseCharacteristicLimiting_Option = .FALSE., &
+           UseTroubledCellIndicator_Option = .TRUE., &
            LimiterThresholdParameter_Option = LT )
 
   CALL InitializePositivityLimiter &
@@ -150,7 +150,7 @@ PROGRAM RiemannProblem
     END IF
 
     CALL UpdateFluid_SSPRK &
-         ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
+           ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
 
     ! --- Update primitive fluid variables, pressure, and sound speed ---
     CALL ComputeFromConserved( iX_B0, iX_E0, uGF, uCF, uPF, uAF )
