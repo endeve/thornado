@@ -688,7 +688,8 @@ CONTAINS
   END SUBROUTINE DetectTroubledCells
 
 
-  SUBROUTINE ApplyConservativeCorrection( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
+  SUBROUTINE ApplyConservativeCorrection &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -703,35 +704,28 @@ CONTAINS
     LOGICAL, INTENT(in)     :: &
       LimitedCell(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
 
-    LOGICAL :: UseCorrection
-    INTEGER :: iX1, iX2, iX3, iCF
-    INTEGER :: LWORK, INFO
-    INTEGER :: i, iPol
-    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNode, iNodeX
-
-    REAL(DP) :: d 
-    REAL(DP), DIMENSION(nDimsX+1):: c
-    REAL(DP), DIMENSION(2*nDimsX+3) :: WORK
-    REAL(DP), DIMENSION(1,nDimsX+1) :: B0, B
-    REAL(DP), DIMENSION(nDimsX+1,nDimsX+1) :: A0, A
-    REAL(DP), DIMENSION(nDOFX,nDOFX) :: LegendreX
+    LOGICAL  :: UseCorrection
+    INTEGER  :: iX1, iX2, iX3, iCF, iPol, iDimX
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
+    REAL(DP) :: Correction
+    REAL(DP) :: LegendreX(nDOFX,nDOFX)
     REAL(DP) :: U_M(nCF,0:2**nDimsX,nDOFX)
 
-    DO iPol = 1, nDOFX
+    DO iPol = 1, nDOFX ! Only need for iPol = 2,3,4 (FIXME)
 
       DO iNodeX3 = 1, nNodesX(3)
-        DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+      DO iNodeX2 = 1, nNodesX(2)
+      DO iNodeX1 = 1, nNodesX(1)
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+        iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-            LegendreX(iNodeX,iPol) &
-                = P_X1(IndPX_Q(1,iPol)) % P( MeshX(1) % Nodes(iNodeX1) ) &
-                    * P_X2(IndPX_Q(2,iPol)) % P( MeshX(2) % Nodes(iNodeX2) ) &
-                      * P_X3(IndPX_Q(3,iPol)) % P( MeshX(3) % Nodes(iNodeX3) )
+        LegendreX(iNodeX,iPol) &
+          = P_X1  (IndPX_Q(1,iPol)) % P( MeshX(1) % Nodes(iNodeX1) ) &
+            * P_X2(IndPX_Q(2,iPol)) % P( MeshX(2) % Nodes(iNodeX2) ) &
+            * P_X3(IndPX_Q(3,iPol)) % P( MeshX(3) % Nodes(iNodeX3) )
 
-          END DO
-        END DO
+      END DO
+      END DO
       END DO
 
     END DO
@@ -744,30 +738,37 @@ CONTAINS
       ! --- mode to maintain the cell average.     ---
 
       DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-          DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
 
-            DO iCF = 1, nCF
+        DO iCF = 1, nCF
 
-              IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
+          IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
 
-                  CALL MapNodalToModal_Fluid &
-                      ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+            CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
 
-                  U_M(iCF,0,1) = U_K(iCF,iX1,iX2,iX3) - ( 1 / V_K(iX1,iX2,iX3) ) & 
-                                   * ( U_M(iCF,0,2) * SUM( WeightsX_q(:) * LegendreX(:,2) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
-                                       + U_M(iCF,0,3) * SUM( WeightsX_q(:) * LegendreX(:,3) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
-                                       + U_M(iCF,0,4) * SUM( WeightsX_q(:) * LegendreX(:,4) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) )
+            Correction = Zero
+            DO iDimX = 1, nDimsX
 
-                  CALL MapModalToNodal_Fluid &
-                      ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
-
-              END IF
+              Correction &
+                = Correction &
+                    + ( U_M(iCF,0,iDimX+1) &
+                        * SUM( WeightsX_q(:) * LegendreX(:,iDimX+1) &
+                               * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) ) &
+                      / V_K(iX1,iX2,iX3)
 
             END DO
 
-          END DO
+            U_M(iCF,0,1) = U_K(iCF,iX1,iX2,iX3) - Correction 
+
+            CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+
+          END IF
+
         END DO
+
+      END DO
+      END DO
       END DO
 
     END IF
