@@ -2,7 +2,7 @@
 \label{sec:conclusions}
 
 We have developed a realizability-preserving DG-IMEX scheme for a two-moment model for fermion transport.  
-The scheme employs simple algebraic two-moment closures rooted in Fermi-Dirac statistics, and combines a CFL condition, a realizability-enforcing limiter, and a constraint-preserving time integrator to maintain point-wise realizability of the moments.  
+The scheme employs simple algebraic two-moment closures rooted in Fermi-Dirac statistics, and combines a time step restriction (CFL condition), a realizability-enforcing limiter, and a constraint-preserving time integrator to maintain point-wise realizability of the moments.  
 Since the realizable domain is a convex set, the realizability-preserving property is obtained from convexity arguments, building on the framework in \cite{zhangShu_2010a}.  
 
 In the applications motivating this work, the collision term is stiff in regions of the computational domain, and we have considered IMEX schemes to avoid solving the transport operator implicitly.  
@@ -26,6 +26,7 @@ The Eddington factors deriving from the maximum entropy closures of Cernohorsky 
 Further approximations of the closure procedure, e.g., employing the low occupancy limit, which results in the Minerbo closure \cite{minerbo_1978} when starting with the maximum entropy closure of \cite{cernohorskyBludman_1994}), is not compatible with realizability of the fermionic two-moment model, and we caution against this approach to modeling particle systems governed by Fermi-Dirac statistics; particularly if the low occupancy approximation is unlikely to hold (e.g., when modeling neutrino transport in core-collapse supernovae).  
 
 In this work, we considered a relatively simple model.  
-In particular, we adopted Cartesian coordinates, assumed a linear collision operator and a fixed material background, isotropic elastic scattering, and relativistic effects due to interactions with a moving background or the presence of a strong gravitational field were not included.  
+In particular, we adopted Cartesian coordinates, assumed a linear collision operator and a fixed material background.  
+Inelastic scattering and relativistic effects (e.g., due to interactions with a moving background or the presence of a strong gravitational field) were not included.  
 To solve more realistic problems of higher scientific interest, some or all of these physical effects must be included.  
 In the context of constraint-preserving schemes, these extension provide significant challenges suitable for future investigations, and for which the scheme presented here may serve as a foundation.  
