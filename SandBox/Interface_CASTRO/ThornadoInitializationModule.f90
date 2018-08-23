@@ -114,6 +114,7 @@ contains
              nE_Option = nE, swE_Option = swE, &
              eL_Option = eL, eR_Option  = eR )
 
+    ! Note we always use 3 here even if calling from Castro 2D
     DO iDim = 1, 3
 
       call CreateMesh &

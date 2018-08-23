@@ -26,7 +26,8 @@ CONTAINS
   SUBROUTINE Update_IMEX_PC2( dt, U_F, U_R )
 
     use GeometryFieldsModuleE, only : uGE
-    use GeometryFieldsModule, only : uGF
+    use GeometryFieldsModule , only : uGF
+    use ProgramHeaderModule  , only : nDimsX
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -76,8 +77,13 @@ CONTAINS
 
     ! --- Include One Layer of Spatial Ghost Cells in Update
 
-    iX_SW = [ 1, 1, 1 ]
-    iZ_SW = [ 0, 1, 1, 1 ]
+    if (nDimsX .eq. 3) then
+       iX_SW = [    1, 1, 1 ]
+       iZ_SW = [ 0, 1, 1, 1 ]
+    else
+       iX_SW = [    1, 1, 0 ]
+       iZ_SW = [ 0, 1, 1, 0 ]
+    end if
 
     ! --- Explicit Step (Radiation Only) ---
 
