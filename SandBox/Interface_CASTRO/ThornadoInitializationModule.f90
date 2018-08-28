@@ -22,6 +22,10 @@ module ThornadoInitializationModule
     InitializeReferenceElementE_Lagrange
   use ReferenceElementModule_Lagrange, only: &
     InitializeReferenceElement_Lagrange
+  use EquationOfStateModule_TABLE, only: &
+    InitializeEquationOfState_TABLE
+  use OpacityModule_TABLE, only: &
+    InitializeOpacities_TABLE
   use MeshModule, only: &
     MeshX, MeshE, &
     CreateMesh, &
@@ -91,6 +95,16 @@ contains
     call InitializeReferenceElementE_Lagrange
 
     call InitializeReferenceElement_Lagrange
+
+    call InitializeEquationOfState_TABLE &
+           ( EquationOfStateTableName_Option &
+               = 'EquationOfStateTable.h5', &
+             Verbose_Option = .true. )
+
+    call InitializeOpacities_TABLE &
+           ( OpacityTableName_Option &
+               = 'OpacityTable.h5', &
+             Verbose_Option = .true. )
 
   end subroutine InitThornado
 
