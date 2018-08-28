@@ -281,6 +281,8 @@ CONTAINS
 
   SUBROUTINE TallyPositivityLimiter_TwoMoment( Time )
 
+    USE UnitsModule, ONLY: UnitsDisplay
+
     REAL(DP), INTENT(in) :: Time
 
     INTEGER :: FileUnit
@@ -289,7 +291,8 @@ CONTAINS
 
     OPEN( NEWUNIT=FileUnit, FILE=TRIM( TallyFileName ), ACCESS='APPEND' )
 
-    WRITE( FileUnit, '(3(ES14.5,x))' ) Time, MinTheta_1, MinTheta_2
+    WRITE( FileUnit, '(3(ES14.5,x))' ) &
+      Time / UnitsDisplay % TimeUnit, MinTheta_1, MinTheta_2
 
     CLOSE( FileUnit )
 
