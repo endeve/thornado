@@ -119,8 +119,6 @@ CONTAINS
 
     ! --- Multiply Inverse Mass Matrix ---
 
-    !$OMP PARALLEL DO PRIVATE &
-    !$OMP& ( iZ1, iZ2, iZ3, iZ4, iCR, iS, dZ, Tau )
     DO iZ4 = iZ_B0(4), iZ_E0(4)
       dZ(4) = MeshX(3) % Width(iZ4)
       DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -149,7 +147,6 @@ CONTAINS
         END DO
       END DO
     END DO
-    !$OMP END PARALLEL DO
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit
 
