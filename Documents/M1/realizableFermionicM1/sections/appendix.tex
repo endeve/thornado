@@ -22,7 +22,7 @@ For $s$ stages, $\tilde{A}=(\tilde{a}_{ij})$, $\tilde{a}_{ij}=0$ for $j\ge i$, a
 The vectors $\tilde{\vect{c}}=(\tilde{c}_{1},\ldots,\tilde{c}_{s})^{T}$ and $\vect{c}=(c_{1},\ldots,c_{s})^{T}$, used for non autonomous systems, satisfy $\tilde{c}_{i}=\sum_{j=1}^{i-1}\tilde{a}_{ij}$ and $c_{i}=\sum_{j=1}^{i}a_{ij}$.  
 For the implicit tableau, we have included the scalar $\alpha$, used for the correction step in Eq.~\eqref{eq:imexCorrection}.  
 
-For the analysis of positivity-preserving IMEX schemes, additional coefficients are defined \cite{hu_etal_2018} (cf. Eq.~\eqref{eq:imexStagesRewrite}).  
+For the analysis of constraint-preserving IMEX schemes, additional coefficients are defined \cite{hu_etal_2018} (cf. Eq.~\eqref{eq:imexStagesRewrite}).  
 First, let
 \begin{equation}
   b_{ii} = \f{1}{a_{ii}}, \quad
@@ -52,7 +52,7 @@ while for IMEX schemes of Type~ARS \cite{ascher_etal_1997}
 
 \paragraph{IMEX PA2}
 
-A second-order accurate, positivity-preserving IMEX scheme of type $A$ (the matrix $A$ is invertible) was given in \cite{hu_etal_2018}.  
+A second-order accurate, constraint-preserving IMEX scheme of type $A$ (the matrix $A$ is invertible) was given in \cite{hu_etal_2018}.  
 We refer to this scheme as IMEX PA2.  
 For this scheme, the non-zero components of $\tilde{A}$ and $A$ are given by
 \begin{align*}
@@ -67,8 +67,8 @@ This scheme is globally stiffly accurate (GSA), so that $\tilde{w}_{i}=\tilde{a}
 
 \paragraph{IMEX PA2+}
 
-We have found another second-order accurate, positivity-preserving IMEX scheme of type $A$, which we refer to as IMEX PA2+.  
-This scheme allows for has a larger $c_{\mbox{\tiny Sch}}$ than IMEX PA2 (i.e., a larger time step while maintaining positivity).  
+We have found another second-order accurate, constraint-preserving IMEX scheme of type $A$, which we refer to as IMEX PA2+.  
+This scheme allows for a larger value of $c_{\mbox{\tiny Sch}}$ than IMEX PA2 (i.e., a larger time step while maintaining admissible solutions).  
 The scheme was found by random sampling of the parameter space spanned by the IMEX coefficients, optimizing $c_{\mbox{\tiny Sch}}$.  
 For IMEX PA2+, $c_{\mbox{\tiny Sch}} = 0.895041066934$. 
 The non-zero components of $\tilde{A}$ and $A$ are given by
@@ -97,7 +97,7 @@ $\alpha=0$, and $\tilde{w}_{i}=\tilde{a}_{3i} = w_{i}=a_{3i}$ for $i\le3$.
 
 \paragraph{IMEX PD-ARS}
 
-We have found diffusion accurate, positivity-preserving IMEX schemes of type ARS that are second-order accurate in the streaming limit, which we refer to as IMEX PD-ARS; see \ref{app:PD-ARS}.  
+We have found diffusion accurate, constraint-preserving IMEX schemes of type ARS that are second-order accurate in the streaming limit, which we refer to as IMEX PD-ARS; see \ref{app:PD-ARS}.  
 For these schemes, $c_{\mbox{\tiny Sch}}= 1 - 2\epsilon$ with $\epsilon \in [0, 1/2)$.
 Here we give an example by setting $\epsilon=0.1$.
 \begin{align*}
@@ -196,14 +196,14 @@ Computing the relevant coefficients in Eq.~\eqref{eq:positivityCoefficientsARS},
 \begin{equation}
   c_{\mbox{\tiny Sch}} = \min \Big\{\, 2x,\, \f{1-2x(1-y)}{y-x},\, 2(1-y) \,\Big\}.  
 \end{equation}
-The positivity-preserving property follows from imposing the inequality constraints $a_{22},a_{33}>0$, $c_{20},c_{30},c_{32}\ge0$, and $\tilde{c}_{20},\tilde{c}_{30},\tilde{c}_{32}\ge0$, which imply
+The positivity-preserving property follows from imposing the inequality constraints $a_{22},a_{33}>0$, $c_{20},c_{30},c_{32}\ge0$, and $\tilde{c}_{20},\tilde{c}_{30},\tilde{c}_{32}\ge0$, which imply that
 \begin{equation}
   0 < x \le y
   \quad\text{and}\quad
   0 < y \le 1.
 \end{equation}
 We chose $x=\f{1}{2}$, so that the explicit part of the IMEX scheme is equivalent to the optimal second-order SSP-RK scheme in \cite{gottlieb_etal_2001} (SSPRK2 in \ref{app:butcherTables}).  
-Then, $y=\f{1}{2} + \epsilon$, where $\epsilon \in [0, \frac{1}{2})$ and $c_{\mbox{\tiny Sch}} = 1 - 2\epsilon$, results in the PD-ARS IMEX scheme.  
+Then, $y=\f{1}{2} + \epsilon$, where $\epsilon \in [0, \frac{1}{2})$, and $c_{\mbox{\tiny Sch}} = 1 - 2\epsilon$ results in the PD-ARS IMEX scheme.  
 Setting $\epsilon = 0$ gives the optimal scheme with $c_{\mbox{\tiny Sch}} = 1$.  
 
 \section{Nonexistence of Three-Stage PD-IMEX Scheme of Type~A}
