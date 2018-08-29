@@ -21,6 +21,8 @@ CONTAINS
     INTEGER,  INTENT(out) :: K
     CHARACTER( LEN = 11 ) , INTENT(out) :: CS
 
+    REAL(DP) :: Eblast, V
+
     SELECT CASE( iRP )
 
       CASE( 0 )
@@ -337,18 +339,16 @@ CONTAINS
 
         D_L = 1.0_DP
         V_L = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-!        P_L = 1.0_DP
-        P_L = 0.1_DP
+        P_L = 1.0_DP
 
-!        D_R = 0.125_DP
-        D_R = 1.0_DP
+        D_R = 0.125_DP
         V_R = [ 0.0_DP, 0.0_DP, 0.0_DP ]
         P_R = 0.1_DP
 
         t     = 0.0_DP
         t_end = 0.5_DP
         CFL   = 0.1_DP
-        xL    = [ 0.0001d0, 0.0d0, 0.0d0 ]
+        xL    = [ 0.0d0, 0.0d0, 0.0d0 ]
         xR    = [ 2.0d0, Pi, TwoPi ]
         x_D   = 1.0_DP
         K     = 128
@@ -361,7 +361,7 @@ CONTAINS
       CASE( 13 )
 
         WRITE(*,*) &
-              'Stationary Contact Discontinuity (Test 5) (Liska & Wendroff (2003))'
+          'Stationary Contact Discontinuity (Test 5) (Liska & Wendroff (2003))'
          
         D_L = 1.4_DP
         V_L = [ 0.0_DP, 0.0_DP, 0.0_DP ]
@@ -383,6 +383,65 @@ CONTAINS
         bcX = [ 2, 0, 0 ]
 
         CS = 'CARTESIAN'
+
+      CASE( 14 )
+        
+        WRITE(*,*) &
+          'Sedov Blast Wave &
+           (http://wonka.physics.ncsu.edu/~blondin/wxyz/bproblems.html)'
+
+        Eblast = 10.0_DP
+        Gamma  = 5.0_DP / 3.0_DP
+        xL     = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR     = [ 1.0d0, Pi, TwoPi ]
+        K      = 100
+        x_D    = ( xR(1) - xL(1) ) / K
+        V      = 4.0_DP / 3.0_DP * PI * x_D**3
+
+        D_L = 1.0_DP
+        V_L = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        P_L = ( Gamma - 1.0_DP ) * Eblast / V
+
+        D_R = 1.0_DP
+        V_R = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        P_R = 1.0d-4
+
+        t     = 0.0_DP
+        t_end = 0.1d0
+        CFL   = 0.1_DP
+
+        bcX = [ 3, 0, 0 ]
+
+        CS = 'SPHERICAL'
+
+     CASE( 15 )
+
+        WRITE(*,*) &
+          'Constant'
+
+        Gamma  = 5.0_DP / 3.0_DP
+        xL     = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR     = [ 1.0d0, 1.0d0, 1.0d0 ]
+        K      = 100
+        x_D    = ( xR(1) - xL(1) ) / K
+        V      = 4.0_DP / 3.0_DP * PI * x_D**3
+
+        D_L = 1.0_DP
+        V_L = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        P_L = 10.0_DP
+
+        D_R = 1.0_DP
+        V_R = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+        P_R = 10.0_DP
+
+        t     = 0.0_DP
+        t_end = 0.01d0
+        CFL   = 0.5_DP
+
+        bcX = [ 2, 0, 0 ]
+
+        CS = 'SPHERICAL'
+
 
      CASE DEFAULT
 

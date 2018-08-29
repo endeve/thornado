@@ -93,29 +93,36 @@ CONTAINS
 
     INTEGER :: i, ITERATION, nNodes
 
-    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q(SIZE(CF_D))
+    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q(SIZE(CF_D)), FunP0
 
     REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-8, TolFunP = 1.0d-12
+    REAL(DP), PARAMETER :: TolP = 1.0d-12, TolFunP = 1.0d-12
 
     q = CF_E(:) + CF_D(:) - SQRT( CF_D(:)**2 &
-                                + CF_S1(:)**2 / GF_Gm_dd_11(:)  &
-                                + CF_S2(:)**2 / GF_Gm_dd_22(:)  &
-                                + CF_S3(:)**2 / GF_Gm_dd_33(:) )
+                                    + CF_S1(:)**2 / GF_Gm_dd_11(:)  &
+                                    + CF_S2(:)**2 / GF_Gm_dd_22(:)  &
+                                    + CF_S3(:)**2 / GF_Gm_dd_33(:) )
 
     nNodes = SIZE( CF_D )
 
     ! --- Loop through all the nodes ---
     DO i = 1, nNodes
 
-      !IF( DEBUG )THEN
-         IF( q(i) .LT. Zero )THEN
-           WRITE(*,'(A6,ES18.10E3)') 'q(i): ', q(i)
-!           WRITE(*,'(A6,ES18.10E3)') 'Gm11: ', GF_Gm_dd_11(:)
-!           WRITE(*,'(A6,ES18.10E3)') 'Gm22: ', GF_Gm_dd_22(:)
-!           WRITE(*,'(A6,ES18.10E3)') 'Gm33: ', GF_Gm_dd_33(:)
-         END IF
-      !END IF
+      IF( DEBUG )THEN
+        IF( q(i) .LT. Zero )THEN
+          WRITE(*,*)
+          WRITE(*,'(A6,ES18.10E3)') 'q(i): ', q(i)
+          WRITE(*,'(A6,ES18.10E3)') 'Gm11: ', GF_Gm_dd_11(:)
+          WRITE(*,'(A6,ES18.10E3)') 'Gm22: ', GF_Gm_dd_22(:)
+          WRITE(*,'(A6,ES18.10E3)') 'Gm33: ', GF_Gm_dd_33(:)
+          WRITE(*,'(A6,ES18.10E3)') 'D:    ', CF_D(:)
+          WRITE(*,'(A6,ES18.10E3)') 'E:    ', CF_E(:)
+          WRITE(*,'(A6,ES18.10E3)') 'S1:   ', CF_S1(:)
+          WRITE(*,'(A6,ES18.10E3)') 'S2:   ', CF_S2(:)
+          WRITE(*,'(A6,ES18.10E3)') 'S3:   ', CF_S3(:)
+          !STOP 'q < 0'
+        END IF
+      END IF
     
       CONVERGED = .FALSE.
       ITERATION = 0
@@ -127,36 +134,88 @@ CONTAINS
       ! --- Find Pressure with Newton's Method ---
 
       ! --- Approximation for pressure assuming h^2~=1 ---
-!      Pold = MAX( SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i), SqrtTiny )
-      Pold = MAX( -q(i), SqrtTiny )
+      Pold = MAX( SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i), SqrtTiny )
+
+      ! --- Get initial values for FunP ---
+      IF( DEBUG ) WRITE(*,'(A)') 'CALL ComputeFunJacP0'
+      CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP0, JacP )
+      IF( DEBUG )THEN
+        WRITE(*,'(A)') 'Finished ComputeFunJacP0'
+        WRITE(*,'(A7,ES24.16E3)') 'FunP0: ', FunP0
+        WRITE(*,*)
+        WRITE(*,'(A)') "Start finding root with Newton's method"
+        WRITE(*,'(A)') "---------------------------------------"
+      END IF
 
       DO WHILE ( .NOT. CONVERGED )
 
         ITERATION = ITERATION + 1
 
+        IF( DEBUG )THEN
+          WRITE(*,*)
+          WRITE(*,'(A10,I3.3)') 'Iteration ', ITERATION
+          WRITE(*,'(A)') 'ComputeFunJacP'
+        END IF
         CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
+        IF( DEBUG ) WRITE(*,'(A)') 'Finished ComputeFunJacP'
 
         Pnew = Pold - FunP / JacP
 
+        IF( DEBUG )THEN
+          WRITE(*,'(A6,ES24.16E3)') 'Pnew: ', Pnew
+          WRITE(*,*)
+        END IF
+        !Pnew = MAX( Pnew, SqrtTiny )
+
         ! --- Check if Newton's method has converged ---
-        IF( ABS( FunP / JacP ) / ABS( Pnew ) .LT. TolP )THEN
-!        IF( ABS( Pnew - Pold ) / ABS( Pnew ) .LT. TolP )THEN
+        IF( DEBUG ) WRITE(*,'(A)') 'Checking relative tolerance...'
+        IF( ABS( Pnew - Pold ) / ABS( Pnew ) .LT. TolP )THEN
+          IF( DEBUG ) WRITE(*,'(A)') 'Relative tolerance met!'
+          IF( DEBUG ) WRITE(*,'(A15,ES23.16E3)') &
+                        '  |dP|/|Pnew|: ', ABS( Pnew - Pold ) / ABS( Pnew )
+          IF( DEBUG ) WRITE(*,'(A)') 'Checking FunP tolerance...'
           CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP )
-          IF( ABS( FunP ) .LT. TolFunP ) THEN
+          IF( ABS( FunP / FunP0 ) .LT. TolFunP ) THEN
             CONVERGED = .TRUE.
+            IF( DEBUG )THEN
+              WRITE(*,'(A)') 'FunP tolerance met!' 
+              WRITE(*,'(A16,ES24.16E3)') '  |FunP/FunP0|: ', &
+                ABS( FunP / FunP0 )
+              WRITE(*,'(A13,I3.3,A11)') &
+                'Converged in ', ITERATION, ' iterations'
+              WRITE(*,'(A)') &
+                '---------------------------'
+              WRITE(*,*)
+            END IF
           ELSE
-            WRITE(*,'(A)') 'No convergence...'
-            WRITE(*,'(A7,ES24.16E3)') 'Pold:  ', Pold
-            WRITE(*,'(A7,ES24.16E3)') 'Pnew:  ', Pnew
-            WRITE(*,'(A7,ES24.16E3)') 'FunP:  ', FunP
-            WRITE(*,'(A)') 'Stopping...'
-            STOP
+            IF( DEBUG )THEN
+              WRITE(*,'(A)') 'FunP tolerance NOT met'
+              WRITE(*,'(I3.3,A11)') ITERATION, ' iterations' 
+              WRITE(*,'(A7,ES24.16E3)') 'Pold:         ', &
+                Pold
+              WRITE(*,'(A7,ES24.16E3)') 'Pnew:         ', &
+                Pnew
+              WRITE(*,'(A7,ES24.16E3)') '|dP/P|:       ', &
+                ABS( Pnew - Pold ) / ABS( Pnew )
+              WRITE(*,'(A14,ES24.16E3)') '|FunP/FunP0|: ', &
+                ABS( FunP / FunP0 )
+              STOP 'Stopping because ABS( FunP / FunP0 ) .GE. TolFunP'
+            END IF
+          END IF
+        ELSE
+          IF( DEBUG )THEN
+            WRITE(*,'(A)') 'Relative tolerance NOT met'
+             WRITE(*,'(A13,ES23.16E3)') &
+               '|dP|/|Pnew|: ', ABS( Pnew - Pold ) / ABS( Pnew )
           END IF
         END IF
 
         ! --- STOP after MAX_IT iterations ---
         IF( ITERATION .GE. MAX_IT )THEN
-           
+
+          WRITE(*,*)
+          WRITE(*,*) 'Max iterations IF statement'
+          WRITE(*,*) '---------------------------'
           WRITE(*,*) 'PF_D:   ', PF_D(:)
           WRITE(*,*) 'PF_V1:  ', PF_V1(:)
           WRITE(*,*) 'PF_V2:  ', PF_V2(:)
@@ -198,9 +257,9 @@ CONTAINS
 
       h = ( CF_E(i) + AF_P(i) + CF_D(i) ) / ( W * CF_D(i) )
 
-      !IF( DEBUG )THEN
+      IF( DEBUG )THEN
         IF( h .LT. 1.0_DP ) WRITE(*,'(A6,ES18.10E3)') 'h:    ', h
-      !END IF
+      END IF
 
       ! --- Recover Primitive Variables ---
 
@@ -218,6 +277,7 @@ CONTAINS
 
    END DO
 
+
   END SUBROUTINE ComputePrimitive_GR
 
 
@@ -229,24 +289,30 @@ CONTAINS
     REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS
     REAL(DP), DIMENSION(1) :: Pbar
 
+    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  CF_D:    ', D
+    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  CF_E:    ', E
+    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  SSq:     ', SSq
+    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  P:       ', P
+
     HSq = ( E + P + D )**2
+    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  HSq:     ', HSq
+    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  H^2-S^2: ', HSq - SSq
 
     RHO = D * SQRT( HSq - SSq ) / SQRT( HSq )
+    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  RHO:     ', RHO
 
     EPS = ( SQRT( HSq - SSq ) &
             - P * SQRT( HSq ) / SQRT( HSq - SSq ) - D ) / D
+    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  EPS:     ', EPS
 
-    !EPS = MAX( EPS, SqrtTiny )
     CALL ComputePressureFromSpecificInternalEnergy &
          ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
 
     FunP = P - Pbar(1)
-!    FunP = 1.0_DP - Pbar(1) / P
     dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
     dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
 
     JacP = 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS )
-!    JacP = Pbar(1) / P * ( 1.0_DP / P - dRHO / RHO - dEPS / EPS )
 
   END SUBROUTINE ComputeFunJacP
 
