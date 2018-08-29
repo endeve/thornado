@@ -22,14 +22,14 @@ MODULE SlopeLimiterModule_Euler_GR
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
+    nGF,          &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_Alpha,    &
-    iGF_Beta_1, &
-    iGF_Beta_2, &
-    iGF_Beta_3, &
+    iGF_Beta_1,   &
+    iGF_Beta_2,   &
+    iGF_Beta_3,   &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
@@ -181,7 +181,8 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    LOGICAL  :: LimitedCell(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+    LOGICAL  :: LimitedCell &
+                  (nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     INTEGER  :: iX1, iX2, iX3, iGF, iCF, iDimX
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
@@ -218,7 +219,8 @@ CONTAINS
 
           ! --- Cell Volume ---
 
-          V_K(iX1,iX2,iX3) = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF_SqrtGm) )  
+          V_K(iX1,iX2,iX3) &
+            = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF_SqrtGm) )  
 
           ! --- Cell Average of Conserved Fluid ---
 
@@ -698,7 +700,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyConservativeCorrection &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -713,165 +715,71 @@ CONTAINS
     LOGICAL, INTENT(in)     :: &
       LimitedCell(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
 
-    LOGICAL :: UseCorrection1, UseCorrection2
-    INTEGER :: iX1, iX2, iX3, iCF
-    INTEGER :: LWORK, INFO
-    INTEGER :: i, iPol
-    INTEGER :: iNodeX1, iNodeX2, iNodeX3, iNode, iNodeX
-
-    REAL(DP) :: d 
-    REAL(DP), DIMENSION(nDimsX+1):: c
-    REAL(DP), DIMENSION(2*nDimsX+3) :: WORK
-    REAL(DP), DIMENSION(1,nDimsX+1) :: B0, B
-    REAL(DP), DIMENSION(nDimsX+1,nDimsX+1) :: A0, A
-    REAL(DP), DIMENSION(nDOFX,nDOFX) :: LegendreX
+    LOGICAL  :: UseCorrection
+    INTEGER  :: iX1, iX2, iX3, iCF, iPol, iDimX
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
+    REAL(DP) :: Correction
+    REAL(DP) :: LegendreX(nDOFX,nDOFX)
     REAL(DP) :: U_M(nCF,0:2**nDimsX,nDOFX)
 
-    DO iPol = 1, nDOFX
+    DO iPol = 1, nDOFX ! Only need for iPol = 2,3,4 (FIXME)
 
       DO iNodeX3 = 1, nNodesX(3)
-        DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+      DO iNodeX2 = 1, nNodesX(2)
+      DO iNodeX1 = 1, nNodesX(1)
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+        iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-            LegendreX(iNodeX,iPol) &
-                = P_X1(IndPX_Q(1,iPol)) % P( MeshX(1) % Nodes(iNodeX1) ) &
-                    * P_X2(IndPX_Q(2,iPol)) % P( MeshX(2) % Nodes(iNodeX2) ) &
-                      * P_X3(IndPX_Q(3,iPol)) % P( MeshX(3) % Nodes(iNodeX3) )
+        LegendreX(iNodeX,iPol) &
+          = P_X1  (IndPX_Q(1,iPol)) % P( MeshX(1) % Nodes(iNodeX1) ) &
+            * P_X2(IndPX_Q(2,iPol)) % P( MeshX(2) % Nodes(iNodeX2) ) &
+            * P_X3(IndPX_Q(3,iPol)) % P( MeshX(3) % Nodes(iNodeX3) )
 
-          END DO
-        END DO
+      END DO
+      END DO
       END DO
 
     END DO
 
-    ! --- Correct Coefficients with Constratined Least Squares ---
-    ! ---          to Preserve Conserved Quantities            ---
-
-    UseCorrection1 = .FALSE.
-
-    IF( UseCorrection1 )THEN
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-          DO iX1 = iX_B0(1), iX_E0(1)
-
-              A0(1:2,1) = [ 1.0_DP, 0.0_DP ]
-              A0(1:2,2) = [ 0.0_DP, 1.0_DP ]
-     
-              B0(1,1) &
-                = SUM( WeightsX_q(:) * LegendreX(:,1) &
-                         * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-
-              B0(1,2) &
-                = SUM( WeightsX_q(:) * LegendreX(:,2) &
-                         * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-
-              IF( nDimsX > 1 )THEN
-
-                A0(1:3,1) = [ 1.0_DP, 0.0_DP, 0.0_DP ]
-                A0(1:3,2) = [ 0.0_DP, 1.0_DP, 0.0_DP ]
-                A0(1:3,3) = [ 0.0_DP, 0.0_DP, 1.0_DP ]
-
-                B0(1,1) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,1) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-                B0(1,2) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,2) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-                B0(1,3) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,3) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-
-              END IF
-
-              IF (nDimsX > 2) THEN 
-
-                A0(1:4,1) = [ 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
-                A0(1:4,2) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
-                A0(1:4,3) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP ]
-                A0(1:4,4) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP ]
-
-                B0(1,1) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,1) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-                B0(1,2) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,2) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-                B0(1,3) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,3) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-                B0(1,4) &
-                  = SUM( WeightsX_q(:) * LegendreX(:,4) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) / V_K(iX1,iX2,iX3)
-
-              END IF
-             
-              DO iCF = 1, nCF
-         
-                IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
-
-                  CALL MapNodalToModal_Fluid &
-                      ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
-
-                  A = A0
-                  B = B0 
-                  c = U_M(iCF,0,1:1+nDimsX)
-                  d = U_K(iCF,iX1,iX2,iX3)
-           
-                  LWORK = SIZE( WORK )
-                  CALL DGGLSE( SIZE( A, 1 ), SIZE( A, 2 ), SIZE( B, 1 ), &
-                                   A, SIZE( A, 1 ), B, SIZE( B, 1 ), c, d, &
-                                   U_M(iCF,0,1:1+nDimsX), WORK, LWORK, INFO )
-            
-
-                  CALL MapModalToNodal_Fluid &
-                       ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
-          
-                END IF
-              
-              END DO            
-
-          END DO
-        END DO
-      END DO
-
-    END IF
-
-    UseCorrection2 = .TRUE.
+    UseCorrection = .TRUE.
     
-    IF( UseCorrection2 )THEN
+    IF( UseCorrection )THEN
       
+      ! --- Applies a correction to the 0-th order ---
+      ! --- mode to maintain the cell average.     ---
+
       DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-          DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
 
-            DO iCF = 1, nCF
+        DO iCF = 1, nCF
 
-              IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
+          IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
 
-                  CALL MapNodalToModal_Fluid &
-                      ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+            CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
 
-                  U_M(iCF,0,1) &
-                    = U_K(iCF,iX1,iX2,iX3) - ( One / V_K(iX1,iX2,iX3) ) & 
-                        * ( U_M(iCF,0,2) * SUM( WeightsX_q(:) &
-                          * LegendreX(:,2) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
-                            + U_M(iCF,0,3) * SUM( WeightsX_q(:) &
-                          * LegendreX(:,3) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
-                            + U_M(iCF,0,4) * SUM( WeightsX_q(:) &
-                          * LegendreX(:,4) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) )
+            Correction = Zero
+            DO iDimX = 1, nDimsX
 
-                  CALL MapModalToNodal_Fluid &
-                      ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
-
-              END IF
+              Correction &
+                = Correction &
+                    + ( U_M(iCF,0,iDimX+1) &
+                        * SUM( WeightsX_q(:) * LegendreX(:,iDimX+1) &
+                               * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) ) &
+                      / V_K(iX1,iX2,iX3)
 
             END DO
 
-          END DO
+            U_M(iCF,0,1) = U_K(iCF,iX1,iX2,iX3) - Correction 
+
+            CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+
+          END IF
+
         END DO
+
+      END DO
+      END DO
       END DO
 
     END IF
