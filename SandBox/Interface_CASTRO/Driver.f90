@@ -2,12 +2,19 @@ PROGRAM Driver
 
   USE KindModule, ONLY: &
     DP
+  USE UnitsModule, ONLY: &
+    Gram, &
+    Centimeter, &
+    Kilometer, &
+    Millisecond, &
+    MeV, &
+    Erg
   USE GeometryFieldsModuleE, ONLY: &
     uGE
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE FluidFieldsModule, ONLY: &
-    uCF
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
   USE RadiationFieldsModule, ONLY: &
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE ThornadoInitializationModule, ONLY: &
@@ -30,7 +37,7 @@ PROGRAM Driver
 
   wTime = MPI_WTIME( )
 
-  CALL InitThornado( nDimsX = 3, nE = 16, nSpeciesIn = 1 )
+  CALL InitThornado( nDimsX = 3, nE = 10, nSpeciesIn = 1 )
 
   wTime = MPI_WTIME( ) - wTime
 
@@ -43,23 +50,30 @@ PROGRAM Driver
   DO i = 1, 2
 
     CALL InitThornado_Patch &
-           ( nX  = [ 16, 16, 16 ], &
+           ( nX  = [ 12, 12, 12 ], &
              swX = [ 2, 2, 2 ], &
-             xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ], &
-             xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ], &
+             xL  = [ 00.0_DP, 00.0_DP, 00.0_DP ] * Kilometer, &
+             xR  = [ 16.0_DP, 16.0_DP, 16.0_DP ] * Kilometer, &
              swE = 0, &
-             eL  = 0.0_DP, &
-             eR  = 1.0_DP )
+             eL  = 0.0d0 * MeV, &
+             eR  = 1.0d2 * MeV )
 
-    dt = 1.0d-4
+    dt = 1.0d-4 * Millisecond
 
     uCR(:,:,:,:,:,iCR_N, :) = 1.0_DP
     uCR(:,:,:,:,:,iCR_G1,:) = 0.0_DP
     uCR(:,:,:,:,:,iCR_G2,:) = 0.0_DP
     uCR(:,:,:,:,:,iCR_G3,:) = 0.0_DP
-!!$
-!!$    CALL Update_IMEX_PDARS( dt, uCF, uCR )
-!!$
+
+    uCF(:,:,:,:,iCF_D)  = 1.0d14 * Gram / Centimeter**3
+    uCF(:,:,:,:,iCF_S1) = 0.0_DP
+    uCF(:,:,:,:,iCF_S2) = 0.0_DP
+    uCF(:,:,:,:,iCF_S3) = 0.0_DP
+    uCF(:,:,:,:,iCF_E)  = 4.5d33 * Erg / Centimeter**3
+    uCF(:,:,:,:,iCF_Ne) = 2.0d37 / Centimeter**3
+
+    CALL Update_IMEX_PDARS( dt, uCF, uCR )
+
     CALL FreeThornado_Patch
 
   END DO
