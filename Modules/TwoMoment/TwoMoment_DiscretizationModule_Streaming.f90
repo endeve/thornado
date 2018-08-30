@@ -130,7 +130,7 @@ CONTAINS
 
             Tau(1:nDOF) &
               = OuterProduct1D3D &
-                  ( GE(:,iZ1,iGE_Ep2), nDOFE, &
+                  ( Ones(1:nDOFE), nDOFE, &
                     GX(:,iZ2,iZ3,iZ4,iGF_SqrtGm), nDOFX )
 
             DO iS = 1, nSpecies
@@ -138,7 +138,7 @@ CONTAINS
 
                 dU(:,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
                   = dU(:,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-                      / ( Weights_q(:) * Tau(:) * PRODUCT( dZ ) )
+                      / ( Weights_q(:) * Tau(:) * PRODUCT( dZ(2:4) ) )
 
               END DO
             END DO
@@ -268,11 +268,11 @@ CONTAINS
 
               Tau(1:nDOF) &
                 = OuterProduct1D3D &
-                    ( GE(:,iZ1,iGE_Ep2), nDOFE, G_K(:,iGF_SqrtGm), nDOFX )
+                    ( Ones(1:nDOFE), nDOFE, G_K(:,iGF_SqrtGm), nDOFX )
 
               Tau_X1(1:nDOF_X1) &
                 = OuterProduct1D3D &
-                    ( GE(:,iZ1,iGE_Ep2), nDOFE, G_F(:,iGF_SqrtGm), nDOFX_X1 )
+                    ( Ones(1:nDOFE), nDOFE, G_F(:,iGF_SqrtGm), nDOFX_X1 )
 
               DO iCR = 1, nCR
 
@@ -321,7 +321,7 @@ CONTAINS
                 DO iCR = 1, nCR
 
                   Flux_X1_q(:,iCR) &
-                    = dZ(1) * dZ(3) * dZ(4) * Weights_q(:) &
+                    = dZ(3) * dZ(4) * Weights_q(:) &
                         * G_K(:,iGF_Alpha) * Tau(:) * Flux_X1_q(:,iCR)
 
                   CALL DGEMV &
@@ -439,7 +439,7 @@ CONTAINS
                         Flux_X1_R(:,iCR), alpha(:) )
 
                 NumericalFlux(:,iCR) &
-                  = dZ(1) * dZ(3) * dZ(4) * Weights_X1(:) &
+                  = dZ(3) * dZ(4) * Weights_X1(:) &
                       * G_F(:,iGF_Alpha) * Tau_X1(:) * NumericalFlux(:,iCR)
 
               END DO
@@ -602,11 +602,11 @@ CONTAINS
 
               Tau(1:nDOF) &
                 = OuterProduct1D3D &
-                    ( GE(:,iZ1,iGE_Ep2), nDOFE, G_K(:,iGF_SqrtGm), nDOFX )
+                    ( Ones(1:nDOFE), nDOFE, G_K(:,iGF_SqrtGm), nDOFX )
 
               Tau_X2(1:nDOF_X2) &
                 = OuterProduct1D3D &
-                    ( GE(:,iZ1,iGE_Ep2), nDOFE, G_F(:,iGF_SqrtGm), nDOFX_X2 )
+                    ( Ones(1:nDOFE), nDOFE, G_F(:,iGF_SqrtGm), nDOFX_X2 )
 
               DO iCR = 1, nCR
 
@@ -656,7 +656,7 @@ CONTAINS
                 DO iCR = 1, nCR
 
                   Flux_X2_q(:,iCR) &
-                    = dE * dX1 * dX3 * Weights_q(:) &
+                    = dX1 * dX3 * Weights_q(:) &
                         * G_K(:,iGF_Alpha) * Tau(:) * Flux_X2_q(:,iCR)
 
                   CALL DGEMV &
@@ -780,7 +780,7 @@ CONTAINS
                         Flux_X2_R(:,iCR), alpha(:) )
 
                 NumericalFlux(:,iCR) &
-                  = dE * dX1 * dX3 * Weights_X2(:) &
+                  = dX1 * dX3 * Weights_X2(:) &
                       * G_F(:,iGF_Alpha) * Tau_X2(:) * NumericalFlux(:,iCR)
 
               END DO
@@ -943,11 +943,11 @@ CONTAINS
 
               Tau(1:nDOF) &
                 = OuterProduct1D3D &
-                    ( GE(:,iZ1,iGE_Ep2), nDOFE, G_K(:,iGF_SqrtGm), nDOFX )
+                    ( Ones(1:nDOFE), nDOFE, G_K(:,iGF_SqrtGm), nDOFX )
 
               Tau_X3(1:nDOF_X3) &
                 = OuterProduct1D3D &
-                    ( GE(:,iZ1,iGE_Ep2), nDOFE, G_F(:,iGF_SqrtGm), nDOFX_X3 )
+                    ( Ones(1:nDOFE), nDOFE, G_F(:,iGF_SqrtGm), nDOFX_X3 )
 
               DO iCR = 1, nCR
 
@@ -997,7 +997,7 @@ CONTAINS
                 DO iCR = 1, nCR
 
                   Flux_X3_q(:,iCR) &
-                    = dE * dX1 * dX2 * Weights_q(:) &
+                    = dX1 * dX2 * Weights_q(:) &
                         * G_K(:,iGF_Alpha) * Tau(:) * Flux_X3_q(:,iCR)
 
                   CALL DGEMV &
@@ -1121,7 +1121,7 @@ CONTAINS
                         Flux_X3_R(:,iCR), alpha(:) )
 
                 NumericalFlux(:,iCR) &
-                  = dE * dX1 * dX2 * Weights_X3(:) &
+                  = dX1 * dX2 * Weights_X3(:) &
                       * G_F(:,iGF_Alpha) * Tau_X3(:) * NumericalFlux(:,iCR)
 
               END DO
