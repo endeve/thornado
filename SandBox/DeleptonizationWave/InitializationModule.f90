@@ -157,9 +157,9 @@ CONTAINS
   SUBROUTINE InitializeRadiationFields_DeleptonizationWave
 
     INTEGER  :: iE, iX1, iX2, iX3, iS
-    INTEGER  :: iNode, iNodeE, iNodeX1
+    INTEGER  :: iNode, iNodeE
     REAL(DP) :: kT(nDOF)
-    REAL(DP) :: Mnu(nDOF), E, X1
+    REAL(DP) :: Mnu(nDOF), E
     REAL(DP) :: Gm_dd_11(nDOF)
     REAL(DP) :: Gm_dd_22(nDOF)
     REAL(DP) :: Gm_dd_33(nDOF)
@@ -189,23 +189,14 @@ CONTAINS
       DO iNode = 1, nDOF
 
         iNodeE  = NodeNumberTable(1,iNode)
-        iNodeX1 = NodeNumberTable(2,iNode)
 
         E  = NodeCoordinate( MeshE,    iE,  iNodeE )
-        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
-!!$        uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
-!!$          = MAX( One / ( EXP( ( E - Mnu(iNode) ) / kT(iNode) ) + One ), 
-!!$                 1.0d-99 )
-!!$
-!!$        uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
-!!$          = Zero
 
         uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
-          = One + Half * SIN( TwoPi * X1 / ( 1.0d2 * Kilometer ) )
+          = MAX( One / ( EXP( (E-Mnu(iNode))/kT(iNode) ) + One ), 1.0d-99 )
 
         uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
-          = ( One - 1.0d-08 ) * uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS)
+          = Zero
 
         uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) &
           = Zero
