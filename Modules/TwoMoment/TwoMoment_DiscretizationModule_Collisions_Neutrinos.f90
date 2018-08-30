@@ -1,12 +1,15 @@
 MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
   USE KindModule, ONLY: &
-    DP, Half, One
+    DP, Zero, Half, One, FourPi
   USE UnitsModule, ONLY: &
     SpeedOfLight, &
     PlanckConstant, &
     BoltzmannConstant, &
-    AtomicMassUnit
+    AtomicMassUnit, &
+    Centimeter, &
+    Gram, &
+    MeV
   USE ProgramHeaderModule, ONLY: &
     nNodesE, &
     nNodesX, &
@@ -51,10 +54,17 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit
 
-  LOGICAL, PARAMETER :: ReportConvergenceData = .TRUE.
+  ! --- Units Only for Displaying to Screen ---
+
+  REAL(DP), PARAMETER :: Unit_D = Gram / Centimeter**3
+  REAL(DP), PARAMETER :: Unit_T = MeV
+
+  LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
   INTEGER  :: Iterations_Min
   INTEGER  :: Iterations_Max
   INTEGER  :: Iterations_Ave
+
+  LOGICAL, PARAMETER :: SolveMatter = .FALSE.
 
   INTEGER  :: nE_G, nX_G
   INTEGER  :: iE_B0,    iE_E0
@@ -314,8 +324,9 @@ CONTAINS
         '', 'Iterations (Min): ', Iterations_Min
       WRITE(*,'(A6,A18,I4.4)') &
         '', 'Iterations (Max): ', Iterations_Max
-      WRITE(*,'(A6,A18,I4.4)') &
-        '', 'Iterations (Ave): ', Iterations_Ave / nX_G
+      WRITE(*,'(A6,A18,ES8.2E2)') &
+        '', 'Iterations (Ave): ', &
+        DBLE( Iterations_Ave ) / DBLE( nX_G )
       WRITE(*,*)
 
     END IF
@@ -365,9 +376,10 @@ CONTAINS
     REAL(DP), INTENT(inout) :: J0 (1:nE_G)
     REAL(DP), INTENT(inout) :: D, T, Y, E
 
+    INTEGER,  PARAMETER :: iY = 1, iE = 2
     INTEGER,  PARAMETER :: MaxIter = 20
     REAL(DP), PARAMETER :: Rtol = 1.0d-08
-    REAL(DP), PARAMETER :: Utol = 1.0d-14
+    REAL(DP), PARAMETER :: Utol = 1.0d-10
 
     LOGICAL  :: CONVERGED
     INTEGER  :: k
@@ -386,8 +398,18 @@ CONTAINS
     ! --- Auxiliary Variables ---
 
     N_B = D / AtomicMassUnit
-    Theta2_N = W2_N * Chi / ( One + Chi )
-    Theta3_N = W3_N * Chi / ( One + Chi )
+
+    IF( SolveMatter )THEN
+
+      Theta2_N = FourPi * W2_N * Chi / ( One + Chi )
+      Theta3_N = FourPi * W3_N * Chi / ( One + Chi )
+
+    ELSE
+
+      Theta2_N = Zero
+      Theta3_N = Zero
+
+    END IF
 
     ! --- Neutrino Chemical Potential and Derivatives ---
 
@@ -399,20 +421,20 @@ CONTAINS
 
     ! --- Initial Guess ---
 
-    U(1:2) = [ Yold, Eold ]
+    U(iY) = Yold; U(iE) = Eold
 
     ! --- Old States (Constant) ---
 
-    C(1) = DOT_PRODUCT( Theta2_N(:), J(:) ) + N_B * U(1)
-    C(2) = DOT_PRODUCT( Theta3_N(:), J(:) ) + N_B * U(2)
+    C(iY) = DOT_PRODUCT( Theta2_N(:), J(:) ) + N_B * U(iY)
+    C(iE) = DOT_PRODUCT( Theta3_N(:), J(:) ) + N_B * U(iE)
 
     ! --- Electron Fraction Equation ---
 
-    FVEC(1) = DOT_PRODUCT( Theta2_N(:), J0(:) ) + N_B * U(1) - C(1)
+    FVEC(iY) = DOT_PRODUCT( Theta2_N(:), J0(:) ) + N_B * U(iY) - C(iY)
 
     ! --- Internal Energy Equation ---
 
-    FVEC(2) = DOT_PRODUCT( Theta3_N(:), J0(:) ) + N_B * U(2) - C(2)
+    FVEC(iE) = DOT_PRODUCT( Theta3_N(:), J0(:) ) + N_B * U(iE) - C(iE)
 
     ! --- Scale Equations and Save Initial Evaluation ---
 
@@ -529,6 +551,22 @@ CONTAINS
         WRITE(*,'(A6,A)') &
           '', 'Exiting with unconverged result'
         WRITE(*,*)
+        WRITE(*,'(A4,A12,ES10.4E2,A2,A10,ES10.4E2,A2,A4,ES10.4E2)') &
+          '', 'D [g/ccm] = ', D / Unit_D, &
+          '', 'T [MeV] = ', T / Unit_T, &
+          '', 'Y = ', Y
+        WRITE(*,*)
+        WRITE(*,'(A4,A24,3ES12.4E2)') &
+          '', '|F(Y)|, |F0(Y)|, Rtol = ', ABS( FVEC(1) ), ABS( FVEC0(1) ), Rtol
+        WRITE(*,'(A4,A24,2ES12.4E2)') &
+          '', '|dY/Y|, Ytol = ', ABS( dU(1) / U(1) ), Utol
+        WRITE(*,'(A4,A24,3ES12.4E2)') &
+          '', '|F(E)|, |F0(E)|, Rtol = ', ABS( FVEC(2) ), ABS( FVEC0(2) ), Rtol
+        WRITE(*,'(A4,A24,2ES12.4E2)') &
+          '', '|dE/E|, Etol = ', ABS( dU(2) / U(2) ), Utol
+        WRITE(*,*)
+
+        CONVERGED = .TRUE.
 
       END IF
 
