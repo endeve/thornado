@@ -67,7 +67,7 @@ CONTAINS
 !    REAL(DP), PARAMETER :: H_D  = 5.0d00 * Kilometer
     ! --- Temperature Profile ---
     REAL(DP), PARAMETER :: MinT = 5.0d09 * Kelvin
-    REAL(DP), PARAMETER :: MaxT = 1.5d11 * Kelvin
+    REAL(DP), PARAMETER :: MaxT = 2.6d11 * Kelvin
 !    REAL(DP), PARAMETER :: C_T  = 1.0_DP
     REAL(DP), PARAMETER :: R_T  = 2.5d01 * Kilometer
     REAL(DP), PARAMETER :: H_T  = 2.0d01 * Kilometer
