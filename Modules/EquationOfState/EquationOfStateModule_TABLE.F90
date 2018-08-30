@@ -276,8 +276,6 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(out) :: T
 
     REAL(DP), DIMENSION(SIZE(T)) :: T_Lookup
-    REAL(DP), DIMENSION(SIZE(T)) :: T_Bisection
-    REAL(DP), DIMENSION(SIZE(T)) :: T_Secant
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -289,24 +287,6 @@ CONTAINS
              T_Lookup )
 
     T = T_Lookup * Kelvin
-
-!!$    CALL ComputeTempFromIntEnergy_Bisection  &
-!!$           ( D / ( Gram / Centimeter**3 ),   &
-!!$             E / ( Erg / Gram ),             &
-!!$             Y, Ds_T, Ts_T, Ys_T, LogInterp, &
-!!$             EOS % DV % Variables(iE_T) % Values, OS_E, &
-!!$             T_Bisection )
-!!$
-!!$    T = T_Bisection * Kelvin
-
-!!$    CALL ComputeTempFromIntEnergy_Secant  &
-!!$           ( D / ( Gram / Centimeter**3 ),   &
-!!$             E / ( Erg / Gram ),             &
-!!$             Y, Ds_T, Ts_T, Ys_T, LogInterp, &
-!!$             EOS % DV % Variables(iE_T) % Values, OS_E, &
-!!$             T_Secant )
-!!$
-!!$    T = T_Secant * Kelvin
 
 #endif
 
@@ -363,23 +343,9 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, P, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: T
 
-    INTEGER                :: iS
-    REAL(DP), DIMENSION(1) :: TMP
     REAL(DP), DIMENSION(SIZE(T)) :: T_Bisection
 
 #ifdef MICROPHYSICS_WEAKLIB
-
-!!$    DO iS = 1, SIZE( D )
-!!$
-!!$      CALL ComputeTempFromPressure                 &
-!!$             ( D(iS) / ( Gram / Centimeter**3 ),   &
-!!$               P(iS) / ( Dyne / Centimeter**2 ),   &
-!!$               Y(iS), Ds_T, Ts_T, Ys_T, LogInterp, &
-!!$               EOS % DV % Variables(iP_T) % Values, OS_P, TMP )
-!!$
-!!$      T(iS) = TMP(1) * Kelvin
-!!$
-!!$    END DO
 
     CALL ComputeTempFromPressure_Bisection  &
            ( D / ( Gram / Centimeter**3 ),   &
