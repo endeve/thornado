@@ -62,7 +62,7 @@ For this scheme, the non-zero components of $\tilde{A}$ and $A$ are given by
   a_{21} &= 0.2431004655, \quad a_{22} = 0.1959392570, \\
   a_{31} &= 0.4803651051, \quad a_{32} = 0.0746432814, \quad a_{33} = 0.4449916135. 
 \end{align*}
-The coefficient in the correction step is $\alpha = 0.2797373792$ and the CFL constant is $c_{sch} = 0.5247457524$.
+The coefficient in the correction step is $\alpha = 0.2797373792$ and the CFL constant is $c_{\mbox{\tiny Sch}} = 0.5247457524$.
 This scheme is globally stiffly accurate (GSA), so that $\tilde{w}_{i}=\tilde{a}_{3i}$ and $w_{i}=a_{3i}$ for $i\le3$.
 
 \paragraph{IMEX PA2+}
@@ -106,11 +106,11 @@ Here we give an example by setting $\epsilon=0.1$.
   a_{22} & = 1.0, \nonumber \\
   a_{32} & = 0.4 \,( = 0.5 - \epsilon\,), \quad a_{33} = 0.6 \,( = 0.5 + \epsilon\,). 
 \end{align*}
-This scheme is GSA, $\alpha=0$, and requires only two implicit solves per time step.  
+This scheme is GSA, $\alpha=0$, and requires two implicit solves per time step (same as IMEX PC2).  
 
 \paragraph{IMEX RKCB2}
 
-We compare the performance of the positivity-preserving IMEX schemes with two other, non-positive, schemes.  
+We compare the performance of the constraint-preserving IMEX schemes with two other (not constraint-preserving) IMEX schemes.  
 The first one is the second-order accurate IMEX scheme given in \cite{cavaglieriBewley2015}.  
 We refer to this scheme as IMEX RKCB2.  
 The non-zero components of $\tilde{A}$ and $A$ are given by
@@ -196,7 +196,7 @@ Computing the relevant coefficients in Eq.~\eqref{eq:positivityCoefficientsARS},
 \begin{equation}
   c_{\mbox{\tiny Sch}} = \min \Big\{\, 2x,\, \f{1-2x(1-y)}{y-x},\, 2(1-y) \,\Big\}.  
 \end{equation}
-The positivity-preserving property follows from imposing the inequality constraints $a_{22},a_{33}>0$, $c_{20},c_{30},c_{32}\ge0$, and $\tilde{c}_{20},\tilde{c}_{30},\tilde{c}_{32}\ge0$, which imply that
+The constraint-preserving property requires imposing the inequality constraints $a_{22},a_{33}>0$, $c_{20},c_{30},c_{32}\ge0$, and $\tilde{c}_{20},\tilde{c}_{30},\tilde{c}_{32}\ge0$, which imply that
 \begin{equation}
   0 < x \le y
   \quad\text{and}\quad
@@ -236,7 +236,7 @@ Accuracy in the diffusion limit (Eq.~\eqref{eq:diffusionCondition}) requires
 \begin{align}
   \tilde{a}_{21} = a_{22}
   \quad\text{and}\quad 
-  -\f{a_{32}\,\tilde{a}_{21}}{a_{22}\,a_{33}} + \f{1}{a_{33}} =1.
+  -\f{a_{32}\,\tilde{a}_{21}}{a_{22}\,a_{33}} + \f{1}{a_{33}} = 1.
 \label{eq:diffusionAccurate}
 \end{align}
 The first constraint in Eq.~\eqref{eq:1stOrderGeneral} together with the constraints in Eq.~\eqref{eq:diffusionAccurate} gives
@@ -244,16 +244,18 @@ The first constraint in Eq.~\eqref{eq:1stOrderGeneral} together with the constra
   a_{31} = 0.
   \label{eq:a31is0}
 \end{align}
-The positivity-preserving property requires $a_{11}, a_{22}, a_{33}>0$ and the inequality constraints
-\begin{align*}
-  & c_{20} = 1 - \frac{a_{21}}{a_{11}} \geq 0, \quad c_{30} = 1-\frac{a_{31}}{a_{11}} + \frac{a_{32}\,a_{21}}{a_{22}\,a_{11}} - \frac{a_{32}}{a_{22}}\geq 0, \\
-  & c_{21} = \frac{a_{21}}{a_{11}} \geq 0, \quad c_{31} = \frac{a_{31}}{a_{11}} - \frac{a_{32}\,a_{21}}{a_{22}\,a_{11}} \geq 0, \quad c_{32} = \frac{a_{32}}{a_{22}} \geq 0,\\
-  & \tilde{c}_{21} = \tilde{a}_{21} \geq 0, \quad \tilde{c}_{31} = \tilde{a}_{31} - \frac{a_{32}\,\tilde{a}_{21}}{a_{22}} \geq 0, \quad \tilde{c}_{32} = \tilde{a}_{32} \geq 0.
-\end{align*}
+The constraint-preserving property requires $a_{11}, a_{22}, a_{33}>0$.  
+The inequality constraints in Eq.~\eqref{eq:positivityConditionsTypeA} also require
+\begin{equation}
+  c_{21} = \frac{a_{21}}{a_{11}} \geq 0, \quad
+  c_{31} = \frac{a_{31}}{a_{11}} - \frac{a_{32}\,a_{21}}{a_{22}\,a_{11}} \geq 0, \quad\text{and}\quad
+  c_{32} = \frac{a_{32}}{a_{22}} \geq 0.
+  \label{eq:constraintsTypeA}
+\end{equation}
 Since $a_{31} = 0$, we have
 \begin{equation*}
   c_{31} = - \frac{a_{32}a_{21}}{a_{22}a_{11}}.  
 \end{equation*}
-Since $a_{21} \geq 0$, $a_{32} \geq 0$, $a_{22} > 0$ and $a_{11} >0$, we have $c_{31} \leq 0$, and the inequality constraints hold only for $c_{31} = 0$.
+Then, since $a_{21} \geq 0$, $a_{32} \geq 0$, $a_{22} > 0$ and $a_{11} >0$, we have $c_{31} \leq 0$, and the inequality constraints in Eq.~\eqref{eq:constraintsTypeA} hold only for $c_{31} = 0$.
 Unfortunately, $c_{31} = 0$ gives $c_{\mbox{\tiny Sch}} = \min \Big\{\,\f{c_{21}}{\tilde{c}_{21}}, \f{c_{31}}{\tilde{c}_{31}}, \f{c_{32}}{\tilde{c}_{32}}\Big\} = 0$.
 Therefore, a three-stage PD-IMEX scheme (Definition~\ref{def:PD-IMEX}) of type~A does not exist.

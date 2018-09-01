@@ -50,7 +50,7 @@ Errors obtained with SSPRK3 are smallest and decrease as $N^{-3}$ (cf. bottom bl
 For all the other schemes, using second-order accurate explicit time stepping, the error decreases as $N^{-2}$.  
 Among the second-order accurate methods, SSP2332 has the smallest error, followed by RKCB2.  
 Errors for the remaining schemes (including SSPRK2) are indistinguishable on the plot.  
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
     \includegraphics[width=\textwidth]{figures/SineWaveStreaming}
    \caption{Absolute error (cf. Eq.~\eqref{eq:errorNormAbsolute}) versus number of elements $N$ for the streaming sine wave test.  Results employing various time stepping schemes are compared: SSPRK2 (cyan triangles pointing up), SSPRK3 (cyan triangles pointing down), PA2 (red), PA2+ (purple), PC2 (blue), RKCB2 (dark green), SSP2332 (green), and PD-ARS (light red circles).  Black dash-dot reference lines are proportional to $N^{-1}$ (top), $N^{-2}$ (middle), and $N^{-3}$ (bottom), respectively.}
@@ -79,7 +79,7 @@ For $\sigma_{\Ab}=0.1$, SSP2332 is the most accurate among these schemes, while 
 On the other hand, PC2 and PD-ARS are indistinguishable and display at most first-order accurate convergence, as expected.  
 (For $\sigma_{\Ab}=0.1$, PC2 and PD-ARS are the most accurate schemes for $N=8$ and $N=16$.)
 
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
     \includegraphics[width=\textwidth]{figures/SineWaveDamping}
    \caption{Relative error (cf. Eq.~\eqref{eq:errorNormRelative}) versus number of elements for the damping sine wave test.  Results for different values of the absorption opacity $\sigma_{\Ab}$, employing various IMEX time stepping schemes, are compared.  Errors for $\sigma_{\Ab}=0.1$, $1$, and $10$ are plotted with red, green, and blue lines, respectively.  The IMEX schemes employed are: PA2 (triangles pointing left), PA2+ (triangles pointing right), PC2 (asterisk), RKCB2 ($\times$), SSP2332 ($+$), and PD-ARS (circles).  Black dash-dot reference lines are proportional to $N^{-1}$ (top) and $N^{-2}$ (bottom), respectively.}
@@ -107,14 +107,14 @@ When computing errors for this test, we compare the numerical results obtained w
 We compute numerical solutions using three values of the scattering opacity ($\sigma_{\Scatt}=10^{2}$, $10^{3}$, and $10^{4}$), and adjust the end time so that $t_{\mbox{\tiny end}}/\sigma_{\Scatt}=1$.  
 The initial amplitude of the sine wave has then been reduced by a factor $e^{-\pi^{2}/27}\approx0.694$ for all values of $\sigma_{\Scatt}$.  
 
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
   \includegraphics[width=1.0\textwidth]{figures/SineWaveDiffusionN}
    \caption{Absolute error (cf. Eq.~\eqref{eq:errorNormAbsolute}) for the number density $\cJ$ versus number of elements for the sine wave diffusion test.  Results with different values of the scattering opacity $\sigma_{\Scatt}$, employing different IMEX schemes, are compared.  Errors with $\sigma_{\Scatt}=10^{2}$, $10^{3}$, and $10^{4}$ are plotted with red, green, and blue lines, respectively.  The IMEX schemes employed are: PA2 (triangle pointing left), PA2+ (triangle pointing right), PC2 (asterisk), RKCB2 (cross), SSP2332 (plus), and PD-ARS (circle).  Black dash-dot reference lines are proportional to $N^{-1}$ (top) and $N^{-2}$ (bottom), respectively.}
   \label{fig:SineWaveDiffusionJ}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
   \includegraphics[width=1.0\textwidth]{figures/SineWaveDiffusionG}
    \caption{Same as in Figure~\ref{fig:SineWaveDiffusionJ}, but for the number flux $\cH_{x}$.}
@@ -160,7 +160,7 @@ For this test, the use of the realizability-preserving limiter described in Sect
 For the results obtained with the CB closure, the limiter was enacted whenever moments ventured outside the realizable set given by Eq.~\eqref{eq:realizableSet}.  
 For the results obtained with the Minerbo closure, which is not based on Fermi-Dirac statistics, we used a modified limiter, which was enacted when the moments ventured outside the realizable domain of positive distributions; i.e., not bounded by $f < 1$, so that $\cJ > 0$ and $\cJ > \vect{\cH}|$ (e.g., \cite{levermore_1984}; see red line in Figure~\ref{fig:RealizableSetFermionic}).  
 
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
   \begin{tabular}{cc}
     \includegraphics[width=0.485\textwidth]{figures/PackedBeam_ME_CB} &
@@ -184,7 +184,7 @@ We have also run this test using the algebraic maximum entropy closure of Lareck
 The numerical solutions obtained with both of these closures follow the analytic solution well, and remain within the realizable set $\cR$.  
 We point out that simply using the realizability-preserving limiter described in Section~\ref{sec:limiter} with the Minerbo closure does not result in a realizability-preserving scheme for Fermi-Dirac statistics because of the properties of this closure discussed in Section~\ref{sec:algebraicClosure}, and plotted in the lower right panel of Figure~\ref{fig:MabWithDifferentClosure}.  
 
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
   \begin{tabular}{cc}
     \includegraphics[width=0.485\textwidth]{figures/PackedBeam_Realizability} &
@@ -214,7 +214,7 @@ We run this test using a grid of $512^{2}$ elements, polynomials of degree $k=1$
 (There are no collisions included in this test; i.e., $\sigma_{\Ab}=\sigma_{\Scatt}=0$.)  
 For comparison, we present results using the algebraic closures of Cernohorsky \& Bludman (CB) and Minerbo.  
 
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
   \begin{tabular}{cc}
     \includegraphics[width=0.495\textwidth]{figures/Implosion_Image} &
@@ -294,7 +294,7 @@ In Figure~\ref{fig:HomogeneousSphere}, we plot results obtained for all tests at
 The particle density $\cJ$ and the flux factor $h=|\vect{\cH}|/\cJ$ (left and right panels, respectively) are plotted versus radius $r=|\vect{x}|$ using scatter plots.  
 In each panel, results obtained with the various algebraic closures discussed in Section~\ref{sec:algebraicClosure} are plotted: Minerbo (magenta), CB (blue), BL (green), and Kershaw (cyan).  
 The analytical solution is also plotted (dashed black lines).  
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
   \begin{tabular}{cc}
     \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_ClosureComparison_Chi_1e0_Density}
@@ -325,7 +325,7 @@ Murchikova et al. do not plot the particle density, but find essentially no diff
 In Figure~\ref{fig:HomogeneousSphereRealizability}, we further compare the results obtained when using the Minerbo and CB closures by plotting the solutions to the homogeneous sphere problem for Test~C at $t=5$ in the $(\cH_{1},\cJ)$-plane (cf. the realizable domain in Figure~\ref{fig:RealizableSetFermionic}):  The numerical solution in each spatial point is represented by a magenta dot in the panels.  
 Results obtained using the CB closure are plotted in the upper left panel, while results obtained using the Minerbo closure are plotted in the upper right panel.  
 In the lower two panel we zoom in on the results obtained with the Minerbo closure around the top and lower right regions of the realizable domain (lower left and lower right panel, respectively; cf. blue boxes in the upper right panel).  
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
   \begin{tabular}{cc}
     \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_Realizability_Chi_1e3_CB}
