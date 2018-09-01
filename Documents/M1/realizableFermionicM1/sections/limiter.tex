@@ -1,13 +1,13 @@
 \section{Realizability-Enforcing Limiter}
 \label{sec:limiter}
 
-The bound-preserving DG-IMEX method developed in previous sections is designed to preserve realizability of the cell averaged moments, i.e., $\vect{\cM}_{\bK}\in\cR$, provided sufficiently accurate quadratures are used to integrate integrals in the DG method, specific CFL conditions are satisfied, and that the polynomial approximation $\vect{\cM}_{h}$, at time $t^{n}$, is realizable in a set of quadrature points in each element $\bK$.  
-We denote this quadrature set by $S\subset\bK$.  
+The bound-preserving DG-IMEX method developed in previous sections is designed to preserve realizability of the cell averaged moments, i.e., $\vect{\cM}_{\bK}\in\cR$, provided sufficiently accurate quadratures are used to integrate integrals in the DG method, a CFL condition is satisfied, and that the polynomial approximation $\vect{\cM}_{h}$, at time $t^{n}$, is realizable in a set of quadrature points in each element $\bK$.  
+We denote this quadrature set by $S=\cup_{k=1}^{d}\hat{\vect{S}}^{k}\subset\bK$.  
 In the DG method, we use the limiter proposed by Zhang \& Shu \cite{zhangShu_2010a} for scalar conservation laws to enforce the bounds on the zeroth moment $\cJ$ (see also \cite{liuOsher_1996}).  
-We replace the polynomial $\cJ_{h}^{n}(\vect{z})$ with the limited polynomial
+We replace the polynomial $\cJ_{h}^{n}(\vect{x})$ with the limited polynomial
 \begin{equation}
-  \tilde{\cJ}_{h}^{n}(\vect{z})
-  =\vartheta_{1}\,\cJ_{h}^{n}(\vect{z})+(1-\vartheta_{1})\,\cJ_{\bK}^{n},
+  \tilde{\cJ}_{h}^{n}(\vect{x})
+  =\vartheta_{1}\,\cJ_{h}^{n}(\vect{x})+(1-\vartheta_{1})\,\cJ_{\bK}^{n},
   \label{eq:limitDensity}
 \end{equation}
 where the limiter parameter $\vartheta_{1}$ is given by
@@ -17,24 +17,24 @@ where the limiter parameter $\vartheta_{1}$ is given by
 \end{equation}
 with $m=0$ and $M=1$, and
 \begin{equation}
-  M_{S}=\max_{\vect{z}\in S}\cJ_{h}^{n}(\vect{z})
+  M_{S}=\max_{\vect{x}\in S}\cJ_{h}^{n}(\vect{x})
   \quad\text{and}\quad
-  m_{S}=\min_{\vect{z}\in S}\cJ_{h}^{n}(\vect{z}).  
+  m_{S}=\min_{\vect{x}\in S}\cJ_{h}^{n}(\vect{x}).  
 \end{equation}
 
 In the next step, we ensure realizability of the moments by following the framework of \cite{zhangShu_2010b}, developed to ensure positivity of the pressure when solving the Euler equations of gas dynamics.  
 We let $\widetilde{\vect{\cM}}_{h}^{n}=\big(\tilde{\cJ}_{h}^{n},\vect{\cH}_{h}^{n}\big)^{T}$.  
-Then, if $\widetilde{\bcM}_{h}^{n}$ lies outside $\cR$ for any quadrature point $\vect{z}_{q}\in S$, i.e., $\gamma(\widetilde{\bcM}_{h}^{n})<0$, there exists an intersection point of the straight line, $\vect{s}_{q}(\xi)$, connecting $\vect{\cM}_{\bK}^{n}\in\cR$ and $\widetilde{\vect{\cM}}_{h}^{n}$ evaluated in the troubled quadrature point $\vect{z}_{q}$, denoted $\widetilde{\vect{\cM}}_{q}^{n}$, and the boundary of $\cR$.  
+Then, if $\widetilde{\bcM}_{h}^{n}$ lies outside $\cR$ for any quadrature point $\vect{x}_{q}\in S$, i.e., $\gamma(\widetilde{\bcM}_{h}^{n})<0$, there exists an intersection point of the straight line, $\vect{s}_{q}(\xi)$, connecting $\vect{\cM}_{\bK}^{n}\in\cR$ and $\widetilde{\vect{\cM}}_{h}^{n}$ evaluated in the troubled quadrature point $\vect{x}_{q}$, denoted $\widetilde{\vect{\cM}}_{q}^{n}$, and the boundary of $\cR$.  
 This line is given by the convex combination 
 \begin{equation}
   \vect{s}_{q}(\xi)=\xi\,\widetilde{\vect{\cM}}_{q}^{n}+(1-\xi)\,\bcM_{\bK}^{n},
 \end{equation}
-where $\xi\in[0,1]$, and the intersection point $\xi_{q}$ is obtained by solving $\gamma(\bs_{q}(\xi))=0$ for $\xi$, using the bisection algorithm.  
+where $\xi\in[0,1]$, and the intersection point $\xi_{q}$ is obtained by solving $\gamma(\bs_{q}(\xi))=0$ for $\xi$, using the bisection algorithm\footnote{In practice, $\xi$ needs not be accurate to many significant digits, and the bisection algorithm can be terminated after a few iterations.}.  
 We then replace the polynomial representation $\widetilde{\vect{\cM}}_{h}^{n}\to\widehat{\vect{\cM}}_{h}^{n}$, where
 \begin{equation}
-  \widehat{\vect{\cM}}_{h}^{n}(\vect{z})=\vartheta_{2}\,\widetilde{\vect{\cM}}_{h}^{n}(\vect{z})+(1-\vartheta_{2})\,\vect{\cM}_{\bK}^{n},
+  \widehat{\vect{\cM}}_{h}^{n}(\vect{x})=\vartheta_{2}\,\widetilde{\vect{\cM}}_{h}^{n}(\vect{x})+(1-\vartheta_{2})\,\vect{\cM}_{\bK}^{n},
   \label{eq:limitMoments}
 \end{equation}
 and $\vartheta_{2}=\min_{q}\xi_{q}$ is the smallest $\xi$ obtained in the element by considering all the troubled quadrature points.  
 
-We note that the realizability-preserving limiter is conservative; i.e., preserves the cell-average.  
+We note that the realizability-enforcing limiter is conservative; i.e., preserves the cell-average $\widehat{\vect{\cM}}_{\bK}=\widetilde{\vect{\cM}}_{\bK}=\vect{\cM}_{\bK}$.  

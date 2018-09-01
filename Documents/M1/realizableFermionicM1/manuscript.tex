@@ -105,8 +105,8 @@ The two-moment model is closed using simple algebraic moment closures, e.g., as 
 Variations of this model have recently been used to simulate neutrino transport in nuclear astrophysics applications --- including core-collapse supernovae and compact binary mergers.  
 We employ the discontinuous Galerkin (DG) method for spatial discretization (in part to capture the asymptotic diffusion limit of the model) combined with implicit-explicit (IMEX) time integration to stably bypass short timescales induced by frequent interactions between particles and the background.  
 Appropriate care is taken to ensure the method preserves strict algebraic bounds on the evolved moments (particle density and flux) as dictated by Pauli's exclusion principle, which demands a bounded distribution function (i.e., $f\in[0,1]$).  
-This realizability-preserving scheme combines a suitable CFL condition, a realizability-preserving limiter, a closure procedure based on Fermi-Dirac statistics, and an IMEX scheme whose stages can be written as a convex combination of forward Euler steps combined with a backward Euler step.  
-The IMEX scheme is formally only first-order accurate, but works well in the diffusion limit and reduces to the optimal second-order strong stability-preserving Runge-Kutta scheme of Shu \& Osher \cite{shuOsher_1988}.  
+This realizability-preserving scheme combines a suitable CFL condition, a realizability-enforcing limiter, a closure procedure based on Fermi-Dirac statistics, and an IMEX scheme whose stages can be written as a convex combination of forward Euler steps combined with a backward Euler step.  
+The IMEX scheme is formally only first-order accurate, but works well in the diffusion limit, and --- without interactions with the background --- reduces to the optimal second-order explicit strong stability-preserving Runge-Kutta scheme of Shu \& Osher \cite{shuOsher_1988}.  
 Numerical results demonstrate the realizability-preserving properties of the scheme.  
 We also demonstrate that the use of algebraic moment closures not based on Fermi-Dirac statistics can lead to unphysical moments in the context of fermion transport.  
 \end{abstract}
@@ -116,6 +116,7 @@ Boltzmann equation,
 Radiation transport, 
 Hyperbolic conservation laws, 
 Discontinuous Galerkin, 
+Implicit-Explicit, 
 Moment Realizability
 \end{keyword}
 

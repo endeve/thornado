@@ -119,9 +119,9 @@ The following Lemma establishes sufficient conditions for realizability of $\vec
   Thus it remains to show that
   \begin{align*}
     &\Phi\big[\,\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,-}),\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,+}),\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,-}),\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,+});\hat{c}_{ij}\,\big] \\
-    &=\f{1}{2}\big[\,\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,+})+\lambda_{ij}^{k}\,\mathscr{F}\big(\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,-}),\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,+})\big)\,\big] \\
+    &=\f{1}{2}\big[\,\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,+})+\lambda_{ij}^{k}\,\mathscr{F}^{k}\big(\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,-}),\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,+})\big)\,\big] \\
     &\hspace{12pt}
-    +\f{1}{2}\big[\,\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,-})-\lambda_{ij}^{k}\,\mathscr{F}\big(\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,-}),\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,+})\big)\,\big]
+    +\f{1}{2}\big[\,\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,-})-\lambda_{ij}^{k}\,\mathscr{F}^{k}\big(\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,-}),\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,+})\big)\,\big]
   \end{align*}
   is realizable.  
   Using the Lax-Friedrichs flux in Eq.~\eqref{eq:fluxFunctionLF}, with $\alpha^{k}=1$ ($k\in\{1,\ldots,d\}$), it is straightforward to show that
@@ -135,7 +135,7 @@ The following Lemma establishes sufficient conditions for realizability of $\vec
     \Phi_{1} &= \Phi^{+}\big[\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,-})\big]+\Phi^{-}\big[\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,-})\big], \\
     \Phi_{2} &= \Phi^{+}\big[\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,+})\big]+\Phi^{-}\big[\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,+})\big],
   \end{align*}
-  and $\Phi^{\pm}(\vect{\cM})=\f{1}{2}\,\big(\vect{\cM}\pm\vect{e}_{k}\cdot\vect{\cF}^{k}(\vect{\cM})\big)$.  
+  and $\Phi^{\pm}(\vect{\cM})=\f{1}{2}\,\big(\vect{\cM}\pm\vect{e}_{k}\cdot\vect{\cF}^{k}(\vect{\cM})\big)$; cf. Lemma~\ref{lem:explicitStep}.  
   Since $\lambda_{ij}^{k}\le1$, $\Phi$ is expressed as a convex combination of three terms; $\Phi_{0}$, $\Phi_{1}$, and $\Phi_{2}$.  
   By assumption, $\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,-})$, $\vect{\cM}_{h}^{(j)}(x_{\Low}^{k,+})$, $\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,-})$, $\vect{\cM}_{h}^{(j)}(x_{\Hgh}^{k,+})\in\cR$, which immediately implies realizability of $\Phi_{0}$.  
   Realizability of $\Phi_{1}$ and $\Phi_{2}$ follows by invoking Lemma~\ref{lem:explicitStep}.  
@@ -189,6 +189,7 @@ For these IMEX schemes, realizability of $\vect{\cM}_{\bK}^{n+1}$ is established
 \end{rem}
 
 We are now ready to state the main result of this section.  
+Consider the IMEX scheme in Eqs.~\eqref{imexStages}-\eqref{eq:imexCorrection} applied to the DG discretization of the two-moment model in Eq.~\eqref{eq:semidiscreteDG}.  
 \begin{theorem}
   Suppose that
   \begin{itemize}

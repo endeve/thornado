@@ -5,7 +5,7 @@ We have developed a realizability-preserving DG-IMEX scheme for a two-moment mod
 The scheme employs simple algebraic two-moment closures rooted in Fermi-Dirac statistics, and combines a time step restriction (CFL condition), a realizability-enforcing limiter, and a constraint-preserving time integrator to maintain point-wise realizability of the moments.  
 Since the realizable domain is a convex set, the realizability-preserving property is obtained from convexity arguments, building on the framework in \cite{zhangShu_2010a}.  
 
-In the applications motivating this work, the collision term is stiff in regions of the computational domain, and we have considered IMEX schemes to avoid solving the transport operator implicitly.  
+In the applications motivating this work, the collision term is stiff in regions of the computational domain, and we have considered IMEX schemes to avoid solving the transport operator implicitly in a fully implicit scheme.  
 We considered recently proposed second-order accurate, constraint-preserving IMEX schemes (cf. \cite{chertock_etal_2015,hu_etal_2018}), which restore second-order accuracy with an implicit correction step.  
 However, we are unable to prove realizability (without invoking a very small time step) with the approach in \cite{chertock_etal_2015}, and we have demonstrated that the approach in \cite{hu_etal_2018} does not perform well in the diffusion limit.  
 For these reasons, and the general nonexistence of high-order, implicit SSP-RK schemes \cite{gottlieb_etal_2001}, we have resorted to develop first-order, constraint-preserving IMEX schemes.  
@@ -15,7 +15,7 @@ For each stage of the IMEX scheme, the cell-averaged moments can be written as a
 Realizability of the explicit part requires the DG solution to be realizable in a finite number of quadrature points in each element and the time step to satisfy a CFL condition.  
 For the backward Euler step, realizability of the cell-averages follows easily from the simple form of the collision operator (which includes emission, absorption, and isotropic elastic scattering), and is independent of the time step.  
 The CFL condition is then solely due to the transport operator, and the time step can be as large as that of the forward Euler scheme applied to the explicit part.  
-After each update, the limiter enforces realizability point-wise by damping towards the realizable cell average.  
+After each update, the limiter enforces moment realizability point-wise by damping towards the realizable cell average.  
 Numerical experiments are presented to demonstrate the accuracy and realizability-preserving property of the scheme.  
 The applicability of the PD-ARS scheme is not restricted to the fermionic two-moment model.  
 It may therefore be a useful option in other applications of kinetic theory where physical constraints confine solutions to a convex set and capturing the diffusion limit is important.  
@@ -23,10 +23,10 @@ It may therefore be a useful option in other applications of kinetic theory wher
 Realizability of the fermionic two-moment model depends sensitively on the closure procedure.  
 For the simple algebraic closures adapted in this work, realizability of the scheme demands that lower and upper bounds on the Eddington factor are satisfied \cite{levermore_1984,lareckiBanach_2011}.  
 The Eddington factors deriving from the maximum entropy closures of Cernohorsky \& Bludman \cite{cernohorskyBludman_1994} and Larecki \& Banach \cite{lareckiBanach_2011}, and the Kershaw-type closure of Larecki \& Banach \cite{banachLarecki_2017a} satisfy these bounds, and are suitable for the fermionic two-moment model.  
-Further approximations of the closure procedure, e.g., employing the low occupancy limit, which results in the Minerbo closure \cite{minerbo_1978} when starting with the maximum entropy closure of \cite{cernohorskyBludman_1994}), is not compatible with realizability of the fermionic two-moment model, and we caution against this approach to modeling particle systems governed by Fermi-Dirac statistics; particularly if the low occupancy approximation is unlikely to hold (e.g., when modeling neutrino transport in core-collapse supernovae).  
+Further approximations of the closure procedure, e.g., employing the low occupancy limit, which results in the Minerbo closure \cite{minerbo_1978} when starting with the maximum entropy closure of \cite{cernohorskyBludman_1994}, is not compatible with realizability of the fermionic two-moment model, and we caution against this approach to modeling particle systems governed by Fermi-Dirac statistics; particularly if the low occupancy approximation is unlikely to hold (e.g., when modeling neutrino transport in core-collapse supernovae).  
 
 In this work, we considered a relatively simple model.  
 In particular, we adopted Cartesian coordinates, assumed a linear collision operator and a fixed material background.  
 Inelastic scattering and relativistic effects (e.g., due to interactions with a moving background or the presence of a strong gravitational field) were not included.  
-To solve more realistic problems of higher scientific interest, some or all of these physical effects must be included.  
+To solve more realistic problems of higher scientific interest, some or all of these physical effects may have to be included.  
 In the context of constraint-preserving schemes, these extension provide significant challenges suitable for future investigations, and for which the scheme presented here may serve as a foundation.  

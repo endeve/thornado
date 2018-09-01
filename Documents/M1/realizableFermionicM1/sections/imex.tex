@@ -20,7 +20,9 @@ Eq.~\eqref{eq:ode} is to be integrated forward in time with an ODE integrator, a
   Given sufficient conditions, a constraint-preserving time integration scheme preserves the constraints of a model if the set of admissible states satisfying the constraints form a convex set.  
   \label{def:constraintPreserving}
 \end{define}
-As an example, given a spatial discretization of a model that is constraint-preserving with the forward Euler method for a sufficiently small time step, high-order strong stability-preserving Runge-Kutta (SSP-RK) methods, which can be expressed as convex combinations of forward Euler steps, form a class of constraint-preserving schemes.  
+As an example, given a spatial discretization of a model that is constraint-preserving with the forward Euler method for a sufficiently small time step, high-order explicit strong stability-preserving Runge-Kutta (SSP-RK) methods, which can be expressed as convex combinations of forward Euler steps, also preserve the constraints (possibly with a smaller time step), and form a class of constraint-preserving schemes.  
+
+Since the realizable set $\cR$ is convex, constraint-preserving schemes can be used to design realizability-preserving schemes for the two-moment model.  
 
 \subsection{Second-Order Accurate, Constraint-Preserving IMEX Schemes}
 
@@ -192,7 +194,7 @@ Then, for the particle number equation we have
 which approximates a diffusion equation for $\cJ$ with the correct diffusion coefficient $\tau/3$.  
 (For a GSA IMEX scheme without the correction step, $\cJ^{n+1}=\cJ^{(s)}$.)  
 
-Unfortunately, the ``diffusion limit requirement" in Eq.~\eqref{eq:diffusionCondition}, together with the order conditions given by Eqs.~\eqref{orderConditions1} and \eqref{orderConditions2} (with $\alpha=0$), and the positivity conditions on $c_{ij}$ and $\tilde{c}_{ij}$, result in too many constraints to obtain a constraint-preserving IMEX scheme.
+Unfortunately, the ``diffusion limit requirement" in Eq.~\eqref{eq:diffusionCondition}, together with the order conditions given by Eqs.~\eqref{orderConditions1} and \eqref{orderConditions2} (with $\alpha=0$), and the positivity conditions on $c_{ij}$ and $\tilde{c}_{ij}$, result in too many constraints to obtain a second-order accurate constraint-preserving IMEX scheme.
 \footnote{It was shown in \cite{hu_etal_2018} --- without the diffusion limit requirement --- that the minimum number of stages for constraint-preserving IMEX schemes of type~ARS is four.)  
 We are also concerned about increasing the number of stages, and thereby the number of implicit solves, since the implicit solve will dominate the computational cost of the IMEX scheme with more realistic collision operators (e.g., inelastic scattering).}  
 To reduce the number of constraints, and accommodate accuracy in the diffusion limit, we relax the requirement of overall second-order accuracy of the IMEX scheme.  
@@ -222,10 +224,10 @@ We then seek to design IMEX schemes of Type~ARS conforming to the following work
   \end{enumerate}
   \label{def:PD-IMEX}
 \end{define}
-Fortunately, IMEX schemes of type~ARS satisfying these properties are easy to find, and we provide an example with $s=3$ (two implicit solves) in \ref{app:butcherTables} (scheme PD-ARS; see \ref{app:PD-ARS} for details).  
+Fortunately, IMEX schemes of type~ARS satisfying these properties are easy to find, and we provide an example with $s=3$ (two implicit solves) in \ref{app:butcherTables} (scheme PD-ARS; see \ref{app:PD-ARS} for further details).  
 In the streaming limit, this scheme is identical to the optimal second-order accurate SSP-RK method \cite{gottlieb_etal_2001}.  
 It is also very similar to the scheme given in \cite{mcclarren_etal_2008} (see scheme PC2 in \ref{app:butcherTables}), which is also a GSA IMEX scheme of type ARS with $s=3$.  
-Scheme PC2 is second-order in the streaming limit, has been demonstrated to work well in the diffusion limit \cite{mcclarren_etal_2008,radice_etal_2013}, and satisfies the positivity conditions.  
+Scheme PC2 is second-order in the streaming limit, has been demonstrated to work well in the diffusion limit \cite{mcclarren_etal_2008,radice_etal_2013}, and satisfies the positivity conditions in Eq.~\eqref{eq:positivityConditionsTypeARS}.  
 However, $c_{\mbox{\tiny Sch}}=0$ (our primary motivation for finding an alternative).  
 In Section~\ref{sec:numerical}, we show numerically that the accuracy of scheme PD-ARS is comparable to the accuracy of scheme PC2.  
 
@@ -239,11 +241,11 @@ As is commonly done, we do this in the context of the linear scalar equation
 \end{equation}
 where $\lambda_{1}\in\mathbb{C}$ and real $\lambda_{2}\le0$.  
 On the right-hand side of Eq.~\eqref{eq:scalarODE}, the first (oscillatory) term is treated explicitly, while the second (damping) term is treated implicitly.  
-The IMEX schemes can then be written as $u^{n+1} =P(z_{1},z_{2})\,u^{n}$, where $P(z_{1},z_{2})$ is the amplification factor of the scheme, $z_{1}=\dt\,\lambda_{1} = x +iy$, and $z_{2} = \dt\,\lambda_{2} < 0$.  
+The IMEX schemes can then be written as $u^{n+1} =P(z_{1},z_{2})\,u^{n}$, where $P(z_{1},z_{2})$ is the amplification factor of the scheme, $z_{1}=\dt\,\lambda_{1} = x +iy$, and $z_{2} = \dt\,\lambda_{2} \le 0$.  
 Stability of the IMEX scheme requires $|P(z_1,z_2)|\leq 1$.  
 The stability regions of PA2+ and PD-ARS are plotted in Figure~\ref{fig:AbsoluteStability}.  
 As can be seen from the figures, the absolute stability region of both schemes increases with increasing $|z_{2}|$ (increased damping).  
-For a given $|z_{2}|>0$, the stability region of PD-ARS is larger than that of PA2+.  
+For a given $|z_{2}|\ge0$, the stability region of PD-ARS is larger than that of PA2+.  
 In the linear case, a time step that satisfies the absolute stability for the explicit part of the IMEX scheme ($|z_2| = 0$) fulfills the stability requirement for the IMEX scheme as whole ($|z_2| \geq 0$).  
 This holds for all PD-ARS schemes with $\epsilon\in [0,0.5)$.
 \begin{figure}[h]

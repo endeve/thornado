@@ -1,13 +1,20 @@
 \section{Numerical Tests}
 \label{sec:numerical}
 
+In this section we present numerical results obtained with the DG-IMEX scheme developed in this paper.  
+The first set of tests (Section~\ref{sec:smoothProblems}) are included to compare the time integration schemes in various regimes.  
+We are not concerned with moment realizability here, and we do not apply the realizability-enforcing limiter in these tests.  
+The tests in Sections~\ref{sec:packedBeam} and \ref{sec:fermionImplosion} are designed specifically to demonstrate the robustness of the scheme to dynamics near the boundary of the realizable set $\cR$.  
+The test in Section~\ref{sec:homogeneousSphere} (Homogeneous Sphere) is of astrophysical interest.  
+Here we consider moment realizability and compare results obtained with various moment closures.  
+
 \subsection{Problems with Known Smooth Solutions}
 \label{sec:smoothProblems}
 
 To compare the accuracy of the IMEX schemes, we present results from smooth problems in streaming, absorption, and scattering dominated regimes in one spatial dimension.  
 For all tests in this subsection, we use third order accurate spatial discretization (polynomials of degree $k=2$) and we employ the maximum entropy closure in the low occupancy limit (i.e., the Minerbo closure).  
 We compare results obtained using IMEX schemes proposed here (PA2+ and PD-ARS) with IMEX schemes from Hu et al. \cite{hu_etal_2018} (PA2), McClarren et al. \cite{mcclarren_etal_2008} (PC2), Pareschi \& Russo \cite{pareschiRusso_2005} (SSP2332), and Cavaglieri \& Bewley \cite{cavaglieriBewley2015} (RKCB2).  
-In the streaming test, we also include results obtained with second-order and third-order accurate explicit strong stability-preserving Runge-Kutta methods \cite{gottlieb_etal_2001} in the comparison (SSPRK2 and SSPRK3, respectively).  
+In the streaming test, we also include results obtained with second-order and third-order accurate explicit strong stability-preserving Runge-Kutta methods \cite{gottlieb_etal_2001} (SSPRK2 and SSPRK3, respectively).  
 See \ref{app:butcherTables} for further details.  
 The time step is set to $\dt=0.1\times\dx$.  
 
@@ -25,7 +32,7 @@ and
   \label{eq:errorNormRelative}
 \end{equation}
 respectively.  
-The integrals in Eqs.~\eqref{eq:errorNormAbsolute} and \eqref{eq:errorNormRelative} are computed with a $3$-point Gaussian quadrature.  
+The integrals in Eqs.~\eqref{eq:errorNormAbsolute} and \eqref{eq:errorNormRelative} are computed with a simple $3$-point equal weight quadrature.  
 
 \subsubsection{Sine Wave: Streaming}
 
@@ -50,7 +57,6 @@ Errors for the remaining schemes (including SSPRK2) are indistinguishable on the
   \label{fig:SineWaveStreaming}
 \end{figure}
 
-
 \subsubsection{Sine Wave: Damping}
 
 The next test we consider, adapted from \cite{skinnerOstriker_2013}, consists of a sine wave propagating with unit speed in a purely absorbing medium ($f_{0}=0$, $\sigma_{\Scatt}=0$), which results in exponential damping of the wave amplitude.  
@@ -68,7 +74,7 @@ Thus, for $\sigma_{\Ab}=0.1$ the sine wave crosses the domain 100 times, while f
 
 Figure~\ref{fig:SineWaveDamping} shows convergence results, obtained using different values of $\sigma_{\Ab}$, for various IMEX schemes at $t=t_{\mbox{\tiny end}}$.  
 Results for $\sigma_{\Ab}=0.1$, $1$, and $10$ are plotted with red, green, and blue lines, respectively (see figure caption for further details).  
-All the second-order accurate schemes (PA2, PA2+, RKCB2, and SSP2332) display second-order accurate convergence rates (cf. bottom, black dash-dot reference line).  
+All the second-order accurate schemes (PA2, PA2+, RKCB2, and SSP2332) display second-order convergence rates (cf. bottom, black dash-dot reference line).  
 For $\sigma_{\Ab}=0.1$, SSP2332 is the most accurate among these schemes, while PA2+ is the most accurate for $\sigma_{\Ab}=10$.  
 On the other hand, PC2 and PD-ARS are indistinguishable and display at most first-order accurate convergence, as expected.  
 (For $\sigma_{\Ab}=0.1$, PC2 and PD-ARS are the most accurate schemes for $N=8$ and $N=16$.)
@@ -115,7 +121,7 @@ The initial amplitude of the sine wave has then been reduced by a factor $e^{-\p
   \label{fig:SineWaveDiffusionH}
 \end{figure}
 
-In Figures~\ref{fig:SineWaveDiffusionJ} and \ref{fig:SineWaveDiffusionJ} we plot the absolute error, obtained using different values of $\sigma_{\Scatt}$, for various IMEX schemes at $t=t_{\mbox{\tiny end}}$.  
+In Figures~\ref{fig:SineWaveDiffusionJ} and \ref{fig:SineWaveDiffusionH} we plot the absolute error, obtained using different values of $\sigma_{\Scatt}$, for various IMEX schemes at $t=t_{\mbox{\tiny end}}$.  
 Results for $\sigma_{\Scatt}=10^{2}$, $10^{3}$, and $10^{4}$ are plotted with red, green, and blue lines, respectively (see figure caption for further details).  
 (Scheme PC2 has been shown to work well for this test \cite{radice_etal_2013}, but is included here for comparison with the other IMEX schemes.)
 Schemes PD-ARS, RKCB2, and SSP2332 are accurate for this test, and display third-order accuracy for the number density $\cJ$ and second-oder accuracy for $\cH_{x}$.  
@@ -125,6 +131,7 @@ Schemes PA2 and PA2+ do not perform well on this test (for reasons discussed in 
 For $\sigma_{\Scatt}=10^{2}$, errors in $\cJ$ and $\cH_{x}$ decrease with increasing $N$, but for $\sigma_{\Scatt}=10^{4}$, errors remain constant with increasing $N$ over the entire range.  
 
 \subsection{Packed Beam}
+\label{sec:packedBeam}
 
 Next we consider a one-dimensional test with discontinuous initial conditions.  
 The purpose of this test is to further gauge the accuracy of the two-moment model and demonstrate the robustness of the DG scheme for dynamics close to the boundary of the realizable set $\cR$.  
@@ -151,7 +158,7 @@ Numerical solutions are plotted with solid lines, while the analytical solution 
 In the left panels, the algebraic maximum entropy closure of Cernohorsky \& Bludman (CB) \cite{cernohorskyBludman_1994} (cf. Eqs.~\eqref{eq:eddingtonFactor} and \eqref{eq:closureMECB}) was used, while in the right panels the Minerbo closure (cf. Eqs.~\eqref{eq:eddingtonFactorLow} and \eqref{eq:closureMECB}) was used.  
 For this test, the use of the realizability-preserving limiter described in Section~\ref{sec:limiter} was essential in order to avoid numerical problems.  
 For the results obtained with the CB closure, the limiter was enacted whenever moments ventured outside the realizable set given by Eq.~\eqref{eq:realizableSet}.  
-For the results obtained with the Minerbo closure, which is not based on Fermi-Dirac statistics, we used a modified limiter, which was enacted when the moments ventured outside the realizable domain of positive distributions; i.e., not bounded by $f\le1$, so that $\cJ\ge0$ and $\cJ\ge|\vect{\cH}|$ (e.g., \cite{levermore_1984}; see dashed red line in Figure~\ref{fig:RealizableSetFermionic}).  
+For the results obtained with the Minerbo closure, which is not based on Fermi-Dirac statistics, we used a modified limiter, which was enacted when the moments ventured outside the realizable domain of positive distributions; i.e., not bounded by $f < 1$, so that $\cJ > 0$ and $\cJ > \vect{\cH}|$ (e.g., \cite{levermore_1984}; see red line in Figure~\ref{fig:RealizableSetFermionic}).  
 
 \begin{figure}[h]
   \centering
@@ -169,10 +176,10 @@ With the Minerbo closure, the solution also evolves outside the realizable domai
 In the left panel in Figure~\ref{fig:PackedBeam_Realizability} we plot $\gamma(\vect{\cM})=\big(1-\cJ\big)\,\cJ-|\vect{\cH}|$ versus position for various times.  
 With the Minerbo closure, $\gamma(\vect{\cM})$ becomes negative in regions of the computational domain (dashed lines), while $\gamma(\vect{\cM})$ remains positive for all $x$ and $t$ the CB closure.  
 In the right panel of Figure~\ref{fig:PackedBeam_Realizability} we plot the numerical solutions in the $(\cH,\cJ)$-plane.  
-Initially, the moments are located in two points: $\vect{\cM}_{\mbox{\tiny L}}$ and $\vect{\cM}_{\mbox{\tiny R}}$, for $x\le0$ and $x>0$, respectively.  
+Initially, the moments are located in two points: $\vect{\cM}_{\mbox{\tiny L}}$ and $\vect{\cM}_{\mbox{\tiny R}}$, for $x\le0$ and $x>0$, respectively (marked by circles in Figure~\ref{fig:PackedBeam_Realizability}).  
 For $t>0$, the solutions trace out curves in the $(\cH,\cJ)$-plane, connecting $\vect{\cM}_{\mbox{\tiny L}}$ and $\vect{\cM}_{\mbox{\tiny R}}$.  
 With the CB closure, the solution curve (blue points) follows the boundary of the realizable set $\cR$ defined in Eq.~\eqref{eq:realizableSet} (cf. black line in Figure~\ref{fig:PackedBeam_Realizability}).  
-With the Minerbo closure (magenta points), the solution follows a different curve --- outside the realizable domain for distribution functions bounded by $f\in[0,1]$, but inside the realizable domain of positive distributions (cf. red line in Figure~\ref{fig:PackedBeam_Realizability}).  
+With the Minerbo closure (magenta points), the solution follows a different curve --- outside the realizable domain for distribution functions bounded by $f\in(0,1)$, but inside the realizable domain of positive distributions (cf. red line in Figure~\ref{fig:PackedBeam_Realizability}).  
 We have also run this test using the algebraic maximum entropy closure of Larecki \& Banach \cite{lareckiBanach_2011} and the simpler Kershaw-type closure in \cite{banachLarecki_2017a}.  
 The numerical solutions obtained with both of these closures follow the analytic solution well, and remain within the realizable set $\cR$.  
 We point out that simply using the realizability-preserving limiter described in Section~\ref{sec:limiter} with the Minerbo closure does not result in a realizability-preserving scheme for Fermi-Dirac statistics because of the properties of this closure discussed in Section~\ref{sec:algebraicClosure}, and plotted in the lower right panel of Figure~\ref{fig:MabWithDifferentClosure}.  
@@ -183,18 +190,19 @@ We point out that simply using the realizability-preserving limiter described in
     \includegraphics[width=0.485\textwidth]{figures/PackedBeam_Realizability} &
     \includegraphics[width=0.485\textwidth]{figures/PackedBeam_RealizableDomain}
   \end{tabular}
-   \caption{In the left panel, $\gamma(\vect{\cM})=(1-\cJ)\,\cJ-|\vect{\cH}|$ is plotted versus $x$ for various times in the packed beam problem: $t=0$ (cyan), $t=0.2$ (magenta), $t=0.4$ (blue), and $t=0.8$ (black).  Results obtained with the CB closure, which remain positive throughout the evolution, are plotted with solid lines, while results obtained with the Minerbo closure are plotted with dashed lines.  In the right panel, the moments are plotted in the $(\cH,\cJ)$-plane for the same times as in the left panel.  Results obtained with the CB and Minerbo closures are plotted in blue and magenta, respectively.  The solid black and red lines are contours where $(1-\cJ)\,\cJ=\cH$ and $\cJ=\cH$, respectively.}
+   \caption{In the left panel, $\gamma(\vect{\cM})=(1-\cJ)\,\cJ-|\vect{\cH}|$ is plotted versus $x$ for various times in the packed beam problem: $t=0$ (cyan), $t=0.2$ (magenta), $t=0.4$ (blue), and $t=0.8$ (black).  Results obtained with the CB closure, which remain positive throughout the evolution, are plotted with solid lines, while results obtained with the Minerbo closure are plotted with dashed lines.  In the right panel, the moments are plotted in the $(\cH,\cJ)$-plane for the same times as in the left panel.  Results obtained with the CB and Minerbo closures are plotted in blue and magenta, respectively.  The solid black and red lines are contours where $(1-\cJ)\,\cJ=\cH$ and $\cJ=\cH$, respectively.  The initial states are marked with black circles.}
   \label{fig:PackedBeam_Realizability}
 \end{figure}
 
 \subsection{Fermion Implosion}
+\label{sec:fermionImplosion}
 
 The next test is inspired by line source benchmark (cf. \cite{brunner_2002,garrettHauck_2013}), which is a challenging test for approximate transport algorithms.  
 The original line source test consists of an initial delta function particle distribution in radius $R=|\vect{x}|$; i.e., $f_{0}=\delta(R)$.  
 For $t>0$, a radiation front propagates in the radial direction, away from $R=0$.  
 Apart from capturing details of the exact transport solution, maintaining realizability of the two-moment solution is challenging.  
 
-Here, a modified version of the line source --- dubbed \emph{Fermion Implosion},  designed to test the realizability-preserving properties of the two moment model for fermionic transport --- is computed on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[-1.28,1.28], x^{2}\in[-1.28,1.28]\}$.  
+Here, a modified version of the line source --- dubbed \emph{Fermion Implosion},  designed to test the realizability-preserving properties of the two-moment model for fermion transport --- is computed on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[-1.28,1.28], x^{2}\in[-1.28,1.28]\}$.  
 Instead of initializing with a delta function, we follow the initialization procedure in \cite{garrettHauck_2013}, and approximate the initial condition using an isotropic Gaussian distribution function.  
 However, different from \cite{garrettHauck_2013}, the initial distribution function is bounded $f_{0}\in(0,1)$, and reaches a minimum in the center of the computational domain (hence implosion)
 \begin{equation}
@@ -222,7 +230,7 @@ Numerical results for the Fermion Implosion problem are plotted in Figure~\ref{f
 For $t>0$, the low-density region in the center of the computational domain is quickly filled in, and a cylindrical perturbation propagates radially away from the center.  
 For the model with the CB closure, this perturbation, seen as a depression in the density relative to the ambient medium, has reached $R\approx1$ for $t=1$ (upper left panel in Figure~\ref{fig:Implosion}).  
 The right panel in Figure~\ref{fig:Implosion} illustrates the difference in dynamics resulting from the two closures.  
-(We also plot a reference transport solution obtained using the filtered spherical harmonics scheme described in \cite{garrettHauck_2013}; dashed black lines.)  
+(We also plot a reference transport solution obtained using the filtered spherical harmonics scheme described in \cite{garrettHauck_2013}; dashed black lines.\footnote{Kindly provided by Dr. Ming Tse Paul Laiu (private communications).})  
 With the CB closure (blue lines), the central density increases towards the maximum value of unity, and an low-density pulse propagates radially.  
 The amplitude of the pulse decreases with time due to the geometry of the problem.  
 For $t=0.4$, the peak depression in located around $R=0.34$ (with $\cJ\approx0.96$).  
@@ -230,21 +238,22 @@ With the Minerbo closure, the central density continues to increase beyond unity
 The central density starts to decrease beyond this point in time, and a steepening pulse propagates radially away from the center.  
 (This pulse is trailing the pulse in the model computed with the CB closure.)  
 At $t=0.4$, a discontinuity appears to have formed around $R=0.2$, resulting in numerical oscillations.  
-Except for the positivity limiter (which is not triggered for this model), no limiters are used to prevent numerical oscillations.  
+Except for the realizability-enforcing limiter (which is not triggered for this model), no other limiters are used to prevent numerical oscillations.  
 Although the solutions obtained with the two-moment model differ from the reference transport solution, the results obtained with the CB closure are in closer agreement with the transport solution.  
 In the lower left panel in Figure~\ref{fig:Implosion}, the moments are plotted in the $(\cH_{x},\cJ)$-plane for the same times as plotted in the upper left panel.  
 (Each dot represents the moments at a specific spatial point and time.)  
 Initially, $\vect{\cH}=0$, and all the moments lie on on the line connecting $(0,0)$ and $(0,1)$; cyan points.  
 With the CB closure (blue points), the moments are confined to evolve inside the realizable domain $\cR$ (black), while with the Minerbo closure, the moments are not confined to $\cR$, but to the region above the red lines (the realizable domain for moments of positive distribution functions), and this is the reason for the difference in dynamics in the two models.  
-For the model with the CB closure, some moments evolve very close to the boundary of the realizable domain, and the positivity limiter is continuously triggered to damp these moments towards the cell average, which is realizable by the design of our numerical scheme.  
+For the model with the CB closure, some moments evolve very close to the boundary of the realizable domain, and the positivity limiter is continuously triggered to damp these moments towards the cell average, which is realizable by the design of the numerical scheme.  
 In the lower right panel in Figure~\ref{fig:Implosion} we plot the limiter parameters $\vartheta_{1}$ (solid) and $\vartheta_{2}$ (dashed) (cf. \eqref{eq:limitDensity} and \eqref{eq:limitMoments}) versus time for the CB closure model (blue) and the Minerbo closure model (magenta); the minimum over the whole computational domain is plotted.  
 For the CB closure model, the limiter is triggered to prevent both density overshoots and $\gamma(\cM)<0$.  
 Late in the simulation ($t\gtrsim0.7$), the minimum value of $\vartheta_{2}$ is around $0.1$.  
 For the model using the Minerbo closure, the limiter is not triggered ($\vartheta_{1}=\vartheta_{2}=1$).  
 
 \subsection{Homogeneous Sphere}
+\label{sec:homogeneousSphere}
 
-The homogeneous sphere test (e.g., \cite{smit_etal_1997}) considers of a sphere with radius $R$.  
+The homogeneous sphere test (e.g., \cite{smit_etal_1997}) considers a sphere with radius $R$.  
 Inside the sphere (radius $<R$), the absorption opacity $\sigma_{\Ab}$ and the equilibrium distribution function $f_{0}$ are set to constant values.  
 The scattering opacity $\sigma_{\Scatt}$ is set to zero in this test (i.e., $\xi=1$).  
 Outside the sphere, the absorption opacity is zero.  
@@ -253,7 +262,7 @@ The steady state solution, obtained by solving the transport equation in spheric
   f_{\mbox{\tiny A}}(r,\mu)=f_{0}\,\big(1-e^{-\chi_{0}\,s(r,\mu)}\big),
   \label{eq:distributionHomogeneousSphere}
 \end{equation}
-where $r=|\vect{x}|$ and
+where $r=|\vect{x}|$, 
 \begin{equation}
   s(r,\mu)
   =\left\{
@@ -265,7 +274,7 @@ where $r=|\vect{x}|$ and
   \right.
 \end{equation}
 and $g(r,\mu)=[1-(r/R)^{2}(1-\mu^{2})]^{1/2}$.  
-For $f_{0}\in[0,1]$, the analytical solution is bounded $f_{\mbox{\tiny A}}\in[0,1]$.  
+For $f_{0}\in(0,1)$, the analytical solution is bounded $f_{\mbox{\tiny A}}\in(0,1)$.  
 
 Here, this test is computed on a three-dimensional Cartesian domain $D=\{\vect{x}\in\bbR^{3}:x^{1}\in[0,2], x^{2}\in[0,2], x^{3}\in[0,2]\}$.  
 Because of the symmetry of the problem, and to save computational resources, we only compute the solution in one octant.  
@@ -278,11 +287,11 @@ Specifically, we use an absorption opacity of the following form
 We set $f_{0}=1$, and compute three versions of this test: one with $\sigma_{\Ab,0}=1$, $R_{0}=1$, and $p=80$ (Test~A), one with $\sigma_{\Ab,0}=10$, $R_{0}=1$, and $p=80$ (Test~B), and one with $\sigma_{\Ab}=10^{3}$, $R_{0}=0.85$, and $p=40$ (Test~C).  
 (These values for $R_{0}$ and $p$ result in similar radius for where the optical depth equals $2/3$ in Test~B and Test~C.)
 We compute until $t=5$, when the system has reached an approximate steady state.  
-We use the IMEX scheme PD-ARS --- the least compute-intensive of the realizability-preserving IMEX schemes presented here --- in all the tests.  
+In all the tests, we use the IMEX scheme PD-ARS --- the least compute-intensive of the constraint-preserving IMEX schemes presented here.  
 The main purpose of this test is to compare the results obtained using the different algebraic closures discussed in Section~\ref{sec:algebraicClosure}.  
 
 In Figure~\ref{fig:HomogeneousSphere}, we plot results obtained for all tests at $t=5$: Test~A (top panels), Test~B (middle panels), and Test~C (bottom panels).  
-The particle density $\cJ$ and the flux factor $h=|\vect{\cH}|/\cJ$ are plotted versus radius $r=|\vect{x}|$ (left and right panels, respectively).  
+The particle density $\cJ$ and the flux factor $h=|\vect{\cH}|/\cJ$ (left and right panels, respectively) are plotted versus radius $r=|\vect{x}|$ using scatter plots.  
 In each panel, results obtained with the various algebraic closures discussed in Section~\ref{sec:algebraicClosure} are plotted: Minerbo (magenta), CB (blue), BL (green), and Kershaw (cyan).  
 The analytical solution is also plotted (dashed black lines).  
 \begin{figure}[h]
@@ -310,7 +319,7 @@ From the plots of the particle density (left panels in Figure~\ref{fig:Homogeneo
 From the plots of the flux factor (right panels in Figure~\ref{fig:HomogeneousSphere}), it is evident that the results obtained with the Minerbo closure --- the only closure not based on Fermo-Dirac statistics --- deviates the most from the analytic solution outside $r=1$, where the flux factor is consistently higher than the analytical solution for all values of $\sigma_{\Ab,0}$.  
 The fermionic closures (CB, BL, and Kershaw) track the analytic solution better.  
 Similar agreement between the numerical and analytical solutions was reported by Smit et al. \cite{smit_etal_1997}, when using the CB maximum entropy closure, with $f_{0}=0.8$ and an unsmoothed absorption opacity $\sigma_{\Ab}=4$.  
-We also note that our results are at odds with the results recently reported by Murchikova et al. \cite{murchikova_etal_2017}, who compared results obtained with with the two-moment model using a large number of algebraic closures for this same problem (albeit using an unsmoothed and slightly different value for the absorption opacity).  
+We also note that our results appear to be somewhat at odds with the results recently reported by Murchikova et al. \cite{murchikova_etal_2017}, who compared results obtained with the two-moment model using a large number of algebraic closures for this same problem (albeit using an unsmoothed and slightly different value for the absorption opacity).  
 Murchikova et al. do not plot the particle density, but find essentially no difference in the flux factor and the Eddington factor when comparing results obtained with the maximum entropy closures of Minerbo and Cernohorsky \& Bludman (CB).  
 
 In Figure~\ref{fig:HomogeneousSphereRealizability}, we further compare the results obtained when using the Minerbo and CB closures by plotting the solutions to the homogeneous sphere problem for Test~C at $t=5$ in the $(\cH_{1},\cJ)$-plane (cf. the realizable domain in Figure~\ref{fig:RealizableSetFermionic}):  The numerical solution in each spatial point is represented by a magenta dot in the panels.  
@@ -328,6 +337,7 @@ In the lower two panel we zoom in on the results obtained with the Minerbo closu
   \label{fig:HomogeneousSphereRealizability}
 \end{figure}
 As can be seen in the upper panels in Figure~\ref{fig:HomogeneousSphereRealizability}, the solution to the homogeneous sphere problem covers a large fraction of the right half of the realizable domain $\cR$, whose boundary is indicated by solid black curves in each panel.  
+(The moments only appear in the right half of $\cR$ because we only compute in one octant.)  
 When using the CB closure, the realizability-preserving DG-IMEX scheme developed here maintains solutions within $\cR$.  
 When using the Minerbo closure, the appropriate realizable domain is given by $\cR^{+}$ (cf. Eq.~\eqref{eq:realizableSetPositive}), whose boundary is indicated by solid red lines in Figure~\ref{fig:HomogeneousSphereRealizability}, and we find that the numerical solution ventures outside $\cR$.  
 Near the surface around $r=1$, the number density slightly exceeds unity (lower left panel), while for larger radii, the computed flux may exceed the value allowed by Fermi-Dirac statistics (lower right panel).  
