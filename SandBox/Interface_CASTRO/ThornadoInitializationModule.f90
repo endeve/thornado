@@ -108,18 +108,24 @@ contains
 
   end subroutine InitThornado
 
-  subroutine InitThornado_Patch( nX, swX, xL, xR, swE, eL, eR ) &
+  subroutine InitThornado_Patch( nX, swX, xL, xR, swE, eL_in, eR_in ) &
       bind(C, name = "InitThornado_Patch")
 
+    use UnitsModule          , only : MeV
     use RadiationFieldsModule, only : nSpecies
     use ProgramHeaderModule  , only : nE, nNodesX, nNodesE
 
     integer,  INTENT(in) :: nX(3), swX(3)
     REAL(DP), INTENT(in) :: xL(3), xR(3)
     integer,  INTENT(in) :: swE
-    REAL(DP), INTENT(in) :: eL, eR
+    REAL(DP), INTENT(in) :: eL_in, eR_in
 
-    integer :: iDim
+    REAL(DP) :: eL, eR
+    integer  :: iDim
+
+    ! Multiply here to convert from MeV into ergs
+    eL = eL_in * MeV
+    eR = eR_in * MeV
 
     call InitializeProgramHeader &
            ( ProgramName_Option = '', nNodes_Option = 2, &
@@ -162,11 +168,18 @@ contains
            ( Verbose_Option = .FALSE. )
 
     call InitializePositivityLimiter_TwoMoment &
-           ( Min_1_Option = - HUGE( 1.0_DP ), &
-             Max_1_Option = + HUGE( 1.0_DP ), &
-             Min_2_Option = - HUGE( 1.0_DP ), &
-             UsePositivityLimiter_Option = .FALSE., &
+           ( Min_1_Option = 0.0_DP, &
+             Max_1_Option = 1.0_DP, &
+             Min_2_Option = 0.0_DP, &
+             UsePositivityLimiter_Option = .TRUE., &
              Verbose_Option = .FALSE. )
+
+ !  call InitializePositivityLimiter_TwoMoment &
+ !         ( Min_1_Option = - HUGE( 1.0_DP ), &
+ !           Max_1_Option = + HUGE( 1.0_DP ), &
+ !           Min_2_Option = - HUGE( 1.0_DP ), &
+ !           UsePositivityLimiter_Option = .FALSE., &
+ !           Verbose_Option = .FALSE. )
 
   end subroutine InitThornado_Patch
 
