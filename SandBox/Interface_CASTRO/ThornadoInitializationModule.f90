@@ -123,7 +123,8 @@ contains
     REAL(DP) :: eL, eR
     integer  :: iDim
 
-    ! Multiply here to convert from MeV into ergs
+    ! --- Convert from MeV (expected) to thornado code units ---
+
     eL = eL_in * MeV
     eR = eR_in * MeV
 
