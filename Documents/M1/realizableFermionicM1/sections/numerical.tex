@@ -3,7 +3,7 @@
 
 In this section we present numerical results obtained with the DG-IMEX scheme developed in this paper.  
 The first set of tests (Section~\ref{sec:smoothProblems}) are included to compare the time integration schemes in various regimes.  
-We are not concerned with moment realizability here, and we do not apply the realizability-enforcing limiter in these tests.  
+We are not concerned with moment realizability in Section~\ref{sec:smoothProblems}, and we do not apply the realizability-enforcing limiter in these tests.  
 The tests in Sections~\ref{sec:packedBeam} and \ref{sec:fermionImplosion} are designed specifically to demonstrate the robustness of the scheme to dynamics near the boundary of the realizable set $\cR$.  
 The test in Section~\ref{sec:homogeneousSphere} (Homogeneous Sphere) is of astrophysical interest.  
 Here we consider moment realizability and compare results obtained with various moment closures.  
@@ -291,7 +291,7 @@ In all the tests, we use the IMEX scheme PD-ARS --- the least compute-intensive 
 The main purpose of this test is to compare the results obtained using the different algebraic closures discussed in Section~\ref{sec:algebraicClosure}.  
 
 In Figure~\ref{fig:HomogeneousSphere}, we plot results obtained for all tests at $t=5$: Test~A (top panels), Test~B (middle panels), and Test~C (bottom panels).  
-The particle density $\cJ$ and the flux factor $h=|\vect{\cH}|/\cJ$ (left and right panels, respectively) are plotted versus radius $r=|\vect{x}|$ using scatter plots.  
+The particle density $\cJ$ and the flux factor $h=|\vect{\cH}|/\cJ$ (left and right panels, respectively) are plotted versus radius $r=|\vect{x}|$.  
 In each panel, results obtained with the various algebraic closures discussed in Section~\ref{sec:algebraicClosure} are plotted: Minerbo (magenta), CB (blue), BL (green), and Kershaw (cyan).  
 The analytical solution is also plotted (dashed black lines).  
 \begin{figure}[H]

@@ -97,7 +97,7 @@ $\alpha=0$, and $\tilde{w}_{i}=\tilde{a}_{3i} = w_{i}=a_{3i}$ for $i\le3$.
 
 \paragraph{IMEX PD-ARS}
 
-We have found diffusion accurate, constraint-preserving IMEX schemes of type ARS that are second-order accurate in the streaming limit, which we refer to as IMEX PD-ARS; see \ref{app:PD-ARS}.  
+We have found a family of constraint-preserving, diffusion accurate IMEX schemes of type ARS that are second-order accurate in the streaming limit, which we refer to as IMEX PD-ARS; see \ref{app:PD-ARS}.  
 For these schemes, $c_{\mbox{\tiny Sch}}= 1 - 2\epsilon$ with $\epsilon \in [0, 1/2)$.
 Here we give an example by setting $\epsilon=0.1$.
 \begin{align*}
@@ -156,7 +156,7 @@ The optimal third-order accurate, strong-stability-preserving Runge-Kutta scheme
 
 Here we construct a three-stage PD-IMEX scheme of Type~ARS, conforming to Definition~\ref{def:PD-IMEX}.  
 We refer to the resulting IMEX scheme as PD-ARS.  
-The double Butcher tableau is
+For a 3-stage scheme, the double Butcher tableau is
 \begin{equation}
   \begin{array}{c | c c c}
   	         0           & 0                 & 0                   & 0  \\
@@ -176,7 +176,7 @@ The problem is then to find the coefficients $\{ \tilde{a}_{21}, \tilde{a}_{31},
 \begin{equation}
   c_{\mbox{\tiny Sch}} = \min \Big\{\, \dfrac{c_{20}}{\tilde{c}_{20}},\, \dfrac{c_{30}}{\tilde{c}_{30}},\, \dfrac{c_{32}}{\tilde{c}_{32}} \,\Big\}.  
 \end{equation}
-Imposing the equality constraints (i.e., Eqs.~\eqref{eq:implicitConsistency}, \eqref{eq:orderConditionsEx}, and \eqref{eq:diffusionCondition}), the double Butcher tableau can be written in terms of two parameters ($x$ and $y$) as
+Imposing the equality constraints (i.e., Eqs.~\eqref{eq:implicitConsistency}, \eqref{eq:orderConditionsEx}, and \eqref{eq:diffusionCondition}), the double Butcher tableau can be written in terms of two independent parameters ($x,y\in\bbR$) as
 \begin{equation}
   \begin{array}{c | c c c}
   	     0       & 0            & 0 & 0 \\
@@ -209,7 +209,7 @@ Setting $\epsilon = 0$ gives the optimal scheme with $c_{\mbox{\tiny Sch}} = 1$.
 \section{Nonexistence of Three-Stage PD-IMEX Scheme of Type~A}
 \label{app:noTypeA}
 
-Here we prove that a PD-IMEX scheme (i.e., conforming to Definition~\ref{def:PD-IMEX}) of type~A does not exist.  
+Here we prove that a PD-IMEX scheme  of type~A (i.e., conforming to Definition~\ref{def:PD-IMEX} with Eq.~\eqref{eq:positivityConditionsTypeA} replacing Eq.~\eqref{eq:positivityConditionsTypeARS} in item 3) does not exist.  
 First, for a three-stage, GSA IMEX scheme of type~A the double Butcher tableau is
 \begin{equation*}
   \begin{array}{c | c c c}
@@ -244,8 +244,8 @@ The first constraint in Eq.~\eqref{eq:1stOrderGeneral} together with the constra
   a_{31} = 0.
   \label{eq:a31is0}
 \end{align}
-The constraint-preserving property requires $a_{11}, a_{22}, a_{33}>0$.  
-The inequality constraints in Eq.~\eqref{eq:positivityConditionsTypeA} also require
+Next we consider the inequality constraints.  
+The constraint-preserving property in Eq.~\eqref{eq:positivityConditionsTypeA} requires $a_{11}, a_{22}, a_{33}>0$, and 
 \begin{equation}
   c_{21} = \frac{a_{21}}{a_{11}} \geq 0, \quad
   c_{31} = \frac{a_{31}}{a_{11}} - \frac{a_{32}\,a_{21}}{a_{22}\,a_{11}} \geq 0, \quad\text{and}\quad

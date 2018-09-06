@@ -17,7 +17,7 @@ In Eq.~\eqref{eq:ode}, the transport operator $\vect{\cT}$ corresponds to the se
 
 Eq.~\eqref{eq:ode} is to be integrated forward in time with an ODE integrator, and we begin with the following definition of a constraint-preserving time integration scheme, as applied to integrate a physical model forward in time.  
 \begin{define}
-  Given sufficient conditions, a constraint-preserving time integration scheme preserves the constraints of a model if the set of admissible states satisfying the constraints form a convex set.  
+  Given sufficient conditions, a constraint-preserving time integration scheme preserves the constraints of a model if the set of admissible states satisfying the constraints forms a convex set.  
   \label{def:constraintPreserving}
 \end{define}
 As an example, given a spatial discretization of a model that is constraint-preserving with the forward Euler method for a sufficiently small time step, high-order explicit strong stability-preserving Runge-Kutta (SSP-RK) methods, which can be expressed as convex combinations of forward Euler steps, also preserve the constraints (possibly with a smaller time step), and form a class of constraint-preserving schemes.  
@@ -141,17 +141,19 @@ The absence of the transport operator in the correction step in Eq.~\eqref{eq:im
 We demonstrate the inferior performance of IMEX schemes with this correction step in the diffusion limit in Section~\ref{sec:smoothProblems}.  
 We have also implemented and tested one of the IMEX schemes in Chertock et al. \cite{chertock_etal_2015} (not included in Section~\ref{sec:smoothProblems}), where the transport operator is part of the correction step, and found it to perform very well in the diffusion limit.  
 However, we have not been able to prove the realizability-preserving property with this approach without invoking a too severe time step restriction.  
-We therefore proceed to design constraint-preserving IMEX schemes, without the correction step, that perform better in the diffusion limit.  
+We therefore proceed to design constraint-preserving IMEX schemes, without the correction step, that perform well in the diffusion limit.  
 We limit the scope to IMEX schemes of type~ARS.  
 (It can be shown that IMEX schemes of type~A conforming to Definition~\ref{def:PD-IMEX} below do not exist; cf. \ref{app:noTypeA}.)
 
 We take a heuristic approach to determine conditions on the coefficients of the IMEX scheme to ensure it performs well in the diffusion limit.  
+We leave the spatial discretization unspecified.  
 Define the vectors 
 \begin{equation}
   \vec{\cJ}=(\cJ^{(1)},\ldots,\cJ^{(s)})^{T}
   \quad\text{and}\quad
   \vec{\vect{\cH}}=(\vect{\cH}^{(1)},\ldots,\vect{\cH}^{(s)})^{T}.  
 \end{equation}
+(The components of $\vec{\cJ}$ and $\vec{\vect{\cH}}$ can, e.g., be the cell averages evolved with the DG method.)  
 We can then write the stages of the IMEX scheme in Eq.~\eqref{imexStages} applied to the number density equation as
 \begin{equation}
   \vec{\cJ}=\cJ^{n}\,\vec{\vect{e}} - \dt\,\tilde{A}\,\nabla\cdot\vec{\vect{\cH}}, 
@@ -244,8 +246,9 @@ On the right-hand side of Eq.~\eqref{eq:scalarODE}, the first (oscillatory) term
 The IMEX schemes can then be written as $u^{n+1} =P(z_{1},z_{2})\,u^{n}$, where $P(z_{1},z_{2})$ is the amplification factor of the scheme, $z_{1}=\dt\,\lambda_{1} = x +iy$, and $z_{2} = \dt\,\lambda_{2} \le 0$.  
 Stability of the IMEX scheme requires $|P(z_1,z_2)|\leq 1$.  
 The stability regions of PA2+ and PD-ARS are plotted in Figure~\ref{fig:AbsoluteStability}.  
+(Contours of constant $z_{2}$ are included, and the stability region for a given $z_{2}$ is enclosed by the corresponding contour.)  
 As can be seen from the figures, the absolute stability region of both schemes increases with increasing $|z_{2}|$ (increased damping).  
-For a given $|z_{2}|\ge0$, the stability region of PD-ARS is larger than that of PA2+.  
+For a given $|z_{2}|>0$, the stability region of PD-ARS is larger than that of PA2+.  
 In the linear case, a time step that satisfies the absolute stability for the explicit part of the IMEX scheme ($|z_2| = 0$) fulfills the stability requirement for the IMEX scheme as whole ($|z_2| \geq 0$).  
 This holds for all PD-ARS schemes with $\epsilon\in [0,0.5)$.
 \begin{figure}[h]
