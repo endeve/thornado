@@ -106,7 +106,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU_R(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
 
-    INTEGER               :: iCR, iS, iCF, iGF, iX_G, iE_G
+    INTEGER               :: iCR, iS, iCF, iGF, iX_G
     REAL(DP)              :: PF_N(1:nPF)
     REAL(DP)              :: AF_N(1:nAF)
     REAL(DP), ALLOCATABLE :: Chi(:,:) ! --- Absorption Opacity
