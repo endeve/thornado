@@ -60,7 +60,7 @@ CONTAINS
 
     CALL GetQuadrature( nN, xQ, wQ )
 
-    ALLOCATE( Mesh % Nodes  (1:nN) )
+    ALLOCATE( Mesh % Nodes(1:nN) )
     Mesh % Nodes = xQ
 
   END SUBROUTINE CreateMesh
