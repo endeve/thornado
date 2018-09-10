@@ -73,14 +73,13 @@ CONTAINS
 
     ! --- Implicit Update ---
 
-    !$OMP PARALLEL DO PRIVATE ( iX_G, iS )
     DO iX_G = 1, nX_G
       DO iS = 1, nSpecies
 
         ! --- Number Density ---
 
         U_N(:,iCR_N, iS,iX_G) &
-          = ( dt * SigmaA(:,iX_G) * N0 + U_N(:,iCR_N, iS,iX_G) ) &
+          = ( dt * SigmaA(:,iX_G) * N0 + U_N(:,iCR_N,iS,iX_G) ) &
             / ( One + dt * SigmaA(:,iX_G) )
 
         ! --- Number Flux (1) ---
@@ -95,7 +94,7 @@ CONTAINS
 
         ! --- Number Flux (3) ---
 
-        dU_N(:,iCR_G3,iS,iX_G) &
+        U_N(:,iCR_G3,iS,iX_G) &
           = U_N(:,iCR_G3,iS,iX_G) / ( One + dt * SigmaT(:,iX_G) )
 
         ! --- Increments ---
@@ -114,7 +113,6 @@ CONTAINS
 
       END DO
     END DO
-    !$OMP END PARALLEL DO
 
     ! --- Map Increment Back ---
 
@@ -177,7 +175,6 @@ CONTAINS
       END DO
     END DO
 
-    !$OMP PARALLEL DO PRIVATE ( iX_G, iS )
     DO iX_G = 1, nX_G
       DO iS = 1, nSpecies
 
@@ -247,7 +244,6 @@ CONTAINS
 
       END DO
     END DO
-    !$OMP END PARALLEL DO
 
     ! --- Map Correction Back ---
 
@@ -274,28 +270,34 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: SigmaS0_Option
     REAL(DP), INTENT(in), OPTIONAL :: Radius_Option
 
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4
-    INTEGER  :: iNodeZ1, iNodeZ2
-    INTEGER  :: iNodeZ3, iNodeZ4, iNode
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iNode
     REAL(DP) :: X1, X2, X3, R, Radius
     REAL(DP), ALLOCATABLE :: SigmaTmp1(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: SigmaTmp2(:,:,:,:,:)
 
-    N0 = Zero
-    IF( PRESENT( N0_Option ) ) &
+    IF( PRESENT( N0_Option ) )THEN
       N0 = N0_Option
+    ELSE
+      N0 = Zero
+    END IF
 
-    SigmaA0 = Zero
-    IF( PRESENT( SigmaA0_Option ) ) &
+    IF( PRESENT( SigmaA0_Option ) )THEN
       SigmaA0 = SigmaA0_Option
+    ELSE
+      SigmaA0 = Zero
+    END IF
 
-    SigmaS0 = Zero
-    IF( PRESENT( SigmaS0_Option ) ) &
+    IF( PRESENT( SigmaS0_Option ) )THEN
       SigmaS0 = SigmaS0_Option
+    ELSE
+      SigmaS0 = Zero
+    END IF
 
-    Radius = HUGE( One )
-    IF( PRESENT( Radius_Option ) ) &
+    IF( PRESENT( Radius_Option ) )THEN
       Radius = Radius_Option
+    ELSE
+      Radius = HUGE( One )
+    END IF
 
     SigmaT0 = SigmaA0 + SigmaS0
 
@@ -325,49 +327,35 @@ CONTAINS
     ALLOCATE( SigmaTmp2(nDOF,nZ(1),nZ(2),nZ(3),nZ(4)) )
 
     DO iZ4 = 1, nZ(4)
-      DO iZ3 = 1, nZ(3)
-        DO iZ2 = 1, nZ(2)
-          DO iZ1 = 1, nZ(1)
+    DO iZ3 = 1, nZ(3)
+    DO iZ2 = 1, nZ(2)
+    DO iZ1 = 1, nZ(1)
 
-            DO iNode = 1, nDOF
+      X1 = MeshX(1) % Center(iZ2)
+      X2 = MeshX(2) % Center(iZ3)
+      X3 = MeshX(3) % Center(iZ4)
 
-              iNodeZ2 = NodeNumberTable(2,iNode)
-              iNodeZ3 = NodeNumberTable(3,iNode)
-              iNodeZ4 = NodeNumberTable(4,iNode)
+      R = SQRT( X1**2 + X2**2 + X3**2 )
 
-              X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
-              X2 = NodeCoordinate( MeshX(2), iZ3, iNodeZ3 )
-              X3 = NodeCoordinate( MeshX(3), iZ4, iNodeZ4 )
+      IF( R < Radius )THEN
 
-              R = SQRT( X1**2 + X2**2 + X3**2 )
+        SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) &
+          = SigmaA0 / ( (R/0.85_DP)**40 + One )
+        SigmaTmp2(:,iZ1,iZ2,iZ3,iZ4) &
+          = SigmaS0
 
-              IF( R < Radius )THEN
+      ELSE
 
-                SigmaTmp1(iNode,iZ1,iZ2,iZ3,iZ4) &
-                  = SigmaA0 / ( (R/0.85_DP)**40 + One )
-                SigmaTmp2(iNode,iZ1,iZ2,iZ3,iZ4) = SigmaS0
+        SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) &
+          = SigmaA0 / ( (R/0.85_DP)**40 + One )
+        SigmaTmp2(:,iZ1,iZ2,iZ3,iZ4) &
+          = Zero
 
-              ELSE
+      END IF
 
-                SigmaTmp1(iNode,iZ1,iZ2,iZ3,iZ4) &
-                  = SigmaA0 / ( (R/0.85_DP)**40 + One )
-                SigmaTmp2(iNode,iZ1,iZ2,iZ3,iZ4) = Zero
-
-              END IF
-
-            END DO
-
-            ! --- Cell Average ---
-
-            SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) &
-              = DOT_PRODUCT( Weights_q, SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) )
-
-            SigmaTmp2(:,iZ1,iZ2,iZ3,iZ4) &
-              = DOT_PRODUCT( Weights_q, SigmaTmp2(:,iZ1,iZ2,iZ3,iZ4) )
-
-          END DO
-        END DO
-      END DO
+    END DO
+    END DO
+    END DO
     END DO
 
     CALL MapForward_R( [1,1,1,1], nZ, SigmaTmp1, SigmaA )
@@ -405,34 +393,32 @@ CONTAINS
 
     iX_G = 0
     DO iZ4 = iZ_B(4), iZ_E(4)
-      DO iZ3 = iZ_B(3), iZ_E(3)
-        DO iZ2 = iZ_B(2), iZ_E(2)
-          DO iNodeZ4 = 1, nNodesZ(4)
-            DO iNodeZ3 = 1, nNodesZ(3)
-              DO iNodeZ2 = 1, nNodesZ(2)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
+    DO iNodeZ4 = 1, nNodesZ(4)
+    DO iNodeZ3 = 1, nNodesZ(3)
+    DO iNodeZ2 = 1, nNodesZ(2)
 
-                iX_G = iX_G + 1
+      iX_G = iX_G + 1
 
-                iE_G = 0
-                DO iZ1 = iZ_B(1), iZ_E(1)
-                  DO iNodeZ1 = 1, nNodesZ(1)
+      iE_G = 0
+      DO iZ1 = iZ_B(1), iZ_E(1)
+      DO iNodeZ1 = 1, nNodesZ(1)
 
-                    iE_G = iE_G + 1
+        iE_G = iE_G + 1
 
-                    iNode = NodeNumberTable4D &
-                              ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
+        iNode = NodeNumberTable4D( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
 
-                    RF_N(iE_G,iX_G) &
-                      = RF(iNode,iZ1,iZ2,iZ3,iZ4)
+        RF_N(iE_G,iX_G) = RF(iNode,iZ1,iZ2,iZ3,iZ4)
 
-                  END DO
-                END DO
-
-              END DO
-            END DO
-          END DO
-        END DO
       END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE MapForward_R
@@ -453,34 +439,32 @@ CONTAINS
 
     iX_G = 0
     DO iZ4 = iZ_B(4), iZ_E(4)
-      DO iZ3 = iZ_B(3), iZ_E(3)
-        DO iZ2 = iZ_B(2), iZ_E(2)
-          DO iNodeZ4 = 1, nNodesZ(4)
-            DO iNodeZ3 = 1, nNodesZ(3)
-              DO iNodeZ2 = 1, nNodesZ(2)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
+    DO iNodeZ4 = 1, nNodesZ(4)
+    DO iNodeZ3 = 1, nNodesZ(3)
+    DO iNodeZ2 = 1, nNodesZ(2)
 
-                iX_G = iX_G + 1
+      iX_G = iX_G + 1
 
-                iE_G = 0
-                DO iZ1 = iZ_B(1), iZ_E(1)
-                  DO iNodeZ1 = 1, nNodesZ(1)
+      iE_G = 0
+      DO iZ1 = iZ_B(1), iZ_E(1)
+      DO iNodeZ1 = 1, nNodesZ(1)
 
-                    iE_G = iE_G + 1
+        iE_G = iE_G + 1
 
-                    iNode = NodeNumberTable4D &
-                              ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
+        iNode = NodeNumberTable4D( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
 
-                    RF(iNode,iZ1,iZ2,iZ3,iZ4) &
-                      = RF_N(iE_G,iX_G)
+        RF(iNode,iZ1,iZ2,iZ3,iZ4) = RF_N(iE_G,iX_G)
 
-                  END DO
-                END DO
-
-              END DO
-            END DO
-          END DO
-        END DO
       END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE MapBackward_R
