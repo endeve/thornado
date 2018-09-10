@@ -658,10 +658,7 @@ CONTAINS
   SUBROUTINE InitializeFields_HomogeneousSphere
 
     INTEGER   :: iE, iX1, iX2, iX3, iS
-    INTEGER   :: iNodeX1
-    INTEGER   :: iNodeX2
     INTEGER   :: iNode
-    REAL(DP)  :: X1, X2, R
     REAL(DP)  :: Gm_dd_11(nDOF)
     REAL(DP)  :: Gm_dd_22(nDOF)
     REAL(DP)  :: Gm_dd_33(nDOF)
