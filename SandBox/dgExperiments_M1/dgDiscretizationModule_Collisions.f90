@@ -3,6 +3,7 @@ MODULE dgDiscretizationModule_Collisions
   USE KindModule, ONLY: &
     DP, Zero, One
   USE ProgramHeaderModule, ONLY: &
+    ProgramName, &
     nZ, nNodesZ, nDOF
   USE ReferenceElementModule, ONLY: &
     NodeNumberTable, &
@@ -331,25 +332,34 @@ CONTAINS
     DO iZ2 = 1, nZ(2)
     DO iZ1 = 1, nZ(1)
 
-      X1 = MeshX(1) % Center(iZ2)
-      X2 = MeshX(2) % Center(iZ3)
-      X3 = MeshX(3) % Center(iZ4)
+      IF( TRIM( ProgramName ) .EQ. 'HomogeneousSphere' )THEN
 
-      R = SQRT( X1**2 + X2**2 + X3**2 )
+        X1 = MeshX(1) % Center(iZ2)
+        X2 = MeshX(2) % Center(iZ3)
+        X3 = MeshX(3) % Center(iZ4)
 
-      IF( R < Radius )THEN
+        R = SQRT( X1**2 + X2**2 + X3**2 )
 
-        SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) &
-          = SigmaA0 / ( (R/0.85_DP)**40 + One )
-        SigmaTmp2(:,iZ1,iZ2,iZ3,iZ4) &
-          = SigmaS0
+        IF( R < Radius )THEN
+
+          SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) &
+            = SigmaA0 / ( (R/0.85_DP)**40 + One )
+          SigmaTmp2(:,iZ1,iZ2,iZ3,iZ4) &
+            = SigmaS0
+
+        ELSE
+
+          SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) &
+            = SigmaA0 / ( (R/0.85_DP)**40 + One )
+          SigmaTmp2(:,iZ1,iZ2,iZ3,iZ4) &
+            = Zero
+
+        END IF
 
       ELSE
 
-        SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) &
-          = SigmaA0 / ( (R/0.85_DP)**40 + One )
-        SigmaTmp2(:,iZ1,iZ2,iZ3,iZ4) &
-          = Zero
+        SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) = SigmaA0
+        SigmaTmp2(:,iZ1,iZ2,iZ3,iZ4) = SigmaS0
 
       END IF
 
