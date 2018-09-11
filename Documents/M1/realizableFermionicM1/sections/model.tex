@@ -5,18 +5,18 @@ In this section we give a summary of the mathematical model.
 
 \subsection{Boltzmann Equation}
 
-We consider approximate solutions to the Boltzmann equation for transport of massless particles through a static material in Cartesian geometry, which, after scaling to dimensionless units, can be written as
+We consider approximate solutions to the Boltzmann equation for the transport of massless particles through a static material in Cartesian geometry, which, after scaling to dimensionless units, can be written as
 \begin{equation}
   \pd{f}{t}+\vect{\ell}\cdot\nabla f
   =\f{1}{\tau}\,\cC(f),
   \label{eq:boltzmann}
 \end{equation}
-where the distribution function $f\colon(\omega,\varepsilon,\vect{x},t)\in\bbS^{2}\times\bbR^{+}\times\bbR^{3}\times\bbR^{+}\to\bbR^{+}$ gives the number of particles propagating in direction $\omega\in\bbS^{2}:=\{\,\omega=(\thetaNu,\phiNu)~|~\thetaNu\in[0,\pi],\phiNu\in[0,2\pi)\,\}$, with energy $\varepsilon\in\bbR^{+}$, at position $\vect{x}\in\bbR^{3}$ and time $t\in\bbR^{+}$.  
+where the distribution function $f\colon(\omega,\varepsilon,\vect{x},t)\in\bbS^{2}\times\bbR^{+}\times\bbR^{3}\times\bbR^{+}\to\bbR^{+}$ gives the number of particles propagating in the direction $\omega\in\bbS^{2}:=\{\,\omega=(\thetaNu,\phiNu)~|~\thetaNu\in[0,\pi],\phiNu\in[0,2\pi)\,\}$, with energy $\varepsilon\in\bbR^{+}$, at position $\vect{x}\in\bbR^{3}$ and time $t\in\bbR^{+}$.  
 Here we use spherical momentum space coordinates $(\varepsilon,\omega)$, and the unit vector $\vect{\ell}(\omega)\in\bbR^{3}$ (independent of $\varepsilon$ and $\vect{x}$) is parallel to the particle three-momentum $\vect{p}=\varepsilon\,\vect{\ell}$.  
 We also define the energy-position coordinates $\vect{z}:=\{\varepsilon,\vect{x}\}\in\bbR^{+}\times\bbR^{3}$.  
 On the right-hand side of Eq.~\eqref{eq:boltzmann}, $\tau$ is the ratio of the particle mean-free path (due to interactions with a background) to some characteristic length scale of the problem.  
 In opaque regions, $\tau\ll1$, while for free streaming particles, $\tau\gg1$.  
-The collision term, due to emission, absorption, and isotropic and elastic scattering, is given by
+The collision operator, which models emission, absorption, and isotropic and elastic scattering, is given by
 \begin{equation}
   \cC(f)=\xi\,\big(\,f_{0}-f\,\big)
   +(1-\xi)\,\big(\,\f{1}{4\pi}\int_{\bbS^{2}}f\,d\omega-f\,\big),
@@ -56,7 +56,7 @@ Taking the zeroth and first moments of Eq.~\eqref{eq:boltzmann} gives the two-mo
   \pd{\vect{\cM}}{t}+\nabla\cdot\vect{\cF}=\f{1}{\tau}\,\vect{\cC}(\vect{\cM}),
   \label{eq:momentEquations}
 \end{equation}
-where evolved moments are $\vect{\cM}=(\cJ,\vect{\cH})^{T}$ and $\vect{\cF}$ are the fluxes.  
+where $\vect{\cM}=(\cJ,\vect{\cH})^{T}$ and $\vect{\cF}=(\vect{\cH},\vect{\cK})^{T}$.  
 Components of the fluxes in each coordinate direction are $\vect{\cF}^{i}=\vect{e}_{i}\cdot\vect{\cF}=(\vect{e}_{i}\cdot\vect{\cH},\vect{e}_{i}\cdot\vect{\cK})^{T}$, where $\vect{e}_{i}$ is the unit vector parallel to the $i$th coordinate direction.  
 On the right-hand side of Eq.~\eqref{eq:momentEquations}, the source term is
 \begin{equation}
@@ -66,7 +66,7 @@ On the right-hand side of Eq.~\eqref{eq:momentEquations}, the source term is
 where $\vect{\eta}=(\xi\,f_{0},\vect{0})^{T}$ and $\vect{\cD}=\mbox{diag}(\xi,\vect{I})$, with $\vect{I}$ the identity matrix.  
 
 In order to close the system given by Eq.~\eqref{eq:momentEquations}, the components of the stress tensor $\vect{\cK}$ must be related to the lower moments through a closure procedure.  
-To this end, Levermore \cite{levermore_1984} defined the Eddington tensor $\vect{k}=\vect{\cK}/\cJ$, assumed that the radiation field is symmetric about a preferred direction $\widehat{\vect{h}}=\vect{\cH}/|\vect{\cH}|$, so that
+To this end, Levermore \cite{levermore_1984} defined the Eddington tensor $\vect{k}=\vect{\cK}/\cJ$ and assumed that the radiation field is symmetric about a preferred direction $\widehat{\vect{h}}=\vect{\cH}/|\vect{\cH}|$ so that
 \begin{equation}
   \vect{k}=\f{1}{2}\big[\,\big(1-\chi\big)\,\vect{I}+\big(3\,\chi-1\big)\,\widehat{\vect{h}}\otimes\widehat{\vect{h}}\,\big],
   \label{eq:eddingtonTensor}
