@@ -80,11 +80,11 @@ This research was supported by the Exascale Computing Project (17-SC-20-SC), a c
 Eirik Endeve was supported in part by NSF under Grant No. 1535130.}
 
 %% Group authors per affiliation:
-\author[ornl,utk-phys,jics]{Eirik Endeve\corref{cor}}
-\ead{endevee@ornl.gov}
-
 \author[utk-phys]{Ran Chu}
 \ead{rchu@vols.utk.edu}
+
+\author[ornl,utk-phys,jics]{Eirik Endeve\corref{cor}}
+\ead{endevee@ornl.gov}
 
 \author[ornl,utk-math]{Cory D. Hauck}
 \ead{hauckc@ornl.gov}
@@ -103,9 +103,9 @@ Eirik Endeve was supported in part by NSF under Grant No. 1535130.}
 \address[utk-math]{Department of Mathematics, University of Tennessee Knoxville, TN 37996-1320}
 
 \begin{abstract}
-Building on the framework of Zhang \& Shu \cite{zhangShu_2010a,zhangShu_2010b}, we develop a realizability-preserving method to simulate transport of particles (fermions) through a background material using the two-moment model of particle transport, which evolves angular moments of a phase space distribution function $f$.  
+Building on the framework of Zhang \& Shu \cite{zhangShu_2010a,zhangShu_2010b}, we develop a realizability-preserving method to simulate the transport of particles (fermions) through a background material using a two-moment model that evolves the angular moments of a phase space distribution function $f$.  
 The two-moment model is closed using algebraic moment closures; e.g., as proposed by Cernohorsky \& Bludman \cite{cernohorskyBludman_1994} and Banach \& Larecki \cite{banachLarecki_2017a}.  
-Variations of this model have recently been used to simulate neutrino transport in nuclear astrophysics applications --- including core-collapse supernovae and compact binary mergers.  
+Variations of this model have recently been used to simulate neutrino transport in nuclear astrophysics applications, including core-collapse supernovae and compact binary mergers.  
 We employ the discontinuous Galerkin (DG) method for spatial discretization (in part to capture the asymptotic diffusion limit of the model) combined with implicit-explicit (IMEX) time integration to stably bypass short timescales induced by frequent interactions between particles and the background.  
 Appropriate care is taken to ensure the method preserves strict algebraic bounds on the evolved moments (particle density and flux) as dictated by Pauli's exclusion principle, which demands a bounded distribution function (i.e., $f\in[0,1]$).  
 This realizability-preserving scheme combines a suitable CFL condition, a realizability-enforcing limiter, a closure procedure based on Fermi-Dirac statistics, and an IMEX scheme whose stages can be written as a convex combination of forward Euler steps combined with a backward Euler step.  
