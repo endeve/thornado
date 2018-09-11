@@ -49,6 +49,7 @@ while for IMEX schemes of Type~ARS \cite{ascher_etal_1997}
   \end{aligned}
   \label{eq:positivityCoefficientsARS}
 \end{equation}
+(Note that $c_{i1}=\tilde{c}_{i1}=0$ in Eq.~\eqref{eq:positivityCoefficientsARS} so that $\sum_{j=0}^{i-1}c_{ij}=1$.)  
 
 \paragraph{IMEX PA2}
 
@@ -209,7 +210,7 @@ Setting $\epsilon = 0$ gives the optimal scheme with $c_{\mbox{\tiny Sch}} = 1$.
 \section{Nonexistence of Three-Stage PD-IMEX Scheme of Type~A}
 \label{app:noTypeA}
 
-Here we prove that a PD-IMEX scheme  of type~A (i.e., conforming to Definition~\ref{def:PD-IMEX} with Eq.~\eqref{eq:positivityConditionsTypeA} replacing Eq.~\eqref{eq:positivityConditionsTypeARS} in item 3) does not exist.  
+Here we prove that a PD-IMEX scheme  of type~A (i.e., conforming to Definition~\ref{def:PD-IMEX}, but with Eq.~\eqref{eq:positivityConditionsTypeA} replacing Eq.~\eqref{eq:positivityConditionsTypeARS} in item 3) does not exist.  
 First, for a three-stage, GSA IMEX scheme of type~A the double Butcher tableau is
 \begin{equation*}
   \begin{array}{c | c c c}

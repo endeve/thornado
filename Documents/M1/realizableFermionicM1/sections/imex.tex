@@ -199,7 +199,7 @@ which approximates a diffusion equation for $\cJ$ with the correct diffusion coe
 Unfortunately, the ``diffusion limit requirement" in Eq.~\eqref{eq:diffusionCondition}, together with the order conditions given by Eqs.~\eqref{orderConditions1} and \eqref{orderConditions2} (with $\alpha=0$), and the positivity conditions on $c_{ij}$ and $\tilde{c}_{ij}$, result in too many constraints to obtain a second-order accurate constraint-preserving IMEX scheme.
 \footnote{It was shown in \cite{hu_etal_2018} --- without the diffusion limit requirement --- that the minimum number of stages for constraint-preserving IMEX schemes of type~ARS is four.)  
 We are also concerned about increasing the number of stages, and thereby the number of implicit solves, since the implicit solve will dominate the computational cost of the IMEX scheme with more realistic collision operators (e.g., inelastic scattering).}  
-To reduce the number of constraints, and accommodate accuracy in the diffusion limit, we relax the requirement of overall second-order accuracy of the IMEX scheme.  
+To reduce the number of constraints and accommodate accuracy in the diffusion limit, we relax the requirement of overall second-order accuracy of the IMEX scheme.  
 Instead, we only require the scheme to be second-order accurate in the streaming limit ($\vect{\cQ}=0$).  
 This gives the order conditions
 \begin{equation}
