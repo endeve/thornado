@@ -17,7 +17,7 @@ We require that each element is a $d$-dimensional box in the logical coordinates
 \begin{equation}
   \bK=\{\,\vect{x} : x^{i} \in K^{i} := (\xL^{i},\xH^{i}),~|~i=1,\ldots,d\,\}, 
 \end{equation}
-with surface elements denoted $\tilde{\bK}^{i}=\otimes_{j\ne i}K^{j}$.  
+with surface elements denoted $\tilde{\bK}^{i}=\times_{j\ne i}K^{j}$.  
 We let $|\bK|$ denote the volume of an element
 \begin{equation}
   |\bK| = \int_{\bK}d\vect{x}, \quad\text{where}\quad d\vect{x} = \prod_{i=1}^{d}dx^{i}.  
@@ -42,7 +42,8 @@ The semi-discrete DG problem is to find $\vect{\cM}_{h}\in\mathbb{V}^{k}$ (which
 \end{align}
 for all $v\in\mathbb{V}^{k}$ and all $\bK\in\mathscr{T}$.  
 
-In Eq.~\eqref{eq:semidiscreteDG}, $\widehat{\bcF}^{i}(\vect{\cM}_{h})$ is a numerical flux, approximating the flux on the surface of $\bK$ with unit normal along the $i$th coordinate direction, and is evaluated with a flux function $\vect{\mathscr{F}}^{i}$ using the DG approximation from both sides of the element interface; i.e.,
+In Eq.~\eqref{eq:semidiscreteDG}, $\widehat{\bcF}^{i}(\vect{\cM}_{h})$ is a numerical flux, approximating the flux on the surface of $\bK$ with unit normal along the $i$th coordinate direction.  
+It is evaluated with a flux function $\vect{\mathscr{F}}^{i}$ using the DG approximation from both sides of the element interface; i.e.,
 \begin{equation}
   \widehat{\bcF}^{i}(\vect{\cM}_{h})\big|_{x^{i}}=\vect{\mathscr{F}}^{i}(\vect{\cM}_{h}(x^{i,-},\tilde{\bx}^{i}),\vect{\cM}_{h}(x^{i,+},\tilde{\bx}^{i})),
 \end{equation}

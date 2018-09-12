@@ -91,7 +91,7 @@ On the other hand, PC2 and PD-ARS are indistinguishable and display at most firs
 The final test with known smooth solutions, adopted from \cite{radice_etal_2013}, is diffusion of a sine wave in a purely scattering medium ($f_{0}=0$, $\sigma_{\Ab}=0$).  
 The computational domain $D=\{x:x\in[-3,3]\}$ is periodic, and the initial condition is given by
 \begin{equation}
-  \cJ_{0}(x)=0.5+0.49\times\sin\big(\pi\,x/3\big)
+  \cJ_{0}(x)=0.5+0.49\times\sin\big(\f{\pi\,x}{3}\big)
   \quad\text{and}\quad
   \cH_{x,0}
   =-\f{1}{3\sigma_{\Scatt}}\pderiv{\cJ_{0}}{x}.  
@@ -100,7 +100,7 @@ The computational domain $D=\{x:x\in[-3,3]\}$ is periodic, and the initial condi
 For a sufficiently high scattering opacity, the moment equations limit to a diffusion equation for the number density (deviations appear at the $1/\sigma_{\Scatt}^{2}$-level).  
 With the initial conditions in Eq.~\eqref{eq:initialConditionDiffusion}, the analytical solution to the limiting diffusion equation is given by
 \begin{equation}
-  \cJ(x,t)=\cJ_{0}(x)\times\exp\big(-\pi^{2}\,t/(27\,\sigma_{\Scatt})\big),
+  \cJ(x,t)=\cJ_{0}(x)\times\exp\big(-\f{\pi^{2}\,t}{27\,\sigma_{\Scatt}}\big),
 \end{equation}
 and $\cH_{x}=(3\,\sigma_{\Scatt})^{-1}\pd{\cJ}{x}$.  
 When computing errors for this test, we compare the numerical results obtained with the two-moment model to the analytical solution to the limiting diffusion equation.  
@@ -210,7 +210,7 @@ However, different from \cite{garrettHauck_2013}, the initial distribution funct
   =1-\max\Big[\,e^{-R^{2}/(2\,\sigma_{0}^{2})},10^{-8}\,\Big].  
 \end{equation}
 We set $\sigma_{0}=0.03$, and evolve to a final time of $t=1.0$.  
-We run this test using a grid of $512^{2}$ elements, polynomials of degree $k=1$, and the SSPRK2 time stepping scheme with $\dt=0.1\times\dx^{1}$; a second-order accurate scheme.  
+We run this test using a grid of $512^{2}$ elements, polynomials of degree $k=1$, and the SSPRK2 time stepping scheme with $\dt=0.1\times\dx^{1}$.  
 (There are no collisions included in this test; i.e., $\sigma_{\Ab}=\sigma_{\Scatt}=0$.)  
 For comparison, we present results using the algebraic closures of Cernohorsky \& Bludman (CB) and Minerbo.  
 
@@ -240,9 +240,11 @@ The central density starts to decrease beyond this point in time, and a steepeni
 At $t=0.4$, a discontinuity appears to have formed around $R=0.2$, resulting in numerical oscillations.  
 Except for the realizability-enforcing limiter (which is not triggered for this model), no other limiters are used to prevent numerical oscillations.  
 Although the solutions obtained with the two-moment model differ from the reference transport solution, the results obtained with the CB closure are in closer agreement with the transport solution.  
+This is likely because the CB closure is consistent with the bound $f<1$ satisfied by the transport solution in this test.  
+(For tests involving lower occupancies, the CB and Minerbo closures are expected to perform similarly.)  
 In the lower left panel in Figure~\ref{fig:Implosion}, the moments are plotted in the $(\cH_{x},\cJ)$-plane for the same times as plotted in the upper left panel.  
 (Each dot represents the moments at a specific spatial point and time.)  
-Initially, $\vect{\cH}=0$, and all the moments lie on on the line connecting $(0,0)$ and $(0,1)$; cyan points.  
+Initially, $\vect{\cH}=0$, and all the moments lie on the line connecting $(0,0)$ and $(0,1)$; cyan points.  
 With the CB closure (blue points), the moments are confined to evolve inside the realizable domain $\cR$ (black), while with the Minerbo closure, the moments are not confined to $\cR$, but to the region above the red lines (the realizable domain for moments of positive distribution functions), and this is the reason for the difference in dynamics in the two models.  
 For the model with the CB closure, some moments evolve very close to the boundary of the realizable domain, and the positivity limiter is continuously triggered to damp these moments towards the cell average, which is realizable by the design of the numerical scheme.  
 In the lower right panel in Figure~\ref{fig:Implosion} we plot the limiter parameters $\vartheta_{1}$ (solid) and $\vartheta_{2}$ (dashed) (cf. \eqref{eq:limitDensity} and \eqref{eq:limitMoments}) versus time for the CB closure model (blue) and the Minerbo closure model (magenta); the minimum over the whole computational domain is plotted.  
@@ -274,9 +276,9 @@ where $r=|\vect{x}|$,
   \right.
 \end{equation}
 and $g(r,\mu)=[1-(r/R)^{2}(1-\mu^{2})]^{1/2}$.  
-For $f_{0}\in(0,1)$, the analytical solution is bounded $f_{\mbox{\tiny A}}\in(0,1)$.  
+Thus, $f_{\mbox{\tiny A}}(r,\mu)\in(0,f_{0})~\forall~r,\mu$.  
 
-Here, this test is computed on a three-dimensional Cartesian domain $D=\{\vect{x}\in\bbR^{3}:x^{1}\in[0,2], x^{2}\in[0,2], x^{3}\in[0,2]\}$.  
+Here, this test is computed using a three-dimensional Cartesian domain $D=\{\vect{x}\in\bbR^{3}:x^{1}\in[0,2], x^{2}\in[0,2], x^{3}\in[0,2]\}$.  
 Because of the symmetry of the problem, and to save computational resources, we only compute the solution in one octant.  
 On the inner boundaries, we impose reflecting boundary conditions, while we impose 'homogeneous' boundary conditions on the outer boundary in all three coordinate dimensions; i.e., values for all moments in a boundary element are set equal to the corresponding values in the nearest element just inside $D$.  
 Since this test is computed with Cartesian coordinates using a relatively low spatial resolution ($64^{3}$), we have found it necessary to smooth out the opacity over a finite radial extent to avoid numerical artifacts due to a discontinuous absorption opacity.  
@@ -287,7 +289,7 @@ Specifically, we use an absorption opacity of the following form
 We set $f_{0}=1$, and compute three versions of this test: one with $\sigma_{\Ab,0}=1$, $R_{0}=1$, and $p=80$ (Test~A), one with $\sigma_{\Ab,0}=10$, $R_{0}=1$, and $p=80$ (Test~B), and one with $\sigma_{\Ab}=10^{3}$, $R_{0}=0.85$, and $p=40$ (Test~C).  
 (These values for $R_{0}$ and $p$ result in similar radius for where the optical depth equals $2/3$ in Test~B and Test~C.)
 We compute until $t=5$, when the system has reached an approximate steady state.  
-In all the tests, we use the IMEX scheme PD-ARS --- the least compute-intensive of the constraint-preserving IMEX schemes presented here.  
+In all the tests, we use the IMEX scheme PD-ARS with $\dt=0.1\times\dx^{1}$ --- the least compute-intensive of the convex-invariant IMEX schemes presented here.  
 The main purpose of this test is to compare the results obtained using the different algebraic closures discussed in Section~\ref{sec:algebraicClosure}.  
 
 In Figure~\ref{fig:HomogeneousSphere}, we plot results obtained for all tests at $t=5$: Test~A (top panels), Test~B (middle panels), and Test~C (bottom panels).  
@@ -304,7 +306,7 @@ The analytical solution is also plotted (dashed black lines).
     \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_ClosureComparison_Chi_1e3_Density}
     \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_ClosureComparison_Chi_1e3_FluxFactor}
   \end{tabular}
-   \caption{Results obtained for the homogeneous sphere problem with the two-moment model for different values of the absorption opacity $\sigma_{\Ab,0}$: $1$ (top panels), $10$, (middle panels), and $1000$ (bottom panels).  The particle density (left panels) and the flux factor (right panels) are plotted versus radius.  Numerical results obtained with the algebraic closures of Minerbo (magenta), CB (blue), BL (green), and Kershaw (cyan) are compared with the analytic solution (dashed black lines).}
+   \caption{Results obtained for the homogeneous sphere problem with the two-moment model for different values of the absorption opacity $\sigma_{\Ab,0}$: $1$ (top panels), $10$ (middle panels), and $1000$ (bottom panels).  The particle density (left panels) and the flux factor (right panels) are plotted versus radius.  Numerical results obtained with the algebraic closures of Minerbo (magenta), CB (blue), BL (green), and Kershaw (cyan) are compared with the analytic solution (dashed black lines).}
   \label{fig:HomogeneousSphere}
 \end{figure}
 
@@ -312,17 +314,18 @@ We find good overall agreement between the results obtained with the two-moment 
 Partly due to the smoothing of the absorption opacity around the surface, the numerical and analytical solutions naturally differ around $r=1$.  
 Aside from some differences discussed in more detail below, the numerical and analytical solutions --- for all values of the absorption opacity $\sigma_{\Ab,0}$ and all closures --- agree well as $r$ tends to zero, as well as when $r\gg1$.  
 The results obtained with the maximum entropy closures CB and BL are practically indistinguishable on the plots.  
-This is consistent with the similarity of the Eddington factors for these two closures plotted in Figure~\ref{fig:EddingtonFactorsWithDifferentClosure}.  
+This is consistent with the similarity of the Eddington factors for these two closures, as shown in Figure~\ref{fig:EddingtonFactorsWithDifferentClosure}.  
 We also find that the results obtained with the fermionic Kershaw closure agree well with the maximum entropy closures based on Fermi-Dirac statistics (CB and BL).  
 From the plots of the particle density (left panels in Figure~\ref{fig:HomogeneousSphere}), the results obtained with all the closures, including Minerbo, appear very similar.  
 (For Test~A, the particle density obtained with the Minerbo closure deviates the most from the analytic solution inside $r\approx0.75$; upper left panel).  
 From the plots of the flux factor (right panels in Figure~\ref{fig:HomogeneousSphere}), it is evident that the results obtained with the Minerbo closure --- the only closure not based on Fermo-Dirac statistics --- deviates the most from the analytic solution outside $r=1$, where the flux factor is consistently higher than the analytical solution for all values of $\sigma_{\Ab,0}$.  
 The fermionic closures (CB, BL, and Kershaw) track the analytic solution better.  
-Similar agreement between the numerical and analytical solutions was reported by Smit et al. \cite{smit_etal_1997}, when using the CB maximum entropy closure, with $f_{0}=0.8$ and an unsmoothed absorption opacity $\sigma_{\Ab}=4$.  
+Similar agreement between the numerical and analytical solutions was reported by Smit et al. \cite{smit_etal_1997}, when using the CB maximum entropy closure with $f_{0}=0.8$ and an unsmoothed absorption opacity $\sigma_{\Ab}=4$.  
 We also note that our results appear to be somewhat at odds with the results recently reported by Murchikova et al. \cite{murchikova_etal_2017}, who compared results obtained with the two-moment model using a large number of algebraic closures for this same problem (albeit using an unsmoothed and slightly different value for the absorption opacity).  
 Murchikova et al. do not plot the particle density, but find essentially no difference in the flux factor and the Eddington factor when comparing results obtained with the maximum entropy closures of Minerbo and Cernohorsky \& Bludman (CB).  
 
-In Figure~\ref{fig:HomogeneousSphereRealizability}, we further compare the results obtained when using the Minerbo and CB closures by plotting the solutions to the homogeneous sphere problem for Test~C at $t=5$ in the $(\cH_{1},\cJ)$-plane (cf. the realizable domain in Figure~\ref{fig:RealizableSetFermionic}):  The numerical solution in each spatial point is represented by a magenta dot in the panels.  
+In Figure~\ref{fig:HomogeneousSphereRealizability}, we further compare the results obtained when using the Minerbo and CB closures by plotting the solutions to the homogeneous sphere problem for Test~C at $t=5$ in the $(\cH_{1},\cJ)$-plane (cf. the realizable domain in Figure~\ref{fig:RealizableSetFermionic}).  
+The numerical solution at each spatial point is represented by a magenta dot in the panels.  
 Results obtained using the CB closure are plotted in the upper left panel, while results obtained using the Minerbo closure are plotted in the upper right panel.  
 In the lower two panel we zoom in on the results obtained with the Minerbo closure around the top and lower right regions of the realizable domain (lower left and lower right panel, respectively; cf. blue boxes in the upper right panel).  
 \begin{figure}[H]

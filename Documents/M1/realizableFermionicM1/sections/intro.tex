@@ -29,7 +29,7 @@ The closure procedure often results in a system of nonlinear hyperbolic conserva
 
 One challenge in solving the closure problem is constructing a sequence of moments that are consistent with a positive distribution function, which typically implies algebraic constraints on the moments \cite{kershaw_1976,levermore_1984}.  
 Moments satisfying these constraints are called \emph{realizable moments} (e.g., \cite{levermore_1996}).  
-When evolving a truncated moment model numerically, maintaining realizable moments is challenging, but necessary in order to ensure the well-posedness of the closure procedure, and may also be necessary to guarantee other desirable properties of the model, including hyperbolicity and (mathematical) entropy dissipation (\ee{Need citations here}).  
+When evolving a truncated moment model numerically, maintaining realizable moments is challenging, but necessary in order to ensure the well-posedness of the closure procedure \cite{levermore_1996,junk_1998,hauck_2008}.  
 In addition to putting the validity of the numerical results into question, failure to maintain moment realizability in a numerical model may, in order to continue a simulation, require ad hoc post-processing steps with undesirable consequences such as loss of conservation.  
 
 Here we consider a two-moment model for particles governed by Fermi-Dirac statistics.  
@@ -61,9 +61,9 @@ We use implicit-explicit (IMEX) Runge-Kutta (RK) methods \cite{ascher_etal_1997,
 This approach is motivated by the fact that we can resolve time scales associated with particle streaming terms in the moment equations, which will be integrated with explicit methods, while terms associated with collisional interactions with the background induce fast time scales that we do not wish to resolve, and will be integrated with implicit methods.  
 This splitting has some advantages when solving kinetic equations since the collisional interactions may couple across momentum space, but are local in position space, and are easier to parallelize than a fully implicit approach.  
 
-The CP framework of \cite{zhangShu_2010a} achieves high-order (i.e., greater than first order) accuracy in time by employing strong stability-preserving explicit Runge-Kutta (SSP-RK) methods \cite{shuOsher_1988,gottlieb_etal_2001}, which can be written as a convex combination of forward Euler steps.  
-Unfortunately, this strategy to achieve high-order temporal accuracy does not work as straightforwardly for standard IMEX Runge-Kutta (IMEX-RK) methods because implicit SSP Runge-Kutta methods with greater than first order accuracy have time step restrictions similar to explicit methods \cite{gottlieb_etal_2001}.  
-To break this ``barrier,'' recently proposed IMEX-RK schemes \cite{chertock_etal_2015,hu_etal_2018} have resorted to first order accuracy in favor of the SSP property in the standard IMEX-RK scheme, and recover second-order accuracy with a correction step.  
+The CP framework of \cite{zhangShu_2010a} achieves high-order (i.e., greater than first-order) accuracy in time by employing strong stability-preserving explicit Runge-Kutta (SSP-RK) methods \cite{shuOsher_1988,gottlieb_etal_2001}, which can be written as a convex combination of forward Euler steps.  
+Unfortunately, this strategy to achieve high-order temporal accuracy does not work as straightforwardly for standard IMEX Runge-Kutta (IMEX-RK) methods because implicit SSP Runge-Kutta methods with greater than first-order accuracy have time step restrictions similar to explicit methods \cite{gottlieb_etal_2001}.  
+To break this ``barrier,'' recently proposed IMEX-RK schemes \cite{chertock_etal_2015,hu_etal_2018} have resorted to first-order accuracy in favor of the SSP property in the standard IMEX-RK scheme, and recover second-order accuracy with a correction step.  
 
 We consider the application of the correction approach to the two-moment model.  
 However, with the correction step from \cite{chertock_etal_2015} we are unable to prove the realizability-preserving property without invoking an overly restrictive time step.  
