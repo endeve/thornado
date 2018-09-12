@@ -257,9 +257,9 @@ CONTAINS
 
     REAL(DP), INTENT(inout) :: G(1:,1:)
 
-    G(:,iGF_Gm_dd_11) = G(:,iGF_h_1)**2
-    G(:,iGF_Gm_dd_22) = G(:,iGF_h_2)**2
-    G(:,iGF_Gm_dd_33) = G(:,iGF_h_3)**2
+    G(:,iGF_Gm_dd_11) = MAX( G(:,iGF_h_1)**2, SqrtTiny )
+    G(:,iGF_Gm_dd_22) = MAX( G(:,iGF_h_2)**2, SqrtTiny )
+    G(:,iGF_Gm_dd_33) = MAX( G(:,iGF_h_3)**2, SqrtTiny )
 
     G(:,iGF_SqrtGm) = G(:,iGF_h_1) * G(:,iGF_h_2) * G(:,iGF_h_3)
 
