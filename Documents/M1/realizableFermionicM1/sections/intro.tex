@@ -68,7 +68,7 @@ To break this ``barrier,'' recently proposed IMEX-RK schemes \cite{chertock_etal
 We consider the application of the correction approach to the two-moment model.  
 However, with the correction step from \cite{chertock_etal_2015} we are unable to prove the realizability-preserving property without invoking an overly restrictive time step.  
 With the correction step from \cite{hu_etal_2018} the realizability-preserving property is guaranteed with a time step comparable to that of the forward Euler method applied to the explicit part of the scheme, but the resulting scheme performs poorly in the asymptotic diffusion limit.  
-Because of these challenges, we resort to first-order temporal accuracy, and propose IMEX-RK schemes that are constraint-preserving with a time step equal to that of forward Euler on the explicit part, perform well in the diffusion limit, and reduce to a second-order SSP-RK scheme in the streaming limit (no collisions with the background material).  
+Because of these challenges, we resort to first-order temporal accuracy, and propose IMEX-RK schemes that are convex-invariant with a time step equal to that of forward Euler on the explicit part, perform well in the diffusion limit, and reduce to a second-order SSP-RK scheme in the streaming limit (no collisions with the background material).  
 
 The realizability-preserving property of the DG-IMEX scheme depends sensitively on the adopted closure procedure.  
 The explicit update of the cell average can, after employing the simple Lax-Friedrichs flux and imposing a suitable CFL condition on the time step, be written as a convex combination.  
@@ -84,7 +84,8 @@ The example we consider is the Minerbo closure \cite{minerbo_1978}, which can be
 The paper is organized as follows.  
 In Section~\ref{sec:model} we present the two-moment model.  
 In Section~\ref{sec:realizability} we discuss moment realizability for the fermionic two-moment model, while algebraic moment closures are discussed in Section~\ref{sec:algebraicClosure}.  
-In Section~\ref{sec:dg} we briefly introduce the DG method for the two-moment model, while the IMEX time stepping methods we use are discussed in Section~\ref{sec:imex}.  
-The main results on the realizability-preserving DG-IMEX method for the fermionic two-moment model are worked out in Section~\ref{sec:realizableDGIMEX}.  
-In Section~\ref{sec:limiter} we discuss the realizability-enforcing limiter.  
+In Section~\ref{sec:dg} we briefly introduce the DG method for the two-moment model, while the (convex-invariant) IMEX time stepping methods we use are discussed in Section~\ref{sec:imex}.  
+The main results on the realizability-preserving DG-IMEX method for the fermionic two-moment model are worked out in Sections~\ref{sec:realizableDGIMEX} and \ref{sec:limiter}.  
+In Section~\ref{sec:limiter} we also discuss the realizability-enforcing limiter.  
 Numerical results are presented in Section~\ref{sec:numerical}, and summary and conclusions are given in Section~\ref{sec:conclusions}.  
+Additional details on the IMEX schemes are provided in Appendices.  

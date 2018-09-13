@@ -182,7 +182,7 @@ With the CB closure, the solution curve (blue points) follows the boundary of th
 With the Minerbo closure (magenta points), the solution follows a different curve --- outside the realizable domain for distribution functions bounded by $f\in(0,1)$, but inside the realizable domain of positive distributions (cf. red line in Figure~\ref{fig:PackedBeam_Realizability}).  
 We have also run this test using the algebraic maximum entropy closure of Larecki \& Banach \cite{lareckiBanach_2011} and the simpler Kershaw-type closure in \cite{banachLarecki_2017a}.  
 The numerical solutions obtained with both of these closures follow the analytic solution well, and remain within the realizable set $\cR$.  
-We point out that simply using the realizability-preserving limiter described in Section~\ref{sec:limiter} with the Minerbo closure does not result in a realizability-preserving scheme for Fermi-Dirac statistics because of the properties of this closure discussed in Section~\ref{sec:algebraicClosure}, and plotted in the lower right panel of Figure~\ref{fig:MabWithDifferentClosure}.  
+We point out that simply using the realizability-preserving limiter described in Section~\ref{sec:limiter} with the Minerbo closure does not result in a realizability-preserving scheme for Fermi-Dirac statistics because of the properties of this closure discussed in Section~\ref{sec:algebraicClosure}, and plotted in the right panel of Figure~\ref{fig:MabWithDifferentClosure}.  
 
 \begin{figure}[H]
   \centering
@@ -324,23 +324,20 @@ Similar agreement between the numerical and analytical solutions was reported by
 We also note that our results appear to be somewhat at odds with the results recently reported by Murchikova et al. \cite{murchikova_etal_2017}, who compared results obtained with the two-moment model using a large number of algebraic closures for this same problem (albeit using an unsmoothed and slightly different value for the absorption opacity).  
 Murchikova et al. do not plot the particle density, but find essentially no difference in the flux factor and the Eddington factor when comparing results obtained with the maximum entropy closures of Minerbo and Cernohorsky \& Bludman (CB).  
 
-In Figure~\ref{fig:HomogeneousSphereRealizability}, we further compare the results obtained when using the Minerbo and CB closures by plotting the solutions to the homogeneous sphere problem for Test~C at $t=5$ in the $(\cH_{1},\cJ)$-plane (cf. the realizable domain in Figure~\ref{fig:RealizableSetFermionic}).  
-The numerical solution at each spatial point is represented by a magenta dot in the panels.  
-Results obtained using the CB closure are plotted in the upper left panel, while results obtained using the Minerbo closure are plotted in the upper right panel.  
-In the lower two panel we zoom in on the results obtained with the Minerbo closure around the top and lower right regions of the realizable domain (lower left and lower right panel, respectively; cf. blue boxes in the upper right panel).  
+In Figure~\ref{fig:HomogeneousSphereRealizability}, we further compare the results obtained when using the Minerbo and CB closures by plotting the solutions to the homogeneous sphere problem for Test~C at $t=5$ in the $(|\vect{\cH}|,\cJ)$-plane (cf. the realizable domain in Figure~\ref{fig:RealizableSetFermionic}).  
+The numerical solution at each spatial point is represented by a blue (CB) or magenta (Minerbo) dot in the panels.  
+In the lower two panel we zoom in on the results obtained with the two closures around the top and lower right regions of the realizable domain (lower left and lower right panel, respectively; cf. green boxes in the upper right panel).  
 \begin{figure}[H]
   \centering
+  \includegraphics[width=1.0\textwidth]{figures/HomogeneousSphere_Realizability_Chi_1e3_CBandMinerbo}
   \begin{tabular}{cc}
-    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_Realizability_Chi_1e3_CB}
-    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_Realizability_Chi_1e3_Minerbo} \\
-    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_Realizability_Chi_1e3_Minerbo_Box1}
-    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_Realizability_Chi_1e3_Minerbo_Box2}
+    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_Realizability_Chi_1e3_CBandMinerbo_Box1}
+    \includegraphics[width=0.5\textwidth]{figures/HomogeneousSphere_Realizability_Chi_1e3_CBandMinerbo_Box2}
   \end{tabular}
-   \caption{Plots of the numerical solution to the homogeneous sphere problem for Test~C in the $(\cH_{1},\cJ)$-plane.  Results obtained with the CB and Minerbo closures are plotted in the upper left and upper right panels, respectively.  Zoom-ins on the solutions obtained with the Minerbo closure are plotted in the lower two panels (cf. blue boxes in the upper right panel).  The boundaries of the realizable domains $\cR$ and $\cR^{+}$ are indicated with solid black and solid red curves, respectively.  See text for further details.  }
+   \caption{Scatter plots of the numerical solution to the homogeneous sphere problem for Test~C in the $(|\vect{\cH}|,\cJ)$-plane.  Results obtained with the CB and Minerbo closures are plotted in the upper panel, blue and magenta points, respectively.  Zoom-ins on the solutions obtained with the two closures are plotted in the lower two panels (cf. green boxes in the upper panel).  The boundaries of the realizable domains $\cR$ and $\cR^{+}$ are indicated with solid black and solid red curves, respectively.  See text for further details.  }
   \label{fig:HomogeneousSphereRealizability}
 \end{figure}
-As can be seen in the upper panels in Figure~\ref{fig:HomogeneousSphereRealizability}, the solution to the homogeneous sphere problem covers a large fraction of the right half of the realizable domain $\cR$, whose boundary is indicated by solid black curves in each panel.  
-(The moments only appear in the right half of $\cR$ because we only compute in one octant.)  
+As can be seen in the upper panel in Figure~\ref{fig:HomogeneousSphereRealizability}, the solutions to the homogeneous sphere problem obtained with the two closures trace out distinct curves relative to the realizable domain $\cR$, whose boundary is indicated by solid black curves in each panel.  
 When using the CB closure, the realizability-preserving DG-IMEX scheme developed here maintains solutions within $\cR$.  
 When using the Minerbo closure, the appropriate realizable domain is given by $\cR^{+}$ (cf. Eq.~\eqref{eq:realizableSetPositive}), whose boundary is indicated by solid red lines in Figure~\ref{fig:HomogeneousSphereRealizability}, and we find that the numerical solution ventures outside $\cR$.  
 Near the surface around $r=1$, the number density slightly exceeds unity (lower left panel), while for larger radii, the computed flux may exceed the value allowed by Fermi-Dirac statistics (lower right panel).  
