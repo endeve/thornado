@@ -1,0 +1,25 @@
+\section{Spacial Discretization}
+Let the spatial domain be $D$ and divide it into $N$ cells, denoted $I_{i}$ with $i = 1,\ldots,N$:
+\begin{equation*}
+D = \cup_{i = 1}^{N} I_{i}
+\end{equation*}
+\begin{equation}
+\bcM_{i} = \dfrac{1}{\dx} \int_{I_i}\bcM dx
+\end{equation}
+
+\begin{equation}
+\dfrac{d \bcM_{i}}{d t} = - \dfrac{1}{\dx} \left( \widehat{\bcF}(\bcM_{i},\bcM_{i+1}) -  \widehat{\bcF}(\bcM_{i-1},\bcM_{i})\right) +  \cC(\bcM_{i})
+\end{equation}
+
+\begin{equation}
+  \widehat{\bcF}(\vect{\cM}_{a},\vect{\cM}_{b})
+  =\f{1}{2}\,\big(\,\bcF(\vect{\cM}_{a})+\bcF(\vect{\cM}_{b})-(\,\vect{\cM}_{b}-\vect{\cM}_{a}\,)\,\big)
+\end{equation}
+
+By treating the flux term explicitly and the collision term implicitly, we have
+\begin{align}
+\bcM_{i}^{n+1} 
+& = \bcM_{i}^{n} - \dfrac{\dt}{\dx} \left( \widehat{\bcF}(\bcM^{n}_{i},\bcM^{n}_{i+1}) -  \widehat{\bcF}(\bcM^{n}_{i-1},\bcM^{n}_{i})\right) + \dt\,\cC(\bcM^{n+1}_{i}) \nonumber \\
+& = (1-\eta)\bcM_{i}^{n} + \f{1}{2}\eta\left( \bcM^{n}_{i+1}-\bcF(\bcM^{n}_{i+1})\right)  + \f{1}{2}\eta\left( \bcM^{n}_{i-1}+\bcF(\bcM^{n}_{i-1})\right) + \dt\,\cC(\bcM^{n+1}_{i})
+\end{align}
+with $\eta = \dfrac{\dt}{\dx}$. The first three terms can form a convex combination.
