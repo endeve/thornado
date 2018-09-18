@@ -60,12 +60,12 @@ module ThornadoInitializationModule
 
 contains
 
-  subroutine InitThornado( nDimsX, nE, nSpeciesIn ) &
+  subroutine InitThornado( nDimsX, nE, zoomE, nSpeciesIn ) &
       bind(C, name = "InitThornado")
 
     use RadiationFieldsModule, only : nSpecies
 
-    integer, INTENT(in) :: nDimsX, nE, nSpeciesIn
+    integer, INTENT(in) :: nDimsX, nE, zoomE, nSpeciesIn
 
     integer :: nX(3), i
 
