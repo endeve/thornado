@@ -76,7 +76,7 @@ contains
 
     call InitializeProgramHeader &
            ( ProgramName_Option = '', nNodes_Option = 2, &
-             nX_Option = nX, nE_Option = nE )
+             nX_Option = nX, nE_Option = nE, zoomE_Option = zoomE )
 
     nSpecies = nSpeciesIn
 
@@ -113,7 +113,7 @@ contains
 
     use UnitsModule          , only : MeV
     use RadiationFieldsModule, only : nSpecies
-    use ProgramHeaderModule  , only : nE, nNodesX, nNodesE
+    use ProgramHeaderModule  , only : nE, nNodesX, nNodesE, zoomE
 
     integer,  INTENT(in) :: nX(3), swX(3)
     REAL(DP), INTENT(in) :: xL(3), xR(3)
@@ -133,7 +133,8 @@ contains
              nX_Option = nX, swX_Option = swX, &
              xL_Option = xL, xR_Option  = xR,  &
              nE_Option = nE, swE_Option = swE, &
-             eL_Option = eL, eR_Option  = eR )
+             eL_Option = eL, eR_Option  = eR,  &
+             zoomE_Option = zoomE )
 
     ! Note we always use 3 here even if calling from Castro 2D
     DO iDim = 1, 3
@@ -144,7 +145,7 @@ contains
 
     END DO
 
-    call CreateMesh( MeshE, nE, nNodesE, swE, eL, eR )
+    call CreateMesh( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
 
     call CreateGeometryFields &
            ( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
