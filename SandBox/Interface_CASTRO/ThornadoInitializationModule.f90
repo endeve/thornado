@@ -65,7 +65,8 @@ contains
 
     use RadiationFieldsModule, only : nSpecies
 
-    integer, INTENT(in) :: nDimsX, nE, zoomE, nSpeciesIn
+    integer,  INTENT(in) :: nDimsX, nE, nSpeciesIn
+    real(dp), INTENT(in) :: zoomE
 
     integer :: nX(3), i
 
