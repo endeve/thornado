@@ -13,11 +13,13 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE ProgramHeaderModule, ONLY: &
     nNodesE, &
     nNodesX, &
-    nNodesZ
+    nNodesZ, &
+    nDOFX
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
   USE ReferenceElementModuleX, ONLY: &
-    NodeNumberTableX3D
+    NodeNumberTableX3D, &
+    WeightsX_q
   USE ReferenceElementModule, ONLY: &
     NodeNumberTable4D
   USE MeshModule, ONLY: &
@@ -53,6 +55,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INCLUDE 'mpif.h'
 
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit
+  PUBLIC :: ComputeIncrement_TwoMoment_Implicit_DGFV
 
   ! --- Units Only for Displaying to Screen ---
 
@@ -78,7 +81,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: GX_N(:,:)     ! --- Spatial Geometry
   REAL(DP), ALLOCATABLE :: CF_N(:,:)     ! --- Conserved Fluid
   REAL(DP), ALLOCATABLE :: dF_N(:,:)     ! --- Conserved Fluid Increment
-  REAL(DP), ALLOCATABLE :: CR_N(:,:,:,:) ! --- Conserved Radiation
+  REAL(DP), ALLOCATABLE :: CR_K(:,:,:)   ! --- Conserved Radiation (Element)
+  REAL(DP), ALLOCATABLE :: CR_N(:,:,:,:) ! --- Conserved Radiation (Node)
   REAL(DP), ALLOCATABLE :: dR_N(:,:,:,:) ! --- Conserved Radiation Increment
 
 CONTAINS
@@ -331,7 +335,7 @@ CONTAINS
 
     END IF
 
-    ! --- Deallocate Local Opacities
+    ! --- Deallocate Local Opacities ---
 
     DEALLOCATE( Chi, Sig, fEQ )
 
@@ -367,6 +371,235 @@ CONTAINS
     CALL FinalizeCollisions
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit
+
+
+  SUBROUTINE ComputeIncrement_TwoMoment_Implicit_DGFV &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      dt
+    REAL(DP), INTENT(in)    :: &
+      GE(1:,iZ_B1(1):,1:)
+    REAL(DP), INTENT(in)    :: &
+      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+    REAL(DP), INTENT(in)    :: &
+      U_F (1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+    REAL(DP), INTENT(inout) :: &
+      dU_F(1:,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+    REAL(DP), INTENT(in)    :: &
+      U_R (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+    REAL(DP), INTENT(inout) :: &
+      dU_R(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+
+    INTEGER               :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iNX, iE
+    REAL(DP)              :: wTimeTotal
+    REAL(DP)              :: GX_K(1:nGF)
+    REAL(DP)              :: CF_K(1:nCF)
+    REAL(DP)              :: PF_K(1:nPF)
+    REAL(DP)              :: AF_K(1:nAF)
+    REAL(DP), ALLOCATABLE :: Chi(:,:) ! --- Absorption Opacity
+    REAL(DP), ALLOCATABLE :: Sig(:,:) ! --- Scattering Opacity
+    REAL(DP), ALLOCATABLE :: fEQ(:,:) ! --- Equilibrium Distribution
+
+    wTimeTotal = MPI_WTIME( )
+
+    iE_B0 = iZ_B0(1);   iE_E0 = iZ_E0(1)
+    iE_B1 = iZ_B1(1);   iE_E1 = iZ_E1(1)
+    iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
+    iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
+
+    CALL InitializeCollisions_DGFV( iZ_B0, iZ_E0 )
+
+    ! --- Energy and Integration Weights ---
+
+    CALL ComputePointsAndWeightsE_DGFV( E_N, W2_N, W3_N )
+
+    ! --- Allocate Local Opacities ---
+
+    ALLOCATE( Chi(nE_G,nSpecies), Sig(nE_G,nSpecies), fEQ(nE_G,nSpecies) )
+
+    ! --- Implicit Update ---
+
+    Iterations_Min = + HUGE( 1 )
+    Iterations_Max = - HUGE( 1 )
+    Iterations_Ave = 0
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iGF = iGF_Gm_dd_11, iGF_Gm_dd_33
+
+        GX_K(iGF) = DOT_PRODUCT( WeightsX_q(:), GX(:,iX1,iX2,iX3,iGF) )
+
+      END DO
+
+      DO iCF = 1, nCF
+
+        CF_K(iCF) = DOT_PRODUCT( WeightsX_q(:), U_F(:,iX1,iX2,iX3,iCF) )
+
+        dU_F(:,iX1,iX2,iX3,iCF) = CF_K(iCF)
+
+      END DO
+
+      CALL ComputePrimitive_Euler &
+             ( CF_K(iCF_D ), CF_K(iCF_S1), CF_K(iCF_S2), &
+               CF_K(iCF_S3), CF_K(iCF_E ), CF_K(iCF_Ne), &
+               PF_K(iPF_D ), PF_K(iPF_V1), PF_K(iPF_V2), &
+               PF_K(iPF_V3), PF_K(iPF_E ), PF_K(iPF_Ne), &
+               GX_K(iGF_Gm_dd_11), GX_K(iGF_Gm_dd_22), GX_K(iGF_Gm_dd_33) )
+
+      CALL ComputeThermodynamicStates_Auxiliary_TABLE &
+             ( PF_K(iPF_D:iPF_D), PF_K(iPF_E:iPF_E), PF_K(iPF_Ne:iPF_Ne), &
+               AF_K(iAF_T:iAF_T), AF_K(iAF_E:iAF_E), AF_K(iAF_Ye:iAF_Ye) )
+
+      ! --- Electron Capture Opacities ---
+
+      CALL ComputeNeutrinoOpacities_EC_Point &
+             ( 1, nE_G, E_N(1:nE_G), PF_K(iPF_D), AF_K(iAF_T), AF_K(iAF_Ye), &
+               Chi(1:nE_G,1), iSpecies = 1 )
+
+      ! --- Elastic Scattering Opacities ---
+
+      CALL ComputeNeutrinoOpacities_ES_Point &
+             ( 1, nE_G, E_N(1:nE_G), PF_K(iPF_D), AF_K(iAF_T), AF_K(iAF_Ye), &
+               Sig(1:nE_G,1), iSpecies = 1 )
+
+      ! --- Map Radiation Data for Collision Update ---
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+
+        CALL MapForward_R_DGFV &
+               ( iE_B0, iE_E0, U_R(:,iE_B0:iE_E0,iX1,iX2,iX3,iCR,iS), &
+                 CR_N(1:nE_G,iCR,iS,1:nDOFX), CR_K(1:nE_G,iCR,iS) )
+
+      END DO
+      END DO
+
+      ! --- Update Fluid ---
+
+      CALL SolveMatterEquations_EmAb &
+             ( CR_K(:,iCR_N,1), dt * Chi(:,1), fEQ(:,1), &
+               PF_K(iPF_D), AF_K(iAF_T), AF_K(iAF_Ye), AF_K(iAF_E) )
+
+      ! --- Compute Primitive Fluid ---
+
+      CALL ComputeThermodynamicStates_Primitive_TABLE &
+             ( PF_K(iPF_D:iPF_D), AF_K(iAF_T:iAF_T), AF_K(iAF_Ye:iAF_Ye), &
+               PF_K(iPF_E:iPF_E), AF_K(iAF_E:iAF_E), PF_K(iPF_Ne:iPF_Ne) )
+
+      ! --- Compute Conserved Fluid ---
+
+      CALL ComputeConserved_Euler &
+             ( PF_K(iPF_D ), PF_K(iPF_V1), PF_K(iPF_V2), &
+               PF_K(iPF_V3), PF_K(iPF_E ), PF_K(iPF_Ne), &
+               CF_K(iCF_D ), CF_K(iCF_S1), CF_K(iCF_S2), &
+               CF_K(iCF_S3), CF_K(iCF_E ), CF_K(iCF_Ne), &
+               GX_K(iGF_Gm_dd_11), GX_K(iGF_Gm_dd_22), GX_K(iGF_Gm_dd_33) )
+
+      ! --- Conserved Fluid Increment ---
+
+      DO iCF = 1, nCF
+
+        dU_F(:,iX1,iX2,iX3,iCF) = ( CF_K(iCF) - dU_F(:,iX1,iX2,iX3,iCF) ) / dt
+
+      END DO
+
+      ! --- Update Radiation Fields ---
+
+      DO iNX = 1, nDOFX
+      DO iS  = 1, nSpecies
+
+        ! --- Number Density ---
+
+        CR_N(:,iCR_N,iS,iNX) &
+          = ( dt * Chi(:,iS) * fEQ(:,iS) &
+              + CR_N(:,iCR_N,iS,iNX) ) / ( One + dt * Chi(:,iS) )
+
+        ! --- Number Flux (1) ---
+
+        CR_N(:,iCR_G1,iS,iNX) &
+          = CR_N(:,iCR_G1,iS,iNX) &
+              / ( One + dt * ( Chi(:,iS) + Sig(:,iS) ) )
+
+        ! --- Number Flux (2) ---
+
+        CR_N(:,iCR_G2,iS,iNX) &
+          = CR_N(:,iCR_G2,iS,iNX) &
+              / ( One + dt * ( Chi(:,iS) + Sig(:,iS) ) )
+
+        ! --- Number Flux (3) ---
+
+        CR_N(:,iCR_G3,iS,iNX) &
+          = CR_N(:,iCR_G3,iS,iNX) &
+              / ( One + dt * ( Chi(:,iS) + Sig(:,iS) ) )
+
+        ! --- Increments ---
+
+        dR_N(:,iCR_N,iS,iNX) &
+          = Chi(:,iS) * ( fEQ(:,iS) - CR_N(:,iCR_N,iS,iNX) )
+
+        dR_N(:,iCR_G1,iS,iNX) &
+          = - ( Chi(:,iS) + Sig(:,iS) ) * CR_N(:,iCR_G1,iS,iNX)
+
+        dR_N(:,iCR_G2,iS,iNX) &
+          = - ( Chi(:,iS) + Sig(:,iS) ) * CR_N(:,iCR_G2,iS,iNX)
+
+        dR_N(:,iCR_G3,iS,iNX) &
+          = - ( Chi(:,iS) + Sig(:,iS) ) * CR_N(:,iCR_G3,iS,iNX)
+
+      END DO
+      END DO
+
+      ! --- Map Radiation Increments Back ---
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+
+        CALL MapBackward_R_DGFV &
+               ( iE_B0, iE_E0, dU_R(:,iE_B0:iE_E0,iX1,iX2,iX3,iCR,iS), &
+                 dR_N(1:nE_G,iCR,iS,1:nDOFX) )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    IF( ReportConvergenceData )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A4,A)') &
+        '', 'Convergence Data:'
+      WRITE(*,*)
+      WRITE(*,'(A6,A18,I4.4)') &
+        '', 'Iterations (Min): ', Iterations_Min
+      WRITE(*,'(A6,A18,I4.4)') &
+        '', 'Iterations (Max): ', Iterations_Max
+      WRITE(*,'(A6,A18,ES8.2E2)') &
+        '', 'Iterations (Ave): ', &
+        DBLE( Iterations_Ave ) / DBLE( nX_G )
+      WRITE(*,*)
+
+    END IF
+
+    ! --- Deallocate Local Opacities ---
+
+    DEALLOCATE( Chi, Sig, fEQ )
+
+    CALL FinalizeCollisions_DGFV
+
+    wTimeTotal = MPI_WTIME( ) - wTimeTotal
+
+!    WRITE(*,'(A4,A32,ES10.4E2)') '', 'wTimeTotal: ', wTimeTotal
+
+  END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_DGFV
 
 
   SUBROUTINE SolveMatterEquations_EmAb( J, Chi, J0, D, T, Y, E )
@@ -614,16 +847,6 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoChemicalPotentials
 
 
-  PURE REAL(DP) FUNCTION ENORM( X )
-
-    REAL(DP), DIMENSION(:), INTENT(in) :: X
-
-    ENORM = SQRT( DOT_PRODUCT( X, X ) )
-
-    RETURN
-  END FUNCTION ENORM
-
-
   SUBROUTINE InitializeCollisions( iZ_B, iZ_E )
 
     INTEGER, INTENT(in) :: iZ_B(4), iZ_E(4)
@@ -647,6 +870,27 @@ CONTAINS
   END SUBROUTINE InitializeCollisions
 
 
+  SUBROUTINE InitializeCollisions_DGFV( iZ_B, iZ_E )
+
+    INTEGER, INTENT(in) :: iZ_B(4), iZ_E(4)
+
+    INTEGER :: nZ(4)
+
+    nZ = iZ_E - iZ_B + 1
+
+    nE_G = nZ(1) * nNodesZ(1)
+    nX_G = PRODUCT( nZ(2:4) )
+
+    ALLOCATE( E_N (nE_G) )
+    ALLOCATE( W2_N(nE_G) )
+    ALLOCATE( W3_N(nE_G) )
+    ALLOCATE( CR_K(nE_G,nCR,nSpecies) )
+    ALLOCATE( CR_N(nE_G,nCR,nSpecies,nDOFX) )
+    ALLOCATE( dR_N(nE_G,nCR,nSpecies,nDOFX) )
+
+  END SUBROUTINE InitializeCollisions_DGFV
+
+
   SUBROUTINE FinalizeCollisions
 
     DEALLOCATE( E_N, W2_N, W3_N )
@@ -655,6 +899,14 @@ CONTAINS
     DEALLOCATE( CR_N, dR_N )
 
   END SUBROUTINE FinalizeCollisions
+
+
+  SUBROUTINE FinalizeCollisions_DGFV
+
+    DEALLOCATE( E_N, W2_N, W3_N )
+    DEALLOCATE( CR_K, CR_N, dR_N )
+
+  END SUBROUTINE FinalizeCollisions_DGFV
 
 
   SUBROUTINE ComputePointsAndWeightsE( E, W2, W3 )
@@ -685,6 +937,36 @@ CONTAINS
     END ASSOCIATE ! -- dE
 
   END SUBROUTINE ComputePointsAndWeightsE
+
+
+  SUBROUTINE ComputePointsAndWeightsE_DGFV( E, W2, W3 )
+
+    REAL(DP), INTENT(out) :: &
+      E(:), W2(:), W3(:)
+
+    INTEGER  :: iE_G, iE, iN
+    REAL(DP) :: hc
+
+    hc = PlanckConstant * SpeedOfLight
+
+    ASSOCIATE( dE => MeshE % Width(iE_B0:iE_E0) )
+
+    iE_G = 0
+    DO iE = iE_B0, iE_E0
+    DO iN = 1, nNodesE
+
+      iE_G = iE_G + 1
+
+      E (iE_G) = NodeCoordinate( MeshE, iE, iN )
+      W2(iE_G) = WeightsE(iN) * ( dE(iE) / hc ) * ( E(iE_G) / hc )**2
+      W3(iE_G) = W2(iE_G) * ( E(iE_G) / AtomicMassUnit )
+
+    END DO
+    END DO
+
+    END ASSOCIATE ! -- dE
+
+  END SUBROUTINE ComputePointsAndWeightsE_DGFV
 
 
   SUBROUTINE MapForward_GX( iX_B, iX_E, GX, GX_N )
@@ -885,6 +1167,84 @@ CONTAINS
   END SUBROUTINE MapBackward_R
 
 
+  SUBROUTINE MapForward_R_DGFV( iZ1_B, iZ1_E, RF, RF_N, RF_K )
+
+    INTEGER,  INTENT(in)  :: &
+      iZ1_B, iZ1_E
+    REAL(DP), INTENT(in)  :: &
+      RF(:,iZ1_B:)
+    REAL(DP), INTENT(out) :: &
+      RF_N(:,:), RF_K(:)
+
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iX, iE
+    INTEGER :: iN1, iN2, iN3, iN4, iN
+
+    RF_K = Zero
+    DO iN4 = 1, nNodesZ(4)
+    DO iN3 = 1, nNodesZ(3)
+    DO iN2 = 1, nNodesZ(2)
+
+      iX = NodeNumberTableX3D(iN2,iN3,iN4)
+
+      iE = 0
+      DO iZ1 = iZ1_B, iZ1_E
+      DO iN1 = 1, nNodesZ(1)
+
+        iE = iE + 1
+
+        iN = NodeNumberTable4D(iN1,iN2,iN3,iN4)
+
+        RF_N(iE,iX) = RF(iN,iZ1)
+        RF_K(iE)    = RF_K(iE) + WeightsX_q(iX) * RF_N(iE,iX)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE MapForward_R_DGFV
+
+
+  SUBROUTINE MapBackward_R_DGFV( iZ1_B, iZ1_E, RF, RF_N )
+
+    INTEGER,  INTENT(in)  :: &
+      iZ1_B, iZ1_E
+    REAL(DP), INTENT(out) :: &
+      RF(:,iZ1_B:)
+    REAL(DP), INTENT(in)  :: &
+      RF_N(:,:)
+
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iX, iE
+    INTEGER :: iN1, iN2, iN3, iN4, iN
+
+    DO iN4 = 1, nNodesZ(4)
+    DO iN3 = 1, nNodesZ(3)
+    DO iN2 = 1, nNodesZ(2)
+
+      iX = NodeNumberTableX3D(iN2,iN3,iN4)
+
+      iE = 0
+      DO iZ1 = iZ1_B, iZ1_E
+      DO iN1 = 1, nNodesZ(1)
+
+        iE = iE + 1
+
+        iN = NodeNumberTable4D(iN1,iN2,iN3,iN4)
+
+        RF(iN,iZ1) = RF_N(iE,iX)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE MapBackward_R_DGFV
+
+
   SUBROUTINE ComputePrimitive_Euler &
                ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
                  Gm_dd_11, Gm_dd_22, Gm_dd_33 )
@@ -929,6 +1289,16 @@ CONTAINS
     Ne  = De
 
   END SUBROUTINE ComputeConserved_Euler
+
+
+  PURE REAL(DP) FUNCTION ENORM( X )
+
+    REAL(DP), DIMENSION(:), INTENT(in) :: X
+
+    ENORM = SQRT( DOT_PRODUCT( X, X ) )
+
+    RETURN
+  END FUNCTION ENORM
 
 
 END MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
