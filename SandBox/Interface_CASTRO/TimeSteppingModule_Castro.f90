@@ -13,7 +13,8 @@ MODULE TimeSteppingModule_Castro
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
-    ComputeIncrement_TwoMoment_Implicit
+    ComputeIncrement_TwoMoment_Implicit, &
+    ComputeIncrement_TwoMoment_Implicit_DGFV
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment
 
@@ -148,7 +149,7 @@ CONTAINS
 
     ! --- Implicit Step ---
 
-    CALL ComputeIncrement_TwoMoment_Implicit &
+    CALL ComputeIncrement_TwoMoment_Implicit_DGFV &
            ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, dt, &
              uGE, uGF, &
              U_F, Q1_F &
@@ -220,7 +221,7 @@ CONTAINS
 
     ! --- Implicit Step ---
 
-    CALL ComputeIncrement_TwoMoment_Implicit &
+    CALL ComputeIncrement_TwoMoment_Implicit_DGFV &
            ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, dt, &
              uGE, uGF, &
              U_F, Q1_F &
