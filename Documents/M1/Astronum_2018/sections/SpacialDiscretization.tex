@@ -1,25 +1,28 @@
 \section{Spacial Discretization}
-Let the spatial domain be $D$ and divide it into $N$ cells, denoted $I_{i}$ with $i = 1,\ldots,N$:
+Divide the spatial domain $D$ into $N$ cells and denote the cell as $I_{i}$ with $i = 1,\ldots,N$, so that
 \begin{equation*}
-D = \cup_{i = 1}^{N} I_{i}
+D = \cup_{i = 1}^{N} I_{i}.
 \end{equation*}
+Each of the cell has a volume/length of $\dx$.
+Then we have cell average moment:
 \begin{equation}
-\bcM_{i} = \dfrac{1}{\dx} \int_{I_i}\bcM dx
+\bcM_{i} = \dfrac{1}{\dx} \int_{I_i}\bcM dx.
 \end{equation}
-
+Integrate Eq.~\eqref{eq:momentEquations} for each cell $I_{i}$ to have
 \begin{equation}
-\dfrac{d \bcM_{i}}{d t} = - \dfrac{1}{\dx} \left( \widehat{\bcF}(\bcM_{i},\bcM_{i+1}) -  \widehat{\bcF}(\bcM_{i-1},\bcM_{i})\right) +  \cC(\bcM_{i})
+\dfrac{d \bcM_{i}}{d t} = - \dfrac{1}{\dx} \left( \widehat{\bcF}(\bcM_{i},\bcM_{i+1}) -  \widehat{\bcF}(\bcM_{i-1},\bcM_{i})\right) + \f{1}{\tau}\,\cC(\bcM_{i}),
 \end{equation}
-
+where $\widehat{\bcF}(\vect{\cM}_{a},\vect{\cM}_{b})$ is numerical flux and $\f{1}{\tau}\,\cC(\bcM_{i})$ is the integrated collision term.
+In this paper we use the simple Lax-Friedrichs flux that given by
 \begin{equation}
-  \widehat{\bcF}(\vect{\cM}_{a},\vect{\cM}_{b})
-  =\f{1}{2}\,\big(\,\bcF(\vect{\cM}_{a})+\bcF(\vect{\cM}_{b})-(\,\vect{\cM}_{b}-\vect{\cM}_{a}\,)\,\big)
+  \widehat{\bcF}_{LF}(\vect{\cM}_{a},\vect{\cM}_{b})
+  =\f{1}{2}\,\big(\,\bcF(\vect{\cM}_{a})+\bcF(\vect{\cM}_{b})-(\,\vect{\cM}_{b}-\vect{\cM}_{a}\,)\,\big).
 \end{equation}
-
-By treating the flux term explicitly and the collision term implicitly, we have
+Therefore, by treating the flux term explicitly and the collision term implicitly, we have
 \begin{align}
 \bcM_{i}^{n+1} 
-& = \bcM_{i}^{n} - \dfrac{\dt}{\dx} \left( \widehat{\bcF}(\bcM^{n}_{i},\bcM^{n}_{i+1}) -  \widehat{\bcF}(\bcM^{n}_{i-1},\bcM^{n}_{i})\right) + \dt\,\cC(\bcM^{n+1}_{i}) \nonumber \\
-& = (1-\eta)\bcM_{i}^{n} + \f{1}{2}\eta\left( \bcM^{n}_{i+1}-\bcF(\bcM^{n}_{i+1})\right)  + \f{1}{2}\eta\left( \bcM^{n}_{i-1}+\bcF(\bcM^{n}_{i-1})\right) + \dt\,\cC(\bcM^{n+1}_{i})
+& = \bcM_{i}^{n} - \dfrac{\dt}{\dx} \left( \widehat{\bcF}(\bcM^{n}_{i},\bcM^{n}_{i+1}) -  \widehat{\bcF}(\bcM^{n}_{i-1},\bcM^{n}_{i})\right) + \f{\dt}{\tau}\,\cC(\bcM^{n+1}_{i}) \nonumber \\
+& = (1-\eta)\bcM_{i}^{n} + \f{1}{2}\eta\left( \bcM^{n}_{i+1}-\bcF(\bcM^{n}_{i+1})\right)  + \f{1}{2}\eta\left( \bcM^{n}_{i-1}+\bcF(\bcM^{n}_{i-1})\right) + \f{\dt}{\tau}\,\cC(\bcM^{n+1}_{i})
 \end{align}
-with $\eta = \dfrac{\dt}{\dx}$. The first three terms can form a convex combination.
+where $\eta := \dfrac{\dt}{\dx}$. The first three terms can form a 3-term convex combination by requiring $\eta \in [0,1]$.
+It can be shown that $\bcM_{i}^{n+1}$ remains realizable given $\bcM_{i}^{n}$ is realizable, $\eta \in [0,1]$ and $\cC(\bcM)$ is positivity-preserving. The proof can be found in \cite{Chu_2018}.

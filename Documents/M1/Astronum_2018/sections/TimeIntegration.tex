@@ -1,37 +1,85 @@
 \section{Time Integration}
-
-Let $\vect{\cQ}$ be some linear operators and
+In this section we show how to use the property we introduced at the end of the previous section to construct a constraint-preserving implicit-explicit (IMEX) scheme.
+We can have a more general form of the partial differential equation, Eq.~\eqref{eq:momentEquations},
+\begin{equation}
+  \dfrac{d \vect{u}}{d t} = \vect{\cT}(\vect{u}) + \f{1}{\tau}\,\vect{\cQ}(\vect{u}),
+\end{equation}
+where
 \begin{equation}
 \vect{u}(t) = \left( \bcM_{1}(t),\ldots,\bcM_{N}(t)\right) ^{T}
 \end{equation}
-\begin{equation}
-  \dfrac{d \vect{u}}{d t} = \vect{\cT}(\vect{u}) + \vect{\cQ}(\vect{u})
-\end{equation}
-\subsection{Standard Implicit-Explicit Scheme}
+is the collection of all moment cell average, $\vect{\cT}$ is the operator corresponding to the flux term and $\f{1}{\tau}\,\vect{\cQ}$ is a linear operators corresponding to the collision term.
 
+
+\subsection{Standard Implicit-Explicit Scheme}
+Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, the standard $s$-stage IMEX schemes take the following form 
 \begin{align}
   \vect{u}^{(i)}
   &=\vect{u}^{n}
   +\dt\sum_{j=1}^{i-1}\tilde{a}_{ij}\,\vect{\cT}(\vect{u}^{(j)})
   +\dt\sum_{j=1}^{i}a_{ij}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(j)}),
   \quad i=1,\ldots,s, \label{imexStages} \\
-  \tilde{\vect{u}}^{n+1}
+  \vect{u}^{n+1}
   &=\vect{u}^{n}
   +\dt\sum_{i=1}^{s}\tilde{w}_{i}\,\vect{\cT}(\vect{u}^{(i)})
   +\dt\sum_{i=1}^{s}w_{i}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}), \label{imexIntermediate} 
 \end{align}
+where  $(\tilde{a}_{ij})$ and $(a_{ij})$ are coefficients of the $i$th-stage and they are the elements of matrices $\tilde{A}$ and $A$, respectively, and the vectors $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ are the weights vector.
+Some conditions those coefficients and weights have to satisfy to serve an accurate, converge and stable scheme.
+For instance, to have second-order temporal accuracy, the following conditions are required:
+\begin{equation}
+  \sum_{i=1}^{s}\tilde{w}_{i}=\sum_{i=1}^{s}w_{i}=1,
+  \label{orderConditions1}
+\end{equation}
+and
+\begin{equation}
+  \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}
+  =\sum_{i=1}^{s}\tilde{w}_{i}\,c_{i}
+  =\sum_{i=1}^{s}w_{i}\,\tilde{c}_{i}
+  =\sum_{i=1}^{s}w_{i}\,c_{i}=\f{1}{2}, 
+  \label{orderConditions2}
+\end{equation}
+where $\tilde{c}_{i} = \sum_{j}^{s}\tilde{a}_{ij}$ and $c_{i}=\sum_{j}^{s}a_{ij}$.
 
 \subsection{Constraint-Preserving Implicit-Explicit Scheme}
-
+The problem left for constructing a constraint-preserving IMEX is finding the conditions $(\tilde{a}_{ij})$, $(a_{ij})$, $\tilde{w}_{i}$ and $w_{i}$ need to satisfied and giving their possible values.
+As Hu et al. did in their paper \cite{hu_etal_2018}, the stage values in Eq.~\eqref{imexStages} can be rewritten to
 \begin{equation}
   \vect{u}^{(i)}
   =\sum_{j=0}^{i-1}c_{ij}\Big[\,\vect{u}^{(j)}+\hat{c}_{ij}\,\dt\,\vect{\cT}(\vect{u}^{(j)})\,\Big]
   +a_{ii}\,\dt\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}),\quad i=1,\ldots,s,
   \label{eq:imexStagesRewrite}
 \end{equation}
-
+It can be proved \cite{Chu_2018} that the conditions we need for constraint-preserving IMEX is:
+\begin{enumerate}
+    \item Consistency of the implicit coefficients
+    \begin{equation}
+      \sum_{i=1}^{s}w_{i}=1.
+    \end{equation}
+    \item Second-order accuracy in the streaming limit; i.e., satisfies \begin{equation}
+      \sum_{i=1}^{s}\tilde{w}_{i}=1
+      \quad\text{and}\quad
+      \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}=\f{1}{2},
+      \label{eq:orderConditionsEx}
+    \end{equation}
+    \item Convex-invariant; i.e. satisfies 
+    \begin{align}
+      &a_{ii}>0, \quad c_{i0},\tilde{c}_{i0}\ge0, \quad \text{for} \quad i=2,\ldots,s, \nonumber \\
+      &\text{and} \quad c_{ij},\tilde{c}_{ij}\ge0, \quad \text{for} \quad i=3,\ldots,s, \quad\text{and}\quad j=2,\ldots,i-1.  
+    \end{align}
+    with $\sum_{j=0}^{i-1}c_{ij}=1$, for $i=1,\ldots,s$, and $c_{\Sch}=\min_{\substack{i = 2,\ldots,s \\ 
+                  j = 0,2,\ldots,i-1}}\,\f{1}{\hat{c}_{ij}}>0$.
+    \item Well-behaved in the diffusion limit; i.e., satisfies \begin{equation}
+      \vect{e}_{i}^{T}A^{-1}\tilde{A}\,\vect{e} = 1, \quad i=2,\ldots,s.
+      \label{eq:diffusionCondition}
+    \end{equation}
+    \item Less than four stages ($s\le3$).
+    \item Globally stiffly accurate (GSA): $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i},\quad i=1,\ldots,s$.
+\end{enumerate}  
+We call the IMEX scheme satisfying the above conditions {PD-ARS}. (Definition 3 in \cite{Chu_2018})
+We give two optimized PD-ARS scheme here: PD-ARS with SSPRK2 and  PD-ARS with SSPRK3. They have $2$-nd order and $3$-rd order accuracy in the streaming limit, respectively.
 \subsubsection{PD-ARS with SSPRK2}
-
+The explicit part of this IMEX scheme is SSPRK2.
 \begin{equation}
   \begin{array}{c | c c c}
   	0 & 0   & 0 & 0 \\
@@ -51,6 +99,8 @@ Let $\vect{\cQ}$ be some linear operators and
 For these schemes, $c_{\mbox{\tiny Sch}}= 1 - 2\epsilon$ with $\epsilon \in [0, 1/2)$.
 
 \subsubsection{PD-ARS with SSPRK3}
+The explicit part of this IMEX scheme is SSPRK3.
+
 \begin{equation}
   \begin{array}{c | c c c c}
   	    &     &     &     &  \\
