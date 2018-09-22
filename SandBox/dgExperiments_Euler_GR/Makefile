@@ -1,10 +1,36 @@
 include ../../../Build/Makefile_Build
 
-all: RiemannProblem StandingAccretionShock ComputePrimitiveTest
+all: ApplicationDriver RiemannProblem StandingAccretionShock ComputePrimitiveTest
+
+ApplicationDriver: \
+	$(thornado) \
+	PositivityLimiterModule_Euler_GR.o \
+	EulerEquationsUtilitiesModule_Beta_GR.o \
+	CharacteristicDecompositionModule_GR.o \
+	BoundaryConditionsModule_Beta.o \
+	SlopeLimiterModule_Euler_GR.o \
+	DataFileReaderModule.o \
+	InitializationModule_GR.o \
+	dgDiscretizationModule_Euler_GR.o \
+	TimeSteppingModule_SSPRK.o \
+	ApplicationDriver.o
+	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
+	$(thornado) \
+	PositivityLimiterModule_Euler_GR.o \
+	EulerEquationsUtilitiesModule_Beta_GR.o \
+	CharacteristicDecompositionModule_GR.o \
+	BoundaryConditionsModule_Beta.o \
+	SlopeLimiterModule_Euler_GR.o \
+	DataFileReaderModule.o \
+	InitializationModule_GR.o \
+	dgDiscretizationModule_Euler_GR.o \
+	TimeSteppingModule_SSPRK.o \
+	ApplicationDriver.o \
+	$(LIBRARIES)
 
 RiemannProblem: \
 	$(thornado) \
-	PositivityLimiterModule.o \
+	PositivityLimiterModule_Euler_GR.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
 	CharacteristicDecompositionModule_GR.o \
 	BoundaryConditionsModule_Beta.o \
@@ -17,7 +43,7 @@ RiemannProblem: \
 	RiemannProblem.o
 	$(FLINKER) $(FLAGS) -o RiemannProblem_$(MACHINE) \
 	$(thornado) \
-	PositivityLimiterModule.o \
+	PositivityLimiterModule_Euler_GR.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
 	CharacteristicDecompositionModule_GR.o \
 	BoundaryConditionsModule_Beta.o \
@@ -32,7 +58,7 @@ RiemannProblem: \
 
 StandingAccretionShock: \
 	$(thornado) \
-	PositivityLimiterModule.o \
+	PositivityLimiterModule_Euler_GR.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
 	CharacteristicDecompositionModule_GR.o \
 	BoundaryConditionsModule_Beta.o \
@@ -44,7 +70,7 @@ StandingAccretionShock: \
 	StandingAccretionShock.o
 	$(FLINKER) $(FLAGS) -o StandingAccretionShock_$(MACHINE) \
 	$(thornado) \
-	PositivityLimiterModule.o \
+	PositivityLimiterModule_Euler_GR.o \
 	EulerEquationsUtilitiesModule_Beta_GR.o \
 	CharacteristicDecompositionModule_GR.o \
 	BoundaryConditionsModule_Beta.o \
@@ -70,6 +96,7 @@ clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
+	rm -f ApplicationDriver_$(MACHINE)
 	rm -f RiemannProblem_$(MACHINE)
 	rm -f StandingAccretionShock_$(MACHINE)
 	rm -f ComputePrimitiveTest_$(MACHINE)
