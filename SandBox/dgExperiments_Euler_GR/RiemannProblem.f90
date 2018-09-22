@@ -50,27 +50,14 @@ PROGRAM RiemannProblem
   REAL(DP) :: D_L, V_L(3), P_L, D_R, V_R(3), P_R
   CHARACTER( LEN = 11 ) :: CS
 
-  REAL(DP)             :: LT
+  INTEGER              :: nNodes = 3
   CHARACTER( LEN = 4 ) :: arg
-  INTEGER              :: argv(2), nNodes, i
-  LOGICAL              :: ConvergenceRate = .FALSE.
+  INTEGER              :: i
 
   CALL RiemannProblemChoice &
          ( D_L, V_L, P_L, D_R, V_R, P_R, &
              xL, xR, x_D, K, t, t_end, CFL, Gamma, bcX, CS, iRP = 10 )
 
-  IF ( ConvergenceRate ) THEN
-    DO i = 1, IARGC()
-      CALL GETARG( i, arg )
-      READ( arg, * ) argv(i)
-    END DO
-    nNodes = argv(1)
-    K      = argv(2)
-  ELSE
-    nNodes = 3
-    LT     = 0.1_DP
-  END IF
-  
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'RiemannProblem', &
@@ -114,7 +101,7 @@ PROGRAM RiemannProblem
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL InitializeFluid_SSPRK( nStages = 3 )
+  CALL InitializeFluid_SSPRK( nStages = nNodes )
 
   CALL InitializeSlopeLimiter_Euler_GR &
          ( BetaTVD_Option = 2.0_DP, &
@@ -123,7 +110,7 @@ PROGRAM RiemannProblem
            UseSlopeLimiter_Option = .TRUE., &
            UseCharacteristicLimiting_Option = .FALSE., &
            UseTroubledCellIndicator_Option = .TRUE., &
-           LimiterThresholdParameter_Option = LT )
+           LimiterThresholdParameter_Option = 0.03_DP )
 
   CALL InitializePositivityLimiter &
          ( Min_1_Option = 1.0d-16 , Min_2_Option = 1.0d-16, &
