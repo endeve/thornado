@@ -141,6 +141,45 @@ CONTAINS
         END DO
       END DO
 
+    CASE ( 32 ) ! Reflecting inner boundary, homogeneous outer boundary
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = 1, swX(1)
+
+            DO iNodeX3 = 1, nNodesX(3)
+              DO iNodeX2 = 1, nNodesX(2)
+                DO iNodeX1 = 1, nNodesX(1)
+
+                  jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+
+                  iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+                  jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+
+                  DO iCF = 1, nCF
+
+                  ! --- Inner boundary ---
+                  U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF) &
+                    = U(jNodeX,iX_B0(1),iX2,iX3,iCF)
+                 
+                  END DO
+
+                  U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
+                    = - U(jNodeX,iX_B0(1),iX2,iX3,iCF_S1)
+
+                END DO
+              END DO
+            END DO
+
+            ! --- Outer Boundary ---
+
+            U(:,iX_E0(1)+iX1,iX2,iX3,:) &
+              = U(:,iX_E0(1),iX2,iX3,:)
+
+          END DO
+        END DO
+     END DO
+
 
     CASE ( 10 ) ! Custom BCs for Accretion Problem
 
