@@ -111,7 +111,7 @@ where $a$ and $b$ represent the state of the fluid in two different elements, $\
 \end{equation}
 and $\alpha$ is the largest (in absolute value) eigenvalue of the flux-Jacobian:
 \begin{equation}
-    \alpha=\left|\left|\f{\p\bF}{\p\bU}\right|\right|.
+    \alpha=\left|\left|\pderiv{\bF}{\bU}\right|\right|.
 \end{equation}
 Using this we define the following variables:
 \begin{equation}\label{Eq:EigVals}
@@ -163,7 +163,7 @@ $\bF\left(\bU\right)$ are the fluxes of those conserved quantities:
 \end{equation}
 and $\bQ$ is a source term:
 \begin{align}
-    \bQ\longrightarrow\begin{pmatrix}0\\\f{1}{2}\,P^{kj}\,\p_{1}\gamma_{kj}\\0\end{pmatrix}&=\begin{pmatrix}0\\ \f{1}{2}\left[P^{11}\,\p_{1}\,\gamma_{11}+P^{22}\,\p_{1}\,\gamma_{22}+P^{33}\,\p_{1}\,\gamma_{33}\right] \\0\end{pmatrix}\\
+    \bQ\longrightarrow\begin{pmatrix}0\\\f{1}{2}\,P^{kj}\,\pd{\gamma_{kj}}{1}\\0\end{pmatrix}&=\begin{pmatrix}0\\ \f{1}{2}\left[P^{11}\,\pd{\gamma_{11}}{1}+P^{22}\,\pd{\gamma_{22}}{1}+P^{33}\,\pd{\gamma_{33}}{1}\right] \\0\end{pmatrix}\\
     &=\begin{pmatrix}0\\ P^{11}\,h_{1}\,\pd{\,h_{1}}{1}+P^{22}\,h_{2}\,\pd{\,h_{2}}{1}+P^{33}\,h_{3}\,\pd{\,h_{3}}{1} \\0\end{pmatrix},
 \end{align}
 where we have used the fact that $\gamma_{jj}=\left(h_{j}\right)^{2}$. The $P^{kj}$ are components of the pressure tensor:
@@ -284,14 +284,14 @@ For this section we drop the subscript $i$ and the superscript $n$. We have to s
 It is clear that the first requirement for $\bH_{2}$ is met, i.e. $\ol{D}>0$. The second requirement is:
 \begin{align}
 \ol{D}+\ol{\tau}&>\sqrt{\ol{D}^{2}+\left[\ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] \left[\ol{S}^{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\p^{1}\,\gamma_{kk}}\right] }\\
-&=\sqrt{\ol{D}^{2}+\left[\ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] \left[\ol{S}^{1}+\gamma^{11}\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}\right] }\\
-&=\sqrt{\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}+\gamma^{11}\left[\f{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}{2\left(1-\ve\right)}\right]^{2}\left(\Delta t\right)^{2}+\f{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}{2\left(1-\ve\right)}\left[\ol{S}_{1}\,\gamma^{11}+\ol{S}^{1}\right]\Delta t}\\
+&=\sqrt{\ol{D}^{2}+\left[\ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] \left[\ol{S}^{1}+\gamma^{11}\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] }\\
+&=\sqrt{\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}+\gamma^{11}\left[\f{\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}}{2\left(1-\ve\right)}\right]^{2}\left(\Delta t\right)^{2}+\f{\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}}{2\left(1-\ve\right)}\left[\ol{S}_{1}\,\gamma^{11}+\ol{S}^{1}\right]\Delta t}\\
 &=\sqrt{a\left(\Delta t\right)^{2}+b\,\Delta t+c}\geq0,
 \end{align}
 where
 \begin{align}
-    a&=\left[\f{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}{2\,\sqrt{\ol{\gamma_{11}}}\left(1-\ve\right)}\right]^{2}\geq0\\
-    b&=\f{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}{\ol{\gamma_{11}}\left(1-\ve\right)}\ol{S}_{1}=\f{2\,\ol{S}_{1}}{\sqrt{\ol{\gamma_{11}}}}\sqrt{a}\\
+    a&=\left[\f{\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}}{2\,\sqrt{\ol{\gamma_{11}}}\left(1-\ve\right)}\right]^{2}\geq0\\
+    b&=\f{\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}}{\ol{\gamma_{11}}\left(1-\ve\right)}\ol{S}_{1}=\f{2\,\ol{S}_{1}}{\sqrt{\ol{\gamma_{11}}}}\sqrt{a}\\
     c&=\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}\geq0.
 \end{align}
 The condition for a quadratic function to be positive-definite is that $a>0$ (concave-up) and $b^{2}-4\,a\,c<0$ (no real roots). The first condition is clearly met. For the second condition:
