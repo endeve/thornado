@@ -37,7 +37,8 @@ MODULE SlopeLimiterModule_Euler_GR
   USE BoundaryConditionsModule_Beta, ONLY: &
     ApplyBoundaryConditions_Fluid
   USE CharacteristicDecompositionModule_GR, ONLY: &
-    ComputeCharacteristicDecomposition_GR
+    ComputeCharacteristicDecomposition_GR, &
+    ComputeCharacteristicDecomposition_SR
 
   IMPLICIT NONE
   PRIVATE
@@ -232,13 +233,13 @@ CONTAINS
           
           END DO
 
-          ! --- Cell Average of Geometry (Spatial Metric Only) ---
+          ! --- Cell Average of Geometry (Spatial Metric, Lapse Function,
+          !     and Shift Vector) ---
 
           DO iGF = iGF_Gm_dd_11, iGF_Gm_dd_33
-
             G_K(iGF) = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF) )
-
           END DO
+
           DO iGF = iGF_Alpha, iGF_Beta_3
              G_K(iGF) = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF))
           END DO
@@ -288,7 +289,7 @@ CONTAINS
 
             ! --- Compute Eigenvectors ---
 
-            CALL ComputeCharacteristicDecomposition_GR &
+            CALL ComputeCharacteristicDecomposition_SR &
                    ( 1, G_K(:), U_M(:,0,1), R_X1, invR_X1 )
 
             IF( nDimsX > 1 )THEN
@@ -422,9 +423,8 @@ CONTAINS
       END DO
     END DO
 
-    IF( UseCharacteristicLimiting ) &
-         CALL ApplyConservativeCorrection &
-                ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
+    !CALL ApplyConservativeCorrection &
+    !       ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
   END SUBROUTINE ApplySlopeLimiter_Euler_GR
 
