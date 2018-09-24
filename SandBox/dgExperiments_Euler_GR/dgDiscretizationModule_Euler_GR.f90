@@ -42,13 +42,11 @@ MODULE dgDiscretizationModule_Euler_GR
     NumericalFlux_X1_HLLC_GR
   USE SlopeLimiterModule_Euler_GR, ONLY: &
     ApplySlopeLimiter_Euler_GR
-  USE PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter
+  USE PositivityLimiterModule_Euler_GR, ONLY: &
+    ApplyPositivityLimiter_Euler_GR
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromSpecificInternalEnergy, &
     ComputeSoundSpeedFromPrimitive_GR
-  USE UnitsModule, ONLY: &
-    SolarMass
 
   IMPLICIT NONE
   PRIVATE
@@ -93,8 +91,8 @@ CONTAINS
     CALL ApplySlopeLimiter_Euler_GR &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
-    IF( DEBUG ) WRITE(*,*) 'CALL ApplyPositivityLimiter'
-    CALL ApplyPositivityLimiter &
+    IF( DEBUG ) WRITE(*,*) 'CALL ApplyPositivityLimiter_Euler_GR'
+    CALL ApplyPositivityLimiter_Euler_GR &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     IF( DEBUG ) WRITE(*,*) 'CALL ApplyBoundaryConditions_Fluid'
@@ -362,7 +360,6 @@ CONTAINS
                    G_F(:,iGF_Gm_dd_33) )
 
           IF( DEBUG ) WRITE(*,*) '      CALL ComputeSoundSpeedFromPrimitive_GR'
-          IF( DEBUG ) WRITE(*,*) '        PF_E:', uPF_L(:,iPF_E)
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L(:) )
 
@@ -476,7 +473,8 @@ CONTAINS
                     G_F  (iNodeX_X1,iGF_Alpha) )
 
             NumericalFlux( iNodeX_X1,:)                &
-!              = NumericalFlux_X1_HLL_GR               &
+!              = NumericalFlux_X1_LLF_GR                &
+!              = NumericalFlux_X1_HLL_GR                &
               = NumericalFlux_X1_HLLC_GR               &
                   ( uCF_L(iNodeX_X1,1:nCF),            &
                     uCF_R(iNodeX_X1,1:nCF),            &
@@ -496,7 +494,7 @@ CONTAINS
           DO iCF = 1, nCF
 
             NumericalFlux(:,iCF) &
-              = dX2 * dX3 * WeightsX_X1(:) * G_F(:,iGF_Alpha) &
+              = dX2 * dX3 * WeightsX_X1(:) & ! HLLC Flux has bug * G_F(:,iGF_Alpha) &
                   * G_F(:,iGF_SqrtGm) * NumericalFlux(:,iCF)
 
           END DO
