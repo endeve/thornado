@@ -9,8 +9,8 @@ MODULE TimeSteppingModule_SSPRK
     nCF
   USE SlopeLimiterModule_Euler_GR, ONLY: &
     ApplySlopeLimiter_Euler_GR
-  USE PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter
+  USE PositivityLimiterModule_Euler_GR, ONLY: &
+    ApplyPositivityLimiter_Euler_GR
   
   IMPLICIT NONE
   PRIVATE
@@ -210,7 +210,7 @@ CONTAINS
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-    CALL ApplyPositivityLimiter &
+    CALL ApplyPositivityLimiter_Euler_GR &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )

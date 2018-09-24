@@ -15,9 +15,9 @@ PROGRAM StandingAccretionShock
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange, &
     FinalizeReferenceElementX_Lagrange
-  USE PositivityLimiterModule, ONLY: &
-    InitializePositivityLimiter, &
-    FinalizePositivityLimiter
+  USE PositivityLimiterModule_Euler_GR, ONLY: &
+    InitializePositivityLimiter_Euler_GR, &
+    FinalizePositivityLimiter_Euler_GR
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE GeometryComputationModule, ONLY: &
@@ -38,7 +38,7 @@ PROGRAM StandingAccretionShock
   USE dgDiscretizationModule_Euler_GR, ONLY: &
     ComputeIncrement_Euler_GR_DG_Explicit
   USE EulerEquationsUtilitiesModule_Beta_GR, ONLY: &
-    ComputeFromConserved
+    ComputeFromConserved_GR
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
@@ -151,7 +151,7 @@ PROGRAM StandingAccretionShock
            UseTroubledCellIndicator_Option = .FALSE., &
            LimiterThresholdParameter_Option = LT )
 
-  CALL InitializePositivityLimiter &
+  CALL InitializePositivityLimiter_Euler_GR &
 !         ( Min_1_Option = 1.0d-25, Min_2_Option = 1.0d-25, &
          ( Min_1_Option = 0.0d-25, Min_2_Option = 0.0d-25, &
            UsePositivityLimiter_Option = .TRUE. )
@@ -181,7 +181,7 @@ PROGRAM StandingAccretionShock
            ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
 
     ! --- Update primitive fluid variables, pressure, and sound speed ---
-    CALL ComputeFromConserved( iX_B0, iX_E0, uGF, uCF, uPF, uAF )
+    CALL ComputeFromConserved_GR( iX_B0, iX_E0, uGF, uCF, uPF, uAF )
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
@@ -195,7 +195,7 @@ PROGRAM StandingAccretionShock
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL FinalizePositivityLimiter
+  CALL FinalizePositivityLimiter_Euler_GR
 
   CALL FinalizeSlopeLimiter_Euler_GR
 
