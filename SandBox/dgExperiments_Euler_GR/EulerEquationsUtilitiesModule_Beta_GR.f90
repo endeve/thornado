@@ -1,11 +1,15 @@
 MODULE EulerEquationsUtilitiesModule_Beta_GR
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, SqrtTiny
+    DP, Zero, SqrtTiny, Half, One, Two
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX
+  USE MeshModule, ONLY: &
+    MeshX
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uAF, iAF_P, iAF_Cs
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
+    nAF, iAF_P, iAF_Cs
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE EquationOfStateModule, ONLY: &
@@ -15,9 +19,10 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   IMPLICIT NONE
   PRIVATE :: ComputeFunJacP
 
-  PUBLIC :: ComputeFromConserved
+  PUBLIC :: ComputeFromConserved_GR
   PUBLIC :: ComputePrimitive_GR
   PUBLIC :: ComputeConserved_GR
+  PUBLIC :: ComputeTimeStep_GR
   PUBLIC :: Eigenvalues_GR
   PUBLIC :: Flux_X1_GR
   PUBLIC :: StressTensor_Diagonal
@@ -27,12 +32,12 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   PUBLIC :: NumericalFlux_X1_HLLC_GR
 
   LOGICAL, PARAMETER :: DEBUG = .FALSE.
-  INTEGER, PARAMETER :: MAX_IT = 100
+  INTEGER, PARAMETER :: MAX_IT = 1000
 
 CONTAINS
 
 
-  SUBROUTINE ComputeFromConserved( iX_B0, iX_E0, G, U, P, A )
+  SUBROUTINE ComputeFromConserved_GR( iX_B0, iX_E0, G, U, P, A )
 
     INTEGER, INTENT(in)  :: &
       iX_B0(3), iX_E0(3)
@@ -75,7 +80,7 @@ CONTAINS
       END DO
     END DO
 
-  END SUBROUTINE ComputeFromConserved
+  END SUBROUTINE ComputeFromConserved_GR
 
 
   SUBROUTINE ComputePrimitive_GR &
@@ -83,50 +88,43 @@ CONTAINS
                 PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
                 AF_P, GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, &
-                                           CF_E, CF_Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, &
-                                           PF_E, PF_Ne, AF_P
+    REAL(DP), DIMENSION(:), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
+    REAL(DP), DIMENSION(:), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, AF_P
     REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
     LOGICAL :: CONVERGED
 
     INTEGER :: i, ITERATION, nNodes
 
-    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q(SIZE(CF_D)), FunP0
+    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q, FunP0
 
     REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-12, TolFunP = 1.0d-12
-
-    q = CF_E(:) + CF_D(:) - SQRT( CF_D(:)**2 &
-                                    + CF_S1(:)**2 / GF_Gm_dd_11(:)  &
-                                    + CF_S2(:)**2 / GF_Gm_dd_22(:)  &
-                                    + CF_S3(:)**2 / GF_Gm_dd_33(:) )
-
-    nNodes = SIZE( CF_D )
+    REAL(DP), PARAMETER :: TolP = 1.0d-12, TolFunP = 1.0d-12, TolFunP0 = 1.0d-12
 
     ! --- Loop through all the nodes ---
+    nNodes = SIZE( CF_D )
     DO i = 1, nNodes
 
-      IF( DEBUG )THEN
-        IF( q(i) .LT. Zero )THEN
-          WRITE(*,*)
-          WRITE(*,'(A6,ES18.10E3)') 'q(i): ', q(i)
-          WRITE(*,'(A6,ES18.10E3)') 'Gm11: ', GF_Gm_dd_11(:)
-          WRITE(*,'(A6,ES18.10E3)') 'Gm22: ', GF_Gm_dd_22(:)
-          WRITE(*,'(A6,ES18.10E3)') 'Gm33: ', GF_Gm_dd_33(:)
-          WRITE(*,'(A6,ES18.10E3)') 'D:    ', CF_D(:)
-          WRITE(*,'(A6,ES18.10E3)') 'E:    ', CF_E(:)
-          WRITE(*,'(A6,ES18.10E3)') 'S1:   ', CF_S1(:)
-          WRITE(*,'(A6,ES18.10E3)') 'S2:   ', CF_S2(:)
-          WRITE(*,'(A6,ES18.10E3)') 'S3:   ', CF_S3(:)
-          !STOP 'q < 0'
-        END IF
+      q = CF_E(i) + CF_D(i) - SQRT( CF_D(i)**2 &
+                                  + CF_S1(i)**2 / GF_Gm_dd_11(i)  &
+                                  + CF_S2(i)**2 / GF_Gm_dd_22(i)  &
+                                  + CF_S3(i)**2 / GF_Gm_dd_33(i) )
+
+      IF( q .LT. Zero )THEN
+        WRITE(*,*)
+        WRITE(*,'(A6,I1)')        'Node: ', i
+        WRITE(*,'(A9,ES18.10E3)') 'q:       ', q
+        WRITE(*,'(A9,ES18.10E3)') 'Gm11(i): ', GF_Gm_dd_11(i)
+        WRITE(*,'(A9,ES18.10E3)') 'Gm22(i): ', GF_Gm_dd_22(i)
+        WRITE(*,'(A9,ES18.10E3)') 'Gm33(i): ', GF_Gm_dd_33(i)
+        WRITE(*,'(A9,ES18.10E3)') 'D(i):    ', CF_D(i)
+        WRITE(*,'(A9,ES18.10E3)') 'E(i):    ', CF_E(i)
+        WRITE(*,'(A9,ES18.10E3)') 'S1(i):   ', CF_S1(i)
+        WRITE(*,'(A9,ES18.10E3)') 'S2(i):   ', CF_S2(i)
+        WRITE(*,'(A9,ES18.10E3)') 'S3(i):   ', CF_S3(i)
+        STOP 'q < 0'
       END IF
     
-      CONVERGED = .FALSE.
-      ITERATION = 0
-
       SSq = CF_S1(i)**2 / GF_Gm_dd_11(i) &
             + CF_S2(i)**2 / GF_Gm_dd_22(i) &
             + CF_S3(i)**2 / GF_Gm_dd_33(i)
@@ -134,9 +132,10 @@ CONTAINS
       ! --- Find Pressure with Newton's Method ---
 
       ! --- Approximation for pressure assuming h^2~=1 ---
-      Pold = MAX( SQRT( SSq + CF_D(i)**2 ) - CF_D(i) - CF_E(i), SqrtTiny )
+      Pold = MAX( -q, SqrtTiny )
 
-      ! --- Get initial values for FunP ---
+      IF( DEBUG ) WRITE(*,*) 'Initial guess for pressure: ', Pold
+      ! --- Get initial value for FunP ---
       IF( DEBUG ) WRITE(*,'(A)') 'CALL ComputeFunJacP0'
       CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP0, JacP )
       IF( DEBUG )THEN
@@ -147,6 +146,14 @@ CONTAINS
         WRITE(*,'(A)') "---------------------------------------"
       END IF
 
+      CONVERGED = .FALSE.
+
+      IF( ABS( FunP0 ) .LT. TolFunP0 )THEN
+        Pnew = Pold
+        CONVERGED = .TRUE.
+      END IF
+
+      ITERATION = 0
       DO WHILE ( .NOT. CONVERGED )
 
         ITERATION = ITERATION + 1
@@ -165,7 +172,7 @@ CONTAINS
           WRITE(*,'(A6,ES24.16E3)') 'Pnew: ', Pnew
           WRITE(*,*)
         END IF
-        !Pnew = MAX( Pnew, SqrtTiny )
+        Pnew = MAX( Pnew, SqrtTiny )
 
         ! --- Check if Newton's method has converged ---
         IF( DEBUG ) WRITE(*,'(A)') 'Checking relative tolerance...'
@@ -211,11 +218,12 @@ CONTAINS
         END IF
 
         ! --- STOP after MAX_IT iterations ---
-        IF( ITERATION .GE. MAX_IT )THEN
+        IF( ITERATION .GE. MAX_IT - 4 )THEN
 
           WRITE(*,*)
           WRITE(*,*) 'Max iterations IF statement'
           WRITE(*,*) '---------------------------'
+          WRITE(*,*) 'ITERATION: ', ITERATION
           WRITE(*,*) 'PF_D:   ', PF_D(:)
           WRITE(*,*) 'PF_V1:  ', PF_V1(:)
           WRITE(*,*) 'PF_V2:  ', PF_V2(:)
@@ -237,7 +245,7 @@ CONTAINS
           WRITE(*,'(A,ES24.16E3)') 'FunP:  ', FunP
           WRITE(*,'(A,ES24.16E3)') &
                   '|Pnew-Pold|/|Pnew|: ', ABS( Pnew - Pold ) / ABS( Pnew )
-          IF( ITERATION == MAX_IT + 3 )THEN
+          IF( ITERATION == MAX_IT )THEN
             WRITE(*,'(A)') &
                    'Max allowed iterations reached, no convergence. Stopping...'
             STOP
@@ -251,11 +259,11 @@ CONTAINS
       AF_P(i) = Pnew
 
       IF( AF_P(i) .LT. Zero ) WRITE(*,'(A3,ES24.10E3)') 'P: ', AF_P(i)
-      vSq = SSq / ( CF_E(i) + AF_P(i) + CF_D(i) )**2
+      vSq = SSq / ( CF_E(i) + Pnew + CF_D(i) )**2
 
       W = 1.0_DP / SQRT( 1.0_DP - vSq )
 
-      h = ( CF_E(i) + AF_P(i) + CF_D(i) ) / ( W * CF_D(i) )
+      h = ( CF_E(i) + Pnew + CF_D(i) ) / ( W * CF_D(i) )
 
       IF( DEBUG )THEN
         IF( h .LT. 1.0_DP ) WRITE(*,'(A6,ES18.10E3)') 'h:    ', h
@@ -271,50 +279,111 @@ CONTAINS
 
       PF_V3(i) = CF_S3(i) / ( CF_D(i) * h * W * GF_Gm_dd_33(i) )
 
-      PF_E(i)  = CF_D(i) * ( h - 1.0_DP ) / W - AF_P(i)
+      PF_E(i)  = CF_D(i) * ( h - 1.0_DP ) / W - Pnew
       
       PF_Ne(i) = CF_Ne(i) / W
 
-   END DO
+   END DO ! --- End of loop over nodes ---
 
 
   END SUBROUTINE ComputePrimitive_GR
 
 
-  SUBROUTINE ComputeFunJacP( D, E, SSq, P, FunP, JacP )
+  SUBROUTINE ComputeFunJacP( CF_D, CF_E, SSq, P, FunP, JacP )
 
-    REAL(DP), INTENT(in)  :: D, E, SSq, P
+    REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq, P
     REAL(DP), INTENT(out) :: FunP, JacP
 
     REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS
     REAL(DP), DIMENSION(1) :: Pbar
 
-    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  CF_D:    ', D
-    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  CF_E:    ', E
+    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  CF_D:    ', CF_D
+    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  CF_E:    ', CF_E
     IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  SSq:     ', SSq
     IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  P:       ', P
 
-    HSq = ( E + P + D )**2
+    HSq = ( CF_E + P + CF_D )**2
     IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  HSq:     ', HSq
     IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  H^2-S^2: ', HSq - SSq
 
-    RHO = D * SQRT( HSq - SSq ) / SQRT( HSq )
+    RHO = CF_D * SQRT( HSq - SSq ) / SQRT( HSq )
     IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  RHO:     ', RHO
 
     EPS = ( SQRT( HSq - SSq ) &
-            - P * SQRT( HSq ) / SQRT( HSq - SSq ) - D ) / D
+            - P * SQRT( HSq ) / SQRT( HSq - SSq ) - CF_D ) / CF_D
     IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  EPS:     ', EPS
 
     CALL ComputePressureFromSpecificInternalEnergy &
          ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
 
     FunP = P - Pbar(1)
-    dRHO = D * SSq / ( SQRT( HSq - SSq ) * HSq )
+    dRHO = CF_D * SSq / ( SQRT( HSq - SSq ) * HSq )
     dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
 
     JacP = 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS )
 
   END SUBROUTINE ComputeFunJacP
+
+
+  SUBROUTINE ComputeTimeStep_GR( iX_B, iX_E, G, U, CFL, TimeStep )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B(3), iX_E(3)
+    REAL(DP), INTENT(in)  :: &
+      G(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
+      U(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+    REAL(DP), INTENT(in)  :: &
+      CFL
+    REAL(DP), INTENT(out) :: &
+      TimeStep
+
+    INTEGER  :: iX1, iX2, iX3
+    REAL(DP) :: dX(3), dt_X(nDOFX,3)
+    REAL(DP) :: P(nDOFX,nPF)
+    REAL(DP) :: A(nDOFX,nAF)
+
+    TimeStep = HUGE( One )
+
+    DO iX3 = iX_B(3), iX_E(3)
+      DO iX2 = iX_B(2), iX_E(2)
+        DO iX1 = iX_B(1), iX_E(1)
+
+          dX(1) = MeshX(1) % Width(iX1)
+          dX(2) = MeshX(2) % Width(iX2)
+          dX(3) = MeshX(3) % Width(iX3)
+
+          CALL ComputePrimitive_GR &
+                 ( U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
+                   U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
+                   U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
+                   P(:,iPF_D), P(:,iPF_V1), P(:,iPF_V2), P(:,iPF_V3), &
+                   P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_P), &
+                   G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+          CALL ComputeSoundSpeedFromPrimitive_GR &
+                 ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_Cs) )
+
+          ! --- NEED TO FIX THIS FOR CURVILINEAR COORDINATES AND SOURCE TERM ---
+          dt_X(:,1) &
+            = dX(1)
+
+          dt_X(:,2) &
+            = dX(2)
+
+          dt_X(:,3) &
+            = dX(3)
+
+          TimeStep = MIN( TimeStep, MINVAL( dt_X ) )
+
+        END DO
+      END DO
+    END DO
+
+    TimeStep = CFL * TimeStep
+
+  END SUBROUTINE ComputeTimeStep_GR
 
   
   SUBROUTINE ComputeConserved_GR( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
@@ -488,29 +557,28 @@ CONTAINS
     ELSE IF( ABS( A ) .LT. eps )THEN
       AlphaC_GR = -C / B
     ELSE
-      AlphaC_GR = ( -B - SQRT( B**2 - 4.0_DP * A * C ) ) / ( 2.0_DP * A )
+      AlphaC_GR = ( -B - SQRT( MAX( B**2 - 4.0_DP * A * C, SqrtTiny ) ) ) &
+                    / ( 2.0_DP * A )
     END IF
 
     RETURN
-    
   END FUNCTION AlphaC_GR
 
 
   PURE FUNCTION NumericalFlux_X1_LLF_GR &
-      ( u_L, u_R, Flux_L, Flux_R, alpha_P, alpha_M, alpha_C, nF, &
-        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_dd_11 )    
+      ( u_L, u_R, Flux_L, Flux_R, aP, aM, aC, nF, &
+        V1_L, V1_R, p_L, p_R, ShiftVector1, Gm11 )    
 
     ! --- Local Lax-Friedrichs Flux ---
 
     INTEGER,  INTENT(in)                   :: nF
     REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
-    REAL(DP), INTENT(in)                   :: alpha_P, alpha_M,      &
-                                              alpha_C, V1_L, V1_R,          &
-                                              p_L, p_R, Beta_u_1, Gm_dd_11
-    REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_X1_LLF_GR(1:nF)
+    REAL(DP), INTENT(in)                   :: aP, aM, aC, V1_L, V1_R, &
+                                              p_L, p_R, ShiftVector1, Gm11
+    REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_X1_LLF_GR
     REAL(DP) :: alpha
 
-    alpha    = MAX( alpha_m, alpha_p )
+    alpha    = MAX( aM, aP )
 
     NumericalFlux_X1_LLF_GR &
       = 0.5_DP * ( flux_L + flux_R - alpha * ( u_R - u_L ) )
@@ -520,126 +588,124 @@ CONTAINS
 
 
   PURE FUNCTION NumericalFlux_X1_HLL_GR &
-      ( u_L, u_R, Flux_L, Flux_R, alpha_P, alpha_M, alpha_C, nF, &
-        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_dd_11 )
+      ( u_L, u_R, Flux_L, Flux_R, aP, aM, aC, nF, &
+        V1_L, V1_R, p_L, p_R, ShiftVector1, Gm11 )
 
     INTEGER,  INTENT(in)                   :: nF
     REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
-    REAL(DP), INTENT(in)                   :: alpha_P, alpha_M,    &
-                                              alpha_C, V1_L, V1_R, &
-                                              p_L, p_R, Beta_u_1, Gm_dd_11
-    REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_X1_HLL_GR(1:nF)
+    REAL(DP), INTENT(in)                   :: aP, aM, aC, V1_L, V1_R, &
+                                              p_L, p_R, ShiftVector1, Gm11
+    REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_X1_HLL_GR
 
     NumericalFlux_X1_HLL_GR &
-      = ( alpha_P * flux_L + alpha_M * flux_R &
-            - alpha_P * alpha_M * ( u_R - u_L ) ) / ( alpha_P + alpha_M )
+      = ( aP * flux_L + aM * flux_R &
+            - aP * aM * ( u_R - u_L ) ) / ( aP + aM )
 
+    RETURN
   END FUNCTION NumericalFlux_X1_HLL_GR
 
 
   PURE FUNCTION NumericalFlux_X1_HLLC_GR &
-      ( u_L, u_R, Flux_L, Flux_R, alpha_P, alpha_M, alpha_C, nF, &
-        V1_L, V1_R, p_L, p_R, Beta_u_1, Gm_dd_11 )
+      ( u_L, u_R, Flux_L, Flux_R, aP, aM, aC, nF, &
+        V1_L, V1_R, p_L, p_R, ShiftVector1, Gm11 )
 
-    INTEGER,  INTENT(in)                   :: nF
-    REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
-    REAL(DP), INTENT(in)                   :: alpha_P, alpha_M,      &
-                                              alpha_C, V1_L, V1_R,          &
-                                              p_L, p_R, Beta_u_1, Gm_dd_11
-    REAL(DP)                               :: p, D, S1, S2, S3, E, Ne
-    REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_X1_HLLC_GR
+    INTEGER,  INTENT(in)                  :: nF
+    REAL(DP), DIMENSION(1:nF), INTENT(in) :: u_L, u_R, Flux_L, Flux_R
+    REAL(DP), INTENT(in)                  :: aP, aM, aC, V1_L, V1_R, &
+                                             p_L, p_R, ShiftVector1, Gm11
+    REAL(DP)                              :: p, CF_D, S1, S2, S3, CF_E, Ne
+    REAL(DP), DIMENSION(1:nF)             :: NumericalFlux_X1_HLLC_GR
 
-    IF( alpha_M .EQ. 0.0_DP )THEN
+    IF( aM .EQ. 0.0_DP )THEN
 
       NumericalFlux_X1_HLLC_GR = Flux_L
 
-    ELSEIF( alpha_P .EQ. 0.0_DP )THEN
+    ELSEIF( aP .EQ. 0.0_DP )THEN
 
       NumericalFlux_X1_HLLC_GR = Flux_R
 
     ELSE
 
       ! --- From Mignone & Bodo (2005)
-      ! --- Note the sign change on alpha_M which is due to it being
+      ! --- Note the sign change on aM which is due to it being
       ! --- read in as positive but the formulae assuming it is negative
 
-      IF( alpha_C .GE. 0.0_DP )THEN    
+      IF( aC .GE. 0.0_DP )THEN    
 
         ! -- UL_star
 
-        p  = ( Gm_dd_11 * alpha_C * ( u_L( iCF_E ) + u_L( iCF_D ) ) &
-             * ( -alpha_M + Beta_u_1 ) - u_L( iCF_S1 ) * ( alpha_C  &
-             - alpha_M - V1_L + Beta_u_1 ) + p_L ) / ( 1.0_DP       &
-             - Gm_dd_11 * alpha_C * ( -alpha_M + Beta_u_1 ) )
+        p     = ( Gm11 * aC * ( u_L( iCF_E ) + u_L( iCF_D ) ) &
+                * ( -aM + ShiftVector1 ) - u_L( iCF_S1 ) * ( aC  &
+                - aM - V1_L + ShiftVector1 ) + p_L ) / ( 1.0_DP       &
+                - Gm11 * aC * ( -aM + ShiftVector1 ) )
 
-        D  = u_L( iCF_D  ) *  ( -alpha_M - V1_L    + Beta_u_1 ) &
-                           /  ( -alpha_M - alpha_C + Beta_u_1 )
+        CF_D  = u_L( iCF_D  ) *  ( -aM - V1_L    + ShiftVector1 ) &
+                              /  ( -aM - aC + ShiftVector1 )
 
-        S1 = u_L( iCF_S1 ) *  ( -alpha_M - V1_L    + Beta_u_1 ) &
-                           /  ( -alpha_M - alpha_C + Beta_u_1 ) &
-             + ( p - p_L ) /  ( -alpha_M - alpha_C + Beta_u_1 )
+        S1    = u_L( iCF_S1 ) *  ( -aM - V1_L    + ShiftVector1 ) &
+                              /  ( -aM - aC + ShiftVector1 ) &
+                + ( p - p_L ) /  ( -aM - aC + ShiftVector1 )
 
-        S2 = u_L( iCF_S2 ) *  ( -alpha_M - V1_L    + Beta_u_1 ) &
-                           /  ( -alpha_M - alpha_C + Beta_u_1 )
+        S2    = u_L( iCF_S2 ) *  ( -aM - V1_L    + ShiftVector1 ) &
+                              /  ( -aM - aC + ShiftVector1 )
 
-        S3 = u_L( iCF_S3 ) *  ( -alpha_M - V1_L    + Beta_u_1 ) &
-                           /  ( -alpha_M - alpha_C + Beta_u_1 )
+        S3    = u_L( iCF_S3 ) *  ( -aM - V1_L    + ShiftVector1 ) &
+                              /  ( -aM - aC + ShiftVector1 )
 
-        E  = ( ( u_L( iCF_E ) + u_L( iCF_D ) ) * ( -alpha_M + Beta_u_1 )    &
-             + 1.0_DP / Gm_dd_11 * S1 - 1.0_DP / Gm_dd_11 * u_L( iCF_S1 ) ) &
-             / ( -alpha_M + Beta_u_1 )
+        CF_E  = ( ( u_L( iCF_E ) + u_L( iCF_D ) ) * ( -aM + ShiftVector1 ) &
+                + 1.0_DP / Gm11 * S1 - 1.0_DP / Gm11 * u_L( iCF_S1 ) ) &
+                / ( -aM + ShiftVector1 )
 
-        Ne = u_L( iCF_Ne ) *  ( -alpha_M - V1_L    + Beta_u_1 ) &
-                           /  ( -alpha_M - alpha_C + Beta_u_1 )
+        Ne    = u_L( iCF_Ne ) *  ( -aM - V1_L    + ShiftVector1 ) &
+                              /  ( -aM - aC + ShiftVector1 )
 
       ELSE
 
         ! -- UR_star
 
-        p  = ( Gm_dd_11 * alpha_C * ( u_R( iCF_E ) + u_R( iCF_D ) ) &
-             * ( alpha_P + Beta_u_1 ) - u_R( iCF_S1 ) * ( alpha_C   &
-             + alpha_P - V1_R + Beta_u_1 ) + p_R ) / ( 1.0_DP       &
-             - Gm_dd_11 * alpha_C * ( alpha_P + Beta_u_1 ) )
+        p     = ( Gm11 * aC * ( u_R( iCF_E ) + u_R( iCF_D ) ) &
+                * ( aP + ShiftVector1 ) - u_R( iCF_S1 ) * ( aC   &
+                + aP - V1_R + ShiftVector1 ) + p_R ) / ( 1.0_DP       &
+                - Gm11 * aC * ( aP + ShiftVector1 ) )
 
-        D  = u_R( iCF_D  ) *  ( alpha_P - V1_R    + Beta_u_1 ) &
-                           /  ( alpha_P - alpha_C + Beta_u_1 )
+        CF_D  = u_R( iCF_D  ) *  ( aP - V1_R    + ShiftVector1 ) &
+                              /  ( aP - aC + ShiftVector1 )
 
-        S1 = u_R( iCF_S1 ) *  ( alpha_P - V1_R    + Beta_u_1 ) &
-                           /  ( alpha_P - alpha_C + Beta_u_1 ) &
-             + ( p - p_R ) /  ( alpha_P - alpha_C + Beta_u_1 )
+        S1    = u_R( iCF_S1 ) *  ( aP - V1_R    + ShiftVector1 ) &
+                              /  ( aP - aC + ShiftVector1 ) &
+                + ( p - p_R ) /  ( aP - aC + ShiftVector1 )
 
-        S2 = u_R( iCF_S2 ) *  ( alpha_P - V1_R    + Beta_u_1 ) &
-                           /  ( alpha_P - alpha_C + Beta_u_1 )
+        S2    = u_R( iCF_S2 ) *  ( aP - V1_R    + ShiftVector1 ) &
+                              /  ( aP - aC + ShiftVector1 )
 
-        S3 = u_R( iCF_S3 ) *  ( alpha_P - V1_R    + Beta_u_1 ) &
-                           /  ( alpha_P - alpha_C + Beta_u_1 )
+        S3    = u_R( iCF_S3 ) *  ( aP - V1_R    + ShiftVector1 ) &
+                              /  ( aP - aC + ShiftVector1 )
 
-        E  = ( ( u_R( iCF_E ) + u_R( iCF_D ) ) * ( alpha_P + Beta_u_1 )     &
-             + 1.0_DP / Gm_dd_11 * S1 - 1.0_DP / Gm_dd_11 * u_R( iCF_S1 ) ) &
-             / ( alpha_P + Beta_u_1 )
+        CF_E  = ( ( u_R( iCF_E ) + u_R( iCF_D ) ) * ( aP + ShiftVector1 )     &
+                + 1.0_DP / Gm11 * S1 - 1.0_DP / Gm11 * u_R( iCF_S1 ) ) &
+                / ( aP + ShiftVector1 )
 
-        Ne  = u_R( iCF_Ne ) *  ( alpha_P - V1_R    + Beta_u_1 ) &
-                            /  ( alpha_P - alpha_C + Beta_u_1 )
+        Ne     = u_R( iCF_Ne ) *  ( aP - V1_R    + ShiftVector1 ) &
+                               /  ( aP - aC + ShiftVector1 )
 
       END IF
 
       NumericalFlux_X1_HLLC_GR( iCF_D  ) &
-        = D  * ( alpha_C - Beta_u_1 )
+        = CF_D  * ( aC - ShiftVector1 )
       NumericalFlux_X1_HLLC_GR( iCF_S1 ) &
-        = S1 * ( alpha_C - Beta_u_1 ) + p
+        = S1 * ( aC - ShiftVector1 ) + p
       NumericalFlux_X1_HLLC_GR( iCF_S2 ) &
-        = S2 * ( alpha_C - Beta_u_1 )
+        = S2 * ( aC - ShiftVector1 )
       NumericalFlux_X1_HLLC_GR( iCF_S3 ) &
-        = S3 * ( alpha_C - Beta_u_1 )
+        = S3 * ( aC - ShiftVector1 )
       NumericalFlux_X1_HLLC_GR( iCF_E  ) &
-        = 1.0_DP / Gm_dd_11 * S1 - Beta_u_1 * ( E - D ) - alpha_C * D
+        = 1.0_DP / Gm11 * S1 - ShiftVector1 * ( CF_E - CF_D ) - aC * CF_D
       NumericalFlux_X1_HLLC_GR( iCF_Ne ) &
-        = Ne * ( alpha_C - Beta_u_1 )
+        = Ne * ( aC - ShiftVector1 )
 
     END IF
 
     RETURN
-
   END FUNCTION NumericalFlux_X1_HLLC_GR
 
 
