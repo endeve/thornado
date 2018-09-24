@@ -13,10 +13,7 @@ PROGRAM ComputePrimitiveTest
     ComputePressureFromSpecificInternalEnergy
   USE EulerEquationsUtilitiesModule_Beta_GR, ONLY: &
     ComputePrimitive_GR, &
-    ComputeFunJacP, &
-    ComputePressureBisection, &
-    ComputeFunP_Bisection
-    
+    ComputeFunJacP    
 
   IMPLICIT NONE
 
@@ -57,11 +54,6 @@ PROGRAM ComputePrimitiveTest
   CALL CreateFunParray( U(i,iCF_D), U(i,iCF_E), SSq, Pmin, Pmax )
   !STOP 'Created FunP array'
 
-  Pressure(i) = &
-    ComputePressureBisection( U(i,iCF_D), U(i,iCF_E), SSq, Gamma_IDEAL )  
-  WRITE(*,'(A9,ES24.16E3)') "P(in) =  ", Pressure(i)
-  !STOP 'Computed pressure via bisection method'
-
   CALL ComputePrimitive_GR &
          ( U(:,iCF_D), &
            U(:,iCF_S1), U(:,iCF_S2), U(:,iCF_S3), &
@@ -70,8 +62,7 @@ PROGRAM ComputePrimitiveTest
            P(:,iPF_V1), P(:,iPF_V2), P(:,iPF_V3), &
            P(:,iPF_E), P(:,iPF_Ne), &
            Pressure, &
-           G(:,iGF_Gm_dd_11), G(:,iGF_Gm_dd_22), G(:,iGF_Gm_dd_33), &
-           DEBUG_Option = .TRUE. )
+           G(:,iGF_Gm_dd_11), G(:,iGF_Gm_dd_22), G(:,iGF_Gm_dd_33) )
 
   WRITE(*,'(A9,ES24.16E3)') "P(out) = ", Pressure(i)
   
