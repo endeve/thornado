@@ -28,7 +28,7 @@
 }
 
 \usepackage{graphicx}
-\newtheorem*{remark}{Remark}
+\newtheorem{remark}{Remark}
 \graphicspath{{Figures/}}
 
 \begin{document}
@@ -56,7 +56,7 @@ where
 \begin{align}
   \bU
   &=\big(D,\,S_{j},\,\tau\big)^{\mbox{\tiny T}}
-  =\big(\rho\,W,\,\rho\,h\,W^{2}\,v_{j},\,\rho\,h\,W^{2}-p-D\big)^{\mbox{\tiny T}}, \\
+  =\big(\rho\,W,\,\rho\,h\,W^{2}\,v_{j},\,\rho\,W\left(h\,W-1\right)-p\big)^{\mbox{\tiny T}}, \\
   \bF^{i}(\bU)
   &=\big(D\,v^{i},\,\big)^{\mbox{\tiny T}}
 \end{align}
@@ -69,77 +69,78 @@ This section closely follows \citet{Qin2016}.
 
 \subsubsection{Set of Admissible States}
 We consider a one-dimensional system of conservation laws:
-\begin{equation*}
-    \pd{\vect{U}}{t} + \pd{\vect{F}\left(\vect{U}\right)}{x} = \vect{0},
-\end{equation*}
-where $\vect{U}$ is a vector of conserved variables, defined as:
+\begin{equation}
+    \pd{\,\bU}{t} + \pd{\,\bF\left(\bU\right)}{x} = \vect{0},
+\end{equation}
+where $\bU$ is a vector of conserved variables, defined as:
 \begin{equation}\label{Eq:ConservedVariables}
-    \vect{U}\longrightarrow\begin{pmatrix} D\\ S\\ \tau\end{pmatrix}=\begin{pmatrix} \rho\,W\\ \rho\,h\,W^{2}\,v\\ \rho\,W\left(h\,W-1\right)-p\end{pmatrix},
+    \bU\longrightarrow\begin{pmatrix} D\\ S\\ \tau\end{pmatrix}=\begin{pmatrix} \rho\,W\\ \rho\,h\,W^{2}\,v\\ \rho\,W\left(h\,W-1\right)-p\end{pmatrix},
 \end{equation}
-and $\vect{F}\left(\vect{U}\right)$ are the fluxes of those conserved quantities:
+and $\bF\left(\bU\right)$ are the fluxes of those conserved quantities:
 \begin{equation}\label{Eq:FluxVector}
-    \vect{F}\left(\vect{U}\right)\longrightarrow\begin{pmatrix}\rho\,W\,v\\ \rho\,h\,W^{2}\,v^{2}+p\\\rho\,h\,W^{2}\,v-D\,v\end{pmatrix}.
+    \bF\left(\bU\right)\longrightarrow\begin{pmatrix}\rho\,W\,v\\ \rho\,h\,W^{2}\,v^{2}+p\\\rho\,h\,W^{2}\,v-D\,v\end{pmatrix}.
 \end{equation}
 
 
-The physics leads us to define a set of admissible states, $\mc{G}_{p}$ (the subscript $p$ stands for primitive), as:
-\begin{equation*}
-    \mc{G}_{p}\equiv\left\{\vect{U}\Big|\rho>0,\,p>0,\,v^{2}<1\right\}.
-\end{equation*}
+The physics leads us to define a set of admissible states, $\cG_{p}$ (the subscript $p$ stands for primitive), as:
+\begin{equation}
+    \cG_{p}\equiv\left\{\bU\Big|\rho>0,\,p>0,\,v^{2}<1\right\}.
+\end{equation}
 
-It is shown in \citet{Mignone2005} that $\mc{G}$ is a convex set\footnote{Convex in the sense that if $\vect{U}_{1}\in\mc{G}$ and $\vect{U}_{2}\in\mc{G}$, then $\alpha_{1}\,\vect{U}_{1}+\alpha_{2}\,\vect{U}_{2}\in\mc{G}$, where $\alpha_{1},\,\alpha_{2}\in\left[0,1\right]$ and $\alpha_{1}+\alpha_{2}=1$.} and can equivalently be written as:
+It is shown in \citet{Mignone2005} that $\cG$ is a convex set\footnote{Convex in the sense that if $\bU_{1}\in\cG$ and $\bU_{2}\in\cG$, then $\alpha_{1}\,\bU_{1}+\alpha_{2}\,\bU_{2}\in\cG$, where $\alpha_{1},\,\alpha_{2}\in\left[0,1\right]$ and $\alpha_{1}+\alpha_{2}=1$.} and can equivalently be written in terms of the conserved variables as:
 \begin{equation}\label{Eq:SetOfAdmissibleStates}
-    \mc{G}\equiv\left\{\vect{U}\Big|D>0,\,\tau+D>\sqrt{D^{2}+S^{2}}\right\}.
+    \cG\equiv\left\{\bU\Big|D>0,\,\tau+D>\sqrt{D^{2}+S^{2}}\right\}.
 \end{equation}
 
 \subsubsection{Time-Step Derivation/CFL Condition}
 For the first-order DG method using forward-Euler time-stepping, we evolve the vector of conserved variables as:
 \begin{equation}\label{Eq:1stOrderDG}
-    \vect{\ol{U}}^{n+1}_{i}=\vect{\ol{U}}^{n}_{i}-\eta\left[\hat{\vect{F}}\left(\vect{\ol{U}}^{n}_{i},\vect{\ol{U}}^{n}_{i+1}\right)-\hat{\vect{F}}\left(\vect{\ol{U}}^{n}_{i-1},\vect{\ol{U}}^{n}_{i}\right)\right],
+    \ol{\bU}^{n+1}_{i}=\ol{\bU}^{n}_{i}-\eta_{i}\left[\hat{\bF}\left(\ol{\bU}^{n}_{i},\ol{\bU}^{n}_{i+1}\right)-\hat{\bF}\left(\ol{\bU}^{n}_{i-1},\ol{\bU}^{n}_{i}\right)\right],
 \end{equation}
 where
-\begin{equation*}
-    \vect{\ol{U}}\equiv\f{1}{\Delta x}\int_{k}\vect{U}\,dx,
-\end{equation*}
-$\eta\equiv\Delta t/\Delta x$, and $\hat{\vect{F}}$ is the numerical flux. In this document we use the local Lax-Friedrichs flux, defined as:
+\begin{equation}
+    \ol{\bU}_{i}\equiv\f{1}{\Delta x_{i}}\int_{x_{\imh}}^{x_{\iph}}\bU_{i}\,dx,
+\end{equation}
+$\eta_{i}\equiv\Delta t_{i}/\Delta x_{i}$, and $\hat{\bF}$ is the numerical flux. In this document we use the local Lax-Friedrichs flux, defined as:
 \begin{equation}\label{Eq:LLF}
-    \hat{\vect{F}}\left(a,b\right)=\f{1}{2}\left[\vect{F}\left(a\right)+\vect{F}\left(b\right) - \alpha_{ab}\left(b-a\right)\right],
+    \hat{\bF}\left(a,b\right)=\f{1}{2}\left[\bF\left(a\right)+\bF\left(b\right) - \alpha_{ab}\left(b-a\right)\right],
 \end{equation}
 where $a$ and $b$ represent the state of the fluid in two different elements, $\alpha_{ab}$ is an estimate for the wave-speed:
-\begin{equation*}
+\begin{equation}
     \alpha_{ab}=\text{max}\left[\alpha\left(a\right),\alpha\left(b\right)\right],
-\end{equation*}
+\end{equation}
 and $\alpha$ is the largest (in absolute value) eigenvalue of the flux-Jacobian:
-\begin{equation*}
-    \alpha=\left|\left|\f{\p\vect{F}}{\p\vect{U}}\right|\right|.
-\end{equation*}
+\begin{equation}
+    \alpha=\left|\left|\f{\p\bF}{\p\bU}\right|\right|.
+\end{equation}
 Using this we define the following variables:
 \begin{equation}\label{Eq:EigVals}
-    \alpha_{i+\f{1}{2}}=\text{max}\left[\alpha\left(\vect{\ol{U}}_{i}\right),\alpha\left(\vect{\ol{U}}_{i+1}\right)\right],\hspace{3em} \alpha_{i-\f{1}{2}}=\text{max}\left[\alpha\left(\vect{\ol{U}}_{i-1}\right),\alpha\left(\vect{\ol{U}}_{i}\right)\right].
+    \alpha_{\iph}=\text{max}\left[\alpha\left(\ol{\bU}_{i}\right),\alpha\left(\ol{\bU}_{i+1}\right)\right],\hspace{3em} \alpha_{\imh}=\text{max}\left[\alpha\left(\ol{\bU}_{i-1}\right),\alpha\left(\ol{\bU}_{i}\right)\right].
 \end{equation}
 
 Substituting \eqref{Eq:LLF} with \eqref{Eq:EigVals} into \eqref{Eq:1stOrderDG}:
 \begin{align}
-    \vect{\ol{U}}^{n+1}_{i}&=\vect{\ol{U}}^{n}_{i}-\f{\eta}{2}\left[\vect{F}\left(\vect{\ol{U}}^{n}_{i}\right)+\vect{F}\left(\vect{\ol{U}}^{n}_{i+1}\right)-\alpha_{i+\f{1}{2}}\left(\vect{\ol{U}}^{n}_{i+1}-\vect{\ol{U}}^{n}_{i}\right)\right.\nonumber\\
-    &\left.\hspace{7em}-\vect{F}\left(\vect{\ol{U}}^{n}_{i}\right)-\vect{F}\left(\vect{\ol{U}}^{n}_{i-1}\right)+\alpha_{i-\f{1}{2}}\left(\vect{\ol{U}}^{n}_{i}-\vect{\ol{U}}^{n}_{i-1}\right)\right]\nonumber\\
-    &=\left[1-\f{\eta}{2}\left(\alpha_{i+\f{1}{2}}+\alpha_{i-\f{1}{2}}\right)\right]\vect{\ol{U}}^{n}_{i}+\f{\eta}{2}\,\alpha_{i+\f{1}{2}}\left[\vect{\ol{U}}^{n}_{i+1}-\f{1}{\alpha_{i+\f{1}{2}}}\vect{F}\left(\vect{\ol{U}}^{n}_{i+1}\right)\right]\nonumber\\
-    &\hspace{15em}+\f{\eta}{2}\,\alpha_{i-\f{1}{2}}\left[\vect{\ol{U}}^{n}_{i-1}+\f{1}{\alpha_{i-\f{1}{2}}}\vect{F}\left(\vect{\ol{U}}^{n}_{i-1}\right)\right]\nonumber\\
-    &=\left[1-\f{\eta}{2}\left(\alpha_{i+\f{1}{2}}+\alpha_{i-\f{1}{2}}\right)\right]\vect{\ol{U}}^{n}_{i}+\f{\eta}{2}\,\alpha_{i+\f{1}{2}}\,\vect{H}^{-}\left(\vect{\ol{U}}^{n}_{i+1},\alpha_{i+\f{1}{2}}\right)+\f{\eta}{2}\,\alpha_{i+\f{1}{2}}\,\vect{H}^{+}\left(\vect{\ol{U}}^{n}_{i-1},\alpha_{i-\f{1}{2}}\right),\label{Eq:ConvComb}
+    \ol{\bU}^{n+1}_{i}&=\ol{\bU}^{n}_{i}-\f{\eta_{i}}{2}\left[\bF\left(\ol{\bU}^{n}_{i}\right)+\bF\left(\ol{\bU}^{n}_{i+1}\right)-\alpha_{\iph}\left(\ol{\bU}^{n}_{i+1}-\ol{\bU}^{n}_{i}\right)\right.\nonumber\\
+    &\left.\hspace{7em}-\bF\left(\ol{\bU}^{n}_{i}\right)-\bF\left(\ol{\bU}^{n}_{i-1}\right)+\alpha_{\imh}\left(\ol{\bU}^{n}_{i}-\ol{\bU}^{n}_{i-1}\right)\right]\nonumber\\
+    &=\left[1-\f{\eta_{i}}{2}\left(\alpha_{\iph}+\alpha_{\imh}\right)\right]\ol{\bU}^{n}_{i}+\f{\eta_{i}}{2}\,\alpha_{\iph}\left[\ol{\bU}^{n}_{i+1}-\f{1}{\alpha_{\iph}}\bF\left(\ol{\bU}^{n}_{i+1}\right)\right]\nonumber\\
+    &\hspace{15em}+\f{\eta_{i}}{2}\,\alpha_{\imh}\left[\ol{\bU}^{n}_{i-1}+\f{1}{\alpha_{\imh}}\bF\left(\ol{\bU}^{n}_{i-1}\right)\right]\nonumber\\
+    &=\left[1-\f{\eta_{i}}{2}\left(\alpha_{\iph}+\alpha_{\imh}\right)\right]\ol{\bU}^{n}_{i}+\f{\eta_{i}}{2}\,\alpha_{\iph}\,\bH^{-}\left(\ol{\bU}^{n}_{i+1},\alpha_{\iph}\right)+\f{\eta_{i}}{2}\,\alpha_{\iph}\,\bH^{+}\left(\ol{\bU}^{n}_{i-1},\alpha_{\imh}\right),\label{Eq:ConvComb}
 \end{align}
 where
 \begin{equation}\label{Eq:Hpm}
-    \vect{H}^{\pm}\left(\vect{\ol{U}},\alpha\right)\equiv\vect{\ol{U}}\pm\f{1}{\alpha}\,\vect{F}\left(\vect{\ol{U}}\right).
+    \bH^{\pm}\left(\ol{\bU},\alpha\right)\equiv\ol{\bU}\pm\f{1}{\alpha}\,\bF\left(\ol{\bU}\right).
 \end{equation}
 
-The proof that $\vect{H}^{\pm}\in\mc{G}$ is given in \citet{Qin2016}. Therefore, we see that with a restrictions on $\alpha_{i\pm\f{1}{2}}$ that \eqref{Eq:ConvComb} is a convex combination. The restriction is (recalling that $\eta=\Delta t/\Delta x$):
-\begin{equation*}
-    1-\f{\eta}{2}\left(\alpha_{i+\f{1}{2}}+\alpha_{i-\f{1}{2}}\right)>0\implies\f{\eta}{2}\left(\alpha_{i+\f{1}{2}}+\alpha_{i-\f{1}{2}}\right)<1\implies \Delta t<\f{2\,\Delta x}{\alpha_{i+\f{1}{2}}+\alpha_{i-\f{1}{2}}}.
-\end{equation*}
+The proof that $\bH^{\pm}\in\cG$ is given in \citet{Qin2016}. Therefore, we see that with a restriction on $\alpha_{i\pm\f{1}{2}}$ that \eqref{Eq:ConvComb} is a convex combination. The restriction is (recalling that $\eta_{i}=\Delta t_{i}/\Delta x_{i}$):
+\begin{equation}
+    1-\f{\eta_{i}}{2}\left(\alpha_{\iph}+\alpha_{\imh}\right)>0\implies\f{\eta_{i}}{2}\left(\alpha_{\iph}+\alpha_{\imh}\right)<1\implies \Delta t_{i}<\f{2\,\Delta x_{i}}{\alpha_{\iph}+\alpha_{\imh}}\leq\f{\Delta x_{i}}{\text{max}\left(\alpha_{i\pm\f{1}{2}}\right)}.
+\end{equation}
 
-We want a time-step that is the same for all elements at a given time, so we tighten the restriction slightly to:
-\begin{equation*}
-    \Delta t<\f{\Delta x}{\text{max}_{i}\left(\alpha_{i-\f{1}{2}}\right)}.
-\end{equation*}
+We want a time-step that is the same for all elements at a given time, so we tighten the restriction to:
+\begin{equation}
+    \Delta t<\text{min}_{i}\left(\f{\Delta x_{i}}{\text{max}\left(\alpha_{i\pm\f{1}{2}}\right)}\right)=\f{\Delta x}{\text{max}_{i}\left(\alpha_{i\pm\f{1}{2}}\right)},
+\end{equation}
+where the equality follows for a uniform mesh, i.e. $\Delta x_{i}=\Delta x\,\forall i$.
 
 \newpage
 
@@ -149,154 +150,232 @@ NOTE: We assume a conformally-flat, time-independent spatial three-metric.
 
 \subsubsection{Set of Admissible States}
 We again consider a one-dimensional system of conservation laws, but this time with a curvilinear metric:
-\begin{equation*}
-    \pd{\left(\sqrtgm\,\vect{U}\right)}{t}+\pd{\left(\sqrtgm\,\vect{F}\right)}{1}=\sqrtgm\,\vect{S},
-\end{equation*}
-where $\vect{U}$ is given by:
-\begin{equation*}
-    \vect{U}\longrightarrow\begin{pmatrix} D\\ S_{1}\\ \tau\end{pmatrix}=\begin{pmatrix} \rho\,W\\ \rho\,h\,W^{2}\,v_{1}\\ \rho\,W\left(h\,W-1\right)-p\end{pmatrix}=\begin{pmatrix} \rho\,W\\ \rho\,h\,W^{2}\,\gamma_{1j}\,v^{j}\\ \rho\,W\left(h\,W-1\right)-p\end{pmatrix},
-\end{equation*}
-$\vect{F}\left(\vect{U}\right)$ are the fluxes of those conserved quantities:
-\begin{equation*}
-    \vect{F}\left(\vect{U}\right)\longrightarrow\begin{pmatrix}\rho\,W\,v^{1}\\ \rho\,h\,W^{2}\,v^{1}\,v_{1}+p\,\delta^{1}_{~1}\\\rho\,h\,W^{2}\,v^{1}-D\,v^{1}\end{pmatrix}=\begin{pmatrix}\rho\,W\,v^{1}\\ \rho\,h\,W^{2}\,\gamma_{1j}\,v^{1}\,v^{j}+p\\\rho\,h\,W^{2}\,v^{1}-D\,v^{1}\end{pmatrix},
-\end{equation*}
-and $\vect{S}$ is a source term:
-\begin{align*}
-    \vect{S}\longrightarrow\begin{pmatrix}0\\\f{1}{2}\,P^{1k}\,\p_{1}\gamma_{1k}\\0\end{pmatrix}=\begin{pmatrix}0\\\f{1}{2}\,P^{11}\,\p_{1}\gamma_{11}\\0\end{pmatrix}&=\begin{pmatrix}0\\\f{1}{2}\left[S^{1}\,v^{1}+p\,\gamma^{11}\right]\,\p_{1}\gamma_{11}\\0\end{pmatrix}=\begin{pmatrix}0\\\f{1}{2}\gamma^{11}\left[S_{1}\,v^{1}+p\right]\p_{1}\gamma_{11}\\0\end{pmatrix}\\
-    &=\begin{pmatrix}0\\\f{1}{2}\left[S_{1}\,v^{1}+p\right]\p_{1}\ln\gamma_{11}\\0\end{pmatrix},
-\end{align*}
-where the last equality follows because for a conformally-flat spatial three-metric, $\gamma^{11}=1/\gamma_{11}$.
+\begin{equation}
+    \pd{\left(\sqrtgm\,\bU\right)}{t}+\pd{\left(\sqrtgm\,\bF\right)}{1}=\sqrtgm\,\bQ,
+\end{equation}
+where $\bU$ is given by:
+\begin{equation}
+    \bU\longrightarrow\begin{pmatrix} D\\ S_{1}\\ \tau\end{pmatrix}=\begin{pmatrix} \rho\,W\\ \rho\,h\,W^{2}\,v_{1}\\ \rho\,W\left(h\,W-1\right)-p\end{pmatrix}=\begin{pmatrix} \rho\,W\\ \rho\,h\,W^{2}\,\gamma_{1j}\,v^{j}\\ \rho\,W\left(h\,W-1\right)-p\end{pmatrix},
+\end{equation}
+$\bF\left(\bU\right)$ are the fluxes of those conserved quantities:
+\begin{equation}
+    \bF\left(\bU\right)\longrightarrow\begin{pmatrix}D\,v^{1}\\ S^{1}\,v_{1}+p\,\delta^{1}_{~1}\\ S^{1}-D\,v^{1}\end{pmatrix}=\begin{pmatrix}\rho\,W\,v^{1}\\ \rho\,h\,W^{2}\,v^{1}\,v_{1}+p\\\rho\,h\,W^{2}\,v^{1}-D\,v^{1}\end{pmatrix}=\begin{pmatrix}\rho\,W\,v^{1}\\ \rho\,h\,W^{2}\,\gamma_{1j}\,v^{1}\,v^{j}+p\\\rho\,h\,W^{2}\,v^{1}-D\,v^{1}\end{pmatrix},
+\end{equation}
+and $\bQ$ is a source term:
+\begin{align}
+    \bQ\longrightarrow\begin{pmatrix}0\\\f{1}{2}\,P^{kj}\,\p_{1}\gamma_{kj}\\0\end{pmatrix}&=\begin{pmatrix}0\\ \f{1}{2}\left[P^{11}\,\p_{1}\,\gamma_{11}+P^{22}\,\p_{1}\,\gamma_{22}+P^{33}\,\p_{1}\,\gamma_{33}\right] \\0\end{pmatrix}\\
+    &=\begin{pmatrix}0\\ P^{11}\,h_{1}\,\pd{\,h_{1}}{1}+P^{22}\,h_{2}\,\pd{\,h_{2}}{1}+P^{33}\,h_{3}\,\pd{\,h_{3}}{1} \\0\end{pmatrix},
+\end{align}
+where we have used the fact that $\gamma_{jj}=\left(h_{j}\right)^{2}$. The $P^{kj}$ are components of the pressure tensor:
+\begin{equation}
+    P^{kj}=S^{k}\,v^{j}+p\,\gamma^{kj}=\gamma^{kj}\left[S_{a}\,v^{a}+p\right].
+\end{equation}
 
 These definitions lead us to define the same set of admissible states as before, namely:
-\begin{equation*}
-    \mc{G}_{p}\equiv\left\{\vect{U}\Big|\rho>0,\,p>0,\,v^{2}<1\right\},
-\end{equation*}
-the difference being that $v^{2}$ now involves the metric:
-\begin{equation*}
-    v^{2}=v^{i}\,v_{i}=v^{1}\,v_{1}=\gamma_{1j}\,v^{1}\,v^{j}.
-\end{equation*}
+\begin{equation}
+    \cG_{p}\equiv\left\{\bU\Big|\rho>0,\,p>0,\,v^{2}<1\right\},
+\end{equation}
+the only difference being that $v^{2}$ now involves the metric:
+\begin{equation}
+    v^{2}=v^{j}\,v_{j}=\gamma_{kj}\,v^{k}\,v^{j}.
+\end{equation}
 
-Before continuing, we show that the introduction of the metric doesn't affect the translation between $\mc{G}_{p}$ and $\mc{G}$...\sd{Need to do this}
+Before continuing, we show that the introduction of the metric doesn't affect the translation between $\cG_{p}$ and $\cG$...\sd{Need to do this}
 
 \subsubsection{Time-Step Derivation/CFL Condition}
-We start by integrating both sides over the element and dividing by the volume, $V$:
-\begin{equation*}
-    \f{1}{V}\int_{k}\pd{\left(\sqrtgm\,\vect{U}\right)}{t}dx+\f{1}{V}\int_{k}\pd{\left(\sqrtgm\,\vect{F}\left(\vect{U}\right)\right)}{x}dx=\f{1}{V}\int_{k}\sqrtgm\,\vect{S}\,dx,
-\end{equation*}
+We start by integrating both sides over $dx^{1}$ and dividing by the volume, $\Delta V_{i}$:
+\begin{equation}
+    \f{1}{\Delta V_{i}}\int_{x^{1}_{\imh}}^{x^{1}_{\iph}}\pd{\left(\sqrtgm\,\bU_{i}\right)}{t}dx^{1}+\f{1}{\Delta V_{i}}\int_{x^{1}_{\imh}}^{x^{1}_{\iph}}\pd{\left(\sqrtgm\,\bF\left(\bU_{i}\right)\right)}{1}dx^{1}=\f{1}{\Delta V_{i}}\int_{x^{1}_{\imh}}^{x^{1}_{\iph}}\sqrtgm\,\bQ_{i}\,dx^{1},
+\end{equation}
 where:
-\begin{equation*}
-    V=\int_{k}dV=\int_{k}\sqrtgm\,dx.
-\end{equation*}
+\begin{equation}
+    \Delta V_{i}=\int_{x^{1}_{\imh}}^{x^{1}_{\iph}}dV=\int_{x^{1}_{\imh}}^{x^{1}_{\iph}}\sqrtgm\,dx^{1}.
+\end{equation}
 
 By defining the cell-average as:
-\begin{equation*}
-    \vect{\ol{W}}\equiv\f{1}{V}\int_{k}\vect{W}\,dV,
-\end{equation*}
+\begin{equation}
+    \ol{\bW}_{i}\equiv\f{1}{\Delta V_{i}}\int_{x^{1}_{\imh}}^{x^{1}_{\iph}}\bW_{i}\,dV,
+\end{equation}
 we have:
-\begin{equation*}
-    \f{d\,\vect{\ol{U}}}{dt}+\f{1}{V}\left.\left(\sqrtgm\,\hat{\vect{F}}\left(\vect{\ol{U}}\right)\right)\right|^{x_{\iph}}_{x_{\imh}}=\vect{\ol{S}},
-\end{equation*}
+\begin{equation}
+    \f{d\,\ol{\bU}_{i}}{dt}+\f{1}{\Delta V_{i}}\left.\left(\sqrtgm\,\hat{\bF}\left(\ol{\bU}\right)\right)\right|^{x^{1}_{\iph}}_{x^{1}_{\imh}}=\ol{\bQ}_{i},
+\end{equation}
 or, using the common notation of the time step being represented as a superscript and the spatial element represented by a subscript:
-\begin{equation*}
-    \vect{\ol{U}}^{n+1}_{i}=\vect{\ol{U}}^{n}_{i}-\f{\Delta t}{V}\left[\sqrtgm_{\iph}\,\hat{\vect{F}}^{n}_{\iph}-\sqrtgm_{\imh}\,\hat{\vect{F}}^{n}_{\imh}\right]+\Delta t\,\vect{\ol{S}}^{n}_{i}.
-\end{equation*}
+\begin{equation}
+    \ol{\bU}^{n+1}_{i}=\ol{\bU}^{n}_{i}-\f{\Delta t_{i}}{\Delta V_{i}}\left[\sqrtgm_{\iph}\,\hat{\bF}^{n}_{\iph}-\sqrtgm_{\imh}\,\hat{\bF}^{n}_{\imh}\right]+\Delta t_{i}\,\ol{\bQ}^{n}_{i}.
+\end{equation}
 
 Now we define a parameter a la \citet{ZS2011b}: $\ve\in\left(0,1\right)$, such that (NOTE: \citet{ZS2011b} set $\ve=1/2$):
-\begin{equation*}
-    \vect{\ol{U}}^{n}_{i}=\ve\,\vect{\ol{U}}^{n}_{i}+\left(1-\ve\right)\vect{\ol{U}}^{n}_{i}.
-\end{equation*}
+\begin{equation}
+    \ol{\bU}^{n}_{i}=\ve\,\ol{\bU}^{n}_{i}+\left(1-\ve\right)\ol{\bU}^{n}_{i}.
+\end{equation}
 We can use the first term to balance out the term in the square brackets and the second term to balance out the source term.
 
 So, we get:
-\begin{align*}
-    \vect{\ol{U}}^{n+1}_{i}&=\ve\left\{\vect{\ol{U}}^{n}_{i}-\f{\Delta t}{\ve\,V}\left[\sqrtgm_{\iph}\,\hat{\vect{F}}^{n}_{\iph}-\sqrtgm_{\imh}\,\hat{\vect{F}}^{n}_{\imh}\right]\right\}+\left(1-\ve\right)\vect{\ol{U}}^{n}_{i}+\Delta t\,\vect{\ol{S}}^{n}_{i}\\
-    &=\ve\left\{\vect{\ol{U}}^{n}_{i}-\eta_{i}\left[\sqrtgm_{\iph}\,\hat{\vect{F}}\left(\vect{\ol{U}}^{n}_{i+1},\vect{\ol{U}}^{n}_{i}\right)-\sqrtgm_{\imh}\,\hat{\vect{F}}\left(\vect{\ol{U}}^{n}_{i},\vect{\ol{U}}^{n}_{i-1}\right)\right]\right\}+\left(1-\ve\right)\vect{\ol{U}}^{n}_{i}+\Delta t\,\vect{\ol{S}}^{n}_{i},\hspace{1em}\eta_{i}\equiv\f{\Delta t}{\ve\,V_{i}}.
-\end{align*}
+\begin{align}
+    \ol{\bU}^{n+1}_{i}&=\ve\left\{\ol{\bU}^{n}_{i}-\f{\Delta t_{i}}{\ve\,\Delta V_{i}}\left[\sqrtgm_{\iph}\,\hat{\bF}^{n}_{\iph}-\sqrtgm_{\imh}\,\hat{\bF}^{n}_{\imh}\right]\right\}+\left(1-\ve\right)\ol{\bU}^{n}_{i}+\Delta t_{i}\,\ol{\bQ}^{n}_{i}\\
+    &=\ve\left\{\ol{\bU}^{n}_{i}-\eta_{i}\left[\sqrtgm_{\iph}\,\hat{\bF}\left(\ol{\bU}^{n}_{i+1},\ol{\bU}^{n}_{i}\right)-\sqrtgm_{\imh}\,\hat{\bF}\left(\ol{\bU}^{n}_{i},\ol{\bU}^{n}_{i-1}\right)\right]\right\}+\left(1-\ve\right)\ol{\bU}^{n}_{i}+\Delta t_{i}\,\ol{\bQ}^{n}_{i}\\
+    &=\ve\,\bH_{1}+\left(1-\ve\right)\bH_{2},
+\end{align}
+where
+\begin{equation}
+    \bH_{1}\equiv \ol{\bU}^{n}_{i}-\eta_{i}\left[\sqrtgm_{\iph}\,\hat{\bF}\left(\ol{\bU}^{n}_{i+1},\ol{\bU}^{n}_{i}\right)-\sqrtgm_{\imh}\,\hat{\bF}\left(\ol{\bU}^{n}_{i},\ol{\bU}^{n}_{i-1}\right)\right],
+\end{equation}
+\begin{equation}
+    \bH_{2}\equiv\ol{\bU}^{n}_{i}+\f{\Delta t_{i}}{1-\ve}\,\ol{\bQ}^{n}_{i},
+\end{equation}
+and
+\begin{equation}
+    \eta_{i}\equiv\f{\Delta t_{i}}{\ve\,\Delta V_{i}}.
+\end{equation}
 
-We proceed by focusing on each term individually.
+We proceed by focusing on each term individually, starting with the numerical flux term, $\bH_{1}$.
 
 \subsubsection{Numerical flux term}
-We start with the term in the curly brackets and again we use the Local-Lax-Friedrichs flux, \eqref{Eq:LLF}, yielding:
-\begin{align*}
-    \vect{\ol{U}}^{n}_{i}-\f{\eta_{i}}{2}\Big\{&\sqrtgm_{\iph}\left[\vect{F}\left(\vect{\ol{U}}^{n}_{i+1}\right)+\vect{F}\left(\vect{\ol{U}}^{n}_{i}\right)-\alpha_{\iph}\left(\vect{\ol{U}}^{n}_{i+1}-\vect{\ol{U}}^{n}_{i}\right)\right]\\
-    &-\sqrtgm_{\imh}\left[\vect{F}\left(\vect{\ol{U}}^{n}_{i}\right)+\vect{F}\left(\vect{\ol{U}}^{n}_{i-1}\right)-\alpha_{\imh}\left(\vect{\ol{U}}^{n}_{i}-\vect{\ol{U}}^{n}_{i-1}\right)\right]\Big\}\\
-    &\hspace{-10em}=\left(1-\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}-\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\right)\vect{\ol{U}}^{n}_{i}\\
-    &\hspace{-8em}-\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\vect{F}\left(\vect{\ol{U}}^{n}_{i}\right)+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\vect{F}\left(\vect{\ol{U}}^{n}_{i}\right)\\
-    &\hspace{-8em}+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\left[\vect{\ol{U}}^{n}_{i-1}+\f{1}{\alpha_{\imh}}\vect{F}\left(\vect{\ol{U}}^{n}_{i-1}\right)\right]+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\left[\vect{\ol{U}}^{n}_{i+1}-\f{1}{\alpha_{\iph}}\vect{F}\left(\vect{\ol{U}}^{n}_{i+1}\right)\right].
-\end{align*}
-Now we add and subtract $\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\,\vect{\ol{U}}^{n}_{i}$ and $\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\,\vect{\ol{U}}^{n}_{i}$, yielding:
-\begin{align*}
-    &\left(1-\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}-\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\right)\vect{\ol{U}}^{n}_{i}\\
-    &+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\left[\vect{\ol{U}}^{n}_{i}-\f{1}{\alpha_{\iph}}\vect{F}\left(\vect{\ol{U}}^{n}_{i}\right)\right]+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\left[\vect{\ol{U}}^{n}_{i}+\f{1}{\alpha_{\imh}}\vect{F}\left(\vect{\ol{U}}^{n}_{i}\right)\right]\\
-    &+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\left[\vect{\ol{U}}^{n}_{i-1}+\f{1}{\alpha_{\imh}}\vect{F}\left(\vect{\ol{U}}^{n}_{i-1}\right)\right]+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\left[\vect{\ol{U}}^{n}_{i+1}-\f{1}{\alpha_{\iph}}\vect{F}\left(\vect{\ol{U}}^{n}_{i+1}\right)\right].
-\end{align*}
-All of the terms in square brackets are similar to the $\vect{H}$ quantities in \citet{Qin2016}, and are therefore in $\mc{G}$. It can easily be seen that the sum of the coefficients is unity. The final condition is that the coefficient of $\vect{\ol{U}}^{n}_{i}>0$, or (recalling that $\eta=\Delta t/\Delta x$):
-\begin{align*}
-    1-\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}&-\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}>0\implies\eta_{i}\left(\sqrtgm_{\iph}\,\alpha_{\iph}+\sqrtgm_{\imh}\,\alpha_{\imh}\right)<1\\
-    &\implies\Delta t<\f{\Delta x}{\sqrtgm_{\iph}\,\alpha_{\iph}+\sqrtgm_{\imh}\,\alpha_{\imh}}.
-\end{align*}
+We have to show that $\bH_{1}\in\cG$. We again we use the Local-Lax-Friedrichs flux, \eqref{Eq:LLF}, yielding for $\bH_{1}$:
+\begin{align}
+    \ol{\bU}^{n}_{i}-\f{\eta_{i}}{2}\Big\{&\sqrtgm_{\iph}\left[\bF\left(\ol{\bU}^{n}_{i+1}\right)+\bF\left(\ol{\bU}^{n}_{i}\right)-\alpha_{\iph}\left(\ol{\bU}^{n}_{i+1}-\ol{\bU}^{n}_{i}\right)\right]\\
+    &-\sqrtgm_{\imh}\left[\bF\left(\ol{\bU}^{n}_{i}\right)+\bF\left(\ol{\bU}^{n}_{i-1}\right)-\alpha_{\imh}\left(\ol{\bU}^{n}_{i}-\ol{\bU}^{n}_{i-1}\right)\right]\Big\}\\
+    &\hspace{-10em}=\left(1-\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}-\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\right)\ol{\bU}^{n}_{i}\\
+    &\hspace{-8em}-\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\bF\left(\ol{\bU}^{n}_{i}\right)+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\bF\left(\ol{\bU}^{n}_{i}\right)\\
+    &\hspace{-8em}+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\left[\ol{\bU}^{n}_{i-1}+\f{1}{\alpha_{\imh}}\bF\left(\ol{\bU}^{n}_{i-1}\right)\right]+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\left[\ol{\bU}^{n}_{i+1}-\f{1}{\alpha_{\iph}}\bF\left(\ol{\bU}^{n}_{i+1}\right)\right].
+\end{align}
+Now we add and subtract $\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\,\ol{\bU}^{n}_{i}$ and $\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\,\ol{\bU}^{n}_{i}$, yielding:
+\begin{align}
+    &\left(1-\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}-\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\right)\ol{\bU}^{n}_{i}\\
+    &+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\left[\ol{\bU}^{n}_{i}-\f{1}{\alpha_{\iph}}\bF\left(\ol{\bU}^{n}_{i}\right)\right]+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\left[\ol{\bU}^{n}_{i}+\f{1}{\alpha_{\imh}}\bF\left(\ol{\bU}^{n}_{i}\right)\right]\\
+    &+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\left[\ol{\bU}^{n}_{i-1}+\f{1}{\alpha_{\imh}}\bF\left(\ol{\bU}^{n}_{i-1}\right)\right]+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\left[\ol{\bU}^{n}_{i+1}-\f{1}{\alpha_{\iph}}\bF\left(\ol{\bU}^{n}_{i+1}\right)\right].
+\end{align}
+All of the terms in square brackets are similar to the $\bH$ quantities in \citet{Qin2016}, and are therefore in $\cG$. It can easily be seen that the sum of the coefficients is unity. The final condition is that the coefficient of $\ol{\bU}^{n}_{i}>0$, or (recalling that $\eta_{i}=\Delta t_{i}/\left(\ve\,\Delta V_{i}\right)$):
+\begin{align}
+    1&-\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}-\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}>0\implies\eta_{i}\left(\sqrtgm_{\iph}\,\alpha_{\iph}+\sqrtgm_{\imh}\,\alpha_{\imh}\right)<1\\
+    &\implies\Delta t_{i}<\f{\ve\,\Delta V_{i}}{\sqrtgm_{\iph}\,\alpha_{\iph}+\sqrtgm_{\imh}\,\alpha_{\imh}}\leq\f{\ve\,\Delta V_{i}}{2\,\text{max}\left(\sqrtgm_{i\pm\f{1}{2}}\,\alpha_{i\pm\f{1}{2}}\right)}.
+\end{align}
 Again we want a time-step that is the same for all elements at a given time, so:
-\begin{equation*}
-    \Delta t<\frac{\Delta x}{2\,\text{max}_{i}\left(\sqrtgm_{\iph}\,\alpha_{\iph}\right)}.
-\end{equation*}
-We see that this differs from the case of Cartesian coordinates by a factor of two, as well as a factor of the metric determinant at the boundaries of the element. \sd{Why doesn't this reduce to the Cartesian result when $\sqrtgm_{\iph}=1$?}
+\begin{equation}
+    \Delta t<\text{min}_{i}\left(\f{\ve\,\Delta V_{i}}{2\,\text{max}\left(\sqrtgm_{i\pm\f{1}{2}}\,\alpha_{i\pm\f{1}{2}}\right)}\right).
+\end{equation}
+
+We close the numerical flux section by writing the explicit form of the time-step for spherical-polar coordinates.
+
+\subsubsubsection{Time-step for Spherical-Polar Coordinates}
+For spherical-polar coordinates in 1-D we have that $\Delta V_{i}=1/3\left(r_{\iph}^{3}-r_{\imh}^{3}\right)$, and (assuming $\alpha_{i\pm\f{1}{2}}=1\ \forall\ i$) $\text{max}\left(\sqrtgm_{i\pm\f{1}{2}}\,\alpha_{i\pm\f{1}{2}}\right)=r_{\iph}^{2}$, so:
+\begin{align}
+    \Delta t&<\text{min}_{i}\left\{\f{\ve\,1/3\left[r_{\iph}^{3}-r_{\imh}^{3}\right]}{2\,r_{\iph}^{2}}\right\}\\
+    &=\text{min}_{i}\left\{\f{\ve}{6}\,r_{\iph}\left[1-\f{r_{\imh}^{3}}{r_{\iph}^{3}}\right]\right\}\\
+    &=\text{min}_{i}\left\{\f{\ve}{6}\,r_{\iph}\left[1-\left(1-\f{\Delta r_{i}}{r_{\iph}}\right)^{3}\right]\right\}\\
+    &=\text{min}_{i}\left\{\f{\ve}{6}\,r_{\iph}\left[1-\left(1+\left(\f{\Delta r_{i}}{r_{\iph}}\right)^{2}-2\frac{\Delta r_{i}}{r_{\iph}}\right)\left(1-\f{\Delta r_{i}}{r_{\iph}}\right)\right]\right\}\\
+    &=\text{min}_{i}\left\{\f{\ve}{6}\,r_{\iph}\left[\left(\f{\Delta r_{i}}{r_{\iph}}\right)^{3}-3\left(\f{\Delta r_{i}}{r_{\iph}}\right)^{2}+3\f{\Delta r_{i}}{r_{\iph}}\right]\right\}\\
+    &=\text{min}_{i}\left\{\f{\ve}{6}\,\Delta r_{i}\left[\left(\f{\Delta r_{i}}{r_{\iph}}\right)^{2}-3\left(\f{\Delta r_{i}}{r_{\iph}}\right)+3\right]\right\}.
+\end{align}
+We know that $\Delta r_{i}/r_{\iph}\in\left[0,1\right]$; the minimum value of the quadratic function in this domain is unity. So, we have that for spherical-polar coordinates:
+\begin{equation}
+\Delta t<\f{\ve}{6}\,\text{min}\left(\Delta r_{i}\right).
+\end{equation}
 
 Next we handle the source term.
 
 \subsubsection{Source term}
-We have to show that $\left(1-\ve\right)\vect{\ol{U}}^{n}_{i}+\Delta t\,\vect{\ol{S}}^{n}_{i}\in\mc{G}$. Following \citet{ZS2011b}, we write out explicitly the cell-averages:
-\begin{equation*}
-    \left(1-\ve\right)\vect{\ol{U}}^{n}_{i}+\Delta t\,\vect{\ol{S}}^{n}_{i}=\f{1-\ve}{V}\int\left[\vect{U}^{n}_{i}+\f{\Delta t}{1-\ve}\vect{S}^{n}_{i}\right]dV.
-\end{equation*}
-Here we note that for a one-dimensional first-order DG scheme we have:
-\begin{equation*}
-    \int\vect{W}^{n}_{i}\left(x\right)\,dV=\Delta x\,w_{1}\,\vect{W}^{n}\left(\eta_{1}\right)\,\sqrtgm\left(\eta_{1}\right),
-\end{equation*}
-and
-\begin{equation*}
-    \int dV=\Delta x\,w_{1}\,\sqrtgm\left(\eta_{1}\right),
-\end{equation*}
-so,
-\begin{equation*}
-    \f{1}{V}\int\vect{W}^{n}_{i}\left(x\right)\,dV=\vect{W}^{n}\left(\eta_{1}\right).
-\end{equation*}
-So, we have:
-\begin{equation*}
-    \f{1-\ve}{V}\int\left[\vect{U}^{n}_{i}+\f{\Delta t}{1-\ve}\vect{S}^{n}_{i}\right]dV=\left(1-\ve\right)\left[\vect{U}^{n}\left(\eta_{1}\right)+\f{\Delta t}{1-\ve}\vect{S}^{n}\left(\eta_{1}\right)\right].
-\end{equation*}
-So we need to show that if $\vect{U}^{n}_{i}\in\mc{G}$, then (omitting the arguments $\eta_{1}$ and superscripts $n$):
-\begin{equation*}
-    \begin{pmatrix}D\\ S_{1}+\f{\Delta t}{2\left(1-\ve\right)}\left[S_{1}\,v^{1}+p\right]\p_{1}\ln\gamma_{11}\\\tau\end{pmatrix}\in\mc{G}.
-\end{equation*}
-The first condition of $\mc{G}$ is immediately obvious, i.e. that $D>0$. The second condition reduces to the requirement that the argument of the square root in the second condition of $\mc{G}$ be non-negative:
-\begin{equation*}
-    D^{2}+\left\{S_{1}+\f{\Delta t}{2\left(1-\ve\right)}\left[S_{1}\,v^{1}+p\right]\p_{1}\ln\gamma_{11}\right\}^{2}\geq0.
-\end{equation*}
-We define the (scalar) term in the square brackets as $K$, yielding (noting that for the second quantity in curly brackets we convert all the contravariant indices to covariant indices and vice-versa):
-\begin{equation*}
-    D^{2}+\left\{S_{1}+\f{\Delta t}{2\left(1-\ve\right)}K\,\p_{1}\ln\gamma_{11}\right\}\times\left\{S^{1}+\f{\Delta t}{2\left(1-\ve\right)}K\,\p^{1}\ln\gamma^{11}\right\}\geq0.
-\end{equation*}
-Here we note that:
-\begin{equation*}
-    \p^{1}\ln\gamma^{11}=\gamma^{11}\,\p_{1}\ln\gamma^{11}=\gamma^{11}\,\p_{1}\ln\f{1}{\gamma_{11}}=-\gamma^{11}\,\p_{1}\ln\gamma_{11}.
-\end{equation*}
-Using this, we have:
-\begin{equation*}
-    D^{2}+\left\{S_{1}+\f{\Delta t}{2\left(1-\ve\right)}K\,\p_{1}\ln\gamma_{11}\right\}\times\left\{S^{1}-\f{\Delta t}{2\left(1-\ve\right)}K\,\gamma^{11}\,\p_{1}\ln\gamma_{11}\right\}\geq0,
-\end{equation*}
-which gives:
-\begin{equation*}
-    D^{2}+S_{1}\,S^{1}-\left(\f{K\,\p_{1}\ln\gamma_{11}}{2\left(1-\ve\right)}\right)^{2}\gamma^{11}\,\left(\Delta t\right)^{2}-S_{1}\f{\Delta t}{2\left(1-\ve\right)}K\,\gamma^{11}\,\p_{1}\ln\gamma_{11}+S^{1}\f{\Delta t}{2\left(1-\ve\right)}K\,\p_{1}\ln\gamma_{11}\geq0.
-\end{equation*}
-Since $S^{1}=\gamma^{11}\,S_{1}$, the last two terms cancel, yielding (recalling that $\gamma^{11}=1/\gamma_{11}$):
-\begin{align*}
-    D^{2}&+S_{1}\,S^{1}-\left(\f{K\,\p_{1}\ln\gamma_{11}}{2\left(1-\ve\right)}\right)^{2}\gamma^{11}\left(\Delta t\right)^{2}\geq0\\
-    &\implies D^{2}+S_{1}\,S^{1}\geq\left(\f{K\,\p_{1}\gamma_{11}}{2\left(1-\ve\right)}\right)^{2}\f{1}{\gamma_{11}^{3}}\left(\Delta t\right)^{2}\\
-    &\implies\Delta t\leq\f{2\left(1-\ve\right)\sqrt{D^{2}+S_{1}\,S^{1}}}{\left|\left[S_{1}\,v^{1}+p\right]\p_{1}\gamma_{11}\right|}\gamma_{11}^{3/2}.
-\end{align*}
+For this section we drop the subscript $i$ and the superscript $n$. We have to show that $\bH_{2}\in\cG$, where
+\begin{equation}
+    \bH_{2}=\begin{pmatrix}\ol{D}\\ \ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}} \\ \ol{\tau}\end{pmatrix},\hspace{1em}\left(H_{2}\right)_{1}>0,\hspace{1em}\left(H_{2}\right)_{3}+\left(H_{2}\right)_{1}>\sqrt{\left(H_{2}\right)_{1}\left(H_{2}\right)_{1}+\left(H_{2}\right)_{2}\left(H_{2}\right)^{2}}.
+\end{equation}
+
+It is clear that the first requirement for $\bH_{2}$ is met, i.e. $\ol{D}>0$. The second requirement is:
+\begin{align}
+\ol{D}+\ol{\tau}&>\sqrt{\ol{D}^{2}+\left[\ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] \left[\ol{S}^{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\p^{1}\,\gamma_{kk}}\right] }\\
+&=\sqrt{\ol{D}^{2}+\left[\ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] \left[\ol{S}^{1}+\gamma^{11}\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}\right] }\\
+&=\sqrt{\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}+\gamma^{11}\left[\f{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}{2\left(1-\ve\right)}\right]^{2}\left(\Delta t\right)^{2}+\f{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}{2\left(1-\ve\right)}\left[\ol{S}_{1}\,\gamma^{11}+\ol{S}^{1}\right]\Delta t}\\
+&=\sqrt{a\left(\Delta t\right)^{2}+b\,\Delta t+c}\geq0,
+\end{align}
+where
+\begin{align}
+    a&=\left[\f{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}{2\,\sqrt{\ol{\gamma_{11}}}\left(1-\ve\right)}\right]^{2}\geq0\\
+    b&=\f{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}{\ol{\gamma_{11}}\left(1-\ve\right)}\ol{S}_{1}=\f{2\,\ol{S}_{1}}{\sqrt{\ol{\gamma_{11}}}}\sqrt{a}\\
+    c&=\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}\geq0.
+\end{align}
+The condition for a quadratic function to be positive-definite is that $a>0$ (concave-up) and $b^{2}-4\,a\,c<0$ (no real roots). The first condition is clearly met. For the second condition:
+\begin{equation}
+    \f{4\left(\ol{S}_{1}\right)^{2}}{\ol{\gamma_{11}}}a-4\,a\left(\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}\right)=4\,\ol{S}_{1}\,\ol{S}^{1}\,a-4\,a\ol{D}^{2}-4\,a\,\ol{S}_{1}\,\ol{S}^{1}=-4\,a\,\ol{D}^{2}<0.
+\end{equation}
+So, the square root is always positive.
+
+With that we have:
+\begin{align}
+    &\ol{D}^{2}+\ol{\tau}^{2}+2\,\ol{D}\,\ol{\tau}>a\left(\Delta t\right)^{2}+b\,\Delta t+c\\
+    &\implies a\left(\Delta t\right)^{2}+b\,\Delta t+c'<0,
+\end{align}
+where:
+\begin{equation}
+  c'=c-\ol{D}^{2}-\ol{\tau}^{2}-2\,\ol{D}\,\ol{\tau}=\ol{S}_{1}\,\ol{S}^{1}-\ol{\tau}^{2}-2\,\ol{D}\,\ol{\tau}.
+\end{equation}
+
+The solutions of this quadratic equation are:
+\begin{align}
+    \Delta t&=\f{-b}{2\,a}\pm\f{1}{2\,a}\sqrt{b^{2}-4\,a\,c'}=\f{-\ol{S}_{1}}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\pm\f{1}{2\,a}\sqrt{\f{4\ol{S}_{1}^{2}}{\ol{\gamma_{11}}}a-4\,a\,c'}\\
+    &=\f{-\ol{S}_{1}}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\pm\f{1}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\sqrt{\ol{S}_{1}^{2}-c'\,\ol{\gamma_{11}}}=\f{1}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\left[-\ol{S}_{1}\pm\sqrt{\ol{S}_{1}^{2}-c'\,\ol{\gamma_{11}}}\right]\\
+    &=\f{1}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\left[-\ol{S}_{1}\pm\sqrt{\ol{\gamma_{11}}\left(\ol{\tau}^{2}+2\,\ol{D}\,\ol{\tau}\right)}\right]\\
+    &=\f{2\left(1-\ve\right)}{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}\left[-\ol{S}_{1}\pm\sqrt{\ol{\gamma_{11}}\left(\ol{\tau}^{2}+2\,\ol{D}\,\ol{\tau}\right)}\right].
+\end{align}
+We see that we must have that $\ol{\tau}^{2}+2\,\ol{D}\,\ol{\tau}>0\implies\ol{\tau}>-2\,\ol{D}$. But, since we know that from the second condition of $\bH_{2}$ that $\ol{\tau}>-\ol{D}$, this requirement is met.
 
 \newpage
+\section{Recovery of Primitive Variables}
+In order to recover the primitive from the conserved variables we need to solve the nonlinear equation:
+\begin{equation}
+    f\left(p\right)=p-\ol{p}\left(p\right)=0,
+\end{equation}
+where $\ol{p}\left(p\right)$ is the pressure as obtained via the ideal gas equation of state with an initial guess, $p$:
+\begin{equation}
+    \ol{p}=\left(\Gamma-1\right)\rho\,\epsilon,
+\end{equation}
+where
+\begin{equation}
+    \rho=\rho\left(\bU,p\right),\hspace{1em}\epsilon=\epsilon\left(\bU,p\right).
+\end{equation}
 
+In order to solve this equation we make use of the bisection method, and therefore need bounds on our initial guess for the pressure.
+
+\subsection{Upper and Lower Bounds for Pressure}
+We obtain a lower bound for the pressure with:
+\begin{equation}
+\tau=D\left(h\,W-1\right)-p\implies p=-\left(\tau+D\right)+D\,h\,W\geq-\left(\tau+D\right)+D\,h\,W\,\sqrt{v^{i}\,v_{i}}=-\left(\tau+D\right)+\sqrt{S^{i}\,S_{i}}.
+\end{equation}
+So, since the pressure must be non-negative, we have:
+\begin{equation}
+p\geq\text{MAX}\left[-\left(\tau+D\right)+\sqrt{S^{i}\,S_{i}},\text{SqrtTiny}\right].
+\end{equation}
+
+For an upper bound, we first note that:
+\begin{equation}
+h=1+\f{e+p}{\rho}=1+\f{\Gamma}{\Gamma-1}\f{p}{\rho}=1+\f{\Gamma}{\Gamma-1}\,\f{p\,W}{D},
+\end{equation}
+so,
+\begin{equation}
+\tau=D\left(W+\f{\Gamma}{\Gamma-1}\f{p\,W^{2}}{D}-1\right)-p=D\left(W-1\right)+p\left(\f{\Gamma}{\Gamma-1}W^{2}-1\right).
+\end{equation}
+So,
+\begin{equation}
+p=\f{\tau-D\left(W-1\right)}{\f{\Gamma}{\Gamma-1}W^{2}-1}.
+\end{equation}
+We also have:
+\begin{equation}
+W=\left(1-v^{i}\,v_{i}\right)^{-1/2}=\left(1-\f{S^{i}\,S_{i}}{\left(\tau+D+p\right)^{2}}\right)^{-1/2}.
+\end{equation}
+Treating $p$ as an independent variable \sd{is this valid?}, we have:
+\begin{equation}
+W\Big|_{p\rightarrow\infty}=1,
+\end{equation}
+which gives us an upper limit:
+\begin{equation}
+p\leq\f{\Gamma-1}{\Gamma}\,\tau.
+\end{equation}
+Just to be safe, in the code we multiply this by two, so that:
+\begin{equation}
+p\leq2\,\f{\Gamma-1}{\Gamma}\,\tau.
+\end{equation}
+
+\newpage
 
 
 
