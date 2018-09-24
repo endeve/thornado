@@ -196,7 +196,7 @@ CONTAINS
             DO iCF = 1, nCF
 
               U_K(iCF) &
-              = SUM( WeightsX_q(:) * U_q(:,iCF_D) &
+              = SUM( WeightsX_q(:) * U_q(:,iCF) &
                   * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
                   / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
@@ -270,6 +270,8 @@ CONTAINS
           CALL ComputePointValues_Geometry( G_q, G_PP )
           CALL Computeq( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), q(1:nPT) )
           IF( ANY( q .LT. Min_2 ) )THEN
+            WRITE(*,*) iX1, iX2, iX3
+            WRITE(*,*) U_K(1:nCF)
             WRITE(*,*) 'q(:): ', q(:)
             STOP 'q < Min_2 after limiting.'
           END IF
