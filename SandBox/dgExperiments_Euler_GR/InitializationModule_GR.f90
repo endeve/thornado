@@ -137,25 +137,25 @@ CONTAINS
 
                 END IF
 
-              CASE( 'MBProblem2' )
+              CASE( 'MBProblem4' )
 
                 IF( X1 <= Half )THEN
 
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = -0.6_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 10.0_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d3
                   uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
                     = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
                 ELSE
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 10.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.5_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 20.0_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d-2
                   uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
                     = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
@@ -185,6 +185,28 @@ CONTAINS
                     = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
                 END IF
+
+             CASE DEFAULT
+
+                WRITE(*,*)
+                WRITE(*,*) &
+                  'Invalid choice for RiemannProblemName: ', RiemannProblemName
+                WRITE(*,*) 'Valid choices:'
+                WRITE(*,*) &
+                  "Sod's shock tube: ", &
+                    "'Sod'"
+                WRITE(*,*) &
+                  "Mignone & Bodo (2005) MNRAS, 364, 126, Problem 1: ", &
+                    "'MBProblem1'"
+                WRITE(*,*) &
+                  "Mignone & Bodo (2005) MNRAS, 364, 126, Problem 4: ", &
+                    "'MBProblem4'"
+                WRITE(*,*) &
+                  "Del Zanna & Bucciantini (2002) AA, 390, 1177, ", &
+                  "sinusoidal density perturbation: ", &
+                    "'PerturbedShockTube'"
+                WRITE(*,*) 'Stopping...'
+                STOP
 
               END SELECT
 
