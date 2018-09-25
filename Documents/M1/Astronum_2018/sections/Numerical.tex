@@ -1,11 +1,13 @@
-\section{Numerical Tests}
+\section{Numerical Tests}\label{se:NumericalTests}
+
 In this section we present the numerical results obtained with the PD-ARS schemes provided in this paper.
 The tests in Section \ref{se: Accuracy Tests} are designed to compare the accuracy of the schemes in various regimes.
 The test in Section \ref{se: Neutrino Stationary State Test} demonstrates the realizability-preserving of PD-ARSs scheme.
+All the tests in this subsection were applied with third-order accurate spatial discretization (polynomials of degree $k=2$) and time step $\dt = 0.1 \times \dx $.
 \subsection{Accuracy Tests}
 \label{se: Accuracy Tests}
 To compare the accuracy of the IMEX scheme, we applied our PDARSs and Pareschi \& Russo \cite{pareschiRusso_2005} (SSP2332) scheme to some smooth problems in streaming, absorption, ans scattering dominated regimes in one spatial dimension.
-All the tests in this subsection were applied with third order accurate spatial discretization, the maximum entropy closure in the low occupancy limit and time step $\dt = 0.1 \times \dx $.
+All the tests in this subsection were applied with the maximum entropy closure in the low occupancy limit.
 In the streaming test, the second-order and third-order accurate explicit strong stability-preserving Runge-Kutta methods\cite{gottlieb_etal_2001} , (SSPRK2 and SSPRK3, respectively) are also applied to serve as an reference.
 More information and the definition of the absolute error and the relative error can be found in \cite{chu_2018}.
 
@@ -54,17 +56,23 @@ PD-ARS with SSP2332 behaviors as good as SSP2332 in the diffusion region but req
    \label{fig:SineWaveDiffusionJ}
 \end{figure}
 
-\subsection{Neutrino Stationary State Test}
-Next we consider a two dimension test with
+\subsection{Neutrino Stationary State Test} \label{se: Neutrino Stationary State Test}
+Next we consider a more realistic-like test: two-dimensional neutrino transport with emission, absorption and elastic scattering under a stationary realistic-like background.
+This test is designed to test the realizability-preserving properties of the PD-ARSs schemes.
+Figure~\ref{fig:NeutrinoStationaryTestEOS} plots the thermal state and the opacities we used.
+This test is computed on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200], x^{2}\in[0,200]\}$ with a grid of 128 elements on each direction.
+We take 10 energy groups vary from 0~MeV to 300~MeV and initial the neutrino number density $\cJ$ and flux density $\bcH$ both zero(arbitrary small).
+For realizability-preserving test, CB closure with PD-ARSs schemes, SSP2332, scheme proposed by Cavaglieri \& Bewley \cite{cavaglieriBewley2015} and scheme proposed by McClarren et al. \cite{mcclarren_etal_2008} are all applied.
+Only PD-ARSs schemes produces realizability-preserving result and evolve the model to a stable state.
+The realizability-preserving plot and the evolve process of PD-ARSs are given in Figure~\ref{fig:NeutrinoStationaryTestEvolve}. 
 
-\label{se: Neutrino Stationary State Test}
 \begin{figure}[h]
   \centering
   \begin{tabular}{cc}
     \includegraphics[width=0.45\textwidth]{figures/NStatinaryS_EOS}
     \includegraphics[width=0.45\textwidth]{figures/NSS_Opacities}
   \end{tabular}
-   \caption{Equation of state plot (left) and neutrino capture opacity (EC) and neutrino elastic scattering opacity (ES) in space (right) for the neutrino stationary state test.}
+   \caption{Thermal state plot (left) and neutrino absorptivity ($\chi$) and neutrino elastic scattering opacity ($\sigma$) in space (right) for the neutrino stationary state test.}
    \label{fig:NeutrinoStationaryTestEOS}
 \end{figure}
 
@@ -73,6 +81,6 @@ Next we consider a two dimension test with
     \includegraphics[width=\textwidth]{figures/NSS_1_1}\\
     \includegraphics[width=\textwidth]{figures/NSS_3_1} \\
     \includegraphics[width=\textwidth]{figures/NSS_5_1} \\
-   \caption{Readability plots (left column), the number density $\cJ$ versus radius plots (center column) and the flux factor $|\bcH|/\cJ$ versus radius plots (right column) at $t = 0.01$ms ,$0.35$ms and $5.0$ms for the neutrino stationary state test.}
+   \caption{Readability plots (left column), the number density $\cJ$ versus radius plots (center column) and the flux factor $|\bcH|/\cJ$ versus radius plots (right column) at t = 0.01~ms ,0.35~ms and 5.0~ms for the neutrino stationary state test. For the realizability plots, the light blue area demonstrate the realizability domain and the black lines define its boundary. Each $\bcM=(\cJ,\bcH)^{T}$ state is marked by a red dot. The results of PD-ARS with SSPRK2 and PD-ARS with SSPRK3 are indistinguishable in these plot.}
       \label{fig:NeutrinoStationaryTestEvolve}
 \end{figure}
