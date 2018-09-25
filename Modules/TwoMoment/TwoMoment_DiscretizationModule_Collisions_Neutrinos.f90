@@ -67,7 +67,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INTEGER  :: Iterations_Max
   INTEGER  :: Iterations_Ave
 
-  LOGICAL, PARAMETER :: SolveMatter = .FALSE.
+  LOGICAL, PARAMETER :: SolveMatter = .TRUE.
 
   INTEGER  :: nE_G, nX_G
   INTEGER  :: iE_B0,    iE_E0
