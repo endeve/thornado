@@ -37,7 +37,7 @@ PROGRAM Driver
 
   wTime = MPI_WTIME( )
 
-  CALL InitThornado( nDimsX = 3, nE = 10, nSpeciesIn = 1 )
+  CALL InitThornado( nDimsX = 3, nE = 10, zoomE = 1.0_DP, nSpeciesIn = 1 )
 
   wTime = MPI_WTIME( ) - wTime
 
@@ -50,17 +50,17 @@ PROGRAM Driver
   DO i = 1, 2
 
     CALL InitThornado_Patch &
-           ( nX  = [ 12, 12, 12 ], &
-             swX = [ 2, 2, 2 ], &
-             xL  = [ 00.0_DP, 00.0_DP, 00.0_DP ] * Kilometer, &
-             xR  = [ 16.0_DP, 16.0_DP, 16.0_DP ] * Kilometer, &
-             swE = 0, &
-             eL  = 0.0d0 * MeV, &
-             eR  = 1.0d2 * MeV )
+           ( nX    = [ 12, 12, 12 ], &
+             swX   = [ 2, 2, 2 ], &
+             xL    = [ 00.0_DP, 00.0_DP, 00.0_DP ] * Kilometer, &
+             xR    = [ 16.0_DP, 16.0_DP, 16.0_DP ] * Kilometer, &
+             swE   = 0, &
+             eL_in = 0.0d0, &
+             eR_in = 1.0d2 )
 
     dt = 1.0d-4 * Millisecond
 
-    uCR(:,:,:,:,:,iCR_N, :) = 1.0_DP
+    uCR(:,:,:,:,:,iCR_N, :) = 0.9_DP
     uCR(:,:,:,:,:,iCR_G1,:) = 0.0_DP
     uCR(:,:,:,:,:,iCR_G2,:) = 0.0_DP
     uCR(:,:,:,:,:,iCR_G3,:) = 0.0_DP
