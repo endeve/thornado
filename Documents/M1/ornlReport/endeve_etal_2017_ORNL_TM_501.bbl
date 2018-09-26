@@ -1,0 +1,363 @@
+\begin{thebibliography}{54}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[{Abdikamalov} et~al.(2012){Abdikamalov}, {Burrows}, {Ott},
+  {L{\"o}ffler}, {O'Connor}, {Dolence}, and {Schnetter}]{abdikamalov_etal_2012}
+E.~{Abdikamalov}, A.~{Burrows}, C.~D. {Ott}, F.~{L{\"o}ffler}, E.~{O'Connor},
+  J.~C. {Dolence}, and E.~{Schnetter}.
+\newblock {A New Monte Carlo Method for Time-dependent Neutrino Radiation
+  Transport}.
+\newblock \emph{Astrophysical Journal}, 755:\penalty0 111, 2012.
+
+\bibitem[Adams(2001)]{adams_2001}
+Marvin~L Adams.
+\newblock Discontinuous finite element transport solutions in thick diffusive
+  problems.
+\newblock \emph{Nuclear science and engineering}, 137\penalty0 (3):\penalty0
+  298--333, 2001.
+
+\bibitem[{Anderson} and {Spiegel}(1972)]{andersonSpiegel_1972}
+J.~L. {Anderson} and E.~A. {Spiegel}.
+\newblock {The Moment Method in Relativistic Radiative Transfer}.
+\newblock \emph{Astrophysical Journal}, 171:\penalty0 127, 1972.
+
+\bibitem[{Bassi} et~al.(2013){Bassi}, {Franchina}, {Ghidoni}, and
+  {Rebay}]{bassi_etal_2013}
+F.~{Bassi}, N.~{Franchina}, A.~{Ghidoni}, and S.~{Rebay}.
+\newblock {A numerical investigation of spectral type nodal collocation
+  discontinuous Galerkin approximation of the Euler and Navier-Stokes
+  equations}.
+\newblock \emph{International Journal for Numerical Methods in Fluids},
+  71:\penalty0 1322--1339, 2013.
+
+\bibitem[{Bethe} and {Wilson}(1985)]{betheWilson_1985}
+H.~A. {Bethe} and J.~R. {Wilson}.
+\newblock {Revival of a stalled supernova shock by neutrino heating}.
+\newblock \emph{Astrophysical Journal}, 295:\penalty0 14--23, 1985.
+
+\bibitem[{Bruenn}(1985)]{bruenn_1985}
+S.~W. {Bruenn}.
+\newblock {Stellar core collapse - Numerical model and infall epoch}.
+\newblock \emph{Astrophysical Journal Supplement Series}, 58:\penalty0
+  771--841, 1985.
+
+\bibitem[{Brunner}(2002)]{brunner_2002}
+T.~A. {Brunner}.
+\newblock {Forms of approximate radiation transport}.
+\newblock \emph{Technical Report, Sandia National Laboratories},
+  SAND2002-1778:\penalty0 1--43, 2002.
+
+\bibitem[{Burrows}(2013)]{burrows_2013}
+A.~{Burrows}.
+\newblock {Colloquium: Perspectives on core-collapse supernova theory}.
+\newblock \emph{Reviews of Modern Physics}, 85:\penalty0 245--261, 2013.
+
+\bibitem[{Cardall} et~al.(2013){Cardall}, {Endeve}, and
+  {Mezzacappa}]{cardall_etal_2013a}
+C.~Y. {Cardall}, E.~{Endeve}, and A.~{Mezzacappa}.
+\newblock {Conservative 3+1 general relativistic variable Eddington tensor
+  radiation transport equations}.
+\newblock \emph{Physical Review D}, 87:\penalty0 103004, 2013.
+
+\bibitem[{Cernohorsky}(1994)]{cernohorsky_1994}
+J.~{Cernohorsky}.
+\newblock {Symmetries in neutrino-electron scattering}.
+\newblock \emph{Astrophysical Journal}, 433:\penalty0 247--249, 1994.
+
+\bibitem[{Cernohorsky} and {Bludman}(1994)]{cernohorskyBludman_1994}
+J.~{Cernohorsky} and S.~A. {Bludman}.
+\newblock {Maximum entropy distribution and closure for Bose-Einstein and
+  Fermi-Dirac radiation transport}.
+\newblock \emph{Astrophysical Journal}, 433:\penalty0 250--255, 1994.
+
+\bibitem[{Chertock} et~al.(2015){Chertock}, {Cui}, {Kurganov}, and
+  {Wu}]{chertock_etal_2015}
+A.~{Chertock}, S.~{Cui}, A.~{Kurganov}, and T.~{Wu}.
+\newblock {Steady State and Sign Preserving Semi-Implicit Runge-Kutta Methods
+  for ODEs with Stiff Damping Term}.
+\newblock \emph{SIAM J. Numer. Anal.}, 53:\penalty0 2008--2029, 2015.
+
+\bibitem[{Cockburn} and {Shu}(2001)]{cockburnShu_2001}
+B.~{Cockburn} and C.-W. {Shu}.
+\newblock {Runge-Kutta Discontinuous Galerkin Methods for Convection-Dominated
+  Problems}.
+\newblock \emph{Journal of Scientific Computing}, 16:\penalty0 173--261, 2001.
+
+\bibitem[{Endeve} and {Hauck}(2017)]{endeveHauck_2017}
+E.~{Endeve} and C.~D. {Hauck}.
+\newblock {A Realizability-Preserving Semi-Implicit Discontinuous Galerkin
+  Method for the Multidimensional $M_{1}$ Model of Radiative Transfer}.
+\newblock \emph{in prep.}, 2017.
+
+\bibitem[{Endeve} et~al.(2015){Endeve}, {Hauck}, {Xing}, and
+  {Mezzacappa}]{endeve_etal_2015}
+E.~{Endeve}, C.~D. {Hauck}, Y.~{Xing}, and A.~{Mezzacappa}.
+\newblock {Bound-Preserving Discontinuous Galerkin Methods for Conservative
+  Phase Space Advection in Curvilinear Coordinates}.
+\newblock \emph{Journal of Computational Physics}, 287:\penalty0 151--183,
+  2015.
+
+\bibitem[{Garrett} and {Hauck}(2013)]{garrettHauck_2013}
+K.~C. {Garrett} and C.~D. {Hauck}.
+\newblock {A Comparison of Moment Closures for Linear Kinetic Transport
+  Equations: The Line Source Benchmark}.
+\newblock \emph{Transport Theory and Statistical Physics}, 42:\penalty0
+  203--235, 2013.
+
+\bibitem[{Gottlieb} et~al.(2001){Gottlieb}, {Shu}, and
+  {Tadmor}]{gottlieb_etal_2001}
+E.~{Gottlieb}, C.-W. {Shu}, and E.~{Tadmor}.
+\newblock {Strong Stability-Preserving High-Order Time Discretization Methods}.
+\newblock \emph{SIAM Review}, 43:\penalty0 89--112, 2001.
+
+\bibitem[{Guermond} and {Kanschat}(2010)]{guermondKanschat_2010}
+J.-L. {Guermond} and G.~{Kanschat}.
+\newblock {Asymptotic Analysis of Upwind Discontinuous Galerkin Approximation
+  of the Radiative Transport Equation in the Diffusive Limit}.
+\newblock \emph{SIAM J. Numer. Anal.}, 48:\penalty0 53--78, 2010.
+
+\bibitem[{Harten}(1989)]{harten_1989}
+A.~{Harten}.
+\newblock {ENO Schemes with Subcell Resolution}.
+\newblock \emph{Journal of Computational Physics}, 83:\penalty0 148--184, 1989.
+
+\bibitem[{Harten} et~al.(1983){Harten}, {Lax}, and {van
+  Leer}]{harten_etal_1983}
+A.~{Harten}, P.D. {Lax}, and B.~{van Leer}.
+\newblock {On Upstream Differencing and Godunov-Type Schemes for Hyperbolic
+  Conservation Laws}.
+\newblock \emph{SIAM Review}, 1983:\penalty0 35--61, 1983.
+
+\bibitem[{Hesthaven} and {Warburton}(2008)]{hesthavenWarburton_2008}
+J.~S. {Hesthaven} and T.~{Warburton}.
+\newblock \emph{{Nodal discontinuous {G}alerkin methods: {A}lgorithms, analysis
+  and applications}}.
+\newblock Springer, 2008.
+
+\bibitem[{Hummer} and {Rybicki}(1971)]{hummerRybicki_1971}
+D.~G. {Hummer} and G.~B. {Rybicki}.
+\newblock {Radiative transfer in spherically symmetric systems. The
+  conservative grey case}.
+\newblock \emph{MNRAS}, 152:\penalty0 1, 1971.
+
+\bibitem[{Janka}(2012)]{janka_2012}
+H.-T. {Janka}.
+\newblock {Explosion Mechanisms of Core-Collapse Supernovae}.
+\newblock \emph{Annual Review of Nuclear and Particle Science}, 62:\penalty0
+  407--451, 2012.
+
+\bibitem[{Kl{\"o}ckner} et~al.(2009){Kl{\"o}ckner}, {Warburton}, {Bridge}, and
+  {Hesthaven}]{klockner_etal_2009}
+A.~{Kl{\"o}ckner}, T.~{Warburton}, J.~{Bridge}, and J.~S. {Hesthaven}.
+\newblock {Nodal discontinuous Galerkin methods on graphics processors}.
+\newblock \emph{Journal of Computational Physics}, 228:\penalty0 7863--7882,
+  2009.
+
+\bibitem[{Larsen} and {Morel}(1989)]{larsenMorel_1989}
+E.~W. {Larsen} and J.~E. {Morel}.
+\newblock {Asymptotic Solutions of Numerical Transport Problems in Optically
+  Thick, Diffusive Regimes II}.
+\newblock \emph{Journal of Computational Physics}, 83:\penalty0 212--236, 1989.
+
+\bibitem[{Levermore}(1984)]{levermore_1984}
+C.~D. {Levermore}.
+\newblock {Relating Eddington factors to flux limiters.}
+\newblock \emph{JQSRT}, 31:\penalty0 149--160, 1984.
+
+\bibitem[{Liu} and {Osher}(1996)]{liuOsher_1996}
+X.~D. {Liu} and S.~{Osher}.
+\newblock Nonoscillatory high order accurate self-similar maximum principle
+  satisfying shock capturing schemes {I}.
+\newblock \emph{SIAM J. Numer. Anal.}, 33\penalty0 (2):\penalty0 760--779,
+  1996.
+
+\bibitem[{Mezzacappa}(2005)]{mezzacappa_2005}
+A.~{Mezzacappa}.
+\newblock {ASCERTAINING THE CORE COLLAPSE SUPERNOVA MECHANISM: The State of the
+  Art and the Road Ahead}.
+\newblock \emph{Annual Review of Nuclear and Particle Science}, 55:\penalty0
+  467--515, 2005.
+
+\bibitem[{Mezzacappa} and {Bruenn}(1993{\natexlab{a}})]{mezzacappaBruenn_1993a}
+A.~{Mezzacappa} and S.~W. {Bruenn}.
+\newblock {Type II supernovae and Boltzmann neutrino transport - The infall
+  phase}.
+\newblock \emph{Astrophysical Journal}, 405:\penalty0 637--668,
+  1993{\natexlab{a}}.
+
+\bibitem[{Mezzacappa} and {Bruenn}(1993{\natexlab{b}})]{mezzacappaBruenn_1993c}
+A.~{Mezzacappa} and S.~W. {Bruenn}.
+\newblock {Stellar core collapse - A Boltzmann treatment of neutrino-electron
+  scattering}.
+\newblock \emph{Astrophysical Journal}, 410:\penalty0 740--760,
+  1993{\natexlab{b}}.
+
+\bibitem[{Minerbo}(1978)]{minerbo_1978}
+G.~N. {Minerbo}.
+\newblock {Maximum entropy Eddington factors.}
+\newblock \emph{JQSRT}, 20:\penalty0 541--545, 1978.
+
+\bibitem[{Minion}(2003)]{minion_2003}
+M.~L. {Minion}.
+\newblock {Semi-implicit spectral deferred correction methods for ordinary
+  differential equations}.
+\newblock \emph{Commun. Math. Sci.}, 1:\penalty0 471--500, 2003.
+
+\bibitem[{M{\"u}ller}(2016)]{muller_2016}
+B.~{M{\"u}ller}.
+\newblock {The Status of Multi-Dimensional Core-Collapse Supernova Models}.
+\newblock \emph{Publications of the Astronomical Society of Australia},
+  33:\penalty0 1--29, 2016.
+
+\bibitem[{O'Connor}(2015)]{oConnor_2015}
+E.~{O'Connor}.
+\newblock {An Open-source Neutrino Radiation Hydrodynamics Code for
+  Core-collapse Supernovae}.
+\newblock \emph{Astrophysical Journal Supplement Series}, 219:\penalty0 24,
+  2015.
+
+\bibitem[Olbrant et~al.(2012)Olbrant, Hauck, and Frank]{OHF2012}
+Edgar Olbrant, Cory~D Hauck, and Martin Frank.
+\newblock A realizability-preserving discontinuous galerkin method for the m1
+  model of radiative transfer.
+\newblock \emph{Journal of Computational Physics}, 231\penalty0 (17):\penalty0
+  5612--5639, 2012.
+
+\bibitem[{Pareschi} and {Russo}(2005)]{pareschiRusso_2005}
+L.~{Pareschi} and G.~{Russo}.
+\newblock {Implicit-Explicit Runge-Kutta Schemes and Application to Hyperbolic
+  Systems with Relaxation}.
+\newblock \emph{Journal of Scientific Computing}, 25:\penalty0 129--155, 2005.
+
+\bibitem[{Pons} et~al.(2000){Pons}, {Ib{\'a}{\~n}ez}, and
+  {Miralles}]{pons_etal_2000}
+J.~A. {Pons}, J.~M. {Ib{\'a}{\~n}ez}, and J.~A. {Miralles}.
+\newblock {Hyperbolic character of the angular moment equations of radiative
+  transfer and numerical methods}.
+\newblock \emph{MNRAS}, 317:\penalty0 550--562, 2000.
+
+\bibitem[{Qiu} and {Shu}(2005)]{qiuShu_2005}
+J.~{Qiu} and C.-W. {Shu}.
+\newblock {A Comparison of Troubled-Cell Indicators for Runge-Kutta
+  Discontinuous Galerkin Methods Using Weighed Essentially Nonoscillatory
+  Limiters}.
+\newblock \emph{SIAM J. Sci. Comput.}, 27:\penalty0 995--1013, 2005.
+
+\bibitem[{Radice} and {Rezzolla}(2011)]{radiceRezzolla_2011}
+D.~{Radice} and L.~{Rezzolla}.
+\newblock {Discontinuous Galerkin methods for general-relativistic
+  hydrodynamics: Formulation and application to spherically symmetric
+  spacetimes}.
+\newblock \emph{PRD}, 84\penalty0 (2):\penalty0 024010, 2011.
+
+\bibitem[{Radice} et~al.(2013){Radice}, {Abdikamalov}, {Rezzolla}, and
+  {Ott}]{radice_etal_2013}
+D.~{Radice}, E.~{Abdikamalov}, L.~{Rezzolla}, and C.~D. {Ott}.
+\newblock {A new spherical harmonics scheme for multi-dimensional radiation
+  transport I. Static matter configurations}.
+\newblock \emph{Journal of Computational Physics}, 242:\penalty0 648--669,
+  2013.
+
+\bibitem[{Reed} and {Hill}(1973)]{reedHill_1973}
+W.H. {Reed} and T.R. {Hill}.
+\newblock {Triangular mesh methods for the neutron transport equation}.
+\newblock Technical Report LA-UR-73-479, Los Alamos National Laboratory, 1973.
+
+\bibitem[{Remacle} et~al.(2003){Remacle}, {Flaherty}, and
+  {Shephard}]{remacle_etal_2003}
+J.-F. {Remacle}, J.~E. {Flaherty}, and M.~S. {Shephard}.
+\newblock {An adaptive discontinuous Galerkin technique with an orthogonal
+  basis applied to compressible flow problems}.
+\newblock \emph{SIAM Review}, 45:\penalty0 53--72, 2003.
+
+\bibitem[{Schaal} et~al.(2015){Schaal}, {Bauer}, {Chandrashekar}, {Pakmor},
+  {Klingenberg}, and {Springel}]{schaal_etal_2015}
+K.~{Schaal}, A.~{Bauer}, P.~{Chandrashekar}, R.~{Pakmor}, C.~{Klingenberg}, and
+  V.~{Springel}.
+\newblock {Astrophysical hydrodynamics with a high-order discontinuous Galerkin
+  scheme and adaptive mesh refinement}.
+\newblock \emph{MNRAS}, 453:\penalty0 4278--4300, 2015.
+
+\bibitem[{Shibata} et~al.(2011){Shibata}, {Kiuchi}, {Sekiguchi}, and
+  {Suwa}]{shibata_etal_2011}
+M.~{Shibata}, K.~{Kiuchi}, Y.~{Sekiguchi}, and Y.~{Suwa}.
+\newblock {Truncated Moment Formalism for Radiation Hydrodynamics in Numerical
+  Relativity}.
+\newblock \emph{Progress of Theoretical Physics}, 125:\penalty0 1255--1287,
+  2011.
+
+\bibitem[{Shu}(2016)]{shu_2016}
+C.-W. {Shu}.
+\newblock {High order WENO and DG methods for time-dependent
+  convection-dominated PDEs: A brief survey of several recent developments}.
+\newblock \emph{Journal of Computational Physics}, 316:\penalty0 598--613,
+  2016.
+
+\bibitem[{Shu} and {Osher}(1988)]{shuOsher_1988}
+C.-W. {Shu} and S.~{Osher}.
+\newblock {Efficient Implementation of Essentially Non-oscillatory
+  Shock-Capturing Schemes}.
+\newblock \emph{Journal of Computational Physics}, 77:\penalty0 439--471, 1988.
+
+\bibitem[{Smit} et~al.(1997){Smit}, {Cernohorsky}, and
+  {Dullemond}]{smit_etal_1997}
+J.~M. {Smit}, J.~{Cernohorsky}, and C.~P. {Dullemond}.
+\newblock {Hyperbolicity and critical points in two-moment approximate
+  radiative transfer.}
+\newblock \emph{Astronomy \& Astrophysics}, 325:\penalty0 203--211, 1997.
+
+\bibitem[{Steiner} et~al.(2013){Steiner}, {Hempel}, and
+  {Fischer}]{steiner_etal_2013}
+A.~W. {Steiner}, M.~{Hempel}, and T.~{Fischer}.
+\newblock {Core-collapse Supernova Equations of State Based on Neutron Star
+  Observations}.
+\newblock \emph{Astrophysical Journal}, 774:\penalty0 17, 2013.
+
+\bibitem[{Sumiyoshi} and {Yamada}(2012)]{sumiyoshiYamada_2012}
+K.~{Sumiyoshi} and S.~{Yamada}.
+\newblock {Neutrino Transfer in Three Dimensions for Core-collapse Supernovae.
+  I. Static Configurations}.
+\newblock \emph{Astrophysical Journal Supplement Series}, 199:\penalty0 17,
+  2012.
+
+\bibitem[{Teukolsky}(2016)]{teukolsky_2016}
+S.~A. {Teukolsky}.
+\newblock {Formulation of discontinuous Galerkin methods for relativistic
+  astrophysics}.
+\newblock \emph{Journal of Computational Physics}, 312:\penalty0 333--356,
+  2016.
+
+\bibitem[{Wu} and {Tang}(2017)]{wuTang_2017}
+K.~{Wu} and H.~{Tang}.
+\newblock {Physical-constraint-preserving Central Discontinuous Galerkin
+  Methods for Special Relativistic Hydrodynamics with a General Equation of
+  State}.
+\newblock \emph{Astrophysical Journal Supplement Series}, 228:\penalty0 3,
+  2017.
+
+\bibitem[Zhang and Shu(2010{\natexlab{a}})]{ZS2010a}
+X.~Zhang and C.-W. Shu.
+\newblock On maximum-principle-satisfying high order schemes for scalar
+  conservation laws.
+\newblock \emph{Journal of Computational Physics}, 229:\penalty0 3091--3120,
+  2010{\natexlab{a}}.
+
+\bibitem[Zhang and Shu(2010{\natexlab{b}})]{ZS2010b}
+X.~Zhang and C.-W. Shu.
+\newblock On positivity preserving high order discontinuous galerkin schemes
+  for compressible euler equations on rectangular meshes.
+\newblock \emph{Journal of Computational Physics}, 229:\penalty0 8918--8934,
+  2010{\natexlab{b}}.
+
+\bibitem[Zhang and Shu(2011)]{ZS2011}
+X.~Zhang and C.-W. Shu.
+\newblock Maximum-principle-satisfying and positivity-preserving high order
+  schemes for conservation laws: Survey and new developments.
+\newblock \emph{Proceedings of the Royal Society A}, 467:\penalty0 2752--2776,
+  2011.
+
+\end{thebibliography}

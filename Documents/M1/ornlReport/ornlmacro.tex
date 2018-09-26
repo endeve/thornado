@@ -1,0 +1,441 @@
+\setcounter{secnumdepth}{5}
+\usepackage{titlesec} 
+\usepackage{parskip}
+\usepackage[T1]{fontenc}   
+\usepackage{blindtext} 
+\usepackage{txfonts} 
+\usepackage{graphicx} 
+\usepackage{array} 
+\usepackage{xcolor} 
+\usepackage{wrapfig} 
+\usepackage[font=bf]{caption} 
+\usepackage{setspace}
+\usepackage{tocloft} 
+\usepackage{fancyhdr} 
+\usepackage[top=1in, bottom=1in, left=1in, right=1in] {geometry} 
+\usepackage[hidelinks]{hyperref} 
+\usepackage[flushleft]{threeparttable}
+\usepackage{fncychap} 
+\usepackage{fullpage} 
+\usepackage{epsf} 
+\usepackage{bm} 
+\usepackage{rotating} 
+\usepackage{wallpaper} 
+\usepackage{sectsty}
+\usepackage{framed, color}
+\usepackage{float}
+\usepackage{calc}
+\usepackage{multirow}
+\usepackage{natbib}       % Use if using a database of references usually name.bib file.
+
+
+\definecolor{shadecolor}{RGB}{0,121,52}
+\sectionfont{\fontsize{11}{11}\selectfont}
+
+\titleformat{\section}
+	{\normalfont\large\bfseries\centering\uppercase}{\thesection}{1em}{}
+\titleformat{\subsection}
+	{\normalfont\large\bfseries\uppercase}{\thesubsection}{1em}{}
+\titleformat{\subsubsection} 
+	{\normalfont\normalsize\bfseries}{\thesubsubsection}{1em}{}
+\titleformat{\paragraph} 
+	{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+
+\renewcommand*{\figurename}{Figure} 
+\renewcommand\thefigure{\arabic{figure}}
+\renewcommand\thetable{\arabic{table}}
+\captionsetup{labelsep=period} 
+\newcommand{\clearemptydoublepage}{\newpage{\pagestyle{empty}\cleardoublepage}}
+\newcommand{\nd}{\noindent}
+\newcommand{\leaderfill}{}
+
+\renewcommand{\cfttoctitlefont}{\large\bfseries\MakeUppercase}
+\renewcommand{\cftloftitlefont}{\large\bfseries\MakeUppercase}
+\renewcommand{\cftlottitlefont}{\large\bfseries\MakeUppercase}
+
+\renewcommand{\thesection}{\arabic{section}.}
+\renewcommand{\thesubsection}{\arabic{section}.\arabic{subsection}}
+\renewcommand{\thesubsubsection}{\arabic{section}.{\arabic{subsection}.\arabic{subsubsection}}}
+\renewcommand{\theparagraph}{\arabic{section}.{\arabic{subsection}.{\arabic{subsubsection}.\arabic{paragraph}}}}
+
+
+\renewcommand{\cftsecfont}{\normalfont}
+\renewcommand{\cftsecpagefont}{\normalfont}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+
+%\newcommand{\eqt}[1]{Eq.~(\ref{#1})}                     % equation
+%\newcommand{\eqts}[1]{Eqs.~(\ref{#1})}                     % equation
+%\newcommand{\fig}[1]{Fig.~\ref{#1}}                      % figure
+%\newcommand{\tbl}[1]{Table~\ref{#1}}                     % table
+%\newcommand{\sct}[1]{Section~\ref{#1}}                   % section
+
+\raggedright
+
+\makeatletter
+\renewcommand\@tocrmarg{.5in plus .5fil} 
+\makeatother
+
+\setlength{\footskip}{65pt}
+
+\setlength{\cftbeforesecskip}{0pt}
+
+\newcommand{\myparagraph}[1]{\paragraph{#1}\mbox{}\\
+\vspace{12pt}}
+
+
+%create a command for fonts on the front cover
+   \newcommand{\CoverFont}[4]{
+     \fontencoding{OT1}
+     \fontfamily{phv}
+     \fontseries{#1}
+     \fontshape{#2}
+     \fontsize{#3}{#4}
+     \selectfont
+   }
+
+
+%create a command for Draft. Not for public release.
+   \newcommand{\DraftBox}{
+     \noindent
+    \vskip 24pt
+     \begin{minipage}{.45\textwidth}
+     \begin{center}
+     \begin{framed} 
+     \large{\bfseries{\textsf{Draft. Not for public release.}}}\\
+     \end{framed}
+     \end{center}
+     \end{minipage}
+     }
+
+%create a command for Not for public release.
+   \newcommand{\NotPublic}{
+     \noindent
+    \vskip 24pt
+     \begin{minipage}{.45\textwidth}
+     \begin{center}
+     \begin{framed} 
+     \large{\bfseries{\textsf{Not for public release.}}}\\
+     \end{framed}
+     \end{center}
+     \end{minipage}
+     }
+
+\fancypagestyle{mypagestylepublic}{  % without page numbers
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C] {Not for public release.} 
+}
+
+\fancypagestyle{mypagestylepublicpage}{   % with page numbers
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C] {Not for public release. \\
+ \thepage}  
+}
+
+
+
+%create a command for Approved for public release.
+   \newcommand{\ApprovedBox}{
+     \noindent
+    \vskip 24pt
+     \begin{minipage}{.45\textwidth}
+     \begin{center}
+     \begin{framed} 
+     \large{\bfseries{\textsf{Approved for public release. \\
+     Distribution is unlimited.}}}\\
+     \end{framed}
+     \end{center}
+     \end{minipage}
+     }
+
+
+%create a command for Business Sensitive.
+   \newcommand{\BusSenBox}{
+     \noindent
+    \vskip 24pt
+     \begin{minipage}{.45\textwidth}
+     \begin{center}
+     \begin{framed} 
+     \large{\bfseries{\textsf{Business Sensitive}}}\\
+     \end{framed}
+     \end{center}
+     \end{minipage}
+     }
+
+
+%create a command for CRADA final.
+   \newcommand{\CRADABox}{
+     \noindent
+    \vskip 24pt
+     \begin{minipage}{.45\textwidth}
+     \begin{center}
+     \begin{framed} 
+     \large{\bfseries{\textsf{CRADA final report for \\
+     CRADA number NFE-XX-XXXXX}}}\\
+     \end{framed}
+ \begin{framed} 
+     \large{\bfseries{\textsf{Approved for public release. \\
+     Distribution is unlimited.}}}\\
+     \end{framed}
+     \end{center}
+     \end{minipage}
+     }
+
+
+%create a command for Official Use Only
+   \newcommand{\OUOBox}{
+    \noindent
+    \vskip 12pt
+    \hspace{-.2in}
+    \fbox{
+    \begin{minipage}[t]{0.525\textwidth}
+    \vspace{2pt}
+    \raggedright
+    \textnormal{
+    \CoverFont{b}{n}{10}{11pt}
+    \hspace*{\fill} {OFFICIAL USE ONLY \hspace*{\fill} \\
+    \CoverFont{mc}{n}{9}{10pt}
+    \underline {\smash{May}} be exempt from public release under the Freedom of Information Act \\
+(5 U.S.C. 552), exemption number and category: 
+    \CoverFont{mc}{n}{9}{10pt} \underline{\smash{Choose an item.}} \\
+% Choose an item.
+% 3. Statutary Exemption
+% 4. Commercial/Proprietary
+% 5. Privileged Information
+% 6. Personal Privacy
+% 7. Law Enforcement
+% 9. Wells
+    Department of Energy review required before public release \\
+    \vspace{0.1in}
+    \CoverFont{mc}{n}{9}{10pt}
+    Name/Org:  \underline{\smash{Click here to enter text}} Date: \underline{\smash{Click here to enter date}}\\
+    \CoverFont{mc}{n}{9}{10pt}
+    Guidance (if applicable): \underline{\smash{Click here to enter text}}}} \\
+    \end{minipage}
+    }}
+
+\fancypagestyle{mypagestyle}{   % With page numbers
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C] {OFFICIAL USE ONLY \\
+ \thepage}  
+}
+
+
+\fancypagestyle{mypagestyleempty}{   % Without page numbers
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C] {OFFICIAL USE ONLY} 
+}
+
+
+
+%create a command for Export Controlled Information
+   \newcommand{\ECIBox}{
+    \noindent
+    \vskip 12pt
+    \hspace{-.2in}
+    \fbox{
+    \begin{minipage}[t]{0.525\textwidth}
+    \vspace{2pt}
+    \raggedright
+    \textnormal{
+    \CoverFont{b}{n}{10}{11pt}
+    \hspace*{\fill} {EXPORT CONTROLLED INFORMATION \hspace*{\fill} \\
+    \CoverFont{mc}{n}{9}{10pt}
+    Contains technical information whose export is restricted by 
+    \CoverFont{mc}{n}{9}{10pt} \underline{\smash{Enter statute here.}} Violations may result in administrative, civil, and/or criminal penalties. Limit dissemination to U.S. persons.\\
+  \CoverFont{mc}{n}{9}{10pt}
+    The cognizant program manager must approve other dissemination. This notice shall not be separated from the attached document.\\
+    \vspace{0.1in}
+    \CoverFont{mc}{n}{9}{10pt}
+    Reviewer (Signature) \underline{\smash{Click here to enter signature}} \\
+    \CoverFont{mc}{n}{9}{10pt}
+    Date \underline{\smash{Click here to enter date}}}} \\
+    \end{minipage}
+    }}
+
+
+%create a command for Unclassified Controlled Nuclear Information
+   \newcommand{\UCNIBox}{
+    \noindent
+    \vskip 12pt
+    \hspace{-.2in}
+    \fbox{
+    \begin{minipage}[t]{0.575\textwidth}
+    \vspace{2pt}
+    \raggedright
+    \textnormal{
+    \CoverFont{b}{n}{9}{10pt}
+    \hspace*{\fill} {UNCLASSIFIED CONTROLLED NUCLEAR INFORMATION\hspace*{\fill} \\
+    \CoverFont{mc}{n}{9}{10pt}
+    \centering{NOT FOR PUBLIC DISSEMINATION} \\
+    \CoverFont{mc}{n}{9}{10pt}
+    \flushleft {Unauthorized dissemination subject to civil and criminal sanctions} \\
+    \CoverFont{mc}{n}{9}{10pt}
+    under section 148 of the Atomic Energy Act of 1954, as amended (42 U.S.C. 2168).\\
+    \vspace{0.05in}
+    \CoverFont{mc}{n}{9}{10pt}
+    \textbf{REVIEWING OFFICIAL:} \underline{\smash{Click here to enter signature}} \\
+    \vspace{0.05in}
+    \CoverFont{mc}{n}{9}{10pt}
+     \textbf{Date:} \underline{\smash{Click here to enter date}} \\
+    \vspace{0.05in}
+    \CoverFont{mc}{n}{9}{10pt}
+     \textbf{Guidance Used:} \underline{\smash{Insert guidance here}} \\
+    \vspace{0.05in}
+    \CoverFont{mc}{n}{9}{10pt}
+    \underline{\smash{Insert more guidance in this area}} \\
+    \vspace{0.05in}
+    \CoverFont{mc}{n}{9}{10pt}
+    \centering{(List all UCNI guidance Used)} }} \\
+     \end{minipage}
+    }}
+
+
+%create a command for Official Use Only and Export Controlled Information
+   \newcommand{\OUOECIBox}{
+    \noindent
+    \vskip 12pt
+    \hspace{-.2in}
+    \fbox{
+    \begin{minipage}[t]{0.525\textwidth}
+    \vspace{2pt}
+    \raggedright
+    \textnormal{
+    \CoverFont{b}{n}{10}{11pt}
+    \hspace*{\fill} {OFFICIAL USE ONLY \hspace*{\fill} \\
+    \CoverFont{mc}{n}{9}{10pt}
+    \underline {\smash{May}} be exempt from public release under the Freedom of Information Act \\
+(5 U.S.C. 552), exemption number and category: 
+    \CoverFont{mc}{n}{9}{10pt} \underline{\smash{Choose an item.}} \\
+% Choose an item.
+% 3. Statutary Exemption
+% 4. Commercial/Proprietary
+% 5. Privileged Information
+% 6. Personal Privacy
+% 7. Law Enforcement
+% 9. Wells
+    Department of Energy review required before public release \\
+    \vspace{0.1in}
+    \CoverFont{mc}{n}{9}{10pt}
+    Name/Org:  \underline{\smash{Click here to enter text}} Date: \underline{\smash{Click here to enter date}}\\
+    \CoverFont{mc}{n}{9}{10pt}
+    Guidance (if applicable): \underline{\smash{Click here to enter text}}}} \\
+\rule{85mm}{.3pt}\\
+    \vspace{3pt}
+    \raggedright
+    \textnormal{
+    \CoverFont{b}{n}{10}{11pt}
+    \hspace*{\fill} {EXPORT CONTROLLED INFORMATION \hspace*{\fill} \\
+    \CoverFont{mc}{n}{9}{10pt}
+    Contains technical information whose export is restricted by 
+    \CoverFont{mc}{n}{9}{10pt} \underline{\smash{Enter statute here.}} Violations may result in administrative, civil, and/or criminal penalties. Limit dissemination to U.S. persons.\\
+  \CoverFont{mc}{n}{9}{10pt}
+    The cognizant program manager must approve other dissemination. This notice shall not be separated from the attached document.\\
+    \vspace{0.1in}
+    \CoverFont{mc}{n}{9}{10pt}
+    Reviewer (Signature) \underline{\smash{Click here to enter signature}} \\
+    \CoverFont{mc}{n}{9}{10pt}
+    Date \underline{\smash{Click here to enter date}}}} \\
+    \end{minipage}
+    }}
+
+
+%create a command for Official Use Only and Applied Technology
+   \newcommand{\OUOATBox}{
+    \noindent
+    \vskip 12pt
+    \hspace{-.2in}
+    \fbox{
+    \begin{minipage}[t]{0.525\textwidth}
+    \vspace{2pt}
+    \raggedright
+    \textnormal{
+    \CoverFont{b}{n}{10}{11pt}
+    \hspace*{\fill} {OFFICIAL USE ONLY \hspace*{\fill} \\
+    \CoverFont{mc}{n}{9}{10pt}
+    \underline {\smash{May}} be exempt from public release under the Freedom of Information Act \\
+(5 U.S.C. 552), exemption number and category: 
+    \CoverFont{mc}{n}{9}{10pt} \underline{\smash{Choose an item.}} \\
+% Choose an item.
+% 3. Statutary Exemption
+% 4. Commercial/Proprietary
+% 5. Privileged Information
+% 6. Personal Privacy
+% 7. Law Enforcement
+% 9. Wells
+    Department of Energy review required before public release \\
+    \vspace{0.1in}
+    \CoverFont{mc}{n}{9}{10pt}
+    Name/Org:  \underline{\smash{Click here to enter text}} Date: \underline{\smash{Click here to enter date}}\\
+    \CoverFont{mc}{n}{9}{10pt}
+    Guidance (if applicable): \underline{\smash{Click here to enter text}}}} \\
+\rule{85mm}{.3pt}\\
+    \vspace{3pt}
+    \raggedright
+    \textnormal{
+    \CoverFont{b}{n}{10}{11pt}
+    \hspace*{\fill} {APPLIED TECHNOLOGY \hspace*{\fill} \\
+    \CoverFont{mc}{n}{9}{10pt}
+      Any further distribution by any holder of this document or data therein to third parties representing foreign interests, foreign governments, foreign companies, and foreign subsidiaries or foreign divisions of U.S. companies shall be approved by the [ \emph {insert appropriate NE Program Office Officials} ], U.S. Department of Energy.  Further, foreign party release may require the DOE approval pursuant to Federal Regulation 10 CFR Part 810, and/or may be subject to Section 127 of the Atomic Energy Act.\\ }}
+    \end{minipage}
+    }}
+
+
+%create a command for Official Use Only, Export Controlled Information, and Applied Technology
+   \newcommand{\OUOECIATBox}{
+    \noindent
+%    \vskip 6pt
+    \hspace{-.2in}
+    \fbox{
+    \begin{minipage}[t]{0.645\textwidth}
+    \vspace{2pt}
+    \raggedright
+    \textnormal{
+    \CoverFont{b}{n}{9}{10pt}
+    \hspace*{\fill} {OFFICIAL USE ONLY \hspace*{\fill} \\
+    \CoverFont{mc}{n}{8}{9pt}
+    \underline {\smash{May}} be exempt from public release under the Freedom of Information Act \\
+(5 U.S.C. 552), exemption number and category: 
+    \CoverFont{mc}{n}{8}{9pt} \underline{\smash{Choose an item.}} \\
+% Choose an item.
+% 3. Statutary Exemption
+% 4. Commercial/Proprietary
+% 5. Privileged Information
+% 6. Personal Privacy
+% 7. Law Enforcement
+% 9. Wells
+    Department of Energy review required before public release \\
+    \vspace{0.1in}
+    \CoverFont{mc}{n}{8}{9pt}
+    Name/Org:  \underline{\smash{Click here to enter text}} Date: \underline{\smash{Click here to enter date}}\\
+    \CoverFont{mc}{n}{8}{9pt}
+    Guidance (if applicable): \underline{\smash{Click here to enter text}}}} \\
+\rule{85mm}{.3pt}\\
+    \vspace{3pt}
+    \raggedright
+    \textnormal{
+    \CoverFont{b}{n}{9}{10pt}
+    \hspace*{\fill} {EXPORT CONTROLLED INFORMATION \hspace*{\fill} \\
+    \CoverFont{mc}{n}{8}{9pt}
+    Contains technical information whose export is restricted by 
+    \CoverFont{mc}{n}{8}{9pt} \underline{\smash{Enter statute here.}} Violations may result in administrative, civil, and/or criminal penalties. Limit dissemination to U.S. persons.\\
+  \CoverFont{mc}{n}{8}{9pt}
+    The cognizant program manager must approve other dissemination. This notice shall not be separated from the attached document.\\
+    \vspace{0.1in}
+    \CoverFont{mc}{n}{8}{9pt}
+    Reviewer (Signature) \underline{\smash{Click here to enter signature}} \\
+    \CoverFont{mc}{n}{8}{9pt}
+    Date \underline{\smash{Click here to enter date}}}} \\
+\rule{85mm}{.3pt}\\
+    \vspace{3pt}
+    \raggedright
+    \textnormal{
+    \CoverFont{b}{n}{9}{10pt}
+    \hspace*{\fill} {APPLIED TECHNOLOGY \hspace*{\fill} \\
+    \CoverFont{mc}{n}{8}{9pt}
+      Any further distribution by any holder of this document or data therein to third parties representing foreign interests, foreign governments, foreign companies, and foreign subsidiaries or foreign divisions of U.S. companies shall be approved by the [ \emph {insert appropriate NE Program Office Officials} ], U.S. Department of Energy.  Further, foreign party release may require the DOE approval pursuant to Federal Regulation 10 CFR Part 810, and/or may be subject to Section 127 of the Atomic Energy Act.\\ }}
+    \end{minipage}
+    }}
