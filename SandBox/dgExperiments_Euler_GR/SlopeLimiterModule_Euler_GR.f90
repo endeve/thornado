@@ -37,8 +37,7 @@ MODULE SlopeLimiterModule_Euler_GR
   USE BoundaryConditionsModule_Beta, ONLY: &
     ApplyBoundaryConditions_Fluid
   USE CharacteristicDecompositionModule_GR, ONLY: &
-    ComputeCharacteristicDecomposition_GR, &
-    ComputeCharacteristicDecomposition_SR
+    ComputeCharacteristicDecomposition_GR
 
   IMPLICIT NONE
   PRIVATE
@@ -289,7 +288,7 @@ CONTAINS
 
             ! --- Compute Eigenvectors ---
 
-            CALL ComputeCharacteristicDecomposition_SR &
+            CALL ComputeCharacteristicDecomposition_GR &
                    ( 1, G_K(:), U_M(:,0,1), R_X1, invR_X1 )
 
             IF( nDimsX > 1 )THEN
