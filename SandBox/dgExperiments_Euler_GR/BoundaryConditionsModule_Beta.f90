@@ -50,7 +50,7 @@ CONTAINS
 
     REAL(DP) :: D_0, E_0, R_0, R_q 
     INTEGER  :: iCF, iX1, iX2, iX3
-    INTEGER  :: iNodeX, iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX1
+    INTEGER  :: iNodeX, iNodeX_0, iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX1
 
     SELECT CASE ( bcX(1) )
 
@@ -180,8 +180,7 @@ CONTAINS
         END DO
      END DO
 
-
-    CASE ( 10 ) ! Custom BCs for Accretion Problem
+    CASE ( 11 ) ! Custom BCs for Accretion Problem
 
       R_0 = MeshX(1) % Center(1) &
               + MeshX(1) % Width(1) &
@@ -189,35 +188,35 @@ CONTAINS
 
       DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
-
-          D_0 = U(1,iX_B0(1),iX2,iX3,iCF_D)
-          E_0 = U(1,iX_B0(1),iX2,iX3,iCF_E)
-          
           DO iX1 = 1, swX(1)
 
-            ! --- Inner Boundary ---
-        
-            DO iNodeX = 1, nDOFX
-             
-              iNodeX1 = NodeNumberTableX(1, iNodeX)
+            ! --- Inner Boundary ---            
 
-              R_q = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNodeX1 )
+            DO iNodeX3 = 1, nNodesX(3)
+              DO iNodeX2 = 1, nNodesX(2)
+                DO iNodeX1 = 1, nNodesX(1)
 
-              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
-                = D_0 * ( R_0 / R_q ) ** 3
-              
-              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
-                = E_0 * ( R_0 / R_q ) ** 4
+                  iNodeX   = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+                  iNodeX_0 = NodeNumberX( 1,       iNodeX2, iNodeX3 )
 
+                  D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
+                  E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
+
+                  R_q = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNodeX1 )            
+                  U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+                    = D_0 * ( R_0 / R_q ) ** 3
+ 
+                  U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+                    = E_0 * ( R_0 / R_q ) ** 4
+
+                END DO
+              END DO
             END DO
-
-            ! --- Outer Boundary left fixed at initial values ---
 
           END DO
         END DO
       END DO 
 
-                  
     CASE DEFAULT
 
       WRITE(*,*)

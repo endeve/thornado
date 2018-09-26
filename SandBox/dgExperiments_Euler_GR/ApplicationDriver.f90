@@ -1,7 +1,7 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, One, Two
+    DP, Zero, One, Two, Pi, Four, TwoPi
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -19,7 +19,7 @@ PROGRAM ApplicationDriver
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE InitializationModule_GR, ONLY: &
-    InitializeFields_GR
+    InitializeFields_GR, ReadParameters
   USE SlopeLimiterModule_Euler_GR, ONLY: &
     InitializeSlopeLimiter_Euler_GR, &
     FinalizeSlopeLimiter_Euler_GR, &
@@ -43,11 +43,14 @@ PROGRAM ApplicationDriver
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
+  USE UnitsModule, ONLY: &
+    Millisecond
 
   IMPLICIT NONE
 
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: RiemannProblemName
+  CHARACTER(32) :: SphericalRiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
   LOGICAL       :: UseSlopeLimiter
@@ -63,22 +66,31 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, wTime, CFL
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
-  REAL(DP)      :: nRel
-  INTEGER       :: nDetCells
 
-  ProgramName = 'RiemannProblem'
+  ! --- Sedov blast wave ---
+  REAL(DP) :: nRel
+  INTEGER  :: nDetCells
+
+  ! --- Standing accretion shock ---
+  REAL(DP), ALLOCATABLE :: FluidFieldParameters(:)
+  REAL(DP)              :: M_PNS = Zero, Ri, R_PNS, R_shock, Rf
+
+!  ProgramName = 'RiemannProblem'
+  ProgramName = 'SphericalRiemannProblem'
+!  ProgramName = 'SedovBlastWave'
+!  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'PerturbedShockTube'
+      RiemannProblemName = 'Sod'
 
       CoordinateSystem = 'CARTESIAN'
 
       Gamma = 5.0_DP / 3.0_DP
 
-      nX = [ 100, 1, 1 ]
+      nX = [ 128, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -94,14 +106,51 @@ PROGRAM ApplicationDriver
       UseCharacteristicLimiting = .TRUE.
 
       UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 0.1_DP
+      LimiterThresholdParameter = 0.015_DP
 
       UsePositivityLimiter = .TRUE.
       Min_1 = 1.0d-16
       Min_2 = 1.0d-16
 
       iCycleD = 100
-      t_end   = 3.5d-1
+      t_end   = 4.0d-1
+      dt_wrt  = 1.0d-2 * t_end
+
+      nStagesSSPRK = nNodes
+      CFL          = 0.1_DP
+
+    CASE( 'SphericalRiemannProblem' )
+
+      SphericalRiemannProblemName = 'SphericalSod'
+
+      CoordinateSystem = 'SPHERICAL'
+
+      Gamma = 5.0_DP / 3.0_DP
+
+      nX = [ 128, 1, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 2.0_DP, Pi, TwoPi ]
+
+      bcX = [ 2, 0, 0 ]
+
+      nNodes = 3
+
+      BetaTVD = 2.0_DP
+      BetaTVB = 0.0_DP
+
+      UseSlopeLimiter           = .TRUE.
+      SlopeTolerance            = 1.0d-6
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 0.015_DP
+
+      UsePositivityLimiter = .TRUE.
+      Min_1 = 1.0d-16
+      Min_2 = 1.0d-16
+
+      iCycleD = 100
+      t_end   = 4.0d-1
       dt_wrt  = 1.0d-2 * t_end
 
       nStagesSSPRK = nNodes
@@ -116,13 +165,13 @@ PROGRAM ApplicationDriver
 
       Gamma = 4.0_DP / 3.0_DP
 
-      nX = [ 128, 1, 1 ]
+      nX = [ 256, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      bcX = [ 2, 0, 0 ]
+      bcX = [ 32, 0, 0 ]
 
-      nNodes = 1
+      nNodes = 3
 
       BetaTVD = 2.0_DP
       BetaTVB = 0.0_DP
@@ -132,18 +181,71 @@ PROGRAM ApplicationDriver
       UseCharacteristicLimiting = .TRUE.
 
       UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 0.1_DP
+      LimiterThresholdParameter = 0.015_DP
 
       UsePositivityLimiter = .TRUE.
-      Min_1 = 1.0d-12
-      Min_2 = 1.0d-12
+      Min_1 = 0.0d-16
+      Min_2 = 0.0d-16
 
-      iCycleD = 1
-      t_end   = 0.1_DP
+      iCycleD = 100
+      t_end   = 4.5_DP
       dt_wrt  = 1.0d-2 * t_end
 
       nStagesSSPRK = nNodes
       CFL          = 0.1_DP
+
+    CASE( 'StandingAccretionShock' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      CALL ReadParameters &
+             ( '../StandingAccretionShock_Parameters.dat', &
+                 FluidFieldParameters )
+
+      M_PNS   = FluidFieldParameters(1)
+      Gamma   = FluidFieldParameters(2)
+      Ri      = FluidFieldParameters(3)
+      R_PNS   = FluidFieldParameters(4)
+      R_shock = FluidFieldParameters(5)
+
+      nX = [ 256, 1, 1 ]
+      xL = [ R_PNS, 0.0_DP, 0.0_DP ]
+      xR = [ Two * R_shock, Pi, Four ]
+
+      bcX = [ 11, 0, 0 ]
+
+      nNodes = 1
+
+      BetaTVD = 2.0_DP
+      BetaTVB = 0.0_DP
+
+      UseSlopeLimiter           = .TRUE.
+      SlopeTolerance            = 1.0d-6
+      UseCharacteristicLimiting = .FALSE.
+
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 0.015_DP
+
+      UsePositivityLimiter = .TRUE.
+      Min_1 = Zero
+      Min_2 = Zero
+
+      iCycleD = 100
+      t_end   = 1.0d1 * Millisecond
+      dt_wrt  = 0.1d0 * Millisecond
+
+      nStagesSSPRK = nNodes
+      CFL          = 0.1_DP
+
+    CASE DEFAULT
+
+      WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
+      WRITE(*,'(A)') 'Valid choices:'
+      WRITE(*,'(A)') 'RiemannProblem'
+      WRITE(*,'(A)') 'SedovBlastWave'
+      WRITE(*,'(A)') 'StandingAccretionShock'
+      WRITE(*,'(A)') 'Stopping...'
+      STOP
 
   END SELECT
 
@@ -176,11 +278,13 @@ PROGRAM ApplicationDriver
   CALL InitializeReferenceElementX_Lagrange
 
   CALL ComputeGeometryX &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = M_PNS )
 
   CALL InitializeFields_GR &
-         ( RiemannProblemName_Option &
-             = TRIM( RiemannProblemName ) )
+         ( RiemannProblemName_Option = TRIM( RiemannProblemName ), &
+           SphericalRiemannProblemName_Option &
+             = TRIM( SphericalRiemannProblemName ), &
+           nDetCells_Option = nDetCells, nRel_Option = nRel )
 
   CALL WriteFieldsHDF &
        ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
@@ -234,8 +338,14 @@ PROGRAM ApplicationDriver
 
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
-      WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
+      IF( ProgramName .EQ. 'StandingAccretionShock' )THEN
+        WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A4,A5,ES13.6E3,A3)') &
+          '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, ' ms ', &
+          'dt = ', dt / Millisecond, ' ms'
+      ELSE
+        WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
           '', 'Cycle = ', iCycle, '', 't = ',  t, '', 'dt = ', dt
+      END IF
 
     END IF
 
@@ -249,7 +359,7 @@ PROGRAM ApplicationDriver
              uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
 
-    IF( t + dt .LT. t_wrt )THEN
+    IF( t + dt .GT. t_wrt )THEN
       t_wrt = t_wrt + dt_wrt
       wrt   = .TRUE.
     END IF
