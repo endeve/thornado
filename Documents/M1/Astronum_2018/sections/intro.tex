@@ -1,29 +1,34 @@
 \section{Introduction}
 
 Core-collapse supernovae (CCSNe) are the explosion happens at the end of a massive star's life.
-They are the source of heavy elements and play an important role in many astrophysical phenomena, such as neutron star and black hole formation.
-Furthermore, these explosions combines extreme energetic and densities with nuclear, particle and relativistic physics. 
+They are a dominant source of heavy elements and play an important role in many astrophysical phenomena, such as neutron star and black hole formation.  
+Furthermore, these explosions occur at energies and densities relevant to address fundamental questions in nuclear, particle, and gravitational physics. 
 A solid theoretical framework for these explosion mechanism will illuminate explanations to many import questions in fundamental physics.
 
-One essential part of the explosion mechanism is neutrino transport which drives the explosion.
+One essential part of the explosion mechanism is neutrino transport which drives the explosion.  
 Neutrino transport is modeled by Boltzmann transport equation, which is partial differential equation and evolves the distribution function $f$.
 Simulating the neutrino transport is finding a solution of Boltzmann transport equation for a given domain and period with an acceptable accuracy.
 
 Solving Boltzmann transport multi-dimensional with high accuracy requirement can be expensive.
+\ee{Balance physical fidelity and computational expediency?}
 One alternation is sacrificing the accuracy: instead of solving Boltzmann transport equations, solve moment equation for an approximate solution.
+\ee{What are moments?}
 This kind method is moment method and we focus on two-moment method in this paper.
 
 Applying two-moment method only is not sufficient to have an affordable solution when the simulating period is long.
 To be precisely, neutrino interact with the background rapidly and its characteristic time scalar is so small comparing to the length of CCSNe explosion process. 
-It makes the time step needed by an explicit time integrator dramatic large and a huge mount of calculation needed. 
+It makes the time step needed by an explicit time integrator dramatic small and a huge mount of calculation needed. 
+\ee{Discuss fully implicit approach?}
 To manipulate this challenge, implicit-explicit (IMEX) methods are taken into consideration.
 By taking advantage of the fact that collision terms are local, IMEX methods are able to make the time integrator more efficient in diffusion dominate region.
 
-However, price needs to be paid for the lunch.
+However, price needs to be paid for the lunch.  
+\ee{Nonlinear equations, closure, well-posedness of closure requires realizable moments}
+\ee{What is moment realizability}
 Two-moment method requires a realizability-preserving algebraic closure for fermion.
-IMEX methods should be diffusion limit accurate. 
+IMEX methods should be diffusion limit accurate \ee{why?}. 
 The discussion of these prices drives this paper. 
+\ee{Moment realizabilty and diffusion accurate IMEX scheme motivates this work}
 
-
-This paper is recognized as following: Section~\ref{se:Two-MomentModel} discusses the mathematical model, algebraic closure and the realizability-preserving property of algebraic closure;
-Section~\ref{se:SpacialDiscretization} gives more information of the spacial discretization; Section~\ref{se:TimeIntegration} discusses how to construct a constraint-preserving, diffusion limit accurate IMEX (PD-ARS) scheme and two PD-ARS schemes are presented; Section~\ref{se:NumericalTests} gives the result of the numerical tests of the PD-ARSs; Section~\ref{se:Conclusion} is the conclusion section.
+This paper is recognized as following: Section~\ref{se:Two-MomentModel} discusses the mathematical model, algebraic closures, and realizability algebraic closures in the context of Fermi-Dirac statistics;
+Section~\ref{se:SpacialDiscretization} we discuss moment realizability in the context of a first-order finite volume spatial discretization; Section~\ref{se:TimeIntegration} discusses how to construct a constraint-preserving, diffusion limit accurate IMEX (PD-ARS) scheme and two PD-ARS schemes are presented \ee{should we introduce the term PD-ARS here?}; Section~\ref{se:NumericalTests} gives the result of the numerical tests of the PD-ARSs; Section~\ref{se:Conclusion} is the conclusion section.
