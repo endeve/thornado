@@ -3,7 +3,7 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Two
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, nDimsX
   USE MeshModule, ONLY: &
     MeshX
   USE FluidFieldsModule, ONLY: &
@@ -11,7 +11,9 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_P, iAF_Cs
   USE GeometryFieldsModule, ONLY: &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+       iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+       iGF_Alpha, &
+       iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromSpecificInternalEnergy, &
     ComputeSoundSpeedFromPrimitive_GR
@@ -99,7 +101,7 @@ CONTAINS
     REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q, FunP0
 
     REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-12, TolFunP = 1.0d-12, TolFunP0 = 1.0d-12
+    REAL(DP), PARAMETER :: TolP = 1.0d-8, TolFunP = 1.0d-10, TolFunP0 = 1.0d-10
 
     ! --- Loop through all the nodes ---
     nNodes = SIZE( CF_D )
@@ -246,9 +248,7 @@ CONTAINS
           WRITE(*,'(A,ES24.16E3)') &
                   '|Pnew-Pold|/|Pnew|: ', ABS( Pnew - Pold ) / ABS( Pnew )
           IF( ITERATION == MAX_IT )THEN
-            WRITE(*,'(A)') &
-                   'Max allowed iterations reached, no convergence. Stopping...'
-            STOP
+            STOP 'Max allowed iterations reached, no convergence. Stopping...'
           END IF
         END IF
 
@@ -337,12 +337,21 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       TimeStep
 
-    INTEGER  :: iX1, iX2, iX3
-    REAL(DP) :: dX(3), dt_X(nDOFX,3)
+    INTEGER  :: iX1, iX2, iX3, iNodeX, iDimX
+    REAL(DP) :: dX(3), dt_X(3)
     REAL(DP) :: P(nDOFX,nPF)
     REAL(DP) :: A(nDOFX,nAF)
+    REAL(DP) :: EigVals_X1(nCF,nDOFX), alphaMax_X1, &
+                EigVals_X2(nCF,nDOFX), alphaMax_X2, &
+                EigVals_X3(nCF,nDOFX), alphaMax_X3
+    REAL(DP) :: epsilon = Half
 
     TimeStep = HUGE( One )
+    dt_X(:)  = HUGE( One )
+
+    alphaMax_X1 = Zero
+    alphaMax_X2 = Zero
+    alphaMax_X3 = Zero
 
     DO iX3 = iX_B(3), iX_E(3)
       DO iX2 = iX_B(2), iX_E(2)
@@ -365,15 +374,71 @@ CONTAINS
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_Cs) )
 
+          DO iNodeX = 1, nDOFX
+            EigVals_X1(:,iNodeX) = Eigenvalues_GR &
+                                     ( P(iNodeX,iPF_V1), &
+                                       P(iNodeX,iPF_V2), &
+                                       P(iNodeX,iPF_V3), &
+                                       P(iNodeX,iPF_V1), &
+                                       A(iNodeX,iAF_Cs), &
+                                       G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                       G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                       G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                       G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                       G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                       G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
+            alphaMax_X1 &
+              = MAX( alphaMax_X1, MAXVAL( ABS( EigVals_X1(:,iNodeX) ) ) )
+
+            IF( nDimsX .GT. 1 )THEN
+              EigVals_X2(:,iNodeX) = Eigenvalues_GR &
+                                       ( P(iNodeX,iPF_V1), &
+                                         P(iNodeX,iPF_V2), &
+                                         P(iNodeX,iPF_V3), &
+                                         P(iNodeX,iPF_V1), &
+                                         A(iNodeX,iAF_Cs), &
+                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                         G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                         G(iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
+              alphaMax_X2 &
+                = MAX( alphaMax_X2, MAXVAL( ABS( EigVals_X2(:,iNodeX) ) ) )
+
+            END IF
+
+            IF( nDimsX .GT. 2 )THEN
+              EigVals_X3(:,iNodeX) = Eigenvalues_GR &
+                                       ( P(iNodeX,iPF_V1),       &
+                                         P(iNodeX,iPF_V2),       &
+                                         P(iNodeX,iPF_V3),       &
+                                         P(iNodeX,iPF_V1),       &
+                                         A(iNodeX,iAF_Cs),       &
+                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                         G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                         G(iNodeX,iX1,iX2,iX3,iGF_Beta_3) )
+              alphaMax_X3 &
+                = MAX( alphaMax_X3, MAXVAL( ABS( EigVals_X3(:,iNodeX) ) ) )
+
+            END IF
+
+          END DO
+
           ! --- NEED TO FIX THIS FOR CURVILINEAR COORDINATES AND SOURCE TERM ---
-          dt_X(:,1) &
-            = dX(1)
+          dt_X(1) &
+            = dX(1) / ( Two * alphaMax_X1 )
 
-          dt_X(:,2) &
-            = dX(2)
+          IF( nDimsX .GT. 1 ) &
+            dt_X(2) &
+              = dX(2) / ( Two * alphaMax_X2 )
 
-          dt_X(:,3) &
-            = dX(3)
+          IF( nDimsX .GT. 2 ) &
+            dt_X(3) &
+              = dX(3) / ( Two * alphaMax_X3 )
 
           TimeStep = MIN( TimeStep, MINVAL( dt_X ) )
 
@@ -381,7 +446,7 @@ CONTAINS
       END DO
     END DO
 
-    TimeStep = CFL * TimeStep
+    TimeStep = epsilon * CFL * TimeStep
 
   END SUBROUTINE ComputeTimeStep_GR
 
