@@ -76,9 +76,9 @@ PROGRAM ApplicationDriver
   REAL(DP)              :: M_PNS = Zero, Ri, R_PNS, R_shock, Rf
 
 !  ProgramName = 'RiemannProblem'
-  ProgramName = 'SphericalRiemannProblem'
+!  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SedovBlastWave'
-!  ProgramName = 'StandingAccretionShock'
+  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -150,7 +150,7 @@ PROGRAM ApplicationDriver
       Min_2 = 1.0d-16
 
       iCycleD = 100
-      t_end   = 4.0d-1
+      t_end   = 5.0d-1
       dt_wrt  = 1.0d-2 * t_end
 
       nStagesSSPRK = nNodes
@@ -235,13 +235,14 @@ PROGRAM ApplicationDriver
       dt_wrt  = 0.1d0 * Millisecond
 
       nStagesSSPRK = nNodes
-      CFL          = 0.1_DP
+      CFL          = 0.01_DP
 
     CASE DEFAULT
 
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)') 'Valid choices:'
       WRITE(*,'(A)') 'RiemannProblem'
+      WRITE(*,'(A)') 'SphericalRiemannProblem'
       WRITE(*,'(A)') 'SedovBlastWave'
       WRITE(*,'(A)') 'StandingAccretionShock'
       WRITE(*,'(A)') 'Stopping...'
