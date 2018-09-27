@@ -214,14 +214,14 @@ PROGRAM ApplicationDriver
 
       bcX = [ 11, 0, 0 ]
 
-      nNodes = 1
+      nNodes = 2
 
       BetaTVD = 2.0_DP
       BetaTVB = 0.0_DP
 
       UseSlopeLimiter           = .TRUE.
       SlopeTolerance            = 1.0d-6
-      UseCharacteristicLimiting = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
 
       UseTroubledCellIndicator  = .TRUE.
       LimiterThresholdParameter = 0.015_DP
@@ -230,7 +230,7 @@ PROGRAM ApplicationDriver
       Min_1 = Zero
       Min_2 = Zero
 
-      iCycleD = 100
+      iCycleD = 1000
       t_end   = 1.0d1 * Millisecond
       dt_wrt  = 0.1d0 * Millisecond
 

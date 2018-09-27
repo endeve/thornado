@@ -425,17 +425,12 @@ CONTAINS
     REAL(DP) :: X1
     REAL(DP), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
 
-    WRITE(*,*)
-    WRITE(*,'(A2,A6,A)') &
-      '', 'INFO: ', TRIM( ProgramName )
-
     CALL ReadParameters &
            ( '../StandingAccretionShock_Parameters.dat', FluidFieldParameters )
     CALL ReadData &
            ( '../StandingAccretionShock_Data.dat', nLines, FluidFieldData )
 
     ! --- Interpolate initial conditions onto grid ---
-    WRITE(*,'(A)') 'Interpolating initial conditions onto grid'
 
     ! --- Loop over all elements ---
     DO iX3 = iX_B1(3), iX_E1(3)
