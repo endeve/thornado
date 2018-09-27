@@ -494,7 +494,7 @@ CONTAINS
           DO iCF = 1, nCF
 
             NumericalFlux(:,iCF) &
-              = dX2 * dX3 * WeightsX_X1(:) & ! HLLC Flux has bug * G_F(:,iGF_Alpha) &
+              = dX2 * dX3 * WeightsX_X1(:) * G_F(:,iGF_Alpha) &
                   * G_F(:,iGF_SqrtGm) * NumericalFlux(:,iCF)
 
           END DO

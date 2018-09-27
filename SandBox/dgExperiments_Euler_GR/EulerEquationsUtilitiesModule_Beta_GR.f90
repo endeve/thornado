@@ -574,15 +574,16 @@ CONTAINS
 
 
   REAL(DP) FUNCTION AlphaC_GR &
-             ( U_L, F_L, U_R, F_R, aP, aM, Gm_dd_11, Beta_u_1, LapseFunction )
+             ( U_L, F_L, U_R, F_R, aP, aM, Gmdd, ShiftVector, LapseFunction )
 
     ! --- Middle Wavespeed as suggested by Mignone and Bodo (2005) ---
 
     REAL(DP), INTENT(in) :: U_L(nCF), F_L(nCF), U_R(nCF), F_R(nCF), &
-                            aP, aM, Gm_dd_11, Beta_u_1, LapseFunction
-    REAL(DP)             :: U_S1, F_S1, U_E, F_E, A, B, C, eps
+                            aP, aM, Gmdd, ShiftVector, LapseFunction
+    REAL(DP)             :: U_S1, F_S1, U_E, F_E, A, B, C, eps, eta
 
     eps = SqrtTiny
+    eta = ShiftVector / LapseFunction
 
     ! --- Note the sign change on aM which is due
     !     to it being read in as positive but Mignone assuming
@@ -602,9 +603,9 @@ CONTAINS
           - ( U_L(iCF_E) + U_L(iCF_D) ) )
 
     ! --- A, B, and C from quadratic equation ---
-    A = Gm_dd_11**2 * ( F_E + Beta_u_1 * U_E )
-    B = -Gm_dd_11 * ( LapseFunction * U_E + F_S1 + Beta_u_1 * U_S1 )
-    C = LapseFunction * U_S1
+    A = Gmdd**2 * ( F_E + eta * U_E )
+    B = -Gmdd * ( F_S1 + U_E + eta * U_S1 )
+    C = U_S1
 
     ! --- Accounting for special cases of the solution to a
     !     quadratic equation when A = 0 ---
