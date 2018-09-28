@@ -6,29 +6,32 @@ Furthermore, these explosions occur at energies and densities relevant to addres
 A solid theoretical framework for these explosion mechanism will illuminate explanations to many import questions in fundamental physics.
 
 One essential part of the explosion mechanism is neutrino transport which drives the explosion.  
-Neutrino transport is modeled by Boltzmann transport equation, which is partial differential equation and evolves the distribution function $f$.
+Neutrino transport is modeled by Boltzmann transport equation, which is partial differential equation and evolves a phase space distribution function $f$.
 Simulating the neutrino transport is finding a solution of Boltzmann transport equation for a given domain and period with an acceptable accuracy.
 
-Solving Boltzmann transport multi-dimensional with high accuracy requirement can be expensive.
-\ee{Balance physical fidelity and computational expediency?}
-One alternation is sacrificing the accuracy: instead of solving Boltzmann transport equations, solve moment equation for an approximate solution.
-\ee{What are moments?}
-This kind method is moment method and we focus on two-moment method in this paper.
+Solving multi-dimensional Boltzmann transport equation can be expensive.
+To balance physical fidelity and computational expediency, an approximation method called two-moment method is investigated.
+In two-moment method, the evolve values are the angular moments of the distribution function $f$, the spectral particle density $\cJ$ and flux $\bcH$, which are the zeroth angular moment and the first angular moment, respectively.
 
 Applying two-moment method only is not sufficient to have an affordable solution when the simulating period is long.
 To be precisely, neutrino interact with the background rapidly and its characteristic time scalar is so small comparing to the length of CCSNe explosion process. 
-It makes the time step needed by an explicit time integrator dramatic small and a huge mount of calculation needed. 
-\ee{Discuss fully implicit approach?}
+It makes the time step needed by an explicit time integrator small and a lot of calculation needed. 
+Moreover, solving the moment equations fully implicitly requires diagonalization of band structure matrices whose sizes depend on the space discretization and makes the simulation expensive.
 To manipulate this challenge, implicit-explicit (IMEX) methods are taken into consideration.
-By taking advantage of the fact that collision terms are local, IMEX methods are able to make the time integrator more efficient in diffusion dominate region.
+By treating the transport term explicitly and the collision term implicitly, IMEX methods subject only to a time step governed by the explicit transport term and the matrix it needs to diagonal is diagonal dominate in most of interested region.
 
-However, price needs to be paid for the lunch.  
-\ee{Nonlinear equations, closure, well-posedness of closure requires realizable moments}
-\ee{What is moment realizability}
-Two-moment method requires a realizability-preserving algebraic closure for fermion.
-IMEX methods should be diffusion limit accurate \ee{why?}. 
-The discussion of these prices drives this paper. 
-\ee{Moment realizabilty and diffusion accurate IMEX scheme motivates this work}
+To employing IMEX schemes for two-moment neutrino transport, two things need to be chosen carefully: a Fermi-Dirac statistics satisfied algebraic closure for closing the two-moment equations and a constraint-preserving diffusion accurate IMEX schemes for ensure a valid result.
+Here is the explanation.
+First of all, the Boltzmann transport equation is a nonlinear equation.
+Its integral form which gives the two-moment method requires the information of $(i+1)$-th order moment for $i$-th order moment evolution.
+Therefore, two-moment method needs a algebraic closure which gives a approximated value of the second order moment $\bcK$ given $\cJ$ and $\bcH$.
+Second, the angular moments are confined. Since a neutrino distribution function is confined ($f\in(0,1)$) by the Pauli exclusion principle, its moments as integrals of a confined function over confined domain ($\omega\in\bbS^{2}$) are also confined.
+We call the moments satisfying a Fermi-Dirac statistics realizable moments.
+Hence, the algebraic closure should give a realizable $\bcK$ and the well-posedness of closure requires realizable $\cJ$ and $\bcH$.
+Third, the realizability of $\cJ$ and $\bcH$ on each time step requires a constraint-preserving IMEX.
+Fourth, the physics of neutrino transport in CCSNe requires the IMEX be diffusion limit accurate.\ee{why?}. 
+Moment realizabilty and diffusion accurate IMEX scheme motivates this work
 
 This paper is recognized as following: Section~\ref{se:Two-MomentModel} discusses the mathematical model, algebraic closures, and realizability algebraic closures in the context of Fermi-Dirac statistics;
-Section~\ref{se:SpacialDiscretization} we discuss moment realizability in the context of a first-order finite volume spatial discretization; Section~\ref{se:TimeIntegration} discusses how to construct a constraint-preserving, diffusion limit accurate IMEX (PD-ARS) scheme and two PD-ARS schemes are presented \ee{should we introduce the term PD-ARS here?}; Section~\ref{se:NumericalTests} gives the result of the numerical tests of the PD-ARSs; Section~\ref{se:Conclusion} is the conclusion section.
+Section~\ref{se:SpacialDiscretization} we discuss moment realizability in the context of a first-order finite volume spatial discretization; Section~\ref{se:TimeIntegration} discusses how to construct a constraint-preserving, diffusion limit accurate IMEX (PD-ARS) scheme and two PD-ARS schemes are presented %\ee{should we introduce the term PD-ARS here?};
+Section~\ref{se:NumericalTests} gives the result of the numerical tests of the PD-ARSs; Section~\ref{se:Conclusion} is the conclusion section.
