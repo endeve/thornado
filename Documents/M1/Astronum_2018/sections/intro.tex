@@ -18,7 +18,10 @@ To be precisely, neutrino interact with the background rapidly and its character
 It makes the time step needed by an explicit time integrator small and a lot of calculation needed. 
 Moreover, solving the moment equations fully implicitly requires diagonalization of band structure matrices whose sizes depend on the space discretization and makes the simulation expensive.
 To manipulate this challenge, implicit-explicit (IMEX) methods are taken into consideration.
-By treating the transport term explicitly and the collision term implicitly, IMEX methods subject only to a time step governed by the explicit transport term and the matrix it needs to diagonal is diagonal dominate in most of interested region.
+By treating the transport term explicitly and the collision term implicitly, IMEX methods subject only to a time step governed by the explicit transport term and the matrix it needs to diagonal is diagonal dominate in most of interested region.  
+\ee{Discuss banded versus block diagonal matrix}
+
+\ee{Some background on current ``state-of-the-art'' simulations and the approach they take.}
 
 To employing IMEX schemes for two-moment neutrino transport, two things need to be chosen carefully: a Fermi-Dirac statistics satisfied algebraic closure for closing the two-moment equations and a constraint-preserving diffusion accurate IMEX schemes for ensure a valid result.
 Here is the explanation.
