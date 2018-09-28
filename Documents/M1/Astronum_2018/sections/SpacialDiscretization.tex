@@ -25,6 +25,14 @@ Therefore, by treating the flux term explicitly and the collision term implicitl
 & = \bcM_{i}^{n} - \dfrac{\dt}{\dx} \left( \widehat{\bcF}(\bcM^{n}_{i},\bcM^{n}_{i+1}) -  \widehat{\bcF}(\bcM^{n}_{i-1},\bcM^{n}_{i})\right) + \f{\dt}{\tau}\,\cC(\bcM^{n+1}_{i}) \nonumber \\
 & = (1-\eta)\bcM_{i}^{n} + \eta\left[ \f{1}{2}\left( \bcM^{n}_{i+1}-\bcF(\bcM^{n}_{i+1})\right)  + \f{1}{2}\left( \bcM^{n}_{i-1}+\bcF(\bcM^{n}_{i-1})\right)\right]  + \f{\dt}{\tau}\,\cC(\bcM^{n+1}_{i})
 \end{align}
-where $\eta := \dfrac{\dt}{\dx}$. The first two terms can form a 3-term convex combination by requiring $\eta \in [0,1]$.
-It can be shown that $\bcM_{i}^{n+1}$ remains realizable given $\bcM_{i}^{n}$ is realizable, $\eta \in [0,1]$ and $\cC(\bcM)$ is positivity-preserving. The proof can be found in \cite{
-chu_2018}.
+where $\eta := \dfrac{\dt}{\dx}$.
+Let's call
+\begin{align*}
+\tilde{\bcM}^{n}_{i} := (1-\eta)\bcM_{i}^{n} + \eta\left[ \f{1}{2}\left( \bcM^{n}_{i+1}-\bcF(\bcM^{n}_{i+1})\right)  + \f{1}{2}\left( \bcM^{n}_{i-1}+\bcF(\bcM^{n}_{i-1})\right)\right],
+\end{align*} 
+and assume $\bcM_{i}^{n}$ is realizable for all $i$. 
+Lemma 3 in \cite{chu_2018} says $\bcM^{n+1}_{i}$ remains realizable given $\f{\dt}{\tau} > 0$ and $\tilde{\bcM}^{n}_{i}$ is realizable.
+$\tilde{\bcM}^{n}_{i}$ is a convex combination of $\bcM_{i}^{n}$ and the bracket term if $\eta \in [0,1]$, so it is realizable if $\eta \in [0,1]$ and the bracket term is realizable.
+And the realizability of the bracket term is given by Lemma 2 in \cite{chu_2018}.
+To sum up, $\bcM^{n+1}_{i}$ remains realizable given $\eta \in [0,1]$.
+It's the CFL condition of the Forward-Euler method employing on a transport only Boltzmann equation.
