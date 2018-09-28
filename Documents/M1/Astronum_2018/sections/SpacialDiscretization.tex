@@ -20,17 +20,17 @@ In this paper we use the simple Lax-Friedrichs flux that given by
   =\f{1}{2}\,\big(\,\bcF(\vect{\cM}_{a})+\bcF(\vect{\cM}_{b})-(\,\vect{\cM}_{b}-\vect{\cM}_{a}\,)\,\big).
 \end{equation}
 Therefore, by treating the flux term explicitly and the collision term implicitly, we have
-\begin{align}
-\bcM_{i}^{n+1} 
-& = \bcM_{i}^{n} - \dfrac{\dt}{\dx} \left( \widehat{\bcF}(\bcM^{n}_{i},\bcM^{n}_{i+1}) -  \widehat{\bcF}(\bcM^{n}_{i-1},\bcM^{n}_{i})\right) + \f{\dt}{\tau}\,\cC(\bcM^{n+1}_{i}) \nonumber \\
-& = (1-\eta)\bcM_{i}^{n} + \eta\left[ \f{1}{2}\left( \bcM^{n}_{i+1}-\bcF(\bcM^{n}_{i+1})\right)  + \f{1}{2}\left( \bcM^{n}_{i-1}+\bcF(\bcM^{n}_{i-1})\right)\right]  + \f{\dt}{\tau}\,\cC(\bcM^{n+1}_{i})
-\end{align}
-where $\eta := \dfrac{\dt}{\dx}$.
-Let's call
 \begin{align*}
-\tilde{\bcM}^{n}_{i} := (1-\eta)\bcM_{i}^{n} + \eta\left[ \f{1}{2}\left( \bcM^{n}_{i+1}-\bcF(\bcM^{n}_{i+1})\right)  + \f{1}{2}\left( \bcM^{n}_{i-1}+\bcF(\bcM^{n}_{i-1})\right)\right],
-\end{align*} 
-and assume $\bcM_{i}^{n}$ is realizable for all $i$. 
+\bcM_{i}^{n+1} = \tilde{\bcM}^{n}_{i} + \f{\dt}{\tau}\,\cC(\bcM^{n+1}_{i})
+\end{align*}
+with
+\begin{align*}
+\widetilde{\bcM}^{n}_{i} 
+& = \bcM_{i}^{n} - \dfrac{\dt}{\dx} \left( \widehat{\bcF}(\bcM^{n}_{i},\bcM^{n}_{i+1}) -  \widehat{\bcF}(\bcM^{n}_{i-1},\bcM^{n}_{i})\right)\nonumber \\
+& = (1-\eta)\bcM_{i}^{n} + \eta\left[ \f{1}{2}\left( \bcM^{n}_{i+1}-\bcF(\bcM^{n}_{i+1})\right)  + \f{1}{2}\left( \bcM^{n}_{i-1}+\bcF(\bcM^{n}_{i-1})\right)\right]
+\end{align*}
+where $\beta := \dfrac{\dt}{\dx}$.
+Assume $\bcM_{i}^{n}$ is realizable for all $i$. 
 Lemma 3 in \cite{chu_2018} says $\bcM^{n+1}_{i}$ remains realizable given $\f{\dt}{\tau} > 0$ and $\tilde{\bcM}^{n}_{i}$ is realizable.
 $\tilde{\bcM}^{n}_{i}$ is a convex combination of $\bcM_{i}^{n}$ and the bracket term if $\eta \in [0,1]$, so it is realizable if $\eta \in [0,1]$ and the bracket term is realizable.
 And the realizability of the bracket term is given by Lemma 2 in \cite{chu_2018}.
