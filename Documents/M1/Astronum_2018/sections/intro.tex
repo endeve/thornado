@@ -29,9 +29,16 @@ Second, the angular moments are confined. Since a neutrino distribution function
 We call the moments satisfying a Fermi-Dirac statistics realizable moments.
 Hence, the algebraic closure should give a realizable $\bcK$ and the well-posedness of closure requires realizable $\cJ$ and $\bcH$.
 Third, the realizability of $\cJ$ and $\bcH$ on each time step requires a constraint-preserving IMEX.
-Fourth, the physics of neutrino transport in CCSNe requires the IMEX be diffusion limit accurate.\ee{why?}. 
-Moment realizabilty and diffusion accurate IMEX scheme motivates this work
+Since the realizable moments form a convex set, it is possible to construct a constraint-preserving IMEX for two-moment neutrino transport method.
+Fourth, the physics of neutrino transport in CCSNe requires the IMEX be diffusion limit accurate.
+[citation] showed standard IMEX scheme can't have an order higher than first.
+To have second-order (or higher-order) accuracy, some correction steps are needed.
+However, the correction step can deteriorate the accuracy of the IMEX in the diffusion limit and restrict the time step.
+To keep simple, we focus on the IMEX scheme without correction step and require it high-order (second or higher order) in the streaming limit and diffusion accurate.
+We call these IMEX scheme PD-ARS.
+The study of moment realizabilty and constraint-preserving diffusion accurate IMEX scheme motivates this work.
 
-This paper is recognized as following: Section~\ref{se:Two-MomentModel} discusses the mathematical model, algebraic closures, and realizability algebraic closures in the context of Fermi-Dirac statistics;
-Section~\ref{se:SpacialDiscretization} we discuss moment realizability in the context of a first-order finite volume spatial discretization; Section~\ref{se:TimeIntegration} discusses how to construct a constraint-preserving, diffusion limit accurate IMEX (PD-ARS) scheme and two PD-ARS schemes are presented %\ee{should we introduce the term PD-ARS here?};
-Section~\ref{se:NumericalTests} gives the result of the numerical tests of the PD-ARSs; Section~\ref{se:Conclusion} is the conclusion section.
+This paper is recognized as following: Section~\ref{se:Two-MomentModel} discusses the mathematical model, algebraic closures, and the constraints on the moments and algebraic closures imposed by Fermi-Dirac statistics;
+Section~\ref{se:SpacialDiscretization} gives a first-order finite volume spatial discretization and shows how the spatial discretization preserve constraints in a IMEX step;
+Section~\ref{se:TimeIntegration} discusses how to use convex combination to construct PD-ARS and two PD-ARSs, one has second-order in the streaming limit and the other has third-order, are provided;
+Section~\ref{se:NumericalTests} presents the results of the numerical tests which demonstrate the portieres of the PD-ARSs; Section~\ref{se:Conclusion} summaries the achievement of this paper.
