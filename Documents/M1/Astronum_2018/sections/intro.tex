@@ -22,9 +22,9 @@ To manipulate these challenges, implicit-explicit (IMEX) methods are taken into 
 By treating the transport term explicitly and the collision term implicitly, IMEX methods subject only to a time step governed by the explicit transport term and the matrix it needs to invert is block diagonal dominated.
 Therefore, IMEX methods need less step and the calculation for each step is parallelable.  
 
-\ee{Some background on current ``state-of-the-art'' simulations and the approach they take.}
+\ee{Some background on current ``state-of-the-art'' simulations and the approach they take.} \cite{vartanyan_etal_2018,oConnorCouch_2018,pan_etal_2018,cabezon_etal_2018,glas_etal_2018,just_etal_2018,kuroda_etal_2016}
 
-To employing IMEX schemes for two-moment neutrino transport, two things need to be chosen carefully: a Fermi-Dirac statistics satisfied algebraic closure for closing the two-moment equations and a constraint-preserving diffusion accurate IMEX schemes for ensure a valid result.
+To employing IMEX schemes for two-moment neutrino transport, two things need to be chosen carefully: a Fermi-Dirac statistics satisfied algebraic closure for closing the two-moment equations and a convex-invariant diffusion accurate IMEX schemes for ensure a valid result.
 Here is the explanation.
 
 First of all, the Boltzmann transport equation is a nonlinear equation.
@@ -36,7 +36,7 @@ Since a neutrino distribution function is confined ($f\in(0,1)$) by the Pauli ex
 We call the moments satisfying a Fermi-Dirac statistics realizable moments.
 Hence, the algebraic closure should give a realizable $\bcK$ and the well-posedness of closure requires realizable $\cJ$ and $\bcH$.
 
-Third, the realizability of $\cJ$ and $\bcH$ on each time step requires a constraint-preserving IMEX.
+Third, the realizability of $\cJ$ and $\bcH$ on each time step requires a convex-invariant IMEX.
 Since the realizable moments form a convex set, it is possible to construct a constraint-preserving IMEX for two-moment neutrino transport method.
 
 Fourth, the physics of neutrino transport in CCSNe requires the IMEX be diffusion limit accurate.

@@ -3,14 +3,14 @@
 We have developed IMEX schemes for the two-moment neutrino transport in \texttt{thornado} code respecting Fermi-Dirac statistics.
 The schemes employ algebraic closure based on Fermi-Dirac statistics, a first-order discontinuous Galerkin method, the simple Lax-Friedrichs flux with the convex-invariant time integrator to maintain point-wise realizability of the moments.
 Since the realizability-preserving property is obtained from convexity of the realizable domain, it's possible to construct a scheme with high order DG method.
-See \cite{chu_2018} for some examples with third-order DG method employed.
+See \cite{chu_etal_2018} for some examples with third-order DG method employed.
 
 In the applications motivating this work, the neutrino distribution function can vary from 0 to 1, and we have considered the algebraic closure respecting Fermi-Dirac statistics for both low and high occupied condition.
 Different values given by different algebraic closures were compared with the boundary values given by the Fermi-Dirac statistics at different occupation.
-Among the algebraic closures we considered, Kershaw\cite{kershaw_1976}, Wilson\cite{wilson1975,leblanc1970}, Levermore\cite{levermore_1984}, Minerbo \cite{minerbo_1978}, Janka 1\cite{janka1991} Janka 2\cite{janka1992} and Cernohorsky \& Bludman \cite{cernohorskyBludman_1994}, only Cernohorsky \& Bludman closure respecting Fermi-Dirac statistics for any occupancy.
+Among the algebraic closures we considered, Kershaw\cite{kershaw_1976}, Wilson\cite{wilson_1975,leblanc_1970}, Levermore\cite{levermore_1984}, Minerbo \cite{minerbo_1978}, Janka 1\cite{janka_1991} Janka 2\cite{janka_1992} and Cernohorsky \& Bludman \cite{cernohorskyBludman_1994}, only Cernohorsky \& Bludman closure respecting Fermi-Dirac statistics for any occupancy.
 And it is Cernohorsky \& Bludman closure that we employed in the numerical tests in Section~\ref{se:NumericalTests}.
 
-Following the work we have done in \cite{chu_2018}, two PD-ARSs have been proposed.
+Following the work we have done in \cite{chu_etal_2018}, two PD-ARSs have been proposed.
 The one with SSPRK2 is second-order and strong stability-preserving in the streaming limit while other with SSPRK3 is third-order.
 Their properties, accuracy and convex-invariant, are demonstrated with numerical tests.
 

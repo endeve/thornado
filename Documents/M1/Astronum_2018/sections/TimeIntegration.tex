@@ -51,7 +51,7 @@ As Hu et al. did in their paper \cite{hu_etal_2018}, the stage values in Eq.~\eq
   +a_{ii}\,\dt\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}),\quad i=1,\ldots,s,
   \label{eq:imexStagesRewrite}
 \end{equation}
-It can be proved \cite{chu_2018} that the conditions we need for constraint-preserving IMEX is:
+It can be proved \cite{chu_etal_2018} that the conditions we need for constraint-preserving IMEX is:
 \begin{enumerate}
     \item Consistency of the implicit coefficients
     \begin{equation}
@@ -77,7 +77,7 @@ It can be proved \cite{chu_2018} that the conditions we need for constraint-pres
     \item Less than four stages ($s\le3$).
     \item Globally stiffly accurate (GSA): $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i},\quad i=1,\ldots,s$.
 \end{enumerate}  
-We call the IMEX scheme satisfying the above conditions {PD-ARS}. (Definition 3 in \cite{Chu_2018})
+We call the IMEX scheme satisfying the above conditions {PD-ARS}. (Definition 3 in \cite{chu_etal_2018})
 We give two optimized PD-ARS scheme here: PD-ARS with SSPRK2 and  PD-ARS with SSPRK3. 
 They have $2$-nd order and $3$-rd order accuracy in the streaming limit, respectively.
 \subsubsection{PD-ARS with SSPRK2}

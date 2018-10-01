@@ -9,12 +9,12 @@ All the tests in this subsection were applied with third-order accurate spatial 
 To compare the accuracy of the IMEX scheme, we applied our PDARSs and Pareschi \& Russo \cite{pareschiRusso_2005} (SSP2332) scheme to some smooth problems in streaming, absorption, ans scattering dominated regimes in one spatial dimension.
 All the tests in this subsection were applied with the maximum entropy closure in the low occupancy limit.
 In the streaming test, the second-order and third-order accurate explicit strong stability-preserving Runge-Kutta methods\cite{gottlieb_etal_2001} , (SSPRK2 and SSPRK3, respectively) are also applied to serve as an reference.
-More information and the definition of the absolute error and the relative error can be found in \cite{chu_2018}.
+More information and the definition of the absolute error and the relative error can be found in \cite{chu_etal_2018}.
 
 \subsubsection{Sine Wave Streaming}
 This test involves the streaming part only: the collision term is turned off. 
 A periodic domain $D$ was applied and the initial condition is given by...
-More information can be found in \cite{chu_2018}.
+More information can be found in \cite{chu_etal_2018}.
 In Figure ~\ref{fig: SineWaveStreaming}, the absolute error for the number density is plotted versus the number of elements $N$.
 Errors obtained with SSPRK3 and PD-ARS with SSPRK3 decrease as $N^{-3}$ as expected.
 All the other schemes have errors decreases as $N^{-2}$.
@@ -31,7 +31,7 @@ Among the second-order schemes, SSP2332 has the smallest error.
 \subsubsection{Sine Wave Damping}
 This test is adapted from \cite{skinnerOstriker_2013}.
 Figure~\ref{fig:SineWaveDamping} shows the numerical result of sine wave damping test.
-See \cite{chu_2018} for more information about the test setting.
+See \cite{chu_etal_2018} for more information about the test setting.
 SSP2332 as a second-order scheme display second order convergence rate.
 PD-ARSs convergent in first order, as a price paid for realizability-preserving.
 \begin{figure}[h]
@@ -44,7 +44,7 @@ PD-ARSs convergent in first order, as a price paid for realizability-preserving.
 \subsubsection{Sine Wave Diffusion}
 The last test with known smooth solution is sine wave diffusion test.
 It is adopted from \cite{radice_etal_2013}.
-See \cite{chu_2018} for more information about the test setting.
+See \cite{chu_etal_2018} for more information about the test setting.
 Figure~\ref{fig:SineWaveDiffusionJ} shows the numerical result.
 SSP2332 and PD-ARSs display third-order accuracy for the number density $\cJ$ and second-oder accuracy for $\cH_{x}$ and their errors are difficult to distinguish.
 PD-ARS with SSP2332 behaviors as good as SSP2332 in the diffusion region but requires 1/3 less implicit solver.
