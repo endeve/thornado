@@ -168,13 +168,13 @@ CONTAINS
 
                 uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
                   = (1.0_DP + PerturbParam) &
-                      * uPF(iNodeX1, iX1, iX2, iX3, iPF_D)
+                      * uPF(iNodeX, iX1, iX2, iX3, iPF_D)
 
               CASE ( 1 ) 
 
                 uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
                   = (1.0_DP + PerturbParam * COS(X2)) &
-                      * uPF(iNodeX1, iX1, iX2, iX3, iPF_D)
+                      * uPF(iNodeX, iX1, iX2, iX3, iPF_D)
 
               END SELECT
 
