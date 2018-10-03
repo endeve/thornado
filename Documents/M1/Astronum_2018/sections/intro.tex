@@ -12,6 +12,10 @@ Simulating the neutrino transport is convert to find a solution of Boltzmann tra
 Nevertheless, solving multi-dimensional Boltzmann transport equation can be expensive.
 To balance physical fidelity and computational expediency, an approximation method called two-moment method is established.
 In two-moment method, the evolve variables are the zeroth and first angular moments of the distribution function $f$, the spectral particle density $\cJ$ and flux $\bcH$ respectively.
+However, the Boltzmann transport equation is a nonlinear equation.
+Its integral form which gives the two-moment method requires the information of the second angular moment $\bcK$ to close the system.
+Therefore, a algebraic closure which gives a approximated value of $\bcK$ given $\cJ$ and $\bcH$ is needed.
+The two-moment method has been widely applied with different algebraic closures, such as the Minerbo\cite{minerbo_1978} closure(e.g.~{O'Connor} and {Couch}\cite{oConnorCouch_2018}, Pan and et al\cite{pan_etal_2018}, Glas et al\cite{glas_etal_2018} and Just et al\cite{just_etal_2018} ) and the Levermore\cite{levermore_1984} closure(e.g.~Vartanyan et al\cite{vartanyan_etal_2018}, Cabezon et al\cite{cabezon_etal_2018} and Kuroda et al\cite{kuroda_etal_2016}). 
 
 Applying two-moment method only is not sufficient to have an affordable solution since the simulating period is long considering the physics it involves.
 To be precisely, neutrino interact with the background rapidly and its characteristic time scalar is very small comparing to the length of CCSNe explosion process. 
@@ -22,27 +26,20 @@ To manipulate these challenges, implicit-explicit (IMEX) methods are taken into 
 By treating the transport term explicitly and the collision term implicitly, IMEX methods subject only to a time step governed by the explicit transport term and the matrix it needs to invert is block diagonal dominated.
 Therefore, IMEX methods need less step and the calculation for each step is parallelable.  
 
-\ee{Some background on current ``state-of-the-art'' simulations and the approach they take.} \cite{vartanyan_etal_2018,oConnorCouch_2018,pan_etal_2018,cabezon_etal_2018,glas_etal_2018,just_etal_2018,kuroda_etal_2016}
-
+%\ee{Some background on current ``state-of-the-art'' simulations and the approach they take.} 
 To employing IMEX schemes for two-moment neutrino transport, two things need to be chosen carefully: a Fermi-Dirac statistics satisfied algebraic closure for closing the two-moment equations and a convex-invariant diffusion accurate IMEX schemes for ensure a valid result.
-Here is the explanation.
-
-First of all, the Boltzmann transport equation is a nonlinear equation.
-Its integral form which gives the two-moment method requires the information of $(i+1)$-th order moment for $i$-th order moment evolution.
-Therefore, two-moment method needs a algebraic closure which gives a approximated value of the second order moment $\bcK$ given $\cJ$ and $\bcH$.
-
-Second, the angular moments are confined.
+Because the angular moments are confined.
 Since a neutrino distribution function is confined ($f\in(0,1)$) by the Pauli exclusion principle, its moments as integrals of a confined function over confined domain ($\omega\in\bbS^{2}$) are also confined.
 We call the moments satisfying a Fermi-Dirac statistics realizable moments.
 Hence, the algebraic closure should give a realizable $\bcK$ and the well-posedness of closure requires realizable $\cJ$ and $\bcH$.
-
-Third, the realizability of $\cJ$ and $\bcH$ on each time step requires a convex-invariant IMEX.
+That's why a Fermi-Dirac statistics satisfied algebraic closure is needed.
+Then, the realizability of $\cJ$ and $\bcH$ on each time step requires a convex-invariant IMEX.
 Since the realizable moments form a convex set, it is possible to construct a constraint-preserving IMEX for two-moment neutrino transport method.
+What's more, the physics of neutrino transport in CCSNe requires the IMEX be diffusion limit accurate.
 
-Fourth, the physics of neutrino transport in CCSNe requires the IMEX be diffusion limit accurate.
 \rc{\cite{gottlieb_etal_2001} showed standard IMEX scheme can't have an order higher than first without a restrict time step requirement.}
 To have second-order (or higher-order) accuracy, some correction steps are needed.
-However, the correction step can deteriorate the accuracy of the IMEX in the diffusion limit and restrict the time step.
+Unfortunately, the correction step can deteriorate the accuracy of the IMEX in the diffusion limit and restrict the time step.
 To keep simple, we focus on the IMEX scheme without correction step and require it high-order (second or higher order) in the streaming limit and diffusion accurate.
 We call these IMEX scheme PD-ARS.
 The study of moment realizability and constraint-preserving diffusion accurate IMEX scheme motivates this work.

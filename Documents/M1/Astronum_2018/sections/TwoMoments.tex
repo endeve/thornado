@@ -76,12 +76,16 @@ As a result, the angular moments of $f$ are confined as the following:
 \end{align}
 where $h = |\bcH|/\cJ$ is the flux factor.[citation]
 
-The inequalities in Eq.\ref{eq:MomentsBounds} define the realizable $\bcM$ which defines a convex set in $\cJ -\bcH$ space.
+The inequalities in Eq.~\eqref{eq:MomentsBounds} define the realizable $\bcM$ which defines a convex set in $\cJ -\bcH$ space.
 As we will see later in Section \ref{se:SpacialDiscretization}, this convexity makes a constraint-preserving spacial discretization possible.
 
-The inequalities in Eq.\ref{eq:eddingtonFactorBounds} desire more attention than have be given.
-They have the equal importance as the inequalities in Eq.\ref{eq:MomentsBounds} in preserving the validity of the simulation result.
-However, as Fig.~\eqref{fig:EddingtonFactorsWithDifferentClosure} shows, not all the algebraic closures satisfy the Eddington factor bounds Eq.\ref{eq:eddingtonFactorBounds}: Kershaw\cite{kershaw_1976}, Wilson\cite{wilson_1975,leblanc_1970}, Levermore\cite{levermore_1984}, Minerbo \cite{minerbo_1978}, Janka 2\cite{janka_1992} may work fine with neutrino low occupied setting, but not for high occupancy situation; Janka 1\cite{janka_1991} can be dangerous for both the cases. The only algebraic closure that remains in the bounds among those seven plotted closures is Cernohorsky \& Bludman's \cite{cernohorskyBludman_1994}.
+The inequalities in Eq.~\eqref{eq:eddingtonFactorBounds} desire more attention than have be given.
+They have the equal importance as the inequalities in Eq.~\eqref{eq:MomentsBounds} in preserving the validity of the simulation result.
+However, as Fig.~\eqref{fig:EddingtonFactorsWithDifferentClosure} shows, not all the algebraic closures satisfy the Eddington factor bounds Eq.~\eqref{eq:eddingtonFactorBounds}: Kershaw\cite{kershaw_1976}, Wilson\cite{wilson_1975,leblancWilson_1970}, Levermore\cite{levermore_1984}, Minerbo \cite{minerbo_1978}, Janka 2\cite{janka_1992} may work fine with neutrino low occupied setting, but not for high occupancy situation; Janka 1\cite{janka_1991} can be dangerous for both the cases.
+The only algebraic closure that remains in the bounds among those seven plotted closures is Cernohorsky \& Bludman's \cite{cernohorskyBludman_1994}.
+
+Though Levermore closure and Minerbo closure don't conserve the bounds with high occupied distribution, they are widely used: {O'Connor} and {Couch}\cite{oConnorCouch_2018}, Pan and et al\cite{pan_etal_2018}, Glas et al\cite{glas_etal_2018} and Just et al\cite{just_etal_2018} use Minerbo closure and Vartanyan et al\cite{vartanyan_etal_2018}, Cabezon et al\cite{cabezon_etal_2018} and Kuroda et al\cite{kuroda_etal_2016} use Levermore clsoure.
+
 \begin{figure}[h]
   \centering
   \begin{tabular}{cc}

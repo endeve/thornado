@@ -1,7 +1,7 @@
 \section{Time Integration} \label{se:TimeIntegration}
 
 In this section we show how to use the property we introduced at the end of the previous section to construct a constraint-preserving implicit-explicit (IMEX) scheme.
-We can have a more general form of the partial differential equation, Eq.~\eqref{eq:momentEquations},
+The semi-discretization of the moment equation, Eq.~\eqref{eq:momentEquations}, results in a system of ordinary differential equations of the form
 \begin{equation}
   \dfrac{d \vect{u}}{d t} = \vect{\cT}(\vect{u}) + \f{1}{\tau}\,\vect{\cQ}(\vect{u}),
 \end{equation}
@@ -10,7 +10,6 @@ where
 \vect{u}(t) = \left( \bcM_{1}(t),\ldots,\bcM_{N}(t)\right) ^{T}
 \end{equation}
 is the collection of all moment cell average, $\vect{\cT}$ is the operator corresponding to the flux term and $\f{1}{\tau}\,\vect{\cQ}$ is a linear operators corresponding to the collision term.
-
 
 \subsection{Standard Implicit-Explicit Scheme}
 Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, the standard $s$-stage IMEX schemes take the following form 

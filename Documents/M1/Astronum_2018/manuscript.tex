@@ -9,6 +9,7 @@
 \usepackage{mathrsfs}
 \usepackage{color}
 \usepackage{url}
+\usepackage[numbers]{natbib}
 
 \newcommand{\ee}[1]{{\color{red} EE:~#1}}
 \newcommand{\rc}[1]{{\color{blue} RC:~#1}}
@@ -42,14 +43,13 @@
 \ead{bronson@ornl.gov}
 
 \begin{abstract}
-We develop implicit-explicit (IMEX) schemes for neutrino transport though a background material in \texttt{thornado} code with two-moment method.
-Two-moment method evolves the angular moments of a neutrino phase space distribution function and the moments have upper and lower bounds that introduced by Pauli's exclusion principle.
-To ensure the scheme preserves these bounds, a algebraic moment closure based on Fermi-Dirac statistics and a convex-invariant time integrator are demanded.
+We develop implicit-explicit (IMEX) schemes for neutrino transport though a background material in \texttt{thornado} code with two-moment method that evolves the angular moments of a neutrino phase space distribution function.
+Considering the upper and lower bounds that introduced by Pauli's exclusion principle on the moments, a algebraic moment closure based on Fermi-Dirac statistics and a convex-invariant time integrator are demanded.
 Severn algebraic closures are compared with these bounds and Cernohorsky \& Bludman closure\cite{cernohorskyBludman_1994} which preserves the bounds is chosen for our IMEX schemes.
 For the convex-invariant time integrator, two IMEX scheme named PD-ARSs have been proposed following the work in \cite{chu_etal_2018}.
 PD-ARS denotes convex-invariant IMEX Runge-Kutta scheme that has first-order accuracy, high-order accuracy in the streaming limit, and works well in the diffusion limit.
-The two PD-ARSs have second-order and third-order accurate explicit strong stability-preserving Runge-Kutta methods\cite{gottlieb_etal_2001} as their explicit part, respectively, and therefore second-order and third-order accurate in the streaming limit.
-The accuracy and convex-invariance of PD-ARSs are demonstrated in the numerical tests with a first-order discontinuous Galerkin method for spatial discretization and a simple Lax-Friedrichs flux.
+Our two PD-ARSs have second-order and third-order explicit strong stability-preserving Runge-Kutta methods\cite{gottlieb_etal_2001} as their explicit part, respectively, and therefore are second-order and third-order accurate in the streaming limit.
+The accuracy and convex-invariance of PD-ARSs are demonstrated in the numerical tests with a first-order discontinuous Galerkin(DG) method for spatial discretization and a simple Lax-Friedrichs flux.
 
 \end{abstract}
 
