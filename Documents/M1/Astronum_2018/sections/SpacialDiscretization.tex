@@ -17,6 +17,7 @@ Then we have cell average moment:
 Integrate Eq.~\eqref{eq:momentEquations} for each cell $\bK_{i}$ to have
 \begin{equation}
 \dfrac{d \bcM_{i}}{d t} = - \dfrac{1}{|\bK|} \left( \widehat{\bcF}(\bcM_{i},\bcM_{i+1}) -  \widehat{\bcF}(\bcM_{i-1},\bcM_{i})\right) + \f{1}{\tau}\,\cC(\bcM_{i}),
+\label{eq:SemiDiscretizatedMomentEquation}
 \end{equation}
 where $\widehat{\bcF}(\vect{\cM}_{a},\vect{\cM}_{b})$ is numerical flux and $\f{1}{\tau}\,\cC(\bcM_{i})$ is the integrated collision term.
 In this paper we use the simple Lax-Friedrichs flux that given by
