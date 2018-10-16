@@ -57,7 +57,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: UsePositivityLimiter
-  INTEGER       :: iCycle, iCycleD
+  INTEGER       :: iCycle, iCycleD, iCycleW = 0
   INTEGER       :: nX(3), bcX(3), nNodes
   INTEGER       :: nStagesSSPRK
   REAL(DP)      :: SlopeTolerance
@@ -68,7 +68,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: LimiterThresholdParameter
 
   ! --- Sedov blast wave ---
-  REAL(DP) :: nRel
+  REAL(DP) :: Eblast
   INTEGER  :: nDetCells
 
   ! --- Standing accretion shock ---
@@ -77,8 +77,8 @@ PROGRAM ApplicationDriver
 
 !  ProgramName = 'RiemannProblem'
 !  ProgramName = 'SphericalRiemannProblem'
-!  ProgramName = 'SedovBlastWave'
-  ProgramName = 'StandingAccretionShock'
+  ProgramName = 'SedovBlastWave'
+!  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -159,7 +159,7 @@ PROGRAM ApplicationDriver
     CASE( 'SedovBlastWave' )
 
       nDetCells = 1
-      nRel      = 1.0d3
+      Eblast    = 1.0d6
 
       CoordinateSystem = 'SPHERICAL'
 
@@ -167,7 +167,7 @@ PROGRAM ApplicationDriver
 
       nX = [ 256, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      xR = [ 1.2_DP, Pi, TwoPi ]
 
       bcX = [ 32, 0, 0 ]
 
@@ -181,15 +181,16 @@ PROGRAM ApplicationDriver
       UseCharacteristicLimiting = .TRUE.
 
       UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 0.015_DP
+      LimiterThresholdParameter = 0.03_DP
 
       UsePositivityLimiter = .TRUE.
-      Min_1 = 0.0d-16
-      Min_2 = 0.0d-16
+      Min_1 = 1.0d-12
+      Min_2 = 1.0d-12
 
       iCycleD = 100
-      t_end   = 4.5_DP
+      t_end   = 1.0_DP
       dt_wrt  = 1.0d-2 * t_end
+      iCycleW = 1
 
       nStagesSSPRK = nNodes
       CFL          = 0.1_DP
@@ -285,7 +286,7 @@ PROGRAM ApplicationDriver
          ( RiemannProblemName_Option = TRIM( RiemannProblemName ), &
            SphericalRiemannProblemName_Option &
              = TRIM( SphericalRiemannProblemName ), &
-           nDetCells_Option = nDetCells, nRel_Option = nRel )
+           nDetCells_Option = nDetCells, Eblast_Option = Eblast )
 
   CALL WriteFieldsHDF &
        ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
@@ -337,7 +338,7 @@ PROGRAM ApplicationDriver
       t  = t_end
     END IF
 
-    IF( MOD( iCycle, iCycleD ) == 0 )THEN
+    IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
 
       IF( ProgramName .EQ. 'StandingAccretionShock' )THEN
         WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A4,A5,ES13.6E3,A3)') &
@@ -360,9 +361,14 @@ PROGRAM ApplicationDriver
              uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
 
-    IF( t + dt .GT. t_wrt )THEN
-      t_wrt = t_wrt + dt_wrt
-      wrt   = .TRUE.
+    IF( iCycleW .GT. 0 )THEN
+      IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
+        wrt = .TRUE.
+    ELSE
+      IF( t + dt .GT. t_wrt )THEN
+        t_wrt = t_wrt + dt_wrt
+        wrt   = .TRUE.
+      END IF
     END IF
 
     IF( wrt )THEN
