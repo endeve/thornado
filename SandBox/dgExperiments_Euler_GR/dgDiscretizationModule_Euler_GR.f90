@@ -465,12 +465,12 @@ CONTAINS
 
             AlphaMdl &
               = AlphaC_GR &
-                  ( uCF_L(iNodeX_X1,1:nCF), Flux_X1_L(iNodeX_X1,1:nCF), &
-                    uCF_R(iNodeX_X1,1:nCF), Flux_X1_R(iNodeX_X1,1:nCF), &
-                    AlphaPls, AlphaMns,                                 &
-                    G_F  (iNodeX_X1,iGF_Gm_dd_11),                      &
-                    G_F  (iNodeX_X1,iGF_Beta_1),                        &
-                    G_F  (iNodeX_X1,iGF_Alpha) )
+                  ( uCF_L    (iNodeX_X1,1:nCF), uCF_R    (iNodeX_X1,1:nCF), &
+                    Flux_X1_L(iNodeX_X1,1:nCF), Flux_X1_R(iNodeX_X1,1:nCF), &
+                    G_F(iNodeX_X1,iGF_Gm_dd_11), &
+                    G_F(iNodeX_X1,iGF_Alpha), &
+                    G_F(iNodeX_X1,iGF_Beta_1), &
+                    AlphaPls, AlphaMns )
 
             NumericalFlux( iNodeX_X1,:)                &
 !              = NumericalFlux_X1_LLF_GR                &

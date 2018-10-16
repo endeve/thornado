@@ -11,9 +11,10 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_P, iAF_Cs
   USE GeometryFieldsModule, ONLY: &
+       iGF_h_1, iGF_h_2, iGF_h_3, &
        iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
        iGF_Alpha, &
-       iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
+       iGF_Beta_1, iGF_Beta_2, iGF_Beta_3, nGF
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromSpecificInternalEnergy, &
     ComputeSoundSpeedFromPrimitive_GR
@@ -33,7 +34,7 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   PUBLIC :: NumericalFlux_X1_HLL_GR
   PUBLIC :: NumericalFlux_X1_HLLC_GR
 
-  LOGICAL, PARAMETER :: DEBUG = .FALSE.
+  LOGICAL :: DEBUG = .FALSE.
   INTEGER, PARAMETER :: MAX_IT = 1000
 
 CONTAINS
@@ -156,13 +157,14 @@ CONTAINS
       END IF
 
       ITERATION = 0
+
       DO WHILE ( .NOT. CONVERGED )
 
         ITERATION = ITERATION + 1
 
         IF( DEBUG )THEN
           WRITE(*,*)
-          WRITE(*,'(A10,I3.3)') 'Iteration ', ITERATION
+          WRITE(*,*) 'Iteration ', ITERATION
           WRITE(*,'(A)') 'ComputeFunJacP'
         END IF
         CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
@@ -206,10 +208,10 @@ CONTAINS
                 Pnew
               WRITE(*,'(A7,ES24.16E3)') '|dP/P|:       ', &
                 ABS( Pnew - Pold ) / ABS( Pnew )
-              WRITE(*,'(A14,ES24.16E3)') '|FunP/FunP0|: ', &
-                ABS( FunP / FunP0 )
-              STOP 'Stopping because ABS( FunP / FunP0 ) .GE. TolFunP'
             END IF
+          WRITE(*,'(A14,ES24.16E3)') '|FunP/FunP0|: ', &
+            ABS( FunP / FunP0 )
+          STOP 'Stopping because ABS( FunP / FunP0 ) .GE. TolFunP'
           END IF
         ELSE
           IF( DEBUG )THEN
@@ -222,6 +224,7 @@ CONTAINS
         ! --- STOP after MAX_IT iterations ---
         IF( ITERATION .GE. MAX_IT - 4 )THEN
 
+          DEBUG = .TRUE.
           WRITE(*,*)
           WRITE(*,*) 'Max iterations IF statement'
           WRITE(*,*) '---------------------------'
@@ -341,17 +344,17 @@ CONTAINS
     REAL(DP) :: dX(3), dt_X(3)
     REAL(DP) :: P(nDOFX,nPF)
     REAL(DP) :: A(nDOFX,nAF)
-    REAL(DP) :: EigVals_X1(nCF,nDOFX), alphaMax_X1, &
-                EigVals_X2(nCF,nDOFX), alphaMax_X2, &
-                EigVals_X3(nCF,nDOFX), alphaMax_X3
+    REAL(DP) :: EigVals_X1(nCF,nDOFX), Max_X1, &
+                EigVals_X2(nCF,nDOFX), Max_X2, &
+                EigVals_X3(nCF,nDOFX), Max_X3
     REAL(DP) :: epsilon = Half
 
     TimeStep = HUGE( One )
     dt_X(:)  = HUGE( One )
 
-    alphaMax_X1 = Zero
-    alphaMax_X2 = Zero
-    alphaMax_X3 = Zero
+    Max_X1 = -Huge( One )
+    Max_X2 = -Huge( One )
+    Max_X3 = -Huge( One )
 
     DO iX3 = iX_B(3), iX_E(3)
       DO iX2 = iX_B(2), iX_E(2)
@@ -387,15 +390,17 @@ CONTAINS
                                        G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                                        G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
                                        G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
-            alphaMax_X1 &
-              = MAX( alphaMax_X1, MAXVAL( ABS( EigVals_X1(:,iNodeX) ) ) )
+            Max_X1 &
+              = MAX( Max_X1, &
+                       MAXVAL( ABS( EigVals_X1(:,iNodeX) ) &
+                         * G(iNodeX,iX1,iX2,iX3,iGF_h_1) ) )
 
             IF( nDimsX .GT. 1 )THEN
               EigVals_X2(:,iNodeX) = Eigenvalues_GR &
                                        ( P(iNodeX,iPF_V1), &
                                          P(iNodeX,iPF_V2), &
                                          P(iNodeX,iPF_V3), &
-                                         P(iNodeX,iPF_V1), &
+                                         P(iNodeX,iPF_V2), &
                                          A(iNodeX,iAF_Cs), &
                                          G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                                          G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
@@ -403,8 +408,10 @@ CONTAINS
                                          G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                                          G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
                                          G(iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
-              alphaMax_X2 &
-                = MAX( alphaMax_X2, MAXVAL( ABS( EigVals_X2(:,iNodeX) ) ) )
+              Max_X2 &
+                = MAX( Max_X2, &
+                       MAXVAL( ABS( EigVals_X2(:,iNodeX) ) &
+                         * G(iNodeX,iX1,iX2,iX3,iGF_h_2) ) )
 
             END IF
 
@@ -413,7 +420,7 @@ CONTAINS
                                        ( P(iNodeX,iPF_V1),       &
                                          P(iNodeX,iPF_V2),       &
                                          P(iNodeX,iPF_V3),       &
-                                         P(iNodeX,iPF_V1),       &
+                                         P(iNodeX,iPF_V3),       &
                                          A(iNodeX,iAF_Cs),       &
                                          G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                                          G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
@@ -421,24 +428,26 @@ CONTAINS
                                          G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
                                          G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
                                          G(iNodeX,iX1,iX2,iX3,iGF_Beta_3) )
-              alphaMax_X3 &
-                = MAX( alphaMax_X3, MAXVAL( ABS( EigVals_X3(:,iNodeX) ) ) )
+              Max_X3 &
+                   = MAX( Max_X3, &
+                       MAXVAL( ABS( EigVals_X3(:,iNodeX) ) &
+                         * G(iNodeX,iX1,iX2,iX3,iGF_h_3) ) )
 
             END IF
 
           END DO
 
-          ! --- NEED TO FIX THIS FOR CURVILINEAR COORDINATES AND SOURCE TERM ---
+          ! --- NEED TO FIX THIS FOR SOURCE TERM ---
           dt_X(1) &
-            = dX(1) / ( Two * alphaMax_X1 )
+            = dX(1) / ( Two * Max_X1 )
 
           IF( nDimsX .GT. 1 ) &
             dt_X(2) &
-              = dX(2) / ( Two * alphaMax_X2 )
+              = dX(2) / ( Two * Max_X2 )
 
           IF( nDimsX .GT. 2 ) &
             dt_X(3) &
-              = dX(3) / ( Two * alphaMax_X3 )
+              = dX(3) / ( Two * Max_X3 )
 
           TimeStep = MIN( TimeStep, MINVAL( dt_X ) )
 
@@ -574,38 +583,35 @@ CONTAINS
 
 
   REAL(DP) FUNCTION AlphaC_GR &
-             ( U_L, F_L, U_R, F_R, aP, aM, Gmdd, ShiftVector, LapseFunction )
+             ( U_L, U_R, F_L, F_R, Gmdd, LapseFunction, ShiftVector, aP, aM )
 
     ! --- Middle Wavespeed as suggested by Mignone and Bodo (2005) ---
 
-    REAL(DP), INTENT(in) :: U_L(nCF), F_L(nCF), U_R(nCF), F_R(nCF), &
-                            aP, aM, Gmdd, ShiftVector, LapseFunction
-    REAL(DP)             :: U_S1, F_S1, U_E, F_E, A, B, C, eps, eta
+    REAL(DP), INTENT(in) :: U_L(nCF), U_R(nCF), &
+                            F_L(nCF), F_R(nCF), &
+                            Gmdd, LapseFunction, ShiftVector, &
+                            aP, aM
 
-    eps = SqrtTiny
-    eta = ShiftVector / LapseFunction
+    REAL(DP) :: E_L, E_R, F_E_L, F_E_R, A_L, A_R, B_L, B_R
+    REAL(DP) :: A, B, C, eps = SqrtTiny
 
-    ! --- Note the sign change on aM which is due
-    !     to it being read in as positive but Mignone assuming
-    !     it is negative ---
+    E_L   = U_L(iCF_E) + U_L(iCF_D)
+    E_R   = U_R(iCF_E) + U_R(iCF_D)
+    F_E_L = F_L(iCF_E) + F_L(iCF_D)
+    F_E_R = F_R(iCF_E) + F_R(iCF_D)
 
-    U_S1 = aP * U_R(iCF_S1) + aM * U_L(iCF_S1) + F_L(iCF_S1) - F_R(iCF_S1)
-
-    U_E  = aP * ( U_R(iCF_E) + U_R(iCF_D) ) + aM * ( U_L(iCF_E) + U_L(iCF_D) ) &
-          + ( F_L(iCF_E) + F_L(iCF_D) ) - ( F_R(iCF_E) + F_R(iCF_D) )
-
-    F_S1 =  aP * F_L(iCF_S1) + aM * F_R(iCF_S1) &
-          - aP * aM * ( U_R(iCF_S1) - U_L(iCF_S1 ) )
-
-    F_E  =  aP * ( F_L(iCF_E) + F_L(iCF_D) ) &
-          + aM * ( F_R(iCF_E) + F_R(iCF_D) ) &
-          - aP * aM * ( ( U_R(iCF_E) + U_R(iCF_D) ) &
-          - ( U_L(iCF_E) + U_L(iCF_D) ) )
+    A_L = -aM * E_L - LapseFunction * F_E_L
+    A_R = +aP * E_R - LapseFunction * F_E_R
+    B_L = -aM * U_L(iCF_S1) - LapseFunction * F_L(iCF_S1)
+    B_R = +aP * U_R(iCF_S1) - LapseFunction * F_R(iCF_S1)
 
     ! --- A, B, and C from quadratic equation ---
-    A = Gmdd**2 * ( F_E + eta * U_E )
-    B = -Gmdd * ( F_S1 + U_E + eta * U_S1 )
-    C = U_S1
+    A = Gmdd**2 &
+          * ( A_R * ( -aM + ShiftVector ) - A_L * ( aP + ShiftVector ) )
+    B = Gmdd &
+          * ( ( LapseFunction * A_L - B_R * ( -aM + ShiftVector ) ) &
+            - ( LapseFunction * A_R - B_L * (  aP + ShiftVector ) ) )
+    C = LapseFunction * ( B_R - B_L )
 
     ! --- Accounting for special cases of the solution to a
     !     quadratic equation when A = 0 ---
@@ -623,7 +629,7 @@ CONTAINS
     ELSE IF( ABS( A ) .LT. eps )THEN
       AlphaC_GR = -C / B
     ELSE
-      AlphaC_GR = ( -B - SQRT( MAX( B**2 - 4.0_DP * A * C, SqrtTiny ) ) ) &
+      AlphaC_GR = ( -B - SQRT( MAX( B**2 - 4.0_DP * A * C, eps ) ) ) &
                     / ( 2.0_DP * A )
     END IF
 
