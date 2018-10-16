@@ -1,7 +1,7 @@
 MODULE InitializationModule_GR
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Pi, TwoPi
+    DP, Zero, Half, One, Three, Pi, TwoPi, FourPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nX, nNodesX, &
@@ -38,12 +38,12 @@ CONTAINS
   SUBROUTINE InitializeFields_GR &
                ( RiemannProblemName_Option, &
                  SphericalRiemannProblemName_Option, &
-                 nDetCells_Option, nRel_Option )
+                 nDetCells_Option, Eblast_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemName_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: SphericalRiemannProblemName_Option
     INTEGER,  INTENT(in), OPTIONAL :: nDetCells_Option
-    REAL(DP), INTENT(in), OPTIONAL :: nRel_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Eblast_Option
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
@@ -66,7 +66,7 @@ CONTAINS
 
         CALL InitializeFields_GR_SedovBlastWave &
                ( nDetCells_Option = nDetCells_Option, &
-                 nRel_Option = nRel_Option)
+                 Eblast_Option = Eblast_Option)
         
       CASE( 'StandingAccretionShock' )
 
@@ -340,25 +340,27 @@ CONTAINS
   END SUBROUTINE InitializeFields_GR_SphericalRiemannProblem
 
 
-  SUBROUTINE InitializeFields_GR_SedovBlastWave( nDetCells_Option, nRel_Option )
+  SUBROUTINE InitializeFields_GR_SedovBlastWave &
+               ( nDetCells_Option, Eblast_Option )
     
     INTEGER,  INTENT(in), OPTIONAL :: nDetCells_Option
-    REAL(DP), INTENT(in), OPTIONAL :: nRel_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Eblast_Option
 
     INTEGER       :: iX1, iX2, iX3
     INTEGER       :: iNodeX, iNodeX1
     REAL(DP)      :: X1
 
     INTEGER       :: nDetCells
-    REAL(DP)      :: nRel, X_D
+    REAL(DP)      :: Eblast, X_D
 
     nDetCells = 1
     IF( PRESENT( nDetCells_Option ) ) nDetCells = nDetCells_Option
 
-    nRel = 1.0d0
-    IF( PRESENT( nRel_Option ) ) nRel = nRel_Option
+    Eblast = 1.0d0
+    IF( PRESENT( Eblast_Option ) ) Eblast = Eblast_Option
 
     X_D = DBLE( nDetCells ) * MeshX(1) % Width(1)
+    WRITE(*,'(A5,ES24.16E3)') 'X_D: ', X_D
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
@@ -376,10 +378,10 @@ CONTAINS
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
-                = nRel * uPF(iNodeX,iX1,iX2,iX3,iPF_D)
               uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+                = Eblast / ( FourPi / Three * X_D**3 )
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
+                = ( Gamma_IDEAL - One ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
 
             ELSE
 
