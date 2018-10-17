@@ -102,7 +102,7 @@ CONTAINS
     REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q, FunP0
 
     REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-9, TolFunP = 1.0d-9, TolFunP0 = 1.0d-10
+    REAL(DP), PARAMETER :: TolP = 1.0d-10, TolFunP = TolP, TolFunP0 = 1.0d-10
 
     ! --- Loop through all the nodes ---
     nNodes = SIZE( CF_D )
@@ -224,35 +224,34 @@ CONTAINS
         ! --- STOP after MAX_IT iterations ---
         IF( ITERATION .GE. MAX_IT - 4 )THEN
 
-          DEBUG = .TRUE.
-          WRITE(*,*)
-          WRITE(*,*) 'Max iterations IF statement'
-          WRITE(*,*) '---------------------------'
-          WRITE(*,*) 'ITERATION: ', ITERATION
-          WRITE(*,'(A,ES24.16E3)') '  P(i,iPF_D)        = ', PF_D(i)
-          WRITE(*,'(A,ES24.16E3)') '  P(i,iPF_V1)       = ', PF_V1(i)
-          WRITE(*,'(A,ES24.16E3)') '  P(i,iPF_V2)       = ', PF_V2(i)
-          WRITE(*,'(A,ES24.16E3)') '  P(i,iPF_V3)       = ', PF_V3(i)
-          WRITE(*,'(A,ES24.16E3)') '  P(i,iPF_E)        = ', PF_E(i)
-          WRITE(*,*)
-          WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_D)        = ', CF_D(i)
-          WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_S1)       = ', CF_S1(i)
-          WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_S2)       = ', CF_S2(i)
-          WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_S3)       = ', CF_S3(i)
-          WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_E)        = ', CF_E(i)
-          WRITE(*,*)
-          WRITE(*,'(A,ES24.16E3)') '  G(i,iGF_Gm_dd_11) = ', GF_Gm_dd_11(i)
-          WRITE(*,'(A,ES24.16E3)') '  G(i,iGF_Gm_dd_22) = ', GF_Gm_dd_22(i)
-          WRITE(*,'(A,ES24.16E3)') '  G(i,iGF_Gm_dd_33) = ', GF_Gm_dd_33(i)
-          WRITE(*,*)
-          WRITE(*,'(A,ES24.16E3)') 'Pold:  ', Pold
-          WRITE(*,'(A,ES24.16E3)') 'Pnew:  ', Pnew
-          WRITE(*,'(A,ES24.16E3)') 'FunP:  ', FunP
+          IF( ITERATION .EQ. MAX_IT - 4 )THEN
+            WRITE(*,*)
+            WRITE(*,*) 'Max iterations IF statement'
+            WRITE(*,*) '---------------------------'
+            WRITE(*,'(A,I1)') '  Node: ', i
+            WRITE(*,'(A,ES7.1E2)')  '  TolP    = ', TolP
+            WRITE(*,'(A,ES7.1E2)')  '  TolFunP = ', TolFunP
+            WRITE(*,*)
+            WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_D)  = ', CF_D(i)
+            WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_S1) = ', CF_S1(i)
+            WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_S2) = ', CF_S2(i)
+            WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_S3) = ', CF_S3(i)
+            WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_E)  = ', CF_E(i)
+            WRITE(*,*)
+            WRITE(*,'(A,ES24.16E3)') '  G(i,iGF_Gm_dd_11) = ', GF_Gm_dd_11(i)
+            WRITE(*,'(A,ES24.16E3)') '  G(i,iGF_Gm_dd_22) = ', GF_Gm_dd_22(i)
+            WRITE(*,'(A,ES24.16E3)') '  G(i,iGF_Gm_dd_33) = ', GF_Gm_dd_33(i)
+            WRITE(*,*)
+          END IF
+
+          WRITE(*,'(A,I4.4)') '  ITERATION: ', ITERATION
+          WRITE(*,'(A)')      '  ---------------'
+          WRITE(*,'(A,ES24.16E3)') '  FunP = ', FunP
           WRITE(*,'(A,ES24.16E3)') &
-                  '|Pnew-Pold|/|Pnew|: ', ABS( Pnew - Pold ) / ABS( Pnew )
+                  '  dP   = ', ( Pnew - Pold ) / ABS( Pnew )
+          WRITE(*,*)
           IF( ITERATION == MAX_IT )THEN
-            WRITE(*,*) 'Node ', i
-            STOP 'Max allowed iterations reached, no convergence. Stopping...'
+            STOP 'Max allowed iterations reached, no convergence.'
           END IF
         END IF
 
@@ -300,22 +299,23 @@ CONTAINS
 
     REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS
     REAL(DP), DIMENSION(1) :: Pbar
+    LOGICAL :: DEBUG_FunJacP = .FALSE.
 
-    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  CF_D:    ', CF_D
-    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  CF_E:    ', CF_E
-    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  SSq:     ', SSq
-    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  P:       ', P
+    IF( DEBUG_FunJacP ) WRITE(*,'(A11,ES24.16E3)') '  CF_D:    ', CF_D
+    IF( DEBUG_FunJacP ) WRITE(*,'(A11,ES24.16E3)') '  CF_E:    ', CF_E
+    IF( DEBUG_FunJacP ) WRITE(*,'(A11,ES24.16E3)') '  SSq:     ', SSq
+    IF( DEBUG_FunJacP ) WRITE(*,'(A11,ES24.16E3)') '  P:       ', P
 
     HSq = ( CF_E + P + CF_D )**2
-    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  HSq:     ', HSq
-    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  H^2-S^2: ', HSq - SSq
+    IF( DEBUG_FunJacP ) WRITE(*,'(A11,ES24.16E3)') '  HSq:     ', HSq
+    IF( DEBUG_FunJacP ) WRITE(*,'(A11,ES24.16E3)') '  H^2-S^2: ', HSq - SSq
 
     RHO = CF_D * SQRT( HSq - SSq ) / SQRT( HSq )
-    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  RHO:     ', RHO
+    IF( DEBUG_FunJacP ) WRITE(*,'(A11,ES24.16E3)') '  RHO:     ', RHO
 
     EPS = ( SQRT( HSq - SSq ) &
             - P * SQRT( HSq ) / SQRT( HSq - SSq ) - CF_D ) / CF_D
-    IF( DEBUG ) WRITE(*,'(A11,ES24.16E3)') '  EPS:     ', EPS
+    IF( DEBUG_FunJacP ) WRITE(*,'(A11,ES24.16E3)') '  EPS:     ', EPS
 
     CALL ComputePressureFromSpecificInternalEnergy &
          ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
