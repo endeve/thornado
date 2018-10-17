@@ -1,26 +1,26 @@
-\section{Spacial Discretization}\label{se:SpacialDiscretization}
-Here we briefly outline our spacial discretization with the first order discontinuous Galerkin method.
+\section{Spatial Discretization}\label{se:SpacialDiscretization}
+Here we briefly outline our spatial discretization using the first-order discontinuous Galerkin method.
 Let the spatial dimension be $d$ and employ Cartesian coordinates.
-We divide the spatial domain $D$ evenly into $N$ cells and denote the cell as $\bK_{i}$ with $i = 1,\ldots,N$, so that
+We divide the spatial domain $D$ evenly into $N$ cells and denote the $i$th cell as $\bK_{i}$ with $i = 1,\ldots,N$, so that
 \begin{equation*}
 D = \cup_{i = 1}^{N} \bK_{i} \quad \text{with} \quad
   \bK_{i}=\{\,\vect{x} : x^{i} \in K^{i} := (\xL^{i},\xH^{i}),~|~i=1,\ldots,d\,\}.
 \end{equation*}
-Each of the cell has a volume of $|\bK|$
+Each of the cells has a volume, $|\bK|$, with
 \begin{equation*}
   |\bK| = \int_{\bK}d\vect{x}, \quad\text{where}\quad d\vect{x} = \prod_{i=1}^{d}dx^{i}.  
 \end{equation*}
-Then we have cell average moment:
+Then, we have cell-average moments:
 \begin{equation}
 \bcM_{i} = \dfrac{1}{|\bK|} \int_{\bK_i}\bcM dx.
 \end{equation}
-Integrate Eq.~\eqref{eq:momentEquations} for each cell $\bK_{i}$ to have
+Integrating Eq.~\eqref{eq:momentEquations} for each cell $\bK_{i}$ given
 \begin{equation}
 \dfrac{d \bcM_{i}}{d t} = - \dfrac{1}{|\bK|} \left( \widehat{\bcF}(\bcM_{i},\bcM_{i+1}) -  \widehat{\bcF}(\bcM_{i-1},\bcM_{i})\right) + \f{1}{\tau}\,\cC(\bcM_{i}),
 \label{eq:SemiDiscretizatedMomentEquation}
 \end{equation}
-where $\widehat{\bcF}(\vect{\cM}_{a},\vect{\cM}_{b})$ is numerical flux and $\f{1}{\tau}\,\cC(\bcM_{i})$ is the integrated collision term.
-In this paper we use the simple Lax-Friedrichs flux that given by
+where $\widehat{\bcF}(\vect{\cM}_{a},\vect{\cM}_{b})$ is the numerical flux and $\f{1}{\tau}\,\cC(\bcM_{i})$ is the integrated collision term.
+In this paper we use the simple Lax-Friedrichs flux, given by
 \begin{equation}
   \widehat{\bcF}_{LF}(\vect{\cM}_{a},\vect{\cM}_{b})
   =\f{1}{2}\,\big(\,\bcF(\vect{\cM}_{a})+\bcF(\vect{\cM}_{b})-(\,\vect{\cM}_{b}-\vect{\cM}_{a}\,)\,\big).
@@ -41,8 +41,8 @@ with
 where $\beta := \frac{\dt}{|\bK|}$.
 
 Assume $\bcM_{i}^{n}$ is realizable for all $i$. 
-For Eq.~\eqref{eq:MomentIMEX}, lemma 3 in \cite{chu_etal_2018} says $\bcM^{n+1}_{i}$ remains realizable given $\f{\dt}{\tau} > 0$ and $\widetilde{\bcM}^{n}_{i}$ is realizable.
-Substitute the Lax-Friedrichs flux Eq.~\eqref{eq:Lax-Friedrichs flux} in and $\widetilde{\bcM}^{n}_{i}$ becomes Eq.~\eqref{eq:widetildeM}, a convex combination of $\bcM_{i}^{n}$ and the square bracket term if $\beta \in [0,1]$, and it is realizable if $\beta \in [0,1]$ and the square bracket term is realizable.
-Given by Lemma 2 in \cite{chu_etal_2018}, the square bracket term is indeed realizable.
+For Eq.~\eqref{eq:MomentIMEX}, lemma 3 in \cite{chu_etal_2018} says that $\bcM^{n+1}_{i}$ remains realizable given $\f{\dt}{\tau} > 0$ and given that $\widetilde{\bcM}^{n}_{i}$ stay realizable.
+Substituting the Lax-Friedrichs flux, Eq.~\eqref{eq:Lax-Friedrichs flux}, in Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, $\widetilde{\bcM}^{n}_{i}$ becomes a convex combination of $\bcM_{i}^{n}$ and the square bracket in Eq.~\eqref{eq:widetildeM} if $\beta \in [0,1]$, and it is realizable if $\beta \in [0,1]$ and the term in square brackets is realizable.
+Given Lemma 2 in \cite{chu_etal_2018}, the term in square brackets is indeed realizable.
 Therefore, $\bcM^{n+1}_{i}$ remains realizable given $\beta \in [0,1]$.
-Note that $\beta \in [0,1]$ is also the CFL condition of the Forward-Euler method employing on a transport only Boltzmann equation.
+Note that $\beta \in [0,1]$ is also the CFL condition of the Forward-Euler method applied to a transport-only Boltzmann equation.

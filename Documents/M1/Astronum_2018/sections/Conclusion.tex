@@ -1,18 +1,18 @@
 \section{Conclusion}\label{se:Conclusion}
 
-We have developed IMEX schemes for the two-moment neutrino transport in \texttt{thornado} code respecting Fermi-Dirac statistics.
-The schemes employ algebraic closure based on Fermi-Dirac statistics, a first-order discontinuous Galerkin method, the simple Lax-Friedrichs flux with the convex-invariant time integrator to maintain point-wise realizability of the moments.
-Since the realizability-preserving property is obtained from convexity of the realizable domain, it's possible to construct a scheme with high order DG method.
-See \cite{chu_etal_2018} for some examples with third-order DG method employed.
+We have developed IMEX schemes for two-moment neutrino transport in \texttt{thornado} that respect Fermi-Dirac statistics.
+The schemes employ algebraic closure based on Fermi-Dirac statistics, a first-order discontinuous Galerkin method, the simple Lax-Friedrichs flux, and convex-invariant time integration to maintain point-wise realizability of the moments.
+Since the realizability-preserving property is obtained from the convexity of the realizable domain, it's possible to construct a scheme with a high-order DG method.
+See \cite{chu_etal_2018} for some examples with third-order DG methods.
 
-In the applications motivating this work, the neutrino distribution function can vary from 0 to 1.
-Hence, we have considered the algebraic closure respecting Fermi-Dirac statistics for both low and high occupied condition: different values given by different algebraic closures are compared with the boundary values given by the Fermi-Dirac statistics at different occupation.
-Among the seven algebraic closures we considered, Kershaw\cite{kershaw_1976}, Wilson\cite{wilson_1975,leblancWilson_1970}, Levermore\cite{levermore_1984}, Minerbo \cite{minerbo_1978}, Janka 1\cite{janka_1991} Janka 2\cite{janka_1992} and Cernohorsky \& Bludman \cite{cernohorskyBludman_1994}, only Cernohorsky \& Bludman closure respecting Fermi-Dirac statistics for all the occupancy.
-So we employ Cernohorsky \& Bludman closure in all the numerical tests in Section~\ref{se:NumericalTests}.
+In the application motivating this work, the neutrino distribution function can vary from 0 to 1.
+Hence, we have considered algebraic closure respecting Fermi-Dirac statistics for both low and high occupancy.
+Among the seven algebraic closures we considered -- Kershaw\cite{kershaw_1976}, Wilson\cite{wilson_1975,leblancWilson_1970}, Levermore\cite{levermore_1984}, Minerbo \cite{minerbo_1978}, Janka 1\cite{janka_1991}, Janka 2\cite{janka_1992}, and Cernohorsky \& Bludman\cite{cernohorskyBludman_1994} -- only the Cernohorsky \& Bludman closure respected Fermi-Dirac statistics for all occupancies.
+As a result, we employed the Cernohorsky \& Bludman closure in all of the numerical tests in Section~\ref{se:NumericalTests}.
 
-Two PD-ARSs are proposed for the desired IMEX scheme.
-The one with SSPRK2 is second-order and strong stability-preserving in the streaming limit while other with SSPRK3 is third-order.
-Their properties, both accuracy and convex-invariant, are demonstrated with numerical tests.
+Two PD-ARS schemes are proposed for the desired IMEX scheme.
+The one with SSPRK2 is second-order accurate and strong-stability preserving in the streaming limit while the other with SSPRK3 is third-order accurate.
+Their properties, both accuracy and convex-invariance, were demonstrated with numerical tests.
 
-In this work, we adopted Cartesian coordinates, linear collision term, non-relativistic, and fixed material background.
-More realistic problems of scientific interest, such as with the scattering with energy changes and relativistic effects, are left for future research.
+In this work, we adopted Cartesian coordinates, linear collision term, and a fixed non-relativistic material background.
+More realistic problems of scientific interest, such as with the scattering with energy exchange and relativistic effects, are left for future research.

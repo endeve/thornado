@@ -1,7 +1,7 @@
 \section{Time Integration} \label{se:TimeIntegration}
 
-In this section we show how to use the property we introduced at the end of the previous section to construct a constraint-preserving implicit-explicit (IMEX) scheme.
-The semi-discretization of the moment equation, Eq.~\eqref{eq:momentEquations}, results in a system of ordinary differential equations of the form
+In this section we show how to use the property we introduced at the end of the previous section to construct a constraint-preserving, implicit-explicit (IMEX) scheme.
+The semi-discretization of the moment equations, Eq.~\eqref{eq:momentEquations}, results in a system of ordinary differential equations of the form
 \begin{equation}
   \dfrac{d \vect{u}}{d t} = \vect{\cT}(\vect{u}) + \f{1}{\tau}\,\vect{\cQ}(\vect{u}),
 \end{equation}
@@ -9,13 +9,13 @@ where
 \begin{equation}
 \vect{u}(t) = \left( \bcM_{1}(t),\ldots,\bcM_{N}(t)\right) ^{T}
 \end{equation}
-is the collection of all moment cell average, $\vect{\cT}$ is the transport operator corresponding to the flux term, the first term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, and $\f{1}{\tau}\,\vect{\cQ}$ is a linear operators corresponding to the collision term, the second term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}.
+is the collection of all cell-average moments, $\vect{\cT}$ is the transport operator corresponding to the flux term, which is the first term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, and $\f{1}{\tau}\,\vect{\cQ}$ is a linear operator corresponding to the collision term, the second term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}.
 
-Sine the realizable $\bcM$ defines a convex set in $\cJ -\bcH$ space, convex-invariant schemes can be used to design realizability-preserving schemes for the two-moment model.
+Since the realizable $\bcM$ define a convex set in $\cJ -\bcH$ space, convex-invariant schemes, which remain in their initial convex set, can be used to design realizability-preserving schemes for the two-moment model. 
 The following discussion shows how to construct a convex-invariant scheme.
 
 \subsection{Standard Implicit-Explicit Scheme}
-Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, a standard $s$-stage IMEX scheme takes the following form 
+Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, a standard $s$-stage IMEX scheme takes the following form\cite{pareschiRusso_2005}
 \begin{align}
   \vect{u}^{(i)}
   &=\vect{u}^{n}
@@ -27,8 +27,8 @@ Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, a sta
   +\dt\sum_{i=1}^{s}\tilde{w}_{i}\,\vect{\cT}(\vect{u}^{(i)})
   +\dt\sum_{i=1}^{s}w_{i}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}), \label{imexIntermediate} 
 \end{align}
-where  $(\tilde{a}_{ij})$ and $(a_{ij})$ are coefficients of the $i$th-stage and they are the elements of matrices $\tilde{A}$ and $A$, respectively, and the vectors $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ are the weights vector.
-Some conditions those coefficients and weights have to satisfy to serve an accurate, converge and stable scheme.
+where  $(\tilde{a}_{ij})$ and $(a_{ij})$ are coefficients of the $i$th-stage and they are the elements of matrices $\tilde{A}$ and $A$, respectively, and the vectors $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ are the weight vectors.
+These coefficients and weights have to satisfy certain condition for an accurate, convergent and stable scheme.
 For instance, to have second-order temporal accuracy, the following conditions are required:
 \begin{equation}
   \sum_{i=1}^{s}\tilde{w}_{i}=\sum_{i=1}^{s}w_{i}=1,
@@ -44,10 +44,10 @@ and
 \end{equation}
 where $\tilde{c}_{i} = \sum_{j}^{s}\tilde{a}_{ij}$ and $c_{i}=\sum_{j}^{s}a_{ij}$.
 
-\subsection{Constraint-Preserving Implicit-Explicit Scheme}
-Beyond the accuracy requirement, a convex-invariant IMEX has extra constraints to satisfy.
-The problem left is finding those constraints on $(\tilde{a}_{ij})$, $(a_{ij})$, $\tilde{w}_{i}$ and $w_{i}$.
-As Hu et al. did in their paper \cite{hu_etal_2018}, the stage values in Eq.~\eqref{imexStages} can be rewritten as
+\subsection{A Constraint-Preserving Implicit-Explicit Scheme}
+Beyond the accuracy requirement, a convex-invariant IMEX scheme has extra constraints to satisfy.
+The problem left is to find the additional constraints on $(\tilde{a}_{ij})$, $(a_{ij})$, $\tilde{w}_{i}$, and $w_{i}$.
+Following Hu et al\cite{hu_etal_2018}, the stage values in Eq.~\eqref{imexStages} can be rewritten as
 \begin{equation}
   \vect{u}^{(i)}
   =\sum_{j=0}^{i-1}c_{ij}\Big[\,\vect{u}^{(j)}+\hat{c}_{ij}\,\dt\,\vect{\cT}(\vect{u}^{(j)})\,\Big]
@@ -56,56 +56,56 @@ As Hu et al. did in their paper \cite{hu_etal_2018}, the stage values in Eq.~\eq
 \end{equation}
 with $c_{ij}$ and $\hat{c}_{ij}$ be given by $a_{ij}$ and $\tilde{a}_{ij}$.
 
-It can be proved \cite{chu_etal_2018} that the conditions we need for a simple convex-invariant IMEX is:
+It can be proven that the conditions we need for a simple convex-invariant IMEX scheme are: \cite{chu_etal_2018}
 \begin{enumerate}
-    \item Consistency of the implicit coefficients
+    \item Consistency of the implicit coefficients:
     \begin{equation}
       \sum_{i=1}^{s}w_{i}=1.
     \end{equation}
-    \item Second-order accuracy in the streaming limit; i.e., satisfies \begin{equation}
+    \item Second-order accuracy in the streaming limit:
+    \begin{equation}
       \sum_{i=1}^{s}\tilde{w}_{i}=1
       \quad\text{and}\quad
       \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}=\f{1}{2},
       \label{eq:orderConditionsEx}
     \end{equation}
-    \item Convex-invariant; i.e. satisfies 
+    \item Convex-invariant:
     \begin{align}
       &a_{ii}>0, \quad c_{i0},\tilde{c}_{i0}\ge0, \quad \text{for} \quad i=2,\ldots,s, \nonumber \\
       &\text{and} \quad c_{ij},\tilde{c}_{ij}\ge0, \quad \text{for} \quad i=3,\ldots,s, \quad\text{and}\quad j=2,\ldots,i-1.  
     \end{align}
     with $\sum_{j=0}^{i-1}c_{ij}=1$, for $i=1,\ldots,s$, and $c_{\Sch}=\min_{\substack{i = 2,\ldots,s \\ 
                   j = 0,2,\ldots,i-1}}\,\f{1}{\hat{c}_{ij}}>0$.
-                  
     And $c_{ij}$ and $\hat{c}_{ij}$ be given by
-\begin{equation}
-  \begin{aligned}
-    c_{i0} &= 1-\sum_{j=2}^{i-1}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad &
-    c_{ij} &= \sum_{l=j}^{i-1}a_{il}b_{lj} \\
-    \tilde{c}_{i0} &= \tilde{a}_{i1}+\sum_{j=2}^{i-1}a_{ij}\tilde{b}_{j1}, \quad &
-    \tilde{c}_{ij} &= \tilde{a}_{ij}+\sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj}.  
-  \end{aligned}
-  \label{eq:positivityCoefficientsARS}
-\end{equation}
-\begin{equation}
-  b_{ii} = \f{1}{a_{ii}}, \quad
-  b_{ij} = -\f{1}{a_{ii}}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad
-  \tilde{b}_{ij} = -\f{1}{a_{ii}}\Big(\tilde{a}_{ij}+\sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj}\Big).  
-\end{equation}
-Note that $c_{i1}=\tilde{c}_{i1}=0$ in Eq.~\eqref{eq:positivityCoefficientsARS} so that $\sum_{j=0}^{i-1}c_{ij}=1$.
-
-    \item Well-behaved in the diffusion limit; i.e., satisfies \begin{equation}
+    \begin{equation}
+     \begin{aligned}
+      c_{i0} &= 1-\sum_{j=2}^{i-1}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad &
+      c_{ij} &= \sum_{l=j}^{i-1}a_{il}b_{lj} \\
+      \tilde{c}_{i0} &= \tilde{a}_{i1}+\sum_{j=2}^{i-1}a_{ij}\tilde{b}_{j1}, \quad &
+      \tilde{c}_{ij} &= \tilde{a}_{ij}+\sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj}.  
+     \end{aligned}
+     \label{eq:positivityCoefficientsARS}
+    \end{equation}
+    \begin{equation}
+      b_{ii} = \f{1}{a_{ii}}, \quad
+      b_{ij} = -\f{1}{a_{ii}}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad
+      \tilde{b}_{ij} = -\f{1}{a_{ii}}\Big(\tilde{a}_{ij}+\sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj}\Big).  
+    \end{equation}
+    Note that $c_{i1}=\tilde{c}_{i1}=0$ in Eq.~\eqref{eq:positivityCoefficientsARS} so that $\sum_{j=0}^{i-1}c_{ij}=1$.
+    \item Well-behaved in the diffusion limit:
+    \begin{equation}
       \vect{e}_{i}^{T}A^{-1}\tilde{A}\,\vect{e} = 1, \quad i=2,\ldots,s,
       \label{eq:diffusionCondition}
     \end{equation}
     where $\vect{e}_{i}$ is the $i$th column of the $s\times s$ identity matrix.
     \item Less than four stages ($s\le3$).
-    \item Globally stiffly accurate (GSA): $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i},\quad i=1,\ldots,s$.
+    \item Globally stiffly accurate: $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i},\quad i=1,\ldots,s$. (GSA)
 \end{enumerate}  
-We call the IMEX scheme satisfying the above conditions {PD-ARS}. (Definition 3 in \cite{chu_etal_2018})
-We give two optimized PD-ARS scheme here: PD-ARS with SSPRK2 and  PD-ARS with SSPRK3. 
-They have second order and third order accuracy in the streaming limit, respectively.
+We call the IMEX scheme satisfying the above conditions {PD-ARS}. (Definition 3 in \cite{chu_etal_2018}.)
+We give two optimized PD-ARS schemes here: PD-ARS with SSPRK2 and  PD-ARS with SSPRK3. 
+They have second- and third-order accuracy in the streaming limit, respectively.
 \subsubsection{PD-ARS with SSPRK2}
-The explicit part of this IMEX scheme is SSPRK2.
+Here we give a family of PD-ARS with SSPRK2 in the standard double Butcher tableau form: explicit tableau on the left ($\tilde{A}$), implicit tableau on the right ($A$):
 \begin{equation}
   \begin{array}{c | c c c}
   	0 & 0   & 0 & 0 \\
@@ -121,12 +121,14 @@ The explicit part of this IMEX scheme is SSPRK2.
   	  & 0 & 1/2-\epsilon & 1/2+\epsilon
   \end{array}
 \end{equation}
-
-For these schemes, $c_{\mbox{\tiny Sch}}= 1 - 2\epsilon$ with $\epsilon \in [0, 1/2)$.
+and $\epsilon \in [0, 1/2)$.
+For these schemes, $c_{\mbox{\tiny Sch}}= 1 - 2\epsilon$.
+The optimized scheme ($c_{\mbox{\tiny Sch}}= 1$) is given by $\epsilon = 0$.
+We chose $\epsilon = 0.1$ for the numerical test in Section~\ref{se:NumericalTests}.
 
 \subsubsection{PD-ARS with SSPRK3}
-The explicit part of this IMEX scheme is SSPRK3.
-
+Here we give the optimized PD-ARS with SSPRK3.
+Its standard double Butcher tableau are (explicit tableau on the left, implicit tableau on the right)
 \begin{equation}
   \begin{array}{c | c c c c}
   	    &     &     &     &  \\
