@@ -18,12 +18,16 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromSpecificInternalEnergy, &
     ComputeSoundSpeedFromPrimitive_GR
-  
+  USE EquationOfStateModule_IDEAL, ONLY: &
+    Gamma_IDEAL
+
   IMPLICIT NONE
-  PUBLIC :: ComputeFunJacP
+  PRIVATE :: ComputePressureWithBisectionMethod
+  PRIVATE :: ComputeFunP
 
   PUBLIC :: ComputeFromConserved_GR
   PUBLIC :: ComputePrimitive_GR
+  PUBLIC :: ComputeFunJacP
   PUBLIC :: ComputeConserved_GR
   PUBLIC :: ComputeTimeStep_GR
   PUBLIC :: Eigenvalues_GR
@@ -102,7 +106,7 @@ CONTAINS
     REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q, FunP0
 
     REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-10, TolFunP = TolP, TolFunP0 = 1.0d-10
+    REAL(DP), PARAMETER :: TolP = 1.0d-10, TolFunP = 1.0d-6, TolFunP0 = 1.0d-10
 
     ! --- Loop through all the nodes ---
     nNodes = SIZE( CF_D )
@@ -136,6 +140,10 @@ CONTAINS
 
       ! --- Approximation for pressure assuming h^2~=1 ---
       Pold = MAX( -q, SqrtTiny )
+      !WRITE(*,*)
+      !WRITE(*,'(A13,ES24.16E3)') 'Pold_approx: ', Pold
+      CALL ComputePressureWithBisectionMethod( CF_D(i), CF_E(i), SSq, Pold )
+      !WRITE(*,'(A13,ES24.16E3)') 'Pold_bisec: ', Pold
 
       IF( DEBUG ) WRITE(*,*) 'Initial guess for pressure: ', Pold
       ! --- Get initial value for FunP ---
@@ -180,12 +188,16 @@ CONTAINS
 
         ! --- Check if Newton's method has converged ---
         IF( DEBUG ) WRITE(*,'(A)') 'Checking relative tolerance...'
+
         IF( ABS( Pnew - Pold ) / ABS( Pnew ) .LT. TolP )THEN
+
           IF( DEBUG ) WRITE(*,'(A)') 'Relative tolerance met!'
           IF( DEBUG ) WRITE(*,'(A15,ES23.16E3)') &
-                        '  |dP|/|Pnew|: ', ABS( Pnew - Pold ) / ABS( Pnew )
+               '  |dP|/|Pnew|: ', ABS( Pnew - Pold ) / ABS( Pnew )
+
           IF( DEBUG ) WRITE(*,'(A)') 'Checking FunP tolerance...'
           CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP )
+
           IF( ABS( FunP / FunP0 ) .LT. TolFunP ) THEN
             CONVERGED = .TRUE.
             IF( DEBUG )THEN
@@ -198,6 +210,7 @@ CONTAINS
                 '---------------------------'
               WRITE(*,*)
             END IF
+
           ELSE
             IF( DEBUG )THEN
               WRITE(*,'(A)') 'FunP tolerance NOT met'
@@ -209,16 +222,20 @@ CONTAINS
               WRITE(*,'(A7,ES24.16E3)') '|dP/P|:       ', &
                 ABS( Pnew - Pold ) / ABS( Pnew )
             END IF
-          WRITE(*,'(A14,ES24.16E3)') '|FunP/FunP0|: ', &
-            ABS( FunP / FunP0 )
-          STOP 'Stopping because ABS( FunP / FunP0 ) .GE. TolFunP'
+            WRITE(*,*)
+            WRITE(*,'(A14,ES24.16E3)') '|FunP/FunP0|: ', &
+              ABS( FunP / FunP0 )
+            STOP 'Stopping because ABS( FunP / FunP0 ) .GE. TolFunP'
+
           END IF
+
         ELSE
           IF( DEBUG )THEN
             WRITE(*,'(A)') 'Relative tolerance NOT met'
              WRITE(*,'(A13,ES23.16E3)') &
                '|dP|/|Pnew|: ', ABS( Pnew - Pold ) / ABS( Pnew )
           END IF
+
         END IF
 
         ! --- STOP after MAX_IT iterations ---
@@ -261,7 +278,7 @@ CONTAINS
 
       AF_P(i) = Pnew
 
-      IF( AF_P(i) .LT. Zero ) WRITE(*,'(A3,ES24.10E3)') 'P: ', AF_P(i)
+      !WRITE(*,'(A13,ES24.16E3)') 'P_final: ', AF_P(i)
       vSq = SSq / ( CF_E(i) + Pnew + CF_D(i) )**2
 
       W = 1.0_DP / SQRT( 1.0_DP - vSq )
@@ -328,6 +345,102 @@ CONTAINS
 
   END SUBROUTINE ComputeFunJacP
 
+
+  SUBROUTINE ComputePressureWithBisectionMethod( CF_D, CF_E, SSq, P )
+
+    REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq
+    REAL(DP), INTENT(out) :: P
+
+    INTEGER,  PARAMETER :: MAX_IT = 96
+    REAL(DP), PARAMETER :: DeltaP_min = 1.0d-3
+
+    LOGICAL :: CONVERGED
+    INTEGER :: ITERATION
+    REAL(DP) :: PA, PB, PC, DeltaP
+    REAL(DP) :: FunPA, FunPB, FunPC
+
+    ! --- Get upper and lower bounds on pressure, PA, PB ---
+    PA = Zero
+    PB = Two * ( One - One / Gamma_IDEAL ) * CF_E
+
+    ! --- Compute FunP for upper and lower bounds ---
+    CALL ComputeFunP( CF_D, CF_E, SSq, PA, FunPA )
+    CALL ComputeFunP( CF_D, CF_E, SSq, PB, FunPB )
+
+    ! --- Check that sign of FunP changes across bounds ---
+    IF( .NOT. FunPA * FunPB .LT. 0 )THEN
+
+      WRITE(*,'(A6,A)') &
+        '', 'ComputePressureWithBisectionMethod:'
+      WRITE(*,'(A8,A)') &
+        '', 'Error: No Root in Interval'
+      WRITE(*,'(A8,A,2ES15.6E3)') &
+        '', 'PA, PB = ', PA, PB
+      WRITE(*,'(A8,A,2ES15.6E3)') &
+        '', 'FunPA, FunPB = ', FunPA, FunPB
+      STOP
+
+    END IF
+
+    DeltaP = PB - PA
+
+    ITERATION = 0
+    CONVERGED = .FALSE.
+    DO WHILE ( .NOT. CONVERGED )
+
+      ITERATION = ITERATION + 1
+
+      ! --- Compute midpoint, PC ---
+      DeltaP = Half * DeltaP
+      PC     = PA + DeltaP
+
+      ! --- Compute FunP for midpoint pressure ---
+      CALL ComputeFunP( CF_D, CF_E, SSq, PC, FunPC )
+
+      ! --- Change PC = PA or PB, depending on sign of FunP(PC) ---
+      IF( FunPA * FunPC .LT. Zero )THEN
+
+        PB = PC
+        FunPB = FunPC
+
+      ELSE
+
+        PA = PC
+        FunPA = FunPC
+
+      END IF
+
+      IF( ( DeltaP .LT. DeltaP_min ) .OR. ( ITERATION .EQ. MAX_IT ) ) &
+        CONVERGED = .TRUE.
+
+    END DO
+
+    P = PA
+    
+  END SUBROUTINE ComputePressureWithBisectionMethod
+
+  
+  SUBROUTINE ComputeFunP( CF_D, CF_E, SSq, P, FunP )
+
+    REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq, P
+    REAL(DP), INTENT(out) :: FunP
+
+    REAL(DP) :: HSq, RHO, EPS
+    REAL(DP), DIMENSION(1) :: Pbar
+
+    HSq = ( CF_E + P + CF_D )**2
+
+    RHO = CF_D * SQRT( HSq - SSq ) / SQRT( HSq )
+
+    EPS = ( SQRT( HSq - SSq ) &
+            - P * SQRT( HSq ) / SQRT( HSq - SSq ) - CF_D ) / CF_D
+
+    CALL ComputePressureFromSpecificInternalEnergy &
+         ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
+
+    FunP = P - Pbar(1)
+
+  END SUBROUTINE ComputeFunP
 
   SUBROUTINE ComputeTimeStep_GR( iX_B, iX_E, G, U, CFL, TimeStep )
 
