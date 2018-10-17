@@ -29,20 +29,21 @@ PROGRAM ComputePrimitiveTest
            Gamma_IDEAL_Option = Gamma_IDEAL )
 
   i = 1
-  U(i,iCF_D)        =  3.5555770729414629d-012
-  U(i,iCF_S1)       =  1.0750650194606914d-002
+
+  ! --- MAKE SURE TO CHANGE 'E' TO 'd' ---
+  U(i,iCF_D)        =  1.0774584450311608d-011
+  U(i,iCF_S1)       =  4.5946496158721857d+000
   U(i,iCF_S2)       =  0.0000000000000000d+000
   U(i,iCF_S3)       =  0.0000000000000000d+000
-  U(i,iCF_E)        =  1.0750662336624871d-002
-  U(i,iCF_Ne)       =  0.0000000000000000d+000
+  U(i,iCF_E)        =  4.5946501977159642d+000
 
   G(i,iGF_Gm_dd_11) =  1.0000000000000000d+000
-  G(i,iGF_Gm_dd_22) =  9.5367431640625000d-005
-  G(i,iGF_Gm_dd_33) =  9.5367431640625000d-005
+  G(i,iGF_Gm_dd_22) =  2.1972656249999999d-005
+  G(i,iGF_Gm_dd_33) =  2.1972656249999999d-005
 
   SSq =  U(i,iCF_S1)**2 / G(i,iGF_Gm_dd_11) &
-          + U(i,iCF_S2)**2 / G(i,iGF_Gm_dd_22) &
-          + U(i,iCF_S3)**2 / G(i,iGF_Gm_dd_33)
+       + U(i,iCF_S2)**2 / G(i,iGF_Gm_dd_22) &
+       + U(i,iCF_S3)**2 / G(i,iGF_Gm_dd_33)
 
   q = U(i,iCF_D) + U(i,iCF_E) - SQRT( U(i,iCF_D)**2 + SSq )
 
@@ -74,18 +75,18 @@ CONTAINS
     SUBROUTINE CreateFunParray( CF_D, CF_E, SSq, Pmin, Pmax )
 
       REAL(DP), INTENT(in) :: CF_D, CF_E, SSq, Pmin, Pmax
-      REAL(DP)             :: Parr(N), FunP(N), JacP(N), dP
-      INTEGER              :: i
+      REAL(DP)             :: Parr(N), FunP(N), JacP(N), DeltaP
+      INTEGER              :: j
 
       OPEN( 100, FILE = 'FunP.dat' )
 
-      dP = ( Pmax - Pmin ) / N
-      DO i = 1, N
-         Parr(i) = Pmin + (i-1) * dP
+      DeltaP = ( Pmax - Pmin ) / N
+      DO j = 1, N
+         Parr(j) = Pmin + (j-1) * DeltaP
          CALL ComputeFunJacP &
-                ( CF_D, CF_E, SSq, Parr(i), FunP(i), JacP(i) )
+                ( CF_D, CF_E, SSq, Parr(j), FunP(j), JacP(j) )
          WRITE( 100, '(ES24.16E3,1x,ES24.16E3,1x,ES24.16E3)') &
-           Parr(i), FunP(i), JacP(i)
+           Parr(j), FunP(j), JacP(j)
       END DO
 
       CLOSE( 100 )

@@ -20,7 +20,7 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
     ComputeSoundSpeedFromPrimitive_GR
   
   IMPLICIT NONE
-  PRIVATE :: ComputeFunJacP
+  PUBLIC :: ComputeFunJacP
 
   PUBLIC :: ComputeFromConserved_GR
   PUBLIC :: ComputePrimitive_GR
@@ -102,7 +102,7 @@ CONTAINS
     REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q, FunP0
 
     REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-8, TolFunP = 1.0d-10, TolFunP0 = 1.0d-10
+    REAL(DP), PARAMETER :: TolP = 1.0d-9, TolFunP = 1.0d-9, TolFunP0 = 1.0d-10
 
     ! --- Loop through all the nodes ---
     nNodes = SIZE( CF_D )
@@ -229,28 +229,29 @@ CONTAINS
           WRITE(*,*) 'Max iterations IF statement'
           WRITE(*,*) '---------------------------'
           WRITE(*,*) 'ITERATION: ', ITERATION
-          WRITE(*,*) 'PF_D:   ', PF_D(:)
-          WRITE(*,*) 'PF_V1:  ', PF_V1(:)
-          WRITE(*,*) 'PF_V2:  ', PF_V2(:)
-          WRITE(*,*) 'PF_V3:  ', PF_V3(:)
-          WRITE(*,*) 'PF_E:   ', PF_E(:)
-
-          WRITE(*,*) 'CF_D:   ', CF_D(:)
-          WRITE(*,*) 'CF_S1:  ', CF_S1(:)
-          WRITE(*,*) 'CF_S2:  ', CF_S2(:)
-          WRITE(*,*) 'CF_S3:  ', CF_S3(:)
-          WRITE(*,*) 'CF_E:   ', CF_E(:)
-
-          WRITE(*,*) 'Gm11:   ', GF_Gm_dd_11(:)
-          WRITE(*,*) 'Gm22:   ', GF_Gm_dd_22(:)
-          WRITE(*,*) 'Gm33:   ', GF_Gm_dd_33(:)
-           
+          WRITE(*,'(A,ES24.16E3)') '  P(i,iPF_D)        = ', PF_D(i)
+          WRITE(*,'(A,ES24.16E3)') '  P(i,iPF_V1)       = ', PF_V1(i)
+          WRITE(*,'(A,ES24.16E3)') '  P(i,iPF_V2)       = ', PF_V2(i)
+          WRITE(*,'(A,ES24.16E3)') '  P(i,iPF_V3)       = ', PF_V3(i)
+          WRITE(*,'(A,ES24.16E3)') '  P(i,iPF_E)        = ', PF_E(i)
+          WRITE(*,*)
+          WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_D)        = ', CF_D(i)
+          WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_S1)       = ', CF_S1(i)
+          WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_S2)       = ', CF_S2(i)
+          WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_S3)       = ', CF_S3(i)
+          WRITE(*,'(A,ES24.16E3)') '  U(i,iCF_E)        = ', CF_E(i)
+          WRITE(*,*)
+          WRITE(*,'(A,ES24.16E3)') '  G(i,iGF_Gm_dd_11) = ', GF_Gm_dd_11(i)
+          WRITE(*,'(A,ES24.16E3)') '  G(i,iGF_Gm_dd_22) = ', GF_Gm_dd_22(i)
+          WRITE(*,'(A,ES24.16E3)') '  G(i,iGF_Gm_dd_33) = ', GF_Gm_dd_33(i)
+          WRITE(*,*)
           WRITE(*,'(A,ES24.16E3)') 'Pold:  ', Pold
           WRITE(*,'(A,ES24.16E3)') 'Pnew:  ', Pnew
           WRITE(*,'(A,ES24.16E3)') 'FunP:  ', FunP
           WRITE(*,'(A,ES24.16E3)') &
                   '|Pnew-Pold|/|Pnew|: ', ABS( Pnew - Pold ) / ABS( Pnew )
           IF( ITERATION == MAX_IT )THEN
+            WRITE(*,*) 'Node ', i
             STOP 'Max allowed iterations reached, no convergence. Stopping...'
           END IF
         END IF
