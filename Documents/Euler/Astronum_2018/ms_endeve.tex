@@ -209,7 +209,7 @@ To prevent negative mass density and pressure (and superluminal velocity for the
 
 In this section we show preliminary numerical results obtained with the DG method implemented in \thornado\ to solve the non-relativistic and special relativistic Euler equations.  
 We use the ideal gas equation of state where the pressure $p$ is related to the internal energy density $e$ by $p=(\Gamma-1)e$, and where $\Gamma$ is the (constant) adiabatic index.  
-Let the $d$-dimensional computational domain be $D=\times_{i=1}^{d}[\xMin^{i},\xMax^{i}]$, where $\xMin^{i}$ and $\xMax^{i}$ denote the coordinates of the inner and outer boundary in the $i$-th coordinate direction, respectively.  
+Let the $d$-dimensional computational domain be $D=\times_{i=1}^{d}[\xMin^{i},\xMax^{i}]$, where $\xMin^{i}$ and $\xMax^{i}$ denote the coordinates of the inner and outer boundary in the $i$th coordinate direction, respectively.  
 We use polynomials of degree $k=2$ combined with SSP-RK3 time stepping, and all the tests were run with a Courant-Friedrichs-Lewy (CFL) factor of $C=0.1$.  
 We use the HLL Riemann solver when solving the non-relativistic Euler equations and the HLLC Riemann solver when solving the special relativistic Euler equations.  
 The purpose of the tests is to gauge the performance of the DG implementation on a set of benchmarks as an initial measure of its suitability for future CCSN simulations.  
