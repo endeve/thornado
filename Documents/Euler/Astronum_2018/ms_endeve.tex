@@ -42,13 +42,13 @@
 \newcommand{\ee}[1]{{\color{red} EE:~#1}}
 
 \begin{document}
-\title{\thornado-hydro: towards discontinuous galerkin methods for supernova hydrodynamics\footnote{This manuscript has been authored by UT-Battelle, LLC under Contract No. DE-AC05-00OR22725 with the U.S. Department of Energy. The United States Government retains and the publisher, by accepting the article for publication, acknowledges that the United States Government retains a non-exclusive, paid-up, irrevocable, world-wide license to publish or reproduce the published form of this manuscript, or allow others to do so, for United States Government purposes. The Department of Energy will provide public access to these results of federally sponsored research in accordance with the DOE Public Access Plan (http://energy.gov/downloads/doe-public-access-plan).}}
+\title{\thornado-hydro: towards discontinuous Galerkin methods for supernova hydrodynamics\footnote{This manuscript has been authored by UT-Battelle, LLC under Contract No. DE-AC05-00OR22725 with the U.S. Department of Energy. The United States Government retains and the publisher, by accepting the article for publication, acknowledges that the United States Government retains a non-exclusive, paid-up, irrevocable, world-wide license to publish or reproduce the published form of this manuscript, or allow others to do so, for United States Government purposes. The Department of Energy will provide public access to these results of federally sponsored research in accordance with the DOE Public Access Plan (http://energy.gov/downloads/doe-public-access-plan).}}
 
 \author{Eirik Endeve$^{1,2,6}$, Jesse Buffaloe$^{2}$, Samuel J Dunham$^{3}$, \\ Nick Roberts$^{2}$, Kristopher Andrew$^{4,1}$, Brandon Barker$^{2}$, \\ David Pochik$^{2}$, Juliana Pulsinelli$^{5,7}$ and Anthony Mezzacappa$^{2,6}$}
 \address{$^{1}$Computer Science and Mathematics Division, Oak Ridge National Laboratory, TN 37831}
 \address{$^{2}$Department of Physics and Astronomy, University of Tennessee Knoxville, TN 37996}
 \address{$^{3}$Department of Astronomy, Vanderbilt University, TN 37212}
-\address{$^{4}$Department of Physics and Astronomy, University of Kentucky Lexington, KY 40506}
+\address{$^{4}$Department of Physics and Astronomy, University of Kentucky, Lexington, KY 40506}
 \address{$^{5}$Princeton University, NJ 08544}
 \address{$^{6}$Joint Institute for Computational Sciences, Oak Ridge National Laboratory, TN 37831}
 \address{$^{7}$Physics Division, Oak Ridge National Laboratory, TN 37831}
@@ -65,7 +65,7 @@ In this paper, we provide an overview of the numerical methods for the Euler equ
 
 Along with solvers for neutrino transport and gravity, the hydrodynamics solver constitutes a major component of core-collapse supernova (CCSN) simulations.  
 The dynamics of the bounce shock and associated fluid instabilities, which drive turbulent flows and help shape the explosion, must be faithfully captured (see, e.g., \cite{muller_2016}, for a recent review).  
-Essentially, the stellar interior is modeled as a perfect fluid (i.e., thermal conduction and viscosity are not explicitly included) using the Euler equations, but extended to accommodate a nuclear equation of state.  
+Essentially, the stellar interior is modeled as a perfect fluid (thermal conduction and viscosity are not explicitly included) using the Euler equations, but the models are extended to accommodate a nuclear equation of state.  
 
 The discontinuous Galerkin (DG) method \cite{cockburnShu_2001,hesthavenWarburton_2008} appears as an appealing choice to model fluid flows in CCSNe.  
 DG methods combine elements of spectral and finite volume methods, and achieve high-order accuracy on a compact stencil.  
@@ -82,7 +82,7 @@ In this paper, we provide an initial description and encouraging demonstration o
 We note that others (e.g., \cite{radiceRezzolla_2011,schaal_etal_2015}) have also investigated the DG method in the context of astrophysical hydrodynamics and reported encouraging results.  
 Whether the high-order approach will improve accuracy and efficiency of CCSN models remains to be demonstrated.  
 
-\section{Discontinuous Galerkin method}
+\section{The discontinuous Galerkin method}
 
 Excellent books and review articles on the DG method are available (see, e.g., \cite{cockburnShu_1998,cockburnShu_2001,hesthavenWarburton_2008,shu_2016} and references therein), and we will not go into too much detail here.  
 However, we review some key concepts to introduce notation, and emphasize specific choices for our implementation in \thornado.  
@@ -93,7 +93,7 @@ To this end, we consider a system of conservation laws with sources of the form
   =\sqrt{\gamma}\,\vect{S}(\vect{U}),
   \label{eq:extendedEulerCompact}
 \end{equation}
-where $\vect{U}$ is the evolved state vector, $\vect{F}^{i}$ the fluxes, and $\vect{S}$ the source vector.  
+where $\vect{U}$ is the evolved state vector, $\vect{F}^{i}$ are the fluxes, and $\vect{S}$ is the source vector.  
 We use a formulation of the equations sufficiently general to accommodate curvilinear spatial coordinates encoded in the metric $\gamma_{ij}$, giving the squared line element $ds^{2}=\gamma_{ij}dx^{i}dx^{j}$, whose determinant is $\gamma$.  
 To solve Eq.~\eqref{eq:extendedEulerCompact}, the computational domain $D\subset\mathbb{R}^{d}$ is divided into a disjoint union $\cT$ of open elements $\bK$, so that $D = \cup_{\bK \in \cT}\bK$.  
 We require that each element is a box in the logical coordinates; i.e.,
@@ -151,7 +151,7 @@ Then, if $P_{h}(x)$ is such a polynomial, we have
 \end{equation}
 
 Note that the interpolation points $S_{N}$ and the quadrature points $\hat{S}_{M}$ generally do not coincide.  
-However, for sake of computational efficiency we let $M=N$ and $S_{N}=\hat{S}_{N}$, which is a spectral-type nodal collocation DG approximation \cite{bassi_etal_2013}.  
+However, for the sake of computational efficiency we let $M=N$ and $S_{N}=\hat{S}_{N}$, which is a spectral-type nodal collocation DG approximation \cite{bassi_etal_2013}.  
 Inserting Eq.~\eqref{eq:conservedNodalExpansion} into Eq.~\eqref{eq:semidiscreteDG}, letting $v(x)=\ell_{k}(x)$, and using the quadratures defined above, we obtain
 \begin{align}
   \pd{}{t}\int_{K}\vect{U}_{h}\,v\,dV
@@ -191,7 +191,7 @@ Eq.~\eqref{eq:semidiscreteDiscretized} comprises a system of ordinary differenti
 In Section~\ref{sec:numerical} we use the optimal third-order strong stability-preserving Runge-Kutta (SSP-RK3) method from \cite{shuOsher_1988}.  
 
 Limiting of the polynomial representation $\vect{U}_{h}$, to reduce oscillations and prevent non-physical states, is a critical step in the DG algorithm.  
-We use the TVD-type slope limiter based on limiting characteristic variables discussed in \cite{cockburnShu_1998}.  
+We use the TVD-type slope limiter based on limiting characteristic variables, discussed in \cite{cockburnShu_1998}.  
 To prevent excessive limiting (e.g., at smooth extrema), we use the troubled-cell indicator (TCI) of \cite{fuShu_2017}.  
 \begin{equation}
   I_{\bK}(G) = \f{\sum_{j}|G_{\bK}-G_{\bK}^{(j)}|}{\max_{j}|G_{\bK^{(j)}}^{(j)}|},
@@ -199,7 +199,7 @@ To prevent excessive limiting (e.g., at smooth extrema), we use the troubled-cel
 \end{equation}
 where $G\in\vect{G}\subseteq\vect{U}$.  
 (Here, $\vect{G}$ consists of the first and last element of $\vect{U}$.)  
-In Eq.~\eqref{eq:indicator}, the sum in the numerator and the $\max$ in the denominator extend over the neighboring elements sharing face with the target element $\bK$.  
+In Eq.~\eqref{eq:indicator}, the sum in the numerator and the $\max$ in the denominator extend over the neighboring elements sharing a face with the target element $\bK$.  
 $G_{\bK}$ is the cell average in $\bK$, $G_{\bK}^{(j)}$ is the cell average computed by extrapolating the polynomial representation from the neighbor element $\bK^{(j)}$ into $\bK$, and $G_{\bK^{(j)}}^{(j)}$ is the cell average native to $\bK^{(j)}$.  
 An element is flagged for limiting if $I_{\bK}(G)>C_{\TCI}$ for any $G\in\vect{G}$.  
 To prevent negative mass density and pressure (and superluminal velocity for the relativistic Euler equations), we follow the approaches in \cite{zhangShu_2010,wuTang_2015,qin_etal_2016}.  
@@ -229,7 +229,7 @@ The sources are due to curvilinear coordinates and Newtonian gravity.
 
 \subsubsection{Sod shock tube}
 
-The first test is the classical Riemann problem due to Sod \cite{sod_1978}, computed using Cartesian coordinates.  
+The first test is the classic Riemann problem due to Sod \cite{sod_1978}, computed using Cartesian coordinates.  
 The one-dimensional computational domain is $D=[0,1]$, and a discontinuity is initially located at $x^{1}=0.5$, separating the left and right states
 \begin{equation*}
   \vect{U}_{\leftState}=(1.0,\vect{0.0},2.5)^{\trans}\quad\text{and}\quad
@@ -256,7 +256,7 @@ This test, detailed in \cite{sedov_1959} (see also {\S}99 in \cite{landauLifshit
 The computational domain is $D=[0,1.2]$, and the initial condition consists of a fluid at rest with density $\rho=1$.  
 The adiabatic index is $\Gamma=1.4$, and an amount of thermal energy equal to $1$ is released in the innermost element.  
 We use $256$ elements and run until $t=1$, using $C_{\TCI}=0.03$.  
-Again, the DG method captures the characteristic of the exact solution well.  
+Again, the DG method captures the characteristic of the exact solution.  
 The maximum density in the shock is somewhat lower for the numerical solution than the exact value (about $5$ versus $6$).  
 
 \subsubsection{Shu-Osher shock tube}
@@ -302,7 +302,7 @@ With $C_{\TCI}=3.0$, limiting is only triggered in the shock.
 
 \subsubsection{Kelvin-Helmholtz (KH) instability}
 This hydrodynamic instability is of significant astrophysical relevance --- including during the explosion phase of CCSNe --- and may occur in the interface separating fluids in relative motion.  
-We compute this problem on the unit square $D=[0,1]\times[0,1]$, imposing periodic boundary conditions, and with initial conditions and single-mode perturbation taken from \cite{mcnally_etal_2012}.  
+We compute this problem on the unit square $D=[0,1]\times[0,1]$, imposing periodic boundary conditions, and with initial conditions and single-mode perturbations taken from \cite{mcnally_etal_2012}.  
 We use $256^{2}$ elements and evolve until $t=3.0$, well into the nonlinear regime.  
 Results are displayed in Figure~\ref{fig:KelvinHelmholtz}.  
 We have computed two models, one with $C_{\TCI}=0.06$ (left panels) and one without limiting ($C_{\TCI}\to\infty$; right panels).  
@@ -327,7 +327,7 @@ We have computed two models, one with $C_{\TCI}=0.06$ (left panels) and one with
   \begin{minipage}{18pc}
     \includegraphics[width=18pc]{./Figures/KelvinHelmholtz_30_noLim_Astronum_2018}
   \end{minipage}
-  \caption{\label{fig:KelvinHelmholtz}Mass density from the KH instability at various times, computed with $256^{2}$ elements: $t=1.5$ (top panels), $t=2.4$ (middle panels), and $t=3.0$ (bottom panels).  Results for $C_{\TCI}=0.06$ are shown in left panels, while result with no limiting are shown in right panels.}
+  \caption{\label{fig:KelvinHelmholtz}Mass density from the KH instability at various times, computed with $256^{2}$ elements: $t=1.5$ (top panels), $t=2.4$ (middle panels), and $t=3.0$ (bottom panels).  Results for $C_{\TCI}=0.06$ and $C_{\TCI}\to\infty$ (no limiting) are shown in the left and right panels, respectively.}
 \end{figure}
 
 Early on ($t=1.5$), the results from the two runs are practically indistinguishable, show no sign of developing secondary billows, and agree visually with results presented in \cite{mcnally_etal_2012}.  
@@ -434,11 +434,11 @@ We show results for a model with $\Gamma=1.30$.
 We use spherical polar coordinates, and let $D=[0,1\times10^{5}]$~km, which is covered with $256$ elements.  
 The Newtonian gravitational potential is obtained by solving Poisson's equation using a third-order accurate continuous finite element method (e.g., \cite{brennerScott_2008}).  
 We use a geometric grid to resolve the mass distribution as the star collapses and the central density increases from about $10^{9}$~g~cm$^{-3}$ to about $10^{14}$~g~cm$^{-3}$.  
-The size of the innermost element is set to $1$~km while the last element is about $3\times10^{3}$~km.  
+The size of the innermost element is set to $1$~km while the size of the last element is about $3\times10^{3}$~km.  
 We specify the polytropic constant by setting a reference pressure $p=6\times10^{27}$~erg~cm$^{-3}$ for $\rho=7\times10^{9}$~g~cm$^{-3}$ (reasonable values for a massive star in the pre-collapse stage).  
-We also specify the collapse time to $(-t)=150$~ms.  
-Results comparing the mass density and velocity of Yahil's reference solution to the solution obtained with \thornado\ using $C_{\TCI}=0.03$ are plotted in Figure~\ref{fig:YahilLattimer}.  
-The agreement of the mass density and velocity profiles is good throughout collapse.  
+We also set the collapse time to $(-t)=150$~ms.  
+Results comparing the mass density and velocity of Yahil's reference solution to those obtained with \thornado\ using $C_{\TCI}=0.03$ are plotted in Figure~\ref{fig:YahilLattimer}.  
+The agreement of the mass density and velocity profiles is excellent throughout collapse.  
 
 \subsection{Special relativistic (SR) hydrodynamics}
 
@@ -476,8 +476,8 @@ Results are plotted in Figure~\ref{fig:RelativisticHydro}.
   \caption{\label{fig:RelativisticHydro}Results from solving the SR Euler equations with \thornado.  Riemann problem~1 (left panel) was solved using $100$ elements, while Riemann problem~2 was solved using $400$ elements.  The numerical and exact solutions are plotted with plusses and solid lines, respectively.}
 \end{figure}
 
-The main features of the exact solution are captured quite well with the DG method implemented in \thornado.  
-For Riemann problem~1, we observe some oscillations in the density between the leftmost shock and the contact discontinuity located near $x^{1}=0.6$.  
+Again, the main features of the exact solution are captured with the DG method implemented in \thornado.  
+For Riemann problem~1, we observe some oscillations in the density profile between the leftmost shock and the contact discontinuity located around $x^{1}=0.6$.  
 For Riemann problem~2, the maximum density in the thin density shell between the shock and the contact discontinuity is significantly lower for the numerical solution than the exact solution.  
 This is due to a combination of limited spatial resolution and the action of the slope limiter.  
 We used $C_{\TCI}=0.03$ in both tests in this section.  
@@ -485,7 +485,7 @@ We have found the agreement with the exact solution to improve for larger values
 
 \section{Summary and outlook}
 
-We have presented preliminary algorithm details and numerical results for solvers of the non-relativistic and special relativistic Euler equations of gas dynamics as implemented in the toolkit for high-order neutrino-radiation hydrodynamics (\thornado).  
+We have presented preliminary algorithm details and numerical results for solvers of the non-relativistic and special relativistic Euler equations of gas dynamics as implemented in the {\bf t}oolkit for {\bf h}igh-{\bf or}der {\bf n}eutrino-r{\bf ad}iation hydr{\bf o}dynamics (\thornado).  
 The spatial discretization is based on the DG method and the ODEs resulting from this discretization are integrated in time using SSP-RK methods.  
 We employ a spectral-type nodal collocation DG approximation based on Legendre-Gauss points for interpolation and numerical quadrature evaluation \cite{bassi_etal_2013}.  
 This choice simplifies expressions for the semi-discretized equations, especially when applied to problems involving curvilinear coordinates encoded in a metric (e.g., in numerical relativity).  
