@@ -1,22 +1,19 @@
 \section{Spatial Discretization}\label{se:SpacialDiscretization}
-Here we briefly outline our spatial discretization using the first-order discontinuous Galerkin method.
-Let the spatial dimension be $d$ and employ Cartesian coordinates.
+Here we use the finite-volume/first-order discontinuous Galerkin method to illustrate how the closure affects the realizability-preserving property of the scheme.
+To simply the illustration, let's focus on one-dimension uniform mesh on Cartesian coordinates.
 We divide the spatial domain $D$ evenly into $N$ cells and denote the $i$th cell as $\bK_{i}$ with $i = 1,\ldots,N$, so that
 \begin{equation*}
 D = \cup_{i = 1}^{N} \bK_{i} \quad \text{with} \quad
-  \bK_{i}=\{\,\vect{x} : x^{i} \in K^{i} := (\xL^{i},\xH^{i}),~|~i=1,\ldots,d\,\}.
+  \bK_{i}=\{\,x : x\in(x_{i-1/2}, x_{i+1/2})\}.
 \end{equation*}
-Each of the cells has a volume, $|\bK|$, with
-\begin{equation*}
-  |\bK| = \int_{\bK}d\vect{x}, \quad\text{where}\quad d\vect{x} = \prod_{i=1}^{d}dx^{i}.  
-\end{equation*}
-Then, we have cell-average moments:
+Each of the cells has a length, $|\dx|$ and $|\dx| = D/N = \int_{\bK}d\vect{x}$.
+The cell-average moments:
 \begin{equation}
-\bcM_{i} = \dfrac{1}{|\bK|} \int_{\bK_i}\bcM dx.
+\bcM_{i} = \dfrac{1}{|\dx|} \int_{\bK_i}\bcM dx.
 \end{equation}
 Integrating Eq.~\eqref{eq:momentEquations} for each cell $\bK_{i}$ given
 \begin{equation}
-\dfrac{d \bcM_{i}}{d t} = - \dfrac{1}{|\bK|} \left( \widehat{\bcF}(\bcM_{i},\bcM_{i+1}) -  \widehat{\bcF}(\bcM_{i-1},\bcM_{i})\right) + \f{1}{\tau}\,\cC(\bcM_{i}),
+\dfrac{d \bcM_{i}}{d t} = - \dfrac{1}{|\dx|} \left( \widehat{\bcF}(\bcM_{i},\bcM_{i+1}) -  \widehat{\bcF}(\bcM_{i-1},\bcM_{i})\right) + \f{1}{\tau}\,\cC(\bcM_{i}),
 \label{eq:SemiDiscretizatedMomentEquation}
 \end{equation}
 where $\widehat{\bcF}(\vect{\cM}_{a},\vect{\cM}_{b})$ is the numerical flux and $\f{1}{\tau}\,\cC(\bcM_{i})$ is the integrated collision term.
@@ -28,21 +25,24 @@ In this paper we use the simple Lax-Friedrichs flux, given by
 \end{equation}
 Therefore, by treating the flux term explicitly and the collision term implicitly, we have
 \begin{align}
-\bcM_{i}^{n+1} = \widetilde{\bcM}^{n}_{i} + \f{\dt}{\tau}\,\cC(\bcM^{n+1}_{i})
+\bcM_{i}^{n+1} = \widetilde{\bcM}^{n}_{i} + \f{\dt}{\tau}\,\cC(\bcM^{n+1}_{i}),
 \label{eq:MomentIMEX}
 \end{align}
-with
+where we define
 \begin{align}
 \widetilde{\bcM}^{n}_{i} 
-& = \bcM_{i}^{n} - \dfrac{\dt}{|\bK|} \left( \widehat{\bcF}(\bcM^{n}_{i},\bcM^{n}_{i+1}) -  \widehat{\bcF}(\bcM^{n}_{i-1},\bcM^{n}_{i})\right)\nonumber \\
-& = (1-\beta)\bcM_{i}^{n} + \beta\left[ \f{1}{2}\left( \bcM^{n}_{i+1}-\bcF(\bcM^{n}_{i+1})\right)  + \f{1}{2}\left( \bcM^{n}_{i-1}+\bcF(\bcM^{n}_{i-1})\right)\right]
+& = \bcM_{i}^{n} - \dfrac{\dt}{|\dx|} \left( \widehat{\bcF}(\bcM^{n}_{i},\bcM^{n}_{i+1}) -  \widehat{\bcF}(\bcM^{n}_{i-1},\bcM^{n}_{i})\right)\nonumber \\
+& = (1-\beta)\bcM_{i}^{n} + \beta\left[ \f{1}{2}\left( \bcM^{n}_{i+1}-\bcF(\bcM^{n}_{i+1})\right)  + \f{1}{2}\left( \bcM^{n}_{i-1}+\bcF(\bcM^{n}_{i-1})\right)\right],
 \label{eq:widetildeM}
 \end{align}
-where $\beta := \frac{\dt}{|\bK|}$.
+and $\beta := \frac{\dt}{|\dx|}$.
 
 Assume $\bcM_{i}^{n}$ is realizable for all $i$. 
-For Eq.~\eqref{eq:MomentIMEX}, lemma 3 in \cite{chu_etal_2018} says that $\bcM^{n+1}_{i}$ remains realizable given $\f{\dt}{\tau} > 0$ and given that $\widetilde{\bcM}^{n}_{i}$ stay realizable.
-Substituting the Lax-Friedrichs flux, Eq.~\eqref{eq:Lax-Friedrichs flux}, in Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, $\widetilde{\bcM}^{n}_{i}$ becomes a convex combination of $\bcM_{i}^{n}$ and the square bracket in Eq.~\eqref{eq:widetildeM} if $\beta \in [0,1]$, and it is realizable if $\beta \in [0,1]$ and the term in square brackets is realizable.
-Given Lemma 2 in \cite{chu_etal_2018}, the term in square brackets is indeed realizable.
-Therefore, $\bcM^{n+1}_{i}$ remains realizable given $\beta \in [0,1]$.
-Note that $\beta \in [0,1]$ is also the CFL condition of the Forward-Euler method applied to a transport-only Boltzmann equation.
+For Eq.~\eqref{eq:MomentIMEX}, Lemma 3 in \cite{chu_etal_2018} says that $\bcM^{n+1}_{i}$ is realizable given $\f{\dt}{\tau} > 0$ and provided that $\widetilde{\bcM}^{n}_{i}$ is realizable.
+Substituting the Lax-Friedrichs flux, Eq.~\eqref{eq:Lax-Friedrichs flux}, in Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, $\widetilde{\bcM}^{n}_{i}$ becomes a convex combination of $\bcM_{i}^{n}$ and the square bracket in Eq.~\eqref{eq:widetildeM} if $\beta \in [0,1]$.
+$\widetilde{\bcM}^{n}_{i}$ is realizable if $\beta \in [0,1]$ and the term in square brackets is realizable.
+Given Lemma 2 in \cite{chu_etal_2018}, the term in square brackets is realizable if $\cJ$, $\bcH$ and $\bcK$ are realizable.
+In other words, realizability of the term in square brackets depends on the algebraic closure.
+If the closure satisfies Eq.~\eqref{eq:eddingtonFactorBounds},
+$\bcM^{n+1}_{i}$ is realizable provided $\beta \in [0,1]$.
+Note that $\beta \leq 1$ is also the CFL condition of the Forward-Euler method applied to a transport-only Boltzmann equation.

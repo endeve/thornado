@@ -1,6 +1,7 @@
 \section{Time Integration} \label{se:TimeIntegration}
 
-In this section we show how to use the property we introduced at the end of the previous section to construct a constraint-preserving, implicit-explicit (IMEX) scheme.
+Suppose we have an algebraic closure based on Fermi-Dirac statistic (whose Eddington factor satisfies Eq.~\eqref{eq:eddingtonFactorBounds}).
+We show how to construct a time integration which satisfies the bounds on moment after each time step in this section.
 The semi-discretization of the moment equations, Eq.~\eqref{eq:momentEquations}, results in a system of ordinary differential equations of the form
 \begin{equation}
   \dfrac{d \vect{u}}{d t} = \vect{\cT}(\vect{u}) + \f{1}{\tau}\,\vect{\cQ}(\vect{u}),
@@ -9,13 +10,13 @@ where
 \begin{equation}
 \vect{u}(t) = \left( \bcM_{1}(t),\ldots,\bcM_{N}(t)\right) ^{T}
 \end{equation}
-is the collection of all cell-average moments, $\vect{\cT}$ is the transport operator corresponding to the flux term, which is the first term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, and $\f{1}{\tau}\,\vect{\cQ}$ is a linear operator corresponding to the collision term, the second term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}.
+is the collection of all cell-average moments, $\vect{\cT}$ is the transport operator corresponding to the first term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, and $\f{1}{\tau}\,\vect{\cQ}$ corresponds to the collision operator, the second term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}.
 
-Since the realizable $\bcM$ define a convex set in $\cJ -\bcH$ space, convex-invariant schemes, which remain in their initial convex set, can be used to design realizability-preserving schemes for the two-moment model. 
+Since the realizable $\bcM$ define a convex set in $\cJ$-$\bcH$ space, convex-invariant schemes, which remain in their initial convex set, can be used to design realizability-preserving schemes for the two-moment model. 
 The following discussion shows how to construct a convex-invariant scheme.
 
 \subsection{Standard Implicit-Explicit Scheme}
-Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, a standard $s$-stage IMEX scheme takes the following form\cite{pareschiRusso_2005}
+Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, a standard $s$-stage IMEX scheme takes the following form \cite{pareschiRusso_2005}
 \begin{align}
   \vect{u}^{(i)}
   &=\vect{u}^{n}
@@ -27,7 +28,8 @@ Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, a sta
   +\dt\sum_{i=1}^{s}\tilde{w}_{i}\,\vect{\cT}(\vect{u}^{(i)})
   +\dt\sum_{i=1}^{s}w_{i}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}), \label{imexIntermediate} 
 \end{align}
-where  $(\tilde{a}_{ij})$ and $(a_{ij})$ are coefficients of the $i$th-stage and they are the elements of matrices $\tilde{A}$ and $A$, respectively, and the vectors $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ are the weight vectors.
+where  $(\tilde{a}_{ij})$ and $(a_{ij})$ are coefficients of the $i$-th stage and they are the elements of matrices $\tilde{A}$ and $A$, respectively.
+The vectors $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ are the weight vectors.
 These coefficients and weights have to satisfy certain condition for an accurate, convergent and stable scheme.
 For instance, to have second-order temporal accuracy, the following conditions are required:
 \begin{equation}
