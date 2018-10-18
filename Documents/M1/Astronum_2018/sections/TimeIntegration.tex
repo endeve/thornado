@@ -30,7 +30,7 @@ Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, a sta
 \end{align}
 where  $(\tilde{a}_{ij})$ and $(a_{ij})$ are coefficients of the $i$-th stage and they are the elements of matrices $\tilde{A}$ and $A$, respectively.
 The vectors $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ are the weight vectors.
-These coefficients and weights have to satisfy certain condition for an accurate, convergent and stable scheme.
+These coefficients and weights have to satisfy certain condition for an accurate and consistent scheme.
 For instance, to have second-order temporal accuracy, the following conditions are required:
 \begin{equation}
   \sum_{i=1}^{s}\tilde{w}_{i}=\sum_{i=1}^{s}w_{i}=1,
@@ -101,14 +101,14 @@ It can be proven that the conditions we need for a simple convex-invariant IMEX 
       \label{eq:diffusionCondition}
     \end{equation}
     where $\vect{e}_{i}$ is the $i$th column of the $s\times s$ identity matrix.
-    \item Less than four stages ($s\le3$).
+    \item Less than five stages ($s\le4$).
     \item Globally stiffly accurate: $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i},\quad i=1,\ldots,s$. (GSA)
 \end{enumerate}  
 We call the IMEX scheme satisfying the above conditions {PD-ARS}. (Definition 3 in \cite{chu_etal_2018}.)
 We give two optimized PD-ARS schemes here: PD-ARS with SSPRK2 and  PD-ARS with SSPRK3. 
 They have second- and third-order accuracy in the streaming limit, respectively.
 \subsubsection{PD-ARS with SSPRK2}
-Here we give a family of PD-ARS with SSPRK2 in the standard double Butcher tableau form: explicit tableau on the left ($\tilde{A}$), implicit tableau on the right ($A$):
+Here we give the optimized PD-ARS with SSPRK2 in the standard double Butcher tableau form: explicit tableau on the left ($\tilde{A}$), implicit tableau on the right ($A$):
 \begin{equation}
   \begin{array}{c | c c c}
   	0 & 0   & 0 & 0 \\
@@ -120,15 +120,11 @@ Here we give a family of PD-ARS with SSPRK2 in the standard double Butcher table
   \begin{array}{c | c c c}
   	0 & 0 & 0            & 0            \\
   	1 & 0 & 1            & 0            \\
-  	1 & 0 & 1/2-\epsilon & 1/2+\epsilon \\ \hline
-  	  & 0 & 1/2-\epsilon & 1/2+\epsilon
+  	1 & 0 & 1/2 & 1/2 \\ \hline
+  	  & 0 & 1/2 & 1/2
   \end{array}
 \end{equation}
-and $\epsilon \in [0, 1/2)$.
-For these schemes, $c_{\mbox{\tiny Sch}}= 1 - 2\epsilon$.
-The optimized scheme ($c_{\mbox{\tiny Sch}}= 1$) is given by $\epsilon = 0$.
-We chose $\epsilon = 0.1$ for the numerical test in Section~\ref{se:NumericalTests}.
-
+For this scheme, $c_{\mbox{\tiny Sch}}= 1$ and only two implicit solver are needed for each time step.
 \subsubsection{PD-ARS with SSPRK3}
 Here we give the optimized PD-ARS with SSPRK3.
 Its standard double Butcher tableau are (explicit tableau on the left, implicit tableau on the right)
@@ -150,3 +146,5 @@ Its standard double Butcher tableau are (explicit tableau on the left, implicit 
   \end{array}
 \end{equation}
 For this schemes, $c_{\mbox{\tiny Sch}}= 1$.
+Three implicit solver are taken for each time step.
+Since PD-ARS with SSPRK3 is as accurate as PD-ARS with SSPRK2 in collision involved region, see Section~\ref{se:NumericalTests} for the plots, it may not offer any advantage.

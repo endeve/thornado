@@ -3,7 +3,7 @@
 In this section we present the numerical results obtained with the PD-ARS schemes given in Section~\ref{se:TimeIntegration}.
 The tests in Section \ref{se: Accuracy Tests} are designed to compare the accuracy of the schemes in streaming, absorption, and scattering-dominated regimes in one spatial dimension.
 The test in Section \ref{se: Neutrino Stationary State Test} demonstrates the convex-invariance of PD-ARS schemes schemes.
-All the tests in this subsection were constructed with third-order accurate spatial discretization (polynomials of degree $k=2$) and time step $\dt = 0.1 \times \dx $.
+All the tests in this subsection were constructed with third-order accurate spatial discretization (polynomials of degree $k=2$) and time step $\dt = 0.1 \times \dx $, using the DG scheme we present in \cite{chu_etal_2018}.
 
 \subsection{Accuracy Tests}
 \label{se: Accuracy Tests}
@@ -14,16 +14,16 @@ To compare the numerical results to analytic solutions, the cell-averaged absolu
 For our convergence test, the number of elements ($N$) vary from 8 to 128.
 
 \subsubsection{Sine Wave Streaming}
-The sine wave streaming test is designed for the steaming dominated regime, with $\sigma_{\Ab} = \sigma_{\Scatt} = 0$.
-A periodic domain with length=1 is used and the initial condition is $\cJ = \bcH =$ a spatial sine wave function.
+The sine wave streaming test is designed for the steaming dominated regime, i.e. $\sigma_{\Ab} = \sigma_{\Scatt} = 0$.
+A periodic domain of unit length is used and the initial condition is $\cJ_{0} = \bcH_{0} = 0.5+0.49\times\sin\big(2\pi\,x\big)$.
 We evolve the test until the sine wave has completed 10 crossings of the domain.
 Figure~\ref{fig: SineWaveStreaming} plots the absolute error for the number density versus the number of elements $N$.
 We see the errors obtained with SSPRK3 and PD-ARS with SSPRK3 as the explicit part decrease as $N^{-3}$, as expected.
 All the other schemes have errors decreasing as $N^{-2}$.
 Among the second-order schemes, SSP2332 has the smallest error.
 
-In the streaming limit, PD-ARS scheme limit to its explicit part, SSPRK2 and SSPRK3, respectively.
-That's why the absolute errors of PD-ARS and SSPRK are indistinguishable on the plot.
+In the streaming limit, the PD-ARS schemes limit to their explicit part, SSPRK2 and SSPRK3, respectively.
+Therefore, the absolute errors of PD-ARS and SSPRK are indistinguishable on the plot.
 
 \begin{figure}[h]
   \centering
@@ -34,12 +34,12 @@ That's why the absolute errors of PD-ARS and SSPRK are indistinguishable on the 
 
 \subsubsection{Sine Wave Damping}
 This test, adapted from \cite{skinnerOstriker_2013}, is designed for absorption-dominated regimes, with $\sigma_{\Scatt} = 0$ and $f_0 = 0$, which results in exponential damping of the wave amplitude.
-A periodic domain with length=1 and an initial condition with $\cJ = \bcH =$ a spacial sine wave function is used.
+A periodic domain of unit length and an initial condition with $\cJ_{0} = \bcH_{0} = 0.5+0.49\times\sin\big(2\pi\,x\big)$ is used.
 The amplitude of the analytical solution decreases as $e^{-\sigma_{\Ab} t}$.
 For $\sigma_{\Ab}$ = 0.1, 1 and 10 we evolve the test until the initial condition has been damped by a factor $e^{-10}$. 
 Figure~\ref{fig:SineWaveDamping} shows convergence results of the sine wave damping test in the relative error.
 SSP2332, a second-order scheme, displays second-order convergence.
-PD-ARS schemes converge with a first-order convergence rate given the price paid for convex-invariance.
+PD-ARS schemes converge with a first-order convergence rate: the price paid for the convex-invariant property.
 \begin{figure}[h]
   \centering
     \includegraphics[width=0.9\textwidth]{figures/SineWaveDamping}
@@ -48,14 +48,14 @@ PD-ARS schemes converge with a first-order convergence rate given the price paid
 \end{figure}
 
 \subsubsection{Sine Wave Diffusion}
-The last test with known smooth solution,adopted from \cite{radice_etal_2013}, is the sine wave diffusion test with $\sigma_{\Ab} = 0, f_0 = 0$.
-A periodic domain with $D=\{x:x\in[-3,3]\}$ and an initial condition with $\cJ_{0}$ = a spatial sine wave function and $\cH =-\f{1}{3\sigma_{\Scatt}}\pderiv{\cJ}{x}$ is used.
+The last test with known smooth solution, adopted from \cite{radice_etal_2013}, is the sine wave diffusion test, i.e. $\sigma_{\Ab} = 0$ and $f_0 = 0$.
+A periodic domain with $D=\{x:x\in[-3,3]\}$ and an initial condition with $\cJ_{0} = 0.5+0.49\times\sin\big(\f{\pi\,x}{3}\big)$ and $\cH_{0} =-\f{1}{3\sigma_{\Scatt}}\pderiv{\cJ_{0}}{x}$ is used.
 The analytic solution is given by $\cJ = \cJ_{0} \times e^{-\f{\pi^2 t}{27\sigma_{\Scatt}}}$ and $\cH = (3\,\sigma_{\Scatt})^{-1}\pd{\cJ}{x}$.
 We evolve with $\sigma_{\Scatt}=10^{2}$, $10^{3}$, and $10^{4}$, and adjust the end time so that $t_{\mbox{\tiny end}}/\sigma_{\Scatt}=1$. 
 Then the amplitude of the sine wave has been reduced by a factor $e^{-\pi^{2}/27}\approx0.694$ for all values of $\sigma_{\Scatt}$. 
-Figure~\ref{fig:SineWaveDiffusionJ} shows the convergence.
+Figure~\ref{fig:SineWaveDiffusionJ} shows the error versus $N$.
 SSP2332 and PD-ARS schemes display third-order accuracy for the number density, $\cJ$, and second-order accuracy for $\cH_{x}$, and their errors are difficult to distinguish.
-PD-ARS with SSP2332 behaves as good as SSP2332 in the diffusion region but requires 1/3 less implicit solvers.
+PD-ARS with SSPRK2 behaves as good as SSP2332 in the diffusion region but requires 1/3 less implicit solvers.
 \begin{figure}[h]
   \centering
   \centerline{\includegraphics[width=1.2\textwidth]{figures/SineWaveDiffusion}}
@@ -68,13 +68,14 @@ PD-ARS with SSP2332 behaves as good as SSP2332 in the diffusion region but requi
 \end{figure}
 
 \subsection{Neutrino Stationary State Test} \label{se: Neutrino Stationary State Test}
-Next we consider a more ``realistic'' test: two-dimensional neutrino transport with emission, absorption, and elastic scattering in a stationary ``realistic'' background.
+Next we consider a more ``realistic'' test: two-dimensional neutrino transport with emission, absorption, and elastic scattering through a stationary background.
 This is designed to test the realizability-preserving properties of the PD-ARS schemes.
 Figure~\ref{fig:NeutrinoStationaryTestEOS} plots the thermal state and the opacities we used.
 This test is constructed on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200], x^{2}\in[0,200]\}$ with a grid of 128 elements in each direction.
 We take 10 energy groups from 0~MeV to 300~MeV and initialize the neutrino number density $\cJ$ and flux density $\bcH$ both at zero(arbitrarily small).
-For the realizability-preserving test, CB closure with PD-ARS schemes, SSP2332, a scheme proposed by Cavaglieri \& Bewley \cite{cavaglieriBewley2015}, and a scheme proposed by McClarren et al \cite{mcclarren_etal_2008} are all applied.
-Only PD-ARS schemes produce realizability-preserving results and evolve the model to a stable state.
+For the realizability-preserving test, we employ the CB closure with PD-ARS schemes, SSP2332, a scheme proposed by Cavaglieri \& Bewley \cite{cavaglieriBewley2015}, and a scheme proposed by McClarren et al \cite{mcclarren_etal_2008} are all applied.
+Only PD-ARS schemes produce realizability-preserving results and evolve the model to a steady state.
+The other schemes crashed immediately after several steps.
 The realizability-preserving plot and the evolve process of PD-ARS schemes are given in Figure~\ref{fig:NeutrinoStationaryTestEvolve}. 
 
 \begin{figure}[h]

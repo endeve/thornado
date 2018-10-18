@@ -1,7 +1,7 @@
 \section{Conclusion}\label{se:Conclusion}
 
 We have developed IMEX schemes for two-moment neutrino transport in \texttt{thornado} that respect Fermi-Dirac statistics.
-The schemes employ algebraic closure based on Fermi-Dirac statistics, a first-order discontinuous Galerkin method, the simple Lax-Friedrichs flux, and convex-invariant time integration to maintain point-wise realizability of the moments.
+The schemes employ algebraic closure based on Fermi-Dirac statistics, a third-order discontinuous Galerkin method, the Lax-Friedrichs flux, and convex-invariant time integration to maintain cell-average realizability of the moments.
 Since the realizability-preserving property is obtained from the convexity of the realizable domain, it's possible to construct a scheme with a high-order DG method.
 See \cite{chu_etal_2018} for some examples with third-order DG methods.
 
