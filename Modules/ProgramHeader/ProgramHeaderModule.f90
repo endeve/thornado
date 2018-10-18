@@ -62,6 +62,9 @@ MODULE ProgramHeaderModule
   REAL(DP), PUBLIC, PARAMETER :: NewtonTol = 1.0d-12
 
   PUBLIC :: InitializeProgramHeader
+  PUBLIC :: InitializeProgramHeaderX
+  PUBLIC :: InitializeProgramHeaderE
+  PUBLIC :: DescribeProgramHeader
 
 CONTAINS
 
@@ -86,8 +89,6 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: eR_Option
     REAL(DP),         INTENT(in), OPTIONAL :: zoomE_Option
 
-    INTEGER :: iDim
-
     IF( PRESENT( ProgramName_Option ) )THEN
       ProgramName = TRIM( ProgramName_Option )
     ELSE
@@ -110,6 +111,37 @@ CONTAINS
     END IF
 
     ! --- Position Space ---
+
+    CALL InitializeProgramHeaderX &
+           ( nX_Option = nX_Option, swX_Option = swX_Option, &
+             bcX_Option = bcX_Option, xL_Option = xL_Option, &
+             xR_Option = xR_Option, zoomX_Option = zoomX_Option )
+
+    ! --- Energy Space ---
+
+    CALL InitializeProgramHeaderE &
+           ( nE_Option = nE_Option, swE_Option = swE_Option, &
+             bcE_Option = bcE_Option, eL_Option = eL_Option, &
+             eR_Option = eR_Option, zoomE_Option = zoomE_Option )
+
+    ! --- Energy-Position Space ---
+
+    CALL InitializeProgramHeaderZ
+
+  END SUBROUTINE InitializeProgramHeader
+
+
+  SUBROUTINE InitializeProgramHeaderX &
+    ( nX_Option, swX_Option, bcX_Option, xL_Option, xR_Option, zoomX_Option )
+
+    INTEGER,  INTENT(in), OPTIONAL :: nX_Option(3)
+    INTEGER,  INTENT(in), OPTIONAL :: swX_Option(3)
+    INTEGER,  INTENT(in), OPTIONAL :: bcX_Option(3)
+    REAL(DP), INTENT(in), OPTIONAL :: xL_Option(3)
+    REAL(DP), INTENT(in), OPTIONAL :: xR_Option(3)
+    REAL(DP), INTENT(in), OPTIONAL :: zoomX_Option(3)
+
+    INTEGER :: iDim
 
     IF( PRESENT( nX_Option ) )THEN
       nX = nX_Option
@@ -161,7 +193,20 @@ CONTAINS
 
     nDOFX = nNodes**nDimsX
 
-    ! --- Energy Space ---
+    CALL InitializeProgramHeaderZ
+
+  END SUBROUTINE InitializeProgramHeaderX
+
+
+  SUBROUTINE InitializeProgramHeaderE &
+    ( nE_Option, swE_Option, bcE_Option, eL_Option, eR_Option, zoomE_Option )
+
+    INTEGER,  INTENT(in), OPTIONAL :: nE_Option
+    INTEGER,  INTENT(in), OPTIONAL :: swE_Option
+    INTEGER,  INTENT(in), OPTIONAL :: bcE_Option
+    REAL(DP), INTENT(in), OPTIONAL :: eL_Option
+    REAL(DP), INTENT(in), OPTIONAL :: eR_Option
+    REAL(DP), INTENT(in), OPTIONAL :: zoomE_Option
 
     IF( PRESENT( nE_Option ) )THEN
       nE = nE_Option
@@ -211,7 +256,12 @@ CONTAINS
 
     nDOFE = nNodes**nDimsE
 
-    ! --- Energy-Position Space ---
+    CALL InitializeProgramHeaderZ
+
+  END SUBROUTINE InitializeProgramHeaderE
+
+
+  SUBROUTINE InitializeProgramHeaderZ
 
     nZ      = [ nE,      nX      ]
     nNodesZ = [ nNodesE, nNodesX ]
@@ -228,7 +278,85 @@ CONTAINS
     nDims = nDimsX + nDimsE
     nDOF  = nNodes**nDims
 
-  END SUBROUTINE InitializeProgramHeader
+  END SUBROUTINE InitializeProgramHeaderZ
+
+
+  SUBROUTINE DescribeProgramHeader
+
+    CALL DescribeProgramHeaderX
+    CALL DescribeProgramHeaderE
+    CALL DescribeProgramHeaderZ
+
+  END SUBROUTINE DescribeProgramHeader
+
+
+  SUBROUTINE DescribeProgramHeaderX
+
+    WRITE(*,*)
+    WRITE(*,'(A6,A)') '', 'Program Header (X)'
+    WRITE(*,*)
+    WRITE(*,'(A6,A10,3I6.4)')      '',      'nX = ', nX
+    WRITE(*,'(A6,A10,3I6.4)')      '',     'swX = ', swX
+    WRITE(*,'(A6,A10,3I6.4)')      '',     'bcX = ', bcX
+    WRITE(*,'(A6,A10,3I6.4)')      '',   'iX_B0 = ', iX_B0
+    WRITE(*,'(A6,A10,3I6.4)')      '',   'iX_B1 = ', iX_B1
+    WRITE(*,'(A6,A10,3I6.4)')      '',   'iX_E0 = ', iX_E0
+    WRITE(*,'(A6,A10,3I6.4)')      '',   'iX_E1 = ', iX_E1
+    WRITE(*,'(A6,A10,3ES11.2E3)'), '',      'xL = ', xL
+    WRITE(*,'(A6,A10,3ES11.2E3)'), '',      'xR = ', xR
+    WRITE(*,'(A6,A10,3ES11.2E3)'), '',   'zoomX = ', zoomX
+    WRITE(*,'(A6,A10,3I6.4)')      '', 'nNodesX = ', nNodesX
+    WRITE(*,'(A6,A10,1I6.4)')      '',  'nDimsX = ', nDimsX
+    WRITE(*,'(A6,A10,1I6.4)')      '',   'nDOFX = ', nDOFX
+    WRITE(*,*)
+
+  END SUBROUTINE DescribeProgramHeaderX
+
+
+  SUBROUTINE DescribeProgramHeaderE
+
+    WRITE(*,*)
+    WRITE(*,'(A6,A)') '', 'Program Header (E)'
+    WRITE(*,*)
+    WRITE(*,'(A6,A10,1I6.4)')      '',      'nE = ', nE
+    WRITE(*,'(A6,A10,1I6.4)')      '',     'swE = ', swE
+    WRITE(*,'(A6,A10,1I6.4)')      '',     'bcE = ', bcE
+    WRITE(*,'(A6,A10,1I6.4)')      '',   'iE_B0 = ', iE_B0
+    WRITE(*,'(A6,A10,1I6.4)')      '',   'iE_B1 = ', iE_B1
+    WRITE(*,'(A6,A10,1I6.4)')      '',   'iE_E0 = ', iE_E0
+    WRITE(*,'(A6,A10,1I6.4)')      '',   'iE_E1 = ', iE_E1
+    WRITE(*,'(A6,A10,1ES11.2E3)'), '',      'eL = ', eL
+    WRITE(*,'(A6,A10,1ES11.2E3)'), '',      'eR = ', eR
+    WRITE(*,'(A6,A10,1ES11.2E3)'), '',   'zoomE = ', zoomE
+    WRITE(*,'(A6,A10,1I6.4)')      '', 'nNodesE = ', nNodesE
+    WRITE(*,'(A6,A10,1I6.4)')      '',  'nDimsE = ', nDimsE
+    WRITE(*,'(A6,A10,1I6.4)')      '',   'nDOFE = ', nDOFE
+    WRITE(*,*)
+
+  END SUBROUTINE DescribeProgramHeaderE
+
+
+  SUBROUTINE DescribeProgramHeaderZ
+
+    WRITE(*,*)
+    WRITE(*,'(A6,A)') '', 'Program Header (Z)'
+    WRITE(*,*)
+    WRITE(*,'(A6,A10,4I6.4)')      '',      'nZ = ', nZ
+    WRITE(*,'(A6,A10,4I6.4)')      '',     'swZ = ', swZ
+    WRITE(*,'(A6,A10,4I6.4)')      '',     'bcZ = ', bcZ
+    WRITE(*,'(A6,A10,4I6.4)')      '',   'iZ_B0 = ', iZ_B0
+    WRITE(*,'(A6,A10,4I6.4)')      '',   'iZ_B1 = ', iZ_B1
+    WRITE(*,'(A6,A10,4I6.4)')      '',   'iZ_E0 = ', iZ_E0
+    WRITE(*,'(A6,A10,4I6.4)')      '',   'iZ_E1 = ', iZ_E1
+    WRITE(*,'(A6,A10,4ES11.2E3)'), '',      'zL = ', zL
+    WRITE(*,'(A6,A10,4ES11.2E3)'), '',      'zR = ', zR
+    WRITE(*,'(A6,A10,4ES11.2E3)'), '',   'zoomZ = ', zoomZ
+    WRITE(*,'(A6,A10,4I6.4)')      '', 'nNodesZ = ', nNodesZ
+    WRITE(*,'(A6,A10,1I6.4)')      '',   'nDims = ', nDims
+    WRITE(*,'(A6,A10,1I6.4)')      '',    'nDOF = ', nDOF
+    WRITE(*,*)
+
+  END SUBROUTINE DescribeProgramHeaderZ
 
 
 END MODULE ProgramHeaderModule
