@@ -60,15 +60,24 @@ module ThornadoInitializationModule
 
 contains
 
-  subroutine InitThornado( nDimsX, nE, zoomE, nSpeciesIn ) &
+  subroutine InitThornado &
+    ( nDimsX, nE, swE, eL_in, eR_in, zoomE, nSpecies_in ) &
       bind(C, name = "InitThornado")
 
+    use UnitsModule          , only : MeV
+    use ProgramHeaderModule  , only : nNodesE
     use RadiationFieldsModule, only : nSpecies
 
-    integer,  INTENT(in) :: nDimsX, nE, nSpeciesIn
-    real(dp), INTENT(in) :: zoomE
+    integer,  intent(in) :: nDimsX, nE, swE, nSpecies_in
+    real(dp), intent(in) :: eL_in, eR_in, zoomE
 
-    integer :: nX(3), i
+    integer  :: nX(3), i
+    real(DP) :: eL, eR
+
+    ! --- Convert from MeV (expected) to thornado code units ---
+
+    eL = eL_in * MeV
+    eR = eR_in * MeV
 
     nX = 1
     DO i = 1, nDimsX
@@ -77,9 +86,10 @@ contains
 
     call InitializeProgramHeader &
            ( ProgramName_Option = '', nNodes_Option = 2, &
-             nX_Option = nX, nE_Option = nE, zoomE_Option = zoomE )
+             nX_Option = nX, nE_Option = nE, swE_Option = swE, &
+             eL_Option = eL, eR_Option = eR, zoomE_Option = zoomE )
 
-    nSpecies = nSpeciesIn
+    nSpecies = nSpecies_in
 
     call InitializeQuadratures
 
@@ -97,10 +107,37 @@ contains
 
     call InitializeReferenceElement_Lagrange
 
+    ! --- Energy Grid ---
+
+    call CreateMesh &
+           ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
+
+    call CreateGeometryFieldsE &
+           ( nE, swE, Verbose_Option = .FALSE. )
+
+    call ComputeGeometryE &
+           ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
+
+    ! --- Two-Moment Solver ---
+
+    call InitializeClosure_TwoMoment &
+           ( Verbose_Option = .FALSE. )
+
+    call InitializePositivityLimiter_TwoMoment &
+           ( Min_1_Option = 0.0_DP, &
+             Max_1_Option = 1.0_DP, &
+             Min_2_Option = 0.0_DP, &
+             UsePositivityLimiter_Option = .TRUE., &
+             Verbose_Option = .FALSE. )
+
+    ! --- Nuclear Equation of State ---
+
     call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = 'EquationOfStateTable.h5', &
              Verbose_Option = .true. )
+
+    ! --- Neutrino Opacities ---
 
     call InitializeOpacities_TABLE &
            ( OpacityTableName_Option &
@@ -146,8 +183,6 @@ contains
 
     END DO
 
-    call CreateMesh( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
-
     call CreateGeometryFields &
            ( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
              Verbose_Option = .FALSE. )
@@ -155,34 +190,9 @@ contains
     call CreateFluidFields &
            ( nX, swX, Verbose_Option = .FALSE. )
 
-    call CreateGeometryFieldsE &
-           ( nE, swE, Verbose_Option = .FALSE. )
-
-    call ComputeGeometryE &
-           ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
-
     call CreateRadiationFields &
            ( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
              Verbose_Option = .FALSE. )
-
-    ! --- Two-Moment Solver ---
-
-    call InitializeClosure_TwoMoment &
-           ( Verbose_Option = .FALSE. )
-
-    call InitializePositivityLimiter_TwoMoment &
-           ( Min_1_Option = 0.0_DP, &
-             Max_1_Option = 1.0_DP, &
-             Min_2_Option = 0.0_DP, &
-             UsePositivityLimiter_Option = .TRUE., &
-             Verbose_Option = .FALSE. )
-
- !  call InitializePositivityLimiter_TwoMoment &
- !         ( Min_1_Option = - HUGE( 1.0_DP ), &
- !           Max_1_Option = + HUGE( 1.0_DP ), &
- !           Min_2_Option = - HUGE( 1.0_DP ), &
- !           UsePositivityLimiter_Option = .FALSE., &
- !           Verbose_Option = .FALSE. )
 
   end subroutine InitThornado_Patch
 
