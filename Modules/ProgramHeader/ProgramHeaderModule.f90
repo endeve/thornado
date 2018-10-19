@@ -132,7 +132,8 @@ CONTAINS
 
 
   SUBROUTINE InitializeProgramHeaderX &
-    ( nX_Option, swX_Option, bcX_Option, xL_Option, xR_Option, zoomX_Option )
+    ( nX_Option, swX_Option, bcX_Option, xL_Option, xR_Option, zoomX_Option, &
+      reinitializeZ_Option )
 
     INTEGER,  INTENT(in), OPTIONAL :: nX_Option(3)
     INTEGER,  INTENT(in), OPTIONAL :: swX_Option(3)
@@ -140,7 +141,9 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: xL_Option(3)
     REAL(DP), INTENT(in), OPTIONAL :: xR_Option(3)
     REAL(DP), INTENT(in), OPTIONAL :: zoomX_Option(3)
+    LOGICAL,  INTENT(in), OPTIONAL :: reinitializeZ_Option
 
+    LOGICAL :: reinitializeZ
     INTEGER :: iDim
 
     IF( PRESENT( nX_Option ) )THEN
@@ -193,13 +196,22 @@ CONTAINS
 
     nDOFX = nNodes**nDimsX
 
-    CALL InitializeProgramHeaderZ
+    IF( PRESENT( reinitializeZ_Option ) )THEN
+      reinitializeZ = reinitializeZ_Option
+    ELSE
+      reinitializeZ = .FALSE.
+    END IF
+
+    IF( reinitializeZ )THEN
+      CALL InitializeProgramHeaderZ
+    END IF
 
   END SUBROUTINE InitializeProgramHeaderX
 
 
   SUBROUTINE InitializeProgramHeaderE &
-    ( nE_Option, swE_Option, bcE_Option, eL_Option, eR_Option, zoomE_Option )
+    ( nE_Option, swE_Option, bcE_Option, eL_Option, eR_Option, zoomE_Option, &
+      reinitializeZ_Option )
 
     INTEGER,  INTENT(in), OPTIONAL :: nE_Option
     INTEGER,  INTENT(in), OPTIONAL :: swE_Option
@@ -207,6 +219,9 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: eL_Option
     REAL(DP), INTENT(in), OPTIONAL :: eR_Option
     REAL(DP), INTENT(in), OPTIONAL :: zoomE_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: reinitializeZ_Option
+
+    LOGICAL :: reinitializeZ
 
     IF( PRESENT( nE_Option ) )THEN
       nE = nE_Option
@@ -256,7 +271,15 @@ CONTAINS
 
     nDOFE = nNodes**nDimsE
 
-    CALL InitializeProgramHeaderZ
+    IF( PRESENT( reinitializeZ_Option ) )THEN
+      reinitializeZ = reinitializeZ_Option
+    ELSE
+      reinitializeZ = .FALSE.
+    END IF
+
+    IF( reinitializeZ )THEN
+      CALL InitializeProgramHeaderZ
+    END IF
 
   END SUBROUTINE InitializeProgramHeaderE
 
