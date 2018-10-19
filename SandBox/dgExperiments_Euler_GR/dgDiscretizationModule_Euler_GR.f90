@@ -40,10 +40,6 @@ MODULE dgDiscretizationModule_Euler_GR
     NumericalFlux_X1_LLF_GR, &
     NumericalFlux_X1_HLL_GR, &
     NumericalFlux_X1_HLLC_GR
-  USE SlopeLimiterModule_Euler_GR, ONLY: &
-    ApplySlopeLimiter_Euler_GR
-  USE PositivityLimiterModule_Euler_GR, ONLY: &
-    ApplyPositivityLimiter_Euler_GR
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromSpecificInternalEnergy, &
     ComputeSoundSpeedFromPrimitive_GR
@@ -86,14 +82,6 @@ CONTAINS
     REAL(DP) :: dX1, dX2, dX3
 
     dU = Zero
-
-    IF( DEBUG ) WRITE(*,*) 'CALL ApplySlopeLimiter_Euler_GR'
-    CALL ApplySlopeLimiter_Euler_GR &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
-
-    IF( DEBUG ) WRITE(*,*) 'CALL ApplyPositivityLimiter_Euler_GR'
-    CALL ApplyPositivityLimiter_Euler_GR &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     IF( DEBUG ) WRITE(*,*) 'CALL ApplyBoundaryConditions_Fluid'
     CALL ApplyBoundaryConditions_Fluid &
