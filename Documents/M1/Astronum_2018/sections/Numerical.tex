@@ -56,6 +56,7 @@ Then the amplitude of the sine wave has been reduced by a factor $e^{-\pi^{2}/27
 Figure~\ref{fig:SineWaveDiffusionJ} shows the error versus $N$.
 SSP2332 and PD-ARS schemes display third-order accuracy for the number density, $\cJ$, and second-order accuracy for $\cH_{x}$, and their errors are difficult to distinguish.
 PD-ARS with SSPRK2 behaves as good as SSP2332 in the diffusion region but requires 1/3 less implicit solvers.
+
 \begin{figure}[h]
   \centering
   \centerline{\includegraphics[width=1.2\textwidth]{figures/SineWaveDiffusion}}
@@ -72,11 +73,12 @@ Next we consider a more ``realistic'' test: two-dimensional neutrino transport w
 This is designed to test the realizability-preserving properties of the PD-ARS schemes.
 Figure~\ref{fig:NeutrinoStationaryTestEOS} plots the thermal state and the opacities we used.
 This test is constructed on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200], x^{2}\in[0,200]\}$ with a grid of 128 elements in each direction.
-We take 10 energy groups from 0~MeV to 300~MeV and initialize the neutrino number density $\cJ$ and flux density $\bcH$ both at zero(arbitrarily small).
+We take 10 energy groups from 0~MeV to 300~MeV and initialize the neutrino number density $\cJ$ and flux density $\bcH$ \rc{both at zero(arbitrarily small) give the number}.
 For the realizability-preserving test, we employ the CB closure with PD-ARS schemes, SSP2332, a scheme proposed by Cavaglieri \& Bewley \cite{cavaglieriBewley2015}, and a scheme proposed by McClarren et al \cite{mcclarren_etal_2008} are all applied.
 Only PD-ARS schemes produce realizability-preserving results and evolve the model to a steady state.
 The other schemes crashed immediately after several steps.
 The realizability-preserving plot and the evolve process of PD-ARS schemes are given in Figure~\ref{fig:NeutrinoStationaryTestEvolve}. 
+\rc{More details of what's plotted.}
 
 \begin{figure}[h]
   \centering
@@ -93,7 +95,7 @@ The realizability-preserving plot and the evolve process of PD-ARS schemes are g
     \includegraphics[width=\textwidth]{figures/NSS_1_1}\\
     \includegraphics[width=\textwidth]{figures/NSS_3_1} \\
     \includegraphics[width=\textwidth]{figures/NSS_5_1} \\
-    \caption{Realizability (left column), the number density $\cJ$ versus radius (center column), and the flux factor $|\bcH|/\cJ$ versus radius (right column) at t = 0.01~ms ,0.35~ms and 5.0~ms for the neutrino stationary state test. For the realizability plots, the light blue area highlights the realizability domain, and the black lines define its boundary. Each $\bcM=(\cJ,\bcH)^{T}$ state is marked by a red dot. The results of PD-ARS with SSPRK2 and PD-ARS with SSPRK3 are indistinguishable in these plots.}
+    \caption{Realizability (left column) \rc{Explain the realizability difference(light blue and light red)}, the number density $\cJ$ versus radius (center column), and the flux factor $|\bcH|/\cJ$ versus radius (right column) at t = 0.01~ms ,0.35~ms and 5.0~ms for the neutrino stationary state test. For the realizability plots, the light blue area highlights the realizable domain, and the black lines define its boundary. Each $\bcM=(\cJ,\bcH)^{T}$ state is marked by a red dot. The results of PD-ARS with SSPRK2 and PD-ARS with SSPRK3 are indistinguishable in these plots.}
     \label{fig:NeutrinoStationaryTestEvolve}
 \end{figure}
 

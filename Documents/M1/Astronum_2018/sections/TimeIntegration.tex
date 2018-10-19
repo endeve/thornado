@@ -16,7 +16,7 @@ Since the realizable $\bcM$ define a convex set in $\cJ$-$\bcH$ space, convex-in
 The following discussion shows how to construct a convex-invariant scheme.
 
 \subsection{Standard Implicit-Explicit Scheme}
-Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, a standard $s$-stage IMEX scheme takes the following form \cite{pareschiRusso_2005}
+Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, a standard $s$-stage IMEX scheme takes the following form \cite{pareschiRusso_2005}: 
 \begin{align}
   \vect{u}^{(i)}
   &=\vect{u}^{n}
@@ -29,7 +29,7 @@ Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, a sta
   +\dt\sum_{i=1}^{s}w_{i}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}), \label{imexIntermediate} 
 \end{align}
 where  $(\tilde{a}_{ij})$ and $(a_{ij})$ are coefficients of the $i$-th stage and they are the elements of matrices $\tilde{A}$ and $A$, respectively.
-The vectors $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ are the weight vectors.
+The vectors $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ are the weights in the assembly step in Eq.~\eqref{imexIntermediate}.
 These coefficients and weights have to satisfy certain condition for an accurate and consistent scheme.
 For instance, to have second-order temporal accuracy, the following conditions are required:
 \begin{equation}
@@ -47,8 +47,9 @@ and
 where $\tilde{c}_{i} = \sum_{j}^{s}\tilde{a}_{ij}$ and $c_{i}=\sum_{j}^{s}a_{ij}$.
 
 \subsection{A Constraint-Preserving Implicit-Explicit Scheme}
-Beyond the accuracy requirement, a convex-invariant IMEX scheme has extra constraints to satisfy.
-The problem left is to find the additional constraints on $(\tilde{a}_{ij})$, $(a_{ij})$, $\tilde{w}_{i}$, and $w_{i}$.
+Beyond the accuracy requirement, a convex-invariant IMEX scheme must satisfy additional constraints.
+Our idea is finding the constraints on $a_{ij}$, $\tilde{a}_{ij}$, $\tilde{w}_{i}$, and $w_{i}$ that enable each $\vect{u}^{(i)}$ and $\vect{u}^{n+1}$ be convex combination of realizable moments:
+
 Following Hu et al\cite{hu_etal_2018}, the stage values in Eq.~\eqref{imexStages} can be rewritten as
 \begin{equation}
   \vect{u}^{(i)}
@@ -56,9 +57,15 @@ Following Hu et al\cite{hu_etal_2018}, the stage values in Eq.~\eqref{imexStages
   +a_{ii}\,\dt\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}),\quad i=1,\ldots,s,
   \label{eq:imexStagesRewrite}
 \end{equation}
-with $c_{ij}$ and $\hat{c}_{ij}$ be given by $a_{ij}$ and $\tilde{a}_{ij}$.
+with $c_{ij}$ and $\hat{c}_{ij}$ be some expression of $a_{ij}$ and $\tilde{a}_{ij}$.
+By requiring the IMEX scheme be globally stiffly accurate (GSA), i.e. $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i}$ for $i=1,\ldots,s$, $\vect{u}^{n+1} = \vect{u}^{(s)}$.
+Using those Lemma proved in \cite{chu_etal_2018}, we can find those constraints that $c_{ij}$ and $\hat{c}_{ij}$ (or $a_{ij}$ and $\tilde{a}_{ij}$) need to satisfy to ensure $\vect{u}^{(i)}$ and $\vect{u}^{n+1}$ be realizable.
 
-It can be proven that the conditions we need for a simple convex-invariant IMEX scheme are: \cite{chu_etal_2018}
+\rc{Diffusion accurate detail...}
+
+\rc{Only ARS and define ARS...}
+
+Here is list of our constraints \cite{chu_etal_2018}:
 \begin{enumerate}
     \item Consistency of the implicit coefficients:
     \begin{equation}
