@@ -207,19 +207,11 @@ contains
 
     END DO
 
-    call DestroyMesh( MeshE )
-
     call DestroyGeometryFields
 
     call DestroyFluidFields
 
-    call DestroyGeometryFieldsE
-
     call DestroyRadiationFields
-
-    ! --- Two-Moment Solver ---
-
-    call FinalizePositivityLimiter_TwoMoment
 
   end subroutine FreeThornado_Patch
 
