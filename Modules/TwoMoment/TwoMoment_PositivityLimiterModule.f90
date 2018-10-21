@@ -143,7 +143,9 @@ CONTAINS
 
   SUBROUTINE FinalizePositivityLimiter_TwoMoment
 
-    DEALLOCATE( U_PP )
+    IF (ALLOCATED( U_PP )) THEN
+       DEALLOCATE( U_PP )
+    END IF
 
   END SUBROUTINE FinalizePositivityLimiter_TwoMoment
 
