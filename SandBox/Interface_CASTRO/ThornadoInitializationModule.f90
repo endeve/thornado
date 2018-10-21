@@ -146,33 +146,21 @@ contains
 
   end subroutine InitThornado
 
-  subroutine InitThornado_Patch( nX, swX, xL, xR, swE, eL_in, eR_in ) &
+  subroutine InitThornado_Patch( nX, swX, xL, xR) &
       bind(C, name = "InitThornado_Patch")
 
-    use UnitsModule          , only : MeV
     use RadiationFieldsModule, only : nSpecies
-    use ProgramHeaderModule  , only : nE, nNodesX, nNodesE, zoomE
+    use ProgramHeaderModule  , only : nNodesX
 
     integer,  INTENT(in) :: nX(3), swX(3)
     REAL(DP), INTENT(in) :: xL(3), xR(3)
-    integer,  INTENT(in) :: swE
-    REAL(DP), INTENT(in) :: eL_in, eR_in
 
-    REAL(DP) :: eL, eR
     integer  :: iDim
-
-    ! --- Convert from MeV (expected) to thornado code units ---
-
-    eL = eL_in * MeV
-    eR = eR_in * MeV
 
     call InitializeProgramHeader &
            ( ProgramName_Option = '', nNodes_Option = 2, &
              nX_Option = nX, swX_Option = swX, &
-             xL_Option = xL, xR_Option  = xR,  &
-             nE_Option = nE, swE_Option = swE, &
-             eL_Option = eL, eR_Option  = eR,  &
-             zoomE_Option = zoomE )
+             xL_Option = xL, xR_Option  = xR)
 
     ! Note we always use 3 here even if calling from Castro 2D
     DO iDim = 1, 3
@@ -185,13 +173,6 @@ contains
 
     call CreateGeometryFields &
            ( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
-             Verbose_Option = .FALSE. )
-
-    call CreateFluidFields &
-           ( nX, swX, Verbose_Option = .FALSE. )
-
-    call CreateRadiationFields &
-           ( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
              Verbose_Option = .FALSE. )
 
   end subroutine InitThornado_Patch
@@ -208,10 +189,6 @@ contains
     END DO
 
     call DestroyGeometryFields
-
-    call DestroyFluidFields
-
-    call DestroyRadiationFields
 
   end subroutine FreeThornado_Patch
 
