@@ -66,7 +66,9 @@ CONTAINS
 
   SUBROUTINE DestroyGeometryFieldsE
 
-    DEALLOCATE( uGE )
+    IF (ALLOCATED( uGE )) THEN
+       DEALLOCATE( uGE )
+    END IF
 
   END SUBROUTINE DestroyGeometryFieldsE
 
