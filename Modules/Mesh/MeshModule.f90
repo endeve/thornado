@@ -124,9 +124,17 @@ CONTAINS
 
     TYPE(MeshType) :: Mesh
 
-    DEALLOCATE( Mesh % Center )
-    DEALLOCATE( Mesh % Width  )
-    DEALLOCATE( Mesh % Nodes  )
+    IF (ALLOCATED( Mesh % Center )) THEN
+       DEALLOCATE( Mesh % Center )
+    END IF
+
+    IF (ALLOCATED( Mesh % Width  )) THEN
+       DEALLOCATE( Mesh % Width  )
+    END IF
+
+    IF (ALLOCATED( Mesh % Nodes  )) THEN
+       DEALLOCATE( Mesh % Nodes  )
+    END IF
 
   END SUBROUTINE DestroyMesh
 
