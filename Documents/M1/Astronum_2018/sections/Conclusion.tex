@@ -12,10 +12,9 @@ As a result, we employed the Cernohorsky \& Bludman closure in all of the numeri
 
 Two PD-ARS schemes are proposed for the desired IMEX scheme.
 The one with SSPRK2 is second-order accurate and strong-stability preserving in the streaming limit while the other with SSPRK3 is third-order accurate.
-Their properties, both accuracy and convex-invariance, were demonstrated with numerical tests.
-
-\rc{Discuss the stationary state test ...}
-
+Their accuracy were demonstrated with some problems with known smooth solutions in streaming, absorption, ans scattering-dominated regimes.
+Neutrino transport test with neutrino emission, absorption, elastic scattering, and stationary background, was designed to test the convex-invariance of our PD-ARS schemes.
+The neutrino stationary state test shows that it's necessary to combine an algebraic closure based on Fermi-Dirac statistics and convex-invariant time integration for a solid CCSN simulation.
 
 In this work, we adopted Cartesian coordinates, linear collision term, and a fixed non-relativistic material background.
 More realistic problems of scientific interest, such as with the scattering with energy exchange and relativistic effects, are left for future research.

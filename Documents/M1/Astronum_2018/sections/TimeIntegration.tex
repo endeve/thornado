@@ -46,7 +46,7 @@ and
 \end{equation}
 where $\tilde{c}_{i} = \sum_{j}^{s}\tilde{a}_{ij}$ and $c_{i}=\sum_{j}^{s}a_{ij}$.
 
-\subsection{A Constraint-Preserving Implicit-Explicit Scheme}
+\subsection{Constraint-Preserving Implicit-Explicit Schemes}
 Beyond the accuracy requirement, a convex-invariant IMEX scheme must satisfy additional constraints.
 Our idea is finding the constraints on $a_{ij}$, $\tilde{a}_{ij}$, $\tilde{w}_{i}$, and $w_{i}$ that enable each $\vect{u}^{(i)}$ and $\vect{u}^{n+1}$ be convex combination of realizable moments:
 
@@ -61,11 +61,38 @@ with $c_{ij}$ and $\hat{c}_{ij}$ be some expression of $a_{ij}$ and $\tilde{a}_{
 By requiring the IMEX scheme be globally stiffly accurate (GSA), i.e. $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i}$ for $i=1,\ldots,s$, $\vect{u}^{n+1} = \vect{u}^{(s)}$.
 Using those Lemma proved in \cite{chu_etal_2018}, we can find those constraints that $c_{ij}$ and $\hat{c}_{ij}$ (or $a_{ij}$ and $\tilde{a}_{ij}$) need to satisfy to ensure $\vect{u}^{(i)}$ and $\vect{u}^{n+1}$ be realizable.
 
-\rc{Diffusion accurate detail...}
+\subsection{Diffusion Accurate, Constraint-Preserving Implicit-Explicit Schemes}
+Diffusion accurate is the other property the time integration should have.
+In the diffusion limit, the distribution function is nearly isotropic so that $\vect{\cK}\approx\f{1}{3}\,\cJ\,\vect{I}$ and $\vect{\cH}\approx-\f{1}{3}\,\tau\,\nabla\cJ$.
+The moment behavior are governed by (e.g., \cite{jinLevermore_1996})
+\begin{equation}
+  \pd{\cJ}{t} + \nabla\cdot\vect{\cH} = 0
+  \quad\text{and}\quad
+  \vect{\cH} = - \tau\,\nabla\cdot\vect{\cK}.  
+  \label{eq:diffusionLimit}
+\end{equation}
+In the context of IMEX schemes, the above relationships imply that the relation $A\,\vec{\vect{\cH}}=-\f{1}{3}\,\tau\,\tilde{A}\,\nabla\vec{\cJ}$ should hold. 
+We derived the diffusion accurate condition in \cite{chu_etal_2018} and proved that only type~ARS (investigated by Ascher, Ruuth, and Spiteri\cite{ascher_etal_1997}) IMEX schemes can be our candidates.
 
-\rc{Only ARS and define ARS...}
-
-Here is list of our constraints \cite{chu_etal_2018}:
+For type~ARS, $a_{i1} = 0$ for $i=1,\ldots,s$.
+$c_{ij}$ and $\hat{c}_{ij}$ are given by
+    \begin{equation}
+     \begin{aligned}
+      c_{i0} &= 1-\sum_{j=2}^{i-1}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad &
+      c_{ij} &= \sum_{l=j}^{i-1}a_{il}b_{lj}, \\
+      \tilde{c}_{i0} &= \tilde{a}_{i1}+\sum_{j=2}^{i-1}a_{ij}\tilde{b}_{j1}, \quad &
+      \tilde{c}_{ij} &= \tilde{a}_{ij}+\sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj},  
+     \end{aligned}
+     \label{eq:positivityCoefficientsARS}
+    \end{equation}
+    \begin{equation}
+      b_{ii} = \f{1}{a_{ii}}, \quad
+      b_{ij} = -\f{1}{a_{ii}}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad
+      \tilde{b}_{ij} = -\f{1}{a_{ii}}\Big(\tilde{a}_{ij}+\sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj}\Big).  
+    \end{equation}
+    Note that $c_{i1}=\tilde{c}_{i1}=0$ in Eq.~\eqref{eq:positivityCoefficientsARS} so that $\sum_{j=0}^{i-1}c_{ij}=1$.
+    
+Combining the conditions we have, we aim to find type~ARS IMEX scheme with.
 \begin{enumerate}
     \item Consistency of the implicit coefficients:
     \begin{equation}
@@ -80,28 +107,11 @@ Here is list of our constraints \cite{chu_etal_2018}:
     \end{equation}
     \item Convex-invariant:
     \begin{align}
-      &a_{i1} = 0, \quad \text{for} \quad i=1,\ldots,s, \nonumber \\
       &a_{ii}>0, \quad c_{i0},\tilde{c}_{i0}\ge0, \quad \text{for} \quad i=2,\ldots,s, \nonumber \\
       &\text{and} \quad c_{ij},\tilde{c}_{ij}\ge0, \quad \text{for} \quad i=3,\ldots,s, \quad\text{and}\quad j=2,\ldots,i-1.  
     \end{align}
     with $\sum_{j=0}^{i-1}c_{ij}=1$, for $i=1,\ldots,s$, and $c_{\Sch}=\min_{\substack{i = 2,\ldots,s \\ 
                   j = 0,2,\ldots,i-1}}\,\f{1}{\hat{c}_{ij}}>0$.
-    And $c_{ij}$ and $\hat{c}_{ij}$ be given by
-    \begin{equation}
-     \begin{aligned}
-      c_{i0} &= 1-\sum_{j=2}^{i-1}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad &
-      c_{ij} &= \sum_{l=j}^{i-1}a_{il}b_{lj} \\
-      \tilde{c}_{i0} &= \tilde{a}_{i1}+\sum_{j=2}^{i-1}a_{ij}\tilde{b}_{j1}, \quad &
-      \tilde{c}_{ij} &= \tilde{a}_{ij}+\sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj}.  
-     \end{aligned}
-     \label{eq:positivityCoefficientsARS}
-    \end{equation}
-    \begin{equation}
-      b_{ii} = \f{1}{a_{ii}}, \quad
-      b_{ij} = -\f{1}{a_{ii}}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad
-      \tilde{b}_{ij} = -\f{1}{a_{ii}}\Big(\tilde{a}_{ij}+\sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj}\Big).  
-    \end{equation}
-    Note that $c_{i1}=\tilde{c}_{i1}=0$ in Eq.~\eqref{eq:positivityCoefficientsARS} so that $\sum_{j=0}^{i-1}c_{ij}=1$.
     \item Well-behaved in the diffusion limit:
     \begin{equation}
       \vect{e}_{i}^{T}A^{-1}\tilde{A}\,\vect{e} = 1, \quad i=2,\ldots,s,
@@ -109,7 +119,7 @@ Here is list of our constraints \cite{chu_etal_2018}:
     \end{equation}
     where $\vect{e}_{i}$ is the $i$th column of the $s\times s$ identity matrix.
     \item Less than five stages ($s\le4$).
-    \item Globally stiffly accurate: $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i},\quad i=1,\ldots,s$. (GSA)
+    \item Globally stiffly accurate: $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i},\quad i=1,\ldots,s$. 
 \end{enumerate}  
 We call the IMEX scheme satisfying the above conditions {PD-ARS}. (Definition 3 in \cite{chu_etal_2018}.)
 We give two optimized PD-ARS schemes here: PD-ARS with SSPRK2 and  PD-ARS with SSPRK3. 

@@ -60,10 +60,6 @@ PD-ARS with SSPRK2 behaves as good as SSP2332 in the diffusion region but requir
 \begin{figure}[h]
   \centering
   \centerline{\includegraphics[width=1.2\textwidth]{figures/SineWaveDiffusion}}
-%  \begin{tabular}{cc}
-%    \includegraphics[width=0.5\textwidth]{figures/SineWaveDiffusionJ}
-%    \includegraphics[width=0.5\textwidth]{figures/SineWaveDiffusionH}
-%  \end{tabular}
    \caption{Absolute error for the number density $\cJ$ (left) and the number flux $\cH_{x}$ (right) versus number of elements for the sine wave diffusion test.  Results with different values of the scattering opacity $\sigma_{\Scatt}$, employing different IMEX schemes, are compared.  Errors with $\sigma_{\Scatt}=10^{2}$, $10^{3}$, and $10^{4}$ are plotted with red, green, and blue lines, respectively.  The IMEX schemes employed are:  SSP2332 ($+$), PD-ARS with SSPRK2 (circles), and PD-ARS with SSPRK3 (hexagram). Black dashed lines on the left plot reference lines proportional to $N^{-2}$ (top) and $N^{-3}$ (bottom), respectively. Black dashed line on the right plot reference lines proportional to $N^{-2}$ .}
    \label{fig:SineWaveDiffusionJ}
 \end{figure}
@@ -71,14 +67,16 @@ PD-ARS with SSPRK2 behaves as good as SSP2332 in the diffusion region but requir
 \subsection{Neutrino Stationary State Test} \label{se: Neutrino Stationary State Test}
 Next we consider a more ``realistic'' test: two-dimensional neutrino transport with emission, absorption, and elastic scattering through a stationary background.
 This is designed to test the realizability-preserving properties of the PD-ARS schemes.
-Figure~\ref{fig:NeutrinoStationaryTestEOS} plots the thermal state and the opacities we used.
+Figure~\ref{fig:NeutrinoStationaryTestEOS} plots the thermal state and the opacities, which are adopted from \cite{Bruenn_1985}, we used.
 This test is constructed on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200], x^{2}\in[0,200]\}$ with a grid of 128 elements in each direction.
-We take 10 energy groups from 0~MeV to 300~MeV and initialize the neutrino number density $\cJ$ and flux density $\bcH$ \rc{both at zero(arbitrarily small) give the number}.
+We take 10 energy groups from 0~MeV to 300~MeV and initialize the neutrino number density $\cJ = 10^{-99}$ and flux density $\bcH=0$.
 For the realizability-preserving test, we employ the CB closure with PD-ARS schemes, SSP2332, a scheme proposed by Cavaglieri \& Bewley \cite{cavaglieriBewley2015}, and a scheme proposed by McClarren et al \cite{mcclarren_etal_2008} are all applied.
 Only PD-ARS schemes produce realizability-preserving results and evolve the model to a steady state.
 The other schemes crashed immediately after several steps.
-The realizability-preserving plot and the evolve process of PD-ARS schemes are given in Figure~\ref{fig:NeutrinoStationaryTestEvolve}. 
-\rc{More details of what's plotted.}
+The realizability-preserving plots are given in the first column of Figure~\ref{fig:NeutrinoStationaryTestEvolve} at $t=0.01$~ms, 0.35~ms and 5.0~ms.
+With each states be marked as a red dot in $\cJ$-$\bcH$ space and the realizable domain be light blue region, they show that all the states achieved in the simulation with PD-ARS schemes are realizable.
+The second and third column of Figure~\ref{fig:NeutrinoStationaryTestEvolve} plot the corresponding the neutrino number density $\cJ$ and flux factor $|\bcH|/\cJ$ in radius.
+These plots show how the neutrinos generate and transport in the simulation.
 
 \begin{figure}[h]
   \centering
@@ -95,7 +93,7 @@ The realizability-preserving plot and the evolve process of PD-ARS schemes are g
     \includegraphics[width=\textwidth]{figures/NSS_1_1}\\
     \includegraphics[width=\textwidth]{figures/NSS_3_1} \\
     \includegraphics[width=\textwidth]{figures/NSS_5_1} \\
-    \caption{Realizability (left column) \rc{Explain the realizability difference(light blue and light red)}, the number density $\cJ$ versus radius (center column), and the flux factor $|\bcH|/\cJ$ versus radius (right column) at t = 0.01~ms ,0.35~ms and 5.0~ms for the neutrino stationary state test. For the realizability plots, the light blue area highlights the realizable domain, and the black lines define its boundary. Each $\bcM=(\cJ,\bcH)^{T}$ state is marked by a red dot. The results of PD-ARS with SSPRK2 and PD-ARS with SSPRK3 are indistinguishable in these plots.}
+    \caption{Realizability (left column, light blue domain for $f \in [0,1]$ with black-solid-line as boundary, light red for $f\geq 0$ with thin-red-solid-line as boundary) , the number density $\cJ$ versus radius (center column), and the flux factor $|\bcH|/\cJ$ versus radius (right column) at t = 0.01~ms ,0.35~ms and 5.0~ms for the neutrino stationary state test. For the realizability plots, each $\bcM=(\cJ,\bcH)^{T}$ state is marked by a red dot, which all sites in the light blue domain. The results of PD-ARS with SSPRK2 and PD-ARS with SSPRK3 are indistinguishable in these plots.}
     \label{fig:NeutrinoStationaryTestEvolve}
 \end{figure}
 

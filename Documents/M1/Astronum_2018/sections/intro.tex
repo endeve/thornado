@@ -3,15 +3,15 @@
 Core-collapse supernovae (CCSNe) are the explosions of massive stars that end their lives.
 CCSNe are a dominant source of heavy elements and play an important role in many astrophysical phenomena, such as neutron star and black hole formation.  
 Furthermore, these explosions occur at energies and densities relevant to address fundamental questions in nuclear, particle, and gravitational physics. 
-A solid theoretical framework for the CCSN explosion mechanism may help answer important questions in fundamental physics.\rc{[references]}
+A solid theoretical framework for the CCSN explosion mechanism may help answer important questions in fundamental physics.\cite{janka_etal_2007}
 
 One essential part of the explosion mechanism is neutrino transport.
-The neutrino energy deposition drives the CCSN explosion.  
-Ideally neutrino transport would be modeled by the Boltzmann transport equation, which is a integro-partial-differential equation evolving a phase-space distribution function $f$.
+The neutrino energy deposition drives the CCSN explosion.\cite{mezzacappaMesser_1999}
+Ideally neutrino transport would be modeled by the Boltzmann transport equation, which is a integro-partial-differential equation evolving a phase-space distribution function $f$.\cite{Bruenn_1985}
 Simulating the neutrino transport implies finding a solution of the Boltzmann equation for a specific domain and period with acceptable accuracy.
 
-However, solving the multi-dimensional Boltzmann transport equation is expensive.\rc{[references]}
-To balance physical fidelity and computational expediency, an approximate method called the two-moment method has been adopted.\rc{[references]}
+However, solving the multi-dimensional Boltzmann transport equation is expensive.
+To balance physical fidelity and computational expediency, an approximate method called the two-moment method has been adopted.\cite{mezzacappaMesser_1999}
 In the two-moment method, the evolved variables are the zeroth and first angular moments of the distribution function $f$: the spectral particle density $\cJ$ and flux $\bcH$, respectively.
 However, the transport term in the Boltzmann transport equation is the dot product of the velocity vector and the gradient of the phase-space distribution function.
 Integrating this term with unit direction vector as the weight introduces the second angular moment $\bcK$ to the moment equations.
@@ -27,7 +27,7 @@ Such a global inversion is both expensive and unfriendly to parallelization.
 To circumvent these challenges, implicit-explicit (IMEX) methods are taken into consideration.
 By treating the transport terms in the two-moment equations explicitly and the collision terms implicitly, IMEX methods are subject only to a time step governed by the explicit transport terms, and the matrices to be inverted are block diagonal.
 Therefore, IMEX methods require fewer time steps comparing with fully explicit method, and the calculation for each step is easily parallelizable.  
-For a non-relativistic system where the propagating speed of gravity wave and fluid is much slower than the light speed, fully implicit method is a better choice for neutrino transport in CCSN simulation.\rc{[references]}
+For a non-relativistic system where the propagating speed of gravity wave and fluid is much slower than the light speed, fully implicit method is a better choice for neutrino transport in CCSN simulation.\cite{cernohorskyVanWeert_1992}(read ?)
 But for a relativistic circumstance that we have, where the gravity, fluid, and neutrino have a relativistic propagating speed, IMEX method
 balances the efficiency and cost.
 
@@ -51,3 +51,5 @@ This paper is organized as follows: Section~\ref{se:Two-MomentModel} discusses t
 Section~\ref{se:SpacialDiscretization} gives a first-order finite-volume spatial discretization and shows how the spatial discretization preserves constraints in an IMEX step;
 Section~\ref{se:TimeIntegration} discusses how to use convex combination to construct PD-ARS scheme and two PD-ARS schemes, one with second-order accuracy in the streaming limit and the other with third-order accuracy in the same limit;
 Section~\ref{se:NumericalTests} presents the results of the numerical tests, which demonstrate the properties of the PD-ARS schemes; Section~\ref{se:Conclusion} summarizes the achievements of this paper and discusses future works.
+
+\rc{Reference check}
