@@ -4,6 +4,7 @@ module ThornadoInitializationModule
     DP
   use ProgramHeaderModule, only: &
     InitializeProgramHeader, &
+    InitializeProgramHeaderX, &
     nNodesX, nNodesE, &
     iE_B0, iE_E0, iE_B1, iE_E1
   use QuadratureModule, only: &
@@ -157,9 +158,8 @@ contains
 
     integer  :: iDim
 
-    call InitializeProgramHeader &
-           ( ProgramName_Option = '', nNodes_Option = 2, &
-             nX_Option = nX, swX_Option = swX, &
+    call InitializeProgramHeaderX &
+           ( nX_Option = nX, swX_Option = swX, &
              xL_Option = xL, xR_Option  = xR)
 
     ! Note we always use 3 here even if calling from Castro 2D
