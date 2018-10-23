@@ -124,14 +124,14 @@ Substituting \eqref{Eq:LLF} with \eqref{Eq:EigVals} into \eqref{Eq:1stOrderDG}:
     &\left.\hspace{7em}-\bF\left(\ol{\bU}^{n}_{i}\right)-\bF\left(\ol{\bU}^{n}_{i-1}\right)+\alpha_{\imh}\left(\ol{\bU}^{n}_{i}-\ol{\bU}^{n}_{i-1}\right)\right]\nonumber\\
     &=\left[1-\f{\eta_{i}}{2}\left(\alpha_{\iph}+\alpha_{\imh}\right)\right]\ol{\bU}^{n}_{i}+\f{\eta_{i}}{2}\,\alpha_{\iph}\left[\ol{\bU}^{n}_{i+1}-\f{1}{\alpha_{\iph}}\bF\left(\ol{\bU}^{n}_{i+1}\right)\right]\nonumber\\
     &\hspace{15em}+\f{\eta_{i}}{2}\,\alpha_{\imh}\left[\ol{\bU}^{n}_{i-1}+\f{1}{\alpha_{\imh}}\bF\left(\ol{\bU}^{n}_{i-1}\right)\right]\nonumber\\
-    &=\left[1-\f{\eta_{i}}{2}\left(\alpha_{\iph}+\alpha_{\imh}\right)\right]\ol{\bU}^{n}_{i}+\f{\eta_{i}}{2}\,\alpha_{\iph}\,\bH^{-}\left(\ol{\bU}^{n}_{i+1},\alpha_{\iph}\right)+\f{\eta_{i}}{2}\,\alpha_{\iph}\,\bH^{+}\left(\ol{\bU}^{n}_{i-1},\alpha_{\imh}\right),\label{Eq:ConvComb}
+    &=\left[1-\f{\eta_{i}}{2}\left(\alpha_{\iph}+\alpha_{\imh}\right)\right]\ol{\bU}^{n}_{i}+\f{\eta_{i}}{2}\,\alpha_{\iph}\,\ol{\bH}^{-}\left(\ol{\bU}^{n}_{i+1},\alpha_{\iph}\right)+\f{\eta_{i}}{2}\,\alpha_{\iph}\,\ol{\bH}^{+}\left(\ol{\bU}^{n}_{i-1},\alpha_{\imh}\right),\label{Eq:ConvComb}
 \end{align}
 where
 \begin{equation}\label{Eq:Hpm}
-    \bH^{\pm}\left(\ol{\bU},\alpha\right)\equiv\ol{\bU}\pm\f{1}{\alpha}\,\bF\left(\ol{\bU}\right).
+    \ol{\bH}^{\pm}\left(\ol{\bU},\alpha\right)\equiv\ol{\bU}\pm\f{1}{\alpha}\,\bF\left(\ol{\bU}\right).
 \end{equation}
 
-The proof that $\bH^{\pm}\in\cG$ is given in \citet{Qin2016}. Therefore, we see that with a restriction on $\alpha_{i\pm\f{1}{2}}$ that \eqref{Eq:ConvComb} is a convex combination. The restriction is (recalling that $\eta_{i}=\Delta t_{i}/\Delta x_{i}$):
+The proof that $\ol{\bH}^{\pm}\in\cG$ is given in \citet{Qin2016}. Therefore, we see that with a restriction on $\alpha_{i\pm\f{1}{2}}$ that \eqref{Eq:ConvComb} is a convex combination. The restriction is (recalling that $\eta_{i}=\Delta t_{i}/\Delta x_{i}$):
 \begin{equation}
     1-\f{\eta_{i}}{2}\left(\alpha_{\iph}+\alpha_{\imh}\right)>0\implies\f{\eta_{i}}{2}\left(\alpha_{\iph}+\alpha_{\imh}\right)<1\implies \Delta t_{i}<\f{2\,\Delta x_{i}}{\alpha_{\iph}+\alpha_{\imh}}\leq\f{\Delta x_{i}}{\text{max}\left(\alpha_{i\pm\f{1}{2}}\right)}.
 \end{equation}
@@ -146,7 +146,11 @@ where the equality follows for a uniform mesh, i.e. $\Delta x_{i}=\Delta x\,\for
 
 
 \subsection{Curvilinear Coordinates}
-NOTE: We assume a conformally-flat, time-independent spatial three-metric.
+NOTE: We assume a conformally-flat, time-independent spatial three-metric:
+\begin{equation}
+    \gamma_{ij}\left(x^{k},t\right)\longrightarrow\psi^{4}\left(x^{k}\right)\,\ol{\gamma_{ii}}\left(x^{k}\right),
+\end{equation}
+where $\psi\left(x^{k}\right)$ is the conformal factor and $\ol{\gamma}_{ii}$ is the flat-space metric.
 
 \subsubsection{Set of Admissible States}
 We again consider a one-dimensional system of conservation laws, but this time with a curvilinear metric:
@@ -168,7 +172,15 @@ and $\bQ$ is a source term:
 \end{align}
 where we have used the fact that $\gamma_{jj}=\left(h_{j}\right)^{2}$. The $P^{kj}$ are components of the pressure tensor:
 \begin{equation}
-    P^{kj}=S^{k}\,v^{j}+p\,\gamma^{kj}=\gamma^{kj}\left[S_{a}\,v^{a}+p\right].
+    P^{kj}=S^{k}\,v^{j}+p\,\gamma^{kj}=\gamma^{k\ell}\,S_{\ell}\,v^{j}+p\,\gamma^{kj}=\gamma^{k\ell}\,S_{\ell}\,v^{j}+p\,\gamma^{k\ell}\,\delta^{j}_{~\ell}=\gamma^{k\ell}\left(S_{\ell}\,v^{j}+p\,\delta^{j}_{~\ell}\right).
+\end{equation}
+Since the spatial three-metric is diagonal we must have that $\ell=k$. We can therefore simplify further:
+\begin{equation}
+    P^{kj}=\gamma^{kk}\left(S_{k}\,v^{j}+p\,\delta^{j}_{~k}\right)=\f{1}{\gamma_{kk}}\,\left(S_{k}\,v^{j}+p\,\delta^{j}_{~k}\right)=\f{1}{\left(h_{k}\right)^{2}}\,\left(S_{k}\,v^{j}+p\,\delta^{j}_{~k}\right)
+\end{equation}
+For the pressure-tensor sum, we then have:
+\begin{equation}\label{Eq:PressureTensorSum}
+    P^{kj}\,\p_{1}\,\gamma_{kj}=P^{kk}\,\p_{1}\,\gamma_{kk}=P^{kk}\,\p_{1}\left(h_{k}\right)^{2}=2\,P^{kk}\,h_{k}\,\p_{1}\,h_{k}=\f{2}{h_{k}}\left(S_{k}\,v^{k}+p\right)\,\p_{1}\,h_{k}.
 \end{equation}
 
 These definitions lead us to define the same set of admissible states as before, namely:
@@ -180,7 +192,7 @@ the only difference being that $v^{2}$ now involves the metric:
     v^{2}=v^{j}\,v_{j}=\gamma_{kj}\,v^{k}\,v^{j}.
 \end{equation}
 
-Before continuing, we show that the introduction of the metric doesn't affect the translation between $\cG_{p}$ and $\cG$...\sd{Need to do this}
+Before continuing, we show that the introduction of the metric doesn't affect the translation between $\cG_{p}$ and $\cG$...\sd{I've shown this, just need to TeX it up}
 
 \subsubsection{Time-Step Derivation/CFL Condition}
 We start by integrating both sides over $dx^{1}$ and dividing by the volume, $\Delta V_{i}$:
@@ -215,24 +227,24 @@ So, we get:
 \begin{align}
     \ol{\bU}^{n+1}_{i}&=\ve\left\{\ol{\bU}^{n}_{i}-\f{\Delta t_{i}}{\ve\,\Delta V_{i}}\left[\sqrtgm_{\iph}\,\hat{\bF}^{n}_{\iph}-\sqrtgm_{\imh}\,\hat{\bF}^{n}_{\imh}\right]\right\}+\left(1-\ve\right)\ol{\bU}^{n}_{i}+\Delta t_{i}\,\ol{\bQ}^{n}_{i}\\
     &=\ve\left\{\ol{\bU}^{n}_{i}-\eta_{i}\left[\sqrtgm_{\iph}\,\hat{\bF}\left(\ol{\bU}^{n}_{i+1},\ol{\bU}^{n}_{i}\right)-\sqrtgm_{\imh}\,\hat{\bF}\left(\ol{\bU}^{n}_{i},\ol{\bU}^{n}_{i-1}\right)\right]\right\}+\left(1-\ve\right)\ol{\bU}^{n}_{i}+\Delta t_{i}\,\ol{\bQ}^{n}_{i}\\
-    &=\ve\,\bH_{1}+\left(1-\ve\right)\bH_{2},
+    &=\ve\,\ol{\bH}_{1}+\left(1-\ve\right)\ol{\bH}_{2},
 \end{align}
 where
 \begin{equation}
-    \bH_{1}\equiv \ol{\bU}^{n}_{i}-\eta_{i}\left[\sqrtgm_{\iph}\,\hat{\bF}\left(\ol{\bU}^{n}_{i+1},\ol{\bU}^{n}_{i}\right)-\sqrtgm_{\imh}\,\hat{\bF}\left(\ol{\bU}^{n}_{i},\ol{\bU}^{n}_{i-1}\right)\right],
+    \ol{\bH}_{1}\equiv \ol{\bU}^{n}_{i}-\eta_{i}\left[\sqrtgm_{\iph}\,\hat{\bF}\left(\ol{\bU}^{n}_{i+1},\ol{\bU}^{n}_{i}\right)-\sqrtgm_{\imh}\,\hat{\bF}\left(\ol{\bU}^{n}_{i},\ol{\bU}^{n}_{i-1}\right)\right],
 \end{equation}
 \begin{equation}
-    \bH_{2}\equiv\ol{\bU}^{n}_{i}+\f{\Delta t_{i}}{1-\ve}\,\ol{\bQ}^{n}_{i},
+    \ol{\bH}_{2}\equiv\ol{\bU}^{n}_{i}+\f{\Delta t_{i}}{1-\ve}\,\ol{\bQ}^{n}_{i},
 \end{equation}
 and
 \begin{equation}
     \eta_{i}\equiv\f{\Delta t_{i}}{\ve\,\Delta V_{i}}.
 \end{equation}
 
-We proceed by focusing on each term individually, starting with the numerical flux term, $\bH_{1}$.
+We proceed by focusing on each term individually, starting with the numerical flux term, $\ol{\bH}_{1}$.
 
 \subsubsection{Numerical flux term}
-We have to show that $\bH_{1}\in\cG$. We again we use the Local-Lax-Friedrichs flux, \eqref{Eq:LLF}, yielding for $\bH_{1}$:
+We have to show that $\ol{\bH}_{1}\in\cG$. We again we use the Local-Lax-Friedrichs flux, \eqref{Eq:LLF}, yielding for $\ol{\bH}_{1}$:
 \begin{align}
     \ol{\bU}^{n}_{i}-\f{\eta_{i}}{2}\Big\{&\sqrtgm_{\iph}\left[\bF\left(\ol{\bU}^{n}_{i+1}\right)+\bF\left(\ol{\bU}^{n}_{i}\right)-\alpha_{\iph}\left(\ol{\bU}^{n}_{i+1}-\ol{\bU}^{n}_{i}\right)\right]\\
     &-\sqrtgm_{\imh}\left[\bF\left(\ol{\bU}^{n}_{i}\right)+\bF\left(\ol{\bU}^{n}_{i-1}\right)-\alpha_{\imh}\left(\ol{\bU}^{n}_{i}-\ol{\bU}^{n}_{i-1}\right)\right]\Big\}\\
@@ -246,7 +258,7 @@ Now we add and subtract $\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\,\ol{
     &+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\left[\ol{\bU}^{n}_{i}-\f{1}{\alpha_{\iph}}\bF\left(\ol{\bU}^{n}_{i}\right)\right]+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\left[\ol{\bU}^{n}_{i}+\f{1}{\alpha_{\imh}}\bF\left(\ol{\bU}^{n}_{i}\right)\right]\\
     &+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\left[\ol{\bU}^{n}_{i-1}+\f{1}{\alpha_{\imh}}\bF\left(\ol{\bU}^{n}_{i-1}\right)\right]+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\left[\ol{\bU}^{n}_{i+1}-\f{1}{\alpha_{\iph}}\bF\left(\ol{\bU}^{n}_{i+1}\right)\right].
 \end{align}
-All of the terms in square brackets are similar to the $\bH$ quantities in \citet{Qin2016}, and are therefore in $\cG$. It can easily be seen that the sum of the coefficients is unity. The final condition is that the coefficient of $\ol{\bU}^{n}_{i}>0$, or (recalling that $\eta_{i}=\Delta t_{i}/\left(\ve\,\Delta V_{i}\right)$):
+All of the terms in square brackets are similar to the $\ol{\bH}$ quantities in \citet{Qin2016}, and are therefore in $\cG$. It can easily be seen that the sum of the coefficients is unity. The final condition is that the coefficient of $\ol{\bU}^{n}_{i}>0$, or (recalling that $\eta_{i}=\Delta t_{i}/\left(\ve\,\Delta V_{i}\right)$):
 \begin{align}
     1&-\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}-\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}>0\implies\eta_{i}\left(\sqrtgm_{\iph}\,\alpha_{\iph}+\sqrtgm_{\imh}\,\alpha_{\imh}\right)<1\\
     &\implies\Delta t_{i}<\f{\ve\,\Delta V_{i}}{\sqrtgm_{\iph}\,\alpha_{\iph}+\sqrtgm_{\imh}\,\alpha_{\imh}}\leq\f{\ve\,\Delta V_{i}}{2\,\text{max}\left(\sqrtgm_{i\pm\f{1}{2}}\,\alpha_{i\pm\f{1}{2}}\right)}.
@@ -270,23 +282,23 @@ For spherical-polar coordinates in 1-D we have that $\Delta V_{i}=1/3\left(r_{\i
 \end{align}
 We know that $\Delta r_{i}/r_{\iph}\in\left[0,1\right]$; the minimum value of the quadratic function in this domain is unity. So, we have that for spherical-polar coordinates:
 \begin{equation}
-\Delta t<\f{\ve}{6}\,\text{min}\left(\Delta r_{i}\right).
+    \Delta t<\f{\ve}{6}\,\text{min}\left(\Delta r_{i}\right).
 \end{equation}
 
 Next we handle the source term.
 
 \subsubsection{Source term}
-For this section we drop the subscript $i$ and the superscript $n$. We have to show that $\bH_{2}\in\cG$, where
+For this section we drop the subscript $i$ and the superscript $n$. We have to show that $\ol{\bH}_{2}\in\cG$, where
 \begin{equation}
-    \bH_{2}=\begin{pmatrix}\ol{D}\\ \ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}} \\ \ol{\tau}\end{pmatrix},\hspace{1em}\left(H_{2}\right)_{1}>0,\hspace{1em}\left(H_{2}\right)_{3}+\left(H_{2}\right)_{1}>\sqrt{\left(H_{2}\right)_{1}\left(H_{2}\right)_{1}+\left(H_{2}\right)_{2}\left(H_{2}\right)^{2}}.
+    \ol{\bH}_{2}=\begin{pmatrix}\ol{D}\\ \ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}} \\ \ol{\tau}\end{pmatrix},\hspace{1em}\left(\ol{H}_{2}\right)_{1}>0,\hspace{1em}\left(\ol{H}_{2}\right)_{3}+\left(\ol{H}_{2}\right)_{1}>\sqrt{\left(\ol{H}_{2}\right)_{1}\left(\ol{H}_{2}\right)_{1}+\left(\ol{H}_{2}\right)_{2}\left(\ol{H}_{2}\right)^{2}}.
 \end{equation}
 
-It is clear that the first requirement for $\bH_{2}$ is met, i.e. $\ol{D}>0$. The second requirement is:
+It is clear that the first requirement for $\ol{\bH}_{2}$ is met, i.e. $\ol{D}>0$. The second requirement is:
 \begin{align}
-\ol{D}+\ol{\tau}&>\sqrt{\ol{D}^{2}+\left[\ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] \left[\ol{S}^{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\p^{1}\,\gamma_{kk}}\right] }\\
-&=\sqrt{\ol{D}^{2}+\left[\ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] \left[\ol{S}^{1}+\gamma^{11}\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] }\\
-&=\sqrt{\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}+\gamma^{11}\left[\f{\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}}{2\left(1-\ve\right)}\right]^{2}\left(\Delta t\right)^{2}+\f{\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}}{2\left(1-\ve\right)}\left[\ol{S}_{1}\,\gamma^{11}+\ol{S}^{1}\right]\Delta t}\\
-&=\sqrt{a\left(\Delta t\right)^{2}+b\,\Delta t+c}\geq0,
+    \ol{D}+\ol{\tau}&>\sqrt{\ol{D}^{2}+\left[\ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] \left[\ol{S}^{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\p^{1}\,\gamma_{kk}}\right] }\\
+    &=\sqrt{\ol{D}^{2}+\left[\ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] \left[\ol{S}^{1}+\gamma^{11}\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] }\\
+    &=\sqrt{\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}+\gamma^{11}\left[\f{\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}}{2\left(1-\ve\right)}\right]^{2}\left(\Delta t\right)^{2}+\f{\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}}{2\left(1-\ve\right)}\left[\ol{S}_{1}\,\gamma^{11}+\ol{S}^{1}\right]\Delta t}\\
+    &=\sqrt{a\left(\Delta t\right)^{2}+b\,\Delta t+c}\geq0,
 \end{align}
 where
 \begin{align}
@@ -296,7 +308,7 @@ where
 \end{align}
 The condition for a quadratic function to be positive-definite is that $a>0$ (concave-up) and $b^{2}-4\,a\,c<0$ (no real roots). The first condition is clearly met. For the second condition:
 \begin{equation}
-    \f{4\left(\ol{S}_{1}\right)^{2}}{\ol{\gamma_{11}}}a-4\,a\left(\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}\right)=4\,\ol{S}_{1}\,\ol{S}^{1}\,a-4\,a\ol{D}^{2}-4\,a\,\ol{S}_{1}\,\ol{S}^{1}=-4\,a\,\ol{D}^{2}<0.
+    b^{2}-4\,a\,c=\f{4\left(\ol{S}_{1}\right)^{2}}{\ol{\gamma_{11}}}a-4\,a\left(\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}\right)=4\,\ol{S}_{1}\,\ol{S}^{1}\,a-4\,a\ol{D}^{2}-4\,a\,\ol{S}_{1}\,\ol{S}^{1}=-4\,a\,\ol{D}^{2}<0.
 \end{equation}
 So, the square root is always positive.
 
@@ -310,14 +322,35 @@ where:
   c'=c-\ol{D}^{2}-\ol{\tau}^{2}-2\,\ol{D}\,\ol{\tau}=\ol{S}_{1}\,\ol{S}^{1}-\ol{\tau}^{2}-2\,\ol{D}\,\ol{\tau}.
 \end{equation}
 
-The solutions of this quadratic equation are:
+This time we want to make sure that our function has at least one real root. We still have that $a>0$, so now we check if $b^{2}-4\,a\,c'>0$:
+\begin{equation}
+    b^{2}-4\,a\,c'=\f{4\left(\ol{S}_{1}\right)^{2}}{\ol{\gamma_{11}}}a-4\,a\left(\ol{S}_{1}\,\ol{S}^{1}-\ol{\tau}^{2}-2\,\ol{D}\,\ol{\tau}\right)=4\,a\,\ol{\tau}\left(\ol{\tau}+2\,\ol{D}\right).
+\end{equation}
+Since $\ol{\tau}\geq0$, we must have that $\ol{\tau}>-2\,\ol{D}$. But, from condition two for $\ol{\bH}_{2}$ we have that $\ol{\tau}>-\ol{D}$, so this condition is automatically satisfied.
+
+The solutions to this quadratic equation are:
 \begin{align}
     \Delta t&=\f{-b}{2\,a}\pm\f{1}{2\,a}\sqrt{b^{2}-4\,a\,c'}=\f{-\ol{S}_{1}}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\pm\f{1}{2\,a}\sqrt{\f{4\ol{S}_{1}^{2}}{\ol{\gamma_{11}}}a-4\,a\,c'}\\
     &=\f{-\ol{S}_{1}}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\pm\f{1}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\sqrt{\ol{S}_{1}^{2}-c'\,\ol{\gamma_{11}}}=\f{1}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\left[-\ol{S}_{1}\pm\sqrt{\ol{S}_{1}^{2}-c'\,\ol{\gamma_{11}}}\right]\\
     &=\f{1}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\left[-\ol{S}_{1}\pm\sqrt{\ol{\gamma_{11}}\left(\ol{\tau}^{2}+2\,\ol{D}\,\ol{\tau}\right)}\right]\\
-    &=\f{2\left(1-\ve\right)}{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}\left[-\ol{S}_{1}\pm\sqrt{\ol{\gamma_{11}}\left(\ol{\tau}^{2}+2\,\ol{D}\,\ol{\tau}\right)}\right].
+    &=\f{2\left(1-\ve\right)}{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}\left[-\ol{S}_{1}\pm\sqrt{\ol{\gamma_{11}}\left(\ol{\tau}^{2}+2\,\ol{D}\,\ol{\tau}\right)}\right]\\
+    &=\f{2\left(1-\ve\right)}{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}\left[-\ol{S}_{1}\pm\sqrt{\ol{\gamma_{11}}\,\ol{\tau}\left(\ol{\tau}+2\,\ol{D}\right)}\right].
 \end{align}
-We see that we must have that $\ol{\tau}^{2}+2\,\ol{D}\,\ol{\tau}>0\implies\ol{\tau}>-2\,\ol{D}$. But, since we know that from the second condition of $\bH_{2}$ that $\ol{\tau}>-\ol{D}$, this requirement is met.
+
+\section{Computing the Time-Step Using Higher-Order DG Schemes}
+
+When making the jump to higher-order DG schemes, we can simply do the same as in the first-order scheme, except we compute the quantities in all of the nodal points instead of using a cell-average. This is valid because the cell-average is a convex combination...\sd{Need to expand on this}. The proof starts with the discretized equation valid at each quadrature point, $q$:
+\begin{equation}
+    \bU_{q}^{n+1}=\bU_{q}^{n}+\Delta t\,\cL_{q}^{n},
+\end{equation}
+where $\cL_{q}^{n}$ is a general form of the RHS at time $t^{n}$. If we define a vector $\ol{\bU}\equiv\left(\bU_{1},\cdots,\bU_{q},\cdots,\bU_{Q}\right)^T$, where $Q$ is the total number of quadrature points, and $\ol{\bW}\equiv\left(\bW_{1},\cdots,\bW_{q},\cdots,\bW_{Q}\right)^T$ as a vector of quadrature weights, then we can write the cell-average of $\bU$ as:
+\begin{equation}
+    \bU_{K}\equiv\ol{\bW}^T\ol{\bU}.
+\end{equation}
+If we then compute the cell-average of the above equation, we get:
+\begin{equation}
+    \bU_{K}^{n+1}=\bU_{K}^{n}+\Delta t\,\ol{\bW}^{T}\,\ol{\cL}_{q}^{n}=\ol{\bW}^{T}\left(\ol{\bU}^{n}+\Delta t\,\ol{\cL}^{n}\right)
+\end{equation}
 
 \newpage
 \section{Recovery of Primitive Variables}
