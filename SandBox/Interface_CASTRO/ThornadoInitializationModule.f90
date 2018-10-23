@@ -160,7 +160,8 @@ contains
 
     call InitializeProgramHeaderX &
            ( nX_Option = nX, swX_Option = swX, &
-             xL_Option = xL, xR_Option  = xR)
+             xL_Option = xL, xR_Option  = xR,  &
+             reinitializeZ_Option = .TRUE. )
 
     ! Note we always use 3 here even if calling from Castro 2D
     DO iDim = 1, 3
