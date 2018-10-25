@@ -69,6 +69,10 @@ contains
     use ProgramHeaderModule  , only : nNodesE
     use RadiationFieldsModule, only : nSpecies
 
+#ifdef CASTRO_CALL_WEAKLIB
+    use actual_eos_module    , only : eos_pointer
+#endif
+
     integer,  intent(in) :: nDimsX, nE, swE, nSpecies_in
     real(dp), intent(in) :: eL_in, eR_in, zoomE
 
@@ -132,12 +136,19 @@ contains
              Verbose_Option = .FALSE. )
 
     ! --- Nuclear Equation of State ---
-
+#ifdef CASTRO_CALL_WEAKLIB
+    call InitializeEquationOfState_TABLE &
+           ( EquationOfStateTableName_Option &
+               = 'EquationOfStateTable.h5', &
+             Verbose_Option = .true. , &
+             External_EOS = eos_pointer )
+#else
     call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = 'EquationOfStateTable.h5', &
              Verbose_Option = .true. )
-
+#endif
+    
     ! --- Neutrino Opacities ---
 
     call InitializeOpacities_TABLE &
