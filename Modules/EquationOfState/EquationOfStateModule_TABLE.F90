@@ -60,8 +60,8 @@ MODULE EquationOfStateModule_TABLE
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
     Ds_T, Ts_T, Ys_T
 #ifdef MICROPHYSICS_WEAKLIB
-  TYPE(EquationOfStateTableType) :: &
-    EOS
+  TYPE(EquationOfStateTableType), POINTER :: EOS
+  LOGICAL :: UsingExternalEOS
 #endif
 
   REAL(DP), PUBLIC :: MinD, MinT, MinY
@@ -89,39 +89,52 @@ CONTAINS
 
 
   SUBROUTINE InitializeEquationOfState_TABLE &
-    ( EquationOfStateTableName_Option, Verbose_Option )
+    ( EquationOfStateTableName_Option, Verbose_Option, External_EOS )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
+    TYPE(EquationOfStateTableType), INTENT(in), POINTER, OPTIONAL :: External_EOS
 
     LOGICAL :: Verbose
 
     IF( PRESENT( EquationOfStateTableName_Option ) )THEN
-      EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
+       EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
     ELSE
-      EquationOfStateTableName = 'EquationOfStateTable.h5'
+       EquationOfStateTableName = 'EquationOfStateTable.h5'
     END IF
 
     IF( PRESENT( Verbose_Option ) )THEN
-      Verbose = Verbose_Option
+       Verbose = Verbose_Option
     ELSE
-      Verbose = .FALSE.
+       Verbose = .FALSE.
     END IF
 
     IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A7,A12,A)') &
-        '', 'Table Name: ', TRIM( EquationOfStateTableName )
+       WRITE(*,*)
+       WRITE(*,'(A7,A12,A)') &
+            '', 'Table Name: ', TRIM( EquationOfStateTableName )
     END IF
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL InitializeHDF( )
+!    IF( .NOT. PRESENT( External_EOS ) ) THEN
 
-    CALL ReadEquationOfStateTableHDF &
-           ( EOS, TRIM( EquationOfStateTableName ) )
+       ALLOCATE( EOS )
+       UsingExternalEOS = .false.       
 
-    CALL FinalizeHDF( )
+       CALL InitializeHDF( )
+
+       CALL ReadEquationOfStateTableHDF &
+            ( EOS, TRIM( EquationOfStateTableName ) )
+
+       CALL FinalizeHDF( )
+
+    ! ELSE
+
+    !    EOS => External_EOS
+    !    UsingExternalEOS = .true.
+
+    ! END IF
 
     ! --- Thermodynamic State Indices ---
 
@@ -188,6 +201,10 @@ CONTAINS
   SUBROUTINE FinalizeEquationOfState_TABLE
 
     DEALLOCATE( Ds_T, Ts_T, Ys_T )
+
+    IF ( UsingExternalEOS ) THEN
+       DEALLOCATE( EOS )
+    END IF
 
   END SUBROUTINE FinalizeEquationOfState_TABLE
 
