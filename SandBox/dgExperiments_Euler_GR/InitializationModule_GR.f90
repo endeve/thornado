@@ -54,7 +54,11 @@ CONTAINS
 
         CALL InitializeFields_GR_RiemannProblem &
                ( RiemannProblemName_Option &
-                   = RiemannProblemName_Option )
+                   = RiemannProblemName_Option, &
+                 nDetCells_Option &
+                   = nDetCells_Option, &
+                 Eblast_Option &
+                   = Eblast_Option )
 
       CASE( 'SphericalRiemannProblem' )
 
@@ -78,15 +82,21 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_GR_RiemannProblem &
-               ( RiemannProblemName_Option )
+               ( RiemannProblemName_Option, &
+                 nDetCells_Option, Eblast_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
          RiemannProblemName_Option
+    INTEGER,  INTENT(in), OPTIONAL :: nDetCells_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Eblast_Option
 
     CHARACTER(32) :: RiemannProblemName
     INTEGER       :: iX1, iX2, iX3
     INTEGER       :: iNodeX, iNodeX1
     REAL(DP)      :: X1
+
+    INTEGER       :: nDetCells
+    REAL(DP)      :: Eblast, X_D
 
     RiemannProblemName = 'Sod'
     IF( PRESENT( RiemannProblemName_Option ) ) &
@@ -95,6 +105,23 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
       '', 'Riemann Problem Name: ', TRIM( RiemannProblemName )
+
+    IF( TRIM( RiemannProblemName ) .EQ. 'CartesianSedov' )THEN
+      nDetCells = 1
+      IF( PRESENT( nDetCells_Option ) ) nDetCells = nDetCells_Option
+
+      Eblast = 1.0d0
+      IF( PRESENT( Eblast_Option ) ) Eblast = Eblast_Option
+
+      X_D = DBLE( nDetCells ) * MeshX(1) % Width(1)
+      WRITE(*,*)
+      WRITE(*,'(A,I4.4)')      '     nDetCells:              ', nDetCells
+      WRITE(*,'(A,ES23.16E3)') '     Initial blast radius:   ', X_D
+      WRITE(*,'(A,ES23.16E3)') '     Initial blast pressure: ', &
+                                       ( Gamma_IDEAL - One ) &
+                                         * Eblast / X_D**3
+
+    END IF
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
@@ -205,6 +232,31 @@ CONTAINS
 
                 END IF
 
+              CASE( 'CartesianSedov' )
+
+                IF( X1 <= X_D )THEN
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                    = Eblast / X_D**3
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
+                    = ( Gamma_IDEAL - One ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
+
+                ELSE
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d-6
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+               END IF
+
              CASE DEFAULT
 
                 WRITE(*,*)
@@ -224,6 +276,8 @@ CONTAINS
                   "'PerturbedShockTube' - ", &
                   "Del Zanna & Bucciantini (2002) AA, 390, 1177, ", &
                   "sinusoidal density perturbation"
+                WRITE(*,*) &
+                  "'CartesianSedov - '"
                 WRITE(*,*) 'Stopping...'
                 STOP
 
@@ -360,7 +414,12 @@ CONTAINS
     IF( PRESENT( Eblast_Option ) ) Eblast = Eblast_Option
 
     X_D = DBLE( nDetCells ) * MeshX(1) % Width(1)
-    WRITE(*,'(A5,ES24.16E3)') 'X_D: ', X_D
+    WRITE(*,*)
+    WRITE(*,'(A,I4.4)')      '     nDetCells:              ', nDetCells
+    WRITE(*,'(A,ES23.16E3)') '     Initial blast radius:   ', X_D
+    WRITE(*,'(A,ES23.16E3)') '     Initial blast pressure: ', &
+                                     ( Gamma_IDEAL - One ) &
+                                       * Eblast / ( FourPi / Three * X_D**3 )
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)

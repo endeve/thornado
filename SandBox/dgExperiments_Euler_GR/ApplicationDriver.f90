@@ -70,31 +70,35 @@ PROGRAM ApplicationDriver
   ! --- Sedov blast wave ---
   REAL(DP) :: Eblast
   INTEGER  :: nDetCells
+  REAL(DP) :: Vmax, LorentzFactor
 
   ! --- Standing accretion shock ---
   REAL(DP), ALLOCATABLE :: FluidFieldParameters(:)
   REAL(DP)              :: M_PNS = Zero, Ri, R_PNS, R_shock, Rf
 
-!  ProgramName = 'RiemannProblem'
+  ProgramName = 'RiemannProblem'
 !  ProgramName = 'SphericalRiemannProblem'
-  ProgramName = 'SedovBlastWave'
+!  ProgramName = 'SedovBlastWave'
 !  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'Sod'
+      RiemannProblemName = 'CartesianSedov'
 
       CoordinateSystem = 'CARTESIAN'
 
-      Gamma = 5.0_DP / 3.0_DP
+      nDetCells = 1
+      Eblast    = 1.0d-3
 
-      nX = [ 128, 1, 1 ]
+      Gamma = 4.0_DP / 3.0_DP
+
+      nX = [ 256, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      bcX = [ 2, 0, 0 ]
+      bcX = [ 3, 0, 0 ]
 
       nNodes = 3
 
@@ -106,15 +110,16 @@ PROGRAM ApplicationDriver
       UseCharacteristicLimiting = .TRUE.
 
       UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 0.015_DP
+      LimiterThresholdParameter = 0.1_DP
 
       UsePositivityLimiter = .TRUE.
-      Min_1 = 1.0d-16
-      Min_2 = 1.0d-16
+      Min_1 = 1.0d-12
+      Min_2 = 1.0d-12
 
       iCycleD = 100
-      t_end   = 4.0d-1
+      t_end   = 1.0d0
       dt_wrt  = 1.0d-2 * t_end
+      iCycleW = 100
 
       nStagesSSPRK = nNodes
       CFL          = 0.1_DP
@@ -159,17 +164,17 @@ PROGRAM ApplicationDriver
     CASE( 'SedovBlastWave' )
 
       nDetCells = 1
-      Eblast    = 1.0d6
+      Eblast    = 1.0d0
 
       CoordinateSystem = 'SPHERICAL'
 
       Gamma = 4.0_DP / 3.0_DP
 
-      nX = [ 256, 1, 1 ]
+      nX = [ 64, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.2_DP, Pi, TwoPi ]
 
-      bcX = [ 32, 0, 0 ]
+      bcX = [ 3, 0, 0 ]
 
       nNodes = 3
 
@@ -184,13 +189,13 @@ PROGRAM ApplicationDriver
       LimiterThresholdParameter = 0.03_DP
 
       UsePositivityLimiter = .TRUE.
-      Min_1 = 1.0d-12
-      Min_2 = 1.0d-12
+      Min_1 = 1.0d-16
+      Min_2 = 1.0d-16
 
       iCycleD = 100
       t_end   = 1.0_DP
       dt_wrt  = 1.0d-2 * t_end
-      iCycleW = 1
+      iCycleW = 100
 
       nStagesSSPRK = nNodes
       CFL          = 0.1_DP
@@ -360,6 +365,16 @@ PROGRAM ApplicationDriver
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+
+!!$    Vmax = MAXVAL( ABS( &
+!!$             uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),2)))
+!!$    LorentzFactor = One / SQRT( One - Vmax**2 )
+!!$    WRITE(*,*)
+!!$
+!!$    IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
+!!$      WRITE(*,'(A8,A4,F12.10)') '', 'V = ', Vmax
+!!$      WRITE(*,'(A8,A4,F10.5)')  '', 'W = ', LorentzFactor
+!!$    END IF
 
     IF( iCycleW .GT. 0 )THEN
       IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
