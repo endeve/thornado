@@ -318,19 +318,19 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A6,A)') '', 'Program Header (X)'
     WRITE(*,*)
-    WRITE(*,'(A6,A10,3I6.4)')      '',      'nX = ', nX
-    WRITE(*,'(A6,A10,3I6.4)')      '',     'swX = ', swX
-    WRITE(*,'(A6,A10,3I6.4)')      '',     'bcX = ', bcX
-    WRITE(*,'(A6,A10,3I6.4)')      '',   'iX_B0 = ', iX_B0
-    WRITE(*,'(A6,A10,3I6.4)')      '',   'iX_B1 = ', iX_B1
-    WRITE(*,'(A6,A10,3I6.4)')      '',   'iX_E0 = ', iX_E0
-    WRITE(*,'(A6,A10,3I6.4)')      '',   'iX_E1 = ', iX_E1
-    WRITE(*,'(A6,A10,3ES11.2E3)'), '',      'xL = ', xL
-    WRITE(*,'(A6,A10,3ES11.2E3)'), '',      'xR = ', xR
-    WRITE(*,'(A6,A10,3ES11.2E3)'), '',   'zoomX = ', zoomX
-    WRITE(*,'(A6,A10,3I6.4)')      '', 'nNodesX = ', nNodesX
-    WRITE(*,'(A6,A10,1I6.4)')      '',  'nDimsX = ', nDimsX
-    WRITE(*,'(A6,A10,1I6.4)')      '',   'nDOFX = ', nDOFX
+    WRITE(*,'(A6,A10,3I6.4)')     '',      'nX = ', nX
+    WRITE(*,'(A6,A10,3I6.4)')     '',     'swX = ', swX
+    WRITE(*,'(A6,A10,3I6.4)')     '',     'bcX = ', bcX
+    WRITE(*,'(A6,A10,3I6.4)')     '',   'iX_B0 = ', iX_B0
+    WRITE(*,'(A6,A10,3I6.4)')     '',   'iX_B1 = ', iX_B1
+    WRITE(*,'(A6,A10,3I6.4)')     '',   'iX_E0 = ', iX_E0
+    WRITE(*,'(A6,A10,3I6.4)')     '',   'iX_E1 = ', iX_E1
+    WRITE(*,'(A6,A10,3ES11.2E3)') '',      'xL = ', xL
+    WRITE(*,'(A6,A10,3ES11.2E3)') '',      'xR = ', xR
+    WRITE(*,'(A6,A10,3ES11.2E3)') '',   'zoomX = ', zoomX
+    WRITE(*,'(A6,A10,3I6.4)')     '', 'nNodesX = ', nNodesX
+    WRITE(*,'(A6,A10,1I6.4)')     '',  'nDimsX = ', nDimsX
+    WRITE(*,'(A6,A10,1I6.4)')     '',   'nDOFX = ', nDOFX
     WRITE(*,*)
 
   END SUBROUTINE DescribeProgramHeaderX
@@ -341,19 +341,19 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A6,A)') '', 'Program Header (E)'
     WRITE(*,*)
-    WRITE(*,'(A6,A10,1I6.4)')      '',      'nE = ', nE
-    WRITE(*,'(A6,A10,1I6.4)')      '',     'swE = ', swE
-    WRITE(*,'(A6,A10,1I6.4)')      '',     'bcE = ', bcE
-    WRITE(*,'(A6,A10,1I6.4)')      '',   'iE_B0 = ', iE_B0
-    WRITE(*,'(A6,A10,1I6.4)')      '',   'iE_B1 = ', iE_B1
-    WRITE(*,'(A6,A10,1I6.4)')      '',   'iE_E0 = ', iE_E0
-    WRITE(*,'(A6,A10,1I6.4)')      '',   'iE_E1 = ', iE_E1
-    WRITE(*,'(A6,A10,1ES11.2E3)'), '',      'eL = ', eL
-    WRITE(*,'(A6,A10,1ES11.2E3)'), '',      'eR = ', eR
-    WRITE(*,'(A6,A10,1ES11.2E3)'), '',   'zoomE = ', zoomE
-    WRITE(*,'(A6,A10,1I6.4)')      '', 'nNodesE = ', nNodesE
-    WRITE(*,'(A6,A10,1I6.4)')      '',  'nDimsE = ', nDimsE
-    WRITE(*,'(A6,A10,1I6.4)')      '',   'nDOFE = ', nDOFE
+    WRITE(*,'(A6,A10,1I6.4)')     '',      'nE = ', nE
+    WRITE(*,'(A6,A10,1I6.4)')     '',     'swE = ', swE
+    WRITE(*,'(A6,A10,1I6.4)')     '',     'bcE = ', bcE
+    WRITE(*,'(A6,A10,1I6.4)')     '',   'iE_B0 = ', iE_B0
+    WRITE(*,'(A6,A10,1I6.4)')     '',   'iE_B1 = ', iE_B1
+    WRITE(*,'(A6,A10,1I6.4)')     '',   'iE_E0 = ', iE_E0
+    WRITE(*,'(A6,A10,1I6.4)')     '',   'iE_E1 = ', iE_E1
+    WRITE(*,'(A6,A10,1ES11.2E3)') '',      'eL = ', eL
+    WRITE(*,'(A6,A10,1ES11.2E3)') '',      'eR = ', eR
+    WRITE(*,'(A6,A10,1ES11.2E3)') '',   'zoomE = ', zoomE
+    WRITE(*,'(A6,A10,1I6.4)')     '', 'nNodesE = ', nNodesE
+    WRITE(*,'(A6,A10,1I6.4)')     '',  'nDimsE = ', nDimsE
+    WRITE(*,'(A6,A10,1I6.4)')     '',   'nDOFE = ', nDOFE
     WRITE(*,*)
 
   END SUBROUTINE DescribeProgramHeaderE
@@ -364,19 +364,19 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A6,A)') '', 'Program Header (Z)'
     WRITE(*,*)
-    WRITE(*,'(A6,A10,4I6.4)')      '',      'nZ = ', nZ
-    WRITE(*,'(A6,A10,4I6.4)')      '',     'swZ = ', swZ
-    WRITE(*,'(A6,A10,4I6.4)')      '',     'bcZ = ', bcZ
-    WRITE(*,'(A6,A10,4I6.4)')      '',   'iZ_B0 = ', iZ_B0
-    WRITE(*,'(A6,A10,4I6.4)')      '',   'iZ_B1 = ', iZ_B1
-    WRITE(*,'(A6,A10,4I6.4)')      '',   'iZ_E0 = ', iZ_E0
-    WRITE(*,'(A6,A10,4I6.4)')      '',   'iZ_E1 = ', iZ_E1
-    WRITE(*,'(A6,A10,4ES11.2E3)'), '',      'zL = ', zL
-    WRITE(*,'(A6,A10,4ES11.2E3)'), '',      'zR = ', zR
-    WRITE(*,'(A6,A10,4ES11.2E3)'), '',   'zoomZ = ', zoomZ
-    WRITE(*,'(A6,A10,4I6.4)')      '', 'nNodesZ = ', nNodesZ
-    WRITE(*,'(A6,A10,1I6.4)')      '',   'nDims = ', nDims
-    WRITE(*,'(A6,A10,1I6.4)')      '',    'nDOF = ', nDOF
+    WRITE(*,'(A6,A10,4I6.4)')     '',      'nZ = ', nZ
+    WRITE(*,'(A6,A10,4I6.4)')     '',     'swZ = ', swZ
+    WRITE(*,'(A6,A10,4I6.4)')     '',     'bcZ = ', bcZ
+    WRITE(*,'(A6,A10,4I6.4)')     '',   'iZ_B0 = ', iZ_B0
+    WRITE(*,'(A6,A10,4I6.4)')     '',   'iZ_B1 = ', iZ_B1
+    WRITE(*,'(A6,A10,4I6.4)')     '',   'iZ_E0 = ', iZ_E0
+    WRITE(*,'(A6,A10,4I6.4)')     '',   'iZ_E1 = ', iZ_E1
+    WRITE(*,'(A6,A10,4ES11.2E3)') '',      'zL = ', zL
+    WRITE(*,'(A6,A10,4ES11.2E3)') '',      'zR = ', zR
+    WRITE(*,'(A6,A10,4ES11.2E3)') '',   'zoomZ = ', zoomZ
+    WRITE(*,'(A6,A10,4I6.4)')     '', 'nNodesZ = ', nNodesZ
+    WRITE(*,'(A6,A10,1I6.4)')     '',   'nDims = ', nDims
+    WRITE(*,'(A6,A10,1I6.4)')     '',    'nDOF = ', nDOF
     WRITE(*,*)
 
   END SUBROUTINE DescribeProgramHeaderZ
