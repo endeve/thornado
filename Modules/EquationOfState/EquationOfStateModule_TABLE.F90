@@ -93,7 +93,12 @@ CONTAINS
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
-    TYPE(EquationOfStateTableType), INTENT(in), POINTER, OPTIONAL :: External_EOS
+#ifdef MICROPHYSICS_WEAKLIB
+    TYPE(EquationOfStateTableType), POINTER, &
+                      INTENT(in), OPTIONAL :: External_EOS
+#else
+    INTEGER,          INTENT(in), OPTIONAL :: External_EOS
+#endif
 
     LOGICAL :: Verbose
 
@@ -202,9 +207,13 @@ CONTAINS
 
     DEALLOCATE( Ds_T, Ts_T, Ys_T )
 
+#ifdef MICROPHYSICS_WEAKLIB
+
     IF ( UsingExternalEOS ) THEN
        DEALLOCATE( EOS )
     END IF
+
+#endif
 
   END SUBROUTINE FinalizeEquationOfState_TABLE
 
