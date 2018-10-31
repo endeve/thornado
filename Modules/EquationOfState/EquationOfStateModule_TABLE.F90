@@ -122,10 +122,10 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-!    IF( .NOT. PRESENT( External_EOS ) ) THEN
+    IF( .NOT. PRESENT( External_EOS ) ) THEN
 
        ALLOCATE( EOS )
-       UsingExternalEOS = .false.       
+       UsingExternalEOS = .FALSE.
 
        CALL InitializeHDF( )
 
@@ -134,12 +134,12 @@ CONTAINS
 
        CALL FinalizeHDF( )
 
-    ! ELSE
+    ELSE
 
-    !    EOS => External_EOS
-    !    UsingExternalEOS = .true.
+       EOS => External_EOS
+       UsingExternalEOS = .TRUE.
 
-    ! END IF
+    END IF
 
     ! --- Thermodynamic State Indices ---
 
@@ -209,7 +209,7 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    IF ( UsingExternalEOS ) THEN
+    IF ( .NOT. UsingExternalEOS ) THEN
        DEALLOCATE( EOS )
     END IF
 
