@@ -76,9 +76,9 @@ PROGRAM ApplicationDriver
   REAL(DP), ALLOCATABLE :: FluidFieldParameters(:)
   REAL(DP)              :: M_PNS = Zero, Ri, R_PNS, R_shock, Rf
 
-  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem'
 !  ProgramName = 'SphericalRiemannProblem'
-!  ProgramName = 'SedovBlastWave'
+  ProgramName = 'SedovBlastWave'
 !  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
@@ -164,13 +164,13 @@ PROGRAM ApplicationDriver
     CASE( 'SedovBlastWave' )
 
       nDetCells = 1
-      Eblast    = 1.0d0
+      Eblast    = 1.0d-2
 
       CoordinateSystem = 'SPHERICAL'
 
       Gamma = 4.0_DP / 3.0_DP
 
-      nX = [ 64, 1, 1 ]
+      nX = [ 256, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.2_DP, Pi, TwoPi ]
 
@@ -189,16 +189,16 @@ PROGRAM ApplicationDriver
       LimiterThresholdParameter = 0.03_DP
 
       UsePositivityLimiter = .TRUE.
-      Min_1 = 1.0d-16
-      Min_2 = 1.0d-16
+      Min_1 = 1.0d-12
+      Min_2 = 1.0d-12
 
       iCycleD = 100
       t_end   = 1.0_DP
       dt_wrt  = 1.0d-2 * t_end
-      iCycleW = 100
+      !iCycleW = 1
 
       nStagesSSPRK = nNodes
-      CFL          = 0.1_DP
+      CFL          = 0.5_DP
 
     CASE( 'StandingAccretionShock' )
 

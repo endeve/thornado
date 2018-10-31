@@ -31,9 +31,11 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
 
   IMPLICIT NONE
 
-  ! --- ComputePressureWithBisectionMethod is only public for debugging ---
-  PUBLIC :: ComputePressureWithBisectionMethod
   PRIVATE :: ComputeFunP
+
+  ! --- ComputePressureWithB*Method is only public for debugging ---
+  PUBLIC :: ComputePressureWithBisectionMethod
+  PUBLIC :: ComputePressureWithBrentsMethod
 
   PUBLIC :: ComputeFromConserved_GR
   PUBLIC :: ComputePrimitive_GR
@@ -107,12 +109,12 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
     LOGICAL :: CONVERGED
-    LOGICAL :: DEBUG = .TRUE.
+    LOGICAL :: DEBUG = .FALSE.
 
     INTEGER :: i, ITERATION, nNodes
     INTEGER, PARAMETER :: MAX_IT = 1000
 
-    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q, FunP0, Pbisec
+    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q, Pbrent
 
     REAL(DP) :: FunP, JacP
     REAL(DP), PARAMETER :: TolP = 1.0d-12, TolFunP = 1.0d-10
@@ -149,30 +151,22 @@ CONTAINS
 
       ! --- Approximation for pressure assuming h^2~=1 ---
       Pold = MAX( -q, SqrtTiny )
-      IF( DEBUG ) WRITE(*,*)
-      IF( DEBUG ) &
-        WRITE(*,'(A,ES24.16E3)') 'Pold_approx: ', Pold
-      CALL ComputePressureWithBisectionMethod( CF_D(i), CF_E(i), SSq, Pbisec )
-      Pold = Pbisec
-      IF( DEBUG ) &
-        WRITE(*,'(A,ES24.16E3)') 'Pold_bisec:  ', Pold
-      IF( DEBUG ) &
-        WRITE(*,*)
 
+      CALL ComputePressureWithBrentsMethod( CF_D(i), CF_E(i), SSq, Pbrent )
+      Pold = Pbrent
       IF( DEBUG ) &
-        WRITE(*,'(A,ES24.16E3)') 'Initial guess for pressure: ', Pold
+        WRITE(*,'(A,ES24.16E3)') '  Pbrent: ', Pbrent
+     
       ! --- Get initial value for FunP ---
       IF( DEBUG ) &
-        WRITE(*,'(A)') 'CALL ComputeFunJacP0'
-      CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP0, JacP, Pbisec )
+        WRITE(*,'(A)') '  CALL ComputeFunJacP for Pbrent'
+      CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP, Pbrent )
       IF( DEBUG ) &
-           WRITE(*,'(A)') 'Finished ComputeFunJacP0'
-      IF( DEBUG ) &
-          WRITE(*,'(A,ES24.16E3)') 'FunP0: ', FunP0
+        WRITE(*,'(A,ES24.16E3)') '  FunPbrent: ', FunP
 
       CONVERGED = .FALSE.
 
-      IF( ABS( FunP0 ) .LT. TolFunP )THEN
+      IF( ABS( FunP ) .LT. TolFunP )THEN
         Pnew = Pold
         CONVERGED = .TRUE. 
       ELSE
@@ -189,23 +183,23 @@ CONTAINS
 
         ITERATION = ITERATION + 1
 
-        CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP, Pbisec )
+        CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP, Pbrent )
 
         Pnew = Pold - FunP / JacP
 
         Pnew = MAX( Pnew, SqrtTiny )
 
         ! --- Check if Newton's method has converged ---
-        IF( ABS( Pnew - Pold ) / ABS( Pbisec ) .LT. TolP )THEN
+        IF( ABS( Pnew - Pold ) / ABS( Pbrent ) .LT. TolP )THEN
 
-          CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP, Pbisec )
+          CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP, Pbrent )
 
           IF( ABS( FunP ) .LT. TolFunP ) THEN
             CONVERGED = .TRUE.
           ELSE
             WRITE(*,'(A,I4.4)') 'ITERATION: ', ITERATION
-            WRITE(*,'(A,ES24.16E3)') '  |dP|/|Pbisec|:  ', &
-              ABS( Pnew - Pold ) / ABS( Pbisec )
+            WRITE(*,'(A,ES24.16E3)') '  |dP|/|Pbrent|:  ', &
+              ABS( Pnew - Pold ) / ABS( Pbrent )
             WRITE(*,'(A,ES24.16E3)') '  |FunP|:         ', &
               ABS( FunP )
             STOP 'Stopping because ABS( FunP ) .GE. TolFunP'
@@ -240,7 +234,7 @@ CONTAINS
               1.0d0 / SQRT( 1.0d0 - SSq / ( CF_E(i) + CF_D(i) + Pnew )**2 )
             WRITE(*,'(A,ES24.16E3)') '  P/rho = ', Pnew / ( CF_D(i) / W )
             WRITE(*,*)
-            WRITE(*,'(A,ES24.16E3)') '  Pbisec = ', Pbisec
+            WRITE(*,'(A,ES24.16E3)') '  Pbrent = ', Pbrent
             WRITE(*,*)
           END IF
 
@@ -249,7 +243,7 @@ CONTAINS
           WRITE(*,'(A,ES24.16E3)') '  Pold        = ', Pold
           WRITE(*,'(A,ES24.16E3)') '  Pnew        = ', Pnew
           WRITE(*,'(A,ES24.16E3)') &
-            '  dP/|Pbisec| = ', ( Pnew - Pold ) / ABS( Pbisec )
+            '  dP/|Pbrent| = ', ( Pnew - Pold ) / ABS( Pbrent )
           WRITE(*,'(A,ES24.16E3)') '  FunP        = ', FunP
           WRITE(*,*)
           IF( ITERATION == MAX_IT )THEN
@@ -404,6 +398,164 @@ CONTAINS
   END SUBROUTINE ComputePressureWithBisectionMethod
 
   
+  SUBROUTINE ComputePressureWithBrentsMethod( CF_D, CF_E, SSq, Pbrent )
+
+    REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq
+    REAL(DP), INTENT(out) :: Pbrent
+
+    REAL(DP) :: PA, PB, PC, PD, PS, PSwap, Pbisec
+    REAL(DP) :: FunPA, FunPB, FunPC, FunPD, FunPS
+    REAL(DP) :: JacPA, JacPB, JacPC, JacPD, JacPS
+
+    REAL(DP), PARAMETER :: TolP = 1.0d-12, TolFunP = 1.0d-10
+    LOGICAL :: mflag, COND1, COND2, COND3, COND4, COND5
+
+    INTEGER, PARAMETER :: MAX_IT = 100
+    INTEGER :: ITERATION
+
+    ! --- Get Pbisec to normalize FunP ---
+    CALL ComputePressureWithBisectionMethod( CF_D, CF_E, SSq, Pbisec )
+
+    ! --- Define values that bracket the root ---
+    PA = Zero
+    PB = Two * ( One - One / Gamma_IDEAL ) * CF_E
+    CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA, Pbisec )
+    CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB, Pbisec )
+
+    ! --- Exit if solution is not bracketed ---
+    IF( .NOT. FunPA * FunPB .LT. 0.0_DP )THEN
+      WRITE(*,'(A)') 'No root in interval. Exiting...'
+      STOP
+    END IF
+
+    ! --- Conditionally swap PA and PB ---
+    IF( ABS( FunPA ) .LT. ABS( FunPB ) )THEN
+       PSwap = PB
+       PB    = PA
+       PA    = PSwap
+       CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA, Pbisec )
+       CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB, Pbisec )
+    END IF
+
+    ! --- Set PC = PA and compute FunPC ---
+    PC = PA
+    CALL ComputeFunJacP( CF_D, CF_E, SSq, PC, FunPC, JacPC, Pbisec )
+
+    ! --- Set mflag ---
+    mflag = .TRUE.
+
+    ITERATION = 0
+    DO WHILE(       ( ABS( PB - PA ) / ABS( Pbisec ) .GE. TolP ) &
+              .AND. ( ABS(FunPB) .GE. TolFunP ) &
+              .AND. ( ITERATION .LE. MAX_IT ) )
+
+      ITERATION = ITERATION + 1
+
+      IF( ( FunPA .NE. FunPC ) .AND. ( FunPB .NE. FunPC ) )THEN
+        ! --- Inverse quadratic interpolation ---  
+        PS =   PA * FunPB * FunPC / ( ( FunPA - FunPB ) * ( FunPA - FunPC ) ) &
+             + PB * FunPA * FunPC / ( ( FunPB - FunPA ) * ( FunPB - FunPC ) ) &
+             + PC * FunPA * FunPB / ( ( FunPC - FunPA ) * ( FunPC - FunPB ) )
+      ELSE
+        ! --- Secant method (replace with Newton's method?) ---
+        PS = PB - FunPB * ( PB - PA ) / ( FunPB - FunPA )
+      END IF
+
+      ! --- Condition 1 ---
+      IF( PB .GT. ( 3.0_DP * PA + PB ) / 4.0_DP )THEN
+        IF( .NOT. ( ( PS .GT. ( 3.0_DP * PA + PB ) / 4.0_DP ) &
+                    .AND. ( PS .LT. PB ) ) )THEN
+          COND1 = .TRUE.
+        ELSE
+          COND1 = .FALSE.
+        END IF
+      ELSE
+        IF( .NOT. ( ( PS .LT. ( 3.0_DP * PA + PB ) / 4.0_DP ) &
+                    .AND. ( PS .GT. PB ) ) )THEN
+          COND1 = .TRUE.
+        ELSE
+          COND1 = .FALSE.
+        END IF
+      END IF
+
+      ! --- Condition 2 ---
+      IF( mflag .AND. ( ABS( PS - PB ) &
+          .GE. ( ABS( PB - PC ) / 2.0_DP ) ) )THEN
+        COND2 = .TRUE.
+      ELSE
+        COND2 = .FALSE.
+      END IF
+
+      ! --- Condition 3 ---
+      IF( .NOT. mflag .AND. ( ABS( PS - PB ) &
+          .GE. ( ABS( PC - PD ) / 2.0_DP ) ) )THEN
+        COND3 = .TRUE.
+      ELSE
+        COND3 = .FALSE.
+      END IF
+
+      ! --- Condition 4 ---
+      IF( mflag .AND. ( ABS( PB - PC ) .LT. TolP ) )THEN
+        COND4 = .TRUE.
+      ELSE
+        COND4 = .FALSE.
+      END IF
+
+      ! --- Condition 5 ---
+      IF( .NOT. mflag .AND. ( ABS( PC - PD ) .LT. TolP ) )THEN
+        COND5 = .TRUE.
+      ELSE
+        COND5 = .FALSE.
+      END IF
+
+      IF( COND1 .OR. COND2 .OR. COND3 .OR. COND4 .OR. COND5 )THEN
+        PS = ( PA + PB ) / 2.0_DP
+        mflag = .TRUE.
+      ELSE
+        mflag = .FALSE.
+      END IF
+
+      CALL ComputeFunJacP( CF_D, CF_E, SSq, PS, FunPS, JacPS, Pbisec )
+      PD = PC
+      PC = PB
+
+      IF( FunPA * FunPS .LT. 0.0_DP )THEN
+        PB = PS
+        CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB, Pbisec )
+      ELSE
+        PA = PS
+        CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA, Pbisec )
+      END IF
+
+      ! --- Conditionally swap PA and PB ---
+      IF( ABS( FunPA ) .LT. ABS( FunPB ) )THEN
+        PSwap = PB
+        PB    = PA
+        PA    = PSwap
+        CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA, Pbisec )
+        CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB, Pbisec )
+      END IF
+
+      Pbrent = PB
+
+      IF( ITERATION .EQ. MAX_IT )THEN
+        WRITE(*,*)
+        WRITE(*,'(A)') 'Maximum number of iterations reached.'
+        WRITE(*,'(A,ES24.16E3)') 'Pbrent =        ', Pbrent
+        WRITE(*,'(A,ES24.16E3)') '|dP|/|Pbisec| = ', &
+          ABS( PB - PA ) / ABS( Pbisec )
+        WRITE(*,'(A,ES24.16E3)') '|Pbrent-Pbisec|/|Pbisec| = ', &
+          ABS( Pbrent - Pbisec ) / ABS( Pbisec )
+        STOP
+      END IF
+
+    END DO
+
+    RETURN
+  END SUBROUTINE ComputePressureWithBrentsMethod
+
+
+
   SUBROUTINE ComputeFunP( CF_D, CF_E, SSq, P, FunP )
 
     REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq, P
@@ -604,23 +756,31 @@ CONTAINS
 
             IF( nDimsX .GT. 1 )THEN
 
-              PosRoot(2) = Two * ( One - epsilon ) / PressureTensorSum &
-                          * ( -U(iNodeX,iX1,iX2,iX3,iCF_S2) &
-                        + SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                          * U(iNodeX,iX1,iX2,iX3,iCF_E) &
-                          * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
-                          + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
-              IF( PosRoot(2) .LT. Zero ) PosRoot(2) = HUGE( One )
+              WRITE(*,'(A,I1)') 'Code not currently able to handle nDimsX = ', nDimsX
+              STOP
 
-              NegRoot(2) = Two * ( One - epsilon ) / PressureTensorSum &
-                          * ( -U(iNodeX,iX1,iX2,iX3,iCF_S2) &
-                        - SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                          * U(iNodeX,iX1,iX2,iX3,iCF_E) &
-                          * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
-                          + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
-              IF( NegRoot(2) .LT. Zero ) NegRoot(2) = HUGE( One )
+              IF( PressureTensorSum .GT. Zero )THEN
+                  
+                PosRoot(2) = Two * ( One - epsilon ) / PressureTensorSum &
+                            * ( -U(iNodeX,iX1,iX2,iX3,iCF_S2) &
+                          + SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+                            * U(iNodeX,iX1,iX2,iX3,iCF_E) &
+                            * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
+                            + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
+                IF( PosRoot(2) .LT. Zero ) PosRoot(2) = HUGE( One )
 
-              dt_S(2) = MIN( dt_S(2), MIN( PosRoot(2), NegRoot(2) ) )
+                NegRoot(2) = Two * ( One - epsilon ) / PressureTensorSum &
+                            * ( -U(iNodeX,iX1,iX2,iX3,iCF_S2) &
+                          - SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+                            * U(iNodeX,iX1,iX2,iX3,iCF_E) &
+                            * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
+                            + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
+                IF( NegRoot(2) .LT. Zero ) NegRoot(2) = HUGE( One )
+
+                dt_S(2) = MIN( dt_S(2), MIN( PosRoot(2), NegRoot(2) ) )
+              ELSE
+                dt_S(2) = HUGE( One )
+              END IF
 
               EigVals_X2(:,iNodeX) = Eigenvalues_GR &
                                        ( P(iNodeX,iPF_V1), &
@@ -643,23 +803,30 @@ CONTAINS
 
             IF( nDimsX .GT. 2 )THEN
 
-              PosRoot(3) = Two * ( One - epsilon ) / PressureTensorSum &
-                          * ( -U(iNodeX,iX1,iX2,iX3,iCF_S3) &
-                        + SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                          * U(iNodeX,iX1,iX2,iX3,iCF_E) &
-                          * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
-                          + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
-              IF( PosRoot(3) .LT. Zero ) PosRoot(3) = HUGE( One )
+              WRITE(*,'(A,I1)') 'Code not currently able to handle nDimsX = ', nDimsX
+              STOP
 
-              NegRoot(3) = Two * ( One - epsilon ) / PressureTensorSum &
-                          * ( -U(iNodeX,iX1,iX2,iX3,iCF_S3) &
-                        - SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                          * U(iNodeX,iX1,iX2,iX3,iCF_E) &
-                          * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
-                          + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
-              IF( NegRoot(3) .LT. Zero ) NegRoot(3) = HUGE( One )
+              IF( PressureTensorSum .GT. Zero )THEN
+                PosRoot(3) = Two * ( One - epsilon ) / PressureTensorSum &
+                            * ( -U(iNodeX,iX1,iX2,iX3,iCF_S3) &
+                          + SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) &
+                            * U(iNodeX,iX1,iX2,iX3,iCF_E) &
+                            * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
+                            + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
+                IF( PosRoot(3) .LT. Zero ) PosRoot(3) = HUGE( One )
 
-              dt_S(3) = MIN( dt_S(3), MIN( PosRoot(3), NegRoot(3) ) )
+                NegRoot(3) = Two * ( One - epsilon ) / PressureTensorSum &
+                            * ( -U(iNodeX,iX1,iX2,iX3,iCF_S3) &
+                          - SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) &
+                            * U(iNodeX,iX1,iX2,iX3,iCF_E) &
+                            * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
+                            + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
+                IF( NegRoot(3) .LT. Zero ) NegRoot(3) = HUGE( One )
+
+                dt_S(3) = MIN( dt_S(3), MIN( PosRoot(3), NegRoot(3) ) )
+              ELSE
+                dt_S(3) = HUGE( One )
+              END IF
 
               EigVals_X3(:,iNodeX) = Eigenvalues_GR &
                                        ( P(iNodeX,iPF_V1),       &
