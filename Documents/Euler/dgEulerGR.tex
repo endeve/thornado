@@ -337,6 +337,11 @@ The solutions to this quadratic equation are:
     &=\f{2\left(1-\ve\right)}{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}\left[-\ol{S}_{1}\pm\sqrt{\ol{\gamma_{11}}\,\ol{\tau}\left(\ol{\tau}+2\,\ol{D}\right)}\right].
 \end{align}
 
+So, we end up with:
+\begin{equation}
+    \Delta t<\text{min}\left\{\text{min}_{i}\left(\f{\ve\,\Delta V_{i}}{2\,\text{max}\left(\sqrtgm_{i\pm\f{1}{2}}\,\alpha_{i\pm\f{1}{2}}\right)}\right),\text{min}^{n}_{i}\left(\f{2\left(1-\ve\right)}{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}\left[-\ol{S}_{1}\pm\sqrt{\ol{\gamma_{11}}\,\ol{\tau}\left(\ol{\tau}+2\,\ol{D}\right)}\right]\right)\right\}.
+\end{equation}
+
 \section{Computing the Time-Step Using Higher-Order DG Schemes}
 
 When making the jump to higher-order DG schemes, we can simply do the same as in the first-order scheme, except we compute the quantities in all of the nodal points instead of using a cell-average. This is valid because the cell-average is a convex combination...\sd{Need to expand on this}. The proof starts with the discretized equation valid at each quadrature point, $q$:
