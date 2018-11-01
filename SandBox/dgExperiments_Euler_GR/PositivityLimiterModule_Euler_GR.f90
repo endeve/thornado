@@ -119,7 +119,7 @@ CONTAINS
     REAL(DP) :: Min_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), G_K(nGF), q(nPT)
     REAL(DP) :: SSq, alpha
-    REAL(DP) :: q_K(1) ! For de-bugging
+    REAL(DP) :: q_K(1), alphaMax
 
     IF( nDOFX == 1 ) RETURN
     
@@ -130,7 +130,9 @@ CONTAINS
       WRITE(*,'(A)') 'Entering PositivityLimiterModule...'
       WRITE(*,'(A)') '-----------------------------------'
     END IF
-   
+
+    alphaMax = -HUGE( One )
+
     DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
@@ -240,26 +242,36 @@ CONTAINS
             CALL Computeq( 1, U_K, G_K, q_K )
             IF( q_K(1) .LT. Zero )THEN
 
-              IF( DEBUG ) WRITE(*,'(A,ES24.16E3)') 'q_K = ', q_K(1)
+              IF( DEBUG ) &
+                WRITE(*,'(A,ES24.16E3)') 'q_K = ', q_K(1)
 
               SSq =  U_K(iCF_S1)**2 / G_K(iGF_Gm_dd_11) &
                    + U_K(iCF_S2)**2 / G_K(iGF_Gm_dd_22) &
                    + U_K(iCF_S3)**2 / G_K(iGF_Gm_dd_33)
-              IF( DEBUG ) WRITE(*,*) 'SSq = ', SSq
+              IF( DEBUG ) &
+                WRITE(*,'(A,ES11.3E3)') 'SSq = ', SSq
+
+              IF( DEBUG ) &
+                WRITE(*,'(A,ES11.3E3)') 'tau = ', U_K(iCF_E)
+              IF( DEBUG ) &
+                WRITE(*,'(A,ES11.3E3)') 'D   = ', U_K(iCF_D)
 
               ! --- Demand that q_K > 0 by modifying tau (alpha > 1) ---
               alpha = ( Min_2 - U_K(iCF_D) &
                         + SQRT( U_K(iCF_D)**2 + SSq + Min_2 ) ) / U_K(iCF_E)
               U_K(iCF_E) = alpha * U_K(iCF_E)
 
-              IF( DEBUG ) WRITE(*,'(A,ES10.3E3)') 'alpha - 1 = ', alpha - 1.0_DP
+              alphaMax = MAX( alphaMax, alpha )
+
+              IF( DEBUG ) &
+                   WRITE(*,'(A,ES10.3E3)') 'alpha - 1 = ', alpha - 1.0_DP
 
               IF( DEBUG )THEN
                 WRITE(*,'(A)') 'CALL Computeq after alpha limiting'
                 CALL Computeq( 1, U_K, G_K, q_K )
                 WRITE(*,'(A,ES24.16E3)') 'q_K = ', q_K(1)
               END IF
-             
+
             END IF
 
             Theta_2 = One
@@ -329,7 +341,12 @@ CONTAINS
         END DO
       END DO
     END DO
-  
+
+    IF( DEBUG )THEN
+      IF( alphaMax .GT. 0.0d0  ) &
+        WRITE(*,'(A,ES10.3E3)') 'alphaMax - 1 = ', alphaMax - 1.0_DP
+    END IF
+
   END SUBROUTINE ApplyPositivityLimiter_Euler_GR
 
 
