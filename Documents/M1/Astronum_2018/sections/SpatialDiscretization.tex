@@ -37,16 +37,15 @@ where we have defined
   \widetilde{\bcM}^{n}_{i} 
   & = \bcM_{i}^{n} - \frac{\dt}{\dx} \left( \widehat{\bcF}_{\LF}(\bcM^{n}_{i},\bcM^{n}_{i+1}) -  \widehat{\bcF}_{\LF}(\bcM^{n}_{i-1},\bcM^{n}_{i})\right)\nonumber \\
   & = (1-\beta)\bcM_{i}^{n} + \beta\left[ \f{1}{2}\left( \bcM^{n}_{i+1}-\bcF(\bcM^{n}_{i+1})\right)  + \f{1}{2}\left( \bcM^{n}_{i-1}+\bcF(\bcM^{n}_{i-1})\right)\right],
+  \quad\beta = \frac{\dt}{\dx}.  
 \label{eq:widetildeM}
 \end{align}
-and $\beta = \frac{\dt}{\dx}$.
 
-Assume $\bcM_{i}^{n}$ is realizable for all $i$. 
-For Eq.~\eqref{eq:MomentIMEX}, Lemma 3 in \cite{chu_etal_2018} says that $\bcM^{n+1}_{i}$ is realizable given $\f{\dt}{\tau} > 0$ and provided that $\widetilde{\bcM}^{n}_{i}$ is realizable.
-Substituting the Lax-Friedrichs flux, Eq.~\eqref{eq:Lax-Friedrichs flux}, in Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, $\widetilde{\bcM}^{n}_{i}$ becomes a convex combination of $\bcM_{i}^{n}$ and the square bracket in Eq.~\eqref{eq:widetildeM} if $\beta \in [0,1]$.
-$\widetilde{\bcM}^{n}_{i}$ is realizable if $\beta \in [0,1]$ and the term in square brackets is realizable.
-Given Lemma 2 in \cite{chu_etal_2018}, the term in square brackets is realizable if $\cJ$, $\bcH$ and $\bcK$ are realizable.
-In other words, realizability of the term in square brackets depends on the algebraic closure.
-If the closure satisfies Eq.~\eqref{eq:eddingtonFactorBounds},
-$\bcM^{n+1}_{i}$ is realizable provided $\beta \in [0,1]$.
-Note that $\beta \leq 1$ is also the CFL condition of the Forward-Euler method applied to a transport-only Boltzmann equation.
+Consider Eq.~\eqref{eq:MomentIMEX} and assume that $\bcM_{i}^{n}$ is realizable for all $i$.  
+Lemma~3 in \cite{chu_etal_2018} states that $\bcM^{n+1}_{i}$ is realizable provided $\f{\dt}{\tau} > 0$ and $\widetilde{\bcM}^{n}_{i}$ is realizable.  
+In Eq.~\eqref{eq:widetildeM}, if $\beta \in [0,1]$, $\widetilde{\bcM}^{n}_{i}$ is expressed as a convex combination of $\bcM_{i}^{n}$ and the expression in the square brackets on the right-hand side of Eq.~\eqref{eq:widetildeM}.  
+It follows that $\widetilde{\bcM}^{n}_{i}$ is realizable if the expression inside the square brackets is realizable.  
+By Lemma~2 in \cite{chu_etal_2018}, the expression in square brackets is realizable for a distribution satisfying $f\in[0,1]$.  
+For the two-moment model considered here, realizability depends in the algebraic closure.  
+Specifically, if $\bcM_{i}^{n}$ is realizable and the Eddington factor satisfies the bounds in Eq.~\eqref{eq:eddingtonFactorBounds}, then $\bcM^{n+1}_{i}$ is realizable provided $\beta \in [0,1]$.  
+Thus, realizability of $\bcM^{n+1}_{i}$ requires both a closure based on Fermi-Dirac statistics and a CFL condition $\dt\le\dx$.  

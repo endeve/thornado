@@ -1,22 +1,25 @@
+\clearpage
 \section{Time Integration} \label{se:TimeIntegration}
 
-Suppose we have an algebraic closure based on Fermi-Dirac statistic (whose Eddington factor satisfies Eq.~\eqref{eq:eddingtonFactorBounds}).
-We show how to construct a time integration which satisfies the bounds on moment after each time step in this section.
-The semi-discretization of the moment equations, Eq.~\eqref{eq:momentEquations}, results in a system of ordinary differential equations of the form
+Suppose that an algebraic closure based on Fermi-Dirac statistics is used (i.e., the Eddington factor satisfies Eq.~\eqref{eq:eddingtonFactorBounds}).
+Here we consider the construction of an Implicit-Explicit (IMEX) time integration scheme which maintains the bounds in Eq.~\eqref{eq:MomentsBounds}.  
+The semi-discretization of the two-moment model results in a system of ordinary differential equations of the form
 \begin{equation}
   \dfrac{d \vect{u}}{d t} = \vect{\cT}(\vect{u}) + \f{1}{\tau}\,\vect{\cQ}(\vect{u}),
 \end{equation}
-where
+where the solution vector
 \begin{equation}
-\vect{u}(t) = \left( \bcM_{1}(t),\ldots,\bcM_{N}(t)\right) ^{T}
+  \vect{u}(t) = \left( \bcM_{1}(t),\ldots,\bcM_{N}(t)\right) ^{T}
 \end{equation}
-is the collection of all cell-average moments, $\vect{\cT}$ is the transport operator corresponding to the first term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, and $\f{1}{\tau}\,\vect{\cQ}$ corresponds to the collision operator, the second term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}.
+is the collection of all cell-averaged moments, $\vect{\cT}$ is the transport operator, corresponding to the first term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, and $\f{1}{\tau}\,\vect{\cQ}$ is the collision operator, corresponding to the second term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}.  
 
-Since the realizable $\bcM$ define a convex set in $\cJ$-$\bcH$ space, convex-invariant schemes, which remain in their initial convex set, can be used to design realizability-preserving schemes for the two-moment model. 
-The following discussion shows how to construct a convex-invariant scheme.
+Since the set of realizable moments is convex, convex-invariant schemes, which maintain states in a convex set, can be used to design realizability-preserving schemes for the two-moment model. 
+Ideally, the scheme should also be high-order accurate and work well in the asymptotic diffusion limit (characterized by frequent collisions and long time scales).  
+The following discussion considers the construction of such convex-invariant schemes.  
 
-\subsection{Standard Implicit-Explicit Scheme}
-Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, a standard $s$-stage IMEX scheme takes the following form \cite{pareschiRusso_2005}: 
+\subsection{Standard IMEX Schemes}
+
+Treating the transport operator explicitly and the collision operator implicitly, a standard $s$-stage IMEX scheme takes the following form \cite{pareschiRusso_2005}: 
 \begin{align}
   \vect{u}^{(i)}
   &=\vect{u}^{n}
@@ -28,10 +31,10 @@ Treating $\vect{\cT}$ explicitly and $\f{1}{\tau}\,\vect{\cQ}$ implicitly, a sta
   +\dt\sum_{i=1}^{s}\tilde{w}_{i}\,\vect{\cT}(\vect{u}^{(i)})
   +\dt\sum_{i=1}^{s}w_{i}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}), \label{imexIntermediate} 
 \end{align}
-where  $(\tilde{a}_{ij})$ and $(a_{ij})$ are coefficients of the $i$-th stage and they are the elements of matrices $\tilde{A}$ and $A$, respectively.
+where $(\tilde{a}_{ij})$ and $(a_{ij})$, coefficients of the $i$-th stage, are the elements of matrices $\tilde{A}$ and $A$, respectively.
 The vectors $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ are the weights in the assembly step in Eq.~\eqref{imexIntermediate}.
-These coefficients and weights have to satisfy certain condition for an accurate and consistent scheme.
-For instance, to have second-order temporal accuracy, the following conditions are required:
+These coefficients and weights must satisfy certain order conditions for consistency and accuracy.  
+For second-order temporal accuracy, the following conditions are required:
 \begin{equation}
   \sum_{i=1}^{s}\tilde{w}_{i}=\sum_{i=1}^{s}w_{i}=1,
   \label{orderConditions1}
@@ -44,7 +47,7 @@ and
   =\sum_{i=1}^{s}w_{i}\,c_{i}=\f{1}{2}, 
   \label{orderConditions2}
 \end{equation}
-where $\tilde{c}_{i} = \sum_{j}^{s}\tilde{a}_{ij}$ and $c_{i}=\sum_{j}^{s}a_{ij}$.
+where $\tilde{c}_{i} = \sum_{j=1}^{s}\tilde{a}_{ij}$ and $c_{i}=\sum_{j=1}^{s}a_{ij}$.
 
 \subsection{Constraint-Preserving Implicit-Explicit Schemes}
 Beyond the accuracy requirement, a convex-invariant IMEX scheme must satisfy additional constraints.
@@ -165,3 +168,5 @@ Its standard double Butcher tableau are (explicit tableau on the left, implicit 
 For this schemes, $c_{\mbox{\tiny Sch}}= 1$.
 Three implicit solver are taken for each time step.
 Since PD-ARS with SSPRK3 is as accurate as PD-ARS with SSPRK2 in collision involved region, see Section~\ref{se:NumericalTests} for the plots, it may not offer any advantage.
+
+\clearpage
