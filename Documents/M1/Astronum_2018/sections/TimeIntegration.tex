@@ -67,9 +67,11 @@ with $c_{ij}$ and $\hat{c}_{ij}$ be some expression of $a_{ij}$ and $\tilde{a}_{
 By requiring the IMEX scheme be globally stiffly accurate (GSA), i.e. $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i}$ for $i=1,\ldots,s$, $\vect{u}^{n+1} = \vect{u}^{(s)}$.
 Using those Lemma proved in \cite{chu_etal_2018}, we can find those constraints that $c_{ij}$ and $\hat{c}_{ij}$ (or $a_{ij}$ and $\tilde{a}_{ij}$) need to satisfy to ensure $\vect{u}^{(i)}$ and $\vect{u}^{n+1}$ be realizable.
 
-\ee{Move definition of coefficients $c_{ij}$ and $\tilde{c}_{ij}$ here}
+\ee{Move definition of coefficients $c_{ij}$ and $\tilde{c}_{ij}$ here.}
+\ee{Discuss non-existence of high-order convex invariant scheme without explicit time step.}
 
 \subsection{Diffusion Accurate, Constraint-Preserving Implicit-Explicit Schemes}
+
 Diffusion accurate is the other property the time integration should have.
 In the diffusion limit, the distribution function is nearly isotropic so that $\vect{\cK}\approx\f{1}{3}\,\cJ\,\vect{I}$ and $\vect{\cH}\approx-\f{1}{3}\,\tau\,\nabla\cJ$.
 The moment behavior are governed by (e.g., \cite{jinLevermore_1996})
@@ -81,6 +83,8 @@ The moment behavior are governed by (e.g., \cite{jinLevermore_1996})
 \end{equation}
 In the context of IMEX schemes, the above relationships imply that the relation $A\,\vec{\vect{\cH}}=-\f{1}{3}\,\tau\,\tilde{A}\,\nabla\vec{\cJ}$ should hold. 
 We derived the diffusion accurate condition in \cite{chu_etal_2018} and proved that only type~ARS (investigated by Ascher, Ruuth, and Spiteri\cite{ascher_etal_1997}) IMEX schemes can be our candidates.
+
+\ee{Discuss conditions on IMEX coefficients for diffusion accuracy here.}
 
 For type~ARS, $a_{i1} = 0$ for $i=1,\ldots,s$.
 $c_{ij}$ and $\hat{c}_{ij}$ are given by
@@ -100,6 +104,9 @@ $c_{ij}$ and $\hat{c}_{ij}$ are given by
     \end{equation}
     Note that $c_{i1}=\tilde{c}_{i1}=0$ in Eq.~\eqref{eq:positivityCoefficientsARS} so that $\sum_{j=0}^{i-1}c_{ij}=1$.
     
+\ee{Maybe make a separate subsection combining results from previous sections here.}
+\ee{Need to motivate resorting to first-order accuracy.}
+
 Combining the conditions we have, we aim to find type~ARS IMEX scheme with.
 \begin{enumerate}
     \item Consistency of the implicit coefficients:
