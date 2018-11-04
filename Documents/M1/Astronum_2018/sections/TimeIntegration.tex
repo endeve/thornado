@@ -49,7 +49,10 @@ and
 \end{equation}
 where $\tilde{c}_{i} = \sum_{j=1}^{s}\tilde{a}_{ij}$ and $c_{i}=\sum_{j=1}^{s}a_{ij}$.
 
+\ee{Discuss GSA and Type~ARS here.}
+
 \subsection{Constraint-Preserving Implicit-Explicit Schemes}
+
 Beyond the accuracy requirement, a convex-invariant IMEX scheme must satisfy additional constraints.
 Our idea is finding the constraints on $a_{ij}$, $\tilde{a}_{ij}$, $\tilde{w}_{i}$, and $w_{i}$ that enable each $\vect{u}^{(i)}$ and $\vect{u}^{n+1}$ be convex combination of realizable moments:
 
@@ -63,6 +66,8 @@ Following Hu et al\cite{hu_etal_2018}, the stage values in Eq.~\eqref{imexStages
 with $c_{ij}$ and $\hat{c}_{ij}$ be some expression of $a_{ij}$ and $\tilde{a}_{ij}$.
 By requiring the IMEX scheme be globally stiffly accurate (GSA), i.e. $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i}$ for $i=1,\ldots,s$, $\vect{u}^{n+1} = \vect{u}^{(s)}$.
 Using those Lemma proved in \cite{chu_etal_2018}, we can find those constraints that $c_{ij}$ and $\hat{c}_{ij}$ (or $a_{ij}$ and $\tilde{a}_{ij}$) need to satisfy to ensure $\vect{u}^{(i)}$ and $\vect{u}^{n+1}$ be realizable.
+
+\ee{Move definition of coefficients $c_{ij}$ and $\tilde{c}_{ij}$ here}
 
 \subsection{Diffusion Accurate, Constraint-Preserving Implicit-Explicit Schemes}
 Diffusion accurate is the other property the time integration should have.
