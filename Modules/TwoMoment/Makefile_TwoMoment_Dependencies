@@ -6,6 +6,10 @@ TwoMoment_UtilitiesModule.o: \
   KindModule.o \
   TwoMoment_UtilitiesModule.f90
 
+TwoMoment_RefinementModule.o: \
+  KindModule.o \
+  TwoMoment_RefinementModule.f90
+
 TwoMoment_BoundaryConditionsModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \

@@ -1,6 +1,7 @@
 TWO_MOMENT = \
   TwoMoment_ClosureModule.o \
   TwoMoment_UtilitiesModule.o \
+  TwoMoment_MeshRefinementModule.o \
   TwoMoment_BoundaryConditionsModule.o \
   TwoMoment_PositivityLimiterModule.o \
   TwoMoment_DiscretizationModule_Streaming.o \
