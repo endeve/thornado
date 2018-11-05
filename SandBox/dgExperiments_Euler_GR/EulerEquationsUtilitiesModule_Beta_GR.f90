@@ -50,6 +50,8 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   PUBLIC :: NumericalFlux_X1_HLL_GR
   PUBLIC :: NumericalFlux_X1_HLLC_GR
 
+  REAL(DP), PARAMETER :: TolP = 1.0d-12, TolFunP = 1.0d-10
+
 CONTAINS
 
 
@@ -109,15 +111,14 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
     LOGICAL :: CONVERGED
-    LOGICAL :: DEBUG = .FALSE.
+    LOGICAL :: DEBUG = .TRUE.
 
     INTEGER :: i, ITERATION, nNodes
-    INTEGER, PARAMETER :: MAX_IT = 1000
+    INTEGER, PARAMETER :: MAX_IT = 100
 
     REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q, Pbrent
 
-    REAL(DP) :: FunP, JacP
-    REAL(DP), PARAMETER :: TolP = 1.0d-12, TolFunP = 1.0d-10
+    REAL(DP) :: FunP, JacP, FunP1
 
     ! --- Loop through all the nodes ---
     nNodes = SIZE( CF_D )
@@ -185,19 +186,27 @@ CONTAINS
 
         CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP, Pbrent )
 
-        Pnew = Pold - FunP / JacP
+        Pnew = MAX( Pold - FunP / JacP, SqrtTiny )
 
-        Pnew = MAX( Pnew, SqrtTiny )
+        CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP1, JacP, Pbrent )
+
+        IF( ( FunP .EQ. -FunP1 ) .AND. ( ITERATION .GT. 10 ) )THEN
+          WRITE(*,'(A)') 'Using midpoint'
+          WRITE(*,'(A,I3)') 'ITERATION = ', ITERATION
+          Pnew = Half * ( Pold + Pnew )
+          WRITE(*,'(F19.17)') Pnew
+          !STOP
+        END IF
 
         ! --- Check if Newton's method has converged ---
-        IF( ABS( Pnew - Pold ) / ABS( Pbrent ) .LT. TolP )THEN
+        IF( ( ABS( Pnew - Pold ) / ABS( Pbrent ) ) .LT. TolP )THEN
 
           CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP, Pbrent )
 
           IF( ABS( FunP ) .LT. TolFunP ) THEN
             CONVERGED = .TRUE.
           ELSE
-            WRITE(*,'(A,I4.4)') 'ITERATION: ', ITERATION
+            WRITE(*,'(A,I3)') 'ITERATION: ', ITERATION
             WRITE(*,'(A,ES24.16E3)') '  |dP|/|Pbrent|:  ', &
               ABS( Pnew - Pold ) / ABS( Pbrent )
             WRITE(*,'(A,ES24.16E3)') '  |FunP|:         ', &
@@ -238,8 +247,8 @@ CONTAINS
             WRITE(*,*)
           END IF
 
-          WRITE(*,'(A,I4.4)') '  ITERATION: ', ITERATION
-          WRITE(*,'(A)')      '  --------------'
+          WRITE(*,'(A,I3)') '  ITERATION: ', ITERATION
+          WRITE(*,'(A)')    '  --------------'
           WRITE(*,'(A,ES24.16E3)') '  Pold        = ', Pold
           WRITE(*,'(A,ES24.16E3)') '  Pnew        = ', Pnew
           WRITE(*,'(A,ES24.16E3)') &
@@ -291,9 +300,9 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_GR
 
 
-  SUBROUTINE ComputeFunJacP( CF_D, CF_E, SSq, P, FunP, JacP, Pbisec )
+  SUBROUTINE ComputeFunJacP( CF_D, CF_E, SSq, P, FunP, JacP, Pnorm )
 
-    REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq, P, Pbisec
+    REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq, P, Pnorm
     REAL(DP), INTENT(out) :: FunP, JacP
 
     REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS
@@ -319,11 +328,14 @@ CONTAINS
     CALL ComputePressureFromSpecificInternalEnergy &
          ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
 
-    FunP = ( P - Pbar(1) ) / Pbisec
+!    WRITE(*,*) 'Pbar(1) = ', Pbar(1)
+!    WRITE(*,*) 'P       = ', P
+!    WRITE(*,*)
+    FunP = ( P - Pbar(1) ) / Pnorm
     dRHO = CF_D * SSq / ( SQRT( HSq - SSq ) * HSq )
     dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
 
-    JacP = ( 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS ) ) / Pbisec
+    JacP = ( 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS ) ) / Pnorm
 
   END SUBROUTINE ComputeFunJacP
 
@@ -407,7 +419,6 @@ CONTAINS
     REAL(DP) :: FunPA, FunPB, FunPC, FunPD, FunPS
     REAL(DP) :: JacPA, JacPB, JacPC, JacPD, JacPS
 
-    REAL(DP), PARAMETER :: TolP = 1.0d-12, TolFunP = 1.0d-10
     LOGICAL :: mflag, COND1, COND2, COND3, COND4, COND5
 
     INTEGER, PARAMETER :: MAX_IT = 100

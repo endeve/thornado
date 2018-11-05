@@ -58,6 +58,7 @@ MODULE SlopeLimiterModule_Euler_GR
   REAL(DP), ALLOCATABLE :: WeightsX_X1_P(:), WeightsX_X1_N(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X2_P(:), WeightsX_X2_N(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X3_P(:), WeightsX_X3_N(:)
+  LOGICAL :: DEBUG = .FALSE.
 
 
 CONTAINS
@@ -199,9 +200,11 @@ CONTAINS
 
     IF( .NOT. UseSlopeLimiter ) RETURN
 
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL ApplyBoundaryConditions_Fluid'
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL DetectTroubledCells'
     CALL DetectTroubledCells &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
@@ -219,11 +222,13 @@ CONTAINS
 
           ! --- Cell Volume ---
 
+          IF( DEBUG ) WRITE(*,'(A)') 'Compute cell-volume'
           V_K(iX1,iX2,iX3) &
             = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF_SqrtGm) )  
 
           ! --- Cell Average of Conserved Fluid ---
 
+          IF( DEBUG ) WRITE(*,'(A)') 'Compute cell-averge of conserved fluid'
           DO iCF = 1, nCF
 
             U_K(iCF,iX1,iX2,iX3) &
@@ -235,10 +240,12 @@ CONTAINS
           ! --- Cell Average of Geometry (Spatial Metric, Lapse Function,
           !     and Shift Vector) ---
 
+          IF( DEBUG ) WRITE(*,'(A)') 'Compute cell-averge of metric factors'
           DO iGF = iGF_Gm_dd_11, iGF_Gm_dd_33
             G_K(iGF) = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF) )
           END DO
 
+          IF( DEBUG ) WRITE(*,'(A)') 'Compute cell-averge of lapse and shift'
           DO iGF = iGF_Alpha, iGF_Beta_3
              G_K(iGF) = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF))
           END DO
@@ -288,6 +295,8 @@ CONTAINS
 
             ! --- Compute Eigenvectors ---
 
+            IF( DEBUG ) WRITE(*,'(A)') &
+                  'CALL ComputeCharacteristicDecomposition_GR (X1)'
             CALL ComputeCharacteristicDecomposition_GR &
                    ( 1, G_K(:), U_M(:,0,1), R_X1, invR_X1 )
 
@@ -317,6 +326,7 @@ CONTAINS
 
           ! --- Compute Limited Slopes ---
 
+          IF( DEBUG ) WRITE(*,'(A)') 'Compute limited slopes'
           dU(:,1) &
             = MinModB &
                 ( MATMUL( invR_X1, U_M(:,0,2) ), &
@@ -350,6 +360,7 @@ CONTAINS
 
             ! --- Transform Back from Characteristic Variables ---
 
+            IF( DEBUG ) WRITE(*,'(A)') 'Recover physical variables'
             dU(:,1) = MATMUL( R_X1, dU(:,1) )
 
             IF( nDimsX > 1 )THEN
@@ -368,6 +379,7 @@ CONTAINS
 
           ! --- Compare Limited Slopes to Original Slopes ---
 
+          IF( DEBUG ) WRITE(*,'(A)') 'Compare limited slopes to original slopes'
           DO iCF = 1, nCF
 
             SlopeDifference(iCF) &
@@ -394,6 +406,7 @@ CONTAINS
           ! --- Replace Slopes and Discard High-Order Components ---
           ! --- if Limited Slopes Deviate too Much from Original ---
 
+          IF( DEBUG ) WRITE(*,'(A)') 'Limiting slopes'
           DO iCF = 1, nCF
 
             IF( SlopeDifference(iCF) &
@@ -422,8 +435,8 @@ CONTAINS
       END DO
     END DO
 
-    !CALL ApplyConservativeCorrection &
-    !       ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
+    CALL ApplyConservativeCorrection &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
   END SUBROUTINE ApplySlopeLimiter_Euler_GR
 

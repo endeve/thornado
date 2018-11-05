@@ -154,6 +154,7 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     PROCEDURE (FluidIncrement) :: &
       ComputeIncrement_Fluid
+    LOGICAL :: DEBUG = .FALSE.
 
     INTEGER :: iS, jS
 
@@ -168,6 +169,7 @@ CONTAINS
 
         IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
+          IF( DEBUG ) WRITE(*,'(A)') 'CALL AddIncrement_Fluid (1)'
           CALL AddIncrement_Fluid &
                  ( One, &
                    U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
@@ -181,16 +183,19 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
+        IF( DEBUG ) WRITE(*,'(A)') 'CALL ApplySlopeLimiter_Euler_GR'
         CALL ApplySlopeLimiter_Euler_GR &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
+        IF( DEBUG ) WRITE(*,'(A)') 'CALL ApplyPositivityLimiter_Euler_GR'
         CALL ApplyPositivityLimiter_Euler_GR &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
+        IF( DEBUG ) WRITE(*,'(A)') 'CALL ComputeIncrement_Fluid'
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
@@ -205,6 +210,7 @@ CONTAINS
 
       IF( w_SSPRK(iS) .NE. Zero )THEN
           
+        IF( DEBUG ) WRITE(*,'(A)') 'CALL AddIncrement_Fluid (2)'
         CALL AddIncrement_Fluid &
                ( One, &
                  U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
@@ -215,11 +221,13 @@ CONTAINS
 
     END DO
 
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL ApplySlopeLimiter_Euler_GR (2)'
     CALL ApplySlopeLimiter_Euler_GR &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL ApplyPositivityLimiter_Euler_GR (2)'
     CALL ApplyPositivityLimiter_Euler_GR &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &

@@ -33,15 +33,15 @@ PROGRAM ComputePrimitiveTest
   i = 1
 
   ! --- MAKE SURE TO CHANGE 'E' TO 'd' ---
-  U(i,iCF_D)  =  1.0000577410694345d+000
-  U(i,iCF_S1) = -2.0044113494280685d-005
+  U(i,iCF_D)  =  9.9994521915916246d-001
+  U(i,iCF_S1) = -1.4111396032719828d-005
   U(i,iCF_S2) =  0.0000000000000000d+000
   U(i,iCF_S3) =  0.0000000000000000d+000
-  U(i,iCF_E)  =  5.2867016077136483d-009
+  U(i,iCF_E)  =  1.7191523746929956d-007
 
   G(i,iGF_Gm_dd_11) =  1.0000000000000000d+000
-  G(i,iGF_Gm_dd_22) =  1.0000000000000000d+000
-  G(i,iGF_Gm_dd_33) =  1.0000000000000000d+000
+  G(i,iGF_Gm_dd_22) =  1.9775390625000015d-004
+  G(i,iGF_Gm_dd_33) =  1.9775390625000015d-004
 
   SSq =  U(i,iCF_S1)**2 / G(i,iGF_Gm_dd_11) &
        + U(i,iCF_S2)**2 / G(i,iGF_Gm_dd_22) &
@@ -93,7 +93,7 @@ CONTAINS
     SUBROUTINE CreateFunParray( CF_D, CF_E, SSq, Pmin, Pmax, Pbisec )
 
       REAL(DP), INTENT(in) :: CF_D, CF_E, SSq, Pmin, Pmax, Pbisec
-      INTEGER, PARAMETER   :: N = 10000
+      INTEGER, PARAMETER   :: N = 1000000
       REAL(DP)             :: Parr(N), FunP(N), JacP(N), DeltaP
       INTEGER              :: j
 

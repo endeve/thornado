@@ -76,6 +76,8 @@ PROGRAM ApplicationDriver
   REAL(DP), ALLOCATABLE :: FluidFieldParameters(:)
   REAL(DP)              :: M_PNS = Zero, Ri, R_PNS, R_shock, Rf
 
+  LOGICAL :: DEBUG = .FALSE.
+  
 !  ProgramName = 'RiemannProblem'
 !  ProgramName = 'SphericalRiemannProblem'
   ProgramName = 'SedovBlastWave'
@@ -85,20 +87,20 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'CartesianSedov'
+      RiemannProblemName = 'PerturbedShockTube'
 
       CoordinateSystem = 'CARTESIAN'
 
       nDetCells = 1
       Eblast    = 1.0d-3
 
-      Gamma = 4.0_DP / 3.0_DP
+      Gamma = 5.0_DP / 3.0_DP
 
-      nX = [ 256, 1, 1 ]
+      nX = [ 64, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      bcX = [ 3, 0, 0 ]
+      bcX = [ 32, 0, 0 ]
 
       nNodes = 3
 
@@ -117,7 +119,7 @@ PROGRAM ApplicationDriver
       Min_2 = 1.0d-12
 
       iCycleD = 100
-      t_end   = 1.0d0
+      t_end   = 0.35d0
       dt_wrt  = 1.0d-2 * t_end
       iCycleW = 100
 
@@ -151,8 +153,8 @@ PROGRAM ApplicationDriver
       LimiterThresholdParameter = 0.015_DP
 
       UsePositivityLimiter = .TRUE.
-      Min_1 = 1.0d-16
-      Min_2 = 1.0d-16
+      Min_1 = 1.0d-12
+      Min_2 = 1.0d-12
 
       iCycleD = 100
       t_end   = 5.0d-1
@@ -356,9 +358,11 @@ PROGRAM ApplicationDriver
 
     END IF
 
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL UpdateFluid_SSPRK'
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
 
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL ComputeFromConserved_GR'
     CALL ComputeFromConserved_GR &
            ( iX_B0, iX_E0, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &

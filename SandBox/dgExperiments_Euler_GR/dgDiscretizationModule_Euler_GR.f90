@@ -594,6 +594,7 @@ CONTAINS
 
     CALL Timer_Start( Timer_Geo )
 
+    IF( DEBUG ) WRITE(*,'(A)') 'Entering ComputeIncrement_Geometry...'
     DO iX3 = iX_B0(3), iX_E0(3)
 
       dX3 = MeshX(3) % Width(iX3)
@@ -622,6 +623,7 @@ CONTAINS
 
           P_K(:) = uAF(:,iX1,iX2,iX3,iAF_P)
 
+          IF( DEBUG ) WRITE(*,'(A)') 'CALL ComputePrimitive_GR'
           CALL ComputePrimitive_GR &
                ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                  uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
@@ -632,6 +634,7 @@ CONTAINS
                  G_K(:,iGF_Gm_dd_22),                               &
                  G_K(:,iGF_Gm_dd_33) )
 
+          IF( DEBUG ) WRITE(*,'(A)') 'StressTensor_Diagonal'
           DO iNodeX = 1, nDOFX
 
             Stress(iNodeX,1:3)            &
@@ -650,6 +653,7 @@ CONTAINS
 
           ! --- Face States (Average of Left and Right States) ---
 
+          IF( DEBUG ) WRITE(*,'(A)') 'Scale factor derivatives wrt X1'
           DO iGF = iGF_h_1, iGF_h_3
 
             CALL DGEMV &
@@ -711,6 +715,7 @@ CONTAINS
 
           ! --- Face States (Average of Left and Right States) ---
 
+          IF( DEBUG ) WRITE(*,'(A)') 'Lapse function derivatives wrt X1'
           iGF = iGF_Alpha
 
           CALL DGEMV &
@@ -749,6 +754,7 @@ CONTAINS
 
           ! --- Compute Increments ---
 
+          IF( DEBUG ) WRITE(*,'(A)') 'Compute increments (1)'
           dU(:,iX1,iX2,iX3,iCF_S1)                                       &
             = dU(:,iX1,iX2,iX3,iCF_S1)                                   &
                 + G_K(:,iGF_Alpha)                                       &
@@ -757,6 +763,7 @@ CONTAINS
                         + ( Stress(:,3) * dh3dX1(:) ) / G_K(:,iGF_h_3) ) &
                 - ( uCF_K(:,iCF_D) + uCF_K(:,iCF_E) ) * dadx1(:)
 
+          IF( DEBUG ) WRITE(*,'(A)') 'Compute increments (2)'
           dU(:,iX1,iX2,iX3,iCF_E)     &
             = dU(:,iX1,iX2,iX3,iCF_E) &
                 - ( uCF_K(:,iCF_S1) / G_K(:,iGF_Gm_dd_11) ) * dadx1(:)
@@ -765,6 +772,7 @@ CONTAINS
       END DO
     END DO
 
+    IF( DEBUG ) WRITE(*,'(A)') 'Leaving ComputeIncrement_Geometry'
     CALL Timer_Stop( Timer_Geo )
 
     IF( DisplayTimers )THEN
