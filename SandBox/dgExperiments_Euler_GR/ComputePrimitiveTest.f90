@@ -105,7 +105,7 @@ CONTAINS
       DO j = 1, N
         Parr(j) = Pmin + (j-1) * DeltaP
         CALL ComputeFunJacP &
-               ( CF_D, CF_E, SSq, Parr(j), FunP(j), JacP(j), Pbisec )
+               ( CF_D, CF_E, SSq, Parr(j), FunP(j), JacP(j) )
         WRITE( 100, '(ES24.16E3,1x,ES24.16E3,1x,ES24.16E3)') &
           Parr(j), FunP(j), JacP(j)
       END DO

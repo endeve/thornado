@@ -166,7 +166,7 @@ PROGRAM ApplicationDriver
     CASE( 'SedovBlastWave' )
 
       nDetCells = 1
-      Eblast    = 1.0d-2
+      Eblast    = 7.39d5
 
       CoordinateSystem = 'SPHERICAL'
 
@@ -199,8 +199,8 @@ PROGRAM ApplicationDriver
       dt_wrt  = 1.0d-2 * t_end
       !iCycleW = 1
 
-      nStagesSSPRK = nNodes
-      CFL          = 0.5_DP
+      nStagesSSPRK = 3
+      CFL          = 0.1_DP
 
     CASE( 'StandingAccretionShock' )
 
@@ -222,7 +222,7 @@ PROGRAM ApplicationDriver
 
       bcX = [ 11, 0, 0 ]
 
-      nNodes = 2
+      nNodes = 1
 
       BetaTVD = 2.0_DP
       BetaTVB = 0.0_DP
@@ -232,18 +232,18 @@ PROGRAM ApplicationDriver
       UseCharacteristicLimiting = .TRUE.
 
       UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 0.015_DP
+      LimiterThresholdParameter = 0.03_DP
 
       UsePositivityLimiter = .TRUE.
-      Min_1 = Zero
-      Min_2 = Zero
+      Min_1 = 1.0d-12
+      Min_2 = 1.0d-12
 
       iCycleD = 1000
       t_end   = 1.0d1 * Millisecond
       dt_wrt  = 0.1d0 * Millisecond
 
       nStagesSSPRK = nNodes
-      CFL          = 0.01_DP
+      CFL          = 0.1_DP
 
     CASE DEFAULT
 
