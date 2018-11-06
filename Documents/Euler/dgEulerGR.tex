@@ -344,21 +344,21 @@ So, we end up with:
 
 \subsection{Demanding that $q>0$}
 
-Sometimes it happens that $q\left(\ol{\bU}\right)<0$, so our positivity limiter will fail. To get around this we modify the conserved energy, $\tau$ to demand that $q=\ve$, where $0<\ve\ll1$. The transformation we make is:
+Sometimes it happens that the cell-average of $q$, $q_{K}\equiv q\left(\bU_{K}\right)<0$, so our positivity limiter will fail. To get around this we modify the conserved energy, $\tau$, to demand that $q=\ve$, where $0<\ve\ll1$. The transformation we make is:
 \begin{equation}
-   \ol{ \tau}\longrightarrow\alpha\,\ol{\tau},\hspace{1em}\alpha>1.
+   \tau_{K}\longrightarrow\alpha\,\tau_{K},\hspace{1em}\alpha>1.
 \end{equation}
-This modifies the definition of $q\left(\ol{\bU}\right)\equiv q_{K}$ from:
+This modifies the definition of $q_{K}$ from:
 \begin{equation}
-   q_{K}=\ol{\tau}+\ol{D}-\sqrt{\ol{D}^{2}+\ol{S}^{2}+\ve}<0,
+   q_{K}=\tau_{K}+D_{K}-\sqrt{D_{K}^{2}+S_{K}^{2}+\ve}<0,
 \end{equation}
 to:
 \begin{equation}
-   \ve=\alpha\,\ol{\tau}+\ol{D}-\sqrt{\ol{D}^{2}+\ol{S}^{2}+\ve}.
+   \ve=\alpha\,\tau_{K}+D_{K}-\sqrt{D_{K}^{2}+S_{K}^{2}+\ve}.
 \end{equation}
 Solving this for $\alpha$, we get:
 \begin{equation}
-   \alpha=\ol{\tau}^{-1}\left[\ve-\ol{D}+\sqrt{\ol{D}^{2}+\ol{S}^{2}+\ve}\right].
+   \alpha=\tau_{K}^{-1}\left[\ve-D_{K}+\sqrt{D_{K}^{2}+S_{K}^{2}+\ve}\right].
 \end{equation}
 
 \section{Computing the Time-Step Using Higher-Order DG Schemes}
