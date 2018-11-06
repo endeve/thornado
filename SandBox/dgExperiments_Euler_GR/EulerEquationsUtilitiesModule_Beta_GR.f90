@@ -50,7 +50,7 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   PUBLIC :: NumericalFlux_X1_HLL_GR
   PUBLIC :: NumericalFlux_X1_HLLC_GR
 
-  REAL(DP), PARAMETER :: TolP = 1.0d-12, TolFunP = 1.0d-10
+  REAL(DP), PARAMETER :: TolP = 1.0d-8, TolFunP = 1.0d-6, MachineEPS = 1.0d-16
 
 CONTAINS
 
@@ -111,12 +111,12 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
     LOGICAL :: CONVERGED
-    LOGICAL :: DEBUG = .TRUE.
+    LOGICAL :: DEBUG = .FALSE.
 
     INTEGER :: i, ITERATION, nNodes
     INTEGER, PARAMETER :: MAX_IT = 100
 
-    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q, Pbrent
+    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q, Pbisec
 
     REAL(DP) :: FunP, JacP, FunP1
 
@@ -131,43 +131,41 @@ CONTAINS
 
       IF( q .LT. Zero )THEN
         WRITE(*,*)
-        WRITE(*,'(A6,I1)')        'Node: ', i
+        WRITE(*,'(A6,I1)')        'Node:    ', i
         WRITE(*,'(A9,ES18.10E3)') 'q:       ', q
         WRITE(*,'(A9,ES18.10E3)') 'Gm11(i): ', GF_Gm_dd_11(i)
         WRITE(*,'(A9,ES18.10E3)') 'Gm22(i): ', GF_Gm_dd_22(i)
         WRITE(*,'(A9,ES18.10E3)') 'Gm33(i): ', GF_Gm_dd_33(i)
         WRITE(*,'(A9,ES18.10E3)') 'D(i):    ', CF_D(i)
-        WRITE(*,'(A9,ES18.10E3)') 'E(i):    ', CF_E(i)
+        WRITE(*,'(A9,ES18.10E3)') 'tau(i):  ', CF_E(i)
         WRITE(*,'(A9,ES18.10E3)') 'S1(i):   ', CF_S1(i)
         WRITE(*,'(A9,ES18.10E3)') 'S2(i):   ', CF_S2(i)
         WRITE(*,'(A9,ES18.10E3)') 'S3(i):   ', CF_S3(i)
         STOP 'q < 0'
       END IF
     
-      SSq = CF_S1(i)**2 / GF_Gm_dd_11(i) &
+      SSq =   CF_S1(i)**2 / GF_Gm_dd_11(i) &
             + CF_S2(i)**2 / GF_Gm_dd_22(i) &
             + CF_S3(i)**2 / GF_Gm_dd_33(i)
 
       ! --- Find Pressure with Newton's Method ---
 
-      ! --- Approximation for pressure assuming h^2~=1 ---
-      Pold = MAX( -q, SqrtTiny )
-
-      CALL ComputePressureWithBrentsMethod( CF_D(i), CF_E(i), SSq, Pbrent )
-      Pold = Pbrent
+      ! --- Get initial guess for pressure with bisection method ---
+      CALL ComputePressureWithBisectionMethod( CF_D(i), CF_E(i), SSq, Pbisec )
+      Pold = Pbisec
       IF( DEBUG ) &
-        WRITE(*,'(A,ES24.16E3)') '  Pbrent: ', Pbrent
+        WRITE(*,'(A,ES24.16E3)') '  Pbisec: ', Pbisec
      
       ! --- Get initial value for FunP ---
       IF( DEBUG ) &
-        WRITE(*,'(A)') '  CALL ComputeFunJacP for Pbrent'
-      CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP, Pbrent )
+        WRITE(*,'(A)') '  CALL ComputeFunJacP for Pbisec'
+      CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
       IF( DEBUG ) &
-        WRITE(*,'(A,ES24.16E3)') '  FunPbrent: ', FunP
+        WRITE(*,'(A,ES24.16E3)') '  FunPbisec / Pbisec: ', FunP / Pbisec
 
       CONVERGED = .FALSE.
 
-      IF( ABS( FunP ) .LT. TolFunP )THEN
+      IF( ABS( FunP ) .LT. TolFunP * ABS( TolFunP ) )THEN
         Pnew = Pold
         CONVERGED = .TRUE. 
       ELSE
@@ -184,40 +182,47 @@ CONTAINS
 
         ITERATION = ITERATION + 1
 
-        CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP, Pbrent )
+        CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
+
+        IF( ABS( FunP / JacP ) .LT. MachineEPS ) THEN
+          IF( DEBUG )THEN
+            WRITE(*,*)
+            WRITE(*,'(A,I3)')        'ITERATION = ', ITERATION
+            WRITE(*,'(A,ES24.16E3)') 'Pold      = ', Pold
+            WRITE(*,'(A,ES24.16E3)') 'Pnew      = ', Pnew
+            WRITE(*,'(A,ES24.16E3)') 'Pbisec    = ', Pbisec
+          END IF
+          Pnew = Pold
+          CONVERGED = .TRUE.
+        END IF
 
         Pnew = MAX( Pold - FunP / JacP, SqrtTiny )
 
-        CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP1, JacP, Pbrent )
-
-        IF( ( FunP .EQ. -FunP1 ) .AND. ( ITERATION .GT. 10 ) )THEN
-          WRITE(*,'(A)') 'Using midpoint'
-          WRITE(*,'(A,I3)') 'ITERATION = ', ITERATION
-          Pnew = Half * ( Pold + Pnew )
-          WRITE(*,'(F19.17)') Pnew
-          !STOP
-        END IF
-
         ! --- Check if Newton's method has converged ---
-        IF( ( ABS( Pnew - Pold ) / ABS( Pbrent ) ) .LT. TolP )THEN
+        IF( ( ABS( ( Pnew - Pold ) / Pold ) ) .LT. TolP )THEN
 
-          CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP, Pbrent )
+          CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP )
 
-          IF( ABS( FunP ) .LT. TolFunP ) THEN
-            CONVERGED = .TRUE.
-          ELSE
-            WRITE(*,'(A,I3)') 'ITERATION: ', ITERATION
-            WRITE(*,'(A,ES24.16E3)') '  |dP|/|Pbrent|:  ', &
-              ABS( Pnew - Pold ) / ABS( Pbrent )
-            WRITE(*,'(A,ES24.16E3)') '  |FunP|:         ', &
-              ABS( FunP )
-            STOP 'Stopping because ABS( FunP ) .GE. TolFunP'
+          IF( .NOT. ( ABS( FunP ) .LT. TolFunP * ABS( Pnew ) ) ) THEN
+            WRITE(*,*)
+            WRITE(*,'(A)') 'WARNING:'
+            WRITE(*,'(A)') '--------'
+            WRITE(*,'(A)') 'ABS( FunP * Pnew ) > TolFunP'
+            WRITE(*,'(A,ES24.16E3)') 'TolFunP              = ', TolFunP
+            WRITE(*,'(A,ES24.16E3)') 'Pold                 = ', Pold
+            WRITE(*,'(A,ES24.16E3)') 'Pnew                 = ', Pnew
+            WRITE(*,'(A,ES24.16E3)') &
+              '|(Pnew - Pold)/Pold| = ', ABS( ( Pnew - Pold ) / Pold )
+            WRITE(*,'(A,ES24.16E3)') &
+              '|FunP(Pnew) / Pnew|  = ', ABS( FunP / Pnew )
           END IF
+
+          CONVERGED = .TRUE.
 
         END IF
 
         ! --- STOP after MAX_IT iterations ---
-        IF( ITERATION .GE. MAX_IT-4 .OR. DEBUG )THEN
+        IF( ITERATION .GE. MAX_IT - 4 .OR. DEBUG )THEN
 
           IF( ITERATION .EQ. MAX_IT - 4 )THEN
             WRITE(*,*)
@@ -241,21 +246,25 @@ CONTAINS
               ABS( CF_S1(i) / ( CF_E(i) + CF_D(i) + Pnew ) )
             WRITE(*,'(A,ES24.16E3)') '  W     = ', &
               1.0d0 / SQRT( 1.0d0 - SSq / ( CF_E(i) + CF_D(i) + Pnew )**2 )
-            WRITE(*,'(A,ES24.16E3)') '  P/rho = ', Pnew / ( CF_D(i) / W )
+            WRITE(*,'(A,ES24.16E3)') '  P/rho = ', &
+              Pnew / ( CF_D(i) / ( 1.0d0 / SQRT( 1.0d0 &
+                - SSq / ( CF_E(i) + CF_D(i) + Pnew )**2 ) ) )
             WRITE(*,*)
-            WRITE(*,'(A,ES24.16E3)') '  Pbrent = ', Pbrent
+            WRITE(*,'(A,ES24.16E3)') '  Pold   = ', Pold
             WRITE(*,*)
           END IF
 
           WRITE(*,'(A,I3)') '  ITERATION: ', ITERATION
           WRITE(*,'(A)')    '  --------------'
-          WRITE(*,'(A,ES24.16E3)') '  Pold        = ', Pold
-          WRITE(*,'(A,ES24.16E3)') '  Pnew        = ', Pnew
+          WRITE(*,'(A,ES24.16E3)') '  Pold      = ', Pold
+          WRITE(*,'(A,ES24.16E3)') '  Pnew      = ', Pnew
+          WRITE(*,'(A,ES24.16E3)') '  FunP      = ', FunP
+          WRITE(*,'(A,ES24.16E3)') '  JacP      = ', JacP
           WRITE(*,'(A,ES24.16E3)') &
-            '  dP/|Pbrent| = ', ( Pnew - Pold ) / ABS( Pbrent )
-          WRITE(*,'(A,ES24.16E3)') '  FunP        = ', FunP
+            '  dP/|Pold| = ', ( Pnew - Pold ) / ABS( Pold )
+          WRITE(*,'(A,ES24.16E3)') '  FunP/Pold = ', FunP / Pold
           WRITE(*,*)
-          IF( ITERATION == MAX_IT )THEN
+          IF( ITERATION .EQ. MAX_IT )THEN
             STOP 'Max allowed iterations reached, no convergence.'
           END IF
         END IF
@@ -300,14 +309,18 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_GR
 
 
-  SUBROUTINE ComputeFunJacP( CF_D, CF_E, SSq, P, FunP, JacP, Pnorm )
+  SUBROUTINE ComputeFunJacP( CF_D, CF_E, SSq, P, FunP, JacP, Pnorm_Option )
 
-    REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq, P, Pnorm
+    REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq, P
+    REAL(DP), INTENT(in), OPTIONAL :: Pnorm_Option
     REAL(DP), INTENT(out) :: FunP, JacP
 
-    REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS
+    REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS, Pnorm
     REAL(DP), DIMENSION(1) :: Pbar
     LOGICAL :: DEBUG_FunJacP = .FALSE.
+
+    Pnorm = One
+    IF( PRESENT( Pnorm_Option ) ) Pnorm = Pnorm_Option
 
     IF( DEBUG_FunJacP ) WRITE(*,'(A11,ES24.16E3)') '  CF_D:    ', CF_D
     IF( DEBUG_FunJacP ) WRITE(*,'(A11,ES24.16E3)') '  CF_E:    ', CF_E
@@ -328,9 +341,6 @@ CONTAINS
     CALL ComputePressureFromSpecificInternalEnergy &
          ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
 
-!    WRITE(*,*) 'Pbar(1) = ', Pbar(1)
-!    WRITE(*,*) 'P       = ', P
-!    WRITE(*,*)
     FunP = ( P - Pbar(1) ) / Pnorm
     dRHO = CF_D * SSq / ( SQRT( HSq - SSq ) * HSq )
     dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
@@ -430,8 +440,8 @@ CONTAINS
     ! --- Define values that bracket the root ---
     PA = Zero
     PB = Two * ( One - One / Gamma_IDEAL ) * CF_E
-    CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA, Pbisec )
-    CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB, Pbisec )
+    CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA )
+    CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB )
 
     ! --- Exit if solution is not bracketed ---
     IF( .NOT. FunPA * FunPB .LT. 0.0_DP )THEN
@@ -444,13 +454,13 @@ CONTAINS
        PSwap = PB
        PB    = PA
        PA    = PSwap
-       CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA, Pbisec )
-       CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB, Pbisec )
+       CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA )
+       CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB )
     END IF
 
     ! --- Set PC = PA and compute FunPC ---
     PC = PA
-    CALL ComputeFunJacP( CF_D, CF_E, SSq, PC, FunPC, JacPC, Pbisec )
+    CALL ComputeFunJacP( CF_D, CF_E, SSq, PC, FunPC, JacPC )
 
     ! --- Set mflag ---
     mflag = .TRUE.
@@ -526,16 +536,16 @@ CONTAINS
         mflag = .FALSE.
       END IF
 
-      CALL ComputeFunJacP( CF_D, CF_E, SSq, PS, FunPS, JacPS, Pbisec )
+      CALL ComputeFunJacP( CF_D, CF_E, SSq, PS, FunPS, JacPS )
       PD = PC
       PC = PB
 
       IF( FunPA * FunPS .LT. 0.0_DP )THEN
         PB = PS
-        CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB, Pbisec )
+        CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB )
       ELSE
         PA = PS
-        CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA, Pbisec )
+        CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA )
       END IF
 
       ! --- Conditionally swap PA and PB ---
@@ -543,8 +553,8 @@ CONTAINS
         PSwap = PB
         PB    = PA
         PA    = PSwap
-        CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA, Pbisec )
-        CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB, Pbisec )
+        CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA )
+        CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB )
       END IF
 
       Pbrent = PB
@@ -767,9 +777,6 @@ CONTAINS
 
             IF( nDimsX .GT. 1 )THEN
 
-              WRITE(*,'(A,I1)') 'Code not currently able to handle nDimsX = ', nDimsX
-              STOP
-
               IF( PressureTensorSum .GT. Zero )THEN
                   
                 PosRoot(2) = Two * ( One - epsilon ) / PressureTensorSum &
@@ -813,9 +820,6 @@ CONTAINS
             END IF
 
             IF( nDimsX .GT. 2 )THEN
-
-              WRITE(*,'(A,I1)') 'Code not currently able to handle nDimsX = ', nDimsX
-              STOP
 
               IF( PressureTensorSum .GT. Zero )THEN
                 PosRoot(3) = Two * ( One - epsilon ) / PressureTensorSum &
@@ -872,12 +876,34 @@ CONTAINS
               = dX(3) / ( Two * Max_X3 )
 
           TimeStep = MIN( TimeStep, MIN( MINVAL( dt_X ), MINVAL( dt_S ) ) )
+          IF( TimeStep .LT. SqrtTiny )THEN
+
+            WRITE(*,*)
+            WRITE(*,*) 'iX1, iX2, iX3       = ', iX1, iX2, iX3
+            WRITE(*,*) 'dt_S                = ', dt_S
+            WRITE(*,*) 'PressureTensorSum   = ', PressureTensorSum
+            WRITE(*,*) 'MinRoot1            = ', MIN( PosRoot(1), NegRoot(1) )
+            WRITE(*,*) 'D                   = ', U(:,iX1,iX2,iX3,iCF_D)
+            WRITE(*,*) 'S1                  = ', U(:,iX1,iX2,iX3,iCF_S1)
+            WRITE(*,*) 'tau                 = ', U(:,iX1,iX2,iX3,iCF_E)
+            WRITE(*,*) 'Gm11                = ', G(:,iX1,iX2,iX3,iGF_Gm_dd_11)
+            WRITE(*,*) 'Gm22                = ', G(:,iX1,iX2,iX3,iGF_Gm_dd_22)
+            WRITE(*,*) 'Gm33                = ', G(:,iX1,iX2,iX3,iGF_Gm_dd_33)
+            WRITE(*,*) 'S1/PTS              = ', &
+                 U(:,iX1,iX2,iX3,iCF_S1) / PressureTensorSum
+            WRITE(*,*) 'SQRT(tau*(tau+2*D)) = ', &
+                 SQRT( U(:,iX1,iX2,iX3,iCF_E) * ( U(:,iX1,iX2,iX3,iCF_E) &
+                 + Two * U(:,iX1,iX2,iX3,iCF_D) ) )
+            STOP 'Timestep < SqrtTiny'
+
+          END IF
+          
 
         END DO
       END DO
     END DO
 
-    TimeStep = epsilon * CFL * TimeStep
+    TimeStep = MAX( epsilon * CFL * TimeStep, SqrtTiny )
 
   END SUBROUTINE ComputeTimeStep_GR
 
