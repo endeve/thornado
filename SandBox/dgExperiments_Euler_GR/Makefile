@@ -9,7 +9,6 @@ ApplicationDriver: \
 	CharacteristicDecompositionModule_GR.o \
 	BoundaryConditionsModule_Beta.o \
 	SlopeLimiterModule_Euler_GR.o \
-	DataFileReaderModule.o \
 	InitializationModule_GR.o \
 	dgDiscretizationModule_Euler_GR.o \
 	TimeSteppingModule_SSPRK.o \
@@ -21,7 +20,6 @@ ApplicationDriver: \
 	CharacteristicDecompositionModule_GR.o \
 	BoundaryConditionsModule_Beta.o \
 	SlopeLimiterModule_Euler_GR.o \
-	DataFileReaderModule.o \
 	InitializationModule_GR.o \
 	dgDiscretizationModule_Euler_GR.o \
 	TimeSteppingModule_SSPRK.o \
