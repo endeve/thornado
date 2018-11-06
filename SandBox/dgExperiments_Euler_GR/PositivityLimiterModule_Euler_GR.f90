@@ -224,6 +224,7 @@ CONTAINS
               END IF          
             END DO
 
+
             IF( DEBUG ) WRITE(*,'(A)') 'Computing cell-average, geometry'
             DO iGF = 1, nGF
               IF( UseGeometry )THEN
@@ -241,6 +242,9 @@ CONTAINS
             ! --- Compute q using cell-averages ---
             CALL Computeq( 1, U_K, G_K, q_K )
             IF( q_K(1) .LT. Zero )THEN
+
+              ! --- Ensure positive tau ---
+              IF( U_K(iCF_E) .LT. Zero ) U_K(iCF_E) = MAX( SqrtTiny, U_K(iCF_E) )
 
               IF( DEBUG ) &
                 WRITE(*,'(A,ES24.16E3)') 'q_K = ', q_K(1)
