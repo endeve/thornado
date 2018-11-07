@@ -174,9 +174,11 @@ CONTAINS
              zoomE_Option            &
                = zoomE_Option )
 
-    BasicInitialization = .FALSE.
-    IF( PRESENT( BasicInitialization_Option ) ) &
+    IF( PRESENT( BasicInitialization_Option ) )THEN
       BasicInitialization = BasicInitialization_Option
+    ELSE
+      BasicInitialization = .FALSE.
+    END IF
 
     IF( BasicInitialization )THEN
 
