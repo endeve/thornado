@@ -32,7 +32,7 @@ Treating the transport operator explicitly and the collision operator implicitly
   +\dt\sum_{i=1}^{s}w_{i}\,\f{1}{\tau}\,\vect{\cQ}(\vect{u}^{(i)}), \label{imexIntermediate} 
 \end{align}
 where $(\tilde{a}_{ij})$ and $(a_{ij})$, coefficients of the $i$-th stage, are the elements of matrices $\tilde{A}$ and $A$, respectively.
-Matrices $\tilde{A}$ and $A$ are both lower triangular matrices.
+Matrices $\tilde{A}$ and $A$ are both lower triangular matrices whose other elements are all zero.
 The vectors $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ are the weights in the assembly step in Eq.~\eqref{imexIntermediate}.
 These coefficients and weights must satisfy certain order conditions for consistency, accuracy and other properties.
   
@@ -55,6 +55,8 @@ For globally stiffly accuracy (GSA), the coefficients have the following relatio
 \begin{equation}
 a_{si}=w_{i}, \quad \tilde{a}_{si}=\tilde{w}_{i}, \quad \text{for} \quad i=1,\ldots,s.
 \end{equation}
+It makes the assembly step the same as the $s$th-stage, $\vect{u}^{n+1} = \vect{u}^{(s)}$.
+Therefore, GSA condition, if it is achievable, is also a simplifying condition beyond stiffly accurate condition.
 
 The IMEX schemes are usually classified by the structure of matrix $A$, the implicit tableau:
 if $A$ is invertible, the IMEX scheme is type~A \cite{pareschiRusso_2005};
@@ -62,7 +64,7 @@ if $a_{i1} = 0$ for $i=1,\ldots,s$ and $w_{1} = 0$, the IMEX scheme is type~ARS 
 
 \subsection{Convex-Invariant Implicit-Explicit Schemes}
 
-Beyond the accuracy requirement, a convex-invariant IMEX scheme must satisfy additional constraints.
+Beyond certain accuracy and GSA requirements, a convex-invariant IMEX scheme must satisfy additional constraints.
 Our idea is finding the constraints on $a_{ij}$, $\tilde{a}_{ij}$, $\tilde{w}_{i}$, and $w_{i}$ that enable each $\vect{u}^{(i)}$ and $\vect{u}^{n+1}$ be convex combination of realizable moments:
 
 Following Hu et al\cite{hu_etal_2018}, the stage values in Eq.~\eqref{imexStages} can be rewritten as
@@ -90,7 +92,7 @@ For example, type~ARS IMEX schemes have $c_{ij}$ and $\hat{c}_{ij}$ be given by
     \end{equation}
 Note that $c_{i1}=\tilde{c}_{i1}=0$ in Eq.~\eqref{eq:positivityCoefficientsARS} so that $\sum_{j=0}^{i-1}c_{ij}=1$.
 
-By requiring the IMEX scheme be GSA, $\vect{u}^{n+1} = \vect{u}^{(s)}$.
+GSA gives $\vect{u}^{n+1} = \vect{u}^{(s)}$.
 Then using those Lemma proved in \cite{chu_etal_2018}, we can find those constraints, such as Eq.~\eqref{eq:convexInvariant} for type~ARS, that $c_{ij}$ and $\hat{c}_{ij}$ (or $a_{ij}$ and $\tilde{a}_{ij}$) need to satisfy to ensure $\vect{u}^{(i)}$, Eq.~\eqref{eq:imexStagesRewrite}, be realizable.
 Hence $\vect{u}^{(i)}$ and $\vect{u}^{n+1}$ are realizable and the method with this convex-invariant IMEX scheme is realizability-preserving.
 
@@ -109,7 +111,7 @@ To keep things simple, we aim for 1st-order in general, high-order in streaming 
 
 \subsection{Diffusion Accurate, Convex-Invariant Implicit-Explicit Schemes}
 
-Diffusion accurate is an important property the time integration should have.
+Diffusion accurate is another important property the time integration should have.
 In the diffusion limit, the distribution function is nearly isotropic so that $\vect{\cK}\approx\f{1}{3}\,\cJ\,\vect{I}$ and $\vect{\cH}\approx-\f{1}{3}\,\tau\,\nabla\cJ$.
 The moment behavior are governed by (e.g., \cite{jinLevermore_1996})
 \begin{equation}
@@ -121,15 +123,19 @@ The moment behavior are governed by (e.g., \cite{jinLevermore_1996})
 In the context of IMEX schemes, the above relationships imply that the relation $A\,\vec{\vect{\cH}}=-\f{1}{3}\,\tau\,\tilde{A}\,\nabla\vec{\cJ}$ should hold. 
 That's
 \begin{equation}
-   \vect{e}_{i}^{T}A^{-1}\tilde{A}\,\vect{e} = 1, \quad i=2,\ldots,s,
+   \vect{e}_{i}^{T}A^{-1}\tilde{A}\,\vect{e} = 1, \quad i=1,\ldots,s,
 \end{equation}
 where $\vect{e}_{i}$ is the $i$th column of the $s\times s$ identity matrix.
-It can be rewritten as $c=\tilde{c}$.
+It can be rewritten as 
+\begin{equation}
+c=\tilde{c}.
+\end{equation}
 We have proved in \cite{chu_etal_2018} that only type~ARS IMEX schemes can be diffusion accurate and convex-invariant at the same time.
+Another short proof is that type~A IMEX schemes have $\tilde{c}_1 = 0$ while $c_i \neq 0$.
 
 \subsection{PD-ARS schemes}
 
-Combining the conditions we have, the 1st-order in general, high-order in streaming limit, diffusion accurate, convex-invariant IMEX schemes we need are type~ARS IMEX schemes satisfying the following constraints:
+Combining the conditions we have, the 1st-order in general, high-order in streaming limit, diffusion accurate, convex-invariant, GSA IMEX schemes we need are type~ARS IMEX schemes satisfying the following constraints:
 \begin{enumerate}
     \item Consistency of the implicit coefficients:
     \begin{equation}
