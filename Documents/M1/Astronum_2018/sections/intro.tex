@@ -27,9 +27,8 @@ Such a global inversion is both expensive and unfriendly to parallelization.
 To circumvent these challenges, implicit-explicit (IMEX) methods are taken into consideration.
 By treating the transport terms in the two-moment equations explicitly and the collision terms implicitly, IMEX methods are subject only to a time step governed by the explicit transport terms, and the matrices to be inverted are block diagonal.
 Therefore, IMEX methods require fewer time steps comparing with fully explicit method, and the calculation for each step is easily parallelizable.  
-For a non-relativistic system where the propagating speed of gravity wave and fluid is much slower than the light speed, fully implicit method is a better choice for neutrino transport in CCSN simulation.\cite{cernohorskyVanWeert_1992}(read ?)
-But for a relativistic circumstance that we have, where the gravity, fluid, and neutrino have a relativistic propagating speed, IMEX method
-balances the efficiency and cost.
+%For a non-relativistic system where the propagating speed of gravitional wave and fluid is much slower than the light speed, fully implicit method is a better choice for neutrino transport in CCSN simulation.\cite{cernohorskyVanWeert_1992}(read ?)
+For a relativistic circumstance that we have, where the gravity, fluid, and neutrino have a relativistic propagating speed, IMEX method is an efficient method.
 
 To model neutrino transport using two-moment method, two things need to be chosen carefully: an algebraic closure based on Fermi-Dirac statistic for closing the two-moment equations and a convex-invariant, diffusion-accurate IMEX scheme to ensure a physical result.
 Since the neutrino distribution function is bounded ($f\in[0,1]$) by the Pauli exclusion principle, its moments as weight integrals of a bounded function over domain $\omega\in\bbS^{2}$ are also bounded.
@@ -37,10 +36,10 @@ We call the moments satisfying the constraints due to Fermi-Dirac statistics \te
 The algebraic closure should give a realizable $\bcK$, and the well-posedness of the closure requires realizable $\cJ$ and $\bcH$.
 It explains why an algebraic closure based on Fermi-Dirac statistics is needed.
 Realizability of $\cJ$ and $\bcH$ after each time step requires a convex-invariant IMEX scheme.
-Since the realizable moments form a convex set, it is possible to construct a constraint-preserving IMEX scheme for two-moment neutrino transport.
+Since the realizable moments form a convex set, it is possible to construct a realizability-preserving method with convex-invariant IMEX scheme for two-moment neutrino transport.
 What's more, the physics of neutrino transport in CCSN requires the IMEX scheme to be diffusion-accurate.
 
-The study of moment realizability and constraint-preserving, diffusion-accurate IMEX schemes motivate this work.
+The study of moment realizability and realizability-preserving method with diffusion-accurate IMEX schemes motivate this work.
 Gottlieb et al\cite{gottlieb_etal_2001} showed standard IMEX scheme with strong-stability-preserving can't have an order higher than first without a restrict time step requirement.
 To have second-order (or higher-order) accuracy, some correction steps are needed.
 Unfortunately, the correction steps can deteriorate the accuracy of the IMEX scheme in the diffusion limit or restrict the time step.
@@ -52,4 +51,4 @@ Section~\ref{se:SpacialDiscretization} gives a first-order finite-volume spatial
 Section~\ref{se:TimeIntegration} discusses how to use convex combination to construct PD-ARS scheme and two PD-ARS schemes, one with second-order accuracy in the streaming limit and the other with third-order accuracy in the same limit;
 Section~\ref{se:NumericalTests} presents the results of the numerical tests, which demonstrate the properties of the PD-ARS schemes; Section~\ref{se:Conclusion} summarizes the achievements of this paper and discusses future works.
 
-\rc{Reference check}
+%\rc{Reference check}

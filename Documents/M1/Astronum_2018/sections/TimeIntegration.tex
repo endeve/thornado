@@ -13,7 +13,7 @@ where the solution vector
 \end{equation}
 is the collection of all cell-averaged moments, $\vect{\cT}$ is the transport operator, corresponding to the first term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, and $\f{1}{\tau}\,\vect{\cQ}$ is the collision operator, corresponding to the second term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}.  
 
-Since the set of realizable moments is convex, convex-invariant schemes, which maintain states in a convex set, can be used to design realizability-preserving schemes for the two-moment model. 
+Since the set of realizable moments is convex, convex-invariant schemes, which maintain states in a convex set, can be used to design realizability-preserving methods for the two-moment model. 
 Ideally, the scheme should also be high-order accurate and work well in the asymptotic diffusion limit (characterized by frequent collisions and long time scales).  
 The following discussion considers the construction of such convex-invariant schemes.  
 
@@ -60,7 +60,7 @@ The IMEX schemes are usually classified by the structure of matrix $A$, the impl
 if $A$ is invertible, the IMEX scheme is type~A \cite{pareschiRusso_2005};
 if $a_{i1} = 0$ for $i=1,\ldots,s$ and $w_{1} = 0$, the IMEX scheme is type~ARS \cite{ascher_etal_1997,pareschiRusso_2005}. 
 
-\subsection{Constraint-Preserving Implicit-Explicit Schemes}
+\subsection{Convex-Invariant Implicit-Explicit Schemes}
 
 Beyond the accuracy requirement, a convex-invariant IMEX scheme must satisfy additional constraints.
 Our idea is finding the constraints on $a_{ij}$, $\tilde{a}_{ij}$, $\tilde{w}_{i}$, and $w_{i}$ that enable each $\vect{u}^{(i)}$ and $\vect{u}^{n+1}$ be convex combination of realizable moments:
@@ -92,7 +92,7 @@ Note that $c_{i1}=\tilde{c}_{i1}=0$ in Eq.~\eqref{eq:positivityCoefficientsARS} 
 
 By requiring the IMEX scheme be GSA, $\vect{u}^{n+1} = \vect{u}^{(s)}$.
 Then using those Lemma proved in \cite{chu_etal_2018}, we can find those constraints, such as Eq.~\eqref{eq:convexInvariant} for type~ARS, that $c_{ij}$ and $\hat{c}_{ij}$ (or $a_{ij}$ and $\tilde{a}_{ij}$) need to satisfy to ensure $\vect{u}^{(i)}$, Eq.~\eqref{eq:imexStagesRewrite}, be realizable.
-Hence $\vect{u}^{(i)}$ and $\vect{u}^{n+1}$ are realizable and the IMEX is constraint-preserving.
+Hence $\vect{u}^{(i)}$ and $\vect{u}^{n+1}$ are realizable and the method with this convex-invariant IMEX scheme is realizability-preserving.
 
 When the convex-invariant constraints are satisfied, the first (sum) term on the right-hand side of Eq.\eqref{eq:imexStagesRewrite} is a convex combination of multiple explicit Euler schemes with time step $\hat{c}_{ij}\,\dt$.
 Each of the explicit Euler schemes has a time step condition that ensures its realizability: $\hat{c}_{ij}\,\dt\leq$ the Courant-Friedrichs-Lewy (CFL) condition.
@@ -101,13 +101,13 @@ As a result, the time step of the IMEX scheme is subject to the most restrict ti
 \max(\hat{c}_{ij})\,\dt \leq \text{CFL condition}.
 \end{equation}
 
-Unfortunately, no coefficients can be found for standard IMEX schemes under the constraint-preserving constraints and the accuracy constraints for 2nd-order or higher. 
+Unfortunately, no coefficients can be found for standard IMEX schemes under the convex-invariant constraints and the accuracy constraints for 2nd-order or higher. 
 To circumvent this problem, some correction steps are introduced after the assembly step, Eq.~\eqref{imexIntermediate}, such as Hu et al.\cite{hu_etal_2018}.
 However, the correction steps impose extra constraints for realizability on time step.
 In the circumstance that we have, correction steps can ruin the efficiency we gain from the IMEX scheme.
-To keep things simple, we aim for 1st-order in general, high-order in streaming limit, diffusion accurate, constraint-preserving IMEX schemes.
+To keep things simple, we aim for 1st-order in general, high-order in streaming limit, diffusion accurate, convex-invariant IMEX schemes.
 
-\subsection{Diffusion Accurate, Constraint-Preserving Implicit-Explicit Schemes}
+\subsection{Diffusion Accurate, Convex-Invariant Implicit-Explicit Schemes}
 
 Diffusion accurate is an important property the time integration should have.
 In the diffusion limit, the distribution function is nearly isotropic so that $\vect{\cK}\approx\f{1}{3}\,\cJ\,\vect{I}$ and $\vect{\cH}\approx-\f{1}{3}\,\tau\,\nabla\cJ$.
@@ -124,12 +124,12 @@ That's
    \vect{e}_{i}^{T}A^{-1}\tilde{A}\,\vect{e} = 1, \quad i=2,\ldots,s,
 \end{equation}
 where $\vect{e}_{i}$ is the $i$th column of the $s\times s$ identity matrix.
-\rc{It can be rewrite to $c=\tilde{c}$.}
-We have proved in \cite{chu_etal_2018} that only type~ARS IMEX schemes can be diffusion accurate and constraint-preserving at the same time.
+It can be rewritten as $c=\tilde{c}$.
+We have proved in \cite{chu_etal_2018} that only type~ARS IMEX schemes can be diffusion accurate and convex-invariant at the same time.
 
 \subsection{PD-ARS schemes}
 
-Combining the conditions we have, the 1st-order in general, high-order in streaming limit, diffusion accurate, constraint-preserving IMEX schemes we need are type~ARS IMEX schemes satisfying the following constraints:
+Combining the conditions we have, the 1st-order in general, high-order in streaming limit, diffusion accurate, convex-invariant IMEX schemes we need are type~ARS IMEX schemes satisfying the following constraints:
 \begin{enumerate}
     \item Consistency of the implicit coefficients:
     \begin{equation}
@@ -139,12 +139,12 @@ Combining the conditions we have, the 1st-order in general, high-order in stream
     \begin{equation}
       \sum_{i=1}^{s}\tilde{w}_{i}=1
       \quad\text{and}\quad
-      \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}=\f{1}{2},
+      \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}=\f{1}{2}.
       \label{eq:orderConditionsEx}
     \end{equation}
-    \item Diffusion accurate: \rc{$c=\tilde{c}$.}
+    \item Diffusion accurate:
     \begin{equation}
-      \vect{e}_{i}^{T}A^{-1}\tilde{A}\,\vect{e} = 1, \quad i=2,\ldots,s.
+      c=\tilde{c}.
       \label{eq:diffusionCondition}
     \end{equation}
     \item Convex-invariant:
@@ -153,7 +153,7 @@ Combining the conditions we have, the 1st-order in general, high-order in stream
       &\text{and} \quad c_{ij},\tilde{c}_{ij}\ge0, \quad \text{for} \quad i=3,\ldots,s, \quad\text{and}\quad j=2,\ldots,i-1.  
       \label{eq:convexInvariant}
     \end{align}
-    with $\sum_{j=0}^{i-1}c_{ij}=1$, for $i=1,\ldots,s$, and $c_{\Sch}=\min_{\substack{i = 2,\ldots,s \\ 
+    with $\sum_{j=0}^{i-1}c_{ij}=1$, for $i=1,\ldots,s$, and $c_{\Sch}:=\min_{\substack{i = 2,\ldots,s \\ 
                   j = 0,2,\ldots,i-1}}\,\f{1}{\hat{c}_{ij}}>0$.
     \item Less than five stages ($s\le4$) \label{cod:statges}.
     \item Globally stiffly accurate: $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i},\quad i=1,\ldots,s$. 
