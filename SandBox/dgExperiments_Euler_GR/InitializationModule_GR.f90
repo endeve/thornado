@@ -120,7 +120,6 @@ CONTAINS
       WRITE(*,'(A,ES23.16E3)') '     Initial blast pressure: ', &
                                        ( Gamma_IDEAL - One ) &
                                          * Eblast / X_D**3
-
     END IF
 
     DO iX3 = 1, nX(3)
@@ -137,7 +136,7 @@ CONTAINS
 
               CASE( 'Sod' )
 
-                IF( X1 <= Half )THEN
+                IF( X1 .LE. Half )THEN
 
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
@@ -161,7 +160,7 @@ CONTAINS
 
               CASE( 'MBProblem1' )
 
-                IF( X1 <= Half )THEN
+                IF( X1 .LE. Half )THEN
 
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.9_DP
@@ -185,7 +184,7 @@ CONTAINS
 
               CASE( 'MBProblem4' )
 
-                IF( X1 <= Half )THEN
+                IF( X1 .LE. Half )THEN
 
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
@@ -209,7 +208,7 @@ CONTAINS
 
               CASE( 'PerturbedShockTube' )
 
-                IF( X1 <= Half )THEN
+                IF( X1 .LE. Half )THEN
 
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 5.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
@@ -234,7 +233,7 @@ CONTAINS
 
               CASE( 'CartesianSedov' )
 
-                IF( X1 <= X_D )THEN
+                IF( X1 .LE. X_D )THEN
 
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
@@ -257,28 +256,48 @@ CONTAINS
 
                END IF
 
+              CASE( 'ShockReflection' )
+
+                IF( X1 .LE. One )THEN
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.99999_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.01_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+                END IF
+
+
              CASE DEFAULT
 
                 WRITE(*,*)
-                WRITE(*,*) &
+                WRITE(*,'(A,A)') &
                   'Invalid choice for RiemannProblemName: ', RiemannProblemName
-                WRITE(*,*) 'Valid choices:'
-                WRITE(*,*) &
-                  "'Sod' - ", &
-                  "Sod's shock tube"
-                WRITE(*,*) &
-                  "'MBProblem1 - '", &
-                  "Mignone & Bodo (2005) MNRAS, 364, 126, Problem 1"
-                WRITE(*,*) &
-                  "'MBProblem4 - '", &
-                  "Mignone & Bodo (2005) MNRAS, 364, 126, Problem 4"
-                WRITE(*,*) &
-                  "'PerturbedShockTube' - ", &
-                  "Del Zanna & Bucciantini (2002) AA, 390, 1177, ", &
-                  "sinusoidal density perturbation"
-                WRITE(*,*) &
-                  "'CartesianSedov - '"
-                WRITE(*,*) 'Stopping...'
+                WRITE(*,'(A)') 'Valid choices:'
+                WRITE(*,'(A)') &
+                  "  'Sod' - &
+                  Sod's shock tube"
+                WRITE(*,'(A)') &
+                  "  'MBProblem1' - &
+                  Mignone & Bodo (2005) MNRAS, 364, 126, Problem 1"
+                WRITE(*,'(A)') &
+                  "  'MBProblem4' - &
+                  Mignone & Bodo (2005) MNRAS, 364, 126, Problem 4"
+                WRITE(*,'(A)') &
+                  "  'PerturbedShockTube' - &
+                  Del Zanna & Bucciantini (2002) AA, 390, 1177, &
+                  Sinusoidal density perturbation"
+                WRITE(*,'(A)') &
+                  "  'CartesianSedov' - &
+                  ..."
+                WRITE(*,'(A)') &
+                  "  'ShockReflection' - &
+                  Del Zanna & Bucciantini (2002) AA, 390, 1177, &
+                  Planar shock reflection"
+                WRITE(*,'(A)') 'Stopping...'
                 STOP
 
               END SELECT
@@ -572,7 +591,7 @@ CONTAINS
       END DO
     END DO
     CLOSE( 100 )
-    STOP 'Wrote SAS_IC.dat'
+    STOP 'Wrote SAS_IC_interp.dat'
 
   END SUBROUTINE InitializeFields_GR_StandingAccretionShock
 
@@ -585,7 +604,9 @@ CONTAINS
     INTEGER,  INTENT(in) :: iVar, i_r, iL
     REAL(DP), INTENT(in) :: X
     REAL(DP), INTENT(in) :: FluidFieldData(:,:)
-    REAL(DP)             :: m, X1, X2, Y1, Y2
+    REAL(DP)             :: X1, X2, Y1, Y2, m
+
+    LOGICAL :: DEBUG = .TRUE.
 
     X1 = FluidFieldData(iL,i_r)
     X2 = FLuidFieldData(iL+1,i_r)
@@ -597,10 +618,22 @@ CONTAINS
     ! --- Using only lower limit for slope ---
     yInterp = m * ( X - X1 ) + Y1
 
+    IF( DEBUG )THEN
+      WRITE(*,'(A)') 'Debugging InterpolateInitialConditionsOntoGrid'
+      WRITE(*,'(A,I1)') 'Variable: ', iVar
+      WRITE(*,'(A,ES24.16E3)') 'Y1             = ', Y1
+      WRITE(*,'(A,ES24.16E3)') 'Y2             = ', Y2
+      WRITE(*,'(A,ES24.16E3)') 'Y2 - Y1        = ', Y2 - Y1
+      WRITE(*,'(A,ES24.16E3)') 'X2 - X1        = ', X2 - X1
+      WRITE(*,'(A,ES24.16E3)') 'm              = ', m
+      WRITE(*,'(A,ES24.16E3)') 'm * ( X - X1 ) = ', m * ( X - X1 )
+      WRITE(*,*)
+    END IF
+
     ! --- Using average slope ---
     ! --- Only changes accuracy in 12th decimal place ---
-!    yInterp = ( 2.0_DP * m * ( X - X1 ) * ( X2 - X ) + ( Y1 * X2 + Y2 * X1 ) &
-!                - X * ( Y1 + Y2 ) ) / ( X1 + X2 - 2.0_DP * X )
+    !yInterp = ( 2.0_DP * m * ( X - X1 ) * ( X2 - X ) + ( Y1 * X2 + Y2 * X1 ) &
+    !            - X * ( Y1 + Y2 ) ) / ( X1 + X2 - 2.0_DP * X )
 
     RETURN
   END FUNCTION InterpolateInitialConditionsOntoGrid
