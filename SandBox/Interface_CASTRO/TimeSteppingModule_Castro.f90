@@ -21,9 +21,34 @@ MODULE TimeSteppingModule_Castro
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: ComputeTimeStep_TwoMoment
   PUBLIC :: Update_IMEX_PDARS
 
 CONTAINS
+
+
+  SUBROUTINE ComputeTimeStep_TwoMoment( dX_CGS, dt_CGS )
+
+    use PhysicalConstantsModule, only : SpeedOfLightCGS
+    use ProgramHeaderModule,     only : nDimsX, nNodes
+
+    REAL(DP), INTENT(in)  :: dX_CGS(3)
+    REAL(DP), INTENT(out) :: dt_CGS
+
+    INTEGER  :: i
+    REAL(DP) :: CFL, InverseLenghtScale
+
+    CFL = SpeedOfLightCGS / DBLE( 2 * nNodes - 1 )
+
+    InverseLenghtScale = 0.0_DP
+    DO i = 1, nDimsX
+      InverseLenghtScale &
+        = InverseLenghtScale + 1.0_DP / dX_CGS(i)
+    END DO
+
+    dt_CGS = CFL / InverseLenghtScale
+
+  END SUBROUTINE ComputeTimeStep_TwoMoment
 
 
   SUBROUTINE Update_IMEX_PDARS( dt, U_F, U_R, SingleStage_Option )
