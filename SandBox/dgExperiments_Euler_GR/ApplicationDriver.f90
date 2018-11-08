@@ -87,41 +87,54 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem' )
 
-!      RiemannProblemName = 'Sod'
-      ! Gamma = 5/3
-      ! t = 0.4
-       
-!      RiemannProblemName = 'MBProblem1'
-      ! Gamma = 4/3
-      ! t = 0.4
-      
-!      RiemannProblemName = 'MBProblem4'
-      ! Gamma = 5/3
-      ! t = 0.4
+      RiemannProblemName = 'ShockReflection'
 
-!      RiemannProblemName = 'PerturbedShockTube'
-      ! Gamma = 5/3
-      ! t = 0.35
+      SELECT CASE ( TRIM( RiemannProblemName ) )
 
-!      RiemannProblemName = 'CartesianSedov'
-!      nDetCells = 1
-!      Eblast    = 1.0d-3
+        CASE( 'Sod' )
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.4d0
+          bcX   = [ 2, 0, 0 ]
 
-      RiemannProblemName = 'ShockReflections'
-      ! Gamma = 5/3
-      ! t = 0.75
-      ! bcX = [ 23, 0, 0 ]
+        CASE( 'MBProblem1' )
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 0.4d0
+          bcX   = [ 2, 0, 0 ]
+
+        CASE( 'MBProblem4' )
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.4d0
+          bcX   = [ 2, 0, 0 ]
+
+        CASE( 'PerturbedShockTube' )
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.35d0
+          bcX   = [ 2, 0, 0 ]
+
+        CASE( 'CartesianSedov' )
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 0.2d0
+          bcX   = [ 32, 0, 0 ]
+          nDetCells = 1
+          Eblast    = 1.0d-3
+
+        CASE( 'ShockReflection' )
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.75d0
+          bcX   = [ 23, 0, 0 ]
+
+        CASE DEFAULT ! Sod
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.4d0
+          bcX   = [ 2, 0, 0 ]
+
+      END SELECT
 
       CoordinateSystem = 'CARTESIAN'
 
-
-      Gamma = 5.0_DP / 3.0_DP
-
-      nX = [ 128, 1, 1 ]
+      nX = [ 256, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
-
-      bcX = [ 23, 0, 0 ]
 
       nNodes = 3
 
@@ -140,11 +153,10 @@ PROGRAM ApplicationDriver
       Min_2 = 1.0d-12
 
       iCycleD = 100
-      t_end   = 0.75d0
-      dt_wrt  = 1.0d-2 * t_end
+      !dt_wrt  = 1.0d-2 * t_end
       iCycleW = 100
 
-      nStagesSSPRK = nNodes
+      nStagesSSPRK = 3
       CFL          = 0.1_DP
 
     CASE( 'SphericalRiemannProblem' )
@@ -171,7 +183,7 @@ PROGRAM ApplicationDriver
       UseCharacteristicLimiting = .TRUE.
 
       UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 0.015_DP
+      LimiterThresholdParameter = 0.03_DP
 
       UsePositivityLimiter = .TRUE.
       Min_1 = 1.0d-12
@@ -181,13 +193,13 @@ PROGRAM ApplicationDriver
       t_end   = 5.0d-1
       dt_wrt  = 1.0d-2 * t_end
 
-      nStagesSSPRK = nNodes
+      nStagesSSPRK = 3
       CFL          = 0.1_DP
 
     CASE( 'SedovBlastWave' )
 
       nDetCells = 1
-      Eblast    = 148.39544187982892_DP
+      Eblast    = 1.0d-4
 
       CoordinateSystem = 'SPHERICAL'
 
@@ -216,7 +228,7 @@ PROGRAM ApplicationDriver
       Min_2 = 1.0d-12
 
       iCycleD = 100
-      t_end   = 1.0012515644555695_DP
+      t_end   = 1.0d0
       dt_wrt  = 1.0d-2 * t_end
       !iCycleW = 1
 
@@ -263,7 +275,7 @@ PROGRAM ApplicationDriver
       t_end   = 1.0d1 * Millisecond
       dt_wrt  = 0.1d0 * Millisecond
 
-      nStagesSSPRK = nNodes
+      nStagesSSPRK = 3
       CFL          = 0.1_DP
 
     CASE DEFAULT
