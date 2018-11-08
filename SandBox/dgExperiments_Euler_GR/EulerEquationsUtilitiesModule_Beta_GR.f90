@@ -1,7 +1,7 @@
 MODULE EulerEquationsUtilitiesModule_Beta_GR
 
   USE KindModule, ONLY: &
-    DP, Zero, SqrtTiny, Half, One, Two
+    DP, Zero, SqrtTiny, Half, One, Two, Three
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDimsX
   USE MeshModule, ONLY: &
@@ -364,7 +364,8 @@ CONTAINS
 
     ! --- Get upper and lower bounds on pressure, PA, PB ---
     PA = Zero
-    PB = Two * ( One - One / Gamma_IDEAL ) * CF_E
+    PB = Three * CF_E
+!    PB = Two * ( One - One / Gamma_IDEAL ) * CF_E
 
     ! --- Compute FunP for upper and lower bounds ---
     CALL ComputeFunP( CF_D, CF_E, SSq, PA, FunPA )
@@ -439,7 +440,8 @@ CONTAINS
 
     ! --- Define values that bracket the root ---
     PA = Zero
-    PB = Two * ( One - One / Gamma_IDEAL ) * CF_E
+    PB = Three * CF_E
+!    PB = Two * ( One - One / Gamma_IDEAL ) * CF_E
     CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA )
     CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB )
 
