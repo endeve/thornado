@@ -78,29 +78,50 @@ PROGRAM ApplicationDriver
 
   LOGICAL :: DEBUG = .FALSE.
   
-!  ProgramName = 'RiemannProblem'
+  ProgramName = 'RiemannProblem'
 !  ProgramName = 'SphericalRiemannProblem'
-  ProgramName = 'SedovBlastWave'
+!  ProgramName = 'SedovBlastWave'
 !  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'PerturbedShockTube'
+!      RiemannProblemName = 'Sod'
+      ! Gamma = 5/3
+      ! t = 0.4
+       
+!      RiemannProblemName = 'MBProblem1'
+      ! Gamma = 4/3
+      ! t = 0.4
+      
+!      RiemannProblemName = 'MBProblem4'
+      ! Gamma = 5/3
+      ! t = 0.4
+
+!      RiemannProblemName = 'PerturbedShockTube'
+      ! Gamma = 5/3
+      ! t = 0.35
+
+!      RiemannProblemName = 'CartesianSedov'
+!      nDetCells = 1
+!      Eblast    = 1.0d-3
+
+      RiemannProblemName = 'ShockReflections'
+      ! Gamma = 5/3
+      ! t = 0.75
+      ! bcX = [ 23, 0, 0 ]
 
       CoordinateSystem = 'CARTESIAN'
 
-      nDetCells = 1
-      Eblast    = 1.0d-3
 
       Gamma = 5.0_DP / 3.0_DP
 
-      nX = [ 64, 1, 1 ]
+      nX = [ 128, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      bcX = [ 32, 0, 0 ]
+      bcX = [ 23, 0, 0 ]
 
       nNodes = 3
 
@@ -119,7 +140,7 @@ PROGRAM ApplicationDriver
       Min_2 = 1.0d-12
 
       iCycleD = 100
-      t_end   = 0.35d0
+      t_end   = 0.75d0
       dt_wrt  = 1.0d-2 * t_end
       iCycleW = 100
 
@@ -166,7 +187,7 @@ PROGRAM ApplicationDriver
     CASE( 'SedovBlastWave' )
 
       nDetCells = 1
-      Eblast    = 7.39d5
+      Eblast    = 148.39544187982892_DP
 
       CoordinateSystem = 'SPHERICAL'
 
@@ -195,7 +216,7 @@ PROGRAM ApplicationDriver
       Min_2 = 1.0d-12
 
       iCycleD = 100
-      t_end   = 1.0_DP
+      t_end   = 1.0012515644555695_DP
       dt_wrt  = 1.0d-2 * t_end
       !iCycleW = 1
 
@@ -247,12 +268,13 @@ PROGRAM ApplicationDriver
 
     CASE DEFAULT
 
+      WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)') 'Valid choices:'
-      WRITE(*,'(A)') 'RiemannProblem'
-      WRITE(*,'(A)') 'SphericalRiemannProblem'
-      WRITE(*,'(A)') 'SedovBlastWave'
-      WRITE(*,'(A)') 'StandingAccretionShock'
+      WRITE(*,'(A)') '  RiemannProblem'
+      WRITE(*,'(A)') '  SphericalRiemannProblem'
+      WRITE(*,'(A)') '  SedovBlastWave'
+      WRITE(*,'(A)') '  StandingAccretionShock'
       WRITE(*,'(A)') 'Stopping...'
       STOP
 
