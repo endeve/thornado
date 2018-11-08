@@ -14,4 +14,7 @@ MODULE PhysicalConstantsModule
     PlanckConstantMKS        = 6.62606876e-34_DP, &
     AvogadroConstantMKS      = 6.02214199e23_DP
 
+  REAL(DP), PUBLIC, PARAMETER :: &
+    SpeedOfLightCGS          = 2.99792458e10_DP
+
 END MODULE PhysicalConstantsModule
