@@ -38,7 +38,7 @@ CONTAINS
     INTEGER  :: i
     REAL(DP) :: CFL, InverseLenghtScale
 
-    CFL = SpeedOfLightCGS / DBLE( 2 * nNodes - 1 )
+    CFL = One / ( SpeedOfLightCGS * DBLE( 2 * nNodes - 1 ) )
 
     InverseLenghtScale = 0.0_DP
     DO i = 1, nDimsX
