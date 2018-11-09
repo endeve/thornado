@@ -1,9 +1,9 @@
 PROGRAM MeshRefinementTest_TwoMoment
 
   USE KindModule, ONLY: &
-    DP, One
+    DP, Zero, One, Two, TwoPi
   USE ProgramHeaderModule, ONLY: &
-    nDOF, nE, nX, nDimsX
+    nDOF, nE, nX, nNodesX, nDimsX
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -21,10 +21,15 @@ PROGRAM MeshRefinementTest_TwoMoment
     FinalizeReferenceElementE_Lagrange
   USE ReferenceElementModule, ONLY: &
     InitializeReferenceElement, &
-    FinalizeReferenceElement
+    FinalizeReferenceElement, &
+    NodeNumberTable
   USE ReferenceElementModule_Lagrange, ONLY: &
     InitializeReferenceElement_Lagrange, &
     FinalizeReferenceElement_Lagrange
+  USE MeshModule, ONLY: &
+    MeshX, NodeCoordinate
+  USE UtilitiesModule, ONLY: &
+    WriteVector
   USE TwoMoment_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_TwoMoment, &
     FinalizeMeshRefinement_TwoMoment, &
@@ -33,9 +38,15 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   IMPLICIT NONE
 
-  INTEGER :: i, iNode, iX1, iX2, iX3, iE
-  INTEGER :: iFine, nFine
-  INTEGER :: iFineX1, iFineX2, iFineX3, nFineX(3)
+  CHARACTER(2)  :: MeshString
+  CHARACTER(32) :: VectorName
+  INTEGER       :: i, iNode, iX1, iX2, iX3, iE
+  INTEGER       :: oX1, oX2, oX3
+  INTEGER       :: iNodeX1
+  INTEGER       :: iFine, nFine
+  INTEGER       :: iFineX1, iFineX2, iFineX3, nFineX(3)
+  REAL(DP)      :: X1
+  REAL(DP), ALLOCATABLE :: X1_0(:)
   REAL(DP), ALLOCATABLE :: U_0(:,:,:,:,:) ! --- Coarse Data
   REAL(DP), ALLOCATABLE :: U_1(:,:,:,:,:,:) ! --- Fine Data
 
@@ -43,7 +54,7 @@ PROGRAM MeshRefinementTest_TwoMoment
          ( ProgramName_Option &
              = 'MeshRefinementTest_TwoMoment', &
            nX_Option &
-             = [ 04, 04, 01 ], &
+             = [ 16, 01, 01 ], &
            swX_Option &
              = [ 01, 01, 01 ], &
            bcX_Option &
@@ -53,7 +64,7 @@ PROGRAM MeshRefinementTest_TwoMoment
            xR_Option &
              = [ 1.0_DP, 1.0_DP, 1.0_DP ], &
            nE_Option &
-             = 10, &
+             = 1, &
            eL_Option &
              = 0.0d0, &
            eR_Option &
@@ -93,6 +104,7 @@ PROGRAM MeshRefinementTest_TwoMoment
   END DO
   nFine = PRODUCT( nFineX )
 
+  ALLOCATE( X1_0(nX(1)*nNodesX(1)) )
   ALLOCATE( U_0(nDOF,nE,nX(1),nX(2),nX(3)) )
   ALLOCATE( U_1(nDOF,nE,nX(1),nX(2),nX(3),nFine) )
 
@@ -109,7 +121,13 @@ PROGRAM MeshRefinementTest_TwoMoment
 
         DO iNode = 1, nDOF
 
-          U_0(iNode,iE,iX1,iX2,iX3) = One
+          iNodeX1 = NodeNumberTable(2,iNode)
+
+          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+          X1_0((iX1-1)*nNodesX(1)+iNodeX1) = X1
+
+          U_0(iNode,iE,iX1,iX2,iX3) = SIN( TwoPi * X1 )
 
         END DO
 
@@ -154,8 +172,12 @@ PROGRAM MeshRefinementTest_TwoMoment
     DO iX2 = 1, MAX( nX(2) / 2, 1 )
     DO iX1 = 1, MAX( nX(1) / 2, 1 )
 
+      oX1 = (iFineX1-1)*MAX( nX(1) / 2, 1 )
+      oX2 = (iFineX2-1)*MAX( nX(2) / 2, 1 )
+      oX3 = (iFineX3-1)*MAX( nX(3) / 2, 1 )
+
       CALL Refine_TwoMoment &
-             ( nE, nFineX, U_0(:,:,iX1,iX2,iX3), &
+             ( nE, nFineX, U_0(:,:,oX1+iX1,oX2+iX2,oX3+iX3), &
                U_1(:,:,(iX1-1)*nFineX(1)+1:iX1*nFineX(1), &
                        (iX2-1)*nFineX(2)+1:iX2*nFineX(2), &
                        (iX3-1)*nFineX(3)+1:iX3*nFineX(3),iFine) )
@@ -169,10 +191,33 @@ PROGRAM MeshRefinementTest_TwoMoment
   END DO
 
   PRINT*, "After Refinement: "
-  PRINT*, "  MIN/MAX U_0 = ", MINVAL( U_0 ), MAXVAL( U_0 )
-  PRINT*, "  MIN/MAX U_1 = ", MINVAL( U_1 ), MAXVAL( U_1 )
+  PRINT*, "  MIN/MAX/SUM U_0 = ", MINVAL( U_0 ), MAXVAL( U_0 ), SUM( U_0 )
+  PRINT*, "  MIN/MAX/SUM U_1 = ", MINVAL( U_1 ), MAXVAL( U_1 ), SUM( U_1 )
+
+  CALL WriteVector( nX(1)*nNodesX(1), X1_0, 'X1_Coarse.dat' )
+
+  CALL WriteVector( nDOF*nE*PRODUCT(nX),  &
+                    RESHAPE( U_0(:,:,:,:,:), [nDOF*nE*PRODUCT(nX)] ), &
+                    'U_Coarse_0.dat' )
+
+  CALL WriteVector( nX(1)*nNodesX(1), (0.0_DP+X1_0)/Two, 'X1_Fine_01.dat' )
+  CALL WriteVector( nX(1)*nNodesX(1), (1.0_DP+X1_0)/Two, 'X1_Fine_02.dat' )
+
+  DO iFine = 1, nFine
+
+    WRITE( MeshString, FMT='(i2.2)') iFine
+
+    VectorName = 'U_Fine_' // MeshString // '.dat'
+
+    CALL WriteVector( nDOF*nE*PRODUCT(nX),  &
+                      RESHAPE( U_1(:,:,:,:,:,iFine), [nDOF*nE*PRODUCT(nX)] ), &
+                      TRIM( VectorName ) )
+
+  END DO
 
   ! --- Coarsen ---
+
+  U_0 = Zero
 
   iFine = 0
   DO iFineX3 = 1, nFineX(3)
@@ -185,8 +230,12 @@ PROGRAM MeshRefinementTest_TwoMoment
     DO iX2 = 1, MAX( nX(2) / 2, 1 )
     DO iX1 = 1, MAX( nX(1) / 2, 1 )
 
+      oX1 = (iFineX1-1)*MAX( nX(1) / 2, 1 )
+      oX2 = (iFineX2-1)*MAX( nX(2) / 2, 1 )
+      oX3 = (iFineX3-1)*MAX( nX(3) / 2, 1 )
+
       CALL Coarsen_TwoMoment &
-             ( nE, nFineX, U_0(:,:,iX1,iX2,iX3), &
+             ( nE, nFineX, U_0(:,:,oX1+iX1,oX2+iX2,oX3+iX3), &
                U_1(:,:,(iX1-1)*nFineX(1)+1:iX1*nFineX(1), &
                        (iX2-1)*nFineX(2)+1:iX2*nFineX(2), &
                        (iX3-1)*nFineX(3)+1:iX3*nFineX(3),iFine) )
@@ -200,8 +249,12 @@ PROGRAM MeshRefinementTest_TwoMoment
   END DO
 
   PRINT*, "After Coarsening: "
-  PRINT*, "  MIN/MAX U_0 = ", MINVAL( U_0 ), MAXVAL( U_0 )
-  PRINT*, "  MIN/MAX U_1 = ", MINVAL( U_1 ), MAXVAL( U_1 )
+  PRINT*, "  MIN/MAX/SUM U_0 = ", MINVAL( U_0 ), MAXVAL( U_0 ), SUM( U_0 )
+  PRINT*, "  MIN/MAX/SUM U_1 = ", MINVAL( U_1 ), MAXVAL( U_1 ), SUM( U_1 )
+
+  CALL WriteVector( nDOF*nE*PRODUCT(nX),  &
+                    RESHAPE( U_0(:,:,:,:,:), [nDOF*nE*PRODUCT(nX)] ), &
+                    'U_Coarse_1.dat' )
 
   CALL FinalizeMeshRefinement_TwoMoment
 
