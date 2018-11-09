@@ -1,7 +1,8 @@
 MODULE TwoMoment_MeshRefinementModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half
+    DP, Zero, Half, One, Two
+  USE UtilitiesModule, ONLY: WriteMatrix
   USE ProgramHeaderModule, ONLY: &
     nNodesX, nDOFX, nDimsX, &
     nNodesE, nDOFE, nDOF
@@ -24,25 +25,35 @@ MODULE TwoMoment_MeshRefinementModule
   PUBLIC :: Refine_TwoMoment
   PUBLIC :: Coarsen_TwoMoment
 
-  INTEGER :: nFine, nFineX(3)
-  REAL(DP), ALLOCATABLE :: ProjectionMatrix(:,:,:)
+  LOGICAL, PARAMETER :: Debug = .TRUE.
+
+  INTEGER  :: nFine, nFineX(3)
+  REAL(DP) :: VolumeRatio
+  REAL(DP), ALLOCATABLE :: ProjectionMatrix  (:,:,:)
+  REAL(DP), ALLOCATABLE :: ProjectionMatrix_T(:,:,:) ! --- Transpose ---
 
 CONTAINS
 
 
   SUBROUTINE InitializeMeshRefinement_TwoMoment
 
+    CHARACTER(2)  :: MeshString
+    CHARACTER(32) :: MatrixName
     INTEGER :: iFine, iFineX1, iFineX2, iFineX3
     INTEGER :: i, k, iN1, iN2, iN3
     REAL(DP), ALLOCATABLE :: xiX1(:), xiX2(:), xiX3(:)
 
-    nFineX = 1
+    nFineX      = 1
+    VolumeRatio = One
     DO i = 1, nDimsX
-      nFineX(i) = 2 ! --- Refinement Factor of 2 Assumed
+      ! --- Refinement Factor of 2 Assumed:
+      nFineX(i)   = 2
+      VolumeRatio = VolumeRatio / Two
     END DO
     nFine = PRODUCT( nFineX )
 
-    ALLOCATE( ProjectionMatrix(nDOFX,nDOFX,nFine) )
+    ALLOCATE( ProjectionMatrix  (nDOFX,nDOFX,nFine) )
+    ALLOCATE( ProjectionMatrix_T(nDOFX,nDOFX,nFine) )
 
     ALLOCATE( xiX1(nNodesX(1)) )
     ALLOCATE( xiX2(nNodesX(2)) )
@@ -98,6 +109,20 @@ CONTAINS
       END DO
       END DO
 
+      ProjectionMatrix_T(:,:,iFine) &
+        = TRANSPOSE( ProjectionMatrix(:,:,iFine) )
+
+      IF( Debug )THEN
+
+        WRITE( MeshString, FMT='(i2.2)') iFine
+
+        MatrixName = 'ProjectionMatrix_' // MeshString // '.dat'
+
+        CALL WriteMatrix( nDOFX, nDOFX, ProjectionMatrix(:,:,iFine), &
+                          TRIM( MatrixName ) )
+
+      END IF
+
     END DO
     END DO
     END DO
@@ -112,6 +137,7 @@ CONTAINS
   SUBROUTINE FinalizeMeshRefinement_TwoMoment
 
     DEALLOCATE( ProjectionMatrix )
+    DEALLOCATE( ProjectionMatrix_T )
 
   END SUBROUTINE FinalizeMeshRefinement_TwoMoment
 
@@ -152,7 +178,40 @@ CONTAINS
   END SUBROUTINE Refine_TwoMoment
 
 
-  SUBROUTINE Coarsen_TwoMoment
+  SUBROUTINE Coarsen_TwoMoment( nE, nX, U_Crs, U_Fin )
+
+    INTEGER,  INTENT(in)  :: nE, nX(3)
+    REAL(DP), INTENT(out) :: U_Crs(1:nDOF,1:nE)
+    REAL(DP), INTENT(in)  :: U_Fin(1:nDOF,1:nE,1:nX(1),1:nX(2),1:nX(3))
+
+    INTEGER :: iFine, iFineX1, iFineX2, iFineX3, iE
+    REAL(DP) :: U_Crs_P(nDOFX,nDOFE*nE)
+    REAL(DP) :: U_Fin_P(nDOFX,nDOFE*nE)
+
+    U_Crs = 0.0_DP
+
+    iFine = 0
+    DO iFineX3 = 1, nFineX(3)
+    DO iFineX2 = 1, nFineX(2)
+    DO iFineX1 = 1, nFineX(1)
+
+      iFine = iFine + 1
+
+      U_Fin_P = Pack_TwoMoment( nE, U_Fin(:,:,iFineX1,iFineX2,iFineX3) )
+
+      U_Crs_P(:,:) = MATMUL( ProjectionMatrix_T(:,:,iFine), U_Fin_P(:,:) )
+
+      DO iE = 1, nDOFE * nE
+
+        U_Crs_P(:,iE) = U_Crs_P(:,iE) / WeightsX_q(:)
+
+      END DO
+
+      U_Crs(:,:) = U_Crs(:,:) + VolumeRatio * Unpack_TwoMoment( nE, U_Crs_P )
+
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE Coarsen_TwoMoment
 
