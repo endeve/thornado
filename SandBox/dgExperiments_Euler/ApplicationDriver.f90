@@ -70,7 +70,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'KelvinHelmholtz'
+  ProgramName = 'IsentropicVortex'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -99,29 +99,29 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'Sod'
+      RiemannProblemName = 'ShockEntropyWave'
 
       Gamma = 1.4_DP
 
-      nX = [ 100, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      nX = [ 200, 1, 1 ]
+      xL = [ - 5.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ + 5.0_DP, 1.0_DP, 1.0_DP ]
 
       bcX = [ 2, 0, 0 ]
 
       nNodes = 3
 
-      BetaTVD = 2.00_DP
+      BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
       UseCharacteristicLimiting = .TRUE.
 
-      UseTroubledCellIndicator  = .FALSE.
-      LimiterThresholdParameter = 0.03_DP
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 1.5d-0
 
-      iCycleD = 1
-      t_end   = 2.0d-1
+      iCycleD = 10
+      t_end   = 1.8d-0
       dt_wrt  = 1.0d-2
 
    CASE( 'RiemannProblemSpherical' )
@@ -130,13 +130,13 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
 
-      nX = [ 128, 1, 1 ]
+      nX = [ 128, 16, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 2.0_DP, Pi,     TwoPi  ]
 
       bcX = [ 3, 3, 0 ]
 
-      nNodes = 3
+      nNodes = 2
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
@@ -157,7 +157,7 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
 
-      nX = [ 128, 1, 1 ]
+      nX = [ 256, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.2_DP, Pi,     TwoPi  ]
 
@@ -165,24 +165,49 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      BetaTVD = 2.0d+00
-      BetaTVB = 0.0d+00
+      BetaTVD = 1.75d+00
+      BetaTVB = 0.00d+00
  
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
 
-      UseTroubledCellIndicator  = .FALSE.
-      LimiterThresholdParameter = 0.03_DP
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 0.015_DP
 
       iCycleD = 1
       t_end   = 1.0d+0
       dt_wrt  = 5.0d-2
 
+    CASE( 'IsentropicVortex' )
+
+      Gamma = 1.4_DP
+
+      nX = [ 200, 200, 1 ]
+      xL = [ - 5.0_DP, - 5.0_DP, 0.0_DP ]
+      xR = [ + 5.0_DP, + 5.0_DP, 1.0_DP ]
+
+      bcX = [ 1, 1, 0 ]
+
+      nNodes = 2
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 0.03_DP
+
+      iCycleD = 10
+      t_end   = 10.0_DP
+      dt_wrt  = 5.00_DP
+
     CASE( 'KelvinHelmholtz' )
 
       Gamma = 5.0_DP / 3.0_DP
 
-      nX = [ 128, 128, 1 ]
+      nX = [ 256, 256, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -190,17 +215,17 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      BetaTVD = 2.00_DP
+      BetaTVD = 1.50_DP
       BetaTVB = 0.0d+00
 
-      UseSlopeLimiter           = .TRUE.
+      UseSlopeLimiter           = .FALSE.
       UseCharacteristicLimiting = .TRUE.
 
       UseTroubledCellIndicator  = .TRUE.
       LimiterThresholdParameter = 0.03_DP
 
       iCycleD = 10
-      t_end   = 1.50_DP
+      t_end   = 3.00_DP
       dt_wrt  = 0.15_DP
 
     CASE( 'RayleighTaylor' )
@@ -232,7 +257,7 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
       
-      nX = [ 128, 128, 1 ]
+      nX = [ 256, 256, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 0.3_DP, 0.3_DP, 1.0_DP ]
 
@@ -240,14 +265,14 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      BetaTVD = 2.00_DP
-      BetaTVB = 0.0d+02
+      BetaTVD = 1.50_DP
+      BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
       UseCharacteristicLimiting = .TRUE.
 
       UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 0.03_DP
+      LimiterThresholdParameter = 0.30_DP
 
       iCycleD = 10
       t_end   = 2.500_DP
@@ -356,7 +381,7 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             CFL = 0.3_DP / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
+             CFL = 0.5_DP / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
 
     IF( t + dt > t_end )THEN
 
