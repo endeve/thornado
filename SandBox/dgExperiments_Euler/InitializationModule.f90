@@ -29,7 +29,8 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields &
-    ( AdvectionProfile_Option, Direction_Option, RiemannProblemName_Option, SedovEnergy_Option, nDetCells_Option )
+    ( AdvectionProfile_Option, Direction_Option, RiemannProblemName_Option, &
+      SedovEnergy_Option, nDetCells_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       AdvectionProfile_Option
@@ -72,6 +73,10 @@ CONTAINS
                    = SedovEnergy_Option, &
                  nDetCells_Option &
                    = nDetCells_Option )
+
+      CASE( 'IsentropicVortex' )
+
+        CALL InitializeFields_IsentropicVortex
 
       CASE( 'KelvinHelmholtz' )
 
@@ -423,10 +428,11 @@ CONTAINS
   END SUBROUTINE InitializeFields_RiemannProblemSpherical
 
 
-  SUBROUTINE InitializeFields_SphericalSedov( SedovEnergy_Option, nDetCells_Option )
+  SUBROUTINE InitializeFields_SphericalSedov &
+    ( SedovEnergy_Option, nDetCells_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: SedovEnergy_Option
-    INTEGER, INTENT(in), OPTIONAL :: nDetCells_Option
+    INTEGER,  INTENT(in), OPTIONAL :: nDetCells_Option
 
     INTEGER  :: iX1, iX2, iX3, nDetCells
     INTEGER  :: iNodeX, iNodeX1
@@ -490,6 +496,68 @@ CONTAINS
     END DO
 
   END SUBROUTINE
+
+
+  SUBROUTINE InitializeFields_IsentropicVortex
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2, R
+
+    REAL(DP), PARAMETER :: Beta  = 5.0_DP
+    REAL(DP), PARAMETER :: Gamma = 1.4_DP
+
+    DO iX3 = 1, nX(3)
+    DO iX2 = 1, nX(2)
+    DO iX1 = 1, nX(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        R  = SQRT( X1**2 + X2**2 )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+          = ( One - ( Gamma - One ) * Beta**2 &
+                    / ( 8.0_DP * Gamma * Pi**2 ) * EXP( One - R**2 ) &
+            )**( One / ( Gamma - One ) )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+          = One &
+            - X2 * ( Beta / TwoPi ) * EXP( Half * ( One - R**2 ) )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+          = One &
+            + X1 * ( Beta / TwoPi ) * EXP( Half * ( One - R**2 ) )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+          = 0.0_DP
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+          = uPF(iNodeX,iX1,iX2,iX3,iPF_D)**Gamma / ( Gamma - One )
+
+      END DO
+
+      CALL ComputeConserved &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_IsentropicVortex
 
 
   SUBROUTINE InitializeFields_KelvinHelmholtz
