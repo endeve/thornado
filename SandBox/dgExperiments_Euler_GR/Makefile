@@ -12,6 +12,7 @@ ApplicationDriver: \
 	InitializationModule_GR.o \
 	dgDiscretizationModule_Euler_GR.o \
 	TimeSteppingModule_SSPRK.o \
+	Euler_TallyModule_GR.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
@@ -23,6 +24,7 @@ ApplicationDriver: \
 	InitializationModule_GR.o \
 	dgDiscretizationModule_Euler_GR.o \
 	TimeSteppingModule_SSPRK.o \
+	Euler_TallyModule_GR.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 

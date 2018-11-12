@@ -45,6 +45,10 @@ PROGRAM ApplicationDriver
     UpdateFluid_SSPRK
   USE UnitsModule, ONLY: &
     Millisecond
+  USE Euler_TallyModule_GR, ONLY: &
+    InitializeTally_Euler_GR, &
+    FinalizeTally_Euler_GR, &
+    ComputeTally_Euler_GR
 
   IMPLICIT NONE
 
@@ -78,16 +82,16 @@ PROGRAM ApplicationDriver
 
   LOGICAL :: DEBUG = .FALSE.
   
-  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem'
 !  ProgramName = 'SphericalRiemannProblem'
-!  ProgramName = 'SedovBlastWave'
+  ProgramName = 'SedovBlastWave'
 !  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'ShockReflection'
+      RiemannProblemName = 'Sod'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
@@ -361,8 +365,13 @@ PROGRAM ApplicationDriver
   t_wrt = dt_wrt
   wrt   = .FALSE.
 
+  CALL InitializeTally_Euler_GR &
+         ( iX_B0, iX_E0, &
+           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+
   iCycle = 0
-  DO WHILE( t < t_end )
+  DO WHILE( t .LT. t_end )
 
     iCycle = iCycle + 1
 
@@ -426,8 +435,22 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
+      IF( DEBUG ) WRITE(*,'(A)') 'CALL ComputeFromConserved_GR'
+      CALL ComputeFromConserved_GR &
+             ( iX_B0, iX_E0, &
+               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
+      CALL ComputeTally_Euler_GR &
+           ( iX_B0, iX_E0, &
+             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
       wrt = .FALSE.
 
@@ -445,6 +468,12 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
+  CALL ComputeTally_Euler_GR &
+         ( iX_B0, iX_E0, &
+           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+
   CALL FinalizePositivityLimiter_Euler_GR
 
   CALL FinalizeSlopeLimiter_Euler_GR
@@ -458,5 +487,5 @@ PROGRAM ApplicationDriver
   CALL FinalizeEquationOfState
 
   CALL FinalizeProgram
-   
+
 END PROGRAM ApplicationDriver
