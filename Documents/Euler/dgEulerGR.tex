@@ -58,8 +58,11 @@ where
   &=\big(D,\,S_{j},\,\tau\big)^{\mbox{\tiny T}}
   =\big(\rho\,W,\,\rho\,h\,W^{2}\,v_{j},\,\rho\,W\left(h\,W-1\right)-p\big)^{\mbox{\tiny T}}, \\
   \bF^{i}(\bU)
-  &=\big(D\,v^{i},\,\big)^{\mbox{\tiny T}}
+  &=\big(D\,v^{i},\,P^{i}_{~j},\,S^{i}-D\,v^{i}\,\big)^{\mbox{\tiny T}} \\
+  \bG(\bU)
+  &=\big(\,0,\,\f{1}{2}\,P^{ik}\pd{\gamma_{ik}}{j}-(\tau+D)\,\alpha^{-1}\pd{\alpha}{j},\,-S^{j}\,\alpha^{-1}\pd{\alpha}{j}\,\big),
 \end{align}
+and $P^{ij}=S^{i}\,v^{j}+p\,\gamma^{ij}$.  
 
 
 \section{Bound-Preserving Methods Using First-Order DG Scheme}
