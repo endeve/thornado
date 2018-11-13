@@ -126,6 +126,19 @@ CONTAINS
                         1.0_DP / 6.0_DP, &
                         2.0_DP / 3.0_DP ]
 
+      CASE ( 'IMEX_ARS_111' )
+
+        nStages = 2
+        CALL AllocateButcherTables( nStages )
+
+        ! --- Coefficients from Ascher et al. (1997) ---
+
+        a_EX(2,1) = 1.0_DP
+        w_EX(1)   = a_EX(2,1)
+
+        a_IM(2,2) = 1.0_DP
+        w_IM(2)   = a_IM(2,2)
+
       CASE ( 'IMEX_P_A2' )
 
         nStages = 3
@@ -496,11 +509,11 @@ CONTAINS
         alpha_EX = 0.0_DP
 
         a_IM(2,2) = 1.0_DP
-        a_IM(3,2) = 0.4_DP
-        a_IM(3,3) = 0.6_DP
+        a_IM(3,2) = 0.5_DP
+        a_IM(3,3) = 0.5_DP
 
-        w_IM(2)   = 0.4_DP
-        w_IM(3)   = 0.6_DP
+        w_IM(2)   = 0.5_DP
+        w_IM(3)   = 0.5_DP
 
         alpha_IM = 0.0_DP
 
@@ -715,6 +728,19 @@ CONTAINS
 
         END IF
 
+        IF( jS == iS - 1 )THEN
+
+          ! --- Apply Positivity Limiter ---
+
+          CALL MapFromStage( iZ_B1, U, U_IMEX )
+
+          CALL ApplyPositivityLimiter_TwoMoment &
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
+
+          CALL MapToStage( iZ_B1, U, U_IMEX )
+
+        END IF
+
       END DO
 
       IF( ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero ) )THEN
@@ -729,6 +755,15 @@ CONTAINS
         CALL MapToStage( iZ_B0, dU, dU_IM(:,iS) )
 
         U_IMEX(:) = U_IMEX(:) + dt * a_IM(iS,iS) * dU_IM(:,iS)
+
+        ! --- Apply Positivity Limiter ---
+
+        CALL MapFromStage( iZ_B1, U, U_IMEX )
+
+        CALL ApplyPositivityLimiter_TwoMoment &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
+
+        CALL MapToStage( iZ_B1, U, U_IMEX )
 
       END IF
 
@@ -838,23 +873,23 @@ CONTAINS
 
     i = 1
     DO iS = 1, nSpecies
-      DO iCR = 1, nCR
-        DO iZ4 = iZ_B0(4), iZ_E0(4)
-          DO iZ3 = iZ_B0(3), iZ_E0(3)
-            DO iZ2 = iZ_B0(2), iZ_E0(2)
-              DO iZ1 = iZ_B0(1), iZ_E0(1)
-                DO iNode = 1, nDOF
+    DO iCR = 1, nCR
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iNode = 1, nDOF
 
-                  U_1D(i) = U_7D(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+      U_1D(i) = U_7D(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS)
 
-                  i = i + 1
+      i = i + 1
 
-                END DO
-              END DO
-            END DO
-          END DO
-        END DO
-      END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE MapToStage
@@ -873,23 +908,23 @@ CONTAINS
 
     i = 1
     DO iS = 1, nSpecies
-      DO iCR = 1, nCR
-        DO iZ4 = iZ_B0(4), iZ_E0(4)
-          DO iZ3 = iZ_B0(3), iZ_E0(3)
-            DO iZ2 = iZ_B0(2), iZ_E0(2)
-              DO iZ1 = iZ_B0(1), iZ_E0(1)
-                DO iNode = 1, nDOF
+    DO iCR = 1, nCR
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iNode = 1, nDOF
 
-                  U_7D(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) = U_1D(i)
+      U_7D(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) = U_1D(i)
 
-                  i = i + 1
+      i = i + 1
 
-                END DO
-              END DO
-            END DO
-          END DO
-        END DO
-      END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE MapFromStage
