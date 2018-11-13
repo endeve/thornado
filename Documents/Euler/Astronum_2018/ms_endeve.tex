@@ -38,6 +38,7 @@
 \newcommand{\TCI}{\textnormal{\tiny\textsc{TCI}}}
 \newcommand{\shock}{\textnormal{\tiny\textsc{Sh}}}
 \newcommand{\thornado}{\texttt{thornado}}
+\newcommand{\chimera}{{\sc Chimera}}
 
 \newcommand{\ee}[1]{{\color{red} EE:~#1}}
 
@@ -490,6 +491,7 @@ The spatial discretization is based on the DG method and the ODEs resulting from
 We employ a spectral-type nodal collocation DG approximation based on Legendre-Gauss points for interpolation and numerical quadrature evaluation \cite{bassi_etal_2013}.  
 This choice simplifies expressions for the semi-discretized equations, especially when applied to problems involving curvilinear coordinates encoded in a metric (e.g., in numerical relativity).  
 Results from a suite of tests in one and two spatial dimensions --- including problems with strong shocks --- demonstrate reliable performance of the implementation.  
+The accuracy of \thornado\ on three shock tests (Sod shock tube \cite{sod_1978}, Sedov-Taylor blast wave \cite{sedov_1959}, and Shu-Osher shock tube \cite{shuOsher_1989}) is qualitatively similar to that of the well-established CCSN simulation code \chimera\ \cite{bruenn_etal_2018}, which is based on the PPM finite volume method \cite{colellaWoodward_1984}.  
 Two tests in spherical symmetry (standing accretion shock \cite{blondin_etal_2003} and Yahil-Lattimer collapse \cite{yahilLattimer_1982,yahil_1983}) demonstrate the DG method's ability to handle conditions relevant to CCSN simulations.  
 We will present a more in-depth analysis of the performance of \thornado\ on these (and related) problems in a future study.  
 
@@ -504,12 +506,14 @@ We hope to report on progress in these directions in the near future.
 \ack Eirik Endeve and Anthony Mezzacappa acknowledge support from the NSF Gravitational Physics Program (NSF-GP 1505933 and 1806692).
 
 \section*{References}
-\begin{thebibliography}{34}
+\begin{thebibliography}{36}
   \bibitem{bassi_etal_2013} Bassi F, Franchina N, Ghidoni A and Rebay S 2013 {\it Int. J. Numer. Meth. Fluids} {\bf 71} 1322
   \bibitem{blondin_etal_2003} Blondin J M, Mezzacappa A and DeMarino C 2003 {\it ApJ} {\bf 584} 980
   \bibitem{brennerScott_2008} Brenner S C and Scott L R 2008 {\it The Mathematical Theory of Finite Element Methods} Springer
+  \bibitem{bruenn_etal_2018} Bruenn S W {\it et al} {\it Preprint} arXiv:1809.05608
   \bibitem{cockburnShu_1998} Cockburn B and Shu C-W 1998 {\it JCP} {\bf 141} 199
   \bibitem{cockburnShu_2001} Cockburn B and Shu C-W 2001 {\it Journal of Scientific Computing} {\bf 16} 173
+  \bibitem{colellaWoodward_1984} Colella P and Woodward P 1984 {\it JCP} {\bf 54} 174
   \bibitem{dumbser_etal_2014} Dumbser M, Zanotti O, Loub{\`e}re R and Diot S 2014 {\it JCP} {\bf 278} 47
   \bibitem{fambri_etal_2018} Fambri F, Dumbser M, K{\"o}ppel S, Rezzolla L and Zanotti O 2018 {\it MNRAS} {\bf 477} 4543
   \bibitem{fuShu_2017} Fu G and Shu C-W 2017 {\it JCP} {\bf 347} 305
