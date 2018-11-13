@@ -90,13 +90,17 @@ CONTAINS
     INTEGER :: iState
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iCR, iS
 
-    iState = 1
-    IF( PRESENT( iState_Option ) ) &
+    IF( PRESENT( iState_Option ) )THEN
       iState = iState_Option
+    ELSE
+      iState = 1
+    END IF
 
-    DisplayTally = .FALSE.
-    IF( PRESENT( DisplayTally_Option ) ) &
+    IF( PRESENT( DisplayTally_Option ) )THEN
       DisplayTally = DisplayTally_Option
+    ELSE
+      DisplayTally = .FALSE.
+    END IF
 
     TwoMomentTally(:,:,iState) = Zero
 
