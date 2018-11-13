@@ -33,16 +33,17 @@
 \newcommand{\UDG}{\bU_{\mbox{\tiny DG}}}
 \newcommand{\sumx}{\sum_{i=1}^{d}}
 \newcommand{\NES}{\mbox{\tiny NES}}
+\newcommand{\thornado}{\texttt{thornado}}
 
 \begin{document}
 
-\title{Nodal Discontinuous Galerkin Method for the Two-Moment Model of Neutrino Transport}
+\title{A Nodal Discontinuous Galerkin Method for the Multi-Group Two-Moment Model of Neutrino Transport}
 \author{Eirik Endeve\altaffilmark{1}, et al.}
 \altaffiltext{1}{Computational and Applied Mathematics Group, Oak Ridge National Laboratory, Oak Ridge, TN 37831-6354, USA; endevee@ornl.gov}
 
 \begin{abstract}
-We present a nodal Discontinuous Galerkin (DG) method for solving the non-relativistic two-moment model for neutrino transport.  
-The method --- ultimately targeted for simulations of core-collapse supernovae --- includes the use of curvilinear coordinates and non-ideal microphysics (nuclear equation of state and weak interactions) for neutrino-matter interactions.  
+We present a nodal Discontinuous Galerkin (DG) method for solving the non-relativistic multi-group two-moment model for neutrino transport.  
+The method --- ultimately targeted for simulations of core-collapse supernovae --- includes the use of curvilinear coordinates and non-ideal microphysics (nuclear equation of state and weak interactions) for neutrino-matter interactions.  We give implementation details and present results from an extensive set of benchmark problems in one spatial dimension. 
 \end{abstract}
 
 \tableofcontents
@@ -671,6 +672,7 @@ The neutrino electron scattering rates are tabulated in terms of neutrino energi
 Here we use a logarithmic grid in $\eta\in[1.0\times10^{-8},2.5\times10^{3}]$~MeV, using $N_{\eta}=100$ points.  
 
 \subsection{Emission and Absorption}
+\label{sec:electronCapture}
 
 Electron capture on nucleons and nuclei ($p+e^{-}\rightleftharpoons n+\nu_{e}$) is governed by the corrected absorption opacity $\tilde{\chi}(\epsilonNu)$ 
 \begin{equation}
@@ -704,6 +706,7 @@ We use the electron neutrino nucleon absorption opacity $\chi_{\mbox{\tiny nucle
 We only tabulate the corrected absorption opacity $\tilde{\chi}$, which has units cm$^{-1}$.  
 
 \subsection{Elastic Scattering}
+\label{sec:elasticScattering}
 
 The isoenergetic scattering kernel $R_{\IS}(\bl'\cdot\bl,\epsilonNu)$ is taken as the sum of contributions from scattering on nucleons and nuclei
 \begin{equation}
@@ -719,7 +722,7 @@ By orthogonality of the Legendre polynomials ($P_{0}(x)=1,P_{1}(x)=x$), the expa
   \Phi_{\IS,\ell}(\epsilonNu)
   =\int_{-1}^{+1}R_{\IS}(\cos\alpha,\epsilonNu)\,P_{\ell}(\cos\alpha)\,d\cos\alpha \quad (\ell=0,1).  
 \end{equation}
-These integrals are performed numerically using a ??-point Gauss-Legendre quadrature rule.  (\ee{Ran: Fill in the number of quadrature points}.)
+These integrals are performed numerically using a 20-point Gauss-Legendre quadrature rule.  
 Inserting the Legendre expansion into Eq.~\eqref{eq:homogeneousBoltzmann} and taking the angular moments gives no contribution to the equation for $\cJ$ (energy conservation), while the contribution to the equation for $\bcH$ is
 \begin{equation}
   \f{1}{c}\deriv{\bcH}{t}
@@ -745,7 +748,7 @@ where
   \Phi_{\NES,\ell}^{\Out}(\epsilonNu,\epsilonNu')
   =\int_{-1}^{+1}R_{\NES}^{\Out}(\cos\alpha,\epsilonNu,\epsilonNu')\,P_{\ell}(\cos\alpha)\,d\cos\alpha \quad (\ell=0,1).  
 \end{equation}
-(Again, these integrals are computed numerically using a ??-point Gauss-Legendre quadrature.  (\ee{Ran: Fill in the number of quadrature points}.))
+(These integrals are computed numerically using a 30-point Gauss-Legendre quadrature.  
 The in-scattering kernels $\Phi_{\NES,\ell}^{\In}(\epsilonNu,\epsilonNu')$ are obtained from symmetry properties \citep{cernohorsky_1994}
 \begin{equation}
   \Phi_{\NES,\ell}^{\In}(\epsilonNu,\epsilonNu')=\Phi_{\NES,\ell}^{\Out}(\epsilonNu',\epsilonNu)
@@ -792,6 +795,8 @@ First we consider test problems in the streaming limit.
 In this case we use the explicit SSP-RK time integrators in Section~\ref{sec:explicitTime}.  
 The 2-stage and 3-stage methods are denoted SSP-RK2 and SSP-RK3, respectively.  
 As an example, an expected third-order accurate method (for problems with smooth solutions), using DG(2) and SSP-RK3, will then be denoted DG(2)+RK3.  
+For tests involving collisions we use the two-stage Semi-Implicit Runge-Kutta method described in Section~\ref{sec:semiImplicitTime}.  
+When this time integrator is combined with DG($k$) spatial discretization, the method is denoted DG($k$)+SIRK2.  
 
 \subsection{Streaming Sine Wave}
 
@@ -995,11 +1000,12 @@ There is good agreement between the numerical and analytical solutions, for both
 \end{figure}
 
 \subsection{Homogeneous Sphere}
+\label{sec:homogeneousSphere}
 
 The homogeneous sphere test \citep[cf.][]{smit_etal_1997} considers of a sphere with radius $R$.  
 Inside the sphere ($r<R$), the absorption opacity and equilibrium distribution function are set to constant values $\chi=\chi_{0}$ and $f_{0}=1$, respectively.  
 Outside the sphere, the absorption opacity is zero.  
-The steady state solution, obtained by solving the transport equation in spherical symetry, is given by
+The steady state solution, obtained by solving the transport equation in spherical symmetry, is given by
 \begin{equation}
   f_{\mbox{\tiny A}}(r,\mu)=f_{0}\,\big(1-e^{-\chi_{0}\,s(r,\mu)}\big),
   \label{distributionHomogeneousSphere}
@@ -1024,6 +1030,10 @@ Thus, in the thick case, the Knudsen number is small, $\mbox{Kn}=(\chi_{0}\,\Del
 The radius of the sphere is set to $R=100$~km.  
 
 Results are plotted in Figure~\ref{fig:homogeneousSphere1D}.  
+In the left panels we plots results obtained for the thick case, while results for the thin case are plotted in the right panels.  
+We plot the radiation density $\cJ$ in the top panels, the flux factor $\cH_{r}/\cJ$ in the middle panels, and the Eddington factor $\psi$ in the bottom panels.  
+The two-moment model captures the analytic solution reasonably well in both the thin and the thick cases, especially for the density $\cJ$.  
+The discrepancy in the flux and Eddington factors between the numerical results and the analytical solution is comparable to that of other implementations of the two-moment model \citep[e.g.,][]{smit_etal_1997}.  
 
 \begin{figure}
   \begin{center}
@@ -1111,14 +1121,15 @@ As can be seen, there is very little difference between the closure methods, but
 Overall, there is quite good agreement between the results obtained with the two-moment model and the transport solutions of \citet{hummerRybicki_1971} when $R_{\mbox{\tiny max}}/R_{\mbox{\tiny min}}=10$.  
 For larger values of this ratio, the agreement is worse, but seems to improve with increasing value of the index $n$ (cf. the blue lines in the lower two panels in Figure~\ref{fig:milneProblem1D}).  
 
-\section{Transport Problems with Tabulated Neutrino Opacities}
+\section{Multi-group Transport Problems with Tabulated Neutrino Opacities}
 \label{sec:numericalTableOpacities}
 
-For the tests in this section we employ the tabulated opacities described in Section~\ref{sec:opacities}.  
-We present two tests from the previous section (the homogeneous sphere and spherical diffusion problems), where the background is kept fixed.  
-Then we present a relaxation problem involving neutrino-electron scattering (NES) with a homogeneous background.  
-Finally, we present a deleptonization problem where the background density mimics that of a collapsed stellar core.  
-The first deleptonization problem (Em/Ab) involves emission and absorption only, while the second deleptonization problem (Full) involves the full set of opacities described in Section~\ref{sec:opacities}.  
+For the tests in this section we employ some of the tabulated opacities described in Section~\ref{sec:opacities}.  
+In Section~\ref{sec:homogeneousSphereTable}, we present a multi-group version of the homogeneous sphere test from Section~\ref{sec:homogeneousSphere}, where the background is kept fixed.  
+In Section~\ref{sec:deleptonizationProblem}, we present a deleptonization problem where the initial background density mimics that of a collapsed stellar core.  
+The deleptonization problem uses the tabulated electron capture and elastic scattering rates on nucleons and nuclei as described in Sections~\ref{sec:electronCapture} and \ref{sec:elasticScattering}.  
+For this problem, the temperature and electron fraction of the background are evolved with the radiation field as described in Section~\ref{sec:couplingElectronCapture} below.  
+The deleptonization problem is distributed with the mini-app, available at \url{https://github.com/ECP-Astro/thornado_mini}.  
 
 When coupling neutrinos to the background fluid, the gain/loss terms involve integrals of the right-hand sides in Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum} over energy space.  
 To simulate multi-group neutrino transport and compute the lepton and energy exchange with the fluid, the infinite energy domain $\bbR^{+}$ is replaced with a finite domain $D^{\epsilonNu}=\{\epsilonNu~|~\epsilonNu\in[0,\epsilonNu_{\mbox{\tiny max}}]\}$.  
@@ -1137,7 +1148,8 @@ In constructing the vectors $\vect{W},\vect{g}\in\bbR^{M^{\epsilonNu}}$, their e
 
 \subsection{Fluid-Radiation Coupling}
 
-\subsubsection{Emission and Absorption}
+%\subsubsection{Emission and Absorption}
+\label{sec:couplingElectronCapture}
 
 Electron capture on nucleons and nuclei results in changes to the electron fraction and internal energy of the fluid given by
 \begin{align}
@@ -1177,112 +1189,112 @@ Once $Y_{e}^{n+1}$ and $\epsilon^{n+1}$ are obtained, the radiation density is o
 \end{equation}
 When elastic scattering is included, the above description remains unchanged, except for $\gamma_{j}^{n}\to\dt\big(\tilde{\chi}_{j}^{n}+\sigma_{j}^{n}\big)$ in Eq.~\eqref{eq:momentEquationMomentumEmAbDiscrete}.  
 
-\subsubsection{Neutrino-Electron Scattering (NES)}
+%\subsubsection{Neutrino-Electron Scattering (NES)}
+%
+%When NES is included the internal energy of the fluid evolves according to
+%\begin{align}
+%  \rho\,d_{t}\epsilon
+%  &=-\int_{\bbR^{+}}\int_{\bbR^{+}}\big(4\pi-\cJ(\epsilonNu)\big)R^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')\,dV_{\epsilonNu'}\,\epsilonNu\,dV_{\epsilonNu} \\
+%  &\hspace{12pt}
+%  +\int_{\bbR^{+}}\int_{\bbR^{+}}\cJ(\epsilonNu)\,R^{\Out}(\epsilonNu,\epsilonNu')\,\big(4\pi-\cJ(\epsilonNu)\big)\,dV_{\epsilonNu'}\,\epsilonNu\,dV_{\epsilonNu}.  
+%\end{align}
+%With the semi-implicit approximation (evaluating the NES scattering rates using fluid properties at $t^{n}$), the neutrino number density can be solved for without iterative coupling to the thermodynamic state of the fluid.  
+%We first define the solution vector $\bcJ=(\cJ_{1},\ldots,\cJ_{M^{\epsilonNu}})^{\mbox{\tiny T}}$, and solve the nonlinear system of equations
+%\begin{equation}
+%  \bF(\bcJ^{n+1})=0
+%  \label{eq:NonlinearSystemNES}
+%\end{equation}
+%using Newton's method.  
+%Here, the $j$th component of the nonlinear system of equations is given by
+%\begin{equation}
+%  F_{j}(\bcJ^{n+1})
+%  =\big(\cJ_{j}^{n+1}-\cJ_{j}^{n}\big)
+%  -\dt\,\Big\{\,
+%    \big(4\pi-\cJ_{j}^{n+1}\big)\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\In,n}\,\cJ_{k}^{n+1}
+%    -\cJ_{j}^{n+1}\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\Out,n}\,\big(4\pi-\cJ_{k}^{n+1}\big)\,\Big\},
+%\end{equation}
+%and the Jacobian matrix is
+%\begin{align}
+%  \pderiv{\bF}{\bcJ}
+%  =\pderiv{F_{j}}{\cJ_{k}}
+%  &=\delta_{jk}\,\Big(1+\dt\,\Big\{\sum_{l=1}^{M^{\epsilonNu}}W_{l}^{(2)}\,R_{jl}^{\In,n}\,\cJ_{l}
+%  +\sum_{l=1}^{M^{\epsilonNu}}W_{l}^{(2)}\,R_{jl}^{\Out,n}\,\big(4\pi-\cJ_{l}\big)\Big\}\Big) \nonumber \\
+%  &\hspace{12pt}
+%  -\dt\,\Big\{\big(4\pi-\cJ_{j}\big)\,W_{k}^{(2)}\,R_{jk}^{\In,n}+\cJ_{j}\,W_{k}^{(2)}\,R_{jk}^{\Out,n}\Big\}.
+%\end{align}
+%When Eq.~\eqref{eq:NonlinearSystemNES} is converged to give $\bcJ^{n+1}$, the fluid energy density is updated as
+%\begin{align}
+%  \epsilon^{n+1}
+%  &=\epsilon^{n}-\f{\dt}{\rho}
+%  \Big\{\,
+%    \sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(3)}\big(4\pi-\cJ_{j}^{n+1}\big)
+%    \sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\In,n}\,\cJ_{k}^{n+1} \nonumber \\
+%    &\hspace{56pt}
+%    -\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(3)}\,\cJ_{j}^{n+1}
+%    \sum_{k=1}^{M^{\epsilonNu}}W^{(2)}\,R_{jk}^{\Out,n}\,\big(4\pi-\cJ_{k}^{n+1}\big)
+%  \,\Big\}.
+%\end{align}
 
-When NES is included the internal energy of the fluid evolves according to
-\begin{align}
-  \rho\,d_{t}\epsilon
-  &=-\int_{\bbR^{+}}\int_{\bbR^{+}}\big(4\pi-\cJ(\epsilonNu)\big)R^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')\,dV_{\epsilonNu'}\,\epsilonNu\,dV_{\epsilonNu} \\
-  &\hspace{12pt}
-  +\int_{\bbR^{+}}\int_{\bbR^{+}}\cJ(\epsilonNu)\,R^{\Out}(\epsilonNu,\epsilonNu')\,\big(4\pi-\cJ(\epsilonNu)\big)\,dV_{\epsilonNu'}\,\epsilonNu\,dV_{\epsilonNu}.  
-\end{align}
-With the semi-implicit approximation (evaluating the NES scattering rates using fluid properties at $t^{n}$), the neutrino number density can be solved for without iterative coupling to the thermodynamic state of the fluid.  
-We first define the solution vector $\bcJ=(\cJ_{1},\ldots,\cJ_{M^{\epsilonNu}})^{\mbox{\tiny T}}$, and solve the nonlinear system of equations
-\begin{equation}
-  \bF(\bcJ^{n+1})=0
-  \label{eq:NonlinearSystemNES}
-\end{equation}
-using Newton's method.  
-Here, the $j$th component of the nonlinear system of equations is given by
-\begin{equation}
-  F_{j}(\bcJ^{n+1})
-  =\big(\cJ_{j}^{n+1}-\cJ_{j}^{n}\big)
-  -\dt\,\Big\{\,
-    \big(4\pi-\cJ_{j}^{n+1}\big)\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\In,n}\,\cJ_{k}^{n+1}
-    -\cJ_{j}^{n+1}\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\Out,n}\,\big(4\pi-\cJ_{k}^{n+1}\big)\,\Big\},
-\end{equation}
-and the Jacobian matrix is
-\begin{align}
-  \pderiv{\bF}{\bcJ}
-  =\pderiv{F_{j}}{\cJ_{k}}
-  &=\delta_{jk}\,\Big(1+\dt\,\Big\{\sum_{l=1}^{M^{\epsilonNu}}W_{l}^{(2)}\,R_{jl}^{\In,n}\,\cJ_{l}
-  +\sum_{l=1}^{M^{\epsilonNu}}W_{l}^{(2)}\,R_{jl}^{\Out,n}\,\big(4\pi-\cJ_{l}\big)\Big\}\Big) \nonumber \\
-  &\hspace{12pt}
-  -\dt\,\Big\{\big(4\pi-\cJ_{j}\big)\,W_{k}^{(2)}\,R_{jk}^{\In,n}+\cJ_{j}\,W_{k}^{(2)}\,R_{jk}^{\Out,n}\Big\}.
-\end{align}
-When Eq.~\eqref{eq:NonlinearSystemNES} is converged to give $\bcJ^{n+1}$, the fluid energy density is updated as
-\begin{align}
-  \epsilon^{n+1}
-  &=\epsilon^{n}-\f{\dt}{\rho}
-  \Big\{\,
-    \sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(3)}\big(4\pi-\cJ_{j}^{n+1}\big)
-    \sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\In,n}\,\cJ_{k}^{n+1} \nonumber \\
-    &\hspace{56pt}
-    -\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(3)}\,\cJ_{j}^{n+1}
-    \sum_{k=1}^{M^{\epsilonNu}}W^{(2)}\,R_{jk}^{\Out,n}\,\big(4\pi-\cJ_{k}^{n+1}\big)
-  \,\Big\}.
-\end{align}
-
-\subsubsection{Full Interaction Set}
-
-With the complete interaction set considered in this paper (i.e., emission and absorption, elastic scattering, and NES), the electron fraction and fluid internal energy evolve according to
-\begin{align}
-  d_{t}Y_{e}
-  &=-\f{m_{\mbox{\tiny B}}}{\rho}\int_{\bbR^{+}}\tilde{\chi}\,\big(\cJ_{0}-\cJ\big)\,dV_{\epsilonNu}, \\
-  \rho\,d_{t}\epsilon
-  &=-\int_{\bbR^{+}}\tilde{\chi}\,\big(\cJ_{0}-\cJ\big)\,\epsilonNu\,dV_{\epsilonNu} \nonumber \\
-  &\hspace{12pt}
-  -\int_{\bbR^{+}}\int_{\bbR^{+}}\big(4\pi-\cJ(\epsilonNu)\big)R^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')\,dV_{\epsilonNu'}\,\epsilonNu\,dV_{\epsilonNu} \nonumber \\
-  &\hspace{12pt}
-  +\int_{\bbR^{+}}\int_{\bbR^{+}}\cJ(\epsilonNu)\,R^{\Out}(\epsilonNu,\epsilonNu')\,\big(4\pi-\cJ(\epsilonNu)\big)\,dV_{\epsilonNu'}\,\epsilonNu\,dV_{\epsilonNu},
-\end{align}
-and the conserved quantities are the total lepton number
-\begin{equation}
-  d_{t}\big(\,\f{\rho}{m_{\mbox{\tiny B}}}Y_{e}+\int_{\bbR^{+}}\cJ\,dV_{\epsilonNu}\,\big)=0,
-  \label{eq:leptonConservationFull}
-\end{equation}
-and the total (fluid plus radiation) energy
-\begin{equation}
-  d_{t}\big(\,\rho\,\epsilon+\int_{\bbR^{+}}\cJ\,\epsilonNu\,dV_{\epsilonNu}\,\big)=0.  
-  \label{eq:energyConservationFull}
-\end{equation}
-
-In the solution to the coupled system, we use Eqs.~\eqref{eq:leptonConservationFull} and \eqref{eq:energyConservationFull} together with the equation for the neutrino number density to form a system of nonlinear equations for the solution vector $\bU=(\bcJ,Y_{e},\epsilon)^{\mbox{\tiny T}}$, i.e.,
-\begin{equation}
-  \bF(\bU^{n+1})=0,
-  \label{eq:nonlinearSystemFull}
-\end{equation}
-where, for $j=1,\ldots,M^{\epsilonNu}$,
-\begin{align}
-  F_{j}(\bU^{n+1})
-  &=\big(\cJ_{j}^{n+1}-\cJ_{j}^{n}\big)-\dt\,\tilde{\chi}_{j}^{n}\big(\,\cJ_{0,j}^{n+1}-\cJ_{j}^{n+1}\,\big) \nonumber \\
-  &\hspace{12pt}
-  -\dt\,\Big\{\,
-    \big(4\pi-\cJ_{j}^{n+1}\big)\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\In,n}\,\cJ_{k}^{n+1}
-    -\cJ_{j}^{n+1}\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\Out,n}\,\big(4\pi-\cJ_{k}^{n+1}\big)\,\Big\}.
-\end{align}
-The electron fraction is constrained by
-\begin{equation}
-  F_{M^{\epsilonNu}+1}(\bU^{n+1})
-  =Y_{e}^{n+1}-Y_{e}^{n}+\f{m_{\mbox{\tiny B}}}{\rho}\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\big(\,\cJ_{k}^{n+1}-\cJ_{k}^{n}\,\big),
-\end{equation}
-while the internal energy is constrained by
-\begin{equation}
-  F_{M^{\epsilonNu}+2}(\bU^{n+1})
-  =\epsilon^{n+1}-\epsilon^{n}+\f{1}{\rho}\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(3)}\big(\,\cJ_{k}^{n+1}-\cJ_{k}^{n}\,\big).  
-\end{equation}
-The system given by Eq.~\eqref{eq:nonlinearSystemFull} is solved using Newton's method, where $\bU^{n}$ is taken as an initial guess.  
-The dense Jacobian matrix is computed analytically, except for derivatives of the equilibrium density $\cJ_{0}$, which are computed numerically by taking derivatives of table interpolation functions.  
-The radiation flux is subsequently obtained from
-\begin{equation}
-  \bcH_{j}^{n+1}-\bcH_{j}^{n}
-  =-\dt\,\big(\,\tilde{\chi}_{j}^{n}+\sigma_{j}^{n}+\sigma_{\NES,j}^{n}\,\big)\,\bcH_{j}^{n+1},
-\end{equation}
-where
-\begin{equation}
-  \sigma_{\NES,j}^{n}
-  =\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\big[\,R_{jk}^{\In,n}\,\cJ_{k}^{n+1}+R_{jk}^{\Out,n}\big(4\pi-\cJ_{k}^{n+1}\big)\,\big].
-\end{equation}
+%\subsubsection{Full Interaction Set}
+%
+%With the complete interaction set considered in this paper (i.e., emission and absorption, elastic scattering, and NES), the electron fraction and fluid internal energy evolve according to
+%\begin{align}
+%  d_{t}Y_{e}
+%  &=-\f{m_{\mbox{\tiny B}}}{\rho}\int_{\bbR^{+}}\tilde{\chi}\,\big(\cJ_{0}-\cJ\big)\,dV_{\epsilonNu}, \\
+%  \rho\,d_{t}\epsilon
+%  &=-\int_{\bbR^{+}}\tilde{\chi}\,\big(\cJ_{0}-\cJ\big)\,\epsilonNu\,dV_{\epsilonNu} \nonumber \\
+%  &\hspace{12pt}
+%  -\int_{\bbR^{+}}\int_{\bbR^{+}}\big(4\pi-\cJ(\epsilonNu)\big)R^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')\,dV_{\epsilonNu'}\,\epsilonNu\,dV_{\epsilonNu} \nonumber \\
+%  &\hspace{12pt}
+%  +\int_{\bbR^{+}}\int_{\bbR^{+}}\cJ(\epsilonNu)\,R^{\Out}(\epsilonNu,\epsilonNu')\,\big(4\pi-\cJ(\epsilonNu)\big)\,dV_{\epsilonNu'}\,\epsilonNu\,dV_{\epsilonNu},
+%\end{align}
+%and the conserved quantities are the total lepton number
+%\begin{equation}
+%  d_{t}\big(\,\f{\rho}{m_{\mbox{\tiny B}}}Y_{e}+\int_{\bbR^{+}}\cJ\,dV_{\epsilonNu}\,\big)=0,
+%  \label{eq:leptonConservationFull}
+%\end{equation}
+%and the total (fluid plus radiation) energy
+%\begin{equation}
+%  d_{t}\big(\,\rho\,\epsilon+\int_{\bbR^{+}}\cJ\,\epsilonNu\,dV_{\epsilonNu}\,\big)=0.  
+%  \label{eq:energyConservationFull}
+%\end{equation}
+%
+%In the solution to the coupled system, we use Eqs.~\eqref{eq:leptonConservationFull} and \eqref{eq:energyConservationFull} together with the equation for the neutrino number density to form a system of nonlinear equations for the solution vector $\bU=(\bcJ,Y_{e},\epsilon)^{\mbox{\tiny T}}$, i.e.,
+%\begin{equation}
+%  \bF(\bU^{n+1})=0,
+%  \label{eq:nonlinearSystemFull}
+%\end{equation}
+%where, for $j=1,\ldots,M^{\epsilonNu}$,
+%\begin{align}
+%  F_{j}(\bU^{n+1})
+%  &=\big(\cJ_{j}^{n+1}-\cJ_{j}^{n}\big)-\dt\,\tilde{\chi}_{j}^{n}\big(\,\cJ_{0,j}^{n+1}-\cJ_{j}^{n+1}\,\big) \nonumber \\
+%  &\hspace{12pt}
+%  -\dt\,\Big\{\,
+%    \big(4\pi-\cJ_{j}^{n+1}\big)\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\In,n}\,\cJ_{k}^{n+1}
+%    -\cJ_{j}^{n+1}\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\,R_{jk}^{\Out,n}\,\big(4\pi-\cJ_{k}^{n+1}\big)\,\Big\}.
+%\end{align}
+%The electron fraction is constrained by
+%\begin{equation}
+%  F_{M^{\epsilonNu}+1}(\bU^{n+1})
+%  =Y_{e}^{n+1}-Y_{e}^{n}+\f{m_{\mbox{\tiny B}}}{\rho}\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\big(\,\cJ_{k}^{n+1}-\cJ_{k}^{n}\,\big),
+%\end{equation}
+%while the internal energy is constrained by
+%\begin{equation}
+%  F_{M^{\epsilonNu}+2}(\bU^{n+1})
+%  =\epsilon^{n+1}-\epsilon^{n}+\f{1}{\rho}\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(3)}\big(\,\cJ_{k}^{n+1}-\cJ_{k}^{n}\,\big).  
+%\end{equation}
+%The system given by Eq.~\eqref{eq:nonlinearSystemFull} is solved using Newton's method, where $\bU^{n}$ is taken as an initial guess.  
+%The dense Jacobian matrix is computed analytically, except for derivatives of the equilibrium density $\cJ_{0}$, which are computed numerically by taking derivatives of table interpolation functions.  
+%The radiation flux is subsequently obtained from
+%\begin{equation}
+%  \bcH_{j}^{n+1}-\bcH_{j}^{n}
+%  =-\dt\,\big(\,\tilde{\chi}_{j}^{n}+\sigma_{j}^{n}+\sigma_{\NES,j}^{n}\,\big)\,\bcH_{j}^{n+1},
+%\end{equation}
+%where
+%\begin{equation}
+%  \sigma_{\NES,j}^{n}
+%  =\sum_{k=1}^{M^{\epsilonNu}}W_{k}^{(2)}\big[\,R_{jk}^{\In,n}\,\cJ_{k}^{n+1}+R_{jk}^{\Out,n}\big(4\pi-\cJ_{k}^{n+1}\big)\,\big].
+%\end{equation}
 
 \begin{table}
   \caption{Parameters used for problems with tabulated opacities. \label{tab:tabulatedModels}}
@@ -1306,6 +1318,38 @@ where
 \end{figure}
 
 \subsection{Homogeneous Sphere}
+\label{sec:homogeneousSphereTable}
+
+Here we present results from a multi-group version of the homogeneous sphere problem in Section~\ref{sec:homogeneousSphere}, where we use the tabulated electron capture rates from Section~\ref{sec:electronCapture}.  
+The radius of the sphere is set to $R=100$~km, and the computational domain covers the region $r\in[0,500]$~km.  
+We present two versions of the test, one for dense conditions, where the $\rho=10^{13}$~g~cm$^{-3}$, $T=16$~MeV, and $Y_{e}=0.14$ inside $r=R$ (Model B in Table~\ref{tab:tabulatedModels}), and one where $\rho=10^{11}$~g~cm$^{-3}$, $T=8$~MeV, and $Y_{e}=0.15$ inside $r=R$ (Model D in Table~\ref{tab:tabulatedModels}).  
+The electron capture rates $\tilde{\chi}$ for these conditions are plotted versus energy $\epsilonNu$ in Figure~\ref{fig:absorptionOpacities_weaklib} (blue and magenta lines, respectively).  
+Outside $r=100$~km, we set $\rho=10^{8}$~g~cm$^{-3}$, $T=0.2$~MeV, and $Y_{e}=0.46$ in both models.  
+
+Numerical results, obtained with the DG(2)+SIRK2 scheme using 100 equally sized radial elements and 24 geometrically spaced energy groups covering $\epsilonNu\in[0,300]$~MeV (with a minimum energy bin $\Delta\epsilonNu=1$~MeV), are plotted in Figures \ref{fig:homogeneousSphere1D_weaklib_B} (Model B) and \ref{fig:homogeneousSphere1D_weaklib_D} (Model D).  
+In the upper left panel we plot the average density $J/V_{\epsilonNu}$, where
+\begin{equation}
+  J=\int_{\bbR^{+}}\cJ\,dV_{\epsilonNu}
+  \quad\text{and}\quad
+  V_{\epsilonNu}=\int_{\bbR^{+}}dV_{\epsilonNu}.  
+  \label{eq:averageDensity}
+\end{equation}
+In the lower left panel we plot the average flux factor, defined as
+\begin{equation}
+  f_{r}=\f{1}{J}\int_{\bbR^{+}}\cH_{r}\,dV_{\epsilonNu}.  
+  \label{eq:averageFluxFactor}
+\end{equation}
+In the upper right panel we plot the average Eddington factor, defined as
+\begin{equation}
+  \langle\psi\rangle=\f{1}{J}\int_{\bbR^{+}}\psi\,\cJ\,dV_{\epsilonNu}.  
+\end{equation}
+In the lower right panel we plot the mean energy
+\begin{equation}
+  \langle\epsilonNu\rangle=\f{1}{J}\int_{\bbR^{+}}\cJ\,\epsilonNu\,dV_{\epsilonNu}.  
+  \label{eq:meanEnergy}
+\end{equation}
+In each panel we compare the numerical and analytical results (dashed and solid lines, respectively).  
+As can be seen, the agreement between the numerical and analytical results is similar to that observed in Section~\ref{sec:homogeneousSphere}.  
 
 \begin{figure}
   \begin{center}
@@ -1316,7 +1360,7 @@ where
       \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_B_MeanEnergy}
     \end{tabular}
   \end{center}
-  \caption{Results from solving the multi-group Homogeneous sphere problem with the DG(2)+SIRK2 method using $100$ spatial elements and $24$ energy groups, and using material properties from Model~D in Table~\ref{tab:tabulatedModels} to compute the neutrino absorption opacities.
+  \caption{Results from solving the multi-group Homogeneous sphere problem with the DG(2)+SIRK2 method using $100$ spatial elements and $24$ energy groups, and using material properties from Model~B in Table~\ref{tab:tabulatedModels} to compute the neutrino absorption opacities.
     We plot the energy-averaged neutrino density (upper left), flux factor (lower left), Eddington factor (upper right), and mean neutrino energy (lower right) versus radius.  
     The analytical solution is represented by the solid lines, while the numerical solution is given by the dashed lines.}
   \label{fig:homogeneousSphere1D_weaklib_B}
@@ -1349,102 +1393,134 @@ where
 %  \label{fig:homogeneousSphere1D_weaklib}
 %\end{figure}
 
-\subsection{Diffuse Scattering}
+%\subsection{Diffuse Scattering}
 
-\subsection{Relaxation}
+%\subsection{Relaxation}
+%
+%\begin{figure}
+%  \begin{center}
+%    \includegraphics[width=0.75\textwidth]{./Figures/RelaxationEmissionAbsorption_Spectra_ModelA}
+%  \end{center}
+%  \caption{Results from solving an emission/absorption relaxation problem with initial material properties given by Model A in Table~\ref{tab:tabulatedModels}.  
+%  The neutrino energy spectrum is plotted for various times as the radiation field approaches equilibrium.}
+%  \label{fig:RelaxationEmissionAbsorption}
+%\end{figure}
+%
+%\begin{figure}
+%  \begin{center}
+%    \includegraphics[width=0.85\textwidth]{./Figures/RelaxationNES_Spectra.png}
+%    \begin{tabular}{cc}
+%      \includegraphics[width=0.475\textwidth]{./Figures/RelaxationNES_DensitiesVsTime.png} &
+%      \includegraphics[width=0.475\textwidth]{./Figures/RelaxationNES_EnergiesVsTime.png}
+%    \end{tabular}
+%  \end{center}
+%  \caption{Results from solving an NES relaxation problem with initial material properties given by Model C in Table~\ref{tab:tabulatedModels}.}
+%  \label{fig:RelaxationNES}
+%\end{figure}
+%
+%\begin{figure}
+%  \begin{center}
+%    \begin{tabular}{cc}
+%      \includegraphics[width=0.475\textwidth]{./Figures/RelaxationNES_DensitiesVsTime_Timestep.png} &
+%      \includegraphics[width=0.475\textwidth]{./Figures/RelaxationNES_EnergiesVsTime_Timestep.png}
+%    \end{tabular}
+%  \end{center}
+%  \caption{Results from the NES relaxation problem with initial material properties given by Model C in Table~\ref{tab:tabulatedModels}, where the timestep $\dt$ has been set to $10^{-5}$~ms (solid lines), $10^{-4}$~ms (dashed lines), and $10^{-3}$~ms (dotted lines).  In the left panel we plot the occupation density versus time for $\epsilonNu=11.2$~MeV (red lines) and $\epsilonNu=97.5$~MeV (blue lines).  In the right panel we plot the fluid energy versus time.}
+%  \label{fig:RelaxationNES_Timestep}
+%\end{figure}
 
-\begin{figure}
-  \begin{center}
-    \includegraphics[width=0.75\textwidth]{./Figures/RelaxationEmissionAbsorption_Spectra_ModelA}
-  \end{center}
-  \caption{Results from solving an emission/absorption relaxation problem with initial material properties given by Model A in Table~\ref{tab:tabulatedModels}.  
-  The neutrino energy spectrum is plotted for various times as the radiation field approaches equilibrium.}
-  \label{fig:RelaxationEmissionAbsorption}
-\end{figure}
+\subsection{Deleptonization Problem}
+\label{sec:deleptonizationProblem}
 
-\begin{figure}
-  \begin{center}
-    \includegraphics[width=0.85\textwidth]{./Figures/RelaxationNES_Spectra.png}
-    \begin{tabular}{cc}
-      \includegraphics[width=0.475\textwidth]{./Figures/RelaxationNES_DensitiesVsTime.png} &
-      \includegraphics[width=0.475\textwidth]{./Figures/RelaxationNES_EnergiesVsTime.png}
-    \end{tabular}
-  \end{center}
-  \caption{Results from solving an NES relaxation problem with initial material properties given by Model C in Table~\ref{tab:tabulatedModels}.}
-  \label{fig:RelaxationNES}
-\end{figure}
-
-\begin{figure}
-  \begin{center}
-    \begin{tabular}{cc}
-      \includegraphics[width=0.475\textwidth]{./Figures/RelaxationNES_DensitiesVsTime_Timestep.png} &
-      \includegraphics[width=0.475\textwidth]{./Figures/RelaxationNES_EnergiesVsTime_Timestep.png}
-    \end{tabular}
-  \end{center}
-  \caption{Results from the NES relaxation problem with initial material properties given by Model C in Table~\ref{tab:tabulatedModels}, where the timestep $\dt$ has been set to $10^{-5}$~ms (solid lines), $10^{-4}$~ms (dashed lines), and $10^{-3}$~ms (dotted lines).  In the left panel we plot the occupation density versus time for $\epsilonNu=11.2$~MeV (red lines) and $\epsilonNu=97.5$~MeV (blue lines).  In the right panel we plot the fluid energy versus time.}
-  \label{fig:RelaxationNES_Timestep}
-\end{figure}
-
-\subsection{Deleptonization}
-
-We conclude with a problem mimicking the deleptonization of a collapsed stellar core.  
-To this end, we adopt an analytic density profile
-\begin{equation}
-  \rho(r)=\big[\,1-\Theta(r)\,\big]\,\rho_{1}(r)+\Theta(r)\,\rho_{2}(r)
-  \label{eq:densityProfile}
-\end{equation}
-where the function $\Theta(r)=0.5\times\big[\,1.0+\tanh\big(\,(r-r_{0})/R_{0}\,\big)\,\big]$ transitions smoothly between two density profiles, given by a Gaussian in the central region and a polynomial at larger radii; i.e.,
+We conclude with a problem mimicking deleptonization in a collapsed stellar core.  
+To this end, we adopt analytic profiles for the initial mass density, temperature, and electron fraction:
 \begin{align}
-  \rho_{1}(r)
-  &=\rho_{1,0}\times\exp\big[-(r/R_{1})^{2}\big]
-  \label{eq:densityProfile1} \\
-  \rho_{2}(r)
-  &=\rho_{2,0}\times\big(r/R_{2}\big)^{\alpha},
-  \label{eq:densityProfile2}
+  \rho(r)
+  &=0.5\times
+  \big\{\,
+    \rho_{\mbox{\tiny max}}\times\big[\,1-\tanh\big(\,(r-R_{\rho})/H_{\rho}\,\big)\,\big]
+    +\rho_{\mbox{\tiny min}}\times\big[\,1-\tanh\big(\,(R_{\rho}-r)/H_{\rho}\,\big)\,\big]
+  \,\big\}, \\
+  T(r)
+  &=0.5\times
+  \big\{\,
+    T_{\mbox{\tiny max}}\times\big[\,1-\tanh\big(\,(r-R_{T})/H_{T}\,\big)\,\big]
+    +T_{\mbox{\tiny min}}\times\big[\,1-\tanh\big(\,(R_{T}-r)/H_{T}\,\big)\,\big]
+  \,\big\}, \\
+  Y_{e}(r)
+  &=0.5\times
+  \big\{\,
+    Y_{e,\mbox{\tiny min}}\times\big[\,1-\tanh\big(\,(r-R_{Y_{e}})/H_{Y_{e}}\,\big)\,\big]
+    +Y_{e,\mbox{\tiny max}}\times\big[\,1-\tanh\big(\,(R_{Y_{e}}-r)/H_{Y_{e}}\,\big)\,\big]
+  \,\big\}.  
 \end{align}
-where $\rho_{1,0}>\rho_{2,0}$ and $\alpha<0$.  
-We set $\rho_{1,0}=4.5\times10^{14}$, $\rho_{1,0}=1.0\times10^{13}$, $\alpha=-4$, and $R_{1}=10$~km.  
-Then, by imposing $\rho_{1}(R_{2})=\rho_{2}(R_{2})$, we find $R_{2}=R_{1}\sqrt{\ln(\rho_{1,0}/\rho_{2,0})}\approx19.5$~km.  
-We also set $r_{0}=R_{2}$ and $R_{0}=1$~km.  
-With these parameters, the density profile given by Eqs~\eqref{eq:densityProfile}, \eqref{eq:densityProfile1}, and \eqref{eq:densityProfile2} provides a reasonable approximation to the density profile in the post-bounce phase of a realistic supernova model (cf. Figure~\ref{fig:analyticDensityProfile}).  
+For the density profile we set $\rho_{\mbox{\tiny min}}=10^{8}$~g~cm$^{-3}$, $\rho_{\mbox{\tiny max}}=4\times10^{14}$~g~cm$^{-3}$, $R_{\rho}=20$~km, and $H_{\rho}=10$~km.  
+For the temperature profile we set $T_{\mbox{\tiny min}}=5\times10^{9}$~K, $T_{\mbox{\tiny max}}=2.6\times10^{11}$~K, $R_{T}=25$~km, and $H_{T}=20$~km.  
+For the electron fraction profile we set $Y_{e,\mbox{\tiny min}}=0.4$, $Y_{e,\mbox{\tiny max}}=0.46$, $R_{Y_{e}}=45$~km, and $H_{Y_{e}}=10$~km.  
+(The initial temperature and electron fraction profiles are plotted as dotted lines in Figure~\ref{fig:deleptonizationProblemFluid}.)
+The radiation field is initialized by setting the distribution function equal to the local Fermi-Dirac distribution.  
+
+In this problem the computational domain covers $r\in[0,100]$~km and $\epsilonNu\in[0,300]$~MeV.  
+We use equally sized spatial elements, while the energy domain is covered by geometrically increasing elements (with the smallest, innermost, energy bin set to $\Delta\epsilonNu=1$~MeV).  
+We evolve until $t=100$~ms.  
+
+In Figure~\ref{fig:deleptonizationProblemFluid} we plot fluid quantities versus radius at select times: $t=0$~ms (initial condition, dotted lines), $t=3$~ms (dash-dot), $t=10$~ms (dashed), and $t=100$~ms (solid).  
+The results were obtained with the DG(1)+SIRK2 scheme using 200 radial elements and 30 energy bins.  
+We plot the electron fraction (upper left panel); mass fractions of protons and neutrons (black), alpha particles (red), and heavy nuclei (blue) (upper right panel); temperature (lower left); and entropy per baryon (lower right).  
+
+%\begin{equation}
+%  \rho(r)=\big[\,1-\Theta(r)\,\big]\,\rho_{1}(r)+\Theta(r)\,\rho_{2}(r)
+%  \label{eq:densityProfile}
+%\end{equation}
+%where the function $\Theta(r)=0.5\times\big[\,1.0+\tanh\big(\,(r-r_{0})/R_{0}\,\big)\,\big]$ transitions smoothly between two density profiles, given by a Gaussian in the central region and a polynomial at larger radii; i.e.,
+%\begin{align}
+%  \rho_{1}(r)
+%  &=\rho_{1,0}\times\exp\big[-(r/R_{1})^{2}\big]
+%  \label{eq:densityProfile1} \\
+%  \rho_{2}(r)
+%  &=\rho_{2,0}\times\big(r/R_{2}\big)^{\alpha},
+%  \label{eq:densityProfile2}
+%\end{align}
+%where $\rho_{1,0}>\rho_{2,0}$ and $\alpha<0$.  
+%We set $\rho_{1,0}=4.5\times10^{14}$, $\rho_{1,0}=1.0\times10^{13}$, $\alpha=-4$, and $R_{1}=10$~km.  
+%Then, by imposing $\rho_{1}(R_{2})=\rho_{2}(R_{2})$, we find $R_{2}=R_{1}\sqrt{\ln(\rho_{1,0}/\rho_{2,0})}\approx19.5$~km.  
+%We also set $r_{0}=R_{2}$ and $R_{0}=1$~km.  
+%With these parameters, the density profile given by Eqs~\eqref{eq:densityProfile}, \eqref{eq:densityProfile1}, and \eqref{eq:densityProfile2} provides a reasonable approximation to the density profile in the post-bounce phase of a realistic supernova model (cf. Figure~\ref{fig:analyticDensityProfile}).  
+%
+%\begin{figure}
+%  \begin{center}
+%      \includegraphics[scale=0.78]{./Figures/AnalyticDensityProfile}
+%  \end{center}
+%  \caption{Density profile used in the deleptonization problem (solid black line; cf. Eq.~\eqref{eq:densityProfile}).  
+%  It is composed of a Gaussian profile for radii $\lesssim20$~km (dashed black line), and a power law, with $\rho\propto r^{-4}$, for larger radii (dotted black line).  
+%  The density profile from a full physics core-collapse supernova simulation at $100$~ms after core bounce is also plotted (solid red line).  }
+%  \label{fig:analyticDensityProfile}
+%\end{figure}
 
 \begin{figure}
   \begin{center}
-      \includegraphics[scale=0.78]{./Figures/AnalyticDensityProfile}
-  \end{center}
-  \caption{Density profile used in the deleptonization problem (solid black line; cf. Eq.~\eqref{eq:densityProfile}).  
-  It is composed of a Gaussian profile for radii $\lesssim20$~km (dashed black line), and a power law, with $\rho\propto r^{-4}$, for larger radii (dotted black line).  
-  The density profile from a full physics core-collapse supernova simulation at $100$~ms after core bounce is also plotted (solid red line).  }
-  \label{fig:analyticDensityProfile}
-\end{figure}
-
-\begin{figure}
-  \begin{center}
-	\includegraphics[width=.85\textwidth]{./Figures/DeleptonizationProblem1D_ElectronFraction.png}
 	\begin{tabular}{cc}
+	  \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_ElectronFraction.png} &
+	  \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_MassFractions.png} \\
 	  \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_Temperature.png} &
 	  \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_EntropyPerBaryon.png}
 	\end{tabular}
   \end{center}
-  \caption{Fluid quantities from the deleptonization problem.  Plotted versus radius for various times are electron fraction (top), temperature (bottom left), and entropy per baryon (bottom right).}
-  \label{fig:}
+  \caption{Fluid quantities from the deleptonization problem.  Plotted versus radius for various times are: electron fraction (top left), mass fractions of protons plus neutrons (black), alpha particles (red), and the mean heavy nucleus (blue; top right), temperature (bottom left), and entropy per baryon (bottom right).}
+  \label{fig:deleptonizationProblemFluid}
 \end{figure}
 
+In Figure~\ref{fig:deleptonizationProblemRadiation} we plot radiation quantities versus radius at the same times a in Figure~\ref{fig:deleptonizationProblemFluid}.  
+We plot the energy-integrated density $J$ (upper left; cf. Eq.~\eqref{eq:averageDensity}), the average flux factor $f_{r}$ (upper right; cf. Eq.~\eqref{eq:averageFluxFactor}), and the mean energy $\langle\epsilonNu\rangle$ (lower left; cf. Eq.~\eqref{eq:meanEnergy}).  
+In the lower right panel we plot the luminosity
 \begin{equation}
-  J=\int_{\bbR^{+}}\cJ\,dV_{\epsilonNu}
+  L_{r}=4\pi\,r^{2}\,\int_{\bbR^{+}}\cH_{r}\,\epsilonNu\,dV_{\epsilonNu}.  
 \end{equation}
-
+In these plots we have also indicated with vertical lines the radius where the optical depth,
 \begin{equation}
-  f_{r}=\f{1}{J}\int_{\bbR^{+}}\cH_{r}\,dV_{\epsilonNu}
+  \tau(r)=\int_{\infty}^{r}\tilde{\chi}\,dr,
 \end{equation}
-
-\begin{equation}
-  \bar{\epsilonNu}=\f{1}{J}\int_{\bbR^{+}}\cJ\,\epsilonNu\,dV_{\epsilonNu}
-\end{equation}
-
-\begin{equation}
-  L_{r}=4\pi\,r^{2}\,\int_{\bbR^{+}}\cH_{r}\,\epsilonNu\,dV_{\epsilonNu}
-\end{equation}
+equals $2/3$.  
 
 \begin{figure}
   \begin{center}
@@ -1455,32 +1531,35 @@ With these parameters, the density profile given by Eqs~\eqref{eq:densityProfile
       \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_Luminosity.png}
     \end{tabular}
   \end{center}
-  \caption{Radiation quantities from the deleptonization problem.  Plotted versus radius for various times are neutrino number density (top left), flux factor (top right), mean energy (bottom left), and luminosity (bottom right).}
-  \label{fig:}
-\end{figure}
-
-\begin{figure}
-  \begin{center}
-      \includegraphics[scale=0.78]{./Figures/DeleptonizationProblem1D_Spectra.png}
-  \end{center}
-  \caption{Neutrino energy spectra at various radii for $t=100$~ms (solid lines).  The dashed lines represent equilibrium spectra, computed using local thermodynamic conditions.}
-  \label{fig:}
+  \caption{Radiation quantities from the deleptonization problem.  Plotted versus radius for various times are neutrino number density (top left), flux factor (top right), mean energy (bottom left), and luminosity (bottom right).  The radii where the optical depth $\tau=2/3$ are indicated with vertical lines.}
+  \label{fig:deleptonizationProblemRadiation}
 \end{figure}
 
 \begin{figure}
   \begin{center}
     \begin{tabular}{cc}
-      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_ElectronFraction_SpatialResolution.png} &
-      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_MeanEnergy_SpatialResolution.png} \\
-      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_ElectronFraction_SpectralResolution.png} &
-      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_MeanEnergy_SpectralResolution.png}
+      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_ElectronFraction_Resolution.png} &
+      \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_MeanEnergy_Resolution.png}
     \end{tabular}
   \end{center}
-  \caption{Results for the deleptonization problem where the spatial and spectral resolution has been varied: the electron fraction (left panels) and mean energy (right panel) are plotted versus radius for $t=100$~ms.}
+  \caption{Results for the deleptonization problem where the spatial and spectral resolution has been varied: the electron fraction (left panel) and mean energy (right panel) are plotted versus radius for $t=100$~ms.  The black solid line is obtained with the DG(1)+SIRK2 scheme using $N_{r}\times N_{\epsilonNu}=200\times30$ elements, while blue circles represent results obtained with the DG(2)+SIRK2 scheme using $64\times12$ elements.  }
   \label{fig:}
 \end{figure}
 
-\section{Miniapp: Collapse of Stellar Iron Core}
+\section{Summary}
+
+We have presented details of the DG scheme the two-moment model for neutrino transport in \thornado.  
+
+Test problems.  
+
+A version of the code has been made publicly available on GitHub\footnote{\url{https://github.com/ECP-Astro/thornado_mini}}.  
+This release includes the deleptonization problem presented in Section~\ref{sec:deleptonizationProblem}.  
+
+Next steps.  
+
+%\section{Miniapp: Collapse of Stellar Iron Core}
+
+\clearpage
 
 \bibliographystyle{apj}
 \bibliography{../References/references.bib}
@@ -1587,8 +1666,6 @@ The corresponding right and left eigenvectors are given by the columns and rows,
   \end{array}
   \right].  
 \end{equation}
-
-\clearpage
 
 \section{Moment Equations in Commonly Used Coordinate Systems}
 \label{app:CurvilinearEuler}
