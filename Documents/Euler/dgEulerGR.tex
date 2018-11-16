@@ -31,6 +31,8 @@
 \newtheorem{remark}{Remark}
 \graphicspath{{Figures/}}
 
+\usepackage{float}
+
 \begin{document}
 
 \title{Nodal Discontinuous Galerkin Method for the Euler Equations in GR}
@@ -58,11 +60,8 @@ where
   &=\big(D,\,S_{j},\,\tau\big)^{\mbox{\tiny T}}
   =\big(\rho\,W,\,\rho\,h\,W^{2}\,v_{j},\,\rho\,W\left(h\,W-1\right)-p\big)^{\mbox{\tiny T}}, \\
   \bF^{i}(\bU)
-  &=\big(D\,v^{i},\,P^{i}_{~j},\,S^{i}-D\,v^{i}\,\big)^{\mbox{\tiny T}} \\
-  \bG(\bU)
-  &=\big(\,0,\,\f{1}{2}\,P^{ik}\pd{\gamma_{ik}}{j}-(\tau+D)\,\alpha^{-1}\pd{\alpha}{j},\,-S^{j}\,\alpha^{-1}\pd{\alpha}{j}\,\big),
+  &=\big(D\,v^{i},\,\big)^{\mbox{\tiny T}}
 \end{align}
-and $P^{ij}=S^{i}\,v^{j}+p\,\gamma^{ij}$.  
 
 
 \section{Bound-Preserving Methods Using First-Order DG Scheme}
@@ -148,7 +147,7 @@ where the equality follows for a uniform mesh, i.e. $\Delta x_{i}=\Delta x\,\for
 \newpage
 
 
-\subsection{Curvilinear Coordinates}
+\subsection{Curvilinear Coordinates in 1-D}
 NOTE: We assume a conformally-flat, time-independent spatial three-metric:
 \begin{equation}
     \gamma_{ij}\left(x^{k},t\right)\longrightarrow\psi^{4}\left(x^{k}\right)\,\ol{\gamma_{ii}}\left(x^{k}\right),
@@ -157,33 +156,33 @@ where $\psi\left(x^{k}\right)$ is the conformal factor and $\ol{\gamma}_{ii}$ is
 
 \subsubsection{Set of Admissible States}
 We again consider a one-dimensional system of conservation laws, but this time with a curvilinear metric:
-\begin{equation}
-    \pd{\left(\sqrtgm\,\bU\right)}{t}+\pd{\left(\sqrtgm\,\bF\right)}{1}=\sqrtgm\,\bQ,
+\begin{equation}\label{Eq:1DCurvilinearConsLaw}
+    \pd{\left(\sqrtgm\,\bU\right)}{t}+\pd{\left(\sqrtgm\,\bF^{i}\right)}{i}=\sqrtgm\,\bQ,\hspace{1em}\text{(no sum on $i$)},
 \end{equation}
 where $\bU$ is given by:
 \begin{equation}
-    \bU\longrightarrow\begin{pmatrix} D\\ S_{1}\\ \tau\end{pmatrix}=\begin{pmatrix} \rho\,W\\ \rho\,h\,W^{2}\,v_{1}\\ \rho\,W\left(h\,W-1\right)-p\end{pmatrix}=\begin{pmatrix} \rho\,W\\ \rho\,h\,W^{2}\,\gamma_{1j}\,v^{j}\\ \rho\,W\left(h\,W-1\right)-p\end{pmatrix},
+    \bU\longrightarrow\begin{pmatrix} D\\ S_{j}\\ \tau\end{pmatrix}=\begin{pmatrix} \rho\,W\\ \rho\,h\,W^{2}\,v_{j}\\ \rho\,W\left(h\,W-1\right)-p\end{pmatrix}=\begin{pmatrix} \rho\,W\\ \rho\,h\,W^{2}\,\gamma_{jk}\,v^{k}\\ \rho\,W\left(h\,W-1\right)-p\end{pmatrix},
 \end{equation}
-$\bF\left(\bU\right)$ are the fluxes of those conserved quantities:
+$\bF^{i}\left(\bU\right)$ are the fluxes in the $x^{i}$-direction of those conserved quantities:
 \begin{equation}
-    \bF\left(\bU\right)\longrightarrow\begin{pmatrix}D\,v^{1}\\ S^{1}\,v_{1}+p\,\delta^{1}_{~1}\\ S^{1}-D\,v^{1}\end{pmatrix}=\begin{pmatrix}\rho\,W\,v^{1}\\ \rho\,h\,W^{2}\,v^{1}\,v_{1}+p\\\rho\,h\,W^{2}\,v^{1}-D\,v^{1}\end{pmatrix}=\begin{pmatrix}\rho\,W\,v^{1}\\ \rho\,h\,W^{2}\,\gamma_{1j}\,v^{1}\,v^{j}+p\\\rho\,h\,W^{2}\,v^{1}-D\,v^{1}\end{pmatrix},
+    \bF^{i}\left(\bU\right)\longrightarrow\begin{pmatrix}D\,v^{i}\\ S^{i}\,v_{j}+p\,\delta^{i}_{~j}\\ S^{i}-D\,v^{i}\end{pmatrix}=\begin{pmatrix}\rho\,W\,v^{i}\\ \rho\,h\,W^{2}\,v^{i}\,v_{j}+p\,\delta^{i}_{~j}\\\rho\,h\,W^{2}\,v^{i}-D\,v^{i}\end{pmatrix}=\begin{pmatrix}\rho\,W\,v^{i}\\ \rho\,h\,W^{2}\,\gamma_{jk}\,v^{i}\,v^{k}+p\,\delta^{i}_{~j}\\\rho\,h\,W^{2}\,v^{i}-D\,v^{i}\end{pmatrix},
 \end{equation}
 and $\bQ$ is a source term:
 \begin{align}
-    \bQ\longrightarrow\begin{pmatrix}0\\\f{1}{2}\,P^{kj}\,\pd{\gamma_{kj}}{1}\\0\end{pmatrix}&=\begin{pmatrix}0\\ \f{1}{2}\left[P^{11}\,\pd{\gamma_{11}}{1}+P^{22}\,\pd{\gamma_{22}}{1}+P^{33}\,\pd{\gamma_{33}}{1}\right] \\0\end{pmatrix}\\
-    &=\begin{pmatrix}0\\ P^{11}\,h_{1}\,\pd{\,h_{1}}{1}+P^{22}\,h_{2}\,\pd{\,h_{2}}{1}+P^{33}\,h_{3}\,\pd{\,h_{3}}{1} \\0\end{pmatrix},
+    \bQ\longrightarrow\begin{pmatrix}0\\\f{1}{2}\,P^{ik}\,\pd{\,\gamma_{ik}}{j}\\0\end{pmatrix}&=\begin{pmatrix}0\\ \f{1}{2}\left[P^{11}\,\pd{\,\gamma_{11}}{j}+P^{22}\,\pd{\,\gamma_{22}}{j}+P^{33}\,\pd{\,\gamma_{33}}{j}\right] \\0\end{pmatrix}\\
+    &=\begin{pmatrix}0\\ P^{11}\,h_{1}\,\pd{\,h_{1}}{j}+P^{22}\,h_{2}\,\pd{\,h_{2}}{j}+P^{33}\,h_{3}\,\pd{\,h_{3}}{j} \\0\end{pmatrix},
 \end{align}
-where we have used the fact that $\gamma_{jj}=\left(h_{j}\right)^{2}$. The $P^{kj}$ are components of the pressure tensor:
+where we have used the fact that $\gamma_{kk}=\left(h_{k}\right)^{2}$. The $P^{ik}$ are components of the pressure tensor:
 \begin{equation}
-    P^{kj}=S^{k}\,v^{j}+p\,\gamma^{kj}=\gamma^{k\ell}\,S_{\ell}\,v^{j}+p\,\gamma^{kj}=\gamma^{k\ell}\,S_{\ell}\,v^{j}+p\,\gamma^{k\ell}\,\delta^{j}_{~\ell}=\gamma^{k\ell}\left(S_{\ell}\,v^{j}+p\,\delta^{j}_{~\ell}\right).
+    P^{ik}=S^{i}\,v^{k}+p\,\gamma^{ik}=\gamma^{i\ell}\,S_{\ell}\,v^{k}+p\,\gamma^{ik}=\gamma^{i\ell}\,S_{\ell}\,v^{k}+p\,\gamma^{i\ell}\,\delta^{k}_{~\ell}=\gamma^{i\ell}\left(S_{\ell}\,v^{k}+p\,\delta^{k}_{~\ell}\right).
 \end{equation}
-Since the spatial three-metric is diagonal we must have that $\ell=k$. We can therefore simplify further:
+Since the spatial three-metric is diagonal the only non-zero term is that with $\ell=i$. We can therefore simplify further:
 \begin{equation}
-    P^{kj}=\gamma^{kk}\left(S_{k}\,v^{j}+p\,\delta^{j}_{~k}\right)=\f{1}{\gamma_{kk}}\,\left(S_{k}\,v^{j}+p\,\delta^{j}_{~k}\right)=\f{1}{\left(h_{k}\right)^{2}}\,\left(S_{k}\,v^{j}+p\,\delta^{j}_{~k}\right)
+    P^{ik}=\gamma^{ii}\left(S_{i}\,v^{k}+p\,\delta^{k}_{~i}\right)=\f{1}{\gamma_{ii}}\,\left(S_{i}\,v^{k}+p\,\delta^{k}_{~i}\right),\hspace{1em}\text{(no sum on $i$)}.
 \end{equation}
-For the pressure-tensor sum, we then have:
+For the source-term sum we then have:
 \begin{equation}\label{Eq:PressureTensorSum}
-    P^{kj}\,\p_{1}\,\gamma_{kj}=P^{kk}\,\p_{1}\,\gamma_{kk}=P^{kk}\,\p_{1}\left(h_{k}\right)^{2}=2\,P^{kk}\,h_{k}\,\p_{1}\,h_{k}=\f{2}{h_{k}}\left(S_{k}\,v^{k}+p\right)\,\p_{1}\,h_{k}.
+    Q_{j}=\f{1}{2}\,P^{ik}\,\p_{j}\,\gamma_{ik}=\f{1}{2}\,P^{kk}\,\p_{j}\,\gamma_{kk}=\f{1}{2}\,P^{kk}\,\p_{j}\left(h_{k}\right)^{2}=P^{kk}\,h_{k}\,\p_{j}\,h_{k}.
 \end{equation}
 
 These definitions lead us to define the same set of admissible states as before, namely:
@@ -198,92 +197,92 @@ the only difference being that $v^{2}$ now involves the metric:
 Before continuing, we show that the introduction of the metric doesn't affect the translation between $\cG_{p}$ and $\cG$...\sd{I've shown this, just need to TeX it up}
 
 \subsubsection{Time-Step Derivation/CFL Condition}
-We start by integrating both sides over $dx^{1}$ and dividing by the volume, $\Delta V_{i}$:
+We start by integrating both sides of \eqref{Eq:1DCurvilinearConsLaw} over $dx^{i}$ and dividing by the volume of the $K^{th}$ element, $\Delta V_{K}$ (recalling that there is no sum on $i$):
 \begin{equation}
-    \f{1}{\Delta V_{i}}\int_{x^{1}_{\imh}}^{x^{1}_{\iph}}\pd{\left(\sqrtgm\,\bU_{i}\right)}{t}dx^{1}+\f{1}{\Delta V_{i}}\int_{x^{1}_{\imh}}^{x^{1}_{\iph}}\pd{\left(\sqrtgm\,\bF\left(\bU_{i}\right)\right)}{1}dx^{1}=\f{1}{\Delta V_{i}}\int_{x^{1}_{\imh}}^{x^{1}_{\iph}}\sqrtgm\,\bQ_{i}\,dx^{1},
+    \f{1}{\Delta V_{K}}\int_{x^{i}_{L}}^{x^{i}_{H}}\pd{\left(\sqrtgm\,\bU\right)}{t}dx^{i}+\f{1}{\Delta V_{K}}\int_{x^{i}_{L}}^{x^{i}_{H}}\pd{\left(\sqrtgm\,\bF^{i}\left(\bU\right)\right)}{i}dx^{i}=\f{1}{\Delta V_{K}}\int_{x^{i}_{L}}^{x^{i}_{H}}\sqrtgm\,\bQ\,dx^{i},
 \end{equation}
 where:
 \begin{equation}
-    \Delta V_{i}=\int_{x^{1}_{\imh}}^{x^{1}_{\iph}}dV=\int_{x^{1}_{\imh}}^{x^{1}_{\iph}}\sqrtgm\,dx^{1}.
+    \Delta V_{K}=\int_{x^{i}_{L}}^{x^{i}_{H}}dV=\int_{x^{i}_{L}}^{x^{i}_{H}}\sqrtgm\,dx^{i}.
 \end{equation}
 
 By defining the cell-average as:
 \begin{equation}
-    \ol{\bW}_{i}\equiv\f{1}{\Delta V_{i}}\int_{x^{1}_{\imh}}^{x^{1}_{\iph}}\bW_{i}\,dV,
+    \bW_{K}\equiv\f{1}{\Delta V_{K}}\int_{x^{i}_{L}}^{x^{i}_{H}}\bW\,dV,
 \end{equation}
 we have:
 \begin{equation}
-    \f{d\,\ol{\bU}_{i}}{dt}+\f{1}{\Delta V_{i}}\left.\left(\sqrtgm\,\hat{\bF}\left(\ol{\bU}\right)\right)\right|^{x^{1}_{\iph}}_{x^{1}_{\imh}}=\ol{\bQ}_{i},
+    \f{d\,\bU_{K}}{dt}+\f{1}{\Delta V_{K}}\left.\left(\sqrtgm\,\hat{\bF}\left(\bU\right)\right)\right|^{x^{i}_{H}}_{x^{i}_{L}}=\bQ_{K}.
 \end{equation}
-or, using the common notation of the time step being represented as a superscript and the spatial element represented by a subscript:
+Now, using the common notation of the time step being represented as a superscript $n$:
 \begin{equation}
-    \ol{\bU}^{n+1}_{i}=\ol{\bU}^{n}_{i}-\f{\Delta t_{i}}{\Delta V_{i}}\left[\sqrtgm_{\iph}\,\hat{\bF}^{n}_{\iph}-\sqrtgm_{\imh}\,\hat{\bF}^{n}_{\imh}\right]+\Delta t_{i}\,\ol{\bQ}^{n}_{i}.
+    \bU^{n+1}_{K}=\bU^{n}_{K}-\f{\Delta t^{n}_{K}}{\Delta V_{K}}\left[\sqrtgm_{H}\,\hat{\bF}^{n}_{H}-\sqrtgm_{L}\,\hat{\bF}^{n}_{L}\right]+\Delta t^{n}_{K}\,\bQ^{n}_{K}.
 \end{equation}
 
 Now we define a parameter a la \citet{ZS2011b}: $\ve\in\left(0,1\right)$, such that (NOTE: \citet{ZS2011b} set $\ve=1/2$):
 \begin{equation}
-    \ol{\bU}^{n}_{i}=\ve\,\ol{\bU}^{n}_{i}+\left(1-\ve\right)\ol{\bU}^{n}_{i}.
+    \bU^{n}_{K}=\ve\,\bU^{n}_{K}+\left(1-\ve\right)\bU^{n}_{K}.
 \end{equation}
 We can use the first term to balance out the term in the square brackets and the second term to balance out the source term.
 
 So, we get:
 \begin{align}
-    \ol{\bU}^{n+1}_{i}&=\ve\left\{\ol{\bU}^{n}_{i}-\f{\Delta t_{i}}{\ve\,\Delta V_{i}}\left[\sqrtgm_{\iph}\,\hat{\bF}^{n}_{\iph}-\sqrtgm_{\imh}\,\hat{\bF}^{n}_{\imh}\right]\right\}+\left(1-\ve\right)\ol{\bU}^{n}_{i}+\Delta t_{i}\,\ol{\bQ}^{n}_{i}\\
-    &=\ve\left\{\ol{\bU}^{n}_{i}-\eta_{i}\left[\sqrtgm_{\iph}\,\hat{\bF}\left(\ol{\bU}^{n}_{i+1},\ol{\bU}^{n}_{i}\right)-\sqrtgm_{\imh}\,\hat{\bF}\left(\ol{\bU}^{n}_{i},\ol{\bU}^{n}_{i-1}\right)\right]\right\}+\left(1-\ve\right)\ol{\bU}^{n}_{i}+\Delta t_{i}\,\ol{\bQ}^{n}_{i}\\
-    &=\ve\,\ol{\bH}_{1}+\left(1-\ve\right)\ol{\bH}_{2},
+    \bU^{n+1}_{K}&=\ve\left\{\bU^{n}_{K}-\f{\Delta t^{n}_{K}}{\ve\,\Delta V_{K}}\left[\sqrtgm_{H}\,\hat{\bF}^{n}_{H}-\sqrtgm_{L}\,\hat{\bF}^{n}_{L}\right]\right\}+\left(1-\ve\right)\bU^{n}_{K}+\Delta t^{n}_{K}\,\bQ^{n}_{K}\\
+    &=\ve\left\{\bU^{n}_{K}-\eta^{n}_{K}\left[\sqrtgm_{H}\,\hat{\bF}\left(\bU^{n}_{K+1},\bU^{n}_{K}\right)-\sqrtgm_{L}\,\hat{\bF}\left(\bU^{n}_{K},\bU^{n}_{K-1}\right)\right]\right\}+\left(1-\ve\right)\bU^{n}_{K}+\Delta t^{n}_{K}\,\bQ^{n}_{K}\\
+    &=\ve\,\bH_{K,1}+\left(1-\ve\right)\bH_{K,2},
 \end{align}
 where
 \begin{equation}
-    \ol{\bH}_{1}\equiv \ol{\bU}^{n}_{i}-\eta_{i}\left[\sqrtgm_{\iph}\,\hat{\bF}\left(\ol{\bU}^{n}_{i+1},\ol{\bU}^{n}_{i}\right)-\sqrtgm_{\imh}\,\hat{\bF}\left(\ol{\bU}^{n}_{i},\ol{\bU}^{n}_{i-1}\right)\right],
+    \bH_{K,1}\equiv \bU^{n}_{K}-\eta^{n}_{K}\left[\sqrtgm_{H}\,\hat{\bF}\left(\bU^{n}_{K+1},\bU^{n}_{K}\right)-\sqrtgm_{L}\,\hat{\bF}\left(\bU^{n}_{K},\bU^{n}_{K-1}\right)\right],
 \end{equation}
 \begin{equation}
-    \ol{\bH}_{2}\equiv\ol{\bU}^{n}_{i}+\f{\Delta t_{i}}{1-\ve}\,\ol{\bQ}^{n}_{i},
+    \bH_{K,2}\equiv\bU^{n}_{K}+\f{\Delta t^{n}_{K}}{1-\ve}\,\bQ^{n}_{K},
 \end{equation}
 and
 \begin{equation}
-    \eta_{i}\equiv\f{\Delta t_{i}}{\ve\,\Delta V_{i}}.
+    \eta^{n}_{K}\equiv\f{\Delta t^{n}_{K}}{\ve\,\Delta V_{K}}.
 \end{equation}
 
-We proceed by focusing on each term individually, starting with the numerical flux term, $\ol{\bH}_{1}$.
+We proceed by focusing on each term individually, starting with the numerical flux term, $\bH_{K,1}$.
 
 \subsubsection{Numerical flux term}
-We have to show that $\ol{\bH}_{1}\in\cG$. We again we use the Local-Lax-Friedrichs flux, \eqref{Eq:LLF}, yielding for $\ol{\bH}_{1}$:
+We have to show that $\bH_{K,1}\in\cG$. We again we use the Local-Lax-Friedrichs flux, \eqref{Eq:LLF}, yielding for $\bH_{K,1}$:
 \begin{align}
-    \ol{\bU}^{n}_{i}-\f{\eta_{i}}{2}\Big\{&\sqrtgm_{\iph}\left[\bF\left(\ol{\bU}^{n}_{i+1}\right)+\bF\left(\ol{\bU}^{n}_{i}\right)-\alpha_{\iph}\left(\ol{\bU}^{n}_{i+1}-\ol{\bU}^{n}_{i}\right)\right]\\
-    &-\sqrtgm_{\imh}\left[\bF\left(\ol{\bU}^{n}_{i}\right)+\bF\left(\ol{\bU}^{n}_{i-1}\right)-\alpha_{\imh}\left(\ol{\bU}^{n}_{i}-\ol{\bU}^{n}_{i-1}\right)\right]\Big\}\\
-    &\hspace{-10em}=\left(1-\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}-\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\right)\ol{\bU}^{n}_{i}\\
-    &\hspace{-8em}-\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\bF\left(\ol{\bU}^{n}_{i}\right)+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\bF\left(\ol{\bU}^{n}_{i}\right)\\
-    &\hspace{-8em}+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\left[\ol{\bU}^{n}_{i-1}+\f{1}{\alpha_{\imh}}\bF\left(\ol{\bU}^{n}_{i-1}\right)\right]+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\left[\ol{\bU}^{n}_{i+1}-\f{1}{\alpha_{\iph}}\bF\left(\ol{\bU}^{n}_{i+1}\right)\right].
+    \bU^{n}_{K}-\f{\eta^{n}_{K}}{2}\Big\{&\sqrtgm_{H}\left[\bF\left(\bU^{n}_{K+1}\right)+\bF\left(\bU^{n}_{K}\right)-\alpha^{n}_{H}\left(\bU^{n}_{K+1}-\bU^{n}_{K}\right)\right]\\
+    &-\sqrtgm_{L}\left[\bF\left(\bU^{n}_{K}\right)+\bF\left(\bU^{n}_{K-1}\right)-\alpha^{n}_{L}\left(\bU^{n}_{K}-\bU^{n}_{K-1}\right)\right]\Big\}\\
+    &\hspace{-10em}=\left(1-\f{1}{2}\,\eta^{n}_{K}\,\sqrtgm_{H}\,\alpha^{n}_{H}-\f{1}{2}\,\eta^{n}_{K}\,\sqrtgm_{L}\,\alpha^{n}_{L}\right)\bU^{n}_{K}\\
+    &\hspace{-8em}-\f{1}{2}\,\eta^{n}_{K}\,\sqrtgm_{H}\,\bF\left(\bU^{n}_{K}\right)+\f{1}{2}\,\eta^{n}_{K}\,\sqrtgm_{L}\,\bF\left(\bU^{n}_{K}\right)\\
+    &\hspace{-8em}+\f{1}{2}\,\eta^{n}_{K}\,\sqrtgm_{L}\,\alpha^{n}_{L}\left[\bU^{n}_{K-1}+\f{1}{\alpha^{n}_{L}}\bF\left(\bU^{n}_{K-1}\right)\right]+\f{1}{2}\,\eta^{n}_{K}\,\sqrtgm_{H}\,\alpha^{n}_{H}\left[\bU^{n}_{K+1}-\f{1}{\alpha^{n}_{H}}\bF\left(\bU^{n}_{K+1}\right)\right].
 \end{align}
-Now we add and subtract $\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\,\ol{\bU}^{n}_{i}$ and $\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\,\ol{\bU}^{n}_{i}$, yielding:
+Now we add and subtract $\f{1}{2}\,\eta^{n}_{K}\,\sqrtgm_{H}\,\alpha^{n}_{H}\,\bU^{n}_{K}$ and $\f{1}{2}\,\eta^{n}_{K}\,\sqrtgm_{L}\,\alpha^{n}_{L}\,\bU^{n}_{K}$, yielding:
 \begin{align}
-    &\left(1-\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}-\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\right)\ol{\bU}^{n}_{i}\\
-    &+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\left[\ol{\bU}^{n}_{i}-\f{1}{\alpha_{\iph}}\bF\left(\ol{\bU}^{n}_{i}\right)\right]+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\left[\ol{\bU}^{n}_{i}+\f{1}{\alpha_{\imh}}\bF\left(\ol{\bU}^{n}_{i}\right)\right]\\
-    &+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}\left[\ol{\bU}^{n}_{i-1}+\f{1}{\alpha_{\imh}}\bF\left(\ol{\bU}^{n}_{i-1}\right)\right]+\f{1}{2}\,\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}\left[\ol{\bU}^{n}_{i+1}-\f{1}{\alpha_{\iph}}\bF\left(\ol{\bU}^{n}_{i+1}\right)\right].
+    &\left(1-\eta^{n}_{K}\,\sqrtgm_{H}\,\alpha^{n}_{H}-\eta^{n}_{K}\,\sqrtgm_{L}\,\alpha^{n}_{L}\right)\bU^{n}_{K}\\
+    &+\f{1}{2}\,\eta^{n}_{K}\,\sqrtgm_{H}\,\alpha^{n}_{H}\left[\bU^{n}_{K}-\f{1}{\alpha^{n}_{H}}\bF\left(\bU^{n}_{K}\right)\right]+\f{1}{2}\,\eta^{n}_{K}\,\sqrtgm_{L}\,\alpha^{n}_{L}\left[\bU^{n}_{K}+\f{1}{\alpha^{n}_{L}}\bF\left(\bU^{n}_{K}\right)\right]\\
+    &+\f{1}{2}\,\eta^{n}_{K}\,\sqrtgm_{L}\,\alpha^{n}_{L}\left[\bU^{n}_{K-1}+\f{1}{\alpha^{n}_{L}}\bF\left(\bU^{n}_{K-1}\right)\right]+\f{1}{2}\,\eta^{n}_{K}\,\sqrtgm_{H}\,\alpha^{n}_{H}\left[\bU^{n}_{K+1}-\f{1}{\alpha^{n}_{H}}\bF\left(\bU^{n}_{K+1}\right)\right].
 \end{align}
-All of the terms in square brackets are similar to the $\ol{\bH}$ quantities in \citet{Qin2016}, and are therefore in $\cG$. It can easily be seen that the sum of the coefficients is unity. The final condition is that the coefficient of $\ol{\bU}^{n}_{i}>0$, or (recalling that $\eta_{i}=\Delta t_{i}/\left(\ve\,\Delta V_{i}\right)$):
+All of the terms in square brackets are similar to the $\bH_{K}$ quantities in \citet{Qin2016}, and are therefore in $\cG$. It can easily be seen that the sum of the coefficients is unity. The final condition is that the coefficient of $\bU^{n}_{K}>0$, or (recalling that $\eta^{n}_{K}=\Delta t_{K}/\left(\ve\,\Delta V_{K}\right)$):
 \begin{align}
-    1&-\eta_{i}\,\sqrtgm_{\iph}\,\alpha_{\iph}-\eta_{i}\,\sqrtgm_{\imh}\,\alpha_{\imh}>0\implies\eta_{i}\left(\sqrtgm_{\iph}\,\alpha_{\iph}+\sqrtgm_{\imh}\,\alpha_{\imh}\right)<1\\
-    &\implies\Delta t_{i}<\f{\ve\,\Delta V_{i}}{\sqrtgm_{\iph}\,\alpha_{\iph}+\sqrtgm_{\imh}\,\alpha_{\imh}}\leq\f{\ve\,\Delta V_{i}}{2\,\text{max}\left(\sqrtgm_{i\pm\f{1}{2}}\,\alpha_{i\pm\f{1}{2}}\right)}.
+    1&-\eta^{n}_{K}\,\sqrtgm_{H}\,\alpha^{n}_{H}-\eta^{n}_{K}\,\sqrtgm_{L}\,\alpha^{n}_{L}>0\implies\eta^{n}_{K}\left(\sqrtgm_{H}\,\alpha^{n}_{H}+\sqrtgm_{L}\,\alpha^{n}_{L}\right)<1\\
+    &\implies\Delta t^{n}_{K}<\f{\ve\,\Delta V_{K}}{\sqrtgm_{H}\,\alpha^{n}_{H}+\sqrtgm_{L}\,\alpha^{n}_{L}}\leq\f{\ve\,\Delta V_{K}}{2\,\text{max}\left(\sqrtgm_{K\pm\f{1}{2}}\,\alpha^{n}_{K\pm\f{1}{2}}\right)}.
 \end{align}
 Again we want a time-step that is the same for all elements at a given time, so:
 \begin{equation}
-    \Delta t<\text{min}_{i}\left(\f{\ve\,\Delta V_{i}}{2\,\text{max}\left(\sqrtgm_{i\pm\f{1}{2}}\,\alpha_{i\pm\f{1}{2}}\right)}\right).
+    \Delta t^{n}<\text{min}_{K}\left(\f{\ve\,\Delta V_{K}}{2\,\text{max}\left(\sqrtgm_{K\pm\f{1}{2}}\,\alpha^{n}_{K\pm\f{1}{2}}\right)}\right).
 \end{equation}
 
 We close the numerical flux section by writing the explicit form of the time-step for spherical-polar coordinates.
 
 \subsubsubsection{Time-step for Spherical-Polar Coordinates}
-For spherical-polar coordinates in 1-D we have that $\Delta V_{i}=1/3\left(r_{\iph}^{3}-r_{\imh}^{3}\right)$, and (assuming $\alpha_{i\pm\f{1}{2}}=1\ \forall\ i$) $\text{max}\left(\sqrtgm_{i\pm\f{1}{2}}\,\alpha_{i\pm\f{1}{2}}\right)=r_{\iph}^{2}$, so:
+For spherical-polar coordinates in 1-D we have that $\Delta V_{K}=1/3\left(r_{H}^{3}-r_{L}^{3}\right)$, and (assuming $\alpha_{K\pm\f{1}{2}}=1\ \forall\ i$) $\text{max}\left(\sqrtgm_{K\pm\f{1}{2}}\,\alpha_{K\pm\f{1}{2}}\right)=r_{H}^{2}$, so:
 \begin{align}
-    \Delta t&<\text{min}_{i}\left\{\f{\ve\,1/3\left[r_{\iph}^{3}-r_{\imh}^{3}\right]}{2\,r_{\iph}^{2}}\right\}\\
-    &=\text{min}_{i}\left\{\f{\ve}{6}\,r_{\iph}\left[1-\f{r_{\imh}^{3}}{r_{\iph}^{3}}\right]\right\}\\
-    &=\text{min}_{i}\left\{\f{\ve}{6}\,r_{\iph}\left[1-\left(1-\f{\Delta r_{i}}{r_{\iph}}\right)^{3}\right]\right\}\\
-    &=\text{min}_{i}\left\{\f{\ve}{6}\,r_{\iph}\left[1-\left(1+\left(\f{\Delta r_{i}}{r_{\iph}}\right)^{2}-2\frac{\Delta r_{i}}{r_{\iph}}\right)\left(1-\f{\Delta r_{i}}{r_{\iph}}\right)\right]\right\}\\
-    &=\text{min}_{i}\left\{\f{\ve}{6}\,r_{\iph}\left[\left(\f{\Delta r_{i}}{r_{\iph}}\right)^{3}-3\left(\f{\Delta r_{i}}{r_{\iph}}\right)^{2}+3\f{\Delta r_{i}}{r_{\iph}}\right]\right\}\\
-    &=\text{min}_{i}\left\{\f{\ve}{6}\,\Delta r_{i}\left[\left(\f{\Delta r_{i}}{r_{\iph}}\right)^{2}-3\left(\f{\Delta r_{i}}{r_{\iph}}\right)+3\right]\right\}.
+    \Delta t&<\text{min}_{i}\left\{\f{\ve\,1/3\left[r_{H}^{3}-r_{L}^{3}\right]}{2\,r_{H}^{2}}\right\}\\
+    &=\text{min}_{i}\left\{\f{\ve}{6}\,r_{H}\left[1-\f{r_{L}^{3}}{r_{H}^{3}}\right]\right\}\\
+    &=\text{min}_{i}\left\{\f{\ve}{6}\,r_{H}\left[1-\left(1-\f{\Delta r_{i}}{r_{H}}\right)^{3}\right]\right\}\\
+    &=\text{min}_{i}\left\{\f{\ve}{6}\,r_{H}\left[1-\left(1+\left(\f{\Delta r_{i}}{r_{H}}\right)^{2}-2\frac{\Delta r_{i}}{r_{H}}\right)\left(1-\f{\Delta r_{i}}{r_{H}}\right)\right]\right\}\\
+    &=\text{min}_{i}\left\{\f{\ve}{6}\,r_{H}\left[\left(\f{\Delta r_{i}}{r_{H}}\right)^{3}-3\left(\f{\Delta r_{i}}{r_{H}}\right)^{2}+3\f{\Delta r_{i}}{r_{H}}\right]\right\}\\
+    &=\text{min}_{i}\left\{\f{\ve}{6}\,\Delta r_{i}\left[\left(\f{\Delta r_{i}}{r_{H}}\right)^{2}-3\left(\f{\Delta r_{i}}{r_{H}}\right)+3\right]\right\}.
 \end{align}
-We know that $\Delta r_{i}/r_{\iph}\in\left[0,1\right]$; the minimum value of the quadratic function in this domain is unity. So, we have that for spherical-polar coordinates:
+We know that $\Delta r_{i}/r_{H}\in\left[0,1\right]$; the minimum value of the quadratic function in this domain is unity. So, we have that for spherical-polar coordinates:
 \begin{equation}
     \Delta t<\f{\ve}{6}\,\text{min}\left(\Delta r_{i}\right).
 \end{equation}
@@ -291,58 +290,60 @@ We know that $\Delta r_{i}/r_{\iph}\in\left[0,1\right]$; the minimum value of th
 Next we handle the source term.
 
 \subsubsection{Source term}
-For this section we drop the subscript $i$ and the superscript $n$. We have to show that $\ol{\bH}_{2}\in\cG$, where
+For this section we drop the subscript $K$ and the superscript $n$ (but keep in mind that all quantities are still cell-averages). We have to show that $\bH_{2}\in\cG$, where
 \begin{equation}
-    \ol{\bH}_{2}=\begin{pmatrix}\ol{D}\\ \ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}} \\ \ol{\tau}\end{pmatrix},\hspace{1em}\left(\ol{H}_{2}\right)_{1}>0,\hspace{1em}\left(\ol{H}_{2}\right)_{3}+\left(\ol{H}_{2}\right)_{1}>\sqrt{\left(\ol{H}_{2}\right)_{1}\left(\ol{H}_{2}\right)_{1}+\left(\ol{H}_{2}\right)_{2}\left(\ol{H}_{2}\right)^{2}}.
+    \bH_{2}=\begin{pmatrix}D\\ S_{j}+\f{\Delta t}{1-\ve}\,Q_{j} \\ \tau\end{pmatrix},\hspace{1em}\left(H_{2}\right)_{1}>0,\hspace{1em}\left(H_{2}\right)_{5}+\left(H_{2}\right)_{1}>\sqrt{\left(H_{2}\right)_{1}\left(H_{2}\right)_{1}+\left(H_{2}\right)_{j}\left(H_{2}\right)^{j}}.
 \end{equation}
 
-It is clear that the first requirement for $\ol{\bH}_{2}$ is met, i.e. $\ol{D}>0$. The second requirement is:
+It is clear that the first requirement for $\bH_{2}$ is met, i.e. $D>0$. The second requirement is:
 \begin{align}
-    \ol{D}+\ol{\tau}&>\sqrt{\ol{D}^{2}+\left[\ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] \left[\ol{S}^{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\p^{1}\,\gamma_{kk}}\right] }\\
-    &=\sqrt{\ol{D}^{2}+\left[\ol{S}_{1}+\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] \left[\ol{S}^{1}+\gamma^{11}\f{\Delta t}{2\left(1-\ve\right)}\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}\right] }\\
-    &=\sqrt{\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}+\gamma^{11}\left[\f{\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}}{2\left(1-\ve\right)}\right]^{2}\left(\Delta t\right)^{2}+\f{\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}}{2\left(1-\ve\right)}\left[\ol{S}_{1}\,\gamma^{11}+\ol{S}^{1}\right]\Delta t}\\
-    &=\sqrt{a\left(\Delta t\right)^{2}+b\,\Delta t+c}\geq0,
+    D+\tau&>\sqrt{D^{2}+\left[S_{j}+\f{\Delta t}{1-\ve}Q_{j}\right] \left[S^{j}+\f{\Delta t}{1-\ve}Q^{j}\right]}\\
+    &=\sqrt{D^{2}+S_{j}\,S^{j}+\f{\Delta t}{1-\ve}\left(S_{j}\,Q^{j}+S^{j}\,Q_{j}\right)+\left(\f{\Delta t}{1-\ve}\right)^{2}\,Q_{j}\,Q^{j}}
 \end{align}
-where
+Now we square both sides:
 \begin{align}
-    a&=\left[\f{\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}}{2\,\sqrt{\ol{\gamma_{11}}}\left(1-\ve\right)}\right]^{2}\geq0\\
-    b&=\f{\ol{P^{kk}\,\pd{\gamma_{kk}}{1}}}{\ol{\gamma_{11}}\left(1-\ve\right)}\ol{S}_{1}=\f{2\,\ol{S}_{1}}{\sqrt{\ol{\gamma_{11}}}}\sqrt{a}\\
-    c&=\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}\geq0.
-\end{align}
-The condition for a quadratic function to be positive-definite is that $a>0$ (concave-up) and $b^{2}-4\,a\,c<0$ (no real roots). The first condition is clearly met. For the second condition:
-\begin{equation}
-    b^{2}-4\,a\,c=\f{4\left(\ol{S}_{1}\right)^{2}}{\ol{\gamma_{11}}}a-4\,a\left(\ol{D}^{2}+\ol{S}_{1}\,\ol{S}^{1}\right)=4\,\ol{S}_{1}\,\ol{S}^{1}\,a-4\,a\ol{D}^{2}-4\,a\,\ol{S}_{1}\,\ol{S}^{1}=-4\,a\,\ol{D}^{2}<0.
-\end{equation}
-So, the square root is always positive.
-
-With that we have:
-\begin{align}
-    &\ol{D}^{2}+\ol{\tau}^{2}+2\,\ol{D}\,\ol{\tau}>a\left(\Delta t\right)^{2}+b\,\Delta t+c\\
-    &\implies a\left(\Delta t\right)^{2}+b\,\Delta t+c'<0,
+    &D^{2}+\tau^{2}+2\,D\,\tau>D^{2}+S_{j}\,S^{j}+\f{\Delta t}{1-\ve}\left(S_{j}\,Q^{j}+S^{j}\,Q_{j}\right)+\left(\f{\Delta t}{1-\ve}\right)^{2}\,Q_{j}\,Q^{j}\\
+    \implies&\tau\left(\tau+2\,D\right)>\gamma^{jk}\,S_{j}\,S_{k}+\f{2\,\Delta t}{1-\ve}\,\gamma^{jk}\,S_{j}\,Q_{k}+\left(\f{\Delta t}{1-\ve}\right)^{2}\,\gamma^{jk}\,Q_{j}\,Q_{k}\\
+    \implies&\tau\left(\tau+2\,D\right)>\f{S_{j}\,S_{k}}{\gamma_{jk}}+\f{2\,\Delta t}{1-\ve}\,\f{S_{j}\,Q_{k}}{\gamma_{jk}}+\left(\f{\Delta t}{1-\ve}\right)^{2}\,\f{Q_{j}\,Q_{k}}{\gamma_{jk}}\\
+    \implies&a\left(\Delta t\right)^{2}+b\,\Delta t+c<0,
 \end{align}
 where:
+\begin{align}
+    a&=\f{1}{\left(1-\ve\right)^{2}}\,\vv{Q}\cdot\vv{Q}=\f{1}{\left(1-\ve\right)^{2}}\,\f{Q_{j}\,Q_{k}}{\gamma_{jk}}=\f{1}{\left(1-\ve\right)^{2}}\sum\limits_{k=1}^{3}\f{\left(Q_{k}\right)^{2}}{\gamma_{kk}}\\
+    b&=\f{2}{1-\ve}\,\vv{S}\cdot\vv{Q}=\f{2}{1-\ve}\,\f{S_{j}\,Q_{k}}{\gamma_{jk}}=\f{2}{1-\ve}\sum\limits_{k=1}^{3}\f{S_{k}\,Q_{k}}{\gamma_{kk}}\\
+    c&=-\tau\left(\tau+2\,D\right)+\vv{S}\cdot\vv{S}=-\tau\left(\tau+2\,D\right)+\sum\limits_{k=1}^{3}\f{\left(S_{k}\right)^{2}}{\gamma_{kk}}.
+\end{align}
+We want to make sure that our function has at least one real root, which means we must have that $b^{2}-4\,a\,c\geq0$:
+\begin{align}
+    b^{2}-4\,a\,c&=\f{4}{\left(1-\ve\right)^{2}}\left(\vv{S}\cdot\vv{Q}\right)^{2}-\f{4}{\left(1-\ve\right)^{2}}\,\vv{Q}\cdot\vv{Q}\left[-\tau\left(\tau+2\,D\right)+\vv{S}\cdot\vv{S}\right]\\
+    &=\f{4}{\left(1-\ve\right)^{2}}\left[\left(\vv{S}\cdot\vv{Q}\right)^{2}-\left(\vv{Q}\cdot\vv{Q}\right)\left(\vv{S}\cdot\vv{S}\right)+\tau\left(\tau+2\,D\right)\vv{Q}\cdot\vv{Q}\right]\\
+    &=\f{4}{\left(1-\ve\right)^{2}}\left[\left|\vv{S}\right|^{2}\left|\vv{Q}\right|^{2}\,\cos^{2}\theta_{SQ}-\left|\vv{Q}\right|^{2}\left|\vv{S}\right|^{2}+\tau\left(\tau+2\,D\right)\left|\vv{Q}\right|^{2}\right]\\
+    &=\f{4}{\left(1-\ve\right)^{2}}\left|\vv{Q}\right|^{2}\left[\tau\left(\tau+2\,D\right)-\left|\vv{S}\right|^{2}\left(1-\cos^{2}\theta_{SQ}\right)\right]\\
+    &=\f{4}{\left(1-\ve\right)^{2}}\left|\vv{Q}\right|^{2}\left[\tau\left(\tau+2\,D\right)-\left|\vv{S}\right|^{2}\sin^{2}\theta_{SQ}\right],
+\end{align}
+where $\theta_{SQ}$ is the angle between the momentum-density vector and the source-term vector. To guarantee at least one real root we must have that
 \begin{equation}
-  c'=c-\ol{D}^{2}-\ol{\tau}^{2}-2\,\ol{D}\,\ol{\tau}=\ol{S}_{1}\,\ol{S}^{1}-\ol{\tau}^{2}-2\,\ol{D}\,\ol{\tau}.
+    \tau\left(\tau+2\,D\right)\geq\left|\vv{S}\right|^{2}\,\sin^{2}\theta_{SQ}.
 \end{equation}
 
-This time we want to make sure that our function has at least one real root. We still have that $a>0$, so now we check if $b^{2}-4\,a\,c'>0$:
+\newpage
 \begin{equation}
-    b^{2}-4\,a\,c'=\f{4\left(\ol{S}_{1}\right)^{2}}{\ol{\gamma_{11}}}a-4\,a\left(\ol{S}_{1}\,\ol{S}^{1}-\ol{\tau}^{2}-2\,\ol{D}\,\ol{\tau}\right)=4\,a\,\ol{\tau}\left(\ol{\tau}+2\,\ol{D}\right).
+    b^{2}-4\,a\,c'=\f{4\left(S_{1}\right)^{2}}{\gamma_{11}}a-4\,a\left(S_{1}\,S^{1}-\tau^{2}-2\,D\,\tau\right)=4\,a\,\tau\left(\tau+2\,D\right).
 \end{equation}
-Since $\ol{\tau}\geq0$, we must have that $\ol{\tau}>-2\,\ol{D}$. But, from condition two for $\ol{\bH}_{2}$ we have that $\ol{\tau}>-\ol{D}$, so this condition is automatically satisfied.
+Since $\tau\geq0$, we must have that $\tau>-2\,D$. But, from condition two for $\bH_{K,2}$ we have that $\tau>-D$, so this condition is automatically satisfied.
 
 The solutions to this quadratic equation are:
 \begin{align}
-    \Delta t&=\f{-b}{2\,a}\pm\f{1}{2\,a}\sqrt{b^{2}-4\,a\,c'}=\f{-\ol{S}_{1}}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\pm\f{1}{2\,a}\sqrt{\f{4\ol{S}_{1}^{2}}{\ol{\gamma_{11}}}a-4\,a\,c'}\\
-    &=\f{-\ol{S}_{1}}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\pm\f{1}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\sqrt{\ol{S}_{1}^{2}-c'\,\ol{\gamma_{11}}}=\f{1}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\left[-\ol{S}_{1}\pm\sqrt{\ol{S}_{1}^{2}-c'\,\ol{\gamma_{11}}}\right]\\
-    &=\f{1}{\sqrt{\ol{\gamma_{11}}}\,\sqrt{a}}\left[-\ol{S}_{1}\pm\sqrt{\ol{\gamma_{11}}\left(\ol{\tau}^{2}+2\,\ol{D}\,\ol{\tau}\right)}\right]\\
-    &=\f{2\left(1-\ve\right)}{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}\left[-\ol{S}_{1}\pm\sqrt{\ol{\gamma_{11}}\left(\ol{\tau}^{2}+2\,\ol{D}\,\ol{\tau}\right)}\right]\\
-    &=\f{2\left(1-\ve\right)}{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}\left[-\ol{S}_{1}\pm\sqrt{\ol{\gamma_{11}}\,\ol{\tau}\left(\ol{\tau}+2\,\ol{D}\right)}\right].
+    \Delta t&=\f{-b}{2\,a}\pm\f{1}{2\,a}\sqrt{b^{2}-4\,a\,c'}=\f{-S_{1}}{\sqrt{\gamma_{11}}\,\sqrt{a}}\pm\f{1}{2\,a}\sqrt{\f{4S_{1}^{2}}{\gamma_{11}}a-4\,a\,c'}\\
+    &=\f{-S_{1}}{\sqrt{\gamma_{11}}\,\sqrt{a}}\pm\f{1}{\sqrt{\gamma_{11}}\,\sqrt{a}}\sqrt{S_{1}^{2}-c'\,\gamma_{11}}=\f{1}{\sqrt{\gamma_{11}}\,\sqrt{a}}\left[-S_{1}\pm\sqrt{S_{1}^{2}-c'\,\gamma_{11}}\right]\\
+    &=\f{1}{\sqrt{\gamma_{11}}\,\sqrt{a}}\left[-S_{1}\pm\sqrt{\gamma_{11}\left(\tau^{2}+2\,D\,\tau\right)}\right]\\
+    &=\f{2\left(1-\ve\right)}{P^{kk}\,\p_{1}\,\gamma_{kk}}\left[-S_{1}\pm\sqrt{\gamma_{11}\left(\tau^{2}+2\,D\,\tau\right)}\right]\\
+    &=\f{2\left(1-\ve\right)}{P^{kk}\,\p_{1}\,\gamma_{kk}}\left[-S_{1}\pm\sqrt{\gamma_{11}\,\tau\left(\tau+2\,D\right)}\right].
 \end{align}
 
 So, we end up with:
 \begin{equation}
-    \Delta t<\text{min}\left\{\text{min}_{i}\left(\f{\ve\,\Delta V_{i}}{2\,\text{max}\left(\sqrtgm_{i\pm\f{1}{2}}\,\alpha_{i\pm\f{1}{2}}\right)}\right),\text{min}^{n}_{i}\left(\f{2\left(1-\ve\right)}{\ol{P^{kk}\,\p_{1}\,\gamma_{kk}}}\left[-\ol{S}_{1}\pm\sqrt{\ol{\gamma_{11}}\,\ol{\tau}\left(\ol{\tau}+2\,\ol{D}\right)}\right]\right)\right\}.
+    \Delta t<\text{min}\left\{\text{min}_{i}\left(\f{\ve\,\Delta V_{K}}{2\,\text{max}\left(\sqrtgm_{i\pm\f{1}{2}}\,\alpha_{i\pm\f{1}{2}}\right)}\right),\text{min}^{n}_{i}\left(\f{2\left(1-\ve\right)}{P^{kk}\,\p_{1}\,\gamma_{kk}}\left[-S_{1}\pm\sqrt{\gamma_{11}\,\tau\left(\tau+2\,D\right)}\right]\right)\right\}.
 \end{equation}
 
 \subsection{Demanding that $q>0$}
@@ -445,6 +446,65 @@ Typically, $\Gamma-1<3$. So, we end up with:
 \begin{equation}
     p<3\,\tau.
 \end{equation}
+
+\newpage
+
+\section{Error Introduced by Linear Interpolation}
+We obtain the initial conditions for the standing accretion shock problem with an external code. We then have to interpolate these data onto the grid for use in \texttt{thornado}. We start by proving that linear interpolation is a convex combination of the solution at the boundary points.
+
+\subsection{Proof that Linear Interpolation is a Convex Combination of Boundary-Points}
+Linear interpolation of a function, $f$, of a variable, $r$, bounded by two points $r_{L}$ and $r_{H}$, with $r_{H}>r_{L}$, can be written as:
+\begin{equation}
+    f\left(r\right)=f\left(r_{L}\right)+\f{f\left(r_{H}\right)-f\left(r_{L}\right)}{r_{H}-r_{L}}\left(r-r_{L}\right).
+\end{equation}
+By making a change of variables from $r$ to $\eta$, where:
+\begin{equation}
+    r\left(\eta\right)=\eta\,r_{H}+\left(1-\eta\right)r_{L}=r_{L}+\eta\,\Delta r\implies\eta=\f{r-r_{L}}{\Delta r},\hspace{1em}\eta\in\left[0,1\right],
+\end{equation}
+such that $r\left(\eta=0\right)=r_{L}$ and $r\left(\eta=1\right)=r_{H}$, we have that:
+\begin{align}
+    f\left(\eta\right)&=f\left(0\right)+\f{f\left(1\right)-f\left(0\right)}{1-0}\left(\eta-0\right)=f\left(0\right)+\left(f\left(1\right)-f\left(0\right)\right)\eta\\
+    \implies f\left(\eta\right)&=\eta\,f\left(1\right)+\left(1-\eta\right)f\left(0\right).
+\end{align}
+
+So when we interpolate a fluid variable, say the mass-density $\rho$, we have:
+\begin{equation}
+    \rho\left(r\right)=\rho_{L}+\f{\Delta\rho}{\Delta r}\left(r-r_{L}\right)\longrightarrow\rho\left(\eta\right)=\eta\,\rho_{H}+\left(1-\eta\right)\rho_{L},
+\end{equation}
+where $\rho_{L}\equiv\rho\left(r_{L}\right)$ and $\rho_{H}=\rho\left(r_{H}\right)$.
+
+
+\subsection{Example: $f\left(x\right)=x^{2}$}
+We can show this directly for simple functions. We take as an example $f\left(x\right)=x^{2}$:
+\begin{align}
+    f\left(x\right)&=x^{2}=\left[x_{L}+\eta\left(x_{R}-x_{L}\right)\right]^{2}=x_{L}^{2}+\eta^{2}\left(x_{R}-x_{L}\right)^{2}+2\,x_{L}\,\eta\left(x_{R}-x_{L}\right)\\
+    &=x_{L}^{2}+\eta^{2}\,x_{R}^{2}+\eta^{2}\,x_{L}^{2}-2\,\eta^{2}\,x_{L}\,x_{R}+2\,\eta\,x_{L}\,x_{R}-2\,\eta\,x_{L}^{2}.
+\end{align}
+Now we add and subtract the interpolated solution: $\eta\,x_{H}^{2}+\left(1-\eta\right)x_{L}^{2}$. This yields:
+\begin{align}
+    x^{2}&=x_{L}^{2}+\eta^{2}\,x_{R}^{2}+\eta^{2}\,x_{L}^{2}-2\,\eta^{2}\,x_{L}\,x_{R}+2\,\eta\,x_{L}\,x_{R}-2\,\eta\,x_{L}^{2}+\eta\,x_{H}^{2}+\left(1-\eta\right)x_{L}^{2}-\eta\,x_{H}^{2}-\left(1-\eta\right)x_{L}^{2}\\
+    &=\left[\eta\,x_{H}^{2}+\left(1-\eta\right)x_{L}^{2}\right]+\left[-\eta\left(1-\eta\right)x_{L}^{2}-\eta\left(1-\eta\right)x_{H}^{2}+2\,\eta\,x_{L}\,x_{H}\left(1-\eta\right)\right]\\
+    &=\left[\eta\,x_{H}^{2}+\left(1-\eta\right)x_{L}^{2}\right]-\eta\left(1-\eta\right)\left[x_{L}^{2}+x_{H}^{2}-2\,x_{L}\,x_{H}\right]\\
+    &=\left[\eta\,x_{H}^{2}+\left(1-\eta\right)x_{L}^{2}\right]-\eta\left(1-\eta\right)\left(x_{H}-x_{L}\right)^{2}\\
+    &=\left[\eta\,x_{H}^{2}+\left(1-\eta\right)x_{L}^{2}\right]-\eta\left(1-\eta\right)\left(\Delta x\right)^{2}.
+\end{align}
+The term in square brackets is the interpolated solution, and the second term is the remainder, i.e. the error in the interpolated solution. We show the results of this in the following figure:
+\begin{figure}[H]
+\centering
+\includegraphics[scale=0.75]{LinearInterpolationError}
+\end{figure}
+
+\subsection{Mass Constant}
+The mass constant, $C_{D}$, from the 3+1 GR hydrodynamics equations is:
+\begin{equation}
+    C_{D}\left(r\right)=\psi\left(r\right)^{6}\,\alpha\left(r\right)\,r^{2}\,\rho\left(r\right)\,W\left[v\left(r\right)\right]\,v\left(r\right).
+\end{equation}
+From the data we have this exact value at the two endpoints:
+\begin{align}
+    C_{D}\left(r_{L}\right)&\equiv C^{L}_{D}=\psi_{L}^{6}\,\alpha_{L}\,r_{L}^{2}\,\rho_{L}\,W_{L}\,v_{L}\\
+    C_{D}\left(r_{H}\right)&\equiv C^{H}_{D}=\psi_{H}^{6}\,\alpha_{H}\,r_{H}^{2}\,\rho_{H}\,W_{H}\,v_{H}.
+\end{align}
+
 
 \newpage
 
