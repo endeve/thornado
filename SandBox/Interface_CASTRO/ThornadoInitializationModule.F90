@@ -34,23 +34,19 @@ module ThornadoInitializationModule
   use GeometryFieldsModule, only: &
     CreateGeometryFields, &
     DestroyGeometryFields
-  use FluidFieldsModule, only: &
-    CreateFluidFields, &
-    DestroyFluidFields
   use GeometryFieldsModuleE, only: &
     CreateGeometryFieldsE, &
     DestroyGeometryFieldsE, &
     uGE
   use GeometryComputationModuleE, only: &
     ComputeGeometryE
-  use RadiationFieldsModule, only: &
-    CreateRadiationFields, &
-    DestroyRadiationFields
   use TwoMoment_ClosureModule, only: &
     InitializeClosure_TwoMoment
   use TwoMoment_PositivityLimiterModule, only: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment
+  use TwoMoment_MeshRefinementModule, only : &
+    InitializeMeshRefinement_TwoMoment
 
   implicit none
   private
@@ -140,13 +136,13 @@ contains
     call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = 'EquationOfStateTable.h5', &
-             Verbose_Option = .true. , &
+             Verbose_Option = .false. , &
              External_EOS = eos_pointer )
 #else
     call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = 'EquationOfStateTable.h5', &
-             Verbose_Option = .true. )
+             Verbose_Option = .false. )
 #endif
     
     ! --- Neutrino Opacities ---
@@ -154,7 +150,10 @@ contains
     call InitializeOpacities_TABLE &
            ( OpacityTableName_Option &
                = 'OpacityTable.h5', &
-             Verbose_Option = .true. )
+             Verbose_Option = .false. )
+
+    ! --- For refinement and coarsening of DG data
+    call InitializeMeshRefinement_TwoMoment
 
   end subroutine InitThornado
 
