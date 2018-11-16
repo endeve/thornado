@@ -25,7 +25,7 @@ MODULE TwoMoment_MeshRefinementModule
   PUBLIC :: Refine_TwoMoment
   PUBLIC :: Coarsen_TwoMoment
 
-  LOGICAL, PARAMETER :: Debug = .TRUE.
+  LOGICAL, PARAMETER :: Debug = .FALSE.
 
   INTEGER  :: nFine, nFineX(3)
   REAL(DP) :: VolumeRatio
