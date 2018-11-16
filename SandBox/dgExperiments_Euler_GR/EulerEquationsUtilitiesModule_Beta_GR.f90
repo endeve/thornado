@@ -3,7 +3,7 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Two, Three, Four
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX
+    nDOFX, nDimsX, nX
   USE MeshModule, ONLY: &
     MeshX
   USE ReferenceElementModuleX, ONLY:       &
@@ -610,7 +610,7 @@ CONTAINS
       G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:), &
       U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(in)  :: &
-      CFL
+         CFL
     REAL(DP), INTENT(out) :: &
       TimeStep
 
@@ -624,9 +624,9 @@ CONTAINS
                 EigVals_X3(nCF,nDOFX), Max_X3
     REAL(DP) :: SourceTerm(3), PosRoot(3), NegRoot(3), a2, a1, a0
     REAL(DP) :: epsilon = Half
-    REAL(DP) :: dh1dX1(nDOFX), dh2dX1(nDOFX),dh3dX1(nDOFX), &
-                dh1dX2(nDOFX), dh2dX2(nDOFX),dh3dX2(nDOFX), &
-                dh1dX3(nDOFX), dh2dX3(nDOFX),dh3dX3(nDOFX)
+    REAL(DP), DIMENSION(nDOFX) :: dh1dX1, dh2dX1, dh3dX1, &
+                                  dh1dX2, dh2dX2, dh3dX2, &
+                                  dh1dX3, dh2dX3, dh3dX3
     REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF), &
                 G_X2_Dn(nDOFX_X2,nGF), G_X2_Up(nDOFX_X2,nGF), &
                 G_X3_Dn(nDOFX_X3,nGF), G_X3_Up(nDOFX_X3,nGF)
@@ -662,8 +662,6 @@ CONTAINS
 
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_Cs) )
-
-          ! --- Compute derivatives of scale factors ---
 
           ! --- Interpolate scale factors to faces ---
           DO iGF = iGF_h_1, iGF_h_3
@@ -702,7 +700,7 @@ CONTAINS
 
             CALL DGEMV &
                    ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-                     G(:,iX1,iX2,iX3,iGF), 1, Zero, G_X2_Up(:,iGF), 1 )
+                     G(:,iX1,iX2  ,iX3,iGF), 1, Zero, G_X2_Up(:,iGF), 1 )
             CALL DGEMV &
                    ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                      G(:,iX1,iX2+1,iX3,iGF), 1, Half, G_X2_Up(:,iGF), 1 )
@@ -716,14 +714,14 @@ CONTAINS
                      G(:,iX1,iX2,iX3-1,iGF), 1, Zero, G_X3_Dn(:,iGF), 1 )
             CALL DGEMV &
                    ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
-                     G(:,iX1,iX2,iX3,iGF), 1, Half, G_X3_Dn(:,iGF), 1 )
+                     G(:,iX1,iX2,iX3,  iGF), 1, Half, G_X3_Dn(:,iGF), 1 )
 
             G_X3_Dn(1:nDOFX_X3,iGF) &
               = MAX( G_X3_Dn(1:nDOFX_X3,iGF), SqrtTiny )
 
             CALL DGEMV &
                    ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
-                     G(:,iX1,iX2,iX3,iGF), 1, Zero, G_X3_Up(:,iGF), 1 )
+                     G(:,iX1,iX2,iX3,  iGF), 1, Zero, G_X3_Up(:,iGF), 1 )
             CALL DGEMV &
                    ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
                      G(:,iX1,iX2,iX3+1,iGF), 1, Half, G_X3_Up(:,iGF), 1 )
@@ -731,22 +729,22 @@ CONTAINS
             G_X3_Up(1:nDOFX_X3,iGF) &
               = MAX( G_X3_Up(1:nDOFX_X3,iGF), SqrtTiny )
 
-          END DO
+          END DO ! Loop over scale factors
 
           ! --- Scale factor derivatives with respect to X1 ---
-          ! --- dh1dx1 ---
+          ! --- dh1dX1 ---
 
           CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
                       WeightsX_X1(:) * G_X1_Up(:,iGF_h_1), 1, Zero, dh1dX1, 1 )
           CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
                       WeightsX_X1(:) * G_X1_Dn(:,iGF_h_1), 1,  One, dh1dX1, 1 )
           CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                      WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_1), 1,  &
+                      WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_1), 1, &
                       One, dh1dX1, 1 )
 
-          dh1dx1 = dh1dx1 / ( WeightsX_q(:) * dX(1) )
+          dh1dX1 = dh1dX1 / ( WeightsX_q(:) * dX(1) )
 
-          ! --- dh2dx1 ---
+          ! --- dh2dX1 ---
 
           CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
                       WeightsX_X1(:) * G_X1_Up(:,iGF_h_2), 1, Zero, dh2dX1, 1 )
@@ -756,9 +754,9 @@ CONTAINS
                       WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_2), &
                       1,  One, dh2dX1, 1 )
 
-          dh2dx1 = dh2dx1 / ( WeightsX_q(:) * dX(1) )
+          dh2dX1 = dh2dX1 / ( WeightsX_q(:) * dX(1) )
 
-          ! --- dh3dx1 ---
+          ! --- dh3dX1 ---
 
           CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
                       WeightsX_X1(:) * G_X1_Up(:,iGF_h_3), 1, Zero, dh3dX1, 1 )
@@ -768,10 +766,10 @@ CONTAINS
                       WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_3), &
                       1,  One, dh3dX1, 1 )
 
-          dh3dx1 = dh3dx1 / ( WeightsX_q(:) * dX(1) )
+          dh3dX1 = dh3dX1 / ( WeightsX_q(:) * dX(1) )
 
           ! --- Scale factor derivatives with respect to X2 ---
-          ! --- dh1dx2 ---
+          ! --- dh1dX2 ---
 
           CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
                       WeightsX_X2(:) * G_X2_Up(:,iGF_h_1), 1, Zero, dh1dX2, 1 )
@@ -781,9 +779,9 @@ CONTAINS
                       WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_2), 1,  &
                       One, dh1dX2, 1 )
 
-          dh1dx2 = dh1dx2 / ( WeightsX_q(:) * dX(2) )
+          dh1dX2 = dh1dX2 / ( WeightsX_q(:) * dX(2) )
 
-          ! --- dh2dx2 ---
+          ! --- dh2dX2 ---
 
           CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
                       WeightsX_X2(:) * G_X2_Up(:,iGF_h_2), 1, Zero, dh2dX2, 1 )
@@ -793,22 +791,22 @@ CONTAINS
                       WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_2), 1,  &
                       One, dh2dX2, 1 )
 
-          dh2dx2 = dh2dx2 / ( WeightsX_q(:) * dX(2) )
+          dh2dX2 = dh2dX2 / ( WeightsX_q(:) * dX(2) )
 
-          ! --- dh3dx2 ---
+          ! --- dh3dX2 ---
 
           CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
                       WeightsX_X2(:) * G_X2_Up(:,iGF_h_3), 1, Zero, dh3dX2, 1 )
           CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
-                      WeightsX_X2(:) * G_X2_Dn(:,iGF_h_3), 1,  One, dh3dX2, 1 )
+                      WeightsX_X2(:) * G_X2_Dn(:,iGF_h_3), 1, One, dh3dX2, 1 )
           CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
                       WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_3), 1,  &
                       One, dh3dX2, 1 )
 
-          dh3dx2 = dh3dx2 / ( WeightsX_q(:) * dX(2) )
+          dh3dX2 = dh3dX2 / ( WeightsX_q(:) * dX(2) )
 
           ! --- Scale factor derivatives with respect to X3 ---
-          ! --- dh1dx3 ---
+          ! --- dh1dX3 ---
 
           CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
                       WeightsX_X3(:) * G_X3_Up(:,iGF_h_1), 1, Zero, dh1dX3, 1 )
@@ -818,19 +816,19 @@ CONTAINS
                       WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_1), 1,  &
                       One, dh1dX3, 1 )
 
-          dh1dx3 = dh1dx3 / ( WeightsX_q(:) * dX(3) )
+          dh1dX3 = dh1dX3 / ( WeightsX_q(:) * dX(3) )
 
-          ! --- dh2dx3 ---
+          ! --- dh2dX3 ---
 
           CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
                       WeightsX_X3(:) * G_X3_Up(:,iGF_h_2), 1, Zero, dh2dX3, 1 )
           CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
-                      WeightsX_X3(:) * G_X3_Dn(:,iGF_h_2), 1,  One, dh2dX3, 1 )
+                      WeightsX_X3(:) * G_X3_Dn(:,iGF_h_2), 1, One, dh2dX3, 1 )
           CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
                       WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_2), 1,  &
                       One, dh2dX3, 1 )
 
-          dh2dx3 = dh2dx3 / ( WeightsX_q(:) * dX(3) )
+          dh2dX3 = dh2dX3 / ( WeightsX_q(:) * dX(3) )
 
           ! --- dh3dx3 ---
 
@@ -842,8 +840,15 @@ CONTAINS
                       WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_3), 1,  &
                       One, dh3dX3, 1 )
 
-          dh3dx3 = dh3dx3 / ( WeightsX_q(:) * dX(3) )
+          dh3dX3 = dh3dX3 / ( WeightsX_q(:) * dX(3) )
 
+          IF( iX1 .EQ. 001 ) WRITE(*,*) 'iX1 = 001, dh2dX1 = ', dh2dX1
+          IF( iX1 .EQ. 050 ) WRITE(*,*) 'iX1 = 050, dh2dX1 = ', dh2dX1
+          IF( iX1 .EQ. 100 ) WRITE(*,*) 'iX1 = 100, dh2dX1 = ', dh2dX1
+          IF( iX1 .EQ. 150 ) WRITE(*,*) 'iX1 = 150, dh2dX1 = ', dh2dX1
+          IF( iX1 .EQ. 200 ) WRITE(*,*) 'iX1 = 200, dh2dX1 = ', dh2dX1
+          IF( iX1 .EQ. 250 ) WRITE(*,*) 'iX1 = 250, dh2dX1 = ', dh2dX1
+          IF( iX1 .EQ. 250 ) STOP 'after writing scale factor derivatives'
           DO iNodeX = 1, nDOFX
 
             ! --- Contribution from source-term (FIX THIS FOR MULTI-D) ---
@@ -982,7 +987,6 @@ CONTAINS
             STOP 'Timestep < SqrtTiny'
 
           END IF
-          
 
         END DO
       END DO
@@ -991,315 +995,6 @@ CONTAINS
     TimeStep = MAX( epsilon * CFL * TimeStep, SqrtTiny )
 
   END SUBROUTINE ComputeTimeStep_GR
-
-  
-!!$  SUBROUTINE ComputeTimeStep_GR( iX_B0, iX_E0, G, U, CFL, TimeStep )
-!!$
-!!$    INTEGER,  INTENT(in)  :: &
-!!$      iX_B0(3), iX_E0(3)
-!!$    REAL(DP), INTENT(in)  :: &
-!!$      G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:), &
-!!$      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-!!$    REAL(DP), INTENT(in)  :: &
-!!$      CFL
-!!$    REAL(DP), INTENT(out) :: &
-!!$      TimeStep
-!!$
-!!$    INTEGER  :: iX1, iX2, iX3, iNodeX, iDimX, iGF
-!!$    REAL(DP) :: dX(3), dt_X(3), dt_S(3)
-!!$    REAL(DP) :: P(nDOFX,nPF)
-!!$    REAL(DP) :: A(nDOFX,nAF)
-!!$    REAL(DP) :: EigVals_X1(nCF,nDOFX), Max_X1, &
-!!$                EigVals_X2(nCF,nDOFX), Max_X2, &
-!!$                EigVals_X3(nCF,nDOFX), Max_X3
-!!$    REAL(DP) :: PressureTensorSum, PosRoot(3), NegRoot(3)
-!!$    REAL(DP) :: epsilon = Half
-!!$    REAL(DP) :: dh1dX1(nDOFX), dh2dX1(nDOFX),dh3dX1(nDOFX)
-!!$    REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF)
-!!$
-!!$    TimeStep = HUGE( One )
-!!$    dt_X(:)  = HUGE( One )
-!!$    dt_S(:)  = HUGE( One )
-!!$
-!!$    PosRoot = HUGE( One )
-!!$    NegRoot = HUGE( One )
-!!$
-!!$    Max_X1 = -Huge( One )
-!!$    Max_X2 = -Huge( One )
-!!$    Max_X3 = -Huge( One )
-!!$
-!!$    DO iX3 = iX_B0(3), iX_E0(3)
-!!$      DO iX2 = iX_B0(2), iX_E0(2)
-!!$        DO iX1 = iX_B0(1), iX_E0(1)
-!!$
-!!$          dX(1) = MeshX(1) % Width(iX1)
-!!$          dX(2) = MeshX(2) % Width(iX2)
-!!$          dX(3) = MeshX(3) % Width(iX3)
-!!$
-!!$          CALL ComputePrimitive_GR &
-!!$                 ( U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
-!!$                   U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
-!!$                   U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
-!!$                   P(:,iPF_D), P(:,iPF_V1), P(:,iPF_V2), P(:,iPF_V3), &
-!!$                   P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_P), &
-!!$                   G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-!!$                   G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-!!$                   G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
-!!$
-!!$          CALL ComputeSoundSpeedFromPrimitive_GR &
-!!$                 ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_Cs) )
-!!$
-!!$          ! --- Compute derivatives of scale factors ---
-!!$
-!!$          ! --- Interpolate scale factors to faces ---
-!!$          DO iGF = iGF_h_1, iGF_h_3
-!!$
-!!$            CALL DGEMV &
-!!$                   ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-!!$                     G(:,iX1-1,iX2,iX3,iGF), 1, Zero, G_X1_Dn(:,iGF), 1 )
-!!$            CALL DGEMV &
-!!$                   ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-!!$                     G(:,iX1,  iX2,iX3,iGF), 1, Half, G_X1_Dn(:,iGF), 1 )
-!!$
-!!$            G_X1_Dn(1:nDOFX_X1,iGF) &
-!!$              = MAX( G_X1_Dn(1:nDOFX_X1,iGF), SqrtTiny )
-!!$
-!!$            CALL DGEMV &
-!!$                   ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-!!$                     G(:,iX1,  iX2,iX3,iGF), 1, Zero, G_X1_Up(:,iGF), 1 )
-!!$            CALL DGEMV &
-!!$                   ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-!!$                     G(:,iX1+1,iX2,iX3,iGF), 1, Half, G_X1_Up(:,iGF), 1 )
-!!$
-!!$            G_X1_Up(1:nDOFX_X1,iGF) &
-!!$              = MAX( G_X1_Up(1:nDOFX_X1,iGF), SqrtTiny )
-!!$
-!!$          END DO
-!!$
-!!$          ! --- dh1dx1 ---
-!!$
-!!$          CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-!!$                      WeightsX_X1(:) * G_X1_Up(:,iGF_h_1), 1, Zero, dh1dX1, 1 )
-!!$          CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-!!$                      WeightsX_X1(:) * G_X1_Dn(:,iGF_h_1), 1,  One, dh1dX1, 1 )
-!!$          CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-!!$                      WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_1), 1,  &
-!!$                      One, dh1dX1, 1 )
-!!$
-!!$          dh1dx1 = dh1dx1 / ( WeightsX_q(:) * dX(1) )
-!!$
-!!$          ! --- dh2dx1 ---
-!!$
-!!$          CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-!!$                      WeightsX_X1(:) * G_X1_Up(:,iGF_h_2), 1, Zero, dh2dX1, 1 )
-!!$          CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-!!$                      WeightsX_X1(:) * G_X1_Dn(:,iGF_h_2), 1,  One, dh2dX1, 1 )
-!!$          CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-!!$                      WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_2), &
-!!$                      1,  One, dh2dX1, 1 )
-!!$
-!!$          dh2dx1 = dh2dx1 / ( WeightsX_q(:) * dX(1) )
-!!$
-!!$          ! --- dh3dx1 ---
-!!$
-!!$          CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-!!$                      WeightsX_X1(:) * G_X1_Up(:,iGF_h_3), 1, Zero, dh3dX1, 1 )
-!!$          CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-!!$                      WeightsX_X1(:) * G_X1_Dn(:,iGF_h_3), 1,  One, dh3dX1, 1 )
-!!$          CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-!!$                      WeightsX_q (:) * G(:,iX1,iX2,iX3,iGF_h_3), &
-!!$                      1,  One, dh3dX1, 1 )
-!!$
-!!$          dh3dx1 = dh3dx1 / ( WeightsX_q(:) * dX(1) )
-!!$
-!!$          DO iNodeX = 1, nDOFX
-!!$
-!!$            ! --- Contribution from source-term (FIX THIS FOR MULTI-D) ---
-!!$            
-!!$            PressureTensorSum =   Two / G(iNodeX,iX1,iX2,iX3,iGF_h_1) &
-!!$                                    * ( U(iNodeX,iX1,iX2,iX3,iCF_S1) &
-!!$                                    * P(iNodeX,iPF_V1) + A(iNodeX,iAF_P) ) &
-!!$                                    * dh1dx1(iNodeX) &
-!!$                                + Two / G(iNodeX,iX1,iX2,iX3,iGF_h_2) &
-!!$                                    * ( U(iNodeX,iX1,iX2,iX3,iCF_S2) &
-!!$                                    * P(iNodeX,iPF_V2) + A(iNodeX,iAF_P) ) &
-!!$                                    * dh2dx1(iNodeX) &
-!!$                                + Two / G(iNodeX,iX1,iX2,iX3,iGF_h_3) &
-!!$                                    * ( U(iNodeX,iX1,iX2,iX3,iCF_S3) &
-!!$                                    * P(iNodeX,iPF_V3) + A(iNodeX,iAF_P) ) &
-!!$                                    * dh3dx1(iNodeX)
-!!$
-!!$            IF( ABS( PressureTensorSum ) .GT. Zero )THEN
-!!$              PosRoot(1) = Two * ( One - epsilon ) / PressureTensorSum &
-!!$                          * ( -U(iNodeX,iX1,iX2,iX3,iCF_S1) &
-!!$                        + SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-!!$                          * U(iNodeX,iX1,iX2,iX3,iCF_E) &
-!!$                          * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
-!!$                          + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
-!!$              IF( PosRoot(1) .LT. Zero ) PosRoot(1) = HUGE( One )
-!!$
-!!$              NegRoot(1) = Two * ( One - epsilon ) / PressureTensorSum &
-!!$                          * ( -U(iNodeX,iX1,iX2,iX3,iCF_S1) &
-!!$                        - SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-!!$                          * U(iNodeX,iX1,iX2,iX3,iCF_E) &
-!!$                          * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
-!!$                          + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
-!!$              IF( NegRoot(1) .LT. Zero ) NegRoot(1) = HUGE( One )
-!!$
-!!$              dt_S(1) = MIN( dt_S(1), MIN( PosRoot(1), NegRoot(1) ) )
-!!$            ELSE
-!!$              dt_S(1) = HUGE( One )
-!!$            END IF
-!!$
-!!$            ! --- Contribution from numerical flux term ---
-!!$            EigVals_X1(:,iNodeX) = Eigenvalues_GR &
-!!$                                     ( P(iNodeX,iPF_V1), &
-!!$                                       P(iNodeX,iPF_V2), &
-!!$                                       P(iNodeX,iPF_V3), &
-!!$                                       P(iNodeX,iPF_V1), &
-!!$                                       A(iNodeX,iAF_Cs), &
-!!$                                       G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-!!$                                       G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-!!$                                       G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-!!$                                       G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-!!$                                       G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-!!$                                       G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
-!!$            Max_X1 &
-!!$              = MAX( Max_X1, &
-!!$                       MAXVAL( ABS( EigVals_X1(:,iNodeX) ) &
-!!$                         * G(iNodeX,iX1,iX2,iX3,iGF_h_1) ) )
-!!$
-!!$            IF( nDimsX .GT. 1 )THEN
-!!$
-!!$              IF( PressureTensorSum .GT. Zero )THEN
-!!$                  
-!!$                PosRoot(2) = Two * ( One - epsilon ) / PressureTensorSum &
-!!$                            * ( -U(iNodeX,iX1,iX2,iX3,iCF_S2) &
-!!$                          + SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-!!$                            * U(iNodeX,iX1,iX2,iX3,iCF_E) &
-!!$                            * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
-!!$                            + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
-!!$                IF( PosRoot(2) .LT. Zero ) PosRoot(2) = HUGE( One )
-!!$
-!!$                NegRoot(2) = Two * ( One - epsilon ) / PressureTensorSum &
-!!$                            * ( -U(iNodeX,iX1,iX2,iX3,iCF_S2) &
-!!$                          - SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-!!$                            * U(iNodeX,iX1,iX2,iX3,iCF_E) &
-!!$                            * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
-!!$                            + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
-!!$                IF( NegRoot(2) .LT. Zero ) NegRoot(2) = HUGE( One )
-!!$
-!!$                dt_S(2) = MIN( dt_S(2), MIN( PosRoot(2), NegRoot(2) ) )
-!!$              ELSE
-!!$                dt_S(2) = HUGE( One )
-!!$              END IF
-!!$
-!!$              EigVals_X2(:,iNodeX) = Eigenvalues_GR &
-!!$                                       ( P(iNodeX,iPF_V1), &
-!!$                                         P(iNodeX,iPF_V2), &
-!!$                                         P(iNodeX,iPF_V3), &
-!!$                                         P(iNodeX,iPF_V2), &
-!!$                                         A(iNodeX,iAF_Cs), &
-!!$                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-!!$                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-!!$                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-!!$                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-!!$                                         G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-!!$                                         G(iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
-!!$              Max_X2 &
-!!$                = MAX( Max_X2, &
-!!$                       MAXVAL( ABS( EigVals_X2(:,iNodeX) ) &
-!!$                         * G(iNodeX,iX1,iX2,iX3,iGF_h_2) ) )
-!!$
-!!$            END IF
-!!$
-!!$            IF( nDimsX .GT. 2 )THEN
-!!$
-!!$              IF( PressureTensorSum .GT. Zero )THEN
-!!$                PosRoot(3) = Two * ( One - epsilon ) / PressureTensorSum &
-!!$                            * ( -U(iNodeX,iX1,iX2,iX3,iCF_S3) &
-!!$                          + SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-!!$                            * U(iNodeX,iX1,iX2,iX3,iCF_E) &
-!!$                            * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
-!!$                            + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
-!!$                IF( PosRoot(3) .LT. Zero ) PosRoot(3) = HUGE( One )
-!!$
-!!$                NegRoot(3) = Two * ( One - epsilon ) / PressureTensorSum &
-!!$                            * ( -U(iNodeX,iX1,iX2,iX3,iCF_S3) &
-!!$                          - SQRT( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-!!$                            * U(iNodeX,iX1,iX2,iX3,iCF_E) &
-!!$                            * ( U(iNodeX,iX1,iX2,iX3,iCF_E) &
-!!$                            + Two * U(iNodeX,iX1,iX2,iX3,iCF_D) ) ) )
-!!$                IF( NegRoot(3) .LT. Zero ) NegRoot(3) = HUGE( One )
-!!$
-!!$                dt_S(3) = MIN( dt_S(3), MIN( PosRoot(3), NegRoot(3) ) )
-!!$              ELSE
-!!$                dt_S(3) = HUGE( One )
-!!$              END IF
-!!$
-!!$              EigVals_X3(:,iNodeX) = Eigenvalues_GR &
-!!$                                       ( P(iNodeX,iPF_V1),       &
-!!$                                         P(iNodeX,iPF_V2),       &
-!!$                                         P(iNodeX,iPF_V3),       &
-!!$                                         P(iNodeX,iPF_V3),       &
-!!$                                         A(iNodeX,iAF_Cs),       &
-!!$                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-!!$                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-!!$                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-!!$                                         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-!!$                                         G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-!!$                                         G(iNodeX,iX1,iX2,iX3,iGF_Beta_3) )
-!!$              Max_X3 &
-!!$                   = MAX( Max_X3, &
-!!$                       MAXVAL( ABS( EigVals_X3(:,iNodeX) ) &
-!!$                         * G(iNodeX,iX1,iX2,iX3,iGF_h_3) ) )
-!!$
-!!$            END IF
-!!$
-!!$          END DO
-!!$
-!!$          dt_X(1) &
-!!$            = dX(1) / ( Two * Max_X1 )
-!!$
-!!$          IF( nDimsX .GT. 1 ) &
-!!$            dt_X(2) &
-!!$              = dX(2) / ( Two * Max_X2 )
-!!$
-!!$          IF( nDimsX .GT. 2 ) &
-!!$            dt_X(3) &
-!!$              = dX(3) / ( Two * Max_X3 )
-!!$
-!!$          TimeStep = MIN( TimeStep, MIN( MINVAL( dt_X ), MINVAL( dt_S ) ) )
-!!$          IF( TimeStep .LT. SqrtTiny )THEN
-!!$
-!!$            WRITE(*,*)
-!!$            WRITE(*,*) 'iX1, iX2, iX3       = ', iX1, iX2, iX3
-!!$            WRITE(*,*) 'dt_S                = ', dt_S
-!!$            WRITE(*,*) 'PressureTensorSum   = ', PressureTensorSum
-!!$            WRITE(*,*) 'MinRoot1            = ', MIN( PosRoot(1), NegRoot(1) )
-!!$            WRITE(*,*) 'D                   = ', U(:,iX1,iX2,iX3,iCF_D)
-!!$            WRITE(*,*) 'S1                  = ', U(:,iX1,iX2,iX3,iCF_S1)
-!!$            WRITE(*,*) 'tau                 = ', U(:,iX1,iX2,iX3,iCF_E)
-!!$            WRITE(*,*) 'Gm11                = ', G(:,iX1,iX2,iX3,iGF_Gm_dd_11)
-!!$            WRITE(*,*) 'Gm22                = ', G(:,iX1,iX2,iX3,iGF_Gm_dd_22)
-!!$            WRITE(*,*) 'Gm33                = ', G(:,iX1,iX2,iX3,iGF_Gm_dd_33)
-!!$            WRITE(*,*) 'S1/PTS              = ', &
-!!$                 U(:,iX1,iX2,iX3,iCF_S1) / PressureTensorSum
-!!$            WRITE(*,*) 'SQRT(tau*(tau+2*D)) = ', &
-!!$                 SQRT( U(:,iX1,iX2,iX3,iCF_E) * ( U(:,iX1,iX2,iX3,iCF_E) &
-!!$                 + Two * U(:,iX1,iX2,iX3,iCF_D) ) )
-!!$            STOP 'Timestep < SqrtTiny'
-!!$
-!!$          END IF
-!!$          
-!!$
-!!$        END DO
-!!$      END DO
-!!$    END DO
-!!$
-!!$    TimeStep = MAX( epsilon * CFL * TimeStep, SqrtTiny )
-!!$
-!!$  END SUBROUTINE ComputeTimeStep_GR
 
   
   SUBROUTINE ComputeConserved_GR( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
