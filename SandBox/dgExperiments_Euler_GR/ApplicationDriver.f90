@@ -286,12 +286,12 @@ PROGRAM ApplicationDriver
 
       WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
-      WRITE(*,'(A)') 'Valid choices:'
-      WRITE(*,'(A)') '  RiemannProblem'
-      WRITE(*,'(A)') '  SphericalRiemannProblem'
-      WRITE(*,'(A)') '  SedovBlastWave'
-      WRITE(*,'(A)') '  StandingAccretionShock'
-      WRITE(*,'(A)') 'Stopping...'
+      WRITE(*,'(A)')     'Valid choices:'
+      WRITE(*,'(A)')     '  RiemannProblem'
+      WRITE(*,'(A)')     '  SphericalRiemannProblem'
+      WRITE(*,'(A)')     '  SedovBlastWave'
+      WRITE(*,'(A)')     '  StandingAccretionShock'
+      WRITE(*,'(A)')     'Stopping...'
       STOP
 
   END SELECT
