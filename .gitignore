@@ -1,3 +1,23 @@
+# latex intermediates
+*.aux
+*.log
+*.dvi
+*.bbl
+*.blg
+*.out
+*.pdf
+*.synctex.gz
+
+# emacs temporaries
+*~
+
+# thornado output files
+*.h5
+
+# compiled code
+*.o
+*.mod
+
 # Sam's files to ignore
 SandBox/dgExperiments_Euler_GR/PastRuns/
 SandBox/dgExperiments_Euler_GR/Executables/*.py
