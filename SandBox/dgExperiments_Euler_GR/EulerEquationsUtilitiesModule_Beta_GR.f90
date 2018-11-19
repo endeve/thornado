@@ -731,6 +731,19 @@ CONTAINS
 
           END DO ! Loop over scale factors
 
+!!$          WRITE(*,*) 'Scale factor h_1 at cell interfaces'
+!!$          WRITE(*,*) 'X1'
+!!$          WRITE(*,*) G_X1_Dn(1:nDOFX_X1,iGF_h_1)
+!!$          WRITE(*,*) G_X1_Up(1:nDOFX_X1,iGF_h_1)
+!!$          WRITE(*,*) 'X2'
+!!$          WRITE(*,*) G_X2_Dn(1:nDOFX_X2,iGF_h_1)
+!!$          WRITE(*,*) G_X2_Up(1:nDOFX_X2,iGF_h_1)
+!!$          WRITE(*,*) 'X3'
+!!$          WRITE(*,*) G_X3_Dn(1:nDOFX_X3,iGF_h_1)
+!!$          WRITE(*,*) G_X3_Up(1:nDOFX_X3,iGF_h_1)
+!!$          WRITE(*,*)
+          !STOP
+
           ! --- Scale factor derivatives with respect to X1 ---
           ! --- dh1dX1 ---
 
@@ -842,13 +855,50 @@ CONTAINS
 
           dh3dX3 = dh3dX3 / ( WeightsX_q(:) * dX(3) )
 
-          IF( iX1 .EQ. 001 ) WRITE(*,*) 'iX1 = 001, dh2dX1 = ', dh2dX1
-          IF( iX1 .EQ. 050 ) WRITE(*,*) 'iX1 = 050, dh2dX1 = ', dh2dX1
-          IF( iX1 .EQ. 100 ) WRITE(*,*) 'iX1 = 100, dh2dX1 = ', dh2dX1
-          IF( iX1 .EQ. 150 ) WRITE(*,*) 'iX1 = 150, dh2dX1 = ', dh2dX1
-          IF( iX1 .EQ. 200 ) WRITE(*,*) 'iX1 = 200, dh2dX1 = ', dh2dX1
-          IF( iX1 .EQ. 250 ) WRITE(*,*) 'iX1 = 250, dh2dX1 = ', dh2dX1
-          IF( iX1 .EQ. 250 ) STOP 'after writing scale factor derivatives'
+!!$          IF( iX1 .EQ. 001 )THEN
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 001, dh1dX1 = ', dh1dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 001, dh2dX1 = ', dh2dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 001, dh3dX1 = ', dh3dX1
+!!$            WRITE(*,*)
+!!$          END IF
+!!$          IF( iX1 .EQ. 050 )THEN
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 050, dh1dX1 = ', dh1dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 050, dh2dX1 = ', dh2dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 050, dh3dX1 = ', dh3dX1
+!!$            WRITE(*,*)
+!!$          END IF
+!!$          IF( iX1 .EQ. 100 )THEN
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 100, dh1dX1 = ', dh1dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 100, dh2dX1 = ', dh2dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 100, dh3dX1 = ', dh3dX1
+!!$            WRITE(*,*)
+!!$          END IF
+!!$          IF( iX1 .EQ. 150 )THEN
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 150, dh1dX1 = ', dh1dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 150, dh2dX1 = ', dh2dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 150, dh3dX1 = ', dh3dX1
+!!$            WRITE(*,*)
+!!$          END IF
+!!$          IF( iX1 .EQ. 200 )THEN
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 200, dh1dX1 = ', dh1dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 200, dh2dX1 = ', dh2dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 200, dh3dX1 = ', dh3dX1
+!!$            WRITE(*,*)
+!!$          END IF
+!!$          IF( iX1 .EQ. 250 )THEN
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 250, dh1dX1 = ', dh1dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 250, dh2dX1 = ', dh2dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 250, dh3dX1 = ', dh3dX1
+!!$            WRITE(*,*)
+!!$          END IF
+!!$          IF( iX1 .EQ. 256 )THEN
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 256, dh1dX1 = ', dh1dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 256, dh2dX1 = ', dh2dX1
+!!$            WRITE(*,'(A,3ES24.16E3)') 'iX1 = 256, dh3dX1 = ', dh3dX1
+!!$            WRITE(*,*)
+!!$            STOP 'Wrote scale factor derivatives.'
+!!$          END IF
+
           DO iNodeX = 1, nDOFX
 
             ! --- Contribution from source-term (FIX THIS FOR MULTI-D) ---

@@ -436,6 +436,7 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A,I4.4)')      '     nDetCells:              ', nDetCells
     WRITE(*,'(A,ES23.16E3)') '     Initial blast radius:   ', X_D
+    WRITE(*,'(A,ES23.16E3)') '     Blast energy:           ', Eblast
     WRITE(*,'(A,ES23.16E3)') '     Initial blast pressure: ', &
                                      ( Gamma_IDEAL - One ) &
                                        * Eblast / ( FourPi / Three * X_D**3 )
