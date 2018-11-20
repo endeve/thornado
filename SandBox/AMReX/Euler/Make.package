@@ -1,0 +1,4 @@
+f90EXE_sources += fmain.f90
+
+# In THORNADO_DIR/Modules/Numbers
+f90EXE_sources += THORNADO_DIR/Modules/Numbers/KindModule.f90

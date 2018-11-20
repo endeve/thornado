@@ -1,0 +1,15 @@
+t_end  = 1.0                         # Final time
+dt_wrt = 0.1                         # Write time interval
+
+ProgramName = "TestProblem"
+
+nNodes  = 2 # Number of DG nodes in each active dimension
+nStages = 2 # Number of SSK-RK stages for time integration
+
+geometry.coord_sys   = 0             # Problem geometry. 0 (Cartesian)
+geometry.prob_lo     = 0.0  0.0  0.0 # Lower domain size
+geometry.prob_hi     = 1.0  1.0  1.0 # Upper domain size
+geometry.is_periodic = 1  1  1       # Periodicity. 0 (no), 1 (yes)
+
+amr.n_cell        = 64 64 01  # number of cells in each dimension
+amr.max_grid_size = 64 64 01  # max grid size
