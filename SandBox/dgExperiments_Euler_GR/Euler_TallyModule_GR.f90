@@ -187,7 +187,7 @@ CONTAINS
 
     OPEN( NEWUNIT=FileUnit, FILE=TRIM( TallyFileName ), ACCESS='APPEND' )
 
-    WRITE( FileUnit, '(9(ES20.12,x))' ) &
+    WRITE( FileUnit, '(7(ES20.12,x))' ) &
       Time                      / U % TimeUnit, &
       EulerTally(iCF_D,      1) / U % MassUnit, &
       EulerTally(iCF_S1,     1) / U % MomentumUnit, &

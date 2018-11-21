@@ -125,6 +125,9 @@ CONTAINS
     
     IF( .NOT. UsePositivityLimiter ) RETURN
 
+    ! --- Implement bound-preserving limiter from
+    !     Qin et al., (2016), JCP, 315, 323 ---
+
     IF( DEBUG )THEN
       WRITE(*,*)
       WRITE(*,'(A)') 'Entering PositivityLimiterModule...'
@@ -243,8 +246,14 @@ CONTAINS
             CALL Computeq( 1, U_K, G_K, q_K )
             IF( q_K(1) .LT. Zero )THEN
 
+              IF( DEBUG ) &
+                WRITE(*,'(A,3I4)') 'iX1,iX2,iX3 = ', iX1,iX2,iX3
+
               ! --- Ensure positive tau ---
-              IF( U_K(iCF_E) .LT. Zero ) U_K(iCF_E) = MAX( SqrtTiny, U_K(iCF_E) )
+              IF( U_K(iCF_E) .LT. Zero )THEN
+                WRITE(*,'(A,ES24.16E3)') 'tau: ', U_K(iCF_E)
+                U_K(iCF_E) = MAX( SqrtTiny, U_K(iCF_E) )
+              END IF
 
               IF( DEBUG ) &
                 WRITE(*,'(A,ES24.16E3)') 'q_K = ', q_K(1)
@@ -258,7 +267,7 @@ CONTAINS
               IF( DEBUG ) &
                 WRITE(*,'(A,ES11.3E3)') 'tau = ', U_K(iCF_E)
               IF( DEBUG ) &
-                WRITE(*,'(A,ES11.3E3)') 'D   = ', U_K(iCF_D)
+                WRITE(*,'(A,ES11.3E3)') 'D^2 = ', U_K(iCF_D)**2
 
               ! --- Demand that q_K > 0 by modifying tau (alpha > 1) ---
               alpha = ( Min_2 - U_K(iCF_D) &
@@ -268,12 +277,15 @@ CONTAINS
               alphaMax = MAX( alphaMax, alpha )
 
               IF( DEBUG ) &
-                   WRITE(*,'(A,ES10.3E3)') 'alpha - 1 = ', alpha - 1.0_DP
+                   WRITE(*,'(A,ES10.3E3)') '|alpha - 1| = ', ABS(alpha - 1.0_DP)
+              IF( DEBUG ) &
+                 WRITE(*,*)
 
               IF( DEBUG )THEN
                 WRITE(*,'(A)') 'CALL Computeq after alpha limiting'
                 CALL Computeq( 1, U_K, G_K, q_K )
                 WRITE(*,'(A,ES24.16E3)') 'q_K = ', q_K(1)
+                WRITE(*,*)
               END IF
 
             END IF
@@ -347,8 +359,8 @@ CONTAINS
     END DO
 
     IF( DEBUG )THEN
-      IF( alphaMax .GT. 0.0d0  ) &
-        WRITE(*,'(A,ES10.3E3)') 'alphaMax - 1 = ', alphaMax - 1.0_DP
+      IF( alphaMax .GT. Zero ) &
+        WRITE(*,'(A,ES10.3E3)') '|alphaMax - 1| = ', ABS(alphaMax - 1.0_DP)
     END IF
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_GR
@@ -360,7 +372,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: X_P(nPT)
 
     INTEGER :: iOS
-    
+
     X_P(1:nDOFX) = X_Q(1:nDOFX)
 
     IF( SUM( nPP(2:3) ) > 0 )THEN
@@ -437,8 +449,8 @@ CONTAINS
     
     REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, Gm11, Gm22, Gm33
 
-    qFun = tau + D - SQRT( D**2 + S1**2 / Gm11 + S2**2 / Gm22 + S3**2 / Gm33 &
-             + Min_2 )
+    qFun = tau + D - SQRT( D**2 + ( S1**2 / Gm11 + S2**2 / Gm22 &
+                                     + S3**2 / Gm33 ) + Min_2 )
 
     RETURN
   END FUNCTION qFun

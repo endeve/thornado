@@ -84,8 +84,8 @@ PROGRAM ApplicationDriver
   
 !  ProgramName = 'RiemannProblem'
 !  ProgramName = 'SphericalRiemannProblem'
-  ProgramName = 'SedovBlastWave'
-!  ProgramName = 'StandingAccretionShock'
+!  ProgramName = 'SedovBlastWave'
+  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -140,29 +140,6 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      nNodes = 3
-
-      BetaTVD = 2.0_DP
-      BetaTVB = 0.0_DP
-
-      UseSlopeLimiter           = .TRUE.
-      SlopeTolerance            = 1.0d-6
-      UseCharacteristicLimiting = .TRUE.
-
-      UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 0.1_DP
-
-      UsePositivityLimiter = .TRUE.
-      Min_1 = 1.0d-12
-      Min_2 = 1.0d-12
-
-      iCycleD = 100
-      !dt_wrt  = 1.0d-2 * t_end
-      iCycleW = 100
-
-      nStagesSSPRK = 3
-      CFL          = 0.1_DP
-
     CASE( 'SphericalRiemannProblem' )
 
       SphericalRiemannProblemName = 'SphericalSod'
@@ -177,33 +154,12 @@ PROGRAM ApplicationDriver
 
       bcX = [ 2, 0, 0 ]
 
-      nNodes = 3
-
-      BetaTVD = 2.0_DP
-      BetaTVB = 0.0_DP
-
-      UseSlopeLimiter           = .TRUE.
-      SlopeTolerance            = 1.0d-6
-      UseCharacteristicLimiting = .TRUE.
-
-      UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 0.03_DP
-
-      UsePositivityLimiter = .TRUE.
-      Min_1 = 1.0d-12
-      Min_2 = 1.0d-12
-
-      iCycleD = 100
-      t_end   = 5.0d-1
-      dt_wrt  = 1.0d-2 * t_end
-
-      nStagesSSPRK = 3
-      CFL          = 0.1_DP
+      t_end = 5.0d-1
 
     CASE( 'SedovBlastWave' )
 
       nDetCells = 1
-      Eblast    = 1.0d-4
+      Eblast    = 2.0d-7
 
       CoordinateSystem = 'SPHERICAL'
 
@@ -215,29 +171,7 @@ PROGRAM ApplicationDriver
 
       bcX = [ 3, 0, 0 ]
 
-      nNodes = 3
-
-      BetaTVD = 2.0_DP
-      BetaTVB = 0.0_DP
-
-      UseSlopeLimiter           = .TRUE.
-      SlopeTolerance            = 1.0d-6
-      UseCharacteristicLimiting = .TRUE.
-
-      UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 0.03_DP
-
-      UsePositivityLimiter = .TRUE.
-      Min_1 = 1.0d-12
-      Min_2 = 1.0d-12
-
-      iCycleD = 100
-      t_end   = 1.0d0
-      dt_wrt  = 1.0d-2 * t_end
-      !iCycleW = 1
-
-      nStagesSSPRK = 3
-      CFL          = 0.1_DP
+      t_end = 1.0d0
 
     CASE( 'StandingAccretionShock' )
 
@@ -253,34 +187,13 @@ PROGRAM ApplicationDriver
       R_PNS   = FluidFieldParameters(4)
       R_shock = FluidFieldParameters(5)
 
-      nX = [ 256, 1, 1 ]
+      nX = [ 2048, 1, 1 ]
       xL = [ R_PNS, 0.0_DP, 0.0_DP ]
       xR = [ Two * R_shock, Pi, Four ]
 
       bcX = [ 11, 0, 0 ]
 
-      nNodes = 1
-
-      BetaTVD = 2.0_DP
-      BetaTVB = 0.0_DP
-
-      UseSlopeLimiter           = .TRUE.
-      SlopeTolerance            = 1.0d-6
-      UseCharacteristicLimiting = .TRUE.
-
-      UseTroubledCellIndicator  = .TRUE.
-      LimiterThresholdParameter = 0.03_DP
-
-      UsePositivityLimiter = .TRUE.
-      Min_1 = 1.0d-12
-      Min_2 = 1.0d-12
-
-      iCycleD = 1000
-      t_end   = 1.0d1 * Millisecond
-      dt_wrt  = 0.1d0 * Millisecond
-
-      nStagesSSPRK = 3
-      CFL          = 0.1_DP
+      t_end = 100.0d0 * Millisecond
 
     CASE DEFAULT
 
@@ -295,6 +208,34 @@ PROGRAM ApplicationDriver
       STOP
 
   END SELECT
+
+  nNodes = 3
+  IF( .NOT. nNodes .LE. 4 ) &
+    STOP 'nNodes must be less than or equal to four.'
+
+  BetaTVD = 2.0_DP
+  BetaTVB = 0.0_DP
+
+  UseSlopeLimiter           = .TRUE.
+  SlopeTolerance            = 1.0d-6
+  UseCharacteristicLimiting = .TRUE.
+
+  UseTroubledCellIndicator  = .TRUE.
+  LimiterThresholdParameter = 0.03_DP
+
+  UsePositivityLimiter = .TRUE.
+  Min_1 = 1.0d-15
+  Min_2 = Zero!1.0d-12
+
+  iCycleD = 100
+  dt_wrt  = 1.0d-2 * t_end
+  !iCycleW = 1
+
+  nStagesSSPRK = 3
+  IF( .NOT. nStagesSSPRK .LE. 3 ) &
+    STOP 'nStagesSSPRK must be less than or equal to three.'
+
+  CFL = 0.1_DP
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -405,14 +346,14 @@ PROGRAM ApplicationDriver
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
 
-    IF( DEBUG ) WRITE(*,'(A)') 'CALL ComputeFromConserved_GR'
-    CALL ComputeFromConserved_GR &
-           ( iX_B0, iX_E0, &
-             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
-
+!!$    IF( DEBUG ) WRITE(*,'(A)') 'CALL ComputeFromConserved_GR'
+!!$    CALL ComputeFromConserved_GR &
+!!$           ( iX_B0, iX_E0, &
+!!$             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+!!$             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+!!$             uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+!!$             uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+!!$
 !!$    Vmax = MAXVAL( ABS( &
 !!$             uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),2)))
 !!$    LorentzFactor = One / SQRT( One - Vmax**2 )
