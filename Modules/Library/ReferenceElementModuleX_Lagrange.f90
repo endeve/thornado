@@ -4,6 +4,8 @@ MODULE ReferenceElementModuleX_Lagrange
     DP, Half
   USE ProgramHeaderModule, ONLY: &
     nNodesX, nDOFX
+  USE LagrangePolynomialsModule, ONLY: &
+    LagrangeP
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, nDOFX_X2, nDOFX_X3, &
     NodeNumberTableX, &
@@ -12,10 +14,9 @@ MODULE ReferenceElementModuleX_Lagrange
     NodeNumberTableX_X3, &
     NodesX1,  NodesX2,  NodesX3, &
     NodesLX1, NodesLX2, NodesLX3
-  USE PolynomialBasisModule_Lagrange, ONLY: &
+  USE PolynomialBasisModuleX_Lagrange, ONLY: &
      L_X1,  L_X2,  L_X3, &
-    dL_X1, dL_X2, dL_X3, &
-    LagrangeP
+    dL_X1, dL_X2, dL_X3
 
   IMPLICIT NONE
   PRIVATE
