@@ -8,8 +8,6 @@ MODULE PolynomialBasisModule_Legendre
     nDOF, nDOFX
   USE QuadratureModule, ONLY: &
     xG5, wG5
-  USE UtilitiesModule, ONLY: &
-    WriteMatrix
 
   IMPLICIT NONE
   PRIVATE
