@@ -1,4 +1,23 @@
 f90EXE_sources += fmain.f90
 
-# In THORNADO_DIR/Modules/Numbers
-f90EXE_sources += THORNADO_DIR/Modules/Numbers/KindModule.f90
+# thornado VPATH_LOCATIONS:
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Numbers
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/ProgramHeader
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Library
+
+# In THORNADO_DIR/Modules/Numbers:
+
+f90EXE_sources += KindModule.f90
+
+# In THORNADO_DIR/Modules/ProgramHeader:
+
+f90EXE_sources += ProgramHeaderModule.f90
+
+# In THORNADO_DIR/Modules/Labrary:
+
+f90EXE_sources += QuadratureModule.f90
+f90EXE_sources += LagrangePolynomialsModule.f90
+f90EXE_sources += ReferenceElementModuleX.f90
+f90EXE_sources += PolynomialBasisModuleX_Lagrange.f90
+f90EXE_sources += PolynomialBasisModuleX_Legendre.f90
+f90EXE_sources += ReferenceElementModuleX_Lagrange.f90
