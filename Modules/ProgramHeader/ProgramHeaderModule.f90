@@ -65,6 +65,7 @@ MODULE ProgramHeaderModule
   PUBLIC :: InitializeProgramHeaderX
   PUBLIC :: InitializeProgramHeaderE
   PUBLIC :: DescribeProgramHeader
+  PUBLIC :: DescribeProgramHeaderX
 
 CONTAINS
 
