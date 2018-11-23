@@ -182,13 +182,13 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
 
-      nX = [ 200, 200, 1 ]
+      nX = [ 50, 50, 1 ]
       xL = [ - 5.0_DP, - 5.0_DP, 0.0_DP ]
       xR = [ + 5.0_DP, + 5.0_DP, 1.0_DP ]
 
       bcX = [ 1, 1, 0 ]
 
-      nNodes = 2
+      nNodes = 3
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
@@ -201,7 +201,7 @@ PROGRAM ApplicationDriver
 
       iCycleD = 10
       t_end   = 10.0_DP
-      dt_wrt  = 5.00_DP
+      dt_wrt  = 10.0_DP
 
     CASE( 'KelvinHelmholtz' )
 
