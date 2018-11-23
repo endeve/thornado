@@ -15,7 +15,7 @@ PROGRAM main
   USE PolynomialBasisModuleX_Lagrange,  ONLY: &
     InitializePolynomialBasisX_Lagrange
   USE PolynomialBasisModuleX_Legendre,  ONLY: &
-    InitializePolynomialBasis_Legendre
+    InitializePolynomialBasisX_Legendre
   USE ReferenceElementModuleX,          ONLY: &
     InitializeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
@@ -86,7 +86,7 @@ PROGRAM main
 print*,"Calling InitializePolynomialBasisX_Lagrange"
   CALL InitializePolynomialBasisX_Lagrange
 print*,"Calling InitializePolynomialBasisX_Legendre"
-  CALL InitializePolynomialBasis_Legendre
+  CALL InitializePolynomialBasisX_Legendre
 print*,"Calling InitializeReferenceElementX"
   CALL InitializeReferenceElementX
 print*,"Calling InitializeReferenceElementX_Lagrange"
