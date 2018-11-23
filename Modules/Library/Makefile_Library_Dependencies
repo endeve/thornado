@@ -7,6 +7,10 @@ UtilitiesModule.o: \
   ProgramHeaderModule.o \
   UtilitiesModule.f90
 
+LagrangePolynomialsModule.o: \
+  KindModule.o \
+  LagrangePolynomialsModule.f90
+
 ReferenceElementModuleX.o: \
   KindModule.o \
   QuadratureModule.o \
@@ -25,12 +29,24 @@ ReferenceElementModule.o: \
   ProgramHeaderModule.o \
   ReferenceElementModule.f90
 
+PolynomialBasisModuleX_Lagrange.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  PolynomialBasisModuleX_Lagrange.f90
+
+PolynomialBasisModuleX_Legendre.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  PolynomialBasisModuleX_Legendre.f90
+
 PolynomialBasisModule_Lagrange.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   QuadratureModule.o \
   UtilitiesModule.o \
-  PolynomialBasisModule.f90
+  PolynomialBasisModule_Lagrange.f90
 
 PolynomialBasisModule_Legendre.o: \
   KindModule.o \

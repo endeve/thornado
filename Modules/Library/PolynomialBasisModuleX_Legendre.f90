@@ -28,13 +28,13 @@ MODULE PolynomialBasisModuleX_Legendre
   TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: P_X2
   TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: P_X3
 
-  PUBLIC :: InitializePolynomialBasis_Legendre
+  PUBLIC :: InitializePolynomialBasisX_Legendre
   PUBLIC :: evalPX
 
 CONTAINS
 
 
-  SUBROUTINE InitializePolynomialBasis_Legendre
+  SUBROUTINE InitializePolynomialBasisX_Legendre
 
     CALL InitializeQuadratures
 
@@ -53,7 +53,7 @@ CONTAINS
     ALLOCATE( MassPX(nDOFX) )
     CALL ComputeMassMatrix
 
-  END SUBROUTINE InitializePolynomialBasis_Legendre
+  END SUBROUTINE InitializePolynomialBasisX_Legendre
 
 
   SUBROUTINE InitializeBasis( P )
