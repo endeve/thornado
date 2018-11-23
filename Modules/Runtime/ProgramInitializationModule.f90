@@ -19,8 +19,12 @@ MODULE ProgramInitializationModule
     InitializeQuadratures
   USE ReferenceElementModule, ONLY: &
     InitializeReferenceElement
+  USE PolynomialBasisModuleX_Lagrange, ONLY: &
+    InitializePolynomialBasisX_Lagrange
   USE PolynomialBasisModule_Lagrange, ONLY: &
     InitializePolynomialBasis_Lagrange
+  USE PolynomialBasisModuleX_Legendre, ONLY: &
+    InitializePolynomialBasisX_Legendre
   USE PolynomialBasisModule_Legendre, ONLY: &
     InitializePolynomialBasis_Legendre
   USE PolynomialBasisMappingModule, ONLY: &
@@ -240,6 +244,10 @@ CONTAINS
     CALL InitializeQuadratures
 
     ! --- Polynomial Basis ---
+
+    CALL InitializePolynomialBasisX_Lagrange
+
+    CALL InitializePolynomialBasisX_Legendre
 
     CALL InitializePolynomialBasis_Lagrange
 
