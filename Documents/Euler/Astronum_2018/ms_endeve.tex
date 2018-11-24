@@ -4,7 +4,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsthm}
-\usepackage{graphicx}
+\usepackage{graphicx,wrapfig}
 \usepackage{hyperref}
 \hypersetup{
   bookmarksnumbered = true,
@@ -301,6 +301,13 @@ In the lower panels of Figure~\ref{fig:ShuOsher} we plot locations in the $xt$-p
 With $C_{\TCI}=0.03$, limiting is triggered in a wide region around the shock and around the peaks of the three leftmost density variations in the upper left panel in Figure~\ref{fig:ShuOsher}.  
 With $C_{\TCI}=3.0$, limiting is only triggered in the shock.  
 
+\subsubsection{Isentropic Vortex}
+
+\begin{wrapfigure}{l}{2.825in}
+  \includegraphics[width=18pc]{./Figures/IsentropicVortex_Astronum_2018}
+  \caption{\label{fig:IsentropicVortex}Convergence results for the Isentropic Vortex test.}
+\end{wrapfigure}
+
 \subsubsection{Kelvin-Helmholtz (KH) instability}
 This hydrodynamic instability is of significant astrophysical relevance --- including during the explosion phase of CCSNe --- and may occur in the interface separating fluids in relative motion.  
 We compute this problem on the unit square $D=[0,1]\times[0,1]$, imposing periodic boundary conditions, and with initial conditions and single-mode perturbations taken from \cite{mcnally_etal_2012}.  
@@ -337,6 +344,11 @@ When $t=3.0$, these secondary instabilities appear to have largely destroyed the
 As discussed in more detail by \cite{mcnally_etal_2012}, the development of the secondary billows may be an artifact of numerical perturbations and diffusion, which is delayed when the resolution is increased.  
 Our results are consistent with this in the sense that the less diffusive model develops secondary billows later.  
 
+\begin{wrapfigure}{r}{2.825in}
+  \includegraphics[width=18pc]{./Figures/KelvinHelmholtz_TCI_24_Astronum_2018}
+  \caption{\label{fig:KelvinHelmholtz_TCI}Distribution of elements flagged for limiting in the KH test at $t=2.4$.}
+\end{wrapfigure}
+
 \subsubsection{Liska-Wendroff implosion}
 
 This test from \cite{liskaWendroff_2003} is computed on a 2D domain $D=[0,0.3]\times[0,0.3]$ with reflecting boundary conditions using $256^{2}$ elements.  
@@ -358,6 +370,19 @@ When $t=0.045$, a shock wave propagates towards the origin of $D$, while a conta
 When $t=2.5$, a complex flow pattern with multiple shocks has emerged due to multiple reflections off the boundaries.  
 The initial symmetry about the $x^{1}=x^{2}$ diagonal is maintained, and the results from \thornado\ agree qualitatively with the unsplit schemes in \cite{liskaWendroff_2003}.  
 In the right panel of Figure~\ref{fig:Implosion}, the chatacteristic ``jet'' has formed and propagates along the diagonal, similar to that displayed by CLAW and WENO in \cite{liskaWendroff_2003}.  
+
+\subsubsection{Liska-Wendroff Explosion}
+
+\begin{figure}[h]
+  \centering
+  \begin{minipage}{18pc}
+    \includegraphics[width=18pc]{./Figures/Explosion_Astronum_2018}
+  \end{minipage}\hspace{0.5pc}%
+  \begin{minipage}{18pc}
+    \includegraphics[width=18pc]{./Figures/Explosion_TCI_Astronum_2018}
+  \end{minipage}
+  \caption{\label{fig:Implosion}Plots for the Liska-Wendroff Explosion problem at $t=3.2$.}
+\end{figure}
 
 \subsubsection{Standing accretion shock (SAS)}
 
