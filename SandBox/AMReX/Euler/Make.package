@@ -1,13 +1,21 @@
-f90EXE_sources += fmain.f90
+f90EXE_sources += fmain.f90 InitializationModule.f90
 
 # thornado VPATH_LOCATIONS:
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Numbers
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Units
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/ProgramHeader
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Library
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Mesh
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
 
 # In THORNADO_DIR/Modules/Numbers:
 
 f90EXE_sources += KindModule.f90
+
+# In THORNADO_DIR/Modules/Units:
+
+f90EXE_sources += PhysicalConstantsModule.f90
+f90EXE_sources += UnitsModule.f90
 
 # In THORNADO_DIR/Modules/ProgramHeader:
 
@@ -21,3 +29,11 @@ f90EXE_sources += ReferenceElementModuleX.f90
 f90EXE_sources += PolynomialBasisModuleX_Lagrange.f90
 f90EXE_sources += PolynomialBasisModuleX_Legendre.f90
 f90EXE_sources += ReferenceElementModuleX_Lagrange.f90
+
+# In THORNADO_DIR/Modules/Mesh:
+
+f90EXE_sources += MeshModule.f90
+
+# In THORNADO_DIR/Modules/Fields:
+
+f90EXE_sources += FluidFieldsModule.f90

@@ -11,7 +11,8 @@ PROGRAM main
     DP
   USE ProgramHeaderModule,              ONLY: &
     InitializeProgramHeader,                  &
-    DescribeProgramHeaderX
+    DescribeProgramHeaderX,                   &
+    nDOFX
   USE PolynomialBasisModuleX_Lagrange,  ONLY: &
     InitializePolynomialBasisX_Lagrange
   USE PolynomialBasisModuleX_Legendre,  ONLY: &
@@ -20,6 +21,13 @@ PROGRAM main
     InitializeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
+  USE FluidFieldsModule,                ONLY: &
+    nCF, nPF, nAF
+
+  ! --- Local Modules ---
+
+  USE InitializationModule, ONLY: &
+    InitializeFields
 
   IMPLICIT NONE
 
@@ -28,7 +36,6 @@ PROGRAM main
   INTEGER :: nNodes
   INTEGER :: nStages
   INTEGER :: nX(3) = 1, swX(3) = 0
-  INTEGER, PARAMETER :: nComp = 10
   INTEGER, PARAMETER :: nGhost = 2
   INTEGER, ALLOCATABLE  :: n_cell(:)
   INTEGER, ALLOCATABLE  :: max_grid_size(:)
@@ -39,7 +46,9 @@ PROGRAM main
   TYPE(amrex_boxarray)  :: BA
   TYPE(amrex_geometry)  :: GEOM
   TYPE(amrex_distromap) :: DM
-  TYPE(amrex_multifab)  :: U
+  TYPE(amrex_multifab)  :: MF_uCF
+  TYPE(amrex_multifab)  :: MF_uPF
+  TYPE(amrex_multifab)  :: MF_uAF
 
   ! --- Initialize AMReX ---
 
@@ -80,19 +89,20 @@ PROGRAM main
   END DO
 
   CALL InitializeProgramHeader &
-         ( nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX )
+         ( ProgramName_Option = TRIM( ProgramName ), &
+           nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX )
 
   CALL DescribeProgramHeaderX
-print*,"Calling InitializePolynomialBasisX_Lagrange"
+
   CALL InitializePolynomialBasisX_Lagrange
-print*,"Calling InitializePolynomialBasisX_Legendre"
+
   CALL InitializePolynomialBasisX_Legendre
-print*,"Calling InitializeReferenceElementX"
+
   CALL InitializeReferenceElementX
-print*,"Calling InitializeReferenceElementX_Lagrange"
+
   CALL InitializeReferenceElementX_Lagrange
 
-  BX = amrex_box( [ 0, 0, 0 ], [ n_cell(1)-1, n_cell(2)-1, n_cell(3)-1 ] )
+  BX = amrex_box( [ 1, 1, 1 ], [ n_cell(1), n_cell(2), n_cell(3) ] )
 
   PRINT*, "BX % Lo = ", BX % Lo
   PRINT*, "BX % Hi = ", BX % Hi
@@ -110,7 +120,25 @@ print*,"Calling InitializeReferenceElementX_Lagrange"
 
   CALL amrex_distromap_build( DM, BA )
 
-  CALL amrex_multifab_build( U, BA, DM, nComp, nGhost )
+  CALL amrex_multifab_build( MF_uCF, BA, DM, nDOFX * nCF, nGhost )
+
+  CALL amrex_multifab_build( MF_uPF, BA, DM, nDOFX * nPF, nGhost )
+
+  CALL amrex_multifab_build( MF_uAF, BA, DM, nDOFX * nAF, nGhost )
+
+  CALL amrex_distromap_destroy( DM )
+
+  CALL amrex_boxarray_destroy( BA )
+
+  CALL InitializeFields( TRIM( ProgramName ), GEOM, MF_uCF )
+
+  CALL amrex_multifab_destroy( MF_uCF )
+
+  CALL amrex_multifab_destroy( MF_uPF )
+
+  CALL amrex_multifab_destroy( MF_uAF )
+
+  CALL amrex_geometry_destroy( GEOM )
 
   ! --- Finalize AMReX ---
 
