@@ -3,7 +3,7 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Two, Three, Four
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX, nX
+    nDOFX, nDimsX, nX, nNodesX
   USE MeshModule, ONLY: &
     MeshX
   USE ReferenceElementModuleX, ONLY:       &
@@ -29,6 +29,8 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
     ComputeSoundSpeedFromPrimitive_GR
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
+  USE QuadratureModule, ONLY: &
+    GetQuadrature
 
   IMPLICIT NONE
 
@@ -623,6 +625,8 @@ CONTAINS
                 EigVals_X2(nCF,nDOFX), Max_X2, &
                 EigVals_X3(nCF,nDOFX), Max_X3
     REAL(DP) :: SourceTerm(3), PosRoot(3), NegRoot(3), a2, a1, a0
+    REAL(DP) :: alpha, W, h
+    REAL(DP) :: tau
     REAL(DP) :: epsilon = Half
     REAL(DP), DIMENSION(nDOFX) :: dh1dX1, dh2dX1, dh3dX1, &
                                   dh1dX2, dh2dX2, dh3dX2, &
@@ -630,6 +634,16 @@ CONTAINS
     REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF), &
                 G_X2_Dn(nDOFX_X2,nGF), G_X2_Up(nDOFX_X2,nGF), &
                 G_X3_Dn(nDOFX_X3,nGF), G_X3_Up(nDOFX_X3,nGF)
+
+    REAL(DP) :: NodesX1(nNodesX(1)), WeightsX1(nNodesX(1))
+    REAL(DP) :: NodesX2(nNodesX(2)), WeightsX2(nNodesX(2))
+    REAL(DP) :: NodesX3(nNodesX(3)), WeightsX3(nNodesX(3))
+
+    CALL GetQuadrature( nNodesX(1), NodesX1, WeightsX1, 'Lobatto' )
+    CALL GetQuadrature( nNodesX(2), NodesX2, WeightsX2, 'Lobatto' )
+    CALL GetQuadrature( nNodesX(3), NodesX3, WeightsX3, 'Lobatto' )
+
+    tau = ( Gamma_IDEAL - 1.0d0 ) / Gamma_IDEAL
 
     TimeStep = HUGE( One )
     dt_X(:)  = HUGE( One )
@@ -999,24 +1013,40 @@ CONTAINS
                                        G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                                        G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
                                        G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
+
+            ! --- Eq. (2.7) from Qin et al., (2016), JCP, 315, 323 ---
+            W = 1.0d0 / SQRT( 1.0d0 &
+                - ( G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) * P(iNodeX,iPF_V1)**2 &
+                  + G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) * P(iNodeX,iPF_V2)**2 &
+                  + G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) * P(iNodeX,iPF_V3)**2 ) )
+            h = 1.0d0 + ( P(iNodeX,iPF_E) + A(iNodeX,iAF_P) ) / P(iNodeX,iPF_D)
+            alpha = ( ABS( P(iNodeX,iPF_V1) ) &
+                      * ( h + 1.0d0 - 2.0d0 * h * tau ) &
+                      * W**2 + SQRT( tau**4 * ( h - 1.0d0 )**2 &
+                      + tau**2 * ( h - 1.0d0 ) &
+                      * ( h + 1.0d0 - 2.0d0 * h * tau ) ) ) &
+                      / ( W**2 * ( h + 1.0d0 - 2.0d0 * h * tau ) &
+                      + tau**2 * ( h - 1.0d0 ) )
+
+            ! --- Maximum wavespeed ---
             Max_X1 &
               = MAX( Max_X1, &
-                       MAXVAL( ABS( EigVals_X1(:,iNodeX) ) &
-                         * G(iNodeX,iX1,iX2,iX3,iGF_h_1) ) )
+                      MAX( ABS( alpha ), &
+                        MAXVAL( ABS( EigVals_X1(:,iNodeX) ) ) ) )
 
 
           END DO ! Loop over nNodesX
 
           dt_X(1) &
-            = dX(1) / ( Two * Max_X1 )
+            = dX(1) * WeightsX1(1) / Max_X1
 
           IF( nDimsX .GT. 1 ) &
             dt_X(2) &
-              = dX(2) / ( Two * Max_X2 )
+              = dX(2) * WeightsX2(1) / Max_X2
 
           IF( nDimsX .GT. 2 ) &
             dt_X(3) &
-              = dX(3) / ( Two * Max_X3 )
+              = dX(3) * WeightsX3(1) / Max_X3
 
           TimeStep = MIN( TimeStep, MIN( MINVAL( dt_X ), MINVAL( dt_S ) ) )
           IF( TimeStep .LT. SqrtTiny )THEN
@@ -1042,7 +1072,7 @@ CONTAINS
       END DO
     END DO
 
-    TimeStep = MAX( epsilon * CFL * TimeStep, SqrtTiny )
+    TimeStep = MAX( CFL * epsilon * TimeStep, SqrtTiny )
 
   END SUBROUTINE ComputeTimeStep_GR
 
