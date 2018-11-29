@@ -82,7 +82,7 @@ Assuming that $\ol{\bU}^{n}\in\cG$, we now seek to derive the conditions that gu
 
 \subsubsection{The numerical flux term: $\ol{\bH}_{1}$}
 
-We start by numerically computing the cell-average using quadrature with the Gauss-Lobatto quadrature rule. We assume that the DG approximation polynomial for the conserved variables is of order $k$, and that the order of the approximate solution is of order $k+d$, where $d$ is an integer that depends on the metric determinant. For the case of Cartesian coordinates, $d=0$ (because $\sqrtgm\sim x^{0}$), and for spherical-polar coordinates, $d=2$ (because $\sqrtgm\sim r^{2}$). Gauss-Lobatto integration will give an exact result if we choose a sufficiently high number, $M$, of quadrature points:
+We start by numerically computing the cell-average using quadrature with the Gauss-Lobatto quadrature rule. We assume that the DG approximation polynomial for the conserved variables is of order $k$, and that the order of the approximate solution is of order $k+d$, where $d$ is an integer that depends on the metric determinant. For the case of Cartesian coordinates, $d=0$ (because $\sqrtgm\sim x^{0}$), and for spherical-polar coordinates in spherical symmetry, $d=2$ (because $\sqrtgm\sim r^{2}$). Gauss-Lobatto integration will give an exact result if we choose a sufficiently high number, $M$, of quadrature points:
 \begin{equation}
     2\,M-3\geq k+d\implies M\geq\f{k+d+3}{2}.
 \end{equation}
@@ -144,17 +144,27 @@ This allows us to write the expression with factors similar to those in \citet{Q
     &+\f{\sqrtgm_{L}\,\Delta x_{j}\,w_{1}}{\Delta V_{j}}\left\{\bU^{+}_{L}\left(1-\f{\Delta t_{j}\,\alpha_{L}}{\ve\,\Delta x_{j}\,w_{1}}\right)+\f{\Delta t_{j}\,\alpha_{L}}{2\,\ve\,\Delta x_{j}\,w_{1}}\left(\left[\bU^{+}_{L}+\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{+}_{L}\right)\right]+\left[\bU^{-}_{L}+\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{-}_{L}\right)\right]\right)\right\}\\
     &+\f{\sqrtgm_{H}\,\Delta x_{j}\,w_{M}}{\Delta V_{j}}\left\{\bU^{-}_{H}\left(1-\f{\Delta t_{j}\,\alpha_{H}}{\ve\,\Delta x_{j}\,w_{M}}\right)+\f{\Delta t_{j}\,\alpha_{H}}{2\,\ve\,\Delta x_{j}\,w_{M}}\left(\left[\bU^{+}_{H}-\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{+}_{H}\right)\right]+\left[\bU^{-}_{H}-\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{-}_{H}\right)\right]\right)\right\}.
 \end{align}
-All of the terms in the square brackets are similar the the $\bH$ quantities in \citet{Qin2016}. We see that the expressions in the curly brackets are convex combinations (given a restriction on $\Delta t_{j}$), because the coefficients sum to unity. Since the quadrature weights are symmetric (so $w_{1}=w_{M}\equiv w_{GL}$), we find that the condition for $\ol{\bH}_{1}\in\cG$ is a time-step restriction:
+All of the terms in the square brackets are similar the the $\bH$ quantities in \citet{Qin2016} and therefore belong to the set of admissible states, provided that:
 \begin{equation}
-\Delta t_{j}<\ve\,\Delta x_{j}\,w_{GL}\,\text{min}\left(\f{1}{\alpha_{L}},\f{1}{\alpha_{H}}\right)
+    \alpha_{L/H}=\alpha^{*}\geq\f{\left|v^{1}\right|\left(h+1-2\,h\,\tau\right)\,W^{2}+\sqrt{\tau^{4}\left(h-1\right)^{2}+\tau^{2}\left(h-1\right)\left(h+1-2\,h\,\tau\right)}}{W^{2}\left(h+1-2\,h\,\tau\right)+\tau^{2}\left(h-1\right)},
+\end{equation}
+where $h$ is the relativistic specific enthalpy and
+\begin{equation}
+    \tau\equiv\f{\Gamma-1}{\Gamma},
+\end{equation}
+where $\Gamma$ is the adiabatic index.
+
+We see that the expressions in the curly brackets are convex combinations (given a restriction on $\Delta t_{j}$), because the coefficients sum to unity. Since the quadrature weights are symmetric (so $w_{1}=w_{M}\equiv w_{GL}$), we find that the condition for $\ol{\bH}_{1}\in\cG$ is a time-step restriction:
+\begin{equation}
+\Delta t_{j}<\ve\,\Delta x_{j}\,w_{GL}\,\text{min}\left(\f{1}{\alpha_{L}},\f{1}{\alpha_{H}},\f{1}{\alpha^{*}}\right)
 \end{equation}
 Since we want a time-step that is constant for all elements, we choose:
 \begin{equation}
-\Delta t<\ve\,w_{GL}\,\text{min}_{j}\left(\f{\Delta x_{j}}{\text{max}\left(\alpha_{L},\alpha_{H}\right)}\right).
+\Delta t<\ve\,w_{GL}\,\text{min}_{j}\left(\f{\Delta x_{j}}{\text{max}\left(\alpha_{L},\alpha_{H},\alpha^{*}\right)}\right).
 \end{equation}
 
 \red{NEW ASSUMPTION:} In order for this to work, we also demand that all of the $\bU_{q}$ are within physical bounds.
 
-\blue{NOTE:} We see the effect of the high-order approximation in the presence of the quadrature end-point weight $w_{GL}$. As the order increases, $w$ decreases, thus making a tighter restriction on the time-step.
+\blue{NOTE:} We see the effect of the high-order approximation in the presence of the quadrature end-point weight $w_{GL}$. As the order increases, $w_{GL}$ decreases, thus making a tighter restriction on the time-step.
 
 \blue{NOTE:} It is worth noting that this result is independent of the metric determinant.
