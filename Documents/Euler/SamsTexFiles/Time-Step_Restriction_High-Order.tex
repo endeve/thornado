@@ -87,6 +87,8 @@ We start by numerically computing the cell-average using quadrature with the Gau
     2\,M-3\geq k+d\implies M\geq\f{k+d+3}{2}.
 \end{equation}
 
+\blue{NOTE:} We do not use this restriction in the code. We simply take $M$ equal to the number of quadrature points (which is the same as the number of interpolation points). The difference will be accounted for by the presence of the CFL number.
+
 \blue{NOTE:} We now drop the superscript $n$ for the rest of this subsection.
 
 Assuming that we choose a sufficient number of points, we can write the cell-average as:
@@ -167,4 +169,4 @@ Since we want a time-step that is constant for all elements, we choose:
 
 \blue{NOTE:} We see the effect of the high-order approximation in the presence of the quadrature end-point weight $w_{GL}$. As the order increases, $w_{GL}$ decreases, thus making a tighter restriction on the time-step.
 
-\blue{NOTE:} It is worth noting that this result is independent of the metric determinant.
+\blue{NOTE:} It is worth noting that this result is \textit{not} independent of the metric, because it is incorporated through the wave-speed in the numerical flux.
