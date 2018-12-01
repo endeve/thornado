@@ -1,0 +1,65 @@
+\section{Recovery of Primitive Variables}
+In order to recover the primitive from the conserved variables we need to solve the nonlinear equation:
+\begin{equation}
+    f\left(p\right)=p-\ol{p}\left(p\right)=0,
+\end{equation}
+where $\ol{p}\left(p\right)$ is the pressure as obtained via the ideal gas equation of state with an initial guess, $p$:
+\begin{equation}
+    \ol{p}=\left(\Gamma-1\right)\rho\,\epsilon,
+\end{equation}
+where
+\begin{equation}
+    \rho=\rho\left(\bU,p\right),\hspace{1em}\epsilon=\epsilon\left(\bU,p\right).
+\end{equation}
+
+In order to solve this equation we make use of the bisection method, and therefore need bounds on our initial guess for the pressure.
+
+\subsection{Upper and Lower Bounds for Pressure}
+We obtain a lower bound for the pressure with:
+\begin{equation}
+\tau=D\left(h\,W-1\right)-p\implies p=-\left(\tau+D\right)+D\,h\,W\geq-\left(\tau+D\right)+D\,h\,W\,\sqrt{v^{i}\,v_{i}}=-\left(\tau+D\right)+\sqrt{S^{i}\,S_{i}}.
+\end{equation}
+So, since the pressure must be non-negative, we have:
+\begin{equation}
+p\geq\text{MAX}\left[-\left(\tau+D\right)+\sqrt{S^{i}\,S_{i}},\text{SqrtTiny}\right].
+\end{equation}
+
+For an upper bound, we first note that:
+\begin{equation}
+h=1+\f{e+p}{\rho}=1+\f{\Gamma}{\Gamma-1}\f{p}{\rho}=1+\f{\Gamma}{\Gamma-1}\,\f{p\,W}{D},
+\end{equation}
+so,
+%\begin{equation}
+%    \tau=D\left(W+\f{\Gamma}{\Gamma-1}\f{p\,W^{2}}{D}-1\right)-p=D\left(W-1\right)+p\left(\f{\Gamma}{\Gamma-1}W^{2}-1\right).
+%\end{equation}
+%So,
+%\begin{equation}
+%    p=\f{\tau-D\left(W-1\right)}{\f{\Gamma}{\Gamma-1}W^{2}-1}.
+%\end{equation}
+%We also have:
+%\begin{equation}
+%    W=\left(1-v^{i}\,v_{i}\right)^{-1/2}=\left(1-\f{S^{i}\,S_{i}}{\left(\tau+D+p\right)^{2}}\right)^{-1/2}.
+%\end{equation}
+%Treating $p$ as an independent variable \sd{is this valid?}, we have:
+%\begin{equation}
+%    W\Big|_{p\rightarrow\infty}=1,
+%\end{equation}
+%which gives us an upper limit:
+%\begin{equation}
+%    p\leq\f{\Gamma-1}{\Gamma}\,\tau.
+%\end{equation}
+%Just to be safe, in the code we multiply this by two, so that:
+%\begin{equation}
+%    p\leq2\,\f{\Gamma-1}{\Gamma}\,\tau.
+%\end{equation}
+\begin{equation}
+    \tau=D\left(W+\f{\Gamma}{\Gamma-1}\f{p\,W^{2}}{D}-1\right)-p=D\left(W-1\right)+p\left(\f{\Gamma}{\Gamma-1}W^{2}-1\right)>p\left(\f{\Gamma}{\Gamma-1}-1\right)=\f{p}{\Gamma-1}.
+\end{equation}
+So,
+\begin{equation}
+    p<\left(\Gamma-1\right)\tau.
+\end{equation}
+Typically, $\Gamma-1<3$. So, we end up with:
+\begin{equation}
+    p<3\,\tau.
+\end{equation}
