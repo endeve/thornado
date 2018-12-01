@@ -3,6 +3,8 @@ dt_wrt = 0.1                         # Write time interval
 
 ProgramName = "IsentropicVortex"
 
+Gamma = 1.4 # Ideal Gas EoS Gamma
+
 nNodes  = 2 # Number of DG nodes in each active dimension
 nStages = 2 # Number of SSK-RK stages for time integration
 

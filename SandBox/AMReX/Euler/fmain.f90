@@ -21,6 +21,8 @@ PROGRAM main
     InitializeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
+  USE EquationOfStateModule,            ONLY: &
+    InitializeEquationOfState
   USE GeometryFieldsModule,             ONLY: &
     nGF
   USE FluidFieldsModule,                ONLY: &
@@ -46,6 +48,7 @@ PROGRAM main
   INTEGER, ALLOCATABLE  :: max_grid_size(:)
   REAL(amrex_real)      :: t_end
   REAL(amrex_real)      :: dt_wrt
+  REAL(amrex_real)      :: Gamma_IDEAL
   TYPE(amrex_parmparse) :: PP
   TYPE(amrex_box)       :: BX
   TYPE(amrex_boxarray)  :: BA
@@ -64,20 +67,27 @@ PROGRAM main
 
   CALL amrex_parmparse_build( PP )
 
-  CALL PP % get( "t_end",   t_end )
-  CALL PP % get( "dt_wrt",  dt_wrt )
-  CALL PP % get( "nNodes",  nNodes )
-  CALL PP % get( "nStages", nStages )
+  CALL PP % get( "t_end",       t_end )
+  CALL PP % get( "dt_wrt",      dt_wrt )
+  CALL PP % get( "nNodes",      nNodes )
+  CALL PP % get( "nStages",     nStages )
   CALL PP % get( "ProgramName", ProgramName )
+  CALL PP % get( "Gamma",       Gamma_IDEAL )
 
   CALL amrex_parmparse_destroy( PP )
 
-  PRINT*, "t_end   = ", t_end
-  PRINT*, "dt_wrt  = ", dt_wrt
-  PRINT*, "nNodes  = ", nNodes
-  PRINT*, "nStages = ", nStages
-  PRINT*, "nDimsX  = ", amrex_spacedim
-  PRINT*, "Name    = ", ProgramName, LEN( ProgramName )
+  IF( amrex_parallel_ioprocessor() )THEN
+
+    PRINT*
+    PRINT*, "t_end   = ", t_end
+    PRINT*, "dt_wrt  = ", dt_wrt
+    PRINT*, "nNodes  = ", nNodes
+    PRINT*, "nStages = ", nStages
+    PRINT*, "nDimsX  = ", amrex_spacedim
+    PRINT*, "Name    = ", ProgramName
+    PRINT*, "Gamma   = ", Gamma_IDEAL
+
+  END IF
 
   CALL amrex_parmparse_build( PP, "geometry" )
 
@@ -85,7 +95,12 @@ PROGRAM main
 
   CALL amrex_parmparse_destroy( PP )
 
-  PRINT*, "CoordinateSystem = ", CoordinateSystem
+  IF( amrex_parallel_ioprocessor() )THEN
+
+    PRINT*
+    PRINT*, "CoordinateSystem = ", CoordinateSystem
+
+  END IF
 
   CALL amrex_parmparse_build( PP, "amr" )
 
@@ -94,8 +109,13 @@ PROGRAM main
 
   CALL amrex_parmparse_destroy( PP )
 
-  PRINT*, "n_cell = ", n_cell
-  PRINT*, "max_grid_size = ", max_grid_size
+  IF( amrex_parallel_ioprocessor() )THEN
+
+    PRINT*
+    PRINT*, "n_cell = ", n_cell
+    PRINT*, "max_grid_size = ", max_grid_size
+
+  END IF
 
   DO iDim = 1, amrex_spacedim
     nX (iDim) = n_cell(iDim)
@@ -116,11 +136,11 @@ PROGRAM main
 
   CALL InitializeReferenceElementX_Lagrange
 
-  BX = amrex_box( [ 1, 1, 1 ], [ n_cell(1), n_cell(2), n_cell(3) ] )
+  CALL InitializeEquationOfState &
+         ( EquationOfState_Option = 'IDEAL', &
+           Gamma_IDEAL_Option = Gamma_IDEAL )
 
-  PRINT*, "BX % Lo = ", BX % Lo
-  PRINT*, "BX % Hi = ", BX % Hi
-  PRINT*, "BX % nodal = ", BX % nodal
+  BX = amrex_box( [ 1, 1, 1 ], [ n_cell(1), n_cell(2), n_cell(3) ] )
 
   CALL amrex_print( BX )
 
@@ -129,8 +149,6 @@ PROGRAM main
   CALL BA % maxSize( max_grid_size )
 
   CALL amrex_geometry_build( GEOM, BX )
-
-  PRINT*, "GEOM % dx = ", GEOM % dx
 
   CALL amrex_distromap_build( DM, BA )
 
