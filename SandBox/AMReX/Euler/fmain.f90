@@ -21,11 +21,15 @@ PROGRAM main
     InitializeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
+  USE GeometryFieldsModule,             ONLY: &
+    nGF
   USE FluidFieldsModule,                ONLY: &
     nCF, nPF, nAF
 
   ! --- Local Modules ---
 
+  USE MF_GeometryModule,    ONLY: &
+    MF_ComputeGeometryX
   USE InitializationModule, ONLY: &
     InitializeFields
 
@@ -36,6 +40,7 @@ PROGRAM main
   INTEGER :: nNodes
   INTEGER :: nStages
   INTEGER :: nX(3) = 1, swX(3) = 0
+  INTEGER :: CoordinateSystem
   INTEGER, PARAMETER :: nGhost = 2
   INTEGER, ALLOCATABLE  :: n_cell(:)
   INTEGER, ALLOCATABLE  :: max_grid_size(:)
@@ -46,6 +51,7 @@ PROGRAM main
   TYPE(amrex_boxarray)  :: BA
   TYPE(amrex_geometry)  :: GEOM
   TYPE(amrex_distromap) :: DM
+  TYPE(amrex_multifab)  :: MF_uGF
   TYPE(amrex_multifab)  :: MF_uCF
   TYPE(amrex_multifab)  :: MF_uPF
   TYPE(amrex_multifab)  :: MF_uAF
@@ -72,6 +78,14 @@ PROGRAM main
   PRINT*, "nStages = ", nStages
   PRINT*, "nDimsX  = ", amrex_spacedim
   PRINT*, "Name    = ", ProgramName, LEN( ProgramName )
+
+  CALL amrex_parmparse_build( PP, "geometry" )
+
+  CALL PP % get( "coord_sys", CoordinateSystem )
+
+  CALL amrex_parmparse_destroy( PP )
+
+  PRINT*, "CoordinateSystem = ", CoordinateSystem
 
   CALL amrex_parmparse_build( PP, "amr" )
 
@@ -120,6 +134,8 @@ PROGRAM main
 
   CALL amrex_distromap_build( DM, BA )
 
+  CALL amrex_multifab_build( MF_uGF, BA, DM, nDOFX * nGF, nGhost )
+
   CALL amrex_multifab_build( MF_uCF, BA, DM, nDOFX * nCF, nGhost )
 
   CALL amrex_multifab_build( MF_uPF, BA, DM, nDOFX * nPF, nGhost )
@@ -130,7 +146,11 @@ PROGRAM main
 
   CALL amrex_boxarray_destroy( BA )
 
+  CALL MF_ComputeGeometryX( MF_uGF )
+
   CALL InitializeFields( TRIM( ProgramName ), GEOM, MF_uCF )
+
+  CALL amrex_multifab_destroy( MF_uGF )
 
   CALL amrex_multifab_destroy( MF_uCF )
 
