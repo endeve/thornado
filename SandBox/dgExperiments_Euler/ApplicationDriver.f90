@@ -70,7 +70,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'IsentropicVortex'
+  ProgramName = 'Explosion'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -277,6 +277,31 @@ PROGRAM ApplicationDriver
       iCycleD = 10
       t_end   = 2.500_DP
       dt_wrt  = 0.045_DP
+
+    CASE( 'Explosion' )
+
+      Gamma = 1.4_DP
+      
+      nX = [ 256, 256, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 1.5_DP, 1.5_DP, 1.0_DP ]
+
+      bcX = [ 31, 31, 0 ]
+
+      nNodes = 3
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 0.05_DP
+
+      iCycleD = 10
+      t_end   = 3.20_DP
+      dt_wrt  = 0.32_DP
 
   END SELECT
 
