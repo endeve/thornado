@@ -139,11 +139,14 @@ CONTAINS
 
   SUBROUTINE InitializeEquationOfState &
                ( EquationOfState_Option, EquationOfStateTableName_Option, &
-                 Gamma_IDEAL_Option )
+                 Gamma_IDEAL_Option, Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfState_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Gamma_IDEAL_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
+
+    LOGICAL :: Verbose
 
     IF( PRESENT( EquationOfState_Option ) )THEN
       EquationOfState = EquationOfState_Option
@@ -151,11 +154,19 @@ CONTAINS
       EquationOfState = 'IDEAL'
     END IF
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A19,A)') &
-      '', 'Equation Of State: ', TRIM( EquationOfState )
-    WRITE(*,'(A5,A19)') &
-      '', '------------------ '
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .FALSE.
+    END IF
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A19,A)') &
+        '', 'Equation Of State: ', TRIM( EquationOfState )
+      WRITE(*,'(A5,A19)') &
+        '', '------------------ '
+    END IF
 
     SELECT CASE ( TRIM( EquationOfState ) )
 
