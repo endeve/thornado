@@ -88,7 +88,11 @@ CONTAINS
 
       CASE( 'Implosion' )
 
-        CALL InitializeFields_Implosion   
+        CALL InitializeFields_Implosion
+
+      CASE( 'Explosion' )
+
+        CALL InitializeFields_Explosion
 
     END SELECT
 
@@ -775,6 +779,74 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_Implosion
+
+
+  SUBROUTINE InitializeFields_Explosion
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2, R
+    INTEGER,  PARAMETER :: p = 150
+    REAL(DP), PARAMETER :: R_0 = 0.4_DP
+    REAL(DP), PARAMETER :: D_O = 0.125_DP
+    REAL(DP), PARAMETER :: E_O = 0.250_DP
+    REAL(DP), PARAMETER :: D_I = 1.000_DP
+    REAL(DP), PARAMETER :: E_I = 2.500_DP
+
+    DO iX3 = 1, nX(3)
+    DO iX2 = 1, nX(2)
+    DO iX1 = 1, nX(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        R = SQRT( X1**2 + X2**2 )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+          = ( D_I + (R/R_0)**p * D_O ) / ( One + (R/R_0)**p )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+          = ( E_I + (R/R_0)**p * E_O ) / ( One + (R/R_0)**p )
+
+!!$        IF( R <= R_0 )THEN
+!!$   
+!!$          uPF(iNodeX,iX1,iX2,iX3,iPF_D) = D_I
+!!$          uPF(iNodeX,iX1,iX2,iX3,iPF_E) = E_I
+!!$
+!!$        ELSE
+!!$
+!!$          uPF(iNodeX,iX1,iX2,iX3,iPF_D) = D_O
+!!$          uPF(iNodeX,iX1,iX2,iX3,iPF_E) = E_O
+!!$
+!!$        ENDIF
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+
+      END DO
+
+      CALL ComputeConserved &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Explosion
 
 
 END MODULE InitializationModule
