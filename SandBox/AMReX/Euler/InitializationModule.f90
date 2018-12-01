@@ -6,14 +6,16 @@ MODULE InitializationModule
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule, ONLY: &
+  USE ProgramHeaderModule,     ONLY: &
     nDOFX, nX, nNodesX
-  USE MeshModule,          ONLY: &
-    MeshType,                    &
-    CreateMesh,                  &
-    DestroyMesh,                 &
+  USE ReferenceElementModuleX, ONLY: &
+    NodeNumberTableX
+  USE MeshModule,              ONLY: &
+    MeshType,                        &
+    CreateMesh,                      &
+    DestroyMesh,                     &
     NodeCoordinate
-  USE FluidFieldsModule,   ONLY: &
+  USE FluidFieldsModule,       ONLY: &
     nCF
 
   IMPLICIT NONE
@@ -61,7 +63,10 @@ CONTAINS
 
     INTEGER            :: iDim
     INTEGER            :: iX1, iX2, iX3
+    INTEGER            :: iNodeX
+    INTEGER            :: iNodeX1, iNodeX2, iNodeX3
     INTEGER            :: lo(4), hi(4)
+    REAL(amrex_real)   :: X1, X2, X3
     REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
@@ -98,9 +103,19 @@ CONTAINS
       DO iX2 = BX % lo(2), BX % hi(2)
       DO iX1 = BX % lo(1), BX % hi(1)
 
-!        X1 = amrex_problo(1)
+        DO iNodeX = 1, nDOFX
 
-!        PRINT*, "iX1,iX2,iX3 = ",iX1,iX2,iX3
+          iNodeX1 = NodeNumberTableX(1,iNodeX)
+          iNodeX2 = NodeNumberTableX(2,iNodeX)
+          iNodeX3 = NodeNumberTableX(3,iNodeX)
+
+          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+          X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+          X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
+
+
+
+        END DO
 
         uCF_K(1:nDOFX,1:nCF) &
           = RESHAPE( uCF(iX1,iX2,iX3,lo(4):hi(4)), [ nDOFX, nCF ] )
