@@ -30,10 +30,12 @@ PROGRAM main
 
   ! --- Local Modules ---
 
-  USE MF_GeometryModule,    ONLY: &
+  USE MF_GeometryModule,        ONLY: &
     MF_ComputeGeometryX
-  USE InitializationModule, ONLY: &
-    InitializeFields
+  USE MF_InitializationModule,  ONLY: &
+    MF_InitializeFields
+  USE MF_Euler_UtilitiesModule, ONLY: &
+    MF_ComputeFromConserved
 
   IMPLICIT NONE
 
@@ -78,14 +80,15 @@ PROGRAM main
 
   IF( amrex_parallel_ioprocessor() )THEN
 
-    PRINT*
-    PRINT*, "t_end   = ", t_end
-    PRINT*, "dt_wrt  = ", dt_wrt
-    PRINT*, "nNodes  = ", nNodes
-    PRINT*, "nStages = ", nStages
-    PRINT*, "nDimsX  = ", amrex_spacedim
-    PRINT*, "Name    = ", ProgramName
-    PRINT*, "Gamma   = ", Gamma_IDEAL
+    WRITE(*,*)
+    WRITE(*,'(A4,A6,A)') '', 'Name: ', TRIM( ProgramName )
+    WRITE(*,*)
+    WRITE(*,'(A4,A24,ES10.3E2)') '',   't_end =', t_end
+    WRITE(*,'(A4,A24,ES10.3E2)') '',  'dt_wrt =', dt_wrt
+    WRITE(*,'(A4,A24,I7.6)')     '',  'nNodes =', nNodes
+    WRITE(*,'(A4,A24,I7.6)')     '', 'nStages =', nStages
+    WRITE(*,'(A4,A24,I3.2)')     '',  'nDimsX =', amrex_spacedim
+    WRITE(*,'(A4,A24,ES10.3E2)') '',   'Gamma =', Gamma_IDEAL
 
   END IF
 
@@ -97,8 +100,9 @@ PROGRAM main
 
   IF( amrex_parallel_ioprocessor() )THEN
 
-    PRINT*
-    PRINT*, "CoordinateSystem = ", CoordinateSystem
+    WRITE(*,*)
+    WRITE(*,'(A4,A24,I3.2)') &
+      '', 'CoordinateSystem =', CoordinateSystem
 
   END IF
 
@@ -111,9 +115,9 @@ PROGRAM main
 
   IF( amrex_parallel_ioprocessor() )THEN
 
-    PRINT*
-    PRINT*, "n_cell = ", n_cell
-    PRINT*, "max_grid_size = ", max_grid_size
+    WRITE(*,*)
+    WRITE(*,'(A4,A24,3I7.6)') '',        'n_cell =', n_cell
+    WRITE(*,'(A4,A24,3I7.6)') '', 'max_grid_size =', max_grid_size
 
   END IF
 
@@ -126,7 +130,11 @@ PROGRAM main
          ( ProgramName_Option = TRIM( ProgramName ), &
            nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX )
 
-  CALL DescribeProgramHeaderX
+  IF( amrex_parallel_ioprocessor() )THEN
+
+    CALL DescribeProgramHeaderX
+
+  END IF
 
   CALL InitializePolynomialBasisX_Lagrange
 
@@ -141,8 +149,6 @@ PROGRAM main
            Gamma_IDEAL_Option = Gamma_IDEAL )
 
   BX = amrex_box( [ 1, 1, 1 ], [ n_cell(1), n_cell(2), n_cell(3) ] )
-
-  CALL amrex_print( BX )
 
   CALL amrex_boxarray_build( BA, BX )
 
@@ -166,7 +172,9 @@ PROGRAM main
 
   CALL MF_ComputeGeometryX( MF_uGF )
 
-  CALL InitializeFields( TRIM( ProgramName ), GEOM, MF_uCF )
+  CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
+
+  CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   CALL amrex_multifab_destroy( MF_uGF )
 

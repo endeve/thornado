@@ -1,4 +1,7 @@
-f90EXE_sources += fmain.f90 InitializationModule.f90 MF_GeometryModule.f90
+f90EXE_sources += fmain.f90
+f90EXE_sources += MF_InitializationModule.f90
+f90EXE_sources += MF_GeometryModule.f90
+f90EXE_sources += MF_Euler_UtilitiesModule.f90
 F90EXE_sources += dgemv.F90 lsame.F90
 
 # thornado VPATH_LOCATIONS:
@@ -10,6 +13,7 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Mesh
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/EquationOfState
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Euler
 
 # In THORNADO_DIR/Modules/Numbers:
 
@@ -51,3 +55,7 @@ f90EXE_sources += GeometryComputationModule.f90
 # In THORNADO_DIR/Modules/Fields:
 
 f90EXE_sources += FluidFieldsModule.f90
+
+# In THORNADO_DIR/Modules/Euler:
+
+f90EXE_sources += Euler_UtilitiesModule.f90
