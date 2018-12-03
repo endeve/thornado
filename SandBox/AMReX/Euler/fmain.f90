@@ -27,6 +27,8 @@ PROGRAM main
     nGF
   USE FluidFieldsModule,                ONLY: &
     nCF, nPF, nAF
+  USE InputOutputModuleAMReX,           ONLY: &
+    WriteFieldsAMReX_PlotFile
 
   ! --- Local Modules ---
 
@@ -175,6 +177,8 @@ PROGRAM main
   CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
 
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+  CALL WriteFieldsAMReX_PlotFile( Time = 0.0_DP )
 
   CALL amrex_multifab_destroy( MF_uGF )
 
