@@ -178,7 +178,8 @@ PROGRAM main
 
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-  CALL WriteFieldsAMReX_PlotFile( Time = 0.0_DP )
+  CALL WriteFieldsAMReX_PlotFile &
+         ( 0.0_DP, GEOM, MF_uGF_Option = MF_uGF )
 
   CALL amrex_multifab_destroy( MF_uGF )
 
