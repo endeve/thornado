@@ -3,13 +3,13 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Two, Three, Four
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX, nX, nNodesX
+    nDOFX, nDimsX, nX
   USE MeshModule, ONLY: &
     MeshX
-  USE ReferenceElementModuleX, ONLY:       &
-    nDOFX_X1, nDOFX_X2, nDOFX_X3,          &
-    WeightsX_X1, WeightsX_X2, WeightsX_X3, &
-    WeightsX_q
+  USE ReferenceElementModuleX, ONLY:          &
+    nDOFX_X1, nDOFX_X2, nDOFX_X3, WeightsX_q, &
+    WeightsX_X1, WeightsX_X2, WeightsX_X3,    &
+    WeightsLX1,  WeightsLX2,  WeightsLX3
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     dLXdX1_q, dLXdX2_q, dLXdX3_q,             &
     LX_X1_Dn, LX_X1_Up,                       &
@@ -29,8 +29,6 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
     ComputeSoundSpeedFromPrimitive_GR
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
-  USE QuadratureModule, ONLY: &
-    GetQuadrature
 
   IMPLICIT NONE
 
@@ -47,11 +45,13 @@ MODULE EulerEquationsUtilitiesModule_Beta_GR
   PUBLIC :: ComputeTimeStep_GR
   PUBLIC :: Eigenvalues_GR
   PUBLIC :: Flux_X1_GR
+  PUBLIC :: Flux_X2_GR
   PUBLIC :: StressTensor_Diagonal
   PUBLIC :: AlphaC_GR
-  PUBLIC :: NumericalFlux_X1_LLF_GR
-  PUBLIC :: NumericalFlux_X1_HLL_GR
+  PUBLIC :: NumericalFlux_LLF_GR
+  PUBLIC :: NumericalFlux_HLL_GR
   PUBLIC :: NumericalFlux_X1_HLLC_GR
+  PUBLIC :: NumericalFlux_X2_HLLC_GR
 
   REAL(DP), PARAMETER :: TolP = 1.0d-8, TolFunP = 1.0d-6, MachineEPS = 1.0d-16
 
@@ -612,7 +612,7 @@ CONTAINS
       G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:), &
       U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(in)  :: &
-         CFL
+      CFL
     REAL(DP), INTENT(out) :: &
       TimeStep
 
@@ -634,14 +634,6 @@ CONTAINS
     REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF), &
                 G_X2_Dn(nDOFX_X2,nGF), G_X2_Up(nDOFX_X2,nGF), &
                 G_X3_Dn(nDOFX_X3,nGF), G_X3_Up(nDOFX_X3,nGF)
-
-    REAL(DP) :: NodesX1(nNodesX(1)), WeightsX1(nNodesX(1))
-    REAL(DP) :: NodesX2(nNodesX(2)), WeightsX2(nNodesX(2))
-    REAL(DP) :: NodesX3(nNodesX(3)), WeightsX3(nNodesX(3))
-
-    CALL GetQuadrature( nNodesX(1), NodesX1, WeightsX1, 'Lobatto' )
-    CALL GetQuadrature( nNodesX(2), NodesX2, WeightsX2, 'Lobatto' )
-    CALL GetQuadrature( nNodesX(3), NodesX3, WeightsX3, 'Lobatto' )
 
     tau = ( Gamma_IDEAL - 1.0d0 ) / Gamma_IDEAL
 
@@ -1034,19 +1026,18 @@ CONTAINS
                       MAX( ABS( alpha ), &
                         MAXVAL( ABS( EigVals_X1(:,iNodeX) ) ) ) )
 
-
           END DO ! Loop over nNodesX
 
           dt_X(1) &
-            = dX(1) * WeightsX1(1) / Max_X1
+            = dX(1) * WeightsLX1(1) / Max_X1
 
           IF( nDimsX .GT. 1 ) &
             dt_X(2) &
-              = dX(2) * WeightsX2(1) / Max_X2
+              = dX(2) * WeightsLX2(1) / Max_X2
 
           IF( nDimsX .GT. 2 ) &
             dt_X(3) &
-              = dX(3) * WeightsX3(1) / Max_X3
+              = dX(3) * WeightsLX3(1) / Max_X3
 
           TimeStep = MIN( TimeStep, MIN( MINVAL( dt_X ), MINVAL( dt_S ) ) )
           IF( TimeStep .LT. SqrtTiny )THEN
@@ -1150,40 +1141,77 @@ CONTAINS
 
 
   FUNCTION Flux_X1_GR &
-    ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Alpha, Beta1 )
+    ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
 
-    REAL(DP), INTENT(in)       :: D, V1, V2, V3, E, P, Ne
-    REAL(DP), INTENT(in)       :: Alpha, Beta1, Gm11, Gm22, Gm33
+    REAL(DP), INTENT(in)       :: D, V1, V2, V3, E, Ne, P
+    REAL(DP), INTENT(in)       :: Gm11, Gm22, Gm33, Lapse, Shift
     REAL(DP), DIMENSION(1:nCF) :: Flux_X1_GR
 
     REAL(DP) :: vSq, W, h
 
     vSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
 
-    W   = 1.0_DP / SQRT( 1.0_DP - vSq )
+    W   = 1.0d0 / SQRT( 1.0d0 - vSq )
 
-    h   = 1.0_DP + ( E + P ) / D
+    h   = 1.0d0 + ( E + P ) / D
 
     Flux_X1_GR(iCF_D)  &
-      = D * W * ( V1 - Beta1 / Alpha )
+      = D * W * ( V1 - Shift / Lapse )
 
     Flux_X1_GR(iCF_S1) &
-      = D * h * W**2 * Gm11 * V1 * ( V1 - Beta1 / Alpha ) + P
+      = D * h * W**2 * Gm11 * V1  * ( V1 - Shift / Lapse ) + P
 
     Flux_X1_GR(iCF_S2) &
-      = D * h * W**2 * Gm22 * V2 * ( V1 - Beta1 / Alpha )
+      = D * h * W**2 * Gm22 * V2  * ( V1 - Shift / Lapse )
 
     Flux_X1_GR(iCF_S3) &
-      = D * h * W**2 * Gm33 * V3 * ( V1 - Beta1 / Alpha )
+      = D * h * W**2 * Gm33 * V3  * ( V1 - Shift / Lapse )
 
     Flux_X1_GR(iCF_E)  &
-      = D * W * ( h * W - One ) * ( V1 - Beta1 / Alpha ) + Beta1 / Alpha * P
+      = D * W * ( h * W - 1.0d0 ) * ( V1 - Shift / Lapse ) + Shift / Lapse * P
 
     Flux_X1_GR(iCF_Ne) &
-      = Ne * W * ( V1 - Beta1 / Alpha )
+      = Ne * W * ( V1 - Shift / Lapse )
 
     RETURN
   END FUNCTION Flux_X1_GR
+
+
+  FUNCTION Flux_X2_GR &
+    ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
+
+    REAL(DP), INTENT(in)       :: D, V1, V2, V3, E, Ne, P
+    REAL(DP), INTENT(in)       :: Gm11, Gm22, Gm33, Lapse, Shift
+    REAL(DP), DIMENSION(1:nCF) :: Flux_X2_GR
+
+    REAL(DP) :: vSq, W, h
+
+    vSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
+
+    W   = 1.0d0 / SQRT( 1.0d0 - vSq )
+
+    h   = 1.0d0 + ( E + P ) / D
+
+    Flux_X2_GR(iCF_D)  &
+      = D * W * ( V2 - Shift / Lapse )
+
+    Flux_X2_GR(iCF_S1) &
+      = D * h * W**2 * Gm11 * V1  * ( V2 - Shift / Lapse )
+
+    Flux_X2_GR(iCF_S2) &
+      = D * h * W**2 * Gm22 * V2  * ( V2 - Shift / Lapse ) + P
+
+    Flux_X2_GR(iCF_S3) &
+      = D * h * W**2 * Gm33 * V3  * ( V2 - Shift / Lapse )
+
+    Flux_X2_GR(iCF_E)  &
+      = D * W * ( h * W - 1.0d0 ) * ( V2 - Shift / Lapse ) + Shift / Lapse * P
+
+    Flux_X2_GR(iCF_Ne) &
+      = Ne * W * ( V2 - Shift / Lapse )
+
+    RETURN
+  END FUNCTION Flux_X2_GR
 
 
   PURE FUNCTION StressTensor_Diagonal( S_1, S_2, S_3, V_1, V_2, V_3, P )
@@ -1200,13 +1228,13 @@ CONTAINS
 
 
   REAL(DP) FUNCTION AlphaC_GR &
-             ( U_L, U_R, F_L, F_R, Gmdd, LapseFunction, ShiftVector, aP, aM )
+             ( U_L, U_R, F_L, F_R, Gmdd, Lapse, Shift, aP, aM )
 
     ! --- Middle Wavespeed as suggested by Mignone and Bodo (2005) ---
 
     REAL(DP), INTENT(in) :: U_L(nCF), U_R(nCF), &
                             F_L(nCF), F_R(nCF), &
-                            Gmdd, LapseFunction, ShiftVector, &
+                            Gmdd, Lapse, Shift, &
                             aP, aM
 
     REAL(DP) :: E_L, E_R, F_E_L, F_E_R, A_L, A_R, B_L, B_R
@@ -1217,18 +1245,18 @@ CONTAINS
     F_E_L = F_L(iCF_E) + F_L(iCF_D)
     F_E_R = F_R(iCF_E) + F_R(iCF_D)
 
-    A_L = -aM * E_L - LapseFunction * F_E_L
-    A_R = +aP * E_R - LapseFunction * F_E_R
-    B_L = -aM * U_L(iCF_S1) - LapseFunction * F_L(iCF_S1)
-    B_R = +aP * U_R(iCF_S1) - LapseFunction * F_R(iCF_S1)
+    A_L = -aM * E_L - Lapse * F_E_L
+    A_R = +aP * E_R - Lapse * F_E_R
+    B_L = -aM * U_L(iCF_S1) - Lapse * F_L(iCF_S1)
+    B_R = +aP * U_R(iCF_S1) - Lapse * F_R(iCF_S1)
 
     ! --- A, B, and C from quadratic equation ---
     A = Gmdd**2 &
-          * ( A_R * ( -aM + ShiftVector ) - A_L * ( aP + ShiftVector ) )
+          * ( A_R * ( -aM + Shift ) - A_L * ( aP + Shift ) )
     B = Gmdd &
-          * ( ( LapseFunction * A_L - B_R * ( -aM + ShiftVector ) ) &
-            - ( LapseFunction * A_R - B_L * (  aP + ShiftVector ) ) )
-    C = LapseFunction * ( B_R - B_L )
+          * ( ( Lapse * A_L - B_R * ( -aM + Shift ) ) &
+            - ( Lapse * A_R - B_L * (  aP + Shift ) ) )
+    C = Lapse * ( B_R - B_L )
 
     ! --- Accounting for special cases of the solution to a
     !     quadratic equation when A = 0 ---
@@ -1254,148 +1282,262 @@ CONTAINS
   END FUNCTION AlphaC_GR
 
 
-  PURE FUNCTION NumericalFlux_X1_LLF_GR &
-      ( u_L, u_R, Flux_L, Flux_R, aP, aM, aC, nF, &
-        V1_L, V1_R, p_L, p_R, ShiftVector1, Gm11 )    
+  PURE FUNCTION NumericalFlux_LLF_GR &
+      ( UL, UR, FL, FR, aP, aM, aC, nF, &
+        vL, vR, pL, pR, Lapse, Shift, Gmdd )
 
     ! --- Local Lax-Friedrichs Flux ---
 
-    INTEGER,  INTENT(in)                   :: nF
-    REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
-    REAL(DP), INTENT(in)                   :: aP, aM, aC, V1_L, V1_R, &
-                                              p_L, p_R, ShiftVector1, Gm11
-    REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_X1_LLF_GR
-    REAL(DP) :: alpha
+    INTEGER,  INTENT(in) :: nF
+    REAL(DP), INTENT(in) :: UL(1:nF), UR(1:nF), FL(1:nF), FR(1:nF), &
+                            aP, aM, aC, vL, vR, pL, pR, &
+                            Lapse, Shift, Gmdd
+    REAL(DP)             :: p, D, S1, S2, S3, E, Ne
+    REAL(DP)             :: NumericalFlux_LLF_GR(1:nF)
+    REAL(DP)             :: alpha
 
-    alpha    = MAX( aM, aP )
+    alpha = MAX( aM, aP )
 
-    NumericalFlux_X1_LLF_GR &
-      = 0.5_DP * ( flux_L + flux_R - alpha * ( u_R - u_L ) )
-
-    RETURN
-  END FUNCTION NumericalFlux_X1_LLF_GR
-
-
-  PURE FUNCTION NumericalFlux_X1_HLL_GR &
-      ( u_L, u_R, Flux_L, Flux_R, aP, aM, aC, nF, &
-        V1_L, V1_R, p_L, p_R, ShiftVector1, Gm11 )
-
-    INTEGER,  INTENT(in)                   :: nF
-    REAL(DP), DIMENSION(1:nF),  INTENT(in) :: u_L, u_R, Flux_L, Flux_R
-    REAL(DP), INTENT(in)                   :: aP, aM, aC, V1_L, V1_R, &
-                                              p_L, p_R, ShiftVector1, Gm11
-    REAL(DP), DIMENSION(1:nF)              :: NumericalFlux_X1_HLL_GR
-
-    NumericalFlux_X1_HLL_GR &
-      = ( aP * flux_L + aM * flux_R &
-            - aP * aM * ( u_R - u_L ) ) / ( aP + aM )
+    NumericalFlux_LLF_GR &
+      = 0.5_DP * ( FL + FR - alpha * ( UR - UL ) )
 
     RETURN
-  END FUNCTION NumericalFlux_X1_HLL_GR
+  END FUNCTION NumericalFlux_LLF_GR
+
+
+  PURE FUNCTION NumericalFlux_HLL_GR &
+      ( UL, UR, FL, FR, aP, aM, aC, nF, &
+        vL, vR, pL, pR, Lapse, Shift, Gmdd )
+
+    INTEGER,  INTENT(in) :: nF
+    REAL(DP), INTENT(in) :: UL(1:nF), UR(1:nF), FL(1:nF), FR(1:nF), &
+                            aP, aM, aC, vL, vR, pL, pR, &
+                            Lapse, Shift, Gmdd
+    REAL(DP)             :: p, D, S1, S2, S3, E, Ne
+    REAL(DP)             :: NumericalFlux_HLL_GR(1:nF)
+
+    NumericalFlux_HLL_GR &
+      = ( aP * FL + aM * FR &
+            - aP * aM * ( UR - UL ) ) / ( aP + aM )
+
+    RETURN
+  END FUNCTION NumericalFlux_HLL_GR
 
 
   PURE FUNCTION NumericalFlux_X1_HLLC_GR &
-      ( u_L, u_R, Flux_L, Flux_R, aP, aM, aC, nF, &
-        V1_L, V1_R, p_L, p_R, ShiftVector1, Gm11 )
+      ( UL, UR, FL, FR, aP, aM, aC, nF, &
+        vL, vR, pL, pR, Lapse, Shift, Gmdd )
 
-    INTEGER,  INTENT(in)                  :: nF
-    REAL(DP), DIMENSION(1:nF), INTENT(in) :: u_L, u_R, Flux_L, Flux_R
-    REAL(DP), INTENT(in)                  :: aP, aM, aC, V1_L, V1_R, &
-                                             p_L, p_R, ShiftVector1, Gm11
-    REAL(DP)                              :: p, CF_D, S1, S2, S3, CF_E, Ne
-    REAL(DP), DIMENSION(1:nF)             :: NumericalFlux_X1_HLLC_GR
+    INTEGER,  INTENT(in) :: nF
+    REAL(DP), INTENT(in) :: UL(1:nF), UR(1:nF), FL(1:nF), FR(1:nF), &
+                            aP, aM, aC, vL, vR, pL, pR, &
+                            Lapse, Shift, Gmdd
+    REAL(DP)             :: p, D, S1, S2, S3, E, Ne
+    REAL(DP)             :: UE, FE, FS
+    REAL(DP)             :: VelocityRatio
+    REAL(DP)             :: NumericalFlux_X1_HLLC_GR(1:nF)
 
-    IF( aM .EQ. 0.0_DP )THEN
+    IF( aM .EQ. 0.0d0 )THEN
 
-      NumericalFlux_X1_HLLC_GR = Flux_L
+      NumericalFlux_X1_HLLC_GR = FL
 
-    ELSEIF( aP .EQ. 0.0_DP )THEN
+    ELSEIF( aP .EQ. 0.0d0 )THEN
 
-      NumericalFlux_X1_HLLC_GR = Flux_R
+      NumericalFlux_X1_HLLC_GR = FR
 
     ELSE
 
       ! --- From Mignone & Bodo (2005)
-      ! --- Note the sign change on aM which is due to it being
-      ! --- read in as positive but the formulae assuming it is negative
+      !     Note the sign change on aM which is due to it being
+      !     read in as positive but the formulae assuming it is negative ---
 
-      IF( aC .GE. 0.0_DP )THEN    
+      IF( aC .GE. 0.0d0 )THEN
 
-        ! -- UL_star
+        VelocityRatio = ( -aM - Lapse * vL + Shift ) &
+                      / ( -aM - Lapse * aC + Shift )
 
-        p     = ( Gm11 * aC * ( u_L( iCF_E ) + u_L( iCF_D ) ) &
-                * ( -aM + ShiftVector1 ) - u_L( iCF_S1 ) * ( aC  &
-                - aM - V1_L + ShiftVector1 ) + p_L ) / ( 1.0_DP       &
-                - Gm11 * aC * ( -aM + ShiftVector1 ) )
+        ! --- UL_star ---
+        UE = UL(iCF_E) + UL(iCF_D)
+        FE = UL(iCF_S1) / Gmdd - Shift / Lapse * UE
+        FS = UL(iCF_S1) * ( vL - Shift / Lapse ) + pL
 
-        CF_D  = u_L( iCF_D  ) *  ( -aM - V1_L    + ShiftVector1 ) &
-                              /  ( -aM - aC + ShiftVector1 )
+        p = ( Gmdd * aC * ( -aM * UE - Lapse * FE ) &
+              - ( -aM * UL(iCF_S1) - Lapse * FS ) ) &
+            / ( Lapse - Gmdd * aC * ( -aM + Shift ) )
 
-        S1    = u_L( iCF_S1 ) *  ( -aM - V1_L    + ShiftVector1 ) &
-                              /  ( -aM - aC + ShiftVector1 ) &
-                + ( p - p_L ) /  ( -aM - aC + ShiftVector1 )
+        D = UL(iCF_D)   * VelocityRatio
 
-        S2    = u_L( iCF_S2 ) *  ( -aM - V1_L    + ShiftVector1 ) &
-                              /  ( -aM - aC + ShiftVector1 )
+        S1 = UL(iCF_S1) * VelocityRatio &
+               + Lapse * ( p - pL ) &
+               / ( -aM - Lapse * aC + Shift )
 
-        S3    = u_L( iCF_S3 ) *  ( -aM - V1_L    + ShiftVector1 ) &
-                              /  ( -aM - aC + ShiftVector1 )
+        S2 = UL(iCF_S2) * VelocityRatio
 
-        CF_E  = ( ( u_L( iCF_E ) + u_L( iCF_D ) ) * ( -aM + ShiftVector1 ) &
-                + 1.0_DP / Gm11 * S1 - 1.0_DP / Gm11 * u_L( iCF_S1 ) ) &
-                / ( -aM + ShiftVector1 )
+        S3 = UL(iCF_S3) * VelocityRatio
 
-        Ne    = u_L( iCF_Ne ) *  ( -aM - V1_L    + ShiftVector1 ) &
-                              /  ( -aM - aC + ShiftVector1 )
+        E = UE          * VelocityRatio &
+              + Lapse * ( p * aC - pL * vL ) &
+              / ( -aM - Lapse * aC + Shift )
+
+        Ne = UL(iCF_Ne) * VelocityRatio
 
       ELSE
 
-        ! -- UR_star
+        VelocityRatio = ( aP - Lapse * vR + Shift ) &
+                      / ( aP - Lapse * aC + Shift )
 
-        p     = ( Gm11 * aC * ( u_R( iCF_E ) + u_R( iCF_D ) ) &
-                * ( aP + ShiftVector1 ) - u_R( iCF_S1 ) * ( aC   &
-                + aP - V1_R + ShiftVector1 ) + p_R ) / ( 1.0_DP       &
-                - Gm11 * aC * ( aP + ShiftVector1 ) )
+        ! --- UR_star ---
+        UE = UR(iCF_E) + UR(iCF_D)
+        FE = UR(iCF_S1) / Gmdd - Shift / Lapse * UE
+        FS = UR(iCF_S1) * ( vR - Shift / Lapse ) + pR
 
-        CF_D  = u_R( iCF_D  ) *  ( aP - V1_R    + ShiftVector1 ) &
-                              /  ( aP - aC + ShiftVector1 )
+        p = ( Gmdd * aC * ( aP * UE - Lapse * FE ) &
+              - ( aP * UR(iCF_S1) - Lapse * FS ) ) &
+              / ( Lapse - Gmdd * aC * ( aP + Shift ) )
 
-        S1    = u_R( iCF_S1 ) *  ( aP - V1_R    + ShiftVector1 ) &
-                              /  ( aP - aC + ShiftVector1 ) &
-                + ( p - p_R ) /  ( aP - aC + ShiftVector1 )
+        D = UR(iCF_D)   * VelocityRatio
 
-        S2    = u_R( iCF_S2 ) *  ( aP - V1_R    + ShiftVector1 ) &
-                              /  ( aP - aC + ShiftVector1 )
+        S1 = UR(iCF_S1) * VelocityRatio &
+               + Lapse * ( p - pR ) &
+               / ( aP - Lapse * aC + Shift )
 
-        S3    = u_R( iCF_S3 ) *  ( aP - V1_R    + ShiftVector1 ) &
-                              /  ( aP - aC + ShiftVector1 )
+        S2 = UR(iCF_S2) * VelocityRatio
 
-        CF_E  = ( ( u_R( iCF_E ) + u_R( iCF_D ) ) * ( aP + ShiftVector1 )     &
-                + 1.0_DP / Gm11 * S1 - 1.0_DP / Gm11 * u_R( iCF_S1 ) ) &
-                / ( aP + ShiftVector1 )
+        S3 = UR(iCF_S3) * VelocityRatio
 
-        Ne     = u_R( iCF_Ne ) *  ( aP - V1_R    + ShiftVector1 ) &
-                               /  ( aP - aC + ShiftVector1 )
+        E = UE          * VelocityRatio &
+              + Lapse * ( p * aC - pR * vR ) &
+              / ( aP - Lapse * aC + Shift )
+
+        Ne = UR(iCF_Ne) * VelocityRatio
 
       END IF
 
-      NumericalFlux_X1_HLLC_GR( iCF_D  ) &
-        = CF_D  * ( aC - ShiftVector1 )
-      NumericalFlux_X1_HLLC_GR( iCF_S1 ) &
-        = S1 * ( aC - ShiftVector1 ) + p
-      NumericalFlux_X1_HLLC_GR( iCF_S2 ) &
-        = S2 * ( aC - ShiftVector1 )
-      NumericalFlux_X1_HLLC_GR( iCF_S3 ) &
-        = S3 * ( aC - ShiftVector1 )
-      NumericalFlux_X1_HLLC_GR( iCF_E  ) &
-        = 1.0_DP / Gm11 * S1 - ShiftVector1 * ( CF_E - CF_D ) - aC * CF_D
-      NumericalFlux_X1_HLLC_GR( iCF_Ne ) &
-        = Ne * ( aC - ShiftVector1 )
+      NumericalFlux_X1_HLLC_GR(iCF_D)  &
+        = D  * ( aC - Shift / Lapse )
+      NumericalFlux_X1_HLLC_GR(iCF_S1) &
+        = S1 * ( aC - Shift / Lapse ) + p
+      NumericalFlux_X1_HLLC_GR(iCF_S2) &
+        = S2 * ( aC - Shift / Lapse )
+      NumericalFlux_X1_HLLC_GR(iCF_S3) &
+        = S3 * ( aC - Shift / Lapse )
+      NumericalFlux_X1_HLLC_GR(iCF_E)  &
+        = S1 / Gmdd - D * aC - Shift / Lapse * ( E - D )
+      NumericalFlux_X1_HLLC_GR(iCF_Ne) &
+        = Ne * ( aC - Shift / Lapse )
 
     END IF
 
-    RETURN
+
   END FUNCTION NumericalFlux_X1_HLLC_GR
+
+
+  PURE FUNCTION NumericalFlux_X2_HLLC_GR &
+      ( UL, UR, FL, FR, aP, aM, aC, nF, &
+        vL, vR, pL, pR, Lapse, Shift, Gmdd )
+
+    INTEGER,  INTENT(in) :: nF
+    REAL(DP), INTENT(in) :: UL(1:nF), UR(1:nF), FL(1:nF), FR(1:nF), &
+                            aP, aM, aC, vL, vR, pL, pR, &
+                            Lapse, Shift, Gmdd
+    REAL(DP)             :: p, D, S1, S2, S3, E, Ne
+    REAL(DP)             :: UE, FE, FS
+    REAL(DP)             :: VelocityRatio
+    REAL(DP)             :: NumericalFlux_X2_HLLC_GR(1:nF)
+
+    IF( aM .EQ. 0.0d0 )THEN
+
+      NumericalFlux_X2_HLLC_GR = FL
+
+    ELSEIF( aP .EQ. 0.0d0 )THEN
+
+      NumericalFlux_X2_HLLC_GR = FR
+
+    ELSE
+
+      ! --- From Mignone & Bodo (2005)
+      !     Note the sign change on aM which is due to it being
+      !     read in as positive but the formulae assuming it is negative ---
+
+      IF( aC .GE. 0.0d0 )THEN
+
+        VelocityRatio = ( -aM - Lapse * vL + Shift ) &
+                      / ( -aM - Lapse * aC + Shift )
+
+        ! --- UL_star ---
+        UE = UL(iCF_E) + UL(iCF_D)
+        FE = UL(iCF_S2) / Gmdd - Shift / Lapse * UE
+        FS = UL(iCF_S2) * ( vL - Shift / Lapse ) + pL
+
+        p = ( Gmdd * aC * ( -aM * UE - Lapse * FE ) &
+              - ( -aM * UL(iCF_S2) - Lapse * FS ) ) &
+            / ( Lapse - Gmdd * aC * ( -aM + Shift ) )
+
+        D = UL(iCF_D)   * VelocityRatio
+
+        S1 = UL(iCF_S1) * VelocityRatio
+
+        S2 = UL(iCF_S2) * VelocityRatio &
+               + Lapse * ( p - pL ) &
+               / ( -aM - Lapse * aC + Shift )
+
+        S3 = UL(iCF_S3) * VelocityRatio
+
+        E = UE          * VelocityRatio &
+              + Lapse * ( p * aC - pL * vL ) &
+              / ( -aM - Lapse * aC + Shift )
+
+        Ne = UL(iCF_Ne) * VelocityRatio
+
+      ELSE
+
+        VelocityRatio = ( aP - Lapse * vR + Shift ) &
+                      / ( aP - Lapse * aC + Shift )
+
+        ! --- UR_star ---
+        UE = UR(iCF_E) + UR(iCF_D)
+        FE = UR(iCF_S2) / Gmdd - Shift / Lapse * UE
+        FS = UR(iCF_S2) * ( vR - Shift / Lapse ) + pR
+
+        p = ( Gmdd * aC * ( aP * UE - Lapse * FE ) &
+              - ( aP * UR(iCF_S2) - Lapse * FS ) ) &
+              / ( Lapse - Gmdd * aC * ( aP + Shift ) )
+
+        D = UR(iCF_D)   * VelocityRatio
+
+        S1 = UR(iCF_S1) * VelocityRatio
+
+        S2 = UR(iCF_S2) * VelocityRatio &
+               + Lapse * ( p - pR ) &
+               / ( aP - Lapse * aC + Shift )
+
+        S3 = UR(iCF_S3) * VelocityRatio
+
+        E = UE          * VelocityRatio &
+              + Lapse * ( p * aC - pR * vR ) &
+              / ( aP - Lapse * aC + Shift )
+
+        Ne = UR(iCF_Ne) * VelocityRatio
+
+      END IF
+
+      NumericalFlux_X2_HLLC_GR(iCF_D)  &
+        = D  * ( aC - Shift / Lapse )
+      NumericalFlux_X2_HLLC_GR(iCF_S1) &
+        = S1 * ( aC - Shift / Lapse )
+      NumericalFlux_X2_HLLC_GR(iCF_S2) &
+        = S2 * ( aC - Shift / Lapse ) + p
+      NumericalFlux_X2_HLLC_GR(iCF_S3) &
+        = S3 * ( aC - Shift / Lapse )
+      NumericalFlux_X2_HLLC_GR(iCF_E)  &
+        = S2 / Gmdd - D * aC - Shift / Lapse * ( E - D )
+      NumericalFlux_X2_HLLC_GR(iCF_Ne) &
+        = Ne * ( aC - Shift / Lapse )
+
+    END IF
+
+
+  END FUNCTION NumericalFlux_X2_HLLC_GR
 
 
 END MODULE EulerEquationsUtilitiesModule_Beta_GR
