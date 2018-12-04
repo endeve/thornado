@@ -187,8 +187,10 @@ CONTAINS
       CASE DEFAULT
 
         WRITE(*,*)
-        WRITE(*,'(A5,A19,I2.2)') &
-          '', 'Invalid dimension: ', iDim
+        WRITE(*,'(A5,A,I2.2)') '', 'Dimension = ', iDim
+        WRITE(*,'(A5,A)') &
+          '', 'Characteristic limiting not implemented for dimension > 1'
+        WRITE(*,'(A5,A)') '', 'Stopping...'
         STOP
 
     END SELECT

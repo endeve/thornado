@@ -37,13 +37,15 @@ CONTAINS
 
   SUBROUTINE InitializeFields_GR &
                ( RiemannProblemName_Option, &
+                 RiemannProblem2dName_Option, &
                  SphericalRiemannProblemName_Option, &
                  nDetCells_Option, Eblast_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemName_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblem2dName_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: SphericalRiemannProblemName_Option
-    INTEGER,  INTENT(in), OPTIONAL :: nDetCells_Option
-    REAL(DP), INTENT(in), OPTIONAL :: Eblast_Option
+    INTEGER,  INTENT(in), OPTIONAL         :: nDetCells_Option
+    REAL(DP), INTENT(in), OPTIONAL         :: Eblast_Option
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
@@ -60,15 +62,21 @@ CONTAINS
                  Eblast_Option &
                    = Eblast_Option )
 
+      CASE( 'RiemannProblem2d' )
+
+        CALL InitializeFields_GR_RiemannProblem2d &
+               ( RiemannProblem2dName_Option &
+                   = RiemannProblem2dName_Option )
+
       CASE( 'SphericalRiemannProblem' )
 
         CALL InitializeFields_GR_SphericalRiemannProblem &
                ( SphericalRiemannProblemName_Option &
                    = SphericalRiemannProblemName_Option )
 
-      CASE( 'SedovBlastWave' )
+      CASE( 'SphericalSedov' )
 
-        CALL InitializeFields_GR_SedovBlastWave &
+        CALL InitializeFields_GR_SphericalSedov &
                ( nDetCells_Option = nDetCells_Option, &
                  Eblast_Option = Eblast_Option)
         
@@ -271,7 +279,7 @@ CONTAINS
                 END IF
 
 
-             CASE DEFAULT
+              CASE DEFAULT
 
                 WRITE(*,*)
                 WRITE(*,'(A,A)') &
@@ -321,6 +329,126 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_GR_RiemannProblem
+
+
+
+  SUBROUTINE InitializeFields_GR_RiemannProblem2d &
+               ( RiemannProblem2dName_Option )
+
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblem2dName_Option
+
+    CHARACTER(32) :: RiemannProblem2dName
+    INTEGER       :: iX1, iX2, iX3
+    INTEGER       :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP)      :: X1, X2
+
+    RiemannProblem2dName = 'DzB2002'
+    IF( PRESENT( RiemannProblem2dName_Option ) )&
+      RiemannProblem2dName = TRIM( RiemannProblem2dName_Option )
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A,A)') &
+      '', 'Riemann Problem 2D Name: ', TRIM( RiemannProblem2dName )
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+            SELECT CASE ( TRIM( RiemannProblem2dName ) )
+
+              CASE( 'DzB2002' )
+
+                ! --- SW ---
+                IF( X1 .LE. Half .AND. X2 .LE. Half )THEN
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.5_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+                ! --- NW ---
+                ELSE IF( X1 .LE. Half .AND. X2 .GT. Half )THEN
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.99_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+                ! --- NE ---
+                ELSE IF( X1 .GT. Half .AND. X2 .GT. Half )THEN
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.01_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+                ! --- SE ---
+                ELSE
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.99_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+                END IF
+
+
+              CASE DEFAULT
+
+                WRITE(*,*)
+                WRITE(*,'(A,A)') &
+                  'Invalid choice for RiemannProblem2dName: ', &
+                    RiemannProblem2dName
+                WRITE(*,'(A)') 'Valid choices:'
+                WRITE(*,'(A)') &
+                  "  'DzB2002' - &
+                  Del-Zanna & Bucciantini, 2D Riemann Problem"
+                WRITE(*,'(A)') 'Stopping...'
+                STOP
+
+            END SELECT
+
+          END DO
+
+          CALL ComputeConserved_GR &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                   uAF(:,iX1,iX2,iX3,iAF_P) )
+
+        END DO
+      END DO
+    END DO
+
+
+  END SUBROUTINE InitializeFields_GR_RiemannProblem2d
+
 
 
   SUBROUTINE InitializeFields_GR_SphericalRiemannProblem &
@@ -413,7 +541,7 @@ CONTAINS
   END SUBROUTINE InitializeFields_GR_SphericalRiemannProblem
 
 
-  SUBROUTINE InitializeFields_GR_SedovBlastWave &
+  SUBROUTINE InitializeFields_GR_SphericalSedov &
                ( nDetCells_Option, Eblast_Option )
     
     INTEGER,  INTENT(in), OPTIONAL :: nDetCells_Option
@@ -468,10 +596,10 @@ CONTAINS
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
-                = 1.0d-6
               uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+                = 1.0d-5
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
+                = ( Gamma_IDEAL - One ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
 
             END IF
 
@@ -493,7 +621,7 @@ CONTAINS
       END DO
     END DO
 
-  END SUBROUTINE InitializeFields_GR_SedovBlastWave
+  END SUBROUTINE InitializeFields_GR_SphericalSedov
 
 
   SUBROUTINE InitializeFields_GR_StandingAccretionShock
@@ -607,7 +735,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: FluidFieldData(:,:)
     REAL(DP)             :: X1, X2, Y1, Y2, m
 
-    LOGICAL :: DEBUG = .TRUE.
+    LOGICAL :: DEBUG = .FALSE.
 
     X1 = FluidFieldData(iL,i_r)
     X2 = FLuidFieldData(iL+1,i_r)
@@ -718,7 +846,7 @@ CONTAINS
               FluidFieldData(i,:)
       END DO
     CLOSE( 100 )
-    !STOP 'Wrote SAS initial conditions to file: SAS_IC.dat'
+!!$    STOP 'Wrote SAS initial conditions to file: SAS_IC.dat'
 
   END SUBROUTINE ReadData
 

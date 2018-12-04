@@ -52,8 +52,10 @@ PROGRAM ApplicationDriver
 
   IMPLICIT NONE
 
+  INCLUDE 'mpif.h'
+
   CHARACTER(32) :: ProgramName
-  CHARACTER(32) :: RiemannProblemName
+  CHARACTER(32) :: RiemannProblemName, RiemannProblem2dName
   CHARACTER(32) :: SphericalRiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
@@ -62,7 +64,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: UsePositivityLimiter
   INTEGER       :: iCycle, iCycleD, iCycleW = 0
-  INTEGER       :: nX(3), bcX(3), nNodes
+  INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
   REAL(DP)      :: SlopeTolerance
   REAL(DP)      :: Min_1, Min_2
@@ -81,11 +83,13 @@ PROGRAM ApplicationDriver
   REAL(DP)              :: M_PNS = Zero, Ri, R_PNS, R_shock, Rf
 
   LOGICAL :: DEBUG = .FALSE.
+  REAL(DP) :: wTime_UF, wTime_CTS
   
 !  ProgramName = 'RiemannProblem'
+  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
-!  ProgramName = 'SedovBlastWave'
-  ProgramName = 'StandingAccretionShock'
+!  ProgramName = 'SphericalSedov'
+!  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -136,9 +140,31 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 256, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      nX  = [ 256, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+    CASE( 'RiemannProblem2d' )
+
+      RiemannProblem2dName = 'DzB2002'
+
+      SELECT CASE ( TRIM( RiemannProblem2dName ) )
+
+        CASE( 'DzB2002' )
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.4d0
+          bcX   = [ 2, 2, 0 ]
+
+      END SELECT
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 64, 64, 1 ]
+      swX = [ 1, 1, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
     CASE( 'SphericalRiemannProblem' )
 
@@ -152,26 +178,28 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 2.0_DP, Pi, TwoPi ]
 
+      swX = [ 1, 0, 0 ]
       bcX = [ 2, 0, 0 ]
 
       t_end = 5.0d-1
 
-    CASE( 'SedovBlastWave' )
+    CASE( 'SphericalSedov' )
 
       nDetCells = 1
       Eblast    = 2.0d-7
 
       CoordinateSystem = 'SPHERICAL'
 
-      Gamma = 4.0_DP / 3.0_DP
+      Gamma = 1.4_DP!4.0_DP / 3.0_DP
 
       nX = [ 256, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.2_DP, Pi, TwoPi ]
 
-      bcX = [ 3, 0, 0 ]
+      swX = [ 1, 0, 0 ]
+      bcX = [ 2, 0, 0 ]
 
-      t_end = 1.0d0
+      t_end = 5.0d0
 
     CASE( 'StandingAccretionShock' )
 
@@ -187,13 +215,14 @@ PROGRAM ApplicationDriver
       R_PNS   = FluidFieldParameters(4)
       R_shock = FluidFieldParameters(5)
 
-      nX = [ 2048, 1, 1 ]
+      nX = [ 256, 1, 1 ]
       xL = [ R_PNS, 0.0_DP, 0.0_DP ]
       xR = [ Two * R_shock, Pi, Four ]
 
+      swX = [ 1, 0, 0 ]
       bcX = [ 11, 0, 0 ]
 
-      t_end = 100.0d0 * Millisecond
+      t_end = 1.0d1 * Millisecond
 
     CASE DEFAULT
 
@@ -201,41 +230,48 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)')     'Valid choices:'
       WRITE(*,'(A)')     '  RiemannProblem'
+      WRITE(*,'(A)')     '  RiemannProblem2d'
       WRITE(*,'(A)')     '  SphericalRiemannProblem'
-      WRITE(*,'(A)')     '  SedovBlastWave'
+      WRITE(*,'(A)')     '  SphericalSedov'
       WRITE(*,'(A)')     '  StandingAccretionShock'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
   END SELECT
 
-  nNodes = 3
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
-  BetaTVD = 2.0_DP
-  BetaTVB = 0.0_DP
+  BetaTVD = 1.75d0
+  BetaTVB = 0.0d0
 
   UseSlopeLimiter           = .TRUE.
   SlopeTolerance            = 1.0d-6
   UseCharacteristicLimiting = .TRUE.
 
   UseTroubledCellIndicator  = .TRUE.
-  LimiterThresholdParameter = 0.03_DP
+  LimiterThresholdParameter = 0.015_DP
 
   UsePositivityLimiter = .TRUE.
-  Min_1 = 1.0d-15
-  Min_2 = Zero!1.0d-12
+  Min_1 = Zero
+  Min_2 = Zero
 
-  iCycleD = 100
-  dt_wrt  = 1.0d-2 * t_end
-  !iCycleW = 1
+  iCycleD = 1
+  iCycleW = 1; dt_wrt = -1.0d0
+!!$  dt_wrt  = 1.0d-2 * t_end;       iCycleW = -1
+!!$  dt_wrt  = 1.0d-1 * Millisecond; iCycleW = -1
+
+  IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 )THEN
+    STOP 'dt_wrt and iCycleW cannot both be present'
+  END IF
 
   nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
-  CFL = 0.1_DP
+  ! --- Cockburn & Shu, (2001), JSC, 16, 173 ---
+  CFL = 0.5d0 / ( 2.0d0 * DBLE( nNodes - 1 ) + 1.0d0 )
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -243,7 +279,7 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 0, 0 ], &
+             = swX, &
            bcX_Option &
              = bcX, &
            xL_Option &
@@ -270,6 +306,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeFields_GR &
          ( RiemannProblemName_Option = TRIM( RiemannProblemName ), &
+           RiemannProblem2dName_Option = TRIM( RiemannProblem2dName ), &
            SphericalRiemannProblemName_Option &
              = TRIM( SphericalRiemannProblemName ), &
            nDetCells_Option = nDetCells, Eblast_Option = Eblast )
@@ -299,6 +336,8 @@ PROGRAM ApplicationDriver
            UsePositivityLimiter_Option = UsePositivityLimiter )
 
   WRITE(*,*)
+  WRITE(*,'(A2,A,F4.2)') '', 'CFL: ', CFL
+  WRITE(*,*)
   WRITE(*,'(A2,A)') '', 'Evolving Fields...'
   WRITE(*,*)
 
@@ -316,11 +355,18 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    CALL ComputeTimeStep_GR &
-           ( iX_B0, iX_E0, &
-             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             CFL = CFL, TimeStep = dt )
+    IF( DEBUG ) wTime_CTS = MPI_WTIME( )
+    IF( .NOT. nX(2) .GT. 1 )THEN
+      CALL ComputeTimeStep_GR &
+             ( iX_B0, iX_E0, &
+               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               CFL = CFL, TimeStep = dt )
+    ELSE
+      dt = CFL * SQRT( xR(1)-xL(1) ) / DBLE( nX(1) )
+    END IF
+
+    IF( DEBUG ) wTime_CTS = MPI_WTIME( ) - wTime_CTS
 
     IF( t + dt .LT. t_end )THEN
       t = t + dt
@@ -340,29 +386,38 @@ PROGRAM ApplicationDriver
           '', 'Cycle = ', iCycle, '', 't = ',  t, '', 'dt = ', dt
       END IF
 
+      IF( DEBUG )THEN
+        WRITE(*,'(A8,A,ES10.3E3,A)') &
+          '', 'Time to call ComputeTimeStep:   ', wTime_CTS, ' s'
+        WRITE(*,'(A8,A,ES10.3E3,A)') &
+          '', 'Time to call UpdateFluid_SSPRK: ', wTime_UF,  ' s'
+      END IF
+
     END IF
 
-    IF( DEBUG ) WRITE(*,'(A)') 'CALL UpdateFluid_SSPRK'
+    IF( DEBUG ) wTime_UF = MPI_WTIME()
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
+    IF( DEBUG ) wTime_UF = MPI_WTIME() - wTime_UF
 
-!!$    IF( DEBUG ) WRITE(*,'(A)') 'CALL ComputeFromConserved_GR'
-!!$    CALL ComputeFromConserved_GR &
-!!$           ( iX_B0, iX_E0, &
-!!$             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-!!$             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-!!$             uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-!!$             uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
-!!$
-!!$    Vmax = MAXVAL( ABS( &
-!!$             uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),2)))
-!!$    LorentzFactor = One / SQRT( One - Vmax**2 )
-!!$    WRITE(*,*)
-!!$
-!!$    IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
-!!$      WRITE(*,'(A8,A4,F12.10)') '', 'V = ', Vmax
-!!$      WRITE(*,'(A8,A4,F10.5)')  '', 'W = ', LorentzFactor
-!!$    END IF
+    IF( DEBUG )THEN
+      CALL ComputeFromConserved_GR &
+             ( iX_B0, iX_E0, &
+               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+
+      Vmax = MAXVAL( ABS( &
+               uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),2)))
+      LorentzFactor = One / SQRT( One - Vmax**2 )
+
+      IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
+        WRITE(*,'(A8,A4,F12.10)') '', 'V = ', Vmax
+        WRITE(*,'(A8,A4,F10.5)')  '', 'W = ', LorentzFactor
+        WRITE(*,*)
+      END IF
+   END IF
 
     IF( iCycleW .GT. 0 )THEN
       IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
@@ -376,7 +431,6 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
-      IF( DEBUG ) WRITE(*,'(A)') 'CALL ComputeFromConserved_GR'
       CALL ComputeFromConserved_GR &
              ( iX_B0, iX_E0, &
                uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
