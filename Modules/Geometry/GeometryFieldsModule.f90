@@ -30,6 +30,7 @@ MODULE GeometryFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iGF_Psi      = 13 ! Conformal Factor
   INTEGER, PUBLIC, PARAMETER :: nGF          = 13 ! n Geometry Fields
 
+
   CHARACTER(32), DIMENSION(nGF), PUBLIC, PARAMETER :: &
     namesGF = [ 'Newtonian Potential                         ', &
                 'Spatial Scale Factor (1)                    ', &
@@ -44,6 +45,21 @@ MODULE GeometryFieldsModule
                 'Shift Vector (2)                            ', &
                 'Shift Vector (3)                            ', &
                 'Conformal Factor                            ' ]
+
+  CHARACTER(32), DIMENSION(nGF), PUBLIC, PARAMETER :: &
+   ShortNamesGF = [ 'NewtonianPotential                          ', &
+                    'SpatialScaleFactor1                         ', &
+                    'SpatialScaleFactor2                         ', &
+                    'SpatialScaleFactor3                         ', &
+                    'SpatialMetricComponent11                    ', &
+                    'SpatialMetricComponent22                    ', &
+                    'SpatialMetricComponent33                    ', &
+                    'SqrtOfSpatialMetricDeterminant              ', &
+                    'LapseFunction                               ', &
+                    'ShiftVector1                                ', &
+                    'ShiftVector2                                ', &
+                    'ShiftVector3                                ', &
+                    'ConformalFactor                             ' ]
 
   REAL(DP), DIMENSION(nGF), PUBLIC :: unitsGF
   REAL(DP), ALLOCATABLE,    PUBLIC :: uGF(:,:,:,:,:)

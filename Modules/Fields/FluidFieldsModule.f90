@@ -28,6 +28,14 @@ MODULE FluidFieldsModule
                 'Conserved Energy Density        ', &
                 'Conserved Electron Density      ' ]
 
+  CHARACTER(32), DIMENSION(nCF), PUBLIC, PARAMETER :: &
+    ShortNamesCF = [ 'ConservedBaryonDensity          ', &
+                     'ConservedMomentumDensity1       ', &
+                     'ConservedMomentumDensity2       ', &
+                     'ConservedMomentumDensity3       ', &
+                     'ConservedEnergyDensity          ', &
+                     'ConservedElectronDensity        ' ]
+
   REAL(DP), DIMENSION(nCF), PUBLIC :: unitsCF
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uCF  (:,:,:,:,:)
@@ -50,6 +58,14 @@ MODULE FluidFieldsModule
                 'Three-Velocity (3)              ', &
                 'Internal Energy Density         ', &
                 'Comoving Electron Density       ' ]
+
+  CHARACTER(32), DIMENSION(nPF), PUBLIC, PARAMETER :: &
+    ShortNamesPF = [ 'ComovingBaryonDensity           ', &
+                     'Three-Velocity1                 ', &
+                     'Three-Velocity2                 ', &
+                     'Three-Velocity3                 ', &
+                     'InternalEnergyDensity           ', &
+                     'ComovingElectronDensity         ' ]
 
   REAL(DP), DIMENSION(nPF), PUBLIC :: unitsPF
 
@@ -88,6 +104,22 @@ MODULE FluidFieldsModule
                 'Heavy Mass Fraction             ', &
                 'Ratio of Specific Heats (Gamma) ', &
                 'Sound Speed                     ' ]
+
+  CHARACTER(32), DIMENSION(nAF), PUBLIC, PARAMETER :: &
+    ShortNamesAF = [ 'Pressure                        ', &
+                     'Temperature                     ', &
+                     'ElectronFraction                ', &
+                     'EntropyPerBaryon                ', &
+                     'SpecificInternalEnergy          ', &
+                     'ElectronChemicalPotential       ', &
+                     'ProtonChemicalPotential         ', &
+                     'NeutronChemicalPotential        ', &
+                     'ProtonMassFraction              ', &
+                     'NeutronMassFraction             ', &
+                     'AlphaMassFraction               ', &
+                     'HeavyMassFraction               ', &
+                     'RatioOfSpecificHeats            ', &
+                     'SoundSpeed                      ' ]
 
   REAL(DP), DIMENSION(nAF), PUBLIC :: unitsAF
 
