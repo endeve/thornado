@@ -67,6 +67,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: xL(3), xR(3), Gamma
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
+  REAL(DP)      :: Eblast
 
   CoordinateSystem = 'CARTESIAN'
 
@@ -152,6 +153,8 @@ PROGRAM ApplicationDriver
       dt_wrt  = 2.5d-2
 
    CASE( 'SphericalSedov' )
+
+      Eblast = 1.0d0
 
       CoordinateSystem = 'SPHERICAL'
 
@@ -360,7 +363,8 @@ PROGRAM ApplicationDriver
            Direction_Option &
              = TRIM( Direction ), &
            RiemannProblemName_Option &
-             = TRIM( RiemannProblemName ) )
+             = TRIM( RiemannProblemName ), &
+           SedovEnergy_Option = Eblast )
 
   CALL ApplySlopeLimiter_Euler &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
