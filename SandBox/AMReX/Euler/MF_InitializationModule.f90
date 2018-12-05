@@ -145,6 +145,8 @@ CONTAINS
           uPF_K(iNodeX,iPF_E) &
             = uPF_K(iNodeX,iPF_D)**Gamma / ( Gamma - One )
 
+          uPF_K(iNodeX,iPF_Ne) = 0.0d0
+
         END DO
 
         CALL ComputeConserved &
