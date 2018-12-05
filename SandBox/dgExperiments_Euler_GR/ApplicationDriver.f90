@@ -86,9 +86,9 @@ PROGRAM ApplicationDriver
   REAL(DP) :: wTime_UF, wTime_CTS
   
 !  ProgramName = 'RiemannProblem'
-  ProgramName = 'RiemannProblem2d'
+!  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
-!  ProgramName = 'SphericalSedov'
+  ProgramName = 'SphericalSedov'
 !  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
@@ -186,7 +186,7 @@ PROGRAM ApplicationDriver
     CASE( 'SphericalSedov' )
 
       nDetCells = 1
-      Eblast    = 2.0d-7
+      Eblast    = 1.0d-1
 
       CoordinateSystem = 'SPHERICAL'
 
@@ -199,7 +199,7 @@ PROGRAM ApplicationDriver
       swX = [ 1, 0, 0 ]
       bcX = [ 2, 0, 0 ]
 
-      t_end = 5.0d0
+      t_end = 1.0d0
 
     CASE( 'StandingAccretionShock' )
 
@@ -239,7 +239,7 @@ PROGRAM ApplicationDriver
 
   END SELECT
 
-  nNodes = 1
+  nNodes = 3
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
@@ -257,9 +257,9 @@ PROGRAM ApplicationDriver
   Min_1 = Zero
   Min_2 = Zero
 
-  iCycleD = 1
-  iCycleW = 1; dt_wrt = -1.0d0
-!!$  dt_wrt  = 1.0d-2 * t_end;       iCycleW = -1
+  iCycleD = 100
+!!$  iCycleW = 1; dt_wrt = -1.0d0
+  dt_wrt  = 1.0d-2 * t_end;       iCycleW = -1
 !!$  dt_wrt  = 1.0d-1 * Millisecond; iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 )THEN
@@ -356,16 +356,11 @@ PROGRAM ApplicationDriver
     iCycle = iCycle + 1
 
     IF( DEBUG ) wTime_CTS = MPI_WTIME( )
-    IF( .NOT. nX(2) .GT. 1 )THEN
-      CALL ComputeTimeStep_GR &
-             ( iX_B0, iX_E0, &
-               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               CFL = CFL, TimeStep = dt )
-    ELSE
-      dt = CFL * SQRT( xR(1)-xL(1) ) / DBLE( nX(1) )
-    END IF
-
+    CALL ComputeTimeStep_GR &
+           ( iX_B0, iX_E0, &
+             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             CFL = CFL, TimeStep = dt, UseSourceTerm_Option = .FALSE. )
     IF( DEBUG ) wTime_CTS = MPI_WTIME( ) - wTime_CTS
 
     IF( t + dt .LT. t_end )THEN
