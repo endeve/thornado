@@ -45,36 +45,29 @@ CONTAINS
     REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
     REAL(amrex_real)   :: uAF_K(nDOFX,nAF)
     TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI_G
-    TYPE(amrex_mfiter) :: MFI_C
-    TYPE(amrex_mfiter) :: MFI_P
-    TYPE(amrex_mfiter) :: MFI_A
+    TYPE(amrex_mfiter) :: MFI
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
-
-    uAF_K(1:nDOFX,1:nAF) = 0.0d0
 
     IF( amrex_parallel_ioprocessor() )THEN
       WRITE(*,*)
       WRITE(*,'(A4,A)') '', 'MF_ComputeFromConserved'
     END IF
 
-    CALL amrex_mfiter_build( MFI_G, MF_uGF, tiling = .TRUE. )
-    CALL amrex_mfiter_build( MFI_C, MF_uCF, tiling = .TRUE. )
-    CALL amrex_mfiter_build( MFI_P, MF_uPF, tiling = .TRUE. )
-    CALL amrex_mfiter_build( MFI_A, MF_uAF, tiling = .TRUE. )
+    uAF_K(1:nDOFX,1:nAF) = 0.0d0
 
-    DO WHILE( MFI_G % next() .AND. MFI_C % next() .AND. &
-              MFI_P % next() .AND. MFI_A % next() )
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = .TRUE. )
 
-      uGF => MF_uGF % DataPtr( MFI_G )
-      uCF => MF_uCF % DataPtr( MFI_C )
-      uPF => MF_uPF % DataPtr( MFI_P )
-      uAF => MF_uAF % DataPtr( MFI_A )
+    DO WHILE( MFI % next() )
 
-      BX = MFI_C % tilebox()
+      uGF => MF_uGF % DataPtr( MFI )
+      uCF => MF_uCF % DataPtr( MFI )
+      uPF => MF_uPF % DataPtr( MFI )
+      uAF => MF_uAF % DataPtr( MFI )
+
+      BX = MFI % tilebox()
 
       lo_G = LBOUND( uGF ); hi_G = UBOUND( uGF )
       lo_C = LBOUND( uCF ); hi_C = UBOUND( uCF )
@@ -124,10 +117,7 @@ CONTAINS
 
     END DO
 
-    CALL amrex_mfiter_destroy( MFI_G )
-    CALL amrex_mfiter_destroy( MFI_C )
-    CALL amrex_mfiter_destroy( MFI_P )
-    CALL amrex_mfiter_destroy( MFI_A )
+    CALL amrex_mfiter_destroy( MFI )
 
   END SUBROUTINE MF_ComputeFromConserved
 
