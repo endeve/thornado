@@ -87,6 +87,8 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
+    uPF_K(1:nDOFX,1:nPF) = 0.0d0
+
     DO iDim = 1, 3
 
       CALL CreateMesh &
@@ -144,8 +146,6 @@ CONTAINS
 
           uPF_K(iNodeX,iPF_E) &
             = uPF_K(iNodeX,iPF_D)**Gamma / ( Gamma - One )
-
-          uPF_K(iNodeX,iPF_Ne) = 0.0d0
 
         END DO
 

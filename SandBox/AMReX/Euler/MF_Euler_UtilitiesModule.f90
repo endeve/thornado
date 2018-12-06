@@ -36,7 +36,6 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uAF
 
     INTEGER            :: iX1, iX2, iX3
-    INTEGER            :: iAF
     INTEGER            :: lo_G(4), hi_G(4)
     INTEGER            :: lo_C(4), hi_C(4)
     INTEGER            :: lo_P(4), hi_P(4)
@@ -54,6 +53,8 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
+
+    uAF_K(1:nDOFX,1:nAF) = 0.0d0
 
     IF( amrex_parallel_ioprocessor() )THEN
       WRITE(*,*)
@@ -105,10 +106,6 @@ CONTAINS
           = RESHAPE( uPF_K(1:nDOFX,1:nPF), [hi_P(4)-lo_P(4)+1] )
 
         ! --- Auxiliary Fluid ---
-
-        DO iAF = 1, nAF
-          uAF_K(:,iAF) = 0.0d0
-        END DO
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
