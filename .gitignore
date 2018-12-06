@@ -23,3 +23,4 @@
 SandBox/dgExperiments_Euler_GR/PastRuns/
 SandBox/dgExperiments_Euler_GR/Executables/*.py
 SandBox/dgExperiments_Euler_GR/SD_*
+Sandbox/AMReX/Euler/amrvis.defaults
