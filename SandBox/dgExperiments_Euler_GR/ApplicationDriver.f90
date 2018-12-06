@@ -59,6 +59,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: SphericalRiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
+  LOGICAL       :: UseFixed_dt, UseSourceTerm
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
@@ -257,6 +258,9 @@ PROGRAM ApplicationDriver
   Min_1 = Zero
   Min_2 = Zero
 
+  UseFixed_dt   = .FALSE.
+  UseSourceTerm = .TRUE.
+
   iCycleD = 100
 !!$  iCycleW = 1; dt_wrt = -1.0d0
   dt_wrt  = 1.0d-2 * t_end;       iCycleW = -1
@@ -345,6 +349,7 @@ PROGRAM ApplicationDriver
   t_wrt = dt_wrt
   wrt   = .FALSE.
 
+  IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL InitializeTally_Euler_GR'
   CALL InitializeTally_Euler_GR &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -356,11 +361,17 @@ PROGRAM ApplicationDriver
     iCycle = iCycle + 1
 
     IF( DEBUG ) wTime_CTS = MPI_WTIME( )
-    CALL ComputeTimeStep_GR &
-           ( iX_B0, iX_E0, &
-             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             CFL = CFL, TimeStep = dt, UseSourceTerm_Option = .FALSE. )
+    IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL ComputeTimeStep_GR'
+    IF( .NOT. UseFixed_dt )THEN
+      CALL ComputeTimeStep_GR &
+             ( iX_B0, iX_E0, &
+               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               CFL = CFL, TimeStep = dt, UseSourceTerm_Option = UseSourceTerm )
+    ELSE
+      dt = CFL * ( xR(1) - xL(1) ) / DBLE( nX(1) )
+    END IF
+
     IF( DEBUG ) wTime_CTS = MPI_WTIME( ) - wTime_CTS
 
     IF( t + dt .LT. t_end )THEN
@@ -391,11 +402,13 @@ PROGRAM ApplicationDriver
     END IF
 
     IF( DEBUG ) wTime_UF = MPI_WTIME()
+    IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL UpdateFluid_SSPRK'
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
     IF( DEBUG ) wTime_UF = MPI_WTIME() - wTime_UF
 
     IF( DEBUG )THEN
+      WRITE(*,'(A)') 'AD: CALL ComputeFromConserved_GR'
       CALL ComputeFromConserved_GR &
              ( iX_B0, iX_E0, &
                uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -426,6 +439,7 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
+      IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL ComputeFromConserved_GR'
       CALL ComputeFromConserved_GR &
              ( iX_B0, iX_E0, &
                uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -433,9 +447,11 @@ PROGRAM ApplicationDriver
                uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
 
+      IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL WriteFieldsHDF'
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
+      IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL ComputeTally_Euler_GR'
       CALL ComputeTally_Euler_GR &
            ( iX_B0, iX_E0, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &

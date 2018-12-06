@@ -53,7 +53,9 @@ MODULE dgDiscretizationModule_Euler_GR
 
   PUBLIC :: ComputeIncrement_Euler_GR_DG_Explicit
 
-  LOGICAL, PARAMETER :: DisplayTimers = .FALSE., DEBUG = .FALSE.
+  LOGICAL, PARAMETER :: DisplayTimers = .FALSE.
+  LOGICAL  :: DEBUG = .FALSE.
+  LOGICAL  :: DEBUG_X1 = .FALSE., DEBUG_X2 = .FALSE., DEBUG_G = .FALSE.
   REAL(DP) :: Timer_RHS_GR
   REAL(DP) :: Timer_RHS_1_GR, dT_RHS_1_GR
   REAL(DP) :: Timer_RHS_2_GR, dT_RHS_2_GR
@@ -85,15 +87,15 @@ CONTAINS
 
     dU = Zero
 
-    IF( DEBUG ) WRITE(*,*) 'CALL ApplyBoundaryConditions_Fluid'
+    IF( DEBUG ) WRITE(*,'(A)') '  DG: CALL ApplyBoundaryConditions_Fluid'
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-    IF( DEBUG ) WRITE(*,*) 'CALL ComputeIncrement_Divergence_X1'
+    IF( DEBUG ) WRITE(*,'(A)') '  DG: CALL ComputeIncrement_Divergence_X1'
     CALL ComputeIncrement_Divergence_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-    IF( DEBUG ) WRITE(*,*) 'CALL ComputeIncrement_Divergence_X2'
+    IF( DEBUG ) WRITE(*,'(A)') '  DG: CALL ComputeIncrement_Divergence_X2'
     CALL ComputeIncrement_Divergence_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
@@ -122,7 +124,7 @@ CONTAINS
       END DO
     END DO
 
-    IF( DEBUG ) WRITE(*,*) 'CALL ComputeIncrement_Geometry'
+    IF( DEBUG ) WRITE(*,'(A)') '  DG: CALL ComputeIncrement_Geometry'
     CALL ComputeIncrement_Geometry &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
@@ -179,7 +181,7 @@ CONTAINS
 
         DO iX1 = iX_B0(1), iX_E0(1) + 1
 
-          IF( DEBUG ) WRITE(*,*) 'iX1,iX2,iX3' , iX1,iX2,iX3
+          IF( DEBUG_X1 ) WRITE(*,'(A,3I5)') '  DG: iX1,iX2,iX3' , iX1,iX2,iX3
           !WRITE(*,*) 'iX1,iX2,iX3' , iX1,iX2,iX3
            
           DO iCF = 1, nCF
@@ -205,8 +207,8 @@ CONTAINS
 
           IF( iX1 < iX_E0(1) + 1 )THEN
 
-            IF( DEBUG ) WRITE(*,*) '  Volume Term'
-            IF( DEBUG ) WRITE(*,*) '    CALL ComputePrimitive_GR'
+            IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG: Volume Term'
+            IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG: CALL ComputePrimitive_GR'
             CALL ComputePrimitive_GR &
                ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                  uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
@@ -260,7 +262,7 @@ CONTAINS
           ! --- Divergence Term ---
           !------------------------
 
-          IF( DEBUG ) WRITE(*,*) '  Divergence Term'
+          IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG: Divergence Term'
           ! --- Interpolate Fluid Fields ---
 
           CALL Timer_Start( dT_INT_F_GR )
@@ -341,8 +343,8 @@ CONTAINS
 
           ! --- Left State Primitive, etc. ---
 
-          IF( DEBUG ) WRITE(*,*) '    Left State Primitive'
-          IF( DEBUG ) WRITE(*,*) '      CALL ComputePrimitive_GR'
+          IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG: Left State Primitive'
+          IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG: CALL ComputePrimitive_GR'
           CALL ComputePrimitive_GR &
                  ( uCF_L(:,iCF_D ), uCF_L(:,iCF_S1), uCF_L(:,iCF_S2), &
                    uCF_L(:,iCF_S3), uCF_L(:,iCF_E ), uCF_L(:,iCF_Ne), &
@@ -353,7 +355,8 @@ CONTAINS
                    G_F(:,iGF_Gm_dd_22),                               &
                    G_F(:,iGF_Gm_dd_33) )
 
-          IF( DEBUG ) WRITE(*,*) '      CALL ComputeSoundSpeedFromPrimitive_GR'
+          IF( DEBUG_X1 ) &
+            WRITE(*,'(A)') '  DG: CALL ComputeSoundSpeedFromPrimitive_GR'
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L(:) )
 
@@ -392,8 +395,8 @@ CONTAINS
 
           ! --- Right State Primitive, etc. ---
 
-          IF( DEBUG ) WRITE(*,*) '    Right State Primitive'
-          IF( DEBUG ) WRITE(*,*) '      CALL ComputePrimitive'
+          IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG: Right State Primitive'
+          IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG: CALL ComputePrimitive'
           CALL ComputePrimitive_GR &
                ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
                  uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
@@ -404,7 +407,8 @@ CONTAINS
                  G_F(:,iGF_Gm_dd_22),                               &
                  G_F(:,iGF_Gm_dd_33) )
 
-          IF( DEBUG ) WRITE(*,*) '      CALL ComputeSoundSpeedFromPrimitive_GR'
+          IF( DEBUG_X1 ) &
+            WRITE(*,'(A)') '  DG: CALL ComputeSoundSpeedFromPrimitive_GR'
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R(:) )
 
@@ -630,7 +634,7 @@ CONTAINS
 
           dX1 = MeshX(1) % Width(iX1)
 
-          IF( DEBUG_X2 ) WRITE(*,*) 'iX1,iX2,iX3' , iX1,iX2,iX3
+          IF( DEBUG_X2 ) WRITE(*,'(A,3I5)') '  DG_X2: iX1,iX2,iX3' , iX1,iX2,iX3
 
           DO iCF = 1, nCF
 
@@ -655,8 +659,8 @@ CONTAINS
 
           IF( iX2 .LT. iX_E0(2) + 1 )THEN
 
-            IF( DEBUG_X2 ) WRITE(*,*) '  Volume Term'
-            IF( DEBUG_X2 ) WRITE(*,*) '    CALL ComputePrimitive_GR'
+            IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: Volume Term'
+            IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: CALL ComputePrimitive_GR'
             CALL ComputePrimitive_GR &
                ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                  uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
@@ -675,7 +679,7 @@ CONTAINS
                       uPF_K(iNodeX,iPF_V1),     &
                       uPF_K(iNodeX,iPF_V2),     &
                       uPF_K(iNodeX,iPF_V3),     &
-                      uPF_K(iNodeX,iPF_E ),     &                    
+                      uPF_K(iNodeX,iPF_E ),     &
                       uPF_K(iNodeX,iPF_Ne),     &
                       P_K(iNodeX),              &
                       G_K(iNodeX,iGF_Gm_dd_11), &
@@ -710,7 +714,7 @@ CONTAINS
           ! --- Divergence Term ---
           !------------------------
 
-          IF( DEBUG_X2 ) WRITE(*,*) '  Divergence Term'
+          IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: Divergence Term'
 
           ! --- Interpolate Fluid Fields ---
 
@@ -796,8 +800,8 @@ CONTAINS
 
           ! --- Left State Primitive, etc. ---
 
-          IF( DEBUG_X2 ) WRITE(*,*) '    Left State Primitive'
-          IF( DEBUG_X2 ) WRITE(*,*) '      CALL ComputePrimitive_GR'
+          IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: Left State Primitive'
+          IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: CALL ComputePrimitive_GR'
           CALL ComputePrimitive_GR &
                  ( uCF_L(:,iCF_D ), uCF_L(:,iCF_S1), uCF_L(:,iCF_S2), &
                    uCF_L(:,iCF_S3), uCF_L(:,iCF_E ), uCF_L(:,iCF_Ne), &
@@ -808,7 +812,8 @@ CONTAINS
                    G_F(:,iGF_Gm_dd_22),                               &
                    G_F(:,iGF_Gm_dd_33) )
 
-          IF( DEBUG_X2 ) WRITE(*,*) '      CALL ComputeSoundSpeedFromPrimitive_GR'
+          IF( DEBUG_X2 ) &
+            WRITE(*,'(A)') '  DG_X2: CALL ComputeSoundSpeedFromPrimitive_GR'
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L(:) )
 
@@ -847,8 +852,8 @@ CONTAINS
 
           ! --- Right State Primitive, etc. ---
 
-          IF( DEBUG ) WRITE(*,*) '    Right State Primitive'
-          IF( DEBUG ) WRITE(*,*) '      CALL ComputePrimitive'
+          IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: Right State Primitive'
+          IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: CALL ComputePrimitive'
           CALL ComputePrimitive_GR &
                ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
                  uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
@@ -859,7 +864,8 @@ CONTAINS
                  G_F(:,iGF_Gm_dd_22),                               &
                  G_F(:,iGF_Gm_dd_33) )
 
-          IF( DEBUG ) WRITE(*,*) '      CALL ComputeSoundSpeedFromPrimitive_GR'
+          IF( DEBUG_X2 ) &
+            WRITE(*,'(A)') '  DG_X2: CALL ComputeSoundSpeedFromPrimitive_GR'
           CALL ComputeSoundSpeedFromPrimitive_GR &
                  ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R(:) )
 
@@ -983,7 +989,7 @@ CONTAINS
 
               CALL DGEMV &
                      ( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Up, nDOFX_X2, &
-                       NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2-1,iX3,iCF), 1 )
+                      NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2-1,iX3,iCF), 1 )
 
             END DO
 
@@ -1054,9 +1060,10 @@ CONTAINS
     REAL(DP) :: G_P_X1(nDOFX,nGF), G_N_X1(nDOFX,nGF)
     REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF)
 
+    IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: Entering ComputeIncrement_Geometry...'
+
     CALL Timer_Start( Timer_Geo )
 
-    IF( DEBUG ) WRITE(*,'(A)') 'Entering ComputeIncrement_Geometry...'
     DO iX3 = iX_B0(3), iX_E0(3)
 
       dX3 = MeshX(3) % Width(iX3)
@@ -1085,7 +1092,7 @@ CONTAINS
 
           P_K(:) = uAF(:,iX1,iX2,iX3,iAF_P)
 
-          IF( DEBUG ) WRITE(*,'(A)') 'CALL ComputePrimitive_GR'
+          IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: CALL ComputePrimitive_GR'
           CALL ComputePrimitive_GR &
                ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                  uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
@@ -1096,7 +1103,7 @@ CONTAINS
                  G_K(:,iGF_Gm_dd_22),                               &
                  G_K(:,iGF_Gm_dd_33) )
 
-          IF( DEBUG ) WRITE(*,'(A)') 'StressTensor_Diagonal'
+          IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: StressTensor_Diagonal'
           DO iNodeX = 1, nDOFX
 
             Stress(iNodeX,1:3)            &
@@ -1115,7 +1122,7 @@ CONTAINS
 
           ! --- Face States (Average of Left and Right States) ---
 
-          IF( DEBUG ) WRITE(*,'(A)') 'Scale factor derivatives wrt X1'
+          IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: Scale factor derivatives wrt X1'
           DO iGF = iGF_h_1, iGF_h_3
 
             CALL DGEMV &
@@ -1177,7 +1184,8 @@ CONTAINS
 
           ! --- Face States (Average of Left and Right States) ---
 
-          IF( DEBUG ) WRITE(*,'(A)') 'Lapse function derivatives wrt X1'
+          IF( DEBUG_G ) WRITE(*,'(A)') &
+            '  DG_G: Lapse function derivatives wrt X1'
           iGF = iGF_Alpha
 
           CALL DGEMV &
@@ -1216,7 +1224,7 @@ CONTAINS
 
           ! --- Compute Increments ---
 
-          IF( DEBUG ) WRITE(*,'(A)') 'Compute increments (1)'
+          IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: Compute increments (1)'
           dU(:,iX1,iX2,iX3,iCF_S1)                                       &
             = dU(:,iX1,iX2,iX3,iCF_S1)                                   &
                 + G_K(:,iGF_Alpha)                                       &
@@ -1225,7 +1233,7 @@ CONTAINS
                         + ( Stress(:,3) * dh3dX1(:) ) / G_K(:,iGF_h_3) ) &
                 - ( uCF_K(:,iCF_D) + uCF_K(:,iCF_E) ) * dadx1(:)
 
-          IF( DEBUG ) WRITE(*,'(A)') 'Compute increments (2)'
+          IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: Compute increments (2)'
           dU(:,iX1,iX2,iX3,iCF_E)     &
             = dU(:,iX1,iX2,iX3,iCF_E) &
                 - ( uCF_K(:,iCF_S1) / G_K(:,iGF_Gm_dd_11) ) * dadx1(:)
@@ -1234,7 +1242,7 @@ CONTAINS
       END DO
     END DO
 
-    IF( DEBUG ) WRITE(*,'(A)') 'Leaving ComputeIncrement_Geometry'
+    IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: Leaving ComputeIncrement_Geometry'
     CALL Timer_Stop( Timer_Geo )
 
     IF( DisplayTimers )THEN
