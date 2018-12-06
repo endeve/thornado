@@ -81,11 +81,10 @@ CONTAINS
     REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
     REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
     TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI_F
-    TYPE(amrex_mfiter) :: MFI_G
+    TYPE(amrex_mfiter) :: MFI
     TYPE(MeshType)     :: MeshX(3)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     uPF_K(1:nDOFX,1:nPF) = 0.0d0
 
@@ -97,21 +96,20 @@ CONTAINS
 
     END DO
 
-    CALL amrex_mfiter_build( MFI_G, MF_uGF, tiling = .TRUE. )
-    CALL amrex_mfiter_build( MFI_F, MF_uCF, tiling = .TRUE. )
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = .TRUE. )
 
-    DO WHILE( MFI_G % next() .AND. MFI_F % next() )
+    DO WHILE( MFI % next() )
 
-      uGF => MF_uGF % DataPtr( MFI_G )
-      uCF => MF_uCF % DataPtr( MFI_F )
+      uGF => MF_uGF % DataPtr( MFI )
+      uCF => MF_uCF % DataPtr( MFI )
 
-      BX = MFI_F % tilebox()
-
-      lo_F = LBOUND( uCF )
-      hi_F = UBOUND( uCF )
+      BX = MFI % tilebox()
 
       lo_G = LBOUND( uGF )
       hi_G = UBOUND( uGF )
+
+      lo_F = LBOUND( uCF )
+      hi_F = UBOUND( uCF )
 
       DO iX3 = BX % lo(3), BX % hi(3)
       DO iX2 = BX % lo(2), BX % hi(2)
@@ -167,8 +165,7 @@ CONTAINS
 
     END DO
 
-    CALL amrex_mfiter_destroy( MFI_G )
-    CALL amrex_mfiter_destroy( MFI_F )
+    CALL amrex_mfiter_destroy( MFI )
 
     DO iDim = 1, 3
 
