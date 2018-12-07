@@ -44,22 +44,37 @@ CONTAINS
     CHARACTER(32)                   :: PlotFileName
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C, WriteFF_P, WriteFF_A
-    INTEGER                         :: iComp, nLevels
+    INTEGER                         :: iComp, nLevels, nF = 0
     TYPE(amrex_multifab)            :: MF_PF
+    TYPE(amrex_boxarray)            :: BA
+    TYPE(amrex_distromap)           :: DM
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
 
+    INTEGER :: iTemp
+
     WriteGF   = .FALSE.
-    IF( PRESENT( MF_uGF_Option ) ) WriteGF   = .TRUE.
+    IF( PRESENT( MF_uGF_Option ) )THEN
+      WriteGF   = .TRUE.
+      nF = nF + nGF
+    END IF
 
     WriteFF_C = .FALSE.
-    IF( PRESENT( MF_uCF_Option ) ) WriteFF_C = .TRUE.
+    IF( PRESENT( MF_uCF_Option ) )THEN
+      WriteFF_C = .TRUE.
+      nF = nF + nCF
+    END IF
 
     WriteFF_P = .FALSE.
-    IF( PRESENT( MF_uPF_Option ) ) WriteFF_P = .TRUE.
+    IF( PRESENT( MF_uPF_Option ) )THEN
+      WriteFF_P = .TRUE.
+      nF = nF + nPF
+    END IF
 
     WriteFF_A = .FALSE.
-    IF( PRESENT( MF_uAF_Option ) ) WriteFF_A = .TRUE.
-
+    IF( PRESENT( MF_uAF_Option ) )THEN
+      WriteFF_A = .TRUE.
+      nF = nF + nAF
+    END IF
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -72,128 +87,79 @@ CONTAINS
 
     nLevels = 1
 
-    ! --- Geometry fields ---
+    PlotFileName = TRIM( BaseFileName ) // '_' // NumberString
+
+    ALLOCATE( VarNames(nF) )
+
+    iTemp = 0
     IF( WriteGF )THEN
-
-      PlotFileName = TRIM( BaseFileName ) // '_GeometryFields_' // NumberString
-
-      ALLOCATE( VarNames(nGF) )
-
       DO iComp = 1, nGF
-
         CALL amrex_string_build &
-               ( VarNames(iComp), TRIM( ShortNamesGF(iComp) ) )
-
+               ( VarNames(iComp + iTemp), TRIM( ShortNamesGF(iComp) ) )
       END DO
-
-      CALL amrex_multifab_build &
-             ( MF_PF, MF_uGF_Option % BA, MF_uGF_Option % DM, nGF, 0 )
-
-      CALL MF_ComputeCellAverage( nGF, MF_uGF_Option, MF_PF )
-
-      CALL amrex_write_plotfile &
-             ( PlotFileName, nLevels, [ MF_PF ], VarNames, &
-               [ GEOM ], Time, [ PlotFileNumber ], [1] )
-
-      CALL amrex_multifab_destroy( MF_PF )
-
-      DEALLOCATE( VarNames )
-
+      iTemp = iTemp + nGF
+      BA = MF_uGF_Option % BA
+      DM = MF_uGF_Option % DM
     END IF
 
-    ! --- Conserved fluid fields ---
     IF( WriteFF_C )THEN
-
-      PlotFileName = TRIM( BaseFileName ) // '_FluidFields_C_' // NumberString
-
-      ALLOCATE( VarNames(nCF) )
-
       DO iComp = 1, nCF
-
-         CALL amrex_string_build &
-                ( VarNames(iComp), TRIM( ShortNamesCF(iComp) ) )
-
+        CALL amrex_string_build &
+               ( VarNames(iComp + iTemp), TRIM( ShortNamesCF(iComp) ) )
       END DO
-
-      CALL amrex_multifab_build &
-             ( MF_PF, MF_uCF_Option % BA, MF_uCF_Option % DM, nCF, 0 )
-
-      CALL MF_ComputeCellAverage( nCF, MF_uCF_Option, MF_PF )
-
-      CALL amrex_write_plotfile &
-             ( PlotFileName, nLevels, [ MF_PF ], VarNames, &
-               [ GEOM ], Time, [ PlotFileNumber ], [1] )
-
-      CALL amrex_multifab_destroy( MF_PF )
-
-      DEALLOCATE( VarNames )
-
+      iTemp = iTemp + nCF
+      BA = MF_uCF_Option % BA
+      DM = MF_uCF_Option % DM
     END IF
 
-    ! --- Primitive fluid fields ---
     IF( WriteFF_P )THEN
-
-      PlotFileName = TRIM( BaseFileName ) // '_FluidFields_P_' // NumberString
-
-      ALLOCATE( VarNames(nPF) )
-
       DO iComp = 1, nPF
-
-         CALL amrex_string_build &
-                ( VarNames(iComp), TRIM( ShortNamesPF(iComp) ) )
-
+        CALL amrex_string_build &
+               ( VarNames(iComp + iTemp), TRIM( ShortNamesPF(iComp) ) )
       END DO
-
-      CALL amrex_multifab_build &
-             ( MF_PF, MF_uPF_Option % BA, MF_uPF_Option % DM, nPF, 0 )
-
-      CALL MF_ComputeCellAverage( nPF, MF_uPF_Option, MF_PF )
-
-      CALL amrex_write_plotfile &
-             ( PlotFileName, nLevels, [ MF_PF ], VarNames, &
-               [ GEOM ], Time, [ PlotFileNumber ], [1] )
-
-      CALL amrex_multifab_destroy( MF_PF )
-
-      DEALLOCATE( VarNames )
-
+      iTemp = iTemp + nPF
+      BA = MF_uPF_Option % BA
+      DM = MF_uPF_Option % DM
     END IF
 
-    ! --- Auxiliary fluid fields ---
     IF( WriteFF_A )THEN
-
-      PlotFileName = TRIM( BaseFileName ) // '_FluidFields_A_' // NumberString
-
-      ALLOCATE( VarNames(nAF) )
-
       DO iComp = 1, nAF
-
-         CALL amrex_string_build &
-                ( VarNames(iComp), TRIM( ShortNamesAF(iComp) ) )
-
+        CALL amrex_string_build &
+               ( VarNames(iComp + iTemp), TRIM( ShortNamesAF(iComp) ) )
       END DO
-
-      CALL amrex_multifab_build &
-             ( MF_PF, MF_uAF_Option % BA, MF_uAF_Option % DM, nAF, 0 )
-
-      CALL MF_ComputeCellAverage( nAF, MF_uAF_Option, MF_PF )
-
-      CALL amrex_write_plotfile &
-             ( PlotFileName, nLevels, [ MF_PF ], VarNames, &
-               [ GEOM ], Time, [ PlotFileNumber ], [1] )
-
-      CALL amrex_multifab_destroy( MF_PF )
-
-      DEALLOCATE( VarNames )
-
+      iTemp = iTemp + nAF
+      BA = MF_uAF_Option % BA
+      DM = MF_uAF_Option % DM
     END IF
+
+    CALL amrex_multifab_build &
+           ( MF_PF, BA, DM, nF, 0 )
+
+    iTemp = 0
+    IF( WriteGF   ) &
+      CALL MF_ComputeCellAverage( nGF, MF_uGF_Option, MF_PF, iTemp )
+    IF( WriteFF_C ) &
+      CALL MF_ComputeCellAverage( nCF, MF_uCF_Option, MF_PF, iTemp )
+    IF( WriteFF_P ) &
+      CALL MF_ComputeCellAverage( nPF, MF_uPF_Option, MF_PF, iTemp )
+    IF( WriteFF_A ) &
+      CALL MF_ComputeCellAverage( nAF, MF_uAF_Option, MF_PF, iTemp )
+
+    CALL amrex_write_plotfile &
+           ( PlotFileName, nLevels, [ MF_PF ], VarNames, &
+             [ GEOM ], Time, [ PlotFileNumber ], [1] )
+
+    CALL amrex_multifab_destroy( MF_PF )
+
+    DEALLOCATE( VarNames )
 
   END SUBROUTINE WriteFieldsAMReX_PlotFile
 
 
-  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A )
+  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, iTemp )
 
     INTEGER,              INTENT(in   ) :: nComp
+    INTEGER,              INTENT(inout) :: iTemp
     TYPE(amrex_multifab), INTENT(in   ) :: MF
     TYPE(amrex_multifab), INTENT(inout) :: MF_A
 
@@ -226,7 +192,7 @@ CONTAINS
         ! --- Compute cell-average ---
         DO iComp = 1, nComp
 
-          u_A(iX1,iX2,iX3,iComp) &
+          u_A(iX1,iX2,iX3,iComp + iTemp) &
             = DOT_PRODUCT( WeightsX_q(:), u_K(:,iComp) )
 
         END DO
@@ -238,6 +204,7 @@ CONTAINS
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
+    iTemp = iTemp + nComp
 
   END SUBROUTINE MF_ComputeCellAverage
 
