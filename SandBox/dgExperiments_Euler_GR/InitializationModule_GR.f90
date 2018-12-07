@@ -130,202 +130,202 @@ CONTAINS
                                          * Eblast / X_D**3
     END IF
 
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
-          DO iNodeX = 1, nDOFX
+      DO iNodeX = 1, nDOFX
 
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-            SELECT CASE ( TRIM( RiemannProblemName ) )
+        SELECT CASE ( TRIM( RiemannProblemName ) )
 
-              CASE( 'Sod' )
+          CASE( 'Sod' )
 
-                IF( X1 .LE. Half )THEN
+            IF( X1 .LE. Half )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                ELSE
+            ELSE
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.1_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.1_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                END IF
+            END IF
 
-              CASE( 'MBProblem1' )
+          CASE( 'MBProblem1' )
 
-                IF( X1 .LE. Half )THEN
+            IF( X1 .LE. Half )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.9_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.9_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                ELSE
+            ELSE
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 10.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 10.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                END IF
+            END IF
 
-              CASE( 'MBProblem4' )
+          CASE( 'MBProblem4' )
 
-                IF( X1 .LE. Half )THEN
+            IF( X1 .LE. Half )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d3
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                ELSE
+            ELSE
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d-2
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d-2
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                END IF
+            END IF
 
-              CASE( 'PerturbedShockTube' )
+          CASE( 'PerturbedShockTube' )
 
-                IF( X1 .LE. Half )THEN
+            IF( X1 .LE. Half )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 5.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 50.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 5.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 50.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                ELSE
+            ELSE
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  &
-                    = 2.0_DP + 0.3_DP * SIN( 50.0_DP * X1 )
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 5.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  &
+                = 2.0_DP + 0.3_DP * SIN( 50.0_DP * X1 )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 5.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                END IF
+            END IF
 
-              CASE( 'CartesianSedov' )
+          CASE( 'CartesianSedov' )
 
-                IF( X1 .LE. X_D )THEN
+            IF( X1 .LE. X_D )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = Eblast / X_D**3
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
-                    = ( Gamma_IDEAL - One ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = Eblast / X_D**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
+                = ( Gamma_IDEAL - One ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
 
-                ELSE
+            ELSE
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d-6
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d-6
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-               END IF
+           END IF
 
-              CASE( 'ShockReflection' )
+          CASE( 'ShockReflection' )
 
-                IF( X1 .LE. One )THEN
+            IF( X1 .LE. One )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.99999_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.01_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.99999_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.01_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                END IF
+            END IF
 
 
-              CASE DEFAULT
+          CASE DEFAULT
 
-                WRITE(*,*)
-                WRITE(*,'(A,A)') &
-                  'Invalid choice for RiemannProblemName: ', RiemannProblemName
-                WRITE(*,'(A)') 'Valid choices:'
-                WRITE(*,'(A)') &
-                  "  'Sod' - &
-                  Sod's shock tube"
-                WRITE(*,'(A)') &
-                  "  'MBProblem1' - &
-                  Mignone & Bodo (2005) MNRAS, 364, 126, Problem 1"
-                WRITE(*,'(A)') &
-                  "  'MBProblem4' - &
-                  Mignone & Bodo (2005) MNRAS, 364, 126, Problem 4"
-                WRITE(*,'(A)') &
-                  "  'PerturbedShockTube' - &
-                  Del Zanna & Bucciantini (2002) AA, 390, 1177, &
-                  Sinusoidal density perturbation"
-                WRITE(*,'(A)') &
-                  "  'CartesianSedov' - &
-                  ..."
-                WRITE(*,'(A)') &
-                  "  'ShockReflection' - &
-                  Del Zanna & Bucciantini (2002) AA, 390, 1177, &
-                  Planar shock reflection"
-                WRITE(*,'(A)') 'Stopping...'
-                STOP
+            WRITE(*,*)
+            WRITE(*,'(A,A)') &
+              'Invalid choice for RiemannProblemName: ', RiemannProblemName
+            WRITE(*,'(A)') 'Valid choices:'
+            WRITE(*,'(A)') &
+              "  'Sod' - &
+              Sod's shock tube"
+            WRITE(*,'(A)') &
+              "  'MBProblem1' - &
+              Mignone & Bodo (2005) MNRAS, 364, 126, Problem 1"
+            WRITE(*,'(A)') &
+              "  'MBProblem4' - &
+              Mignone & Bodo (2005) MNRAS, 364, 126, Problem 4"
+            WRITE(*,'(A)') &
+              "  'PerturbedShockTube' - &
+              Del Zanna & Bucciantini (2002) AA, 390, 1177, &
+              Sinusoidal density perturbation"
+            WRITE(*,'(A)') &
+              "  'CartesianSedov' - &
+              ..."
+            WRITE(*,'(A)') &
+              "  'ShockReflection' - &
+              Del Zanna & Bucciantini (2002) AA, 390, 1177, &
+              Planar shock reflection"
+            WRITE(*,'(A)') 'Stopping...'
+            STOP
 
-              END SELECT
-
-            END DO
-
-          CALL ComputeConserved_GR &
-                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   uAF(:,iX1,iX2,iX3,iAF_P) )
+          END SELECT
 
         END DO
-      END DO
+
+      CALL ComputeConserved_GR &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE InitializeFields_GR_RiemannProblem
@@ -350,101 +350,131 @@ CONTAINS
     WRITE(*,'(A4,A,A)') &
       '', 'Riemann Problem 2D Name: ', TRIM( RiemannProblem2dName )
 
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
-          DO iNodeX = 1, nDOFX
+      DO iNodeX = 1, nDOFX
 
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-            iNodeX2 = NodeNumberTableX(2,iNodeX)
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-            SELECT CASE ( TRIM( RiemannProblem2dName ) )
+        SELECT CASE ( TRIM( RiemannProblem2dName ) )
 
-              CASE( 'DzB2002' )
+          CASE( 'DzB2002' )
 
-                ! --- SW ---
-                IF( X1 .LE. Half .AND. X2 .LE. Half )THEN
+            ! --- SW ---
+            IF( X1 .LE. Half .AND. X2 .LE. Half )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.5_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.5_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                ! --- NW ---
-                ELSE IF( X1 .LE. Half .AND. X2 .GT. Half )THEN
+            ! --- NW ---
+            ELSE IF( X1 .LE. Half .AND. X2 .GT. Half )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.99_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.99_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                ! --- NE ---
-                ELSE IF( X1 .GT. Half .AND. X2 .GT. Half )THEN
+            ! --- NE ---
+            ELSE IF( X1 .GT. Half .AND. X2 .GT. Half )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.01_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.01_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                ! --- SE ---
-                ELSE
+            ! --- SE ---
+            ELSE
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.99_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.99_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                END IF
+            END IF
 
 
-              CASE DEFAULT
+          CASE DEFAULT
 
-                WRITE(*,*)
-                WRITE(*,'(A,A)') &
-                  'Invalid choice for RiemannProblem2dName: ', &
-                    RiemannProblem2dName
-                WRITE(*,'(A)') 'Valid choices:'
-                WRITE(*,'(A)') &
-                  "  'DzB2002' - &
-                  Del-Zanna & Bucciantini, 2D Riemann Problem"
-                WRITE(*,'(A)') 'Stopping...'
-                STOP
+            WRITE(*,*)
+            WRITE(*,'(A,A)') &
+              'Invalid choice for RiemannProblem2dName: ', &
+                RiemannProblem2dName
+            WRITE(*,'(A)') 'Valid choices:'
+            WRITE(*,'(A)') &
+              "  'DzB2002' - &
+              Del-Zanna & Bucciantini, 2D Riemann Problem"
+            WRITE(*,'(A)') 'Stopping...'
+            STOP
 
-            END SELECT
+        END SELECT
 
-          END DO
-
-          CALL ComputeConserved_GR &
-                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   uAF(:,iX1,iX2,iX3,iAF_P) )
-
-        END DO
       END DO
+
+      CALL ComputeConserved_GR &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
     END DO
+    END DO
+    END DO
+
+!!$    DO iX3 = iX_B1(3), iX_E1(3)
+!!$    DO iX2 = iX_B1(2), iX_E1(2)
+!!$    DO iX1 = iX_B1(1), iX_E1(1)
+!!$
+!!$      WRITE(*,*) 'uPF: ', uPF(:,iX1,iX2,iX3,iPF_V3)
+!!$      WRITE(*,*) 'uCF: ', uCF(:,iX1,iX2,iX3,iCF_S3)
+!!$      CALL ComputePrimitive_GR( uCF(:,iX1,iX2,iX3,iCF_D ), &
+!!$                                uCF(:,iX1,iX2,iX3,iCF_S1), &
+!!$                                uCF(:,iX1,iX2,iX3,iCF_S2), &
+!!$                                uCF(:,iX1,iX2,iX3,iCF_S3), &
+!!$                                uCF(:,iX1,iX2,iX3,iCF_E ), &
+!!$                                uCF(:,iX1,iX2,iX3,iCF_Ne), &
+!!$                                uPF(:,iX1,iX2,iX3,iPF_D ), &
+!!$                                uPF(:,iX1,iX2,iX3,iPF_V1), &
+!!$                                uPF(:,iX1,iX2,iX3,iPF_V2), &
+!!$                                uPF(:,iX1,iX2,iX3,iPF_V3), &
+!!$                                uPF(:,iX1,iX2,iX3,iPF_E ), &
+!!$                                uPF(:,iX1,iX2,iX3,iPF_Ne), &
+!!$                                uAF(:,iX1,iX2,iX3,iAF_P ), &
+!!$                                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+!!$                                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+!!$                                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+!!$      WRITE(*,*) 'uPF: ', uPF(:,iX1,iX2,iX3,iPF_V3)
+!!$      WRITE(*,*)
+!!$
+!!$    END DO
+!!$    END DO
+!!$    END DO
+!!$    STOP 'InitializationModule'
 
 
   END SUBROUTINE InitializeFields_GR_RiemannProblem2d
@@ -468,74 +498,75 @@ CONTAINS
 
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
-      '', 'Spherical Riemann Problem Name: ', TRIM( SphericalRiemannProblemName )
+      '', 'Spherical Riemann Problem Name: ', &
+        TRIM( SphericalRiemannProblemName )
 
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
-          DO iNodeX = 1, nDOFX
+      DO iNodeX = 1, nDOFX
 
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-            SELECT CASE ( TRIM( SphericalRiemannProblemName ) )
+        SELECT CASE ( TRIM( SphericalRiemannProblemName ) )
 
-              CASE( 'SphericalSod' )
+          CASE( 'SphericalSod' )
 
-                IF( X1 <= One )THEN
+            IF( X1 <= One )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                ELSE
+            ELSE
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.1_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                    = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.1_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-                END IF
+            END IF
 
-             CASE DEFAULT
+         CASE DEFAULT
 
-                WRITE(*,*)
-                WRITE(*,*) &
-                  'Invalid choice for SphericalRiemannProblemName: ', &
-                  SphericalRiemannProblemName
-                WRITE(*,*) 'Valid choices:'
-                WRITE(*,*) &
-                  "'SphericalSod' - ", &
-                  "Spherical Sod's shock tube"
-                STOP
+            WRITE(*,*)
+            WRITE(*,*) &
+              'Invalid choice for SphericalRiemannProblemName: ', &
+              SphericalRiemannProblemName
+            WRITE(*,*) 'Valid choices:'
+            WRITE(*,*) &
+              "'SphericalSod' - ", &
+              "Spherical Sod's shock tube"
+            STOP
 
-              END SELECT
-
-            END DO
-
-          CALL ComputeConserved_GR &
-                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   uAF(:,iX1,iX2,iX3,iAF_P) )
+          END SELECT
 
         END DO
-      END DO
+
+      CALL ComputeConserved_GR &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE InitializeFields_GR_SphericalRiemannProblem
@@ -569,56 +600,56 @@ CONTAINS
                                      ( Gamma_IDEAL - One ) &
                                        * Eblast / ( FourPi / Three * X_D**3 )
 
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
-          DO iNodeX = 1, nDOFX
+      DO iNodeX = 1, nDOFX
 
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-            IF( X1 <= X_D)THEN
+        IF( X1 <= X_D)THEN
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = Eblast / ( FourPi / Three * X_D**3 )
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
-                = ( Gamma_IDEAL - One ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+            = Eblast / ( FourPi / Three * X_D**3 )
+          uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
+            = ( Gamma_IDEAL - One ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
 
-            ELSE
+        ELSE
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = 1.0d-5
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
-                = ( Gamma_IDEAL - One ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+            = 1.0d-5
+          uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
+            = ( Gamma_IDEAL - One ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
 
-            END IF
+        END IF
 
-          END DO
-
-          CALL ComputeConserved_GR &
-                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   uAF(:,iX1,iX2,iX3,iAF_P) )
-
-        END DO
       END DO
+
+      CALL ComputeConserved_GR &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE InitializeFields_GR_SphericalSedov
@@ -643,62 +674,62 @@ CONTAINS
 
     ! --- Loop over all elements ---
     DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-        DO iX1 = iX_B1(1), iX_E1(1)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
 
-          ! --- Loop over all nodes in an element ---
-          DO iNodeX = 1, nDOFX
+      ! --- Loop over all nodes in an element ---
+      DO iNodeX = 1, nDOFX
 
-            ! --- Isolate node in X1 direction ---
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
+        ! --- Isolate node in X1 direction ---
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
 
-            ! --- Physical coordinate corresponding to iNodeX1 ---
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        ! --- Physical coordinate corresponding to iNodeX1 ---
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-            ! --- Get lower index of input array
-            !     (FluidFieldData) corresponding to physical coordinate (X1) ---
-            iL = Locate( X1, FluidFieldData(:,i_r), nLines )
+        ! --- Get lower index of input array
+        !     (FluidFieldData) corresponding to physical coordinate (X1) ---
+        iL = Locate( X1, FluidFieldData(:,i_r), nLines )
 
-            ! --- Interpolate to the physical point X1 ---
+        ! --- Interpolate to the physical point X1 ---
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-              = InterpolateInitialConditionsOntoGrid &
-                  ( i_D, i_r, iL, X1, FluidFieldData )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+          = InterpolateInitialConditionsOntoGrid &
+              ( i_D, i_r, iL, X1, FluidFieldData )
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-              = InterpolateInitialConditionsOntoGrid &
-                  ( i_V1, i_r, iL, X1, FluidFieldData )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+          = InterpolateInitialConditionsOntoGrid &
+              ( i_V1, i_r, iL, X1, FluidFieldData )
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = Zero
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-              = InterpolateInitialConditionsOntoGrid &
-                  ( i_E, i_r, iL, X1, FluidFieldData )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+          = InterpolateInitialConditionsOntoGrid &
+              ( i_E, i_r, iL, X1, FluidFieldData )
 
-            ! --- Compute pressure from internal energy density ---
-            uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
-              = ( Gamma_IDEAL - 1.0_DP ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
+        ! --- Compute pressure from internal energy density ---
+        uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+          = ( Gamma_IDEAL - 1.0_DP ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
 
-          END DO ! --- Loop over nodes ---
+      END DO ! --- Loop over nodes ---
 
-          CALL ComputeConserved_GR &
-                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11),                      &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22),                      &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33),                      &
-                   uAF(:,iX1,iX2,iX3,iAF_P ) )
+      CALL ComputeConserved_GR &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11),                      &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22),                      &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33),                      &
+               uAF(:,iX1,iX2,iX3,iAF_P ) )
 
-        END DO
-      END DO
+    END DO
+    END DO
     END DO
 
     OPEN(  100, FILE = 'SAS_IC_interp.dat' )

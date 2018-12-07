@@ -87,9 +87,9 @@ PROGRAM ApplicationDriver
   REAL(DP) :: wTime_UF, wTime_CTS
   
 !  ProgramName = 'RiemannProblem'
-!  ProgramName = 'RiemannProblem2d'
+  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
-  ProgramName = 'SphericalSedov'
+!  ProgramName = 'SphericalSedov'
 !  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
@@ -142,7 +142,6 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'CARTESIAN'
 
       nX  = [ 256, 1, 1 ]
-      swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -162,8 +161,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 64, 64, 1 ]
-      swX = [ 1, 1, 0 ]
+      nX  = [ 32, 32, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -179,7 +177,6 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 2.0_DP, Pi, TwoPi ]
 
-      swX = [ 1, 0, 0 ]
       bcX = [ 2, 0, 0 ]
 
       t_end = 5.0d-1
@@ -197,7 +194,6 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.2_DP, Pi, TwoPi ]
 
-      swX = [ 1, 0, 0 ]
       bcX = [ 2, 0, 0 ]
 
       t_end = 1.0d0
@@ -220,7 +216,6 @@ PROGRAM ApplicationDriver
       xL = [ R_PNS, 0.0_DP, 0.0_DP ]
       xR = [ Two * R_shock, Pi, Four ]
 
-      swX = [ 1, 0, 0 ]
       bcX = [ 11, 0, 0 ]
 
       t_end = 1.0d1 * Millisecond
@@ -249,7 +244,7 @@ PROGRAM ApplicationDriver
 
   UseSlopeLimiter           = .TRUE.
   SlopeTolerance            = 1.0d-6
-  UseCharacteristicLimiting = .TRUE.
+  UseCharacteristicLimiting = .FALSE.
 
   UseTroubledCellIndicator  = .TRUE.
   LimiterThresholdParameter = 0.015_DP
@@ -259,16 +254,14 @@ PROGRAM ApplicationDriver
   Min_2 = Zero
 
   UseFixed_dt   = .FALSE.
-  UseSourceTerm = .TRUE.
+  UseSourceTerm = .FALSE.
 
-  iCycleD = 100
-!!$  iCycleW = 1; dt_wrt = -1.0d0
-  dt_wrt  = 1.0d-2 * t_end;       iCycleW = -1
-!!$  dt_wrt  = 1.0d-1 * Millisecond; iCycleW = -1
+  iCycleD = 1
+  iCycleW = 1; dt_wrt = -1.0d0
+!!$  dt_wrt = 1.0d-2 * t_end; iCycleW = -1
 
-  IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 )THEN
+  IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
-  END IF
 
   nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
@@ -276,6 +269,7 @@ PROGRAM ApplicationDriver
 
   ! --- Cockburn & Shu, (2001), JSC, 16, 173 ---
   CFL = 0.5d0 / ( 2.0d0 * DBLE( nNodes - 1 ) + 1.0d0 )
+  CFL = 0.1d0
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -283,7 +277,7 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = swX, &
+             = [ 1, 1, 1], &
            bcX_Option &
              = bcX, &
            xL_Option &
@@ -360,19 +354,18 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    IF( DEBUG ) wTime_CTS = MPI_WTIME( )
-    IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL ComputeTimeStep_GR'
     IF( .NOT. UseFixed_dt )THEN
+      IF( DEBUG ) wTime_CTS = MPI_WTIME( )
+      IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL ComputeTimeStep_GR'
       CALL ComputeTimeStep_GR &
              ( iX_B0, iX_E0, &
                uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                CFL = CFL, TimeStep = dt, UseSourceTerm_Option = UseSourceTerm )
+      IF( DEBUG ) wTime_CTS = MPI_WTIME( ) - wTime_CTS
     ELSE
       dt = CFL * ( xR(1) - xL(1) ) / DBLE( nX(1) )
     END IF
-
-    IF( DEBUG ) wTime_CTS = MPI_WTIME( ) - wTime_CTS
 
     IF( t + dt .LT. t_end )THEN
       t = t + dt
@@ -393,8 +386,9 @@ PROGRAM ApplicationDriver
       END IF
 
       IF( DEBUG )THEN
-        WRITE(*,'(A8,A,ES10.3E3,A)') &
-          '', 'Time to call ComputeTimeStep:   ', wTime_CTS, ' s'
+        IF( .NOT. UseFixed_dt ) &
+          WRITE(*,'(A8,A,ES10.3E3,A)') &
+            '', 'Time to call ComputeTimeStep:   ', wTime_CTS, ' s'
         WRITE(*,'(A8,A,ES10.3E3,A)') &
           '', 'Time to call UpdateFluid_SSPRK: ', wTime_UF,  ' s'
       END IF
