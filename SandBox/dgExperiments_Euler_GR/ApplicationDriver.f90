@@ -87,9 +87,10 @@ PROGRAM ApplicationDriver
   REAL(DP) :: wTime_UF, wTime_CTS
   
 !  ProgramName = 'RiemannProblem'
-  ProgramName = 'RiemannProblem2d'
+!  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
+  ProgramName = 'KelvinHelmholtz2D_Relativistic'
 !  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
@@ -161,7 +162,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 32, 32, 1 ]
+      nX  = [ 256, 256, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -198,6 +199,20 @@ PROGRAM ApplicationDriver
 
       t_end = 1.0d0
 
+    CASE( 'KelvinHelmholtz2D_Relativistic' )
+
+       CoordinateSystem = 'CARTESIAN'
+
+       Gamma = 4.0d0 / 3.0d0
+
+       nX = [ 256, 256, 1 ]
+       xL = [ -0.5d0, -1.0d0, 0.0d0 ]
+       xR = [  0.5d0,  1.0d0, 1.0d0 ]
+
+       bcX = [ 1, 1, 0 ]
+
+       t_end = 3.0d0
+
     CASE( 'StandingAccretionShock' )
 
       CoordinateSystem = 'SPHERICAL'
@@ -229,6 +244,7 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  RiemannProblem2d'
       WRITE(*,'(A)')     '  SphericalRiemannProblem'
       WRITE(*,'(A)')     '  SphericalSedov'
+      WRITE(*,'(A)')     '  KelvinHelmholtz2D_Relativistic'
       WRITE(*,'(A)')     '  StandingAccretionShock'
       WRITE(*,'(A)')     'Stopping...'
       STOP
@@ -255,10 +271,15 @@ PROGRAM ApplicationDriver
 
   UseFixed_dt   = .FALSE.
   UseSourceTerm = .FALSE.
+  IF( TRIM(CoordinateSystem) .EQ. 'CARTESIAN' .AND. UseSourceTerm )THEN
+    WRITE(*,'(A)') 'Cartesian coordinates demand that UseSourceTerm = .FALSE.'
+    WRITE(*,'(A)') 'Setting UseSourceTerm to .FALSE.'
+    UseSourceTerm = .FALSE.
+  END IF
 
   iCycleD = 1
-  iCycleW = 1; dt_wrt = -1.0d0
-!!$  dt_wrt = 1.0d-2 * t_end; iCycleW = -1
+!!$  iCycleW = 1; dt_wrt = -1.0d0
+  dt_wrt = 1.0d-2 * t_end; iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -269,7 +290,7 @@ PROGRAM ApplicationDriver
 
   ! --- Cockburn & Shu, (2001), JSC, 16, 173 ---
   CFL = 0.5d0 / ( 2.0d0 * DBLE( nNodes - 1 ) + 1.0d0 )
-  CFL = 0.1d0
+  CFL = 1.0d0
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -334,7 +355,7 @@ PROGRAM ApplicationDriver
            UsePositivityLimiter_Option = UsePositivityLimiter )
 
   WRITE(*,*)
-  WRITE(*,'(A2,A,F4.2)') '', 'CFL: ', CFL
+  WRITE(*,'(A2,A,ES11.3E3)') '', 'CFL: ', CFL
   WRITE(*,*)
   WRITE(*,'(A2,A)') '', 'Evolving Fields...'
   WRITE(*,*)
