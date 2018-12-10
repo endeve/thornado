@@ -685,7 +685,7 @@ CONTAINS
                 G_X3_Dn(nDOFX_X3,nGF), G_X3_Up(nDOFX_X3,nGF)
     LOGICAL :: UseSourceTerm
 
-    UseSourceTerm = .TRUE.
+    UseSourceTerm = .FALSE.
     IF( PRESENT( UseSourceTerm_Option) ) &
       UseSourceTerm = UseSourceTerm_Option
 
@@ -1071,20 +1071,24 @@ CONTAINS
 
       dt_X(1) &
         = dX(1) * WeightsLX1(1) / Max_X1
+      IF( dt_X(1) .LE. SqrtTiny ) dt_X(1) = HUGE( One )
 
       IF( nDimsX .GT. 1 ) &
         dt_X(2) &
           = dX(2) * WeightsLX2(1) / Max_X2
+        IF( dt_X(2) .LE. SqrtTiny ) dt_X(2) = HUGE( One )
 
       IF( nDimsX .GT. 2 ) &
         dt_X(3) &
           = dX(3) * WeightsLX3(1) / Max_X3
+        IF( dt_X(3) .LE. SqrtTiny ) dt_X(3) = HUGE( One )
 
       TimeStep = MIN( TimeStep, MIN( MINVAL( dt_X ), MINVAL( dt_S ) ) )
       IF( TimeStep .LT. SqrtTiny )THEN
 
         WRITE(*,*)
         WRITE(*,*) 'iX1, iX2, iX3       = ', iX1, iX2, iX3
+        WRITE(*,*) 'dt_X                = ', dt_X
         WRITE(*,*) 'dt_S                = ', dt_S
         IF( UseSourceTerm ) &
           WRITE(*,*) 'MinRoot1            = ', MIN( PosRoot(1), NegRoot(1) )
@@ -1305,19 +1309,16 @@ CONTAINS
 
     IF     ( ( ABS( A ) .LT. eps ) .AND. ( ABS( B ) .LT. eps ) &
             .AND. ( ABS( C ) .LT. eps ) )THEN
-      WRITE(*,*) 'AlphaC is undefined'
-      AlphaC_GR = 0.0_DP
+      STOP 'AlphaC is undefined'
     ELSE IF( ( ABS( A ) .LT. eps ) .AND. ( ABS( B ) .LT. eps ) )THEN
-      WRITE(*,*) 'AlphaC is undefined'
-      WRITE(*,*) 'C:', C
-      AlphaC_GR = 0.0_DP
+      STOP 'AlphaC is undefined'
     ELSE IF( ( ABS( A ) .LT. eps ) .AND. ( ABS( C ) .LT. eps ) )THEN
-      AlphaC_GR = 0.0_DP
+      AlphaC_GR = Zero
     ELSE IF( ABS( A ) .LT. eps )THEN
       AlphaC_GR = -C / B
     ELSE
-      AlphaC_GR = ( -B - SQRT( MAX( B**2 - 4.0_DP * A * C, eps ) ) ) &
-                    / ( 2.0_DP * A )
+      AlphaC_GR = ( -B - SQRT( MAX( B**2 - Four * A * C, eps ) ) ) &
+                    / ( Two * A )
     END IF
 
     RETURN
@@ -1341,7 +1342,7 @@ CONTAINS
     alpha = MAX( aM, aP )
 
     NumericalFlux_LLF_GR &
-      = 0.5_DP * ( FL + FR - alpha * ( UR - UL ) )
+      = Half * ( FL + FR - alpha * ( UR - UL ) )
 
     RETURN
   END FUNCTION NumericalFlux_LLF_GR
@@ -1379,11 +1380,11 @@ CONTAINS
     REAL(DP)             :: VelocityRatio
     REAL(DP)             :: NumericalFlux_X1_HLLC_GR(1:nF)
 
-    IF( aM .EQ. 0.0d0 )THEN
+    IF( aM .EQ. Zero )THEN
 
       NumericalFlux_X1_HLLC_GR = FL
 
-    ELSEIF( aP .EQ. 0.0d0 )THEN
+    ELSEIF( aP .EQ. Zero )THEN
 
       NumericalFlux_X1_HLLC_GR = FR
 
@@ -1393,7 +1394,7 @@ CONTAINS
       !     Note the sign change on aM which is due to it being
       !     read in as positive but the formulae assuming it is negative ---
 
-      IF( aC .GE. 0.0d0 )THEN
+      IF( aC .GE. Zero )THEN
 
         VelocityRatio = ( -aM - Lapse * vL + Shift ) &
                       / ( -aM - Lapse * aC + Shift )
@@ -1487,11 +1488,11 @@ CONTAINS
     REAL(DP)             :: VelocityRatio
     REAL(DP)             :: NumericalFlux_X2_HLLC_GR(1:nF)
 
-    IF( aM .EQ. 0.0d0 )THEN
+    IF( aM .EQ. Zero )THEN
 
       NumericalFlux_X2_HLLC_GR = FL
 
-    ELSEIF( aP .EQ. 0.0d0 )THEN
+    ELSEIF( aP .EQ. Zero )THEN
 
       NumericalFlux_X2_HLLC_GR = FR
 
@@ -1501,7 +1502,7 @@ CONTAINS
       !     Note the sign change on aM which is due to it being
       !     read in as positive but the formulae assuming it is negative ---
 
-      IF( aC .GE. 0.0d0 )THEN
+      IF( aC .GE. Zero )THEN
 
         VelocityRatio = ( -aM - Lapse * vL + Shift ) &
                       / ( -aM - Lapse * aC + Shift )
