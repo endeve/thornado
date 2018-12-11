@@ -144,12 +144,8 @@ CONTAINS
     CALL amrex_mfiter_build( MFI, MF_PF, tiling = .TRUE. )
 
     BX = MFI % tilebox()
-    WRITE(*,'(A,I2.2,A,I2.2,1x,I2.2)') &
-      'MyProc = ', MyProc, ': lo(1), hi(1) = ', BX % lo(1), BX % hi(1)
-    WRITE(*,'(A,I2.2,A,I2.2,1x,I2.2)') &
-      'MyProc = ', MyProc, ': lo(2), hi(2) = ', BX % lo(2), BX % hi(2)
-    WRITE(*,'(A,I2.2,A,I2.2,1x,I2.2)') &
-      'MyProc = ', MyProc, ': lo(3), hi(3) = ', BX % lo(3), BX % hi(3)
+    WRITE(*,'(A,I2.2,A,3I3.2,A,3I3.2)') &
+      'MyProc = ', MyProc, ': lo = ', BX % lo, ', hi = ', BX % hi
 
     jComp = 0
     IF( WriteGF   ) &
