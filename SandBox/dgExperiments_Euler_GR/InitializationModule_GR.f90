@@ -80,9 +80,13 @@ CONTAINS
                ( nDetCells_Option = nDetCells_Option, &
                  Eblast_Option = Eblast_Option)
 
-      CASE( 'KelvinHelmholtz2D_Relativistic' )
+      CASE( 'KelvinHelmholtz_Relativistic' )
 
-         CALL InitializeFields_GR_KelvinHelmholtz2D_Relativistic
+         CALL InitializeFields_GR_KelvinHelmholtz_Relativistic
+
+      CASE( 'KelvinHelmholtz' )
+
+         CALL InitializeFields_GR_KelvinHelmholtz
         
       CASE( 'StandingAccretionShock' )
 
@@ -631,7 +635,7 @@ CONTAINS
 
   ! --- Relativistic 2D Kelvin-Helmoltz instability a la
   !     Radice & Rezzolla (2012), A&A, 547, 26 ---
-  SUBROUTINE InitializeFields_GR_KelvinHelmholtz2D_Relativistic
+  SUBROUTINE InitializeFields_GR_KelvinHelmholtz_Relativistic
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1, iNodeX2
@@ -670,11 +674,8 @@ CONTAINS
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
             = A0 * Vshear * SIN( 2.0d0 * Pi * X1 ) &
                 * EXP( -( X2 - X2_Scale )**2 / sigma )
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0d0
-          uAF(iNodeX,iX1,iX2,iX3,iAF_P) = 1.0d0
-          uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-            = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
+        ! --- Bottom ---
         ELSE
           uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
             = rho0 - rho1 * TANH( ( X2 + X2_Scale ) / a )
@@ -683,12 +684,13 @@ CONTAINS
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
             = -A0 * Vshear * SIN( 2.0d0 * Pi * X1 ) &
                 * EXP( -( X2 + X2_Scale )**2 / sigma )
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0d0
-          uAF(iNodeX,iX1,iX2,iX3,iAF_P) = 1.0d0
-          uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-            = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
          END IF
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0d0
+        uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d0
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+          = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
       END DO
 
@@ -709,9 +711,91 @@ CONTAINS
     END DO
 
 
-  END SUBROUTINE InitializeFields_GR_KelvinHelmholtz2D_Relativistic
+  END SUBROUTINE InitializeFields_GR_KelvinHelmholtz_Relativistic
 
 
+  SUBROUTINE InitializeFields_GR_KelvinHelmholtz
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2, D_M, V_M
+    REAL(DP), PARAMETER :: D_1 = 1.0_DP
+    REAL(DP), PARAMETER :: D_2 = 2.0_DP
+    REAL(DP), PARAMETER :: L = 0.025_DP
+    REAL(DP), PARAMETER :: V_1 = + 0.5_DP
+    REAL(DP), PARAMETER :: V_2 = - 0.5_DP
+
+    D_M = Half * ( D_1 - D_2 )
+    V_M = Half * ( V_1 - V_2 )
+
+    DO iX3 = 1, nX(3)
+    DO iX2 = 1, nX(2)
+    DO iX1 = 1, nX(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        IF(     ( X2 .GE. 0.00_DP ) .AND. ( X2 .LT. 0.25_DP ) )THEN
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+            = D_1 - D_M * EXP( ( X2 - 0.25_DP ) / L )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = V_1 - V_M * EXP( ( X2 - 0.25_DP ) / L )
+
+        ELSEIF( ( X2 .GE. 0.25_DP ) .AND. ( X2 .LT. 0.50_DP ) )THEN
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+            = D_2 + D_M * EXP( ( 0.25_DP - X2 ) / L )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = V_2 + V_M * EXP( ( 0.25_DP - X2 ) / L )
+
+        ELSEIF( ( X2 .GE. 0.50_DP ) .AND. ( X2 .LT. 0.75_DP ) )THEN
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+            = D_2 + D_M * EXP( ( X2 - 0.75_DP ) / L )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = V_2 + V_M * EXP( ( X2 - 0.75_DP ) / L )
+
+        ELSEIF( ( X2 .GE. 0.75_DP ) .AND. ( X2 .LT. 1.00_DP ) )THEN
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+            = D_1 - D_M * EXP( ( 0.75_DP - X2 ) / L )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = V_1 - V_M * EXP( ( 0.75_DP - X2 ) / L )
+
+        END IF
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+          = 0.01_DP * SIN( FourPi * X1 )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+          = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+          = 3.75_DP
+
+      END DO
+
+      CALL ComputeConserved_GR &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_GR_KelvinHelmholtz
 
 
   SUBROUTINE InitializeFields_GR_StandingAccretionShock

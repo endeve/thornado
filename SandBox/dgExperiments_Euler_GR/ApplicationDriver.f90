@@ -90,7 +90,8 @@ PROGRAM ApplicationDriver
 !  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
-  ProgramName = 'KelvinHelmholtz2D_Relativistic'
+!  ProgramName = 'KelvinHelmholtz_Relativistic'
+  ProgramName = 'KelvinHelmholtz'
 !  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
@@ -162,7 +163,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 256, 256, 1 ]
+      nX  = [ 64, 64, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -185,7 +186,7 @@ PROGRAM ApplicationDriver
     CASE( 'SphericalSedov' )
 
       nDetCells = 1
-      Eblast    = 1.0d-1
+      Eblast    = 1.0d-3
 
       CoordinateSystem = 'SPHERICAL'
 
@@ -195,23 +196,37 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.2_DP, Pi, TwoPi ]
 
-      bcX = [ 2, 0, 0 ]
+      bcX = [ 3, 0, 0 ]
 
       t_end = 1.0d0
 
-    CASE( 'KelvinHelmholtz2D_Relativistic' )
+    CASE( 'KelvinHelmholtz_Relativistic' )
 
        CoordinateSystem = 'CARTESIAN'
 
        Gamma = 4.0d0 / 3.0d0
 
-       nX = [ 256, 256, 1 ]
+       nX = [ 32, 32, 1 ]
        xL = [ -0.5d0, -1.0d0, 0.0d0 ]
        xR = [  0.5d0,  1.0d0, 1.0d0 ]
 
        bcX = [ 1, 1, 0 ]
 
        t_end = 3.0d0
+
+    CASE( 'KelvinHelmholtz' )
+
+       CoordinateSystem = 'CARTESIAN'
+
+       Gamma = 5.0d0 / 3.0d0
+
+       nX = [ 256, 256, 1 ]
+       xL = [ 0.0d0, 0.0d0, 0.0d0 ]
+       xR = [ 1.0d0, 1.0d0, 1.0d0 ]
+
+       bcX = [ 1, 1, 0 ]
+
+       t_end = 1.5d0
 
     CASE( 'StandingAccretionShock' )
 
@@ -251,7 +266,7 @@ PROGRAM ApplicationDriver
 
   END SELECT
 
-  nNodes = 3
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
