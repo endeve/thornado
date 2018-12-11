@@ -3,6 +3,7 @@ MODULE InputOutputModuleAMReX
   ! --- AMReX Modules ---
 
   USE amrex_base_module
+  USE amrex_paralleldescriptor_module ! --- For getting MPI process info ---
 
   ! --- thornado Modules ---
 
@@ -44,13 +45,16 @@ CONTAINS
     CHARACTER(32)                   :: PlotFileName
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C, WriteFF_P, WriteFF_A
-    INTEGER                         :: iComp, nLevels, nF = 0
+    INTEGER                         :: iComp, jComp, nLevels, nF = 0
+    INTEGER                         :: MyProc
     TYPE(amrex_multifab)            :: MF_PF
     TYPE(amrex_boxarray)            :: BA
     TYPE(amrex_distromap)           :: DM
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
 
-    INTEGER :: iTemp
+    ! --- Only needed to get and write BX % lo and BX % hi ---
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
 
     WriteGF   = .FALSE.
     IF( PRESENT( MF_uGF_Option ) )THEN
@@ -76,6 +80,8 @@ CONTAINS
       nF = nF + nAF
     END IF
 
+    MyProc = amrex_pd_myproc()
+
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
@@ -91,13 +97,13 @@ CONTAINS
 
     ALLOCATE( VarNames(nF) )
 
-    iTemp = 0
+    jComp = 0
     IF( WriteGF )THEN
       DO iComp = 1, nGF
         CALL amrex_string_build &
-               ( VarNames(iComp + iTemp), TRIM( ShortNamesGF(iComp) ) )
+               ( VarNames(iComp + jComp), TRIM( ShortNamesGF(iComp) ) )
       END DO
-      iTemp = iTemp + nGF
+      jComp = jComp + nGF
       BA = MF_uGF_Option % BA
       DM = MF_uGF_Option % DM
     END IF
@@ -105,9 +111,9 @@ CONTAINS
     IF( WriteFF_C )THEN
       DO iComp = 1, nCF
         CALL amrex_string_build &
-               ( VarNames(iComp + iTemp), TRIM( ShortNamesCF(iComp) ) )
+               ( VarNames(iComp + jComp), TRIM( ShortNamesCF(iComp) ) )
       END DO
-      iTemp = iTemp + nCF
+      jComp = jComp + nCF
       BA = MF_uCF_Option % BA
       DM = MF_uCF_Option % DM
     END IF
@@ -115,9 +121,9 @@ CONTAINS
     IF( WriteFF_P )THEN
       DO iComp = 1, nPF
         CALL amrex_string_build &
-               ( VarNames(iComp + iTemp), TRIM( ShortNamesPF(iComp) ) )
+               ( VarNames(iComp + jComp), TRIM( ShortNamesPF(iComp) ) )
       END DO
-      iTemp = iTemp + nPF
+      jComp = jComp + nPF
       BA = MF_uPF_Option % BA
       DM = MF_uPF_Option % DM
     END IF
@@ -125,9 +131,9 @@ CONTAINS
     IF( WriteFF_A )THEN
       DO iComp = 1, nAF
         CALL amrex_string_build &
-               ( VarNames(iComp + iTemp), TRIM( ShortNamesAF(iComp) ) )
+               ( VarNames(iComp + jComp), TRIM( ShortNamesAF(iComp) ) )
       END DO
-      iTemp = iTemp + nAF
+      jComp = jComp + nAF
       BA = MF_uAF_Option % BA
       DM = MF_uAF_Option % DM
     END IF
@@ -135,15 +141,25 @@ CONTAINS
     CALL amrex_multifab_build &
            ( MF_PF, BA, DM, nF, 0 )
 
-    iTemp = 0
+    CALL amrex_mfiter_build( MFI, MF_PF, tiling = .TRUE. )
+
+    BX = MFI % tilebox()
+    WRITE(*,'(A,I2.2,A,I2.2,1x,I2.2)') &
+      'MyProc = ', MyProc, ': lo(1), hi(1) = ', BX % lo(1), BX % hi(1)
+    WRITE(*,'(A,I2.2,A,I2.2,1x,I2.2)') &
+      'MyProc = ', MyProc, ': lo(2), hi(2) = ', BX % lo(2), BX % hi(2)
+    WRITE(*,'(A,I2.2,A,I2.2,1x,I2.2)') &
+      'MyProc = ', MyProc, ': lo(3), hi(3) = ', BX % lo(3), BX % hi(3)
+
+    jComp = 0
     IF( WriteGF   ) &
-      CALL MF_ComputeCellAverage( nGF, MF_uGF_Option, MF_PF, iTemp )
+      CALL MF_ComputeCellAverage( nGF, MF_uGF_Option, MF_PF, jComp )
     IF( WriteFF_C ) &
-      CALL MF_ComputeCellAverage( nCF, MF_uCF_Option, MF_PF, iTemp )
+      CALL MF_ComputeCellAverage( nCF, MF_uCF_Option, MF_PF, jComp )
     IF( WriteFF_P ) &
-      CALL MF_ComputeCellAverage( nPF, MF_uPF_Option, MF_PF, iTemp )
+      CALL MF_ComputeCellAverage( nPF, MF_uPF_Option, MF_PF, jComp )
     IF( WriteFF_A ) &
-      CALL MF_ComputeCellAverage( nAF, MF_uAF_Option, MF_PF, iTemp )
+      CALL MF_ComputeCellAverage( nAF, MF_uAF_Option, MF_PF, jComp )
 
     CALL amrex_write_plotfile &
            ( PlotFileName, nLevels, [ MF_PF ], VarNames, &
@@ -156,10 +172,10 @@ CONTAINS
   END SUBROUTINE WriteFieldsAMReX_PlotFile
 
 
-  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, iTemp )
+  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, jComp )
 
     INTEGER,              INTENT(in   ) :: nComp
-    INTEGER,              INTENT(inout) :: iTemp
+    INTEGER,              INTENT(inout) :: jComp
     TYPE(amrex_multifab), INTENT(in   ) :: MF
     TYPE(amrex_multifab), INTENT(inout) :: MF_A
 
@@ -192,7 +208,7 @@ CONTAINS
         ! --- Compute cell-average ---
         DO iComp = 1, nComp
 
-          u_A(iX1,iX2,iX3,iComp + iTemp) &
+          u_A(iX1,iX2,iX3,iComp + jComp) &
             = DOT_PRODUCT( WeightsX_q(:), u_K(:,iComp) )
 
         END DO
@@ -204,7 +220,7 @@ CONTAINS
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
-    iTemp = iTemp + nComp
+    jComp = jComp + nComp
 
   END SUBROUTINE MF_ComputeCellAverage
 
