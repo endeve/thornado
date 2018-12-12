@@ -3,7 +3,9 @@ MODULE InputOutputModuleAMReX
   ! --- AMReX Modules ---
 
   USE amrex_base_module
-  USE amrex_paralleldescriptor_module ! --- For getting MPI process info ---
+
+  ! --- For getting MPI process info (could also add this to amrex_base_module) ---
+  USE amrex_paralleldescriptor_module
 
   ! --- thornado Modules ---
 
@@ -24,9 +26,11 @@ MODULE InputOutputModuleAMReX
   PRIVATE
 
   CHARACTER(8) :: BaseFileName = 'thornado'
+  CHARACTER(3) :: BaseCheckpointFileName = 'chk'
   INTEGER      :: PlotFileNumber = 0
 
   PUBLIC :: WriteFieldsAMReX_PlotFile
+  PUBLIC :: WriteFieldsAMReX_Checkpoint
 
 CONTAINS
 
@@ -146,6 +150,7 @@ CONTAINS
     BX = MFI % tilebox()
     WRITE(*,'(A,I2.2,A,3I3.2,A,3I3.2)') &
       'MyProc = ', MyProc, ': lo = ', BX % lo, ', hi = ', BX % hi
+!!$    CALL amrex_print( BX )
 
     jComp = 0
     IF( WriteGF   ) &
@@ -166,6 +171,72 @@ CONTAINS
     DEALLOCATE( VarNames )
 
   END SUBROUTINE WriteFieldsAMReX_PlotFile
+
+
+  SUBROUTINE WriteFieldsAMReX_Checkpoint &
+             ( iCycle, Time, GEOM, MF_uGF, MF_uCF, &
+                                   MF_uPF, MF_uAF )
+
+    INTEGER,              INTENT(in) :: iCycle
+    REAL(DP),             INTENT(in) :: Time
+    TYPE(amrex_geometry), INTENT(in) :: GEOM
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in) :: MF_uCF
+    TYPE(amrex_multifab), INTENT(in) :: MF_uPF
+    TYPE(amrex_multifab), INTENT(in) :: MF_uAF
+
+    CHARACTER(08)        :: NumberString = '00000010'
+    CHARACTER(11)        :: CheckpointName
+    CHARACTER(32)        :: Command
+    TYPE(amrex_boxarray) :: BA
+    INTEGER              :: nF = nGF + nCF + nPF + nAF
+
+    INTEGER :: iLevel, nLevels
+
+    LOGICAL :: callBarrier = .TRUE.
+
+    BA = MF_uGF % BA
+    nLevels = 1
+
+    CheckpointName = BaseCheckpointFileName // NumberString
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(Command,'(A,A)') 'mkdir ', TRIM( CheckpointName )
+
+      ! --- Pre-build directory hierarchy ---
+      CALL SYSTEM( Command )
+      DO iLevel = 0, nLevels - 1
+         WRITE(Command,'(A,I2.2)') &
+           'mkdir ' // TRIM( CheckpointName ) // '/Level', iLevel
+         CALL SYSTEM( Command )
+      END DO
+
+      ! CALL BARRIER() ! (Can't find FORTRAN equivalent)
+
+      OPEN(100, FILE = CheckpointName // '/Header' )
+
+        ! --- Write out the tite line ---
+        WRITE(100,'(A)') 'Checkpoint file for thornado'
+
+        ! --- Write out the finest level
+        WRITE(100,'(I2.2)') nLevels
+
+        ! --- Write iCycle ---
+        WRITE(100,'(I6.6)') iCycle
+
+        ! --- Write Time ---
+        WRITE(100,'(ES23.16E3)') Time
+
+!!$        DO iLevel = 0, nLevels - 1
+!!$          WRITE(100,*) BA(iLevel)
+!!$        END DO
+
+      CLOSE(100)
+
+    END IF
+
+  END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
 
   SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, jComp )
