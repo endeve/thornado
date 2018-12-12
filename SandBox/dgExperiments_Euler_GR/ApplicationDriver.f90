@@ -87,11 +87,11 @@ PROGRAM ApplicationDriver
   REAL(DP) :: wTime_UF, wTime_CTS
   
 !  ProgramName = 'RiemannProblem'
-!  ProgramName = 'RiemannProblem2d'
+  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
 !  ProgramName = 'KelvinHelmholtz_Relativistic'
-  ProgramName = 'KelvinHelmholtz'
+!  ProgramName = 'KelvinHelmholtz'
 !  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
@@ -163,7 +163,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 64, 64, 1 ]
+      nX  = [ 256, 256, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -275,7 +275,7 @@ PROGRAM ApplicationDriver
 
   UseSlopeLimiter           = .TRUE.
   SlopeTolerance            = 1.0d-6
-  UseCharacteristicLimiting = .FALSE.
+  UseCharacteristicLimiting = .TRUE.
 
   UseTroubledCellIndicator  = .TRUE.
   LimiterThresholdParameter = 0.015_DP
@@ -306,6 +306,66 @@ PROGRAM ApplicationDriver
   ! --- Cockburn & Shu, (2001), JSC, 16, 173 ---
   CFL = 0.5d0 / ( 2.0d0 * DBLE( nNodes - 1 ) + 1.0d0 )
   CFL = 1.0d0
+
+  ! --- Write program parameters to header file ---
+  OPEN( 100, FILE = '../Output/.ProgramHeader' )
+    WRITE(100,'(A,A)')         'Program Name: ', TRIM(ProgramName)
+    WRITE(100,*)
+    IF( TRIM( ProgramName ) .EQ. 'RiemannProblem' ) &
+      WRITE(100,'(A,A)') &
+        'Riemann Problem Name: ', RiemannProblemName
+    IF( TRIM( ProgramName ) .EQ. 'RiemannProblem2d' ) &
+      WRITE(100,'(A,A)') &
+        '2D Riemann Problem Name: ', RiemannProblem2dName
+    IF( TRIM( ProgramName ) .EQ. 'SphericalSedov' )THEN
+      WRITE(100,'(A,I4.4)')     'nDetCells: ', nDetCells
+      WRITE(100,'(A,ES10.3E3)') 'Eblast:    ', Eblast
+    END IF
+    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
+      WRITE(100,'(A,ES10.3E3)') 'PNS Mass:     ', M_PNS
+      WRITE(100,'(A,ES10.3E3)') 'Inner radius: ', Ri
+      WRITE(100,'(A,ES10.3E3)') 'PNS Radius:   ', R_PNS
+      WRITE(100,'(A,ES10.3E3)') 'Shock Radius: ', R_shock
+    END IF
+    WRITE(100,*)
+    WRITE(100,'(A,F5.3)')      'Gamma_IDEAL: ', Gamma
+    WRITE(100,*)
+    WRITE(100,'(A)')           'Mesh'
+    WRITE(100,'(A)')           '----'
+    WRITE(100,'(A,A)')         'Coordinate System: ', TRIM( CoordinateSystem)
+    WRITE(100,'(A,3I5.4)')     'nX:     ', nX
+    WRITE(100,'(A,3I3.2)')     'bcX:    ', bcX
+    WRITE(100,'(A,3ES12.3E3)') 'xL:     ', xL
+    WRITE(100,'(A,3ES12.3E3)') 'xR:     ', xR
+    WRITE(100,'(A,I2.2)')      'nNodes: ', nNodes
+    WRITE(100,*)
+    WRITE(100,'(A)')           'Time-Stepping'
+    WRITE(100,'(A)')           '-------------'
+    WRITE(100,'(A,ES10.3E3)')  't_end:         ', t_end
+    WRITE(100,'(A,F4.2)')      'CFL:           ', CFL
+    WRITE(100,'(A,I1.1)')      'nStagesSSPRK:  ', nStagesSSPRK
+    WRITE(100,'(A,L)')         'UseFixed_dt:   ', UseFixed_dt
+    WRITE(100,'(A,L)')         'UseSourceTerm: ', UseSourceTerm
+    WRITE(100,*)
+    WRITE(100,'(A)')           'Slope Limiter'
+    WRITE(100,'(A)')           '------------------'
+    WRITE(100,'(A,L)')         'UseSlopeLimiter:           ', UseSlopeLimiter
+    WRITE(100,'(A,L)')         'UseTroubledCellIndicator:  ', &
+                                 UseTroubledCellIndicator
+    WRITE(100,'(A,L)')         'UseCharacteristicLimiting: ', &
+                                 UseCharacteristicLimiting
+    WRITE(100,'(A,ES10.3E3)')  'BetaTVD:                   ', BetaTVD
+    WRITE(100,'(A,ES10.3E3)')  'BetaTVB:                   ', BetaTVB
+    WRITE(100,'(A,ES10.3E3)')  'SlopeTolerance:            ', SlopeTolerance
+    WRITE(100,'(A,F5.3)')      'LimiterThresholdParameter: ', &
+                                 LimiterThresholdParameter
+    WRITE(100,*)
+    WRITE(100,'(A)')           'Positivity Limiter'
+    WRITE(100,'(A)')           '------------------'
+    WRITE(100,'(A,L)')         'UsePositivityLimiter: ', UsePositivityLimiter
+    WRITE(100,'(A,ES11.3E3)')  'Min_1: ', Min_1
+    WRITE(100,'(A,ES11.3E3)')  'Min_2: ', Min_2
+  CLOSE(100)
 
   CALL InitializeProgram &
          ( ProgramName_Option &
