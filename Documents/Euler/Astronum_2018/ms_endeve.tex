@@ -96,6 +96,7 @@ To this end, we consider a system of conservation laws with sources of the form
 \end{equation}
 where $\vect{U}$ is the evolved state vector, $\vect{F}^{i}$ are the fluxes, and $\vect{S}$ is the source vector.  
 We use a formulation of the equations sufficiently general to accommodate curvilinear spatial coordinates encoded in the metric $\gamma_{ij}$, giving the squared line element $ds^{2}=\gamma_{ij}dx^{i}dx^{j}$, whose determinant is $\gamma$.  
+Henceforth, we will assume that the spatial metric is time-independent.  
 To solve Eq.~\eqref{eq:extendedEulerCompact}, the computational domain $D\subset\mathbb{R}^{d}$ is divided into a disjoint union $\cT$ of open elements $\bK$, so that $D = \cup_{\bK \in \cT}\bK$.  
 We require that each element is a box in the logical coordinates; i.e.,
 \begin{equation}
@@ -190,10 +191,12 @@ Using Eqs.~\eqref{eq:timeDerivativeTerm}-\eqref{eq:volumeTerm} in Eq.~\eqref{eq:
 \end{align}
 Eq.~\eqref{eq:semidiscreteDiscretized} comprises a system of ordinary differential equations (ODEs), which are integrated in time with an ODE solver.  
 In Section~\ref{sec:numerical} we use the optimal third-order strong stability-preserving Runge-Kutta (SSP-RK3) method from \cite{shuOsher_1988}.  
+We assume that the source term $\vect{S}(\vect{U}_{k})$ is non-stiff so that the equations can integrated efficiently with explicit methods.  
+In future applications of the DG method to model CCSNe we plan to use a combination of implicit and explicit methods (e.g., IMEX methods \cite{ascher_etal_1997}) to stably integrate stiff sources due to neutrino-matter interactions.  
 
 Limiting of the polynomial representation $\vect{U}_{h}$, to reduce oscillations and prevent non-physical states, is a critical step in the DG algorithm.  
 We use the TVD-type slope limiter based on limiting characteristic variables, discussed in \cite{cockburnShu_1998}.  
-To prevent excessive limiting (e.g., at smooth extrema), we use the troubled-cell indicator (TCI) of \cite{fuShu_2017}.  
+To prevent excessive limiting (e.g., at smooth extrema), we use the troubled-cell indicator (TCI) of \cite{fuShu_2017}:
 \begin{equation}
   I_{\bK}(G) = \f{\sum_{j}|G_{\bK}-G_{\bK}^{(j)}|}{\max_{j}|G_{\bK^{(j)}}^{(j)}|},
   \label{eq:indicator}
@@ -238,8 +241,10 @@ The one-dimensional computational domain is $D=[0,1]$, and a discontinuity is in
 \end{equation*}
 where the adiabatic index is $\Gamma=1.4$.  
 The test is run with $100$ elements until $t=0.2$, using $C_{\TCI}=0.03$.  
-Results are plotted in the left panel of Figure~\ref{fig:SodSedov}.  
-The DG method captures the main features of the solution well without introducing noticeable oscillations near the discontinuities.  
+Results are plotted in the left panels of Figure~\ref{fig:SodSedov}.  
+The DG method captures the main features of the solution well without introducing noticeable oscillations near the discontinuities (upper left panel).  
+In the lower left panel we plot locations in the $xt$-plane of elements flagged for limiting.  
+Limiting is mainly triggered by the contact discontinuity and the shock.  
 \begin{figure}[h]
   \centering
   \begin{minipage}{18pc}
@@ -247,8 +252,14 @@ The DG method captures the main features of the solution well without introducin
   \end{minipage}\hspace{0.5pc}%
   \begin{minipage}{18pc}
     \includegraphics[width=18pc]{./Figures/Sedov_Astronum_2018}
+  \end{minipage} \\
+  \begin{minipage}{18pc}
+    \includegraphics[width=18pc]{./Figures/Sod_TCI_Astronum_2018}
+  \end{minipage}\hspace{0.5pc}%
+  \begin{minipage}{18pc}
+    \includegraphics[width=18pc]{./Figures/Sedov_TCI_Astronum_2018}
   \end{minipage}
-  \caption{\label{fig:SodSedov}{\it Left panel:} numerical solution of Sod's problem using $100$ elements (plusses) compared with the exact solution (solid lines; from \cite{toro_1999}).  {\it Right panel:} numerical solution of the Sedov-Taylor blast wave using $256$ elements (plusses) against the exact solution (solid lines).}
+  \caption{\label{fig:SodSedov}{\it Upper left panel:} numerical solution of Sod's problem using $100$ elements (plusses) compared with the exact solution (solid lines; from \cite{toro_1999}).  {\it Upper right panel:} numerical solution of the Sedov-Taylor blast wave using $256$ elements (plusses) against the exact solution (solid lines).  In the lower panels we plot locations in the $xt$-plane of elements flagged for limiting ($I_{\bK}>C_{\TCI}$) by the Sod (left) and Sedov (right) problems.}
 \end{figure}
 
 \subsubsection{Sedov-Taylor blast wave}
@@ -257,8 +268,10 @@ This test, detailed in \cite{sedov_1959} (see also {\S}99 in \cite{landauLifshit
 The computational domain is $D=[0,1.2]$, and the initial condition consists of a fluid at rest with density $\rho=1$.  
 The adiabatic index is $\Gamma=1.4$, and an amount of thermal energy equal to $1$ is released in the innermost element.  
 We use $256$ elements and run until $t=1$, using $C_{\TCI}=0.03$.  
-Again, the DG method captures the characteristic of the exact solution.  
+Again, the DG method captures the characteristic of the exact solution (cf. upper right panel of Figure~\ref{fig:SodSedov}).  
 The maximum density in the shock is somewhat lower for the numerical solution than the exact value (about $5$ versus $6$).  
+In the lower right panel we map locations of elements flagged for limiting in the $xt$-plane.  
+The troubled-cell indicator tracks the shock well (the analytic shock trajectory is given by the dashed cyan line), but also flags elements at smaller radii with low density.  
 
 \subsubsection{Shu-Osher shock tube}
 
@@ -276,6 +289,8 @@ In the two upper panels of Figure~\ref{fig:ShuOsher} we plot the density for var
 Larger $C_{\TCI}$ implies less limiting.  
 The results are compared with a reference solution computed with $2048$ elements.  
 With full limiting, the scheme is unable to capture the density variations behind the shock (cf. upper right panel in Figure~\ref{fig:ShuOsher}).  
+This is expected since the TVD-type limiter clips extrema.  
+The results improve when the troubled-cell indicator is used.  
 When $C_{\TCI}=0.03$, the variations are better resolved, but the amplitudes are much reduced relative to the reference solution.  
 With $C_{\TCI}=3.0$, the variations are well resolved and the amplitudes are comparable to the reference.  
 \begin{figure}[h]
@@ -301,12 +316,27 @@ In the lower panels of Figure~\ref{fig:ShuOsher} we plot locations in the $xt$-p
 With $C_{\TCI}=0.03$, limiting is triggered in a wide region around the shock and around the peaks of the three leftmost density variations in the upper left panel in Figure~\ref{fig:ShuOsher}.  
 With $C_{\TCI}=3.0$, limiting is only triggered in the shock.  
 
-\subsubsection{Isentropic Vortex}
+\subsubsection{Isentropic vortex}
+This test from \cite{shu_1997} is included to verify the accuracy of the DG method implemented in \thornado.  
+The periodic computational domain is given by $D=[-5,5]\times[-5,5]$.  
+The initial density and pressure are given by $\rho_{0}=\big(\,1-\f{(\Gamma-1)\,\beta^{2}}{(8\pi\Gamma)}\exp\big(1-r^{2}\big)\,\big)^{1/(\Gamma-1)}$ and $P_{0}=\rho^{\Gamma}$, where $r=\sqrt{(x^{1})^{2}+(x^{2})^{2}}$, while the velocity components are $v_{0}^{1}=1-\f{x^{2}\beta}{2\pi}\,\exp\big((1-r^{2})/2\big)$ and $v_{0}^{2}=1+\f{x^{1}\beta}{2\pi}\,\exp\big((1-r^{2})/2\big)$.  
+The strength of the vortex is set to $\beta=5$, and we use $\Gamma=1.4$.  
+We evolve this test until $t=t_{f}=10$, when the vortex has returned to its initial position.  
 
 \begin{wrapfigure}{l}{2.825in}
   \includegraphics[width=18pc]{./Figures/IsentropicVortex_Astronum_2018}
-  \caption{\label{fig:IsentropicVortex}Convergence results for the Isentropic Vortex test.}
+  \caption{\label{fig:IsentropicVortex}Convergence results for the Isentropic Vortex:  $L^{\infty}$ error norm versus number of elements in the $x^{1}$-dimension.}
 \end{wrapfigure}
+
+In Figure~\ref{fig:IsentropicVortex} we plot the density error measured in the infinity norm $L^{\infty}=\max_{D}|\rho(\vect{x},t_{f})-\rho_{0}(\vect{x})|$ versus number of cells the $x^{1}$-dimension for various configurations.  
+We ran with spatial resolutions of $25\times25$, $50\times50$, $100\times100$, and $200\times200$.  
+In the first set of runs, we ran without any limiting and varied the polynomial degree $k$: $k=1$ (solid red), $k=2$ (solid black), and $k=3$ (solid green).  
+We observe the expected order of accuracy for $k=1$ and $k=2$ (second- and third-order accuracy, respectively; cf. dotted reference lines).  
+For $k=3$, the order of accuracy is close to fourth-order for the lower resolutions, but tends to third-order as the resolution increases, presumably due to the use of third-order time stepping.  
+In the second set of runs, we kept $k=2$ and ran with limiting turned on.  
+We ran one set with $C_{\TCI}=0.03$ (dashed magenta) and one set with $C_{\TCI}=0.1$ (dashed cyan).  
+When $C_{\TCI}=0.03$, the limiter is activated for the lowest resolution run and significantly reduces the accuracy of the method.  
+For all the other runs, the limiter is not activated, and the results are identical to the runs with the limiter turned off.  
 
 \subsubsection{Kelvin-Helmholtz (KH) instability}
 This hydrodynamic instability is of significant astrophysical relevance --- including during the explosion phase of CCSNe --- and may occur in the interface separating fluids in relative motion.  
@@ -339,13 +369,15 @@ We have computed two models, one with $C_{\TCI}=0.06$ (left panels) and one with
 \end{figure}
 
 Early on ($t=1.5$), the results from the two runs are practically indistinguishable, show no sign of developing secondary billows, and agree visually with results presented in \cite{mcnally_etal_2012}.  
-When $t=2.4$, the run with $C_{\TCI}=0.03$ has started to develop secondary billows within the coiled-up interface separating dense (white) and less dense (black) fluids, while the model with no limiting has not.  
+When $t=2.4$, the run with $C_{\TCI}=0.06$ has started to develop secondary billows within the coiled-up interface separating dense (white) and less dense (black) fluids, while the model with no limiting has not.  
+See Figure~\ref{fig:KelvinHelmholtz_TCI} for the spatial distribution of elements flagged for limiting at $t=2.4$.  
 When $t=3.0$, these secondary instabilities appear to have largely destroyed the coil structure for the model with limiting, while the coils remain intact in the model without limiting (although secondary billows have started to form in this model at this time).  
 As discussed in more detail by \cite{mcnally_etal_2012}, the development of the secondary billows may be an artifact of numerical perturbations and diffusion, which is delayed when the resolution is increased.  
 Our results are consistent with this in the sense that the less diffusive model develops secondary billows later.  
 
-\begin{wrapfigure}{r}{2.825in}
-  \includegraphics[width=18pc]{./Figures/KelvinHelmholtz_TCI_24_Astronum_2018}
+\begin{wrapfigure}{l}{2.75in}
+  \centering
+  \includegraphics[width=16pc]{./Figures/KelvinHelmholtz_TCI_24_Astronum_2018}
   \caption{\label{fig:KelvinHelmholtz_TCI}Distribution of elements flagged for limiting in the KH test at $t=2.4$.}
 \end{wrapfigure}
 
@@ -371,8 +403,19 @@ When $t=2.5$, a complex flow pattern with multiple shocks has emerged due to mul
 The initial symmetry about the $x^{1}=x^{2}$ diagonal is maintained, and the results from \thornado\ agree qualitatively with the unsplit schemes in \cite{liskaWendroff_2003}.  
 In the right panel of Figure~\ref{fig:Implosion}, the chatacteristic ``jet'' has formed and propagates along the diagonal, similar to that displayed by CLAW and WENO in \cite{liskaWendroff_2003}.  
 
-\subsubsection{Liska-Wendroff Explosion}
+\subsubsection{Liska-Wendroff explosion}
 
+This test, also from \cite{liskaWendroff_2003}, is computed on the domain $D=[0,1.5]\times[0,1.5]$ with reflecting inner boundaries and outflow outer boundaries using $256^{2}$ elements.  
+Inside the radius $r=\sqrt{(x^{1})^{2}+(x^{2})^{2}}=0.4$, we initially set $\vect{U}=\big(1.0,\vect{0.0},2.5\big)^{\trans}$, while $\vect{U}=\big(0.125,\vect{0.0},0.25\big)^{\trans}$ elsewhere.  
+We did not apply any smoothing to the initial discontinuity.  
+
+Results for $t=3.2$, obtained with $C_{\TCI}=0.1$, are displayed in Figure~\ref{fig:Explosion}, which agree qualitatively with results in \cite{liskaWendroff_2003}.  
+Initially, this test is similar to the Sod shock tube in cylindrical geometry: a shock and a contact discontinuity propagate in the positive radial direction, while a rarefaction wave propagates toward the origin.  
+Later, the initial shock leaves the computational domain, while an instability (resembling Richtmeyr-Meshkov) develops in the contact discontinuity.  
+A second shock emerges from the origin of the computational domain and runs through the contact discontinuity, which has developed a complex structure (see density contours in Figure~\ref{fig:Explosion}).  
+The second shock is located around $r=1.2$ at $t=3.2$.  
+In the right panel we plot the distribution of elements flagged for limiting by the troubled-cell indicator at $t=3.2$.  
+Limiting is mainly focused on elements around the shock and the contact discontinuity.  
 \begin{figure}[h]
   \centering
   \begin{minipage}{18pc}
@@ -381,7 +424,7 @@ In the right panel of Figure~\ref{fig:Implosion}, the chatacteristic ``jet'' has
   \begin{minipage}{18pc}
     \includegraphics[width=18pc]{./Figures/Explosion_TCI_Astronum_2018}
   \end{minipage}
-  \caption{\label{fig:Implosion}Plots for the Liska-Wendroff Explosion problem at $t=3.2$.}
+  \caption{\label{fig:Explosion}Plots for the Liska-Wendroff Explosion problem at $t=3.2$.  In the left panel, intended to match panels in Figure~4.12 in \cite{liskaWendroff_2003}, the color map shows the pressure distribution, black contours show the mass density, while arrows indicate the velocity.  In the right panel we plot the distribution of elements flagged for limiting $t=3.2$.}
 \end{figure}
 
 \subsubsection{Standing accretion shock (SAS)}
@@ -532,6 +575,7 @@ We hope to report on progress in these directions in the near future.
 
 \section*{References}
 \begin{thebibliography}{36}
+  \bibitem{ascher_etal_1997} Ascher U M, Ruuth S J and Spiteri R J 1997 {\it Applied Numerical Mathematics} {\bf 23} 151
   \bibitem{bassi_etal_2013} Bassi F, Franchina N, Ghidoni A and Rebay S 2013 {\it Int. J. Numer. Meth. Fluids} {\bf 71} 1322
   \bibitem{blondin_etal_2003} Blondin J M, Mezzacappa A and DeMarino C 2003 {\it ApJ} {\bf 584} 980
   \bibitem{brennerScott_2008} Brenner S C and Scott L R 2008 {\it The Mathematical Theory of Finite Element Methods} Springer
@@ -558,6 +602,7 @@ We hope to report on progress in these directions in the near future.
   \bibitem{sedov_1959} Sedov L I 1959 {\it Similarity and Dimensional Methods in Mechanics} Academic Press
   \bibitem{shuOsher_1988} Shu C-W and Osher S 1988 {\it JCP} {\bf 77} 439
   \bibitem{shuOsher_1989} Shu C-W and Osher S 1989 {\it JCP} {\bf 83} 32
+  \bibitem{shu_1997} Shu C-W 1997 {\it NASA/CR-97-206253 ICASE Report No. 97-65}
   \bibitem{shu_2016} Shu C-W 2016 {\it JCP} {\bf 316} 598
   \bibitem{sod_1978} Sod G A 1978 {\it JCP} {\bf 27} 1
   \bibitem{teukolsky_2016} Teukolsky S A 2016 {\it JCP} {\bf 312} 333
