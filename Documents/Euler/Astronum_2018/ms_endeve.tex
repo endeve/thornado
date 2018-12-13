@@ -214,7 +214,7 @@ To prevent negative mass density and pressure (and superluminal velocity for the
 In this section we show preliminary numerical results obtained with the DG method implemented in \thornado\ to solve the non-relativistic and special relativistic Euler equations.  
 We use the ideal gas equation of state where the pressure $p$ is related to the internal energy density $e$ by $p=(\Gamma-1)e$, and where $\Gamma$ is the (constant) adiabatic index.  
 Let the $d$-dimensional computational domain be $D=\times_{i=1}^{d}[\xMin^{i},\xMax^{i}]$, where $\xMin^{i}$ and $\xMax^{i}$ denote the coordinates of the inner and outer boundary in the $i$th coordinate direction, respectively.  
-We use polynomials of degree $k=2$ combined with SSP-RK3 time stepping, and all the tests were run with a Courant-Friedrichs-Lewy (CFL) factor of $C=0.1$.  
+To limit the scope of this initial study, we use polynomials of degree $k=2$ (except in Section~\ref{sec:isentropicVortex}, where we also use $k=1$ and $k=3$) combined with SSP-RK3 time stepping, and run all the tests with a Courant-Friedrichs-Lewy (CFL) factor of $C=0.1$.  
 We use the HLL Riemann solver when solving the non-relativistic Euler equations and the HLLC Riemann solver when solving the special relativistic Euler equations.  
 The purpose of the tests is to gauge the performance of the DG implementation on a set of benchmarks as an initial measure of its suitability for future CCSN simulations.  
 
@@ -317,6 +317,8 @@ With $C_{\TCI}=0.03$, limiting is triggered in a wide region around the shock an
 With $C_{\TCI}=3.0$, limiting is only triggered in the shock.  
 
 \subsubsection{Isentropic vortex}
+\label{sec:isentropicVortex}
+
 This test from \cite{shu_1997} is included to verify the accuracy of the DG method implemented in \thornado.  
 The periodic computational domain is given by $D=[-5,5]\times[-5,5]$.  
 The initial density and pressure are given by $\rho_{0}=\big(\,1-\f{(\Gamma-1)\,\beta^{2}}{(8\pi\Gamma)}\exp\big(1-r^{2}\big)\,\big)^{1/(\Gamma-1)}$ and $P_{0}=\rho^{\Gamma}$, where $r=\sqrt{(x^{1})^{2}+(x^{2})^{2}}$, while the velocity components are $v_{0}^{1}=1-\f{x^{2}\beta}{2\pi}\,\exp\big((1-r^{2})/2\big)$ and $v_{0}^{2}=1+\f{x^{1}\beta}{2\pi}\,\exp\big((1-r^{2})/2\big)$.  

@@ -5,7 +5,7 @@
 {\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid1\'02\'00.;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid2\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listname ;}\listid1}
 {\list\listtemplateid2\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat6\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid101\'02\'00.;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listname ;}\listid2}}
 {\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}}
-\margl1440\margr1440\vieww17600\viewh10920\viewkind0
+\margl1440\margr1440\vieww22180\viewh14240\viewkind0
 \deftab720
 \pard\pardeftab720\sl300\sa240\partightenfactor0
 
@@ -72,7 +72,9 @@ you tested many one-dimensional problems. Can you please add a simple 2d test, w
 \b \cf3 We added the explosion problem from Liska & Wendroff (now Section 3.17).
 \b0 \cf2 \
 \ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	11.	}\expnd0\expndtw0\kerning0
-is there any specific reason why don\'92t you take advantages from the high-order resolution of DG schemes? Indeed, you only use k = 2 (third order accuracy in space) but you may reach an arbitrary order of accuracy in space very easily. \uc0\u8232 \
+is there any specific reason why don\'92t you take advantages from the high-order resolution of DG schemes? Indeed, you only use k = 2 (third order accuracy in space) but you may reach an arbitrary order of accuracy in space very easily. \uc0\u8232 
+\b \cf3 The only reason is to limit the scope of the paper.  We plan to publish a more detailed methods paper, where we also vary the polynomial degree, at a later time.  However, we included results with k=1 and k=3 for the Isentropic vortex test.  To reflect this, we modified the fourth sentence in Section 3 to read: \'93To limit the scope of this initial study, we use polynomials of degree $k=2$ (except in Section~\\ref\{sec:isentropicVortex\}, where we also use $k=1$ and $k=3$) combined with SSP-RK3 time stepping, and run all the tests with a Courant-Friedrichs-Lewy (CFL) factor of $C=0.1$.\'94
+\b0 \cf2   \
 \ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	12.	}\expnd0\expndtw0\kerning0
 Figure 1: can you add, please, the maps of the limiter activation? These are the good tests for the accuracy of the adopted trouble-cell indicator. \uc0\u8232 
 \b \cf3 We have added maps of the limiter activation for these tests (lower panels of Figure 1).
