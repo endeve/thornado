@@ -86,7 +86,9 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    uPF_K(1:nDOFX,1:nPF) = 0.0d0
+    uGF_K = 0.0d0
+    uPF_K = 0.0d0
+    uCF_K = 0.0d0
 
     DO iDim = 1, 3
 
@@ -115,7 +117,7 @@ CONTAINS
       DO iX2 = BX % lo(2), BX % hi(2)
       DO iX1 = BX % lo(1), BX % hi(1)
 
-        uGF_K(1:nDOFX,1:nGF) &
+        uGF_K &
           = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
         DO iNodeX = 1, nDOFX
@@ -157,7 +159,7 @@ CONTAINS
                  uGF_K(:,iGF_Gm_dd_33) )
 
         uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
-          = RESHAPE( uCF_K(1:nDOFX,1:nCF), [ hi_F(4) - lo_F(4) + 1 ] )
+          = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
 
       END DO
       END DO

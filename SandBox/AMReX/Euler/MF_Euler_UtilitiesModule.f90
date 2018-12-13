@@ -56,7 +56,10 @@ CONTAINS
       WRITE(*,'(A4,A)') '', 'MF_ComputeFromConserved'
     END IF
 
-    uAF_K(1:nDOFX,1:nAF) = 0.0d0
+    uGF_K = 0.0d0
+    uCF_K = 0.0d0
+    uPF_K = 0.0d0
+    uAF_K = 0.0d0
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = .TRUE. )
 
@@ -78,10 +81,10 @@ CONTAINS
       DO iX2 = BX % lo(2), BX % hi(2)
       DO iX1 = BX % lo(1), BX % hi(1)
 
-        uGF_K(1:nDOFX,1:nGF) &
+        uGF_K &
           = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-        uCF_K(1:nDOFX,1:nCF) &
+        uCF_K &
           = RESHAPE( uCF(iX1,iX2,iX3,lo_C(4):hi_C(4)), [ nDOFX, nCF ] )
 
         ! --- Primitive Fluid ---
@@ -96,7 +99,7 @@ CONTAINS
                  uGF_K(:,iGF_Gm_dd_33) )
 
         uPF(iX1,iX2,iX3,:) &
-          = RESHAPE( uPF_K(1:nDOFX,1:nPF), [hi_P(4)-lo_P(4)+1] )
+          = RESHAPE( uPF_K, [hi_P(4)-lo_P(4)+1] )
 
         ! --- Auxiliary Fluid ---
 
@@ -109,7 +112,7 @@ CONTAINS
                  uAF_K(:,iAF_Cs) )
 
         uAF(iX1,iX2,iX3,:) &
-          = RESHAPE( uAF_K(1:nDOFX,1:nAF), [hi_A(4)-lo_A(4)+1] )
+          = RESHAPE( uAF_K, [hi_A(4)-lo_A(4)+1] )
 
       END DO
       END DO

@@ -28,13 +28,13 @@ MODULE FluidFieldsModule
                 'Conserved Energy Density        ', &
                 'Conserved Electron Density      ' ]
 
-  CHARACTER(32), DIMENSION(nCF), PUBLIC, PARAMETER :: &
-    ShortNamesCF = [ 'ConservedBaryonDensity          ', &
-                     'ConservedMomentumDensity1       ', &
-                     'ConservedMomentumDensity2       ', &
-                     'ConservedMomentumDensity3       ', &
-                     'ConservedEnergyDensity          ', &
-                     'ConservedElectronDensity        ' ]
+  CHARACTER(10),  DIMENSION(nCF), PUBLIC, PARAMETER :: &
+    ShortNamesCF = [ 'CF_D      ', &
+                     'CF_S1     ', &
+                     'CF_S2     ', &
+                     'CF_S3     ', &
+                     'CF_E      ', &
+                     'CF_Ne     ' ]
 
   REAL(DP), DIMENSION(nCF), PUBLIC :: unitsCF
 
@@ -59,13 +59,13 @@ MODULE FluidFieldsModule
                 'Internal Energy Density         ', &
                 'Comoving Electron Density       ' ]
 
-  CHARACTER(32), DIMENSION(nPF), PUBLIC, PARAMETER :: &
-    ShortNamesPF = [ 'ComovingBaryonDensity           ', &
-                     'Three-Velocity1                 ', &
-                     'Three-Velocity2                 ', &
-                     'Three-Velocity3                 ', &
-                     'InternalEnergyDensity           ', &
-                     'ComovingElectronDensity         ' ]
+  CHARACTER(10),  DIMENSION(nPF), PUBLIC, PARAMETER :: &
+    ShortNamesPF = [ 'PF_D      ', &
+                     'PF_V1     ', &
+                     'PF_V2     ', &
+                     'PF_V3     ', &
+                     'PF_E      ', &
+                     'PF_Ne     ' ]
 
   REAL(DP), DIMENSION(nPF), PUBLIC :: unitsPF
 
@@ -105,21 +105,21 @@ MODULE FluidFieldsModule
                 'Ratio of Specific Heats (Gamma) ', &
                 'Sound Speed                     ' ]
 
-  CHARACTER(32), DIMENSION(nAF), PUBLIC, PARAMETER :: &
-    ShortNamesAF = [ 'Pressure                        ', &
-                     'Temperature                     ', &
-                     'ElectronFraction                ', &
-                     'EntropyPerBaryon                ', &
-                     'SpecificInternalEnergy          ', &
-                     'ElectronChemicalPotential       ', &
-                     'ProtonChemicalPotential         ', &
-                     'NeutronChemicalPotential        ', &
-                     'ProtonMassFraction              ', &
-                     'NeutronMassFraction             ', &
-                     'AlphaMassFraction               ', &
-                     'HeavyMassFraction               ', &
-                     'RatioOfSpecificHeats            ', &
-                     'SoundSpeed                      ' ]
+  CHARACTER(10),  DIMENSION(nAF), PUBLIC, PARAMETER :: &
+    ShortNamesAF = [ 'AF_P      ', &
+                     'AF_T      ', &
+                     'AF_Ye     ', &
+                     'AF_S      ', &
+                     'AF_E      ', &
+                     'AF_Me     ', &
+                     'AF_Mp     ', &
+                     'AF_Mn     ', &
+                     'AF_Xp     ', &
+                     'AF_Xn     ', &
+                     'AF_Xa     ', &
+                     'AF_Xh     ', &
+                     'AF_Gm     ', &
+                     'AF_Cs     ' ]
 
   REAL(DP), DIMENSION(nAF), PUBLIC :: unitsAF
 

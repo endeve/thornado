@@ -46,20 +46,20 @@ MODULE GeometryFieldsModule
                 'Shift Vector (3)                            ', &
                 'Conformal Factor                            ' ]
 
-  CHARACTER(32), DIMENSION(nGF), PUBLIC, PARAMETER :: &
-   ShortNamesGF = [ 'NewtonianPotential                          ', &
-                    'SpatialScaleFactor1                         ', &
-                    'SpatialScaleFactor2                         ', &
-                    'SpatialScaleFactor3                         ', &
-                    'SpatialMetricComponent11                    ', &
-                    'SpatialMetricComponent22                    ', &
-                    'SpatialMetricComponent33                    ', &
-                    'SqrtOfSpatialMetricDeterminant              ', &
-                    'LapseFunction                               ', &
-                    'ShiftVector1                                ', &
-                    'ShiftVector2                                ', &
-                    'ShiftVector3                                ', &
-                    'ConformalFactor                             ' ]
+  CHARACTER(10), DIMENSION(nGF), PUBLIC, PARAMETER :: &
+   ShortNamesGF = [ 'GF_Phi_N  ', &
+                    'GF_h_1    ', &
+                    'GF_h_2    ', &
+                    'GF_h_3    ', &
+                    'GF_Gm_11  ', &
+                    'GF_Gm_22  ', &
+                    'GF_Gm_33  ', &
+                    'GF_SqrtGm ', &
+                    'GF_Alpha  ', &
+                    'GF_Beta_1 ', &
+                    'GF_Beta_2 ', &
+                    'GF_Beta_3 ', &
+                    'GF_Psi    ' ]
 
   REAL(DP), DIMENSION(nGF), PUBLIC :: unitsGF
   REAL(DP), ALLOCATABLE,    PUBLIC :: uGF(:,:,:,:,:)

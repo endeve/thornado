@@ -28,7 +28,8 @@ PROGRAM main
   USE FluidFieldsModule,                ONLY: &
     nCF, nPF, nAF
   USE InputOutputModuleAMReX,           ONLY: &
-    WriteFieldsAMReX_PlotFile
+    WriteFieldsAMReX_PlotFile, &
+    WriteFieldsAMReX_Checkpoint
 
   ! --- Local Modules ---
 
@@ -42,6 +43,7 @@ PROGRAM main
   IMPLICIT NONE
 
   CHARACTER(LEN=:), ALLOCATABLE :: ProgramName
+  INTEGER :: iCycle
   INTEGER :: iDim
   INTEGER :: nNodes
   INTEGER :: nStages
@@ -184,6 +186,10 @@ PROGRAM main
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &
            MF_uAF_Option = MF_uAF )
+
+  iCycle = 0
+  CALL WriteFieldsAMReX_Checkpoint( iCycle, 0.0_DP, GEOM, &
+                                    MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   CALL amrex_multifab_destroy( MF_uGF )
 

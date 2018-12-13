@@ -4,6 +4,9 @@ MODULE InputOutputModuleAMReX
 
   USE amrex_base_module
 
+  ! --- For getting MPI process info (could also add this to amrex_base_module) ---
+  USE amrex_paralleldescriptor_module
+
   ! --- thornado Modules ---
 
   USE KindModule,              ONLY: &
@@ -23,9 +26,11 @@ MODULE InputOutputModuleAMReX
   PRIVATE
 
   CHARACTER(8) :: BaseFileName = 'thornado'
+  CHARACTER(3) :: BaseCheckpointFileName = 'chk'
   INTEGER      :: PlotFileNumber = 0
 
   PUBLIC :: WriteFieldsAMReX_PlotFile
+  PUBLIC :: WriteFieldsAMReX_Checkpoint
 
 CONTAINS
 
@@ -44,22 +49,42 @@ CONTAINS
     CHARACTER(32)                   :: PlotFileName
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C, WriteFF_P, WriteFF_A
-    INTEGER                         :: iComp, nLevels
+    INTEGER                         :: iComp, jComp, nLevels, nF = 0
+    INTEGER                         :: MyProc
     TYPE(amrex_multifab)            :: MF_PF
+    TYPE(amrex_boxarray)            :: BA
+    TYPE(amrex_distromap)           :: DM
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
 
+    ! --- Only needed to get and write BX % lo and BX % hi ---
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
+
     WriteGF   = .FALSE.
-    IF( PRESENT( MF_uGF_Option ) ) WriteGF   = .TRUE.
+    IF( PRESENT( MF_uGF_Option ) )THEN
+      WriteGF   = .TRUE.
+      nF = nF + nGF
+    END IF
 
     WriteFF_C = .FALSE.
-    IF( PRESENT( MF_uCF_Option ) ) WriteFF_C = .TRUE.
+    IF( PRESENT( MF_uCF_Option ) )THEN
+      WriteFF_C = .TRUE.
+      nF = nF + nCF
+    END IF
 
     WriteFF_P = .FALSE.
-    IF( PRESENT( MF_uPF_Option ) ) WriteFF_P = .TRUE.
+    IF( PRESENT( MF_uPF_Option ) )THEN
+      WriteFF_P = .TRUE.
+      nF = nF + nPF
+    END IF
 
     WriteFF_A = .FALSE.
-    IF( PRESENT( MF_uAF_Option ) ) WriteFF_A = .TRUE.
+    IF( PRESENT( MF_uAF_Option ) )THEN
+      WriteFF_A = .TRUE.
+      nF = nF + nAF
+    END IF
 
+    MyProc = amrex_pd_myproc()
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -72,128 +97,152 @@ CONTAINS
 
     nLevels = 1
 
-    ! --- Geometry fields ---
+    PlotFileName = TRIM( BaseFileName ) // '_' // NumberString
+
+    ALLOCATE( VarNames(nF) )
+
+    jComp = 0
     IF( WriteGF )THEN
-
-      PlotFileName = TRIM( BaseFileName ) // '_GeometryFields_' // NumberString
-
-      ALLOCATE( VarNames(nGF) )
-
       DO iComp = 1, nGF
-
         CALL amrex_string_build &
-               ( VarNames(iComp), TRIM( ShortNamesGF(iComp) ) )
-
+               ( VarNames(iComp + jComp), TRIM( ShortNamesGF(iComp) ) )
       END DO
-
-      CALL amrex_multifab_build &
-             ( MF_PF, MF_uGF_Option % BA, MF_uGF_Option % DM, nGF, 0 )
-
-      CALL MF_ComputeCellAverage( nGF, MF_uGF_Option, MF_PF )
-
-      CALL amrex_write_plotfile &
-             ( PlotFileName, nLevels, [ MF_PF ], VarNames, &
-               [ GEOM ], Time, [ PlotFileNumber ], [1] )
-
-      CALL amrex_multifab_destroy( MF_PF )
-
-      DEALLOCATE( VarNames )
-
+      jComp = jComp + nGF
+      BA = MF_uGF_Option % BA
+      DM = MF_uGF_Option % DM
     END IF
 
-    ! --- Conserved fluid fields ---
     IF( WriteFF_C )THEN
-
-      PlotFileName = TRIM( BaseFileName ) // '_FluidFields_C_' // NumberString
-
-      ALLOCATE( VarNames(nCF) )
-
       DO iComp = 1, nCF
-
-         CALL amrex_string_build &
-                ( VarNames(iComp), TRIM( ShortNamesCF(iComp) ) )
-
+        CALL amrex_string_build &
+               ( VarNames(iComp + jComp), TRIM( ShortNamesCF(iComp) ) )
       END DO
-
-      CALL amrex_multifab_build &
-             ( MF_PF, MF_uCF_Option % BA, MF_uCF_Option % DM, nCF, 0 )
-
-      CALL MF_ComputeCellAverage( nCF, MF_uCF_Option, MF_PF )
-
-      CALL amrex_write_plotfile &
-             ( PlotFileName, nLevels, [ MF_PF ], VarNames, &
-               [ GEOM ], Time, [ PlotFileNumber ], [1] )
-
-      CALL amrex_multifab_destroy( MF_PF )
-
-      DEALLOCATE( VarNames )
-
+      jComp = jComp + nCF
+      BA = MF_uCF_Option % BA
+      DM = MF_uCF_Option % DM
     END IF
 
-    ! --- Primitive fluid fields ---
     IF( WriteFF_P )THEN
-
-      PlotFileName = TRIM( BaseFileName ) // '_FluidFields_P_' // NumberString
-
-      ALLOCATE( VarNames(nPF) )
-
       DO iComp = 1, nPF
-
-         CALL amrex_string_build &
-                ( VarNames(iComp), TRIM( ShortNamesPF(iComp) ) )
-
+        CALL amrex_string_build &
+               ( VarNames(iComp + jComp), TRIM( ShortNamesPF(iComp) ) )
       END DO
-
-      CALL amrex_multifab_build &
-             ( MF_PF, MF_uPF_Option % BA, MF_uPF_Option % DM, nPF, 0 )
-
-      CALL MF_ComputeCellAverage( nPF, MF_uPF_Option, MF_PF )
-
-      CALL amrex_write_plotfile &
-             ( PlotFileName, nLevels, [ MF_PF ], VarNames, &
-               [ GEOM ], Time, [ PlotFileNumber ], [1] )
-
-      CALL amrex_multifab_destroy( MF_PF )
-
-      DEALLOCATE( VarNames )
-
+      jComp = jComp + nPF
+      BA = MF_uPF_Option % BA
+      DM = MF_uPF_Option % DM
     END IF
 
-    ! --- Auxiliary fluid fields ---
     IF( WriteFF_A )THEN
-
-      PlotFileName = TRIM( BaseFileName ) // '_FluidFields_A_' // NumberString
-
-      ALLOCATE( VarNames(nAF) )
-
       DO iComp = 1, nAF
-
-         CALL amrex_string_build &
-                ( VarNames(iComp), TRIM( ShortNamesAF(iComp) ) )
-
+        CALL amrex_string_build &
+               ( VarNames(iComp + jComp), TRIM( ShortNamesAF(iComp) ) )
       END DO
-
-      CALL amrex_multifab_build &
-             ( MF_PF, MF_uAF_Option % BA, MF_uAF_Option % DM, nAF, 0 )
-
-      CALL MF_ComputeCellAverage( nAF, MF_uAF_Option, MF_PF )
-
-      CALL amrex_write_plotfile &
-             ( PlotFileName, nLevels, [ MF_PF ], VarNames, &
-               [ GEOM ], Time, [ PlotFileNumber ], [1] )
-
-      CALL amrex_multifab_destroy( MF_PF )
-
-      DEALLOCATE( VarNames )
-
+      jComp = jComp + nAF
+      BA = MF_uAF_Option % BA
+      DM = MF_uAF_Option % DM
     END IF
+
+    CALL amrex_multifab_build &
+           ( MF_PF, BA, DM, nF, 0 )
+
+    CALL amrex_mfiter_build( MFI, MF_PF, tiling = .TRUE. )
+
+    BX = MFI % tilebox()
+    WRITE(*,'(A,I2.2,A,3I3.2,A,3I3.2)') &
+      'MyProc = ', MyProc, ': lo = ', BX % lo, ', hi = ', BX % hi
+!!$    CALL amrex_print( BX )
+
+    jComp = 0
+    IF( WriteGF   ) &
+      CALL MF_ComputeCellAverage( nGF, MF_uGF_Option, MF_PF, jComp )
+    IF( WriteFF_C ) &
+      CALL MF_ComputeCellAverage( nCF, MF_uCF_Option, MF_PF, jComp )
+    IF( WriteFF_P ) &
+      CALL MF_ComputeCellAverage( nPF, MF_uPF_Option, MF_PF, jComp )
+    IF( WriteFF_A ) &
+      CALL MF_ComputeCellAverage( nAF, MF_uAF_Option, MF_PF, jComp )
+
+    CALL amrex_write_plotfile &
+           ( PlotFileName, nLevels, [ MF_PF ], VarNames, &
+             [ GEOM ], Time, [ PlotFileNumber ], [1] )
+
+    CALL amrex_multifab_destroy( MF_PF )
+
+    DEALLOCATE( VarNames )
 
   END SUBROUTINE WriteFieldsAMReX_PlotFile
 
 
-  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A )
+  SUBROUTINE WriteFieldsAMReX_Checkpoint &
+             ( iCycle, Time, GEOM, MF_uGF, MF_uCF, &
+                                   MF_uPF, MF_uAF )
+
+    INTEGER,              INTENT(in) :: iCycle
+    REAL(DP),             INTENT(in) :: Time
+    TYPE(amrex_geometry), INTENT(in) :: GEOM
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in) :: MF_uCF
+    TYPE(amrex_multifab), INTENT(in) :: MF_uPF
+    TYPE(amrex_multifab), INTENT(in) :: MF_uAF
+
+    CHARACTER(08)        :: NumberString = '00000010'
+    CHARACTER(11)        :: CheckpointName
+    CHARACTER(32)        :: Command
+    TYPE(amrex_boxarray) :: BA
+    INTEGER              :: nF = nGF + nCF + nPF + nAF
+
+    INTEGER :: iLevel, nLevels
+
+    LOGICAL :: callBarrier = .TRUE.
+
+    BA = MF_uGF % BA
+    nLevels = 1
+
+    CheckpointName = BaseCheckpointFileName // NumberString
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(Command,'(A,A)') 'mkdir ', TRIM( CheckpointName )
+
+      ! --- Pre-build directory hierarchy ---
+      CALL SYSTEM( Command )
+      DO iLevel = 0, nLevels - 1
+         WRITE(Command,'(A,I2.2)') &
+           'mkdir ' // TRIM( CheckpointName ) // '/Level', iLevel
+         CALL SYSTEM( Command )
+      END DO
+
+      ! CALL BARRIER() ! (Can't find FORTRAN equivalent)
+
+      OPEN(100, FILE = CheckpointName // '/Header' )
+
+        ! --- Write out the tite line ---
+        WRITE(100,'(A)') 'Checkpoint file for thornado'
+
+        ! --- Write out the finest level
+        WRITE(100,'(I2.2)') nLevels
+
+        ! --- Write iCycle ---
+        WRITE(100,'(I6.6)') iCycle
+
+        ! --- Write Time ---
+        WRITE(100,'(ES23.16E3)') Time
+
+!!$        DO iLevel = 0, nLevels - 1
+!!$          WRITE(100,*) BA(iLevel)
+!!$        END DO
+
+      CLOSE(100)
+
+    END IF
+
+  END SUBROUTINE WriteFieldsAMReX_Checkpoint
+
+
+  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, jComp )
 
     INTEGER,              INTENT(in   ) :: nComp
+    INTEGER,              INTENT(inout) :: jComp
     TYPE(amrex_multifab), INTENT(in   ) :: MF
     TYPE(amrex_multifab), INTENT(inout) :: MF_A
 
@@ -226,7 +275,7 @@ CONTAINS
         ! --- Compute cell-average ---
         DO iComp = 1, nComp
 
-          u_A(iX1,iX2,iX3,iComp) &
+          u_A(iX1,iX2,iX3,iComp + jComp) &
             = DOT_PRODUCT( WeightsX_q(:), u_K(:,iComp) )
 
         END DO
@@ -238,6 +287,7 @@ CONTAINS
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
+    jComp = jComp + nComp
 
   END SUBROUTINE MF_ComputeCellAverage
 
