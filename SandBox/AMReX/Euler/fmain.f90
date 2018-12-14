@@ -12,7 +12,7 @@ PROGRAM main
   USE ProgramHeaderModule,              ONLY: &
     InitializeProgramHeader,                  &
     DescribeProgramHeaderX,                   &
-    nDOFX
+    nDOFX, nNodesX
   USE PolynomialBasisModuleX_Lagrange,  ONLY: &
     InitializePolynomialBasisX_Lagrange
   USE PolynomialBasisModuleX_Legendre,  ONLY: &
@@ -21,10 +21,12 @@ PROGRAM main
     InitializeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
+  USE MeshModule,                       ONLY: &
+    MeshX, CreateMesh, DestroyMesh
   USE EquationOfStateModule,            ONLY: &
     InitializeEquationOfState
   USE GeometryFieldsModule,             ONLY: &
-    nGF
+    nGF, CoordinateSystem
   USE FluidFieldsModule,                ONLY: &
     nCF, nPF, nAF
   USE InputOutputModuleAMReX,           ONLY: &
@@ -48,7 +50,7 @@ PROGRAM main
   INTEGER :: nNodes
   INTEGER :: nStages
   INTEGER :: nX(3) = 1, swX(3) = 0
-  INTEGER :: CoordinateSystem
+  INTEGER :: coord_sys
   INTEGER, PARAMETER :: nGhost = 2
   INTEGER, ALLOCATABLE  :: n_cell(:)
   INTEGER, ALLOCATABLE  :: max_grid_size(:)
@@ -98,14 +100,25 @@ PROGRAM main
 
   CALL amrex_parmparse_build( PP, "geometry" )
 
-  CALL PP % get( "coord_sys", CoordinateSystem )
+  CALL PP % get( "coord_sys", coord_sys )
 
   CALL amrex_parmparse_destroy( PP )
+
+  SELECT CASE ( coord_sys )
+    CASE ( 0 )
+      CoordinateSystem = 'CARTESIAN'
+    CASE ( 1 )
+      CoordinateSystem = 'CYLINDRICAL'
+    CASE ( 2 )
+      CoordinateSystem = 'SPHERICAL'
+    CASE DEFAULT
+      CoordinateSystem = 'CARTESIAN'
+  END SELECT
 
   IF( amrex_parallel_ioprocessor() )THEN
 
     WRITE(*,*)
-    WRITE(*,'(A4,A24,I3.2)') &
+    WRITE(*,'(A4,A24,A)') &
       '', 'CoordinateSystem =', CoordinateSystem
 
   END IF
@@ -174,6 +187,14 @@ PROGRAM main
 
   CALL amrex_boxarray_destroy( BA )
 
+  DO iDim = 1, 3
+
+    CALL CreateMesh &
+           ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
+             amrex_problo(iDim), amrex_probhi(iDim) )
+
+  END DO
+
   CALL MF_ComputeGeometryX( MF_uGF )
 
   CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
@@ -190,6 +211,12 @@ PROGRAM main
   iCycle = 0
   CALL WriteFieldsAMReX_Checkpoint( iCycle, 0.0_DP, GEOM, &
                                     MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+  DO iDim = 1, 3
+
+    CALL DestroyMesh( MeshX(iDim) )
+
+  END DO
 
   CALL amrex_multifab_destroy( MF_uGF )
 
