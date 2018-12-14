@@ -37,6 +37,8 @@
 \newcommand{\rightState}{\textnormal{\tiny\textsc{R}}}
 \newcommand{\TCI}{\textnormal{\tiny\textsc{TCI}}}
 \newcommand{\shock}{\textnormal{\tiny\textsc{Sh}}}
+\newcommand{\Pos}{\textnormal{\tiny\textsc{Pos}}}
+\newcommand{\TVD}{\textnormal{\tiny\textsc{Tvd}}}
 \newcommand{\thornado}{\texttt{thornado}}
 \newcommand{\chimera}{{\sc Chimera}}
 
@@ -207,6 +209,31 @@ In Eq.~\eqref{eq:indicator}, the sum in the numerator and the $\max$ in the deno
 $G_{\bK}$ is the cell average in $\bK$, $G_{\bK}^{(j)}$ is the cell average computed by extrapolating the polynomial representation from the neighbor element $\bK^{(j)}$ into $\bK$, and $G_{\bK^{(j)}}^{(j)}$ is the cell average native to $\bK^{(j)}$.  
 An element is flagged for limiting if $I_{\bK}(G)>C_{\TCI}$ for any $G\in\vect{G}$.  
 To prevent negative mass density and pressure (and superluminal velocity for the relativistic Euler equations), we follow the approaches in \cite{zhangShu_2010,wuTang_2015,qin_etal_2016}.  
+
+To summarize the RK-DG algorithm we let $\bar{\vect{U}}$ denote the global solution vector containing all the unknowns in $D$ and $\bar{\vect{F}}$ denote the corresponding DG discretization from the right-hand side of Eq.~\eqref{eq:semidiscreteDiscretized}, so that the global ODE system can be written as the $d_{t}\bar{\vect{U}}=\bar{\vect{F}}(\bar{\vect{U}})$.  
+We denote the TVD limiter with $\Lambda^{\TVD}\{\}$ and the `positivty' limiter preventing unphysical states with $ \Lambda^{\Pos}\{\}$.  
+(E.g., application of the TVD limiter is $\bar{\vect{U}} := \Lambda^{\TVD}\{\bar{\vect{U}}\}$.)  
+The general $s$-stage Runge-Kutta time stepping algorithm, which includes application of limiters, can then be written as \cite{cockburnShu_2001}:
+\begin{itemize}
+  \item[1.] Set $\bar{\vect{U}}^{(0)} = \bar{\vect{U}}^{n}$,
+  \item[2.] For $i=1,\ldots,s$ compute:
+  \begin{equation}
+    \bar{\vect{U}}^{(i)} 
+    = \Lambda^{\Pos}\Big\{\,\Lambda^{\TVD}\Big\{\,\sum_{j=0}^{i-1}\Big(\,\alpha_{ij}\,\bar{\vect{U}}^{(j)}+\beta_{ij}\,\Delta t\,\bar{\vect{F}}\big(\bar{\vect{U}}^{(j)}\big)\,\Big)\,\Big\}\,\Big\},
+    \label{eq:rkStages}
+  \end{equation}
+  \item[3.] Set $\bar{\vect{U}}^{n+1}=\bar{\vect{U}}^{(s)}$.  
+\end{itemize}
+The coefficients $\alpha_{ij}$ and $\beta_{ij}$ for SSP-RK3 are given in Table~2.1 in \cite{cockburnShu_2001}.  
+In Eq.~\eqref{eq:rkStages}, for each stage, the TVD limiter is applied first (for elements where $I_{\bK}>C_{\TCI}$), followed by the positivity limiter.  
+The positivity limiter 
+
+$\Delta t=\min_{D}(\Delta t_{\TVD},\Delta t_{\Pos})$
+\begin{equation}
+  \Delta t_{\TVD} = \f{1}{d}\,\f{1}{(2k+1)}\min_{i}\big(\Delta x^{i}/|\lambda^{i}|\big)\quad\text{and}\quad
+  \Delta t_{\Pos} = \f{\hat{w}_{N}}{d}\min_{i}\big(\Delta x^{i}/|\lambda^{i}|\big)
+\end{equation}
+For $d=k=2$, the effective Courant-Friedrichs-Lewy (CFL) factor is $0.1$ for $\Delta t_{\TVD}$, while it is $1/12$ for $\Delta t_{\Pos}$.  
 
 \section{Preliminary numerical results}
 \label{sec:numerical}
@@ -521,6 +548,7 @@ In this case the state, flux, and source vectors in Eq.~\eqref{eq:extendedEulerC
   \text{and}~\vect{S}=0,
 \end{equation}
 where $W$ is the Lorentz factor, $h=1+(e+p)/\rho$ is the specific enthalpy, $\tau=\rho W(hW-1)-p$, and $\Pi^{i}_{~j}=\rho h W^{2} u^{i} u_{j}+p\delta^{i}_{~j}$.  
+To recover primitive from conserved variables we have implemented the procedure for analytic equations of state detailed in Appendix~D in \cite{rezzollaZanotti_2013}.  
 We solve two Riemann problems and compare the numerical results with exact solutions obtained with the solver from \cite{martiMuller_2003}.  
 Let the primitive state vector be $\vect{V}=\big(\rho,\vect{u},p\big)^{\trans}$.  
 In the first problem (Riemann problem~1), taken from \cite{mignoneBodo_2005}, we use $\Gamma=4/3$ and
@@ -543,15 +571,22 @@ Results are plotted in Figure~\ref{fig:RelativisticHydro}.
   \end{minipage}\hspace{0.5pc}%
   \begin{minipage}{18pc}
     \includegraphics[width=18pc]{./Figures/MB2005_04_Astronum_2018}
+  \end{minipage} \\
+  \begin{minipage}{18pc}
+    \includegraphics[width=18pc]{./Figures/MB2005_01_TCI_Astronum_2018}
+  \end{minipage}\hspace{0.5pc}%
+  \begin{minipage}{18pc}
+    \includegraphics[width=18pc]{./Figures/MB2005_04_TCI_Astronum_2018}
   \end{minipage}
-  \caption{\label{fig:RelativisticHydro}Results from solving the SR Euler equations with \thornado.  Riemann problem~1 (left panel) was solved using $100$ elements, while Riemann problem~2 was solved using $400$ elements.  The numerical and exact solutions are plotted with plusses and solid lines, respectively.}
+  \caption{\label{fig:RelativisticHydro}Results from solving the SR Euler equations with \thornado.  Riemann problem~1 (left panels) was solved using $100$ elements, while Riemann problem~2 (right panels) was solved using $400$ elements.  The numerical and exact solutions are plotted with plusses and solid lines, respectively.  In the lower panels we plot $xt$-plane locations of elements flagged for limiting}
 \end{figure}
 
 Again, the main features of the exact solution are captured with the DG method implemented in \thornado.  
 For Riemann problem~1, we observe some oscillations in the density profile between the leftmost shock and the contact discontinuity located around $x^{1}=0.6$.  
 For Riemann problem~2, the maximum density in the thin density shell between the shock and the contact discontinuity is significantly lower for the numerical solution than the exact solution.  
 This is due to a combination of limited spatial resolution and the action of the slope limiter.  
-We used $C_{\TCI}=0.03$ in both tests in this section.  
+We used $C_{\TCI}=0.03$ in both tests in this section, and we plot locations in the $xt$-plane of elements flagged for limiting in Figure~\ref{fig:RelativisticHydro}.  
+The troubled-cell indicator tracks the discontinuities well for both Riemann problems.  
 We have found the agreement with the exact solution to improve for larger values of $C_{\TCI}$, but at the expense of somewhat more oscillatory results.  
 
 \section{Summary and outlook}
@@ -600,6 +635,7 @@ We hope to report on progress in these directions in the near future.
   \bibitem{qin_etal_2016} Qin T, Shu C-W and Yang Y 2016 {\it JCP} {\bf 315} 323
   \bibitem{radiceRezzolla_2011} Radice D and Rezzolla L 2011 {\it Phys. Rev. D} {\bf 84} 024010
   \bibitem{remacle_etal_2003} Remacle J-F, Flaherty J E and Shephard M S 2003 {\it SIAM~Review} {\bf 45} 53
+  \bibitem{rezzollaZanotti_2013} Rezzolla L and Zanotti O 2013 {\it Relativistic Hydrodynamics} Oxford
   \bibitem{schaal_etal_2015} Schaal K, Bauer A, Chandrashekar P R{\"u}diger P, Klingenberg C and Springel V 2015 {\it MNRAS} {\bf 453} 4278
   \bibitem{sedov_1959} Sedov L I 1959 {\it Similarity and Dimensional Methods in Mechanics} Academic Press
   \bibitem{shuOsher_1988} Shu C-W and Osher S 1988 {\it JCP} {\bf 77} 439
