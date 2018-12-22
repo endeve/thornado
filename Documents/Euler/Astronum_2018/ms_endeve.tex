@@ -81,9 +81,12 @@ Exploring the utility and performance of DG methods to model CCSNe seems like a 
 The {\bf t}oolkit for {\bf h}igh-{\bf or}der {\bf n}eutrino-r{\bf ad}iation hydr{\bf o}dynamics (\thornado) is being developed to simulate neutrino-radiation hydrodynamics in CCSNe and related applications in nuclear astrophysics.  
 The spatial discretization of solvers for hyperbolic partial differential equations in \thornado\ is based on the DG method, while we foresee using a combination of spectral and continuous finite element methods for solving elliptic equations; e.g., for Newtonian gravity or relativistic gravity employing the conformal flatness approximation \cite{wilson_etal_1996}.  
 With these approaches, we employ high-order discretization techniques based on a common mathematical framework in all the major model components.  
-In this paper, we provide an initial description and encouraging demonstration of the DG method implemented in \thornado\ to solve the Euler equations.  
-We note that others (e.g., \cite{radiceRezzolla_2011,schaal_etal_2015}) have also investigated the DG method in the context of astrophysical hydrodynamics and reported encouraging results.  
 Whether the high-order approach will improve accuracy and efficiency of CCSN models remains to be demonstrated.  
+However, in this paper, we provide an initial description and encouraging demonstration of the DG method implemented in \thornado\ to solve the Euler equations.  
+We focus on basic tests in one and two spatial dimensions and focus, to some extent, on the implementation of limiters in \thornado.  
+We note that others (e.g., \cite{radiceRezzolla_2011,schaal_etal_2015,zanotti_etal_2015,dumbser_etal_2018}) have also investigated the DG method in the context of astrophysical applications and reported encouraging results.  
+The DG limiting techniques implemented in \thornado\ are similar to those used by \cite{schaal_etal_2015}, but is supplemented with a troubled-cell indicator \cite{fuShu_2017} to prevent excessive limiting (e.g., around smooth extrema), and differs from more recent approaches in the literature (e.g., \cite{huerta_etal_2012,dumbser_etal_2014,zanotti_etal_2015,sonntagMunz_2017}), which combine the sub-cell resolution of the DG method with high-order finite-volume techniques to improve the performance of the DG limiting procedure.  
+While the results with current limiters are encouraging, these latter methods appear as attractive options for future implementation in \thornado.  
 
 \section{The discontinuous Galerkin method}
 
@@ -193,10 +196,10 @@ Using Eqs.~\eqref{eq:timeDerivativeTerm}-\eqref{eq:volumeTerm} in Eq.~\eqref{eq:
 \end{align}
 Eq.~\eqref{eq:semidiscreteDiscretized} comprises a system of ordinary differential equations (ODEs), which are integrated in time with an ODE solver.  
 In Section~\ref{sec:numerical} we use the optimal third-order strong stability-preserving Runge-Kutta (SSP-RK3) method from \cite{shuOsher_1988}.  
-We assume that the source term $\vect{S}(\vect{U}_{k})$ is non-stiff so that the equations can integrated efficiently with explicit methods.  
+We assume that the source term $\vect{S}(\vect{U}_{k})$ is non-stiff so that the equations can be integrated efficiently with explicit methods.  
 In future applications of the DG method to model CCSNe we plan to use a combination of implicit and explicit methods (e.g., IMEX methods \cite{ascher_etal_1997}) to stably integrate stiff sources due to neutrino-matter interactions.  
 
-Limiting of the polynomial representation $\vect{U}_{h}$, to reduce oscillations and prevent non-physical states, is a critical step in the DG algorithm.  
+Limiting of the polynomial representation $\vect{U}_{h}$, to reduce oscillations and prevent unphysical states, is a critical step in the DG algorithm.  
 We use the TVD-type slope limiter based on limiting characteristic variables, discussed in \cite{cockburnShu_1998}.  
 To prevent excessive limiting (e.g., at smooth extrema), we use the troubled-cell indicator (TCI) of \cite{fuShu_2017}:
 \begin{equation}
@@ -210,9 +213,8 @@ $G_{\bK}$ is the cell average in $\bK$, $G_{\bK}^{(j)}$ is the cell average comp
 An element is flagged for limiting if $I_{\bK}(G)>C_{\TCI}$ for any $G\in\vect{G}$.  
 To prevent negative mass density and pressure (and superluminal velocity for the relativistic Euler equations), we follow the approaches in \cite{zhangShu_2010,wuTang_2015,qin_etal_2016}.  
 
-To summarize the RK-DG algorithm we let $\bar{\vect{U}}$ denote the global solution vector containing all the unknowns in $D$ and $\bar{\vect{F}}$ denote the corresponding DG discretization from the right-hand side of Eq.~\eqref{eq:semidiscreteDiscretized}, so that the global ODE system can be written as the $d_{t}\bar{\vect{U}}=\bar{\vect{F}}(\bar{\vect{U}})$.  
-We denote the TVD limiter with $\Lambda^{\TVD}\{\}$ and the `positivty' limiter preventing unphysical states with $ \Lambda^{\Pos}\{\}$.  
-(E.g., application of the TVD limiter is $\bar{\vect{U}} := \Lambda^{\TVD}\{\bar{\vect{U}}\}$.)  
+To summarize the full RK-DG algorithm we let $\bar{\vect{U}}$ denote the global solution vector containing all the unknowns in $D$ and $\bar{\vect{F}}$ denote the corresponding DG discretization from the right-hand side of Eq.~\eqref{eq:semidiscreteDiscretized}, so that the global ODE system can be written as the $d_{t}\bar{\vect{U}}=\bar{\vect{F}}(\bar{\vect{U}})$.  
+The TVD limiter and the `positivity' limiter preventing unphysical states are denoted by $\Lambda^{\TVD}\{\}$ and $ \Lambda^{\Pos}\{\}$, respectively (e.g., application of the TVD limiter is $\bar{\vect{U}} := \Lambda^{\TVD}\{\bar{\vect{U}}\}$).  
 The general $s$-stage Runge-Kutta time stepping algorithm, which includes application of limiters, can then be written as \cite{cockburnShu_2001}:
 \begin{itemize}
   \item[1.] Set $\bar{\vect{U}}^{(0)} = \bar{\vect{U}}^{n}$,
@@ -226,14 +228,20 @@ The general $s$-stage Runge-Kutta time stepping algorithm, which includes applic
 \end{itemize}
 The coefficients $\alpha_{ij}$ and $\beta_{ij}$ for SSP-RK3 are given in Table~2.1 in \cite{cockburnShu_2001}.  
 In Eq.~\eqref{eq:rkStages}, for each stage, the TVD limiter is applied first (for elements where $I_{\bK}>C_{\TCI}$), followed by the positivity limiter.  
-The positivity limiter 
-
-$\Delta t=\min_{D}(\Delta t_{\TVD},\Delta t_{\Pos})$
+The algorithm is subject to two time step restrictions, the stability condition $\Delta t_{\TVD}$ and the positivity condition $\Delta t_{\Pos}$, and we take $\Delta t=\min_{D}(\Delta t_{\TVD},\Delta t_{\Pos})$.  
+Let $(h/|\lambda|)=\min_{i\in\{1,\ldots,d\}}(\Delta x^{i}/|\lambda^{i}|)$, where $|\lambda^{i}|$ is the largest absolute eigenvalue of the flux Jacobian.  
+Then, assuming Cartesian coordinates (e.g., \cite{cockburnShu_2001,zhangShu_2010}):
 \begin{equation}
-  \Delta t_{\TVD} = \f{1}{d}\,\f{1}{(2k+1)}\min_{i}\big(\Delta x^{i}/|\lambda^{i}|\big)\quad\text{and}\quad
-  \Delta t_{\Pos} = \f{\hat{w}_{N}}{d}\min_{i}\big(\Delta x^{i}/|\lambda^{i}|\big)
+  \Delta t_{\TVD} \le \f{1}{d}\,\f{(h/|\lambda|)}{(2k+1)} \quad\text{and}\quad
+  \Delta t_{\Pos} \le \f{\hat{w}_{1}(h/|\lambda|)}{d},
+  \label{eq:timestepRestrictions}
 \end{equation}
+where $\hat{w}_{1}$ is the first quadrature weight of the Gauss-Lobatto quadrature that integrates the cell average of $\vect{U}_{h}$ exactly.  
 For $d=k=2$, the effective Courant-Friedrichs-Lewy (CFL) factor is $0.1$ for $\Delta t_{\TVD}$, while it is $1/12$ for $\Delta t_{\Pos}$.  
+The positivity limiter checks for unphysical states in all the quadrature points involved in the DG discretization.  
+If any point in an element is flagged as unphysical, the polynomial representation $\vect{U}_{h}$ is damped towards its cell average $\vect{U}_{\bK}$, which is guaranteed to be physical by the $\Delta t_{\Pos}$ restriction.  
+Note that $\Delta t_{\Pos}$ is a sufficient condition.  
+In practice, the time step can often be set larger than $\Delta t_{\Pos}$.  
 
 \section{Preliminary numerical results}
 \label{sec:numerical}
@@ -241,7 +249,7 @@ For $d=k=2$, the effective Courant-Friedrichs-Lewy (CFL) factor is $0.1$ for $\D
 In this section we show preliminary numerical results obtained with the DG method implemented in \thornado\ to solve the non-relativistic and special relativistic Euler equations.  
 We use the ideal gas equation of state where the pressure $p$ is related to the internal energy density $e$ by $p=(\Gamma-1)e$, and where $\Gamma$ is the (constant) adiabatic index.  
 Let the $d$-dimensional computational domain be $D=\times_{i=1}^{d}[\xMin^{i},\xMax^{i}]$, where $\xMin^{i}$ and $\xMax^{i}$ denote the coordinates of the inner and outer boundary in the $i$th coordinate direction, respectively.  
-To limit the scope of this initial study, we use polynomials of degree $k=2$ (except in Section~\ref{sec:isentropicVortex}, where we also use $k=1$ and $k=3$) combined with SSP-RK3 time stepping, and run all the tests with a Courant-Friedrichs-Lewy (CFL) factor of $C=0.1$.  
+To limit the scope of this initial study, we use polynomials of degree $k=2$ (except in Section~\ref{sec:isentropicVortex}, where we also use $k=1$ and $k=3$) combined with SSP-RK3 time stepping, and, unless stated otherwise, run all the tests with a CFL factor of $C=0.1$.  
 We use the HLL Riemann solver when solving the non-relativistic Euler equations and the HLLC Riemann solver when solving the special relativistic Euler equations.  
 The purpose of the tests is to gauge the performance of the DG implementation on a set of benchmarks as an initial measure of its suitability for future CCSN simulations.  
 
@@ -286,7 +294,7 @@ Limiting is mainly triggered by the contact discontinuity and the shock.
   \begin{minipage}{18pc}
     \includegraphics[width=18pc]{./Figures/Sedov_TCI_Astronum_2018}
   \end{minipage}
-  \caption{\label{fig:SodSedov}{\it Upper left panel:} numerical solution of Sod's problem using $100$ elements (plusses) compared with the exact solution (solid lines; from \cite{toro_1999}).  {\it Upper right panel:} numerical solution of the Sedov-Taylor blast wave using $256$ elements (plusses) against the exact solution (solid lines).  In the lower panels we plot locations in the $xt$-plane of elements flagged for limiting ($I_{\bK}>C_{\TCI}$) by the Sod (left) and Sedov (right) problems.}
+  \caption{\label{fig:SodSedov}{\it Upper left panel:} numerical solution of Sod's problem using $100$ elements (plusses) compared with the exact solution (solid lines; from \cite{toro_1999}).  {\it Upper right panel:} numerical solution of the Sedov-Taylor blast wave using $256$ elements (plusses) against the exact solution (solid lines; from \cite{kammTimmes_2007}).  In the lower panels we plot locations in the $xt$-plane of elements flagged for limiting ($I_{\bK}>C_{\TCI}$) by the Sod (left) and Sedov (right) problems.}
 \end{figure}
 
 \subsubsection{Sedov-Taylor blast wave}
@@ -352,7 +360,7 @@ The initial density and pressure are given by $\rho_{0}=\big(\,1-\f{(\Gamma-1)\,
 The strength of the vortex is set to $\beta=5$, and we use $\Gamma=1.4$.  
 We evolve this test until $t=t_{f}=10$, when the vortex has returned to its initial position.  
 
-\begin{wrapfigure}{l}{2.825in}
+\begin{wrapfigure}{L}{2.825in}
   \includegraphics[width=18pc]{./Figures/IsentropicVortex_Astronum_2018}
   \caption{\label{fig:IsentropicVortex}Convergence results for the Isentropic Vortex:  $L^{\infty}$ error norm versus number of elements in the $x^{1}$-dimension.}
 \end{wrapfigure}
@@ -362,6 +370,7 @@ We ran with spatial resolutions of $25\times25$, $50\times50$, $100\times100$, a
 In the first set of runs, we ran without any limiting and varied the polynomial degree $k$: $k=1$ (solid red), $k=2$ (solid black), and $k=3$ (solid green).  
 We observe the expected order of accuracy for $k=1$ and $k=2$ (second- and third-order accuracy, respectively; cf. dotted reference lines).  
 For $k=3$, the order of accuracy is close to fourth-order for the lower resolutions, but tends to third-order as the resolution increases, presumably due to the use of third-order time stepping.  
+(Note that we ran the $k=3$ case with a CFL factor of $1/14$; cf. Eq.~\eqref{eq:timestepRestrictions}.)
 In the second set of runs, we kept $k=2$ and ran with limiting turned on.  
 We ran one set with $C_{\TCI}=0.03$ (dashed magenta) and one set with $C_{\TCI}=0.1$ (dashed cyan).  
 When $C_{\TCI}=0.03$, the limiter is activated for the lowest resolution run and significantly reduces the accuracy of the method.  
@@ -404,9 +413,9 @@ When $t=3.0$, these secondary instabilities appear to have largely destroyed the
 As discussed in more detail by \cite{mcnally_etal_2012}, the development of the secondary billows may be an artifact of numerical perturbations and diffusion, which is delayed when the resolution is increased.  
 Our results are consistent with this in the sense that the less diffusive model develops secondary billows later.  
 
-\begin{wrapfigure}{l}{2.75in}
+\begin{wrapfigure}{R}{2.825in}
   \centering
-  \includegraphics[width=16pc]{./Figures/KelvinHelmholtz_TCI_24_Astronum_2018}
+  \includegraphics[width=18pc]{./Figures/KelvinHelmholtz_TCI_24_Astronum_2018}
   \caption{\label{fig:KelvinHelmholtz_TCI}Distribution of elements flagged for limiting in the KH test at $t=2.4$.}
 \end{wrapfigure}
 
@@ -415,7 +424,7 @@ Our results are consistent with this in the sense that the less diffusive model 
 This test from \cite{liskaWendroff_2003} is computed on a 2D domain $D=[0,0.3]\times[0,0.3]$ with reflecting boundary conditions using $256^{2}$ elements.  
 Below the line $x^{2}=0.15-x^{1}$, we initially set $\vect{U}=\big(0.125,\vect{0.0},0.35\big)^{\trans}$, while $\vect{U}=\big(1.0,\vect{0.0},2.5\big)^{\trans}$ elsewhere.  
 
-\begin{figure}[h]
+\begin{figure}[b]
   \centering
   \begin{minipage}{18pc}
     \includegraphics[width=18pc]{./Figures/Implosion_01_HighTCI_Astronum_2018}
@@ -621,10 +630,13 @@ We hope to report on progress in these directions in the near future.
   \bibitem{cockburnShu_2001} Cockburn B and Shu C-W 2001 {\it Journal of Scientific Computing} {\bf 16} 173
   \bibitem{colellaWoodward_1984} Colella P and Woodward P 1984 {\it JCP} {\bf 54} 174
   \bibitem{dumbser_etal_2014} Dumbser M, Zanotti O, Loub{\`e}re R and Diot S 2014 {\it JCP} {\bf 278} 47
+  \bibitem{dumbser_etal_2018} Dumbser M, Guercilena F, K{\"o}ppel S, Rezzolla L and Zanotti O 2018 {\it Phys. Rev. D} {\bf 97} 084053
   \bibitem{fambri_etal_2018} Fambri F, Dumbser M, K{\"o}ppel S, Rezzolla L and Zanotti O 2018 {\it MNRAS} {\bf 477} 4543
   \bibitem{fuShu_2017} Fu G and Shu C-W 2017 {\it JCP} {\bf 347} 305
   \bibitem{harten_etal_1983} Harten A, Lax P D and Van Leer B 1983 {\it SIAM~Review} {\bf 25} 35
   \bibitem{hesthavenWarburton_2008} Hesthaven J S and Warburton T 2008 {\it Nodal discontinuous Galerkin methods: Algorithms, analysis and applications} Springer
+  \bibitem{huerta_etal_2012} Huerta A, Casoni E and Peraire J 2012 {\it Int. J. Numer. Meth. Fluids} {\bf 69} 1614
+  \bibitem{kammTimmes_2007} Kamm J R and Timmes F X 2007 {\it LANL Report, No. LA-UR-07-2849}
   \bibitem{klockner_etal_2009} Kl{\"o}ckner A, Warburton T, Bridge J and Hesthaven J S 2009 {\it JCP} {\bf 228} 7863
   \bibitem{landauLifshitz_1979} Landau L D and Lifshitz E M 1979 {\it Fluid Mechanics} Pergamon
   \bibitem{liskaWendroff_2003} Liska R and Wendroff B 2003 {\it SIAM J. Sci. Comput.} {\bf 25} 3
@@ -643,6 +655,7 @@ We hope to report on progress in these directions in the near future.
   \bibitem{shu_1997} Shu C-W 1997 {\it NASA/CR-97-206253 ICASE Report No. 97-65}
   \bibitem{shu_2016} Shu C-W 2016 {\it JCP} {\bf 316} 598
   \bibitem{sod_1978} Sod G A 1978 {\it JCP} {\bf 27} 1
+  \bibitem{sonntagMunz_2017} Sonntag M and Munz C-D 2017 {\it Journal of Scientific Computing} {\bf 70} 1262
   \bibitem{teukolsky_2016} Teukolsky S A 2016 {\it JCP} {\bf 312} 333
   \bibitem{toro_etal_1994} Toro E F, Spruce M and Speares W 1994 {\it Shock Waves} {\bf 4} 25
   \bibitem{toro_1999} Toro E F 1999 {\it NUMERICA: A Library of Source Codes for Teaching, Research and Applications}
@@ -650,6 +663,7 @@ We hope to report on progress in these directions in the near future.
   \bibitem{wuTang_2015} Wu K and Tang H 2015 {\it JCP} {\bf 298} 539
   \bibitem{yahilLattimer_1982} Yahil A and Lattimer J M 1982 {\it Supernovae: A Survey of Current Research} Reidel
   \bibitem{yahil_1983} Yahil A 1983 {\it ApJ} {\bf 265} 1047
+  \bibitem{zanotti_etal_2015} Zanotti O, Fambri F and Dumser M 2015 {\it MNRAS} {\bf 452} 3010
   \bibitem{zhangShu_2010} Zhang X and Shu C-W 2010 {\it JCP} {\bf 229} 8918
 \end{thebibliography}
 
