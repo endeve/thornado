@@ -13,5 +13,9 @@ geometry.prob_lo     = -5.0  -5.0  0.0 # Lower domain size
 geometry.prob_hi     = +5.0  +5.0  1.0 # Upper domain size
 geometry.is_periodic = 1  1  1         # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell        = 08 08 01  # number of cells in each dimension
-amr.max_grid_size = 04 04 01  # max grid size
+amr.n_cell        = 32 32 01  # number of cells in each dimension
+amr.max_grid_size = 16 16 01  # max grid size
+
+# Checkpoint
+amr.nLevels = 0
+amr.restart = chk00000

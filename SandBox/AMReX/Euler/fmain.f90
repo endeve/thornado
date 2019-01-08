@@ -3,7 +3,7 @@ PROGRAM main
   ! --- AMReX Modules ---
 
   USE amrex_base_module
-  USE amrex_fort_module, only: amrex_spacedim
+  USE amrex_fort_module
 
   ! --- thornado Modules ---
 
@@ -30,8 +30,7 @@ PROGRAM main
   USE FluidFieldsModule,                ONLY: &
     nCF, nPF, nAF
   USE InputOutputModuleAMReX,           ONLY: &
-    WriteFieldsAMReX_PlotFile, &
-    WriteFieldsAMReX_Checkpoint
+    WriteFieldsAMReX_PlotFile
 
   ! --- Local Modules ---
 
@@ -41,6 +40,9 @@ PROGRAM main
     MF_InitializeFields
   USE MF_Euler_UtilitiesModule, ONLY: &
     MF_ComputeFromConserved
+
+  ! --- Checkpoint ---
+  USE MyRestartModule
 
   IMPLICIT NONE
 
@@ -60,12 +62,18 @@ PROGRAM main
   TYPE(amrex_parmparse) :: PP
   TYPE(amrex_box)       :: BX
   TYPE(amrex_boxarray)  :: BA
-  TYPE(amrex_geometry)  :: GEOM
   TYPE(amrex_distromap) :: DM
-  TYPE(amrex_multifab)  :: MF_uGF
-  TYPE(amrex_multifab)  :: MF_uCF
-  TYPE(amrex_multifab)  :: MF_uPF
-  TYPE(amrex_multifab)  :: MF_uAF
+  TYPE(amrex_geometry), ALLOCATABLE :: GEOM(:)
+  TYPE(amrex_multifab), ALLOCATABLE :: MF_uGF(:)
+  TYPE(amrex_multifab), ALLOCATABLE :: MF_uCF(:)
+  TYPE(amrex_multifab), ALLOCATABLE :: MF_uPF(:)
+  TYPE(amrex_multifab), ALLOCATABLE :: MF_uAF(:)
+
+  ! --- Checkpoint ---
+  INTEGER,              ALLOCATABLE :: StepNo(:)
+  REAL(amrex_real),     ALLOCATABLE :: dt(:), t_new(:)
+  INTEGER                           :: FinestLevel, iLevel, nLevels
+  TYPE(amrex_multifab), ALLOCATABLE :: MF_Chk(:)
 
   ! --- Initialize AMReX ---
 
@@ -127,8 +135,24 @@ PROGRAM main
 
   CALL PP % getarr( "n_cell", n_cell )
   CALL PP % getarr( "max_grid_size", max_grid_size )
+  CALL PP % get   ( "nLevels", nLevels )
 
   CALL amrex_parmparse_destroy( PP )
+
+  FinestLevel = nLevels
+  ALLOCATE( StepNo(0:nLevels) )
+  StepNo = 0
+  ALLOCATE( dt    (0:nLevels) )
+  dt = 1.0e-4_amrex_real
+  ALLOCATE( t_new (0:nLevels) )
+  t_new = 0.0_amrex_real
+
+  ALLOCATE( GEOM  (0:nLevels) )
+  ALLOCATE( MF_uGF(0:nLevels) )
+  ALLOCATE( MF_uCF(0:nLevels) )
+  ALLOCATE( MF_uPF(0:nLevels) )
+  ALLOCATE( MF_uAF(0:nLevels) )
+  ALLOCATE( MF_Chk(0:nLevels) )
 
   IF( amrex_parallel_ioprocessor() )THEN
 
@@ -171,17 +195,20 @@ PROGRAM main
 
   CALL BA % maxSize( max_grid_size )
 
-  CALL amrex_geometry_build( GEOM, BX )
+  DO iLevel = 0, nLevels
+    CALL amrex_geometry_build( GEOM(iLevel), BX )
+  END DO
 
   CALL amrex_distromap_build( DM, BA )
 
-  CALL amrex_multifab_build( MF_uGF, BA, DM, nDOFX * nGF, nGhost )
-
-  CALL amrex_multifab_build( MF_uCF, BA, DM, nDOFX * nCF, nGhost )
-
-  CALL amrex_multifab_build( MF_uPF, BA, DM, nDOFX * nPF, nGhost )
-
-  CALL amrex_multifab_build( MF_uAF, BA, DM, nDOFX * nAF, nGhost )
+  DO iLevel = 0, nLevels
+    CALL amrex_multifab_build( MF_uGF(iLevel), BA, DM, nDOFX * nGF, nGhost )
+    CALL amrex_multifab_build( MF_uCF(iLevel), BA, DM, nDOFX * nCF, nGhost )
+    CALL amrex_multifab_build( MF_uPF(iLevel), BA, DM, nDOFX * nPF, nGhost )
+    CALL amrex_multifab_build( MF_uAF(iLevel), BA, DM, nDOFX * nAF, nGhost )
+    CALL amrex_multifab_build( MF_Chk(iLevel), BA, DM, &
+                                 nDOFX * ( nGF + nCF + nPF + nAF ), nGhost )
+  END DO
 
   CALL amrex_distromap_destroy( DM )
 
@@ -195,22 +222,34 @@ PROGRAM main
 
   END DO
 
-  CALL MF_ComputeGeometryX( MF_uGF )
-
-  CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
-
-  CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+  DO iLevel = 0, nLevels
+    CALL MF_ComputeGeometryX( MF_uGF(iLevel) )
+    CALL MF_InitializeFields &
+           ( TRIM( ProgramName ), MF_uGF(iLevel), MF_uCF(iLevel) )
+    CALL MF_ComputeFromConserved &
+           ( MF_uGF(iLevel), MF_uCF(iLevel), MF_uPF(iLevel), MF_uAF(iLevel) )
+  END DO
 
   CALL WriteFieldsAMReX_PlotFile &
-         ( 0.0_DP, GEOM, &
+         ( 0.0_DP, nLevels, GEOM, StepNo, &
            MF_uGF_Option = MF_uGF, &
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &
            MF_uAF_Option = MF_uAF )
 
+  CALL WriteCheckpointFile &
+         ( StepNo, FinestLevel, dt, t_new, &
+           MF_uGF(0:FinestLevel) % BA % P, &
+           MF_uGF(0:FinestLevel) % P, &
+           MF_uCF(0:FinestLevel) % P, &
+           MF_uPF(0:FinestLevel) % P, &
+           MF_uAF(0:FinestLevel) % P )
+
   iCycle = 0
-  CALL WriteFieldsAMReX_Checkpoint( iCycle, 0.0_DP, GEOM, &
-                                    MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+  ! --- Evolution goes here
+!!$  CALL ReadCheckpointFile()
+  ! --- END of evolution
 
   DO iDim = 1, 3
 
@@ -218,15 +257,17 @@ PROGRAM main
 
   END DO
 
-  CALL amrex_multifab_destroy( MF_uGF )
+  DO iLevel = 0, nLevels
+    CALL amrex_geometry_destroy( GEOM  (iLevel) )
+    CALL amrex_multifab_destroy( MF_uGF(iLevel) )
+    CALL amrex_multifab_destroy( MF_uCF(iLevel) )
+    CALL amrex_multifab_destroy( MF_uPF(iLevel) )
+    CALL amrex_multifab_destroy( MF_uAF(iLevel) )
+  END DO
 
-  CALL amrex_multifab_destroy( MF_uCF )
-
-  CALL amrex_multifab_destroy( MF_uPF )
-
-  CALL amrex_multifab_destroy( MF_uAF )
-
-  CALL amrex_geometry_destroy( GEOM )
+  DEALLOCATE( StepNo )
+  DEALLOCATE( dt )
+  DEALLOCATE( t_new )
 
   ! --- Finalize AMReX ---
 
