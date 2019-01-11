@@ -43,6 +43,7 @@ PROGRAM main
 
   ! --- Checkpoint ---
   USE MyRestartModule
+  USE amrex_amr_module ! To call amrex_amrcore_init
 
   IMPLICIT NONE
 
@@ -73,11 +74,11 @@ PROGRAM main
   INTEGER,              ALLOCATABLE :: StepNo(:)
   REAL(amrex_real),     ALLOCATABLE :: dt(:), t_new(:)
   INTEGER                           :: FinestLevel, iLevel, nLevels
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_Chk(:)
 
   ! --- Initialize AMReX ---
 
   CALL amrex_init( )
+  CALL amrex_amrcore_init() ! Gets refinement ratio
 
   ! --- Parse Parameter File ---
 
@@ -135,7 +136,7 @@ PROGRAM main
 
   CALL PP % getarr( "n_cell", n_cell )
   CALL PP % getarr( "max_grid_size", max_grid_size )
-  CALL PP % get   ( "nLevels", nLevels )
+  CALL PP % get   ( "max_level", nLevels )
 
   CALL amrex_parmparse_destroy( PP )
 
@@ -152,7 +153,6 @@ PROGRAM main
   ALLOCATE( MF_uCF(0:nLevels) )
   ALLOCATE( MF_uPF(0:nLevels) )
   ALLOCATE( MF_uAF(0:nLevels) )
-  ALLOCATE( MF_Chk(0:nLevels) )
 
   IF( amrex_parallel_ioprocessor() )THEN
 
@@ -206,8 +206,6 @@ PROGRAM main
     CALL amrex_multifab_build( MF_uCF(iLevel), BA, DM, nDOFX * nCF, nGhost )
     CALL amrex_multifab_build( MF_uPF(iLevel), BA, DM, nDOFX * nPF, nGhost )
     CALL amrex_multifab_build( MF_uAF(iLevel), BA, DM, nDOFX * nAF, nGhost )
-    CALL amrex_multifab_build( MF_Chk(iLevel), BA, DM, &
-                                 nDOFX * ( nGF + nCF + nPF + nAF ), nGhost )
   END DO
 
   CALL amrex_distromap_destroy( DM )
@@ -237,18 +235,21 @@ PROGRAM main
            MF_uPF_Option = MF_uPF, &
            MF_uAF_Option = MF_uAF )
 
-  CALL WriteCheckpointFile &
+  CALL WriteFieldsAMReX_Checkpoint &
          ( StepNo, FinestLevel, dt, t_new, &
-           MF_uGF(0:FinestLevel) % BA % P, &
-           MF_uGF(0:FinestLevel) % P, &
-           MF_uCF(0:FinestLevel) % P, &
-           MF_uPF(0:FinestLevel) % P, &
-           MF_uAF(0:FinestLevel) % P )
+           MF_uGF % BA % P, &
+           MF_uGF % P, &
+           MF_uCF % P, &
+           MF_uPF % P, &
+           MF_uAF % P )
 
   iCycle = 0
 
   ! --- Evolution goes here
-!!$  CALL ReadCheckpointFile()
+
+  WRITE(*,*) 'Reading from checkpoint file...'
+  CALL ReadCheckpointFile()
+
   ! --- END of evolution
 
   DO iDim = 1, 3
@@ -270,7 +271,7 @@ PROGRAM main
   DEALLOCATE( t_new )
 
   ! --- Finalize AMReX ---
-
+  CALL amrex_amrcore_finalize()
   CALL amrex_finalize( )
 
 END PROGRAM main

@@ -17,5 +17,5 @@ amr.n_cell        = 32 32 01  # number of cells in each dimension
 amr.max_grid_size = 16 16 01  # max grid size
 
 # Checkpoint
-amr.nLevels = 0
-amr.restart = chk00000
+amr.max_level = 2
+amr.restart   = chk00000

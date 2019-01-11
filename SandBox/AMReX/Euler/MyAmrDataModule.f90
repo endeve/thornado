@@ -9,12 +9,11 @@ MODULE MyAmrDataModule
   IMPLICIT NONE
 
   PRIVATE
-  PUBLIC :: t_new, t_old, flux_reg, stepno_vec, dt_vec, do_reflux, &
+  PUBLIC :: t_new, flux_reg, stepno_vec, dt_vec, do_reflux, &
             MF_uGF, MF_uCF, MF_uPF, MF_uAF
   PUBLIC :: amr_data_init, amr_data_finalize
 
   REAL(amrex_real), ALLOCATABLE :: t_new(:)
-  REAL(amrex_real), ALLOCATABLE :: t_old(:)
 
   TYPE(amrex_multifab), ALLOCATABLE :: MF_uGF(:)
   TYPE(amrex_multifab), ALLOCATABLE :: MF_uCF(:)
@@ -33,9 +32,6 @@ CONTAINS
     ALLOCATE(t_new(0:amrex_max_level))
     t_new = 0.0_amrex_real
 
-    ALLOCATE(t_old(0:amrex_max_level))
-    t_old = -1.0e100_amrex_real
-
     ALLOCATE(MF_uGF(0:amrex_max_level))
     ALLOCATE(MF_uCF(0:amrex_max_level))
     ALLOCATE(MF_uPF(0:amrex_max_level))
@@ -44,7 +40,10 @@ CONTAINS
     ALLOCATE(flux_reg(0:amrex_max_level))
 
     ALLOCATE(stepno_vec(0:amrex_max_level))
+    stepno_vec = 0
+
     ALLOCATE(dt_vec(0:amrex_max_level))
+    dt_vec = 1.0e-4_amrex_real
   END SUBROUTINE amr_data_init
 
   SUBROUTINE amr_data_finalize

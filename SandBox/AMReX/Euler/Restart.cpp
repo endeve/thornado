@@ -21,7 +21,7 @@ using namespace amrex;
 
 extern "C"
 {
-  void writecheckpointfile
+  void writefieldsamrex_checkpoint
          ( int StepNo[], int FinestLevel, Real dt[], Real time[],
            BoxArray** BA, MultiFab** MF_uGF, MultiFab** MF_uCF,
            MultiFab** MF_uPF, MultiFab** MF_uAF )
@@ -41,7 +41,8 @@ extern "C"
     const std::string& checkpointname
                          = amrex::Concatenate( chk_file, StepNo[0] );
 
-    amrex::Print() << "Writing checkpoint " << checkpointname << "\n";
+    if ( ParallelDescriptor::IOProcessor() )
+      amrex::Print() << "Writing checkpoint " << checkpointname << "\n";
 
     const int nLevels = FinestLevel+1;
 
@@ -147,6 +148,7 @@ extern "C"
     VisMF::IO_Buffer io_buffer( VisMF::GetIOBufferSize() );
 
     Vector<char> fileCharPtr;
+
     ParallelDescriptor::ReadAndBcastFile( File, fileCharPtr );
     std::string fileCharPtrString( fileCharPtr.dataPtr() );
     std::istringstream is( fileCharPtrString, std::istringstream::in );
@@ -163,12 +165,16 @@ extern "C"
     // Read in array of istep
     std::getline( is, line );
     {
-      std::istringstream lis( line );
-      int i = 0;
-      while( lis >> word )
-      {
-        stepno[i++] = std::stoi( word );
-      }
+        std::istringstream lis(line);
+        int i = 0;
+        while (lis >> word)
+	{
+          std::cout << "i = " << i << std::endl;
+          std::cout << "line = " << line << std::endl;
+          std::cout << "word = " << word << std::endl;
+          std::cout << "stoi( word ) = " << std::stoi( word ) << std::endl;
+          stepno[i++] = std::stoi(word);
+        }
     }
 
     // Read in array of dt

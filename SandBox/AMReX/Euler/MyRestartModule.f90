@@ -16,7 +16,7 @@ MODULE MyRestartModule
 
   INTERFACE
 
-    SUBROUTINE WriteCheckpointFile &
+    SUBROUTINE WriteFieldsAMReX_Checkpoint &
                  ( StepNo, FinestLevel, dt, time, pBA, &
                    pMF_uGF, pMF_uCF, pMF_uPF, pMF_uAF ) BIND(c)
        IMPORT
@@ -29,7 +29,7 @@ MODULE MyRestartModule
        TYPE(c_ptr),      INTENT(in) :: pMF_uCF(*)
        TYPE(c_ptr),      INTENT(in) :: pMF_uPF(*)
        TYPE(c_ptr),      INTENT(in) :: pMF_uAF(*)
-    END SUBROUTINE WriteCheckpointFile
+    END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
                  ( FinestLevel, StepNo, dt, time, pBA, pDM ) BIND(c)
@@ -124,6 +124,7 @@ CONTAINS
     pBA(0:amrex_max_level) = BA(0:amrex_max_level) % P
     pDM(0:amrex_max_level) = DM(0:amrex_max_level) % P
 
+    FinestLevel = amrex_max_level
     CALL ReadHeaderAndBoxArrayData &
            ( FinestLevel, stepno_vec, dt_vec, t_new, &
              pBA(0:amrex_max_level), pDM(0:amrex_max_level) )
@@ -158,9 +159,9 @@ CONTAINS
     END DO
 
     GF(0:amrex_max_level) = MF_uGF(0:amrex_max_level) % P
-    CF(0:amrex_max_level) = MF_uGF(0:amrex_max_level) % P
-    PF(0:amrex_max_level) = MF_uGF(0:amrex_max_level) % P
-    AF(0:amrex_max_level) = MF_uGF(0:amrex_max_level) % P
+    CF(0:amrex_max_level) = MF_uCF(0:amrex_max_level) % P
+    PF(0:amrex_max_level) = MF_uPF(0:amrex_max_level) % P
+    AF(0:amrex_max_level) = MF_uAF(0:amrex_max_level) % P
     CALL readmultifabdata( FinestLevel(1), GF(0:amrex_max_level), 0 )
     CALL readmultifabdata( FinestLevel(1), CF(0:amrex_max_level), 1 )
     CALL readmultifabdata( FinestLevel(1), PF(0:amrex_max_level), 2 )
