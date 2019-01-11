@@ -51,7 +51,7 @@ CONTAINS
     CHARACTER(32)                   :: PlotFileName
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C, WriteFF_P, WriteFF_A
-    INTEGER                         :: iComp, jComp, iLevel, nF = 0
+    INTEGER                         :: iComp, Offset, iLevel, nF = 0
     INTEGER                         :: MyProc
     TYPE(amrex_multifab)            :: MF_PF(0:nLevels)
     TYPE(amrex_boxarray)            :: BA
@@ -95,7 +95,11 @@ CONTAINS
 
     END IF
 
-    WRITE(NumberString,'(I8.8)') StepNo
+    IF( nLevels .EQ. 0 )THEN
+      WRITE(NumberString,'(I8.8)') StepNo(:)
+    ELSE
+      WRITE(NumberString,'(I8.8)') StepNo(1)
+    END IF
 
     PlotFileName = TRIM( BaseFileName ) // '_' // NumberString
 
@@ -103,13 +107,13 @@ CONTAINS
 
     DO iLevel = 0, nLevels
 
-      jComp = 0
+      Offset = 0
       IF( WriteGF )THEN
         DO iComp = 1, nGF
           CALL amrex_string_build &
-                 ( VarNames(iComp + jComp), TRIM( ShortNamesGF(iComp) ) )
+                 ( VarNames(iComp + Offset), TRIM( ShortNamesGF(iComp) ) )
         END DO
-        jComp = jComp + nGF
+        Offset = Offset + nGF
         BA = MF_uGF_Option(iLevel) % BA
         DM = MF_uGF_Option(iLevel) % DM
       END IF
@@ -117,9 +121,9 @@ CONTAINS
       IF( WriteFF_C )THEN
         DO iComp = 1, nCF
           CALL amrex_string_build &
-                 ( VarNames(iComp + jComp), TRIM( ShortNamesCF(iComp) ) )
+                 ( VarNames(iComp + Offset), TRIM( ShortNamesCF(iComp) ) )
         END DO
-        jComp = jComp + nCF
+        Offset = Offset + nCF
         BA = MF_uCF_Option(iLevel) % BA
         DM = MF_uCF_Option(iLevel) % DM
       END IF
@@ -127,9 +131,9 @@ CONTAINS
       IF( WriteFF_P )THEN
         DO iComp = 1, nPF
           CALL amrex_string_build &
-                 ( VarNames(iComp + jComp), TRIM( ShortNamesPF(iComp) ) )
+                 ( VarNames(iComp + Offset), TRIM( ShortNamesPF(iComp) ) )
         END DO
-        jComp = jComp + nPF
+        Offset = Offset + nPF
         BA = MF_uPF_Option(iLevel) % BA
         DM = MF_uPF_Option(iLevel) % DM
       END IF
@@ -137,9 +141,9 @@ CONTAINS
       IF( WriteFF_A )THEN
         DO iComp = 1, nAF
           CALL amrex_string_build &
-                 ( VarNames(iComp + jComp), TRIM( ShortNamesAF(iComp) ) )
+                 ( VarNames(iComp + Offset), TRIM( ShortNamesAF(iComp) ) )
         END DO
-        jComp = jComp + nAF
+        Offset = Offset + nAF
         BA = MF_uAF_Option(iLevel) % BA
         DM = MF_uAF_Option(iLevel) % DM
       END IF
@@ -154,25 +158,33 @@ CONTAINS
 !!$        'MyProc = ', MyProc, ': lo = ', BX % lo, ', hi = ', BX % hi
 !!$      CALL amrex_print( BX )
 
-      jComp = 0
-      IF( WriteGF   ) &
+      Offset = 0
+      IF( WriteGF   )THEN
         CALL MF_ComputeCellAverage &
-          ( nGF, MF_uGF_Option(iLevel), MF_PF(iLevel), jComp )
-      IF( WriteFF_C ) &
+          ( nGF, MF_uGF_Option(iLevel), MF_PF(iLevel), Offset )
+        Offset = Offset + nGF
+      END IF
+      IF( WriteFF_C )THEN
         CALL MF_ComputeCellAverage &
-          ( nCF, MF_uCF_Option(iLevel), MF_PF(iLevel), jComp )
-      IF( WriteFF_P ) &
+          ( nCF, MF_uCF_Option(iLevel), MF_PF(iLevel), Offset )
+        Offset = Offset + nCF
+      END IF
+      IF( WriteFF_P )THEN
         CALL MF_ComputeCellAverage &
-          ( nPF, MF_uPF_Option(iLevel), MF_PF(iLevel), jComp )
-      IF( WriteFF_A ) &
+          ( nPF, MF_uPF_Option(iLevel), MF_PF(iLevel), Offset )
+        Offset = Offset + nPF
+      END IF
+      IF( WriteFF_A )THEN
         CALL MF_ComputeCellAverage &
-          ( nAF, MF_uAF_Option(iLevel), MF_PF(iLevel), jComp )
+          ( nAF, MF_uAF_Option(iLevel), MF_PF(iLevel), Offset )
+        Offset = Offset + nAF
+      END IF
 
     END DO ! --- Loop over levels ---
 
     CALL amrex_write_plotfile &
            ( PlotFileName, nLevels+1, MF_PF, VarNames, &
-             GEOM, Time, StepNo, [0] )
+             GEOM, Time, StepNo, amrex_ref_ratio )
 
     DO iLevel = 0, nLevels
       CALL amrex_multifab_destroy( MF_PF(iLevel) )
@@ -183,10 +195,9 @@ CONTAINS
   END SUBROUTINE WriteFieldsAMReX_PlotFile
 
 
-  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, jComp )
+  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, Offset )
 
-    INTEGER,              INTENT(in   ) :: nComp
-    INTEGER,              INTENT(inout) :: jComp
+    INTEGER,              INTENT(in   ) :: nComp, Offset
     TYPE(amrex_multifab), INTENT(in   ) :: MF
     TYPE(amrex_multifab), INTENT(inout) :: MF_A
 
@@ -219,7 +230,7 @@ CONTAINS
         ! --- Compute cell-average ---
         DO iComp = 1, nComp
 
-          u_A(iX1,iX2,iX3,iComp + jComp) &
+          u_A(iX1,iX2,iX3,iComp + Offset) &
             = DOT_PRODUCT( WeightsX_q(:), u_K(:,iComp) )
 
         END DO
@@ -231,7 +242,6 @@ CONTAINS
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
-    jComp = jComp + nComp
 
   END SUBROUTINE MF_ComputeCellAverage
 
