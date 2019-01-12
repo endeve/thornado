@@ -4,6 +4,11 @@ f90EXE_sources += MF_GeometryModule.f90
 f90EXE_sources += MF_Euler_UtilitiesModule.f90
 F90EXE_sources += dgemv.F90 lsame.F90
 
+# Checkpoint
+f90EXE_sources += MyRestartModule.f90
+f90EXE_sources += MyAmrDataModule.f90
+CEXE_sources   += Restart.cpp
+
 # thornado VPATH_LOCATIONS:
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Numbers
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Units

@@ -399,7 +399,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq
     REAL(DP), INTENT(out) :: P
 
-    INTEGER,  PARAMETER :: MAX_IT = 10
+    INTEGER,  PARAMETER :: MAX_IT = 100
 
     LOGICAL  :: CONVERGED
     INTEGER  :: ITERATION
@@ -1150,7 +1150,7 @@ CONTAINS
 
     ! Alpha is the lapse function
     ! V_i is the contravariant component V^i
-    ! Beta_1 is the contravariant component Beta^1
+    ! Beta_i is the contravariant component Beta^i
 
     REAL(DP)             :: Eigenvalues_GR(1:nCF)
     REAL(DP), INTENT(in) :: V_1, V_2, V_3, V_i, Cs
