@@ -7,6 +7,7 @@ F90EXE_sources += dgemv.F90 lsame.F90
 # Checkpoint
 f90EXE_sources += MyRestartModule.f90
 f90EXE_sources += MyAmrDataModule.f90
+f90EXE_sources += MyAmrModule.f90
 CEXE_sources   += Restart.cpp
 
 # thornado VPATH_LOCATIONS:

@@ -169,10 +169,6 @@ extern "C"
         int i = 0;
         while (lis >> word)
 	{
-          std::cout << "i = " << i << std::endl;
-          std::cout << "line = " << line << std::endl;
-          std::cout << "word = " << word << std::endl;
-          std::cout << "stoi( word ) = " << std::stoi( word ) << std::endl;
           stepno[i++] = std::stoi(word);
         }
     }
@@ -199,17 +195,26 @@ extern "C"
       }
     }
 
-    // Read in level 'lev' BoxArray from Header
-    for( int lev = 0; lev <= finest_level[0]; ++lev )
+    /*
+    std::cout << "Pausing here, in Restart.cpp, line ~200" << std::endl;
+    std::cout << "Press enter to continue..." << std::endl;
+    std::cin.get();
+    */
+
+    // Read in level 'iLevel' BoxArray from Header
+    for( int iLevel = 0; iLevel <= finest_level[0]; ++iLevel )
     {
-      BoxArray& ba1=*ba[lev];
+
+      BoxArray& ba1 = *ba[iLevel];
+      ba1 = BoxArray(); 
       ba1.readFrom( is );
-      ba[lev] = &ba1;
+      ba[iLevel] = &ba1;
       GotoNextLine( is );
 
       // Create a distribution mapping
       DistributionMapping dm1{ ba1, ParallelDescriptor::NProcs() };
-      *dm[lev]=dm1;
+      *dm[iLevel]=dm1;
+
     }
 
   } // End of readheaderandboxarraydata function

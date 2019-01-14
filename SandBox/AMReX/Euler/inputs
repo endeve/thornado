@@ -1,21 +1,20 @@
-t_end  = 1.0                         # Final time
-dt_wrt = 0.1                         # Write time interval
-
 ProgramName = "IsentropicVortex"
+
+t_end  = 1.0 # Final time
+dt_wrt = 0.1 # Write time interval
 
 Gamma = 1.4 # Ideal Gas EoS Gamma
 
 nNodes  = 2 # Number of DG nodes in each active dimension
 nStages = 2 # Number of SSK-RK stages for time integration
 
-geometry.coord_sys   = 0               # Problem geometry. 0 (Cartesian)
+geometry.CoordSys    = 0               # Problem geometry. 0 (Cartesian)
 geometry.prob_lo     = -5.0  -5.0  0.0 # Lower domain size
 geometry.prob_hi     = +5.0  +5.0  1.0 # Upper domain size
 geometry.is_periodic = 1  1  1         # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell        = 32 32 01  # number of cells in each dimension
-amr.max_grid_size = 16 16 01  # max grid size
-
-# Checkpoint
-amr.max_level = 2
-amr.restart   = chk00000
+amr.n_cell      = 32 32 01  # Number of cells in each dimension
+amr.swX         = 01 01 00  # Stencil width (nGhostCells) in each dimension
+amr.MaxGridSize = 16 16 01  # Max grid size
+amr.max_level   = 0         # Max number of refinement levels
+amr.restart     = chk00000  # Which checkpoint to restart from
