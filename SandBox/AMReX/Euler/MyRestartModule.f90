@@ -107,10 +107,10 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A)') 'Hello from MyRestartModule'
     WRITE(*,*)
-    IF( .NOT. amrex_amrcore_initialized() ) &
-      amrcore = amrex_get_amrcore()
 
     CALL MyAmrInit
+
+    amrcore = amrex_get_amrcore()
 
     ! Dummy variables 
     DOMAIN = amrex_box( [0,0,0], [1,1,1] )
@@ -150,13 +150,13 @@ CONTAINS
 
     DO iLevel = 0, FinestLevel(1)
       CALL amrex_multifab_build &
-             ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, 0 )
+             ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
       CALL amrex_multifab_build &
-             ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, 0 )
+             ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
       CALL amrex_multifab_build &
-             ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, 0 )
+             ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
       CALL amrex_multifab_build &
-             ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, 0 )
+             ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
 
 !!$      IF( iLevel .GT. 0 .AND. do_reflux )THEN
 !!$        CALL amrex_fluxregister_build &
