@@ -12,6 +12,8 @@ MODULE MyRestartModule
   USE FluidFieldsModule,    ONLY: &
     nCF, nPF, nAF
 
+  USE MyAmrModule
+
   IMPLICIT NONE
 
   INTERFACE
@@ -86,50 +88,55 @@ CONTAINS
   SUBROUTINE ReadCheckpointFile()
 
     USE amrex_amr_module
-    USE MyAmrDataModule, ONLY: &
-      t_new, MF_uGF, MF_uCF, MF_uPF, MF_uAF, &
-      flux_reg, stepno_vec, do_reflux, dt_vec
+    USE MyAmrDataModule
 
     IMPLICIT NONE
     INTEGER               :: iLevel, FinestLevel(1), nComps
     TYPE(c_ptr)           :: pBA(0:amrex_max_level)
     TYPE(c_ptr)           :: pDM(0:amrex_max_level)
-    TYPE(c_ptr)           :: MF(0:amrex_max_level)
-    TYPE(c_ptr)           :: GF(0:amrex_max_level)
-    TYPE(c_ptr)           :: CF(0:amrex_max_level)
-    TYPE(c_ptr)           :: PF(0:amrex_max_level)
-    TYPE(c_ptr)           :: AF(0:amrex_max_level)
+    TYPE(c_ptr)           :: pGF(0:amrex_max_level)
+    TYPE(c_ptr)           :: pCF(0:amrex_max_level)
+    TYPE(c_ptr)           :: pPF(0:amrex_max_level)
+    TYPE(c_ptr)           :: pAF(0:amrex_max_level)
     TYPE(amrex_boxarray)  :: BA(0:amrex_max_level)
     TYPE(amrex_distromap) :: DM(0:amrex_max_level)
     TYPE(c_ptr)           :: amrcore
     TYPE(amrex_box)       :: DOMAIN, DOM
     TYPE(amrex_geometry)  :: GEOM(0:amrex_max_level)
 
-    amrcore = amrex_get_amrcore()
+    WRITE(*,*)
+    WRITE(*,'(A)') 'Hello from MyRestartModule'
+    WRITE(*,*)
+    IF( .NOT. amrex_amrcore_initialized() ) &
+      amrcore = amrex_get_amrcore()
+
+    CALL MyAmrInit
 
     ! Dummy variables 
     DOMAIN = amrex_box( [0,0,0], [1,1,1] )
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels
       CALL amrex_geometry_build( GEOM(iLevel), DOMAIN )
     END DO
 
     DOM = GEOM(0) % DOMAIN
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels
       CALL amrex_boxarray_build ( BA(iLevel), DOM )
       CALL amrex_distromap_build( DM(iLevel), BA(iLevel) )
     END DO
 
-    pBA(0:amrex_max_level) = BA(0:amrex_max_level) % P
-    pDM(0:amrex_max_level) = DM(0:amrex_max_level) % P
+    pBA = BA % P
+    pDM = DM % P
 
-    FinestLevel = amrex_max_level
+    FinestLevel = nLevels
+
+    WRITE(*,'(A)') 'Calling ReadHeaderAndBoxArrayData...'
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevel, stepno_vec, dt_vec, t_new, &
-             pBA(0:amrex_max_level), pDM(0:amrex_max_level) )
+           ( FinestLevel, StepNo_vec, dt_vec, t_new, pBA, pDM )
+    WRITE(*,'(A)') 'Sucessfully called ReadHeaderAndBoxArrayData'
 
-    DO iLevel=0, FinestLevel(1)
+    DO iLevel = 0, FinestLevel(1)
       BA(iLevel) = pBA(iLevel)
       DM(iLevel) = pDM(iLevel)
     END DO
@@ -151,21 +158,21 @@ CONTAINS
       CALL amrex_multifab_build &
              ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, 0 )
 
-      IF( iLevel .GT. 0 .AND. do_reflux )THEN
-        CALL amrex_fluxregister_build &
-               ( flux_reg(iLevel), BA(iLevel), DM(iLevel), &
-                 amrex_ref_ratio(iLevel-1), iLevel, nComps )
-      END IF
+!!$      IF( iLevel .GT. 0 .AND. do_reflux )THEN
+!!$        CALL amrex_fluxregister_build &
+!!$               ( flux_reg(iLevel), BA(iLevel), DM(iLevel), &
+!!$                 amrex_ref_ratio(iLevel-1), iLevel, nComps )
+!!$      END IF
     END DO
 
-    GF(0:amrex_max_level) = MF_uGF(0:amrex_max_level) % P
-    CF(0:amrex_max_level) = MF_uCF(0:amrex_max_level) % P
-    PF(0:amrex_max_level) = MF_uPF(0:amrex_max_level) % P
-    AF(0:amrex_max_level) = MF_uAF(0:amrex_max_level) % P
-    CALL readmultifabdata( FinestLevel(1), GF(0:amrex_max_level), 0 )
-    CALL readmultifabdata( FinestLevel(1), CF(0:amrex_max_level), 1 )
-    CALL readmultifabdata( FinestLevel(1), PF(0:amrex_max_level), 2 )
-    CALL readmultifabdata( FinestLevel(1), AF(0:amrex_max_level), 3 )
+    pGF = MF_uGF % P
+    pCF = MF_uCF % P
+    pPF = MF_uPF % P
+    pAF = MF_uAF % P
+    CALL readmultifabdata( FinestLevel(1), pGF, 0 )
+    CALL readmultifabdata( FinestLevel(1), pCF, 1 )
+    CALL readmultifabdata( FinestLevel(1), pPF, 2 )
+    CALL readmultifabdata( FinestLevel(1), pAF, 3 )
 
     CALL amrex_fi_set_finest_level( FinestLevel(1), amrcore )
 	
