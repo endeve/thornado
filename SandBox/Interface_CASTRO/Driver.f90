@@ -37,7 +37,9 @@ PROGRAM Driver
 
   wTime = MPI_WTIME( )
 
-  CALL InitThornado( nDimsX = 3, nE = 10, zoomE = 1.0_DP, nSpeciesIn = 1 )
+  CALL InitThornado &
+         ( nDimsX = 3, nE = 10, swE = 0, eL_in = 0.0d0, eR_in = 1.0d2, &
+           zoomE = 1.0_DP, nSpecies_in = 1 )
 
   wTime = MPI_WTIME( ) - wTime
 
@@ -53,26 +55,23 @@ PROGRAM Driver
            ( nX    = [ 12, 12, 12 ], &
              swX   = [ 2, 2, 2 ], &
              xL    = [ 00.0_DP, 00.0_DP, 00.0_DP ] * Kilometer, &
-             xR    = [ 16.0_DP, 16.0_DP, 16.0_DP ] * Kilometer, &
-             swE   = 0, &
-             eL_in = 0.0d0, &
-             eR_in = 1.0d2 )
+             xR    = [ 16.0_DP, 16.0_DP, 16.0_DP ] * Kilometer )
 
     dt = 1.0d-4 * Millisecond
 
-    uCR(:,:,:,:,:,iCR_N, :) = 0.9_DP
-    uCR(:,:,:,:,:,iCR_G1,:) = 0.0_DP
-    uCR(:,:,:,:,:,iCR_G2,:) = 0.0_DP
-    uCR(:,:,:,:,:,iCR_G3,:) = 0.0_DP
+!    uCR(:,:,:,:,:,iCR_N, :) = 0.9_DP
+!    uCR(:,:,:,:,:,iCR_G1,:) = 0.0_DP
+!    uCR(:,:,:,:,:,iCR_G2,:) = 0.0_DP
+!    uCR(:,:,:,:,:,iCR_G3,:) = 0.0_DP
 
-    uCF(:,:,:,:,iCF_D)  = 1.0d14 * Gram / Centimeter**3
-    uCF(:,:,:,:,iCF_S1) = 0.0_DP
-    uCF(:,:,:,:,iCF_S2) = 0.0_DP
-    uCF(:,:,:,:,iCF_S3) = 0.0_DP
-    uCF(:,:,:,:,iCF_E)  = 4.5d33 * Erg / Centimeter**3
-    uCF(:,:,:,:,iCF_Ne) = 2.0d37 / Centimeter**3
+!    uCF(:,:,:,:,iCF_D)  = 1.0d14 * Gram / Centimeter**3
+!    uCF(:,:,:,:,iCF_S1) = 0.0_DP
+!    uCF(:,:,:,:,iCF_S2) = 0.0_DP
+!    uCF(:,:,:,:,iCF_S3) = 0.0_DP
+!    uCF(:,:,:,:,iCF_E)  = 4.5d33 * Erg / Centimeter**3
+!    uCF(:,:,:,:,iCF_Ne) = 2.0d37 / Centimeter**3
 
-    CALL Update_IMEX_PDARS( dt, uCF, uCR )
+!    CALL Update_IMEX_PDARS( dt, uCF, uCR )
 
     CALL FreeThornado_Patch
 

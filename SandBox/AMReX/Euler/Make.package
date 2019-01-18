@@ -5,7 +5,6 @@ f90EXE_sources += MF_Euler_UtilitiesModule.f90
 F90EXE_sources += dgemv.F90 lsame.F90
 
 # Checkpoint
-f90EXE_sources += MyRestartModule.f90
 f90EXE_sources += MyAmrDataModule.f90
 f90EXE_sources += MyAmrModule.f90
 CEXE_sources   += Restart.cpp
@@ -35,7 +34,7 @@ f90EXE_sources += UnitsModule.f90
 
 f90EXE_sources += ProgramHeaderModule.f90
 
-# In THORNADO_DIR/Modules/Labrary:
+# In THORNADO_DIR/Modules/Library:
 
 f90EXE_sources += QuadratureModule.f90
 f90EXE_sources += LagrangePolynomialsModule.f90

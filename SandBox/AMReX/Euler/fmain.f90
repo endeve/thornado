@@ -30,7 +30,8 @@ PROGRAM main
   USE FluidFieldsModule,                ONLY: &
     nCF, nPF, nAF
   USE InputOutputModuleAMReX,           ONLY: &
-    WriteFieldsAMReX_PlotFile
+    WriteFieldsAMReX_PlotFile, &
+    ReadCheckpointFile
 
   ! --- Local Modules ---
 
@@ -42,7 +43,7 @@ PROGRAM main
     MF_ComputeFromConserved
 
   ! --- Checkpoint ---
-  USE MyRestartModule
+  USE InputOutputModuleAMReX ! Needed to import WriteFieldsAMReX_Checkpoint
   USE amrex_amr_module ! To call amrex_amrcore_init
   USE MyAmrDataModule
   USE MyAmrModule

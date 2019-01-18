@@ -206,6 +206,7 @@ extern "C"
     {
 
       BoxArray& ba1 = *ba[iLevel];
+      ba1 = BoxArray(); 
       ba1.readFrom( is );
       ba[iLevel] = &ba1;
       GotoNextLine( is );

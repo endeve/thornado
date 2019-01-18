@@ -15,6 +15,8 @@ module ThornadoInitializationModule
     InitializeReferenceElementE
   use ReferenceElementModule, only: &
     InitializeReferenceElement
+  use PolynomialBasisModuleX_Lagrange, only: &
+    InitializePolynomialBasisX_Lagrange
   use PolynomialBasisModule_Lagrange, only: &
     InitializePolynomialBasis_Lagrange
   use ReferenceElementModuleX_Lagrange, only: &
@@ -99,6 +101,8 @@ contains
     call InitializeReferenceElementE
 
     call InitializeReferenceElement
+
+    call InitializePolynomialBasisX_Lagrange
 
     call InitializePolynomialBasis_Lagrange
 

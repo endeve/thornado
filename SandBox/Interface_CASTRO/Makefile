@@ -40,6 +40,8 @@ Driver: $(weaklib) \
 	ReferenceElementModuleX.o \
 	ReferenceElementModuleE.o \
 	ReferenceElementModule.o \
+	LagrangePolynomialsModule.o \
+	PolynomialBasisModuleX_Lagrange.o \
 	PolynomialBasisModule_Lagrange.o \
 	ReferenceElementModuleX_Lagrange.o \
 	ReferenceElementModuleE_Lagrange.o \
@@ -55,6 +57,7 @@ Driver: $(weaklib) \
 	OpacityModule_TABLE.o \
 	NeutrinoOpacitiesModule.o \
 	NeutrinoOpacitiesComputationModule.o \
+	TwoMoment_MeshRefinementModule.o \
 	TwoMoment_ClosureModule.o \
 	TwoMoment_BoundaryConditionsModule.o \
 	TwoMoment_UtilitiesModule.o \
@@ -75,6 +78,8 @@ Driver: $(weaklib) \
 	ReferenceElementModuleX.o \
 	ReferenceElementModuleE.o \
 	ReferenceElementModule.o \
+	LagrangePolynomialsModule.o \
+	PolynomialBasisModuleX_Lagrange.o \
 	PolynomialBasisModule_Lagrange.o \
 	ReferenceElementModuleX_Lagrange.o \
 	ReferenceElementModuleE_Lagrange.o \
@@ -91,6 +96,7 @@ Driver: $(weaklib) \
 	NeutrinoOpacitiesModule.o \
 	NeutrinoOpacitiesComputationModule.o \
 	TwoMoment_ClosureModule.o \
+	TwoMoment_MeshRefinementModule.o \
 	TwoMoment_BoundaryConditionsModule.o \
 	TwoMoment_UtilitiesModule.o \
 	TwoMoment_PositivityLimiterModule.o \
