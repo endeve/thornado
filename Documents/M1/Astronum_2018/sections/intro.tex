@@ -14,14 +14,16 @@ However, solving the Boltzmann transport equation full-dimensionally is expensiv
 To balance physical fidelity and computational expediency, an approximate method called the two-moment method has been adopted.\cite{mezzacappaMesser_1999}
 Using the two-moment method, the evolved variables are the zeroth and first angular moments of the distribution function $f$ -- the spectral particle density $\cJ$ and flux $\bcH$, respectively.
 However, the transport term in the Boltzmann transport equation has the dot product of the velocity vector and the gradient of the phase-space distribution function as its form.
-Integrating this term with an unit direction vector as the weight function couples the moment equations: it introduces the second angular moment $\bcK$ to the first moment $\cJ$'s equation.
+Integrating this term with an unit direction vector as the weight function couples the moment equations: it introduces the second angular moment $\bcK$ to the first moment $\bcH$'s equation.
 Knowledge of $\bcK$ is needed to close the two-moment equation system.
-Therefore, an algebraic closure that gives an approximate value of $\bcK$ given $\cJ$ and $\bcH$ is needed.
-The two-moment method has been widely applied with different algebraic closures, such as the Minerbo\cite{minerbo_1978} closure(e.g.~{O'Connor} and {Couch}\cite{oConnorCouch_2018}, Pan and et al\cite{pan_etal_2018}, Glas et al\cite{glas_etal_2018}, and Just et al\cite{just_etal_2018} ) and the Levermore\cite{levermore_1984} closure(e.g.~Vartanyan et al\cite{vartanyan_etal_2018}, Cabezon et al\cite{cabezon_etal_2018}, and Kuroda et al\cite{kuroda_etal_2016}). 
+Therefore, an algebraic closure that gives a predicted $\bcK$ given $\cJ$ and $\bcH$ is needed.
+The better the closure predicts $\bcK$, the more accurate the two-moment method. 
+Two-moment method has been widely applied with different algebraic closures, such as the Minerbo\cite{minerbo_1978} closure(e.g.~{O'Connor} and {Couch}\cite{oConnorCouch_2018}, Pan and et al\cite{pan_etal_2018}, Glas et al\cite{glas_etal_2018}, and Just et al\cite{just_etal_2018} ) and the Levermore\cite{levermore_1984} closure(e.g.~Vartanyan et al\cite{vartanyan_etal_2018}, Cabezon et al\cite{cabezon_etal_2018}, and Kuroda et al\cite{kuroda_etal_2016}). 
 
-Applying the two-moment method alone does not guarantee an affordable solution.
-To be precise, neutrinos interact with the background, and the characteristic time scale of these interactions, which can be $\sim\mathcal{O}(10^{-13})$~second, is short compared to the duration of the CCSN explosion, which $\sim\mathcal{O}(1)$~second.  
-This makes the time step needed by an explicit time integrator prohibitively small. 
+Applying the two-moment method does simplify the problem, but doesn't guarantee an affordable solution.
+To be precise, how to discrete the continuous equation system given by the two-moment method and solve the discretized system efficiently is remain a question.
+In fact, the time scales of neutrino interactions with the background ($\sim\mathcal{O}(10^{-13})$~second) is short compared to the duration of the CCSN explosion ($\sim\mathcal{O}(1)$~second).  
+This means that a lot of time step would be needed for solving the system fully explicitly. 
 On the other hand, solving the moment equations fully implicitly requires inverting globally many band-structured matrices whose sizes depend on the spatial discretization.
 Such a global inversion is both expensive and unfriendly to parallelization.
 To circumvent these challenges, implicit-explicit (IMEX) methods are taken into consideration.
