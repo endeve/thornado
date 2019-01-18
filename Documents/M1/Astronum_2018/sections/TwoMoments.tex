@@ -109,10 +109,10 @@ The Eddington factor of Janka~1~\cite{janka_1991} may violate both the upper and
 Only the closure due to Cernohorsky~\&~Bludman~\cite{cernohorskyBludman_1994} satisfies both the upper and lower bounds.  
 This is not surprising as this is the only closure based on Fermi-Dirac statistics.  
 Although the Levermore and Minerbo closures do not satisfy the bounds in Eq.~\eqref{eq:eddingtonFactorBounds}, they are widely used in simulations of neutrino transport in CCSNe and compact binary mergers; e.g., O'Connor \& Couch~\cite{oConnorCouch_2018}, Pan et al.~\cite{pan_etal_2018}, Glas et al.~\cite{glas_etal_2018}, Just et al.~\cite{just_etal_2018}, and Foucart et al.~\cite{foucart_etal_2015} use the Minerbo closure, while Vartanyan et al.~\cite{vartanyan_etal_2018}, Cabezon et al.~\cite{cabezon_etal_2018}, Kuroda et al.~\cite{kuroda_etal_2016}, and Fujibayashi et al.~\cite{fujibayashi_etal_2017} use the Levermore closure.  
-When employing these closures in conditions of high occupancy, a numerical scheme may evolve the moments outside the realizable domain of Fermi-Dirac statistics given in Eq.~\eqref{eq:MomentsBounds}.  
-\ee{so what?  Should we discuss the presence of blocking factors in collision terms?}
-%With those algebraic closures that don't conserve the bounds, the time integrator may give moments that implies $f>1$.
-%Some safety protections may be applied for those method, but the safety protections can break the conservation laws in lepton number or energy and defect the CCSN simulation.
+When employing these closures in conditions of high occupancy, a numerical scheme may evolve the moments outside the realizable domain of Fermi-Dirac statistics given in Eq.~\eqref{eq:MomentsBounds}.
+If the exceeding happened, the update step may give $f>1$ which changes the sign of the blocking factors in the collision terms.
+If no treatment was taken and the error iterated itself, it would be difficult to predict what the exceeding would result.
+If some treatments are taken to map the outside moments in, the treatments need be manipulated to conserve the lepton number, the momentum, and the energy of the system.
 
 \begin{figure}[h]
   \centering

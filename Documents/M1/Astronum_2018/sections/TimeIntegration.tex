@@ -131,12 +131,23 @@ Combining these requirements we seek GSA IMEX schemes of type~ARS with coefficie
     \begin{equation}
       \sum_{i=1}^{s}w_{i}=1.
     \end{equation}
-    \item High-order accuracy in the streaming limit.  For second-order accuracy: \ee{(Do we need to list third-order accuracy also?)}
+    \item High-order accuracy in the streaming limit.
+    For second-order accuracy:
     \begin{equation}
       \sum_{i=1}^{s}\tilde{w}_{i}=1
       \quad\text{and}\quad
       \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}=\f{1}{2}.
       \label{eq:orderConditionsEx}
+    \end{equation}
+    For third-order accuracy: 
+    \begin{equation}
+    \sum_{i=1}^{s}\tilde{w}_{i}=1,
+          \quad
+          \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}=\f{1}{2},
+          \quad
+          \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c_{i}}^2 = \f{1}{3}
+          \quad\text{and}\quad
+          \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{a_{ij}}\tilde{c}_{j}= \f{1}{6}
     \end{equation}
     \item Diffusion accurate:
     \begin{equation}
