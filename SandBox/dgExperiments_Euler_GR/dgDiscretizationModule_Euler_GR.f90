@@ -28,7 +28,7 @@ MODULE dgDiscretizationModule_Euler_GR
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uAF, nAF, iAF_P, iAF_Gm
+    nAF, iAF_P, iAF_Gm
   USE BoundaryConditionsModule_Beta, ONLY: &
     ApplyBoundaryConditions_Fluid
   USE EulerEquationsUtilitiesModule_Beta_GR, ONLY:  &
@@ -176,6 +176,9 @@ CONTAINS
       dX3 = MeshX(3) % Width(iX3)
       dX2 = MeshX(2) % Width(iX2)
 
+      IF( DEBUG_X1 ) &
+        WRITE(*,'(A,3I5)') '  DG_X1: iX1,iX2,iX3' , iX1,iX2,iX3
+
       DO iCF = 1, nCF
 
         uCF_P(:,iCF) = U(:,iX1-1,iX2,iX3,iCF)
@@ -189,9 +192,6 @@ CONTAINS
         G_K(:,iGF) = G(:,iX1,  iX2,iX3,iGF)
 
       END DO
-
-      P_P(:) = uAF(:,iX1-1,iX2,iX3,iAF_P)
-      P_K(:) = uAF(:,iX1,  iX2,iX3,iAF_P)
 
       !--------------------
       ! --- Volume Term ---
@@ -623,7 +623,8 @@ CONTAINS
       dX3 = MeshX(3) % Width(iX3)
       dX1 = MeshX(1) % Width(iX1)
 
-      IF( DEBUG_X2 ) WRITE(*,'(A,3I5)') '  DG_X2: iX1,iX2,iX3' , iX1,iX2,iX3
+      IF( DEBUG_X2 ) &
+        WRITE(*,'(A,3I5)') '  DG_X2: iX1,iX2,iX3' , iX1,iX2,iX3
 
       DO iCF = 1, nCF
 
@@ -638,9 +639,6 @@ CONTAINS
         G_K(:,iGF) = G(:,iX1,iX2,  iX3,iGF)
 
       END DO
-
-      P_P(:) = uAF(:,iX1,iX2-1,iX3,iAF_P)
-      P_K(:) = uAF(:,iX1,iX2,  iX3,iAF_P)
 
       !--------------------
       ! --- Volume Term ---
@@ -1070,8 +1068,6 @@ CONTAINS
         G_N_X1(:,iGF) = G(:,iX1+1,iX2,iX3,iGF)
 
       END DO
-
-      P_K(:) = uAF(:,iX1,iX2,iX3,iAF_P)
 
       IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: CALL ComputePrimitive_GR'
       CALL ComputePrimitive_GR &
