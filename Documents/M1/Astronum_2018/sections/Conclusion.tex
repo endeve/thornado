@@ -1,20 +1,23 @@
 \section{Conclusion}\label{se:Conclusion}
 
-We have developed IMEX schemes suitable for a two-moment model of neutrino transport in \texttt{thornado} that can obey Fermi-Dirac statistics.  \ee{(What is \texttt{thornado}?  It is mentioned here and in the abstract, and not anywhere else.  Need a paragraph in the intro?)}
+We have developed IMEX schemes suitable for a two-moment model of neutrino transport in \texttt{thornado} that can obey Fermi-Dirac statistics.
 The scheme employs algebraic closure based on Fermi-Dirac statistics, high-order discontinuous Galerkin method for spatial discretization, and convex-invariant time integration to maintain realizability of the moments.  
-Since the realizability-preserving property is obtained from the convexity of the realizable domain, it is possible to construct a scheme with the high-order DG method \ee{(Not sure what this means.  Does it have to be DG?)}.  
+Since the realizable domain is convex and its convexity can be inherited by a convex combination, some schemes having convex combinations as their stages should be able to preserve the convexity.
+This idea encourages us to construct realizability-preserving time integrators, realizability-preserving IMEX schemes, and eventually a method with realizability-preserving IMEX time integrator and high-order DG method.
 See \cite{chu_etal_2018} for some examples with third-order DG methods.  
 
 In the application motivating this work, the neutrino distribution function can vary from 0 to 1.  
 Hence, we have considered algebraic closures based on Fermi-Dirac statistics for both low and high occupancy.  
 Among the seven algebraic closures we considered -- Kershaw~\cite{kershaw_1976}, Wilson~\cite{wilson_1975,leblancWilson_1970}, Levermore~\cite{levermore_1984}, Minerbo~\cite{minerbo_1978}, Janka 1~\cite{janka_1991}, Janka 2~\cite{janka_1992}, and Cernohorsky \& Bludman~\cite{cernohorskyBludman_1994} -- only the Cernohorsky \& Bludman closure obeys Fermi-Dirac statistics for all occupancies.  
-As a result, we employed the Cernohorsky \& Bludman closure in all of the numerical tests in Section~\ref{se:NumericalTests}.  \ee{(But you said you used Minerbo for the accuracy tests)}
+As a result, we employed the Cernohorsky \& Bludman closure for the neutrino stationary state test in Section~\ref{se: Neutrino Stationary State Test}.
+(We also run the code with other algebraic closures for examination.
+And the program crashed after few steps because of the nonphysical neutrino density/flux.)
 
-Two PD-ARS schemes are proposed.  
-The one with SSPRK2 is second-order accurate and strong-stability preserving in the streaming limit while the other with SSPRK3 is third-order accurate in the streaming limit.  
+Two PD-ARS schemes are proposed.
+The one with SSPRK2 has second-order accuracy while the other with SSPRK3 has third-order accuracy, and both have strong-stability preserving property in the streaming limit.  
 Their accuracy were demonstrated on problems with known smooth solutions in streaming, absorption, and scattering-dominated regimes.
-The neutrino transport test with emission, absorption, and elastic scattering through a stationary background, was designed to test the convex-invariance of our PD-ARS schemes.
-The neutrino stationary state test shows that it's necessary to combine an algebraic closure based on Fermi-Dirac statistics and convex-invariant time integration for a solid CCSN simulation.  \ee{(This statement is too strong.  Rewrite.)}
+The neutrino transport test with emission, absorption, and elastic scattering through a stationary background, was designed to test the convex-invariance of our PD-ARS schemes. 
+The neutrino stationary state test shows that a method combined an algebraic closure based on Fermi-Dirac statistics and convex-invariant time integration can be a candidate for constructing a CCSN simulation code without "nonphysical protection" that may break conservation laws.
 
 In this work, we adopted Cartesian coordinates, linear collision term, and a fixed non-relativistic material background.
 More realistic problems of scientific interest, such as with the scattering with energy exchange and relativistic effects, are left for future research.

@@ -8,11 +8,12 @@ All the tests in this section were computed with third-order accurate spatial di
 \subsection{Accuracy Tests}
 \label{se: Accuracy Tests}
 
-To compare the accuracy of the IMEX schemes, we applied our PD-ARS schemes and the SSP2332 scheme from Pareschi \& Russo \cite{pareschiRusso_2005} to problems with known smooth solutions in streaming, absorption, and scattering-dominated regimes in one spatial dimension.  
+To compare the accuracy of the IMEX schemes, we applied our PD-ARS schemes and the SSP2332 scheme from Pareschi \& Russo \cite{pareschiRusso_2005} to problems with known smooth solutions in streaming, absorption(damping), and scattering-dominated(diffusing) regimes in one spatial dimension.  
 All the tests in this subsection were computed with the maximum entropy closure in the low-occupancy limit (i.e., the Minerbo closure).  
 In the streaming test, the second- and third-order accurate explicit strong-stability-preserving Runge-Kutta methods from \cite{gottlieb_etal_2001} (SSPRK2 and SSPRK3, respectively) are also included.  
-To compare the numerical results to analytic solutions, the cell-averaged absolute error or the cell averaged relative error are computed \ee{(give more specific details here)}.  
-For our convergence test, the number of elements ($N$) vary from 8 to 128.  
+To compare the numerical results to analytic solutions, the averaged absolute error or the averaged relative error are computed in the $L^{1}$-error norm: the absolute error for the streaming test and the diffusion test; the relative error for the damping test.
+They are averaged over the cell with a equal weight quadrature for the cell integrals.
+And to examine the convergence, we let the number of elements ($N$) vary from 8 to 128.  
 
 \subsubsection{Sine Wave Streaming}
 
@@ -72,8 +73,7 @@ PD-ARS with SSPRK2 behaves as good as SSP2332 in the diffusion region but requir
 In this section we consider a more ``realistic'' test: two-dimensional multigroup neutrino transport with emission, absorption, and elastic scattering through a stationary background.  
 This test is designed to test the realizability-preserving properties of the PD-ARS schemes.  
 Figure~\ref{fig:NeutrinoStationaryTestEOS} plots the thermal state and the opacities used (adopted from \cite{Bruenn_1985}).  
-This test is computed on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200], x^{2}\in[0,200]\}$ with a grid of 128 elements in each direction.  
-\ee{(State boundary conditions.)}
+This test is computed on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200], x^{2}\in[0,200]\}$ with a grid of 128 elements in each direction, a reflecting inner boundary and a homogeneous out-flowing outer boundary.
 We use 10 energy groups to cover the range from 0~MeV to 300~MeV and initialize the neutrino number density to $\cJ = 10^{-99}$, flux density $\bcH=0$, and evolve until an approximate steady state is reached ($t=5$~ms).  
 For this test, we employed the CB closure.  
 We attempted to run this test with our PD-ARS schemes, SSP2332 from \cite{pareschiRusso_2005}, IMEXRKCB2 proposed by Cavaglieri \& Bewley \cite{cavaglieriBewley2015}, and the scheme proposed by McClarren et al. \cite{mcclarren_etal_2008}.
