@@ -20,38 +20,41 @@
 \title{\texttt{thornado}-transport: IMEX schemes for two-moment neutrino transport respecting Fermi-Dirac statistics}
 
 \author{Ran Chu}
-\address{Department of Physics and Astronomy, University of Tennessee Knoxville, TN 37996-1200}
+\address{Department of Physics and Astronomy, University of Tennessee, Knoxville, TN 37996-1200}
 \ead{rchu@vols.utk.edu}
 
 \author{Eirik Endeve}
 \address{Computational and Applied Mathematics Group, Oak Ridge National Laboratory, Oak Ridge, TN 37831 USA}
-\address{Department of Physics and Astronomy, University of Tennessee Knoxville, TN 37996-1200}
+\address{Department of Physics and Astronomy, University of Tennessee, Knoxville, TN 37996-1200}
+\address{Joint Institute for Computational Sciences, Oak Ridge National Laboratory, Oak Ridge, TN 37831 USA}
 \ead{endevee@ornl.gov}
 
 \author{Cory D. Hauck}
 \address{Computational and Applied Mathematics Group, Oak Ridge National Laboratory, Oak Ridge, TN 37831 USA}
-\address{Department of Mathematics, University of Tennessee Knoxville, TN 37996-1320}
+\address{Department of Mathematics, University of Tennessee, Knoxville, TN 37996-1320}
 \ead{hauckc@ornl.gov}
 
 \author{Anthony Mezzacappa}
-\address{Department of Physics and Astronomy, University of Tennessee Knoxville, TN 37996-1200}
+\address{Department of Physics and Astronomy, University of Tennessee, Knoxville, TN 37996-1200}
+\address{Joint Institute for Computational Sciences, Oak Ridge National Laboratory, Oak Ridge, TN 37831 USA}
 \ead{mezz@utk.edu}
 
 \author{Bronson Messer}
 \address{Scientific Computing and Theoretical Physics Groups, Oak Ridge National Laboratory, Oak Ridge, TN 37831 USA}
-\address{Department of Physics and Astronomy, University of Tennessee Knoxville, TN 37996-1200}
+\address{Department of Physics and Astronomy, University of Tennessee, Knoxville, TN 37996-1200}
 \ead{bronson@ornl.gov}
 
 \begin{abstract}
-We develop implicit-explicit (IMEX) schemes for neutrino transport through a background material in the \texttt{thornado} code in the context of a two-moment model that evolves the angular moments of a neutrino phase-space distribution function.
+We develop implicit-explicit (IMEX) schemes for neutrino transport in a background material using the \texttt{thornado} code in the context of a two-moment model that evolves the angular moments of a neutrino phase-space distribution function.
 Considering the upper and lower bounds that are introduced by Pauli's exclusion principle on the moments, an algebraic moment closure based on Fermi-Dirac statistics and a convex-invariant time integrator both are demanded.
 A finite-volume/first-order discontinuous Galerkin(DG) method is used to interpret how an algebraic moment closure based on Fermi-Dirac statistics satisfies the bounds.
 Several algebraic closures are compared with these bounds in mind and the Cernohorsky and Bludman closure\cite{cernohorskyBludman_1994}, which satisfies the bounds, is chosen for our IMEX schemes.
 For the convex-invariant time integrator, two IMEX schemes named PD-ARS have been proposed following the work in \cite{chu_etal_2018}.
-PD-ARS denotes a convex-invariant IMEX Runge-Kutta scheme that has the first-order accuracy in general, high-order accuracy in the streaming limit, and works well in the diffusion limit.
-Our two PD-ARS schemes are second- and third-order, explicit, strong-stability-preserving Runge-Kutta methods\cite{gottlieb_etal_2001} as their explicit part, respectively, and therefore are second- and third-order accurate in the streaming limit, respectively.
+PD-ARS denotes a convex-invariant IMEX Runge-Kutta scheme that has first-order accuracy in general, high-order accuracy in the streaming limit, and works well in the diffusion limit.
+Our two PD-ARS schemes are second- and third-order, explicit, strong-stability-preserving Runge-Kutta methods\cite{gottlieb_etal_2001} in their explicit part, respectively, and therefore are second- and third-order accurate in the streaming limit, respectively.
 The accuracy and convex-invariance of our PD-ARS schemes are demonstrated in the numerical tests with a third-order DG method for spatial discretization and a simple Lax-Friedrichs flux.
-We show preliminary result employing tabulated neutrino opacities from Bruenn(1985)\citep{Bruenn_1985}
+We show preliminary result employing tabulated neutrino opacities. 
+%from Bruenn(1985)\citep{Bruenn_1985}
 
 \end{abstract}
 

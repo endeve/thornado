@@ -1,9 +1,7 @@
-\section{Two-Moment Model}
-\label{se:Two-MomentModel}
+\section{Two-Moment Model}\label{se:Two-MomentModel}
 
 \subsection{Transport Equations}
-
-We consider neutrino transport through a static background, and include neutrino-matter interactions due to emission, absorption, and isotropic iso-energetic scattering.  
+We consider neutrino transport through a static background, and include neutrino-matter interactions due to emission, absorption, and isoenergetic scattering.
 After scaling to dimensionless units, the Boltzmann equation can be written as
 \begin{equation}
   \pd{f}{t}+\vect{\ell}\cdot\nabla f
@@ -11,11 +9,11 @@ After scaling to dimensionless units, the Boltzmann equation can be written as
   \label{eq:boltzmann}
 \end{equation}
 where the distribution function $f = f(\omega,\varepsilon,\vect{x},t)$ gives the number of neutrinos propagating in the direction $\omega\in\bbS^{2}$, with energy $\varepsilon\in\bbR^{+}$, at position $\vect{x}\in\bbR^{3}$ and time $t\in\bbR^{+}$.  
-$\vect{\ell} = \vect{\ell}(\omega)\in\bbR^{3}$ is the unit vector parallel to the neutrino three-momentum direction: $\vect{p}=\varepsilon\,\vect{\ell}$.
-On the right-hand side, $\tau$ is collision time scale.  
+$\vect{\ell} = \vect{\ell}(\omega)\in\bbR^{3}$ is the unit vector parallel to the neutrino three-momentum vector: $\vect{p}=\varepsilon\,\vect{\ell}$.
+On the right-hand side, $\tau$ is a collision time scale.  
 In opaque regions, where neutrinos have frequent interactions with the background, $\tau\ll1$.  
 In transparent regions, where neutrinos rarely interact and stream freely, $\tau\gg1$.
-The collision term, $\cC(f)$, which models emission, absorption, and isotropic and elastic scattering is given by
+The collision term, $\cC(f)$, which models emission, absorption, and isoenergetic scattering is given by
 \begin{equation}
   \cC(f)=\xi\,\big(\,f_{0}-f\,\big)
   +(1-\xi)\,\big(\,\f{1}{4\pi}\int_{\bbS^{2}}f\,d\omega-f\,\big),
@@ -29,8 +27,8 @@ The equilibrium distribution function for neutrinos is given by the Fermi-Dirac 
   f_{0}(\vect{z})=\f{1}{e^{(\varepsilon-\mu(\vect{x}))/T(\vect{x})}+1}, 
   \label{eq:fermiDirac}
 \end{equation}
-where $T$ is the material temperature in energy units and $\mu$ is the neutrino chemical potential.
-Both depend on the spatial position $\vect{x}$.
+where $\vect{z}:=\{\varepsilon,\vect{x}\}$, $T$ is the material temperature in energy units and $\mu$ is the neutrino chemical potential.
+Both $T$ and $\mu$ depend on the spatial position $\vect{x}$.
 
 \subsection{Two-Moment Model}
 
@@ -38,10 +36,9 @@ Approximate solutions to the Boltzmann equation, Eq.~\eqref{eq:boltzmann}, can b
 To this end, define the angular moments of the distribution function as follows
 \begin{equation}
   \big\{\,\cJ,\vect{\cH},\vect{\cK}\,\big\}(\vect{z},t)
-  =\f{1}{4\pi}\int_{\bbS^{2}}f(\omega,\vect{z},t)\,\{\,1,\vect{\ell},\vect{\ell}\otimes\vect{\ell}\,\}\,d\omega,
+  =\f{1}{4\pi}\int_{\bbS^{2}}f(\omega,\vect{z},t)\,\{\,1,\vect{\ell},\vect{\ell}\otimes\vect{\ell}\,\}\,d\omega.
   \label{eq:angularMoments}
-\end{equation}
-where $\vect{z}:=\{\varepsilon,\vect{x}\}$.  
+\end{equation}  
 The zeroth moment, $\cJ$, is referred to as the particle density.  
 The first moment, $\bcH$, is the particle flux, and the second moment, $\bcK$, is proportional to the stress tensor.  
 By integrating Eq.~\eqref{eq:boltzmann} over the momentum space angular dimension we obtain equations for the zeroth and the first moments
@@ -92,7 +89,7 @@ where $h = |\bcH|/\cJ$ is the flux factor.
 
 The constraints in Eq.~\eqref{eq:MomentsBounds} define realizable moments $\bcM$.  
 For fermions, realizable moments can only be constructed from a distribution satisfying the bounds $f \in [0,1]$.  
-Moreover, the set of realizable moments is convex.  
+Moreover, the set of realizable moments is convex: let $\cR$ contains all the possible $\bcM(f)$ so that for any  $f_1\in [0,1]$ and $f_2\in [0,1]$, $\bcM(f_1) \in \cR$ and $\bcM(f_2) \in \cR$, then $\lambda \bcM(f_1) + (1-\lambda)\bcM(f_2) \in \cR$ for any $\lambda \in [0,1]$~\cite{chu_etal_2018}.
 As we will see later in Section~\ref{se:SpacialDiscretization}, this convexity makes it possible to design a realizability-preserving discretization for solving the two-moment model numerically.
 
 The inequalities in Eq.~\eqref{eq:eddingtonFactorBounds} deserve further attention.  
@@ -100,19 +97,20 @@ They are equally important, relative to those in Eq.~\eqref{eq:MomentsBounds}, i
 When designing a numerical scheme for the two-moment model that maintains realizable $\bcM$, it is also necessary for the Eddington factor to satisfy the bounds in Eq.~\eqref{eq:eddingtonFactorBounds}.  
 
 However, recently reported CCSN simulations using two-moment neutrino transport with algebraic closures have employed Eddington factors that can violate the bounds in Eq.~\eqref{eq:eddingtonFactorBounds}.  
-As examples, we consider the Eddington factors discussed in \cite{murchikova_etal_2017}, where the suitability of several algebraic closures for two-moment neutrino transport was evaluated.  
+As examples, we consider the Eddington factors discussed in~\cite{murchikova_etal_2017}, where the suitability of several algebraic closures for two-moment neutrino transport was evaluated.  
 In Fig.~\ref{fig:EddingtonFactorsWithDifferentClosure}, we plot the Eddington factor versus the flux factor for two occupancies; $\cJ = 0.1$ (low occupancy) and $\cJ = 0.9$ (high occupancy).  
 Of the algebraic closures plotted, few satisfy the bounds on the Eddington factor in Eq.~\eqref{eq:eddingtonFactorBounds}.  
-Kershaw~\cite{kershaw_1976}, Wilson~\cite{wilson_1975,leblancWilson_1970}, Levermore~\cite{levermore_1984}, Minerbo~\cite{minerbo_1978}, and Janka~2~\cite{janka_1992} may work fine when the occupancy is low.  
+Kershaw~\cite{kershaw_1976}, Wilson~\cite{wilson_1975,leblancWilson_1970}, Levermore~\cite{levermore_1984}, Minerbo~\cite{minerbo_1978}, and Janka~2~\cite{janka_1992} clsoures may work fine when the occupancy is low.  
 When the occupancy is high, the Eddington factor due to these closures exceeds the upper bound for Fermi-Dirac statistics.  
 The Eddington factor of Janka~1~\cite{janka_1991} may violate both the upper and lower bound on the Eddington factor.  
 Only the closure due to Cernohorsky~\&~Bludman~\cite{cernohorskyBludman_1994} satisfies both the upper and lower bounds.  
 This is not surprising as this is the only closure based on Fermi-Dirac statistics.  
 Although the Levermore and Minerbo closures do not satisfy the bounds in Eq.~\eqref{eq:eddingtonFactorBounds}, they are widely used in simulations of neutrino transport in CCSNe and compact binary mergers; e.g., O'Connor \& Couch~\cite{oConnorCouch_2018}, Pan et al.~\cite{pan_etal_2018}, Glas et al.~\cite{glas_etal_2018}, Just et al.~\cite{just_etal_2018}, and Foucart et al.~\cite{foucart_etal_2015} use the Minerbo closure, while Vartanyan et al.~\cite{vartanyan_etal_2018}, Cabezon et al.~\cite{cabezon_etal_2018}, Kuroda et al.~\cite{kuroda_etal_2016}, and Fujibayashi et al.~\cite{fujibayashi_etal_2017} use the Levermore closure.  
 When employing these closures in conditions of high occupancy, a numerical scheme may evolve the moments outside the realizable domain of Fermi-Dirac statistics given in Eq.~\eqref{eq:MomentsBounds}.
-If the exceeding happened, the update step may give $f>1$ which changes the sign of the blocking factors in the collision terms.
-If no treatment was taken and the error iterated itself, it would be difficult to predict what the exceeding would result.
-If some treatments are taken to map the outside moments in, the treatments need be manipulated to conserve the lepton number, the momentum, and the energy of the system.
+If this were to happen, the update step may give $f>1$, which would change the sign of the blocking factors in the collision terms.
+If no corrective actions were taken, it would be difficult to predict the impact of the subsequent induced errors on the simulation outcome (later, we will encounter examples in the 
+test cases we have considered).
+If treatments are developed to map the unrealizable moments into the realizable domain, they must be developed to conserve lepton number, energy, and momentum.
 
 \begin{figure}[h]
   \centering
