@@ -3,7 +3,7 @@
 In this section we discretize the two-moment model with a simple first-order finite volume method to illustrate how the closure affects the realizability-preserving property of the method.  
 By assuming that the moments at time level $t^{n}$ ($\bcM^{n}$) satisfy the bounds in Eq.~\eqref{eq:MomentsBounds}, our goal is to identify sufficient conditions such that the moments at time level $t^{n+1}$ ($\bcM^{n+1}$) also satisfy the bounds.  
 To simply the illustration, we limit the discussion to one spatial dimension and employ a uniform Cartesian mesh.  
-(The extension to multiple spatial dimensions and high-order discretization using the discontinuous Galerkin method is given in \cite{chu_etal_2018})
+(The extension to multiple spatial dimensions and high-order discretization using the discontinuous Galerkin method is given in~\cite{chu_etal_2018}.)
 
 We divide the spatial domain $D$ into $N$ uniform cells and denote the $i$-th cell by $\bK_{i}$, with $i = 1,\ldots,N$; i.e.,
 \begin{equation*}
@@ -42,10 +42,11 @@ where we have defined
 \end{align}
 
 Consider Eq.~\eqref{eq:MomentIMEX} and assume that $\bcM_{i}^{n}$ is realizable for all $i$.  
-Lemma~3 in \cite{chu_etal_2018} states that $\bcM^{n+1}_{i}$ is realizable provided $\f{\dt}{\tau} > 0$ and $\widetilde{\bcM}^{n}_{i}$ is realizable.  
+Lemma~3 in~\cite{chu_etal_2018} states that $\bcM^{n+1}_{i}$ is realizable provided $\f{\dt}{\tau} > 0$. 
+%and $\widetilde{\bcM}^{n}_{i}$ is realizable.  
 In Eq.~\eqref{eq:widetildeM}, if $\beta \in [0,1]$, $\widetilde{\bcM}^{n}_{i}$ is expressed as a convex combination of $\bcM_{i}^{n}$ and the expression in the square brackets on the right-hand side of Eq.~\eqref{eq:widetildeM}.  
 It follows that $\widetilde{\bcM}^{n}_{i}$ is realizable if the expression inside the square brackets is realizable.  
-By Lemma~2 in \cite{chu_etal_2018}, the expression in square brackets is realizable for a distribution satisfying $f\in[0,1]$.  
-For the two-moment model considered here, realizability depends in the algebraic closure.  
+By Lemma~2 in~\cite{chu_etal_2018}, the expression in square brackets is realizable for a distribution satisfying $f\in[0,1]$.  
+For the two-moment model considered here, realizability depends on the algebraic closure.  
 Specifically, if $\bcM_{i}^{n}$ is realizable and the Eddington factor satisfies the bounds in Eq.~\eqref{eq:eddingtonFactorBounds}, then $\bcM^{n+1}_{i}$ is realizable provided $\beta \in [0,1]$.  
 Thus, realizability of $\bcM^{n+1}_{i}$ requires both a closure based on Fermi-Dirac statistics and a CFL condition $\dt\le\dx$.  
