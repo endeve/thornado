@@ -134,7 +134,6 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
-
       G_q(1:nDOFX,1:nGF) = G(1:nDOFX,iX1,iX2,iX3,1:nGF)
 
       DO iCF = 1, nCF
@@ -146,81 +145,73 @@ CONTAINS
       END DO
       CALL ComputeGeometryX_FromScaleFactors( G_PP )
 
-      ! --- Compute cell-average of conserved rest-mass-density ---
       U_K(iCF_D) = SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) * U_q(:,iCF_D) ) &
                    / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
 
       IF( U_K(iCF_D) .GT. Min_1 )THEN
+
         Min_K = MINVAL( U_PP(:,iCF_D) )
         IF( Min_K .LT. Min_1 )THEN
+
           Theta_1 = ( U_K(iCF_D) - Min_1 ) / ( U_K(iCF_D) - Min_K )
-          IF( ( Theta_1 .LT. 0.0d0 ) .OR. ( Theta_1 .GT. 1.0d0 ) )THEN
-            WRITE(*,'(A,F12.9)') 'Theta_1 out of range. Theta_1 = ', Theta_1
-            STOP
-          END IF
-          IF( MINVAL( U_K(iCF_D) + Theta_1 * ( U_q(:,iCF_D) - U_K(iCF_D) ) ) &
-                .LE. Min_1 )THEN
-            Theta_1 = 0.0d0
-          END IF
 
           U_q(:,iCF_D) = U_K(iCF_D) + Theta_1 * ( U_q(:,iCF_D) - U_K(iCF_D) )
 
-          ! --- Recompute Point Value for CF_D ---
+          ! --- Recompute point-values for CF_D using limited density ---
           CALL ComputePointValues( U_q(:,iCF_D), U_PP(:,iCF_D) )
+        END IF
 
-          CALL Computeq( nPT, U_PP, G_PP, q )
-          IF( ANY( q .LT. 0.0d0 ) )THEN
-            ! --- Compute cell-averages of conserved fluid fields ---
-            DO iCF = 1, nCF
-              U_K(iCF) &
-                = SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) * U_q(:,iCF) ) &
+        CALL Computeq( nPT, U_PP, G_PP, q )
+        IF( ANY( q .LT. 0.0d0 ) )THEN
+
+          DO iCF = 1, nCF
+            U_K(iCF) &
+              = SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) * U_q(:,iCF) ) &
+                / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
+          END DO
+
+          DO iGF = 1, nGF
+            G_K(iGF) &
+              = SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) * G_q(:,iGF) ) &
                   / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
-            END DO
-            ! --- Compute cell-averages of geometry fields ---
-            DO iGF = 1, nGF
-              G_K(iGF) &
-                = SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) * G_q(:,iGF) ) &
-                    / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
-            END DO
+          END DO
 
-            ! --- Compute q using cell-averages ---
-            CALL Computeq( 1, U_K, G_K, q_K )
-            IF( q_K(1) .LT. Zero )THEN
-              WRITE(*,'(A)') 'WARNING: q_K < 0'
-              ! --- Ensure positive tau ---
-              IF( U_K(iCF_E) .LT. Zero )THEN
-                WRITE(*,'(A,ES24.16E3)') 'tau: ', U_K(iCF_E)
-                U_K(iCF_E) = MAX( SqrtTiny, U_K(iCF_E) )
-              END IF
-              SSq =  U_K(iCF_S1)**2 / G_K(iGF_Gm_dd_11) &
-                   + U_K(iCF_S2)**2 / G_K(iGF_Gm_dd_22) &
-                   + U_K(iCF_S3)**2 / G_K(iGF_Gm_dd_33)
-              ! --- Demand that q_K > 0 by modifying tau (alpha > 1) ---
-              alpha = ( Min_2 - U_K(iCF_D) &
-                        + SQRT( U_K(iCF_D)**2 + SSq + Min_2 ) ) / U_K(iCF_E)
-              U_K(iCF_E) = alpha * U_K(iCF_E)
-              alphaMax = MAX( alphaMax, alpha )
+          ! --- Compute q using cell-averages ---
+          CALL Computeq( 1, U_K, G_K, q_K )
+          IF( q_K(1) .LT. Zero )THEN
+            WRITE(*,'(A)') 'WARNING: q_K < 0'
+            ! --- Ensure positive tau ---
+            IF( U_K(iCF_E) .LT. Zero )THEN
+              WRITE(*,'(A,ES24.16E3)') 'tau: ', U_K(iCF_E)
+              U_K(iCF_E) = MAX( SqrtTiny, U_K(iCF_E) )
             END IF
+            SSq =  U_K(iCF_S1)**2 / G_K(iGF_Gm_dd_11) &
+                 + U_K(iCF_S2)**2 / G_K(iGF_Gm_dd_22) &
+                 + U_K(iCF_S3)**2 / G_K(iGF_Gm_dd_33)
+            ! --- Demand that q_K > 0 by modifying tau (alpha > 1) ---
+            alpha = ( Min_2 - U_K(iCF_D) &
+                      + SQRT( U_K(iCF_D)**2 + SSq + Min_2 ) ) / U_K(iCF_E)
+            U_K(iCF_E) = alpha * U_K(iCF_E)
+            alphaMax = MAX( alphaMax, alpha )
+          END IF
 
-            ! --- Compute Theta_2 ---
-            Theta_2 = One
-            DO iP = 1, nPT
-              IF( q(iP) .LT. Zero )THEN
-                CALL SolveTheta_Bisection &
-                       ( U_PP(iP,1:nCF), U_K, G_PP(iP,1:nGF), G_K, Theta_P )
-                Theta_2 = MIN( Theta_2, Theta_P )
-              END IF
-            END DO
+          ! --- Compute Theta_2 ---
+          Theta_2 = One
+          DO iP = 1, nPT
+            IF( q(iP) .LT. Zero )THEN
+              CALL SolveTheta_Bisection &
+                     ( U_PP(iP,1:nCF), U_K, G_PP(iP,1:nGF), G_K, Theta_P )
+              Theta_2 = MIN( Theta_2, Theta_P )
+            END IF
+          END DO
 
-            ! --- Limit Towards Cell Average ---
-            Theta_2 = 0.0d0
-            DO iCF = 1, nCF
-              U_q(:,iCF) = U_K(iCF) + Theta_2 * ( U_q(:,iCF) - U_K(iCF) )
-            END DO
+          ! --- Limit all variables towards cell-average ---
+          DO iCF = 1, nCF
+            U_q(:,iCF) = U_K(iCF) + Theta_2 * ( U_q(:,iCF) - U_K(iCF) )
+          END DO
 
-          END IF ! q < 0
+        END IF ! q < 0
 
-        END IF ! Min_K < Min_1
         U(1:nDOFX,iX1,iX2,iX3,1:nCF) = U_q(1:nDOFX,1:nCF)
       ELSE
         WRITE(*,'(A)') 'WARNING: PosLimMod: Cell-average of density <= Min_1'
@@ -232,40 +223,6 @@ CONTAINS
           U(1:nDOFX,iX1,iX2,iX3,iCF) = U_K(iCF)
         END DO
       END IF
-
-      ! --- DEBUGGING ---
-
-      IF( ANY( U(1:nDOFX,iX1,iX2,iX3,iCF_D) .LT. Min_1 ) )THEN
-        WRITE(*,'(A)') 'After Limiting...'
-        WRITE(*,'(A,I2.2,1x,I2.2)') 'iX1, iX2 = ', iX1, iX2
-        WRITE(*,'(A,F13.10)') 'Theta_1 = ', Theta_1
-        WRITE(*,'(A,ES24.16E3)') 'PosLim: CF_D =       ', &
-          MINVAL(U(1:nDOFX,iX1,iX2,iX3,iCF_D))
-        WRITE(*,'(A,ES12.3E3)') 'PosLim: CF_D (avg) = ', U_K(iCF_D)
-        WRITE(*,*)
-      END IF
-
-      DO iCF = 1, nCF
-        CALL ComputePointValues( U(:,iX1,iX2,iX3,iCF), U_PP(:,iCF) )
-      END DO
-      CALL Computeq( nPT, U_PP, G_PP, q )
-      IF( ANY( q .LT. 0.0d0 ) )THEN
-        WRITE(*,'(A)') 'After Limiting...'
-        WRITE(*,'(A,I2.2,1x,I2.2)') 'iX1, iX2 = ', iX1, iX2
-        WRITE(*,'(A,F13.10)') 'Theta_1 = ', Theta_1
-        WRITE(*,'(A,F13.10)') 'Theta_2 = ', Theta_2
-        WRITE(*,'(A,ES24.16E3)') 'PosLim: CF_D  = ', MINVAL(U_PP(:,iCF_D) )
-        WRITE(*,'(A,ES24.16E3)') 'PosLim: Min_q = ', MINVAL( q )
-        WRITE(*,*)
-      END IF
-
-      U_K(5) &
-        = SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) * U(:,iX1,iX2,iX3,5) ) &
-            / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
-      WRITE(*,'(A,I2.2,1x,I2.2,A,ES9.1E3,A,ES9.1E3)') &
-        'iX1, iX2 = ', iX1, iX2, ', Min(tau) = ', MINVAL(U(:,iX1,iX2,iX3,5)), &
-        ', tau_K = ', U_K(5)
-      WRITE(*,*)
 
     END DO
     END DO
@@ -398,14 +355,6 @@ CONTAINS
               x_b * G_Q(iGF_Gm_dd_11) + ( One - x_b ) * G_K(iGF_Gm_dd_11),  &
               x_b * G_Q(iGF_Gm_dd_22) + ( One - x_b ) * G_K(iGF_Gm_dd_22),  &
               x_b * G_Q(iGF_Gm_dd_33) + ( One - x_b ) * G_K(iGF_Gm_dd_33) )
-
-    IF     ( ABS(f_a) .LT. TINY(1.0_DP) )THEN
-      Theta_p = x_a
-      RETURN
-    ELSE IF( ABS(f_b) .LT. TINY(1.0_DP) )THEN
-      THETA_p = x_b
-      RETURN
-    END IF
 
     IF( .NOT. f_a * f_b < 0 )THEN
 
