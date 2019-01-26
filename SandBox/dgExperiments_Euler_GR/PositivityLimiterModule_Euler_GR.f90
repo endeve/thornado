@@ -133,8 +133,8 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
-      G_q(1:nDOFX,1:nGF) = G(1:nDOFX,iX1,iX2,iX3,1:nGF)
+      U_q = U(:,iX1,iX2,iX3,:)
+      G_q = G(:,iX1,iX2,iX3,:)
 
       DO iCF = 1, nCF
         CALL ComputePointValues( U_q(:,iCF), U_PP(:,iCF) )
@@ -145,8 +145,8 @@ CONTAINS
       END DO
       CALL ComputeGeometryX_FromScaleFactors( G_PP )
 
-      U_K(iCF_D) = SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) * U_q(:,iCF_D) ) &
-                   / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
+      U_K(iCF_D) = SUM( WeightsX_q * G_q(:,iGF_SqrtGm) * U_q(:,iCF_D) ) &
+                   / SUM( WeightsX_q * G_q(:,iGF_SqrtGm) )
 
       IF( U_K(iCF_D) .GT. Min_1 )THEN
 
@@ -166,14 +166,14 @@ CONTAINS
 
           DO iCF = 1, nCF
             U_K(iCF) &
-              = SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) * U_q(:,iCF) ) &
-                / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
+              = SUM( WeightsX_q * G_q(:,iGF_SqrtGm) * U_q(:,iCF) ) &
+                / SUM( WeightsX_q * G_q(:,iGF_SqrtGm) )
           END DO
 
           DO iGF = 1, nGF
             G_K(iGF) &
-              = SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) * G_q(:,iGF) ) &
-                  / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
+              = SUM( WeightsX_q * G_q(:,iGF_SqrtGm) * G_q(:,iGF) ) &
+                  / SUM( WeightsX_q * G_q(:,iGF_SqrtGm) )
           END DO
 
           ! --- Compute q using cell-averages ---
@@ -200,7 +200,7 @@ CONTAINS
           DO iP = 1, nPT
             IF( q(iP) .LT. Zero )THEN
               CALL SolveTheta_Bisection &
-                     ( U_PP(iP,1:nCF), U_K, G_PP(iP,1:nGF), G_K, Theta_P )
+                     ( U_PP(iP,:), U_K, G_PP(iP,:), G_K, Theta_P )
               Theta_2 = MIN( Theta_2, Theta_P )
             END IF
           END DO
@@ -212,15 +212,15 @@ CONTAINS
 
         END IF ! q < 0
 
-        U(1:nDOFX,iX1,iX2,iX3,1:nCF) = U_q(1:nDOFX,1:nCF)
+        U(:,iX1,iX2,iX3,:) = U_q
       ELSE
         WRITE(*,'(A)') 'WARNING: PosLimMod: Cell-average of density <= Min_1'
         ! --- Compute cell-averages ---
         DO iCF = 1, nCF
           U_K(iCF) &
-            = SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) * U_q(:,iCF) ) &
-              / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
-          U(1:nDOFX,iX1,iX2,iX3,iCF) = U_K(iCF)
+            = SUM( WeightsX_q * G_q(:,iGF_SqrtGm) * U_q(:,iCF) ) &
+              / SUM( WeightsX_q * G_q(:,iGF_SqrtGm) )
+          U(:,iX1,iX2,iX3,iCF) = U_K(iCF)
         END DO
       END IF
 
@@ -238,7 +238,7 @@ CONTAINS
 
     INTEGER :: iOS
 
-    X_P(1:nDOFX) = X_Q(1:nDOFX)
+    X_P = X_Q
 
     IF( SUM( nPP(2:3) ) > 0 )THEN
 
@@ -248,13 +248,13 @@ CONTAINS
 
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
-               X_Q(1:nDOFX), 1, Zero, X_P(iOS+1:iOS+nDOFX_X1), 1 )
+               X_Q, 1, Zero, X_P(iOS+1:iOS+nDOFX_X1), 1 )
 
       iOS = iOS + nPP(2)
 
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Up, nDOFX_X1, &
-               X_Q(1:nDOFX), 1, Zero, X_P(iOS+1:iOS+nDOFX_X1), 1 )
+               X_Q, 1, Zero, X_P(iOS+1:iOS+nDOFX_X1), 1 )
 
     END IF
 
@@ -272,7 +272,7 @@ CONTAINS
 
       CALL DGEMV &
              ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Up, nDOFX_X2, &
-               X_Q(1:nDOFX), 1, Zero, X_P(iOS+1:iOS+nDOFX_X2), 1 )
+               X_Q, 1, Zero, X_P(iOS+1:iOS+nDOFX_X2), 1 )
 
     END IF
 
@@ -284,13 +284,13 @@ CONTAINS
 
       CALL DGEMV &
              ( 'N', nDOFX_X3, nDOFX, One, LX_X3_Dn, nDOFX_X3, &
-               X_Q(1:nDOFX), 1, Zero, X_P(iOS+1:iOS+nDOFX_X3), 1 )
+               X_Q, 1, Zero, X_P(iOS+1:iOS+nDOFX_X3), 1 )
 
       iOS = iOS + nPP(6)
 
       CALL DGEMV &
              ( 'N', nDOFX_X3, nDOFX, One, LX_X3_Up, nDOFX_X3, &
-               X_Q(1:nDOFX), 1, Zero, X_P(iOS+1:iOS+nDOFX_X3), 1 )
+               X_Q, 1, Zero, X_P(iOS+1:iOS+nDOFX_X3), 1 )
 
     END IF
 
