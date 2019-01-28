@@ -28,10 +28,6 @@ CONTAINS
 
   SUBROUTINE InitializeDataAMReX
 
-    WRITE(*,*)
-    WRITE(*,'(A)') 'Calling InitializeDataAMReX...'
-    WRITE(*,*)
-
     ALLOCATE( t_new(0:amrex_max_level) )
     t_new = 0.0_amrex_real
 
@@ -54,10 +50,6 @@ CONTAINS
   SUBROUTINE FinalizeDataAMReX
 
     INTEGER :: iLevel
-
-    WRITE(*,*)
-    WRITE(*,'(A)') 'Calling FinalizeDataAMReX...'
-    WRITE(*,*)
 
     DO iLevel = 0, amrex_max_level
       CALL amrex_multifab_destroy( MF_uGF(iLevel) )
