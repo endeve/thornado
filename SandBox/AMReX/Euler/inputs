@@ -1,3 +1,5 @@
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+
 ProgramName = "IsentropicVortex"
 
 t_end  = 1.0 # Final time
@@ -5,16 +7,26 @@ dt_wrt = 0.1 # Write time interval
 
 Gamma = 1.4 # Ideal Gas EoS Gamma
 
-nNodes  = 2 # Number of DG nodes in each active dimension
-nStages = 2 # Number of SSK-RK stages for time integration
+nNodes  = 1 # Number of DG nodes in each active dimension
+nStages = 1 # Number of SSP-RK stages for time integration
 
-geometry.CoordSys    = 0               # Problem geometry. 0 (Cartesian)
-geometry.prob_lo     = -5.0  -5.0  0.0 # Lower domain size
-geometry.prob_hi     = +5.0  +5.0  1.0 # Upper domain size
-geometry.is_periodic = 1  1  1         # Periodicity. 0 (no), 1 (yes)
+#geometry.CoordinateSystem = 0 # 0 for Cart., 1 for Cyl., 2 for Sph.
+geometry.CoordinateSystem = CARTESIAN
+geometry.prob_lo          = -5.0  -5.0  0.0 # Lower domain size
+geometry.prob_hi          = +5.0  +5.0  1.0 # Upper domain size
+geometry.is_periodic      = 1  1  1         # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell      = 32 32 01  # Number of cells in each dimension
+amr.n_cell      = 08 08 01  # Number of cells in each dimension
 amr.swX         = 01 01 00  # Stencil width (nGhostCells) in each dimension
-amr.MaxGridSize = 16 16 01  # Max grid size
-amr.max_level   = 0         # Max number of refinement levels
+amr.MaxGridSize = 08 08 01  # Max grid size
+amr.max_level   = 2         # Max number of refinement levels
 amr.restart     = chk00000  # Which checkpoint to restart from
+
+# Slope limiter parameters
+SL.UseSlopeLimiter           = 1
+SL.UseCharacteristicLimiting = 0
+SL.UseTroubledCellIndicator  = 0
+SL.SlopeTolerance            = 1.0d-6
+SL.BetaTVD                   = 1.75d0
+SL.BetaTVB                   = 0.0d0
+SL.LimiterThresholdParameter = 0.015d0
