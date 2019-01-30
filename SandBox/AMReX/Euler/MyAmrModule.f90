@@ -10,12 +10,19 @@ MODULE MyAmrModule
   IMPLICIT NONE
 
   REAL(amrex_real)                    :: t_end, dt_wrt, Gamma_IDEAL
-  INTEGER                             :: nNodes, nStages, CoordSys, nLevels
+  INTEGER                             :: nNodes, nStages, nLevels
   INTEGER,          ALLOCATABLE       :: MaxGridSize(:), nX(:), swX(:)
   REAL(amrex_real), ALLOCATABLE       :: xL(:), xR(:), dt(:)
-  CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName
+  CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName, CoordSys
   INTEGER,          ALLOCATABLE, SAVE :: StepNo(:), nSubSteps(:)
 
+  ! --- Slope limiter ---
+  LOGICAL          :: UseSlopeLimiter
+  LOGICAL          :: UseCharacteristicLimiting
+  LOGICAL          :: UseTroubledCellIndicator
+  REAL(amrex_real) :: SlopeTolerance
+  REAL(amrex_real) :: BetaTVD, BetaTVB
+  REAL(amrex_real) :: LimiterThresholdParameter
 CONTAINS
 
   SUBROUTINE MyAmrInit
@@ -43,9 +50,9 @@ CONTAINS
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
-      CALL PP % get   ( 'CoordSys', CoordSys )
-      CALL PP % getarr( 'prob_lo',  xL )
-      CALL PP % getarr( 'prob_hi',  xR )
+      CALL PP % get   ( 'CoordinateSystem', CoordSys )
+      CALL PP % getarr( 'prob_lo',          xL )
+      CALL PP % getarr( 'prob_hi',          xR )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters amr.*
@@ -54,6 +61,17 @@ CONTAINS
       CALL PP % getarr( 'swX',         swX )
       CALL PP % getarr( 'MaxGridSize', MaxGridSize )
       CALL PP % get   ( 'max_level',   nLevels )
+    CALL amrex_parmparse_destroy( PP )
+
+    ! --- Slope limiter parameters SL.*
+    CALL amrex_parmparse_build( PP, 'SL' )
+      CALL PP % get( 'UseSlopeLimiter',           UseSlopeLimiter )
+      CALL PP % get( 'UseCharacteristicLimiting', UseCharacteristicLimiting )
+      CALL PP % get( 'UseTroubledCellIndicator',  UseTroubledCellIndicator )
+      CALL PP % get( 'SlopeTolerance',            SlopeTolerance )
+      CALL PP % get( 'BetaTVD',                   BetaTVD )
+      CALL PP % get( 'BetaTVB',                   BetaTVB )
+      CALL PP % get( 'LimiterThresholdParameter', LimiterThresholdParameter )
     CALL amrex_parmparse_destroy( PP )
 
 !!$    if (.not. amrex_is_all_periodic()) then
@@ -78,10 +96,6 @@ CONTAINS
   END SUBROUTINE MyAmrInit
 
   SUBROUTINE MyAmrFinalize
-
-    WRITE(*,*)
-    WRITE(*,'(A)') 'Calling MyAmrFinalize...'
-    WRITE(*,*)
 
     CALL FinalizeDataAMReX
     DEALLOCATE( dt )
