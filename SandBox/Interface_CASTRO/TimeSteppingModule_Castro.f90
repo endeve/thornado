@@ -51,7 +51,8 @@ CONTAINS
   END SUBROUTINE ComputeTimeStep_TwoMoment
 
 
-  SUBROUTINE Update_IMEX_PDARS( dt, U_F, U_R, SingleStage_Option )
+  SUBROUTINE Update_IMEX_PDARS &
+    ( dt, U_F, U_R, SingleStage_Option, CallFromThornado_Option )
 
     use GeometryFieldsModuleE, only : uGE
     use GeometryFieldsModule,  only : uGF
@@ -67,9 +68,12 @@ CONTAINS
       U_R(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SingleStage_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      CallFromThornado_Option
 
     LOGICAL  :: &
-      SingleStage
+      SingleStage, &
+      CallFromThornado
     INTEGER  :: &
       iX_SW(3), iZ_SW(4)
     REAL(DP) :: &
@@ -121,6 +125,12 @@ CONTAINS
       SingleStage = .FALSE.
     END IF
 
+    IF( PRESENT( CallFromThornado_Option ) )THEN
+      CallFromThornado = CallFromThornado_Option
+    ELSE
+      CallFromThornado = .FALSE.
+    END IF
+
     ! ----------------------------------------------------------------
     ! --- Positive, Diffusion Accurate IMEX Scheme from Chu et al. ---
     ! --- arXiv:1809.06949 -------------------------------------------
@@ -146,8 +156,10 @@ CONTAINS
        iZ_SW = [ 0, 1, 1, 0 ]
     end if
 
-!!$    iX_SW = [ 0, 0, 0 ]     ! --- For Debugging within thornado
-!!$    iZ_SW = [ 0, 0, 0, 0 ]  ! --- For Debugging within thornado
+    IF( CallFromThornado )THEN
+      iX_SW = [ 0, 0, 0 ]     ! --- For Debugging within thornado
+      iZ_SW = [ 0, 0, 0, 0 ]  ! --- For Debugging within thornado
+    END IF
 
     ! --- Explicit Step (Radiation Only) ---
 
