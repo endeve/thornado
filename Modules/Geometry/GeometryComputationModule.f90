@@ -121,6 +121,9 @@ CONTAINS
     REAL(DP) :: XC(3), dX(3), xL_q(3), xG_q(3)
     REAL(DP) :: G_L(nDOFX,nGF)
 
+    XC = 0.0_DP
+    dX = 0.0_DP
+
     DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
 
@@ -206,6 +209,9 @@ CONTAINS
     REAL(DP) :: XC(3), dX(3), xL_q(3), xG_q(3)
     REAL(DP) :: G_L(nDOFX,nGF)
     INTEGER  :: iX1, iX2, iX3, iNodeX
+
+    XC = 0.0_DP
+    dX = 0.0_DP
 
     DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
