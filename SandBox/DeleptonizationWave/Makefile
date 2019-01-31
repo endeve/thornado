@@ -2,7 +2,8 @@ MICROPHYSICS = WEAKLIB
 #MOMENT_CLOSURE = MINERBO
 MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
 
-include ../../../Build/Makefile_Build
+THORNADO_DIR ?= ../../../
+include $(THORNADO_DIR)/Build/Makefile_Build
 
 all: DeleptonizationWave
 
