@@ -84,9 +84,9 @@ PROGRAM DeleptonizationWave
 
   nNodes = 2
 
-  nX = [ 64, 1, 1 ]
-  xL = [ 0.0d0, - 5.0d1, - 5.0d1 ] * Kilometer
-  xR = [ 1.0d2, + 5.0d1, + 5.0d1 ] * Kilometer
+  nX = [ 64, 64, 1 ]
+  xL = [ - 1.0d2, - 1.0d2, - 5.0d1 ] * Kilometer
+  xR = [ + 1.0d2, + 1.0d2, + 5.0d1 ] * Kilometer
 
   nE = 10
   eL = 0.0d0 * MeV
@@ -100,7 +100,7 @@ PROGRAM DeleptonizationWave
            swX_Option &
              = [ 01, 01, 01 ], &
            bcX_Option &
-             = [ 1, 32, 32 ], &
+             = [ 02, 02, 32 ], &
            xL_Option &
              = xL, &
            xR_Option &
@@ -173,9 +173,9 @@ PROGRAM DeleptonizationWave
   ! --- Initialize Positivity Limiter ---
 
   CALL InitializePositivityLimiter_TwoMoment &
-         ( Min_1_Option = 1.0d-10, &
-           Max_1_Option = 9.0d-00, &
-           Min_2_Option = 1.0d-10, &
+         ( Min_1_Option = 0.0d0, &
+           Max_1_Option = 1.0d0, &
+           Min_2_Option = 0.0d0, &
            UsePositivityLimiter_Option &
              = .TRUE., &
            UsePositivityLimiterTally_Option &
@@ -212,7 +212,7 @@ PROGRAM DeleptonizationWave
   dt_wrt  = 1.0d-1 * Millisecond
   t_wrt   = dt_wrt
   wrt     = .FALSE.
-  iCycleD = 10
+  iCycleD = 1
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
@@ -251,7 +251,12 @@ PROGRAM DeleptonizationWave
 
     END IF
 
-    CALL Update_IMEX_PDARS( dt, uCF, uCR, SingleStage_Option = .TRUE. )
+    CALL Update_IMEX_PDARS &
+           ( dt, uCF, uCR, &
+             Explicit_Option = .TRUE., &
+             Implicit_Option = .TRUE., &
+             SingleStage_Option = .FALSE., &
+             CallFromThornado_Option = .TRUE. )
 
     t = t + dt
 
