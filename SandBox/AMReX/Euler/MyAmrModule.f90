@@ -11,7 +11,7 @@ MODULE MyAmrModule
 
   REAL(amrex_real)                    :: t_end, dt_wrt, Gamma_IDEAL
   INTEGER                             :: nNodes, nStages, nLevels
-  INTEGER,          ALLOCATABLE       :: MaxGridSize(:), nX(:), swX(:)
+  INTEGER,          ALLOCATABLE       :: MaxGridSize(:), nX(:), swX(:), bcX(:)
   REAL(amrex_real), ALLOCATABLE       :: xL(:), xR(:), dt(:)
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName, CoordSys
   INTEGER,          ALLOCATABLE, SAVE :: StepNo(:), nSubSteps(:)
@@ -39,13 +39,16 @@ CONTAINS
 !!$                                        MyClearLevel,                  &
 !!$                                        my_error_estimate )
  
-    CALL amrex_parmparse_build( PP )
-      CALL PP % get( 'dt_wrt',      dt_wrt )
-      CALL PP % get( 't_end',       t_end )
-      CALL PP % get( 'nNodes',      nNodes )
-      CALL PP % get( 'nStages',     nStages )
-      CALL PP % get( 'ProgramName', ProgramName )
-      CALL PP % get( 'Gamma',       Gamma_IDEAL )
+    ! --- thornado paramaters thornado.* ---
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % get   ( 'dt_wrt',      dt_wrt )
+      CALL PP % get   ( 't_end',       t_end )
+      CALL PP % get   ( 'nNodes',      nNodes )
+      CALL PP % get   ( 'nStages',     nStages )
+      CALL PP % get   ( 'ProgramName', ProgramName )
+      CALL PP % get   ( 'Gamma',       Gamma_IDEAL )
+      CALL PP % getarr( 'bcX',         bcX )
+      CALL PP % getarr( 'swX',         swX )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters geometry.* ---
@@ -58,7 +61,6 @@ CONTAINS
     ! --- Parameters amr.*
     CALL amrex_parmparse_build( PP, 'amr' )
       CALL PP % getarr( 'n_cell',      nX )
-      CALL PP % getarr( 'swX',         swX )
       CALL PP % getarr( 'MaxGridSize', MaxGridSize )
       CALL PP % get   ( 'max_level',   nLevels )
     CALL amrex_parmparse_destroy( PP )

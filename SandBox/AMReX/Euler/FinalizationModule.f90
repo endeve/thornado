@@ -1,15 +1,15 @@
 MODULE FinalizationModule
 
   ! --- thornado Modules ---
-  USE ReferenceElementModuleX, ONLY: &
+  USE ReferenceElementModuleX,          ONLY: &
     FinalizeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     FinalizeReferenceElementX_Lagrange
-  USE MeshModule,                       ONLY: &
+   USE MeshModule,                      ONLY: &
     MeshType, DestroyMesh
   USE EquationOfStateModule,            ONLY: &
     FinalizeEquationOfState
-  USE SlopeLimiterModule_Euler, ONLY: &
+  USE Euler_SlopeLimiterModule,         ONLY: &
     FinalizeSlopeLimiter_Euler
 
   ! --- Local Modules ---
@@ -37,12 +37,12 @@ CONTAINS
 
     INTEGER :: iLevel, iDim
 
-    DO iLevel = 0, nLevels
-      CALL amrex_geometry_destroy( GEOM(iLevel) )
-    END DO
-
     DO iDim = 1, 3
       CALL DestroyMesh( MeshX(iDim) )
+    END DO
+
+    DO iLevel = 0, nLevels
+      CALL amrex_geometry_destroy( GEOM(iLevel) )
     END DO
 
     CALL FinalizeSlopeLimiter_Euler
@@ -50,7 +50,6 @@ CONTAINS
     CALL FinalizeEquationOfState
 
     CALL FinalizeReferenceElementX_Lagrange
-
     CALL FinalizeReferenceElementX
 
     CALL MyAmrFinalize

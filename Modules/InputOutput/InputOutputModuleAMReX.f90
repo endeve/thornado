@@ -29,7 +29,6 @@ MODULE InputOutputModuleAMReX
   PRIVATE
 
   CHARACTER(8) :: BaseFileName = 'thornado'
-  CHARACTER(3) :: BaseCheckpointFileName = 'chk'
 
   PUBLIC :: WriteFieldsAMReX_PlotFile
   PUBLIC :: WriteFieldsAMReX_Checkpoint
@@ -211,7 +210,7 @@ CONTAINS
     CHARACTER(32)                   :: PlotFileName
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C, WriteFF_P, WriteFF_A
-    INTEGER                         :: iComp, iOS, iLevel, nF = 0
+    INTEGER                         :: iComp, iOS, iLevel, nF
     INTEGER                         :: MyProc
     TYPE(amrex_multifab)            :: MF_PF(0:nLevels)
     TYPE(amrex_boxarray)            :: BA(0:nLevels)
@@ -222,6 +221,7 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
+    nF = 0
     WriteGF   = .FALSE.
     IF( PRESENT( MF_uGF_Option ) )THEN
       WriteGF   = .TRUE.
@@ -265,51 +265,60 @@ CONTAINS
 
     ALLOCATE( VarNames(nF) )
 
-    DO iLevel = 0, nLevels
-
-      iOS = 0
-      IF( WriteGF )THEN
-        DO iComp = 1, nGF
-          CALL amrex_string_build &
-                 ( VarNames(iComp + iOS), TRIM( ShortNamesGF(iComp) ) )
-        END DO
-        iOS = iOS + nGF
+    iOS = 0
+    IF( WriteGF )THEN
+      DO iComp = 1, nGF
+        CALL amrex_string_build &
+               ( VarNames(iComp + iOS), TRIM( ShortNamesGF(iComp) ) )
+      END DO
+      iOS = iOS + nGF
+      DO iLevel = 0, nLevels
         BA(iLevel) = MF_uGF_Option(iLevel) % BA
         DM(iLevel) = MF_uGF_Option(iLevel) % DM
-      END IF
+      END DO
+    END IF
 
-      IF( WriteFF_C )THEN
-        DO iComp = 1, nCF
-          CALL amrex_string_build &
-                 ( VarNames(iComp + iOS), TRIM( ShortNamesCF(iComp) ) )
-        END DO
-        iOS = iOS + nCF
+    IF( WriteFF_C )THEN
+      DO iComp = 1, nCF
+        CALL amrex_string_build &
+               ( VarNames(iComp + iOS), TRIM( ShortNamesCF(iComp) ) )
+      END DO
+      iOS = iOS + nCF
+      DO iLevel = 0, nLevels
         BA(iLevel) = MF_uCF_Option(iLevel) % BA
         DM(iLevel) = MF_uCF_Option(iLevel) % DM
-      END IF
+      END DO
+    END IF
 
-      IF( WriteFF_P )THEN
-        DO iComp = 1, nPF
-          CALL amrex_string_build &
-                 ( VarNames(iComp + iOS), TRIM( ShortNamesPF(iComp) ) )
-        END DO
-        iOS = iOS + nPF
+    IF( WriteFF_P )THEN
+      DO iComp = 1, nPF
+        CALL amrex_string_build &
+               ( VarNames(iComp + iOS), TRIM( ShortNamesPF(iComp) ) )
+      END DO
+      iOS = iOS + nPF
+      DO iLevel = 0, nLevels
         BA(iLevel) = MF_uPF_Option(iLevel) % BA
         DM(iLevel) = MF_uPF_Option(iLevel) % DM
-      END IF
+      END DO
+    END IF
 
-      IF( WriteFF_A )THEN
-        DO iComp = 1, nAF
-          CALL amrex_string_build &
-                 ( VarNames(iComp + iOS), TRIM( ShortNamesAF(iComp) ) )
-        END DO
-        iOS = iOS + nAF
+    IF( WriteFF_A )THEN
+      DO iComp = 1, nAF
+        CALL amrex_string_build &
+               ( VarNames(iComp + iOS), TRIM( ShortNamesAF(iComp) ) )
+      END DO
+      iOS = iOS + nAF
+      DO iLevel = 0, nLevels
         BA(iLevel) = MF_uAF_Option(iLevel) % BA
         DM(iLevel) = MF_uAF_Option(iLevel) % DM
-      END IF
+      END DO
+    END IF
+
+    DO iLevel = 0, nLevels
 
       CALL amrex_multifab_build &
              ( MF_PF(iLevel), BA(iLevel), DM(iLevel), nF, 0 )
+      CALL MF_PF(iLevel) % setVal( 0.0d0 )
 
       CALL amrex_mfiter_build( MFI, MF_PF(iLevel), tiling = .TRUE. )
 
@@ -341,12 +350,6 @@ CONTAINS
       END IF
 
     END DO ! End of loop over levels
-
-    WRITE(*,'(A,A)')       'PlotFileName:    ', PlotFileName
-    WRITE(*,'(A,I1)')      'nLevels:         ', nLevels
-    WRITE(*,'(A,ES9.1E3)') 'Time:            ', Time
-    WRITE(*,'(A,3I3.2)')   'StepNo:          ', StepNo
-    WRITE(*,'(A,3I3.2)')   'amrex_ref_ratio: ', amrex_ref_ratio
 
     CALL amrex_write_plotfile &
            ( PlotFileName, nLevels+1, MF_PF, VarNames, &
@@ -394,13 +397,10 @@ CONTAINS
           = RESHAPE( u(iX1,iX2,iX3,lo(4):hi(4)), [ nDOFX, nComp ] )
 
         ! --- Compute cell-average ---
-!        WRITE(*,'(A,3I4.2)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
         DO iComp = 1, nComp
 
           u_A(iX1,iX2,iX3,iComp + iOS) &
             = DOT_PRODUCT( WeightsX_q(:), u_K(:,iComp) )
-
-!          WRITE(*,*) 'iComp: ', iComp, ', u_A: ', DOT_PRODUCT( WeightsX_q(:), u_K(:,iComp) )
 
         END DO
 

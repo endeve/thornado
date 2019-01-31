@@ -32,8 +32,6 @@ PROGRAM main
   USE InputOutputModuleAMReX,           ONLY: &
     WriteFieldsAMReX_PlotFile, &
     ReadCheckpointFile
-  USE SlopeLimiterModule_Euler, ONLY: &
-    InitializeSlopeLimiter_Euler
 
   ! --- Local Modules ---
 
@@ -54,9 +52,21 @@ PROGRAM main
   USE MyAmrDataModule
   USE MyAmrModule
 
+  ! --- For slope limiter ---
+  USE Euler_SlopeLimiterModule,       ONLY: &
+    InitializeSlopeLimiter_Euler
+  USE FluidFieldsModule,              ONLY: &
+    Shock
+  USE PolynomialBasisMappingModule,   ONLY: &
+    InitializePolynomialBasisMapping
+  USE PolynomialBasisModule_Lagrange, ONLY: &
+    InitializePolynomialBasis_Lagrange
+  USE PolynomialBasisModule_Legendre, ONLY: &
+    InitializePolynomialBasis_Legendre
+
   IMPLICIT NONE
 
-  INTEGER :: iCycle, iLevel, iDim
+  INTEGER :: iLevel, iDim
   TYPE(amrex_box)                    :: BX
   TYPE(amrex_boxarray),  ALLOCATABLE :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE :: DM(:)
@@ -87,6 +97,7 @@ PROGRAM main
     WRITE(*,'(A5,A24,A)')        '', 'CoordinateSystem = ', TRIM( CoordSys )
     WRITE(*,'(A4,A24,3I7.6)')    '', 'nX          =', nX
     WRITE(*,'(A4,A24,3I7.6)')    '', 'swX         =', swX
+    WRITE(*,'(A4,A24,3I7.6)')    '', 'bcX         =', bcX
     WRITE(*,'(A4,A24,3I7.6)')    '', 'MaxGridSize =', MaxGridSize
 
   END IF
@@ -94,7 +105,7 @@ PROGRAM main
   CALL InitializeProgramHeader &
          ( ProgramName_Option = TRIM( ProgramName ), &
            nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
-           xL_Option = xL, xR_Option = xR )
+           xL_Option = xL, xR_Option = xR, bcX_Option = bcX )
 
   IF( amrex_parallel_ioprocessor() )THEN
 
@@ -103,11 +114,12 @@ PROGRAM main
   END IF
 
   CALL InitializePolynomialBasisX_Lagrange
-
   CALL InitializePolynomialBasisX_Legendre
 
-  CALL InitializeReferenceElementX
+  CALL InitializePolynomialBasis_Lagrange
+  CALL InitializePolynomialBasis_Legendre
 
+  CALL InitializeReferenceElementX
   CALL InitializeReferenceElementX_Lagrange
 
   CALL InitializeEquationOfState &
@@ -145,10 +157,9 @@ PROGRAM main
   ALLOCATE( DM  (0:nLevels) )
 
   DO iLevel = 0, nLevels
-    CALL amrex_geometry_build( GEOM(iLevel), BX )
-    CALL amrex_distromap_build( DM(iLevel), BA(iLevel) )
+    CALL amrex_geometry_build ( GEOM(iLevel), BX )
+    CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
   END DO
-
 
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
@@ -171,6 +182,9 @@ PROGRAM main
            ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
              amrex_problo(iDim), amrex_probhi(iDim) )
   END DO
+
+  CALL InitializePolynomialBasisMapping &
+    ( [0.0d0], MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
 
   DO iLevel = 0, nLevels
     CALL MF_ComputeGeometryX( MF_uGF(iLevel) )
@@ -195,23 +209,22 @@ PROGRAM main
            MF_uPF % P, &
            MF_uAF % P )
 
-  iCycle = 0
+  ! --- START of evolution ---
 
-  ! --- Evolution goes here
-
+  ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
   CALL MF_ApplySlopeLimiter_Euler( nLevels, MF_uGF, MF_uCF )
+  DEALLOCATE( Shock )
   StepNo(0) = StepNo(0) + 1
 
-!!$  CALL WriteFieldsAMReX_PlotFile &
-!!$         ( 0.1_DP, nLevels, GEOM, StepNo, &
-!!$           MF_uGF_Option = MF_uGF, &
-!!$           MF_uCF_Option = MF_uCF, &
-!!$           MF_uPF_Option = MF_uPF, &
-!!$           MF_uAF_Option = MF_uAF )
+  CALL WriteFieldsAMReX_PlotFile &
+         ( 0.1_DP, nLevels, GEOM, StepNo, &
+           MF_uGF_Option = MF_uGF, &
+           MF_uCF_Option = MF_uCF, &
+           MF_uPF_Option = MF_uPF, &
+           MF_uAF_Option = MF_uAF )
 
-  ! --- END of evolution
+  ! --- END of evolution ---
 
-  WRITE(*,*) 'Reading from checkpoint file...'
   CALL MyAmrFinalize
   CALL ReadCheckpointFile
 

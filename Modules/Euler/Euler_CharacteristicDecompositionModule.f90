@@ -1,4 +1,4 @@
-MODULE CharacteristicDecompositionModule
+MODULE Euler_CharacteristicDecompositionModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One
@@ -238,4 +238,4 @@ CONTAINS
   END SUBROUTINE ComputeCharacteristicDecomposition
 
 
-END MODULE CharacteristicDecompositionModule
+END MODULE Euler_CharacteristicDecompositionModule
