@@ -30,7 +30,7 @@ MODULE Euler_SlopeLimiterModule
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
     Shock
-  USE BoundaryConditionsModule_Beta, ONLY: &
+  USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Fluid
   USE Euler_CharacteristicDecompositionModule, ONLY: &
     ComputeCharacteristicDecomposition
