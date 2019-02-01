@@ -164,13 +164,13 @@ CONTAINS
 
     DO iLevel = 0, FinestLevel(1)
       CALL amrex_multifab_build &
-             ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
+             ( MF_uGF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
       CALL amrex_multifab_build &
-             ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+             ( MF_uCF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
       CALL amrex_multifab_build &
-             ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
+             ( MF_uPF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
       CALL amrex_multifab_build &
-             ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+             ( MF_uAF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
 
 !!$      IF( iLevel .GT. 0 .AND. do_reflux )THEN
 !!$        CALL amrex_fluxregister_build &
@@ -179,10 +179,10 @@ CONTAINS
 !!$      END IF
     END DO
 
-    pGF = MF_uGF % P
-    pCF = MF_uCF % P
-    pPF = MF_uPF % P
-    pAF = MF_uAF % P
+    pGF = MF_uGF_new % P
+    pCF = MF_uCF_new % P
+    pPF = MF_uPF_new % P
+    pAF = MF_uAF_new % P
     CALL ReadMultiFabData( FinestLevel(1), pGF, 0 )
     CALL ReadMultiFabData( FinestLevel(1), pCF, 1 )
     CALL ReadMultiFabData( FinestLevel(1), pPF, 2 )

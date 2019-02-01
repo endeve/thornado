@@ -163,13 +163,13 @@ PROGRAM main
 
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
-      ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
+      ( MF_uGF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
     CALL amrex_multifab_build &
-      ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+      ( MF_uCF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
     CALL amrex_multifab_build &
-      ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
+      ( MF_uPF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
     CALL amrex_multifab_build &
-      ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+      ( MF_uAF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
   END DO
 
   DO iLevel = 0, nLevels
@@ -187,41 +187,42 @@ PROGRAM main
     ( [0.0d0], MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
 
   DO iLevel = 0, nLevels
-    CALL MF_ComputeGeometryX( MF_uGF(iLevel) )
+    CALL MF_ComputeGeometryX( MF_uGF_new(iLevel) )
     CALL MF_InitializeFields &
-           ( TRIM( ProgramName ), MF_uGF(iLevel), MF_uCF(iLevel) )
+           ( TRIM( ProgramName ), MF_uGF_new(iLevel), MF_uCF_new(iLevel) )
     CALL MF_ComputeFromConserved &
-           ( MF_uGF(iLevel), MF_uCF(iLevel), MF_uPF(iLevel), MF_uAF(iLevel) )
+           ( MF_uGF_new(iLevel), MF_uCF_new(iLevel), &
+             MF_uPF_new(iLevel), MF_uAF_new(iLevel) )
   END DO
 
   CALL WriteFieldsAMReX_PlotFile &
          ( 0.0_DP, nLevels, GEOM, StepNo, &
-           MF_uGF_Option = MF_uGF, &
-           MF_uCF_Option = MF_uCF, &
-           MF_uPF_Option = MF_uPF, &
-           MF_uAF_Option = MF_uAF )
+           MF_uGF_Option = MF_uGF_new, &
+           MF_uCF_Option = MF_uCF_new, &
+           MF_uPF_Option = MF_uPF_new, &
+           MF_uAF_Option = MF_uAF_new )
 
   CALL WriteFieldsAMReX_Checkpoint &
          ( StepNo, nLevels, dt, t_new, &
-           MF_uGF % BA % P, &
-           MF_uGF % P, &
-           MF_uCF % P, &
-           MF_uPF % P, &
-           MF_uAF % P )
+           MF_uGF_new % BA % P, &
+           MF_uGF_new % P, &
+           MF_uCF_new % P, &
+           MF_uPF_new % P, &
+           MF_uAF_new % P )
 
   ! --- START of evolution ---
 
   ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
-  CALL MF_ApplySlopeLimiter_Euler( nLevels, MF_uGF, MF_uCF )
+  CALL MF_ApplySlopeLimiter_Euler( nLevels, MF_uGF_new, MF_uCF_new )
   DEALLOCATE( Shock )
   StepNo(0) = StepNo(0) + 1
 
   CALL WriteFieldsAMReX_PlotFile &
          ( 0.1_DP, nLevels, GEOM, StepNo, &
-           MF_uGF_Option = MF_uGF, &
-           MF_uCF_Option = MF_uCF, &
-           MF_uPF_Option = MF_uPF, &
-           MF_uAF_Option = MF_uAF )
+           MF_uGF_Option = MF_uGF_new, &
+           MF_uCF_Option = MF_uCF_new, &
+           MF_uPF_Option = MF_uPF_new, &
+           MF_uAF_Option = MF_uAF_new )
 
   ! --- END of evolution ---
 
