@@ -109,7 +109,7 @@ Although the Levermore and Minerbo closures do not satisfy the bounds in Eq.~\eq
 When employing these closures in conditions of high occupancy, a numerical scheme may evolve the moments outside the realizable domain of Fermi-Dirac statistics given in Eq.~\eqref{eq:MomentsBounds}.
 If this were to happen, the update step may give $\cJ>1$.
 Considering the fact that the completed collision term contains blocking factors, i.e.~$(1-\cJ)\times$ something positive, $\cJ > 1$ would change blocking factors' sign and it would be difficult to predict the impact of the subsequent induced errors on the simulation outcome.
-\rc{Besides, even with the simplified collision term, Eq~\ref{eq:collisionTermMoments}, $\cJ>1$ could result... the reason of crash}
+Besides, even with the simplified collision term Eq~\ref{eq:collisionTermMoments}, $\cJ>1$ could result information lose (such as, lose the neutrino distribution for high-energy groups), closure failure, and other unpredictable consequences.
 If treatments are developed to map the unrealizable moments into the realizable domain, they should be developed to conserve lepton number, energy, and momentum.
 
 \begin{figure}[h]
