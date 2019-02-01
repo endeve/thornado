@@ -4,24 +4,24 @@ all: ApplicationDriver
 
 ApplicationDriver: \
 	$(thornado) \
-	EulerEquationsUtilitiesModule_Beta.o \
-	CharacteristicDecompositionModule.o \
+	Euler_UtilitiesModule.o \
+	Euler_CharacteristicDecompositionModule.o \
 	InitializationModule.o \
-	BoundaryConditionsModule_Beta.o \
-	SlopeLimiterModule_Euler.o \
-	PositivityLimiterModule_Euler.o \
+	Euler_BoundaryConditionsModule.o \
+	Euler_SlopeLimiterModule.o \
+	Euler_PositivityLimiterModule.o \
 	dgDiscretizationModule_Euler.o \
 	TimeSteppingModule_SSPRK.o \
 	Euler_TallyModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
-	EulerEquationsUtilitiesModule_Beta.o \
-	CharacteristicDecompositionModule.o \
+	Euler_UtilitiesModule.o \
+	Euler_CharacteristicDecompositionModule.o \
 	InitializationModule.o \
-	BoundaryConditionsModule_Beta.o \
-	SlopeLimiterModule_Euler.o \
-	PositivityLimiterModule_Euler.o \
+	Euler_BoundaryConditionsModule.o \
+	Euler_SlopeLimiterModule.o \
+	Euler_PositivityLimiterModule.o \
 	dgDiscretizationModule_Euler.o \
 	TimeSteppingModule_SSPRK.o \
 	Euler_TallyModule.o \

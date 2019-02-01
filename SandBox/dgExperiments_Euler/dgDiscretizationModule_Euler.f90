@@ -39,9 +39,9 @@ MODULE dgDiscretizationModule_Euler
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE BoundaryConditionsModule_Beta, ONLY: &
+  USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Fluid
-  USE EulerEquationsUtilitiesModule_Beta, ONLY: &
+  USE Euler_UtilitiesModule, ONLY: &
     ComputePrimitive, &
     Eigenvalues, &
     AlphaPlus, &
