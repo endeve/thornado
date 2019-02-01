@@ -6,15 +6,14 @@ Furthermore, these explosions occur at energies and densities relevant to addres
 A solid theoretical framework for the CCSN explosion mechanism may help answer important questions in fundamental physics~\cite{janka_etal_2007}.
 
 One essential part of the explosion mechanism is neutrino transport.
-Neutrino energy deposition is believed to be the major driver of CCSN explosions, -- except in cases where rapid rotation is present and magnetohydrodynamic effects may dominate (for reviews, see~\cite{mezzacappa_2005,janka_2012,burrows_2013,muller_2016}).
+Neutrino energy deposition is believed to be the major driver of CCSN explosions, -- except in peculiar cases where rapid rotation is present and magnetohydrodynamic effects may dominate (for reviews, see~\cite{mezzacappa_2005,janka_2012,burrows_2013,muller_2016}).
 Ideally, neutrino transport would be modeled by the Boltzmann transport equation, which is an integro-partial-differential equation evolving a phase-space distribution function $f$.~(e.g., see~\cite{mezzacappaBruenn_1993a,mezzacappaBruenn_1993b,mezzacappaBruenn_1993c,mezzacappa_etal_2001,liebendoerfer_etal_2001,liebendoerfer_etal_2004,livne_etal_2004,liebendoerfer_etal_2005,ott_etal_2008,sumiyoshiYamada_2012,nagakura_etal_2014,sumiyoshi_etal_2014,nagakura_etal_2018} for studies of CCSN with Boltzmann transport in various approximate settings.)
 Simulating the neutrino transport implies finding a solution of the Boltzmann equation for a specific domain and period, with acceptable accuracy.
 
 However, solving the Boltzmann transport equation with sufficient phase-space resolution and full weak interaction physics is at present too expensive.
 To balance physical fidelity and computational expediency, an approximate method called the two-moment method has been adopted (e.g., see~\cite{kuroda_etal_2016,roberts_etal_2016,just_etal_2018,vartanyan_etal_2018}).
 Using the two-moment method, the evolved variables are the zeroth and first angular moments of the distribution function $f$ -- the spectral particle density $\cJ$ and flux $\bcH$, respectively.
-However, the transport term in the Boltzmann transport equation includes the dot product of the velocity vector and the gradient of the phase-space distribution function.
-Integrating this term with a unit direction vector as the weight function couples the moment equations: it introduces the second angular moment $\bcK$ to the first moment $\bcH$'s equation.
+However, the equation of $\bcH$ includes the second angular moment $\bcK$.
 Knowledge of $\bcK$ is needed to close the two-moment system.
 Therefore, a closure that gives $\bcK$ consistent with $\cJ$ and $\bcH$ is needed.
 The better the closure predicts $\bcK$, the more accurate the two-moment method. 
@@ -43,7 +42,7 @@ In addition, the physics of neutrino transport in CCSNe requires the IMEX scheme
 
 The study of moment realizability and realizability-preserving methods with diffusion-accurate IMEX schemes motivates this work.
 Gottlieb et al.~\cite{gottlieb_etal_2001} showed that standard strong-stability-preserving IMEX schemes cannot have an order higher than first without a restricted time step.
-To have second-order (or higher-order) accuracy, some correction steps are needed.
+One way to obtain the second-order (or higher-order) accuracy is to add some correction steps after the standard step~\cite{huangShu_2017,hu_etal_2018}.
 Unfortunately, the correction steps can deteriorate the accuracy of the IMEX scheme in the diffusion limit or restrict the time step.
 To keep things simple, we focus on IMEX schemes without correction steps and require them to be high-order (second or higher order) in the streaming limit and diffusion-accurate.
 We call these IMEX schemes \textit{PD-ARS}.
