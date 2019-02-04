@@ -238,7 +238,7 @@ CONTAINS
 
     INTEGER :: iOS
 
-    X_P = X_Q
+    X_P(1:nDOFX) = X_Q
 
     IF( SUM( nPP(2:3) ) > 0 )THEN
 
