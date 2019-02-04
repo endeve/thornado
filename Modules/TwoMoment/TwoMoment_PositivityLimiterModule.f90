@@ -109,7 +109,7 @@ CONTAINS
     nPP = 0
     nPP(1) = PRODUCT( nNodesZ )
 
-    DO i = 1, 4
+    DO i = 2, 4 ! --- Exclude energy dimension for now ---
 
       IF( nNodesZ(i) > 1 )THEN
 
@@ -173,109 +173,104 @@ CONTAINS
     MinTheta_2 = One
 
     DO iS = 1, nSpecies
-      DO iZ4 = iZ_B0(4), iZ_E0(4)
-        DO iZ3 = iZ_B0(3), iZ_E0(3)
-          DO iZ2 = iZ_B0(2), iZ_E0(2)
-            DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-              U_q(1:nDOF,1:nCR) &
-                = U(1:nDOF,iZ1,iZ2,iZ3,iZ4,1:nCR,iS)
+      U_q(1:nDOF,1:nCR) = U(1:nDOF,iZ1,iZ2,iZ3,iZ4,1:nCR,iS)
 
-              NegativeStates = .FALSE.
+      NegativeStates = .FALSE.
 
-              CALL ComputePointValues( U_q, U_PP )
+      CALL ComputePointValues( U_q, U_PP )
 
-              ! --- Ensure Bounded Density ---
+      ! --- Ensure Bounded Density ---
 
-              Min_K = MINVAL( U_PP(:,iCR_N) )
-              Max_K = MAXVAL( U_PP(:,iCR_N) )
+      Min_K = MINVAL( U_PP(:,iCR_N) )
+      Max_K = MAXVAL( U_PP(:,iCR_N) )
 
-              IF( Min_K < Min_1 .OR. Max_K > Max_1 )THEN
+      IF( Min_K < Min_1 .OR. Max_K > Max_1 )THEN
 
-                ! --- Cell Average ---
+        ! --- Cell Average ---
 
-                U_K(iCR_N) = DOT_PRODUCT( Weights_q, U_q(:,iCR_N) )
+        U_K(iCR_N) = DOT_PRODUCT( Weights_q, U_q(:,iCR_N) )
 
-                Theta_1 &
-                  = MIN( One, &
-                         ABS( (Min_1-U_K(iCR_N)) / (Min_K-U_K(iCR_N)) ), &
-                         ABS( (Max_1-U_K(iCR_N)) / (Max_K-U_K(iCR_N)) ) )
+        Theta_1 &
+          = MIN( One, &
+                 ABS( (Min_1-U_K(iCR_N)) / (Min_K-U_K(iCR_N)) ), &
+                 ABS( (Max_1-U_K(iCR_N)) / (Max_K-U_K(iCR_N)) ) )
 
-                ! --- Limit Density Towards Cell Average ---
+        ! --- Limit Density Towards Cell Average ---
 
-                U_q(:,iCR_N) &
-                  = Theta_1 * U_q(:,iCR_N) + ( One - Theta_1 ) * U_K(iCR_N)
+        U_q(:,iCR_N) = Theta_1 * U_q(:,iCR_N) + ( One - Theta_1 ) * U_K(iCR_N)
 
-                ! --- Recompute Point Values ---
+        ! --- Recompute Point Values ---
 
-                CALL ComputePointValues( U_q, U_PP )
+        CALL ComputePointValues( U_q, U_PP )
 
-                NegativeStates(1) = .TRUE.
+        NegativeStates(1) = .TRUE.
 
-                MinTheta_1 = MIN( Theta_1, MinTheta_1 )
+        MinTheta_1 = MIN( Theta_1, MinTheta_1 )
 
-              END IF
+      END IF
 
-              ! --- Ensure Positive Gamma ---
+      ! --- Ensure Positive Gamma ---
 
-              CALL ComputeGamma( nPT, U_PP(1:nPT,1:nCR), Gamma(1:nPT) )
+      CALL ComputeGamma( nPT, U_PP(1:nPT,1:nCR), Gamma(1:nPT) )
 
-              IF( ANY( Gamma(:) < Min_2 ) )THEN
+      IF( ANY( Gamma(:) < Min_2 ) )THEN
 
-                ! --- Cell Average ---
+        ! --- Cell Average ---
 
-                DO iCR = 1, nCR
+        DO iCR = 1, nCR
 
-                  U_K(iCR) = DOT_PRODUCT( Weights_q, U_q(:,iCR) )
+          U_K(iCR) = DOT_PRODUCT( Weights_q, U_q(:,iCR) )
 
-                END DO
-
-                Theta_2 = One
-                DO iP = 1, nPT
-
-                  IF( Gamma(iP) < Min_2 ) THEN
-
-                    CALL SolveTheta_Bisection &
-                           ( U_PP(iP,1:nCR), U_K(1:nCR), Min_2, Theta_P )
-
-                    Theta_2 = MIN( Theta_2, Theta_P )
-
-                  END IF
-
-                END DO
-
-                ! --- Limit Towards Cell Average ---
-
-                DO iCR = 1, nCR
-
-                  U_q(:,iCR) &
-                    = Theta_2 * U_q(:,iCR) + ( One - Theta_2 ) * U_K(iCR)
-
-                END DO
-
-                NegativeStates(2) = .TRUE.
-                NegativeStates(1) = .FALSE.
-
-                MinTheta_2 = MIN( Theta_2, MinTheta_2 )
-
-              END IF
-
-              IF( NegativeStates(1) )THEN
-
-                U(1:nDOF,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) &
-                  = U_q(1:nDOF,iCR_N)
-
-              ELSEIF( NegativeStates(2) )THEN
-
-                U(1:nDOF,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) &
-                  = U_q(1:nDOF,1:nCR)
-
-              END IF
-
-            END DO
-          END DO
         END DO
-      END DO
+
+        Theta_2 = One
+        DO iP = 1, nPT
+
+          IF( Gamma(iP) < Min_2 ) THEN
+
+            CALL SolveTheta_Bisection &
+                   ( U_PP(iP,1:nCR), U_K(1:nCR), Min_2, Theta_P )
+
+            Theta_2 = MIN( Theta_2, Theta_P )
+
+          END IF
+
+        END DO
+
+        ! --- Limit Towards Cell Average ---
+
+        DO iCR = 1, nCR
+
+          U_q(:,iCR) = Theta_2 * U_q(:,iCR) + ( One - Theta_2 ) * U_K(iCR)
+
+        END DO
+
+        NegativeStates(2) = .TRUE.
+        NegativeStates(1) = .FALSE.
+
+        MinTheta_2 = MIN( Theta_2, MinTheta_2 )
+
+      END IF
+
+      IF( NegativeStates(1) )THEN
+
+        U(1:nDOF,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) = U_q(1:nDOF,iCR_N)
+
+      ELSEIF( NegativeStates(2) )THEN
+
+        U(1:nDOF,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) = U_q(1:nDOF,1:nCR)
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
