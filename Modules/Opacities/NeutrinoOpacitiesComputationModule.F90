@@ -48,6 +48,7 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: ComputeNeutrinoOpacities_EC_Point
   PUBLIC :: ComputeNeutrinoOpacities_ES_Point
   PUBLIC :: ComputeEquilibriumDistributions_Point
+  PUBLIC :: ComputeNeutrinoOpacities_EC_Points
   PUBLIC :: FermiDirac
   PUBLIC :: dFermiDiracdT
   PUBLIC :: dFermiDiracdY
@@ -334,6 +335,47 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_EC_Point
+
+
+  SUBROUTINE ComputeNeutrinoOpacities_EC_Points &
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, iSpecies, opEC_Points )
+
+    ! --- Electron Capture Opacities (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    INTEGER,  INTENT(in)  :: iSpecies
+    REAL(DP), INTENT(out) :: opEC_Points(iE_B:iE_E,iX_B:iX_E)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ASSOCIATE &
+      ( opEC_T => OPACITIES % ThermEmAb &
+                    % Absorptivity(iSpecies) % Values, &
+        OS     => OPACITIES % ThermEmAb &
+                    % Offsets(iSpecies) )
+
+    CALL LogInterpolateSingleVariable_1D3D_Custom &
+           ( LOG10( E / UnitE ), LOG10( D / UnitD ), &
+             LOG10( T / UnitT ),      ( Y / UnitY ), &
+             LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opEC_T, &
+             opEC_Points )
+
+    opEC_Points = opEC_Points * UnitEC
+
+    END ASSOCIATE ! opEC_T, etc.
+
+#else
+
+    opEC_Points = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_EC_Points
 
 
   SUBROUTINE ComputeNeutrinoOpacities_ES( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y )
