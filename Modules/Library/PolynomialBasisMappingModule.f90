@@ -12,7 +12,7 @@ MODULE PolynomialBasisMappingModule
   USE PolynomialBasisModule_Lagrange, ONLY: &
     IndL_Q, IndLX_Q, L_E, L_X1, L_X2, L_X3
   USE PolynomialBasisModule_Legendre, ONLY: &
-    IndP_Q, INDPX_Q, P_E, P_X1, P_X2, P_X3, &
+    IndP_Q, IndPX_Q, P_E, P_X1, P_X2, P_X3, &
     MassP, MassPX
 
   IMPLICIT NONE
@@ -44,69 +44,69 @@ CONTAINS
 
     Kij_X = 0.0_DP
     DO j = 1, nDOFX
-      DO i = 1, nDOFX
+    DO i = 1, nDOFX
 
-        DO qX3 = 1, SIZE( xG5 )
-          DO qX2 = 1, SIZE( xG5 )
-            DO qX1 = 1, SIZE( xG5 )
+      DO qX3 = 1, SIZE( xG5 )
+      DO qX2 = 1, SIZE( xG5 )
+      DO qX1 = 1, SIZE( xG5 )
 
-              Kij_X(i,j) &
-                = Kij_X(i,j) &
-                    + wG5(qX1) * wG5(qX2) * wG5(qX3) &
-                        * P_X1(IndPX_Q(1,i)) % P( xG5(qX1) ) &
-                            * P_X2(IndPX_Q(2,i)) % P( xG5(qX2) ) &
-                                * P_X3(IndPX_Q(3,i)) % P( xG5(qX3) ) &
-                        * L_X1(IndLX_Q(1,j)) % P( xG5(qX1) ) &
-                            * L_X2(IndLX_Q(2,j)) % P( xG5(qX2) ) &
-                                * L_X3(IndLX_Q(3,j)) % P( xG5(qX3) )
-
-            END DO
-          END DO
-        END DO
-
-        Pij_X(i,j) &
-          = P_X1(IndPX_Q(1,j)) % P( Nodes_X1(IndLX_Q(1,i)) ) &
-              * P_X2(IndPX_Q(2,j)) % P( Nodes_X2(IndLX_Q(2,i)) ) &
-                  * P_X3(IndPX_Q(3,j)) % P( Nodes_X3(IndLX_Q(3,i)) )
+        Kij_X(i,j) &
+          = Kij_X(i,j) &
+              + wG5(qX1) * wG5(qX2) * wG5(qX3) &
+                  * P_X1(IndPX_Q(1,i)) % P( xG5(qX1) ) &
+                      * P_X2(IndPX_Q(2,i)) % P( xG5(qX2) ) &
+                          * P_X3(IndPX_Q(3,i)) % P( xG5(qX3) ) &
+                  * L_X1(IndLX_Q(1,j)) % P( xG5(qX1) ) &
+                      * L_X2(IndLX_Q(2,j)) % P( xG5(qX2) ) &
+                          * L_X3(IndLX_Q(3,j)) % P( xG5(qX3) )
 
       END DO
+      END DO
+      END DO
+
+      Pij_X(i,j) &
+        = P_X1(IndPX_Q(1,j)) % P( Nodes_X1(IndLX_Q(1,i)) ) &
+            * P_X2(IndPX_Q(2,j)) % P( Nodes_X2(IndLX_Q(2,i)) ) &
+                * P_X3(IndPX_Q(3,j)) % P( Nodes_X3(IndLX_Q(3,i)) )
+
+    END DO
     END DO
 
     ALLOCATE( K_ij(1:nDOF,1:nDOF), P_ij(1:nDOF,1:nDOF) )
 
     K_ij = 0.0_DP
     DO j = 1, nDOF
-      DO i = 1, nDOF
+    DO i = 1, nDOF
 
-        DO qX3 = 1, SIZE( xG5 )
-          DO qX2 = 1, SIZE( xG5 )
-            DO qX1 = 1, SIZE( xG5 )
-              DO qE  = 1, SIZE( xG5 )
+      DO qX3 = 1, SIZE( xG5 )
+      DO qX2 = 1, SIZE( xG5 )
+      DO qX1 = 1, SIZE( xG5 )
+        DO qE  = 1, SIZE( xG5 )
 
-                K_ij(i,j) &
-                  = K_ij(i,j) &
-                      + wG5(qE) * wG5(qX1) * wG5(qX2) * wG5(qX3) &
-                          * P_E(IndP_Q(0,i)) % P( xG5(qE) ) &
-                              * P_X1(IndP_Q(1,i)) % P( xG5(qX1) ) &
-                                  * P_X2(IndP_Q(2,i)) % P( xG5(qX2) ) &
-                                      * P_X3(IndP_Q(3,i)) % P( xG5(qX3) ) &
-                          * L_E(IndL_Q(0,j)) % P( xG5(qE) ) &
-                              * L_X1(IndL_Q(1,j)) % P( xG5(qX1) ) &
-                                  * L_X2(IndL_Q(2,j)) % P( xG5(qX2) ) &
-                                      * L_X3(IndL_Q(3,j)) % P( xG5(qX3) )
+          K_ij(i,j) &
+            = K_ij(i,j) &
+                + wG5(qE) * wG5(qX1) * wG5(qX2) * wG5(qX3) &
+                    * P_E(IndP_Q(0,i)) % P( xG5(qE) ) &
+                        * P_X1(IndP_Q(1,i)) % P( xG5(qX1) ) &
+                            * P_X2(IndP_Q(2,i)) % P( xG5(qX2) ) &
+                                * P_X3(IndP_Q(3,i)) % P( xG5(qX3) ) &
+                    * L_E(IndL_Q(0,j)) % P( xG5(qE) ) &
+                        * L_X1(IndL_Q(1,j)) % P( xG5(qX1) ) &
+                            * L_X2(IndL_Q(2,j)) % P( xG5(qX2) ) &
+                                * L_X3(IndL_Q(3,j)) % P( xG5(qX3) )
 
-              END DO
-            END DO
-          END DO
         END DO
-
-        P_ij(i,j) &
-          = P_E(IndP_Q(0,j)) % P( Nodes_E(IndL_Q(0,i)) ) &
-              * P_X1(IndP_Q(1,j)) % P( Nodes_X1(IndL_Q(1,i)) ) &
-                  * P_X2(IndP_Q(2,j)) % P( Nodes_X2(IndL_Q(2,i)) ) &
-                      * P_X3(IndP_Q(3,j)) % P( Nodes_X3(IndL_Q(3,i)) )
-
       END DO
+      END DO
+      END DO
+
+      P_ij(i,j) &
+        = P_E(IndP_Q(0,j)) % P( Nodes_E(IndL_Q(0,i)) ) &
+            * P_X1(IndP_Q(1,j)) % P( Nodes_X1(IndL_Q(1,i)) ) &
+                * P_X2(IndP_Q(2,j)) % P( Nodes_X2(IndL_Q(2,i)) ) &
+                    * P_X3(IndP_Q(3,j)) % P( Nodes_X3(IndL_Q(3,i)) )
+
+    END DO
     END DO
 
   END SUBROUTINE InitializePolynomialBasisMapping

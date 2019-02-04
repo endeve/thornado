@@ -1,4 +1,4 @@
-MODULE PositivityLimiterModule_Euler
+MODULE Euler_PositivityLimiterModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One
@@ -418,4 +418,4 @@ CONTAINS
   END SUBROUTINE SolveTheta_Bisection
 
 
-END MODULE PositivityLimiterModule_Euler
+END MODULE Euler_PositivityLimiterModule

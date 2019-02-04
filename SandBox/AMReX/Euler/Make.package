@@ -22,18 +22,6 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Euler
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/InputOutput
-VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/dgExperiments_Euler
-VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/StandingAccretionShock
-
-# In THORNADO_DIR/SandBox/dgExperiments_Euler
-
-f90EXE_sources += CharacteristicDecompositionModule.f90
-f90EXE_sources += EulerEquationsUtilitiesModule_Beta.f90
-f90EXE_sources += SlopeLimiterModule_Euler.f90
-
-# In THORNADO_DIR/Modules/SandBox/StandingAccretionShock
-
-f90EXE_sources += BoundaryConditionsModule_Beta.f90
 
 # In THORNADO_DIR/Modules/Numbers:
 
@@ -84,6 +72,10 @@ f90EXE_sources += FluidFieldsModule.f90
 # In THORNADO_DIR/Modules/Euler:
 
 f90EXE_sources += Euler_UtilitiesModule.f90
+f90EXE_sources += Euler_BoundaryConditionsModule.f90
+f90EXE_sources += Euler_SlopeLimiterModule.f90
+f90EXE_sources += Euler_CharacteristicDecompositionModule.f90
+f90EXE_sources += Euler_PositivityLimiterModule.f90
 
 # In THORNADO_DIR/Modules/InputOutput:
 

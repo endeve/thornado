@@ -286,7 +286,7 @@ CONTAINS
 
     IF( .NOT. UsePositivityLimiterTally ) RETURN
 
-    OPEN( NEWUNIT=FileUnit, FILE=TRIM( TallyFileName ), ACCESS='APPEND' )
+    OPEN( NEWUNIT=FileUnit, FILE=TRIM( TallyFileName ), POSITION='APPEND', ACTION='WRITE' )
 
     WRITE( FileUnit, '(3(ES14.5,x))' ) &
       Time / UnitsDisplay % TimeUnit, MinTheta_1, MinTheta_2

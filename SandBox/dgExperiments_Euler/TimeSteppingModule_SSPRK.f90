@@ -7,9 +7,9 @@ MODULE TimeSteppingModule_SSPRK
     nDOFX
   USE FluidFieldsModule, ONLY: &
     nCF
-  USE SlopeLimiterModule_Euler, ONLY: &
+  USE Euler_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_Euler
-  USE PositivityLimiterModule_Euler, ONLY: &
+  USE Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler
   
   IMPLICIT NONE

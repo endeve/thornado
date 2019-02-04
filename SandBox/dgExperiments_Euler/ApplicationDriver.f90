@@ -30,15 +30,15 @@ PROGRAM ApplicationDriver
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
-  USE SlopeLimiterModule_Euler, ONLY: &
+  USE Euler_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_Euler, &
     FinalizeSlopeLimiter_Euler, &
     ApplySlopeLimiter_Euler
-  USE PositivityLimiterModule_Euler, ONLY: &
+  USE Euler_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_Euler, &
     FinalizePositivityLimiter_Euler, &
     ApplyPositivityLimiter_Euler
-  USE EulerEquationsUtilitiesModule_Beta, ONLY: &
+  USE Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved, &
     ComputeTimeStep
   USE dgDiscretizationModule_Euler, ONLY: &

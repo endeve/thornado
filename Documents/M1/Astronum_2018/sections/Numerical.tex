@@ -85,10 +85,12 @@ This test is designed to test the realizability-preserving properties of the PD-
 Figure~\ref{fig:NeutrinoStationaryTestEOS} plots the thermal state and the opacities used (adopted from~\cite{Bruenn_1985}).  
 This test is computed on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200], x^{2}\in[0,200]\}$ with a grid of 128 elements in each direction, a reflecting inner boundary and a homogeneous out-flowing outer boundary.
 We use 10 energy groups to cover the range from 0~MeV to 300~MeV and initialize the neutrino number density to $\cJ = 10^{-99}$, flux density $\bcH=0$, and evolve until an approximate steady state is reached ($t=5$~ms).  
-For this test, we employed the CB closure.  
-We attempted to run this test with our PD-ARS schemes, SSP2332 from~\cite{pareschiRusso_2005}, IMEXRKCB2 proposed by Cavaglieri \& Bewley~\cite{cavaglieriBewley2015}, and the scheme proposed by McClarren et al.~\cite{mcclarren_etal_2008}.
-Only the PD-ARS schemes produce realizable moments and are able to evolve to a steady state.
-The other schemes crashed after a few time steps, when moments became non-realizable and the closure procedure failed.  
+For this test, we employed both CB and Minerbo closures.  
+We attempted to run this test with our PD-ARS schemes, SSP2332 from~\cite{pareschiRusso_2005}, IMEXRKCB2 proposed by Cavaglieri \& Bewley~\cite{cavaglieriBewley2015}, and the IMEX PC2 scheme proposed by McClarren et al.~\cite{mcclarren_etal_2008}.
+Only the PD-ARS schemes produce realizable moments and are able to evolve to a steady state with either CB or Minerbo closure.
+SSP2332 and IMEX PC2 failed after a few time step with neither CB or Minerbo closure because of unrealizable moment.
+Even though IMEXRKCB2 with Minerbo closure can run and reach a steady state in this test, its results are different from that of PD-ARS schemes with CB closure and there is no guarantee for its stability.
+%It's difficult to determine whether the results are in fact compromised by a particular correction step and, if so, in what way and to what degree.
 
 Results obtained with the IMEX PD-ARS schemes are plotted in Figure~\ref{fig:NeutrinoStationaryTestEvolve} for various times: $t=0.01$~ms (top panels), 0.35~ms (middle panels), and 5.0~ms (bottom panels).  
 In the left column we plot the solution in the $|\vect{\cH}|\cJ$-plane.  
@@ -96,9 +98,12 @@ In the middle column we show scatter plots of the number density $\cJ$ versus ra
 In the right column we plot the flux factor $|\vect{\cH}|/\cJ$ versus radius for the same neutrino energies as in the middle column. 
 In the left panels, each solution point in the domain is marked as a red dot in the $|\vect{\cH}|\cJ$-plane, and the realizable domain is shown as the light blue region.  
 The figures show that all the states in the simulation with the PD-ARS schemes are realizable.
-In the middle column, we can see how the neutrinos are generated near the core, stream out, and reach an equilibrium distribution over the phase space eventually.
-In the right column, we can see how the scattering reshapes the flux direction. 
-The oscillatory behavior, which is more obvious for high-energy groups, is caused by machine accuracy error.
+In the middle and right column, we can see how the neutrinos are generated near the core, stream out, and reach an equilibrium distribution over the phase space eventually.
+The oscillation in the right column is caused by numerical error.
+%can see how the scattering reshapes the flux direction. 
+%The oscillatory behavior, which is more obvious for high-energy groups, is due to numerical error.
+%by the oscillatory in $|\bcH|$ as a result of scattering: scattering changes neutrino's direction and brings randomness to $|\bcH|$.  
+%High-energy groups can gain more randomness due to machine accuracy error.
 
 \begin{figure}[h]
   \centering

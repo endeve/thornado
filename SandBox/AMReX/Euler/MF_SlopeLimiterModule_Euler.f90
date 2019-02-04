@@ -9,7 +9,7 @@ MODULE MF_SlopeLimiterModule_Euler
     nCF
   USE GeometryFieldsModule, ONLY: &
     nGF
-  USE SlopeLimiterModule_Euler, ONLY: &
+  USE Euler_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_Euler
 
   IMPLICIT NONE
