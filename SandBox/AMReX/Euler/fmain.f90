@@ -32,18 +32,22 @@ PROGRAM main
   USE InputOutputModuleAMReX,           ONLY: &
     WriteFieldsAMReX_PlotFile, &
     ReadCheckpointFile
+  USE TimeSteppingModule_SSPRK,         ONLY: &
+    InitializeFluid_SSPRK
 
   ! --- Local Modules ---
 
-  USE MF_GeometryModule,        ONLY: &
+  USE MF_GeometryModule,                ONLY: &
     MF_ComputeGeometryX
-  USE MF_InitializationModule,  ONLY: &
+  USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
-  USE MF_Euler_UtilitiesModule, ONLY: &
+  USE MF_Euler_UtilitiesModule,         ONLY: &
     MF_ComputeFromConserved
-  USE MF_SlopeLimiterModule_Euler, ONLY: &
+  USE MF_SlopeLimiterModule_Euler,      ONLY: &
     MF_ApplySlopeLimiter_Euler
-  USE FinalizationModule, ONLY: &
+  USE MF_PositivityLimiterModule_Euler, ONLY: &
+    MF_ApplyPositivityLimiter_Euler
+  USE FinalizationModule,               ONLY: &
     FinalizeProgram
 
   ! --- Checkpoint ---
@@ -64,22 +68,70 @@ PROGRAM main
   USE PolynomialBasisModule_Legendre, ONLY: &
     InitializePolynomialBasis_Legendre
 
+  ! --- For positivity limiter ---
+  USE Euler_PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter_Euler
+
   IMPLICIT NONE
 
-  INTEGER :: iLevel, iDim
+  INTEGER :: iLevel, iDim, nStages_SSPRK
   TYPE(amrex_box)                    :: BX
   TYPE(amrex_boxarray),  ALLOCATABLE :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE :: DM(:)
   TYPE(amrex_geometry),  ALLOCATABLE :: GEOM(:)
+  REAL(amrex_real)                   :: t
 
   ! --- Initialize AMReX ---
-
   CALL amrex_init()
 
   CALL amrex_amrcore_init() ! Gets refinement ratio
 
   ! --- Parse parameter file ---
   CALL MyAmrInit
+
+  BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
+
+  ALLOCATE( BA(0:nLevels) )
+  DO iLevel = 0, nLevels
+    CALL amrex_boxarray_build( BA(iLevel), BX )
+  END DO
+
+  DO iLevel = 0, nLevels
+    CALL BA(iLevel) % maxSize( MaxGridSize )
+  END DO
+
+  ALLOCATE( GEOM(0:nLevels) )
+  ALLOCATE( DM  (0:nLevels) )
+
+  DO iLevel = 0, nLevels
+    CALL amrex_geometry_build ( GEOM(iLevel), BX )
+    CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
+  END DO
+
+  ! -- (Almost) end of initializing AMReX ---
+
+  ! --- Initialize thornado ---
+
+  CALL InitializeProgramHeader &
+         ( ProgramName_Option = TRIM( ProgramName ), &
+           nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
+           xL_Option = xL, xR_Option = xR, bcX_Option = bcX )
+
+  DO iLevel = 0, nLevels
+    CALL amrex_multifab_build &
+      ( MF_uGF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
+    CALL amrex_multifab_build &
+      ( MF_uCF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+    CALL amrex_multifab_build &
+      ( MF_uPF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
+    CALL amrex_multifab_build &
+      ( MF_uAF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+  END DO
+
+  DO iLevel = 0, nLevels
+    CALL amrex_distromap_destroy( DM(iLevel) )
+    CALL amrex_boxarray_destroy ( BA(iLevel) )
+  END DO
 
   CoordinateSystem = TRIM( CoordSys )
 
@@ -102,16 +154,17 @@ PROGRAM main
 
   END IF
 
-  CALL InitializeProgramHeader &
-         ( ProgramName_Option = TRIM( ProgramName ), &
-           nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
-           xL_Option = xL, xR_Option = xR, bcX_Option = bcX )
-
   IF( amrex_parallel_ioprocessor() )THEN
 
     CALL DescribeProgramHeaderX
 
   END IF
+
+  DO iDim = 1, 3
+    CALL CreateMesh &
+           ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
+             amrex_problo(iDim), amrex_probhi(iDim) )
+  END DO
 
   CALL InitializePolynomialBasisX_Lagrange
   CALL InitializePolynomialBasisX_Legendre
@@ -119,8 +172,15 @@ PROGRAM main
   CALL InitializePolynomialBasis_Lagrange
   CALL InitializePolynomialBasis_Legendre
 
+  CALL InitializePolynomialBasisMapping &
+    ( [0.0d0], MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
+
   CALL InitializeReferenceElementX
   CALL InitializeReferenceElementX_Lagrange
+
+  DO iLevel = 0, nLevels
+    CALL MF_ComputeGeometryX( MF_uGF_new(iLevel) )
+  END DO
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &
@@ -142,54 +202,21 @@ PROGRAM main
            LimiterThresholdParameter_Option &
              = LimiterThresholdParameter )
 
-  BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
-
-  ALLOCATE( BA(0:nLevels) )
-  DO iLevel = 0, nLevels
-    CALL amrex_boxarray_build( BA(iLevel), BX )
-  END DO
+  CALL InitializePositivityLimiter_Euler &
+         ( Min_1_Option = 1.0d-12, &
+           Min_2_Option = 1.0d-12, &
+           UsePositivityLimiter_Option = .TRUE. )
 
   DO iLevel = 0, nLevels
-    CALL BA(iLevel) % maxSize( MaxGridSize )
-  END DO
-
-  ALLOCATE( GEOM(0:nLevels) )
-  ALLOCATE( DM  (0:nLevels) )
-
-  DO iLevel = 0, nLevels
-    CALL amrex_geometry_build ( GEOM(iLevel), BX )
-    CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
-  END DO
-
-  DO iLevel = 0, nLevels
-    CALL amrex_multifab_build &
-      ( MF_uGF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
-    CALL amrex_multifab_build &
-      ( MF_uCF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
-    CALL amrex_multifab_build &
-      ( MF_uPF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
-    CALL amrex_multifab_build &
-      ( MF_uAF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
-  END DO
-
-  DO iLevel = 0, nLevels
-    CALL amrex_distromap_destroy( DM(iLevel) )
-    CALL amrex_boxarray_destroy ( BA(iLevel) )
-  END DO
-
-  DO iDim = 1, 3
-    CALL CreateMesh &
-           ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
-             amrex_problo(iDim), amrex_probhi(iDim) )
-  END DO
-
-  CALL InitializePolynomialBasisMapping &
-    ( [0.0d0], MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
-
-  DO iLevel = 0, nLevels
-    CALL MF_ComputeGeometryX( MF_uGF_new(iLevel) )
     CALL MF_InitializeFields &
            ( TRIM( ProgramName ), MF_uGF_new(iLevel), MF_uCF_new(iLevel) )
+  END DO
+
+  ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
+  CALL MF_ApplySlopeLimiter_Euler( nLevels, MF_uGF_new, MF_uCF_new )
+  CALL MF_ApplyPositivityLimiter_Euler( nLevels, MF_uGF_new, MF_uCF_new )
+
+  DO iLevel = 0, nLevels
     CALL MF_ComputeFromConserved &
            ( MF_uGF_new(iLevel), MF_uCF_new(iLevel), &
              MF_uPF_new(iLevel), MF_uAF_new(iLevel) )
@@ -210,21 +237,26 @@ PROGRAM main
            MF_uPF_new % P, &
            MF_uAF_new % P )
 
-  ! --- START of evolution ---
+  nStages_SSPRK = 3
+  CALL InitializeFluid_SSPRK( nStages = nStages_SSPRK )
 
-  ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
-  CALL MF_ApplySlopeLimiter_Euler( nLevels, MF_uGF_new, MF_uCF_new )
-  DEALLOCATE( Shock )
-  StepNo(0) = StepNo(0) + 1
+  ! --- Evolve ---
+  t = 0.0_amrex_real
+
+  ! --- END of evolution ---
+
+  DO iLevel = 0, nLevels
+    CALL MF_ComputeFromConserved &
+           ( MF_uGF_new(iLevel), MF_uCF_new(iLevel), &
+             MF_uPF_new(iLevel), MF_uAF_new(iLevel) )
+  END DO
 
   CALL WriteFieldsAMReX_PlotFile &
-         ( 0.1_DP, nLevels, GEOM, StepNo, &
+         ( t, nLevels, GEOM, StepNo, &
            MF_uGF_Option = MF_uGF_new, &
            MF_uCF_Option = MF_uCF_new, &
            MF_uPF_Option = MF_uPF_new, &
            MF_uAF_Option = MF_uAF_new )
-
-  ! --- END of evolution ---
 
   CALL MyAmrFinalize
   CALL ReadCheckpointFile
@@ -233,6 +265,7 @@ PROGRAM main
 
   CALL FinalizeProgram( nLevels, GEOM, MeshX )
 
+  DEALLOCATE( Shock )
   DEALLOCATE( GEOM )
   DEALLOCATE( BA )
   DEALLOCATE( DM )

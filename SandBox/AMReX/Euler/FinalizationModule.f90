@@ -11,6 +11,10 @@ MODULE FinalizationModule
     FinalizeEquationOfState
   USE Euler_SlopeLimiterModule,         ONLY: &
     FinalizeSlopeLimiter_Euler
+  USE Euler_PositivityLimiterModule,    ONLY: &
+    FinalizePositivityLimiter_Euler
+  USE TimeSteppingModule_SSPRK,         ONLY: &
+    FinalizeFluid_SSPRK
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -37,6 +41,17 @@ CONTAINS
 
     INTEGER :: iLevel, iDim
 
+    CALL FinalizePositivityLimiter_Euler
+
+    CALL FinalizeSlopeLimiter_Euler
+
+    CALL FinalizeEquationOfState
+
+    CALL FinalizeFluid_SSPRK
+
+    CALL FinalizeReferenceElementX_Lagrange
+    CALL FinalizeReferenceElementX
+
     DO iDim = 1, 3
       CALL DestroyMesh( MeshX(iDim) )
     END DO
@@ -44,13 +59,6 @@ CONTAINS
     DO iLevel = 0, nLevels
       CALL amrex_geometry_destroy( GEOM(iLevel) )
     END DO
-
-    CALL FinalizeSlopeLimiter_Euler
-
-    CALL FinalizeEquationOfState
-
-    CALL FinalizeReferenceElementX_Lagrange
-    CALL FinalizeReferenceElementX
 
     CALL MyAmrFinalize
 
