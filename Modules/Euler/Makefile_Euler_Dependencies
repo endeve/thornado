@@ -48,3 +48,16 @@ Euler_BoundaryConditionsModule.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.f90
 
+Euler_dgDiscretizationModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  FluidFieldsModule.o \
+  Euler_BoundaryConditionsModule.o \
+  Euler_UtilitiesModule.o \
+  EquationOfStateModule.o \
+  Euler_dgDiscretizationModule.f90

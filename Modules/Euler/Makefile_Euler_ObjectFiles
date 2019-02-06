@@ -3,4 +3,5 @@ EULER = \
   Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule.o \
   Euler_SlopeLimiterModule.o \
-  Euler_PositivityLimiterModule.o
+  Euler_PositivityLimiterModule.o \
+  Euler_dgDiscretizationModule.o

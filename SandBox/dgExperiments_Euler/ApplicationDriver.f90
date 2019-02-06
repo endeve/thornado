@@ -41,7 +41,7 @@ PROGRAM ApplicationDriver
   USE Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved, &
     ComputeTimeStep
-  USE dgDiscretizationModule_Euler, ONLY: &
+  USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
   USE Euler_TallyModule, ONLY: &
     InitializeTally_Euler, &

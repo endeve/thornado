@@ -1,4 +1,4 @@
-MODULE dgDiscretizationModule_Euler
+MODULE Euler_dgDiscretizationModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Pi, TwoPi, &
@@ -1146,4 +1146,4 @@ CONTAINS
   END SUBROUTINE Timer_Add
 
 
-END MODULE dgDiscretizationModule_Euler
+END MODULE Euler_dgDiscretizationModule
