@@ -3,11 +3,11 @@ MODULE MF_SlopeLimiterModule_Euler
   USE amrex_base_module
   USE amrex_fort_module
 
-  USE ProgramHeaderModule, ONLY: &
+  USE ProgramHeaderModule,      ONLY: &
     swX, nDOFX
-  USE FluidFieldsModule, ONLY: &
+  USE FluidFieldsModule,        ONLY: &
     nCF
-  USE GeometryFieldsModule, ONLY: &
+  USE GeometryFieldsModule,     ONLY: &
     nGF
   USE Euler_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_Euler
@@ -33,8 +33,8 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
 
     INTEGER :: iLevel
 
@@ -49,21 +49,21 @@ CONTAINS
 
         BX = MFI % tilebox()
 
-        ALLOCATE( U(1:nDOFX,BX%lo(1)-swX(1):BX%hi(1)+swX(1), &
-                            BX%lo(2)-swX(2):BX%hi(2)+swX(2), &
-                            BX%lo(3)-swX(3):BX%hi(3)+swX(3),1:nCF) )
         ALLOCATE( G(1:nDOFX,BX%lo(1)-swX(1):BX%hi(1)+swX(1), &
                             BX%lo(2)-swX(2):BX%hi(2)+swX(2), &
                             BX%lo(3)-swX(3):BX%hi(3)+swX(3),1:nGF) )
+        ALLOCATE( U(1:nDOFX,BX%lo(1)-swX(1):BX%hi(1)+swX(1), &
+                            BX%lo(2)-swX(2):BX%hi(2)+swX(2), &
+                            BX%lo(3)-swX(3):BX%hi(3)+swX(3),1:nCF) )
 
-        CALL AMReX2thornado( nCF, BX, uCF, U )
         CALL AMReX2thornado( nGF, BX, uGF, G )
+        CALL AMReX2thornado( nCF, BX, uCF, U )
 
         CALL ApplySlopeLimiter_Euler &
                ( BX % lo, BX % hi, ( BX % lo ) - swX, ( BX % hi ) + swX, G, U )
 
-        CALL thornado2AMReX( nCF, BX, uCF, U )
         CALL thornado2AMReX( nGF, BX, uGF, G )
+        CALL thornado2AMReX( nCF, BX, uCF, U )
 
         DEALLOCATE( G )
         DEALLOCATE( U )
@@ -89,11 +89,12 @@ CONTAINS
     INTEGER :: iX1, iX2, iX3, iY1, iY2, iY3, iVar
 
     DO iX3 = BX % lo(3) - swX(3), BX % hi(3) + swX(3)
-      iY3 = iX3 + swX(3)
     DO iX2 = BX % lo(2) - swX(2), BX % hi(2) + swX(2)
-      iY2 = iX2 + swX(2)
     DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
+
       iY1 = iX1 + swX(1)
+      iY2 = iX2 + swX(2)
+      iY3 = iX3 + swX(3)
 
       DO iVar = 1, nVars
         Data_thornado(1:nDOFX,iX1,iX2,iX3,iVar) &
@@ -103,7 +104,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
 
   END SUBROUTINE AMReX2thornado
 
@@ -121,11 +121,12 @@ CONTAINS
     INTEGER :: iX1, iX2, iX3, iY1, iY2, iY3, iVar
 
     DO iX3 = BX % lo(3) - swX(3), BX % hi(3) + swX(3)
-      iY3 = iX3 + swX(3)
     DO iX2 = BX % lo(2) - swX(2), BX % hi(2) + swX(2)
-      iY2 = iX2 + swX(2)
     DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
+
       iY1 = iX1 + swX(1)
+      iY2 = iX2 + swX(2)
+      iY3 = iX3 + swX(3)
 
       DO iVar = 1, nVars
         Data_amrex(iY1,iY2,iY3,nDOFX*(iVar-1)+1:nDOFX*iVar) &
