@@ -1,7 +1,7 @@
 PROGRAM DeleptonizationWave
 
   USE KindModule, ONLY: &
-    DP, Third
+    DP, SqrtTiny, Third
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -84,11 +84,11 @@ PROGRAM DeleptonizationWave
 
   nNodes = 2
 
-  nX = [ 64, 64, 1 ]
-  xL = [ - 1.0d2, - 1.0d2, - 5.0d1 ] * Kilometer
+  nX = [ 48, 48, 1 ]
+  xL = [ - 0.0d2, - 0.0d2, - 5.0d1 ] * Kilometer
   xR = [ + 1.0d2, + 1.0d2, + 5.0d1 ] * Kilometer
 
-  nE = 10
+  nE = 16
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
 
@@ -98,9 +98,9 @@ PROGRAM DeleptonizationWave
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 01, 01, 01 ], &
+             = [ 01, 01, 00 ], &
            bcX_Option &
-             = [ 02, 02, 32 ], &
+             = [ 32, 32, 00 ], &
            xL_Option &
              = xL, &
            xR_Option &
@@ -112,7 +112,7 @@ PROGRAM DeleptonizationWave
            eR_Option &
              = eR, &
            ZoomE_Option &
-             = 1.332232099544440_DP, &
+             = 1.183081754893913_DP, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -173,9 +173,9 @@ PROGRAM DeleptonizationWave
   ! --- Initialize Positivity Limiter ---
 
   CALL InitializePositivityLimiter_TwoMoment &
-         ( Min_1_Option = 0.0d0, &
-           Max_1_Option = 1.0d0, &
-           Min_2_Option = 0.0d0, &
+         ( Min_1_Option = 0.0d0 + SqrtTiny, &
+           Max_1_Option = 1.0d0 - SqrtTiny, &
+           Min_2_Option = 0.0d0 + SqrtTiny, &
            UsePositivityLimiter_Option &
              = .TRUE., &
            UsePositivityLimiterTally_Option &
@@ -185,8 +185,19 @@ PROGRAM DeleptonizationWave
 
   CALL InitializeFields_DeleptonizationWave
 
+  ! --- Write Initial Condition Before Limiter ---
+
+  CALL WriteFieldsHDF &
+         ( Time = 0.0_DP, &
+           WriteGF_Option = .TRUE., &
+           WriteFF_Option = .TRUE., &
+           WriteRF_Option = .TRUE., &
+           WriteOP_Option = .TRUE. )
+
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
+
+  CALL TallyPositivityLimiter_TwoMoment( 0.0_DP )
 
   CALL ComputeNeutrinoOpacities &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
@@ -194,7 +205,7 @@ PROGRAM DeleptonizationWave
            uAF(:,:,:,:,iAF_T), &
            uAF(:,:,:,:,iAF_Ye) )
 
-  ! --- Write Initial Condition ---
+  ! --- Write Initial Condition After Limiter ---
 
   CALL WriteFieldsHDF &
          ( Time = 0.0_DP, &
@@ -208,8 +219,8 @@ PROGRAM DeleptonizationWave
   wTime = MPI_WTIME( )
 
   t       = 0.0_DP
-  t_end   = 5.0d-0 * Millisecond
-  dt_wrt  = 1.0d-1 * Millisecond
+  t_end   = 1.0d-0 * Millisecond
+  dt_wrt  = 2.0d-2 * Millisecond
   t_wrt   = dt_wrt
   wrt     = .FALSE.
   iCycleD = 1
