@@ -1,8 +1,15 @@
 MODULE MF_PositivityLimiterModule_Euler
 
-  USE amrex_base_module
-  USE amrex_fort_module
+  ! --- AMReX Modules ---
+  USE amrex_base_module, ONLY: &
+    amrex_multifab, &
+    amrex_box,      &
+    amrex_mfiter,   &
+    amrex_mfiter_build
+  USE amrex_fort_module, ONLY: &
+    amrex_real
 
+  ! --- thornado Modules ---
   USE ProgramHeaderModule,           ONLY: &
     swX, nDOFX
   USE FluidFieldsModule,             ONLY: &
@@ -11,6 +18,11 @@ MODULE MF_PositivityLimiterModule_Euler
     nGF
   USE Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler
+
+  ! --- Local Modules ---
+  USE MF_UtilitiesModule, ONLY: &
+    AMReX2thornado, &
+    thornado2AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -36,7 +48,9 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
 
-    INTEGER :: iLevel
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+
+    IF( nDOFX .EQ. 1 ) RETURN
 
     DO iLevel = 0, nLevels
 
@@ -49,21 +63,55 @@ CONTAINS
 
         BX = MFI % tilebox()
 
-        ALLOCATE( U(1:nDOFX,BX%lo(1)-swX(1):BX%hi(1)+swX(1), &
-                            BX%lo(2)-swX(2):BX%hi(2)+swX(2), &
-                            BX%lo(3)-swX(3):BX%hi(3)+swX(3),1:nCF) )
-        ALLOCATE( G(1:nDOFX,BX%lo(1)-swX(1):BX%hi(1)+swX(1), &
-                            BX%lo(2)-swX(2):BX%hi(2)+swX(2), &
-                            BX%lo(3)-swX(3):BX%hi(3)+swX(3),1:nGF) )
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
 
-        CALL AMReX2thornado( nCF, BX, uCF, U )
-        CALL AMReX2thornado( nGF, BX, uGF, G )
+        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3), 1:nGF ) )
+        ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3), 1:nCF ) )
+
+        CALL AMReX2thornado &
+               ( nGF, iX_B1, iX_E1, &
+                 uGF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
+                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF) )
+
+        CALL AMReX2thornado &
+               ( nCF, iX_B0, iX_E0, &
+                 uCF(      iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nDOFX*nCF), &
+                 U(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nCF) )
+
 
         CALL ApplyPositivityLimiter_Euler &
-               ( BX % lo, BX % hi, ( BX % lo ) - swX, ( BX % hi ) + swX, G, U )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, &
+                 G (1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nGF), &
+                 U (1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nCF) )
 
-        CALL thornado2AMReX( nCF, BX, uCF, U )
-        CALL thornado2AMReX( nGF, BX, uGF, G )
+
+        CALL thornado2AMReX &
+               ( nCF, iX_B0, iX_E0, &
+                 uCF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nCF), &
+                 U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nCF) )
 
         DEALLOCATE( G )
         DEALLOCATE( U )
@@ -72,71 +120,7 @@ CONTAINS
 
     END DO
 
-
   END SUBROUTINE MF_ApplyPositivityLimiter_Euler
-
-
-  SUBROUTINE AMReX2thornado( nVars, BX, Data_amrex, Data_thornado )
-
-    INTEGER,          INTENT(in)    :: nVars
-    TYPE(amrex_box),  INTENT(in)    :: BX
-    REAL(amrex_real), INTENT(in)    :: &
-      Data_amrex(BX%lo(1):,BX%lo(2):,BX%lo(3):,1:)
-    REAL(amrex_real), INTENT(inout) :: &
-      Data_thornado(1:nDOFX,BX%lo(1)-swX(1):BX%hi(1)+swX(1), &
-                            BX%lo(2)-swX(2):BX%hi(2)+swX(2), &
-                            BX%lo(3)-swX(3):BX%hi(3)+swX(3),1:nVars)
-    INTEGER :: iX1, iX2, iX3, iY1, iY2, iY3, iVar
-
-    DO iX3 = BX % lo(3) - swX(3), BX % hi(3) + swX(3)
-      iY3 = iX3 + swX(3)
-    DO iX2 = BX % lo(2) - swX(2), BX % hi(2) + swX(2)
-      iY2 = iX2 + swX(2)
-    DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
-      iY1 = iX1 + swX(1)
-
-      DO iVar = 1, nVars
-        Data_thornado(1:nDOFX,iX1,iX2,iX3,iVar) &
-          = Data_amrex(iY1,iY2,iY3,nDOFX*(iVar-1)+1:nDOFX*iVar)
-      END DO
-
-    END DO
-    END DO
-    END DO
-
-
-  END SUBROUTINE AMReX2thornado
-
-
-  SUBROUTINE thornado2AMReX( nVars, BX, Data_amrex, Data_thornado )
-
-    INTEGER,          INTENT(in)    :: nVars
-    TYPE(amrex_box),  INTENT(in)    :: BX
-    REAL(amrex_real), INTENT(inout) :: &
-      Data_amrex(BX%lo(1):,BX%lo(2):,BX%lo(3):,1:)
-    REAL(amrex_real), INTENT(in)    :: &
-      Data_thornado(1:nDOFX,BX%lo(1)-swX(1):BX%hi(1)+swX(1), &
-                            BX%lo(2)-swX(2):BX%hi(2)+swX(2), &
-                            BX%lo(3)-swX(3):BX%hi(3)+swX(3),1:nVars)
-    INTEGER :: iX1, iX2, iX3, iY1, iY2, iY3, iVar
-
-    DO iX3 = BX % lo(3) - swX(3), BX % hi(3) + swX(3)
-      iY3 = iX3 + swX(3)
-    DO iX2 = BX % lo(2) - swX(2), BX % hi(2) + swX(2)
-      iY2 = iX2 + swX(2)
-    DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
-      iY1 = iX1 + swX(1)
-
-      DO iVar = 1, nVars
-        Data_amrex(iY1,iY2,iY3,nDOFX*(iVar-1)+1:nDOFX*iVar) &
-          = Data_thornado(1:nDOFX,iX1,iX2,iX3,iVar)
-      END DO
-
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE thornado2AMReX
 
 
 END MODULE MF_PositivityLimiterModule_Euler

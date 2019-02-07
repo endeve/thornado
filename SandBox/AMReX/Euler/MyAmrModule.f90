@@ -18,6 +18,7 @@ MODULE MyAmrModule
 
   REAL(amrex_real)                    :: t_end, dt_wrt, Gamma_IDEAL
   INTEGER                             :: nNodes, nStages, nLevels
+  INTEGER                             :: iCycleW, iCycleChk
   INTEGER,          ALLOCATABLE       :: MaxGridSize(:), nX(:), swX(:), bcX(:)
   REAL(amrex_real), ALLOCATABLE       :: xL(:), xR(:), dt(:)
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName, CoordSys
@@ -56,6 +57,8 @@ CONTAINS
       CALL PP % get   ( 'Gamma',       Gamma_IDEAL )
       CALL PP % getarr( 'bcX',         bcX )
       CALL PP % getarr( 'swX',         swX )
+      CALL PP % get   ( 'iCycleW',     iCycleW )
+      CALL PP % get   ( 'iCycleChk',   iCycleChk )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters geometry.* ---

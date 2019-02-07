@@ -13,12 +13,12 @@ MODULE FinalizationModule
     FinalizeSlopeLimiter_Euler
   USE Euler_PositivityLimiterModule,    ONLY: &
     FinalizePositivityLimiter_Euler
-  USE TimeSteppingModule_SSPRK,         ONLY: &
-    FinalizeFluid_SSPRK
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     MyAmrFinalize
+  USE MF_TimeSteppingModule_SSPRK, ONLY: &
+    MF_FinalizeFluid_SSPRK
 
   ! --- AMReX Modules ---
   USE amrex_amr_module
@@ -47,7 +47,7 @@ CONTAINS
 
     CALL FinalizeEquationOfState
 
-    CALL FinalizeFluid_SSPRK
+    CALL MF_FinalizeFluid_SSPRK( nLevels )
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX

@@ -1,3 +1,4 @@
+f90EXE_sources += MF_UtilitiesModule.f90
 f90EXE_sources += fmain.f90
 f90EXE_sources += MF_InitializationModule.f90
 f90EXE_sources += MF_GeometryModule.f90
@@ -5,6 +6,8 @@ f90EXE_sources += MF_Euler_UtilitiesModule.f90
 F90EXE_sources += dgemv.F90 lsame.F90
 f90EXE_sources += MF_SlopeLimiterModule_Euler.f90
 f90EXE_sources += MF_PositivityLimiterModule_Euler.f90
+f90EXE_sources += MF_dgDiscretizationModule_Euler.f90
+f90EXE_sources += MF_TimeSteppingModule_SSPRK.f90
 f90EXE_sources += FinalizationModule.f90
 
 # Checkpoint
@@ -82,6 +85,7 @@ f90EXE_sources += Euler_BoundaryConditionsModule.f90
 f90EXE_sources += Euler_SlopeLimiterModule.f90
 f90EXE_sources += Euler_CharacteristicDecompositionModule.f90
 f90EXE_sources += Euler_PositivityLimiterModule.f90
+f90EXE_sources += Euler_dgDiscretizationModule.f90
 
 # In THORNADO_DIR/Modules/InputOutput:
 
