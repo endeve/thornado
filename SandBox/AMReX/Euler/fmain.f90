@@ -75,10 +75,6 @@ PROGRAM main
   USE Euler_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_Euler
 
-  ! --- For evolving problems with forward-Euler time-stepping ---
-  USE MF_UtilitiesModule, ONLY: &
-    LinComb
-
   IMPLICIT NONE
 
   INTEGER :: iLevel, iDim
@@ -87,9 +83,6 @@ PROGRAM main
   TYPE(amrex_distromap), ALLOCATABLE :: DM(:)
   TYPE(amrex_geometry),  ALLOCATABLE :: GEOM(:)
   REAL(amrex_real)                   :: t
-
-  ! --- For forward-Euler time-evolution ---
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_duCF(:)
 
   ! --- Initialize AMReX ---
   CALL amrex_init()
@@ -127,7 +120,6 @@ PROGRAM main
            nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
            xL_Option = xL, xR_Option = xR, bcX_Option = bcX )
 
-  ALLOCATE( MF_duCF(0:nLevels) )
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
            ( MF_uGF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
@@ -137,9 +129,6 @@ PROGRAM main
            ( MF_uPF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
     CALL amrex_multifab_build &
            ( MF_uAF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
-
-    CALL amrex_multifab_build &
-           ( MF_duCF(iLevel),    BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
   END DO
 
 
@@ -240,7 +229,7 @@ PROGRAM main
   END DO
 
   WRITE(*,*)
-  WRITE(*,'(A,ES8.1E3)') 't = ', 0.0_amrex_real
+  WRITE(*,'(A,ES13.6E3)') 't = ', 0.0_amrex_real
   CALL WriteFieldsAMReX_PlotFile &
          ( 0.0_amrex_real, nLevels, GEOM, StepNo, &
            MF_uGF_Option = MF_uGF_new, &
@@ -257,11 +246,7 @@ PROGRAM main
     t      = t + dt(0)
     StepNo = StepNo + 1
 
-    WRITE(*,'(A,ES8.1E3)') 't = ', t
-
-    CALL MF_ComputeIncrement_Fluid( nLevels, MF_uGF_new, MF_uCF_new, MF_duCF )
-
-    CALL LinComb( nLevels, 1.0_amrex_real, MF_uCF_new, dt(0), MF_duCF )
+    WRITE(*,'(A,ES13.6E3)') 't = ', t
 
 !!$    DO iLevel = 0, nLevels
 !!$      CALL MF_uCF_new(iLevel) &
@@ -270,9 +255,9 @@ PROGRAM main
 !!$                        MF_uCF_new(iLevel) % nComp(), 0 )
 !!$    END DO
 
-!!$    CALL MF_UpdateFluid_SSPRK &
-!!$           ( nLevels, [t], dt, MF_uGF_new, MF_uCF_new, &
-!!$             MF_ComputeIncrement_Fluid )
+    CALL MF_UpdateFluid_SSPRK &
+           ( nLevels, t, dt, MF_uGF_new, MF_uCF_new, &
+             MF_ComputeIncrement_Fluid )
 
     IF( MOD( StepNo(0), iCycleW ) .EQ. 0 )THEN
 

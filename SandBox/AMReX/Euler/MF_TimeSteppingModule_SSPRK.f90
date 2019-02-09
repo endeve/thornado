@@ -29,6 +29,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     MF_ApplySlopeLimiter_Euler
   USE MF_PositivityLimiterModule_Euler, ONLY: &
     MF_ApplyPositivityLimiter_Euler
+  USE MF_UtilitiesModule,               ONLY: &
+    LinComb
 
 
   IMPLICIT NONE
@@ -39,18 +41,19 @@ MODULE MF_TimeSteppingModule_SSPRK
   REAL(amrex_real), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
   REAL(amrex_real), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
 
-  TYPE(amrex_multifab), DIMENSION(:), ALLOCATABLE :: MF_U_SSPRK
-  TYPE(amrex_multifab), DIMENSION(:), ALLOCATABLE :: MF_D_SSPRK
+  TYPE(amrex_multifab), DIMENSION(:), ALLOCATABLE :: MF_U
+  TYPE(amrex_multifab), DIMENSION(:), ALLOCATABLE :: MF_D
 
   PUBLIC :: MF_InitializeFluid_SSPRK
   PUBLIC :: MF_UpdateFluid_SSPRK
   PUBLIC :: MF_FinalizeFluid_SSPRK
 
   INTERFACE
-    SUBROUTINE MF_FluidIncrement( nLevels, MF_uGF, MF_uCF, MF_duCF )
+    SUBROUTINE MF_FluidIncrement &
+      ( nLevels, MF_uGF, MF_uCF, MF_duCF, iS )
       USE amrex_base_module, ONLY: &
         amrex_multifab
-      INTEGER,              INTENT(in)    :: nLevels
+      INTEGER,              INTENT(in)    :: nLevels, iS
       TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels)
       TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels)
       TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels)
@@ -86,16 +89,16 @@ CONTAINS
     WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_SSPRK(1:nStages)
     WRITE(*,*)
 
-    ALLOCATE( MF_U_SSPRK(0:nLevels) )
-    ALLOCATE( MF_D_SSPRK(0:nLevels) )
+    ALLOCATE( MF_U(0:nLevels) )
+    ALLOCATE( MF_D(0:nLevels) )
 
     BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
     DO iLevel = 0, nLevels
       CALL amrex_multifab_build &
-        ( MF_U_SSPRK(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+        ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
       CALL amrex_multifab_build &
-        ( MF_D_SSPRK(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, 0 )
+        ( MF_D(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF * nStages, swX(1) )
     END DO
 
   END SUBROUTINE MF_InitializeFluid_SSPRK
@@ -109,11 +112,11 @@ CONTAINS
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
 
     DO iLevel = 0, nLevels
-      CALL amrex_multifab_destroy( MF_U_SSPRK(iLevel) )
-      CALL amrex_multifab_destroy( MF_D_SSPRK(iLevel) )
+      CALL amrex_multifab_destroy( MF_U(iLevel) )
+      CALL amrex_multifab_destroy( MF_D(iLevel) )
     END DO
-    DEALLOCATE( MF_U_SSPRK )
-    DEALLOCATE( MF_D_SSPRK )
+    DEALLOCATE( MF_U )
+    DEALLOCATE( MF_D )
 
   END SUBROUTINE MF_FinalizeFluid_SSPRK
 
@@ -175,7 +178,7 @@ CONTAINS
               ( nLevels, t, dt, MF_uGF, MF_uCF, MF_ComputeIncrement_Fluid )
 
     INTEGER,              INTENT(in)    :: nLevels
-    REAL(amrex_real),     INTENT(in)    :: t(0:nLevels), dt(0:nLevels)
+    REAL(amrex_real),     INTENT(in)    :: t, dt(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
     PROCEDURE(MF_FluidIncrement)        :: MF_ComputeIncrement_Fluid
@@ -184,46 +187,33 @@ CONTAINS
     INTEGER :: iS, jS
 
     DO iLevel = 0, nLevels
-      CALL MF_U_SSPRK(iLevel) % setval( 0.0_amrex_real )
-      CALL MF_D_SSPRK(iLevel) % setval( 0.0_amrex_real )
+      CALL MF_U(iLevel) % setval( 0.0_amrex_real )
+      CALL MF_D(iLevel) % setval( 0.0_amrex_real )
     END DO
 
     DO iS = 1, nStages_SSPRK
 
       DO iLevel = 0, nLevels
-        CALL MF_U_SSPRK(iLevel) &
+        CALL MF_U(iLevel) &
                % COPY( MF_uCF(iLevel), 1, 1, MF_uCF(iLevel) % nComp(), swX(1) )
       END DO
 
       DO jS = 1, iS - 1
 
-        IF( a_SSPRK(iS,jS) .NE. 0.0_amrex_real )THEN
-
-          DO iLevel = 0, nLevels
-            CALL MF_U_SSPRK(iLevel) &
-                   % LinComb( 1.0_amrex_real, &
-                              MF_U_SSPRK(iLevel), &
-                              1, &
-                              dt(iLevel) * a_SSPRK(iS,jS), &
-                              MF_D_SSPRK(iLevel), &
-                              1, &
-                              1, &
-                              MF_U_SSPRK(iLevel) % nComp(), &
-                              0 )
-          END DO
-
-        END IF
+        IF( a_SSPRK(iS,jS) .NE. 0.0_amrex_real ) &
+          CALL LinComb( nLevels, 1.0_amrex_real, MF_U, &
+                                 dt * a_SSPRK(iS,jS), MF_D, jS )
 
       END DO
 
       IF( ANY( a_SSPRK(:,iS) .NE. 0.0_amrex_real ) &
           .OR. ( w_SSPRK(iS) .NE. 0.0_amrex_real ) )THEN
 
-        CALL MF_ApplySlopeLimiter_Euler     ( nLevels, MF_uGF, MF_uCF )
-        CALL MF_ApplyPositivityLimiter_Euler( nLevels, MF_uGF, MF_uCF )
+        CALL MF_ApplySlopeLimiter_Euler     ( nLevels, MF_uGF, MF_U )
+        CALL MF_ApplyPositivityLimiter_Euler( nLevels, MF_uGF, MF_U )
 
         CALL MF_ComputeIncrement_Fluid &
-            ( nLevels, MF_uGF, MF_U_SSPRK, MF_D_SSPRK )
+            ( nLevels, MF_uGF, MF_U, MF_D, iS )
 
       END IF
 
@@ -231,22 +221,9 @@ CONTAINS
 
     DO iS = 1, nStages_SSPRK
 
-      IF( w_SSPRK(iS) .NE. 0.0_amrex_real )THEN
-
-        DO iLevel = 0, nLevels
-          CALL MF_U_SSPRK(iLevel) &
-                 % LinComb( 1.0_amrex_real, &
-                            MF_U_SSPRK(iLevel), &
-                            1, &
-                            dt(iLevel) * w_SSPRK(iS), &
-                            MF_D_SSPRK(iLevel), &
-                            1, &
-                            1, &
-                            MF_U_SSPRK(iLevel) % nComp(), &
-                            0 )
-        END DO
-
-      END IF
+      IF( w_SSPRK(iS) .NE. 0.0_amrex_real ) &
+        CALL LinComb( nLevels, 1.0_amrex_real, MF_uCF, &
+                               dt * w_SSPRK(iS), MF_D, iS )
 
     END DO
 

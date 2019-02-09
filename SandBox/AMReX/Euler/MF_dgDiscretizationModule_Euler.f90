@@ -33,9 +33,10 @@ MODULE  MF_dgDiscretizationModule_Euler
 CONTAINS
 
 
-  SUBROUTINE MF_ComputeIncrement_Fluid( nLevels, MF_uGF, MF_uCF, MF_duCF )
+  SUBROUTINE MF_ComputeIncrement_Fluid &
+    ( nLevels, MF_uGF, MF_uCF, MF_duCF, iS )
  
-    INTEGER,              INTENT(in)    :: nLevels
+    INTEGER,              INTENT(in)    :: nLevels, iS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels)
@@ -49,7 +50,7 @@ CONTAINS
 
     REAL(amrex_real), ALLOCATABLE :: G (:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: U (:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: dU(:,:,:,:,:)
+    REAL(amrex_real), ALLOCATABLE :: dU(:,:,:,:,:,:)
 
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -74,13 +75,14 @@ CONTAINS
 
         ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3), 1:nGF ) )
+                             iX_B1(3):iX_E1(3),1:nGF) )
         ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3), 1:nCF ) )
+                             iX_B1(3):iX_E1(3),1:nCF) )
         ALLOCATE( dU(1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3), 1:nCF ) )
+                             iX_B1(3):iX_E1(3),1:nCF, &
+                             iS) )
 
         CALL AMReX2thornado &
                ( nGF, iX_B1, iX_E1, &
@@ -100,6 +102,7 @@ CONTAINS
                            iX_B0(2):iX_E0(2), &
                            iX_B0(3):iX_E0(3),1:nCF) )
 
+
         CALL ComputeIncrement_Euler_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
@@ -110,16 +113,20 @@ CONTAINS
                             iX_B1(3):iX_E1(3),1:nCF), &
                  dU(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nCF) )
+                            iX_B0(3):iX_E0(3),1:nCF, &
+                            iS) )
+
 
         CALL thornado2AMReX &
                ( nCF, iX_B0, iX_E0, &
                  duCF(      iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nDOFX*nCF), &
+                            iX_B0(3):iX_E0(3), &
+                            (iS-1)*nDOFX*nCF+1:iS*nDOFX*nCF), &
                  dU(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nCF) )
+                            iX_B0(3):iX_E0(3),1:nCF, &
+                            iS) )
 
         DEALLOCATE( G  )
         DEALLOCATE( U  )

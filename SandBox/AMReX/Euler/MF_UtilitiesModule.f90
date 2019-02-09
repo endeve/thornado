@@ -30,7 +30,7 @@ CONTAINS
     INTEGER,          INTENT(in)  :: nVars
     INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3)
     REAL(amrex_real), INTENT(in)  :: &
-      Data_amrex(iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
     REAL(amrex_real), INTENT(out) :: &
       Data_thornado(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
 
@@ -57,7 +57,7 @@ CONTAINS
     INTEGER,          INTENT(in)  :: nVars
     INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3)
     REAL(amrex_real), INTENT(out) :: &
-      Data_amrex(iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
     REAL(amrex_real), INTENT(in)  :: &
       Data_thornado(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
 
@@ -79,12 +79,12 @@ CONTAINS
   END SUBROUTINE thornado2AMReX
 
 
-  SUBROUTINE LinComb( nLevels, alpha, MF_U, beta, MF_D )
+  SUBROUTINE LinComb( nLevels, alpha, MF_U, beta, MF_D, iS )
 
-    INTEGER,              INTENT(in)    :: nLevels
+    INTEGER,              INTENT(in)    :: nLevels, iS
     TYPE(amrex_multifab), INTENT(inout) :: MF_U(0:nLevels)
     TYPE(amrex_multifab), INTENT(in)    :: MF_D(0:nLevels)
-    REAL(amrex_real),     INTENT(in)    :: alpha, beta
+    REAL(amrex_real),     INTENT(in)    :: alpha, beta(0:nLevels)
 
     INTEGER                               :: iX1, iX2, iX3, iLevel
     INTEGER                               :: lo(4), hi(4)
@@ -93,10 +93,14 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: U(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: D(:,:,:,:)
 
+    INTEGER :: nComp, iComp
+
     DO iLevel = 0, nLevels
       CALL amrex_mfiter_build( MFI, MF_U(iLevel), tiling = .TRUE. )
 
       DO WHILE( MFI % next() )
+
+        nComp = MF_U(iLevel) % nComp()
 
         U => MF_U(iLevel) % DataPtr( MFI )
         D => MF_D(iLevel) % DataPtr( MFI )
@@ -105,14 +109,20 @@ CONTAINS
 
         lo = LBOUND( U ); hi = UBOUND( U )
 
-        DO iX3 = BX % lo(3), BX % hi(3)
-        DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1)
+        DO iComp = 1, nComp
 
-          U(iX1,iX2,iX3,:) = alpha * U(iX1,iX2,iX3,:) + beta * D(iX1,iX2,iX3,:)
+          DO iX3 = BX % lo(3), BX % hi(3)
+          DO iX2 = BX % lo(2), BX % hi(2)
+          DO iX1 = BX % lo(1), BX % hi(1)
 
-        END DO
-        END DO
+            U(iX1,iX2,iX3,iComp) = alpha * U(iX1,iX2,iX3,iComp) &
+                                   + beta(iLevel) &
+                                   * D(iX1,iX2,iX3,(iS-1)*nComp+iComp)
+
+          END DO
+          END DO
+          END DO
+
         END DO
 
       END DO
