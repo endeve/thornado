@@ -16,9 +16,9 @@ MODULE MyAmrModule
 
   IMPLICIT NONE
 
-  REAL(amrex_real)                    :: t_end, dt_wrt, Gamma_IDEAL
+  REAL(amrex_real)                    :: t_end, dt_wrt, Gamma_IDEAL, CFL
   INTEGER                             :: nNodes, nStages, nLevels
-  INTEGER                             :: iCycleW, iCycleChk
+  INTEGER                             :: iCycleD, iCycleW, iCycleChk
   INTEGER,          ALLOCATABLE       :: MaxGridSize(:), nX(:), swX(:), bcX(:)
   REAL(amrex_real), ALLOCATABLE       :: xL(:), xR(:), dt(:)
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName, CoordSys
@@ -53,10 +53,12 @@ CONTAINS
       CALL PP % get   ( 't_end',       t_end )
       CALL PP % get   ( 'nNodes',      nNodes )
       CALL PP % get   ( 'nStages',     nStages )
+      CALL PP % get   ( 'CFL',         CFL )
       CALL PP % get   ( 'ProgramName', ProgramName )
       CALL PP % get   ( 'Gamma',       Gamma_IDEAL )
       CALL PP % getarr( 'bcX',         bcX )
       CALL PP % getarr( 'swX',         swX )
+      CALL PP % get   ( 'iCycleD',     iCycleD )
       CALL PP % get   ( 'iCycleW',     iCycleW )
       CALL PP % get   ( 'iCycleChk',   iCycleChk )
     CALL amrex_parmparse_destroy( PP )

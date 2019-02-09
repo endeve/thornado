@@ -15,7 +15,8 @@ MODULE MF_Euler_UtilitiesModule
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iCF_Ne, &
     nAF, iAF_P, iAF_Cs
   USE Euler_UtilitiesModule, ONLY: &
-    ComputePrimitive
+    ComputePrimitive, &
+    ComputeTimeStep
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -24,6 +25,7 @@ MODULE MF_Euler_UtilitiesModule
   PRIVATE
 
   PUBLIC :: MF_ComputeFromConserved
+  PUBLIC :: MF_ComputeTimeStep
 
 CONTAINS
 
@@ -123,6 +125,83 @@ CONTAINS
     CALL amrex_mfiter_destroy( MFI )
 
   END SUBROUTINE MF_ComputeFromConserved
+
+
+  SUBROUTINE MF_ComputeTimeStep( nLevels, MF_uGF, MF_uCF, CFL, TimeStep )
+
+    INTEGER,              INTENT(in)  :: &
+      nLevels
+    TYPE(amrex_multifab), INTENT(in)  :: &
+      MF_uGF(0:nlevels), &
+      MF_uCF(0:nLevels)
+    REAL(amrex_real),     INTENT(in)  :: &
+      CFL
+    REAL(amrex_real),     INTENT(out) :: &
+      TimeStep(0:nLevels)
+
+    INTEGER            :: iLevel
+    INTEGER            :: iX1, iX2, iX3, iX_B(3), iX_E(3)
+    INTEGER            :: lo_G(4), hi_G(4)
+    INTEGER            :: lo_C(4), hi_C(4)
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(amrex_real), ALLOCATABLE         :: G(:,:,:,:,:)
+    REAL(amrex_real), ALLOCATABLE         :: U(:,:,:,:,:)
+
+    DO iLevel = 0, nLevels
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF ); hi_G = UBOUND( uGF )
+        lo_C = LBOUND( uCF ); hi_C = UBOUND( uCF )
+
+        iX_B = BX % lo
+        iX_E = BX % hi
+
+        ALLOCATE( G(1:nDOFX,iX_B(1):iX_E(1), &
+                            iX_B(2):iX_E(2), &
+                            iX_B(3):iX_E(3),1:nGF) )
+        ALLOCATE( U(1:nDOFX,iX_B(1):iX_E(1), &
+                            iX_B(2):iX_E(2), &
+                            iX_B(3):iX_E(3),1:nCF) )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+           G(1:nDOFX,iX1,iX2,iX3,1:nGF) &
+             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+           U(1:nDOFX,iX1,iX2,iX3,1:nCF) &
+             = RESHAPE( uCF(iX1,iX2,iX3,lo_C(4):hi_C(4)), [ nDOFX, nCF ] )
+
+        END DO
+        END DO
+        END DO
+
+
+        CALL ComputeTimeStep &
+               ( iX_B, iX_E, &
+                 G(:,iX_B(1):iX_E(1),iX_B(2):iX_E(2),iX_B(3):iX_E(3),:), &
+                 U(:,iX_B(1):iX_E(1),iX_B(2):iX_E(2),iX_B(3):iX_E(3),:), &
+                 CFL, TimeStep(iLevel) )
+
+        DEALLOCATE( G )
+        DEALLOCATE( U )
+
+      END DO
+
+    END DO
+
+  END SUBROUTINE MF_ComputeTimeStep
 
 
 END MODULE MF_Euler_UtilitiesModule

@@ -40,7 +40,8 @@ PROGRAM main
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
   USE MF_Euler_UtilitiesModule,         ONLY: &
-    MF_ComputeFromConserved
+    MF_ComputeFromConserved, &
+    MF_ComputeTimeStep
   USE MF_SlopeLimiterModule_Euler,      ONLY: &
     MF_ApplySlopeLimiter_Euler
   USE MF_PositivityLimiterModule_Euler, ONLY: &
@@ -239,14 +240,17 @@ PROGRAM main
 
   ! --- Evolve ---
   t  = 0.0_amrex_real
-  dt = 1.0e-3_amrex_real
 
   DO WHILE( t .LT. t_end )
 
-    t      = t + dt(0)
     StepNo = StepNo + 1
 
-    WRITE(*,'(A,ES13.6E3)') 't = ', t
+    CALL MF_ComputeTimeStep( nLevels, MF_uGF_new, MF_uCF_new, CFL, dt )
+    t = t + dt(0)
+
+    IF( MOD( StepNo(0), iCycleD ) .EQ. 0 ) &
+      WRITE(*,'(A5,A,I6.6,A,ES13.6E3,A,ES13.6E3)') &
+        '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
 
 !!$    DO iLevel = 0, nLevels
 !!$      CALL MF_uCF_new(iLevel) &
