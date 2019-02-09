@@ -63,7 +63,7 @@ MODULE Euler_dgDiscretizationModule
 
   INCLUDE 'mpif.h'
 
-  PUBLIC :: ComputeIncrement_Euler_DG_Explicit
+  PUBLIC :: Euler_ComputeIncrement_DG_Explicit
 
   LOGICAL, PARAMETER :: DisplayTimers = .FALSE.
   REAL(DP) :: Timer_RHS
@@ -79,7 +79,7 @@ MODULE Euler_dgDiscretizationModule
 CONTAINS
 
 
-  SUBROUTINE ComputeIncrement_Euler_DG_Explicit &
+  SUBROUTINE Euler_ComputeIncrement_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     INTEGER, INTENT(in)     :: &
@@ -136,7 +136,7 @@ CONTAINS
     CALL ComputeIncrement_Gravity &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-  END SUBROUTINE ComputeIncrement_Euler_DG_Explicit
+  END SUBROUTINE Euler_ComputeIncrement_DG_Explicit
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &

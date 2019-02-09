@@ -8,9 +8,9 @@ MODULE TimeSteppingModule_SSPRK
   USE FluidFieldsModule, ONLY: &
     nCF
   USE Euler_SlopeLimiterModule, ONLY: &
-    ApplySlopeLimiter_Euler
+    Euler_ApplySlopeLimiter
   USE Euler_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_Euler
+    Euler_ApplyPositivityLimiter
   
   IMPLICIT NONE
   PRIVATE
@@ -204,12 +204,12 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-        CALL ApplySlopeLimiter_Euler &
+        CALL Euler_ApplySlopeLimiter &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-        CALL ApplyPositivityLimiter_Euler &
+        CALL Euler_ApplyPositivityLimiter &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
@@ -247,12 +247,12 @@ CONTAINS
 
     END DO
 
-    CALL ApplySlopeLimiter_Euler &
+    CALL Euler_ApplySlopeLimiter &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-    CALL ApplyPositivityLimiter_Euler &
+    CALL Euler_ApplyPositivityLimiter &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )

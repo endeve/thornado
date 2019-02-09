@@ -1,4 +1,4 @@
-MODULE  MF_dgDiscretizationModule_Euler
+MODULE  MF_Euler_dgDiscretizationModule
 
   ! --- AMReX Modules ---
   USE amrex_base_module, ONLY: &
@@ -18,7 +18,7 @@ MODULE  MF_dgDiscretizationModule_Euler
   USE GeometryFieldsModule,     ONLY: &
     nGF
   USE Euler_dgDiscretizationModule, ONLY: &
-    ComputeIncrement_Euler_DG_Explicit
+    Euler_ComputeIncrement_DG_Explicit
 
   ! --- Local Modules ---
   USE MF_UtilitiesModule, ONLY: &
@@ -28,13 +28,13 @@ MODULE  MF_dgDiscretizationModule_Euler
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_ComputeIncrement_Fluid
+  PUBLIC :: MF_Euler_ComputeIncrement
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_ComputeIncrement_Fluid &
+  SUBROUTINE MF_Euler_ComputeIncrement &
     ( nLevels, GEOM, MF_uGF, MF_uCF, MF_duCF, iS )
  
     INTEGER,              INTENT(in)    :: nLevels, iS
@@ -112,7 +112,7 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nCF) )
 
 
-        CALL ComputeIncrement_Euler_DG_Explicit &
+        CALL Euler_ComputeIncrement_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
@@ -145,7 +145,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_ComputeIncrement_Fluid
+  END SUBROUTINE MF_Euler_ComputeIncrement
 
 
-END MODULE MF_dgDiscretizationModule_Euler
+END MODULE MF_Euler_dgDiscretizationModule

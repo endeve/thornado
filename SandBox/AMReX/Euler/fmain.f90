@@ -42,12 +42,12 @@ PROGRAM main
   USE MF_Euler_UtilitiesModule,         ONLY: &
     MF_ComputeFromConserved, &
     MF_ComputeTimeStep
-  USE MF_SlopeLimiterModule_Euler,      ONLY: &
-    MF_ApplySlopeLimiter_Euler
-  USE MF_PositivityLimiterModule_Euler, ONLY: &
-    MF_ApplyPositivityLimiter_Euler
-  USE MF_dgDiscretizationModule_Euler,  ONLY: &
-    MF_ComputeIncrement_Fluid
+  USE MF_Euler_SlopeLimiterModule,      ONLY: &
+    MF_Euler_ApplySlopeLimiter
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    MF_Euler_ApplyPositivityLimiter
+  USE MF_Euler_dgDiscretizationModule,  ONLY: &
+    MF_Euler_ComputeIncrement
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
     MF_InitializeFluid_SSPRK, &
     MF_UpdateFluid_SSPRK
@@ -62,7 +62,7 @@ PROGRAM main
 
   ! --- For slope limiter ---
   USE Euler_SlopeLimiterModule,       ONLY: &
-    InitializeSlopeLimiter_Euler
+    Euler_InitializeSlopeLimiter
   USE FluidFieldsModule,              ONLY: &
     Shock
   USE PolynomialBasisMappingModule,   ONLY: &
@@ -74,7 +74,7 @@ PROGRAM main
 
   ! --- For positivity limiter ---
   USE Euler_PositivityLimiterModule, ONLY: &
-    InitializePositivityLimiter_Euler
+    Euler_InitializePositivityLimiter
 
   IMPLICIT NONE
 
@@ -187,7 +187,7 @@ PROGRAM main
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma_IDEAL )
 
-  CALL InitializeSlopeLimiter_Euler &
+  CALL Euler_InitializeSlopeLimiter &
          ( BetaTVD_Option &
              = BetaTVD, &
            BetaTVB_Option &
@@ -203,7 +203,7 @@ PROGRAM main
            LimiterThresholdParameter_Option &
              = LimiterThresholdParameter )
 
-  CALL InitializePositivityLimiter_Euler &
+  CALL Euler_InitializePositivityLimiter &
          ( Min_1_Option = 1.0d-12, &
            Min_2_Option = 1.0d-12, &
            UsePositivityLimiter_Option = .TRUE. )
@@ -214,8 +214,8 @@ PROGRAM main
   END DO
 
   ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
-  CALL MF_ApplySlopeLimiter_Euler     ( nLevels, MF_uGF_new, MF_uCF_new, GEOM )
-  CALL MF_ApplyPositivityLimiter_Euler( nLevels, MF_uGF_new, MF_uCF_new )
+  CALL MF_Euler_ApplySlopeLimiter     ( nLevels, MF_uGF_new, MF_uCF_new, GEOM )
+  CALL MF_Euler_ApplyPositivityLimiter( nLevels, MF_uGF_new, MF_uCF_new )
 
   DO iLevel = 0, nLevels
     CALL MF_ComputeFromConserved &
@@ -262,7 +262,7 @@ PROGRAM main
 
     CALL MF_UpdateFluid_SSPRK &
            ( nLevels, t, dt, MF_uGF_new, MF_uCF_new, &
-             GEOM, MF_ComputeIncrement_Fluid )
+             GEOM, MF_Euler_ComputeIncrement )
 
     IF( MOD( StepNo(0), iCycleW ) .EQ. 0 )THEN
 

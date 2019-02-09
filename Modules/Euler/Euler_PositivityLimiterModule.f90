@@ -26,9 +26,9 @@ MODULE Euler_PositivityLimiterModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializePositivityLimiter_Euler
-  PUBLIC :: FinalizePositivityLimiter_Euler
-  PUBLIC :: ApplyPositivityLimiter_Euler
+  PUBLIC :: Euler_InitializePositivityLimiter
+  PUBLIC :: Euler_FinalizePositivityLimiter
+  PUBLIC :: Euler_ApplyPositivityLimiter
 
   LOGICAL               :: UsePositivityLimiter
   INTEGER, PARAMETER    :: nPS = 7
@@ -40,7 +40,7 @@ MODULE Euler_PositivityLimiterModule
 CONTAINS
 
 
-  SUBROUTINE InitializePositivityLimiter_Euler &
+  SUBROUTINE Euler_InitializePositivityLimiter &
     ( Min_1_Option, Min_2_Option, UsePositivityLimiter_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
@@ -62,7 +62,8 @@ CONTAINS
       UsePositivityLimiter = UsePositivityLimiter_Option
 
     WRITE(*,*)
-    WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'InitializePositivityLimiter'
+    WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'Euler_InitializePositivityLimiter'
+    WRITE(*,'(A2,A)') '',    '-------------------------------------------'
     WRITE(*,*)
     WRITE(*,'(A6,A,L1)') &
       '', 'Use Positivity Limiter: ', UsePositivityLimiter 
@@ -94,17 +95,17 @@ CONTAINS
 
     ALLOCATE( U_PP(nPT,nCF) )
 
-  END SUBROUTINE InitializePositivityLimiter_Euler
+  END SUBROUTINE Euler_InitializePositivityLimiter
 
 
-  SUBROUTINE FinalizePositivityLimiter_Euler
+  SUBROUTINE Euler_FinalizePositivityLimiter
 
     DEALLOCATE( U_PP )
 
-  END SUBROUTINE FinalizePositivityLimiter_Euler
+  END SUBROUTINE Euler_FinalizePositivityLimiter
 
 
-  SUBROUTINE ApplyPositivityLimiter_Euler &
+  SUBROUTINE Euler_ApplyPositivityLimiter &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER,  INTENT(in)    :: &
@@ -223,7 +224,7 @@ CONTAINS
       END DO
     END DO
 
-  END SUBROUTINE ApplyPositivityLimiter_Euler
+  END SUBROUTINE Euler_ApplyPositivityLimiter
 
 
   SUBROUTINE ComputePointValues_Fluid( U_q, U_p )

@@ -25,10 +25,10 @@ MODULE MF_TimeSteppingModule_SSPRK
     nGF
 
   ! --- Local Modules ---
-  USE MF_SlopeLimiterModule_Euler,      ONLY: &
-    MF_ApplySlopeLimiter_Euler
-  USE MF_PositivityLimiterModule_Euler, ONLY: &
-    MF_ApplyPositivityLimiter_Euler
+  USE MF_Euler_SlopeLimiterModule,      ONLY: &
+    MF_Euler_ApplySlopeLimiter
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    MF_Euler_ApplyPositivityLimiter
   USE MF_UtilitiesModule,               ONLY: &
     LinComb
 
@@ -49,17 +49,17 @@ MODULE MF_TimeSteppingModule_SSPRK
   PUBLIC :: MF_FinalizeFluid_SSPRK
 
   INTERFACE
-    SUBROUTINE MF_FluidIncrement &
+    SUBROUTINE MF_Euler_Increment &
       ( nLevels, GEOM, MF_uGF, MF_uCF, MF_duCF, iS )
       USE amrex_base_module, ONLY: &
-        amrex_multifab, &
-        amrex_geometry
+        amrex_geometry, &
+        amrex_multifab
       INTEGER,              INTENT(in)    :: nLevels, iS
       TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels)
       TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels)
       TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels)
       TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels)
-    END SUBROUTINE MF_FluidIncrement
+    END SUBROUTINE MF_Euler_Increment
   END INTERFACE
 
 CONTAINS
@@ -178,14 +178,14 @@ CONTAINS
 
   SUBROUTINE MF_UpdateFluid_SSPRK &
               ( nLevels, t, dt, MF_uGF, MF_uCF, &
-                GEOM, MF_ComputeIncrement_Fluid )
+                GEOM, MF_Euler_ComputeIncrement )
 
     INTEGER,              INTENT(in)    :: nLevels
     REAL(amrex_real),     INTENT(in)    :: t, dt (0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
     TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels)
-    PROCEDURE(MF_FluidIncrement)        :: MF_ComputeIncrement_Fluid
+    PROCEDURE(MF_Euler_Increment)       :: MF_Euler_ComputeIncrement
 
     INTEGER :: iLevel
     INTEGER :: iS, jS
@@ -213,10 +213,10 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. 0.0_amrex_real ) &
           .OR. ( w_SSPRK(iS) .NE. 0.0_amrex_real ) )THEN
 
-        CALL MF_ApplySlopeLimiter_Euler     ( nLevels, MF_uGF, MF_U, GEOM )
-        CALL MF_ApplyPositivityLimiter_Euler( nLevels, MF_uGF, MF_U )
+        CALL MF_Euler_ApplySlopeLimiter     ( nLevels, MF_uGF, MF_U, GEOM )
+        CALL MF_Euler_ApplyPositivityLimiter( nLevels, MF_uGF, MF_U )
 
-        CALL MF_ComputeIncrement_Fluid &
+        CALL MF_Euler_ComputeIncrement &
             ( nLevels, GEOM, MF_uGF, MF_U, MF_D, iS )
 
       END IF
@@ -231,8 +231,8 @@ CONTAINS
 
     END DO
 
-    CALL MF_ApplySlopeLimiter_Euler     ( nLevels, MF_uGF, MF_uCF, GEOM )
-    CALL MF_ApplyPositivityLimiter_Euler( nLevels, MF_uGF, MF_uCF )
+    CALL MF_Euler_ApplySlopeLimiter     ( nLevels, MF_uGF, MF_uCF, GEOM )
+    CALL MF_Euler_ApplyPositivityLimiter( nLevels, MF_uGF, MF_uCF )
 
   END SUBROUTINE MF_UpdateFluid_SSPRK
 

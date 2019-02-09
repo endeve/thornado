@@ -10,9 +10,9 @@ MODULE FinalizationModule
   USE EquationOfStateModule,            ONLY: &
     FinalizeEquationOfState
   USE Euler_SlopeLimiterModule,         ONLY: &
-    FinalizeSlopeLimiter_Euler
+    Euler_FinalizeSlopeLimiter
   USE Euler_PositivityLimiterModule,    ONLY: &
-    FinalizePositivityLimiter_Euler
+    Euler_FinalizePositivityLimiter
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -41,9 +41,9 @@ CONTAINS
 
     INTEGER :: iLevel, iDim
 
-    CALL FinalizePositivityLimiter_Euler
+    CALL Euler_FinalizePositivityLimiter
 
-    CALL FinalizeSlopeLimiter_Euler
+    CALL Euler_FinalizeSlopeLimiter
 
     CALL FinalizeEquationOfState
 

@@ -1,4 +1,4 @@
-MODULE MF_PositivityLimiterModule_Euler
+MODULE MF_Euler_PositivityLimiterModule
 
   ! --- AMReX Modules ---
   USE amrex_base_module, ONLY: &
@@ -17,7 +17,7 @@ MODULE MF_PositivityLimiterModule_Euler
   USE GeometryFieldsModule,          ONLY: &
     nGF
   USE Euler_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_Euler
+    Euler_ApplyPositivityLimiter
 
   ! --- Local Modules ---
   USE MF_UtilitiesModule, ONLY: &
@@ -27,13 +27,13 @@ MODULE MF_PositivityLimiterModule_Euler
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_ApplyPositivityLimiter_Euler
+  PUBLIC :: MF_Euler_ApplyPositivityLimiter
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_ApplyPositivityLimiter_Euler( nLevels, MF_uGF, MF_uCF )
+  SUBROUTINE MF_Euler_ApplyPositivityLimiter( nLevels, MF_uGF, MF_uCF )
 
     INTEGER,              INTENT(in)    :: nLevels
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels)
@@ -94,7 +94,7 @@ CONTAINS
                            iX_B0(3):iX_E0(3),1:nCF) )
 
 
-        CALL ApplyPositivityLimiter_Euler &
+        CALL Euler_ApplyPositivityLimiter &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
@@ -120,7 +120,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_ApplyPositivityLimiter_Euler
+  END SUBROUTINE MF_Euler_ApplyPositivityLimiter
 
 
-END MODULE MF_PositivityLimiterModule_Euler
+END MODULE MF_Euler_PositivityLimiterModule
