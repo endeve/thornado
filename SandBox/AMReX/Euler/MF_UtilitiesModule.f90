@@ -11,7 +11,7 @@ MODULE MF_UtilitiesModule
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, swX
 
   IMPLICIT NONE
   PRIVATE
@@ -153,12 +153,12 @@ CONTAINS
 
         lo = LBOUND( U ); hi = UBOUND( U )
 
-        DO iX3 = BX % lo(3), BX % hi(3)
-        DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1)
+        DO iX3 = BX % lo(3) - swX(3), BX % hi(3) + swX(3)
+        DO iX2 = BX % lo(2) - swX(2), BX % hi(2) + swX(2)
+        DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
 
           WRITE(*,'(A,3I3.2,ES10.1E3)') &
-            'iX1, iX2, iX3, Data: ',iX1, iX2, iX3, u(iX1,iX2,iX3,iComp)
+            'iX1, iX2, iX3, Data: ',iX1, iX2, iX3, U(iX1,iX2,iX3,iComp)
 
         END DO
         END DO

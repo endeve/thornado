@@ -3,7 +3,7 @@ MODULE Euler_SlopeLimiterModule
   USE KindModule, ONLY: &
     DP, Zero, One, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX, nNodes, nNodesX
+    nDOFX, nDimsX, nNodes, nNodesX, UseAMReX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX, &
     NodesX1, WeightsX1, &
@@ -194,8 +194,9 @@ CONTAINS
 
     IF( .NOT. UseSlopeLimiter ) RETURN
 
-    CALL ApplyBoundaryConditions_Fluid &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+    IF( .NOT. UseAMReX ) &
+      CALL ApplyBoundaryConditions_Fluid &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL DetectTroubledCells &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )

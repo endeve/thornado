@@ -4,7 +4,7 @@ MODULE Euler_dgDiscretizationModule
     DP, Zero, Half, One, Pi, TwoPi, &
     SqrtTiny
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, UseAMReX
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
@@ -96,8 +96,9 @@ CONTAINS
 
     dU = Zero
 
-    CALL ApplyBoundaryConditions_Fluid &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+    IF( .NOT. UseAMReX ) &
+      CALL ApplyBoundaryConditions_Fluid &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL ComputeIncrement_Divergence_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )

@@ -119,7 +119,8 @@ PROGRAM main
   CALL InitializeProgramHeader &
          ( ProgramName_Option = TRIM( ProgramName ), &
            nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
-           xL_Option = xL, xR_Option = xR, bcX_Option = bcX )
+           xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
+           UseAMReX_Option = .TRUE. )
 
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
@@ -213,7 +214,7 @@ PROGRAM main
   END DO
 
   ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
-  CALL MF_ApplySlopeLimiter_Euler     ( nLevels, MF_uGF_new, MF_uCF_new )
+  CALL MF_ApplySlopeLimiter_Euler     ( nLevels, MF_uGF_new, MF_uCF_new, GEOM )
   CALL MF_ApplyPositivityLimiter_Euler( nLevels, MF_uGF_new, MF_uCF_new )
 
   DO iLevel = 0, nLevels
@@ -261,7 +262,7 @@ PROGRAM main
 
     CALL MF_UpdateFluid_SSPRK &
            ( nLevels, t, dt, MF_uGF_new, MF_uCF_new, &
-             MF_ComputeIncrement_Fluid )
+             GEOM, MF_ComputeIncrement_Fluid )
 
     IF( MOD( StepNo(0), iCycleW ) .EQ. 0 )THEN
 

@@ -4,6 +4,7 @@ MODULE MF_SlopeLimiterModule_Euler
   USE amrex_base_module, ONLY: &
     amrex_multifab, &
     amrex_box,      &
+    amrex_geometry, &
     amrex_mfiter,   &
     amrex_mfiter_build
   USE amrex_fort_module, ONLY: &
@@ -33,11 +34,12 @@ MODULE MF_SlopeLimiterModule_Euler
 CONTAINS
 
 
-  SUBROUTINE MF_ApplySlopeLimiter_Euler( nLevels, MF_uGF, MF_uCF )
+  SUBROUTINE MF_ApplySlopeLimiter_Euler( nLevels, MF_uGF, MF_uCF, GEOM )
 
     INTEGER,              INTENT(in)    :: nLevels
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -53,6 +55,12 @@ CONTAINS
     IF( nDOFX .EQ. 1 ) RETURN
 
     DO iLevel = 0, nLevels
+
+      ! --- Apply boundary conditions to geometry and conserved fluid ---
+      !     Do we need to apply boundary conditions to geometry?
+      !     If not, when is it applied? ---
+      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -70,10 +78,10 @@ CONTAINS
 
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3), 1:nGF ) )
+                            iX_B1(3):iX_E1(3),1:nGF ) )
         ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3), 1:nCF ) )
+                            iX_B1(3):iX_E1(3),1:nCF ) )
 
         CALL AMReX2thornado &
                ( nGF, iX_B1, iX_E1, &
@@ -85,13 +93,13 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nGF) )
 
         CALL AMReX2thornado &
-               ( nCF, iX_B0, iX_E0, &
-                 uCF(      iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nDOFX*nCF), &
-                 U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nCF) )
+               ( nCF, iX_B1, iX_E1, &
+                 uCF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nCF), &
+                 U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nCF) )
 
 
         CALL ApplySlopeLimiter_Euler &

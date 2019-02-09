@@ -28,6 +28,7 @@ MODULE MyAmrModule
   LOGICAL          :: UseSlopeLimiter
   LOGICAL          :: UseCharacteristicLimiting
   LOGICAL          :: UseTroubledCellIndicator
+  LOGICAL          :: UseAMReX
   REAL(amrex_real) :: SlopeTolerance
   REAL(amrex_real) :: BetaTVD, BetaTVB
   REAL(amrex_real) :: LimiterThresholdParameter
