@@ -7,7 +7,6 @@ MODULE ProgramHeaderModule
 
   CHARACTER(LEN=32), PUBLIC :: ProgramName
   INTEGER,           PUBLIC :: nNodes
-  LOGICAL,           PUBLIC :: UseAMReX
 
   ! --- Position Space ---
 
@@ -74,8 +73,7 @@ CONTAINS
   SUBROUTINE InitializeProgramHeader &
     ( ProgramName_Option, nNodes_Option, nX_Option, swX_Option,  &
       bcX_Option, xL_Option, xR_Option, zoomX_Option, nE_Option, &
-      swE_Option, bcE_Option, eL_Option, eR_Option, zoomE_Option, &
-      UseAMReX_Option )
+      swE_Option, bcE_Option, eL_Option, eR_Option, zoomE_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: ProgramName_Option
     INTEGER,          INTENT(in), OPTIONAL :: nNodes_Option
@@ -91,7 +89,6 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: eL_Option
     REAL(DP),         INTENT(in), OPTIONAL :: eR_Option
     REAL(DP),         INTENT(in), OPTIONAL :: zoomE_Option
-    LOGICAL,          INTENT(in), OPTIONAL :: UseAMReX_Option
 
     IF( PRESENT( ProgramName_Option ) )THEN
       ProgramName = TRIM( ProgramName_Option )
@@ -132,11 +129,6 @@ CONTAINS
 
     CALL InitializeProgramHeaderZ
 
-    IF( PRESENT( UseAMReX_Option ) )THEN
-      UseAMReX = UseAMReX_Option
-    ELSE
-      UseAMReX = .FALSE.
-    END IF
 
   END SUBROUTINE InitializeProgramHeader
 
