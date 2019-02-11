@@ -30,7 +30,7 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     MF_Euler_ApplyPositivityLimiter
   USE MF_UtilitiesModule,               ONLY: &
-    LinComb
+    LinComb, ShowVariableFromMultiFab
 
 
   IMPLICIT NONE
@@ -41,8 +41,10 @@ MODULE MF_TimeSteppingModule_SSPRK
   REAL(amrex_real), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
   REAL(amrex_real), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
 
-  TYPE(amrex_multifab), DIMENSION(:), ALLOCATABLE :: MF_U
-  TYPE(amrex_multifab), DIMENSION(:), ALLOCATABLE :: MF_D
+  TYPE(amrex_multifab), DIMENSION(:),   ALLOCATABLE :: MF_U
+  TYPE(amrex_multifab), DIMENSION(:,:), ALLOCATABLE :: MF_D
+
+  LOGICAL :: Verbose
 
   PUBLIC :: MF_InitializeFluid_SSPRK
   PUBLIC :: MF_UpdateFluid_SSPRK
@@ -50,11 +52,11 @@ MODULE MF_TimeSteppingModule_SSPRK
 
   INTERFACE
     SUBROUTINE MF_Euler_Increment &
-      ( nLevels, GEOM, MF_uGF, MF_uCF, MF_duCF, iS )
+      ( nLevels, GEOM, MF_uGF, MF_uCF, MF_duCF )
       USE amrex_base_module, ONLY: &
         amrex_geometry, &
         amrex_multifab
-      INTEGER,              INTENT(in)    :: nLevels, iS
+      INTEGER,              INTENT(in)    :: nLevels
       TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels)
       TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels)
       TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels)
@@ -65,42 +67,55 @@ MODULE MF_TimeSteppingModule_SSPRK
 CONTAINS
 
 
-  SUBROUTINE MF_InitializeFluid_SSPRK( nLevels, nStages, BA, DM )
+  SUBROUTINE MF_InitializeFluid_SSPRK &
+    ( nLevels, nStages, BA, DM, Verbose_Option )
 
-    INTEGER,               INTENT(in) :: nLevels
-    INTEGER,               INTENT(in) :: nStages
-    TYPE(amrex_boxarray),  INTENT(in) :: BA(0:nLevels)
-    TYPE(amrex_distromap), INTENT(in) :: DM(0:nLevels)
+    INTEGER,               INTENT(in)           :: nLevels
+    INTEGER,               INTENT(in)           :: nStages
+    TYPE(amrex_boxarray),  INTENT(in)           :: BA(0:nLevels)
+    TYPE(amrex_distromap), INTENT(in)           :: DM(0:nLevels)
+    LOGICAL,               INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER         :: i, iLevel
     TYPE(amrex_box) :: BX
+
+
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+       Verbose = .TRUE.
+    END IF
 
     nStages_SSPRK = nStages
 
     CALL InitializeSSPRK( nStages )
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A)') '', 'Butcher Table:'
-    WRITE(*,'(A5,A)') '', '--------------'
-    DO i = 1, nStages
-      WRITE(*,'(A5,4ES14.4E3)') '', c_SSPRK(i), a_SSPRK(i,1:nStages)
-    END DO
-    WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_SSPRK(1:nStages)
-    WRITE(*,*)
+      WRITE(*,*)
+      WRITE(*,'(A5,A)') '', 'Butcher Table:'
+      WRITE(*,'(A5,A)') '', '--------------'
+      DO i = 1, nStages
+        WRITE(*,'(A5,4ES14.4E3)') '', c_SSPRK(i), a_SSPRK(i,1:nStages)
+      END DO
+      WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_SSPRK(1:nStages)
+      WRITE(*,*)
+    END IF
 
     ALLOCATE( MF_U(0:nLevels) )
-    ALLOCATE( MF_D(0:nLevels) )
+    ALLOCATE( MF_D(0:nLevels,1:nStages) )
 
     BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
     DO iLevel = 0, nLevels
       CALL amrex_multifab_build &
         ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
-      CALL amrex_multifab_build &
-        ( MF_D(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF * nStages, swX(1) )
+      DO i = 1, nStages
+        CALL amrex_multifab_build &
+               ( MF_D(iLevel,i), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+      END DO
     END DO
 
   END SUBROUTINE MF_InitializeFluid_SSPRK
@@ -109,13 +124,15 @@ CONTAINS
   SUBROUTINE MF_FinalizeFluid_SSPRK( nLevels )
 
     INTEGER, INTENT(in) :: nLevels
-    INTEGER :: iLevel
+    INTEGER :: iLevel, iS
 
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
 
     DO iLevel = 0, nLevels
       CALL amrex_multifab_destroy( MF_U(iLevel) )
-      CALL amrex_multifab_destroy( MF_D(iLevel) )
+      DO iS = 1, nStages_SSPRK
+        CALL amrex_multifab_destroy( MF_D(iLevel,iS) )
+      END DO
     END DO
     DEALLOCATE( MF_U )
     DEALLOCATE( MF_D )
@@ -181,7 +198,7 @@ CONTAINS
                 GEOM, MF_Euler_ComputeIncrement )
 
     INTEGER,              INTENT(in)    :: nLevels
-    REAL(amrex_real),     INTENT(in)    :: t, dt (0:nLevels)
+    REAL(amrex_real),     INTENT(in)    :: t(0:nLevels), dt(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
     TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels)
@@ -192,7 +209,9 @@ CONTAINS
 
     DO iLevel = 0, nLevels
       CALL MF_U(iLevel) % setval( 0.0_amrex_real )
-      CALL MF_D(iLevel) % setval( 0.0_amrex_real )
+      DO iS = 1, nStages_SSPRK
+        CALL MF_D(iLevel,iS) % setval( 0.0_amrex_real )
+      END DO
     END DO
 
     DO iS = 1, nStages_SSPRK
@@ -204,9 +223,10 @@ CONTAINS
 
       DO jS = 1, iS - 1
 
-        IF( a_SSPRK(iS,jS) .NE. 0.0_amrex_real ) &
+        IF( a_SSPRK(iS,jS) .NE. 0.0_amrex_real )THEN
           CALL LinComb( nLevels, 1.0_amrex_real, MF_U, &
-                                 dt * a_SSPRK(iS,jS), MF_D, jS )
+                                 dt * a_SSPRK(iS,jS), MF_D(:,jS) )
+        END IF
 
       END DO
 
@@ -217,7 +237,7 @@ CONTAINS
         CALL MF_Euler_ApplyPositivityLimiter( nLevels, MF_uGF, MF_U )
 
         CALL MF_Euler_ComputeIncrement &
-            ( nLevels, GEOM, MF_uGF, MF_U, MF_D, iS )
+               ( nLevels, GEOM, MF_uGF, MF_U, MF_D(:,iS) )
 
       END IF
 
@@ -227,7 +247,7 @@ CONTAINS
 
       IF( w_SSPRK(iS) .NE. 0.0_amrex_real ) &
         CALL LinComb( nLevels, 1.0_amrex_real, MF_uCF, &
-                               dt * w_SSPRK(iS), MF_D, iS )
+                               dt * w_SSPRK(iS), MF_D(:,iS) )
 
     END DO
 

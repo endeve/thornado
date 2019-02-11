@@ -31,6 +31,7 @@ MODULE Euler_PositivityLimiterModule
   PUBLIC :: Euler_ApplyPositivityLimiter
 
   LOGICAL               :: UsePositivityLimiter
+  LOGICAL               :: Verbose
   INTEGER, PARAMETER    :: nPS = 7
   INTEGER               :: nPP(nPS)
   INTEGER               :: nPT
@@ -41,11 +42,12 @@ CONTAINS
 
 
   SUBROUTINE Euler_InitializePositivityLimiter &
-    ( Min_1_Option, Min_2_Option, UsePositivityLimiter_Option )
+    ( Min_1_Option, Min_2_Option, UsePositivityLimiter_Option, Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_2_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: i
 
@@ -61,15 +63,23 @@ CONTAINS
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
       UsePositivityLimiter = UsePositivityLimiter_Option
 
-    WRITE(*,*)
-    WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'Euler_InitializePositivityLimiter'
-    WRITE(*,'(A2,A)') '',    '-------------------------------------------'
-    WRITE(*,*)
-    WRITE(*,'(A6,A,L1)') &
-      '', 'Use Positivity Limiter: ', UsePositivityLimiter 
-    WRITE(*,*)
-    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
-    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'Euler_InitializePositivityLimiter'
+      WRITE(*,'(A2,A)') '',    '-------------------------------------------'
+      WRITE(*,*)
+      WRITE(*,'(A6,A,L1)') &
+        '', 'Use Positivity Limiter: ', UsePositivityLimiter
+      WRITE(*,*)
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
+    END IF
 
     ! --- Compute Number of Positive Points per Set ---
 

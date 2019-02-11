@@ -83,7 +83,6 @@ PROGRAM main
   TYPE(amrex_boxarray),  ALLOCATABLE :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE :: DM(:)
   TYPE(amrex_geometry),  ALLOCATABLE :: GEOM(:)
-  REAL(amrex_real)                   :: t
 
   ! --- Initialize AMReX ---
   CALL amrex_init()
@@ -119,8 +118,7 @@ PROGRAM main
   CALL InitializeProgramHeader &
          ( ProgramName_Option = TRIM( ProgramName ), &
            nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
-           xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
-           UseAMReX_Option = .TRUE. )
+           xL_Option = xL, xR_Option = xR, bcX_Option = bcX )
 
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
@@ -132,7 +130,6 @@ PROGRAM main
     CALL amrex_multifab_build &
            ( MF_uAF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
   END DO
-
 
   CoordinateSystem = TRIM( CoordSys )
 
@@ -153,10 +150,6 @@ PROGRAM main
     WRITE(*,'(A4,A24,3I7.6)')    '', 'bcX         =', bcX
     WRITE(*,'(A4,A24,3I7.6)')    '', 'MaxGridSize =', MaxGridSize
 
-  END IF
-
-  IF( amrex_parallel_ioprocessor() )THEN
-
     CALL DescribeProgramHeaderX
 
   END IF
@@ -174,7 +167,7 @@ PROGRAM main
   CALL InitializePolynomialBasis_Legendre
 
   CALL InitializePolynomialBasisMapping &
-    ( [0.0d0], MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
+         ( [0.0d0], MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
 
   CALL InitializeReferenceElementX
   CALL InitializeReferenceElementX_Lagrange
@@ -201,12 +194,15 @@ PROGRAM main
            UseTroubledCellIndicator_Option &
              = UseTroubledCellIndicator, &
            LimiterThresholdParameter_Option &
-             = LimiterThresholdParameter )
+             = LimiterThresholdParameter, &
+           Verbose_Option &
+             = amrex_parallel_ioprocessor() )
 
   CALL Euler_InitializePositivityLimiter &
          ( Min_1_Option = 1.0d-12, &
            Min_2_Option = 1.0d-12, &
-           UsePositivityLimiter_Option = .TRUE. )
+           UsePositivityLimiter_Option = .TRUE., &
+           Verbose_Option = amrex_parallel_ioprocessor() )
 
   DO iLevel = 0, nLevels
     CALL MF_InitializeFields &
@@ -214,8 +210,10 @@ PROGRAM main
   END DO
 
   ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
-  CALL MF_Euler_ApplySlopeLimiter     ( nLevels, MF_uGF_new, MF_uCF_new, GEOM )
-  CALL MF_Euler_ApplyPositivityLimiter( nLevels, MF_uGF_new, MF_uCF_new )
+  CALL MF_Euler_ApplySlopeLimiter &
+         ( nLevels, MF_uGF_new, MF_uCF_new, GEOM )
+  CALL MF_Euler_ApplyPositivityLimiter &
+         ( nLevels, MF_uGF_new, MF_uCF_new )
 
   DO iLevel = 0, nLevels
     CALL MF_ComputeFromConserved &
@@ -223,15 +221,20 @@ PROGRAM main
              MF_uPF_new(iLevel), MF_uAF_new(iLevel) )
   END DO
 
-  CALL MF_InitializeFluid_SSPRK( nLevels, nStages, BA, DM )
+  CALL MF_InitializeFluid_SSPRK &
+         ( nLevels, nStages, BA, DM, &
+           Verbose_Option = amrex_parallel_ioprocessor() )
 
   DO iLevel = 0, nLevels
     CALL amrex_distromap_destroy( DM(iLevel) )
     CALL amrex_boxarray_destroy ( BA(iLevel) )
   END DO
 
-  WRITE(*,*)
-  WRITE(*,'(A,ES13.6E3)') 't = ', 0.0_amrex_real
+  IF( amrex_parallel_ioprocessor() )THEN
+    WRITE(*,*)
+    WRITE(*,'(A,ES13.6E3)') 't = ', 0.0_amrex_real
+  END IF
+
   CALL WriteFieldsAMReX_PlotFile &
          ( 0.0_amrex_real, nLevels, GEOM, StepNo, &
            MF_uGF_Option = MF_uGF_new, &
@@ -242,16 +245,32 @@ PROGRAM main
   ! --- Evolve ---
   t  = 0.0_amrex_real
 
-  DO WHILE( t .LT. t_end )
+  DO WHILE( ALL( t .LT. t_end ) )
+
+!!$    IF( LEN_TRIM( Restart ) .NE. 0 )THEN
+!!$      DO iLevel = 0, nLevels
+!!$        StepNo(iLevel) = StepNo_vec(iLevel)
+!!$        dt    (iLevel) = dt_vec    (iLevel)
+!!$!        t              = t_vec     (iLevel)
+!!$      END DO
+!!$      CALL WriteFieldsAMReX_PlotFile &
+!!$             ( t, nLevels, GEOM, StepNo, &
+!!$               MF_uGF_Option = MF_uGF_new, &
+!!$               MF_uCF_Option = MF_uCF_new, &
+!!$               MF_uPF_Option = MF_uPF_new, &
+!!$               MF_uAF_Option = MF_uAF_new )
+!!$     END IF
 
     StepNo = StepNo + 1
 
     CALL MF_ComputeTimeStep( nLevels, MF_uGF_new, MF_uCF_new, CFL, dt )
-    t = t + dt(0)
+    t = t + dt
 
-    IF( MOD( StepNo(0), iCycleD ) .EQ. 0 ) &
-      WRITE(*,'(A5,A,I6.6,A,ES13.6E3,A,ES13.6E3)') &
-        '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
+    IF( amrex_parallel_ioprocessor() )THEN
+      IF( MOD( StepNo(0), iCycleD ) .EQ. 0 ) &
+        WRITE(*,'(A5,A,I6.6,A,ES13.6E3,A,ES13.6E3)') &
+          '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
+    END IF
 
 !!$    DO iLevel = 0, nLevels
 !!$      CALL MF_uCF_new(iLevel) &
@@ -273,7 +292,7 @@ PROGRAM main
       END DO
 
       CALL WriteFieldsAMReX_PlotFile &
-             ( t, nLevels, GEOM, StepNo, &
+             ( t(0), nLevels, GEOM, StepNo, &
                MF_uGF_Option = MF_uGF_new, &
                MF_uCF_Option = MF_uCF_new, &
                MF_uPF_Option = MF_uPF_new, &
@@ -289,7 +308,7 @@ PROGRAM main
       END DO
 
       CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, [t], &
+             ( StepNo, nLevels, dt, t, &
                MF_uGF_new % BA % P, &
                MF_uGF_new % P, &
                MF_uCF_new % P, &
@@ -309,13 +328,12 @@ PROGRAM main
 
   StepNo = StepNo + 1
   CALL WriteFieldsAMReX_PlotFile &
-         ( t, nLevels, GEOM, StepNo, &
+         ( t(0), nLevels, GEOM, StepNo, &
            MF_uGF_Option = MF_uGF_new, &
            MF_uCF_Option = MF_uCF_new, &
            MF_uPF_Option = MF_uPF_new, &
            MF_uAF_Option = MF_uAF_new )
 
-!!$  CALL MyAmrFinalize
 !!$  CALL ReadCheckpointFile
 
   ! --- Finalize everything ---

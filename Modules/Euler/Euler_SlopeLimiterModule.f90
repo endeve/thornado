@@ -3,7 +3,7 @@ MODULE Euler_SlopeLimiterModule
   USE KindModule, ONLY: &
     DP, Zero, One, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX, nNodes, nNodesX, UseAMReX
+    nDOFX, nDimsX, nNodes, nNodesX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX, &
     NodesX1, WeightsX1, &
@@ -46,6 +46,7 @@ MODULE Euler_SlopeLimiterModule
   LOGICAL  :: UseCharacteristicLimiting
   LOGICAL  :: UseCorrection
   LOGICAL  :: UseTroubledCellIndicator
+  LOGICAL  :: Verbose
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
   REAL(DP) :: LimiterThreshold
@@ -62,7 +63,8 @@ CONTAINS
   SUBROUTINE Euler_InitializeSlopeLimiter &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
-      UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option )
+      UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
+      Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
@@ -71,7 +73,8 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: &
       UseSlopeLimiter_Option, &
       UseCharacteristicLimiting_Option, &
-      UseTroubledCellIndicator_Option
+      UseTroubledCellIndicator_Option, &
+      Verbose_Option
     REAL(DP), INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
 
@@ -121,27 +124,35 @@ CONTAINS
 
     LimiterThreshold = LimiterThresholdParameter * 2.0_DP**( nNodes - 2 )
 
-    WRITE(*,*)
-    WRITE(*,'(A)') '  INFO: Euler_InitializeSlopeLimiter:'
-    WRITE(*,'(A)') '  -----------------------------------'
-    WRITE(*,*)
-    WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
-      UseSlopeLimiter
-    WRITE(*,*)
-    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVD: ' , &
-      BetaTVD
-    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVB: ' , &
-      BetaTVB
-    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'SlopeTolerance: ' , &
-      SlopeTolerance
-    WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
-      UseCharacteristicLimiting
-    WRITE(*,*)
-    WRITE(*,'(A4,A27,L1)'      ) '', 'UseTroubledCellIndicator: ' , &
-      UseTroubledCellIndicator
-    WRITE(*,*)
-    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
-      LimiterThreshold
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A)') '  INFO: Euler_InitializeSlopeLimiter:'
+      WRITE(*,'(A)') '  -----------------------------------'
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
+        UseSlopeLimiter
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVD: ' , &
+        BetaTVD
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVB: ' , &
+        BetaTVB
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'SlopeTolerance: ' , &
+        SlopeTolerance
+      WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
+        UseCharacteristicLimiting
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,L1)'      ) '', 'UseTroubledCellIndicator: ' , &
+        UseTroubledCellIndicator
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
+        LimiterThreshold
+    END IF
 
     IF( UseTroubledCellIndicator )THEN
 
@@ -194,9 +205,8 @@ CONTAINS
 
     IF( .NOT. UseSlopeLimiter ) RETURN
 
-    IF( .NOT. UseAMReX ) &
-      CALL ApplyBoundaryConditions_Fluid &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+    CALL ApplyBoundaryConditions_Fluid &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL DetectTroubledCells &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )

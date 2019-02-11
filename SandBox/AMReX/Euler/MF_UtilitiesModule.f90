@@ -79,9 +79,9 @@ CONTAINS
   END SUBROUTINE thornado2AMReX
 
 
-  SUBROUTINE LinComb( nLevels, alpha, MF_U, beta, MF_D, iS )
+  SUBROUTINE LinComb( nLevels, alpha, MF_U, beta, MF_D )
 
-    INTEGER,              INTENT(in)    :: nLevels, iS
+    INTEGER,              INTENT(in)    :: nLevels
     TYPE(amrex_multifab), INTENT(inout) :: MF_U(0:nLevels)
     TYPE(amrex_multifab), INTENT(in)    :: MF_D(0:nLevels)
     REAL(amrex_real),     INTENT(in)    :: alpha, beta(0:nLevels)
@@ -117,7 +117,7 @@ CONTAINS
 
             U(iX1,iX2,iX3,iComp) = alpha * U(iX1,iX2,iX3,iComp) &
                                    + beta(iLevel) &
-                                   * D(iX1,iX2,iX3,(iS-1)*nComp+iComp)
+                                   * D(iX1,iX2,iX3,iComp)
 
           END DO
           END DO
@@ -126,6 +126,7 @@ CONTAINS
         END DO
 
       END DO
+
     END DO
 
   END SUBROUTINE LinComb
