@@ -23,6 +23,8 @@ MODULE TimeSteppingModule_SSPRK
   REAL(DP), DIMENSION(:,:,:,:,:),   ALLOCATABLE :: U_SSPRK
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: D_SSPRK
 
+  LOGICAL :: Verbose
+
   PUBLIC :: InitializeFluid_SSPRK
   PUBLIC :: UpdateFluid_SSPRK
   PUBLIC :: FinalizeFluid_SSPRK
@@ -56,27 +58,36 @@ MODULE TimeSteppingModule_SSPRK
 CONTAINS
 
 
-  SUBROUTINE InitializeFluid_SSPRK( nStages )
+  SUBROUTINE InitializeFluid_SSPRK( nStages, Verbose_Option )
 
-    INTEGER, INTENT(in) :: nStages
+    INTEGER, INTENT(in)           :: nStages
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: i
+
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+       Verbose = .TRUE.
+    END IF
 
     nStages_SSPRK = nStages
 
     CALL InitializeSSPRK( nStages )
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A)') '', 'Butcher Table:'
-    WRITE(*,'(A5,A)') '', '--------------'
-    DO i = 1, nStages
-      WRITE(*,'(A5,4ES14.4E3)') '', c_SSPRK(i), a_SSPRK(i,1:nStages)
-    END DO
-    WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_SSPRK(1:nStages)
-    WRITE(*,*)
+      WRITE(*,*)
+      WRITE(*,'(A5,A)') '', 'Butcher Table:'
+      WRITE(*,'(A5,A)') '', '--------------'
+      DO i = 1, nStages
+        WRITE(*,'(A5,4ES14.4E3)') '', c_SSPRK(i), a_SSPRK(i,1:nStages)
+      END DO
+      WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_SSPRK(1:nStages)
+      WRITE(*,*)
+    END IF
 
     ALLOCATE( U_SSPRK &
                 (1:nDOFX, &
