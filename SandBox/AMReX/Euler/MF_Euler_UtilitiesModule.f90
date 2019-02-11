@@ -201,6 +201,8 @@ CONTAINS
 
     END DO
 
+    CALL amrex_parallel_reduce_min( TimeStep, nLevels+1 )
+
   END SUBROUTINE MF_ComputeTimeStep
 
 
