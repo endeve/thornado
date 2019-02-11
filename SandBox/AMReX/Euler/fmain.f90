@@ -1,5 +1,7 @@
 PROGRAM main
 
+  USE OMP_lib
+
   ! --- AMReX Modules ---
 
   USE amrex_base_module
@@ -84,6 +86,8 @@ PROGRAM main
   TYPE(amrex_distromap), ALLOCATABLE :: DM(:)
   TYPE(amrex_geometry),  ALLOCATABLE :: GEOM(:)
 
+  REAL(amrex_real) :: Timer_Evolution
+
   ! --- Initialize AMReX ---
   CALL amrex_init()
 
@@ -118,7 +122,8 @@ PROGRAM main
   CALL InitializeProgramHeader &
          ( ProgramName_Option = TRIM( ProgramName ), &
            nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
-           xL_Option = xL, xR_Option = xR, bcX_Option = bcX )
+           xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
+           Verbose_Option = amrex_parallel_ioprocessor() )
 
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
@@ -245,6 +250,8 @@ PROGRAM main
   ! --- Evolve ---
   t  = 0.0_amrex_real
 
+  Timer_Evolution = OMP_get_wtime()
+
   DO WHILE( ALL( t .LT. t_end ) )
 
 !!$    IF( LEN_TRIM( Restart ) .NE. 0 )THEN
@@ -319,6 +326,7 @@ PROGRAM main
 
   END DO
   ! --- END of evolution ---
+  WRITE(*,*) 'Total evolution time: ', OMP_get_wtime() - Timer_Evolution, ' s'
 
   DO iLevel = 0, nLevels
     CALL MF_ComputeFromConserved &

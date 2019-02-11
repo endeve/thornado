@@ -61,6 +61,8 @@ MODULE ProgramHeaderModule
 
   REAL(DP), PUBLIC, PARAMETER :: NewtonTol = 1.0d-12
 
+  LOGICAL :: Verbose
+
   PUBLIC :: InitializeProgramHeader
   PUBLIC :: InitializeProgramHeaderX
   PUBLIC :: InitializeProgramHeaderE
@@ -73,7 +75,8 @@ CONTAINS
   SUBROUTINE InitializeProgramHeader &
     ( ProgramName_Option, nNodes_Option, nX_Option, swX_Option,  &
       bcX_Option, xL_Option, xR_Option, zoomX_Option, nE_Option, &
-      swE_Option, bcE_Option, eL_Option, eR_Option, zoomE_Option )
+      swE_Option, bcE_Option, eL_Option, eR_Option, zoomE_Option, &
+      Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: ProgramName_Option
     INTEGER,          INTENT(in), OPTIONAL :: nNodes_Option
@@ -89,6 +92,7 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: eL_Option
     REAL(DP),         INTENT(in), OPTIONAL :: eR_Option
     REAL(DP),         INTENT(in), OPTIONAL :: zoomE_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     IF( PRESENT( ProgramName_Option ) )THEN
       ProgramName = TRIM( ProgramName_Option )
@@ -96,7 +100,13 @@ CONTAINS
       ProgramName = 'thornado'
     END IF
 
-    IF( LEN_TRIM( ProgramName ) > 0 )THEN
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
+
+    IF( ( LEN_TRIM( ProgramName ) > 0 ) .AND. Verbose )THEN
 
       WRITE(*,*)
       WRITE(*,'(A2,A28,A)') &
