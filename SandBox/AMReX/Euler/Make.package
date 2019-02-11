@@ -26,11 +26,6 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Euler
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/InputOutput
-VPATH_LOCATIONS += $(THORNADO_DIR)/Sandbox/dgExperiments_Euler
-
-# In THORNADO_DIR/Sandbox/dgExperiments_Euler:
-
-f90EXE_sources += TimeSteppingModule_SSPRK.f90
 
 # In THORNADO_DIR/Modules/Numbers:
 
