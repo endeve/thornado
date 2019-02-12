@@ -2,16 +2,34 @@ MODULE MF_UtilitiesModule
 
   ! --- AMReX Modules ---
   USE amrex_base_module, ONLY: &
+    amrex_finalize, &
     amrex_multifab, &
+    amrex_multifab_build, &
+    amrex_multifab_destroy, &
     amrex_box, &
+    amrex_boxarray, &
     amrex_mfiter, &
-    amrex_mfiter_build
+    amrex_mfiter_build, &
+    amrex_distromap
+  USE amrex_amr_module, ONLY: &
+    amrex_amrcore_finalize
   USE amrex_fort_module, ONLY: &
     amrex_real
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule, ONLY: &
     nDOFX, swX
+  USE FluidFieldsModule, ONLY: &
+    nCF, nPF, nAF
+  USE GeometryFieldsModule, ONLY: &
+    nGF
+
+  USE MyAmrModule,            ONLY: &
+    MyAmrInit, MyAmrFinalize
+  USE MyAmrDataModule
+  USE InputOutputModuleAMReX, ONLY: &
+    ReadCheckpointFile
+
 
   IMPLICIT NONE
   PRIVATE
@@ -20,6 +38,7 @@ MODULE MF_UtilitiesModule
   PUBLIC :: thornado2AMReX
   PUBLIC :: LinComb
   PUBLIC :: ShowVariableFromMultiFab
+  PUBLIC :: MakeMF_Diff
 
 
 CONTAINS
@@ -134,7 +153,7 @@ CONTAINS
 
   SUBROUTINE ShowVariableFromMultiFab( nLevels, MF, iComp )
 
-    INTEGER,              INTENT(in)    :: nLevels
+    INTEGER,              INTENT(in) :: nLevels
     TYPE(amrex_multifab), INTENT(in) :: MF(0:nLevels)
     INTEGER,              INTENT(in) :: iComp
 
@@ -158,7 +177,7 @@ CONTAINS
         DO iX2 = BX % lo(2) - swX(2), BX % hi(2) + swX(2)
         DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
 
-          WRITE(*,'(A,3I3.2,ES10.1E3)') &
+          WRITE(*,'(A,3I4.3,ES10.1E3)') &
             'iX1, iX2, iX3, Data: ',iX1, iX2, iX3, U(iX1,iX2,iX3,iComp)
 
         END DO
@@ -171,6 +190,69 @@ CONTAINS
     WRITE(*,*)
 
   END SUBROUTINE ShowVariableFromMultiFab
+
+
+  SUBROUTINE MakeMF_Diff( nLevels, BA, DM, chk1, chk2 )
+
+    INTEGER,               INTENT(in) :: nLevels, chk1, chk2
+    TYPE(amrex_boxarray),  INTENT(in) :: BA(0:nLevels)
+    TYPE(amrex_distromap), INTENT(in) :: DM(0:nLevels)
+
+    TYPE(amrex_multifab) :: MF_uGF_TEMP(0:nLevels)
+    TYPE(amrex_multifab) :: MF_uCF_TEMP(0:nLevels)
+    TYPE(amrex_multifab) :: MF_uPF_TEMP(0:nLevels)
+    TYPE(amrex_multifab) :: MF_uAF_TEMP(0:nLevels)
+    INTEGER              :: iLevel
+
+    DO iLevel = 0, nLevels
+      CALL amrex_multifab_build &
+             ( MF_uGF_TEMP(iLevel), BA(iLevel), DM(iLevel), &
+               nDOFX * nGF, swX(1) )
+      CALL amrex_multifab_build &
+             ( MF_uCF_TEMP(iLevel), BA(iLevel), DM(iLevel), &
+               nDOFX * nCF, swX(1) )
+      CALL amrex_multifab_build &
+             ( MF_uPF_TEMP(iLevel), BA(iLevel), DM(iLevel), &
+               nDOFX * nPF, swX(1) )
+      CALL amrex_multifab_build &
+             ( MF_uAF_TEMP(iLevel), BA(iLevel), DM(iLevel), &
+               nDOFX * nAF, swX(1) )
+    END DO
+
+    CALL MyAmrFinalize
+    CALL ReadCheckpointFile( chk1 )
+
+    DO iLevel = 0, nLevels
+      CALL MF_uCF_TEMP(iLevel) &
+             % COPY( MF_uCF(iLevel), 1, 1, MF_uCF(iLevel) % nComp(), swX(1) )
+    END DO
+
+    CALL MyAmrFinalize
+    CALL ReadCheckpointFile( chk2 )
+
+    DO iLevel = 0, nLevels
+      CALL MF_uCF_TEMP(iLevel) &
+             % SUBTRACT( MF_uCF(iLevel), 1, 1, &
+                         MF_uCF(iLevel) % nComp(), swX(1) )
+    END DO
+
+    CALL ShowVariableFromMultifab( nLevels, MF_uCF_TEMP, 2 )
+
+    CALL MyAmrFinalize
+
+    DO iLevel = 0, nLevels
+      CALL amrex_multifab_destroy( MF_uGF_TEMP(iLevel) )
+      CALL amrex_multifab_destroy( MF_uCF_TEMP(iLevel) )
+      CALL amrex_multifab_destroy( MF_uPF_TEMP(iLevel) )
+      CALL amrex_multifab_destroy( MF_uAF_TEMP(iLevel) )
+    END DO
+
+    CALL amrex_amrcore_finalize()
+    CALL amrex_finalize()
+
+    STOP 'MF_UtilitiesModule.f90'
+
+  END SUBROUTINE MakeMF_Diff
 
 
 END MODULE MF_UtilitiesModule

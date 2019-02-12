@@ -22,7 +22,6 @@ geometry.is_periodic      = 1  1  1       # Periodicity. 0 (no), 1 (yes)
 amr.n_cell      = 16 16 01  # Number of cells in each dimension
 amr.MaxGridSize = 08 08 01  # nBoxes = n_cell / MaxGridSize
 amr.max_level   = 0         # Maximum number of refinement levels
-amr.restart     = chk00000  # Which checkpoint to restart from
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1

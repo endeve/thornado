@@ -1,7 +1,13 @@
 MODULE MyAmrModule
 
   USE iso_c_binding
-  USE amrex_amr_module
+  USE amrex_amr_module, ONLY: &
+    amrex_amrcore_initialized, &
+    amrex_amrcore_init
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
   USE amrex_fort_module, ONLY: &
     amrex_real
 
@@ -22,8 +28,7 @@ MODULE MyAmrModule
   INTEGER,          ALLOCATABLE       :: MaxGridSize(:), nX(:), swX(:), bcX(:)
   REAL(amrex_real), ALLOCATABLE       :: xL(:), xR(:), dt(:), t(:)
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName, CoordSys
-  INTEGER,          ALLOCATABLE, SAVE :: StepNo(:), nSubSteps(:)
-  CHARACTER(LEN=:), ALLOCATABLE, SAVE :: Restart
+  INTEGER,          ALLOCATABLE, SAVE :: StepNo(:)
 
   ! --- Slope limiter ---
   LOGICAL          :: UseSlopeLimiter
@@ -33,7 +38,10 @@ MODULE MyAmrModule
   REAL(amrex_real) :: SlopeTolerance
   REAL(amrex_real) :: BetaTVD, BetaTVB
   REAL(amrex_real) :: LimiterThresholdParameter
+
+
 CONTAINS
+
 
   SUBROUTINE MyAmrInit
 
@@ -42,14 +50,6 @@ CONTAINS
 
     IF( .NOT. amrex_amrcore_initialized() ) &
       CALL amrex_amrcore_init()
-
-!!$    CALL amrex_init_virtual_functions ( MyMakeNewLevelFromScratch,     &
-!!$                                        my_make_new_level_from_coarse, &
-!!$                                        my_remake_level,               &
-!!$                                        MyClearLevel,                  &
-!!$                                        my_error_estimate )
-
-    ALLOCATE( CHARACTER(LEN=0) :: Restart )
 
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -79,7 +79,6 @@ CONTAINS
       CALL PP % getarr( 'n_cell',      nX )
       CALL PP % getarr( 'MaxGridSize', MaxGridSize )
       CALL PP % get   ( 'max_level',   nLevels )
-      CALL PP % query ( 'Restart',     Restart )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Slope limiter parameters SL.*
@@ -101,12 +100,6 @@ CONTAINS
     ALLOCATE( StepNo(0:nLevels) )
     StepNo = 0
 
-    ALLOCATE( nSubSteps(0:nLevels) )
-    nSubSteps(0) = 1
-    DO iLevel = 1, nLevels
-      nSubSteps(iLevel) = amrex_ref_ratio(iLevel-1)
-    END DO
-
     ALLOCATE( dt(0:nLevels) )
     dt = 1.0e-4_amrex_real
 
@@ -117,12 +110,13 @@ CONTAINS
 
   END SUBROUTINE MyAmrInit
 
+
   SUBROUTINE MyAmrFinalize
 
     CALL FinalizeDataAMReX
+
     DEALLOCATE( t )
     DEALLOCATE( dt )
-    DEALLOCATE( nSubSteps )
     DEALLOCATE( StepNo )
 
   END SUBROUTINE MyAmrFinalize

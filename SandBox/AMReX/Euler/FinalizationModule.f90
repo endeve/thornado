@@ -21,8 +21,12 @@ MODULE FinalizationModule
     MF_FinalizeFluid_SSPRK
 
   ! --- AMReX Modules ---
-  USE amrex_amr_module
-  USE amrex_amrcore_module
+  USE amrex_amr_module,     ONLY: &
+    amrex_geometry, &
+    amrex_geometry_destroy, &
+    amrex_finalize
+  USE amrex_amrcore_module, ONLY: &
+    amrex_amrcore_finalize
 
   IMPLICIT NONE
   PRIVATE
@@ -35,7 +39,7 @@ CONTAINS
 
   SUBROUTINE FinalizeProgram( nLevels, GEOM, MeshX )
 
-    INTEGER,               INTENT(in) :: nLevels
+    INTEGER,               INTENT(in)    :: nLevels
     TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels)
     TYPE(MeshType),        INTENT(inout) :: MeshX(1:3)
 

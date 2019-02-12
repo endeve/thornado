@@ -218,7 +218,7 @@ CONTAINS
 
       DO iLevel = 0, nLevels
         CALL MF_U(iLevel) &
-               % COPY( MF_uCF(iLevel), 1, 1, MF_uCF(iLevel) % nComp(), swX(1) )
+               % PARALLEL_COPY( MF_uCF(iLevel), GEOM(iLevel) )
       END DO
 
       DO jS = 1, iS - 1
