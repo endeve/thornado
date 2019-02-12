@@ -30,6 +30,7 @@ MODULE MyAmrDataModule
 
   INTEGER,          ALLOCATABLE, SAVE :: StepNo_vec(:)
   REAL(amrex_real), ALLOCATABLE, SAVE :: dt_vec(:)
+  REAL(amrex_real), ALLOCATABLE, SAVE :: t_vec(:)
   LOGICAL                             :: do_reflux  = .TRUE.
   
 CONTAINS
@@ -59,6 +60,9 @@ CONTAINS
 
     ALLOCATE( dt_vec(0:amrex_max_level) )
     dt_vec = 1.0e-4_amrex_real
+
+    ALLOCATE( t_vec(0:amrex_max_level) )
+    t_vec = 0.0e0_amrex_real
 
   END SUBROUTINE InitializeDataAMReX
 
@@ -92,6 +96,7 @@ CONTAINS
     DEALLOCATE( flux_reg )
 
     DEALLOCATE( StepNo_vec )
+    DEALLOCATE( t_vec )
     DEALLOCATE( dt_vec )
     DEALLOCATE( t_old )
     DEALLOCATE( t_new )

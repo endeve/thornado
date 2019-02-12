@@ -38,14 +38,15 @@ MODULE Euler_SlopeLimiterModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializeSlopeLimiter_Euler
-  PUBLIC :: FinalizeSlopeLimiter_Euler
-  PUBLIC :: ApplySlopeLimiter_Euler
+  PUBLIC :: Euler_InitializeSlopeLimiter
+  PUBLIC :: Euler_FinalizeSlopeLimiter
+  PUBLIC :: Euler_ApplySlopeLimiter
 
   LOGICAL  :: UseSlopeLimiter
   LOGICAL  :: UseCharacteristicLimiting
   LOGICAL  :: UseCorrection
   LOGICAL  :: UseTroubledCellIndicator
+  LOGICAL  :: Verbose
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
   REAL(DP) :: LimiterThreshold
@@ -59,10 +60,11 @@ MODULE Euler_SlopeLimiterModule
 CONTAINS
 
 
-  SUBROUTINE InitializeSlopeLimiter_Euler &
+  SUBROUTINE Euler_InitializeSlopeLimiter &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
-      UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option )
+      UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
+      Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
@@ -71,7 +73,8 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: &
       UseSlopeLimiter_Option, &
       UseCharacteristicLimiting_Option, &
-      UseTroubledCellIndicator_Option
+      UseTroubledCellIndicator_Option, &
+      Verbose_Option
     REAL(DP), INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
 
@@ -121,27 +124,35 @@ CONTAINS
 
     LimiterThreshold = LimiterThresholdParameter * 2.0_DP**( nNodes - 2 )
 
-    WRITE(*,*)
-    WRITE(*,'(A)') '  INFO: InitializeSlopeLimiter_Euler:'
-    WRITE(*,'(A)') '  -----------------------------------'
-    WRITE(*,*)
-    WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
-      UseSlopeLimiter
-    WRITE(*,*)
-    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVD: ' , &
-      BetaTVD
-    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVB: ' , &
-      BetaTVB
-    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'SlopeTolerance: ' , &
-      SlopeTolerance
-    WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
-      UseCharacteristicLimiting
-    WRITE(*,*)
-    WRITE(*,'(A4,A27,L1)'      ) '', 'UseTroubledCellIndicator: ' , &
-      UseTroubledCellIndicator
-    WRITE(*,*)
-    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
-      LimiterThreshold
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A)') '  INFO: Euler_InitializeSlopeLimiter:'
+      WRITE(*,'(A)') '  -----------------------------------'
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
+        UseSlopeLimiter
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVD: ' , &
+        BetaTVD
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVB: ' , &
+        BetaTVB
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'SlopeTolerance: ' , &
+        SlopeTolerance
+      WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
+        UseCharacteristicLimiting
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,L1)'      ) '', 'UseTroubledCellIndicator: ' , &
+        UseTroubledCellIndicator
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
+        LimiterThreshold
+    END IF
 
     IF( UseTroubledCellIndicator )THEN
 
@@ -154,10 +165,10 @@ CONTAINS
       I_6x6(i,i) = One
     END DO
 
-  END SUBROUTINE InitializeSlopeLimiter_Euler
+  END SUBROUTINE Euler_InitializeSlopeLimiter
 
 
-  SUBROUTINE FinalizeSlopeLimiter_Euler
+  SUBROUTINE Euler_FinalizeSlopeLimiter
 
     IF( UseTroubledCellIndicator )THEN
 
@@ -165,10 +176,10 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE FinalizeSlopeLimiter_Euler
+  END SUBROUTINE Euler_FinalizeSlopeLimiter
 
 
-  SUBROUTINE ApplySlopeLimiter_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+  SUBROUTINE Euler_ApplySlopeLimiter( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -417,7 +428,7 @@ CONTAINS
     CALL ApplyConservativeCorrection &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
-  END SUBROUTINE ApplySlopeLimiter_Euler
+  END SUBROUTINE Euler_ApplySlopeLimiter
 
 
   SUBROUTINE InitializeTroubledCellIndicator
