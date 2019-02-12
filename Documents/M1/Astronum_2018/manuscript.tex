@@ -48,7 +48,7 @@
 We develop implicit-explicit (IMEX) schemes for neutrino transport in a background material in the context of a two-moment model that evolves the angular moments of a neutrino phase-space distribution function.
 Considering the upper and lower bounds that are introduced by Pauli's exclusion principle on the moments, an algebraic moment closure based on Fermi-Dirac statistics and a convex-invariant time integrator both are demanded.
 A finite-volume/first-order discontinuous Galerkin(DG) method is used to illustrate how an algebraic moment closure based on Fermi-Dirac statistics is needed to satisfy the bounds.
-Several algebraic closures are compared with these bounds in mind and the Cernohorsky and Bludman closure, which satisfies the bounds, is chosen for our IMEX schemes.
+Several algebraic closures are compared with these bounds in mind, and the Cernohorsky and Bludman closure, which satisfies the bounds, is chosen for our IMEX schemes.
 For the convex-invariant time integrator, two IMEX schemes named PD-ARS have been proposed.
 PD-ARS denotes a convex-invariant IMEX Runge-Kutta scheme that is high-order accurate in the streaming limit, and works well in the diffusion limit.
 Our two PD-ARS schemes use second- and third-order, explicit, strong-stability-preserving Runge-Kutta methods as their explicit part, respectively, and therefore are second- and third-order accurate in the streaming limit, respectively.

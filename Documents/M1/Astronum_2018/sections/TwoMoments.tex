@@ -93,12 +93,12 @@ Moreover, the set of realizable moments is convex: let $\cR$ be the realizabilit
 As we will see later in Section~\ref{se:SpatialDiscretization}, this convexity makes it possible to design a realizability-preserving discretization for solving the two-moment model numerically.
 
 The inequalities in Eq.~\eqref{eq:eddingtonFactorBounds} deserve further attention.  
-They are important as those in Eq.~\eqref{eq:MomentsBounds}, in maintaining consistency of the two-moment model with respect to Fermi-Dirac statistics.  
+They are as important as those in Eq.~\eqref{eq:MomentsBounds}, in maintaining consistency of the two-moment model with respect to Fermi-Dirac statistics.  
 When designing a numerical scheme for the two-moment model that maintains realizable $\bcM$, it is also necessary for the Eddington factor to satisfy the bounds in Eq.~\eqref{eq:eddingtonFactorBounds}.  
 
 However, recently reported CCSN simulations using two-moment neutrino transport with algebraic closures have employed Eddington factors that can violate the bounds in Eq.~\eqref{eq:eddingtonFactorBounds}.  
 As examples, we consider the Eddington factors discussed in~\cite{murchikova_etal_2017}, where the suitability of several algebraic closures for two-moment neutrino transport was evaluated.  
-In Fig.~\ref{fig:EddingtonFactorsWithDifferentClosure}, we plot the Eddington factor versus the flux factor for two occupancies; $\cJ = 0.1$ (low occupancy) and $\cJ = 0.9$ (high occupancy).  
+In Fig.~\ref{fig:EddingtonFactorsWithDifferentClosure}, we plot the Eddington factor versus the flux factor for two occupancies: $\cJ = 0.1$ (low occupancy) and $\cJ = 0.9$ (high occupancy).  
 Of the algebraic closures plotted, few satisfy the bounds on the Eddington factor in Eq.~\eqref{eq:eddingtonFactorBounds}.  
 Kershaw~\cite{kershaw_1976}, Wilson~\cite{wilson_1975,leblancWilson_1970}, Levermore~\cite{levermore_1984}, Minerbo~\cite{minerbo_1978}, and Janka~2~\cite{janka_1992} closures may work fine when the occupancy is low.  
 When the occupancy is high, the Eddington factor due to these closures exceeds the upper bound for Fermi-Dirac statistics.  
@@ -108,8 +108,8 @@ This is not surprising as this is the only closure based on Fermi-Dirac statisti
 Although the Levermore and Minerbo closures do not satisfy the bounds in Eq.~\eqref{eq:eddingtonFactorBounds}, they are widely used in simulations of neutrino transport in CCSNe and compact binary mergers; e.g., O'Connor \& Couch~\cite{oConnorCouch_2018}, Pan et al.~\cite{pan_etal_2018}, Glas et al.~\cite{glas_etal_2018}, Just et al.~\cite{just_etal_2018}, and Foucart et al.~\cite{foucart_etal_2015} use the Minerbo closure, while Vartanyan et al.~\cite{vartanyan_etal_2018}, Cabezon et al.~\cite{cabezon_etal_2018}, Kuroda et al.~\cite{kuroda_etal_2016}, and Fujibayashi et al.~\cite{fujibayashi_etal_2017} use the Levermore closure.  
 When employing these closures in conditions of high occupancy, a numerical scheme may evolve the moments outside the realizable domain of Fermi-Dirac statistics given in Eq.~\eqref{eq:MomentsBounds}.
 If this were to happen, the update step may give $\cJ>1$.
-Considering the fact that the completed collision term contains blocking factors, i.e.~$(1-\cJ)\times$ something positive, $\cJ > 1$ would change blocking factors' sign and it would be difficult to predict the impact of the subsequent induced errors on the simulation outcome.
-Besides, even with the simplified collision term Eq~\ref{eq:collisionTermMoments}, $\cJ>1$ could result information lose (such as, lose the neutrino distribution for high-energy groups), closure failure, and other unpredictable consequences.
+Considering the fact that the collision term contains blocking factors --- i.e.~$(1-\cJ)\times$ something positive --- $\cJ > 1$ would change the blocking factors' sign, and it would be difficult to predict the impact of the subsequent induced errors on the simulation outcome.
+Besides, even with the simplified collision term Eq~\ref{eq:collisionTermMoments}, $\cJ>1$ could result in information loss (such as loss to the neutrino distribution for the group that exceed the bounds), closure failure, and other unpredictable consequences.
 If treatments are developed to map the unrealizable moments into the realizable domain, they should be developed to conserve lepton number, energy, and momentum.
 
 \begin{figure}[h]
