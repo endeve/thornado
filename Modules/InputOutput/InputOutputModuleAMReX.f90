@@ -2,7 +2,7 @@ MODULE InputOutputModuleAMReX
 
   ! --- AMReX Modules ---
 
-  USE iso_c_binding
+  USE ISO_C_BINDING
   USE amrex_base_module
   USE amrex_amr_module
 
@@ -52,21 +52,23 @@ MODULE InputOutputModuleAMReX
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
-                 ( FinestLevel, StepNo, dt, time, pBA, pDM ) BIND(c)
+                 ( FinestLevel, StepNo, dt, time, pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int),   INTENT(out) :: FinestLevel(*)
       INTEGER(c_int),   INTENT(out) :: StepNo(*)
       REAL(amrex_real), INTENT(out) :: dt(*),time(*)
       TYPE(c_ptr),      INTENT(out) :: pBA(*), pDM(*)
+      INTEGER(c_int),   VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
 
-    SUBROUTINE ReadMultiFabData( FinestLevel, pMF, iMF ) BIND(c)
+    SUBROUTINE ReadMultiFabData( FinestLevel, pMF, iMF, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int), VALUE       :: FinestLevel
       TYPE(c_ptr),    INTENT(out) :: pMF(*)
       INTEGER(c_int), VALUE       :: iMF
+      INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadMultiFabData
 
     SUBROUTINE amrex_fi_set_boxarray( iLevel, pBA, amrcore ) BIND(c)
@@ -103,13 +105,16 @@ MODULE InputOutputModuleAMReX
 
 CONTAINS
 
-  SUBROUTINE ReadCheckpointFile()
+  SUBROUTINE ReadCheckpointFile( iChkFile )
 
     USE amrex_amr_module
     USE MyAmrModule
     USE MyAmrDataModule
 
     IMPLICIT NONE
+
+    INTEGER, INTENT(in) :: iChkFile
+
     INTEGER               :: iLevel, FinestLevel(1), nComps
     TYPE(c_ptr)           :: pBA(0:amrex_max_level)
     TYPE(c_ptr)           :: pDM(0:amrex_max_level)
@@ -148,7 +153,7 @@ CONTAINS
     FinestLevel = nLevels
 
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevel, StepNo_vec, dt_vec, t_new, pBA, pDM )
+           ( FinestLevel, StepNo, dt, t, pBA, pDM, iChkFile )
 
     DO iLevel = 0, FinestLevel(1)
       BA(iLevel) = pBA(iLevel)
@@ -164,29 +169,25 @@ CONTAINS
 
     DO iLevel = 0, FinestLevel(1)
       CALL amrex_multifab_build &
-             ( MF_uGF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
+             ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
       CALL amrex_multifab_build &
-             ( MF_uCF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+             ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
       CALL amrex_multifab_build &
-             ( MF_uPF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
+             ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
       CALL amrex_multifab_build &
-             ( MF_uAF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+             ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
 
-!!$      IF( iLevel .GT. 0 .AND. do_reflux )THEN
-!!$        CALL amrex_fluxregister_build &
-!!$               ( flux_reg(iLevel), BA(iLevel), DM(iLevel), &
-!!$                 amrex_ref_ratio(iLevel-1), iLevel, nComps )
-!!$      END IF
     END DO
 
-    pGF = MF_uGF_new % P
-    pCF = MF_uCF_new % P
-    pPF = MF_uPF_new % P
-    pAF = MF_uAF_new % P
-    CALL ReadMultiFabData( FinestLevel(1), pGF, 0 )
-    CALL ReadMultiFabData( FinestLevel(1), pCF, 1 )
-    CALL ReadMultiFabData( FinestLevel(1), pPF, 2 )
-    CALL ReadMultiFabData( FinestLevel(1), pAF, 3 )
+    pGF = MF_uGF % P
+    pCF = MF_uCF % P
+    pPF = MF_uPF % P
+    pAF = MF_uAF % P
+
+    CALL ReadMultiFabData( FinestLevel(1), pGF, 0, iChkFile )
+    CALL ReadMultiFabData( FinestLevel(1), pCF, 1, iChkFile )
+    CALL ReadMultiFabData( FinestLevel(1), pPF, 2, iChkFile )
+    CALL ReadMultiFabData( FinestLevel(1), pAF, 3, iChkFile )
 
     CALL amrex_fi_set_finest_level( FinestLevel(1), amrcore )
 	
