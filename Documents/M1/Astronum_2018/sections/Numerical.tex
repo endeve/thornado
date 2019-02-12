@@ -25,7 +25,7 @@ Figure~\ref{fig: SineWaveStreaming} plots the absolute error for the number dens
 We see the errors obtained with SSPRK3 and PD-ARS3 are smallest and decrease as $N^{-3}$, as expected for a scheme combining third-order accurate time stepping with third-order accurate spatial discretization.
 For all the other schemes, using second-order accurate explicit time stepping, the error decreases as $N^{-2}$.
 Among the second-order schemes, SSP2332 has the smallest error.
-In the streaming limit, the PD-ARS schemes reduce to SSPRK schemes, such that PD-ARS2 to SSPRK2 and PD-ARS3 to SSPRK3, respectively.
+In the streaming limit, the PD-ARS schemes reduce to SSPRK schemes --- PD-ARS2 to SSPRK2 and PD-ARS3 to SSPRK3, respectively.
 Therefore, the absolute errors of PD-ARS schemes and SSPRK schemes are indistinguishable.  
 
 \begin{figure}[h]
@@ -45,8 +45,8 @@ Figure~\ref{fig:SineWaveDamping} shows convergence results of the test in the re
 Results for $\sigma_{\Ab}=0.1$, $1$, and $10$ are plotted with red, green, and blue lines, respectively.
 SSP2332 is the most accurate among these schemes for $\sigma_{\Ab}= 1$ and 10. 
 For $\sigma_{\Ab}=0.1$, PD-ARS2 is the most accurate scheme for $N=8$ and $N=16$. 
-We have seen the same behavior for the scheme proposed by McClarren et al.~\cite{mcclarren_etal_2008} (PC2) in~\cite{chu_etal_2018}.
-Since these are special cases for $N=8$ and $N=16$, we won't recommend PD-ARS2 instead of SSP2332 for the damping problem.
+We have seen the same behavior for the scheme proposed by McClarren et al.~\cite{mcclarren_etal_2008} (PC2 in~\cite{chu_etal_2018}).
+Since these are special cases for $N=8$ and $N=16$, we do not recommend PD-ARS2 instead of SSP2332 for the damping problem.
 Only SSP2332, a second-order accurate scheme, displays a second-order convergence rate.  
 The PD-ARS schemes are first-order accurate.
 
@@ -59,7 +59,7 @@ The PD-ARS schemes are first-order accurate.
 
 \subsubsection{Sine Wave Diffusion}
 
-The final test with known smooth solution, adopted from~\cite{radice_etal_2013}, is the sine wave diffusion test; i.e. $\sigma_{\Ab} = 0$ and $f_0 = 0$.
+The final test with known smooth solutions, adopted from~\cite{radice_etal_2013}, is the sine wave diffusion test; i.e. $\sigma_{\Ab} = 0$ and $f_0 = 0$.
 A periodic domain $D=\{x:x\in[-3,3]\}$ with initial conditions $\cJ_{0} = 0.5+0.49\times\sin\big(\f{\pi\,x}{3}\big)$ and $\cH_{0} =-\f{1}{3\sigma_{\Scatt}}\pderiv{\cJ_{0}}{x}$ are used.  
 The reference diffusion solution is given by $\cJ = \cJ_{0} \times \exp\big(-\f{\pi^2 t}{27\sigma_{\Scatt}}\big)$ and $\cH = (3\,\sigma_{\Scatt})^{-1}\pd{\cJ}{x}$.  
 We evolve with $\sigma_{\Scatt}=10^{2}$, $10^{3}$, and $10^{4}$, and adjust the end time so that $t_{\mbox{\tiny end}}/\sigma_{\Scatt}=1$, 
@@ -84,12 +84,12 @@ In this section we consider a more ``realistic'' test: two-dimensional multigrou
 This test is designed to test the realizability-preserving properties of the PD-ARS schemes.  
 Figure~\ref{fig:NeutrinoStationaryTestEOS} plots the thermal state and the opacities used (adopted from~\cite{Bruenn_1985}).  
 This test is computed on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200], x^{2}\in[0,200]\}$ with a grid of 128 elements in each direction, a reflecting inner boundary and a homogeneous out-flowing outer boundary.
-We use 10 energy groups to cover the range from 0~MeV to 300~MeV and initialize the neutrino number density to $\cJ = 10^{-99}$, flux density $\bcH=0$, and evolve until an approximate steady state is reached ($t=5$~ms).  
+We use 10 energy groups to cover the range from 0~MeV to 300~MeV and initialize the neutrino number density to $\cJ = 10^{-99}$, flux density to $\bcH=0$, and evolve until an approximate steady state is reached ($t=5$~ms).  
 For this test, we employed both CB and Minerbo closures.  
 We attempted to run this test with our PD-ARS schemes, SSP2332 from~\cite{pareschiRusso_2005}, IMEXRKCB2 proposed by Cavaglieri \& Bewley~\cite{cavaglieriBewley2015}, and the IMEX PC2 scheme proposed by McClarren et al.~\cite{mcclarren_etal_2008}.
 Only the PD-ARS schemes produce realizable moments and are able to evolve to a steady state with either CB or Minerbo closure.
-SSP2332 and IMEX PC2 failed after a few time step with neither CB or Minerbo closure because of unrealizable moment.
-Even though IMEXRKCB2 with Minerbo closure can run and reach a steady state in this test, its results are different from that of PD-ARS schemes with CB closure and there is no guarantee for its stability.
+SSP2332 and IMEX PC2 failed after a few time steps with either CB or Minerbo closure because of the development of unrealizable moments.
+Even though IMEXRKCB2 with Minerbo closure can run and reach a steady state in this test, its results are different from that of PD-ARS schemes with CB closure, and there is no guarantee of stability.
 %It's difficult to determine whether the results are in fact compromised by a particular correction step and, if so, in what way and to what degree.
 
 Results obtained with the IMEX PD-ARS schemes are plotted in Figure~\ref{fig:NeutrinoStationaryTestEvolve} for various times: $t=0.01$~ms (top panels), 0.35~ms (middle panels), and 5.0~ms (bottom panels).  
@@ -98,7 +98,7 @@ In the middle column we show scatter plots of the number density $\cJ$ versus ra
 In the right column we plot the flux factor $|\vect{\cH}|/\cJ$ versus radius for the same neutrino energies as in the middle column. 
 In the left panels, each solution point in the domain is marked as a red dot in the $|\vect{\cH}|\cJ$-plane, and the realizable domain is shown as the light blue region.  
 The figures show that all the states in the simulation with the PD-ARS schemes are realizable.
-In the middle and right column, we can see how the neutrinos are generated near the core, stream out, and reach an equilibrium distribution over the phase space eventually.
+In the middle and right column, we can see how the neutrinos are generated near the core, stream out, and eventually reach an equilibrium distribution over the phase space.
 The oscillation in the right column is caused by numerical error.
 %can see how the scattering reshapes the flux direction. 
 %The oscillatory behavior, which is more obvious for high-energy groups, is due to numerical error.
