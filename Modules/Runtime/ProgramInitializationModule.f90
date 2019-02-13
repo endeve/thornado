@@ -88,13 +88,13 @@ CONTAINS
     ( ProgramName_Option, nX_Option, swX_Option, bcX_Option, xL_Option, &
       xR_Option, zoomX_Option, nE_Option, swE_Option, bcE_Option, &
       eL_Option, eR_Option, zoomE_Option, CoordinateSystem_Option, &
-      nNodes_Option, ActivateUnits_Option, EquationOfState_Option, &
-      EquationOfStateTableName_Option, Gamma_IDEAL_Option, &
-      Opacity_Option, OpacityTableName_Option, GravitySolver_Option, &
-      PointMass_Option, FluidSolver_Option, RadiationSolver_Option, &
-      FluidRiemannSolver_Option, RadiationRiemannSolver_Option, &
-      FluidRadiationCoupling_Option, EvolveGravity_Option, &
-      EvolveFluid_Option, EvolveRadiation_Option, &
+      nNodes_Option, ActivateUnits_Option, nSpecies_Option, &
+      EquationOfState_Option, EquationOfStateTableName_Option, &
+      Gamma_IDEAL_Option, Opacity_Option, OpacityTableName_Option, &
+      GravitySolver_Option, PointMass_Option, FluidSolver_Option, &
+      RadiationSolver_Option, FluidRiemannSolver_Option, &
+      RadiationRiemannSolver_Option, FluidRadiationCoupling_Option, &
+      EvolveGravity_Option, EvolveFluid_Option, EvolveRadiation_Option, &
       ApplySlopeLimiter_Option, BetaTVB_Option, BetaTVD_Option, &
       ApplyPositivityLimiter_Option, nStages_SSP_RK_Option, &
       nStages_SI_RK_Option, IMEX_Scheme_Option, BasicInitialization_Option )
@@ -115,6 +115,7 @@ CONTAINS
     INTEGER,                INTENT(in), OPTIONAL :: nNodes_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: CoordinateSystem_Option
     LOGICAL,                INTENT(in), OPTIONAL :: ActivateUnits_Option
+    INTEGER,                INTENT(in), OPTIONAL :: nSpecies_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: EquationOfState_Option
     CHARACTER(LEN=*),       INTENT(in), OPTIONAL :: &
       EquationOfStateTableName_Option
@@ -144,7 +145,7 @@ CONTAINS
     LOGICAL,                INTENT(in), OPTIONAL :: BasicInitialization_Option
 
     LOGICAL :: ActivateUnits
-    INTEGER :: iDim
+    INTEGER :: iDim, nSpecies
 
     CALL MPI_INIT( mpierr )
 
@@ -333,7 +334,14 @@ CONTAINS
 
     ! --- Radiation Fields ---
 
-    CALL CreateRadiationFields( nX, swX, nE, swE )
+    IF( PRESENT( nSpecies_Option ) )THEN
+      nSpecies = nSpecies_Option
+    ELSE
+      nSpecies = 1
+    END IF
+
+    CALL CreateRadiationFields &
+           ( nX, swX, nE, swE, nSpecies_Option = nSpecies )
 
     ! --- For Mapping Between Nodal and Modal Representations ---
 
