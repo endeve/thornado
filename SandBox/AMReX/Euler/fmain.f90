@@ -91,6 +91,8 @@ PROGRAM main
 
   REAL(amrex_real) :: Timer_Evolution
 
+  CALL MakeMF_Diff( 2, 4 )
+
   ! --- Initialize AMReX ---
   CALL amrex_init()
 
@@ -127,9 +129,6 @@ PROGRAM main
            nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
            xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
            Verbose_Option = amrex_parallel_ioprocessor() )
-
-  CALL MakeMF_Diff( nLevels, BA, DM, 500, 1000 )
-  STOP 'fmain.f90'
 
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
@@ -247,7 +246,7 @@ PROGRAM main
   END IF
 
   CALL WriteFieldsAMReX_PlotFile &
-         ( 0.0_amrex_real, nLevels, GEOM, StepNo, &
+         ( 0.0e0_amrex_real, nLevels, GEOM, StepNo, &
            MF_uGF_Option = MF_uGF, &
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &
