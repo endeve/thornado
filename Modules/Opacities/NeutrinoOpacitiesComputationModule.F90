@@ -243,48 +243,47 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( opEC_T => OPACITIES % ThermEmAb % Absorptivity(1) % Values, &
-        OS     => OPACITIES % ThermEmAb % Offsets(1) )
+      ( opEC_T => OPACITIES % EmAb % Opacity(1) % Values, &
+        OS     => OPACITIES % EmAb % Offsets(1) )
 
     DO iZ4 = iZ_B0(4), iZ_E0(4)
-      DO iZ3 = iZ_B0(3), iZ_E0(3)
-        DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-          ! --- Use Cell Averaged D, T, Y ---
+      ! --- Use Cell Averaged D, T, Y ---
 
-          D_K = DOT_PRODUCT( WeightsX_q(:), D(:,iZ2,iZ3,iZ4) )
-          T_K = DOT_PRODUCT( WeightsX_q(:), T(:,iZ2,iZ3,iZ4) )
-          Y_K = DOT_PRODUCT( WeightsX_q(:), Y(:,iZ2,iZ3,iZ4) )
+      D_K = DOT_PRODUCT( WeightsX_q(:), D(:,iZ2,iZ3,iZ4) )
+      T_K = DOT_PRODUCT( WeightsX_q(:), T(:,iZ2,iZ3,iZ4) )
+      Y_K = DOT_PRODUCT( WeightsX_q(:), Y(:,iZ2,iZ3,iZ4) )
 
-          ! --- Offset (Position) ---
+      ! --- Offset (Position) ---
 
-          iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
+      iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
 
-          DO iZ1 = iZ_B0(1), iZ_E0(1)
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-            ! --- Use Cell Center Energy ---
+        ! --- Use Cell Center Energy ---
 
-            E_K = MeshE % Center(iZ1)
+        E_K = MeshE % Center(iZ1)
 
-            ! --- Offset (Energy) ---
+        ! --- Offset (Energy) ---
 
-            iOS_E = (iZ1-1) * nDOFE
+        iOS_E = (iZ1-1) * nDOFE
 
-            ! --- Electron Neutrinos ---
+        ! --- Electron Neutrinos ---
 
-            CALL LogInterpolateSingleVariable_1D3D_Custom &
-                   ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
-                     LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
-                     LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, &
-                     opEC_T, opEC_K )
+        CALL LogInterpolateSingleVariable_1D3D_Custom &
+               ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
+                 LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
+                 LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opEC_T, opEC_K )
 
-            opEC(iOS_E+1:iOS_E+nDOFE,1,iOS_X+1:iOS_X+nDOFX) &
-              = opEC_K(1,1) * UnitEC
+        opEC(iOS_E+1:iOS_E+nDOFE,1,iOS_X+1:iOS_X+nDOFX) &
+          = opEC_K(1,1) * UnitEC
 
-          END DO
-
-        END DO
       END DO
+
+    END DO
+    END DO
     END DO
 
     END ASSOCIATE ! opEC_T, etc.
@@ -314,9 +313,9 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( opEC_T => OPACITIES % ThermEmAb &
-                    % Absorptivity(iSpecies) % Values, &
-        OS     => OPACITIES % ThermEmAb &
+      ( opEC_T => OPACITIES % EmAb &
+                    % Opacity(iSpecies) % Values, &
+        OS     => OPACITIES % EmAb &
                     % Offsets(iSpecies) )
 
     CALL LogInterpolateSingleVariable_1D3D_Custom &
@@ -354,9 +353,9 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( opEC_T => OPACITIES % ThermEmAb &
-                    % Absorptivity(iSpecies) % Values, &
-        OS     => OPACITIES % ThermEmAb &
+      ( opEC_T => OPACITIES % EmAb &
+                    % Opacity(iSpecies) % Values, &
+        OS     => OPACITIES % EmAb &
                     % Offsets(iSpecies) )
 
     CALL LogInterpolateSingleVariable_1D3D_Custom &
@@ -398,48 +397,47 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( opES_T => OPACITIES % Scatt_Iso % Kernel(1) % Values(:,:,:,:,1), &
-        OS     => OPACITIES % Scatt_Iso % Offsets(1,1) )
+      ( opES_T => OPACITIES % Scat_Iso % Kernel(1) % Values(:,1,:,:,:), &
+        OS     => OPACITIES % Scat_Iso % Offsets(1,1) )
 
     DO iZ4 = iZ_B0(4), iZ_E0(4)
-      DO iZ3 = iZ_B0(3), iZ_E0(3)
-        DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-          ! --- Use Cell Averaged D, T, Y ---
+      ! --- Use Cell Averaged D, T, Y ---
 
-          D_K = DOT_PRODUCT( WeightsX_q(:), D(:,iZ2,iZ3,iZ4) )
-          T_K = DOT_PRODUCT( WeightsX_q(:), T(:,iZ2,iZ3,iZ4) )
-          Y_K = DOT_PRODUCT( WeightsX_q(:), Y(:,iZ2,iZ3,iZ4) )
+      D_K = DOT_PRODUCT( WeightsX_q(:), D(:,iZ2,iZ3,iZ4) )
+      T_K = DOT_PRODUCT( WeightsX_q(:), T(:,iZ2,iZ3,iZ4) )
+      Y_K = DOT_PRODUCT( WeightsX_q(:), Y(:,iZ2,iZ3,iZ4) )
 
-          ! --- Offset (Position) ---
+      ! --- Offset (Position) ---
 
-          iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
+      iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
 
-          DO iZ1 = iZ_B0(1), iZ_E0(1)
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-            ! --- Use Cell Center Energy ---
+        ! --- Use Cell Center Energy ---
 
-            E_K = MeshE % Center(iZ1)
+        E_K = MeshE % Center(iZ1)
 
-            ! --- Offset (Energy) ---
+        ! --- Offset (Energy) ---
 
-            iOS_E = (iZ1-1) * nDOFE
+        iOS_E = (iZ1-1) * nDOFE
 
-            ! --- Electron Neutrinos ---
+        ! --- Electron Neutrinos ---
 
-            CALL LogInterpolateSingleVariable_1D3D_Custom &
-                   ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
-                     LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
-                     LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, &
-                     opES_T, opES_K )
+        CALL LogInterpolateSingleVariable_1D3D_Custom &
+               ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
+                 LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
+                 LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opES_T, opES_K )
 
-            opES(iOS_E+1:iOS_E+nDOFE,1,iOS_X+1:iOS_X+nDOFX) &
-              = opES_K(1,1) * UnitES
+        opES(iOS_E+1:iOS_E+nDOFE,1,iOS_X+1:iOS_X+nDOFX) &
+          = opES_K(1,1) * UnitES
 
-          END DO
-
-        END DO
       END DO
+
+    END DO
+    END DO
     END DO
 
     END ASSOCIATE ! opES_T, etc.
@@ -469,9 +467,9 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( opES_T => OPACITIES % Scatt_Iso &
-                    % Kernel(iSpecies) % Values(:,:,:,:,1), &
-        OS     => OPACITIES % Scatt_Iso &
+      ( opES_T => OPACITIES % Scat_Iso &
+                    % Kernel(iSpecies) % Values(:,1,:,:,:), &
+        OS     => OPACITIES % Scat_Iso &
                     % Offsets(iSpecies,1) )
 
     CALL LogInterpolateSingleVariable_1D3D_Custom &

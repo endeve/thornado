@@ -152,8 +152,8 @@ contains
     ! --- Neutrino Opacities ---
 
     call InitializeOpacities_TABLE &
-           ( OpacityTableName_Option &
-               = 'OpacityTable.h5', &
+           ( OpacityTableName_EmAb_Option = 'OpacityTable_EmAb.h5', &
+	     OpacityTableName_Iso_Option  = 'OpacityTable_Iso.h5',  &
              Verbose_Option = .false. )
 
     ! --- For refinement and coarsening of DG data

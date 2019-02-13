@@ -45,12 +45,12 @@ PROGRAM DeleptonizationWave
     uAF, iAF_T, iAF_Ye
   USE RadiationFieldsModule, ONLY: &
     uCR, rhsCR, nSpecies
-  USE EquationOfStateModule, ONLY: &
-    InitializeEquationOfState, &
-    FinalizeEquationOfState
-  USE OpacityModule, ONLY: &
-    InitializeOpacities, &
-    FinalizeOpacities
+  USE EquationOfStateModule_TABLE, ONLY: &
+    InitializeEquationOfState_TABLE, &
+    FinalizeEquationOfState_TABLE
+  USE OpacityModule_TABLE, ONLY: &
+    InitializeOpacities_TABLE, &
+    FinalizeOpacities_TABLE
   USE NeutrinoOpacitiesModule, ONLY: &
     CreateNeutrinoOpacities, &
     DestroyNeutrinoOpacities
@@ -156,19 +156,15 @@ PROGRAM DeleptonizationWave
 
   ! --- Initialize Equation of State ---
 
-  CALL InitializeEquationOfState &
-         ( EquationOfState_Option &
-             = 'TABLE', &
-           EquationOfStateTableName_Option &
-             = 'EquationOfStateTable.h5' )
+  CALL InitializeEquationOfState_TABLE &
+         ( EquationOfStateTableName_Option = 'EquationOfStateTable.h5' )
 
   ! --- Initialize Opacities ---
 
-  CALL InitializeOpacities &
-         ( Opacity_Option &
-             = 'TABLE', &
-           OpacityTableName_Option &
-             = 'OpacityTable.h5' )
+  CALL InitializeOpacities_TABLE &
+         ( OpacityTableName_EmAb_Option = 'OpacityTable_EmAb.h5', &
+           OpacityTableName_Iso_Option  = 'OpacityTable_Iso.h5',  &
+           Verbose_Option = .TRUE. )
 
   ! --- Create Neutrino Opacities ---
 
@@ -299,9 +295,9 @@ PROGRAM DeleptonizationWave
 
   CALL FinalizeReferenceElement_Lagrange
 
-  CALL FinalizeEquationOfState
+  CALL FinalizeEquationOfState_TABLE
 
-  CALL FinalizeOpacities
+  CALL FinalizeOpacities_TABLE
 
   CALL DestroyNeutrinoOpacities
 
