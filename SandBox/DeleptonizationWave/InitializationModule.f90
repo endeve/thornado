@@ -31,9 +31,9 @@ MODULE InitializationModule
     nSpecies, &
     uPR, nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
     uCR, nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
-  USE EquationOfStateModule, ONLY: &
-    ApplyEquationOfState, &
-    ComputeThermodynamicStates_Primitive
+  USE EquationOfStateModule_TABLE, ONLY: &
+    ApplyEquationOfState_TABLE, &
+    ComputeThermodynamicStates_Primitive_TABLE
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeConserved_TwoMoment
 
@@ -120,7 +120,7 @@ CONTAINS
 
       END DO
 
-      CALL ComputeThermodynamicStates_Primitive &
+      CALL ComputeThermodynamicStates_Primitive_TABLE &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
                uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E ), &
                uAF(:,iX1,iX2,iX3,iAF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne) )
@@ -129,7 +129,7 @@ CONTAINS
       uPF(:,iX1,iX2,iX3,iPF_V2) = Zero
       uPF(:,iX1,iX2,iX3,iPF_V3) = Zero
 
-      CALL ApplyEquationOfState &
+      CALL ApplyEquationOfState_TABLE &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
                uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_P ), &
                uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
