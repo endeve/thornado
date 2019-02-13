@@ -23,6 +23,8 @@ MODULE NeutrinoOpacitiesComputationModule
     OPACITIES, &
 #endif
     LogEs_T, LogDs_T, LogTs_T, Ys_T
+  USE RadiationFieldsModule, ONLY: &
+    nSpecies, iNuE, iNuE_Bar
   USE NeutrinoOpacitiesModule, ONLY: &
     f_EQ, opEC, opES, opIS, opPP
 
@@ -75,37 +77,42 @@ CONTAINS
       T(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):), &
       Y(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):)
 
+    INTEGER  :: iS
     REAL(DP) :: wTime
 
-    CALL ComputeEquilibriumDistributions &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y )
+    DO iS = 1, nSpecies
 
-    wTime = MPI_WTIME( )
+      CALL ComputeEquilibriumDistributions &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y, iS )
 
-    CALL ComputeNeutrinoOpacities_EC &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y )
+      wTime = MPI_WTIME( )
 
-    wTime = MPI_WTIME( ) - wTime
+      CALL ComputeNeutrinoOpacities_EC &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y, iS )
 
-    PRINT*
-    PRINT*, "  ComputeNeutrinoOpacities:"
-    PRINT*
-    PRINT*, "    EC: ", wTime
+      wTime = MPI_WTIME( ) - wTime
 
-    wTime = MPI_WTIME( )
+      PRINT*
+      PRINT*, "  ComputeNeutrinoOpacities: ", iS
+      PRINT*
+      PRINT*, "    EC: ", wTime
 
-    CALL ComputeNeutrinoOpacities_ES &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y )
+      wTime = MPI_WTIME( )
 
-    wTime = MPI_WTIME( ) - wTime
+      CALL ComputeNeutrinoOpacities_ES &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y, iS )
 
-    PRINT*, "    ES: ", wTime
+      wTime = MPI_WTIME( ) - wTime
+
+      PRINT*, "    ES: ", wTime
+
+    END DO
 
   END SUBROUTINE ComputeNeutrinoOpacities
 
 
   SUBROUTINE ComputeEquilibriumDistributions &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y, iSpecies )
 
     ! --- Equilibrium Neutrino Distributions ---
 
@@ -115,6 +122,8 @@ CONTAINS
       D(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):), &
       T(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):), &
       Y(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):)
+    INTEGER,  INTENT(in) :: &
+      iSpecies
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, nZ(4)
     INTEGER  :: iOS_X, iOS_E, iNodeX, iNodeE
@@ -123,51 +132,69 @@ CONTAINS
     nZ = iZ_E0 - iZ_B0 + 1
 
     DO iZ4 = iZ_B0(4), iZ_E0(4)
-      DO iZ3 = iZ_B0(3), iZ_E0(3)
-        DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-          ! --- Compute Chemical Potentials ---
+      ! --- Compute Chemical Potentials ---
 
-          CALL ComputeElectronChemicalPotential_TABLE &
-                 ( D(:,iZ2,iZ3,iZ4), T(:,iZ2,iZ3,iZ4), Y(:,iZ2,iZ3,iZ4), Me )
+      CALL ComputeElectronChemicalPotential_TABLE &
+             ( D(:,iZ2,iZ3,iZ4), T(:,iZ2,iZ3,iZ4), Y(:,iZ2,iZ3,iZ4), Me )
 
-          CALL ComputeProtonChemicalPotential_TABLE &
-                 ( D(:,iZ2,iZ3,iZ4), T(:,iZ2,iZ3,iZ4), Y(:,iZ2,iZ3,iZ4), Mp )
+      CALL ComputeProtonChemicalPotential_TABLE &
+             ( D(:,iZ2,iZ3,iZ4), T(:,iZ2,iZ3,iZ4), Y(:,iZ2,iZ3,iZ4), Mp )
 
-          CALL ComputeNeutronChemicalPotential_TABLE &
-                 ( D(:,iZ2,iZ3,iZ4), T(:,iZ2,iZ3,iZ4), Y(:,iZ2,iZ3,iZ4), Mn )
+      CALL ComputeNeutronChemicalPotential_TABLE &
+             ( D(:,iZ2,iZ3,iZ4), T(:,iZ2,iZ3,iZ4), Y(:,iZ2,iZ3,iZ4), Mn )
 
-          ! --- Electron Neutrinos ---
+      IF( iSpecies .EQ. iNuE )THEN
 
-          Mnu = Me + Mp - Mn
+        ! --- Electron Neutrinos ---
 
-          ! --- Offset (Position) ---
+        Mnu = + Me + ( Mp - Mn )
 
-          iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
+      ELSEIF( iSpecies .EQ. iNuE_Bar )THEN
 
-          DO iZ1 = iZ_B0(1), iZ_E0(1)
+        ! --- Electron Antineutrinos ---
 
-            ! --- Offset (Energy) ---
+        Mnu = - Me - ( Mp - Mn )
 
-            iOS_E = (iZ1-1) * nDOFE
+      ELSE
 
-            ! --- Energy Coordinates ---
+        WRITE(*,*)
+        WRITE(*,'(A5,A)') '', 'ComputeEquilibriumDistributions'
+        WRITE(*,'(A5,A,I2.2)') '', 'Invalid Species: ', iSpecies
+        WRITE(*,*)
+        STOP
 
-            E = MeshE % Center(iZ1) + MeshE % Width(iZ1) * MeshE % Nodes(:)
+      END IF
 
-            DO iNodeX = 1, nDOFX
-              DO iNodeE = 1, nDOFE
+      ! --- Offset (Position) ---
 
-                f_EQ(iOS_E+iNodeE,1,iOS_X+iNodeX) &
-                  = FermiDirac( E(iNodeE), Mnu(iNodeX), T(iNodeX,iZ2,iZ3,iZ4) )
+      iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
 
-              END DO
-            END DO
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-          END DO
+        ! --- Offset (Energy) ---
+
+        iOS_E = (iZ1-1) * nDOFE
+
+        ! --- Energy Coordinates ---
+
+        E = MeshE % Center(iZ1) + MeshE % Width(iZ1) * MeshE % Nodes(:)
+
+        DO iNodeX = 1, nDOFX
+        DO iNodeE = 1, nDOFE
+
+          f_EQ(iOS_E+iNodeE,iSpecies,iOS_X+iNodeX) &
+            = FermiDirac( E(iNodeE), Mnu(iNodeX), T(iNodeX,iZ2,iZ3,iZ4) )
 
         END DO
+        END DO
+
       END DO
+
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE ComputeEquilibriumDistributions
@@ -223,7 +250,8 @@ CONTAINS
   END SUBROUTINE ComputeEquilibriumDistributions_Point
 
 
-  SUBROUTINE ComputeNeutrinoOpacities_EC( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y )
+  SUBROUTINE ComputeNeutrinoOpacities_EC &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y, iSpecies )
 
     ! --- Electron Capture Opacities ---
 
@@ -233,6 +261,8 @@ CONTAINS
       D(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):), &
       T(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):), &
       Y(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):)
+    INTEGER,  INTENT(in) :: &
+      iSpecies
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, nZ(4)
     INTEGER  :: iOS_X, iOS_E
@@ -243,8 +273,8 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( opEC_T => OPACITIES % EmAb % Opacity(1) % Values, &
-        OS     => OPACITIES % EmAb % Offsets(1) )
+      ( opEC_T => OPACITIES % EmAb % Opacity(iSpecies) % Values, &
+        OS     => OPACITIES % EmAb % Offsets(iSpecies) )
 
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -270,14 +300,12 @@ CONTAINS
 
         iOS_E = (iZ1-1) * nDOFE
 
-        ! --- Electron Neutrinos ---
-
         CALL LogInterpolateSingleVariable_1D3D_Custom &
                ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
                  LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
                  LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opEC_T, opEC_K )
 
-        opEC(iOS_E+1:iOS_E+nDOFE,1,iOS_X+1:iOS_X+nDOFX) &
+        opEC(iOS_E+1:iOS_E+nDOFE,iSpecies,iOS_X+1:iOS_X+nDOFX) &
           = opEC_K(1,1) * UnitEC
 
       END DO
@@ -290,7 +318,7 @@ CONTAINS
 
 #else
 
-!    opEC = Zero
+    opEC = Zero
 
 #endif
 
@@ -377,7 +405,8 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacities_EC_Points
 
 
-  SUBROUTINE ComputeNeutrinoOpacities_ES( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y )
+  SUBROUTINE ComputeNeutrinoOpacities_ES &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D, T, Y, iSpecies )
 
     ! --- Elastic Scattering Opacities ---
 
@@ -387,6 +416,8 @@ CONTAINS
       D(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):), &
       T(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):), &
       Y(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):)
+    INTEGER,  INTENT(in) :: &
+      iSpecies
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, nZ(4)
     INTEGER  :: iOS_X, iOS_E
@@ -397,8 +428,10 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( opES_T => OPACITIES % Scat_Iso % Kernel(1) % Values(:,1,:,:,:), &
-        OS     => OPACITIES % Scat_Iso % Offsets(1,1) )
+      ( opES_T => OPACITIES % Scat_Iso &
+                    % Kernel(iSpecies) % Values(:,1,:,:,:), &
+        OS     => OPACITIES % Scat_Iso &
+                    % Offsets(iSpecies,1) )
 
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -424,14 +457,12 @@ CONTAINS
 
         iOS_E = (iZ1-1) * nDOFE
 
-        ! --- Electron Neutrinos ---
-
         CALL LogInterpolateSingleVariable_1D3D_Custom &
                ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
                  LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
                  LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opES_T, opES_K )
 
-        opES(iOS_E+1:iOS_E+nDOFE,1,iOS_X+1:iOS_X+nDOFX) &
+        opES(iOS_E+1:iOS_E+nDOFE,iSpecies,iOS_X+1:iOS_X+nDOFX) &
           = opES_K(1,1) * UnitES
 
       END DO
@@ -444,7 +475,7 @@ CONTAINS
 
 #else
 
-!    opES = Zero
+    opES = Zero
 
 #endif
 
