@@ -10,7 +10,7 @@ MODULE RadiationFieldsModule
 
   LOGICAL :: Verbose
 
-  INTEGER, PUBLIC            :: nSpecies = 1
+  INTEGER, PUBLIC            :: nSpecies
   INTEGER, PUBLIC, PARAMETER :: iNuE     = 1
   INTEGER, PUBLIC, PARAMETER :: iNuE_Bar = 2
   INTEGER, PUBLIC, PARAMETER :: iNuX     = 3
@@ -95,6 +95,12 @@ CONTAINS
       Verbose = Verbose_Option
     ELSE
       Verbose = .TRUE.
+    END IF
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A29,I2.2)') &
+        '', 'Radiation Fields, nSpecies = ', nSpecies
     END IF
 
     CALL CreateRadiationFields_Conserved( nX, swX, nE, swE )
