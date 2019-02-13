@@ -7,6 +7,9 @@ Modified by sjdunham for multiple MultiFabs (not working yet)
 
 */
 
+#include <sstream>
+#include <iomanip>
+
 #include <AMReX_ParmParse.H>
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_VisMF.H>
@@ -134,11 +137,14 @@ extern "C"
 
   void readheaderandboxarraydata
          ( int finest_level[], int stepno[], Real dt[], Real time[],
-           BoxArray** ba, DistributionMapping** dm )
+           BoxArray** ba, DistributionMapping** dm, int iChkFile )
   {
 
-    ParmParse pp( "amr" );
-    pp.query( "restart", restart_chkfile );
+    std::cout << "iChkFile: " << iChkFile << std::endl;
+
+    std::stringstream sChkFile;
+    sChkFile << chk_file << std::setw(5) << std::setfill('0') << iChkFile;
+    restart_chkfile = sChkFile.str();
 
     amrex::Print() << "Restart from checkpoint " << restart_chkfile << "\n";
 
@@ -219,10 +225,14 @@ extern "C"
 
   } // End of readheaderandboxarraydata function
 
-  void readmultifabdata( int FinestLevel, MultiFab** MF, int iMF) 
+  void readmultifabdata
+    ( int FinestLevel, MultiFab** MF, int iMF, int iChkFile )
   {
-    ParmParse pp( "amr" );
-    pp.query( "restart", restart_chkfile );
+
+    std::stringstream sChkFile;
+
+    sChkFile << chk_file << std::setw(5) << std::setfill('0') << iChkFile;
+    restart_chkfile = sChkFile.str();
 
     // Header
     std::string File( restart_chkfile + "/Header" );

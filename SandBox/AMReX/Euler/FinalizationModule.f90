@@ -10,19 +10,23 @@ MODULE FinalizationModule
   USE EquationOfStateModule,            ONLY: &
     FinalizeEquationOfState
   USE Euler_SlopeLimiterModule,         ONLY: &
-    FinalizeSlopeLimiter_Euler
+    Euler_FinalizeSlopeLimiter
   USE Euler_PositivityLimiterModule,    ONLY: &
-    FinalizePositivityLimiter_Euler
-  USE TimeSteppingModule_SSPRK,         ONLY: &
-    FinalizeFluid_SSPRK
+    Euler_FinalizePositivityLimiter
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     MyAmrFinalize
+  USE MF_TimeSteppingModule_SSPRK, ONLY: &
+    MF_FinalizeFluid_SSPRK
 
   ! --- AMReX Modules ---
-  USE amrex_amr_module
-  USE amrex_amrcore_module
+  USE amrex_amr_module,     ONLY: &
+    amrex_geometry, &
+    amrex_geometry_destroy, &
+    amrex_finalize
+  USE amrex_amrcore_module, ONLY: &
+    amrex_amrcore_finalize
 
   IMPLICIT NONE
   PRIVATE
@@ -35,19 +39,19 @@ CONTAINS
 
   SUBROUTINE FinalizeProgram( nLevels, GEOM, MeshX )
 
-    INTEGER,               INTENT(in) :: nLevels
+    INTEGER,               INTENT(in)    :: nLevels
     TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels)
     TYPE(MeshType),        INTENT(inout) :: MeshX(1:3)
 
     INTEGER :: iLevel, iDim
 
-    CALL FinalizePositivityLimiter_Euler
+    CALL Euler_FinalizePositivityLimiter
 
-    CALL FinalizeSlopeLimiter_Euler
+    CALL Euler_FinalizeSlopeLimiter
 
     CALL FinalizeEquationOfState
 
-    CALL FinalizeFluid_SSPRK
+    CALL MF_FinalizeFluid_SSPRK( nLevels )
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX

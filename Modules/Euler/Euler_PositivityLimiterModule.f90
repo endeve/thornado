@@ -26,11 +26,12 @@ MODULE Euler_PositivityLimiterModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializePositivityLimiter_Euler
-  PUBLIC :: FinalizePositivityLimiter_Euler
-  PUBLIC :: ApplyPositivityLimiter_Euler
+  PUBLIC :: Euler_InitializePositivityLimiter
+  PUBLIC :: Euler_FinalizePositivityLimiter
+  PUBLIC :: Euler_ApplyPositivityLimiter
 
   LOGICAL               :: UsePositivityLimiter
+  LOGICAL               :: Verbose
   INTEGER, PARAMETER    :: nPS = 7
   INTEGER               :: nPP(nPS)
   INTEGER               :: nPT
@@ -40,12 +41,13 @@ MODULE Euler_PositivityLimiterModule
 CONTAINS
 
 
-  SUBROUTINE InitializePositivityLimiter_Euler &
-    ( Min_1_Option, Min_2_Option, UsePositivityLimiter_Option )
+  SUBROUTINE Euler_InitializePositivityLimiter &
+    ( Min_1_Option, Min_2_Option, UsePositivityLimiter_Option, Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_2_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: i
 
@@ -61,14 +63,23 @@ CONTAINS
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
       UsePositivityLimiter = UsePositivityLimiter_Option
 
-    WRITE(*,*)
-    WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'InitializePositivityLimiter'
-    WRITE(*,*)
-    WRITE(*,'(A6,A,L1)') &
-      '', 'Use Positivity Limiter: ', UsePositivityLimiter 
-    WRITE(*,*)
-    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
-    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'Euler_InitializePositivityLimiter'
+      WRITE(*,'(A2,A)') '',    '-------------------------------------------'
+      WRITE(*,*)
+      WRITE(*,'(A6,A,L1)') &
+        '', 'Use Positivity Limiter: ', UsePositivityLimiter
+      WRITE(*,*)
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
+    END IF
 
     ! --- Compute Number of Positive Points per Set ---
 
@@ -94,17 +105,17 @@ CONTAINS
 
     ALLOCATE( U_PP(nPT,nCF) )
 
-  END SUBROUTINE InitializePositivityLimiter_Euler
+  END SUBROUTINE Euler_InitializePositivityLimiter
 
 
-  SUBROUTINE FinalizePositivityLimiter_Euler
+  SUBROUTINE Euler_FinalizePositivityLimiter
 
     DEALLOCATE( U_PP )
 
-  END SUBROUTINE FinalizePositivityLimiter_Euler
+  END SUBROUTINE Euler_FinalizePositivityLimiter
 
 
-  SUBROUTINE ApplyPositivityLimiter_Euler &
+  SUBROUTINE Euler_ApplyPositivityLimiter &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER,  INTENT(in)    :: &
@@ -223,7 +234,7 @@ CONTAINS
       END DO
     END DO
 
-  END SUBROUTINE ApplyPositivityLimiter_Euler
+  END SUBROUTINE Euler_ApplyPositivityLimiter
 
 
   SUBROUTINE ComputePointValues_Fluid( U_q, U_p )
