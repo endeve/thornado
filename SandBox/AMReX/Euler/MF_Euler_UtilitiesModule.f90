@@ -140,7 +140,7 @@ CONTAINS
       TimeStep(0:nLevels)
 
     INTEGER            :: iLevel
-    INTEGER            :: iX1, iX2, iX3, iX_B(3), iX_E(3)
+    INTEGER            :: iX1, iX2, iX3, iX_B0(3), iX_E0(3)
     INTEGER            :: lo_G(4), hi_G(4)
     INTEGER            :: lo_C(4), hi_C(4)
     TYPE(amrex_box)    :: BX
@@ -164,15 +164,15 @@ CONTAINS
         lo_G = LBOUND( uGF ); hi_G = UBOUND( uGF )
         lo_C = LBOUND( uCF ); hi_C = UBOUND( uCF )
 
-        iX_B = BX % lo
-        iX_E = BX % hi
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
 
-        ALLOCATE( G(1:nDOFX,iX_B(1):iX_E(1), &
-                            iX_B(2):iX_E(2), &
-                            iX_B(3):iX_E(3),1:nGF) )
-        ALLOCATE( U(1:nDOFX,iX_B(1):iX_E(1), &
-                            iX_B(2):iX_E(2), &
-                            iX_B(3):iX_E(3),1:nCF) )
+        ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3),1:nGF) )
+        ALLOCATE( U(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3),1:nCF) )
 
         DO iX3 = BX % lo(3), BX % hi(3)
         DO iX2 = BX % lo(2), BX % hi(2)
@@ -187,11 +187,10 @@ CONTAINS
         END DO
         END DO
 
-
         CALL ComputeTimeStep &
-               ( iX_B, iX_E, &
-                 G(:,iX_B(1):iX_E(1),iX_B(2):iX_E(2),iX_B(3):iX_E(3),:), &
-                 U(:,iX_B(1):iX_E(1),iX_B(2):iX_E(2),iX_B(3):iX_E(3),:), &
+               ( iX_B0, iX_E0, &
+                 G(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+                 U(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                  CFL, TimeStep(iLevel) )
 
         DEALLOCATE( G )
