@@ -154,7 +154,7 @@ CONTAINS
 
     CALL ReadHeaderAndBoxArrayData &
            ( FinestLevel, StepNo, dt, t, &
-             pBA(0:amrex_max_level), pDM(0:amrex_max_level), iChkFile )
+             pBA(0:nLevels), pDM(0:nLevels), iChkFile )
 
     DO iLevel = 0, nLevels
       BA(iLevel) = pBA(iLevel)
@@ -196,7 +196,7 @@ CONTAINS
       CALL MF_uAF(iLevel) % Fill_Boundary( GEOM(iLevel) )
     END DO
 
-    CALL amrex_fi_set_finest_level( FinestLevel(1), amrcore )
+    CALL amrex_fi_set_finest_level( nLevels, amrcore )
 	
   END SUBROUTINE ReadCheckpointFile
 
