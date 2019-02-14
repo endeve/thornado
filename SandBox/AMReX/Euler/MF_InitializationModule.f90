@@ -46,6 +46,10 @@ CONTAINS
 
     SELECT CASE ( TRIM( ProgramName ) )
 
+      CASE ( 'IsentropicVortex' )
+
+        CALL InitializeFields_IsentropicVortex( MF_uGF, MF_uCF )
+
       CASE ( 'SphericalSod' )
 
         CALL InitializeFields_SphericalSod( MF_uGF, MF_uCF )
@@ -53,10 +57,6 @@ CONTAINS
       CASE( 'TopHatAdvection' )
 
         CALL InitializeFields_TopHatAdvection( MF_uGF, MF_uCF )
-
-      CASE ( 'IsentropicVortex' )
-
-        CALL InitializeFields_IsentropicVortex( MF_uGF, MF_uCF )
 
       CASE DEFAULT
 
