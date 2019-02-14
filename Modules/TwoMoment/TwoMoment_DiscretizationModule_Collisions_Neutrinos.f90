@@ -35,7 +35,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     nAF, iAF_T, iAF_Ye, iAF_E
   USE RadiationFieldsModule, ONLY: &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
-    nSpecies
+    nSpecies, iNuE, iNuE_Bar
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeThermodynamicStates_Auxiliary_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE, &
@@ -207,14 +207,40 @@ CONTAINS
 
       wTime = MPI_WTIME( )
 
-      DO iNodeX = 1, nDOFX
+      IF( nSpecies .EQ. 1 )THEN
 
-        CALL SolveMatterEquations_EmAb &
-               ( CR_N(:,iCR_N,1,iNodeX), dt * Chi(:,1,iNodeX), &
-                 fEQ(:,1,iNodeX),  PF_N(iNodeX,iPF_D), AF_N(iNodeX,iAF_T), &
-                 AF_N(iNodeX,iAF_Ye), AF_N(iNodeX,iAF_E) )
+        ! --- Single Species (Electron Neutrinos) ---
 
-      END DO
+        DO iNodeX = 1, nDOFX
+
+          CALL SolveMatterEquations_EmAb_NuE &
+                 ( CR_N    (:,iCR_N,iNuE,iNodeX), &
+                   dt * Chi(:,      iNuE,iNodeX), &
+                   fEQ     (:,      iNuE,iNodeX), &
+                   PF_N(iNodeX,iPF_D ), AF_N(iNodeX,iAF_T), &
+                   AF_N(iNodeX,iAF_Ye), AF_N(iNodeX,iAF_E) )
+
+        END DO
+
+      ELSE
+
+        ! --- Electron Neutrinos and Antineutrinos ---
+
+        DO iNodeX = 1, nDOFX
+
+          CALL SolveMatterEquations_EmAb &
+                 ( CR_N    (:,iCR_N,iNuE,    iNodeX), &
+                   CR_N    (:,iCR_N,iNuE_Bar,iNodeX), &
+                   dt * Chi(:,      iNuE,    iNodeX), &
+                   dt * Chi(:,      iNuE_Bar,iNodeX), &
+                   fEQ     (:,      iNuE,    iNodeX), &
+                   fEQ     (:,      iNuE_Bar,iNodeX), &
+                   PF_N(iNodeX,iPF_D ), AF_N(iNodeX,iAF_T), &
+                   AF_N(iNodeX,iAF_Ye), AF_N(iNodeX,iAF_E) )
+
+        END DO
+
+      END IF
 
       wTime = MPI_WTIME( ) - wTime
 
@@ -460,8 +486,8 @@ CONTAINS
 
       wTime = MPI_WTIME( )
 
-      CALL SolveMatterEquations_EmAb &
-             ( CR_N(:,iCR_N,1,iX_G), dt * Chi(:,1), fEQ(:,1), &
+      CALL SolveMatterEquations_EmAb_NuE &
+             ( CR_N(:,iCR_N,iNuE,iX_G), dt * Chi(:,iNuE), fEQ(:,iNuE), &
                PF_N(iPF_D), AF_N(iAF_T), AF_N(iAF_Ye), AF_N(iAF_E) )
 
       wTime = MPI_WTIME( ) - wTime
@@ -696,8 +722,8 @@ CONTAINS
 
       ! --- Update Fluid ---
 
-      CALL SolveMatterEquations_EmAb &
-             ( CR_K(:,iCR_N,1), dt * Chi(:,1), fEQ(:,1), &
+      CALL SolveMatterEquations_EmAb_NuE &
+             ( CR_K(:,iCR_N,iNuE), dt * Chi(:,iNuE), fEQ(:,iNuE), &
                PF_K(iPF_D), AF_K(iAF_T), AF_K(iAF_Ye), AF_K(iAF_E) )
 
       ! --- Compute Primitive Fluid ---
@@ -815,7 +841,7 @@ CONTAINS
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_DGFV
 
 
-  SUBROUTINE SolveMatterEquations_EmAb( J, Chi, J0, D, T, Y, E )
+  SUBROUTINE SolveMatterEquations_EmAb_NuE( J, Chi, J0, D, T, Y, E )
 
     REAL(DP), INTENT(in)    :: J  (1:nE_G)
     REAL(DP), INTENT(in)    :: Chi(1:nE_G)
@@ -859,7 +885,8 @@ CONTAINS
 
     ! --- Neutrino Chemical Potential and Derivatives ---
 
-    CALL ComputeNeutrinoChemicalPotentials( D, T, Y, Mnu, dMnudT, dMnudY )
+    CALL ComputeNeutrinoChemicalPotentials &
+           ( D, T, Y, Mnu, dMnudT, dMnudY, iSpecies = iNuE )
 
     ! --- Equilibrium Distribution ---
 
@@ -956,7 +983,8 @@ CONTAINS
 
       ! --- Neutrino Chemical Potential and Derivatives ---
 
-      CALL ComputeNeutrinoChemicalPotentials( D, T, Y, Mnu, dMnudT, dMnudY )
+      CALL ComputeNeutrinoChemicalPotentials &
+             ( D, T, Y, Mnu, dMnudT, dMnudY, iSpecies = 1 )
 
       ! --- Equilibrium Distribution ---
 
@@ -1018,13 +1046,45 @@ CONTAINS
 
     END DO
 
+  END SUBROUTINE SolveMatterEquations_EmAb_NuE
+
+
+  SUBROUTINE SolveMatterEquations_EmAb &
+    ( J_1, J_2, Chi_1, Chi_2, J0_1, J0_2, D, T, Y, E )
+
+    ! --- Electron Neutrinos (1) and Electron Antineutrinos (2) ---
+
+    REAL(DP), INTENT(in)    :: J_1  (1:nE_G), J_2  (1:nE_G)
+    REAL(DP), INTENT(in)    :: Chi_1(1:nE_G), Chi_2(1:nE_G)
+    REAL(DP), INTENT(inout) :: J0_1 (1:nE_G), J0_2 (1:nE_G)
+    REAL(DP), INTENT(inout) :: D, T, Y, E
+
+    REAL(DP) :: Mnu_1, dMnudT_1, dMnudY_1
+    REAL(DP) :: Mnu_2, dMnudT_2, dMnudY_2
+
+    ! --- Neutrino Chemical Potentials and Derivatives ---
+
+    CALL ComputeNeutrinoChemicalPotentials &
+           ( D, T, Y, Mnu_1, dMnudT_1, dMnudY_1, iSpecies = iNuE )
+
+    CALL ComputeNeutrinoChemicalPotentials &
+           ( D, T, Y, Mnu_2, dMnudT_2, dMnudY_2, iSpecies = iNuE_Bar )
+
+    ! --- Equilibrium Distributions ---
+
+    J0_1 = FermiDirac( E_N, Mnu_1, BoltzmannConstant * T )
+
+    J0_2 = FermiDirac( E_N, Mnu_2, BoltzmannConstant * T )
+
   END SUBROUTINE SolveMatterEquations_EmAb
 
 
-  SUBROUTINE ComputeNeutrinoChemicalPotentials( D, T, Y, M, dMdT, dMdY )
+  SUBROUTINE ComputeNeutrinoChemicalPotentials &
+    ( D, T, Y, M, dMdT, dMdY, iSpecies )
 
     REAL(DP), INTENT(in)  :: D, T, Y
     REAL(DP), INTENT(out) :: M, dMdT, dMdY
+    INTEGER,  INTENT(in)  :: iSpecies
 
     REAL(DP) :: Me, dMedT, dMedY
     REAL(DP) :: Mp, dMpdT, dMpdY
@@ -1053,9 +1113,19 @@ CONTAINS
 
     ! --- Neutrino Chemical Potential and Derivatives ---
 
-    M = ( Me + Mp ) - Mn
-    dMdT = ( dMedT + dMpdT ) - dMndT
-    dMdY = ( dMedY + dMpdY ) - dMndY
+    IF( iSpecies .EQ. iNuE )THEN
+
+      M = ( Me + Mp ) - Mn
+      dMdT = ( dMedT + dMpdT ) - dMndT
+      dMdY = ( dMedY + dMpdY ) - dMndY
+
+    ELSEIF( iSpecies .EQ. iNuE_Bar )THEN
+
+      M = Mn - ( Me + Mp )
+      dMdT = dMndT - ( dMedT + dMpdT )
+      dMdY = dMndY - ( dMedY + dMpdY )
+
+    END IF
 
   END SUBROUTINE ComputeNeutrinoChemicalPotentials
 
