@@ -1,7 +1,13 @@
 function...
   [ Time, E, X1, X2, X3, f_EQ ]...
-    = ReadOpacitiesEQ( AppName, FileNumber, Directory )
+    = ReadOpacitiesEQ( AppName, FileNumber, Species, Directory )
 
+  if( exist( 'Species', 'var' ) )
+    SpeciesIndex = Species;
+  else
+    SpeciesIndex = 1;
+  end
+  
   if( exist( 'Directory', 'var' ) )
     DirName = Directory;
   else
@@ -16,6 +22,8 @@ function...
   X2   = h5read( FileName, '/Spatial Grid/X2' );
   X3   = h5read( FileName, '/Spatial Grid/X3' );
   
-  f_EQ = h5read( FileName, '/Opacities/Species_01/Equilibrium Distribution' );
+  SpeciesString = [ 'Species_' sprintf( '%02d', SpeciesIndex ) ];
+  
+  f_EQ = h5read( FileName, [ '/Opacities/' SpeciesString '/Equilibrium Distribution' ] );
 
 end

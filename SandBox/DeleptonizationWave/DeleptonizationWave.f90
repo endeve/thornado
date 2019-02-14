@@ -45,13 +45,13 @@ PROGRAM DeleptonizationWave
     uPF, iPF_D, &
     uAF, iAF_T, iAF_Ye
   USE RadiationFieldsModule, ONLY: &
-    uCR, rhsCR, nSpecies
-  USE EquationOfStateModule, ONLY: &
-    InitializeEquationOfState, &
-    FinalizeEquationOfState
-  USE OpacityModule, ONLY: &
-    InitializeOpacities, &
-    FinalizeOpacities
+    uCR, rhsCR
+  USE EquationOfStateModule_TABLE, ONLY: &
+    InitializeEquationOfState_TABLE, &
+    FinalizeEquationOfState_TABLE
+  USE OpacityModule_TABLE, ONLY: &
+    InitializeOpacities_TABLE, &
+    FinalizeOpacities_TABLE
   USE NeutrinoOpacitiesModule, ONLY: &
     CreateNeutrinoOpacities, &
     DestroyNeutrinoOpacities
@@ -77,16 +77,17 @@ PROGRAM DeleptonizationWave
 
   LOGICAL  :: wrt
   INTEGER  :: iCycle, iCycleD
-  INTEGER  :: nE, nX(3), nNodes
+  INTEGER  :: nE, nX(3), nNodes, nSpecies
   REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt, wTime
   REAL(DP) :: eL, eR
   REAL(DP) :: xL(3), xR(3)
 
-  nNodes = 2
+  nNodes   = 2
+  nSpecies = 2
 
-  nX = [ 16, 16, 16 ]
-  xL = [ - 0.0d2, - 0.0d2, - 0.0d2 ] * Kilometer
-  xR = [ + 1.0d2, + 1.0d2, + 1.0d2 ] * Kilometer
+  nX = [ 32, 32, 1 ]
+  xL = [ - 0.0d2, - 0.0d2, - 5.0d1 ] * Kilometer
+  xR = [ + 1.0d2, + 1.0d2, + 5.0d1 ] * Kilometer
 
   nE = 16
   eL = 0.0d0 * MeV
@@ -98,9 +99,9 @@ PROGRAM DeleptonizationWave
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 01, 01, 01 ], &
+             = [ 01, 01, 00 ], &
            bcX_Option &
-             = [ 32, 32, 32 ], &
+             = [ 32, 32, 00 ], &
            xL_Option &
              = xL, &
            xR_Option &
@@ -119,6 +120,8 @@ PROGRAM DeleptonizationWave
              = 'CARTESIAN', &
            ActivateUnits_Option &
              = .TRUE., &
+           nSpecies_Option &
+             = nSpecies, &
            BasicInitialization_Option &
              = .TRUE. )
 
@@ -152,19 +155,17 @@ PROGRAM DeleptonizationWave
 
   ! --- Initialize Equation of State ---
 
-  CALL InitializeEquationOfState &
-         ( EquationOfState_Option &
-             = 'TABLE', &
-           EquationOfStateTableName_Option &
-             = 'EquationOfStateTable.h5' )
+  CALL InitializeEquationOfState_TABLE &
+         ( EquationOfStateTableName_Option = 'EquationOfStateTable.h5' )
 
   ! --- Initialize Opacities ---
 
-  CALL InitializeOpacities &
-         ( Opacity_Option &
-             = 'TABLE', &
-           OpacityTableName_Option &
-             = 'OpacityTable.h5' )
+  CALL InitializeOpacities_TABLE &
+         ( OpacityTableName_EmAb_Option &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5', &
+           OpacityTableName_Iso_Option  &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5', &
+           Verbose_Option = .TRUE. )
 
   ! --- Create Neutrino Opacities ---
 
@@ -219,8 +220,8 @@ PROGRAM DeleptonizationWave
   wTime = MPI_WTIME( )
 
   t       = 0.0_DP
-  t_end   = 2.0d-2 * Millisecond
-  dt_wrt  = 2.0d-2 * Millisecond
+  t_end   = 1.0d-0 * Millisecond
+  dt_wrt  = 1.0d-1 * Millisecond
   t_wrt   = dt_wrt
   wrt     = .FALSE.
   iCycleD = 1
@@ -318,9 +319,9 @@ PROGRAM DeleptonizationWave
 
   CALL FinalizeReferenceElement_Lagrange
 
-  CALL FinalizeEquationOfState
+  CALL FinalizeEquationOfState_TABLE
 
-  CALL FinalizeOpacities
+  CALL FinalizeOpacities_TABLE
 
   CALL DestroyNeutrinoOpacities
 

@@ -12,7 +12,7 @@ where the solution vector
 \end{equation}
 is the collection of all cell-averaged moments, $\vect{\cT}$ is the transport operator, corresponding to the first term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, and $\vect{\cQ}$ is the collision operator, corresponding to the second term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}.  
 
-Since the set of realizable moments is convex, convex-invariant schemes, which maps the initial value remains in its domain, can be used to design realizability-preserving methods for the two-moment model.
+Since the set of realizable moments is convex, convex-invariant schemes, which map the initial values into this set, can be used to design realizability-preserving methods for the two-moment model.
 Ideally, the scheme should also be high-order accurate and work well in the asymptotic diffusion limit (characterized by frequent collisions and long time scales).  
 The following discussion considers the construction of such convex-invariant schemes.  
 
@@ -87,7 +87,7 @@ For IMEX schemes of type~ARS, $c_{ij}$ and $\tilde{c}_{ij}$ are given by~\cite{h
 Note that $c_{i1}=\tilde{c}_{i1}=0$ in Eq.~\eqref{eq:positivityCoefficientsARS}, so that $\sum_{j=0}^{i-1}c_{ij}=1$.
 
 If the IMEX scheme is GSA, $\vect{u}^{n+1} = \vect{u}^{(s)}$.  
-Moreover, if $c_{ij},\tilde{c}_{ij}\ge0$ and $a_{ii}>0$, each stage in Eq.~\eqref{eq:imexStagesRewrite} is a convex combination of explicit Euler steps (with time step $\hat{c}_{ij}\dt$), followed by a implicit Euler step.  
+Moreover, if $c_{ij},\tilde{c}_{ij}\ge0$ and $a_{ii}>0$, each stage in Eq.~\eqref{eq:imexStagesRewrite} is a convex combination of explicit Euler steps (with time step $\hat{c}_{ij}\dt$), followed by an implicit Euler step.  
 Each of the explicit Euler steps has a time step condition that ensures its realizability given by $\hat{c}_{ij}\,\dt\leq\dx$; the CFL condition of the scheme.
 Using results proved in~\cite{chu_etal_2018} and discussed in Section~\ref{se:SpatialDiscretization}, the IMEX scheme is convex-invariant and realizability-preserving for the two-moment model in Section~\ref{se:SpatialDiscretization} provided
 \begin{equation}
@@ -98,7 +98,7 @@ Using results proved in~\cite{chu_etal_2018} and discussed in Section~\ref{se:Sp
 \subsection{Diffusion Accurate, Convex-Invariant IMEX Schemes}
 
 Accuracy in the diffusion limit is another important property to consider when an IMEX scheme is applied to the two-moment model.  
-In the diffusion limit, the distribution function is nearly isotropic so that $\vect{\cK}\approx\f{1}{3}\,\cJ\,\vect{I}$ and $\vect{\cH}\approx-\f{1}{3}\,\tau\,\nabla\cJ$, and the two-moment model is approximately governed by (e.g., \cite{jinLevermore_1996})
+In the diffusion limit, the distribution function is nearly isotropic, so $\vect{\cK}\approx\f{1}{3}\,\cJ\,\vect{I}$ and $\vect{\cH}\approx-\f{1}{3}\,\tau\,\nabla\cJ$, and the two-moment model is approximately governed by (e.g., \cite{jinLevermore_1996})
 \begin{equation}
   \pd{\cJ}{t} + \nabla\cdot\vect{\cH} = 0
   \quad\text{and}\quad
@@ -164,15 +164,15 @@ Combining these requirements we seek GSA IMEX schemes of type~ARS with coefficie
                   
     (Note that the greater the $c_{\Sch}$, the larger the time step can be.
     And $c_{\Sch} \leq 1$.)
-    \item Have less than five stages ($s\le4$)\label{cod:statges}.
+    \item Having less than five stages ($s\le4$)\label{cod:statges}.
     \item Are globally stiffly accurate: $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i},\quad i=1,\ldots,s$. 
 \end{enumerate}
 Fortunately, these IMEX schemes are easy to find.  
 (The constraint in \eqref{cod:statges} is introduced from efficiency considerations to limit the number of implicit solves.)
-We call the IMEX schemes satisfying the above conditions {PD-ARS} (see also Definition~3 in~\cite{chu_etal_2018}), and we provide two optimal PD-ARS schemes below: PD-ARS2 and PD-ARS3, each limits to the optimal second-order and third-order SSPRK schemes from~\cite{shuOsher_1988}, respectively.
+We call the IMEX schemes satisfying the above conditions {PD-ARS} (see also Definition~3 in~\cite{chu_etal_2018}), and we provide two optimal PD-ARS schemes below: PD-ARS2 and PD-ARS3, each limiting to the optimal second-order and third-order SSPRK schemes from~\cite{shuOsher_1988}, respectively.
 \subsubsection{PD-ARS2}
 
-The optimal 3-statge PD-ARS, PD-ARS2, in the standard double Butcher tableau form, with explicit tableau ($\tilde{A}$) on the left and implicit tableau ($A$) on the right, is given by
+The optimal 3-stage PD-ARS, PD-ARS2, in the standard double Butcher tableau form, with explicit tableau ($\tilde{A}$) on the left and implicit tableau ($A$) on the right, is given by
 \begin{align}
   &\begin{array}{c | c c c}
   	0 & 0   & 0 & 0 \\
@@ -213,4 +213,4 @@ The optimal 4-stage PD-ARS, PD-ARS3, is given in its standard double Butcher tab
 \end{align}
 Its explicit tableau is SSPRK3. 
 This scheme requires three implicit solves per time step, and $c_{\Sch}= 1$.  
-Since PD-ARS3 is not more accurate than PD-ARS2 in collision dominated regions (see our results in Section~\ref{se:NumericalTests}), it may not offer any practical advantage over PD-ARS2.  
+Since PD-ARS3 is not more accurate than PD-ARS2 in collision-dominated regions (see our results in Section~\ref{se:NumericalTests}), it may not offer any practical advantage over PD-ARS2.  

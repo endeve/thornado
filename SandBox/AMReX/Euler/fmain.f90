@@ -53,10 +53,13 @@ PROGRAM main
     MF_UpdateFluid_SSPRK
   USE FinalizationModule,               ONLY: &
     FinalizeProgram
+  USE MF_UtilitiesModule,               ONLY: &
+    MakeMF_Diff
 
   ! --- Checkpoint ---
   USE InputOutputModuleAMReX
-  USE amrex_amr_module
+  USE amrex_amr_module, ONLY: &
+    amrex_amrcore_init
   USE MyAmrDataModule
   USE MyAmrModule
 
@@ -78,11 +81,17 @@ PROGRAM main
 
   IMPLICIT NONE
 
-  INTEGER :: iLevel, iDim
+  INCLUDE 'mpif.h'
+
+  INTEGER                            :: iLevel, iDim
   TYPE(amrex_box)                    :: BX
   TYPE(amrex_boxarray),  ALLOCATABLE :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE :: DM(:)
   TYPE(amrex_geometry),  ALLOCATABLE :: GEOM(:)
+
+  REAL(amrex_real) :: Timer_Evolution
+
+  CALL MakeMF_Diff( 2, 4 )
 
   ! --- Initialize AMReX ---
   CALL amrex_init()
@@ -118,17 +127,18 @@ PROGRAM main
   CALL InitializeProgramHeader &
          ( ProgramName_Option = TRIM( ProgramName ), &
            nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
-           xL_Option = xL, xR_Option = xR, bcX_Option = bcX )
+           xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
+           Verbose_Option = amrex_parallel_ioprocessor() )
 
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
-           ( MF_uGF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
+           ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
     CALL amrex_multifab_build &
-           ( MF_uCF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+           ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
     CALL amrex_multifab_build &
-           ( MF_uPF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
+           ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
     CALL amrex_multifab_build &
-           ( MF_uAF_new(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+           ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
   END DO
 
   CoordinateSystem = TRIM( CoordSys )
@@ -173,7 +183,7 @@ PROGRAM main
   CALL InitializeReferenceElementX_Lagrange
 
   DO iLevel = 0, nLevels
-    CALL MF_ComputeGeometryX( MF_uGF_new(iLevel) )
+    CALL MF_ComputeGeometryX( MF_uGF(iLevel) )
   END DO
 
   CALL InitializeEquationOfState &
@@ -206,19 +216,19 @@ PROGRAM main
 
   DO iLevel = 0, nLevels
     CALL MF_InitializeFields &
-           ( TRIM( ProgramName ), MF_uGF_new(iLevel), MF_uCF_new(iLevel) )
+           ( TRIM( ProgramName ), MF_uGF(iLevel), MF_uCF(iLevel) )
   END DO
 
   ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
   CALL MF_Euler_ApplySlopeLimiter &
-         ( nLevels, MF_uGF_new, MF_uCF_new, GEOM )
+         ( nLevels, MF_uGF, MF_uCF, GEOM )
   CALL MF_Euler_ApplyPositivityLimiter &
-         ( nLevels, MF_uGF_new, MF_uCF_new )
+         ( nLevels, MF_uGF, MF_uCF )
 
   DO iLevel = 0, nLevels
     CALL MF_ComputeFromConserved &
-           ( MF_uGF_new(iLevel), MF_uCF_new(iLevel), &
-             MF_uPF_new(iLevel), MF_uAF_new(iLevel) )
+           ( MF_uGF(iLevel), MF_uCF(iLevel), &
+             MF_uPF(iLevel), MF_uAF(iLevel) )
   END DO
 
   CALL MF_InitializeFluid_SSPRK &
@@ -236,34 +246,24 @@ PROGRAM main
   END IF
 
   CALL WriteFieldsAMReX_PlotFile &
-         ( 0.0_amrex_real, nLevels, GEOM, StepNo, &
-           MF_uGF_Option = MF_uGF_new, &
-           MF_uCF_Option = MF_uCF_new, &
-           MF_uPF_Option = MF_uPF_new, &
-           MF_uAF_Option = MF_uAF_new )
+         ( 0.0e0_amrex_real, nLevels, GEOM, StepNo, &
+           MF_uGF_Option = MF_uGF, &
+           MF_uCF_Option = MF_uCF, &
+           MF_uPF_Option = MF_uPF, &
+           MF_uAF_Option = MF_uAF )
 
-  ! --- Evolve ---
+  ! --- Beginning of evolution ---
+
   t  = 0.0_amrex_real
+
+  IF( amrex_parallel_ioprocessor() ) &
+    Timer_Evolution = MPI_WTIME()
 
   DO WHILE( ALL( t .LT. t_end ) )
 
-!!$    IF( LEN_TRIM( Restart ) .NE. 0 )THEN
-!!$      DO iLevel = 0, nLevels
-!!$        StepNo(iLevel) = StepNo_vec(iLevel)
-!!$        dt    (iLevel) = dt_vec    (iLevel)
-!!$!        t              = t_vec     (iLevel)
-!!$      END DO
-!!$      CALL WriteFieldsAMReX_PlotFile &
-!!$             ( t, nLevels, GEOM, StepNo, &
-!!$               MF_uGF_Option = MF_uGF_new, &
-!!$               MF_uCF_Option = MF_uCF_new, &
-!!$               MF_uPF_Option = MF_uPF_new, &
-!!$               MF_uAF_Option = MF_uAF_new )
-!!$     END IF
-
     StepNo = StepNo + 1
 
-    CALL MF_ComputeTimeStep( nLevels, MF_uGF_new, MF_uCF_new, CFL, dt )
+    CALL MF_ComputeTimeStep( nLevels, MF_uGF, MF_uCF, CFL, dt )
     t = t + dt
 
     IF( amrex_parallel_ioprocessor() )THEN
@@ -272,69 +272,75 @@ PROGRAM main
           '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
     END IF
 
-!!$    DO iLevel = 0, nLevels
-!!$      CALL MF_uCF_new(iLevel) &
-!!$             % LinComb( 1.0_amrex_real, MF_uCF_new(iLevel), 1, dt(0), &
-!!$                        MF_duCF(iLevel), 1, 1, &
-!!$                        MF_uCF_new(iLevel) % nComp(), 0 )
-!!$    END DO
-
     CALL MF_UpdateFluid_SSPRK &
-           ( nLevels, t, dt, MF_uGF_new, MF_uCF_new, &
+           ( nLevels, t, dt, MF_uGF, MF_uCF, &
              GEOM, MF_Euler_ComputeIncrement )
 
     IF( MOD( StepNo(0), iCycleW ) .EQ. 0 )THEN
 
       DO iLevel = 0, nLevels
         CALL MF_ComputeFromConserved &
-               ( MF_uGF_new(iLevel), MF_uCF_new(iLevel), &
-                 MF_uPF_new(iLevel), MF_uAF_new(iLevel) )
+               ( MF_uGF(iLevel), MF_uCF(iLevel), &
+                 MF_uPF(iLevel), MF_uAF(iLevel) )
       END DO
 
       CALL WriteFieldsAMReX_PlotFile &
              ( t(0), nLevels, GEOM, StepNo, &
-               MF_uGF_Option = MF_uGF_new, &
-               MF_uCF_Option = MF_uCF_new, &
-               MF_uPF_Option = MF_uPF_new, &
-               MF_uAF_Option = MF_uAF_new )
+               MF_uGF_Option = MF_uGF, &
+               MF_uCF_Option = MF_uCF, &
+               MF_uPF_Option = MF_uPF, &
+               MF_uAF_Option = MF_uAF )
     END IF
 
     IF( MOD( StepNo(0), iCycleChk ) .EQ. 0 )THEN
 
       DO iLevel = 0, nLevels
         CALL MF_ComputeFromConserved &
-               ( MF_uGF_new(iLevel), MF_uCF_new(iLevel), &
-                 MF_uPF_new(iLevel), MF_uAF_new(iLevel) )
+               ( MF_uGF(iLevel), MF_uCF(iLevel), &
+                 MF_uPF(iLevel), MF_uAF(iLevel) )
       END DO
 
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t, &
-               MF_uGF_new % BA % P, &
-               MF_uGF_new % P, &
-               MF_uCF_new % P, &
-               MF_uPF_new % P, &
-               MF_uAF_new % P )
+               MF_uGF % BA % P, &
+               MF_uGF % P, &
+               MF_uCF % P, &
+               MF_uPF % P, &
+               MF_uAF % P )
      
     END IF
 
   END DO
+
   ! --- END of evolution ---
+
+  IF( amrex_parallel_ioprocessor() )THEN
+    WRITE(*,*)
+    WRITE(*,'(A,ES13.6E3,A)') &
+      'Total evolution time: ', MPI_WTIME() - Timer_Evolution, ' s'
+  END IF
 
   DO iLevel = 0, nLevels
     CALL MF_ComputeFromConserved &
-           ( MF_uGF_new(iLevel), MF_uCF_new(iLevel), &
-             MF_uPF_new(iLevel), MF_uAF_new(iLevel) )
+           ( MF_uGF(iLevel), MF_uCF(iLevel), &
+             MF_uPF(iLevel), MF_uAF(iLevel) )
   END DO
 
   StepNo = StepNo + 1
   CALL WriteFieldsAMReX_PlotFile &
          ( t(0), nLevels, GEOM, StepNo, &
-           MF_uGF_Option = MF_uGF_new, &
-           MF_uCF_Option = MF_uCF_new, &
-           MF_uPF_Option = MF_uPF_new, &
-           MF_uAF_Option = MF_uAF_new )
+           MF_uGF_Option = MF_uGF, &
+           MF_uCF_Option = MF_uCF, &
+           MF_uPF_Option = MF_uPF, &
+           MF_uAF_Option = MF_uAF )
 
-!!$  CALL ReadCheckpointFile
+  CALL WriteFieldsAMReX_Checkpoint &
+         ( StepNo, nLevels, dt, t, &
+           MF_uGF % BA % P, &
+           MF_uGF % P, &
+           MF_uCF % P, &
+           MF_uPF % P, &
+           MF_uAF % P )
 
   ! --- Finalize everything ---
 
