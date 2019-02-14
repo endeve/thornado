@@ -1,6 +1,12 @@
 function...
   [ Time, E, X1, X2, X3, opEC ]...
-    = ReadOpacitiesEC( AppName, FileNumber, Directory )
+    = ReadOpacitiesEC( AppName, FileNumber, Species, Directory )
+
+  if( exist( 'Species', 'var' ) )
+    SpeciesIndex = Species;
+  else
+    SpeciesIndex = 1;
+  end
 
   if( exist( 'Directory', 'var' ) )
     DirName = Directory;
@@ -16,7 +22,9 @@ function...
   X2   = h5read( FileName, '/Spatial Grid/X2' );
   X3   = h5read( FileName, '/Spatial Grid/X3' );
   
-  opEC = h5read( FileName, '/Opacities/Species_01/Electron Capture Opacities' );
+  SpeciesString = [ 'Species_' sprintf( '%02d', SpeciesIndex ) ];
+  
+  opEC = h5read( FileName, [ '/Opacities/' SpeciesString '/Electron Capture Opacities' ] );
 
 end
 
