@@ -14,13 +14,15 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     nNodesE, &
     nNodesX, &
     nNodesZ, &
-    nDOFX
+    nDOFX,   &
+    nDOF
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX3D, &
     WeightsX_q
   USE ReferenceElementModule, ONLY: &
+    NodeNumberTable, &
     NodeNumberTable4D
   USE MeshModule, ONLY: &
     MeshE, &
@@ -33,7 +35,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     nAF, iAF_T, iAF_Ye, iAF_E
   USE RadiationFieldsModule, ONLY: &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
-    nSpecies
+    nSpecies, iNuE, iNuE_Bar
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeThermodynamicStates_Auxiliary_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE, &
@@ -45,6 +47,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeNeutrinoOpacities_EC_Point, &
     ComputeNeutrinoOpacities_ES_Point, &
+    ComputeNeutrinoOpacities_EC_Points, &
     FermiDirac, &
     dFermiDiracdT, &
     dFermiDiracdY
@@ -55,6 +58,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INCLUDE 'mpif.h'
 
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit
+  PUBLIC :: ComputeIncrement_TwoMoment_Implicit_New
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit_DGFV
 
   ! --- Units Only for Displaying to Screen ---
@@ -86,6 +90,241 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: dR_N(:,:,:,:) ! --- Conserved Radiation Increment
 
 CONTAINS
+
+
+  SUBROUTINE ComputeIncrement_TwoMoment_Implicit_New &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      dt
+    REAL(DP), INTENT(in)    :: &
+      GE(1:,iZ_B1(1):,1:)
+    REAL(DP), INTENT(in)    :: &
+      GX  (1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+    REAL(DP), INTENT(in)    :: &
+      U_F (1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+    REAL(DP), INTENT(inout) :: &
+      dU_F(1:,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+    REAL(DP), INTENT(in)    :: &
+      U_R (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+    REAL(DP), INTENT(inout) :: &
+      dU_R(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+
+    INTEGER  :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iNodeX, iE
+    REAL(DP) :: CF_N(1:nDOFX,1:nCF)
+    REAL(DP) :: PF_N(1:nDOFX,1:nPF)
+    REAL(DP) :: AF_N(1:nDOFX,1:nAF)
+    REAL(DP), ALLOCATABLE :: Kappa(:)
+    REAL(DP), ALLOCATABLE :: Chi(:,:,:)
+    REAL(DP), ALLOCATABLE :: Sig(:,:,:)
+    REAL(DP), ALLOCATABLE :: fEQ(:,:,:)
+
+    iE_B0 = iZ_B0(1);   iE_E0 = iZ_E0(1)
+    iE_B1 = iZ_B1(1);   iE_E1 = iZ_E1(1)
+    iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
+    iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
+
+!!$    PRINT*, "ComputeIncrement_TwoMoment_Implicit_New"
+
+    CALL InitializeCollisions_New( iE_B0, iE_E0 )
+
+    ALLOCATE( Kappa(nE_G) )
+    ALLOCATE( Chi(nE_G,nSpecies,nDOFX) )
+    ALLOCATE( Sig(nE_G,nSpecies,nDOFX) )
+    ALLOCATE( fEQ(nE_G,nSpecies,nDOFX) )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+!!$      PRINT*, "iX1,iX2,iX3 = ", iX1,iX2,iX3
+
+      wTime = MPI_WTIME( )
+
+      DO iCF = 1, nCF
+
+        CF_N(:,            iCF) = U_F (:,iX1,iX2,iX3,iCF)
+        dU_F(:,iX1,iX2,iX3,iCF) = CF_N(:,            iCF)
+
+      END DO
+
+      wTime = MPI_WTIME( ) - wTime
+
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'Copy to CF_N: ', wTime
+
+      CALL ComputePrimitive_Euler &
+             ( CF_N(:,iCF_D ), CF_N(:,iCF_S1), CF_N(:,iCF_S2), &
+               CF_N(:,iCF_S3), CF_N(:,iCF_E ), CF_N(:,iCF_Ne), &
+               PF_N(:,iPF_D ), PF_N(:,iPF_V1), PF_N(:,iPF_V2), &
+               PF_N(:,iPF_V3), PF_N(:,iPF_E ), PF_N(:,iPF_Ne), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+!!$      PRINT*, "D  = ", PF_N(:,iPF_D  )
+!!$      PRINT*, "V1 = ", PF_N(:,iPF_V1 )
+!!$      PRINT*, "V2 = ", PF_N(:,iPF_V2 )
+!!$      PRINT*, "V3 = ", PF_N(:,iPF_V3 )
+!!$      PRINT*, "E  = ", PF_N(:,iPF_E  )
+!!$      PRINT*, "Ne = ", PF_N(:,iPF_Ne )
+
+      CALL ComputeThermodynamicStates_Auxiliary_TABLE &
+             ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
+               AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
+
+!!$      PRINT*, "T  = ", AF_N(:,iAF_T)
+!!$      PRINT*, "E  = ", AF_N(:,iAF_E)
+!!$      PRINT*, "Ye = ", AF_N(:,iAF_Ye)
+
+      wTime = MPI_WTIME( )
+
+      DO iS = 1, nSpecies
+
+        CALL ComputeNeutrinoOpacities_EC_Points &
+               ( 1, nE_G, 1, nDOFX, E_N, PF_N(:,iPF_D), &
+                 AF_N(:,iAF_T), AF_N(:,iAF_Ye), iS, Chi(:,iS,:) )
+
+      END DO
+
+      Sig = Zero
+
+      wTime = MPI_WTIME( ) - wTime
+
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeNeutrinoOpacities: ', wTime
+
+      wTime = MPI_WTIME( )
+
+      CALL MapForward_R_New &
+             ( iE_B0, iE_E0, U_R(:,iE_B0:iE_E0,iX1,iX2,iX3,:,:), CR_N )
+
+      wTime = MPI_WTIME( ) - wTime
+
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'MapForward_R: ', wTime
+
+      wTime = MPI_WTIME( )
+
+      IF( nSpecies .EQ. 1 )THEN
+
+        ! --- Single Species (Electron Neutrinos) ---
+
+        DO iNodeX = 1, nDOFX
+
+          CALL SolveMatterEquations_EmAb_NuE &
+                 ( CR_N    (:,iCR_N,iNuE,iNodeX), &
+                   dt * Chi(:,      iNuE,iNodeX), &
+                   fEQ     (:,      iNuE,iNodeX), &
+                   PF_N(iNodeX,iPF_D ), AF_N(iNodeX,iAF_T), &
+                   AF_N(iNodeX,iAF_Ye), AF_N(iNodeX,iAF_E) )
+
+        END DO
+
+      ELSE
+
+        ! --- Electron Neutrinos and Antineutrinos ---
+
+        DO iNodeX = 1, nDOFX
+
+          CALL SolveMatterEquations_EmAb &
+                 ( CR_N    (:,iCR_N,iNuE,    iNodeX), &
+                   CR_N    (:,iCR_N,iNuE_Bar,iNodeX), &
+                   dt * Chi(:,      iNuE,    iNodeX), &
+                   dt * Chi(:,      iNuE_Bar,iNodeX), &
+                   fEQ     (:,      iNuE,    iNodeX), &
+                   fEQ     (:,      iNuE_Bar,iNodeX), &
+                   PF_N(iNodeX,iPF_D ), AF_N(iNodeX,iAF_T), &
+                   AF_N(iNodeX,iAF_Ye), AF_N(iNodeX,iAF_E) )
+
+        END DO
+
+      END IF
+
+      wTime = MPI_WTIME( ) - wTime
+
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'SolveMatterEquations_EmAb: ', wTime
+
+      CALL ComputeThermodynamicStates_Primitive_TABLE &
+             ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
+               PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
+
+      CALL ComputeConserved_Euler &
+             ( PF_N(:,iPF_D ), PF_N(:,iPF_V1), PF_N(:,iPF_V2), &
+               PF_N(:,iPF_V3), PF_N(:,iPF_E ), PF_N(:,iPF_Ne), &
+               CF_N(:,iCF_D ), CF_N(:,iCF_S1), CF_N(:,iCF_S2), &
+               CF_N(:,iCF_S3), CF_N(:,iCF_E ), CF_N(:,iCF_Ne), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      ! --- Conserved Fluid Increment ---
+
+      DO iCF = 1, nCF
+
+        dU_F(:,iX1,iX2,iX3,iCF) &
+          = ( CF_N(:,iCF) - dU_F(:,iX1,iX2,iX3,iCF) ) /dt
+
+      END DO
+
+      ! --- Update Radiation Fields ---
+
+      DO iNodeX = 1, nDOFX
+      DO iS     = 1, nSpecies
+
+        Kappa = Chi(:,iS,iNodeX) + Sig(:,iS,iNodeX)
+
+        ! --- Number Density ---
+
+        CR_N(:,iCR_N,iS,iNodeX) &
+          = ( dt * Chi(:,iS,iNodeX) * fEQ(:,iS,iNodeX) &
+              + CR_N(:,iCR_N,iS,iNodeX) ) / ( One + dt * Chi(:,iS,iNodeX) )
+
+        ! --- Number Flux (1) ---
+
+        CR_N(:,iCR_G1,iS,iNodeX) &
+          = CR_N(:,iCR_G1,iS,iNodeX) / ( One + dt * Kappa )
+
+        ! --- Number Flux (2) ---
+
+        CR_N(:,iCR_G2,iS,iNodeX) &
+          = CR_N(:,iCR_G2,iS,iNodeX) / ( One + dt * Kappa )
+
+        ! --- Number Flux (3) ---
+
+        CR_N(:,iCR_G3,iS,iNodeX) &
+          = CR_N(:,iCR_G3,iS,iNodeX) / ( One + dt * Kappa )
+
+        ! --- Increments ---
+
+        dR_N(:,iCR_N,iS,iNodeX) &
+          = Chi(:,iS,iNodeX) * ( fEQ(:,iS,iNodeX) - CR_N(:,iCR_N,iS,iNodeX) )
+
+        dR_N(:,iCR_G1,iS,iNodeX) &
+          = - Kappa * CR_N(:,iCR_G1,iS,iNodeX)
+
+        dR_N(:,iCR_G2,iS,iNodeX) &
+          = - Kappa * CR_N(:,iCR_G2,iS,iNodeX)
+
+        dR_N(:,iCR_G3,iS,iNodeX) &
+          = - Kappa * CR_N(:,iCR_G3,iS,iNodeX)
+        
+      END DO
+      END DO
+
+      CALL MapBackward_R_New &
+             ( iE_B0, iE_E0, dU_R(:,iE_B0:iE_E0,iX1,iX2,iX3,:,:), dR_N )
+
+    END DO
+    END DO
+    END DO
+
+    DEALLOCATE( Kappa, Chi, Sig, fEQ )
+
+    CALL FinalizeCollisions_New
+
+  END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_New
 
 
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
@@ -247,8 +486,8 @@ CONTAINS
 
       wTime = MPI_WTIME( )
 
-      CALL SolveMatterEquations_EmAb &
-             ( CR_N(:,iCR_N,1,iX_G), dt * Chi(:,1), fEQ(:,1), &
+      CALL SolveMatterEquations_EmAb_NuE &
+             ( CR_N(:,iCR_N,iNuE,iX_G), dt * Chi(:,iNuE), fEQ(:,iNuE), &
                PF_N(iPF_D), AF_N(iAF_T), AF_N(iAF_Ye), AF_N(iAF_E) )
 
       wTime = MPI_WTIME( ) - wTime
@@ -483,8 +722,8 @@ CONTAINS
 
       ! --- Update Fluid ---
 
-      CALL SolveMatterEquations_EmAb &
-             ( CR_K(:,iCR_N,1), dt * Chi(:,1), fEQ(:,1), &
+      CALL SolveMatterEquations_EmAb_NuE &
+             ( CR_K(:,iCR_N,iNuE), dt * Chi(:,iNuE), fEQ(:,iNuE), &
                PF_K(iPF_D), AF_K(iAF_T), AF_K(iAF_Ye), AF_K(iAF_E) )
 
       ! --- Compute Primitive Fluid ---
@@ -602,7 +841,7 @@ CONTAINS
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_DGFV
 
 
-  SUBROUTINE SolveMatterEquations_EmAb( J, Chi, J0, D, T, Y, E )
+  SUBROUTINE SolveMatterEquations_EmAb_NuE( J, Chi, J0, D, T, Y, E )
 
     REAL(DP), INTENT(in)    :: J  (1:nE_G)
     REAL(DP), INTENT(in)    :: Chi(1:nE_G)
@@ -646,7 +885,8 @@ CONTAINS
 
     ! --- Neutrino Chemical Potential and Derivatives ---
 
-    CALL ComputeNeutrinoChemicalPotentials( D, T, Y, Mnu, dMnudT, dMnudY )
+    CALL ComputeNeutrinoChemicalPotentials &
+           ( D, T, Y, Mnu, dMnudT, dMnudY, iSpecies = iNuE )
 
     ! --- Equilibrium Distribution ---
 
@@ -743,7 +983,8 @@ CONTAINS
 
       ! --- Neutrino Chemical Potential and Derivatives ---
 
-      CALL ComputeNeutrinoChemicalPotentials( D, T, Y, Mnu, dMnudT, dMnudY )
+      CALL ComputeNeutrinoChemicalPotentials &
+             ( D, T, Y, Mnu, dMnudT, dMnudY, iSpecies = 1 )
 
       ! --- Equilibrium Distribution ---
 
@@ -805,13 +1046,45 @@ CONTAINS
 
     END DO
 
+  END SUBROUTINE SolveMatterEquations_EmAb_NuE
+
+
+  SUBROUTINE SolveMatterEquations_EmAb &
+    ( J_1, J_2, Chi_1, Chi_2, J0_1, J0_2, D, T, Y, E )
+
+    ! --- Electron Neutrinos (1) and Electron Antineutrinos (2) ---
+
+    REAL(DP), INTENT(in)    :: J_1  (1:nE_G), J_2  (1:nE_G)
+    REAL(DP), INTENT(in)    :: Chi_1(1:nE_G), Chi_2(1:nE_G)
+    REAL(DP), INTENT(inout) :: J0_1 (1:nE_G), J0_2 (1:nE_G)
+    REAL(DP), INTENT(inout) :: D, T, Y, E
+
+    REAL(DP) :: Mnu_1, dMnudT_1, dMnudY_1
+    REAL(DP) :: Mnu_2, dMnudT_2, dMnudY_2
+
+    ! --- Neutrino Chemical Potentials and Derivatives ---
+
+    CALL ComputeNeutrinoChemicalPotentials &
+           ( D, T, Y, Mnu_1, dMnudT_1, dMnudY_1, iSpecies = iNuE )
+
+    CALL ComputeNeutrinoChemicalPotentials &
+           ( D, T, Y, Mnu_2, dMnudT_2, dMnudY_2, iSpecies = iNuE_Bar )
+
+    ! --- Equilibrium Distributions ---
+
+    J0_1 = FermiDirac( E_N, Mnu_1, BoltzmannConstant * T )
+
+    J0_2 = FermiDirac( E_N, Mnu_2, BoltzmannConstant * T )
+
   END SUBROUTINE SolveMatterEquations_EmAb
 
 
-  SUBROUTINE ComputeNeutrinoChemicalPotentials( D, T, Y, M, dMdT, dMdY )
+  SUBROUTINE ComputeNeutrinoChemicalPotentials &
+    ( D, T, Y, M, dMdT, dMdY, iSpecies )
 
     REAL(DP), INTENT(in)  :: D, T, Y
     REAL(DP), INTENT(out) :: M, dMdT, dMdY
+    INTEGER,  INTENT(in)  :: iSpecies
 
     REAL(DP) :: Me, dMedT, dMedY
     REAL(DP) :: Mp, dMpdT, dMpdY
@@ -840,11 +1113,38 @@ CONTAINS
 
     ! --- Neutrino Chemical Potential and Derivatives ---
 
-    M = ( Me + Mp ) - Mn
-    dMdT = ( dMedT + dMpdT ) - dMndT
-    dMdY = ( dMedY + dMpdY ) - dMndY
+    IF( iSpecies .EQ. iNuE )THEN
+
+      M = ( Me + Mp ) - Mn
+      dMdT = ( dMedT + dMpdT ) - dMndT
+      dMdY = ( dMedY + dMpdY ) - dMndY
+
+    ELSEIF( iSpecies .EQ. iNuE_Bar )THEN
+
+      M = Mn - ( Me + Mp )
+      dMdT = dMndT - ( dMedT + dMpdT )
+      dMdY = dMndY - ( dMedY + dMpdY )
+
+    END IF
 
   END SUBROUTINE ComputeNeutrinoChemicalPotentials
+
+
+  SUBROUTINE InitializeCollisions_New( iE_B, iE_E )
+
+    INTEGER, INTENT(in) :: iE_B, iE_E
+
+    nE_G = (iE_E-iE_B+1) * nNodesZ(1)
+
+    ALLOCATE( E_N (nE_G) )
+    ALLOCATE( W2_N(nE_G) )
+    ALLOCATE( W3_N(nE_G) )
+    ALLOCATE( CR_N(nE_G,nCR,nSpecies,nDOFX) )
+    ALLOCATE( dR_N(nE_G,nCR,nSpecies,nDOFX) )
+
+    CALL ComputePointsAndWeightsE( E_N, W2_N, W3_N )
+
+  END SUBROUTINE InitializeCollisions_New
 
 
   SUBROUTINE InitializeCollisions( iZ_B, iZ_E )
@@ -889,6 +1189,14 @@ CONTAINS
     ALLOCATE( dR_N(nE_G,nCR,nSpecies,nDOFX) )
 
   END SUBROUTINE InitializeCollisions_DGFV
+
+
+  SUBROUTINE FinalizeCollisions_New
+
+    DEALLOCATE( E_N, W2_N, W3_N )
+    DEALLOCATE( CR_N, dR_N )
+
+  END SUBROUTINE FinalizeCollisions_New
 
 
   SUBROUTINE FinalizeCollisions
@@ -1077,6 +1385,70 @@ CONTAINS
   END SUBROUTINE MapBackward_F
 
 
+  SUBROUTINE MapForward_R_New( iE_B, iE_E, RF, RF_K )
+
+    INTEGER,  INTENT(in)  :: &
+      iE_B, iE_E
+    REAL(DP), INTENT(in)  :: &
+      RF(:,iE_B:,:,:)
+    REAL(DP), INTENT(out) :: &
+      RF_K(:,:,:,:)
+
+    INTEGER :: iE, iN_E, iN, iN_X, iCR, iS, iNodeE, iNodeX(3)
+
+    DO iS  = 1, nSpecies
+    DO iCR = 1, nCR
+    DO iE  = iE_B, iE_E
+    DO iN  = 1, nDOF
+
+      iNodeE = NodeNumberTable(1,  iN)
+      iNodeX = NodeNumberTable(2:4,iN)
+
+      iN_E = (iE-1)*nNodesE+iNodeE
+      iN_X = NodeNumberTableX3D(iNodeX(1),iNodeX(2),iNodeX(3))
+
+      RF_K(iN_E,iCR,iS,iN_X) = RF(iN,iE,iCR,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE MapForward_R_New
+
+
+  SUBROUTINE MapBackward_R_New( iE_B, iE_E, RF, RF_K )
+
+    INTEGER,  INTENT(in)  :: &
+      iE_B, iE_E
+    REAL(DP), INTENT(out) :: &
+      RF(:,iE_B:,:,:)
+    REAL(DP), INTENT(in)  :: &
+      RF_K(:,:,:,:)
+
+    INTEGER :: iE, iN_E, iN, iN_X, iCR, iS, iNodeE, iNodeX(3)
+
+    DO iS  = 1, nSpecies
+    DO iCR = 1, nCR
+    DO iE  = iE_B, iE_E
+    DO iN  = 1, nDOF
+
+      iNodeE = NodeNumberTable(1,  iN)
+      iNodeX = NodeNumberTable(2:4,iN)
+
+      iN_E = (iE-1)*nNodesE+iNodeE
+      iN_X = NodeNumberTableX3D(iNodeX(1),iNodeX(2),iNodeX(3))
+
+      RF(iN,iE,iCR,iS) = RF_K(iN_E,iCR,iS,iN_X)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE MapBackward_R_New
+
+
   SUBROUTINE MapForward_R( iZ_B, iZ_E, RF, RF_N )
 
     INTEGER,  INTENT(in)  :: &
@@ -1245,9 +1617,9 @@ CONTAINS
   END SUBROUTINE MapBackward_R_DGFV
 
 
-  SUBROUTINE ComputePrimitive_Euler &
-               ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+  ELEMENTAL SUBROUTINE ComputePrimitive_Euler &
+    ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     REAL(DP), INTENT(in)  :: N, S_1, S_2, S_3, G, Ne
     REAL(DP), INTENT(out) :: D, V_1, V_2, V_3, E, De
@@ -1268,9 +1640,9 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_Euler
 
 
-  SUBROUTINE ComputeConserved_Euler &
-               ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+  ELEMENTAL SUBROUTINE ComputeConserved_Euler &
+    ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     REAL(DP), INTENT(in)  :: D, V_1, V_2, V_3, E, De
     REAL(DP), INTENT(out) :: N, S_1, S_2, S_3, G, Ne
@@ -1280,10 +1652,10 @@ CONTAINS
     ! --- Three-Momentum: Index Down ---
 
     N   = D
-    S_1 = D * V_1
-    S_2 = D * V_2
-    S_3 = D * V_3
-    G   = E + Half * D * ( Gm_dd_11 * V_1**2 &
+    S_1 = D * Gm_dd_11 * V_1
+    S_2 = D * Gm_dd_22 * V_2
+    S_3 = D * Gm_dd_33 * V_3
+    G   = E + Half * D * (   Gm_dd_11 * V_1**2 &
                            + Gm_dd_22 * V_2**2 &
                            + Gm_dd_33 * V_3**2 )
     Ne  = De

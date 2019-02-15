@@ -75,9 +75,9 @@ CONTAINS
     ! --- Three-Momentum: Index Down ---
 
     N   = D
-    S_1 = D * V_1
-    S_2 = D * V_2
-    S_3 = D * V_3
+    S_1 = D * Gm_dd_11 * V_1
+    S_2 = D * Gm_dd_22 * V_2
+    S_3 = D * Gm_dd_33 * V_3
     G   = E + Half * D * ( Gm_dd_11 * V_1**2 &
                            + Gm_dd_22 * V_2**2 &
                            + Gm_dd_33 * V_3**2 )

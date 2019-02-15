@@ -2,7 +2,7 @@ MODULE InputOutputModuleAMReX
 
   ! --- AMReX Modules ---
 
-  USE iso_c_binding
+  USE ISO_C_BINDING
   USE amrex_base_module
   USE amrex_amr_module
 
@@ -29,7 +29,6 @@ MODULE InputOutputModuleAMReX
   PRIVATE
 
   CHARACTER(8) :: BaseFileName = 'thornado'
-  CHARACTER(3) :: BaseCheckpointFileName = 'chk'
 
   PUBLIC :: WriteFieldsAMReX_PlotFile
   PUBLIC :: WriteFieldsAMReX_Checkpoint
@@ -53,21 +52,23 @@ MODULE InputOutputModuleAMReX
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
-                 ( FinestLevel, StepNo, dt, time, pBA, pDM ) BIND(c)
+                 ( FinestLevel, StepNo, dt, time, pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int),   INTENT(out) :: FinestLevel(*)
       INTEGER(c_int),   INTENT(out) :: StepNo(*)
       REAL(amrex_real), INTENT(out) :: dt(*),time(*)
       TYPE(c_ptr),      INTENT(out) :: pBA(*), pDM(*)
+      INTEGER(c_int),   VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
 
-    SUBROUTINE ReadMultiFabData( FinestLevel, pMF, iMF ) BIND(c)
+    SUBROUTINE ReadMultiFabData( FinestLevel, pMF, iMF, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int), VALUE       :: FinestLevel
       TYPE(c_ptr),    INTENT(out) :: pMF(*)
       INTEGER(c_int), VALUE       :: iMF
+      INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadMultiFabData
 
     SUBROUTINE amrex_fi_set_boxarray( iLevel, pBA, amrcore ) BIND(c)
@@ -104,13 +105,16 @@ MODULE InputOutputModuleAMReX
 
 CONTAINS
 
-  SUBROUTINE ReadCheckpointFile()
+  SUBROUTINE ReadCheckpointFile( iChkFile )
 
     USE amrex_amr_module
     USE MyAmrModule
     USE MyAmrDataModule
 
     IMPLICIT NONE
+
+    INTEGER, INTENT(in) :: iChkFile
+
     INTEGER               :: iLevel, FinestLevel(1), nComps
     TYPE(c_ptr)           :: pBA(0:amrex_max_level)
     TYPE(c_ptr)           :: pDM(0:amrex_max_level)
@@ -124,10 +128,7 @@ CONTAINS
     TYPE(amrex_box)       :: DOMAIN, DOM
     TYPE(amrex_geometry)  :: GEOM(0:amrex_max_level)
 
-    WRITE(*,*)
-    WRITE(*,'(A)') 'Hello from MyRestartModule'
-    WRITE(*,*)
-
+    ! --- Parse parameter file ---
     CALL MyAmrInit
 
     amrcore = amrex_get_amrcore()
@@ -146,29 +147,28 @@ CONTAINS
       CALL amrex_distromap_build( DM(iLevel), BA(iLevel) )
     END DO
 
-    pBA = BA % P
-    pDM = DM % P
+    pBA(0:amrex_max_level) = BA(0:amrex_max_level) % P
+    pDM(0:amrex_max_level) = DM(0:amrex_max_level) % P
 
     FinestLevel = nLevels
 
-    WRITE(*,'(A)') 'Calling ReadHeaderAndBoxArrayData...'
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevel, StepNo_vec, dt_vec, t_new, pBA, pDM )
-    WRITE(*,'(A)') 'Sucessfully called ReadHeaderAndBoxArrayData'
+           ( FinestLevel, StepNo, dt, t, &
+             pBA(0:nLevels), pDM(0:nLevels), iChkFile )
 
-    DO iLevel = 0, FinestLevel(1)
+    DO iLevel = 0, nLevels
       BA(iLevel) = pBA(iLevel)
       DM(iLevel) = pDM(iLevel)
     END DO
 
-    DO iLevel = 0, FinestLevel(1)
+    DO iLevel = 0, nLevels
       CALL amrex_fi_set_boxarray ( iLevel, BA(iLevel) % P, amrcore )
       CALL amrex_fi_set_distromap( iLevel, DM(iLevel) % P, amrcore )
     END DO
 
     nComps = 1
 
-    DO iLevel = 0, FinestLevel(1)
+    DO iLevel = 0, nLevels
       CALL amrex_multifab_build &
              ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
       CALL amrex_multifab_build &
@@ -177,24 +177,26 @@ CONTAINS
              ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
       CALL amrex_multifab_build &
              ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
-
-!!$      IF( iLevel .GT. 0 .AND. do_reflux )THEN
-!!$        CALL amrex_fluxregister_build &
-!!$               ( flux_reg(iLevel), BA(iLevel), DM(iLevel), &
-!!$                 amrex_ref_ratio(iLevel-1), iLevel, nComps )
-!!$      END IF
     END DO
 
-    pGF = MF_uGF % P
-    pCF = MF_uCF % P
-    pPF = MF_uPF % P
-    pAF = MF_uAF % P
-    CALL readmultifabdata( FinestLevel(1), pGF, 0 )
-    CALL readmultifabdata( FinestLevel(1), pCF, 1 )
-    CALL readmultifabdata( FinestLevel(1), pPF, 2 )
-    CALL readmultifabdata( FinestLevel(1), pAF, 3 )
+    pGF(0:amrex_max_level) = MF_uGF(0:amrex_max_level) % P
+    pCF(0:amrex_max_level) = MF_uCF(0:amrex_max_level) % P
+    pPF(0:amrex_max_level) = MF_uPF(0:amrex_max_level) % P
+    pAF(0:amrex_max_level) = MF_uAF(0:amrex_max_level) % P
 
-    CALL amrex_fi_set_finest_level( FinestLevel(1), amrcore )
+    CALL ReadMultiFabData( nLevels, pGF(0:amrex_max_level), 0, iChkFile )
+    CALL ReadMultiFabData( nLevels, pCF(0:amrex_max_level), 1, iChkFile )
+    CALL ReadMultiFabData( nLevels, pPF(0:amrex_max_level), 2, iChkFile )
+    CALL ReadMultiFabData( nLevels, pAF(0:amrex_max_level), 3, iChkFile )
+
+    DO iLevel = 0, nLevels
+      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL MF_uPF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL MF_uAF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+    END DO
+
+    CALL amrex_fi_set_finest_level( nLevels, amrcore )
 	
   END SUBROUTINE ReadCheckpointFile
 
@@ -216,17 +218,18 @@ CONTAINS
     CHARACTER(32)                   :: PlotFileName
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C, WriteFF_P, WriteFF_A
-    INTEGER                         :: iComp, Offset, iLevel, nF = 0
+    INTEGER                         :: iComp, iOS, iLevel, nF
     INTEGER                         :: MyProc
     TYPE(amrex_multifab)            :: MF_PF(0:nLevels)
-    TYPE(amrex_boxarray)            :: BA
-    TYPE(amrex_distromap)           :: DM
+    TYPE(amrex_boxarray)            :: BA(0:nLevels)
+    TYPE(amrex_distromap)           :: DM(0:nLevels)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
 
     ! --- Only needed to get and write BX % lo and BX % hi ---
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
+    nF = 0
     WriteGF   = .FALSE.
     IF( PRESENT( MF_uGF_Option ) )THEN
       WriteGF   = .TRUE.
@@ -263,58 +266,67 @@ CONTAINS
     IF( nLevels .EQ. 0 )THEN
       WRITE(NumberString,'(I8.8)') StepNo(:)
     ELSE
-      WRITE(NumberString,'(I8.8)') StepNo(1)
+      WRITE(NumberString,'(I8.8)') StepNo(0)
     END IF
 
     PlotFileName = TRIM( BaseFileName ) // '_' // NumberString
 
     ALLOCATE( VarNames(nF) )
 
+    iOS = 0
+    IF( WriteGF )THEN
+      DO iComp = 1, nGF
+        CALL amrex_string_build &
+               ( VarNames(iComp + iOS), TRIM( ShortNamesGF(iComp) ) )
+      END DO
+      iOS = iOS + nGF
+      DO iLevel = 0, nLevels
+        BA(iLevel) = MF_uGF_Option(iLevel) % BA
+        DM(iLevel) = MF_uGF_Option(iLevel) % DM
+      END DO
+    END IF
+
+    IF( WriteFF_C )THEN
+      DO iComp = 1, nCF
+        CALL amrex_string_build &
+               ( VarNames(iComp + iOS), TRIM( ShortNamesCF(iComp) ) )
+      END DO
+      iOS = iOS + nCF
+      DO iLevel = 0, nLevels
+        BA(iLevel) = MF_uCF_Option(iLevel) % BA
+        DM(iLevel) = MF_uCF_Option(iLevel) % DM
+      END DO
+    END IF
+
+    IF( WriteFF_P )THEN
+      DO iComp = 1, nPF
+        CALL amrex_string_build &
+               ( VarNames(iComp + iOS), TRIM( ShortNamesPF(iComp) ) )
+      END DO
+      iOS = iOS + nPF
+      DO iLevel = 0, nLevels
+        BA(iLevel) = MF_uPF_Option(iLevel) % BA
+        DM(iLevel) = MF_uPF_Option(iLevel) % DM
+      END DO
+    END IF
+
+    IF( WriteFF_A )THEN
+      DO iComp = 1, nAF
+        CALL amrex_string_build &
+               ( VarNames(iComp + iOS), TRIM( ShortNamesAF(iComp) ) )
+      END DO
+      iOS = iOS + nAF
+      DO iLevel = 0, nLevels
+        BA(iLevel) = MF_uAF_Option(iLevel) % BA
+        DM(iLevel) = MF_uAF_Option(iLevel) % DM
+      END DO
+    END IF
+
     DO iLevel = 0, nLevels
 
-      Offset = 0
-      IF( WriteGF )THEN
-        DO iComp = 1, nGF
-          CALL amrex_string_build &
-                 ( VarNames(iComp + Offset), TRIM( ShortNamesGF(iComp) ) )
-        END DO
-        Offset = Offset + nGF
-        BA = MF_uGF_Option(iLevel) % BA
-        DM = MF_uGF_Option(iLevel) % DM
-      END IF
-
-      IF( WriteFF_C )THEN
-        DO iComp = 1, nCF
-          CALL amrex_string_build &
-                 ( VarNames(iComp + Offset), TRIM( ShortNamesCF(iComp) ) )
-        END DO
-        Offset = Offset + nCF
-        BA = MF_uCF_Option(iLevel) % BA
-        DM = MF_uCF_Option(iLevel) % DM
-      END IF
-
-      IF( WriteFF_P )THEN
-        DO iComp = 1, nPF
-          CALL amrex_string_build &
-                 ( VarNames(iComp + Offset), TRIM( ShortNamesPF(iComp) ) )
-        END DO
-        Offset = Offset + nPF
-        BA = MF_uPF_Option(iLevel) % BA
-        DM = MF_uPF_Option(iLevel) % DM
-      END IF
-
-      IF( WriteFF_A )THEN
-        DO iComp = 1, nAF
-          CALL amrex_string_build &
-                 ( VarNames(iComp + Offset), TRIM( ShortNamesAF(iComp) ) )
-        END DO
-        Offset = Offset + nAF
-        BA = MF_uAF_Option(iLevel) % BA
-        DM = MF_uAF_Option(iLevel) % DM
-      END IF
-
       CALL amrex_multifab_build &
-             ( MF_PF(iLevel), BA, DM, nF, 0 )
+             ( MF_PF(iLevel), BA(iLevel), DM(iLevel), nF, 0 )
+      CALL MF_PF(iLevel) % setVal( 0.0d0 )
 
       CALL amrex_mfiter_build( MFI, MF_PF(iLevel), tiling = .TRUE. )
 
@@ -323,29 +335,29 @@ CONTAINS
 !!$        'MyProc = ', MyProc, ': lo = ', BX % lo, ', hi = ', BX % hi
 !!$      CALL amrex_print( BX )
 
-      Offset = 0
+      iOS = 0
       IF( WriteGF   )THEN
         CALL MF_ComputeCellAverage &
-          ( nGF, MF_uGF_Option(iLevel), MF_PF(iLevel), Offset )
-        Offset = Offset + nGF
+          ( nGF, MF_uGF_Option(iLevel), MF_PF(iLevel), iOS )
+        iOS = iOS + nGF
       END IF
       IF( WriteFF_C )THEN
         CALL MF_ComputeCellAverage &
-          ( nCF, MF_uCF_Option(iLevel), MF_PF(iLevel), Offset )
-        Offset = Offset + nCF
+          ( nCF, MF_uCF_Option(iLevel), MF_PF(iLevel), iOS )
+        iOS = iOS + nCF
       END IF
       IF( WriteFF_P )THEN
         CALL MF_ComputeCellAverage &
-          ( nPF, MF_uPF_Option(iLevel), MF_PF(iLevel), Offset )
-        Offset = Offset + nPF
+          ( nPF, MF_uPF_Option(iLevel), MF_PF(iLevel), iOS )
+        iOS = iOS + nPF
       END IF
       IF( WriteFF_A )THEN
         CALL MF_ComputeCellAverage &
-          ( nAF, MF_uAF_Option(iLevel), MF_PF(iLevel), Offset )
-        Offset = Offset + nAF
+          ( nAF, MF_uAF_Option(iLevel), MF_PF(iLevel), iOS )
+        iOS = iOS + nAF
       END IF
 
-    END DO ! --- Loop over levels ---
+    END DO ! End of loop over levels
 
     CALL amrex_write_plotfile &
            ( PlotFileName, nLevels+1, MF_PF, VarNames, &
@@ -360,9 +372,9 @@ CONTAINS
   END SUBROUTINE WriteFieldsAMReX_PlotFile
 
 
-  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, Offset )
+  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, iOS )
 
-    INTEGER,              INTENT(in   ) :: nComp, Offset
+    INTEGER,              INTENT(in   ) :: nComp, iOS
     TYPE(amrex_multifab), INTENT(in   ) :: MF
     TYPE(amrex_multifab), INTENT(inout) :: MF_A
 
@@ -395,7 +407,7 @@ CONTAINS
         ! --- Compute cell-average ---
         DO iComp = 1, nComp
 
-          u_A(iX1,iX2,iX3,iComp + Offset) &
+          u_A(iX1,iX2,iX3,iComp + iOS) &
             = DOT_PRODUCT( WeightsX_q(:), u_K(:,iComp) )
 
         END DO

@@ -18,5 +18,13 @@ NeutrinoOpacitiesModule.o: \
   NeutrinoOpacitiesModule.f90
 
 NeutrinoOpacitiesComputationModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  EquationOfStateModule_TABLE.o \
+  OpacityModule_TABLE.o \
+  RadiationFieldsModule.o \
   NeutrinoOpacitiesModule.o \
   NeutrinoOpacitiesComputationModule.f90

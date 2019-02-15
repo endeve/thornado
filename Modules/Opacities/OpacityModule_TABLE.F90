@@ -34,7 +34,8 @@ MODULE OpacityModule_TABLE
 
   LOGICAL, PARAMETER :: InterpTest = .TRUE.
   CHARACTER(256) :: &
-    OpacityTableName
+    OpacityTableName_EmAb, &
+    OpacityTableName_Iso
   INTEGER :: &
     iD_T, iT_T, iY_T
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
@@ -55,17 +56,25 @@ CONTAINS
 
 
   SUBROUTINE InitializeOpacities_TABLE &
-    ( OpacityTableName_Option, Verbose_Option )
+    ( OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
+      Verbose_Option )
 
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_EmAb_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Iso_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: Verbose
 
-    IF( PRESENT( OpacityTableName_Option ) )THEN
-      OpacityTableName = TRIM( OpacityTableName_Option )
+    IF( PRESENT( OpacityTableName_EmAb_Option ) )THEN
+      OpacityTableName_EmAb = TRIM( OpacityTableName_EmAb_Option )
     ELSE
-      OpacityTableName = 'OpacityTable.h5'
+      OpacityTableName_EmAb = 'OpacityTable_EmAb.h5'
+    END IF
+
+    IF( PRESENT( OpacityTableName_EmAb_Option ) )THEN
+      OpacityTableName_Iso = TRIM( OpacityTableName_Iso_Option )
+    ELSE
+      OpacityTableName_Iso = 'OpacityTable_Iso.h5'
     END IF
 
     IF( PRESENT( Verbose_Option ) )THEN
@@ -76,8 +85,10 @@ CONTAINS
 
     IF( Verbose )THEN
       WRITE(*,*)
-      WRITE(*,'(A7,A12,A)') &
-        '', 'Table Name: ', TRIM( OpacityTableName )
+      WRITE(*,'(A7,A20,A)') &
+        '', 'Table Name (EmAb): ', TRIM( OpacityTableName_EmAb )
+      WRITE(*,'(A7,A20,A)') &
+        '', 'Table Name (Iso):  ', TRIM( OpacityTableName_Iso )
     END IF
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -85,7 +96,9 @@ CONTAINS
     CALL InitializeHDF( )
 
     CALL ReadOpacityTableHDF &
-           ( OPACITIES, TRIM( OpacityTableName ) )
+           ( OPACITIES, &
+             TRIM( OpacityTableName_EmAb ), &
+             TRIM( OpacityTableName_Iso  ) )
 
     CALL FinalizeHDF( )
 
@@ -162,8 +175,8 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( Chi_T => OPACITIES % ThermEmAb % Absorptivity(1) % Values, &
-        OS    => OPACITIES % ThermEmAb % Offsets(1) )
+      ( Chi_T => OPACITIES % EmAb % Opacity(1) % Values, &
+        OS    => OPACITIES % EmAb % Offsets(1) )
 
     IF( .NOT. InterpTest )THEN
 
@@ -207,8 +220,8 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( Sigma_T => OPACITIES % Scatt_Iso % Kernel(1) % Values(:,:,:,:,1), &
-        OS      => OPACITIES % Scatt_Iso % Offsets(1,1) )
+      ( Sigma_T => OPACITIES % Scat_Iso % Kernel(1) % Values(:,1,:,:,:), &
+        OS      => OPACITIES % Scat_Iso % Offsets(1,1) )
 
     IF( .NOT. InterpTest )THEN
 
@@ -249,37 +262,40 @@ CONTAINS
     INTEGER :: iX
     REAL(DP), DIMENSION(SIZE(E)) :: LogE
 
+    PRINT*, "ComputeScatteringOpacity_NES_TABLE Disabled"
+    STOP
+
 #ifdef MICROPHYSICS_WEAKLIB
 
-    IF( .NOT. InterpTest )THEN
-
-      CALL LogInterpolateSingleVariable_2D2D &
-             ( E / MeV, E / MeV, T / Kelvin, Eta, &
-               Es_T, Es_T, Ts_T, Etas_T, [ 1, 1, 1, 1 ], &
-               OPACITIES % Scatt_NES % Offsets(1,1), &
-               OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1), &
-               R0_Out )
-
-    ELSE
-
-      LogE = LOG10( E / MeV )
-
-      CALL LogInterpolateSingleVariable_2D2D_Custom &
-             ( LogE, LogE, LOG10( T / Kelvin ), LOG10( Eta ), &
-               LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
-               OPACITIES % Scatt_NES % Offsets(1,1), &
-               OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1), &
-               R0_Out )
-
-    END IF
-
-    R0_Out = R0_Out * ( 1.0_DP / ( Centimeter * MeV**3 ) )
-
-    DO iX = 1, SIZE( T )
-
-      R0_In(:,:,iX) = TRANSPOSE( R0_Out(:,:,iX) )
-
-    END DO
+!!$    IF( .NOT. InterpTest )THEN
+!!$
+!!$      CALL LogInterpolateSingleVariable_2D2D &
+!!$             ( E / MeV, E / MeV, T / Kelvin, Eta, &
+!!$               Es_T, Es_T, Ts_T, Etas_T, [ 1, 1, 1, 1 ], &
+!!$               OPACITIES % Scatt_NES % Offsets(1,1), &
+!!$               OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1), &
+!!$               R0_Out )
+!!$
+!!$    ELSE
+!!$
+!!$      LogE = LOG10( E / MeV )
+!!$
+!!$      CALL LogInterpolateSingleVariable_2D2D_Custom &
+!!$             ( LogE, LogE, LOG10( T / Kelvin ), LOG10( Eta ), &
+!!$               LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
+!!$               OPACITIES % Scatt_NES % Offsets(1,1), &
+!!$               OPACITIES % Scatt_NES % Kernel(1) % Values(:,:,:,:,1), &
+!!$               R0_Out )
+!!$
+!!$    END IF
+!!$
+!!$    R0_Out = R0_Out * ( 1.0_DP / ( Centimeter * MeV**3 ) )
+!!$
+!!$    DO iX = 1, SIZE( T )
+!!$
+!!$      R0_In(:,:,iX) = TRANSPOSE( R0_Out(:,:,iX) )
+!!$
+!!$    END DO
 
 #else
 

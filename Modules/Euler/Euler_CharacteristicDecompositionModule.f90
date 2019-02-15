@@ -1,4 +1,4 @@
-MODULE CharacteristicDecompositionModule
+MODULE Euler_CharacteristicDecompositionModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One
@@ -10,7 +10,7 @@ MODULE CharacteristicDecompositionModule
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE EulerEquationsUtilitiesModule_Beta, ONLY: &
+  USE Euler_UtilitiesModule, ONLY: &
     ComputePrimitive
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
@@ -238,4 +238,4 @@ CONTAINS
   END SUBROUTINE ComputeCharacteristicDecomposition
 
 
-END MODULE CharacteristicDecompositionModule
+END MODULE Euler_CharacteristicDecompositionModule
