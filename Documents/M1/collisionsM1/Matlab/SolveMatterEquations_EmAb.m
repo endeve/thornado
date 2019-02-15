@@ -18,7 +18,7 @@ function SolveMatterEquations_EmAb( J, Chi, D, T, Y, E )
     hc = PlanckConstant * SpeedOfLight;
     c = SpeedOfLight;
     
-    Rtol = 1e-8; Utol = 1e-10;
+    Rtol = 1e-8; Utol = 1e-10; maxIter = 100;
 
     iY = 1;
     iE = 2;
@@ -199,7 +199,10 @@ function SolveMatterEquations_EmAb( J, Chi, D, T, Y, E )
         g_Iterations_Ave = g_Iterations_Ave + k;
 
       end
-
+      if(k >= maxIter)
+         disp("Failed to converge within maxIter.");
+         break;
+      end
     
 
     end
