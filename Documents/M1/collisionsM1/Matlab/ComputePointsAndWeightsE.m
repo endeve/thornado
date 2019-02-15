@@ -29,7 +29,8 @@ function [E_N, W2, W3] = ComputePointsAndWeightsE(NumofEBins, NorderE)
         iEnd = iStart + length(E_q) - 1;
         E_N(iStart:iEnd) = E_q;
         
-        W2(iStart:iEnd) = W_q .* eGrid.Width(iE) .* ( E_q ).^2;
+%         W2(iStart:iEnd) = W_q .* eGrid.Width(iE) .* ( E_q ).^2;
+        W2(iStart:iEnd) = W_q .* ( E_q ).^2;
         W3(iStart:iEnd) = W2(iStart:iEnd) .* ( E_q );
         
         % scaled version

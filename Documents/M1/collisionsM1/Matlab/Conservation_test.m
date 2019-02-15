@@ -1,12 +1,16 @@
 clear all
 
 % D = 7.833e10;   %  1.6605e+03 to 3.1641e+15
-% T = 2.4447e11;  %  1.1605e+09 to 1.8392e+12
+% T = 2.4447e10;  %  1.1605e+09 to 1.8392e+12
 % Y = 1.421e-1;   %  0.01       to 0.6
 
-D = 4.146E14;
-T = 1.260E11;
-Y = 2.518E-01;
+profile = [  
+  5.506E+06   1.851E+11   5.809E+10   1.557E-01  
+];
+
+D = profile(2);
+T = profile(3);
+Y = profile(4);
 
 % D = flip(logspace(3.5, 15, 100)');
 % T = (logspace(9.5, 12, 100)');
@@ -47,13 +51,18 @@ global BoltzmannConstant
 J0 = FermiDirac( g_E_N, Mnu, BoltzmannConstant * T );
 
 J = zeros(size(g_E_N));
-J(1:end-1) = J0(1:end-1); % initial condition
-% J(1) = 1;
+% J(1:end-1) = J0(1:end-1); % initial condition
+J(1) = 1;
+% J = J0 - 1e-6*J0; % initial condition
 
 global g_Iterations_Min g_Iterations_Max g_Iterations_Ave;
 g_Iterations_Min = 0;
 g_Iterations_Max = Inf;
 g_Iterations_Ave = 0;
 
-SolveMatterEquations_EmAb( J, dt * Chi, D, T, Y, E );
+% Newton's method
+[J01, D1, T1, Y1, E1, iter1] = SolveMatterEquations_EmAb( J, dt * Chi, D, T, Y, E );
+
+% Fixed-point
+[J02, D2, T2, Y2, E2, iter2, Inneriter2] = SolveMatterEquations_EmAb_FP( J, dt * Chi, D, T, Y, E );
 

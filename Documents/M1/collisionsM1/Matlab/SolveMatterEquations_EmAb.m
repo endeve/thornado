@@ -1,4 +1,4 @@
-function SolveMatterEquations_EmAb( J, Chi, D, T, Y, E )
+function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb( J, Chi, D, T, Y, E )
 
     % g_E_N       : nE_G x 1 (energy grid)
     % J, J_0    : nE_G x 1 (size of energy grid)
@@ -189,8 +189,8 @@ function SolveMatterEquations_EmAb( J, Chi, D, T, Y, E )
 
       % --- Check for Convergence ---
 
-%       if((norm(FVEC) < Rtol * norm(FVEC0)) || (norm(dU./U) < Utol))
-      if((norm(FVEC) < Rtol * norm(FVEC0)))
+      if((norm(FVEC) < Rtol * norm(FVEC0)) || (norm(dU./U) < Utol))
+%       if((norm(FVEC) < Rtol * norm(FVEC0)))
 
         CONVERGED = true;
 
@@ -206,7 +206,7 @@ function SolveMatterEquations_EmAb( J, Chi, D, T, Y, E )
     
 
     end
-
+    iter = k;
 
 end
 
