@@ -1,4 +1,4 @@
-MODULE dgDiscretizationModule_Euler
+MODULE Euler_dgDiscretizationModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Pi, TwoPi, &
@@ -39,9 +39,9 @@ MODULE dgDiscretizationModule_Euler
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE BoundaryConditionsModule_Beta, ONLY: &
+  USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Fluid
-  USE EulerEquationsUtilitiesModule_Beta, ONLY: &
+  USE Euler_UtilitiesModule, ONLY: &
     ComputePrimitive, &
     Eigenvalues, &
     AlphaPlus, &
@@ -63,7 +63,7 @@ MODULE dgDiscretizationModule_Euler
 
   INCLUDE 'mpif.h'
 
-  PUBLIC :: ComputeIncrement_Euler_DG_Explicit
+  PUBLIC :: Euler_ComputeIncrement_DG_Explicit
 
   LOGICAL, PARAMETER :: DisplayTimers = .FALSE.
   REAL(DP) :: Timer_RHS
@@ -79,7 +79,7 @@ MODULE dgDiscretizationModule_Euler
 CONTAINS
 
 
-  SUBROUTINE ComputeIncrement_Euler_DG_Explicit &
+  SUBROUTINE Euler_ComputeIncrement_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     INTEGER, INTENT(in)     :: &
@@ -135,7 +135,7 @@ CONTAINS
     CALL ComputeIncrement_Gravity &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-  END SUBROUTINE ComputeIncrement_Euler_DG_Explicit
+  END SUBROUTINE Euler_ComputeIncrement_DG_Explicit
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &
@@ -1146,4 +1146,4 @@ CONTAINS
   END SUBROUTINE Timer_Add
 
 
-END MODULE dgDiscretizationModule_Euler
+END MODULE Euler_dgDiscretizationModule

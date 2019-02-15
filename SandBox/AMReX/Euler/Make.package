@@ -1,8 +1,19 @@
+f90EXE_sources += MF_UtilitiesModule.f90
 f90EXE_sources += fmain.f90
 f90EXE_sources += MF_InitializationModule.f90
 f90EXE_sources += MF_GeometryModule.f90
 f90EXE_sources += MF_Euler_UtilitiesModule.f90
 F90EXE_sources += dgemv.F90 lsame.F90
+f90EXE_sources += MF_Euler_SlopeLimiterModule.f90
+f90EXE_sources += MF_Euler_PositivityLimiterModule.f90
+f90EXE_sources += MF_Euler_dgDiscretizationModule.f90
+f90EXE_sources += MF_TimeSteppingModule_SSPRK.f90
+f90EXE_sources += FinalizationModule.f90
+
+# Checkpoint
+f90EXE_sources += MyAmrDataModule.f90
+f90EXE_sources += MyAmrModule.f90
+CEXE_sources   += Restart.cpp
 
 # thornado VPATH_LOCATIONS:
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Numbers
@@ -29,7 +40,7 @@ f90EXE_sources += UnitsModule.f90
 
 f90EXE_sources += ProgramHeaderModule.f90
 
-# In THORNADO_DIR/Modules/Labrary:
+# In THORNADO_DIR/Modules/Library:
 
 f90EXE_sources += QuadratureModule.f90
 f90EXE_sources += LagrangePolynomialsModule.f90
@@ -37,6 +48,11 @@ f90EXE_sources += ReferenceElementModuleX.f90
 f90EXE_sources += PolynomialBasisModuleX_Lagrange.f90
 f90EXE_sources += PolynomialBasisModuleX_Legendre.f90
 f90EXE_sources += ReferenceElementModuleX_Lagrange.f90
+f90EXE_sources += UtilitiesModule.f90
+f90EXE_sources += PolynomialBasisModule_Lagrange.f90
+f90EXE_sources += PolynomialBasisModule_Legendre.f90
+f90EXE_sources += ReferenceElementModule.f90
+f90EXE_sources += PolynomialBasisMappingModule.f90
 
 # In THORNADO_DIR/Modules/Mesh:
 
@@ -60,6 +76,11 @@ f90EXE_sources += FluidFieldsModule.f90
 # In THORNADO_DIR/Modules/Euler:
 
 f90EXE_sources += Euler_UtilitiesModule.f90
+f90EXE_sources += Euler_BoundaryConditionsModule.f90
+f90EXE_sources += Euler_SlopeLimiterModule.f90
+f90EXE_sources += Euler_CharacteristicDecompositionModule.f90
+f90EXE_sources += Euler_PositivityLimiterModule.f90
+f90EXE_sources += Euler_dgDiscretizationModule.f90
 
 # In THORNADO_DIR/Modules/InputOutput:
 

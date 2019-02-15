@@ -1,6 +1,12 @@
 function...
   [ Time, E, X1, X2, X3, opES ]...
-    = ReadOpacitiesES( AppName, FileNumber, Directory )
+    = ReadOpacitiesES( AppName, FileNumber, Species, Directory )
+
+  if( exist( 'Species', 'var' ) )
+    SpeciesIndex = Species;
+  else
+    SpeciesIndex = 1;
+  end
 
   if( exist( 'Directory', 'var' ) )
     DirName = Directory;
@@ -16,6 +22,8 @@ function...
   X2   = h5read( FileName, '/Spatial Grid/X2' );
   X3   = h5read( FileName, '/Spatial Grid/X3' );
   
-  opES = h5read( FileName, '/Opacities/Species_01/Elastic Scattering Opacities' );
+  SpeciesString = [ 'Species_' sprintf( '%02d', SpeciesIndex ) ];
+  
+  opES = h5read( FileName, [ '/Opacities/' SpeciesString '/Elastic Scattering Opacities' ] );
 
 end

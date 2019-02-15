@@ -64,9 +64,11 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: Opacity_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Option
 
-    Opacity = 'IDEAL'
-    IF( PRESENT( Opacity_Option ) ) &
+    IF( PRESENT( Opacity_Option ) )THEN
       Opacity = TRIM( Opacity_Option )
+    ELSE
+      Opacity = 'IDEAL'
+    END IF
 
     WRITE(*,*)
     WRITE(*,'(A5,A11,A)') &
@@ -89,9 +91,7 @@ CONTAINS
       CASE( 'TABLE' )
 
         CALL InitializeOpacities_TABLE &
-               ( OpacityTableName_Option &
-                   = OpacityTableName_Option, &
-                 Verbose_Option = .TRUE. )
+               ( Verbose_Option = .TRUE. )
 
         ComputeAbsorptionOpacity &
           => ComputeAbsorptionOpacity_TABLE

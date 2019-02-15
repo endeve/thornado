@@ -1,5 +1,8 @@
 MODULE EulerEquationsUtilitiesModule_GR
 
+  USE, INTRINSIC :: ieee_arithmetic, ONLY: &
+    IEEE_IS_NAN
+
   USE KindModule, ONLY: &
     DP, SqrtTiny
   USE GeometryFieldsModule, ONLY: &
@@ -119,7 +122,7 @@ CONTAINS
           STOP
         END IF
 
-        IF( ISNAN( Pnew ) )THEN
+        IF( IEEE_IS_NAN( Pnew ) )THEN
           WRITE(*,'(A6,1x,I2)') 'nIter:' , nIter
           WRITE(*,'(A6,1x,E9.2)') 'Pold:', Pold
           WRITE(*,'(A6,1x,E9.2)') 'Pnew:', Pnew

@@ -14,6 +14,7 @@ MODULE TimeSteppingModule_Castro
     ComputeIncrement_TwoMoment_Explicit
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
     ComputeIncrement_TwoMoment_Implicit, &
+    ComputeIncrement_TwoMoment_Implicit_New, &
     ComputeIncrement_TwoMoment_Implicit_DGFV
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment
@@ -51,7 +52,9 @@ CONTAINS
   END SUBROUTINE ComputeTimeStep_TwoMoment
 
 
-  SUBROUTINE Update_IMEX_PDARS( dt, U_F, U_R, SingleStage_Option )
+  SUBROUTINE Update_IMEX_PDARS &
+    ( dt, U_F, U_R, Explicit_Option, Implicit_Option, &
+      SingleStage_Option, CallFromThornado_Option )
 
     use GeometryFieldsModuleE, only : uGE
     use GeometryFieldsModule,  only : uGF
@@ -66,10 +69,16 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U_R(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
-      SingleStage_Option
+      Explicit_Option, &
+      Implicit_Option, &
+      SingleStage_Option, &
+      CallFromThornado_Option
 
     LOGICAL  :: &
-      SingleStage
+      Explicit, &
+      Implicit, &
+      SingleStage, &
+      CallFromThornado
     INTEGER  :: &
       iX_SW(3), iZ_SW(4)
     REAL(DP) :: &
@@ -115,10 +124,28 @@ CONTAINS
          iZ_B1(4):iZ_E1(4), &
          1:nCR,1:nSpecies)
 
+    IF( PRESENT( Explicit_Option ) )THEN
+      Explicit = Explicit_Option
+    ELSE
+      Explicit = .TRUE.
+    END IF
+
+    IF( PRESENT( Implicit_Option ) )THEN
+      Implicit = Implicit_Option
+    ELSE
+      Implicit = .TRUE.
+    END IF
+
     IF( PRESENT( SingleStage_Option ) )THEN
       SingleStage = SingleStage_Option
     ELSE
       SingleStage = .FALSE.
+    END IF
+
+    IF( PRESENT( CallFromThornado_Option ) )THEN
+      CallFromThornado = CallFromThornado_Option
+    ELSE
+      CallFromThornado = .FALSE.
     END IF
 
     ! ----------------------------------------------------------------
@@ -146,21 +173,31 @@ CONTAINS
        iZ_SW = [ 0, 1, 1, 0 ]
     end if
 
-!!$    iX_SW = [ 0, 0, 0 ]     ! --- For Debugging within thornado
-!!$    iZ_SW = [ 0, 0, 0, 0 ]  ! --- For Debugging within thornado
+    IF( CallFromThornado )THEN
+      iX_SW = [ 0, 0, 0 ]     ! --- For Debugging within thornado
+      iZ_SW = [ 0, 0, 0, 0 ]  ! --- For Debugging within thornado
+    END IF
 
     ! --- Explicit Step (Radiation Only) ---
 
-    CALL ComputeIncrement_TwoMoment_Explicit &
-           ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
-             uGE, uGF, &
-             U_R, T0_R &
-                    (1:nDOF, &
-                     iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
-                     iZ_B0(2)-iZ_SW(2):iZ_E0(2)+iZ_SW(2), &
-                     iZ_B0(3)-iZ_SW(3):iZ_E0(3)+iZ_SW(3), &
-                     iZ_B0(4)-iZ_SW(4):iZ_E0(4)+iZ_SW(4), &
-                     1:nCR,1:nSpecies) )
+    IF( Explicit )THEN
+
+      CALL ComputeIncrement_TwoMoment_Explicit &
+             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
+               uGE, uGF, &
+               U_R, T0_R &
+                      (1:nDOF, &
+                       iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
+                       iZ_B0(2)-iZ_SW(2):iZ_E0(2)+iZ_SW(2), &
+                       iZ_B0(3)-iZ_SW(3):iZ_E0(3)+iZ_SW(3), &
+                       iZ_B0(4)-iZ_SW(4):iZ_E0(4)+iZ_SW(4), &
+                       1:nCR,1:nSpecies) )
+
+    ELSE
+
+      T0_R = Zero
+
+    END IF
 
     ! --- Apply Increment ---
 
@@ -174,22 +211,31 @@ CONTAINS
 
     ! --- Implicit Step ---
 
-    CALL ComputeIncrement_TwoMoment_Implicit &
-           ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, dt, &
-             uGE, uGF, &
-             U_F, Q1_F &
-                    (1:nDOFX, &
-                     iX_B0(1)-iX_SW(1):iX_E0(1)+iX_SW(1), &
-                     iX_B0(2)-iX_SW(2):iX_E0(2)+iX_SW(2), &
-                     iX_B0(3)-iX_SW(3):iX_E0(3)+iX_SW(3), &
-                     1:nCF), &
-             U_R, Q1_R &
-                    (1:nDOF, &
-                     iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
-                     iZ_B0(2)-iZ_SW(2):iZ_E0(2)+iZ_SW(2), &
-                     iZ_B0(3)-iZ_SW(3):iZ_E0(3)+iZ_SW(3), &
-                     iZ_B0(4)-iZ_SW(4):iZ_E0(4)+iZ_SW(4), &
-                     1:nCR,1:nSpecies) )
+    IF( Implicit )THEN
+
+      CALL ComputeIncrement_TwoMoment_Implicit_New &
+             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, dt, &
+               uGE, uGF, &
+               U_F, Q1_F &
+                      (1:nDOFX, &
+                       iX_B0(1)-iX_SW(1):iX_E0(1)+iX_SW(1), &
+                       iX_B0(2)-iX_SW(2):iX_E0(2)+iX_SW(2), &
+                       iX_B0(3)-iX_SW(3):iX_E0(3)+iX_SW(3), &
+                       1:nCF), &
+               U_R, Q1_R &
+                      (1:nDOF, &
+                       iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
+                       iZ_B0(2)-iZ_SW(2):iZ_E0(2)+iZ_SW(2), &
+                       iZ_B0(3)-iZ_SW(3):iZ_E0(3)+iZ_SW(3), &
+                       iZ_B0(4)-iZ_SW(4):iZ_E0(4)+iZ_SW(4), &
+                       1:nCR,1:nSpecies) )
+
+    ELSE
+
+      Q1_F = Zero
+      Q1_R = Zero
+
+    END IF
 
     CALL AddFields_Fluid &
            ( iX_B0-iX_SW, iX_E0+iX_SW, One, dt, U_F, Q1_F, U_F )
@@ -214,16 +260,24 @@ CONTAINS
 
     ! --- Explicit Step (Radiation Only) ---
 
-    CALL ComputeIncrement_TwoMoment_Explicit &
-           ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
-             uGE, uGF, &
-             U_R, T1_R &
-                    (1:nDOF, &
-                     iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
-                     iZ_B0(2)-iZ_SW(2):iZ_E0(2)+iZ_SW(2), &
-                     iZ_B0(3)-iZ_SW(3):iZ_E0(3)+iZ_SW(3), &
-                     iZ_B0(4)-iZ_SW(4):iZ_E0(4)+iZ_SW(4), &
-                     1:nCR, 1:nSpecies) )
+    IF( Explicit )THEN
+
+      CALL ComputeIncrement_TwoMoment_Explicit &
+             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
+               uGE, uGF, &
+               U_R, T1_R &
+                      (1:nDOF, &
+                       iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
+                       iZ_B0(2)-iZ_SW(2):iZ_E0(2)+iZ_SW(2), &
+                       iZ_B0(3)-iZ_SW(3):iZ_E0(3)+iZ_SW(3), &
+                       iZ_B0(4)-iZ_SW(4):iZ_E0(4)+iZ_SW(4), &
+                       1:nCR, 1:nSpecies) )
+
+    ELSE
+
+      T1_R = 0.0_DP
+
+    END IF
 
     ! --- Apply Increment ---
 
@@ -246,22 +300,31 @@ CONTAINS
 
     ! --- Implicit Step ---
 
-    CALL ComputeIncrement_TwoMoment_Implicit &
-           ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, Half * dt, &
-             uGE, uGF, &
-             U_F, Q1_F &
-                    (1:nDOFX, &
-                     iX_B0(1)-iX_SW(1):iX_E0(1)+iX_SW(1), &
-                     iX_B0(2)-iX_SW(2):iX_E0(2)+iX_SW(2), &
-                     iX_B0(3)-iX_SW(3):iX_E0(3)+iX_SW(3), &
-                     1:nCF), &
-             U_R, Q1_R &
-                    (1:nDOF, &
-                     iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
-                     iZ_B0(2)-iZ_SW(2):iZ_E0(2)+iZ_SW(2), &
-                     iZ_B0(3)-iZ_SW(3):iZ_E0(3)+iZ_SW(3), &
-                     iZ_B0(4)-iZ_SW(4):iZ_E0(4)+iZ_SW(4), &
-                     1:nCR, 1:nSpecies) )
+    IF( Implicit )THEN
+
+      CALL ComputeIncrement_TwoMoment_Implicit_New &
+             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, Half * dt, &
+               uGE, uGF, &
+               U_F, Q1_F &
+                      (1:nDOFX, &
+                       iX_B0(1)-iX_SW(1):iX_E0(1)+iX_SW(1), &
+                       iX_B0(2)-iX_SW(2):iX_E0(2)+iX_SW(2), &
+                       iX_B0(3)-iX_SW(3):iX_E0(3)+iX_SW(3), &
+                       1:nCF), &
+               U_R, Q1_R &
+                      (1:nDOF, &
+                       iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
+                       iZ_B0(2)-iZ_SW(2):iZ_E0(2)+iZ_SW(2), &
+                       iZ_B0(3)-iZ_SW(3):iZ_E0(3)+iZ_SW(3), &
+                       iZ_B0(4)-iZ_SW(4):iZ_E0(4)+iZ_SW(4), &
+                       1:nCR, 1:nSpecies) )
+
+    ELSE
+
+      Q1_F = Zero
+      Q1_R = Zero
+
+    END IF
 
     CALL AddFields_Fluid &
            ( iX_B0-iX_SW, iX_E0+iX_SW, One, Half * dt, U_F, Q1_F, U_F )

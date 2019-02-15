@@ -1,0 +1,33 @@
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+
+thornado.ProgramName = "IsentropicVortex"
+
+thornado.t_end     = 10.0     # Final time
+thornado.dt_wrt    = 0.1      # Write time interval
+thornado.Gamma     = 1.4      # Ideal Gas EoS Gamm
+thornado.nNodes    = 3        # Number of DG nodes in each active dimension
+thornado.nStages   = 3        # Number of SSP-RK stages for time integration
+thornado.CFL       = 0.1      # CFL number
+thornado.bcX       = 00 00 00 # Boundary conditions
+thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
+thornado.iCycleD   = 010      # MOD this number to display info
+thornado.iCycleW   = 100      # MOD this number to write plotfile
+thornado.iCycleChk = 100      # MOD this number to write checkpoint file
+
+geometry.CoordinateSystem = CARTESIAN
+geometry.prob_lo          = -5.0 -5.0 0.0 # Lower domain size
+geometry.prob_hi          = +5.0 +5.0 1.0 # Upper domain size
+geometry.is_periodic      = 1  1  1       # Periodicity. 0 (no), 1 (yes)
+
+amr.n_cell      = 128 128 01  # Number of cells in each dimension
+amr.MaxGridSize = 064 064 01  # nBoxes = n_cell / MaxGridSize
+amr.max_level   = 0         # Maximum number of refinement levels
+
+# Slope limiter parameters
+SL.UseSlopeLimiter           = 1
+SL.UseCharacteristicLimiting = 1
+SL.UseTroubledCellIndicator  = 1
+SL.SlopeTolerance            = 1.0d-6
+SL.BetaTVD                   = 1.75d0
+SL.BetaTVB                   = 0.0d0
+SL.LimiterThresholdParameter = 0.015d0

@@ -1,4 +1,4 @@
-MODULE BoundaryConditionsModule_Beta
+MODULE Euler_BoundaryConditionsModule
 
   USE KindModule, ONLY: &
     DP
@@ -484,4 +484,4 @@ CONTAINS
   END SUBROUTINE ApplyBC_Fluid_X3
 
 
-END MODULE BoundaryConditionsModule_Beta
+END MODULE Euler_BoundaryConditionsModule

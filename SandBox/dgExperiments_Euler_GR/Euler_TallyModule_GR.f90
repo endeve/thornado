@@ -52,7 +52,7 @@ CONTAINS
 
     ALLOCATE( EulerTally(1:nTallies,0:1) )
 
-    TallyFileName = '../Output/EulerTally.dat'
+    TallyFileName = '../Output/.EulerTally.dat'
 
     OPEN( NEWUNIT = FileUnit, FILE = TRIM( TallyFileName ) )
 
@@ -122,48 +122,50 @@ CONTAINS
     ! --- Conserved Fluid ---
 
     DO iCF = 1, nCF
+
       DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-          DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
 
-            EulerTally(iCF,iState) &
-              = EulerTally(iCF,iState) &
-                  + SUM( WeightsX_q(:) &
-                           * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                           * U(:,iX1,iX2,iX3,iCF) ) &
-                      * dX1(iX1) * dX2(iX2) * dX3(iX3)
+        EulerTally(iCF,iState) &
+          = EulerTally(iCF,iState) &
+              + SUM( WeightsX_q(:) &
+                       * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
+                       * U(:,iX1,iX2,iX3,iCF) ) &
+                  * dX1(iX1) * dX2(iX2) * dX3(iX3)
 
-          END DO
-        END DO
       END DO
+      END DO
+      END DO
+
     END DO
 
     DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
-          CALL ComputePrimitive_GR &
-                 ( U(:,iX1,iX2,iX3,iCF_D) , U(:,iX1,iX2,iX3,iCF_S1), &
-                   U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
-                   U(:,iX1,iX2,iX3,iCF_E) , U(:,iX1,iX2,iX3,iCF_Ne), &
-                   P(:,iPF_D) , P(:,iPF_V1), P(:,iPF_V2), &
-                   P(:,iPF_V3), P(:,iPF_E) , P(:,iPF_Ne), &
-                   Pressure, &
-                   G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                   G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+      CALL ComputePrimitive_GR &
+             ( U(:,iX1,iX2,iX3,iCF_D) , U(:,iX1,iX2,iX3,iCF_S1), &
+               U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
+               U(:,iX1,iX2,iX3,iCF_E) , U(:,iX1,iX2,iX3,iCF_Ne), &
+               P(:,iPF_D) , P(:,iPF_V1), P(:,iPF_V2), &
+               P(:,iPF_V3), P(:,iPF_E) , P(:,iPF_Ne), &
+               Pressure, &
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-          ! --- Pressure ---
+      ! --- Pressure ---
 
-          EulerTally(iTally_Pres,iState) &
-            = EulerTally(iTally_Pres,iState) &
-                + SUM( WeightsX_q(:) &
-                         * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                         * Pressure(:) ) &
-                    * dX1(iX1) * dX2(iX2) * dX3(iX3)
+      EulerTally(iTally_Pres,iState) &
+        = EulerTally(iTally_Pres,iState) &
+            + SUM( WeightsX_q(:) &
+                     * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
+                     * Pressure(:) ) &
+                * dX1(iX1) * dX2(iX2) * dX3(iX3)
 
-        END DO
-      END DO
+    END DO
+    END DO
     END DO
 
     END ASSOCIATE ! dX1, etc.

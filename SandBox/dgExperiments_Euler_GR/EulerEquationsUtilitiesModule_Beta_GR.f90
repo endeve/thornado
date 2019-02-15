@@ -399,7 +399,8 @@ CONTAINS
     REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq
     REAL(DP), INTENT(out) :: P
 
-    INTEGER,  PARAMETER :: MAX_IT = 10
+    INTEGER,  PARAMETER :: MAX_IT = 1 - INT( LOG(TolP) / LOG(2.0d0) )
+!!$    INTEGER,  PARAMETER :: MAX_IT = 100
 
     LOGICAL  :: CONVERGED
     INTEGER  :: ITERATION
@@ -412,6 +413,9 @@ CONTAINS
 !    PB = Two * ( One - One / Gamma_IDEAL ) * CF_E
     IF( DEBUG_Bisec ) WRITE(*,'(A,ES24.16E3)') '      CPWBM: PA: ', PA
     IF( DEBUG_Bisec ) WRITE(*,'(A,ES24.16E3)') '      CPWBM: PB: ', PB
+!!$    WRITE(*,'(A,ES24.16E3)') '      CPWBM: CF_D: ', CF_D
+!!$    WRITE(*,'(A,ES24.16E3)') '      CPWBM: CF_E: ', CF_E
+!!$    WRITE(*,'(A,ES24.16E3)') '      CPWBM: SSq:  ', SSq
 
     ! --- Compute FunP for upper and lower bounds ---
     IF( DEBUG_Bisec ) WRITE(*,'(A,ES24.16E3)') '      CPWBM: CALL ComputeFunPA'
@@ -1150,8 +1154,7 @@ CONTAINS
 
     ! Alpha is the lapse function
     ! V_i is the contravariant component V^i
-    ! Beta_1 is the contravariant component Beta^1
-
+    ! Beta_i is the contravariant component Beta^i
     REAL(DP)             :: Eigenvalues_GR(1:nCF)
     REAL(DP), INTENT(in) :: V_1, V_2, V_3, V_i, Cs
     REAL(DP), INTENT(in) :: Gm_11, Gm_22, Gm_33, Gm_ii, Alpha, Beta_i

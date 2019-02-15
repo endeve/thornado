@@ -2,7 +2,6 @@ MODULE TwoMoment_MeshRefinementModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two
-  USE UtilitiesModule, ONLY: WriteMatrix
   USE ProgramHeaderModule, ONLY: &
     nNodesX, nDOFX, nDimsX, &
     nNodesE, nDOFE, nDOF
@@ -24,8 +23,6 @@ MODULE TwoMoment_MeshRefinementModule
   PUBLIC :: FinalizeMeshRefinement_TwoMoment
   PUBLIC :: Refine_TwoMoment
   PUBLIC :: Coarsen_TwoMoment
-
-  LOGICAL, PARAMETER :: Debug = .FALSE.
 
   INTEGER  :: nFine, nFineX(3)
   REAL(DP) :: VolumeRatio
@@ -111,17 +108,6 @@ CONTAINS
 
       ProjectionMatrix_T(:,:,iFine) &
         = TRANSPOSE( ProjectionMatrix(:,:,iFine) )
-
-      IF( Debug )THEN
-
-        WRITE( MeshString, FMT='(i2.2)') iFine
-
-        MatrixName = 'ProjectionMatrix_' // MeshString // '.dat'
-
-        CALL WriteMatrix( nDOFX, nDOFX, ProjectionMatrix(:,:,iFine), &
-                          TRIM( MatrixName ) )
-
-      END IF
 
     END DO
     END DO

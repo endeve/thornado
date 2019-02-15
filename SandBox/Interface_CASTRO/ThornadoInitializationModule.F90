@@ -15,6 +15,8 @@ module ThornadoInitializationModule
     InitializeReferenceElementE
   use ReferenceElementModule, only: &
     InitializeReferenceElement
+  use PolynomialBasisModuleX_Lagrange, only: &
+    InitializePolynomialBasisX_Lagrange
   use PolynomialBasisModule_Lagrange, only: &
     InitializePolynomialBasis_Lagrange
   use ReferenceElementModuleX_Lagrange, only: &
@@ -100,6 +102,8 @@ contains
 
     call InitializeReferenceElement
 
+    call InitializePolynomialBasisX_Lagrange
+
     call InitializePolynomialBasis_Lagrange
 
     call InitializeReferenceElementX_Lagrange
@@ -148,8 +152,8 @@ contains
     ! --- Neutrino Opacities ---
 
     call InitializeOpacities_TABLE &
-           ( OpacityTableName_Option &
-               = 'OpacityTable.h5', &
+           ( OpacityTableName_EmAb_Option = 'OpacityTable_EmAb.h5', &
+	     OpacityTableName_Iso_Option  = 'OpacityTable_Iso.h5',  &
              Verbose_Option = .false. )
 
     ! --- For refinement and coarsening of DG data

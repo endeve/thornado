@@ -87,7 +87,7 @@ CONTAINS
       CASE( 'KelvinHelmholtz' )
 
          CALL InitializeFields_GR_KelvinHelmholtz
-        
+
       CASE( 'StandingAccretionShock' )
 
         CALL InitializeFields_GR_StandingAccretionShock
@@ -633,23 +633,23 @@ CONTAINS
   END SUBROUTINE InitializeFields_GR_SphericalSedov
 
 
-  ! --- Relativistic 2D Kelvin-Helmoltz instability a la
-  !     Radice & Rezzolla (2012), A&A, 547, 26 ---
+  ! --- Relativistic 2D Kelvin-Helmholtz instability a la
+  !     Beckwith & Stone (2011), ApjS, 193, 6 (typo in Eq. (63)) ---
   SUBROUTINE InitializeFields_GR_KelvinHelmholtz_Relativistic
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1, iNodeX2
     REAL(DP) :: X1, X2
     REAL(DP) :: rho0, rho1
-    REAL(DP) :: Vshear, a, X2_Scale, sigma, A0
+    REAL(DP) :: Vshear, a, X2_Offset, sigma, A0
 
     rho0 = 0.505d0
     rho1 = 0.495d0
 
-    Vshear   = 0.5d0
-    a        = 0.01d0
-    X2_Scale = 0.5d0
-    sigma    = 0.1d0
+    Vshear    = 0.5d0
+    a         = 0.01d0
+    X2_Offset = 0.5d0
+    sigma     = 0.1d0
 
     A0 = 0.1d0
 
@@ -668,22 +668,25 @@ CONTAINS
         ! --- Top ---
         IF( X2 .GT. 0.0d0 )THEN
           uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-            = rho0 + rho1 * TANH( ( X2 - X2_Scale ) / a )
+            = rho0 + rho1 * TANH( ( X2 - X2_Offset ) / a )
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = Vshear      * TANH( ( X2 - X2_Scale ) / a )
+            = Vshear      * TANH( ( X2 - X2_Offset ) / a )
+
+          ! --- This is where the typo is. The following expression is
+          !     taken from Radice & Rezzolla, 2012, AA, 547, A26, Eq. (48) ---
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
             = A0 * Vshear * SIN( 2.0d0 * Pi * X1 ) &
-                * EXP( -( X2 - X2_Scale )**2 / sigma )
+                * EXP( -( ( X2 - X2_Offset ) / sigma )**2 )
 
         ! --- Bottom ---
         ELSE
           uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-            = rho0 - rho1 * TANH( ( X2 + X2_Scale ) / a )
+            = rho0 - rho1 * TANH( ( X2 + X2_Offset ) / a )
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = Vshear      * TANH( ( X2 + X2_Scale ) / a )
+            = -Vshear     * TANH( ( X2 + X2_Offset ) / a )
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
             = -A0 * Vshear * SIN( 2.0d0 * Pi * X1 ) &
-                * EXP( -( X2 + X2_Scale )**2 / sigma )
+                * EXP( -( ( X2 + X2_Offset ) / sigma )**2 )
 
          END IF
 
@@ -894,7 +897,7 @@ CONTAINS
       END DO
     END DO
     CLOSE( 100 )
-    STOP 'Wrote SAS_IC_interp.dat'
+!!$    STOP 'Wrote SAS_IC_interp.dat'
 
   END SUBROUTINE InitializeFields_GR_StandingAccretionShock
 
