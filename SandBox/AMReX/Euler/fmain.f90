@@ -245,6 +245,10 @@ PROGRAM main
     WRITE(*,'(A,ES13.6E3)') 't = ', 0.0_amrex_real
   END IF
 
+  ! --- Beginning of evolution ---
+
+  t  = 0.0_amrex_real
+
   CALL WriteFieldsAMReX_PlotFile &
          ( 0.0e0_amrex_real, nLevels, GEOM, StepNo, &
            MF_uGF_Option = MF_uGF, &
@@ -252,9 +256,13 @@ PROGRAM main
            MF_uPF_Option = MF_uPF, &
            MF_uAF_Option = MF_uAF )
 
-  ! --- Beginning of evolution ---
-
-  t  = 0.0_amrex_real
+  CALL WriteFieldsAMReX_Checkpoint &
+         ( StepNo, nLevels, dt, t, &
+           MF_uGF % BA % P, &
+           MF_uGF % P, &
+           MF_uCF % P, &
+           MF_uPF % P, &
+           MF_uAF % P )
 
   IF( amrex_parallel_ioprocessor() ) &
     Timer_Evolution = MPI_WTIME()

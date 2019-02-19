@@ -124,6 +124,7 @@ CONTAINS
   SUBROUTINE MF_FinalizeFluid_SSPRK( nLevels )
 
     INTEGER, INTENT(in) :: nLevels
+
     INTEGER :: iLevel, iS
 
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
@@ -223,10 +224,9 @@ CONTAINS
 
       DO jS = 1, iS - 1
 
-        IF( a_SSPRK(iS,jS) .NE. 0.0_amrex_real )THEN
+        IF( a_SSPRK(iS,jS) .NE. 0.0_amrex_real ) &
           CALL LinComb( nLevels, 1.0_amrex_real, MF_U, &
                                  dt * a_SSPRK(iS,jS), MF_D(:,jS) )
-        END IF
 
       END DO
 
