@@ -1,7 +1,7 @@
 module ThornadoInitializationModule
 
   use KindModule, only: &
-    DP
+    DP, SqrtTiny
   use ProgramHeaderModule, only: &
     InitializeProgramHeader, &
     InitializeProgramHeaderX, &
@@ -129,9 +129,9 @@ contains
            ( Verbose_Option = .FALSE. )
 
     call InitializePositivityLimiter_TwoMoment &
-           ( Min_1_Option = 0.0_DP, &
-             Max_1_Option = 1.0_DP, &
-             Min_2_Option = 0.0_DP, &
+           ( Min_1_Option = 0.0_DP + SqrtTiny, &
+             Max_1_Option = 1.0_DP - SqrtTiny, &
+             Min_2_Option = 0.0_DP + SqrtTiny, &
              UsePositivityLimiter_Option = .TRUE., &
              Verbose_Option = .FALSE. )
 
