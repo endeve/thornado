@@ -26,14 +26,14 @@ PROGRAM ApplicationDriver
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
-  USE SlopeLimiterModule_Euler, ONLY: &
-    InitializeSlopeLimiter_Euler, &
-    FinalizeSlopeLimiter_Euler, &
-    ApplySlopeLimiter_Euler
-  USE PositivityLimiterModule_Euler, ONLY: &
-    InitializePositivityLimiter_Euler, &
-    FinalizePositivityLimiter_Euler, &
-    ApplyPositivityLimiter_Euler
+  USE Euler_SlopeLimiterModule, ONLY: &
+    Euler_InitializeSlopeLimiter, &
+    Euler_FinalizeSlopeLimiter, &
+    Euler_ApplySlopeLimiter
+  USE Euler_PositivityLimiterModule, ONLY: &
+    Euler_InitializePositivityLimiter, &
+    Euler_FinalizePositivityLimiter, &
+    Euler_ApplyPositivityLimiter
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE EquationOfStateModule, ONLY: &
@@ -41,11 +41,11 @@ PROGRAM ApplicationDriver
     FinalizeEquationOfState
   USE InitializationModule, ONLY: &
     InitializeFields, ApplyPerturbations
-  USE EulerEquationsUtilitiesModule_Beta, ONLY: &
+  USE Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved, &
     ComputeTimeStep
-  USE dgDiscretizationModule_Euler, ONLY: &
-    ComputeIncrement_Euler_DG_Explicit
+  USE Euler_dgDiscretizationModule, ONLY: &
+    Euler_ComputeIncrement_DG_Explicit
   USE Euler_TallyModule, ONLY: &
     InitializeTally_Euler, &
     FinalizeTally_Euler, &
@@ -111,7 +111,7 @@ PROGRAM ApplicationDriver
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
-  CALL InitializeSlopeLimiter_Euler &
+  CALL Euler_InitializeSlopeLimiter &
          ( BetaTVD_Option                   = 1.15_DP, &
            BetaTVB_Option                   = 0.00_DP, &
            SlopeTolerance_Option            = 1.00d-6, &
@@ -120,7 +120,7 @@ PROGRAM ApplicationDriver
            UseTroubledCellIndicator_Option  = .TRUE., &
            LimiterThresholdParameter_Option = 0.015_DP )
 
-  CALL InitializePositivityLimiter_Euler &
+  CALL Euler_InitializePositivityLimiter &
          ( Min_1_Option = 1.0d-12, &
            Min_2_Option = 1.0d-12, &
            UsePositivityLimiter_Option = .TRUE. )
@@ -130,12 +130,12 @@ PROGRAM ApplicationDriver
 
   CALL ApplyPerturbations( 1.4_DP, 1.6_DP, 0, 2.0_DP )
 
-  CALL ApplySlopeLimiter_Euler &
+  CALL Euler_ApplySlopeLimiter &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-  CALL ApplyPositivityLimiter_Euler &
+  CALL Euler_ApplyPositivityLimiter &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
@@ -196,7 +196,7 @@ PROGRAM ApplicationDriver
     END IF
 
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, ComputeIncrement_Euler_DG_Explicit )
+           ( t, dt, uGF, uCF, Euler_ComputeIncrement_DG_Explicit )
 
     t = t + dt
 
@@ -251,9 +251,9 @@ PROGRAM ApplicationDriver
 
   ! --- Finalize ---
 
-  CALL FinalizePositivityLimiter_Euler
+  CALL Euler_FinalizePositivityLimiter
 
-  CALL FinalizeSlopeLimiter_Euler
+  CALL Euler_FinalizeSlopeLimiter
 
   CALL FinalizeEquationOfState
 
