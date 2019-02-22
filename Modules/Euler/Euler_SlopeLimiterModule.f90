@@ -209,7 +209,7 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL DetectTroubledCells &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     LimitedCell = .FALSE.
 
@@ -524,16 +524,14 @@ CONTAINS
   END SUBROUTINE FinalizeTroubledCellIndicator
 
 
-  SUBROUTINE DetectTroubledCells( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+  SUBROUTINE DetectTroubledCells( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in) :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &         
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iX1, iX2, iX3, iCF
-    REAL(DP) :: V_K (0:2*nDimsX)
     REAL(DP) :: U_K (0:2*nDimsX,nCF)
     REAL(DP) :: U_K0(0:2*nDimsX,nCF)
 
@@ -553,129 +551,67 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      ! --- Compute Cell Volumes and Cell Averages ---------
+      ! --- Compute Cell Averages --------------------------
       ! --- in Target Cell and Neighbors in X1 Direction ---
-
-      V_K(0) = DOT_PRODUCT &
-                 ( WeightsX_q(:), G(:,iX1,  iX2,iX3,iGF_SqrtGm) )
-
-      V_K(1) = DOT_PRODUCT &
-                 ( WeightsX_q(:), G(:,iX1-1,iX2,iX3,iGF_SqrtGm) )
-
-      V_K(2) = DOT_PRODUCT &
-                 ( WeightsX_q(:), G(:,iX1+1,iX2,iX3,iGF_SqrtGm) )
 
       DO iCF = 1, nCF
 
         U_K(0,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q(:), &
-                G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1,iX2,iX3,iCF) ) / V_K(0)
+          = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1,  iX2,iX3,iCF) )
 
         U_K(1,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q(:), &
-                G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1-1,iX2,iX3,iCF) ) / V_K(1)
+          = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1-1,iX2,iX3,iCF) )
 
         U_K0(1,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_X1_P(:), &
-                G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1-1,iX2,iX3,iCF) ) / V_K(0)
+          = DOT_PRODUCT( WeightsX_X1_P(:), U(:,iX1-1,iX2,iX3,iCF) )
 
         U_K(2,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q(:), &
-                G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1+1,iX2,iX3,iCF) ) / V_K(2)
+          = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1+1,iX2,iX3,iCF) )
 
         U_K0(2,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_X1_N(:), &
-                G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1+1,iX2,iX3,iCF) ) / V_K(0)
+          = DOT_PRODUCT( WeightsX_X1_N(:), U(:,iX1+1,iX2,iX3,iCF) )
 
       END DO
 
-      ! --- Compute Cell Volumes and Cell Averages ---
-      ! --- in Neighbors in X2 Direction -------------
+      ! --- Compute Cell Averages in Neighbors in X2 Direction ---
 
       IF( nDimsX > 1 )THEN
-
-        V_K(3) = DOT_PRODUCT &
-                   ( WeightsX_q(:), G(:,iX1,iX2-1,iX3,iGF_SqrtGm) )
-
-        V_K(4) = DOT_PRODUCT &
-                   ( WeightsX_q(:), G(:,iX1,iX2+1,iX3,iGF_SqrtGm) )
 
         DO iCF = 1, nCF
 
           U_K(3,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q(:), &
-                  G(:,iX1,iX2-1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2-1,iX3,iCF) ) / V_K(3)
+            = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1,iX2-1,iX3,iCF) )
 
           U_K0(3,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X2_P(:), &
-                  G(:,iX1,iX2-1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2-1,iX3,iCF) ) / V_K(0)
+            = DOT_PRODUCT( WeightsX_X2_P(:), U(:,iX1,iX2-1,iX3,iCF) )
 
           U_K(4,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q(:), &
-                  G(:,iX1,iX2+1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2+1,iX3,iCF) ) / V_K(4)
+            = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1,iX2+1,iX3,iCF) )
 
           U_K0(4,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X2_N(:), &
-                  G(:,iX1,iX2+1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2+1,iX3,iCF) ) / V_K(0)
+            = DOT_PRODUCT( WeightsX_X2_N(:), U(:,iX1,iX2+1,iX3,iCF) )
 
         END DO
 
       END IF
 
-      ! --- Compute Cell Volumes and Cell Averages ---
-      ! --- in Neighbors in X3 Direction -------------
+      ! --- Compute Cell Averages in Neighbors in X3 Direction ---
 
       IF( nDimsX > 2 )THEN
-
-        V_K(5) = DOT_PRODUCT &
-                   ( WeightsX_q(:), G(:,iX1,iX2,iX3-1,iGF_SqrtGm) )
-
-        V_K(6) = DOT_PRODUCT &
-                   ( WeightsX_q(:), G(:,iX1,iX2,iX3+1,iGF_SqrtGm) )
 
         DO iCF = 1, nCF
 
           U_K(5,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q(:), &
-                  G(:,iX1,iX2,iX3-1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3-1,iCF) ) / V_K(5)
+            = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1,iX2,iX3-1,iCF) )
 
           U_K0(5,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X3_P(:), &
-                  G(:,iX1,iX2,iX3-1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3-1,iCF) ) / V_K(0)
+            = DOT_PRODUCT( WeightsX_X3_P(:), U(:,iX1,iX2,iX3-1,iCF) )
 
           U_K(6,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q(:), &
-                  G(:,iX1,iX2,iX3+1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3+1,iCF) ) / V_K(6)
+            = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1,iX2,iX3+1,iCF) )
 
           U_K0(6,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X3_N(:), &
-                  G(:,iX1,iX2,iX3+1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3+1,iCF) ) / V_K(0)
+            = DOT_PRODUCT( WeightsX_X3_N(:), U(:,iX1,iX2,iX3+1,iCF) )
 
         END DO
 
