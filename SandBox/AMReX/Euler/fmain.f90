@@ -91,7 +91,7 @@ PROGRAM main
 
   REAL(amrex_real) :: Timer_Evolution
 
-  CALL MakeMF_Diff( 2, 4 )
+!!$  CALL MakeMF_Diff( 2, 4 )
 
   ! --- Initialize AMReX ---
   CALL amrex_init()
