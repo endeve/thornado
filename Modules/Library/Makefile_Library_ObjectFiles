@@ -12,4 +12,5 @@ LIBRARY = \
   ReferenceElementModuleX_Lagrange.o \
   ReferenceElementModuleE_Lagrange.o \
   ReferenceElementModule_Lagrange.o \
-  PolynomialBasisMappingModule.o
+  PolynomialBasisMappingModule.o \
+  SubcellReconstructionModule.o
