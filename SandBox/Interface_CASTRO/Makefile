@@ -46,6 +46,7 @@ Driver: $(weaklib) \
 	ReferenceElementModuleX_Lagrange.o \
 	ReferenceElementModuleE_Lagrange.o \
 	ReferenceElementModule_Lagrange.o \
+	SubcellReconstructionModule.o \
 	MeshModule.o \
 	GeometryFieldsModule.o \
 	GeometryComputationModule.o \
@@ -84,6 +85,7 @@ Driver: $(weaklib) \
 	ReferenceElementModuleX_Lagrange.o \
 	ReferenceElementModuleE_Lagrange.o \
 	ReferenceElementModule_Lagrange.o \
+	SubcellReconstructionModule.o \
 	MeshModule.o \
 	GeometryFieldsModule.o \
 	GeometryComputationModule.o \
