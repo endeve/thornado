@@ -30,9 +30,11 @@ Unew = zeros(2,1);
 % \rho / m_B
 N_B = D / AtomicMassUnit;
 
+Chi = Chi * c;
+
 % scales
-s_Y = N_B / c;
-s_E = D / c;
+s_Y = N_B;
+s_E = D;
 
 
 % (scaled) weights
@@ -76,10 +78,10 @@ while((~CONVERGED)&&(k<=maxIter))
     J0 = FermiDirac( g_E_N, Mnu, BoltzmannConstant * T );
     
     % compute new J
-%     [Jout, iter] = UpdateNeutrinoDistribution(Jin, J0, Chi);
-    [Jout, iter] = UpdateNeutrinoDistribution_exact(Jin, J0, Chi);
+%     [Jout, iter_in] = UpdateNeutrinoDistribution(Jin, J0, Chi);
+    [Jout, iter_in] = UpdateNeutrinoDistribution_exact(Jin, J0, Chi);
 
-    Inneriter = Inneriter + iter;
+    Inneriter = Inneriter + iter_in;
     
     % Picard iteration (update U)
     Unew(iY) = 1 + C(iY) - Theta2_N' * Jout / s_Y;

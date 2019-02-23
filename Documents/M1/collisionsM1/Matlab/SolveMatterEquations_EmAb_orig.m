@@ -1,4 +1,4 @@
-function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb( J, Chi, D, T, Y, E )
+function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb_orig( J, Chi, D, T, Y, E )
 
     % g_E_N       : nE_G x 1 (energy grid)
     % J, J_0    : nE_G x 1 (size of energy grid)
@@ -30,10 +30,7 @@ function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb( J, Chi, D, T, Y, E 
     % \rho / m_B
     N_B = D / AtomicMassUnit;
     
-    % scales
-    s_Y = N_B;
-    s_E = D;
-    
+
     Chi = Chi * c;
 
     
@@ -42,9 +39,11 @@ function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb( J, Chi, D, T, Y, E 
 %     NumPts = 2;
 %     [E_N, W2_N, W3_N] = ComputePointsAndWeightsE(Numbins,NumPts);
     
+    % unit test 
+%     sec_per_cm = 3.3356409519815209E-011;
     % (scaled) weights
-    Theta2_N = 4 * pi * g_W2_N .* Chi ./ ( 1 + Chi );
-    Theta3_N = 4 * pi * g_W3_N .* Chi ./ ( 1 + Chi );
+    Theta2_N = 4 * pi * g_W2_N .* Chi ./ ( 1  + Chi );
+    Theta3_N = 4 * pi * g_W3_N .* Chi ./ ( 1  + Chi ) / AtomicMassUnit;
 
     Theta2_N = Theta2_N / (hc)^3;
     Theta3_N = Theta3_N / (hc)^3;
@@ -57,34 +56,23 @@ function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb( J, Chi, D, T, Y, E 
     
     % equilibrium distribution
     J0 = FermiDirac( g_E_N, Mnu, BoltzmannConstant * T );
-
-    % store initial
-    Y0 = Y; 
-%     E0 = E;
-    E0 = E * Erg2MeV; % change unit
-
-    
-    % scaling for Jacobian
-    s_Y = s_Y * Y0;
-    s_E = s_E * E0;
-
     
     % initial guess
-    U(iY) = Y / Y0; 
-    U(iE) = E * Erg2MeV / E0; % change unit
+    U(iY) = Y; 
+    U(iE) = E * Erg2MeV; % change unit
     
     % old states
-    C(iY) = Theta2_N' * J + s_Y * U(iY);
-    C(iE) = Theta3_N' * J + s_E * U(iE);
+    C(iY) = Theta2_N' * J + N_B * U(iY);
+    C(iE) = Theta3_N' * J + N_B * U(iE);
 
    
     % --- Electron Fraction Equation ---
 
-    FVEC(iY) = Theta2_N' * J0 + s_Y * U(iY) - C(iY);
+    FVEC(iY) = Theta2_N' * J0 + N_B * U(iY) - C(iY);
 
     % --- Internal Energy Equation ---
 
-    FVEC(iE) = Theta3_N' * J0 + s_E * U(iE) - C(iE);
+    FVEC(iE) = Theta3_N' * J0 + N_B * U(iE) - C(iE);
 
     % --- Scale Equations and Save Initial Evaluation ---
 
@@ -106,8 +94,8 @@ function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb( J, Chi, D, T, Y, E 
       [~, dEdT, dEdY] = ComputeSpecificInternalEnergy_TABLE(D, T, Y);
       
       % change units
-      dEdT = dEdT * Erg2MeV / E0 ;
-      dEdY = dEdY * Y0 * Erg2MeV / E0;
+      dEdT = dEdT * Erg2MeV ;
+      dEdY = dEdY * Erg2MeV;
       
       % --- Derivative of J0 wrt. T (Constant Y) ---
 
@@ -117,8 +105,6 @@ function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb( J, Chi, D, T, Y, E 
 
       dJ0dY_T = dFermiDiracdY(g_E_N, Mnu, BoltzmannConstant * T, dMnudY);
 
-      dJ0dY_T = dJ0dY_T * Y0;
-      
       % --- Derivative of J0 wrt. E (Constant Y) ---
 
       dJ0dE_Y = dJ0dT_Y / dEdT;
@@ -129,20 +115,19 @@ function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb( J, Chi, D, T, Y, E 
 
       % --- Jacobian ---
 
-      FJAC(1,1) = Theta2_N' * dJ0dY_E  + s_Y;
+      FJAC(1,1) = Theta2_N' * dJ0dY_E  + N_B;
 
       FJAC(1,2) = Theta2_N' * dJ0dE_Y;
 
       FJAC(2,1) = Theta3_N' * dJ0dY_E;
 
-      FJAC(2,2) = Theta3_N' * dJ0dE_Y + s_E;
+      FJAC(2,2) = Theta3_N' * dJ0dE_Y + N_B;
 
       % --- Scale Jacobian ---
 
       FJAC(:,1) = FJAC(:,1) ./ C;
 
       FJAC(:,2) = FJAC(:,2) ./ C;
-
       cond(FJAC)
       % --- Determinant of Jacobian ---
 
@@ -163,8 +148,8 @@ function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb( J, Chi, D, T, Y, E 
 
       U = U + dU;
 
-      Y = U(iY) * Y0; 
-      E = U(iE) * E0 / Erg2MeV; % change unit
+      Y = U(iY) ; 
+      E = U(iE) / Erg2MeV; % change unit
 
       
       T = ComputeTemperatureFromSpecificInternalEnergy_TABLE(D, E, Y); 
@@ -179,11 +164,11 @@ function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb( J, Chi, D, T, Y, E 
 
       % --- Electron Fraction Equation ---
 
-      FVEC(iY) = Theta2_N' * J0 + s_Y * U(iY) - C(iY);
+      FVEC(iY) = Theta2_N' * J0 + N_B * U(iY) - C(iY);
 
       % --- Internal Energy Equation ---
 
-      FVEC(iE) = Theta3_N' * J0 + s_E * U(iE) - C(iE);
+      FVEC(iE) = Theta3_N' * J0 + N_B * U(iE) - C(iE);
 
       % --- Scale Equations ---
 
