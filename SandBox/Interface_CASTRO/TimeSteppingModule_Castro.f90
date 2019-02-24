@@ -182,6 +182,11 @@ CONTAINS
 
     IF( Explicit )THEN
 
+      ! --- Apply Positivity Limiter ---
+
+      CALL ApplyPositivityLimiter_TwoMoment &
+             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+
       CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
                uGE, uGF, &
