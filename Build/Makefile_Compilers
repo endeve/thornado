@@ -8,7 +8,7 @@ FORTRAN_titan_gnu    = ftn
 FORTRAN_titan_cray   = ftn
 FORTRAN_beacon_intel = mpiifort -mkl
 FORTRAN_mcarpe21     = mpiifort
-FORTRAN_summit_xl    = mpifort -qsmp=omp:noauto -qoffload
+FORTRAN_summit_xl    = mpifort -qsmp=omp:noauto# -qoffload
 FORTRAN              = $(FORTRAN_$(MACHINE))
 
 SUFFIX_f90_mac_gnu      = 
@@ -33,7 +33,7 @@ FLINKER_titan_gnu    = ftn
 FLINKER_titan_cray   = ftn
 FLINKER_beacon_intel = mpiifort -mkl
 FLINKER_mcarpe21     = mpiifort
-FLINKER_summit_xl    = mpifort -qsmp=omp:noauto -qoffload
+FLINKER_summit_xl    = mpifort -qsmp=omp:noauto# -qoffload
 FLINKER              = $(FLINKER_$(MACHINE))
 
 FLAGS_DEBUG        = $(DEBUG)
@@ -61,7 +61,7 @@ OPTIMIZE_titan_gnu    = -O2
 OPTIMIZE_titan_cray   = 
 OPTIMIZE_beacon_intel = -fast
 OPTIMIZE_mcarpe21     = -O2
-OPTIMIZE_summit_xl    = -g -O2 -qarch=pwr9 -qtune=pwr9 -qsuppress=cmpmsg -w
+OPTIMIZE_summit_xl    = -g -O3 -qarch=pwr9 -qtune=pwr9 -qsuppress=cmpmsg -w
 OPTIMIZE              = $(OPTIMIZE_$(MACHINE))
 
 INCLUDE_HDF5_mac_gnu           = -I/usr/local/Cellar/hdf5/1.8.16_1/include
@@ -141,7 +141,7 @@ LIBRARIES_LAPACK_mcarpe21      = -L/usr/lib/lapack -llapack \
 LIBRARIES_LAPACK_summit_xl     = -L$(OLCF_ESSL_ROOT)/lib64 -lessl -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
 LIBRARIES_LAPACK               = $(LIBRARIES_LAPACK_$(MACHINE))
 
-LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_WEAKLIB) $(LIBRARIES_POSEIDON)
+LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_POSEIDON)
 
 PP_summit_xl                   = -WF,
 PP                             = $(PP_$(MACHINE))
