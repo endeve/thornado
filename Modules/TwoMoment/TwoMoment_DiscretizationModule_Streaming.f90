@@ -74,10 +74,14 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     Flux_X3, &
     NumericalFlux_LLF
 
+  !$ USE OMP_LIB
+
   IMPLICIT NONE
   PRIVATE
 
   REAL(DP), PARAMETER :: Ones(16) = One
+  REAL(DP) :: wTime_X1
+  !$OMP THREADPRIVATE(wTime_X1)
 
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit
 
@@ -108,7 +112,7 @@ CONTAINS
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
-    CALL ComputeIncrement_Divergence_X1 &
+    CALL ComputeIncrement_Divergence_X1_GPU &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
     CALL ComputeIncrement_Divergence_X2 &
@@ -149,6 +153,350 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit
+
+
+  SUBROUTINE ComputeIncrement_Divergence_X1_GPU &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      GE(1:,iZ_B1(1):,1:)
+    REAL(DP), INTENT(in)    :: &
+      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+    REAL(DP), INTENT(in)    :: &
+      U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+    REAL(DP), INTENT(inout) :: &
+      dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER  :: iNode
+    INTEGER  :: iGF, iCR
+    REAL(DP) :: dZ(4)
+    REAL(DP) :: FF, EF
+    REAL(DP) :: GX_P(nDOFX,   nGF)
+    REAL(DP) :: GX_K(nDOFX,   nGF)
+    REAL(DP) :: GX_F(nDOFX_X1,nGF)
+    REAL(DP) :: G_K(nDOF,nGF)
+    REAL(DP) :: G_F(nDOF_X1,nGF)
+    REAL(DP), DIMENSION(nDOF_X1)     :: absLambda_L
+    REAL(DP), DIMENSION(nDOF_X1)     :: absLambda_R
+    REAL(DP), DIMENSION(nDOF_X1)     :: alpha
+    REAL(DP), DIMENSION(nDOF)        :: Tau
+    REAL(DP), DIMENSION(nDOF_X1)     :: Tau_X1
+    REAL(DP), DIMENSION(nDOF_X1,nCR) :: uCR_L, uCR_R
+    REAL(DP), DIMENSION(nDOF_X1,nPR) :: uPR_L, uPR_R
+    REAL(DP), DIMENSION(nDOF_X1,nCR) :: Flux_X1_L
+    REAL(DP), DIMENSION(nDOF_X1,nCR) :: Flux_X1_R
+    REAL(DP), DIMENSION(nDOF_X1,nCR) :: NumericalFlux
+    REAL(DP), DIMENSION(nDOF   ,nCR) :: uCR_P, uCR_K
+    REAL(DP), DIMENSION(nDOF   ,nPR) :: uPR_K
+    REAL(DP), DIMENSION(nDOF   ,nCR) :: Flux_X1_q
+
+    REAL(DP) :: wTime
+
+    IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
+
+    wTime = omp_get_wtime()
+    wTime_X1 = wTime_X1 - wTime
+
+    DO iS = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+
+        dZ(4) = MeshX(3) % Width(iZ4)
+
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+
+          dZ(3) = MeshX(2) % Width(iZ3)
+
+          DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
+
+            ! --- Geometry Fields in Element Nodes ---
+
+            DO iGF = 1, nGF
+
+              GX_P(:,iGF) = GX(:,iZ2-1,iZ3,iZ4,iGF) ! --- Previous Element
+              GX_K(:,iGF) = GX(:,iZ2,  iZ3,iZ4,iGF) ! --- This     Element
+
+              G_K(1:nDOF,iGF) &
+                = OuterProduct1D3D &
+                    ( Ones(1:nDOFE), nDOFE, GX_K(1:nDOFX,iGF), nDOFX )
+
+            END DO
+
+            ! --- Interpolate Geometry Fields on Shared Face ---
+
+            ! --- Face States (Average of Left and Right States) ---
+
+            ! --- Scale Factors ---
+
+            DO iGF = iGF_h_1, iGF_h_3
+
+              CALL DGEMV &
+                     ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+                       GX_P(:,iGF), 1, Zero, GX_F(:,iGF), 1 )
+              CALL DGEMV &
+                     ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+                       GX_K(:,iGF), 1, Half, GX_F(:,iGF), 1 )
+
+              GX_F(1:nDOFX_X1,iGF) &
+                = MAX( GX_F(1:nDOFX_X1,iGF), SqrtTiny )
+
+              G_F(1:nDOF_X1,iGF) &
+                = OuterProduct1D3D &
+                    ( Ones(1:nDOFE), nDOFE, GX_F(1:nDOFX_X1,iGF), nDOFX_X1 )
+
+            END DO
+
+            CALL ComputeGeometryX_FromScaleFactors( G_F(:,:) )
+
+            ! --- Lapse Function ---
+
+            CALL DGEMV &
+                   ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+                     GX_P(:,iGF_Alpha), 1, Zero, GX_F(:,iGF_Alpha), 1 )
+            CALL DGEMV &
+                   ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+                     GX_K(:,iGF_Alpha), 1, Half, GX_F(:,iGF_Alpha), 1 )
+
+            GX_F(1:nDOFX_X1,iGF_Alpha) &
+              = MAX( GX_F(1:nDOFX_X1,iGF_Alpha), SqrtTiny )
+
+            G_F(1:nDOF_X1,iGF_Alpha) &
+              = OuterProduct1D3D &
+                  ( Ones(1:nDOFE), nDOFE, &
+                    GX_F(1:nDOFX_X1,iGF_Alpha), nDOFX_X1 )
+
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+              dZ(1) = MeshE % Width(iZ1)
+
+              ! --- Volume Jacobian in Energy-Position Element ---
+
+              Tau(1:nDOF) &
+                = OuterProduct1D3D &
+                    ( Ones(1:nDOFE), nDOFE, G_K(:,iGF_SqrtGm), nDOFX )
+
+              Tau_X1(1:nDOF_X1) &
+                = OuterProduct1D3D &
+                    ( Ones(1:nDOFE), nDOFE, G_F(:,iGF_SqrtGm), nDOFX_X1 )
+
+              DO iCR = 1, nCR
+
+                uCR_P(:,iCR) = U(:,iZ1,iZ2-1,iZ3,iZ4,iCR,iS)
+                uCR_K(:,iCR) = U(:,iZ1,iZ2,  iZ3,iZ4,iCR,iS)
+
+              END DO
+
+              !--------------------
+              ! --- Volume Term ---
+              !--------------------
+
+              IF( iZ2 < iZ_E0(2) + 1 )THEN
+
+                CALL ComputePrimitive_TwoMoment &
+                       ( uCR_K(:,iCR_N ), uCR_K(:,iCR_G1), &
+                         uCR_K(:,iCR_G2), uCR_K(:,iCR_G3), &
+                         uPR_K(:,iPR_D ), uPR_K(:,iPR_I1), &
+                         uPR_K(:,iPR_I2), uPR_K(:,iPR_I3), &
+                         G_K(:,iGF_Gm_dd_11), &
+                         G_K(:,iGF_Gm_dd_22), &
+                         G_K(:,iGF_Gm_dd_33) )
+
+                DO iNode = 1, nDOF
+
+                  FF = FluxFactor &
+                         ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
+                           uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
+                           G_K(iNode,iGF_Gm_dd_11), &
+                           G_K(iNode,iGF_Gm_dd_22), &
+                           G_K(iNode,iGF_Gm_dd_33) )
+
+                  EF = EddingtonFactor( uPR_K(iNode,iPR_D), FF )
+
+                  Flux_X1_q(iNode,1:nCR) &
+                    = Flux_X1 &
+                        ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
+                          uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
+                          FF, EF, &
+                          G_K(iNode,iGF_Gm_dd_11), &
+                          G_K(iNode,iGF_Gm_dd_22), &
+                          G_K(iNode,iGF_Gm_dd_33) )
+
+                END DO
+
+                DO iCR = 1, nCR
+
+                  Flux_X1_q(:,iCR) &
+                    = dZ(3) * dZ(4) * Weights_q(:) &
+                        * G_K(:,iGF_Alpha) * Tau(:) * Flux_X1_q(:,iCR)
+
+                  CALL DGEMV &
+                         ( 'T', nDOF, nDOF, One, dLdX1_q, nDOF, &
+                           Flux_X1_q(:,iCR), 1, One, &
+                           dU(:,iZ1,iZ2,iZ3,iZ4,iCR,iS), 1 )
+
+                END DO
+
+              END IF
+
+              !---------------------
+              ! --- Surface Term ---
+              !---------------------
+
+              ! --- Interpolate Radiation Fields ---
+
+              DO iCR = 1, nCR
+
+                ! --- Interpolate Left State ---
+
+                CALL DGEMV &
+                       ( 'N', nDOF_X1, nDOF, One, L_X1_Up, nDOF_X1, &
+                         uCR_P(:,iCR), 1, Zero, uCR_L(:,iCR), 1 )
+
+                ! --- Interpolate Right State ---
+
+                CALL DGEMV &
+                       ( 'N', nDOF_X1, nDOF, One, L_X1_Dn, nDOF_X1, &
+                         uCR_K(:,iCR), 1, Zero, uCR_R(:,iCR), 1 )
+
+              END DO
+
+              ! --- Left State Primitive, etc. ---
+
+              CALL ComputePrimitive_TwoMoment &
+                     ( uCR_L(:,iCR_N ), uCR_L(:,iCR_G1), &
+                       uCR_L(:,iCR_G2), uCR_L(:,iCR_G3), &
+                       uPR_L(:,iPR_D ), uPR_L(:,iPR_I1), &
+                       uPR_L(:,iPR_I2), uPR_L(:,iPR_I3), &
+                       G_F(:,iGF_Gm_dd_11), &
+                       G_F(:,iGF_Gm_dd_22), &
+                       G_F(:,iGF_Gm_dd_33) )
+
+              DO iNode = 1, nDOF_X1
+
+                FF = FluxFactor &
+                       ( uPR_L(iNode,iPR_D ), uPR_L(iNode,iPR_I1), &
+                         uPR_L(iNode,iPR_I2), uPR_L(iNode,iPR_I3), &
+                         G_F(iNode,iGF_Gm_dd_11), &
+                         G_F(iNode,iGF_Gm_dd_22), &
+                         G_F(iNode,iGF_Gm_dd_33) )
+
+                EF = EddingtonFactor( uPR_L(iNode,iPR_D), FF )
+
+                Flux_X1_L(iNode,1:nCR) &
+                  = Flux_X1 &
+                      ( uPR_L(iNode,iPR_D ), uPR_L(iNode,iPR_I1), &
+                        uPR_L(iNode,iPR_I2), uPR_L(iNode,iPR_I3), &
+                        FF, EF, &
+                        G_F(iNode,iGF_Gm_dd_11), &
+                        G_F(iNode,iGF_Gm_dd_22), &
+                        G_F(iNode,iGF_Gm_dd_33) )
+
+                absLambda_L(iNode) = 1.0_DP
+
+              END DO
+
+              ! --- Right State Primitive, etc. ---
+
+              CALL ComputePrimitive_TwoMoment &
+                     ( uCR_R(:,iCR_N ), uCR_R(:,iCR_G1), &
+                       uCR_R(:,iCR_G2), uCR_R(:,iCR_G3), &
+                       uPR_R(:,iPR_D ), uPR_R(:,iPR_I1), &
+                       uPR_R(:,iPR_I2), uPR_R(:,iPR_I3), &
+                       G_F(:,iGF_Gm_dd_11), &
+                       G_F(:,iGF_Gm_dd_22), &
+                       G_F(:,iGF_Gm_dd_33) )
+
+              DO iNode = 1, nDOF_X1
+
+                FF = FluxFactor &
+                       ( uPR_R(iNode,iPR_D ), uPR_R(iNode,iPR_I1), &
+                         uPR_R(iNode,iPR_I2), uPR_R(iNode,iPR_I3), &
+                         G_F(iNode,iGF_Gm_dd_11), &
+                         G_F(iNode,iGF_Gm_dd_22), &
+                         G_F(iNode,iGF_Gm_dd_33) )
+
+                EF = EddingtonFactor( uPR_R(iNode,iPR_D), FF )
+
+                Flux_X1_R(iNode,1:nCR) &
+                  = Flux_X1 &
+                      ( uPR_R(iNode,iPR_D ), uPR_R(iNode,iPR_I1), &
+                        uPR_R(iNode,iPR_I2), uPR_R(iNode,iPR_I3), &
+                        FF, EF, &
+                        G_F(iNode,iGF_Gm_dd_11), &
+                        G_F(iNode,iGF_Gm_dd_22), &
+                        G_F(iNode,iGF_Gm_dd_33) )
+
+                absLambda_R(iNode) = 1.0_DP
+
+              END DO
+
+              ! --- Numerical Flux ---
+
+              alpha = MAX( absLambda_L, absLambda_R )
+
+              DO iCR = 1, nCR
+
+                NumericalFlux(:,iCR) &
+                  = NumericalFlux_LLF &
+                      ( uCR_L    (:,iCR), &
+                        uCR_R    (:,iCR), &
+                        Flux_X1_L(:,iCR), &
+                        Flux_X1_R(:,iCR), alpha(:) )
+
+                NumericalFlux(:,iCR) &
+                  = dZ(3) * dZ(4) * Weights_X1(:) &
+                      * G_F(:,iGF_Alpha) * Tau_X1(:) * NumericalFlux(:,iCR)
+
+              END DO
+
+              ! --- Contribution to this Element ---
+
+              IF( iZ2 < iZ_E0(2) + 1 )THEN
+
+                DO iCR = 1, nCR
+
+                  CALL DGEMV &
+                         ( 'T', nDOF_X1, nDOF, + One, L_X1_Dn, &
+                           nDOF_X1, NumericalFlux(:,iCR), 1, One, &
+                           dU(:,iZ1,iZ2  ,iZ3,iZ4,iCR,iS), 1 )
+
+                END DO
+
+              END IF
+
+              ! --- Contribution to Previous Element ---
+
+              IF( iZ2 > iZ_B0(2) )THEN
+
+                DO iCR = 1, nCR
+
+                  CALL DGEMV &
+                         ( 'T', nDOF_X1, nDOF, - One, L_X1_Up, &
+                           nDOF_X1, NumericalFlux(:,iCR), 1, One, &
+                           dU(:,iZ1,iZ2-1,iZ3,iZ4,iCR,iS), 1 )
+
+                END DO
+
+              END IF
+
+            END DO ! iZ1
+          END DO ! iZ2
+        END DO ! iZ3
+      END DO ! iZ4
+    END DO ! iS
+
+    wTime = omp_get_wtime()
+    wTime_X1 = wTime_X1 + wTime
+
+    WRITE(*,'(A,2(ES12.6E2,A))') &
+      '[ComputeIncrement_Divergence_X1] wTime = ', wTime, &
+      ' s, wTime_X1 = ', wTime_X1, ' s'
+
+  END SUBROUTINE ComputeIncrement_Divergence_X1_GPU
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &
