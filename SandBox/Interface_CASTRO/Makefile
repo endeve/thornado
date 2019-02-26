@@ -13,10 +13,11 @@ MICROPHYSICS = WEAKLIB
 include ./Makefile_WeakLib
 include ../../Build/Makefile_Build
 
-VPATH = \
-$(THORNADO_DIR)/WeakLib/Distributions/Library: \
-$(THORNADO_DIR)/WeakLib/Distributions/EOSSource: \
-$(THORNADO_DIR)/WeakLib/Distributions/OpacitySource: \
+WEAKLIB_DIR ?= $(HOME)/weaklib
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+
+VPATH += \
 $(THORNADO_DIR)/Modules/Numbers: \
 $(THORNADO_DIR)/Modules/Units: \
 $(THORNADO_DIR)/Modules/ProgramHeader: \

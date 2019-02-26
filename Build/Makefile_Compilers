@@ -77,18 +77,6 @@ INCLUDE_HDF5_mcarpe21	       = -I/opt/hdf5/include
 INCLUDE_HDF5_summit_xl         = -I$(OLCF_HDF5_ROOT)/include
 INCLUDE_HDF5                   = $(INCLUDE_HDF5_$(MACHINE))
 
-INCLUDE_WEAKLIB_mac_gnu        = 
-INCLUDE_WEAKLIB_sn1987b        = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
-INCLUDE_WEAKLIB_juliana        = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
-INCLUDE_WEAKLIB_kristopher     = 
-INCLUDE_WEAKLIB_ranchu         = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
-INCLUDE_WEAKLIB_sjdunham       = 
-INCLUDE_WEAKLIB_titan_gnu      = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
-INCLUDE_WEAKLIB_titan_cray     = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
-INCLUDE_WEAKLIB_beacon_intel   = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
-INCLUDE_WEAKLIB_summit_xl      = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
-INCLUDE_WEAKLIB                = $(INCLUDE_WEAKLIB_$(MACHINE))
-
 INCLUDE_POSEIDON_mac_gnu       = 
 INCLUDE_POSEIDON_sn1987b       = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON_kristopher    = -I$(POSEIDON_DIR)/Obj
@@ -98,7 +86,7 @@ INCLUDE_LAPACK_ranchu          = -I/usr/include
 INCLUDE_LAPACK_summit_xl       = -I$(OLCF_ROOT_ESSL)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK                 = $(INCLUDE_LAPACK_$(MACHINE))
 
-INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_WEAKLIB) $(INCLUDE_POSEIDON)
+INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_POSEIDON)
 
 LIBRARIES_HDF5_mac_gnu         = -L/usr/local/Cellar/hdf5/1.8.16_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_sn1987b         = -L/usr/local/Cellar/hdf5/1.8.16_1/lib -lhdf5_fortran -lhdf5
@@ -115,20 +103,6 @@ LIBRARIES_HDF5_mcarpe21	       = -L/opt/hdf5/lib \
 				 -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_summit_xl       = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5                 = $(LIBRARIES_HDF5_$(MACHINE))
-
-LIBRARIES_WEAKLIB_mac_gnu      = 
-LIBRARIES_WEAKLIB_sn1987b      = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
-LIBRARIES_WEAKLIB_juliana      = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
-LIBRARIES_WEAKLIB_kristopher   = 
-LIBRARIES_WEAKLIB_ranchu       = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
-LIBRARIES_WEAKLIB_sjdunham     = 
-LIBRARIES_WEAKLIB_titan_gnu    = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
-LIBRARIES_WEAKLIB_titan_cray   = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
-LIBRARIES_WEAKLIB_darter_gnu   = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
-LIBRARIES_WEAKLIB_darter_cray  = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
-LIBRARIES_WEAKLIB_beacon_intel = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
-LIBRARIES_WEAKLIB_summit_xl    = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
-LIBRARIES_WEAKLIB              = $(LIBRARIES_WEAKLIB_$(MACHINE))
 
 LIBRARIES_POSEIDON_mac_gnu     = 
 LIBRARIES_POSEIDON_sn1987b     = $(POSEIDON_DIR)/Obj/poseidon.a

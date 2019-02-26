@@ -12,14 +12,14 @@ include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 all: DeleptonizationWave
 
 DeleptonizationWave: \
-	$(thornado) \
 	$(weaklib) \
+	$(thornado) \
 	InitializationModule.o \
 	TimeSteppingModule_Castro.o \
 	DeleptonizationWave.o
 	$(FLINKER) $(FLAGS) -o DeleptonizationWave_$(MACHINE) \
-	$(thornado) \
 	$(weaklib) \
+	$(thornado) \
 	InitializationModule.o \
 	TimeSteppingModule_Castro.o \
 	DeleptonizationWave.o \
