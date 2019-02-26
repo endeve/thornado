@@ -80,7 +80,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   PRIVATE
 
   REAL(DP), PARAMETER :: Ones(16) = One
-  REAL(DP) :: wTime_X1
+  REAL(DP) :: wTime_X1 = Zero
   !$OMP THREADPRIVATE(wTime_X1)
 
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit
@@ -200,7 +200,6 @@ CONTAINS
     IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
 
     wTime = omp_get_wtime()
-    wTime_X1 = wTime_X1 - wTime
 
     DO iS = 1, nSpecies
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -489,7 +488,7 @@ CONTAINS
       END DO ! iZ4
     END DO ! iS
 
-    wTime = omp_get_wtime()
+    wTime = omp_get_wtime() - wTime
     wTime_X1 = wTime_X1 + wTime
 
     WRITE(*,'(A,2(ES12.6E2,A))') &
