@@ -193,7 +193,7 @@ CONTAINS
     REAL(DP), DIMENSION(nDOF_X1,nCR) :: NumericalFlux
     REAL(DP), DIMENSION(nDOF   ,nCR) :: uCR_P, uCR_K
     REAL(DP), DIMENSION(nDOF   ,nPR) :: uPR_K
-    REAL(DP), DIMENSION(nDOF   ,nCR) :: Flux_X1_q
+    REAL(DP) :: Flux_X1_q(nDOF,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2)  ,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
 
     REAL(DP) :: wTime
 
@@ -315,7 +315,7 @@ CONTAINS
 
                   EF = EddingtonFactor( uPR_K(iNode,iPR_D), FF )
 
-                  Flux_X1_q(iNode,1:nCR) &
+                  Flux_X1_q(iNode,1:nCR,iZ1,iZ2,iZ3,iZ4,iS) &
                     = Flux_X1 &
                         ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
                           uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
@@ -328,13 +328,13 @@ CONTAINS
 
                 DO iCR = 1, nCR
 
-                  Flux_X1_q(:,iCR) &
+                  Flux_X1_q(:,iCR,iZ1,iZ2,iZ3,iZ4,iS) &
                     = dZ3 * dZ4 * Weights_q(:) &
-                        * G_K(:,iGF_Alpha) * Tau(:) * Flux_X1_q(:,iCR)
+                        * G_K(:,iGF_Alpha) * Tau(:) * Flux_X1_q(:,iCR,iZ1,iZ2,iZ3,iZ4,iS)
 
                   CALL DGEMV &
                          ( 'T', nDOF, nDOF, One, dLdX1_q, nDOF, &
-                           Flux_X1_q(:,iCR), 1, One, &
+                           Flux_X1_q(:,iCR,iZ1,iZ2,iZ3,iZ4,iS), 1, One, &
                            dU(:,iZ1,iZ2,iZ3,iZ4,iCR,iS), 1 )
 
                 END DO
