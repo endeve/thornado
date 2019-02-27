@@ -201,6 +201,90 @@ CONTAINS
 
     wTime_X1 = wTime_X1 - omp_get_wtime()
 
+    !--------------------
+    ! --- Volume Term ---
+    !--------------------
+
+    DO iS = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+            DO iGF = 1, nGF
+
+              GX_K(:,iGF) = GX(:,iZ2,iZ3,iZ4,iGF)
+
+              G_K(1:nDOF,iGF) &
+                = OuterProduct1D3D &
+                    ( Ones(1:nDOFE), nDOFE, GX_K(1:nDOFX,iGF), nDOFX )
+
+            END DO
+
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+              Tau(1:nDOF) &
+                = OuterProduct1D3D &
+                    ( Ones(1:nDOFE), nDOFE, G_K(:,iGF_SqrtGm), nDOFX )
+
+              DO iCR = 1, nCR
+
+                uCR_K(:,iCR) = U(:,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+
+              END DO
+
+              CALL ComputePrimitive_TwoMoment &
+                     ( uCR_K(:,iCR_N ), uCR_K(:,iCR_G1), &
+                       uCR_K(:,iCR_G2), uCR_K(:,iCR_G3), &
+                       uPR_K(:,iPR_D ), uPR_K(:,iPR_I1), &
+                       uPR_K(:,iPR_I2), uPR_K(:,iPR_I3), &
+                       G_K(:,iGF_Gm_dd_11), &
+                       G_K(:,iGF_Gm_dd_22), &
+                       G_K(:,iGF_Gm_dd_33) )
+
+              DO iNode = 1, nDOF
+
+                FF = FluxFactor &
+                       ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
+                         uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
+                         G_K(iNode,iGF_Gm_dd_11), &
+                         G_K(iNode,iGF_Gm_dd_22), &
+                         G_K(iNode,iGF_Gm_dd_33) )
+
+                EF = EddingtonFactor( uPR_K(iNode,iPR_D), FF )
+
+                Flux_X1_q(iNode,1:nCR,iZ1,iZ2,iZ3,iZ4,iS) &
+                  = Flux_X1 &
+                      ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
+                        uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
+                        FF, EF, &
+                        G_K(iNode,iGF_Gm_dd_11), &
+                        G_K(iNode,iGF_Gm_dd_22), &
+                        G_K(iNode,iGF_Gm_dd_33) )
+
+              END DO
+
+              DO iCR = 1, nCR
+
+                dZ3 = MeshX(2) % Width(iZ3)
+                dZ4 = MeshX(3) % Width(iZ4)
+
+                Flux_X1_q(:,iCR,iZ1,iZ2,iZ3,iZ4,iS) &
+                  = dZ3 * dZ4 * Weights_q(:) &
+                      * G_K(:,iGF_Alpha) * Tau(:) * Flux_X1_q(:,iCR,iZ1,iZ2,iZ3,iZ4,iS)
+
+                CALL DGEMV &
+                       ( 'T', nDOF, nDOF, One, dLdX1_q, nDOF, &
+                         Flux_X1_q(:,iCR,iZ1,iZ2,iZ3,iZ4,iS), 1, One, &
+                         dU(:,iZ1,iZ2,iZ3,iZ4,iCR,iS), 1 )
+
+              END DO
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
     DO iS = 1, nSpecies
       DO iZ4 = iZ_B0(4), iZ_E0(4)
 
@@ -218,10 +302,6 @@ CONTAINS
 
               GX_P(:,iGF) = GX(:,iZ2-1,iZ3,iZ4,iGF) ! --- Previous Element
               GX_K(:,iGF) = GX(:,iZ2,  iZ3,iZ4,iGF) ! --- This     Element
-
-              G_K(1:nDOF,iGF) &
-                = OuterProduct1D3D &
-                    ( Ones(1:nDOFE), nDOFE, GX_K(1:nDOFX,iGF), nDOFX )
 
             END DO
 
@@ -274,10 +354,6 @@ CONTAINS
 
               ! --- Volume Jacobian in Energy-Position Element ---
 
-              Tau(1:nDOF) &
-                = OuterProduct1D3D &
-                    ( Ones(1:nDOFE), nDOFE, G_K(:,iGF_SqrtGm), nDOFX )
-
               Tau_X1(1:nDOF_X1) &
                 = OuterProduct1D3D &
                     ( Ones(1:nDOFE), nDOFE, G_F(:,iGF_SqrtGm), nDOFX_X1 )
@@ -288,58 +364,6 @@ CONTAINS
                 uCR_K(:,iCR) = U(:,iZ1,iZ2,  iZ3,iZ4,iCR,iS)
 
               END DO
-
-              !--------------------
-              ! --- Volume Term ---
-              !--------------------
-
-              IF( iZ2 < iZ_E0(2) + 1 )THEN
-
-                CALL ComputePrimitive_TwoMoment &
-                       ( uCR_K(:,iCR_N ), uCR_K(:,iCR_G1), &
-                         uCR_K(:,iCR_G2), uCR_K(:,iCR_G3), &
-                         uPR_K(:,iPR_D ), uPR_K(:,iPR_I1), &
-                         uPR_K(:,iPR_I2), uPR_K(:,iPR_I3), &
-                         G_K(:,iGF_Gm_dd_11), &
-                         G_K(:,iGF_Gm_dd_22), &
-                         G_K(:,iGF_Gm_dd_33) )
-
-                DO iNode = 1, nDOF
-
-                  FF = FluxFactor &
-                         ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
-                           uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
-                           G_K(iNode,iGF_Gm_dd_11), &
-                           G_K(iNode,iGF_Gm_dd_22), &
-                           G_K(iNode,iGF_Gm_dd_33) )
-
-                  EF = EddingtonFactor( uPR_K(iNode,iPR_D), FF )
-
-                  Flux_X1_q(iNode,1:nCR,iZ1,iZ2,iZ3,iZ4,iS) &
-                    = Flux_X1 &
-                        ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
-                          uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
-                          FF, EF, &
-                          G_K(iNode,iGF_Gm_dd_11), &
-                          G_K(iNode,iGF_Gm_dd_22), &
-                          G_K(iNode,iGF_Gm_dd_33) )
-
-                END DO
-
-                DO iCR = 1, nCR
-
-                  Flux_X1_q(:,iCR,iZ1,iZ2,iZ3,iZ4,iS) &
-                    = dZ3 * dZ4 * Weights_q(:) &
-                        * G_K(:,iGF_Alpha) * Tau(:) * Flux_X1_q(:,iCR,iZ1,iZ2,iZ3,iZ4,iS)
-
-                  CALL DGEMV &
-                         ( 'T', nDOF, nDOF, One, dLdX1_q, nDOF, &
-                           Flux_X1_q(:,iCR,iZ1,iZ2,iZ3,iZ4,iS), 1, One, &
-                           dU(:,iZ1,iZ2,iZ3,iZ4,iCR,iS), 1 )
-
-                END DO
-
-              END IF
 
               !---------------------
               ! --- Surface Term ---
