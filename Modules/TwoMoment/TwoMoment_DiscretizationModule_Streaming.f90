@@ -174,7 +174,7 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
     INTEGER  :: iNode
     INTEGER  :: iGF, iCR
-    REAL(DP) :: dZ(4)
+    REAL(DP) :: dZ1, dZ2, dZ3, dZ4
     REAL(DP) :: FF, EF
     REAL(DP) :: GX_P(nDOFX,   nGF)
     REAL(DP) :: GX_K(nDOFX,   nGF)
@@ -199,16 +199,16 @@ CONTAINS
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
 
-    wTime = omp_get_wtime()
+    wTime_X1 = wTime_X1 - omp_get_wtime()
 
     DO iS = 1, nSpecies
       DO iZ4 = iZ_B0(4), iZ_E0(4)
 
-        dZ(4) = MeshX(3) % Width(iZ4)
+        dZ4 = MeshX(3) % Width(iZ4)
 
         DO iZ3 = iZ_B0(3), iZ_E0(3)
 
-          dZ(3) = MeshX(2) % Width(iZ3)
+          dZ3 = MeshX(2) % Width(iZ3)
 
           DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
 
@@ -270,7 +270,7 @@ CONTAINS
 
             DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-              dZ(1) = MeshE % Width(iZ1)
+              dZ1 = MeshE % Width(iZ1)
 
               ! --- Volume Jacobian in Energy-Position Element ---
 
@@ -329,7 +329,7 @@ CONTAINS
                 DO iCR = 1, nCR
 
                   Flux_X1_q(:,iCR) &
-                    = dZ(3) * dZ(4) * Weights_q(:) &
+                    = dZ3 * dZ4 * Weights_q(:) &
                         * G_K(:,iGF_Alpha) * Tau(:) * Flux_X1_q(:,iCR)
 
                   CALL DGEMV &
@@ -447,7 +447,7 @@ CONTAINS
                         Flux_X1_R(:,iCR), alpha(:) )
 
                 NumericalFlux(:,iCR) &
-                  = dZ(3) * dZ(4) * Weights_X1(:) &
+                  = dZ3 * dZ4 * Weights_X1(:) &
                       * G_F(:,iGF_Alpha) * Tau_X1(:) * NumericalFlux(:,iCR)
 
               END DO
@@ -488,12 +488,10 @@ CONTAINS
       END DO ! iZ4
     END DO ! iS
 
-    wTime = omp_get_wtime() - wTime
-    wTime_X1 = wTime_X1 + wTime
+    wTime_X1 = wTime_X1 + omp_get_wtime()
 
-    WRITE(*,'(A,2(ES12.6E2,A))') &
-      '[ComputeIncrement_Divergence_X1] wTime = ', wTime, &
-      ' s, wTime_X1 = ', wTime_X1, ' s'
+    WRITE(*,'(A,ES12.6E2,A)') &
+      '[ComputeIncrement_Divergence_X1] wTime_X1 = ', wTime_X1
 
   END SUBROUTINE ComputeIncrement_Divergence_X1_GPU
 
