@@ -207,7 +207,9 @@ CONTAINS
 
     DO iS = 1, nSpecies
       DO iZ4 = iZ_B0(4), iZ_E0(4)
+        dZ4 = MeshX(3) % Width(iZ4)
         DO iZ3 = iZ_B0(3), iZ_E0(3)
+          dZ3 = MeshX(2) % Width(iZ3)
           DO iZ2 = iZ_B0(2), iZ_E0(2)
 
             DO iGF = 1, nGF
@@ -265,12 +267,24 @@ CONTAINS
 
               DO iCR = 1, nCR
 
-                dZ3 = MeshX(2) % Width(iZ3)
-                dZ4 = MeshX(3) % Width(iZ4)
-
                 Flux_X1_q(:,iCR,iZ1,iZ2,iZ3,iZ4,iS) &
                   = dZ3 * dZ4 * Weights_q(:) &
                       * G_K(:,iGF_Alpha) * Tau(:) * Flux_X1_q(:,iCR,iZ1,iZ2,iZ3,iZ4,iS)
+
+              END DO
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    DO iS = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+              DO iCR = 1, nCR
 
                 CALL DGEMV &
                        ( 'T', nDOF, nDOF, One, dLdX1_q, nDOF, &
@@ -278,7 +292,6 @@ CONTAINS
                          dU(:,iZ1,iZ2,iZ3,iZ4,iCR,iS), 1 )
 
               END DO
-
             END DO
           END DO
         END DO
