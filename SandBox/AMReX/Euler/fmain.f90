@@ -10,8 +10,8 @@ PROGRAM main
   USE KindModule,                       ONLY: &
     DP
   USE ProgramHeaderModule,              ONLY: &
-    InitializeProgramHeader,                  &
-    DescribeProgramHeaderX,                   &
+    InitializeProgramHeader, &
+    DescribeProgramHeaderX, &
     nDOFX, nNodesX
   USE PolynomialBasisModuleX_Lagrange,  ONLY: &
     InitializePolynomialBasisX_Lagrange
@@ -220,10 +220,8 @@ PROGRAM main
   END DO
 
   ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
-  CALL MF_Euler_ApplySlopeLimiter &
-         ( nLevels, MF_uGF, MF_uCF, GEOM )
-  CALL MF_Euler_ApplyPositivityLimiter &
-         ( nLevels, MF_uGF, MF_uCF )
+  CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
+  CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
 
   DO iLevel = 0, nLevels
     CALL MF_ComputeFromConserved &
@@ -232,7 +230,7 @@ PROGRAM main
   END DO
 
   CALL MF_InitializeFluid_SSPRK &
-         ( nLevels, nStages, BA, DM, &
+         ( nStages, BA, DM, &
            Verbose_Option = amrex_parallel_ioprocessor() )
 
   DO iLevel = 0, nLevels
@@ -250,7 +248,7 @@ PROGRAM main
   t  = 0.0_amrex_real
 
   CALL WriteFieldsAMReX_PlotFile &
-         ( 0.0e0_amrex_real, nLevels, GEOM, StepNo, &
+         ( 0.0e0_amrex_real, GEOM, StepNo, &
            MF_uGF_Option = MF_uGF, &
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &
@@ -271,7 +269,7 @@ PROGRAM main
 
     StepNo = StepNo + 1
 
-    CALL MF_ComputeTimeStep( nLevels, MF_uGF, MF_uCF, CFL, dt )
+    CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt )
     t = t + dt
 
     IF( amrex_parallel_ioprocessor() )THEN
@@ -281,7 +279,7 @@ PROGRAM main
     END IF
 
     CALL MF_UpdateFluid_SSPRK &
-           ( nLevels, t, dt, MF_uGF, MF_uCF, &
+           ( t, dt, MF_uGF, MF_uCF, &
              GEOM, MF_Euler_ComputeIncrement )
 
     IF( MOD( StepNo(0), iCycleW ) .EQ. 0 )THEN
@@ -293,7 +291,7 @@ PROGRAM main
       END DO
 
       CALL WriteFieldsAMReX_PlotFile &
-             ( t(0), nLevels, GEOM, StepNo, &
+             ( t(0), GEOM, StepNo, &
                MF_uGF_Option = MF_uGF, &
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
@@ -336,7 +334,7 @@ PROGRAM main
 
   StepNo = StepNo + 1
   CALL WriteFieldsAMReX_PlotFile &
-         ( t(0), nLevels, GEOM, StepNo, &
+         ( t(0), GEOM, StepNo, &
            MF_uGF_Option = MF_uGF, &
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &
@@ -352,7 +350,7 @@ PROGRAM main
 
   ! --- Finalize everything ---
 
-  CALL FinalizeProgram( nLevels, GEOM, MeshX )
+  CALL FinalizeProgram( GEOM, MeshX )
 
   DEALLOCATE( Shock )
   DEALLOCATE( GEOM )

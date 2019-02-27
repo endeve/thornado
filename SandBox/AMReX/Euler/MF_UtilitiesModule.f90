@@ -110,9 +110,8 @@ CONTAINS
   END SUBROUTINE thornado2AMReX
 
 
-  SUBROUTINE LinComb( nLevels, alpha, MF_U, beta, MF_D )
+  SUBROUTINE LinComb( alpha, MF_U, beta, MF_D )
 
-    INTEGER,              INTENT(in)    :: nLevels
     TYPE(amrex_multifab), INTENT(inout) :: MF_U(0:nLevels)
     TYPE(amrex_multifab), INTENT(in)    :: MF_D(0:nLevels)
     REAL(amrex_real),     INTENT(in)    :: alpha, beta(0:nLevels)
@@ -163,9 +162,9 @@ CONTAINS
   END SUBROUTINE LinComb
 
 
-  SUBROUTINE ShowVariableFromMultiFab( nLevels, MF, swX, iComp )
+  SUBROUTINE ShowVariableFromMultiFab( MF, swX, iComp )
 
-    INTEGER,              INTENT(in) :: nLevels, swX(3)
+    INTEGER,              INTENT(in) :: swX(3)
     TYPE(amrex_multifab), INTENT(in) :: MF(0:nLevels)
     INTEGER,              INTENT(in) :: iComp
 
@@ -320,7 +319,7 @@ CONTAINS
 !!$    END DO
 
     CALL WriteFieldsAMReX_Plotfile &
-           ( t(0), nLevels, GEOM, StepNo, &
+           ( t(0), GEOM, StepNo, &
              MF_uGF_Option = MF_uGF_TEMP, &
              MF_uCF_Option = MF_uCF_TEMP, &
              MF_uPF_Option = MF_uPF_TEMP, &

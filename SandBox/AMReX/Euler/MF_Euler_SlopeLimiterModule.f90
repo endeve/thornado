@@ -24,6 +24,8 @@ MODULE MF_Euler_SlopeLimiterModule
   USE MF_UtilitiesModule, ONLY: &
     AMReX2thornado, &
     thornado2AMReX
+  USE MyAmrModule,        ONLY: &
+    nLevels
 
   IMPLICIT NONE
   PRIVATE
@@ -34,9 +36,8 @@ MODULE MF_Euler_SlopeLimiterModule
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ApplySlopeLimiter( nLevels, MF_uGF, MF_uCF, GEOM )
+  SUBROUTINE MF_Euler_ApplySlopeLimiter( MF_uGF, MF_uCF, GEOM )
 
-    INTEGER,              INTENT(in)    :: nLevels
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
     TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels)

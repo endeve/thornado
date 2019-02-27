@@ -25,6 +25,9 @@ MODULE InputOutputModuleAMReX
     nPF, ShortNamesPF, &
     nAF, ShortNamesAF
 
+  USE MyAmrModule, ONLY: &
+    nLevels
+
   IMPLICIT NONE
   PRIVATE
 
@@ -202,11 +205,10 @@ CONTAINS
 
 
   SUBROUTINE WriteFieldsAMReX_PlotFile &
-    ( Time, nLevels, GEOM, StepNo, &
+    ( Time, GEOM, StepNo, &
       MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, MF_uAF_Option )
 
     REAL(DP),             INTENT(in)           :: Time
-    INTEGER,              INTENT(in)           :: nLevels
     TYPE(amrex_geometry), INTENT(in)           :: GEOM(0:nLevels)
     INTEGER,              INTENT(in)           :: StepNo(0:nLevels)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:nLevels)
@@ -374,8 +376,8 @@ CONTAINS
 
   SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, iOS )
 
-    INTEGER,              INTENT(in   ) :: nComp, iOS
-    TYPE(amrex_multifab), INTENT(in   ) :: MF
+    INTEGER,              INTENT(in)    :: nComp, iOS
+    TYPE(amrex_multifab), INTENT(in)    :: MF
     TYPE(amrex_multifab), INTENT(inout) :: MF_A
 
     INTEGER            :: iX1, iX2, iX3, iComp
