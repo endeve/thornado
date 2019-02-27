@@ -285,6 +285,10 @@ CONTAINS
       END DO
     END DO
 
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
+
     DO iS = 1, nSpecies
       DO iZ4 = iZ_B0(4), iZ_E0(4)
 
@@ -364,10 +368,6 @@ CONTAINS
                 uCR_K(:,iCR) = U(:,iZ1,iZ2,  iZ3,iZ4,iCR,iS)
 
               END DO
-
-              !---------------------
-              ! --- Surface Term ---
-              !---------------------
 
               ! --- Interpolate Radiation Fields ---
 
