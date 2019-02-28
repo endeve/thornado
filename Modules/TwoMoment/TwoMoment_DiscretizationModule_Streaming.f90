@@ -211,9 +211,9 @@ CONTAINS
     nF = nSpecies * nCR * PRODUCT( nZ + [0,1,0,0] )
     nF_GF = nSpecies * nZ(4) * nZ(3) * ( nZ(2) + 1 )
 
-    !-------------------------
-    ! --- Geometry Factors ---
-    !-------------------------
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
 
     ! --- Geometry Fields in Element Nodes ---
 
@@ -222,20 +222,6 @@ CONTAINS
         DO iZ4 = iZ_B0(4), iZ_E0(4)
           DO iZ3 = iZ_B0(3), iZ_E0(3)
             GX_K(:,iZ3,iZ4,iZ2,iGF) = GX(:,iZ2,iZ3,iZ4,iGF)
-          END DO
-        END DO
-      END DO
-    END DO
-
-    DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
-      DO iZ4 = iZ_B0(4), iZ_E0(4)
-        DO iZ3 = iZ_B0(3), iZ_E0(3)
-          DO iGF = 1, nGF
-
-            G_K(1:nDOF,iGF,iZ3,iZ4,iZ2) &
-              = OuterProduct1D3D &
-                  ( Ones(1:nDOFE), nDOFE, GX_K(1:nDOFX,iZ3,iZ4,iZ2,iGF), nDOFX )
-
           END DO
         END DO
       END DO
@@ -298,9 +284,7 @@ CONTAINS
       END DO
     END DO
 
-    !---------------------
-    ! --- Volume Term ---
-    !---------------------
+    ! --- Interpolate Radiation Fields ---
 
     DO iZ2 = iZ_B0(2) - 1, iZ_E0(2) + 1
       DO iS = 1, nSpecies
@@ -315,79 +299,6 @@ CONTAINS
         END DO
       END DO
     END DO
-
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-      DO iS = 1, nSpecies
-        DO iZ4 = iZ_B0(4), iZ_E0(4)
-          DO iZ3 = iZ_B0(3), iZ_E0(3)
-            DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-              dZ3 = MeshX(2) % Width(iZ3)
-              dZ4 = MeshX(3) % Width(iZ4)
-
-              CALL ComputePrimitive_TwoMoment &
-                     ( uCR_K(:,iZ1,iZ3,iZ4,iCR_N ,iS,iZ2), &
-                       uCR_K(:,iZ1,iZ3,iZ4,iCR_G1,iS,iZ2), &
-                       uCR_K(:,iZ1,iZ3,iZ4,iCR_G2,iS,iZ2), &
-                       uCR_K(:,iZ1,iZ3,iZ4,iCR_G3,iS,iZ2), &
-                       uPR_K(:,iPR_D ), uPR_K(:,iPR_I1), &
-                       uPR_K(:,iPR_I2), uPR_K(:,iPR_I3), &
-                       G_K(:,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
-                       G_K(:,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
-                       G_K(:,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
-
-              DO iNode = 1, nDOF
-
-                FF = FluxFactor &
-                       ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
-                         uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
-                         G_K(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
-                         G_K(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
-                         G_K(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
-
-                EF = EddingtonFactor( uPR_K(iNode,iPR_D), FF )
-
-                Flux_X1_q(iNode,iZ1,iZ3,iZ4,1:nCR,iS,iZ2) &
-                  = Flux_X1 &
-                      ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
-                        uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
-                        FF, EF, &
-                        G_K(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
-                        G_K(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
-                        G_K(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
-
-              END DO
-
-              ! --- Volume Jacobian in Energy-Position Element ---
-
-              Tau(1:nDOF) &
-                = OuterProduct1D3D &
-                    ( Ones(1:nDOFE), nDOFE, G_K(:,iGF_SqrtGm,iZ3,iZ4,iZ2), nDOFX )
-
-              DO iCR = 1, nCR
-
-                Flux_X1_q(:,iZ1,iZ3,iZ4,iCR,iS,iZ2) &
-                  = dZ3 * dZ4 * Weights_q(:) * Tau(:) &
-                      * G_K(:,iGF_Alpha,iZ3,iZ4,iZ2) &
-                      * Flux_X1_q(:,iZ1,iZ3,iZ4,iCR,iS,iZ2)
-
-              END DO
-
-            END DO
-          END DO
-        END DO
-      END DO
-    END DO
-
-    CALL DGEMM &
-           ( 'T', 'N', nDOF, nK, nDOF, One, dLdX1_q, nDOF, &
-             Flux_X1_q, nDOF, Zero, dU_K, nDOF )
-
-    !---------------------
-    ! --- Surface Term ---
-    !---------------------
-
-    ! --- Interpolate Radiation Fields ---
 
     ! --- Interpolate Left State ---
 
@@ -516,17 +427,92 @@ CONTAINS
       END DO
     END DO
 
-    ! --- Contribution from Left Face ---
+    !---------------------
+    ! --- Volume Term ---
+    !---------------------
+
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iGF = 1, nGF
+
+            G_K(1:nDOF,iGF,iZ3,iZ4,iZ2) &
+              = OuterProduct1D3D &
+                  ( Ones(1:nDOFE), nDOFE, GX_K(1:nDOFX,iZ3,iZ4,iZ2,iGF), nDOFX )
+
+          END DO
+        END DO
+      END DO
+    END DO
+
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iS = 1, nSpecies
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ3 = iZ_B0(3), iZ_E0(3)
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+              dZ3 = MeshX(2) % Width(iZ3)
+              dZ4 = MeshX(3) % Width(iZ4)
+
+              CALL ComputePrimitive_TwoMoment &
+                     ( uCR_K(:,iZ1,iZ3,iZ4,iCR_N ,iS,iZ2), &
+                       uCR_K(:,iZ1,iZ3,iZ4,iCR_G1,iS,iZ2), &
+                       uCR_K(:,iZ1,iZ3,iZ4,iCR_G2,iS,iZ2), &
+                       uCR_K(:,iZ1,iZ3,iZ4,iCR_G3,iS,iZ2), &
+                       uPR_K(:,iPR_D ), uPR_K(:,iPR_I1), &
+                       uPR_K(:,iPR_I2), uPR_K(:,iPR_I3), &
+                       G_K(:,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
+                       G_K(:,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
+                       G_K(:,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
+
+              DO iNode = 1, nDOF
+
+                FF = FluxFactor &
+                       ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
+                         uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
+                         G_K(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
+                         G_K(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
+                         G_K(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
+
+                EF = EddingtonFactor( uPR_K(iNode,iPR_D), FF )
+
+                Flux_X1_q(iNode,iZ1,iZ3,iZ4,1:nCR,iS,iZ2) &
+                  = Flux_X1 &
+                      ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
+                        uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
+                        FF, EF, &
+                        G_K(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
+                        G_K(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
+                        G_K(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
+
+              END DO
+
+              ! --- Volume Jacobian in Energy-Position Element ---
+
+              Tau(1:nDOF) &
+                = OuterProduct1D3D &
+                    ( Ones(1:nDOFE), nDOFE, G_K(:,iGF_SqrtGm,iZ3,iZ4,iZ2), nDOFX )
+
+              DO iCR = 1, nCR
+
+                Flux_X1_q(:,iZ1,iZ3,iZ4,iCR,iS,iZ2) &
+                  = dZ3 * dZ4 * Weights_q(:) * Tau(:) &
+                      * G_K(:,iGF_Alpha,iZ3,iZ4,iZ2) &
+                      * Flux_X1_q(:,iZ1,iZ3,iZ4,iCR,iS,iZ2)
+
+              END DO
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    ! --- Contribution from Volume ---
 
     CALL DGEMM &
-           ( 'T', 'N', nDOF, nK, nDOF_X1, + One, L_X1_Dn, nDOF_X1, &
-             NumericalFlux(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF_X1, One, dU_K, nDOF )
-
-    ! --- Contribution from Right Face ---
-
-    CALL DGEMM &
-           ( 'T', 'N', nDOF, nK, nDOF_X1, - One, L_X1_Up, nDOF_X1, &
-             NumericalFlux(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)+1), nDOF_X1, One, dU_K, nDOF )
+           ( 'T', 'N', nDOF, nK, nDOF, One, dLdX1_q, nDOF, &
+             Flux_X1_q, nDOF, One, dU_K, nDOF )
 
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
