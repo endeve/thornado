@@ -171,7 +171,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
 
-    INTEGER  :: nZ(4), nK, nF, nF_GF
+    INTEGER  :: nZ(4), nZ_X1(4), nK, nF, nF_GF
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
     INTEGER  :: iNode
     INTEGER  :: iGF, iCR
@@ -207,9 +207,10 @@ CONTAINS
     wTime_X1 = wTime_X1 - omp_get_wtime()
 
     nZ = iZ_E0 - iZ_B0 + 1
+    nZ_X1 = nZ + [0,1,0,0]
     nK = nSpecies * nCR * PRODUCT( nZ )
-    nF = nSpecies * nCR * PRODUCT( nZ + [0,1,0,0] )
-    nF_GF = nZ(4) * nZ(3) * ( nZ(2) + 1 )
+    nF = nSpecies * nCR * PRODUCT( nZ_X1 )
+    nF_GF = PRODUCT( nZ_X1(2:4) )
 
     !---------------------
     ! --- Surface Term ---
