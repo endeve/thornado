@@ -187,11 +187,10 @@ CONTAINS
     REAL(DP), DIMENSION(nDOF_X1,nCR) :: Flux_X1_R
     REAL(DP), DIMENSION(nDOF   ,nPR) :: uPR_K
 
-    REAL(DP) :: GX_P         (nDOFX       ,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2):iZ_E0(2)+1,nGF)
-    REAL(DP) :: GX_K         (nDOFX       ,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2):iZ_E0(2)+1,nGF)
-    REAL(DP) :: GX_F         (nDOFX_X1    ,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2):iZ_E0(2)+1,nGF)
-    REAL(DP) :: G_K          (nDOF    ,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2):iZ_E0(2)+1)
-    REAL(DP) :: G_F          (nDOF_X1 ,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2):iZ_E0(2)+1)
+    REAL(DP) :: GX_K         (nDOFX       ,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)-1:iZ_E0(2)+1,nGF)
+    REAL(DP) :: GX_F         (nDOFX_X1    ,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)  :iZ_E0(2)+1,nGF)
+    REAL(DP) :: G_K          (nDOF    ,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)  :iZ_E0(2)+1)
+    REAL(DP) :: G_F          (nDOF_X1 ,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)  :iZ_E0(2)+1)
 
     REAL(DP) :: uCR_K        (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)-1:iZ_E0(2)+1)
     REAL(DP) :: uCR_L        (nDOF_X1 ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)  :iZ_E0(2)+1)
@@ -218,13 +217,20 @@ CONTAINS
 
     ! --- Geometry Fields in Element Nodes ---
 
+    DO iGF = 1, nGF
+      DO iZ2 = iZ_B0(2) - 1, iZ_E0(2) + 1
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ3 = iZ_B0(3), iZ_E0(3)
+            GX_K(:,iZ3,iZ4,iZ2,iGF) = GX(:,iZ2,iZ3,iZ4,iGF)
+          END DO
+        END DO
+      END DO
+    END DO
+
     DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
       DO iZ4 = iZ_B0(4), iZ_E0(4)
         DO iZ3 = iZ_B0(3), iZ_E0(3)
           DO iGF = 1, nGF
-
-            GX_P(:,iZ3,iZ4,iZ2,iGF) = GX(:,iZ2-1,iZ3,iZ4,iGF) ! --- Previous Element
-            GX_K(:,iZ3,iZ4,iZ2,iGF) = GX(:,iZ2,  iZ3,iZ4,iGF) ! --- This     Element
 
             G_K(1:nDOF,iGF,iZ3,iZ4,iZ2) &
               = OuterProduct1D3D &
@@ -245,10 +251,12 @@ CONTAINS
 
       CALL DGEMM &
              ( 'N', 'N', nDOFX_X1, nF_GF, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-               GX_P(:,:,:,:,iGF), nDOFX, Zero, GX_F(:,:,:,:,iGF), nDOFX_X1 )
+               GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)-1,iGF), nDOFX, Zero, &
+               GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF), nDOFX_X1 )
       CALL DGEMM &
              ( 'N', 'N', nDOFX_X1, nF_GF, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-               GX_K(:,:,:,:,iGF), nDOFX, Half, GX_F(:,:,:,:,iGF), nDOFX_X1 )
+               GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF), nDOFX, Half, &
+               GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF), nDOFX_X1 )
 
       GX_F(:,:,:,:,iGF) = MAX( GX_F(:,:,:,:,iGF), SqrtTiny )
 
@@ -258,12 +266,12 @@ CONTAINS
 
     CALL DGEMM &
            ( 'N', 'N', nDOFX_X1, nF_GF, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-             GX_P(:,:,:,:,iGF_Alpha), nDOFX, Zero, &
-             GX_F(:,:,:,:,iGF_Alpha), nDOFX_X1 )
+             GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)-1,iGF_Alpha), nDOFX, Zero, &
+             GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_Alpha), nDOFX_X1 )
     CALL DGEMM &
            ( 'N', 'N', nDOFX_X1, nF_GF, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-             GX_K(:,:,:,:,iGF_Alpha), nDOFX, Half, &
-             GX_F(:,:,:,:,iGF_Alpha), nDOFX_X1 )
+             GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_Alpha), nDOFX, Half, &
+             GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_Alpha), nDOFX_X1 )
 
     GX_F(:,:,:,:,iGF_Alpha) = MAX( GX_F(:,:,:,:,iGF_Alpha), SqrtTiny )
 
