@@ -209,7 +209,7 @@ CONTAINS
     nZ = iZ_E0 - iZ_B0 + 1
     nK = nSpecies * nCR * PRODUCT( nZ )
     nF = nSpecies * nCR * PRODUCT( nZ + [0,1,0,0] )
-    nF_GF = nSpecies * nZ(4) * nZ(3) * ( nZ(2) + 1 )
+    nF_GF = nZ(4) * nZ(3) * ( nZ(2) + 1 )
 
     !---------------------
     ! --- Surface Term ---
@@ -426,6 +426,18 @@ CONTAINS
         END DO
       END DO
     END DO
+
+    ! --- Contribution from Left Face ---
+
+    CALL DGEMM &
+           ( 'T', 'N', nDOF, nK, nDOF_X1, + One, L_X1_Dn, nDOF_X1, &
+             NumericalFlux(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF_X1, Zero, dU_K, nDOF )
+
+    ! --- Contribution from Right Face ---
+
+    CALL DGEMM &
+           ( 'T', 'N', nDOF, nK, nDOF_X1, - One, L_X1_Up, nDOF_X1, &
+             NumericalFlux(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)+1), nDOF_X1, One,  dU_K, nDOF )
 
     !---------------------
     ! --- Volume Term ---
