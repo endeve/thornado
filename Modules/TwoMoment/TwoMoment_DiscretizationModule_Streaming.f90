@@ -193,14 +193,13 @@ CONTAINS
     REAL(DP) :: G_K          (nDOF    ,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2):iZ_E0(2)+1)
     REAL(DP) :: G_F          (nDOF_X1 ,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2):iZ_E0(2)+1)
 
-    REAL(DP) :: uCR_P        (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2):iZ_E0(2)+1)
-    REAL(DP) :: uCR_K        (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2):iZ_E0(2)+1)
-    REAL(DP) :: uCR_L        (nDOF_X1 ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2):iZ_E0(2)+1)
-    REAL(DP) :: uCR_R        (nDOF_X1 ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2):iZ_E0(2)+1)
+    REAL(DP) :: uCR_K        (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)-1:iZ_E0(2)+1)
+    REAL(DP) :: uCR_L        (nDOF_X1 ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)  :iZ_E0(2)+1)
+    REAL(DP) :: uCR_R        (nDOF_X1 ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)  :iZ_E0(2)+1)
 
-    REAL(DP) :: dU_K         (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2):iZ_E0(2))
-    REAL(DP) :: Flux_X1_q    (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2):iZ_E0(2))
-    REAL(DP) :: NumericalFlux(nDOF_X1 ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2):iZ_E0(2)+1)
+    REAL(DP) :: dU_K         (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)  :iZ_E0(2)  )
+    REAL(DP) :: Flux_X1_q    (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)  :iZ_E0(2)  )
+    REAL(DP) :: NumericalFlux(nDOF_X1 ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)  :iZ_E0(2)+1)
 
     REAL(DP) :: wTime
 
@@ -268,10 +267,6 @@ CONTAINS
 
     GX_F(:,:,:,:,iGF_Alpha) = MAX( GX_F(:,:,:,:,iGF_Alpha), SqrtTiny )
 
-    !---------------------
-    ! --- Volume Term ---
-    !---------------------
-
     DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
       DO iZ4 = iZ_B0(4), iZ_E0(4)
         DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -295,7 +290,25 @@ CONTAINS
       END DO
     END DO
 
-    DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
+    !---------------------
+    ! --- Volume Term ---
+    !---------------------
+
+    DO iZ2 = iZ_B0(2) - 1, iZ_E0(2) + 1
+      DO iS = 1, nSpecies
+        DO iCR = 1, nCR
+          DO iZ4 = iZ_B0(4), iZ_E0(4)
+            DO iZ3 = iZ_B0(3), iZ_E0(3)
+              DO iZ1 = iZ_B0(1), iZ_E0(1)
+                uCR_K(:,iZ1,iZ3,iZ4,iCR,iS,iZ2) = U(:,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
       DO iS = 1, nSpecies
         DO iZ4 = iZ_B0(4), iZ_E0(4)
           DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -304,68 +317,53 @@ CONTAINS
               dZ3 = MeshX(2) % Width(iZ3)
               dZ4 = MeshX(3) % Width(iZ4)
 
+              CALL ComputePrimitive_TwoMoment &
+                     ( uCR_K(:,iZ1,iZ3,iZ4,iCR_N ,iS,iZ2), &
+                       uCR_K(:,iZ1,iZ3,iZ4,iCR_G1,iS,iZ2), &
+                       uCR_K(:,iZ1,iZ3,iZ4,iCR_G2,iS,iZ2), &
+                       uCR_K(:,iZ1,iZ3,iZ4,iCR_G3,iS,iZ2), &
+                       uPR_K(:,iPR_D ), uPR_K(:,iPR_I1), &
+                       uPR_K(:,iPR_I2), uPR_K(:,iPR_I3), &
+                       G_K(:,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
+                       G_K(:,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
+                       G_K(:,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
+
+              DO iNode = 1, nDOF
+
+                FF = FluxFactor &
+                       ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
+                         uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
+                         G_K(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
+                         G_K(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
+                         G_K(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
+
+                EF = EddingtonFactor( uPR_K(iNode,iPR_D), FF )
+
+                Flux_X1_q(iNode,iZ1,iZ3,iZ4,1:nCR,iS,iZ2) &
+                  = Flux_X1 &
+                      ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
+                        uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
+                        FF, EF, &
+                        G_K(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
+                        G_K(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
+                        G_K(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
+
+              END DO
+
               ! --- Volume Jacobian in Energy-Position Element ---
 
               Tau(1:nDOF) &
                 = OuterProduct1D3D &
                     ( Ones(1:nDOFE), nDOFE, G_K(:,iGF_SqrtGm,iZ3,iZ4,iZ2), nDOFX )
-                                                                        
-              Tau_X1(1:nDOF_X1) &                                       
-                = OuterProduct1D3D &                                    
-                    ( Ones(1:nDOFE), nDOFE, G_F(:,iGF_SqrtGm,iZ3,iZ4,iZ2), nDOFX_X1 )
 
               DO iCR = 1, nCR
 
-                uCR_P(:,iZ1,iZ3,iZ4,iCR,iS,iZ2) = U(:,iZ1,iZ2-1,iZ3,iZ4,iCR,iS)
-                uCR_K(:,iZ1,iZ3,iZ4,iCR,iS,iZ2) = U(:,iZ1,iZ2,  iZ3,iZ4,iCR,iS)
+                Flux_X1_q(:,iZ1,iZ3,iZ4,iCR,iS,iZ2) &
+                  = dZ3 * dZ4 * Weights_q(:) * Tau(:) &
+                      * G_K(:,iGF_Alpha,iZ3,iZ4,iZ2) &
+                      * Flux_X1_q(:,iZ1,iZ3,iZ4,iCR,iS,iZ2)
 
               END DO
-
-              IF( iZ2 < iZ_E0(2) + 1 )THEN
-
-                CALL ComputePrimitive_TwoMoment &
-                       ( uCR_K(:,iZ1,iZ3,iZ4,iCR_N ,iS,iZ2), &
-                         uCR_K(:,iZ1,iZ3,iZ4,iCR_G1,iS,iZ2), &
-                         uCR_K(:,iZ1,iZ3,iZ4,iCR_G2,iS,iZ2), &
-                         uCR_K(:,iZ1,iZ3,iZ4,iCR_G3,iS,iZ2), &
-                         uPR_K(:,iPR_D ), uPR_K(:,iPR_I1), &
-                         uPR_K(:,iPR_I2), uPR_K(:,iPR_I3), &
-                         G_K(:,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
-                         G_K(:,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
-                         G_K(:,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
-
-                DO iNode = 1, nDOF
-
-                  FF = FluxFactor &
-                         ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
-                           uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
-                           G_K(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
-                           G_K(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
-                           G_K(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
-
-                  EF = EddingtonFactor( uPR_K(iNode,iPR_D), FF )
-
-                  Flux_X1_q(iNode,iZ1,iZ3,iZ4,1:nCR,iS,iZ2) &
-                    = Flux_X1 &
-                        ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
-                          uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
-                          FF, EF, &
-                          G_K(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
-                          G_K(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
-                          G_K(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
-
-                END DO
-
-                DO iCR = 1, nCR
-
-                  Flux_X1_q(:,iZ1,iZ3,iZ4,iCR,iS,iZ2) &
-                    = dZ3 * dZ4 * Weights_q(:) * Tau(:) &
-                        * G_K(:,iGF_Alpha,iZ3,iZ4,iZ2) &
-                        * Flux_X1_q(:,iZ1,iZ3,iZ4,iCR,iS,iZ2)
-
-                END DO
-
-              END IF
 
             END DO
           END DO
@@ -387,13 +385,13 @@ CONTAINS
 
     CALL DGEMM &
            ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Up, nDOF_X1, &
-             uCR_P, nDOF, Zero, uCR_L, nDOF_X1 )
+             uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)-1), nDOF, Zero, uCR_L, nDOF_X1 )
 
     ! --- Interpolate Right State ---
 
     CALL DGEMM &
            ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Dn, nDOF_X1, &
-             uCR_K, nDOF, Zero, uCR_R, nDOF_X1 )
+             uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF, Zero, uCR_R, nDOF_X1 )
 
     DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
       DO iS = 1, nSpecies
@@ -477,6 +475,12 @@ CONTAINS
                 absLambda_R(iNode) = 1.0_DP
 
               END DO
+
+              ! --- Volume Jacobian in Energy-Position Element ---
+
+              Tau_X1(1:nDOF_X1) &
+                = OuterProduct1D3D &
+                    ( Ones(1:nDOFE), nDOFE, G_F(:,iGF_SqrtGm,iZ3,iZ4,iZ2), nDOFX_X1 )
 
               ! --- Numerical Flux ---
 
