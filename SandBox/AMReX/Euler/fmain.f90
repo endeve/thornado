@@ -120,16 +120,6 @@ PROGRAM main
     CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
   END DO
 
-  ! -- (Almost) end of initializing AMReX ---
-
-  ! --- Initialize thornado ---
-
-  CALL InitializeProgramHeader &
-         ( ProgramName_Option = TRIM( ProgramName ), &
-           nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
-           xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
-           Verbose_Option = amrex_parallel_ioprocessor() )
-
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
            ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
@@ -140,6 +130,10 @@ PROGRAM main
     CALL amrex_multifab_build &
            ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
   END DO
+
+  ! -- End of initializing AMReX ---
+
+  ! --- Initialize thornado ---
 
   CoordinateSystem = TRIM( CoordSys )
 

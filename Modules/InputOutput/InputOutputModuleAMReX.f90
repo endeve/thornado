@@ -6,10 +6,6 @@ MODULE InputOutputModuleAMReX
   USE amrex_base_module
   USE amrex_amr_module
 
-  ! --- For getting MPI process info (could also
-  !     add this to amrex_base_module) ---
-  USE amrex_paralleldescriptor_module
-
   ! --- thornado Modules ---
 
   USE KindModule,              ONLY: &
@@ -256,8 +252,6 @@ CONTAINS
       nF = nF + nAF
     END IF
 
-    MyProc = amrex_pd_myproc()
-
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
@@ -333,9 +327,6 @@ CONTAINS
       CALL amrex_mfiter_build( MFI, MF_PF(iLevel), tiling = .TRUE. )
 
       BX = MFI % tilebox()
-!!$      WRITE(*,'(A,I2.2,A,3I3.2,A,3I3.2)') &
-!!$        'MyProc = ', MyProc, ': lo = ', BX % lo, ', hi = ', BX % hi
-!!$      CALL amrex_print( BX )
 
       iOS = 0
       IF( WriteGF   )THEN

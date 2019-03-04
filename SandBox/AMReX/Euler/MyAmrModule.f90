@@ -1,9 +1,18 @@
 MODULE MyAmrModule
 
   USE iso_c_binding
+  USE amrex_base_module, ONLY: &
+    amrex_init, &
+    amrex_initialized, &
+    amrex_parallel_ioprocessor
   USE amrex_amr_module, ONLY: &
+    amrex_amrcore_init, &
     amrex_amrcore_initialized, &
-    amrex_amrcore_init
+    amrex_is_all_periodic, &
+    amrex_spacedim
+  USE amrex_bc_types_module, ONLY: &
+    amrex_bc_int_dir, &
+    amrex_bc_foextrap
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -12,7 +21,7 @@ MODULE MyAmrModule
     amrex_real
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    InitializeProgramHeader, nDOFX
   USE FluidFieldsModule, ONLY: &
     nCF, nPF, nAF
   USE GeometryFieldsModule, ONLY: &
@@ -30,6 +39,9 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName, CoordSys
   INTEGER,          ALLOCATABLE, SAVE :: StepNo(:)
 
+  ! --- Boundary Conditions ---
+  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: bcAMReX(:)
+
   ! --- Slope limiter ---
   LOGICAL          :: UseSlopeLimiter
   LOGICAL          :: UseCharacteristicLimiting
@@ -46,7 +58,9 @@ CONTAINS
   SUBROUTINE MyAmrInit
 
     TYPE(amrex_parmparse) :: PP
-    INTEGER               :: iLevel
+
+    IF( .NOT. amrex_initialized() ) &
+      CALL amrex_init()
 
     IF( .NOT. amrex_amrcore_initialized() ) &
       CALL amrex_amrcore_init()
@@ -72,6 +86,7 @@ CONTAINS
       CALL PP % get   ( 'CoordinateSystem', CoordSys )
       CALL PP % getarr( 'prob_lo',          xL )
       CALL PP % getarr( 'prob_hi',          xR )
+      CALL PP % getarr( 'bcAMReX',          bcAMReX )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters amr.*
@@ -92,10 +107,11 @@ CONTAINS
       CALL PP % get( 'LimiterThresholdParameter', LimiterThresholdParameter )
     CALL amrex_parmparse_destroy( PP )
 
-!!$    if (.not. amrex_is_all_periodic()) then
-!!$       lo_bc = amrex_bc_foextrap
-!!$       hi_bc = amrex_bc_foextrap
-!!$    end if
+    CALL InitializeProgramHeader &
+           ( ProgramName_Option = TRIM( ProgramName ), &
+             nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
+             xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
+             Verbose_Option = amrex_parallel_ioprocessor() )
 
     ALLOCATE( StepNo(0:nLevels) )
     StepNo = 0
