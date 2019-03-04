@@ -10,7 +10,6 @@ PROGRAM main
   USE KindModule,                       ONLY: &
     DP
   USE ProgramHeaderModule,              ONLY: &
-    InitializeProgramHeader, &
     DescribeProgramHeaderX, &
     nDOFX, nNodesX
   USE PolynomialBasisModuleX_Lagrange,  ONLY: &
@@ -54,7 +53,8 @@ PROGRAM main
   USE FinalizationModule,               ONLY: &
     FinalizeProgram
   USE MF_UtilitiesModule,               ONLY: &
-    MakeMF_Diff
+    MakeMF_Diff, &
+    ShowVariableFromMultifab
 
   ! --- Checkpoint ---
   USE InputOutputModuleAMReX
@@ -91,7 +91,9 @@ PROGRAM main
 
   REAL(amrex_real) :: Timer_Evolution
 
-!!$  CALL MakeMF_Diff( 2, 4 )
+  INTEGER :: iErr
+
+!!$  CALL MakeMF_Diff( 0, 5857 )
 
   ! --- Initialize AMReX ---
   CALL amrex_init()
@@ -148,7 +150,7 @@ PROGRAM main
     WRITE(*,'(A4,A24,I7.6)')     '', 'nStages =', nStages
     WRITE(*,'(A4,A24,I3.2)')     '', 'nDimsX  =', amrex_spacedim
     WRITE(*,'(A4,A24,ES10.3E2)') '', 'Gamma   =', Gamma_IDEAL
-    WRITE(*,'(A5,A24,A)')        '', 'CoordinateSystem = ', TRIM( CoordSys )
+    WRITE(*,'(A5,A24,A)')        '', 'CoordinateSystem = ', CoordinateSystem
     WRITE(*,'(A4,A24,3I7.6)')    '', 'nX          =', nX
     WRITE(*,'(A4,A24,3I7.6)')    '', 'swX         =', swX
     WRITE(*,'(A4,A24,3I7.6)')    '', 'bcX         =', bcX
@@ -239,7 +241,7 @@ PROGRAM main
 
   ! --- Beginning of evolution ---
 
-  t  = 0.0_amrex_real
+  t = 0.0_amrex_real
 
   CALL WriteFieldsAMReX_PlotFile &
          ( 0.0e0_amrex_real, GEOM, StepNo, &
@@ -264,7 +266,13 @@ PROGRAM main
     StepNo = StepNo + 1
 
     CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt )
-    t = t + dt
+
+    IF( ALL( t + dt .LE. t_end ) )THEN
+      t = t + dt
+    ELSE
+      dt = t_end - [t]
+      t  = [t_end]
+    END IF
 
     IF( amrex_parallel_ioprocessor() )THEN
       IF( MOD( StepNo(0), iCycleD ) .EQ. 0 ) &
@@ -350,7 +358,6 @@ PROGRAM main
   DEALLOCATE( GEOM )
   DEALLOCATE( BA )
   DEALLOCATE( DM )
-
 
 END PROGRAM main
 
