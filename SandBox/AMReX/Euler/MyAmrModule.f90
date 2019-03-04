@@ -32,12 +32,13 @@ MODULE MyAmrModule
   IMPLICIT NONE
 
   REAL(amrex_real)                    :: t_end, dt_wrt, Gamma_IDEAL, CFL
-  INTEGER                             :: nNodes, nStages, nLevels
+  INTEGER                             :: nNodes, nStages, nLevels, coord_sys
   INTEGER                             :: iCycleD, iCycleW, iCycleChk
   INTEGER,          ALLOCATABLE       :: MaxGridSize(:), nX(:), swX(:), bcX(:)
   REAL(amrex_real), ALLOCATABLE       :: xL(:), xR(:), dt(:), t(:)
-  CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName, CoordSys
+  CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName
   INTEGER,          ALLOCATABLE, SAVE :: StepNo(:)
+  CHARACTER(LEN=32),             SAVE :: Coordsys
 
   ! --- Boundary Conditions ---
   INTEGER, ALLOCATABLE, PUBLIC, SAVE :: bcAMReX(:)
@@ -83,17 +84,26 @@ CONTAINS
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
-      CALL PP % get   ( 'CoordinateSystem', CoordSys )
+      CALL PP % get   ( 'coord_sys',        coord_sys )
       CALL PP % getarr( 'prob_lo',          xL )
       CALL PP % getarr( 'prob_hi',          xR )
       CALL PP % getarr( 'bcAMReX',          bcAMReX )
     CALL amrex_parmparse_destroy( PP )
+    IF     ( coord_sys .EQ. 0 )THEN
+      CoordSys = 'CARTESIAN'
+    ELSE IF( coord_sys .EQ. 1 )THEN
+      CoordSys = 'CYLINDRICAL'
+    ELSE IF( coord_sys .EQ. 2 )THEN
+      CoordSys = 'SPHERICAL'
+    ELSE
+      STOP 'Invalid choice for coord_sys'
+    END IF
 
     ! --- Parameters amr.*
     CALL amrex_parmparse_build( PP, 'amr' )
-      CALL PP % getarr( 'n_cell',      nX )
-      CALL PP % getarr( 'MaxGridSize', MaxGridSize )
-      CALL PP % get   ( 'max_level',   nLevels )
+      CALL PP % getarr( 'n_cell',        nX )
+      CALL PP % getarr( 'max_grid_size', MaxGridSize )
+      CALL PP % get   ( 'max_level',     nLevels )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Slope limiter parameters SL.*
