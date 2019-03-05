@@ -476,26 +476,26 @@ CONTAINS
 
           IF( X1 + X2 .LT. 0.15_amrex_real )THEN
    
-            uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+            uPF_K(iNodeX,iPF_D) &
               = D_0
-            uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+            uPF_K(iNodeX,iPF_E) &
               = E_0
            
           ELSE
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+            uPF_K(iNodeX,iPF_D) &
               = D_1
-            uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+            uPF_K(iNodeX,iPF_E) &
               = E_1
 
           END IF
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = Zero
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
-            = Zero
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
-            = Zero
+          uPF_K(iNodeX,iPF_V1) &
+            = 0.0_amrex_real
+          uPF_K(iNodeX,iPF_V2) &
+            = 0.0_amrex_real
+          uPF_K(iNodeX,iPF_V3) &
+            = 0.0_amrex_real
 
         END DO
 

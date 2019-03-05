@@ -1,6 +1,6 @@
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 
-thornado.ProgramName = "IsentropicVortex"
+thornado.ProgramName = "Implosion"
 
 thornado.t_end     = 2.5      # Final time
 thornado.dt_wrt    = 0.045    # Write time interval
