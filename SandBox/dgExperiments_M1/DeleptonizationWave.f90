@@ -75,6 +75,7 @@ PROGRAM DeleptonizationWave
   USE dgDiscretizationModule_Collisions_Neutrinos, ONLY: &
     ComputeIncrement_M1_DG_Implicit, &
     ComputeCorrection_M1_DG_Implicit
+  USE ProgenitorModule
 
   IMPLICIT NONE
 
@@ -88,7 +89,7 @@ PROGRAM DeleptonizationWave
 
   nNodes = 2
 
-  nX = [ 128, 128, 1 ]
+  nX = [ 128, 128, 1 ]  ! 96 / 128 [96, 96, 1]
   xL = [ 0.0d0, 0.0d0, - 1.0d2 ] * Kilometer
   xR = [ 2.0d2, 2.0d2, + 1.0d2 ] * Kilometer
 
@@ -174,7 +175,7 @@ PROGRAM DeleptonizationWave
 
   CALL InitializePositivityLimiter_TwoMoment &
          ( Min_1_Option = 0.0d-00, &
-           Max_1_Option = 1.0d+99, &
+           Max_1_Option = 1.0d+00, &
            Min_2_Option = 0.0d-00, &
            UsePositivityLimiter_Option &
              = .TRUE. )
@@ -182,11 +183,11 @@ PROGRAM DeleptonizationWave
   ! --- Initialize Time Stepper ---
 
   CALL Initialize_IMEX_RK &
-         ( Scheme = 'IMEX_PARSD' )
+         ( Scheme = 'IMEX_PDARS_3' )
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields
+  CALL InitializeFields( Profile_Option = 'ChimeraBounce_fined.d')
 
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
@@ -211,12 +212,12 @@ PROGRAM DeleptonizationWave
   wTime = MPI_WTIME( )
 
   t     = 0.0_DP
-  t_end = 5.0_DP * Millisecond
+  t_end = 8.0_DP * Millisecond
   dt    = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
   iCycleD = 10
-  iCycleW = 200
+  iCycleW = 200 ! 200 -> 128, 150 -> 96 
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
