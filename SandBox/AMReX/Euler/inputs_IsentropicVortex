@@ -22,8 +22,8 @@ geometry.prob_hi     = +5.0 +5.0 1.0 # Upper domain size
 geometry.is_periodic = 01 01 01      # Periodicity. 0 (no), 1 (yes)
 geometry.bcAMReX     = 01 01 00
 
-amr.n_cell          = 100 100 01 # Number of cells in each dimension
-amr.max_grid_size   = 050 050 01 # nBoxes = n_cell / MaxGridSize
+amr.n_cell          = 32 32 01 # Number of cells in each dimension
+amr.max_grid_size   = 16 16 01 # nBoxes = n_cell / MaxGridSize
 amr.max_level       = 0          # Maximum number of refinement levels
 amr.blocking_factor = 1          # Must be a factor of max_grid_size
 
