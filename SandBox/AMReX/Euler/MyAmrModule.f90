@@ -1,9 +1,18 @@
 MODULE MyAmrModule
 
   USE iso_c_binding
+  USE amrex_base_module, ONLY: &
+    amrex_init, &
+    amrex_initialized, &
+    amrex_parallel_ioprocessor
   USE amrex_amr_module, ONLY: &
+    amrex_amrcore_init, &
     amrex_amrcore_initialized, &
-    amrex_amrcore_init
+    amrex_is_all_periodic, &
+    amrex_spacedim
+  USE amrex_bc_types_module, ONLY: &
+    amrex_bc_int_dir, &
+    amrex_bc_foextrap
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -12,7 +21,7 @@ MODULE MyAmrModule
     amrex_real
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    InitializeProgramHeader, nDOFX
   USE FluidFieldsModule, ONLY: &
     nCF, nPF, nAF
   USE GeometryFieldsModule, ONLY: &
@@ -23,12 +32,16 @@ MODULE MyAmrModule
   IMPLICIT NONE
 
   REAL(amrex_real)                    :: t_end, dt_wrt, Gamma_IDEAL, CFL
-  INTEGER                             :: nNodes, nStages, nLevels
+  INTEGER                             :: nNodes, nStages, nLevels, coord_sys
   INTEGER                             :: iCycleD, iCycleW, iCycleChk
   INTEGER,          ALLOCATABLE       :: MaxGridSize(:), nX(:), swX(:), bcX(:)
   REAL(amrex_real), ALLOCATABLE       :: xL(:), xR(:), dt(:), t(:)
-  CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName, CoordSys
+  CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName
   INTEGER,          ALLOCATABLE, SAVE :: StepNo(:)
+  CHARACTER(LEN=32),             SAVE :: Coordsys
+
+  ! --- Boundary Conditions ---
+  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: bcAMReX(:)
 
   ! --- Slope limiter ---
   LOGICAL          :: UseSlopeLimiter
@@ -46,7 +59,9 @@ CONTAINS
   SUBROUTINE MyAmrInit
 
     TYPE(amrex_parmparse) :: PP
-    INTEGER               :: iLevel
+
+    IF( .NOT. amrex_initialized() ) &
+      CALL amrex_init()
 
     IF( .NOT. amrex_amrcore_initialized() ) &
       CALL amrex_amrcore_init()
@@ -69,16 +84,26 @@ CONTAINS
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
-      CALL PP % get   ( 'CoordinateSystem', CoordSys )
+      CALL PP % get   ( 'coord_sys',        coord_sys )
       CALL PP % getarr( 'prob_lo',          xL )
       CALL PP % getarr( 'prob_hi',          xR )
+      CALL PP % getarr( 'bcAMReX',          bcAMReX )
     CALL amrex_parmparse_destroy( PP )
+    IF     ( coord_sys .EQ. 0 )THEN
+      CoordSys = 'CARTESIAN'
+    ELSE IF( coord_sys .EQ. 1 )THEN
+      CoordSys = 'CYLINDRICAL'
+    ELSE IF( coord_sys .EQ. 2 )THEN
+      CoordSys = 'SPHERICAL'
+    ELSE
+      STOP 'Invalid choice for coord_sys'
+    END IF
 
     ! --- Parameters amr.*
     CALL amrex_parmparse_build( PP, 'amr' )
-      CALL PP % getarr( 'n_cell',      nX )
-      CALL PP % getarr( 'MaxGridSize', MaxGridSize )
-      CALL PP % get   ( 'max_level',   nLevels )
+      CALL PP % getarr( 'n_cell',        nX )
+      CALL PP % getarr( 'max_grid_size', MaxGridSize )
+      CALL PP % get   ( 'max_level',     nLevels )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Slope limiter parameters SL.*
@@ -92,10 +117,11 @@ CONTAINS
       CALL PP % get( 'LimiterThresholdParameter', LimiterThresholdParameter )
     CALL amrex_parmparse_destroy( PP )
 
-!!$    if (.not. amrex_is_all_periodic()) then
-!!$       lo_bc = amrex_bc_foextrap
-!!$       hi_bc = amrex_bc_foextrap
-!!$    end if
+    CALL InitializeProgramHeader &
+           ( ProgramName_Option = TRIM( ProgramName ), &
+             nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
+             xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
+             Verbose_Option = amrex_parallel_ioprocessor() )
 
     ALLOCATE( StepNo(0:nLevels) )
     StepNo = 0

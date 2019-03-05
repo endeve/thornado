@@ -28,7 +28,7 @@ MODULE InitializationModule
     iAF_Me, iAF_Mp, iAF_Mn, iAF_Xp, iAF_Xn, &
     iAF_Xa, iAF_Xh, iAF_Gm
   USE RadiationFieldsModule, ONLY: &
-    nSpecies, &
+    nSpecies, iNuE, iNuE_Bar, &
     uPR, nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
     uCR, nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -181,9 +181,19 @@ CONTAINS
       kT = BoltzmannConstant &
              * uAF(NodeNumbersX,iX1,iX2,iX3,iAF_T)
 
-      Mnu = uAF(NodeNumbersX,iX1,iX2,iX3,iAF_Me) &
-            + uAF(NodeNumbersX,iX1,iX2,iX3,iAF_Mp) &
-            - uAF(NodeNumbersX,iX1,iX2,iX3,iAF_Mn)
+      IF( iS .EQ. iNuE )THEN
+
+        Mnu = + ( uAF(NodeNumbersX,iX1,iX2,iX3,iAF_Me) &
+                  + uAF(NodeNumbersX,iX1,iX2,iX3,iAF_Mp) &
+                  - uAF(NodeNumbersX,iX1,iX2,iX3,iAF_Mn) )
+
+      ELSEIF( iS .EQ. iNuE_Bar )THEN
+
+        Mnu = - ( uAF(NodeNumbersX,iX1,iX2,iX3,iAF_Me) &
+                  + uAF(NodeNumbersX,iX1,iX2,iX3,iAF_Mp) &
+                  - uAF(NodeNumbersX,iX1,iX2,iX3,iAF_Mn) )
+
+      END IF
 
       DO iE = iE_B0, iE_E0
       DO iNode = 1, nDOF

@@ -83,7 +83,7 @@ PROGRAM DeleptonizationWave
   REAL(DP) :: xL(3), xR(3)
 
   nNodes   = 2
-  nSpecies = 1
+  nSpecies = 2
 
   nX = [ 32, 32, 1 ]
   xL = [ - 0.0d2, - 0.0d2, - 5.0d1 ] * Kilometer
@@ -220,8 +220,8 @@ PROGRAM DeleptonizationWave
   wTime = MPI_WTIME( )
 
   t       = 0.0_DP
-  t_end   = 1.0d-1 * Millisecond
-  dt_wrt  = 2.0d-2 * Millisecond
+  t_end   = 1.0d-0 * Millisecond
+  dt_wrt  = 1.0d-1 * Millisecond
   t_wrt   = dt_wrt
   wrt     = .FALSE.
   iCycleD = 1

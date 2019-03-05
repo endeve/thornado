@@ -81,3 +81,10 @@ PolynomialBasisMappingModule.o: \
   PolynomialBasisModule_Lagrange.o \
   PolynomialBasisModule_Legendre.o \
   PolynomialBasisMappingModule.f90
+
+SubcellReconstructionModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  PolynomialBasisModuleX_Lagrange.o \
+  SubcellReconstructionModule.f90

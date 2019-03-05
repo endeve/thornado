@@ -2,31 +2,35 @@ MICROPHYSICS = WEAKLIB
 
 include ../../../Build/Makefile_Build
 
+WEAKLIB_DIR ?= $(HOME)/weaklib
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+
 all: HomogeneousSphere1D \
      GaussianSphericalDiffusion1D \
      DeleptonizationProblem1D
 
 HomogeneousSphere1D: \
-	$(thornado) TransportProblemsInitializationModule.o \
+	$(weaklib) $(thornado) TransportProblemsInitializationModule.o \
 	HomogeneousSphere1D.o
 	$(FLINKER) $(FLAGS) -o HomogeneousSphere1D_$(MACHINE) \
-	$(thornado) TransportProblemsInitializationModule.o \
+	$(weaklib) $(thornado) TransportProblemsInitializationModule.o \
 	HomogeneousSphere1D.o \
 	$(LIBRARIES)
 
 GaussianSphericalDiffusion1D: \
-	$(thornado) TransportProblemsInitializationModule.o \
+	$(weaklib) $(thornado) TransportProblemsInitializationModule.o \
 	GaussianSphericalDiffusion1D.o
 	$(FLINKER) $(FLAGS) -o GaussianSphericalDiffusion1D_$(MACHINE) \
-	$(thornado) TransportProblemsInitializationModule.o \
+	$(weaklib) $(thornado) TransportProblemsInitializationModule.o \
 	GaussianSphericalDiffusion1D.o \
 	$(LIBRARIES)
 
 DeleptonizationProblem1D: \
-	$(thornado) TransportProblemsInitializationModule.o \
+	$(weaklib) $(thornado) TransportProblemsInitializationModule.o \
 	DeleptonizationProblem1D.o
 	$(FLINKER) $(FLAGS) -o DeleptonizationProblem1D_$(MACHINE) \
-	$(thornado) TransportProblemsInitializationModule.o \
+	$(weaklib) $(thornado) TransportProblemsInitializationModule.o \
 	DeleptonizationProblem1D.o \
 	$(LIBRARIES)
 

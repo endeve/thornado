@@ -6,9 +6,14 @@ MOMENT_CLOSURE = KERSHAW_BL
 
 include ../../../Build/Makefile_Build
 
+WEAKLIB_DIR ?= $(HOME)/weaklib
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+
 all: ApplicationDriver DeleptonizationWave
 
 ApplicationDriver: \
+	$(weaklib) \
 	$(thornado) \
 	TwoMoment_TallyModule.o \
 	TimeSteppingModule_IMEX_RK.o \
@@ -16,6 +21,7 @@ ApplicationDriver: \
 	dgDiscretizationModule_Collisions.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
+	$(weaklib) \
 	$(thornado) \
 	TwoMoment_TallyModule.o \
 	TimeSteppingModule_IMEX_RK.o \
@@ -25,6 +31,7 @@ ApplicationDriver: \
 	$(LIBRARIES)
 
 DeleptonizationWave: \
+	$(weaklib) \
 	$(thornado) \
 	GeometryComputationModule_Beta.o \
 	GeometryComputationModuleE_Beta.o \
@@ -36,6 +43,7 @@ DeleptonizationWave: \
 	dgDiscretizationModule_Collisions_Neutrinos.o \
 	DeleptonizationWave.o
 	$(FLINKER) $(FLAGS) -o DeleptonizationWave_$(MACHINE) \
+	$(weaklib) \
 	$(thornado) \
 	GeometryComputationModule_Beta.o \
 	GeometryComputationModuleE_Beta.o \

@@ -6,10 +6,6 @@ MODULE InputOutputModuleAMReX
   USE amrex_base_module
   USE amrex_amr_module
 
-  ! --- For getting MPI process info (could also
-  !     add this to amrex_base_module) ---
-  USE amrex_paralleldescriptor_module
-
   ! --- thornado Modules ---
 
   USE KindModule,              ONLY: &
@@ -24,6 +20,9 @@ MODULE InputOutputModuleAMReX
     nCF, ShortNamesCF, &
     nPF, ShortNamesPF, &
     nAF, ShortNamesAF
+
+  USE MyAmrModule, ONLY: &
+    nLevels
 
   IMPLICIT NONE
   PRIVATE
@@ -147,27 +146,28 @@ CONTAINS
       CALL amrex_distromap_build( DM(iLevel), BA(iLevel) )
     END DO
 
-    pBA = BA % P
-    pDM = DM % P
+    pBA(0:amrex_max_level) = BA(0:amrex_max_level) % P
+    pDM(0:amrex_max_level) = DM(0:amrex_max_level) % P
 
     FinestLevel = nLevels
 
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevel, StepNo, dt, t, pBA, pDM, iChkFile )
+           ( FinestLevel, StepNo, dt, t, &
+             pBA(0:nLevels), pDM(0:nLevels), iChkFile )
 
-    DO iLevel = 0, FinestLevel(1)
+    DO iLevel = 0, nLevels
       BA(iLevel) = pBA(iLevel)
       DM(iLevel) = pDM(iLevel)
     END DO
 
-    DO iLevel = 0, FinestLevel(1)
+    DO iLevel = 0, nLevels
       CALL amrex_fi_set_boxarray ( iLevel, BA(iLevel) % P, amrcore )
       CALL amrex_fi_set_distromap( iLevel, DM(iLevel) % P, amrcore )
     END DO
 
     nComps = 1
 
-    DO iLevel = 0, FinestLevel(1)
+    DO iLevel = 0, nLevels
       CALL amrex_multifab_build &
              ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
       CALL amrex_multifab_build &
@@ -176,30 +176,35 @@ CONTAINS
              ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
       CALL amrex_multifab_build &
              ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
-
     END DO
 
-    pGF = MF_uGF % P
-    pCF = MF_uCF % P
-    pPF = MF_uPF % P
-    pAF = MF_uAF % P
+    pGF(0:amrex_max_level) = MF_uGF(0:amrex_max_level) % P
+    pCF(0:amrex_max_level) = MF_uCF(0:amrex_max_level) % P
+    pPF(0:amrex_max_level) = MF_uPF(0:amrex_max_level) % P
+    pAF(0:amrex_max_level) = MF_uAF(0:amrex_max_level) % P
 
-    CALL ReadMultiFabData( FinestLevel(1), pGF, 0, iChkFile )
-    CALL ReadMultiFabData( FinestLevel(1), pCF, 1, iChkFile )
-    CALL ReadMultiFabData( FinestLevel(1), pPF, 2, iChkFile )
-    CALL ReadMultiFabData( FinestLevel(1), pAF, 3, iChkFile )
+    CALL ReadMultiFabData( nLevels, pGF(0:amrex_max_level), 0, iChkFile )
+    CALL ReadMultiFabData( nLevels, pCF(0:amrex_max_level), 1, iChkFile )
+    CALL ReadMultiFabData( nLevels, pPF(0:amrex_max_level), 2, iChkFile )
+    CALL ReadMultiFabData( nLevels, pAF(0:amrex_max_level), 3, iChkFile )
 
-    CALL amrex_fi_set_finest_level( FinestLevel(1), amrcore )
+    DO iLevel = 0, nLevels
+      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL MF_uPF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL MF_uAF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+    END DO
+
+    CALL amrex_fi_set_finest_level( nLevels, amrcore )
 	
   END SUBROUTINE ReadCheckpointFile
 
 
   SUBROUTINE WriteFieldsAMReX_PlotFile &
-    ( Time, nLevels, GEOM, StepNo, &
+    ( Time, GEOM, StepNo, &
       MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, MF_uAF_Option )
 
     REAL(DP),             INTENT(in)           :: Time
-    INTEGER,              INTENT(in)           :: nLevels
     TYPE(amrex_geometry), INTENT(in)           :: GEOM(0:nLevels)
     INTEGER,              INTENT(in)           :: StepNo(0:nLevels)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:nLevels)
@@ -246,8 +251,6 @@ CONTAINS
       WriteFF_A = .TRUE.
       nF = nF + nAF
     END IF
-
-    MyProc = amrex_pd_myproc()
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -324,9 +327,6 @@ CONTAINS
       CALL amrex_mfiter_build( MFI, MF_PF(iLevel), tiling = .TRUE. )
 
       BX = MFI % tilebox()
-!!$      WRITE(*,'(A,I2.2,A,3I3.2,A,3I3.2)') &
-!!$        'MyProc = ', MyProc, ': lo = ', BX % lo, ', hi = ', BX % hi
-!!$      CALL amrex_print( BX )
 
       iOS = 0
       IF( WriteGF   )THEN
@@ -367,8 +367,8 @@ CONTAINS
 
   SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, iOS )
 
-    INTEGER,              INTENT(in   ) :: nComp, iOS
-    TYPE(amrex_multifab), INTENT(in   ) :: MF
+    INTEGER,              INTENT(in)    :: nComp, iOS
+    TYPE(amrex_multifab), INTENT(in)    :: MF
     TYPE(amrex_multifab), INTENT(inout) :: MF_A
 
     INTEGER            :: iX1, iX2, iX3, iComp

@@ -150,19 +150,19 @@ CONTAINS
 
         ! --- Electron Neutrinos ---
 
-        Mnu = + Me + ( Mp - Mn )
+        Mnu = Me + Mp - Mn
 
       ELSEIF( iSpecies .EQ. iNuE_Bar )THEN
 
         ! --- Electron Antineutrinos ---
 
-        Mnu = - Me - ( Mp - Mn )
+        Mnu = Mn - Me - Mp
 
       ELSE
 
         WRITE(*,*)
-        WRITE(*,'(A5,A)') '', 'ComputeEquilibriumDistributions'
-        WRITE(*,'(A5,A,I2.2)') '', 'Invalid Species: ', iSpecies
+        WRITE(*,'(A4,A)') '', 'ERROR (ComputeEquilibriumDistributions)'
+        WRITE(*,'(A4,A,I2.2)') '', 'Invalid Species: ', iSpecies
         WRITE(*,*)
         STOP
 
@@ -224,13 +224,13 @@ CONTAINS
     CALL ComputeNeutronChemicalPotential_TABLE &
            ( [ D ], [ T ], [ Y ], Mn )
 
-    IF    ( iSpecies .EQ. 1 )THEN
+    IF( iSpecies .EQ. iNuE )THEN
 
       ! --- Electron Neutrinos ---
 
       Mnu = ( Me(1) + Mp(1) ) - Mn(1)
 
-    ELSEIF( iSpecies .EQ. 2 )THEN
+    ELSEIF( iSpecies .EQ. iNuE_Bar )THEN
 
       ! --- Electron Antineutrino ---
 
@@ -240,8 +240,9 @@ CONTAINS
 
       WRITE(*,*)
       WRITE(*,'(A4,A)') '', 'ERROR (ComputeEquilibriumDistributions_Point):'
-      WRITE(*,'(A4,A,I2.2)') '', 'Unknown Species: ', iSpecies
+      WRITE(*,'(A4,A,I2.2)') '', 'Invalid Species: ', iSpecies
       WRITE(*,*)
+      STOP
 
     END IF
 

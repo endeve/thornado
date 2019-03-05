@@ -24,6 +24,8 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE MF_UtilitiesModule, ONLY: &
     AMReX2thornado, &
     thornado2AMReX
+  USE MyAmrModule,        ONLY: &
+    nLevels
 
   IMPLICIT NONE
   PRIVATE
@@ -34,10 +36,8 @@ MODULE  MF_Euler_dgDiscretizationModule
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ComputeIncrement &
-    ( nLevels, GEOM, MF_uGF, MF_uCF, MF_duCF )
+  SUBROUTINE MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_uCF, MF_duCF )
  
-    INTEGER,              INTENT(in)    :: nLevels
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels)
