@@ -59,8 +59,7 @@ Hence, the process of solving the Boltzmann equation, Eq.~\eqref{eq:boltzmann}, 
 
 The moment equation for $\bcH$ involves the higher moment $\bcK$ and the two-moment model is open.  
 To close the two-moment model, we consider algebraic closures.  
-For the two-moment model, algebraic closures give an approximation to $\bcK$ using the lower moments.  
-Write
+For the two-moment model, algebraic closures give an approximation to $\bcK$ using the lower moments:
 \begin{equation}
   \bcK = \vect{k} \cJ,
 \end{equation}
@@ -109,7 +108,7 @@ Although the Levermore and Minerbo closures do not satisfy the bounds in Eq.~\eq
 When employing these closures in conditions of high occupancy, a numerical scheme may evolve the moments outside the realizable domain of Fermi-Dirac statistics given in Eq.~\eqref{eq:MomentsBounds}.
 If this were to happen, the update step may give $\cJ>1$.
 Considering the fact that the collision term contains blocking factors --- i.e.~$(1-\cJ)\times$ something positive --- $\cJ > 1$ would change the blocking factors' sign, and it would be difficult to predict the impact of the subsequent induced errors on the simulation outcome.
-Besides, even with the simplified collision term Eq~\ref{eq:collisionTermMoments}, $\cJ>1$ could result in information loss (such as loss to the neutrino distribution for the group that exceed the bounds), closure failure, and other unpredictable consequences.
+Besides, even with the simplified collision term Eq~\ref{eq:collisionTermMoments}, $\cJ>1$ could result in information loss (such as loss to the neutrino distribution for the groups that exceed the bounds), closure failure, and other unpredictable consequences.
 If treatments are developed to map the unrealizable moments into the realizable domain, they should be developed to conserve lepton number, energy, and momentum.
 
 \begin{figure}[h]
