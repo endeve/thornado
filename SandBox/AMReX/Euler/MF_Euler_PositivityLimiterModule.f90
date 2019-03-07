@@ -23,6 +23,8 @@ MODULE MF_Euler_PositivityLimiterModule
   USE MF_UtilitiesModule, ONLY: &
     AMReX2thornado, &
     thornado2AMReX
+  USE MyAmrModule,        ONLY: &
+    nLevels
 
   IMPLICIT NONE
   PRIVATE
@@ -33,9 +35,8 @@ MODULE MF_Euler_PositivityLimiterModule
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ApplyPositivityLimiter( nLevels, MF_uGF, MF_uCF )
+  SUBROUTINE MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
 
-    INTEGER,              INTENT(in)    :: nLevels
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
 

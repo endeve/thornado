@@ -10,8 +10,7 @@ PROGRAM main
   USE KindModule,                       ONLY: &
     DP
   USE ProgramHeaderModule,              ONLY: &
-    InitializeProgramHeader,                  &
-    DescribeProgramHeaderX,                   &
+    DescribeProgramHeaderX, &
     nDOFX, nNodesX
   USE PolynomialBasisModuleX_Lagrange,  ONLY: &
     InitializePolynomialBasisX_Lagrange
@@ -54,7 +53,8 @@ PROGRAM main
   USE FinalizationModule,               ONLY: &
     FinalizeProgram
   USE MF_UtilitiesModule,               ONLY: &
-    MakeMF_Diff
+    MakeMF_Diff, &
+    ShowVariableFromMultifab
 
   ! --- Checkpoint ---
   USE InputOutputModuleAMReX
@@ -91,7 +91,9 @@ PROGRAM main
 
   REAL(amrex_real) :: Timer_Evolution
 
-!!$  CALL MakeMF_Diff( 2, 4 )
+  INTEGER :: iErr
+
+!!$  CALL MakeMF_Diff( 0, 5857 )
 
   ! --- Initialize AMReX ---
   CALL amrex_init()
@@ -120,16 +122,6 @@ PROGRAM main
     CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
   END DO
 
-  ! -- (Almost) end of initializing AMReX ---
-
-  ! --- Initialize thornado ---
-
-  CALL InitializeProgramHeader &
-         ( ProgramName_Option = TRIM( ProgramName ), &
-           nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
-           xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
-           Verbose_Option = amrex_parallel_ioprocessor() )
-
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
            ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
@@ -140,6 +132,10 @@ PROGRAM main
     CALL amrex_multifab_build &
            ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
   END DO
+
+  ! -- End of initializing AMReX ---
+
+  ! --- Initialize thornado ---
 
   CoordinateSystem = TRIM( CoordSys )
 
@@ -154,7 +150,7 @@ PROGRAM main
     WRITE(*,'(A4,A24,I7.6)')     '', 'nStages =', nStages
     WRITE(*,'(A4,A24,I3.2)')     '', 'nDimsX  =', amrex_spacedim
     WRITE(*,'(A4,A24,ES10.3E2)') '', 'Gamma   =', Gamma_IDEAL
-    WRITE(*,'(A5,A24,A)')        '', 'CoordinateSystem = ', TRIM( CoordSys )
+    WRITE(*,'(A5,A24,A)')        '', 'CoordinateSystem = ', CoordinateSystem
     WRITE(*,'(A4,A24,3I7.6)')    '', 'nX          =', nX
     WRITE(*,'(A4,A24,3I7.6)')    '', 'swX         =', swX
     WRITE(*,'(A4,A24,3I7.6)')    '', 'bcX         =', bcX
@@ -220,10 +216,8 @@ PROGRAM main
   END DO
 
   ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
-  CALL MF_Euler_ApplySlopeLimiter &
-         ( nLevels, MF_uGF, MF_uCF, GEOM )
-  CALL MF_Euler_ApplyPositivityLimiter &
-         ( nLevels, MF_uGF, MF_uCF )
+  CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
+  CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
 
   DO iLevel = 0, nLevels
     CALL MF_ComputeFromConserved &
@@ -232,7 +226,7 @@ PROGRAM main
   END DO
 
   CALL MF_InitializeFluid_SSPRK &
-         ( nLevels, nStages, BA, DM, &
+         ( nStages, BA, DM, &
            Verbose_Option = amrex_parallel_ioprocessor() )
 
   DO iLevel = 0, nLevels
@@ -247,10 +241,10 @@ PROGRAM main
 
   ! --- Beginning of evolution ---
 
-  t  = 0.0_amrex_real
+  t = 0.0_amrex_real
 
   CALL WriteFieldsAMReX_PlotFile &
-         ( 0.0e0_amrex_real, nLevels, GEOM, StepNo, &
+         ( 0.0e0_amrex_real, GEOM, StepNo, &
            MF_uGF_Option = MF_uGF, &
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &
@@ -271,8 +265,14 @@ PROGRAM main
 
     StepNo = StepNo + 1
 
-    CALL MF_ComputeTimeStep( nLevels, MF_uGF, MF_uCF, CFL, dt )
-    t = t + dt
+    CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt )
+
+    IF( ALL( t + dt .LE. t_end ) )THEN
+      t = t + dt
+    ELSE
+      dt = t_end - [t]
+      t  = [t_end]
+    END IF
 
     IF( amrex_parallel_ioprocessor() )THEN
       IF( MOD( StepNo(0), iCycleD ) .EQ. 0 ) &
@@ -281,7 +281,7 @@ PROGRAM main
     END IF
 
     CALL MF_UpdateFluid_SSPRK &
-           ( nLevels, t, dt, MF_uGF, MF_uCF, &
+           ( t, dt, MF_uGF, MF_uCF, &
              GEOM, MF_Euler_ComputeIncrement )
 
     IF( MOD( StepNo(0), iCycleW ) .EQ. 0 )THEN
@@ -293,7 +293,7 @@ PROGRAM main
       END DO
 
       CALL WriteFieldsAMReX_PlotFile &
-             ( t(0), nLevels, GEOM, StepNo, &
+             ( t(0), GEOM, StepNo, &
                MF_uGF_Option = MF_uGF, &
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
@@ -336,7 +336,7 @@ PROGRAM main
 
   StepNo = StepNo + 1
   CALL WriteFieldsAMReX_PlotFile &
-         ( t(0), nLevels, GEOM, StepNo, &
+         ( t(0), GEOM, StepNo, &
            MF_uGF_Option = MF_uGF, &
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &
@@ -352,13 +352,12 @@ PROGRAM main
 
   ! --- Finalize everything ---
 
-  CALL FinalizeProgram( nLevels, GEOM, MeshX )
+  CALL FinalizeProgram( GEOM, MeshX )
 
   DEALLOCATE( Shock )
   DEALLOCATE( GEOM )
   DEALLOCATE( BA )
   DEALLOCATE( DM )
-
 
 END PROGRAM main
 

@@ -3,14 +3,18 @@ GRAVITY_SOLVER = POSEIDON_NEWTON
 
 include ../../../Build/Makefile_Build
 
+WEAKLIB_DIR ?= $(HOME)/weaklib
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+
 all: GravitationalCollapse1D
 
 GravitationalCollapse1D: \
-	$(thornado) ProgenitorModule.o InitializationModule.o \
+	$(weaklib) $(thornado) ProgenitorModule.o InitializationModule.o \
 	GravitationalCollapse1D.o
 	$(FLINKER) $(FLAGS) -o \
 	GravitationalCollapse1D_$(MACHINE) \
-	$(thornado) ProgenitorModule.o InitializationModule.o \
+	$(weaklib) $(thornado) ProgenitorModule.o InitializationModule.o \
 	GravitationalCollapse1D.o $(LIBRARIES)
 
 clean:

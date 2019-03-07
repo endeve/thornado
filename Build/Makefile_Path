@@ -1,4 +1,4 @@
-VPATH = \
+VPATH += \
 $(THORNADO_DIR)/Modules/Numbers: \
 $(THORNADO_DIR)/Modules/Units: \
 $(THORNADO_DIR)/Modules/ProgramHeader: \

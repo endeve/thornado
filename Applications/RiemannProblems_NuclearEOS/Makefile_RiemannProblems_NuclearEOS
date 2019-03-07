@@ -2,39 +2,43 @@ MICROPHYSICS = WEAKLIB
 
 include ../../../Build/Makefile_Build
 
+WEAKLIB_DIR ?= $(HOME)/weaklib
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+
 all: RiemannProblem1D_NuclearEOS \
      ShockEntropyWaveInteraction1D_NuclearEOS \
      ComputeEigensystem_NuclearEOS \
      ComputeLeftState_NuclearEOS
 
 RiemannProblem1D_NuclearEOS: \
-	$(thornado) RiemannProblemInitializationModule.o \
+	$(weaklib) $(thornado) RiemannProblemInitializationModule.o \
 	RiemannProblem1D_NuclearEOS.o
 	$(FLINKER) $(FLAGS) -o \
 	RiemannProblem1D_NuclearEOS_$(MACHINE) \
-	$(thornado) RiemannProblemInitializationModule.o \
+	$(weaklib) $(thornado) RiemannProblemInitializationModule.o \
 	RiemannProblem1D_NuclearEOS.o $(LIBRARIES)
 
 ShockEntropyWaveInteraction1D_NuclearEOS: \
-	$(thornado) RiemannProblemInitializationModule.o \
+	$(weaklib) $(thornado) RiemannProblemInitializationModule.o \
 	ShockEntropyWaveInteraction1D_NuclearEOS.o
 	$(FLINKER) $(FLAGS) -o \
 	ShockEntropyWaveInteraction1D_NuclearEOS_$(MACHINE) \
-	$(thornado) RiemannProblemInitializationModule.o \
+	$(weaklib) $(thornado) RiemannProblemInitializationModule.o \
 	ShockEntropyWaveInteraction1D_NuclearEOS.o $(LIBRARIES)
 
 ComputeEigensystem_NuclearEOS: \
-	$(thornado) ComputeEigensystem_NuclearEOS.o
+	$(weaklib) $(thornado) ComputeEigensystem_NuclearEOS.o
 	$(FLINKER) $(FLAGS) -o \
 	ComputeEigensystem_NuclearEOS_$(MACHINE) \
-	$(thornado) ComputeEigensystem_NuclearEOS.o $(LIBRARIES)
+	$(weaklib) $(thornado) ComputeEigensystem_NuclearEOS.o $(LIBRARIES)
 
 ComputeLeftState_NuclearEOS: \
-	$(thornado) UtilitiesModule_NuclearEOS.o \
+	$(weaklib) $(thornado) UtilitiesModule_NuclearEOS.o \
 	ComputeLeftState_NuclearEOS.o
 	$(FLINKER) $(FLAGS) -o \
 	ComputeLeftState_NuclearEOS_$(MACHINE) \
-	$(thornado) UtilitiesModule_NuclearEOS.o \
+	$(weaklib) $(thornado) UtilitiesModule_NuclearEOS.o \
 	ComputeLeftState_NuclearEOS.o $(LIBRARIES)
 
 clean:
