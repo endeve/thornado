@@ -1,4 +1,5 @@
 FORTRAN_mac_gnu      = mpif90 -fopenmp
+FORTRAN_bbarker      = mpif90 -fopenmp
 FORTRAN_sn1987b      = mpif90 -fopenmp
 FORTRAN_juliana      = gfortran
 FORTRAN_kristopher   = mpif90
@@ -21,10 +22,22 @@ SUFFIX_f90_titan_gnu    =
 SUFFIX_f90_titan_cray   = 
 SUFFIX_f90_beacon_intel = 
 SUFFIX_f90_summit_xl    = 
+
+SUFFIX_f90_mac_gnu      =
+SUFFIX_f90_sn1987b      =
+SUFFIX_f90_bbarker      =
+SUFFIX_f90_juliana      =
+SUFFIX_f90_kristopher   =
+SUFFIX_f90_ranchu       =
+SUFFIX_f90_sjdunham     =
+SUFFIX_f90_titan_gnu    =
+SUFFIX_f90_titan_cray   =
+SUFFIX_f90_beacon_intel =
 SUFFIX_f90              = $(SUFFIX_f90_$(MACHINE))
 
 FLINKER_mac_gnu      = mpif90 -fopenmp
 FLINKER_sn1987b      = mpif90 -fopenmp
+FLINKER_bbarker      = mpif90 -fopenmp
 FLINKER_juliana      = gfortran
 FLINKER_kristopher   = mpif90
 FLINKER_ranchu       = mpif90
@@ -39,9 +52,10 @@ FLINKER              = $(FLINKER_$(MACHINE))
 FLAGS_DEBUG        = $(DEBUG)
 DEBUG_mac_gnu      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_sn1987b      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
+DEBUG_bbarker      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_juliana      = -g -fbacktrace -fbounds-check
 DEBUG_kristopher   = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
-DEBUG_ranchu       = -g 
+DEBUG_ranchu       = -g
 DEBUG_sjdunham     = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_titan_gnu    = -g -ffpe-trap=invalid,zero -fcheck=bounds
 DEBUG_titan_cray   = -G0 -hfp0 -K trap=fp
@@ -53,12 +67,13 @@ DEBUG              = $(DEBUG_$(MACHINE))
 FLAGS_OPTIMIZE        = $(OPTIMIZE)
 OPTIMIZE_mac_gnu      = -O2 -framework Accelerate
 OPTIMIZE_sn1987b      = -O2 -framework Accelerate
+OPTIMIZE_bbarker      = -O2 -framework Accelerate
 OPTIMIZE_juliana      = -O2
 OPTIMIZE_kristopher   = -O2 -framework Accelerate
 OPTIMIZE_ranchu       = -O2
 OPTIMIZE_sjdunham     = -O2 -framework Accelerate
 OPTIMIZE_titan_gnu    = -O2
-OPTIMIZE_titan_cray   = 
+OPTIMIZE_titan_cray   =
 OPTIMIZE_beacon_intel = -fast
 OPTIMIZE_mcarpe21     = -O2
 OPTIMIZE_summit_xl    = -g -O2 -qarch=pwr9 -qtune=pwr9 -qsuppress=cmpmsg -w
@@ -66,6 +81,7 @@ OPTIMIZE              = $(OPTIMIZE_$(MACHINE))
 
 INCLUDE_HDF5_mac_gnu           = -I/usr/local/Cellar/hdf5/1.8.16_1/include
 INCLUDE_HDF5_sn1987b           = -I/usr/local/Cellar/hdf5/1.8.16_1/include
+INCLUDE_HDF5_bbarker           = -I/usr/local/Cellar/hdf5/1.10.2_1/include
 INCLUDE_HDF5_juliana           = -I/usr/local/hdf5/include
 INCLUDE_HDF5_kristopher        = -I/usr/local/Cellar/hdf5/1.10.2_1/include
 INCLUDE_HDF5_ranchu            = -I/usr/local/hdf5/include
@@ -77,19 +93,21 @@ INCLUDE_HDF5_mcarpe21	       = -I/opt/hdf5/include
 INCLUDE_HDF5_summit_xl         = -I$(OLCF_HDF5_ROOT)/include
 INCLUDE_HDF5                   = $(INCLUDE_HDF5_$(MACHINE))
 
-INCLUDE_WEAKLIB_mac_gnu        = 
+INCLUDE_WEAKLIB_mac_gnu        =
 INCLUDE_WEAKLIB_sn1987b        = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
+INCLUDE_WEAKLIB_bbarker        = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_juliana        = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
-INCLUDE_WEAKLIB_kristopher     = 
+INCLUDE_WEAKLIB_kristopher     =
 INCLUDE_WEAKLIB_ranchu         = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
-INCLUDE_WEAKLIB_sjdunham       = 
+INCLUDE_WEAKLIB_sjdunham       =
 INCLUDE_WEAKLIB_titan_gnu      = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_titan_cray     = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_beacon_intel   = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
 INCLUDE_WEAKLIB_summit_xl      = -I$(WEAKLIB_DIR)/Distributions/ExternalLibrary
+INCLUDE_WEAKLIB		       =
 INCLUDE_WEAKLIB                = $(INCLUDE_WEAKLIB_$(MACHINE))
 
-INCLUDE_POSEIDON_mac_gnu       = 
+INCLUDE_POSEIDON_mac_gnu       =
 INCLUDE_POSEIDON_sn1987b       = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON_kristopher    = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON               = $(INCLUDE_POSEIDON_$(MACHINE))
@@ -102,6 +120,7 @@ INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_WEA
 
 LIBRARIES_HDF5_mac_gnu         = -L/usr/local/Cellar/hdf5/1.8.16_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_sn1987b         = -L/usr/local/Cellar/hdf5/1.8.16_1/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_bbarker         = -L/usr/local/Cellar/hdf5/1.10.2_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_juliana         = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_kristopher      = -L/usr/local/Cellar/hdf5/1.10.2_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_ranchu          = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
@@ -116,12 +135,13 @@ LIBRARIES_HDF5_mcarpe21	       = -L/opt/hdf5/lib \
 LIBRARIES_HDF5_summit_xl       = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5                 = $(LIBRARIES_HDF5_$(MACHINE))
 
-LIBRARIES_WEAKLIB_mac_gnu      = 
+LIBRARIES_WEAKLIB_mac_gnu      =
 LIBRARIES_WEAKLIB_sn1987b      = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
+LIBRARIES_WEAKLIB_bbarker      = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
 LIBRARIES_WEAKLIB_juliana      = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
-LIBRARIES_WEAKLIB_kristopher   = 
+LIBRARIES_WEAKLIB_kristopher   =
 LIBRARIES_WEAKLIB_ranchu       = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
-LIBRARIES_WEAKLIB_sjdunham     = 
+LIBRARIES_WEAKLIB_sjdunham     =
 LIBRARIES_WEAKLIB_titan_gnu    = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
 LIBRARIES_WEAKLIB_titan_cray   = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
 LIBRARIES_WEAKLIB_darter_gnu   = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
@@ -130,7 +150,7 @@ LIBRARIES_WEAKLIB_beacon_intel = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/we
 LIBRARIES_WEAKLIB_summit_xl    = $(WEAKLIB_DIR)/Distributions/ExternalLibrary/weaklib.a
 LIBRARIES_WEAKLIB              = $(LIBRARIES_WEAKLIB_$(MACHINE))
 
-LIBRARIES_POSEIDON_mac_gnu     = 
+LIBRARIES_POSEIDON_mac_gnu     =
 LIBRARIES_POSEIDON_sn1987b     = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON_kristopher  = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON             = $(LIBRARIES_POSEIDON_$(MACHINE))

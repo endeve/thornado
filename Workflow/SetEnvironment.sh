@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export THORNADO_MACHINE=$1
+#export THORNADO_MACHINE=$1
 
 if [[ $THORNADO_MACHINE == mac* ]]; then
 
@@ -36,6 +36,11 @@ elif [[ $THORNADO_MACHINE == beacon* ]]; then
   module unload PE-gnu PE-intel
 
 elif [[ $THORNADO_MACHINE == sn1987b* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+elif [[ $THORNADO_MACHINE == bbarker* ]]; then
 
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
@@ -111,6 +116,10 @@ elif [[ $THORNADO_MACHINE == beacon_intel ]]; then
   module load hdf5/1.8.14
 
 elif [[ $THORNADO_MACHINE == sn1987b ]]; then
+
+  echo
+
+elif [[ $THORNADO_MACHINE == bbarker ]]; then
 
   echo
 
