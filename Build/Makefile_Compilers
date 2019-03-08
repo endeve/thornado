@@ -3,6 +3,7 @@ FORTRAN_sn1987b      = mpif90 -fopenmp
 FORTRAN_juliana      = gfortran
 FORTRAN_kristopher   = mpif90
 FORTRAN_ranchu       = mpif90
+FORTRAN_ranchuair    = mpif90
 FORTRAN_sjdunham     = mpif90
 FORTRAN_titan_gnu    = ftn
 FORTRAN_titan_cray   = ftn
@@ -16,6 +17,7 @@ SUFFIX_f90_sn1987b      =
 SUFFIX_f90_juliana      = 
 SUFFIX_f90_kristopher   = 
 SUFFIX_f90_ranchu       = 
+SUFFIX_f90_ranchuair    = 
 SUFFIX_f90_sjdunham     = 
 SUFFIX_f90_titan_gnu    = 
 SUFFIX_f90_titan_cray   = 
@@ -28,6 +30,7 @@ FLINKER_sn1987b      = mpif90 -fopenmp
 FLINKER_juliana      = gfortran
 FLINKER_kristopher   = mpif90
 FLINKER_ranchu       = mpif90
+FLINKER_ranchuair    = mpif90
 FLINKER_sjdunham     = mpif90
 FLINKER_titan_gnu    = ftn
 FLINKER_titan_cray   = ftn
@@ -42,6 +45,7 @@ DEBUG_sn1987b      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zer
 DEBUG_juliana      = -g -fbacktrace -fbounds-check
 DEBUG_kristopher   = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_ranchu       = -g 
+DEBUG_ranchuair    = -g 
 DEBUG_sjdunham     = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_titan_gnu    = -g -ffpe-trap=invalid,zero -fcheck=bounds
 DEBUG_titan_cray   = -G0 -hfp0 -K trap=fp
@@ -56,6 +60,7 @@ OPTIMIZE_sn1987b      = -O2 -framework Accelerate
 OPTIMIZE_juliana      = -O2
 OPTIMIZE_kristopher   = -O2 -framework Accelerate
 OPTIMIZE_ranchu       = -O2
+OPTIMIZE_ranchuair    = -O2
 OPTIMIZE_sjdunham     = -O2 -framework Accelerate
 OPTIMIZE_titan_gnu    = -O2
 OPTIMIZE_titan_cray   = 
@@ -69,6 +74,7 @@ INCLUDE_HDF5_sn1987b           = -I/usr/local/Cellar/hdf5/1.8.16_1/include
 INCLUDE_HDF5_juliana           = -I/usr/local/hdf5/include
 INCLUDE_HDF5_kristopher        = -I/usr/local/Cellar/hdf5/1.10.2_1/include
 INCLUDE_HDF5_ranchu            = -I/usr/local/hdf5/include
+INCLUDE_HDF5_ranchuair         = -I/usr/local/Cellar/hdf5/1.10.5/include
 INCLUDE_HDF5_sjdunham          = -I/usr/local/Cellar/hdf5/1.10.4/include
 INCLUDE_HDF5_titan_gnu         = # Use Module Load
 INCLUDE_HDF5_titan_cray        = # Use Module Load
@@ -83,6 +89,7 @@ INCLUDE_POSEIDON_kristopher    = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON               = $(INCLUDE_POSEIDON_$(MACHINE))
 
 INCLUDE_LAPACK_ranchu          = -I/usr/include
+INCLUDE_LAPACK_ranchuair       = -I/usr/local/opt/lapack/include
 INCLUDE_LAPACK_summit_xl       = -I$(OLCF_ROOT_ESSL)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK                 = $(INCLUDE_LAPACK_$(MACHINE))
 
@@ -93,6 +100,7 @@ LIBRARIES_HDF5_sn1987b         = -L/usr/local/Cellar/hdf5/1.8.16_1/lib -lhdf5_fo
 LIBRARIES_HDF5_juliana         = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_kristopher      = -L/usr/local/Cellar/hdf5/1.10.2_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_ranchu          = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_ranchuair       = -L/usr/local/Cellar/hdf5/1.10.5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_sjdunham        = -L/usr/local/Cellar/hdf5/1.10.4/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_titan_gnu       = # Use Module Load
 LIBRARIES_HDF5_titan_cray      = # Use Module Load
@@ -110,6 +118,7 @@ LIBRARIES_POSEIDON_kristopher  = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON             = $(LIBRARIES_POSEIDON_$(MACHINE))
 
 LIBRARIES_LAPACK_ranchu        = -L/usr/lib -llapack -lblas
+LIBRARIES_LAPACK_ranchuair     = -L/usr/local/opt/lapack/lib -llapack -lblas
 LIBRARIES_LAPACK_mcarpe21      = -L/usr/lib/lapack -llapack \
 				 -L/usr/lib/libblas -lblas
 LIBRARIES_LAPACK_summit_xl     = -L$(OLCF_ESSL_ROOT)/lib64 -lessl -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
