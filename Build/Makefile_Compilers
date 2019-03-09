@@ -45,7 +45,7 @@ DEBUG_sn1987b      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zer
 DEBUG_juliana      = -g -fbacktrace -fbounds-check
 DEBUG_kristopher   = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_ranchu       = -g 
-DEBUG_ranchuair    = -g 
+DEBUG_ranchuair    = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check 
 DEBUG_sjdunham     = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_titan_gnu    = -g -ffpe-trap=invalid,zero -fcheck=bounds
 DEBUG_titan_cray   = -G0 -hfp0 -K trap=fp
@@ -60,7 +60,7 @@ OPTIMIZE_sn1987b      = -O2 -framework Accelerate
 OPTIMIZE_juliana      = -O2
 OPTIMIZE_kristopher   = -O2 -framework Accelerate
 OPTIMIZE_ranchu       = -O2
-OPTIMIZE_ranchuair    = -O2
+OPTIMIZE_ranchuair    = -O2 -framework Accelerate
 OPTIMIZE_sjdunham     = -O2 -framework Accelerate
 OPTIMIZE_titan_gnu    = -O2
 OPTIMIZE_titan_cray   = 
