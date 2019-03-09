@@ -205,9 +205,9 @@ PROGRAM main
              = amrex_parallel_ioprocessor() )
 
   CALL Euler_InitializePositivityLimiter &
-         ( Min_1_Option = 1.0d-12, &
-           Min_2_Option = 1.0d-12, &
-           UsePositivityLimiter_Option = .TRUE., &
+         ( Min_1_Option = Min_1, &
+           Min_2_Option = Min_2, &
+           UsePositivityLimiter_Option = UsePositivityLimiter, &
            Verbose_Option = amrex_parallel_ioprocessor() )
 
   DO iLevel = 0, nLevels

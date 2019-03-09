@@ -52,6 +52,10 @@ MODULE MyAmrModule
   REAL(amrex_real) :: BetaTVD, BetaTVB
   REAL(amrex_real) :: LimiterThresholdParameter
 
+  ! --- Positivity limiter ---
+  LOGICAL          :: UsePositivityLimiter
+  REAL(amrex_real) :: Min_1, Min_2
+
 
 CONTAINS
 
@@ -115,6 +119,13 @@ CONTAINS
       CALL PP % get( 'BetaTVD',                   BetaTVD )
       CALL PP % get( 'BetaTVB',                   BetaTVB )
       CALL PP % get( 'LimiterThresholdParameter', LimiterThresholdParameter )
+    CALL amrex_parmparse_destroy( PP )
+
+    ! --- Positivitiy limiter parameters PL.*
+    CALL amrex_parmparse_build( PP, 'PL' )
+      CALL PP % get( 'UsePositivityLimiter', UsePositivityLimiter )
+      CALL PP % get( 'Min_1',                Min_1 )
+      CALL PP % get( 'Min_2',                Min_2 )
     CALL amrex_parmparse_destroy( PP )
 
     CALL InitializeProgramHeader &
