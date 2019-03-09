@@ -326,8 +326,6 @@ CONTAINS
 
       CALL amrex_mfiter_build( MFI, MF_PF(iLevel), tiling = .TRUE. )
 
-      BX = MFI % tilebox()
-
       iOS = 0
       IF( WriteGF   )THEN
         CALL MF_ComputeCellAverage &
