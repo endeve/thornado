@@ -25,7 +25,7 @@ MODULE MF_Euler_SlopeLimiterModule
     AMReX2thornado, &
     thornado2AMReX
   USE MyAmrModule,        ONLY: &
-    nLevels, bcAMReX
+    nLevels, bcAMReX, UseSlopeLimiter
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     MF_Euler_ApplyBoundaryConditions
 
@@ -56,6 +56,8 @@ CONTAINS
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     IF( nDOFX .EQ. 1 ) RETURN
+
+    IF( .NOT. UseSlopeLimiter ) RETURN
 
     DO iLevel = 0, nLevels
 
