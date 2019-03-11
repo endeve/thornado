@@ -571,10 +571,10 @@ CONTAINS
       CASE DEFAULT
 
         WRITE(*,*)
-        WRITE(*,'(A6,A,A)'), &
+        WRITE(*,'(A6,A,A)') &
           '', 'Unknown Time Stepping Scheme: ', TRIM( Scheme )
         WRITE(*,*)
-        WRITE(*,'(A6,A)'), &
+        WRITE(*,'(A6,A)') &
           '', 'Available Options:'
         WRITE(*,*)
         WRITE(*,'(A6,A)') '', 'SSPRK1'

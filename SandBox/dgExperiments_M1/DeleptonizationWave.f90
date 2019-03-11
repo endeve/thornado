@@ -1,7 +1,7 @@
 PROGRAM DeleptonizationWave
 
   USE KindModule, ONLY: &
-    DP, Third
+    DP, SqrtTiny, Third
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -174,9 +174,9 @@ PROGRAM DeleptonizationWave
   ! --- Initialize Positivity Limiter ---
 
   CALL InitializePositivityLimiter_TwoMoment &
-         ( Min_1_Option = 0.0d-00, &
-           Max_1_Option = 1.0d+00, &
-           Min_2_Option = 0.0d-00, &
+         ( Min_1_Option = 0.0d0 + SqrtTiny, &
+           Max_1_Option = 1.0d0 - SqrtTiny, &
+           Min_2_Option = 0.0d0 + SqrtTiny, &
            UsePositivityLimiter_Option &
              = .TRUE. )
 
@@ -187,7 +187,7 @@ PROGRAM DeleptonizationWave
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields( Profile_Option = 'ChimeraBounce_fined.d')
+  CALL InitializeFields( Profile_Option = 'Chimera100ms_fined.d')
 
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
@@ -212,7 +212,7 @@ PROGRAM DeleptonizationWave
   wTime = MPI_WTIME( )
 
   t     = 0.0_DP
-  t_end = 8.0_DP * Millisecond
+  t_end = 5.0_DP * Millisecond
   dt    = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
