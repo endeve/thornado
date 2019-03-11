@@ -217,7 +217,6 @@ CONTAINS
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C, WriteFF_P, WriteFF_A
     INTEGER                         :: iComp, iOS, iLevel, nF
-    INTEGER                         :: MyProc
     TYPE(amrex_multifab)            :: MF_PF(0:nLevels)
     TYPE(amrex_boxarray)            :: BA(0:nLevels)
     TYPE(amrex_distromap)           :: DM(0:nLevels)
@@ -225,7 +224,6 @@ CONTAINS
 
     ! --- Only needed to get and write BX % lo and BX % hi ---
     TYPE(amrex_mfiter) :: MFI
-    TYPE(amrex_box)    :: BX
 
     nF = 0
     WriteGF   = .FALSE.
@@ -325,8 +323,6 @@ CONTAINS
       CALL MF_PF(iLevel) % setVal( 0.0d0 )
 
       CALL amrex_mfiter_build( MFI, MF_PF(iLevel), tiling = .TRUE. )
-
-      BX = MFI % tilebox()
 
       iOS = 0
       IF( WriteGF   )THEN

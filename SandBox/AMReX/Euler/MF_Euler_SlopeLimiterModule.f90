@@ -25,7 +25,9 @@ MODULE MF_Euler_SlopeLimiterModule
     AMReX2thornado, &
     thornado2AMReX
   USE MyAmrModule,        ONLY: &
-    nLevels
+    nLevels, bcAMReX, UseSlopeLimiter
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    MF_Euler_ApplyBoundaryConditions
 
   IMPLICIT NONE
   PRIVATE
@@ -55,13 +57,16 @@ CONTAINS
 
     IF( nDOFX .EQ. 1 ) RETURN
 
+    IF( .NOT. UseSlopeLimiter ) RETURN
+
     DO iLevel = 0, nLevels
 
-      ! --- Apply boundary conditions to geometry and conserved fluid ---
-      !     Do we need to apply boundary conditions to geometry?
-      !     If not, when is it applied? ---
-      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      ! --- Apply boundary conditions to interior domains ---
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      ! --- Apply boundary conditions to physical domains ---
+      CALL MF_Euler_ApplyBoundaryConditions &
+             ( MF_uCF(iLevel) % P, GEOM(iLevel) % P, bcAMReX )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
