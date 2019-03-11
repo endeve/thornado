@@ -31,7 +31,7 @@ MODULE Euler_SlopeLimiterModule
     nCF, iCF_D, iCF_E, &
     Shock
   USE Euler_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_Fluid
+    Euler_ApplyBoundaryConditions
   USE Euler_CharacteristicDecompositionModule, ONLY: &
     ComputeCharacteristicDecomposition
 
@@ -205,7 +205,7 @@ CONTAINS
 
     IF( .NOT. UseSlopeLimiter ) RETURN
 
-    CALL ApplyBoundaryConditions_Fluid &
+    CALL Euler_ApplyBoundaryConditions &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL DetectTroubledCells &

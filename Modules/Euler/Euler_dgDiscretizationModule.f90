@@ -40,7 +40,7 @@ MODULE Euler_dgDiscretizationModule
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE Euler_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_Fluid
+    Euler_ApplyBoundaryConditions
   USE Euler_UtilitiesModule, ONLY: &
     ComputePrimitive, &
     Eigenvalues, &
@@ -96,7 +96,7 @@ CONTAINS
 
     dU = Zero
 
-    CALL ApplyBoundaryConditions_Fluid &
+    CALL Euler_ApplyBoundaryConditions &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL ComputeIncrement_Divergence_X1 &
