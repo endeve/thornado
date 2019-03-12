@@ -140,7 +140,9 @@ Furthermore, in the diffusion limit, the distribution function is nearly isotrop
 The absence of the transport operator in the correction step in Eq.~\eqref{eq:imexCorrection}, destroys the balance between the transport term and the collision term.  
 We demonstrate the inferior performance of IMEX schemes with this correction step in the diffusion limit in Section~\ref{sec:smoothProblems}.  
 We have also implemented and tested one of the IMEX schemes in Chertock et al. \cite{chertock_etal_2015} (not included in Section~\ref{sec:smoothProblems}), where the transport operator is part of the correction step, and found it to perform very well in the diffusion limit.  
-However, we have not been able to prove the realizability-preserving property with this approach without invoking a too severe time step restriction.  
+However, we have not been able to prove the realizability-preserving property with this approach without invoking a too severe time step restriction.%
+\footnote{\modified{For example in the pure absorption case, we find that there is a sufficient time step, proportional to $\sqrt{\tau|K|}$ (as opposed to $|K|$ without the correction step), which guarantees moment realizability.  
+In numerical experiments, we have observed for the homogeneous sphere problem in Section~\ref{sec:homogeneousSphere} that this approach breaks for stiff problems ($\tau\ll1$) when this restriction is violated.}}
 We therefore proceed to design convex-invariant IMEX schemes without the correction step that perform well in the diffusion limit.  
 We limit the scope to IMEX schemes of type~ARS.  
 (It can be shown that IMEX schemes of type~A conforming to Definition~\ref{def:PD-IMEX} below do not exist; cf. \ref{app:noTypeA}.)
