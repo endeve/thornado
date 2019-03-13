@@ -24,7 +24,7 @@ MODULE MF_Euler_PositivityLimiterModule
     AMReX2thornado, &
     thornado2AMReX
   USE MyAmrModule,        ONLY: &
-    nLevels
+    nLevels, UsePositivityLimiter
 
   IMPLICIT NONE
   PRIVATE
@@ -52,6 +52,8 @@ CONTAINS
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     IF( nDOFX .EQ. 1 ) RETURN
+
+    IF( .NOT. UsePositivityLimiter ) RETURN
 
     DO iLevel = 0, nLevels
 
@@ -87,12 +89,12 @@ CONTAINS
 
         CALL AMReX2thornado &
                ( nCF, iX_B0, iX_E0, &
-                 uCF(      iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nDOFX*nCF), &
-                 U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nCF) )
+                 uCF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nCF), &
+                 U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nCF) )
 
 
         CALL Euler_ApplyPositivityLimiter &
@@ -114,8 +116,8 @@ CONTAINS
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
 
-        DEALLOCATE( G )
         DEALLOCATE( U )
+        DEALLOCATE( G )
 
       END DO
 
