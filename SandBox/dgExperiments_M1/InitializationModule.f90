@@ -1256,7 +1256,9 @@ CONTAINS
                 E = NodeCoordinate( MeshE, iE, iNodeE )
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
-                  = 1.0d-99
+                  = MAX( 1.0d-32, & 
+                    1.0d0 / ( EXP( (E-Mnu(iNode))/kT(iNode) ) + 1.0_DP ) )
+                  != 1.0d-99
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
                   = Zero
