@@ -91,8 +91,6 @@ PROGRAM main
 
   REAL(amrex_real) :: Timer_Evolution
 
-  INTEGER :: iErr
-
 !!$  CALL MakeMF_Diff( 0, 5857 )
 
   ! --- Initialize AMReX ---
@@ -265,6 +263,13 @@ PROGRAM main
 
     StepNo = StepNo + 1
 
+    IF( DEBUG )THEN
+      WRITE(*,*)
+      WRITE(*,'(A,I4)')       'StepNo: ', StepNo
+      WRITE(*,'(A,ES13.6E3)') 'Time:   ', t
+    END IF
+
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_ComputeTimeStep'
     CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt )
 
     IF( ALL( t + dt .LE. t_end ) )THEN
@@ -280,6 +285,7 @@ PROGRAM main
           '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
     END IF
 
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_UpdateFluid_SSPRK'
     CALL MF_UpdateFluid_SSPRK &
            ( t, dt, MF_uGF, MF_uCF, &
              GEOM, MF_Euler_ComputeIncrement )

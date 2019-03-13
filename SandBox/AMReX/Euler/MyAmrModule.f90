@@ -39,15 +39,12 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName
   INTEGER,          ALLOCATABLE, SAVE :: StepNo(:)
   CHARACTER(LEN=32),             SAVE :: Coordsys
-
-  ! --- Boundary Conditions ---
-  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: bcAMReX(:)
+  LOGICAL,                       SAVE :: DEBUG
 
   ! --- Slope limiter ---
   LOGICAL          :: UseSlopeLimiter
   LOGICAL          :: UseCharacteristicLimiting
   LOGICAL          :: UseTroubledCellIndicator
-  LOGICAL          :: UseAMReX
   REAL(amrex_real) :: SlopeTolerance
   REAL(amrex_real) :: BetaTVD, BetaTVB
   REAL(amrex_real) :: LimiterThresholdParameter
@@ -70,6 +67,11 @@ CONTAINS
     IF( .NOT. amrex_amrcore_initialized() ) &
       CALL amrex_amrcore_init()
 
+    DEBUG = .FALSE.
+    CALL amrex_parmparse_build( PP )
+      CALL PP % query( 'DEBUG', DEBUG )
+    CALL amrex_parmparse_destroy( PP )
+
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'dt_wrt',      dt_wrt )
@@ -91,7 +93,6 @@ CONTAINS
       CALL PP % get   ( 'coord_sys',        coord_sys )
       CALL PP % getarr( 'prob_lo',          xL )
       CALL PP % getarr( 'prob_hi',          xR )
-      CALL PP % getarr( 'bcAMReX',          bcAMReX )
     CALL amrex_parmparse_destroy( PP )
     IF     ( coord_sys .EQ. 0 )THEN
       CoordSys = 'CARTESIAN'
