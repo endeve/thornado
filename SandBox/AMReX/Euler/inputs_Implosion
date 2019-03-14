@@ -1,10 +1,10 @@
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
-thornado.ProgramName = "IsentropicVortex"
+thornado.ProgramName = "Implosion"
 
-thornado.t_end     = 10.0     # Final time
-thornado.dt_wrt    = 0.1      # Write time interval
+thornado.t_end     = 2.5      # Final time
+thornado.dt_wrt    = 0.045    # Write time interval
 thornado.Gamma     = 1.4      # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
@@ -18,13 +18,13 @@ thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
 geometry.coord_sys   = 0             # CARTESIAN
 #geometry.coord_sys   = 1             # CYLINDRICAL
 #geometry.coord_sys   = 2             # SPHERICAL
-geometry.prob_lo     = -5.0 -5.0 0.0 # Lower domain size
-geometry.prob_hi     = +5.0 +5.0 1.0 # Upper domain size
-geometry.is_periodic = 01 01 01      # Periodicity. 0 (no), 1 (yes)
-geometry.bcAMReX     = 01 01 00
+geometry.prob_lo     = 0.0 0.0 0.0 # Lower domain size
+geometry.prob_hi     = 0.3 0.3 1.0 # Upper domain size
+geometry.is_periodic = 00 00 01      # Periodicity. 0 (no), 1 (yes)
+geometry.bcAMReX     = 03 03 00
 
-amr.n_cell          = 32 32 01 # Number of cells in each dimension
-amr.max_grid_size   = 16 16 01 # nBoxes = n_cell / MaxGridSize
+amr.n_cell          = 256 256 01 # Number of cells in each dimension
+amr.max_grid_size   = 256 256 01 # nBoxes = n_cell / MaxGridSize
 amr.max_level       = 0          # Maximum number of refinement levels
 amr.blocking_factor = 1          # Must be a factor of max_grid_size
 
@@ -33,12 +33,11 @@ SL.UseSlopeLimiter           = 1
 SL.UseCharacteristicLimiting = 1
 SL.UseTroubledCellIndicator  = 1
 SL.SlopeTolerance            = 1.0e-6
-SL.BetaTVD                   = 1.75
+SL.BetaTVD                   = 1.5
 SL.BetaTVB                   = 0.0
-SL.LimiterThresholdParameter = 0.015
+SL.LimiterThresholdParameter = 0.3
 
 # Positivity limiter parameters
 PL.UsePositivityLimiter = 1
 PL.Min_1                = 1.0e-12
 PL.Min_2                = 1.0e-12
-

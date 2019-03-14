@@ -24,6 +24,11 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE MF_UtilitiesModule, ONLY: &
     AMReX2thornado, &
     thornado2AMReX
+  USE MyAmrModule,        ONLY: &
+    nLevels, DEBUG
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    EdgeMap, ConstructEdgeMap, &
+    MF_Euler_ApplyBoundaryConditions
 
   IMPLICIT NONE
   PRIVATE
@@ -34,10 +39,8 @@ MODULE  MF_Euler_dgDiscretizationModule
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ComputeIncrement &
-    ( nLevels, GEOM, MF_uGF, MF_uCF, MF_duCF )
+  SUBROUTINE MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_uCF, MF_duCF )
  
-    INTEGER,              INTENT(in)    :: nLevels
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels)
@@ -57,12 +60,11 @@ CONTAINS
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
+    TYPE(EdgeMap) :: Edge_Map
+
     DO iLevel = 0, nLevels
 
-      ! --- Apply boundary conditions to geometry and conserved fluid ---
-      !     Do we need to apply boundary conditions to geometry?
-      !     If not, when is it applied? ---
-      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      ! --- Apply boundary conditions to interior domains ---
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_duCF(iLevel) % setval( 0.0_amrex_real )
@@ -110,7 +112,16 @@ CONTAINS
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
 
+        ! --- Apply boundary conditions to physical boundaries ---
+        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_Euler_ApplyBoundaryConditions'
+        CALL MF_Euler_ApplyBoundaryConditions &
+               ( iX_B0, iX_E0, iX_B1, iX_E1,  &
+                 U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nCF), Edge_Map )
 
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL Euler_ComputeIncrement_DG_Explicit'
         CALL Euler_ComputeIncrement_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
@@ -121,7 +132,8 @@ CONTAINS
                             iX_B1(3):iX_E1(3),1:nCF), &
                  dU(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nCF) )
+                            iX_B0(3):iX_E0(3),1:nCF), &
+                 SuppressBC_Option = .TRUE. )
 
 
         CALL thornado2AMReX &

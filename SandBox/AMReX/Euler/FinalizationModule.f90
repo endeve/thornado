@@ -16,6 +16,7 @@ MODULE FinalizationModule
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
+    nLevels, &
     MyAmrFinalize
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     MF_FinalizeFluid_SSPRK
@@ -37,9 +38,8 @@ MODULE FinalizationModule
 CONTAINS
 
 
-  SUBROUTINE FinalizeProgram( nLevels, GEOM, MeshX )
+  SUBROUTINE FinalizeProgram( GEOM, MeshX )
 
-    INTEGER,               INTENT(in)    :: nLevels
     TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels)
     TYPE(MeshType),        INTENT(inout) :: MeshX(1:3)
 
@@ -51,7 +51,7 @@ CONTAINS
 
     CALL FinalizeEquationOfState
 
-    CALL MF_FinalizeFluid_SSPRK( nLevels )
+    CALL MF_FinalizeFluid_SSPRK
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX

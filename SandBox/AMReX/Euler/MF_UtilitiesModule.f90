@@ -110,9 +110,8 @@ CONTAINS
   END SUBROUTINE thornado2AMReX
 
 
-  SUBROUTINE LinComb( nLevels, alpha, MF_U, beta, MF_D )
+  SUBROUTINE LinComb( alpha, MF_U, beta, MF_D )
 
-    INTEGER,              INTENT(in)    :: nLevels
     TYPE(amrex_multifab), INTENT(inout) :: MF_U(0:nLevels)
     TYPE(amrex_multifab), INTENT(in)    :: MF_D(0:nLevels)
     REAL(amrex_real),     INTENT(in)    :: alpha, beta(0:nLevels)
@@ -163,22 +162,26 @@ CONTAINS
   END SUBROUTINE LinComb
 
 
-  SUBROUTINE ShowVariableFromMultiFab( nLevels, MF, swX, iComp )
+  SUBROUTINE ShowVariableFromMultiFab( MF, swX, iComp )
 
-    INTEGER,              INTENT(in) :: nLevels, swX(3)
+    INTEGER,              INTENT(in) :: swX(3)
     TYPE(amrex_multifab), INTENT(in) :: MF(0:nLevels)
     INTEGER,              INTENT(in) :: iComp
 
-    INTEGER                               :: iX1, iX2, iX3, iLevel
+    INTEGER                               :: iX1, iX2, iX3, iLevel, iBox
     INTEGER                               :: lo(4), hi(4)
     TYPE(amrex_box)                       :: BX
     TYPE(amrex_mfiter)                    :: MFI
     REAL(amrex_real), CONTIGUOUS, POINTER :: U(:,:,:,:)
 
     DO iLevel = 0, nLevels
+
       CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = .TRUE. )
 
+      iBox = 0
       DO WHILE( MFI % next() )
+        iBox = iBox + 1
+        WRITE(*,*) 'iBox = ', iBox
 
         U => MF(iLevel) % DataPtr( MFI )
         BX = MFI % tilebox()
@@ -189,7 +192,7 @@ CONTAINS
         DO iX2 = BX % lo(2) - swX(2), BX % hi(2) + swX(2)
         DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
 
-          WRITE(*,'(A,3I4.3,ES10.1E3)') &
+          WRITE(*,'(A,3I4.3,ES11.2E3)') &
             'iX1, iX2, iX3, Data: ',iX1, iX2, iX3, U(iX1,iX2,iX3,iComp)
 
         END DO
@@ -320,7 +323,7 @@ CONTAINS
 !!$    END DO
 
     CALL WriteFieldsAMReX_Plotfile &
-           ( t(0), nLevels, GEOM, StepNo, &
+           ( t(0), GEOM, StepNo, &
              MF_uGF_Option = MF_uGF_TEMP, &
              MF_uCF_Option = MF_uCF_TEMP, &
              MF_uPF_Option = MF_uPF_TEMP, &

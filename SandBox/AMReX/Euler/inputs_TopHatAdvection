@@ -1,4 +1,5 @@
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
 
 thornado.ProgramName = "TopHatAdvection"
 
@@ -14,20 +15,29 @@ thornado.iCycleD   = 010      # MOD this number to display info
 thornado.iCycleW   = 010      # MOD this number to write plotfile
 thornado.iCycleChk = 500      # MOD this number to write checkpoint file
 
-geometry.CoordinateSystem = CARTESIAN
-geometry.prob_lo          = 0.0 0.0 0.0 # Lower domain size
-geometry.prob_hi          = 1.0 1.0 1.0 # Upper domain size
-geometry.is_periodic      = 1  1  1       # Periodicity. 0 (no), 1 (yes)
+geometry.coord_sys   = 0 # CARTESIAN
+#geometry.coord_sys   = 1 # CYLINDRICAL
+#geometry.coord_sys   = 2 # SPHERICAL
+geometry.prob_lo     = 0.0 0.0 0.0 # Lower domain size
+geometry.prob_hi     = 1.0 1.0 1.0 # Upper domain size
+geometry.is_periodic = 01 01 01    # Periodicity. 0 (no), 1 (yes)
+geometry.bcAMReX     = 01 01 00
 
-amr.n_cell      = 16 16 01  # Number of cells in each dimension
-amr.MaxGridSize = 08 08 01  # nBoxes = n_cell / MaxGridSize
-amr.max_level   = 0         # Maximum number of refinement levels
+amr.n_cell          = 16 16 01 # Number of cells in each dimension
+amr.max_grid_size   = 08 08 01 # nBoxes = n_cell / MaxGridSize
+amr.max_level       = 0        # Maximum number of refinement levels
+amr.blocking_factor = 8        # Must be a factor of max_grid_size
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1
 SL.UseCharacteristicLimiting = 1
 SL.UseTroubledCellIndicator  = 1
-SL.SlopeTolerance            = 1.0d-6
-SL.BetaTVD                   = 1.75d0
-SL.BetaTVB                   = 0.0d0
-SL.LimiterThresholdParameter = 0.015d0
+SL.SlopeTolerance            = 1.0e-6
+SL.BetaTVD                   = 1.75
+SL.BetaTVB                   = 0.0
+SL.LimiterThresholdParameter = 0.015
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter = 1
+PL.Min_1                = 1.0e-12
+PL.Min_2                = 1.0e-12

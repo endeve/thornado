@@ -24,6 +24,11 @@ MODULE MF_Euler_SlopeLimiterModule
   USE MF_UtilitiesModule, ONLY: &
     AMReX2thornado, &
     thornado2AMReX
+  USE MyAmrModule,        ONLY: &
+    nLevels, UseSlopeLimiter, DEBUG
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    EdgeMap, ConstructEdgeMap, &
+    MF_Euler_ApplyBoundaryConditions
 
   IMPLICIT NONE
   PRIVATE
@@ -34,9 +39,8 @@ MODULE MF_Euler_SlopeLimiterModule
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ApplySlopeLimiter( nLevels, MF_uGF, MF_uCF, GEOM )
+  SUBROUTINE MF_Euler_ApplySlopeLimiter( MF_uGF, MF_uCF, GEOM )
 
-    INTEGER,              INTENT(in)    :: nLevels
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
     TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels)
@@ -52,14 +56,15 @@ CONTAINS
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
+    TYPE(EdgeMap) :: Edge_Map
+
     IF( nDOFX .EQ. 1 ) RETURN
+
+    IF( .NOT. UseSlopeLimiter ) RETURN
 
     DO iLevel = 0, nLevels
 
-      ! --- Apply boundary conditions to geometry and conserved fluid ---
-      !     Do we need to apply boundary conditions to geometry?
-      !     If not, when is it applied? ---
-      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      ! --- Apply boundary conditions to interior domains ---
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
@@ -101,7 +106,16 @@ CONTAINS
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
 
+        ! --- Apply boundary conditions to physical boundaries ---
+        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplyBoundaryConditions'
+        CALL MF_Euler_ApplyBoundaryConditions &
+               ( iX_B0, iX_E0, iX_B1, iX_E1,  &
+                 U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nCF), Edge_Map )
 
+        IF( DEBUG ) WRITE(*,'(A)') '  CALL Euler_ApplySlopeLimiter'
         CALL Euler_ApplySlopeLimiter &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
@@ -109,11 +123,12 @@ CONTAINS
                             iX_B1(3):iX_E1(3),1:nGF), &
                  U (1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nCF) )
+                            iX_B1(3):iX_E1(3),1:nCF), &
+                 SuppressBC_Option = .TRUE. )
 
 
         CALL thornado2AMReX &
-               ( nCF, iX_B0, iX_E0, &
+               ( nCF, iX_B1, iX_E1, &
                  uCF(      iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nDOFX*nCF), &
@@ -121,8 +136,8 @@ CONTAINS
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
 
-        DEALLOCATE( G )
         DEALLOCATE( U )
+        DEALLOCATE( G )
 
       END DO
 

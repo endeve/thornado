@@ -6,10 +6,6 @@ MODULE InputOutputModuleAMReX
   USE amrex_base_module
   USE amrex_amr_module
 
-  ! --- For getting MPI process info (could also
-  !     add this to amrex_base_module) ---
-  USE amrex_paralleldescriptor_module
-
   ! --- thornado Modules ---
 
   USE KindModule,              ONLY: &
@@ -24,6 +20,9 @@ MODULE InputOutputModuleAMReX
     nCF, ShortNamesCF, &
     nPF, ShortNamesPF, &
     nAF, ShortNamesAF
+
+  USE MyAmrModule, ONLY: &
+    nLevels
 
   IMPLICIT NONE
   PRIVATE
@@ -202,11 +201,10 @@ CONTAINS
 
 
   SUBROUTINE WriteFieldsAMReX_PlotFile &
-    ( Time, nLevels, GEOM, StepNo, &
+    ( Time, GEOM, StepNo, &
       MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, MF_uAF_Option )
 
     REAL(DP),             INTENT(in)           :: Time
-    INTEGER,              INTENT(in)           :: nLevels
     TYPE(amrex_geometry), INTENT(in)           :: GEOM(0:nLevels)
     INTEGER,              INTENT(in)           :: StepNo(0:nLevels)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:nLevels)
@@ -219,7 +217,6 @@ CONTAINS
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C, WriteFF_P, WriteFF_A
     INTEGER                         :: iComp, iOS, iLevel, nF
-    INTEGER                         :: MyProc
     TYPE(amrex_multifab)            :: MF_PF(0:nLevels)
     TYPE(amrex_boxarray)            :: BA(0:nLevels)
     TYPE(amrex_distromap)           :: DM(0:nLevels)
@@ -227,7 +224,6 @@ CONTAINS
 
     ! --- Only needed to get and write BX % lo and BX % hi ---
     TYPE(amrex_mfiter) :: MFI
-    TYPE(amrex_box)    :: BX
 
     nF = 0
     WriteGF   = .FALSE.
@@ -253,8 +249,6 @@ CONTAINS
       WriteFF_A = .TRUE.
       nF = nF + nAF
     END IF
-
-    MyProc = amrex_pd_myproc()
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -330,11 +324,6 @@ CONTAINS
 
       CALL amrex_mfiter_build( MFI, MF_PF(iLevel), tiling = .TRUE. )
 
-      BX = MFI % tilebox()
-!!$      WRITE(*,'(A,I2.2,A,3I3.2,A,3I3.2)') &
-!!$        'MyProc = ', MyProc, ': lo = ', BX % lo, ', hi = ', BX % hi
-!!$      CALL amrex_print( BX )
-
       iOS = 0
       IF( WriteGF   )THEN
         CALL MF_ComputeCellAverage &
@@ -374,8 +363,8 @@ CONTAINS
 
   SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, iOS )
 
-    INTEGER,              INTENT(in   ) :: nComp, iOS
-    TYPE(amrex_multifab), INTENT(in   ) :: MF
+    INTEGER,              INTENT(in)    :: nComp, iOS
+    TYPE(amrex_multifab), INTENT(in)    :: MF
     TYPE(amrex_multifab), INTENT(inout) :: MF_A
 
     INTEGER            :: iX1, iX2, iX3, iComp
