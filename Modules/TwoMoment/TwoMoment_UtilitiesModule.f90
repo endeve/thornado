@@ -23,6 +23,11 @@ CONTAINS
 
   SUBROUTINE ComputePrimitive_TwoMoment &
     ( N, G_1, G_2, G_3, D, I_1, I_2, I_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: N, G_1, G_2, G_3
     REAL(DP), DIMENSION(:), INTENT(out) :: D, I_1, I_2, I_3
@@ -53,6 +58,11 @@ CONTAINS
 
   PURE FUNCTION Flux_X1 &
     ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP)             :: Flux_X1(1:4)
     REAL(DP), INTENT(in) :: D, I_1, I_2, I_3, FF, EF
@@ -85,6 +95,11 @@ CONTAINS
 
   PURE FUNCTION Flux_X2 &
     ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP)             :: Flux_X2(1:4)
     REAL(DP), INTENT(in) :: D, I_1, I_2, I_3, FF, EF
@@ -117,6 +132,11 @@ CONTAINS
 
   PURE FUNCTION Flux_X3 &
     ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP)             :: Flux_X3(1:4)
     REAL(DP), INTENT(in) :: D, I_1, I_2, I_3, FF, EF
@@ -149,6 +169,11 @@ CONTAINS
 
   REAL(DP) PURE ELEMENTAL FUNCTION NumericalFlux_LLF &
     ( u_L, u_R, Flux_L, Flux_R, alpha )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Local Lax-Friedrichs Flux ---
 

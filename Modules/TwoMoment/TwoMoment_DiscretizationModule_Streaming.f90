@@ -1,3 +1,7 @@
+#ifdef THORNADO_DEBUG
+#define THORNADO_DEBUG_EXPLICIT
+#endif
+
 MODULE TwoMoment_DiscretizationModule_Streaming
 
   USE KindModule, ONLY: &
@@ -7,6 +11,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     nNodesX, nDOFX, &
     nNodesE, nDOFE, &
     nDOF
+  USE LinearAlgebraModule, ONLY: &
+    MatrixMatrixMultiply
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
@@ -73,20 +79,22 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     Flux_X2, &
     Flux_X3, &
     NumericalFlux_LLF
-
-  !$ USE OMP_LIB
+  USE OpenMPModule, ONLY: &
+    omp_get_wtime
 
   IMPLICIT NONE
   PRIVATE
 
   REAL(DP), PARAMETER :: Ones(16) = One
+  LOGICAL,  PARAMETER :: DisplayTimers = .false.
+
   REAL(DP) :: wTime_X1 = Zero
-  !$OMP THREADPRIVATE(wTime_X1)
+  REAL(DP) :: wTime_X2 = Zero
+  REAL(DP) :: wTime_X3 = Zero
 
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit
 
 CONTAINS
-
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
@@ -96,66 +104,113 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)    :: &
-      GE(1:,iZ_B1(1):,1:)
+      GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
-      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(inout) :: &
-      U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS
-    REAL(DP) :: dZ(4), Tau(nDOF)
+    INTEGER  :: iNodeX, iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS
+    REAL(DP) :: Tau
 
-    dU = Zero
+    ASSOCIATE ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
+                dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
 
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
-    CALL ComputeIncrement_Divergence_X1_GPU &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: GX, U, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP          dZ1, dZ2, dZ3, dZ4 ) &
+    !$OMP MAP( alloc: dU )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
 
-    CALL ComputeIncrement_Divergence_X2 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
-
-    CALL ComputeIncrement_Divergence_X3 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
-
-    ! --- Multiply Inverse Mass Matrix ---
-
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-      dZ(4) = MeshX(3) % Width(iZ4)
-      DO iZ3 = iZ_B0(3), iZ_E0(3)
-        dZ(3) = MeshX(2) % Width(iZ3)
-        DO iZ2 = iZ_B0(2), iZ_E0(2)
-          dZ(2) = MeshX(1) % Width(iZ2)
-          DO iZ1 = iZ_B0(1), iZ_E0(1)
-            dZ(1) = MeshE % Width(iZ1)
-
-            Tau(1:nDOF) &
-              = OuterProduct1D3D &
-                  ( Ones(1:nDOFE), nDOFE, &
-                    GX(:,iZ2,iZ3,iZ4,iGF_SqrtGm), nDOFX )
-
-            DO iS = 1, nSpecies
-              DO iCR = 1, nCR
-
-                dU(:,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-                  = dU(:,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-                      / ( Weights_q(:) * Tau(:) * PRODUCT( dZ(2:4) ) )
-
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ3 = iZ_B0(3), iZ_E0(3)
+            DO iZ2 = iZ_B0(2), iZ_E0(2)
+              DO iZ1 = iZ_B0(1), iZ_E0(1)
+                DO iNode = 1, nDOF
+                  dU(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
+                END DO
               END DO
             END DO
-
           END DO
         END DO
       END DO
     END DO
 
+    CALL ComputeIncrement_Divergence_X1_New &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    CALL ComputeIncrement_Divergence_X2_New &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    CALL ComputeIncrement_Divergence_X3_New &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    ! --- Multiply Inverse Mass Matrix ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7) &
+    !$OMP PRIVATE( iNodeX, Tau )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ3 = iZ_B0(3), iZ_E0(3)
+            DO iZ2 = iZ_B0(2), iZ_E0(2)
+              DO iZ1 = iZ_B0(1), iZ_E0(1)
+                DO iNode = 1, nDOF
+
+                  iNodeX = MOD(iNode-1,nDOFX) + 1
+                  Tau = One * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
+
+                  dU(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+                    = dU(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+                        / ( Weights_q(iNode) * Tau * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) )
+
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: GX, U, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP               dZ1, dZ2, dZ3, dZ4 ) &
+    !$OMP MAP( from: dU )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+
+    END ASSOCIATE
+
+#ifdef THORNADO_DEBUG_EXPLICIT
+    WRITE(*,'(a20,7i4)')     'MAXLOC(dU)', MAXLOC(dU)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU)', MAXVAL(dU)
+#endif
+
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit
 
 
-  SUBROUTINE ComputeIncrement_Divergence_X1_GPU &
+  SUBROUTINE ComputeIncrement_Divergence_X1_New &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
@@ -163,42 +218,39 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)    :: &
-      GE(1:,iZ_B1(1):,1:)
+      GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
-      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(in)    :: &
-      U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
     INTEGER  :: nZ(4), nZ_X1(4), nK, nF, nF_GF
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
-    INTEGER  :: iNode
-    INTEGER  :: iGF, iCR
-    REAL(DP) :: dZ1, dZ2, dZ3, dZ4
-    REAL(DP) :: FF, EF
-    REAL(DP), DIMENSION(nDOF_X1)     :: absLambda_L
-    REAL(DP), DIMENSION(nDOF_X1)     :: absLambda_R
-    REAL(DP), DIMENSION(nDOF_X1)     :: alpha
-    REAL(DP), DIMENSION(nDOF)        :: Tau
-    REAL(DP), DIMENSION(nDOF_X1)     :: Tau_X1
-    REAL(DP), DIMENSION(nDOF_X1,nPR) :: uPR_L, uPR_R
-    REAL(DP), DIMENSION(nDOF_X1,nCR) :: Flux_X1_L
-    REAL(DP), DIMENSION(nDOF_X1,nCR) :: Flux_X1_R
-    REAL(DP), DIMENSION(nDOF   ,nPR) :: uPR_K
+    INTEGER  :: iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF
+    REAL(DP) :: FF, EF, FF_L, EF_L, FF_R, EF_R
+    REAL(DP) :: alpha
+    REAL(DP) :: Tau
+    REAL(DP) :: Tau_X1
+    REAL(DP) :: absLambda_L
+    REAL(DP) :: absLambda_R
+    REAL(DP), DIMENSION(nPR) :: uPR_L, uPR_R
+    REAL(DP), DIMENSION(nPR) :: uPR_K
+    REAL(DP), DIMENSION(nCR) :: Flux_X1_L
+    REAL(DP), DIMENSION(nCR) :: Flux_X1_R
 
     REAL(DP) :: GX_K         (nDOFX       ,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)-1:iZ_E0(2)+1,nGF)
     REAL(DP) :: GX_F         (nDOFX_X1    ,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)  :iZ_E0(2)+1,nGF)
-    REAL(DP) :: G_K          (nDOF    ,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)  :iZ_E0(2)+1)
+    REAL(DP) :: G_K          (nDOF    ,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)  :iZ_E0(2)  )
     REAL(DP) :: G_F          (nDOF_X1 ,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)  :iZ_E0(2)+1)
 
     REAL(DP) :: uCR_K        (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)-1:iZ_E0(2)+1)
     REAL(DP) :: uCR_L        (nDOF_X1 ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)  :iZ_E0(2)+1)
     REAL(DP) :: uCR_R        (nDOF_X1 ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)  :iZ_E0(2)+1)
 
-    REAL(DP) :: dU_K         (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)  :iZ_E0(2)  )
-    REAL(DP) :: Flux_X1_q    (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)  :iZ_E0(2)  )
-    REAL(DP) :: NumericalFlux(nDOF_X1 ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2)  :iZ_E0(2)+1)
+    REAL(DP) :: dU_X1         (nDOF    ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(2)  :iZ_E0(2)  )
+    REAL(DP) :: Flux_X1_q    (nDOF    ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(2)  :iZ_E0(2)  )
+    REAL(DP) :: NumericalFlux(nDOF_X1 ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(2)  :iZ_E0(2)+1)
 
     REAL(DP) :: wTime
 
@@ -212,17 +264,35 @@ CONTAINS
     nF = nSpecies * nCR * PRODUCT( nZ_X1 )
     nF_GF = PRODUCT( nZ_X1(2:4) )
 
+    ASSOCIATE ( dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: dZ3, dZ4 ) &
+    !$OMP MAP( alloc: GX_K, GX_F, G_K, G_F, uCR_K, uCR_L, uCR_R, &
+    !$OMP             dU_X1, Flux_X1_q, NumericalFlux )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+
     !---------------------
     ! --- Surface Term ---
     !---------------------
 
     ! --- Geometry Fields in Element Nodes ---
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
     DO iGF = 1, nGF
       DO iZ2 = iZ_B0(2) - 1, iZ_E0(2) + 1
         DO iZ4 = iZ_B0(4), iZ_E0(4)
           DO iZ3 = iZ_B0(3), iZ_E0(3)
-            GX_K(:,iZ3,iZ4,iZ2,iGF) = GX(:,iZ2,iZ3,iZ4,iGF)
+            DO iNode = 1, nDOFX
+              GX_K(iNode,iZ3,iZ4,iZ2,iGF) = GX(iNode,iZ2,iZ3,iZ4,iGF)
+            END DO
           END DO
         END DO
       END DO
@@ -235,38 +305,56 @@ CONTAINS
     ! --- Scale Factors ---
 
     DO iGF = iGF_h_1, iGF_h_3
-
-      CALL DGEMM &
+      
+      CALL MatrixMatrixMultiply &
              ( 'N', 'N', nDOFX_X1, nF_GF, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)-1,iGF), nDOFX, Zero, &
                GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF), nDOFX_X1 )
-      CALL DGEMM &
+      CALL MatrixMatrixMultiply &
              ( 'N', 'N', nDOFX_X1, nF_GF, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF), nDOFX, Half, &
                GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF), nDOFX_X1 )
-
-      GX_F(:,:,:,:,iGF) = MAX( GX_F(:,:,:,:,iGF), SqrtTiny )
 
     END DO
 
     ! --- Lapse Function ---
 
-    CALL DGEMM &
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X1, nF_GF, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
              GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)-1,iGF_Alpha), nDOFX, Zero, &
              GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_Alpha), nDOFX_X1 )
-    CALL DGEMM &
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX_X1, nF_GF, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
              GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_Alpha), nDOFX, Half, &
              GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_Alpha), nDOFX_X1 )
 
-    GX_F(:,:,:,:,iGF_Alpha) = MAX( GX_F(:,:,:,:,iGF_Alpha), SqrtTiny )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iGF = 1, nGF
+      DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ3 = iZ_B0(3), iZ_E0(3)
+            DO iNode = 1, nDOFX_X1
+              GX_F(iNode,iZ3,iZ4,iZ2,iGF) = MAX( GX_F(iNode,iZ3,iZ4,iZ2,iGF), SqrtTiny )
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
     DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
       DO iZ4 = iZ_B0(4), iZ_E0(4)
         DO iZ3 = iZ_B0(3), iZ_E0(3)
 
-          DO iGF = iGF_h_1, iGF_h_3
+          DO iGF = 1, nGF
 
             G_F(1:nDOF_X1,iGF,iZ3,iZ4,iZ2) &
               = OuterProduct1D3D &
@@ -287,13 +375,20 @@ CONTAINS
 
     ! --- Interpolate Radiation Fields ---
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
     DO iZ2 = iZ_B0(2) - 1, iZ_E0(2) + 1
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = iZ_B0(4), iZ_E0(4)
             DO iZ3 = iZ_B0(3), iZ_E0(3)
               DO iZ1 = iZ_B0(1), iZ_E0(1)
-                uCR_K(:,iZ1,iZ3,iZ4,iCR,iS,iZ2) = U(:,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+                DO iNode = 1, nDOF
+                  uCR_K(iNode,iZ1,iZ3,iZ4,iCR,iS,iZ2) = U(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+                END DO
               END DO
             END DO
           END DO
@@ -303,125 +398,102 @@ CONTAINS
 
     ! --- Interpolate Left State ---
 
-    CALL DGEMM &
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Up, nDOF_X1, &
-             uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)-1), nDOF, Zero, uCR_L, nDOF_X1 )
+             uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)-1), nDOF, Zero, &
+             uCR_L(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF_X1 )
 
     ! --- Interpolate Right State ---
 
-    CALL DGEMM &
+    CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Dn, nDOF_X1, &
-             uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF, Zero, uCR_R, nDOF_X1 )
+             uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF, Zero, &
+             uCR_R(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF_X1 )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( Flux_X1_L, Flux_X1_R, FF_L, EF_L, FF_R, EF_R, uPR_L, uPR_R, Tau_X1, alpha, absLambda_L, absLambda_R )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
     DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
       DO iS = 1, nSpecies
         DO iZ4 = iZ_B0(4), iZ_E0(4)
           DO iZ3 = iZ_B0(3), iZ_E0(3)
             DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-              dZ3 = MeshX(2) % Width(iZ3)
-              dZ4 = MeshX(3) % Width(iZ4)
-
-              ! --- Left State Primitive, etc. ---
-
-              CALL ComputePrimitive_TwoMoment &
-                     ( uCR_L(:,iZ1,iZ3,iZ4,iCR_N ,iS,iZ2), &
-                       uCR_L(:,iZ1,iZ3,iZ4,iCR_G1,iS,iZ2), &
-                       uCR_L(:,iZ1,iZ3,iZ4,iCR_G2,iS,iZ2), &
-                       uCR_L(:,iZ1,iZ3,iZ4,iCR_G3,iS,iZ2), &
-                       uPR_L(:,iPR_D ), uPR_L(:,iPR_I1), &
-                       uPR_L(:,iPR_I2), uPR_L(:,iPR_I3), &
-                       G_F(:,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
-                       G_F(:,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
-                       G_F(:,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
-
               DO iNode = 1, nDOF_X1
 
-                FF = FluxFactor &
-                       ( uPR_L(iNode,iPR_D ), uPR_L(iNode,iPR_I1), &
-                         uPR_L(iNode,iPR_I2), uPR_L(iNode,iPR_I3), &
+                ! --- Left State Primitive, etc. ---
+
+                uPR_L(iPR_D ) = uCR_L(iNode,iZ1,iZ3,iZ4,iCR_N ,iS,iZ2)
+                uPR_L(iPR_I1) = uCR_L(iNode,iZ1,iZ3,iZ4,iCR_G1,iS,iZ2) / G_F(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2)
+                uPR_L(iPR_I2) = uCR_L(iNode,iZ1,iZ3,iZ4,iCR_G2,iS,iZ2) / G_F(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2)
+                uPR_L(iPR_I3) = uCR_L(iNode,iZ1,iZ3,iZ4,iCR_G3,iS,iZ2) / G_F(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2)
+
+                FF_L = FluxFactor &
+                       ( uPR_L(iPR_D ), uPR_L(iPR_I1), &
+                         uPR_L(iPR_I2), uPR_L(iPR_I3), &
                          G_F(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                          G_F(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                          G_F(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
-
-                EF = EddingtonFactor( uPR_L(iNode,iPR_D), FF )
-
-                Flux_X1_L(iNode,1:nCR) &
+                EF_L = EddingtonFactor( uPR_L(iPR_D), FF_L )
+                Flux_X1_L(1:nCR) &
                   = Flux_X1 &
-                      ( uPR_L(iNode,iPR_D ), uPR_L(iNode,iPR_I1), &
-                        uPR_L(iNode,iPR_I2), uPR_L(iNode,iPR_I3), &
-                        FF, EF, &
+                      ( uPR_L(iPR_D ), uPR_L(iPR_I1), &
+                        uPR_L(iPR_I2), uPR_L(iPR_I3), &
+                        FF_L, EF_L, &
                         G_F(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                         G_F(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                         G_F(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
 
-                absLambda_L(iNode) = 1.0_DP
+                ! --- Right State Primitive, etc. ---
 
-              END DO
+                uPR_R(iPR_D ) = uCR_R(iNode,iZ1,iZ3,iZ4,iCR_N ,iS,iZ2)
+                uPR_R(iPR_I1) = uCR_R(iNode,iZ1,iZ3,iZ4,iCR_G1,iS,iZ2) / G_F(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2)
+                uPR_R(iPR_I2) = uCR_R(iNode,iZ1,iZ3,iZ4,iCR_G2,iS,iZ2) / G_F(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2)
+                uPR_R(iPR_I3) = uCR_R(iNode,iZ1,iZ3,iZ4,iCR_G3,iS,iZ2) / G_F(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2)
 
-              ! --- Right State Primitive, etc. ---
-
-              CALL ComputePrimitive_TwoMoment &
-                     ( uCR_R(:,iZ1,iZ3,iZ4,iCR_N ,iS,iZ2), &
-                       uCR_R(:,iZ1,iZ3,iZ4,iCR_G1,iS,iZ2), &
-                       uCR_R(:,iZ1,iZ3,iZ4,iCR_G2,iS,iZ2), &
-                       uCR_R(:,iZ1,iZ3,iZ4,iCR_G3,iS,iZ2), &
-                       uPR_R(:,iPR_D ), uPR_R(:,iPR_I1), &
-                       uPR_R(:,iPR_I2), uPR_R(:,iPR_I3), &
-                       G_F(:,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
-                       G_F(:,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
-                       G_F(:,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
-
-              DO iNode = 1, nDOF_X1
-
-                FF = FluxFactor &
-                       ( uPR_R(iNode,iPR_D ), uPR_R(iNode,iPR_I1), &
-                         uPR_R(iNode,iPR_I2), uPR_R(iNode,iPR_I3), &
+                FF_R = FluxFactor &
+                       ( uPR_R(iPR_D ), uPR_R(iPR_I1), &
+                         uPR_R(iPR_I2), uPR_R(iPR_I3), &
                          G_F(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                          G_F(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                          G_F(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
-
-                EF = EddingtonFactor( uPR_R(iNode,iPR_D), FF )
-
-                Flux_X1_R(iNode,1:nCR) &
+                EF_R = EddingtonFactor( uPR_R(iPR_D), FF_R )
+                Flux_X1_R(1:nCR) &
                   = Flux_X1 &
-                      ( uPR_R(iNode,iPR_D ), uPR_R(iNode,iPR_I1), &
-                        uPR_R(iNode,iPR_I2), uPR_R(iNode,iPR_I3), &
-                        FF, EF, &
+                      ( uPR_R(iPR_D ), uPR_R(iPR_I1), &
+                        uPR_R(iPR_I2), uPR_R(iPR_I3), &
+                        FF_R, EF_R, &
                         G_F(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                         G_F(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                         G_F(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
 
-                absLambda_R(iNode) = 1.0_DP
+                ! --- Numerical Flux ---
+
+                DO iCR = 1, nCR
+
+                  absLambda_L = 1.0_DP
+                  absLambda_R = 1.0_DP
+
+                  Tau_X1 = One * G_F(iNode,iGF_SqrtGm,iZ3,iZ4,iZ2)
+                  alpha = MAX( absLambda_L, absLambda_R )
+
+                  NumericalFlux(iNode,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
+                    = NumericalFlux_LLF &
+                        ( uCR_L(iNode,iZ1,iZ3,iZ4,iCR,iS,iZ2), &
+                          uCR_R(iNode,iZ1,iZ3,iZ4,iCR,iS,iZ2), &
+                          Flux_X1_L(iCR), &
+                          Flux_X1_R(iCR), &
+                          alpha )
+
+                  NumericalFlux(iNode,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
+                    = dZ3(iZ3) * dZ4(iZ4) * Weights_X1(iNode) * Tau_X1 &
+                        * G_F(iNode,iGF_Alpha,iZ3,iZ4,iZ2) &
+                        * NumericalFlux(iNode,iCR,iZ1,iZ3,iZ4,iS,iZ2)
+                END DO
 
               END DO
-
-              ! --- Volume Jacobian in Energy-Position Element ---
-
-              Tau_X1(1:nDOF_X1) &
-                = OuterProduct1D3D &
-                    ( Ones(1:nDOFE), nDOFE, G_F(:,iGF_SqrtGm,iZ3,iZ4,iZ2), nDOFX_X1 )
-
-              ! --- Numerical Flux ---
-
-              alpha = MAX( absLambda_L, absLambda_R )
-
-              DO iCR = 1, nCR
-
-                NumericalFlux(:,iZ1,iZ3,iZ4,iCR,iS,iZ2) &
-                  = NumericalFlux_LLF &
-                      ( uCR_L    (:,iZ1,iZ3,iZ4,iCR,iS,iZ2), &
-                        uCR_R    (:,iZ1,iZ3,iZ4,iCR,iS,iZ2), &
-                        Flux_X1_L(:,iCR), &
-                        Flux_X1_R(:,iCR), alpha(:) )
-
-                NumericalFlux(:,iZ1,iZ3,iZ4,iCR,iS,iZ2) &
-                  = dZ3 * dZ4 * Weights_X1(:) * Tau_X1(:) &
-                      * G_F(:,iGF_Alpha,iZ3,iZ4,iZ2) &
-                      * NumericalFlux(:,iZ1,iZ3,iZ4,iCR,iS,iZ2)
-
-              END DO
-
             END DO
           END DO
         END DO
@@ -430,20 +502,27 @@ CONTAINS
 
     ! --- Contribution from Left Face ---
 
-    CALL DGEMM &
+    CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOF, nK, nDOF_X1, + One, L_X1_Dn, nDOF_X1, &
-             NumericalFlux(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF_X1, Zero, dU_K, nDOF )
+             NumericalFlux(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)  ), nDOF_X1, Zero, &
+             dU_X1, nDOF )
 
     ! --- Contribution from Right Face ---
 
-    CALL DGEMM &
+    CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOF, nK, nDOF_X1, - One, L_X1_Up, nDOF_X1, &
-             NumericalFlux(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)+1), nDOF_X1, One,  dU_K, nDOF )
+             NumericalFlux(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)+1), nDOF_X1, One, &
+             dU_X1, nDOF )
 
     !---------------------
     ! --- Volume Term ---
     !---------------------
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
     DO iZ2 = iZ_B0(2), iZ_E0(2)
       DO iZ4 = iZ_B0(4), iZ_E0(4)
         DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -458,63 +537,54 @@ CONTAINS
       END DO
     END DO
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( EF, FF, uPR_K, Tau )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
     DO iZ2 = iZ_B0(2), iZ_E0(2)
       DO iS = 1, nSpecies
         DO iZ4 = iZ_B0(4), iZ_E0(4)
           DO iZ3 = iZ_B0(3), iZ_E0(3)
             DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-              dZ3 = MeshX(2) % Width(iZ3)
-              dZ4 = MeshX(3) % Width(iZ4)
-
-              CALL ComputePrimitive_TwoMoment &
-                     ( uCR_K(:,iZ1,iZ3,iZ4,iCR_N ,iS,iZ2), &
-                       uCR_K(:,iZ1,iZ3,iZ4,iCR_G1,iS,iZ2), &
-                       uCR_K(:,iZ1,iZ3,iZ4,iCR_G2,iS,iZ2), &
-                       uCR_K(:,iZ1,iZ3,iZ4,iCR_G3,iS,iZ2), &
-                       uPR_K(:,iPR_D ), uPR_K(:,iPR_I1), &
-                       uPR_K(:,iPR_I2), uPR_K(:,iPR_I3), &
-                       G_K(:,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
-                       G_K(:,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
-                       G_K(:,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
-
               DO iNode = 1, nDOF
 
+                uPR_K(iPR_D ) = uCR_K(iNode,iZ1,iZ3,iZ4,iCR_N ,iS,iZ2)
+                uPR_K(iPR_I1) = uCR_K(iNode,iZ1,iZ3,iZ4,iCR_G1,iS,iZ2) / G_K(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2)
+                uPR_K(iPR_I2) = uCR_K(iNode,iZ1,iZ3,iZ4,iCR_G2,iS,iZ2) / G_K(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2)
+                uPR_K(iPR_I3) = uCR_K(iNode,iZ1,iZ3,iZ4,iCR_G3,iS,iZ2) / G_K(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2)
+
                 FF = FluxFactor &
-                       ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
-                         uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
+                       ( uPR_K(iPR_D ), uPR_K(iPR_I1), &
+                         uPR_K(iPR_I2), uPR_K(iPR_I3), &
                          G_K(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                          G_K(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                          G_K(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
 
-                EF = EddingtonFactor( uPR_K(iNode,iPR_D), FF )
+                EF = EddingtonFactor( uPR_K(iPR_D), FF )
 
-                Flux_X1_q(iNode,iZ1,iZ3,iZ4,1:nCR,iS,iZ2) &
+                Flux_X1_q(iNode,1:nCR,iZ1,iZ3,iZ4,iS,iZ2) &
                   = Flux_X1 &
-                      ( uPR_K(iNode,iPR_D ), uPR_K(iNode,iPR_I1), &
-                        uPR_K(iNode,iPR_I2), uPR_K(iNode,iPR_I3), &
+                      ( uPR_K(iPR_D ), uPR_K(iPR_I1), &
+                        uPR_K(iPR_I2), uPR_K(iPR_I3), &
                         FF, EF, &
                         G_K(iNode,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                         G_K(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                         G_K(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
 
-              END DO
+                DO iCR = 1, nCR
 
-              ! --- Volume Jacobian in Energy-Position Element ---
+                  Tau = One * G_K(iNode,iGF_SqrtGm,iZ3,iZ4,iZ2)
 
-              Tau(1:nDOF) &
-                = OuterProduct1D3D &
-                    ( Ones(1:nDOFE), nDOFE, G_K(:,iGF_SqrtGm,iZ3,iZ4,iZ2), nDOFX )
+                  Flux_X1_q(iNode,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
+                    = dZ3(iZ3) * dZ4(iZ4) * Weights_q(iNode) * Tau &
+                        * G_K(iNode,iGF_Alpha,iZ3,iZ4,iZ2) &
+                        * Flux_X1_q(iNode,iCR,iZ1,iZ3,iZ4,iS,iZ2)
 
-              DO iCR = 1, nCR
-
-                Flux_X1_q(:,iZ1,iZ3,iZ4,iCR,iS,iZ2) &
-                  = dZ3 * dZ4 * Weights_q(:) * Tau(:) &
-                      * G_K(:,iGF_Alpha,iZ3,iZ4,iZ2) &
-                      * Flux_X1_q(:,iZ1,iZ3,iZ4,iCR,iS,iZ2)
+                END DO
 
               END DO
-
             END DO
           END DO
         END DO
@@ -523,20 +593,344 @@ CONTAINS
 
     ! --- Contribution from Volume ---
 
-    CALL DGEMM &
+    CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOF, nK, nDOF, One, dLdX1_q, nDOF, &
-             Flux_X1_q, nDOF, One, dU_K, nDOF )
+             Flux_X1_q, nDOF, One, dU_X1, nDOF )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
         DO iZ4 = iZ_B0(4), iZ_E0(4)
           DO iZ3 = iZ_B0(3), iZ_E0(3)
             DO iZ2 = iZ_B0(2), iZ_E0(2)
               DO iZ1 = iZ_B0(1), iZ_E0(1)
+                DO iNode = 1, nDOF
 
-                dU(:,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-                  =   dU  (:,iZ1,iZ2  ,iZ3,iZ4,iCR,iS) &
-                    + dU_K(:,iZ1,iZ3,iZ4,iCR,iS,iZ2)
+                  dU(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+                    =   dU  (iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+                      + dU_X1(iNode,iCR,iZ1,iZ3,iZ4,iS,iZ2)
+
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+#ifdef THORNADO_DEBUG_EXPLICIT
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM(dU_X1)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_X1)', MAXLOC(dU_X1)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_X1)', MAXVAL(dU_X1)
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: dZ3, dZ4, GX_K, GX_F, G_K, G_F, uCR_K, uCR_L, uCR_R, dU_X1, Flux_X1_q, NumericalFlux )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+
+    END ASSOCIATE
+
+    wTime_X1 = wTime_X1 + omp_get_wtime()
+
+    IF ( DisplayTimers ) WRITE(*,'(A,ES12.6E2,A)') &
+      '[ComputeIncrement_Divergence_X1] wTime_X1 = ', wTime_X1
+
+  END SUBROUTINE ComputeIncrement_Divergence_X1_New
+
+
+  SUBROUTINE ComputeIncrement_Divergence_X2_New &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
+    REAL(DP), INTENT(in)    :: &
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
+    REAL(DP), INTENT(in)    :: &
+      U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(inout) :: &
+      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+
+    INTEGER  :: nZ(4), nZ_X2(4), nK, nF, nF_GF
+    INTEGER  :: iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF
+    REAL(DP) :: FF, EF, FF_L, EF_L, FF_R, EF_R
+    REAL(DP) :: alpha
+    REAL(DP) :: Tau
+    REAL(DP) :: Tau_X2
+    REAL(DP) :: absLambda_L
+    REAL(DP) :: absLambda_R
+    REAL(DP), DIMENSION(nPR) :: uPR_L, uPR_R
+    REAL(DP), DIMENSION(nPR) :: uPR_K
+    REAL(DP), DIMENSION(nCR) :: Flux_X2_L
+    REAL(DP), DIMENSION(nCR) :: Flux_X2_R
+
+    REAL(DP) :: GX_K         (nDOFX       ,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),iZ_B0(3)-1:iZ_E0(3)+1,nGF)
+    REAL(DP) :: GX_F         (nDOFX_X2    ,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),iZ_B0(3)  :iZ_E0(3)+1,nGF)
+    REAL(DP) :: G_K          (nDOF    ,nGF,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),iZ_B0(3)  :iZ_E0(3)  )
+    REAL(DP) :: G_F          (nDOF_X2 ,nGF,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),iZ_B0(3)  :iZ_E0(3)+1)
+
+    REAL(DP) :: uCR_K        (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(3)-1:iZ_E0(3)+1)
+    REAL(DP) :: uCR_L        (nDOF_X2 ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(3)  :iZ_E0(3)+1)
+    REAL(DP) :: uCR_R        (nDOF_X2 ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(3)  :iZ_E0(3)+1)
+
+    REAL(DP) :: dU_X2         (nDOF    ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(3)  :iZ_E0(3)  )
+    REAL(DP) :: Flux_X2_q    (nDOF    ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(3)  :iZ_E0(3)  )
+    REAL(DP) :: NumericalFlux(nDOF_X2 ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(3)  :iZ_E0(3)+1)
+
+    REAL(DP) :: wTime
+
+    IF( iZ_E0(3) .EQ. iZ_B0(3) ) RETURN
+
+    wTime_X2 = wTime_X2 - omp_get_wtime()
+
+    nZ = iZ_E0 - iZ_B0 + 1
+    nZ_X2 = nZ + [0,0,1,0]
+    nK = nSpecies * nCR * PRODUCT( nZ )
+    nF = nSpecies * nCR * PRODUCT( nZ_X2 )
+    nF_GF = PRODUCT( nZ_X2(2:4) )
+
+    ASSOCIATE ( dZ2 => MeshX(1) % Width, dZ4 => MeshX(3) % Width )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: dZ2, dZ4 ) &
+    !$OMP MAP( alloc: GX_K, GX_F, G_K, G_F, uCR_K, uCR_L, uCR_R, &
+    !$OMP             dU_X2, Flux_X2_q, NumericalFlux )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
+
+    ! --- Geometry Fields in Element Nodes ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iGF = 1, nGF
+      DO iZ3 = iZ_B0(3) - 1, iZ_E0(3) + 1
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iNode = 1, nDOFX
+              GX_K(iNode,iZ2,iZ4,iZ3,iGF) = GX(iNode,iZ2,iZ3,iZ4,iGF)
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    ! --- Interpolate Geometry Fields on Shared Face ---
+
+    ! --- Face States (Average of Left and Right States) ---
+
+    ! --- Scale Factors ---
+
+    DO iGF = iGF_h_1, iGF_h_3
+      
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X2, nF_GF, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+               GX_K(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)-1,iGF), nDOFX, Zero, &
+               GX_F(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF), nDOFX_X2 )
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X2, nF_GF, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+               GX_K(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF), nDOFX, Half, &
+               GX_F(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF), nDOFX_X2 )
+
+    END DO
+
+    ! --- Lapse Function ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nF_GF, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             GX_K(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)-1,iGF_Alpha), nDOFX, Zero, &
+             GX_F(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF_Alpha), nDOFX_X2 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nF_GF, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             GX_K(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF_Alpha), nDOFX, Half, &
+             GX_F(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF_Alpha), nDOFX_X2 )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iGF = 1, nGF
+      DO iZ3 = iZ_B0(3), iZ_E0(3) + 1
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iNode = 1, nDOFX_X2
+              GX_F(iNode,iZ2,iZ4,iZ3,iGF) = MAX( GX_F(iNode,iZ2,iZ4,iZ3,iGF), SqrtTiny )
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iZ3 = iZ_B0(3), iZ_E0(3) + 1
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+          DO iGF = 1, nGF
+
+            G_F(1:nDOF_X2,iGF,iZ2,iZ4,iZ3) &
+              = OuterProduct1D3D &
+                  ( Ones(1:nDOFE), nDOFE, GX_F(1:nDOFX_X2,iZ2,iZ4,iZ3,iGF), nDOFX_X2 )
+
+          END DO
+
+          CALL ComputeGeometryX_FromScaleFactors( G_F(:,:,iZ2,iZ4,iZ3) )
+
+          G_F(1:nDOF_X2,iGF_Alpha,iZ2,iZ4,iZ3) &
+            = OuterProduct1D3D &
+                ( Ones(1:nDOFE), nDOFE, &
+                  GX_F(1:nDOFX_X2,iZ2,iZ4,iZ3,iGF_Alpha), nDOFX_X2 )
+
+        END DO
+      END DO
+    END DO
+
+    ! --- Interpolate Radiation Fields ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iZ3 = iZ_B0(3) - 1, iZ_E0(3) + 1
+      DO iS = 1, nSpecies
+        DO iCR = 1, nCR
+          DO iZ4 = iZ_B0(4), iZ_E0(4)
+            DO iZ2 = iZ_B0(2), iZ_E0(2)
+              DO iZ1 = iZ_B0(1), iZ_E0(1)
+                DO iNode = 1, nDOF
+                  uCR_K(iNode,iZ1,iZ2,iZ4,iCR,iS,iZ3) = U(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    ! --- Interpolate Left State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOF_X2, nF, nDOF, One, L_X2_Up, nDOF_X2, &
+             uCR_K(1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,1,iZ_B0(3)-1), nDOF, Zero, &
+             uCR_L(1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,1,iZ_B0(3)  ), nDOF_X2 )
+
+    ! --- Interpolate Right State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOF_X2, nF, nDOF, One, L_X2_Dn, nDOF_X2, &
+             uCR_K(1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,1,iZ_B0(3)  ), nDOF, Zero, &
+             uCR_R(1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,1,iZ_B0(3)  ), nDOF_X2 )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( Flux_X2_L, Flux_X2_R, FF_L, EF_L, FF_R, EF_R, uPR_L, uPR_R, Tau_X2, alpha, absLambda_L, absLambda_R )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iZ3 = iZ_B0(3), iZ_E0(3) + 1
+      DO iS = 1, nSpecies
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+              DO iNode = 1, nDOF_X2
+
+                ! --- Left State Primitive, etc. ---
+
+                uPR_L(iPR_D ) = uCR_L(iNode,iZ1,iZ2,iZ4,iCR_N ,iS,iZ3)
+                uPR_L(iPR_I1) = uCR_L(iNode,iZ1,iZ2,iZ4,iCR_G1,iS,iZ3) / G_F(iNode,iGF_Gm_dd_11,iZ2,iZ4,iZ3)
+                uPR_L(iPR_I2) = uCR_L(iNode,iZ1,iZ2,iZ4,iCR_G2,iS,iZ3) / G_F(iNode,iGF_Gm_dd_22,iZ2,iZ4,iZ3)
+                uPR_L(iPR_I3) = uCR_L(iNode,iZ1,iZ2,iZ4,iCR_G3,iS,iZ3) / G_F(iNode,iGF_Gm_dd_33,iZ2,iZ4,iZ3)
+
+                FF_L = FluxFactor &
+                       ( uPR_L(iPR_D ), uPR_L(iPR_I1), &
+                         uPR_L(iPR_I2), uPR_L(iPR_I3), &
+                         G_F(iNode,iGF_Gm_dd_11,iZ2,iZ4,iZ3), &
+                         G_F(iNode,iGF_Gm_dd_22,iZ2,iZ4,iZ3), &
+                         G_F(iNode,iGF_Gm_dd_33,iZ2,iZ4,iZ3) )
+                EF_L = EddingtonFactor( uPR_L(iPR_D), FF_L )
+                Flux_X2_L(1:nCR) &
+                  = Flux_X2 &
+                      ( uPR_L(iPR_D ), uPR_L(iPR_I1), &
+                        uPR_L(iPR_I2), uPR_L(iPR_I3), &
+                        FF_L, EF_L, &
+                        G_F(iNode,iGF_Gm_dd_11,iZ2,iZ4,iZ3), &
+                        G_F(iNode,iGF_Gm_dd_22,iZ2,iZ4,iZ3), &
+                        G_F(iNode,iGF_Gm_dd_33,iZ2,iZ4,iZ3) )
+
+                ! --- Right State Primitive, etc. ---
+
+                uPR_R(iPR_D ) = uCR_R(iNode,iZ1,iZ2,iZ4,iCR_N ,iS,iZ3)
+                uPR_R(iPR_I1) = uCR_R(iNode,iZ1,iZ2,iZ4,iCR_G1,iS,iZ3) / G_F(iNode,iGF_Gm_dd_11,iZ2,iZ4,iZ3)
+                uPR_R(iPR_I2) = uCR_R(iNode,iZ1,iZ2,iZ4,iCR_G2,iS,iZ3) / G_F(iNode,iGF_Gm_dd_22,iZ2,iZ4,iZ3)
+                uPR_R(iPR_I3) = uCR_R(iNode,iZ1,iZ2,iZ4,iCR_G3,iS,iZ3) / G_F(iNode,iGF_Gm_dd_33,iZ2,iZ4,iZ3)
+
+                FF_R = FluxFactor &
+                       ( uPR_R(iPR_D ), uPR_R(iPR_I1), &
+                         uPR_R(iPR_I2), uPR_R(iPR_I3), &
+                         G_F(iNode,iGF_Gm_dd_11,iZ2,iZ4,iZ3), &
+                         G_F(iNode,iGF_Gm_dd_22,iZ2,iZ4,iZ3), &
+                         G_F(iNode,iGF_Gm_dd_33,iZ2,iZ4,iZ3) )
+                EF_R = EddingtonFactor( uPR_R(iPR_D), FF_R )
+                Flux_X2_R(1:nCR) &
+                  = Flux_X2 &
+                      ( uPR_R(iPR_D ), uPR_R(iPR_I1), &
+                        uPR_R(iPR_I2), uPR_R(iPR_I3), &
+                        FF_R, EF_R, &
+                        G_F(iNode,iGF_Gm_dd_11,iZ2,iZ4,iZ3), &
+                        G_F(iNode,iGF_Gm_dd_22,iZ2,iZ4,iZ3), &
+                        G_F(iNode,iGF_Gm_dd_33,iZ2,iZ4,iZ3) )
+
+                ! --- Numerical Flux ---
+
+                DO iCR = 1, nCR
+
+                  absLambda_L = 1.0_DP
+                  absLambda_R = 1.0_DP
+
+                  Tau_X2 = One * G_F(iNode,iGF_SqrtGm,iZ2,iZ4,iZ3)
+                  alpha = MAX( absLambda_L, absLambda_R )
+
+                  NumericalFlux(iNode,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
+                    = NumericalFlux_LLF &
+                        ( uCR_L(iNode,iZ1,iZ2,iZ4,iCR,iS,iZ3), &
+                          uCR_R(iNode,iZ1,iZ2,iZ4,iCR,iS,iZ3), &
+                          Flux_X2_L(iCR), &
+                          Flux_X2_R(iCR), &
+                          alpha )
+
+                  NumericalFlux(iNode,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
+                    = dZ2(iZ2) * dZ4(iZ4) * Weights_X2(iNode) * Tau_X2 &
+                        * G_F(iNode,iGF_Alpha,iZ2,iZ4,iZ3) &
+                        * NumericalFlux(iNode,iCR,iZ1,iZ2,iZ4,iS,iZ3)
+                END DO
 
               END DO
             END DO
@@ -545,12 +939,592 @@ CONTAINS
       END DO
     END DO
 
-    wTime_X1 = wTime_X1 + omp_get_wtime()
+    ! --- Contribution from Left Face ---
 
-    WRITE(*,'(A,ES12.6E2,A)') &
-      '[ComputeIncrement_Divergence_X1] wTime_X1 = ', wTime_X1
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOF, nK, nDOF_X2, + One, L_X2_Dn, nDOF_X2, &
+             NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,iZ_B0(3)  ), nDOF_X2, Zero, &
+             dU_X2, nDOF )
 
-  END SUBROUTINE ComputeIncrement_Divergence_X1_GPU
+    ! --- Contribution from Right Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOF, nK, nDOF_X2, - One, L_X2_Up, nDOF_X2, &
+             NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,iZ_B0(3)+1), nDOF_X2, One, &
+             dU_X2, nDOF )
+
+    !---------------------
+    ! --- Volume Term ---
+    !---------------------
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ2 = iZ_B0(2), iZ_E0(2)
+          DO iGF = 1, nGF
+
+            G_K(1:nDOF,iGF,iZ2,iZ4,iZ3) &
+              = OuterProduct1D3D &
+                  ( Ones(1:nDOFE), nDOFE, GX_K(1:nDOFX,iZ2,iZ4,iZ3,iGF), nDOFX )
+
+          END DO
+        END DO
+      END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( EF, FF, uPR_K, Tau )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iS = 1, nSpecies
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+              DO iNode = 1, nDOF
+
+                uPR_K(iPR_D ) = uCR_K(iNode,iZ1,iZ2,iZ4,iCR_N ,iS,iZ3)
+                uPR_K(iPR_I1) = uCR_K(iNode,iZ1,iZ2,iZ4,iCR_G1,iS,iZ3) / G_K(iNode,iGF_Gm_dd_11,iZ2,iZ4,iZ3)
+                uPR_K(iPR_I2) = uCR_K(iNode,iZ1,iZ2,iZ4,iCR_G2,iS,iZ3) / G_K(iNode,iGF_Gm_dd_22,iZ2,iZ4,iZ3)
+                uPR_K(iPR_I3) = uCR_K(iNode,iZ1,iZ2,iZ4,iCR_G3,iS,iZ3) / G_K(iNode,iGF_Gm_dd_33,iZ2,iZ4,iZ3)
+
+                FF = FluxFactor &
+                       ( uPR_K(iPR_D ), uPR_K(iPR_I1), &
+                         uPR_K(iPR_I2), uPR_K(iPR_I3), &
+                         G_K(iNode,iGF_Gm_dd_11,iZ2,iZ4,iZ3), &
+                         G_K(iNode,iGF_Gm_dd_22,iZ2,iZ4,iZ3), &
+                         G_K(iNode,iGF_Gm_dd_33,iZ2,iZ4,iZ3) )
+
+                EF = EddingtonFactor( uPR_K(iPR_D), FF )
+
+                Flux_X2_q(iNode,1:nCR,iZ1,iZ2,iZ4,iS,iZ3) &
+                  = Flux_X2 &
+                      ( uPR_K(iPR_D ), uPR_K(iPR_I1), &
+                        uPR_K(iPR_I2), uPR_K(iPR_I3), &
+                        FF, EF, &
+                        G_K(iNode,iGF_Gm_dd_11,iZ2,iZ4,iZ3), &
+                        G_K(iNode,iGF_Gm_dd_22,iZ2,iZ4,iZ3), &
+                        G_K(iNode,iGF_Gm_dd_33,iZ2,iZ4,iZ3) )
+
+                DO iCR = 1, nCR
+
+                  Tau = One * G_K(iNode,iGF_SqrtGm,iZ2,iZ4,iZ3)
+
+                  Flux_X2_q(iNode,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
+                    = dZ2(iZ2) * dZ4(iZ4) * Weights_q(iNode) * Tau &
+                        * G_K(iNode,iGF_Alpha,iZ2,iZ4,iZ3) &
+                        * Flux_X2_q(iNode,iCR,iZ1,iZ2,iZ4,iS,iZ3)
+
+                END DO
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    ! --- Contribution from Volume ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOF, nK, nDOF, One, dLdX2_q, nDOF, &
+             Flux_X2_q, nDOF, One, dU_X2, nDOF )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ3 = iZ_B0(3), iZ_E0(3)
+            DO iZ2 = iZ_B0(2), iZ_E0(2)
+              DO iZ1 = iZ_B0(1), iZ_E0(1)
+                DO iNode = 1, nDOF
+
+                  dU(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+                    =   dU  (iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+                      + dU_X2(iNode,iCR,iZ1,iZ2,iZ4,iS,iZ3)
+
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+#ifdef THORNADO_DEBUG_EXPLICIT
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM(dU_X2)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_X2)', MAXLOC(dU_X2)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_X2)', MAXVAL(dU_X2)
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: dZ2, dZ4, GX_K, GX_F, G_K, G_F, uCR_K, uCR_L, uCR_R, dU_X2, Flux_X2_q, NumericalFlux )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+
+    END ASSOCIATE
+
+    wTime_X2 = wTime_X2 + omp_get_wtime()
+
+    IF ( DisplayTimers ) WRITE(*,'(A,ES12.6E2,A)') &
+      '[ComputeIncrement_Divergence_X2] wTime_X2 = ', wTime_X2
+
+  END SUBROUTINE ComputeIncrement_Divergence_X2_New
+
+
+  SUBROUTINE ComputeIncrement_Divergence_X3_New &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
+    REAL(DP), INTENT(in)    :: &
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
+    REAL(DP), INTENT(in)    :: &
+      U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(inout) :: &
+      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+
+    INTEGER  :: nZ(4), nZ_X3(4), nK, nF, nF_GF
+    INTEGER  :: iNode, iZ1, iZ2, iZ4, iZ3, iCR, iS, iGF
+    REAL(DP) :: FF, EF, FF_L, EF_L, FF_R, EF_R
+    REAL(DP) :: alpha
+    REAL(DP) :: Tau
+    REAL(DP) :: Tau_X3
+    REAL(DP) :: absLambda_L
+    REAL(DP) :: absLambda_R
+    REAL(DP), DIMENSION(nPR) :: uPR_L, uPR_R
+    REAL(DP), DIMENSION(nPR) :: uPR_K
+    REAL(DP), DIMENSION(nCR) :: Flux_X3_L
+    REAL(DP), DIMENSION(nCR) :: Flux_X3_R
+
+    REAL(DP) :: GX_K         (nDOFX       ,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4)-1:iZ_E0(4)+1,nGF)
+    REAL(DP) :: GX_F         (nDOFX_X3    ,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4)  :iZ_E0(4)+1,nGF)
+    REAL(DP) :: G_K          (nDOF    ,nGF,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4)  :iZ_E0(4)  )
+    REAL(DP) :: G_F          (nDOF_X3 ,nGF,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4)  :iZ_E0(4)+1)
+
+    REAL(DP) :: uCR_K        (nDOF    ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),nCR,nSpecies,iZ_B0(4)-1:iZ_E0(4)+1)
+    REAL(DP) :: uCR_L        (nDOF_X3 ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),nCR,nSpecies,iZ_B0(4)  :iZ_E0(4)+1)
+    REAL(DP) :: uCR_R        (nDOF_X3 ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),nCR,nSpecies,iZ_B0(4)  :iZ_E0(4)+1)
+
+    REAL(DP) :: dU_X3         (nDOF    ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),nSpecies,iZ_B0(4)  :iZ_E0(4)  )
+    REAL(DP) :: Flux_X3_q    (nDOF    ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),nSpecies,iZ_B0(4)  :iZ_E0(4)  )
+    REAL(DP) :: NumericalFlux(nDOF_X3 ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),nSpecies,iZ_B0(4)  :iZ_E0(4)+1)
+
+    REAL(DP) :: wTime
+
+    IF( iZ_E0(4) .EQ. iZ_B0(4) ) RETURN
+
+    wTime_X3 = wTime_X3 - omp_get_wtime()
+
+    nZ = iZ_E0 - iZ_B0 + 1
+    nZ_X3 = nZ + [0,0,0,1]
+    nK = nSpecies * nCR * PRODUCT( nZ )
+    nF = nSpecies * nCR * PRODUCT( nZ_X3 )
+    nF_GF = PRODUCT( nZ_X3(2:4) )
+
+    ASSOCIATE ( dZ2 => MeshX(1) % Width, dZ3 => MeshX(2) % Width )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: dZ2, dZ3 ) &
+    !$OMP MAP( alloc: GX_K, GX_F, G_K, G_F, uCR_K, uCR_L, uCR_R, &
+    !$OMP             dU_X3, Flux_X3_q, NumericalFlux )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
+
+    ! --- Geometry Fields in Element Nodes ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iGF = 1, nGF
+      DO iZ4 = iZ_B0(4) - 1, iZ_E0(4) + 1
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iNode = 1, nDOFX
+              GX_K(iNode,iZ2,iZ3,iZ4,iGF) = GX(iNode,iZ2,iZ3,iZ4,iGF)
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    ! --- Interpolate Geometry Fields on Shared Face ---
+
+    ! --- Face States (Average of Left and Right States) ---
+
+    ! --- Scale Factors ---
+
+    DO iGF = iGF_h_1, iGF_h_3
+ 
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X3, nF_GF, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
+               GX_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)-1,iGF), nDOFX, Zero, &
+               GX_F(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF), nDOFX_X3 )
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X3, nF_GF, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+               GX_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF), nDOFX, Half, &
+               GX_F(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF), nDOFX_X3 )
+
+    END DO
+
+    ! --- Lapse Function ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X3, nF_GF, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
+             GX_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)-1,iGF_Alpha), nDOFX, Zero, &
+             GX_F(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF_Alpha), nDOFX_X3 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X3, nF_GF, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+             GX_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF_Alpha), nDOFX, Half, &
+             GX_F(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF_Alpha), nDOFX_X3 )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iGF = 1, nGF
+      DO iZ4 = iZ_B0(4), iZ_E0(4) + 1
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iNode = 1, nDOFX_X3
+              GX_F(iNode,iZ2,iZ3,iZ4,iGF) = MAX( GX_F(iNode,iZ2,iZ3,iZ4,iGF), SqrtTiny )
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iZ4 = iZ_B0(4), iZ_E0(4) + 1
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+        DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+          DO iGF = 1, nGF
+
+            G_F(1:nDOF_X3,iGF,iZ2,iZ3,iZ4) &
+              = OuterProduct1D3D &
+                  ( Ones(1:nDOFE), nDOFE, GX_F(1:nDOFX_X3,iZ2,iZ3,iZ4,iGF), nDOFX_X3 )
+
+          END DO
+
+          CALL ComputeGeometryX_FromScaleFactors( G_F(:,:,iZ2,iZ3,iZ4) )
+
+          G_F(1:nDOF_X3,iGF_Alpha,iZ2,iZ3,iZ4) &
+            = OuterProduct1D3D &
+                ( Ones(1:nDOFE), nDOFE, &
+                  GX_F(1:nDOFX_X3,iZ2,iZ3,iZ4,iGF_Alpha), nDOFX_X3 )
+
+        END DO
+      END DO
+    END DO
+
+    ! --- Interpolate Radiation Fields ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iZ4 = iZ_B0(4) - 1, iZ_E0(4) + 1
+      DO iS = 1, nSpecies
+        DO iCR = 1, nCR
+          DO iZ3 = iZ_B0(3), iZ_E0(3)
+            DO iZ2 = iZ_B0(2), iZ_E0(2)
+              DO iZ1 = iZ_B0(1), iZ_E0(1)
+                DO iNode = 1, nDOF
+                  uCR_K(iNode,iZ1,iZ2,iZ3,iCR,iS,iZ4) = U(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    ! --- Interpolate Left State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOF_X3, nF, nDOF, One, L_X3_Up, nDOF_X3, &
+             uCR_K(1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,1,iZ_B0(4)-1), nDOF, Zero, &
+             uCR_L(1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,1,iZ_B0(4)  ), nDOF_X3 )
+
+    ! --- Interpolate Right State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOF_X3, nF, nDOF, One, L_X3_Dn, nDOF_X3, &
+             uCR_K(1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,1,iZ_B0(4)  ), nDOF, Zero, &
+             uCR_R(1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,1,iZ_B0(4)  ), nDOF_X3 )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( Flux_X3_L, Flux_X3_R, FF_L, EF_L, FF_R, EF_R, uPR_L, uPR_R, Tau_X3, alpha, absLambda_L, absLambda_R )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iZ4 = iZ_B0(4), iZ_E0(4) + 1
+      DO iS = 1, nSpecies
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+              DO iNode = 1, nDOF_X3
+
+                ! --- Left State Primitive, etc. ---
+
+                uPR_L(iPR_D ) = uCR_L(iNode,iZ1,iZ2,iZ3,iCR_N ,iS,iZ4)
+                uPR_L(iPR_I1) = uCR_L(iNode,iZ1,iZ2,iZ3,iCR_G1,iS,iZ4) / G_F(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4)
+                uPR_L(iPR_I2) = uCR_L(iNode,iZ1,iZ2,iZ3,iCR_G2,iS,iZ4) / G_F(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4)
+                uPR_L(iPR_I3) = uCR_L(iNode,iZ1,iZ2,iZ3,iCR_G3,iS,iZ4) / G_F(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4)
+
+                FF_L = FluxFactor &
+                       ( uPR_L(iPR_D ), uPR_L(iPR_I1), &
+                         uPR_L(iPR_I2), uPR_L(iPR_I3), &
+                         G_F(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
+                         G_F(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
+                         G_F(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+                EF_L = EddingtonFactor( uPR_L(iPR_D), FF_L )
+                Flux_X3_L(1:nCR) &
+                  = Flux_X3 &
+                      ( uPR_L(iPR_D ), uPR_L(iPR_I1), &
+                        uPR_L(iPR_I2), uPR_L(iPR_I3), &
+                        FF_L, EF_L, &
+                        G_F(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
+                        G_F(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
+                        G_F(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+
+                ! --- Right State Primitive, etc. ---
+
+                uPR_R(iPR_D ) = uCR_R(iNode,iZ1,iZ2,iZ3,iCR_N ,iS,iZ4)
+                uPR_R(iPR_I1) = uCR_R(iNode,iZ1,iZ2,iZ3,iCR_G1,iS,iZ4) / G_F(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4)
+                uPR_R(iPR_I2) = uCR_R(iNode,iZ1,iZ2,iZ3,iCR_G2,iS,iZ4) / G_F(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4)
+                uPR_R(iPR_I3) = uCR_R(iNode,iZ1,iZ2,iZ3,iCR_G3,iS,iZ4) / G_F(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4)
+
+                FF_R = FluxFactor &
+                       ( uPR_R(iPR_D ), uPR_R(iPR_I1), &
+                         uPR_R(iPR_I2), uPR_R(iPR_I3), &
+                         G_F(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
+                         G_F(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
+                         G_F(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+                EF_R = EddingtonFactor( uPR_R(iPR_D), FF_R )
+                Flux_X3_R(1:nCR) &
+                  = Flux_X3 &
+                      ( uPR_R(iPR_D ), uPR_R(iPR_I1), &
+                        uPR_R(iPR_I2), uPR_R(iPR_I3), &
+                        FF_R, EF_R, &
+                        G_F(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
+                        G_F(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
+                        G_F(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+
+                ! --- Numerical Flux ---
+
+                DO iCR = 1, nCR
+
+                  absLambda_L = 1.0_DP
+                  absLambda_R = 1.0_DP
+
+                  Tau_X3 = One * G_F(iNode,iGF_SqrtGm,iZ2,iZ3,iZ4)
+                  alpha = MAX( absLambda_L, absLambda_R )
+
+                  NumericalFlux(iNode,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
+                    = NumericalFlux_LLF &
+                        ( uCR_L(iNode,iZ1,iZ2,iZ3,iCR,iS,iZ4), &
+                          uCR_R(iNode,iZ1,iZ2,iZ3,iCR,iS,iZ4), &
+                          Flux_X3_L(iCR), &
+                          Flux_X3_R(iCR), &
+                          alpha )
+
+                  NumericalFlux(iNode,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
+                    = dZ2(iZ2) * dZ3(iZ3) * Weights_X3(iNode) * Tau_X3 &
+                        * G_F(iNode,iGF_Alpha,iZ2,iZ3,iZ4) &
+                        * NumericalFlux(iNode,iCR,iZ1,iZ2,iZ3,iS,iZ4)
+                END DO
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    ! --- Contribution from Left Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOF, nK, nDOF_X3, + One, L_X3_Dn, nDOF_X3, &
+             NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,iZ_B0(4)  ), nDOF_X3, Zero, &
+             dU_X3, nDOF )
+
+    ! --- Contribution from Right Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOF, nK, nDOF_X3, - One, L_X3_Up, nDOF_X3, &
+             NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,iZ_B0(4)+1), nDOF_X3, One, &
+             dU_X3, nDOF )
+
+    !---------------------
+    ! --- Volume Term ---
+    !---------------------
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+        DO iZ2 = iZ_B0(2), iZ_E0(2)
+          DO iGF = 1, nGF
+
+            G_K(1:nDOF,iGF,iZ2,iZ3,iZ4) &
+              = OuterProduct1D3D &
+                  ( Ones(1:nDOFE), nDOFE, GX_K(1:nDOFX,iZ2,iZ3,iZ4,iGF), nDOFX )
+
+          END DO
+        END DO
+      END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( EF, FF, uPR_K, Tau )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iS = 1, nSpecies
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+              DO iNode = 1, nDOF
+
+                uPR_K(iPR_D ) = uCR_K(iNode,iZ1,iZ2,iZ3,iCR_N ,iS,iZ4)
+                uPR_K(iPR_I1) = uCR_K(iNode,iZ1,iZ2,iZ3,iCR_G1,iS,iZ4) / G_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4)
+                uPR_K(iPR_I2) = uCR_K(iNode,iZ1,iZ2,iZ3,iCR_G2,iS,iZ4) / G_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4)
+                uPR_K(iPR_I3) = uCR_K(iNode,iZ1,iZ2,iZ3,iCR_G3,iS,iZ4) / G_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4)
+
+                FF = FluxFactor &
+                       ( uPR_K(iPR_D ), uPR_K(iPR_I1), &
+                         uPR_K(iPR_I2), uPR_K(iPR_I3), &
+                         G_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
+                         G_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
+                         G_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+
+                EF = EddingtonFactor( uPR_K(iPR_D), FF )
+
+                Flux_X3_q(iNode,1:nCR,iZ1,iZ2,iZ3,iS,iZ4) &
+                  = Flux_X3 &
+                      ( uPR_K(iPR_D ), uPR_K(iPR_I1), &
+                        uPR_K(iPR_I2), uPR_K(iPR_I3), &
+                        FF, EF, &
+                        G_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
+                        G_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
+                        G_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+
+                DO iCR = 1, nCR
+
+                  Tau = One * G_K(iNode,iGF_SqrtGm,iZ2,iZ3,iZ4)
+
+                  Flux_X3_q(iNode,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
+                    = dZ2(iZ2) * dZ3(iZ3) * Weights_q(iNode) * Tau &
+                        * G_K(iNode,iGF_Alpha,iZ2,iZ3,iZ4) &
+                        * Flux_X3_q(iNode,iCR,iZ1,iZ2,iZ3,iS,iZ4)
+
+                END DO
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    ! --- Contribution from Volume ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOF, nK, nDOF, One, dLdX3_q, nDOF, &
+             Flux_X3_q, nDOF, One, dU_X3, nDOF )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ3 = iZ_B0(3), iZ_E0(3)
+            DO iZ2 = iZ_B0(2), iZ_E0(2)
+              DO iZ1 = iZ_B0(1), iZ_E0(1)
+                DO iNode = 1, nDOF
+
+                  dU(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+                    =   dU  (iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+                      + dU_X3(iNode,iCR,iZ1,iZ2,iZ3,iS,iZ4)
+
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+#ifdef THORNADO_DEBUG_EXPLICIT
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM(dU_X3)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_X3)', MAXLOC(dU_X3)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_X3)', MAXVAL(dU_X3)
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: dZ2, dZ3, GX_K, GX_F, G_K, G_F, uCR_K, uCR_L, uCR_R, dU_X3, Flux_X3_q, NumericalFlux )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
+
+    END ASSOCIATE
+
+    wTime_X3 = wTime_X3 + omp_get_wtime()
+
+    IF ( DisplayTimers ) WRITE(*,'(A,ES12.6E2,A)') &
+      '[ComputeIncrement_Divergence_X3] wTime_X3 = ', wTime_X3
+
+  END SUBROUTINE ComputeIncrement_Divergence_X3_New
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &
@@ -561,7 +1535,7 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)    :: &
-      GE(1:,iZ_B1(1):,1:)
+      GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
       GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
     REAL(DP), INTENT(in)    :: &
