@@ -1,7 +1,11 @@
 \section{Two-Moment Model}\label{se:Two-MomentModel}
 
 \subsection{Transport Equations}
-We consider neutrino transport through a static background, and include neutrino-matter interactions due to emission, absorption, and isoenergetic scattering.
+We consider neutrino transport through a static background under the Newtonian framework.
+We include neutrino-matter interactions due to emission, absorption, and isoenergetic scattering, which dominate the opacity under the physical conditions that we're interested in.
+It's possible to include other interactions, such as neutrino-electron scattering and neutrino pair production, in the two-moment model.
+But involving those interactions complicates the collision term and requires more efforts in proving the realizability of a scheme.
+We leave it for future work.
 After scaling to dimensionless units, the Boltzmann equation can be written as
 \begin{equation}
   \pd{f}{t}+\vect{\ell}\cdot\nabla f
@@ -84,7 +88,9 @@ As a result, the angular moments $\cJ$ and $\vect{\cH}$ and the Eddington factor
   \leq & \chi \leq \min\big(1,\f{1}{3\cJ}-\f{\cJ}{1-\cJ}h^{2}\big)=\chi_{\mbox{\tiny max}},
   \label{eq:eddingtonFactorBounds}
 \end{align}
-where $h = |\bcH|/\cJ$ is the flux factor.  
+where $h = |\bcH|/\cJ$ is the flux factor.
+These relationships hold for moment in the comoving frame.
+Similar relationships can be derived in the laboratory frame, which we leave for future work.
 
 The constraints in Eq.~\eqref{eq:MomentsBounds} define realizable moments $\bcM$.  
 For fermions, realizable moments can only be constructed from a distribution satisfying the bounds $f \in [0,1]$.  
