@@ -1,6 +1,24 @@
+ifeq ($(USE_GPU),TRUE)
+DeviceModule_prereqs += CudaModule.o
+endif
+ifeq ($(USE_OACC),TRUE)
+DeviceModule_prereqs += OpenACCModule.o
+else ifeq ($(USE_OMP_OL),TRUE)
+DeviceModule_prereqs += OpenMPModule.o
+endif
+ifeq ($(USE_MAGMA),TRUE)
+DeviceModule_prereqs += MagmaModule.o CublasModule.o
+else ifeq ($(USE_CUBLAS),TRUE)
+DeviceModule_prereqs += CublasModule.o
+endif
+
+DeviceModule.o: \
+  $(DeviceModule_prereqs) \
+  DeviceModule.f90
+
 LinearAlgebraModule.o: \
   KindModule.o \
-  cublasf.o \
+  DeviceModule.o \
   LinearAlgebraModule.f90
 
 QuadratureModule.o: \
