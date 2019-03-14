@@ -93,9 +93,9 @@ PROGRAM DeleptonizationWave
   nNodes   = 2
   nSpecies = 2
 
-  nX = [ 32, 32, 1 ]
-  xL = [ - 0.0d2, - 0.0d2, - 5.0d1 ] * Kilometer
-  xR = [ + 1.0d2, + 1.0d2, + 5.0d1 ] * Kilometer
+  nX = [ 8, 8, 8 ]
+  xL = [ - 0.0d2, - 0.0d2, - 0.0d2 ] * Kilometer
+  xR = [ + 1.0d2, + 1.0d2, + 1.0d2 ] * Kilometer
 
   nE = 16
   eL = 0.0d0 * MeV
@@ -107,9 +107,9 @@ PROGRAM DeleptonizationWave
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 01, 01, 00 ], &
+             = [ 01, 01, 01 ], &
            bcX_Option &
-             = [ 32, 32, 00 ], &
+             = [ 32, 32, 32 ], &
            xL_Option &
              = xL, &
            xR_Option &
@@ -243,8 +243,8 @@ PROGRAM DeleptonizationWave
   CALL TimersStart( Timer_Evolve )
 
   t       = 0.0_DP
-  t_end   = 1.0d-0 * Millisecond
-  dt_wrt  = 1.0d-1 * Millisecond
+  t_end   = 5.0d-2 * Millisecond
+  dt_wrt  = 5.0d-2 * Millisecond
   t_wrt   = dt_wrt
   wrt     = .FALSE.
   iCycleD = 1
