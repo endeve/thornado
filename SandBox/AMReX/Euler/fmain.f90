@@ -123,12 +123,16 @@ PROGRAM main
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
            ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
+    CALL MF_uGF(iLevel) % SetVal( 0.0_amrex_real )
     CALL amrex_multifab_build &
            ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+    CALL MF_uCF(iLevel) % SetVal( 0.0_amrex_real )
     CALL amrex_multifab_build &
            ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
+    CALL MF_uPF(iLevel) % SetVal( 0.0_amrex_real )
     CALL amrex_multifab_build &
            ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+    CALL MF_uAF(iLevel) % SetVal( 0.0_amrex_real )
   END DO
 
   ! -- End of initializing AMReX ---
