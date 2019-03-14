@@ -11,6 +11,16 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     nNodesX, nDOFX, &
     nNodesE, nDOFE, &
     nDOF
+  USE TimersModule, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_Explicit, &
+    Timer_Ex_In, &
+    Timer_Ex_Div, &
+    Timer_Ex_Div_X1, &
+    Timer_Ex_Div_X2, &
+    Timer_Ex_Div_X3, &
+    Timer_Ex_Out
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
   USE ReferenceElementModuleX, ONLY: &
@@ -79,18 +89,11 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     Flux_X2, &
     Flux_X3, &
     NumericalFlux_LLF
-  USE OpenMPModule, ONLY: &
-    omp_get_wtime
 
   IMPLICIT NONE
   PRIVATE
 
   REAL(DP), PARAMETER :: Ones(16) = One
-  LOGICAL,  PARAMETER :: DisplayTimers = .false.
-
-  REAL(DP) :: wTime_X1 = Zero
-  REAL(DP) :: wTime_X2 = Zero
-  REAL(DP) :: wTime_X3 = Zero
 
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit
 
@@ -115,8 +118,12 @@ CONTAINS
     INTEGER  :: iNodeX, iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS
     REAL(DP) :: Tau
 
+    CALL TimersStart( Timer_Explicit )
+
     ASSOCIATE ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
                 dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
+
+    CALL TimersStart( Timer_Ex_In )
 
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
@@ -151,14 +158,28 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStop( Timer_Ex_In )
+    CALL TimersStart( Timer_Ex_Div )
+    CALL TimersStart( Timer_Ex_Div_X1 )
+
     CALL ComputeIncrement_Divergence_X1_New &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    CALL TimersStop( Timer_Ex_Div_X1 )
+    CALL TimersStart( Timer_Ex_Div_X2 )
 
     CALL ComputeIncrement_Divergence_X2_New &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
+    CALL TimersStop( Timer_Ex_Div_X2 )
+    CALL TimersStart( Timer_Ex_Div_X3 )
+
     CALL ComputeIncrement_Divergence_X3_New &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    CALL TimersStop( Timer_Ex_Div_X3 )
+    CALL TimersStop( Timer_Ex_Div )
+    CALL TimersStart( Timer_Ex_Out )
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -200,12 +221,16 @@ CONTAINS
 #elif defined(THORNADO_OMP)
 #endif
 
+    CALL TimersStop( Timer_Ex_Out )
+
     END ASSOCIATE
 
 #ifdef THORNADO_DEBUG_EXPLICIT
     WRITE(*,'(a20,7i4)')     'MAXLOC(dU)', MAXLOC(dU)
     WRITE(*,'(a20,es23.15)') 'MAXVAL(dU)', MAXVAL(dU)
 #endif
+
+    CALL TimersStop( Timer_Explicit )
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit
 
@@ -252,11 +277,7 @@ CONTAINS
     REAL(DP) :: Flux_X1_q    (nDOF    ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(2)  :iZ_E0(2)  )
     REAL(DP) :: NumericalFlux(nDOF_X1 ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(2)  :iZ_E0(2)+1)
 
-    REAL(DP) :: wTime
-
     IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
-
-    wTime_X1 = wTime_X1 - omp_get_wtime()
 
     nZ = iZ_E0 - iZ_B0 + 1
     nZ_X1 = nZ + [0,1,0,0]
@@ -641,11 +662,6 @@ CONTAINS
 
     END ASSOCIATE
 
-    wTime_X1 = wTime_X1 + omp_get_wtime()
-
-    IF ( DisplayTimers ) WRITE(*,'(A,ES12.6E2,A)') &
-      '[ComputeIncrement_Divergence_X1] wTime_X1 = ', wTime_X1
-
   END SUBROUTINE ComputeIncrement_Divergence_X1_New
 
 
@@ -691,11 +707,7 @@ CONTAINS
     REAL(DP) :: Flux_X2_q    (nDOF    ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(3)  :iZ_E0(3)  )
     REAL(DP) :: NumericalFlux(nDOF_X2 ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(3)  :iZ_E0(3)+1)
 
-    REAL(DP) :: wTime
-
     IF( iZ_E0(3) .EQ. iZ_B0(3) ) RETURN
-
-    wTime_X2 = wTime_X2 - omp_get_wtime()
 
     nZ = iZ_E0 - iZ_B0 + 1
     nZ_X2 = nZ + [0,0,1,0]
@@ -1080,11 +1092,6 @@ CONTAINS
 
     END ASSOCIATE
 
-    wTime_X2 = wTime_X2 + omp_get_wtime()
-
-    IF ( DisplayTimers ) WRITE(*,'(A,ES12.6E2,A)') &
-      '[ComputeIncrement_Divergence_X2] wTime_X2 = ', wTime_X2
-
   END SUBROUTINE ComputeIncrement_Divergence_X2_New
 
 
@@ -1130,11 +1137,7 @@ CONTAINS
     REAL(DP) :: Flux_X3_q    (nDOF    ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),nSpecies,iZ_B0(4)  :iZ_E0(4)  )
     REAL(DP) :: NumericalFlux(nDOF_X3 ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),nSpecies,iZ_B0(4)  :iZ_E0(4)+1)
 
-    REAL(DP) :: wTime
-
     IF( iZ_E0(4) .EQ. iZ_B0(4) ) RETURN
-
-    wTime_X3 = wTime_X3 - omp_get_wtime()
 
     nZ = iZ_E0 - iZ_B0 + 1
     nZ_X3 = nZ + [0,0,0,1]
@@ -1518,11 +1521,6 @@ CONTAINS
 #endif
 
     END ASSOCIATE
-
-    wTime_X3 = wTime_X3 + omp_get_wtime()
-
-    IF ( DisplayTimers ) WRITE(*,'(A,ES12.6E2,A)') &
-      '[ComputeIncrement_Divergence_X3] wTime_X3 = ', wTime_X3
 
   END SUBROUTINE ComputeIncrement_Divergence_X3_New
 

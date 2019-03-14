@@ -14,6 +14,14 @@ PROGRAM DeleptonizationWave
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
+  USE TimersModule, ONLY: &
+    InitializeTimers, &
+    FinalizeTimers, &
+    TimersStart, &
+    TimersStop, &
+    Timer_Initialize, &
+    Timer_InputOutput, &
+    Timer_Evolve
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
@@ -78,7 +86,7 @@ PROGRAM DeleptonizationWave
   LOGICAL  :: wrt
   INTEGER  :: iCycle, iCycleD
   INTEGER  :: nE, nX(3), nNodes, nSpecies
-  REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt, wTime
+  REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt
   REAL(DP) :: eL, eR
   REAL(DP) :: xL(3), xR(3)
 
@@ -124,6 +132,12 @@ PROGRAM DeleptonizationWave
              = nSpecies, &
            BasicInitialization_Option &
              = .TRUE. )
+
+  ! --- Initialize Timers ---
+
+  CALL InitializeTimers
+
+  CALL TimersStart( Timer_Initialize )
 
   ! --- Position Space Reference Element and Geometry ---
 
@@ -188,12 +202,16 @@ PROGRAM DeleptonizationWave
 
   ! --- Write Initial Condition Before Limiter ---
 
+  CALL TimersStart( Timer_InputOutput )
+
   CALL WriteFieldsHDF &
          ( Time = 0.0_DP, &
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE., &
            WriteOP_Option = .TRUE. )
+
+  CALL TimersStop( Timer_InputOutput )
 
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
@@ -208,6 +226,8 @@ PROGRAM DeleptonizationWave
 
   ! --- Write Initial Condition After Limiter ---
 
+  CALL TimersStart( Timer_InputOutput )
+
   CALL WriteFieldsHDF &
          ( Time = 0.0_DP, &
            WriteGF_Option = .TRUE., &
@@ -215,9 +235,12 @@ PROGRAM DeleptonizationWave
            WriteRF_Option = .TRUE., &
            WriteOP_Option = .TRUE. )
 
+  CALL TimersStop( Timer_InputOutput )
+  CALL TimersStop( Timer_Initialize )
+
   ! --- Evolve ---
 
-  wTime = MPI_WTIME( )
+  CALL TimersStart( Timer_Evolve )
 
   t       = 0.0_DP
   t_end   = 1.0d-0 * Millisecond
@@ -276,12 +299,16 @@ PROGRAM DeleptonizationWave
 
     IF( wrt )THEN
 
+      CALL TimersStart( Timer_InputOutput )
+
       CALL WriteFieldsHDF &
              ( Time = t, &
                WriteGF_Option = .TRUE., &
                WriteFF_Option = .TRUE., &
                WriteRF_Option = .TRUE., &
                WriteOP_Option = .TRUE. )
+
+      CALL TimersStop( Timer_InputOutput )
 
       wrt = .FALSE.
 
@@ -291,6 +318,8 @@ PROGRAM DeleptonizationWave
 
   ! --- Write Final Solution ---
 
+  CALL TimersStart( Timer_InputOutput )
+
   CALL WriteFieldsHDF &
          ( Time = t, &
            WriteGF_Option = .TRUE., &
@@ -298,14 +327,17 @@ PROGRAM DeleptonizationWave
            WriteRF_Option = .TRUE., &
            WriteOP_Option = .TRUE. )
 
-  wTime = MPI_WTIME( ) - wTime
+  CALL TimersStop( Timer_InputOutput )
+  CALL TimersStop( Timer_Evolve )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
-    '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
+    '', 'Finished ', iCycle, ' Cycles in ', Timer_Evolve, ' s'
   WRITE(*,*)
 
   ! --- Finalize ---
+
+  CALL FinalizeTimers
 
   CALL FinalizeReferenceElementX
 

@@ -16,6 +16,10 @@ DeviceModule.o: \
   $(DeviceModule_prereqs) \
   DeviceModule.f90
 
+TimersModule.o: \
+  KindModule.o \
+  TimersModule.f90
+
 LinearAlgebraModule.o: \
   KindModule.o \
   DeviceModule.o \

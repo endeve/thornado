@@ -1,5 +1,6 @@
 LIBRARY = \
   DeviceModule.o \
+  TimersModule.o \
   LinearAlgebraModule.o \
   QuadratureModule.o \
   UtilitiesModule.o \

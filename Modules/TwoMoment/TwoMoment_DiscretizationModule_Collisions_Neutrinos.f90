@@ -16,6 +16,19 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     nNodesZ, &
     nDOFX,   &
     nDOF
+  USE TimersModule, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_Implicit, &
+    Timer_Im_In, &
+    Timer_Im_ComputeTS_Aux, &
+    Timer_Im_ComputeOpacity, &
+    Timer_Im_MapForward, &
+    Timer_Im_Solve, &
+    Timer_Im_Out, &
+    Timer_Im_ComputeTS_Prim, &
+    Timer_Im_Increment, &
+    Timer_Im_MapBackward
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
   USE ReferenceElementModuleX, ONLY: &
@@ -123,6 +136,8 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: Sig(:,:,:)
     REAL(DP), ALLOCATABLE :: fEQ(:,:,:)
 
+    CALL TimersStart( Timer_Implicit )
+
     iE_B0 = iZ_B0(1);   iE_E0 = iZ_E0(1)
     iE_B1 = iZ_B1(1);   iE_E1 = iZ_E1(1)
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
@@ -143,7 +158,7 @@ CONTAINS
 
 !!$      PRINT*, "iX1,iX2,iX3 = ", iX1,iX2,iX3
 
-      wTime = MPI_WTIME( )
+      CALL TimersStart( Timer_Im_In )
 
       DO iCF = 1, nCF
 
@@ -151,10 +166,6 @@ CONTAINS
         dU_F(:,iX1,iX2,iX3,iCF) = CF_N(:,            iCF)
 
       END DO
-
-      wTime = MPI_WTIME( ) - wTime
-
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'Copy to CF_N: ', wTime
 
       CALL ComputePrimitive_Euler &
              ( CF_N(:,iCF_D ), CF_N(:,iCF_S1), CF_N(:,iCF_S2), &
@@ -165,12 +176,16 @@ CONTAINS
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'Copy to CF_N: ', Timer_Implicit_In
+
 !!$      PRINT*, "D  = ", PF_N(:,iPF_D  )
 !!$      PRINT*, "V1 = ", PF_N(:,iPF_V1 )
 !!$      PRINT*, "V2 = ", PF_N(:,iPF_V2 )
 !!$      PRINT*, "V3 = ", PF_N(:,iPF_V3 )
 !!$      PRINT*, "E  = ", PF_N(:,iPF_E  )
 !!$      PRINT*, "Ne = ", PF_N(:,iPF_Ne )
+
+      CALL TimersStart( Timer_Im_ComputeTS_Aux )
 
       CALL ComputeThermodynamicStates_Auxiliary_TABLE &
              ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
@@ -180,7 +195,9 @@ CONTAINS
 !!$      PRINT*, "E  = ", AF_N(:,iAF_E)
 !!$      PRINT*, "Ye = ", AF_N(:,iAF_Ye)
 
-      wTime = MPI_WTIME( )
+      CALL TimersStop( Timer_Im_ComputeTS_Aux )
+
+      CALL TimersStart( Timer_Im_ComputeOpacity )
 
       DO iS = 1, nSpecies
 
@@ -192,20 +209,22 @@ CONTAINS
 
       Sig = Zero
 
-      wTime = MPI_WTIME( ) - wTime
+      CALL TimersStop( Timer_Im_ComputeOpacity )
 
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeNeutrinoOpacities: ', wTime
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeNeutrinoOpacities: ', Timer_Im_ComputeOpacity
 
-      wTime = MPI_WTIME( )
+      CALL TimersStart( Timer_Im_MapForward )
 
       CALL MapForward_R_New &
              ( iE_B0, iE_E0, U_R(:,iE_B0:iE_E0,iX1,iX2,iX3,:,:), CR_N )
 
-      wTime = MPI_WTIME( ) - wTime
+      CALL TimersStop( Timer_Im_MapForward )
 
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'MapForward_R: ', wTime
+      CALL TimersStop( Timer_Im_In )
 
-      wTime = MPI_WTIME( )
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'MapForward_R: ', Timer_Im_MapR
+
+      CALL TimersStart( Timer_Im_Solve )
 
       IF( nSpecies .EQ. 1 )THEN
 
@@ -242,13 +261,19 @@ CONTAINS
 
       END IF
 
-      wTime = MPI_WTIME( ) - wTime
+      CALL TimersStop( Timer_Im_Solve )
 
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'SolveMatterEquations_EmAb: ', wTime
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'SolveMatterEquations_EmAb: ', Timer_Im_Solve
+
+      CALL TimersStart( Timer_Im_Out )
+
+      CALL TimersStart( Timer_Im_ComputeTS_Prim )
 
       CALL ComputeThermodynamicStates_Primitive_TABLE &
              ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
                PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
+
+      CALL TimersStop( Timer_Im_ComputeTS_Prim )
 
       CALL ComputeConserved_Euler &
              ( PF_N(:,iPF_D ), PF_N(:,iPF_V1), PF_N(:,iPF_V2), &
@@ -258,6 +283,8 @@ CONTAINS
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      CALL TimersStart( Timer_Im_Increment )
 
       ! --- Conserved Fluid Increment ---
 
@@ -313,8 +340,16 @@ CONTAINS
       END DO
       END DO
 
+      CALL TimersStop( Timer_Im_Increment )
+
+      CALL TimersStart( Timer_Im_MapBackward )
+
       CALL MapBackward_R_New &
              ( iE_B0, iE_E0, dU_R(:,iE_B0:iE_E0,iX1,iX2,iX3,:,:), dR_N )
+
+      CALL TimersStop( Timer_Im_MapBackward )
+
+      CALL TimersStop( Timer_Im_Out )
 
     END DO
     END DO
@@ -323,6 +358,8 @@ CONTAINS
     DEALLOCATE( Kappa, Chi, Sig, fEQ )
 
     CALL FinalizeCollisions_New
+
+    CALL TimersStop( Timer_Implicit )
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_New
 
