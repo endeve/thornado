@@ -135,103 +135,105 @@ CONTAINS
     IF( .NOT. UsePositivityLimiter ) RETURN
 
     DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
-          U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
+      U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
 
-          NegativeStates = .FALSE.
+      NegativeStates = .FALSE.
 
-          CALL ComputePointValues_Fluid( U_q, U_PP )
+      CALL ComputePointValues_Fluid( U_q, U_PP )
 
-          ! --- Ensure Positive Mass Density ---
+      ! --- Ensure Positive Mass Density ---
 
-          Min_K = MINVAL( U_PP(:,iCF_D) )
+      Min_K = MINVAL( U_PP(:,iCF_D) )
 
-          IF( Min_K < Min_1 )THEN
+      IF( Min_K < Min_1 )THEN
 
-            ! --- Cell Average ---
+        ! --- Cell Average ---
 
-            U_K(iCF_D) = SUM( WeightsX_q(:) * U_q(:,iCF_D) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
-                           / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
+        U_K(iCF_D) &
+          = SUM( WeightsX_q(:) * U_q(:,iCF_D) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+              / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
-            Theta_1 = MIN( One, (U_K(iCF_D)-Min_1)/(U_K(iCF_D)-Min_K) )
+        Theta_1 = MIN( One, (U_K(iCF_D)-Min_1)/(U_K(iCF_D)-Min_K) )
 
-            ! --- Limit Density Towards Cell Average ---
+        ! --- Limit Density Towards Cell Average ---
 
-            U_q(:,iCF_D) = Theta_1 * U_q(:,iCF_D) &
-                           + ( One - Theta_1 ) * U_K(iCF_D)
+        U_q(:,iCF_D) = Theta_1 * U_q(:,iCF_D) &
+                       + ( One - Theta_1 ) * U_K(iCF_D)
 
-            ! --- Recompute Point Values ---
+        ! --- Recompute Point Values ---
 
-            CALL ComputePointValues_Fluid( U_q, U_PP )
+        CALL ComputePointValues_Fluid( U_q, U_PP )
 
-            ! --- Flag for Negative Density ---
+        ! --- Flag for Negative Density ---
 
-            NegativeStates(1) = .TRUE.
+        NegativeStates(1) = .TRUE.
 
-          END IF
+      END IF
 
-          ! --- Ensure Positive Internal Energy Density ---
+      ! --- Ensure Positive Internal Energy Density ---
 
-          CALL ComputeInternalEnergyDensity &
-                 ( nPT, U_PP(1:nPT,1:nCF), IntE(1:nPT) )
+      CALL ComputeInternalEnergyDensity &
+             ( nPT, U_PP(1:nPT,1:nCF), IntE(1:nPT) )
 
-          IF( ANY( IntE(:) < Min_2 ) )THEN
+      IF( ANY( IntE(:) < Min_2 ) )THEN
 
-            ! --- Cell Average ---
+        ! --- Cell Average ---
 
-            DO iCF = 1, nCF
+        DO iCF = 1, nCF
 
-              U_K(iCF) = SUM( WeightsX_q(:) * U_q(:,iCF) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
-                           / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
+          U_K(iCF) &
+            = SUM( WeightsX_q(:) * U_q(:,iCF) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
-            END DO
+        END DO
 
-            Theta_2 = One
-            DO iP = 1, nPT
+        Theta_2 = One
+        DO iP = 1, nPT
 
-              IF( IntE(iP) < Min_2 )THEN
+          IF( IntE(iP) < Min_2 )THEN
 
-                CALL SolveTheta_Bisection &
-                       ( U_PP(iP,1:nCF), U_K(1:nCF), Min_2, Theta_P )
+            CALL SolveTheta_Bisection &
+                   ( U_PP(iP,1:nCF), U_K(1:nCF), Min_2, Theta_P )
 
-                Theta_2 = MIN( Theta_2, Theta_P )
-
-              END IF
-
-            END DO
-
-            ! --- Limit Towards Cell Average ---
-
-            DO iCF = 1, nCF
-
-              U_q(:,iCF) = Theta_2 * U_q(:,iCF) &
-                           + ( One - Theta_2 ) * U_K(iCF)
-
-            END DO
-
-            ! --- Flag for Negative Internal Energy Density ---
-
-            NegativeStates(1) = .FALSE.
-            NegativeStates(2) = .TRUE.
-
-          END IF
-
-          IF( NegativeStates(1) )THEN
-
-            U(1:nDOFX,iX1,iX2,iX3,iCF_D) &
-              = U_q(1:nDOFX,iCF_D)
-
-          ELSEIF( NegativeStates(2) )THEN
-
-            U(1:nDOFX,iX1,iX2,iX3,1:nCF) &
-              = U_q(1:nDOFX,1:nCF)
+            Theta_2 = MIN( Theta_2, Theta_P )
 
           END IF
 
         END DO
-      END DO
+
+        ! --- Limit Towards Cell Average ---
+
+        DO iCF = 1, nCF
+
+          U_q(:,iCF) = Theta_2 * U_q(:,iCF) &
+                       + ( One - Theta_2 ) * U_K(iCF)
+
+        END DO
+
+        ! --- Flag for Negative Internal Energy Density ---
+
+        NegativeStates(1) = .FALSE.
+        NegativeStates(2) = .TRUE.
+
+      END IF
+
+      IF( NegativeStates(1) )THEN
+
+        U(1:nDOFX,iX1,iX2,iX3,iCF_D) &
+          = U_q(1:nDOFX,iCF_D)
+
+      ELSEIF( NegativeStates(2) )THEN
+
+        U(1:nDOFX,iX1,iX2,iX3,1:nCF) &
+          = U_q(1:nDOFX,1:nCF)
+
+      END IF
+
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE Euler_ApplyPositivityLimiter
