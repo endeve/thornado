@@ -24,7 +24,7 @@ MODULE MF_Euler_PositivityLimiterModule
     AMReX2thornado, &
     thornado2AMReX
   USE MyAmrModule,        ONLY: &
-    nLevels, UsePositivityLimiter
+    nLevels, UsePositivityLimiter, DEBUG
 
   IMPLICIT NONE
   PRIVATE
@@ -88,7 +88,7 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nGF) )
 
         CALL AMReX2thornado &
-               ( nCF, iX_B0, iX_E0, &
+               ( nCF, iX_B1, iX_E1, &
                  uCF(      iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nDOFX*nCF), &
@@ -97,6 +97,7 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nCF) )
 
 
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL Euler_ApplyPositivityLimiter'
         CALL Euler_ApplyPositivityLimiter &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
@@ -108,7 +109,7 @@ CONTAINS
 
 
         CALL thornado2AMReX &
-               ( nCF, iX_B0, iX_E0, &
+               ( nCF, iX_B1, iX_E1, &
                  uCF(      iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nDOFX*nCF), &
