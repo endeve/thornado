@@ -4,6 +4,10 @@ MODULE TwoMoment_PositivityLimiterModule
     DP, Zero, Half, One
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, nDOF, nDOFE, nDOFX
+  USE TimersModule, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_PositivityLimiter
   USE ReferenceElementModule, ONLY: &
     nDOF_X1, nDOF_X2, nDOF_X3, &
     Weights_q
@@ -173,6 +177,8 @@ CONTAINS
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
+    CALL TimersStart( Timer_PositivityLimiter )
+
     MinTheta_1 = One
     MinTheta_2 = One
 
@@ -276,6 +282,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_PositivityLimiter )
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 

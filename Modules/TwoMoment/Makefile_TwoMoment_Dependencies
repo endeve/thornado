@@ -20,6 +20,7 @@ TwoMoment_BoundaryConditionsModule.o: \
 TwoMoment_PositivityLimiterModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  TimersModule.o \
   ReferenceElementModule.o \
   ReferenceElementModule_Lagrange.o \
   RadiationFieldsModule.o \
@@ -28,6 +29,7 @@ TwoMoment_PositivityLimiterModule.o: \
 TwoMoment_DiscretizationModule_Streaming.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  TimersModule.o \
   LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
@@ -47,6 +49,7 @@ TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
+  TimersModule.o \
   ReferenceElementModule.o \
   ReferenceElementModuleE.o \
   ReferenceElementModuleX.o \

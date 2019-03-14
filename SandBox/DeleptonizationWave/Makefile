@@ -38,6 +38,7 @@ DeleptonizationWave.o: \
    ProgramHeaderModule.o \
    UnitsModule.o \
    ProgramInitializationModule.o \
+   TimersModule.o \
    ReferenceElementModuleX.o \
    ReferenceElementModuleX_Lagrange.o \
    ReferenceElementModuleE.o \
@@ -78,6 +79,7 @@ InitializationModule.o: \
 TimeSteppingModule_Castro.o: \
    KindModule.o \
    ProgramHeaderModule.o \
+   TimersModule.o \
    FluidFieldsModule.o \
    RadiationFieldsModule.o \
    TwoMoment_DiscretizationModule_Streaming.o \
