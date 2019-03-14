@@ -15,6 +15,9 @@ MODULE MF_Euler_BoundaryConditionsModule
     iEuler_ApplyBC_Outer, &
     iEuler_ApplyBC_None
 
+  USE MyAmrModule, ONLY: &
+    DEBUG
+
   IMPLICIT NONE
   PRIVATE
 
@@ -95,6 +98,7 @@ CONTAINS
 
     CALL Edge_Map % Euler_GetBC( iApplyBC )
 
+    IF( DEBUG ) WRITE(*,'(A)') '      CALL Euler_ApplyBoundaryConditions'
     CALL Euler_ApplyBoundaryConditions &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), iApplyBC )

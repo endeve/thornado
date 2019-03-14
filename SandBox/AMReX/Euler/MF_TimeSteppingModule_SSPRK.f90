@@ -234,6 +234,7 @@ CONTAINS
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplySlopeLimiter (1)'
         CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_U, GEOM )
+        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplyPositivityLimiter (1)'
         CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_U )
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ComputeIncrement'
@@ -253,6 +254,7 @@ CONTAINS
 
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplySlopeLimiter (2)'
     CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
+    IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplyPositivityLimiter (2)'
     CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
 
   END SUBROUTINE MF_UpdateFluid_SSPRK

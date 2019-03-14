@@ -23,7 +23,8 @@ MODULE MF_Euler_SlopeLimiterModule
   ! --- Local Modules ---
   USE MF_UtilitiesModule, ONLY: &
     AMReX2thornado, &
-    thornado2AMReX
+    thornado2AMReX, &
+    ShowVariableFromMultiFab
   USE MyAmrModule,        ONLY: &
     nLevels, UseSlopeLimiter, DEBUG
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
@@ -108,14 +109,15 @@ CONTAINS
 
         ! --- Apply boundary conditions to physical boundaries ---
         CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
-        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplyBoundaryConditions'
+
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_Euler_ApplyBoundaryConditions'
         CALL MF_Euler_ApplyBoundaryConditions &
                ( iX_B0, iX_E0, iX_B1, iX_E1,  &
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF), Edge_Map )
 
-        IF( DEBUG ) WRITE(*,'(A)') '  CALL Euler_ApplySlopeLimiter'
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL Euler_ApplySlopeLimiter'
         CALL Euler_ApplySlopeLimiter &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
