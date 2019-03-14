@@ -65,9 +65,9 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       dt
     REAL(DP), INTENT(inout) :: &
-      U_F(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      U_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      U_R(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U_R(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       Explicit_Option, &
       Implicit_Option, &
