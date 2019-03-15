@@ -91,8 +91,6 @@ PROGRAM main
 
   REAL(amrex_real) :: Timer_Evolution
 
-  INTEGER :: iErr
-
 !!$  CALL MakeMF_Diff( 0, 5857 )
 
   ! --- Initialize AMReX ---
@@ -125,12 +123,16 @@ PROGRAM main
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
            ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
+    CALL MF_uGF(iLevel) % SetVal( 0.0_amrex_real )
     CALL amrex_multifab_build &
            ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+    CALL MF_uCF(iLevel) % SetVal( 0.0_amrex_real )
     CALL amrex_multifab_build &
            ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
+    CALL MF_uPF(iLevel) % SetVal( 0.0_amrex_real )
     CALL amrex_multifab_build &
            ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+    CALL MF_uAF(iLevel) % SetVal( 0.0_amrex_real )
   END DO
 
   ! -- End of initializing AMReX ---
@@ -265,6 +267,13 @@ PROGRAM main
 
     StepNo = StepNo + 1
 
+    IF( DEBUG )THEN
+      WRITE(*,*)
+      WRITE(*,'(A,I4)')       'StepNo: ', StepNo
+      WRITE(*,'(A,ES13.6E3)') 'Time:   ', t
+    END IF
+
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_ComputeTimeStep'
     CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt )
 
     IF( ALL( t + dt .LE. t_end ) )THEN
@@ -280,6 +289,7 @@ PROGRAM main
           '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
     END IF
 
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_UpdateFluid_SSPRK'
     CALL MF_UpdateFluid_SSPRK &
            ( t, dt, MF_uGF, MF_uCF, &
              GEOM, MF_Euler_ComputeIncrement )

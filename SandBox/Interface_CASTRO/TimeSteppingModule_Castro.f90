@@ -6,6 +6,11 @@ MODULE TimeSteppingModule_Castro
     nDOFX, nDOFE, nDOF, &
     iX_B0, iX_B1, iX_E0, iX_E1, &
     iZ_B0, iZ_B1, iZ_E0, iZ_E1
+  USE TimersModule, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_AddFieldsF, &
+    Timer_AddFieldsR
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_Ne
   USE RadiationFieldsModule, ONLY: &
@@ -65,9 +70,9 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       dt
     REAL(DP), INTENT(inout) :: &
-      U_F(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      U_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      U_R(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U_R(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       Explicit_Option, &
       Implicit_Option, &
@@ -360,6 +365,8 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iFF
 
+    CALL TimersStart( Timer_AddFieldsF )
+
     DO iFF = 1, nCF
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
@@ -373,6 +380,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_AddFieldsF )
 
   END SUBROUTINE AddFields_Fluid
 
@@ -392,6 +401,8 @@ CONTAINS
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iRF, iS
 
+    CALL TimersStart( Timer_AddFieldsR )
+
     DO iS = 1, nSpecies
     DO iRF = 1, nCR
     DO iZ4 = iZ_B(4), iZ_E(4)
@@ -409,6 +420,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_AddFieldsR )
 
   END SUBROUTINE AddFields_Radiation
 

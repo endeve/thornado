@@ -168,16 +168,20 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in) :: MF(0:nLevels)
     INTEGER,              INTENT(in) :: iComp
 
-    INTEGER                               :: iX1, iX2, iX3, iLevel
+    INTEGER                               :: iX1, iX2, iX3, iLevel, iBox
     INTEGER                               :: lo(4), hi(4)
     TYPE(amrex_box)                       :: BX
     TYPE(amrex_mfiter)                    :: MFI
     REAL(amrex_real), CONTIGUOUS, POINTER :: U(:,:,:,:)
 
     DO iLevel = 0, nLevels
+
       CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = .TRUE. )
 
+      iBox = 0
       DO WHILE( MFI % next() )
+        iBox = iBox + 1
+        WRITE(*,*) 'iBox = ', iBox
 
         U => MF(iLevel) % DataPtr( MFI )
         BX = MFI % tilebox()
@@ -188,7 +192,7 @@ CONTAINS
         DO iX2 = BX % lo(2) - swX(2), BX % hi(2) + swX(2)
         DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
 
-          WRITE(*,'(A,3I4.3,ES10.1E3)') &
+          WRITE(*,'(A,3I4.3,ES11.2E3)') &
             'iX1, iX2, iX3, Data: ',iX1, iX2, iX3, U(iX1,iX2,iX3,iComp)
 
         END DO

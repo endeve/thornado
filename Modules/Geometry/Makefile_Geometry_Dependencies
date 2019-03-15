@@ -12,7 +12,7 @@ GeometryComputationModule.o: \
   GeometryFieldsModule.o \
   GeometryComputationModule.f90
 
-GeometryFieldsModuleE.o
+GeometryFieldsModuleE.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModuleE.f90

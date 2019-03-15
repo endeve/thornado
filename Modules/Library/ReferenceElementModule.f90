@@ -208,10 +208,26 @@ CONTAINS
 
     END DO
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
+#endif
+
   END SUBROUTINE InitializeReferenceElement
 
 
   SUBROUTINE FinalizeReferenceElement
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( delete: Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC FINALIZE( Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
+#endif
 
     DEALLOCATE( NodeNumbersX )
     DEALLOCATE( NodeNumberTable )
@@ -232,17 +248,24 @@ CONTAINS
 
 
   PURE FUNCTION OuterProduct1D3D( X1D, n1D, X3D, n3D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     INTEGER,  INTENT(in) :: n1D, n3D
     REAL(DP), INTENT(in) :: X1D(n1D)
     REAL(DP), INTENT(in) :: X3D(n3D)
     REAL(DP)             :: OuterProduct1D3D(n1D*n3D)
 
-    INTEGER :: i3D
+    INTEGER :: i3D, i1D
 
     DO i3D = 1, n3D
 
-      OuterProduct1D3D((i3D-1)*n1D+1:(i3D-1)*n1D+n1D) = X1D(:) * X3D(i3D)
+      DO i1D = 1, n1D
+        OuterProduct1D3D((i3D-1)*n1D+i1D) = X1D(i1D) * X3D(i3D)
+      END DO
 
     END DO
 

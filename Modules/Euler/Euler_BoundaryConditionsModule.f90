@@ -17,14 +17,11 @@ MODULE Euler_BoundaryConditionsModule
   PRIVATE
 
   PUBLIC :: Euler_ApplyBoundaryConditions
-  PUBLIC :: Euler_ApplyBC_X1
-  PUBLIC :: Euler_ApplyBC_X2
-  PUBLIC :: Euler_ApplyBC_X3
 
-  INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_None  = 0
-  INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Both  = 1
-  INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Inner = 2
-  INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Outer = 3
+  INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Both  = 0
+  INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Inner = 1
+  INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Outer = 2
+  INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_None  = 3
 
 CONTAINS
 
@@ -54,21 +51,38 @@ CONTAINS
 
 
   SUBROUTINE Euler_ApplyBoundaryConditions &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC_Option )
 
-    INTEGER,  INTENT(in)    :: &
+    INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER,  INTENT(in), OPTIONAL :: &
+      iApplyBC_Option(3)
+
+    INTEGER :: iApplyBC(3)
+
+    iApplyBC = iEuler_ApplyBC_Both
+    IF( PRESENT( iApplyBC_Option ) ) &
+      iApplyBC = iApplyBC_Option
 
     CALL Euler_ApplyBC_X1 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U, iEuler_ApplyBC_Both )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, &
+             U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                       iX_B1(2):iX_E1(2), &
+                       iX_B1(3):iX_E1(3),1:nCF), iApplyBC(1) )
 
     CALL Euler_ApplyBC_X2 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U, iEuler_ApplyBC_Both )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, &
+             U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                       iX_B1(2):iX_E1(2), &
+                       iX_B1(3):iX_E1(3),1:nCF), iApplyBC(2) )
 
     CALL Euler_ApplyBC_X3 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U, iEuler_ApplyBC_Both )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, &
+             U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                       iX_B1(2):iX_E1(2), &
+                       iX_B1(3):iX_E1(3),1:nCF), iApplyBC(3) )
 
   END SUBROUTINE Euler_ApplyBoundaryConditions
 
@@ -139,7 +153,7 @@ CONTAINS
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = 1, swX(1)
-            
+
         DO iNodeX3 = 1, nNodesX(3)
         DO iNodeX2 = 1, nNodesX(2)
         DO iNodeX1 = 1, nNodesX(1)
@@ -379,52 +393,52 @@ CONTAINS
 
     CASE ( 3 ) ! Reflecting
 
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = 1, swX(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = 1, swX(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+        DO iNodeX3 = 1, nNodesX(3)
+        DO iNodeX2 = 1, nNodesX(2)
+        DO iNodeX1 = 1, nNodesX(1)
 
-            jNodeX2 = ( nNodesX(2) - iNodeX2 ) + 1
+          jNodeX2 = ( nNodesX(2) - iNodeX2 ) + 1
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            jNodeX = NodeNumberX( iNodeX1, jNodeX2, iNodeX3 )
+          iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+          jNodeX = NodeNumberX( iNodeX1, jNodeX2, iNodeX3 )
 
-            DO iCF = 1, nCF
+          DO iCF = 1, nCF
 
-              ! --- Inner boundary ---
-              IF( ApplyInnerBC( iApplyBC ) ) &
-                U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF) &
-                  = U(jNodeX,iX1,iX_B0(2),iX3,iCF)
+            ! --- Inner boundary ---
+            IF( ApplyInnerBC( iApplyBC ) ) &
+              U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF) &
+                = U(jNodeX,iX1,iX_B0(2),iX3,iCF)
 
-              ! --- Outer boundary ---
-              IF( ApplyOuterBC( iApplyBC ) ) &
-                U(iNodeX,iX1,iX_E0(2)+iX2,iX3,iCF) &
-                  = U(jNodeX,iX1,iX_E0(2),iX3,iCF)
-
-            END DO
-
-              ! --- Inner boundary ---
-              IF( ApplyInnerBC( iApplyBC ) ) &
-              U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) &
-                = - U(jNodeX,iX1,iX_B0(2),iX3,iCF_S2)
-
-              ! --- Outer boundary ---
-              IF( ApplyOuterBC( iApplyBC ) ) &
-              U(iNodeX,iX1,iX_E0(2)+iX2,iX3,iCF_S2) &
-                = - U(jNodeX,iX1,iX_E0(2),iX3,iCF_S2)
+            ! --- Outer boundary ---
+            IF( ApplyOuterBC( iApplyBC ) ) &
+              U(iNodeX,iX1,iX_E0(2)+iX2,iX3,iCF) &
+                = U(jNodeX,iX1,iX_E0(2),iX3,iCF)
 
           END DO
-          END DO
-          END DO
+
+            ! --- Inner boundary ---
+            IF( ApplyInnerBC( iApplyBC ) ) &
+            U(iNodeX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) &
+              = - U(jNodeX,iX1,iX_B0(2),iX3,iCF_S2)
+
+            ! --- Outer boundary ---
+            IF( ApplyOuterBC( iApplyBC ) ) &
+            U(iNodeX,iX1,iX_E0(2)+iX2,iX3,iCF_S2) &
+              = - U(jNodeX,iX1,iX_E0(2),iX3,iCF_S2)
 
         END DO
         END DO
         END DO
 
-      CASE ( 31 ) ! Reflecting (Inner), Homogeneous (Outer)
+      END DO
+      END DO
+      END DO
+
+    CASE ( 31 ) ! Reflecting (Inner), Homogeneous (Outer)
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)

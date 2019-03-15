@@ -32,7 +32,7 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE MF_UtilitiesModule,               ONLY: &
     LinComb, ShowVariableFromMultiFab
   USE MyAmrModule,                      ONLY: &
-    nLevels
+    nLevels, DEBUG
 
 
   IMPLICIT NONE
@@ -232,9 +232,12 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. 0.0_amrex_real ) &
           .OR. ( w_SSPRK(iS) .NE. 0.0_amrex_real ) )THEN
 
+        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplySlopeLimiter (1)'
         CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_U, GEOM )
+        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplyPositivityLimiter (1)'
         CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_U )
 
+        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ComputeIncrement'
         CALL MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_U, MF_D(:,iS) )
 
       END IF
@@ -249,7 +252,9 @@ CONTAINS
 
     END DO
 
+    IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplySlopeLimiter (2)'
     CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
+    IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplyPositivityLimiter (2)'
     CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
 
   END SUBROUTINE MF_UpdateFluid_SSPRK
