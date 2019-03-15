@@ -10,7 +10,7 @@ GeometryComputationModule.o: \
   ReferenceElementModuleX_Lagrange.o \
   MeshModule.o \
   GeometryFieldsModule.o \
-  GeometryComputationModule.f90
+  GeometryComputationModule.F90
 
 GeometryFieldsModuleE.o: \
   KindModule.o \
