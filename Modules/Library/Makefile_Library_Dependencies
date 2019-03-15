@@ -14,7 +14,7 @@ endif
 
 DeviceModule.o: \
   $(DeviceModule_prereqs) \
-  DeviceModule.f90
+  DeviceModule.F90
 
 TimersModule.o: \
   KindModule.o \
@@ -23,7 +23,7 @@ TimersModule.o: \
 LinearAlgebraModule.o: \
   KindModule.o \
   DeviceModule.o \
-  LinearAlgebraModule.f90
+  LinearAlgebraModule.F90
 
 QuadratureModule.o: \
   KindModule.o \
@@ -54,7 +54,7 @@ ReferenceElementModule.o: \
   KindModule.o \
   QuadratureModule.o \
   ProgramHeaderModule.o \
-  ReferenceElementModule.f90
+  ReferenceElementModule.F90
 
 PolynomialBasisModuleX_Lagrange.o: \
   KindModule.o \
@@ -85,7 +85,7 @@ ReferenceElementModuleX_Lagrange.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   PolynomialBasisModule_Lagrange.o \
-  ReferenceElementModuleX_Lagrange.f90
+  ReferenceElementModuleX_Lagrange.F90
 
 ReferenceElementModuleE_Lagrange.o: \
   KindModule.o \
@@ -99,7 +99,7 @@ ReferenceElementModule_Lagrange.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleE.o \
   PolynomialBasisModule_Lagrange.o \
-  ReferenceElementModule_Lagrange.f90
+  ReferenceElementModule_Lagrange.F90
 
 PolynomialBasisMappingModule.o: \
   KindModule.o \

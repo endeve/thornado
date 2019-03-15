@@ -4,7 +4,7 @@ TwoMoment_ClosureModule.o: \
 
 TwoMoment_UtilitiesModule.o: \
   KindModule.o \
-  TwoMoment_UtilitiesModule.f90
+  TwoMoment_UtilitiesModule.F90
 
 TwoMoment_RefinementModule.o: \
   KindModule.o \
@@ -15,7 +15,7 @@ TwoMoment_BoundaryConditionsModule.o: \
   ProgramHeaderModule.o \
   ReferenceElementModule.o \
   RadiationFieldsModule.o \
-  TwoMoment_BoundaryConditionsModule.f90
+  TwoMoment_BoundaryConditionsModule.F90
 
 TwoMoment_PositivityLimiterModule.o: \
   KindModule.o \
@@ -43,7 +43,7 @@ TwoMoment_DiscretizationModule_Streaming.o: \
   TwoMoment_ClosureModule.o \
   TwoMoment_BoundaryConditionsModule.o \
   TwoMoment_UtilitiesModule.o \
-  TwoMoment_DiscretizationModule_Streaming.f90
+  TwoMoment_DiscretizationModule_Streaming.F90
 
 TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
   KindModule.o \
