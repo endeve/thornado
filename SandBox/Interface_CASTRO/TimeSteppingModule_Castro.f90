@@ -179,8 +179,9 @@ CONTAINS
     end if
 
     IF( CallFromThornado )THEN
-      iX_SW = [ 0, 0, 0 ]     ! --- For Debugging within thornado
-      iZ_SW = [ 0, 0, 0, 0 ]  ! --- For Debugging within thornado
+      iX_SW   = [ 0, 0, 0 ]     ! --- For Debugging within thornado
+      iZ_SW   = [ 0, 0, 0, 0 ]  ! --- For Debugging within thornado
+      iZ_SW_P = [ 0, 0, 0, 0 ]  ! --- For Debugging within thornado
     END IF
 
     ! --- Explicit Step (Radiation Only) ---
