@@ -131,16 +131,17 @@ CONTAINS
     REAL(DP) :: AF_N(1:nDOFX,1:nAF,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     REAL(DP) :: GX_N(1:nDOFX,1:nGF,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
 
-    REAL(DP) :: Kappa
-    REAL(DP) :: Chi (1:nNodesZ(1)*(iZ_E0(1)-iZ_B0(1)+1),1:nSpecies, &
-                     1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: Sig (1:nNodesZ(1)*(iZ_E0(1)-iZ_B0(1)+1),1:nSpecies, &
-                     1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: fEQ (1:nNodesZ(1)*(iZ_E0(1)-iZ_B0(1)+1),1:nSpecies, &
-                     1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: CR_N(1:nNodesZ(1)*(iZ_E0(1)-iZ_B0(1)+1),1:nCR,1:nSpecies, &
-                     1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: dR_N(1:nNodesZ(1)*(iZ_E0(1)-iZ_B0(1)+1),1:nCR,1:nSpecies, &
+    REAL(DP) :: Kappa(1:nNodesZ(1)*(iZ_E0(1)-iZ_B0(1)+1),1:nSpecies, &
+                      1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: Chi  (1:nNodesZ(1)*(iZ_E0(1)-iZ_B0(1)+1),1:nSpecies, &
+                      1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: Sig  (1:nNodesZ(1)*(iZ_E0(1)-iZ_B0(1)+1),1:nSpecies, &
+                      1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: fEQ  (1:nNodesZ(1)*(iZ_E0(1)-iZ_B0(1)+1),1:nSpecies, &
+                      1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: CR_N (1:nNodesZ(1)*(iZ_E0(1)-iZ_B0(1)+1),1:nCR,1:nSpecies, &
+                      1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: dR_N (1:nNodesZ(1)*(iZ_E0(1)-iZ_B0(1)+1),1:nCR,1:nSpecies, &
                      1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
 
     CALL TimersStart( Timer_Implicit )
@@ -269,7 +270,12 @@ CONTAINS
           DO iNodeX = 1, nDOFX
             DO iS = 1, nSpecies
               DO iN_E = 1, nE_G
+
                 Sig(iN_E,iS,iNodeX,iX1,iX2,iX3) = Zero
+
+                Kappa(iN_E,iS,iNodeX,iX1,iX2,iX3) &
+                  = Chi(iN_E,iS,iNodeX,iX1,iX2,iX3) + Sig(iN_E,iS,iNodeX,iX1,iX2,iX3)
+
               END DO
             END DO
           END DO
@@ -444,8 +450,6 @@ CONTAINS
             DO iS = 1, nSpecies
               DO iN_E = 1, nE_G
 
-                Kappa = Chi(iN_E,iS,iNodeX,iX1,iX2,iX3) + Sig(iN_E,iS,iNodeX,iX1,iX2,iX3)
-
                 ! --- Number Density ---
 
                 CR_N(iN_E,iCR_N,iS,iNodeX,iX1,iX2,iX3) &
@@ -455,17 +459,17 @@ CONTAINS
                 ! --- Number Flux (1) ---
 
                 CR_N(iN_E,iCR_G1,iS,iNodeX,iX1,iX2,iX3) &
-                  = CR_N(iN_E,iCR_G1,iS,iNodeX,iX1,iX2,iX3) / ( One + dt * Kappa )
+                  = CR_N(iN_E,iCR_G1,iS,iNodeX,iX1,iX2,iX3) / ( One + dt * Kappa(iN_E,iS,iNodeX,iX1,iX2,iX3) )
 
                 ! --- Number Flux (2) ---
 
                 CR_N(iN_E,iCR_G2,iS,iNodeX,iX1,iX2,iX3) &
-                  = CR_N(iN_E,iCR_G2,iS,iNodeX,iX1,iX2,iX3) / ( One + dt * Kappa )
+                  = CR_N(iN_E,iCR_G2,iS,iNodeX,iX1,iX2,iX3) / ( One + dt * Kappa(iN_E,iS,iNodeX,iX1,iX2,iX3) )
 
                 ! --- Number Flux (3) ---
 
                 CR_N(iN_E,iCR_G3,iS,iNodeX,iX1,iX2,iX3) &
-                  = CR_N(iN_E,iCR_G3,iS,iNodeX,iX1,iX2,iX3) / ( One + dt * Kappa )
+                  = CR_N(iN_E,iCR_G3,iS,iNodeX,iX1,iX2,iX3) / ( One + dt * Kappa(iN_E,iS,iNodeX,iX1,iX2,iX3) )
 
                 ! --- Increments ---
 
@@ -473,13 +477,13 @@ CONTAINS
                   = Chi(iN_E,iS,iNodeX,iX1,iX2,iX3) * ( fEQ(iN_E,iS,iNodeX,iX1,iX2,iX3) - CR_N(iN_E,iCR_N,iS,iNodeX,iX1,iX2,iX3) )
 
                 dR_N(iN_E,iCR_G1,iS,iNodeX,iX1,iX2,iX3) &
-                  = - Kappa * CR_N(iN_E,iCR_G1,iS,iNodeX,iX1,iX2,iX3)
+                  = - Kappa(iN_E,iS,iNodeX,iX1,iX2,iX3) * CR_N(iN_E,iCR_G1,iS,iNodeX,iX1,iX2,iX3)
 
                 dR_N(iN_E,iCR_G2,iS,iNodeX,iX1,iX2,iX3) &
-                  = - Kappa * CR_N(iN_E,iCR_G2,iS,iNodeX,iX1,iX2,iX3)
+                  = - Kappa(iN_E,iS,iNodeX,iX1,iX2,iX3) * CR_N(iN_E,iCR_G2,iS,iNodeX,iX1,iX2,iX3)
 
                 dR_N(iN_E,iCR_G3,iS,iNodeX,iX1,iX2,iX3) &
-                  = - Kappa * CR_N(iN_E,iCR_G3,iS,iNodeX,iX1,iX2,iX3)
+                  = - Kappa(iN_E,iS,iNodeX,iX1,iX2,iX3) * CR_N(iN_E,iCR_G3,iS,iNodeX,iX1,iX2,iX3)
             
               END DO
             END DO
