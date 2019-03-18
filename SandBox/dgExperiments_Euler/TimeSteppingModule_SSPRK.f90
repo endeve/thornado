@@ -30,16 +30,19 @@ MODULE TimeSteppingModule_SSPRK
   PUBLIC :: FinalizeFluid_SSPRK
 
   INTERFACE
-    SUBROUTINE FluidIncrement( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    SUBROUTINE FluidIncrement &
+      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, SuppressBC_Option )
       USE KindModule, ONLY: DP
-      INTEGER, INTENT(in)     :: &
+      INTEGER, INTENT(in)           :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-      REAL(DP), INTENT(in)    :: &
+      REAL(DP), INTENT(in)          :: &
         G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      REAL(DP), INTENT(inout) :: &
+      REAL(DP), INTENT(inout)       :: &
         U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      REAL(DP), INTENT(out)   :: &
+      REAL(DP), INTENT(out)         :: &
         dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      LOGICAL, INTENT(in), OPTIONAL :: &
+        SuppressBC_Option
     END SUBROUTINE FluidIncrement
   END INTERFACE
 
