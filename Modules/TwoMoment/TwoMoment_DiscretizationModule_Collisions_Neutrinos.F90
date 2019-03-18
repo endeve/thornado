@@ -1,3 +1,6 @@
+#ifdef THORNADO_DEBUG
+#define THORNADO_DEBUG_IMPLICIT
+#endif
 MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
   USE KindModule, ONLY: &
@@ -360,6 +363,13 @@ CONTAINS
     CALL FinalizeCollisions_New
 
     CALL TimersStop( Timer_Implicit )
+
+#ifdef THORNADO_DEBUG_IMPLICIT
+    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_F)', MAXLOC(dU_F)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_F)', MAXVAL(dU_F)
+    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_R)', MAXLOC(dU_R)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_R)', MAXVAL(dU_R)
+#endif
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_New
 
