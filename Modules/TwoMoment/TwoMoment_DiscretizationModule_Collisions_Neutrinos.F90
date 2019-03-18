@@ -79,6 +79,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit_New
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit_DGFV
+  PUBLIC :: ComputeIncrement_TwoMoment_Implicit_GPU
 
   ! --- Units Only for Displaying to Screen ---
 
@@ -109,6 +110,272 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: dR_N(:,:,:,:) ! --- Conserved Radiation Increment
 
 CONTAINS
+
+
+  SUBROUTINE ComputeIncrement_TwoMoment_Implicit_GPU &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      dt
+    REAL(DP), INTENT(in)    :: &
+      GE  (1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
+    REAL(DP), INTENT(in)    :: &
+      GX  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
+    REAL(DP), INTENT(in)    :: &
+      U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
+    REAL(DP), INTENT(inout) :: &
+      dU_F(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCF)
+    REAL(DP), INTENT(in)    :: &
+      U_R (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(inout) :: &
+      dU_R(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+
+    INTEGER  :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iNodeX, iE
+    REAL(DP) :: CF_N(1:nDOFX,1:nCF)
+    REAL(DP) :: PF_N(1:nDOFX,1:nPF)
+    REAL(DP) :: AF_N(1:nDOFX,1:nAF)
+    REAL(DP), ALLOCATABLE :: Kappa(:)
+    REAL(DP), ALLOCATABLE :: Chi(:,:,:)
+    REAL(DP), ALLOCATABLE :: Sig(:,:,:)
+    REAL(DP), ALLOCATABLE :: fEQ(:,:,:)
+
+    CALL TimersStart( Timer_Implicit )
+
+    iE_B0 = iZ_B0(1);   iE_E0 = iZ_E0(1)
+    iE_B1 = iZ_B1(1);   iE_E1 = iZ_E1(1)
+    iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
+    iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
+
+!!$    PRINT*, "ComputeIncrement_TwoMoment_Implicit_New"
+
+    CALL InitializeCollisions_New( iE_B0, iE_E0 )
+
+    ALLOCATE( Kappa(nE_G) )
+    ALLOCATE( Chi(nE_G,nSpecies,nDOFX) )
+    ALLOCATE( Sig(nE_G,nSpecies,nDOFX) )
+    ALLOCATE( fEQ(nE_G,nSpecies,nDOFX) )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+!!$      PRINT*, "iX1,iX2,iX3 = ", iX1,iX2,iX3
+
+      CALL TimersStart( Timer_Im_In )
+
+      DO iCF = 1, nCF
+
+        CF_N(:,            iCF) = U_F (:,iX1,iX2,iX3,iCF)
+        dU_F(:,iX1,iX2,iX3,iCF) = CF_N(:,            iCF)
+
+      END DO
+
+      CALL ComputePrimitive_Euler &
+             ( CF_N(:,iCF_D ), CF_N(:,iCF_S1), CF_N(:,iCF_S2), &
+               CF_N(:,iCF_S3), CF_N(:,iCF_E ), CF_N(:,iCF_Ne), &
+               PF_N(:,iPF_D ), PF_N(:,iPF_V1), PF_N(:,iPF_V2), &
+               PF_N(:,iPF_V3), PF_N(:,iPF_E ), PF_N(:,iPF_Ne), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'Copy to CF_N: ', Timer_Implicit_In
+
+!!$      PRINT*, "D  = ", PF_N(:,iPF_D  )
+!!$      PRINT*, "V1 = ", PF_N(:,iPF_V1 )
+!!$      PRINT*, "V2 = ", PF_N(:,iPF_V2 )
+!!$      PRINT*, "V3 = ", PF_N(:,iPF_V3 )
+!!$      PRINT*, "E  = ", PF_N(:,iPF_E  )
+!!$      PRINT*, "Ne = ", PF_N(:,iPF_Ne )
+
+      CALL TimersStart( Timer_Im_ComputeTS_Aux )
+
+      CALL ComputeThermodynamicStates_Auxiliary_TABLE &
+             ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
+               AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
+
+!!$      PRINT*, "T  = ", AF_N(:,iAF_T)
+!!$      PRINT*, "E  = ", AF_N(:,iAF_E)
+!!$      PRINT*, "Ye = ", AF_N(:,iAF_Ye)
+
+      CALL TimersStop( Timer_Im_ComputeTS_Aux )
+
+      CALL TimersStart( Timer_Im_ComputeOpacity )
+
+      DO iS = 1, nSpecies
+
+        CALL ComputeNeutrinoOpacities_EC_Points &
+               ( 1, nE_G, 1, nDOFX, E_N, PF_N(:,iPF_D), &
+                 AF_N(:,iAF_T), AF_N(:,iAF_Ye), iS, Chi(:,iS,:) )
+
+      END DO
+
+      Sig = Zero
+
+      CALL TimersStop( Timer_Im_ComputeOpacity )
+
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeNeutrinoOpacities: ', Timer_Im_ComputeOpacity
+
+      CALL TimersStart( Timer_Im_MapForward )
+
+      CALL MapForward_R_New &
+             ( iE_B0, iE_E0, U_R(:,iE_B0:iE_E0,iX1,iX2,iX3,:,:), CR_N )
+
+      CALL TimersStop( Timer_Im_MapForward )
+
+      CALL TimersStop( Timer_Im_In )
+
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'MapForward_R: ', Timer_Im_MapR
+
+      CALL TimersStart( Timer_Im_Solve )
+
+      IF( nSpecies .EQ. 1 )THEN
+
+        ! --- Single Species (Electron Neutrinos) ---
+
+        DO iNodeX = 1, nDOFX
+
+          CALL SolveMatterEquations_EmAb_NuE &
+                 ( CR_N    (:,iCR_N,iNuE,iNodeX), &
+                   dt * Chi(:,      iNuE,iNodeX), &
+                   fEQ     (:,      iNuE,iNodeX), &
+                   PF_N(iNodeX,iPF_D ), AF_N(iNodeX,iAF_T), &
+                   AF_N(iNodeX,iAF_Ye), AF_N(iNodeX,iAF_E) )
+
+        END DO
+
+      ELSE
+
+        ! --- Electron Neutrinos and Antineutrinos ---
+
+        DO iNodeX = 1, nDOFX
+
+          CALL SolveMatterEquations_EmAb &
+                 ( CR_N    (:,iCR_N,iNuE,    iNodeX), &
+                   CR_N    (:,iCR_N,iNuE_Bar,iNodeX), &
+                   dt * Chi(:,      iNuE,    iNodeX), &
+                   dt * Chi(:,      iNuE_Bar,iNodeX), &
+                   fEQ     (:,      iNuE,    iNodeX), &
+                   fEQ     (:,      iNuE_Bar,iNodeX), &
+                   PF_N(iNodeX,iPF_D ), AF_N(iNodeX,iAF_T), &
+                   AF_N(iNodeX,iAF_Ye), AF_N(iNodeX,iAF_E) )
+
+        END DO
+
+      END IF
+
+      CALL TimersStop( Timer_Im_Solve )
+
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'SolveMatterEquations_EmAb: ', Timer_Im_Solve
+
+      CALL TimersStart( Timer_Im_Out )
+
+      CALL TimersStart( Timer_Im_ComputeTS_Prim )
+
+      CALL ComputeThermodynamicStates_Primitive_TABLE &
+             ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
+               PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
+
+      CALL TimersStop( Timer_Im_ComputeTS_Prim )
+
+      CALL ComputeConserved_Euler &
+             ( PF_N(:,iPF_D ), PF_N(:,iPF_V1), PF_N(:,iPF_V2), &
+               PF_N(:,iPF_V3), PF_N(:,iPF_E ), PF_N(:,iPF_Ne), &
+               CF_N(:,iCF_D ), CF_N(:,iCF_S1), CF_N(:,iCF_S2), &
+               CF_N(:,iCF_S3), CF_N(:,iCF_E ), CF_N(:,iCF_Ne), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      CALL TimersStart( Timer_Im_Increment )
+
+      ! --- Conserved Fluid Increment ---
+
+      DO iCF = 1, nCF
+
+        dU_F(:,iX1,iX2,iX3,iCF) &
+          = ( CF_N(:,iCF) - dU_F(:,iX1,iX2,iX3,iCF) ) /dt
+
+      END DO
+
+      ! --- Update Radiation Fields ---
+
+      DO iNodeX = 1, nDOFX
+      DO iS     = 1, nSpecies
+
+        Kappa = Chi(:,iS,iNodeX) + Sig(:,iS,iNodeX)
+
+        ! --- Number Density ---
+
+        CR_N(:,iCR_N,iS,iNodeX) &
+          = ( dt * Chi(:,iS,iNodeX) * fEQ(:,iS,iNodeX) &
+              + CR_N(:,iCR_N,iS,iNodeX) ) / ( One + dt * Chi(:,iS,iNodeX) )
+
+        ! --- Number Flux (1) ---
+
+        CR_N(:,iCR_G1,iS,iNodeX) &
+          = CR_N(:,iCR_G1,iS,iNodeX) / ( One + dt * Kappa )
+
+        ! --- Number Flux (2) ---
+
+        CR_N(:,iCR_G2,iS,iNodeX) &
+          = CR_N(:,iCR_G2,iS,iNodeX) / ( One + dt * Kappa )
+
+        ! --- Number Flux (3) ---
+
+        CR_N(:,iCR_G3,iS,iNodeX) &
+          = CR_N(:,iCR_G3,iS,iNodeX) / ( One + dt * Kappa )
+
+        ! --- Increments ---
+
+        dR_N(:,iCR_N,iS,iNodeX) &
+          = Chi(:,iS,iNodeX) * ( fEQ(:,iS,iNodeX) - CR_N(:,iCR_N,iS,iNodeX) )
+
+        dR_N(:,iCR_G1,iS,iNodeX) &
+          = - Kappa * CR_N(:,iCR_G1,iS,iNodeX)
+
+        dR_N(:,iCR_G2,iS,iNodeX) &
+          = - Kappa * CR_N(:,iCR_G2,iS,iNodeX)
+
+        dR_N(:,iCR_G3,iS,iNodeX) &
+          = - Kappa * CR_N(:,iCR_G3,iS,iNodeX)
+        
+      END DO
+      END DO
+
+      CALL TimersStop( Timer_Im_Increment )
+
+      CALL TimersStart( Timer_Im_MapBackward )
+
+      CALL MapBackward_R_New &
+             ( iE_B0, iE_E0, dU_R(:,iE_B0:iE_E0,iX1,iX2,iX3,:,:), dR_N )
+
+      CALL TimersStop( Timer_Im_MapBackward )
+
+      CALL TimersStop( Timer_Im_Out )
+
+    END DO
+    END DO
+    END DO
+
+    DEALLOCATE( Kappa, Chi, Sig, fEQ )
+
+    CALL FinalizeCollisions_New
+
+    CALL TimersStop( Timer_Implicit )
+
+#ifdef THORNADO_DEBUG_IMPLICIT
+    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_F)', MAXLOC(dU_F)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_F)', MAXVAL(dU_F)
+    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_R)', MAXLOC(dU_R)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_R)', MAXVAL(dU_R)
+#endif
+
+  END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_GPU
 
 
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit_New &

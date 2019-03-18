@@ -20,7 +20,8 @@ MODULE TimeSteppingModule_Castro
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
     ComputeIncrement_TwoMoment_Implicit, &
     ComputeIncrement_TwoMoment_Implicit_New, &
-    ComputeIncrement_TwoMoment_Implicit_DGFV
+    ComputeIncrement_TwoMoment_Implicit_DGFV, &
+    ComputeIncrement_TwoMoment_Implicit_GPU
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment
 
@@ -227,7 +228,7 @@ CONTAINS
 
     IF( Implicit )THEN
 
-      CALL ComputeIncrement_TwoMoment_Implicit_New &
+      CALL ComputeIncrement_TwoMoment_Implicit_GPU &
              ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, dt, &
                uGE, uGF, &
                U_F, Q1_F &
@@ -316,7 +317,7 @@ CONTAINS
 
     IF( Implicit )THEN
 
-      CALL ComputeIncrement_TwoMoment_Implicit_New &
+      CALL ComputeIncrement_TwoMoment_Implicit_GPU &
              ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, Half * dt, &
                uGE, uGF, &
                U_F, Q1_F &
