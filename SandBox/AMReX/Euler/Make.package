@@ -42,7 +42,7 @@ f90EXE_sources += UnitsModule.f90
 
 # In THORNADO_DIR/Modules/ProgramHeader:
 
-f90EXE_sources += ProgramHeaderModule.f90
+F90EXE_sources += ProgramHeaderModule.F90
 
 # In THORNADO_DIR/Modules/Library:
 
@@ -51,11 +51,11 @@ f90EXE_sources += LagrangePolynomialsModule.f90
 f90EXE_sources += ReferenceElementModuleX.f90
 f90EXE_sources += PolynomialBasisModuleX_Lagrange.f90
 f90EXE_sources += PolynomialBasisModuleX_Legendre.f90
-f90EXE_sources += ReferenceElementModuleX_Lagrange.f90
+F90EXE_sources += ReferenceElementModuleX_Lagrange.F90
 f90EXE_sources += UtilitiesModule.f90
 f90EXE_sources += PolynomialBasisModule_Lagrange.f90
 f90EXE_sources += PolynomialBasisModule_Legendre.f90
-f90EXE_sources += ReferenceElementModule.f90
+F90EXE_sources += ReferenceElementModule.F90
 f90EXE_sources += PolynomialBasisMappingModule.f90
 
 # In THORNADO_DIR/Modules/Mesh:
@@ -71,7 +71,7 @@ f90EXE_sources += EquationOfStateModule.f90
 # In THORNADO_DIR/Modules/Geometry:
 
 f90EXE_sources += GeometryFieldsModule.f90
-f90EXE_sources += GeometryComputationModule.f90
+F90EXE_sources += GeometryComputationModule.F90
 
 # In THORNADO_DIR/Modules/Fields:
 
