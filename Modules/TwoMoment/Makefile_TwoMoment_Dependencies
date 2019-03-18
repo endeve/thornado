@@ -63,6 +63,24 @@ TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
   NeutrinoOpacitiesComputationModule.o \
   TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90
 
+TwoMoment_DiscretizationModule_Collisions_Neutrinos_GPU.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  TimersModule.o \
+  ReferenceElementModule.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
+  NeutrinoOpacitiesModule.o \
+  NeutrinoOpacitiesComputationModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos_GPU.F90
+
 TwoMoment_MeshRefinementModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
