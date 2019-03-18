@@ -356,11 +356,11 @@ CONTAINS
             DO iNodeX = 1, nDOFX
 
               CALL SolveMatterEquations_EmAb &
-                     ( CR_N    (:,iCR_N,iNuE,    iNodeX,iX1,iX2,iX3), &
+                     ( CR_N    (:,iCR_N,iNuE    ,iNodeX,iX1,iX2,iX3), &
                        CR_N    (:,iCR_N,iNuE_Bar,iNodeX,iX1,iX2,iX3), &
-                       dt * Chi(:,      iNuE,    iNodeX,iX1,iX2,iX3), &
+                       dt * Chi(:,      iNuE    ,iNodeX,iX1,iX2,iX3), &
                        dt * Chi(:,      iNuE_Bar,iNodeX,iX1,iX2,iX3), &
-                       fEQ     (:,      iNuE,    iNodeX,iX1,iX2,iX3), &
+                       fEQ     (:,      iNuE    ,iNodeX,iX1,iX2,iX3), &
                        fEQ     (:,      iNuE_Bar,iNodeX,iX1,iX2,iX3), &
                        PF_N(iNodeX,iPF_D ,iX1,iX2,iX3), &
                        AF_N(iNodeX,iAF_T ,iX1,iX2,iX3), &
