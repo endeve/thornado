@@ -131,9 +131,9 @@ INCLUDE_POSEIDON_kristopher    = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON               = $(INCLUDE_POSEIDON_$(MACHINE))
 
 INCLUDE_LAPACK_ranchu          = -I/usr/include
-INCLUDE_LAPACK_summit_gcc      = -I$(OLCF_ROOT_ESSL)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
-INCLUDE_LAPACK_summit_pgi      = -I$(OLCF_ROOT_ESSL)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
-INCLUDE_LAPACK_summit_xl       = -I$(OLCF_ROOT_ESSL)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
+INCLUDE_LAPACK_summit_gcc      = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
+INCLUDE_LAPACK_summit_pgi      = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
+INCLUDE_LAPACK_summit_xl       = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK                 = $(INCLUDE_LAPACK_$(MACHINE))
 
 INCLUDE_CUDA_summit_gcc        = -I$(OLCF_CUDA_ROOT)/include
