@@ -18,6 +18,14 @@ MODULE TimersModule
   REAL(DP), PUBLIC :: Timer_Ex_In    
   REAL(DP), PUBLIC :: Timer_Ex_Div   
   REAL(DP), PUBLIC :: Timer_Ex_Div_X1
+  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_In
+  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_G
+  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_U
+  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_S
+  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_V
+  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_dU
+  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_Out
+  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_MM
   REAL(DP), PUBLIC :: Timer_Ex_Div_X2
   REAL(DP), PUBLIC :: Timer_Ex_Div_X3
   REAL(DP), PUBLIC :: Timer_Ex_Out   
@@ -53,6 +61,14 @@ CONTAINS
     Timer_Ex_In             = Zero
     Timer_Ex_Div            = Zero
     Timer_Ex_Div_X1         = Zero
+    Timer_Ex_Div_X1_In      = Zero
+    Timer_Ex_Div_X1_G       = Zero
+    Timer_Ex_Div_X1_U       = Zero
+    Timer_Ex_Div_X1_S       = Zero
+    Timer_Ex_Div_X1_V       = Zero
+    Timer_Ex_Div_X1_dU      = Zero
+    Timer_Ex_Div_X1_Out     = Zero
+    Timer_Ex_Div_X1_MM      = Zero
     Timer_Ex_Div_X2         = Zero
     Timer_Ex_Div_X3         = Zero
     Timer_Ex_Out            = Zero
@@ -86,6 +102,14 @@ CONTAINS
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_In               :', Timer_Ex_In            , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_Div              :', Timer_Ex_Div           , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Ex_Div_X1         :', Timer_Ex_Div_X1        , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_In    :', Timer_Ex_Div_X1_In     , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_G     :', Timer_Ex_Div_X1_G      , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_U     :', Timer_Ex_Div_X1_U      , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_S     :', Timer_Ex_Div_X1_S      , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_V     :', Timer_Ex_Div_X1_V      , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_dU    :', Timer_Ex_Div_X1_dU     , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_Out   :', Timer_Ex_Div_X1_Out    , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_MM    :', Timer_Ex_Div_X1_MM     , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Ex_Div_X2         :', Timer_Ex_Div_X2        , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Ex_Div_X3         :', Timer_Ex_Div_X3        , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_Out              :', Timer_Ex_Out           , ' s'
