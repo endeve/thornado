@@ -9,6 +9,7 @@ TimeSteppingModule.o: \
   EquationOfStateModule.o \
   InputOutputModule.o \
   TallyModule.o \
+  GravitySolutionModule.o \
   EulerEquationsUtilitiesModule.o \
   FluidEvolutionModule.o \
   RadiationEvolutionModule.o \
