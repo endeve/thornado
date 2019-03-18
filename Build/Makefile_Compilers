@@ -1,4 +1,7 @@
+OPENMP_summit_gcc    = -fopenmp
+OPENMP_summit_pgi    = -mp
 OPENMP_summit_xl     = -qsmp=omp:noauto
+OPENMP_OL_summit_pgi = $(OPENMP_summit_pgi)
 OPENMP_OL_summit_xl  = $(OPENMP_summit_xl) -qoffload
 ifeq ($(USE_OMP),TRUE)
 OPENMP               = $(OPENMP_$(MACHINE))
@@ -6,6 +9,15 @@ else ifeq ($(USE_OMP_OL),TRUE)
 OPENMP               = $(OPENMP_OL_$(MACHINE))
 endif
 
+OPENACC_summit_gcc   = -fopenacc
+OPENACC_summit_pgi   = -acc -ta=tesla:cc70,cuda9.2,ptxinfo -Minfo=accel
+OPENACC_summit_xl    =
+ifeq ($(USE_OACC),TRUE)
+OPENACC              = $(OPENACC_$(MACHINE))
+endif
+
+C_summit_pgi         = mpic++ -std=c++11 $(OPENMP)
+C_summit_pgi         = mpic++ --c++11 $(OPENMP)
 C_summit_xl          = mpic++ -std=c++11 $(OPENMP)
 C                    = $(C_$(MACHINE))
 
@@ -21,6 +33,8 @@ FORTRAN_titan_gnu    = ftn
 FORTRAN_titan_cray   = ftn
 FORTRAN_beacon_intel = mpiifort -mkl
 FORTRAN_mcarpe21     = mpiifort
+FORTRAN_summit_gcc   = mpifort $(OPENMP)
+FORTRAN_summit_pgi   = mpifort -Mpreprocess $(OPENMP)
 FORTRAN_summit_xl    = mpifort -qpreprocess $(OPENMP)
 FORTRAN              = $(FORTRAN_$(MACHINE))
 
@@ -35,6 +49,8 @@ SUFFIX_f90_zelledge     =
 SUFFIX_f90_titan_gnu    = 
 SUFFIX_f90_titan_cray   = 
 SUFFIX_f90_beacon_intel = 
+SUFFIX_f90_summit_gcc   =
+SUFFIX_f90_summit_pgi   =
 SUFFIX_f90_summit_xl    = 
 SUFFIX_f90              = $(SUFFIX_f90_$(MACHINE))
 
@@ -50,6 +66,8 @@ FLINKER_titan_gnu    = ftn
 FLINKER_titan_cray   = ftn
 FLINKER_beacon_intel = mpiifort -mkl
 FLINKER_mcarpe21     = mpiifort
+FLINKER_summit_gcc   = mpifort $(OPENMP)
+FLINKER_summit_pgi   = mpifort -Mpreprocess $(OPENMP)
 FLINKER_summit_xl    = mpifort -qpreprocess $(OPENMP)
 FLINKER              = $(FLINKER_$(MACHINE))
 
@@ -66,6 +84,8 @@ DEBUG_titan_gnu    = -g -ffpe-trap=invalid,zero -fcheck=bounds
 DEBUG_titan_cray   = -G0 -hfp0 -K trap=fp
 DEBUG_beacon_intel = -g -warn all -fpe0 -fpe-all=0 -ftrapuv -traceback -CB
 DEBUG_mcarpe21     = -g
+DEBUG_summit_gcc   = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
+DEBUG_summit_pgi   = -O0 -Mbounds -Mnoopenmp
 DEBUG_summit_xl    = -g9 -qtbtable=full -O2 -qsclk=micro -qstrict=all -qsuppress=cmpmsg -qflag=i:w -qfloat=rngchk -qcheck=all:nounset -qflttrap=enable:invalid:nanq:overflow:zerodivide -qsigtrap=xl__trcedump
 DEBUG              = $(DEBUG_$(MACHINE))
 
@@ -82,6 +102,8 @@ OPTIMIZE_titan_gnu    = -O2
 OPTIMIZE_titan_cray   = 
 OPTIMIZE_beacon_intel = -fast
 OPTIMIZE_mcarpe21     = -O2
+OPTIMIZE_summit_gcc   = -g -Ofast
+OPTIMIZE_summit_pgi   = -g -fast
 OPTIMIZE_summit_xl    = -g -O3 -qarch=pwr9 -qtune=pwr9 -qsclk=micro -qsuppress=cmpmsg -w
 OPTIMIZE              = $(OPTIMIZE_$(MACHINE))
 
@@ -98,6 +120,8 @@ INCLUDE_HDF5_titan_gnu         = # Use Module Load
 INCLUDE_HDF5_titan_cray        = # Use Module Load
 INCLUDE_HDF5_beacon_intel      = $(HDF5_INC)
 INCLUDE_HDF5_mcarpe21	       = -I/opt/hdf5/include
+INCLUDE_HDF5_summit_gcc        = -I$(OLCF_HDF5_ROOT)/include
+INCLUDE_HDF5_summit_pgi        = -I$(OLCF_HDF5_ROOT)/include
 INCLUDE_HDF5_summit_xl         = -I$(OLCF_HDF5_ROOT)/include
 INCLUDE_HDF5                   = $(INCLUDE_HDF5_$(MACHINE))
 
@@ -108,12 +132,18 @@ INCLUDE_POSEIDON               = $(INCLUDE_POSEIDON_$(MACHINE))
 
 INCLUDE_LAPACK_ranchu          = -I/usr/include
 INCLUDE_LAPACK_ranchuair       = -I/usr/local/opt/lapack/include
+INCLUDE_LAPACK_summit_gcc      = -I$(OLCF_ROOT_ESSL)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
+INCLUDE_LAPACK_summit_pgi      = -I$(OLCF_ROOT_ESSL)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_xl       = -I$(OLCF_ROOT_ESSL)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK                 = $(INCLUDE_LAPACK_$(MACHINE))
 
+INCLUDE_CUDA_summit_gcc        = -I$(OLCF_CUDA_ROOT)/include
+INCLUDE_CUDA_summit_pgi        = -I$(OLCF_CUDA_ROOT)/include
 INCLUDE_CUDA_summit_xl         = -I$(OLCF_CUDA_ROOT)/include
 INCLUDE_CUDA                   = $(INCLUDE_CUDA_$(MACHINE))
 
+INCLUDE_MAGMA_summit_gcc       = -I$(OLCF_MAGMA_ROOT)/include
+INCLUDE_MAGMA_summit_pgi       = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_summit_xl        = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA                  = $(INCLUDE_MAGMA_$(MACHINE))
 
@@ -133,6 +163,8 @@ LIBRARIES_HDF5_darter_gnu      = # Use Module Load
 LIBRARIES_HDF5_darter_cray     = # Use Module Load
 LIBRARIES_HDF5_beacon_intel    = $(HDF5_LIB) -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_mcarpe21	       = -L/opt/hdf5/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_summit_gcc      = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_summit_pgi      = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_summit_xl       = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5                 = $(LIBRARIES_HDF5_$(MACHINE))
 
@@ -145,18 +177,28 @@ LIBRARIES_LAPACK_ranchu        = -L/usr/lib -llapack -lblas
 LIBRARIES_LAPACK_ranchuair     = -L/usr/local/opt/lapack/lib -llapack -lblas
 LIBRARIES_LAPACK_mcarpe21      = -L/usr/lib/lapack -llapack \
 				 -L/usr/lib/libblas -lblas
+LIBRARIES_LAPACK_summit_gcc    = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
+                                 -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
+LIBRARIES_LAPACK_summit_pgi    = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
+                                 -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
 LIBRARIES_LAPACK_summit_xl     = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
                                  -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
 LIBRARIES_LAPACK               = $(LIBRARIES_LAPACK_$(MACHINE))
 
+LIBRARIES_CUDA_summit_gcc      = -L$(OLCF_CUDA_ROOT)/lib64 -lcublas -lcudart -lcuda
+LIBRARIES_CUDA_summit_pgi      = -L$(OLCF_CUDA_ROOT)/lib64 -lcublas -lcudart -lcuda
 LIBRARIES_CUDA_summit_xl       = -L$(OLCF_CUDA_ROOT)/lib64 -lcublas -lcudart -lcuda
 LIBRARIES_CUDA                 = $(LIBRARIES_CUDA_$(MACHINE))
 
+LIBRARIES_MAGMA_summit_gcc     = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
+LIBRARIES_MAGMA_summit_pgi     = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_summit_xl      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA                = $(LIBRARIES_MAGMA_$(MACHINE))
 
 LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_POSEIDON)
 
+PP_summit_gcc                  =
+PP_summit_pgi                  =
 PP_summit_xl                   = -WF,
 PP                             = $(PP_$(MACHINE))
 
