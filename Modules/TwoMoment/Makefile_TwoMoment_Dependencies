@@ -60,7 +60,7 @@ TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
   EquationOfStateModule_TABLE.o \
   NeutrinoOpacitiesModule.o \
   NeutrinoOpacitiesComputationModule.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos.f90
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90
 
 TwoMoment_MeshRefinementModule.o: \
   KindModule.o \
