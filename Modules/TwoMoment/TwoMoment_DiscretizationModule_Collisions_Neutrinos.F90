@@ -18,6 +18,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     nNodesX, &
     nNodesZ, &
     nDOFX,   &
+    nDOFE,   &
     nDOF
   USE TimersModule, ONLY: &
     TimersStart, &
@@ -45,6 +46,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+  USE GeometryFieldsModuleE, ONLY: &
+    nGE
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
@@ -118,17 +121,17 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       dt
     REAL(DP), INTENT(in)    :: &
-      GE(1:,iZ_B1(1):,1:)
+      GE  (1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
-      GX  (1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      GX  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(in)    :: &
-      U_F (1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      dU_F(1:,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+      dU_F(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCF)
     REAL(DP), INTENT(in)    :: &
-      U_R (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U_R (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU_R(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+      dU_R(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iNodeX, iE
     REAL(DP) :: CF_N(1:nDOFX,1:nCF)
@@ -384,17 +387,17 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       dt
     REAL(DP), INTENT(in)    :: &
-      GE(1:,iZ_B1(1):,1:)
+      GE  (1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
-      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      GX  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(in)    :: &
-      U_F (1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      dU_F(1:,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+      dU_F(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCF)
     REAL(DP), INTENT(in)    :: &
-      U_R (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U_R (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU_R(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+      dU_R(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
     INTEGER               :: iCR, iS, iCF, iGF, iX_G
     REAL(DP)              :: PF_N(1:nPF)
@@ -669,17 +672,17 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       dt
     REAL(DP), INTENT(in)    :: &
-      GE(1:,iZ_B1(1):,1:)
+      GE  (1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
-      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      GX  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(in)    :: &
-      U_F (1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      dU_F(1:,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+      dU_F(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCF)
     REAL(DP), INTENT(in)    :: &
-      U_R (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U_R (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU_R(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+      dU_R(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
     INTEGER               :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iNX, iE
     REAL(DP)              :: wTimeTotal
@@ -1329,9 +1332,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iX_B(3), iX_E(3)
     REAL(DP), INTENT(in)  :: &
-      GX(:,iX_B(1):,iX_B(2):,iX_B(3):)
+      GX(1:nDOFX,iX_B(1):iX_E(1),iX_B(2):iX_E(2),iX_B(3):iX_E(3))
     REAL(DP), INTENT(out) :: &
-      GX_N(:)
+      GX_N(1:nX_G)
 
     INTEGER :: iX1, iX2, iX3, iX
     INTEGER :: iN1, iN2, iN3, iN
@@ -1365,9 +1368,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iX_B(3), iX_E(3)
     REAL(DP), INTENT(in)  :: &
-      FF(:,iX_B(1):,iX_B(2):,iX_B(3):)
+      FF(1:nDOFX,iX_B(1):iX_E(1),iX_B(2):iX_E(2),iX_B(3):iX_E(3))
     REAL(DP), INTENT(out) :: &
-      FF_N(:)
+      FF_N(1:nX_G)
 
     INTEGER :: iX1, iX2, iX3, iX
     INTEGER :: iN1, iN2, iN3, iN
@@ -1401,9 +1404,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iX_B(3), iX_E(3)
     REAL(DP), INTENT(out) :: &
-      FF(:,iX_B(1):,iX_B(2):,iX_B(3):)
+      FF(1:nDOFX,iX_B(1):iX_E(1),iX_B(2):iX_E(2),iX_B(3):iX_E(3))
     REAL(DP), INTENT(in)  :: &
-      FF_N(:)
+      FF_N(1:nX_G)
 
     INTEGER :: iX1, iX2, iX3, iX
     INTEGER :: iN1, iN2, iN3, iN
@@ -1437,9 +1440,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iE_B, iE_E
     REAL(DP), INTENT(in)  :: &
-      RF(:,iE_B:,:,:)
+      RF(1:nDOF,iE_B:iE_E,1:nCR,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      RF_K(:,:,:,:)
+      RF_K(1:nE_G,1:nCR,1:nSpecies,1:nDOFX)
 
     INTEGER :: iE, iN_E, iN, iN_X, iCR, iS, iNodeE, iNodeX(3)
 
@@ -1469,9 +1472,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iE_B, iE_E
     REAL(DP), INTENT(out) :: &
-      RF(:,iE_B:,:,:)
+      RF(1:nDOF,iE_B:iE_E,1:nCR,1:nSpecies)
     REAL(DP), INTENT(in)  :: &
-      RF_K(:,:,:,:)
+      RF_K(1:nE_G,1:nCR,1:nSpecies,1:nDOFX)
 
     INTEGER :: iE, iN_E, iN, iN_X, iCR, iS, iNodeE, iNodeX(3)
 
@@ -1501,9 +1504,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iZ_B(4), iZ_E(4)
     REAL(DP), INTENT(in)  :: &
-      RF(:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):)
+      RF(1:nDOF,iZ_B(1):iZ_E(1),iZ_B(2):iZ_E(2),iZ_B(3):iZ_E(3),iZ_B(4):iZ_E(4))
     REAL(DP), INTENT(out) :: &
-      RF_N(:,:)
+      RF_N(1:nE_G,1:nX_G)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iX, iE
     INTEGER :: iN1, iN2, iN3, iN4, iN
@@ -1546,9 +1549,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iZ_B(4), iZ_E(4)
     REAL(DP), INTENT(out) :: &
-      RF(:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):)
+      RF(1:nDOF,iZ_B(1):iZ_E(1),iZ_B(2):iZ_E(2),iZ_B(3):iZ_E(3),iZ_B(4):iZ_E(4))
     REAL(DP), INTENT(in)  :: &
-      RF_N(:,:)
+      RF_N(1:nE_G,1:nX_G)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iX, iE
     INTEGER :: iN1, iN2, iN3, iN4, iN
@@ -1591,9 +1594,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iZ1_B, iZ1_E
     REAL(DP), INTENT(in)  :: &
-      RF(:,iZ1_B:)
+      RF(1:nDOF,iZ1_B:iZ1_E)
     REAL(DP), INTENT(out) :: &
-      RF_N(:,:), RF_K(:)
+      RF_N(1:nE_G,1:nDOFX), RF_K(1:nE_G)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iX, iE
     INTEGER :: iN1, iN2, iN3, iN4, iN
@@ -1631,9 +1634,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iZ1_B, iZ1_E
     REAL(DP), INTENT(out) :: &
-      RF(:,iZ1_B:)
+      RF(1:nDOF,iZ1_B:iZ1_E)
     REAL(DP), INTENT(in)  :: &
-      RF_N(:,:)
+      RF_N(1:nE_G,1:nDOFX)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iX, iE
     INTEGER :: iN1, iN2, iN3, iN4, iN

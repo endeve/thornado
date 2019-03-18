@@ -55,6 +55,7 @@ TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
   ReferenceElementModuleX.o \
   MeshModule.o \
   GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   EquationOfStateModule_TABLE.o \
