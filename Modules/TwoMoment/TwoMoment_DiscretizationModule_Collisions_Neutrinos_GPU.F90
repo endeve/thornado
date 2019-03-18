@@ -289,28 +289,15 @@ CONTAINS
           DO iX2 = iX_B0(2), iX_E0(2)
             DO iX1 = iX_B0(1), iX_E0(1)
               DO iE = iE_B0, iE_E0
-                DO iNodeX3 = 1, nNodesX(3)
-                  DO iNodeX2 = 1, nNodesX(2)
-                    DO iNodeX1 = 1, nNodesX(1)
-                      DO iNodeE = 1, nNodesE
+                DO iNode = 1, nDOF
 
-                        iNode  = + ( iNodeX3 - 1 ) * nNodesE * nNodesX(1) * nNodesX(2) &
-                                 + ( iNodeX2 - 1 ) * nNodesE * nNodesX(1) &
-                                 + ( iNodeX1 - 1 ) * nNodesE &
-                                 +   iNodeE
+                  iNodeX = MOD( (iNode-1) / nNodesE, nDOFX   ) + 1
+                  iNodeE = MOD( (iNode-1)          , nNodesE ) + 1
 
-                        iNodeX = + ( iNodeX3 - 1 ) * nNodesX(1) * nNodesX(2) &
-                                 + ( iNodeX2 - 1 ) * nNodesX(1) &
-                                 +   iNodeX1
+                  iN_E   = ( iE - iE_B0 ) * nNodesE + iNodeE
 
-                        iN_E   = + ( iE - iE_B0 ) * nNodesE &
-                                 +   iNodeE
+                  CR_N(iN_E,iCR,iS,iNodeX,iX1,iX2,iX3) = U_R(iNode,iE,iX1,iX2,iX3,iCR,iS)
 
-                        CR_N(iN_E,iCR,iS,iNodeX,iX1,iX2,iX3) = U_R(iNode,iE,iX1,iX2,iX3,iCR,iS)
-
-                      END DO
-                    END DO
-                  END DO
                 END DO
               END DO
             END DO
@@ -513,28 +500,15 @@ CONTAINS
           DO iX2 = iX_B0(2), iX_E0(2)
             DO iX1 = iX_B0(1), iX_E0(1)
               DO iE = iE_B0, iE_E0
-                DO iNodeX3 = 1, nNodesX(3)
-                  DO iNodeX2 = 1, nNodesX(2)
-                    DO iNodeX1 = 1, nNodesX(1)
-                      DO iNodeE = 1, nNodesE
+                DO iNode = 1, nDOF
 
-                        iNode  = + ( iNodeX3 - 1 ) * nNodesE * nNodesX(1) * nNodesX(2) &
-                                 + ( iNodeX2 - 1 ) * nNodesE * nNodesX(1) &
-                                 + ( iNodeX1 - 1 ) * nNodesE &
-                                 +   iNodeE
+                  iNodeX = MOD( (iNode-1) / nNodesE, nDOFX   ) + 1
+                  iNodeE = MOD( (iNode-1)          , nNodesE ) + 1
 
-                        iNodeX = + ( iNodeX3 - 1 ) * nNodesX(1) * nNodesX(2) &
-                                 + ( iNodeX2 - 1 ) * nNodesX(1) &
-                                 +   iNodeX1
+                  iN_E   = ( iE - iE_B0 ) * nNodesE + iNodeE
 
-                        iN_E   = + ( iE - iE_B0 ) * nNodesE &
-                                 +   iNodeE
+                  dU_R(iNode,iE,iX1,iX2,iX3,iCR,iS) = dR_N(iN_E,iCR,iS,iNodeX,iX1,iX2,iX3)
 
-                        dU_R(iNode,iE,iX1,iX2,iX3,iCR,iS) = dR_N(iN_E,iCR,iS,iNodeX,iX1,iX2,iX3)
-
-                      END DO
-                    END DO
-                  END DO
                 END DO
               END DO
             END DO
