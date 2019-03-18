@@ -156,11 +156,11 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: GX, U_F, U_R, iX_B0, iX_E0, iX_B1, iX_E1 ) &
-    !$OMP MAP( alloc: dU_F, dU_R, CF_N, PF_N, AF_N, GX_N, CR_N, dR_N, Chi, Sig, fEQ )
+    !$OMP MAP( alloc: dU_F, dU_R, CF_N, PF_N, AF_N, GX_N, CR_N, dR_N, Kappa, Chi, Sig, fEQ )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( GX, U_F, U_R ) &
-    !$ACC CREATE( dU_F, dU_R, CF_N, PF_N, AF_N, GX_N, CR_N, dR_N, Chi, Sig, fEQ )
+    !$ACC CREATE( dU_F, dU_R, CF_N, PF_N, AF_N, GX_N, CR_N, dR_N, Kappa, Chi, Sig, fEQ )
 #endif
 
     CALL TimersStart( Timer_Im_In )
