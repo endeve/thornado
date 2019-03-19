@@ -214,7 +214,7 @@ CONTAINS
               DO iZ1 = iZ_B0(1), iZ_E0(1)
                 DO iNode = 1, nDOF
 
-                  iNodeX = MOD(iNode-1,nDOFX) + 1
+                  iNodeX = MOD( (iNode-1) / nDOFE, nDOFX ) + 1
                   Tau = One * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
 
                   dU(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
