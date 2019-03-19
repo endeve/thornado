@@ -31,7 +31,8 @@ Treating the transport operator explicitly and the collision operator implicitly
   +\dt\sum_{i=1}^{s}w_{i}\,\vect{\cQ}(\vect{u}^{(i)}), \label{imexIntermediate} 
 \end{align}
 where $(\tilde{a}_{ij})$ and $(a_{ij})$, coefficients of the $i$-th stage, are elements of matrices $\tilde{A}$ and $A$, respectively.
-The matrices $\tilde{A}$ and $A$ are lower triangular ($\tilde{A}$ is strictly lower triangular so that the transport part is explicit).  
+The matrices $\tilde{A}$ and $A$ are lower triangular.
+($\tilde{A}$ is strictly lower triangular so that the transport part is explicit.)  
 The vectors $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ are the weights in the assembly step in Eq.~\eqref{imexIntermediate}.
 These coefficients and weights must satisfy certain order conditions for consistency, accuracy, and other properties.  
 For second-order temporal accuracy, the following conditions are required~\cite{hairer_1981}:

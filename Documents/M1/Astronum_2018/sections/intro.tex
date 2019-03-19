@@ -20,7 +20,8 @@ The better the closure predicts $\bcK$, the more accurate the two-moment method 
 The two-moment method has been widely applied in the CCSN modeling community with different algebraic closures, such as the Minerbo~\cite{minerbo_1978} closure (e.g.~{O'Connor} and {Couch}~\cite{oConnorCouch_2018}, Pan and et al.~\cite{pan_etal_2018}, Glas et al.~\cite{glas_etal_2018}, and Just et al.~\cite{just_etal_2018}) and the Levermore~\cite{levermore_1984} closure (e.g.~Vartanyan et al.~\cite{vartanyan_etal_2018}, Cabezon et al.~\cite{cabezon_etal_2018}, and Kuroda et al.~\cite{kuroda_etal_2016}). 
 
 Applying the two-moment method does simplify the problem, but doesn't guarantee an affordable solution.
-To be precise, how to discretize the continuous system of equation given by the two-moment method and solve the discretized system efficiently remains a question.
+To be precise, how to discretize the continuous system of equatio
+ns given by the two-moment method and solve the discretized system efficiently remains a question.
 In fact, the time scales of neutrino interactions with the background (they can be $\sim\mathcal{O}(10^{-13})$~second) is short compared to the duration of the CCSN explosion ($\sim\mathcal{O}(1)$~second).  
 This means that $\sim\mathcal{O}(10^{13})$ time steps could be needed for solving the system fully explicitly. 
 On the other hand, solving the moment equations fully implicitly requires inverting global band-structured matrices whose sizes depend on the phase-space discretization.

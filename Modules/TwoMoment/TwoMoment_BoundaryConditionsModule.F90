@@ -4,7 +4,7 @@ MODULE TwoMoment_BoundaryConditionsModule
     DP
   USE ProgramHeaderModule, ONLY: &
     bcZ, swZ, &
-    nNodesZ
+    nNodesZ, nDOF
   USE ReferenceElementModule, ONLY: &
     NodeNumberTable4D
   USE RadiationFieldsModule, ONLY: &
@@ -27,7 +27,7 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     CALL ApplyBC_TwoMoment_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
@@ -48,9 +48,9 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
-    INTEGER :: iS, iCR, iZ1, iZ2, iZ3, iZ4
+    INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
     INTEGER :: jNodeZ2, iNodeZ, jNodeZ
 
@@ -60,23 +60,30 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
+#if defined(THORNADO_OMP_OL)
+      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = iZ_B0(4), iZ_E0(4)
             DO iZ3 = iZ_B0(3), iZ_E0(3)
               DO iZ2 = 1, swZ(2)
                 DO iZ1 = iZ_B0(1), iZ_E0(1)
+                  DO iNode = 1, nDOF
 
-                  ! --- Inner Boundary ---
+                    ! --- Inner Boundary ---
 
-                  U(:,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ_E0(2)-(iZ2-1),iZ3,iZ4,iCR,iS)
+                    U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ_E0(2)-(iZ2-1),iZ3,iZ4,iCR,iS)
 
-                  ! --- Outer Boundary ---
+                    ! --- Outer Boundary ---
 
-                  U(:,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ_B0(2)+(iZ2-1),iZ3,iZ4,iCR,iS)
+                    U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ_B0(2)+(iZ2-1),iZ3,iZ4,iCR,iS)
 
+                  END DO
                 END DO
               END DO
             END DO
@@ -86,23 +93,30 @@ CONTAINS
 
     CASE ( 2 ) ! Homogeneous
 
+#if defined(THORNADO_OMP_OL)
+      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = iZ_B0(4), iZ_E0(4)
             DO iZ3 = iZ_B0(3), iZ_E0(3)
               DO iZ2 = 1, swZ(2)
                 DO iZ1 = iZ_B0(1), iZ_E0(1)
+                  DO iNode = 1, nDOF
 
-                  ! --- Inner Boundary ---
+                    ! --- Inner Boundary ---
 
-                  U(:,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
+                    U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
 
-                  ! --- Outer Boundary ---
+                    ! --- Outer Boundary ---
 
-                  U(:,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS)
+                    U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS)
 
+                  END DO
                 END DO
               END DO
             END DO
@@ -112,6 +126,12 @@ CONTAINS
 
     CASE ( 3 ) ! Reflecting
 
+#if defined(THORNADO_OMP_OL)
+      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+      !!$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -150,15 +170,19 @@ CONTAINS
 
                   ELSE
 
-                    ! --- Inner Boundary ---
+                    DO iNode = 1, nDOF
 
-                    U(:,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
-                      = U(:,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
+                      ! --- Inner Boundary ---
 
-                    ! --- Outer Boundary ---
+                      U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
+                        = U(iNode,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
 
-                    U(:,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
-                      = U(:,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS)
+                      ! --- Outer Boundary ---
+
+                      U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
+                        = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS)
+
+                    END DO
 
                   END IF
 
@@ -171,6 +195,12 @@ CONTAINS
 
     CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
 
+#if defined(THORNADO_OMP_OL)
+      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+      !!$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -205,15 +235,23 @@ CONTAINS
 
                   ELSE
 
-                    U(:,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
-                      = U(:,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
+                    DO iNode = 1, nDOF
+
+                      U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
+                        = U(iNode,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
+
+                    END DO
 
                   END IF
 
                   ! --- Outer Boundary (Homogeneous) ---
 
-                  U(:,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS)
+                  DO iNode = 1, nDOF
+
+                    U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS)
+
+                  END DO
 
                 END DO
               END DO
@@ -241,9 +279,9 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
-    INTEGER :: iS, iCR, iZ1, iZ2, iZ3, iZ4
+    INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
     INTEGER :: jNodeZ3, iNodeZ, jNodeZ
 
@@ -253,23 +291,30 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
+#if defined(THORNADO_OMP_OL)
+      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = iZ_B0(4), iZ_E0(4)
             DO iZ3 = 1, swZ(3)
               DO iZ2 = iZ_B0(2), iZ_E0(2)
                 DO iZ1 = iZ_B0(1), iZ_E0(1)
+                  DO iNode = 1, nDOF
 
-                  ! --- Inner Boundary ---
+                    ! --- Inner Boundary ---
 
-                  U(:,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ2,iZ_E0(3)-(iZ3-1),iZ4,iCR,iS)
+                    U(iNode,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ2,iZ_E0(3)-(iZ3-1),iZ4,iCR,iS)
 
-                  ! --- Outer Boundary ---
+                    ! --- Outer Boundary ---
 
-                  U(:,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ2,iZ_B0(3)+(iZ3-1),iZ4,iCR,iS)
+                    U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ2,iZ_B0(3)+(iZ3-1),iZ4,iCR,iS)
 
+                  END DO
                 END DO
               END DO
             END DO
@@ -279,23 +324,30 @@ CONTAINS
 
     CASE ( 2 ) ! Homogeneous
 
+#if defined(THORNADO_OMP_OL)
+      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = iZ_B0(4), iZ_E0(4)
             DO iZ3 = 1, swZ(3)
               DO iZ2 = iZ_B0(2), iZ_E0(2)
                 DO iZ1 = iZ_B0(1), iZ_E0(1)
+                  DO iNode = 1, nDOF
 
-                  ! --- Inner Boundary ---
+                    ! --- Inner Boundary ---
 
-                  U(:,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ2,iZ_B0(3),iZ4,iCR,iS)
+                    U(iNode,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ2,iZ_B0(3),iZ4,iCR,iS)
 
-                  ! --- Outer Boundary ---
+                    ! --- Outer Boundary ---
 
-                  U(:,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ2,iZ_E0(3),iZ4,iCR,iS)
+                    U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ2,iZ_E0(3),iZ4,iCR,iS)
 
+                  END DO
                 END DO
               END DO
             END DO
@@ -305,6 +357,12 @@ CONTAINS
 
     CASE ( 3 ) ! Reflecting
 
+#if defined(THORNADO_OMP_OL)
+      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+      !!$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -343,15 +401,19 @@ CONTAINS
 
                   ELSE
 
-                    ! --- Inner Boundary ---
+                    DO iNode = 1, nDOF
 
-                    U(:,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
-                      = U(:,iZ1,iZ2,iZ_B0(3),iZ4,iCR,iS)
+                      ! --- Inner Boundary ---
 
-                    ! --- Outer Boundary ---
+                      U(iNode,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
+                        = U(iNode,iZ1,iZ2,iZ_B0(3),iZ4,iCR,iS)
 
-                    U(:,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
-                      = U(:,iZ1,iZ2,iZ_E0(3),iZ4,iCR,iS)
+                      ! --- Outer Boundary ---
+
+                      U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
+                        = U(iNode,iZ1,iZ2,iZ_E0(3),iZ4,iCR,iS)
+
+                    END DO
 
                   END IF
 
@@ -364,6 +426,12 @@ CONTAINS
 
     CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
 
+#if defined(THORNADO_OMP_OL)
+      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+      !!$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -397,15 +465,23 @@ CONTAINS
 
                   ELSE
 
-                    U(:,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
-                      = U(:,iZ1,iZ2,iZ_B0(3),iZ4,iCR,iS)
+                    DO iNode = 1, nDOF
+
+                      U(iNode,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
+                        = U(iNode,iZ1,iZ2,iZ_B0(3),iZ4,iCR,iS)
+
+                    END DO
 
                   END IF
 
                   ! --- Outer Boundary (Homogeneous) ---
 
-                  U(:,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ2,iZ_E0(3),iZ4,iCR,iS)
+                  DO iNode = 1, nDOF
+
+                    U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ2,iZ_E0(3),iZ4,iCR,iS)
+
+                  END DO
 
                 END DO
               END DO
@@ -433,9 +509,9 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
-    INTEGER :: iS, iCR, iZ1, iZ2, iZ3, iZ4
+    INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
     INTEGER :: jNodeZ4, iNodeZ, jNodeZ
 
@@ -445,23 +521,30 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
+#if defined(THORNADO_OMP_OL)
+      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = 1, swZ(4)
             DO iZ3 = iZ_B0(3), iZ_E0(3)
               DO iZ2 = iZ_B0(2), iZ_E0(2)
                 DO iZ1 = iZ_B0(1), iZ_E0(1)
+                  DO iNode = 1, nDOF
 
-                  ! --- Inner Boundary ---
+                    ! --- Inner Boundary ---
 
-                  U(:,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ2,iZ3,iZ_E0(4)-(iZ4-1),iCR,iS)
+                    U(iNode,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)-(iZ4-1),iCR,iS)
 
-                  ! --- Outer Boundary ---
+                    ! --- Outer Boundary ---
 
-                  U(:,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ2,iZ3,iZ_B0(4)+(iZ4-1),iCR,iS)
+                    U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ2,iZ3,iZ_B0(4)+(iZ4-1),iCR,iS)
 
+                  END DO
                 END DO
               END DO
             END DO
@@ -471,23 +554,30 @@ CONTAINS
 
     CASE ( 2 ) ! Homogeneous
 
+#if defined(THORNADO_OMP_OL)
+      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = 1, swZ(4)
             DO iZ3 = iZ_B0(3), iZ_E0(3)
               DO iZ2 = iZ_B0(2), iZ_E0(2)
                 DO iZ1 = iZ_B0(1), iZ_E0(1)
+                  DO iNode = 1, nDOF
 
-                  ! --- Inner Boundary ---
+                    ! --- Inner Boundary ---
 
-                  U(:,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ2,iZ3,iZ_B0(4),iCR,iS)
+                    U(iNode,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ2,iZ3,iZ_B0(4),iCR,iS)
 
-                  ! --- Outer Boundary ---
+                    ! --- Outer Boundary ---
 
-                  U(:,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ2,iZ3,iZ_E0(4),iCR,iS)
+                    U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ2,iZ3,iZ_E0(4),iCR,iS)
 
+                  END DO
                 END DO
               END DO
             END DO
@@ -497,6 +587,12 @@ CONTAINS
 
     CASE ( 3 ) ! Reflecting
 
+#if defined(THORNADO_OMP_OL)
+      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+      !!$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = 1, swZ(4)
@@ -535,15 +631,19 @@ CONTAINS
 
                   ELSE
 
-                    ! --- Inner Boundary ---
+                    DO iNode = 1, nDOF
 
-                    U(:,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
-                      = U(:,iZ1,iZ2,iZ3,iZ_B0(4),iCR,iS)
+                      ! --- Inner Boundary ---
 
-                    ! --- Outer Boundary ---
+                      U(iNode,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
+                        = U(iNode,iZ1,iZ2,iZ3,iZ_B0(4),iCR,iS)
 
-                    U(:,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
-                      = U(:,iZ1,iZ2,iZ3,iZ_E0(4),iCR,iS)
+                      ! --- Outer Boundary ---
+
+                      U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
+                        = U(iNode,iZ1,iZ2,iZ3,iZ_E0(4),iCR,iS)
+
+                    END DO
 
                   END IF
 
@@ -556,6 +656,12 @@ CONTAINS
 
     CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
 
+#if defined(THORNADO_OMP_OL)
+      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+      !!$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OMP)
+#endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
           DO iZ4 = 1, swZ(4)
@@ -590,15 +696,23 @@ CONTAINS
 
                   ELSE
 
-                    U(:,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
-                      = U(:,iZ1,iZ2,iZ3,iZ_B0(4),iCR,iS)
+                    DO iNode = 1, nDOF
+
+                      U(iNode,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
+                        = U(iNode,iZ1,iZ2,iZ3,iZ_B0(4),iCR,iS)
+
+                    END DO
 
                   END IF
 
                   ! --- Outer Boundary (Homogeneous) ---
 
-                  U(:,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
-                    = U(:,iZ1,iZ2,iZ3,iZ_E0(4),iCR,iS)
+                  DO iNode = 1, nDOF
+
+                    U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
+                      = U(iNode,iZ1,iZ2,iZ3,iZ_E0(4),iCR,iS)
+
+                  END DO
 
                 END DO
               END DO

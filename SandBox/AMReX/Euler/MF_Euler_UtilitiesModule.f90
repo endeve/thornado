@@ -21,6 +21,9 @@ MODULE MF_Euler_UtilitiesModule
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
 
+  USE MyAmrModule, ONLY: &
+    nLevels
+
   IMPLICIT NONE
   PRIVATE
 
@@ -127,10 +130,8 @@ CONTAINS
   END SUBROUTINE MF_ComputeFromConserved
 
 
-  SUBROUTINE MF_ComputeTimeStep( nLevels, MF_uGF, MF_uCF, CFL, TimeStep )
+  SUBROUTINE MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, TimeStep )
 
-    INTEGER,              INTENT(in)  :: &
-      nLevels
     TYPE(amrex_multifab), INTENT(in)  :: &
       MF_uGF(0:nlevels), &
       MF_uCF(0:nLevels)

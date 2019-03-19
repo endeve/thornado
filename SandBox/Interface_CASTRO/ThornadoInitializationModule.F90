@@ -25,6 +25,8 @@ module ThornadoInitializationModule
     InitializeReferenceElementE_Lagrange
   use ReferenceElementModule_Lagrange, only: &
     InitializeReferenceElement_Lagrange
+  use SubcellReconstructionModule, only: &
+    InitializeSubcellReconstruction
   use EquationOfStateModule_TABLE, only: &
     InitializeEquationOfState_TABLE
   use OpacityModule_TABLE, only: &
@@ -112,6 +114,10 @@ contains
 
     call InitializeReferenceElement_Lagrange
 
+    ! --- For Mapping Between FV and DG Representations ---
+
+    call InitializeSubcellReconstruction
+
     ! --- Energy Grid ---
 
     call CreateMesh &
@@ -157,6 +163,7 @@ contains
              Verbose_Option = .false. )
 
     ! --- For refinement and coarsening of DG data
+
     call InitializeMeshRefinement_TwoMoment
 
   end subroutine InitThornado

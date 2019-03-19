@@ -40,7 +40,7 @@ MODULE Euler_dgDiscretizationModule
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE Euler_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_Fluid
+    Euler_ApplyBoundaryConditions
   USE Euler_UtilitiesModule, ONLY: &
     ComputePrimitive, &
     Eigenvalues, &
@@ -80,24 +80,32 @@ CONTAINS
 
 
   SUBROUTINE Euler_ComputeIncrement_DG_Explicit &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, SuppressBC_Option )
 
-    INTEGER, INTENT(in)     :: &
+    INTEGER, INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(in)           :: &
       G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(inout)        :: &
       U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out)   :: &
+    REAL(DP), INTENT(out)          :: &
       dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      SuppressBC_Option
 
     INTEGER  :: iX1, iX2, iX3, iCF
     REAL(DP) :: dX1, dX2, dX3
+    LOGICAL  :: SuppressBC
 
     dU = Zero
 
-    CALL ApplyBoundaryConditions_Fluid &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+    SuppressBC = .FALSE.
+    IF( PRESENT( SuppressBC_Option ) ) &
+      SuppressBC = SuppressBC_Option
+
+    IF( .NOT. SuppressBC ) &
+      CALL Euler_ApplyBoundaryConditions &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL ComputeIncrement_Divergence_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
@@ -191,8 +199,6 @@ CONTAINS
         dX2 = MeshX(2) % Width(iX2)
 
         DO iX1 = iX_B0(1), iX_E0(1) + 1
-
-!          print*,"iX1, iX2, iX3 = ", iX1, iX2, iX3
 
           DO iCF = 1, nCF
 

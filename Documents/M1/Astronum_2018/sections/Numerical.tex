@@ -82,9 +82,22 @@ PD-ARS2 behaves as well as SSP2332 in the diffusion region but requires 33\% les
 
 In this section we consider a more ``realistic'' test: two-dimensional multigroup neutrino transport with emission, absorption, and isoenergetic scattering through a stationary background.  
 This test is designed to test the realizability-preserving properties of the PD-ARS schemes.  
-Figure~\ref{fig:NeutrinoStationaryTestEOS} plots the thermal state and the opacities used (adopted from~\cite{Bruenn_1985}).  
-This test is computed on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200], x^{2}\in[0,200]\}$ with a grid of 128 elements in each direction, a reflecting inner boundary and a homogeneous out-flowing outer boundary.
-We use 10 energy groups to cover the range from 0~MeV to 300~MeV and initialize the neutrino number density to $\cJ = 10^{-99}$, flux density to $\bcH=0$, and evolve until an approximate steady state is reached ($t=5$~ms).  
+Figure~\ref{fig:NeutrinoStationaryTestEOS} left plots the initial thermal state: 
+\begin{subequations}
+\begin{align}
+\text{Density: }~\rho & = 4 \times 10^{14} \times \dfrac{7.5}{( 7.5 + ( r / 5 )^4 )} ~\text{g $\cdot$ cm$^{-3}$}\\
+\text{Temperature: }~T & = 1.5 \times 10^{11} \times \dfrac{1}{1 + ( r / 50 )^2 } ~\text{K}\\
+\text{Electron Fraction: }~Y_e & = 0.25 \times \left(  1 + \dfrac{1}{1+ ( r / 50 )^{-12}}  \right) 
+\end{align}
+\label{eq:NuStatinaryStateEOS}
+\end{subequations}
+with radius $r$ in kilometer unit. 
+Eq.~\eqref{eq:NuStatinaryStateEOS} is designed to simulate a CCSN progenitor.
+Figure~\ref{fig:NeutrinoStationaryTestEOS} right plots the used opacities which are provided by interpolations of a pre-calculated opacity table based on~\cite{Bruenn_1985}.
+This test is computed on Cartesian coordinate with a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200], x^{2}\in[0,200]\}$ in kilometer unit, a grid of 128 elements in each direction, 10 energy groups covering $(0,300)$~MeV, a reflecting inner boundary and a homogeneous out-flowing outer boundary.
+Because of the Cartesian coordinate, we ignored some geometric terms, which leads the initial condition to be non-axisymmetric.
+We initialize the neutrino number density to $\cJ = 10^{-99}$, flux density to $\bcH=0$, and evolve until an approximate steady state is reached ($t=5$~ms).
+No hydrodynamics is used for the stationary background.
 For this test, we employed both CB and Minerbo closures.  
 We attempted to run this test with our PD-ARS schemes, SSP2332 from~\cite{pareschiRusso_2005}, IMEXRKCB2 proposed by Cavaglieri \& Bewley~\cite{cavaglieriBewley2015}, and the IMEX PC2 scheme proposed by McClarren et al.~\cite{mcclarren_etal_2008}.
 Only the PD-ARS schemes produce realizable moments and are able to evolve to a steady state with either CB or Minerbo closure.

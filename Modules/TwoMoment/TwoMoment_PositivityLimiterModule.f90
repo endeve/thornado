@@ -3,7 +3,11 @@ MODULE TwoMoment_PositivityLimiterModule
   USE KindModule, ONLY: &
     DP, Zero, Half, One
   USE ProgramHeaderModule, ONLY: &
-    nNodesZ, nDOF
+    nNodesZ, nDOF, nDOFE, nDOFX
+  USE TimersModule, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_PositivityLimiter
   USE ReferenceElementModule, ONLY: &
     nDOF_X1, nDOF_X2, nDOF_X3, &
     Weights_q
@@ -11,6 +15,10 @@ MODULE TwoMoment_PositivityLimiterModule
     L_X1_Dn, L_X1_Up, &
     L_X2_Dn, L_X2_Up, &
     L_X3_Dn, L_X3_Up
+  USE GeometryFieldsModule, ONLY: &
+    nGF
+  USE GeometryFieldsModuleE, ONLY: &
+    nGE
   USE RadiationFieldsModule, ONLY: &
     nSpecies, nCR, &
     iCR_N, iCR_G1, iCR_G2, iCR_G3
@@ -156,11 +164,11 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)    :: &
-      GE(1:,iZ_B1(1):,1:)
+      GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
-      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(inout) :: &
-      U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     LOGICAL  :: NegativeStates(2)
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iCR, iP
@@ -168,6 +176,8 @@ CONTAINS
     REAL(DP) :: U_q(nDOF,nCR), U_K(nCR), Gamma(nPT)
 
     IF( .NOT. UsePositivityLimiter ) RETURN
+
+    CALL TimersStart( Timer_PositivityLimiter )
 
     MinTheta_1 = One
     MinTheta_2 = One
@@ -272,6 +282,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_PositivityLimiter )
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 

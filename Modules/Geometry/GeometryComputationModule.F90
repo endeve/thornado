@@ -260,6 +260,11 @@ CONTAINS
 
 
   SUBROUTINE ComputeGeometryX_FromScaleFactors( G )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(inout) :: G(1:,1:)
 

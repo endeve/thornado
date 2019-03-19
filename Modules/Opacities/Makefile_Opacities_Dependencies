@@ -2,10 +2,21 @@ OpacityModule_IDEAL.o: \
   KindModule.o \
   OpacityModule_IDEAL.f90
 
+ifeq ($(MICROPHYSICS),WEAKLIB)
+OpacityModule_TABLE.o: \
+  wlIOModuleHDF.o \
+  wlOpacityTableIOModuleHDF.o \
+  wlOpacityTableModule.o \
+  wlInterpolationModule.o \
+  KindModule.o \
+  UnitsModule.o \
+  OpacityModule_TABLE.F90
+else
 OpacityModule_TABLE.o: \
   KindModule.o \
   UnitsModule.o \
-  OpacityModule_TABLE.f90
+  OpacityModule_TABLE.F90
+endif
 
 OpacityModule.o: \
   KindModule.o \
@@ -15,6 +26,7 @@ OpacityModule.o: \
 
 NeutrinoOpacitiesModule.o: \
   KindModule.o \
+  UnitsModule.o \
   NeutrinoOpacitiesModule.f90
 
 NeutrinoOpacitiesComputationModule.o: \
@@ -27,4 +39,4 @@ NeutrinoOpacitiesComputationModule.o: \
   OpacityModule_TABLE.o \
   RadiationFieldsModule.o \
   NeutrinoOpacitiesModule.o \
-  NeutrinoOpacitiesComputationModule.f90
+  NeutrinoOpacitiesComputationModule.F90

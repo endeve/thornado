@@ -1,4 +1,4 @@
-MODULE InitializationModule
+ MODULE InitializationModule
 
   USE KindModule, ONLY: &
     DP, Zero, Third, Half, &
@@ -14,6 +14,10 @@ MODULE InitializationModule
     iE_B0, iE_E0, &
     nDOF, nDOFX, nDOFE, &
     nZ, nNodes
+  USE UtilitiesModule, ONLY: &
+    Locate, &
+    NodeNumberX, &
+    Interpolate1D_Linear
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE ReferenceElementModule, ONLY: &
@@ -42,6 +46,9 @@ MODULE InitializationModule
     ComputeThermodynamicStates_Primitive_TABLE
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeConserved_TwoMoment
+  USE ProgenitorModule, ONLY: &
+    ProgenitorType1D, &
+    ReadProgenitor1D
 
   IMPLICIT NONE
   PRIVATE
@@ -54,15 +61,17 @@ MODULE InitializationModule
 CONTAINS
 
 
-  SUBROUTINE InitializeFields( Direction_Option, SigmaA_Option, SigmaS_Option )
+  SUBROUTINE InitializeFields &
+             ( Direction_Option, SigmaA_Option, SigmaS_Option, Profile_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       Direction_Option
+    CHARACTER(len=*), INTENT(in), OPTIONAL :: &
+      Profile_Option
     REAL(DP),         INTENT(in), OPTIONAL :: &
       SigmaA_Option
     REAL(DP),         INTENT(in), OPTIONAL :: &
       SigmaS_Option
-
     REAL(DP) :: wTime
 
     wTime = MPI_WTIME( )
@@ -104,7 +113,7 @@ CONTAINS
 
       CASE ( 'DeleptonizationWave' )
 
-        CALL InitializeFields_DeleptonizationWave
+        CALL InitializeFields_DeleptonizationWave( Profile_Option )
 
     END SELECT
 
@@ -1033,9 +1042,19 @@ CONTAINS
   END SUBROUTINE ComputeError_SineWaveDiffusion
 
 
-  SUBROUTINE InitializeFields_DeleptonizationWave
+  SUBROUTINE InitializeFields_DeleptonizationWave( Profile_Option )
 
-    CALL InitializeFluidFields_DeleptonizationWave
+    CHARACTER(len=*), INTENT(in), OPTIONAL :: Profile_Option
+
+    IF( PRESENT( Profile_Option ) )THEN
+
+      CALL InitializeFluidFields_DeleptonizationWave_Profile( Profile_Option )
+
+    ELSE
+
+      CALL InitializeFluidFields_DeleptonizationWave
+
+    END IF
 
     CALL InitializeRadiationFields_DeleptonizationWave
 
@@ -1124,6 +1143,78 @@ CONTAINS
   END SUBROUTINE InitializeFluidFields_DeleptonizationWave
 
 
+  SUBROUTINE InitializeFluidFields_DeleptonizationWave_Profile( FileName )
+
+    CHARACTER(len=*), INTENT(in) :: FileName
+
+    TYPE(ProgenitorType1D) :: P1D
+    CHARACTER(LEN=100)                  :: Format1, Format2, Format3
+    CHARACTER(LEN=30)                   :: a
+    INTEGER                             :: ii, datasize
+    REAL(dp), DIMENSION(:,:), ALLOCATABLE :: database
+
+    INTEGER  :: iX1, iX2, iX3, iNodeX
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3
+    REAL(DP) :: X1, X2, X3, R
+
+    CALL ReadProgenitor1D( FileName, P1D )
+
+    ASSOCIATE &
+      ( R1D => P1D % Radius, &
+        D1D => P1D % MassDensity, &
+        T1D => P1D % Temperature, &
+        Y1D => P1D % ElectronFraction )
+ 
+    DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+            iNodeX3 = NodeNumberTableX(3,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+            X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
+
+            R = SQRT( X1**2 + X2**2 + X3**2 ) 
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+              = Interpolate1D( R1D, D1D, SIZE( R1D ), R )
+
+            uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+              = Interpolate1D( R1D, T1D, SIZE( R1D ), R )
+
+            uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+              = Interpolate1D( R1D, Y1D, SIZE( R1D ), R )
+
+          END DO
+
+          CALL ComputeThermodynamicStates_Primitive_TABLE &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E), &
+                   uAF(:,iX1,iX2,iX3,iAF_E),  uPF(:,iX1,iX2,iX3,iPF_Ne) )
+
+          CALL ApplyEquationOfState_TABLE &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_P ), &
+                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mp), &
+                   uAF(:,iX1,iX2,iX3,iAF_Mn), uAF(:,iX1,iX2,iX3,iAF_Xp), &
+                   uAF(:,iX1,iX2,iX3,iAF_Xn), uAF(:,iX1,iX2,iX3,iAF_Xa), &
+                   uAF(:,iX1,iX2,iX3,iAF_Xh), uAF(:,iX1,iX2,iX3,iAF_Gm) )
+
+        END DO
+      END DO
+    END DO
+
+    END ASSOCIATE
+
+  END SUBROUTINE InitializeFluidFields_DeleptonizationWave_Profile
+
+
   SUBROUTINE InitializeRadiationFields_DeleptonizationWave
 
     INTEGER  :: iE, iX1, iX2, iX3, iS
@@ -1151,7 +1242,7 @@ CONTAINS
 
             kT = BoltzmannConstant &
                  * uAF(NodeNumbersX,iX1,iX2,iX3,iAF_T)
-
+!!!
             Mnu = uAF(NodeNumbersX,iX1,iX2,iX3,iAF_Me) &
                   + uAF(NodeNumbersX,iX1,iX2,iX3,iAF_Mp) &
                   - uAF(NodeNumbersX,iX1,iX2,iX3,iAF_Mn)
@@ -1165,7 +1256,9 @@ CONTAINS
                 E = NodeCoordinate( MeshE, iE, iNodeE )
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
-                  = 1.0d-99
+                  = MAX( 1.0d-32, & 
+                    1.0d0 / ( EXP( (E-Mnu(iNode))/kT(iNode) ) + 1.0_DP ) )
+                  != 1.0d-99
 
                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
                   = Zero
@@ -1199,5 +1292,40 @@ CONTAINS
 
   END SUBROUTINE InitializeRadiationFields_DeleptonizationWave
 
+
+  REAL(DP) FUNCTION Interpolate1D( x, y, n, xq )
+
+    INTEGER,                INTENT(in) :: n
+    REAL(DP), DIMENSION(n), INTENT(in) :: x, y
+    REAL(DP),               INTENT(in) :: xq
+
+    INTEGER :: i
+
+    i = Locate( xq, x, n )
+
+    IF( i == 0 )THEN
+
+      ! --- Extrapolate Left ---
+
+      Interpolate1D &
+        = Interpolate1D_Linear( xq, x(1), x(2), y(1), y(2) )
+
+    ELSE IF( i == n )THEN
+
+      ! --- Extrapolate Right ---
+
+      Interpolate1D &
+        = Interpolate1D_Linear( xq, x(n-1), x(n), y(n-1), y(n) )
+
+    ELSE
+
+      Interpolate1D &
+        = Interpolate1D_Linear( xq, x(i), x(i+1), y(i), y(i+1) )
+
+    END IF
+
+    RETURN
+
+  END FUNCTION Interpolate1D
 
 END MODULE InitializationModule
