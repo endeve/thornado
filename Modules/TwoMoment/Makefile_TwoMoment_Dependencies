@@ -68,9 +68,7 @@ TwoMoment_DiscretizationModule_Collisions_Neutrinos_GPU.o: \
   UnitsModule.o \
   ProgramHeaderModule.o \
   TimersModule.o \
-  ReferenceElementModule.o \
   ReferenceElementModuleE.o \
-  ReferenceElementModuleX.o \
   MeshModule.o \
   GeometryFieldsModule.o \
   GeometryFieldsModuleE.o \
