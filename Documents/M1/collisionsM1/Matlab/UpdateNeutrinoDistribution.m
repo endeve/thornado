@@ -1,6 +1,6 @@
 function [Jout, iter] = UpdateNeutrinoDistribution(Jin, J0, Chi)
 
-maxIter = 10000;
+maxIter = 100;
 Rtol = 1e-8;
 % initial guess
 Jout = Jin;
@@ -12,6 +12,8 @@ while((~CONVERGED)&&(k<=maxIter))
     k = k + 1;
     
     % Picard iteration
+    % THIS IS NOT A CONTRACTION MAPPING (Chi_q>1 for some q)
+    % DOES NOT CONVERGE
     Jnew = Jin + Chi.*(J0 - Jout);
     
     % check convergence

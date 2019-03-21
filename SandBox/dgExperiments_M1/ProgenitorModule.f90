@@ -46,7 +46,6 @@ CONTAINS
     READ( 1, Format1 ) a, datasize
     ALLOCATE( database( datasize, 4) )
     READ( 1, Format2 )
-    WRITE(*,*) 'datasize', datasize
     DO ii = 1, datasize
       READ( 1, Format3 ) database(ii,1:4)
     END DO
@@ -56,8 +55,6 @@ CONTAINS
     P1D % MassDensity      = database(:,2) * Gram / Centimeter**3
     P1D % Temperature      = database(:,3) * Kelvin
     P1D % ElectronFraction = database(:,4)
-
-    WRITE(*,*) 'end reading'
 
   END SUBROUTINE ReadProgenitor1D
 
