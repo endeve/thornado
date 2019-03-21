@@ -1,7 +1,6 @@
 #ifdef THORNADO_DEBUG
 #define THORNADO_DEBUG_POSITIVITYLIMITER
 #endif
-MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 MODULE TwoMoment_PositivityLimiterModule
 
   USE KindModule, ONLY: &
