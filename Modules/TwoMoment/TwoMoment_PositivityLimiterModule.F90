@@ -1,3 +1,7 @@
+#ifdef THORNADO_DEBUG
+#define THORNADO_DEBUG_POSITIVITYLIMITER
+#endif
+MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 MODULE TwoMoment_PositivityLimiterModule
 
   USE KindModule, ONLY: &
@@ -284,6 +288,11 @@ CONTAINS
     END DO
 
     CALL TimersStop( Timer_PositivityLimiter )
+
+#ifdef THORNADO_DEBUG_POSITIVITYLIMITER
+    WRITE(*,'(a20,7i4)')     'MAXLOC(U)', MAXLOC(U)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(U)', MAXVAL(U)
+#endif
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 
