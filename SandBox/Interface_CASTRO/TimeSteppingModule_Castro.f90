@@ -18,9 +18,7 @@ MODULE TimeSteppingModule_Castro
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
-    ComputeIncrement_TwoMoment_Implicit, &
-    ComputeIncrement_TwoMoment_Implicit_New, &
-    ComputeIncrement_TwoMoment_Implicit_DGFV
+    ComputeIncrement_TwoMoment_Implicit_New
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment
 
