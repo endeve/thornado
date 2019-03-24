@@ -158,6 +158,10 @@ CONTAINS
     ALLOCATE( Sig(nE_G,nSpecies,nDOFX) )
     ALLOCATE( fEQ(nE_G,nSpecies,nDOFX) )
 
+    Iterations_Min = + HUGE( 1 )
+    Iterations_Max = - HUGE( 1 )
+    Iterations_Ave = 0
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
