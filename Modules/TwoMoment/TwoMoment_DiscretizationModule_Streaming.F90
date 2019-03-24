@@ -175,19 +175,22 @@ CONTAINS
     CALL TimersStart( Timer_Ex_Div )
     CALL TimersStart( Timer_Ex_Div_X1 )
 
-    CALL ComputeIncrement_Divergence_X1_New &
+!!$    CALL ComputeIncrement_Divergence_X1_New &
+    CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
     CALL TimersStop( Timer_Ex_Div_X1 )
     CALL TimersStart( Timer_Ex_Div_X2 )
 
-    CALL ComputeIncrement_Divergence_X2_New &
+!!$    CALL ComputeIncrement_Divergence_X2_New &
+    CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
     CALL TimersStop( Timer_Ex_Div_X2 )
     CALL TimersStart( Timer_Ex_Div_X3 )
 
-    CALL ComputeIncrement_Divergence_X3_New &
+!!$    CALL ComputeIncrement_Divergence_X3_New &
+    CALL ComputeIncrement_Divergence_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
     CALL TimersStop( Timer_Ex_Div_X3 )
