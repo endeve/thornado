@@ -169,11 +169,13 @@ CONTAINS
     ! --- Include One Layer of Spatial Ghost Cells in Update
 
     if (nDimsX .eq. 3) then
-       iX_SW = [    1, 1, 1 ]
-       iZ_SW = [ 0, 1, 1, 1 ]; iZ_SW_P = [ 0, 2, 2, 2 ]
+       iX_SW   = [    1, 1, 1 ]
+       iZ_SW   = [ 0, 1, 1, 1 ] 
+       iZ_SW_P = [ 0, 2, 2, 2 ]
     else
-       iX_SW = [    1, 1, 0 ]
-       iZ_SW = [ 0, 1, 1, 0 ]; iZ_SW_P = [ 0, 2, 2, 0 ]
+       iX_SW   = [    1, 1, 0 ]
+       iZ_SW   = [ 0, 1, 1, 0 ]
+       iZ_SW_P = [ 0, 2, 2, 0 ]
     end if
 
     IF( CallFromThornado )THEN
@@ -187,9 +189,6 @@ CONTAINS
     IF( Explicit )THEN
 
       ! --- Apply Positivity Limiter ---
-
-!!$      CALL ApplyPositivityLimiter_TwoMoment &
-!!$             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0-iZ_SW_P, iZ_E0+iZ_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_R )
