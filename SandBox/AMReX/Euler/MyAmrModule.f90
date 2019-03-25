@@ -1,6 +1,10 @@
 MODULE MyAmrModule
 
   USE iso_c_binding
+
+  ! --- AMReX Modules ---
+  USE amrex_fort_module, ONLY: &
+    amrex_real
   USE amrex_base_module, ONLY: &
     amrex_init, &
     amrex_initialized, &
@@ -10,16 +14,12 @@ MODULE MyAmrModule
     amrex_amrcore_initialized, &
     amrex_is_all_periodic, &
     amrex_spacedim
-  USE amrex_bc_types_module, ONLY: &
-    amrex_bc_int_dir, &
-    amrex_bc_foextrap
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
-  USE amrex_fort_module, ONLY: &
-    amrex_real
 
+  ! --- thornado Modules ---
   USE ProgramHeaderModule, ONLY: &
     InitializeProgramHeader, nDOFX
   USE FluidFieldsModule, ONLY: &
@@ -27,6 +27,7 @@ MODULE MyAmrModule
   USE GeometryFieldsModule, ONLY: &
     nGF
 
+  ! --- Local Modules ---
   USE MyAmrDataModule
 
   IMPLICIT NONE
@@ -144,14 +145,14 @@ CONTAINS
     ALLOCATE( t(0:nLevels) )
     t = 0.0e0_amrex_real
 
-    CALL InitializeDataAMReX
+    CALL InitializeDataAMReX( nLevels )
 
   END SUBROUTINE MyAmrInit
 
 
   SUBROUTINE MyAmrFinalize
 
-    CALL FinalizeDataAMReX
+    CALL FinalizeDataAMReX( nLevels )
 
     DEALLOCATE( t )
     DEALLOCATE( dt )

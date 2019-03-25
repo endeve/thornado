@@ -1,5 +1,13 @@
 MODULE FinalizationModule
 
+  ! --- AMReX Modules ---
+  USE amrex_amr_module,     ONLY: &
+    amrex_geometry, &
+    amrex_geometry_destroy, &
+    amrex_finalize
+  USE amrex_amrcore_module, ONLY: &
+    amrex_amrcore_finalize
+
   ! --- thornado Modules ---
   USE ReferenceElementModuleX,          ONLY: &
     FinalizeReferenceElementX
@@ -15,19 +23,10 @@ MODULE FinalizationModule
     Euler_FinalizePositivityLimiter
 
   ! --- Local Modules ---
-  USE MyAmrModule, ONLY: &
-    nLevels, &
-    MyAmrFinalize
+  USE MyAmrModule,                 ONLY: &
+    nLevels, MyAmrFinalize
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     MF_FinalizeFluid_SSPRK
-
-  ! --- AMReX Modules ---
-  USE amrex_amr_module,     ONLY: &
-    amrex_geometry, &
-    amrex_geometry_destroy, &
-    amrex_finalize
-  USE amrex_amrcore_module, ONLY: &
-    amrex_amrcore_finalize
 
   IMPLICIT NONE
   PRIVATE

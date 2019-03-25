@@ -1,11 +1,21 @@
 MODULE MF_InitializationModule
 
   ! --- AMReX Modules ---
-
-  USE amrex_base_module
+  USE amrex_base_module,     ONLY: &
+    amrex_problo, amrex_probhi
+  USE amrex_fort_module,     ONLY: &
+    amrex_real
+  USE amrex_box_module,      ONLY: &
+    amrex_box
+  USE amrex_multifab_module, ONLY: &
+    amrex_multifab, &
+    amrex_mfiter, &
+    amrex_mfiter_build, &
+    amrex_mfiter_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
-
   USE KindModule,              ONLY: &
     DP, Half, One, Pi, TwoPi
   USE ProgramHeaderModule,     ONLY: &
@@ -25,6 +35,10 @@ MODULE MF_InitializationModule
   USE Euler_UtilitiesModule,   ONLY: &
     ComputeConserved
 
+  ! --- Local Modules ---
+  USE MyAmrModule, ONLY: &
+    nLevels
+
   IMPLICIT NONE
   PRIVATE
 
@@ -36,8 +50,8 @@ CONTAINS
   SUBROUTINE MF_InitializeFields( ProgramName, MF_uGF, MF_uCF )
 
     CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
 
     IF( amrex_parallel_ioprocessor() )THEN
       WRITE(*,*)
@@ -76,13 +90,13 @@ CONTAINS
 
   SUBROUTINE InitializeFields_IsentropicVortex( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
 
     REAL(amrex_real), PARAMETER :: Beta  = 5.0_amrex_real
     REAL(amrex_real), PARAMETER :: Gamma = 1.4_amrex_real
 
-    INTEGER            :: iDim
+    INTEGER            :: iDim, iLevel
     INTEGER            :: iX1, iX2, iX3
     INTEGER            :: iNodeX
     INTEGER            :: iNodeX1, iNodeX2
@@ -110,76 +124,80 @@ CONTAINS
 
     END DO
 
-    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = .TRUE. )
+    DO iLevel = 0, nLevels
 
-    DO WHILE( MFI % next() )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
-      uGF => MF_uGF % DataPtr( MFI )
-      uCF => MF_uCF % DataPtr( MFI )
+      DO WHILE( MFI % next() )
 
-      BX = MFI % tilebox()
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
 
-      lo_G = LBOUND( uGF )
-      hi_G = UBOUND( uGF )
+        BX = MFI % tilebox()
 
-      lo_F = LBOUND( uCF )
-      hi_F = UBOUND( uCF )
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
 
-        uGF_K &
-          = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
 
-        DO iNodeX = 1, nDOFX
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
-          iNodeX2 = NodeNumberTableX(2,iNodeX)
+          DO iNodeX = 1, nDOFX
 
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-          X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
 
-          R = SQRT( X1**2 + X2**2 )
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-          uPF_K(iNodeX,iPF_D) &
-            = ( One - ( Gamma - One ) * Beta**2 &
-                      / ( 8.0_DP * Gamma * Pi**2 ) * EXP( One - R**2 ) &
-              )**( One / ( Gamma - One ) )
+            R = SQRT( X1**2 + X2**2 )
 
-          uPF_K(iNodeX,iPF_V1) &
-            = One - X2 * ( Beta / TwoPi ) * EXP( Half * ( One - R**2 ) )
+            uPF_K(iNodeX,iPF_D) &
+              = ( One - ( Gamma - One ) * Beta**2 &
+                        / ( 8.0_DP * Gamma * Pi**2 ) * EXP( One - R**2 ) &
+                )**( One / ( Gamma - One ) )
 
-          uPF_K(iNodeX,iPF_V2) &
-            = One + X1 * ( Beta / TwoPi ) * EXP( Half * ( One - R**2 ) )
+            uPF_K(iNodeX,iPF_V1) &
+              = One - X2 * ( Beta / TwoPi ) * EXP( Half * ( One - R**2 ) )
 
-          uPF_K(iNodeX,iPF_V3) &
-            = 0.0_DP
+            uPF_K(iNodeX,iPF_V2) &
+              = One + X1 * ( Beta / TwoPi ) * EXP( Half * ( One - R**2 ) )
 
-          uPF_K(iNodeX,iPF_E) &
-            = uPF_K(iNodeX,iPF_D)**Gamma / ( Gamma - One )
+            uPF_K(iNodeX,iPF_V3) &
+              = 0.0_DP
+
+            uPF_K(iNodeX,iPF_E) &
+              = uPF_K(iNodeX,iPF_D)**Gamma / ( Gamma - One )
+
+          END DO
+
+          CALL ComputeConserved &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
 
         END DO
-
-        CALL ComputeConserved &
-               ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-                 uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                 uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-                 uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-                 uGF_K(:,iGF_Gm_dd_11), &
-                 uGF_K(:,iGF_Gm_dd_22), &
-                 uGF_K(:,iGF_Gm_dd_33) )
-
-        uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
-          = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+        END DO
+        END DO
 
       END DO
-      END DO
-      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
 
     END DO
-
-    CALL amrex_mfiter_destroy( MFI )
 
     DO iDim = 1, 3
 
@@ -192,15 +210,14 @@ CONTAINS
 
   SUBROUTINE InitializeFields_SphericalSod( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
 
     REAL(amrex_real), PARAMETER :: Gamma = 1.4_amrex_real
 
-    INTEGER            :: iDim
+    INTEGER            :: iDim, iLevel
     INTEGER            :: iX1, iX2, iX3
     INTEGER            :: iNodeX
-    INTEGER            :: iNodeX1
     INTEGER            :: lo_G(4), hi_G(4)
     INTEGER            :: lo_F(4), hi_F(4)
     REAL(amrex_real)   :: X1
@@ -225,71 +242,75 @@ CONTAINS
 
     END DO
 
-    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = .TRUE. )
+    DO iLevel = 0, nLevels
 
-    DO WHILE( MFI % next() )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
-      uGF => MF_uGF % DataPtr( MFI )
-      uCF => MF_uCF % DataPtr( MFI )
+      DO WHILE( MFI % next() )
 
-      BX = MFI % tilebox()
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
 
-      lo_G = LBOUND( uGF )
-      hi_G = UBOUND( uGF )
+        BX = MFI % tilebox()
 
-      lo_F = LBOUND( uCF )
-      hi_F = UBOUND( uCF )
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
 
-        uGF_K &
-          = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
 
-        X1 = MeshX(1) % Center(iX1)
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-        DO iNodeX = 1, nDOFX
+          X1 = MeshX(1) % Center(iX1)
 
-          IF( X1 <= 1.0_DP ) THEN
+          DO iNodeX = 1, nDOFX
 
-            uPF_K(iNodeX,iPF_D)  = 1.0_DP
-            uPF_K(iNodeX,iPF_V1) = 0.0_DP
-            uPF_K(iNodeX,iPF_V2) = 0.0_DP
-            uPF_K(iNodeX,iPF_V3) = 0.0_DP
-            uPF_K(iNodeX,iPF_E)  = 1.0_DP / ( Gamma - 1.0_DP )
+            IF( X1 <= 1.0_DP ) THEN
 
-          ELSE
+              uPF_K(iNodeX,iPF_D)  = 1.0_DP
+              uPF_K(iNodeX,iPF_V1) = 0.0_DP
+              uPF_K(iNodeX,iPF_V2) = 0.0_DP
+              uPF_K(iNodeX,iPF_V3) = 0.0_DP
+              uPF_K(iNodeX,iPF_E)  = 1.0_DP / ( Gamma - 1.0_DP )
 
-            uPF_K(iNodeX,iPF_D)  = 0.125_DP
-            uPF_K(iNodeX,iPF_V1) = 0.0_DP
-            uPF_K(iNodeX,iPF_V2) = 0.0_DP
-            uPF_K(iNodeX,iPF_V3) = 0.0_DP
-            uPF_K(iNodeX,iPF_E)  = 0.1_DP / ( Gamma - 1.0_DP )
+            ELSE
 
-          END IF
+              uPF_K(iNodeX,iPF_D)  = 0.125_DP
+              uPF_K(iNodeX,iPF_V1) = 0.0_DP
+              uPF_K(iNodeX,iPF_V2) = 0.0_DP
+              uPF_K(iNodeX,iPF_V3) = 0.0_DP
+              uPF_K(iNodeX,iPF_E)  = 0.1_DP / ( Gamma - 1.0_DP )
+
+            END IF
+
+          END DO
+
+          CALL ComputeConserved &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
 
         END DO
-
-        CALL ComputeConserved &
-               ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-                 uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                 uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-                 uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-                 uGF_K(:,iGF_Gm_dd_11), &
-                 uGF_K(:,iGF_Gm_dd_22), &
-                 uGF_K(:,iGF_Gm_dd_33) )
-
-        uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
-          = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+        END DO
+        END DO
 
       END DO
-      END DO
-      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
 
     END DO
-
-    CALL amrex_mfiter_destroy( MFI )
 
     DO iDim = 1, 3
 
@@ -302,10 +323,10 @@ CONTAINS
 
   SUBROUTINE InitializeFields_TopHatAdvection( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
 
-    INTEGER            :: iDim
+    INTEGER            :: iDim, iLevel
     INTEGER            :: iX1, iX2, iX3
     INTEGER            :: iNodeX
     INTEGER            :: iNodeX1
@@ -333,66 +354,70 @@ CONTAINS
 
     END DO
 
-    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = .TRUE. )
+    DO iLevel = 0, nLevels
 
-    DO WHILE( MFI % next() )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
-      uGF => MF_uGF % DataPtr( MFI )
-      uCF => MF_uCF % DataPtr( MFI )
+      DO WHILE( MFI % next() )
 
-      BX = MFI % tilebox()
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
 
-      lo_G = LBOUND( uGF )
-      hi_G = UBOUND( uGF )
+        BX = MFI % tilebox()
 
-      lo_F = LBOUND( uCF )
-      hi_F = UBOUND( uCF )
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
 
-        uGF_K &
-          = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
 
-        DO iNodeX = 1, nDOFX
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
+          DO iNodeX = 1, nDOFX
 
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
 
-          IF( ABS( X1 - 0.5_DP ) .LE. 0.25_DP )THEN
-            uPF_K(iNodeX,iPF_D) = 2.0_DP
-          ELSE
-            uPF_K(iNodeX,iPF_D) = 1.0_DP
-          END IF
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            IF( ABS( X1 - 0.5_DP ) .LE. 0.25_DP )THEN
+              uPF_K(iNodeX,iPF_D) = 2.0_DP
+            ELSE
+              uPF_K(iNodeX,iPF_D) = 1.0_DP
+            END IF
+
+          END DO
+
+          uPF_K(:,iPF_V1) = 1.0_DP
+          uPF_K(:,iPF_V2) = 0.0_DP
+          uPF_K(:,iPF_V3) = 0.0_DP
+          uPF_K(:,iPF_E)  = 1.0d-2
+
+          CALL ComputeConserved &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
 
         END DO
-
-        uPF_K(:,iPF_V1) = 1.0_DP
-        uPF_K(:,iPF_V2) = 0.0_DP
-        uPF_K(:,iPF_V3) = 0.0_DP
-        uPF_K(:,iPF_E)  = 1.0d-2
-
-        CALL ComputeConserved &
-               ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-                 uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                 uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-                 uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-                 uGF_K(:,iGF_Gm_dd_11), &
-                 uGF_K(:,iGF_Gm_dd_22), &
-                 uGF_K(:,iGF_Gm_dd_33) )
-
-        uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
-          = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+        END DO
+        END DO
 
       END DO
-      END DO
-      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
 
     END DO
-
-    CALL amrex_mfiter_destroy( MFI )
 
     DO iDim = 1, 3
 
@@ -405,19 +430,19 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Implosion( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
 
     REAL(amrex_real), PARAMETER :: Beta  = 5.0_amrex_real
     REAL(amrex_real), PARAMETER :: Gamma = 1.4_amrex_real
 
-    INTEGER            :: iDim
+    INTEGER            :: iDim, iLevel
     INTEGER            :: iX1, iX2, iX3
     INTEGER            :: iNodeX
     INTEGER            :: iNodeX1, iNodeX2
     INTEGER            :: lo_G(4), hi_G(4)
     INTEGER            :: lo_F(4), hi_F(4)
-    REAL(amrex_real)   :: X1, X2, R
+    REAL(amrex_real)   :: X1, X2
     REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
     REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
     REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
@@ -444,80 +469,84 @@ CONTAINS
 
     END DO
 
-    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = .TRUE. )
+    DO iLevel = 0, nLevels
 
-    DO WHILE( MFI % next() )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
-      uGF => MF_uGF % DataPtr( MFI )
-      uCF => MF_uCF % DataPtr( MFI )
+      DO WHILE( MFI % next() )
 
-      BX = MFI % tilebox()
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
 
-      lo_G = LBOUND( uGF )
-      hi_G = UBOUND( uGF )
+        BX = MFI % tilebox()
 
-      lo_F = LBOUND( uCF )
-      hi_F = UBOUND( uCF )
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
 
-        uGF_K &
-          = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
 
-        DO iNodeX = 1, nDOFX
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
-          iNodeX2 = NodeNumberTableX(2,iNodeX)
+          DO iNodeX = 1, nDOFX
 
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-          X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
 
-          IF( X1 + X2 .LT. 0.15_amrex_real )THEN
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+            IF( X1 + X2 .LT. 0.15_amrex_real )THEN
    
-            uPF_K(iNodeX,iPF_D) &
-              = D_0
-            uPF_K(iNodeX,iPF_E) &
-              = E_0
+              uPF_K(iNodeX,iPF_D) &
+                = D_0
+              uPF_K(iNodeX,iPF_E) &
+                = E_0
            
-          ELSE
+            ELSE
 
-            uPF_K(iNodeX,iPF_D) &
-              = D_1
-            uPF_K(iNodeX,iPF_E) &
-              = E_1
+              uPF_K(iNodeX,iPF_D) &
+                = D_1
+              uPF_K(iNodeX,iPF_E) &
+                = E_1
 
-          END IF
+            END IF
 
-          uPF_K(iNodeX,iPF_V1) &
-            = 0.0_amrex_real
-          uPF_K(iNodeX,iPF_V2) &
-            = 0.0_amrex_real
-          uPF_K(iNodeX,iPF_V3) &
-            = 0.0_amrex_real
+            uPF_K(iNodeX,iPF_V1) &
+              = 0.0_amrex_real
+            uPF_K(iNodeX,iPF_V2) &
+              = 0.0_amrex_real
+            uPF_K(iNodeX,iPF_V3) &
+              = 0.0_amrex_real
+
+          END DO
+
+          CALL ComputeConserved &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
 
         END DO
-
-        CALL ComputeConserved &
-               ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-                 uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                 uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-                 uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-                 uGF_K(:,iGF_Gm_dd_11), &
-                 uGF_K(:,iGF_Gm_dd_22), &
-                 uGF_K(:,iGF_Gm_dd_33) )
-
-        uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
-          = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+        END DO
+        END DO
 
       END DO
-      END DO
-      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
 
     END DO
-
-    CALL amrex_mfiter_destroy( MFI )
 
     DO iDim = 1, 3
 

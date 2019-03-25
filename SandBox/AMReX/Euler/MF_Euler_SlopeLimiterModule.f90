@@ -1,14 +1,17 @@
 MODULE MF_Euler_SlopeLimiterModule
 
   ! --- AMReX Modules ---
-  USE amrex_base_module, ONLY: &
-    amrex_multifab, &
-    amrex_box,      &
-    amrex_geometry, &
-    amrex_mfiter,   &
-    amrex_mfiter_build
-  USE amrex_fort_module, ONLY: &
+  USE amrex_fort_module,     ONLY: &
     amrex_real
+  USE amrex_box_module,      ONLY: &
+    amrex_box
+  USE amrex_geometry_module, ONLY: &
+    amrex_geometry
+  USE amrex_multifab_module, ONLY: &
+    amrex_multifab, &
+    amrex_mfiter, &
+    amrex_mfiter_build, &
+    amrex_mfiter_destroy
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,      ONLY: &
@@ -21,11 +24,10 @@ MODULE MF_Euler_SlopeLimiterModule
     Euler_ApplySlopeLimiter
 
   ! --- Local Modules ---
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule,                ONLY: &
     AMReX2thornado, &
-    thornado2AMReX, &
-    ShowVariableFromMultiFab
-  USE MyAmrModule,        ONLY: &
+    thornado2AMReX
+  USE MyAmrModule,                       ONLY: &
     nLevels, UseSlopeLimiter, DEBUG
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap, ConstructEdgeMap, &
@@ -142,6 +144,8 @@ CONTAINS
         DEALLOCATE( G )
 
       END DO
+
+      CALL amrex_mfiter_destroy( MFI )
 
     END DO
 
