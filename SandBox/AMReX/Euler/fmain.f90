@@ -55,7 +55,6 @@ PROGRAM main
   USE InputOutputModuleAMReX,           ONLY: &
     WriteFieldsAMReX_PlotFile, &
     ReadCheckpointFile, &
-    WriteFieldsHDF_AMReX, &
     MakeMF_Diff
 
   ! --- Local Modules ---
@@ -261,8 +260,6 @@ PROGRAM main
 
   t = 0.0_amrex_real
 
-  CALL WriteFieldsHDF_AMReX( t, GEOM, MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
   CALL WriteFieldsAMReX_PlotFile &
          ( 0.0e0_amrex_real, GEOM, StepNo, &
            MF_uGF_Option = MF_uGF, &
@@ -351,8 +348,6 @@ PROGRAM main
   END IF
 
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-  CALL WriteFieldsHDF_AMReX( t, GEOM, MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   StepNo = StepNo + 1
   CALL WriteFieldsAMReX_PlotFile &
