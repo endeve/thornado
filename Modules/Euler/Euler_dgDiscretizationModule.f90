@@ -187,8 +187,8 @@ CONTAINS
     !$OMP PARALLEL DO PRIVATE &
     !$OMP& ( iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X1, dX2, dX3, &
     !$OMP&   uCF_P, uCF_K, uCF_L, uCF_R, uPF_K, uPF_L, uPF_R, P_K, &
-    !$OMP&   P_L, P_R, Cs_L, Cs_R, Lambda_L, Lambda_R, G_P, G_K,   &
-    !$OMP&   G_F, Flux_X1_q, Flux_X1_L, Flux_X1_R, NumericalFlux )
+    !$OMP&   P_L, P_R, Cs_L, Cs_R, G_P, G_K, G_F, Flux_X1_q, &
+    !$OMP&   Flux_X1_L, Flux_X1_R, NumericalFlux )
     DO iX3 = iX_B0(3), iX_E0(3)
 
       dX3 = MeshX(3) % Width(iX3)

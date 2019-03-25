@@ -167,6 +167,37 @@ CONTAINS
   END FUNCTION Flux_X3
 
 
+  PURE FUNCTION StressTensor_Diagonal &
+    ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    REAL(DP)             :: StressTensor_Diagonal(1:3)
+    REAL(DP), INTENT(in) :: D, I_1, I_2, I_3, FF, EF
+    REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+    REAL(DP) :: h_u_1, h_u_2, h_u_3
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+
+    h_u_1 = I_1 / ( FF * D )
+    h_u_2 = I_2 / ( FF * D )
+    h_u_3 = I_3 / ( FF * D )
+
+    h_d_1 = Gm_dd_11 * h_u_1
+    h_d_2 = Gm_dd_22 * h_u_2
+    h_d_3 = Gm_dd_33 * h_u_3
+
+    StressTensor_Diagonal(1) &
+      = D * Half * ( (Three*EF - One) * h_u_1 * h_d_1 + (One - EF) )
+
+    StressTensor_Diagonal(2) &
+      = D * Half * ( (Three*EF - One) * h_u_2 * h_d_2 + (One - EF) )
+
+    StressTensor_Diagonal(3) &
+      = D * Half * ( (Three*EF - One) * h_u_3 * h_d_3 + (One - EF) )
+
+    RETURN
+  END FUNCTION StressTensor_Diagonal
+
+
   REAL(DP) PURE ELEMENTAL FUNCTION NumericalFlux_LLF &
     ( u_L, u_R, Flux_L, Flux_R, alpha )
 #if defined(THORNADO_OMP_OL)
