@@ -15,6 +15,10 @@ MODULE FinalizationModule
     FinalizeReferenceElementX_Lagrange
    USE MeshModule,                      ONLY: &
     MeshType, DestroyMesh
+  USE GeometryFieldsModule,             ONLY: &
+    DestroyGeometryFields
+  USE FluidFieldsModule,                ONLY: &
+    DestroyFluidFields
   USE EquationOfStateModule,            ONLY: &
     FinalizeEquationOfState
   USE Euler_SlopeLimiterModule,         ONLY: &
@@ -44,13 +48,17 @@ CONTAINS
 
     INTEGER :: iLevel, iDim
 
+    CALL MF_FinalizeFluid_SSPRK
+
+    CALL DestroyFluidFields
+
     CALL Euler_FinalizePositivityLimiter
 
     CALL Euler_FinalizeSlopeLimiter
 
     CALL FinalizeEquationOfState
 
-    CALL MF_FinalizeFluid_SSPRK
+    CALL DestroyGeometryFields
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX
