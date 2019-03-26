@@ -1785,6 +1785,8 @@ CONTAINS
 
             END DO
 
+            CALL ComputeGeometryX_FromScaleFactors( GX_F(:,:) )
+
             CALL ComputeGeometryX_FromScaleFactors( G_F(:,:) )
 
             ! --- Lapse Function ---
@@ -1812,11 +1814,11 @@ CONTAINS
 
               Tau(1:nDOF) &
                 = OuterProduct1D3D &
-                    ( Ones(1:nDOFE), nDOFE, G_K(:,iGF_SqrtGm), nDOFX )
+                    ( Ones(1:nDOFE), nDOFE, GX_K(:,iGF_SqrtGm), nDOFX )
 
               Tau_X1(1:nDOF_X1) &
                 = OuterProduct1D3D &
-                    ( Ones(1:nDOFE), nDOFE, G_F(:,iGF_SqrtGm), nDOFX_X1 )
+                    ( Ones(1:nDOFE), nDOFE, GX_F(:,iGF_SqrtGm), nDOFX_X1 )
 
               DO iCR = 1, nCR
 
