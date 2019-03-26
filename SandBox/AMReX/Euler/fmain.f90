@@ -59,7 +59,8 @@ PROGRAM main
 
   ! --- Local Modules ---
   USE MF_GeometryModule,                ONLY: &
-    MF_ComputeGeometryX
+    MF_ComputeGeometryX, &
+    MF_ComputeGravitationalPotential
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
   USE MF_Euler_UtilitiesModule,         ONLY: &
@@ -113,6 +114,7 @@ PROGRAM main
   TYPE(amrex_geometry),  ALLOCATABLE :: GEOM(:)
 
   REAL(amrex_real) :: Timer_Evolution
+  REAL(amrex_real) :: Mass
 
 !!$  CALL MakeMF_Diff( 0, 2929 )
 
@@ -205,6 +207,11 @@ PROGRAM main
 
   CALL MF_ComputeGeometryX( MF_uGF )
   CALL CreateGeometryFields( nX, swX, CoordinateSystem )
+
+  IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
+    Mass = 0.5_amrex_real
+    CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
+  END IF
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &
