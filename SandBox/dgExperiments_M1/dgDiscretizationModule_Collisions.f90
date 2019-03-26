@@ -356,6 +356,18 @@ CONTAINS
 
         END IF
 
+      ELSEIF( TRIM( ProgramName ) .EQ. 'HomogeneousSphere_Spherical' )THEN
+
+        R = MeshX(1) % Center(iZ2)
+
+        ! --- Smoothen Absorption Opacity ---
+
+        SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) &
+          = SigmaA0 / ( ( R / Radius )**80 + One )
+
+        SigmaTmp2(:,iZ1,iZ2,iZ3,iZ4) &
+          = Zero
+
       ELSE
 
         SigmaTmp1(:,iZ1,iZ2,iZ3,iZ4) = SigmaA0
