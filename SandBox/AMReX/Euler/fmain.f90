@@ -47,9 +47,11 @@ PROGRAM main
   USE EquationOfStateModule,            ONLY: &
     InitializeEquationOfState
   USE GeometryFieldsModule,             ONLY: &
-    nGF, CoordinateSystem
+    nGF, CoordinateSystem, &
+    CreateGeometryFields
   USE FluidFieldsModule,                ONLY: &
-    nCF, nPF, nAF
+    nCF, nPF, nAF, &
+    CreateFluidFields
   USE InputOutputModuleAMReX,           ONLY: &
     WriteFieldsAMReX_PlotFile, &
     ReadCheckpointFile, &
@@ -112,7 +114,7 @@ PROGRAM main
 
   REAL(amrex_real) :: Timer_Evolution
 
-!!$  CALL MakeMF_Diff( 0, 1 )
+!!$  CALL MakeMF_Diff( 0, 2929 )
 
   ! --- Initialize AMReX ---
   CALL amrex_init()
@@ -202,6 +204,7 @@ PROGRAM main
   CALL InitializeReferenceElementX_Lagrange
 
   CALL MF_ComputeGeometryX( MF_uGF )
+  CALL CreateGeometryFields( nX, swX, CoordinateSystem )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &
@@ -232,8 +235,8 @@ PROGRAM main
            Verbose_Option = amrex_parallel_ioprocessor() )
 
   CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
+  CALL CreateFluidFields( nX, swX )
 
-  ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
   CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
   CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
 
@@ -366,7 +369,6 @@ PROGRAM main
 
   CALL FinalizeProgram( GEOM, MeshX )
 
-  DEALLOCATE( Shock )
   DEALLOCATE( GEOM )
   DEALLOCATE( BA )
   DEALLOCATE( DM )
