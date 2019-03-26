@@ -16,6 +16,7 @@ MODULE TwoMoment_UtilitiesModule
   PUBLIC :: Flux_X1
   PUBLIC :: Flux_X2
   PUBLIC :: Flux_X3
+  PUBLIC :: StressTensor_Diagonal
   PUBLIC :: NumericalFlux_LLF
 
 CONTAINS
