@@ -303,11 +303,12 @@ PROGRAM ApplicationDriver
 
       nNodes = 2
 
-      TimeSteppingScheme = 'SSPRK2'
+      TimeSteppingScheme = 'IMEX_PDARS_3'
 
-      N0     = 0.00_DP!1.00_DP - 1.0d-12
-      SigmaA = 0.00_DP!1000.0_DP
+      N0     = 0.80_DP
+      SigmaA = 4.00_DP
       SigmaS = 0.00_DP
+      Radius = 1.00_DP
 
       UsePositivityLimiter = .TRUE.
 
@@ -315,7 +316,7 @@ PROGRAM ApplicationDriver
       Max_1 = One  - SqrtTiny ! --- Max Density
       Min_2 = Zero + SqrtTiny ! --- Min "Gamma"
 
-      t_end     = 5.0d-0
+      t_end     = 2.0d+1
       iCycleD   = 10
       iCycleW   = 500
       iCycleT   = 10
@@ -411,7 +412,9 @@ PROGRAM ApplicationDriver
   ! --- Write Initial Condition ---
 
   CALL WriteFieldsHDF &
-         ( Time = 0.0_DP, WriteRF_Option = .TRUE. )
+         ( Time = 0.0_DP, &
+           WriteGF_Option = .TRUE., &
+           WriteRF_Option = .TRUE. )
 
   ! --- Tally ---
 
@@ -469,13 +472,19 @@ PROGRAM ApplicationDriver
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
-      CALL WriteFieldsHDF( Time = t, WriteRF_Option = .TRUE. )
+      CALL WriteFieldsHDF &
+             ( Time = t, &
+               WriteGF_Option = .TRUE., &
+               WriteRF_Option = .TRUE. )
 
     END IF
 
   END DO
 
-  CALL WriteFieldsHDF( Time = t, WriteRF_Option = .TRUE. )
+  CALL WriteFieldsHDF &
+         ( Time = t, &
+           WriteGF_Option = .TRUE., &
+           WriteRF_Option = .TRUE. )
 
   wTime = MPI_WTIME( ) - wTime
 
