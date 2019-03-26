@@ -208,6 +208,24 @@ module CublasModule
     end function cublasGetMatrixAsync
 
     integer(c_int) function &
+        & cublasDgemv_v2(handle, trans, m, n, alpha, dA, ldda, dx, incx, beta, dy, incy) &
+        & bind(c, name="cublasDgemv_v2")
+      use, intrinsic :: iso_c_binding
+      type(c_ptr), value :: handle
+      integer(c_int), value :: trans
+      integer(c_int), value :: m
+      integer(c_int), value :: n
+      real(c_double) :: alpha
+      type(c_ptr), value :: dA
+      integer(c_int), value :: ldda
+      type(c_ptr), value :: dx
+      integer(c_int), value :: incx
+      real(c_double) :: beta
+      type(c_ptr), value :: dy
+      integer(c_int), value :: incy
+    end function cublasDgemv_v2
+
+    integer(c_int) function &
         & cublasDgetrfBatched(handle, n, dA, ldda, dP, dInfo, nbatch) &
         & bind(c, name="cublasDgetrfBatched")
       use, intrinsic :: iso_c_binding
