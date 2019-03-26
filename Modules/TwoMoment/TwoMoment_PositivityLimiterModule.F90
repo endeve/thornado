@@ -175,6 +175,7 @@ CONTAINS
 
     LOGICAL  :: NegativeStates(2)
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iCR, iP
+    INTEGER  :: nNeg_1, nNeg_2
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: U_q(nDOF,nCR), U_K(nCR), Gamma(nPT)
 
@@ -184,6 +185,9 @@ CONTAINS
 
     MinTheta_1 = One
     MinTheta_2 = One
+
+    nNeg_1 = 0
+    nNeg_2 = 0
 
     DO iS = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -224,6 +228,17 @@ CONTAINS
         NegativeStates(1) = .TRUE.
 
         MinTheta_1 = MIN( Theta_1, MinTheta_1 )
+
+        nNeg_1 = nNeg_1 + 1
+#ifdef THORNADO_DEBUG_POSITIVITYLIMITER
+        IF ( nNeg_1 <= 5 ) THEN
+          WRITE(*,'(a30,5i4)')      'Neg. UQ(N) @ ', iZ1, iZ2, iZ3, iZ4, iS
+          WRITE(*,'(a30,3es23.15)')    'Min_K, Max_K, Theta_1 : ', Min_K, Max_K, Theta_1
+          WRITE(*,'(a30,es23.15,i4)')  '        MINVAL(UQ(N)) : ', MINVAL(U_q(:,iCR_N)), MINLOC(U_q(:,iCR_N))
+          WRITE(*,'(a30,es23.15)')     '                  U_K : ', U_K(iCR_N)
+          WRITE(*,'(a30,es23.15,i4)')  '        MINVAL(UP(N)) : ', MINVAL(U_PP(:,iCR_N)), MINLOC(U_PP(:,iCR_N))
+        END IF
+#endif
 
       END IF
 
@@ -267,6 +282,16 @@ CONTAINS
         NegativeStates(1) = .FALSE.
 
         MinTheta_2 = MIN( Theta_2, MinTheta_2 )
+
+        nNeg_2 = nNeg_2 + 1
+#ifdef THORNADO_DEBUG_POSITIVITYLIMITER
+        IF ( nNeg_2 <= 5 ) THEN
+          WRITE(*,'(a30,5i4)')      'Neg. Gamma @ ', iZ1, iZ2, iZ3, iZ4, iS
+          WRITE(*,'(a30,2es23.15)') '   Min_Gamma, Theta_2 : ', MINVAL(Gamma(:)), Theta_2
+          WRITE(*,'(a30,4es23.15)') '        MINVAL(UQ(:)) : ', MINVAL(U_q(:,:),DIM=1)
+          WRITE(*,'(a30,4es23.15)') '                  U_K : ', U_K(:)
+        END IF
+#endif
 
       END IF
 
