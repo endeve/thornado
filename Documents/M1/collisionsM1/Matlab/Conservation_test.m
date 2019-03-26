@@ -5,7 +5,8 @@ clear all
 % Y = 1.421e-1;   %  0.01       to 0.6
 
 profile = [  
-  1.179E+05   4.117E+14   1.261E+11   2.520E-01  
+%   1.179E+05   4.117E+14   1.261E+11   2.520E-01  
+  1.658E+06   2.469E+13   2.517E+11   1.849E-01  
 ];
 
 D = profile(2);
@@ -52,10 +53,11 @@ dt = 1e-6;
 global BoltzmannConstant
 J0 = FermiDirac( g_E_N, Mnu, BoltzmannConstant * T );
 
-J = zeros(size(g_E_N));
+% J = zeros(size(g_E_N));
 % J(1:end-1) = J0(1:end-1); % initial condition
 % J(1) = 1;
 J = J0 - 1e-2*J0; % initial condition
+% J = J0; % initial condition
 
 global g_Iterations_Min g_Iterations_Max g_Iterations_Ave;
 g_Iterations_Min = 0;
