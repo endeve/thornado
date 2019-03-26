@@ -34,8 +34,13 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
-    nDOFX_X3
+    nDOFX_X3, &
+    WeightsX_q, &
+    WeightsX_X1, &
+    WeightsX_X2
   USE ReferenceElementModuleX_Lagrange, ONLY: &
+    dLXdX1_q, &
+    dLXdX2_q, &
     LX_X1_Dn, &
     LX_X1_Up, &
     LX_X2_Dn, &
@@ -51,7 +56,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     Weights_X2, &
     Weights_X3, &
     NodeNumberTable, &
-    OuterProduct1D3D
+    OuterProduct1D3D, &
+    NodeNumbersX
   USE ReferenceElementModule_Lagrange, ONLY: &
     dLdX1_q, &
     dLdX2_q, &
@@ -75,7 +81,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_SqrtGm, &
-    iGF_Alpha
+    iGF_Alpha, &
+    CoordinateSystem
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModuleE, ONLY: &
@@ -96,7 +103,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     Flux_X1, &
     Flux_X2, &
     Flux_X3, &
-    NumericalFlux_LLF
+    NumericalFlux_LLF, &
+    StressTensor_Diagonal
 
   IMPLICIT NONE
   PRIVATE
@@ -119,9 +127,11 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(inout) :: &
-      U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+      U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                 iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+                 iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iNodeX, iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS
     REAL(DP) :: Tau
@@ -231,6 +241,9 @@ CONTAINS
         END DO
       END DO
     END DO
+
+    CALL ComputeIncrement_Geometry &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -2694,6 +2707,261 @@ CONTAINS
     END DO ! iS
 
   END SUBROUTINE ComputeIncrement_Divergence_X3
+
+
+  SUBROUTINE ComputeIncrement_Geometry &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
+    REAL(DP), INTENT(in)    :: &
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
+    REAL(DP), INTENT(in)    :: &
+      U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                 iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(inout) :: &
+      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
+                 iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iGF
+    INTEGER  :: iNodeZ, iNodeX
+    REAL(DP) :: PR_K(nDOF,nPR), FF(nDOF), EF(nDOF), Stress(3)
+    REAL(DP) :: &
+      h2_X1(nDOFX_X1,iZ_B0(2):iZ_E0(2)+1,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+      h3_X1(nDOFX_X1,iZ_B0(2):iZ_E0(2)+1,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+      h3_X2(nDOFX_X2,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3)+1,iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      dh2dX1(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+      dh3dX1(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+      dh3dX2(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      G(nDOF,nGF,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+    IF( TRIM( CoordinateSystem ) == 'CARTESIAN' ) RETURN
+
+    ! --- Derivative of Scale Factor h_2 wrt X1 ---
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
+
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+               GX(:,iZ2-1,iZ3,iZ4,iGF_h_2), 1, Zero, h2_X1(:,iZ2,iZ3,iZ4), 1 )
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               GX(:,iZ2  ,iZ3,iZ4,iGF_h_2), 1, Half, h2_X1(:,iZ2,iZ3,iZ4), 1 )
+
+      ! --- h_2 on X1 Faces ---
+
+      h2_X1(:,iZ2,iZ3,iZ4) &
+        = WeightsX_X1(:) * MAX( h2_X1(:,iZ2,iZ3,iZ4), SqrtTiny )
+
+    END DO
+    END DO
+    END DO
+
+    ASSOCIATE( dZ2 => MeshX(1) % Width )
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      CALL DGEMV &
+             ( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
+               h2_X1(:,iZ2+1,iZ3,iZ4), 1, Zero, dh2dX1(:,iZ2,iZ3,iZ4), 1 )
+      CALL DGEMV &
+             ( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
+               h2_X1(:,iZ2  ,iZ3,iZ4), 1,  One, dh2dX1(:,iZ2,iZ3,iZ4), 1 )
+      CALL DGEMV &
+             ( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX, WeightsX_q &
+               * GX(:,iZ2,iZ3,iZ4,iGF_h_2), 1, One, dh2dX1(:,iZ2,iZ3,iZ4), 1 )
+
+      dh2dX1(:,iZ2,iZ3,iZ4) &
+        = dh2dX1(:,iZ2,iZ3,iZ4) / ( WeightsX_q(:) * dZ2(iZ2) )
+
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE ! dZ2, etc.
+
+    ! --- Derivative of Scale Factor h_3 wrt X1 ---
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
+
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+               GX(:,iZ2-1,iZ3,iZ4,iGF_h_3), 1, Zero, h3_X1(:,iZ2,iZ3,iZ4), 1 )
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               GX(:,iZ2  ,iZ3,iZ4,iGF_h_3), 1, Half, h3_X1(:,iZ2,iZ3,iZ4), 1 )
+
+      ! --- h_3 on X1 Faces ---
+
+      h3_X1(:,iZ2,iZ3,iZ4) &
+        = WeightsX_X1(:) * MAX( h3_X1(:,iZ2,iZ3,iZ4), SqrtTiny )
+
+    END DO
+    END DO
+    END DO
+
+    ASSOCIATE( dZ2 => MeshX(1) % Width )
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      CALL DGEMV &
+             ( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
+               h3_X1(:,iZ2+1,iZ3,iZ4), 1, Zero, dh3dX1(:,iZ2,iZ3,iZ4), 1 )
+      CALL DGEMV &
+             ( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
+               h3_X1(:,iZ2  ,iZ3,iZ4), 1,  One, dh3dX1(:,iZ2,iZ3,iZ4), 1 )
+      CALL DGEMV &
+             ( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX, WeightsX_q &
+               * GX(:,iZ2,iZ3,iZ4,iGF_h_3), 1, One, dh3dX1(:,iZ2,iZ3,iZ4), 1 )
+
+      dh3dX1(:,iZ2,iZ3,iZ4) &
+        = dh3dX1(:,iZ2,iZ3,iZ4) / ( WeightsX_q(:) * dZ2(iZ2) )
+
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE ! dZ2, etc.
+
+    ! --- Derivative of Scale Factor h_3 wrt X2 ---
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3) + 1
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      CALL DGEMV &
+             ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+               GX(:,iZ2,iZ3-1,iZ4,iGF_h_3), 1, Zero, h3_X2(:,iZ2,iZ3,iZ4), 1 )
+      CALL DGEMV &
+             ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+               GX(:,iZ2,iZ3  ,iZ4,iGF_h_3), 1, Half, h3_X2(:,iZ2,iZ3,iZ4), 1 )
+
+      ! --- h_3 on X2 Faces ---
+
+      h3_X2(:,iZ2,iZ3,iZ4) &
+        = WeightsX_X2(:) * MAX( h3_X2(:,iZ2,iZ3,iZ4), SqrtTiny )
+
+    END DO
+    END DO
+    END DO
+
+    ASSOCIATE( dZ3 => MeshX(2) % Width )
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      CALL DGEMV &
+             ( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
+               h3_X2(:,iZ2,iZ3+1,iZ4), 1, Zero, dh3dX2(:,iZ2,iZ3,iZ4), 1 )
+      CALL DGEMV &
+             ( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
+               h3_X2(:,iZ2,iZ3  ,iZ4), 1,  One, dh3dX2(:,iZ2,iZ3,iZ4), 1 )
+      CALL DGEMV &
+             ( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX, WeightsX_q &
+               * GX(:,iZ2,iZ3,iZ4,iGF_h_3), 1, One, dh3dX2(:,iZ2,iZ3,iZ4), 1 )
+
+      dh3dX2(:,iZ2,iZ3,iZ4) &
+        = dh3dX2(:,iZ2,iZ3,iZ4) / ( WeightsX_q(:) * dZ3(iZ3) )
+
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE ! dZ2, etc.
+
+    DO iGF = 1, nGF
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeZ = 1, nDOF
+
+        G(iNodeZ,iGF,iZ2,iZ3,iZ3) &
+          = GX(NodeNumbersX(iNodeZ),iZ2,iZ3,iZ4,iGF)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      CALL ComputePrimitive_TwoMoment &
+             ( U(:,iZ1,iZ2,iZ3,iZ4,iCR_N, iS), &
+               U(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+               U(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+               U(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+               PR_K(:,iPR_D ), PR_K(:,iPR_I1), &
+               PR_K(:,iPR_I2), PR_K(:,iPR_I3), &
+               G(:,iGF_Gm_dd_11,iZ2,iZ3,iZ4),  &
+               G(:,iGF_Gm_dd_22,iZ2,iZ3,iZ4),  &
+               G(:,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+
+      FF = FluxFactor &
+             ( PR_K(:,iPR_D ), PR_K(:,iPR_I1), &
+               PR_K(:,iPR_I2), PR_K(:,iPR_I3), &
+               G(:,iGF_Gm_dd_11,iZ2,iZ3,iZ4),  &
+               G(:,iGF_Gm_dd_22,iZ2,iZ3,iZ4),  &
+               G(:,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+
+      EF = EddingtonFactor( PR_K(:,iPR_D), FF )
+
+      DO iNodeZ = 1, nDOF
+
+        iNodeX = NodeNumbersX(iNodeZ)
+
+        Stress = StressTensor_Diagonal &
+                   ( PR_K(iNodeZ,iPR_D ), PR_K(iNodeZ,iPR_I1), &
+                     PR_K(iNodeZ,iPR_I2), PR_K(iNodeZ,iPR_I3), &
+                     FF(iNodeZ), EF(iNodeZ), &
+                     G(iNodeZ,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
+                     G(iNodeZ,iGF_Gm_dd_22,iZ2,iZ3,iZ4),  &
+                     G(iNodeZ,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+
+        ! --- Add to Increments ---
+
+        dU(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
+          = dU(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
+              + Stress(2) * dh2dX1(iNodeX,iZ2,iZ3,iZ4) &
+                  / G(iNodeZ,iGF_h_2,iZ2,iZ3,iZ4) &
+              + Stress(3) * dh3dX1(iNodeX,iZ2,iZ3,iZ4) &
+                  / G(iNodeZ,iGF_h_3,iZ2,iZ3,iZ4)
+
+        dU(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
+          = dU(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
+              + Stress(3) * dh3dX2(iNodeX,iZ2,iZ3,iZ4) &
+                  / G(iNodeZ,iGF_h_3,iZ2,iZ3,iZ4)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeIncrement_Geometry
 
 
 END MODULE TwoMoment_DiscretizationModule_Streaming
