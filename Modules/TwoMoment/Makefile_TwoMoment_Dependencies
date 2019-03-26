@@ -30,6 +30,7 @@ TwoMoment_PositivityLimiterModule_GPU.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   TimersModule.o \
+  LinearAlgebraModule.o \
   ReferenceElementModule.o \
   ReferenceElementModule_Lagrange.o \
   RadiationFieldsModule.o \

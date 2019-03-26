@@ -11,6 +11,9 @@ MODULE TwoMoment_PositivityLimiterModule
     TimersStart, &
     TimersStop, &
     Timer_PositivityLimiter
+  USE LinearAlgebraModule, ONLY: &
+    MatrixMatrixMultiply, &
+    MatrixVectorMultiply
   USE ReferenceElementModule, ONLY: &
     nDOF_X1, nDOF_X2, nDOF_X3, &
     Weights_q
@@ -144,30 +147,30 @@ CONTAINS
       IF ( SUM( nPP(4:5) ) > 0 ) THEN
 
         iOS = SUM( nPP(1:3) )
-        L_X(iOS+1:iOS+nDOF_X1,iNode) = L_X1_Up(1:nDOF_X1,iNode)
+        L_X(iOS+1:iOS+nDOF_X1,iNode) = L_X1_Dn(1:nDOF_X1,iNode)
 
         iOS = iOS + nPP(4)
-        L_X(iOS+1:iOS+nDOF_X1,iNode) = L_X1_Dn(1:nDOF_X1,iNode)
+        L_X(iOS+1:iOS+nDOF_X1,iNode) = L_X1_Up(1:nDOF_X1,iNode)
 
       END IF
 
       IF ( SUM( nPP(6:7) ) > 0 ) THEN
 
         iOS = SUM( nPP(1:5) )
-        L_X(iOS+1:iOS+nDOF_X2,iNode) = L_X2_Up(1:nDOF_X2,iNode)
+        L_X(iOS+1:iOS+nDOF_X2,iNode) = L_X2_Dn(1:nDOF_X2,iNode)
 
         iOS = iOS + nPP(6)
-        L_X(iOS+1:iOS+nDOF_X2,iNode) = L_X2_Dn(1:nDOF_X2,iNode)
+        L_X(iOS+1:iOS+nDOF_X2,iNode) = L_X2_Up(1:nDOF_X2,iNode)
 
       END IF
 
       IF ( SUM( nPP(8:9) ) > 0 ) THEN
 
         iOS = SUM( nPP(1:7) )
-        L_X(iOS+1:iOS+nDOF_X3,iNode) = L_X3_Up(1:nDOF_X3,iNode)
+        L_X(iOS+1:iOS+nDOF_X3,iNode) = L_X3_Dn(1:nDOF_X3,iNode)
 
         iOS = iOS + nPP(8)
-        L_X(iOS+1:iOS+nDOF_X3,iNode) = L_X3_Dn(1:nDOF_X3,iNode)
+        L_X(iOS+1:iOS+nDOF_X3,iNode) = L_X3_Up(1:nDOF_X3,iNode)
 
       END IF
 
@@ -180,8 +183,6 @@ CONTAINS
       !$ACC ENTER DATA &
       !$ACC COPYIN( L_X )
 #endif
-        
-
 
     ! --- For Tally of Positivity Limiter ---
 
@@ -246,9 +247,13 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: U_K_Pack1(:)
     REAL(DP), ALLOCATABLE :: U_Q_Pack1(:,:)
     REAL(DP), ALLOCATABLE :: U_P_Pack1(:,:)
+    REAL(DP), ALLOCATABLE :: Min_K_Pack(:)
+    REAL(DP), ALLOCATABLE :: Max_K_Pack(:)
+
     REAL(DP), ALLOCATABLE :: U_K_Pack2(:,:)
     REAL(DP), ALLOCATABLE :: U_Q_Pack2(:,:,:)
     REAL(DP), ALLOCATABLE :: U_P_Pack2(:,:,:)
+    REAL(DP), ALLOCATABLE :: Gam_Pack(:,:)
     REAL(DP), ALLOCATABLE :: Theta_2_Pack(:)
 
     IF( .NOT. UsePositivityLimiter ) RETURN
@@ -259,18 +264,20 @@ CONTAINS
     nR_1 = nSpecies * PRODUCT( nZ )
     nR = nR_1 * nCR
 
+    ALLOCATE( Min_K_Pack(nR_1) )
+    ALLOCATE( Max_K_Pack(nR_1) )
     ALLOCATE( U_K_Pack1(nR_1) )
     ALLOCATE( U_Q_Pack1(nDOF,nR_1) )
     ALLOCATE( U_P_Pack1(nPT,nR_1) )
 
     ALLOCATE( U_K_Pack2(nCR,nR_1) )
     ALLOCATE( U_Q_Pack2(nDOF,nCR,nR_1) )
-    ALLOCATE( U_P_Pack2(nCR,nCR,nR_1) )
+    ALLOCATE( U_P_Pack2(nCR,nPT,nR_1) )
     ALLOCATE( Gam_Pack(nPT,nR_1) )
     ALLOCATE( Theta_2_Pack(nR_1) )
 
-    ALLOCATE( NegativeTable_1(5,nR_1)
-    ALLOCATE( NegativeTable_2(5,nR_1)
+    ALLOCATE( NegativeTable_1(5,nR_1) )
+    ALLOCATE( NegativeTable_2(5,nR_1) )
 
     MinTheta_1 = One
     MinTheta_2 = One
@@ -319,6 +326,9 @@ CONTAINS
 
                 NegativeStates(1,iZ1,iZ2,iZ3,iZ4,iS) = .TRUE.
 
+                Min_K_Pack(iPack_1) = Min_K
+                Max_K_Pack(iPack_1) = Max_K
+
                 DO iNode = 1, nDOF
                   U_Q_Pack1(iNode,iPack_1) = U_q(iNode,iCR_N,iZ1,iZ2,iZ3,iZ4,iS)
                 END DO
@@ -332,46 +342,69 @@ CONTAINS
     END DO
     nPack_1 = iPack_1
 
-    ! --- Cell Average ---
+    IF ( nPack_1 > 0 ) THEN
 
-    CALL MatrixVectorMultiply &
-      ( 'T', nDOF, nPack_1, One, U_Q_Pack1, nDOF, &
-        Weights_q, 1, Zero, U_K_Pack1, 1 )
+      ! --- Cell Average ---
 
-    ! --- Limit Density Towards Cell Average ---
+      CALL DGEMV &
+        ( 'T', nDOF, nPack_1, One, U_Q_Pack1, nDOF, &
+          Weights_q, 1, Zero, U_K_Pack1, 1 )
 
-    DO iPack_1 = 1, nPack_1
-      DO iNode = 1, nDOF
+      ! --- Limit Density Towards Cell Average ---
 
+      DO iPack_1 = 1, nPack_1
+        DO iNode = 1, nDOF
+
+          Min_K = Min_K_pack(iPack_1)
+          Max_K = Max_K_pack(iPack_1)
+
+          Theta_1 &
+            = MIN( One, &
+                   ABS( (Min_1-U_K_Pack1(iPack_1)) / (Min_K-U_K_Pack1(iPack_1)) ), &
+                   ABS( (Max_1-U_K_Pack1(iPack_1)) / (Max_K-U_K_Pack1(iPack_1)) ) )
+
+          U_Q_Pack1(iNode,iPack_1) &
+            = U_Q_Pack1(iNode,iPack_1) * Theta_1 + U_K_Pack1(iPack_1) * ( One - Theta_1 )
+
+          MinTheta_1 = MIN( Theta_1, MinTheta_1 )
+
+        END DO
+      END DO
+
+      ! --- Recompute Point Values ---
+
+      CALL ComputePointValues_Pack( nPack_1, U_Q_Pack1, U_P_Pack1 )
+
+#ifdef THORNADO_DEBUG_POSITIVITYLIMITER
+      DO iPack_1 = 1, MIN( nPack_1, 5 )
+        Min_K = Min_K_pack(iPack_1)
+        Max_K = Max_K_pack(iPack_1)
         Theta_1 &
           = MIN( One, &
                  ABS( (Min_1-U_K_Pack1(iPack_1)) / (Min_K-U_K_Pack1(iPack_1)) ), &
                  ABS( (Max_1-U_K_Pack1(iPack_1)) / (Max_K-U_K_Pack1(iPack_1)) ) )
+        WRITE(*,'(a30,5i4)')      'Neg. UQ(N) @ ', NegativeTable_1(:,iPack_1)
+        WRITE(*,'(a30,3es23.15)')    'Min_K, Max_K, Theta_1 : ', Min_K, Max_K, Theta_1
+        WRITE(*,'(a30,es23.15,i4)')  '        MINVAL(UQ(N)) : ', MINVAL(U_Q_Pack1(:,iPack_1)), MINLOC(U_Q_Pack1(:,iPack_1))
+        WRITE(*,'(a30,es23.15)')     '                  U_K : ', U_K_Pack1(iPack_1)
+        WRITE(*,'(a30,es23.15,i4)')  '        MINVAL(UP(N)) : ', MINVAL(U_P_Pack1(:,iPack_1)), MINLOC(U_P_Pack1(:,iPack_1))
+      END DO
+#endif
 
-        U_Q_Pack1(iNode,iPack_1) &
-          = U_Q_Pack1(iNode,iPack_1) * Theta_1 + U_K_Pack1(iPack_1) * ( One - Theta_1 )
+      DO iPack_1 = 1, nPack_1
 
-        MinTheta_1 = MIN( Theta_1, MinTheta_1 )
+        iZ1 = NegativeTable_1(1,iPack_1)
+        iZ2 = NegativeTable_1(2,iPack_1)
+        iZ3 = NegativeTable_1(3,iPack_1)
+        iZ4 = NegativeTable_1(4,iPack_1)
+        iS  = NegativeTable_1(5,iPack_1)
+
+        U_q (:,iCR_N,iZ1,iZ2,iZ3,iZ4,iS) = U_Q_Pack1(:,iPack_1)
+        U_PP(:,iCR_N,iZ1,iZ2,iZ3,iZ4,iS) = U_P_Pack1(:,iPack_1)
 
       END DO
-    END DO
 
-    ! --- Recompute Point Values ---
-
-    CALL ComputePointValues_Pack( nPack_1, U_Q_Pack1, U_P_Pack1 )
-
-    DO iPack_1 = 1, nPack_1
-
-      iZ1 = NegativeTable_1(1,iPack_1)
-      iZ2 = NegativeTable_1(2,iPack_1)
-      iZ3 = NegativeTable_1(3,iPack_1)
-      iZ4 = NegativeTable_1(4,iPack_1)
-      iS  = NegativeTable_1(5,iPack_1)
-
-      U_q (:,iCR_N,iZ1,iZ2,iZ3,iZ4,iS) = U_Q_Pack1(:,iPack_1)
-      U_PP(:,iCR_N,iZ1,iZ2,iZ3,iZ4,iS) = U_P_Pack1(:,iPack_1)
-
-    END DO
+    END IF
 
     ! --- Ensure Positive Gamma ---
 
@@ -383,9 +416,9 @@ CONTAINS
             DO iZ1 = iZ_B0(1), iZ_E0(1)
 
               CALL ComputeGamma &
-                     ( nPT, U_PP(1:nPT,1:nCR,iZ1,iZ2,iZ3,iZ4,iS), Gam (1:nPT) )
+                     ( nPT, U_PP(1:nPT,1:nCR,iZ1,iZ2,iZ3,iZ4,iS), Gam(1:nPT) )
 
-              IF ( ANY( Gam(:) < Min_2 ) THEN
+              IF ( ANY( Gam(:) < Min_2 ) ) THEN
 
                 iPack_2 = iPack_2 + 1
 
@@ -409,59 +442,73 @@ CONTAINS
     END DO
     nPack_2 = iPack_2
 
-    ! --- Cell Average ---
+    IF ( nPack_2 > 0 ) THEN
 
-    CALL MatrixVectorMultiply &
-      ( 'T', nDOF, nPack_2*nCR, One, U_Q_Pack2, nDOF, &
-        Weights_q, 1, Zero, U_K_Pack2, 1 )
+      ! --- Cell Average ---
 
-    ! --- Limit Towards Cell Average ---
+      CALL DGEMV &
+        ( 'T', nDOF, nPack_2*nCR, One, U_Q_Pack2, nDOF, &
+          Weights_q, 1, Zero, U_K_Pack2, 1 )
 
-    DO iPack_2 = 1, nPack_2
+      ! --- Limit Towards Cell Average ---
 
-      Theta_P(:) = One
-      DO iP = 1, nPT
-        IF( Gam_Pack(iP,iPack_2) < Min_2 ) THEN
+      DO iPack_2 = 1, nPack_2
 
-          CALL SolveTheta_Bisection &
-                 ( U_P_Pack2(1:nCR,iP,iPack_2), U_K_Pack2(1:nCR,iPack_2), Min_2, Theta_P(iP) )
+        Theta_P(:) = One
+        DO iP = 1, nPT
+          IF( Gam_Pack(iP,iPack_2) < Min_2 ) THEN
 
-        END IF
+            CALL SolveTheta_Bisection &
+                   ( U_P_Pack2(1:nCR,iP,iPack_2), U_K_Pack2(1:nCR,iPack_2), Min_2, Theta_P(iP) )
+
+          END IF
+        END DO
+
+        Theta_2 = MINVAL( Theta_P(:) )
+        Theta_2_Pack(iPack_2) = Theta_2
+
+        MinTheta_2 = MIN( Theta_2, MinTheta_2 )
+
       END DO
 
-      Theta_2 = MINVAL( Theta_P(:) )
-      Theta_2_Pack(iPack_2) = Theta_2
+      DO iPack_2 = 1, nPack_2
+        DO iCR = 1, nCR
+          DO iNode = 1, nDOF
 
-      MinTheta_2 = MIN( Theta_2, MinTheta_2 )
+            Theta_2 = Theta_2_Pack(iPack_2)
 
-    END DO
+            U_Q_Pack2(iNode,iCR,iPack_2) &
+              = U_Q_Pack2(iNode,iCR,iPack_2) * Theta_2 + U_K_Pack2(iCR,iPack_2) * ( One - Theta_2 )
 
-    DO iPack_2 = 1, nPack_2
-      DO iCR = 1, nCR
-        DO iNode = 1, nDOF
+          END DO
+        END DO
+      END DO
 
-          Theta_2 = Theta_2_Pack(iPack_2)
+#ifdef THORNADO_DEBUG_POSITIVITYLIMITER
+      DO iPack_2 = 1, MIN( nPack_2, 5 )
+        Theta_2 = Theta_2_Pack(iPack_2)
+        WRITE(*,'(a30,5i4)')      'Neg. Gamma @ ', NegativeTable_2(:,iPack_2)
+        WRITE(*,'(a30,2es23.15)') '   Min_Gamma, Theta_2 : ', MINVAL(Gam_Pack(:,iPack_2)), Theta_2
+        WRITE(*,'(a30,4es23.15)') '        MINVAL(UQ(:)) : ', MINVAL(U_Q_Pack2(:,:,iPack_2),DIM=1)
+        WRITE(*,'(a30,4es23.15)') '                  U_K : ', U_K_Pack2(:,iPack_2)
+      END DO
+#endif
 
-          U_Q_Pack2(iNode,iCR,iPack_2) &
-            = U_Q_Pack2(iNode,iCR,iPack_2) * Theta_2 + U_K_Pack2(iCR,iPack_2) * ( One - Theta_2 )
+      DO iPack_2 = 1, nPack_2
+        DO iCR = 1, nCR
+
+          iZ1 = NegativeTable_2(1,iPack_2)
+          iZ2 = NegativeTable_2(2,iPack_2)
+          iZ3 = NegativeTable_2(3,iPack_2)
+          iZ4 = NegativeTable_2(4,iPack_2)
+          iS  = NegativeTable_2(5,iPack_2)
+
+          U_q (:,iCR,iZ1,iZ2,iZ3,iZ4,iS) = U_Q_Pack2(:,iCR,iPack_2)
 
         END DO
       END DO
-    END DO
 
-    DO iPack_2 = 1, nPack_2
-      DO iCR = 1, nCR
-
-        iZ1 = NegativeTable_2(1,iPack_2)
-        iZ2 = NegativeTable_2(2,iPack_2)
-        iZ3 = NegativeTable_2(3,iPack_2)
-        iZ4 = NegativeTable_2(4,iPack_2)
-        iS  = NegativeTable_2(5,iPack_2)
-
-        U_q (:,iCR,iZ1,iZ2,iZ3,iZ4,iS) = U_Q_Pack2(:,iPack_2)
-
-      END DO
-    END DO
+    END IF
 
     DO iS = 1, nSpecies
       DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -488,6 +535,7 @@ CONTAINS
     CALL TimersStop( Timer_PositivityLimiter )
 
     DEALLOCATE( U_K_Pack1, U_Q_Pack1, U_P_Pack1, NegativeTable_1 )
+    DEALLOCATE( Min_K_Pack, Max_K_Pack )
     DEALLOCATE( U_K_Pack2, U_Q_Pack2, U_P_Pack2, NegativeTable_2 )
     DEALLOCATE( Gam_Pack, Theta_2_Pack )
 
@@ -522,25 +570,25 @@ CONTAINS
   SUBROUTINE ComputePointValues_Pack( nPack, U_Q, U_P )
 
     INTEGER,  INTENT(in)  :: nPack
-    REAL(DP), INTENT(in)  :: U_Q(1:nDOF,1:nPack)
-    REAL(DP), INTENT(out) :: U_P(1:nPT ,1:nPack)
+    REAL(DP), INTENT(in)  :: U_Q(nDOF,nPack)
+    REAL(DP), INTENT(inout) :: U_P(nPT ,nPack)
 
-    CALL MatrixMatrixMultiply &
+    CALL DGEMM &
            ( 'N', 'N', nPT, nPack, nDOF, One, L_X, nPT, &
-            U_Q, nDOF, Zero, U_P, nPT )
+             U_Q, nDOF, Zero, U_P, nPT )
 
-  END SUBROUTINE ComputePointValues
+  END SUBROUTINE ComputePointValues_Pack
 
 
   SUBROUTINE ComputePointValues( iZ_B0, iZ_E0, U_Q, U_P )
 
     INTEGER,  INTENT(in)  :: iZ_B0(4), iZ_E0(4)
     REAL(DP), INTENT(in)  :: U_Q(nDOF,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
-    REAL(DP), INTENT(out) :: U_P(nPT ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
+    REAL(DP), INTENT(inout) :: U_P(nPT ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
 
-    CALL MatrixMatrixMultiply &
+    CALL DGEMM &
            ( 'N', 'N', nPT, nR, nDOF, One, L_X, nPT, &
-            U_Q, nDOF, Zero, U_P, nPT )
+             U_Q, nDOF, Zero, U_P, nPT )
 
   END SUBROUTINE ComputePointValues
 
