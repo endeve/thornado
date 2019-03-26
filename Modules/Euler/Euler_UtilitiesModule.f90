@@ -149,45 +149,45 @@ CONTAINS
     TimeStep = HUGE( One )
 
     DO iX3 = iX_B(3), iX_E(3)
-      DO iX2 = iX_B(2), iX_E(2)
-        DO iX1 = iX_B(1), iX_E(1)
+    DO iX2 = iX_B(2), iX_E(2)
+    DO iX1 = iX_B(1), iX_E(1)
 
-          dX(1) = MeshX(1) % Width(iX1)
-          dX(2) = MeshX(2) % Width(iX2)
-          dX(3) = MeshX(3) % Width(iX3)
+      dX(1) = MeshX(1) % Width(iX1)
+      dX(2) = MeshX(2) % Width(iX2)
+      dX(3) = MeshX(3) % Width(iX3)
 
-          CALL ComputePrimitive &
-                 ( U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
-                   U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
-                   U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
-                   P(:,iPF_D), P(:,iPF_V1), P(:,iPF_V2), P(:,iPF_V3), &
-                   P(:,iPF_E), P(:,iPF_Ne), &
-                   G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                   G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+      CALL ComputePrimitive &
+             ( U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
+               U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
+               U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
+               P(:,iPF_D), P(:,iPF_V1), P(:,iPF_V2), P(:,iPF_V3), &
+               P(:,iPF_E), P(:,iPF_Ne), &
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-          CALL ComputePressureFromPrimitive &
-                 ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_P) )
+      CALL ComputePressureFromPrimitive &
+             ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_P) )
 
-          CALL ComputeSoundSpeedFromPrimitive &
-                 ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_Cs) )
+      CALL ComputeSoundSpeedFromPrimitive &
+             ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_Cs) )
 
-          dt_X(:,1) &
-            = dX(1) * G(:,iX1,iX2,iX3,iGF_h_1) &
-                / MAX( ABS( P(:,iPF_V1) ) + A(:,iAF_Cs), SqrtTiny )
+      dt_X(:,1) &
+        = dX(1) * G(:,iX1,iX2,iX3,iGF_h_1) &
+            / MAX( ABS( P(:,iPF_V1) ) + A(:,iAF_Cs), SqrtTiny )
 
-          dt_X(:,2) &
-            = dX(2) * G(:,iX1,iX2,iX3,iGF_h_2) &
-                / MAX( ABS( P(:,iPF_V2) ) + A(:,iAF_Cs), SqrtTiny )
+      dt_X(:,2) &
+        = dX(2) * G(:,iX1,iX2,iX3,iGF_h_2) &
+            / MAX( ABS( P(:,iPF_V2) ) + A(:,iAF_Cs), SqrtTiny )
 
-          dt_X(:,3) &
-            = dX(3) * G(:,iX1,iX2,iX3,iGF_h_3) &
-                / MAX( ABS( P(:,iPF_V3) ) + A(:,iAF_Cs), SqrtTiny )
+      dt_X(:,3) &
+        = dX(3) * G(:,iX1,iX2,iX3,iGF_h_3) &
+            / MAX( ABS( P(:,iPF_V3) ) + A(:,iAF_Cs), SqrtTiny )
 
-          TimeStep = MIN( TimeStep, MINVAL( dt_X ) )
+      TimeStep = MIN( TimeStep, MINVAL( dt_X ) )
 
-        END DO
-      END DO
+    END DO
+    END DO
     END DO
 
     TimeStep = CFL * TimeStep

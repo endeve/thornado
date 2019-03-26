@@ -37,6 +37,9 @@ Driver: $(weaklib) \
 	PhysicalConstantsModule.o \
 	UnitsModule.o \
 	ProgramHeaderModule.o \
+	TimersModule.o \
+	DeviceModule.o \
+	LinearAlgebraModule.o \
 	QuadratureModule.o \
 	ReferenceElementModuleX.o \
 	ReferenceElementModuleE.o \
@@ -76,6 +79,9 @@ Driver: $(weaklib) \
 	PhysicalConstantsModule.o \
 	UnitsModule.o \
 	ProgramHeaderModule.o \
+	TimersModule.o \
+	DeviceModule.o \
+	LinearAlgebraModule.o \
 	QuadratureModule.o \
 	ReferenceElementModuleX.o \
 	ReferenceElementModuleE.o \

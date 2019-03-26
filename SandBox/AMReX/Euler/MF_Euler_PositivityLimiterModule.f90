@@ -1,13 +1,15 @@
 MODULE MF_Euler_PositivityLimiterModule
 
   ! --- AMReX Modules ---
-  USE amrex_base_module, ONLY: &
-    amrex_multifab, &
-    amrex_box,      &
-    amrex_mfiter,   &
-    amrex_mfiter_build
-  USE amrex_fort_module, ONLY: &
+  USE amrex_fort_module,     ONLY: &
     amrex_real
+  USE amrex_box_module,      ONLY: &
+    amrex_box
+  USE amrex_multifab_module, ONLY: &
+    amrex_multifab, &
+    amrex_mfiter, &
+    amrex_mfiter_build, &
+    amrex_mfiter_destroy
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,           ONLY: &
@@ -121,6 +123,8 @@ CONTAINS
         DEALLOCATE( G )
 
       END DO
+
+      CALL amrex_mfiter_destroy( MFI )
 
     END DO
 

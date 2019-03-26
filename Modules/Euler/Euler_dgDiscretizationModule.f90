@@ -43,7 +43,6 @@ MODULE Euler_dgDiscretizationModule
     Euler_ApplyBoundaryConditions
   USE Euler_UtilitiesModule, ONLY: &
     ComputePrimitive, &
-    Eigenvalues, &
     AlphaPlus, &
     AlphaMinus, &
     AlphaMiddle, &
@@ -157,11 +156,11 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X1, iNodeX1
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X1
     REAL(DP) :: dX2, dX3
     REAL(DP) :: AlphaPls, AlphaMns, AlphaMdl
-    REAL(DP), DIMENSION(nDOFX_X1)     :: P_L, Cs_L, Lambda_L
-    REAL(DP), DIMENSION(nDOFX_X1)     :: P_R, Cs_R, Lambda_R
+    REAL(DP), DIMENSION(nDOFX_X1)     :: P_L, Cs_L
+    REAL(DP), DIMENSION(nDOFX_X1)     :: P_R, Cs_R
     REAL(DP), DIMENSION(nDOFX)        :: P_K
     REAL(DP), DIMENSION(nDOFX_X1,nCF) :: uCF_L, uCF_R
     REAL(DP), DIMENSION(nDOFX_X1,nGF) :: G_F
@@ -188,8 +187,8 @@ CONTAINS
     !$OMP PARALLEL DO PRIVATE &
     !$OMP& ( iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X1, dX2, dX3, &
     !$OMP&   uCF_P, uCF_K, uCF_L, uCF_R, uPF_K, uPF_L, uPF_R, P_K, &
-    !$OMP&   P_L, P_R, Cs_L, Cs_R, Lambda_L, Lambda_R, G_P, G_K,   &
-    !$OMP&   G_F, Flux_X1_q, Flux_X1_L, Flux_X1_R, NumericalFlux )
+    !$OMP&   P_L, P_R, Cs_L, Cs_R, G_P, G_K, G_F, Flux_X1_q, &
+    !$OMP&   Flux_X1_L, Flux_X1_R, NumericalFlux )
     DO iX3 = iX_B0(3), iX_E0(3)
 
       dX3 = MeshX(3) % Width(iX3)
@@ -530,8 +529,8 @@ CONTAINS
     REAL(DP) :: AlphaMns
     REAL(DP) :: AlphaMdl
     REAL(DP) :: P_K(nDOFX)
-    REAL(DP) :: P_L(nDOFX_X2), Cs_L(nDOFX_X2), Lambda_L(nDOFX_X2)
-    REAL(DP) :: P_R(nDOFX_X2), Cs_R(nDOFX_X2), Lambda_R(nDOFX_X2)
+    REAL(DP) :: P_L(nDOFX_X2), Cs_L(nDOFX_X2)
+    REAL(DP) :: P_R(nDOFX_X2), Cs_R(nDOFX_X2)
     REAL(DP) :: uCF_L(nDOFX_X2,nCF), uCF_R(nDOFX_X2,nCF)
     REAL(DP) :: uCF_P(nDOFX,nCF), uCF_K(nDOFX,nCF)
     REAL(DP) :: uPF_K(nDOFX,nPF)
@@ -844,7 +843,6 @@ CONTAINS
       dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX
-    INTEGER  :: iNodeX1, iNodeX2, iNodeX3
     REAL(DP) :: dX1, dX2
     REAL(DP) :: P_K(nDOFX)
     REAL(DP) :: dh2dX1(nDOFX), dh3dX1(nDOFX), dh3dX2(nDOFX)
