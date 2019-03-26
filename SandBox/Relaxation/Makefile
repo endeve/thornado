@@ -8,10 +8,12 @@ all: Relaxation
 
 Relaxation: \
 	$(thornado) \
+	TwoMoment_DiscretizationModule_Collisions_Neutrinos_beta.o \
 	InitializationModule.o \
 	Relaxation.o
 	$(FLINKER) $(FLAGS) -o Relaxation_$(MACHINE) \
 	$(thornado) \
+	TwoMoment_DiscretizationModule_Collisions_Neutrinos_beta.o \
 	InitializationModule.o \
 	Relaxation.o \
 	$(LIBRARIES)
