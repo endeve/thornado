@@ -42,7 +42,9 @@ MODULE TwoMoment_PositivityLimiterModule
   INTEGER               :: nPT      ! Number of Positive Points
   REAL(DP)              :: Min_1, Max_1, Min_2
   REAL(DP)              :: Theta_FD, MinTheta_1, MinTheta_2
+  REAL(DP),   PARAMETER :: Theta_Eps = 1.0_DP - EPSILON(1.0_DP)
   REAL(DP), ALLOCATABLE :: U_PP(:,:)
+  REAL(DP), ALLOCATABLE :: L_X(:,:)
 
 CONTAINS
 
@@ -60,7 +62,7 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: Verbose
-    INTEGER :: i, FileUnit
+    INTEGER :: i, iNode, iOS, FileUnit
 
     IF( PRESENT( Min_1_Option ) )THEN
       Min_1 = Min_1_Option
@@ -135,6 +137,44 @@ CONTAINS
 
     ALLOCATE( U_PP(nPT,nCR) )
 
+    ALLOCATE( L_X(nPT,nDOF) )
+    L_X = Zero
+    DO iNode = 1, nDOF
+
+      L_X(iNode,iNode) = One
+
+      IF ( SUM( nPP(4:5) ) > 0 ) THEN
+
+        iOS = SUM( nPP(1:3) )
+        L_X(iOS+1:iOS+nDOF_X1,iNode) = L_X1_Dn(1:nDOF_X1,iNode)
+
+        iOS = iOS + nPP(4)
+        L_X(iOS+1:iOS+nDOF_X1,iNode) = L_X1_Up(1:nDOF_X1,iNode)
+
+      END IF
+
+      IF ( SUM( nPP(6:7) ) > 0 ) THEN
+
+        iOS = SUM( nPP(1:5) )
+        L_X(iOS+1:iOS+nDOF_X2,iNode) = L_X2_Dn(1:nDOF_X2,iNode)
+
+        iOS = iOS + nPP(6)
+        L_X(iOS+1:iOS+nDOF_X2,iNode) = L_X2_Up(1:nDOF_X2,iNode)
+
+      END IF
+
+      IF ( SUM( nPP(8:9) ) > 0 ) THEN
+
+        iOS = SUM( nPP(1:7) )
+        L_X(iOS+1:iOS+nDOF_X3,iNode) = L_X3_Dn(1:nDOF_X3,iNode)
+
+        iOS = iOS + nPP(8)
+        L_X(iOS+1:iOS+nDOF_X3,iNode) = L_X3_Up(1:nDOF_X3,iNode)
+
+      END IF
+
+    END DO
+
     ! --- For Tally of Positivity Limiter ---
 
     IF( UsePositivityLimiterTally )THEN
@@ -157,6 +197,9 @@ CONTAINS
     IF( ALLOCATED( U_PP ) )THEN
        DEALLOCATE( U_PP )
     END IF
+    IF( ALLOCATED( L_X ) )THEN
+       DEALLOCATE( L_X )
+    END IF
 
   END SUBROUTINE FinalizePositivityLimiter_TwoMoment
 
@@ -178,6 +221,7 @@ CONTAINS
     INTEGER  :: nNeg_1, nNeg_2
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: U_q(nDOF,nCR), U_K(nCR), Gamma(nPT)
+    REAL(DP), EXTERNAL :: DDOT
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
@@ -211,9 +255,11 @@ CONTAINS
         ! --- Cell Average ---
 
         U_K(iCR_N) = DOT_PRODUCT( Weights_q, U_q(:,iCR_N) )
+        !U_K(iCR_N) = DDOT( nDOF, Weights_q, 1, U_q(:,iCR_N), 1 )
+        !CALL DGEMV( 'T', nDOF, 1, One, U_q(:,iCR_N), nDOF, Weights_q, 1, Zero, U_K(iCR_N), 1 )
 
         Theta_1 &
-          = MIN( One, &
+          = Theta_Eps * MIN( One, &
                  ABS( (Min_1-U_K(iCR_N)) / (Min_K-U_K(iCR_N)) ), &
                  ABS( (Max_1-U_K(iCR_N)) / (Max_K-U_K(iCR_N)) ) )
 
@@ -251,10 +297,10 @@ CONTAINS
         ! --- Cell Average ---
 
         DO iCR = 1, nCR
-
           U_K(iCR) = DOT_PRODUCT( Weights_q, U_q(:,iCR) )
-
+          !U_K(iCR) = DDOT( nDOF, Weights_q, 1, U_q(:,iCR), 1 )
         END DO
+        !CALL DGEMV( 'T', nDOF, nCR, One, U_q, nDOF, Weights_q, 1, Zero, U_K, 1 )
 
         Theta_2 = One
         DO iP = 1, nPT
@@ -269,6 +315,7 @@ CONTAINS
           END IF
 
         END DO
+        Theta_2 = Theta_Eps * Theta_2
 
         ! --- Limit Towards Cell Average ---
 
@@ -407,6 +454,10 @@ CONTAINS
       END IF
 
     END DO
+
+    !CALL DGEMM &
+    !       ( 'N', 'N', nPT, nCR, nDOF, One, L_X, nPT, &
+    !         U_Q, nDOF, Zero, U_P, nPT )
 
   END SUBROUTINE ComputePointValues
 

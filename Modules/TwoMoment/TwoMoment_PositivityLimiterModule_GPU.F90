@@ -46,6 +46,7 @@ MODULE TwoMoment_PositivityLimiterModule
   INTEGER               :: nR, nR_1, nZ(4)
   REAL(DP)              :: Min_1, Max_1, Min_2
   REAL(DP)              :: Theta_FD, MinTheta_1, MinTheta_2
+  REAL(DP),   PARAMETER :: Theta_Eps = 1.0_DP - EPSILON(1.0_DP)
   REAL(DP), ALLOCATABLE :: L_X(:,:)
 
 CONTAINS
@@ -232,7 +233,7 @@ CONTAINS
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iNode, iZ1, iZ2, iZ3, iZ4, iS, iCR, iP
-    INTEGER  :: iPack_1, iPack_2, nPack_1, nPack_2
+    INTEGER  :: iPack_1, iPack_2, nPack_1, nPack_2, iter
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P(nPT), Gam(nPT)
 
     LOGICAL  :: NegativeStates(2,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
@@ -329,9 +330,7 @@ CONTAINS
                 Min_K_Pack(iPack_1) = Min_K
                 Max_K_Pack(iPack_1) = Max_K
 
-                DO iNode = 1, nDOF
-                  U_Q_Pack1(iNode,iPack_1) = U_q(iNode,iCR_N,iZ1,iZ2,iZ3,iZ4,iS)
-                END DO
+                U_Q_Pack1(:,iPack_1) = U_q(:,iCR_N,iZ1,iZ2,iZ3,iZ4,iS)
 
               END IF
 
@@ -353,13 +352,14 @@ CONTAINS
       ! --- Limit Density Towards Cell Average ---
 
       DO iPack_1 = 1, nPack_1
+
+        Min_K = Min_K_pack(iPack_1)
+        Max_K = Max_K_pack(iPack_1)
+
         DO iNode = 1, nDOF
 
-          Min_K = Min_K_pack(iPack_1)
-          Max_K = Max_K_pack(iPack_1)
-
           Theta_1 &
-            = MIN( One, &
+            = Theta_Eps * MIN( One, &
                    ABS( (Min_1-U_K_Pack1(iPack_1)) / (Min_K-U_K_Pack1(iPack_1)) ), &
                    ABS( (Max_1-U_K_Pack1(iPack_1)) / (Max_K-U_K_Pack1(iPack_1)) ) )
 
@@ -369,6 +369,7 @@ CONTAINS
           MinTheta_1 = MIN( Theta_1, MinTheta_1 )
 
         END DO
+
       END DO
 
       ! --- Recompute Point Values ---
@@ -464,7 +465,7 @@ CONTAINS
           END IF
         END DO
 
-        Theta_2 = MINVAL( Theta_P(:) )
+        Theta_2 = Theta_Eps * MINVAL( Theta_P(:) )
         Theta_2_Pack(iPack_2) = Theta_2
 
         MinTheta_2 = MIN( Theta_2, MinTheta_2 )
@@ -565,6 +566,18 @@ CONTAINS
     CLOSE( FileUnit )
 
   END SUBROUTINE TallyPositivityLimiter_TwoMoment
+
+
+  SUBROUTINE ComputePointValues_Single( U_Q, U_P )
+
+    REAL(DP), INTENT(in)  :: U_Q(nDOF)
+    REAL(DP), INTENT(inout) :: U_P(nPT)
+
+    CALL DGEMM &
+           ( 'N', 'N', nPT, 1, nDOF, One, L_X, nPT, &
+             U_Q, nDOF, Zero, U_P, nPT )
+
+  END SUBROUTINE ComputePointValues_Single
 
 
   SUBROUTINE ComputePointValues_Pack( nPack, U_Q, U_P )
