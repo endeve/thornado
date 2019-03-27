@@ -375,6 +375,19 @@ CONTAINS
 
       CALL ComputePointValues_Pack( nPack_1, U_Q_Pack1, U_P_Pack1 )
 
+      DO iPack_1 = 1, nPack_1
+
+        iZ1 = NegativeTable_1(1,iPack_1)
+        iZ2 = NegativeTable_1(2,iPack_1)
+        iZ3 = NegativeTable_1(3,iPack_1)
+        iZ4 = NegativeTable_1(4,iPack_1)
+        iS  = NegativeTable_1(5,iPack_1)
+
+        U_q (:,iCR_N,iZ1,iZ2,iZ3,iZ4,iS) = U_Q_Pack1(:,iPack_1)
+        U_PP(:,iCR_N,iZ1,iZ2,iZ3,iZ4,iS) = U_P_Pack1(:,iPack_1)
+
+      END DO
+
 #ifdef THORNADO_DEBUG_POSITIVITYLIMITER
       DO iPack_1 = 1, MIN( nPack_1, 5 )
         Min_K = Min_K_pack(iPack_1)
@@ -390,19 +403,6 @@ CONTAINS
         WRITE(*,'(a30,es23.15,i4)')  '        MINVAL(UP(N)) : ', MINVAL(U_P_Pack1(:,iPack_1)), MINLOC(U_P_Pack1(:,iPack_1))
       END DO
 #endif
-
-      DO iPack_1 = 1, nPack_1
-
-        iZ1 = NegativeTable_1(1,iPack_1)
-        iZ2 = NegativeTable_1(2,iPack_1)
-        iZ3 = NegativeTable_1(3,iPack_1)
-        iZ4 = NegativeTable_1(4,iPack_1)
-        iS  = NegativeTable_1(5,iPack_1)
-
-        U_q (:,iCR_N,iZ1,iZ2,iZ3,iZ4,iS) = U_Q_Pack1(:,iPack_1)
-        U_PP(:,iCR_N,iZ1,iZ2,iZ3,iZ4,iS) = U_P_Pack1(:,iPack_1)
-
-      END DO
 
     END IF
 
@@ -484,16 +484,6 @@ CONTAINS
         END DO
       END DO
 
-#ifdef THORNADO_DEBUG_POSITIVITYLIMITER
-      DO iPack_2 = 1, MIN( nPack_2, 5 )
-        Theta_2 = Theta_2_Pack(iPack_2)
-        WRITE(*,'(a30,5i4)')      'Neg. Gamma @ ', NegativeTable_2(:,iPack_2)
-        WRITE(*,'(a30,2es23.15)') '   Min_Gamma, Theta_2 : ', MINVAL(Gam_Pack(:,iPack_2)), Theta_2
-        WRITE(*,'(a30,4es23.15)') '        MINVAL(UQ(:)) : ', MINVAL(U_Q_Pack2(:,:,iPack_2),DIM=1)
-        WRITE(*,'(a30,4es23.15)') '                  U_K : ', U_K_Pack2(:,iPack_2)
-      END DO
-#endif
-
       DO iPack_2 = 1, nPack_2
         DO iCR = 1, nCR
 
@@ -507,6 +497,16 @@ CONTAINS
 
         END DO
       END DO
+
+#ifdef THORNADO_DEBUG_POSITIVITYLIMITER
+      DO iPack_2 = 1, MIN( nPack_2, 5 )
+        Theta_2 = Theta_2_Pack(iPack_2)
+        WRITE(*,'(a30,5i4)')      'Neg. Gamma @ ', NegativeTable_2(:,iPack_2)
+        WRITE(*,'(a30,2es23.15)') '   Min_Gamma, Theta_2 : ', MINVAL(Gam_Pack(:,iPack_2)), Theta_2
+        WRITE(*,'(a30,4es23.15)') '        MINVAL(UQ(:)) : ', MINVAL(U_Q_Pack2(:,:,iPack_2),DIM=1)
+        WRITE(*,'(a30,4es23.15)') '                  U_K : ', U_K_Pack2(:,iPack_2)
+      END DO
+#endif
 
     END IF
 
