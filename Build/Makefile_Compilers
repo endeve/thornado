@@ -99,7 +99,11 @@ OPTIMIZE_ranchu       = -O2
 OPTIMIZE_ranchuair    = -O2
 #OPTIMIZE_ranchuair    = -O2 -framework Accelerate
 OPTIMIZE_sjdunham     = -O2 -framework Accelerate
+<<<<<<< HEAD
 OPTIMIZE_zelledge     = -O2 -framework Accelerate
+=======
+OPTIMIZE_zelledge     = -O2 
+>>>>>>> 93abde2c75133cfa005f33f8d2d9139bf69efe16
 OPTIMIZE_titan_gnu    = -O2
 OPTIMIZE_titan_cray   =
 OPTIMIZE_beacon_intel = -fast
@@ -134,6 +138,8 @@ INCLUDE_POSEIDON               = $(INCLUDE_POSEIDON_$(MACHINE))
 
 INCLUDE_LAPACK_ranchu          = -I/usr/include
 INCLUDE_LAPACK_ranchuair       = -I/usr/local/opt/lapack/include
+INCLUDE_LAPACK_zelledge        = -I/usr/include
+INCLUDE_LAPACK_summit_xl       = -I$(OLCF_ROOT_ESSL)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_gcc      = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_pgi      = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_xl       = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
@@ -177,6 +183,7 @@ LIBRARIES_POSEIDON             = $(LIBRARIES_POSEIDON_$(MACHINE))
 
 LIBRARIES_LAPACK_ranchu        = -L/usr/lib -llapack -lblas
 LIBRARIES_LAPACK_ranchuair     = -L/usr/local/opt/lapack/lib -llapack -lblas
+LIBRARIES_LAPACK_zelledge      = -L/usr/lib/x86_64-linux-gnu/lapack -llapack -lblas
 LIBRARIES_LAPACK_mcarpe21      = -L/usr/lib/lapack -llapack \
 				 -L/usr/lib/libblas -lblas
 LIBRARIES_LAPACK_summit_gcc    = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
