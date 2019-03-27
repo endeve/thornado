@@ -181,10 +181,34 @@ CONTAINS
     END DO
     !$OMP END PARALLEL DO
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: L_X1_Dn, L_X2_Dn, L_X3_Dn, &
+    !$OMP          L_X1_Up, L_X2_Up, L_X3_Up, &
+    !$OMP          dLdX1_q, dLdX2_q, dLdX3_q )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( L_X1_Dn, L_X2_Dn, L_X3_Dn, &
+    !$ACC         L_X1_Up, L_X2_Up, L_X3_Up, &
+    !$ACC         dLdX1_q, dLdX2_q, dLdX3_q )
+#endif
+
   END SUBROUTINE InitializeReferenceElement_Lagrange
 
 
   SUBROUTINE FinalizeReferenceElement_Lagrange
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( delete: L_X1_Dn, L_X2_Dn, L_X3_Dn, &
+    !$OMP              L_X1_Up, L_X2_Up, L_X3_Up, &
+    !$OMP              dLdX1_q, dLdX2_q, dLdX3_q )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC FINALIZE( L_X1_Dn, L_X2_Dn, L_X3_Dn, &
+    !$ACC           L_X1_Up, L_X2_Up, L_X3_Up, &
+    !$ACC           dLdX1_q, dLdX2_q, dLdX3_q )
+#endif
 
     DEALLOCATE( L_X1_Dn )
     DEALLOCATE( L_X1_Up )

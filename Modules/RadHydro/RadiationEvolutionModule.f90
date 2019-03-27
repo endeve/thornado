@@ -32,18 +32,18 @@ MODULE RadiationEvolutionModule
     END SUBROUTINE ComputeRHS
   END INTERFACE
 
-  PROCEDURE (ApplyLimiter), POINTER, PUBLIC :: &
+  PROCEDURE (ApplyLimiter_Radiation), POINTER, PUBLIC :: &
     ApplySlopeLimiter_Radiation      => NULL(), &
     ApplyPositivityLimiter_Radiation => NULL()
 
   INTERFACE
-    SUBROUTINE ApplyLimiter( iX_B0, iX_E0, iX_B1, iX_E1, U )
+    SUBROUTINE ApplyLimiter_Radiation( iX_B0, iX_E0, iX_B1, iX_E1, U )
       USE KindModule, ONLY: DP
       INTEGER,  INTENT(in)    :: &
         iX_B0(3), iX_B1(3), iX_E0(3), iX_E1(3)
       REAL(DP), INTENT(inout) :: &
         U(1:,1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
-    END SUBROUTINE ApplyLimiter
+    END SUBROUTINE ApplyLimiter_Radiation
   END INTERFACE
 
   PUBLIC :: InitializeRadiationEvolution
@@ -90,6 +90,8 @@ CONTAINS
       CASE DEFAULT
 
         ComputeRHS_Radiation &
+          => ComputeRHS_Dummy
+        ComputeExplicitIncrement_Radiation &
           => ComputeRHS_Dummy
         ApplySlopeLimiter_Radiation &
           => ApplyLimiter_Dummy

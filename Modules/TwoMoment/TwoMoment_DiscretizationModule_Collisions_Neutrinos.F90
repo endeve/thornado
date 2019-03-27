@@ -1,3 +1,6 @@
+#ifdef THORNADO_DEBUG
+#define THORNADO_DEBUG_IMPLICIT
+#endif
 MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
   USE KindModule, ONLY: &
@@ -15,7 +18,21 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     nNodesX, &
     nNodesZ, &
     nDOFX,   &
+    nDOFE,   &
     nDOF
+  USE TimersModule, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_Implicit, &
+    Timer_Im_In, &
+    Timer_Im_ComputeTS_Aux, &
+    Timer_Im_ComputeOpacity, &
+    Timer_Im_MapForward, &
+    Timer_Im_Solve, &
+    Timer_Im_Out, &
+    Timer_Im_ComputeTS_Prim, &
+    Timer_Im_Increment, &
+    Timer_Im_MapBackward
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
   USE ReferenceElementModuleX, ONLY: &
@@ -29,6 +46,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+  USE GeometryFieldsModuleE, ONLY: &
+    nGE
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
@@ -102,17 +121,17 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       dt
     REAL(DP), INTENT(in)    :: &
-      GE(1:,iZ_B1(1):,1:)
+      GE  (1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
-      GX  (1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      GX  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(in)    :: &
-      U_F (1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      dU_F(1:,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+      dU_F(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCF)
     REAL(DP), INTENT(in)    :: &
-      U_R (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U_R (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU_R(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+      dU_R(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iNodeX, iE
     REAL(DP) :: CF_N(1:nDOFX,1:nCF)
@@ -122,6 +141,8 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: Chi(:,:,:)
     REAL(DP), ALLOCATABLE :: Sig(:,:,:)
     REAL(DP), ALLOCATABLE :: fEQ(:,:,:)
+
+    CALL TimersStart( Timer_Implicit )
 
     iE_B0 = iZ_B0(1);   iE_E0 = iZ_E0(1)
     iE_B1 = iZ_B1(1);   iE_E1 = iZ_E1(1)
@@ -137,13 +158,17 @@ CONTAINS
     ALLOCATE( Sig(nE_G,nSpecies,nDOFX) )
     ALLOCATE( fEQ(nE_G,nSpecies,nDOFX) )
 
+    Iterations_Min = + HUGE( 1 )
+    Iterations_Max = - HUGE( 1 )
+    Iterations_Ave = 0
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
 !!$      PRINT*, "iX1,iX2,iX3 = ", iX1,iX2,iX3
 
-      wTime = MPI_WTIME( )
+      CALL TimersStart( Timer_Im_In )
 
       DO iCF = 1, nCF
 
@@ -151,10 +176,6 @@ CONTAINS
         dU_F(:,iX1,iX2,iX3,iCF) = CF_N(:,            iCF)
 
       END DO
-
-      wTime = MPI_WTIME( ) - wTime
-
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'Copy to CF_N: ', wTime
 
       CALL ComputePrimitive_Euler &
              ( CF_N(:,iCF_D ), CF_N(:,iCF_S1), CF_N(:,iCF_S2), &
@@ -165,12 +186,16 @@ CONTAINS
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'Copy to CF_N: ', Timer_Implicit_In
+
 !!$      PRINT*, "D  = ", PF_N(:,iPF_D  )
 !!$      PRINT*, "V1 = ", PF_N(:,iPF_V1 )
 !!$      PRINT*, "V2 = ", PF_N(:,iPF_V2 )
 !!$      PRINT*, "V3 = ", PF_N(:,iPF_V3 )
 !!$      PRINT*, "E  = ", PF_N(:,iPF_E  )
 !!$      PRINT*, "Ne = ", PF_N(:,iPF_Ne )
+
+      CALL TimersStart( Timer_Im_ComputeTS_Aux )
 
       CALL ComputeThermodynamicStates_Auxiliary_TABLE &
              ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
@@ -180,7 +205,9 @@ CONTAINS
 !!$      PRINT*, "E  = ", AF_N(:,iAF_E)
 !!$      PRINT*, "Ye = ", AF_N(:,iAF_Ye)
 
-      wTime = MPI_WTIME( )
+      CALL TimersStop( Timer_Im_ComputeTS_Aux )
+
+      CALL TimersStart( Timer_Im_ComputeOpacity )
 
       DO iS = 1, nSpecies
 
@@ -192,20 +219,22 @@ CONTAINS
 
       Sig = Zero
 
-      wTime = MPI_WTIME( ) - wTime
+      CALL TimersStop( Timer_Im_ComputeOpacity )
 
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeNeutrinoOpacities: ', wTime
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeNeutrinoOpacities: ', Timer_Im_ComputeOpacity
 
-      wTime = MPI_WTIME( )
+      CALL TimersStart( Timer_Im_MapForward )
 
       CALL MapForward_R_New &
              ( iE_B0, iE_E0, U_R(:,iE_B0:iE_E0,iX1,iX2,iX3,:,:), CR_N )
 
-      wTime = MPI_WTIME( ) - wTime
+      CALL TimersStop( Timer_Im_MapForward )
 
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'MapForward_R: ', wTime
+      CALL TimersStop( Timer_Im_In )
 
-      wTime = MPI_WTIME( )
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'MapForward_R: ', Timer_Im_MapR
+
+      CALL TimersStart( Timer_Im_Solve )
 
       IF( nSpecies .EQ. 1 )THEN
 
@@ -242,13 +271,19 @@ CONTAINS
 
       END IF
 
-      wTime = MPI_WTIME( ) - wTime
+      CALL TimersStop( Timer_Im_Solve )
 
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'SolveMatterEquations_EmAb: ', wTime
+!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'SolveMatterEquations_EmAb: ', Timer_Im_Solve
+
+      CALL TimersStart( Timer_Im_Out )
+
+      CALL TimersStart( Timer_Im_ComputeTS_Prim )
 
       CALL ComputeThermodynamicStates_Primitive_TABLE &
              ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
                PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
+
+      CALL TimersStop( Timer_Im_ComputeTS_Prim )
 
       CALL ComputeConserved_Euler &
              ( PF_N(:,iPF_D ), PF_N(:,iPF_V1), PF_N(:,iPF_V2), &
@@ -258,6 +293,8 @@ CONTAINS
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      CALL TimersStart( Timer_Im_Increment )
 
       ! --- Conserved Fluid Increment ---
 
@@ -313,8 +350,16 @@ CONTAINS
       END DO
       END DO
 
+      CALL TimersStop( Timer_Im_Increment )
+
+      CALL TimersStart( Timer_Im_MapBackward )
+
       CALL MapBackward_R_New &
              ( iE_B0, iE_E0, dU_R(:,iE_B0:iE_E0,iX1,iX2,iX3,:,:), dR_N )
+
+      CALL TimersStop( Timer_Im_MapBackward )
+
+      CALL TimersStop( Timer_Im_Out )
 
     END DO
     END DO
@@ -323,6 +368,15 @@ CONTAINS
     DEALLOCATE( Kappa, Chi, Sig, fEQ )
 
     CALL FinalizeCollisions_New
+
+    CALL TimersStop( Timer_Implicit )
+
+#ifdef THORNADO_DEBUG_IMPLICIT
+    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_F)', MAXLOC(dU_F)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_F)', MAXVAL(dU_F)
+    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_R)', MAXLOC(dU_R)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_R)', MAXVAL(dU_R)
+#endif
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_New
 
@@ -337,17 +391,17 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       dt
     REAL(DP), INTENT(in)    :: &
-      GE(1:,iZ_B1(1):,1:)
+      GE  (1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
-      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      GX  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(in)    :: &
-      U_F (1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      dU_F(1:,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+      dU_F(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCF)
     REAL(DP), INTENT(in)    :: &
-      U_R (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U_R (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU_R(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+      dU_R(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
     INTEGER               :: iCR, iS, iCF, iGF, iX_G
     REAL(DP)              :: PF_N(1:nPF)
@@ -622,17 +676,17 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       dt
     REAL(DP), INTENT(in)    :: &
-      GE(1:,iZ_B1(1):,1:)
+      GE  (1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
-      GX(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      GX  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(in)    :: &
-      U_F (1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      dU_F(1:,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+      dU_F(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCF)
     REAL(DP), INTENT(in)    :: &
-      U_R (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U_R (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU_R(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+      dU_R(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
     INTEGER               :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iNX, iE
     REAL(DP)              :: wTimeTotal
@@ -1282,9 +1336,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iX_B(3), iX_E(3)
     REAL(DP), INTENT(in)  :: &
-      GX(:,iX_B(1):,iX_B(2):,iX_B(3):)
+      GX(1:nDOFX,iX_B(1):iX_E(1),iX_B(2):iX_E(2),iX_B(3):iX_E(3))
     REAL(DP), INTENT(out) :: &
-      GX_N(:)
+      GX_N(1:nX_G)
 
     INTEGER :: iX1, iX2, iX3, iX
     INTEGER :: iN1, iN2, iN3, iN
@@ -1318,9 +1372,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iX_B(3), iX_E(3)
     REAL(DP), INTENT(in)  :: &
-      FF(:,iX_B(1):,iX_B(2):,iX_B(3):)
+      FF(1:nDOFX,iX_B(1):iX_E(1),iX_B(2):iX_E(2),iX_B(3):iX_E(3))
     REAL(DP), INTENT(out) :: &
-      FF_N(:)
+      FF_N(1:nX_G)
 
     INTEGER :: iX1, iX2, iX3, iX
     INTEGER :: iN1, iN2, iN3, iN
@@ -1354,9 +1408,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iX_B(3), iX_E(3)
     REAL(DP), INTENT(out) :: &
-      FF(:,iX_B(1):,iX_B(2):,iX_B(3):)
+      FF(1:nDOFX,iX_B(1):iX_E(1),iX_B(2):iX_E(2),iX_B(3):iX_E(3))
     REAL(DP), INTENT(in)  :: &
-      FF_N(:)
+      FF_N(1:nX_G)
 
     INTEGER :: iX1, iX2, iX3, iX
     INTEGER :: iN1, iN2, iN3, iN
@@ -1390,9 +1444,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iE_B, iE_E
     REAL(DP), INTENT(in)  :: &
-      RF(:,iE_B:,:,:)
+      RF(1:nDOF,iE_B:iE_E,1:nCR,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      RF_K(:,:,:,:)
+      RF_K(1:nE_G,1:nCR,1:nSpecies,1:nDOFX)
 
     INTEGER :: iE, iN_E, iN, iN_X, iCR, iS, iNodeE, iNodeX(3)
 
@@ -1422,9 +1476,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iE_B, iE_E
     REAL(DP), INTENT(out) :: &
-      RF(:,iE_B:,:,:)
+      RF(1:nDOF,iE_B:iE_E,1:nCR,1:nSpecies)
     REAL(DP), INTENT(in)  :: &
-      RF_K(:,:,:,:)
+      RF_K(1:nE_G,1:nCR,1:nSpecies,1:nDOFX)
 
     INTEGER :: iE, iN_E, iN, iN_X, iCR, iS, iNodeE, iNodeX(3)
 
@@ -1454,9 +1508,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iZ_B(4), iZ_E(4)
     REAL(DP), INTENT(in)  :: &
-      RF(:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):)
+      RF(1:nDOF,iZ_B(1):iZ_E(1),iZ_B(2):iZ_E(2),iZ_B(3):iZ_E(3),iZ_B(4):iZ_E(4))
     REAL(DP), INTENT(out) :: &
-      RF_N(:,:)
+      RF_N(1:nE_G,1:nX_G)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iX, iE
     INTEGER :: iN1, iN2, iN3, iN4, iN
@@ -1499,9 +1553,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iZ_B(4), iZ_E(4)
     REAL(DP), INTENT(out) :: &
-      RF(:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):)
+      RF(1:nDOF,iZ_B(1):iZ_E(1),iZ_B(2):iZ_E(2),iZ_B(3):iZ_E(3),iZ_B(4):iZ_E(4))
     REAL(DP), INTENT(in)  :: &
-      RF_N(:,:)
+      RF_N(1:nE_G,1:nX_G)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iX, iE
     INTEGER :: iN1, iN2, iN3, iN4, iN
@@ -1544,9 +1598,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iZ1_B, iZ1_E
     REAL(DP), INTENT(in)  :: &
-      RF(:,iZ1_B:)
+      RF(1:nDOF,iZ1_B:iZ1_E)
     REAL(DP), INTENT(out) :: &
-      RF_N(:,:), RF_K(:)
+      RF_N(1:nE_G,1:nDOFX), RF_K(1:nE_G)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iX, iE
     INTEGER :: iN1, iN2, iN3, iN4, iN
@@ -1584,9 +1638,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iZ1_B, iZ1_E
     REAL(DP), INTENT(out) :: &
-      RF(:,iZ1_B:)
+      RF(1:nDOF,iZ1_B:iZ1_E)
     REAL(DP), INTENT(in)  :: &
-      RF_N(:,:)
+      RF_N(1:nE_G,1:nDOFX)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iX, iE
     INTEGER :: iN1, iN2, iN3, iN4, iN

@@ -1,12 +1,14 @@
 module ThornadoInitializationModule
 
   use KindModule, only: &
-    DP
+    DP, SqrtTiny
   use ProgramHeaderModule, only: &
     InitializeProgramHeader, &
     InitializeProgramHeaderX, &
     nNodesX, nNodesE, &
     iE_B0, iE_E0, iE_B1, iE_E1
+  use TimersModule, only: &
+    InitializeTimers
   use QuadratureModule, only: &
     InitializeQuadratures
   use ReferenceElementModuleX, only: &
@@ -25,6 +27,8 @@ module ThornadoInitializationModule
     InitializeReferenceElementE_Lagrange
   use ReferenceElementModule_Lagrange, only: &
     InitializeReferenceElement_Lagrange
+  use SubcellReconstructionModule, only: &
+    InitializeSubcellReconstruction
   use EquationOfStateModule_TABLE, only: &
     InitializeEquationOfState_TABLE
   use OpacityModule_TABLE, only: &
@@ -94,6 +98,8 @@ contains
 
     nSpecies = nSpecies_in
 
+    call InitializeTimers
+
     call InitializeQuadratures
 
     call InitializeReferenceElementX
@@ -112,6 +118,10 @@ contains
 
     call InitializeReferenceElement_Lagrange
 
+    ! --- For Mapping Between FV and DG Representations ---
+
+    call InitializeSubcellReconstruction
+
     ! --- Energy Grid ---
 
     call CreateMesh &
@@ -129,9 +139,9 @@ contains
            ( Verbose_Option = .FALSE. )
 
     call InitializePositivityLimiter_TwoMoment &
-           ( Min_1_Option = 0.0_DP, &
-             Max_1_Option = 1.0_DP, &
-             Min_2_Option = 0.0_DP, &
+           ( Min_1_Option = 0.0_DP + SqrtTiny, &
+             Max_1_Option = 1.0_DP - SqrtTiny, &
+             Min_2_Option = 0.0_DP + SqrtTiny, &
              UsePositivityLimiter_Option = .TRUE., &
              Verbose_Option = .FALSE. )
 
@@ -157,6 +167,7 @@ contains
              Verbose_Option = .false. )
 
     ! --- For refinement and coarsening of DG data
+
     call InitializeMeshRefinement_TwoMoment
 
   end subroutine InitThornado
@@ -164,13 +175,12 @@ contains
   subroutine InitThornado_Patch( nX, swX, xL, xR) &
       bind(C, name = "InitThornado_Patch")
 
-    use RadiationFieldsModule, only : nSpecies
-    use ProgramHeaderModule  , only : nNodesX
+    use ProgramHeaderModule, only : nNodesX
 
     integer,  INTENT(in) :: nX(3), swX(3)
     REAL(DP), INTENT(in) :: xL(3), xR(3)
 
-    integer  :: iDim
+    integer :: iDim
 
     call InitializeProgramHeaderX &
            ( nX_Option = nX, swX_Option = swX, &

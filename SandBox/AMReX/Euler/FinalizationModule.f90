@@ -1,5 +1,13 @@
 MODULE FinalizationModule
 
+  ! --- AMReX Modules ---
+  USE amrex_amr_module,     ONLY: &
+    amrex_geometry, &
+    amrex_geometry_destroy, &
+    amrex_finalize
+  USE amrex_amrcore_module, ONLY: &
+    amrex_amrcore_finalize
+
   ! --- thornado Modules ---
   USE ReferenceElementModuleX,          ONLY: &
     FinalizeReferenceElementX
@@ -7,6 +15,10 @@ MODULE FinalizationModule
     FinalizeReferenceElementX_Lagrange
    USE MeshModule,                      ONLY: &
     MeshType, DestroyMesh
+  USE GeometryFieldsModule,             ONLY: &
+    DestroyGeometryFields
+  USE FluidFieldsModule,                ONLY: &
+    DestroyFluidFields
   USE EquationOfStateModule,            ONLY: &
     FinalizeEquationOfState
   USE Euler_SlopeLimiterModule,         ONLY: &
@@ -15,18 +27,10 @@ MODULE FinalizationModule
     Euler_FinalizePositivityLimiter
 
   ! --- Local Modules ---
-  USE MyAmrModule, ONLY: &
-    MyAmrFinalize
+  USE MyAmrModule,                 ONLY: &
+    nLevels, MyAmrFinalize
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     MF_FinalizeFluid_SSPRK
-
-  ! --- AMReX Modules ---
-  USE amrex_amr_module,     ONLY: &
-    amrex_geometry, &
-    amrex_geometry_destroy, &
-    amrex_finalize
-  USE amrex_amrcore_module, ONLY: &
-    amrex_amrcore_finalize
 
   IMPLICIT NONE
   PRIVATE
@@ -37,13 +41,16 @@ MODULE FinalizationModule
 CONTAINS
 
 
-  SUBROUTINE FinalizeProgram( nLevels, GEOM, MeshX )
+  SUBROUTINE FinalizeProgram( GEOM, MeshX )
 
-    INTEGER,               INTENT(in)    :: nLevels
     TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels)
     TYPE(MeshType),        INTENT(inout) :: MeshX(1:3)
 
     INTEGER :: iLevel, iDim
+
+    CALL MF_FinalizeFluid_SSPRK
+
+    CALL DestroyFluidFields
 
     CALL Euler_FinalizePositivityLimiter
 
@@ -51,7 +58,7 @@ CONTAINS
 
     CALL FinalizeEquationOfState
 
-    CALL MF_FinalizeFluid_SSPRK( nLevels )
+    CALL DestroyGeometryFields
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX

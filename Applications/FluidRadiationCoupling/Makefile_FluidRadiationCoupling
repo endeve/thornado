@@ -2,22 +2,26 @@ MICROPHYSICS = WEAKLIB
 
 include ../../../Build/Makefile_Build
 
+WEAKLIB_DIR ?= $(HOME)/weaklib
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+
 all: RelaxationEmissionAbsorption \
      RelaxationNES
 
 RelaxationEmissionAbsorption: \
-	$(thornado) FluidRadiationCouplingInitializationModule.o \
+	$(weaklib) $(thornado) FluidRadiationCouplingInitializationModule.o \
 	RelaxationEmissionAbsorption.o
 	$(FLINKER) $(FLAGS) -o RelaxationEmissionAbsorption_$(MACHINE) \
-	$(thornado) FluidRadiationCouplingInitializationModule.o \
+	$(weaklib) $(thornado) FluidRadiationCouplingInitializationModule.o \
 	RelaxationEmissionAbsorption.o \
 	$(LIBRARIES)
 
 RelaxationNES: \
-	$(thornado) FluidRadiationCouplingInitializationModule.o \
+	$(weaklib) $(thornado) FluidRadiationCouplingInitializationModule.o \
 	RelaxationNES.o
 	$(FLINKER) $(FLAGS) -o RelaxationNES_$(MACHINE) \
-	$(thornado) FluidRadiationCouplingInitializationModule.o \
+	$(weaklib) $(thornado) FluidRadiationCouplingInitializationModule.o \
 	RelaxationNES.o \
 	$(LIBRARIES)
 

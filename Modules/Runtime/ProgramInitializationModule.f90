@@ -69,6 +69,9 @@ MODULE ProgramInitializationModule
   USE TimeSteppingModule, ONLY: &
     InitializeTimeStepping, &
     FinalizeTimeStepping
+  USE DeviceModule, ONLY: &
+    InitializeDevice, &
+    FinalizeDevice
 
   IMPLICIT NONE
   PRIVATE
@@ -148,6 +151,10 @@ CONTAINS
     INTEGER :: iDim, nSpecies
 
     CALL MPI_INIT( mpierr )
+
+    ! --- Device ---
+
+    CALL InitializeDevice
 
     CALL InitializeProgramHeader     &
            ( ProgramName_Option      &
@@ -468,6 +475,10 @@ CONTAINS
 
     IF( BasicInitialization )THEN
 
+      ! --- Device ---
+
+      CALL FinalizeDevice
+
       CALL MPI_FINALIZE( mpierr )
 
       RETURN
@@ -505,6 +516,10 @@ CONTAINS
     ! --- Time Stepping ---
 
     CALL FinalizeTimeStepping
+
+    ! --- Device ---
+
+    CALL FinalizeDevice
 
     CALL MPI_FINALIZE( mpierr )
 

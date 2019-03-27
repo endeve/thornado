@@ -33,13 +33,13 @@ MODULE FluidEvolutionModule
     END SUBROUTINE ComputeRHS
   END INTERFACE
 
-  PROCEDURE (ApplyLimiter), POINTER, PUBLIC :: &
+  PROCEDURE (ApplyLimiter_Fluid), POINTER, PUBLIC :: &
     ApplySlopeLimiter_Fluid      => NULL(), &
     ApplyPositivityLimiter_Fluid => NULL()
 
   INTERFACE
-    SUBROUTINE ApplyLimiter
-    END SUBROUTINE ApplyLimiter
+    SUBROUTINE ApplyLimiter_Fluid
+    END SUBROUTINE ApplyLimiter_Fluid
   END INTERFACE
 
   PUBLIC :: InitializeFluidEvolution

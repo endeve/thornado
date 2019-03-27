@@ -10,9 +10,9 @@ GeometryComputationModule.o: \
   ReferenceElementModuleX_Lagrange.o \
   MeshModule.o \
   GeometryFieldsModule.o \
-  GeometryComputationModule.f90
+  GeometryComputationModule.F90
 
-GeometryFieldsModuleE.o
+GeometryFieldsModuleE.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModuleE.f90

@@ -31,9 +31,10 @@ function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb( J, Chi, D, T, Y, E 
     N_B = D / AtomicMassUnit;
     
     % scales
-    s_Y = N_B / c;
-    s_E = D / c;
+    s_Y = N_B;
+    s_E = D;
     
+    Chi = Chi * c;
 
     
 %     % weights
