@@ -111,6 +111,10 @@ CONTAINS
 
         CALL InitializeFields_HomogeneousSphere
 
+      CASE ( 'HomogeneousSphere_Spherical' )
+
+        CALL InitializeFields_HomogeneousSphere_Spherical
+
       CASE ( 'DeleptonizationWave' )
 
         CALL InitializeFields_DeleptonizationWave( Profile_Option )
@@ -731,6 +735,50 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_HomogeneousSphere
+
+
+  SUBROUTINE InitializeFields_HomogeneousSphere_Spherical
+
+    INTEGER  :: iE, iX1, iX2, iX3, iS
+    REAL(DP) :: Gm_dd_11(nDOF)
+    REAL(DP) :: Gm_dd_22(nDOF)
+    REAL(DP) :: Gm_dd_33(nDOF)
+
+    DO iS = 1, nSpecies
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      Gm_dd_11 = uGF(NodeNumbersX,iX1,iX2,iX3,iGF_Gm_dd_11)
+      Gm_dd_22 = uGF(NodeNumbersX,iX1,iX2,iX3,iGF_Gm_dd_22)
+      Gm_dd_33 = uGF(NodeNumbersX,iX1,iX2,iX3,iGF_Gm_dd_33)
+
+      DO iE = iE_B0, iE_E0
+
+        uPR(:,iE,iX1,iX2,iX3,iPR_D, iS) = 1.0d-6
+        uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS) = 0.0_DP
+        uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS) = 0.0_DP
+        uPR(:,iE,iX1,iX2,iX3,iPR_I3,iS) = 0.0_DP
+
+        CALL ComputeConserved_TwoMoment &
+               ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &
+                 uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                 uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                 uPR(:,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                 uCR(:,iE,iX1,iX2,iX3,iCR_N, iS), &
+                 uCR(:,iE,iX1,iX2,iX3,iCR_G1,iS), &
+                 uCR(:,iE,iX1,iX2,iX3,iCR_G2,iS), &
+                 uCR(:,iE,iX1,iX2,iX3,iCR_G3,iS), &
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_HomogeneousSphere_Spherical
 
 
   SUBROUTINE ComputeError( Time, SigmaA, SigmaS )

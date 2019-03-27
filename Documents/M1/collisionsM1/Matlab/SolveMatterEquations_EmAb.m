@@ -143,7 +143,6 @@ function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb( J, Chi, D, T, Y, E 
 
       FJAC(:,2) = FJAC(:,2) ./ C;
 
-      cond(FJAC)
       % --- Determinant of Jacobian ---
 
       DJAC = FJAC(1,1) * FJAC(2,2) - FJAC(2,1) * FJAC(1,2);

@@ -1,4 +1,4 @@
-function [J0, D, T, Y, E, iter, Inneriter] = SolveMatterEquations_EmAb_FP( Jin, Chi, D, T, Y, E )
+function [J0, D, T, Y, E, iter, Inneriter] = SolveMatterEquations_EmAb_NES_FP( Jin, dt, Chi, R_in_NES, R_out_NES, D, T, Y, E)
 
 % g_E_N       : nE_G x 1 (energy grid)
 % J, J_0    : nE_G x 1 (size of energy grid)
@@ -30,7 +30,9 @@ Unew = zeros(2,1);
 % \rho / m_B
 N_B = D / AtomicMassUnit;
 
-Chi = Chi * c;
+Chi = Chi * c * dt;
+R_in_NES = R_in_NES * c * dt;
+R_out_NES = R_out_NES * c * dt;
 
 % scales
 s_Y = N_B;
@@ -77,10 +79,17 @@ while((~CONVERGED)&&(k<=maxIter))
     % equilibrium distribution
     J0 = FermiDirac( g_E_N, Mnu, BoltzmannConstant * T );
     
+    % FOR IMPLICIT R_NES, UPDATE (interpolate) R_NES here:
+%     [R_in_NES, R_out_NES] = ComputeNesScatteringOpacityOnEGrid_TABLE(g_E_N, D, T, Y);
+    
+    % scale R_NES by dt and c 
+%     R_in_NES = R_in_NES * c * dt;
+%     R_out_NES = R_out_NES * c * dt;
+    
     % compute new J
 %     [Jout, iter_in] = UpdateNeutrinoDistribution(Jin, J0, Chi);
-    [Jout, iter_in] = UpdateNeutrinoDistribution_exact(Jin, J0, Chi);
-%     [Jout, iter_in] = UpdateNeutrinoDistribution_NES(Jin, J0, Chi);
+%     [Jout, iter_in] = UpdateNeutrinoDistribution_exact(Jin, J0, Chi);
+    [Jout, iter_in] = UpdateNeutrinoDistribution_NES(Jin, J0, Chi, R_in_NES, R_out_NES);
 
     Inneriter = Inneriter + iter_in;
     

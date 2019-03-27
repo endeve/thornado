@@ -16,6 +16,7 @@ MODULE TwoMoment_UtilitiesModule
   PUBLIC :: Flux_X1
   PUBLIC :: Flux_X2
   PUBLIC :: Flux_X3
+  PUBLIC :: StressTensor_Diagonal
   PUBLIC :: NumericalFlux_LLF
 
 CONTAINS
@@ -23,6 +24,11 @@ CONTAINS
 
   SUBROUTINE ComputePrimitive_TwoMoment &
     ( N, G_1, G_2, G_3, D, I_1, I_2, I_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: N, G_1, G_2, G_3
     REAL(DP), DIMENSION(:), INTENT(out) :: D, I_1, I_2, I_3
@@ -53,6 +59,11 @@ CONTAINS
 
   PURE FUNCTION Flux_X1 &
     ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP)             :: Flux_X1(1:4)
     REAL(DP), INTENT(in) :: D, I_1, I_2, I_3, FF, EF
@@ -85,6 +96,11 @@ CONTAINS
 
   PURE FUNCTION Flux_X2 &
     ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP)             :: Flux_X2(1:4)
     REAL(DP), INTENT(in) :: D, I_1, I_2, I_3, FF, EF
@@ -117,6 +133,11 @@ CONTAINS
 
   PURE FUNCTION Flux_X3 &
     ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP)             :: Flux_X3(1:4)
     REAL(DP), INTENT(in) :: D, I_1, I_2, I_3, FF, EF
@@ -147,8 +168,44 @@ CONTAINS
   END FUNCTION Flux_X3
 
 
+  PURE FUNCTION StressTensor_Diagonal &
+    ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    REAL(DP)             :: StressTensor_Diagonal(1:3)
+    REAL(DP), INTENT(in) :: D, I_1, I_2, I_3, FF, EF
+    REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+    REAL(DP) :: h_u_1, h_u_2, h_u_3
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+
+    h_u_1 = I_1 / ( FF * D )
+    h_u_2 = I_2 / ( FF * D )
+    h_u_3 = I_3 / ( FF * D )
+
+    h_d_1 = Gm_dd_11 * h_u_1
+    h_d_2 = Gm_dd_22 * h_u_2
+    h_d_3 = Gm_dd_33 * h_u_3
+
+    StressTensor_Diagonal(1) &
+      = D * Half * ( (Three*EF - One) * h_u_1 * h_d_1 + (One - EF) )
+
+    StressTensor_Diagonal(2) &
+      = D * Half * ( (Three*EF - One) * h_u_2 * h_d_2 + (One - EF) )
+
+    StressTensor_Diagonal(3) &
+      = D * Half * ( (Three*EF - One) * h_u_3 * h_d_3 + (One - EF) )
+
+    RETURN
+  END FUNCTION StressTensor_Diagonal
+
+
   REAL(DP) PURE ELEMENTAL FUNCTION NumericalFlux_LLF &
     ( u_L, u_R, Flux_L, Flux_R, alpha )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Local Lax-Friedrichs Flux ---
 

@@ -71,7 +71,7 @@ CONTAINS
       OpacityTableName_EmAb = 'OpacityTable_EmAb.h5'
     END IF
 
-    IF( PRESENT( OpacityTableName_EmAb_Option ) )THEN
+    IF( PRESENT( OpacityTableName_Iso_Option ) )THEN
       OpacityTableName_Iso = TRIM( OpacityTableName_Iso_Option )
     ELSE
       OpacityTableName_Iso = 'OpacityTable_Iso.h5'

@@ -1,3 +1,3 @@
 ProgramHeaderModule.o: \
   KindModule.o \
-  ProgramHeaderModule.f90
+  ProgramHeaderModule.F90

@@ -1,6 +1,10 @@
 MODULE MyAmrModule
 
   USE iso_c_binding
+
+  ! --- AMReX Modules ---
+  USE amrex_fort_module, ONLY: &
+    amrex_real
   USE amrex_base_module, ONLY: &
     amrex_init, &
     amrex_initialized, &
@@ -10,16 +14,12 @@ MODULE MyAmrModule
     amrex_amrcore_initialized, &
     amrex_is_all_periodic, &
     amrex_spacedim
-  USE amrex_bc_types_module, ONLY: &
-    amrex_bc_int_dir, &
-    amrex_bc_foextrap
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
-  USE amrex_fort_module, ONLY: &
-    amrex_real
 
+  ! --- thornado Modules ---
   USE ProgramHeaderModule, ONLY: &
     InitializeProgramHeader, nDOFX
   USE FluidFieldsModule, ONLY: &
@@ -27,6 +27,7 @@ MODULE MyAmrModule
   USE GeometryFieldsModule, ONLY: &
     nGF
 
+  ! --- Local Modules ---
   USE MyAmrDataModule
 
   IMPLICIT NONE
@@ -39,15 +40,12 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName
   INTEGER,          ALLOCATABLE, SAVE :: StepNo(:)
   CHARACTER(LEN=32),             SAVE :: Coordsys
-
-  ! --- Boundary Conditions ---
-  INTEGER, ALLOCATABLE, PUBLIC, SAVE :: bcAMReX(:)
+  LOGICAL,                       SAVE :: DEBUG
 
   ! --- Slope limiter ---
   LOGICAL          :: UseSlopeLimiter
   LOGICAL          :: UseCharacteristicLimiting
   LOGICAL          :: UseTroubledCellIndicator
-  LOGICAL          :: UseAMReX
   REAL(amrex_real) :: SlopeTolerance
   REAL(amrex_real) :: BetaTVD, BetaTVB
   REAL(amrex_real) :: LimiterThresholdParameter
@@ -70,6 +68,11 @@ CONTAINS
     IF( .NOT. amrex_amrcore_initialized() ) &
       CALL amrex_amrcore_init()
 
+    DEBUG = .FALSE.
+    CALL amrex_parmparse_build( PP )
+      CALL PP % query( 'DEBUG', DEBUG )
+    CALL amrex_parmparse_destroy( PP )
+
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'dt_wrt',      dt_wrt )
@@ -91,7 +94,6 @@ CONTAINS
       CALL PP % get   ( 'coord_sys',        coord_sys )
       CALL PP % getarr( 'prob_lo',          xL )
       CALL PP % getarr( 'prob_hi',          xR )
-      CALL PP % getarr( 'bcAMReX',          bcAMReX )
     CALL amrex_parmparse_destroy( PP )
     IF     ( coord_sys .EQ. 0 )THEN
       CoordSys = 'CARTESIAN'
@@ -143,14 +145,14 @@ CONTAINS
     ALLOCATE( t(0:nLevels) )
     t = 0.0e0_amrex_real
 
-    CALL InitializeDataAMReX
+    CALL InitializeDataAMReX( nLevels )
 
   END SUBROUTINE MyAmrInit
 
 
   SUBROUTINE MyAmrFinalize
 
-    CALL FinalizeDataAMReX
+    CALL FinalizeDataAMReX( nLevels )
 
     DEALLOCATE( t )
     DEALLOCATE( dt )

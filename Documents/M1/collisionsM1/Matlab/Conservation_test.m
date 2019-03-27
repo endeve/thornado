@@ -5,7 +5,7 @@ clear all
 % Y = 1.421e-1;   %  0.01       to 0.6
 
 profile = [  
-1.146E+07   6.233E+09   3.021E+10   3.178E-01  
+  1.179E+05   4.117E+14   1.261E+11   2.520E-01  
 ];
 
 D = profile(2);
@@ -42,6 +42,8 @@ Y_N = Y * ones(size(g_E_N));
 
 [Chi] = ComputeAbEmOpacityOnEGrid_TABLE(g_E_N, D_N, T_N, Y_N);
 
+% explicit NES test
+[R_in_NES, R_out_NES] = ComputeNesScatteringOpacityOnEGrid_TABLE(g_E_N, D, T, Y);
 
 % dt is around 10^{-6} second
 dt = 1e-6;
@@ -61,9 +63,10 @@ g_Iterations_Max = Inf;
 g_Iterations_Ave = 0;
 
 % Newton's method
-[J01, D1, T1, Y1, E1, iter1] = SolveMatterEquations_EmAb( J, dt * Chi, D, T, Y, E );
-[J00, D0, T0, Y0, E0, iter0] = SolveMatterEquations_EmAb_orig( J, dt * Chi, D, T, Y, E );
+% [J01, D1, T1, Y1, E1, iter1] = SolveMatterEquations_EmAb( J, dt * Chi, D, T, Y, E );
+% [J00, D0, T0, Y0, E0, iter0] = SolveMatterEquations_EmAb_orig( J, dt * Chi, D, T, Y, E );
 
 % Fixed-point
-[J02, D2, T2, Y2, E2, iter2, Inneriter2] = SolveMatterEquations_EmAb_FP( J, dt * Chi, D, T, Y, E );
+% [J02, D2, T2, Y2, E2, iter2, Inneriter2] = SolveMatterEquations_EmAb_FP( J, dt * Chi, D, T, Y, E );
+[J02, D2, T2, Y2, E2, iter2, Inneriter2] = SolveMatterEquations_EmAb_NES_FP( J, dt, Chi, R_in_NES, R_out_NES, D, T, Y, E );
 
