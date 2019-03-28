@@ -99,11 +99,7 @@ OPTIMIZE_ranchu       = -O2
 OPTIMIZE_ranchuair    = -O2
 #OPTIMIZE_ranchuair    = -O2 -framework Accelerate
 OPTIMIZE_sjdunham     = -O2 -framework Accelerate
-<<<<<<< HEAD
-OPTIMIZE_zelledge     = -O2 -framework Accelerate
-=======
 OPTIMIZE_zelledge     = -O2 
->>>>>>> 93abde2c75133cfa005f33f8d2d9139bf69efe16
 OPTIMIZE_titan_gnu    = -O2
 OPTIMIZE_titan_cray   =
 OPTIMIZE_beacon_intel = -fast
