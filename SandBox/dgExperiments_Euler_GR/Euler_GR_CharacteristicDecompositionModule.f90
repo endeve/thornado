@@ -1,4 +1,4 @@
-MODULE CharacteristicDecompositionModule_GR
+MODULE Euler_GR_CharacteristicDecompositionModule
 
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Two, Four
@@ -17,7 +17,7 @@ MODULE CharacteristicDecompositionModule_GR
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
-  USE EulerEquationsUtilitiesModule_Beta_GR, ONLY: &
+  USE Euler_GR_UtilitiesModule, ONLY: &
     ComputePrimitive_GR, &
     Eigenvalues_GR
   USE EquationOfStateModule, ONLY: &
@@ -28,12 +28,12 @@ MODULE CharacteristicDecompositionModule_GR
 
   INCLUDE 'mpif.h'
 
-  PUBLIC :: ComputeCharacteristicDecomposition_GR
+  PUBLIC :: Euler_GR_ComputeCharacteristicDecomposition
 
 CONTAINS
 
 
-  SUBROUTINE ComputeCharacteristicDecomposition_GR ( iDim, G, U, R, invR )
+  SUBROUTINE Euler_GR_ComputeCharacteristicDecomposition( iDim, G, U, R, invR )
 
     INTEGER,  INTENT(in)  :: iDim
     REAL(DP), INTENT(in)  :: G(nGF), U(nCF)
@@ -277,7 +277,7 @@ CONTAINS
 
     END SELECT
 
-  END SUBROUTINE ComputeCharacteristicDecomposition_GR
+  END SUBROUTINE Euler_GR_ComputeCharacteristicDecomposition
   
 
   ! --- Find the inverse of a matrix, function definition from
@@ -583,4 +583,4 @@ CONTAINS
   END SUBROUTINE ComputeFluxJacConsMatrix
 
 
-END MODULE CharacteristicDecompositionModule_GR
+END MODULE Euler_GR_CharacteristicDecompositionModule
