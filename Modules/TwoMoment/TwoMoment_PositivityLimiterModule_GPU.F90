@@ -287,6 +287,22 @@ CONTAINS
     NegativeTable_1 = 0
     NegativeTable_2 = 0
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: U, iZ_B0, iZ_E0, MinTheta_1, MinTheta_2, NegativeStates, &
+    !$OMP          NegativeTable_1, NegativeTable_2 ) &
+    !$OMP MAP( alloc: Min_K_Pack, Max_K_Pack, U_K_Pack1, U_Q_Pack1, U_P_Pack1, &
+    !$OMP             U_K_Pack2, U_Q_Pack2, U_P_Pack2, Gam_Pack, Theta_2_Pack, &
+    !$OMP             U_q, U_PP, U_K, Theta_P, Gam )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( U, iZ_B0, iZ_E0, MinTheta_1, MinTheta_2, NegativeStates, &
+    !$ACC         NegativeTable_1, NegativeTable_2 ) &
+    !$ACC CREATE( Min_K_Pack, Max_K_Pack, U_K_Pack1, U_Q_Pack1, U_P_Pack1, &
+    !$ACC         U_K_Pack2, U_Q_Pack2, U_P_Pack2, Gam_Pack, Theta_2_Pack, &
+    !$ACC         U_q, U_PP, U_K, Theta_P, Gam )
+#endif
+
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
         DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -532,6 +548,22 @@ CONTAINS
         END DO
       END DO
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: U, MinTheta_1, MinTheta_2 ) &
+    !$OMP MAP( release: iZ_B0, iZ_E0, NegativeTable_1, NegativeTable_2, &
+    !$OMP               Min_K_Pack, Max_K_Pack, U_K_Pack1, U_Q_Pack1, U_P_Pack1, &
+    !$OMP               U_K_Pack2, U_Q_Pack2, U_P_Pack2, Gam_Pack, Theta_2_Pack, &
+    !$OMP               U_q, U_PP, U_K, Theta_P, Gam, NegativeStates )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( U, MinTheta_1, MinTheta_2 ) &
+    !$ACC DELETE( iZ_B0, iZ_E0, NegativeTable_1, NegativeTable_2, &
+    !$ACC         Min_K_Pack, Max_K_Pack, U_K_Pack1, U_Q_Pack1, U_P_Pack1, &
+    !$ACC         U_K_Pack2, U_Q_Pack2, U_P_Pack2, Gam_Pack, Theta_2_Pack, &
+    !$ACC         U_q, U_PP, U_K, Theta_P, Gam, NegativeStates )
+#endif
 
     CALL TimersStop( Timer_PositivityLimiter )
 
