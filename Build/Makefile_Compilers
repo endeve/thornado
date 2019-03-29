@@ -106,7 +106,7 @@ OPTIMIZE_beacon_intel = -fast
 OPTIMIZE_mcarpe21     = -O2
 OPTIMIZE_summit_gcc   = -g -Ofast
 OPTIMIZE_summit_pgi   = -g -fast
-OPTIMIZE_summit_xl    = -g -O3 -qarch=pwr9 -qtune=pwr9 -qsclk=micro -qsuppress=cmpmsg -w
+OPTIMIZE_summit_xl    = -g -O3 -qnohot -qarch=pwr9 -qtune=pwr9 -qsclk=micro -qsuppress=cmpmsg -w
 OPTIMIZE              = $(OPTIMIZE_$(MACHINE))
 
 INCLUDE_HDF5_mac_gnu           = -I/usr/local/Cellar/hdf5/1.8.16_1/include

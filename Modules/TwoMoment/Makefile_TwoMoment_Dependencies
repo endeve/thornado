@@ -24,7 +24,17 @@ TwoMoment_PositivityLimiterModule.o: \
   ReferenceElementModule.o \
   ReferenceElementModule_Lagrange.o \
   RadiationFieldsModule.o \
-  TwoMoment_PositivityLimiterModule.f90
+  TwoMoment_PositivityLimiterModule.F90
+
+TwoMoment_PositivityLimiterModule_GPU.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TimersModule.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  RadiationFieldsModule.o \
+  TwoMoment_PositivityLimiterModule.F90
 
 TwoMoment_DiscretizationModule_Streaming.o: \
   KindModule.o \

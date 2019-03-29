@@ -9,6 +9,8 @@ WEAKLIB_DIR ?= $(HOME)/weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 
+DEFINES += $(PP)-DTHORNADO_DEBUG_POSITIVITYLIMITER
+
 all: DeleptonizationWave
 
 DeleptonizationWave: \
@@ -59,7 +61,7 @@ DeleptonizationWave.o: \
    InitializationModule.o \
    InputOutputModuleHDF.o \
    TwoMoment_ClosureModule.o \
-   TwoMoment_PositivityLimiterModule.o \
+   TwoMoment_PositivityLimiterModule_GPU.o \
    DeleptonizationWave.f90
 
 InitializationModule.o: \
@@ -84,7 +86,7 @@ TimeSteppingModule_Castro.o: \
    RadiationFieldsModule.o \
    TwoMoment_DiscretizationModule_Streaming.o \
    TwoMoment_DiscretizationModule_Collisions_Neutrinos_GPU.o \
-   TwoMoment_PositivityLimiterModule.o \
+   TwoMoment_PositivityLimiterModule_GPU.o \
    PhysicalConstantsModule.o \
    GeometryFieldsModuleE.o \
    GeometryFieldsModule.o \
