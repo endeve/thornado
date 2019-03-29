@@ -1,11 +1,12 @@
 \section{Two-Moment Model}\label{se:Two-MomentModel}
 
 \subsection{Transport Equations}
-We consider neutrino transport through a static background under the Newtonian framework.
-We include neutrino-matter interactions due to emission, absorption, and isoenergetic scattering, which dominate the opacity under the physical conditions that we're interested in.
-It's possible to include other interactions, such as neutrino-electron scattering and neutrino pair production, in the two-moment model.
-But involving those interactions complicates the collision term and requires more efforts in proving the realizability of a scheme.
-We leave it for future work.
+\modified{We consider neutrino transport through a static background in a non-relativistic framework.  
+For simplicity, we only include neutrino-matter interactions due to emission, absorption, and isoenergetic scattering.  
+It is possible to include other interactions, such as neutrino-electron scattering and pair processes, in the two-moment model.  
+However, these interactions result in dense coupling across neutrino energies and across neutrino species, and we have not yet considered the realizability-preserving property of our scheme in this case.
+We leave this for future work.}
+
 After scaling to dimensionless units, the Boltzmann equation can be written as
 \begin{equation}
   \pd{f}{t}+\vect{\ell}\cdot\nabla f
@@ -89,8 +90,9 @@ As a result, the angular moments $\cJ$ and $\vect{\cH}$ and the Eddington factor
   \label{eq:eddingtonFactorBounds}
 \end{align}
 where $h = |\bcH|/\cJ$ is the flux factor.
-These relationships hold for moment in the comoving frame.
-Similar relationships can be derived in the laboratory frame, which we leave for future work.
+\modified{The inequalities in Eqs.~\eqref{eq:MomentsBounds} and \eqref{eq:eddingtonFactorBounds} hold for moments as defined in Eq.~\eqref{eq:angularMoments} with $f\in[0,1]$.  
+In a relativistic model (e.g., \cite{shibata_etal_2011,cardall_etal_2013}), the evolved quantities --- functions of the moments in Eq.~\eqref{eq:angularMoments} --- satisfy different bounds.  
+We are currently exploring extensions of the realizability-preserving scheme presented here to the relativistic case.}
 
 The constraints in Eq.~\eqref{eq:MomentsBounds} define realizable moments $\bcM$.  
 For fermions, realizable moments can only be constructed from a distribution satisfying the bounds $f \in [0,1]$.  

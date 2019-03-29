@@ -81,7 +81,7 @@ PD-ARS2 behaves as well as SSP2332 in the diffusion region but requires 33\% les
 \subsection{Neutrino Stationary State Test} \label{se: Neutrino Stationary State Test}
 
 In this section we consider a more ``realistic'' test: two-dimensional multigroup neutrino transport with emission, absorption, and isoenergetic scattering through a stationary background.  
-This test is designed to test the realizability-preserving properties of the PD-ARS schemes.  
+\modified{This test is designed to test the realizability-preserving properties of the PD-ARS schemes.  
 Figure~\ref{fig:NeutrinoStationaryTestEOS} left plots the initial thermal state: 
 \begin{subequations}
 \begin{align}
@@ -95,7 +95,7 @@ with radius $r$ in kilometer unit.
 Eq.~\eqref{eq:NuStatinaryStateEOS} is designed to simulate a CCSN progenitor.
 Figure~\ref{fig:NeutrinoStationaryTestEOS} right plots the used opacities which are provided by interpolations of a pre-calculated opacity table based on~\cite{Bruenn_1985}.
 This test is computed on Cartesian coordinate with a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200], x^{2}\in[0,200]\}$ in kilometer unit, a grid of 128 elements in each direction, 10 energy groups covering $(0,300)$~MeV, a reflecting inner boundary and a homogeneous out-flowing outer boundary.
-Because of the Cartesian coordinate, we ignored some geometric terms, which leads the initial condition to be non-axisymmetric.
+Because of the Cartesian coordinate, we ignored some geometric terms, which leads the initial condition to be non-axisymmetric.}
 We initialize the neutrino number density to $\cJ = 10^{-99}$, flux density to $\bcH=0$, and evolve until an approximate steady state is reached ($t=5$~ms).
 No hydrodynamics is used for the stationary background.
 For this test, we employed both CB and Minerbo closures.  
@@ -112,11 +112,11 @@ In the right column we plot the flux factor $|\vect{\cH}|/\cJ$ versus radius for
 In the left panels, each solution point in the domain is marked as a red dot in the $|\vect{\cH}|\cJ$-plane, and the realizable domain is shown as the light blue region.  
 The figures show that all the states in the simulation with the PD-ARS schemes are realizable.
 In the middle and right column, we can see how the neutrinos are generated near the core, stream out, and eventually reach an equilibrium distribution over the phase space.
-The oscillation in the right column is caused by the oscillation in the numerical flux $|\vect{\cH}|$.
+\modified{The oscillation in the right column is caused by the oscillation in the numerical flux $|\vect{\cH}|$.
 Parts of the causes can be the numerical error and the non-axisymmetric boundary condition.
 We should also note that no flux limiter is used in this test.
 The oscillation can be the spurious oscillations that occur due to discontinuities in the solution domain.
-We leave these for our future study.
+We leave these for our future study.}
 
 \begin{figure}[h]
   \centering
