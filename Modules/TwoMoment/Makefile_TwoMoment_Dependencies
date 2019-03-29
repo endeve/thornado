@@ -34,7 +34,7 @@ TwoMoment_PositivityLimiterModule_GPU.o: \
   ReferenceElementModule.o \
   ReferenceElementModule_Lagrange.o \
   RadiationFieldsModule.o \
-  TwoMoment_PositivityLimiterModule.F90
+  TwoMoment_PositivityLimiterModule_GPU.F90
 
 TwoMoment_DiscretizationModule_Streaming.o: \
   KindModule.o \
