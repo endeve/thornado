@@ -82,27 +82,26 @@ PD-ARS2 behaves as well as SSP2332 in the diffusion region but requires 33\% les
 
 In this section we consider a more ``realistic'' test: two-dimensional multigroup neutrino transport with emission, absorption, and isoenergetic scattering through a stationary background.  
 \modified{This test is designed to test the realizability-preserving properties of the PD-ARS schemes.  
-Figure~\ref{fig:NeutrinoStationaryTestEOS} left plots the initial thermal state: 
+In the left panel in Figure~\ref{fig:NeutrinoStationaryTestEOS} we plot the thermal state of the background, which mimic a collapsed stellar core: 
 \begin{subequations}
-\begin{align}
-\text{Density: }~\rho & = 4 \times 10^{14} \times \dfrac{7.5}{( 7.5 + ( r / 5 )^4 )} ~\text{g $\cdot$ cm$^{-3}$}\\
-\text{Temperature: }~T & = 1.5 \times 10^{11} \times \dfrac{1}{1 + ( r / 50 )^2 } ~\text{K}\\
-\text{Electron Fraction: }~Y_e & = 0.25 \times \left(  1 + \dfrac{1}{1+ ( r / 50 )^{-12}}  \right) 
-\end{align}
-\label{eq:NuStatinaryStateEOS}
+  \begin{align}
+    \text{Mass Density: }~\rho & = 4 \times 10^{14} \times \dfrac{7.5}{( 7.5 + ( r / 5~\mbox{km} )^4 )} ~\text{g~cm$^{-3}$}, \\
+    \text{Temperature: }~T & = 1.5 \times 10^{11} \times \dfrac{1}{1 + ( r / 50~\mbox{km} )^2 } ~\text{K}, \\
+    \text{Electron Fraction: }~Y_e & = 0.25 \times \left(  1 + \dfrac{1}{1+ ( r / 50~\mbox{km} )^{-12}}  \right), 
+  \end{align}
+  \label{eq:NuStatinaryStateEOS}
 \end{subequations}
-with radius $r$ in kilometer unit. 
-Eq.~\eqref{eq:NuStatinaryStateEOS} is designed to simulate a CCSN progenitor.
-Figure~\ref{fig:NeutrinoStationaryTestEOS} right plots the used opacities which are provided by interpolations of a pre-calculated opacity table based on~\cite{Bruenn_1985}.
-This test is computed on Cartesian coordinate with a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200], x^{2}\in[0,200]\}$ in kilometer unit, a grid of 128 elements in each direction, 10 energy groups covering $(0,300)$~MeV, a reflecting inner boundary and a homogeneous out-flowing outer boundary.
-Because of the Cartesian coordinate, we ignored some geometric terms, which leads the initial condition to be non-axisymmetric.}
-We initialize the neutrino number density to $\cJ = 10^{-99}$, flux density to $\bcH=0$, and evolve until an approximate steady state is reached ($t=5$~ms).
-No hydrodynamics is used for the stationary background.
+where the radius $r=\sqrt{(x^{1})^{2}+(x^{2})^{2}}$ is in kilometers.  
+In the right panel in Figure~\ref{fig:NeutrinoStationaryTestEOS} we plot the neutrino opacities, computed by interpolation of a pre-calculated opacity table based on~\cite{Bruenn_1985}.
+This test is computed using Cartesian coordinates on a two-dimensional domain $D=\{\vect{x}\in\bbR^{2}:x^{1}\in[0,200]~\mbox{km}, x^{2}\in[0,200]~\mbox{km}\}$, using a grid of 128 elements in each direction, 10 energy groups covering $0$-$300$~MeV, reflecting inner boundaries and outflow outer boundaries.  
+Because we use Cartesian coordinates in two spatial dimensions, this problem has cylindrical geometry, and results in an artificial stratification of the radiation quantities.}
+We initialize the neutrino number density to $\cJ = 10^{-99}$, the number flux density to $\bcH=0$, and evolve until an approximate steady state is reached ($t=5$~ms).
+The background is kept fixed during the entire run.  
 For this test, we employed both CB and Minerbo closures.  
 We attempted to run this test with our PD-ARS schemes, SSP2332 from~\cite{pareschiRusso_2005}, IMEXRKCB2 proposed by Cavaglieri \& Bewley~\cite{cavaglieriBewley2015}, and the IMEX PC2 scheme proposed by McClarren et al.~\cite{mcclarren_etal_2008}.
 Only the PD-ARS schemes produce realizable moments and are able to evolve to a steady state with either CB or Minerbo closure.
 SSP2332 and IMEX PC2 failed after a few time steps with either CB or Minerbo closure because of the development of unrealizable moments.
-Even though IMEXRKCB2 with Minerbo closure can run and reach a steady state in this test, its results are different from that of PD-ARS schemes with CB closure, and there is no guarantee of stability.
+Even though IMEXRKCB2 with Minerbo closure can run and reach a steady state in this test, its results are different from that of PD-ARS schemes with CB closure, and there is no guarantee of stability.  
 %It's difficult to determine whether the results are in fact compromised by a particular correction step and, if so, in what way and to what degree.
 
 Results obtained with the IMEX PD-ARS schemes are plotted in Figure~\ref{fig:NeutrinoStationaryTestEvolve} for various times: $t=0.01$~ms (top panels), 0.35~ms (middle panels), and 5.0~ms (bottom panels).  
@@ -112,11 +111,9 @@ In the right column we plot the flux factor $|\vect{\cH}|/\cJ$ versus radius for
 In the left panels, each solution point in the domain is marked as a red dot in the $|\vect{\cH}|\cJ$-plane, and the realizable domain is shown as the light blue region.  
 The figures show that all the states in the simulation with the PD-ARS schemes are realizable.
 In the middle and right column, we can see how the neutrinos are generated near the core, stream out, and eventually reach an equilibrium distribution over the phase space.
-\modified{The oscillation in the right column is caused by the oscillation in the numerical flux $|\vect{\cH}|$.
-Parts of the causes can be the numerical error and the non-axisymmetric boundary condition.
-We should also note that no flux limiter is used in this test.
-The oscillation can be the spurious oscillations that occur due to discontinuities in the solution domain.
-We leave these for our future study.}
+\modified{The oscillations in the flux factor seen in the right columns are associated with steep gradients in the radiation field as the initial transient propagates through the computational domain.  
+Note that we do not apply any limiters to prevent oscillations in the numerical solution, and these will likely go away when we implement slope limiters, e.g., as described in \cite{cockburnShu_1998}.  
+The fact that we can still evolve the solution to a steady state speaks to the robustness of the scheme.}
 
 \begin{figure}[h]
   \centering
