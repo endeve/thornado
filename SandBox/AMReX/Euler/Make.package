@@ -30,7 +30,6 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Euler
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/InputOutput
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Opacities
-VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/StandingAccretionShock
 
 # In THORNADO_DIR/Modules/Numbers:
 
@@ -73,6 +72,7 @@ f90EXE_sources += EquationOfStateModule.f90
 
 f90EXE_sources += GeometryFieldsModule.f90
 F90EXE_sources += GeometryComputationModule.F90
+f90EXE_sources += GravitySolutionModule_Newtonian_PointMass.f90
 
 # In THORNADO_DIR/Modules/Fields:
 
@@ -97,7 +97,3 @@ f90EXE_sources += InputOutputModuleHDF.f90
 # In THORNADO_DIR/Module/Opacities:
 
 f90EXE_sources += NeutrinoOpacitiesModule.f90
-
-# In THORNADO_DIR/SandBox/StandingAccretionShock:
-
-f90EXE_sources += GravitySolutionModule_Newtonian_PointMass_Beta.f90
