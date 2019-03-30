@@ -84,7 +84,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'HomogeneousSphere_Spherical'
+  ProgramName = 'SquareWaveStreaming'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -123,6 +123,43 @@ PROGRAM ApplicationDriver
       iCycleW   = 10
       iCycleT   = 10
       maxCycles = 10000
+
+
+    CASE( 'SquareWaveStreaming' )
+
+      ! --- Minerbo Closure Only ---
+
+      Direction = 'X'
+
+      nX = [ 256, 1, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      bcX = [ 1, 1, 1 ]
+
+      nE = 1
+      eL = 0.0_DP
+      eR = 1.0_DP
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'SSPRK3'
+
+      N0     = 0.0_DP
+      SigmaA = 0.0_DP
+      SigmaS = 0.0_DP
+
+      UsePositivityLimiter = .FALSE.
+
+      Min_1 = - HUGE( One ) ! --- Min Density
+      Max_1 = + HUGE( One ) ! --- Max Density
+      Min_2 = - HUGE( One ) ! --- Min "Gamma"
+
+      t_end     = 1.0d+1
+      iCycleD   = 10000
+      iCycleW   = 10000
+      iCycleT   = 10000
+      maxCycles = 1000000
 
     CASE( 'SineWaveDamping' )
 
@@ -483,7 +520,7 @@ PROGRAM ApplicationDriver
 
   CALL WriteFieldsHDF &
          ( Time = t, &
-           WriteGF_Option = .TRUE., &
+           WriteGF_Option = .FALSE., &
            WriteRF_Option = .TRUE. )
 
   wTime = MPI_WTIME( ) - wTime

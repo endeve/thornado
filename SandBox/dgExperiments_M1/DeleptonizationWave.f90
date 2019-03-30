@@ -90,8 +90,8 @@ PROGRAM DeleptonizationWave
   nNodes = 2
 
   nX = [ 128, 128, 1 ]  ! 96 / 128 [96, 96, 1]
-  xL = [ 0.0d0, 0.0d0, - 1.0d2 ] * Kilometer
-  xR = [ 2.0d2, 2.0d2, + 1.0d2 ] * Kilometer
+  xL = [  0.0d2,  0.0d2, - 1.0d2 ] * Kilometer
+  xR = [  2.0d2,  2.0d2, + 1.0d2 ] * Kilometer
 
   nE = 10
   eL = 0.0d0 * MeV
@@ -187,7 +187,8 @@ PROGRAM DeleptonizationWave
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields( Profile_Option = 'Chimera100ms_fined.d')
+  CALL InitializeFields
+  !CALL InitializeFields( Profile_Option = 'Chimera100ms_fined.d')
 
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
@@ -212,9 +213,11 @@ PROGRAM DeleptonizationWave
   wTime = MPI_WTIME( )
 
   t     = 0.0_DP
-  t_end = 5.0_DP * Millisecond
-  dt    = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
-            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+  t_end = 5.0d0 * Millisecond
+  dt    = 1.0d-7 * Millisecond
+
+!  dt    = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+!            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
   iCycleD = 10
   iCycleW = 200 ! 200 -> 128, 150 -> 96 
@@ -234,8 +237,14 @@ PROGRAM DeleptonizationWave
 
       dt = t_end - t
 
-    END IF
+    ELSE
 
+      dt = MIN( dt * 1.01_dp, &
+                Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+              / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) )
+
+    END IF
+    
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
       WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A5,ES12.6E2)') &
@@ -269,7 +278,7 @@ PROGRAM DeleptonizationWave
   ! --- Write Final Solution ---
 
   CALL WriteFieldsHDF &
-         ( Time = 0.0_DP, &
+         ( Time = t, &
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE., &
