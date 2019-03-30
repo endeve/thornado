@@ -14,13 +14,13 @@ MODULE MF_GeometryModule
     amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
-  USE ProgramHeaderModule,       ONLY: &
+  USE ProgramHeaderModule,                       ONLY: &
     nDOFX, swX
-  USE GeometryFieldsModule,      ONLY: &
+  USE GeometryFieldsModule,                      ONLY: &
     nGF
-  USE GeometryComputationModule, ONLY: &
+  USE GeometryComputationModule,                 ONLY: &
     ComputeGeometryX
-  USE GravitySolutionModule_Newtonian_PointMass_Beta, ONLY: &
+  USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
     ComputeGravitationalPotential
 
   ! --- Local Modules ---
@@ -125,8 +125,8 @@ CONTAINS
         CALL ComputeGravitationalPotential &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF), Mass )
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF), Mass )
 
         DO iX3 = iX_B1(3), iX_E1(3)
         DO iX2 = iX_B1(2), iX_E1(2)
