@@ -1,0 +1,44 @@
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+DEBUG = 0
+
+thornado.ProgramName = "StandingAccretionShock"
+
+thornado.t_end     = 50.0     # Final time
+thornado.dt_wrt    = 0.25     # Write time interval
+thornado.Gamma     = 1.4      # Ideal Gas EoS Gamma
+thornado.nNodes    = 2        # Number of DG nodes in each active dimension
+thornado.nStages   = 2        # Number of SSP-RK stages for time integration
+thornado.CFL       = 0.06     # CFL number (0.3/(2*(nNodes-1) + 1)
+thornado.bcX       = 11 03 00 # Boundary conditions
+thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
+thornado.iCycleD   = 0010     # MOD this number to display info
+thornado.iCycleW   = 0100     # MOD this number to write plotfile
+thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
+
+#geometry.coord_sys   = 0            # CARTESIAN
+#geometry.coord_sys   = 1            # CYLINDRICAL
+geometry.coord_sys   = 2             # SPHERICAL
+geometry.prob_lo     = 0.2 0.0  0.0  # Lower domain size
+geometry.prob_hi     = 2.0 3.14 6.28 # Upper domain size
+geometry.is_periodic = 00  00   00   # Periodicity. 0 (no), 1 (yes)
+
+amr.n_cell          = 128  16 01 # Number of cells in each dimension
+amr.max_grid_size   = 128  16 01 # nBoxes = n_cell / MaxGridSize
+amr.max_level       = 0          # Maximum number of refinement levels
+amr.blocking_factor = 2          # Must be a factor of max_grid_size
+
+# Slope limiter parameters
+SL.UseSlopeLimiter           = 1
+SL.UseCharacteristicLimiting = 1
+SL.UseTroubledCellIndicator  = 1
+SL.SlopeTolerance            = 1.0e-6
+SL.BetaTVD                   = 1.15e0
+SL.BetaTVB                   = 0.0e0
+SL.LimiterThresholdParameter = 1.5e-2
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter = 1
+PL.Min_1                = 1.0e-12
+PL.Min_2                = 1.0e-12
