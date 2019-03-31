@@ -1,6 +1,7 @@
 MODULE MF_InitializationModule
 
   ! --- AMReX Modules ---
+
   USE amrex_base_module,     ONLY: &
     amrex_problo, amrex_probhi
   USE amrex_fort_module,     ONLY: &
@@ -16,8 +17,9 @@ MODULE MF_InitializationModule
     amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
+
   USE KindModule,              ONLY: &
-    DP, Half, One, Pi, TwoPi
+    DP, Half, One, Pi, TwoPi, FourPi
   USE ProgramHeaderModule,     ONLY: &
     nDOFX, nX, nNodesX
   USE ReferenceElementModuleX, ONLY: &
@@ -75,6 +77,10 @@ CONTAINS
       CASE( 'Implosion' )
 
         CALL InitializeFields_Implosion( MF_uGF, MF_uCF )
+
+      CASE( 'StandingAccretionShock' )
+
+        CALL InitializeFields_StandingAccretionShock( MF_uGF, MF_uCF )
 
       CASE DEFAULT
 
@@ -555,6 +561,233 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_Implosion
+
+
+  SUBROUTINE InitializeFields_StandingAccretionShock( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+
+    REAL(amrex_real), PARAMETER :: Gamma = 1.4_amrex_real
+    REAL(amrex_real), PARAMETER :: mDot = FourPi
+    REAL(amrex_real), PARAMETER :: Mass = Half
+    REAL(amrex_real), PARAMETER :: rshock = One
+    REAL(amrex_real), PARAMETER :: Mach = 1.0d2
+
+    LOGICAL, PARAMETER :: Perturb = .FALSE.
+
+    REAL(amrex_real), PARAMETER :: ShellIn = 1.4_DP
+    REAL(amrex_real), PARAMETER :: ShellOut = 1.6_DP
+    INTEGER         , PARAMETER :: PerturbOrder = 0
+    REAL(amrex_real), PARAMETER :: PerturbParam = 2.0_DP
+
+    INTEGER            :: iDim, iLevel
+    INTEGER            :: iX1, iX2, iX3
+    INTEGER            :: iNodeX
+    INTEGER            :: lo_G(4), hi_G(4)
+    INTEGER            :: lo_F(4), hi_F(4)
+    REAL(amrex_real)   :: X1, X2, Alpha, Speed
+    REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
+    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
+    REAL(amrex_real)   :: V1_prime, D_prime, P_prime
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(MeshType)     :: MeshX(3)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    Alpha = 4.0_DP * Gamma / ( ( Gamma + 1.0_DP ) * ( Gamma - 1.0_DP ) ) &
+              * ( ( Gamma - 1.0_DP ) / ( Gamma + 1.0_DP ) )**Gamma
+
+    uGF_K = 0.0d0
+    uPF_K = 0.0d0
+    uCF_K = 0.0d0
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               amrex_problo(iDim), amrex_probhi(iDim) )
+
+    END DO
+
+    DO iLevel = 0, nLevels
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          X1 = MeshX(1) % Center(iX1)
+          X2 = MeshX(2) % Center(iX2)
+
+          DO iNodeX = 1, nDOFX
+
+            IF( X1 <= rShock ) THEN
+
+              CALL ComputeSettlingSpeed_Bisection( X1, Alpha, Gamma, Mass, Speed )
+
+              uPF_K(iNodeX,iPF_D)  = ( mDot / FourPi ) * Speed**(-1.0_DP) * X1**(-2.0_DP)
+              uPF_K(iNodeX,iPF_V1) = - Speed
+              uPF_K(iNodeX,iPF_V2) = 0.0_DP
+              uPF_K(iNodeX,iPF_V3) = 0.0_DP
+
+              V1_prime = ( Gamma - 1.0_DP ) / ( Gamma + 1.0_DP ) &
+                           * SQRT( 2.0_DP * Mass / rShock )
+
+              D_prime = ( mDot / FourPi ) * ( 1.0_DP / V1_prime ) * rShock**(-2.0_DP)
+
+              P_prime = 2.0_DP / ( Gamma + 1.0_DP ) * ( mDot / FourPi ) &
+                          * SQRT( 2.0_DP * Mass ) * rShock**(-2.5_DP)
+
+              uPF_K(iNodeX,iPF_E)  = P_Prime * ( uPF_K(iNodeX,iPF_D) / D_prime )**Gamma &
+                                       / ( Gamma - 1.0_DP )
+
+            ELSE
+
+              uPF_K(iNodeX,iPF_D)  = mDot / ( FourPi * X1**2.0_DP * Speed )
+              uPF_K(iNodeX,iPF_V1) = - Speed
+              uPF_K(iNodeX,iPF_V2) = 0.0_DP
+              uPF_K(iNodeX,iPF_V3) = 0.0_DP
+              uPF_K(iNodeX,iPF_E)  = uPF_K(iNodeX,iPF_D) / Gamma &
+                                       * ( Speed / Mach )**2.0_DP / ( Gamma - 1.0_DP )
+
+            END IF
+
+            IF( Perturb .AND. ( X1 .GE. ShellIn ) .AND. ( X1 .LE. ShellOut ) ) THEN
+
+              SELECT CASE( PerturbOrder )
+
+              CASE( 0 )
+
+                uPF_K(iNodeX, iPF_D) = (1.0_DP + PerturbParam) &
+                                         * uPF_K(iNodeX,iPF_D)
+
+              CASE( 1 )
+
+                uPF_K(iNodeX, iPF_D) = (1.0_DP + PerturbParam * COS(X2)) &
+                                         * uPF_K(iNodeX,iPF_D)
+
+               END SELECT
+
+             END IF
+
+          END DO
+
+          CALL ComputeConserved &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_StandingAccretionShock
+
+
+  SUBROUTINE ComputeSettlingSpeed_Bisection( r, Alpha, Gamma, Mass, V1 )
+
+    REAL(amrex_real), INTENT(in) :: r, Alpha, Gamma, Mass
+
+    LOGICAL :: Converged
+    INTEGER :: Iter
+    REAL(amrex_real) :: a, b, c, ab, F_a, F_b, F_c, F_0
+    INTEGER, PARAMETER :: MaxIter = 128
+    REAL(amrex_real), PARAMETER :: Tol_ab = 1.0d-8
+    REAL(amrex_real), PARAMETER :: Tol_F = 1.0d-8
+
+    REAL(amrex_real), INTENT(out) :: V1
+
+    a = 1.0d-6
+    F_a = SettlingSpeedFun(a, r, Alpha, Gamma, Mass)
+
+    b = 1.0_DP
+    F_b = SettlingSpeedFun(b, r, Alpha, Gamma, Mass)
+
+    F_0 = F_a
+    ab = b - a
+
+    Converged = .FALSE.
+    Iter = 0
+
+    DO WHILE ( .NOT. Converged)
+
+      Iter = Iter + 1
+
+      ab = 0.5_DP * ab
+      c = a + ab
+
+      F_c = SettlingSpeedFun(c, r, Alpha, Gamma, Mass)
+
+      IF( F_a * F_c < 0.0_DP ) THEN
+
+        b   = c
+        F_b = F_c
+
+      ELSE
+
+        a   = c
+        F_a = F_c
+
+      END IF
+
+      IF (ab < Tol_ab .AND. ABS( F_a ) / F_0 < Tol_F) Converged = .TRUE.
+
+    END DO
+
+    V1 = a
+
+  END SUBROUTINE ComputeSettlingSpeed_Bisection
+
+
+  REAL(DP) FUNCTION SettlingSpeedFun( u, r, Alpha, Gamma, Mass )
+
+    REAL(amrex_real), INTENT(in) :: u, r, Alpha, Gamma, Mass
+
+    SettlingSpeedFun &
+      = r * u**2 &
+        + Alpha * r**(3.0_DP-2.0_DP*Gamma) * u**(1.0_DP-Gamma) &
+        - 2.0_DP * Mass
+    RETURN
+  END FUNCTION SettlingSpeedFun
 
 
 END MODULE MF_InitializationModule
