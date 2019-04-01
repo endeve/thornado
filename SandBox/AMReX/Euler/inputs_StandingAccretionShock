@@ -5,9 +5,14 @@ DEBUG = 0
 
 thornado.ProgramName = "StandingAccretionShock"
 
-thornado.t_end     = 50.0     # Final time
+SAS.mDot   = 4.0 # In units of pi
+SAS.Mass   = 0.5
+SAS.rShock = 1.0
+SAS.Mach   = 100.0
+
+thornado.t_end     = 5.0     # Final time
 thornado.dt_wrt    = 0.25     # Write time interval
-thornado.Gamma     = 1.4      # Ideal Gas EoS Gamma
+thornado.Gamma     = 1.33     # Ideal Gas EoS Gamma
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
 thornado.nStages   = 2        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.06     # CFL number (0.3/(2*(nNodes-1) + 1)
@@ -25,9 +30,9 @@ geometry.prob_hi     = 2.0 3.14 6.28 # Upper domain size
 geometry.is_periodic = 00  00   00   # Periodicity. 0 (no), 1 (yes)
 
 amr.n_cell          = 128  16 01 # Number of cells in each dimension
-amr.max_grid_size   = 128  16 01 # nBoxes = n_cell / MaxGridSize
+amr.max_grid_size   = 064  08 01 # nBoxes = n_cell / MaxGridSize
 amr.max_level       = 0          # Maximum number of refinement levels
-amr.blocking_factor = 2          # Must be a factor of max_grid_size
+amr.blocking_factor = 1          # Must be a factor of max_grid_size
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1

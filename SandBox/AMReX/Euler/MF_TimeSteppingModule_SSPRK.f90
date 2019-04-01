@@ -34,6 +34,7 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     MF_Euler_ApplyPositivityLimiter
   USE MF_UtilitiesModule,               ONLY: &
+    ShowVariableFromMultiFab, &
     LinComb
   USE MyAmrModule,                      ONLY: &
     nLevels, DEBUG
@@ -223,7 +224,9 @@ CONTAINS
       ! --- Copy data from input MultiFab to temporary MultiFab ---
       DO iLevel = 0, nLevels
         CALL MF_U(iLevel) &
-               % PARALLEL_COPY( MF_uCF(iLevel), GEOM(iLevel) )
+               % PARALLEL_COPY( MF_uCF(iLevel), 1, 1, &
+                                MF_uCF(iLevel) % ncomp(), swX(1), swX(1), &
+                                GEOM(iLevel) )
       END DO
 
       DO jS = 1, iS - 1

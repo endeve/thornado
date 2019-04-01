@@ -53,6 +53,7 @@ PROGRAM main
     nCF, nPF, nAF, &
     CreateFluidFields
   USE InputOutputModuleAMReX,           ONLY: &
+    WriteFieldsHDF_AMReX, &
     WriteFieldsAMReX_PlotFile, &
     ReadCheckpointFile, &
     MakeMF_Diff
@@ -90,8 +91,6 @@ PROGRAM main
   ! --- For slope limiter ---
   USE Euler_SlopeLimiterModule,       ONLY: &
     Euler_InitializeSlopeLimiter
-  USE FluidFieldsModule,              ONLY: &
-    Shock
   USE PolynomialBasisMappingModule,   ONLY: &
     InitializePolynomialBasisMapping
   USE PolynomialBasisModule_Lagrange, ONLY: &
@@ -241,12 +240,17 @@ PROGRAM main
            UsePositivityLimiter_Option = UsePositivityLimiter, &
            Verbose_Option = amrex_parallel_ioprocessor() )
 
+  IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_InitializeFields'
   CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
+  IF( DEBUG ) WRITE(*,'(A)') 'CALL CreateFluidFields'
   CALL CreateFluidFields( nX, swX )
 
+  IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_Euler_ApplySlopeLimiter'
   CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
+  IF( DEBUG ) WRITE(*,'(A)') 'MF_Euler_ApplyPositivityLimiter'
   CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
 
+  IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_ComputeFromConserved'
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   CALL MF_InitializeFluid_SSPRK &
@@ -328,6 +332,7 @@ PROGRAM main
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF )
+
     END IF
 
     IF( MOD( StepNo(0), iCycleChk ) .EQ. 0 )THEN
