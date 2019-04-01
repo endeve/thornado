@@ -96,7 +96,7 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iCF, iX1, iX2, iX3
-    INTEGER :: iNode, iNodeX, iNodeX_0
+    INTEGER :: iNodeX, iNodeX_0
     INTEGER :: iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX1
     REAL(DP) :: D_0, E_0, R_0, R_q 
 
