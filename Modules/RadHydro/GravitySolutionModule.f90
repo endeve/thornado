@@ -12,7 +12,7 @@ MODULE GravitySolutionModule
     dL_X1, dL_X2, dL_X3
   USE MeshModule, ONLY: &
     MeshX
-  USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
+  USE GravitySolutionModule_Newtonian_PointMass_Old, ONLY: &
     InitializeGravitySolver_Newtonian_PointMass, &
     FinalizeGravitySolver_Newtonian_PointMass, &
     SolveGravity_Newtonian_PointMass

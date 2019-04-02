@@ -25,16 +25,8 @@ CONTAINS
     REAL(DP), DIMENSION(6,6), INTENT(out) :: VL, A0
     LOGICAL,                  INTENT(in)  :: Componentwise
 
-    REAL(DP), DIMENSION(1) :: dPdD, dPdT, dPdY
-    REAL(DP), DIMENSION(1) :: dEdD, dEdT, dEdY
-    REAL(DP), DIMENSION(1) :: dPdE, dPdN, dPdTau
-    REAL(DP), DIMENSION(1) :: Tau, P, E, N, H, VSq, w, X, Alpha, Delta
-    REAL(DP), DIMENSION(3) :: Phi
-    ! E is specific internal energy: epsilon
-    ! Y is Ye
-
     INTEGER                             :: INFO, LWORK, i
-    REAL(DP), DIMENSION(1)              :: TEMP, Cs
+    REAL(DP), DIMENSION(1)              :: TEMP
     REAL(DP), DIMENSION(6)              :: WR, WI
     REAL(DP), DIMENSION(:), ALLOCATABLE :: WORK
     REAL(DP), DIMENSION(6,6)            :: A
@@ -53,96 +45,26 @@ CONTAINS
 
     ELSE
 
-      Tau = 1.0_DP / D
+      CALL ComputeFluxJacobian( D, T, Y, V1, V2, V3, A )
 
-      CALL ComputePressure_TABLE &
-             ( D, T, Y, P, dPdD, dPdT, dPdY )
+      A0 = A
 
-      CALL ComputeSpecificInternalEnergy_TABLE &
-             ( D, T, Y, E, dEdD, dEdT, dEdY )
+      ! --- Workspace Query ---
 
-      dPdE   = dPdT / dEdT
-      dPdN   = ( AtomicMassUnit * Tau ) * ( dPdY - dEdY * dPdE )
-      dPdTau = - ( dPdD - Y * dPdN / AtomicMassUnit - dEdD * dPdE ) / Tau**2
+      LWORK = - 1
+      CALL DGEEV( 'V', 'N', 6, A, 6, WR, WI, VL, 6, 0, 6, TEMP, LWORK, INFO )
 
-      Cs = SQRT(Tau * (dPdN * N + P * dPdE * Tau - dPdTau * Tau ))
+      ! --- Compute Eigenvectors ---
 
-      Phi(1) = dPdE(1) * Tau(1) * V1(1)
-      Phi(2) = dPdE(1) * Tau(1) * V2(1)
-      Phi(3) = dPdE(1) * Tau(1) * V3(1)
+      LWORK = TEMP(1)
+      ALLOCATE( WORK(LWORK) )
+      CALL DGEEV( 'V', 'N', 6, A, 6, WR, WI, VL, 6, 0, 6, WORK, LWORK, INFO )
 
-      w = Tau(1) * (dPdE(1)*(Delta + 2.0_DP * E(1)) &
-                 - 2.0_DP * dPdTau(1) * Tau(1))
+      DO i = 1, 6
+        lambda(i) = WR(i)
+      END DO
 
-      Delta = V1(1)**2 - V2(1)**2 - V3(1)**2
-
-      X = (dPdE(1) * ( Delta + 2.0_DP * E) + 2.0_DP * dPdTau(1) * Tau(1))
-
-      Alpha = 2.0_DP * N * dPdN(1) - X
-
-      lambda(1) = V1(1) - Cs(1)
-      lambda(2) = V1(1)
-      lambda(3) = V1(1)
-      lambda(4) = V1(1)
-      lambda(5) = V1(1)
-      lambda(6) = V1(1) + Cs(1)
-
-
-      VL(1,:) = (1.0_DP / Cs(1)**2) * &
-                [ (2.0_DP * Cs * V1(1) + w)/ 4.0_DP, -(Cs + Phi(1))/2.0_DP, &
-                - 0.5_DP * Phi(2), - 0.5_DP * Phi(3), 0.5_DP * dPdE(1) * Tau(1),  &
-                + 0.5_DP * dPdN(1) ]
-
-
-      VL(2,:) = (1.0_DP / Cs(1)**2) * &
-                [ - 0.5_DP * V2(1) * w, Phi(1) * V2(1), Cs**2 + Phi(2) * V2(1), &
-                  + Phi(2) * V3(1), - Phi(2), - dPdN(1) * V2(1) ]
-
-      VL(3,:) = (1.0_DP / Cs(1)**2) * &
-                [ Cs**2 + (Alpha * W +  2.0_DP * Cs**2 * X)/(2.0_DP * X), &
-                - (Phi(1) * Alpha)/X, - (Phi(2) * Alpha)/X, - (Phi(3) * Alpha)/X, &
-                (dPdE(1) * Tau(1) * Alpha)/X, dPdN(1) * (-2.0_DP * Cs**2 &
-                + Tau(1) * Alpha)/(Tau(1) * X)]
-
-      VL(4,:) = (1.0_DP / Cs(1)**2) * &
-                [ - (N * dPdN(1) * w)/X, (2.0_DP * N * dPdN(1) * Phi(1))/X, &
-                  + (2.0_DP * N * dPdN(1) * Phi(2))/X, &
-                  + (2.0_DP * N * dPdN(1) * Phi(3))/X, &
-                  - (2.0_DP * N * dPdN(1) * dPdE(1) * Tau(1) )/X, &
-                  + (2.0_DP * dPdN(1) * (Cs**2 * N * - N * dPdN(1) * Tau(1)) )/( &
-                     Tau(1) * X) ]
-
-      VL(5,:) = (1.0_DP / Cs(1)**2) * &
-                [ - 0.5_DP * V3(1) * w, Phi(3) * V1(1), Phi(3) * V2(1), &
-                  + Cs**2 + Phi(3) * V3(1), - Phi(3), - dPdN(1) * V3(1) ]
-
-      VL(6,:) = (1.0_DP / Cs(1)**2) * &
-                [ (- 2.0_DP * Cs * V1(1) + w)/(4.0_DP), 0.5_DP  * (Cs - Phi(1)), &
-                  - 0.5_DP * Phi(2), - 0.5_DP * Phi(3), 0.5_DP * dPdE(1) * Tau(1), &
-                  + 0.5_DP * dPdN(1) ]
-
-
-      ! CALL ComputeFluxJacobian( D, T, Y, V1, V2, V3, A )
-      !
-      ! A0 = A
-      !
-      ! ! --- Workspace Query ---
-      !
-      ! LWORK = - 1
-      ! CALL DGEEV( 'V', 'N', 6, A, 6, WR, WI, VL, 6, 0, 6, TEMP, LWORK, INFO )
-      !
-      ! ! --- Compute Eigenvectors ---
-      !
-      ! LWORK = TEMP(1)
-      ! ALLOCATE( WORK(LWORK) )
-      ! CALL DGEEV( 'V', 'N', 6, A, 6, WR, WI, VL, 6, 0, 6, WORK, LWORK, INFO )
-      !
-      ! DO i = 1, 6
-      !   lambda(i) = WR(i)
-      ! END DO
-      !
-      ! VL = TRANSPOSE( VL )
-
+      VL = TRANSPOSE( VL )
 
     END IF
 
@@ -159,12 +81,7 @@ CONTAINS
 
     INTEGER                             :: INFO, LWORK, i
     INTEGER,  DIMENSION(6)              :: IPIV
-    REAL(DP), DIMENSION(1)              :: dPdD, dPdT, dPdY
-    REAL(DP), DIMENSION(1)              :: dEdD, dEdT, dEdY
-    REAL(DP), DIMENSION(1)              :: dPdE, dPdN, dPdTau
-    REAL(DP), DIMENSION(1)              :: TEMP, h, k, Cs
-    REAL(DP), DIMENSION(1)              :: Tau, P, E, N
-    REAL(DP), DIMENSION(1)              :: VSq, X, Alpha, Delta
+    REAL(DP), DIMENSION(1)              :: TEMP
     REAL(DP), DIMENSION(6)              :: WR, WI
     REAL(DP), DIMENSION(:), ALLOCATABLE :: WORK
     REAL(DP), DIMENSION(6,6)            :: A, VL
@@ -183,67 +100,25 @@ CONTAINS
 
     ELSE
 
-      Tau = 1.0_DP / D
+      CALL ComputeEigenvectors_L &
+             ( D, T, Y, V1, V2, V3, lambda, VL, A, Componentwise )
 
-      CALL ComputePressure_TABLE &
-             ( D, T, Y, P, dPdD, dPdT, dPdY )
+      A0 = A
 
-      CALL ComputeSpecificInternalEnergy_TABLE &
-             ( D, T, Y, E, dEdD, dEdT, dEdY )
+      CALL DGETRF( 6, 6, VL, 6, IPIV, INFO )
 
-      dPdE   = dPdT / dEdT
-      dPdN   = ( AtomicMassUnit * Tau ) * ( dPdY - dEdY * dPdE )
-      dPdTau = - ( dPdD - Y * dPdN / AtomicMassUnit - dEdD * dPdE ) / Tau**2
+      ! --- Workspace Query ---
 
-      Cs = SQRT(Tau * (dPdY * Y + P * dPdE * Tau - dPdTau * Tau ))
+      LWORK = -1
+      CALL DGETRI( 6, VL, 6, IPIV, TEMP, LWORK, INFO )
 
-      VSq = V1(1)**2 + V2(1)**2 + V3(1)**2
+      ! --- Compute Inverse of VL ---
 
-      Delta = V1(1)**2 - V2(1)**2 - V3(1)**2
+      LWORK = TEMP(1)
+      ALLOCATE( WORK(LWORK) )
+      CALL DGETRI( 6, VL, 6, IPIV, WORK, LWORK, INFO )
 
-      X = (dPdE(1) * ( Delta + 2.0_DP * E) + 2.0_DP * dPdTau(1) * Tau(1))
-
-      k = ( (Y(1) / AtomicMassUnit * Tau(1)) * dPdN(1) + dPdE(1) * ( &
-            0.5_DP * Vsq + E) + dPdTau(1) * Tau(1))/(dPdE(1))
-
-      h = Cs**2 / (dPdE(1) * Tau(1)) + k
-
-      lambda(1) = V1(1) - Cs(1)
-      lambda(2) = V1(1)
-      lambda(3) = V1(1)
-      lambda(4) = V1(1)
-      lambda(5) = V1(1)
-      lambda(6) = V1(1) + Cs(1)
-
-      VR(1,:) = [ 1.0_DP, 0.0_DP, 1.0_DP, 1.0_DP, 0.0_DP, 1.0_DP ]
-      VR(2,:) = [ V1(1) - Cs, 0.0_DP, V1(1), V1(1), 0.0_DP, V1(1) + Cs]
-      VR(3,:) = [ V2(1), 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, V2(1)]
-      VR(4,:) = [ V3(1), 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP, V3(1)]
-      VR(5,:) = [ h - Cs * V1(1), V2(1), 0.5_DP * (Delta + 2.0_DP * E + &
-                   (2.0_DP * dPdTau(1) * Tau(1))/dPdE(1)), 0.0_DP, V3(1), &
-                     h + Cs * V1(1) ]
-      VR(6,:) = [(Y(1) / AtomicMassUnit), 0.0_DP, 0.0_DP, (Tau(1) * X)/(&
-                  2.0_DP * dPdN(1)), 0.0_DP, (Y(1) / AtomicMassUnit) ]
-
-      ! CALL ComputeEigenvectors_L &
-      !        ( D, T, Y, V1, V2, V3, lambda, VL, A, Componentwise )
-      !
-      ! A0 = A
-      !
-      ! CALL DGETRF( 6, 6, VL, 6, IPIV, INFO )
-      !
-      ! ! --- Workspace Query ---
-      !
-      ! LWORK = -1
-      ! CALL DGETRI( 6, VL, 6, IPIV, TEMP, LWORK, INFO )
-      !
-      ! ! --- Compute Inverse of VL ---
-      !
-      ! LWORK = TEMP(1)
-      ! ALLOCATE( WORK(LWORK) )
-      ! CALL DGETRI( 6, VL, 6, IPIV, WORK, LWORK, INFO )
-      !
-      ! VR = VL
+      VR = VL
 
     END IF
 
@@ -279,7 +154,7 @@ CONTAINS
     dFdU(1,:) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
 
     dFdU(2,1) = - V1(1)**2 - Tau(1)**2 * dPdTau(1) &
-                - Tau(1) * dPdE(1) * ( E(1) -  0.5_DP * VSq(1) )
+                - Tau(1) * dPdE(1) * ( E(1) - 0.5_DP * VSq(1) )
     dFdU(2,2) = V1(1) * ( 2.0_DP - Tau(1) * dPdE(1) )
     dFdU(2,3) = - dPdE(1) * Tau(1) * V2(1)
     dFdU(2,4) = - dPdE(1) * Tau(1) * V3(1)

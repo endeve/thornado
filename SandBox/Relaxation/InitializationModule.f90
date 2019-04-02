@@ -168,14 +168,14 @@ CONTAINS
           iNodeE = NodeNumberTable(1,iNode)
 
           E = NodeCoordinate( MeshE, iE, iNodeE )
-
+! initial condition
           uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
-            = MAX( One / ( EXP( (E-Mnu(iNode))/kT(iNode) ) + One ), 1.0d-99 )
+            = (1.0d0-1.0d-2) * MAX( One / ( EXP( (E-Mnu(iNode))/kT(iNode) ) + One ), 1.0d-99 )
 
           uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) = Zero
           uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
           uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
-        
+
         END DO
 
         CALL ComputeConserved_TwoMoment &

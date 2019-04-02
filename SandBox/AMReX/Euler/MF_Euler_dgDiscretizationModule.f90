@@ -1,14 +1,17 @@
 MODULE  MF_Euler_dgDiscretizationModule
 
   ! --- AMReX Modules ---
-  USE amrex_base_module, ONLY: &
-    amrex_multifab, &
-    amrex_box,      &
-    amrex_geometry, &
-    amrex_mfiter,   &
-    amrex_mfiter_build
-  USE amrex_fort_module, ONLY: &
+  USE amrex_fort_module,     ONLY: &
     amrex_real
+  USE amrex_box_module,      ONLY: &
+    amrex_box
+  USE amrex_geometry_module, ONLY: &
+    amrex_geometry
+  USE amrex_multifab_module, ONLY: &
+    amrex_multifab, &
+    amrex_mfiter,   &
+    amrex_mfiter_build, &
+    amrex_mfiter_destroy
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,      ONLY: &
@@ -21,12 +24,13 @@ MODULE  MF_Euler_dgDiscretizationModule
     Euler_ComputeIncrement_DG_Explicit
 
   ! --- Local Modules ---
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule,                ONLY: &
     AMReX2thornado, &
     thornado2AMReX
-  USE MyAmrModule,        ONLY: &
-    nLevels, bcAMReX
+  USE MyAmrModule,                       ONLY: &
+    nLevels, DEBUG
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    EdgeMap, ConstructEdgeMap, &
     MF_Euler_ApplyBoundaryConditions
 
   IMPLICIT NONE
@@ -59,14 +63,12 @@ CONTAINS
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
+    TYPE(EdgeMap) :: Edge_Map
+
     DO iLevel = 0, nLevels
 
       ! --- Apply boundary conditions to interior domains ---
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
-
-      ! --- Apply boundary conditions to physical domains ---
-      CALL MF_Euler_ApplyBoundaryConditions &
-             ( MF_uCF(iLevel) % P, GEOM(iLevel) % P, bcAMReX )
 
       CALL MF_duCF(iLevel) % setval( 0.0_amrex_real )
 
@@ -91,9 +93,9 @@ CONTAINS
         ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nCF) )
-        ALLOCATE( dU(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nCF) )
+        ALLOCATE( dU(1:nDOFX,iX_B0(1):iX_E0(1), &
+                             iX_B0(2):iX_E0(2), &
+                             iX_B0(3):iX_E0(3),1:nCF) )
 
         CALL AMReX2thornado &
                ( nGF, iX_B1, iX_E1, &
@@ -113,7 +115,16 @@ CONTAINS
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
 
+        ! --- Apply boundary conditions to physical boundaries ---
+        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_Euler_ApplyBoundaryConditions'
+        CALL MF_Euler_ApplyBoundaryConditions &
+               ( iX_B0, iX_E0, iX_B1, iX_E1,  &
+                 U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nCF), Edge_Map )
 
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL Euler_ComputeIncrement_DG_Explicit'
         CALL Euler_ComputeIncrement_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
@@ -124,8 +135,8 @@ CONTAINS
                             iX_B1(3):iX_E1(3),1:nCF), &
                  dU(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nCF) )
-
+                            iX_B0(3):iX_E0(3),1:nCF), &
+                 SuppressBC_Option = .TRUE. )
 
         CALL thornado2AMReX &
                ( nCF, iX_B0, iX_E0, &
@@ -136,11 +147,13 @@ CONTAINS
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3),1:nCF) )
 
-        DEALLOCATE( G  )
-        DEALLOCATE( U  )
         DEALLOCATE( dU )
+        DEALLOCATE( U  )
+        DEALLOCATE( G  )
 
       END DO
+
+      CALL amrex_mfiter_destroy( MFI )
 
     END DO
 

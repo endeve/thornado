@@ -76,7 +76,7 @@ extern "C"
       HeaderFile.rdbuf() -> pubsetbuf( io_buffer.dataPtr(), io_buffer.size() );
 
       // Write out title line
-      HeaderFile << "Checkpoint file for IsentropicVortex\n";
+      HeaderFile << "Checkpoint file\n";
 
       // Write out FinestLevel
       HeaderFile << FinestLevel << "\n";

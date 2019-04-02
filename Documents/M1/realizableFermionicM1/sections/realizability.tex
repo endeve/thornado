@@ -7,9 +7,15 @@ The Pauli exclusion principle requires the distribution function to satisfy the 
 In this paper, we seek to design a numerical method for solving the system of moment equations given by Eq.~\eqref{eq:momentEquations} that preserves realizability of the moments; i.e., the moments evolve within the set of admissible values as dictated by Pauli's exclusion principle.  
 (Since we are only concerned with the angular dependence of $f$ in this section, we simplify the notation by suppressing the $\vect{z}$ and $t$ dependence and write $f(\omega,\vect{z},t)=f(\omega)$.)  
 
-We begin with the following definition of moment realizability.  
+\modified{
+We let
+\begin{equation}
+  \mathfrak{R} := \left\{\,f~|~0\le f \le 1 ~\text{and}~0<\f{1}{4\pi}\int_{\bbS^{2}}f\,d\omega<1\,\right\},
+\end{equation}
+and begin with the following definition of moment realizability.}  
 \begin{define}
-  The moments $\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}$ are realizable if they can be obtained from a distribution function satisfying $0 < f(\omega) < 1~\forall~\omega\in\bbS^{2}$.  
+  \modified{The moments $\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}$ are realizable if they can be obtained from a distribution function $f(\omega)\in\mathfrak{R}$.}  
+  %satisfying $0 < f(\omega) < 1~\forall~\omega\in\bbS^{2}$.  
   The set of all realizable moments $\cR$ is
   \begin{equation}
     \cR:=\big\{\,\vect{\cM}=\big(\cJ,\vect{\cH}\big)^{T}~|~\cJ\in(0,1)~\text{and}~\gamma(\vect{\cM}) > 0\,\big\},
@@ -21,8 +27,13 @@ We begin with the following definition of moment realizability.
 \begin{rem}
   Following \cite{lareckiBanach_2011}, in Definition~\ref{def:momentRealizability}, and in the rest of this paper, we exclude the cases $f=0$ and $f=1$ almost everywhere (a.e.) on $\bbS^{2}$, which would give $\cJ=0$, $\vect{\cH}=0$ and $\cJ=1$, $\vect{\cH}=0$, respectively.  
 \end{rem}
+\modified{
+\begin{rem}
+  The conditions in Eq.~\eqref{eq:realizableSet} are necessary and sufficient for the moments to be realizable \cite[Theorem 7.1]{banachLarecki_2017a}.  (See also \cite{lareckiBanach_2011,banachLarecki_2013}.)
+\end{rem}
+}
 
-The algebraic constraints in Eq.~\eqref{eq:realizableSet} are proven in \cite{banachLarecki_2017a} (see also \cite{lareckiBanach_2011,banachLarecki_2013}).  
+%The algebraic constraints in Eq.~\eqref{eq:realizableSet} are proven in \cite{banachLarecki_2017a}.  
 %\begin{lemma}
 %  Suppose that $0 < f(\omega) < 1~\forall~\omega\in\bbS^{2}$.  
 %  Then the moments $\vect{\cM}=(\cJ,\vect{\cH})^{T}$, defined as in Eq.~\eqref{eq:angularMoments}, satisfy $0 < \cJ < 1$ and $\big(1-\cJ\big)\,\cJ-|\vect{\cH}| > 0$. 

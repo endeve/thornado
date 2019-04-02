@@ -65,6 +65,17 @@ elif [[ $THORNADO_MACHINE == ranchu* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == zelledge* ]]; then
+
+	  echo
+	    echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+
+elif [[ $THORNADO_MACHINE == ranchuair* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 elif [[ $THORNADO_MACHINE == mcarpe21* ]]; then
 
   echo
@@ -140,6 +151,14 @@ elif [[ $THORNADO_MACHINE == sjdunham ]]; then
   echo
 
 elif [[ $THORNADO_MACHINE == ranchu ]]; then
+
+  echo
+
+elif [[ $THORNADO_MACHINE == zelledge ]]; then
+       
+  echo
+
+elif [[ $THORNADO_MACHINE == ranchuair ]]; then
 
   echo
 

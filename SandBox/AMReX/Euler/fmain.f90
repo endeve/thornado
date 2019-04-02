@@ -1,14 +1,36 @@
 PROGRAM main
 
   ! --- AMReX Modules ---
-
-  USE amrex_base_module
-  USE amrex_fort_module
+  USE amrex_base_module,     ONLY: &
+    amrex_problo, amrex_probhi
+  USE amrex_fort_module, ONLY: &
+    amrex_real, &
+    amrex_spacedim
+  USE amrex_amr_module, ONLY: &
+    amrex_init, &
+    amrex_finalize
+  USE amrex_amrcore_module, ONLY: &
+    amrex_amrcore_init
+  USE amrex_box_module, ONLY: &
+    amrex_box
+  USE amrex_boxarray_module, ONLY: &
+    amrex_boxarray, &
+    amrex_boxarray_build, &
+    amrex_boxarray_destroy
+  USE amrex_distromap_module, ONLY: &
+    amrex_distromap, &
+    amrex_distromap_build, &
+    amrex_distromap_destroy
+  USE amrex_geometry_module, ONLY: &
+    amrex_geometry, &
+    amrex_geometry_build
+  USE amrex_multifab_module, ONLY: &
+    amrex_multifab, &
+    amrex_multifab_build
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
-
-  USE KindModule,                       ONLY: &
-    DP
   USE ProgramHeaderModule,              ONLY: &
     DescribeProgramHeaderX, &
     nDOFX, nNodesX
@@ -25,17 +47,21 @@ PROGRAM main
   USE EquationOfStateModule,            ONLY: &
     InitializeEquationOfState
   USE GeometryFieldsModule,             ONLY: &
-    nGF, CoordinateSystem
+    nGF, CoordinateSystem, &
+    CreateGeometryFields
   USE FluidFieldsModule,                ONLY: &
-    nCF, nPF, nAF
+    nCF, nPF, nAF, &
+    CreateFluidFields
   USE InputOutputModuleAMReX,           ONLY: &
+    WriteFieldsHDF_AMReX, &
     WriteFieldsAMReX_PlotFile, &
-    ReadCheckpointFile
+    ReadCheckpointFile, &
+    MakeMF_Diff
 
   ! --- Local Modules ---
-
   USE MF_GeometryModule,                ONLY: &
-    MF_ComputeGeometryX
+    MF_ComputeGeometryX, &
+    MF_ComputeGravitationalPotential
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
   USE MF_Euler_UtilitiesModule,         ONLY: &
@@ -53,7 +79,6 @@ PROGRAM main
   USE FinalizationModule,               ONLY: &
     FinalizeProgram
   USE MF_UtilitiesModule,               ONLY: &
-    MakeMF_Diff, &
     ShowVariableFromMultifab
 
   ! --- Checkpoint ---
@@ -66,8 +91,6 @@ PROGRAM main
   ! --- For slope limiter ---
   USE Euler_SlopeLimiterModule,       ONLY: &
     Euler_InitializeSlopeLimiter
-  USE FluidFieldsModule,              ONLY: &
-    Shock
   USE PolynomialBasisMappingModule,   ONLY: &
     InitializePolynomialBasisMapping
   USE PolynomialBasisModule_Lagrange, ONLY: &
@@ -90,10 +113,9 @@ PROGRAM main
   TYPE(amrex_geometry),  ALLOCATABLE :: GEOM(:)
 
   REAL(amrex_real) :: Timer_Evolution
+  REAL(amrex_real) :: Mass
 
-  INTEGER :: iErr
-
-!!$  CALL MakeMF_Diff( 0, 5857 )
+!!$  CALL MakeMF_Diff( 0, 2929 )
 
   ! --- Initialize AMReX ---
   CALL amrex_init()
@@ -125,12 +147,16 @@ PROGRAM main
   DO iLevel = 0, nLevels
     CALL amrex_multifab_build &
            ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
+    CALL MF_uGF(iLevel) % SetVal( 0.0_amrex_real )
     CALL amrex_multifab_build &
            ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+    CALL MF_uCF(iLevel) % SetVal( 0.0_amrex_real )
     CALL amrex_multifab_build &
            ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
+    CALL MF_uPF(iLevel) % SetVal( 0.0_amrex_real )
     CALL amrex_multifab_build &
            ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+    CALL MF_uAF(iLevel) % SetVal( 0.0_amrex_real )
   END DO
 
   ! -- End of initializing AMReX ---
@@ -178,9 +204,13 @@ PROGRAM main
   CALL InitializeReferenceElementX
   CALL InitializeReferenceElementX_Lagrange
 
-  DO iLevel = 0, nLevels
-    CALL MF_ComputeGeometryX( MF_uGF(iLevel) )
-  END DO
+  CALL MF_ComputeGeometryX( MF_uGF )
+  CALL CreateGeometryFields( nX, swX, CoordinateSystem )
+
+  IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
+    Mass = 0.5_amrex_real
+    CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
+  END IF
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &
@@ -205,25 +235,23 @@ PROGRAM main
              = amrex_parallel_ioprocessor() )
 
   CALL Euler_InitializePositivityLimiter &
-         ( Min_1_Option = 1.0d-12, &
-           Min_2_Option = 1.0d-12, &
-           UsePositivityLimiter_Option = .TRUE., &
+         ( Min_1_Option = Min_1, &
+           Min_2_Option = Min_2, &
+           UsePositivityLimiter_Option = UsePositivityLimiter, &
            Verbose_Option = amrex_parallel_ioprocessor() )
 
-  DO iLevel = 0, nLevels
-    CALL MF_InitializeFields &
-           ( TRIM( ProgramName ), MF_uGF(iLevel), MF_uCF(iLevel) )
-  END DO
+  IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_InitializeFields'
+  CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
+  IF( DEBUG ) WRITE(*,'(A)') 'CALL CreateFluidFields'
+  CALL CreateFluidFields( nX, swX )
 
-  ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
+  IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_Euler_ApplySlopeLimiter'
   CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
+  IF( DEBUG ) WRITE(*,'(A)') 'MF_Euler_ApplyPositivityLimiter'
   CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
 
-  DO iLevel = 0, nLevels
-    CALL MF_ComputeFromConserved &
-           ( MF_uGF(iLevel), MF_uCF(iLevel), &
-             MF_uPF(iLevel), MF_uAF(iLevel) )
-  END DO
+  IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_ComputeFromConserved'
+  CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   CALL MF_InitializeFluid_SSPRK &
          ( nStages, BA, DM, &
@@ -265,12 +293,21 @@ PROGRAM main
 
     StepNo = StepNo + 1
 
+    IF( DEBUG )THEN
+      WRITE(*,*)
+      WRITE(*,'(A,I4)')       'StepNo: ', StepNo
+      WRITE(*,'(A,ES13.6E3)') 'Time:   ', t
+    END IF
+
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_ComputeTimeStep'
     CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt )
 
     IF( ALL( t + dt .LE. t_end ) )THEN
       t = t + dt
     ELSE
+      WRITE(*,*) 'Before: t, dt ', t, dt
       dt = t_end - [t]
+      WRITE(*,*) 'After: t, dt ', t, dt
       t  = [t_end]
     END IF
 
@@ -280,17 +317,14 @@ PROGRAM main
           '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
     END IF
 
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_UpdateFluid_SSPRK'
     CALL MF_UpdateFluid_SSPRK &
            ( t, dt, MF_uGF, MF_uCF, &
              GEOM, MF_Euler_ComputeIncrement )
 
     IF( MOD( StepNo(0), iCycleW ) .EQ. 0 )THEN
 
-      DO iLevel = 0, nLevels
-        CALL MF_ComputeFromConserved &
-               ( MF_uGF(iLevel), MF_uCF(iLevel), &
-                 MF_uPF(iLevel), MF_uAF(iLevel) )
-      END DO
+      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_PlotFile &
              ( t(0), GEOM, StepNo, &
@@ -298,15 +332,12 @@ PROGRAM main
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF )
+
     END IF
 
     IF( MOD( StepNo(0), iCycleChk ) .EQ. 0 )THEN
 
-      DO iLevel = 0, nLevels
-        CALL MF_ComputeFromConserved &
-               ( MF_uGF(iLevel), MF_uCF(iLevel), &
-                 MF_uPF(iLevel), MF_uAF(iLevel) )
-      END DO
+      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t, &
@@ -328,11 +359,7 @@ PROGRAM main
       'Total evolution time: ', MPI_WTIME() - Timer_Evolution, ' s'
   END IF
 
-  DO iLevel = 0, nLevels
-    CALL MF_ComputeFromConserved &
-           ( MF_uGF(iLevel), MF_uCF(iLevel), &
-             MF_uPF(iLevel), MF_uAF(iLevel) )
-  END DO
+  CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   StepNo = StepNo + 1
   CALL WriteFieldsAMReX_PlotFile &
@@ -354,7 +381,6 @@ PROGRAM main
 
   CALL FinalizeProgram( GEOM, MeshX )
 
-  DEALLOCATE( Shock )
   DEALLOCATE( GEOM )
   DEALLOCATE( BA )
   DEALLOCATE( DM )

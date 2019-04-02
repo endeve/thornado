@@ -1,7 +1,7 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Pi, TwoPi
+    DP, SqrtTiny, Zero, One, Pi, TwoPi, Third
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
@@ -71,6 +71,7 @@ PROGRAM ApplicationDriver
   CHARACTER(8)  :: Direction
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: TimeSteppingScheme
+  CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: UsePositivityLimiter
   INTEGER       :: iCycle, iCycleD, iCycleW, iCycleT, maxCycles
   INTEGER       :: nE, nX(3), bcX(3), nNodes
@@ -81,7 +82,9 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: Radius = 1.0d16
   REAL(DP)      :: Min_1, Max_1, Min_2
 
-  ProgramName = 'HomogeneousSphere'
+  CoordinateSystem = 'CARTESIAN'
+
+  ProgramName = 'SquareWaveStreaming'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -103,7 +106,7 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      TimeSteppingScheme = 'SSPRK3'
+      TimeSteppingScheme = 'IMEX_PDARS_3'
 
       N0     = 0.0_DP
       SigmaA = 0.0_DP
@@ -120,6 +123,43 @@ PROGRAM ApplicationDriver
       iCycleW   = 10
       iCycleT   = 10
       maxCycles = 10000
+
+
+    CASE( 'SquareWaveStreaming' )
+
+      ! --- Minerbo Closure Only ---
+
+      Direction = 'X'
+
+      nX = [ 256, 1, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      bcX = [ 1, 1, 1 ]
+
+      nE = 1
+      eL = 0.0_DP
+      eR = 1.0_DP
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'IMEX_PDARS_4'
+
+      N0     = 0.0_DP
+      SigmaA = 0.0_DP
+      SigmaS = 0.0_DP
+
+      UsePositivityLimiter = .FALSE.
+
+      Min_1 = - HUGE( One ) ! --- Min Density
+      Max_1 = + HUGE( One ) ! --- Max Density
+      Min_2 = - HUGE( One ) ! --- Min "Gamma"
+
+      t_end     = 1.0d+1
+      iCycleD   = 100
+      iCycleW   = 100
+      iCycleT   = 100
+      maxCycles = 1000000
 
     CASE( 'SineWaveDamping' )
 
@@ -284,6 +324,41 @@ PROGRAM ApplicationDriver
       iCycleT   = 10
       maxCycles = 100000
 
+    CASE( 'HomogeneousSphere_Spherical' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      nX = [ 128, 1, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 5.0_DP, Pi,     TwoPi  ]
+
+      bcX = [ 32, 0, 0 ]
+
+      nE = 1
+      eL = 0.0_DP
+      eR = 1.0_DP
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_PDARS_3'
+
+      N0     = 0.80_DP
+      SigmaA = 4.00_DP
+      SigmaS = 0.00_DP
+      Radius = 1.00_DP
+
+      UsePositivityLimiter = .TRUE.
+
+      Min_1 = Zero + SqrtTiny ! --- Min Density
+      Max_1 = One  - SqrtTiny ! --- Max Density
+      Min_2 = Zero + SqrtTiny ! --- Min "Gamma"
+
+      t_end     = 2.0d+1
+      iCycleD   = 10
+      iCycleW   = 500
+      iCycleT   = 10
+      maxCycles = 100000
+
   END SELECT
 
   CALL InitializeProgram &
@@ -308,7 +383,7 @@ PROGRAM ApplicationDriver
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
-             = 'CARTESIAN', &
+             = TRIM( CoordinateSystem ), &
            BasicInitialization_Option &
              = .TRUE. )
 
@@ -374,7 +449,9 @@ PROGRAM ApplicationDriver
   ! --- Write Initial Condition ---
 
   CALL WriteFieldsHDF &
-         ( Time = 0.0_DP, WriteRF_Option = .TRUE. )
+         ( Time = 0.0_DP, &
+           WriteGF_Option = .TRUE., &
+           WriteRF_Option = .TRUE. )
 
   ! --- Tally ---
 
@@ -386,7 +463,7 @@ PROGRAM ApplicationDriver
   wTime = MPI_WTIME( )
 
   t  = 0.0d-0
-  dt = 0.05_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
+  dt = 0.1_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
        / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
   WRITE(*,*)
@@ -432,13 +509,19 @@ PROGRAM ApplicationDriver
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
-      CALL WriteFieldsHDF( Time = t, WriteRF_Option = .TRUE. )
+      CALL WriteFieldsHDF &
+             ( Time = t, &
+               WriteGF_Option = .TRUE., &
+               WriteRF_Option = .TRUE. )
 
     END IF
 
   END DO
 
-  CALL WriteFieldsHDF( Time = t, WriteRF_Option = .TRUE. )
+  CALL WriteFieldsHDF &
+         ( Time = t, &
+           WriteGF_Option = .FALSE., &
+           WriteRF_Option = .TRUE. )
 
   wTime = MPI_WTIME( ) - wTime
 

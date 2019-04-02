@@ -1,7 +1,7 @@
 PROGRAM DeleptonizationWave
 
   USE KindModule, ONLY: &
-    DP, Third
+    DP, SqrtTiny, Third, Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -81,17 +81,41 @@ PROGRAM DeleptonizationWave
 
   INCLUDE 'mpif.h'
 
+  CHARACTER(32) :: ProgramName
+  CHARACTER(32) :: CoordinateSystem
   INTEGER  :: iCycle, iCycleD, iCycleW
-  INTEGER  :: nE, nX(3), nNodes
+  INTEGER  :: nE, nX(3), bcX(3), nNodes
   REAL(DP) :: t, dt, t_end, wTime
   REAL(DP) :: eL, eR
   REAL(DP) :: xL(3), xR(3)
 
-  nNodes = 2
+  CoordinateSystem = 'SPHERICAL'
 
-  nX = [ 128, 128, 1 ]  ! 96 / 128 [96, 96, 1]
-  xL = [ 0.0d0, 0.0d0, - 1.0d2 ] * Kilometer
-  xR = [ 2.0d2, 2.0d2, + 1.0d2 ] * Kilometer
+  SELECT CASE( CoordinateSystem)
+
+    CASE( 'CARTESIAN' )
+
+      ProgramName = 'DeleptonizationWave'
+
+      nX = [ 128, 128, 1 ]  ! 96 / 128 [96, 96, 1]
+      xL = [  0.0d2,  0.0d2, - 1.0d2 ] * Kilometer
+      xR = [  2.0d2,  2.0d2, + 1.0d2 ] * Kilometer
+      
+      bcX = [ 32, 32, 32 ]
+ 
+    CASE( 'SPHERICAL' )
+
+      ProgramName = 'DeleptonizationWave_Spherical'
+
+      nX = [ 512, 1, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 3.0d2 * Kilometer, Pi,     TwoPi  ]
+
+      bcX = [ 32, 0, 0 ]
+
+  END SELECT
+ 
+  nNodes = 2
 
   nE = 10
   eL = 0.0d0 * MeV
@@ -99,13 +123,13 @@ PROGRAM DeleptonizationWave
 
   CALL InitializeProgram &
          ( ProgramName_Option &
-             = 'DeleptonizationWave', &
+             = ProgramName, &
            nX_Option &
              = nX, &
            swX_Option &
              = [ 01, 01, 01 ], &
            bcX_Option &
-             = [ 32, 32, 32 ], &
+             = bcX, &
            xL_Option &
              = xL, &
            xR_Option &
@@ -121,7 +145,7 @@ PROGRAM DeleptonizationWave
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
-             = 'CARTESIAN', &
+             = CoordinateSystem, &
            ActivateUnits_Option &
              = .TRUE., &
            BasicInitialization_Option &
@@ -174,9 +198,9 @@ PROGRAM DeleptonizationWave
   ! --- Initialize Positivity Limiter ---
 
   CALL InitializePositivityLimiter_TwoMoment &
-         ( Min_1_Option = 0.0d-00, &
-           Max_1_Option = 1.0d+00, &
-           Min_2_Option = 0.0d-00, &
+         ( Min_1_Option = 0.0d0 + SqrtTiny, &
+           Max_1_Option = 1.0d0 - SqrtTiny, &
+           Min_2_Option = 0.0d0 + SqrtTiny, &
            UsePositivityLimiter_Option &
              = .TRUE. )
 
@@ -187,7 +211,8 @@ PROGRAM DeleptonizationWave
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields( Profile_Option = 'ChimeraBounce_fined.d')
+  CALL InitializeFields
+  !CALL InitializeFields( Profile_Option = 'Chimera100ms_fined.d')
 
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
@@ -212,7 +237,10 @@ PROGRAM DeleptonizationWave
   wTime = MPI_WTIME( )
 
   t     = 0.0_DP
-  t_end = 8.0_DP * Millisecond
+  t_end = 5.0d-3 * Millisecond
+
+!  dt    = 1.0d-7 * Millisecond
+
   dt    = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
@@ -234,8 +262,14 @@ PROGRAM DeleptonizationWave
 
       dt = t_end - t
 
-    END IF
+!    ELSE
+!
+!      dt = MIN( dt * 1.01_dp, &
+!                Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+!              / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) )
 
+    END IF
+    
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
       WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A5,ES12.6E2)') &
@@ -269,7 +303,7 @@ PROGRAM DeleptonizationWave
   ! --- Write Final Solution ---
 
   CALL WriteFieldsHDF &
-         ( Time = 0.0_DP, &
+         ( Time = t, &
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE., &

@@ -6,6 +6,11 @@ MODULE TimeSteppingModule_Castro
     nDOFX, nDOFE, nDOF, &
     iX_B0, iX_B1, iX_E0, iX_E1, &
     iZ_B0, iZ_B1, iZ_E0, iZ_E1
+  USE TimersModule, ONLY: &
+    TimersStart, &
+    TimersStop, &
+    Timer_AddFieldsF, &
+    Timer_AddFieldsR
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_Ne
   USE RadiationFieldsModule, ONLY: &
@@ -13,9 +18,7 @@ MODULE TimeSteppingModule_Castro
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
-    ComputeIncrement_TwoMoment_Implicit, &
-    ComputeIncrement_TwoMoment_Implicit_New, &
-    ComputeIncrement_TwoMoment_Implicit_DGFV
+    ComputeIncrement_TwoMoment_Implicit_New
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment
 
@@ -65,9 +68,9 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       dt
     REAL(DP), INTENT(inout) :: &
-      U_F(1:,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:)
+      U_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      U_R(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      U_R(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       Explicit_Option, &
       Implicit_Option, &
@@ -80,7 +83,7 @@ CONTAINS
       SingleStage, &
       CallFromThornado
     INTEGER  :: &
-      iX_SW(3), iZ_SW(4)
+      iX_SW(3), iZ_SW(4), iZ_SW_P(4)
     REAL(DP) :: &
       U0_F &
         (1:nDOFX, &
@@ -166,16 +169,19 @@ CONTAINS
     ! --- Include One Layer of Spatial Ghost Cells in Update
 
     if (nDimsX .eq. 3) then
-       iX_SW = [    1, 1, 1 ]
-       iZ_SW = [ 0, 1, 1, 1 ]
+       iX_SW   = [    1, 1, 1 ]
+       iZ_SW   = [ 0, 1, 1, 1 ] 
+       iZ_SW_P = [ 0, 2, 2, 2 ]
     else
-       iX_SW = [    1, 1, 0 ]
-       iZ_SW = [ 0, 1, 1, 0 ]
+       iX_SW   = [    1, 1, 0 ]
+       iZ_SW   = [ 0, 1, 1, 0 ]
+       iZ_SW_P = [ 0, 2, 2, 0 ]
     end if
 
     IF( CallFromThornado )THEN
-      iX_SW = [ 0, 0, 0 ]     ! --- For Debugging within thornado
-      iZ_SW = [ 0, 0, 0, 0 ]  ! --- For Debugging within thornado
+      iX_SW   = [ 0, 0, 0 ]     ! --- For Debugging within thornado
+      iZ_SW   = [ 0, 0, 0, 0 ]  ! --- For Debugging within thornado
+      iZ_SW_P = [ 0, 0, 0, 0 ]  ! --- For Debugging within thornado
     END IF
 
     ! --- Explicit Step (Radiation Only) ---
@@ -185,7 +191,7 @@ CONTAINS
       ! --- Apply Positivity Limiter ---
 
       CALL ApplyPositivityLimiter_TwoMoment &
-             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+             ( iZ_B0-iZ_SW_P, iZ_E0+iZ_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
       CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
@@ -360,6 +366,8 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iFF
 
+    CALL TimersStart( Timer_AddFieldsF )
+
     DO iFF = 1, nCF
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
@@ -373,6 +381,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_AddFieldsF )
 
   END SUBROUTINE AddFields_Fluid
 
@@ -392,6 +402,8 @@ CONTAINS
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iRF, iS
 
+    CALL TimersStart( Timer_AddFieldsR )
+
     DO iS = 1, nSpecies
     DO iRF = 1, nCR
     DO iZ4 = iZ_B(4), iZ_E(4)
@@ -409,6 +421,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop( Timer_AddFieldsR )
 
   END SUBROUTINE AddFields_Radiation
 

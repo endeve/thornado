@@ -80,6 +80,7 @@ while((~CONVERGED)&&(k<=maxIter))
     % compute new J
 %     [Jout, iter_in] = UpdateNeutrinoDistribution(Jin, J0, Chi);
     [Jout, iter_in] = UpdateNeutrinoDistribution_exact(Jin, J0, Chi);
+%     [Jout, iter_in] = UpdateNeutrinoDistribution_NES(Jin, J0, Chi);
 
     Inneriter = Inneriter + iter_in;
     

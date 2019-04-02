@@ -7,6 +7,8 @@ module ThornadoInitializationModule
     InitializeProgramHeaderX, &
     nNodesX, nNodesE, &
     iE_B0, iE_E0, iE_B1, iE_E1
+  use TimersModule, only: &
+    InitializeTimers
   use QuadratureModule, only: &
     InitializeQuadratures
   use ReferenceElementModuleX, only: &
@@ -96,6 +98,8 @@ contains
 
     nSpecies = nSpecies_in
 
+    call InitializeTimers
+
     call InitializeQuadratures
 
     call InitializeReferenceElementX
@@ -171,13 +175,12 @@ contains
   subroutine InitThornado_Patch( nX, swX, xL, xR) &
       bind(C, name = "InitThornado_Patch")
 
-    use RadiationFieldsModule, only : nSpecies
-    use ProgramHeaderModule  , only : nNodesX
+    use ProgramHeaderModule, only : nNodesX
 
     integer,  INTENT(in) :: nX(3), swX(3)
     REAL(DP), INTENT(in) :: xL(3), xR(3)
 
-    integer  :: iDim
+    integer :: iDim
 
     call InitializeProgramHeaderX &
            ( nX_Option = nX, swX_Option = swX, &

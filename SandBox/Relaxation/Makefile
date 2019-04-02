@@ -13,11 +13,13 @@ all: Relaxation
 Relaxation: \
 	$(weaklib) \
 	$(thornado) \
+	TwoMoment_DiscretizationModule_Collisions_Neutrinos_beta.o \
 	InitializationModule.o \
 	Relaxation.o
 	$(FLINKER) $(FLAGS) -o Relaxation_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
+	TwoMoment_DiscretizationModule_Collisions_Neutrinos_beta.o \
 	InitializationModule.o \
 	Relaxation.o \
 	$(LIBRARIES)

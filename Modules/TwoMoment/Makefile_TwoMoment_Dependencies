@@ -4,7 +4,7 @@ TwoMoment_ClosureModule.o: \
 
 TwoMoment_UtilitiesModule.o: \
   KindModule.o \
-  TwoMoment_UtilitiesModule.f90
+  TwoMoment_UtilitiesModule.F90
 
 TwoMoment_RefinementModule.o: \
   KindModule.o \
@@ -15,19 +15,32 @@ TwoMoment_BoundaryConditionsModule.o: \
   ProgramHeaderModule.o \
   ReferenceElementModule.o \
   RadiationFieldsModule.o \
-  TwoMoment_BoundaryConditionsModule.f90
+  TwoMoment_BoundaryConditionsModule.F90
 
 TwoMoment_PositivityLimiterModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  TimersModule.o \
   ReferenceElementModule.o \
   ReferenceElementModule_Lagrange.o \
   RadiationFieldsModule.o \
-  TwoMoment_PositivityLimiterModule.f90
+  TwoMoment_PositivityLimiterModule.F90
+
+TwoMoment_PositivityLimiterModule_GPU.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TimersModule.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  RadiationFieldsModule.o \
+  TwoMoment_PositivityLimiterModule_GPU.F90
 
 TwoMoment_DiscretizationModule_Streaming.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  TimersModule.o \
+  LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
   ReferenceElementModule.o \
@@ -40,13 +53,46 @@ TwoMoment_DiscretizationModule_Streaming.o: \
   TwoMoment_ClosureModule.o \
   TwoMoment_BoundaryConditionsModule.o \
   TwoMoment_UtilitiesModule.o \
-  TwoMoment_PositivityLimiterModule.o \
-  TwoMoment_DiscretizationModule_Streaming.f90
+  TwoMoment_DiscretizationModule_Streaming.F90
 
 TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
   KindModule.o \
-  ProgramHeader.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  TimersModule.o \
   ReferenceElementModule.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  FluidFieldsModule.o \
   RadiationFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
   NeutrinoOpacitiesModule.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos.f90
+  NeutrinoOpacitiesComputationModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90
+
+TwoMoment_DiscretizationModule_Collisions_Neutrinos_GPU.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  TimersModule.o \
+  ReferenceElementModuleE.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
+  NeutrinoOpacitiesModule.o \
+  NeutrinoOpacitiesComputationModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos_GPU.F90
+
+TwoMoment_MeshRefinementModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  TwoMoment_MeshRefinementModule.f90

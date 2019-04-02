@@ -2,12 +2,17 @@
 MODULE MyAmrDataModule
 
   USE ISO_C_BINDING
-  USE amrex_amr_module,  ONLY: &
-    amrex_multifab, &
-    amrex_multifab_destroy, &
-    amrex_max_level
-  USE amrex_fort_module, ONLY: &
+
+  ! --- AMReX Modules ---
+  USE amrex_fort_module,     ONLY: &
     amrex_real
+  USE amrex_multifab_module, ONLY: &
+    amrex_multifab, &
+    amrex_multifab_destroy
+
+  ! --- Local Modules ---
+  USE amrex_amr_module, ONLY: &
+    amrex_max_level
 
   IMPLICIT NONE
 
@@ -16,7 +21,6 @@ MODULE MyAmrDataModule
 
   PUBLIC :: InitializeDataAMReX, FinalizeDataAMReX
 
-  REAL(amrex_real),     ALLOCATABLE :: t(:)
   TYPE(amrex_multifab), ALLOCATABLE :: MF_uGF(:)
   TYPE(amrex_multifab), ALLOCATABLE :: MF_uCF(:)
   TYPE(amrex_multifab), ALLOCATABLE :: MF_uPF(:)
@@ -26,7 +30,9 @@ MODULE MyAmrDataModule
 CONTAINS
 
 
-  SUBROUTINE InitializeDataAMReX
+  SUBROUTINE InitializeDataAMReX( amrex_max_level )
+
+    INTEGER, INTENT(in) :: amrex_max_level
 
     ALLOCATE( MF_uGF(0:amrex_max_level) )
     ALLOCATE( MF_uCF(0:amrex_max_level) )
@@ -36,7 +42,9 @@ CONTAINS
   END SUBROUTINE InitializeDataAMReX
 
 
-  SUBROUTINE FinalizeDataAMReX
+  SUBROUTINE FinalizeDataAMReX( amrex_max_level )
+
+    INTEGER, INTENT(in) :: amrex_max_level
 
     INTEGER :: iLevel
 

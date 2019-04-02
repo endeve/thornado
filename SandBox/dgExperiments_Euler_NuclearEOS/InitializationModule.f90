@@ -3,6 +3,9 @@ MODULE InitializationModule
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Three, &
     Pi, TwoPi, FourPi
+  USE UnitsModule, ONLY: &
+    Gram, Centimeter, &
+    Kilometer, Erg, Second, Kelvin
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nX, nNodesX, &
@@ -15,10 +18,14 @@ MODULE InitializationModule
   USE GeometryFieldsModule, ONLY: &
     uGF, iGF_Phi_N, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Ne, &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    uAF, iAF_P, iAF_Ye, iAF_T, iAF_E
   USE Euler_UtilitiesModule, ONLY: &
     ComputeConserved
+  USE EquationOfStateModule, ONLY: &
+    ComputeTemperatureFromPressure, &
+    ComputeThermodynamicStates_Primitive
 
   IMPLICIT NONE
   PRIVATE
@@ -252,7 +259,7 @@ CONTAINS
     INTEGER       :: iNodeX, iNodeX1
     REAL(DP)      :: X1
 
-    RiemannProblemName = 'Nuclear_MovingContact'
+    RiemannProblemName = 'Sod'
     IF( PRESENT( RiemannProblemName_Option ) ) &
        RiemannProblemName = TRIM( RiemannProblemName_Option )
 
@@ -276,19 +283,22 @@ CONTAINS
 
                 IF( X1 <= Half )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+                  ! Change vars
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.00d12 * Gram / Centimeter**3
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d32 * Erg / Centimeter**3
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.4_DP
 
                 ELSE
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.1_DP / 0.4_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)   = 1.25d11 * Gram / Centimeter**3
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1)  = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2)  = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3)  = 0.0_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)   = 1.0d31 * Erg / Centimeter**3
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)  = 0.3_DP
 
                 END IF
 
@@ -332,28 +342,6 @@ CONTAINS
 
                 END IF
 
-              CASE( 'Nuclear_MovingContact' )
-
-                IF( X1 <= Half )THEN
-
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.4_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne)  = 0.4_DP / (1.4_DP)
-
-                ELSE
-
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne)  = 0.6_DP / (1.0_DP)
-
-                END IF
-
               CASE( 'Toro' )
 
               CASE( 'InteractingBlasts' )
@@ -381,6 +369,17 @@ CONTAINS
             END SELECT
 
           END DO
+
+          ! CALL TempFromPRessure
+          CALL ComputeTemperatureFromPressure &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_P), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_T) )
+
+          CALL ComputeThermodynamicStates_Primitive &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E ),&
+                   uAF(:,iX1,iX2,iX3,iAF_E),  uCF(:,iX1,iX2,iX3,iCF_Ne) )
+                   ! iAF_E = Em. Ev = iPF_E
 
           CALL ComputeConserved &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &

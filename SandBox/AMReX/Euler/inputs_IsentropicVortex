@@ -1,4 +1,7 @@
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+DEBUG = 0
 
 thornado.ProgramName = "IsentropicVortex"
 
@@ -20,7 +23,6 @@ geometry.coord_sys   = 0             # CARTESIAN
 geometry.prob_lo     = -5.0 -5.0 0.0 # Lower domain size
 geometry.prob_hi     = +5.0 +5.0 1.0 # Upper domain size
 geometry.is_periodic = 01 01 01      # Periodicity. 0 (no), 1 (yes)
-geometry.bcAMReX     = 01 01 00
 
 amr.n_cell          = 32 32 01 # Number of cells in each dimension
 amr.max_grid_size   = 16 16 01 # nBoxes = n_cell / MaxGridSize
@@ -31,7 +33,13 @@ amr.blocking_factor = 1          # Must be a factor of max_grid_size
 SL.UseSlopeLimiter           = 1
 SL.UseCharacteristicLimiting = 1
 SL.UseTroubledCellIndicator  = 1
-SL.SlopeTolerance            = 1.0d-6
-SL.BetaTVD                   = 1.75d0
-SL.BetaTVB                   = 0.0d0
-SL.LimiterThresholdParameter = 0.015d0
+SL.SlopeTolerance            = 1.0e-6
+SL.BetaTVD                   = 1.75e0
+SL.BetaTVB                   = 0.0e0
+SL.LimiterThresholdParameter = 0.015e0
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter = 1
+PL.Min_1                = 1.0e-12
+PL.Min_2                = 1.0e-12
+
