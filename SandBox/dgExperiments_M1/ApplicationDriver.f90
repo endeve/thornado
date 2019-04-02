@@ -1,7 +1,7 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, SqrtTiny, Zero, One, Pi, TwoPi
+    DP, SqrtTiny, Zero, One, Pi, TwoPi, Third
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
@@ -106,7 +106,7 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      TimeSteppingScheme = 'SSPRK3'
+      TimeSteppingScheme = 'IMEX_PDARS_3'
 
       N0     = 0.0_DP
       SigmaA = 0.0_DP
@@ -143,7 +143,7 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      TimeSteppingScheme = 'SSPRK3'
+      TimeSteppingScheme = 'IMEX_PDARS_4'
 
       N0     = 0.0_DP
       SigmaA = 0.0_DP
@@ -156,9 +156,9 @@ PROGRAM ApplicationDriver
       Min_2 = - HUGE( One ) ! --- Min "Gamma"
 
       t_end     = 1.0d+1
-      iCycleD   = 10000
-      iCycleW   = 10000
-      iCycleT   = 10000
+      iCycleD   = 100
+      iCycleW   = 100
+      iCycleT   = 100
       maxCycles = 1000000
 
     CASE( 'SineWaveDamping' )
@@ -463,7 +463,7 @@ PROGRAM ApplicationDriver
   wTime = MPI_WTIME( )
 
   t  = 0.0d-0
-  dt = 0.05_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
+  dt = 0.1_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
        / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
   WRITE(*,*)
