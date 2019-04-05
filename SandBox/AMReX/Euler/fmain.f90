@@ -272,7 +272,7 @@ PROGRAM main
   t = 0.0_amrex_real
 
   CALL WriteFieldsAMReX_PlotFile &
-         ( 0.0e0_amrex_real, GEOM, StepNo, &
+         ( 0.0e0_amrex_real, StepNo, &
            MF_uGF_Option = MF_uGF, &
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &
@@ -327,7 +327,7 @@ PROGRAM main
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_PlotFile &
-             ( t(0), GEOM, StepNo, &
+             ( t(0), StepNo, &
                MF_uGF_Option = MF_uGF, &
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
@@ -363,7 +363,7 @@ PROGRAM main
 
   StepNo = StepNo + 1
   CALL WriteFieldsAMReX_PlotFile &
-         ( t(0), GEOM, StepNo, &
+         ( t(0), StepNo, &
            MF_uGF_Option = MF_uGF, &
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &

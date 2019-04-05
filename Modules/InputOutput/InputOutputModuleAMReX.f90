@@ -301,8 +301,7 @@ CONTAINS
 
 
   SUBROUTINE WriteFieldsAMReX_PlotFile &
-    ( Time, GEOM, StepNo, &
-      MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, MF_uAF_Option )
+    ( Time, StepNo, MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, MF_uAF_Option )
 
     REAL(DP),             INTENT(in)           :: Time
     INTEGER,              INTENT(in)           :: StepNo(0:nLevels)
@@ -637,7 +636,7 @@ CONTAINS
     WRITE(*,*) 'Linf (CF_D): ', MAX( ABS(MaxD), ABS(MinD) )
 
     CALL WriteFieldsAMReX_Plotfile &
-           ( t(0), GEOM, StepNo, &
+           ( t(0), StepNo, &
              MF_uGF_Option = MF_uGF_TEMP, &
              MF_uCF_Option = MF_uCF_TEMP, &
              MF_uPF_Option = MF_uPF_TEMP, &
