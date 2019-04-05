@@ -4,7 +4,7 @@ MODULE MyAmrModule
 
   ! --- AMReX Modules ---
   USE amrex_fort_module, ONLY: &
-    amrex_real
+    amrex_real, amrex_spacedim
   USE amrex_base_module, ONLY: &
     amrex_init, &
     amrex_initialized, &
@@ -88,6 +88,8 @@ CONTAINS
       CALL PP % get   ( 'iCycleW',     iCycleW )
       CALL PP % get   ( 'iCycleChk',   iCycleChk )
     CALL amrex_parmparse_destroy( PP )
+    CFL = CFL &
+            / ( amrex_spacedim * ( 2.0_amrex_real * nNodes - 1.0_amrex_real ) )
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
