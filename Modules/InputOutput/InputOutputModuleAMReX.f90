@@ -305,7 +305,6 @@ CONTAINS
       MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, MF_uAF_Option )
 
     REAL(DP),             INTENT(in)           :: Time
-    TYPE(amrex_geometry), INTENT(in)           :: GEOM(0:nLevels)
     INTEGER,              INTENT(in)           :: StepNo(0:nLevels)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:nLevels)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCF_Option(0:nLevels)
@@ -316,14 +315,38 @@ CONTAINS
     CHARACTER(32)                   :: PlotFileName
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C, WriteFF_P, WriteFF_A
-    INTEGER                         :: iComp, iOS, iLevel, nF
+    INTEGER                         :: iComp, iOS, iLevel, nF, iOS_CPP(3)
+    TYPE(amrex_mfiter)              :: MFI
+    TYPE(amrex_box)                 :: BX
     TYPE(amrex_multifab)            :: MF_PF(0:nLevels)
-    TYPE(amrex_boxarray)            :: BA(0:nLevels)
-    TYPE(amrex_distromap)           :: DM(0:nLevels)
+    TYPE(amrex_geometry)            :: GEOM (0:nLevels)
+    TYPE(amrex_boxarray)            :: BA   (0:nLevels)
+    TYPE(amrex_distromap)           :: DM   (0:nLevels)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
 
-    ! --- Only needed to get and write BX % lo and BX % hi ---
-    TYPE(amrex_mfiter) :: MFI
+    ! --- Offset for C++ indexing ---
+    iOS_CPP = 1
+    IF     ( amrex_spacedim .EQ. 1 )THEN
+      iOS_CPP(2) = 0
+      iOS_CPP(3) = 0
+    ELSE IF( amrex_spacedim .EQ. 2 )THEN
+      iOS_CPP(3) = 0
+    END IF
+
+    BX = amrex_box( [ 0, 0, 0 ], [ nX(1)-1, nX(2)-1, nX(3)-1 ] )
+
+    DO iLevel = 0, nLevels
+      CALL amrex_boxarray_build( BA(iLevel), BX )
+    END DO
+
+    DO iLevel = 0, nLevels
+      CALL BA(iLevel) % maxSize( MaxGridSize )
+    END DO
+
+    DO iLevel = 0, nLevels
+      CALL amrex_geometry_build ( GEOM(iLevel), BX )
+      CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
+    END DO
 
     nF = 0
     WriteGF   = .FALSE.
@@ -374,10 +397,6 @@ CONTAINS
                ( VarNames(iComp + iOS), TRIM( ShortNamesGF(iComp) ) )
       END DO
       iOS = iOS + nGF
-      DO iLevel = 0, nLevels
-        BA(iLevel) = MF_uGF_Option(iLevel) % BA
-        DM(iLevel) = MF_uGF_Option(iLevel) % DM
-      END DO
     END IF
 
     IF( WriteFF_C )THEN
@@ -386,10 +405,6 @@ CONTAINS
                ( VarNames(iComp + iOS), TRIM( ShortNamesCF(iComp) ) )
       END DO
       iOS = iOS + nCF
-      DO iLevel = 0, nLevels
-        BA(iLevel) = MF_uCF_Option(iLevel) % BA
-        DM(iLevel) = MF_uCF_Option(iLevel) % DM
-      END DO
     END IF
 
     IF( WriteFF_P )THEN
@@ -398,10 +413,6 @@ CONTAINS
                ( VarNames(iComp + iOS), TRIM( ShortNamesPF(iComp) ) )
       END DO
       iOS = iOS + nPF
-      DO iLevel = 0, nLevels
-        BA(iLevel) = MF_uPF_Option(iLevel) % BA
-        DM(iLevel) = MF_uPF_Option(iLevel) % DM
-      END DO
     END IF
 
     IF( WriteFF_A )THEN
@@ -410,10 +421,6 @@ CONTAINS
                ( VarNames(iComp + iOS), TRIM( ShortNamesAF(iComp) ) )
       END DO
       iOS = iOS + nAF
-      DO iLevel = 0, nLevels
-        BA(iLevel) = MF_uAF_Option(iLevel) % BA
-        DM(iLevel) = MF_uAF_Option(iLevel) % DM
-      END DO
     END IF
 
     DO iLevel = 0, nLevels
@@ -427,22 +434,22 @@ CONTAINS
       iOS = 0
       IF( WriteGF   )THEN
         CALL MF_ComputeCellAverage &
-          ( nGF, MF_uGF_Option(iLevel), MF_PF(iLevel), iOS )
+          ( nGF, MF_uGF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP )
         iOS = iOS + nGF
       END IF
       IF( WriteFF_C )THEN
         CALL MF_ComputeCellAverage &
-          ( nCF, MF_uCF_Option(iLevel), MF_PF(iLevel), iOS )
+          ( nCF, MF_uCF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP )
         iOS = iOS + nCF
       END IF
       IF( WriteFF_P )THEN
         CALL MF_ComputeCellAverage &
-          ( nPF, MF_uPF_Option(iLevel), MF_PF(iLevel), iOS )
+          ( nPF, MF_uPF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP )
         iOS = iOS + nPF
       END IF
       IF( WriteFF_A )THEN
         CALL MF_ComputeCellAverage &
-          ( nAF, MF_uAF_Option(iLevel), MF_PF(iLevel), iOS )
+          ( nAF, MF_uAF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP )
         iOS = iOS + nAF
       END IF
 
@@ -453,7 +460,10 @@ CONTAINS
              GEOM, Time, StepNo, amrex_ref_ratio )
 
     DO iLevel = 0, nLevels
-      CALL amrex_multifab_destroy( MF_PF(iLevel) )
+      CALL amrex_multifab_destroy ( MF_PF(iLevel) )
+      CALL amrex_distromap_destroy( DM   (iLevel) )
+      CALL amrex_geometry_destroy ( GEOM (iLevel) )
+      CALL amrex_boxarray_destroy ( BA   (iLevel) )
     END DO
 
     DEALLOCATE( VarNames )
@@ -461,9 +471,9 @@ CONTAINS
   END SUBROUTINE WriteFieldsAMReX_PlotFile
 
 
-  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, iOS )
+  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, iOS, iOS_CPP )
 
-    INTEGER,              INTENT(in)    :: nComp, iOS
+    INTEGER,              INTENT(in)    :: nComp, iOS, iOS_CPP(3)
     TYPE(amrex_multifab), INTENT(in)    :: MF
     TYPE(amrex_multifab), INTENT(inout) :: MF_A
 
@@ -495,8 +505,7 @@ CONTAINS
 
         ! --- Compute cell-average ---
         DO iComp = 1, nComp
-
-          u_A(iX1,iX2,iX3,iComp + iOS) &
+          u_A(iX1-iOS_CPP(1),iX2-iOS_CPP(2),iX3-iOS_CPP(3),iComp + iOS) &
             = DOT_PRODUCT( WeightsX_q(:), u_K(:,iComp) )
 
         END DO
