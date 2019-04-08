@@ -23,7 +23,7 @@ thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
 thornado.bcX       = 11 03 00 # Boundary conditions
 thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
-thornado.iCycleD   = 01000    # MOD this number to display info
+thornado.iCycleD   = 00010    # MOD this number to display info
 thornado.iCycleW   = 10000    # MOD this number to write plotfile
 thornado.iCycleChk = 10000    # MOD this number to write checkpoint file
 
