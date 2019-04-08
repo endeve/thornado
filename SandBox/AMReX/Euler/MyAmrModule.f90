@@ -93,9 +93,9 @@ CONTAINS
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
-      CALL PP % get   ( 'coord_sys',        coord_sys )
-      CALL PP % getarr( 'prob_lo',          xL )
-      CALL PP % getarr( 'prob_hi',          xR )
+      CALL PP % get   ( 'coord_sys', coord_sys )
+      CALL PP % getarr( 'prob_lo',   xL )
+      CALL PP % getarr( 'prob_hi',   xR )
     CALL amrex_parmparse_destroy( PP )
     IF     ( coord_sys .EQ. 0 )THEN
       CoordSys = 'CARTESIAN'
@@ -142,7 +142,7 @@ CONTAINS
     StepNo = 0
 
     ALLOCATE( dt(0:nLevels) )
-    dt = 1.0e-4_amrex_real
+    dt = -100.0e0_amrex_real
 
     ALLOCATE( t(0:nLevels) )
     t = 0.0e0_amrex_real

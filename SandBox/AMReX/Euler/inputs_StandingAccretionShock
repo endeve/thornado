@@ -10,15 +10,20 @@ SAS.Mass   = 0.5
 SAS.rShock = 1.0
 SAS.Mach   = 100.0
 
+SAS.ShellIn          = 1.4
+SAS.ShellOut         = 1.6
+SAS.PerturbOrder     = 1
+SAS.PerturbAmplitude = 0.2
+
 thornado.t_end     = 50.0     # Final time
 thornado.dt_wrt    = 0.25     # Write time interval
-thornado.Gamma     = 1.33     # Ideal Gas EoS Gamma
+thornado.Gamma     = 1.333333333333333 # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
 thornado.bcX       = 11 03 00 # Boundary conditions
 thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
-thornado.iCycleD   = 1000     # MOD this number to display info
+thornado.iCycleD   = 01000    # MOD this number to display info
 thornado.iCycleW   = 10000    # MOD this number to write plotfile
 thornado.iCycleChk = 10000    # MOD this number to write checkpoint file
 
@@ -26,13 +31,13 @@ thornado.iCycleChk = 10000    # MOD this number to write checkpoint file
 #geometry.coord_sys   = 1            # CYLINDRICAL (r,z,phi/pi)
 geometry.coord_sys   = 2             # SPHERICAL (r,theta/pi,phi/pi)
 geometry.prob_lo     = 0.2 0.0  0.0  # Lower domain size
-geometry.prob_hi     = 2.0  3.141592653589793 6.283185307179586 # Upper domain size
+geometry.prob_hi     = 2.0 3.141592653589793 6.283185307179586 # Upper domain size
 geometry.is_periodic = 00  00   00   # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell          = 256  64 01 # Number of cells in each dimension
-amr.max_grid_size   = 032  64 01 # nBoxes = n_cell / MaxGridSize
+amr.n_cell          = 256 064 01 # Number of cells in each dimension
+amr.max_grid_size   = 064 064 01 # nBoxes = n_cell / MaxGridSize
 amr.max_level       = 0          # Maximum number of refinement levels
-amr.blocking_factor = 1          # Must be a factor of max_grid_size
+amr.blocking_factor = 8          # Must be a factor of max_grid_size
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1
