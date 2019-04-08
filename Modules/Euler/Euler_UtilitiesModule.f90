@@ -175,21 +175,12 @@ CONTAINS
       dt_X(:,1) &
         = dX(1) * G(:,iX1,iX2,iX3,iGF_h_1) &
             / MAX( ABS( P(:,iPF_V1) ) + A(:,iAF_Cs), SqrtTiny )
-
-      IF( nDimsX .GT. 1 )THEN
-        dt_X(:,2) &
-          = dX(2) * G(:,iX1,iX2,iX3,iGF_h_2) &
-              / MAX( ABS( P(:,iPF_V2) ) + A(:,iAF_Cs), SqrtTiny )
-      ELSE
-        dt_X(:,2) = HUGE( One )
-      END IF
-      IF( nDimsX .GT. 2 )THEN
-        dt_X(:,3) &
-          = dX(3) * G(:,iX1,iX2,iX3,iGF_h_3) &
-              / MAX( ABS( P(:,iPF_V3) ) + A(:,iAF_Cs), SqrtTiny )
-      ELSE
-        dt_X(:,3) = HUGE( One )
-      END IF
+      dt_X(:,2) &
+        = dX(2) * G(:,iX1,iX2,iX3,iGF_h_2) &
+            / MAX( ABS( P(:,iPF_V2) ) + A(:,iAF_Cs), SqrtTiny )
+      dt_X(:,3) &
+        = dX(3) * G(:,iX1,iX2,iX3,iGF_h_3) &
+            / MAX( ABS( P(:,iPF_V3) ) + A(:,iAF_Cs), SqrtTiny )
 
       TimeStep = MIN( TimeStep, MINVAL( dt_X ) )
 
