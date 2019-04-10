@@ -585,22 +585,19 @@ CONTAINS
     ! --- thornado variables ---
     INTEGER            :: iX1, iX2, iX3
     INTEGER            :: iNodeX, iNodeX1, iNodeX2
-    REAL(amrex_real)   :: X1, Alpha, Speed, D_Prime, V1_Prime, P_Prime
+    REAL(amrex_real)   :: X1, X2, Alpha, Speed, D_Prime, V1_Prime, P_Prime
 
     REAL(amrex_real) :: mDot, Mass, rShock, Mach
     INTEGER          :: PerturbOrder
     REAL(amrex_real) :: ShellIn, ShellOut, PerturbAmplitude
-
-    ! --- Perturbation parameters ---
-    LOGICAL, PARAMETER :: Perturb = .TRUE.
-
-    REAL(amrex_real)            :: X2
+    LOGICAL          :: Perturb
 
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % get( 'mDot',             mDot )
       CALL PP % get( 'Mass',             Mass )
       CALL PP % get( 'rShock',           rShock )
       CALL PP % get( 'Mach',             Mach )
+      CALL PP % get( 'Perturb',          Perturb )
       CALL PP % get( 'ShellIn',          ShellIn )
       CALL PP % get( 'ShellOut',         ShellOut )
       CALL PP % get( 'PerturbOrder',     PerturbOrder )
