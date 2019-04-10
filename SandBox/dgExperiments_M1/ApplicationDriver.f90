@@ -84,7 +84,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'SquareWaveStreaming'
+  ProgramName = 'HomogeneousSphere_Spherical'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -328,11 +328,11 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'SPHERICAL'
 
-      nX = [ 128, 1, 1 ]
+      nX = [ 128, 8, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 5.0_DP, Pi,     TwoPi  ]
 
-      bcX = [ 32, 0, 0 ]
+      bcX = [ 32, 3, 0 ]
 
       nE = 1
       eL = 0.0_DP
