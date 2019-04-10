@@ -1,8 +1,5 @@
 clear all
 
-%%% including electron-type antineutrinos 
-%%% including Pair opacity
-
 readTestConstants();
 readTables();
 
@@ -70,7 +67,7 @@ for i = 1:NumTests
     [E, dEdT, dEdY] = ComputeSpecificInternalEnergy_TABLE(D, T, Y);
 
     % Pair kernel test
-    [R_Pr_Ne, R_An_Ne, R_Pr_ANe, R_An_ANe] = ComputePairOpacityOnEGrid_TABLE(g_E_N, D, T, Y);
+%     [R_Pr_Ne, R_An_Ne, R_Pr_ANe, R_An_ANe] = ComputePairOpacityOnEGrid_TABLE(g_E_N, D, T, Y);
     
     % Newton's method
     % [J01, D1, T1, Y1, E1, iter1] = SolveMatterEquations_EmAb( J, dt * Chi, D, T, Y, E );

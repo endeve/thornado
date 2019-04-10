@@ -1,4 +1,4 @@
-function [Jout, iter] = UpdateNeutrinoDistribution_NES(J, Jin, J0, Chi, R_in_NES, R_out_NES)
+function [Jout, iter] = UpdateNeutrinoDistribution_NES_AA(J, Jin, J0, Chi, R_in_NES, R_out_NES)
 
 global g_W2_N;
 
@@ -23,9 +23,16 @@ W2_N = g_W2_N;
 %     norm(NES_in_E - NES_out_E)
 
 
+% Anderson acceleration truncation parameter
+m = 3;
+Fvec = zeros(length(J),m);
+Jvec = zeros(length(J),m);
+alpha = zeros(m,1);
 
 while((~CONVERGED)&&(k<=maxIter))
     k = k + 1;
+    
+    mk = min(m,k);
     
     % solve (66) and (75) in the tech report
     % Picard iteration
@@ -39,9 +46,16 @@ while((~CONVERGED)&&(k<=maxIter))
     % new formulation 
     eta_NES = (R_in_NES'*diag(W2_N)*Jout);
     Chi_NES = (R_out_NES'*diag(W2_N)*(1 - Jout));
-    Jnew = (Jin + Chi.*J0 + eta_NES)./(1 + Chi + eta_NES + Chi_NES);
+    Jvec(:,mk) = (Jin + Chi.*J0 + eta_NES)./(1 + Chi + eta_NES + Chi_NES);
+    Fvec(:,mk) = Jvec(:,mk) - Jout;
     
-
+    if (mk == 1)
+        Jnew = Jvec(:,1);
+    else
+        alpha(1:mk-1) = (Fvec(:,1:mk-1) - Fvec(:,mk)*ones(1,mk-1))\(-Fvec(:,mk));
+        alpha(mk) = 1 - sum(alpha(1:mk-1));
+        Jnew = Jvec(:,1:mk) * alpha(1:mk);
+    end
     
 %     norm(Jnew - Jout)
     
@@ -50,7 +64,12 @@ while((~CONVERGED)&&(k<=maxIter))
         CONVERGED = true;
     end
 
+    if (mk == m)
+        Jvec = circshift(Jvec,-1,2);
+        Fvec = circshift(Fvec,-1,2);
+    end
     Jout = Jnew;
+    
 end
 iter = k;
 
