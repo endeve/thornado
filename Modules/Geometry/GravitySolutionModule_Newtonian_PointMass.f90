@@ -1,4 +1,4 @@
-MODULE GravitySolutionModule_Newtonian_PointMass_Beta
+MODULE GravitySolutionModule_Newtonian_PointMass
 
   USE KindModule, ONLY: &
     DP, Zero, One
@@ -134,4 +134,4 @@ CONTAINS
   END SUBROUTINE ComputeGravitationalPotential_CYLINDRICAL
 
 
-END MODULE GravitySolutionModule_Newtonian_PointMass_Beta
+END MODULE GravitySolutionModule_Newtonian_PointMass

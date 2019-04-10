@@ -61,7 +61,8 @@ PROGRAM Relaxation
     WriteFieldsHDF
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
-  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos
+  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_beta, ONLY: &
+    ComputeIncrement_TwoMoment_Implicit_New
 
   IMPLICIT NONE
 
@@ -86,9 +87,11 @@ PROGRAM Relaxation
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
 
-  D_0 = 1.0d14 * Gram / Centimeter**3
-  T_0 = 1.0d11 * Kelvin
-  Y_0 = 0.25_DP
+  D_0 = 6.233d09 * Gram / Centimeter**3
+  T_0 = 3.021d10 * Kelvin
+  Y_0 = 0.3178_DP
+
+  
 
   dt_0    = 1.0d-3 * Millisecond
   t       = 0.0d-0 * Millisecond
@@ -234,6 +237,7 @@ PROGRAM Relaxation
 
     t = t + dt
 
+stop
     IF( wrt )THEN
 
       CALL WriteFieldsHDF &

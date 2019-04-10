@@ -86,6 +86,11 @@ CONTAINS
         CALL InitializeFields_SineWaveStreaming &
                ( Direction_Option = Direction_Option )
 
+      CASE ( 'SquareWaveStreaming' )
+
+        CALL InitializeFields_SquareWaveStreaming &
+               ( Direction_Option = Direction_Option )
+
       CASE ( 'SineWaveDamping' )
 
         CALL InitializeFields_SineWaveDamping
@@ -118,6 +123,10 @@ CONTAINS
       CASE ( 'DeleptonizationWave' )
 
         CALL InitializeFields_DeleptonizationWave( Profile_Option )
+
+      CASE ( 'DeleptonizationWave_Spherical' )
+
+        CALL InitializeFields_DeleptonizationWave_Spherical( Profile_Option )
 
     END SELECT
 
@@ -301,6 +310,109 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_SineWaveStreaming
+
+
+  SUBROUTINE InitializeFields_SquareWaveStreaming( Direction_Option )
+
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
+      Direction_Option
+
+    CHARACTER(8) :: Direction
+    INTEGER      :: iE, iX1, iX2, iX3, iS
+    INTEGER      :: iNodeX1
+    INTEGER      :: iNodeX2
+    INTEGER      :: iNodeX3
+    INTEGER      :: iNode
+    REAL(DP)     :: X1, X2, X3, X, L
+    REAL(DP)     :: Gm_dd_11(nDOF)
+    REAL(DP)     :: Gm_dd_22(nDOF)
+    REAL(DP)     :: Gm_dd_33(nDOF)
+    REAL(DP)     :: Ones(nDOFE)
+
+    Direction = 'X'
+    IF( PRESENT( Direction_Option ) ) &
+      Direction = TRIM( Direction_Option )
+    
+    WRITE(*,*)
+    WRITE(*,'(A6,A,A)') '', 'Direction = ', TRIM( Direction )
+
+    Ones = 1.0_DP
+
+    DO iS = 1, nSpecies
+      DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = iX_B0(1), iX_E0(1)
+
+            Gm_dd_11 &
+              = OuterProduct1D3D &
+                  ( Ones, nDOFE, uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), nDOFX )
+
+            Gm_dd_22 &
+              = OuterProduct1D3D &
+                  ( Ones, nDOFE, uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), nDOFX )
+
+            Gm_dd_33 &
+              = OuterProduct1D3D &
+                  ( Ones, nDOFE, uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), nDOFX )
+
+            DO iE = iE_B0, iE_E0
+
+              SELECT CASE ( TRIM( Direction ) )
+              CASE ( 'X' )
+
+                DO iNode = 1, nDOF
+
+                  iNodeX1 = NodeNumberTable(2,iNode)
+
+                  X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+                  IF( (X1 <= 0.40_DP) .AND. (X1 > 0.10_DP) ) THEN
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
+                       = 0.80_DP
+                  ELSE 
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
+                       = 0.20_DP
+                  END IF
+
+                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
+                    = uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS)
+
+                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) &
+                    = 0.0_DP
+
+                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) &
+                    = 0.0_DP
+
+                END DO
+
+              CASE DEFAULT
+
+                WRITE(*,*)
+                WRITE(*,'(A6,A,A)') &
+                  '', 'Invalid Direction: ', TRIM( Direction )
+                WRITE(*,*)
+                STOP
+
+              END SELECT
+
+              CALL ComputeConserved_TwoMoment &
+                     ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &
+                       uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                       uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                       uPR(:,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                       uCR(:,iE,iX1,iX2,iX3,iCR_N, iS), &
+                       uCR(:,iE,iX1,iX2,iX3,iCR_G1,iS), &
+                       uCR(:,iE,iX1,iX2,iX3,iCR_G2,iS), &
+                       uCR(:,iE,iX1,iX2,iX3,iCR_G3,iS), &
+                       Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:) )
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_SquareWaveStreaming
 
 
   SUBROUTINE InitializeFields_SineWaveDamping
@@ -1109,6 +1221,26 @@ CONTAINS
   END SUBROUTINE InitializeFields_DeleptonizationWave
 
 
+  SUBROUTINE InitializeFields_DeleptonizationWave_Spherical( Profile_Option )
+
+    CHARACTER(len=*), INTENT(in), OPTIONAL :: Profile_Option
+
+    IF( PRESENT( Profile_Option ) )THEN
+
+      CALL InitializeFluidFields_DeleptonizationWave_Spherical_Profile&
+             ( Profile_Option )
+
+    ELSE
+
+      CALL InitializeFluidFields_DeleptonizationWave_Spherical
+
+    END IF
+
+    CALL InitializeRadiationFields_DeleptonizationWave
+
+  END SUBROUTINE InitializeFields_DeleptonizationWave_Spherical
+
+
   SUBROUTINE InitializeFluidFields_DeleptonizationWave
 
     ! --- Density Profile ---
@@ -1161,7 +1293,7 @@ CONTAINS
             uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
 !!$              = Half * ( MaxT * ( One - TANH( (R-R_T)/H_T ) ) &
 !!$                         + MinT * ( One - TANH( (R_T-R)/H_T ) ) )
-              = MaxT * C_T / ( C_T + ( R / H_T )**2 )
+              = MAX( MaxT * C_T / ( C_T + ( R / H_T )**2 ), 1.0d10 * Kelvin )
 
             uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
 !!$              = Half * ( MinY * ( One - TANH( (R-R_Y)/H_Y ) ) &
@@ -1261,6 +1393,154 @@ CONTAINS
     END ASSOCIATE
 
   END SUBROUTINE InitializeFluidFields_DeleptonizationWave_Profile
+
+
+  SUBROUTINE InitializeFluidFields_DeleptonizationWave_Spherical
+
+    ! --- Density Profile ---
+    REAL(DP), PARAMETER :: MinD = 1.0d08 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: MaxD = 4.0d14 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: C_D  = 7.5_DP
+    REAL(DP), PARAMETER :: R_D  = 2.0d01 * Kilometer
+!    REAL(DP), PARAMETER :: H_D  = 1.0d01 * Kilometer
+    REAL(DP), PARAMETER :: H_D  = 5.0d00 * Kilometer
+    ! --- Temperature Profile ---
+    REAL(DP), PARAMETER :: MinT = 5.0d09 * Kelvin
+    REAL(DP), PARAMETER :: MaxT = 1.5d11 * Kelvin
+    REAL(DP), PARAMETER :: C_T  = 1.0_DP
+    REAL(DP), PARAMETER :: R_T  = 2.5d01 * Kilometer
+!    REAL(DP), PARAMETER :: H_T  = 2.0d01 * Kilometer
+    REAL(DP), PARAMETER :: H_T  = 5.0d01 * Kilometer
+    ! --- Electron Fraction Profile ---
+    REAL(DP), PARAMETER :: MinY = 2.5d-1
+    REAL(DP), PARAMETER :: MaxY = 4.6d-1
+    REAL(DP), PARAMETER :: C_Y  = 1.0_DP
+    REAL(DP), PARAMETER :: R_Y  = 4.5d01 * Kilometer
+!    REAL(DP), PARAMETER :: H_Y  = 1.0d01 * Kilometer
+    REAL(DP), PARAMETER :: H_Y  = 5.0d01 * Kilometer
+
+    INTEGER  :: iX1, iX2, iX3, iNodeX
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3
+    REAL(DP) :: X1, X2, X3, R
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+            iNodeX3 = NodeNumberTableX(3,iNodeX)
+
+            R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+!!$              = Half * ( MaxD * ( One - TANH( (R-R_D)/H_D ) ) &
+!!$                         + MinD * ( One - TANH( (R_D-R)/H_D ) ) )
+              = MaxD * C_D / ( C_D + ( R / H_D )**4 )
+
+            uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+!!$              = Half * ( MaxT * ( One - TANH( (R-R_T)/H_T ) ) &
+!!$                         + MinT * ( One - TANH( (R_T-R)/H_T ) ) )
+              = MAX( MaxT * C_T / ( C_T + ( R / H_T )**2 ), 1.0d10 * Kelvin )
+
+            uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+!!$              = Half * ( MinY * ( One - TANH( (R-R_Y)/H_Y ) ) &
+!!$                         + MaxY * ( One - TANH( (R_Y-R)/H_Y ) ) )
+              = MinY * ( One + C_Y / ( C_Y + ( R / H_Y )**(-12) ) )
+
+          END DO
+
+          CALL ComputeThermodynamicStates_Primitive_TABLE &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E), &
+                   uAF(:,iX1,iX2,iX3,iAF_E),  uPF(:,iX1,iX2,iX3,iPF_Ne) )
+
+          CALL ApplyEquationOfState_TABLE &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_P ), &
+                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mp), &
+                   uAF(:,iX1,iX2,iX3,iAF_Mn), uAF(:,iX1,iX2,iX3,iAF_Xp), &
+                   uAF(:,iX1,iX2,iX3,iAF_Xn), uAF(:,iX1,iX2,iX3,iAF_Xa), &
+                   uAF(:,iX1,iX2,iX3,iAF_Xh), uAF(:,iX1,iX2,iX3,iAF_Gm) )
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFluidFields_DeleptonizationWave_Spherical
+
+
+  SUBROUTINE InitializeFluidFields_DeleptonizationWave_Spherical_Profile( FileName )
+
+    CHARACTER(len=*), INTENT(in) :: FileName
+
+    TYPE(ProgenitorType1D) :: P1D
+    CHARACTER(LEN=100)                  :: Format1, Format2, Format3
+    CHARACTER(LEN=30)                   :: a
+    INTEGER                             :: ii, datasize
+    REAL(dp), DIMENSION(:,:), ALLOCATABLE :: database
+
+    INTEGER  :: iX1, iX2, iX3, iNodeX
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3
+    REAL(DP) :: X1, X2, X3, R
+
+    CALL ReadProgenitor1D( FileName, P1D )
+
+    ASSOCIATE &
+      ( R1D => P1D % Radius, &
+        D1D => P1D % MassDensity, &
+        T1D => P1D % Temperature, &
+        Y1D => P1D % ElectronFraction )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+            iNodeX3 = NodeNumberTableX(3,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            R = X1
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+              = Interpolate1D( R1D, D1D, SIZE( R1D ), R )
+
+            uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+              = Interpolate1D( R1D, T1D, SIZE( R1D ), R )
+
+            uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+              = Interpolate1D( R1D, Y1D, SIZE( R1D ), R )
+
+          END DO
+
+          CALL ComputeThermodynamicStates_Primitive_TABLE &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E), &
+                   uAF(:,iX1,iX2,iX3,iAF_E),  uPF(:,iX1,iX2,iX3,iPF_Ne) )
+
+          CALL ApplyEquationOfState_TABLE &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_P ), &
+                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mp), &
+                   uAF(:,iX1,iX2,iX3,iAF_Mn), uAF(:,iX1,iX2,iX3,iAF_Xp), &
+                   uAF(:,iX1,iX2,iX3,iAF_Xn), uAF(:,iX1,iX2,iX3,iAF_Xa), &
+                   uAF(:,iX1,iX2,iX3,iAF_Xh), uAF(:,iX1,iX2,iX3,iAF_Gm) )
+
+        END DO
+      END DO
+    END DO
+
+    END ASSOCIATE
+
+  END SUBROUTINE InitializeFluidFields_DeleptonizationWave_Spherical_Profile
 
 
   SUBROUTINE InitializeRadiationFields_DeleptonizationWave

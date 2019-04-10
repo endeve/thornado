@@ -1,4 +1,4 @@
-MODULE EulerEquationsUtilitiesModule_Beta_GR
+MODULE Euler_GR_UtilitiesModule
 
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Two, Three, Four
@@ -1586,4 +1586,4 @@ CONTAINS
   END FUNCTION NumericalFlux_X2_HLLC_GR
 
 
-END MODULE EulerEquationsUtilitiesModule_Beta_GR
+END MODULE Euler_GR_UtilitiesModule

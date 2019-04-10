@@ -20,7 +20,7 @@ MODULE InitializationModule_GR
     uAF, iAF_P
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
-  USE EulerEquationsUtilitiesModule_Beta_GR, ONLY: &
+  USE Euler_GR_UtilitiesModule, ONLY: &
     ComputeConserved_GR
   USE UnitsModule, ONLY: &
     Meter, Kilogram, Second, Joule
