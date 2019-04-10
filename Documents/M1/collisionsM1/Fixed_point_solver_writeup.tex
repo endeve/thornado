@@ -43,6 +43,10 @@
 \newtheorem{rem}{Remark}
 \newtheorem{theorem}{Theorem}
 
+\def\Ne{{\nu_{e}}}
+\def\ANe{{\bar{\nu}_{e}}}
+\def\quand{\quad\text{and}\quad}
+
 \begin{document}
 
 \title{A writeup on fixed point formulations of the collision solver}
@@ -134,91 +138,162 @@ while energy conservation is due to
 
 
 We are interested in solving the number density equation \eqref{eq:momentNumber} with the conservations \eqref{eq:LeptonConservation} and \eqref{eq:EnergyConservation} guaranteed.
-For now, we only consider the electron type neutrinos, thus \eqref{eq:LeptonConservation} and \eqref{eq:EnergyConservation} respectively become
+For now, we only consider the electron-type neutrinos and antineutrinos, thus \eqref{eq:LeptonConservation} and \eqref{eq:EnergyConservation} respectively become
+\begin{subequations}
 \begin{equation}\label{eq:LeptonConservationNue}
-  \deriv{}{t}\int_{\bbR^{+}}\cJ_{\nu_{e}}(\varepsilon)\,dV_{\varepsilon}+\f{\rho}{m_{b}}\deriv{Y_{e}}{t} = 0\:,
+  \deriv{}{t}\int_{\bbR^{+}} \left(\cJ_\Ne (\varepsilon) - \cJ_\ANe(\varepsilon)\right) \,dV_{\varepsilon}+\f{\rho}{m_{b}}\deriv{Y_{e}}{t} = 0\:,
 \end{equation}
 and 
 \begin{equation}\label{eq:EnergyConservationNue}
-  \deriv{}{t}\int_{\bbR^{+}}\varepsilon\cJ_{\nu_{e}}(\varepsilon)\,dV_{\varepsilon}+\rho\deriv{\epsilon}{t} = 0\:,
+  \deriv{}{t}\int_{\bbR^{+}}\varepsilon\left( \cJ_\Ne (\varepsilon) + \cJ_\ANe (\varepsilon) \right)\,dV_{\varepsilon}+\rho\deriv{\epsilon}{t} = 0\:,
 \end{equation}
-where $\cJ_{\nu_{e}}(\varepsilon)$ is governed by (with the $\f{1}{c}$)
+\end{subequations}
+where $\cJ_\Ne$ and $\cJ_\ANe$ are governed by (with the $\f{1}{c}$)
 \begin{equation}\label{eq:momentNumberNue}
-\f{1}{c}  \deriv{\cJ_{\nu_{e}}}{t}
-  =\widehat{\eta}_{\nu_{e}} - \widehat{\chi}_{\nu_{e}}\,\cJ_{\nu_{e}}
+\f{1}{c}  \deriv{\cJ_\Ne}{t}
+  =\widehat{\eta}_{\Ne} - \widehat{\chi}_{\Ne}\,\cJ_\Ne\:, \quand
+\f{1}{c}  \deriv{\cJ_\ANe}{t}
+  =\widehat{\eta}_{\ANe} - \widehat{\chi}_{\ANe}\,\cJ_{\ANe}
 \end{equation}
 with
+\begin{subequations}
 \begin{equation}
-  \widehat{\eta}_{\nu_{e}}(\cJ_{\nu_{e}})
-  =\tilde{\chi}_{\nu_{e}}\,\cJ_{0,\nu_{e}} + \eta_{\SC,\nu_{e}}(\cJ_{\nu_{e}})\:,\quad
-  \eta_{\SC,\nu_{e}}(\cJ_{\nu_{e}})
-  =\int_{\bbR^{+}}\Phi_{0,\nu_{e}}^{\IN}(\varepsilon,\varepsilon')\,\cJ_{\nu_{e}}(\varepsilon')\,dV_{\varepsilon'},
-\end{equation}
-and 
+  \widehat{\eta}_{\Ne}(\cJ_{\Ne},\cJ_{\ANe})
+  =\tilde{\chi}_{\Ne}\,\cJ_{0,\Ne} + \eta_{\SC,\Ne}(\cJ_{\Ne}) + \eta_{\TP,\Ne}(\cJ_{\ANe})\:,
+\end{equation}  
 \begin{equation}
-  \widehat{\chi}_{\nu_{e}}(\cJ_{\nu_{e}})
-  =\tilde{\chi}_{\nu_{e}} + \chi_{\SC,\nu_{e}}(\cJ_{\nu_{e}})\:,
+  \widehat{\eta}_{\ANe}(\cJ_{\Ne},\cJ_{\ANe})
+  =\tilde{\chi}_{\ANe}\,\cJ_{0,\ANe} + \eta_{\SC,\ANe}(\cJ_{\ANe}) + \eta_{\TP,\ANe}(\cJ_{\Ne})\:,
+\end{equation}  
+\end{subequations}
+\begin{subequations}
+\begin{equation}
+  \widehat{\chi}_{\Ne}(\cJ_{\Ne},\cJ_{\ANe})
+  =\tilde{\chi}_{\Ne} + \chi_{\SC,\Ne}(\cJ_{\Ne}) + \chi_{\TP,\Ne}(\cJ_{\ANe})\:,
 \end{equation}
 \begin{equation}
-  \chi_{\SC,\nu_{e}}(\cJ_{\nu_{e}})
-  =\int_{\bbR^{+}}\big[\,\Phi_{0,\nu_{e}}^{\IN}(\varepsilon,\varepsilon')\,\cJ_{\nu_{e}}(\varepsilon')+\Phi_{0,\nu_{e}}^{\Out}(\varepsilon,\varepsilon')\,\big(1-\cJ_{\nu_{e}}(\varepsilon')\big)\,\big]\,dV_{\varepsilon'}\:.
+  \widehat{\chi}_{\ANe}(\cJ_{\Ne},\cJ_{\ANe})
+  =\tilde{\chi}_{\ANe} + \chi_{\SC,\ANe}(\cJ_{\ANe}) + \chi_{\TP,\ANe}(\cJ_{\Ne})\:,
+\end{equation}  
+\end{subequations}
+
+
+\begin{subequations}
+\begin{equation}
+  \eta_{\SC,\Ne}(\cJ_{\Ne})
+  =\int_{\bbR^{+}}\Phi_{0,\Ne}^{\IN}(\varepsilon,\varepsilon')\,\cJ_{\Ne}(\varepsilon')\,dV_{\varepsilon'},
 \end{equation}
+\begin{equation}
+  \eta_{\SC,\ANe}(\cJ_{\ANe})
+  =\int_{\bbR^{+}}\Phi_{0,\ANe}^{\IN}(\varepsilon,\varepsilon')\,\cJ_{\ANe}(\varepsilon')\,dV_{\varepsilon'},
+\end{equation}
+\end{subequations}
+
+\begin{subequations}
+\begin{equation}
+  \chi_{\SC,\Ne}(\cJ_{\Ne})
+  =\int_{\bbR^{+}}\big[\,\Phi_{0,\Ne}^{\IN}(\varepsilon,\varepsilon')\,\cJ_{\Ne}(\varepsilon')+\Phi_{0,\Ne}^{\Out}(\varepsilon,\varepsilon')\,\big(1-\cJ_{\Ne}(\varepsilon')\big)\,\big]\,dV_{\varepsilon'}\:.
+\end{equation}
+\begin{equation}
+  \chi_{\SC,\ANe}(\cJ_{\ANe})
+  =\int_{\bbR^{+}}\big[\,\Phi_{0,\ANe}^{\IN}(\varepsilon,\varepsilon')\,\cJ_{\ANe}(\varepsilon')+\Phi_{0,\ANe}^{\Out}(\varepsilon,\varepsilon')\,\big(1-\cJ_{\ANe}(\varepsilon')\big)\,\big]\,dV_{\varepsilon'}\:.
+\end{equation}
+\end{subequations}
+
+\begin{subequations}
+\begin{equation}
+  \eta_{\TP,\Ne}(\cJ_{\ANe})
+  =\int_{\bbR^{+}}\Phi_{0,\Ne}^{\PROD}(\varepsilon,\varepsilon')\,\big(1 - \cJ_{\ANe}(\varepsilon')\big)\,dV_{\varepsilon'},
+\end{equation}
+\begin{equation}
+  \eta_{\TP,\ANe}(\cJ_{\Ne})
+  =\int_{\bbR^{+}}\Phi_{0,\ANe}^{\PROD}(\varepsilon,\varepsilon')\,\big( 1 - \cJ_{\Ne}(\varepsilon')\big)\,dV_{\varepsilon'},
+\end{equation}
+\end{subequations}
+
+\begin{subequations}
+\begin{equation}
+  \chi_{\TP,\Ne}(\cJ_{\ANe})
+  =\int_{\bbR^{+}} \Phi_{0,\Ne}^{\PROD}(\varepsilon,\varepsilon')\,\big(1-\cJ_{\ANe}(\varepsilon')\big)+\Phi_{0,\Ne}^{\ANN}(\varepsilon,\varepsilon')\,\cJ_{\ANe}(\varepsilon')\,dV_{\varepsilon'}\:,
+\end{equation}
+\begin{equation}
+  \chi_{\TP,\ANe}(\cJ_{\Ne})
+  =\int_{\bbR^{+}} \Phi_{0,\ANe}^{\PROD}(\varepsilon,\varepsilon')\,\big(1 - \cJ_{\Ne}(\varepsilon')\big)+\Phi_{0,\ANe}^{\ANN}(\varepsilon,\varepsilon')\, \cJ_{\Ne}(\varepsilon')\,dV_{\varepsilon'}\:.
+\end{equation}
+\end{subequations}
 
 Discretizing \eqref{eq:LeptonConservationNue}--\eqref{eq:momentNumberNue} in time and using numerical integration gives
 \begin{equation}\label{eq:LeptonConservationNueDis}
-  \sum_{q} w^{(2)}_q \big(\cJ_{\nu_{e},q}^{n+1} - \cJ_{\nu_{e},q}^{n}\big) + \f{\rho}{m_{b}} \big(Y_{e}^{n+1} - Y_{e}^{n} \big) = 0\:,
+   \sum_{q} w^{(2)}_q \big(\cJ_{\Ne,q}^{n+1} - \cJ_{\Ne,q}^{n}\big)
+ - \sum_{q} w^{(2)}_q \big(\cJ_{\ANe,q}^{n+1} - \cJ_{\ANe,q}^{n}\big)
+ + \f{\rho}{m_{b}} \big(Y_{e}^{n+1} - Y_{e}^{n} \big) = 0\:,
 \end{equation}
 \begin{equation}\label{eq:EnergyConservationNueDis}
-    \sum_{q} w^{(3)}_q \big(\cJ_{\nu_{e},q}^{n+1} - \cJ_{\nu_{e},q}^{n}\big)+\rho \big(\epsilon^{n+1} - \epsilon^{n} \big) = 0\:,
+   \sum_{q} w^{(3)}_q \big(\cJ_{\Ne,q}^{n+1} - \cJ_{\Ne,q}^{n}\big)
+ + \sum_{q} w^{(3)}_q \big(\cJ_{\ANe,q}^{n+1} - \cJ_{\ANe,q}^{n}\big)
+ + \rho \big(\epsilon^{n+1} - \epsilon^{n} \big) = 0\:,
 \end{equation}
 and
-\begin{equation}
-  \cJ_{\nu_{e}}^{n+1} = \cJ_{\nu_{e}}^{n} + c\dt \big(\widehat{\eta}_{\nu_{e}}(\cJ_{\nu_{e}}^{n+1}) - \widehat{\chi}_{\nu_{e}}(\cJ_{\nu_{e}}^{n+1})\,\cJ_{\nu_{e}}^{n+1}\big)\:.
-\end{equation}
-We rewrite the above equation as
 \begin{equation}\label{eq:momentNumberNueDis}
-  \cJ_{\nu_{e}}^{n+1} = \f{\cJ_{\nu_{e}}^{n} + c\dt \widehat{\eta}_{\nu_{e}}(\cJ_{\nu_{e}}^{n+1})}{1 + c\dt\widehat{\chi}_{\nu_{e}}(\cJ_{\nu_{e}}^{n+1})}\:.
+  \cJ_{\Ne}^{n+1} = \f{\cJ_{\Ne}^{n} + c\dt \widehat{\eta}_{\Ne}(\cJ_{\Ne}^{n+1},\cJ_{\ANe}^{n+1})}{1 + c\dt\widehat{\chi}_{\Ne}(\cJ_{\Ne}^{n+1},\cJ_{\ANe}^{n+1})}\:,
+\end{equation}
+\begin{equation}\label{eq:momentNumberNueBarDis}
+  \cJ_{\ANe}^{n+1} = \f{\cJ_{\ANe}^{n} + c\dt \widehat{\eta}_{\ANe}(\cJ_{\Ne}^{n+1},\cJ_{\ANe}^{n+1})}{1 + c\dt\widehat{\chi}_{\ANe}(\cJ_{\Ne}^{n+1},\cJ_{\ANe}^{n+1})}\:.
+\end{equation}
+Here \eqref{eq:momentNumberNueDis}--\eqref{eq:momentNumberNueBarDis} are from the backward Euler discretization
+\begin{equation}
+  \cJ_{s}^{n+1} = \cJ_{s}^{n} + c\dt \big(\widehat{\eta}_{s}(\cJ_{s}^{n+1},\bar{\cJ}_{s}^{n+1}) - \widehat{\chi}_{s}(\cJ_{s}^{n+1},\bar{\cJ}_{s}^{n+1})\,\cJ_{s}^{n+1}\big)\:.
 \end{equation}
 
 
-We propose two fixed-point formulations for \eqref{eq:LeptonConservationNueDis}, \eqref{eq:EnergyConservationNueDis}, and \eqref{eq:momentNumberNueDis}.
+We propose two fixed-point formulations for \eqref{eq:LeptonConservationNueDis}--\eqref{eq:momentNumberNueBarDis}.
 
-The first one is a fixed-point problem on $(Y_{e}, \,\epsilon,\,\cJ_{\nu_{e}})$, for which Picard iteration takes the form
+The first one is a fixed-point problem on $(Y_{e}, \,\epsilon,\,\cJ_{\Ne},\,\cJ_{\ANe})$, for which Picard iteration takes the form
 \begin{subequations}
 \begin{equation}\label{eq:}
-Y_{e}^{(k+1)} = Y_{e}^{n} + \f{m_{b}}{\rho} \sum_{q} w^{(2)}_q  \cJ_{\nu_{e},q}^{n}  - \f{m_{b}}{\rho} \sum_{q} w^{(2)}_q\cJ_{\nu_{e},q}^{(k)}\:,
+Y_{e}^{(k+1)} = Y_{e}^{n} + \f{m_{b}}{\rho} \sum_{q} w^{(2)}_q  (\cJ_{\Ne,q}^{n} - \cJ_{\ANe,q}^{n})  
+- \f{m_{b}}{\rho} \sum_{q} w^{(2)}_q (\cJ_{\Ne,q}^{(k)}-\cJ_{\ANe,q}^{(k)})\:,
 \end{equation}
 \begin{equation}\label{eq:}
-\epsilon^{(k+1)}  = \epsilon^{n} + \f{1}{\rho} \sum_{q} w^{(3)}_q \cJ_{\nu_{e},q}^{n} - \f{1}{\rho} \sum_{q} w^{(3)}_q \cJ_{\nu_{e},q}^{(k)}\:,   
+\epsilon^{(k+1)}  = \epsilon^{n} + \f{1}{\rho} \sum_{q} w^{(3)}_q (\cJ_{\Ne,q}^{n} + \cJ_{\ANe,q}^{n}) 
+- \f{1}{\rho} \sum_{q} w^{(3)}_q (\cJ_{\Ne,q}^{(k)}+\cJ_{\ANe,q}^{(k)})\:,   
 \end{equation}
 and
 \begin{equation}\label{eq:}
-  \cJ_{\nu_{e}}^{(k+1)} = \f{\cJ_{\nu_{e}}^{n} + c\dt \widehat{\eta}_{\nu_{e}}^{(k)}(\cJ_{\nu_{e}}^{(k)})}{1 + c\dt\widehat{\chi}_{\nu_{e}}^{(k)}(\cJ_{\nu_{e}}^{(k)})}\:,
+  \cJ_{s}^{(k+1)} = \f{\cJ_{s}^{n} + c\dt \widehat{\eta}_{s}^{(k)}(\cJ_{s}^{(k)},\bar{\cJ}_{s}^{(k)})}{1 + c\dt\widehat{\chi}_{s}^{(k)}(\cJ_{s}^{(k)},\bar{\cJ}_{s}^{(k)})}\:,
 \end{equation}
+%\begin{equation}\label{eq:}
+%  \cJ_{\Ne}^{(k+1)} = \f{\cJ_{\Ne}^{n} + c\dt \widehat{\eta}_{\Ne}^{(k)}(\cJ_{\Ne}^{(k)},\cJ_{\ANe}^{(k)})}{1 + c\dt\widehat{\chi}_{\Ne}^{(k)}(\cJ_{\Ne}^{(k)},\cJ_{\ANe}^{(k)})}\:,
+%\end{equation}
+%\begin{equation}\label{eq:}
+%  \cJ_{\ANe}^{(k+1)} = \f{\cJ_{\ANe}^{n} + c\dt \widehat{\eta}_{\ANe}^{(k)}(\cJ_{\Ne}^{(k)},\cJ_{\ANe}^{(k)})}{1 + c\dt\widehat{\chi}_{\ANe}^{(k)}(\cJ_{\Ne}^{(k)},\cJ_{\ANe}^{(k)})}\:,
+%\end{equation}
 \end{subequations}
 where
 \begin{equation}
-\widehat{\eta}_{\nu_{e}}^{(k)}
-  =\tilde{\chi}_{\nu_{e}}\,\cJ_{0,\nu_{e}} + \eta_{\SC,\nu_{e}}^{(k)} \:,\quad
-  \widehat{\chi}_{\nu_{e}}^{(k)}
-  =\tilde{\chi}_{\nu_{e}} + \chi_{\SC,\nu_{e}}^{(k)}
+\widehat{\eta}_{s}^{(k)}
+  =\tilde{\chi}_{s}\,\cJ_{0,s}^{(k)} + \eta_{\SC,s}^{(k)} + \eta_{\TP,s}^{(k)}\:,\quad
+  \widehat{\chi}_{s}^{(k)}
+  =\tilde{\chi}_{s} + \chi_{\SC,s}^{(k)} + \chi_{\TP,s}^{(k)}
 \end{equation}
-with $\eta_{\SC,\nu_{e}}^{(k)}$ and $\chi_{\SC,\nu_{e}}^{(k)}$ evaluated using $(Y_{e}^{(k)}, \,\epsilon^{(k)})$.
+with $\cJ_{0,s}^{(k)}$, $\eta_{\SC,s}^{(k)}$, $\chi_{\SC,s}^{(k)}$, $\eta_{\TP,s}^{(k)}$, and $\chi_{\TP,s}^{(k)}$ evaluated at $(Y_{e}^{(k)}, \,\epsilon^{(k)})$ for $s=\Ne,\,\ANe$.
 
 
 The second formulation is a nested fixed-point problem with the outer one on $(Y_{e}, \,\epsilon)$:
 \begin{subequations}
 \begin{equation}\label{eq:}
-Y_{e}^{(k+1)} = Y_{e}^{n} + \f{m_{b}}{\rho} \sum_{q} w^{(2)}_q  \cJ_{\nu_{e},q}^{n}  - \f{m_{b}}{\rho} \sum_{q} w^{(2)}_q\cJ_{\nu_{e},q}^{(k)}\:,
+Y_{e}^{(k+1)} = Y_{e}^{n} + \f{m_{b}}{\rho} \sum_{q} w^{(2)}_q  (\cJ_{\Ne,q}^{n} - \cJ_{\ANe,q}^{n})  
+- \f{m_{b}}{\rho} \sum_{q} w^{(2)}_q (\cJ_{\Ne,q}^{(k)}-\cJ_{\ANe,q}^{(k)})\:,
 \end{equation}
 \begin{equation}\label{eq:}
-\epsilon^{(k+1)}  = \epsilon^{n} + \f{1}{\rho} \sum_{q} w^{(3)}_q \cJ_{\nu_{e},q}^{n} - \f{1}{\rho} \sum_{q} w^{(3)}_q \cJ_{\nu_{e},q}^{(k)}\:,   
+\epsilon^{(k+1)}  = \epsilon^{n} + \f{1}{\rho} \sum_{q} w^{(3)}_q (\cJ_{\Ne,q}^{n} + \cJ_{\ANe,q}^{n}) 
+- \f{1}{\rho} \sum_{q} w^{(3)}_q (\cJ_{\Ne,q}^{(k)}+\cJ_{\ANe,q}^{(k)})\:,   
 \end{equation}
-and $\cJ_{\nu_{e},q}^{(k)}$ is given by the solution of an inner fixed-point problem
+and $\cJ_{s,q}^{(k)}$ is given by the solution of an inner fixed-point problem
 \begin{equation}
-  \cJ_{\nu_{e}}^{(k,\ell+1)} = \f{\cJ_{\nu_{e}}^{n} + c\dt \widehat{\eta}_{\nu_{e}}^{(k)}(\cJ_{\nu_{e}}^{(k,\ell)})}{1 + c\dt\widehat{\chi}_{\nu_{e}}^{(k)}(\cJ_{\nu_{e}}^{(k,\ell)})}\:.
+  \cJ_{s}^{(k,\ell+1)} = \f{\cJ_{s}^{n} + c\dt \widehat{\eta}_{s}^{(k)}(\cJ_{s}^{(k,\ell)},\bar{\cJ}_{s}^{(k,\ell)})}{1 + c\dt\widehat{\chi}_{s}^{(k)}(\cJ_{s}^{(k,\ell)},\bar{\cJ}_{s}^{(k,\ell)})}
 \end{equation}
-
+for $s=\Ne,\,\ANe$.
 
 \end{subequations}
 
