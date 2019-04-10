@@ -1,4 +1,4 @@
-MODULE Euler_TallyModule_GR
+MODULE Euler_GR_TallyModule
 
   USE KindModule, ONLY: &
     DP, Zero
@@ -18,15 +18,15 @@ MODULE Euler_TallyModule_GR
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE EulerEquationsUtilitiesModule_Beta_GR, ONLY: &
+  USE Euler_GR_UtilitiesModule, ONLY: &
     ComputePrimitive_GR
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializeTally_Euler_GR
-  PUBLIC :: FinalizeTally_Euler_GR
-  PUBLIC :: ComputeTally_Euler_GR
+  PUBLIC :: Euler_GR_InitializeTally
+  PUBLIC :: Euler_GR_FinalizeTally
+  PUBLIC :: Euler_GR_ComputeTally
 
   CHARACTER(256)        :: TallyFileName
   INTEGER               :: nTallies
@@ -36,7 +36,7 @@ MODULE Euler_TallyModule_GR
 CONTAINS
 
 
-  SUBROUTINE InitializeTally_Euler_GR( iX_B0, iX_E0, G, U )
+  SUBROUTINE Euler_GR_InitializeTally( iX_B0, iX_E0, G, U )
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3)
@@ -61,25 +61,25 @@ CONTAINS
 
     CLOSE( FileUnit )
 
-    CALL ComputeTally_Euler_GR &
+    CALL Euler_GR_ComputeTally &
            ( iX_B0, iX_E0, G, U, Time = Zero, &
              iState_Option = 0, DisplayTally_Option = .FALSE. )
 
-    CALL ComputeTally_Euler_GR &
+    CALL Euler_GR_ComputeTally &
            ( iX_B0, iX_E0, G, U, Time = Zero, &
              iState_Option = 1, DisplayTally_Option = .TRUE. )
 
-  END SUBROUTINE InitializeTally_Euler_GR
+  END SUBROUTINE Euler_GR_InitializeTally
 
 
-  SUBROUTINE FinalizeTally_Euler_GR
+  SUBROUTINE Euler_GR_FinalizeTally
 
     DEALLOCATE( EulerTally )
 
-  END SUBROUTINE FinalizeTally_Euler_GR
+  END SUBROUTINE Euler_GR_FinalizeTally
 
 
-  SUBROUTINE ComputeTally_Euler_GR &
+  SUBROUTINE Euler_GR_ComputeTally &
     ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
 
     INTEGER,  INTENT(in) :: &
@@ -176,7 +176,7 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE ComputeTally_Euler_GR
+  END SUBROUTINE Euler_GR_ComputeTally
 
 
   SUBROUTINE WriteTally_Euler( Time )
@@ -205,4 +205,4 @@ CONTAINS
   END SUBROUTINE WriteTally_Euler
 
 
-END MODULE Euler_TallyModule_GR
+END MODULE Euler_GR_TallyModule

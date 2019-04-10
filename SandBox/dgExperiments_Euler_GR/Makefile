@@ -4,37 +4,37 @@ all: ApplicationDriver ComputePrimitiveTest
 
 ApplicationDriver: \
 	$(thornado) \
-	PositivityLimiterModule_Euler_GR.o \
-	EulerEquationsUtilitiesModule_Beta_GR.o \
-	CharacteristicDecompositionModule_GR.o \
-	BoundaryConditionsModule_Beta.o \
-	SlopeLimiterModule_Euler_GR.o \
+	Euler_GR_PositivityLimiterModule.o \
+	Euler_GR_UtilitiesModule.o \
+	Euler_GR_CharacteristicDecompositionModule.o \
+	Euler_GR_BoundaryConditionsModule.o \
+	Euler_GR_SlopeLimiterModule.o \
 	InitializationModule_GR.o \
-	dgDiscretizationModule_Euler_GR.o \
+	Euler_GR_dgDiscretizationModule.o \
 	TimeSteppingModule_SSPRK.o \
-	Euler_TallyModule_GR.o \
+	Euler_GR_TallyModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
-	PositivityLimiterModule_Euler_GR.o \
-	EulerEquationsUtilitiesModule_Beta_GR.o \
-	CharacteristicDecompositionModule_GR.o \
-	BoundaryConditionsModule_Beta.o \
-	SlopeLimiterModule_Euler_GR.o \
+	Euler_GR_PositivityLimiterModule.o \
+	Euler_GR_UtilitiesModule.o \
+	Euler_GR_CharacteristicDecompositionModule.o \
+	Euler_GR_BoundaryConditionsModule.o \
+	Euler_GR_SlopeLimiterModule.o \
 	InitializationModule_GR.o \
-	dgDiscretizationModule_Euler_GR.o \
+	Euler_GR_dgDiscretizationModule.o \
 	TimeSteppingModule_SSPRK.o \
-	Euler_TallyModule_GR.o \
+	Euler_GR_TallyModule.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
 ComputePrimitiveTest: \
 	$(thornado) \
-	EulerEquationsUtilitiesModule_Beta_GR.o \
+	Euler_GR_UtilitiesModule.o \
 	ComputePrimitiveTest.o
 	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_$(MACHINE) \
 	$(thornado) \
-	EulerEquationsUtilitiesModule_Beta_GR.o \
+	Euler_GR_UtilitiesModule.o \
 	ComputePrimitiveTest.o \
 	$(LIBRARIES)
 

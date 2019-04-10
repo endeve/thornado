@@ -1,4 +1,4 @@
-function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb_NES_FP_coupled( Jin, dt, Chi, D, T, Y, E)
+function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb_NES_FP_coupled_backup( Jin, dt, Chi, D, T, Y, E)
 
 % g_E_N       : nE_G x 1 (energy grid)
 % J, J_0    : nE_G x 1 (size of energy grid)
@@ -70,41 +70,40 @@ C(iE) = Theta3_N' * Jin / s_E;
 k = 0;
 CONVERGED = false;
 
-
-% compute chemical potential and derivatives
-[Mnu, ~, ~] = ComputeNeutrinoChemicalPotentials(D, T, Y);
-
-% equilibrium distribution
-J0 = FermiDirac( g_E_N, Mnu, BoltzmannConstant * T );
-% FOR IMPLICIT R_NES, UPDATE (interpolate) R_NES here:
-[R_in_NES, R_out_NES] = ComputeNesScatteringOpacityOnEGrid_TABLE(g_E_N, D, T, Y);
-
-% scale R_NES by dt and c
-R_in_NES = R_in_NES * c * dt;
-R_out_NES = R_out_NES * c * dt;
-eta_NES = (R_in_NES'*diag(W2_N)*J);
-Chi_NES = (R_out_NES'*diag(W2_N)*(1 - J));
-J = (Jin + Chi.*J0 + eta_NES)./(1 + Chi + eta_NES + Chi_NES);
-
-    
 while((~CONVERGED)&&(k<=maxIter))
     
     k = k + 1;
- 
-    % Update (U,J)
-    Unew(iY) = 1 + C(iY) - Theta2_N' * J / s_Y;
-    Unew(iE) = 1 + C(iE) - Theta3_N' * J / s_E;
     
+    % compute chemical potential and derivatives
+    [Mnu, ~, ~] = ComputeNeutrinoChemicalPotentials(D, T, Y);
+    
+    % equilibrium distribution
+    J0 = FermiDirac( g_E_N, Mnu, BoltzmannConstant * T );
+    
+    % FOR IMPLICIT R_NES, UPDATE (interpolate) R_NES here:
+    [R_in_NES, R_out_NES] = ComputeNesScatteringOpacityOnEGrid_TABLE(g_E_N, D, T, Y);
+    
+    % scale R_NES by dt and c 
+    R_in_NES = R_in_NES * c * dt;
+    R_out_NES = R_out_NES * c * dt;
+    
+    % compute new J
+%     [Jout, iter_in] = UpdateNeutrinoDistribution_NES(Jin, J0, Chi, R_in_NES, R_out_NES);
+
     eta_NES = (R_in_NES'*diag(W2_N)*J);
     Chi_NES = (R_out_NES'*diag(W2_N)*(1 - J));
     Jnew = (Jin + Chi.*J0 + eta_NES)./(1 + Chi + eta_NES + Chi_NES);
     
+
+    
+    % Picard iteration (update U)
+    Unew(iY) = 1 + C(iY) - Theta2_N' * Jnew / s_Y;
+    Unew(iE) = 1 + C(iE) - Theta3_N' * Jnew / s_E;
     
     % check convergence
     if (norm([Unew; Jnew] - [U; J]) <= Rtol * norm([U0; Jin]))
         CONVERGED = true;
     end
-    
     
     % update U, Y, E, T, J
     U = Unew;
@@ -114,29 +113,22 @@ while((~CONVERGED)&&(k<=maxIter))
     T = ComputeTemperatureFromSpecificInternalEnergy_TABLE(D, E, Y);
     
     J = Jnew;
-    
-    % compute chemical potential and derivatives
-    [Mnu, ~, ~] = ComputeNeutrinoChemicalPotentials(D, T, Y);
-    
-    % equilibrium distribution
-    J0 = FermiDirac( g_E_N, Mnu, BoltzmannConstant * T );
-    
-    if (~CONVERGED)
-        % FOR IMPLICIT R_NES, UPDATE (interpolate) R_NES here:
-        [R_in_NES, R_out_NES] = ComputeNesScatteringOpacityOnEGrid_TABLE(g_E_N, D, T, Y);
-
-        % scale R_NES by dt and c 
-        R_in_NES = R_in_NES * c * dt;
-        R_out_NES = R_out_NES * c * dt;
-    end
 end
 
 if(k >= maxIter)
     disp("Failed to converge within maxIter.");
 end
 
+% --- Neutrino Chemical Potential and Derivatives ---
+[Mnu, ~, ~] = ComputeNeutrinoChemicalPotentials(D, T, Y);
+
+% --- Equilibrium Distribution ---
+J0 = FermiDirac( g_E_N, Mnu, BoltzmannConstant * T );
 
 iter = k;
+
+
+
 
 
 

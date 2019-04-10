@@ -1,7 +1,7 @@
 PROGRAM DeleptonizationWave
 
   USE KindModule, ONLY: &
-    DP, SqrtTiny, Third
+    DP, SqrtTiny, Third, Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -34,6 +34,8 @@ PROGRAM DeleptonizationWave
     FinalizeReferenceElement_Lagrange
   USE GeometryFieldsModule, ONLY: &
     uGF
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryComputationModule_Beta, ONLY: &
     ComputeGeometryX
   USE GeometryFieldsModuleE, ONLY: &
@@ -81,17 +83,45 @@ PROGRAM DeleptonizationWave
 
   INCLUDE 'mpif.h'
 
+  CHARACTER(32) :: ProgramName
+  CHARACTER(32) :: CoordinateSystem
   INTEGER  :: iCycle, iCycleD, iCycleW
-  INTEGER  :: nE, nX(3), nNodes
+  INTEGER  :: nE, nX(3), bcX(3), nNodes
   REAL(DP) :: t, dt, t_end, wTime
   REAL(DP) :: eL, eR
-  REAL(DP) :: xL(3), xR(3)
+  REAL(DP) :: xL(3), xR(3), ZoomX(3)
 
+  CoordinateSystem = 'SPHERICAL'
+
+  SELECT CASE( CoordinateSystem)
+
+    CASE( 'CARTESIAN' )
+
+      ProgramName = 'DeleptonizationWave'
+
+      nX = [ 128, 128, 1 ]  ! 96 / 128 [96, 96, 1]
+      xL = [  0.0d2,  0.0d2, - 1.0d2 ] * Kilometer
+      xR = [  2.0d2,  2.0d2, + 1.0d2 ] * Kilometer
+      
+      bcX = [ 32, 32, 32 ]
+
+      zoomX = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+ 
+    CASE( 'SPHERICAL' )
+
+      ProgramName = 'DeleptonizationWave_Spherical'
+
+      nX = [ 512, 1, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 3.0d3 * Kilometer, Pi,     TwoPi  ]
+
+      bcX = [ 32, 0, 0 ]
+
+      zoomX = [ 1.007_DP, 1.0_DP, 1.0_DP ]
+
+  END SELECT
+ 
   nNodes = 2
-
-  nX = [ 128, 128, 1 ]  ! 96 / 128 [96, 96, 1]
-  xL = [ 0.0d0, 0.0d0, - 1.0d2 ] * Kilometer
-  xR = [ 2.0d2, 2.0d2, + 1.0d2 ] * Kilometer
 
   nE = 10
   eL = 0.0d0 * MeV
@@ -99,17 +129,19 @@ PROGRAM DeleptonizationWave
 
   CALL InitializeProgram &
          ( ProgramName_Option &
-             = 'DeleptonizationWave', &
+             = ProgramName, &
            nX_Option &
              = nX, &
            swX_Option &
              = [ 01, 01, 01 ], &
            bcX_Option &
-             = [ 32, 32, 32 ], &
+             = bcX, &
            xL_Option &
              = xL, &
            xR_Option &
              = xR, &
+           ZoomX_Option &
+             = ZoomX, &
            nE_Option &
              = nE, &
            eL_Option &
@@ -121,7 +153,7 @@ PROGRAM DeleptonizationWave
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
-             = 'CARTESIAN', &
+             = CoordinateSystem, &
            ActivateUnits_Option &
              = .TRUE., &
            BasicInitialization_Option &
@@ -187,7 +219,8 @@ PROGRAM DeleptonizationWave
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields( Profile_Option = 'Chimera100ms_fined.d')
+  CALL InitializeFields
+  !CALL InitializeFields( Profile_Option = 'Chimera100ms_fined.d')
 
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
@@ -212,9 +245,18 @@ PROGRAM DeleptonizationWave
   wTime = MPI_WTIME( )
 
   t     = 0.0_DP
-  t_end = 5.0_DP * Millisecond
-  dt    = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+  t_end = 2.0d1 * Millisecond
+
+!  dt    = 1.0d-7 * Millisecond
+
+!  dt    = Third * (xR(1)-xL(1)) / DBLE( nX(1) ) &
+!            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+
+  dt    = Third * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+
+!  dt    = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+!            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
   iCycleD = 10
   iCycleW = 200 ! 200 -> 128, 150 -> 96 
@@ -234,8 +276,14 @@ PROGRAM DeleptonizationWave
 
       dt = t_end - t
 
-    END IF
+!    ELSE
+!
+!      dt = MIN( dt * 1.01_dp, &
+!                Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+!              / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) )
 
+    END IF
+    
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
       WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A5,ES12.6E2)') &
@@ -269,7 +317,7 @@ PROGRAM DeleptonizationWave
   ! --- Write Final Solution ---
 
   CALL WriteFieldsHDF &
-         ( Time = 0.0_DP, &
+         ( Time = t, &
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE., &

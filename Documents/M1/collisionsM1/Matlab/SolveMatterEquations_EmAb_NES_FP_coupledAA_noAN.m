@@ -1,0 +1,185 @@
+function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb_NES_FP_coupledAA_noAN( Jin, dt, Chi, D, T, Y, E)
+
+% g_E_N       : nE_G x 1 (energy grid)
+% J, J_0    : nE_G x 1 (size of energy grid)
+% Chi       : nE_G x 1 (size of energy grid)
+% W2_N, W3_N: nE_G x 1 (size of energy grid)
+
+% constants
+global AtomicMassUnit BoltzmannConstant Erg2MeV SpeedOfLight PlanckConstant;
+
+% energy grid
+global g_E_N g_W2_N g_W3_N;
+
+
+hc = PlanckConstant * SpeedOfLight;
+c = SpeedOfLight;
+
+Rtol = 1e-8; Utol = 1e-10; maxIter = 100;
+
+iY = 1;
+iE = 2;
+iJNe = iE + (1:length(Jin.Ne));
+
+
+U = zeros(2,1);
+C = zeros(2,1);
+
+
+% \rho / m_B
+N_B = D / AtomicMassUnit;
+
+Chi.Ne = Chi.Ne * c * dt;
+
+% scales
+s_Y = N_B;
+s_E = D;
+
+% weights (for NES)
+W2_N = g_W2_N;
+
+
+% (scaled) weights
+Theta2_N = 4 * pi * g_W2_N;
+Theta3_N = 4 * pi * g_W3_N;
+
+Theta2_N = Theta2_N / (hc)^3;
+Theta3_N = Theta3_N / (hc)^3;
+
+% store initial values
+Y0 = Y;
+E0 = E * Erg2MeV; % change unit
+
+% update scales
+s_Y = s_Y * Y0;
+s_E = s_E * E0;
+
+% initial guess (both 1 for now)
+U(iY) = Y / Y0;
+U(iE) = E * Erg2MeV / E0; % change unit
+
+U0 = U;
+
+J = Jin;
+
+
+% calculate known values
+C(iY) = Theta2_N' * (Jin.Ne)/ s_Y;
+C(iE) = Theta3_N' * (Jin.Ne)/ s_E;
+
+
+k = 0;
+CONVERGED = false;
+
+% Anderson acceleration truncation parameter
+m = 3;
+Fvec = zeros(length(U)+length(J.Ne),m);
+Jvec = zeros(length(U)+length(J.Ne),m);
+alpha = zeros(m,1);
+
+
+% compute chemical potential and derivatives
+[Mnu, ~, ~] = ComputeNeutrinoChemicalPotentials(D, T, Y);
+
+% equilibrium distribution
+[J0.Ne, ~] = FermiDirac( g_E_N, Mnu, BoltzmannConstant * T );
+    
+% FOR IMPLICIT R_NES, UPDATE (interpolate) R_NES here:
+[R_in_NES.Ne, R_out_NES.Ne, ~, ~] = ComputeNesScatteringOpacityOnEGrid_TABLE(g_E_N, D, T, Y);
+
+% scale R_NES by dt and c
+R_in_NES.Ne = R_in_NES.Ne * c * dt;
+R_out_NES.Ne = R_out_NES.Ne * c * dt;
+
+eta_NES.Ne = (R_in_NES.Ne'*diag(W2_N)*J.Ne);
+Chi_NES.Ne = (R_out_NES.Ne'*diag(W2_N)*(1 - J.Ne));
+
+J.Ne = (Jin.Ne + Chi.Ne.*J0.Ne + eta_NES.Ne)./(1 + Chi.Ne + eta_NES.Ne + Chi_NES.Ne);
+
+
+    
+while((~CONVERGED)&&(k<=maxIter))
+    
+    k = k + 1;
+    mk = min(m,k);
+ 
+    % Update (U,J)
+    Jvec(iY,mk) = 1 + C(iY) - Theta2_N' * (J.Ne)/ s_Y;
+    Jvec(iE,mk) = 1 + C(iE) - Theta3_N' * (J.Ne) / s_E;
+    
+    eta_NES.Ne = (R_in_NES.Ne'*diag(W2_N)*J.Ne);
+    Chi_NES.Ne = (R_out_NES.Ne'*diag(W2_N)*(1 - J.Ne));
+
+    Jvec(iJNe,mk) = (Jin.Ne + Chi.Ne.*J0.Ne + eta_NES.Ne)./(1 + Chi.Ne + eta_NES.Ne + Chi_NES.Ne);
+    
+    Fvec(:,mk) = Jvec(:,mk) - [U; J.Ne];
+    
+    if (mk == 1)
+        Unew = Jvec(1:2,1);
+        Jnew.Ne = Jvec(iJNe,1);
+    else
+        alpha(1:mk-1) = (Fvec(:,1:mk-1) - Fvec(:,mk)*ones(1,mk-1))\(-Fvec(:,mk));
+        alpha(mk) = 1 - sum(alpha(1:mk-1));
+        temp = Jvec(:,1:mk) * alpha(1:mk);
+        Unew = temp(1:2);
+        Jnew.Ne = temp(iJNe);
+    end
+    
+    % check convergence
+    if (norm([Unew; Jnew.Ne] - [U; J.Ne]) <= Rtol * norm([U0; Jin.Ne]))
+        CONVERGED = true;
+    end
+    
+    if (mk == m)
+        Jvec = circshift(Jvec,-1,2);
+        Fvec = circshift(Fvec,-1,2);
+    end
+    
+    % update U, Y, E, T, J
+    U = Unew;
+    
+    Y = U(iY) * Y0;
+    E = U(iE) * E0 / Erg2MeV; % change unit    
+    T = ComputeTemperatureFromSpecificInternalEnergy_TABLE(D, E, Y);
+    
+    J = Jnew;
+    
+    % compute chemical potential and derivatives
+    [Mnu, ~, ~] = ComputeNeutrinoChemicalPotentials(D, T, Y);
+    
+    % equilibrium distribution
+    [J0.Ne, ~]= FermiDirac( g_E_N, Mnu, BoltzmannConstant * T );
+    
+    if (~CONVERGED)
+        % FOR IMPLICIT R_NES, UPDATE (interpolate) R_NES here:
+        [R_in_NES.Ne, R_out_NES.Ne, ~, ~] = ComputeNesScatteringOpacityOnEGrid_TABLE(g_E_N, D, T, Y);
+
+        % scale R_NES by dt and c
+        R_in_NES.Ne = R_in_NES.Ne * c * dt;
+        R_out_NES.Ne = R_out_NES.Ne * c * dt;
+
+    end
+end
+
+if(k >= maxIter)
+    disp("Failed to converge within maxIter.");
+end
+
+
+iter = k;
+
+
+
+end
+
+
+
+
+
+
+
+
+
+
+
+

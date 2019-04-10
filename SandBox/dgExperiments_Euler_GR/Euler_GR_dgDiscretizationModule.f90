@@ -1,4 +1,4 @@
-MODULE dgDiscretizationModule_Euler_GR
+MODULE Euler_GR_dgDiscretizationModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Pi, TwoPi, SqrtTiny
@@ -29,9 +29,9 @@ MODULE dgDiscretizationModule_Euler_GR
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_P, iAF_Gm
-  USE BoundaryConditionsModule_Beta, ONLY: &
+  USE Euler_GR_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Fluid
-  USE EulerEquationsUtilitiesModule_Beta_GR, ONLY:  &
+  USE Euler_GR_UtilitiesModule, ONLY:  &
     ComputePrimitive_GR,      &
     Eigenvalues_GR,           &
     AlphaC_GR,                &
@@ -51,7 +51,7 @@ MODULE dgDiscretizationModule_Euler_GR
 
   INCLUDE 'mpif.h'
 
-  PUBLIC :: ComputeIncrement_Euler_GR_DG_Explicit
+  PUBLIC :: Euler_GR_ComputeIncrement_DG_Explicit
 
   LOGICAL, PARAMETER :: DisplayTimers = .FALSE.
   LOGICAL  :: DEBUG = .FALSE.
@@ -68,7 +68,7 @@ MODULE dgDiscretizationModule_Euler_GR
 CONTAINS
 
 
-  SUBROUTINE ComputeIncrement_Euler_GR_DG_Explicit &
+  SUBROUTINE Euler_GR_ComputeIncrement_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     INTEGER, INTENT(in)     :: &
@@ -99,6 +99,10 @@ CONTAINS
     CALL ComputeIncrement_Divergence_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
+    IF( DEBUG ) WRITE(*,'(A)') '  DG: CALL ComputeIncrement_Divergence_X3'
+    CALL ComputeIncrement_Divergence_X3 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+
     ! --- Multiply Inverse Mass Matrix ---
 
     DO iCF = 1, nCF
@@ -126,7 +130,7 @@ CONTAINS
     CALL ComputeIncrement_Geometry &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-  END SUBROUTINE ComputeIncrement_Euler_GR_DG_Explicit
+  END SUBROUTINE Euler_GR_ComputeIncrement_DG_Explicit
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &
@@ -1020,6 +1024,26 @@ CONTAINS
   END SUBROUTINE ComputeIncrement_Divergence_X2
 
 
+  SUBROUTINE ComputeIncrement_Divergence_X3 &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+
+    INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
+      dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+
+    IF( iX_E0(3) .EQ. iX_B0(3) )THEN
+      RETURN
+    ELSE
+      STOP 'ComputeIncrement_Divergence_X3 not yet implemented'
+    END IF
+
+  END SUBROUTINE ComputeIncrement_Divergence_X3
+
+
   SUBROUTINE ComputeIncrement_Geometry &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
@@ -1263,4 +1287,4 @@ CONTAINS
   END SUBROUTINE Timer_Add
 
 
-END MODULE dgDiscretizationModule_Euler_GR
+END MODULE Euler_GR_dgDiscretizationModule
