@@ -1,4 +1,4 @@
-MODULE GravitySolutionModule_Newtonian_PointMass
+MODULE GravitySolutionModule_Newtonian_PointMass_Old
 
   USE KindModule, ONLY: &
     DP
@@ -131,4 +131,4 @@ CONTAINS
   END SUBROUTINE SetBoundaryConditions_X1
 
 
-END MODULE GravitySolutionModule_Newtonian_PointMass
+END MODULE GravitySolutionModule_Newtonian_PointMass_Old

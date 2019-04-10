@@ -7,10 +7,10 @@ MODULE TimeSteppingModule_SSPRK
     nDOFX
   USE FluidFieldsModule, ONLY: &
     nCF
-  USE SlopeLimiterModule_Euler_GR, ONLY: &
-    ApplySlopeLimiter_Euler_GR
-  USE PositivityLimiterModule_Euler_GR, ONLY: &
-    ApplyPositivityLimiter_Euler_GR
+  USE Euler_GR_SlopeLimiterModule, ONLY: &
+    Euler_GR_ApplySlopeLimiter
+  USE Euler_GR_PositivityLimiterModule, ONLY: &
+    Euler_GR_ApplyPositivityLimiter
   
   IMPLICIT NONE
   PRIVATE
@@ -183,14 +183,14 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-        IF( DEBUG ) WRITE(*,'(A)') 'CALL ApplySlopeLimiter_Euler_GR'
-        CALL ApplySlopeLimiter_Euler_GR &
+        IF( DEBUG ) WRITE(*,'(A)') 'CALL Euler_GR_ApplySlopeLimiter'
+        CALL Euler_GR_ApplySlopeLimiter &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-        IF( DEBUG ) WRITE(*,'(A)') 'CALL ApplyPositivityLimiter_Euler_GR'
-        CALL ApplyPositivityLimiter_Euler_GR &
+        IF( DEBUG ) WRITE(*,'(A)') 'CALL Euler_GR_ApplyPositivityLimiter'
+        CALL Euler_GR_ApplyPositivityLimiter &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
@@ -221,14 +221,14 @@ CONTAINS
 
     END DO
 
-    IF( DEBUG ) WRITE(*,'(A)') 'CALL ApplySlopeLimiter_Euler_GR (2)'
-    CALL ApplySlopeLimiter_Euler_GR &
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL Euler_GR_ApplySlopeLimiter (2)'
+    CALL Euler_GR_ApplySlopeLimiter &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-    IF( DEBUG ) WRITE(*,'(A)') 'CALL ApplyPositivityLimiter_Euler_GR (2)'
-    CALL ApplyPositivityLimiter_Euler_GR &
+    IF( DEBUG ) WRITE(*,'(A)') 'CALL Euler_GR_ApplyPositivityLimiter (2)'
+    CALL Euler_GR_ApplyPositivityLimiter &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )

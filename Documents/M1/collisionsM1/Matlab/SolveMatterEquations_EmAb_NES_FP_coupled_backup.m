@@ -1,4 +1,4 @@
-function [J0, D, T, Y, E, iter, Inneriter] = SolveMatterEquations_EmAb_NES_FP( Jin, dt, Chi, D, T, Y, E)
+function [J0, D, T, Y, E, iter] = SolveMatterEquations_EmAb_NES_FP_coupled_backup( Jin, dt, Chi, D, T, Y, E)
 
 % g_E_N       : nE_G x 1 (energy grid)
 % J, J_0    : nE_G x 1 (size of energy grid)
@@ -35,6 +35,9 @@ Chi = Chi * c * dt;
 s_Y = N_B;
 s_E = D;
 
+% weights (for NES)
+W2_N = g_W2_N;
+
 
 % (scaled) weights
 Theta2_N = 4 * pi * g_W2_N;
@@ -65,10 +68,7 @@ C(iE) = Theta3_N' * Jin / s_E;
 
 
 k = 0;
-Inneriter = 0;
 CONVERGED = false;
-
-
 
 while((~CONVERGED)&&(k<=maxIter))
     
@@ -88,30 +88,31 @@ while((~CONVERGED)&&(k<=maxIter))
     R_out_NES = R_out_NES * c * dt;
     
     % compute new J
-    [J, iter_in] = UpdateNeutrinoDistribution_NES(J, Jin, J0, Chi, R_in_NES, R_out_NES);
-    
-%     [J, iter_in] = UpdateNeutrinoDistribution_NES_AA(J, Jin, J0, Chi, R_in_NES, R_out_NES);
+%     [Jout, iter_in] = UpdateNeutrinoDistribution_NES(Jin, J0, Chi, R_in_NES, R_out_NES);
 
-    Inneriter = Inneriter + iter_in;
+    eta_NES = (R_in_NES'*diag(W2_N)*J);
+    Chi_NES = (R_out_NES'*diag(W2_N)*(1 - J));
+    Jnew = (Jin + Chi.*J0 + eta_NES)./(1 + Chi + eta_NES + Chi_NES);
+    
+
     
     % Picard iteration (update U)
-    Unew(iY) = 1 + C(iY) - Theta2_N' * J / s_Y;
-    Unew(iE) = 1 + C(iE) - Theta3_N' * J / s_E;
+    Unew(iY) = 1 + C(iY) - Theta2_N' * Jnew / s_Y;
+    Unew(iE) = 1 + C(iE) - Theta3_N' * Jnew / s_E;
     
     % check convergence
-    if (norm(Unew-U) <= Rtol * norm(U0))
+    if (norm([Unew; Jnew] - [U; J]) <= Rtol * norm([U0; Jin]))
         CONVERGED = true;
-%         g_Iterations_Min = min( g_Iterations_Min, k );
-%         g_Iterations_Max = max( g_Iterations_Max, k );
-%         g_Iterations_Ave = g_Iterations_Ave + k;
     end
     
-    % update U, Y, E, T
+    % update U, Y, E, T, J
     U = Unew;
     
     Y = U(iY) * Y0;
     E = U(iE) * E0 / Erg2MeV; % change unit    
     T = ComputeTemperatureFromSpecificInternalEnergy_TABLE(D, E, Y);
+    
+    J = Jnew;
 end
 
 if(k >= maxIter)

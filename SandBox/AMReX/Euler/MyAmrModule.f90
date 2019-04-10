@@ -4,7 +4,7 @@ MODULE MyAmrModule
 
   ! --- AMReX Modules ---
   USE amrex_fort_module, ONLY: &
-    amrex_real
+    amrex_real, amrex_spacedim
   USE amrex_base_module, ONLY: &
     amrex_init, &
     amrex_initialized, &
@@ -88,12 +88,14 @@ CONTAINS
       CALL PP % get   ( 'iCycleW',     iCycleW )
       CALL PP % get   ( 'iCycleChk',   iCycleChk )
     CALL amrex_parmparse_destroy( PP )
+    CFL = CFL &
+            / ( amrex_spacedim * ( 2.0_amrex_real * nNodes - 1.0_amrex_real ) )
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
-      CALL PP % get   ( 'coord_sys',        coord_sys )
-      CALL PP % getarr( 'prob_lo',          xL )
-      CALL PP % getarr( 'prob_hi',          xR )
+      CALL PP % get   ( 'coord_sys', coord_sys )
+      CALL PP % getarr( 'prob_lo',   xL )
+      CALL PP % getarr( 'prob_hi',   xR )
     CALL amrex_parmparse_destroy( PP )
     IF     ( coord_sys .EQ. 0 )THEN
       CoordSys = 'CARTESIAN'
@@ -140,7 +142,7 @@ CONTAINS
     StepNo = 0
 
     ALLOCATE( dt(0:nLevels) )
-    dt = 1.0e-4_amrex_real
+    dt = -100.0e0_amrex_real
 
     ALLOCATE( t(0:nLevels) )
     t = 0.0e0_amrex_real

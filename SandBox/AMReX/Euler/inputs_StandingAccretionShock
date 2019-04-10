@@ -1,0 +1,54 @@
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+DEBUG = 0
+
+thornado.ProgramName = "StandingAccretionShock"
+
+SAS.mDot   = 4.0 # In units of pi
+SAS.Mass   = 0.5
+SAS.rShock = 1.0
+SAS.Mach   = 100.0
+
+SAS.ShellIn          = 1.4
+SAS.ShellOut         = 1.6
+SAS.PerturbOrder     = 1
+SAS.PerturbAmplitude = 0.2
+
+thornado.t_end     = 50.0     # Final time
+thornado.dt_wrt    = 0.25     # Write time interval
+thornado.Gamma     = 1.333333333333333 # Ideal Gas EoS Gamma
+thornado.nNodes    = 3        # Number of DG nodes in each active dimension
+thornado.nStages   = 3        # Number of SSP-RK stages for time integration
+thornado.CFL       = 0.5      # CFL number
+thornado.bcX       = 11 03 00 # Boundary conditions
+thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
+thornado.iCycleD   = 00010    # MOD this number to display info
+thornado.iCycleW   = 10000    # MOD this number to write plotfile
+thornado.iCycleChk = 10000    # MOD this number to write checkpoint file
+
+#geometry.coord_sys   = 0            # CARTESIAN
+#geometry.coord_sys   = 1            # CYLINDRICAL (r,z,phi/pi)
+geometry.coord_sys   = 2             # SPHERICAL (r,theta/pi,phi/pi)
+geometry.prob_lo     = 0.2 0.0  0.0  # Lower domain size
+geometry.prob_hi     = 2.0 3.141592653589793 6.283185307179586 # Upper domain size
+geometry.is_periodic = 00  00   00   # Periodicity. 0 (no), 1 (yes)
+
+amr.n_cell          = 256 064 01 # Number of cells in each dimension
+amr.max_grid_size   = 064 064 01 # nBoxes = n_cell / MaxGridSize
+amr.max_level       = 0          # Maximum number of refinement levels
+amr.blocking_factor = 8          # Must be a factor of max_grid_size
+
+# Slope limiter parameters
+SL.UseSlopeLimiter           = 1
+SL.UseCharacteristicLimiting = 1
+SL.UseTroubledCellIndicator  = 1
+SL.SlopeTolerance            = 1.0e-6
+SL.BetaTVD                   = 1.15e0
+SL.BetaTVB                   = 0.0e0
+SL.LimiterThresholdParameter = 1.5e-2
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter = 1
+PL.Min_1                = 1.0e-12
+PL.Min_2                = 1.0e-12

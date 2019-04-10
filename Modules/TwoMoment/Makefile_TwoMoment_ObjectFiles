@@ -5,4 +5,4 @@ TWO_MOMENT = \
   TwoMoment_BoundaryConditionsModule.o \
   TwoMoment_PositivityLimiterModule.o \
   TwoMoment_DiscretizationModule_Streaming.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos_GPU.o
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o

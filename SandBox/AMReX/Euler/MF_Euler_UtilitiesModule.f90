@@ -145,7 +145,7 @@ CONTAINS
   END SUBROUTINE MF_ComputeFromConserved
 
 
-  SUBROUTINE MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, TimeStep )
+  SUBROUTINE MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, TimeStepMin )
 
     TYPE(amrex_multifab), INTENT(in)  :: &
       MF_uGF(0:nlevels), &
@@ -153,7 +153,7 @@ CONTAINS
     REAL(amrex_real),     INTENT(in)  :: &
       CFL
     REAL(amrex_real),     INTENT(out) :: &
-      TimeStep(0:nLevels)
+      TimeStepMin(0:nLevels)
 
     INTEGER            :: iLevel
     INTEGER            :: iX1, iX2, iX3, iX_B0(3), iX_E0(3)
@@ -161,11 +161,13 @@ CONTAINS
     INTEGER            :: lo_C(4), hi_C(4)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
+    REAL(amrex_real)   :: TimeStep(0:nLevels)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(amrex_real), ALLOCATABLE         :: G(:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE         :: U(:,:,:,:,:)
 
+    TimeStepMin = HUGE( 1.0e0_amrex_real )
     DO iLevel = 0, nLevels
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
@@ -209,16 +211,18 @@ CONTAINS
                  U(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                  CFL, TimeStep(iLevel) )
 
+        TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
+
         DEALLOCATE( G )
         DEALLOCATE( U )
 
-      END DO
+      END DO ! --- Loop over grids (boxes) ---
 
       CALL amrex_mfiter_destroy( MFI )
 
-    END DO
+    END DO ! --- Loop over levels ---
 
-    CALL amrex_parallel_reduce_min( TimeStep, nLevels+1 )
+    CALL amrex_parallel_reduce_min( TimeStepMin, nLevels+1 )
 
   END SUBROUTINE MF_ComputeTimeStep
 

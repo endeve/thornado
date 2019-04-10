@@ -1,4 +1,4 @@
-MODULE PositivityLimiterModule_Euler_GR
+MODULE Euler_GR_PositivityLimiterModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, SqrtTiny
@@ -30,9 +30,9 @@ MODULE PositivityLimiterModule_Euler_GR
 
   INCLUDE 'mpif.h'
 
-  PUBLIC :: InitializePositivityLimiter_Euler_GR
-  PUBLIC :: FinalizePositivityLimiter_Euler_GR
-  PUBLIC :: ApplyPositivityLimiter_Euler_GR
+  PUBLIC :: Euler_GR_InitializePositivityLimiter
+  PUBLIC :: Euler_GR_FinalizePositivityLimiter
+  PUBLIC :: Euler_GR_ApplyPositivityLimiter
 
   LOGICAL               :: UsePositivityLimiter
   INTEGER, PARAMETER    :: nPS = 7  ! Number of Positive Point Sets
@@ -44,7 +44,7 @@ MODULE PositivityLimiterModule_Euler_GR
 CONTAINS
 
 
-  SUBROUTINE InitializePositivityLimiter_Euler_GR &
+  SUBROUTINE Euler_GR_InitializePositivityLimiter &
     ( Min_1_Option, Min_2_Option, UsePositivityLimiter_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
@@ -66,7 +66,7 @@ CONTAINS
       UsePositivityLimiter = UsePositivityLimiter_Option
 
     WRITE(*,*)
-    WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'InitializePositivityLimiter'
+    WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'Euler_GR_InitializePositivityLimiter'
     WRITE(*,*)
     WRITE(*,'(A6,A,L1)') &
       '', 'Use Positivity Limiter: ', UsePositivityLimiter 
@@ -93,18 +93,18 @@ CONTAINS
     ALLOCATE( U_PP(nPT,nCF) )
     ALLOCATE( G_PP(nPT,nGF) )
 
-  END SUBROUTINE InitializePositivityLimiter_Euler_GR
+  END SUBROUTINE Euler_GR_InitializePositivityLimiter
 
   
-  SUBROUTINE FinalizePositivityLimiter_Euler_GR
+  SUBROUTINE Euler_GR_FinalizePositivityLimiter
 
     DEALLOCATE( U_PP )
     DEALLOCATE( G_PP )
 
-  END SUBROUTINE FinalizePositivityLimiter_Euler_GR
+  END SUBROUTINE Euler_GR_FinalizePositivityLimiter
 
 
-  SUBROUTINE ApplyPositivityLimiter_Euler_GR &
+  SUBROUTINE Euler_GR_ApplyPositivityLimiter &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER,  INTENT(in)    :: &
@@ -212,7 +212,25 @@ CONTAINS
 
         END IF ! q < 0
 
+        ! --- If q < 0 after limiting, set U = U_K ---
+        DO iCF = 1, nCF
+          CALL ComputePointValues( U_q(:,iCF), U_PP(:,iCF) )
+        END DO
+        CALL Computeq( nPt, U_PP, G_PP, q )
+        IF( ANY( q .LT. 0.0d0 ) )THEN
+          WRITE(*,*)
+          WRITE(*,'(A)') 'WARNING: q < 0 AFTER limiting. Setting U to U_K'
+          WRITE(*,'(A,3I4.3)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
+          WRITE(*,*) 'q = ', q
+          ! --- Limit all variables towards cell-average ---
+          DO iCF = 1, nCF
+            U_q(:,iCF) = U_K(iCF)
+          END DO
+          WRITE(*,*)
+        END IF
+
         U(:,iX1,iX2,iX3,:) = U_q
+
       ELSE
         WRITE(*,'(A)') 'WARNING: PosLimMod: Cell-average of density <= Min_1'
         ! --- Compute cell-averages ---
@@ -224,11 +242,27 @@ CONTAINS
         END DO
       END IF
 
+      ! --- Debugging ---
+      DO iCF = 1, nCF
+        CALL ComputePointValues( U(:,iX1,iX2,iX3,iCF), U_PP(:,iCF) )
+      END DO
+      CALL Computeq( nPT, U_PP, G_PP, q )
+      IF( ANY( q .LT. 0.0d0 ) )THEN
+        WRITE(*,'(A)') 'q < 0 AFTER limiting'
+        WRITE(*,'(A,3I4.3)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
+        WRITE(*,*) 'q = ', q
+        WRITE(*,*) 'Theta_2 = ', Theta_2
+        DO iCF = 1, nCF
+          WRITE(*,*) U(:,iX1,iX2,iX3,iCF)
+        END DO
+        STOP ''
+      END IF
+
     END DO
     END DO
     END DO
 
-  END SUBROUTINE ApplyPositivityLimiter_Euler_GR
+  END SUBROUTINE Euler_GR_ApplyPositivityLimiter
 
 
   SUBROUTINE ComputePointValues( X_Q, X_P )
@@ -431,4 +465,4 @@ CONTAINS
   END SUBROUTINE SolveTheta_Bisection
 
 
-END MODULE PositivityLimiterModule_Euler_GR
+END MODULE Euler_GR_PositivityLimiterModule

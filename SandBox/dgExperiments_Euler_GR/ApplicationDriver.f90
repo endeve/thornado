@@ -20,15 +20,15 @@ PROGRAM ApplicationDriver
     ComputeGeometryX
   USE InitializationModule_GR, ONLY: &
     InitializeFields_GR, ReadParameters
-  USE SlopeLimiterModule_Euler_GR, ONLY: &
-    InitializeSlopeLimiter_Euler_GR, &
-    FinalizeSlopeLimiter_Euler_GR, &
-    ApplySlopeLimiter_Euler_GR
-  USE PositivityLimiterModule_Euler_GR, ONLY: &
-    InitializePositivityLimiter_Euler_GR, &
-    FinalizePositivityLimiter_Euler_GR, &
-    ApplyPositivityLimiter_Euler_GR
-  USE EulerEquationsUtilitiesModule_Beta_GR, ONLY: &
+  USE Euler_GR_SlopeLimiterModule, ONLY: &
+    Euler_GR_InitializeSlopeLimiter, &
+    Euler_GR_FinalizeSlopeLimiter, &
+    Euler_GR_ApplySlopeLimiter
+  USE Euler_GR_PositivityLimiterModule, ONLY: &
+    Euler_GR_InitializePositivityLimiter, &
+    Euler_GR_FinalizePositivityLimiter, &
+    Euler_GR_ApplyPositivityLimiter
+  USE Euler_GR_UtilitiesModule, ONLY: &
     ComputeFromConserved_GR, &
     ComputeTimeStep_GR
   USE InputOutputModuleHDF, ONLY: &
@@ -37,18 +37,18 @@ PROGRAM ApplicationDriver
     uCF, uPF, uAF
   USE GeometryFieldsModule, ONLY: &
     uGF
-  USE dgDiscretizationModule_Euler_GR, ONLY: &
-    ComputeIncrement_Euler_GR_DG_Explicit
+  USE Euler_GR_dgDiscretizationModule, ONLY: &
+    Euler_GR_ComputeIncrement_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
   USE UnitsModule, ONLY: &
     Millisecond
-  USE Euler_TallyModule_GR, ONLY: &
-    InitializeTally_Euler_GR, &
-    FinalizeTally_Euler_GR, &
-    ComputeTally_Euler_GR
+  USE Euler_GR_TallyModule, ONLY: &
+    Euler_GR_InitializeTally, &
+    Euler_GR_FinalizeTally, &
+    Euler_GR_ComputeTally
 
   IMPLICIT NONE
 
@@ -84,13 +84,14 @@ PROGRAM ApplicationDriver
   REAL(DP)              :: M_PNS = Zero, Ri, R_PNS, R_shock, Rf
 
   LOGICAL :: DEBUG = .FALSE.
-  REAL(DP) :: wTime_UF, wTime_CTS
+  LOGICAL :: WriteGF = .FALSE., WriteFF = .TRUE.
+  REAL(DP) :: wTime_UF, wTime_CTS, Timer_Evolution
   
 !  ProgramName = 'RiemannProblem'
-!  ProgramName = 'RiemannProblem2d'
+  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
-  ProgramName = 'KelvinHelmholtz_Relativistic'
+!  ProgramName = 'KelvinHelmholtz_Relativistic'
 !  ProgramName = 'KelvinHelmholtz'
 !  ProgramName = 'StandingAccretionShock'
 
@@ -163,7 +164,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 256, 256, 1 ]
+      nX  = [ 64, 64, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -183,6 +184,8 @@ PROGRAM ApplicationDriver
 
       t_end = 5.0d-1
 
+      WriteGF = .TRUE.
+
     CASE( 'SphericalSedov' )
 
       nDetCells = 1
@@ -199,6 +202,8 @@ PROGRAM ApplicationDriver
       bcX = [ 3, 0, 0 ]
 
       t_end = 1.0d0
+
+      WriteGF = .TRUE.
 
     CASE( 'KelvinHelmholtz_Relativistic' )
 
@@ -248,7 +253,9 @@ PROGRAM ApplicationDriver
 
       bcX = [ 11, 0, 0 ]
 
-      t_end = 1.0d1 * Millisecond
+      t_end = 3.0d2 * Millisecond
+
+      WriteGF = .TRUE.
 
     CASE DEFAULT
 
@@ -266,14 +273,14 @@ PROGRAM ApplicationDriver
 
   END SELECT
 
-  nNodes = 2
+  nNodes = 3
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   BetaTVD = 1.75d0
   BetaTVB = 0.0d0
 
-  UseSlopeLimiter           = .FALSE.
+  UseSlopeLimiter           = .TRUE.
   SlopeTolerance            = 1.0d-6
   UseCharacteristicLimiting = .TRUE.
 
@@ -287,8 +294,8 @@ PROGRAM ApplicationDriver
   UseFixed_dt   = .FALSE.
   UseSourceTerm = .TRUE.
 
-  iCycleD = 1
-!!$  iCycleW = 1; dt_wrt = -1.0d0
+  iCycleD = 10
+!!$  iCycleW = 1000; dt_wrt = -1.0d0
   dt_wrt = 1.0d-2 * t_end; iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
@@ -309,7 +316,7 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 1, 1], &
+             = [ 1, 1, 1 ], &
            bcX_Option &
              = bcX, &
            xL_Option &
@@ -323,10 +330,6 @@ PROGRAM ApplicationDriver
            BasicInitialization_Option &
              = .TRUE. )
 
-  CALL InitializeEquationOfState &
-         ( EquationOfState_Option = 'IDEAL', &
-           Gamma_IDEAL_Option = Gamma )
-
   CALL InitializeReferenceElementX
 
   CALL InitializeReferenceElementX_Lagrange
@@ -334,19 +337,11 @@ PROGRAM ApplicationDriver
   CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = M_PNS )
 
-  CALL InitializeFields_GR &
-         ( RiemannProblemName_Option = TRIM( RiemannProblemName ), &
-           RiemannProblem2dName_Option = TRIM( RiemannProblem2dName ), &
-           SphericalRiemannProblemName_Option &
-             = TRIM( SphericalRiemannProblemName ), &
-           nDetCells_Option = nDetCells, Eblast_Option = Eblast )
+  CALL InitializeEquationOfState &
+         ( EquationOfState_Option = 'IDEAL', &
+           Gamma_IDEAL_Option = Gamma )
 
-  CALL WriteFieldsHDF &
-       ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
-
-  CALL InitializeFluid_SSPRK( nStages = nStagesSSPRK )
-
-  CALL InitializeSlopeLimiter_Euler_GR &
+  CALL Euler_GR_InitializeSlopeLimiter &
          ( BetaTVD_Option = BetaTVD, &
            BetaTVB_Option = BetaTVB, &
            SlopeTolerance_Option &
@@ -360,10 +355,32 @@ PROGRAM ApplicationDriver
            LimiterThresholdParameter_Option &
              = LimiterThresholdParameter )
 
-  CALL InitializePositivityLimiter_Euler_GR &
+  CALL Euler_GR_InitializePositivityLimiter &
          ( Min_1_Option = Min_1, &
            Min_2_Option = Min_2, &
            UsePositivityLimiter_Option = UsePositivityLimiter )
+
+  CALL InitializeFields_GR &
+         ( RiemannProblemName_Option = TRIM( RiemannProblemName ), &
+           RiemannProblem2dName_Option = TRIM( RiemannProblem2dName ), &
+           SphericalRiemannProblemName_Option &
+             = TRIM( SphericalRiemannProblemName ), &
+           nDetCells_Option = nDetCells, Eblast_Option = Eblast )
+
+  CALL Euler_GR_ApplySlopeLimiter &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, &
+           uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
+           uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
+
+  CALL Euler_GR_ApplyPositivityLimiter &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, &
+           uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
+           uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
+
+  CALL WriteFieldsHDF &
+       ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+
+  CALL InitializeFluid_SSPRK( nStages = nStagesSSPRK )
 
   WRITE(*,*)
   WRITE(*,'(A2,A,ES11.3E3)') '', 'CFL: ', CFL
@@ -375,13 +392,14 @@ PROGRAM ApplicationDriver
   t_wrt = dt_wrt
   wrt   = .FALSE.
 
-  IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL InitializeTally_Euler_GR'
-  CALL InitializeTally_Euler_GR &
+  IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL Euler_GR_InitializeTally'
+  CALL Euler_GR_InitializeTally &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
 
   iCycle = 0
+  Timer_Evolution = MPI_WTIME()
   DO WHILE( t .LT. t_end )
 
     iCycle = iCycle + 1
@@ -430,7 +448,7 @@ PROGRAM ApplicationDriver
     IF( DEBUG ) wTime_UF = MPI_WTIME()
     IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL UpdateFluid_SSPRK'
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, ComputeIncrement_Euler_GR_DG_Explicit )
+           ( t, dt, uGF, uCF, Euler_GR_ComputeIncrement_DG_Explicit )
     IF( DEBUG ) wTime_UF = MPI_WTIME() - wTime_UF
 
     IF( DEBUG )THEN
@@ -475,10 +493,10 @@ PROGRAM ApplicationDriver
 
       IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL WriteFieldsHDF'
       CALL WriteFieldsHDF &
-             ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-      IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL ComputeTally_Euler_GR'
-      CALL ComputeTally_Euler_GR &
+      IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL Euler_GR_ComputeTally'
+      CALL Euler_GR_ComputeTally &
            ( iX_B0, iX_E0, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -489,6 +507,9 @@ PROGRAM ApplicationDriver
     END IF
 
   END DO
+  Timer_Evolution = MPI_WTIME() - Timer_Evolution
+  WRITE(*,*)
+  WRITE(*,'(A,ES13.6E3)') 'Total evolution time: ', Timer_Evolution
 
   CALL ComputeFromConserved_GR &
          ( iX_B0, iX_E0, &
@@ -498,17 +519,17 @@ PROGRAM ApplicationDriver
            uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
 
   CALL WriteFieldsHDF &
-         ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-  CALL ComputeTally_Euler_GR &
+  CALL Euler_GR_ComputeTally &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
-  CALL FinalizePositivityLimiter_Euler_GR
+  CALL Euler_GR_FinalizePositivityLimiter
 
-  CALL FinalizeSlopeLimiter_Euler_GR
+  CALL Euler_GR_FinalizeSlopeLimiter
 
   CALL FinalizeFluid_SSPRK
 

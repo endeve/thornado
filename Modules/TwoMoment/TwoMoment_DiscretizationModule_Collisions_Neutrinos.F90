@@ -421,7 +421,7 @@ CONTAINS
 
     wTime = MPI_WTIME( ) - wTime
 
-!    WRITE(*,'(A4,A32,ES10.4E2)') '', 'InitializeCollisions: ', wTime
+    !    WRITE(*,'(A4,A32,ES10.4E2)') '', 'InitializeCollisions: ', wTime
 
     ! --- Energy and Integration Weights ---
 
@@ -431,7 +431,7 @@ CONTAINS
 
     wTime = MPI_WTIME( ) - wTime
 
-!    WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputePointsAndWeightsE: ', wTime
+    !    WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputePointsAndWeightsE: ', wTime
 
     ! --- Map Spatial Geometry Data ---
 
@@ -479,7 +479,7 @@ CONTAINS
 
     wTime = MPI_WTIME( ) - wTime
 
-!    WRITE(*,'(A4,A32,ES10.4E2)') '', 'MapForward_R: ', wTime
+    !    WRITE(*,'(A4,A32,ES10.4E2)') '', 'MapForward_R: ', wTime
 
     ! --- Allocate Local Opacities ---
 
@@ -508,7 +508,7 @@ CONTAINS
 
       wTime = MPI_WTIME( ) - wTime
 
-!      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputePrimitive_Euler: ', wTime
+      !      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputePrimitive_Euler: ', wTime
 
       wTime = MPI_WTIME( )
 
@@ -518,7 +518,7 @@ CONTAINS
 
       wTime = MPI_WTIME( ) - wTime
 
-!      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeTS_Auxiliary: ', wTime
+      !      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeTS_Auxiliary: ', wTime
 
       wTime = MPI_WTIME( )
 
@@ -536,7 +536,7 @@ CONTAINS
 
       wTime = MPI_WTIME( ) - wTime
 
-!      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeNuOp_Point: ', wTime
+      !      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeNuOp_Point: ', wTime
 
       wTime = MPI_WTIME( )
 
@@ -546,7 +546,7 @@ CONTAINS
 
       wTime = MPI_WTIME( ) - wTime
 
-!      WRITE(*,'(A4,A32,ES10.4E2)') '', 'SolveMatterEquations_EmAb: ', wTime
+      !      WRITE(*,'(A4,A32,ES10.4E2)') '', 'SolveMatterEquations_EmAb: ', wTime
 
       CALL ComputeThermodynamicStates_Primitive_TABLE &
              ( PF_N(iPF_D:iPF_D), AF_N(iAF_T:iAF_T), AF_N(iAF_Ye:iAF_Ye), &
@@ -890,7 +890,7 @@ CONTAINS
 
     wTimeTotal = MPI_WTIME( ) - wTimeTotal
 
-!    WRITE(*,'(A4,A32,ES10.4E2)') '', 'wTimeTotal: ', wTimeTotal
+    !    WRITE(*,'(A4,A32,ES10.4E2)') '', 'wTimeTotal: ', wTimeTotal
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_DGFV
 

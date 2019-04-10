@@ -14,13 +14,13 @@ MODULE MF_GeometryModule
     amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
-  USE ProgramHeaderModule,       ONLY: &
+  USE ProgramHeaderModule,                       ONLY: &
     nDOFX, swX
-  USE GeometryFieldsModule,      ONLY: &
-    nGF
-  USE GeometryComputationModule, ONLY: &
+  USE GeometryFieldsModule,                      ONLY: &
+    nGF, iGF_Phi_N
+  USE GeometryComputationModule,                 ONLY: &
     ComputeGeometryX
-  USE GravitySolutionModule_Newtonian_PointMass_Beta, ONLY: &
+  USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
     ComputeGravitationalPotential
 
   ! --- Local Modules ---
@@ -125,15 +125,15 @@ CONTAINS
         CALL ComputeGravitationalPotential &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF), Mass )
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF), Mass )
 
         DO iX3 = iX_B1(3), iX_E1(3)
         DO iX2 = iX_B1(2), iX_E1(2)
         DO iX1 = iX_B1(1), iX_E1(1)
 
-          uGF(iX1,iX2,iX3,:) &
-            = RESHAPE( G(1:nDOFX,iX1,iX2,iX3,1:nGF), [nGF*nDOFX] )
+          uGF(iX1,iX2,iX3,(iGF_Phi_N-1)*nDOFX+1:iGF_Phi_N*nDOFX) &
+            = RESHAPE( G(1:nDOFX,iX1,iX2,iX3,iGF_Phi_N), [nDOFX] )
 
         END DO
         END DO

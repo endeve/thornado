@@ -14,6 +14,7 @@ MODULE LinearAlgebraModule
   USE CublasModule, ONLY: &
     cublas_handle, &
     cublasDgemm_v2, &
+    cublasDgemv_v2, &
     CUBLAS_OP_N, CUBLAS_OP_T
 #endif
 
@@ -22,6 +23,7 @@ MODULE LinearAlgebraModule
     magma_queue, &
     magma_queue_sync, &
     magma_dgemm, &
+    magma_dgemv, &
     MagmaNoTrans, MagmaTrans
 #endif
 
@@ -29,6 +31,7 @@ MODULE LinearAlgebraModule
   PRIVATE
 
   PUBLIC :: MatrixMatrixMultiply
+  PUBLIC :: MatrixVectorMultiply
 
 CONTAINS
 
@@ -120,5 +123,75 @@ CONTAINS
     END IF
 
   END SUBROUTINE MatrixMatrixMultiply
+
+
+  SUBROUTINE MatrixVectorMultiply( trans, m, n, alpha, a, lda, x, incx, beta, y, incy )
+
+    CHARACTER                          :: trans
+    INTEGER                            :: m, n, lda, incx, incy
+    REAL(DP)                           :: alpha, beta
+    REAL(DP), DIMENSION(lda,*), TARGET :: a
+    REAL(DP), DIMENSION(*)    , TARGET :: x
+    REAL(DP), DIMENSION(*)    , TARGET :: y
+
+    INTEGER                            :: ierr
+    INTEGER(C_INT)                     :: itrans
+    INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_x
+    TYPE(C_PTR)                        :: ha, hx, hy
+    TYPE(C_PTR)                        :: da, dx, dy
+    LOGICAL                            :: data_on_device
+
+    data_on_device = .false.
+    sizeof_a = m * n * c_sizeof(0.0_DP)
+    sizeof_x = m     * c_sizeof(0.0_DP)
+
+    ha = C_LOC( a )
+    hx = C_LOC( x )
+    hy = C_LOC( y )
+
+    data_on_device = device_is_present( ha, mydevice, sizeof_a ) &
+               .AND. device_is_present( hx, mydevice, sizeof_x ) &
+               .AND. device_is_present( hy, mydevice, sizeof_x )
+
+    IF ( data_on_device ) THEN
+
+      itrans = itrans_from_char( trans )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( a, x, y )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( a, x, y )
+#endif
+      da = C_LOC( a )
+      dx = C_LOC( x )
+      dy = C_LOC( y )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+#endif
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cublasDgemv_v2 &
+             ( cublas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy )
+      ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_MAGMA)
+      CALL magma_dgemm &
+             ( itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy, magma_queue )
+      CALL magma_queue_sync( magma_queue )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[MatrixMatrixMultiply] Data not present on device'
+#endif
+
+      CALL DGEMV &
+             ( trans, m, n, alpha, a, lda, x, incx, beta, y, incy )
+
+    END IF
+
+  END SUBROUTINE MatrixVectorMultiply
 
 END MODULE LinearAlgebraModule

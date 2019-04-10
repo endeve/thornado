@@ -18,14 +18,14 @@ GravitySolutionUtilitiesModule.o: \
   FluidFieldsModule.o \
   GravitySolutionUtilitiesModule.f90
 
-GravitySolutionModule_Newtonian_PointMass.o: \
+GravitySolutionModule_Newtonian_PointMass_Old.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   MeshModule.o \
   GeometryFieldsModule.o \
-  GravitySolutionModule_Newtonian_PointMass.f90
+  GravitySolutionModule_Newtonian_PointMass_Old.f90
 
 GravitySolutionModule_Newtonian_Poseidon.o: \
   KindModule.o \
@@ -43,7 +43,7 @@ GravitySolutionModule.o: \
   UtilitiesModule.o \
   PolynomialBasisModule_Lagrange.o \
   MeshModule.o \
-  GravitySolutionModule_Newtonian_PointMass.o \
+  GravitySolutionModule_Newtonian_PointMass_Old.o \
   GravitySolutionModule_Newtonian_Poseidon.o \
   GravitySolutionModule.f90
 

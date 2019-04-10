@@ -1,4 +1,4 @@
-function [J0, D, T, Y, E, iter, Inneriter] = SolveMatterEquations_EmAb_NES_FP( Jin, dt, Chi, D, T, Y, E)
+function [J0, D, T, Y, E, iter, Inneriter] = SolveMatterEquations_EmAb_NES_FP_AA( Jin, dt, Chi, D, T, Y, E)
 
 % g_E_N       : nE_G x 1 (energy grid)
 % J, J_0    : nE_G x 1 (size of energy grid)
@@ -88,9 +88,9 @@ while((~CONVERGED)&&(k<=maxIter))
     R_out_NES = R_out_NES * c * dt;
     
     % compute new J
-    [J, iter_in] = UpdateNeutrinoDistribution_NES(J, Jin, J0, Chi, R_in_NES, R_out_NES);
+%     [J, iter_in] = UpdateNeutrinoDistribution_NES(J, Jin, J0, Chi, R_in_NES, R_out_NES);
     
-%     [J, iter_in] = UpdateNeutrinoDistribution_NES_AA(J, Jin, J0, Chi, R_in_NES, R_out_NES);
+    [J, iter_in] = UpdateNeutrinoDistribution_NES_AA(J, Jin, J0, Chi, R_in_NES, R_out_NES);
 
     Inneriter = Inneriter + iter_in;
     

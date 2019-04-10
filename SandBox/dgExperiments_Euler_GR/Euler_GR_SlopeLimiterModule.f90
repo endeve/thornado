@@ -1,4 +1,4 @@
-MODULE SlopeLimiterModule_Euler_GR
+MODULE Euler_GR_SlopeLimiterModule
 
   USE KindModule, ONLY: &
     DP, Zero, One, SqrtTiny
@@ -34,17 +34,17 @@ MODULE SlopeLimiterModule_Euler_GR
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
     Shock
-  USE BoundaryConditionsModule_Beta, ONLY: &
+  USE Euler_GR_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Fluid
-  USE CharacteristicDecompositionModule_GR, ONLY: &
-    ComputeCharacteristicDecomposition_GR
+  USE Euler_GR_CharacteristicDecompositionModule, ONLY: &
+    Euler_GR_ComputeCharacteristicDecomposition
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializeSlopeLimiter_Euler_GR
-  PUBLIC :: FinalizeSlopeLimiter_Euler_GR
-  PUBLIC :: ApplySlopeLimiter_Euler_GR
+  PUBLIC :: Euler_GR_InitializeSlopeLimiter
+  PUBLIC :: Euler_GR_FinalizeSlopeLimiter
+  PUBLIC :: Euler_GR_ApplySlopeLimiter
 
   LOGICAL  :: UseSlopeLimiter
   LOGICAL  :: UseCharacteristicLimiting
@@ -64,7 +64,7 @@ MODULE SlopeLimiterModule_Euler_GR
 CONTAINS
 
 
-  SUBROUTINE InitializeSlopeLimiter_Euler_GR &
+  SUBROUTINE Euler_GR_InitializeSlopeLimiter &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option )
@@ -127,7 +127,7 @@ CONTAINS
     LimiterThreshold = LimiterThresholdParameter * 2.0_DP**( nNodes - 2 )
 
     WRITE(*,*)
-    WRITE(*,'(A)') '  INFO: InitializeSlopeLimiter_Euler_GR:'
+    WRITE(*,'(A)') '  INFO: Euler_GR_InitializeSlopeLimiter:'
     WRITE(*,'(A)') '  --------------------------------------'
     WRITE(*,*)
     WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
@@ -159,10 +159,10 @@ CONTAINS
       I_6x6(i,i) = One
     END DO
 
-  END SUBROUTINE InitializeSlopeLimiter_Euler_GR
+  END SUBROUTINE Euler_GR_InitializeSlopeLimiter
 
 
-  SUBROUTINE FinalizeSlopeLimiter_Euler_GR
+  SUBROUTINE Euler_GR_FinalizeSlopeLimiter
 
     IF( UseTroubledCellIndicator )THEN
 
@@ -170,10 +170,10 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE FinalizeSlopeLimiter_Euler_GR
+  END SUBROUTINE Euler_GR_FinalizeSlopeLimiter
 
 
-  SUBROUTINE ApplySlopeLimiter_Euler_GR( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+  SUBROUTINE Euler_GR_ApplySlopeLimiter( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -296,20 +296,20 @@ CONTAINS
         ! --- Compute Eigenvectors ---
 
         IF( DEBUG ) WRITE(*,'(A)') &
-              'CALL ComputeCharacteristicDecomposition_GR (X1)'
-        CALL ComputeCharacteristicDecomposition_GR &
+              'CALL Euler_GR_ComputeCharacteristicDecomposition (X1)'
+        CALL Euler_GR_ComputeCharacteristicDecomposition &
                ( 1, G_K(:), U_M(:,0,1), R_X1, invR_X1 )
 
         IF( nDimsX > 1 )THEN
 
-          CALL ComputeCharacteristicDecomposition_GR &
+          CALL Euler_GR_ComputeCharacteristicDecomposition &
                  ( 2, G_K(:), U_M(:,0,1), R_X2, invR_X2 )
 
         END IF
 
         IF( nDimsX > 2 )THEN
 
-          CALL ComputeCharacteristicDecomposition_GR &
+          CALL Euler_GR_ComputeCharacteristicDecomposition &
                  ( 3, G_K(:), U_M(:,0,1), R_X3, invR_X3 )
 
         END IF
@@ -438,7 +438,7 @@ CONTAINS
     CALL ApplyConservativeCorrection &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
-  END SUBROUTINE ApplySlopeLimiter_Euler_GR
+  END SUBROUTINE Euler_GR_ApplySlopeLimiter
 
 
   SUBROUTINE InitializeTroubledCellIndicator
@@ -799,4 +799,4 @@ CONTAINS
   END SUBROUTINE ApplyConservativeCorrection
 
 
-END MODULE SlopeLimiterModule_Euler_GR
+END MODULE Euler_GR_SlopeLimiterModule
