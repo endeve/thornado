@@ -15,6 +15,15 @@ Euler_CharacteristicDecompositionModule.o: \
   EquationOfStateModule.o \
   Euler_CharacteristicDecompositionModule.f90
 
+Euler_CharacteristicDecompositionModule_TABLE.o: \
+  KindModule.o \
+  UnitsModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule.o \
+  EquationOfStateModule.o \
+  Euler_CharacteristicDecompositionModule_TABLE.f90
+
 Euler_PositivityLimiterModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \

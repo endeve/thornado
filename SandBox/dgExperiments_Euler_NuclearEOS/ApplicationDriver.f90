@@ -3,7 +3,8 @@ PROGRAM ApplicationDriver
   USE KindModule, ONLY: &
     DP, One, Two, Pi, TwoPi
   USE UnitsModule, ONLY: &
-      Millisecond, Microsecond
+      Millisecond, Microsecond, &
+      Kilometer
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_B1, iX_E0, iX_E1
   USE ProgramInitializationModule, ONLY: &
@@ -77,13 +78,36 @@ PROGRAM ApplicationDriver
 
   SELECT CASE ( TRIM( ProgramName ) )
 
-    CASE( 'RiemannProblem' )
+  CASE( 'RiemannProblem' )
 
       RiemannProblemName = 'Sod'
 
-      nX = [ 200, 1, 1 ]
-      xL = [ - 5.0_DP, 0.0_DP, 0.0_DP ] ! * Kilometer
-      xR = [ + 5.0_DP, 1.0_DP, 1.0_DP ] ! Follow before (Riemann...NuclearEOS)
+      nX = [ 100, 1, 1 ]
+      xL = [ - 5.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
+      xR = [ + 5.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+
+      bcX = [ 2, 0, 0 ]
+
+      nNodes = 3
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 1.5d-0
+
+      iCycleD = 10
+      t_end   = 2.5d-2 * Millisecond
+      dt_wrt  = 2.5d-4 * Millisecond
+
+    CASE( 'Noh' )
+
+      nX = [ 100, 1, 1 ]
+      xL = [ - 5.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
+      xR = [ + 5.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
 
       bcX = [ 2, 0, 0 ]
 
@@ -99,8 +123,8 @@ PROGRAM ApplicationDriver
       LimiterThresholdParameter = 1.5d-0
 
       iCycleD = 10
-      t_end   = 2.5d-0 * Microsecond
-      dt_wrt  = 5.0d-2 * Microsecond
+      t_end   = 2.5d-2 * Millisecond
+      dt_wrt  = 2.5d-4 * Millisecond
 
   END SELECT
 
@@ -153,7 +177,7 @@ PROGRAM ApplicationDriver
   CALL Euler_InitializePositivityLimiter &
          ( Min_1_Option = 1.0d-12, &
            Min_2_Option = 1.0d-12, &
-           UsePositivityLimiter_Option = .TRUE. )
+           UsePositivityLimiter_Option = .FALSE. )
 
   CALL InitializeFields &
          ( AdvectionProfile_Option &
@@ -180,122 +204,122 @@ PROGRAM ApplicationDriver
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
-  !
-  ! CALL WriteFieldsHDF &
-  !        ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
-  !
-  ! CALL InitializeFluid_SSPRK( nStages = 3 )
-  !
-  ! ! --- Evolve ---
-  !
-  ! wTime = MPI_WTIME( )
-  !
-  ! t     = 0.0_DP
-  ! t_wrt = dt_wrt
-  ! wrt   = .FALSE.
-  !
-  ! CALL InitializeTally_Euler &
-  !        ( iX_B0, iX_E0, &
-  !          uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !          uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
-  !
-  ! iCycle = 0
-  ! DO WHILE ( t < t_end )
-  !
-  !   iCycle = iCycle + 1
-  !
-  !   CALL ComputeTimeStep &
-  !          ( iX_B0, iX_E0, &
-  !            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !            CFL = 0.5_DP / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
-  !
-  !   IF( t + dt > t_end )THEN
-  !
-  !     dt = t_end - t
-  !
-  !   END IF
-  !
-  !   IF( t + dt > t_wrt )THEN
-  !
-  !     dt    = t_wrt - t
-  !     t_wrt = t_wrt + dt_wrt
-  !     wrt   = .TRUE.
-  !
-  !   END IF
-  !
-  !   IF( MOD( iCycle, iCycleD ) == 0 )THEN
-  !
-  !     WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
-  !         '', 'Cycle = ', iCycle, '', 't = ',  t, '', 'dt = ', dt
-  !
-  !   END IF
-  !
-  !   CALL UpdateFluid_SSPRK &
-  !          ( t, dt, uGF, uCF, Euler_ComputeIncrement_DG_Explicit )
-  !
-  !   t = t + dt
-  !
-  !   IF( wrt )THEN
-  !
-  !     CALL ComputeFromConserved &
-  !            ( iX_B0, iX_E0, &
-  !              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !              uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !              uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
-  !
-  !     CALL WriteFieldsHDF &
-  !            ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
-  !
-  !     CALL ComputeTally_Euler &
-  !          ( iX_B0, iX_E0, &
-  !            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
-  !
-  !     wrt = .FALSE.
-  !
-  !   END IF
-  !
-  ! END DO
-  !
-  ! CALL ComputeFromConserved &
-  !        ( iX_B0, iX_E0, &
-  !          uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !          uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !          uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !          uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
-  !
-  ! CALL WriteFieldsHDF &
-  !        ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
-  !
-  ! CALL ComputeTally_Euler &
-  !        ( iX_B0, iX_E0, &
-  !          uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !          uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-  !          Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
-  !
-  ! CALL FinalizeTally_Euler
-  !
-  ! wTime = MPI_WTIME( ) - wTime
-  !
-  ! WRITE(*,*)
-  ! WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
-  !   '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
-  ! WRITE(*,*)
-  !
+
+  CALL WriteFieldsHDF &
+         ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
+  CALL InitializeFluid_SSPRK( nStages = 3 )
+
+  ! --- Evolve ---
+
+  wTime = MPI_WTIME( )
+
+  t     = 0.0_DP * Millisecond
+  t_wrt = dt_wrt !* Millisecond
+  wrt   = .TRUE.
+
+  CALL InitializeTally_Euler &
+         ( iX_B0, iX_E0, &
+           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+
+  iCycle = 0
+  DO WHILE ( t < t_end )
+
+    iCycle = iCycle + 1
+
+    CALL ComputeTimeStep &
+           ( iX_B0, iX_E0, &
+             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             CFL = 0.5_DP / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
+
+    IF( t + dt > t_end )THEN
+
+      dt = t_end - t
+
+    END IF
+
+    IF( t + dt > t_wrt )THEN
+
+      dt    = t_wrt - t
+      t_wrt = t_wrt + dt_wrt
+      wrt   = .TRUE.
+
+    END IF
+
+    IF( MOD( iCycle, iCycleD ) == 0 )THEN
+
+      WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
+          '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, '', 'dt = ', dt
+
+    END IF
+
+    CALL UpdateFluid_SSPRK &
+           ( t, dt, uGF, uCF, Euler_ComputeIncrement_DG_Explicit )
+
+    t = t + dt
+
+    IF( wrt )THEN
+
+      CALL ComputeFromConserved &
+             ( iX_B0, iX_E0, &
+               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+
+      CALL WriteFieldsHDF &
+             ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
+      CALL ComputeTally_Euler &
+           ( iX_B0, iX_E0, &
+             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+
+      wrt = .FALSE.
+
+    END IF
+
+  END DO
+
+  CALL ComputeFromConserved &
+         ( iX_B0, iX_E0, &
+           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+
+  CALL WriteFieldsHDF &
+         ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
+  CALL ComputeTally_Euler &
+         ( iX_B0, iX_E0, &
+           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+
+  CALL FinalizeTally_Euler
+
+  wTime = MPI_WTIME( ) - wTime
+
+  WRITE(*,*)
+  WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
+    '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
+  WRITE(*,*)
+
   CALL Euler_FinalizePositivityLimiter
 
   CALL Euler_FinalizeSlopeLimiter
-  !
-  ! CALL FinalizeEquationOfState
-  !
-  ! CALL FinalizeFluid_SSPRK
-  !
-  ! CALL FinalizeReferenceElementX_Lagrange
-  !
-  ! CALL FinalizeReferenceElementX
+
+  CALL FinalizeEquationOfState
+
+  CALL FinalizeFluid_SSPRK
+
+  CALL FinalizeReferenceElementX_Lagrange
+
+  CALL FinalizeReferenceElementX
 
   CALL FinalizeProgram
 

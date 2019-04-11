@@ -101,6 +101,10 @@ CONTAINS
 
         CALL InitializeFields_Explosion
 
+      CASE( 'Noh' )
+
+        CALL InitializeFields_Noh
+
     END SELECT
 
 
@@ -285,18 +289,18 @@ CONTAINS
 
                   ! Change vars
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.00d12 * Gram / Centimeter**3
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
                   uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d32 * Erg / Centimeter**3
                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.4_DP
 
                 ELSE
 
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D)   = 1.25d11 * Gram / Centimeter**3
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1)  = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2)  = 0.0_DP
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3)  = 0.0_DP
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1)  = 0.0_DP * Kilometer / Second
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2)  = 0.0_DP * Kilometer / Second
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3)  = 0.0_DP * Kilometer / Second
                   uAF(iNodeX,iX1,iX2,iX3,iAF_P)   = 1.0d31 * Erg / Centimeter**3
                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)  = 0.3_DP
 
@@ -378,7 +382,7 @@ CONTAINS
           CALL ComputeThermodynamicStates_Primitive &
                  ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
                    uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E ),&
-                   uAF(:,iX1,iX2,iX3,iAF_E),  uCF(:,iX1,iX2,iX3,iCF_Ne) )
+                   uAF(:,iX1,iX2,iX3,iAF_E),  uPF(:,iX1,iX2,iX3,iPF_Ne) )
                    ! iAF_E = Em. Ev = iPF_E
 
           CALL ComputeConserved &
@@ -398,6 +402,71 @@ CONTAINS
 
   END SUBROUTINE InitializeFields_RiemannProblem
 
+  SUBROUTINE InitializeFields_Noh
+
+    INTEGER       :: iX1, iX2, iX3
+    INTEGER       :: iNodeX, iNodeX1
+    REAL(DP)      :: X1
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            IF( X1 <= Half )THEN
+
+              ! Change vars
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.00d12 * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 1.00d3 * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d31 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.4_DP
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)   = 1.00d12 * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1)  = -1.00d3 * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2)  = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3)  = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)   = 1.0d31 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)  = 0.4_DP
+
+            END IF
+
+          END DO
+
+          CALL ComputeTemperatureFromPressure &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_P), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_T) )
+
+          CALL ComputeThermodynamicStates_Primitive &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E ),&
+                   uAF(:,iX1,iX2,iX3,iAF_E),  uPF(:,iX1,iX2,iX3,iPF_Ne) )
+                   ! iAF_E = Em. Ev = iPF_E
+
+          CALL ComputeConserved &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Noh
 
   SUBROUTINE InitializeFields_RiemannProblemSpherical
 

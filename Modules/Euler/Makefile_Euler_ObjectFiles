@@ -2,6 +2,7 @@ EULER = \
   Euler_UtilitiesModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule.o \
+  Euler_CharacteristicDecompositionModule_TABLE.o \
   Euler_SlopeLimiterModule.o \
   Euler_PositivityLimiterModule.o \
   Euler_dgDiscretizationModule.o

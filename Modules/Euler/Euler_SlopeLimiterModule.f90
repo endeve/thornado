@@ -2,6 +2,8 @@ MODULE Euler_SlopeLimiterModule
 
   USE KindModule, ONLY: &
     DP, Zero, One, SqrtTiny
+  USE UnitsModule, ONLY: &
+    AtomicMassUnit, Gram
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDimsX, nNodes, nNodesX
   USE ReferenceElementModuleX, ONLY: &
@@ -28,11 +30,13 @@ MODULE Euler_SlopeLimiterModule
     iGF_Gm_dd_33, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_E, &
+    nCF, iCF_D, iCF_E, iCF_Ne, &
     Shock
   USE Euler_BoundaryConditionsModule, ONLY: &
     Euler_ApplyBoundaryConditions
-  USE Euler_CharacteristicDecompositionModule, ONLY: &
+  ! USE Euler_CharacteristicDecompositionModule, ONLY: &
+  !   ComputeCharacteristicDecomposition
+  USE Euler_CharacteristicDecompositionModule_TABLE, ONLY: &
     ComputeCharacteristicDecomposition
 
   IMPLICIT NONE
@@ -79,7 +83,7 @@ CONTAINS
       LimiterThresholdParameter_Option
 
     INTEGER :: i
- 
+
     IF( PRESENT( BetaTVD_Option ) )THEN
       BetaTVD = BetaTVD_Option
     ELSE
@@ -198,7 +202,7 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iGF, iCF
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
-    REAL(DP) :: G_K(nGF) 
+    REAL(DP) :: G_K(nGF)
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
     REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
@@ -206,7 +210,7 @@ CONTAINS
     REAL(DP) :: R_X3(nCF,nCF), invR_X3(nCF,nCF)
     REAL(DP) :: V_K(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP) :: U_K(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
-    
+
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. UseSlopeLimiter ) RETURN
@@ -237,7 +241,7 @@ CONTAINS
       ! --- Cell Volume ---
 
       V_K(iX1,iX2,iX3) &
-        = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF_SqrtGm) )  
+        = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
       ! --- Cell Average of Conserved Fluid ---
 
@@ -330,6 +334,8 @@ CONTAINS
       END IF
 
       ! --- Compute Limited Slopes ---
+      IF( UseCharacteristicLimiting ) &
+        U_M(iCF_Ne,:,:) = U_M(iCF_Ne,:,:) * AtomicMassUnit
 
       dU(:,1) &
         = MinModB &
@@ -365,6 +371,9 @@ CONTAINS
         ! --- Transform Back from Characteristic Variables ---
 
         dU(:,1) = MATMUL( R_X1, dU(:,1) )
+
+        dU(iCF_Ne,1) = dU(iCF_Ne,1) / AtomicMassUnit
+        U_M(iCF_Ne,:,:) = U_M(iCF_Ne,:,:) / AtomicMassUnit !hack
 
         IF( nDimsX > 1 )THEN
 
@@ -658,11 +667,11 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       V_K(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP), INTENT(in)    :: &
-      U_K(1:nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+      U_K(1:nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL, INTENT(in)     :: &
-      LimitedCell(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)) 
+      LimitedCell(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
 
     LOGICAL  :: UseCorrection
     INTEGER  :: iX1, iX2, iX3, iCF, iPol, iDimX
@@ -691,9 +700,9 @@ CONTAINS
     END DO
 
     UseCorrection = .TRUE.
-    
+
     IF( UseCorrection )THEN
-      
+
       ! --- Applies a correction to the 0-th order ---
       ! --- mode to maintain the cell average.     ---
 
@@ -719,7 +728,7 @@ CONTAINS
 
             END DO
 
-            U_M(iCF,0,1) = U_K(iCF,iX1,iX2,iX3) - Correction 
+            U_M(iCF,0,1) = U_K(iCF,iX1,iX2,iX3) - Correction
 
             CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
 
