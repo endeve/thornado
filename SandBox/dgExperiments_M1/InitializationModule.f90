@@ -1232,7 +1232,7 @@ CONTAINS
 
     ELSE
 
-      CALL InitializeFluidFields_DeleptonizationWave
+      CALL InitializeFluidFields_DeleptonizationWave_Spherical
 
     END IF
 
@@ -1293,7 +1293,7 @@ CONTAINS
             uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
 !!$              = Half * ( MaxT * ( One - TANH( (R-R_T)/H_T ) ) &
 !!$                         + MinT * ( One - TANH( (R_T-R)/H_T ) ) )
-              = MaxT * C_T / ( C_T + ( R / H_T )**2 )
+              = MAX( MaxT * C_T / ( C_T + ( R / H_T )**2 ), 1.0d10 * Kelvin )
 
             uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
 !!$              = Half * ( MinY * ( One - TANH( (R-R_Y)/H_Y ) ) &
@@ -1393,6 +1393,84 @@ CONTAINS
     END ASSOCIATE
 
   END SUBROUTINE InitializeFluidFields_DeleptonizationWave_Profile
+
+
+  SUBROUTINE InitializeFluidFields_DeleptonizationWave_Spherical
+
+    ! --- Density Profile ---
+    REAL(DP), PARAMETER :: MinD = 1.0d08 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: MaxD = 4.0d14 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: C_D  = 7.5_DP
+    REAL(DP), PARAMETER :: R_D  = 2.0d01 * Kilometer
+!    REAL(DP), PARAMETER :: H_D  = 1.0d01 * Kilometer
+    REAL(DP), PARAMETER :: H_D  = 5.0d00 * Kilometer
+    ! --- Temperature Profile ---
+    REAL(DP), PARAMETER :: MinT = 5.0d09 * Kelvin
+    REAL(DP), PARAMETER :: MaxT = 1.5d11 * Kelvin
+    REAL(DP), PARAMETER :: C_T  = 1.0_DP
+    REAL(DP), PARAMETER :: R_T  = 2.5d01 * Kilometer
+!    REAL(DP), PARAMETER :: H_T  = 2.0d01 * Kilometer
+    REAL(DP), PARAMETER :: H_T  = 5.0d01 * Kilometer
+    ! --- Electron Fraction Profile ---
+    REAL(DP), PARAMETER :: MinY = 2.5d-1
+    REAL(DP), PARAMETER :: MaxY = 4.6d-1
+    REAL(DP), PARAMETER :: C_Y  = 1.0_DP
+    REAL(DP), PARAMETER :: R_Y  = 4.5d01 * Kilometer
+!    REAL(DP), PARAMETER :: H_Y  = 1.0d01 * Kilometer
+    REAL(DP), PARAMETER :: H_Y  = 5.0d01 * Kilometer
+
+    INTEGER  :: iX1, iX2, iX3, iNodeX
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3
+    REAL(DP) :: X1, X2, X3, R
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+            iNodeX3 = NodeNumberTableX(3,iNodeX)
+
+            R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+!!$              = Half * ( MaxD * ( One - TANH( (R-R_D)/H_D ) ) &
+!!$                         + MinD * ( One - TANH( (R_D-R)/H_D ) ) )
+              = MaxD * C_D / ( C_D + ( R / H_D )**4 )
+
+            uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+!!$              = Half * ( MaxT * ( One - TANH( (R-R_T)/H_T ) ) &
+!!$                         + MinT * ( One - TANH( (R_T-R)/H_T ) ) )
+              = MAX( MaxT * C_T / ( C_T + ( R / H_T )**2 ), 1.0d10 * Kelvin )
+
+            uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+!!$              = Half * ( MinY * ( One - TANH( (R-R_Y)/H_Y ) ) &
+!!$                         + MaxY * ( One - TANH( (R_Y-R)/H_Y ) ) )
+              = MinY * ( One + C_Y / ( C_Y + ( R / H_Y )**(-12) ) )
+
+          END DO
+
+          CALL ComputeThermodynamicStates_Primitive_TABLE &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E), &
+                   uAF(:,iX1,iX2,iX3,iAF_E),  uPF(:,iX1,iX2,iX3,iPF_Ne) )
+
+          CALL ApplyEquationOfState_TABLE &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_P ), &
+                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
+                   uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mp), &
+                   uAF(:,iX1,iX2,iX3,iAF_Mn), uAF(:,iX1,iX2,iX3,iAF_Xp), &
+                   uAF(:,iX1,iX2,iX3,iAF_Xn), uAF(:,iX1,iX2,iX3,iAF_Xa), &
+                   uAF(:,iX1,iX2,iX3,iAF_Xh), uAF(:,iX1,iX2,iX3,iAF_Gm) )
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFluidFields_DeleptonizationWave_Spherical
 
 
   SUBROUTINE InitializeFluidFields_DeleptonizationWave_Spherical_Profile( FileName )

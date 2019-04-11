@@ -34,6 +34,8 @@ PROGRAM DeleptonizationWave
     FinalizeReferenceElement_Lagrange
   USE GeometryFieldsModule, ONLY: &
     uGF
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryComputationModule_Beta, ONLY: &
     ComputeGeometryX
   USE GeometryFieldsModuleE, ONLY: &
@@ -87,7 +89,7 @@ PROGRAM DeleptonizationWave
   INTEGER  :: nE, nX(3), bcX(3), nNodes
   REAL(DP) :: t, dt, t_end, wTime
   REAL(DP) :: eL, eR
-  REAL(DP) :: xL(3), xR(3)
+  REAL(DP) :: xL(3), xR(3), ZoomX(3)
 
   CoordinateSystem = 'SPHERICAL'
 
@@ -102,6 +104,8 @@ PROGRAM DeleptonizationWave
       xR = [  2.0d2,  2.0d2, + 1.0d2 ] * Kilometer
       
       bcX = [ 32, 32, 32 ]
+
+      zoomX = [ 1.0_DP, 1.0_DP, 1.0_DP ]
  
     CASE( 'SPHERICAL' )
 
@@ -109,9 +113,11 @@ PROGRAM DeleptonizationWave
 
       nX = [ 512, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 3.0d2 * Kilometer, Pi,     TwoPi  ]
+      xR = [ 3.0d3 * Kilometer, Pi,     TwoPi  ]
 
       bcX = [ 32, 0, 0 ]
+
+      zoomX = [ 1.007_DP, 1.0_DP, 1.0_DP ]
 
   END SELECT
  
@@ -134,6 +140,8 @@ PROGRAM DeleptonizationWave
              = xL, &
            xR_Option &
              = xR, &
+           ZoomX_Option &
+             = ZoomX, &
            nE_Option &
              = nE, &
            eL_Option &
@@ -237,12 +245,18 @@ PROGRAM DeleptonizationWave
   wTime = MPI_WTIME( )
 
   t     = 0.0_DP
-  t_end = 5.0d-3 * Millisecond
+  t_end = 2.0d1 * Millisecond
 
 !  dt    = 1.0d-7 * Millisecond
 
-  dt    = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+!  dt    = Third * (xR(1)-xL(1)) / DBLE( nX(1) ) &
+!            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+
+  dt    = Third * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+
+!  dt    = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+!            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
   iCycleD = 10
   iCycleW = 200 ! 200 -> 128, 150 -> 96 

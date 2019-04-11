@@ -1,8 +1,6 @@
 PROGRAM main
 
   ! --- AMReX Modules ---
-  USE amrex_base_module,     ONLY: &
-    amrex_problo, amrex_probhi
   USE amrex_fort_module, ONLY: &
     amrex_real, &
     amrex_spacedim
@@ -28,7 +26,8 @@ PROGRAM main
     amrex_multifab, &
     amrex_multifab_build
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_communicator
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,              ONLY: &
@@ -106,7 +105,7 @@ PROGRAM main
 
   INCLUDE 'mpif.h'
 
-  INTEGER                            :: iLevel, iDim
+  INTEGER                            :: iLevel, iDim, iErr
   TYPE(amrex_box)                    :: BX
   TYPE(amrex_boxarray),  ALLOCATABLE :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE :: DM(:)
@@ -189,7 +188,7 @@ PROGRAM main
   DO iDim = 1, 3
     CALL CreateMesh &
            ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
-             amrex_problo(iDim), amrex_probhi(iDim) )
+             xL(iDim), xR(iDim) )
   END DO
 
   CALL InitializePolynomialBasisX_Lagrange
@@ -205,7 +204,8 @@ PROGRAM main
   CALL InitializeReferenceElementX_Lagrange
 
   CALL MF_ComputeGeometryX( MF_uGF )
-  CALL CreateGeometryFields( nX, swX, CoordinateSystem )
+  CALL CreateGeometryFields &
+         ( nX, swX, CoordinateSystem, amrex_parallel_ioprocessor() )
 
   IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
     Mass = 0.5_amrex_real
@@ -243,7 +243,7 @@ PROGRAM main
   IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_InitializeFields'
   CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
   IF( DEBUG ) WRITE(*,'(A)') 'CALL CreateFluidFields'
-  CALL CreateFluidFields( nX, swX )
+  CALL CreateFluidFields( nX, swX, amrex_parallel_ioprocessor() )
 
   IF( DEBUG ) WRITE(*,'(A)') 'CALL MF_Euler_ApplySlopeLimiter'
   CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
@@ -272,7 +272,7 @@ PROGRAM main
   t = 0.0_amrex_real
 
   CALL WriteFieldsAMReX_PlotFile &
-         ( 0.0e0_amrex_real, GEOM, StepNo, &
+         ( 0.0e0_amrex_real, StepNo, &
            MF_uGF_Option = MF_uGF, &
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &
@@ -288,6 +288,8 @@ PROGRAM main
 
   IF( amrex_parallel_ioprocessor() ) &
     Timer_Evolution = MPI_WTIME()
+
+  CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
   DO WHILE( ALL( t .LT. t_end ) )
 
@@ -327,7 +329,7 @@ PROGRAM main
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_PlotFile &
-             ( t(0), GEOM, StepNo, &
+             ( t(0), StepNo, &
                MF_uGF_Option = MF_uGF, &
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
@@ -363,7 +365,7 @@ PROGRAM main
 
   StepNo = StepNo + 1
   CALL WriteFieldsAMReX_PlotFile &
-         ( t(0), GEOM, StepNo, &
+         ( t(0), StepNo, &
            MF_uGF_Option = MF_uGF, &
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &

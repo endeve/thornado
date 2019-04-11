@@ -84,6 +84,7 @@ PROGRAM ApplicationDriver
   REAL(DP)              :: M_PNS = Zero, Ri, R_PNS, R_shock, Rf
 
   LOGICAL :: DEBUG = .FALSE.
+  LOGICAL :: WriteGF = .FALSE., WriteFF = .TRUE.
   REAL(DP) :: wTime_UF, wTime_CTS, Timer_Evolution
   
 !  ProgramName = 'RiemannProblem'
@@ -163,7 +164,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 256, 256, 1 ]
+      nX  = [ 64, 64, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -183,6 +184,8 @@ PROGRAM ApplicationDriver
 
       t_end = 5.0d-1
 
+      WriteGF = .TRUE.
+
     CASE( 'SphericalSedov' )
 
       nDetCells = 1
@@ -199,6 +202,8 @@ PROGRAM ApplicationDriver
       bcX = [ 3, 0, 0 ]
 
       t_end = 1.0d0
+
+      WriteGF = .TRUE.
 
     CASE( 'KelvinHelmholtz_Relativistic' )
 
@@ -250,6 +255,8 @@ PROGRAM ApplicationDriver
 
       t_end = 3.0d2 * Millisecond
 
+      WriteGF = .TRUE.
+
     CASE DEFAULT
 
       WRITE(*,*)
@@ -273,7 +280,7 @@ PROGRAM ApplicationDriver
   BetaTVD = 1.75d0
   BetaTVB = 0.0d0
 
-  UseSlopeLimiter           = .FALSE.
+  UseSlopeLimiter           = .TRUE.
   SlopeTolerance            = 1.0d-6
   UseCharacteristicLimiting = .TRUE.
 
@@ -287,14 +294,14 @@ PROGRAM ApplicationDriver
   UseFixed_dt   = .FALSE.
   UseSourceTerm = .TRUE.
 
-  iCycleD = 100
+  iCycleD = 10
 !!$  iCycleW = 1000; dt_wrt = -1.0d0
   dt_wrt = 1.0d-2 * t_end; iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
 
-  nStagesSSPRK = nNodes
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -371,7 +378,7 @@ PROGRAM ApplicationDriver
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
 
   CALL WriteFieldsHDF &
-       ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+       ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
   CALL InitializeFluid_SSPRK( nStages = nStagesSSPRK )
 
@@ -486,7 +493,7 @@ PROGRAM ApplicationDriver
 
       IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL WriteFieldsHDF'
       CALL WriteFieldsHDF &
-             ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
       IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL Euler_GR_ComputeTally'
       CALL Euler_GR_ComputeTally &
@@ -512,7 +519,7 @@ PROGRAM ApplicationDriver
            uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
 
   CALL WriteFieldsHDF &
-         ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
   CALL Euler_GR_ComputeTally &
          ( iX_B0, iX_E0, &

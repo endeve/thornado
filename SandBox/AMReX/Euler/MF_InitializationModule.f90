@@ -584,28 +584,24 @@ CONTAINS
 
     ! --- thornado variables ---
     INTEGER            :: iX1, iX2, iX3
-    INTEGER            :: iNodeX, iNodeX1
-    REAL(amrex_real)   :: X1, Alpha, Speed, D_Prime, V1_Prime, P_Prime
+    INTEGER            :: iNodeX, iNodeX1, iNodeX2
+    REAL(amrex_real)   :: X1, X2, Alpha, Speed, D_Prime, V1_Prime, P_Prime
 
-    REAL(amrex_real) :: mDot
-    REAL(amrex_real) :: Mass
-    REAL(amrex_real) :: rshock
-    REAL(amrex_real) :: Mach
-
-    ! --- Perturbation parameters ---
-    LOGICAL, PARAMETER :: Perturb = .FALSE.
-
-    REAL(amrex_real)            :: X2
-    REAL(amrex_real), PARAMETER :: ShellIn = 1.4_amrex_real
-    REAL(amrex_real), PARAMETER :: ShellOut = 1.6_amrex_real
-    INTEGER         , PARAMETER :: PerturbOrder = 0
-    REAL(amrex_real), PARAMETER :: PerturbParam = 2.0_amrex_real
+    REAL(amrex_real) :: mDot, Mass, rShock, Mach
+    INTEGER          :: PerturbOrder
+    REAL(amrex_real) :: ShellIn, ShellOut, PerturbAmplitude
+    LOGICAL          :: Perturb
 
     CALL amrex_parmparse_build( PP, 'SAS' )
-      CALL PP % get( 'mDot',   mDot )
-      CALL PP % get( 'Mass',   Mass )
-      CALL PP % get( 'rShock', rShock )
-      CALL PP % get( 'Mach',   Mach )
+      CALL PP % get( 'mDot',             mDot )
+      CALL PP % get( 'Mass',             Mass )
+      CALL PP % get( 'rShock',           rShock )
+      CALL PP % get( 'Mach',             Mach )
+      CALL PP % get( 'Perturb',          Perturb )
+      CALL PP % get( 'ShellIn',          ShellIn )
+      CALL PP % get( 'ShellOut',         ShellOut )
+      CALL PP % get( 'PerturbOrder',     PerturbOrder )
+      CALL PP % get( 'PerturbAmplitude', PerturbAmplitude )
     CALL amrex_parmparse_destroy( PP )
 
     mDot = mDot * Pi
@@ -655,8 +651,10 @@ CONTAINS
           DO iNodeX = 1, nDOFX
 
             iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
             IF( X1 .LE. rShock ) THEN
 
@@ -722,13 +720,13 @@ CONTAINS
               CASE( 0 )
 
                 uPF_K(iNodeX, iPF_D) &
-                  = ( 1.0_amrex_real + PerturbParam) &
+                  = ( 1.0_amrex_real + PerturbAmplitude ) &
                       * uPF_K(iNodeX,iPF_D)
 
               CASE( 1 )
 
                 uPF_K(iNodeX, iPF_D) &
-                  = ( 1.0_amrex_real + PerturbParam * COS(X2) ) &
+                  = ( 1.0_amrex_real + PerturbAmplitude * COS(X2) ) &
                       * uPF_K(iNodeX,iPF_D)
 
                END SELECT
