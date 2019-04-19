@@ -90,7 +90,7 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      BetaTVD = 2.0_DP
+      BetaTVD = 1.25_DP
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
