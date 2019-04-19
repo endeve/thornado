@@ -80,7 +80,7 @@ PROGRAM ApplicationDriver
 
   CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'Sod'
+      RiemannProblemName = 'ChimeraProfile'
 
       nX = [ 100, 1, 1 ]
       xL = [ - 5.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
@@ -90,24 +90,24 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      BetaTVD = 1.75_DP
+      BetaTVD = 2.0_DP
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
       UseCharacteristicLimiting = .TRUE.
 
-      UseTroubledCellIndicator  = .FALSE.
-      LimiterThresholdParameter = 1.5d-0
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 1.0d-1
 
       iCycleD = 10
-      t_end   = 2.5d-2 * Millisecond
+      t_end   = 2.5d-2 * Millisecond !2.5d-2 * Millisecond!105.0_DP * Millisecond
       dt_wrt  = 2.5d-4 * Millisecond
 
-    CASE( 'Noh' )
+    CASE( 'ChimeraProfile' )
 
       nX = [ 100, 1, 1 ]
-      xL = [ - 5.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
-      xR = [ + 5.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+      xL = [ 2.9d4, 0.0_DP, 0.0_DP ] * Kilometer
+      xR = [ 2.275d7, 1.0_DP, 1.0_DP ] * Kilometer
 
       bcX = [ 2, 0, 0 ]
 
@@ -185,9 +185,8 @@ PROGRAM ApplicationDriver
            Direction_Option &
              = TRIM( Direction ), &
            RiemannProblemName_Option &
-             = TRIM( RiemannProblemName ), &
-           SedovEnergy_Option = Eblast )
-
+             = TRIM( RiemannProblemName ) )
+  print*,"------------------------------------------------------------------"
   CALL Euler_ApplySlopeLimiter &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &

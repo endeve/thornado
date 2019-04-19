@@ -40,13 +40,13 @@ PROGRAM ComputeLeftState_NuclearEOS
 
   ! --- Right State ---
 
-  D_R = 1.0d12 * Gram / Centimeter**3
+  D_R = 1.25d12 * Gram / Centimeter**3
   V_R = 0.0d00 * Kilometer / Second
-  P_R = 1.0d31 * Erg / Centimeter**3
-  Y_R = 0.3_DP
+  T_R = 9.38d10 * Kelvin
+  Y_R = 1.35d-1
 
-  CALL ComputeTemperatureFromPressure_TABLE &
-         ( D_R, P_R, Y_R, T_R )
+  ! CALL ComputeTemperatureFromPressure_TABLE &
+  !        ( D_R, P_R, Y_R, T_R )
   CALL ComputeThermodynamicStates_Primitive_TABLE &
          ( D_R, T_R, Y_R, Ev_R, E_R, N_R )
   CALL ComputeAuxiliary_Fluid_TABLE &
@@ -74,9 +74,9 @@ PROGRAM ComputeLeftState_NuclearEOS
   ! --- Initial Guess for Left State ---
 
   D_L = 4.0_DP * D_R
-  V_L = 0.10_DP
+  V_L = 0.00_DP
   P_L = 10.0_DP * P_R
-  Y_L = Y_R
+  Y_L = 0.5_DP
 
   CALL ComputeTemperatureFromPressure_TABLE &
          ( D_L, P_L, Y_L, T_L )

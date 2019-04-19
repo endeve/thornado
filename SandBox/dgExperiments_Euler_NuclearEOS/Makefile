@@ -7,7 +7,7 @@ WEAKLIB_DIR ?= $(HOME)/weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 
-all: ApplicationDriver
+all: ApplicationDriver ComputeLeftState_NuclearEOS
 
 ApplicationDriver: \
 	$(weaklib) \
@@ -25,16 +25,16 @@ ApplicationDriver: \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
-ComputeEigensystem_NuclearEOS: \
+ComputeLeftState_NuclearEOS: \
 	$(weaklib) \
 	$(thornado) \
 	UtilitiesModule_NuclearEOS.o \
-	ComputeEigensystem_NuclearEOS.o
-	$(FLINKER) $(FLAGS) -o ComputeEigensystem_NuclearEOS_$(MACHINE) \
+	ComputeLeftState_NuclearEOS.o
+	$(FLINKER) $(FLAGS) -o ComputeLeftState_NuclearEOS_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
 	UtilitiesModule_NuclearEOS.o \
-	ComputeEigensystem_NuclearEOS.o \
+	ComputeLeftState_NuclearEOS.o \
 	$(LIBRARIES)
 
 clean:
