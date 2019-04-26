@@ -20,8 +20,6 @@ MODULE InputOutputModuleAMReX
     nCF, uCF, ShortNamesCF, &
     nPF, uPF, ShortNamesPF, &
     nAF, uAF, ShortNamesAF
-  USE InputOutputModuleHDF,    ONLY: &
-    WriteFieldsHDF
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,     ONLY: &
@@ -48,7 +46,6 @@ MODULE InputOutputModuleAMReX
 
   PUBLIC :: WriteFieldsAMReX_PlotFile
   PUBLIC :: WriteFieldsAMReX_Checkpoint
-  PUBLIC :: WriteFieldsHDF_AMReX
   PUBLIC :: ReadCheckpointFile
   PUBLIC :: MakeMF_Diff
 
@@ -217,87 +214,6 @@ CONTAINS
     CALL amrex_fi_set_finest_level( nLevels, amrcore )
 	
   END SUBROUTINE ReadCheckpointFile
-
-
-  SUBROUTINE WriteFieldsHDF_AMReX( Time, GEOM, MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-    REAL(amrex_real),     INTENT(in) :: Time(0:nLevels)
-    TYPE(amrex_geometry), INTENT(in) :: GEOM(0:nLevels)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uPF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uAF(0:nLevels)
-
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF_AMReX(:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF_AMReX(:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uPF_AMReX(:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uAF_AMReX(:,:,:,:)
-
-    INTEGER            :: iLevel, iX_B0(3), iX_E0(3)
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
-
-    DO iLevel = 0, nLevels
-
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
-
-      iX_B0 = GEOM(iLevel) % DOMAIN % lo
-      iX_E0 = GEOM(iLevel) % DOMAIN % hi
-
-      DO WHILE( MFI % next() )
-
-        uGF_AMReX => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF_AMReX => MF_uCF(iLevel) % DataPtr( MFI )
-        uPF_AMReX => MF_uPF(iLevel) % DataPtr( MFI )
-        uAF_AMReX => MF_uAF(iLevel) % DataPtr( MFI )
-
-        BX = MFI % tilebox()
-
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
-
-        CALL AMReX2thornado &
-               ( nGF, iX_B0, iX_E0, &
-                 uGF_AMReX(  iX_B0(1):iX_E0(1), &
-                             iX_B0(2):iX_E0(2), &
-                             iX_B0(3):iX_E0(3),1:nDOFX*nGF), &
-                 uGF(1:nDOFX,iX_B0(1):iX_E0(1), &
-                             iX_B0(2):iX_E0(2), &
-                             iX_B0(3):iX_E0(3),1:nGF) )
-
-        CALL AMReX2thornado &
-               ( nCF, iX_B0, iX_E0, &
-                 uCF_AMReX(  iX_B0(1):iX_E0(1), &
-                             iX_B0(2):iX_E0(2), &
-                             iX_B0(3):iX_E0(3),1:nDOFX*nCF), &
-                 uCF(1:nDOFX,iX_B0(1):iX_E0(1), &
-                             iX_B0(2):iX_E0(2), &
-                             iX_B0(3):iX_E0(3),1:nCF) )
-        CALL AMReX2thornado &
-               ( nPF, iX_B0, iX_E0, &
-                 uPF_AMReX(  iX_B0(1):iX_E0(1), &
-                             iX_B0(2):iX_E0(2), &
-                             iX_B0(3):iX_E0(3),1:nDOFX*nPF), &
-                 uPF(1:nDOFX,iX_B0(1):iX_E0(1), &
-                             iX_B0(2):iX_E0(2), &
-                             iX_B0(3):iX_E0(3),1:nPF) )
-        CALL AMReX2thornado &
-               ( nAF, iX_B0, iX_E0, &
-                 uAF_AMReX(  iX_B0(1):iX_E0(1), &
-                             iX_B0(2):iX_E0(2), &
-                             iX_B0(3):iX_E0(3),1:nDOFX*nAF), &
-                 uAF(1:nDOFX,iX_B0(1):iX_E0(1), &
-                             iX_B0(2):iX_E0(2), &
-                             iX_B0(3):iX_E0(3),1:nAF) )
-
-      END DO
-
-    END DO
-
-    CALL WriteFieldsHDF &
-           ( Time(0), WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
-
-  END SUBROUTINE WriteFieldsHDF_AMReX
 
 
   SUBROUTINE WriteFieldsAMReX_PlotFile &

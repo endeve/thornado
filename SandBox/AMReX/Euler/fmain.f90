@@ -52,7 +52,6 @@ PROGRAM main
     nCF, nPF, nAF, &
     CreateFluidFields
   USE InputOutputModuleAMReX,           ONLY: &
-    WriteFieldsHDF_AMReX, &
     WriteFieldsAMReX_PlotFile, &
     ReadCheckpointFile, &
     MakeMF_Diff

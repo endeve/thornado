@@ -19,9 +19,6 @@ DIM       = 2
 
 EBASE     = main
 
-INCLUDE_LOCATIONS += /usr/local/Cellar/hdf5/1.10.4/include
-LIBRARIES         += -lhdf5_fortran -lhdf5 -L/usr/local/Cellar/hdf5/1.10.4/lib
-
 include ./Make.package
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs

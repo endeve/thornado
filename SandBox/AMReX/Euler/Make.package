@@ -29,7 +29,6 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Euler
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/InputOutput
-VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Opacities
 
 # In THORNADO_DIR/Modules/Numbers:
 
@@ -77,7 +76,6 @@ f90EXE_sources += GravitySolutionModule_Newtonian_PointMass.f90
 # In THORNADO_DIR/Modules/Fields:
 
 f90EXE_sources += FluidFieldsModule.f90
-f90EXE_sources += RadiationFieldsModule.f90
 
 # In THORNADO_DIR/Modules/Euler:
 
@@ -92,8 +90,3 @@ f90EXE_sources += Euler_dgDiscretizationModule.f90
 
 f90EXE_sources += InputOutputModuleAMReX.f90
 f90EXE_sources += InputOutputUtilitiesModule.f90
-f90EXE_sources += InputOutputModuleHDF.f90
-
-# In THORNADO_DIR/Module/Opacities:
-
-f90EXE_sources += NeutrinoOpacitiesModule.f90
