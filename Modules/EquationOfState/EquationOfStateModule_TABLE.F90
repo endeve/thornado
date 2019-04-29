@@ -522,6 +522,7 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
+    INTEGER :: iP
 
     ComputeDerivatives = .FALSE.
     IF( ANY( [ PRESENT( dPdD_Option ), PRESENT( dPdT_Option ), &
@@ -533,9 +534,21 @@ CONTAINS
              ( D(:), T(:), Y(:), P(:), TMP(:,1:3), iP_T, OS_P, &
                Units_V = Dyne / Centimeter**2 )
 
-       IF( PRESENT( dPdD_Option ) ) dPdD_Option(:) = TMP(:,1)
-       IF( PRESENT( dPdT_Option ) ) dPdT_Option(:) = TMP(:,2)
-       IF( PRESENT( dPdY_Option ) ) dPdY_Option(:) = TMP(:,3)
+      IF( PRESENT( dPdD_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dPdD_Option(iP) = TMP(iP,1)
+        END DO
+      END IF
+      IF( PRESENT( dPdT_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dPdT_Option(iP) = TMP(iP,2)
+        END DO
+      END IF
+      IF( PRESENT( dPdY_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dPdY_Option(iP) = TMP(iP,3)
+        END DO
+      END IF
 
     ELSE
 
@@ -559,6 +572,7 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
+    INTEGER :: iP
 
     ComputeDerivatives = .FALSE.
     IF( ANY( [ PRESENT( dEdD_Option ), PRESENT( dEdT_Option ), &
@@ -570,9 +584,21 @@ CONTAINS
              ( D(:), T(:), Y(:), E(:), TMP(:,1:3), iE_T, OS_E, &
                Units_V = Erg / Gram )
 
-      IF( PRESENT( dEdD_Option ) ) dEdD_Option(:) = TMP(:,1)
-      IF( PRESENT( dEdT_Option ) ) dEdT_Option(:) = TMP(:,2)
-      IF( PRESENT( dEdY_Option ) ) dEdY_Option(:) = TMP(:,3)
+      IF( PRESENT( dEdD_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dEdD_Option(iP) = TMP(iP,1)
+        END DO
+      END IF
+      IF( PRESENT( dEdT_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dEdT_Option(iP) = TMP(iP,2)
+        END DO
+      END IF
+      IF( PRESENT( dEdY_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dEdY_Option(iP) = TMP(iP,3)
+        END DO
+      END IF
 
     ELSE
 
@@ -596,6 +622,7 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
+    INTEGER :: iP
 
     ComputeDerivatives = .FALSE.
     IF( ANY( [ PRESENT( dMdD_Option ), PRESENT( dMdT_Option ), &
@@ -607,9 +634,21 @@ CONTAINS
              ( D(:), T(:), Y(:), M(:), TMP(:,1:3), iMe_T, OS_Me, &
                Units_V = MeV )
 
-      IF( PRESENT( dMdD_Option ) ) dMdD_Option(:) = TMP(:,1)
-      IF( PRESENT( dMdT_Option ) ) dMdT_Option(:) = TMP(:,2)
-      IF( PRESENT( dMdY_Option ) ) dMdY_Option(:) = TMP(:,3)
+      IF( PRESENT( dMdD_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dMdD_Option(iP) = TMP(iP,1)
+        END DO
+      END IF
+      IF( PRESENT( dMdT_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dMdT_Option(iP) = TMP(iP,2)
+        END DO
+      END IF
+      IF( PRESENT( dMdY_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dMdY_Option(iP) = TMP(iP,3)
+        END DO
+      END IF
 
     ELSE
 
@@ -633,6 +672,7 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
+    INTEGER :: iP
 
     ComputeDerivatives = .FALSE.
     IF( ANY( [ PRESENT( dMdD_Option ), PRESENT( dMdT_Option ), &
@@ -644,9 +684,21 @@ CONTAINS
              ( D(:), T(:), Y(:), M(:), TMP(:,1:3), iMp_T, OS_Mp, &
                Units_V = MeV )
 
-      IF( PRESENT( dMdD_Option ) ) dMdD_Option(:) = TMP(:,1)
-      IF( PRESENT( dMdT_Option ) ) dMdT_Option(:) = TMP(:,2)
-      IF( PRESENT( dMdY_Option ) ) dMdY_Option(:) = TMP(:,3)
+      IF( PRESENT( dMdD_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dMdD_Option(iP) = TMP(iP,1)
+        END DO
+      END IF
+      IF( PRESENT( dMdT_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dMdT_Option(iP) = TMP(iP,2)
+        END DO
+      END IF
+      IF( PRESENT( dMdY_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dMdY_Option(iP) = TMP(iP,3)
+        END DO
+      END IF
 
     ELSE
 
@@ -670,6 +722,7 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
+    INTEGER :: iP
 
     ComputeDerivatives = .FALSE.
     IF( ANY( [ PRESENT( dMdD_Option ), PRESENT( dMdT_Option ), &
@@ -681,9 +734,21 @@ CONTAINS
              ( D(:), T(:), Y(:), M(:), TMP(:,1:3), iMn_T, OS_Mn, &
                Units_V = MeV )
 
-      IF( PRESENT( dMdD_Option ) ) dMdD_Option(:) = TMP(:,1)
-      IF( PRESENT( dMdT_Option ) ) dMdT_Option(:) = TMP(:,2)
-      IF( PRESENT( dMdY_Option ) ) dMdY_Option(:) = TMP(:,3)
+      IF( PRESENT( dMdD_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dMdD_Option(iP) = TMP(iP,1)
+        END DO
+      END IF
+      IF( PRESENT( dMdT_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dMdT_Option(iP) = TMP(iP,2)
+        END DO
+      END IF
+      IF( PRESENT( dMdY_Option ) ) THEN
+        DO iP = 1, SIZE(D)
+          dMdY_Option(iP) = TMP(iP,3)
+        END DO
+      END IF
 
     ELSE
 
@@ -703,20 +768,25 @@ CONTAINS
     INTEGER,                INTENT(in)  :: iV
     REAL(DP),               INTENT(in)  :: OS_V, Units_V
 
-    REAL(DP), DIMENSION(1:SIZE( D )) :: TMP
+    REAL(DP) :: TMP
+    INTEGER :: iP
+
+    DO iP = 1, SIZE(D)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL LogInterpolateSingleVariable         &
-           ( D(:) / ( Gram / Centimeter**3 ), &
-             T(:) / Kelvin,                   &
-             Y(:), Ds_T, Ts_T, Ys_T,          &
-             LogInterp, OS_V,                 &
-             EOS % DV % Variables(iV) % Values, TMP )
+      CALL LogInterpolateSingleVariable         &
+             ( D(iP) / ( Gram / Centimeter**3 ), &
+               T(iP) / Kelvin,                   &
+               Y(iP), Ds_T, Ts_T, Ys_T,          &
+               OS_V,                 &
+               EOS % DV % Variables(iV) % Values, TMP )
 
 #endif
 
-    V(:) = TMP(:) * Units_V
+      V(iP) = TMP * Units_V
+
+    END DO
 
   END SUBROUTINE ComputeDependentVariable_TABLE
 
@@ -730,26 +800,30 @@ CONTAINS
     INTEGER,                  INTENT(in)  :: iV
     REAL(DP),                 INTENT(in)  :: OS_V, Units_V
 
-    REAL(DP), DIMENSION(1:SIZE( D ))     :: TMP
-    REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: dTMP
+    REAL(DP) :: TMP, dTMP(3)
+    INTEGER :: iP
+
+    DO iP = 1, SIZE(D)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL LogInterpolateDifferentiateSingleVariable &
-           ( D(:) / ( Gram / Centimeter**3 ),      &
-             T(:) / Kelvin,                        &
-             Y(:), Ds_T, Ts_T, Ys_T,               &
-             LogInterp, OS_V,                      &
-             EOS % DV % Variables(iV) % Values,    &
-             TMP, dTMP )
+      CALL LogInterpolateDifferentiateSingleVariable &
+             ( D(iP) / ( Gram / Centimeter**3 ),      &
+               T(iP) / Kelvin,                        &
+               Y(iP), Ds_T, Ts_T, Ys_T,               &
+               OS_V,                      &
+               EOS % DV % Variables(iV) % Values,    &
+               TMP, dTMP )
 
 #endif
 
-    V(:) = TMP(:) * Units_V
+      V(iP) = TMP * Units_V
 
-    dV(:,1) = dTMP(:,1) * Units_V / ( Gram / Centimeter**3 )
-    dV(:,2) = dTMP(:,2) * Units_V / Kelvin
-    dV(:,3) = dTMP(:,3) * Units_V
+      dV(iP,1) = dTMP(1) * Units_V / ( Gram / Centimeter**3 )
+      dV(iP,2) = dTMP(2) * Units_V / Kelvin
+      dV(iP,3) = dTMP(3) * Units_V
+
+    END DO
 
   END SUBROUTINE ComputeDependentVariableAndDerivatives_TABLE
 
