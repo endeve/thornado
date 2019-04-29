@@ -18,7 +18,7 @@ PROGRAM ApplicationDriver
     WriteFieldsHDF
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
-  USE GravitySolutionModule_Newtonian_PointMass_Beta, ONLY: &
+  USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
     ComputeGravitationalPotential
   USE FluidFieldsModule, ONLY: &
     uCF, uPF, uAF

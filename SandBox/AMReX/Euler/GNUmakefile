@@ -2,7 +2,7 @@
 # If you set AMREX_HOME as an environment variable, this line will be ignored
 AMREX_HOME ?= $(AMREX_DIR)
 
-DEBUG     = TRUE
+DEBUG     = FALSE
 
 USE_MPI   = TRUE
 USE_OMP   = FALSE
@@ -18,9 +18,6 @@ COMP      = gnu
 DIM       = 2
 
 EBASE     = main
-
-INCLUDE_LOCATIONS += /usr/local/Cellar/hdf5/1.10.4/include
-LIBRARIES         += -lhdf5_fortran -lhdf5 -L/usr/local/Cellar/hdf5/1.10.4/lib
 
 include ./Make.package
 

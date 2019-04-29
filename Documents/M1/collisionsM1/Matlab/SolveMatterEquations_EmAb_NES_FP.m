@@ -11,9 +11,6 @@ global AtomicMassUnit BoltzmannConstant Erg2MeV SpeedOfLight PlanckConstant;
 % energy grid
 global g_E_N g_W2_N g_W3_N;
 
-% iteration data
-
-global g_Iterations_Min g_Iterations_Max g_Iterations_Ave;
 
 hc = PlanckConstant * SpeedOfLight;
 c = SpeedOfLight;
@@ -91,9 +88,9 @@ while((~CONVERGED)&&(k<=maxIter))
     R_out_NES = R_out_NES * c * dt;
     
     % compute new J
-%     [Jout, iter_in] = UpdateNeutrinoDistribution(Jin, J0, Chi);
-%     [Jout, iter_in] = UpdateNeutrinoDistribution_exact(Jin, J0, Chi);
     [J, iter_in] = UpdateNeutrinoDistribution_NES(J, Jin, J0, Chi, R_in_NES, R_out_NES);
+    
+%     [J, iter_in] = UpdateNeutrinoDistribution_NES_AA(J, Jin, J0, Chi, R_in_NES, R_out_NES);
 
     Inneriter = Inneriter + iter_in;
     

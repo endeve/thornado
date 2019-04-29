@@ -1425,7 +1425,7 @@ CONTAINS
 
       DO iNodeZ = 1, nDOF
 
-        G(iNodeZ,iGF,iZ2,iZ3,iZ3) &
+        G(iNodeZ,iGF,iZ2,iZ3,iZ4) &
           = GX(NodeNumbersX(iNodeZ),iZ2,iZ3,iZ4,iGF)
 
       END DO

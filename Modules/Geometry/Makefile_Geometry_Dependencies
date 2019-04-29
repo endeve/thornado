@@ -25,4 +25,13 @@ GeometryComputationModuleE.o: \
   MeshModule.o \
   GeometryFieldsModuleE.o \
   GeometryComputationModuleE.f90
-  
+
+GravitySolutionModule_Newtonian_PointMass.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GravitySolutionModule_Newtonian_PointMass.f90

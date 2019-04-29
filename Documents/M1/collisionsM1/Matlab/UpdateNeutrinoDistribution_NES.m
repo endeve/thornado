@@ -22,6 +22,8 @@ W2_N = g_W2_N;
 %     NES_out_E = J0 .* (R_out_NES'*diag(W3_N)*(1 - J0));
 %     norm(NES_in_E - NES_out_E)
 
+
+
 while((~CONVERGED)&&(k<=maxIter))
     k = k + 1;
     

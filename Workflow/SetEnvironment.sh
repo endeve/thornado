@@ -40,6 +40,11 @@ elif [[ $THORNADO_MACHINE == sn1987b* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == bbarker* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 elif [[ $THORNADO_MACHINE == juliana* ]]; then
 
   echo
@@ -55,6 +60,11 @@ elif [[ $THORNADO_MACHINE == sjdunham* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == accre* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 elif [[ $THORNADO_MACHINE == ranchu* ]]; then
 
   echo
@@ -62,9 +72,8 @@ elif [[ $THORNADO_MACHINE == ranchu* ]]; then
 
 elif [[ $THORNADO_MACHINE == zelledge* ]]; then
 
-	  echo
-	    echo "INFO: Setting environment for" $THORNADO_MACHINE
-
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
 
 elif [[ $THORNADO_MACHINE == ranchuair* ]]; then
 
@@ -125,6 +134,10 @@ elif [[ $THORNADO_MACHINE == sn1987b ]]; then
 
   echo
 
+elif [[ $THORNADO_MACHINE == bbarker ]]; then
+
+  echo
+
 elif [[ $THORNADO_MACHINE == juliana ]]; then
 
   echo
@@ -141,13 +154,19 @@ elif [[ $THORNADO_MACHINE == sjdunham ]]; then
 
   echo
 
+elif [[ $THORNADO_MACHINE == accre ]]; then
+
+  echo
+
 elif [[ $THORNADO_MACHINE == ranchu ]]; then
 
   echo
 
 elif [[ $THORNADO_MACHINE == zelledge ]]; then
-       
+
   echo
+  export WEAKLIB_DIR=/mnt/c/Users/Zack/weaklib/
+  export THORNADO_DIR=/mnt/c/Users/Zack/thornado/
 
 elif [[ $THORNADO_MACHINE == ranchuair ]]; then
 
