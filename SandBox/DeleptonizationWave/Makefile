@@ -84,7 +84,7 @@ TimeSteppingModule_Castro.o: \
    TimersModule.o \
    FluidFieldsModule.o \
    RadiationFieldsModule.o \
-   TwoMoment_DiscretizationModule_Streaming.o \
+   TwoMoment_DiscretizationModule_Streaming_GPU.o \
    TwoMoment_DiscretizationModule_Collisions_Neutrinos_GPU.o \
    TwoMoment_PositivityLimiterModule_GPU.o \
    PhysicalConstantsModule.o \
