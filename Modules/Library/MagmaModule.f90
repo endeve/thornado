@@ -507,6 +507,20 @@ interface
         type(c_ptr),            value :: queue  !! queue_t
     end subroutine
 
+    subroutine magmablas_dgemv( &
+        transA, m, n, &
+        alpha, dA, lda, &
+               dx, incx, &
+        beta,  dy, incy, &
+        queue ) &
+    bind(C, name="magmablas_dgemv")
+        use iso_c_binding
+        integer(c_int),         value :: transA, m, n, lda, incx, incy
+        real(c_double), value :: alpha, beta
+        type(c_ptr),            value :: dA, dx, dy
+        type(c_ptr),            value :: queue  !! queue_t
+    end subroutine
+
     subroutine magma_dgemm( &
         transA, transB, m, n, k, &
         alpha, dA, lda, &
