@@ -46,7 +46,7 @@ MODULE TwoMoment_PositivityLimiterModule
   INTEGER               :: nR, nR_1, nZ(4)
   REAL(DP)              :: Min_1, Max_1, Min_2
   REAL(DP)              :: Theta_FD, MinTheta_1, MinTheta_2
-  REAL(DP),   PARAMETER :: Theta_Eps = 1.0_DP - EPSILON(1.0_DP)
+  REAL(DP),   PARAMETER :: Theta_Eps = 1.0_DP - 10.0_DP*EPSILON(1.0_DP)
   REAL(DP), ALLOCATABLE :: L_X(:,:)
 
 CONTAINS
