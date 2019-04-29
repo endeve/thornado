@@ -247,7 +247,7 @@ CONTAINS
   END SUBROUTINE FinalizeReferenceElement
 
 
-  PURE FUNCTION OuterProduct1D3D( X1D, n1D, X3D, n3D )
+  FUNCTION OuterProduct1D3D( X1D, n1D, X3D, n3D )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
