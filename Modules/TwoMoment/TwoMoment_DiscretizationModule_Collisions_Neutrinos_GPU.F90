@@ -96,6 +96,16 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: CR_N(:,:,:,:)
   REAL(DP), ALLOCATABLE :: dR_N(:,:,:,:)
 
+  INTERFACE ComputePrimitive_Euler
+    MODULE PROCEDURE ComputePrimitive_Euler_Scalar
+    MODULE PROCEDURE ComputePrimitive_Euler_Vector
+  END INTERFACE
+
+  INTERFACE ComputeConserved_Euler
+    MODULE PROCEDURE ComputeConserved_Euler_Scalar
+    MODULE PROCEDURE ComputeConserved_Euler_Vector
+  END INTERFACE
+
 CONTAINS
 
 
@@ -114,11 +124,11 @@ CONTAINS
       GX  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(in)    :: &
       U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(out) :: &
       dU_F(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCF)
     REAL(DP), INTENT(in)    :: &
       U_R (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(out) :: &
       dU_R(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iE, iN_E, iN_X
@@ -147,8 +157,9 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
     !$OMP PRIVATE( iNodeX, iX1, iX2, iX3 )
 #elif defined(THORNADO_OACC)
-    !$ACC KERNELS LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRIVATE( iNodeX, iX1, iX2, iX3 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iNodeX, iX1, iX2, iX3 ) &
+    !$ACC PRESENT( nX, iX_B0, CF_N, dF_N, U_F )
 #elif defined(THORNADO_OMP)
 #endif
     DO iCF = 1, nCF
@@ -170,8 +181,9 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
     !$OMP PRIVATE( iNodeX, iX1, iX2, iX3 )
 #elif defined(THORNADO_OACC)
-    !$ACC KERNELS LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRIVATE( iNodeX, iX1, iX2, iX3 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iNodeX, iX1, iX2, iX3 ) &
+    !$ACC PRESENT( nX, iX_B0, GX_N, GX )
 #elif defined(THORNADO_OMP)
 #endif
     DO iGF = 1, nGF
@@ -192,7 +204,8 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO
 #elif defined(THORNADO_OACC)
-    !$ACC KERNELS LOOP GANG VECTOR
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( CF_N, PF_N, GX_N )
 #elif defined(THORNADO_OMP)
 #endif
     DO iN_X = 1, nX_G
@@ -221,9 +234,9 @@ CONTAINS
     CALL TimersStart( Timer_Im_ComputeTS_Aux )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne) )
+    !$OMP TARGET UPDATE FROM( PF_N )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne) )
+    !$ACC UPDATE HOST( PF_N )
 #endif
 
     CALL ComputeThermodynamicStates_Auxiliary_TABLE &
@@ -235,9 +248,9 @@ CONTAINS
              AF_N(:,iAF_Ye) )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
+    !$OMP TARGET UPDATE TO( AF_N )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
+    !$ACC UPDATE DEVICE( AF_N )
 #endif
 
     CALL TimersStop( Timer_Im_ComputeTS_Aux )
@@ -267,7 +280,8 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-    !$ACC KERNELS LOOP GANG VECTOR COLLAPSE(3)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( Sig )
 #elif defined(THORNADO_OMP)
 #endif
     DO iS = 1, nSpecies
@@ -290,8 +304,9 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( iNode, iNodeX, iNodeE, iE, iX1, iX2, iX3 )
 #elif defined(THORNADO_OACC)
-    !$ACC KERNELS LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRIVATE( iNodeX, iNodeE, iN_X, iN_E )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( iNode, iNodeX, iNodeE, iE, iX1, iX2, iX3 ) &
+    !$ACC PRESENT( nZ, nX, iX_B0, CR_N, U_R )
 #elif defined(THORNADO_OMP)
 #endif
     DO iS = 1, nSpecies
@@ -346,9 +361,9 @@ CONTAINS
     CALL TimersStart( Timer_Im_ComputeTS_Prim )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye) )
+    !$OMP TARGET UPDATE FROM( PF_N, AF_N )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye) )
+    !$ACC UPDATE HOST( PF_N, AF_N )
 #endif
 
     CALL ComputeThermodynamicStates_Primitive_TABLE &
@@ -360,9 +375,9 @@ CONTAINS
              PF_N(:,iPF_Ne) )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
+    !$OMP TARGET UPDATE TO( PF_N, AF_N )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
+    !$ACC UPDATE DEVICE( PF_N, AF_N )
 #endif
 
     CALL TimersStop( Timer_Im_ComputeTS_Prim )
@@ -372,7 +387,8 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO
 #elif defined(THORNADO_OACC)
-    !$ACC KERNELS LOOP GANG VECTOR
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( PF_N, CF_N, GX_N )
 #elif defined(THORNADO_OMP)
 #endif
     DO iN_X = 1, nX_G
@@ -404,8 +420,9 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
     !$OMP PRIVATE( iN_X )
 #elif defined(THORNADO_OACC)
-    !$ACC KERNELS LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( iN_X )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( iN_X ) &
+    !$ACC PRESENT( nX, iX_B0, dU_F, CF_N, dF_N )
 #elif defined(THORNADO_OMP)
 #endif
     DO iCF = 1, nCF
@@ -433,8 +450,9 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( Kappa )
 #elif defined(THORNADO_OACC)
-    !$ACC KERNELS LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( Kappa )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( Kappa ) &
+    !$ACC PRESENT( Chi, Sig, fEQ, CR_N, dR_N )
 #elif defined(THORNADO_OMP)
 #endif
     DO iS = 1, nSpecies
@@ -492,8 +510,9 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
     !$OMP PRIVATE( iNodeX, iNodeE, iN_X, iN_E )
 #elif defined(THORNADO_OACC)
-    !$ACC KERNELS LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRIVATE( iNodeX, iNodeE, iN_X, iN_E )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRIVATE( iNodeX, iNodeE, iN_X, iN_E ) &
+    !$ACC PRESENT( nX, iX_B0, dU_R, dR_N )
 #elif defined(THORNADO_OMP)
 #endif
     DO iS = 1, nSpecies
@@ -528,17 +547,17 @@ CONTAINS
 
     CALL TimersStop( Timer_Im_Out )
 
-    CALL FinalizeCollisions_New
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
-    !$OMP MAP( from: dU_F, dU_R )
+    !$OMP MAP( from: dU_F, dU_R ) &
+    !$OMP MAP( release: GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
-    !$ACC COPYOUT( dU_F, dU_R )
+    !$ACC COPYOUT( dU_F, dU_R ) &
+    !$ACC DELETE( GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #endif
+
+    CALL FinalizeCollisions_New
 
     CALL TimersStop( Timer_Implicit )
 
@@ -561,12 +580,12 @@ CONTAINS
     REAL(DP), INTENT(in)    :: J_2  (1:nE_G,1:nX_G)
     REAL(DP), INTENT(in)    :: Chi_1(1:nE_G,1:nX_G)
     REAL(DP), INTENT(in)    :: Chi_2(1:nE_G,1:nX_G)
-    REAL(DP), INTENT(inout) :: J0_1 (1:nE_G,1:nX_G)
-    REAL(DP), INTENT(inout) :: J0_2 (1:nE_G,1:nX_G)
-    REAL(DP), INTENT(inout) :: D    (1:nX_G)
-    REAL(DP), INTENT(inout) :: T    (1:nX_G)
-    REAL(DP), INTENT(inout) :: Y    (1:nX_G)
-    REAL(DP), INTENT(inout) :: E    (1:nX_G)
+    REAL(DP), INTENT(out)   :: J0_1 (1:nE_G,1:nX_G)
+    REAL(DP), INTENT(out)   :: J0_2 (1:nE_G,1:nX_G)
+    REAL(DP), INTENT(in)    :: D    (1:nX_G)
+    REAL(DP), INTENT(in)    :: T    (1:nX_G)
+    REAL(DP), INTENT(in)    :: Y    (1:nX_G)
+    REAL(DP), INTENT(in)    :: E    (1:nX_G)
 
     REAL(DP), PARAMETER :: Log1d100 = LOG( 1.0d100 )
     REAL(DP) :: Mnu_1(1:nX_G), dMnudT_1(1:nX_G), dMnudY_1(1:nX_G)
@@ -597,8 +616,9 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
     !$OMP PRIVATE( FD1_Exp, FD2_Exp )
 #elif defined(THORNADO_OACC)
-    !$ACC KERNELS LOOP GANG VECTOR COLLAPSE(2), &
-    !$ACC PRIVATE( FD1_Exp, FD2_Exp )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2), &
+    !$ACC PRIVATE( FD1_Exp, FD2_Exp ) &
+    !$ACC PRESENT( E_N, T, Mnu_1, Mnu_2, J0_1, J0_2 )
 #elif defined(THORNADO_OMP)
 #endif
     DO iN_X = 1, nX_G
@@ -623,23 +643,24 @@ CONTAINS
     !$ACC DELETE( Mnu_1, dMnudT_1, dMnudY_1, Mnu_2, dMnudT_2, dMnudY_2 )
 #endif
 
+
   END SUBROUTINE SolveMatterEquations_EmAb
 
 
   SUBROUTINE ComputeNeutrinoChemicalPotentials &
     ( D, T, Y, M, dMdT, dMdY, iSpecies )
 
-    REAL(DP), INTENT(in)  :: D   (:)
-    REAL(DP), INTENT(in)  :: T   (:)
-    REAL(DP), INTENT(in)  :: Y   (:)
-    REAL(DP), INTENT(out) :: M   (:)
-    REAL(DP), INTENT(out) :: dMdT(:)
-    REAL(DP), INTENT(out) :: dMdY(:)
+    REAL(DP), INTENT(in)  :: D   (1:nX_G)
+    REAL(DP), INTENT(in)  :: T   (1:nX_G)
+    REAL(DP), INTENT(in)  :: Y   (1:nX_G)
+    REAL(DP), INTENT(out) :: M   (1:nX_G)
+    REAL(DP), INTENT(out) :: dMdT(1:nX_G)
+    REAL(DP), INTENT(out) :: dMdY(1:nX_G)
     INTEGER,  INTENT(in)  :: iSpecies
 
-    REAL(DP) :: Me(SIZE(D)), dMedT(SIZE(D)), dMedY(SIZE(D))
-    REAL(DP) :: Mp(SIZE(D)), dMpdT(SIZE(D)), dMpdY(SIZE(D))
-    REAL(DP) :: Mn(SIZE(D)), dMndT(SIZE(D)), dMndY(SIZE(D))
+    REAL(DP) :: Me(1:nX_G), dMedT(1:nX_G), dMedY(1:nX_G)
+    REAL(DP) :: Mp(1:nX_G), dMpdT(1:nX_G), dMpdY(1:nX_G)
+    REAL(DP) :: Mn(1:nX_G), dMndT(1:nX_G), dMndY(1:nX_G)
 
     INTEGER :: i
 
@@ -671,7 +692,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO( Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVCIE( Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
+    !$ACC UPDATE DEVICE( Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
 #endif
 
     ! --- Neutrino Chemical Potential and Derivatives ---
@@ -681,10 +702,11 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-      !$ACC KERNELS LOOP GANG VECTOR
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC PRESENT( M, dMdT, dMdY, Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
 #elif defined(THORNADO_OMP)
 #endif
-      DO i = 1, SIZE(D)
+      DO i = 1, nX_G
         M   (i) = ( Me   (i) + Mp   (i) ) - Mn   (i)
         dMdT(i) = ( dMedT(i) + dMpdT(i) ) - dMndT(i)
         dMdY(i) = ( dMedY(i) + dMpdY(i) ) - dMndY(i)
@@ -695,10 +717,11 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-      !$ACC KERNELS LOOP GANG VECTOR
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC PRESENT( M, dMdT, dMdY, Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
 #elif defined(THORNADO_OMP)
 #endif
-      DO i = 1, SIZE(D)
+      DO i = 1, nX_G
         M   (i) = Mn   (i) - ( Me   (i) + Mp   (i) )
         dMdT(i) = dMndT(i) - ( dMedT(i) + dMpdT(i) )
         dMdY(i) = dMndY(i) - ( dMedY(i) + dMpdY(i) )
@@ -713,6 +736,7 @@ CONTAINS
     !$ACC EXIT DATA &
     !$ACC DELETE( Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
 #endif
+
 
   END SUBROUTINE ComputeNeutrinoChemicalPotentials
 
@@ -766,20 +790,20 @@ CONTAINS
 
   SUBROUTINE FinalizeCollisions_New
 
-    DEALLOCATE( E_N, W2_N, W3_N )
-    DEALLOCATE( CF_N, PF_N, AF_N, GX_N, dF_N )
-    DEALLOCATE( Chi, Sig, fEQ )
-    DEALLOCATE( CR_N, dR_N )
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: E_N, W2_N, W3_N, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
     !$OMP               CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, Chi, Sig, fEQ )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
+    !$ACC EXIT DATA &
     !$ACC DELETE( E_N, W2_N, W3_N, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
     !$ACC         CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, Chi, Sig, fEQ )
 #endif
+
+    DEALLOCATE( E_N, W2_N, W3_N )
+    DEALLOCATE( CF_N, PF_N, AF_N, GX_N, dF_N )
+    DEALLOCATE( Chi, Sig, fEQ )
+    DEALLOCATE( CR_N, dR_N )
 
   END SUBROUTINE FinalizeCollisions_New
 
@@ -814,7 +838,7 @@ CONTAINS
   END SUBROUTINE ComputePointsAndWeightsE
 
 
-  ELEMENTAL SUBROUTINE ComputePrimitive_Euler &
+  SUBROUTINE ComputePrimitive_Euler_Scalar &
     ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #if defined(THORNADO_OMP_OL)
@@ -839,10 +863,37 @@ CONTAINS
                        + S_3**2 / Gm_dd_33 ) / N
     De  = Ne
 
-  END SUBROUTINE ComputePrimitive_Euler
+  END SUBROUTINE ComputePrimitive_Euler_Scalar
+
+  SUBROUTINE ComputePrimitive_Euler_Vector &
+    ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: N(:), S_1(:), S_2(:), S_3(:), G(:), Ne(:)
+    REAL(DP), INTENT(out) :: D(:), V_1(:), V_2(:), V_3(:), E(:), De(:)
+    REAL(DP), INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+
+    ! --- Three-Velocity: Index Up   ---
+    ! --- Three-Momentum: Index Down ---
+
+    D   = N
+    V_1 = S_1 / ( Gm_dd_11 * N )
+    V_2 = S_2 / ( Gm_dd_22 * N )
+    V_3 = S_3 / ( Gm_dd_33 * N )
+    E   = G - Half * ( S_1**2 / Gm_dd_11 &
+                       + S_2**2 / Gm_dd_22 &
+                       + S_3**2 / Gm_dd_33 ) / N
+    De  = Ne
+
+  END SUBROUTINE ComputePrimitive_Euler_Vector
 
 
-  ELEMENTAL SUBROUTINE ComputeConserved_Euler &
+  SUBROUTINE ComputeConserved_Euler_Scalar &
     ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #if defined(THORNADO_OMP_OL)
@@ -867,7 +918,34 @@ CONTAINS
                            + Gm_dd_33 * V_3**2 )
     Ne  = De
 
-  END SUBROUTINE ComputeConserved_Euler
+  END SUBROUTINE ComputeConserved_Euler_Scalar
+
+  SUBROUTINE ComputeConserved_Euler_Vector &
+    ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D(:), V_1(:), V_2(:), V_3(:), E(:), De(:)
+    REAL(DP), INTENT(out) :: N(:), S_1(:), S_2(:), S_3(:), G(:), Ne(:)
+    REAL(DP), INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+
+    ! --- Three-Velocity: Index Up   ---
+    ! --- Three-Momentum: Index Down ---
+
+    N   = D
+    S_1 = D * Gm_dd_11 * V_1
+    S_2 = D * Gm_dd_22 * V_2
+    S_3 = D * Gm_dd_33 * V_3
+    G   = E + Half * D * (   Gm_dd_11 * V_1**2 &
+                           + Gm_dd_22 * V_2**2 &
+                           + Gm_dd_33 * V_3**2 )
+    Ne  = De
+
+  END SUBROUTINE ComputeConserved_Euler_Vector
 
 
 END MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos

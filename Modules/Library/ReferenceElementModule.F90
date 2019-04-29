@@ -223,10 +223,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( delete: Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
+    !$OMP MAP( release: Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC FINALIZE( Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
+    !$ACC DELETE( Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
 #endif
 
     DEALLOCATE( NodeNumbersX )
@@ -247,7 +247,7 @@ CONTAINS
   END SUBROUTINE FinalizeReferenceElement
 
 
-  PURE FUNCTION OuterProduct1D3D( X1D, n1D, X3D, n3D )
+  FUNCTION OuterProduct1D3D( X1D, n1D, X3D, n3D )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)

@@ -35,10 +35,10 @@ FORTRAN_titan_gnu    = ftn
 FORTRAN_titan_cray   = ftn
 FORTRAN_beacon_intel = mpiifort -mkl
 FORTRAN_mcarpe21     = mpiifort
-FORTRAN_summit_gcc   = mpifort $(OPENMP)
-FORTRAN_summit_pgi   = mpifort -Mpreprocess $(OPENMP)
-FORTRAN_summit_xl    = mpifort -qpreprocess $(OPENMP)
-FORTRAN              = $(FORTRAN_$(MACHINE))
+FORTRAN_summit_gcc   = mpifort
+FORTRAN_summit_pgi   = mpifort -Mpreprocess
+FORTRAN_summit_xl    = mpifort -qpreprocess
+FORTRAN              = $(FORTRAN_$(MACHINE)) $(OPENMP) $(OPENACC)
 
 SUFFIX_f90_mac_gnu      =
 SUFFIX_f90_sn1987b      =
@@ -72,11 +72,10 @@ FLINKER_titan_gnu    = ftn
 FLINKER_titan_cray   = ftn
 FLINKER_beacon_intel = mpiifort -mkl
 FLINKER_mcarpe21     = mpiifort
-FLINKER_summit_gcc   = mpifort $(OPENMP)
-FLINKER_summit_pgi   = mpifort -Mpreprocess $(OPENMP)
-FLINKER_summit_xl    = mpifort -qpreprocess $(OPENMP)
-
-FLINKER              = $(FLINKER_$(MACHINE))
+FLINKER_summit_gcc   = mpifort
+FLINKER_summit_pgi   = mpifort -Mpreprocess
+FLINKER_summit_xl    = mpifort -qpreprocess
+FLINKER              = $(FLINKER_$(MACHINE)) $(OPENMP) $(OPENACC)
 
 FLAGS_DEBUG        = $(DEBUG)
 DEBUG_mac_gnu      = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
@@ -114,8 +113,8 @@ OPTIMIZE_titan_gnu    = -O2
 OPTIMIZE_titan_cray   =
 OPTIMIZE_beacon_intel = -fast
 OPTIMIZE_mcarpe21     = -O2
-OPTIMIZE_summit_gcc   = -g -Ofast
-OPTIMIZE_summit_pgi   = -g -fast
+OPTIMIZE_summit_gcc   = -g -O3 -mcpu=power9
+OPTIMIZE_summit_pgi   = -g -O3
 OPTIMIZE_summit_xl    = -g -O3 -qnohot -qarch=pwr9 -qtune=pwr9 -qsclk=micro -qsuppress=cmpmsg -w
 OPTIMIZE              = $(OPTIMIZE_$(MACHINE))
 
@@ -148,7 +147,6 @@ INCLUDE_LAPACK_ranchu          = -I/usr/include
 INCLUDE_LAPACK_ranchuair       = -I/usr/local/opt/lapack/include
 INCLUDE_LAPACK_zelledge        = -I/usr/include
 INCLUDE_LAPACK_accre           = -I/accre/arch/easybuild/software/MPI/GCC/5.4.0-2.26/OpenMPI/1.10.3/ScaLAPACK/2.0.2/include
-INCLUDE_LAPACK_summit_xl       = -I$(OLCF_ROOT_ESSL)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_gcc      = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_pgi      = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_xl       = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
