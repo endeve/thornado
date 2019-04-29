@@ -204,7 +204,7 @@ CONTAINS
     !$OMP               L_X1_Up, L_X2_Up, L_X3_Up, &
     !$OMP               dLdX1_q, dLdX2_q, dLdX3_q )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
+    !$ACC EXIT DATA &
     !$ACC DELETE( L_X1_Dn, L_X2_Dn, L_X3_Dn, &
     !$ACC         L_X1_Up, L_X2_Up, L_X3_Up, &
     !$ACC         dLdX1_q, dLdX2_q, dLdX3_q )
