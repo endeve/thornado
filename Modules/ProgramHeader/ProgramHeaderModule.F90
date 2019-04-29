@@ -315,10 +315,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: nZ, nNodesZ, swZ, bcZ, iZ_B0, iZ_B1, iZ_E0, iZ_E1, zL, zR, zoomZ )
+    !$OMP MAP( to: nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( nZ, nNodesZ, swZ, bcZ, iZ_B0, iZ_B1, iZ_E0, iZ_E1, zL, zR, zoomZ )
+    !$ACC COPYIN( nZ, nNodesZ, swZ, bcZ, zL, zR, zoomZ )
 #endif
 
   END SUBROUTINE InitializeProgramHeaderZ
