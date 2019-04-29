@@ -116,10 +116,10 @@ CONTAINS
       WRITE(*,'(A6,A,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter 
       WRITE(*,*)
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_1 = ', Max_1
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Theta_FD = ', Theta_FD
+      WRITE(*,'(A6,A12,ES23.15E3)') '', 'Min_1 = ', Min_1
+      WRITE(*,'(A6,A12,ES23.15E3)') '', 'Max_1 = ', Max_1
+      WRITE(*,'(A6,A12,ES23.15E3)') '', 'Min_2 = ', Min_2
+      WRITE(*,'(A6,A12,ES23.15E3)') '', 'Theta_FD = ', Theta_FD
 
     END IF
 
