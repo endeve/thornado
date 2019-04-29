@@ -14,6 +14,12 @@ MODULE TimersModule
   REAL(DP), PUBLIC :: Timer_AddFieldsF
   REAL(DP), PUBLIC :: Timer_AddFieldsR
   REAL(DP), PUBLIC :: Timer_PositivityLimiter
+  REAL(DP), PUBLIC :: Timer_PL_In
+  REAL(DP), PUBLIC :: Timer_PL_P
+  REAL(DP), PUBLIC :: Timer_PL_K
+  REAL(DP), PUBLIC :: Timer_PL_Theta_1
+  REAL(DP), PUBLIC :: Timer_PL_Theta_2
+  REAL(DP), PUBLIC :: Timer_PL_Out
   REAL(DP), PUBLIC :: Timer_Explicit
   REAL(DP), PUBLIC :: Timer_Ex_In    
   REAL(DP), PUBLIC :: Timer_Ex_Div   
@@ -57,6 +63,12 @@ CONTAINS
     Timer_AddFieldsF        = Zero
     Timer_AddFieldsR        = Zero
     Timer_PositivityLimiter = Zero
+    Timer_PL_In             = Zero
+    Timer_PL_P              = Zero
+    Timer_PL_K              = Zero
+    Timer_PL_Theta_1        = Zero
+    Timer_PL_Theta_2        = Zero
+    Timer_PL_Out            = Zero
     Timer_Explicit          = Zero
     Timer_Ex_In             = Zero
     Timer_Ex_Div            = Zero
@@ -98,6 +110,12 @@ CONTAINS
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '  AddFieldsF            :', Timer_AddFieldsF       , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '  AddFieldsR            :', Timer_AddFieldsR       , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '  PositivityLimiter     :', Timer_PositivityLimiter, ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_In               :', Timer_PL_In            , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_P                :', Timer_PL_P             , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_K                :', Timer_PL_K             , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_Theta_1          :', Timer_PL_Theta_1       , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_Theta_2          :', Timer_PL_Theta_2       , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_Out              :', Timer_PL_Out           , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '  Explicit              :', Timer_Explicit         , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_In               :', Timer_Ex_In            , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_Div              :', Timer_Ex_Div           , ' s'
