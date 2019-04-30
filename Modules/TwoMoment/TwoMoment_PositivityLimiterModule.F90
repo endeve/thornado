@@ -254,9 +254,9 @@ CONTAINS
 
         ! --- Cell Average ---
 
-        U_K(iCR_N) = DOT_PRODUCT( Weights_q, U_q(:,iCR_N) )
+        !U_K(iCR_N) = DOT_PRODUCT( Weights_q, U_q(:,iCR_N) )
         !U_K(iCR_N) = DDOT( nDOF, Weights_q, 1, U_q(:,iCR_N), 1 )
-        !CALL DGEMV( 'T', nDOF, 1, One, U_q(:,iCR_N), nDOF, Weights_q, 1, Zero, U_K(iCR_N), 1 )
+        CALL DGEMV( 'T', nDOF, 1, One, U_q(:,iCR_N), nDOF, Weights_q, 1, Zero, U_K(iCR_N), 1 )
 
         Theta_1 &
           = Theta_Eps * MIN( One, &
@@ -275,32 +275,38 @@ CONTAINS
 
         MinTheta_1 = MIN( Theta_1, MinTheta_1 )
 
-        nNeg_1 = nNeg_1 + 1
+      END IF
+
 #ifdef THORNADO_DEBUG_POSITIVITYLIMITER
+      IF( NegativeStates(1) )THEN
+        nNeg_1 = nNeg_1 + 1
         IF ( nNeg_1 <= 5 ) THEN
-          WRITE(*,'(a30,5i4)')      'Neg. UQ(N) @ ', iZ1, iZ2, iZ3, iZ4, iS
+          WRITE(*,'(a30,5i4)')         'Neg. UQ(N) @ ', iZ1, iZ2, iZ3, iZ4, iS
           WRITE(*,'(a30,3es23.15)')    'Min_K, Max_K, Theta_1 : ', Min_K, Max_K, Theta_1
           WRITE(*,'(a30,es23.15,i4)')  '        MINVAL(UQ(N)) : ', MINVAL(U_q(:,iCR_N)), MINLOC(U_q(:,iCR_N))
           WRITE(*,'(a30,es23.15)')     '                  U_K : ', U_K(iCR_N)
-          WRITE(*,'(a30,es23.15,i4)')  '        MINVAL(UP(N)) : ', MINVAL(U_PP(:,iCR_N)), MINLOC(U_PP(:,iCR_N))
         END IF
-#endif
-
       END IF
+#endif
 
       ! --- Ensure Positive Gamma ---
 
-      CALL ComputeGamma( nPT, U_PP(1:nPT,1:nCR), Gamma(1:nPT) )
+      !CALL ComputeGamma( nPT, U_PP(1:nPT,1:nCR), Gamma(1:nPT) )
+      Gamma(1:nPT) = GammaFun &
+                     ( U_PP(1:nPT,iCR_N ), &
+                       U_PP(1:nPT,iCR_G1), &
+                       U_PP(1:nPT,iCR_G2), &
+                       U_PP(1:nPT,iCR_G3) )
 
       IF( ANY( Gamma(:) < Min_2 ) )THEN
 
         ! --- Cell Average ---
 
-        DO iCR = 1, nCR
-          U_K(iCR) = DOT_PRODUCT( Weights_q, U_q(:,iCR) )
-          !U_K(iCR) = DDOT( nDOF, Weights_q, 1, U_q(:,iCR), 1 )
-        END DO
-        !CALL DGEMV( 'T', nDOF, nCR, One, U_q, nDOF, Weights_q, 1, Zero, U_K, 1 )
+        !DO iCR = 1, nCR
+        !  U_K(iCR) = DOT_PRODUCT( Weights_q, U_q(:,iCR) )
+        !  !U_K(iCR) = DDOT( nDOF, Weights_q, 1, U_q(:,iCR), 1 )
+        !END DO
+        CALL DGEMV( 'T', nDOF, nCR, One, U_q, nDOF, Weights_q, 1, Zero, U_K, 1 )
 
         Theta_2 = One
         DO iP = 1, nPT
@@ -326,29 +332,30 @@ CONTAINS
         END DO
 
         NegativeStates(2) = .TRUE.
-        NegativeStates(1) = .FALSE.
 
         MinTheta_2 = MIN( Theta_2, MinTheta_2 )
 
-        nNeg_2 = nNeg_2 + 1
+      END IF
+
 #ifdef THORNADO_DEBUG_POSITIVITYLIMITER
+      IF( NegativeStates(2) )THEN
+        nNeg_2 = nNeg_2 + 1
         IF ( nNeg_2 <= 5 ) THEN
           WRITE(*,'(a30,5i4)')      'Neg. Gamma @ ', iZ1, iZ2, iZ3, iZ4, iS
           WRITE(*,'(a30,2es23.15)') '   Min_Gamma, Theta_2 : ', MINVAL(Gamma(:)), Theta_2
           WRITE(*,'(a30,4es23.15)') '        MINVAL(UQ(:)) : ', MINVAL(U_q(:,:),DIM=1)
           WRITE(*,'(a30,4es23.15)') '                  U_K : ', U_K(:)
         END IF
+      END IF
 #endif
 
-      END IF
-
-      IF( NegativeStates(1) )THEN
-
-        U(1:nDOF,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) = U_q(1:nDOF,iCR_N)
-
-      ELSEIF( NegativeStates(2) )THEN
+      IF( NegativeStates(2) )THEN
 
         U(1:nDOF,iZ1,iZ2,iZ3,iZ4,1:nCR,iS) = U_q(1:nDOF,1:nCR)
+
+      ELSEIF( NegativeStates(1) )THEN
+
+        U(1:nDOF,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) = U_q(1:nDOF,iCR_N)
 
       END IF
 
@@ -395,69 +402,9 @@ CONTAINS
 
     INTEGER :: iOS, iCR
 
-    DO iCR = 1, nCR
-
-      U_P(1:nDOF,iCR) = U_Q(1:nDOF,iCR)
-
-      IF( SUM( nPP(4:5) ) > 0 )THEN
-
-        ! --- X1 ---
-
-        iOS = SUM( nPP(1:3) )
-
-        CALL DGEMV &
-               ( 'N', nDOF_X1, nDOF, One, L_X1_Dn, nDOF_X1, &
-                 U_Q(1:nDOF,iCR), 1, Zero, U_P(iOS+1:iOS+nDOF_X1,iCR), 1 )
-
-        iOS = iOS + nPP(4)
-
-        CALL DGEMV &
-               ( 'N', nDOF_X1, nDOF, One, L_X1_Up, nDOF_X1, &
-                 U_Q(1:nDOF,iCR), 1, Zero, U_P(iOS+1:iOS+nDOF_X1,iCR), 1 )
-
-      END IF
-
-      IF( SUM( nPP(6:7) ) > 0 )THEN
-
-        ! --- X2 ---
-
-        iOS = SUM( nPP(1:5) )
-
-        CALL DGEMV &
-               ( 'N', nDOF_X2, nDOF, One, L_X2_Dn, nDOF_X2, &
-                 U_Q(1:nDOF,iCR), 1, Zero, U_P(iOS+1:iOS+nDOF_X2,iCR), 1 )
-
-        iOS = iOS + nPP(6)
-
-        CALL DGEMV &
-               ( 'N', nDOF_X2, nDOF, One, L_X2_Up, nDOF_X2, &
-                 U_Q(1:nDOF,iCR), 1, Zero, U_P(iOS+1:iOS+nDOF_X2,iCR), 1 )
-
-      END IF
-
-      IF( SUM( nPP(8:9) ) > 0 )THEN
-
-        ! --- X3 ---
-
-        iOS = SUM( nPP(1:7) )
-
-        CALL DGEMV &
-               ( 'N', nDOF_X3, nDOF, One, L_X3_Dn, nDOF_X3, &
-                 U_Q(1:nDOF,iCR), 1, Zero, U_P(iOS+1:iOS+nDOF_X3,iCR), 1 )
-
-        iOS = iOS + nPP(8)
-
-        CALL DGEMV &
-               ( 'N', nDOF_X3, nDOF, One, L_X3_Up, nDOF_X3, &
-                 U_Q(1:nDOF,iCR), 1, Zero, U_P(iOS+1:iOS+nDOF_X3,iCR), 1 )
-
-      END IF
-
-    END DO
-
-    !CALL DGEMM &
-    !       ( 'N', 'N', nPT, nCR, nDOF, One, L_X, nPT, &
-    !         U_Q, nDOF, Zero, U_P, nPT )
+    CALL DGEMM &
+           ( 'N', 'N', nPT, nCR, nDOF, One, L_X, nPT, &
+             U_Q, nDOF, Zero, U_P, nPT )
 
   END SUBROUTINE ComputePointValues
 

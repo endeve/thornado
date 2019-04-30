@@ -60,6 +60,11 @@ elif [[ $THORNADO_MACHINE == sjdunham* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == accre* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 elif [[ $THORNADO_MACHINE == ranchu* ]]; then
 
   echo
@@ -146,6 +151,10 @@ elif [[ $THORNADO_MACHINE == kristopher ]]; then
   export POSEIDON_DIR=~/Desktop/Work/ORNL/poseidon
 
 elif [[ $THORNADO_MACHINE == sjdunham ]]; then
+
+  echo
+
+elif [[ $THORNADO_MACHINE == accre ]]; then
 
   echo
 

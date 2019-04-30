@@ -19,6 +19,16 @@ MODULE TwoMoment_UtilitiesModule
   PUBLIC :: StressTensor_Diagonal
   PUBLIC :: NumericalFlux_LLF
 
+  INTERFACE NumericalFlux_LLF
+    MODULE PROCEDURE NumericalFlux_LLF_Scalar
+    MODULE PROCEDURE NumericalFlux_LLF_Vector
+  END INTERFACE
+
+  INTERFACE Flux_X1
+    MODULE PROCEDURE Flux_X1_Scalar
+    MODULE PROCEDURE Flux_X1_Vector
+  END INTERFACE
+
 CONTAINS
 
 
@@ -57,17 +67,18 @@ CONTAINS
   END SUBROUTINE ComputeConserved_TwoMoment
 
 
-  PURE FUNCTION Flux_X1 &
-    ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+  FUNCTION Flux_X1_Scalar &
+    ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
+    RESULT( Flux_X1 )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP)             :: Flux_X1(1:4)
     REAL(DP), INTENT(in) :: D, I_1, I_2, I_3, FF, EF
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP)             :: Flux_X1(1:4)
 
     REAL(DP) :: h_u_1
     REAL(DP) :: h_d_1, h_d_2, h_d_3
@@ -91,10 +102,47 @@ CONTAINS
       = D * Half * ( (Three*EF - One) * h_u_1 * h_d_3 )
 
     RETURN
-  END FUNCTION Flux_X1
+  END FUNCTION Flux_X1_Scalar
+
+  FUNCTION Flux_X1_Vector &
+    ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
+    RESULT( Flux_X1 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D(:), I_1(:), I_2(:), I_3(:), FF(:), EF(:)
+    REAL(DP), INTENT(in) :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+    REAL(DP)             :: Flux_X1(SIZE(D),1:4)
+
+    REAL(DP) :: h_u_1(SIZE(D))
+    REAL(DP) :: h_d_1(SIZE(D)), h_d_2(SIZE(D)), h_d_3(SIZE(D))
+
+    h_u_1 = I_1 / ( FF * D )
+
+    h_d_1 = Gm_dd_11 * I_1 / ( FF * D )
+    h_d_2 = Gm_dd_22 * I_2 / ( FF * D )
+    h_d_3 = Gm_dd_33 * I_3 / ( FF * D )
+
+    Flux_X1(:,1) &
+      = I_1
+
+    Flux_X1(:,2) &
+      = D * Half * ( (Three*EF - One) * h_u_1 * h_d_1 + (One - EF) )
+
+    Flux_X1(:,3) &
+      = D * Half * ( (Three*EF - One) * h_u_1 * h_d_2 )
+
+    Flux_X1(:,4) &
+      = D * Half * ( (Three*EF - One) * h_u_1 * h_d_3 )
+
+    RETURN
+  END FUNCTION Flux_X1_Vector
 
 
-  PURE FUNCTION Flux_X2 &
+  FUNCTION Flux_X2 &
     ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -131,7 +179,7 @@ CONTAINS
   END FUNCTION Flux_X2
 
 
-  PURE FUNCTION Flux_X3 &
+  FUNCTION Flux_X3 &
     ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -199,8 +247,9 @@ CONTAINS
   END FUNCTION StressTensor_Diagonal
 
 
-  REAL(DP) PURE ELEMENTAL FUNCTION NumericalFlux_LLF &
-    ( u_L, u_R, Flux_L, Flux_R, alpha )
+  FUNCTION NumericalFlux_LLF_Scalar &
+    ( u_L, u_R, Flux_L, Flux_R, alpha ) &
+    RESULT( NumericalFlux_LLF )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -210,12 +259,33 @@ CONTAINS
     ! --- Local Lax-Friedrichs Flux ---
 
     REAL(DP), INTENT(in) :: u_L, u_R, flux_L, flux_R, alpha
+    REAL(DP) :: NumericalFlux_LLF
 
     NumericalFlux_LLF &
       = Half * ( flux_L + flux_R - alpha * ( u_R - u_L ) )
 
     RETURN
-  END FUNCTION NumericalFlux_LLF
+  END FUNCTION NumericalFlux_LLF_Scalar
+
+  FUNCTION NumericalFlux_LLF_Vector &
+    ( u_L, u_R, Flux_L, Flux_R, alpha ) &
+    RESULT( NumericalFlux_LLF )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    ! --- Local Lax-Friedrichs Flux ---
+
+    REAL(DP), INTENT(in) :: u_L(:), u_R(:), flux_L(:), flux_R(:), alpha(:)
+    REAL(DP) :: NumericalFlux_LLF(SIZE(u_L))
+
+    NumericalFlux_LLF &
+      = Half * ( flux_L + flux_R - alpha * ( u_R - u_L ) )
+
+    RETURN
+  END FUNCTION NumericalFlux_LLF_Vector
 
 
 END MODULE TwoMoment_UtilitiesModule

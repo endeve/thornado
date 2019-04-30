@@ -207,14 +207,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( delete: LX_X1_Dn, LX_X2_Dn, LX_X3_Dn, &
-    !$OMP              LX_X1_Up, LX_X2_Up, LX_X3_Up, &
-    !$OMP              dLXdX1_q, dLXdX2_q, dLXdX3_q )
+    !$OMP MAP( release: LX_X1_Dn, LX_X2_Dn, LX_X3_Dn, &
+    !$OMP               LX_X1_Up, LX_X2_Up, LX_X3_Up, &
+    !$OMP               dLXdX1_q, dLXdX2_q, dLXdX3_q )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC FINALIZE( LX_X1_Dn, LX_X2_Dn, LX_X3_Dn, &
-    !$ACC           LX_X1_Up, LX_X2_Up, LX_X3_Up, &
-    !$ACC           dLXdX1_q, dLXdX2_q, dLXdX3_q )
+    !$ACC DELETE( LX_X1_Dn, LX_X2_Dn, LX_X3_Dn, &
+    !$ACC         LX_X1_Up, LX_X2_Up, LX_X3_Up, &
+    !$ACC         dLXdX1_q, dLXdX2_q, dLXdX3_q )
 #endif
 
     DEALLOCATE( LX_X1_Dn )

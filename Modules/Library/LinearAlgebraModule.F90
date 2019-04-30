@@ -65,8 +65,10 @@ CONTAINS
     INTEGER                            :: ierr
     INTEGER(C_INT)                     :: itransa, itransb
     INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_b, sizeof_c
+    REAL(DP), DIMENSION(:,:), POINTER  :: pa, pb, pc
     TYPE(C_PTR)                        :: ha, hb, hc
     TYPE(C_PTR)                        :: da, db, dc
+    INTEGER                            :: ka, kb
     LOGICAL                            :: data_on_device
 
     data_on_device = .false.
@@ -74,9 +76,25 @@ CONTAINS
     sizeof_b = k * n * c_sizeof(0.0_DP)
     sizeof_c = m * n * c_sizeof(0.0_DP)
 
-    ha = C_LOC( a )
-    hb = C_LOC( b )
-    hc = C_LOC( c )
+    IF ( transa == 'N' ) THEN
+      ka = k
+    ELSE
+      ka = m
+    END IF
+
+    IF ( transb == 'N' ) THEN
+      kb = n
+    ELSE
+      kb = k
+    END IF
+
+    pa(1:lda,1:ka) => a(:,1:ka)
+    pb(1:ldb,1:kb) => b(:,1:kb)
+    pc(1:ldc,1:n ) => c(:,1:n )
+
+    ha = C_LOC( pa )
+    hb = C_LOC( pb )
+    hc = C_LOC( pc )
 
     data_on_device = device_is_present( ha, mydevice, sizeof_a ) &
                .AND. device_is_present( hb, mydevice, sizeof_b ) &
@@ -88,13 +106,13 @@ CONTAINS
       itransb = itrans_from_char( transb )
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( a, b, c )
+      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
 #elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( a, b, c )
+      !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
 #endif
-      da = C_LOC( a )
-      db = C_LOC( b )
-      dc = C_LOC( c )
+      da = C_LOC( pa )
+      db = C_LOC( pb )
+      dc = C_LOC( pc )
 #if defined(THORNADO_OMP_OL)
       !$OMP END TARGET DATA
 #elif defined(THORNADO_OACC)
@@ -115,6 +133,12 @@ CONTAINS
 
 #if defined(THORNADO_GPU)
       WRITE(*,*) '[MatrixMatrixMultiply] Data not present on device'
+      IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
+        WRITE(*,*) '[MatrixMatrixMultiply]   A missing'
+      IF ( .not. device_is_present( hb, mydevice, sizeof_b ) ) &
+        WRITE(*,*) '[MatrixMatrixMultiply]   B missing'
+      IF ( .not. device_is_present( hc, mydevice, sizeof_c ) ) &
+        WRITE(*,*) '[MatrixMatrixMultiply]   C missing'
 #endif
 
       CALL DGEMM &
@@ -136,7 +160,9 @@ CONTAINS
 
     INTEGER                            :: ierr
     INTEGER(C_INT)                     :: itrans
-    INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_x
+    INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_x, sizeof_y
+    REAL(DP), DIMENSION(:,:), POINTER  :: pa
+    REAL(DP), DIMENSION(:)  , POINTER  :: px, py
     TYPE(C_PTR)                        :: ha, hx, hy
     TYPE(C_PTR)                        :: da, dx, dy
     LOGICAL                            :: data_on_device
@@ -144,27 +170,32 @@ CONTAINS
     data_on_device = .false.
     sizeof_a = m * n * c_sizeof(0.0_DP)
     sizeof_x = m     * c_sizeof(0.0_DP)
+    sizeof_y =     n * c_sizeof(0.0_DP)
 
-    ha = C_LOC( a )
-    hx = C_LOC( x )
-    hy = C_LOC( y )
+    pa(1:lda,1:n) => a(:,1:n)
+    px(1:m) => x(1:m)
+    py(1:n) => y(1:n)
+
+    ha = C_LOC( pa )
+    hx = C_LOC( px )
+    hy = C_LOC( py )
 
     data_on_device = device_is_present( ha, mydevice, sizeof_a ) &
                .AND. device_is_present( hx, mydevice, sizeof_x ) &
-               .AND. device_is_present( hy, mydevice, sizeof_x )
+               .AND. device_is_present( hy, mydevice, sizeof_y )
 
     IF ( data_on_device ) THEN
 
       itrans = itrans_from_char( trans )
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET DATA USE_DEVICE_PTR( a, x, y )
+      !$OMP TARGET DATA USE_DEVICE_PTR( pa, px, py )
 #elif defined(THORNADO_OACC)
-      !$ACC HOST_DATA USE_DEVICE( a, x, y )
+      !$ACC HOST_DATA USE_DEVICE( pa, px, py )
 #endif
-      da = C_LOC( a )
-      dx = C_LOC( x )
-      dy = C_LOC( y )
+      da = C_LOC( pa )
+      dx = C_LOC( px )
+      dy = C_LOC( py )
 #if defined(THORNADO_OMP_OL)
       !$OMP END TARGET DATA
 #elif defined(THORNADO_OACC)
@@ -176,7 +207,7 @@ CONTAINS
              ( cublas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy )
       ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
-      CALL magma_dgemm &
+      CALL magma_dgemv &
              ( itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy, magma_queue )
       CALL magma_queue_sync( magma_queue )
 #endif
@@ -184,7 +215,13 @@ CONTAINS
     ELSE
 
 #if defined(THORNADO_GPU)
-      WRITE(*,*) '[MatrixMatrixMultiply] Data not present on device'
+      WRITE(*,*) '[MatrixVectorMultiply] Data not present on device'
+      IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
+        WRITE(*,*) '[MatrixVectorMultiply]   A missing'
+      IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
+        WRITE(*,*) '[MatrixVectorMultiply]   x missing'
+      IF ( .not. device_is_present( hy, mydevice, sizeof_y ) ) &
+        WRITE(*,*) '[MatrixVectorMultiply]   y missing'
 #endif
 
       CALL DGEMV &
