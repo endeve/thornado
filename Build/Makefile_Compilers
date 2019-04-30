@@ -35,7 +35,7 @@ FORTRAN_titan_gnu    = ftn
 FORTRAN_titan_cray   = ftn
 FORTRAN_beacon_intel = mpiifort -mkl
 FORTRAN_mcarpe21     = mpiifort
-FORTRAN_summit_gcc   = mpifort
+FORTRAN_summit_gcc   = mpifort -cpp
 FORTRAN_summit_pgi   = mpifort -Mpreprocess
 FORTRAN_summit_xl    = mpifort -qpreprocess
 FORTRAN              = $(FORTRAN_$(MACHINE)) $(OPENMP) $(OPENACC)
@@ -232,8 +232,10 @@ ifeq ($(USE_GPU),TRUE)
    DEFINES      += $(PP)-DTHORNADO_GPU
    ifeq ($(USE_OACC),TRUE)
       DEFINES   += $(PP)-DTHORNADO_OACC
+      DEFINES   += $(PP)-D$(MICROPHYSICS)_OACC
    else ifeq ($(USE_OMP_OL),TRUE)
       DEFINES   += $(PP)-DTHORNADO_OMP_OL
+      DEFINES   += $(PP)-D$(MICROPHYSICS)_OMP_OL
    endif
    ifeq ($(USE_MAGMA),TRUE)
       INCLUDE   += $(INCLUDE_MAGMA)
@@ -245,6 +247,7 @@ ifeq ($(USE_GPU),TRUE)
 else
    ifeq ($(USE_OMP),TRUE)
       DEFINES   += $(PP)-DTHORNADO_OMP
+      DEFINES   += $(PP)-D$(MICROPHYSICS)_OMP
    endif
    DEFINES      += $(PP)-DTHORNADO_LA_LAPACK
 endif
