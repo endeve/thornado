@@ -11,6 +11,10 @@ MODULE EquationOfStateModule_TABLE
     ReadEquationOfStateTableHDF
   USE wlEquationOfStateTableModule, ONLY: &
     EquationOfStateTableType
+  USE wlEOSInversionModule, ONLY: &
+    InitializeEOSInversion, &
+    ComputeTemperatureWith_DEY, &
+    DescribeEOSInversionError
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable, &
     LogInterpolateDifferentiateSingleVariable, &
@@ -24,6 +28,7 @@ MODULE EquationOfStateModule_TABLE
 
 #endif
 
+  USE, INTRINSIC :: ISO_C_BINDING
   USE KindModule, ONLY: &
     DP
   USE UnitsModule, ONLY: &
@@ -35,6 +40,9 @@ MODULE EquationOfStateModule_TABLE
     Dyne, &
     Erg, &
     MeV
+  USE DeviceModule, ONLY: &
+    mydevice, &
+    device_is_present
   USE FluidFieldsModule, ONLY: &
     ! --- Primitive Fluid Fields:
     iPF_D, iPF_E, iPF_Ne, nPF, &
@@ -59,6 +67,9 @@ MODULE EquationOfStateModule_TABLE
     BaryonMass = AtomicMassUnit
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
     Ds_T, Ts_T, Ys_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: &
+    P_T, S_T, E_T, Me_T, Mp_T, Mn_T, &
+    Xp_T, Xn_T, Xa_T, Xh_T, Gm_T
 #ifdef MICROPHYSICS_WEAKLIB
   TYPE(EquationOfStateTableType), POINTER :: EOS
   LOGICAL :: UsingExternalEOS
@@ -198,6 +209,49 @@ CONTAINS
     OS_Xh = EOS % DV % Offsets(iXh_T)
     OS_Gm = EOS % DV % Offsets(iGm_T)
 
+    ALLOCATE( P_T (1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
+    ALLOCATE( S_T (1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
+    ALLOCATE( E_T (1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
+    ALLOCATE( Me_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
+    ALLOCATE( Mp_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
+    ALLOCATE( Mn_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
+    ALLOCATE( Xp_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
+    ALLOCATE( Xn_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
+    ALLOCATE( Xa_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
+    ALLOCATE( Xh_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
+    ALLOCATE( Gm_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
+
+    P_T (:,:,:) = EOS % DV % Variables(iP_T ) % Values(:,:,:) 
+    S_T (:,:,:) = EOS % DV % Variables(iS_T ) % Values(:,:,:)
+    E_T (:,:,:) = EOS % DV % Variables(iE_T ) % Values(:,:,:)
+    Me_T(:,:,:) = EOS % DV % Variables(iMe_T) % Values(:,:,:)
+    Mp_T(:,:,:) = EOS % DV % Variables(iMp_T) % Values(:,:,:)
+    Mn_T(:,:,:) = EOS % DV % Variables(iMn_T) % Values(:,:,:)
+    Xp_T(:,:,:) = EOS % DV % Variables(iXp_T) % Values(:,:,:)
+    Xn_T(:,:,:) = EOS % DV % Variables(iXn_T) % Values(:,:,:)
+    Xa_T(:,:,:) = EOS % DV % Variables(iXa_T) % Values(:,:,:)
+    Xh_T(:,:,:) = EOS % DV % Variables(iXh_T) % Values(:,:,:)
+    Gm_T(:,:,:) = EOS % DV % Variables(iGm_T) % Values(:,:,:)
+
+    CALL InitializeEOSInversion &
+           ( Ds_T, Ts_T, Ys_t, &
+             10.0d0**( E_T ) - OS_E, &
+             10.0d0**( P_T ) - OS_P, &
+             10.0d0**( S_T ) - OS_S, &
+             Verbose_Option = .TRUE. )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: Ds_T, Ts_T, Ys_T, &
+    !$OMP          OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, &
+    !$OMP          P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( Ds_T, Ts_T, Ys_T, &
+    !$ACC         OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, &
+    !$ACC         P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T )
+#endif
+
 #endif
 
   END SUBROUTINE InitializeEquationOfState_TABLE
@@ -205,9 +259,33 @@ CONTAINS
 
   SUBROUTINE FinalizeEquationOfState_TABLE
 
+#ifdef MICROPHYSICS_WEAKLIB
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Ds_T, Ts_T, Ys_T, &
+    !$OMP               OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, &
+    !$OMP               P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Ds_T, Ts_T, Ys_T, &
+    !$ACC         OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, &
+    !$ACC         P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T )
+#endif
+
     DEALLOCATE( Ds_T, Ts_T, Ys_T )
 
-#ifdef MICROPHYSICS_WEAKLIB
+    DEALLOCATE( P_T  )
+    DEALLOCATE( S_T  )
+    DEALLOCATE( E_T  )
+    DEALLOCATE( Me_T )
+    DEALLOCATE( Mp_T )
+    DEALLOCATE( Mn_T )
+    DEALLOCATE( Xp_T )
+    DEALLOCATE( Xn_T )
+    DEALLOCATE( Xa_T )
+    DEALLOCATE( Xh_T )
+    DEALLOCATE( Gm_T )
 
     IF ( .NOT. UsingExternalEOS ) THEN
        DEALLOCATE( EOS )
@@ -230,67 +308,67 @@ CONTAINS
     ! --- Interpolate Pressure ----------------------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), P(:), iP_T, OS_P, &
+           ( D(:), T(:), Y(:), P(:), P_T, OS_P, &
              Units_V = Dyne / Centimeter**2 )
 
     ! --- Interpolate Entropy Per Baryon ------------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), S(:), iS_T, OS_S, &
+           ( D(:), T(:), Y(:), S(:), S_T, OS_S, &
              Units_V = BoltzmannConstant )
 
     ! --- Interpolate Specific Internal Energy ------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), E(:), iE_T, OS_E, &
+           ( D(:), T(:), Y(:), E(:), E_T, OS_E, &
              Units_V = Erg / Gram )
 
     ! --- Interpolate Electron Chemical Potential ---------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Me(:), iMe_T, OS_Me, &
+           ( D(:), T(:), Y(:), Me(:), Me_T, OS_Me, &
              Units_V = MeV )
 
     ! --- Interpolate Proton Chemical Potential -----------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Mp(:), iMp_T, OS_Mp, &
+           ( D(:), T(:), Y(:), Mp(:), Mp_T, OS_Mp, &
              Units_V = MeV )
 
     ! --- Interpolate Neutron Chemical Potential ----------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Mn(:), iMn_T, OS_Mn, &
+           ( D(:), T(:), Y(:), Mn(:), Mn_T, OS_Mn, &
              Units_V = MeV )
 
     ! --- Interpolate Proton Mass Fraction ----------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Xp(:), iXp_T, OS_Xp, &
+           ( D(:), T(:), Y(:), Xp(:), Xp_T, OS_Xp, &
              Units_V = 1.0_DP )
 
     ! --- Interpolate Neutron Mass Fraction ---------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Xn(:), iXn_T, OS_Xn, &
+           ( D(:), T(:), Y(:), Xn(:), Xn_T, OS_Xn, &
              Units_V = 1.0_DP )
 
     ! --- Interpolate Alpha Mass Fraction -----------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Xa(:), iXa_T, OS_Xa, &
+           ( D(:), T(:), Y(:), Xa(:), Xa_T, OS_Xa, &
              Units_V = 1.0_DP )
 
     ! --- Interpolate Heavy Mass Fraction -----------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Xh(:), iXh_T, OS_Xh, &
+           ( D(:), T(:), Y(:), Xh(:), Xh_T, OS_Xh, &
              Units_V = 1.0_DP )
 
     ! --- Gamma1 ------------------------------------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Gm(:), iGm_T, OS_Gm, &
+           ( D(:), T(:), Y(:), Gm(:), Gm_T, OS_Gm, &
              Units_V = 1.0_DP )
 
   END SUBROUTINE ApplyEquationOfState_TABLE
@@ -301,18 +379,28 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, E, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: T
 
-    REAL(DP), DIMENSION(SIZE(T)) :: T_Lookup
+    REAL(DP) :: T_Lookup(SIZE(D))
+    INTEGER :: iP, nP, Error(SIZE(D))
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputeTempFromIntEnergy_Lookup     &
-           ( D / ( Gram / Centimeter**3 ),   &
-             E / ( Erg / Gram ),             &
-             Y, Ds_T, Ts_T, Ys_T, LogInterp, &
-             EOS % DV % Variables(iE_T) % Values, OS_E, &
-             T_Lookup )
+    nP = SIZE(D)
 
-    T = T_Lookup * Kelvin
+    CALL ComputeTemperatureWith_DEY           &
+           ( D(:) / ( Gram / Centimeter**3 ), &
+             E(:) / ( Erg / Gram ),           &
+             Y(:),                            &
+             Ds_T, Ts_T, Ys_T, E_T, OS_E,     &
+             T_Lookup,  &
+             Error_Option = Error(:) )
+
+    T(:) = T_Lookup(:) * Kelvin
+    IF ( ANY( Error(:) > 0 ) ) THEN 
+      DO iP = 1, nP
+        IF ( Error(iP) > 0 ) CALL DescribeEOSInversionError( Error(iP) )
+      END DO
+      STOP
+    END IF
 
 #endif
 
@@ -367,11 +455,11 @@ CONTAINS
            ( D(:), Em(:), Y(:), T(:) )
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), P(:), iP_T, OS_P, &
+           ( D(:), T(:), Y(:), P(:), P_T, OS_P, &
              Units_V = Dyne / Centimeter**2 )
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Gm(:), iGm_T, OS_Gm, &
+           ( D(:), T(:), Y(:), Gm(:), Gm_T, OS_Gm, &
              Units_V = 1.0_DP )
 
     Cs(:) = SQRT( Gm(:) * P(:) / D(:) )
@@ -392,7 +480,7 @@ CONTAINS
            ( D / ( Gram / Centimeter**3 ),   &
              P / ( Dyne / Centimeter**2 ),             &
              Y, Ds_T, Ts_T, Ys_T, LogInterp, &
-             EOS % DV % Variables(iP_T) % Values, OS_P, &
+             P_T, OS_P, &
              T_Bisection )
 
     T = T_Bisection * Kelvin
@@ -410,7 +498,7 @@ CONTAINS
     ! --- Interpolate Specific Internal Energy ------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Em(:), iE_T, OS_E, &
+           ( D(:), T(:), Y(:), Em(:), E_T, OS_E, &
              Units_V = Erg / Gram )
 
     Ev(:) = Em(:) * D(:)              ! --- Internal Energy per Unit Volume
@@ -445,15 +533,15 @@ CONTAINS
            ( D(:), Em(:), Y(:), T(:) )
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), P(:), iP_T, OS_P, &
+           ( D(:), T(:), Y(:), P(:), P_T, OS_P, &
              Units_V = Dyne / Centimeter**2 )
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), S(:), iS_T, OS_S, &
+           ( D(:), T(:), Y(:), S(:), S_T, OS_S, &
              Units_V = BoltzmannConstant )
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Gm(:), iGm_T, OS_Gm, &
+           ( D(:), T(:), Y(:), Gm(:), Gm_T, OS_Gm, &
              Units_V = 1.0_DP )
 
     Cs(:) = SQRT( Gm(:) * P(:) / D(:) )
@@ -484,21 +572,21 @@ CONTAINS
 
     CALL ComputeDependentVariable_TABLE &
            ( [ PF(iPF_D) ], [ Auxiliary_Fluid_TABLE(iAF_T) ], &
-             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP, iP_T, OS_P, &
+             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP, P_T, OS_P, &
              Units_V = Dyne / Centimeter**2 )
 
     Auxiliary_Fluid_TABLE(iAF_P) = TMP(1)
 
     CALL ComputeDependentVariable_TABLE &
            ( [ PF(iPF_D) ], [ Auxiliary_Fluid_TABLE(iAF_T) ], &
-             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP, iS_T, OS_S, &
+             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP, S_T, OS_S, &
              Units_V = BoltzmannConstant )
 
     Auxiliary_Fluid_TABLE(iAF_S) = TMP(1)
 
     CALL ComputeDependentVariable_TABLE &
            ( [ PF(iPF_D) ], [ Auxiliary_Fluid_TABLE(iAF_T) ], &
-             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP, iGm_T, OS_Gm, &
+             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP, Gm_T, OS_Gm, &
              Units_V = 1.0_DP )
 
     Auxiliary_Fluid_TABLE(iAF_Gm) = TMP(1)
@@ -522,7 +610,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
-    INTEGER :: iP
+    INTEGER :: iP, nP
+
+    nP = SIZE(D)
 
     ComputeDerivatives = .FALSE.
     IF( ANY( [ PRESENT( dPdD_Option ), PRESENT( dPdT_Option ), &
@@ -531,29 +621,19 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D(:), T(:), Y(:), P(:), TMP(:,1:3), iP_T, OS_P, &
+             ( D(:), T(:), Y(:), P(:), TMP(:,:), P_T, OS_P, &
                Units_V = Dyne / Centimeter**2 )
 
-      IF( PRESENT( dPdD_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dPdD_Option(iP) = TMP(iP,1)
-        END DO
-      END IF
-      IF( PRESENT( dPdT_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dPdT_Option(iP) = TMP(iP,2)
-        END DO
-      END IF
-      IF( PRESENT( dPdY_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dPdY_Option(iP) = TMP(iP,3)
-        END DO
-      END IF
+      DO iP = 1, nP
+        IF( PRESENT( dPdD_Option ) ) dPdD_Option(iP) = TMP(iP,1)
+        IF( PRESENT( dPdT_Option ) ) dPdT_Option(iP) = TMP(iP,2)
+        IF( PRESENT( dPdY_Option ) ) dPdY_Option(iP) = TMP(iP,3)
+      END DO
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D(:), T(:), Y(:), P(:), iP_T, OS_P, &
+             ( D(:), T(:), Y(:), P(:), P_T, OS_P, &
                Units_V = Dyne / Centimeter**2 )
 
     END IF
@@ -572,7 +652,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
-    INTEGER :: iP
+    INTEGER :: iP, nP
+
+    nP = SIZE(D)
 
     ComputeDerivatives = .FALSE.
     IF( ANY( [ PRESENT( dEdD_Option ), PRESENT( dEdT_Option ), &
@@ -581,29 +663,19 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D(:), T(:), Y(:), E(:), TMP(:,1:3), iE_T, OS_E, &
+             ( D(:), T(:), Y(:), E(:), TMP(:,:), E_T, OS_E, &
                Units_V = Erg / Gram )
 
-      IF( PRESENT( dEdD_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dEdD_Option(iP) = TMP(iP,1)
-        END DO
-      END IF
-      IF( PRESENT( dEdT_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dEdT_Option(iP) = TMP(iP,2)
-        END DO
-      END IF
-      IF( PRESENT( dEdY_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dEdY_Option(iP) = TMP(iP,3)
-        END DO
-      END IF
+      DO iP = 1, nP
+        IF( PRESENT( dEdD_Option ) ) dEdD_Option(iP) = TMP(iP,1)
+        IF( PRESENT( dEdT_Option ) ) dEdT_Option(iP) = TMP(iP,2)
+        IF( PRESENT( dEdY_Option ) ) dEdY_Option(iP) = TMP(iP,3)
+      END DO
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D(:), T(:), Y(:), E(:), iE_T, OS_E, &
+             ( D(:), T(:), Y(:), E(:), E_T, OS_E, &
                Units_V = Erg / Gram )
 
     END IF
@@ -622,7 +694,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
-    INTEGER :: iP
+    INTEGER :: iP, nP
+
+    nP = SIZE(D)
 
     ComputeDerivatives = .FALSE.
     IF( ANY( [ PRESENT( dMdD_Option ), PRESENT( dMdT_Option ), &
@@ -631,29 +705,19 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D(:), T(:), Y(:), M(:), TMP(:,1:3), iMe_T, OS_Me, &
+             ( D(:), T(:), Y(:), M(:), TMP(:,:), Me_T, OS_Me, &
                Units_V = MeV )
 
-      IF( PRESENT( dMdD_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dMdD_Option(iP) = TMP(iP,1)
-        END DO
-      END IF
-      IF( PRESENT( dMdT_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dMdT_Option(iP) = TMP(iP,2)
-        END DO
-      END IF
-      IF( PRESENT( dMdY_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dMdY_Option(iP) = TMP(iP,3)
-        END DO
-      END IF
+      DO iP = 1, nP
+        IF( PRESENT( dMdD_Option ) ) dMdD_Option(iP) = TMP(iP,1)
+        IF( PRESENT( dMdT_Option ) ) dMdT_Option(iP) = TMP(iP,2)
+        IF( PRESENT( dMdY_Option ) ) dMdY_Option(iP) = TMP(iP,3)
+      END DO
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D(:), T(:), Y(:), M(:), iMe_T, OS_Me, &
+             ( D(:), T(:), Y(:), M(:), Me_T, OS_Me, &
                Units_V = MeV )
 
     END IF
@@ -672,7 +736,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
-    INTEGER :: iP
+    INTEGER :: iP, nP
+
+    nP = SIZE(D)
 
     ComputeDerivatives = .FALSE.
     IF( ANY( [ PRESENT( dMdD_Option ), PRESENT( dMdT_Option ), &
@@ -681,29 +747,19 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D(:), T(:), Y(:), M(:), TMP(:,1:3), iMp_T, OS_Mp, &
+             ( D(:), T(:), Y(:), M(:), TMP(:,:), Mp_T, OS_Mp, &
                Units_V = MeV )
 
-      IF( PRESENT( dMdD_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dMdD_Option(iP) = TMP(iP,1)
-        END DO
-      END IF
-      IF( PRESENT( dMdT_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dMdT_Option(iP) = TMP(iP,2)
-        END DO
-      END IF
-      IF( PRESENT( dMdY_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dMdY_Option(iP) = TMP(iP,3)
-        END DO
-      END IF
+      DO iP = 1, nP
+        IF( PRESENT( dMdD_Option ) ) dMdD_Option(iP) = TMP(iP,1)
+        IF( PRESENT( dMdT_Option ) ) dMdT_Option(iP) = TMP(iP,2)
+        IF( PRESENT( dMdY_Option ) ) dMdY_Option(iP) = TMP(iP,3)
+      END DO
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D(:), T(:), Y(:), M(:), iMp_T, OS_Mp, &
+             ( D(:), T(:), Y(:), M(:), Mp_T, OS_Mp, &
                Units_V = MeV )
 
     END IF
@@ -722,7 +778,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
-    INTEGER :: iP
+    INTEGER :: iP, nP
+
+    nP = SIZE(D)
 
     ComputeDerivatives = .FALSE.
     IF( ANY( [ PRESENT( dMdD_Option ), PRESENT( dMdT_Option ), &
@@ -731,29 +789,19 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D(:), T(:), Y(:), M(:), TMP(:,1:3), iMn_T, OS_Mn, &
+             ( D(:), T(:), Y(:), M(:), TMP(:,:), Mn_T, OS_Mn, &
                Units_V = MeV )
 
-      IF( PRESENT( dMdD_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dMdD_Option(iP) = TMP(iP,1)
-        END DO
-      END IF
-      IF( PRESENT( dMdT_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dMdT_Option(iP) = TMP(iP,2)
-        END DO
-      END IF
-      IF( PRESENT( dMdY_Option ) ) THEN
-        DO iP = 1, SIZE(D)
-          dMdY_Option(iP) = TMP(iP,3)
-        END DO
-      END IF
+      DO iP = 1, nP
+        IF( PRESENT( dMdD_Option ) ) dMdD_Option(iP) = TMP(iP,1)
+        IF( PRESENT( dMdT_Option ) ) dMdT_Option(iP) = TMP(iP,2)
+        IF( PRESENT( dMdY_Option ) ) dMdY_Option(iP) = TMP(iP,3)
+      END DO
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D(:), T(:), Y(:), M(:), iMn_T, OS_Mn, &
+             ( D(:), T(:), Y(:), M(:), Mn_T, OS_Mn, &
                Units_V = MeV )
 
     END IF
@@ -761,61 +809,63 @@ CONTAINS
   END SUBROUTINE ComputeNeutronChemicalPotential_TABLE
 
 
-  SUBROUTINE ComputeDependentVariable_TABLE( D, T, Y, V, iV, OS_V, Units_V )
+  SUBROUTINE ComputeDependentVariable_TABLE( D, T, Y, V, Values, OS_V, Units_V )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out) :: V
-    INTEGER,                INTENT(in)  :: iV
-    REAL(DP),               INTENT(in)  :: OS_V, Units_V
+    REAL(DP), DIMENSION(:),     INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:),     INTENT(out) :: V
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Values
+    REAL(DP),                   INTENT(in)  :: OS_V, Units_V
 
     REAL(DP) :: TMP
-    INTEGER :: iP
-
-    DO iP = 1, SIZE(D)
+    INTEGER :: iP, nP
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    nP = SIZE(D)
+
+    DO iP = 1, nP
 
       CALL LogInterpolateSingleVariable         &
              ( D(iP) / ( Gram / Centimeter**3 ), &
                T(iP) / Kelvin,                   &
                Y(iP), Ds_T, Ts_T, Ys_T,          &
                OS_V,                 &
-               EOS % DV % Variables(iV) % Values, TMP )
-
-#endif
+               Values, TMP )
 
       V(iP) = TMP * Units_V
 
     END DO
 
+#endif
+
   END SUBROUTINE ComputeDependentVariable_TABLE
 
 
   SUBROUTINE ComputeDependentVariableAndDerivatives_TABLE &
-               ( D, T, Y, V, dV, iV, OS_V, Units_V )
+               ( D, T, Y, V, dV, Values, OS_V, Units_V )
 
-    REAL(DP), DIMENSION(:),   INTENT(in)  :: D, T, Y
-    REAL(DP), DIMENSION(:),   INTENT(out) :: V
-    REAL(DP), DIMENSION(:,:), INTENT(out) :: dV
-    INTEGER,                  INTENT(in)  :: iV
-    REAL(DP),                 INTENT(in)  :: OS_V, Units_V
+    REAL(DP), DIMENSION(:),     INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:),     INTENT(out) :: V
+    REAL(DP), DIMENSION(:,:),   INTENT(out) :: dV
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Values
+    REAL(DP),                   INTENT(in)  :: OS_V, Units_V
 
     REAL(DP) :: TMP, dTMP(3)
-    INTEGER :: iP
-
-    DO iP = 1, SIZE(D)
+    INTEGER :: iP, nP
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    nP = SIZE(D)
+
+    DO iP = 1, nP
 
       CALL LogInterpolateDifferentiateSingleVariable &
              ( D(iP) / ( Gram / Centimeter**3 ),      &
                T(iP) / Kelvin,                        &
                Y(iP), Ds_T, Ts_T, Ys_T,               &
                OS_V,                      &
-               EOS % DV % Variables(iV) % Values,    &
+               Values,    &
                TMP, dTMP )
-
-#endif
 
       V(iP) = TMP * Units_V
 
@@ -824,6 +874,8 @@ CONTAINS
       dV(iP,3) = dTMP(3) * Units_V
 
     END DO
+
+#endif
 
   END SUBROUTINE ComputeDependentVariableAndDerivatives_TABLE
 
