@@ -39,7 +39,7 @@ MODULE MF_InitializationModule
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iPF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iCF_Ne
   USE Euler_UtilitiesModule,   ONLY: &
-    ComputeConserved
+    Euler_ComputeConserved
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -69,6 +69,10 @@ CONTAINS
       CASE ( 'IsentropicVortex' )
 
         CALL InitializeFields_IsentropicVortex( MF_uGF, MF_uCF )
+
+      CASE ( 'Sod' )
+
+        CALL InitializeFields_Sod( MF_uGF, MF_uCF )
 
       CASE ( 'SphericalSod' )
 
@@ -186,7 +190,7 @@ CONTAINS
 
           END DO
 
-          CALL ComputeConserved &
+          CALL Euler_ComputeConserved &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -215,6 +219,117 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_IsentropicVortex
+
+
+  SUBROUTINE InitializeFields_Sod( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+
+    INTEGER            :: iDim, iLevel
+    INTEGER            :: iX1, iX2, iX3
+    INTEGER            :: iNodeX
+    INTEGER            :: lo_G(4), hi_G(4)
+    INTEGER            :: lo_F(4), hi_F(4)
+    REAL(amrex_real)   :: X1
+    REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
+    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(MeshType)     :: MeshX(3)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    uGF_K = 0.0d0
+    uPF_K = 0.0d0
+    uCF_K = 0.0d0
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               amrex_problo(iDim), amrex_probhi(iDim) )
+
+    END DO
+
+    DO iLevel = 0, nLevels
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          X1 = MeshX(1) % Center(iX1)
+
+          DO iNodeX = 1, nDOFX
+
+            IF( X1 .LE. 0.5_amrex_real ) THEN
+
+              uPF_K(iNodeX,iPF_D)  = 1.0_amrex_real
+              uPF_K(iNodeX,iPF_V1) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_V2) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_V3) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_E)  = 1.0_amrex_real / 0.4_amrex_real
+
+            ELSE
+
+              uPF_K(iNodeX,iPF_D)  = 0.125_amrex_real
+              uPF_K(iNodeX,iPF_V1) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_V2) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_V3) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_E)  = 0.1_amrex_real / 0.4_amrex_real
+
+            END IF
+
+          END DO
+
+          CALL Euler_ComputeConserved &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_Sod
 
 
   SUBROUTINE InitializeFields_SphericalSod( MF_uGF, MF_uCF )
@@ -297,7 +412,7 @@ CONTAINS
 
           END DO
 
-          CALL ComputeConserved &
+          CALL Euler_ComputeConserved &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -404,7 +519,7 @@ CONTAINS
           uPF_K(:,iPF_V3) = 0.0_DP
           uPF_K(:,iPF_E)  = 1.0d-2
 
-          CALL ComputeConserved &
+          CALL Euler_ComputeConserved &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -532,7 +647,7 @@ CONTAINS
 
           END DO
 
-          CALL ComputeConserved &
+          CALL Euler_ComputeConserved &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -735,7 +850,7 @@ CONTAINS
 
           END DO
 
-          CALL ComputeConserved &
+          CALL Euler_ComputeConserved &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &

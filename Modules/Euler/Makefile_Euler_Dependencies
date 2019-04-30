@@ -1,3 +1,12 @@
+Euler_UtilitiesModule_NonRelativistic.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  Euler_UtilitiesModule_NonRelativistic.f90
+
 Euler_UtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -5,7 +14,15 @@ Euler_UtilitiesModule.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
-  Euler_UtilitiesModule.f90
+  Euler_UtilitiesModule.F90
+
+Euler_CharacteristicDecompositionModule_NonRelativistic.o: \
+  KindModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule.o \
+  EquationOfStateModule.o \
+  Euler_CharacteristicDecompositionModule_NonRelativistic.f90
 
 Euler_CharacteristicDecompositionModule.o: \
   KindModule.o \
@@ -13,7 +30,16 @@ Euler_CharacteristicDecompositionModule.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule.o \
   EquationOfStateModule.o \
-  Euler_CharacteristicDecompositionModule.f90
+  Euler_CharacteristicDecompositionModule.F90
+
+Euler_CharacteristicDecompositionModule_TABLE_NonRelativistic.o: \
+  KindModule.o \
+  UnitsModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule.o \
+  EquationOfStateModule.o \
+  Euler_CharacteristicDecompositionModule_TABLE_NonRelativistic.f90
 
 Euler_CharacteristicDecompositionModule_TABLE.o: \
   KindModule.o \
@@ -22,7 +48,16 @@ Euler_CharacteristicDecompositionModule_TABLE.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule.o \
   EquationOfStateModule.o \
-  Euler_CharacteristicDecompositionModule_TABLE.f90
+  Euler_CharacteristicDecompositionModule_TABLE.F90
+
+Euler_PositivityLimiterModule_NonRelativistic.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_PositivityLimiterModule_NonRelativistic.f90
 
 Euler_PositivityLimiterModule.o: \
   KindModule.o \
@@ -31,7 +66,22 @@ Euler_PositivityLimiterModule.o: \
   ReferenceElementModuleX_Lagrange.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
-  Euler_PositivityLimiterModule.f90
+  Euler_PositivityLimiterModule.F90
+
+Euler_SlopeLimiterModule_NonRelativistic.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_BoundaryConditionsModule.o \
+  Euler_CharacteristicDecompositionModule.o \
+  Euler_SlopeLimiterModule_NonRelativistic.f90
 
 Euler_SlopeLimiterModule.o: \
   KindModule.o \
@@ -46,7 +96,7 @@ Euler_SlopeLimiterModule.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule.o \
-  Euler_SlopeLimiterModule.f90
+  Euler_SlopeLimiterModule.F90
 
 Euler_BoundaryConditionsModule.o: \
   KindModule.o \
@@ -56,6 +106,20 @@ Euler_BoundaryConditionsModule.o: \
   UtilitiesModule.o \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.f90
+
+Euler_dgDiscretizationModule_NonRelativistic.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  FluidFieldsModule.o \
+  Euler_BoundaryConditionsModule.o \
+  Euler_UtilitiesModule.o \
+  EquationOfStateModule.o \
+  Euler_dgDiscretizationModule_NonRelativistic.f90
 
 Euler_dgDiscretizationModule.o: \
   KindModule.o \
@@ -69,4 +133,4 @@ Euler_dgDiscretizationModule.o: \
   Euler_BoundaryConditionsModule.o \
   Euler_UtilitiesModule.o \
   EquationOfStateModule.o \
-  Euler_dgDiscretizationModule.f90
+  Euler_dgDiscretizationModule.F90

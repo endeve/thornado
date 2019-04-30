@@ -24,8 +24,8 @@ MODULE MF_Euler_UtilitiesModule
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iCF_Ne, &
     nAF, iAF_P, iAF_Cs
   USE Euler_UtilitiesModule, ONLY: &
-    ComputePrimitive, &
-    ComputeTimeStep
+    Euler_ComputePrimitive, &
+    Euler_ComputeTimeStep
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -107,7 +107,7 @@ CONTAINS
 
           ! --- Primitive Fluid ---
 
-          CALL ComputePrimitive &
+          CALL Euler_ComputePrimitive &
                  ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                    uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                    uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
@@ -205,7 +205,7 @@ CONTAINS
         END DO
         END DO
 
-        CALL ComputeTimeStep &
+        CALL Euler_ComputeTimeStep &
                ( iX_B0, iX_E0, &
                  G(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                  U(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
