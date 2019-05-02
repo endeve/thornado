@@ -82,15 +82,22 @@ f90EXE_sources += FluidFieldsModule.f90
 # In THORNADO_DIR/Modules/Euler:
 
 f90EXE_sources += Euler_UtilitiesModule_NonRelativistic.f90
+f90EXE_sources += Euler_UtilitiesModule_Relativistic.f90
 F90EXE_sources += Euler_UtilitiesModule.F90
-f90EXE_sources += Euler_BoundaryConditionsModule.f90
+f90EXE_sources += Euler_BoundaryConditionsModule_NonRelativistic.f90
+f90EXE_sources += Euler_BoundaryConditionsModule_NonRelativistic.f90
+f90EXE_sources += Euler_BoundaryConditionsModule.F90
 f90EXE_sources += Euler_SlopeLimiterModule_NonRelativistic.f90
+f90EXE_sources += Euler_SlopeLimiterModule_Relativistic.f90
 F90EXE_sources += Euler_SlopeLimiterModule.F90
 f90EXE_sources += Euler_CharacteristicDecompositionModule_NonRelativistic.f90
+f90EXE_sources += Euler_CharacteristicDecompositionModule_Relativistic.f90
 F90EXE_sources += Euler_CharacteristicDecompositionModule.F90
 f90EXE_sources += Euler_PositivityLimiterModule_NonRelativistic.f90
+f90EXE_sources += Euler_PositivityLimiterModule_Relativistic.f90
 F90EXE_sources += Euler_PositivityLimiterModule.F90
 f90EXE_sources += Euler_dgDiscretizationModule_NonRelativistic.f90
+f90EXE_sources += Euler_dgDiscretizationModule_Relativistic.f90
 F90EXE_sources += Euler_dgDiscretizationModule.F90
 
 # In THORNADO_DIR/Modules/InputOutput:
