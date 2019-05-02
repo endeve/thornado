@@ -238,12 +238,13 @@ CONTAINS
   END FUNCTION Euler_AlphaMinus_NonRelativistic
 
 
-  PURE ELEMENTAL REAL(DP) FUNCTION Euler_AlphaMiddle_NonRelativistic &
-    ( D_L, FD_L, S_L, FS_L, D_R, FD_R, S_R, FS_R, aP, aM, Gm_dd_ii )
+  REAL(DP) FUNCTION Euler_AlphaMiddle_NonRelativistic &
+    ( D_L, S_L, E_L, FD_L, FS_L, FE_L, D_R, S_R, E_R, FD_R, FS_R, FE_R, &
+      aP, aM, Gm_dd_ii )
 
-    REAL(DP), INTENT(in) :: D_L, FD_L, S_L, FS_L
-    REAL(DP), INTENT(in) :: D_R, FD_R, S_R, FS_R
-    REAL(DP), INTENT(in) :: aP, aM, Gm_dd_ii
+    REAL(DP), INTENT(in) :: D_L, S_L, E_L, FD_L, FS_L, FE_L, &
+                            D_R, S_R, E_R, FD_R, FS_R, FE_R, &
+                            aP, aM, Gm_dd_ii
 
     ! --- Middle Wavespeed as Suggested by Batten et al. (1997) ---
     ! --- (SIAM J. Sci. Comput., Vol. 18, No. 6, pp. 1553-1570) ---
@@ -314,15 +315,15 @@ CONTAINS
 
 
   PURE FUNCTION Euler_StressTensor_Diagonal_NonRelativistic &
-    ( D, V_1, V_2, V_3, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    ( S1, S2, S3, V1, V2, V3, P )
 
-    REAL(DP)             :: Euler_StressTensor_Diagonal_NonRelativistic(1:3)
-    REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, P
-    REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(in) :: S1, S2, S3, V1, V2, V3, P
 
-    Euler_StressTensor_Diagonal_NonRelativistic(1) = D * Gm_dd_11 * V_1**2 + P
-    Euler_StressTensor_Diagonal_NonRelativistic(2) = D * Gm_dd_22 * V_2**2 + P
-    Euler_StressTensor_Diagonal_NonRelativistic(3) = D * Gm_dd_33 * V_3**2 + P
+    REAL(DP) :: Euler_StressTensor_Diagonal_NonRelativistic(3)
+
+    Euler_StressTensor_Diagonal_NonRelativistic(1) = S1 * V1 + P
+    Euler_StressTensor_Diagonal_NonRelativistic(2) = S2 * V2 + P
+    Euler_StressTensor_Diagonal_NonRelativistic(3) = S3 * V3 + P
 
     RETURN
   END FUNCTION Euler_StressTensor_Diagonal_NonRelativistic

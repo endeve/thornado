@@ -1,4 +1,4 @@
-MODULE Euler_GR_PositivityLimiterModule
+MODULE Euler_PositivityLimiterModule_Relativistic
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, SqrtTiny
@@ -30,9 +30,9 @@ MODULE Euler_GR_PositivityLimiterModule
 
   INCLUDE 'mpif.h'
 
-  PUBLIC :: Euler_GR_InitializePositivityLimiter
-  PUBLIC :: Euler_GR_FinalizePositivityLimiter
-  PUBLIC :: Euler_GR_ApplyPositivityLimiter
+  PUBLIC :: Euler_InitializePositivityLimiter_Relativistic
+  PUBLIC :: Euler_FinalizePositivityLimiter_Relativistic
+  PUBLIC :: Euler_ApplyPositivityLimiter_Relativistic
 
   LOGICAL               :: UsePositivityLimiter
   INTEGER, PARAMETER    :: nPS = 7  ! Number of Positive Point Sets
@@ -44,14 +44,15 @@ MODULE Euler_GR_PositivityLimiterModule
 CONTAINS
 
 
-  SUBROUTINE Euler_GR_InitializePositivityLimiter &
-    ( Min_1_Option, Min_2_Option, UsePositivityLimiter_Option )
+  SUBROUTINE Euler_InitializePositivityLimiter_Relativistic &
+    ( Min_1_Option, Min_2_Option, UsePositivityLimiter_Option, Verbose_Option )
 
-    REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
-    REAL(DP), INTENT(in), OPTIONAL :: Min_2_Option
-    LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option, Min_2_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option, &
+                                      Verbose_Option
 
     INTEGER :: i
+    LOGICAL :: Verbose
 
     Min_1 = - HUGE( One )
     IF( PRESENT( Min_1_Option ) ) &
@@ -65,14 +66,22 @@ CONTAINS
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
       UsePositivityLimiter = UsePositivityLimiter_Option
 
-    WRITE(*,*)
-    WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'Euler_GR_InitializePositivityLimiter'
-    WRITE(*,*)
-    WRITE(*,'(A6,A,L1)') &
-      '', 'Use Positivity Limiter: ', UsePositivityLimiter 
-    WRITE(*,*)
-    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
-    WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'Euler_GR_InitializePositivityLimiter'
+      WRITE(*,*)
+      WRITE(*,'(A6,A,L1)') &
+        '', 'Use Positivity Limiter: ', UsePositivityLimiter 
+      WRITE(*,*)
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
+    END IF
 
     nPP = 0
     nPP(1) = PRODUCT( nNodesX )
@@ -93,18 +102,18 @@ CONTAINS
     ALLOCATE( U_PP(nPT,nCF) )
     ALLOCATE( G_PP(nPT,nGF) )
 
-  END SUBROUTINE Euler_GR_InitializePositivityLimiter
+  END SUBROUTINE Euler_InitializePositivityLimiter_Relativistic
 
   
-  SUBROUTINE Euler_GR_FinalizePositivityLimiter
+  SUBROUTINE Euler_FinalizePositivityLimiter_Relativistic
 
     DEALLOCATE( U_PP )
     DEALLOCATE( G_PP )
 
-  END SUBROUTINE Euler_GR_FinalizePositivityLimiter
+  END SUBROUTINE Euler_FinalizePositivityLimiter_Relativistic
 
 
-  SUBROUTINE Euler_GR_ApplyPositivityLimiter &
+  SUBROUTINE Euler_ApplyPositivityLimiter_Relativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER,  INTENT(in)    :: &
@@ -262,7 +271,7 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE Euler_GR_ApplyPositivityLimiter
+  END SUBROUTINE Euler_ApplyPositivityLimiter_Relativistic
 
 
   SUBROUTINE ComputePointValues( X_Q, X_P )
@@ -465,4 +474,4 @@ CONTAINS
   END SUBROUTINE SolveTheta_Bisection
 
 
-END MODULE Euler_GR_PositivityLimiterModule
+END MODULE Euler_PositivityLimiterModule_Relativistic

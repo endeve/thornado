@@ -9,10 +9,11 @@ MODULE Euler_CharacteristicDecompositionModule
 
 #ifdef HYDRO_NONRELATIVISTIC
 
-  USE Euler_UtilitiesModule_NonRelativistic
   USE Euler_CharacteristicDecompositionModule_NonRelativistic
 
 #elif HYDRO_RELATIVISTIC
+
+  USE Euler_CharacteristicDecompositionModule_Relativistic
 
 #endif
 
@@ -40,8 +41,12 @@ CONTAINS
 
 #elif HYDRO_RELATIVISTIC
 
+    CALL Euler_ComputeCharacteristicDecomposition_Relativistic &
+           ( iDim, G, U, R, invR )
+
 #endif
 
   END SUBROUTINE Euler_ComputeCharacteristicDecomposition
+
 
 END MODULE Euler_CharacteristicDecompositionModule

@@ -1,4 +1,4 @@
-MODULE Euler_GR_SlopeLimiterModule
+MODULE Euler_SlopeLimiterModule_Relativistic
 
   USE KindModule, ONLY: &
     DP, Zero, One, SqrtTiny
@@ -34,17 +34,17 @@ MODULE Euler_GR_SlopeLimiterModule
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
     Shock
-  USE Euler_GR_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_Fluid
-  USE Euler_GR_CharacteristicDecompositionModule, ONLY: &
-    Euler_GR_ComputeCharacteristicDecomposition
+  USE Euler_BoundaryConditionsModule_Relativistic, ONLY: &
+    Euler_ApplyBoundaryConditions_Relativistic
+  USE Euler_CharacteristicDecompositionModule_Relativistic, ONLY: &
+    Euler_ComputeCharacteristicDecomposition_Relativistic
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_GR_InitializeSlopeLimiter
-  PUBLIC :: Euler_GR_FinalizeSlopeLimiter
-  PUBLIC :: Euler_GR_ApplySlopeLimiter
+  PUBLIC :: Euler_InitializeSlopeLimiter_Relativistic
+  PUBLIC :: Euler_FinalizeSlopeLimiter_Relativistic
+  PUBLIC :: Euler_ApplySlopeLimiter_Relativistic
 
   LOGICAL  :: UseSlopeLimiter
   LOGICAL  :: UseCharacteristicLimiting
@@ -64,10 +64,11 @@ MODULE Euler_GR_SlopeLimiterModule
 CONTAINS
 
 
-  SUBROUTINE Euler_GR_InitializeSlopeLimiter &
+  SUBROUTINE Euler_InitializeSlopeLimiter_Relativistic &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
-      UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option )
+      UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
+      Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
@@ -76,11 +77,13 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: &
       UseSlopeLimiter_Option, &
       UseCharacteristicLimiting_Option, &
-      UseTroubledCellIndicator_Option
+      UseTroubledCellIndicator_Option, &
+      Verbose_Option
     REAL(DP), INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
 
     INTEGER :: i
+    LOGICAL :: Verbose
  
     IF( PRESENT( BetaTVD_Option ) )THEN
       BetaTVD = BetaTVD_Option
@@ -126,27 +129,35 @@ CONTAINS
 
     LimiterThreshold = LimiterThresholdParameter * 2.0_DP**( nNodes - 2 )
 
-    WRITE(*,*)
-    WRITE(*,'(A)') '  INFO: Euler_GR_InitializeSlopeLimiter:'
-    WRITE(*,'(A)') '  --------------------------------------'
-    WRITE(*,*)
-    WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
-      UseSlopeLimiter
-    WRITE(*,*)
-    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVD: ' , &
-      BetaTVD
-    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVB: ' , &
-      BetaTVB
-    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'SlopeTolerance: ' , &
-      SlopeTolerance
-    WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
-      UseCharacteristicLimiting
-    WRITE(*,*)
-    WRITE(*,'(A4,A27,L1)'      ) '', 'UseTroubledCellIndicator: ' , &
-      UseTroubledCellIndicator
-    WRITE(*,*)
-    WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
-      LimiterThreshold
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .TRUE.
+    END IF
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A)') '  INFO: Euler_GR_InitializeSlopeLimiter:'
+      WRITE(*,'(A)') '  --------------------------------------'
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
+        UseSlopeLimiter
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVD: ' , &
+        BetaTVD
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVB: ' , &
+        BetaTVB
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'SlopeTolerance: ' , &
+        SlopeTolerance
+      WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
+        UseCharacteristicLimiting
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,L1)'      ) '', 'UseTroubledCellIndicator: ' , &
+        UseTroubledCellIndicator
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
+        LimiterThreshold
+    END IF
 
     IF( UseTroubledCellIndicator )THEN
 
@@ -159,10 +170,10 @@ CONTAINS
       I_6x6(i,i) = One
     END DO
 
-  END SUBROUTINE Euler_GR_InitializeSlopeLimiter
+  END SUBROUTINE Euler_InitializeSlopeLimiter_Relativistic
 
 
-  SUBROUTINE Euler_GR_FinalizeSlopeLimiter
+  SUBROUTINE Euler_FinalizeSlopeLimiter_Relativistic
 
     IF( UseTroubledCellIndicator )THEN
 
@@ -170,20 +181,24 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE Euler_GR_FinalizeSlopeLimiter
+  END SUBROUTINE Euler_FinalizeSlopeLimiter_Relativistic
 
 
-  SUBROUTINE Euler_GR_ApplySlopeLimiter( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+  SUBROUTINE Euler_ApplySlopeLimiter_Relativistic &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
-      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      SuppressBC_Option
 
     LOGICAL  :: LimitedCell &
                   (nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+    LOGICAL  :: SuppressBC
     INTEGER  :: iX1, iX2, iX3, iGF, iCF, iDimX
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
@@ -200,11 +215,14 @@ CONTAINS
 
     IF( .NOT. UseSlopeLimiter ) RETURN
 
-    IF( DEBUG ) WRITE(*,'(A)') 'CALL ApplyBoundaryConditions_Fluid'
-    CALL ApplyBoundaryConditions_Fluid &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+    SuppressBC = .FALSE.
+    IF( PRESENT( SuppressBC_Option ) ) &
+      SuppressBC = SuppressBC_Option
 
-    IF( DEBUG ) WRITE(*,'(A)') 'CALL DetectTroubledCells'
+    IF( .NOT. SuppressBC ) &
+      CALL Euler_ApplyBoundaryConditions_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
     CALL DetectTroubledCells &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
@@ -297,19 +315,19 @@ CONTAINS
 
         IF( DEBUG ) WRITE(*,'(A)') &
               'CALL Euler_GR_ComputeCharacteristicDecomposition (X1)'
-        CALL Euler_GR_ComputeCharacteristicDecomposition &
+        CALL Euler_ComputeCharacteristicDecomposition_Relativistic &
                ( 1, G_K(:), U_M(:,0,1), R_X1, invR_X1 )
 
         IF( nDimsX > 1 )THEN
 
-          CALL Euler_GR_ComputeCharacteristicDecomposition &
+          CALL Euler_ComputeCharacteristicDecomposition_Relativistic &
                  ( 2, G_K(:), U_M(:,0,1), R_X2, invR_X2 )
 
         END IF
 
         IF( nDimsX > 2 )THEN
 
-          CALL Euler_GR_ComputeCharacteristicDecomposition &
+          CALL Euler_ComputeCharacteristicDecomposition_Relativistic &
                  ( 3, G_K(:), U_M(:,0,1), R_X3, invR_X3 )
 
         END IF
@@ -438,7 +456,7 @@ CONTAINS
     CALL ApplyConservativeCorrection &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
-  END SUBROUTINE Euler_GR_ApplySlopeLimiter
+  END SUBROUTINE Euler_ApplySlopeLimiter_Relativistic
 
 
   SUBROUTINE InitializeTroubledCellIndicator
@@ -799,4 +817,4 @@ CONTAINS
   END SUBROUTINE ApplyConservativeCorrection
 
 
-END MODULE Euler_GR_SlopeLimiterModule
+END MODULE Euler_SlopeLimiterModule_Relativistic

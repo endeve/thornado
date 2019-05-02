@@ -18,37 +18,37 @@ PROGRAM ApplicationDriver
     iX_B0, iX_B1, iX_E0, iX_E1
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
-  USE InitializationModule_GR, ONLY: &
-    InitializeFields_GR, ReadParameters
-  USE Euler_GR_SlopeLimiterModule, ONLY: &
-    Euler_GR_InitializeSlopeLimiter, &
-    Euler_GR_FinalizeSlopeLimiter, &
-    Euler_GR_ApplySlopeLimiter
-  USE Euler_GR_PositivityLimiterModule, ONLY: &
-    Euler_GR_InitializePositivityLimiter, &
-    Euler_GR_FinalizePositivityLimiter, &
-    Euler_GR_ApplyPositivityLimiter
-  USE Euler_GR_UtilitiesModule, ONLY: &
-    ComputeFromConserved_GR, &
-    ComputeTimeStep_GR
+  USE InitializationModule_Relativistic, ONLY: &
+    InitializeFields_Relativistic, ReadParameters
+  USE Euler_SlopeLimiterModule, ONLY: &
+    Euler_InitializeSlopeLimiter, &
+    Euler_FinalizeSlopeLimiter, &
+    Euler_ApplySlopeLimiter
+  USE Euler_PositivityLimiterModule, ONLY: &
+    Euler_InitializePositivityLimiter, &
+    Euler_FinalizePositivityLimiter, &
+    Euler_ApplyPositivityLimiter
+  USE Euler_UtilitiesModule, ONLY: &
+    Euler_ComputeFromConserved, &
+    Euler_ComputeTimeStep
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE FluidFieldsModule, ONLY: &
     uCF, uPF, uAF
   USE GeometryFieldsModule, ONLY: &
     uGF
-  USE Euler_GR_dgDiscretizationModule, ONLY: &
-    Euler_GR_ComputeIncrement_DG_Explicit
+  USE Euler_dgDiscretizationModule, ONLY: &
+    Euler_ComputeIncrement_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
   USE UnitsModule, ONLY: &
     Millisecond
-  USE Euler_GR_TallyModule, ONLY: &
-    Euler_GR_InitializeTally, &
-    Euler_GR_FinalizeTally, &
-    Euler_GR_ComputeTally
+  USE Euler_TallyModule_Relativistic, ONLY: &
+    Euler_InitializeTally_Relativistic, &
+    Euler_FinalizeTally_Relativistic, &
+    Euler_ComputeTally_Relativistic
 
   IMPLICIT NONE
 
@@ -341,7 +341,7 @@ PROGRAM ApplicationDriver
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
-  CALL Euler_GR_InitializeSlopeLimiter &
+  CALL Euler_InitializeSlopeLimiter &
          ( BetaTVD_Option = BetaTVD, &
            BetaTVB_Option = BetaTVB, &
            SlopeTolerance_Option &
@@ -355,24 +355,24 @@ PROGRAM ApplicationDriver
            LimiterThresholdParameter_Option &
              = LimiterThresholdParameter )
 
-  CALL Euler_GR_InitializePositivityLimiter &
+  CALL Euler_InitializePositivityLimiter &
          ( Min_1_Option = Min_1, &
            Min_2_Option = Min_2, &
            UsePositivityLimiter_Option = UsePositivityLimiter )
 
-  CALL InitializeFields_GR &
+  CALL InitializeFields_Relativistic &
          ( RiemannProblemName_Option = TRIM( RiemannProblemName ), &
            RiemannProblem2dName_Option = TRIM( RiemannProblem2dName ), &
            SphericalRiemannProblemName_Option &
              = TRIM( SphericalRiemannProblemName ), &
            nDetCells_Option = nDetCells, Eblast_Option = Eblast )
 
-  CALL Euler_GR_ApplySlopeLimiter &
+  CALL Euler_ApplySlopeLimiter &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
 
-  CALL Euler_GR_ApplyPositivityLimiter &
+  CALL Euler_ApplyPositivityLimiter &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
@@ -392,8 +392,7 @@ PROGRAM ApplicationDriver
   t_wrt = dt_wrt
   wrt   = .FALSE.
 
-  IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL Euler_GR_InitializeTally'
-  CALL Euler_GR_InitializeTally &
+  CALL Euler_InitializeTally_Relativistic &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
@@ -407,7 +406,7 @@ PROGRAM ApplicationDriver
     IF( .NOT. UseFixed_dt )THEN
       IF( DEBUG ) wTime_CTS = MPI_WTIME( )
       IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL ComputeTimeStep_GR'
-      CALL ComputeTimeStep_GR &
+      CALL Euler_ComputeTimeStep &
              ( iX_B0, iX_E0, &
                uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -445,31 +444,8 @@ PROGRAM ApplicationDriver
 
     END IF
 
-    IF( DEBUG ) wTime_UF = MPI_WTIME()
-    IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL UpdateFluid_SSPRK'
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, Euler_GR_ComputeIncrement_DG_Explicit )
-    IF( DEBUG ) wTime_UF = MPI_WTIME() - wTime_UF
-
-    IF( DEBUG )THEN
-      WRITE(*,'(A)') 'AD: CALL ComputeFromConserved_GR'
-      CALL ComputeFromConserved_GR &
-             ( iX_B0, iX_E0, &
-               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
-
-      Vmax = MAXVAL( ABS( &
-               uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),2)))
-      LorentzFactor = One / SQRT( One - Vmax**2 )
-
-      IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
-        WRITE(*,'(A8,A4,F12.10)') '', 'V = ', Vmax
-        WRITE(*,'(A8,A4,F10.5)')  '', 'W = ', LorentzFactor
-        WRITE(*,*)
-      END IF
-   END IF
+           ( t, dt, uGF, uCF, Euler_ComputeIncrement_DG_Explicit )
 
     IF( iCycleW .GT. 0 )THEN
       IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
@@ -483,20 +459,17 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
-      IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL ComputeFromConserved_GR'
-      CALL ComputeFromConserved_GR &
+      CALL Euler_ComputeFromConserved &
              ( iX_B0, iX_E0, &
                uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
 
-      IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL WriteFieldsHDF'
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-      IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL Euler_GR_ComputeTally'
-      CALL Euler_GR_ComputeTally &
+      CALL Euler_ComputeTally_Relativistic &
            ( iX_B0, iX_E0, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -511,7 +484,7 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
   WRITE(*,'(A,ES13.6E3)') 'Total evolution time: ', Timer_Evolution
 
-  CALL ComputeFromConserved_GR &
+  CALL Euler_ComputeFromConserved &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -521,15 +494,15 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-  CALL Euler_GR_ComputeTally &
+  CALL Euler_ComputeTally_Relativistic &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
-  CALL Euler_GR_FinalizePositivityLimiter
+  CALL Euler_FinalizePositivityLimiter
 
-  CALL Euler_GR_FinalizeSlopeLimiter
+  CALL Euler_FinalizeSlopeLimiter
 
   CALL FinalizeFluid_SSPRK
 

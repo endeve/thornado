@@ -30,10 +30,10 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
     Shock
-  USE Euler_BoundaryConditionsModule, ONLY: &
-    Euler_ApplyBoundaryConditions
-  USE Euler_CharacteristicDecompositionModule, ONLY: &
-    Euler_ComputeCharacteristicDecomposition
+  USE Euler_BoundaryConditionsModule_NonRelativistic, ONLY: &
+    Euler_ApplyBoundaryConditions_NonRelativistic
+  USE Euler_CharacteristicDecompositionModule_NonRelativistic, ONLY: &
+    Euler_ComputeCharacteristicDecomposition_NonRelativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -216,7 +216,7 @@ CONTAINS
       SuppressBC = SuppressBC_Option
 
     IF( .NOT. SuppressBC ) &
-      CALL Euler_ApplyBoundaryConditions &
+      CALL Euler_ApplyBoundaryConditions_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL DetectTroubledCells &
@@ -302,19 +302,19 @@ CONTAINS
 
         ! --- Compute Eigenvectors ---
 
-        CALL Euler_ComputeCharacteristicDecomposition &
+        CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic &
                ( 1, G_K(:), U_M(:,0,1), R_X1, invR_X1 )
 
         IF( nDimsX > 1 )THEN
 
-          CALL Euler_ComputeCharacteristicDecomposition &
+          CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic &
                  ( 2, G_K(:), U_M(:,0,1), R_X2, invR_X2 )
 
         END IF
 
         IF( nDimsX > 2 )THEN
 
-          CALL Euler_ComputeCharacteristicDecomposition &
+          CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic &
                  ( 3, G_K(:), U_M(:,0,1), R_X3, invR_X3 )
 
         END IF

@@ -10,8 +10,8 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE Euler_UtilitiesModule, ONLY: &
-    Euler_ComputePrimitive
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
+    Euler_ComputePrimitive_NonRelativistic
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -39,7 +39,7 @@ CONTAINS
     REAL(DP), DIMENSION(1) :: D, V1, V2, V3, Gmdd11, Gmdd22, Gmdd33, Vu1, Vu2, Vu3, E, Ne, P, Cs
     REAL(DP), DIMENSION(1) :: Q, K, H, J, Mu1, Mu2, Mu3, Vd1, Vd2, Vd3
 
-    CALL Euler_ComputePrimitive &
+    CALL Euler_ComputePrimitive_NonRelativistic &
            ( [ U(iCF_D ) ], [ U(iCF_S1) ], [ U(iCF_S2) ], &
              [ U(iCF_S3) ], [ U(iCF_E ) ], [ U(iCF_Ne) ], &
              D, V1, V2, V3, E, Ne, &

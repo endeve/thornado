@@ -39,20 +39,20 @@ MODULE Euler_dgDiscretizationModule_NonRelativistic
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE Euler_BoundaryConditionsModule, ONLY: &
-    Euler_ApplyBoundaryConditions
-  USE Euler_UtilitiesModule, ONLY: &
-    Euler_ComputePrimitive, &
-    Euler_AlphaPlus, &
-    Euler_AlphaMinus, &
-    Euler_AlphaMiddle, &
-    Euler_Flux_X1, &
-    Euler_Flux_X2, &
-    Euler_StressTensor_Diagonal, &
-    Euler_NumericalFlux_HLL, &
-    Euler_NumericalFlux_X1_HLLC, &
-    Euler_NumericalFlux_X2_HLLC, &
-    Euler_NumericalFlux_X3_HLLC
+  USE Euler_BoundaryConditionsModule_NonRelativistic, ONLY: &
+    Euler_ApplyBoundaryConditions_NonRelativistic
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
+    Euler_ComputePrimitive_NonRelativistic, &
+    Euler_AlphaPlus_NonRelativistic, &
+    Euler_AlphaMinus_NonRelativistic, &
+    Euler_AlphaMiddle_NonRelativistic, &
+    Euler_Flux_X1_NonRelativistic, &
+    Euler_Flux_X2_NonRelativistic, &
+    Euler_StressTensor_Diagonal_NonRelativistic, &
+    Euler_NumericalFlux_HLL_NonRelativistic, &
+    Euler_NumericalFlux_X1_HLLC_NonRelativistic, &
+    Euler_NumericalFlux_X2_HLLC_NonRelativistic, &
+    Euler_NumericalFlux_X3_HLLC_NonRelativistic
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -103,7 +103,7 @@ CONTAINS
       SuppressBC = SuppressBC_Option
 
     IF( .NOT. SuppressBC ) &
-      CALL Euler_ApplyBoundaryConditions &
+      CALL Euler_ApplyBoundaryConditions_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL ComputeIncrement_Divergence_X1 &
@@ -216,7 +216,7 @@ CONTAINS
 
       IF( iX1 < iX_E0(1) + 1 )THEN
 
-        CALL Euler_ComputePrimitive &
+        CALL Euler_ComputePrimitive_NonRelativistic &
                ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                  uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                  uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
@@ -231,7 +231,7 @@ CONTAINS
         DO iNodeX = 1, nDOFX
 
           Flux_X1_q(iNodeX,1:nCF) &
-            = Euler_Flux_X1 &
+            = Euler_Flux_X1_NonRelativistic &
                 ( uPF_K(iNodeX,iPF_D ), &
                   uPF_K(iNodeX,iPF_V1), &
                   uPF_K(iNodeX,iPF_V2), &
@@ -316,7 +316,7 @@ CONTAINS
 
       ! --- Left State Primitive, etc. ---
 
-      CALL Euler_ComputePrimitive &
+      CALL Euler_ComputePrimitive_NonRelativistic &
              ( uCF_L(:,iCF_D ), uCF_L(:,iCF_S1), uCF_L(:,iCF_S2), &
                uCF_L(:,iCF_S3), uCF_L(:,iCF_E ), uCF_L(:,iCF_Ne), &
                uPF_L(:,iPF_D ), uPF_L(:,iPF_V1), uPF_L(:,iPF_V2), &
@@ -334,7 +334,7 @@ CONTAINS
       DO iNodeX_X1 = 1, nDOFX_X1
 
         Flux_X1_L(iNodeX_X1,1:nCF) &
-          = Euler_Flux_X1 &
+          = Euler_Flux_X1_NonRelativistic &
               ( uPF_L(iNodeX_X1,iPF_D ), &
                 uPF_L(iNodeX_X1,iPF_V1), &
                 uPF_L(iNodeX_X1,iPF_V2), &
@@ -350,7 +350,7 @@ CONTAINS
 
       ! --- Right State Primitive, etc. ---
 
-      CALL Euler_ComputePrimitive &
+      CALL Euler_ComputePrimitive_NonRelativistic &
              ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
                uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
                uPF_R(:,iPF_D ), uPF_R(:,iPF_V1), uPF_R(:,iPF_V2), &
@@ -368,7 +368,7 @@ CONTAINS
       DO iNodeX_X1 = 1, nDOFX_X1
 
         Flux_X1_R(iNodeX_X1,1:nCF) &
-          = Euler_Flux_X1 &
+          = Euler_Flux_X1_NonRelativistic &
               ( uPF_R(iNodeX_X1,iPF_D ), &
                 uPF_R(iNodeX_X1,iPF_V1), &
                 uPF_R(iNodeX_X1,iPF_V2), &
@@ -389,28 +389,36 @@ CONTAINS
       DO iNodeX_X1 = 1, nDOFX_X1
 
         AlphaPls &
-          = Euler_AlphaPlus &
+          = Euler_AlphaPlus_NonRelativistic &
               ( uPF_L(iNodeX_X1,iPF_V1), Cs_L(iNodeX_X1), &
                 uPF_R(iNodeX_X1,iPF_V1), Cs_R(iNodeX_X1), &
                 G_F(iNodeX_X1,iGF_Gm_dd_11) )
 
         AlphaMns &
-          = Euler_AlphaMinus &
+          = Euler_AlphaMinus_NonRelativistic &
               ( uPF_L(iNodeX_X1,iPF_V1), Cs_L(iNodeX_X1), &
                 uPF_R(iNodeX_X1,iPF_V1), Cs_R(iNodeX_X1), &
                 G_F(iNodeX_X1,iGF_Gm_dd_11) )
 
         AlphaMdl &
-          = Euler_AlphaMiddle &
-              ( uCF_L(iNodeX_X1,iCF_D ), Flux_X1_L(iNodeX_X1,iCF_D ), &
-                uCF_L(iNodeX_X1,iCF_S1), Flux_X1_L(iNodeX_X1,iCF_S1), &
-                uCF_R(iNodeX_X1,iCF_D ), Flux_X1_R(iNodeX_X1,iCF_D ), &
-                uCF_R(iNodeX_X1,iCF_S1), Flux_X1_R(iNodeX_X1,iCF_S1), &
+          = Euler_AlphaMiddle_NonRelativistic &
+              ( uCF_L(iNodeX_X1,iCF_D ), &
+                uCF_L(iNodeX_X1,iCF_S1), &
+                uCF_L(iNodeX_X1,iCF_E ), &
+                Flux_X1_L(iNodeX_X1,iCF_D ), &
+                Flux_X1_L(iNodeX_X1,iCF_S1), &
+                Flux_X1_L(iNodeX_X1,iCF_E ), &
+                uCF_R(iNodeX_X1,iCF_D ), &
+                uCF_R(iNodeX_X1,iCF_S1), &
+                uCF_R(iNodeX_X1,iCF_E ), &
+                Flux_X1_R(iNodeX_X1,iCF_D ), &
+                Flux_X1_R(iNodeX_X1,iCF_S1), &
+                Flux_X1_R(iNodeX_X1,iCF_E ), &
                 AlphaPls, AlphaMns, G_F(iNodeX_X1,iGF_Gm_dd_11) )
 
         NumericalFlux(iNodeX_X1,:) &
-!              = Euler_NumericalFlux_X1_HLLC &
-          = Euler_NumericalFlux_HLL &
+!          = Euler_NumericalFlux_X1_HLLC_NonRelativistic     &
+          = Euler_NumericalFlux_HLL_NonRelativistic         &
               ( uCF_L(iNodeX_X1,:), Flux_X1_L(iNodeX_X1,:), &
                 uCF_R(iNodeX_X1,:), Flux_X1_R(iNodeX_X1,:), &
                 AlphaPls, AlphaMns, AlphaMdl, G_F(iNodeX_X1,iGF_Gm_dd_11) )
@@ -572,7 +580,7 @@ CONTAINS
 
       IF( iX2 < iX_E0(2) + 1 )THEN
 
-        CALL Euler_ComputePrimitive &
+        CALL Euler_ComputePrimitive_NonRelativistic &
                ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                  uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                  uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
@@ -587,7 +595,7 @@ CONTAINS
         DO iNodeX = 1, nDOFX
 
           Flux_X2_q(iNodeX,1:nCF) &
-            = Euler_Flux_X2 &
+            = Euler_Flux_X2_NonRelativistic &
                 ( uPF_K(iNodeX,iPF_D ), &
                   uPF_K(iNodeX,iPF_V1), &
                   uPF_K(iNodeX,iPF_V2), &
@@ -654,7 +662,7 @@ CONTAINS
 
       ! --- Left State Primitive, etc. ---
 
-      CALL Euler_ComputePrimitive &
+      CALL Euler_ComputePrimitive_NonRelativistic &
              ( uCF_L(:,iCF_D ), uCF_L(:,iCF_S1), uCF_L(:,iCF_S2), &
                uCF_L(:,iCF_S3), uCF_L(:,iCF_E ), uCF_L(:,iCF_Ne), &
                uPF_L(:,iPF_D ), uPF_L(:,iPF_V1), uPF_L(:,iPF_V2), &
@@ -672,7 +680,7 @@ CONTAINS
       DO iNodeX_X2 = 1, nDOFX_X2
 
         Flux_X2_L(iNodeX_X2,1:nCF) &
-          = Euler_Flux_X2 &
+          = Euler_Flux_X2_NonRelativistic &
               ( uPF_L(iNodeX_X2,iPF_D ), &
                 uPF_L(iNodeX_X2,iPF_V1), &
                 uPF_L(iNodeX_X2,iPF_V2), &
@@ -688,7 +696,7 @@ CONTAINS
 
       ! --- Right State Primitive, etc. ---
 
-      CALL Euler_ComputePrimitive &
+      CALL Euler_ComputePrimitive_NonRelativistic &
              ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
                uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
                uPF_R(:,iPF_D ), uPF_R(:,iPF_V1), uPF_R(:,iPF_V2), &
@@ -706,7 +714,7 @@ CONTAINS
       DO iNodeX_X2 = 1, nDOFX_X2
 
         Flux_X2_R(iNodeX_X2,1:nCF) &
-          = Euler_Flux_X2 &
+          = Euler_Flux_X2_NonRelativistic &
               ( uPF_R(iNodeX_X2,iPF_D ), &
                 uPF_R(iNodeX_X2,iPF_V1), &
                 uPF_R(iNodeX_X2,iPF_V2), &
@@ -725,28 +733,36 @@ CONTAINS
       DO iNodeX_X2 = 1, nDOFX_X2
 
         AlphaPls &
-          = Euler_AlphaPlus &
+          = Euler_AlphaPlus_NonRelativistic &
               ( uPF_L(iNodeX_X2,iPF_V2), Cs_L(iNodeX_X2), &
                 uPF_R(iNodeX_X2,iPF_V2), Cs_R(iNodeX_X2), &
                 G_F(iNodeX_X2,iGF_Gm_dd_22) )
 
         AlphaMns &
-          = Euler_AlphaMinus &
+          = Euler_AlphaMinus_NonRelativistic &
               ( uPF_L(iNodeX_X2,iPF_V2), Cs_L(iNodeX_X2), &
                 uPF_R(iNodeX_X2,iPF_V2), Cs_R(iNodeX_X2), &
                 G_F(iNodeX_X2,iGF_Gm_dd_22) )
 
         AlphaMdl &
-          = Euler_AlphaMiddle &
-              ( uCF_L(iNodeX_X2,iCF_D ), Flux_X2_L(iNodeX_X2,iCF_D ), &
-                uCF_L(iNodeX_X2,iCF_S2), Flux_X2_L(iNodeX_X2,iCF_S2), &
-                uCF_R(iNodeX_X2,iCF_D ), Flux_X2_R(iNodeX_X2,iCF_D ), &
-                uCF_R(iNodeX_X2,iCF_S2), Flux_X2_R(iNodeX_X2,iCF_S2), &
+          = Euler_AlphaMiddle_NonRelativistic &
+              ( uCF_L(iNodeX_X2,iCF_D ), &
+                uCF_L(iNodeX_X2,iCF_S2), &
+                uCF_L(iNodeX_X2,iCF_E ), &
+                Flux_X2_L(iNodeX_X2,iCF_D ), &
+                Flux_X2_L(iNodeX_X2,iCF_S2), &
+                Flux_X2_L(iNodeX_X2,iCF_E), &
+                uCF_R(iNodeX_X2,iCF_D ), &
+                uCF_R(iNodeX_X2,iCF_S2), &
+                uCF_R(iNodeX_X2,iCF_E ), &
+                Flux_X2_R(iNodeX_X2,iCF_D ), &
+                Flux_X2_R(iNodeX_X2,iCF_S2), &
+                Flux_X2_R(iNodeX_X2,iCF_E ), &
                 AlphaPls, AlphaMns, G_F(iNodeX_X2,iGF_Gm_dd_22) )
 
         NumericalFlux(iNodeX_X2,:) &
-!              = Euler_NumericalFlux_X2_HLLC &
-          = Euler_NumericalFlux_HLL &
+!          = Euler_NumericalFlux_X2_HLLC_NonRelativistic     &
+          = Euler_NumericalFlux_HLL_NonRelativistic         &
               ( uCF_L(iNodeX_X2,:), Flux_X2_L(iNodeX_X2,:), &
                 uCF_R(iNodeX_X2,:), Flux_X2_R(iNodeX_X2,:), &
                 AlphaPls, AlphaMns, AlphaMdl, G_F(iNodeX_X2,iGF_Gm_dd_22) )
@@ -878,7 +894,7 @@ CONTAINS
 
       END DO
 
-      CALL Euler_ComputePrimitive &
+      CALL Euler_ComputePrimitive_NonRelativistic &
              ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
@@ -893,15 +909,14 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         Stress(iNodeX,1:3) &
-          = Euler_StressTensor_Diagonal &
-              ( uPF_K(iNodeX,iPF_D ), &
+          = Euler_StressTensor_Diagonal_NonRelativistic &
+              ( uCF_K(iNodeX,iCF_S1), &
+                uCF_K(iNodeX,iCF_S2), &
+                uCF_K(iNodeX,iCF_S3), &
                 uPF_K(iNodeX,iPF_V1), &
                 uPF_K(iNodeX,iPF_V2), &
                 uPF_K(iNodeX,iPF_V3), &
-                P_K  (iNodeX), &
-                G_K(iNodeX,iGF_Gm_dd_11), &
-                G_K(iNodeX,iGF_Gm_dd_22), &
-                G_K(iNodeX,iGF_Gm_dd_33) )
+                P_K  (iNodeX) )
 
       END DO
 

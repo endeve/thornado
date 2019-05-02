@@ -9,6 +9,8 @@ MODULE Euler_SlopeLimiterModule
 
 #elif HYDRO_RELATIVISTIC
 
+  USE Euler_SlopeLimiterModule_Relativistic
+
 #endif
 
 

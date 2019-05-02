@@ -9,6 +9,8 @@ MODULE Euler_PositivityLimiterModule
 
 #elif HYDRO_RELATIVISTIC
 
+  USE Euler_PositivityLimiterModule_Relativistic
+
 #endif
 
 
@@ -39,6 +41,10 @@ CONTAINS
 
 #elif HYDRO_RELATIVISTIC
 
+    CALL Euler_InitializePositivityLimiter_Relativistic &
+           ( Min_1_Option, Min_2_Option, &
+             UsePositivityLimiter_Option, Verbose_Option )
+
 #endif
 
   END SUBROUTINE Euler_InitializePositivityLimiter
@@ -51,6 +57,8 @@ CONTAINS
     CALL Euler_FinalizePositivityLimiter_NonRelativistic
 
 #elif HYDRO_RELATIVISTIC
+
+    CALL Euler_FinalizePositivityLimiter_Relativistic
 
 #endif
 
@@ -73,6 +81,9 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
 #elif HYDRO_RELATIVISTIC
+
+    CALL Euler_ApplyPositivityLimiter_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
 #endif
 

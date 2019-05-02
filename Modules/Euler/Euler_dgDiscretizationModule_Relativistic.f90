@@ -1,4 +1,4 @@
-MODULE Euler_GR_dgDiscretizationModule
+MODULE Euler_dgDiscretizationModule_Relativistic
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Pi, TwoPi, SqrtTiny
@@ -29,19 +29,20 @@ MODULE Euler_GR_dgDiscretizationModule
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_P, iAF_Gm
-  USE Euler_GR_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_Fluid
-  USE Euler_GR_UtilitiesModule, ONLY:  &
-    ComputePrimitive_GR,      &
-    Eigenvalues_GR,           &
-    AlphaC_GR,                &
-    Flux_X1_GR,               &
-    Flux_X2_GR,               &
-    StressTensor_Diagonal,    &
-    NumericalFlux_LLF_GR,     &
-    NumericalFlux_HLL_GR,     &
-    NumericalFlux_X1_HLLC_GR, &
-    NumericalFlux_X2_HLLC_GR
+  USE Euler_BoundaryConditionsModule_Relativistic, ONLY: &
+    Euler_ApplyBoundaryConditions_Relativistic
+  USE Euler_UtilitiesModule_Relativistic, ONLY:  &
+    Euler_ComputePrimitive_Relativistic,      &
+    Euler_Eigenvalues_Relativistic,           &
+    Euler_AlphaMiddle_Relativistic,           &
+    Euler_Flux_X1_Relativistic,               &
+    Euler_Flux_X2_Relativistic,               &
+    Euler_Flux_X3_Relativistic,               &
+    Euler_StressTensor_Diagonal_Relativistic, &
+    Euler_NumericalFlux_HLL_Relativistic,     &
+    Euler_NumericalFlux_X1_HLLC_Relativistic, &
+    Euler_NumericalFlux_X2_HLLC_Relativistic, &
+    Euler_NumericalFlux_X3_HLLC_Relativistic
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromSpecificInternalEnergy, &
     ComputeSoundSpeedFromPrimitive_GR
@@ -51,11 +52,9 @@ MODULE Euler_GR_dgDiscretizationModule
 
   INCLUDE 'mpif.h'
 
-  PUBLIC :: Euler_GR_ComputeIncrement_DG_Explicit
+  PUBLIC :: Euler_ComputeIncrement_DG_Explicit_Relativistic
 
   LOGICAL, PARAMETER :: DisplayTimers = .FALSE.
-  LOGICAL  :: DEBUG = .FALSE.
-  LOGICAL  :: DEBUG_X1 = .FALSE., DEBUG_X2 = .FALSE., DEBUG_G = .FALSE.
   REAL(DP) :: Timer_RHS_GR
   REAL(DP) :: Timer_RHS_1_GR, dT_RHS_1_GR
   REAL(DP) :: Timer_RHS_2_GR, dT_RHS_2_GR
@@ -68,38 +67,42 @@ MODULE Euler_GR_dgDiscretizationModule
 CONTAINS
 
 
-  SUBROUTINE Euler_GR_ComputeIncrement_DG_Explicit &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+  SUBROUTINE Euler_ComputeIncrement_DG_Explicit_Relativistic &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, SuppressBC_Option )
 
-    INTEGER, INTENT(in)     :: &
+    INTEGER, INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: &
-      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout) :: &
-      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out)   :: &
-      dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(in)           :: &
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(inout)        :: &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(out)          :: &
+      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      SuppressBC_Option
 
     REAL(DP) :: ErrorL1, ErrorIn, Error, X1
 
     INTEGER  :: iX1, iX2, iX3, iCF, iNodeX, iNodeX1
     REAL(DP) :: dX1, dX2, dX3
+    LOGICAL  :: SuppressBC
 
     dU = Zero
 
-    IF( DEBUG ) WRITE(*,'(A)') '  DG: CALL ApplyBoundaryConditions_Fluid'
-    CALL ApplyBoundaryConditions_Fluid &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+    SuppressBC = .FALSE.
+    IF( PRESENT( SuppressBC_Option ) ) &
+      SuppressBC = SuppressBC_Option
 
-    IF( DEBUG ) WRITE(*,'(A)') '  DG: CALL ComputeIncrement_Divergence_X1'
+    IF( .NOT. SuppressBC ) &
+      CALL Euler_ApplyBoundaryConditions_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
     CALL ComputeIncrement_Divergence_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-    IF( DEBUG ) WRITE(*,'(A)') '  DG: CALL ComputeIncrement_Divergence_X2'
     CALL ComputeIncrement_Divergence_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-    IF( DEBUG ) WRITE(*,'(A)') '  DG: CALL ComputeIncrement_Divergence_X3'
     CALL ComputeIncrement_Divergence_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
@@ -115,10 +118,9 @@ CONTAINS
         dX2 = MeshX(2) % Width(iX2)
         dX1 = MeshX(1) % Width(iX1)
 
-        dU(:,iX1,iX2,iX3,iCF)                               &
-          = dU(:,iX1,iX2,iX3,iCF)                           &
-            / ( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                * dX1 * dX2 * dX3 )
+        dU(:,iX1,iX2,iX3,iCF) &
+          = dU(:,iX1,iX2,iX3,iCF) &
+            / ( WeightsX_q * G(:,iX1,iX2,iX3,iGF_SqrtGm) * dX1 * dX2 * dX3 )
 
       END DO
       END DO
@@ -126,43 +128,43 @@ CONTAINS
 
     END DO
 
-    IF( DEBUG ) WRITE(*,'(A)') '  DG: CALL ComputeIncrement_Geometry'
     CALL ComputeIncrement_Geometry &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-  END SUBROUTINE Euler_GR_ComputeIncrement_DG_Explicit
+  END SUBROUTINE Euler_ComputeIncrement_DG_Explicit_Relativistic
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
-      dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iAF, iNodeX, iNodeX_X1, iNodeX1
-    REAL(DP) :: dX2, dX3
-    REAL(DP) :: Alpha, Beta_1, Beta_2, Beta_3
-    REAL(DP) :: AlphaMns, AlphaMdl, AlphaPls
-    REAL(DP), DIMENSION(nDOFX_X1)     :: Cs_L, Cs_R
-    REAL(DP), DIMENSION(nCF,nDOFX_X1) :: Lambda_L, Lambda_R
-    REAL(DP), DIMENSION(nDOFX_X1,nCF) :: uCF_L, uCF_R
-    REAL(DP), DIMENSION(nDOFX_X1,nPF) :: uPF_L, uPF_R
-    REAL(DP), DIMENSION(nDOFX_X1,nAF) :: uAF_L, uAF_R
-    REAL(DP), DIMENSION(nDOFX_X1,nGF) :: G_F
-    REAL(DP), DIMENSION(nDOFX)        :: P_P, P_K
-    REAL(DP), DIMENSION(nDOFX_X1,nCF) :: Flux_X1_L, Flux_X1_R
-    REAL(DP), DIMENSION(nDOFX_X1,nCF) :: EigVals_L, EigVals_R, EigVals
-    REAL(DP), DIMENSION(nDOFX_X1,nCF) :: NumericalFlux
-    REAL(DP), DIMENSION(nDOFX,   nCF) :: uCF_P, uCF_K    
-    REAL(DP), DIMENSION(nDOFX,   nPF) :: uPF_P, uPF_K
-    REAL(DP), DIMENSION(nDOFX,   nAF) :: uAF_P, uAF_K
-    REAL(DP), DIMENSION(nDOFX,   nGF) :: G_P, G_K
-    REAL(DP), DIMENSION(nDOFX,   nCF) :: Flux_X1_q
+    REAL(DP) :: dX2, dX3, &
+                Alpha, Beta_1, Beta_2, Beta_3, &
+                AlphaMns, AlphaMdl, AlphaPls, &
+                Cs_L(nDOFX_X1), Cs_R(nDOFX_X1), &
+                Lambda_L(nCF,nDOFX_X1), Lambda_R(nCF,nDOFX_X1), &
+                uCF_L(nDOFX_X1,nCF), uCF_R(nDOFX_X1,nCF), &
+                uPF_L(nDOFX_X1,nPF), uPF_R(nDOFX_X1,nPF), &
+                uAF_L(nDOFX_X1,nAF), uAF_R(nDOFX_X1,nAF), &
+                G_F(nDOFX_X1,nGF), &
+                P_P(nDOFX), P_K(nDOFX), &
+                Flux_X1_L(nDOFX_X1,nCF), Flux_X1_R(nDOFX_X1,nCF), &
+                EigVals_L(nDOFX_X1,nCF), EigVals_R(nDOFX_X1,nCF), &
+                EigVals(nDOFX_X1,nCF), &
+                NumericalFlux(nDOFX_X1,nCF), &
+                uCF_P(nDOFX,nCF), uCF_K(nDOFX,nCF), &    
+                uPF_P(nDOFX,nPF), uPF_K(nDOFX,nPF), &
+                uAF_P(nDOFX,nAF), uAF_K(nDOFX,nAF), &
+                G_P(nDOFX,nGF), G_K(nDOFX,nGF), &
+                Flux_X1_q(nDOFX,nCF)
 
     Timer_RHS_1_GR = 0.0_DP
     Timer_RHS_2_GR = 0.0_DP
@@ -179,9 +181,6 @@ CONTAINS
 
       dX3 = MeshX(3) % Width(iX3)
       dX2 = MeshX(2) % Width(iX2)
-
-      IF( DEBUG_X1 ) &
-        WRITE(*,'(A,3I5)') '  DG_X1: iX1,iX2,iX3' , iX1,iX2,iX3
 
       DO iCF = 1, nCF
 
@@ -201,24 +200,22 @@ CONTAINS
       ! --- Volume Term ---
       !--------------------
 
-      IF( iX1 < iX_E0(1) + 1 )THEN
+      IF( iX1 .LT. iX_E0(1) + 1 )THEN
 
-        IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG_X1: Volume Term'
-        IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG_X1: CALL ComputePrimitive_GR'
-        CALL ComputePrimitive_GR &
-           ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-             uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-             uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-             uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-             P_K(:),                                            &
-             G_K(:,iGF_Gm_dd_11),                               &
-             G_K(:,iGF_Gm_dd_22),                               &
-             G_K(:,iGF_Gm_dd_33) )
+        CALL Euler_ComputePrimitive_Relativistic &
+               ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                 uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                 uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                 uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                 G_K(:,iGF_Gm_dd_11),                               &
+                 G_K(:,iGF_Gm_dd_22),                               &
+                 G_K(:,iGF_Gm_dd_33),                               &
+                 P_K )
 
         DO iNodeX = 1, nDOFX
 
-          Flux_X1_q(iNodeX,1:nCF)           &
-            = Flux_X1_GR                    &
+          Flux_X1_q(iNodeX,:) &
+            = Euler_Flux_X1_Relativistic    &
                 ( uPF_K(iNodeX,iPF_D ),     &
                   uPF_K(iNodeX,iPF_V1),     &
                   uPF_K(iNodeX,iPF_V2),     &
@@ -238,8 +235,8 @@ CONTAINS
 
         DO iCF = 1, nCF
 
-          Flux_X1_q(:,iCF)                                 &
-            = dX2 * dX3 * WeightsX_q(:) * G_K(:,iGF_Alpha) &
+          Flux_X1_q(:,iCF) &
+            = dX2 * dX3 * WeightsX_q * G_K(:,iGF_Alpha) &
                 * G_K(:,iGF_SqrtGm) * Flux_X1_q(:,iCF)
 
           CALL DGEMV &
@@ -258,7 +255,6 @@ CONTAINS
       ! --- Divergence Term ---
       !------------------------
 
-      IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG_X1: Divergence Term'
       ! --- Interpolate Fluid Fields ---
 
       CALL Timer_Start( dT_INT_F_GR )
@@ -283,13 +279,13 @@ CONTAINS
 
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Up, nDOFX_X1, &
-             P_P(:), 1, Zero, uAF_L(:,iAF_P), 1 )
+               P_P, 1, Zero, uAF_L(:,iAF_P), 1 )
 
       ! --- Right State Pressure ---
 
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
-               P_K(:), 1, Zero, uAF_R(:,iAF_P), 1 )
+               P_K, 1, Zero, uAF_R(:,iAF_P), 1 )
 
       CALL Timer_Stop( dT_INT_F_GR )
 
@@ -315,12 +311,11 @@ CONTAINS
                ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                  G_K(:,iGF), 1, Half, G_F(:,iGF), 1 )
 
-        G_F(1:nDOFX_X1,iGF) &
-          = MAX( G_F(1:nDOFX_X1,iGF), SqrtTiny )
+        G_F(:,iGF) = MAX( G_F(:,iGF), SqrtTiny )
 
       END DO
 
-      CALL ComputeGeometryX_FromScaleFactors( G_F(:,:) )
+      CALL ComputeGeometryX_FromScaleFactors( G_F )
 
       ! --- Lapse Function ---
 
@@ -332,8 +327,7 @@ CONTAINS
              ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                G_K(:,iGF_Alpha), 1, Half, G_F(:,iGF_Alpha), 1 )
 
-      G_F(1:nDOFX_X1,iGF_Alpha) &
-        = MAX( G_F(1:nDOFX_X1,iGF_Alpha), SqrtTiny )
+      G_F(:,iGF_Alpha) = MAX( G_F(:,iGF_Alpha), SqrtTiny )
 
       CALL Timer_Stop( dT_INT_G_GR )
 
@@ -341,41 +335,37 @@ CONTAINS
 
       ! --- Left State Primitive, etc. ---
 
-      IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG_X1: Left State Primitive'
-      IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG_X1: CALL ComputePrimitive_GR'
-      CALL ComputePrimitive_GR &
+      CALL Euler_ComputePrimitive_Relativistic &
              ( uCF_L(:,iCF_D ), uCF_L(:,iCF_S1), uCF_L(:,iCF_S2), &
                uCF_L(:,iCF_S3), uCF_L(:,iCF_E ), uCF_L(:,iCF_Ne), &
                uPF_L(:,iPF_D ), uPF_L(:,iPF_V1), uPF_L(:,iPF_V2), &
                uPF_L(:,iPF_V3), uPF_L(:,iPF_E ), uPF_L(:,iPF_Ne), &
-               uAF_L(:,iAF_P),                                    &
                G_F(:,iGF_Gm_dd_11),                               &
                G_F(:,iGF_Gm_dd_22),                               &
-               G_F(:,iGF_Gm_dd_33) )
+               G_F(:,iGF_Gm_dd_33),                               &
+               uAF_L(:,iAF_P) )
 
-      IF( DEBUG_X1 ) &
-        WRITE(*,'(A)') '  DG_X1: CALL ComputeSoundSpeedFromPrimitive_GR'
       CALL ComputeSoundSpeedFromPrimitive_GR &
-             ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L(:) )
+             ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L )
 
       DO iNodeX_X1 = 1, nDOFX_X1
 
         Lambda_L(:,iNodeX_X1) &
-          = Eigenvalues_GR &
+          = Euler_Eigenvalues_Relativistic     &
               ( uPF_L(iNodeX_X1,iPF_V1),       &
+                Cs_L (iNodeX_X1),              &
+                uPF_L(iNodeX_X1,iPF_V1),       &
                 uPF_L(iNodeX_X1,iPF_V2),       &
                 uPF_L(iNodeX_X1,iPF_V3),       &
-                uPF_L(iNodeX_X1,iPF_V1),       &
-                Cs_L (iNodeX_X1),              &
+                G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X1,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X1,iGF_Gm_dd_33), &
-                G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X1,iGF_Alpha),    &
                 G_F  (iNodeX_X1,iGF_Beta_1) )
 
-        Flux_X1_L(iNodeX_X1,1:nCF)             &
-          = Flux_X1_GR                         &
+        Flux_X1_L(iNodeX_X1,:) &
+          = Euler_Flux_X1_Relativistic         &
               ( uPF_L(iNodeX_X1,iPF_D ),       &
                 uPF_L(iNodeX_X1,iPF_V1),       &
                 uPF_L(iNodeX_X1,iPF_V2),       &
@@ -393,41 +383,37 @@ CONTAINS
 
       ! --- Right State Primitive, etc. ---
 
-      IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG_X1: Right State Primitive'
-      IF( DEBUG_X1 ) WRITE(*,'(A)') '  DG_X1: CALL ComputePrimitive'
-      CALL ComputePrimitive_GR &
-           ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
-             uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
-             uPF_R(:,iPF_D ), uPF_R(:,iPF_V1), uPF_R(:,iPF_V2), &
-             uPF_R(:,iPF_V3), uPF_R(:,iPF_E ), uPF_R(:,iPF_Ne), &
-             uAF_R(:,iAF_P),                                    &
-             G_F(:,iGF_Gm_dd_11),                               &
-             G_F(:,iGF_Gm_dd_22),                               &
-             G_F(:,iGF_Gm_dd_33) )
+      CALL Euler_ComputePrimitive_Relativistic &
+             ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
+               uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
+               uPF_R(:,iPF_D ), uPF_R(:,iPF_V1), uPF_R(:,iPF_V2), &
+               uPF_R(:,iPF_V3), uPF_R(:,iPF_E ), uPF_R(:,iPF_Ne), &
+               G_F(:,iGF_Gm_dd_11),                               &
+               G_F(:,iGF_Gm_dd_22),                               &
+               G_F(:,iGF_Gm_dd_33),                               &
+               uAF_R(:,iAF_P) )
 
-      IF( DEBUG_X1 ) &
-        WRITE(*,'(A)') '  DG_X1: CALL ComputeSoundSpeedFromPrimitive_GR'
       CALL ComputeSoundSpeedFromPrimitive_GR &
-             ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R(:) )
+             ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R )
 
       DO iNodeX_X1 = 1, nDOFX_X1
 
         Lambda_R(:,iNodeX_X1) &
-          = Eigenvalues_GR &
+          = Euler_Eigenvalues_Relativistic     &
               ( uPF_R(iNodeX_X1,iPF_V1),       &
+                Cs_R (iNodeX_X1),              &
+                uPF_R(iNodeX_X1,iPF_V1),       &
                 uPF_R(iNodeX_X1,iPF_V2),       &
                 uPF_R(iNodeX_X1,iPF_V3),       &
-                uPF_R(iNodeX_X1,iPF_V1),       &
-                Cs_R (iNodeX_X1),              &
+                G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X1,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X1,iGF_Gm_dd_33), &
-                G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X1,iGF_Alpha),    &
                 G_F  (iNodeX_X1,iGF_Beta_1) )
 
-        Flux_X1_R(iNodeX_X1,1:nCF) &
-          = Flux_X1_GR                         &
+        Flux_X1_R(iNodeX_X1,:) &
+          = Euler_Flux_X1_Relativistic         &
               ( uPF_R(iNodeX_X1,iPF_D ),       &
                 uPF_R(iNodeX_X1,iPF_V1),       &
                 uPF_R(iNodeX_X1,iPF_V2),       &
@@ -460,38 +446,46 @@ CONTAINS
                  MAXVAL( + Lambda_R(:,iNodeX_X1) ) )
 
         AlphaMdl &
-          = AlphaC_GR &
-              ( uCF_L    (iNodeX_X1,1:nCF), uCF_R    (iNodeX_X1,1:nCF), &
-                Flux_X1_L(iNodeX_X1,1:nCF), Flux_X1_R(iNodeX_X1,1:nCF), &
-                G_F(iNodeX_X1,iGF_Gm_dd_11), &
-                G_F(iNodeX_X1,iGF_Alpha),    &
-                G_F(iNodeX_X1,iGF_Beta_1),   &
-                AlphaPls, AlphaMns )
+          = Euler_AlphaMiddle_Relativistic         &
+              ( uCF_L    (iNodeX_X1,iCF_D ),       &
+                uCF_L    (iNodeX_X1,iCF_S1),       &
+                uCF_L    (iNodeX_X1,iCF_E ),       &
+                Flux_X1_L(iNodeX_X1,iCF_D ),       &
+                Flux_X1_L(iNodeX_X1,iCF_S1),       &
+                Flux_X1_L(iNodeX_X1,iCF_E ),       &
+                uCF_R    (iNodeX_X1,iCF_D ),       &
+                uCF_R    (iNodeX_X1,iCF_S1),       &
+                uCF_R    (iNodeX_X1,iCF_E ),       &
+                Flux_X1_R(iNodeX_X1,iCF_D ),       &
+                Flux_X1_R(iNodeX_X1,iCF_S1),       &
+                Flux_X1_R(iNodeX_X1,iCF_E ),       &
+                AlphaPls, AlphaMns,                &
+                G_F      (iNodeX_X1,iGF_Gm_dd_11), &
+                G_F      (iNodeX_X1,iGF_Alpha),    &
+                G_F      (iNodeX_X1,iGF_Beta_1) )
 
-        NumericalFlux(iNodeX_X1,:)                 &
-!          = NumericalFlux_LLF_GR                   &
-          = NumericalFlux_HLL_GR                   &
-!          = NumericalFlux_X1_HLLC_GR               &
-              ( uCF_L(iNodeX_X1,1:nCF),            &
-                uCF_R(iNodeX_X1,1:nCF),            &
-                Flux_X1_L(iNodeX_X1,1:nCF),        &
-                Flux_X1_R(iNodeX_X1,1:nCF),        &
-                AlphaPls, AlphaMns, AlphaMdl, nCF, &
-                uPF_L(iNodeX_X1,iPF_V1),           &
-                uPF_R(iNodeX_X1,iPF_V1),           &
-                uAF_L(iNodeX_X1,iAF_P),            &
-                uAF_R(iNodeX_X1,iAF_P),            &
-                G_F(iNodeX_X1,iGF_Alpha),          &
-                G_F(iNodeX_X1,iGF_Beta_1),         &
-                G_F(iNodeX_X1,iGF_Gm_dd_11) )
-
+        NumericalFlux(iNodeX_X1,:) &
+!          = Euler_NumericalFlux_HLLC_X2_Relativistic &
+          = Euler_NumericalFlux_HLL_Relativistic     &
+              ( uCF_L    (iNodeX_X1,:),              &
+                uCF_R    (iNodeX_X1,:),              &
+                Flux_X1_L(iNodeX_X1,:),              &
+                Flux_X1_R(iNodeX_X1,:),              &
+                AlphaPls, AlphaMns, AlphaMdl,        &
+                G_F      (iNodeX_X1,iGF_Gm_dd_11),   &
+                uPF_L    (iNodeX_X1,iPF_V1),         &
+                uPF_R    (iNodeX_X1,iPF_V1),         &
+                uAF_L    (iNodeX_X1,iAF_P),          &
+                uAF_R    (iNodeX_X1,iAF_P),          &
+                G_F      (iNodeX_X1,iGF_Alpha),      &
+                G_F      (iNodeX_X1,iGF_Beta_1) )
 
       END DO
 
       DO iCF = 1, nCF
 
         NumericalFlux(:,iCF) &
-          = dX2 * dX3 * WeightsX_X1(:) * G_F(:,iGF_Alpha) &
+          = dX2 * dX3 * WeightsX_X1 * G_F(:,iGF_Alpha) &
               * G_F(:,iGF_SqrtGm) * NumericalFlux(:,iCF)
 
       END DO
@@ -579,37 +573,38 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X2 &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
-      dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iAF, iNodeX, iNodeX_X2, iNodeX2
-    REAL(DP) :: dX1, dX3
-    REAL(DP) :: Alpha, Beta_1, Beta_2, Beta_3
-    REAL(DP) :: AlphaMns, AlphaMdl, AlphaPls
-    REAL(DP), DIMENSION(nDOFX_X2)     :: Cs_L, Cs_R
-    REAL(DP), DIMENSION(nCF,nDOFX_X2) :: Lambda_L, Lambda_R
-    REAL(DP), DIMENSION(nDOFX_X2,nCF) :: uCF_L, uCF_R
-    REAL(DP), DIMENSION(nDOFX_X2,nPF) :: uPF_L, uPF_R
-    REAL(DP), DIMENSION(nDOFX_X2,nAF) :: uAF_L, uAF_R
-    REAL(DP), DIMENSION(nDOFX_X2,nGF) :: G_F
-    REAL(DP), DIMENSION(nDOFX)        :: P_P, P_K
-    REAL(DP), DIMENSION(nDOFX_X2,nCF) :: Flux_X2_L, Flux_X2_R
-    REAL(DP), DIMENSION(nDOFX_X2,nCF) :: EigVals_L, EigVals_R, EigVals
-    REAL(DP), DIMENSION(nDOFX_X2,nCF) :: NumericalFlux
-    REAL(DP), DIMENSION(nDOFX,   nCF) :: uCF_P, uCF_K
-    REAL(DP), DIMENSION(nDOFX,   nPF) :: uPF_P, uPF_K
-    REAL(DP), DIMENSION(nDOFX,   nAF) :: uAF_P, uAF_K
-    REAL(DP), DIMENSION(nDOFX,   nGF) :: G_P, G_K
-    REAL(DP), DIMENSION(nDOFX,   nCF) :: Flux_X2_q
+    REAL(DP) :: dX1, dX3, &
+                Alpha, Beta_1, Beta_2, Beta_3, &
+                AlphaMns, AlphaMdl, AlphaPls, &
+                Cs_L(nDOFX_X2), Cs_R(nDOFX_X2), &
+                Lambda_L(nCF,nDOFX_X2), Lambda_R(nCF,nDOFX_X2), &
+                uCF_L(nDOFX_X2,nCF), uCF_R(nDOFX_X2,nCF), &
+                uPF_L(nDOFX_X2,nPF), uPF_R(nDOFX_X2,nPF), &
+                uAF_L(nDOFX_X2,nAF), uAF_R(nDOFX_X2,nAF), &
+                G_F(nDOFX_X2,nGF), &
+                P_P(nDOFX) , P_K(nDOFX), & 
+                Flux_X2_L(nDOFX_X2,nCF), Flux_X2_R(nDOFX_X2,nCF), &
+                EigVals_L(nDOFX_X2,nCF), EigVals_R(nDOFX_X2,nCF), &
+                EigVals(nDOFX_X2,nCF), &
+                NumericalFlux(nDOFX_X2,nCF), &
+                uCF_P(nDOFX,nCF), uCF_K(nDOFX,nCF), &
+                uPF_P(nDOFX,nPF), uPF_K(nDOFX,nPF), &
+                uAF_P(nDOFX,nAF), uAF_K(nDOFX,nAF), &
+                G_P(nDOFX,nGF), G_K(nDOFX,nGF), &
+                Flux_X2_q(nDOFX,nCF)
 
-    IF( iX_E0(2) == iX_B0(2) ) RETURN
+    IF( iX_E0(2) .EQ. iX_B0(2) ) RETURN
 
     Timer_RHS_1_GR = 0.0_DP
     Timer_RHS_2_GR = 0.0_DP
@@ -626,9 +621,6 @@ CONTAINS
 
       dX3 = MeshX(3) % Width(iX3)
       dX1 = MeshX(1) % Width(iX1)
-
-      IF( DEBUG_X2 ) &
-        WRITE(*,'(A,3I5)') '  DG_X2: iX1,iX2,iX3' , iX1,iX2,iX3
 
       DO iCF = 1, nCF
 
@@ -650,34 +642,32 @@ CONTAINS
 
       IF( iX2 .LT. iX_E0(2) + 1 )THEN
 
-        IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: Volume Term'
-        IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: CALL ComputePrimitive_GR'
-        CALL ComputePrimitive_GR &
-           ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-             uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-             uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-             uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-             P_K(:),                                            &
-             G_K(:,iGF_Gm_dd_11),                               &
-             G_K(:,iGF_Gm_dd_22),                               &
-             G_K(:,iGF_Gm_dd_33) )
+        CALL Euler_ComputePrimitive_Relativistic &
+               ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                 uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                 uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                 uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                 G_K(:,iGF_Gm_dd_11),                               &
+                 G_K(:,iGF_Gm_dd_22),                               &
+                 G_K(:,iGF_Gm_dd_33),                               &
+                 P_K )
 
         DO iNodeX = 1, nDOFX
 
-          Flux_X2_q(iNodeX,1:nCF)           &
-            = Flux_X2_GR                    &
-                ( uPF_K(iNodeX,iPF_D ),     &
-                  uPF_K(iNodeX,iPF_V1),     &
-                  uPF_K(iNodeX,iPF_V2),     &
-                  uPF_K(iNodeX,iPF_V3),     &
-                  uPF_K(iNodeX,iPF_E ),     &
-                  uPF_K(iNodeX,iPF_Ne),     &
-                  P_K(iNodeX),              &
-                  G_K(iNodeX,iGF_Gm_dd_11), &
-                  G_K(iNodeX,iGF_Gm_dd_22), &
-                  G_K(iNodeX,iGF_Gm_dd_33), &
-                  G_K(iNodeX,iGF_Alpha),    &
-                  G_K(iNodeX,iGF_Beta_2) )
+          Flux_X2_q(iNodeX,:) &
+            = Euler_Flux_X2_Relativistic      &
+                ( uPF_K(iNodeX,iPF_D ),       &
+                  uPF_K(iNodeX,iPF_V1),       &
+                  uPF_K(iNodeX,iPF_V2),       &
+                  uPF_K(iNodeX,iPF_V3),       &
+                  uPF_K(iNodeX,iPF_E ),       &
+                  uPF_K(iNodeX,iPF_Ne),       &
+                  P_K  (iNodeX),              &
+                  G_K  (iNodeX,iGF_Gm_dd_11), &
+                  G_K  (iNodeX,iGF_Gm_dd_22), &
+                  G_K  (iNodeX,iGF_Gm_dd_33), &
+                  G_K  (iNodeX,iGF_Alpha),    &
+                  G_K  (iNodeX,iGF_Beta_2) )
 
         END DO
 
@@ -685,8 +675,8 @@ CONTAINS
 
         DO iCF = 1, nCF
 
-          Flux_X2_q(:,iCF)                                 &
-            = dX1 * dX3 * WeightsX_q(:) * G_K(:,iGF_Alpha) &
+          Flux_X2_q(:,iCF) &
+            = dX1 * dX3 * WeightsX_q * G_K(:,iGF_Alpha) &
                 * G_K(:,iGF_SqrtGm) * Flux_X2_q(:,iCF)
 
           CALL DGEMV &
@@ -704,8 +694,6 @@ CONTAINS
       !------------------------
       ! --- Divergence Term ---
       !------------------------
-
-      IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: Divergence Term'
 
       ! --- Interpolate Fluid Fields ---
 
@@ -731,11 +719,11 @@ CONTAINS
 
       CALL DGEMV &
              ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Up, nDOFX_X2, &
-               P_P(:), 1, Zero, uAF_L(:,iAF_P), 1 )
+               P_P, 1, Zero, uAF_L(:,iAF_P), 1 )
 
       CALL DGEMV &
              ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
-               P_K(:), 1, Zero, uAF_R(:,iAF_P), 1 )
+               P_K, 1, Zero, uAF_R(:,iAF_P), 1 )
 
       CALL Timer_Stop( dT_INT_F_GR )
 
@@ -761,12 +749,11 @@ CONTAINS
                ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                  G_K(:,iGF), 1, Half, G_F(:,iGF), 1 )
 
-        G_F(1:nDOFX_X2,iGF) &
-          = MAX( G_F(1:nDOFX_X2,iGF), SqrtTiny )
+        G_F(1:nDOFX_X2,iGF) = MAX( G_F(:,iGF), SqrtTiny )
 
       END DO
 
-      CALL ComputeGeometryX_FromScaleFactors( G_F(:,:) )
+      CALL ComputeGeometryX_FromScaleFactors( G_F )
 
       ! --- Lapse Function ---
 
@@ -778,8 +765,7 @@ CONTAINS
              ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                G_K(:,iGF_Alpha), 1, Half, G_F(:,iGF_Alpha), 1 )
 
-      G_F(1:nDOFX_X2,iGF_Alpha) &
-        = MAX( G_F(1:nDOFX_X2,iGF_Alpha), SqrtTiny )
+      G_F(:,iGF_Alpha) = MAX( G_F(:,iGF_Alpha), SqrtTiny )
 
       CALL Timer_Stop( dT_INT_G_GR )
 
@@ -787,41 +773,37 @@ CONTAINS
 
       ! --- Left State Primitive, etc. ---
 
-      IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: Left State Primitive'
-      IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: CALL ComputePrimitive_GR'
-      CALL ComputePrimitive_GR &
+      CALL Euler_ComputePrimitive_Relativistic &
              ( uCF_L(:,iCF_D ), uCF_L(:,iCF_S1), uCF_L(:,iCF_S2), &
                uCF_L(:,iCF_S3), uCF_L(:,iCF_E ), uCF_L(:,iCF_Ne), &
                uPF_L(:,iPF_D ), uPF_L(:,iPF_V1), uPF_L(:,iPF_V2), &
                uPF_L(:,iPF_V3), uPF_L(:,iPF_E ), uPF_L(:,iPF_Ne), &
-               uAF_L(:,iAF_P),                                    &
                G_F(:,iGF_Gm_dd_11),                               &
                G_F(:,iGF_Gm_dd_22),                               &
-               G_F(:,iGF_Gm_dd_33) )
+               G_F(:,iGF_Gm_dd_33),                               &
+               uAF_L(:,iAF_P) )
 
-      IF( DEBUG_X2 ) &
-        WRITE(*,'(A)') '  DG_X2: CALL ComputeSoundSpeedFromPrimitive_GR'
       CALL ComputeSoundSpeedFromPrimitive_GR &
-             ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L(:) )
+             ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L )
 
       DO iNodeX_X2 = 1, nDOFX_X2
 
         Lambda_L(:,iNodeX_X2) &
-          = Eigenvalues_GR &
-              ( uPF_L(iNodeX_X2,iPF_V1),       &
+          = Euler_Eigenvalues_Relativistic                  &
+              ( uPF_L(iNodeX_X2,iPF_V2),       &
+                Cs_L (iNodeX_X2),              &
+                uPF_L(iNodeX_X2,iPF_V1),       &
                 uPF_L(iNodeX_X2,iPF_V2),       &
                 uPF_L(iNodeX_X2,iPF_V3),       &
-                uPF_L(iNodeX_X2,iPF_V2),       &
-                Cs_L (iNodeX_X2),              &
+                G_F  (iNodeX_X2,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X2,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X2,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X2,iGF_Gm_dd_33), &
-                G_F  (iNodeX_X2,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X2,iGF_Alpha),    &
                 G_F  (iNodeX_X2,iGF_Beta_2) )
 
-        Flux_X2_L(iNodeX_X2,1:nCF)             &
-          = Flux_X2_GR                         &
+        Flux_X2_L(iNodeX_X2,:) &
+          = Euler_Flux_X2_Relativistic                      &
               ( uPF_L(iNodeX_X2,iPF_D ),       &
                 uPF_L(iNodeX_X2,iPF_V1),       &
                 uPF_L(iNodeX_X2,iPF_V2),       &
@@ -839,41 +821,37 @@ CONTAINS
 
       ! --- Right State Primitive, etc. ---
 
-      IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: Right State Primitive'
-      IF( DEBUG_X2 ) WRITE(*,'(A)') '  DG_X2: CALL ComputePrimitive'
-      CALL ComputePrimitive_GR &
-           ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
-             uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
-             uPF_R(:,iPF_D ), uPF_R(:,iPF_V1), uPF_R(:,iPF_V2), &
-             uPF_R(:,iPF_V3), uPF_R(:,iPF_E ), uPF_R(:,iPF_Ne), &
-             uAF_R(:,iAF_P),                                    &
-             G_F(:,iGF_Gm_dd_11),                               &
-             G_F(:,iGF_Gm_dd_22),                               &
-             G_F(:,iGF_Gm_dd_33) )
+      CALL Euler_ComputePrimitive_Relativistic &
+             ( uCF_R(:,iCF_D ), uCF_R(:,iCF_S1), uCF_R(:,iCF_S2), &
+               uCF_R(:,iCF_S3), uCF_R(:,iCF_E ), uCF_R(:,iCF_Ne), &
+               uPF_R(:,iPF_D ), uPF_R(:,iPF_V1), uPF_R(:,iPF_V2), &
+               uPF_R(:,iPF_V3), uPF_R(:,iPF_E ), uPF_R(:,iPF_Ne), &
+               G_F(:,iGF_Gm_dd_11),                               &
+               G_F(:,iGF_Gm_dd_22),                               &
+               G_F(:,iGF_Gm_dd_33),                               &
+               uAF_R(:,iAF_P) )
 
-      IF( DEBUG_X2 ) &
-        WRITE(*,'(A)') '  DG_X2: CALL ComputeSoundSpeedFromPrimitive_GR'
       CALL ComputeSoundSpeedFromPrimitive_GR &
-             ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R(:) )
+             ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R )
 
       DO iNodeX_X2 = 1, nDOFX_X2
 
         Lambda_R(:,iNodeX_X2) &
-          = Eigenvalues_GR &
-              ( uPF_R(iNodeX_X2,iPF_V1),       &
+          = Euler_Eigenvalues_Relativistic     &
+              ( uPF_R(iNodeX_X2,iPF_V2),       &
+                Cs_R (iNodeX_X2),              &
+                uPF_R(iNodeX_X2,iPF_V1),       &
                 uPF_R(iNodeX_X2,iPF_V2),       &
                 uPF_R(iNodeX_X2,iPF_V3),       &
-                uPF_R(iNodeX_X2,iPF_V2),       &
-                Cs_R (iNodeX_X2),              &
+                G_F  (iNodeX_X2,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X2,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X2,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X2,iGF_Gm_dd_33), &
-                G_F  (iNodeX_X2,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X2,iGF_Alpha),    &
                 G_F  (iNodeX_X2,iGF_Beta_2) )
 
-        Flux_X2_R(iNodeX_X2,1:nCF) &
-          = Flux_X2_GR                         &
+        Flux_X2_R(iNodeX_X2,:) &
+          = Euler_Flux_X2_Relativistic         &
               ( uPF_R(iNodeX_X2,iPF_D ),       &
                 uPF_R(iNodeX_X2,iPF_V1),       &
                 uPF_R(iNodeX_X2,iPF_V2),       &
@@ -906,30 +884,39 @@ CONTAINS
                  MAXVAL( + Lambda_R(:,iNodeX_X2) ) )
 
         AlphaMdl &
-          = AlphaC_GR &
-              ( uCF_L    (iNodeX_X2,1:nCF), uCF_R    (iNodeX_X2,1:nCF), &
-                Flux_X2_L(iNodeX_X2,1:nCF), Flux_X2_R(iNodeX_X2,1:nCF), &
-                G_F(iNodeX_X2,iGF_Gm_dd_22), &
-                G_F(iNodeX_X2,iGF_Alpha),    &
-                G_F(iNodeX_X2,iGF_Beta_2),   &
-                AlphaPls, AlphaMns )
+          = Euler_AlphaMiddle_Relativistic         &
+              ( uCF_L    (iNodeX_X2,iCF_D ),       &
+                uCF_L    (iNodeX_X2,iCF_S2),       &
+                uCF_L    (iNodeX_X2,iCF_E ),       &
+                Flux_X2_L(iNodeX_X2,iCF_D ),       &
+                Flux_X2_L(iNodeX_X2,iCF_S2),       &
+                Flux_X2_L(iNodeX_X2,iCF_E ),       &
+                uCF_R    (iNodeX_X2,iCF_D ),       &
+                uCF_R    (iNodeX_X2,iCF_S2),       &
+                uCF_R    (iNodeX_X2,iCF_E ),       &
+                Flux_X2_R(iNodeX_X2,iCF_D ),       &
+                Flux_X2_R(iNodeX_X2,iCF_S2),       &
+                Flux_X2_R(iNodeX_X2,iCF_E ),       &
+                AlphaPls, AlphaMns,                &
+                G_F      (iNodeX_X2,iGF_Gm_dd_22), &
+                G_F      (iNodeX_X2,iGF_Alpha),    &
+                G_F      (iNodeX_X2,iGF_Beta_2) )
 
-        NumericalFlux(iNodeX_X2,:)                 &
-!          = NumericalFlux_LLF_GR                   &
-          = NumericalFlux_HLL_GR                   &
-!          = NumericalFlux_X2_HLLC_GR               &
-              ( uCF_L(iNodeX_X2,1:nCF),            &
-                uCF_R(iNodeX_X2,1:nCF),            &
-                Flux_X2_L(iNodeX_X2,1:nCF),        &
-                Flux_X2_R(iNodeX_X2,1:nCF),        &
-                AlphaPls, AlphaMns, AlphaMdl, nCF, &
-                uPF_L(iNodeX_X2,iPF_V2),           &
-                uPF_R(iNodeX_X2,iPF_V2),           &
-                uAF_L(iNodeX_X2,iAF_P),            &
-                uAF_R(iNodeX_X2,iAF_P),            &
-                G_F(iNodeX_X2,iGF_Alpha),          &
-                G_F(iNodeX_X2,iGF_Beta_2),         &
-                G_F(iNodeX_X2,iGF_Gm_dd_22) )
+        NumericalFlux(iNodeX_X2,:) &
+!          = Euler_NumericalFlux_X2_HLLC_Relativistic &
+          = Euler_NumericalFlux_HLL_Relativistic     &
+              ( uCF_L    (iNodeX_X2,1:nCF),          &
+                uCF_R    (iNodeX_X2,1:nCF),          &
+                Flux_X2_L(iNodeX_X2,1:nCF),          &
+                Flux_X2_R(iNodeX_X2,1:nCF),          &
+                AlphaPls, AlphaMns, AlphaMdl,        &
+                G_F      (iNodeX_X2,iGF_Gm_dd_22),   &
+                uPF_L    (iNodeX_X2,iPF_V2),         &
+                uPF_R    (iNodeX_X2,iPF_V2),         &
+                uAF_L    (iNodeX_X2,iAF_P),          &
+                uAF_R    (iNodeX_X2,iAF_P),          &
+                G_F      (iNodeX_X2,iGF_Alpha),      &
+                G_F      (iNodeX_X2,iGF_Beta_2) )
 
 
       END DO
@@ -937,7 +924,7 @@ CONTAINS
       DO iCF = 1, nCF
 
         NumericalFlux(:,iCF) &
-          = dX1 * dX3 * WeightsX_X2(:) * G_F(:,iGF_Alpha) &
+          = dX1 * dX3 * WeightsX_X2 * G_F(:,iGF_Alpha) &
               * G_F(:,iGF_SqrtGm) * NumericalFlux(:,iCF)
 
       END DO
@@ -976,7 +963,7 @@ CONTAINS
 
           CALL DGEMV &
                  ( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Up, nDOFX_X2, &
-                  NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2-1,iX3,iCF), 1 )
+                   NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2-1,iX3,iCF), 1 )
 
         END DO
 
@@ -1025,15 +1012,15 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X3 &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
-      dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
     IF( iX_E0(3) .EQ. iX_B0(3) )THEN
       RETURN
@@ -1045,29 +1032,27 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
-      dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX
-    REAL(DP) :: dX1, dX2, dX3
-    REAL(DP) :: P_K(nDOFX)
-    REAL(DP) :: dh1dX1(nDOFX), dh2dX1(nDOFX), dh3dX1(nDOFX)
-    REAL(DP) :: dadx1(nDOFX)
-    REAL(DP) :: Stress(nDOFX,3)
-    REAL(DP) :: uCF_K(nDOFX,nCF)
-    REAL(DP) :: uPF_K(nDOFX,nPF)
-    REAL(DP) :: G_K(nDOFX,nGF)
-    REAL(DP) :: G_P_X1(nDOFX,nGF), G_N_X1(nDOFX,nGF)
-    REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF)
-
-    IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: Entering ComputeIncrement_Geometry...'
+    REAL(DP) :: dX1, dX2, dX3, &
+                P_K(nDOFX), &
+                dh1dX1(nDOFX), dh2dX1(nDOFX), dh3dX1(nDOFX), &
+                dadx1(nDOFX), &
+                Stress(nDOFX,3), &
+                uCF_K(nDOFX,nCF), &
+                uPF_K(nDOFX,nPF), &
+                G_K(nDOFX,nGF), &
+                G_P_X1(nDOFX,nGF), G_N_X1(nDOFX,nGF), &
+                G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF)
 
     CALL Timer_Start( Timer_Geo )
 
@@ -1093,28 +1078,23 @@ CONTAINS
 
       END DO
 
-      IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: CALL ComputePrimitive_GR'
-      CALL ComputePrimitive_GR &
+      CALL Euler_ComputePrimitive_Relativistic &
            ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
              uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
              uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
              uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-             P_K(:),                                            &
              G_K(:,iGF_Gm_dd_11),                               &
              G_K(:,iGF_Gm_dd_22),                               &
-             G_K(:,iGF_Gm_dd_33) )
+             G_K(:,iGF_Gm_dd_33),                               &
+             P_K )
 
-      IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: StressTensor_Diagonal'
       DO iNodeX = 1, nDOFX
 
-        Stress(iNodeX,1:3)            &
-          = StressTensor_Diagonal     &
-              ( uCF_K(iNodeX,iCF_S1), &
-                uCF_K(iNodeX,iCF_S2), &
-                uCF_K(iNodeX,iCF_S3), &
-                uPF_K(iNodeX,iPF_V1), &
-                uPF_K(iNodeX,iPF_V2), &
-                uPF_K(iNodeX,iPF_V3), &
+        Stress(iNodeX,:) &
+          = Euler_StressTensor_Diagonal_Relativistic        &
+              ( uCF_K(iNodeX,iCF_S1), uCF_K(iNodeX,iCF_S2), &
+                uCF_K(iNodeX,iCF_S3), uPF_K(iNodeX,iPF_V1), &
+                uPF_K(iNodeX,iPF_V2), uPF_K(iNodeX,iPF_V3), &
                 P_K  (iNodeX) )
 
       END DO
@@ -1123,7 +1103,6 @@ CONTAINS
 
       ! --- Face States (Average of Left and Right States) ---
 
-      IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: Scale factor derivatives wrt X1'
       DO iGF = iGF_h_1, iGF_h_3
 
         CALL DGEMV &
@@ -1133,8 +1112,7 @@ CONTAINS
                ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                  G_K   (:,iGF), 1, Half, G_X1_Dn(:,iGF), 1 )
 
-        G_X1_Dn(1:nDOFX_X1,iGF) &
-          = MAX( G_X1_Dn(1:nDOFX_X1,iGF), SqrtTiny )
+        G_X1_Dn(:,iGF) = MAX( G_X1_Dn(:,iGF), SqrtTiny )
 
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
@@ -1143,107 +1121,97 @@ CONTAINS
                ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                  G_N_X1(:,iGF), 1, Half, G_X1_Up(:,iGF), 1 )
 
-        G_X1_Up(1:nDOFX_X1,iGF) &
-          = MAX( G_X1_Up(1:nDOFX_X1,iGF), SqrtTiny )
+        G_X1_Up(:,iGF) = MAX( G_X1_Up(:,iGF), SqrtTiny )
 
       END DO
 
       ! --- dh1dx1 ---
 
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1(:) * G_X1_Up(:,iGF_h_1), 1, Zero, dh1dX1, 1 )
+                  WeightsX_X1 * G_X1_Up(:,iGF_h_1), 1, Zero, dh1dX1, 1 )
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1(:) * G_X1_Dn(:,iGF_h_1), 1,  One, dh1dX1, 1 )
+                  WeightsX_X1 * G_X1_Dn(:,iGF_h_1), 1,  One, dh1dX1, 1 )
       CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q (:) * G_K    (:,iGF_h_1), 1,  One, dh1dX1, 1 )
+                  WeightsX_q  * G_K    (:,iGF_h_1), 1,  One, dh1dX1, 1 )
 
-      dh1dx1 = dh1dx1 / ( WeightsX_q(:) * dX1 )
+      dh1dx1 = dh1dx1 / ( WeightsX_q * dX1 )
 
       ! --- dh2dx1 ---
 
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1(:) * G_X1_Up(:,iGF_h_2), 1, Zero, dh2dX1, 1 )
+                  WeightsX_X1 * G_X1_Up(:,iGF_h_2), 1, Zero, dh2dX1, 1 )
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1(:) * G_X1_Dn(:,iGF_h_2), 1,  One, dh2dX1, 1 )
+                  WeightsX_X1 * G_X1_Dn(:,iGF_h_2), 1,  One, dh2dX1, 1 )
       CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q (:) * G_K    (:,iGF_h_2), 1,  One, dh2dX1, 1 )
+                  WeightsX_q  * G_K    (:,iGF_h_2), 1,  One, dh2dX1, 1 )
 
       dh2dx1 = dh2dx1 / ( WeightsX_q(:) * dX1 )
 
       ! --- dh3dx1 ---
 
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1(:) * G_X1_Up(:,iGF_h_3), 1, Zero, dh3dX1, 1 )
+                  WeightsX_X1 * G_X1_Up(:,iGF_h_3), 1, Zero, dh3dX1, 1 )
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1(:) * G_X1_Dn(:,iGF_h_3), 1,  One, dh3dX1, 1 )
+                  WeightsX_X1 * G_X1_Dn(:,iGF_h_3), 1,  One, dh3dX1, 1 )
       CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q (:) * G_K    (:,iGF_h_3), 1,  One, dh3dX1, 1 )
+                  WeightsX_q  * G_K    (:,iGF_h_3), 1,  One, dh3dX1, 1 )
 
-      dh3dx1 = dh3dx1 / ( WeightsX_q(:) * dX1 )
+      dh3dx1 = dh3dx1 / ( WeightsX_q * dX1 )
 
       ! --- Lapse Function Derivative wrt X1 ---
 
       ! --- Face States (Average of Left and Right States) ---
 
-      IF( DEBUG_G ) WRITE(*,'(A)') &
-        '  DG_G: Lapse function derivatives wrt X1'
-      iGF = iGF_Alpha
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+               G_P_X1(:,iGF_Alpha), 1, Zero, G_X1_Dn(:,iGF_Alpha), 1 )
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               G_K   (:,iGF_Alpha), 1, Half, G_X1_Dn(:,iGF_Alpha), 1 )
+
+      G_X1_Dn(:,iGF_Alpha) = MAX( G_X1_Dn(:,iGF_Alpha), SqrtTiny )
 
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-               G_P_X1(:,iGF), 1, Zero, G_X1_Dn(:,iGF), 1 )
+               G_K   (:,iGF_Alpha), 1, Zero, G_X1_Up(:,iGF_Alpha), 1 )
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-               G_K   (:,iGF), 1, Half, G_X1_Dn(:,iGF), 1 )
+               G_N_X1(:,iGF_Alpha), 1, Half, G_X1_Up(:,iGF_Alpha), 1 )
 
-      G_X1_Dn(1:nDOFX_X1,iGF) &
-        = MAX( G_X1_Dn(1:nDOFX_X1,iGF), SqrtTiny )
-
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-               G_K   (:,iGF), 1, Zero, G_X1_Up(:,iGF), 1 )
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-               G_N_X1(:,iGF), 1, Half, G_X1_Up(:,iGF), 1 )
-
-      G_X1_Up(1:nDOFX_X1,iGF) &
-        = MAX( G_X1_Up(1:nDOFX_X1,iGF), SqrtTiny )
+      G_X1_Up(:,iGF_Alpha) = MAX( G_X1_Up(:,iGF_Alpha), SqrtTiny )
 
       ! --- dadx1 ---
 
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-                  WeightsX_X1(:) * G_X1_Up(:,iGF_Alpha), 1, Zero,  &
+                  WeightsX_X1 * G_X1_Up(:,iGF_Alpha), 1, Zero,  &
                   dadX1, 1 )
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-                  WeightsX_X1(:) * G_X1_Dn(:,iGF_Alpha), 1,  One,  &
+                  WeightsX_X1 * G_X1_Dn(:,iGF_Alpha), 1,  One,  &
                   dadX1, 1 )
       CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
-                  WeightsX_q (:) * G_K    (:,iGF_Alpha), 1,  One,  &
+                  WeightsX_q  * G_K    (:,iGF_Alpha), 1,  One,  &
                   dadX1, 1 )
 
-      dadx1 = dadx1 / ( WeightsX_q(:) * dX1 )
+      dadx1 = dadx1 / ( WeightsX_q * dX1 )
 
       ! --- Compute Increments ---
 
-      IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: Compute increments (1)'
-      dU(:,iX1,iX2,iX3,iCF_S1)                                       &
-        = dU(:,iX1,iX2,iX3,iCF_S1)                                   &
-            + G_K(:,iGF_Alpha)                                       &
-                * ( ( Stress(:,1) * dh1dX1(:) ) / G_K(:,iGF_h_1)     &
-                    + ( Stress(:,2) * dh2dX1(:) ) / G_K(:,iGF_h_2)   &
-                    + ( Stress(:,3) * dh3dX1(:) ) / G_K(:,iGF_h_3) ) &
-            - ( uCF_K(:,iCF_D) + uCF_K(:,iCF_E) ) * dadx1(:)
+      dU(:,iX1,iX2,iX3,iCF_S1) &
+        = dU(:,iX1,iX2,iX3,iCF_S1)                                &
+            + G_K(:,iGF_Alpha)                                    &
+                * ( ( Stress(:,1) * dh1dX1 ) / G_K(:,iGF_h_1)     &
+                    + ( Stress(:,2) * dh2dX1 ) / G_K(:,iGF_h_2)   &
+                    + ( Stress(:,3) * dh3dX1 ) / G_K(:,iGF_h_3) ) &
+            - ( uCF_K(:,iCF_D) + uCF_K(:,iCF_E) ) * dadx1
 
-      IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: Compute increments (2)'
-      dU(:,iX1,iX2,iX3,iCF_E)     &
+      dU(:,iX1,iX2,iX3,iCF_E) &
         = dU(:,iX1,iX2,iX3,iCF_E) &
-            - ( uCF_K(:,iCF_S1) / G_K(:,iGF_Gm_dd_11) ) * dadx1(:)
+            - ( uCF_K(:,iCF_S1) / G_K(:,iGF_Gm_dd_11) ) * dadx1
 
     END DO
     END DO
     END DO
 
-    IF( DEBUG_G ) WRITE(*,'(A)') '  DG_G: Leaving ComputeIncrement_Geometry'
     CALL Timer_Stop( Timer_Geo )
 
     IF( DisplayTimers )THEN
@@ -1287,4 +1255,4 @@ CONTAINS
   END SUBROUTINE Timer_Add
 
 
-END MODULE Euler_GR_dgDiscretizationModule
+END MODULE Euler_dgDiscretizationModule_Relativistic
