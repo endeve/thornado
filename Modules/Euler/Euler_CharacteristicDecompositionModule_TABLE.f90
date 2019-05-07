@@ -70,7 +70,7 @@ CONTAINS
     Tau = 1.0_DP / D
 
     dPdE   = dPdT / dEdT
-    dPdDe   =  ( Tau ) * ( dPdY - dEdY * dPdE )
+    dPdDe  = ( Tau ) * ( dPdY - dEdY * dPdE )
     dPdTau = (dPdDe * (Y - 1) + dEdD * dPdE)/ (Tau**2)
 
 

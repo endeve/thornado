@@ -255,7 +255,7 @@ CONTAINS
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
                   uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d32 * Erg / Centimeter**3
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.25_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.4_DP
 
                 ELSE
 
@@ -264,7 +264,7 @@ CONTAINS
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2)  = 0.0_DP * Kilometer / Second
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3)  = 0.0_DP * Kilometer / Second
                   uAF(iNodeX,iX1,iX2,iX3,iAF_P)   = 1.0d31 * Erg / Centimeter**3
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)  = 0.5_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)  = 0.3_DP
 
                 END IF
 

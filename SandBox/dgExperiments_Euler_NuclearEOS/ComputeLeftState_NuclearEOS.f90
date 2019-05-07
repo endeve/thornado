@@ -36,21 +36,23 @@ PROGRAM ComputeLeftState_NuclearEOS
   REAL(DP), DIMENSION(4)   :: FVEC, UVEC, dUVEC
   REAL(DP), DIMENSION(4,4) :: FJAC
 
-  CALL InitializeEquationOfState_TABLE( 'EquationOfStateTable.h5' )
+  CALL InitializeEquationOfState_TABLE( 'wl-EOS-SFHo-15-25-50.h5' )
 
   ! --- Right State ---
 
-  D_R = 1.25d12 * Gram / Centimeter**3
+  D_R = 1.00d12 * Gram / Centimeter**3
   V_R = 0.0d00 * Kilometer / Second
-  T_R = 9.38d10 * Kelvin
-  Y_R = 1.35d-1
+  P_R = 1.0d32 * Erg / Centimeter**3
+  Y_R = 0.4_DP
 
-  ! CALL ComputeTemperatureFromPressure_TABLE &
-  !        ( D_R, P_R, Y_R, T_R )
+
+  CALL ComputeTemperatureFromPressure_TABLE &
+         ( D_R, P_R, Y_R, T_R )
   CALL ComputeThermodynamicStates_Primitive_TABLE &
          ( D_R, T_R, Y_R, Ev_R, E_R, N_R )
   CALL ComputeAuxiliary_Fluid_TABLE &
          ( D_R, Ev_R, N_R, P_R, T_R, Y_R, S_R, E_R, Gm_R, Cs_R )
+  print*,"E_v_R: ", Ev_R / (Erg / Centimeter**3)
 
   WRITE(*,*)
   WRITE(*,'(A4,A)') '', 'Right State:'

@@ -80,7 +80,7 @@ PROGRAM ApplicationDriver
 
   CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'ChimeraProfile'
+      RiemannProblemName = 'Sod'
 
       nX = [ 100, 1, 1 ]
       xL = [ - 5.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
@@ -90,17 +90,17 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      BetaTVD = 1.25_DP
+      BetaTVD = 2.0_DP
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .TRUE.
+      UseCharacteristicLimiting = .FALSE.
 
-      UseTroubledCellIndicator  = .TRUE.
+      UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 1.0d-1
 
       iCycleD = 10
-      t_end   = 2.5d-2 * Millisecond !2.5d-2 * Millisecond!105.0_DP * Millisecond
+      t_end   = 2.5d-2 * Millisecond
       dt_wrt  = 2.5d-4 * Millisecond
 
     CASE( 'ChimeraProfile' )
@@ -111,7 +111,7 @@ PROGRAM ApplicationDriver
 
       bcX = [ 2, 0, 0 ]
 
-      nNodes = 1
+      nNodes = 3
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
@@ -158,7 +158,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'TABLE', &
-           EquationOfStateTableName_Option = 'EquationOfStateTable.h5' )
+           EquationOfStateTableName_Option = 'wl-EOS-DD2-25-50-100.h5' )
 
   CALL Euler_InitializeSlopeLimiter &
          ( BetaTVD_Option = BetaTVD, &
@@ -186,7 +186,7 @@ PROGRAM ApplicationDriver
              = TRIM( Direction ), &
            RiemannProblemName_Option &
              = TRIM( RiemannProblemName ) )
-  print*,"------------------------------------------------------------------"
+
   CALL Euler_ApplySlopeLimiter &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
@@ -214,7 +214,7 @@ PROGRAM ApplicationDriver
   wTime = MPI_WTIME( )
 
   t     = 0.0_DP * Millisecond
-  t_wrt = dt_wrt !* Millisecond
+  t_wrt = dt_wrt
   wrt   = .TRUE.
 
   CALL InitializeTally_Euler &
