@@ -21,7 +21,8 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic
     Euler_ComputePrimitive_Relativistic, &
     Euler_Eigenvalues_Relativistic
   USE EquationOfStateModule, ONLY: &
-    ComputeSoundSpeedFromPrimitive_GR
+    ComputeSoundSpeedFromPrimitive_GR, &
+    ComputePressureFromPrimitive_Relativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -68,7 +69,9 @@ CONTAINS
              D, V1, V2, V3, E, Ne, &
              [G(iGF_Gm_dd_11)], &
              [G(iGF_Gm_dd_22)], &
-             [G(iGF_Gm_dd_33)], P )
+             [G(iGF_Gm_dd_33)] )
+
+    CALL ComputePressureFromPrimitive_Relativistic( D, E, Ne, P )
 
     Vu1 = V1(1)
     Vu2 = V2(1)
@@ -345,8 +348,9 @@ CONTAINS
              D, V1, V2, V3, E, Ne, &
              [G(iGF_Gm_dd_11)], &
              [G(iGF_Gm_dd_22)], &
-             [G(iGF_Gm_dd_33)], &
-             P )
+             [G(iGF_Gm_dd_33)] )
+
+    CALL ComputePressureFromPrimitive_Relativistic( D, E, Ne, P )
 
     CALL ComputeSoundSpeedFromPrimitive_GR( D, E, Ne, Cs )
 

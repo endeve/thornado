@@ -20,6 +20,8 @@ MODULE Euler_TallyModule_Relativistic
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     Euler_ComputePrimitive_Relativistic
+  USE EquationOfStateModule, ONLY: &
+    ComputePressureFromPrimitive_Relativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -153,8 +155,10 @@ CONTAINS
                P(:,iPF_V3), P(:,iPF_E) , P(:,iPF_Ne), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               Pressure )
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      CALL ComputePressureFromPrimitive_Relativistic &
+             ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), Pressure )
 
       ! --- Pressure ---
 
