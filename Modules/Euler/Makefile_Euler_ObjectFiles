@@ -16,8 +16,6 @@ EULER = \
   Euler_PositivityLimiterModule_NonRelativistic.o \
   Euler_PositivityLimiterModule_Relativistic.o \
   Euler_PositivityLimiterModule.o \
-  Euler_dgDiscretizationModule_NonRelativistic.o \
-  Euler_dgDiscretizationModule_Relativistic.o \
   Euler_dgDiscretizationModule.o \
   Euler_TallyModule_NonRelativistic.o \
   Euler_TallyModule_Relativistic.o \
