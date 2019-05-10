@@ -6,6 +6,7 @@ MODULE EquationOfStateModule
     InitializeEquationOfState_IDEAL, &
     ComputeInternalEnergyDensityFromPressure_IDEAL, &
     ComputePressureFromPrimitive_IDEAL, &
+    ComputePressureFromPrimitive_Relativistic_IDEAL, &
     ComputePressureFromSpecificInternalEnergy_IDEAL, &
     ComputeSoundSpeedFromPrimitive_IDEAL, &
     ComputeSoundSpeedFromPrimitive_GR_IDEAL, &
@@ -113,6 +114,7 @@ MODULE EquationOfStateModule
   PROCEDURE (EosSubroutine_1),   POINTER, PUBLIC :: &
     ComputeInternalEnergyDensityFromPressure     => NULL(), &
     ComputePressureFromPrimitive                 => NULL(), &
+    ComputePressureFromPrimitive_Relativistic    => NULL(), &
     ComputePressureFromSpecificInternalEnergy    => NULL(), &
     ComputeTemperatureFromPressure               => NULL(), &
     ComputeTemperatureFromSpecificInternalEnergy => NULL(), &
@@ -180,6 +182,8 @@ CONTAINS
           => ComputeInternalEnergyDensityFromPressure_IDEAL
         ComputePressureFromPrimitive &
           => ComputePressureFromPrimitive_IDEAL
+        ComputePressureFromPrimitive_Relativistic &
+          => ComputePressureFromPrimitive_Relativistic_IDEAL
         ComputePressureFromSpecificInternalEnergy &
           => ComputePressureFromSpecificInternalEnergy_IDEAL
         ComputeSoundSpeedFromPrimitive &

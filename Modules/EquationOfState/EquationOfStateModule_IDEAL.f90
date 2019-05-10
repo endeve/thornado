@@ -18,6 +18,7 @@ MODULE EquationOfStateModule_IDEAL
   PUBLIC :: FinalizeEquationOfState_IDEAL
   PUBLIC :: ComputeInternalEnergyDensityFromPressure_IDEAL
   PUBLIC :: ComputePressureFromPrimitive_IDEAL
+  PUBLIC :: ComputePressureFromPrimitive_Relativistic_IDEAL
   PUBLIC :: ComputePressureFromSpecificInternalEnergy_IDEAL
   PUBLIC :: ComputeSoundSpeedFromPrimitive_IDEAL
   PUBLIC :: ComputeSoundSpeedFromPrimitive_GR_IDEAL
@@ -63,6 +64,16 @@ CONTAINS
     P(:) = ( Gamma_IDEAL - 1.0_DP ) * Ev(:)
 
   END SUBROUTINE ComputePressureFromPrimitive_IDEAL
+
+
+  SUBROUTINE ComputePressureFromPrimitive_Relativistic_IDEAL( D, Ev, Ne, P )
+
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: P(:)
+
+    P = ( Gamma_IDEAL - One ) * Ev
+
+  END SUBROUTINE ComputePressureFromPrimitive_Relativistic_IDEAL
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Y, P )
