@@ -26,7 +26,8 @@ MODULE Euler_UtilitiesModule_Relativistic
     iGF_Beta_1, iGF_Beta_2, iGF_Beta_3, nGF
   USE EquationOfStateModule, ONLY:             &
     ComputePressureFromSpecificInternalEnergy, &
-    ComputeSoundSpeedFromPrimitive_GR
+    ComputeSoundSpeedFromPrimitive_GR, &
+    ComputePressureFromPrimitive_Relativistic
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
 
@@ -64,19 +65,19 @@ CONTAINS
   SUBROUTINE Euler_ComputePrimitive_Relativistic &
               ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
                 PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, AF_P )
+                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
     REAL(DP), INTENT(in)  :: CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), &
                              CF_E(:), CF_Ne(:)
     REAL(DP), INTENT(out) :: PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), &
-                             PF_E(:), PF_Ne(:), AF_P(:)
+                             PF_E(:), PF_Ne(:)
     REAL(DP), INTENT(in)  :: GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
 
     LOGICAL            :: CONVERGED
     INTEGER, PARAMETER :: MAX_IT = 100
     INTEGER            :: i, ITERATION, nNodes
     REAL(DP)           :: SSq, Pold, vSq, W, h, Pnew, q, Pbisec
-    REAL(DP)           :: FunP, JacP, FunP1
+    REAL(DP)           :: FunP, JacP, FunP1, AF_P(SIZE(PF_D))
 
     ! --- Loop through all the nodes ---
     nNodes = SIZE( CF_D )
@@ -295,8 +296,11 @@ CONTAINS
                P(:,iX1,iX2,iX3,iPF_Ne),        &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_11),  &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22),  &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_33),  &
-               A(:,iX1,iX2,iX3,iAF_P) )
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      CALL ComputePressureFromPrimitive_Relativistic &
+             ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E ), &
+               P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeSoundSpeedFromPrimitive_GR &
              ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E ), &
@@ -376,8 +380,10 @@ CONTAINS
                P(:,iPF_E), P(:,iPF_Ne), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               A(:,iAF_P) )
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      CALL ComputePressureFromPrimitive_Relativistic &
+             ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_P) )
 
       CALL ComputeSoundSpeedFromPrimitive_GR &
              ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_Cs) )

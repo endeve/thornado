@@ -45,7 +45,8 @@ MODULE Euler_dgDiscretizationModule_Relativistic
     Euler_NumericalFlux_X3_HLLC_Relativistic
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromSpecificInternalEnergy, &
-    ComputeSoundSpeedFromPrimitive_GR
+    ComputeSoundSpeedFromPrimitive_GR, &
+    ComputePressureFromPrimitive_Relativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -209,8 +210,10 @@ CONTAINS
                  uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                  G_K(:,iGF_Gm_dd_11),                               &
                  G_K(:,iGF_Gm_dd_22),                               &
-                 G_K(:,iGF_Gm_dd_33),                               &
-                 P_K )
+                 G_K(:,iGF_Gm_dd_33) )
+
+        CALL ComputePressureFromPrimitive_Relativistic &
+               ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
 
         DO iNodeX = 1, nDOFX
 
@@ -342,8 +345,10 @@ CONTAINS
                uPF_L(:,iPF_V3), uPF_L(:,iPF_E ), uPF_L(:,iPF_Ne), &
                G_F(:,iGF_Gm_dd_11),                               &
                G_F(:,iGF_Gm_dd_22),                               &
-               G_F(:,iGF_Gm_dd_33),                               &
-               uAF_L(:,iAF_P) )
+               G_F(:,iGF_Gm_dd_33) )
+
+      CALL ComputePressureFromPrimitive_Relativistic &
+             ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), uAF_L(:,iAF_P) )
 
       CALL ComputeSoundSpeedFromPrimitive_GR &
              ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L )
@@ -390,8 +395,10 @@ CONTAINS
                uPF_R(:,iPF_V3), uPF_R(:,iPF_E ), uPF_R(:,iPF_Ne), &
                G_F(:,iGF_Gm_dd_11),                               &
                G_F(:,iGF_Gm_dd_22),                               &
-               G_F(:,iGF_Gm_dd_33),                               &
-               uAF_R(:,iAF_P) )
+               G_F(:,iGF_Gm_dd_33) )
+
+      CALL ComputePressureFromPrimitive_Relativistic &
+             ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), uAF_R(:,iAF_P) )
 
       CALL ComputeSoundSpeedFromPrimitive_GR &
              ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R )
@@ -649,8 +656,10 @@ CONTAINS
                  uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                  G_K(:,iGF_Gm_dd_11),                               &
                  G_K(:,iGF_Gm_dd_22),                               &
-                 G_K(:,iGF_Gm_dd_33),                               &
-                 P_K )
+                 G_K(:,iGF_Gm_dd_33) )
+
+        CALL ComputePressureFromPrimitive_Relativistic &
+               ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
 
         DO iNodeX = 1, nDOFX
 
@@ -780,8 +789,10 @@ CONTAINS
                uPF_L(:,iPF_V3), uPF_L(:,iPF_E ), uPF_L(:,iPF_Ne), &
                G_F(:,iGF_Gm_dd_11),                               &
                G_F(:,iGF_Gm_dd_22),                               &
-               G_F(:,iGF_Gm_dd_33),                               &
-               uAF_L(:,iAF_P) )
+               G_F(:,iGF_Gm_dd_33) )
+
+      CALL ComputePressureFromPrimitive_Relativistic &
+             ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), uAF_L(:,iAF_P) )
 
       CALL ComputeSoundSpeedFromPrimitive_GR &
              ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L )
@@ -828,8 +839,10 @@ CONTAINS
                uPF_R(:,iPF_V3), uPF_R(:,iPF_E ), uPF_R(:,iPF_Ne), &
                G_F(:,iGF_Gm_dd_11),                               &
                G_F(:,iGF_Gm_dd_22),                               &
-               G_F(:,iGF_Gm_dd_33),                               &
-               uAF_R(:,iAF_P) )
+               G_F(:,iGF_Gm_dd_33) )
+
+      CALL ComputePressureFromPrimitive_Relativistic &
+             ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), uAF_R(:,iAF_P) )
 
       CALL ComputeSoundSpeedFromPrimitive_GR &
              ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R )
@@ -1085,8 +1098,10 @@ CONTAINS
              uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
              G_K(:,iGF_Gm_dd_11),                               &
              G_K(:,iGF_Gm_dd_22),                               &
-             G_K(:,iGF_Gm_dd_33),                               &
-             P_K )
+             G_K(:,iGF_Gm_dd_33) )
+
+      CALL ComputePressureFromPrimitive_Relativistic &
+             ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
 
       DO iNodeX = 1, nDOFX
 

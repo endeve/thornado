@@ -42,16 +42,13 @@ CONTAINS
   SUBROUTINE Euler_ComputePrimitive &
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
-      AF_P_Option )
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
     REAL(DP), INTENT(in)  :: CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), &
                              CF_E(:), CF_Ne(:)
     REAL(DP), INTENT(out) :: PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), &
                              PF_E(:), PF_Ne(:)
     REAL(DP), INTENT(in)  :: GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
-
-    REAL(DP), INTENT(out), OPTIONAL :: AF_P_Option(:)
 
 #ifdef HYDRO_NONRELATIVISTIC
 
@@ -65,7 +62,7 @@ CONTAINS
     CALL Euler_ComputePrimitive_Relativistic &
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
              PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, AF_P_Option )
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #endif
 
