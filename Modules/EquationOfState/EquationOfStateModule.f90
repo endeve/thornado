@@ -6,10 +6,8 @@ MODULE EquationOfStateModule
     InitializeEquationOfState_IDEAL, &
     ComputeInternalEnergyDensityFromPressure_IDEAL, &
     ComputePressureFromPrimitive_IDEAL, &
-    ComputePressureFromPrimitive_Relativistic_IDEAL, &
     ComputePressureFromSpecificInternalEnergy_IDEAL, &
     ComputeSoundSpeedFromPrimitive_IDEAL, &
-    ComputeSoundSpeedFromPrimitive_GR_IDEAL, &
     ComputeAuxiliary_Fluid_IDEAL, &
     Auxiliary_Fluid_IDEAL
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -114,12 +112,10 @@ MODULE EquationOfStateModule
   PROCEDURE (EosSubroutine_1),   POINTER, PUBLIC :: &
     ComputeInternalEnergyDensityFromPressure     => NULL(), &
     ComputePressureFromPrimitive                 => NULL(), &
-    ComputePressureFromPrimitive_Relativistic    => NULL(), &
     ComputePressureFromSpecificInternalEnergy    => NULL(), &
     ComputeTemperatureFromPressure               => NULL(), &
     ComputeTemperatureFromSpecificInternalEnergy => NULL(), &
     ComputeSoundSpeedFromPrimitive               => NULL(), &
-    ComputeSoundSpeedFromPrimitive_GR            => NULL()
   PROCEDURE (EosSubroutine_3),   POINTER, PUBLIC :: &
     ComputeThermodynamicStates_Primitive         => NULL(), &
     ComputeThermodynamicStates_Auxiliary         => NULL()
@@ -182,14 +178,10 @@ CONTAINS
           => ComputeInternalEnergyDensityFromPressure_IDEAL
         ComputePressureFromPrimitive &
           => ComputePressureFromPrimitive_IDEAL
-        ComputePressureFromPrimitive_Relativistic &
-          => ComputePressureFromPrimitive_Relativistic_IDEAL
         ComputePressureFromSpecificInternalEnergy &
           => ComputePressureFromSpecificInternalEnergy_IDEAL
         ComputeSoundSpeedFromPrimitive &
           => ComputeSoundSpeedFromPrimitive_IDEAL
-        ComputeSoundSpeedFromPrimitive_GR &
-          => ComputeSoundSpeedFromPrimitive_GR_IDEAL
         ComputeAuxiliary_Fluid &
           => ComputeAuxiliary_Fluid_IDEAL
         Auxiliary_Fluid &

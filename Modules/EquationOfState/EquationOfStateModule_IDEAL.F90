@@ -18,12 +18,11 @@ MODULE EquationOfStateModule_IDEAL
   PUBLIC :: FinalizeEquationOfState_IDEAL
   PUBLIC :: ComputeInternalEnergyDensityFromPressure_IDEAL
   PUBLIC :: ComputePressureFromPrimitive_IDEAL
-  PUBLIC :: ComputePressureFromPrimitive_Relativistic_IDEAL
   PUBLIC :: ComputePressureFromSpecificInternalEnergy_IDEAL
   PUBLIC :: ComputeSoundSpeedFromPrimitive_IDEAL
-  PUBLIC :: ComputeSoundSpeedFromPrimitive_GR_IDEAL
   PUBLIC :: ComputeAuxiliary_Fluid_IDEAL
   PUBLIC :: Auxiliary_Fluid_IDEAL
+
 
 CONTAINS
 
@@ -66,16 +65,6 @@ CONTAINS
   END SUBROUTINE ComputePressureFromPrimitive_IDEAL
 
 
-  SUBROUTINE ComputePressureFromPrimitive_Relativistic_IDEAL( D, Ev, Ne, P )
-
-    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
-    REAL(DP), INTENT(out) :: P(:)
-
-    P = ( Gamma_IDEAL - One ) * Ev
-
-  END SUBROUTINE ComputePressureFromPrimitive_Relativistic_IDEAL
-
-
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Y, P )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Em, Y
@@ -86,6 +75,8 @@ CONTAINS
   END SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL
 
 
+#ifdef HYDRO_NONRELATIVISTIC
+
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
@@ -95,16 +86,19 @@ CONTAINS
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL
 
+#elif HYDRO_RELATIVISTIC
 
-  SUBROUTINE ComputeSoundSpeedFromPrimitive_GR_IDEAL( D, Ev, Ne, Cs )
+  SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: Cs
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: Cs(:)
 
-    Cs(:) = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev(:) &
-                    / ( D(:) + Gamma_IDEAL * Ev(:) ) )
+    Cs = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev &
+                 / ( D + Gamma_IDEAL * Ev ) )
 
-  END SUBROUTINE ComputeSoundSpeedFromPrimitive_GR_IDEAL
+  END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL
+
+#endif
 
 
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
