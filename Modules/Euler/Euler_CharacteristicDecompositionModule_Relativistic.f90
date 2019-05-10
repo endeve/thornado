@@ -21,8 +21,8 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic
     Euler_ComputePrimitive_Relativistic, &
     Euler_Eigenvalues_Relativistic
   USE EquationOfStateModule, ONLY: &
-    ComputeSoundSpeedFromPrimitive_GR, &
-    ComputePressureFromPrimitive_Relativistic
+    ComputeSoundSpeedFromPrimitive, &
+    ComputePressureFromPrimitive
 
   IMPLICIT NONE
   PRIVATE
@@ -71,7 +71,7 @@ CONTAINS
              [G(iGF_Gm_dd_22)], &
              [G(iGF_Gm_dd_33)] )
 
-    CALL ComputePressureFromPrimitive_Relativistic( D, E, Ne, P )
+    CALL ComputePressureFromPrimitive( D, E, Ne, P )
 
     Vu1 = V1(1)
     Vu2 = V2(1)
@@ -93,7 +93,7 @@ CONTAINS
     chi     = ( Gamma_IDEAL - One ) * epsilon
     kappa   = ( Gamma_IDEAL - One ) * D(1)
 
-    CALL ComputeSoundSpeedFromPrimitive_GR( D, E, Ne, Cs )
+    CALL ComputeSoundSpeedFromPrimitive( D, E, Ne, Cs )
 
     ! --- Rezzolla, Eq. (7.244) ---
     K = ( Gamma_IDEAL - One ) / ( Gamma_IDEAL - One - Cs(1)**2 )
@@ -350,9 +350,9 @@ CONTAINS
              [G(iGF_Gm_dd_22)], &
              [G(iGF_Gm_dd_33)] )
 
-    CALL ComputePressureFromPrimitive_Relativistic( D, E, Ne, P )
+    CALL ComputePressureFromPrimitive( D, E, Ne, P )
 
-    CALL ComputeSoundSpeedFromPrimitive_GR( D, E, Ne, Cs )
+    CALL ComputeSoundSpeedFromPrimitive( D, E, Ne, Cs )
 
     rho     = D(1)
     epsilon = E(1) / D(1)

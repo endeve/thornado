@@ -26,8 +26,8 @@ MODULE Euler_UtilitiesModule_Relativistic
     iGF_Beta_1, iGF_Beta_2, iGF_Beta_3, nGF
   USE EquationOfStateModule, ONLY:             &
     ComputePressureFromSpecificInternalEnergy, &
-    ComputeSoundSpeedFromPrimitive_GR, &
-    ComputePressureFromPrimitive_Relativistic
+    ComputeSoundSpeedFromPrimitive, &
+    ComputePressureFromPrimitive
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
 
@@ -298,11 +298,11 @@ CONTAINS
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22),  &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-      CALL ComputePressureFromPrimitive_Relativistic &
+      CALL ComputePressureFromPrimitive &
              ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E ), &
                P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_P) )
 
-      CALL ComputeSoundSpeedFromPrimitive_GR &
+      CALL ComputeSoundSpeedFromPrimitive &
              ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E ), &
                P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_Cs) )
 
@@ -382,10 +382,10 @@ CONTAINS
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-      CALL ComputePressureFromPrimitive_Relativistic &
+      CALL ComputePressureFromPrimitive &
              ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_P) )
 
-      CALL ComputeSoundSpeedFromPrimitive_GR &
+      CALL ComputeSoundSpeedFromPrimitive &
              ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_Cs) )
 
       IF( UseSourceTerm )THEN

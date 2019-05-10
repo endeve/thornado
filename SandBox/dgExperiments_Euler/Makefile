@@ -18,4 +18,5 @@ clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
-	rm -f ApplicationDriver_$(MACHINE)
+	rm -f   ApplicationDriver_$(MACHINE)
+	rm -rf  ApplicationDriver_$(MACHINE).dSYM

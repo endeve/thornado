@@ -115,7 +115,7 @@ MODULE EquationOfStateModule
     ComputePressureFromSpecificInternalEnergy    => NULL(), &
     ComputeTemperatureFromPressure               => NULL(), &
     ComputeTemperatureFromSpecificInternalEnergy => NULL(), &
-    ComputeSoundSpeedFromPrimitive               => NULL(), &
+    ComputeSoundSpeedFromPrimitive               => NULL()
   PROCEDURE (EosSubroutine_3),   POINTER, PUBLIC :: &
     ComputeThermodynamicStates_Primitive         => NULL(), &
     ComputeThermodynamicStates_Auxiliary         => NULL()

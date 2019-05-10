@@ -26,7 +26,7 @@ clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
-	rm -f ApplicationDriver_$(MACHINE)
-	rm -f ComputePrimitiveTest_$(MACHINE)
-	rm -f *.dat
-	rm -rf *.dSYM
+	rm -f  ApplicationDriver_$(MACHINE)
+	rm -f  ComputePrimitiveTest_$(MACHINE)
+	rm -rf ApplicationDriver_$(MACHINE).dSYM
+	rm -rf ComputePrimitiveTest_$(MACHINE).dSYM
