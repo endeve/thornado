@@ -806,7 +806,7 @@ CONTAINS
 
   REAL(DP) FUNCTION Euler_AlphaMiddle_Relativistic &
     ( DL, SL, tauL, F_DL, F_SL, F_tauL, DR, SR, tauR, F_DR, F_SR, F_tauR, &
-      aP, aM, Gm, Lapse, Shift )
+      Gm, Lapse, Shift, aP, aM )
 
     ! --- Middle Wavespeed as suggested by Mignone and Bodo (2005) ---
 
@@ -815,7 +815,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: DL, SL, tauL, F_DL, F_SL, F_tauL, &
                             DR, SR, tauR, F_DR, F_SR, F_tauR, &
-                            aP, aM, Gm, Lapse, Shift 
+                            Gm, Lapse, Shift, aP, aM
 
     REAL(DP) :: EL, F_EL, ER, F_ER, AL, AR, BL, BR, a2, a1, a0
 
@@ -990,12 +990,12 @@ CONTAINS
 
 
   PURE FUNCTION Euler_NumericalFlux_LLF_Relativistic &
-    ( UL, UR, FL, FR, aP, aM, aC, Gm, vL, vR, pL, pR, Lapse, Shift )
+    ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
 
     ! --- Local Lax-Friedrichs Flux ---
 
-    REAL(DP), INTENT(in) :: UL(nCF), UR(nCF), FL(nCF), FR(nCF), &
-                            aP, aM, aC, Gm, vL, vR, pL, pR, Lapse, Shift
+    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
+                            Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC
 
     REAL(DP) :: p, D, S1, S2, S3, E, Ne, alpha, &
                 Euler_NumericalFlux_LLF_Relativistic(nCF)
@@ -1003,47 +1003,47 @@ CONTAINS
     alpha = MAX( aM, aP )
 
     Euler_NumericalFlux_LLF_Relativistic &
-      = Half * ( FL + FR - alpha * ( UR - UL ) )
+      = Half * ( fL + fR - alpha * ( uR - uL ) )
 
     RETURN
   END FUNCTION Euler_NumericalFlux_LLF_Relativistic
 
 
   PURE FUNCTION Euler_NumericalFlux_HLL_Relativistic &
-      ( UL, UR, FL, FR, aP, aM, aC, Gm, vL, vR, pL, pR, Lapse, Shift )
+    ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
 
-    REAL(DP), INTENT(in) :: UL(nCF), UR(nCF), FL(nCF), FR(nCF), &
-                            aP, aM, aC, Gm, vL, vR, pL, pR, Lapse, Shift
+    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
+                            Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC
 
     REAL(DP) :: p, D, S1, S2, S3, E, Ne, &
                 Euler_NumericalFlux_HLL_Relativistic(nCF)
 
     Euler_NumericalFlux_HLL_Relativistic &
-      = ( aP * FL + aM * FR - aP * aM * ( UR - UL ) ) / ( aP + aM )
+      = ( aP * fL + aM * fR - aP * aM * ( uR - uL ) ) / ( aP + aM )
 
     RETURN
   END FUNCTION Euler_NumericalFlux_HLL_Relativistic
 
 
   PURE FUNCTION Euler_NumericalFlux_X1_HLLC_Relativistic &
-      ( UL, UR, FL, FR, aP, aM, aC, Gm, vL, vR, pL, pR, Lapse, Shift )
+    ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
 
     ! --- Shift is the first contravariant component of the shift-vector
     !     Gm is the first covariant component of the spatial three-metric ---
 
-    REAL(DP), INTENT(in) :: UL(nCF), UR(nCF), FL(nCF), FR(nCF), &
-                            aP, aM, aC, Gm, vL, vR, pL, pR, Lapse, Shift
+    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
+                            Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC
 
     REAL(DP) :: p, D, S1, S2, S3, E, Ne, UE, FE, FS, VelocityRatio, &
                 Euler_NumericalFlux_X1_HLLC_Relativistic(nCF)
 
     IF( aM .EQ. Zero )THEN
 
-      Euler_NumericalFlux_X1_HLLC_Relativistic = FL
+      Euler_NumericalFlux_X1_HLLC_Relativistic = fL
 
     ELSEIF( aP .EQ. Zero )THEN
 
-      Euler_NumericalFlux_X1_HLLC_Relativistic = FR
+      Euler_NumericalFlux_X1_HLLC_Relativistic = fR
 
     ELSE
 
@@ -1056,56 +1056,56 @@ CONTAINS
         VelocityRatio = ( -aM - Lapse * vL + Shift ) &
                       / ( -aM - Lapse * aC + Shift )
 
-        ! --- UL_star ---
-        UE = UL(iCF_E) + UL(iCF_D)
-        FE = UL(iCF_S1) / Gm - Shift / Lapse * UE
-        FS = UL(iCF_S1) * ( vL - Shift / Lapse ) + pL
+        ! --- uL_star ---
+        UE = uL(iCF_E) + uL(iCF_D)
+        FE = uL(iCF_S1) / Gm - Shift / Lapse * UE
+        FS = uL(iCF_S1) * ( vL - Shift / Lapse ) + pL
 
         p  = ( Gm * aC * ( -aM * UE - Lapse * FE ) &
-               - ( -aM * UL(iCF_S1) - Lapse * FS ) ) &
+               - ( -aM * uL(iCF_S1) - Lapse * FS ) ) &
              / ( Lapse - Gm * aC * ( -aM + Shift ) )
 
-        D  = UL(iCF_D)  * VelocityRatio
+        D  = uL(iCF_D)  * VelocityRatio
 
-        S1 = UL(iCF_S1) * VelocityRatio &
+        S1 = uL(iCF_S1) * VelocityRatio &
                + Lapse * ( p - pL ) / ( -aM - Lapse * aC + Shift )
 
-        S2 = UL(iCF_S2) * VelocityRatio
+        S2 = uL(iCF_S2) * VelocityRatio
 
-        S3 = UL(iCF_S3) * VelocityRatio
+        S3 = uL(iCF_S3) * VelocityRatio
 
         E  = UE         * VelocityRatio + Lapse * ( p * aC - pL * vL ) &
                / ( -aM - Lapse * aC + Shift )
 
-        Ne = UL(iCF_Ne) * VelocityRatio
+        Ne = uL(iCF_Ne) * VelocityRatio
 
       ELSE
 
         VelocityRatio = ( aP - Lapse * vR + Shift ) &
                       / ( aP - Lapse * aC + Shift )
 
-        ! --- UR_star ---
-        UE = UR(iCF_E) + UR(iCF_D)
-        FE = UR(iCF_S1) / Gm - Shift / Lapse * UE
-        FS = UR(iCF_S1) * ( vR - Shift / Lapse ) + pR
+        ! --- uR_star ---
+        UE = uR(iCF_E) + uR(iCF_D)
+        FE = uR(iCF_S1) / Gm - Shift / Lapse * UE
+        FS = uR(iCF_S1) * ( vR - Shift / Lapse ) + pR
 
         p  = ( Gm * aC * ( aP * UE - Lapse * FE ) &
-               - ( aP * UR(iCF_S1) - Lapse * FS ) ) &
+               - ( aP * uR(iCF_S1) - Lapse * FS ) ) &
                / ( Lapse - Gm * aC * ( aP + Shift ) )
 
-        D  = UR(iCF_D)  * VelocityRatio
+        D  = uR(iCF_D)  * VelocityRatio
 
-        S1 = UR(iCF_S1) * VelocityRatio &
+        S1 = uR(iCF_S1) * VelocityRatio &
                + Lapse * ( p - pR ) / ( aP - Lapse * aC + Shift )
 
-        S2 = UR(iCF_S2) * VelocityRatio
+        S2 = uR(iCF_S2) * VelocityRatio
 
-        S3 = UR(iCF_S3) * VelocityRatio
+        S3 = uR(iCF_S3) * VelocityRatio
 
         E  = UE         * VelocityRatio + Lapse * ( p * aC - pR * vR ) &
                / ( aP - Lapse * aC + Shift )
 
-        Ne = UR(iCF_Ne) * VelocityRatio
+        Ne = uR(iCF_Ne) * VelocityRatio
 
       END IF
 
@@ -1129,24 +1129,24 @@ CONTAINS
 
 
   PURE FUNCTION Euler_NumericalFlux_X2_HLLC_Relativistic &
-      ( UL, UR, FL, FR, aP, aM, aC, Gm, vL, vR, pL, pR, Lapse, Shift )
+    ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
 
     ! --- Shift is the second contravariant component of the shift-vector
     !     Gm is the second covariant component of the spatial three-metric ---
 
-    REAL(DP), INTENT(in) :: UL(nCF), UR(nCF), FL(nCF), FR(nCF), &
-                            aP, aM, aC, Gm, vL, vR, pL, pR, Lapse, Shift
+    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
+                            Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC
 
     REAL(DP) :: p, D, S1, S2, S3, E, Ne, UE, FE, FS, VelocityRatio
     REAL(DP) :: Euler_NumericalFlux_X2_HLLC_Relativistic(nCF)
 
     IF( aM .EQ. Zero )THEN
 
-      Euler_NumericalFlux_X2_HLLC_Relativistic = FL
+      Euler_NumericalFlux_X2_HLLC_Relativistic = fL
 
     ELSEIF( aP .EQ. Zero )THEN
 
-      Euler_NumericalFlux_X2_HLLC_Relativistic = FR
+      Euler_NumericalFlux_X2_HLLC_Relativistic = fR
 
     ELSE
 
@@ -1159,56 +1159,56 @@ CONTAINS
         VelocityRatio = ( -aM - Lapse * vL + Shift ) &
                       / ( -aM - Lapse * aC + Shift )
 
-        ! --- UL_star ---
-        UE = UL(iCF_E) + UL(iCF_D)
-        FE = UL(iCF_S2) / Gm - Shift / Lapse * UE
-        FS = UL(iCF_S2) * ( vL - Shift / Lapse ) + pL
+        ! --- uL_star ---
+        UE = uL(iCF_E) + uL(iCF_D)
+        FE = uL(iCF_S2) / Gm - Shift / Lapse * UE
+        FS = uL(iCF_S2) * ( vL - Shift / Lapse ) + pL
 
         p  = ( Gm * aC * ( -aM * UE - Lapse * FE ) &
-               - ( -aM * UL(iCF_S2) - Lapse * FS ) ) &
+               - ( -aM * uL(iCF_S2) - Lapse * FS ) ) &
              / ( Lapse - Gm * aC * ( -aM + Shift ) )
 
-        D  = UL(iCF_D)  * VelocityRatio
+        D  = uL(iCF_D)  * VelocityRatio
 
-        S1 = UL(iCF_S1) * VelocityRatio
+        S1 = uL(iCF_S1) * VelocityRatio
 
-        S2 = UL(iCF_S2) * VelocityRatio &
+        S2 = uL(iCF_S2) * VelocityRatio &
                + Lapse * ( p - pL ) / ( -aM - Lapse * aC + Shift )
 
-        S3 = UL(iCF_S3) * VelocityRatio
+        S3 = uL(iCF_S3) * VelocityRatio
 
         E  = UE         * VelocityRatio + Lapse * ( p * aC - pL * vL ) &
                / ( -aM - Lapse * aC + Shift )
 
-        Ne = UL(iCF_Ne) * VelocityRatio
+        Ne = uL(iCF_Ne) * VelocityRatio
 
       ELSE
 
         VelocityRatio = ( aP - Lapse * vR + Shift ) &
                       / ( aP - Lapse * aC + Shift )
 
-        ! --- UR_star ---
-        UE = UR(iCF_E) + UR(iCF_D)
-        FE = UR(iCF_S2) / Gm - Shift / Lapse * UE
-        FS = UR(iCF_S2) * ( vR - Shift / Lapse ) + pR
+        ! --- uR_star ---
+        UE = uR(iCF_E) + uR(iCF_D)
+        FE = uR(iCF_S2) / Gm - Shift / Lapse * UE
+        FS = uR(iCF_S2) * ( vR - Shift / Lapse ) + pR
 
         p  = ( Gm * aC * ( aP * UE - Lapse * FE ) &
-               - ( aP * UR(iCF_S2) - Lapse * FS ) ) &
+               - ( aP * uR(iCF_S2) - Lapse * FS ) ) &
                / ( Lapse - Gm * aC * ( aP + Shift ) )
 
-        D  = UR(iCF_D)  * VelocityRatio
+        D  = uR(iCF_D)  * VelocityRatio
 
-        S1 = UR(iCF_S1) * VelocityRatio
+        S1 = uR(iCF_S1) * VelocityRatio
 
-        S2 = UR(iCF_S2) * VelocityRatio &
+        S2 = uR(iCF_S2) * VelocityRatio &
                + Lapse * ( p - pR ) / ( aP - Lapse * aC + Shift )
 
-        S3 = UR(iCF_S3) * VelocityRatio
+        S3 = uR(iCF_S3) * VelocityRatio
 
         E  = UE         * VelocityRatio + Lapse * ( p * aC - pR * vR ) &
                / ( aP - Lapse * aC + Shift )
 
-        Ne = UR(iCF_Ne) * VelocityRatio
+        Ne = uR(iCF_Ne) * VelocityRatio
 
       END IF
 
@@ -1232,24 +1232,24 @@ CONTAINS
 
 
   PURE FUNCTION Euler_NumericalFlux_X3_HLLC_Relativistic &
-      ( UL, UR, FL, FR, aP, aM, aC, Gm, vL, vR, pL, pR, Lapse, Shift )
+      ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
 
     ! --- Shift is the third contravariant component of the shift-vector
     !     Gm is the third covariant component of the spatial three-metric ---
 
-    REAL(DP), INTENT(in) :: UL(nCF), UR(nCF), FL(nCF), FR(nCF), &
-                            aP, aM, aC, Gm, vL, vR, pL, pR, Lapse, Shift
+    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
+                            Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC
 
     REAL(DP) :: p, D, S1, S2, S3, E, Ne, UE, FE, FS, VelocityRatio
     REAL(DP) :: Euler_NumericalFlux_X3_HLLC_Relativistic(nCF)
 
     IF( aM .EQ. Zero )THEN
 
-      Euler_NumericalFlux_X3_HLLC_Relativistic = FL
+      Euler_NumericalFlux_X3_HLLC_Relativistic = fL
 
     ELSEIF( aP .EQ. Zero )THEN
 
-      Euler_NumericalFlux_X3_HLLC_Relativistic = FR
+      Euler_NumericalFlux_X3_HLLC_Relativistic = fR
 
     ELSE
 
@@ -1262,56 +1262,56 @@ CONTAINS
         VelocityRatio = ( -aM - Lapse * vL + Shift ) &
                       / ( -aM - Lapse * aC + Shift )
 
-        ! --- UL_star ---
-        UE = UL(iCF_E) + UL(iCF_D)
-        FE = UL(iCF_S3) / Gm - Shift / Lapse * UE
-        FS = UL(iCF_S3) * ( vL - Shift / Lapse ) + pL
+        ! --- uL_star ---
+        UE = uL(iCF_E) + uL(iCF_D)
+        FE = uL(iCF_S3) / Gm - Shift / Lapse * UE
+        FS = uL(iCF_S3) * ( vL - Shift / Lapse ) + pL
 
         p  = ( Gm * aC * ( -aM * UE - Lapse * FE ) &
-               - ( -aM * UL(iCF_S3) - Lapse * FS ) ) &
+               - ( -aM * uL(iCF_S3) - Lapse * FS ) ) &
              / ( Lapse - Gm * aC * ( -aM + Shift ) )
 
-        D  = UL(iCF_D)  * VelocityRatio
+        D  = uL(iCF_D)  * VelocityRatio
 
-        S1 = UL(iCF_S1) * VelocityRatio
+        S1 = uL(iCF_S1) * VelocityRatio
 
-        S2 = UL(iCF_S2) * VelocityRatio
+        S2 = uL(iCF_S2) * VelocityRatio
 
-        S3 = UL(iCF_S3) * VelocityRatio &
+        S3 = uL(iCF_S3) * VelocityRatio &
                + Lapse * ( p - pL ) / ( -aM - Lapse * aC + Shift )
 
         E  = UE         * VelocityRatio + Lapse * ( p * aC - pL * vL ) &
                / ( -aM - Lapse * aC + Shift )
 
-        Ne = UL(iCF_Ne) * VelocityRatio
+        Ne = uL(iCF_Ne) * VelocityRatio
 
       ELSE
 
         VelocityRatio = ( aP - Lapse * vR + Shift ) &
                       / ( aP - Lapse * aC + Shift )
 
-        ! --- UR_star ---
-        UE = UR(iCF_E) + UR(iCF_D)
-        FE = UR(iCF_S3) / Gm - Shift / Lapse * UE
-        FS = UR(iCF_S3) * ( vR - Shift / Lapse ) + pR
+        ! --- uR_star ---
+        UE = uR(iCF_E) + uR(iCF_D)
+        FE = uR(iCF_S3) / Gm - Shift / Lapse * UE
+        FS = uR(iCF_S3) * ( vR - Shift / Lapse ) + pR
 
         p  = ( Gm * aC * ( aP * UE - Lapse * FE ) &
-               - ( aP * UR(iCF_S3) - Lapse * FS ) ) &
+               - ( aP * uR(iCF_S3) - Lapse * FS ) ) &
                / ( Lapse - Gm * aC * ( aP + Shift ) )
 
-        D  = UR(iCF_D)  * VelocityRatio
+        D  = uR(iCF_D)  * VelocityRatio
 
-        S1 = UR(iCF_S1) * VelocityRatio
+        S1 = uR(iCF_S1) * VelocityRatio
 
-        S2 = UR(iCF_S2) * VelocityRatio
+        S2 = uR(iCF_S2) * VelocityRatio
 
-        S3 = UR(iCF_S3) * VelocityRatio &
+        S3 = uR(iCF_S3) * VelocityRatio &
                + Lapse * ( p - pR ) / ( aP - Lapse * aC + Shift )
 
         E  = UE         * VelocityRatio + Lapse * ( p * aC - pR * vR ) &
                / ( aP - Lapse * aC + Shift )
 
-        Ne = UR(iCF_Ne) * VelocityRatio
+        Ne = uR(iCF_Ne) * VelocityRatio
 
       END IF
 

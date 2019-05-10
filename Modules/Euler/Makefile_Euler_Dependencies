@@ -166,34 +166,6 @@ Euler_BoundaryConditionsModule.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.F90
 
-Euler_dgDiscretizationModule_NonRelativistic.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  MeshModule.o \
-  ReferenceElementModuleX.o \
-  ReferenceElementModuleX_Lagrange.o \
-  GeometryFieldsModule.o \
-  GeometryComputationModule.o \
-  FluidFieldsModule.o \
-  Euler_BoundaryConditionsModule_NonRelativistic.o \
-  Euler_UtilitiesModule_NonRelativistic.o \
-  EquationOfStateModule.o \
-  Euler_dgDiscretizationModule_NonRelativistic.f90
-
-Euler_dgDiscretizationModule_Relativistic.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  MeshModule.o \
-  ReferenceElementModuleX.o \
-  ReferenceElementModuleX_Lagrange.o \
-  GeometryFieldsModule.o \
-  GeometryComputationModule.o \
-  FluidFieldsModule.o \
-  Euler_BoundaryConditionsModule_Relativistic.o \
-  Euler_UtilitiesModule_Relativistic.o \
-  EquationOfStateModule.o \
-  Euler_dgDiscretizationModule_Relativistic.f90
-
 Euler_dgDiscretizationModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \

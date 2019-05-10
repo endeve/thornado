@@ -87,8 +87,8 @@ PROGRAM ApplicationDriver
   LOGICAL :: WriteGF = .FALSE., WriteFF = .TRUE.
   REAL(DP) :: wTime_UF, wTime_CTS, Timer_Evolution
   
-!  ProgramName = 'RiemannProblem'
-  ProgramName = 'RiemannProblem2d'
+  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
 !  ProgramName = 'KelvinHelmholtz_Relativistic'
