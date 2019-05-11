@@ -37,7 +37,8 @@ MODULE MF_InitializationModule
     nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule,       ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iPF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iCF_Ne
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iCF_Ne, &
+    nAF, iAF_P
   USE Euler_UtilitiesModule,   ONLY: &
     Euler_ComputeConserved
 
@@ -117,8 +118,9 @@ CONTAINS
     INTEGER            :: lo_F(4), hi_F(4)
     REAL(amrex_real)   :: X1, X2, R
     REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
-    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
     REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
+    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)   :: uAF_K(nDOFX,nAF)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
     TYPE(MeshType)     :: MeshX(3)
@@ -197,7 +199,8 @@ CONTAINS
                    uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                    uGF_K(:,iGF_Gm_dd_11), &
                    uGF_K(:,iGF_Gm_dd_22), &
-                   uGF_K(:,iGF_Gm_dd_33) )
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
 
           uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
@@ -233,8 +236,9 @@ CONTAINS
     INTEGER            :: lo_F(4), hi_F(4)
     REAL(amrex_real)   :: X1
     REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
-    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
     REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
+    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)   :: uAF_K(nDOFX,nAF)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
     TYPE(MeshType)     :: MeshX(3)
@@ -308,7 +312,8 @@ CONTAINS
                    uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                    uGF_K(:,iGF_Gm_dd_11), &
                    uGF_K(:,iGF_Gm_dd_22), &
-                   uGF_K(:,iGF_Gm_dd_33) )
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
 
           uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
@@ -344,8 +349,9 @@ CONTAINS
     INTEGER            :: lo_F(4), hi_F(4)
     REAL(amrex_real)   :: X1
     REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
-    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
     REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
+    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)   :: uAF_K(nDOFX,nAF)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
     TYPE(MeshType)     :: MeshX(3)
@@ -419,7 +425,8 @@ CONTAINS
                    uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                    uGF_K(:,iGF_Gm_dd_11), &
                    uGF_K(:,iGF_Gm_dd_22), &
-                   uGF_K(:,iGF_Gm_dd_33) )
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
 
           uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
@@ -456,8 +463,9 @@ CONTAINS
     INTEGER            :: lo_F(4), hi_F(4)
     REAL(amrex_real)   :: X1
     REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
-    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
     REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
+    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)   :: uAF_K(nDOFX,nAF)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
     TYPE(MeshType)     :: MeshX(3)
@@ -526,7 +534,8 @@ CONTAINS
                    uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                    uGF_K(:,iGF_Gm_dd_11), &
                    uGF_K(:,iGF_Gm_dd_22), &
-                   uGF_K(:,iGF_Gm_dd_33) )
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
 
           uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
@@ -565,8 +574,9 @@ CONTAINS
     INTEGER            :: lo_F(4), hi_F(4)
     REAL(amrex_real)   :: X1, X2
     REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
-    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
     REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
+    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)   :: uAF_K(nDOFX,nAF)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
     TYPE(MeshType)     :: MeshX(3)
@@ -654,7 +664,8 @@ CONTAINS
                    uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                    uGF_K(:,iGF_Gm_dd_11), &
                    uGF_K(:,iGF_Gm_dd_22), &
-                   uGF_K(:,iGF_Gm_dd_33) )
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
 
           uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
@@ -688,8 +699,9 @@ CONTAINS
     INTEGER               :: lo_G(4), hi_G(4)
     INTEGER               :: lo_F(4), hi_F(4)
     REAL(amrex_real)      :: uGF_K(nDOFX,nGF)
-    REAL(amrex_real)      :: uPF_K(nDOFX,nPF)
     REAL(amrex_real)      :: uCF_K(nDOFX,nCF)
+    REAL(amrex_real)      :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)      :: uAF_K(nDOFX,nAF)
     TYPE(amrex_box)       :: BX
     TYPE(amrex_mfiter)    :: MFI
     TYPE(MeshType)        :: MeshX(3)
@@ -857,7 +869,8 @@ CONTAINS
                    uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                    uGF_K(:,iGF_Gm_dd_11), &
                    uGF_K(:,iGF_Gm_dd_22), &
-                   uGF_K(:,iGF_Gm_dd_33) )
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
 
           uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
