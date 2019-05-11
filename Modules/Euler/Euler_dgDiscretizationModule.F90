@@ -985,15 +985,41 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
-      dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+
+#ifdef HYDRO_NONRELATIVISTIC
+
+    CALL ComputeIncrement_Geometry_NonRelativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+
+#elif HYDRO_RELATIVISTIC
+
+    CALL ComputeIncrement_Geometry_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+
+#endif
+
+  END SUBROUTINE ComputeIncrement_Geometry
+
+
+  SUBROUTINE ComputeIncrement_Geometry_NonRelativistic &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+
+    INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(inout) :: &
+      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX
     REAL(DP) :: dX1, dX2
@@ -1174,19 +1200,250 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE ComputeIncrement_Geometry
+  END SUBROUTINE ComputeIncrement_Geometry_NonRelativistic
 
 
-  SUBROUTINE ComputeIncrement_Gravity &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+  SUBROUTINE ComputeIncrement_Geometry_Relativistic &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
-      dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX
+    REAL(DP) :: dX1, dX2, dX3
+    REAL(DP) :: P_K(nDOFX)
+    REAL(DP) :: dh1dX1(nDOFX), dh2dX1(nDOFX), dh3dX1(nDOFX)
+    REAL(DP) :: dadx1(nDOFX)
+    REAL(DP) :: Stress(nDOFX,3)
+    REAL(DP) :: uCF_K(nDOFX,nCF), uPF_K(nDOFX,nPF), G_K(nDOFX,nGF)
+    REAL(DP) :: G_P_X1(nDOFX,nGF), G_N_X1(nDOFX,nGF)
+    REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF)
+
+    CALL Timer_Start( Timer_Geo )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      dX3 = MeshX(3) % Width(iX3)
+      dX2 = MeshX(2) % Width(iX2)
+      dX1 = MeshX(1) % Width(iX1)
+
+      DO iCF = 1, nCF
+
+        uCF_K(:,iCF) = U(:,iX1,iX2,iX3,iCF)
+
+      END DO
+
+      DO iGF = 1, nGF
+
+        G_P_X1(:,iGF) = G(:,iX1-1,iX2,iX3,iGF)
+        G_K   (:,iGF) = G(:,iX1,  iX2,iX3,iGF)
+        G_N_X1(:,iGF) = G(:,iX1+1,iX2,iX3,iGF)
+
+      END DO
+
+      CALL Euler_ComputePrimitive &
+           ( uCF_K(:,iCF_D ),     &
+             uCF_K(:,iCF_S1),     &
+             uCF_K(:,iCF_S2),     &
+             uCF_K(:,iCF_S3),     &
+             uCF_K(:,iCF_E ),     &
+             uCF_K(:,iCF_Ne),     &
+             uPF_K(:,iPF_D ),     &
+             uPF_K(:,iPF_V1),     &
+             uPF_K(:,iPF_V2),     &
+             uPF_K(:,iPF_V3),     &
+             uPF_K(:,iPF_E ),     &
+             uPF_K(:,iPF_Ne),     &
+             G_K(:,iGF_Gm_dd_11), &
+             G_K(:,iGF_Gm_dd_22), &
+             G_K(:,iGF_Gm_dd_33) )
+
+      CALL ComputePressureFromPrimitive &
+             ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
+
+      DO iNodeX = 1, nDOFX
+
+        Stress(iNodeX,:) &
+          = Euler_StressTensor_Diagonal &
+              ( uCF_K(iNodeX,iCF_S1), &
+                uCF_K(iNodeX,iCF_S2), &
+                uCF_K(iNodeX,iCF_S3), &
+                uPF_K(iNodeX,iPF_V1), &
+                uPF_K(iNodeX,iPF_V2), &
+                uPF_K(iNodeX,iPF_V3), &
+                P_K  (iNodeX) )
+
+      END DO
+
+      ! --- Scale Factor Derivatives wrt X1 ---
+
+      ! --- Face States (Average of Left and Right States) ---
+
+      DO iGF = iGF_h_1, iGF_h_3
+
+        CALL DGEMV &
+               ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+                 G_P_X1(:,iGF), 1, Zero, G_X1_Dn(:,iGF), 1 )
+        CALL DGEMV &
+               ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+                 G_K   (:,iGF), 1, Half, G_X1_Dn(:,iGF), 1 )
+
+        G_X1_Dn(:,iGF) = MAX( G_X1_Dn(:,iGF), SqrtTiny )
+
+        CALL DGEMV &
+               ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+                 G_K   (:,iGF), 1, Zero, G_X1_Up(:,iGF), 1 )
+        CALL DGEMV &
+               ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+                 G_N_X1(:,iGF), 1, Half, G_X1_Up(:,iGF), 1 )
+
+        G_X1_Up(:,iGF) = MAX( G_X1_Up(:,iGF), SqrtTiny )
+
+      END DO
+
+      ! --- dh1dx1 ---
+
+      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
+                  WeightsX_X1 * G_X1_Up(:,iGF_h_1), 1, Zero, dh1dX1, 1 )
+      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
+                  WeightsX_X1 * G_X1_Dn(:,iGF_h_1), 1, One,  dh1dX1, 1 )
+      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
+                  WeightsX_q  * G_K    (:,iGF_h_1), 1, One,  dh1dX1, 1 )
+
+      dh1dx1 = dh1dx1 / ( WeightsX_q * dX1 )
+
+      ! --- dh2dx1 ---
+
+      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
+                  WeightsX_X1 * G_X1_Up(:,iGF_h_2), 1, Zero, dh2dX1, 1 )
+      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
+                  WeightsX_X1 * G_X1_Dn(:,iGF_h_2), 1, One,  dh2dX1, 1 )
+      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
+                  WeightsX_q  * G_K    (:,iGF_h_2), 1, One,  dh2dX1, 1 )
+
+      dh2dx1 = dh2dx1 / ( WeightsX_q * dX1 )
+
+      ! --- dh3dx1 ---
+
+      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
+                  WeightsX_X1 * G_X1_Up(:,iGF_h_3), 1, Zero, dh3dX1, 1 )
+      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
+                  WeightsX_X1 * G_X1_Dn(:,iGF_h_3), 1, One,  dh3dX1, 1 )
+      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
+                  WeightsX_q  * G_K    (:,iGF_h_3), 1, One,  dh3dX1, 1 )
+
+      dh3dx1 = dh3dx1 / ( WeightsX_q * dX1 )
+
+      ! --- Lapse Function Derivative wrt X1 ---
+
+      ! --- Face States (Average of Left and Right States) ---
+
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+               G_P_X1(:,iGF_Alpha), 1, Zero, G_X1_Dn(:,iGF_Alpha), 1 )
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               G_K   (:,iGF_Alpha), 1, Half, G_X1_Dn(:,iGF_Alpha), 1 )
+
+      G_X1_Dn(:,iGF_Alpha) = MAX( G_X1_Dn(:,iGF_Alpha), SqrtTiny )
+
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+               G_K   (:,iGF_Alpha), 1, Zero, G_X1_Up(:,iGF_Alpha), 1 )
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               G_N_X1(:,iGF_Alpha), 1, Half, G_X1_Up(:,iGF_Alpha), 1 )
+
+      G_X1_Up(:,iGF_Alpha) = MAX( G_X1_Up(:,iGF_Alpha), SqrtTiny )
+
+      ! --- dadx1 ---
+
+      CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
+                  WeightsX_X1 * G_X1_Up(:,iGF_Alpha), 1, Zero, dadX1, 1 )
+      CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
+                  WeightsX_X1 * G_X1_Dn(:,iGF_Alpha), 1, One,  dadX1, 1 )
+      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
+                  WeightsX_q  * G_K    (:,iGF_Alpha), 1, One,  dadX1, 1 )
+
+      dadx1 = dadx1 / ( WeightsX_q * dX1 )
+
+      ! --- Compute Increments ---
+
+      dU(:,iX1,iX2,iX3,iCF_S1) &
+        = dU(:,iX1,iX2,iX3,iCF_S1)                                &
+            + G_K(:,iGF_Alpha)                                    &
+                * ( ( Stress(:,1) * dh1dX1 ) / G_K(:,iGF_h_1)     &
+                    + ( Stress(:,2) * dh2dX1 ) / G_K(:,iGF_h_2)   &
+                    + ( Stress(:,3) * dh3dX1 ) / G_K(:,iGF_h_3) ) &
+            - ( uCF_K(:,iCF_D) + uCF_K(:,iCF_E) ) * dadx1
+
+      dU(:,iX1,iX2,iX3,iCF_E) &
+        = dU(:,iX1,iX2,iX3,iCF_E) &
+            - ( uCF_K(:,iCF_S1) / G_K(:,iGF_Gm_dd_11) ) * dadx1
+
+    END DO
+    END DO
+    END DO
+
+    CALL Timer_Stop( Timer_Geo )
+
+    IF( DisplayTimers )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A4,A)') &
+        '', 'Timers:'
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,ES10.4E2)') &
+        '', 'ComputeIncrement_Geometry: ', Timer_Geo
+
+    END IF
+
+  END SUBROUTINE ComputeIncrement_Geometry_Relativistic
+
+
+  SUBROUTINE ComputeIncrement_Gravity &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+
+   INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(inout) :: &
+      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+
+#ifdef HYDRO_NONRELATIVISTIC
+
+    CALL ComputeIncrement_Gravity_NonRelativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+
+#elif HYDRO_RELATIVISTIC
+
+    CALL ComputeIncrement_Gravity_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+
+#endif
+
+  END SUBROUTINE ComputeIncrement_Gravity
+
+
+  SUBROUTINE ComputeIncrement_Gravity_NonRelativistic &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+
+    INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(inout) :: &
+      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
     INTEGER  :: iX1, iX2, iX3, iCF
     REAL(DP) :: dX1, dX2, dX3
@@ -1263,7 +1520,20 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE ComputeIncrement_Gravity
+  END SUBROUTINE ComputeIncrement_Gravity_NonRelativistic
+
+
+  SUBROUTINE ComputeIncrement_Gravity_Relativistic &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+
+    INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(inout) :: &
+      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+  END SUBROUTINE ComputeIncrement_Gravity_Relativistic
 
 
   SUBROUTINE Timer_Start( Timer )
