@@ -999,6 +999,8 @@ CONTAINS
 
     REAL(DP) :: Euler_NumericalFlux_LLF_Relativistic(nCF)
 
+    REAL(DP) :: alpha
+
     alpha = MAX( aM, aP )
 
     Euler_NumericalFlux_LLF_Relativistic &
