@@ -98,6 +98,9 @@ CONTAINS
           G(:,iX1,iX2,iX3,iGF_h_2) = One
           G(:,iX1,iX2,iX3,iGF_h_3) = One
 
+          ! --- Temporary hack to set lapse function to unity ---
+          G(:,iX1,iX2,iX3,iGF_Alpha) = One
+
           CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
 
         END DO
