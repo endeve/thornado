@@ -997,8 +997,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC
 
-    REAL(DP) :: p, D, S1, S2, S3, E, Ne, alpha, &
-                Euler_NumericalFlux_LLF_Relativistic(nCF)
+    REAL(DP) :: Euler_NumericalFlux_LLF_Relativistic(nCF)
 
     alpha = MAX( aM, aP )
 
@@ -1015,8 +1014,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC
 
-    REAL(DP) :: p, D, S1, S2, S3, E, Ne, &
-                Euler_NumericalFlux_HLL_Relativistic(nCF)
+    REAL(DP) :: Euler_NumericalFlux_HLL_Relativistic(nCF)
 
     Euler_NumericalFlux_HLL_Relativistic &
       = ( aP * fL + aM * fR - aP * aM * ( uR - uL ) ) / ( aP + aM )
