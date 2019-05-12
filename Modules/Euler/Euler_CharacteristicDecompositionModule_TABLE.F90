@@ -9,7 +9,6 @@ MODULE Euler_CharacteristicDecompositionModule_TABLE
 
 #ifdef HYDRO_NONRELATIVISTIC
 
-  USE Euler_UtilitiesModule_NonRelativistic
   USE Euler_CharacteristicDecompositionModule_TABLE_NonRelativistic
 
 #elif HYDRO_RELATIVISTIC
