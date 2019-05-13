@@ -221,6 +221,8 @@ PP_summit_pgi                  =
 PP_summit_xl                   = -WF,
 PP                             = $(PP_$(MACHINE))
 
+HYDRO ?= NONRELATIVISTIC
+
 DEFINES = \
 $(PP)-DMICROPHYSICS_$(MICROPHYSICS) \
 $(PP)-DMOMENT_CLOSURE_$(MOMENT_CLOSURE) \
