@@ -2,7 +2,7 @@ MODULE TwoMoment_ClosureModule
 
   USE KindModule, ONLY: &
     DP, SqrtTiny, &
-    One, Two, Three, Four, &
+    Zero, One, Two, Three, Four, &
     Fifth, Third
 
   IMPLICIT NONE
