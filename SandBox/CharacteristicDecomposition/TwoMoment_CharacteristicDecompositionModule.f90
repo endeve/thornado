@@ -1,4 +1,4 @@
-MODULE CharacteristicDecompositionModule
+MODULE TwoMoment_CharacteristicDecompositionModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three
@@ -8,20 +8,21 @@ MODULE CharacteristicDecompositionModule
     FluxFactor, &
     EddingtonFactor
   USE ClosureModule, ONLY: &
-    PartialDerivativeEddingtonFactor    
+    ComputeEddingtonFactorDerivatives    
 
   IMPLICIT NONE
   PRIVATE
 
   LOGICAL, PARAMETER :: Debug = .FALSE.
 
-  PUBLIC :: ComputeCharacteristicDecomposition_RC
+  PUBLIC :: TwoMoment_ComputeCharacteristicDecomposition
 
   EXTERNAL  DGEEV
 
 CONTAINS
 
-  SUBROUTINE ComputeCharacteristicDecomposition_RC &
+
+  SUBROUTINE TwoMoment_ComputeCharacteristicDecomposition &
     ( iDim, G, U, R, invR )
 
     INTEGER,  INTENT(in)  :: iDim
@@ -39,21 +40,21 @@ CONTAINS
     Gm_dd_33 = G(3)
 
     CALL ComputeFluxJacobian &
-    ( iDim, U(iPR_D), U(iPR_I1), U(iPR_I2), U(iPR_I3), &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, Jacobian )
+           ( iDim, U(iPR_D), U(iPR_I1), U(iPR_I2), U(iPR_I3), &
+             Gm_dd_11, Gm_dd_22, Gm_dd_33, Jacobian )
 
     CALL ComputeEigen( nPR, Jacobian, R, invR, Eigens )
 
-!    IF ( Debug ) THEN
+    IF ( Debug ) THEN
       WRITE(*,*)
       WRITE(*,'(A4,A)')'', 'ComputeCharacteristicDecomposition_RC:'
       WRITE(*,*)
       WRITE(*,'(A4,A6,I2)')'', 'iDim = ', iDim
       WRITE(*,*)
       WRITE(*,'(A6,4ES16.5)') '', Eigens
-!    END IF
+    END IF
 
-  END SUBROUTINE ComputeCharacteristicDecomposition_RC
+  END SUBROUTINE TwoMoment_ComputeCharacteristicDecomposition
 
 
   SUBROUTINE ComputeFluxJacobian &
@@ -81,12 +82,11 @@ CONTAINS
     hd1 = Gm_dd_11 * hu1
     hd2 = Gm_dd_22 * hu2
     hd3 = Gm_dd_33 * hu3
-    
-    CALL PartialDerivativeEddingtonFactor( D, FF, EF_D, EF_FF )
+
+    CALL ComputeEddingtonFactorDerivatives( D, FF, EF_D, EF_FF )
     
     Elem1 = -One + Three * EF + Three * EF_D * D
     Elem2 = Two + Three * EF_FF * FF - 6.d0 * EF
-
     
     SELECT CASE ( iDim ) 
 
@@ -124,13 +124,13 @@ CONTAINS
 
         A44 = Half * hu1 * ( -One + hd3 * hu3 * Elem2 + Three * EF ) / FF
 
-! ---------------------------------------------------------------
-! Fortran is column-major order. The Jacobian in writting format:    
-!        Jacobian(1,:) = [ Zero, One/Gm_dd_11,  Zero, Zero ]
-!        Jacobian(2,:) = [ A21,  A22,           A23,  A24  ]
-!        Jacobian(3,:) = [ A31,  A32,           A33,  A34  ]
-!        Jacobian(4,:) = [ A41,  A42,           A43,  A44  ]
-! ---------------------------------------------------------------
+        ! ---------------------------------------------------------------
+        ! Fortran is column-major order. The Jacobian in writting format:    
+        !        Jacobian(1,:) = [ Zero, One/Gm_dd_11,  Zero, Zero ]
+        !        Jacobian(2,:) = [ A21,  A22,           A23,  A24  ]
+        !        Jacobian(3,:) = [ A31,  A32,           A33,  A34  ]
+        !        Jacobian(4,:) = [ A41,  A42,           A43,  A44  ]
+        ! ---------------------------------------------------------------
 
         Jacobian(:,1) = [ Zero, A21, A31, A41 ]
         Jacobian(:,2) = [ One/Gm_dd_11, A22, A32, A42 ]
@@ -222,8 +222,6 @@ CONTAINS
 
     END SELECT
 
-    !   Debug Printing
-
     IF ( Debug ) THEN
 
       WRITE(*,*)
@@ -245,7 +243,7 @@ CONTAINS
         END DO ! i
       END DO ! j
  
-    END IF ! Debug printing
+    END IF ! Debug
 
   END SUBROUTINE ComputeFluxJacobian
 
@@ -353,4 +351,5 @@ CONTAINS
 
   END SUBROUTINE ComputeEigen
 
-END MODULE CharacteristicDecompositionModule
+
+END MODULE TwoMoment_CharacteristicDecompositionModule

@@ -8,26 +8,18 @@ MODULE ClosureModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: PartialDerivativeEddingtonFactor
+  PUBLIC :: ComputeEddingtonFactorDerivatives
 
 CONTAINS
 
-  SUBROUTINE PartialDerivativeEddingtonFactor &
-    ( D, FF, pEFpD, pEFpFF, Verbose_Option )
 
-    REAL(DP), INTENT(in)  :: D, FF  
-    REAL(DP), INTENT(out) :: pEFpD  ! wt FF constant
-    REAL(DP), INTENT(out) :: pEFpFF ! wt D constant
-    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
+  SUBROUTINE ComputeEddingtonFactorDerivatives( D, FF, dEFdD_FF, dEFdFF_D )
+
+    REAL(DP), INTENT(in)  :: D, FF
+    REAL(DP), INTENT(out) :: dEFdD_FF ! --- wrt D, constant FF
+    REAL(DP), INTENT(out) :: dEFdFF_D ! --- wrt FF, constant D
     
-    LOGICAL :: Verbose
     REAL(DP) :: XX
-
-    IF( PRESENT( Verbose_Option ) )THEN
-      Verbose = Verbose_Option
-    ELSE
-      Verbose = .FALSE.
-    END IF
 
     XX = FF / MAX( One - D, SqrtTiny )
 
@@ -35,102 +27,68 @@ CONTAINS
 
     ! --- Maximum Entropy (ME) Minerbo Closure ---
    
-    IF ( Verbose ) THEN
-      WRITE(*,*)
-      WRITE(*,'(A6,A)') '', 'Minerbo : '
-    END IF
+    dEFdD_FF = Zero
 
-    pEFpD  = Zero
-
-    pEFpFF = Two * Third &
-              * DerivativeClosurePolynomial_ME_CB &
-                ( FF ) 
+    dEFdFF_D = Two * Third * ClosurePolynomialDerivative_ME_CB( FF ) 
 
 #elif MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
 
     ! --- Cernohorsky-Bludman ME Closure ---
 
-    IF ( Verbose ) THEN
-      WRITE(*,*)
-      WRITE(*,'(A6,A)') '', 'Cernohorsky-Bludman :'
-    END IF
+    dEFdD_FF &
+      = Two * Third &
+          * ( ClosurePolynomial_ME_CB( XX ) * ( Four * D - Three ) &
+              + ClosurePolynomialDerivative_ME_CB( XX ) * XX * ( One - Two * D ) )
 
-    pEFpD  = Two * Third &
-             * ( ClosurePolynomial_ME_CB( XX ) &
-                 * ( Four * D - Three ) &
-               + DerivativeClosurePolynomial_ME_CB( XX ) &
-                 * xx * ( One - Two * D ) ) 
-    pEFpFF = Two * Third * ( One - Two * D) &
-              * DerivativeClosurePolynomial_ME_CB( XX )
+    dEFdFF_D &
+      = Two * Third * ( One - Two * D ) * ClosurePolynomialDerivative_ME_CB( XX )
 
 #elif MOMENT_CLOSURE_MAXIMUM_ENTROPY_BL
 
     ! --- Banach-Larecki ME Closure ---
 
-    IF ( Verbose ) THEN
-      WRITE(*,*)
-      WRITE(*,'(A6,A)') '', 'Banach-Larecki :'
-    END IF
+    dEFdD_FF &
+      = Two * Third &
+          * ( ClosurePolynomial_ME_BL( XX ) * ( Four * D - Three ) &
+              + ClosurePolynomialDerivative_ME_BL( XX ) * XX * ( One - Two * D ) )
 
-    pEFpD  = Two * Third &
-             * ( ClosurePolynomial_ME_BL( XX ) &
-                 * ( Four * D - Three ) &
-               + DerivativeClosurePolynomial_ME_BL( XX ) &
-                 * xx * ( One - Two * D ) )
-    pEFpFF = Two * Third * ( One - Two * D) &
-              * DerivativeClosurePolynomial_ME_BL( XX )
+    dEFdFF_D &
+      = Two * Third * ( One - Two * D ) * ClosurePolynomialDerivative_ME_BL( XX )
 
 #elif MOMENT_CLOSURE_KERSHAW_BL
 
     ! --- Banach-Larecki Kershaw Closure ---
  
-    IF ( Verbose ) THEN
-      WRITE(*,*)
-      WRITE(*,'(A6,A)') '', 'Kershaw :'
-    END IF
+    dEFdD_FF &
+      = Two * Third &
+          * ( ClosurePolynomial_KE_BL( XX ) * ( Four * D - Three ) &
+              + ClosurePolynomialDerivative_KE_BL( XX ) * XX * ( One - Two * D ) )
 
-    pEFpD  = Two * Third &
-             * ( ClosurePolynomial_KE_BL( XX ) &
-                 * ( Four * D - Three ) &
-               + DerivativeClosurePolynomial_KE_BL( XX ) &
-                 * xx * ( One - Two * D ) )
-    pEFpFF = Two * Third * ( One - Two * D) &
-              * DerivativeClosurePolynomial_KE_BL( XX )
+    dEFdFF_D &
+      = Two * Third * ( One - Two * D ) * ClosurePolynomialDerivative_KE_BL( XX )
 
-#else
-
-    WRITE(*,*)
-    WRITE(*,'(A6,A)') '', 'PartialDerivativeEddingtonFactor : Two-Moment Closure Unknown'
-    WRITE(*,*)
-    STOP
-  
 #endif
 
-    IF ( Verbose ) THEN
-      WRITE(*,'(A10,2A15)') '', 'pEFpD','pEFpFF'
-      WRITE(*,'(A10,2ES15.4)') '', pEFpD, pEFpFF
-    END IF
+  END SUBROUTINE ComputeEddingtonFactorDerivatives
 
-  END SUBROUTINE PartialDerivativeEddingtonFactor
 
   ! --- Derivative of Closure Polynomials ---
 
 
-  PURE REAL(DP) ELEMENTAL FUNCTION DerivativeClosurePolynomial_ME_CB( X )
+  PURE REAL(DP) ELEMENTAL FUNCTION ClosurePolynomialDerivative_ME_CB( X )
 
     ! --- Cernohorsky-Bludman Maximum Entropy Closure ---
 
     REAL(DP), INTENT(in) :: X
 
-    DerivativeClosurePolynomial_ME_CB &
+    ClosurePolynomialDerivative_ME_CB &
       = Three * Fifth * X * ( Two - X + Four * X * X )
 
     RETURN
+  END FUNCTION ClosurePolynomialDerivative_ME_CB
 
-  END FUNCTION DerivativeClosurePolynomial_ME_CB
 
-
-  PURE REAL(DP) ELEMENTAL FUNCTION DerivativeClosurePolynomial_ME_BL( X )
+  PURE REAL(DP) ELEMENTAL FUNCTION ClosurePolynomialDerivative_ME_BL( X )
 
     ! --- Banach-Larecki Maximum Entropy Closure ---
 
@@ -140,22 +98,24 @@ CONTAINS
 
     aa = SQRT( 33.0_DP * X**4 - 42.0_DP * X * X + 25.0_DP )
 
-    DerivativeClosurePolynomial_ME_BL &
+    ClosurePolynomialDerivative_ME_BL &
       = Three * x * ( 11.0_DP * X * X + Three * X - 7.0_DP) / ( Four * aa )
 
-  END FUNCTION DerivativeClosurePolynomial_ME_BL
+    RETURN
+  END FUNCTION ClosurePolynomialDerivative_ME_BL
 
 
-  PURE REAL(DP) ELEMENTAL FUNCTION DerivativeClosurePolynomial_KE_BL( X )
+  PURE REAL(DP) ELEMENTAL FUNCTION ClosurePolynomialDerivative_KE_BL( X )
 
     ! --- Banach-Larecki Kershaw Closure ---
 
     REAL(DP), INTENT(in) :: X
 
-    DerivativeClosurePolynomial_KE_BL &
-      = 2 * X
+    ClosurePolynomialDerivative_KE_BL &
+      = Two * X
 
-  END FUNCTION DerivativeClosurePolynomial_KE_BL
+    RETURN
+  END FUNCTION ClosurePolynomialDerivative_KE_BL
   
 
 ! ====== COPIED FROM TwoMoment_ClosureModule ===== !

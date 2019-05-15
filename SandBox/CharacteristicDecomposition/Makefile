@@ -4,8 +4,6 @@ MICROPHYSICS = WEAKLIB
 #MOMENT_CLOSURE = MAXIMUM_ENTROPY_BL
 MOMENT_CLOSURE = KERSHAW_BL
 
-HYDRO = NONRELATIVISTIC
-
 THORNADO_DIR ?= $(HOME)/thornado
 include $(THORNADO_DIR)/Build/Makefile_Build
 
@@ -19,13 +17,13 @@ Driver: \
 	$(weaklib) \
 	$(thornado) \
 	ClosureModule.o \
-	CharacteristicDecompositionModule.o \
+	TwoMoment_CharacteristicDecompositionModule.o \
 	Driver.o
 	$(FLINKER) $(FLAGS) -o Driver_$(MACHINE)_$(MOMENT_CLOSURE)  \
 	$(weaklib) \
 	$(thornado) \
 	ClosureModule.o \
-	CharacteristicDecompositionModule.o \
+	TwoMoment_CharacteristicDecompositionModule.o \
 	Driver.o \
 	$(LIBRARIES)
 

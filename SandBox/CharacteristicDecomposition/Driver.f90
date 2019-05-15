@@ -4,9 +4,9 @@ PROGRAM Driver
     DP, Zero, SqrtTiny, One
   USE RadiationFieldsModule, ONLY: &
     nCR
-  USE CharacteristicDecompositionModule, ONLY: &
-    ComputeCharacteristicDecomposition_RC
-  
+  USE TwoMoment_CharacteristicDecompositionModule, ONLY: &
+    TwoMoment_ComputeCharacteristicDecomposition
+
   IMPLICIT NONE
 
   INTEGER  :: iDim
@@ -30,8 +30,8 @@ PROGRAM Driver
   I_2      = Zero
   I_3      = Zero
   Gm_dd_11 = One
-  Gm_dd_22 = Zero
-  Gm_dd_33 = Zero
+  Gm_dd_22 = One
+  Gm_dd_33 = One
 
   G = [ Gm_dd_11, Gm_dd_22, Gm_dd_33 ]
   U = [ D, I_1, I_2, I_3 ]
@@ -40,7 +40,7 @@ PROGRAM Driver
   WRITE(*,'(A4,4A18)') '', ' J', 'H1', 'H2', 'H3'
   WRITE(*,'(A4,4ES18.3)') '', D, I_1, I_2, I_3
 
-  CALL ComputeCharacteristicDecomposition_RC &
+  CALL TwoMoment_ComputeCharacteristicDecomposition &
          ( iDim, G, U, R, invR )
 
   ! ComputeFluxJacobian test in y:
@@ -61,7 +61,7 @@ PROGRAM Driver
   WRITE(*,'(A4,4A18)') '', ' J', 'H1', 'H2', 'H3'
   WRITE(*,'(A4,4ES18.3)') '', D, I_1, I_2, I_3
 
-  CALL ComputeCharacteristicDecomposition_RC &
+  CALL TwoMoment_ComputeCharacteristicDecomposition &
          ( iDim, G, U, R, invR )
 
   ! ComputeFluxJacobian test in z:
@@ -82,7 +82,7 @@ PROGRAM Driver
   WRITE(*,'(A4,4A18)') '', ' J', 'H1', 'H2', 'H3'
   WRITE(*,'(A4,4ES18.3)') '', D, I_1, I_2, I_3
 
-  CALL ComputeCharacteristicDecomposition_RC &
+  CALL TwoMoment_ComputeCharacteristicDecomposition &
          ( iDim, G, U, R, invR )
 
 END PROGRAM Driver
