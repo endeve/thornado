@@ -23,6 +23,10 @@ TwoMoment_BoundaryConditionsModule.o: \
   RadiationFieldsModule.o \
   TwoMoment_BoundaryConditionsModule.F90
 
+TwoMoment_SlopeLimiterModule.o: \
+  KindModule.o \
+  TwoMoment_SlopeLimiterModule.f90
+
 TwoMoment_PositivityLimiterModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
