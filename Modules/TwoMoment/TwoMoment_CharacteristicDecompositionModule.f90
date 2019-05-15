@@ -80,7 +80,7 @@ CONTAINS
     INTEGER  :: i, j
     REAL(DP) :: FF, EF
     REAL(DP) :: A21, A22, A23, A24, A31, A32, A33, A34, &
-                A41, A42, A43, A44, EF_FF, EF_D
+                A41, A42, A43, A44, dEFdFF_D, dEFdD_FF
     REAL(DP) :: hd1, hu1, hd2, hu2, hd3, hu3
     REAL(DP) :: Elem1, Elem2
         
@@ -94,29 +94,29 @@ CONTAINS
     hd2 = Gm_dd_22 * hu2
     hd3 = Gm_dd_33 * hu3
 
-    CALL ComputeEddingtonFactorDerivatives( D, FF, EF_D, EF_FF )
+    CALL ComputeEddingtonFactorDerivatives( D, FF, dEFdD_FF, dEFdFF_D )
     
-    Elem1 = -One + Three * EF + Three * EF_D * D
-    Elem2 = Two + Three * EF_FF * FF - 6.d0 * EF
+    Elem1 = -One + Three * EF + Three * dEFdD_FF * D
+    Elem2 = Two + Three * dEFdFF_D * FF - 6.d0 * EF
     
     SELECT CASE ( iDim ) 
 
       CASE ( 1 )
 
-        A21 = Half * ( One + EF_FF * ( FF - Three * FF * hd1 * hu1 ) &
-                       - EF_D * D - EF + hd1 * hu1 * Elem1 )
+        A21 = Half * ( One + dEFdFF_D * ( FF - Three * FF * hd1 * hu1 ) &
+                       - dEFdD_FF * D - EF + hd1 * hu1 * Elem1 )
 
-        A22 = Half * ( EF_FF * hu1 * ( -One + Three * hd1 * hu1 ) ) &
-            + ( hd1 / Gm_dd_11 + hu1 - Two * hd1 * hu1 * hu1 ) &
-              * ( -One + Three * EF ) / FF
+        A22 = Half * ( dEFdFF_D * hu1 * ( -One + Three * hd1 * hu1 ) ) &
+              + ( hd1 / Gm_dd_11 + hu1 - Two * hd1 * hu1 * hu1 ) &
+                * ( -One + Three * EF ) / FF
      
-        A23 = Half * EF_FF * ( -One + Three * hd1 * hu1 ) * hu2 &
-            + hd1 * hu1 * hu2 * ( One - Three * EF ) / FF
+        A23 = Half * dEFdFF_D * ( -One + Three * hd1 * hu1 ) * hu2 &
+              + hd1 * hu1 * hu2 * ( One - Three * EF ) / FF
   
-        A24 = Half * EF_FF * ( -One + Three * hd1 * hu1 ) * hu3 &
-            + hd1 * hu1 * hu3 * ( One - Three * EF ) / FF
+        A24 = Half * dEFdFF_D * ( -One + Three * hd1 * hu1 ) * hu3 &
+              + hd1 * hu1 * hu3 * ( One - Three * EF ) / FF
 
-        A31 = Half * hd2 * hu1 * ( Elem1 - Three * EF_FF )
+        A31 = Half * hd2 * hu1 * ( Elem1 - Three * dEFdFF_D )
 
         A32 = Half * hd2 * ( -One + Gm_dd_11 * hu1 * hu1 &
                            * Elem2  + Three * EF ) / ( Gm_dd_11 * FF )
@@ -125,7 +125,7 @@ CONTAINS
 
         A34 = Half * hd2 * hu1 * hu3 * Elem2 / FF
 
-        A41 = Half * hd3 * hu1 * ( Elem1 - Three * EF_FF * FF  )
+        A41 = Half * hd3 * hu1 * ( Elem1 - Three * dEFdFF_D * FF  )
 
         A42 = Half * hd3 * &
               ( -One + Gm_dd_11 * hu1 * hu1 * Elem2 + Three * EF ) &
@@ -150,7 +150,7 @@ CONTAINS
 
       CASE ( 2 )
 
-        A21 = Half * hd1 * hu2 * ( Elem1 - Three * EF_FF * FF )
+        A21 = Half * hd1 * hu2 * ( Elem1 - Three * dEFdFF_D * FF )
 
         A22 = Half * hu2 * ( -One + hd1 * hu1 * Elem2 + Three * EF ) / FF
        
@@ -159,20 +159,20 @@ CONTAINS
 
         A24 = Half * hd1 * hu2 * hu3 * Elem2 / FF
 
-        A31 = Half * ( One + EF_FF * ( FF - Three * FF * hd2 * hu2 ) &
-                       - EF_D * D - EF + hd2 * hu2 * Elem1 )
+        A31 = Half * ( One + dEFdFF_D * ( FF - Three * FF * hd2 * hu2 ) &
+                       - dEFdD_FF * D - EF + hd2 * hu2 * Elem1 )
 
-        A32 = Half * EF_FF * hu1 * ( -One + Three * hd2 * hu2 ) &
+        A32 = Half * dEFdFF_D * hu1 * ( -One + Three * hd2 * hu2 ) &
               + hd2 * hu1 * hu2 * ( One - Three * EF ) / FF
 
-        A33 = Half * ( EF_FF * hu2 * ( -One + Three * hd2 * hu2 ) &
+        A33 = Half * ( dEFdFF_D * hu2 * ( -One + Three * hd2 * hu2 ) &
                        + ( hd2 / Gm_dd_22 + hu2 - Two * hd2 * hu2 * hu2 ) &
                        * ( -One + Three * EF ) / FF ) 
 
-        A34 = Half * EF_FF * ( -One + Three * hd2 * hu2 ) * hu3 &
+        A34 = Half * dEFdFF_D * ( -One + Three * hd2 * hu2 ) * hu3 &
               + hd2 * hu2 * hu3 * ( One - Three * EF ) / FF 
  
-        A41 = Half * hd3 * hu2 * ( Elem2 - Three * EF_FF * FF )
+        A41 = Half * hd3 * hu2 * ( Elem2 - Three * dEFdFF_D * FF )
 
         A42 = Half * hd3 * hu1 * hu2 * Elem2 / FF
 
@@ -188,7 +188,7 @@ CONTAINS
 
       CASE (3)
 
-        A21 = Half * hd1 * hu3 * ( Elem1 - Three * EF_FF * FF )
+        A21 = Half * hd1 * hu3 * ( Elem1 - Three * dEFdFF_D * FF )
  
         A22 = Half * hu3 * ( -One + hd1 * hu1 * Elem2 + Three * EF ) / FF
 
@@ -197,7 +197,7 @@ CONTAINS
         A24 = Half * hd1 * ( -One + Gm_dd_33 * hu3 * hu3 * Elem2 &
                              + Three * EF ) / ( Gm_dd_33 * FF ) 
 
-        A31 = Half * hd2 * hu3 * ( Elem1 - Three * EF_FF * FF )
+        A31 = Half * hd2 * hu3 * ( Elem1 - Three * dEFdFF_D * FF )
 
         A32 = Half * hd2 * hu1 * hu3 * Elem2 / FF
 
@@ -206,16 +206,16 @@ CONTAINS
         A34 = Half * hd2 * ( -One + Gm_dd_33 * hu3 * hu3 * Elem2 &
                              + Three * EF ) / ( Gm_dd_33 * FF )
 
-        A41 = Half * ( One + EF_FF * ( FF - Three * FF * hd3 * hu3 ) &
-                       - EF_D * D - EF + hd3 * hu3 * Elem1 )
+        A41 = Half * ( One + dEFdFF_D * ( FF - Three * FF * hd3 * hu3 ) &
+                       - dEFdD_FF * D - EF + hd3 * hu3 * Elem1 )
  
-        A42 = Half * EF_FF * hu1 * ( -One + Three * hd3 * hu3 ) &
+        A42 = Half * dEFdFF_D * hu1 * ( -One + Three * hd3 * hu3 ) &
               + hd3 * hu1 * hu3 * ( One - Three * EF ) / FF
 
-        A43 = Half * EF_FF * hu2 * ( -One + Three * hd3 * hu3 ) &
+        A43 = Half * dEFdFF_D * hu2 * ( -One + Three * hd3 * hu3 ) &
               + hd3 * hu2 * hu3 * ( One - Three * EF ) / FF
 
-        A44 = Half * ( EF_FF * hu3 * ( -One + Three * hd3 * hu3 ) &
+        A44 = Half * ( dEFdFF_D * hu3 * ( -One + Three * hd3 * hu3 ) &
                        + ( hd3 / Gm_dd_33 + hu3 - Two * hd3 * hu3 * hu3 ) &
                          * ( -One + Three * EF ) / FF )
 
