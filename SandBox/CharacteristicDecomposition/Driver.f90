@@ -2,6 +2,11 @@ PROGRAM Driver
 
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, One
+  USE GeometryFieldsModule, ONLY: &
+    nGF, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33
   USE RadiationFieldsModule, ONLY: &
     nCR
   USE TwoMoment_CharacteristicDecompositionModule, ONLY: &
@@ -10,7 +15,7 @@ PROGRAM Driver
   IMPLICIT NONE
 
   INTEGER  :: iDim
-  REAL(DP) :: G(3)
+  REAL(DP) :: G(nGF)
   REAL(DP) :: U(nCR)
   REAL(DP) :: R(nCR,nCR)
   REAL(DP) :: invR(nCR,nCR)
@@ -33,7 +38,10 @@ PROGRAM Driver
   Gm_dd_22 = One
   Gm_dd_33 = One
 
-  G = [ Gm_dd_11, Gm_dd_22, Gm_dd_33 ]
+  G(iGF_Gm_dd_11) = Gm_dd_11
+  G(iGF_Gm_dd_22) = Gm_dd_22
+  G(iGF_Gm_dd_33) = Gm_dd_33
+
   U = [ D, I_1, I_2, I_3 ]
 
   WRITE(*,*)
@@ -50,11 +58,7 @@ PROGRAM Driver
   I_1      = Zero
   I_2      = SqrtTiny
   I_3      = Zero
-  Gm_dd_11 = Zero
-  Gm_dd_22 = One
-  Gm_dd_33 = Zero
 
-  G = [ Gm_dd_11, Gm_dd_22, Gm_dd_33]
   U = [D, I_1, I_2, I_3]
 
   WRITE(*,*)
@@ -71,11 +75,7 @@ PROGRAM Driver
   I_1      = Zero
   I_2      = Zero
   I_3      = SqrtTiny
-  Gm_dd_11 = Zero
-  Gm_dd_22 = Zero
-  Gm_dd_33 = One
 
-  G = [ Gm_dd_11, Gm_dd_22, Gm_dd_33 ]
   U = [ D, I_1, I_2, I_3 ]
 
   WRITE(*,*)
