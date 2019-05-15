@@ -38,6 +38,21 @@ MODULE TwoMoment_ClosureModule
     MODULE PROCEDURE ClosurePolynomial_KE_BL_Vector
   END INTERFACE
 
+  INTERFACE ClosurePolynomialDerivative_ME_CB
+    MODULE PROCEDURE ClosurePolynomialDerivative_ME_CB_Scalar
+    MODULE PROCEDURE ClosurePolynomialDerivative_ME_CB_Vector
+  END INTERFACE
+
+  INTERFACE ClosurePolynomialDerivative_ME_BL
+    MODULE PROCEDURE ClosurePolynomialDerivative_ME_BL_Scalar
+    MODULE PROCEDURE ClosurePolynomialDerivative_ME_BL_Vector
+  END INTERFACE
+
+  INTERFACE ClosurePolynomialDerivative_KE_BL
+    MODULE PROCEDURE ClosurePolynomialDerivative_KE_BL_Scalar
+    MODULE PROCEDURE ClosurePolynomialDerivative_KE_BL_Vector
+  END INTERFACE
+
 CONTAINS
 
 
@@ -448,47 +463,123 @@ CONTAINS
   ! --- Derivative of Closure Polynomials ---
 
 
-  PURE REAL(DP) ELEMENTAL FUNCTION ClosurePolynomialDerivative_ME_CB( X )
+  FUNCTION ClosurePolynomialDerivative_ME_CB_Scalar( X ) &
+      RESULT( ClosurePolynomialDerivative_ME_CB )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Cernohorsky-Bludman Maximum Entropy Closure ---
 
     REAL(DP), INTENT(in) :: X
+    REAL(DP) :: ClosurePolynomialDerivative_ME_CB
 
     ClosurePolynomialDerivative_ME_CB &
       = Three * Fifth * X * ( Two - X + Four * X * X )
 
-    RETURN
-  END FUNCTION ClosurePolynomialDerivative_ME_CB
+  END FUNCTION ClosurePolynomialDerivative_ME_CB_Scalar
 
 
-  PURE REAL(DP) ELEMENTAL FUNCTION ClosurePolynomialDerivative_ME_BL( X )
+  FUNCTION ClosurePolynomialDerivative_ME_CB_Vector( X ) &
+      RESULT( ClosurePolynomialDerivative_ME_CB )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    ! --- Cernohorsky-Bludman Maximum Entropy Closure ---
+
+    REAL(DP), INTENT(in) :: X(:)
+    REAL(DP) :: ClosurePolynomialDerivative_ME_CB(SIZE(X))
+
+    ClosurePolynomialDerivative_ME_CB &
+      = Three * Fifth * X * ( Two - X + Four * X**2 )
+
+  END FUNCTION ClosurePolynomialDerivative_ME_CB_Vector
+
+
+  FUNCTION ClosurePolynomialDerivative_ME_BL_Scalar( X ) &
+      RESULT( ClosurePolynomialDerivative_ME_BL )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Banach-Larecki Maximum Entropy Closure ---
 
     REAL(DP), INTENT(in) :: X
-
     REAL(DP) :: aa
+    REAL(DP) :: ClosurePolynomialDerivative_ME_BL
 
     aa = SQRT( 33.0_DP * X**4 - 42.0_DP * X * X + 25.0_DP )
 
     ClosurePolynomialDerivative_ME_BL &
       = Three * x * ( 11.0_DP * X * X + Three * X - 7.0_DP) / ( Four * aa )
 
-    RETURN
-  END FUNCTION ClosurePolynomialDerivative_ME_BL
+  END FUNCTION ClosurePolynomialDerivative_ME_BL_Scalar
 
 
-  PURE REAL(DP) ELEMENTAL FUNCTION ClosurePolynomialDerivative_KE_BL( X )
+  FUNCTION ClosurePolynomialDerivative_ME_BL_Vector( X ) &
+      RESULT( ClosurePolynomialDerivative_ME_BL )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    ! --- Banach-Larecki Maximum Entropy Closure ---
+
+    REAL(DP), INTENT(in) :: X(:)
+    REAL(DP) :: aa(SIZE(X))
+    REAL(DP) :: ClosurePolynomialDerivative_ME_BL(SIZE(X))
+
+    aa = SQRT( 33.0_DP * X**4 - 42.0_DP * X * X + 25.0_DP )
+
+    ClosurePolynomialDerivative_ME_BL &
+      = Three * x * ( 11.0_DP * X * X + Three * X - 7.0_DP) / ( Four * aa )
+
+  END FUNCTION ClosurePolynomialDerivative_ME_BL_Vector
+
+
+  FUNCTION ClosurePolynomialDerivative_KE_BL_Scalar( X ) &
+      RESULT( ClosurePolynomialDerivative_KE_BL )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Banach-Larecki Kershaw Closure ---
 
     REAL(DP), INTENT(in) :: X
+    REAL(DP) :: ClosurePolynomialDerivative_KE_BL
 
     ClosurePolynomialDerivative_KE_BL &
       = Two * X
 
-    RETURN
-  END FUNCTION ClosurePolynomialDerivative_KE_BL
+  END FUNCTION ClosurePolynomialDerivative_KE_BL_Scalar
 
+
+  FUNCTION ClosurePolynomialDerivative_KE_BL_Vector( X ) &
+      RESULT( ClosurePolynomialDerivative_KE_BL )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    ! --- Banach-Larecki Kershaw Closure ---
+
+    REAL(DP), INTENT(in) :: X(:)
+    REAL(DP) :: ClosurePolynomialDerivative_KE_BL(SIZE(X))
+
+    ClosurePolynomialDerivative_KE_BL &
+      = Two * X
+
+  END FUNCTION ClosurePolynomialDerivative_KE_BL_Vector
 
 END MODULE TwoMoment_ClosureModule
