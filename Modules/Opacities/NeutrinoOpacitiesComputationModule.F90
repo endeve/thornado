@@ -35,6 +35,7 @@ MODULE NeutrinoOpacitiesComputationModule
   USE wlOpacityTableModule, ONLY: &
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
+    LogInterpolateSingleVariable, &
     LogInterpolateSingleVariable_1D3D_Custom
 
   ! ----------------------------------------------
@@ -511,7 +512,7 @@ CONTAINS
 
     opES_Point(:) = tmp(:,1) * UnitES
 
-    END ASSOCIATE ! opEC_T, etc.
+    END ASSOCIATE ! opES_T, etc.
 
 #else
 
@@ -520,6 +521,48 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Point
+
+
+  SUBROUTINE ComputeNeutrinoOpacities_ES_Points &
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, iSpecies, iMoment, opES_Points )
+
+    ! --- Elastic Scattering Opacities (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    INTEGER,  INTENT(in)  :: iSpecies
+    INTEGER,  INTENT(in)  :: iMoment
+    REAL(DP), INTENT(out) :: opES_Points(iE_B:iE_E,iX_B:iX_E)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ASSOCIATE &
+      ( opES_T => OPACITIES % Scat_Iso &
+                    % Kernel(iSpecies) % Values(:,iMoment,:,:,:), &
+        OS     => OPACITIES % Scat_Iso &
+                    % Offsets(iSpecies,iMoment) )
+
+    CALL LogInterpolateSingleVariable &
+           ( LOG10( E / UnitE ), LOG10( D / UnitD ), &
+             LOG10( T / UnitT ),      ( Y / UnitY ), &
+             LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opES_T, &
+             opES_Points )
+
+    opES_Points = opES_Points * UnitES
+
+    END ASSOCIATE ! opES_T, etc.
+
+#else
+
+    opES_Points = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_ES_Points
 
 
   PURE ELEMENTAL REAL(DP) FUNCTION FermiDirac( E, Mu, kT )
