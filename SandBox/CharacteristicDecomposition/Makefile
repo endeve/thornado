@@ -16,14 +16,10 @@ all: Driver
 Driver: \
 	$(weaklib) \
 	$(thornado) \
-	ClosureModule.o \
-	TwoMoment_CharacteristicDecompositionModule.o \
 	Driver.o
 	$(FLINKER) $(FLAGS) -o Driver_$(MACHINE)_$(MOMENT_CLOSURE)  \
 	$(weaklib) \
 	$(thornado) \
-	ClosureModule.o \
-	TwoMoment_CharacteristicDecompositionModule.o \
 	Driver.o \
 	$(LIBRARIES)
 

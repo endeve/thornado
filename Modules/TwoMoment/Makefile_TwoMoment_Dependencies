@@ -2,6 +2,12 @@ TwoMoment_ClosureModule.o: \
   KindModule.o \
   TwoMoment_ClosureModule.F90
 
+TwoMoment_CharacteristicDecompositionModule.o: \
+  KindModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_CharacteristicDecompositionModule.f90
+
 TwoMoment_UtilitiesModule.o: \
   KindModule.o \
   TwoMoment_UtilitiesModule.F90

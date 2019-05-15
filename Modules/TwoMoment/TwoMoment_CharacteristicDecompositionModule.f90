@@ -6,9 +6,8 @@ MODULE TwoMoment_CharacteristicDecompositionModule
     nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
-    EddingtonFactor
-  USE ClosureModule, ONLY: &
-    ComputeEddingtonFactorDerivatives    
+    EddingtonFactor, &
+    ComputeEddingtonFactorDerivatives
 
   IMPLICIT NONE
   PRIVATE
