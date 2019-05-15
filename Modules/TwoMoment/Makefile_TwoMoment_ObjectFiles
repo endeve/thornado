@@ -1,7 +1,7 @@
 TWO_MOMENT = \
   TwoMoment_ClosureModule.o \
-  TwoMoment_CharacteristicDecompositionModule.o \
   TwoMoment_UtilitiesModule.o \
+  TwoMoment_CharacteristicDecompositionModule.o \
   TwoMoment_MeshRefinementModule.o \
   TwoMoment_BoundaryConditionsModule.o \
   TwoMoment_PositivityLimiterModule.o \

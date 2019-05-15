@@ -2,12 +2,20 @@ MODULE TwoMoment_CharacteristicDecompositionModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three
+  USE GeometryFieldsModule, ONLY: &
+    nGF, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33
   USE RadiationFieldsModule, ONLY: &
+    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
     EddingtonFactor, &
     ComputeEddingtonFactorDerivatives
+  USE TwoMoment_UtilitiesModule, ONLY: &
+    ComputePrimitive_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
@@ -25,24 +33,29 @@ CONTAINS
     ( iDim, G, U, R, invR )
 
     INTEGER,  INTENT(in)  :: iDim
-    REAL(DP), INTENT(in)  :: G(3)   ! Gm_dd_11,22,33
-    REAL(DP), INTENT(in)  :: U(nPR)
-    REAL(DP), INTENT(out) :: R(nPR,nPR)
-    REAL(DP), INTENT(out) :: invR(nPR,nPR)
+    REAL(DP), INTENT(in)  :: G(nGF)
+    REAL(DP), INTENT(in)  :: U(nCR)
+    REAL(DP), INTENT(out) :: R(nCR,nCR)
+    REAL(DP), INTENT(out) :: invR(nCR,nCR)
 
-    INTEGER :: i
-    REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33, Eigens(nPR)
-    REAL(DP) :: Jacobian(nPR,nPR)
+    REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP) :: D(1), I_1(1), I_2(1), I_3(1)
+    REAL(DP) :: Eigens(nCR)
+    REAL(DP) :: Jacobian(nCR,nCR)
 
-    Gm_dd_11 = G(1)
-    Gm_dd_22 = G(2)
-    Gm_dd_33 = G(3)
+    Gm_dd_11 = G(iGF_Gm_dd_11)
+    Gm_dd_22 = G(iGF_Gm_dd_22)
+    Gm_dd_33 = G(iGF_Gm_dd_33)
+
+    CALL ComputePrimitive_TwoMoment &
+           ( [ U(iCR_N) ], [ U(iCR_G1) ], [ U(iCR_G2) ], [ U(iCR_G3) ], &
+             D, I_1, I_2, I_3, [ Gm_dd_11 ], [ Gm_dd_22 ], [ Gm_dd_33 ] )
 
     CALL ComputeFluxJacobian &
-           ( iDim, U(iPR_D), U(iPR_I1), U(iPR_I2), U(iPR_I3), &
+           ( iDim, D(1), I_1(1), I_2(1), I_3(1), &
              Gm_dd_11, Gm_dd_22, Gm_dd_33, Jacobian )
 
-    CALL ComputeEigen( nPR, Jacobian, R, invR, Eigens )
+    CALL ComputeEigen( nCR, Jacobian, R, invR, Eigens )
 
     IF ( Debug ) THEN
       WRITE(*,*)
@@ -59,14 +72,13 @@ CONTAINS
   SUBROUTINE ComputeFluxJacobian &
     ( iDim, D, I_1, I_2, I_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, Jacobian )
 
-    INTEGER,  INTENT(in)     :: iDim
-    REAL(DP), INTENT(in)     :: D, I_1, I_2, I_3
-    REAL(DP), INTENT(in)     :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP), INTENT(out)    :: Jacobian(nPR,nPR)
-
-    REAL(DP)                 :: FF, EF
+    INTEGER,  INTENT(in)  :: iDim
+    REAL(DP), INTENT(in)  :: D, I_1, I_2, I_3
+    REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(out) :: Jacobian(nCR,nCR)
 
     INTEGER  :: i, j
+    REAL(DP) :: FF, EF
     REAL(DP) :: A21, A22, A23, A24, A31, A32, A33, A34, &
                 A41, A42, A43, A44, EF_FF, EF_D
     REAL(DP) :: hd1, hu1, hd2, hu2, hd3, hu3
@@ -131,10 +143,10 @@ CONTAINS
         !        Jacobian(4,:) = [ A41,  A42,           A43,  A44  ]
         ! ---------------------------------------------------------------
 
-        Jacobian(:,1) = [ Zero, A21, A31, A41 ]
-        Jacobian(:,2) = [ One/Gm_dd_11, A22, A32, A42 ]
-        Jacobian(:,3) = [ Zero, A23, A33, A43 ]
-        Jacobian(:,4) = [ Zero, A24, A34, A44 ]
+        Jacobian(:,1) = [ Zero,           A21, A31, A41 ]
+        Jacobian(:,2) = [ One / Gm_dd_11, A22, A32, A42 ]
+        Jacobian(:,3) = [ Zero,           A23, A33, A43 ]
+        Jacobian(:,4) = [ Zero,           A24, A34, A44 ]
 
       CASE ( 2 )
 
@@ -169,10 +181,10 @@ CONTAINS
 
         A44 = Half * hu2 * ( -One + hd3 * hu3 * Elem2 + Three * EF ) / FF
  
-        Jacobian(:,1) = [ Zero, A21, A31, A41 ]
-        Jacobian(:,2) = [ Zero, A22, A32, A42 ]
-        Jacobian(:,3) = [ One/Gm_dd_22, A23, A33, A43 ]
-        Jacobian(:,4) = [ Zero, A24, A34, A44 ]
+        Jacobian(:,1) = [ Zero,           A21, A31, A41 ]
+        Jacobian(:,2) = [ Zero,           A22, A32, A42 ]
+        Jacobian(:,3) = [ One / Gm_dd_22, A23, A33, A43 ]
+        Jacobian(:,4) = [ Zero,           A24, A34, A44 ]
 
       CASE (3)
 
@@ -207,10 +219,10 @@ CONTAINS
                        + ( hd3 / Gm_dd_33 + hu3 - Two * hd3 * hu3 * hu3 ) &
                          * ( -One + Three * EF ) / FF )
 
-        Jacobian(:,1) = [ Zero, A21, A31, A41 ]
-        Jacobian(:,2) = [ Zero, A22, A32, A42 ]
-        Jacobian(:,3) = [ Zero, A23, A33, A43 ]
-        Jacobian(:,4) = [ One/Gm_dd_33, A24, A34, A44 ]
+        Jacobian(:,1) = [ Zero,           A21, A31, A41 ]
+        Jacobian(:,2) = [ Zero,           A22, A32, A42 ]
+        Jacobian(:,3) = [ Zero,           A23, A33, A43 ]
+        Jacobian(:,4) = [ One / Gm_dd_33, A24, A34, A44 ]
 
       CASE DEFAULT
 
