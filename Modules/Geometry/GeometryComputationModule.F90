@@ -12,15 +12,12 @@ MODULE GeometryComputationModule
     MeshX
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem, &
-    iGF_h_1, &
-    iGF_h_2, &
-    iGF_h_3, &
-    iGF_Gm_dd_11, &
-    iGF_Gm_dd_22, &
-    iGF_Gm_dd_33, &
+    iGF_Phi_N, &
+    iGF_h_1,      iGF_h_2,      iGF_h_3,      &
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    iGF_Beta_1,   iGF_Beta_2,   iGF_Beta_3,   &
     iGF_SqrtGm, &
-    iGF_Alpha, &
-    iGF_Psi, &
+    iGF_Alpha, iGF_Psi, &
     nGF
 
   IMPLICIT NONE
@@ -29,15 +26,16 @@ MODULE GeometryComputationModule
   PUBLIC :: ComputeGeometryX
   PUBLIC :: ComputeGeometryX_FromScaleFactors
 
+
 CONTAINS
 
 
   SUBROUTINE ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option )
 
-    INTEGER, INTENT(in)     :: &
+    INTEGER, INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(inout) :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout)        :: &
+      G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in), OPTIONAL :: &
       Mass_Option
 
@@ -84,27 +82,35 @@ CONTAINS
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
       Mass
 
     INTEGER :: iX1, iX2, iX3
 
     DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-        DO iX1 = iX_B1(1), iX_E1(1)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
 
-          G(:,iX1,iX2,iX3,iGF_h_1) = One
-          G(:,iX1,iX2,iX3,iGF_h_2) = One
-          G(:,iX1,iX2,iX3,iGF_h_3) = One
+      ! --- Initialize to flat spacetime ---
+      G(:,iX1,iX2,iX3,iGF_Phi_N)    = Zero
+      G(:,iX1,iX2,iX3,iGF_h_1)      = One
+      G(:,iX1,iX2,iX3,iGF_h_2)      = One
+      G(:,iX1,iX2,iX3,iGF_h_3)      = One
+      G(:,iX1,iX2,iX3,iGF_Gm_dd_11) = One
+      G(:,iX1,iX2,iX3,iGF_Gm_dd_22) = One
+      G(:,iX1,iX2,iX3,iGF_Gm_dd_33) = One
+      G(:,iX1,iX2,iX3,iGF_SqrtGm)   = One
+      G(:,iX1,iX2,iX3,iGF_Alpha)    = One
+      G(:,iX1,iX2,iX3,iGF_Beta_1)   = Zero
+      G(:,iX1,iX2,iX3,iGF_Beta_2)   = Zero
+      G(:,iX1,iX2,iX3,iGF_Beta_3)   = Zero
+      G(:,iX1,iX2,iX3,iGF_Psi)      = One
 
-          ! --- Temporary hack to set lapse function to unity ---
-          G(:,iX1,iX2,iX3,iGF_Alpha) = One
+      CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
 
-          CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
-
-        END DO
-      END DO
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE ComputeGeometryX_CARTESIAN
@@ -116,7 +122,7 @@ CONTAINS
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
       Mass
 
@@ -128,72 +134,71 @@ CONTAINS
     dX = 0.0_DP
 
     DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
 
-        XC(2) = MeshX(2) % Center(iX2)
-        dX(2) = MeshX(2) % Width (iX2)
+      XC(2) = MeshX(2) % Center(iX2)
+      dX(2) = MeshX(2) % Width (iX2)
 
-        DO iX1 = iX_B1(1), iX_E1(1)
+      XC(1) = MeshX(1) % Center(iX1)
+      dX(1) = MeshX(1) % Width (iX1)
 
-          XC(1) = MeshX(1) % Center(iX1)
-          dX(1) = MeshX(1) % Width (iX1)
+      ! --- Compute Geometry Fields in Lobatto Points ---
 
-          ! --- Compute Geometry Fields in Lobatto Points ---
+      DO iNodeX = 1, nDOFX
 
-          DO iNodeX = 1, nDOFX
+        ! --- Local Coordinates (Lobatto Points) ---
 
-            ! --- Local Coordinates (Lobatto Points) ---
+        xL_q = NodesLX_q(1:3,iNodeX)
 
-            xL_q = NodesLX_q(1:3,iNodeX)
+        ! --- Global Coordinates ---
 
-            ! --- Global Coordinates ---
+        xG_q = XC + dX * xL_q
 
-            xG_q = XC + dX * xL_q
+        ! --- Compute Lapse Function and Conformal Factor ---
 
-            ! --- Compute Lapse Function and Conformal Factor ---
+        G_L(iNodeX,iGF_Alpha) &
+          = LapseFunction  ( xG_q(1), Mass )
+        G_L(iNodeX,iGF_Psi) &
+          = ConformalFactor( xG_q(1), Mass )
 
-            G_L(iNodeX,iGF_Alpha) &
-              = LapseFunction  ( xG_q(1), Mass )
-            G_L(iNodeX,iGF_Psi) &
-              = ConformalFactor( xG_q(1), Mass )
+        ! --- Set Geometry in Lobatto Points ---
 
-            ! --- Set Geometry in Lobatto Points ---
+        G_L(iNodeX,iGF_h_1) &
+          = G_L(iNodeX,iGF_Psi)**2
+        G_L(iNodeX,iGF_h_2) &
+          = G_L(iNodeX,iGF_Psi)**2 &
+              * MAX( ABS( xG_q(1) ), SqrtTiny )
+        G_L(iNodeX,iGF_h_3) &
+          = G_L(iNodeX,iGF_Psi)**2 &
+              * MAX( ABS( xG_q(1) * SIN( xG_q(2) ) ), SqrtTiny )
 
-            G_L(iNodeX,iGF_h_1) &
-              = G_L(iNodeX,iGF_Psi)**2
-            G_L(iNodeX,iGF_h_2) &
-              = G_L(iNodeX,iGF_Psi)**2 &
-                  * MAX( ABS( xG_q(1) ), SqrtTiny )
-            G_L(iNodeX,iGF_h_3) &
-              = G_L(iNodeX,iGF_Psi)**2 &
-                  * MAX( ABS( xG_q(1) * SIN( xG_q(2) ) ), SqrtTiny )
-
-          END DO
-
-          ! --- Interpolate from Lobatto to Gaussian Points ---
-
-          CALL DGEMV &
-                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-                   G_L(:,iGF_h_1), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_1), 1 )
-          CALL DGEMV &
-                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-                   G_L(:,iGF_h_2), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_2), 1 )
-          CALL DGEMV &
-                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-                   G_L(:,iGF_h_3), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_3), 1 )
-
-          CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
-
-          CALL DGEMV &
-                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-                   G_L(:,iGF_Alpha), 1, Zero, G(:,iX1,iX2,iX3,iGF_Alpha), 1 )
-
-          CALL DGEMV &
-                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-                   G_L(:,iGF_Psi),   1, Zero, G(:,iX1,iX2,iX3,iGF_Psi),   1 )
-
-        END DO
       END DO
+
+      ! --- Interpolate from Lobatto to Gaussian Points ---
+
+      CALL DGEMV &
+             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+               G_L(:,iGF_h_1), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_1), 1 )
+      CALL DGEMV &
+             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+               G_L(:,iGF_h_2), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_2), 1 )
+      CALL DGEMV &
+             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+               G_L(:,iGF_h_3), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_3), 1 )
+
+      CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+
+      CALL DGEMV &
+             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+               G_L(:,iGF_Alpha), 1, Zero, G(:,iX1,iX2,iX3,iGF_Alpha), 1 )
+
+      CALL DGEMV &
+             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+               G_L(:,iGF_Psi),   1, Zero, G(:,iX1,iX2,iX3,iGF_Psi),   1 )
+
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE ComputeGeometryX_SPHERICAL
@@ -205,7 +210,7 @@ CONTAINS
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
       Mass
 
@@ -217,46 +222,46 @@ CONTAINS
     dX = 0.0_DP
 
     DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
-          XC(1) = MeshX(1) % Center(iX1)
-          dX(1) = MeshX(1) % Width (iX1)
+      XC(1) = MeshX(1) % Center(iX1)
+      dX(1) = MeshX(1) % Width (iX1)
 
-          DO iNodeX = 1, nDOFX
+      DO iNodeX = 1, nDOFX
 
-            ! --- Local Coordinates (Lobatto Points) ---
+        ! --- Local Coordinates (Lobatto Points) ---
 
-            xL_q = NodesLX_q(1:3,iNodeX)
+        xL_q = NodesLX_q(1:3,iNodeX)
 
-            ! --- Global Coordinates ---
+        ! --- Global Coordinates ---
 
-            xG_q = XC + dX * xL_q
+        xG_q = XC + dX * xL_q
 
-            ! --- Set Geometry in Lobatto Points ---
+        ! --- Set Geometry in Lobatto Points ---
 
-            G_L(iNodeX,iGF_h_1) = One
-            G_L(iNodeX,iGF_h_2) = One
-            G_L(iNodeX,iGF_h_3) = xG_q(1)
+        G_L(iNodeX,iGF_h_1) = One
+        G_L(iNodeX,iGF_h_2) = One
+        G_L(iNodeX,iGF_h_3) = xG_q(1)
 
-          END DO
-
-          ! --- Interpolate from Lobatto to Gaussian Points ---
-
-          CALL DGEMV &
-                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-                   G_L(:,iGF_h_1), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_1), 1 )
-          CALL DGEMV &
-                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-                   G_L(:,iGF_h_2), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_2), 1 )
-          CALL DGEMV &
-                 ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
-                   G_L(:,iGF_h_3), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_3), 1 )
-
-          CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
-
-        END DO
       END DO
+
+      ! --- Interpolate from Lobatto to Gaussian Points ---
+
+      CALL DGEMV &
+             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+               G_L(:,iGF_h_1), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_1), 1 )
+      CALL DGEMV &
+             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+               G_L(:,iGF_h_2), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_2), 1 )
+      CALL DGEMV &
+             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+               G_L(:,iGF_h_3), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_3), 1 )
+
+      CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE ComputeGeometryX_CYLINDRICAL
