@@ -46,8 +46,7 @@ PROGRAM main
   USE EquationOfStateModule,            ONLY: &
     InitializeEquationOfState
   USE GeometryFieldsModule,             ONLY: &
-    nGF, CoordinateSystem, &
-    CreateGeometryFields
+    nGF, CoordinateSystem
   USE FluidFieldsModule,                ONLY: &
     nCF, nPF, nAF, &
     CreateFluidFields
@@ -203,8 +202,6 @@ PROGRAM main
   CALL InitializeReferenceElementX_Lagrange
 
   CALL MF_ComputeGeometryX( MF_uGF )
-  CALL CreateGeometryFields &
-         ( nX, swX, CoordinateSystem, amrex_parallel_ioprocessor() )
 
   IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
     Mass = 0.5_amrex_real
