@@ -526,13 +526,13 @@ CONTAINS
 
       CALL ComputeNeutrinoOpacities_EC_Point &
              ( 1, nE_G, E_N(1:nE_G), PF_N(iPF_D), AF_N(iAF_T), AF_N(iAF_Ye), &
-               Chi(1:nE_G,1), iSpecies = 1 )
+               iSpecies = 1, opEC_Point = Chi(1:nE_G,1) )
 
       ! --- Elastic Scattering Opacities ---
 
       CALL ComputeNeutrinoOpacities_ES_Point &
              ( 1, nE_G, E_N(1:nE_G), PF_N(iPF_D), AF_N(iAF_T), AF_N(iAF_Ye), &
-               Sig(1:nE_G,1), iSpecies = 1 )
+               iSpecies = 1, iMoment = 1, opES_Point = Sig(1:nE_G,1) )
 
       wTime = MPI_WTIME( ) - wTime
 
@@ -754,13 +754,13 @@ CONTAINS
 
       CALL ComputeNeutrinoOpacities_EC_Point &
              ( 1, nE_G, E_N(1:nE_G), PF_K(iPF_D), AF_K(iAF_T), AF_K(iAF_Ye), &
-               Chi(1:nE_G,1), iSpecies = 1 )
+               iSpecies = 1, opEC_Point = Chi(1:nE_G,1) )
 
       ! --- Elastic Scattering Opacities ---
 
       CALL ComputeNeutrinoOpacities_ES_Point &
              ( 1, nE_G, E_N(1:nE_G), PF_K(iPF_D), AF_K(iAF_T), AF_K(iAF_Ye), &
-               Sig(1:nE_G,1), iSpecies = 1 )
+               iSpecies = 1, iMoment = 1, opES_Point = Sig(1:nE_G,1) )
 
       ! --- Map Radiation Data for Collision Update ---
 
