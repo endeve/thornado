@@ -1,4 +1,4 @@
-function [J, J0, D, T, Y, E, iter] = SolveMatterEquations_Pair( Jin, dt, Chi, D, T, Y, E)
+function [J, J0, D, T, Y, E, iter, iter_in] = SolveMatterEquations_Pair_NestedAA( Jin, dt, Chi, D, T, Y, E)
 
 % g_E_N       : nE_G x 1 (energy grid)
 % J, J_0    : nE_G x 1 (size of energy grid)
@@ -16,10 +16,11 @@ hc = PlanckConstant * SpeedOfLight;
 c = SpeedOfLight;
 
 Rtol = 1e-8; Utol = 1e-10; maxIter = 100;
+iter_in = 0;
 
 iY = 1;
 iE = 2;
-iJNe = iE + (1:length(Jin.Ne));
+iJNe = 1:length(Jin.Ne);
 iJANe = iJNe(end) + (1:length(Jin.ANe));
 
 U = zeros(2,1);
@@ -74,9 +75,12 @@ CONVERGED = false;
 
 % Anderson acceleration truncation parameter
 m = 5;
-Fvec = zeros(length(U)+length(J.Ne)+length(J.ANe),m);
-Jvec = zeros(length(U)+length(J.Ne)+length(J.ANe),m);
+Finvec = zeros(length(J.Ne)+length(J.ANe),m);
+Jvec = zeros(length(J.Ne)+length(J.ANe),m);
+Fvec = zeros(length(U),m);
+Uvec = zeros(length(U),m);
 alpha = zeros(m,1);
+alpha_in = zeros(m,1);
 
 
 % compute chemical potential and derivatives
@@ -128,61 +132,94 @@ while((~CONVERGED)&&(k<=maxIter))
     k = k + 1;
     mk = min(m,k);
  
+    k_in = 0;
+    CONVERGED_IN = false;
+    J_in = J;
+    
+    % Solve inner loop
+    while((~CONVERGED_IN)&&(k_in<=maxIter))
+        k_in = k_in + 1;
+        mk_in = min(m,k_in);
+        
+        Jvec(iJNe,mk_in) = (Jin.Ne + Chi.Ne.*J0.Ne + eta_NES.Ne + eta_TP.Ne)./(1 + Chi.Ne + Chi_NES.Ne + Chi_TP.Ne);
+        Jvec(iJANe,mk_in) = (Jin.ANe + Chi.ANe.*J0.ANe + eta_NES.ANe + eta_TP.ANe)./(1 + Chi.ANe + Chi_NES.ANe + Chi_TP.ANe);
+        
+        Finvec(:,mk_in) = Jvec(:,mk_in) - [J.Ne; J.ANe];
+   
+        
+        if (mk_in == 1)
+            Jnew.Ne = Jvec(iJNe,1);
+            Jnew.ANe = Jvec(iJANe,1);
+        else
+            alpha_in(1:mk_in-1) = (Finvec(:,1:mk_in-1) - Finvec(:,mk_in)*ones(1,mk_in-1))\(-Finvec(:,mk_in));
+            alpha_in(mk_in) = 1 - sum(alpha_in(1:mk_in-1));
+            temp = Jvec(:,1:mk_in) * alpha_in(1:mk_in);
+            Jnew.Ne = temp(iJNe);
+            Jnew.ANe = temp(iJANe);
+        end
+    
+        if ((norm(Jnew.Ne - J.Ne) <= Rtol * norm(J_in.Ne)) && (norm(Jnew.ANe - J.ANe) <= Rtol * norm(J_in.ANe)))
+            CONVERGED_IN = true;
+        end
+
+        if (mk_in == m)
+            Jvec = circshift(Jvec,-1,2);
+            Finvec = circshift(Finvec,-1,2);
+        end
+        
+        J = Jnew;
+
+        if (~CONVERGED_IN)
+
+            eta_NES.Ne = R_in_NES.Ne' * (W2_N .* J.Ne);
+            Chi_NES.Ne = eta_NES.Ne + R_out_NES.Ne' * (W2_N .* (1 - J.Ne));
+
+            eta_NES.ANe = R_in_NES.ANe' * (W2_N .* J.ANe);
+            Chi_NES.ANe = eta_NES.ANe + R_out_NES.ANe' * (W2_N .* (1 - J.ANe));
+
+            eta_TP.Ne = R_Pr.Ne' * (W2_N .* (1 - J.ANe));
+            Chi_TP.Ne = eta_TP.Ne + R_An.Ne' * (W2_N .* J.ANe);
+
+            eta_TP.ANe = R_Pr.ANe' * (W2_N .* (1 - J.Ne));
+            Chi_TP.ANe = eta_TP.ANe + R_An.ANe' * (W2_N .* J.Ne);
+        end
+    end
+    if(k_in >= maxIter)
+        disp("Inner loop failed to converge within maxIter.");
+    end
+
+    iter_in = iter_in + k_in;
+    
     % Update (U,J)
-    Jvec(iY,mk) = 1 + C(iY) - Theta2_N' * (J.Ne - J.ANe)/ s_Y;
-    Jvec(iE,mk) = 1 + C(iE) - Theta3_N' * (J.Ne + J.ANe) / s_E;
+    Uvec(iY,mk) = 1 + C(iY) - Theta2_N' * (J.Ne - J.ANe)/ s_Y;
+    Uvec(iE,mk) = 1 + C(iE) - Theta3_N' * (J.Ne + J.ANe) / s_E;
     
-    eta_NES.Ne = R_in_NES.Ne' * (W2_N .* J.Ne);
-    Chi_NES.Ne = eta_NES.Ne + R_out_NES.Ne' * (W2_N .* (1 - J.Ne));
-    
-    eta_NES.ANe = R_in_NES.ANe' * (W2_N .* J.ANe);
-    Chi_NES.ANe = eta_NES.ANe + R_out_NES.ANe' * (W2_N .* (1 - J.ANe));
-
-    eta_TP.Ne = R_Pr.Ne' * (W2_N .* (1 - J.ANe));
-    Chi_TP.Ne = eta_TP.Ne + R_An.Ne' * (W2_N .* J.ANe);
-
-    eta_TP.ANe = R_Pr.ANe' * (W2_N .* (1 - J.Ne));
-    Chi_TP.ANe = eta_TP.ANe + R_An.ANe' * (W2_N .* J.Ne);
-
-    % update J for electron type neutrino and antineutrino
-    Jvec(iJNe,mk) = (Jin.Ne + Chi.Ne.*J0.Ne + eta_NES.Ne + eta_TP.Ne)./(1 + Chi.Ne + Chi_NES.Ne + Chi_TP.Ne);
-    Jvec(iJANe,mk) = (Jin.ANe + Chi.ANe.*J0.ANe + eta_NES.ANe + eta_TP.ANe)./(1 + Chi.ANe + Chi_NES.ANe + Chi_TP.ANe);
-    
-    Fvec(:,mk) = Jvec(:,mk) - [U; J.Ne; J.ANe];
+    Fvec(:,mk) = Uvec(:,mk) - U;
     
     if (mk == 1)
-        Unew = Jvec(1:2,1);
-        Jnew.Ne = Jvec(iJNe,1);
-        Jnew.ANe = Jvec(iJANe,1);
+        Unew = Uvec(:,1);
     else
         alpha(1:mk-1) = (Fvec(:,1:mk-1) - Fvec(:,mk)*ones(1,mk-1))\(-Fvec(:,mk));
         alpha(mk) = 1 - sum(alpha(1:mk-1));
-        temp = Jvec(:,1:mk) * alpha(1:mk);
-        Unew = temp(1:2);
-        Jnew.Ne = temp(iJNe);
-        Jnew.ANe = temp(iJANe);
+        Unew = Uvec(:,1:mk) * alpha(1:mk);
     end
     
     % check convergence
-%     if (norm([Unew; Jnew.Ne; Jnew.ANe] - [U; J.Ne; J.ANe]) <= Rtol * norm([U0; Jin.Ne; Jin.ANe]))
-    if ((norm(Unew(1) - U(1)) <= Rtol * norm(U0(1))) && (norm(Unew(2) - U(2)) <= Rtol * norm(U0(2)))...
-        && (norm(Jnew.Ne - J.Ne) <= Rtol * norm(Jin.Ne)) && (norm(Jnew.ANe - J.ANe) <= Rtol * norm(Jin.ANe)))
+    if ((norm(Unew(1) - U(1)) <= Rtol * norm(U0(1))) && (norm(Unew(2) - U(2)) <= Rtol * norm(U0(2))))
         CONVERGED = true;
     end
     
     if (mk == m)
-        Jvec = circshift(Jvec,-1,2);
+        Uvec = circshift(Uvec,-1,2);
         Fvec = circshift(Fvec,-1,2);
     end
     
-    % update U, Y, E, T, J
+    % update U, Y, E, T
     U = Unew;
     
     Y = U(iY) * Y0;
     E = U(iE) * E0 / Erg2MeV; % change unit    
     T = ComputeTemperatureFromSpecificInternalEnergy_TABLE(D, E, Y);
-    
-    J = Jnew;
     
     % compute chemical potential and derivatives
     [Mnu, ~, ~] = ComputeNeutrinoChemicalPotentials(D, T, Y);
@@ -220,7 +257,7 @@ end
 
 
 iter = k;
-
+iter_in = iter_in / iter;
 
 
 end
