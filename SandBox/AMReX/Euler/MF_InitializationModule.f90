@@ -41,6 +41,8 @@ MODULE MF_InitializationModule
     nAF, iAF_P
   USE Euler_UtilitiesModule,   ONLY: &
     Euler_ComputeConserved
+  USE EquationOfStateModule,   ONLY: &
+    ComputePressureFromPrimitive
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -192,6 +194,10 @@ CONTAINS
 
           END DO
 
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
           CALL Euler_ComputeConserved &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
@@ -291,7 +297,8 @@ CONTAINS
               uPF_K(iNodeX,iPF_V1) = 0.0_amrex_real
               uPF_K(iNodeX,iPF_V2) = 0.0_amrex_real
               uPF_K(iNodeX,iPF_V3) = 0.0_amrex_real
-              uPF_K(iNodeX,iPF_E)  = 1.0_amrex_real / 0.4_amrex_real
+              uPF_K(iNodeX,iPF_E)  = 1.0_amrex_real &
+                                       / (Gamma_IDEAL - 1.0_amrex_real)
 
             ELSE
 
@@ -299,11 +306,16 @@ CONTAINS
               uPF_K(iNodeX,iPF_V1) = 0.0_amrex_real
               uPF_K(iNodeX,iPF_V2) = 0.0_amrex_real
               uPF_K(iNodeX,iPF_V3) = 0.0_amrex_real
-              uPF_K(iNodeX,iPF_E)  = 0.1_amrex_real / 0.4_amrex_real
+              uPF_K(iNodeX,iPF_E)  = 0.1_amrex_real &
+                                       / (Gamma_IDEAL - 1.0_amrex_real)
 
             END IF
 
           END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
 
           CALL Euler_ComputeConserved &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
@@ -418,6 +430,10 @@ CONTAINS
 
           END DO
 
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
           CALL Euler_ComputeConserved &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
@@ -526,6 +542,10 @@ CONTAINS
           uPF_K(:,iPF_V2) = 0.0_DP
           uPF_K(:,iPF_V3) = 0.0_DP
           uPF_K(:,iPF_E)  = 1.0d-2
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
 
           CALL Euler_ComputeConserved &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
@@ -656,6 +676,10 @@ CONTAINS
               = 0.0_amrex_real
 
           END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
 
           CALL Euler_ComputeConserved &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
@@ -861,6 +885,10 @@ CONTAINS
              END IF
 
           END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
 
           CALL Euler_ComputeConserved &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
