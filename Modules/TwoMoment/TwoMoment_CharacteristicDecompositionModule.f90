@@ -299,7 +299,7 @@ CONTAINS
     CALL DGEEV( 'Vectors', 'Vectors', N, A, LDA, WR, WI, VL, LDVL, &
                  VR, LDVR, WORK, LWORK, INFO )
 
-    IF( INFO.GT.0 ) THEN
+    IF( INFO.NE.0 ) THEN
        WRITE(*,*)'The algorithm failed to compute eigenvalues.'
        STOP
     END IF
