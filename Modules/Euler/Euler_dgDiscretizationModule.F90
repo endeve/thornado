@@ -3,18 +3,20 @@ MODULE Euler_dgDiscretizationModule
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, nDimsX
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, WeightsX_X1, &
     nDOFX_X2, WeightsX_X2, &
+    nDOFX_X3, WeightsX_X3, &
     WeightsX_q,            &    
     NodeNumberTableX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     dLXdX1_q, LX_X1_Dn, LX_X1_Up, &
-    dLXdX2_q, LX_X2_Dn, LX_X2_Up
+    dLXdX2_q, LX_X2_Dn, LX_X2_Up, &
+    dLXdX3_q, LX_X3_Dn, LX_X3_Up
   USE GeometryFieldsModule, ONLY: &
     nGF,                                      &
     iGF_h_1,      iGF_h_2,      iGF_h_3,      &
@@ -1214,15 +1216,29 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
+    ! --- This subroutine currently assumes that the shift-vector
+    !     is identically zero, which implies that the extrinsic
+    !     curvature is identically zero ---
+
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: P_K(nDOFX)
-    REAL(DP) :: dh1dX1(nDOFX), dh2dX1(nDOFX), dh3dX1(nDOFX)
-    REAL(DP) :: dadx1(nDOFX)
+    REAL(DP) :: dh1dX1(nDOFX), dh2dX1(nDOFX), dh3dX1(nDOFX), &
+                dh1dX2(nDOFX), dh2dX2(nDOFX), dh3dX2(nDOFX), &
+                dh1dX3(nDOFX), dh2dX3(nDOFX), dh3dX3(nDOFX)
+    REAL(DP) :: dadx1(nDOFX), dadx2(nDOFX), dadx3(nDOFX)
     REAL(DP) :: Stress(nDOFX,3)
     REAL(DP) :: uCF_K(nDOFX,nCF), uPF_K(nDOFX,nPF), G_K(nDOFX,nGF)
-    REAL(DP) :: G_P_X1(nDOFX,nGF), G_N_X1(nDOFX,nGF)
-    REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF)
+    REAL(DP) :: G_P_X1(nDOFX,nGF), G_N_X1(nDOFX,nGF), &
+                G_P_X2(nDOFX,nGF), G_N_X2(nDOFX,nGF), &
+                G_P_X3(nDOFX,nGF), G_N_X3(nDOFX,nGF)
+    REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF), &
+                G_X2_Dn(nDOFX_X2,nGF), G_X2_Up(nDOFX_X2,nGF), &
+                G_X3_Dn(nDOFX_X3,nGF), G_X3_Up(nDOFX_X3,nGF)
+
+    dadx1 = Zero
+    dadx2 = Zero
+    dadx3 = Zero
 
     CALL Timer_Start( Timer_Geo )
 
@@ -1243,8 +1259,12 @@ CONTAINS
       DO iGF = 1, nGF
 
         G_P_X1(:,iGF) = G(:,iX1-1,iX2,iX3,iGF)
-        G_K   (:,iGF) = G(:,iX1,  iX2,iX3,iGF)
         G_N_X1(:,iGF) = G(:,iX1+1,iX2,iX3,iGF)
+        G_P_X2(:,iGF) = G(:,iX1,iX2-1,iX3,iGF)
+        G_N_X2(:,iGF) = G(:,iX1,iX2+1,iX3,iGF)
+        G_P_X3(:,iGF) = G(:,iX1,iX2,iX3-1,iGF)
+        G_N_X3(:,iGF) = G(:,iX1,iX2,iX3+1,iGF)
+        G_K   (:,iGF) = G(:,iX1,  iX2,iX3,iGF)
 
       END DO
 
@@ -1374,8 +1394,6 @@ CONTAINS
 
       dadx1 = dadx1 / ( WeightsX_q * dX1 )
 
-      ! --- Compute Increments ---
-
       dU(:,iX1,iX2,iX3,iCF_S1) &
         = dU(:,iX1,iX2,iX3,iCF_S1)                                &
             + G_K(:,iGF_Alpha)                                    &
@@ -1384,9 +1402,221 @@ CONTAINS
                     + ( Stress(:,3) * dh3dX1 ) / G_K(:,iGF_h_3) ) &
             - ( uCF_K(:,iCF_D) + uCF_K(:,iCF_E) ) * dadx1
 
+      IF( nDimsX .GT. 1 )THEN
+
+        ! --- Scale Factor Derivatives wrt X2 ---
+
+        ! --- Face States (Average of Left and Right States) ---
+
+        DO iGF = iGF_h_1, iGF_h_3
+
+          CALL DGEMV &
+                 ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+                   G_P_X2(:,iGF), 1, Zero, G_X2_Dn(:,iGF), 1 )
+          CALL DGEMV &
+                 ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+                   G_K   (:,iGF), 1, Half, G_X2_Dn(:,iGF), 1 )
+
+          G_X2_Dn(:,iGF) = MAX( G_X2_Dn(:,iGF), SqrtTiny )
+
+          CALL DGEMV &
+                 ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+                   G_K   (:,iGF), 1, Zero, G_X2_Up(:,iGF), 1 )
+          CALL DGEMV &
+                 ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+                   G_N_X2(:,iGF), 1, Half, G_X2_Up(:,iGF), 1 )
+
+          G_X2_Up(:,iGF) = MAX( G_X2_Up(:,iGF), SqrtTiny )
+
+        END DO
+
+        ! --- dh1dx2 ---
+
+        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
+                    WeightsX_X2 * G_X2_Up(:,iGF_h_1), 1, Zero, dh1dX2, 1 )
+        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
+                    WeightsX_X2 * G_X2_Dn(:,iGF_h_1), 1, One,  dh1dX2, 1 )
+        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
+                    WeightsX_q  * G_K    (:,iGF_h_1), 1, One,  dh1dX2, 1 )
+
+        dh1dx2 = dh1dx2 / ( WeightsX_q * dX2 )
+
+        ! --- dh2dx2 ---
+
+        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
+                    WeightsX_X2 * G_X2_Up(:,iGF_h_2), 1, Zero, dh2dX2, 1 )
+        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
+                    WeightsX_X2 * G_X2_Dn(:,iGF_h_2), 1, One,  dh2dX2, 1 )
+        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
+                    WeightsX_q  * G_K    (:,iGF_h_2), 1, One,  dh2dX2, 1 )
+
+        dh2dx2 = dh2dx2 / ( WeightsX_q * dX2 )
+
+        ! --- dh3dx2 ---
+
+        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
+                    WeightsX_X2 * G_X2_Up(:,iGF_h_3), 1, Zero, dh3dX2, 1 )
+        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
+                    WeightsX_X2 * G_X2_Dn(:,iGF_h_3), 1, One,  dh3dX2, 1 )
+        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
+                    WeightsX_q  * G_K    (:,iGF_h_3), 1, One,  dh3dX2, 1 )
+
+        dh3dx2 = dh3dx2 / ( WeightsX_q * dX2 )
+
+        ! --- Lapse Function Derivative wrt X2 ---
+
+        ! --- Face States (Average of Left and Right States) ---
+
+        CALL DGEMV &
+               ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+                 G_P_X2(:,iGF_Alpha), 1, Zero, G_X2_Dn(:,iGF_Alpha), 1 )
+        CALL DGEMV &
+               ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+                 G_K   (:,iGF_Alpha), 1, Half, G_X2_Dn(:,iGF_Alpha), 1 )
+
+        G_X2_Dn(:,iGF_Alpha) = MAX( G_X2_Dn(:,iGF_Alpha), SqrtTiny )
+
+        CALL DGEMV &
+               ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+                 G_K   (:,iGF_Alpha), 1, Zero, G_X2_Up(:,iGF_Alpha), 1 )
+        CALL DGEMV &
+               ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+                 G_N_X2(:,iGF_Alpha), 1, Half, G_X2_Up(:,iGF_Alpha), 1 )
+
+        G_X2_Up(:,iGF_Alpha) = MAX( G_X2_Up(:,iGF_Alpha), SqrtTiny )
+
+        ! --- dadx2 ---
+
+        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
+                    WeightsX_X2 * G_X2_Up(:,iGF_Alpha), 1, Zero, dadX2, 1 )
+        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
+                    WeightsX_X2 * G_X2_Dn(:,iGF_Alpha), 1, One,  dadX2, 1 )
+        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
+                    WeightsX_q  * G_K    (:,iGF_Alpha), 1, One,  dadX2, 1 )
+
+        dadx2 = dadx2 / ( WeightsX_q * dX2 )
+
+        dU(:,iX1,iX2,iX3,iCF_S2) &
+          = dU(:,iX1,iX2,iX3,iCF_S2)                                &
+              + G_K(:,iGF_Alpha)                                    &
+                  * ( ( Stress(:,1) * dh1dX2 ) / G_K(:,iGF_h_1)     &
+                      + ( Stress(:,2) * dh2dX2 ) / G_K(:,iGF_h_2)   &
+                      + ( Stress(:,3) * dh3dX2 ) / G_K(:,iGF_h_3) ) &
+              - ( uCF_K(:,iCF_D) + uCF_K(:,iCF_E) ) * dadx2
+
+      END IF
+
+      IF( nDimsX .GT. 2 )THEN
+
+        ! --- Scale Factor Derivatives wrt X3 ---
+
+        ! --- Face States (Average of Left and Right States) ---
+
+        DO iGF = iGF_h_1, iGF_h_3
+
+          CALL DGEMV &
+                 ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
+                   G_P_X3(:,iGF), 1, Zero, G_X3_Dn(:,iGF), 1 )
+          CALL DGEMV &
+                 ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+                   G_K   (:,iGF), 1, Half, G_X3_Dn(:,iGF), 1 )
+
+          G_X3_Dn(:,iGF) = MAX( G_X3_Dn(:,iGF), SqrtTiny )
+
+          CALL DGEMV &
+                 ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
+                   G_K   (:,iGF), 1, Zero, G_X3_Up(:,iGF), 1 )
+          CALL DGEMV &
+                 ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+                   G_N_X3(:,iGF), 1, Half, G_X3_Up(:,iGF), 1 )
+
+          G_X3_Up(:,iGF) = MAX( G_X3_Up(:,iGF), SqrtTiny )
+
+        END DO
+
+        ! --- dh1dx3 ---
+
+        CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
+                    WeightsX_X3 * G_X3_Up(:,iGF_h_1), 1, Zero, dh1dX3, 1 )
+        CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
+                    WeightsX_X3 * G_X3_Dn(:,iGF_h_1), 1, One,  dh1dX3, 1 )
+        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
+                    WeightsX_q  * G_K    (:,iGF_h_1), 1, One,  dh1dX3, 1 )
+
+        dh1dx3 = dh1dx3 / ( WeightsX_q * dX3 )
+
+        ! --- dh2dx3 ---
+
+        CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
+                    WeightsX_X3 * G_X3_Up(:,iGF_h_2), 1, Zero, dh2dX3, 1 )
+        CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
+                    WeightsX_X3 * G_X3_Dn(:,iGF_h_2), 1, One,  dh2dX3, 1 )
+        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
+                    WeightsX_q  * G_K    (:,iGF_h_2), 1, One,  dh2dX3, 1 )
+
+        dh2dx3 = dh2dx3 / ( WeightsX_q * dX3 )
+
+        ! --- dh3dx3 ---
+
+        CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
+                    WeightsX_X3 * G_X3_Up(:,iGF_h_3), 1, Zero, dh3dX3, 1 )
+        CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
+                  WeightsX_X3 * G_X3_Dn(:,iGF_h_3), 1, One,  dh3dX3, 1 )
+        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
+                    WeightsX_q  * G_K    (:,iGF_h_3), 1, One,  dh3dX3, 1 )
+
+        dh3dx3 = dh3dx3 / ( WeightsX_q * dX3 )
+
+        ! --- Lapse Function Derivative wrt X3 ---
+
+        ! --- Face States (Average of Left and Right States) ---
+
+        CALL DGEMV &
+               ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
+                 G_P_X3(:,iGF_Alpha), 1, Zero, G_X3_Dn(:,iGF_Alpha), 1 )
+        CALL DGEMV &
+               ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+                 G_K   (:,iGF_Alpha), 1, Half, G_X3_Dn(:,iGF_Alpha), 1 )
+
+        G_X3_Dn(:,iGF_Alpha) = MAX( G_X3_Dn(:,iGF_Alpha), SqrtTiny )
+
+        CALL DGEMV &
+               ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
+                 G_K   (:,iGF_Alpha), 1, Zero, G_X3_Up(:,iGF_Alpha), 1 )
+        CALL DGEMV &
+               ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+                 G_N_X3(:,iGF_Alpha), 1, Half, G_X3_Up(:,iGF_Alpha), 1 )
+
+        G_X3_Up(:,iGF_Alpha) = MAX( G_X3_Up(:,iGF_Alpha), SqrtTiny )
+
+        ! --- dadx3 ---
+
+        CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
+                    WeightsX_X3 * G_X3_Up(:,iGF_Alpha), 1, Zero, dadX3, 1 )
+        CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
+                    WeightsX_X3 * G_X3_Dn(:,iGF_Alpha), 1, One,  dadX3, 1 )
+        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
+                    WeightsX_q  * G_K    (:,iGF_Alpha), 1, One,  dadX3, 1 )
+
+        dadx3 = dadx3 / ( WeightsX_q * dX3 )
+
+        dU(:,iX1,iX2,iX3,iCF_S3) &
+          = dU(:,iX1,iX2,iX3,iCF_S3)                                &
+              + G_K(:,iGF_Alpha)                                    &
+                  * ( ( Stress(:,1) * dh1dX3 ) / G_K(:,iGF_h_1)     &
+                      + ( Stress(:,2) * dh2dX3 ) / G_K(:,iGF_h_2)   &
+                      + ( Stress(:,3) * dh3dX3 ) / G_K(:,iGF_h_3) ) &
+              - ( uCF_K(:,iCF_D) + uCF_K(:,iCF_E) ) * dadx3
+
+      END IF
+
+      ! --- Compute Energy Increment (missing extrinsic curvature term) ---
+
       dU(:,iX1,iX2,iX3,iCF_E) &
         = dU(:,iX1,iX2,iX3,iCF_E) &
-            - ( uCF_K(:,iCF_S1) / G_K(:,iGF_Gm_dd_11) ) * dadx1
+            - (   uCF_K(:,iCF_S1) / G_K(:,iGF_Gm_dd_11) * dadx1 &
+                + uCF_K(:,iCF_S2) / G_K(:,iGF_Gm_dd_22) * dadx2 &
+                + uCF_K(:,iCF_S3) / G_K(:,iGF_Gm_dd_33) * dadx3 )
 
     END DO
     END DO
