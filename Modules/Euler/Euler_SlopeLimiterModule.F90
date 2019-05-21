@@ -45,13 +45,19 @@ CONTAINS
 
 #ifdef HYDRO_NONRELATIVISTIC
 
-    CALL Euler_InitializeSlopeLimiter_NonRelativistic&
+    CALL Euler_InitializeSlopeLimiter_NonRelativistic &
            ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
              UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
              UseTroubledCellIndicator_Option, &
              LimiterThresholdParameter_Option, Verbose_Option )
 
 #elif HYDRO_RELATIVISTIC
+
+    CALL Euler_InitializeSlopeLimiter_Relativistic &
+           ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
+             UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
+             UseTroubledCellIndicator_Option, &
+             LimiterThresholdParameter_Option, Verbose_Option )
 
 #endif
 
@@ -65,6 +71,8 @@ CONTAINS
     CALL Euler_FinalizeSlopeLimiter_NonRelativistic
 
 #elif HYDRO_RELATIVISTIC
+
+    CALL Euler_FinalizeSlopeLimiter_Relativistic
 
 #endif
 
@@ -89,6 +97,9 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
 
 #elif HYDRO_RELATIVISTIC
+
+    CALL Euler_ApplySlopeLimiter_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
 
 #endif
 
