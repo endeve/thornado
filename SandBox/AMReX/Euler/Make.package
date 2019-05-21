@@ -1,3 +1,5 @@
+DEFINES += -DHYDRO_NONRELATIVISTIC
+
 f90EXE_sources += fmain.f90
 f90EXE_sources += MF_UtilitiesModule.f90
 f90EXE_sources += MF_InitializationModule.f90
@@ -29,7 +31,6 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Euler
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/InputOutput
-VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Opacities
 
 # In THORNADO_DIR/Modules/Numbers:
 
@@ -65,7 +66,7 @@ f90EXE_sources += MeshModule.f90
 # In THORNADO_DIR/Modules/EquationOfState:
 
 F90EXE_sources += EquationOfStateModule_TABLE.F90
-f90EXE_sources += EquationOfStateModule_IDEAL.f90
+F90EXE_sources += EquationOfStateModule_IDEAL.F90
 f90EXE_sources += EquationOfStateModule.f90
 
 # In THORNADO_DIR/Modules/Geometry:
@@ -77,23 +78,27 @@ f90EXE_sources += GravitySolutionModule_Newtonian_PointMass.f90
 # In THORNADO_DIR/Modules/Fields:
 
 f90EXE_sources += FluidFieldsModule.f90
-f90EXE_sources += RadiationFieldsModule.f90
 
 # In THORNADO_DIR/Modules/Euler:
 
-f90EXE_sources += Euler_UtilitiesModule.f90
-f90EXE_sources += Euler_BoundaryConditionsModule.f90
-f90EXE_sources += Euler_SlopeLimiterModule.f90
-f90EXE_sources += Euler_CharacteristicDecompositionModule.f90
-f90EXE_sources += Euler_PositivityLimiterModule.f90
-f90EXE_sources += Euler_dgDiscretizationModule.f90
+f90EXE_sources += Euler_UtilitiesModule_NonRelativistic.f90
+f90EXE_sources += Euler_UtilitiesModule_Relativistic.f90
+F90EXE_sources += Euler_UtilitiesModule.F90
+f90EXE_sources += Euler_BoundaryConditionsModule_NonRelativistic.f90
+f90EXE_sources += Euler_BoundaryConditionsModule_Relativistic.f90
+F90EXE_sources += Euler_BoundaryConditionsModule.F90
+f90EXE_sources += Euler_SlopeLimiterModule_NonRelativistic.f90
+f90EXE_sources += Euler_SlopeLimiterModule_Relativistic.f90
+F90EXE_sources += Euler_SlopeLimiterModule.F90
+f90EXE_sources += Euler_CharacteristicDecompositionModule_NonRelativistic.f90
+f90EXE_sources += Euler_CharacteristicDecompositionModule_Relativistic.f90
+F90EXE_sources += Euler_CharacteristicDecompositionModule.F90
+f90EXE_sources += Euler_PositivityLimiterModule_NonRelativistic.f90
+f90EXE_sources += Euler_PositivityLimiterModule_Relativistic.f90
+F90EXE_sources += Euler_PositivityLimiterModule.F90
+F90EXE_sources += Euler_dgDiscretizationModule.F90
 
 # In THORNADO_DIR/Modules/InputOutput:
 
 f90EXE_sources += InputOutputModuleAMReX.f90
 f90EXE_sources += InputOutputUtilitiesModule.f90
-f90EXE_sources += InputOutputModuleHDF.f90
-
-# In THORNADO_DIR/Module/Opacities:
-
-f90EXE_sources += NeutrinoOpacitiesModule.f90

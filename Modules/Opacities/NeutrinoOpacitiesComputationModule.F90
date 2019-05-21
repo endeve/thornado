@@ -22,7 +22,7 @@ MODULE NeutrinoOpacitiesComputationModule
 #ifdef MICROPHYSICS_WEAKLIB
     OPACITIES, &
 #endif
-    LogEs_T, LogDs_T, LogTs_T, Ys_T
+    LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T
   USE RadiationFieldsModule, ONLY: &
     nSpecies, iNuE, iNuE_Bar
   USE NeutrinoOpacitiesModule, ONLY: &
@@ -35,7 +35,10 @@ MODULE NeutrinoOpacitiesComputationModule
   USE wlOpacityTableModule, ONLY: &
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
-    LogInterpolateSingleVariable_1D3D_Custom
+    LogInterpolateSingleVariable, &
+    LogInterpolateSingleVariable_1D3D_Custom, &
+    LogInterpolateSingleVariable_2D2D_Custom, &
+    LogInterpolateSingleVariable_2D2D_Custom_Point
 
   ! ----------------------------------------------
 
@@ -48,9 +51,14 @@ MODULE NeutrinoOpacitiesComputationModule
 
   PUBLIC :: ComputeNeutrinoOpacities
   PUBLIC :: ComputeNeutrinoOpacities_EC_Point
-  PUBLIC :: ComputeNeutrinoOpacities_ES_Point
-  PUBLIC :: ComputeEquilibriumDistributions_Point
   PUBLIC :: ComputeNeutrinoOpacities_EC_Points
+  PUBLIC :: ComputeNeutrinoOpacities_ES_Point
+  PUBLIC :: ComputeNeutrinoOpacities_ES_Points
+  PUBLIC :: ComputeNeutrinoOpacities_NES_Point
+  PUBLIC :: ComputeNeutrinoOpacities_NES_Points
+  PUBLIC :: ComputeNeutrinoOpacities_Pair_Point
+  PUBLIC :: ComputeNeutrinoOpacities_Pair_Points
+  PUBLIC :: ComputeEquilibriumDistributions_Point
   PUBLIC :: FermiDirac
   PUBLIC :: dFermiDiracdT
   PUBLIC :: dFermiDiracdY
@@ -62,6 +70,10 @@ MODULE NeutrinoOpacitiesComputationModule
   REAL(DP), PARAMETER :: UnitE    = MeV
   REAL(DP), PARAMETER :: UnitEC   = One / Centimeter
   REAL(DP), PARAMETER :: UnitES   = One / Centimeter
+  REAL(DP), PARAMETER :: UnitNES  = One / ( Centimeter * MeV**3 )
+  REAL(DP), PARAMETER :: UnitPair = One / ( Centimeter * MeV**3 )
+  REAL(DP), PARAMETER :: cv       = 0.96d+00 ! weak interaction constant
+  REAL(DP), PARAMETER :: ca       = 0.50d+00 ! weak interaction constant
 
 CONTAINS
 
@@ -327,38 +339,35 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_EC_Point &
-    ( iE_B, iE_E, E, D, T, Y, opEC_Point, iSpecies )
+    ( iE_B, iE_E, E, D, T, Y, iSpecies, opEC_Point )
 
     ! --- Electron Capture Opacities (Single D,T,Y) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
     REAL(DP), INTENT(in)  :: D, T, Y
-    REAL(DP), INTENT(out) :: opEC_Point(iE_B:iE_E)
     INTEGER,  INTENT(in)  :: iSpecies
-
-    REAL(DP) :: tmp(iE_B:iE_E,1)
+    REAL(DP), INTENT(out) :: opEC_Point(iE_B:iE_E)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( opEC_T => OPACITIES % EmAb &
-                    % Opacity(iSpecies) % Values, &
-        OS     => OPACITIES % EmAb &
-                    % Offsets(iSpecies) )
+      ( opEC_T => OPACITIES % EmAb % Opacity(iSpecies) % Values, &
+        OS     => OPACITIES % EmAb % Offsets(iSpecies) )
 
-    CALL LogInterpolateSingleVariable_1D3D_Custom &
-           ( LOG10( [ E ] / UnitE ), LOG10( [ D ] / UnitD ), &
-             LOG10( [ T ] / UnitT ),      ( [ Y ] / UnitY ), &
-             LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opEC_T, tmp )
+    CALL LogInterpolateSingleVariable &
+           ( LOG10( E / UnitE ), LOG10( D / UnitD ), &
+             LOG10( T / UnitT ),      ( Y / UnitY ), &
+             LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opEC_T, &
+             opEC_Point )
 
-    opEC_Point(:) = tmp(:,1) * UnitEC
+    opEC_Point = opEC_Point * UnitEC
 
     END ASSOCIATE ! opEC_T, etc.
 
 #else
 
-    opEC_Point(:) = Zero
+    opEC_Point = Zero
 
 #endif
 
@@ -382,12 +391,10 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
-      ( opEC_T => OPACITIES % EmAb &
-                    % Opacity(iSpecies) % Values, &
-        OS     => OPACITIES % EmAb &
-                    % Offsets(iSpecies) )
+      ( opEC_T => OPACITIES % EmAb % Opacity(iSpecies) % Values, &
+        OS     => OPACITIES % EmAb % Offsets(iSpecies) )
 
-    CALL LogInterpolateSingleVariable_1D3D_Custom &
+    CALL LogInterpolateSingleVariable &
            ( LOG10( E / UnitE ), LOG10( D / UnitD ), &
              LOG10( T / UnitT ),      ( Y / UnitY ), &
              LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opEC_T, &
@@ -484,34 +491,34 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_ES_Point &
-    ( iE_B, iE_E, E, D, T, Y, opES_Point, iSpecies )
+    ( iE_B, iE_E, E, D, T, Y, iSpecies, iMoment, opES_Point )
 
     ! --- Elastic Scattering Opacities (Single D,T,Y) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
     REAL(DP), INTENT(in)  :: D, T, Y
-    REAL(DP), INTENT(out) :: opES_Point(iE_B:iE_E)
     INTEGER,  INTENT(in)  :: iSpecies
-
-    REAL(DP) :: tmp(iE_B:iE_E,1)
+    INTEGER,  INTENT(in)  :: iMoment
+    REAL(DP), INTENT(out) :: opES_Point(iE_B:iE_E)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     ASSOCIATE &
       ( opES_T => OPACITIES % Scat_Iso &
-                    % Kernel(iSpecies) % Values(:,1,:,:,:), &
+                    % Kernel (iSpecies) % Values(:,iMoment,:,:,:), &
         OS     => OPACITIES % Scat_Iso &
-                    % Offsets(iSpecies,1) )
+                    % Offsets(iSpecies,iMoment) )
 
-    CALL LogInterpolateSingleVariable_1D3D_Custom &
-           ( LOG10( [ E ] / UnitE ), LOG10( [ D ] / UnitD ), &
-             LOG10( [ T ] / UnitT ),      ( [ Y ] / UnitY ), &
-             LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opES_T, tmp )
+    CALL LogInterpolateSingleVariable &
+           ( LOG10( E / UnitE ), LOG10( D / UnitD ), &
+             LOG10( T / UnitT ),      ( Y / UnitY ), &
+             LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opES_T, &
+             opES_Point )
 
-    opES_Point(:) = tmp(:,1) * UnitES
+    opES_Point = opES_Point * UnitES
 
-    END ASSOCIATE ! opEC_T, etc.
+    END ASSOCIATE ! opES_T, etc.
 
 #else
 
@@ -520,6 +527,457 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Point
+
+
+  SUBROUTINE ComputeNeutrinoOpacities_ES_Points &
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, iSpecies, iMoment, opES_Points )
+
+    ! --- Elastic Scattering Opacities (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    INTEGER,  INTENT(in)  :: iSpecies
+    INTEGER,  INTENT(in)  :: iMoment
+    REAL(DP), INTENT(out) :: opES_Points(iE_B:iE_E,iX_B:iX_E)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ASSOCIATE &
+      ( opES_T => OPACITIES % Scat_Iso &
+                    % Kernel(iSpecies) % Values(:,iMoment,:,:,:), &
+        OS     => OPACITIES % Scat_Iso &
+                    % Offsets(iSpecies,iMoment) )
+
+    CALL LogInterpolateSingleVariable &
+           ( LOG10( E / UnitE ), LOG10( D / UnitD ), &
+             LOG10( T / UnitT ),      ( Y / UnitY ), &
+             LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opES_T, &
+             opES_Points )
+
+    opES_Points = opES_Points * UnitES
+
+    END ASSOCIATE ! opES_T, etc.
+
+#else
+
+    opES_Points = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_ES_Points
+
+
+  SUBROUTINE ComputeNeutrinoOpacities_NES_Point &
+    ( iE_B, iE_E, E, D, T, Y, iSpecies, iMoment, Phi_In, Phi_Out )
+
+    ! --- Neutrino-Electron Scattering Opacities (Single D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D, T, Y
+    INTEGER,  INTENT(in)  :: iSpecies
+    INTEGER,  INTENT(in)  :: iMoment
+    REAL(DP), INTENT(out) :: Phi_In (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: Phi_Out(iE_B:iE_E,iE_B:iE_E)
+
+    INTEGER  :: i, j
+    INTEGER  :: iH1, iH2
+    REAL(DP) :: C1, C2, kT
+    REAL(DP) :: Eta(1)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    kT = BoltzmannConstant * T
+
+    ! --- Compute Electron Chemical Potential ---
+
+    CALL ComputeElectronChemicalPotential_TABLE( [ D ], [ T ], [ Y ], Eta )
+
+    Eta = Eta / kT
+
+    iH1 = ( iMoment - 1 ) * 2 + 1
+    iH2 = ( iMoment - 1 ) * 2 + 2
+
+    IF(     iSpecies == iNuE     )THEN
+
+      C1 = ( cv + ca )**2
+      C2 = ( cv - ca )**2
+
+    ELSEIF( iSpecies == iNuE_Bar )THEN
+
+      C1 = ( cv - ca )**2
+      C2 = ( cv + ca )**2
+
+    END IF
+
+    ASSOCIATE &
+      ( opH1_T => OPACITIES % Scat_NES % Kernel(1) % Values(:,:,iH1,:,:), &
+        opH2_T => OPACITIES % Scat_NES % Kernel(1) % Values(:,:,iH2,:,:), &
+        OS_H1  => OPACITIES % Scat_NES % Offsets(1,iH1), &
+        OS_H2  => OPACITIES % Scat_NES % Offsets(1,iH2) )
+
+    ! --- Interpolate HI  (put result temporarily in Phi_In) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom_Point &
+           ( LOG10( E / UnitE ), LOG10( T / UnitT ), LOG10( Eta(1) ), &
+             LogEs_T, LogTs_T, LogEtas_T, OS_H1, opH1_T, Phi_In )
+
+    ! --- Interpolate HII (put result temporarily in Phi_Out) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom_Point &
+           ( LOG10( E / UnitE ), LOG10( T / UnitT ), LOG10( Eta(1) ), &
+             LogEs_T, LogTs_T, LogEtas_T, OS_H2, opH2_T, Phi_Out )
+
+    END ASSOCIATE ! opH1_T, etc.
+
+    ! --- Compute Phi_Out ---
+
+    DO j = iE_B, iE_E
+    DO i = iE_B, j
+
+      Phi_Out(i,j) = C1 * Phi_In(i,j) + C2 * Phi_Out(i,j)
+
+    END DO
+    END DO
+
+    ! --- Enforce Detailed Balance ---
+
+    DO j = iE_B, iE_E
+    DO i = j+1,  iE_E
+
+      Phi_Out(i,j) = Phi_Out(j,i) * EXP( ( E(j) - E(i) ) / kT )
+
+    END DO
+    END DO
+
+    Phi_Out = Phi_Out * UnitNES
+
+    Phi_In  = TRANSPOSE( Phi_Out )
+
+#else
+
+    Phi_In  = Zero
+    Phi_Out = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_NES_Point
+
+
+  SUBROUTINE ComputeNeutrinoOpacities_NES_Points &
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, iSpecies, iMoment, Phi_In, Phi_Out )
+
+    ! --- Neutrino-Electron Scattering Opacities (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    INTEGER,  INTENT(in)  :: iSpecies
+    INTEGER,  INTENT(in)  :: iMoment
+    REAL(DP), INTENT(out) :: Phi_In (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(out) :: Phi_Out(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+
+    INTEGER  :: iX, i, j
+    INTEGER  :: iH1, iH2
+    REAL(DP) :: C1, C2, kT
+    REAL(DP) :: Eta(iX_B:iX_E)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ! --- Compute Electron Chemical Potential ---
+
+    CALL ComputeElectronChemicalPotential_TABLE( D, T, Y, Eta )
+
+    Eta = Eta / ( BoltzmannConstant * T )
+
+    iH1 = ( iMoment - 1 ) * 2 + 1
+    iH2 = ( iMoment - 1 ) * 2 + 2
+
+    IF(     iSpecies == iNuE     )THEN
+
+      C1 = ( cv + ca )**2
+      C2 = ( cv - ca )**2
+
+    ELSEIF( iSpecies == iNuE_Bar )THEN
+
+      C1 = ( cv - ca )**2
+      C2 = ( cv + ca )**2
+
+    END IF
+
+    ASSOCIATE &
+      ( opH1_T => OPACITIES % Scat_NES % Kernel(1) % Values(:,:,iH1,:,:), &
+        opH2_T => OPACITIES % Scat_NES % Kernel(1) % Values(:,:,iH2,:,:), &
+        OS_H1  => OPACITIES % Scat_NES % Offsets(1,iH1), &
+        OS_H2  => OPACITIES % Scat_NES % Offsets(1,iH2) )
+
+    ! --- Interpolate HI  (put result temporarily in Phi_In) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom &
+           ( LOG10( E / UnitE ), LOG10( T / UnitT ), LOG10( Eta ), &
+             LogEs_T, LogTs_T, LogEtas_T, OS_H1, opH1_T, Phi_In )
+
+    ! --- Interpolate HII (put result temporarily in Phi_Out) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom &
+           ( LOG10( E / UnitE ), LOG10( T / UnitT ), LOG10( Eta ), &
+             LogEs_T, LogTs_T, LogEtas_T, OS_H2, opH2_T, Phi_Out )
+
+    END ASSOCIATE ! opH1_T, etc.
+
+    DO iX = iX_B, iX_E
+
+      ! --- Compute Phi_Out ---
+
+      DO j = iE_B, iE_E
+      DO i = iE_B, j
+
+        Phi_Out(i,j,iX) = C1 * Phi_In(i,j,iX) + C2 * Phi_Out(i,j,iX)
+
+      END DO
+      END DO
+
+      ! --- Enforce Detailed Balance ---
+
+      kT = BoltzmannConstant * T(iX)
+
+      DO j = iE_B, iE_E
+      DO i = j+1,  iE_E
+
+        Phi_Out(i,j,iX) = Phi_Out(j,i,iX) * EXP( ( E(j) - E(i) ) / kT )
+
+      END DO
+      END DO
+
+      Phi_Out(:,:,iX) = Phi_Out(:,:,iX) * UnitNES
+
+      Phi_In (:,:,iX) = TRANSPOSE( Phi_Out(:,:,iX) )
+
+    END DO
+
+#else
+
+    Phi_In  = Zero
+    Phi_Out = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_NES_Points
+
+
+  SUBROUTINE ComputeNeutrinoOpacities_Pair_Point &
+    ( iE_B, iE_E, E, D, T, Y, iSpecies, iMoment, Phi_In, Phi_Out )
+
+    ! --- Pair Opacities (Single D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D, T, Y
+    INTEGER,  INTENT(in)  :: iSpecies
+    INTEGER,  INTENT(in)  :: iMoment
+    REAL(DP), INTENT(out) :: Phi_In (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: Phi_Out(iE_B:iE_E,iE_B:iE_E)
+
+    INTEGER  :: i, j
+    INTEGER  :: iJ1, iJ2
+    REAL(DP) :: C1, C2, kT
+    REAL(DP) :: Eta(1)
+    REAL(DP) :: Phi_Local(iE_B:iE_E,iE_B:iE_E)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    kT = BoltzmannConstant * T
+
+    ! --- Compute Electron Chemical Potential ---
+
+    CALL ComputeElectronChemicalPotential_TABLE( [ D ], [ T ], [ Y ], Eta )
+
+    Eta = Eta / kT
+
+    iJ1 = ( iMoment - 1 ) * 2 + 1
+    iJ2 = ( iMoment - 1 ) * 2 + 2
+
+    IF(     iSpecies == iNuE     )THEN
+
+      C1 = ( cv + ca )**2
+      C2 = ( cv - ca )**2
+
+    ELSEIF( iSpecies == iNuE_Bar )THEN
+
+      C1 = ( cv - ca )**2
+      C2 = ( cv + ca )**2
+
+    END IF
+
+    ASSOCIATE &
+      ( opJ1_T => OPACITIES % Scat_Pair % Kernel(1) % Values(:,:,iJ1,:,:), &
+        opJ2_T => OPACITIES % Scat_Pair % Kernel(1) % Values(:,:,iJ2,:,:), &
+        OS_J1  => OPACITIES % Scat_Pair % Offsets(1,iJ1), &
+        OS_J2  => OPACITIES % Scat_Pair % Offsets(1,iJ2) )
+
+    ! --- Interpolate JI  (put result temporarily in Phi_In) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom_Point &
+           ( LOG10( E / UnitE ), LOG10( T / UnitT ), LOG10( Eta(1) ), &
+             LogEs_T, LogTs_T, LogEtas_T, OS_J1, opJ1_T, Phi_In )
+
+    ! --- Interpolate JII (put result temporarily in Phi_Out) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom_Point &
+           ( LOG10( E / UnitE ), LOG10( T / UnitT ), LOG10( Eta(1) ), &
+             LogEs_T, LogTs_T, LogEtas_T, OS_J2, opJ2_T, Phi_Out )
+
+    END ASSOCIATE ! opJ1, etc.
+
+    DO j = iE_B, iE_E
+    DO i = iE_B, j
+
+      Phi_Local(i,j) = C1 * Phi_In(i,j) + C2 * Phi_Out(i,j)
+
+    END DO
+    END DO
+
+    DO j = iE_B, iE_E
+    DO i = j+1,  iE_E
+
+      Phi_Local(i,j) = C1 * Phi_Out(j,i) + C2 * Phi_In(j,i)
+
+    END DO
+    END DO
+
+    Phi_Out = Phi_Local * UnitPair
+
+    DO j = iE_B, iE_E
+    DO i = iE_B, iE_E
+
+      Phi_In (i,j) = Phi_Out(i,j) * EXP( - ( E(i) + E(j) ) / kT )
+
+    END DO
+    END DO
+
+#else
+
+    Phi_In  = Zero
+    Phi_Out = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_Pair_Point
+
+
+  SUBROUTINE ComputeNeutrinoOpacities_Pair_Points &
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, iSpecies, iMoment, Phi_In, Phi_Out )
+
+    ! --- Pair Opacities (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    INTEGER,  INTENT(in)  :: iSpecies
+    INTEGER,  INTENT(in)  :: iMoment
+    REAL(DP), INTENT(out) :: Phi_In (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(out) :: Phi_Out(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+
+    INTEGER  :: iX, i, j
+    INTEGER  :: iJ1, iJ2
+    REAL(DP) :: C1, C2, kT
+    REAL(DP) :: Eta(iX_B:iX_E)
+    REAL(DP) :: Phi_Local(iE_B:iE_E,iE_B:iE_E)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ! --- Compute Electron Chemical Potential ---
+
+    CALL ComputeElectronChemicalPotential_TABLE( D, T, Y, Eta )
+
+    Eta = Eta / ( BoltzmannConstant * T )
+
+    iJ1 = ( iMoment - 1 ) * 2 + 1
+    iJ2 = ( iMoment - 1 ) * 2 + 2
+
+    IF(     iSpecies == iNuE     )THEN
+
+      C1 = ( cv + ca )**2
+      C2 = ( cv - ca )**2
+
+    ELSEIF( iSpecies == iNuE_Bar )THEN
+
+      C1 = ( cv - ca )**2
+      C2 = ( cv + ca )**2
+
+    END IF
+
+    ASSOCIATE &
+      ( opJ1_T => OPACITIES % Scat_Pair % Kernel(1) % Values(:,:,iJ1,:,:), &
+        opJ2_T => OPACITIES % Scat_Pair % Kernel(1) % Values(:,:,iJ2,:,:), &
+        OS_J1  => OPACITIES % Scat_Pair % Offsets(1,iJ1), &
+        OS_J2  => OPACITIES % Scat_Pair % Offsets(1,iJ2) )
+
+    ! --- Interpolate JI  (put result temporarily in Phi_In) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom &
+           ( LOG10( E / UnitE ), LOG10( T / UnitT ), LOG10( Eta ), &
+             LogEs_T, LogTs_T, LogEtas_T, OS_J1, opJ1_T, Phi_In )
+
+    ! --- Interpolate JII (put result temporarily in Phi_Out) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom &
+           ( LOG10( E / UnitE ), LOG10( T / UnitT ), LOG10( Eta ), &
+             LogEs_T, LogTs_T, LogEtas_T, OS_J2, opJ2_T, Phi_Out )
+
+    END ASSOCIATE ! opJ1, etc.
+
+    DO iX = iX_B, iX_E
+
+      DO j = iE_B, iE_E
+      DO i = iE_B, j
+
+        Phi_Local(i,j) = C1 * Phi_In(i,j,iX) + C2 * Phi_Out(i,j,iX)
+
+      END DO
+      END DO
+
+      DO j = iE_B, iE_E
+      DO i = j+1,  iE_E
+
+        Phi_Local(i,j) = C1 * Phi_Out(j,i,iX) + C2 * Phi_In(j,i,iX)
+
+      END DO
+      END DO
+
+      Phi_Local = Phi_Local * UnitPair
+
+      kT = BoltzmannConstant * T(iX)
+
+      DO j = iE_B, iE_E
+      DO i = iE_B, iE_E
+
+        Phi_Out(i,j,iX) = Phi_Local(i,j)
+        Phi_In (i,j,iX) = Phi_Local(i,j) * EXP( - ( E(i) + E(j) ) / kT )
+
+      END DO
+      END DO
+
+    END DO
+
+#else
+
+    Phi_In  = Zero
+    Phi_Out = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_Pair_Points
 
 
   PURE ELEMENTAL REAL(DP) FUNCTION FermiDirac( E, Mu, kT )

@@ -358,11 +358,11 @@ CONTAINS
     INTEGER,  INTENT(in)    :: iX_B(3), iX_E(3)
     REAL(DP), INTENT(in)    :: alpha, beta
     REAL(DP), INTENT(inout) :: &
-      A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      A(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      B(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      B(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(out)   :: &
-      C(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      C(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
     INTEGER :: iX1, iX2, iX3, iFF
 
@@ -394,11 +394,11 @@ CONTAINS
     INTEGER,  INTENT(in)    :: iZ_B(4), iZ_E(4)
     REAL(DP), INTENT(in)    :: alpha, beta
     REAL(DP), INTENT(inout) :: &
-      A(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      A(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      B(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      B(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(out)   :: &
-      C(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      C(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iRF, iS
 

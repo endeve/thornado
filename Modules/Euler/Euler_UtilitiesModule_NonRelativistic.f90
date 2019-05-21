@@ -1,4 +1,4 @@
-MODULE Euler_UtilitiesModule
+MODULE Euler_UtilitiesModule_NonRelativistic
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, SqrtTiny
@@ -20,27 +20,25 @@ MODULE Euler_UtilitiesModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ComputePrimitive
-  PUBLIC :: ComputeConserved
-  PUBLIC :: ComputeFromConserved
-  PUBLIC :: ComputeTimeStep
-  PUBLIC :: Eigenvalues
-  PUBLIC :: AlphaPlus
-  PUBLIC :: AlphaMinus
-  PUBLIC :: AlphaMiddle
-  PUBLIC :: Flux_X1
-  PUBLIC :: Flux_X2
-  PUBLIC :: Flux_X3
-  PUBLIC :: StressTensor_Diagonal
-  PUBLIC :: NumericalFlux_HLL
-  PUBLIC :: NumericalFlux_X1_HLLC
-  PUBLIC :: NumericalFlux_X2_HLLC
-  PUBLIC :: NumericalFlux_X3_HLLC
+  PUBLIC :: Euler_ComputePrimitive_NonRelativistic
+  PUBLIC :: Euler_ComputeConserved_NonRelativistic
+  PUBLIC :: Euler_ComputeFromConserved_NonRelativistic
+  PUBLIC :: Euler_ComputeTimeStep_NonRelativistic
+  PUBLIC :: Euler_Eigenvalues_NonRelativistic
+  PUBLIC :: Euler_AlphaMiddle_NonRelativistic
+  PUBLIC :: Euler_Flux_X1_NonRelativistic
+  PUBLIC :: Euler_Flux_X2_NonRelativistic
+  PUBLIC :: Euler_Flux_X3_NonRelativistic
+  PUBLIC :: Euler_StressTensor_Diagonal_NonRelativistic
+  PUBLIC :: Euler_NumericalFlux_HLL_NonRelativistic
+  PUBLIC :: Euler_NumericalFlux_X1_HLLC_NonRelativistic
+  PUBLIC :: Euler_NumericalFlux_X2_HLLC_NonRelativistic
+  PUBLIC :: Euler_NumericalFlux_X3_HLLC_NonRelativistic
 
 CONTAINS
 
 
-  SUBROUTINE ComputePrimitive &
+  SUBROUTINE Euler_ComputePrimitive_NonRelativistic &
                ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
                  Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
@@ -60,16 +58,19 @@ CONTAINS
                        + S_3**2 / Gm_dd_33 ) / N
     De  = Ne
 
-  END SUBROUTINE ComputePrimitive
+  END SUBROUTINE Euler_ComputePrimitive_NonRelativistic
 
 
-  SUBROUTINE ComputeConserved &
+  SUBROUTINE Euler_ComputeConserved_NonRelativistic &
                ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33, P )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, V_1, V_2, V_3, E, De
     REAL(DP), DIMENSION(:), INTENT(out) :: N, S_1, S_2, S_3, G, Ne
     REAL(DP), DIMENSION(:), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+    ! --- Only used for relativistic code ---
+    REAL(DP), INTENT(in) :: P(:)
 
     ! --- Three-Velocity: Index Up   ---
     ! --- Three-Momentum: Index Down ---
@@ -83,10 +84,11 @@ CONTAINS
                            + Gm_dd_33 * V_3**2 )
     Ne  = De
 
-  END SUBROUTINE ComputeConserved
+  END SUBROUTINE Euler_ComputeConserved_NonRelativistic
 
 
-  SUBROUTINE ComputeFromConserved( iX_B, iX_E, G, U, P, A )
+  SUBROUTINE Euler_ComputeFromConserved_NonRelativistic &
+               ( iX_B, iX_E, G, U, P, A )
 
     INTEGER,  INTENT(in)  :: &
       iX_B(3), iX_E(3)
@@ -103,7 +105,7 @@ CONTAINS
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
 
-      CALL ComputePrimitive &
+      CALL Euler_ComputePrimitive_NonRelativistic &
              ( U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
                U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
                U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
@@ -126,10 +128,11 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE ComputeFromConserved
+  END SUBROUTINE Euler_ComputeFromConserved_NonRelativistic
 
 
-  SUBROUTINE ComputeTimeStep( iX_B, iX_E, G, U, CFL, TimeStep )
+  SUBROUTINE Euler_ComputeTimeStep_NonRelativistic &
+               ( iX_B, iX_E, G, U, CFL, TimeStep )
 
     INTEGER,  INTENT(in)  :: &
       iX_B(3), iX_E(3)
@@ -156,7 +159,7 @@ CONTAINS
       dX(2) = MeshX(2) % Width(iX2)
       dX(3) = MeshX(3) % Width(iX3)
 
-      CALL ComputePrimitive &
+      CALL Euler_ComputePrimitive_NonRelativistic &
              ( U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
                U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
                U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
@@ -190,178 +193,171 @@ CONTAINS
 
     TimeStep = CFL * TimeStep
 
-  END SUBROUTINE ComputeTimeStep
+  END SUBROUTINE Euler_ComputeTimeStep_NonRelativistic
 
 
-  PURE FUNCTION Eigenvalues( V, Cs )
+  PURE FUNCTION Euler_Eigenvalues_NonRelativistic &
+    ( V, Cs, V1, V2, V3, Gm, Gm11, Gm22, Gm33, Lapse, Shift )
 
     REAL(DP), INTENT(in)     :: V, Cs
-    REAL(DP), DIMENSION(nCF) :: Eigenvalues
+    REAL(DP), DIMENSION(nCF) :: Euler_Eigenvalues_NonRelativistic
 
-    Eigenvalues = [ V - Cs, V, V, V, V, V + Cs ]
+    ! --- Only used for relativistic code ---
+    REAL(DP), INTENT(in) :: V1, V2, V3, Gm, Gm11, Gm22, Gm33, Lapse, Shift
 
-    RETURN
-  END FUNCTION Eigenvalues
-
-
-  PURE ELEMENTAL REAL(DP) FUNCTION AlphaPlus &
-    ( V_L, Cs_L, V_R, Cs_R, Gm_dd_ii )
-
-    REAL(DP), INTENT(in) :: V_L, Cs_L, V_R, Cs_R, Gm_dd_ii
-
-    REAL(DP) :: SqrtGm_uu_ii
-
-    SqrtGm_uu_ii = SQRT( One / Gm_dd_ii )
-
-    AlphaPlus = MAX( Zero, V_L + SqrtGm_uu_ii * Cs_L, &
-                           V_R + SqrtGm_uu_ii * Cs_R )
+    Euler_Eigenvalues_NonRelativistic = [ V - Cs, V, V, V, V, V + Cs ]
 
     RETURN
-  END FUNCTION AlphaPlus
+  END FUNCTION Euler_Eigenvalues_NonRelativistic
 
 
-  PURE ELEMENTAL REAL(DP) FUNCTION AlphaMinus &
-    ( V_L, Cs_L, V_R, Cs_R, Gm_dd_ii )
+  REAL(DP) FUNCTION Euler_AlphaMiddle_NonRelativistic &
+    ( D_L, S_L, E_L, FD_L, FS_L, FE_L, D_R, S_R, E_R, FD_R, FS_R, FE_R, &
+      Gm_dd_ii, Lapse, Shift, aP, aM )
 
-    REAL(DP), INTENT(in) :: V_L, Cs_L, V_R, Cs_R, Gm_dd_ii
+    REAL(DP), INTENT(in) :: D_L, S_L, E_L, FD_L, FS_L, FE_L, &
+                            D_R, S_R, E_R, FD_R, FS_R, FE_R, &
+                            Gm_dd_ii, aP, aM
 
-    REAL(DP) :: SqrtGm_uu_ii
-
-    SqrtGm_uu_ii = SQRT( One / Gm_dd_ii )
-
-    AlphaMinus = MAX( Zero, SqrtGm_uu_ii * Cs_L - V_L, &
-                            SqrtGm_uu_ii * Cs_R - V_R )
-
-    RETURN
-  END FUNCTION AlphaMinus
-
-
-  PURE ELEMENTAL REAL(DP) FUNCTION AlphaMiddle &
-    ( D_L, FD_L, S_L, FS_L, D_R, FD_R, S_R, FS_R, aP, aM, Gm_dd_ii )
-
-    REAL(DP), INTENT(in) :: D_L, FD_L, S_L, FS_L
-    REAL(DP), INTENT(in) :: D_R, FD_R, S_R, FS_R
-    REAL(DP), INTENT(in) :: aP, aM, Gm_dd_ii
+    ! --- Only used for relativistic code ---
+    REAL(DP), INTENT(in) :: Lapse, Shift
 
     ! --- Middle Wavespeed as Suggested by Batten et al. (1997) ---
     ! --- (SIAM J. Sci. Comput., Vol. 18, No. 6, pp. 1553-1570) ---
 
-    AlphaMiddle & ! --- Index Up
+    Euler_AlphaMiddle_NonRelativistic & ! --- Index Up
       = ( aP * S_R + aM * S_L - ( FS_R - FS_L ) ) &
         / ( aP * D_R + aM * D_L - ( FD_R - FD_L ) ) / Gm_dd_ii
 
     RETURN
-  END FUNCTION AlphaMiddle
+  END FUNCTION Euler_AlphaMiddle_NonRelativistic
 
 
-  PURE FUNCTION Flux_X1 &
-    ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+  PURE FUNCTION Euler_Flux_X1_NonRelativistic &
+    ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33, Lapse, Shift )
 
-    REAL(DP)             :: Flux_X1(1:nCF)
+    REAL(DP)             :: Euler_Flux_X1_NonRelativistic(1:nCF)
     REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, P
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+    ! --- Only used for relativistic code ---
+    REAL(DP), INTENT(in) :: Lapse, Shift
 
     REAL(DP) :: VSq
 
     VSq = Gm_dd_11 * V_1**2 + Gm_dd_22 * V_2**2 + Gm_dd_33 * V_3**2
 
-    Flux_X1(iCF_D ) = D * V_1
-    Flux_X1(iCF_S1) = D * Gm_dd_11 * V_1 * V_1 + P
-    Flux_X1(iCF_S2) = D * Gm_dd_22 * V_2 * V_1
-    Flux_X1(iCF_S3) = D * Gm_dd_33 * V_3 * V_1
-    Flux_X1(iCF_E ) = ( E + Half * D * VSq + P ) * V_1
-    Flux_X1(iCF_Ne) = Ne * V_1
+    Euler_Flux_X1_NonRelativistic(iCF_D ) = D * V_1
+    Euler_Flux_X1_NonRelativistic(iCF_S1) = D * Gm_dd_11 * V_1 * V_1 + P
+    Euler_Flux_X1_NonRelativistic(iCF_S2) = D * Gm_dd_22 * V_2 * V_1
+    Euler_Flux_X1_NonRelativistic(iCF_S3) = D * Gm_dd_33 * V_3 * V_1
+    Euler_Flux_X1_NonRelativistic(iCF_E ) = ( E + Half * D * VSq + P ) * V_1
+    Euler_Flux_X1_NonRelativistic(iCF_Ne) = Ne * V_1
 
     RETURN
-  END FUNCTION Flux_X1
+  END FUNCTION Euler_Flux_X1_NonRelativistic
 
 
-  PURE FUNCTION Flux_X2 &
-    ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+  PURE FUNCTION Euler_Flux_X2_NonRelativistic &
+    ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33, Lapse, Shift )
 
-    REAL(DP)             :: Flux_X2(1:nCF)
+    REAL(DP)             :: Euler_Flux_X2_NonRelativistic(1:nCF)
     REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, P
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+    ! --- Only used for relativistic code ---
+    REAL(DP), INTENT(in) :: Lapse, Shift
 
     REAL(DP) :: VSq
 
     VSq = Gm_dd_11 * V_1**2 + Gm_dd_22 * V_2**2 + Gm_dd_33 * V_3**2
 
-    Flux_X2(iCF_D ) = D * V_2
-    Flux_X2(iCF_S1) = D * Gm_dd_11 * V_1 * V_2
-    Flux_X2(iCF_S2) = D * Gm_dd_22 * V_2 * V_2 + P
-    Flux_X2(iCF_S3) = D * Gm_dd_33 * V_3 * V_2
-    Flux_X2(iCF_E ) = ( E + Half * D * VSq + P ) * V_2
-    Flux_X2(iCF_Ne) = Ne * V_2
+    Euler_Flux_X2_NonRelativistic(iCF_D ) = D * V_2
+    Euler_Flux_X2_NonRelativistic(iCF_S1) = D * Gm_dd_11 * V_1 * V_2
+    Euler_Flux_X2_NonRelativistic(iCF_S2) = D * Gm_dd_22 * V_2 * V_2 + P
+    Euler_Flux_X2_NonRelativistic(iCF_S3) = D * Gm_dd_33 * V_3 * V_2
+    Euler_Flux_X2_NonRelativistic(iCF_E ) = ( E + Half * D * VSq + P ) * V_2
+    Euler_Flux_X2_NonRelativistic(iCF_Ne) = Ne * V_2
 
     RETURN
-  END FUNCTION Flux_X2
+  END FUNCTION Euler_Flux_X2_NonRelativistic
 
 
-  PURE FUNCTION Flux_X3 &
-    ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+  PURE FUNCTION Euler_Flux_X3_NonRelativistic &
+    ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33, Lapse, Shift )
 
-    REAL(DP)             :: Flux_X3(1:nCF)
+    REAL(DP)             :: Euler_Flux_X3_NonRelativistic(1:nCF)
     REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, P
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
-    Flux_X3 = 0.0_DP
+    ! --- Only used for relativistic code ---
+    REAL(DP), INTENT(in) :: Lapse, Shift
+
+    Euler_Flux_X3_NonRelativistic = 0.0_DP
 
     RETURN
-  END FUNCTION Flux_X3
+  END FUNCTION Euler_Flux_X3_NonRelativistic
 
 
-  PURE FUNCTION StressTensor_Diagonal &
-    ( D, V_1, V_2, V_3, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+  PURE FUNCTION Euler_StressTensor_Diagonal_NonRelativistic &
+    ( S1, S2, S3, V1, V2, V3, P )
 
-    REAL(DP)             :: StressTensor_Diagonal(1:3)
-    REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, P
-    REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(in) :: S1, S2, S3, V1, V2, V3, P
 
-    StressTensor_Diagonal(1) = D * Gm_dd_11 * V_1**2 + P
-    StressTensor_Diagonal(2) = D * Gm_dd_22 * V_2**2 + P
-    StressTensor_Diagonal(3) = D * Gm_dd_33 * V_3**2 + P
+    REAL(DP) :: Euler_StressTensor_Diagonal_NonRelativistic(3)
 
-    RETURN
-  END FUNCTION StressTensor_Diagonal
-
-
-  PURE FUNCTION NumericalFlux_HLL( uL, FluxL, uR, FluxR, aP, aM, aC, Gm_dd )
-
-    REAL(DP),                 INTENT(in) :: aP, aM, aC, Gm_dd
-    REAL(DP), DIMENSION(nCF), INTENT(in) :: uL, FluxL, uR, FluxR
-    REAL(DP), DIMENSION(nCF)             :: NumericalFlux_HLL
-
-    NumericalFlux_HLL &
-      = ( aP * FluxL + aM * FluxR - aP * aM * ( uR - uL ) ) / ( aP + aM )
+    Euler_StressTensor_Diagonal_NonRelativistic(1) = S1 * V1 + P
+    Euler_StressTensor_Diagonal_NonRelativistic(2) = S2 * V2 + P
+    Euler_StressTensor_Diagonal_NonRelativistic(3) = S3 * V3 + P
 
     RETURN
-  END FUNCTION NumericalFlux_HLL
+  END FUNCTION Euler_StressTensor_Diagonal_NonRelativistic
 
 
-  PURE FUNCTION NumericalFlux_X1_HLLC &
-    ( uL, FluxL, uR, FluxR, aP, aM, aC, Gm_dd_11 )
+  PURE FUNCTION Euler_NumericalFlux_HLL_NonRelativistic &
+    ( uL, uR, fL, fR, Gm_dd, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
 
-    REAL(DP),                 INTENT(in) :: aP, aM, aC, Gm_dd_11
-    REAL(DP), DIMENSION(nCF), INTENT(in) :: uL, FluxL, uR, FluxR
-    REAL(DP), DIMENSION(nCF)             :: NumericalFlux_X1_HLLC
+    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF)
+    REAL(DP), INTENT(in) :: Gm_dd, aP, aM, aC
 
-    REAL(DP) :: D, V1, V2, V3, P, E, Ne
-    REAL(DP), DIMENSION(nCF) :: TMP
+    ! --- Only used in relativistic code ---
+    REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift
+
+    REAL(DP) :: Euler_NumericalFlux_HLL_NonRelativistic(nCF)
+
+    Euler_NumericalFlux_HLL_NonRelativistic &
+      = ( aP * fL + aM * fR - aP * aM * ( uR - uL ) ) / ( aP + aM )
+
+    RETURN
+  END FUNCTION Euler_NumericalFlux_HLL_NonRelativistic
+
+
+  PURE FUNCTION Euler_NumericalFlux_X1_HLLC_NonRelativistic &
+    ( uL, uR, fL, fR, Gm_dd_11, vL, vR, pL, pR, Lapse, Shift_1, aP, aM, aC )
+
+    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
+                            Gm_dd_11, aP, aM, aC
+
+    ! --- Only used for relativistic code ---
+    REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift_1
+
+    REAL(DP) :: Euler_NumericalFlux_X1_HLLC_NonRelativistic(nCF)
+
+    REAL(DP) :: D, V1, V2, V3, P, E, Ne, TMP(nCF)
 
     IF( aM .EQ. Zero )THEN
 
-      NumericalFlux_X1_HLLC = FluxL
+      Euler_NumericalFlux_X1_HLLC_NonRelativistic = fL
 
     ELSEIF( aP .EQ. Zero )THEN
 
-      NumericalFlux_X1_HLLC = FluxR
+      Euler_NumericalFlux_X1_HLLC_NonRelativistic = fR
 
     ELSE
 
       IF( aC .GE. Zero )THEN
 
-        TMP = FluxL + aM * uL
+        TMP = fL + aM * uL
 
         D  = TMP(iCF_D) / ( aC + aM )
         V1 = aC                       ! --- Index Up
@@ -373,7 +369,7 @@ CONTAINS
 
       ELSE
 
-        TMP = FluxR - aP * uR
+        TMP = fR - aP * uR
 
         D  = TMP(iCF_D) / ( aC - aP )
         V1 = aC                       ! --- Index Up
@@ -385,48 +381,51 @@ CONTAINS
 
       END IF
 
-      NumericalFlux_X1_HLLC(iCF_D) &
+      Euler_NumericalFlux_X1_HLLC_NonRelativistic(iCF_D) &
         = D * V1
-      NumericalFlux_X1_HLLC(iCF_S1) &
+      Euler_NumericalFlux_X1_HLLC_NonRelativistic(iCF_S1) &
         = D * Gm_dd_11 * V1 * V1 + P
-      NumericalFlux_X1_HLLC(iCF_S2) &
+      Euler_NumericalFlux_X1_HLLC_NonRelativistic(iCF_S2) &
         = D * V2 * V1
-      NumericalFlux_X1_HLLC(iCF_S3) &
+      Euler_NumericalFlux_X1_HLLC_NonRelativistic(iCF_S3) &
         = D * V3 * V1
-      NumericalFlux_X1_HLLC(iCF_E) &
+      Euler_NumericalFlux_X1_HLLC_NonRelativistic(iCF_E) &
         = ( E + P ) * V1
-      NumericalFlux_X1_HLLC(iCF_Ne) &
+      Euler_NumericalFlux_X1_HLLC_NonRelativistic(iCF_Ne) &
         = Ne * V1
 
     END IF
 
     RETURN
-  END FUNCTION NumericalFlux_X1_HLLC
+  END FUNCTION Euler_NumericalFlux_X1_HLLC_NonRelativistic
 
 
-  PURE FUNCTION NumericalFlux_X2_HLLC &
-    ( uL, FluxL, uR, FluxR, aP, aM, aC, Gm_dd_22 )
+  PURE FUNCTION Euler_NumericalFlux_X2_HLLC_NonRelativistic &
+    ( uL, uR, fL, fR, Gm_dd_22, vL, vR, pL, pR, Lapse, Shift_2, aP, aM, aC )
 
-    REAL(DP),                 INTENT(in) :: aP, aM, aC, Gm_dd_22
-    REAL(DP), DIMENSION(nCF), INTENT(in) :: uL, FluxL, uR, FluxR
-    REAL(DP), DIMENSION(nCF)             :: NumericalFlux_X2_HLLC
+    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
+                            Gm_dd_22, aP, aM, aC
 
-    REAL(DP) :: D, V1, V2, V3, P, E, Ne
-    REAL(DP), DIMENSION(nCF) :: TMP
+    ! --- Only used for relativistic code ---
+    REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift_2
+
+    REAL(DP) :: Euler_NumericalFlux_X2_HLLC_NonRelativistic(nCF)
+    
+    REAL(DP) :: D, V1, V2, V3, P, E, Ne, TMP(nCF)
 
     IF( aM .EQ. Zero )THEN
 
-      NumericalFlux_X2_HLLC = FluxL
+      Euler_NumericalFlux_X2_HLLC_NonRelativistic = fL
 
     ELSEIF( aP .EQ. Zero )THEN
 
-      NumericalFlux_X2_HLLC = FluxR
+      Euler_NumericalFlux_X2_HLLC_NonRelativistic = fR
 
     ELSE
 
       IF( aC .GE. Zero )THEN
 
-        TMP = FluxL + aM * uL
+        TMP = fL + aM * uL
 
         D  = TMP(iCF_D) / ( aC + aM )
         V1 = TMP(iCF_S1) / TMP(iCF_D) ! --- Index Down
@@ -438,7 +437,7 @@ CONTAINS
 
       ELSE
 
-        TMP = FluxR - aP * uR
+        TMP = fR - aP * uR
 
         D  = TMP(iCF_D) / ( aC - aP )
         V1 = TMP(iCF_S1) / TMP(iCF_D) ! --- Index Down
@@ -450,48 +449,51 @@ CONTAINS
 
       END IF
 
-      NumericalFlux_X2_HLLC(iCF_D) &
+      Euler_NumericalFlux_X2_HLLC_NonRelativistic(iCF_D) &
         = D * V2
-      NumericalFlux_X2_HLLC(iCF_S2) &
+      Euler_NumericalFlux_X2_HLLC_NonRelativistic(iCF_S2) &
         = D * V1 * V2
-      NumericalFlux_X2_HLLC(iCF_S2) &
+      Euler_NumericalFlux_X2_HLLC_NonRelativistic(iCF_S2) &
         = D * Gm_dd_22 * V2 * V2 + P
-      NumericalFlux_X2_HLLC(iCF_S3) &
+      Euler_NumericalFlux_X2_HLLC_NonRelativistic(iCF_S3) &
         = D * V3 * V2
-      NumericalFlux_X2_HLLC(iCF_E) &
+      Euler_NumericalFlux_X2_HLLC_NonRelativistic(iCF_E) &
         = ( E + P ) * V2
-      NumericalFlux_X2_HLLC(iCF_Ne) &
+      Euler_NumericalFlux_X2_HLLC_NonRelativistic(iCF_Ne) &
         = Ne * V2
 
     END IF
 
     RETURN
-  END FUNCTION NumericalFlux_X2_HLLC
+  END FUNCTION Euler_NumericalFlux_X2_HLLC_NonRelativistic
 
 
-  PURE FUNCTION NumericalFlux_X3_HLLC &
-    ( uL, FluxL, uR, FluxR, aP, aM, aC, Gm_dd_33 )
+  PURE FUNCTION Euler_NumericalFlux_X3_HLLC_NonRelativistic &
+    ( uL, uR, fL, fR, Gm_dd_33, vL, vR, pL, pR, Lapse, Shift_3, aP, aM, aC )
 
-    REAL(DP),                 INTENT(in) :: aP, aM, aC, Gm_dd_33
-    REAL(DP), DIMENSION(nCF), INTENT(in) :: uL, FluxL, uR, FluxR
-    REAL(DP), DIMENSION(nCF)             :: NumericalFlux_X3_HLLC
+    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
+                            Gm_dd_33, aP, aM, aC
 
-    REAL(DP) :: D, V1, V2, V3, P, E, Ne
-    REAL(DP), DIMENSION(nCF) :: TMP
+    ! --- Only used for relativistic code ---
+    REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift_3
+
+    REAL(DP) :: Euler_NumericalFlux_X3_HLLC_NonRelativistic(nCF)
+
+    REAL(DP) :: D, V1, V2, V3, P, E, Ne, TMP(nCF)
 
     IF( aM .EQ. Zero )THEN
 
-      NumericalFlux_X3_HLLC = FluxL
+      Euler_NumericalFlux_X3_HLLC_NonRelativistic = fL
 
     ELSEIF( aP .EQ. Zero )THEN
 
-      NumericalFlux_X3_HLLC = FluxR
+      Euler_NumericalFlux_X3_HLLC_NonRelativistic = fR
 
     ELSE
 
       IF( aC .GE. Zero )THEN
 
-        TMP = FluxL + aM * uL
+        TMP = fL + aM * uL
 
         D  = TMP(iCF_D) / ( aC + aM )
         V1 = TMP(iCF_S1) / TMP(iCF_D) ! --- Index Down
@@ -503,7 +505,7 @@ CONTAINS
 
       ELSE
 
-        TMP = FluxR - aP * uR
+        TMP = fR - aP * uR
 
         D  = TMP(iCF_D) / ( aC - aP )
         V1 = TMP(iCF_S1) / TMP(iCF_D) ! --- Index Down
@@ -515,23 +517,23 @@ CONTAINS
 
       END IF
 
-      NumericalFlux_X3_HLLC(iCF_D) &
+      Euler_NumericalFlux_X3_HLLC_NonRelativistic(iCF_D) &
         = D * V3
-      NumericalFlux_X3_HLLC(iCF_S2) &
+      Euler_NumericalFlux_X3_HLLC_NonRelativistic(iCF_S2) &
         = D * V1 * V3
-      NumericalFlux_X3_HLLC(iCF_S2) &
+      Euler_NumericalFlux_X3_HLLC_NonRelativistic(iCF_S2) &
         = D * V2 * V3
-      NumericalFlux_X3_HLLC(iCF_S3) &
+      Euler_NumericalFlux_X3_HLLC_NonRelativistic(iCF_S3) &
         = D * Gm_dd_33 * V3 * V3 + P
-      NumericalFlux_X3_HLLC(iCF_E) &
+      Euler_NumericalFlux_X3_HLLC_NonRelativistic(iCF_E) &
         = ( E + P ) * V3
-      NumericalFlux_X3_HLLC(iCF_Ne) &
+      Euler_NumericalFlux_X3_HLLC_NonRelativistic(iCF_Ne) &
         = Ne * V3
 
     END IF
 
     RETURN
-  END FUNCTION NumericalFlux_X3_HLLC
+  END FUNCTION Euler_NumericalFlux_X3_HLLC_NonRelativistic
 
 
-END MODULE Euler_UtilitiesModule
+END MODULE Euler_UtilitiesModule_NonRelativistic

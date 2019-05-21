@@ -8,6 +8,8 @@ MODULE ReferenceElementModule
     nNodesX, &
     nNodesE, &
     nNodesZ, &
+    nDOFX, &
+    nDOFE, &
     nDOF
 
   IMPLICIT NONE
@@ -17,6 +19,7 @@ MODULE ReferenceElementModule
   INTEGER,               PUBLIC :: nDOF_X2
   INTEGER,               PUBLIC :: nDOF_X3
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumbersX(:)
+  INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumbersE(:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable(:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable_X1(:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable_X2(:,:)
@@ -67,6 +70,28 @@ CONTAINS
           END DO
         END DO
       END DO
+    END DO
+
+    ALLOCATE( NodeNumbersE(nDOFX,nDOFE) )
+
+    iNode  = 0
+    iNodeX = 0
+    DO iNodeX3 = 1, nNodesX(3)
+    DO iNodeX2 = 1, nNodesX(2)
+    DO iNodeX1 = 1, nNodesX(1)
+
+      iNodeX = iNodeX + 1
+
+      DO iNodeE = 1, nNodesE
+
+        iNode = iNode + 1
+
+        NodeNumbersE(iNodeX,iNodeE) = iNode
+
+      END DO
+
+    END DO
+    END DO
     END DO
 
     ALLOCATE( NodeNumberTable(4,nDOF) )
@@ -223,10 +248,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( delete: Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
+    !$OMP MAP( release: Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC FINALIZE( Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
+    !$ACC DELETE( Weights_q, Weights_X1, Weights_X2, Weights_X3, NodeNumberTable4D )
 #endif
 
     DEALLOCATE( NodeNumbersX )
@@ -247,7 +272,7 @@ CONTAINS
   END SUBROUTINE FinalizeReferenceElement
 
 
-  PURE FUNCTION OuterProduct1D3D( X1D, n1D, X3D, n3D )
+  FUNCTION OuterProduct1D3D( X1D, n1D, X3D, n3D )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)

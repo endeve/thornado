@@ -35,7 +35,9 @@ MODULE OpacityModule_TABLE
   LOGICAL, PARAMETER :: InterpTest = .TRUE.
   CHARACTER(256) :: &
     OpacityTableName_EmAb, &
-    OpacityTableName_Iso
+    OpacityTableName_Iso,  &
+    OpacityTableName_NES,  &
+    OpacityTableName_Pair
   INTEGER :: &
     iD_T, iT_T, iY_T
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
@@ -57,12 +59,17 @@ CONTAINS
 
   SUBROUTINE InitializeOpacities_TABLE &
     ( OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
+      OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
       Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_EmAb_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Iso_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_NES_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Pair_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
+    LOGICAL :: Include_NES
+    LOGICAL :: Include_Pair
     LOGICAL :: Verbose
 
     IF( PRESENT( OpacityTableName_EmAb_Option ) )THEN
@@ -77,6 +84,20 @@ CONTAINS
       OpacityTableName_Iso = 'OpacityTable_Iso.h5'
     END IF
 
+    IF( PRESENT( OpacityTableName_NES_Option ) )THEN
+      OpacityTableName_NES = TRIM( OpacityTableName_NES_Option )
+      Include_NES = .TRUE.
+    ELSE
+      Include_NES = .FALSE.
+    END IF
+
+    IF( PRESENT( OpacityTableName_Pair_Option ) )THEN
+      OpacityTableName_Pair = TRIM( OpacityTableName_Pair_Option )
+      Include_Pair = .TRUE.
+    ELSE
+      Include_Pair = .FALSE.
+    END IF
+
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
     ELSE
@@ -89,16 +110,53 @@ CONTAINS
         '', 'Table Name (EmAb): ', TRIM( OpacityTableName_EmAb )
       WRITE(*,'(A7,A20,A)') &
         '', 'Table Name (Iso):  ', TRIM( OpacityTableName_Iso )
+      IF( Include_NES )THEN
+        WRITE(*,'(A7,A20,A)') &
+          '', 'Table Name (NES):  ', TRIM( OpacityTableName_NES )
+      END IF
+      IF( Include_Pair )THEN
+        WRITE(*,'(A7,A20,A)') &
+          '', 'Table Name (Pair): ', TRIM( OpacityTableName_Pair )
+      END IF
     END IF
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     CALL InitializeHDF( )
 
-    CALL ReadOpacityTableHDF &
-           ( OPACITIES, &
-             TRIM( OpacityTableName_EmAb ), &
-             TRIM( OpacityTableName_Iso  ) )
+    IF( (.NOT.Include_NES) .AND. (.NOT.Include_Pair) )THEN
+
+      CALL ReadOpacityTableHDF &
+             ( OPACITIES, &
+               FileName_EmAb_Option = TRIM( OpacityTableName_EmAb ), &
+               FileName_Iso_Option  = TRIM( OpacityTableName_Iso  ) )
+
+    ELSE IF( Include_NES .AND. (.NOT.Include_Pair) )THEN
+
+      CALL ReadOpacityTableHDF &
+             ( OPACITIES, &
+               FileName_EmAb_Option = TRIM( OpacityTableName_EmAb ), &
+               FileName_Iso_Option  = TRIM( OpacityTableName_Iso  ), &
+               FileName_NES_Option  = TRIM( OpacityTableName_NES  ) )
+
+    ELSE IF( (.NOT.Include_NES) .AND. Include_Pair )THEN
+
+      CALL ReadOpacityTableHDF &
+             ( OPACITIES, &
+               FileName_EmAb_Option = TRIM( OpacityTableName_EmAb ), &
+               FileName_Iso_Option  = TRIM( OpacityTableName_Iso  ), &
+               FileName_Pair_Option = TRIM( OpacityTableName_Pair ) )
+
+    ELSE
+
+      CALL ReadOpacityTableHDF &
+             ( OPACITIES, &
+               FileName_EmAb_Option = TRIM( OpacityTableName_EmAb ), &
+               FileName_Iso_Option  = TRIM( OpacityTableName_Iso  ), &
+               FileName_NES_Option  = TRIM( OpacityTableName_NES  ), &
+               FileName_Pair_Option = TRIM( OpacityTableName_Pair ) )
+
+    END IF
 
     CALL FinalizeHDF( )
 

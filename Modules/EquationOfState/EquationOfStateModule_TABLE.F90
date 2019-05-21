@@ -324,12 +324,16 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: P
 
-    WRITE(*,*)
-    WRITE(*,'(A4,A)') &
-      '', 'ComputePressureFromPrimitive_TABLE Not Implemented'
-    WRITE(*,*)
+    REAL(DP), DIMENSION(SIZE(D)) :: Em, T, Y
 
-    STOP
+    Em(:) = Ev(:) / D(:)              ! --- Internal Energy per Mass
+    Y (:) = Ne(:) / D(:) * BaryonMass ! --- Electron Fraction
+
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+           ( D(:), Em(:), Y(:), T(:) )
+
+    CALL ComputePressure_TABLE &
+           ( D(:), T(:), Y(:), P(:) )
 
   END SUBROUTINE ComputePressureFromPrimitive_TABLE
 
@@ -354,12 +358,23 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: Cs
 
-    WRITE(*,*)
-    WRITE(*,'(A4,A)') &
-      '', 'ComputeSoundSpeedFromPrimitive_TABLE Not Implemented'
-    WRITE(*,*)
+    REAL(DP), DIMENSION(SIZE(D)) :: P, T, Y, Em, Gm
 
-    STOP
+    Em(:) = Ev(:) / D(:)
+    Y (:) = Ne(:) * ( BaryonMass / D(:) )
+
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+           ( D(:), Em(:), Y(:), T(:) )
+
+    CALL ComputeDependentVariable_TABLE &
+           ( D(:), T(:), Y(:), P(:), iP_T, OS_P, &
+             Units_V = Dyne / Centimeter**2 )
+
+    CALL ComputeDependentVariable_TABLE &
+           ( D(:), T(:), Y(:), Gm(:), iGm_T, OS_Gm, &
+             Units_V = 1.0_DP )
+
+    Cs(:) = SQRT( Gm(:) * P(:) / D(:) )
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE
 
@@ -496,11 +511,11 @@ CONTAINS
   END FUNCTION Auxiliary_Fluid_TABLE
 
 
-  SUBROUTINE ComputePressure_TABLE & 
+  SUBROUTINE ComputePressure_TABLE &
                ( D, T, Y, P, dPdD_Option, dPdT_Option, dPdY_Option )
 
     REAL(DP), DIMENSION(:), INTENT(in)            :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)           :: P   
+    REAL(DP), DIMENSION(:), INTENT(out)           :: P
     REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dPdD_Option
     REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dPdT_Option
     REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dPdY_Option
@@ -509,7 +524,7 @@ CONTAINS
     REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
 
     ComputeDerivatives = .FALSE.
-    IF( ANY( [ PRESENT( dPdD_Option ), PRESENT( dPdT_Option ), & 
+    IF( ANY( [ PRESENT( dPdD_Option ), PRESENT( dPdT_Option ), &
                PRESENT( dPdY_Option ) ] ) ) ComputeDerivatives = .TRUE.
 
     IF( ComputeDerivatives )THEN
@@ -517,15 +532,15 @@ CONTAINS
       CALL ComputeDependentVariableAndDerivatives_TABLE &
              ( D(:), T(:), Y(:), P(:), TMP(:,1:3), iP_T, OS_P, &
                Units_V = Dyne / Centimeter**2 )
-      
+
        IF( PRESENT( dPdD_Option ) ) dPdD_Option(:) = TMP(:,1)
        IF( PRESENT( dPdT_Option ) ) dPdT_Option(:) = TMP(:,2)
-       IF( PRESENT( dPdY_Option ) ) dPdY_Option(:) = TMP(:,3) 
+       IF( PRESENT( dPdY_Option ) ) dPdY_Option(:) = TMP(:,3)
 
     ELSE
 
-      CALL ComputeDependentVariable_TABLE & 
-             ( D(:), T(:), Y(:), P(:), iP_T, OS_P, & 
+      CALL ComputeDependentVariable_TABLE &
+             ( D(:), T(:), Y(:), P(:), iP_T, OS_P, &
                Units_V = Dyne / Centimeter**2 )
 
     END IF

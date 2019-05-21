@@ -48,6 +48,10 @@ PROGRAM ApplicationDriver
     ComputeError
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
+  USE TwoMoment_SlopeLimiterModule, ONLY: &
+    InitializeSlopeLimiter_TwoMoment, &
+    FinalizeSlopeLimiter_TwoMoment, &
+    ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment, &
@@ -131,7 +135,7 @@ PROGRAM ApplicationDriver
 
       Direction = 'X'
 
-      nX = [ 256, 1, 1 ]
+      nX = [ 64, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -143,7 +147,7 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      TimeSteppingScheme = 'IMEX_PDARS_4'
+      TimeSteppingScheme = 'SSPRK3'
 
       N0     = 0.0_DP
       SigmaA = 0.0_DP
@@ -155,7 +159,7 @@ PROGRAM ApplicationDriver
       Max_1 = + HUGE( One ) ! --- Max Density
       Min_2 = - HUGE( One ) ! --- Min "Gamma"
 
-      t_end     = 1.0d+1
+      t_end     = 1.0d+0
       iCycleD   = 100
       iCycleW   = 100
       iCycleT   = 100
@@ -305,7 +309,7 @@ PROGRAM ApplicationDriver
 
       nNodes = 2
 
-      TimeSteppingScheme = 'IMEX_PARSD'
+      TimeSteppingScheme = 'IMEX_PDARS_3'
 
       N0     = 1.00_DP - 1.0d-12
       SigmaA = 1000.0_DP
@@ -328,11 +332,11 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'SPHERICAL'
 
-      nX = [ 128, 1, 1 ]
+      nX = [ 128, 8, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 5.0_DP, Pi,     TwoPi  ]
 
-      bcX = [ 32, 0, 0 ]
+      bcX = [ 32, 3, 0 ]
 
       nE = 1
       eL = 0.0_DP
@@ -432,6 +436,16 @@ PROGRAM ApplicationDriver
            SigmaA_Option = SigmaA, &
            SigmaS_Option = SigmaS )
 
+  ! --- Initialize Slope Limiter ---
+
+  CALL InitializeSlopeLimiter_TwoMoment &
+         ( BetaTVD_Option = 2.0_DP, & 
+           BetaTVB_Option = 1.d2, & 
+           SlopeTolerance_Option = 1.0d-6, &
+           UseSlopeLimiter_Option = .TRUE., &
+           UseCharacteristicLimiting_Option = .TRUE., &
+           Verbose_Option = .TRUE. )
+ 
   ! --- Initialize Positivity Limiter ---
 
   CALL InitializePositivityLimiter_TwoMoment &
@@ -442,6 +456,9 @@ PROGRAM ApplicationDriver
              = UsePositivityLimiter, &
            UsePositivityLimiterTally_Option &
              = .TRUE. )
+
+  CALL ApplySlopeLimiter_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )  
 
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )

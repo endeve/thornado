@@ -189,7 +189,7 @@ PROGRAM DeleptonizationWave
 
   CALL InitializePositivityLimiter_TwoMoment &
          ( Min_1_Option = 0.0d0 + SqrtTiny, &
-           Max_1_Option = 1.0d0 - SqrtTiny, &
+           Max_1_Option = 1.0d0 - EPSILON(1.0d0), &
            Min_2_Option = 0.0d0 + SqrtTiny, &
            UsePositivityLimiter_Option &
              = .TRUE., &

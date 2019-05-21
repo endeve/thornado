@@ -20,9 +20,9 @@ MODULE EquationOfStateModule_IDEAL
   PUBLIC :: ComputePressureFromPrimitive_IDEAL
   PUBLIC :: ComputePressureFromSpecificInternalEnergy_IDEAL
   PUBLIC :: ComputeSoundSpeedFromPrimitive_IDEAL
-  PUBLIC :: ComputeSoundSpeedFromPrimitive_GR_IDEAL
   PUBLIC :: ComputeAuxiliary_Fluid_IDEAL
   PUBLIC :: Auxiliary_Fluid_IDEAL
+
 
 CONTAINS
 
@@ -75,6 +75,8 @@ CONTAINS
   END SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL
 
 
+#ifdef HYDRO_NONRELATIVISTIC
+
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
@@ -84,16 +86,19 @@ CONTAINS
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL
 
+#elif HYDRO_RELATIVISTIC
 
-  SUBROUTINE ComputeSoundSpeedFromPrimitive_GR_IDEAL( D, Ev, Ne, Cs )
+  SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: Cs
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: Cs(:)
 
-    Cs(:) = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev(:) &
-                    / ( D(:) + Gamma_IDEAL * Ev(:) ) )
+    Cs = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev &
+                 / ( D + Gamma_IDEAL * Ev ) )
 
-  END SUBROUTINE ComputeSoundSpeedFromPrimitive_GR_IDEAL
+  END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL
+
+#endif
 
 
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )

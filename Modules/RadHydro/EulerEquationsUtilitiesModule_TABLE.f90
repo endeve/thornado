@@ -17,7 +17,7 @@ MODULE EulerEquationsUtilitiesModule_TABLE
 CONTAINS
 
 
-  SUBROUTINE ComputeEigenvectors_L & 
+  SUBROUTINE ComputeEigenvectors_L &
                ( D, T, Y, V1, V2, V3, lambda, VL, A0, Componentwise )
 
     REAL(DP), DIMENSION(1),   INTENT(in)  :: D, T, Y, V1, V2, V3
@@ -42,7 +42,7 @@ CONTAINS
 
       A0 = A
       VL = A
- 
+
     ELSE
 
       CALL ComputeFluxJacobian( D, T, Y, V1, V2, V3, A )
@@ -71,7 +71,7 @@ CONTAINS
   END SUBROUTINE ComputeEigenvectors_L
 
 
-  SUBROUTINE ComputeEigenvectors_R & 
+  SUBROUTINE ComputeEigenvectors_R &
                ( D, T, Y, V1, V2, V3, lambda, VR, A0, Componentwise )
 
     REAL(DP), DIMENSION(1),   INTENT(in)  :: D, T, Y, V1, V2, V3
@@ -100,7 +100,7 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeEigenvectors_L & 
+      CALL ComputeEigenvectors_L &
              ( D, T, Y, V1, V2, V3, lambda, VL, A, Componentwise )
 
       A0 = A
@@ -135,10 +135,10 @@ CONTAINS
     REAL(DP), DIMENSION(1) :: dPdE, dPdN, dPdTau
     REAL(DP), DIMENSION(1) :: Tau, P, E, N, H, VSq
 
-    CALL ComputePressure_TABLE & 
+    CALL ComputePressure_TABLE &
            ( D, T, Y, P, dPdD, dPdT, dPdY )
 
-    CALL ComputeSpecificInternalEnergy_TABLE & 
+    CALL ComputeSpecificInternalEnergy_TABLE &
            ( D, T, Y, E, dEdD, dEdT, dEdY )
 
     Tau = 1.0_DP / D

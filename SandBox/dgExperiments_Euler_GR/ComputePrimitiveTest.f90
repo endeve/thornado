@@ -11,8 +11,8 @@ PROGRAM ComputePrimitiveTest
     InitializeEquationOfState, &
     FinalizeEquationOfState, &
     ComputePressureFromSpecificInternalEnergy
-  USE Euler_GR_UtilitiesModule, ONLY: &
-    ComputePrimitive_GR, &
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    Euler_ComputePrimitive_Relativistic, &
     ComputeFunJacP, &
     ComputePressureWithBisectionMethod, &
     ComputePressureWithBrentsMethod

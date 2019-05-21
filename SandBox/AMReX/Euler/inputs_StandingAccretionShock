@@ -10,22 +10,23 @@ SAS.Mass   = 0.5
 SAS.rShock = 1.0
 SAS.Mach   = 100.0
 
+SAS.Perturb          = 0
 SAS.ShellIn          = 1.4
 SAS.ShellOut         = 1.6
 SAS.PerturbOrder     = 1
 SAS.PerturbAmplitude = 0.2
 
-thornado.t_end     = 50.0     # Final time
-thornado.dt_wrt    = 0.25     # Write time interval
+thornado.t_end     = 80.0      # Final time
+thornado.dt_wrt    = 0.25      # Write time interval
 thornado.Gamma     = 1.333333333333333 # Ideal Gas EoS Gamma
-thornado.nNodes    = 3        # Number of DG nodes in each active dimension
-thornado.nStages   = 3        # Number of SSP-RK stages for time integration
-thornado.CFL       = 0.5      # CFL number
-thornado.bcX       = 11 03 00 # Boundary conditions
-thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
-thornado.iCycleD   = 00010    # MOD this number to display info
-thornado.iCycleW   = 10000    # MOD this number to write plotfile
-thornado.iCycleChk = 10000    # MOD this number to write checkpoint file
+thornado.nNodes    = 3         # Number of DG nodes in each active dimension
+thornado.nStages   = 3         # Number of SSP-RK stages for time integration
+thornado.CFL       = 0.5       # CFL number
+thornado.bcX       = 11 03 00  # Boundary conditions
+thornado.swX       = 01 01 00  # Stencil width (nGhostCells) in each dimension
+thornado.iCycleD   = 000010    # MOD this number to display info
+thornado.iCycleW   = 005000    # MOD this number to write plotfile
+thornado.iCycleChk = 100000    # MOD this number to write checkpoint file
 
 #geometry.coord_sys   = 0            # CARTESIAN
 #geometry.coord_sys   = 1            # CYLINDRICAL (r,z,phi/pi)
@@ -35,7 +36,7 @@ geometry.prob_hi     = 2.0 3.141592653589793 6.283185307179586 # Upper domain si
 geometry.is_periodic = 00  00   00   # Periodicity. 0 (no), 1 (yes)
 
 amr.n_cell          = 256 064 01 # Number of cells in each dimension
-amr.max_grid_size   = 064 064 01 # nBoxes = n_cell / MaxGridSize
+amr.max_grid_size   = 016 064 01 # nBoxes = n_cell / MaxGridSize
 amr.max_level       = 0          # Maximum number of refinement levels
 amr.blocking_factor = 8          # Must be a factor of max_grid_size
 

@@ -1,4 +1,4 @@
-MODULE Euler_BoundaryConditionsModule
+MODULE Euler_BoundaryConditionsModule_NonRelativistic
 
   USE KindModule, ONLY: &
     DP
@@ -16,12 +16,13 @@ MODULE Euler_BoundaryConditionsModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_ApplyBoundaryConditions
+  PUBLIC :: Euler_ApplyBoundaryConditions_NonRelativistic
 
   INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Both  = 0
   INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Inner = 1
   INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Outer = 2
   INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_None  = 3
+
 
 CONTAINS
 
@@ -50,7 +51,7 @@ CONTAINS
   END FUNCTION ApplyOuterBC
 
 
-  SUBROUTINE Euler_ApplyBoundaryConditions &
+  SUBROUTINE Euler_ApplyBoundaryConditions_NonRelativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
@@ -84,7 +85,7 @@ CONTAINS
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), iApplyBC(3) )
 
-  END SUBROUTINE Euler_ApplyBoundaryConditions
+  END SUBROUTINE Euler_ApplyBoundaryConditions_NonRelativistic
 
 
   SUBROUTINE Euler_ApplyBC_X1( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
@@ -566,4 +567,4 @@ CONTAINS
   END SUBROUTINE Euler_ApplyBC_X3
 
 
-END MODULE Euler_BoundaryConditionsModule
+END MODULE Euler_BoundaryConditionsModule_NonRelativistic

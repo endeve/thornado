@@ -7,6 +7,8 @@ MODULE TimeSteppingModule_IMEX_RK
     nDOF
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies
+  USE TwoMoment_SlopeLimiterModule, ONLY: &
+    ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment
 
@@ -743,6 +745,9 @@ CONTAINS
 
           CALL MapFromStage( iZ_B1, U, U_IMEX )
 
+          CALL ApplySlopeLimiter_TwoMoment &
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
+
           CALL ApplyPositivityLimiter_TwoMoment &
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
 
@@ -768,6 +773,9 @@ CONTAINS
         ! --- Apply Positivity Limiter ---
 
         CALL MapFromStage( iZ_B1, U, U_IMEX )
+
+        CALL ApplySlopeLimiter_TwoMoment &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
 
         CALL ApplyPositivityLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
@@ -815,6 +823,9 @@ CONTAINS
     END IF
 
     CALL MapFromStage( iZ_B1, U, U_IMEX )
+
+    CALL ApplySlopeLimiter_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
 
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U ) ! Possibly move this
