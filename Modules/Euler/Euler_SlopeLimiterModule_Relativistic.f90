@@ -185,7 +185,7 @@ CONTAINS
 
 
   SUBROUTINE Euler_ApplySlopeLimiter_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -193,12 +193,11 @@ CONTAINS
       G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-    LOGICAL,  INTENT(in), OPTIONAL :: &
-      SuppressBC_Option
+    LOGICAL,  INTENT(in)    :: &
+      SuppressBC
 
     LOGICAL  :: LimitedCell &
                   (nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
-    LOGICAL  :: SuppressBC
     INTEGER  :: iX1, iX2, iX3, iGF, iCF, iDimX
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
@@ -215,10 +214,6 @@ CONTAINS
 
     IF( .NOT. UseSlopeLimiter ) RETURN
 
-    SuppressBC = .FALSE.
-    IF( PRESENT( SuppressBC_Option ) ) &
-      SuppressBC = SuppressBC_Option
-
     IF( .NOT. SuppressBC ) &
       CALL Euler_ApplyBoundaryConditions_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
@@ -232,7 +227,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( Shock(iX1,iX2,iX3) < LimiterThreshold ) CYCLE
+      IF( Shock(iX1,iX2,iX3) .LT. LimiterThreshold ) CYCLE
 
       dX1 = MeshX(1) % Width(iX1)
       dX2 = MeshX(2) % Width(iX2)

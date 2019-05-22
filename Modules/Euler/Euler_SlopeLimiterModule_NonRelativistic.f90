@@ -180,21 +180,19 @@ CONTAINS
 
 
   SUBROUTINE Euler_ApplySlopeLimiter_NonRelativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 
-    INTEGER,  INTENT(in)           :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)           :: &
+    REAL(DP), INTENT(in)    :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout)        :: &
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    LOGICAL,  INTENT(in), OPTIONAL :: &
-      SuppressBC_Option
+    LOGICAL,  INTENT(in)    :: SuppressBC
 
     LOGICAL  :: LimitedCell(nCF,iX_B0(1):iX_E0(1), &
                                 iX_B0(2):iX_E0(2), &
                                 iX_B0(3):iX_E0(3))
-    LOGICAL  :: SuppressBC
     INTEGER  :: iX1, iX2, iX3, iGF, iCF
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
@@ -210,10 +208,6 @@ CONTAINS
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. UseSlopeLimiter ) RETURN
-
-    SuppressBC = .FALSE.
-    IF( PRESENT( SuppressBC_Option ) ) &
-      SuppressBC = SuppressBC_Option
 
     IF( .NOT. SuppressBC ) &
       CALL Euler_ApplyBoundaryConditions_NonRelativistic &
