@@ -91,15 +91,21 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
 
+    LOGICAL :: SuppressBC
+
+    SuppressBC = .FALSE.
+    IF( PRESENT( SuppressBC_Option ) ) &
+      SuppressBC = SuppressBC_Option
+
 #ifdef HYDRO_NONRELATIVISTIC
 
     CALL Euler_ApplySlopeLimiter_NonRelativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 
 #elif HYDRO_RELATIVISTIC
 
     CALL Euler_ApplySlopeLimiter_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 
 #endif
 
