@@ -233,12 +233,6 @@ CONTAINS
 
     CALL TimersStart( Timer_Im_ComputeTS_Aux )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( PF_N )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( PF_N )
-#endif
-
     CALL ComputeThermodynamicStates_Auxiliary_TABLE &
            ( PF_N(:,iPF_D ), &
              PF_N(:,iPF_E ), &
@@ -246,12 +240,6 @@ CONTAINS
              AF_N(:,iAF_T ), &
              AF_N(:,iAF_E ), &
              AF_N(:,iAF_Ye) )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( AF_N )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( AF_N )
-#endif
 
     CALL TimersStop( Timer_Im_ComputeTS_Aux )
 
@@ -270,12 +258,6 @@ CONTAINS
                iS, Chi(:,:,iS) )
 
     END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( Chi )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( Chi )
-#endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -360,12 +342,6 @@ CONTAINS
 
     CALL TimersStart( Timer_Im_ComputeTS_Prim )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( PF_N, AF_N )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( PF_N, AF_N )
-#endif
-
     CALL ComputeThermodynamicStates_Primitive_TABLE &
            ( PF_N(:,iPF_D ), &
              AF_N(:,iAF_T ), &
@@ -373,12 +349,6 @@ CONTAINS
              PF_N(:,iPF_E ), &
              AF_N(:,iAF_E ), &
              PF_N(:,iPF_Ne) )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( PF_N, AF_N )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( PF_N, AF_N )
-#endif
 
     CALL TimersStop( Timer_Im_ComputeTS_Prim )
 
@@ -613,13 +583,15 @@ CONTAINS
     ! --- Equilibrium Distributions ---
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
     !$OMP PRIVATE( FD1_Exp, FD2_Exp )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2), &
     !$ACC PRIVATE( FD1_Exp, FD2_Exp ) &
     !$ACC PRESENT( E_N, T, Mnu_1, Mnu_2, J0_1, J0_2 )
 #elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( FD1_Exp, FD2_Exp )
 #endif
     DO iN_X = 1, nX_G
       DO iN_E = 1, nE_G
@@ -658,6 +630,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: dMdY(1:nX_G)
     INTEGER,  INTENT(in)  :: iSpecies
 
+    REAL(DP) :: dMdD(1:nX_G)
     REAL(DP) :: Me(1:nX_G), dMedT(1:nX_G), dMedY(1:nX_G)
     REAL(DP) :: Mp(1:nX_G), dMpdT(1:nX_G), dMpdY(1:nX_G)
     REAL(DP) :: Mn(1:nX_G), dMndT(1:nX_G), dMndY(1:nX_G)
@@ -666,34 +639,22 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
+    !$OMP MAP( alloc: Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY, dMdD )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
+    !$ACC CREATE( Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY, dMdD )
 #endif
-
-!#if defined(THORNADO_OMP_OL)
-!    !$OMP TARGET UPDATE FROM( D, T, Y )
-!#elif defined(THORNADO_OACC)
-!    !$ACC UPDATE HOST( D, T, Y )
-!#endif
 
     ! --- Matter Chemical Potentials and Derivatives ---
 
     CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, M = Me, dMdT_Option = dMedT, dMdY_Option = dMedY )
+           ( D, T, Y, M = Me, dMdD_Option = dMdD, dMdT_Option = dMedT, dMdY_Option = dMedY )
 
     CALL ComputeProtonChemicalPotential_TABLE &
-           ( D, T, Y, M = Mp, dMdT_Option = dMpdT, dMdY_Option = dMpdY )
+           ( D, T, Y, M = Mp, dMdD_Option = dMdD, dMdT_Option = dMpdT, dMdY_Option = dMpdY )
 
     CALL ComputeNeutronChemicalPotential_TABLE &
-           ( D, T, Y, M = Mn, dMdT_Option = dMndT, dMdY_Option = dMndY )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
-#endif
+           ( D, T, Y, M = Mn, dMdD_Option = dMdD, dMdT_Option = dMndT, dMdY_Option = dMndY )
 
     ! --- Neutrino Chemical Potential and Derivatives ---
 
@@ -705,6 +666,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRESENT( M, dMdT, dMdY, Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD
 #endif
       DO i = 1, nX_G
         M   (i) = ( Me   (i) + Mp   (i) ) - Mn   (i)
@@ -720,6 +682,7 @@ CONTAINS
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRESENT( M, dMdT, dMdY, Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD
 #endif
       DO i = 1, nX_G
         M   (i) = Mn   (i) - ( Me   (i) + Mp   (i) )
@@ -731,12 +694,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
+    !$OMP MAP( release: Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY, dMdD )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
+    !$ACC DELETE( Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY, dMdD )
 #endif
-
 
   END SUBROUTINE ComputeNeutrinoChemicalPotentials
 
