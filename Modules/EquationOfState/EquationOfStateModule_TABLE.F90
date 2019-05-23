@@ -1,3 +1,7 @@
+#ifdef THORNADO_DEBUG
+#define THORNADO_DEBUG_EOS
+#endif
+
 MODULE EquationOfStateModule_TABLE
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -41,8 +45,7 @@ MODULE EquationOfStateModule_TABLE
     Erg, &
     MeV
   USE DeviceModule, ONLY: &
-    mydevice, &
-    device_is_present
+    QueryOnGpu
   USE FluidFieldsModule, ONLY: &
     ! --- Primitive Fluid Fields:
     iPF_D, iPF_E, iPF_Ne, nPF, &
@@ -95,6 +98,13 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
   PUBLIC :: ComputeProtonChemicalPotential_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
+
+#if defined(THORNADO_OACC)
+  !$ACC DECLARE CREATE &
+  !$ACC ( Ds_T, Ts_T, Ys_T, &
+  !$ACC   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, &
+  !$ACC   P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T )
+#endif
 
 CONTAINS
 
@@ -246,10 +256,10 @@ CONTAINS
     !$OMP          OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, &
     !$OMP          P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( Ds_T, Ts_T, Ys_T, &
-    !$ACC         OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, &
-    !$ACC         P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T )
+    !$ACC UPDATE DEVICE &
+    !$ACC ( Ds_T, Ts_T, Ys_T, &
+    !$ACC   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, &
+    !$ACC   P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T )
 #endif
 
 #endif
@@ -266,11 +276,6 @@ CONTAINS
     !$OMP MAP( release: Ds_T, Ts_T, Ys_T, &
     !$OMP               OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, &
     !$OMP               P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC DELETE( Ds_T, Ts_T, Ys_T, &
-    !$ACC         OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, &
-    !$ACC         P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T )
 #endif
 
     DEALLOCATE( Ds_T, Ts_T, Ys_T )
@@ -379,22 +384,45 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, E, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: T
 
-    REAL(DP) :: T_Lookup(SIZE(D))
     INTEGER :: iP, nP, Error(SIZE(D))
+    LOGICAL :: do_gpu
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     nP = SIZE(D)
 
-    CALL ComputeTemperatureWith_DEY           &
-           ( D(:) / ( Gram / Centimeter**3 ), &
-             E(:) / ( Erg / Gram ),           &
-             Y(:),                            &
-             Ds_T, Ts_T, Ys_T, E_T, OS_E,     &
-             T_Lookup,  &
-             Error_Option = Error(:) )
+    do_gpu = QueryOnGPU( D, E, Y, T )
+#if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
+    IF ( .not. do_gpu ) THEN
+      WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE] Data not present on device'
+      IF ( .not. QueryOnGPU( D ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   D    missing'
+      IF ( .not. QueryOnGPU( E ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   E    missing'
+      IF ( .not. QueryOnGPU( Y ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   Y    missing'
+      IF ( .not. QueryOnGPU( T ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   T    missing'
+    END IF
+#endif
 
-    T(:) = T_Lookup(:) * Kelvin
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( from: Error )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( D, E, Y, T ) &
+    !$ACC COPYOUT( Error )
+#endif
+    DO iP = 1, nP
+
+      CALL ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
+             ( D(iP), E(iP), Y(iP), T(iP), Error_Option = Error(iP) )
+
+    END DO
+
     IF ( ANY( Error(:) > 0 ) ) THEN 
       DO iP = 1, nP
         IF ( Error(iP) > 0 ) CALL DescribeEOSInversionError( Error(iP) )
@@ -405,6 +433,39 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE
+
+
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE( D, E, Y, T, Error_Option )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)            :: D, E, Y
+    REAL(DP), INTENT(out)           :: T
+    INTEGER,  INTENT(out), OPTIONAL :: Error_Option
+
+    REAL(DP) :: D_P, E_P, Y_P, T_Lookup
+    INTEGER :: Error
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P = D / ( Gram / Centimeter**3 )
+    E_P = E / ( Erg / Gram )
+    Y_P = Y
+
+    CALL ComputeTemperatureWith_DEY &
+           ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, E_T, OS_E, T_Lookup, &
+             Error_Option = Error )
+
+    T = T_Lookup * Kelvin
+
+#endif
+
+    IF ( PRESENT( Error_Option ) ) Error_Option = Error
+
+  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE
 
 
   SUBROUTINE ComputePressureFromPrimitive_TABLE( D, Ev, Ne, P )
@@ -495,14 +556,50 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
     REAL(DP), DIMENSION(:), INTENT(out) :: Ev, Em, Ne
 
-    ! --- Interpolate Specific Internal Energy ------------------------
+    INTEGER :: iP, nP
+    LOGICAL :: do_gpu
 
-    CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Em(:), E_T, OS_E, &
-             Units_V = Erg / Gram )
+    nP = SIZE(D)
 
-    Ev(:) = Em(:) * D(:)              ! --- Internal Energy per Unit Volume
-    Ne(:) = Y (:) * D(:) / BaryonMass ! --- Electrons per Unit Volume
+    do_gpu = QueryOnGPU( D, T, Y, Ev, Em, Ne )
+#if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
+    IF ( .not. do_gpu ) THEN
+      WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE] Data not present on device'
+      IF ( .not. QueryOnGPU( D ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE]   D    missing'
+      IF ( .not. QueryOnGPU( T ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE]   T    missing'
+      IF ( .not. QueryOnGPU( Y ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE]   Y    missing'
+      IF ( .not. QueryOnGPU( Ev ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE]   Ev   missing'
+      IF ( .not. QueryOnGPU( Em ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE]   Em   missing'
+      IF ( .not. QueryOnGPU( Ne ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Primitive_TABLE]   Ne   missing'
+    END IF
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( D, T, Y, Em, Ev, Ne )
+#endif
+    DO iP = 1, nP
+
+      ! --- Interpolate Specific Internal Energy ------------------------
+
+      CALL ComputeDependentVariablePoint_TABLE &
+             ( D(iP), T(iP), Y(iP), Em(iP), E_T, OS_E, &
+               Units_V = Erg / Gram )
+
+      Ev(iP) = Em(iP) * D(iP)              ! --- Internal Energy per Unit Volume
+      Ne(iP) = Y (iP) * D(iP) / BaryonMass ! --- Electrons per Unit Volume
+
+    END DO
 
   END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE
 
@@ -512,11 +609,56 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: T, Em, Y
 
-    Em(:) = Ev(:) / D(:)              ! --- Internal Energy per Mass
-    Y (:) = Ne(:) / D(:) * BaryonMass ! --- Electron Fraction
+    INTEGER :: iP, nP, Error(SIZE(D))
+    LOGICAL :: do_gpu
 
-    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-           ( D(:), Em(:), Y(:), T(:) )
+    nP = SIZE(D)
+
+    do_gpu = QueryOnGPU( D, Ev, Ne, T, Em, Y )
+#if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
+    IF ( .not. do_gpu ) THEN
+      WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE] Data not present on device'
+      IF ( .not. QueryOnGPU( D ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   D    missing'
+      IF ( .not. QueryOnGPU( Ev ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   Ev   missing'
+      IF ( .not. QueryOnGPU( Ne ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   Ne   missing'
+      IF ( .not. QueryOnGPU( T ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   T    missing'
+      IF ( .not. QueryOnGPU( Em ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   Em   missing'
+      IF ( .not. QueryOnGPU( Y ) ) &
+        WRITE(*,*) '[ComputeThermodynamicStates_Auxiliary_TABLE]   Y    missing'
+    END IF
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( from: Error )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( D, Ev, Ne, T, Em, Y ) &
+    !$ACC COPYOUT( Error )
+#endif
+    DO iP = 1, nP
+
+      Em(iP) = Ev(iP) / D(iP)              ! --- Internal Energy per Mass
+      Y (iP) = Ne(iP) / D(iP) * BaryonMass ! --- Electron Fraction
+
+      CALL ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
+             ( D(iP), Em(iP), Y(iP), T(iP), Error_Option = Error(iP) )
+
+    END DO
+
+    IF ( ANY( Error(:) > 0 ) ) THEN 
+      DO iP = 1, nP
+        IF ( Error(iP) > 0 ) CALL DescribeEOSInversionError( Error(iP) )
+      END DO
+      STOP
+    END IF
 
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE
 
@@ -602,38 +744,51 @@ CONTAINS
   SUBROUTINE ComputePressure_TABLE &
                ( D, T, Y, P, dPdD_Option, dPdT_Option, dPdY_Option )
 
-    REAL(DP), DIMENSION(:), INTENT(in)            :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)           :: P
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dPdD_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dPdT_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dPdY_Option
+    REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)                   :: P
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dPdD_Option
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dPdT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dPdY_Option
 
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: dPdD_Local, dPdT_Local, dPdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: dPdD, dPdT, dPdY
+    INTEGER :: nP
     LOGICAL :: ComputeDerivatives
-    REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
-    INTEGER :: iP, nP
 
     nP = SIZE(D)
-
     ComputeDerivatives = .FALSE.
-    IF( ANY( [ PRESENT( dPdD_Option ), PRESENT( dPdT_Option ), &
-               PRESENT( dPdY_Option ) ] ) ) ComputeDerivatives = .TRUE.
 
-    IF( ComputeDerivatives )THEN
+    IF ( PRESENT( dPdD_Option ) ) THEN
+      dPdD(1:nP) => dPdD_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dPdD(1:nP) => dPdD_Local(:)
+    END IF
+
+    IF ( PRESENT( dPdT_Option ) ) THEN
+      dPdT(1:nP) => dPdT_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dPdT(1:nP) => dPdT_Local(:)
+    END IF
+
+    IF ( PRESENT( dPdY_Option ) ) THEN
+      dPdY(1:nP) => dPdY_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dPdY(1:nP) => dPdY_Local(:)
+    END IF
+
+    IF ( ComputeDerivatives ) THEN
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D(:), T(:), Y(:), P(:), TMP(:,:), P_T, OS_P, &
+             ( D, T, Y, P, dPdD, dPdT, dPdY, P_T, OS_P, &
                Units_V = Dyne / Centimeter**2 )
-
-      DO iP = 1, nP
-        IF( PRESENT( dPdD_Option ) ) dPdD_Option(iP) = TMP(iP,1)
-        IF( PRESENT( dPdT_Option ) ) dPdT_Option(iP) = TMP(iP,2)
-        IF( PRESENT( dPdY_Option ) ) dPdY_Option(iP) = TMP(iP,3)
-      END DO
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D(:), T(:), Y(:), P(:), P_T, OS_P, &
+             ( D, T, Y, P, P_T, OS_P, &
                Units_V = Dyne / Centimeter**2 )
 
     END IF
@@ -644,38 +799,51 @@ CONTAINS
   SUBROUTINE ComputeSpecificInternalEnergy_TABLE &
                ( D, T, Y, E, dEdD_Option, dEdT_Option, dEdY_Option )
 
-    REAL(DP), DIMENSION(:), INTENT(in)            :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)           :: E
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dEdD_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dEdT_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dEdY_Option
+    REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)                   :: E
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dEdD_Option
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dEdT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dEdY_Option
 
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: dEdD_Local, dEdT_Local, dEdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: dEdD, dEdT, dEdY
+    INTEGER :: nP
     LOGICAL :: ComputeDerivatives
-    REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
-    INTEGER :: iP, nP
 
     nP = SIZE(D)
-
     ComputeDerivatives = .FALSE.
-    IF( ANY( [ PRESENT( dEdD_Option ), PRESENT( dEdT_Option ), &
-               PRESENT( dEdY_Option ) ] ) ) ComputeDerivatives = .TRUE.
 
-    IF( ComputeDerivatives )THEN
+    IF ( PRESENT( dEdD_Option ) ) THEN
+      dEdD(1:nP) => dEdD_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dEdD(1:nP) => dEdD_Local(:)
+    END IF
+
+    IF ( PRESENT( dEdT_Option ) ) THEN
+      dEdT(1:nP) => dEdT_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dEdT(1:nP) => dEdT_Local(:)
+    END IF
+
+    IF ( PRESENT( dEdY_Option ) ) THEN
+      dEdY(1:nP) => dEdY_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dEdY(1:nP) => dEdY_Local(:)
+    END IF
+
+    IF ( ComputeDerivatives ) THEN
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D(:), T(:), Y(:), E(:), TMP(:,:), E_T, OS_E, &
+             ( D, T, Y, E, dEdD, dEdT, dEdY, E_T, OS_E, &
                Units_V = Erg / Gram )
-
-      DO iP = 1, nP
-        IF( PRESENT( dEdD_Option ) ) dEdD_Option(iP) = TMP(iP,1)
-        IF( PRESENT( dEdT_Option ) ) dEdT_Option(iP) = TMP(iP,2)
-        IF( PRESENT( dEdY_Option ) ) dEdY_Option(iP) = TMP(iP,3)
-      END DO
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D(:), T(:), Y(:), E(:), E_T, OS_E, &
+             ( D, T, Y, E, E_T, OS_E, &
                Units_V = Erg / Gram )
 
     END IF
@@ -686,38 +854,51 @@ CONTAINS
   SUBROUTINE ComputeElectronChemicalPotential_TABLE &
                ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
-    REAL(DP), DIMENSION(:), INTENT(in)            :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)           :: M
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMdD_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMdT_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMdY_Option
+    REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)                   :: M
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
 
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: dMdD, dMdT, dMdY
+    INTEGER :: nP
     LOGICAL :: ComputeDerivatives
-    REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
-    INTEGER :: iP, nP
 
     nP = SIZE(D)
-
     ComputeDerivatives = .FALSE.
-    IF( ANY( [ PRESENT( dMdD_Option ), PRESENT( dMdT_Option ), &
-               PRESENT( dMdY_Option ) ] ) ) ComputeDerivatives = .TRUE.
 
-    IF( ComputeDerivatives )THEN
+    IF ( PRESENT( dMdD_Option ) ) THEN
+      dMdD(1:nP) => dMdD_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dMdD(1:nP) => dMdD_Local(:)
+    END IF
+
+    IF ( PRESENT( dMdT_Option ) ) THEN
+      dMdT(1:nP) => dMdT_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dMdT(1:nP) => dMdT_Local(:)
+    END IF
+
+    IF ( PRESENT( dMdY_Option ) ) THEN
+      dMdY(1:nP) => dMdY_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dMdY(1:nP) => dMdY_Local(:)
+    END IF
+
+    IF ( ComputeDerivatives ) THEN
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D(:), T(:), Y(:), M(:), TMP(:,:), Me_T, OS_Me, &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Me_T, OS_Me, &
                Units_V = MeV )
-
-      DO iP = 1, nP
-        IF( PRESENT( dMdD_Option ) ) dMdD_Option(iP) = TMP(iP,1)
-        IF( PRESENT( dMdT_Option ) ) dMdT_Option(iP) = TMP(iP,2)
-        IF( PRESENT( dMdY_Option ) ) dMdY_Option(iP) = TMP(iP,3)
-      END DO
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D(:), T(:), Y(:), M(:), Me_T, OS_Me, &
+             ( D, T, Y, M, Me_T, OS_Me, &
                Units_V = MeV )
 
     END IF
@@ -728,38 +909,51 @@ CONTAINS
   SUBROUTINE ComputeProtonChemicalPotential_TABLE &
                ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
-    REAL(DP), DIMENSION(:), INTENT(in)            :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)           :: M
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMdD_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMdT_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMdY_Option
+    REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)                   :: M
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
 
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: dMdD, dMdT, dMdY
+    INTEGER :: nP
     LOGICAL :: ComputeDerivatives
-    REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
-    INTEGER :: iP, nP
 
     nP = SIZE(D)
-
     ComputeDerivatives = .FALSE.
-    IF( ANY( [ PRESENT( dMdD_Option ), PRESENT( dMdT_Option ), &
-               PRESENT( dMdY_Option ) ] ) ) ComputeDerivatives = .TRUE.
 
-    IF( ComputeDerivatives )THEN
+    IF ( PRESENT( dMdD_Option ) ) THEN
+      dMdD(1:nP) => dMdD_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dMdD(1:nP) => dMdD_Local(:)
+    END IF
+
+    IF ( PRESENT( dMdT_Option ) ) THEN
+      dMdT(1:nP) => dMdT_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dMdT(1:nP) => dMdT_Local(:)
+    END IF
+
+    IF ( PRESENT( dMdY_Option ) ) THEN
+      dMdY(1:nP) => dMdY_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dMdY(1:nP) => dMdY_Local(:)
+    END IF
+
+    IF ( ComputeDerivatives ) THEN
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D(:), T(:), Y(:), M(:), TMP(:,:), Mp_T, OS_Mp, &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mp_T, OS_Mp, &
                Units_V = MeV )
-
-      DO iP = 1, nP
-        IF( PRESENT( dMdD_Option ) ) dMdD_Option(iP) = TMP(iP,1)
-        IF( PRESENT( dMdT_Option ) ) dMdT_Option(iP) = TMP(iP,2)
-        IF( PRESENT( dMdY_Option ) ) dMdY_Option(iP) = TMP(iP,3)
-      END DO
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D(:), T(:), Y(:), M(:), Mp_T, OS_Mp, &
+             ( D, T, Y, M, Mp_T, OS_Mp, &
                Units_V = MeV )
 
     END IF
@@ -770,38 +964,51 @@ CONTAINS
   SUBROUTINE ComputeNeutronChemicalPotential_TABLE &
                ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
-    REAL(DP), DIMENSION(:), INTENT(in)            :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)           :: M
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMdD_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMdT_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dMdY_Option
+    REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
+    REAL(DP), DIMENSION(:), INTENT(out)                   :: M
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
 
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: dMdD, dMdT, dMdY
+    INTEGER :: nP
     LOGICAL :: ComputeDerivatives
-    REAL(DP), DIMENSION(1:SIZE( D ),1:3) :: TMP
-    INTEGER :: iP, nP
 
     nP = SIZE(D)
-
     ComputeDerivatives = .FALSE.
-    IF( ANY( [ PRESENT( dMdD_Option ), PRESENT( dMdT_Option ), &
-               PRESENT( dMdY_Option ) ] ) ) ComputeDerivatives = .TRUE.
 
-    IF( ComputeDerivatives )THEN
+    IF ( PRESENT( dMdD_Option ) ) THEN
+      dMdD(1:nP) => dMdD_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dMdD(1:nP) => dMdD_Local(:)
+    END IF
+
+    IF ( PRESENT( dMdT_Option ) ) THEN
+      dMdT(1:nP) => dMdT_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dMdT(1:nP) => dMdT_Local(:)
+    END IF
+
+    IF ( PRESENT( dMdY_Option ) ) THEN
+      dMdY(1:nP) => dMdY_Option(:)
+      ComputeDerivatives = .TRUE.
+    ELSE
+      dMdY(1:nP) => dMdY_Local(:)
+    END IF
+
+    IF ( ComputeDerivatives ) THEN
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D(:), T(:), Y(:), M(:), TMP(:,:), Mn_T, OS_Mn, &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mn_T, OS_Mn, &
                Units_V = MeV )
-
-      DO iP = 1, nP
-        IF( PRESENT( dMdD_Option ) ) dMdD_Option(iP) = TMP(iP,1)
-        IF( PRESENT( dMdT_Option ) ) dMdT_Option(iP) = TMP(iP,2)
-        IF( PRESENT( dMdY_Option ) ) dMdY_Option(iP) = TMP(iP,3)
-      END DO
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D(:), T(:), Y(:), M(:), Mn_T, OS_Mn, &
+             ( D, T, Y, M, Mn_T, OS_Mn, &
                Units_V = MeV )
 
     END IF
@@ -809,30 +1016,47 @@ CONTAINS
   END SUBROUTINE ComputeNeutronChemicalPotential_TABLE
 
 
-  SUBROUTINE ComputeDependentVariable_TABLE( D, T, Y, V, Values, OS_V, Units_V )
+  SUBROUTINE ComputeDependentVariable_TABLE( D, T, Y, V, V_T, OS_V, Units_V )
 
     REAL(DP), DIMENSION(:),     INTENT(in)  :: D, T, Y
     REAL(DP), DIMENSION(:),     INTENT(out) :: V
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Values
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: V_T
     REAL(DP),                   INTENT(in)  :: OS_V, Units_V
 
-    REAL(DP) :: TMP
     INTEGER :: iP, nP
+    LOGICAL :: do_gpu
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     nP = SIZE(D)
 
+    do_gpu = QueryOnGPU( D, T, Y, V )
+#if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
+    IF ( .not. do_gpu ) THEN
+      WRITE(*,*) '[ComputeDependentVariable_TABLE] Data not present on device'
+      IF ( .not. QueryOnGPU( D ) ) &
+        WRITE(*,*) '[ComputeDependentVariable_TABLE]   D    missing'
+      IF ( .not. QueryOnGPU( T ) ) &
+        WRITE(*,*) '[ComputeDependentVariable_TABLE]   T    missing'
+      IF ( .not. QueryOnGPU( Y ) ) &
+        WRITE(*,*) '[ComputeDependentVariable_TABLE]   Y    missing'
+      IF ( .not. QueryOnGPU( V ) ) &
+        WRITE(*,*) '[ComputeDependentVariable_TABLE]   V    missing'
+    END IF
+#endif
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC IF( do_gpu ) &
+      !$ACC PRESENT( D, T, Y, V, OS_V, V_T )
+#endif
     DO iP = 1, nP
 
-      CALL LogInterpolateSingleVariable         &
-             ( D(iP) / ( Gram / Centimeter**3 ), &
-               T(iP) / Kelvin,                   &
-               Y(iP), Ds_T, Ts_T, Ys_T,          &
-               OS_V,                 &
-               Values, TMP )
-
-      V(iP) = TMP * Units_V
+      CALL ComputeDependentVariablePoint_TABLE &
+             ( D(iP), T(iP), Y(iP), V(iP), V_T, OS_V, Units_V )
 
     END DO
 
@@ -841,43 +1065,125 @@ CONTAINS
   END SUBROUTINE ComputeDependentVariable_TABLE
 
 
-  SUBROUTINE ComputeDependentVariableAndDerivatives_TABLE &
-               ( D, T, Y, V, dV, Values, OS_V, Units_V )
+  SUBROUTINE ComputeDependentVariablePoint_TABLE( D, T, Y, V, V_T, OS_V, Units_V )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
-    REAL(DP), DIMENSION(:),     INTENT(in)  :: D, T, Y
-    REAL(DP), DIMENSION(:),     INTENT(out) :: V
-    REAL(DP), DIMENSION(:,:),   INTENT(out) :: dV
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Values
+    REAL(DP),                   INTENT(in)  :: D, T, Y
+    REAL(DP),                   INTENT(out) :: V
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: V_T
     REAL(DP),                   INTENT(in)  :: OS_V, Units_V
 
-    REAL(DP) :: TMP, dTMP(3)
+    REAL(DP) :: D_P, T_P, Y_P, V_P
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P = D / ( Gram / Centimeter**3 )
+    T_P = T / Kelvin
+    Y_P = Y
+
+    CALL LogInterpolateSingleVariable &
+           ( D_P, T_P, Y_P, Ds_T, Ts_T, Ys_T, OS_V, V_T, V_P )
+
+    V = V_P * Units_V
+
+#endif
+
+  END SUBROUTINE ComputeDependentVariablePoint_TABLE
+
+
+  SUBROUTINE ComputeDependentVariableAndDerivatives_TABLE &
+               ( D, T, Y, V, dVdD, dVdT, dVdY, V_T, OS_V, Units_V )
+
+    REAL(DP), DIMENSION(:),     INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:),     INTENT(out) :: V, dVdD, dVdT, dVdY
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: V_T
+    REAL(DP),                   INTENT(in)  :: OS_V, Units_V
+
     INTEGER :: iP, nP
+    LOGICAL :: do_gpu
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     nP = SIZE(D)
 
+    do_gpu = QueryOnGPU( D, T, Y, V, dVdD, dVdT, dVdY )
+#if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
+    IF ( .not. do_gpu ) THEN
+      WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE] Data not present on device'
+      IF ( .not. QueryOnGPU( D ) ) &
+        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   D    missing'
+      IF ( .not. QueryOnGPU( T ) ) &
+        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   T    missing'
+      IF ( .not. QueryOnGPU( Y ) ) &
+        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   Y    missing'
+      IF ( .not. QueryOnGPU( V ) ) &
+        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   V    missing'
+      IF ( .not. QueryOnGPU( dVdD ) ) &
+        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   dVdD missing'
+      IF ( .not. QueryOnGPU( dVdT ) ) &
+        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   dVdT missing'
+      IF ( .not. QueryOnGPU( dVdY ) ) &
+        WRITE(*,*) '[ComputeDependentVariableAndDerivatives_TABLE]   dVdY missing'
+    END IF
+#endif
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC IF( do_gpu ) &
+      !$ACC PRESENT( D, T, Y, V, dVdD, dVdT, dVdY, OS_V, V_T )
+#endif
     DO iP = 1, nP
 
-      CALL LogInterpolateDifferentiateSingleVariable &
-             ( D(iP) / ( Gram / Centimeter**3 ),      &
-               T(iP) / Kelvin,                        &
-               Y(iP), Ds_T, Ts_T, Ys_T,               &
-               OS_V,                      &
-               Values,    &
-               TMP, dTMP )
-
-      V(iP) = TMP * Units_V
-
-      dV(iP,1) = dTMP(1) * Units_V / ( Gram / Centimeter**3 )
-      dV(iP,2) = dTMP(2) * Units_V / Kelvin
-      dV(iP,3) = dTMP(3) * Units_V
+      CALL ComputeDependentVariableAndDerivativesPoint_TABLE &
+             ( D(iP), T(iP), Y(iP), V(iP), dVdD(iP), dVdT(iP), dVdY(iP), V_T, OS_V, Units_V )
 
     END DO
 
 #endif
 
   END SUBROUTINE ComputeDependentVariableAndDerivatives_TABLE
+
+
+  SUBROUTINE ComputeDependentVariableAndDerivativesPoint_TABLE &
+               ( D, T, Y, V, dVdD, dVdT, dVdY, V_T, OS_V, Units_V )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP),                   INTENT(in)  :: D, T, Y
+    REAL(DP),                   INTENT(out) :: V, dVdD, dVdT, dVdY
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: V_T
+    REAL(DP),                   INTENT(in)  :: OS_V, Units_V
+
+    REAL(DP) :: D_P, T_P, Y_P, V_P, dV_P(3)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P = D / ( Gram / Centimeter**3 )
+    T_P = T / Kelvin
+    Y_P = Y
+
+    CALL LogInterpolateDifferentiateSingleVariable &
+           ( D_P, T_P, Y_P, Ds_T, Ts_T, Ys_T, OS_V, V_T, V_P, dV_P )
+
+    V = V_P * Units_V
+
+    dVdD = dV_P(1) * Units_V / ( Gram / Centimeter**3 )
+    dVdT = dV_P(2) * Units_V / Kelvin
+    dVdY = dV_P(3) * Units_V
+
+#endif
+
+  END SUBROUTINE ComputeDependentVariableAndDerivativesPoint_TABLE
 
 
 END MODULE EquationOfStateModule_TABLE

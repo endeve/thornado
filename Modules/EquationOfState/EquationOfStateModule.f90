@@ -96,11 +96,11 @@ MODULE EquationOfStateModule
   INTERFACE
     SUBROUTINE EosSubroutine_1_3( X, Y, Z, V, dVdX, dVdY, dVdZ )
       USE KindModule, ONLY: DP
-      REAL(DP), DIMENSION(:), INTENT(in)            :: X, Y, Z
-      REAL(DP), DIMENSION(:), INTENT(out)           :: V
-      REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dVdX
-      REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dVdY
-      REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dVdZ
+      REAL(DP), DIMENSION(:), INTENT(in)                    :: X, Y, Z
+      REAL(DP), DIMENSION(:), INTENT(out)                   :: V
+      REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dVdX
+      REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dVdY
+      REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dVdZ
     END SUBROUTINE EosSubroutine_1_3
   END INTERFACE
 
