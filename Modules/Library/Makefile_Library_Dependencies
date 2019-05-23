@@ -14,6 +14,7 @@ endif
 
 DeviceModule.o: \
   $(DeviceModule_prereqs) \
+  KindModule.o \
   DeviceModule.F90
 
 TimersModule.o: \
