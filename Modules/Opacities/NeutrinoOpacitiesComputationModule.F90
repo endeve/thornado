@@ -1,3 +1,7 @@
+#ifdef THORNADO_DEBUG
+#define THORNADO_DEBUG_OPACITY
+#endif
+
 MODULE NeutrinoOpacitiesComputationModule
 
   USE KindModule, ONLY: &
@@ -10,6 +14,8 @@ MODULE NeutrinoOpacitiesComputationModule
     MeV
   USE ProgramHeaderModule, ONLY: &
     nDOFE, nDOFX
+  USE DeviceModule, ONLY: &
+    QueryOnGpu
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
   USE MeshModule, ONLY: &
@@ -20,7 +26,10 @@ MODULE NeutrinoOpacitiesComputationModule
     ComputeNeutronChemicalPotential_TABLE
   USE OpacityModule_TABLE, ONLY: &
 #ifdef MICROPHYSICS_WEAKLIB
-    OPACITIES, &
+    OS_Iso, &
+    OS_EmAb, &
+    Iso_T, &
+    EmAb_T, &
 #endif
     LogEs_T, LogDs_T, LogTs_T, Ys_T
   USE RadiationFieldsModule, ONLY: &
@@ -35,7 +44,7 @@ MODULE NeutrinoOpacitiesComputationModule
   USE wlOpacityTableModule, ONLY: &
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
-    LogInterpolateSingleVariable_1D3D_Custom
+    LogInterpolateSingleVariable
 
   ! ----------------------------------------------
 
@@ -273,10 +282,6 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    ASSOCIATE &
-      ( opEC_T => OPACITIES % EmAb % Opacity(iSpecies) % Values, &
-        OS     => OPACITIES % EmAb % Offsets(iSpecies) )
-
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -301,10 +306,11 @@ CONTAINS
 
         iOS_E = (iZ1-1) * nDOFE
 
-        CALL LogInterpolateSingleVariable_1D3D_Custom &
+        CALL LogInterpolateSingleVariable &
                ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
                  LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
-                 LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opEC_T, opEC_K )
+                 LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+                 OS_EmAb(iSpecies), EmAb_T(:,:,:,:,iSpecies), opEC_K )
 
         opEC(iOS_E+1:iOS_E+nDOFE,iSpecies,iOS_X+1:iOS_X+nDOFX) &
           = opEC_K(1,1) * UnitEC
@@ -314,8 +320,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    END ASSOCIATE ! opEC_T, etc.
 
 #else
 
@@ -337,30 +341,9 @@ CONTAINS
     REAL(DP), INTENT(out) :: opEC_Point(iE_B:iE_E)
     INTEGER,  INTENT(in)  :: iSpecies
 
-    REAL(DP) :: tmp(iE_B:iE_E,1)
-
-#ifdef MICROPHYSICS_WEAKLIB
-
-    ASSOCIATE &
-      ( opEC_T => OPACITIES % EmAb &
-                    % Opacity(iSpecies) % Values, &
-        OS     => OPACITIES % EmAb &
-                    % Offsets(iSpecies) )
-
-    CALL LogInterpolateSingleVariable_1D3D_Custom &
-           ( LOG10( [ E ] / UnitE ), LOG10( [ D ] / UnitD ), &
-             LOG10( [ T ] / UnitT ),      ( [ Y ] / UnitY ), &
-             LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opEC_T, tmp )
-
-    opEC_Point(:) = tmp(:,1) * UnitEC
-
-    END ASSOCIATE ! opEC_T, etc.
-
-#else
-
-    opEC_Point(:) = Zero
-
-#endif
+    CALL ComputeNeutrinoOpacityE_Point &
+           ( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+             opEC_Point, EmAb_T(:,:,:,:,iSpecies), OS_EmAb(iSpecies), UnitEC )
 
   END SUBROUTINE ComputeNeutrinoOpacities_EC_Point
 
@@ -379,29 +362,44 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iSpecies
     REAL(DP), INTENT(out) :: opEC_Points(iE_B:iE_E,iX_B:iX_E)
 
-#ifdef MICROPHYSICS_WEAKLIB
+    INTEGER :: iX, iE
+    LOGICAL :: do_gpu
 
-    ASSOCIATE &
-      ( opEC_T => OPACITIES % EmAb &
-                    % Opacity(iSpecies) % Values, &
-        OS     => OPACITIES % EmAb &
-                    % Offsets(iSpecies) )
-
-    CALL LogInterpolateSingleVariable_1D3D_Custom &
-           ( LOG10( E / UnitE ), LOG10( D / UnitD ), &
-             LOG10( T / UnitT ),      ( Y / UnitY ), &
-             LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opEC_T, &
-             opEC_Points )
-
-    opEC_Points = opEC_Points * UnitEC
-
-    END ASSOCIATE ! opEC_T, etc.
-
-#else
-
-    opEC_Points = Zero
-
+    do_gpu = QueryOnGPU( E, D, T, Y ) &
+       .AND. QueryOnGPU( opEC_Points )
+#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
+    IF ( .not. do_gpu ) THEN
+      WRITE(*,*) '[ComputeNeutrinoOpacities_EC_Points] Data not present on device'
+      IF ( .not. QueryOnGPU( E ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_EC_Points]   E missing'
+      IF ( .not. QueryOnGPU( D ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_EC_Points]   D missing'
+      IF ( .not. QueryOnGPU( T ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_EC_Points]   T missing'
+      IF ( .not. QueryOnGPU( Y ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_EC_Points]   Y missing'
+      IF ( .not. QueryOnGPU( opEC_Points ) ) &
+        WRITE(*,*) '[ComputeNeutrinoOpacities_EC_Points]   opEC_Points missing'
+    END IF
 #endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, opEC_Points, OS_EmAb, EmAb_T )
+#endif
+    DO iX = iX_B, iX_E
+      DO iE = iE_B, iE_E
+
+        CALL ComputeNeutrinoOpacity_Point &
+               ( E(iE), D(iX), T(iX), Y(iX), LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+                 opEC_Points(iE,iX), EmAb_T(:,:,:,:,iSpecies), OS_EmAb(iSpecies), UnitEC )
+
+      END DO
+    END DO
 
   END SUBROUTINE ComputeNeutrinoOpacities_EC_Points
 
@@ -428,12 +426,6 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    ASSOCIATE &
-      ( opES_T => OPACITIES % Scat_Iso &
-                    % Kernel(iSpecies) % Values(:,1,:,:,:), &
-        OS     => OPACITIES % Scat_Iso &
-                    % Offsets(iSpecies,1) )
-
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -458,10 +450,13 @@ CONTAINS
 
         iOS_E = (iZ1-1) * nDOFE
 
-        CALL LogInterpolateSingleVariable_1D3D_Custom &
+        CALL LogInterpolateSingleVariable &
                ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
                  LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
-                 LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opES_T, opES_K )
+                 LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+                 OS_Iso(iSpecies,1), &
+                 Iso_T(:,1,:,:,:,iSpecies), &
+                 opES_K )
 
         opES(iOS_E+1:iOS_E+nDOFE,iSpecies,iOS_X+1:iOS_X+nDOFX) &
           = opES_K(1,1) * UnitES
@@ -471,8 +466,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    END ASSOCIATE ! opES_T, etc.
 
 #else
 
@@ -498,20 +491,15 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    ASSOCIATE &
-      ( opES_T => OPACITIES % Scat_Iso &
-                    % Kernel(iSpecies) % Values(:,1,:,:,:), &
-        OS     => OPACITIES % Scat_Iso &
-                    % Offsets(iSpecies,1) )
-
-    CALL LogInterpolateSingleVariable_1D3D_Custom &
+    CALL LogInterpolateSingleVariable &
            ( LOG10( [ E ] / UnitE ), LOG10( [ D ] / UnitD ), &
              LOG10( [ T ] / UnitT ),      ( [ Y ] / UnitY ), &
-             LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, opES_T, tmp )
+             LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+             OS_Iso(iSpecies,1), &
+             Iso_T(:,1,:,:,:,iSpecies), &
+             tmp )
 
     opES_Point(:) = tmp(:,1) * UnitES
-
-    END ASSOCIATE ! opEC_T, etc.
 
 #else
 
@@ -520,6 +508,82 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Point
+
+
+  SUBROUTINE ComputeNeutrinoOpacityE_Point &
+    ( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, Op, Op_T, OS_Op, Units_Op )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), DIMENSION(:),       INTENT(in)  :: E
+    REAL(DP),                     INTENT(in)  :: D, T, Y
+    REAL(DP), DIMENSION(:),       INTENT(in)  :: LogEs_T, LogDs_T, LogTs_T, Ys_T
+    REAL(DP), DIMENSION(:),       INTENT(out) :: Op
+    REAL(DP), DIMENSION(:,:,:,:), INTENT(in)  :: Op_T
+    REAL(DP),                     INTENT(in)  :: OS_Op, Units_Op
+
+    REAL(DP), DIMENSION(SIZE(E)) :: E_P, Op_P
+    REAL(DP) :: D_P, T_P, Y_P
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    E_P(:) = LOG10( E(:) / UnitE )
+    D_P    = LOG10( D    / UnitD )
+    T_P    = LOG10( T    / UnitT )
+    Y_P    = Y / UnitY
+
+    CALL LogInterpolateSingleVariable &
+           ( E_P, D_P, T_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, OS_Op, Op_T, Op_P )
+
+    Op(:) = Op_P(:) * Units_Op
+
+#else
+
+    Op(:) = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacityE_Point
+
+
+  SUBROUTINE ComputeNeutrinoOpacity_Point &
+    ( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, Op, Op_T, OS_Op, Units_Op )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP),                     INTENT(in)  :: E, D, T, Y
+    REAL(DP), DIMENSION(:),       INTENT(in)  :: LogEs_T, LogDs_T, LogTs_T, Ys_T
+    REAL(DP),                     INTENT(out) :: Op
+    REAL(DP), DIMENSION(:,:,:,:), INTENT(in)  :: Op_T
+    REAL(DP),                     INTENT(in)  :: OS_Op, Units_Op
+
+    REAL(DP) :: E_P, D_P, T_P, Y_P, Op_P
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    E_P = LOG10( E / UnitE )
+    D_P = LOG10( D / UnitD )
+    T_P = LOG10( T / UnitT )
+    Y_P = Y / UnitY
+
+    CALL LogInterpolateSingleVariable &
+           ( E_P, D_P, T_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, OS_Op, Op_T, Op_P )
+
+    Op = Op_P * Units_Op
+
+#else
+
+    Op = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacity_Point
 
 
   PURE ELEMENTAL REAL(DP) FUNCTION FermiDirac( E, Mu, kT )
