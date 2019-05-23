@@ -8,15 +8,18 @@ EquationOfStateModule_TABLE.o: \
   wlIOModuleHDF.o \
   wlEOSIOModuleHDF.o \
   wlEquationOfStateTableModule.o \
+  wlEOSInversionModule.o \
   wlInterpolationModule.o \
   KindModule.o \
   UnitsModule.o \
+  DeviceModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_TABLE.F90
 else
 EquationOfStateModule_TABLE.o: \
   KindModule.o \
   UnitsModule.o \
+  DeviceModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_TABLE.F90
 endif
