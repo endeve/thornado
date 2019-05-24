@@ -1,4 +1,4 @@
-MODULE InitializationModule_GR
+MODULE InitializationModule_Relativistic
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Three, Pi, TwoPi, FourPi
@@ -20,8 +20,8 @@ MODULE InitializationModule_GR
     uAF, iAF_P
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
-  USE Euler_GR_UtilitiesModule, ONLY: &
-    ComputeConserved_GR
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    Euler_ComputeConserved_Relativistic
   USE UnitsModule, ONLY: &
     Meter, Kilogram, Second, Joule
   USE UtilitiesModule, ONLY: &
@@ -30,12 +30,14 @@ MODULE InitializationModule_GR
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: InitializeFields_GR
+  PUBLIC :: InitializeFields_Relativistic
   PUBLIC :: ReadParameters
+
 
 CONTAINS
 
-  SUBROUTINE InitializeFields_GR &
+
+  SUBROUTINE InitializeFields_Relativistic &
                ( RiemannProblemName_Option, &
                  RiemannProblem2dName_Option, &
                  SphericalRiemannProblemName_Option, &
@@ -94,7 +96,7 @@ CONTAINS
         
     END SELECT 
 
-  END SUBROUTINE InitializeFields_GR
+  END SUBROUTINE InitializeFields_Relativistic
 
 
   SUBROUTINE InitializeFields_GR_RiemannProblem &
@@ -320,7 +322,7 @@ CONTAINS
 
         END DO
 
-      CALL ComputeConserved_GR &
+      CALL Euler_ComputeConserved_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -438,7 +440,7 @@ CONTAINS
 
       END DO
 
-      CALL ComputeConserved_GR &
+      CALL Euler_ComputeConserved_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -531,7 +533,7 @@ CONTAINS
 
         END DO
 
-      CALL ComputeConserved_GR &
+      CALL Euler_ComputeConserved_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -614,7 +616,7 @@ CONTAINS
 
       END DO
 
-      CALL ComputeConserved_GR &
+      CALL Euler_ComputeConserved_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -697,7 +699,7 @@ CONTAINS
 
       END DO
 
-      CALL ComputeConserved_GR &
+      CALL Euler_ComputeConserved_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -782,7 +784,7 @@ CONTAINS
 
       END DO
 
-      CALL ComputeConserved_GR &
+      CALL Euler_ComputeConserved_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -862,7 +864,7 @@ CONTAINS
 
       END DO ! --- Loop over nodes ---
 
-      CALL ComputeConserved_GR &
+      CALL Euler_ComputeConserved_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -1028,4 +1030,4 @@ CONTAINS
   END SUBROUTINE ReadData
 
 
-END MODULE InitializationModule_GR
+END MODULE InitializationModule_Relativistic

@@ -1,4 +1,4 @@
-MODULE Euler_PositivityLimiterModule
+MODULE Euler_PositivityLimiterModule_NonRelativistic
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One
@@ -26,9 +26,9 @@ MODULE Euler_PositivityLimiterModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializePositivityLimiter
-  PUBLIC :: Euler_FinalizePositivityLimiter
-  PUBLIC :: Euler_ApplyPositivityLimiter
+  PUBLIC :: Euler_InitializePositivityLimiter_NonRelativistic
+  PUBLIC :: Euler_FinalizePositivityLimiter_NonRelativistic
+  PUBLIC :: Euler_ApplyPositivityLimiter_NonRelativistic
 
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: Verbose
@@ -41,7 +41,7 @@ MODULE Euler_PositivityLimiterModule
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializePositivityLimiter &
+  SUBROUTINE Euler_InitializePositivityLimiter_NonRelativistic &
     ( Min_1_Option, Min_2_Option, UsePositivityLimiter_Option, Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
@@ -105,17 +105,17 @@ CONTAINS
 
     ALLOCATE( U_PP(nPT,nCF) )
 
-  END SUBROUTINE Euler_InitializePositivityLimiter
+  END SUBROUTINE Euler_InitializePositivityLimiter_NonRelativistic
 
 
-  SUBROUTINE Euler_FinalizePositivityLimiter
+  SUBROUTINE Euler_FinalizePositivityLimiter_NonRelativistic
 
     DEALLOCATE( U_PP )
 
-  END SUBROUTINE Euler_FinalizePositivityLimiter
+  END SUBROUTINE Euler_FinalizePositivityLimiter_NonRelativistic
 
 
-  SUBROUTINE Euler_ApplyPositivityLimiter &
+  SUBROUTINE Euler_ApplyPositivityLimiter_NonRelativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER,  INTENT(in)    :: &
@@ -236,7 +236,7 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE Euler_ApplyPositivityLimiter
+  END SUBROUTINE Euler_ApplyPositivityLimiter_NonRelativistic
 
 
   SUBROUTINE ComputePointValues_Fluid( U_q, U_p )
@@ -431,4 +431,4 @@ CONTAINS
   END SUBROUTINE SolveTheta_Bisection
 
 
-END MODULE Euler_PositivityLimiterModule
+END MODULE Euler_PositivityLimiterModule_NonRelativistic

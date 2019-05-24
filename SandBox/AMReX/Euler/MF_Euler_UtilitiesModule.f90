@@ -18,14 +18,12 @@ MODULE MF_Euler_UtilitiesModule
   USE ProgramHeaderModule,   ONLY: &
     nDOFX
   USE GeometryFieldsModule,  ONLY: &
-    nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    nGF
   USE FluidFieldsModule,     ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iPF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iCF_Ne, &
-    nAF, iAF_P, iAF_Cs
+    nCF, nPF, nAF
   USE Euler_UtilitiesModule, ONLY: &
-    ComputePrimitive, &
-    ComputeTimeStep
+    Euler_ComputeTimeStep, &
+    Euler_ComputeFromConserved
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -33,6 +31,9 @@ MODULE MF_Euler_UtilitiesModule
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     nLevels
+  USE MF_UtilitiesModule, ONLY: &
+    AMReX2thornado, &
+    thornado2AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -46,38 +47,27 @@ CONTAINS
 
   SUBROUTINE MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uCF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uPF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uAF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: &
+      MF_uGF(0:nLevels), MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: &
+      MF_uPF(0:nLevels), MF_uAF(0:nLevels)
 
-    INTEGER            :: iX1, iX2, iX3, iLevel
-    INTEGER            :: lo_G(4), hi_G(4)
-    INTEGER            :: lo_C(4), hi_C(4)
-    INTEGER            :: lo_P(4), hi_P(4)
-    INTEGER            :: lo_A(4), hi_A(4)
-    REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
-    REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
-    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
-    REAL(amrex_real)   :: uAF_K(nDOFX,nAF)
-    TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
+
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
 
-!!$    IF( amrex_parallel_ioprocessor() )THEN
-!!$      WRITE(*,*)
-!!$      WRITE(*,'(A4,A)') '', 'MF_ComputeFromConserved'
-!!$    END IF
+    REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(amrex_real), ALLOCATABLE :: P(:,:,:,:,:)
+    REAL(amrex_real), ALLOCATABLE :: A(:,:,:,:,:)
+
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3)
 
     DO iLevel = 0, nLevels
-
-      uGF_K = 0.0d0
-      uCF_K = 0.0d0
-      uPF_K = 0.0d0
-      uAF_K = 0.0d0
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -90,51 +80,91 @@ CONTAINS
 
         BX = MFI % tilebox()
 
-        lo_G = LBOUND( uGF ); hi_G = UBOUND( uGF )
-        lo_C = LBOUND( uCF ); hi_C = UBOUND( uCF )
-        lo_P = LBOUND( uPF ); hi_P = UBOUND( uPF )
-        lo_A = LBOUND( uAF ); hi_A = UBOUND( uAF )
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
 
-        DO iX3 = BX % lo(3), BX % hi(3)
-        DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1)
+        ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3), 1:nGF ) )
+        ALLOCATE( U(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3), 1:nCF ) )
+        ALLOCATE( P(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3), 1:nPF ) )
+        ALLOCATE( A(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3), 1:nAF ) )
 
-          uGF_K &
-            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+        CALL AMReX2thornado &
+               ( nGF, iX_B0, iX_E0, &
+                 uGF(      iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nDOFX*nGF), &
+                 G(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nGF) )
+        CALL AMReX2thornado &
+               ( nCF, iX_B0, iX_E0, &
+                 uCF(      iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nDOFX*nCF), &
+                 U(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nCF) )
+        CALL AMReX2thornado &
+               ( nPF, iX_B0, iX_E0, &
+                 uPF(      iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nDOFX*nPF), &
+                 P(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nPF) )
+        CALL AMReX2thornado &
+               ( nAF, iX_B0, iX_E0, &
+                 uAF(      iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nDOFX*nAF), &
+                 A(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nAF) )
 
-          uCF_K &
-            = RESHAPE( uCF(iX1,iX2,iX3,lo_C(4):hi_C(4)), [ nDOFX, nCF ] )
+        CALL Euler_ComputeFromConserved &
+               ( iX_B0, iX_E0, &
+                 G(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nGF), &
+                 U(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nCF), &
+                 P(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nPF), &
+                 A(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nAF) )
 
-          ! --- Primitive Fluid ---
+        CALL thornado2AMReX &
+               ( nPF, iX_B0, iX_E0, &
+                 uPF(      iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nDOFX*nPF), &
+                 P(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nPF) )
+        CALL thornado2AMReX &
+               ( nAF, iX_B0, iX_E0, &
+                 uAF(      iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nDOFX*nAF), &
+                 A(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nAF) )
 
-          CALL ComputePrimitive &
-                 ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-                   uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                   uGF_K(:,iGF_Gm_dd_11), &
-                   uGF_K(:,iGF_Gm_dd_22), &
-                   uGF_K(:,iGF_Gm_dd_33) )
-
-          uPF(iX1,iX2,iX3,:) &
-            = RESHAPE( uPF_K, [hi_P(4)-lo_P(4)+1] )
-
-          ! --- Auxiliary Fluid ---
-
-          CALL ComputePressureFromPrimitive &
-                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
-                   uAF_K(:,iAF_P) )
-
-          CALL ComputeSoundSpeedFromPrimitive &
-                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
-                   uAF_K(:,iAF_Cs) )
-
-          uAF(iX1,iX2,iX3,:) &
-            = RESHAPE( uAF_K, [hi_A(4)-lo_A(4)+1] )
-
-        END DO
-        END DO
-        END DO
+        DEALLOCATE( A )
+        DEALLOCATE( P )
+        DEALLOCATE( U )
+        DEALLOCATE( G )
 
       END DO
 
@@ -148,26 +178,27 @@ CONTAINS
   SUBROUTINE MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, TimeStepMin )
 
     TYPE(amrex_multifab), INTENT(in)  :: &
-      MF_uGF(0:nlevels), &
-      MF_uCF(0:nLevels)
+      MF_uGF(0:nlevels), MF_uCF(0:nLevels)
     REAL(amrex_real),     INTENT(in)  :: &
       CFL
     REAL(amrex_real),     INTENT(out) :: &
       TimeStepMin(0:nLevels)
 
-    INTEGER            :: iLevel
-    INTEGER            :: iX1, iX2, iX3, iX_B0(3), iX_E0(3)
-    INTEGER            :: lo_G(4), hi_G(4)
-    INTEGER            :: lo_C(4), hi_C(4)
-    TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
-    REAL(amrex_real)   :: TimeStep(0:nLevels)
+    TYPE(amrex_box)    :: BX
+
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE         :: G(:,:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE         :: U(:,:,:,:,:)
+
+    REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
+
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3)
+
+    REAL(amrex_real) :: TimeStep(0:nLevels)
 
     TimeStepMin = HUGE( 1.0e0_amrex_real )
+
     DO iLevel = 0, nLevels
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
@@ -179,9 +210,6 @@ CONTAINS
 
         BX = MFI % tilebox()
 
-        lo_G = LBOUND( uGF ); hi_G = UBOUND( uGF )
-        lo_C = LBOUND( uCF ); hi_C = UBOUND( uCF )
-
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
@@ -192,29 +220,37 @@ CONTAINS
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3),1:nCF) )
 
-        DO iX3 = BX % lo(3), BX % hi(3)
-        DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1)
+        CALL AMReX2thornado &
+               ( nGF, iX_B0, iX_E0, &
+                 uGF(      iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nDOFX*nGF), &
+                 G(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nGF) )
+        CALL AMReX2thornado &
+               ( nCF, iX_B0, iX_E0, &
+                 uCF(      iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nDOFX*nCF), &
+                 U(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nCF) )
 
-           G(1:nDOFX,iX1,iX2,iX3,1:nGF) &
-             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
-           U(1:nDOFX,iX1,iX2,iX3,1:nCF) &
-             = RESHAPE( uCF(iX1,iX2,iX3,lo_C(4):hi_C(4)), [ nDOFX, nCF ] )
-
-        END DO
-        END DO
-        END DO
-
-        CALL ComputeTimeStep &
+        CALL Euler_ComputeTimeStep &
                ( iX_B0, iX_E0, &
-                 G(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-                 U(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+                 G(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nGF), &
+                 U(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nCF), &
                  CFL, TimeStep(iLevel) )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 
-        DEALLOCATE( G )
         DEALLOCATE( U )
+        DEALLOCATE( G )
 
       END DO ! --- Loop over grids (boxes) ---
 

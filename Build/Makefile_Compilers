@@ -248,10 +248,13 @@ PP_summit_pgi                  =
 PP_summit_xl                   = -WF,
 PP                             = $(PP_$(MACHINE))
 
+HYDRO ?= NONRELATIVISTIC
+
 DEFINES = \
 $(PP)-DMICROPHYSICS_$(MICROPHYSICS) \
 $(PP)-DMOMENT_CLOSURE_$(MOMENT_CLOSURE) \
-$(PP)-DGRAVITY_SOLVER_$(GRAVITY_SOLVER)
+$(PP)-DGRAVITY_SOLVER_$(GRAVITY_SOLVER) \
+$(PP)-DHYDRO_$(HYDRO)
 
 ifeq ($(USE_GPU),TRUE)
    INCLUDE      += $(INCLUDE_CUDA)

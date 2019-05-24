@@ -8,6 +8,8 @@ MODULE ReferenceElementModule
     nNodesX, &
     nNodesE, &
     nNodesZ, &
+    nDOFX, &
+    nDOFE, &
     nDOF
 
   IMPLICIT NONE
@@ -17,6 +19,7 @@ MODULE ReferenceElementModule
   INTEGER,               PUBLIC :: nDOF_X2
   INTEGER,               PUBLIC :: nDOF_X3
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumbersX(:)
+  INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumbersE(:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable(:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable_X1(:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable_X2(:,:)
@@ -67,6 +70,28 @@ CONTAINS
           END DO
         END DO
       END DO
+    END DO
+
+    ALLOCATE( NodeNumbersE(nDOFX,nDOFE) )
+
+    iNode  = 0
+    iNodeX = 0
+    DO iNodeX3 = 1, nNodesX(3)
+    DO iNodeX2 = 1, nNodesX(2)
+    DO iNodeX1 = 1, nNodesX(1)
+
+      iNodeX = iNodeX + 1
+
+      DO iNodeE = 1, nNodesE
+
+        iNode = iNode + 1
+
+        NodeNumbersE(iNodeX,iNodeE) = iNode
+
+      END DO
+
+    END DO
+    END DO
     END DO
 
     ALLOCATE( NodeNumberTable(4,nDOF) )

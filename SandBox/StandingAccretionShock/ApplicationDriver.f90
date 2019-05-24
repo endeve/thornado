@@ -42,14 +42,14 @@ PROGRAM ApplicationDriver
   USE InitializationModule, ONLY: &
     InitializeFields, ApplyPerturbations
   USE Euler_UtilitiesModule, ONLY: &
-    ComputeFromConserved, &
-    ComputeTimeStep
+    Euler_ComputeFromConserved, &
+    Euler_ComputeTimeStep
   USE Euler_dgDiscretizationModule, ONLY: &
     Euler_ComputeIncrement_DG_Explicit
   USE Euler_TallyModule, ONLY: &
-    InitializeTally_Euler, &
-    FinalizeTally_Euler, &
-    ComputeTally_Euler
+    Euler_InitializeTally, &
+    Euler_FinalizeTally, &
+    Euler_ComputeTally
 
   IMPLICIT NONE
 
@@ -140,7 +140,7 @@ PROGRAM ApplicationDriver
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-  CALL ComputeFromConserved &
+  CALL Euler_ComputeFromConserved &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -158,7 +158,7 @@ PROGRAM ApplicationDriver
   t_wrt = dt_wrt
   wrt   = .FALSE.
 
-  CALL InitializeTally_Euler &
+  CALL Euler_InitializeTally &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
@@ -168,7 +168,7 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    CALL ComputeTimeStep &
+    CALL Euler_ComputeTimeStep &
            ( iX_B0, iX_E0, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -202,7 +202,7 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
-      CALL ComputeFromConserved &
+      CALL Euler_ComputeFromConserved &
              ( iX_B0, iX_E0, &
                uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -212,7 +212,7 @@ PROGRAM ApplicationDriver
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-      CALL ComputeTally_Euler &
+      CALL Euler_ComputeTally &
              ( iX_B0, iX_E0, &
                uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -224,7 +224,7 @@ PROGRAM ApplicationDriver
 
   END DO
 
-  CALL ComputeFromConserved &
+  CALL Euler_ComputeFromConserved &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -234,13 +234,13 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL ComputeTally_Euler &
+  CALL Euler_ComputeTally &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
-  CALL FinalizeTally_Euler
+  CALL Euler_FinalizeTally
 
   wTime = MPI_WTIME( ) - wTime
 

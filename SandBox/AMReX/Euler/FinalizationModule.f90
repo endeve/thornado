@@ -15,8 +15,6 @@ MODULE FinalizationModule
     FinalizeReferenceElementX_Lagrange
    USE MeshModule,                      ONLY: &
     MeshType, DestroyMesh
-  USE GeometryFieldsModule,             ONLY: &
-    DestroyGeometryFields
   USE FluidFieldsModule,                ONLY: &
     DestroyFluidFields
   USE EquationOfStateModule,            ONLY: &
@@ -57,8 +55,6 @@ CONTAINS
     CALL Euler_FinalizeSlopeLimiter
 
     CALL FinalizeEquationOfState
-
-    CALL DestroyGeometryFields
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX

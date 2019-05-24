@@ -1,4 +1,4 @@
-MODULE Euler_GR_CharacteristicDecompositionModule
+MODULE Euler_CharacteristicDecompositionModule_Relativistic
 
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Two, Four
@@ -17,37 +17,39 @@ MODULE Euler_GR_CharacteristicDecompositionModule
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
-  USE Euler_GR_UtilitiesModule, ONLY: &
-    ComputePrimitive_GR, &
-    Eigenvalues_GR
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    Euler_ComputePrimitive_Relativistic, &
+    Euler_Eigenvalues_Relativistic
   USE EquationOfStateModule, ONLY: &
-    ComputeSoundSpeedFromPrimitive_GR
+    ComputeSoundSpeedFromPrimitive, &
+    ComputePressureFromPrimitive
 
   IMPLICIT NONE
   PRIVATE
 
   INCLUDE 'mpif.h'
 
-  PUBLIC :: Euler_GR_ComputeCharacteristicDecomposition
+  PUBLIC :: Euler_ComputeCharacteristicDecomposition_Relativistic
 
 CONTAINS
 
 
-  SUBROUTINE Euler_GR_ComputeCharacteristicDecomposition( iDim, G, U, R, invR )
+  SUBROUTINE Euler_ComputeCharacteristicDecomposition_Relativistic &
+    ( iDim, G, U, R, invR )
 
     INTEGER,  INTENT(in)  :: iDim
     REAL(DP), INTENT(in)  :: G(nGF), U(nCF)
     REAL(DP), INTENT(out) :: R(nCF,nCF), invR(nCF,nCF)
 
-    REAL(DP) :: D(1), V1(1), V2(1), V3(1), E(1), Ne(1), P(1), Cs(1)
-    REAL(DP) :: Vu1, Vu2, Vu3, Vd1, Vd2, Vd3
-    REAL(DP) :: Gmdd11, Gmdd22, Gmdd33
-    REAL(DP) :: W, h, LapseFunction
-    REAL(DP) :: ShiftVector(3)
-    REAL(DP) :: epsilon, kappa, chi, VSq, VdSq, K
-    REAL(DP) :: EigVals(nCF)
-    REAL(DP) :: LAMBDA_m, LAMBDA_p
-    REAL(DP) :: Vm, Vp, Am, Ap, Nm, Np
+    REAL(DP) :: D(1), V1(1), V2(1), V3(1), E(1), Ne(1), P(1), Cs(1), &
+                Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, &
+                Gmdd11, Gmdd22, Gmdd33, &
+                W, h, LapseFunction, &
+                ShiftVector(3), &
+                epsilon, kappa, chi, VSq, VdSq, K, &
+                EigVals(nCF), &
+                LAMBDA_m, LAMBDA_p, &
+                Vm, Vp, Am, Ap, Nm, Np
 
     LOGICAL  :: DEBUG = .FALSE.
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
@@ -61,13 +63,15 @@ CONTAINS
     ShiftVector(2) = G(iGF_Beta_2)
     ShiftVector(3) = G(iGF_Beta_3)
 
-    CALL ComputePrimitive_GR &
+    CALL Euler_ComputePrimitive_Relativistic &
            ( [U(iCF_D )], [U(iCF_S1)], [U(iCF_S2)], &
              [U(iCF_S3)], [U(iCF_E )], [U(iCF_Ne)], &
-             D, V1, V2, V3, E, Ne, P, &
+             D, V1, V2, V3, E, Ne, &
              [G(iGF_Gm_dd_11)], &
              [G(iGF_Gm_dd_22)], &
              [G(iGF_Gm_dd_33)] )
+
+    CALL ComputePressureFromPrimitive( D, E, Ne, P )
 
     Vu1 = V1(1)
     Vu2 = V2(1)
@@ -89,7 +93,7 @@ CONTAINS
     chi     = ( Gamma_IDEAL - One ) * epsilon
     kappa   = ( Gamma_IDEAL - One ) * D(1)
 
-    CALL ComputeSoundSpeedFromPrimitive_GR( D, E, Ne, Cs )
+    CALL ComputeSoundSpeedFromPrimitive( D, E, Ne, Cs )
 
     ! --- Rezzolla, Eq. (7.244) ---
     K = ( Gamma_IDEAL - One ) / ( Gamma_IDEAL - One - Cs(1)**2 )
@@ -98,9 +102,9 @@ CONTAINS
 
       CASE( 1 )
 
-        EigVals = Eigenvalues_GR &
-                    ( Vu1, Vu2, Vu3, Vu1, Cs(1), &
-                      Gmdd11, Gmdd22, Gmdd33, Gmdd11, &
+        EigVals = Euler_Eigenvalues_Relativistic &
+                    ( Vu1, Cs(1), Vu1, Vu2, Vu3, &
+                      Gmdd11, Gmdd11, Gmdd22, Gmdd33, &
                       LapseFunction, ShiftVector(1) )
 
         ! --- lambda_m = EigVals(1) ---
@@ -183,9 +187,9 @@ CONTAINS
 
       CASE( 2 )
 
-        EigVals = Eigenvalues_GR &
-                    ( Vu1, Vu2, Vu3, Vu2, Cs(1), &
-                      Gmdd11, Gmdd22, Gmdd33, Gmdd22, &
+        EigVals = Euler_Eigenvalues_Relativistic &
+                    ( Vu2, Cs(1), Vu1, Vu2, Vu3, &
+                      Gmdd22, Gmdd11, Gmdd22, Gmdd33, &
                       LapseFunction, ShiftVector(2) )
 
         ! --- lambda_m = EigVals(1) ---
@@ -277,7 +281,7 @@ CONTAINS
 
     END SELECT
 
-  END SUBROUTINE Euler_GR_ComputeCharacteristicDecomposition
+  END SUBROUTINE Euler_ComputeCharacteristicDecomposition_Relativistic
   
 
   ! --- Find the inverse of a matrix, function definition from
@@ -338,15 +342,17 @@ CONTAINS
     ShiftVector(2) = G(iGF_Beta_2)
     ShiftVector(3) = G(iGF_Beta_3)
 
-    CALL ComputePrimitive_GR &
+    CALL Euler_ComputePrimitive_Relativistic &
            ( [U(iCF_D )], [U(iCF_S1)], [U(iCF_S2)], &
              [U(iCF_S3)], [U(iCF_E )], [U(iCF_Ne)], &
-             D, V1, V2, V3, E, Ne, P, &
+             D, V1, V2, V3, E, Ne, &
              [G(iGF_Gm_dd_11)], &
              [G(iGF_Gm_dd_22)], &
              [G(iGF_Gm_dd_33)] )
 
-    CALL ComputeSoundSpeedFromPrimitive_GR( D, E, Ne, Cs )
+    CALL ComputePressureFromPrimitive( D, E, Ne, P )
+
+    CALL ComputeSoundSpeedFromPrimitive( D, E, Ne, Cs )
 
     rho     = D(1)
     epsilon = E(1) / D(1)
@@ -583,4 +589,4 @@ CONTAINS
   END SUBROUTINE ComputeFluxJacConsMatrix
 
 
-END MODULE Euler_GR_CharacteristicDecompositionModule
+END MODULE Euler_CharacteristicDecompositionModule_Relativistic

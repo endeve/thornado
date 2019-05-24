@@ -11,11 +11,7 @@ MODULE MF_Euler_BoundaryConditionsModule
 
   ! --- thornado Modules ---
   USE Euler_BoundaryConditionsModule, ONLY: &
-    Euler_ApplyBoundaryConditions, &
-    iEuler_ApplyBC_Both,  &
-    iEuler_ApplyBC_Inner, &
-    iEuler_ApplyBC_Outer, &
-    iEuler_ApplyBC_None
+    Euler_ApplyBoundaryConditions
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -23,6 +19,13 @@ MODULE MF_Euler_BoundaryConditionsModule
 
   IMPLICIT NONE
   PRIVATE
+
+  ! --- Hack to get iEuler_ApplyBC_XXX. DO NOT CHANGE THESE VALUES ---
+  INTEGER, PARAMETER :: iEuler_ApplyBC_Both  = 0
+  INTEGER, PARAMETER :: iEuler_ApplyBC_Inner = 1
+  INTEGER, PARAMETER :: iEuler_ApplyBC_Outer = 2
+  INTEGER, PARAMETER :: iEuler_ApplyBC_None  = 3
+
 
   PUBLIC :: MF_Euler_ApplyBoundaryConditions
   PUBLIC :: ConstructEdgeMap

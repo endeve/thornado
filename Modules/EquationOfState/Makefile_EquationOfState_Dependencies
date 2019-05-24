@@ -1,7 +1,7 @@
 EquationOfStateModule_IDEAL.o: \
   KindModule.o \
   FluidFieldsModule.o \
-  EquationOfStateModule_IDEAL.f90
+  EquationOfStateModule_IDEAL.F90
 
 ifeq ($(MICROPHYSICS),WEAKLIB)
 EquationOfStateModule_TABLE.o: \

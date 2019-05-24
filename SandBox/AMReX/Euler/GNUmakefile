@@ -15,7 +15,7 @@ TINY_PROFILE = FALSE
 
 COMP      = gnu
 
-DIM       = 2
+DIM       = 1
 
 EBASE     = main
 
@@ -35,3 +35,4 @@ include $(AMREX_HOME)/Src/AmrCore/Make.package
 include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules
+

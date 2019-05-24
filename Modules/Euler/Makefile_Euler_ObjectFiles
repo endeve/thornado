@@ -1,8 +1,22 @@
 EULER = \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  Euler_UtilitiesModule_Relativistic.o \
   Euler_UtilitiesModule.o \
+  Euler_BoundaryConditionsModule_NonRelativistic.o \
+  Euler_BoundaryConditionsModule_Relativistic.o \
   Euler_BoundaryConditionsModule.o \
+  Euler_CharacteristicDecompositionModule_NonRelativistic.o \
+  Euler_CharacteristicDecompositionModule_Relativistic.o \
   Euler_CharacteristicDecompositionModule.o \
+  Euler_CharacteristicDecompositionModule_TABLE_NonRelativistic.o \
   Euler_CharacteristicDecompositionModule_TABLE.o \
+  Euler_SlopeLimiterModule_NonRelativistic.o \
+  Euler_SlopeLimiterModule_Relativistic.o \
   Euler_SlopeLimiterModule.o \
+  Euler_PositivityLimiterModule_NonRelativistic.o \
+  Euler_PositivityLimiterModule_Relativistic.o \
   Euler_PositivityLimiterModule.o \
-  Euler_dgDiscretizationModule.o
+  Euler_dgDiscretizationModule.o \
+  Euler_TallyModule_NonRelativistic.o \
+  Euler_TallyModule_Relativistic.o \
+  Euler_TallyModule.o

@@ -1,4 +1,4 @@
-MODULE Euler_GR_TallyModule
+MODULE Euler_TallyModule_Relativistic
 
   USE KindModule, ONLY: &
     DP, Zero
@@ -18,25 +18,28 @@ MODULE Euler_GR_TallyModule
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE Euler_GR_UtilitiesModule, ONLY: &
-    ComputePrimitive_GR
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    Euler_ComputePrimitive_Relativistic
+  USE EquationOfStateModule, ONLY: &
+    ComputePressureFromPrimitive
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_GR_InitializeTally
-  PUBLIC :: Euler_GR_FinalizeTally
-  PUBLIC :: Euler_GR_ComputeTally
+  PUBLIC :: Euler_InitializeTally_Relativistic
+  PUBLIC :: Euler_FinalizeTally_Relativistic
+  PUBLIC :: Euler_ComputeTally_Relativistic
 
   CHARACTER(256)        :: TallyFileName
   INTEGER               :: nTallies
   INTEGER               :: iTally_Pres
   REAL(DP), ALLOCATABLE :: EulerTally(:,:)
 
+
 CONTAINS
 
 
-  SUBROUTINE Euler_GR_InitializeTally( iX_B0, iX_E0, G, U )
+  SUBROUTINE Euler_InitializeTally_Relativistic( iX_B0, iX_E0, G, U )
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3)
@@ -61,25 +64,25 @@ CONTAINS
 
     CLOSE( FileUnit )
 
-    CALL Euler_GR_ComputeTally &
+    CALL Euler_ComputeTally_Relativistic &
            ( iX_B0, iX_E0, G, U, Time = Zero, &
              iState_Option = 0, DisplayTally_Option = .FALSE. )
 
-    CALL Euler_GR_ComputeTally &
+    CALL Euler_ComputeTally_Relativistic &
            ( iX_B0, iX_E0, G, U, Time = Zero, &
              iState_Option = 1, DisplayTally_Option = .TRUE. )
 
-  END SUBROUTINE Euler_GR_InitializeTally
+  END SUBROUTINE Euler_InitializeTally_Relativistic
 
 
-  SUBROUTINE Euler_GR_FinalizeTally
+  SUBROUTINE Euler_FinalizeTally_Relativistic
 
     DEALLOCATE( EulerTally )
 
-  END SUBROUTINE Euler_GR_FinalizeTally
+  END SUBROUTINE Euler_FinalizeTally_Relativistic
 
 
-  SUBROUTINE Euler_GR_ComputeTally &
+  SUBROUTINE Euler_ComputeTally_Relativistic &
     ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
 
     INTEGER,  INTENT(in) :: &
@@ -144,16 +147,18 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      CALL ComputePrimitive_GR &
+      CALL Euler_ComputePrimitive_Relativistic &
              ( U(:,iX1,iX2,iX3,iCF_D) , U(:,iX1,iX2,iX3,iCF_S1), &
                U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
                U(:,iX1,iX2,iX3,iCF_E) , U(:,iX1,iX2,iX3,iCF_Ne), &
                P(:,iPF_D) , P(:,iPF_V1), P(:,iPF_V2), &
                P(:,iPF_V3), P(:,iPF_E) , P(:,iPF_Ne), &
-               Pressure, &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      CALL ComputePressureFromPrimitive &
+             ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), Pressure )
 
       ! --- Pressure ---
 
@@ -176,7 +181,7 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE Euler_GR_ComputeTally
+  END SUBROUTINE Euler_ComputeTally_Relativistic
 
 
   SUBROUTINE WriteTally_Euler( Time )
@@ -205,4 +210,4 @@ CONTAINS
   END SUBROUTINE WriteTally_Euler
 
 
-END MODULE Euler_GR_TallyModule
+END MODULE Euler_TallyModule_Relativistic

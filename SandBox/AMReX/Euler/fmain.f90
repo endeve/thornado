@@ -28,6 +28,10 @@ PROGRAM main
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_communicator
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse,       &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,              ONLY: &
@@ -46,8 +50,7 @@ PROGRAM main
   USE EquationOfStateModule,            ONLY: &
     InitializeEquationOfState
   USE GeometryFieldsModule,             ONLY: &
-    nGF, CoordinateSystem, &
-    CreateGeometryFields
+    nGF, CoordinateSystem
   USE FluidFieldsModule,                ONLY: &
     nCF, nPF, nAF, &
     CreateFluidFields
@@ -105,6 +108,7 @@ PROGRAM main
   INCLUDE 'mpif.h'
 
   INTEGER                            :: iLevel, iDim, iErr
+  TYPE(amrex_parmparse)              :: PP
   TYPE(amrex_box)                    :: BX
   TYPE(amrex_boxarray),  ALLOCATABLE :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE :: DM(:)
@@ -203,13 +207,13 @@ PROGRAM main
   CALL InitializeReferenceElementX_Lagrange
 
   CALL MF_ComputeGeometryX( MF_uGF )
-  CALL CreateGeometryFields &
-         ( nX, swX, CoordinateSystem, amrex_parallel_ioprocessor() )
 
-  IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
-    Mass = 0.5_amrex_real
-    CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
-  END IF
+  Mass = 0.0_amrex_real
+  CALL amrex_parmparse_build( PP, 'SAS' )
+    CALL PP % query( 'Mass', Mass )
+  CALL amrex_parmparse_destroy( PP )
+
+  CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &

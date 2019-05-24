@@ -375,7 +375,8 @@ CONTAINS
                   END IF
 
                   uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
-                    = uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS)
+                    = uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
+                      * ( 1.d0 - 1d-5 )
 
                   uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) &
                     = 0.0_DP

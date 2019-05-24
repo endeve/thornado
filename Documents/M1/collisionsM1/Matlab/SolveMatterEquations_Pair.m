@@ -1,4 +1,4 @@
-function [J0, D, T, Y, E, iter] = SolveMatterEquations_Pair( Jin, dt, Chi, D, T, Y, E)
+function [J, J0, D, T, Y, E, iter] = SolveMatterEquations_Pair( Jin, dt, Chi, D, T, Y, E)
 
 % g_E_N       : nE_G x 1 (energy grid)
 % J, J_0    : nE_G x 1 (size of energy grid)
@@ -164,7 +164,9 @@ while((~CONVERGED)&&(k<=maxIter))
     end
     
     % check convergence
-    if (norm([Unew; Jnew.Ne; Jnew.ANe] - [U; J.Ne; J.ANe]) <= Rtol * norm([U0; Jin.Ne; Jin.ANe]))
+%     if (norm([Unew; Jnew.Ne; Jnew.ANe] - [U; J.Ne; J.ANe]) <= Rtol * norm([U0; Jin.Ne; Jin.ANe]))
+    if ((norm(Unew(1) - U(1)) <= Rtol * norm(U0(1))) && (norm(Unew(2) - U(2)) <= Rtol * norm(U0(2)))...
+        && (norm(Jnew.Ne - J.Ne) <= Rtol * norm(Jin.Ne)) && (norm(Jnew.ANe - J.ANe) <= Rtol * norm(Jin.ANe)))
         CONVERGED = true;
     end
     

@@ -22,8 +22,8 @@ The two-moment method has been widely applied in the CCSN modeling community wit
 Applying the two-moment method does simplify the problem, but doesn't guarantee an affordable solution.
 To be precise, how to discretize the continuous system of equatio
 ns given by the two-moment method and solve the discretized system efficiently remains a question.
-In fact, the time scales of neutrino interactions with the background (they can be $\sim\mathcal{O}(10^{-13})$~second) is short compared to the duration of the CCSN explosion ($\sim\mathcal{O}(1)$~second).  
-This means that $\sim\mathcal{O}(10^{13})$ time steps could be needed for solving the system fully explicitly. 
+In fact, the time scales of neutrino interactions with the background (they can be $\sim\mathcal{O}(10^{-10})$~second) is short compared to the duration of the CCSN explosion ($\sim\mathcal{O}(1)$~second).  
+This means that $\sim\mathcal{O}(10^{10})$ time steps could be needed for solving the system fully explicitly. 
 On the other hand, solving the moment equations fully implicitly requires inverting global band-structured matrices whose sizes depend on the phase-space discretization.
 Such a global inversion is both expensive and unfriendly to parallelization.
 To circumvent these challenges, implicit-explicit (IMEX) methods are taken into consideration.
