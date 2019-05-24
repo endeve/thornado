@@ -23,9 +23,9 @@ MODULE EquationOfStateModule
     ComputeAuxiliary_Fluid_TABLE, &
     Auxiliary_Fluid_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
-    ComputeElectronChemicalPotential_TABLE, &
-    ComputeProtonChemicalPotential_TABLE, &
-    ComputeNeutronChemicalPotential_TABLE
+    ComputeElectronChemicalPotentialPoints_TABLE, &
+    ComputeProtonChemicalPotentialPoints_TABLE, &
+    ComputeNeutronChemicalPotentialPoints_TABLE
   USE UnitsModule, ONLY: &
     AtomicMassUnit
 
@@ -217,11 +217,11 @@ CONTAINS
         ComputeSpecificInternalEnergy &
           => ComputeSpecificInternalEnergy_TABLE
         ComputeElectronChemicalPotential &
-          => ComputeElectronChemicalPotential_TABLE
+          => ComputeElectronChemicalPotentialPoints_TABLE
         ComputeProtonChemicalPotential &
-          => ComputeProtonChemicalPotential_TABLE
+          => ComputeProtonChemicalPotentialPoints_TABLE
         ComputeNeutronChemicalPotential &
-          => ComputeNeutronChemicalPotential_TABLE
+          => ComputeNeutronChemicalPotentialPoints_TABLE
 
       CASE DEFAULT
 

@@ -96,10 +96,29 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputePressure_TABLE
   PUBLIC :: ComputeSpecificInternalEnergy_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
+  PUBLIC :: ComputeElectronChemicalPotentialPoints_TABLE
+  PUBLIC :: ComputeElectronChemicalPotentialPoint_TABLE
   PUBLIC :: ComputeProtonChemicalPotential_TABLE
+  PUBLIC :: ComputeProtonChemicalPotentialPoints_TABLE
+  PUBLIC :: ComputeProtonChemicalPotentialPoint_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
-  PUBLIC :: ComputeDependentVariable_TABLE
-  PUBLIC :: ComputeDependentVariablePoint_TABLE
+  PUBLIC :: ComputeNeutronChemicalPotentialPoints_TABLE
+  PUBLIC :: ComputeNeutronChemicalPotentialPoint_TABLE
+
+  INTERFACE ComputeElectronChemicalPotential_TABLE
+    MODULE PROCEDURE ComputeElectronChemicalPotentialPoints_TABLE
+    MODULE PROCEDURE ComputeElectronChemicalPotentialPoint_TABLE
+  END INTERFACE
+
+  INTERFACE ComputeProtonChemicalPotential_TABLE
+    MODULE PROCEDURE ComputeProtonChemicalPotentialPoints_TABLE
+    MODULE PROCEDURE ComputeProtonChemicalPotentialPoint_TABLE
+  END INTERFACE
+
+  INTERFACE ComputeNeutronChemicalPotential_TABLE
+    MODULE PROCEDURE ComputeNeutronChemicalPotentialPoints_TABLE
+    MODULE PROCEDURE ComputeNeutronChemicalPotentialPoint_TABLE
+  END INTERFACE
 
 #if defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
@@ -853,7 +872,7 @@ CONTAINS
   END SUBROUTINE ComputeSpecificInternalEnergy_TABLE
 
 
-  SUBROUTINE ComputeElectronChemicalPotential_TABLE &
+  SUBROUTINE ComputeElectronChemicalPotentialPoints_TABLE &
                ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
     REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
@@ -905,10 +924,68 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE ComputeElectronChemicalPotential_TABLE
+  END SUBROUTINE ComputeElectronChemicalPotentialPoints_TABLE
 
 
-  SUBROUTINE ComputeProtonChemicalPotential_TABLE &
+  SUBROUTINE ComputeElectronChemicalPotentialPoint_TABLE &
+               ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
+
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), POINTER :: dMdD, dMdT, dMdY
+    LOGICAL :: ComputeDerivatives
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdY_Option )
+
+    IF ( PRESENT( dMdD_Option ) ) THEN
+      dMdD => dMdD_Option
+    ELSE
+      dMdD => dMdD_Local
+    END IF
+
+    IF ( PRESENT( dMdT_Option ) ) THEN
+      dMdT => dMdT_Option
+    ELSE
+      dMdT => dMdT_Local
+    END IF
+
+    IF ( PRESENT( dMdY_Option ) ) THEN
+      dMdY => dMdY_Option
+    ELSE
+      dMdY => dMdY_Local
+    END IF
+
+    IF ( ComputeDerivatives ) THEN
+
+      CALL ComputeDependentVariableAndDerivativesPoint_TABLE &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Me_T, OS_Me, &
+               Units_V = MeV )
+
+    ELSE
+
+      CALL ComputeDependentVariablePoint_TABLE &
+             ( D, T, Y, M, Me_T, OS_Me, &
+               Units_V = MeV )
+
+    END IF
+
+  END SUBROUTINE ComputeElectronChemicalPotentialPoint_TABLE
+
+
+  SUBROUTINE ComputeProtonChemicalPotentialPoints_TABLE &
                ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
     REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
@@ -960,10 +1037,68 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE ComputeProtonChemicalPotential_TABLE
+  END SUBROUTINE ComputeProtonChemicalPotentialPoints_TABLE
 
 
-  SUBROUTINE ComputeNeutronChemicalPotential_TABLE &
+  SUBROUTINE ComputeProtonChemicalPotentialPoint_TABLE &
+               ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
+
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), POINTER :: dMdD, dMdT, dMdY
+    LOGICAL :: ComputeDerivatives
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdY_Option )
+
+    IF ( PRESENT( dMdD_Option ) ) THEN
+      dMdD => dMdD_Option
+    ELSE
+      dMdD => dMdD_Local
+    END IF
+
+    IF ( PRESENT( dMdT_Option ) ) THEN
+      dMdT => dMdT_Option
+    ELSE
+      dMdT => dMdT_Local
+    END IF
+
+    IF ( PRESENT( dMdY_Option ) ) THEN
+      dMdY => dMdY_Option
+    ELSE
+      dMdY => dMdY_Local
+    END IF
+
+    IF ( ComputeDerivatives ) THEN
+
+      CALL ComputeDependentVariableAndDerivativesPoint_TABLE &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mp_T, Os_Mp, &
+               Units_V = MeV )
+
+    ELSE
+
+      CALL ComputeDependentVariablePoint_TABLE &
+             ( D, T, Y, M, Mp_T, Os_Mp, &
+               Units_V = MeV )
+
+    END IF
+
+  END SUBROUTINE ComputeProtonChemicalPotentialPoint_TABLE
+
+
+  SUBROUTINE ComputeNeutronChemicalPotentialPoints_TABLE &
                ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
     REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
@@ -1015,7 +1150,65 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE ComputeNeutronChemicalPotential_TABLE
+  END SUBROUTINE ComputeNeutronChemicalPotentialPoints_TABLE
+
+
+  SUBROUTINE ComputeNeutronChemicalPotentialPoint_TABLE &
+               ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
+
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), POINTER :: dMdD, dMdT, dMdY
+    LOGICAL :: ComputeDerivatives
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdY_Option )
+
+    IF ( PRESENT( dMdD_Option ) ) THEN
+      dMdD => dMdD_Option
+    ELSE
+      dMdD => dMdD_Local
+    END IF
+
+    IF ( PRESENT( dMdT_Option ) ) THEN
+      dMdT => dMdT_Option
+    ELSE
+      dMdT => dMdT_Local
+    END IF
+
+    IF ( PRESENT( dMdY_Option ) ) THEN
+      dMdY => dMdY_Option
+    ELSE
+      dMdY => dMdY_Local
+    END IF
+
+    IF ( ComputeDerivatives ) THEN
+
+      CALL ComputeDependentVariableAndDerivativesPoint_TABLE &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mn_T, OS_Mn, &
+               Units_V = MeV )
+
+    ELSE
+
+      CALL ComputeDependentVariablePoint_TABLE &
+             ( D, T, Y, M, Mn_T, OS_Mn, &
+               Units_V = MeV )
+
+    END IF
+
+  END SUBROUTINE ComputeNeutronChemicalPotentialPoint_TABLE
 
 
   SUBROUTINE ComputeDependentVariable_TABLE( D, T, Y, V, V_T, OS_V, Units_V )

@@ -23,8 +23,7 @@ MODULE NeutrinoOpacitiesComputationModule
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeElectronChemicalPotential_TABLE, &
     ComputeProtonChemicalPotential_TABLE, &
-    ComputeNeutronChemicalPotential_TABLE, &
-    ComputeDependentVariablePoint_TABLE
+    ComputeNeutronChemicalPotential_TABLE
   USE OpacityModule_TABLE, ONLY: &
 #ifdef MICROPHYSICS_WEAKLIB
     OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
@@ -230,30 +229,30 @@ CONTAINS
     REAL(DP), INTENT(out) :: f_EQ_Point(iE_B:iE_E)
     INTEGER,  INTENT(in)  :: iSpecies
 
-    REAL(DP) :: Me(1), Mp(1), Mn(1), Mnu
+    REAL(DP) :: Me, Mp, Mn, Mnu
 
     ! --- Compute Chemical Potentials ---
 
     CALL ComputeElectronChemicalPotential_TABLE &
-           ( [ D ], [ T ], [ Y ], Me )
+           ( D, T, Y, Me )
 
     CALL ComputeProtonChemicalPotential_TABLE &
-           ( [ D ], [ T ], [ Y ], Mp )
+           ( D, T, Y, Mp )
 
     CALL ComputeNeutronChemicalPotential_TABLE &
-           ( [ D ], [ T ], [ Y ], Mn )
+           ( D, T, Y, Mn )
 
     IF( iSpecies .EQ. iNuE )THEN
 
       ! --- Electron Neutrinos ---
 
-      Mnu = ( Me(1) + Mp(1) ) - Mn(1)
+      Mnu = ( Me + Mp ) - Mn
 
     ELSEIF( iSpecies .EQ. iNuE_Bar )THEN
 
       ! --- Electron Antineutrino ---
 
-      Mnu = Mn(1) - ( Me(1) + Mp(1) )
+      Mnu = Mn - ( Me + Mp )
 
     ELSE
 
@@ -348,6 +347,7 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
     REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(out) :: opEC_Point(iE_B:iE_E)
     INTEGER,  INTENT(in)  :: iSpecies
 
     CALL ComputeNeutrinoOpacityE_Point &
@@ -602,9 +602,8 @@ CONTAINS
 
     ! --- Compute Electron Chemical Potential ---
 
-    CALL ComputeDependentVariablePoint_TABLE &
-             ( D, T, Y, Me, Me_T, OS_Me, &
-               Units_V = MeV )
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( D, T, Y, Me )
 
     kT = BoltzmannConstant * T
     LogEta = LOG10( Me / kT )
@@ -615,25 +614,25 @@ CONTAINS
         ! --- Interpolate HI ---
 
         CALL ComputeNeutrinoOpacity_Point &
-               ( E(iE1), E(iE2), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+               ( E(iE1), E(iE2), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                  H1, NES_T(:,:,iH1,:,:,1), OS_NES(1,iH1), UnitNES )
 
         ! --- Interpolate HI' ---
 
         CALL ComputeNeutrinoOpacity_Point &
-               ( E(iE2), E(iE1), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+               ( E(iE2), E(iE1), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                  H1_P, NES_T(:,:,iH1,:,:,1), OS_NES(1,iH1), UnitNES )
 
         ! --- Interpolate HII ---
 
         CALL ComputeNeutrinoOpacity_Point &
-               ( E(iE1), E(iE2), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+               ( E(iE1), E(iE2), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                  H2, NES_T(:,:,iH2,:,:,1), OS_NES(1,iH2), UnitNES )
 
         ! --- Interpolate HII' ---
 
         CALL ComputeNeutrinoOpacity_Point &
-               ( E(iE2), E(iE1), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+               ( E(iE2), E(iE1), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                  H2_P, NES_T(:,:,iH2,:,:,1), OS_NES(1,iH2), UnitNES )
 
         ! --- Compute Phi ---
@@ -740,9 +739,8 @@ CONTAINS
 
     ! --- Compute Electron Chemical Potential ---
 
-    CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, Me, Me_T, OS_Me, &
-               Units_V = MeV )
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( D, T, Y, Me )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
@@ -764,25 +762,25 @@ CONTAINS
           ! --- Interpolate HI ---
 
           CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE1), E(iE2), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+                 ( E(iE1), E(iE2), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                    H1, NES_T(:,:,iH1,:,:,1), OS_NES(1,iH1), UnitNES )
 
           ! --- Interpolate HI' ---
 
           CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE2), E(iE1), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+                 ( E(iE2), E(iE1), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                    H1_P, NES_T(:,:,iH1,:,:,1), OS_NES(1,iH1), UnitNES )
 
           ! --- Interpolate HII ---
 
           CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE1), E(iE2), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+                 ( E(iE1), E(iE2), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                    H2, NES_T(:,:,iH2,:,:,1), OS_NES(1,iH2), UnitNES )
 
           ! --- Interpolate HII' ---
 
           CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE2), E(iE1), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+                 ( E(iE2), E(iE1), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                    H2_P, NES_T(:,:,iH2,:,:,1), OS_NES(1,iH2), UnitNES )
 
           ! --- Compute Phi ---
@@ -880,9 +878,8 @@ CONTAINS
 
     ! --- Compute Electron Chemical Potential ---
 
-    CALL ComputeDependentVariablePoint_TABLE &
-             ( D, T, Y, Me, Me_T, OS_Me, &
-               Units_V = MeV )
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( D, T, Y, Me )
 
     kT = BoltzmannConstant * T
     LogEta = LOG10( Me / kT )
@@ -893,25 +890,25 @@ CONTAINS
         ! --- Interpolate JI ---
 
         CALL ComputeNeutrinoOpacity_Point &
-               ( E(iE1), E(iE2), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+               ( E(iE1), E(iE2), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                  J1, Pair_T(:,:,iJ1,:,:,1), OS_Pair(1,iJ1), UnitPair )
 
         ! --- Interpolate JI' ---
 
         CALL ComputeNeutrinoOpacity_Point &
-               ( E(iE2), E(iE1), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+               ( E(iE2), E(iE1), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                  J1_P, Pair_T(:,:,iJ1,:,:,1), OS_Pair(1,iJ1), UnitPair )
 
         ! --- Interpolate JII ---
 
         CALL ComputeNeutrinoOpacity_Point &
-               ( E(iE1), E(iE2), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+               ( E(iE1), E(iE2), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                  J2, Pair_T(:,:,iJ2,:,:,1), OS_Pair(1,iJ2), UnitPair )
 
         ! --- Interpolate JII' ---
 
         CALL ComputeNeutrinoOpacity_Point &
-               ( E(iE2), E(iE1), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+               ( E(iE2), E(iE1), T, LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                  J2_P, Pair_T(:,:,iJ2,:,:,1), OS_Pair(1,iJ2), UnitPair )
 
         ! --- Compute Phi ---
@@ -1016,9 +1013,8 @@ CONTAINS
 
     ! --- Compute Electron Chemical Potential ---
 
-    CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, Me, Me_T, OS_Me, &
-               Units_V = MeV )
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( D, T, Y, Me )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
@@ -1040,25 +1036,25 @@ CONTAINS
           ! --- Interpolate JI ---
 
           CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE1), E(iE2), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+                 ( E(iE1), E(iE2), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                    J1, Pair_T(:,:,iJ1,:,:,1), OS_Pair(1,iJ1), UnitPair )
 
           ! --- Interpolate JI' ---
 
           CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE2), E(iE1), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+                 ( E(iE2), E(iE1), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                    J1_P, Pair_T(:,:,iJ1,:,:,1), OS_Pair(1,iJ1), UnitPair )
 
           ! --- Interpolate JII ---
 
           CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE1), E(iE2), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+                 ( E(iE1), E(iE2), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                    J2, Pair_T(:,:,iJ2,:,:,1), OS_Pair(1,iJ2), UnitPair )
 
           ! --- Interpolate JII' ---
 
           CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE2), E(iE1), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtasT, &
+                 ( E(iE2), E(iE1), T(iX), LogEta, LogEs_T, LogEs_T, LogTs_T, LogEtas_T, &
                    J2_P, Pair_T(:,:,iJ2,:,:,1), OS_Pair(1,iJ2), UnitPair )
 
           ! --- Compute Phi ---
