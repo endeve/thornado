@@ -360,6 +360,10 @@ PROGRAM ApplicationDriver
            Min_2_Option = Min_2, &
            UsePositivityLimiter_Option = UsePositivityLimiter )
 
+  CALL InitializeFluid_SSPRK( nStages = nStagesSSPRK )
+  WRITE(*,*)
+  WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
+
   CALL InitializeFields_Relativistic &
          ( RiemannProblemName_Option = TRIM( RiemannProblemName ), &
            RiemannProblem2dName_Option = TRIM( RiemannProblem2dName ), &
@@ -380,12 +384,10 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
        ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-  CALL InitializeFluid_SSPRK( nStages = nStagesSSPRK )
-
   WRITE(*,*)
-  WRITE(*,'(A2,A,ES11.3E3)') '', 'CFL: ', CFL
   WRITE(*,*)
-  WRITE(*,'(A2,A)') '', 'Evolving Fields...'
+  WRITE(*,'(A2,A)') '', 'Begin evolution'
+  WRITE(*,'(A2,A)') '', '---------------'
   WRITE(*,*)
 
   t     = 0.0_DP

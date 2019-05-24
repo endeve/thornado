@@ -136,25 +136,27 @@ CONTAINS
 
     IF( Verbose )THEN
       WRITE(*,*)
-      WRITE(*,'(A)') '  INFO: Euler_InitializeSlopeLimiter_Relativistic:'
-      WRITE(*,'(A)') '  ------------------------------------------------'
+      WRITE(*,*)
+      WRITE(*,'(A)') '    INFO: Euler_InitializeSlopeLimiter_Relativistic:'
+      WRITE(*,'(A)') '    ------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
       WRITE(*,*)
-      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVD: ' , &
+      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVD: ' , &
         BetaTVD
-      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVB: ' , &
+      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVB: ' , &
         BetaTVB
-      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'SlopeTolerance: ' , &
+      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
         SlopeTolerance
+      WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
         UseCharacteristicLimiting
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'      ) '', 'UseTroubledCellIndicator: ' , &
         UseTroubledCellIndicator
       WRITE(*,*)
-      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
+      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
         LimiterThreshold
     END IF
 

@@ -50,7 +50,7 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL         :: Eblast_Option
 
     WRITE(*,*)
-    WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
+    WRITE(*,'(A,A)') '    INFO: ', TRIM( ProgramName )
 
     SELECT CASE ( TRIM( ProgramName ) )
 
