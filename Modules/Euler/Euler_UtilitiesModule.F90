@@ -142,6 +142,12 @@ CONTAINS
     LOGICAL, INTENT(in), OPTIONAL :: &
       UseSourceTerm_Option
 
+    LOGICAL :: UseSourceTerm
+
+    UseSourceTerm = .FALSE.
+    IF( PRESENT( UseSourceTerm_Option ) ) &
+      UseSourceTerm = UseSourceTerm_Option
+
 #ifdef HYDRO_NONRELATIVISTIC
 
     CALL Euler_ComputeTimeStep_NonRelativistic &
@@ -150,7 +156,7 @@ CONTAINS
 #elif HYDRO_RELATIVISTIC
 
     CALL Euler_ComputeTimeStep_Relativistic &
-           ( iX_B, iX_E, G, U, CFL, TimeStep, UseSourceTerm_Option )
+           ( iX_B, iX_E, G, U, CFL, TimeStep, UseSourceTerm )
 
 #endif
 

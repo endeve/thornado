@@ -316,18 +316,19 @@ CONTAINS
 
 
   SUBROUTINE Euler_ComputeTimeStep_Relativistic &
-    ( iX_B0, iX_E0, G, U, CFL, TimeStep, UseSourceTerm_Option )
+    ( iX_B0, iX_E0, G, U, CFL, TimeStep, UseSourceTerm )
 
-    INTEGER,  INTENT(in)           :: &
+    INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3)
-    REAL(DP), INTENT(in)           :: &
+    REAL(DP), INTENT(in)  :: &
       G(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:), &
       U(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
-    REAL(DP), INTENT(in)           :: &
+    REAL(DP), INTENT(in)  :: &
       CFL
-    REAL(DP), INTENT(out)          :: &
+    REAL(DP), INTENT(out) :: &
       TimeStep
-    LOGICAL,  INTENT(in), OPTIONAL :: UseSourceTerm_Option
+    LOGICAL,  INTENT(in)  :: &
+      UseSourceTerm
 
     INTEGER  :: iX1, iX2, iX3, iNodeX, iDimX, iGF
     REAL(DP) :: dX(3), dt_X(3), dt_S(3)
@@ -347,11 +348,6 @@ CONTAINS
     REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF), &
                 G_X2_Dn(nDOFX_X2,nGF), G_X2_Up(nDOFX_X2,nGF), &
                 G_X3_Dn(nDOFX_X3,nGF), G_X3_Up(nDOFX_X3,nGF)
-    LOGICAL :: UseSourceTerm
-
-    UseSourceTerm = .FALSE.
-    IF( PRESENT( UseSourceTerm_Option) ) &
-      UseSourceTerm = UseSourceTerm_Option
 
     tau = ( Gamma_IDEAL - 1.0d0 ) / Gamma_IDEAL
 
