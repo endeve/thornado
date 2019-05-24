@@ -98,6 +98,8 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
   PUBLIC :: ComputeProtonChemicalPotential_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
+  PUBLIC :: ComputeDependentVariable_TABLE
+  PUBLIC :: ComputeDependentVariablePoint_TABLE
 
 #if defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
@@ -1090,6 +1092,10 @@ CONTAINS
 
     V = V_P * Units_V
 
+#else
+
+    V = 0.0_DP
+
 #endif
 
   END SUBROUTINE ComputeDependentVariablePoint_TABLE
@@ -1180,6 +1186,13 @@ CONTAINS
     dVdD = dV_P(1) * Units_V / ( Gram / Centimeter**3 )
     dVdT = dV_P(2) * Units_V / Kelvin
     dVdY = dV_P(3) * Units_V
+
+#else
+
+    V = 0.0_DP
+    dVdD = 0.0_DP
+    dVdT = 0.0_DP
+    dVdY = 0.0_DP
 
 #endif
 
