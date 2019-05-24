@@ -1,6 +1,6 @@
 include ../../../Build/Makefile_Build
 
-all: ApplicationDriver #ComputePrimitiveTest
+all: ApplicationDriver ComputePrimitiveTest
 
 ApplicationDriver: \
 	$(thornado) \
@@ -14,13 +14,13 @@ ApplicationDriver: \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
-#ComputePrimitiveTest: \
-#	$(thornado) \
-#	ComputePrimitiveTest.o
-#	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_$(MACHINE) \
-#	$(thornado) \
-#	ComputePrimitiveTest.o \
-#	$(LIBRARIES)
+ComputePrimitiveTest: \
+	$(thornado) \
+	ComputePrimitiveTest.o
+	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_$(MACHINE) \
+	$(thornado) \
+	ComputePrimitiveTest.o \
+	$(LIBRARIES)
 
 clean:
 	rm -f *.o *.mod *.ld

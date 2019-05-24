@@ -50,9 +50,11 @@ MODULE Euler_UtilitiesModule_Relativistic
   PUBLIC :: Euler_NumericalFlux_X2_HLLC_Relativistic
   PUBLIC :: Euler_NumericalFlux_X3_HLLC_Relativistic
 
-  PRIVATE :: ComputeFunJacP
-  PRIVATE :: ComputePressureWithBisectionMethod
-  PRIVATE :: ComputePressureWithBrentsMethod
+  ! --- These will all be private once
+  !     Euler_ComputePrimitive_Relativistic is satisfactory ---
+  PUBLIC :: ComputeFunJacP
+  PUBLIC :: ComputePressureWithBisectionMethod
+  PUBLIC :: ComputePressureWithBrentsMethod
   PRIVATE :: ComputeFunP
 
   REAL(DP), PARAMETER :: TolP = 1.0d-8, TolFunP = 1.0d-6, MachineEPS = 1.0d-16
