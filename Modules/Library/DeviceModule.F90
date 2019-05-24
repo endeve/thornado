@@ -54,6 +54,9 @@ MODULE DeviceModule
   INTEGER, PUBLIC :: mydevice, ndevices
 
   INTERFACE QueryOnGPU
+    MODULE PROCEDURE QueryOnGPU_3D_DP_1
+    MODULE PROCEDURE QueryOnGPU_3D_DP_2
+    MODULE PROCEDURE QueryOnGPU_3D_DP_3
     MODULE PROCEDURE QueryOnGPU_2D_DP_1
     MODULE PROCEDURE QueryOnGPU_DP_1
     MODULE PROCEDURE QueryOnGPU_DP_2
@@ -150,6 +153,57 @@ CONTAINS
 #endif
     RETURN
   END FUNCTION get_device_num
+
+
+  FUNCTION QueryOnGPU_3D_DP_1( X1 ) RESULT( QueryOnGPU )
+
+    REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET :: X1
+    LOGICAL :: QueryOnGPU
+
+    INTEGER(C_SIZE_T) :: SizeOf_X1
+
+    SizeOf_X1 = SIZE(X1) * C_SIZEOF(0.0_DP)
+
+    QueryOnGPU = device_is_present( C_LOC( X1 ), mydevice, SizeOf_X1 )
+
+  END FUNCTION QueryOnGPU_3D_DP_1
+
+
+  FUNCTION QueryOnGPU_3D_DP_2( X1 ) RESULT( QueryOnGPU )
+
+    REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET :: X1
+    LOGICAL :: QueryOnGPU
+
+    INTEGER(C_SIZE_T) :: SizeOf_X1
+    INTEGER(C_SIZE_T) :: SizeOf_X2
+
+    SizeOf_X1 = SIZE(X1) * C_SIZEOF(0.0_DP)
+    SizeOf_X2 = SIZE(X2) * C_SIZEOF(0.0_DP)
+
+    QueryOnGPU = device_is_present( C_LOC( X1 ), mydevice, SizeOf_X1 ) &
+           .AND. device_is_present( C_LOC( X2 ), mydevice, SizeOf_X2 )
+
+  END FUNCTION QueryOnGPU_3D_DP_2
+
+
+  FUNCTION QueryOnGPU_3D_DP_3( X1 ) RESULT( QueryOnGPU )
+
+    REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET :: X1
+    LOGICAL :: QueryOnGPU
+
+    INTEGER(C_SIZE_T) :: SizeOf_X1
+    INTEGER(C_SIZE_T) :: SizeOf_X2
+    INTEGER(C_SIZE_T) :: SizeOf_X3
+
+    SizeOf_X1 = SIZE(X1) * C_SIZEOF(0.0_DP)
+    SizeOf_X2 = SIZE(X2) * C_SIZEOF(0.0_DP)
+    SizeOf_X3 = SIZE(X3) * C_SIZEOF(0.0_DP)
+
+    QueryOnGPU = device_is_present( C_LOC( X1 ), mydevice, SizeOf_X1 ) &
+           .AND. device_is_present( C_LOC( X2 ), mydevice, SizeOf_X2 ) &
+           .AND. device_is_present( C_LOC( X3 ), mydevice, SizeOf_X3 )
+
+  END FUNCTION QueryOnGPU_3D_DP_3
 
 
   FUNCTION QueryOnGPU_2D_DP_1( X1 ) RESULT( QueryOnGPU )
