@@ -56,7 +56,7 @@ MODULE Euler_dgDiscretizationModule
 
   PUBLIC :: Euler_ComputeIncrement_DG_Explicit
 
-  LOGICAL :: TimeIt = .TRUE.
+  LOGICAL :: TimeIt = .FALSE.
 
 
 CONTAINS
