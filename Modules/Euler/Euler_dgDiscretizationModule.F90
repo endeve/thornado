@@ -2,6 +2,7 @@ MODULE Euler_dgDiscretizationModule
 
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Pi, TwoPi
+  USE TimersModule_Euler
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDimsX
   USE MeshModule, ONLY: &
@@ -55,16 +56,7 @@ MODULE Euler_dgDiscretizationModule
 
   PUBLIC :: Euler_ComputeIncrement_DG_Explicit
 
-  LOGICAL, PARAMETER :: DisplayTimers = .FALSE.
-  REAL(DP) :: Timer_RHS
-  REAL(DP) :: Timer_RHS_1, dT_RHS_1
-  REAL(DP) :: Timer_RHS_2, dT_RHS_2
-  REAL(DP) :: Timer_RHS_3, dT_RHS_3
-  REAL(DP) :: Timer_INT_F, dT_INT_F
-  REAL(DP) :: Timer_INT_G, dT_INT_G
-  REAL(DP) :: Timer_FLX_N, dT_FLX_N
-  REAL(DP) :: Timer_Div_X2
-  REAL(DP) :: Timer_Geo
+  LOGICAL :: TimeIt = .FALSE.
 
 
 CONTAINS
@@ -88,6 +80,9 @@ CONTAINS
     REAL(DP) :: dX1, dX2, dX3
     LOGICAL  :: SuppressBC
 
+    IF( TimeIt ) CALL InitializeTimers_Euler
+    IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_Inc )
+
     dU = Zero
 
     SuppressBC = .FALSE.
@@ -98,14 +93,20 @@ CONTAINS
       CALL Euler_ApplyBoundaryConditions &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
+    IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_Div_X1 )
     CALL ComputeIncrement_Divergence_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_Div_X1 )
 
+    IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_Div_X2 )
     CALL ComputeIncrement_Divergence_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_Div_X2 )
 
+    IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_Div_X3 )
     CALL ComputeIncrement_Divergence_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_Div_X3 )
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -127,11 +128,19 @@ CONTAINS
       END DO
     END DO
 
+    IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_Geom )
     CALL ComputeIncrement_Geometry &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_Geom )
 
+    IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_Grav )
     CALL ComputeIncrement_Gravity &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_Grav )
+
+    IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_Inc )
+    IF( TimeIt ) CALL FinalizeTimers_Euler
+    IF( TimeIt ) STOP 'Euler_ComputeIncrement_DG_Explicit'
 
   END SUBROUTINE Euler_ComputeIncrement_DG_Explicit
 
@@ -166,15 +175,6 @@ CONTAINS
 
     IF( iX_E0(1) .EQ. iX_B0(1) ) RETURN
 
-    Timer_RHS_1 = 0.0_DP
-    Timer_RHS_2 = 0.0_DP
-    Timer_RHS_3 = 0.0_DP
-    Timer_INT_F = 0.0_DP
-    Timer_INT_G = 0.0_DP
-    Timer_FLX_N = 0.0_DP
-
-    CALL Timer_Start( Timer_RHS )
-
     !$OMP PARALLEL DO PRIVATE &
     !$OMP& ( iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X1, dX2, dX3, &
     !$OMP&   uCF_P, uCF_K, uCF_L, uCF_R, uPF_K, uPF_L, uPF_R, P_K, &
@@ -207,6 +207,7 @@ CONTAINS
 
       IF( iX1 .LT. iX_E0(1) + 1 )THEN
 
+        IF( TimeIt) CALL TimersStart_Euler( Timer_Euler_CompPrim )
         CALL Euler_ComputePrimitive &
                ( uCF_K(:,iCF_D ),     &
                  uCF_K(:,iCF_S1),     &
@@ -223,6 +224,7 @@ CONTAINS
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
                  G_K(:,iGF_Gm_dd_33) )
+        IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_CompPrim )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
@@ -246,23 +248,18 @@ CONTAINS
 
         END DO
 
-        CALL Timer_Start( dT_RHS_1 )
-
         DO iCF = 1, nCF
 
           Flux_X1_q(:,iCF) &
             = dX2 * dX3 * WeightsX_q * G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) &
                 * Flux_X1_q(:,iCF)
-
+          IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_MV )
           CALL DGEMV &
                  ( 'T', nDOFX, nDOFX, One, dLXdX1_q, nDOFX, &
                    Flux_X1_q(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+          IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_MV )
 
         END DO
-
-        CALL Timer_Stop( dT_RHS_1 )
-
-        CALL Timer_Add( Timer_RHS_1, dT_RHS_1 )
 
       END IF
 
@@ -272,26 +269,20 @@ CONTAINS
 
       ! --- Interpolate Fluid Fields ---
 
-      CALL Timer_Start( dT_INT_F )
-
       DO iCF = 1, nCF
 
+        IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_MV )
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Up, nDOFX_X1, &
                  uCF_P(:,iCF), 1, Zero, uCF_L(:,iCF), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
                  uCF_K(:,iCF), 1, Zero, uCF_R(:,iCF), 1 )
+        IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_MV )
 
       END DO
 
-      CALL Timer_Stop( dT_INT_F )
-
-      CALL Timer_Add( Timer_INT_F, dT_INT_F )
-
       ! --- Interpolate Geometry Fields ---
-
-      CALL Timer_Start( dT_INT_G )
 
       ! --- Face States (Average of Left and Right States) ---
 
@@ -299,12 +290,14 @@ CONTAINS
 
       DO iGF = iGF_h_1, iGF_h_3
 
+        IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_MV )
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                  G_P(:,iGF), 1, Zero, G_F(:,iGF), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                  G_K(:,iGF), 1, Half, G_F(:,iGF), 1 )
+        IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_MV )
 
         G_F(:,iGF) = MAX( G_F(:,iGF), SqrtTiny )
 
@@ -314,6 +307,7 @@ CONTAINS
 
       ! --- Lapse Function ---
 
+      IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_MV )
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                G_P(:,iGF_Alpha), 1, Zero, G_F(:,iGF_Alpha), 1 )
@@ -321,15 +315,13 @@ CONTAINS
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                G_K(:,iGF_Alpha), 1, Half, G_F(:,iGF_Alpha), 1 )
+      IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_MV )
 
       G_F(:,iGF_Alpha) = MAX( G_F(:,iGF_Alpha), SqrtTiny )
 
-      CALL Timer_Stop( dT_INT_G )
-
-      CALL Timer_Add( Timer_INT_G, dT_INT_G )
-
       ! --- Left State Primitive, etc. ---
 
+      IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_CompPrim )
       CALL Euler_ComputePrimitive &
              ( uCF_L(:,iCF_D ),       &
                uCF_L(:,iCF_S1),       &
@@ -346,6 +338,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
+      IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_CompPrim )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), P_L  )
@@ -388,6 +381,7 @@ CONTAINS
 
       ! --- Right State Primitive, etc. ---
 
+      IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_CompPrim )
       CALL Euler_ComputePrimitive &
              ( uCF_R(:,iCF_D ),       &
                uCF_R(:,iCF_S1),       &
@@ -404,6 +398,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
+      IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_CompPrim )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), P_R  )
@@ -445,8 +440,6 @@ CONTAINS
       END DO
 
       ! --- Numerical Flux ---
-
-      CALL Timer_Start( dT_FLX_N )
 
       DO iNodeX_X1 = 1, nDOFX_X1
 
@@ -505,84 +498,42 @@ CONTAINS
 
       END DO
 
-      CALL Timer_Stop( dT_FLX_N )
-
-      CALL Timer_Add( Timer_FLX_N, dT_FLX_N )
-
       ! --- Contribution to This Element ---
-
-      CALL Timer_Start( dT_RHS_2 )
 
       IF( iX1 .LT. iX_E0(1) + 1 )THEN
 
         DO iCF = 1, nCF
 
+          IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_MV )
           CALL DGEMV &
                  ( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Dn, nDOFX_X1, &
                    NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+          IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_MV )
 
         END DO
 
       END IF
 
-      CALL Timer_Stop( dT_RHS_2 )
-
-      CALL Timer_Add( Timer_RHS_2, dT_RHS_2 )
-
       ! --- Contribution to Previous Element ---
-
-      CALL Timer_Start( dT_RHS_3 )
 
       IF( iX1 .GT. iX_B0(1) )THEN
 
         DO iCF = 1, nCF
 
+          IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_MV )
           CALL DGEMV &
                  ( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Up, nDOFX_X1, &
                    NumericalFlux(:,iCF), 1, One, dU(:,iX1-1,iX2,iX3,iCF), 1 )
+          IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_MV )
 
         END DO
 
       END IF
 
-      CALL Timer_Stop( dT_RHS_3 )
-
-      CALL Timer_Add( Timer_RHS_3, dT_RHS_3 )
-
     END DO
     END DO
     END DO
     !$OMP END PARALLEL DO
-
-    CALL Timer_Stop( Timer_RHS )
-
-    IF( DisplayTimers )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(A4,A)') &
-        '', 'Timers:'
-      WRITE(*,*)
-      WRITE(*,'(A4,A24,ES10.4E2)') &
-        '', 'ComputeRHS_Euler: ', Timer_RHS
-      WRITE(*,*)
-      WRITE(*,'(A6,A18,ES10.4E2)') &
-        '', 'RHS 1: ', Timer_RHS_1
-      WRITE(*,'(A6,A18,ES10.4E2)') &
-        '', 'RHS 2: ', Timer_RHS_2
-      WRITE(*,'(A6,A18,ES10.4E2)') &
-        '', 'RHS 3: ', Timer_RHS_3
-      WRITE(*,'(A6,A18,ES10.4E2)') &
-        '', 'INT F: ', Timer_INT_F
-      WRITE(*,'(A6,A18,ES10.4E2)') &
-        '', 'INT G: ', Timer_INT_G
-      WRITE(*,'(A6,A18,ES10.4E2)') &
-        '', 'FLX N: ', Timer_FLX_N
-      WRITE(*,*)
-      WRITE(*,'(A6,A18,ES10.4E2)') &
-        '', 'Sum: ', Timer_RHS_1+Timer_RHS_2+Timer_RHS_3+Timer_INT_F &
-        + Timer_INT_G + Timer_FLX_N
-
-    END IF
 
   END SUBROUTINE ComputeIncrement_Divergence_X1
 
@@ -617,8 +568,6 @@ CONTAINS
 
     IF( iX_E0(2) .EQ. iX_B0(2) ) RETURN
 
-    CALL Timer_Start( Timer_Div_X2 )
-
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2) + 1
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -646,6 +595,7 @@ CONTAINS
 
       IF( iX2 .LT. iX_E0(2) + 1 )THEN
 
+        IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_CompPrim )
         CALL Euler_ComputePrimitive &
                ( uCF_K(:,iCF_D ),     &
                  uCF_K(:,iCF_S1),     &
@@ -662,6 +612,7 @@ CONTAINS
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
                  G_K(:,iGF_Gm_dd_33) )
+        IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_CompPrim )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
@@ -691,9 +642,11 @@ CONTAINS
             = dX1 * dX3 * WeightsX_q * G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) &
                 * Flux_X2_q(:,iCF)
 
+          IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_MV )
           CALL DGEMV &
                  ( 'T', nDOFX, nDOFX, One, dLXdX2_q, nDOFX, &
                    Flux_X2_q(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+          IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_MV )
 
         END DO
 
@@ -707,12 +660,14 @@ CONTAINS
 
       DO iCF = 1, nCF
 
+        IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_MV )
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Up, nDOFX_X2, &
                  uCF_P(:,iCF), 1, Zero, uCF_L(:,iCF), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
                  uCF_K(:,iCF), 1, Zero, uCF_R(:,iCF), 1 )
+        IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_MV )
 
       END DO
 
@@ -724,12 +679,14 @@ CONTAINS
 
       DO iGF = iGF_h_1, iGF_h_3
 
+        IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_MV )
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                  G_P(:,iGF), 1, Zero, G_F(:,iGF), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                  G_K(:,iGF), 1, Half, G_F(:,iGF), 1 )
+        IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_MV )
 
         G_F(:,iGF) = MAX( G_F(:,iGF), SqrtTiny )
 
@@ -739,6 +696,7 @@ CONTAINS
 
       ! --- Lapse Function ---
 
+      IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_MV )
       CALL DGEMV &
              ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                G_P(:,iGF_Alpha), 1, Zero, G_F(:,iGF_Alpha), 1 )
@@ -746,11 +704,13 @@ CONTAINS
       CALL DGEMV &
              ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                G_K(:,iGF_Alpha), 1, Half, G_F(:,iGF_Alpha), 1 )
+      IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_MV )
 
       G_F(:,iGF_Alpha) = MAX( G_F(:,iGF_Alpha), SqrtTiny )
 
       ! --- Left State Primitive, etc. ---
 
+      IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_CompPrim )
       CALL Euler_ComputePrimitive &
              ( uCF_L(:,iCF_D ),       &
                uCF_L(:,iCF_S1),       &
@@ -767,6 +727,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
+      IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_CompPrim )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), P_L  )
@@ -809,6 +770,7 @@ CONTAINS
 
       ! --- Right State Primitive, etc. ---
 
+      IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_CompPrim )
       CALL Euler_ComputePrimitive &
              ( uCF_R(:,iCF_D ),       &
                uCF_R(:,iCF_S1),       &
@@ -825,6 +787,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
+      IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_CompPrim )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), P_R )
@@ -930,8 +893,10 @@ CONTAINS
 
         DO iCF = 1, nCF
 
+          IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_MV )
           CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Dn, nDOFX_X2, &
                       NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+          IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_MV )
 
         END DO
 
@@ -943,8 +908,10 @@ CONTAINS
 
         DO iCF = 1, nCF
 
+          IF( TimeIt ) CALL TimersStart_Euler( Timer_Euler_MV )
           CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Up, nDOFX_X2, &
                       NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2-1,iX3,iCF), 1 )
+          IF( TimeIt ) CALL TimersStop_Euler( Timer_Euler_MV )
 
         END DO
 
@@ -953,19 +920,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL Timer_Stop( Timer_Div_X2 )
-
-    IF( DisplayTimers )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(A4,A)') &
-        '', 'Timers:'
-      WRITE(*,*)
-      WRITE(*,'(A4,A32,ES10.4E2)') &
-        '', 'ComputeIncrement_Divergence_X2: ', Timer_Div_X2
-
-    END IF
 
   END SUBROUTINE ComputeIncrement_Divergence_X2
 
@@ -1037,8 +991,6 @@ CONTAINS
     REAL(DP) :: G_X2_Dn(nDOFX_X2,nGF), G_X2_Up(nDOFX_X2,nGF)
 
     IF( TRIM( CoordinateSystem ) == 'CARTESIAN' ) RETURN
-
-    CALL Timer_Start( Timer_Geo )
 
     IF( nDimsX .EQ. 2 )THEN
 
@@ -1206,18 +1158,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL Timer_Stop( Timer_Geo )
-
-    IF( DisplayTimers )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(A4,A)') &
-        '', 'Timers:'
-      WRITE(*,*)
-      WRITE(*,'(A4,A27,ES10.4E2)') &
-        '', 'ComputeIncrement_Geometry: ', Timer_Geo
-
-    END IF
 
   END SUBROUTINE ComputeIncrement_Geometry_NonRelativistic
 
@@ -1294,8 +1234,6 @@ CONTAINS
       END DO
 
     END IF
-
-    CALL Timer_Start( Timer_Geo )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1673,19 +1611,6 @@ CONTAINS
     END DO
     END DO
 
-    CALL Timer_Stop( Timer_Geo )
-
-    IF( DisplayTimers )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(A4,A)') &
-        '', 'Timers:'
-      WRITE(*,*)
-      WRITE(*,'(A4,A27,ES10.4E2)') &
-        '', 'ComputeIncrement_Geometry: ', Timer_Geo
-
-    END IF
-
   END SUBROUTINE ComputeIncrement_Geometry_Relativistic
 
 
@@ -1815,39 +1740,6 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
   END SUBROUTINE ComputeIncrement_Gravity_Relativistic
-
-
-  SUBROUTINE Timer_Start( Timer )
-
-    REAL(DP) :: Timer
-
-    IF( .NOT. DisplayTimers ) RETURN
-
-    Timer = MPI_WTIME( )
-
-  END SUBROUTINE Timer_Start
-
-
-  SUBROUTINE Timer_Stop( Timer )
-
-    REAL(DP) :: Timer
-
-    IF( .NOT. DisplayTimers ) RETURN
-
-    Timer = MPI_WTIME( ) - Timer
-
-  END SUBROUTINE Timer_Stop
-
-
-  SUBROUTINE Timer_Add( Timer, dT )
-
-    REAL(DP) :: Timer, dT
-
-    IF( .NOT. DisplayTimers ) RETURN
-
-    Timer = Timer + dT
-
-  END SUBROUTINE Timer_Add
 
 
 END MODULE Euler_dgDiscretizationModule

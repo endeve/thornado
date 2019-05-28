@@ -31,6 +31,7 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic
 
   PUBLIC :: Euler_ComputeCharacteristicDecomposition_Relativistic
 
+
 CONTAINS
 
 
@@ -41,15 +42,19 @@ CONTAINS
     REAL(DP), INTENT(in)  :: G(nGF), U(nCF)
     REAL(DP), INTENT(out) :: R(nCF,nCF), invR(nCF,nCF)
 
-    REAL(DP) :: D(1), V1(1), V2(1), V3(1), E(1), Ne(1), P(1), Cs(1), &
-                Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, &
-                Gmdd11, Gmdd22, Gmdd33, &
-                W, h, LapseFunction, &
-                ShiftVector(3), &
-                epsilon, kappa, chi, VSq, VdSq, K, &
-                EigVals(nCF), &
-                LAMBDA_m, LAMBDA_p, &
-                Vm, Vp, Am, Ap, Nm, Np
+    ! --- Expressions for right and left eigenvector matrices from
+    !     Rezzolla & Zanotti, Relativistic Hydrodynamics, Eq. 7.240-7.248 ---
+
+    REAL(DP) :: D(1), V1(1), V2(1), V3(1), E(1), Ne(1)
+    REAL(DP) :: P(1), Cs(1)
+    REAL(DP) :: Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq
+    REAL(DP) :: Gmdd11, Gmdd22, Gmdd33, DetGm, LapseFunction, ShiftVector(3)
+    REAL(DP) :: W, h, K
+    REAL(DP) :: EigVals(nCF)
+    REAL(DP) :: LAMBDA_m, LAMBDA_p
+    REAL(DP) :: Vm, Vp, Am, Ap, Nm, Np, Cm, Cp
+    REAL(DP) :: xi, DELTA
+    REAL(DP) :: GAMMA_11, GAMMA_22, GAMMA_33
 
     LOGICAL  :: DEBUG = .FALSE.
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
@@ -58,6 +63,7 @@ CONTAINS
     Gmdd11         = G(iGF_Gm_dd_11)
     Gmdd22         = G(iGF_Gm_dd_22)
     Gmdd33         = G(iGF_Gm_dd_33)
+    DetGm          = G(iGF_SqrtGm)**2
     LapseFunction  = G(iGF_Alpha)
     ShiftVector(1) = G(iGF_Beta_1)
     ShiftVector(2) = G(iGF_Beta_2)
@@ -81,22 +87,42 @@ CONTAINS
     Vd2 = Gmdd22 * Vu2
     Vd3 = Gmdd33 * Vu3
 
-    VdSq = Vd1**2 + Vd2**2 + Vd3**2
-
     VSq = Vu1*Vd1 + Vu2*Vd2 + Vu3*Vd3
 
     ! --- Auxiliary quantities ---
     W = One / SQRT( One - VSq )
     h = One + ( E(1) + P(1) ) / D(1)
 
-    epsilon = P(1) / ( ( Gamma_IDEAL - One ) * D(1) )
-    chi     = ( Gamma_IDEAL - One ) * epsilon
-    kappa   = ( Gamma_IDEAL - One ) * D(1)
-
     CALL ComputeSoundSpeedFromPrimitive( D, E, Ne, Cs )
 
     ! --- Rezzolla, Eq. (7.244) ---
     K = ( Gamma_IDEAL - One ) / ( Gamma_IDEAL - One - Cs(1)**2 )
+
+    IF( DEBUG )THEN
+      WRITE(*,*)
+      WRITE(*,'(A)') 'Debugging CharacteristicDecompositionModule...'
+      WRITE(*,*)
+
+      ! --- Input for python program to compute eigenvectors ---
+      WRITE(*,'(A)') '# Geometry'
+      WRITE(*,'(A,ES24.16E3)') 'Gmdd11        = ', Gmdd11
+      WRITE(*,'(A,ES24.16E3)') 'Gmdd22        = ', Gmdd22
+      WRITE(*,'(A,ES24.16E3)') 'Gmdd33        = ', Gmdd33
+      WRITE(*,'(A,ES24.16E3)') 'DetGm         = ', DetGm
+      WRITE(*,'(A,ES24.16E3)') 'ShiftVector1  = ', ShiftVector(1)
+      WRITE(*,'(A,ES24.16E3)') 'ShiftVector2  = ', ShiftVector(2)
+      WRITE(*,'(A,ES24.16E3)') 'ShiftVector3  = ', ShiftVector(3)
+      WRITE(*,'(A,ES24.16E3)') 'LapseFunction = ', LapseFunction
+      WRITE(*,*)
+      WRITE(*,'(A)') '# Fluid variables'
+      WRITE(*,'(A,ES24.16E3)') 'Gamma  = ', Gamma_IDEAL
+      WRITE(*,'(A,ES24.16E3)') 'rho    = ', D(1)
+      WRITE(*,'(A,ES24.16E3)') 'Vu1    = ', Vu1
+      WRITE(*,'(A,ES24.16E3)') 'Vu2    = ', Vu2
+      WRITE(*,'(A,ES24.16E3)') 'Vu3    = ', Vu3
+      WRITE(*,'(A,ES24.16E3)') 'e      = ', E(1)
+      WRITE(*,*)
+    END IF
 
     SELECT CASE( iDim )
 
@@ -117,10 +143,8 @@ CONTAINS
         Vm = ( Vu1 - LAMBDA_m ) / ( One / Gmdd11 - Vu1 * LAMBDA_m )
         Vp = ( Vu1 - LAMBDA_p ) / ( One / Gmdd11 - Vu1 * LAMBDA_p )
 
-        Am = ( One / Gmdd11 - Vu1 * Vu1 ) &
-             / ( One / Gmdd11 - Vu1 * LAMBDA_m )
-        Ap = ( One / Gmdd11 - Vu1 * Vu1 ) &
-             / ( One / Gmdd11 - Vu1 * LAMBDA_p )
+        Am = ( One / Gmdd11 - Vu1 * Vu1 ) / ( One / Gmdd11 - Vu1 * LAMBDA_m )
+        Ap = ( One / Gmdd11 - Vu1 * Vu1 ) / ( One / Gmdd11 - Vu1 * LAMBDA_p )
 
         R(:,1) = [ One, &
                    h * W * ( Vd1 - Vm ), &
@@ -154,34 +178,79 @@ CONTAINS
                    Zero ]
         R(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
-        invR = inv(R)
+        ! --- Rezzolla, Eq. (7.251) ---
+        GAMMA_11 = Gmdd22 * Gmdd33
+        xi = GAMMA_11 - DetGm * Vu1**2
+
+        ! --- Rezzolla, Eq. (7.249) ---
+        Nm = ( One - K ) * ( -DetGm * Vu1 + Vp * ( W**2 * xi - GAMMA_11 ) ) &
+               - K * W**2 * Vp * xi
+        Np = ( One - K ) * ( -DetGm * Vu1 + Vm * ( W**2 * xi - GAMMA_11 ) ) &
+               - K * W**2 * Vm * xi
+
+        ! --- Rezzolla, Eq. (7.250) ---
+        Cm = Vd1 - Vm
+        Cp = Vd1 - Vp
+        DELTA = h**3 * W * ( K - One ) * ( Cp - Cm ) * xi
+
+        ! --- Transpose of L ---
+        invR(1,:) = + h**2 / DELTA &
+                      * [ h * W * Vp * xi + Nm, &
+                          Vp * Vu1 * ( Two * K - One ) &
+                            * ( W**2 * xi - GAMMA_11 ) &
+                            + GAMMA_11 * ( One - K * Ap ), &
+                          Vp * Vu2 * ( Two * K - One ) * W**2 * xi, &
+                          Vp * Vu3 * ( Two * K - One ) * W**2 * xi, &
+                          Nm, &
+                          Zero ]
+        invR(2,:) = W / ( K - One ) &
+                      * [ h - W, W * Vu1, W * Vu2, W * Vu3, -W, Zero ]
+        invR(3,:) = One / ( h * xi ) &
+                      * [ -Gmdd33 * Vd2, &
+                          Vu1 * Gmdd33 * Vd2, &
+                          Gmdd33 * ( One - Vd1 * Vu1 ), &
+                          Zero, &
+                          -Gmdd33 * Vd2, &
+                          Zero ]
+        invR(4,:) = One / ( h * xi ) &
+                      * [ -Gmdd22 * Vd3, &
+                          Vu1 * Gmdd22 * Vd3, &
+                          Zero, &
+                          Gmdd22 * ( One - Vd1 * Vu1 ), &
+                          -Gmdd22 * Vd3, &
+                          Zero ]
+        invR(5,:) = - h**2 / DELTA &
+                      * [ h * W * Vm * xi + Np, &
+                          Vm * Vu1 * ( Two * K - One ) &
+                            * ( W**2 * xi - GAMMA_11 ) &
+                            + GAMMA_11 * ( One - K * Am ), &
+                          Vm * Vu2 * ( Two * K - One ) * W**2 * xi, &
+                          Vm * Vu3 * ( Two * K - One ) * W**2 * xi, &
+                          Np, &
+                          Zero ]
+        invR(6,:) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
         IF( DEBUG )THEN
 
-          WRITE(*,'(A)') 'Debugging CharacteristicDecompositionModule (X1)...'
+          WRITE(*,*)
+          WRITE(*,'(A)') 'X1'
           WRITE(*,*)
 
           CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
 
           WRITE(*,*) 'EigVals:'
           DO i = 1, nCF
-            WRITE(*,*) EigVals(i)
+            WRITE(*,'(ES11.2E3)') EigVals(i)
           END DO
           WRITE(*,*)
 
           LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
           WRITE(*,*) 'LAMBDA = inv(R) x dFdU x R:'
           DO i = 1, nCF
-            WRITE(*,*) LAMBDA(i,:)
+            WRITE(*,'(6ES11.2E3)') LAMBDA(i,1), LAMBDA(i,2), LAMBDA(i,3), &
+                                   LAMBDA(i,4), LAMBDA(i,5), LAMBDA(i,6)
           END DO
           WRITE(*,*)
-
-!!$          WRITE(*,*) 'GR: R(i,:)'
-!!$          DO i = 1, nCF
-!!$            WRITE(*,*) R(i,:)
-!!$          END DO
-!!$          WRITE(*,*)
-!          STOP 'End of debugging CharacteristicDecompositionModule'
 
         END IF
 
@@ -202,10 +271,8 @@ CONTAINS
         Vm = ( Vu2 - LAMBDA_m ) / ( One / Gmdd22 - Vu2 * LAMBDA_m )
         Vp = ( Vu2 - LAMBDA_p ) / ( One / Gmdd22 - Vu2 * LAMBDA_p )
 
-        Am = ( One / Gmdd22 - Vu2 * Vu2 ) &
-             / ( One / Gmdd22 - Vu2 * LAMBDA_m )
-        Ap = ( One / Gmdd22 - Vu2 * Vu2 ) &
-             / ( One / Gmdd22 - Vu2 * LAMBDA_p )
+        Am = ( One / Gmdd22 - Vu2 * Vu2 ) / ( One / Gmdd22 - Vu2 * LAMBDA_m )
+        Ap = ( One / Gmdd22 - Vu2 * Vu2 ) / ( One / Gmdd22 - Vu2 * LAMBDA_p )
 
         R(:,1) = [ One, &
                    h * W * Vd1, &
@@ -239,34 +306,79 @@ CONTAINS
                    Zero ]
         R(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
-        invR = inv(R)
+        ! --- Rezzolla, Eq. (7.251) ---
+        GAMMA_22 = Gmdd11 * Gmdd33
+        xi = GAMMA_22 - DetGm * Vu2**2
+
+        ! --- Rezzolla, Eq. (7.249) ---
+        Nm = ( One - K ) * ( -DetGm * Vu2 + Vp * ( W**2 * xi - GAMMA_22 ) ) &
+               - K * W**2 * Vp * xi
+        Np = ( One - K ) * ( -DetGm * Vu2 + Vm * ( W**2 * xi - GAMMA_22 ) ) &
+               - K * W**2 * Vm * xi
+
+        ! --- Rezzolla, Eq. (7.250) ---
+        Cm = Vd2 - Vm
+        Cp = Vd2 - Vp
+        DELTA = h**3 * W * ( K - One ) * ( Cp - Cm ) * xi
+
+        ! --- Transpose of L, Eqs. (7.246-7.248) ---
+        invR(1,:) = + h**2 / DELTA &
+                      * [ h * W * Vp * xi + Nm, &
+                          Vp * Vu1 * ( Two * K - One ) * W**2 * xi, &
+                          Vp * Vu2 * ( Two * K - One ) &
+                            * ( W**2 * xi - GAMMA_22 ) &
+                            + GAMMA_22 * ( One - K * Ap ), &
+                          Vp * Vu3 * ( Two * K - One ) * W**2 * xi, &
+                          Nm, &
+                          Zero ]
+        invR(2,:) = W / ( K - One ) &
+                      * [ h - W, W * Vu1, W * Vu2, W * Vu3, -W, Zero ]
+        invR(3,:) = One / ( h * xi ) &
+                      * [ -Gmdd33 * Vd1, &
+                          Gmdd33 * ( One - Vd2 * Vu2 ), &
+                          Vu2 * Gmdd33 * Vd1, &
+                          Zero, &
+                          -Gmdd33 * Vd1, &
+                          Zero ]
+        invR(4,:) = One / ( h * xi ) &
+                      * [ -Gmdd11 * Vd3, &
+                          Zero, &
+                          Vu2 * Gmdd11 * Vd3, &
+                          Gmdd11 * ( One - Vd2 * Vu2 ), &
+                          -Gmdd11 * Vd3, &
+                          Zero ]
+        invR(5,:) = - h**2 / DELTA &
+                      * [ h * W * Vm * xi + Np, &
+                          Vm * Vu1 * ( Two * K - One ) * W**2 * xi, &
+                          Vm * Vu2 * ( Two * K - One ) &
+                            * ( W**2 * xi - GAMMA_22 ) &
+                            + GAMMA_22 * ( One - K * Am ), &
+                          Vm * Vu3 * ( Two * K - One ) * W**2 * xi, &
+                          Np, &
+                          Zero ]
+        invR(6,:) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
         IF( DEBUG )THEN
 
-          WRITE(*,'(A)') 'Debugging CharacteristicDecompositionModule (X2)...'
+          WRITE(*,*)
+          WRITE(*,'(A)') 'X2'
           WRITE(*,*)
 
           CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
 
           WRITE(*,*) 'EigVals:'
           DO i = 1, nCF
-            WRITE(*,*) EigVals(i)
+            WRITE(*,'(ES11.2E3)') EigVals(i)
           END DO
           WRITE(*,*)
 
           LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
           WRITE(*,*) 'LAMBDA = inv(R) x dFdU x R:'
           DO i = 1, nCF
-            WRITE(*,*) LAMBDA(i,:)
+            WRITE(*,'(6ES11.2E3)') LAMBDA(i,1), LAMBDA(i,2), LAMBDA(i,3), &
+                                   LAMBDA(i,4), LAMBDA(i,5), LAMBDA(i,6)
           END DO
           WRITE(*,*)
-
-!!$          WRITE(*,*) 'GR: R(i,:)'
-!!$          DO i = 1, nCF
-!!$            WRITE(*,*) R(i,:)
-!!$          END DO
-!!$          WRITE(*,*)
-          STOP 'End of debugging CharacteristicDecompositionModule'
 
         END IF
 

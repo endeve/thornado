@@ -1,6 +1,7 @@
 LIBRARY = \
   DeviceModule.o \
   TimersModule.o \
+  TimersModule_Euler.o \
   LinearAlgebraModule.o \
   QuadratureModule.o \
   UtilitiesModule.o \
