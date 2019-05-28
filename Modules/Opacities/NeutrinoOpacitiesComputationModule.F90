@@ -1065,6 +1065,7 @@ CONTAINS
       DO iE2 = iE_B, iE_E
         DO iE1 = iE_B, iE_E
 
+          kT = BoltzmannConstant * T(iX)
           E12 = E(iE2) + E(iE1)
 
           IF ( iE1 <= iE2 ) THEN
