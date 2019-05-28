@@ -596,11 +596,11 @@ CONTAINS
     DO iN_X = 1, nX_G
       DO iN_E = 1, nE_G
 
-        FD1_Exp = ( E_N(iN_E) - Mnu_1(iN_X) ) / BoltzmannConstant * T(iN_X)
+        FD1_Exp = ( E_N(iN_E) - Mnu_1(iN_X) ) / ( BoltzmannConstant * T(iN_X) )
         FD1_Exp = MIN( MAX( FD1_Exp, - Log1d100 ), + Log1d100 )
         J0_1(iN_E,iN_X) = One / ( EXP( FD1_Exp ) + One )
 
-        FD2_Exp = ( E_N(iN_E) - Mnu_2(iN_X) ) / BoltzmannConstant * T(iN_X)
+        FD2_Exp = ( E_N(iN_E) - Mnu_2(iN_X) ) / ( BoltzmannConstant * T(iN_X) )
         FD2_Exp = MIN( MAX( FD2_Exp, - Log1d100 ), + Log1d100 )
         J0_2(iN_E,iN_X) = One / ( EXP( FD2_Exp ) + One )
 
