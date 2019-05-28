@@ -85,6 +85,11 @@ elif [[ $THORNADO_MACHINE == mcarpe21* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == paullaiu_gnu* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 fi
 
 if [[ $THORNADO_MACHINE == mac_gnu ]]; then
@@ -177,6 +182,12 @@ elif [[ $THORNADO_MACHINE == mcarpe21 ]]; then
   echo
   export THORNADO_DIR=~/thornado
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/hdf5/lib/
+
+elif [[ $THORNADO_MACHINE == paullaiu_gnu ]]; then
+
+  echo
+  export THORNADO_DIR=/home/plc/Documents/Git/thornado
+  export WEAKLIB_DIR=/home/plc/Documents/Git/Neutrino/weaklib
 
 else
 
