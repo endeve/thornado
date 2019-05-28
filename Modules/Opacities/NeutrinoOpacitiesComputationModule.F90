@@ -226,6 +226,11 @@ CONTAINS
 
   SUBROUTINE ComputeEquilibriumDistributions_Point &
     ( iE_B, iE_E, E, D, T, Y, f_EQ_Point, iSpecies )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Equilibrium Neutrino Distributions (Single D,T,Y) ---
 
@@ -235,7 +240,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: f_EQ_Point(iE_B:iE_E)
     INTEGER,  INTENT(in)  :: iSpecies
 
-    REAL(DP) :: Me, Mp, Mn, Mnu
+    INTEGER  :: iE
+    REAL(DP) :: Me, Mp, Mn, Mnu, kT, FD_Exp
 
     ! --- Compute Chemical Potentials ---
 
@@ -262,15 +268,16 @@ CONTAINS
 
     ELSE
 
-      WRITE(*,*)
-      WRITE(*,'(A4,A)') '', 'ERROR (ComputeEquilibriumDistributions_Point):'
-      WRITE(*,'(A4,A,I2.2)') '', 'Invalid Species: ', iSpecies
-      WRITE(*,*)
-      STOP
+      Mnu = Zero
 
     END IF
 
-    f_EQ_Point = FermiDirac( E, Mnu, BoltzmannConstant * T )
+    kT = BoltzmannConstant * T
+    DO iE = iE_B, iE_E
+      FD_Exp = ( E(iE) - Mnu ) / kT
+      FD_Exp = MIN( MAX( FD_Exp, - Log1d100, + Log1d100 )
+      f_EQ_Point(iE) = One / ( EXP( FD_Exp ) + One )
+    END DO
 
   END SUBROUTINE ComputeEquilibriumDistributions_Point
 
