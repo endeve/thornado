@@ -275,7 +275,7 @@ CONTAINS
     kT = BoltzmannConstant * T
     DO iE = iE_B, iE_E
       FD_Exp = ( E(iE) - Mnu ) / kT
-      FD_Exp = MIN( MAX( FD_Exp, - Log1d100, + Log1d100 )
+      FD_Exp = MIN( MAX( FD_Exp, - Log1d100 ), + Log1d100 )
       f_EQ_Point(iE) = One / ( EXP( FD_Exp ) + One )
     END DO
 
