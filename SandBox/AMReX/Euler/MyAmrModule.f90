@@ -21,7 +21,7 @@ MODULE MyAmrModule
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule, ONLY: &
-    InitializeProgramHeader, nDOFX
+    InitializeProgramHeader, nDOFX, nDimsX
   USE FluidFieldsModule, ONLY: &
     nCF, nPF, nAF
   USE GeometryFieldsModule, ONLY: &
@@ -137,6 +137,14 @@ CONTAINS
              nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
              xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
              Verbose_Option = amrex_parallel_ioprocessor() )
+
+    IF( nDimsX .NE. amrex_spacedim )THEN
+      WRITE(*,'(A)') 'ERROR'
+      WRITE(*,'(A)') '-----'
+      WRITE(*,'(A)') 'thornado nDimsX different from AMReX amrex_spacedim.'
+      WRITE(*,'(A)') 'Check DIM parameter in GNUmakefile. Stopping...'
+      STOP
+    END IF
 
     ALLOCATE( StepNo(0:nLevels) )
     StepNo = 0
