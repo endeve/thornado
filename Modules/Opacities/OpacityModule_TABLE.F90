@@ -83,7 +83,7 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Pair_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
-    INTEGER :: iS
+    INTEGER :: iS, iM
     LOGICAL :: Include_NES
     LOGICAL :: Include_Pair
     LOGICAL :: Verbose
@@ -247,32 +247,38 @@ CONTAINS
 
     ALLOCATE( NES_T(1:OPACITIES % Scat_NES % nPoints(1), &
                     1:OPACITIES % Scat_NES % nPoints(2), &
-                    1:OPACITIES % Scat_NES % nPoints(3), &
                     1:OPACITIES % Scat_NES % nPoints(4), &
                     1:OPACITIES % Scat_NES % nPoints(5), &
+                    1:OPACITIES % Scat_NES % nMoments, &
                     1:OPACITIES % Scat_NES % nOpacities) )
     DO iS = 1, OPACITIES % Scat_NES % nOpacities
-      NES_T(:,:,:,:,:,iS) = OPACITIES % Scat_NES % Kernel(iS) % Values(:,:,:,:,:)
+      DO iM = 1, OPACITIES % Scat_NES % nMoments
+        NES_T(:,:,:,:,iM,iS) = OPACITIES % Scat_NES % Kernel(iS) % Values(:,:,iM,:,:)
+      END DO
     END DO
 
     ALLOCATE( Pair_T(1:OPACITIES % Scat_Pair % nPoints(1), &
                      1:OPACITIES % Scat_Pair % nPoints(2), &
-                     1:OPACITIES % Scat_Pair % nPoints(3), &
                      1:OPACITIES % Scat_Pair % nPoints(4), &
                      1:OPACITIES % Scat_Pair % nPoints(5), &
+                     1:OPACITIES % Scat_Pair % nMoments, &
                      1:OPACITIES % Scat_Pair % nOpacities) )
     DO iS = 1, OPACITIES % Scat_Pair % nOpacities
-      Pair_T(:,:,:,:,:,iS) = OPACITIES % Scat_Pair % Kernel(iS) % Values(:,:,:,:,:)
+      DO iM = 1, OPACITIES % Scat_Pair % nMoments
+        Pair_T(:,:,:,:,iM,iS) = OPACITIES % Scat_Pair % Kernel(iS) % Values(:,:,iM,:,:)
+      END DO
     END DO
 
     ALLOCATE( Iso_T(1:OPACITIES % Scat_Iso % nPoints(1), &
-                    1:OPACITIES % Scat_Iso % nPoints(2), &
                     1:OPACITIES % Scat_Iso % nPoints(3), &
                     1:OPACITIES % Scat_Iso % nPoints(4), &
                     1:OPACITIES % Scat_Iso % nPoints(5), &
+                    1:OPACITIES % Scat_Iso % nMoments, &
                     1:OPACITIES % Scat_Iso % nOpacities) )
     DO iS = 1, OPACITIES % Scat_Iso % nOpacities
-      Iso_T(:,:,:,:,:,iS) = OPACITIES % Scat_Iso % Kernel(iS) % Values(:,:,:,:,:)
+      DO iM = 1, OPACITIES % Scat_Iso % nMoments
+        Iso_T(:,:,:,:,iM,iS) = OPACITIES % Scat_Iso % Kernel(iS) % Values(:,iM,:,:,:)
+      END DO
     END DO
 
 #if defined(THORNADO_OMP_OL)

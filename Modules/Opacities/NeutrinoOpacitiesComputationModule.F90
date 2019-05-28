@@ -470,7 +470,7 @@ CONTAINS
                  LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
                  LogEs_T, LogDs_T, LogTs_T, Ys_T, &
                  OS_Iso(iSpecies,1), &
-                 Iso_T(:,1,:,:,:,iSpecies), &
+                 Iso_T(:,:,:,:,1,iSpecies), &
                  opES_K )
 
         opES(iOS_E+1:iOS_E+nDOFE,iSpecies,iOS_X+1:iOS_X+nDOFX) &
@@ -505,7 +505,7 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacityE_Point &
            ( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-             opES_Point, Iso_T(:,iMoment,:,:,:,iSpecies), OS_Iso(iSpecies,iMoment), UnitES )
+             opES_Point, Iso_T(:,:,:,:,iMoment,iSpecies), OS_Iso(iSpecies,iMoment), UnitES )
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Point
 
@@ -559,7 +559,7 @@ CONTAINS
 
         CALL ComputeNeutrinoOpacity_Point &
                ( E(iE), D(iX), T(iX), Y(iX), LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-                 opES_Points(iE,iX), Iso_T(:,iMoment,:,:,:,iSpecies), OS_Iso(iSpecies,iMoment), UnitES )
+                 opES_Points(iE,iX), Iso_T(:,:,:,:,iMoment,iSpecies), OS_Iso(iSpecies,iMoment), UnitES )
 
       END DO
     END DO
@@ -621,13 +621,13 @@ CONTAINS
 
         CALL ComputeNeutrinoOpacity_Point &
                ( E(iE1), E(iE2), T, Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                 H1, NES_T(:,:,iH1,:,:,1), OS_NES(1,iH1), UnitNES )
+                 H1, NES_T(:,:,:,:,iH1,1), OS_NES(1,iH1), UnitNES )
 
         ! --- Interpolate HII ---
 
         CALL ComputeNeutrinoOpacity_Point &
                ( E(iE1), E(iE2), T, Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                 H2, NES_T(:,:,iH2,:,:,1), OS_NES(1,iH2), UnitNES )
+                 H2, NES_T(:,:,:,:,iH2,1), OS_NES(1,iH2), UnitNES )
 
         ! --- Compute Phi ---
 
@@ -762,13 +762,13 @@ CONTAINS
 
           CALL ComputeNeutrinoOpacity_Point &
                  ( E(iE1), E(iE2), T(iX), Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                   H1, NES_T(:,:,iH1,:,:,1), OS_NES(1,iH1), UnitNES )
+                   H1, NES_T(:,:,:,:,iH1,1), OS_NES(1,iH1), UnitNES )
 
           ! --- Interpolate HII ---
 
           CALL ComputeNeutrinoOpacity_Point &
                  ( E(iE1), E(iE2), T(iX), Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                   H2, NES_T(:,:,iH2,:,:,1), OS_NES(1,iH2), UnitNES )
+                   H2, NES_T(:,:,:,:,iH2,1), OS_NES(1,iH2), UnitNES )
 
           ! --- Compute Phi ---
 
@@ -896,13 +896,13 @@ CONTAINS
 
         CALL ComputeNeutrinoOpacity_Point &
                ( E(iE1), E(iE2), T, Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                 J1, Pair_T(:,:,iJ1,:,:,1), OS_Pair(1,iJ1), UnitPair )
+                 J1, Pair_T(:,:,:,:,iJ1,1), OS_Pair(1,iJ1), UnitPair )
 
         ! --- Interpolate JII ---
 
         CALL ComputeNeutrinoOpacity_Point &
                ( E(iE1), E(iE2), T, Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                 J2, Pair_T(:,:,iJ2,:,:,1), OS_Pair(1,iJ2), UnitPair )
+                 J2, Pair_T(:,:,:,:,iJ2,1), OS_Pair(1,iJ2), UnitPair )
 
         ! --- Compute Phi ---
 
@@ -1035,13 +1035,13 @@ CONTAINS
 
           CALL ComputeNeutrinoOpacity_Point &
                  ( E(iE1), E(iE2), T(iX), Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                   J1, Pair_T(:,:,iJ1,:,:,1), OS_Pair(1,iJ1), UnitPair )
+                   J1, Pair_T(:,:,:,:,iJ1,1), OS_Pair(1,iJ1), UnitPair )
 
           ! --- Interpolate JII ---
 
           CALL ComputeNeutrinoOpacity_Point &
                  ( E(iE1), E(iE2), T(iX), Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                   J2, Pair_T(:,:,iJ2,:,:,1), OS_Pair(1,iJ2), UnitPair )
+                   J2, Pair_T(:,:,:,:,iJ2,1), OS_Pair(1,iJ2), UnitPair )
 
           ! --- Compute Phi ---
 
