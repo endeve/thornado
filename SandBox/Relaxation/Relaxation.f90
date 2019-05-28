@@ -61,7 +61,7 @@ PROGRAM Relaxation
     WriteFieldsHDF
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
-  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_beta, ONLY: &
+  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
     ComputeIncrement_TwoMoment_Implicit_New
 
   IMPLICIT NONE
@@ -77,7 +77,7 @@ PROGRAM Relaxation
   REAL(DP) :: D_0, T_0, Y_0
 
   nNodes   = 2
-  nSpecies = 1
+  nSpecies = 2
 
   nX = [ 1, 1, 1 ]
   xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
@@ -87,16 +87,18 @@ PROGRAM Relaxation
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
 
-  D_0 = 6.233d09 * Gram / Centimeter**3
-  T_0 = 3.021d10 * Kelvin
-  Y_0 = 0.3178_DP
+!!$  D_0 = 6.233d09 * Gram / Centimeter**3
+!!$  T_0 = 3.021d10 * Kelvin
+!!$  Y_0 = 0.3178_DP
 
-  
+  D_0 = 1.0520d+12 * Gram / Centimeter**3
+  T_0 = 8.9670d+10 * Kelvin
+  Y_0 = 0.1352_DP
 
   dt_0    = 1.0d-3 * Millisecond
   t       = 0.0d-0 * Millisecond
-  t_end   = 1.0d-0 * Millisecond
-  dt_wrt  = 1.0d-1 * Millisecond
+  t_end   = 1.0d+0 * Millisecond
+  dt_wrt  = 1.0d-2 * Millisecond
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -118,7 +120,7 @@ PROGRAM Relaxation
            eR_Option &
              = eR, &
            ZoomE_Option &
-             = 1.183081754893913_DP, &
+             = 1.2660_DP, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -170,6 +172,10 @@ PROGRAM Relaxation
              = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5', &
            OpacityTableName_Iso_Option  &
              = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5', &
+           OpacityTableName_NES_Option &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5', &
+           OpacityTableName_Pair_Option &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
            Verbose_Option = .TRUE. )
 
   ! --- Set Initial Condition ---
@@ -228,16 +234,19 @@ PROGRAM Relaxation
 
     END IF
 
-    CALL ComputeIncrement_TwoMoment_Implicit_New &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, uGF, uCF, rhsCF, uCR, rhsCR )
+    IF( dt > 0.0_DP )THEN
 
-    uCF = uCF + dt * rhsCF
+      CALL ComputeIncrement_TwoMoment_Implicit_New &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, uGF, uCF, rhsCF, uCR, rhsCR )
 
-    uCR = uCR + dt * rhsCR
+      uCF = uCF + dt * rhsCF
+
+      uCR = uCR + dt * rhsCR
+
+    END IF
 
     t = t + dt
 
-stop
     IF( wrt )THEN
 
       CALL WriteFieldsHDF &
