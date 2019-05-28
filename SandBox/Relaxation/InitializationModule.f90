@@ -1,11 +1,11 @@
 MODULE InitializationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, TwoPi
+    DP, Zero, Half, One, Two, TwoPi
   USE UnitsModule, ONLY: &
     Gram, Centimeter, &
     Kilometer, Kelvin, &
-    BoltzmannConstant
+    BoltzmannConstant, MeV
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     iX_B0, iX_E0, &
@@ -168,9 +168,13 @@ CONTAINS
           iNodeE = NodeNumberTable(1,iNode)
 
           E = NodeCoordinate( MeshE, iE, iNodeE )
-! initial condition
+
           uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
-            = (1.0d0-1.0d-2) * MAX( One / ( EXP( (E-Mnu(iNode))/kT(iNode) ) + One ), 1.0d-99 )
+            = MAX( 0.99_DP * EXP( - ( E - Two*kT(iNode) )**2 &
+                                    / ( Two*(1.0d1*MeV)**2 ) ), 1.0d-99 )
+
+!          uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
+!            = MAX( One / ( EXP( (E-Mnu(iNode))/kT(iNode) ) + One ), 1.0d-99 )
 
           uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) = Zero
           uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
