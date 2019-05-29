@@ -34,11 +34,12 @@ Euler_CharacteristicDecompositionModule_Relativistic.o: \
 
 Euler_CharacteristicDecompositionModule_TABLE_NonRelativistic.o: \
   KindModule.o \
-  UnitsModule.o \
   GeometryFieldsModule.o \
+  UnitsModule.o \
   FluidFieldsModule.o \
-  Euler_UtilitiesModule_NonRelativistic.o \
+  Euler_UtilitiesModule.o \
   EquationOfStateModule.o \
+  EquationOfStateModule_TABLE.o \
   Euler_CharacteristicDecompositionModule_TABLE_NonRelativistic.f90
 
 Euler_PositivityLimiterModule_NonRelativistic.o: \
