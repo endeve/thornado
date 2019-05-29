@@ -78,10 +78,9 @@ PROGRAM Relaxation
 
   INCLUDE 'mpif.h'
 
-  LOGICAL  :: wrt
   INTEGER  :: iCycle, iCycleD, iCycleW
   INTEGER  :: nE, nX(3), nNodes, nSpecies
-  REAL(DP) :: t, dt, dt_0, t_end, dt_wrt, t_wrt, wTime
+  REAL(DP) :: t, dt, dt_0, t_end, wTime
   REAL(DP) :: eL, eR
   REAL(DP) :: xL(3), xR(3)
   REAL(DP) :: D_0, T_0, Y_0
@@ -108,9 +107,8 @@ PROGRAM Relaxation
   dt_0    = 1.0d-3 * Millisecond
   t       = 0.0d-0 * Millisecond
   t_end   = 1.0d+0 * Millisecond
-  dt_wrt  = 1.0d-3 * Millisecond
   iCycleD = 1
-  iCycleW = 10
+  iCycleW = 5
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -210,9 +208,6 @@ PROGRAM Relaxation
 
   wTime = MPI_WTIME( )
 
-  t_wrt   = dt_wrt
-  wrt     = .FALSE.
-
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A,ES8.2E2)') &
     '', 'Evolving from t [ms] = ', t / Millisecond, &
@@ -232,14 +227,6 @@ PROGRAM Relaxation
 
     END IF
 
-    IF( t + dt > t_wrt )THEN
-
-      dt    = t_wrt - t
-      t_wrt = t_wrt + dt_wrt
-      wrt   = .TRUE.
-
-    END IF
-
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
       WRITE(*,'(A8,A8,I8.8,A2,A,ES12.6E2,A2,A,ES12.6E2)') &
@@ -249,20 +236,16 @@ PROGRAM Relaxation
 
     END IF
 
-    IF( dt > 0.0_DP )THEN
+    CALL ComputeIncrement_TwoMoment_Implicit_New &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, uGF, uCF, rhsCF, uCR, rhsCR )
 
-      CALL ComputeIncrement_TwoMoment_Implicit_New &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, uGF, uCF, rhsCF, uCR, rhsCR )
+    uCF = uCF + dt * rhsCF
 
-      uCF = uCF + dt * rhsCF
-
-      uCR = uCR + dt * rhsCR
-
-    END IF
+    uCR = uCR + dt * rhsCR
 
     t = t + dt
 
-    IF( wrt )THEN
+    IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
       CALL ComputeFromConserved_Fluid
 
@@ -273,8 +256,6 @@ PROGRAM Relaxation
                WriteGF_Option = .TRUE., &
                WriteFF_Option = .TRUE., &
                WriteRF_Option = .TRUE. )
-
-      wrt = .FALSE.
 
     END IF
 
