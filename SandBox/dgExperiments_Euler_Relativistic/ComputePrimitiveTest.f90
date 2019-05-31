@@ -10,7 +10,7 @@ PROGRAM ComputePrimitiveTest
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState, &
-    ComputePressureFromSpecificInternalEnergy
+    ComputePressureFromPrimitive
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     Euler_ComputePrimitive_Relativistic, &
     ComputeFunJacP, &
@@ -70,17 +70,18 @@ PROGRAM ComputePrimitiveTest
   WRITE(*,'(A)') 'Created FunP array!'
   WRITE(*,*)
 
-  WRITE(*,'(A)') 'CALL ComputePrimitive_GR:'
-  WRITE(*,'(A)') '-------------------------'
-  CALL ComputePrimitive_GR &
+  WRITE(*,'(A)') 'CALL Euler_ComputePrimitive_Relativistic:'
+  WRITE(*,'(A)') '-----------------------------------------'
+  CALL Euler_ComputePrimitive_Relativistic &
          ( U(:,iCF_D), &
            U(:,iCF_S1), U(:,iCF_S2), U(:,iCF_S3), &
            U(:,iCF_E), U(:,iCF_Ne), &
            P(:,iPF_D), &
            P(:,iPF_V1), P(:,iPF_V2), P(:,iPF_V3), &
            P(:,iPF_E), P(:,iPF_Ne), &
-           Pressure, &
            G(:,iGF_Gm_dd_11), G(:,iGF_Gm_dd_22), G(:,iGF_Gm_dd_33) )
+  CALL ComputePressureFromPrimitive &
+         ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), Pressure )
 
   WRITE(*,'(A9,ES24.16E3)') "P(out) = ", Pressure(i)
   

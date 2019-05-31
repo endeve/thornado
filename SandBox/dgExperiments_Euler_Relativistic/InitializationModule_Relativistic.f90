@@ -50,13 +50,13 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL         :: Eblast_Option
 
     WRITE(*,*)
-    WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
+    WRITE(*,'(A,A)') '    INFO: ', TRIM( ProgramName )
 
     SELECT CASE ( TRIM( ProgramName ) )
 
       CASE( 'RiemannProblem' )
 
-        CALL InitializeFields_GR_RiemannProblem &
+        CALL InitializeFields_RiemannProblem_Relativistic &
                ( RiemannProblemName_Option &
                    = RiemannProblemName_Option, &
                  nDetCells_Option &
@@ -66,40 +66,40 @@ CONTAINS
 
       CASE( 'RiemannProblem2d' )
 
-        CALL InitializeFields_GR_RiemannProblem2d &
+        CALL InitializeFields_RiemannProblem2d_Relativistic &
                ( RiemannProblem2dName_Option &
                    = RiemannProblem2dName_Option )
 
       CASE( 'SphericalRiemannProblem' )
 
-        CALL InitializeFields_GR_SphericalRiemannProblem &
+        CALL InitializeFields_SphericalRiemannProblem_Relativistic &
                ( SphericalRiemannProblemName_Option &
                    = SphericalRiemannProblemName_Option )
 
       CASE( 'SphericalSedov' )
 
-        CALL InitializeFields_GR_SphericalSedov &
+        CALL InitializeFields_SphericalSedov_Relativistic &
                ( nDetCells_Option = nDetCells_Option, &
                  Eblast_Option = Eblast_Option)
 
       CASE( 'KelvinHelmholtz_Relativistic' )
 
-         CALL InitializeFields_GR_KelvinHelmholtz_Relativistic
+         CALL InitializeFields_KelvinHelmholtz_Relativistic
 
       CASE( 'KelvinHelmholtz' )
 
-         CALL InitializeFields_GR_KelvinHelmholtz
+         CALL InitializeFields_KelvinHelmholtz
 
       CASE( 'StandingAccretionShock' )
 
-        CALL InitializeFields_GR_StandingAccretionShock
+        CALL InitializeFields_StandingAccretionShock_Relativistic
         
     END SELECT 
 
   END SUBROUTINE InitializeFields_Relativistic
 
 
-  SUBROUTINE InitializeFields_GR_RiemannProblem &
+  SUBROUTINE InitializeFields_RiemannProblem_Relativistic &
                ( RiemannProblemName_Option, &
                  nDetCells_Option, Eblast_Option )
 
@@ -338,11 +338,11 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE InitializeFields_GR_RiemannProblem
+  END SUBROUTINE InitializeFields_RiemannProblem_Relativistic
 
 
 
-  SUBROUTINE InitializeFields_GR_RiemannProblem2d &
+  SUBROUTINE InitializeFields_RiemannProblem2d_Relativistic &
                ( RiemannProblem2dName_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblem2dName_Option
@@ -457,11 +457,11 @@ CONTAINS
     END DO
 
 
-  END SUBROUTINE InitializeFields_GR_RiemannProblem2d
+  END SUBROUTINE InitializeFields_RiemannProblem2d_Relativistic
 
 
 
-  SUBROUTINE InitializeFields_GR_SphericalRiemannProblem &
+  SUBROUTINE InitializeFields_SphericalRiemannProblem_Relativistic &
                ( SphericalRiemannProblemName_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
@@ -549,10 +549,10 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE InitializeFields_GR_SphericalRiemannProblem
+  END SUBROUTINE InitializeFields_SphericalRiemannProblem_Relativistic
 
 
-  SUBROUTINE InitializeFields_GR_SphericalSedov &
+  SUBROUTINE InitializeFields_SphericalSedov_Relativistic &
                ( nDetCells_Option, Eblast_Option )
     
     INTEGER,  INTENT(in), OPTIONAL :: nDetCells_Option
@@ -632,12 +632,12 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE InitializeFields_GR_SphericalSedov
+  END SUBROUTINE InitializeFields_SphericalSedov_Relativistic
 
 
   ! --- Relativistic 2D Kelvin-Helmholtz instability a la
   !     Beckwith & Stone (2011), ApjS, 193, 6 (typo in Eq. (63)) ---
-  SUBROUTINE InitializeFields_GR_KelvinHelmholtz_Relativistic
+  SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1, iNodeX2
@@ -716,10 +716,10 @@ CONTAINS
     END DO
 
 
-  END SUBROUTINE InitializeFields_GR_KelvinHelmholtz_Relativistic
+  END SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic
 
 
-  SUBROUTINE InitializeFields_GR_KelvinHelmholtz
+  SUBROUTINE InitializeFields_KelvinHelmholtz
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1, iNodeX2
@@ -800,10 +800,10 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE InitializeFields_GR_KelvinHelmholtz
+  END SUBROUTINE InitializeFields_KelvinHelmholtz
 
 
-  SUBROUTINE InitializeFields_GR_StandingAccretionShock
+  SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
 
     REAL(DP) :: D, V(3), P
     INTEGER  :: iX1, iX2, iX3
@@ -901,7 +901,7 @@ CONTAINS
     CLOSE( 100 )
 !!$    STOP 'Wrote SAS_IC_interp.dat'
 
-  END SUBROUTINE InitializeFields_GR_StandingAccretionShock
+  END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
 
 
   ! --- Auxiliary functions/subroutines for SAS problem ---

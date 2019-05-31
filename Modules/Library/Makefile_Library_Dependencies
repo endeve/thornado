@@ -21,6 +21,10 @@ TimersModule.o: \
   KindModule.o \
   TimersModule.f90
 
+TimersModule_Euler.o: \
+  KindModule.o \
+  TimersModule_Euler.f90
+
 LinearAlgebraModule.o: \
   KindModule.o \
   DeviceModule.o \

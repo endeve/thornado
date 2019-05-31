@@ -58,6 +58,11 @@ CONTAINS
     CALL InitializeSSPRK( nStages )
 
     WRITE(*,*)
+    WRITE(*,*)
+    WRITE(*,'(A)') '    INFO: TimeSteppingModule_SSPRK'
+    WRITE(*,'(A)') '    ------------------------------'
+
+    WRITE(*,*)
     WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
 
     WRITE(*,*)

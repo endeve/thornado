@@ -112,6 +112,7 @@ Euler_BoundaryConditionsModule_Relativistic.o: \
 
 Euler_dgDiscretizationModule.o: \
   KindModule.o \
+  TimersModule_Euler.o \
   ProgramHeaderModule.o \
   MeshModule.o \
   ReferenceElementModuleX.o \

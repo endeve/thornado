@@ -15,7 +15,8 @@ PROGRAM ApplicationDriver
     InitializeEquationOfState, &
     FinalizeEquationOfState
   USE ProgramHeaderModule, ONLY: &
-    iX_B0, iX_B1, iX_E0, iX_E1
+    iX_B0, iX_B1, iX_E0, iX_E1, &
+    nDimsX
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE InitializationModule_Relativistic, ONLY: &
@@ -306,7 +307,7 @@ PROGRAM ApplicationDriver
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
   ! --- Cockburn & Shu, (2001), JSC, 16, 173 ---
-  CFL = 0.5d0 / ( 2.0d0 * DBLE( nNodes - 1 ) + 1.0d0 )
+  CFL = 0.5_DP
 
   CALL WriteProgramHeader
 
@@ -360,6 +361,10 @@ PROGRAM ApplicationDriver
            Min_2_Option = Min_2, &
            UsePositivityLimiter_Option = UsePositivityLimiter )
 
+  CALL InitializeFluid_SSPRK( nStages = nStagesSSPRK )
+  WRITE(*,*)
+  WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
+
   CALL InitializeFields_Relativistic &
          ( RiemannProblemName_Option = TRIM( RiemannProblemName ), &
            RiemannProblem2dName_Option = TRIM( RiemannProblem2dName ), &
@@ -380,12 +385,10 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
        ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
-  CALL InitializeFluid_SSPRK( nStages = nStagesSSPRK )
-
   WRITE(*,*)
-  WRITE(*,'(A2,A,ES11.3E3)') '', 'CFL: ', CFL
   WRITE(*,*)
-  WRITE(*,'(A2,A)') '', 'Evolving Fields...'
+  WRITE(*,'(A2,A)') '', 'Begin evolution'
+  WRITE(*,'(A2,A)') '', '---------------'
   WRITE(*,*)
 
   t     = 0.0_DP
@@ -410,7 +413,8 @@ PROGRAM ApplicationDriver
              ( iX_B0, iX_E0, &
                uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               CFL = CFL, TimeStep = dt, UseSourceTerm_Option = UseSourceTerm )
+               CFL = CFL / ( nDimsX * ( Two * nNodes - One ) ), &
+               TimeStep = dt, UseSourceTerm_Option = UseSourceTerm )
       IF( DEBUG ) wTime_CTS = MPI_WTIME( ) - wTime_CTS
     ELSE
       dt = CFL * ( xR(1) - xL(1) ) / DBLE( nX(1) )
