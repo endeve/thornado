@@ -473,7 +473,7 @@ CONTAINS
                 AlphaPls, AlphaMns )
 
         NumericalFlux(iNodeX_X1,:) &
-!          = Euler_NumericalFlux_HLLC_X1 &
+!          = Euler_NumericalFlux_X1_HLLC &
           = Euler_NumericalFlux_HLL &
               ( uCF_L    (iNodeX_X1,:),            &
                 uCF_R    (iNodeX_X1,:),            &
@@ -862,7 +862,7 @@ CONTAINS
                 AlphaPls, AlphaMns )
 
         NumericalFlux(iNodeX_X2,:) &
-!          = Euler_NumericalFlux_HLLC_X2 &
+!          = Euler_NumericalFlux_X2_HLLC &
           = Euler_NumericalFlux_HLL &
               ( uCF_L    (iNodeX_X2,:),            &
                 uCF_R    (iNodeX_X2,:),            &
