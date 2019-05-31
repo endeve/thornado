@@ -236,12 +236,16 @@ PROGRAM Relaxation
 
     END IF
 
-    CALL ComputeIncrement_TwoMoment_Implicit_New &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, uGF, uCF, rhsCF, uCR, rhsCR )
+    IF( dt > 0.0_DP )THEN
 
-    uCF = uCF + dt * rhsCF
+      CALL ComputeIncrement_TwoMoment_Implicit_New &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, uGF, uCF, rhsCF, uCR, rhsCR )
 
-    uCR = uCR + dt * rhsCR
+      uCF = uCF + dt * rhsCF
+
+      uCR = uCR + dt * rhsCR
+
+    END IF
 
     t = t + dt
 

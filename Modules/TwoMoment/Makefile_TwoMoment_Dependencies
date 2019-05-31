@@ -25,6 +25,16 @@ TwoMoment_BoundaryConditionsModule.o: \
 
 TwoMoment_SlopeLimiterModule.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModule.o \
+  ReferenceElementModuleX.o \
+  UtilitiesModule.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  RadiationFieldsModule.o \
+  TwoMoment_CharacteristicDecompositionModule.o \
   TwoMoment_SlopeLimiterModule.f90
 
 TwoMoment_PositivityLimiterModule.o: \

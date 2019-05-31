@@ -27,13 +27,16 @@ PROGRAM NeutrinoOpacities
     ComputeNeutrinoOpacities_NES_Points, &
     ComputeNeutrinoOpacities_Pair_Point, &
     ComputeNeutrinoOpacities_Pair_Points
+  USE DeviceModule, ONLY: &
+    InitializeDevice, &
+    FinalizeDevice
 
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
 
   INTEGER, PARAMETER :: &
-    nPointsX = 2**4, &
+    nPointsX = 2**12, &
     nPointsE = 2**5, &
     nSpecies = 2
   REAL(DP), PARAMETER :: &
@@ -74,6 +77,8 @@ PROGRAM NeutrinoOpacities
     Phi_0_Pair_Out
 
   CALL MPI_INIT( mpierr )
+
+  CALL InitializeDevice
 
   WRITE(*,*)
   WRITE(*,'(A4,A)') '', 'NeutrinoOpacities'
@@ -129,6 +134,18 @@ PROGRAM NeutrinoOpacities
 
   Timer_ReadOpacities = MPI_WTIME() - Timer_ReadOpacities
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET ENTER DATA &
+  !$OMP MAP( to: E, D, T, Y ) &
+  !$OMP MAP( alloc: Chi, Chi_NES, Chi_Pair, Sigma, &
+  !$OMP             Phi_0_NES_In, Phi_0_NES_Out, Phi_0_Pair_In, Phi_0_Pair_Out )
+#elif defined(THORNADO_OACC)
+  !$ACC ENTER DATA &
+  !$ACC COPYIN( E, D, T, Y ) &
+  !$ACC CREATE( Chi, Chi_NES, Chi_Pair, Sigma, &
+  !$ACC         Phi_0_NES_In, Phi_0_NES_Out, Phi_0_Pair_In, Phi_0_Pair_Out )
+#endif
+
   ! --- Compute Electron Capture Opacities ---
 
   Timer_Compute_EC = MPI_WTIME()
@@ -146,6 +163,12 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_EC_Point = MPI_WTIME()
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+  !$ACC PRESENT( E, D, T, Y, Chi )
+#endif
   DO iS = 1, nSpecies
   DO iX = 1, nPointsX
 
@@ -156,6 +179,12 @@ PROGRAM NeutrinoOpacities
   END DO
 
   Timer_Compute_EC_Point = MPI_WTIME() - Timer_Compute_EC_Point
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( Chi )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST( Chi )
+#endif
 
   ! --- Compute Elastic Scattering Opacities ---
 
@@ -174,6 +203,12 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_ES_Point = MPI_WTIME()
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+  !$ACC PRESENT( E, D, T, Y, Sigma )
+#endif
   DO iS = 1, nSpecies
   DO iX = 1, nPointsX
 
@@ -184,6 +219,12 @@ PROGRAM NeutrinoOpacities
   END DO
 
   Timer_Compute_ES_Point = MPI_WTIME() - Timer_Compute_ES_Point
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( Sigma )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST( Sigma )
+#endif
 
   ! --- Compute NES Opacities ---
 
@@ -203,6 +244,12 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_NES_Point = MPI_WTIME()
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+  !$ACC PRESENT( E, D, T, Y, Phi_0_NES_In, Phi_0_NES_Out )
+#endif
   DO iS = 1, nSpecies
   DO iX = 1, nPointsX
 
@@ -214,6 +261,12 @@ PROGRAM NeutrinoOpacities
   END DO
 
   Timer_Compute_NES_Point = MPI_WTIME() - Timer_Compute_NES_Point
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( Phi_0_NES_In, Phi_0_NES_Out )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST( Phi_0_NES_In, Phi_0_NES_Out )
+#endif
 
   ! --- Integrated NES Opacity ---
 
@@ -246,6 +299,12 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_Pair_Point = MPI_WTIME()
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+  !$ACC PRESENT( E, D, T, Y, Phi_0_Pair_In, Phi_0_Pair_Out )
+#endif
   DO iS = 1, nSpecies
   DO iX = 1, nPointsX
 
@@ -257,6 +316,12 @@ PROGRAM NeutrinoOpacities
   END DO
 
   Timer_Compute_Pair_Point = MPI_WTIME() - Timer_Compute_Pair_Point
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET UPDATE FROM( Phi_0_Pair_In, Phi_0_Pair_Out )
+#elif defined(THORNADO_OACC)
+  !$ACC UPDATE HOST( Phi_0_Pair_In, Phi_0_Pair_Out )
+#endif
 
   ! --- Integrated Pair Opacity ---
 
@@ -270,6 +335,18 @@ PROGRAM NeutrinoOpacities
   END DO
   END DO
   END DO
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET EXIT DATA &
+  !$OMP MAP( release: E, D, T, Y, &
+  !$OMP               Chi, Chi_NES, Chi_Pair, Sigma, &
+  !$OMP               Phi_0_NES_In, Phi_0_NES_Out, Phi_0_Pair_In, Phi_0_Pair_Out )
+#elif defined(THORNADO_OACC)
+  !$ACC EXIT DATA &
+  !$ACC DELETE( E, D, T, Y, &
+  !$ACC         Chi, Chi_NES, Chi_Pair, Sigma, &
+  !$ACC         Phi_0_NES_In, Phi_0_NES_Out, Phi_0_Pair_In, Phi_0_Pair_Out )
+#endif
 
   CALL WriteVector &
          ( nPointsE, E / Unit_E, 'E.dat' )
@@ -336,6 +413,8 @@ PROGRAM NeutrinoOpacities
   WRITE(*,'(A4,A19,2ES10.2E2)') '', 'Compute_Pair (P) = ',  &
     Timer_Compute_Pair_Point, Timer_Compute_Pair_Point / Timer_Total
   WRITE(*,*)
+
+  CALL FinalizeDevice
 
   CALL MPI_FINALIZE( mpierr )
 
