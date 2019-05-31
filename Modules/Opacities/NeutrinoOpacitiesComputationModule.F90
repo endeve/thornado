@@ -354,6 +354,11 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacities_EC_Point &
     ( iE_B, iE_E, E, D, T, Y, iSpecies, opEC_Point )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Electron Capture Opacities (Single D,T,Y) ---
 
@@ -363,9 +368,19 @@ CONTAINS
     REAL(DP), INTENT(out) :: opEC_Point(iE_B:iE_E)
     INTEGER,  INTENT(in)  :: iSpecies
 
-    CALL ComputeNeutrinoOpacityE_Point &
-           ( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-             opEC_Point, EmAb_T(:,:,:,:,iSpecies), OS_EmAb(iSpecies), UnitEC )
+    INTEGER :: iE
+
+    DO iE = iE_B, iE_E
+
+      CALL ComputeNeutrinoOpacity_Point &
+             ( E(iE), D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+               opEC_Point(iE), EmAb_T(:,:,:,:,iSpecies), OS_EmAb(iSpecies), UnitEC )
+
+    END DO
+
+    !CALL ComputeNeutrinoOpacityE_Point &
+    !       ( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+    !         opEC_Point, EmAb_T(:,:,:,:,iSpecies), OS_EmAb(iSpecies), UnitEC )
 
   END SUBROUTINE ComputeNeutrinoOpacities_EC_Point
 
@@ -500,6 +515,11 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacities_ES_Point &
     ( iE_B, iE_E, E, D, T, Y, iSpecies, iMoment, opES_Point )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Elastic Scattering Opacities (Single D,T,Y) ---
 
@@ -510,9 +530,19 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: opES_Point(iE_B:iE_E)
 
-    CALL ComputeNeutrinoOpacityE_Point &
-           ( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-             opES_Point, Iso_T(:,:,:,:,iMoment,iSpecies), OS_Iso(iSpecies,iMoment), UnitES )
+    INTEGER :: iE
+
+    DO iE = iE_B, iE_E
+
+      CALL ComputeNeutrinoOpacity_Point &
+             ( E(iE), D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+               opES_Point(iE), Iso_T(:,:,:,:,iMoment,iSpecies), OS_Iso(iSpecies,iMoment), UnitES )
+
+    END DO
+
+    !CALL ComputeNeutrinoOpacityE_Point &
+    !       ( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+    !         opES_Point, Iso_T(:,:,:,:,iMoment,iSpecies), OS_Iso(iSpecies,iMoment), UnitES )
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Point
 
@@ -758,7 +788,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC IF( do_gpu ) &
     !$ACC PRIVATE( H1, H2, kT, Eta, dE ) &
-    !$ACC PRESENT( E, T, Me, LogEs_T, LogTs_T, LogEtas_T, OS_NES, NES_T )
+    !$ACC PRESENT( E, T, Me, LogEs_T, LogTs_T, LogEtas_T, OS_NES, NES_T, Phi_In, Phi_Out )
 #endif
     DO iX = iX_B, iX_E
       DO iE2 = iE_B, iE_E
@@ -848,6 +878,11 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacities_Pair_Point &
     ( iE_B, iE_E, E, D, T, Y, iSpecies, iMoment, Phi_In, Phi_Out )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Pair Opacities (Single D,T,Y) ---
 
@@ -1023,7 +1058,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC IF( do_gpu ) &
     !$ACC PRIVATE( kT, Eta, J1, J2 ) &
-    !$ACC PRESENT( E, T, Me, LogEs_T, LogTs_T, LogEtas_T, OS_Pair, Pair_T )
+    !$ACC PRESENT( E, T, Me, LogEs_T, LogTs_T, LogEtas_T, OS_Pair, Pair_T, Phi_In, Phi_Out )
 #endif
     DO iX = iX_B, iX_E
       DO iE2 = iE_B, iE_E
