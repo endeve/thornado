@@ -370,6 +370,8 @@ CONTAINS
 
     INTEGER :: iE
 
+#ifdef MICROPHYSICS_WEAKLIB
+
     DO iE = iE_B, iE_E
 
       CALL ComputeNeutrinoOpacity_Point &
@@ -381,6 +383,12 @@ CONTAINS
     !CALL ComputeNeutrinoOpacityE_Point &
     !       ( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
     !         opEC_Point, EmAb_T(:,:,:,:,iSpecies), OS_EmAb(iSpecies), UnitEC )
+
+#else
+
+    opEC_Point = Zero
+
+#endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_EC_Point
 
@@ -420,6 +428,8 @@ CONTAINS
     END IF
 #endif
 
+#ifdef MICROPHYSICS_WEAKLIB
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
     !$OMP IF( do_gpu )
@@ -437,6 +447,12 @@ CONTAINS
 
       END DO
     END DO
+
+#else
+
+    opEC_Points = Zero
+
+#endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_EC_Points
 
@@ -532,6 +548,8 @@ CONTAINS
 
     INTEGER :: iE
 
+#ifdef MICROPHYSICS_WEAKLIB
+
     DO iE = iE_B, iE_E
 
       CALL ComputeNeutrinoOpacity_Point &
@@ -543,6 +561,12 @@ CONTAINS
     !CALL ComputeNeutrinoOpacityE_Point &
     !       ( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
     !         opES_Point, Iso_T(:,:,:,:,iMoment,iSpecies), OS_Iso(iSpecies,iMoment), UnitES )
+
+#else
+
+    opES_Points = Zero
+
+#endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Point
 
@@ -583,6 +607,8 @@ CONTAINS
     END IF
 #endif
 
+#ifdef MICROPHYSICS_WEAKLIB
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
     !$OMP IF( do_gpu )
@@ -600,6 +626,12 @@ CONTAINS
 
       END DO
     END DO
+
+#else
+
+    opES_Points = Zero
+
+#endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Points
 
