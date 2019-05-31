@@ -992,25 +992,6 @@ CONTAINS
 
     IF( TRIM( CoordinateSystem ) == 'CARTESIAN' ) RETURN
 
-    IF( nDimsX .EQ. 2 )THEN
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-
-        DO iGF = 1, nGF
-
-          G_P_X2(:,iGF) = G(:,iX1,iX2-1,iX3,iGF)
-          G_N_X2(:,iGF) = G(:,iX1,iX2+1,iX3,iGF)
-
-        END DO
-
-      END DO
-      END DO
-      END DO
-
-    END IF
-
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -1031,6 +1012,8 @@ CONTAINS
         G_K   (:,iGF) = G(:,iX1,  iX2,iX3,iGF)
         G_P_X1(:,iGF) = G(:,iX1-1,iX2,iX3,iGF)
         G_N_X1(:,iGF) = G(:,iX1+1,iX2,iX3,iGF)
+        G_P_X2(:,iGF) = G(:,iX1,iX2-1,iX3,iGF)
+        G_N_X2(:,iGF) = G(:,iX1,iX2+1,iX3,iGF)
 
       END DO
 
@@ -1197,44 +1180,6 @@ CONTAINS
     dadx2 = Zero
     dadx3 = Zero
 
-    IF     ( nDimsX .EQ. 2 )THEN
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-
-        DO iGF = 1, nGF
-
-          G_P_X2(:,iGF) = G(:,iX1,iX2-1,iX3,iGF)
-          G_N_X2(:,iGF) = G(:,iX1,iX2+1,iX3,iGF)
-
-        END DO
-
-      END DO
-      END DO
-      END DO
-
-    ELSE IF( nDimsX .EQ. 3 )THEN
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-
-        DO iGF = 1, nGF
-
-          G_P_X2(:,iGF) = G(:,iX1,iX2-1,iX3,iGF)
-          G_N_X2(:,iGF) = G(:,iX1,iX2+1,iX3,iGF)
-          G_P_X3(:,iGF) = G(:,iX1,iX2,iX3-1,iGF)
-          G_N_X3(:,iGF) = G(:,iX1,iX2,iX3+1,iGF)
-
-        END DO
-
-      END DO
-      END DO
-      END DO
-
-    END IF
-
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -1254,6 +1199,10 @@ CONTAINS
         G_K   (:,iGF) = G(:,iX1,  iX2,iX3,iGF)
         G_P_X1(:,iGF) = G(:,iX1-1,iX2,iX3,iGF)
         G_N_X1(:,iGF) = G(:,iX1+1,iX2,iX3,iGF)
+        G_P_X2(:,iGF) = G(:,iX1,iX2-1,iX3,iGF)
+        G_N_X2(:,iGF) = G(:,iX1,iX2+1,iX3,iGF)
+        G_P_X3(:,iGF) = G(:,iX1,iX2,iX3-1,iGF)
+        G_N_X3(:,iGF) = G(:,iX1,iX2,iX3+1,iGF)
 
       END DO
 

@@ -59,6 +59,7 @@ f90EXE_sources += PolynomialBasisModule_Legendre.f90
 F90EXE_sources += ReferenceElementModule.F90
 f90EXE_sources += PolynomialBasisMappingModule.f90
 f90EXE_sources += TimersModule_Euler.f90
+F90EXE_sources += DeviceModule.F90
 
 # In THORNADO_DIR/Modules/Mesh:
 
