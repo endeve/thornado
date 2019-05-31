@@ -1,3 +1,5 @@
+OPENMP_titan_gnu     = -fopenmp
+OPENMP_titan_pgi     = -mp
 OPENMP_summit_gcc    = -fopenmp
 OPENMP_summit_pgi    = -mp
 OPENMP_summit_xl     = -qsmp=omp:noauto
@@ -9,14 +11,18 @@ else ifeq ($(USE_OMP_OL),TRUE)
 OPENMP               = $(OPENMP_OL_$(MACHINE))
 endif
 
+OPENACC_titan_gnu    = -fopenacc
+OPENACC_titan_pgi    = -acc -ta=tesla:cc35,cuda9.1,ptxinfo -Minfo=accel
 OPENACC_summit_gcc   = -fopenacc
-OPENACC_summit_pgi   = -acc -ta=tesla:cc70,cuda9.2,ptxinfo -Minfo=accel
+OPENACC_summit_pgi   = -acc -ta=tesla:cc70,cuda10.1,ptxinfo -Minfo=accel
 OPENACC_summit_xl    =
 ifeq ($(USE_OACC),TRUE)
 OPENACC              = $(OPENACC_$(MACHINE))
 endif
 
-C_summit_pgi         = mpic++ -std=c++11 $(OPENMP)
+C_titan_gnu          = CC -std=c++11 $(OPENMP)
+C_titan_pgi          = CC --c++11 $(OPENMP)
+C_summit_gcc         = mpic++ -std=c++11 $(OPENMP)
 C_summit_pgi         = mpic++ --c++11 $(OPENMP)
 C_summit_xl          = mpic++ -std=c++11 $(OPENMP)
 C                    = $(C_$(MACHINE))
@@ -31,12 +37,13 @@ FORTRAN_ranchuair    = mpif90
 FORTRAN_sjdunham     = mpif90
 FORTRAN_accre        = mpif90
 FORTRAN_zelledge     = mpif90
-FORTRAN_paullaiu_gnu = mpif90
-FORTRAN_titan_gnu    = ftn
+FORTRAN_titan_gnu    = ftn -cpp
+FORTRAN_titan_pgi    = ftn -Mpreprocess
 FORTRAN_titan_cray   = ftn
+FORTRAN_paullaiu_gnu = mpif90
 FORTRAN_beacon_intel = mpiifort -mkl
 FORTRAN_mcarpe21     = mpiifort
-FORTRAN_summit_gcc   = mpifort
+FORTRAN_summit_gcc   = mpifort -cpp
 FORTRAN_summit_pgi   = mpifort -Mpreprocess
 FORTRAN_summit_xl    = mpifort -qpreprocess
 FORTRAN              = $(FORTRAN_$(MACHINE)) $(OPENMP) $(OPENACC)
@@ -53,6 +60,7 @@ SUFFIX_f90_accre        =
 SUFFIX_f90_zelledge     =
 SUFFIX_paullaiu_gnu     =
 SUFFIX_f90_titan_gnu    =
+SUFFIX_f90_titan_pgi    =
 SUFFIX_f90_titan_cray   =
 SUFFIX_f90_beacon_intel =
 SUFFIX_f90_summit_gcc   =
@@ -70,12 +78,13 @@ FLINKER_ranchuair    = mpif90
 FLINKER_sjdunham     = mpif90
 FLINKER_accre        = mpif90
 FLINKER_zelledge     = mpif90
-FLINKER_paullaiu_gnu = mpif90
-FLINKER_titan_gnu    = ftn
+FLINKER_titan_gnu    = ftn -cpp
+FLINKER_titan_pgi    = ftn -Mpreprocess
 FLINKER_titan_cray   = ftn
+FLINKER_paullaiu_gnu = mpif90
 FLINKER_beacon_intel = mpiifort -mkl
 FLINKER_mcarpe21     = mpiifort
-FLINKER_summit_gcc   = mpifort
+FLINKER_summit_gcc   = mpifort -cpp
 FLINKER_summit_pgi   = mpifort -Mpreprocess
 FLINKER_summit_xl    = mpifort -qpreprocess
 FLINKER              = $(FLINKER_$(MACHINE)) $(OPENMP) $(OPENACC)
@@ -91,9 +100,10 @@ DEBUG_zelledge     = -g
 DEBUG_ranchuair    = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_sjdunham     = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_accre        = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
-DEBUG_paullaiu_gnu = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
-DEBUG_titan_gnu    = -g -ffpe-trap=invalid,zero -fcheck=bounds
+DEBUG_titan_gnu    = -g -Og -ffpe-trap=invalid,zero -fcheck=bounds
+DEBUG_titan_pgi    = -g -O0 -traceback -Mbounds -Ktrap=fp -Mnoopenmp
 DEBUG_titan_cray   = -G0 -hfp0 -K trap=fp
+DEBUG_paullaiu_gnu = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_beacon_intel = -g -warn all -fpe0 -fpe-all=0 -ftrapuv -traceback -CB
 DEBUG_mcarpe21     = -g
 DEBUG_summit_gcc   = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
@@ -113,9 +123,10 @@ OPTIMIZE_ranchuair    = -O2
 OPTIMIZE_sjdunham     = -O2 -framework Accelerate
 OPTIMIZE_accre        = -O2
 OPTIMIZE_zelledge     = -O2
-OPTIMIZE_paullaiu_gnu = -O2
-OPTIMIZE_titan_gnu    = -O2
+OPTIMIZE_titan_gnu    = -O3 -march=bdver1
+OPTIMIZE_titan_pgi    = -fastsse
 OPTIMIZE_titan_cray   =
+OPTIMIZE_paullaiu_gnu = -O2
 OPTIMIZE_beacon_intel = -fast
 OPTIMIZE_mcarpe21     = -O2
 OPTIMIZE_summit_gcc   = -g -O3 -mcpu=power9
@@ -136,6 +147,7 @@ INCLUDE_HDF5_zelledge          = -I/usr/include/hdf5/serial
 #INCLUDE_HDF5_zelledge          = -I/usr/lib/x86_64-linux-gnu/hdf5/serial
 INCLUDE_HDF5_paullaiu_gnu      = -I/usr/lib/x86_64-linux-gnu/hdf5/serial/include
 INCLUDE_HDF5_titan_gnu         = # Use Module Load
+INCLUDE_HDF5_titan_pgi         = # Use Module Load
 INCLUDE_HDF5_titan_cray        = # Use Module Load
 INCLUDE_HDF5_beacon_intel      = $(HDF5_INC)
 INCLUDE_HDF5_mcarpe21	       = -I/opt/hdf5/include
@@ -154,16 +166,22 @@ INCLUDE_LAPACK_ranchuair       = -I/usr/local/opt/lapack/include
 INCLUDE_LAPACK_zelledge        = -I/usr/include
 INCLUDE_LAPACK_paullaiu_gnu    = -I/usr/include
 INCLUDE_LAPACK_accre           = -I/accre/arch/easybuild/software/MPI/GCC/5.4.0-2.26/OpenMPI/1.10.3/ScaLAPACK/2.0.2/include
+INCLUDE_LAPACK_titan_gnu       =
+INCLUDE_LAPACK_titan_pgi       =
 INCLUDE_LAPACK_summit_gcc      = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_pgi      = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK_summit_xl       = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_LAPACK                 = $(INCLUDE_LAPACK_$(MACHINE))
 
+INCLUDE_CUDA_titan_gnu         = -I$(CUDATOOLKIT_HOME)/include
+INCLUDE_CUDA_titan_pgi         = -I$(CUDATOOLKIT_HOME)/include
 INCLUDE_CUDA_summit_gcc        = -I$(OLCF_CUDA_ROOT)/include
 INCLUDE_CUDA_summit_pgi        = -I$(OLCF_CUDA_ROOT)/include
 INCLUDE_CUDA_summit_xl         = -I$(OLCF_CUDA_ROOT)/include
 INCLUDE_CUDA                   = $(INCLUDE_CUDA_$(MACHINE))
 
+INCLUDE_MAGMA_titan_gnu        = -I$(OLCF_MAGMA_ROOT)/include
+INCLUDE_MAGMA_titan_pgi        = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_summit_gcc       = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_summit_pgi       = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_summit_xl        = -I$(OLCF_MAGMA_ROOT)/include
@@ -183,6 +201,7 @@ LIBRARIES_HDF5_zelledge        = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lh
 LIBRARIES_HDF5_paullaiu_gnu    = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_accre           = -L/accre/arch/easybuild/software/MPI/GCC/5.4.0-2.26/OpenMPI/1.10.3/HDF5/1.8.17/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_titan_gnu       = # Use Module Load
+LIBRARIES_HDF5_titan_pgi       = # Use Module Load
 LIBRARIES_HDF5_titan_cray      = # Use Module Load
 LIBRARIES_HDF5_darter_gnu      = # Use Module Load
 LIBRARIES_HDF5_darter_cray     = # Use Module Load
@@ -205,6 +224,8 @@ LIBRARIES_LAPACK_paullaiu_gnu  = -L/usr/lib/lapack  -llapack -lblas
 LIBRARIES_LAPACK_accre         = -L/accre/arch/easybuild/software/MPI/GCC/5.4.0-2.26/OpenMPI/1.10.3/ScaLAPACK/2.0.2/lib -lscalapack -lopenblas
 LIBRARIES_LAPACK_mcarpe21      = -L/usr/lib/lapack -llapack \
 				 -L/usr/lib/libblas -lblas
+LIBRARIES_LAPACK_titan_gnu     =
+LIBRARIES_LAPACK_titan_pgi     =
 LIBRARIES_LAPACK_summit_gcc    = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
                                  -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
 LIBRARIES_LAPACK_summit_pgi    = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
@@ -213,11 +234,15 @@ LIBRARIES_LAPACK_summit_xl     = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
                                  -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
 LIBRARIES_LAPACK               = $(LIBRARIES_LAPACK_$(MACHINE))
 
+LIBRARIES_CUDA_titan_gnu       = -L$(CUDATOOLKIT_HOME)/lib64 -lcublas -lcudart -lcuda
+LIBRARIES_CUDA_titan_pgi       = -L$(CUDATOOLKIT_HOME)/lib64 -lcublas -lcudart -lcuda
 LIBRARIES_CUDA_summit_gcc      = -L$(OLCF_CUDA_ROOT)/lib64 -lcublas -lcudart -lcuda
 LIBRARIES_CUDA_summit_pgi      = -L$(OLCF_CUDA_ROOT)/lib64 -lcublas -lcudart -lcuda
 LIBRARIES_CUDA_summit_xl       = -L$(OLCF_CUDA_ROOT)/lib64 -lcublas -lcudart -lcuda
 LIBRARIES_CUDA                 = $(LIBRARIES_CUDA_$(MACHINE))
 
+LIBRARIES_MAGMA_titan_gnu      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
+LIBRARIES_MAGMA_titan_pgi      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_summit_gcc     = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_summit_pgi     = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA_summit_xl      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
@@ -225,6 +250,8 @@ LIBRARIES_MAGMA                = $(LIBRARIES_MAGMA_$(MACHINE))
 
 LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_POSEIDON)
 
+PP_titan_gnu                   =
+PP_titan_pgi                   =
 PP_summit_gcc                  =
 PP_summit_pgi                  =
 PP_summit_xl                   = -WF,
@@ -244,8 +271,10 @@ ifeq ($(USE_GPU),TRUE)
    DEFINES      += $(PP)-DTHORNADO_GPU
    ifeq ($(USE_OACC),TRUE)
       DEFINES   += $(PP)-DTHORNADO_OACC
+      DEFINES   += $(PP)-D$(MICROPHYSICS)_OACC
    else ifeq ($(USE_OMP_OL),TRUE)
       DEFINES   += $(PP)-DTHORNADO_OMP_OL
+      DEFINES   += $(PP)-D$(MICROPHYSICS)_OMP_OL
    endif
    ifeq ($(USE_MAGMA),TRUE)
       INCLUDE   += $(INCLUDE_MAGMA)
@@ -257,6 +286,7 @@ ifeq ($(USE_GPU),TRUE)
 else
    ifeq ($(USE_OMP),TRUE)
       DEFINES   += $(PP)-DTHORNADO_OMP
+      DEFINES   += $(PP)-D$(MICROPHYSICS)_OMP
    endif
    DEFINES      += $(PP)-DTHORNADO_LA_LAPACK
 endif

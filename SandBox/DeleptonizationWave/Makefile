@@ -4,12 +4,16 @@ MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
+include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
 WEAKLIB_DIR ?= $(HOME)/weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
 
-#DEFINES += $(PP)-DTHORNADO_DEBUG_POSITIVITYLIMITER
+#DEFINES += $(PP)-DTHORNADO_DEBUG
+
+.DEFAULT_GOAL := all
 
 all: DeleptonizationWave DeleptonizationWave1D
 
@@ -47,9 +51,6 @@ clean:
 clobber: clean
 	rm -f DeleptonizationWave_$(MACHINE)
 	rm -f DeleptonizationWave1D_$(MACHINE)
-
-include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
-include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
 DeleptonizationWave.o: \
   KindModule.o \

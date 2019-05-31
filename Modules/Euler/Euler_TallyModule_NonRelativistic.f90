@@ -212,7 +212,7 @@ CONTAINS
 
     ASSOCIATE( U => UnitsDisplay )
 
-    OPEN( NEWUNIT=FileUnit, FILE=TRIM( TallyFileName ), ACCESS='APPEND' )
+    OPEN( NEWUNIT=FileUnit, FILE=TRIM( TallyFileName ), POSITION='APPEND', ACTION='WRITE' )
 
     WRITE( FileUnit, '(9(ES20.12,x))' ) &
       Time / U % TimeUnit, &

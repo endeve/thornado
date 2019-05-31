@@ -939,6 +939,7 @@ CONTAINS
       IF( ITERATION > MAX_IT .AND. .NOT. CONVERGED )THEN
 
         iError = ITERATION
+        IF ( ITERATION > MAX_IT + 3 ) EXIT
 
       END IF
 

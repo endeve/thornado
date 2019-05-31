@@ -10,11 +10,13 @@ OpacityModule_TABLE.o: \
   wlInterpolationModule.o \
   KindModule.o \
   UnitsModule.o \
+  DeviceModule.o \
   OpacityModule_TABLE.F90
 else
 OpacityModule_TABLE.o: \
   KindModule.o \
   UnitsModule.o \
+  DeviceModule.o \
   OpacityModule_TABLE.F90
 endif
 

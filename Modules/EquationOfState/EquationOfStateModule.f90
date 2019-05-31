@@ -23,9 +23,9 @@ MODULE EquationOfStateModule
     ComputeAuxiliary_Fluid_TABLE, &
     Auxiliary_Fluid_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
-    ComputeElectronChemicalPotential_TABLE, &
-    ComputeProtonChemicalPotential_TABLE, &
-    ComputeNeutronChemicalPotential_TABLE
+    ComputeElectronChemicalPotentialPoints_TABLE, &
+    ComputeProtonChemicalPotentialPoints_TABLE, &
+    ComputeNeutronChemicalPotentialPoints_TABLE
   USE UnitsModule, ONLY: &
     AtomicMassUnit
 
@@ -95,11 +95,11 @@ MODULE EquationOfStateModule
   INTERFACE
     SUBROUTINE EosSubroutine_1_3( X, Y, Z, V, dVdX, dVdY, dVdZ )
       USE KindModule, ONLY: DP
-      REAL(DP), DIMENSION(:), INTENT(in)            :: X, Y, Z
-      REAL(DP), DIMENSION(:), INTENT(out)           :: V
-      REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dVdX
-      REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dVdY
-      REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: dVdZ
+      REAL(DP), DIMENSION(:), INTENT(in)                    :: X, Y, Z
+      REAL(DP), DIMENSION(:), INTENT(out)                   :: V
+      REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dVdX
+      REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dVdY
+      REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dVdZ
     END SUBROUTINE EosSubroutine_1_3
   END INTERFACE
 
@@ -217,11 +217,11 @@ CONTAINS
         ComputeSpecificInternalEnergy &
           => ComputeSpecificInternalEnergy_TABLE
         ComputeElectronChemicalPotential &
-          => ComputeElectronChemicalPotential_TABLE
+          => ComputeElectronChemicalPotentialPoints_TABLE
         ComputeProtonChemicalPotential &
-          => ComputeProtonChemicalPotential_TABLE
+          => ComputeProtonChemicalPotentialPoints_TABLE
         ComputeNeutronChemicalPotential &
-          => ComputeNeutronChemicalPotential_TABLE
+          => ComputeNeutronChemicalPotentialPoints_TABLE
 
       CASE DEFAULT
 

@@ -29,7 +29,7 @@ ifeq ($(USE_GPU),TRUE)
 
 else
 
-   USE_OMP    ?= TRUE
+   USE_OMP    ?= FALSE
    USE_OACC   ?= FALSE
    USE_OMP_OL ?= FALSE
    USE_MAGMA  ?= FALSE
