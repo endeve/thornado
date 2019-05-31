@@ -564,7 +564,7 @@ CONTAINS
 
 #else
 
-    opES_Points = Zero
+    opES_Point = Zero
 
 #endif
 
