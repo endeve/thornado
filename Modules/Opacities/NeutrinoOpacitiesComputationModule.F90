@@ -402,6 +402,12 @@ CONTAINS
 
 #endif
 
+#else
+
+    opEC_Point = Zero
+
+#endif
+
   END SUBROUTINE ComputeNeutrinoOpacities_EC_Point
 
 
@@ -629,6 +635,12 @@ CONTAINS
              OS_Iso(iSpecies,iMoment), Iso_T(:,:,:,:,iMoment,iSpecies), opES_Point )
 
     opES_Point = opES_Point * UnitES
+
+#endif
+
+#else
+
+    opES_Point = Zero
 
 #endif
 
