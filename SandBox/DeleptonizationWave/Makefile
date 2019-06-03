@@ -78,7 +78,7 @@ DeleptonizationWave.o: \
   InitializationModule.o \
   InputOutputModuleHDF.o \
   TwoMoment_ClosureModule.o \
-  TwoMoment_PositivityLimiterModule_GPU.o \
+  TwoMoment_PositivityLimiterModule.o \
   DeleptonizationWave.f90
 
 DeleptonizationWave1D.o: \
@@ -106,7 +106,7 @@ DeleptonizationWave1D.o: \
   InputOutputModuleHDF.o \
   Euler_UtilitiesModule.o \
   TwoMoment_ClosureModule.o \
-  TwoMoment_PositivityLimiterModule_GPU.o \
+  TwoMoment_PositivityLimiterModule.o \
   DeleptonizationWave1D.f90
 
 InitializationModule.o: \
@@ -129,9 +129,9 @@ TimeSteppingModule_Castro.o: \
   TimersModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
-  TwoMoment_DiscretizationModule_Streaming_GPU.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos_GPU.o \
-  TwoMoment_PositivityLimiterModule_GPU.o \
+  TwoMoment_DiscretizationModule_Streaming.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
+  TwoMoment_PositivityLimiterModule.o \
   PhysicalConstantsModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o \
