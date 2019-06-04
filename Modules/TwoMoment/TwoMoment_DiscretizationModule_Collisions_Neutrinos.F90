@@ -420,10 +420,10 @@ CONTAINS
     CALL TimersStop( Timer_Implicit )
 
 #ifdef THORNADO_DEBUG_IMPLICIT
-    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_F)', MAXLOC(dU_F)
-    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_F)', MAXVAL(dU_F)
-    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_R)', MAXLOC(dU_R)
-    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_R)', MAXVAL(dU_R)
+    WRITE(*,'(a20,7i4,es23.15)') 'MINLOC(dU_F), MINVAL(dU_F)', MINLOC(dU_F), MINVAL(dU_F)
+    WRITE(*,'(a20,7i4,es23.15)') 'MAXLOC(dU_F), MAXVAL(dU_F)', MAXLOC(dU_F), MAXVAL(dU_F)
+    WRITE(*,'(a20,7i4,es23.15)') 'MINLOC(dU_R), MINVAL(dU_F)', MINLOC(dU_R), MINVAL(dU_R)
+    WRITE(*,'(a20,7i4,es23.15)') 'MAXLOC(dU_R), MAXVAL(dU_F)', MAXLOC(dU_R), MAXVAL(dU_R)
 #endif
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_New
