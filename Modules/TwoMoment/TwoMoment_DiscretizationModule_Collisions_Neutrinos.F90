@@ -411,6 +411,23 @@ CONTAINS
     END DO
     END DO
 
+    IF( ReportConvergenceData )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A4,A)') &
+        '', 'Convergence Data:'
+      WRITE(*,*)
+      WRITE(*,'(A6,A18,I4.4)') &
+        '', 'Iterations (Min): ', Iterations_Min
+      WRITE(*,'(A6,A18,I4.4)') &
+        '', 'Iterations (Max): ', Iterations_Max
+      WRITE(*,'(A6,A18,ES8.2E2)') &
+        '', 'Iterations (Ave): ', &
+        DBLE( Iterations_Ave ) / DBLE( PRODUCT(iX_E0-iX_B0+1)*nDOFX )
+      WRITE(*,*)
+
+    END IF
+
     DEALLOCATE &
       ( Kappa, Chi_T, Eta_T, Chi, fEQ, Sig, Chi_NES, Eta_NES, &
         Chi_Pair, Eta_Pair )
@@ -1470,6 +1487,10 @@ CONTAINS
       THEN
 
         CONVERGED = .TRUE.
+
+        Iterations_Min = MIN( Iterations_Min, k )
+        Iterations_Max = MAX( Iterations_Max, k )
+        Iterations_Ave = Iterations_Ave + k
 
       END IF
 
