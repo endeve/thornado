@@ -67,6 +67,7 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: ComputeNeutrinoOpacities_Pair_Point
   PUBLIC :: ComputeNeutrinoOpacities_Pair_Points
   PUBLIC :: ComputeEquilibriumDistributions_Point
+  PUBLIC :: ComputeEquilibriumDistributions_Points
   PUBLIC :: FermiDirac
   PUBLIC :: dFermiDiracdT
   PUBLIC :: dFermiDiracdY
@@ -282,6 +283,114 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeEquilibriumDistributions_Point
+
+
+  SUBROUTINE ComputeEquilibriumDistributions_Points &
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, iSpecies, f_EQ_Points )
+
+    ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(out) :: f_EQ_Points(iE_B:iE_E,iX_B:iX_E)
+    INTEGER,  INTENT(in)  :: iSpecies
+
+    INTEGER  :: iX, iE
+    REAL(DP) :: Me(iX_B:iX_E), Mp(iX_B:iX_E), Mn(iX_B:iX_E)
+    REAL(DP) :: Mnu, kT, FD_Exp
+    LOGICAL  :: do_gpu
+
+    do_gpu = QueryOnGPU( E, D, T, Y ) &
+       .AND. QueryOnGPU( f_EQ_Points )
+#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
+    IF ( .not. do_gpu ) THEN
+      WRITE(*,*) '[ComputeEquilibriumDistributions_Points] Data not present on device'
+      IF ( .not. QueryOnGPU( E ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributions_Points]   E missing'
+      IF ( .not. QueryOnGPU( D ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributions_Points]   D missing'
+      IF ( .not. QueryOnGPU( T ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributions_Points]   T missing'
+      IF ( .not. QueryOnGPU( Y ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributions_Points]   Y missing'
+      IF ( .not. QueryOnGPU( f_EQ_Points ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributions_Points]   f_EQ_Points missing'
+    END IF
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( alloc: Me, Mp, Mn )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC IF( do_gpu ) &
+    !$ACC CREATE( Me, Mp, Mn )
+#endif
+
+    ! --- Compute Chemical Potentials ---
+
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( D, T, Y, Me )
+
+    CALL ComputeProtonChemicalPotential_TABLE &
+           ( D, T, Y, Mp )
+
+    CALL ComputeNeutronChemicalPotential_TABLE &
+           ( D, T, Y, Mn )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE &
+    !$OMP PRIVATE( Mnu, kT ) &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRIVATE( Mnu, kT ) &
+    !$ACC PRESENT( Me, Mp, Mn, f_EQ_Points )
+#endif
+    DO iX = iX_B, iX_E
+
+      IF ( iSpecies == iNuE ) THEN
+        Mnu = ( Me(iX) + Mp(iX) ) - Mn(iX)
+      ELSE IF ( iSpecies == iNuE_Bar ) THEN
+        Mnu = Mn(iX) - ( Me(iX) + Mp(iX) )
+      ELSE
+        Mnu = Zero
+      END IF
+
+      kT = BoltzmannConstant * T(iX)
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP PARALLEL DO SIMD &
+      !$OMP PRIVATE( FD_Exp )
+#elif defined(THORNADO_OACC)
+      !$ACC LOOP VECTOR &
+      !$ACC PRIVATE( FD_Exp )
+#endif
+      DO iE = iE_B, iE_E
+        FD_Exp = ( E(iE) - Mnu ) / kT
+        FD_Exp = MIN( MAX( FD_Exp, - Log1d100 ), + Log1d100 )
+        f_EQ_Points(iE,iX) = One / ( EXP( FD_Exp ) + One )
+      END DO
+
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( release: Me, Mp, Mn )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC IF( do_gpu ) &
+    !$ACC DELETE( Me, Mp, Mn )
+#endif
+
+  END SUBROUTINE ComputeEquilibriumDistributions_Points
 
 
   SUBROUTINE ComputeNeutrinoOpacities_EC &
