@@ -43,6 +43,8 @@ MODULE NeutrinoOpacitiesComputationModule
     OpacityTableType
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable, &
+    LogInterpolateSingleVariable_1D3D_Custom, &
+    LogInterpolateSingleVariable_1D3D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom, &
     LogInterpolateSingleVariable_2D2D_Custom_Point
 
@@ -370,6 +372,10 @@ CONTAINS
 
     INTEGER :: iE
 
+#ifdef MICROPHYSICS_WEAKLIB
+
+#if defined(THORNADO_OMP_XL) || defined(THORNADO_OACC)
+
     DO iE = iE_B, iE_E
 
       CALL ComputeNeutrinoOpacity_Point &
@@ -378,9 +384,23 @@ CONTAINS
 
     END DO
 
-    !CALL ComputeNeutrinoOpacityE_Point &
-    !       ( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-    !         opEC_Point, EmAb_T(:,:,:,:,iSpecies), OS_EmAb(iSpecies), UnitEC )
+#else
+
+    CALL LogInterpolateSingleVariable_1D3D_Custom_Point &
+           ( LOG10( E / UnitE ), LOG10( D / UnitD ), &
+             LOG10( T / UnitT ),      ( Y / UnitY ), &
+             LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+             OS_EmAb(iSpecies), EmAb_T(:,:,:,:,iSpecies), opEC_Point )
+
+    opEC_Point = opEC_Point * UnitEC
+
+#endif
+
+#else
+
+    opEC_Point = Zero
+
+#endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_EC_Point
 
@@ -399,8 +419,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iSpecies
     REAL(DP), INTENT(out) :: opEC_Points(iE_B:iE_E,iX_B:iX_E)
 
-    INTEGER :: iX, iE
-    LOGICAL :: do_gpu
+    INTEGER  :: iX, iE
+    REAL(DP) :: LogE_P(iE_B:iE_E), LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
+    LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( E, D, T, Y ) &
        .AND. QueryOnGPU( opEC_Points )
@@ -420,23 +441,78 @@ CONTAINS
     END IF
 #endif
 
+#ifdef MICROPHYSICS_WEAKLIB
+
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
+    !$OMP TARGET ENTER DATA &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC IF( do_gpu ) &
+    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( D, LogD_P, T, LogT_P, Y, Y_P )
+#endif
+    DO iX = iX_B, iX_E
+      LogD_P(iX) = LOG10( D(iX) / UnitD )
+      LogT_P(iX) = LOG10( T(iX) / UnitT )
+      Y_P(iX) = Y(iX) / UnitY
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( E, LogE_P )
+#endif
+    DO iE = iE_B, iE_E
+      LogE_P(iE) = LOG10( E(iE) / UnitE )
+    END DO
+
+    CALL LogInterpolateSingleVariable_1D3D_Custom &
+           ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+             OS_EmAb(iSpecies), EmAb_T(:,:,:,:,iSpecies), opEC_Points, &
+             GPU_Option = do_gpu )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
     !$OMP IF( do_gpu )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC IF( do_gpu ) &
-    !$ACC PRESENT( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, opEC_Points, OS_EmAb, EmAb_T )
+    !$ACC PRESENT( opEC_Points )
 #endif
     DO iX = iX_B, iX_E
       DO iE = iE_B, iE_E
-
-        CALL ComputeNeutrinoOpacity_Point &
-               ( E(iE), D(iX), T(iX), Y(iX), LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-                 opEC_Points(iE,iX), EmAb_T(:,:,:,:,iSpecies), OS_EmAb(iSpecies), UnitEC )
-
+        opEC_Points(iE,iX) = opEC_Points(iE,iX) * UnitEC
       END DO
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC IF( do_gpu ) &
+    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P )
+#endif
+
+#else
+
+    opEC_Points = Zero
+
+#endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_EC_Points
 
@@ -532,6 +608,10 @@ CONTAINS
 
     INTEGER :: iE
 
+#ifdef MICROPHYSICS_WEAKLIB
+
+#if defined(THORNADO_OMP_XL) || defined(THORNADO_OACC)
+
     DO iE = iE_B, iE_E
 
       CALL ComputeNeutrinoOpacity_Point &
@@ -540,9 +620,23 @@ CONTAINS
 
     END DO
 
-    !CALL ComputeNeutrinoOpacityE_Point &
-    !       ( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-    !         opES_Point, Iso_T(:,:,:,:,iMoment,iSpecies), OS_Iso(iSpecies,iMoment), UnitES )
+#else
+
+    CALL LogInterpolateSingleVariable_1D3D_Custom_Point &
+           ( LOG10( E / UnitE ), LOG10( D / UnitD ), &
+             LOG10( T / UnitT ),      ( Y / UnitY ), &
+             LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+             OS_Iso(iSpecies,iMoment), Iso_T(:,:,:,:,iMoment,iSpecies), opES_Point )
+
+    opES_Point = opES_Point * UnitES
+
+#endif
+
+#else
+
+    opES_Point = Zero
+
+#endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Point
 
@@ -562,8 +656,9 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: opES_Points(iE_B:iE_E,iX_B:iX_E)
 
-    INTEGER :: iX, iE
-    LOGICAL :: do_gpu
+    INTEGER  :: iX, iE
+    REAL(DP) :: LogE_P(iE_B:iE_E), LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
+    LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( E, D, T, Y ) &
        .AND. QueryOnGPU( opES_Points )
@@ -583,23 +678,78 @@ CONTAINS
     END IF
 #endif
 
+#ifdef MICROPHYSICS_WEAKLIB
+
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
+    !$OMP TARGET ENTER DATA &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC IF( do_gpu ) &
+    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( D, LogD_P, T, LogT_P, Y, Y_P )
+#endif
+    DO iX = iX_B, iX_E
+      LogD_P(iX) = LOG10( D(iX) / UnitD )
+      LogT_P(iX) = LOG10( T(iX) / UnitT )
+      Y_P(iX) = Y(iX) / UnitY
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( E, LogE_P )
+#endif
+    DO iE = iE_B, iE_E
+      LogE_P(iE) = LOG10( E(iE) / UnitE )
+    END DO
+
+    CALL LogInterpolateSingleVariable_1D3D_Custom &
+           ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+             OS_Iso(iSpecies,iMoment), Iso_T(:,:,:,:,iMoment,iSpecies), opES_Points, &
+             GPU_Option = do_gpu )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
     !$OMP IF( do_gpu )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC IF( do_gpu ) &
-    !$ACC PRESENT( E, D, T, Y, LogEs_T, LogDs_T, LogTs_T, Ys_T, opES_Points, OS_Iso, Iso_T )
+    !$ACC PRESENT( opES_Points )
 #endif
     DO iX = iX_B, iX_E
       DO iE = iE_B, iE_E
-
-        CALL ComputeNeutrinoOpacity_Point &
-               ( E(iE), D(iX), T(iX), Y(iX), LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-                 opES_Points(iE,iX), Iso_T(:,:,:,:,iMoment,iSpecies), OS_Iso(iSpecies,iMoment), UnitES )
-
+        opES_Points(iE,iX) = opES_Points(iE,iX) * UnitES
       END DO
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC IF( do_gpu ) &
+    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P )
+#endif
+
+#else
+
+    opES_Points = Zero
+
+#endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Points
 
@@ -623,7 +773,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: Phi_Out(iE_B:iE_E,iE_B:iE_E)
 
     INTEGER  :: iE1, iE2, iH1, iH2
-    REAL(DP) :: C1, C2, H1, H2, Eta, kT, dE, Me
+    REAL(DP) :: C1, C2, kT, Phi_Local
+    REAL(DP) :: LogE_P(iE_B:iE_E), LogT_P, LogEta_P
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -645,56 +796,50 @@ CONTAINS
     ! --- Compute Electron Chemical Potential ---
 
     CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, Me )
+           ( D, T, Y, LogEta_P )
 
     kT = BoltzmannConstant * T
-    Eta = Me / kT
+
+    LogT_P = LOG10( T / UnitT )
+    LogEta_P = LOG10( LogEta_P / kT / UnitEta )
+
+    DO iE1 = iE_B, iE_E
+      LogE_P(iE1) = LOG10( E(iE1) / UnitE )
+    END DO
+
+    ! --- Interpolate HI  (put result temporarily in Phi_In) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom_Point &
+           ( LogE_P, LogT_P, LogEta_P, LogEs_T, LogTs_T, LogEtas_T, &
+             OS_NES(1,iH1), NES_T(:,:,:,:,iH1,1), Phi_In )
+
+    ! --- Interpolate HII (put result temporarily in Phi_Out) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom_Point &
+           ( LogE_P, LogT_P, LogEta_P, LogEs_T, LogTs_T, LogEtas_T, &
+             OS_NES(1,iH2), NES_T(:,:,:,:,iH2,1), Phi_Out )
+
+    DO iE2 = iE_B, iE_E
+      DO iE1 = iE_B, iE2
+        Phi_Out(iE1,iE2) = C1 * Phi_In(iE1,iE2) + C2 * Phi_Out(iE1,iE2)
+      END DO
+    END DO
+
+    DO iE2 = iE_B, iE_E
+      DO iE1 = iE2+1, iE_E
+        Phi_Out(iE1,iE2) = Phi_Out(iE2,iE1) * EXP( ( E(iE2) - E(iE1) ) / kT )
+      END DO
+    END DO
 
     DO iE2 = iE_B, iE_E
       DO iE1 = iE_B, iE_E
+        Phi_Out(iE1,iE2) = Phi_Out(iE1,iE2) * UnitNES
+      END DO
+    END DO
 
-        dE = ABS( E(iE2) - E(iE1) )
-
-        IF ( iE1 <= iE2 ) THEN
-
-          ! --- Interpolate HI ---
-
-          CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE1), E(iE2), T, Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                   H1, NES_T(:,:,:,:,iH1,1), OS_NES(1,iH1), UnitNES )
-
-          ! --- Interpolate HII ---
-
-          CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE1), E(iE2), T, Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                   H2, NES_T(:,:,:,:,iH2,1), OS_NES(1,iH2), UnitNES )
-
-          ! --- Compute Phi ---
-
-          Phi_Out(iE1,iE2) = C1 * H1 + C2 * H2
-          Phi_In (iE1,iE2) = Phi_Out(iE1,iE2) * EXP( - dE / kT )
-
-        ELSE
-
-          ! --- Interpolate HI' ---
-
-          CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE2), E(iE1), T, Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                   H1, NES_T(:,:,:,:,iH1,1), OS_NES(1,iH1), UnitNES )
-
-          ! --- Interpolate HII' ---
-
-          CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE2), E(iE1), T, Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                   H2, NES_T(:,:,:,:,iH2,1), OS_NES(1,iH2), UnitNES )
-
-          ! --- Compute Phi ---
-
-          Phi_In (iE1,iE2) = C1 * H1 + C2 * H2
-          Phi_Out(iE1,iE2) = Phi_In (iE1,iE2) * EXP( - dE / kT )
-
-        END IF
-
+    DO iE2 = iE_B, iE_E
+      DO iE1 = iE_B, iE_E
+        Phi_In(iE1,iE2) = Phi_Out(iE2,iE1)
       END DO
     END DO
 
@@ -725,7 +870,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: Phi_Out(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
     INTEGER  :: iX, iE1, iE2, iH1, iH2
-    REAL(DP) :: C1, C2, H1, H2, kT, Eta, dE, Me(iX_B:iX_E)
+    REAL(DP) :: C1, C2, kT
+    REAL(DP) :: LogE_P(iE_B:iE_E), LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
     LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( E, D, T, Y ) &
@@ -768,94 +914,135 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP IF( do_gpu ) &
-    !$OMP MAP( alloc: Me )
+    !$OMP MAP( alloc: LogE_P, LogT_P, LogEta_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC IF( do_gpu ) &
-    !$ACC CREATE( Me )
+    !$ACC CREATE( LogE_P, LogT_P, LogEta_P )
 #endif
 
     ! --- Compute Electron Chemical Potential ---
 
     CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, Me )
+           ( D, T, Y, LogEta_P )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP IF( do_gpu ) &
-    !$OMP PRIVATE( H1, H2, kT, Eta, dE )
+    !$OMP PRIVATE( kT )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC IF( do_gpu ) &
-    !$ACC PRIVATE( H1, H2, kT, Eta, dE ) &
-    !$ACC PRESENT( E, T, Me, LogEs_T, LogTs_T, LogEtas_T, OS_NES, NES_T, Phi_In, Phi_Out )
+    !$ACC PRIVATE( kT ) &
+    !$ACC PRESENT( T, LogT_P, LogEta_P )
 #endif
     DO iX = iX_B, iX_E
+      LogT_P(iX) = LOG10( T(iX) / UnitT )
+
+      kT = BoltzmannConstant * T(iX)
+      LogEta_P(iX) = LOG10( LogEta_P(iX) / kT / UnitEta )
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( E, LogE_P )
+#endif
+    DO iE1 = iE_B, iE_E
+      LogE_P(iE1) = LOG10( E(iE1) / UnitE )
+    END DO
+
+    ! --- Interpolate HI  (put result temporarily in Phi_In) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom &
+           ( LogE_P, LogT_P, LogEta_P, LogEs_T, LogTs_T, LogEtas_T, &
+             OS_NES(1,iH1), NES_T(:,:,:,:,iH1,1), Phi_In, &
+             GPU_Option = do_gpu )
+
+    ! --- Interpolate HII (put result temporarily in Phi_Out) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom &
+           ( LogE_P, LogT_P, LogEta_P, LogEs_T, LogTs_T, LogEtas_T, &
+             OS_NES(1,iH2), NES_T(:,:,:,:,iH2,1), Phi_Out, &
+             GPU_Option = do_gpu )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE &
+    !$OMP PRIVATE( kT ) &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRIVATE( kT ) &
+    !$ACC PRESENT( E, T, Phi_In, Phi_Out )
+#endif
+    DO iX = iX_B, iX_E
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+      !$ACC LOOP VECTOR
+#endif
       DO iE2 = iE_B, iE_E
-        DO iE1 = iE_B, iE_E
-
-          kT = BoltzmannConstant * T(iX)
-          Eta = Me(iX) / kT
-          dE = ABS( E(iE2) - E(iE1) )
-
-          IF ( iE1 <= iE2 ) THEN
-
-            ! --- Interpolate HI ---
-
-            CALL ComputeNeutrinoOpacity_Point &
-                   ( E(iE1), E(iE2), T(iX), Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                     H1, NES_T(:,:,:,:,iH1,1), OS_NES(1,iH1), UnitNES )
-
-            ! --- Interpolate HII ---
-
-            CALL ComputeNeutrinoOpacity_Point &
-                   ( E(iE1), E(iE2), T(iX), Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                     H2, NES_T(:,:,:,:,iH2,1), OS_NES(1,iH2), UnitNES )
-
-            ! --- Compute Phi ---
-
-            Phi_Out(iE1,iE2,iX) = C1 * H1 + C2 * H2
-            Phi_In (iE1,iE2,iX) = Phi_Out(iE1,iE2,iX) * EXP( - dE / kT )
-
-          ELSE
-
-            ! --- Interpolate HI' ---
-
-            CALL ComputeNeutrinoOpacity_Point &
-                   ( E(iE2), E(iE1), T(iX), Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                     H1, NES_T(:,:,:,:,iH1,1), OS_NES(1,iH1), UnitNES )
-
-            ! --- Interpolate HII' ---
-
-            CALL ComputeNeutrinoOpacity_Point &
-                   ( E(iE2), E(iE1), T(iX), Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                     H2, NES_T(:,:,:,:,iH2,1), OS_NES(1,iH2), UnitNES )
-
-            ! --- Compute Phi ---
-
-            Phi_In (iE1,iE2,iX) = C1 * H1 + C2 * H2
-            Phi_Out(iE1,iE2,iX) = Phi_In (iE1,iE2,iX) * EXP( - dE / kT )
-
-          END IF
-
+        DO iE1 = iE_B, iE2
+          Phi_Out(iE1,iE2,iX) = C1 * Phi_In(iE1,iE2,iX) + C2 * Phi_Out(iE1,iE2,iX)
         END DO
       END DO
+
+      kT = BoltzmannConstant * T(iX)
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+      !$ACC LOOP VECTOR
+#endif
+      DO iE2 = iE_B, iE_E
+        DO iE1 = iE2+1, iE_E
+          Phi_Out(iE1,iE2,iX) = Phi_Out(iE2,iE1,iX) * EXP( ( E(iE2) - E(iE1) ) / kT )
+        END DO
+      END DO
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP PARALLEL DO SIMD COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+      !$ACC LOOP VECTOR COLLAPSE(2)
+#endif
+      DO iE2 = iE_B, iE_E
+        DO iE1 = iE_B, iE_E
+          Phi_Out(iE1,iE2,iX) = Phi_Out(iE1,iE2,iX) * UnitNES
+        END DO
+      END DO
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP PARALLEL DO SIMD COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+      !$ACC LOOP VECTOR COLLAPSE(2)
+#endif
+      DO iE2 = iE_B, iE_E
+        DO iE1 = iE_B, iE_E
+          Phi_In(iE1,iE2,iX) = Phi_Out(iE2,iE1,iX)
+        END DO
+      END DO
+
     END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP IF( do_gpu ) &
-    !$OMP MAP( release: Me )
+    !$OMP MAP( release: LogE_P, LogT_P, LogEta_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC IF( do_gpu ) &
-    !$ACC DELETE( Me )
+    !$ACC DELETE( LogE_P, LogT_P, LogEta_P )
 #endif
 
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP IF( do_gpu )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
@@ -895,7 +1082,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: Phi_Out(iE_B:iE_E,iE_B:iE_E)
 
     INTEGER  :: iE1, iE2, iJ1, iJ2
-    REAL(DP) :: C1, C2, J1, J2, kT, Eta, Me
+    REAL(DP) :: C1, C2, kT, Phi_Local
+    REAL(DP) :: LogE_P(iE_B:iE_E), LogT_P, LogEta_P
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -917,53 +1105,40 @@ CONTAINS
     ! --- Compute Electron Chemical Potential ---
 
     CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, Me )
+           ( D, T, Y, LogEta_P )
 
     kT = BoltzmannConstant * T
-    Eta = Me / kT
+
+    LogT_P = LOG10( T / UnitT )
+    LogEta_P = LOG10( LogEta_P / kT / UnitEta )
+
+    DO iE1 = iE_B, iE_E
+      LogE_P(iE1) = LOG10( E(iE1) / UnitE )
+    END DO
+
+    ! --- Interpolate JI  (put result temporarily in Phi_In) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom_Point &
+           ( LogE_P, LogT_P, LogEta_P, LogEs_T, LogTs_T, LogEtas_T, &
+             OS_Pair(1,iJ1), Pair_T(:,:,:,:,iJ1,1), Phi_In )
+
+    ! --- Interpolate JII (put result temporarily in Phi_Out) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom_Point &
+           ( LogE_P, LogT_P, LogEta_P, LogEs_T, LogTs_T, LogEtas_T, &
+             OS_Pair(1,iJ2), Pair_T(:,:,:,:,iJ2,1), Phi_Out )
 
     DO iE2 = iE_B, iE_E
       DO iE1 = iE_B, iE_E
 
         IF ( iE1 <= iE2 ) THEN
-
-          ! --- Interpolate JI ---
-
-          CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE1), E(iE2), T, Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                   J1, Pair_T(:,:,:,:,iJ1,1), OS_Pair(1,iJ1), UnitPair )
-
-          ! --- Interpolate JII ---
-
-          CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE1), E(iE2), T, Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                   J2, Pair_T(:,:,:,:,iJ2,1), OS_Pair(1,iJ2), UnitPair )
-
-          ! --- Compute Phi ---
-
-          Phi_Out(iE1,iE2) = C1 * J1 + C2 * J2
-
+          Phi_Local = ( C1 * Phi_In (iE1,iE2) + C2 * Phi_Out(iE1,iE2) ) * UnitPair
         ELSE
-
-          ! --- Interpolate JI' ---
-
-          CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE2), E(iE1), T, Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                   J1, Pair_T(:,:,:,:,iJ1,1), OS_Pair(1,iJ1), UnitPair )
-
-          ! --- Interpolate JII' ---
-
-          CALL ComputeNeutrinoOpacity_Point &
-                 ( E(iE2), E(iE1), T, Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                   J2, Pair_T(:,:,:,:,iJ2,1), OS_Pair(1,iJ2), UnitPair )
-
-          ! --- Compute Phi ---
-
-          Phi_Out(iE1,iE2) = C1 * J2 + C2 * J1
-
+          Phi_Local = ( C1 * Phi_Out(iE2,iE1) + C2 * Phi_In (iE2,iE1) ) * UnitPair
         END IF
 
-        Phi_In(iE1,iE2) = Phi_Out(iE1,iE2) * EXP( - ( E(iE2) + E(iE1) ) / kT )
+        Phi_Out(iE1,iE2) = Phi_Local
+        Phi_In (iE1,iE2) = Phi_Local * EXP( - ( E(iE1) + E(iE2) ) / kT )
 
       END DO
     END DO
@@ -995,7 +1170,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: Phi_Out(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
     INTEGER  :: iX, iE1, iE2, iJ1, iJ2
-    REAL(DP) :: C1, C2, J1, J2, kT, Eta, Me(iX_B:iX_E)
+    REAL(DP) :: C1, C2, kT, Phi_Local(iE_B:iE_E,iE_B:iE_E)
+    REAL(DP) :: LogE_P(iE_B:iE_E), LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
     LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( E, D, T, Y ) &
@@ -1038,93 +1214,114 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP IF( do_gpu ) &
-    !$OMP MAP( alloc: Me )
+    !$OMP MAP( alloc: LogE_P, LogT_P, LogEta_P )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC IF( do_gpu ) &
-    !$ACC CREATE( Me )
+    !$ACC CREATE( LogE_P, LogT_P, LogEta_P )
 #endif
 
     ! --- Compute Electron Chemical Potential ---
 
     CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, Me )
+           ( D, T, Y, LogEta_P )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
-    !$OMP IF( do_gpu ) &
-    !$OMP PRIVATE( kT, Eta, J1, J2 )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC IF( do_gpu ) &
-    !$ACC PRIVATE( kT, Eta, J1, J2 ) &
-    !$ACC PRESENT( E, T, Me, LogEs_T, LogTs_T, LogEtas_T, OS_Pair, Pair_T, Phi_In, Phi_Out )
+    !$ACC PRESENT( T, LogT_P, LogEta_P )
 #endif
     DO iX = iX_B, iX_E
+      LogT_P(iX) = LOG10( T(iX) / UnitT )
+      LogEta_P(iX) = LOG10( LogEta_P(iX) / ( BoltzmannConstant * T(iX) ) / UnitEta )
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( E, LogE_P )
+#endif
+    DO iE1 = iE_B, iE_E
+      LogE_P(iE1) = LOG10( E(iE1) / UnitE )
+    END DO
+
+    ! --- Interpolate JI  (put result temporarily in Phi_In) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom &
+           ( LogE_P, LogT_P, LogEta_P, LogEs_T, LogTs_T, LogEtas_T, &
+             OS_Pair(1,iJ1), Pair_T(:,:,:,:,iJ1,1), Phi_In, &
+             GPU_Option = do_gpu )
+
+    ! --- Interpolate JII (put result temporarily in Phi_Out) ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom &
+           ( LogE_P, LogT_P, LogEta_P, LogEs_T, LogTs_T, LogEtas_T, &
+             OS_Pair(1,iJ2), Pair_T(:,:,:,:,iJ2,1), Phi_Out, &
+             GPU_Option = do_gpu )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE &
+    !$OMP IF( do_gpu ) &
+    !$OMP PRIVATE( kT, Phi_Local )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRIVATE( kT, Phi_Local ) &
+    !$ACC PRESENT( E, T, Phi_In, Phi_Out )
+#endif
+    DO iX = iX_B, iX_E
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP PARALLEL DO SIMD COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+      !$ACC LOOP VECTOR COLLAPSE(2)
+#endif
       DO iE2 = iE_B, iE_E
         DO iE1 = iE_B, iE_E
-
-          kT = BoltzmannConstant * T(iX)
-          Eta = Me(iX) / kT
-
           IF ( iE1 <= iE2 ) THEN
-
-            ! --- Interpolate JI ---
-
-            CALL ComputeNeutrinoOpacity_Point &
-                   ( E(iE1), E(iE2), T(iX), Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                     J1, Pair_T(:,:,:,:,iJ1,1), OS_Pair(1,iJ1), UnitPair )
-
-            ! --- Interpolate JII ---
-
-            CALL ComputeNeutrinoOpacity_Point &
-                   ( E(iE1), E(iE2), T(iX), Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                     J2, Pair_T(:,:,:,:,iJ2,1), OS_Pair(1,iJ2), UnitPair )
-
-            ! --- Compute Phi ---
-
-            Phi_Out(iE1,iE2,iX) = C1 * J1 + C2 * J2
-
+            Phi_Local(iE1,iE2) = ( C1 * Phi_In (iE1,iE2,iX) + C2 * Phi_Out(iE1,iE2,iX) ) * UnitPair
           ELSE
-
-            ! --- Interpolate JI' ---
-
-            CALL ComputeNeutrinoOpacity_Point &
-                   ( E(iE2), E(iE1), T(iX), Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                     J1, Pair_T(:,:,:,:,iJ1,1), OS_Pair(1,iJ1), UnitPair )
-
-            ! --- Interpolate JII' ---
-
-            CALL ComputeNeutrinoOpacity_Point &
-                   ( E(iE2), E(iE1), T(iX), Eta, LogEs_T, LogTs_T, LogEtas_T, &
-                     J2, Pair_T(:,:,:,:,iJ2,1), OS_Pair(1,iJ2), UnitPair )
-
-            ! --- Compute Phi ---
-
-            Phi_Out(iE1,iE2,iX) = C1 * J2 + C2 * J1
-
+            Phi_Local(iE1,iE2) = ( C1 * Phi_Out(iE2,iE1,iX) + C2 * Phi_In (iE2,iE1,iX) ) * UnitPair
           END IF
-
-          Phi_In(iE1,iE2,iX) = Phi_Out(iE1,iE2,iX) * EXP( - ( E(iE2) + E(iE1) ) / kT )
-
         END DO
       END DO
+
+      kT = BoltzmannConstant * T(iX)
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP PARALLEL DO SIMD COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+      !$ACC LOOP VECTOR COLLAPSE(2)
+#endif
+      DO iE2 = iE_B, iE_E
+        DO iE1 = iE_B, iE_E
+          Phi_Out(iE1,iE2,iX) = Phi_Local(iE1,iE2)
+          Phi_In (iE1,iE2,iX) = Phi_Local(iE1,iE2) * EXP( - ( E(iE1) + E(iE2) ) / kT )
+        END DO
+      END DO
+
     END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP IF( do_gpu ) &
-    !$OMP MAP( release: Me )
+    !$OMP MAP( release: LogE_P, LogT_P, LogEta_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC IF( do_gpu ) &
-    !$ACC DELETE( Me )
+    !$ACC DELETE( LogE_P, LogT_P, LogEta_P )
 #endif
 
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP IF( do_gpu )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &

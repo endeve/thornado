@@ -639,6 +639,8 @@ CONTAINS
     INTEGER :: iP, nP, Error(SIZE(D))
     LOGICAL :: do_gpu
 
+#ifdef MICROPHYSICS_WEAKLIB
+
     nP = SIZE(D)
 
     do_gpu = QueryOnGPU( D, Ev, Ne, T, Em, Y )
@@ -686,6 +688,8 @@ CONTAINS
       END DO
       STOP
     END IF
+
+#endif
 
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE
 
