@@ -56,6 +56,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     ComputeProtonChemicalPotential_TABLE, &
     ComputeNeutronChemicalPotential_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
+    ComputeEquilibriumDistributions, &
     ComputeNeutrinoOpacities_EC_Points
 
   IMPLICIT NONE
@@ -77,6 +78,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
   LOGICAL, PARAMETER :: SolveMatter = .TRUE.
 
+  REAL(DP), PARAMETER :: WFactor_FP = FourPi / PlanckConstant**3
+
   INTEGER  :: nE_G, nX_G, nZ(4), nX(3)
   INTEGER  :: iE_B0,    iE_E0
   INTEGER  :: iE_B1,    iE_E1
@@ -85,6 +88,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: E_N(:)        ! --- Energy Grid
   REAL(DP), ALLOCATABLE :: W2_N(:)       ! --- Ingegration Weights (E^2)
   REAL(DP), ALLOCATABLE :: W3_N(:)       ! --- Integration Weights (E^3)
+  REAL(DP), ALLOCATABLE :: W2_FP(:)
+  REAL(DP), ALLOCATABLE :: W3_FP(:)
   REAL(DP), ALLOCATABLE :: CF_N(:,:)
   REAL(DP), ALLOCATABLE :: PF_N(:,:)
   REAL(DP), ALLOCATABLE :: AF_N(:,:)
@@ -93,6 +98,10 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: Chi(:,:,:)
   REAL(DP), ALLOCATABLE :: Sig(:,:,:)
   REAL(DP), ALLOCATABLE :: fEQ(:,:,:)
+  REAL(DP), ALLOCATABLE :: Chi_NES(:,:,:)
+  REAL(DP), ALLOCATABLE :: Eta_NES(:,:,:)
+  REAL(DP), ALLOCATABLE :: Chi_Pair(:,:,:)
+  REAL(DP), ALLOCATABLE :: Eta_Pair(:,:,:)
   REAL(DP), ALLOCATABLE :: CR_N(:,:,:,:)
   REAL(DP), ALLOCATABLE :: dR_N(:,:,:,:)
 
@@ -263,14 +272,18 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( Sig )
+    !$ACC PRESENT( Sig, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #elif defined(THORNADO_OMP)
 #endif
     DO iS = 1, nSpecies
       DO iN_X = 1, nX_G
         DO iN_E = 1, nE_G
 
-          Sig(iN_E,iN_X,iS) = Zero
+          Sig     (iN_E,iN_X,iS) = Zero
+          Chi_NES (iN_E,iN_X,iS) = Zero
+          Eta_NES (iN_E,iN_X,iS) = Zero
+          Chi_Pair(iN_E,iN_X,iS) = Zero
+          Eta_Pair(iN_E,iN_X,iS) = Zero
 
         END DO
       END DO
@@ -333,6 +346,27 @@ CONTAINS
              AF_N    (:,iAF_T ), &
              AF_N    (:,iAF_Ye), &
              AF_N    (:,iAF_E ) )
+
+    !CALL SolveMatterEquations_FP_Coupled &
+    !       ( dt, iNuE, iNuE_Bar, &
+    !         CR_N    (:,:,iCR_N,iNuE    ), &
+    !         CR_N    (:,:,iCR_N,iNuE_Bar), &
+    !         Chi     (:,:,      iNuE    ), &
+    !         Chi     (:,:,      iNuE_Bar), &
+    !         fEQ     (:,:,      iNuE    ), &
+    !         fEQ     (:,:,      iNuE_Bar), &
+    !         Chi_NES (:,:,      iNuE    ), &
+    !         Chi_NES (:,:,      iNuE_Bar), &
+    !         Eta_NES (:,:,      iNuE    ), &
+    !         Eta_NES (:,:,      iNuE_Bar), &
+    !         Chi_Pair(:,:,      iNuE    ), &
+    !         Chi_Pair(:,:,      iNuE_Bar), &
+    !         Eta_Pair(:,:,      iNuE    ), &
+    !         Eta_Pair(:,:,      iNuE_Bar), &
+    !         PF_N    (:,iPF_D ), &
+    !         AF_N    (:,iAF_T ), &
+    !         AF_N    (:,iAF_Ye), &
+    !         AF_N    (:,iAF_E ) )
 
     CALL TimersStop( Timer_Im_Solve )
 
@@ -619,6 +653,326 @@ CONTAINS
   END SUBROUTINE SolveMatterEquations_EmAb
 
 
+  SUBROUTINE SolveMatterEquations_FP_Coupled &
+    ( dt, iS_1, iS_2, Jold_1, Jold_2, Chi_1, Chi_2, J0_1, J0_2, &
+      Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
+      Chi_Pair_1, Chi_Pair_2, Eta_Pair_1, Eta_Pair_2, &
+      D, T, Y, E )
+
+    ! --- Neutrino (1) and Antineutrino (2) ---
+
+    REAL(DP), INTENT(in)    :: dt
+    INTEGER,  INTENT(in)    :: iS_1, iS_2
+    REAL(DP), INTENT(in)    :: Jold_1    (1:nE_G,1:nX_G)
+    REAL(DP), INTENT(in)    :: Jold_2    (1:nE_G,1:nX_G)
+    REAL(DP), INTENT(in)    :: Chi_1     (1:nE_G,1:nX_G)
+    REAL(DP), INTENT(in)    :: Chi_2     (1:nE_G,1:nX_G)
+    REAL(DP), INTENT(out)   :: J0_1      (1:nE_G,1:nX_G)
+    REAL(DP), INTENT(out)   :: J0_2      (1:nE_G,1:nX_G)
+    REAL(DP), INTENT(inout) :: Chi_NES_1 (1:nE_G,1:nX_G)
+    REAL(DP), INTENT(inout) :: Chi_NES_2 (1:nE_G,1:nX_G)
+    REAL(DP), INTENT(inout) :: Eta_NES_1 (1:nE_G,1:nX_G)
+    REAL(DP), INTENT(inout) :: Eta_NES_2 (1:nE_G,1:nX_G)
+    REAL(DP), INTENT(inout) :: Chi_Pair_1(1:nE_G,1:nX_G)
+    REAL(DP), INTENT(inout) :: Chi_Pair_2(1:nE_G,1:nX_G)
+    REAL(DP), INTENT(inout) :: Eta_Pair_1(1:nE_G,1:nX_G)
+    REAL(DP), INTENT(inout) :: Eta_Pair_2(1:nE_G,1:nX_G)
+    REAL(DP), INTENT(inout) :: D         (1:nX_G)
+    REAL(DP), INTENT(inout) :: T         (1:nX_G)
+    REAL(DP), INTENT(inout) :: Y         (1:nX_G)
+    REAL(DP), INTENT(inout) :: E         (1:nX_G)
+
+    ! --- Solver Parameters ---
+
+    INTEGER,  PARAMETER :: iY = 1
+    INTEGER,  PARAMETER :: iE = 2
+    INTEGER,  PARAMETER :: M = 5
+    INTEGER,  PARAMETER :: MaxIter = 100
+    INTEGER,  PARAMETER :: LWORK = 2 * M
+    REAL(DP), PARAMETER :: Rtol = 1.0d-08
+    REAL(DP), PARAMETER :: Utol = 1.0d-10
+
+    ! --- Local Variables ---
+
+    LOGICAL  :: CONVERGED
+    INTEGER  :: i, k, mk, INFO
+    INTEGER  :: OS_1, OS_2
+    REAL(DP), DIMENSION(1:nX_G) :: Yold, S_Y, C_Y, Unew_Y
+    REAL(DP), DIMENSION(1:nX_G) :: Eold, S_E, C_E, Unew_E
+
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Jnew_1, Eta_1
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Jnew_2, Eta_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Jtmp_1, Jtmp_2, Jtmp_3, Jtmp_4
+
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
+
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
+
+    REAL(DP) :: Alpha(1:M)
+    REAL(DP) :: WORK(1:LWORK)
+    REAL(DP) :: GVECm(1:2*(1+nE_G))
+    REAL(DP) :: FVECm(1:2*(1+nE_G))
+    REAL(DP) :: GVEC (1:2*(1+nE_G),1:M)
+    REAL(DP) :: FVEC (1:2*(1+nE_G),1:M)
+    REAL(DP) :: BVEC(1:2*(1+nE_G))
+    REAL(DP) :: AMAT(1:2*(1+nE_G),1:M)
+
+    INTEGER  :: iN_X, iN_E
+
+    ! TODO: matrix-matrix addition interface
+    ! TODO: diagnoal matrix multiply
+    ! TODO: batched DGEMV interface
+    ! TODO: (batched) DGELS interface
+    ! TODO: batched iteration loop
+
+    OS_1 = 2
+    OS_2 = 2 + nE_G
+
+    ! --- Fixed Electron Fraction and Internal Energy RHS ---
+
+    Jtmp_1 = Jold_1
+    !CALL DCOPY( nE_G*nX_G, Jold_1, 1, Jtmp_1, 1 )
+    CALL DAXPY( nE_G*nX_G, -One, Jold_2, 1, Jtmp_1, 1 )
+    CALL DGEMV( 'T', nE_G, nX_G, One, Jtmp_1, nE_G, W2_S, 1, Zero, C_Y, 1 )
+    !CALL MatrixMatrixAdd &
+    !  ( nE_G, nX_G, One, Jold_1, nE_G, -One, Jold_2, nE_G, Jtmp_1, nE_G )
+    !CALL MatrixVectorMultiply &
+    !  ( 'T', nE_G, nX_G, One, Jtmp_1, nE_G, W2_S, 1, Zero, C_Y, 1 )
+
+    Jtmp_2 = Jold_1
+    !CALL DCOPY( nE_G*nX_G, Jold_1, 1, Jtmp_2, 1 )
+    CALL DAXPY( nE_G*nX_G, +One, Jold_2, 1, Jtmp_2, 1 )
+    CALL DGEMV( 'T', nE_G, nX_G, One, Jtmp_2, nE_G, W3_S, 1, Zero, C_E, 1 )
+    !CALL MatrixMatrixAdd &
+    !  ( nE_G, nX_G, One, Jold_1, nE_G, +One, Jold_2, nE_G, Jtmp_2, nE_G )
+    !CALL MatrixVectorMultiply &
+    !  ( 'T', nE_G, nX_G, One, Jtmp_2, nE_G, W3_S, 1, Zero, C_E, 1 )
+
+    DO iN_X = 1, nX_G
+
+      Yold(iN_X) = Y(iN_X)
+      Eold(iN_X) = E(iN_X)
+
+      S_Y(iN_X) = D(iN_X) * Yold(iN_X) / AtomicMassUnit
+      S_E(iN_X) = D(iN_X) * Eold(iN_X)
+
+      C_Y(iN_X) = C_Y(iN_X) / S_Y(iN_X)
+      C_E(iN_X) = C_E(iN_X) / S_E(iN_X)
+
+      Unew_Y(iN_X) = One ! --- Initial Guess
+      Unew_E(iN_X) = One ! --- Initial Guess
+
+    END DO
+
+    ! --- Equilibrium Distributions ---
+
+    CALL ComputeEquilibriumDistributions_Points &
+           ( 1, nE_G, 1, nX_G, E_N, D, T, Y, J0_1, iS_1 )
+
+    CALL ComputeEquilibriumDistributions_Points &
+           ( 1, nE_G, 1, nX_G, E_N, D, T, Y, J0_2, iS_2 )
+
+    DO iN_X = 1, nX_G
+      DO iN_E = 1, nE_G
+        Eta_1(iN_E,iN_X) = Chi_1(iN_E,iN_X) * J0_1(iN_E,iN_X)
+        Eta_2(iN_E,iN_X) = Chi_2(iN_E,iN_X) * J0_2(iN_E,iN_X)
+      END DO
+    END DO
+
+    ! --- Temporary Work Arrays ---
+
+    DO iN_X = 1, nX_G
+      DO iN_E = 1, nX_E
+        Jtmp_1(iN_E,iN_X) = W2_N(iN_E) *         Jold_1(iN_E,iN_X)
+        Jtmp_2(iN_E,iN_X) = W2_N(iN_E) * ( One - Jold_1(iN_E,iN_X) )
+        Jtmp_3(iN_E,iN_X) = W2_N(iN_E) *         Jold_2(iN_E,iN_X)
+        Jtmp_4(iN_E,iN_X) = W2_N(iN_E) * ( One - Jold_2(iN_E,iN_X) )
+      END DO
+    END DO
+
+    ! --- NES Kernels ---
+
+    CALL ComputeNeutrinoOpacities_NES_Points &
+           ( 1, nE_G, 1, nX_G, E_N, D, T, Y, iS_1, 1, &
+             Phi_0_In_NES_1, Phi_0_Ot_NES_1 )
+
+    CALL ComputeNeutrinoOpacities_NES_Points &
+           ( 1, nE_G, 1, nX_G, E_N, D, T, Y, iS_2, 1, &
+             Phi_0_In_NES_2, Phi_0_Ot_NES_2 )
+
+    ! --- NES Emissivities and Opacities ---
+
+    ! --- Neutrino ---
+
+    DO iN_X = 1, nX_G
+
+      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_NES_1(1,1,iN_X), nE_G, &
+                  Jtmp_1(1,iN_X), 1, Zero, Eta_NES_1(1,iN_X), 1 )
+
+    END DO
+
+    Chi_NES_1 = Eta_NES_1
+    !CALL DCOPY( nE_G*nX_G, Eta_NES_1, 1, Chi_NES_1, 1 )
+
+    DO iN_X = 1, nX_G
+
+      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_NES_1(1,1,iN_X), nE_G, &
+                  Jtmp_2(1,iN_X), 1, One, Chi_NES_1(1,iN_X), 1 )
+
+    END DO
+
+    ! --- Antineutrino ---
+
+    DO iN_X = 1, nX_G
+
+      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_NES_2(1,1,iN_X), nE_G, &
+                  Jtmp_3(1,iN_X), 1, Zero, Eta_NES_2(1,iN_X), 1 )
+
+    END DO
+
+    Chi_NES_2 = Eta_NES_2
+    !CALL DCOPY( nE_G*nX_G, Eta_NES_2, 1, Chi_NES_2, 1 )
+
+    DO iN_X = 1, nX_G
+
+      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_NES_2(1,1,iN_X), nE_G, &
+                  Jtmp_4(1,iN_X), 1, One, Chi_NES_2(1,iN_X), 1 )
+
+    END DO
+
+    ! --- Pair Kernels ---
+
+    CALL ComputeNeutrinoOpacities_Pair_Points &
+           ( 1, nE_G, 1, nX_G, E_N, D, T, Y, iS_1, 1, &
+             Phi_0_In_Pair_1, Phi_0_Ot_Pair_1 )
+
+    CALL ComputeNeutrinoOpacities_Pair_Points &
+           ( 1, nE_G, 1, nX_G, E_N, D, T, Y, iS_2, 1, &
+             Phi_0_In_Pair_2, Phi_0_Ot_Pair_2 )
+
+    ! --- Pair Emissivities and Opacities ---
+
+    ! --- Neutrino ---
+
+    DO iN_X = 1, nX_G
+
+      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_Pair_1(1,1,iN_X), nE_G, &
+                  Jtmp_4(1,iN_X), 1, Zero, Eta_Pair_1(1,iN_X), 1 )
+
+    END DO
+
+    Chi_Pair_1 = Eta_Pair_1
+    !CALL DCOPY( nE_G*nX_G, Eta_Pair_1, 1, Chi_Pair_1, 1 )
+
+    DO iN_X = 1, nX_G
+
+      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair_1(1,1,iN_X), nE_G, &
+                  Jtmp_3(1,iN_X), 1, One, Chi_Pair_1(1,iN_X), 1 )
+
+    END DO
+
+    ! --- Antineutrino ---
+
+    DO iN_X = 1, nX_G
+
+      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_Pair_2(1,1,iN_X), nE_G, &
+                  Jtmp_2(1,iN_X), 1, Zero, Eta_Pair_2(1,iN_X), 1 )
+
+    END DO
+
+    Chi_Pair_2 = Eta_Pair_2
+    !CALL DCOPY( nE_G*nX_G, Eta_Pair_2, 1, Chi_Pair_2, 1 )
+
+    DO iN_X = 1, nX_G
+
+      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair_2(1,1,iN_X), nE_G, &
+                  Jtmp_1(1,iN_X), 1, One, Chi_Pair_2(1,iN_X), 1 )
+
+    END DO
+
+    ! --- Update Neutrino Densities ---
+
+    DO iN_X = 1, nX_G
+      DO iN_E = 1, nX_E
+
+        Eta_Total_1 = Eta_1(iN_E,iN_X) + Eta_NES_1(iN_E,iN_X) + Eta_Pair_1(iN_E,iN_X)
+        Chi_Total_1 = Chi_1(iN_E,iN_X) + Chi_NES_1(iN_E,iN_X) + Chi_Pair_1(iN_E,iN_X)
+
+        Jnew_1(iN_E,iN_X) &
+          = ( Jold_1(iN_E,iN_X) + dt * Eta_Total_1 ) / ( One + dt * Chi_Total_1 )
+
+        Eta_Total_2 = Eta_2(iN_E,iN_X) + Eta_NES_2(iN_E,iN_X) + Eta_Pair_2(iN_E,iN_X)
+        Chi_Total_2 = Chi_2(iN_E,iN_X) + Chi_NES_2(iN_E,iN_X) + Chi_Pair_2(iN_E,iN_X)
+
+        Jnew_2(iN_E,iN_X) &
+          = ( Jold_2(iN_E,iN_X) + dt * Eta_Total_2 ) / ( One + dt * Chi_Total_2 )
+
+      END DO
+    END DO
+
+    k = 0
+    CONVERGED = .FALSE.
+    DO WHILE( .NOT. CONVERGED .AND. k < MaxIter )
+
+      k  = k + 1
+      mk = MIN( M, k )
+
+      ! --- NES Emissivities and Opacities ---
+
+      ! --- Neutrino ---
+
+
+
+      ! --- Antineutrino ---
+
+
+
+      ! --- Pair Emissivities and Opacities ---
+
+      ! --- Neutrino ---
+
+
+
+      ! --- Antineutrino ---
+
+
+
+      ! --- Right-Hand Side Vectors ---
+
+
+
+      ! --- Residuals ---
+
+
+
+      ! --- Update Matter ---
+
+
+
+      IF( .NOT. CONVERGED )THEN
+
+        ! --- Recompute Equilibrium Distributions and Emissivities ---
+
+
+
+        ! --- Recompute Kernels ---
+
+        ! --- NES Kernels ---
+
+
+
+        ! --- Pair Kernels ---
+
+
+      END IF
+
+    END DO
+
+  END SUBROUTINE SolveMatterEquations_FP_Coupled
+
+
   SUBROUTINE ComputeNeutrinoChemicalPotentials &
     ( D, T, Y, M, dMdT, dMdY, iSpecies )
 
@@ -721,6 +1075,8 @@ CONTAINS
     ALLOCATE( E_N (nE_G) )
     ALLOCATE( W2_N(nE_G) )
     ALLOCATE( W3_N(nE_G) )
+    ALLOCATE( W2_FP(nE_G) )
+    ALLOCATE( W3_FP(nE_G) )
 
     ALLOCATE( CF_N(nX_G,nCF) )
     ALLOCATE( PF_N(nX_G,nPF) )
@@ -728,23 +1084,34 @@ CONTAINS
     ALLOCATE( GX_N(nX_G,nGF) )
     ALLOCATE( dF_N(nX_G,nGF) )
 
-    ALLOCATE( Chi(nE_G,nX_G,nSpecies) )
-    ALLOCATE( Sig(nE_G,nX_G,nSpecies) )
-    ALLOCATE( fEQ(nE_G,nX_G,nSpecies) )
+    ALLOCATE( Chi     (nE_G,nX_G,nSpecies) )
+    ALLOCATE( Sig     (nE_G,nX_G,nSpecies) )
+    ALLOCATE( fEQ     (nE_G,nX_G,nSpecies) )
+    ALLOCATE( Chi_NES (nE_G,nX_G,nSpecies) )
+    ALLOCATE( Eta_NES (nE_G,nX_G,nSpecies) )
+    ALLOCATE( Chi_Pair(nE_G,nX_G,nSpecies) )
+    ALLOCATE( Eta_Pair(nE_G,nX_G,nSpecies) )
 
     ALLOCATE( CR_N(nE_G,nX_G,nCR,nSpecies) )
     ALLOCATE( dR_N(nE_G,nX_G,nCR,nSpecies) )
 
     CALL ComputePointsAndWeightsE( E_N, W2_N, W3_N )
 
+    DO iN_E = 1, nE_G
+      W2_FP(iN_E) = WFactor_FP * W2_N(iN_E)
+      W3_FP(iN_E) = WFactor_FP * W3_N(iN_E)
+    END DO
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: E_N, W2_N, W3_N, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX ) &
-    !$OMP MAP( alloc: CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, Chi, Sig, fEQ )
+    !$OMP MAP( to: E_N, W2_N, W3_N, W2_FP, W3_FP, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX ) &
+    !$OMP MAP( alloc: CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, &
+    !$OMP             Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( E_N, W2_N, W3_N, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX ) &
-    !$ACC CREATE( CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, Chi, Sig, fEQ )
+    !$ACC COPYIN( E_N, W2_N, W3_N, W2_FP, W3_FP, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX ) &
+    !$ACC CREATE( CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, &
+    !$ACC         Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #endif
 
   END SUBROUTINE InitializeCollisions_New
@@ -754,17 +1121,19 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: E_N, W2_N, W3_N, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
-    !$OMP               CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, Chi, Sig, fEQ )
+    !$OMP MAP( release: E_N, W2_N, W3_N, W2_FP, W3_FP, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
+    !$OMP               CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, &
+    !$OMP               Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( E_N, W2_N, W3_N, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
-    !$ACC         CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, Chi, Sig, fEQ )
+    !$ACC DELETE( E_N, W2_N, W3_N, W2_FP, W3_FP, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
+    !$ACC         CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, &
+    !$ACC         Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #endif
 
-    DEALLOCATE( E_N, W2_N, W3_N )
+    DEALLOCATE( E_N, W2_N, W3_N, W2_FP, W3_FP )
     DEALLOCATE( CF_N, PF_N, AF_N, GX_N, dF_N )
-    DEALLOCATE( Chi, Sig, fEQ )
+    DEALLOCATE( Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
     DEALLOCATE( CR_N, dR_N )
 
   END SUBROUTINE FinalizeCollisions_New
@@ -776,9 +1145,6 @@ CONTAINS
       E(:), W2(:), W3(:)
 
     INTEGER  :: iE_G, iE, iN
-    REAL(DP) :: hc
-
-    hc = PlanckConstant * SpeedOfLight
 
     ASSOCIATE( dE => MeshE % Width(iE_B0:iE_E0) )
 
@@ -789,8 +1155,9 @@ CONTAINS
       iE_G = iE_G + 1
 
       E (iE_G) = NodeCoordinate( MeshE, iE, iN )
-      W2(iE_G) = WeightsE(iN) * ( dE(iE) / hc ) * ( E(iE_G) / hc )**2
-      W3(iE_G) = W2(iE_G) * ( E(iE_G) / AtomicMassUnit )
+
+      W2(iE_G) = WeightsE(iN) * dE(iE) * E(iE_G)**2
+      W3(iE_G) = WeightsE(iN) * dE(iE) * E(iE_G)**3
 
     END DO
     END DO
