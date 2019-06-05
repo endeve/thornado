@@ -483,7 +483,7 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-#if defined(THORNADO_OMP_XL) || defined(THORNADO_OACC)
+#if defined(THORNADO_OMP_OL) || defined(THORNADO_OACC)
 
     DO iE = iE_B, iE_E
 
@@ -719,7 +719,7 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-#if defined(THORNADO_OMP_XL) || defined(THORNADO_OACC)
+#if defined(THORNADO_OMP_OL) || defined(THORNADO_OACC)
 
     DO iE = iE_B, iE_E
 
