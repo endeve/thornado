@@ -815,23 +815,23 @@ CONTAINS
                             DR, SR, tauR, F_DR, F_SR, F_tauR, &
                             Gm, Lapse, Shift, aP, aM
 
-    REAL(DP) :: EL, F_EL, ER, F_ER, AL, AR, BL, BR, a2, a1, a0
+    REAL(DP) :: EL, F_EL, ER, F_ER, a2, a1, a0
+    REAL(DP) :: E_HLL, S_HLL, FE_HLL, FS_HLL
 
     EL   = tauL + DL
     F_EL = F_tauL + F_DL
     ER   = tauR + DR
     F_ER = F_tauR + F_DR
 
-    AL = -aM * EL - Lapse * F_EL
-    AR = +aP * ER - Lapse * F_ER
-    BL = -aM * SL - Lapse * F_SL
-    BR = +aP * SR - Lapse * F_SR
+    E_HLL  = aP * ER + aM * EL + Lapse * ( F_EL - F_ER )
+    S_HLL  = aP * SR + aM * SL + Lapse * ( F_SL - F_SR )
+    FE_HLL = Lapse * ( aP * F_EL + aM * F_ER ) - aM * aP * ( ER - EL )
+    FS_HLL = Lapse * ( aP * F_SL + aM * F_SR ) - aM * aP * ( SR - SL )
 
-    ! --- a2, a1, and a0 from quadratic equation ---
-    a2 = Gm**2 * ( AR * ( -aM + Shift ) - AL * ( aP + Shift ) )
-    a1 = Gm * ( ( Lapse * AL - BR * ( -aM + Shift ) ) &
-           - ( Lapse * AR - BL * (  aP + Shift ) ) )
-    a0 = Lapse * ( BR - BL )
+    ! --- Coefficients in quadratic equation ---
+    a2 = Gm**2 * ( FE_HLL + Shift * E_HLL )
+    a1 = -Gm * ( Lapse * E_HLL + FS_HLL - Shift * E_HLL )
+    a0 = Lapse * S_HLL
 
     ! --- Accounting for special cases of the solution to a
     !     quadratic equation when a2 = 0 ---
@@ -845,6 +845,8 @@ CONTAINS
       Euler_AlphaMiddle_Relativistic = Zero
     ELSE IF( ABS( a2 ) .LT. SqrtTiny )THEN
       Euler_AlphaMiddle_Relativistic = -a0 / a1
+    ELSE IF( ABS( a0 ) .LT. SqrtTiny )THEN
+       Euler_AlphaMiddle_Relativistic = Zero
     ELSE
       Euler_AlphaMiddle_Relativistic &
         = ( -a1 - SQRT( MAX( a1**2 - Four * a2 * a0, SqrtTiny ) ) ) &
