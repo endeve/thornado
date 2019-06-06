@@ -71,6 +71,9 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     ComputeNeutrinoOpacities_Pair_Point, &
     ComputeNeutrinoOpacitiesRates_Pair_Points
 
+  USE wlEOSInversionModule, ONLY: &
+    DescribeEOSInversionError
+
   IMPLICIT NONE
   PRIVATE
 
@@ -92,7 +95,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
   REAL(DP), PARAMETER :: WFactor_FP = FourPi / PlanckConstant**3
 
-  INTEGER  :: nE_G, nX_G, nZ(4), nX(3)
+  INTEGER  :: nE_G, nX_G, nZ(4), nX(3), nFP
   INTEGER  :: iE_B0,    iE_E0
   INTEGER  :: iE_B1,    iE_E1
   INTEGER  :: iX_B0(3), iX_E0(3)
@@ -154,7 +157,7 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iE, iN_E, iN_X
     INTEGER  :: iNode, iNodeX, iNodeE, iNodeX1, iNodeX2, iNodeX3
-    REAL(DP) :: Kappa
+    REAL(DP) :: Chi_T, Eta_T, Eta, Kappa
 
     CALL TimersStart( Timer_Implicit )
 
@@ -280,18 +283,29 @@ CONTAINS
 
     END DO
 
+    DO iS = 1, nSpecies
+
+      CALL ComputeNeutrinoOpacities_ES_Points &
+             ( 1, nE_G, 1, nX_G, &
+               E_N (:), &
+               PF_N(:,iPF_D ), &
+               AF_N(:,iAF_T ), &
+               AF_N(:,iAF_Ye), &
+               iS, 1, Sig(:,:,iS) )
+
+    END DO
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( Sig, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
+    !$ACC PRESENT( Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #elif defined(THORNADO_OMP)
 #endif
     DO iS = 1, nSpecies
       DO iN_X = 1, nX_G
         DO iN_E = 1, nE_G
 
-          Sig     (iN_E,iN_X,iS) = Zero
           Chi_NES (iN_E,iN_X,iS) = Zero
           Eta_NES (iN_E,iN_X,iS) = Zero
           Chi_Pair(iN_E,iN_X,iS) = Zero
@@ -464,24 +478,28 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( Kappa )
+    !$OMP PRIVATE( Chi_T, Eta_T, Eta, Kappa )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( Kappa ) &
-    !$ACC PRESENT( Chi, Sig, fEQ, CR_N, dR_N )
+    !$ACC PRIVATE( Chi_T, Eta_T, Eta, Kappa ) &
+    !$ACC PRESENT( Chi, Chi_NES, Chi_Pair, Eta_NES, Eta_Pair, &
+    !$ACC          Sig, fEQ, CR_N, dR_N )
 #elif defined(THORNADO_OMP)
 #endif
     DO iS = 1, nSpecies
       DO iN_X = 1, nX_G
         DO iN_E = 1, nE_G
 
-          Kappa = Chi(iN_E,iN_X,iS) + Sig(iN_E,iN_X,iS)
+          Chi_T = Chi(iN_E,iN_X,iS) + Chi_NES(iN_E,iN_X,iS) + Chi_Pair(iN_E,iN_X,iS)
+          Kappa = Chi_T + Sig(iN_E,iN_X,iS)
+
+          Eta   = Chi(iN_E,iN_X,iS) * fEQ(iN_E,iN_X,iS)
+          Eta_T = Eta + Eta_NES(iN_E,iN_X,iS) + Eta_Pair(iN_E,iN_X,iS)
 
           ! --- Number Density ---
 
           CR_N(iN_E,iN_X,iCR_N,iS) &
-            = ( dt * Chi(iN_E,iN_X,iS) * fEQ(iN_E,iN_X,iS) &
-                + CR_N(iN_E,iN_X,iCR_N,iS) ) / ( One + dt * Chi(iN_E,iN_X,iS) )
+            = ( CR_N(iN_E,iN_X,iCR_N,iS) + dt * Eta_T ) / ( One + dt * Chi_T )
 
           ! --- Number Flux (1) ---
 
@@ -501,7 +519,7 @@ CONTAINS
           ! --- Increments ---
 
           dR_N(iN_E,iN_X,iCR_N,iS) &
-            = Chi(iN_E,iN_X,iS) * ( fEQ(iN_E,iN_X,iS) - CR_N(iN_E,iN_X,iCR_N,iS) )
+            = Eta_T - Chi_T * CR_N(iN_E,iN_X,iCR_N,iS)
 
           dR_N(iN_E,iN_X,iCR_G1,iS) &
             = - Kappa * CR_N(iN_E,iN_X,iCR_G1,iS)
@@ -716,9 +734,9 @@ CONTAINS
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
 
-    REAL(DP), DIMENSION(1:2*(1+nE_G),1:M,1:nX_G) :: GVEC, FVEC, AMAT
-    REAL(DP), DIMENSION(1:2*(1+nE_G),    1:nX_G) :: GVECm, FVECm, BVEC
-    REAL(DP), DIMENSION(             1:M,1:nX_G) :: Alpha
+    REAL(DP), DIMENSION(1:nFP,1:M,1:nX_G) :: GVEC, FVEC, AMAT
+    REAL(DP), DIMENSION(1:nFP,    1:nX_G) :: GVECm, FVECm, BVEC
+    REAL(DP), DIMENSION(      1:M,1:nX_G) :: Alpha
 
     REAL(DP), DIMENSION(    1:nX_G) :: JNRM_1, JNRM_2
     REAL(DP), DIMENSION(1:4,1:nX_G) :: AERR, RERR
@@ -727,7 +745,7 @@ CONTAINS
     REAL(DP) :: alpha_k, WORK(1:LWORK)
     REAL(DP) :: Eta_Total_1, Eta_Total_2, Chi_Total_1, Chi_Total_2
     INTEGER  :: i, k, iFP, iM, Mk, iN_X, iN_E, i_shift
-    INTEGER  :: nFP, OS_2, INFO
+    INTEGER  :: OS_2, INFO, Error
     REAL(DP), EXTERNAL :: DNRM2
 
     ! TODO: matrix-matrix addition interface
@@ -736,8 +754,15 @@ CONTAINS
     ! TODO: (batched) DGELS interface
     ! TODO: batched iteration loop
 
+    DO iN_X = 1, nX_G
+      DO i = 1, M
+        DO iFP = 1, nFP
+          GVEC(iFP,i,iN_X) = Zero
+        END DO
+      END DO
+    END DO
+
     OS_2 = OS_1 + nE_G
-    nFP  = OS_1 + 2*nE_G
 
     DO iN_X = 1, nX_G
 
@@ -930,12 +955,14 @@ CONTAINS
         ! --- Picard Iteration ---
 
         DO iN_X = 1, nX_G
-          DO iFP = 1, nFP
+          IF ( ITERATE(iN_X) ) THEN
+            DO iFP = 1, nFP
 
-            FVEC(iFP,iM,iN_X) = FVECm(iFP,iN_X)
-            GVEC(iFP,iM,iN_X) = GVECm(iFP,iN_X)
+              FVEC(iFP,iM,iN_X) = FVECm(iFP,iN_X)
+              GVEC(iFP,iM,iN_X) = GVECm(iFP,iN_X)
 
-          END DO
+            END DO
+          END IF
         END DO
 
       ELSE
@@ -943,79 +970,64 @@ CONTAINS
         ! --- Anderson Acceleration ---
 
         DO iN_X = 1, nX_G
-          DO iFP = 1, nFP
-
-            BVEC(iFP,iN_X)    = - FVECm(iFP,iN_X)
-
-            FVEC(iFP,iM,iN_X) = FVECm(iFP,iN_X)
-            GVEC(iFP,iM,iN_X) = GVECm(iFP,iN_X)
-
-          END DO
-        END DO
-
-        DO iN_X = 1, nX_G
-          DO i = 1, Mk-1
+          IF ( ITERATE(iN_X) ) THEN
             DO iFP = 1, nFP
 
-              i_shift = 1 + MOD( i + iM - 1, Mk )
+              BVEC(iFP,iN_X)    = - FVECm(iFP,iN_X)
 
-              AMAT(iFP,i,iN_X) = FVEC(iFP,i_shift,iN_X) - FVECm(iFP,iN_X)
+              FVEC(iFP,iM,iN_X) = FVECm(iFP,iN_X)
+              GVEC(iFP,iM,iN_X) = GVECm(iFP,iN_X)
 
             END DO
-          END DO
+
+            DO i = 1, Mk-1
+              DO iFP = 1, nFP
+
+                i_shift = 1 + MOD( i + iM - 1, Mk )
+
+                AMAT(iFP,i,iN_X) = FVEC(iFP,i_shift,iN_X) - FVECm(iFP,iN_X)
+
+              END DO
+            END DO
+
+            CALL DGELS &
+              ( 'N', nFP, Mk-1, 1, AMAT(1,1,iN_X), nFP, &
+                BVEC(1,iN_X), nFP, WORK, LWORK, INFO )
+
+            alpha_k = One
+
+            DO i = 1, Mk-1
+
+              i_shift = 1 + MOD( i + iM - 1, Mk )
+              Alpha(i_shift,iN_X) = BVEC(i,iN_X)
+
+              alpha_k = alpha_k - BVEC(i,iN_X)
+
+            END DO
+
+            Alpha(iM,iN_X) = alpha_k
+
+            CALL MatrixVectorMultiply &
+              ( 'N', nFP, Mk, One, GVEC(1,1,iN_X), nFP, &
+                Alpha(1,iN_X), 1, Zero, GVECm(1,iN_X), 1 )
+
+          END IF
         END DO
-
-        DO iN_X = 1, nX_G
-
-          CALL DGELS &
-            ( 'N', nFP, Mk-1, 1, AMAT, nFP, BVEC, nFP, WORK, LWORK, INFO )
-
-        END DO
-
-        DO iN_X = 1, nX_G
-
-          alpha_k = One
-
-          DO i = 1, Mk-1
-
-            i_shift = 1 + MOD( i + iM - 1, Mk )
-            Alpha(i_shift,iN_X) = BVEC(i,iN_X)
-
-            alpha_k = alpha_k - BVEC(i,iN_X)
-
-          END DO
-
-          Alpha(iM,iN_X) = alpha_k
-
-        END DO
-
-        DO iN_X = 1, nX_G
-
-          CALL MatrixVectorMultiply &
-            ( 'N', nFP, Mk, One, GVEC(1,1,iN_X), nFP, &
-              Alpha(1,iN_X), 1, One, GVECm(1,iN_X), 1 )
-
-        END DO
-
       END IF
 
       DO iN_X = 1, nX_G
-
-        FVECm(iY,iN_X) = GVECm(iY,iN_X) - Unew_Y(iN_X)
-        FVECm(iE,iN_X) = GVECm(iE,iN_X) - Unew_E(iN_X)
-
-        DO iFP = OS_1+1, OS_1+nE_G
-          FVECm(iFP,iN_X) = GVECm(iFP,iN_X) - Jnew_1(iFP-OS_1,iN_X)
-        END DO
-
-        DO iFP = OS_2+1, OS_2+nE_G
-          FVECm(iFP,iN_X) = GVECm(iFP,iN_X) - Jnew_2(iFP-OS_2,iN_X)
-        END DO
-
-      END DO
-
-      DO iN_X = 1, nX_G
         IF ( ITERATE(iN_X) ) THEN
+
+          FVECm(iY,iN_X) = GVECm(iY,iN_X) - Unew_Y(iN_X)
+          FVECm(iE,iN_X) = GVECm(iE,iN_X) - Unew_E(iN_X)
+
+          DO iFP = OS_1+1, OS_1+nE_G
+            FVECm(iFP,iN_X) = GVECm(iFP,iN_X) - Jnew_1(iFP-OS_1,iN_X)
+          END DO
+
+          DO iFP = OS_2+1, OS_2+nE_G
+            FVECm(iFP,iN_X) = GVECm(iFP,iN_X) - Jnew_2(iFP-OS_2,iN_X)
+          END DO
 
           AERR(1,iN_X) = FVECm(iY,iN_X)
           AERR(2,iN_X) = FVECm(iE,iN_X)
@@ -1042,7 +1054,13 @@ CONTAINS
           E(iN_X) = Unew_E(iN_X) * Eold(iN_X)
 
           CALL ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
-                 ( D(iN_X), E(iN_X), Y(iN_X), T(iN_X) )
+                 ( D(iN_X), E(iN_X), Y(iN_X), T(iN_X), Error_Option = Error )
+
+          IF ( Error > 0 ) THEN
+            WRITE(*,'(2i4,3es12.5)') k, iN_X, D(iN_X), E(iN_X), Y(iN_X)
+            CALL DescribeEOSInversionError( Error )
+            STOP
+          END IF
 
           IF ( CONVERGED(iN_X) ) THEN
 
@@ -1090,18 +1108,17 @@ CONTAINS
 
           END IF
 
-        END IF
-      END DO
-
-      IF ( Mk == M ) THEN
-        DO iN_X = 1, nX_G
-          IF ( ITERATE(iN_X) ) THEN
+          IF ( Mk == M ) THEN
             DO i = 1, Mk-1
               CALL DSWAP( nFP, GVEC(1,i,iN_X), 1, GVEC(1,i+1,iN_X), 1 )
             END DO
+            DO i = 1, Mk-1
+              CALL DSWAP( nFP, FVEC(1,i,iN_X), 1, FVEC(1,i+1,iN_X), 1 )
+            END DO
           END IF
-        END DO
-      END IF
+
+        END IF
+      END DO
 
     END DO
 
@@ -1206,6 +1223,7 @@ CONTAINS
     nX = nZ(2:4)
     nX_G = nDOFX * PRODUCT( nX )
     nE_G = nNodesZ(1) * nZ(1)
+    nFP  = 2 + 2*nE_G
 
     ALLOCATE( E_N (nE_G) )
     ALLOCATE( W2_N(nE_G) )
