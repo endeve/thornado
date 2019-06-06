@@ -463,7 +463,7 @@ CONTAINS
   END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE
 
 
-  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE( D, E, Y, T, Error_Option )
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE( D, E, Y, T, Guess_Option, Error_Option )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -472,9 +472,10 @@ CONTAINS
 
     REAL(DP), INTENT(in)            :: D, E, Y
     REAL(DP), INTENT(out)           :: T
+    REAL(DP), INTENT(in),  OPTIONAL :: Guess_Option
     INTEGER,  INTENT(out), OPTIONAL :: Error_Option
 
-    REAL(DP) :: D_P, E_P, Y_P, T_Lookup
+    REAL(DP) :: D_P, E_P, Y_P, T_Lookup, T_Guess
     INTEGER :: Error
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -483,10 +484,21 @@ CONTAINS
     E_P = E / ( Erg / Gram )
     Y_P = Y
 
-    CALL ComputeTemperatureWith_DEY &
-           ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, &
-             Error_Option = Error )
+    IF ( PRESENT( Guess_Option ) ) THEN
 
+      T_Guess = Guess_Option / Kelvin
+
+      CALL ComputeTemperatureWith_DEY &
+             ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, T_Guess, &
+               Error_Option = Error )
+
+    ELSE
+
+      CALL ComputeTemperatureWith_DEY &
+             ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, &
+               Error_Option = Error )
+
+    END IF
     T = T_Lookup * Kelvin
 
 #endif
