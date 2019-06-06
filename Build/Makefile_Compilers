@@ -28,7 +28,7 @@ C_summit_xl          = mpic++ -std=c++11 $(OPENMP)
 C                    = $(C_$(MACHINE))
 
 FORTRAN_mac_gnu      = mpif90 -fopenmp
-FORTRAN_sn1987b      = mpif90 -fopenmp
+FORTRAN_sn1987b      = mpif90 -fopenmp -cpp
 FORTRAN_bbarker      = mpif90 -fopenmp
 FORTRAN_juliana      = gfortran
 FORTRAN_kristopher   = mpif90
