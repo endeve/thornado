@@ -69,6 +69,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     ComputeNeutrinoOpacities_EC_Point, &
     ComputeNeutrinoOpacities_EC_Points, &
     ComputeNeutrinoOpacities_ES_Point, &
+    ComputeNeutrinoOpacities_ES_Points, &
     ComputeNeutrinoOpacities_NES_Point, &
     ComputeNeutrinoOpacities_Pair_Point, &
     FermiDirac, &
@@ -236,7 +237,14 @@ CONTAINS
 
       END DO
 
-      Sig      = Zero
+      DO iS = 1, nSpecies
+
+        CALL ComputeNeutrinoOpacities_ES_Points &
+               ( 1, nE_G, 1, nDOFX, E_N, PF_N(:,iPF_D), &
+                 AF_N(:,iAF_T), AF_N(:,iAF_Ye), iS, 1, Sig(:,iS,:) )
+
+      END DO
+
       Chi_NES  = Zero
       Eta_NES  = Zero
       Chi_Pair = Zero
