@@ -107,7 +107,7 @@ DEBUG_paullaiu_gnu = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invali
 DEBUG_beacon_intel = -g -warn all -fpe0 -fpe-all=0 -ftrapuv -traceback -CB
 DEBUG_mcarpe21     = -g
 DEBUG_summit_gcc   = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
-DEBUG_summit_pgi   = -O0 -Mbounds -Mnoopenmp -Ktrap=fp -ta=tesla:autocompare
+DEBUG_summit_pgi   = -O0 -Mbounds -Mnoopenmp -Ktrap=fp
 DEBUG_summit_xl    = -g9 -qtbtable=full -O2 -qsclk=micro -qstrict=all -qsuppress=cmpmsg -qflag=i:w -qfloat=rngchk -qcheck=all:nounset -qflttrap=enable:invalid:nanq:overflow:zerodivide -qsigtrap=xl__trcedump
 DEBUG              = $(DEBUG_$(MACHINE))
 
