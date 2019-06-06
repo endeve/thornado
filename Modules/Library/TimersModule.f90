@@ -45,6 +45,19 @@ MODULE TimersModule
   REAL(DP), PUBLIC :: Timer_Im_ComputeTS_Prim
   REAL(DP), PUBLIC :: Timer_Im_Increment     
   REAL(DP), PUBLIC :: Timer_Im_MapBackward   
+  REAL(DP), PUBLIC :: Timer_FP_RHS
+  REAL(DP), PUBLIC :: Timer_FP_J0
+  REAL(DP), PUBLIC :: Timer_FP_Op
+  REAL(DP), PUBLIC :: Timer_FP_Rate
+  REAL(DP), PUBLIC :: Timer_FP_G
+  REAL(DP), PUBLIC :: Timer_FP_Update
+  REAL(DP), PUBLIC :: Timer_FP_DGELS
+  REAL(DP), PUBLIC :: Timer_FP_Alpha
+  REAL(DP), PUBLIC :: Timer_FP_DEY
+  REAL(DP), PUBLIC :: Timer_FP_J0P
+  REAL(DP), PUBLIC :: Timer_FP_OpP
+  REAL(DP), PUBLIC :: Timer_FP_RateP
+  REAL(DP), PUBLIC :: Timer_FP_DSWAP
 
   PUBLIC :: InitializeTimers
   PUBLIC :: FinalizeTimers
@@ -94,6 +107,19 @@ CONTAINS
     Timer_Im_ComputeTS_Prim = Zero
     Timer_Im_Increment      = Zero
     Timer_Im_MapBackward    = Zero
+    Timer_FP_RHS            = Zero
+    Timer_FP_J0             = Zero
+    Timer_FP_Op             = Zero
+    Timer_FP_Rate           = Zero
+    Timer_FP_G              = Zero
+    Timer_FP_Update         = Zero
+    Timer_FP_DGELS          = Zero
+    Timer_FP_Alpha          = Zero
+    Timer_FP_DEY            = Zero
+    Timer_FP_J0P            = Zero
+    Timer_FP_OpP            = Zero
+    Timer_FP_RateP          = Zero
+    Timer_FP_DSWAP          = Zero
 
     RETURN
   END SUBROUTINE InitializeTimers
@@ -137,6 +163,19 @@ CONTAINS
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Im_ComputeOpacity :', Timer_Im_ComputeOpacity, ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Im_MapForward     :', Timer_Im_MapForward    , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Im_Solve            :', Timer_Im_Solve         , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_RHS            :', Timer_FP_RHS           , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_J0             :', Timer_FP_J0            , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_Op             :', Timer_FP_Op            , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_Rate           :', Timer_FP_Rate          , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_G              :', Timer_FP_G             , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_Update         :', Timer_FP_Update        , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_DGELS          :', Timer_FP_DGELS         , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_Alpha          :', Timer_FP_Alpha         , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_DEY            :', Timer_FP_DEY           , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_J0P            :', Timer_FP_J0P           , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_OpP            :', Timer_FP_OpP           , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_RateP          :', Timer_FP_RateP         , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      FP_DSWAP          :', Timer_FP_DSWAP         , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Im_Out              :', Timer_Im_Out           , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Im_ComputeTS_Prim :', Timer_Im_ComputeTS_Prim, ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Im_Increment      :', Timer_Im_Increment     , ' s'
