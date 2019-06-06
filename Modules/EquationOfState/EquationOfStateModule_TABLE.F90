@@ -86,6 +86,7 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ApplyEquationOfState_TABLE
   PUBLIC :: ComputeTemperatureFromPressure_TABLE
   PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy_TABLE
+  PUBLIC :: ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE
   PUBLIC :: ComputeThermodynamicStates_Primitive_TABLE
   PUBLIC :: ComputeThermodynamicStates_Auxiliary_TABLE
   PUBLIC :: ComputePressureFromPrimitive_TABLE
