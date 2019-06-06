@@ -33,6 +33,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     Timer_Im_ComputeTS_Prim, &
     Timer_Im_Increment, &
     Timer_Im_MapBackward
+  USE LinearAlgebraModule, ONLY: &
+    MatrixVectorMultiply
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
   USE MeshModule, ONLY: &
@@ -52,12 +54,22 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeThermodynamicStates_Auxiliary_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE, &
+    ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
+    ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE, &
     ComputeElectronChemicalPotential_TABLE, &
     ComputeProtonChemicalPotential_TABLE, &
     ComputeNeutronChemicalPotential_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeEquilibriumDistributions, &
-    ComputeNeutrinoOpacities_EC_Points
+    ComputeEquilibriumDistributions_Point, &
+    ComputeEquilibriumDistributions_Points, &
+    ComputeNeutrinoOpacities_EC_Points, &
+    ComputeNeutrinoOpacities_ES_Points, &
+    ComputeNeutrinoOpacities_NES_Points, &
+    ComputeNeutrinoOpacities_NES_Point, &
+    ComputeNeutrinoOpacitiesRates_NES_Points, &
+    ComputeNeutrinoOpacities_Pair_Points, &
+    ComputeNeutrinoOpacities_Pair_Point, &
+    ComputeNeutrinoOpacitiesRates_Pair_Points
 
   IMPLICIT NONE
   PRIVATE
@@ -88,8 +100,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: E_N(:)        ! --- Energy Grid
   REAL(DP), ALLOCATABLE :: W2_N(:)       ! --- Ingegration Weights (E^2)
   REAL(DP), ALLOCATABLE :: W3_N(:)       ! --- Integration Weights (E^3)
-  REAL(DP), ALLOCATABLE :: W2_FP(:)
-  REAL(DP), ALLOCATABLE :: W3_FP(:)
+  REAL(DP), ALLOCATABLE :: W2_S(:)
+  REAL(DP), ALLOCATABLE :: W3_S(:)
   REAL(DP), ALLOCATABLE :: CF_N(:,:)
   REAL(DP), ALLOCATABLE :: PF_N(:,:)
   REAL(DP), ALLOCATABLE :: AF_N(:,:)
@@ -335,38 +347,38 @@ CONTAINS
 
     ! --- Electron Neutrinos and Antineutrinos ---
 
-    CALL SolveMatterEquations_EmAb &
-           ( CR_N    (:,:,iCR_N,iNuE    ), &
-             CR_N    (:,:,iCR_N,iNuE_Bar), &
-             dt * Chi(:,:,      iNuE    ), &
-             dt * Chi(:,:,      iNuE_Bar), &
-             fEQ     (:,:,      iNuE    ), &
-             fEQ     (:,:,      iNuE_Bar), &
-             PF_N    (:,iPF_D ), &
-             AF_N    (:,iAF_T ), &
-             AF_N    (:,iAF_Ye), &
-             AF_N    (:,iAF_E ) )
-
-    !CALL SolveMatterEquations_FP_Coupled &
-    !       ( dt, iNuE, iNuE_Bar, &
-    !         CR_N    (:,:,iCR_N,iNuE    ), &
+    !CALL SolveMatterEquations_EmAb &
+    !       ( CR_N    (:,:,iCR_N,iNuE    ), &
     !         CR_N    (:,:,iCR_N,iNuE_Bar), &
-    !         Chi     (:,:,      iNuE    ), &
-    !         Chi     (:,:,      iNuE_Bar), &
+    !         dt * Chi(:,:,      iNuE    ), &
+    !         dt * Chi(:,:,      iNuE_Bar), &
     !         fEQ     (:,:,      iNuE    ), &
     !         fEQ     (:,:,      iNuE_Bar), &
-    !         Chi_NES (:,:,      iNuE    ), &
-    !         Chi_NES (:,:,      iNuE_Bar), &
-    !         Eta_NES (:,:,      iNuE    ), &
-    !         Eta_NES (:,:,      iNuE_Bar), &
-    !         Chi_Pair(:,:,      iNuE    ), &
-    !         Chi_Pair(:,:,      iNuE_Bar), &
-    !         Eta_Pair(:,:,      iNuE    ), &
-    !         Eta_Pair(:,:,      iNuE_Bar), &
     !         PF_N    (:,iPF_D ), &
     !         AF_N    (:,iAF_T ), &
     !         AF_N    (:,iAF_Ye), &
     !         AF_N    (:,iAF_E ) )
+
+    CALL SolveMatterEquations_FP_Coupled &
+           ( dt, iNuE, iNuE_Bar, &
+             CR_N    (:,:,iCR_N,iNuE    ), &
+             CR_N    (:,:,iCR_N,iNuE_Bar), &
+             Chi     (:,:,      iNuE    ), &
+             Chi     (:,:,      iNuE_Bar), &
+             fEQ     (:,:,      iNuE    ), &
+             fEQ     (:,:,      iNuE_Bar), &
+             Chi_NES (:,:,      iNuE    ), &
+             Chi_NES (:,:,      iNuE_Bar), &
+             Eta_NES (:,:,      iNuE    ), &
+             Eta_NES (:,:,      iNuE_Bar), &
+             Chi_Pair(:,:,      iNuE    ), &
+             Chi_Pair(:,:,      iNuE_Bar), &
+             Eta_Pair(:,:,      iNuE    ), &
+             Eta_Pair(:,:,      iNuE_Bar), &
+             PF_N    (:,iPF_D ), &
+             AF_N    (:,iAF_T ), &
+             AF_N    (:,iAF_Ye), &
+             AF_N    (:,iAF_E ) )
 
     CALL TimersStop( Timer_Im_Solve )
 
@@ -686,6 +698,7 @@ CONTAINS
 
     INTEGER,  PARAMETER :: iY = 1
     INTEGER,  PARAMETER :: iE = 2
+    INTEGER,  PARAMETER :: OS_1 = iE
     INTEGER,  PARAMETER :: M = 5
     INTEGER,  PARAMETER :: MaxIter = 100
     INTEGER,  PARAMETER :: LWORK = 2 * M
@@ -694,32 +707,28 @@ CONTAINS
 
     ! --- Local Variables ---
 
-    LOGICAL  :: CONVERGED
-    INTEGER  :: i, k, mk, INFO
-    INTEGER  :: OS_1, OS_2
-    REAL(DP), DIMENSION(1:nX_G) :: Yold, S_Y, C_Y, Unew_Y
-    REAL(DP), DIMENSION(1:nX_G) :: Eold, S_E, C_E, Unew_E
-
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Jnew_1, Eta_1
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Jnew_2, Eta_2
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Jtmp_1, Jtmp_2, Jtmp_3, Jtmp_4
-
+    REAL(DP), DIMENSION(              1:nX_G) :: Yold, S_Y, C_Y, Unew_Y
+    REAL(DP), DIMENSION(              1:nX_G) :: Eold, S_E, C_E, Unew_E
+    REAL(DP), DIMENSION(1:nE_G,       1:nX_G) :: Jnew_1, Eta_1
+    REAL(DP), DIMENSION(1:nE_G,       1:nX_G) :: Jnew_2, Eta_2
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
-
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
 
-    REAL(DP) :: Alpha(1:M)
-    REAL(DP) :: WORK(1:LWORK)
-    REAL(DP) :: GVECm(1:2*(1+nE_G))
-    REAL(DP) :: FVECm(1:2*(1+nE_G))
-    REAL(DP) :: GVEC (1:2*(1+nE_G),1:M)
-    REAL(DP) :: FVEC (1:2*(1+nE_G),1:M)
-    REAL(DP) :: BVEC(1:2*(1+nE_G))
-    REAL(DP) :: AMAT(1:2*(1+nE_G),1:M)
+    REAL(DP), DIMENSION(1:2*(1+nE_G),1:M,1:nX_G) :: GVEC, FVEC, AMAT
+    REAL(DP), DIMENSION(1:2*(1+nE_G),    1:nX_G) :: GVECm, FVECm, BVEC
+    REAL(DP), DIMENSION(             1:M,1:nX_G) :: Alpha
 
-    INTEGER  :: iN_X, iN_E
+    REAL(DP), DIMENSION(    1:nX_G) :: JNRM_1, JNRM_2
+    REAL(DP), DIMENSION(1:4,1:nX_G) :: AERR, RERR
+    LOGICAL,  DIMENSION(    1:nX_G) :: CONVERGED, ITERATE
+
+    REAL(DP) :: alpha_k, WORK(1:LWORK)
+    REAL(DP) :: Eta_Total_1, Eta_Total_2, Chi_Total_1, Chi_Total_2
+    INTEGER  :: i, k, iFP, iM, Mk, iN_X, iN_E, i_shift
+    INTEGER  :: nFP, OS_2, INFO
+    REAL(DP), EXTERNAL :: DNRM2
 
     ! TODO: matrix-matrix addition interface
     ! TODO: diagnoal matrix multiply
@@ -727,39 +736,38 @@ CONTAINS
     ! TODO: (batched) DGELS interface
     ! TODO: batched iteration loop
 
-    OS_1 = 2
-    OS_2 = 2 + nE_G
+    OS_2 = OS_1 + nE_G
+    nFP  = OS_1 + 2*nE_G
+
+    DO iN_X = 1, nX_G
+
+      JNRM_1(iN_X) = DNRM2( nE_G, Jold_1(1,iN_X), 1 )
+      JNRM_2(iN_X) = DNRM2( nE_G, Jold_2(1,iN_X), 1 )
+
+    END DO
 
     ! --- Fixed Electron Fraction and Internal Energy RHS ---
 
-    Jtmp_1 = Jold_1
-    !CALL DCOPY( nE_G*nX_G, Jold_1, 1, Jtmp_1, 1 )
-    CALL DAXPY( nE_G*nX_G, -One, Jold_2, 1, Jtmp_1, 1 )
-    CALL DGEMV( 'T', nE_G, nX_G, One, Jtmp_1, nE_G, W2_S, 1, Zero, C_Y, 1 )
-    !CALL MatrixMatrixAdd &
-    !  ( nE_G, nX_G, One, Jold_1, nE_G, -One, Jold_2, nE_G, Jtmp_1, nE_G )
-    !CALL MatrixVectorMultiply &
-    !  ( 'T', nE_G, nX_G, One, Jtmp_1, nE_G, W2_S, 1, Zero, C_Y, 1 )
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, +One, Jold_1, nE_G, W2_S, 1, Zero, C_Y, 1 )
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, -One, Jold_2, nE_G, W2_S, 1,  One, C_Y, 1 )
 
-    Jtmp_2 = Jold_1
-    !CALL DCOPY( nE_G*nX_G, Jold_1, 1, Jtmp_2, 1 )
-    CALL DAXPY( nE_G*nX_G, +One, Jold_2, 1, Jtmp_2, 1 )
-    CALL DGEMV( 'T', nE_G, nX_G, One, Jtmp_2, nE_G, W3_S, 1, Zero, C_E, 1 )
-    !CALL MatrixMatrixAdd &
-    !  ( nE_G, nX_G, One, Jold_1, nE_G, +One, Jold_2, nE_G, Jtmp_2, nE_G )
-    !CALL MatrixVectorMultiply &
-    !  ( 'T', nE_G, nX_G, One, Jtmp_2, nE_G, W3_S, 1, Zero, C_E, 1 )
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, +One, Jold_1, nE_G, W3_S, 1, Zero, C_E, 1 )
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, +One, Jold_2, nE_G, W3_S, 1,  One, C_E, 1 )
 
     DO iN_X = 1, nX_G
 
       Yold(iN_X) = Y(iN_X)
       Eold(iN_X) = E(iN_X)
 
-      S_Y(iN_X) = D(iN_X) * Yold(iN_X) / AtomicMassUnit
-      S_E(iN_X) = D(iN_X) * Eold(iN_X)
+      S_Y(iN_X) = One / ( D(iN_X) * Yold(iN_X) / AtomicMassUnit )
+      S_E(iN_X) = One / ( D(iN_X) * Eold(iN_X) )
 
-      C_Y(iN_X) = C_Y(iN_X) / S_Y(iN_X)
-      C_E(iN_X) = C_E(iN_X) / S_E(iN_X)
+      C_Y(iN_X) = C_Y(iN_X) * S_Y(iN_X)
+      C_E(iN_X) = C_E(iN_X) * S_E(iN_X)
 
       Unew_Y(iN_X) = One ! --- Initial Guess
       Unew_E(iN_X) = One ! --- Initial Guess
@@ -771,201 +779,328 @@ CONTAINS
     CALL ComputeEquilibriumDistributions_Points &
            ( 1, nE_G, 1, nX_G, E_N, D, T, Y, J0_1, iS_1 )
 
+    DO iN_X = 1, nX_G
+      DO iN_E = 1, nE_G
+        Eta_1(iN_E,iN_X) = Chi_1(iN_E,iN_X) * J0_1(iN_E,iN_X)
+      END DO
+    END DO
+
     CALL ComputeEquilibriumDistributions_Points &
            ( 1, nE_G, 1, nX_G, E_N, D, T, Y, J0_2, iS_2 )
 
     DO iN_X = 1, nX_G
       DO iN_E = 1, nE_G
-        Eta_1(iN_E,iN_X) = Chi_1(iN_E,iN_X) * J0_1(iN_E,iN_X)
         Eta_2(iN_E,iN_X) = Chi_2(iN_E,iN_X) * J0_2(iN_E,iN_X)
       END DO
     END DO
 
-    ! --- Temporary Work Arrays ---
-
-    DO iN_X = 1, nX_G
-      DO iN_E = 1, nX_E
-        Jtmp_1(iN_E,iN_X) = W2_N(iN_E) *         Jold_1(iN_E,iN_X)
-        Jtmp_2(iN_E,iN_X) = W2_N(iN_E) * ( One - Jold_1(iN_E,iN_X) )
-        Jtmp_3(iN_E,iN_X) = W2_N(iN_E) *         Jold_2(iN_E,iN_X)
-        Jtmp_4(iN_E,iN_X) = W2_N(iN_E) * ( One - Jold_2(iN_E,iN_X) )
-      END DO
-    END DO
-
-    ! --- NES Kernels ---
+    ! --- NES Emissivities and Opacities ---
 
     CALL ComputeNeutrinoOpacities_NES_Points &
            ( 1, nE_G, 1, nX_G, E_N, D, T, Y, iS_1, 1, &
              Phi_0_In_NES_1, Phi_0_Ot_NES_1 )
 
+    CALL ComputeNeutrinoOpacitiesRates_NES_Points &
+           ( 1, nE_G, 1, nX_G, W2_N, Jold_1, &
+             Phi_0_In_NES_1, Phi_0_Ot_NES_1, Eta_NES_1, Chi_NES_1 )
+
     CALL ComputeNeutrinoOpacities_NES_Points &
            ( 1, nE_G, 1, nX_G, E_N, D, T, Y, iS_2, 1, &
              Phi_0_In_NES_2, Phi_0_Ot_NES_2 )
 
-    ! --- NES Emissivities and Opacities ---
+    CALL ComputeNeutrinoOpacitiesRates_NES_Points &
+           ( 1, nE_G, 1, nX_G, W2_N, Jold_2, &
+             Phi_0_In_NES_2, Phi_0_Ot_NES_2, Eta_NES_2, Chi_NES_2 )
 
-    ! --- Neutrino ---
-
-    DO iN_X = 1, nX_G
-
-      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_NES_1(1,1,iN_X), nE_G, &
-                  Jtmp_1(1,iN_X), 1, Zero, Eta_NES_1(1,iN_X), 1 )
-
-    END DO
-
-    Chi_NES_1 = Eta_NES_1
-    !CALL DCOPY( nE_G*nX_G, Eta_NES_1, 1, Chi_NES_1, 1 )
-
-    DO iN_X = 1, nX_G
-
-      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_NES_1(1,1,iN_X), nE_G, &
-                  Jtmp_2(1,iN_X), 1, One, Chi_NES_1(1,iN_X), 1 )
-
-    END DO
-
-    ! --- Antineutrino ---
-
-    DO iN_X = 1, nX_G
-
-      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_NES_2(1,1,iN_X), nE_G, &
-                  Jtmp_3(1,iN_X), 1, Zero, Eta_NES_2(1,iN_X), 1 )
-
-    END DO
-
-    Chi_NES_2 = Eta_NES_2
-    !CALL DCOPY( nE_G*nX_G, Eta_NES_2, 1, Chi_NES_2, 1 )
-
-    DO iN_X = 1, nX_G
-
-      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_NES_2(1,1,iN_X), nE_G, &
-                  Jtmp_4(1,iN_X), 1, One, Chi_NES_2(1,iN_X), 1 )
-
-    END DO
-
-    ! --- Pair Kernels ---
+    ! --- Pair Emissivities and Opacities ---
 
     CALL ComputeNeutrinoOpacities_Pair_Points &
            ( 1, nE_G, 1, nX_G, E_N, D, T, Y, iS_1, 1, &
              Phi_0_In_Pair_1, Phi_0_Ot_Pair_1 )
 
+    CALL ComputeNeutrinoOpacitiesRates_Pair_Points &
+           ( 1, nE_G, 1, nX_G, W2_N, Jold_2, &
+             Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Eta_Pair_1, Chi_Pair_1 )
+
     CALL ComputeNeutrinoOpacities_Pair_Points &
            ( 1, nE_G, 1, nX_G, E_N, D, T, Y, iS_2, 1, &
              Phi_0_In_Pair_2, Phi_0_Ot_Pair_2 )
 
-    ! --- Pair Emissivities and Opacities ---
-
-    ! --- Neutrino ---
-
-    DO iN_X = 1, nX_G
-
-      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_Pair_1(1,1,iN_X), nE_G, &
-                  Jtmp_4(1,iN_X), 1, Zero, Eta_Pair_1(1,iN_X), 1 )
-
-    END DO
-
-    Chi_Pair_1 = Eta_Pair_1
-    !CALL DCOPY( nE_G*nX_G, Eta_Pair_1, 1, Chi_Pair_1, 1 )
-
-    DO iN_X = 1, nX_G
-
-      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair_1(1,1,iN_X), nE_G, &
-                  Jtmp_3(1,iN_X), 1, One, Chi_Pair_1(1,iN_X), 1 )
-
-    END DO
-
-    ! --- Antineutrino ---
-
-    DO iN_X = 1, nX_G
-
-      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_Pair_2(1,1,iN_X), nE_G, &
-                  Jtmp_2(1,iN_X), 1, Zero, Eta_Pair_2(1,iN_X), 1 )
-
-    END DO
-
-    Chi_Pair_2 = Eta_Pair_2
-    !CALL DCOPY( nE_G*nX_G, Eta_Pair_2, 1, Chi_Pair_2, 1 )
-
-    DO iN_X = 1, nX_G
-
-      CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair_2(1,1,iN_X), nE_G, &
-                  Jtmp_1(1,iN_X), 1, One, Chi_Pair_2(1,iN_X), 1 )
-
-    END DO
+    CALL ComputeNeutrinoOpacitiesRates_Pair_Points &
+           ( 1, nE_G, 1, nX_G, W2_N, Jold_1, &
+             Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, Eta_Pair_2, Chi_Pair_2 )
 
     ! --- Update Neutrino Densities ---
 
     DO iN_X = 1, nX_G
-      DO iN_E = 1, nX_E
+      DO iN_E = 1, nE_G
 
         Eta_Total_1 = Eta_1(iN_E,iN_X) + Eta_NES_1(iN_E,iN_X) + Eta_Pair_1(iN_E,iN_X)
-        Chi_Total_1 = Chi_1(iN_E,iN_X) + Chi_NES_1(iN_E,iN_X) + Chi_Pair_1(iN_E,iN_X)
-
-        Jnew_1(iN_E,iN_X) &
-          = ( Jold_1(iN_E,iN_X) + dt * Eta_Total_1 ) / ( One + dt * Chi_Total_1 )
-
         Eta_Total_2 = Eta_2(iN_E,iN_X) + Eta_NES_2(iN_E,iN_X) + Eta_Pair_2(iN_E,iN_X)
+
+        Chi_Total_1 = Chi_1(iN_E,iN_X) + Chi_NES_1(iN_E,iN_X) + Chi_Pair_1(iN_E,iN_X)
         Chi_Total_2 = Chi_2(iN_E,iN_X) + Chi_NES_2(iN_E,iN_X) + Chi_Pair_2(iN_E,iN_X)
 
-        Jnew_2(iN_E,iN_X) &
-          = ( Jold_2(iN_E,iN_X) + dt * Eta_Total_2 ) / ( One + dt * Chi_Total_2 )
+        Jnew_1(iN_E,iN_X) = ( Jold_1(iN_E,iN_X) + dt * Eta_Total_1 ) / ( One + dt * Chi_Total_1 )
+        Jnew_2(iN_E,iN_X) = ( Jold_2(iN_E,iN_X) + dt * Eta_Total_2 ) / ( One + dt * Chi_Total_2 )
 
       END DO
     END DO
 
     k = 0
-    CONVERGED = .FALSE.
-    DO WHILE( .NOT. CONVERGED .AND. k < MaxIter )
+    ITERATE(:) = .TRUE.
+    CONVERGED(:) = .FALSE.
+    DO WHILE( ANY( ITERATE(:) ) .AND. k < MaxIter )
 
       k  = k + 1
-      mk = MIN( M, k )
+      Mk = MIN( M, k )
+      iM = Mk
+      !iM = 1 + MOD( k-1, M )
 
       ! --- NES Emissivities and Opacities ---
 
-      ! --- Neutrino ---
+      CALL ComputeNeutrinoOpacitiesRates_NES_Points &
+             ( 1, nE_G, 1, nX_G, W2_N, Jnew_1, &
+               Phi_0_In_NES_1, Phi_0_Ot_NES_1, Eta_NES_1, Chi_NES_1 )
 
-
-
-      ! --- Antineutrino ---
-
-
+      CALL ComputeNeutrinoOpacitiesRates_NES_Points &
+             ( 1, nE_G, 1, nX_G, W2_N, Jnew_2, &
+               Phi_0_In_NES_2, Phi_0_Ot_NES_2, Eta_NES_2, Chi_NES_2 )
 
       ! --- Pair Emissivities and Opacities ---
 
-      ! --- Neutrino ---
+      CALL ComputeNeutrinoOpacitiesRates_Pair_Points &
+             ( 1, nE_G, 1, nX_G, W2_N, Jnew_2, &
+               Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Eta_Pair_1, Chi_Pair_1 )
 
+      CALL ComputeNeutrinoOpacitiesRates_Pair_Points &
+             ( 1, nE_G, 1, nX_G, W2_N, Jnew_1, &
+               Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, Eta_Pair_2, Chi_Pair_2 )
 
+      ! --- Right-Hand Side Vectors and Residuals ---
 
-      ! --- Antineutrino ---
+      CALL MatrixVectorMultiply &
+        ( 'T', nE_G, nX_G, +One, Jnew_1, nE_G, W2_S, 1, Zero, GVECm(iY,1), nFP )
+      CALL MatrixVectorMultiply &
+        ( 'T', nE_G, nX_G, -One, Jnew_2, nE_G, W2_S, 1,  One, GVECm(iY,1), nFP )
 
+      CALL MatrixVectorMultiply &
+        ( 'T', nE_G, nX_G, +One, Jnew_1, nE_G, W3_S, 1, Zero, GVECm(iE,1), nFP )
+      CALL MatrixVectorMultiply &
+        ( 'T', nE_G, nX_G, +One, Jnew_2, nE_G, W3_S, 1,  One, GVECm(iE,1), nFP )
 
+      DO iN_X = 1, nX_G
 
-      ! --- Right-Hand Side Vectors ---
+        GVECm(iY,iN_X) = One + C_Y(iN_X) - GVECm(iY,iN_X) * S_Y(iN_X)
+        GVECm(iE,iN_X) = One + C_E(iN_X) - GVECm(iE,iN_X) * S_E(iN_X)
 
+        FVECm(iY,iN_X) = GVECm(iY,iN_X) - Unew_Y(iN_X)
+        FVECm(iE,iN_X) = GVECm(iE,iN_X) - Unew_E(iN_X)
 
+        DO iFP = 1+OS_1, nE_G+OS_1
 
-      ! --- Residuals ---
+          iN_E = iFP - OS_1
 
+          Eta_Total_1 = Eta_1(iN_E,iN_X) + Eta_NES_1(iN_E,iN_X) + Eta_Pair_1(iN_E,iN_X)
+          Chi_Total_1 = Chi_1(iN_E,iN_X) + Chi_NES_1(iN_E,iN_X) + Chi_Pair_1(iN_E,iN_X)
 
+          GVECm(iFP,iN_X) = ( Jold_1(iN_E,iN_X) + dt * Eta_Total_1 ) / ( One + dt * Chi_Total_1 )
+          FVECm(iFP,iN_X) = GVECm(iFP,iN_X) - Jnew_1(iN_E,iN_X)
 
-      ! --- Update Matter ---
+        END DO
 
+        DO iFP = 1+OS_2, nE_G+OS_2
 
+          iN_E = iFP - OS_2
 
-      IF( .NOT. CONVERGED )THEN
+          Eta_Total_2 = Eta_2(iN_E,iN_X) + Eta_NES_2(iN_E,iN_X) + Eta_Pair_2(iN_E,iN_X)
+          Chi_Total_2 = Chi_2(iN_E,iN_X) + Chi_NES_2(iN_E,iN_X) + Chi_Pair_2(iN_E,iN_X)
 
-        ! --- Recompute Equilibrium Distributions and Emissivities ---
+          GVECm(iFP,iN_X) = ( Jold_2(iN_E,iN_X) + dt * Eta_Total_2 ) / ( One + dt * Chi_Total_2 )
+          FVECm(iFP,iN_X) = GVECm(iFP,iN_X) - Jnew_2(iN_E,iN_X)
 
+        END DO
 
+      END DO
 
-        ! --- Recompute Kernels ---
+      ! --- Update Solution ---
 
-        ! --- NES Kernels ---
+      IF ( Mk == 1 ) THEN
 
+        ! --- Picard Iteration ---
 
+        DO iN_X = 1, nX_G
+          DO iFP = 1, nFP
 
-        ! --- Pair Kernels ---
+            FVEC(iFP,iM,iN_X) = FVECm(iFP,iN_X)
+            GVEC(iFP,iM,iN_X) = GVECm(iFP,iN_X)
 
+          END DO
+        END DO
 
+      ELSE
+
+        ! --- Anderson Acceleration ---
+
+        DO iN_X = 1, nX_G
+          DO iFP = 1, nFP
+
+            BVEC(iFP,iN_X)    = - FVECm(iFP,iN_X)
+
+            FVEC(iFP,iM,iN_X) = FVECm(iFP,iN_X)
+            GVEC(iFP,iM,iN_X) = GVECm(iFP,iN_X)
+
+          END DO
+        END DO
+
+        DO iN_X = 1, nX_G
+          DO i = 1, Mk-1
+            DO iFP = 1, nFP
+
+              i_shift = 1 + MOD( i + iM - 1, Mk )
+
+              AMAT(iFP,i,iN_X) = FVEC(iFP,i_shift,iN_X) - FVECm(iFP,iN_X)
+
+            END DO
+          END DO
+        END DO
+
+        DO iN_X = 1, nX_G
+
+          CALL DGELS &
+            ( 'N', nFP, Mk-1, 1, AMAT, nFP, BVEC, nFP, WORK, LWORK, INFO )
+
+        END DO
+
+        DO iN_X = 1, nX_G
+
+          alpha_k = One
+
+          DO i = 1, Mk-1
+
+            i_shift = 1 + MOD( i + iM - 1, Mk )
+            Alpha(i_shift,iN_X) = BVEC(i,iN_X)
+
+            alpha_k = alpha_k - BVEC(i,iN_X)
+
+          END DO
+
+          Alpha(iM,iN_X) = alpha_k
+
+        END DO
+
+        DO iN_X = 1, nX_G
+
+          CALL MatrixVectorMultiply &
+            ( 'N', nFP, Mk, One, GVEC(1,1,iN_X), nFP, &
+              Alpha(1,iN_X), 1, One, GVECm(1,iN_X), 1 )
+
+        END DO
+
+      END IF
+
+      DO iN_X = 1, nX_G
+
+        FVECm(iY,iN_X) = GVECm(iY,iN_X) - Unew_Y(iN_X)
+        FVECm(iE,iN_X) = GVECm(iE,iN_X) - Unew_E(iN_X)
+
+        DO iFP = OS_1+1, OS_1+nE_G
+          FVECm(iFP,iN_X) = GVECm(iFP,iN_X) - Jnew_1(iFP-OS_1,iN_X)
+        END DO
+
+        DO iFP = OS_2+1, OS_2+nE_G
+          FVECm(iFP,iN_X) = GVECm(iFP,iN_X) - Jnew_2(iFP-OS_2,iN_X)
+        END DO
+
+      END DO
+
+      DO iN_X = 1, nX_G
+        IF ( ITERATE(iN_X) ) THEN
+
+          AERR(1,iN_X) = FVECm(iY,iN_X)
+          AERR(2,iN_X) = FVECm(iE,iN_X)
+          AERR(3,iN_X) = DNRM2( nE_G, FVECm(OS_1,iN_X), 1 )
+          AERR(4,iN_X) = DNRM2( nE_G, FVECm(OS_2,iN_X), 1 )
+
+          RERR(1,iN_X) = AERR(1,iN_X) / One
+          RERR(2,iN_X) = AERR(2,iN_X) / One
+          RERR(3,iN_X) = AERR(3,iN_X) / JNRM_1(iN_X)
+          RERR(4,iN_X) = AERR(4,iN_X) / JNRM_2(iN_X)
+
+          CONVERGED(iN_X) = ALL( RERR(1:4,iN_X) <= Rtol )
+
+          Unew_Y(iN_X) = GVECm(iY,iN_X)
+          Unew_E(iN_X) = GVECm(iE,iN_X)
+          DO iN_E = 1, nE_G
+            Jnew_1(iN_E,iN_X) = GVECm(iN_E+OS_1,iN_X)
+            Jnew_2(iN_E,iN_X) = GVECm(iN_E+OS_2,iN_X)
+          END DO
+
+          ! --- Update Matter ---
+
+          Y(iN_X) = Unew_Y(iN_X) * Yold(iN_X)
+          E(iN_X) = Unew_E(iN_X) * Eold(iN_X)
+
+          CALL ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
+                 ( D(iN_X), E(iN_X), Y(iN_X), T(iN_X) )
+
+          IF ( CONVERGED(iN_X) ) THEN
+
+            ITERATE(iN_X) = .FALSE.
+
+          ELSE
+
+            ! --- Recompute Equilibrium Distributions and Emissivities ---
+
+            CALL ComputeEquilibriumDistributions_Point &
+                   ( 1, nE_G, E_N, D(iN_X), T(iN_X), Y(iN_X), J0_1(:,iN_X), iS_1 )
+
+            DO iN_E = 1, nE_G
+              Eta_1(iN_E,iN_X) = Chi_1(iN_E,iN_X) * J0_1(iN_E,iN_X)
+            END DO
+
+            CALL ComputeEquilibriumDistributions_Point &
+                   ( 1, nE_G, E_N, D(iN_X), T(iN_X), Y(iN_X), J0_2(:,iN_X), iS_2 )
+
+            DO iN_E = 1, nE_G
+              Eta_2(iN_E,iN_X) = Chi_2(iN_E,iN_X) * J0_2(iN_E,iN_X)
+            END DO
+
+            ! --- Recompute Kernels ---
+
+            ! --- NES Kernels ---
+
+            CALL ComputeNeutrinoOpacities_NES_Point &
+                   ( 1, nE_G, E_N, D(iN_X), T(iN_X), Y(iN_X), iS_1, 1, &
+                     Phi_0_In_NES_1(:,:,iN_X), Phi_0_Ot_NES_1(:,:,iN_X) )
+
+            CALL ComputeNeutrinoOpacities_NES_Point &
+                   ( 1, nE_G, E_N, D(iN_X), T(iN_X), Y(iN_X), iS_2, 1, &
+                     Phi_0_In_NES_2(:,:,iN_X), Phi_0_Ot_NES_2(:,:,iN_X) )
+
+            ! --- Pair Kernels ---
+
+            CALL ComputeNeutrinoOpacities_Pair_Point &
+                   ( 1, nE_G, E_N, D(iN_X), T(iN_X), Y(iN_X), iS_1, 1, &
+                     Phi_0_In_Pair_1(:,:,iN_X), Phi_0_Ot_Pair_1(:,:,iN_X) )
+
+            CALL ComputeNeutrinoOpacities_Pair_Point &
+                   ( 1, nE_G, E_N, D(iN_X), T(iN_X), Y(iN_X), iS_2, 1, &
+                     Phi_0_In_Pair_2(:,:,iN_X), Phi_0_Ot_Pair_2(:,:,iN_X) )
+
+          END IF
+
+        END IF
+      END DO
+
+      IF ( Mk == M ) THEN
+        DO iN_X = 1, nX_G
+          IF ( ITERATE(iN_X) ) THEN
+            DO i = 1, Mk-1
+              CALL DSWAP( nFP, GVEC(1,i,iN_X), 1, GVEC(1,i+1,iN_X), 1 )
+            END DO
+          END IF
+        END DO
       END IF
 
     END DO
@@ -1075,8 +1210,8 @@ CONTAINS
     ALLOCATE( E_N (nE_G) )
     ALLOCATE( W2_N(nE_G) )
     ALLOCATE( W3_N(nE_G) )
-    ALLOCATE( W2_FP(nE_G) )
-    ALLOCATE( W3_FP(nE_G) )
+    ALLOCATE( W2_S(nE_G) )
+    ALLOCATE( W3_S(nE_G) )
 
     ALLOCATE( CF_N(nX_G,nCF) )
     ALLOCATE( PF_N(nX_G,nPF) )
@@ -1097,19 +1232,17 @@ CONTAINS
 
     CALL ComputePointsAndWeightsE( E_N, W2_N, W3_N )
 
-    DO iN_E = 1, nE_G
-      W2_FP(iN_E) = WFactor_FP * W2_N(iN_E)
-      W3_FP(iN_E) = WFactor_FP * W3_N(iN_E)
-    END DO
+    W2_S(:) = WFactor_FP * W2_N(:)
+    W3_S(:) = WFactor_FP * W3_N(:)
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: E_N, W2_N, W3_N, W2_FP, W3_FP, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX ) &
+    !$OMP MAP( to: E_N, W2_N, W3_N, W2_S, W3_S, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX ) &
     !$OMP MAP( alloc: CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, &
     !$OMP             Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC COPYIN( E_N, W2_N, W3_N, W2_FP, W3_FP, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX ) &
+    !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX ) &
     !$ACC CREATE( CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, &
     !$ACC         Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #endif
@@ -1121,17 +1254,17 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: E_N, W2_N, W3_N, W2_FP, W3_FP, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
+    !$OMP MAP( release: E_N, W2_N, W3_N, W2_S, W3_S, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
     !$OMP               CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, &
     !$OMP               Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( E_N, W2_N, W3_N, W2_FP, W3_FP, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
+    !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
     !$ACC         CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, &
     !$ACC         Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #endif
 
-    DEALLOCATE( E_N, W2_N, W3_N, W2_FP, W3_FP )
+    DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S )
     DEALLOCATE( CF_N, PF_N, AF_N, GX_N, dF_N )
     DEALLOCATE( Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
     DEALLOCATE( CR_N, dR_N )
