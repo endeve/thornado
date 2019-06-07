@@ -1,19 +1,17 @@
-PROGRAM Relaxation
+PROGRAM DeleptonizationWave1D
 
   USE KindModule, ONLY: &
-    DP, Third
+    DP, SqrtTiny, Half, &
+    Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
     iZ_B0, iZ_E0, iZ_B1, iZ_E1
   USE UnitsModule, ONLY: &
-    Gram, &
-    Centimeter, &
     Kilometer, &
     Millisecond, &
-    MeV, &
-    Kelvin
+    MeV
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -55,7 +53,6 @@ PROGRAM Relaxation
   USE GeometryComputationModuleE, ONLY: &
     ComputeGeometryE
   USE FluidFieldsModule, ONLY: &
-    rhsCF, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uAF, iAF_T, iAF_Ye, iAF_E, iAF_Me, iAF_Mp, iAF_Mn
@@ -71,62 +68,58 @@ PROGRAM Relaxation
   USE OpacityModule_TABLE, ONLY: &
     InitializeOpacities_TABLE, &
     FinalizeOpacities_TABLE
+  USE TimeSteppingModule_Castro, ONLY: &
+    Update_IMEX_PDARS
   USE InitializationModule, ONLY: &
-    InitializeFields_Relaxation
+    InitializeFields_DeleptonizationWave
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE Euler_UtilitiesModule, ONLY: &
     Euler_ComputePrimitive
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
-  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
-    ComputeIncrement_TwoMoment_Implicit_New
+  USE TwoMoment_PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter_TwoMoment, &
+    FinalizePositivityLimiter_TwoMoment, &
+    ApplyPositivityLimiter_TwoMoment
 
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
 
-  INTEGER  :: iCycle, iCycleD, iCycleW
+  LOGICAL  :: wrt
+  INTEGER  :: iCycle, iCycleD
   INTEGER  :: nE, nX(3), nNodes, nSpecies
-  REAL(DP) :: t, dt, dt_0, t_end, wTime
-  REAL(DP) :: eL, eR
+  REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt
+  REAL(DP) :: eL, eR, ZoomE
   REAL(DP) :: xL(3), xR(3)
-  REAL(DP) :: D_0, T_0, Y_0
 
   nNodes   = 2
   nSpecies = 2
 
-  nX = [ 1, 1, 1 ]
-  xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
-  xR = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+  nX = [ 64, 1, 1 ]
+  xL = [ 0.0_DP           , 0.0_DP, 0.0_DP ]
+  xR = [ 1.0d2 * Kilometer, Pi    , TwoPi  ]
 
   nE = 16
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
+  ZoomE = 1.183081754893913_DP
 
-!!$  D_0 = 6.233d09 * Gram / Centimeter**3
-!!$  T_0 = 3.021d10 * Kelvin
-!!$  Y_0 = 0.3178_DP
-
-  D_0 = 1.0520d+12 * Gram / Centimeter**3
-  T_0 = 8.9670d+10 * Kelvin
-  Y_0 = 0.1352_DP
-
-  dt_0    = 1.0d-3 * Millisecond
-  t       = 0.0d-0 * Millisecond
-  t_end   = 1.0d+0 * Millisecond
+  t       = 0.0_DP
+  t_end   = 5.0d-0 * Millisecond
+  dt_wrt  = 1.0d-1 * Millisecond
   iCycleD = 1
-  iCycleW = 5
 
   CALL InitializeProgram &
          ( ProgramName_Option &
-             = 'Relaxation', &
+             = 'DeleptonizationWave1D', &
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 0, 0, 0 ], &
+             = [ 01, 1, 1 ], &
            bcX_Option &
-             = [ 0, 0, 0 ], &
+             = [ 32, 0, 0 ], &
            xL_Option &
              = xL, &
            xR_Option &
@@ -138,11 +131,11 @@ PROGRAM Relaxation
            eR_Option &
              = eR, &
            ZoomE_Option &
-             = 1.266038160710160_DP, &
+             = ZoomE, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
-             = 'CARTESIAN', &
+             = 'SPHERICAL', &
            ActivateUnits_Option &
              = .TRUE., &
            nSpecies_Option &
@@ -150,11 +143,11 @@ PROGRAM Relaxation
            BasicInitialization_Option &
              = .TRUE. )
 
-   ! --- Initialize Timers ---
+  ! --- Initialize Timers ---
 
-   CALL InitializeTimers
+  CALL InitializeTimers
 
-   CALL TimersStart( Timer_Initialize )
+  CALL TimersStart( Timer_Initialize )
 
   ! --- Position Space Reference Element and Geometry ---
 
@@ -202,33 +195,66 @@ PROGRAM Relaxation
              = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
            Verbose_Option = .TRUE. )
 
+  ! --- Initialize Positivity Limiter ---
+
+  CALL InitializePositivityLimiter_TwoMoment &
+         ( Min_1_Option = 0.0d0 + SqrtTiny, &
+           Max_1_Option = 1.0d0 - EPSILON(1.0d0), &
+           Min_2_Option = 0.0d0 + SqrtTiny, &
+           UsePositivityLimiter_Option &
+             = .TRUE. )
+
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields_Relaxation( D_0, T_0, Y_0 )
+  CALL InitializeFields_DeleptonizationWave
 
-  ! --- Write Initial Condition ---
+  ! --- Write Initial Condition Before Limiter ---
+
+  CALL TimersStart( Timer_InputOutput )
 
   CALL ComputeFromConserved_Fluid
 
   CALL ComputeFromConserved_Radiation
 
   CALL WriteFieldsHDF &
-         ( Time = t, &
+         ( Time = 0.0_DP, &
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
 
+  CALL TimersStop( Timer_InputOutput )
+
+  CALL ApplyPositivityLimiter_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
+
+  ! --- Write Initial Condition After Limiter ---
+
+  CALL TimersStart( Timer_InputOutput )
+
+  CALL ComputeFromConserved_Fluid
+
+  CALL ComputeFromConserved_Radiation
+
+  CALL WriteFieldsHDF &
+         ( Time = 0.0_DP, &
+           WriteGF_Option = .TRUE., &
+           WriteFF_Option = .TRUE., &
+           WriteRF_Option = .TRUE. )
+
+  CALL TimersStop( Timer_InputOutput )
   CALL TimersStop( Timer_Initialize )
 
   ! --- Evolve ---
 
-  wTime = MPI_WTIME( )
   CALL TimersStart( Timer_Evolve )
 
+  t_wrt = dt_wrt
+  wrt   = .FALSE.
+
   WRITE(*,*)
-  WRITE(*,'(A6,A,ES8.2E2,A,ES8.2E2)') &
-    '', 'Evolving from t [ms] = ', t / Millisecond, &
-    ' to t [ms] = ', t_end / Millisecond
+  WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
+    '', 'Evolving from t = ', t / Millisecond, &
+    ' to t = ', t_end / Millisecond
   WRITE(*,*)
 
   iCycle = 0
@@ -236,7 +262,8 @@ PROGRAM Relaxation
 
     iCycle = iCycle + 1
 
-    dt = dt_0
+    dt = Half * ( xR(1) - xL(1) ) / DBLE( nX(1) ) &
+           / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
     IF( t + dt > t_end )THEN
 
@@ -244,29 +271,35 @@ PROGRAM Relaxation
 
     END IF
 
+    IF( t + dt > t_wrt )THEN
+
+      dt    = t_wrt - t
+      t_wrt = t_wrt + dt_wrt
+      wrt   = .TRUE.
+
+    END IF
+
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
-      WRITE(*,'(A8,A8,I8.8,A2,A,ES12.6E2,A2,A,ES12.6E2)') &
+      WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A5,ES12.6E2)') &
           '', 'Cycle = ', iCycle, &
-          '', 't [ms] = ',  t / Millisecond, &
-          '', 'dt [ms] = ', dt / Millisecond
+          '', 't = ',  t / Millisecond, &
+          '', 'dt = ', dt / Millisecond
 
     END IF
 
-    IF( dt > 0.0_DP )THEN
-
-      CALL ComputeIncrement_TwoMoment_Implicit_New &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, uGF, uCF, rhsCF, uCR, rhsCR )
-
-      uCF = uCF + dt * rhsCF
-
-      uCR = uCR + dt * rhsCR
-
-    END IF
+    CALL Update_IMEX_PDARS &
+           ( dt, uCF, uCR, &
+             Explicit_Option = .TRUE., &
+             Implicit_Option = .TRUE., &
+             SingleStage_Option = .FALSE., &
+             CallFromThornado_Option = .TRUE. )
 
     t = t + dt
 
-    IF( MOD( iCycle, iCycleW ) == 0 )THEN
+    IF( wrt )THEN
+
+      CALL TimersStart( Timer_InputOutput )
 
       CALL ComputeFromConserved_Fluid
 
@@ -278,11 +311,17 @@ PROGRAM Relaxation
                WriteFF_Option = .TRUE., &
                WriteRF_Option = .TRUE. )
 
+      CALL TimersStop( Timer_InputOutput )
+
+      wrt = .FALSE.
+
     END IF
 
   END DO
 
   ! --- Write Final Solution ---
+
+  CALL TimersStart( Timer_InputOutput )
 
   CALL ComputeFromConserved_Fluid
 
@@ -294,18 +333,17 @@ PROGRAM Relaxation
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
 
-  wTime = MPI_WTIME( ) - wTime
+  CALL TimersStop( Timer_InputOutput )
   CALL TimersStop( Timer_Evolve )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
-    '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
+    '', 'Finished ', iCycle, ' Cycles in ', Timer_Evolve, ' s'
   WRITE(*,*)
 
   ! --- Finalize ---
 
   CALL FinalizeTimers
-
 
   CALL FinalizeReferenceElementX
 
@@ -322,6 +360,8 @@ PROGRAM Relaxation
   CALL FinalizeEquationOfState_TABLE
 
   CALL FinalizeOpacities_TABLE
+
+  CALL FinalizePositivityLimiter_TwoMoment
 
   CALL FinalizeProgram
 
@@ -391,4 +431,4 @@ CONTAINS
   END SUBROUTINE ComputeFromConserved_Radiation
 
 
-END PROGRAM Relaxation
+END PROGRAM DeleptonizationWave1D

@@ -505,6 +505,23 @@ CONTAINS
     END DO
     END DO
 
+    IF( ReportConvergenceData )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A4,A)') &
+        '', 'Convergence Data:'
+      WRITE(*,*)
+      WRITE(*,'(A6,A18,I4.4)') &
+        '', 'Iterations (Min): ', Iterations_Min
+      WRITE(*,'(A6,A18,I4.4)') &
+        '', 'Iterations (Max): ', Iterations_Max
+      WRITE(*,'(A6,A18,ES8.2E2)') &
+        '', 'Iterations (Ave): ', &
+        DBLE( Iterations_Ave ) / DBLE( PRODUCT(iX_E0-iX_B0+1)*nDOFX )
+      WRITE(*,*)
+
+    END IF
+
     DEALLOCATE &
       ( Kappa, Chi_T, Eta_T, Chi, fEQ, Sig, Chi_NES, Eta_NES, &
         Chi_Pair, Eta_Pair )
@@ -514,10 +531,10 @@ CONTAINS
     CALL TimersStop( Timer_Implicit )
 
 #ifdef THORNADO_DEBUG_IMPLICIT
-    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_F)', MAXLOC(dU_F)
-    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_F)', MAXVAL(dU_F)
-    WRITE(*,'(a20,7i4)')     'MAXLOC(dU_R)', MAXLOC(dU_R)
-    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_R)', MAXVAL(dU_R)
+    WRITE(*,'(a,8x,5i4,es23.15)') 'MINLOC(dU_F), MINVAL(dU_F)', MINLOC(dU_F), MINVAL(dU_F)
+    WRITE(*,'(a,8x,5i4,es23.15)') 'MAXLOC(dU_F), MAXVAL(dU_F)', MAXLOC(dU_F), MAXVAL(dU_F)
+    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(dU_R), MINVAL(dU_F)', MINLOC(dU_R), MINVAL(dU_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(dU_R), MAXVAL(dU_F)', MAXLOC(dU_R), MAXVAL(dU_R)
 #endif
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_New
@@ -1562,6 +1579,10 @@ CONTAINS
       THEN
 
         CONVERGED = .TRUE.
+
+        Iterations_Min = MIN( Iterations_Min, k )
+        Iterations_Max = MAX( Iterations_Max, k )
+        Iterations_Ave = Iterations_Ave + k
 
       END IF
 

@@ -43,6 +43,14 @@ MODULE OpacityModule_TABLE
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
     Es_T, Ds_T, Ts_T, Ys_T, Etas_T, &
     LogEs_T, LogDs_T, LogTs_T, LogEtas_T
+  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
+    OS_EmAb
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: &
+    OS_Iso, OS_NES, OS_Pair
+  REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
+    EmAb_T
+  REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
+    Iso_T, NES_T, Pair_T
 #ifdef MICROPHYSICS_WEAKLIB
   TYPE(OpacityTableType), PUBLIC :: &
     OPACITIES
@@ -53,6 +61,18 @@ MODULE OpacityModule_TABLE
   PUBLIC :: ComputeAbsorptionOpacity_TABLE
   PUBLIC :: ComputeScatteringOpacity_ES_TABLE
   PUBLIC :: ComputeScatteringOpacity_NES_TABLE
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET &
+  !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+  !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
+  !$OMP   EmAb_T, Iso_T, NES_T, Pair_T )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE CREATE &
+  !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+  !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
+  !$ACC   EmAb_T, Iso_T, NES_T, Pair_T )
+#endif
 
 CONTAINS
 
@@ -68,6 +88,7 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Pair_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
+    INTEGER :: iS, iM
     LOGICAL :: Include_NES
     LOGICAL :: Include_Pair
     LOGICAL :: Verbose
@@ -205,6 +226,78 @@ CONTAINS
     ALLOCATE( LogEtas_T(SIZE( Etas_T )) )
     LogEtas_T = LOG10( Etas_T )
 
+    ALLOCATE( OS_EmAb(1:OPACITIES % EmAb % nOpacities) )
+    OS_EmAb(:) = OPACITIES % EmAb % Offsets(:)
+
+    ALLOCATE( OS_Iso(1:OPACITIES % Scat_Iso % nOpacities, &
+                     1:OPACITIES % Scat_Iso % nMoments) )
+    OS_Iso(:,:) = OPACITIES % Scat_Iso % Offsets(:,:)
+
+    ALLOCATE( OS_NES(1:OPACITIES % Scat_NES % nOpacities, &
+                     1:OPACITIES % Scat_NES % nMoments) )
+    OS_NES(:,:) = OPACITIES % Scat_NES % Offsets(:,:)
+
+    ALLOCATE( OS_Pair(1:OPACITIES % Scat_Pair % nOpacities, &
+                      1:OPACITIES % Scat_Pair % nMoments) )
+    OS_Pair(:,:) = OPACITIES % Scat_Pair % Offsets(:,:)
+
+    ALLOCATE( EmAb_T(1:OPACITIES % EmAb % nPoints(1), &
+                     1:OPACITIES % EmAb % nPoints(2), &
+                     1:OPACITIES % EmAb % nPoints(3), &
+                     1:OPACITIES % EmAb % nPoints(4), &
+                     1:OPACITIES % EmAb % nOpacities) )
+    DO iS = 1, OPACITIES % EmAb % nOpacities
+      EmAb_T(:,:,:,:,iS) = OPACITIES % EmAb % Opacity(iS) % Values(:,:,:,:)
+    END DO
+
+    ALLOCATE( NES_T(1:OPACITIES % Scat_NES % nPoints(1), &
+                    1:OPACITIES % Scat_NES % nPoints(2), &
+                    1:OPACITIES % Scat_NES % nPoints(4), &
+                    1:OPACITIES % Scat_NES % nPoints(5), &
+                    1:OPACITIES % Scat_NES % nMoments, &
+                    1:OPACITIES % Scat_NES % nOpacities) )
+    DO iS = 1, OPACITIES % Scat_NES % nOpacities
+      DO iM = 1, OPACITIES % Scat_NES % nMoments
+        NES_T(:,:,:,:,iM,iS) = OPACITIES % Scat_NES % Kernel(iS) % Values(:,:,iM,:,:)
+      END DO
+    END DO
+
+    ALLOCATE( Pair_T(1:OPACITIES % Scat_Pair % nPoints(1), &
+                     1:OPACITIES % Scat_Pair % nPoints(2), &
+                     1:OPACITIES % Scat_Pair % nPoints(4), &
+                     1:OPACITIES % Scat_Pair % nPoints(5), &
+                     1:OPACITIES % Scat_Pair % nMoments, &
+                     1:OPACITIES % Scat_Pair % nOpacities) )
+    DO iS = 1, OPACITIES % Scat_Pair % nOpacities
+      DO iM = 1, OPACITIES % Scat_Pair % nMoments
+        Pair_T(:,:,:,:,iM,iS) = OPACITIES % Scat_Pair % Kernel(iS) % Values(:,:,iM,:,:)
+      END DO
+    END DO
+
+    ALLOCATE( Iso_T(1:OPACITIES % Scat_Iso % nPoints(1), &
+                    1:OPACITIES % Scat_Iso % nPoints(3), &
+                    1:OPACITIES % Scat_Iso % nPoints(4), &
+                    1:OPACITIES % Scat_Iso % nPoints(5), &
+                    1:OPACITIES % Scat_Iso % nMoments, &
+                    1:OPACITIES % Scat_Iso % nOpacities) )
+    DO iS = 1, OPACITIES % Scat_Iso % nOpacities
+      DO iM = 1, OPACITIES % Scat_Iso % nMoments
+        Iso_T(:,:,:,:,iM,iS) = OPACITIES % Scat_Iso % Kernel(iS) % Values(:,iM,:,:,:)
+      END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
+    !$OMP          EmAb_T, Iso_T, NES_T, Pair_T )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE &
+    !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
+    !$ACC   EmAb_T, Iso_T, NES_T, Pair_T )
+#endif
+
 #endif
 
   END SUBROUTINE InitializeOpacities_TABLE
@@ -214,8 +307,18 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
+    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T )
+#endif
+
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
     DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
+
+    DEALLOCATE( OS_EmAb, OS_Iso, OS_NES, OS_Pair )
+    DEALLOCATE( EmAb_T, Iso_T, NES_T, Pair_T )
 
 #endif
 
@@ -232,15 +335,14 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    ASSOCIATE &
-      ( Chi_T => OPACITIES % EmAb % Opacity(1) % Values, &
-        OS    => OPACITIES % EmAb % Offsets(1) )
-
     IF( .NOT. InterpTest )THEN
 
       CALL LogInterpolateSingleVariable_1D3D &
              ( E / MeV, D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
-               Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], OS, Chi_T, Chi )
+               Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], &
+               OPACITIES % EmAb % Offsets(1), &
+               OPACITIES % EmAb % Opacity(1) % Values, &
+               Chi )
 
     ELSE
 
@@ -249,14 +351,14 @@ CONTAINS
       CALL LogInterpolateSingleVariable_1D3D_Custom           &
              ( LogE, LOG10( D / ( Gram / Centimeter**3 ) ), &
                LOG10( T / Kelvin ), Y, &
-               LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, &
-               Chi_T, Chi )
+               LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+               OPACITIES % EmAb % Offsets(1), &
+               OPACITIES % EmAb % Opacity(1) % Values, &
+               Chi )
 
     END IF
 
     Chi(:,:) = Chi(:,:) * ( 1.0_DP / Centimeter )
-
-    END ASSOCIATE ! Chi_T, etc.
 
 #else
 
@@ -277,15 +379,14 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    ASSOCIATE &
-      ( Sigma_T => OPACITIES % Scat_Iso % Kernel(1) % Values(:,1,:,:,:), &
-        OS      => OPACITIES % Scat_Iso % Offsets(1,1) )
-
     IF( .NOT. InterpTest )THEN
 
       CALL LogInterpolateSingleVariable_1D3D &
              ( E / MeV, D / ( Gram / Centimeter**3 ), T / Kelvin, Y, &
-               Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], OS, Sigma_T, Sigma )
+               Es_T, Ds_T, Ts_T, Ys_T, [ 1, 1, 1, 0 ], &
+               OPACITIES % Scat_Iso % Offsets(1,1), &
+               OPACITIES % Scat_Iso % Kernel(1) % Values(:,1,:,:,:), &
+               Sigma )
 
     ELSE
 
@@ -294,14 +395,14 @@ CONTAINS
       CALL LogInterpolateSingleVariable_1D3D_Custom         &
              ( LogE, LOG10( D / ( Gram / Centimeter**3 ) ), &
                LOG10( T / Kelvin ), Y, &
-               LogEs_T, LogDs_T, LogTs_T, Ys_T, OS, &
-               Sigma_T, Sigma )
+               LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+               OPACITIES % Scat_Iso % Offsets(1,1), &
+               OPACITIES % Scat_Iso % Kernel(1) % Values(:,1,:,:,:), &
+               Sigma )
 
     END IF
 
     Sigma(:,:) = Sigma(:,:) * ( 1.0_DP / Centimeter )
-
-    END ASSOCIATE ! Sigma_T, etc.
 
 #else
 

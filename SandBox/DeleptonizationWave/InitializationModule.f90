@@ -20,6 +20,7 @@ MODULE InitializationModule
     MeshE, MeshX, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
+    CoordinateSystem, &
     uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
@@ -101,7 +102,15 @@ CONTAINS
         X3 = &!MeshX(3) % Center(iX3)
              NodeCoordinate( MeshX(3), iX3, iNodeX3 )
 
-        R = SQRT( X1**2 + X2**2 + X3**2 )
+        IF( TRIM( CoordinateSystem ) == 'SPHERICAL' )THEN
+
+          R = X1
+
+        ELSE
+
+          R = SQRT( X1**2 + X2**2 + X3**2 )
+
+        END IF
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
           = Half * ( MaxD * ( One - TANH( (R-R_D)/H_D ) ) &
