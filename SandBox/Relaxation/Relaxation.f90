@@ -17,6 +17,14 @@ PROGRAM Relaxation
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
+  USE TimersModule, ONLY: &
+    InitializeTimers, &
+    FinalizeTimers, &
+    TimersStart, &
+    TimersStop, &
+    Timer_Initialize, &
+    Timer_InputOutput, &
+    Timer_Evolve
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
@@ -130,7 +138,7 @@ PROGRAM Relaxation
            eR_Option &
              = eR, &
            ZoomE_Option &
-             = 1.2660_DP, &
+             = 1.266038160710160_DP, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -141,6 +149,12 @@ PROGRAM Relaxation
              = nSpecies, &
            BasicInitialization_Option &
              = .TRUE. )
+
+   ! --- Initialize Timers ---
+
+   CALL InitializeTimers
+
+   CALL TimersStart( Timer_Initialize )
 
   ! --- Position Space Reference Element and Geometry ---
 
@@ -204,9 +218,12 @@ PROGRAM Relaxation
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
 
+  CALL TimersStop( Timer_Initialize )
+
   ! --- Evolve ---
 
   wTime = MPI_WTIME( )
+  CALL TimersStart( Timer_Evolve )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A,ES8.2E2)') &
@@ -274,6 +291,7 @@ PROGRAM Relaxation
            WriteRF_Option = .TRUE. )
 
   wTime = MPI_WTIME( ) - wTime
+  CALL TimersStop( Timer_Evolve )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
@@ -281,6 +299,9 @@ PROGRAM Relaxation
   WRITE(*,*)
 
   ! --- Finalize ---
+
+  CALL FinalizeTimers
+
 
   CALL FinalizeReferenceElementX
 

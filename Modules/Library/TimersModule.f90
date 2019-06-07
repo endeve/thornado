@@ -21,8 +21,8 @@ MODULE TimersModule
   REAL(DP), PUBLIC :: Timer_PL_Theta_2
   REAL(DP), PUBLIC :: Timer_PL_Out
   REAL(DP), PUBLIC :: Timer_Explicit
-  REAL(DP), PUBLIC :: Timer_Ex_In    
-  REAL(DP), PUBLIC :: Timer_Ex_Div   
+  REAL(DP), PUBLIC :: Timer_Ex_In
+  REAL(DP), PUBLIC :: Timer_Ex_Div
   REAL(DP), PUBLIC :: Timer_Ex_Div_X1
   REAL(DP), PUBLIC :: Timer_Ex_Div_X1_In
   REAL(DP), PUBLIC :: Timer_Ex_Div_X1_G
@@ -34,17 +34,20 @@ MODULE TimersModule
   REAL(DP), PUBLIC :: Timer_Ex_Div_X1_MM
   REAL(DP), PUBLIC :: Timer_Ex_Div_X2
   REAL(DP), PUBLIC :: Timer_Ex_Div_X3
-  REAL(DP), PUBLIC :: Timer_Ex_Out   
+  REAL(DP), PUBLIC :: Timer_Ex_Out
   REAL(DP), PUBLIC :: Timer_Implicit
-  REAL(DP), PUBLIC :: Timer_Im_In            
-  REAL(DP), PUBLIC :: Timer_Im_ComputeTS_Aux 
+  REAL(DP), PUBLIC :: Timer_Im_In
+  REAL(DP), PUBLIC :: Timer_Im_ComputeTS_Aux
   REAL(DP), PUBLIC :: Timer_Im_ComputeOpacity
-  REAL(DP), PUBLIC :: Timer_Im_MapForward    
-  REAL(DP), PUBLIC :: Timer_Im_Solve         
-  REAL(DP), PUBLIC :: Timer_Im_Out           
+  REAL(DP), PUBLIC :: Timer_Im_MapForward
+  REAL(DP), PUBLIC :: Timer_Im_Solve
+  REAL(DP), PUBLIC :: Timer_Im_CoupledAA
+  REAL(DP), PUBLIC :: Timer_Im_NestedAA
+  REAL(DP), PUBLIC :: Timer_Im_NestedNewton
+  REAL(DP), PUBLIC :: Timer_Im_Out
   REAL(DP), PUBLIC :: Timer_Im_ComputeTS_Prim
-  REAL(DP), PUBLIC :: Timer_Im_Increment     
-  REAL(DP), PUBLIC :: Timer_Im_MapBackward   
+  REAL(DP), PUBLIC :: Timer_Im_Increment
+  REAL(DP), PUBLIC :: Timer_Im_MapBackward
 
   PUBLIC :: InitializeTimers
   PUBLIC :: FinalizeTimers
@@ -90,6 +93,9 @@ CONTAINS
     Timer_Im_ComputeOpacity = Zero
     Timer_Im_MapForward     = Zero
     Timer_Im_Solve          = Zero
+    Timer_Im_CoupledAA      = Zero
+    Timer_Im_NestedAA       = Zero
+    Timer_Im_NestedNewton   = Zero
     Timer_Im_Out            = Zero
     Timer_Im_ComputeTS_Prim = Zero
     Timer_Im_Increment      = Zero
@@ -137,6 +143,9 @@ CONTAINS
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Im_ComputeOpacity :', Timer_Im_ComputeOpacity, ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Im_MapForward     :', Timer_Im_MapForward    , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Im_Solve            :', Timer_Im_Solve         , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    CoupledAA           :', Timer_Im_CoupledAA     , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    NestedAA            :', Timer_Im_NestedAA      , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    NestedNewton        :', Timer_Im_NestedNewton  , ' s'            
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Im_Out              :', Timer_Im_Out           , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Im_ComputeTS_Prim :', Timer_Im_ComputeTS_Prim, ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Im_Increment      :', Timer_Im_Increment     , ' s'
