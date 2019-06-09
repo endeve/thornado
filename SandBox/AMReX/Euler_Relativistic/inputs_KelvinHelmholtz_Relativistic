@@ -6,16 +6,17 @@ DEBUG = 0
 thornado.ProgramName = "KelvinHelmholtz_Relativistic"
 
 thornado.t_end     = 3.0      # Final time
-thornado.dt_wrt    = 0.045
-thornado.Gamma     = 1.33     # Ideal Gas EoS Gamma
+thornado.dt_wrt    = 0.03     # Time increment to write plot-file
+thornado.dt_chk    = 0.3      # Time increment to write checkpoint-file
+thornado.Gamma     = 1.3333333333333333     # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
 thornado.bcX       = 00 00 00 # Boundary conditions
 thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
 thornado.iCycleD   = 0010     # MOD this number to display info
-thornado.iCycleW   = 0100     # MOD this number to write plotfile
-thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
+thornado.iCycleW   = -0100     # MOD this number to write plotfile
+thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
 
 geometry.coord_sys     = 0           # CARTESIAN
 geometry.prob_lo       = -0.5 -1.0 0.0 # Lower domain size
