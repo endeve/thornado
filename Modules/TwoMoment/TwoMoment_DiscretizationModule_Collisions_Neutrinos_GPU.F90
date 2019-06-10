@@ -47,7 +47,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     Timer_FP_RateP, &
     Timer_FP_DSWAP
   USE LinearAlgebraModule, ONLY: &
-    MatrixVectorMultiply
+    MatrixVectorMultiply, &
+    VectorNorm2
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
   USE MeshModule, ONLY: &
@@ -760,7 +761,6 @@ CONTAINS
     REAL(DP) :: Eta_Total_1, Eta_Total_2, Chi_Total_1, Chi_Total_2
     INTEGER  :: i, k, iFP, iM, Mk, iN_X, iN_E, i_shift
     INTEGER  :: OS_2, INFO, Error
-    REAL(DP), EXTERNAL :: DNRM2
 
     ! TODO: matrix-matrix addition interface
     ! TODO: diagnoal matrix multiply
@@ -770,10 +770,28 @@ CONTAINS
 
     OS_2 = OS_1 + nE_G
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: Yold, S_Y, C_Y, Unew_Y, Eold, S_E, C_E, Unew_E, &
+    !$OMP             Jnew_1, Jnew_2, Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
+    !$OMP             Phi_0_In_NES_2, Phi_0_Ot_NES_2, Phi_0_In_Pair_1, &
+    !$OMP             Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
+    !$OMP             GVEC, FVEC, AMAT, GVECm, FVECm, BVEC, Alpha, JNRM_1, &
+    !$OMP             JNRM_2, AERR, RERR, CONVERGED, ITERATE, WORK )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE( Yold, S_Y, C_Y, Unew_Y, Eold, S_E, C_E, Unew_E, &
+    !$ACC         Jnew_1, Jnew_2, Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
+    !$ACC         Phi_0_In_NES_2, Phi_0_Ot_NES_2, Phi_0_In_Pair_1, &
+    !$ACC         Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
+    !$ACC         GVEC, FVEC, AMAT, GVECm, FVECm, BVEC, Alpha, JNRM_1, &
+    !$ACC         JNRM_2, AERR, RERR, CONVERGED, ITERATE, WORK )
+#endif
+
     DO iN_X = 1, nX_G
 
-      JNRM_1(iN_X) = DNRM2( nE_G, Jold_1(1,iN_X), 1 )
-      JNRM_2(iN_X) = DNRM2( nE_G, Jold_2(1,iN_X), 1 )
+      CALL VectorNorm2( nE_G, Jold_1(1,iN_X), 1, JNRM_1(iN_X) )
+      CALL VectorNorm2( nE_G, Jold_2(1,iN_X), 1, JNRM_2(iN_X) )
 
     END DO
 
@@ -1076,8 +1094,8 @@ CONTAINS
 
           AERR(1,iN_X) = FVECm(iY,iN_X)
           AERR(2,iN_X) = FVECm(iE,iN_X)
-          AERR(3,iN_X) = DNRM2( nE_G, FVECm(OS_1,iN_X), 1 )
-          AERR(4,iN_X) = DNRM2( nE_G, FVECm(OS_2,iN_X), 1 )
+          CALL VectorNorm2( nE_G, FVECm(OS_1+1,iN_X), 1, AERR(3,iN_X) )
+          CALL VectorNorm2( nE_G, FVECm(OS_2+1,iN_X), 1, AERR(4,iN_X) )
 
           RERR(1,iN_X) = AERR(1,iN_X) / One
           RERR(2,iN_X) = AERR(2,iN_X) / One
@@ -1173,6 +1191,24 @@ CONTAINS
       END DO
 
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Yold, S_Y, C_Y, Unew_Y, Eold, S_E, C_E, Unew_E, &
+    !$OMP               Jnew_1, Jnew_2, Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
+    !$OMP               Phi_0_In_NES_2, Phi_0_Ot_NES_2, Phi_0_In_Pair_1, &
+    !$OMP               Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
+    !$OMP               GVEC, FVEC, AMAT, GVECm, FVECm, BVEC, Alpha, JNRM_1, &
+    !$OMP               JNRM_2, AERR, RERR, CONVERGED, ITERATE, WORK )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Yold, S_Y, C_Y, Unew_Y, Eold, S_E, C_E, Unew_E, &
+    !$ACC         Jnew_1, Jnew_2, Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
+    !$ACC         Phi_0_In_NES_2, Phi_0_Ot_NES_2, Phi_0_In_Pair_1, &
+    !$ACC         Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
+    !$ACC         GVEC, FVEC, AMAT, GVECm, FVECm, BVEC, Alpha, JNRM_1, &
+    !$ACC         JNRM_2, AERR, RERR, CONVERGED, ITERATE, WORK )
+#endif
 
   END SUBROUTINE SolveMatterEquations_FP_Coupled
 
