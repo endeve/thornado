@@ -480,6 +480,17 @@ interface
 
     !! -------------------------------------------------------------------------
     !! BLAS (matrices in GPU memory)
+    real(c_double) function magma_dnrm2( &
+        n, &
+        dx, incx, &
+        queue ) &
+    bind(C, name="magma_dnrm2")
+        use iso_c_binding
+        integer(c_int),         value :: n, incx
+        type(c_ptr),            value :: dx
+        type(c_ptr),            value :: queue  !! queue_t
+    end function
+
     subroutine magma_daxpy( &
         n, &
         alpha, dx, incx, &
