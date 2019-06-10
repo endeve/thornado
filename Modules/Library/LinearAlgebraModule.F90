@@ -32,6 +32,7 @@ MODULE LinearAlgebraModule
 
   PUBLIC :: MatrixMatrixMultiply
   PUBLIC :: MatrixVectorMultiply
+  PUBLIC :: VectorNorm2
 
 CONTAINS
 
@@ -230,5 +231,65 @@ CONTAINS
     END IF
 
   END SUBROUTINE MatrixVectorMultiply
+
+
+  SUBROUTINE VectorNorm2( n, x, incx, xnorm )
+
+    INTEGER                            :: n, incx
+    REAL(DP), DIMENSION(*)    , TARGET :: x
+    REAL(DP)                           :: xnorm
+
+    INTEGER                            :: ierr
+    INTEGER(C_SIZE_T)                  :: sizeof_x
+    REAL(DP), DIMENSION(:)  , POINTER  :: px
+    TYPE(C_PTR)                        :: hx
+    TYPE(C_PTR)                        :: dx
+    LOGICAL                            :: data_on_device
+    REAL(DP), EXTERNAL                 :: DNRM2
+
+    data_on_device = .false.
+    sizeof_x = n * c_sizeof(0.0_DP)
+
+    px(1:n) => x(1:n)
+
+    hx = C_LOC( px )
+
+    data_on_device = device_is_present( hx, mydevice, sizeof_x )
+
+    IF ( data_on_device ) THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( px )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( px )
+#endif
+      dx = C_LOC( px )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+#endif
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cublasDnrm2_v2( cublas_handle, n, dx, incx, xnorm )
+      ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_MAGMA)
+      xnorm = magma_dnrm2( n, dx, incx, magma_queue )
+      CALL magma_queue_sync( magma_queue )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[MatrixVectorMultiply] Data not present on device'
+      IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
+        WRITE(*,*) '[MatrixVectorMultiply]   x missing'
+#endif
+
+      xnorm = DNRM2( n, dx, incx )
+
+    END IF
+
+  END SUBROUTINE VectorNorm2
 
 END MODULE LinearAlgebraModule
