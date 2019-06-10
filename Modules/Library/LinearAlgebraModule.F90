@@ -286,7 +286,7 @@ CONTAINS
         WRITE(*,*) '[MatrixVectorMultiply]   x missing'
 #endif
 
-      xnorm = DNRM2( n, dx, incx )
+      xnorm = DNRM2( n, x, incx )
 
     END IF
 
