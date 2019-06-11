@@ -312,13 +312,13 @@ CONTAINS
     ELSE IF ( n == 1 ) THEN
       xnorm = ABS( x(1) )
     ELSE
-      xscale = zero
-      xssq = one
+      xscale = 0.0d0
+      xssq = 1.0d0
       DO ix = 1, 1 + (n-1)*incx, incx
         IF ( x(ix) /= 0.0d0 ) THEN
           absxi = ABS( x(ix) )
           IF ( xscale < absxi ) THEN
-            xssq = one + xssq * (xscale/absxi)**2
+            xssq = 1.0d0 + xssq * (xscale/absxi)**2
             xscale = absxi
           ELSE
             xssq = xssq + (absxi/xscale)**2
