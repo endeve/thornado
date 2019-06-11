@@ -33,12 +33,14 @@ MODULE DeviceModule
   USE OpenMPModule, ONLY: &
     omp_set_default_device, &
     omp_get_default_device, &
+    omp_is_initial_device, &
     omp_target_is_present
 #endif
 
 #if defined(THORNADO_OACC)
   USE OpenACCModule, ONLY: &
     acc_get_device_num, &
+    acc_on_device, &
     acc_is_present, &
     acc_set_cuda_stream, &
     acc_get_default_async, &
@@ -73,6 +75,7 @@ MODULE DeviceModule
   PUBLIC :: FinalizeDevice
   PUBLIC :: device_is_present
   PUBLIC :: get_device_num
+  PUBLIC :: on_device
   PUBLIC :: QueryOnGpu
 
 CONTAINS
@@ -155,6 +158,18 @@ CONTAINS
 #endif
     RETURN
   END FUNCTION get_device_num
+
+
+  LOGICAL FUNCTION on_device()
+#if defined(THORNADO_OMP_OL)
+    on_device = ( .not. omp_is_initial_device() )
+#elif defined(THORNADO_OACC)
+    on_device = acc_on_device( acc_device_nvidia )
+#else
+    on_device = .false.
+#endif
+    RETURN
+  END FUNCTION on_device
 
 
   FUNCTION QueryOnGPU_3D_DP_1( X1 ) RESULT( QueryOnGPU )

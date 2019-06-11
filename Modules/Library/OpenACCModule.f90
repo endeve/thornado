@@ -8,7 +8,7 @@ module OpenACCModule
   ! Interface to OpenACC routines
   !-------------------------------------------------------------------------------------------------
   use, intrinsic :: iso_c_binding
-  use openacc, only: acc_init, acc_set_device_num, acc_get_device_num, acc_device_nvidia
+  use openacc, only: acc_init, acc_set_device_num, acc_get_device_num, acc_on_device, acc_device_nvidia
   implicit none
 
   integer(c_int) :: acc_async_default
