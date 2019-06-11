@@ -4,6 +4,7 @@ MODULE LinearAlgebraModule
   USE KindModule, ONLY: &
     DP
   USE DeviceModule, ONLY: &
+    on_device, &
     mydevice, &
     device_is_present
 
@@ -232,8 +233,7 @@ CONTAINS
 
   END SUBROUTINE MatrixVectorMultiply
 
-
-  SUBROUTINE VectorNorm2( n, x, incx, xnorm )
+  SUBROUTINE VectorNorm2_Library( n, x, incx, xnorm )
 
     INTEGER                         :: n, incx
     REAL(DP), DIMENSION(*), TARGET  :: x
@@ -287,6 +287,68 @@ CONTAINS
 #endif
 
       xnorm = DNRM2( n, x, incx )
+
+    END IF
+
+  END SUBROUTINE VectorNorm2_Library
+
+
+  SUBROUTINE VectorNorm2_Kernel( n, x, incx, xnorm )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER                         :: n, incx
+    REAL(DP), DIMENSION(*), TARGET  :: x
+    REAL(DP)                        :: xnorm
+
+    INTEGER                         :: ix
+    REAL(DP)                        :: xscale, xssq, absxi
+
+    IF ( n < 1 .OR. incx < 1 ) THEN
+      xnorm = 0.0d0
+    ELSE IF ( n == 1 ) THEN
+      xnorm = ABS( x(1) )
+    ELSE
+      xscale = zero
+      xssq = one
+      DO ix = 1, 1 + (n-1)*incx, incx
+        IF ( x(ix) /= 0.0d0 ) THEN
+          absxi = ABS( x(ix) )
+          IF ( xscale < absxi ) THEN
+            xssq = one + xssq * (xscale/absxi)**2
+            xscale = absxi
+          ELSE
+            xssq = xssq + (absxi/xscale)**2
+          END IF
+        END IF
+      END DO
+      xnorm = xscale * SQRT(xssq)
+    END IF
+
+  END SUBROUTINE VectorNorm2_Kernel
+
+
+  SUBROUTINE VectorNorm2( n, x, incx, xnorm )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER                         :: n, incx
+    REAL(DP), DIMENSION(*), TARGET  :: x
+    REAL(DP)                        :: xnorm
+
+    IF ( on_device() ) THEN
+
+      CALL VectorNorm2_Kernel( n, x, incx, xnorm )
+
+    ELSE
+
+      CALL VectorNorm2_Library( n, x, incx, xnorm )
 
     END IF
 
