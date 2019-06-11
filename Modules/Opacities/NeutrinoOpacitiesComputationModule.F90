@@ -23,7 +23,8 @@ MODULE NeutrinoOpacitiesComputationModule
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeElectronChemicalPotential_TABLE, &
     ComputeProtonChemicalPotential_TABLE, &
-    ComputeNeutronChemicalPotential_TABLE
+    ComputeNeutronChemicalPotential_TABLE, &
+    ComputeSpecificInternalEnergy_TABLE
   USE OpacityModule_TABLE, ONLY: &
 #ifdef MICROPHYSICS_WEAKLIB
     OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
@@ -46,7 +47,8 @@ MODULE NeutrinoOpacitiesComputationModule
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_1D3D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom, &
-    LogInterpolateSingleVariable_2D2D_Custom_Point
+    LogInterpolateSingleVariable_2D2D_Custom_Point, &
+    LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Point
 
   ! ----------------------------------------------
 
@@ -64,6 +66,7 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: ComputeNeutrinoOpacities_ES_Points
   PUBLIC :: ComputeNeutrinoOpacities_NES_Point
   PUBLIC :: ComputeNeutrinoOpacities_NES_Points
+  PUBLIC :: ComputeNeutrinoOpacitiesAndDerivatives_NES_Point
   PUBLIC :: ComputeNeutrinoOpacities_Pair_Point
   PUBLIC :: ComputeNeutrinoOpacities_Pair_Points
   PUBLIC :: ComputeEquilibriumDistributions_Point
@@ -820,27 +823,27 @@ CONTAINS
              OS_NES(1,iH2), NES_T(:,:,:,:,iH2,1), Phi_Out )
 
     DO iE2 = iE_B, iE_E
-      DO iE1 = iE_B, iE2
-        Phi_Out(iE1,iE2) = C1 * Phi_In(iE1,iE2) + C2 * Phi_Out(iE1,iE2)
-      END DO
+    DO iE1 = iE_B, iE2
+      Phi_Out(iE1,iE2) = C1 * Phi_In(iE1,iE2) + C2 * Phi_Out(iE1,iE2)
+    END DO
+    END DO
+
+    DO iE2 = iE_B,  iE_E
+    DO iE1 = iE2+1, iE_E
+      Phi_Out(iE1,iE2) = Phi_Out(iE2,iE1) * EXP( ( E(iE2) - E(iE1) ) / kT )
+    END DO
     END DO
 
     DO iE2 = iE_B, iE_E
-      DO iE1 = iE2+1, iE_E
-        Phi_Out(iE1,iE2) = Phi_Out(iE2,iE1) * EXP( ( E(iE2) - E(iE1) ) / kT )
-      END DO
+    DO iE1 = iE_B, iE_E
+      Phi_Out(iE1,iE2) = Phi_Out(iE1,iE2) * UnitNES
+    END DO
     END DO
 
     DO iE2 = iE_B, iE_E
-      DO iE1 = iE_B, iE_E
-        Phi_Out(iE1,iE2) = Phi_Out(iE1,iE2) * UnitNES
-      END DO
+    DO iE1 = iE_B, iE_E
+      Phi_In(iE1,iE2) = Phi_Out(iE2,iE1)
     END DO
-
-    DO iE2 = iE_B, iE_E
-      DO iE1 = iE_B, iE_E
-        Phi_In(iE1,iE2) = Phi_Out(iE2,iE1)
-      END DO
     END DO
 
 #else
@@ -878,7 +881,8 @@ CONTAINS
        .AND. QueryOnGPU( Phi_In, Phi_Out )
 #if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
     IF ( .not. do_gpu ) THEN
-      WRITE(*,*) '[ComputeNeutrinoOpacities_NES_Points] Data not present on device'
+      WRITE(*,*) &
+        '[ComputeNeutrinoOpacities_NES_Points] Data not present on device'
       IF ( .not. QueryOnGPU( E ) ) &
         WRITE(*,*) '[ComputeNeutrinoOpacities_NES_Points]   E missing'
       IF ( .not. QueryOnGPU( D ) ) &
@@ -987,9 +991,9 @@ CONTAINS
       !$ACC LOOP VECTOR
 #endif
       DO iE2 = iE_B, iE_E
-        DO iE1 = iE_B, iE2
-          Phi_Out(iE1,iE2,iX) = C1 * Phi_In(iE1,iE2,iX) + C2 * Phi_Out(iE1,iE2,iX)
-        END DO
+      DO iE1 = iE_B, iE2
+        Phi_Out(iE1,iE2,iX) = C1 * Phi_In(iE1,iE2,iX) + C2 * Phi_Out(iE1,iE2,iX)
+      END DO
       END DO
 
       kT = BoltzmannConstant * T(iX)
@@ -1000,9 +1004,10 @@ CONTAINS
       !$ACC LOOP VECTOR
 #endif
       DO iE2 = iE_B, iE_E
-        DO iE1 = iE2+1, iE_E
-          Phi_Out(iE1,iE2,iX) = Phi_Out(iE2,iE1,iX) * EXP( ( E(iE2) - E(iE1) ) / kT )
-        END DO
+      DO iE1 = iE2+1, iE_E
+        Phi_Out(iE1,iE2,iX) &
+          = Phi_Out(iE2,iE1,iX) * EXP( ( E(iE2) - E(iE1) ) / kT )
+      END DO
       END DO
 
 #if defined(THORNADO_OMP_OL)
@@ -1011,9 +1016,9 @@ CONTAINS
       !$ACC LOOP VECTOR COLLAPSE(2)
 #endif
       DO iE2 = iE_B, iE_E
-        DO iE1 = iE_B, iE_E
-          Phi_Out(iE1,iE2,iX) = Phi_Out(iE1,iE2,iX) * UnitNES
-        END DO
+      DO iE1 = iE_B, iE_E
+        Phi_Out(iE1,iE2,iX) = Phi_Out(iE1,iE2,iX) * UnitNES
+      END DO
       END DO
 
 #if defined(THORNADO_OMP_OL)
@@ -1022,9 +1027,9 @@ CONTAINS
       !$ACC LOOP VECTOR COLLAPSE(2)
 #endif
       DO iE2 = iE_B, iE_E
-        DO iE1 = iE_B, iE_E
-          Phi_In(iE1,iE2,iX) = Phi_Out(iE2,iE1,iX)
-        END DO
+      DO iE1 = iE_B, iE_E
+        Phi_In(iE1,iE2,iX) = Phi_Out(iE2,iE1,iX)
+      END DO
       END DO
 
     END DO
@@ -1049,18 +1054,216 @@ CONTAINS
     !$ACC IF( do_gpu ) &
     !$ACC PRESENT( Phi_In, Phi_Out )
 #endif
-    DO iX = iX_B, iX_E
-      DO iE2 = iE_B, iE_E
-        DO iE1 = iE_B, iE_E
-          Phi_Out(iE1,iE2,iX) = Zero
-          Phi_In (iE1,iE2,iX) = Zero
-        END DO
-      END DO
+    DO iX  = iX_B, iX_E
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      Phi_Out(iE1,iE2,iX) = Zero
+      Phi_In (iE1,iE2,iX) = Zero
+    END DO
+    END DO
     END DO
 
 #endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_NES_Points
+
+
+  SUBROUTINE ComputeNeutrinoOpacitiesAndDerivatives_NES_Point &
+    ( iE_B, iE_E, E, D, T, Y, iSpecies, iMoment, Phi_In, Phi_Out, &
+      dPhi_In_dY, dPhi_In_dE, dPhi_Out_dY, dPhi_Out_dE )
+
+    ! --- Neutrino-Electron Scattering Opacities (Single D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D, T, Y
+    INTEGER,  INTENT(in)  :: iSpecies
+    INTEGER,  INTENT(in)  :: iMoment
+    REAL(DP), INTENT(out) :: Phi_In     (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: Phi_Out    (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: dPhi_In_dY (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: dPhi_In_dE (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: dPhi_Out_dY(iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: dPhi_Out_dE(iE_B:iE_E,iE_B:iE_E)
+
+    INTEGER  :: iE1, iE2, iH1, iH2
+    REAL(DP) :: C1, C2, kT, LogT, LogEta, C_Eta, C_T
+    REAL(DP) :: M, dMdD, dMdT, dMdY
+    REAL(DP) :: U, dUdD, dUdT, dUdY
+    REAL(DP) :: LogE(iE_B:iE_E)
+    REAL(DP) :: H1    (iE_B:iE_E,iE_B:iE_E), H2      (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP) :: dH1dT (iE_B:iE_E,iE_B:iE_E), dH1dEta (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP) :: dH2dT (iE_B:iE_E,iE_B:iE_E), dH2dEta (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP) :: dPhidT(iE_B:iE_E,iE_B:iE_E), dPhidEta(iE_B:iE_E,iE_B:iE_E)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    iH1 = ( iMoment - 1 ) * 2 + 1
+    iH2 = ( iMoment - 1 ) * 2 + 2
+
+    IF(     iSpecies == iNuE     )THEN
+
+      C1 = ( cv + ca )**2
+      C2 = ( cv - ca )**2
+
+    ELSEIF( iSpecies == iNuE_Bar )THEN
+
+      C1 = ( cv - ca )**2
+      C2 = ( cv + ca )**2
+
+    END IF
+
+    ! --- Compute Electron Chemical Potential and Derivatives ---
+
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( D, T, Y, M, dMdD, dMdT, dMdY )
+
+    kT = BoltzmannConstant * T
+
+    LogT   = LOG10( T / UnitT )
+    LogEta = LOG10( M / kT )
+
+    DO iE1 = iE_B, iE_E
+      LogE(iE1) = LOG10( E(iE1) / UnitE )
+    END DO
+
+    ! --- Interpolate HI  ---
+
+    CALL LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Point &
+           ( LogE, LogT, LogEta, LogEs_T, LogTs_T, LogEtas_T, &
+             OS_NES(1,iH1), NES_T(:,:,:,:,iH1,1), H1, dH1dT, dH1dEta )
+
+    ! --- Interpolate HII ---
+
+    CALL LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Point &
+           ( LogE, LogT, LogEta, LogEs_T, LogTs_T, LogEtas_T, &
+             OS_NES(1,iH2), NES_T(:,:,:,:,iH2,1), H2, dH2dT, dH2dEta )
+
+    ! --- Phi_Out ---
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE2
+      Phi_Out(iE1,iE2) = C1 * H1(iE1,iE2) + C2 * H2(iE1,iE2)
+    END DO
+    END DO
+
+    DO iE2 = iE_B,  iE_E
+    DO iE1 = iE2+1, iE_E
+      Phi_Out(iE1,iE2) = Phi_Out(iE2,iE1) * EXP( ( E(iE2) - E(iE1) ) / kT )
+    END DO
+    END DO
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      Phi_Out(iE1,iE2) = Phi_Out(iE1,iE2) * UnitNES
+    END DO
+    END DO
+
+    ! --- Phi_In ---
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      Phi_In(iE1,iE2) = Phi_Out(iE2,iE1)
+    END DO
+    END DO
+
+    ! --- Derivative of Phi_Out wrt. Temperature ---
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE2
+      dPhidT(iE1,iE2) = C1 * dH1dT(iE1,iE2) + C2 * dH2dT(iE1,iE2)
+    END DO
+    END DO
+
+    DO iE2 = iE_B,  iE_E
+    DO iE1 = iE2+1, iE_E
+      dPhidT(iE1,iE2) = dPhidT(iE2,iE1) * EXP( ( E(iE2) - E(iE1) ) / kT )
+    END DO
+    END DO
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      dPhidT(iE1,iE2) = dPhidT(iE1,iE2) * UnitNES / UnitT
+    END DO
+    END DO
+
+    ! --- Derivative of Phi_Out wrt. Degeneracy Parameter ---
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE2
+      dPhidEta(iE1,iE2) = C1 * dH1dEta(iE1,iE2) + C2 * dH2dEta(iE1,iE2)
+    END DO
+    END DO
+
+    DO iE2 = iE_B,  iE_E
+    DO iE1 = iE2+1, iE_E
+      dPhidEta(iE1,iE2) = dPhidEta(iE2,iE1) * EXP( ( E(iE2) - E(iE1) ) / kT )
+    END DO
+    END DO
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      dPhidEta(iE1,iE2) = dPhidEta(iE1,iE2) * UnitNES
+    END DO
+    END DO
+
+    ! --- Compute Specific Internal Energy and Derivatives ---
+
+    CALL ComputeSpecificInternalEnergy_TABLE &
+           ( D, T, Y, U, dUdD, dUdT, dUdY )
+
+    ! --- Derivative of Phi_Out wrt. Electron Fraction ---
+
+    C_Eta = ( dMdY - dUdY * ( dMdT - M / T ) / dUdT ) / kT
+    C_T   = - dUdY / dUdT
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      dPhi_Out_dY(iE1,iE2) &
+        = C_Eta * dPhidEta(iE1,iE2) + C_T * dPhidT(iE1,iE2)
+    END DO
+    END DO
+
+    ! --- Derivative of Phi_In wrt. Electron Fraction ---
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      dPhi_In_dY(iE1,iE2) = dPhi_Out_dY(iE2,iE1)
+    END DO
+    END DO
+
+    ! --- Derivative of Phi_Out wrt. Specific Internal Energy ---
+
+    C_Eta = ( dMdT - M / T ) / ( dUdT * kT )
+    C_T   = One / dUdT
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      dPhi_Out_dE(iE1,iE2) &
+        = C_Eta * dPhidEta(iE1,iE2) + C_T * dPhidT(iE1,iE2)
+    END DO
+    END DO
+
+    ! --- Derivative of Phi_In wrt. Specific Internal Energy ---
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      dPhi_In_dE(iE1,iE2) = dPhi_Out_dE(iE2,iE1)
+    END DO
+    END DO
+
+#else
+
+    Phi_In      = Zero
+    Phi_Out     = Zero
+    dPhi_In_dY  = Zero
+    dPhi_In_dE  = Zero
+    dPhi_Out_dY = Zero
+    dPhi_Out_dE = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacitiesAndDerivatives_NES_Point
 
 
   SUBROUTINE ComputeNeutrinoOpacities_Pair_Point &
@@ -1132,9 +1335,11 @@ CONTAINS
       DO iE1 = iE_B, iE_E
 
         IF ( iE1 <= iE2 ) THEN
-          Phi_Local = ( C1 * Phi_In (iE1,iE2) + C2 * Phi_Out(iE1,iE2) ) * UnitPair
+          Phi_Local &
+            = ( C1 * Phi_In (iE1,iE2) + C2 * Phi_Out(iE1,iE2) ) * UnitPair
         ELSE
-          Phi_Local = ( C1 * Phi_Out(iE2,iE1) + C2 * Phi_In (iE2,iE1) ) * UnitPair
+          Phi_Local &
+            = ( C1 * Phi_Out(iE2,iE1) + C2 * Phi_In (iE2,iE1) ) * UnitPair
         END IF
 
         Phi_Out(iE1,iE2) = Phi_Local
