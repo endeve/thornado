@@ -41,10 +41,9 @@ MODULE Euler_dgDiscretizationModule
     Euler_Flux_X1,               &
     Euler_Flux_X2,               &
     Euler_StressTensor_Diagonal, &
-    Euler_NumericalFlux_HLL,     &
-    Euler_NumericalFlux_X1_HLLC, &
-    Euler_NumericalFlux_X2_HLLC, &
-    Euler_NumericalFlux_X3_HLLC
+    Euler_NumericalFlux_X1,      &
+    Euler_NumericalFlux_X2,      &
+    Euler_NumericalFlux_X3
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -473,8 +472,7 @@ CONTAINS
                 AlphaPls, AlphaMns )
 
         NumericalFlux(iNodeX_X1,:) &
-!          = Euler_NumericalFlux_X1_HLLC &
-          = Euler_NumericalFlux_HLL &
+          = Euler_NumericalFlux_X1 &
               ( uCF_L    (iNodeX_X1,:),            &
                 uCF_R    (iNodeX_X1,:),            &
                 Flux_X1_L(iNodeX_X1,:),            &
@@ -862,8 +860,7 @@ CONTAINS
                 AlphaPls, AlphaMns )
 
         NumericalFlux(iNodeX_X2,:) &
-!          = Euler_NumericalFlux_X2_HLLC &
-          = Euler_NumericalFlux_HLL &
+          = Euler_NumericalFlux_X2 &
               ( uCF_L    (iNodeX_X2,:),            &
                 uCF_R    (iNodeX_X2,:),            &
                 Flux_X2_L(iNodeX_X2,:),            &
