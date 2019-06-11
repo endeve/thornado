@@ -2366,15 +2366,7 @@ END SUBROUTINE SolveMatterEquations_FP_NestedAA
           END DO
 
 
-!           PRINT*, "  GJAC_inner = ["
-!           DO i = 1, 2*nE_G
-!             PRINT*,  GJAC_inner(i,:)
-!           END DO
-!           PRINT*, "]"
-! stop "stop after printing"
-          ! --- Newton direction ---
-          ! Solve linear system
-          ! GVECm_inner = NEW UPDATE
+
           CALL DGESV( 2*nE_G, 1, GJAC_inner, 2*nE_G, IPIV, GVEC_inner, 2*nE_G, INFO )
 
           GVECm_inner(OS_1+1:OS_1+nE_G) = Jnew(:,1) - GVEC_inner(OS_1+1:OS_1+nE_G)
