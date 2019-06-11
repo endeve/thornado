@@ -126,8 +126,6 @@ CONTAINS
       CALL PP % getarr( 'max_grid_size', MaxGridSize )
       CALL PP % get   ( 'max_level',     nLevels )
     CALL amrex_parmparse_destroy( PP )
-    WRITE(*,*) 'MaxGridSize: ', MaxGridSize
-    WRITE(*,*) 'nLevels_AMR: ', nLevels
 
     ! --- Slope limiter parameters SL.*
     CALL amrex_parmparse_build( PP, 'SL' )
