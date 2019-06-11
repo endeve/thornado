@@ -44,6 +44,7 @@ MODULE DeviceModule
     acc_is_present, &
     acc_set_cuda_stream, &
     acc_get_default_async, &
+    acc_device_host, &
     acc_device_nvidia, &
     acc_async_default
 #endif
@@ -164,7 +165,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     on_device = ( .not. omp_is_initial_device() )
 #elif defined(THORNADO_OACC)
-    on_device = acc_on_device( acc_device_nvidia )
+    on_device = ( .not. acc_on_device( acc_device_host ) )
 #else
     on_device = .false.
 #endif
