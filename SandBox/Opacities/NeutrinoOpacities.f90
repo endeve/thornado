@@ -25,6 +25,7 @@ PROGRAM NeutrinoOpacities
     ComputeNeutrinoOpacities_ES_Points, &
     ComputeNeutrinoOpacities_NES_Point, &
     ComputeNeutrinoOpacities_NES_Points, &
+    ComputeNeutrinoOpacitiesAndDerivatives_NES_Point, &
     ComputeNeutrinoOpacities_Pair_Point, &
     ComputeNeutrinoOpacities_Pair_Points
   USE DeviceModule, ONLY: &
@@ -53,12 +54,13 @@ PROGRAM NeutrinoOpacities
     Timer_ReadEos, &
     Timer_ReadOpacities, &
     Timer_Compute_EC, &
-    Timer_Compute_ES, &
-    Timer_Compute_NES, &
-    Timer_Compute_Pair, &
     Timer_Compute_EC_Point, &
+    Timer_Compute_ES, &
     Timer_Compute_ES_Point, &
+    Timer_Compute_NES, &
     Timer_Compute_NES_Point, &
+    Timer_Compute_NES_D_Point, &
+    Timer_Compute_Pair, &
     Timer_Compute_Pair_Point, &
     Timer_Total
   REAL(DP), DIMENSION(nPointsX) :: &
@@ -71,8 +73,8 @@ PROGRAM NeutrinoOpacities
     Chi_NES, & ! --- Integrated NES Opacity
     Chi_Pair   ! --- Integrated Pair Opacity
   REAL(DP), DIMENSION(nPointsE,nPointsE,nPointsX,nSpecies) :: &
-    Phi_0_NES_In, &
-    Phi_0_NES_Out, &
+    Phi_0_NES_In,  dPhi_0_NES_In_dY,  dPhi_0_NES_In_dE, &
+    Phi_0_NES_Out, dPhi_0_NES_Out_dY, dPhi_0_NES_Out_dE, &
     Phi_0_Pair_In, &
     Phi_0_Pair_Out
 
@@ -268,6 +270,27 @@ PROGRAM NeutrinoOpacities
   !$ACC UPDATE HOST( Phi_0_NES_In, Phi_0_NES_Out )
 #endif
 
+  ! --- Compute NES Opacities and Derivatives (Point) ---
+
+  Timer_Compute_NES_D_Point = MPI_WTIME()
+
+  DO iS = 1, nSpecies
+  DO iX = 1, nPointsX
+
+    CALL ComputeNeutrinoOpacitiesAndDerivatives_NES_Point &
+           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, &
+             Phi_0_NES_In     (:,:,iX,iS), &
+             Phi_0_NES_Out    (:,:,iX,iS), &
+             dPhi_0_NES_In_dY (:,:,iX,iS), &
+             dPhi_0_NES_In_dE (:,:,iX,iS), &
+             dPhi_0_NES_Out_dY(:,:,iX,iS), &
+             dPhi_0_NES_Out_dE(:,:,iX,iS) )
+
+  END DO
+  END DO
+
+  Timer_Compute_NES_D_Point = MPI_WTIME() - Timer_Compute_NES_D_Point
+
   ! --- Integrated NES Opacity ---
 
   DO iS = 1, nSpecies
@@ -389,28 +412,31 @@ PROGRAM NeutrinoOpacities
     = Timer_Compute_EC + Timer_Compute_EC_Point &
       + Timer_Compute_ES + Timer_Compute_ES_Point &
       + Timer_Compute_NES + Timer_Compute_NES_Point &
-      + Timer_Compute_Pair + Timer_Compute_Pair_Point
+      + Timer_Compute_NES_D_Point + Timer_Compute_Pair &
+      + Timer_Compute_Pair_Point
 
   WRITE(*,*)
-  WRITE(*,'(A4,A19,1ES10.2E2)') '', 'ReadEos = ',       &
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', 'ReadEos = ',       &
     Timer_ReadEos
-  WRITE(*,'(A4,A19,1ES10.2E2)') '', 'ReadOpacities = ', &
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', 'ReadOpacities = ', &
     Timer_ReadOpacities
-  WRITE(*,'(A4,A19,2ES10.2E2)') '', 'Compute_EC = ',    &
+  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_EC = ',    &
     Timer_Compute_EC, Timer_Compute_EC / Timer_Total
-  WRITE(*,'(A4,A19,2ES10.2E2)') '', 'Compute_EC (P) = ',    &
+  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_EC (P) = ',    &
     Timer_Compute_EC_Point, Timer_Compute_EC_Point / Timer_Total
-  WRITE(*,'(A4,A19,2ES10.2E2)') '', 'Compute_ES = ',    &
+  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_ES = ',    &
     Timer_Compute_ES, Timer_Compute_ES / Timer_Total
-  WRITE(*,'(A4,A19,2ES10.2E2)') '', 'Compute_ES (P) = ',    &
+  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_ES (P) = ',    &
     Timer_Compute_ES_Point, Timer_Compute_ES_Point / Timer_Total
-  WRITE(*,'(A4,A19,2ES10.2E2)') '', 'Compute_NES = ',   &
+  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_NES = ',   &
     Timer_Compute_NES, Timer_Compute_NES / Timer_Total
-  WRITE(*,'(A4,A19,2ES10.2E2)') '', 'Compute_NES (P) = ',   &
+  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_NES (P) = ',   &
     Timer_Compute_NES_Point, Timer_Compute_NES_Point / Timer_Total
-  WRITE(*,'(A4,A19,2ES10.2E2)') '', 'Compute_Pair = ',  &
+  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_NES_D (P) = ',   &
+    Timer_Compute_NES_D_Point, Timer_Compute_NES_D_Point / Timer_Total
+  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Pair = ',  &
     Timer_Compute_Pair, Timer_Compute_Pair / Timer_Total
-  WRITE(*,'(A4,A19,2ES10.2E2)') '', 'Compute_Pair (P) = ',  &
+  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Pair (P) = ',  &
     Timer_Compute_Pair_Point, Timer_Compute_Pair_Point / Timer_Total
   WRITE(*,*)
 
