@@ -830,7 +830,7 @@ CONTAINS
 
     ! --- Coefficients in quadratic equation ---
     a2 = Gm**2 * ( FE_HLL + Shift * E_HLL )
-    a1 = -Gm * ( Lapse * E_HLL + FS_HLL - Shift * E_HLL )
+    a1 = -Gm * ( Lapse * E_HLL + FS_HLL + Shift * S_HLL )
     a0 = Lapse * S_HLL
 
     ! --- Accounting for special cases of the solution to a

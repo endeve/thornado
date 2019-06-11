@@ -116,6 +116,8 @@ PROGRAM main
 
   REAL(amrex_real) :: Timer_Evolution
   REAL(amrex_real) :: Mass
+  REAL(amrex_real) :: t_wrt, t_chk
+  LOGICAL          :: wrt, chk
 
 !!$  CALL MakeMF_Diff( 0, 2929 )
 
@@ -246,7 +248,9 @@ PROGRAM main
   CALL MF_InitializeFluid_SSPRK &
          ( nStages, BA, DM, &
            Verbose_Option = amrex_parallel_ioprocessor() )
-  IF( amrex_parallel_ioprocessor() ) WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
+  IF( amrex_parallel_ioprocessor() ) WRITE(*,'(A6,A,ES11.3E3)') &
+    '', 'CFL: ', &
+    CFL * ( amrex_spacedim * ( 2.0_amrex_real * nNodes - 1.0_amrex_real ) )
 
   CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
   CALL CreateFluidFields( nX, swX, amrex_parallel_ioprocessor() )
@@ -263,7 +267,11 @@ PROGRAM main
 
   ! --- Beginning of evolution ---
 
-  t = 0.0_amrex_real
+  t     = 0.0_amrex_real
+  t_wrt = dt_wrt
+  t_chk = dt_chk
+  wrt   = .FALSE.
+  chk   = .FALSE.
 
   IF( amrex_parallel_ioprocessor() )THEN
     WRITE(*,*)
@@ -313,7 +321,17 @@ PROGRAM main
            ( t, dt, MF_uGF, MF_uCF, &
              GEOM, MF_Euler_ComputeIncrement )
 
-    IF( MOD( StepNo(0), iCycleW ) .EQ. 0 )THEN
+    IF( iCycleW .GT. 0 )THEN
+      IF( MOD( StepNo(0), iCycleW ) .EQ. 0 ) &
+        wrt = .TRUE.
+    ELSE
+      IF( ALL( t + dt .GT. t_wrt ) )THEN
+        t_wrt = t_wrt + dt_wrt
+        wrt   = .TRUE.
+      END IF
+    END IF
+
+    IF( wrt )THEN
 
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
@@ -324,9 +342,21 @@ PROGRAM main
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF )
 
+      wrt = .FALSE.
+
     END IF
 
-    IF( MOD( StepNo(0), iCycleChk ) .EQ. 0 )THEN
+    IF( iCycleChk .GT. 0 )THEN
+      IF( MOD( StepNo(0), iCycleChk ) .EQ. 0 ) &
+        chk = .TRUE.
+    ELSE
+      IF( ALL( t + dt .GT. t_chk ) )THEN
+        t_chk = t_chk + dt_chk
+        chk   = .TRUE.
+      END IF
+    END IF
+
+    IF( chk )THEN
 
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
@@ -337,6 +367,8 @@ PROGRAM main
                MF_uCF % P, &
                MF_uPF % P, &
                MF_uAF % P )
+
+      chk = .FALSE.
      
     END IF
 

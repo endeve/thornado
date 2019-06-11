@@ -3,29 +3,29 @@
 
 DEBUG = 0
 
-thornado.ProgramName = "KelvinHelmholtz_Relativistic"
+thornado.ProgramName = "RiemannProblem_2D"
 
-thornado.t_end     = 3.0      # Final time
-thornado.dt_wrt    = 0.03     # Time increment to write plot-file
-thornado.dt_chk    = 0.3      # Time increment to write checkpoint-file
+thornado.t_end     = 0.4      # Final time
+thornado.dt_wrt    = 0.004    # Time increment to write plot-file
+thornado.dt_chk    = 0.04     # Time increment to write checkpoint-file
 thornado.Gamma     = 1.3333333333333333     # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
-thornado.bcX       = 00 00 00 # Boundary conditions
+thornado.bcX       = 02 02 00 # Boundary conditions
 thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
-thornado.iCycleD   = 0010     # MOD this number to display info
-thornado.iCycleW   = -0100     # MOD this number to write plotfile
-thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
+thornado.iCycleD   = 00010     # MOD this number to display info
+thornado.iCycleW   = -01000     # MOD this number to write plotfile
+thornado.iCycleChk = -10000     # MOD this number to write checkpoint file
 
 geometry.coord_sys     = 0           # CARTESIAN
-geometry.prob_lo       = -0.5 -1.0 0.0 # Lower domain size
-geometry.prob_hi       = +0.5 +1.0 1.0 # Upper domain size
-geometry.is_periodic   = 01 01 01    # Periodicity. 0 (no), 1 (yes)
+geometry.prob_lo       = 0.0 0.0 0.0 # Lower domain size
+geometry.prob_hi       = 1.0 1.0 1.0 # Upper domain size
+geometry.is_periodic   = 00 00 01    # Periodicity. 0 (no), 1 (yes)
 geometry.UseSourceTerm = 0           # Source term in timestep calculation
 
-amr.n_cell          = 32 16 01 # Number of cells in each dimension
-amr.max_grid_size   = 16 08  01 # nBoxes = n_cell / MaxGridSize
+amr.n_cell          = 32 32 01 # Number of cells in each dimension
+amr.max_grid_size   = 32 32  01 # nBoxes = n_cell / MaxGridSize
 amr.max_level       = 0          # Maximum number of refinement levels
 amr.blocking_factor = 1          # Must be a factor of max_grid_size
 

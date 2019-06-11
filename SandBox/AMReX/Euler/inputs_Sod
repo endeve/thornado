@@ -6,7 +6,8 @@ DEBUG = 0
 thornado.ProgramName = "Sod"
 
 thornado.t_end     = 0.2      # Final time
-thornado.dt_wrt    = 0.045
+thornado.dt_wrt    = -0.045    # Time increment to write plot-file
+thornado.dt_chk    = -0.045    # Time increment to write checkpoint-file
 thornado.Gamma     = 1.4      # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
