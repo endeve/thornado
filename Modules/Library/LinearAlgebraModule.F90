@@ -235,17 +235,17 @@ CONTAINS
 
   SUBROUTINE VectorNorm2( n, x, incx, xnorm )
 
-    INTEGER                            :: n, incx
-    REAL(DP), DIMENSION(*)    , TARGET :: x
-    REAL(DP)                           :: xnorm
+    INTEGER                         :: n, incx
+    REAL(DP), DIMENSION(*), TARGET  :: x
+    REAL(DP)                        :: xnorm
 
-    INTEGER                            :: ierr
-    INTEGER(C_SIZE_T)                  :: sizeof_x
-    REAL(DP), DIMENSION(:)  , POINTER  :: px
-    TYPE(C_PTR)                        :: hx
-    TYPE(C_PTR)                        :: dx
-    LOGICAL                            :: data_on_device
-    REAL(DP), EXTERNAL                 :: DNRM2
+    INTEGER                         :: ierr
+    INTEGER(C_SIZE_T)               :: sizeof_x
+    REAL(DP), DIMENSION(:), POINTER :: px
+    TYPE(C_PTR)                     :: hx
+    TYPE(C_PTR)                     :: dx
+    LOGICAL                         :: data_on_device
+    REAL(DP), EXTERNAL              :: DNRM2
 
     data_on_device = .false.
     sizeof_x = n * c_sizeof(0.0_DP)
