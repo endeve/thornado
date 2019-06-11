@@ -248,7 +248,9 @@ PROGRAM main
   CALL MF_InitializeFluid_SSPRK &
          ( nStages, BA, DM, &
            Verbose_Option = amrex_parallel_ioprocessor() )
-  IF( amrex_parallel_ioprocessor() ) WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
+  IF( amrex_parallel_ioprocessor() ) WRITE(*,'(A6,A,ES11.3E3)') &
+    '', 'CFL: ', &
+    CFL * ( amrex_spacedim * ( 2.0_amrex_real * nNodes - 1.0_amrex_real ) )
 
   CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
   CALL CreateFluidFields( nX, swX, amrex_parallel_ioprocessor() )
