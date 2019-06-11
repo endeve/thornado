@@ -8,7 +8,7 @@ thornado.ProgramName = "RiemannProblem_2D"
 thornado.t_end     = 0.4      # Final time
 thornado.dt_wrt    = 0.004    # Time increment to write plot-file
 thornado.dt_chk    = 0.04     # Time increment to write checkpoint-file
-thornado.Gamma     = 1.3333333333333333     # Ideal Gas EoS Gamma
+thornado.Gamma     = 1.6666666666666666     # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
@@ -25,7 +25,7 @@ geometry.is_periodic   = 00 00 01    # Periodicity. 0 (no), 1 (yes)
 geometry.UseSourceTerm = 0           # Source term in timestep calculation
 
 amr.n_cell          = 32 32 01 # Number of cells in each dimension
-amr.max_grid_size   = 32 32  01 # nBoxes = n_cell / MaxGridSize
+amr.max_grid_size   = 16 16 01 # nBoxes = n_cell / MaxGridSize
 amr.max_level       = 0          # Maximum number of refinement levels
 amr.blocking_factor = 1          # Must be a factor of max_grid_size
 
