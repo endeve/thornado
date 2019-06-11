@@ -32,7 +32,7 @@ MODULE MyAmrModule
 
   IMPLICIT NONE
 
-  REAL(amrex_real)                    :: t_end, dt_wrt, Gamma_IDEAL, CFL
+  REAL(amrex_real)                    :: t_end, dt_wrt, dt_chk, Gamma_IDEAL, CFL
   INTEGER                             :: nNodes, nStages, nLevels, coord_sys
   INTEGER                             :: iCycleD, iCycleW, iCycleChk
   INTEGER,          ALLOCATABLE       :: MaxGridSize(:), nX(:), swX(:), bcX(:)
@@ -76,6 +76,7 @@ CONTAINS
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'dt_wrt',      dt_wrt )
+      CALL PP % get   ( 'dt_chk',      dt_chk )
       CALL PP % get   ( 't_end',       t_end )
       CALL PP % get   ( 'nNodes',      nNodes )
       CALL PP % get   ( 'nStages',     nStages )
@@ -88,6 +89,17 @@ CONTAINS
       CALL PP % get   ( 'iCycleW',     iCycleW )
       CALL PP % get   ( 'iCycleChk',   iCycleChk )
     CALL amrex_parmparse_destroy( PP )
+    IF( iCycleW .GT. 0 .AND. dt_wrt .GT. 0.0_amrex_real )THEN
+      WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'
+      WRITE(*,'(A)') 'Stopping...'
+      STOP
+    END IF
+    IF( iCycleChk .GT. 0 .AND. dt_chk .GT. 0.0_amrex_real )THEN
+      WRITE(*,'(A)') 'iCycleChk and dt_chk cannot both be greater than zero.'
+      WRITE(*,'(A)') 'Stopping...'
+      STOP
+    END IF
+
     CFL = CFL &
             / ( amrex_spacedim * ( 2.0_amrex_real * nNodes - 1.0_amrex_real ) )
 

@@ -208,15 +208,15 @@ CONTAINS
 #ifdef HYDRO_NONRELATIVISTIC
 
     Euler_AlphaMiddle = Euler_AlphaMiddle_NonRelativistic &
-                          ( DL, F_DL, SL, F_SL, EL, F_EL, &
-                            DR, F_DR, SR, F_SR, ER, F_ER, &
+                          ( DL, SL, EL, F_DL, F_SL, F_EL, &
+                            DR, SR, ER, F_DR, F_SR, F_ER, &
                             Gm, Lapse, Shift, aP, aM )
 
 #elif HYDRO_RELATIVISTIC
 
     Euler_AlphaMiddle = Euler_AlphaMiddle_Relativistic &
-                          ( DL, F_DL, SL, F_SL, EL, F_EL, &
-                            DR, F_DR, SR, F_SR, ER, F_ER, &
+                          ( DL, SL, EL, F_DL, F_SL, F_EL, &
+                            DR, SR, ER, F_DR, F_SR, F_ER, &
                             Gm, Lapse, Shift, aP, aM )
 
 #endif

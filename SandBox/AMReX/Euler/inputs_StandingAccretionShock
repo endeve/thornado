@@ -17,7 +17,8 @@ SAS.PerturbOrder     = 1
 SAS.PerturbAmplitude = 0.2
 
 thornado.t_end     = 80.0      # Final time
-thornado.dt_wrt    = 0.25      # Write time interval
+thornado.dt_wrt    = -0.25      # Write time interval
+thornado.dt_chk    = -0.25      # # Time increment to write checkpoint-file
 thornado.Gamma     = 1.333333333333333 # Ideal Gas EoS Gamma
 thornado.nNodes    = 3         # Number of DG nodes in each active dimension
 thornado.nStages   = 3         # Number of SSP-RK stages for time integration

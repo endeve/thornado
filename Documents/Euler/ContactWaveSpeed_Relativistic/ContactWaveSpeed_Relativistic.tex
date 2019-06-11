@@ -34,246 +34,204 @@
 \newcommand{\figref}[1]{Figure \ref{#1}}
 
 \begin{document}
+Throughout this document, lowercase latin indices ($i,j,$ etc.) run from 1 to 3, lowercase Greek indices ($\mu,\nu,$ etc.) run from 0 to 3, and uppercase latin indices ($J$) run from 1 to 5.
+
+\section{Equations}
+We are solving the general relativistic hydrodynamics (GRH) equations \citep{RezzollaRelHyd}:
+\begin{equation}\label{Eq:GRH}
+\pd{\left(\sqrt{\gamma}\,\bU\right)}{t}+\pd{\left(\alpha\,\sqrt{\gamma}\,\bF^{i}\right)}{i}=\sqrt{\gamma}\,\bS,
+\end{equation}
+where $\bU$ is the vector of conserved variables, defined as
+\begin{equation}
+\bU\longrightarrow U^{J}=\begin{pmatrix}D\\ S_{j}\\ E\end{pmatrix}=\begin{pmatrix}\rho\,W\\ \rho\,h\,W^{2}\,v_{j}\\\rho\,h\,W^{2}-p\end{pmatrix},
+\end{equation}
+$\bF^{i}$ is the vector of fluxes of the conserved variables in the $x^{i}$-direction, defined as
+\begin{equation}
+\bF^{i}\longrightarrow \left(F^{i}\right)^{J}=\begin{pmatrix}D\left(v^{i}-\eta^{i}\right)\\ S_{j}\left(v^{i}-\eta^{i}\right)+p\,\delta^{i}_{~j}\\S^{i}-\eta^{i}\,E\end{pmatrix},
+\end{equation}
+$\bS$ is the vector of sources, defined as
+\begin{equation}
+\bS\longrightarrow S^{J}=\begin{pmatrix}0\\\frac{1}{2}\,\alpha\,P^{ik}\,\pd{\gamma_{ik}}{j}+S_{i}\,\pd{\beta^{i}}{j}-E\,\pd{\alpha}{j}\\\alpha\,P^{ij}\,K_{ij}-S^{j}\,\pd{\alpha}{j}\end{pmatrix},
+\end{equation}
+where $\rho$ is the mass-density of the fluid, $v^{i}$ are the contravariant components of the fluid three-velocity, and $p$ is the pressure of the fluid. The quantity $h$ is the specific enthalpy of the fluid, defined as
+\begin{equation}
+h\equiv1+\frac{e+p}{\rho},
+\end{equation}
+where $e$ is the internal energy-density of the fluid. The quantity $W$ is the Lorentz factor of the fluid, defined as
+\begin{equation}
+W\equiv\left(1-\vv{v}\cdot\vv{v}\right)^{-1/2}.
+\end{equation}
+The quantity $\alpha$ is the lapse function, $\eta^{i}$ are the ratio of the components shift-vector, $\beta^{i}$, to the lapse function:
+\begin{equation}
+\vv{\eta}\longrightarrow\eta^{i}\equiv\alpha^{-1}\,\beta^{i},
+\end{equation}
+and $\gamma_{ij}$ are the covariant components of the spatial three-metric tensor, i.e. $\gamma^{ij}\,\gamma_{jk}=\delta^{i}_{~k}$, where $\delta^{i}_{~k}$ are the usual components of the Kronecker delta tensor. The $P^{ij}$ are the components of the stress-tensor, defined as
+\begin{equation}
+\bP\longrightarrow P^{ij}\equiv\rho\,h\,W^{2}\,v^{i}\,v^{j}+p\,\gamma^{ij},
+\end{equation}
+and the $K_{ij}$ are the components of the extrinsic curvature, defined as
+\begin{equation}
+\text{FILL IN HERE}.
+\end{equation}
 
 \section{Derivation of Middle Wave-Speed Estimate for General Relativistic HLLC Numerical Flux}
-For a given Riemann problem we assume that the shocked fluid is composed of two distinct regions, separated by a contact discontinuity (see \figref{Fig:HLLC_RiemannFan}).
+For a given Riemann problem we assume that a discontinuity breaks up into four distinct regions (see \figref{Fig:HLLC_RiemannFan}).
 \begin{figure}[H]
 \centering
 \includegraphics[scale=0.5]{HLLC_RiemannFan_MB2005}
 \caption{HLLC Riemann fan from \citet{Mignone2005}.}\label{Fig:HLLC_RiemannFan}
 \end{figure}
 
-
-Here we derive an estimate for the propagation speed of that contact discontinuity.
-
-The equations we are solving are the general relativistic equations of hydrodynamics in conservative form:
-\begin{equation}
-    \pderiv{\left(\sqrtgm\,\bU\right)}{t}+\pderiv{\left(\alpha\,\sqrtgm\,\bF^{i}\left(\bU\right)\right)}{x^{i}}=\alpha\,\sqrtgm\,\bS,
-\end{equation}
-where $\bU$ is the \textit{vector of conserved variables}, $\bF^{i}\left(\bU\right)$ are the fluxes of the conserved variables along the three spatial directions, $\bS$ is a source term (which does \textit{not} contain any derivatives of the fluid variables), $\alpha$ is the lapse function, and $\sqrtgm$ is the determinant of the spatial three-metric. In deriving the above equations we assume that the lapse function is explicitly independent of time. We can re-write this slightly using the product rule:
-\begin{equation}
-    \sqrtgm\,\pderiv{\bU}{t}+\bU\,\pderiv{\sqrtgm}{t}+\sqrtgm\,\pderiv{\left(\alpha\,\bF^{i}\right)}{x^{i}}+\alpha\,\bF^{i}\,\pderiv{\sqrtgm}{x^{i}}=\alpha\,\sqrtgm\,\bS.
-\end{equation}
-Now, moving the terms that don't contain derivatives of the fluid variables to the RHS and dividing by $\sqrtgm$, we obtain:
-\begin{equation}\label{Eq:EulerConsSources}
-    \pderiv{\bU}{t}+\pderiv{\left(\alpha\,\bF^{i}\right)}{x^{i}}=\bQ,
-\end{equation}
-where:
-\begin{equation}
-    \bQ\equiv\alpha\,\bS-\f{1}{\sqrtgm}\left(\bU\,\pderiv{\sqrtgm}{t}+\alpha\,\bF^{i}\,\pderiv{\sqrtgm}{x^{i}}\right).
-\end{equation}
-
-The vector of conserved variables is given by \citep{Mignone2005}:
-\begin{equation}
-    \bU\equiv
-    \begin{pmatrix}
-      D \\
-      S_{j} \\
-      E
-    \end{pmatrix}=
-    \begin{pmatrix}
-      \rho\,W \\
-      \rho\,h\,W^{2}\,v_{j} \\
-      \rho\,h\,W^{2}-p,
-    \end{pmatrix}
-\end{equation}
-where $\rho$ is the rest mass-density, $v_{j}$ are the covariant components of the three-velocity, $p$ is the pressure, and $W$ is the Lorentz factor:
-\begin{equation}
-    W\equiv\left(1-\vv{v}\cdot\vv{v}\right)^{-1/2}.
-\end{equation}
-The quantity $h$ is the relativistic specific enthalpy, given by:
-\begin{equation}
-    h\equiv1+\f{e+p}{\rho},
-\end{equation}
-where $e$ is the internal energy-density. The fluxes are given by \citep{RezzollaRelHyd}:
-\begin{equation}
-    \bF^{i}\equiv
-    \begin{pmatrix}
-      D\left(v^{i}-\alpha^{-1}\,\beta^{i}\right) \\
-      S_{j}\left(v^{i}-\alpha^{-1}\,\beta^{i}\right) + p\,\delta^{i}_{~j} \\
-      S^{i}-\alpha^{-1}\,\beta^{i}\,E
-    \end{pmatrix},
-\end{equation}
-where $\beta^{i}$ are the components of the shift vector. We define the quantity $\eta^{i}$ as:
-\begin{equation}
-    \eta^{i}\equiv\alpha^{-1}\,\beta^{i},
-\end{equation}
-which makes the fluxes that we work with:
-\begin{equation}
-    \bF^{i}\equiv
-    \begin{pmatrix}
-      D\left(v^{i}-\eta^{i}\right) \\
-      S_{j}\left(v^{i}-\eta^{i}\right) + p\,\delta^{i}_{~j} \\
-      S^{i}-\eta^{i}\,E
-    \end{pmatrix}.
-\end{equation}
-
-We will need to know how the fluxes relate to the conserved variables across shocks. These relations are known as the \textit{Rankine-Hugoniot jump conditions}. We derive them next.
-
 \subsection{Derivation of Rankine-Hugoniot Jump Conditions}
 This derivation closely follows \citet{RezzollaRelHyd}.
 
-We start the derivation by integrating the one-dimensional version of \eqref{Eq:EulerConsSources} in space from a point $x_{L}$ to a point $x_{R}$, that contains a shock, which we define to be at a time-dependent point $x_{L}<s\left(t\right)<x_{R}$:
+We start the derivation by integrating the one-dimensional version of \eqref{Eq:GRH} in space from a point $x_{L}$ to a point $x_{R}$, that contains a shock, which we define to be at a time-dependent point $x_{L}<\lambda\left(t\right)<x_{R}$:
 \begin{equation}
-    \int\limits_{x_{L}}^{x_{R}}\pd{\bU}{t}\,\sqrtgm\,dx+\int\limits_{x_{L}}^{x_{R}}\pd{\left(\alpha\,\bF\right)}{x}\,\sqrtgm\,dx=\int\limits_{x_{L}}^{x_{R}}\bQ\,\sqrtgm\,dx.
+\int\limits_{x_{L}}^{x_{R}}\pd{\left(\sqrt{\gamma}\,\bU\right)}{t}\,dx+\int\limits_{x_{L}}^{x_{R}}\pd{\left(\alpha\,\sqrt{\gamma}\,\bF^{x}\right)}{x}\,dx=\int\limits_{x_{L}}^{x_{R}}\sqrt{\gamma}\,\bS\,dx.
 \end{equation}
-Using the product rule again, we get:
-\begin{equation}
-    \int\limits_{x_{L}}^{x_{R}}\pd{\left(\sqrtgm\,\bU\right)}{t}\,dx-\int\limits_{x_{L}}^{x_{R}}\bU\,\pd{\sqrtgm}{t}\,dx+\int\limits_{x_{L}}^{x_{R}}\pd{\left(\alpha\,\sqrtgm\,\bF\right)}{x}\,dx-\int\limits_{x_{L}}^{x_{R}}\alpha\,\bF\,\pd{\sqrtgm}{x}\,dx=\int\limits_{x_{L}}^{x_{R}}\bQ\,\sqrtgm\,dx.
-\end{equation}
-Again moving the terms that don't contain derivatives of fluid variables to the RHS, we get:
-\begin{equation}
-    \int\limits_{x_{L}}^{x_{R}}\pd{\left(\sqrtgm\,\bU\right)}{t}\,dx+\int\limits_{x_{L}}^{x_{R}}\pd{\left(\alpha\,\sqrtgm\,\bF\right)}{x}\,dx=\int\limits_{x_{L}}^{x_{R}}\,\bQ'\,\sqrtgm\,dx,
-\end{equation}
-where
-\begin{equation}
-    \bQ'\equiv\bQ+\f{1}{\sqrtgm}\left(\bU\,\pd{\sqrtgm}{t}+\alpha\,\bF\,\pd{\sqrtgm}{x}\right).
-\end{equation}
-
-The second term on the LHS becomes a boundary term. Moving that to the RHS and the source term to the LHS we get:
-\begin{equation}
-    \alpha\left(x_{L},t\right)\,\sqrtgm\left(x_{L},t\right)\,\bF\left(\bU\left(x_{L},t\right)\right)-\alpha\left(x_{R},t\right)\,\sqrtgm\left(x_{R},t\right)\,\bF\left(\bU\left(x_{R},t\right)\right)=\f{d}{dt}\int\limits_{x_{L}}^{x_{R}}\sqrtgm\,\bU\,dx-\int\limits_{x_{L}}^{x_{R}}\bQ'\,\sqrtgm\,dx.
-\end{equation}
-We now split the first integral into two parts, with the shock being at an endpoint:
-\begin{equation}
-    \alpha_{L}\,\sqrtgm_{L}\,\bF_{L}-\alpha_{R}\,\sqrtgm_{R}\,\bF_{R}=\f{d}{dt}\int\limits_{x_{L}}^{s_{L}\left(t\right)}\sqrtgm\,\bU\,dx+\f{d}{dt}\int\limits_{s_{R}\left(t\right)}^{x_{R}}\sqrtgm\,\bU\,dx-\int\limits_{x_{L}}^{x_{R}}\sqrtgm\,\bQ'\,dx,
-\end{equation}
-where $\bF_{L}\equiv\bF\left(\bU\left(x_{L},t\right)\right)$, etc. We also use the notation that $s_{L}$ means ``approaches $s$ from the left state" and $s_{R}$ means ``approaches $s$ from the right state". Using the rule for differentiating an integral with variable bounds:
-\begin{equation}
-    \f{d}{dt}\int\limits_{x_{1}\left(t\right)}^{x_{2}\left(t\right)}A\left(x,t\right)\,dx=\int\limits_{x_{1}\left(t\right)}^{x_{2}\left(t\right)}\pd{A\left(x,t\right)}{t}\,dx+A\left(x_{2}\left(t\right),t\right)\,\f{dx_{2}\left(t\right)}{dt}-A\left(x_{1}\left(t\right),t\right)\,\f{dx_{1}\left(t\right)}{dt},
-\end{equation}
-we find:
-\begin{equation}
-    \alpha_{L}\,\sqrtgm_{L}\,\bF_{L}-\alpha_{R}\,\sqrtgm_{R}\,\bF_{R}=\f{ds}{dt}\left(\sqrtgm_{L}\,\bU_{L}-\sqrtgm_{R}\,\bU_{R}\right)+\int\limits_{x_{L}}^{s_{L}\left(t\right)}\pd{\left(\sqrtgm\,\bU\right)}{t}\,dx+\int\limits_{s_{R}\left(t\right)}^{x_{R}}\pd{\left(\sqrtgm\,\bU\right)}{t}\,dx-\int\limits_{x_{L}}^{x_{R}}\bQ'\,dx.
-\end{equation}
-Now we take the limit that $x_{L}\longrightarrow s\left(t\right)$ and $x_{R}\longrightarrow s\left(t\right)$. In this limit all the integrals vanish (since no terms in $\bQ'$ depend on derivatives of fluid variables), and since $\alpha$ and $\sqrtgm$ are continuous across shocks, $\alpha_{L}=\alpha_{R}\equiv\alpha$ and $\sqrtgm_{L}=\sqrtgm_{R}\equiv\sqrtgm$. Defining the shock speed as $ds/dt\equiv\lambda$, we see that the metric determinant cancels, leaving us with the jump conditions:
-\begin{equation}
-    \alpha\left(\bF_{L}-\bF_{R}\right)=\lambda\left(\bU_{L}-\bU_{R}\right).
-\end{equation}
-
-
-\subsection{Derivation of Contact Wave-Speed}
-With the jump conditions we are ready to derive an estimate for the propagation speed of the contact discontinuity. If we assume one state is the shocked region and the other state is the unshocked region then the jump conditions become:
-\begin{equation}\label{Eq:RHJump_GR}
-    \lambda^{i}\left(\bU^{*}-\bU\right)=\alpha\left(\left(\bF^{*}\right)^{i}-\bF^{i}\right).
-\end{equation}
-We assume that the flux in the shocked region can be written as:
-\begin{equation}
-    \left(\bF^{*}\right)^{i}\equiv
-    \begin{pmatrix}
-      D^{*}\left[\left(v^{*}\right)^{i}-\left(\eta^{*}\right)^{i}\right] \\
-      S^{*}_{j}\left[\left(v^{*}\right)^{i}-\left(\eta^{*}\right)^{i}\right] + p^{*}\,\delta^{i}_{~j} \\
-      \left(S^{*}\right)^{i}-\left(\eta^{*}\right)^{i}\,E^{*}
-    \end{pmatrix}.
-\end{equation}
-Since $\alpha$ and $\boldsymbol{\beta}$ are continuous, we can equate $\alpha^{*}=\alpha$ and $\boldsymbol{\beta}^{*}=\boldsymbol{\beta}$, and therefore $\left(\eta^{*}\right)^{i}=\eta^{i}$. We also define $\left(v^{*}\right)^{i}\equiv\left(\lambda^{*}\right)^{i}$, the propagation speed of the contact discontinuity. We use the shorthand notation:
-\begin{equation}
-    \left(X^{*}\right)^{i}=X^{*i}.
-\end{equation}
-With that the fluxes in the shocked region can be written as:
-\begin{equation}\label{Eq:StarFlux}
-    \bF^{*i}\equiv
-    \begin{pmatrix}
-      D^{*}\left(\lambda^{*i}-\eta^{i}\right) \\
-      S^{*}_{j}\left(\lambda^{*i}-\eta^{i}\right) + p^{*}\,\delta^{i}_{~j} \\
-      S^{*i}-\eta^{i}\,E^{*}
-    \end{pmatrix}.
-\end{equation}
-
-\subsubsection{Applying the Jump Conditions}
-Now we apply the jump conditions, \eqref{Eq:RHJump_GR} to the momentum-density:
+First, we note that in the first integral on the LHS we can pull out the partial derivative with respect to time, which converts it into a total derivative. We also perform an integration-by-parts on the second integral on the LHS, yielding
 \begin{align}
-    \lambda^{i}\left(S^{*}_{j}-S_{j}\right)&=\alpha\left[S^{*}_{j}\left(\lambda^{*i}-\eta^{i}\right)+p^{*}\,\delta^{i}_{~j}-S_{j}\left(v^{i}-\eta^{i}\right)-p\,\delta^{i}_{~j}\right]\\
-    \implies S^{*}_{j}\left(\lambda^{i}-\alpha\,\lambda^{*i}+\alpha\,\eta^{i}\right)&=S_{j}\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)+\alpha\left(p^{*}-p\right)\delta^{i}_{~j}\label{Eq:RH_Mom}
+\frac{d}{dt}\int\limits_{x_{L}}^{x_{R}}&\sqrt{\gamma}\,\bU\,dx+\left[\alpha\,\sqrt{\gamma}\,\bF^{x}\right]^{x_{R}}_{x_{L}}=\int\limits_{x_{L}}^{x_{R}}\sqrt{\gamma}\,\bS\,dx\\
+&\implies\frac{d}{dt}\int\limits_{x_{L}}^{x_{R}}\sqrt{\gamma}\,\bU\,dx+\alpha_{R}\,\sqrt{\gamma_{R}}\,\bF_{R}^{x}-\alpha_{L}\,\sqrt{\gamma_{L}}\,\bF_{L}^{x}=\int\limits_{x_{L}}^{x_{R}}\sqrt{\gamma}\,\bS\,dx,
 \end{align}
+where $\alpha_{L}=\alpha\left(x_{L}\right)$, etc. The integral over the vector of conserved variables contains the discontinuity, and therefore it's derivative is not well-defined. To overcome this we split the integral into one integral from $x_{L}$ to the location of the shock as approached from below, $s^{-}\left(t\right)$, and another integral from the location of the shock as approached from above, $s^{+}\left(t\right)$, to $x_{R}$:
+\begin{equation}
+\int\limits_{x_{L}}^{x_{R}}\sqrt{\gamma}\,\bU\,dx=\int\limits_{x_{L}}^{s^{-}\left(t\right)}\sqrt{\gamma}\,\bU\,dx+\int\limits_{s^{+}\left(t\right)}^{x_{R}}\sqrt{\gamma}\,\bU\,dx.
+\end{equation}
+Both of these integrals are smooth. Next we use the rule for differentiation of an integral depending on a parameter \citep{RezzollaRelHyd}:
+\begin{equation}
+\f{d}{dt}\int\limits_{x_{1}\left(t\right)}^{x_{2}\left(t\right)}Q\left(x,t\right)\,dx=\int\limits_{x_{1}\left(t\right)}^{x_{2}\left(t\right)}\pd{Q\left(x,t\right)}{t}\,dx+Q\left(x_{2}\left(t\right),t\right)\,\frac{dx_{2}\left(t\right)}{dt}-Q\left(x_{1}\left(t\right),t\right)\,\frac{dx_{1}\left(t\right)}{dt}.
+\end{equation}
+This yields, since $x_{L}$ and $x_{R}$ are constant,
+\begin{align}
+\int\limits_{x_{L}}^{s^{-}\left(t\right)}&\pd{\left(\sqrt{\gamma}\,\bU\right)}{t}\,dx+\sqrt{\gamma\left(s^{-}\left(t\right),t\right)}\,\bU\left(s^{-}\left(t\right),t\right)\,\frac{ds^{-}}{dt}\\
+&+\int\limits_{s^{+}\left(t\right)}^{x_{R}}\pd{\left(\sqrt{\gamma}\,\bU\right)}{t}\,dx-\sqrt{\gamma\left(s^{+}\left(t\right),t\right)}\,\bU\left(s^{+}\left(t\right),t\right)\,\frac{ds^{+}}{dt}\\
+&+\alpha_{R}\,\sqrt{\gamma_{R}}\,\bF_{R}-\alpha_{L}\,\sqrt{\gamma_{L}}\,\bF_{L}=\int\limits_{x_{L}}^{x_{R}}\sqrt{\gamma}\,\bS\,dx.
+\end{align}
+We will now take the limit that $x_{L}\longrightarrow s^{-}$ and $x_{R}\longrightarrow s^{+}$. When we do this, we see that the integrals vanish, because the integrands are all smooth in the regions considered. This yields (defining $\bU_{L}\equiv\bU\left(s^{-}\left(t\right),t\right)$, etc.)
+\begin{equation}
+\sqrt{\gamma_{L}}\,\bU_{L}\,\frac{ds_{L}}{dt}-\sqrt{\gamma_{R}}\,\bU_{R}\,\frac{ds_{R}}{dt}=\alpha_{L}\,\sqrt{\gamma_{L}}\,\bF_{L}-\alpha_{R}\,\sqrt{\gamma_{R}}\,\bF_{R}.
+\end{equation}
+Now, we note that $s_{L}=s_{R}$, and that geometry fields are continuous across discontinuities, which means that the metric determinant cancels. This yields, defining the middle wave-speed $\lambda$ as
+\begin{equation}
+\lambda\equiv\frac{ds}{dt},
+\end{equation}
+\begin{equation}
+\lambda\left(\bU_{L}-\bU_{R}\right)=\alpha\left(\bF_{L}-\bF_{R}\right).
+\end{equation}
+These are the \textit{Rankine-Hugoniot jump conditions} and they describe how the fluid variables change across a discontinuity. Next we derive an expression for an estimate of the value of the middle wave-speed, $\lambda$.
 
-Before we apply the jump conditions to the energy-density, we note that:
+\subsection{Derivation of Estimate of Middle Wave-Speed $\lambda$}
+Now we apply the jump conditions to the shocked and un-shocked fluid (either the left or the right state):
+\begin{equation}
+\lambda^{i}\left(\bU^{*}-\bU\right)=\alpha\left(\left(\bF^{*}\right)^{i}-\bF^{i}\right).
+\end{equation}
+We will use the shorthand notation:
+\begin{equation}
+\bF^{*i}=\left(\bF^{*}\right)^{i}.
+\end{equation}
+Recalling that the geometry fields are continuous, we assume that the flux in the shocked region can be written as
+\begin{equation}
+\bF^{*i}\longrightarrow\left(F^{*i}\right)^{J}=\begin{pmatrix}D^{*}\left(\lambda^{*i}-\eta^{i}\right)\\ S^{*}_{j}\left(\lambda^{*i}-\eta^{i}\right)+p^{*}\,\delta^{i}_{~j}\\S^{*i}-\eta^{i}\,E^{*}\end{pmatrix}.
+\end{equation}
+Applying the jump conditions to the momentum-density equation we get
 \begin{align}
-    S^{i}&=\left(E+p\right)v^{i}\\
-    S^{*i}&=\left(E^{*}+p^{*}\right)\lambda^{*i}.\label{Eq:SsEs}
+\lambda^{i}\left(S_{j}^{*}-S_{j}\right)&=\alpha\left[S^{*}_{j}\left(\lambda^{*i}-\eta^{i}\right)+p^{*}\,\delta^{i}_{~j}-S_{j}\left(v^{i}-\eta^{i}\right)-p\,\delta^{i}_{~j}\right]\\
+\implies S^{*}_{j}\left[\lambda^{i}-\alpha\left(\lambda^{*i}-\eta^{i}\right)\right]&=S_{j}\left[\lambda^{i}-\alpha\left(v^{i}-\eta^{i}\right)\right]+\alpha\left(p^{*}-p\right)\delta^{i}_{~j}.
 \end{align}
-Next we apply the jump conditions to the energy-density:
+Now we apply the jump conditions to the energy-density equation, which gives
+\begin{equation}
+\lambda^{i}\left(E^{*}-E\right)=\alpha\left[S^{*i}-\eta^{i}\,E^{*}-S^{i}+\eta^{i}\,E\right].
+\end{equation}
+Now, we note that
 \begin{align}
-    \lambda^{i}\left(E^{*}-E\right)&=\alpha\left(S^{*i}-\eta^{i}\,E^{*}-S^{i}+\eta^{i}\,E\right)\\
-    \implies\lambda^{i}\left(E^{*}-E\right)&=\alpha\left(E^{*}\,\lambda^{*i}+p^{*}\,\lambda^{*i}-\eta^{i}\,E^{*}-E\,v^{i}-p\,v^{i}+\eta^{i}\,E\right)\\
-    \implies E^{*}\left(\lambda^{i}-\alpha\,\lambda^{*i}+\alpha\,\eta^{i}\right)&=E\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)+\alpha\left(p^{*}\,\lambda^{*i}-p\,v^{i}\right).\label{Eq:RH_E}
+S^{i}&=\left(E+p\right)v^{i}\label{Eq:Mom-En}\\
+S^{*i}&=\left(E^{*}+p^{*}\right)\lambda^{*i}.
 \end{align}
-Now we use \eqref{Eq:SsEs} and re-write \eqref{Eq:RH_Mom} (using the metric to raise and lower indices, so $S^{*}_{j}=\gamma_{jk}S^{*k}$):
-\begin{equation}
-    \left(E^{*}+p^{*}\right)\gamma_{kj}\,\lambda^{*k}\left(\lambda^{i}-\alpha\,\lambda^{*i}+\alpha\,\eta^{i}\right)=S_{j}\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)+\alpha\left(p^{*}-p\right)\delta^{i}_{~j}.
-\end{equation}
-Slight manipulation yields:
-\begin{equation}
-    E^{*}\left(\lambda^{i}-\alpha\,\lambda^{*i}+\alpha\,\eta^{i}\right)=-p^{*}\left(\lambda^{i}-\alpha\,\lambda^{*i}+\alpha\,\eta^{i}\right)+\f{S_{j}\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)+\alpha\left(p^{*}-p\right)\delta^{i}_{~j}}{\gamma_{kj}\,\lambda^{*k}}.
-\end{equation}
-Now we equate this with \eqref{Eq:RH_E}, which gives:
-\begin{equation}
-    E\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)+\alpha\left(p^{*}\,\lambda^{*i}-p\,v^{i}\right)=-p^{*}\left(\lambda^{i}-\alpha\,\lambda^{*i}+\alpha\,\eta^{i}\right)+\f{S_{j}\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)+\alpha\left(p^{*}-p\right)\delta^{i}_{~j}}{\gamma_{kj}\,\lambda^{*k}}.
-\end{equation}
-Or, multiplying through by $\gamma_{kj}\,\lambda^{*k}$:    
+Substituting this into the energy-density equation gives
 \begin{align}
-    &\gamma_{kj}\,\lambda^{*k}\left[E\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)+\alpha\left(p^{*}\,\lambda^{*i}-p\,v^{i}\right)\right]\nonumber\\
-    &\hspace{10em}=-\gamma_{kj}\,\lambda^{*k}\,p^{*}\left(\lambda^{i}-\alpha\,\lambda^{*i}+\alpha\,\eta^{i}\right)+S_{j}\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)+\alpha\left(p^{*}-p\right)\delta^{i}_{~j}.
+\lambda^{i}\left(E^{*}-E\right)&=\alpha\left[\left(E^{*}+p^{*}\right)\lambda^{*i}-\eta^{i}\,E^{*}-\left(E+p\right)v^{i}+\eta^{i}\,E\right]\\
+\implies E^{*}\left[\lambda^{i}-\alpha\left(\lambda^{*i}-\eta^{i}\right)\right]&=E\left[\lambda^{i}-\alpha\left(v^{i}-\eta^{i}\right)\right]+\alpha\left(p^{*}\,\lambda^{*i}-p\,v^{i}\right).\label{Eq:En1}
 \end{align}
-We see that the term $\gamma_{kj}\,\lambda^{*k}\,\alpha\,p^{*}\,\lambda^{*i}$ cancels. This gives:
+Now we substitute \eqref{Eq:Mom-En} into the momentum-density equation which yields
+\begin{align}
+\left(E^{*}+p^{*}\right)\lambda^{*}_{j}\left[\lambda^{i}-\alpha\left(\lambda^{*i}-\eta^{i}\right)\right]&=S_{j}\left[\lambda^{i}-\alpha\left(v^{i}-\eta^{i}\right)\right]+\alpha\left(p^{*}-p\right)\delta^{i}_{~j}\\
+\implies E^{*}\left[\lambda^{i}-\alpha\left(\lambda^{*i}-\eta^{i}\right)\right]\lambda^{*}_{j}&=-p^{*}\left[\lambda^{i}-\alpha\left(\lambda^{*i}-\eta^{i}\right)\right]\lambda^{*}_{j}+S_{j}\left[\lambda^{i}-\alpha\left(v^{i}-\eta^{i}\right)\right]+\alpha\left(p^{*}-p\right)\delta^{i}_{~j}.
+\end{align}
+Equating this with \eqref{Eq:En1} gives
+\begin{align}
+&\left\{E\left[\lambda^{i}-\alpha\left(v^{i}-\eta^{i}\right)\right]+\alpha\left(p^{*}\,\lambda^{*i}-p\,v^{i}\right)\right\}\lambda^{*}_{j}\\
+&\hspace{5em}=-p^{*}\left[\lambda^{i}-\alpha\left(\lambda^{*i}-\eta^{i}\right)\right]\lambda^{*}_{j}+S_{j}\left[\lambda^{i}-\alpha\left(v^{i}-\eta^{i}\right)\right]+\alpha\left(p^{*}-p\right)\delta^{i}_{~j}.
+\end{align}
+We see that the term $\alpha\,p^{*}\,\lambda^{*i}\,\lambda^{*}_{j}$ cancels from both sides. We now isolate $p^{*}$ to get
+\begin{align}
+p^{*}&=\frac{E\left[\lambda^{i}-\alpha\left(v^{i}-\eta^{i}\right)\right]\lambda^{*}_{j}-\alpha\,p\,v^{i}\,\lambda^{*}_{j}-S_{j}\left[\lambda^{i}-\alpha\left(v^{i}-\eta^{i}\right)\right]+\alpha\,p\,\delta^{i}_{~j}}{\alpha\,\delta^{i}_{~j}-\left(\lambda^{i}+\alpha\,\eta^{i}\right)\lambda^{*}_{j}}\\
+&=\frac{\left\{E\left[\lambda^{i}-\alpha\left(v^{i}-\eta^{i}\right)\right]-\alpha\,p\,v^{i}\right\}\lambda^{*}_{j}-\left\{S_{j}\left[\lambda^{i}-\alpha\left(v^{i}-\eta^{i}\right)\right]-\alpha\,p\,\delta^{i}_{~j}\right\}}{\alpha\,\delta^{i}_{~j}-\left(\lambda^{i}+\alpha\,\eta^{i}\right)\lambda^{*}_{j}}.
+\end{align}
+Now we note that
 \begin{equation}
-    \gamma_{kj}\,\lambda^{*k}\left[E\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)-\alpha\,p\,v^{i}\right]=-\gamma_{kj}\,\lambda^{*k}\,p^{*}\left(\lambda^{i}+\alpha\,\eta^{i}\right)+S_{j}\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)+\alpha\left(p^{*}-p\right)\delta^{i}_{~j}.
-\end{equation}
-Or, grouping the terms with $\lambda^{*k}$ to the LHS:
-\begin{equation}
-    \left[E\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)-\alpha\,p\,v^{i}+p^{*}\left(\lambda^{i}+\alpha\,\eta^{i}\right)\right]\gamma_{jk}\,\lambda^{*k}=S_{j}\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)-\alpha\,p\,\delta^{i}_{~j}+\alpha\,p^{*}\,\delta^{i}_{~j},
-\end{equation}
-We can write this as:
-\begin{equation}\label{Eq:AB}
-    \left[A^{i}+\left(\lambda^{i}+\alpha\,\eta^{i}\right)p^{*}\right]\gamma_{jk}\,\lambda^{*k}=B^{i}_{~j}+\alpha\,p^{*}\,\delta^{i}_{~j},
-\end{equation}
-where
-\begin{equation}
-    A^{i}\equiv E\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)-\alpha\,p\,v^{i}=\lambda^{i}\,E-\alpha\left(E+p\right)v^{i}+\alpha\,\eta^{i}\,E=\lambda^{i}\,E-\alpha\left(S^{i}-\eta^{i}\,E\right)=\lambda^{i}\,E-\alpha\,F^{i}_{E},
+E\left[\lambda^{i}-\alpha\left(v^{i}-\eta^{i}\right)\right]-\alpha\,p\,v^{i}=\lambda^{i}\,E-\alpha\left[\left(E+p\right)v^{i}-\eta^{i}\,E\right]=\lambda^{i}\,E-\alpha\left(S^{i}-\eta^{i}\,E\right)=\lambda^{i}\,E-\alpha\,F^{i}_{E},
 \end{equation}
 and
 \begin{equation}
-    B^{i}_{~j}\equiv S_{j}\left(\lambda^{i}-\alpha\,v^{i}+\alpha\,\eta^{i}\right)-\alpha\,p\,\delta^{i}_{~j}=\lambda^{i}\,S_{j}-\alpha\left[S_{j}\,v^{i}+p\,\delta^{i}_{~j}-\eta^{i}\,S_{j}\right]=\lambda^{i}\,S_{j}-\alpha\,F^{i}_{S_{j}}.
+S_{j}\left[\lambda^{i}-\alpha\left(v^{i}-\eta^{i}\right)\right]-\alpha\,p\,\delta^{i}_{~j}=\lambda^{i}\,S_{j}-\alpha\left[S_{j}\left(v^{i}-\eta^{i}\right)+p\,\delta^{i}_{~j}\right]=\lambda^{i}\,S_{j}-\alpha\,F^{i}_{S_{j}}.
 \end{equation}
-We can solve \eqref{Eq:AB} for $p^{*}$:
-\begin{equation}\label{Eq:p*}
-  \gamma_{jk}\,\lambda^{*k}\,A^{i}+\gamma_{jk}\,\lambda^{*k}\,\left(\lambda^{i}+\alpha\,\eta^{i}\right)p^{*}=B^{i}_{~j}+\alpha\,p^{*}\,\delta^{i}_{~j}\implies p^{*}=\f{\gamma_{jk}\,\lambda^{*k}\,A^{i}-B^{i}_{~j}}{\alpha\,\delta^{i}_{~j}-\gamma_{jk}\,\lambda^{*k}\left(\lambda^{i}+\alpha\,\eta^{i}\right)}
-\end{equation}
-At this point we note that because of the conformally-flat approximation, the metric contraction term reduces to:
+With this, we have
 \begin{equation}
-    \gamma_{jk}\,\lambda^{*k}=\gamma_{jj}\,\lambda^{*j}\hspace{2em}\text{(No summation over $j$ index)}.
+p^{*}=\frac{\left(\lambda^{i}\,E-\alpha\,F^{i}_{E}\right)\lambda^{*}_{j}-\left(\lambda^{i}\,S_{j}-\alpha\,F^{i}_{S_{j}}\right)}{\alpha\,\delta^{i}_{~j}-\left(\lambda^{i}+\alpha\,\eta^{i}\right)\lambda^{*}_{j}}.
 \end{equation}
-So if $i=j$, then $\lambda^{*j}=\lambda^{*i}$ is the normal velocity, which must be continuous across a contact discontinuity, i.e. $\lambda^{*j}_{L}=\lambda^{*j}_{R}=\lambda^{*j}$. Otherwise $\lambda^{*j}$, $j\neq i$ is a tangential velocity, which may be discontinuous across a contact discontinuity, i.e. $\lambda^{*j}_{L}\neq\lambda^{*j}_{R}$. We also know that the pressure is continuous across a contact discontinuity, so $p^{*}_{L}=p^{*}_{R}=p^{*}$. Using this, we can obtain an equation for $\lambda^{*i}$ by setting $j=i$ in \eqref{Eq:p*} and applying it to the left and right sides of the contact discontinuity, and then equating them:
+Now, since the pressure is continuous across contact discontinuities we can equate the left and right states, giving
 \begin{equation}
-    \f{\gamma_{ii,L}\,\lambda^{*i}\,A^{i}_{L}-B^{i}_{~i,L}}{\alpha_{L}-\gamma_{ii,L}\,\lambda^{*i}\left(-\lambda^{i}_{L}+\alpha_{L}\,\eta_{L}^{i}\right)}=\f{\gamma_{ii,R}\,\lambda^{*i}\,A^{i}_{R}-B^{i}_{~i,R}}{\alpha_{R}-\gamma_{ii,R}\,\lambda^{*i}\left(\lambda^{i}_{R}+\alpha_{R}\,\eta_{R}^{i}\right)}.
+\frac{\left(-\lambda^{i}_{L}\,E_{L}-\alpha\,F^{i}_{E,L}\right)\lambda^{*}_{j}-\left(-\lambda^{i}_{L}\,S_{j,L}-\alpha\,F^{i}_{S_{j},L}\right)}{\alpha\,\delta^{i}_{~j}-\left(-\lambda^{i}_{L}+\alpha\,\eta^{i}\right)\lambda^{*}_{j}}=\frac{\left(\lambda^{i}_{R}\,E_{R}-\alpha\,F^{i}_{E,R}\right)\lambda^{*}_{j}-\left(\lambda^{i}_{R}\,S_{j,R}-\alpha\,F^{i}_{S_{j},R}\right)}{\alpha\,\delta^{i}_{~j}-\left(\lambda^{i}_{R}+\alpha\,\eta^{i}\right)\lambda^{*}_{j}}.
 \end{equation}
-The minus sign in front of $\lambda^{i}_{L}$ comes about because we demand that $\lambda^{i}$ is \textit{always} greater than or equal to zero, so a subsonic left-moving wave requires a minus sign. \sd{What about super-sonic waves? Does it reducing to HLL mean that the sign isn't important?}
-Solving the equation for $\lambda^{*i}$:
+Now, cross-multiplying and focusing on the LHS:
 \begin{align}
-    &\left[\alpha_{R}-\gamma_{ii,R}\,\lambda^{*i}\left(\lambda^{i}_{R}+\alpha_{R}\,\eta_{R}^{i}\right)\right]\left(\gamma_{ii,L}\,\lambda^{*i}\,A^{i}_{L}-B^{i}_{~i,L}\right)=\left[\alpha_{L}-\gamma_{ii,L}\,\lambda^{*i}\left(-\lambda^{i}_{L}+\alpha_{L}\,\eta_{L}^{i}\right)\right]\left(\gamma_{ii,R}\,\lambda^{*i}\,A^{i}_{R}-B^{i}_{~i,R}\right)\nonumber\\
-    &\implies \alpha_{R}\,\gamma_{ii,L}\,A^{i}_{L}\,\lambda^{*i}-\alpha_{R}\,B^{i}_{~i,L}-\gamma_{ii,R}\,\gamma_{ii,L}\,A^{i}_{L}\left(\lambda^{i}_{R}+\alpha_{R}\,\eta^{i}_{R}\right)\left(\lambda^{*i}\right)^{2}+\gamma_{ii,R}\,B^{i}_{~i,L}\left(\lambda^{i}_{R}+\alpha_{R}\,\eta^{i}_{R}\right)\lambda^{*i}\nonumber\\
-    &\hspace{3em}=\alpha_{L}\,\gamma_{ii,R}\,A^{i}_{R}\,\lambda^{*i}-\alpha_{L}\,B^{i}_{~i,R}-\gamma_{ii,L}\,\gamma_{ii,R}\,A^{i}_{R}\left(-\lambda^{i}_{L}+\alpha_{L}\,\eta^{i}_{L}\right)\left(\lambda^{*i}\right)^{2}+\gamma_{ii,L}\,B^{i}_{~i,R}\left(-\lambda^{i}_{L}+\alpha_{L}\,\eta^{i}_{L}\right)\lambda^{*i}\nonumber\\
-    &\implies\gamma_{ii,L}\,\gamma_{ii,R}\left[A^{i}_{R}\left(-\lambda^{i}_{L}+\alpha_{L}\,\eta^{i}_{L}\right)-A^{i}_{L}\left(\lambda^{i}_{R}+\alpha_{R}\,\eta^{i}_{R}\right)\right]\left(\lambda^{*i}\right)^{2}\nonumber\\
-    &\hspace{5em}+\left\{\gamma_{ii,L}\left[\alpha_{R}\,A^{i}_{L}-B^{i}_{~i,R}\left(-\lambda^{i}_{L}+\alpha_{L}\,\eta^{i}_{L}\right)\right]+\gamma_{ii,R}\left[B^{i}_{~i,L}\left(\lambda^{i}_{R}+\alpha_{R}\,\eta^{i}_{R}\right)-\alpha_{L}\,A^{i}_{R}\right]\right\}\lambda^{*i}\nonumber\\
-    &\hspace{10em}+\alpha_{L}\,B^{i}_{~i,R}-\alpha_{R}\,B^{i}_{~i,L}=0.
+&\left[\alpha\,\delta^{i}_{~j}-\left(\lambda^{i}_{R}+\alpha\,\eta^{i}\right)\lambda^{*}_{j}\right]\left[\left(-\lambda^{i}_{L}\,E_{L}-\alpha\,F^{i}_{E,L}\right)\lambda^{*}_{j}-\left(-\lambda^{i}_{L}\,S_{j,L}-\alpha\,F^{i}_{S_{j},L}\right)\right]\\
+&=\left[\alpha\,\delta^{i}_{~j}-\left(\lambda^{i}_{R}+\beta^{i}\right)\lambda^{*}_{j}\right]\left[\left(-\lambda^{i}_{L}\,E_{L}-\alpha\,F^{i}_{E,L}\right)\lambda^{*}_{j}-\left(-\lambda^{i}_{L}\,S_{j,L}-\alpha\,F^{i}_{S_{j},L}\right)\right]\\
+&=\alpha\,\delta^{i}_{~j}\left(-\lambda^{i}_{L}\,E_{L}-\alpha\,F^{i}_{E,L}\right)\lambda^{*}_{j}-\alpha\,\delta^{i}_{~j}\left(-\lambda^{i}_{L}\,S_{j,L}-\alpha\,F^{i}_{S_{j},L}\right)\\
+&\hspace{3em}-\left(\lambda^{i}_{R}+\beta^{i}\right)\left(-\lambda^{i}_{L}\,E_{L}-\alpha\,F^{i}_{E,L}\right)\left(\lambda^{*}_{j}\right)^{2}+\left(\lambda^{i}_{R}+\beta^{i}\right)\left(-\lambda^{i}_{L}\,S_{j,L}-\alpha\,F^{i}_{S_{j},L}\right)\lambda^{*}_{j}\\
+&=-\left(\lambda^{i}_{R}+\beta^{i}\right)\left(-\lambda^{i}_{L}\,E_{L}-\alpha\,F^{i}_{E,L}\right)\left(\lambda^{*}_{j}\right)^{2}\\
+&\hspace{3em}+\left[\alpha\,\delta^{i}_{~j}\left(-\lambda^{i}_{L}\,E_{L}-\alpha\,F^{i}_{E,L}\right)+\left(\lambda^{i}_{R}+\beta^{i}\right)\left(-\lambda^{i}_{L}\,S_{j,L}-\alpha\,F^{i}_{S_{j},L}\right)\right]\lambda^{*}_{j}\\
+&\hspace{3em}-\alpha\,\delta^{i}_{~j}\left(-\lambda^{i}_{L}\,S_{j,L}-\alpha\,F^{i}_{S_{j,L}}\right).
 \end{align}
-So, we have a quadratic equation in $\lambda^{*i}$:
-\begin{equation}
-    X^{ii}\,\left(\lambda^{*i}\right)^{2}+X^{i}\,\lambda^{*i}+X=0,
-\end{equation}
-where (recalling that $\alpha\,\eta^{i}=\beta^{i}$):
+Expanding out the terms gives
 \begin{align}
-    X^{ii}&=\gamma_{ii,L}\,\gamma_{ii,R}\left[A^{i}_{R}\left(-\lambda^{i}_{L}+\beta^{i}_{L}\right)-A^{i}_{L}\left(\lambda^{i}_{R}+\beta^{i}_{R}\right)\right]\\
-    X^{i}&=\gamma_{ii,L}\left[\alpha_{R}\,A^{i}_{L}-B^{i}_{~i,R}\left(-\lambda^{i}_{L}+\beta^{i}_{L}\right)\right]-\gamma_{ii,R}\left[\alpha_{L}\,A^{i}_{R}-B^{i}_{~i,L}\left(\lambda^{i}_{R}+\beta^{i}_{R}\right)\right]\\
-    X&=\alpha_{L}\,B^{i}_{~i,R}-\alpha_{R}\,B^{i}_{~i,L}.
+&\left[\lambda^{i}_{R}\,\lambda^{i}_{L}\,E_{L}+\lambda^{i}_{R}\,\alpha\,F^{i}_{E,L}-\beta^{i}\left(-\lambda^{i}_{L}\,E_{L}-\alpha\,F^{i}_{E,L}\right)\right]\left(\lambda^{*}_{j}\right)^{2}\\
+&+\left[\alpha\,\delta^{i}_{~j}\left(-\lambda^{i}_{L}\,E_{L}-\alpha\,F^{i}_{E,L}\right)-\lambda^{i}_{R}\,\lambda^{i}_{L}\,S_{j,L}-\lambda^{i}_{R}\,\alpha\,F^{i}_{S_{j},L}+\beta^{i}\left(-\lambda^{i}_{L}\,S_{j,L}-\alpha\,F^{i}_{S_{j},L}\right)\right]\lambda^{*}_{j}\\
+&-\alpha\,\delta^{i}_{~j}\left(-\lambda^{i}_{L}\,S_{j,L}-\alpha\,F^{i}_{S_{j},L}\right).
 \end{align}
+From symmetry, by letting $L\leftrightarrow R$ and $\lambda^{i}_{L}\leftrightarrow-\lambda^{i}_{R}$, we can immediately write down the RHS as
+\begin{align}
+&\left[\lambda^{i}_{R}\,\lambda^{i}_{L}\,E_{R}-\lambda^{i}_{L}\,\alpha\,F^{i}_{E,R}-\beta^{i}\left(\lambda^{i}_{R}\,E_{R}-\alpha\,F^{i}_{E,R}\right)\right]\left(\lambda^{*}_{j}\right)^{2}\\
+&+\left[\alpha\,\delta^{i}_{~j}\left(\lambda^{i}_{R}\,E_{R}-\alpha\,F^{i}_{E,R}\right)-\lambda^{i}_{R}\,\lambda^{i}_{L}\,S_{j,R}+\lambda^{i}_{L}\,\alpha\,F^{i}_{S_{j},R}+\beta^{i}\left(\lambda^{i}_{R}\,S_{j,R}-\alpha\,F^{i}_{S_{j},R}\right)\right]\lambda^{*}_{j}\\
+&-\alpha\,\delta^{i}_{~j}\left(\lambda^{i}_{R}\,S_{j,R}-\alpha\,F^{i}_{S_{j},R}\right).
+\end{align}
+Now we subtract the LHS from the RHS, giving
+\begin{align}
+&\left[\lambda^{i}_{R}\,\lambda^{i}_{L}\left(E_{R}-E_{L}\right)-\left(\lambda^{i}_{R}\,\alpha\,F^{i}_{E,L}+\lambda^{i}_{L}\,\alpha\,F^{i}_{E,R}\right)-\beta^{i}\left(\lambda^{i}_{R}\,E_{R}+\lambda^{i}_{L}\,E_{L}+\alpha\,F^{i}_{E,L}-\alpha\,F^{i}_{E,R}\right)\right]\left(\lambda^{*}_{j}\right)^{2}\\
+&+\left[\alpha\,\delta^{i}_{~j}\left(\lambda^{i}_{R}\,E_{R}+\lambda^{i}_{L}\,E_{L}+\alpha\,F^{i}_{E,L}-\alpha\,F^{i}_{E,R}\right)-\lambda^{i}_{R}\,\lambda^{i}_{L}\left(S_{j,R}-S_{j,L}\right)+\lambda^{i}_{R}\,\alpha\,F^{i}_{S_{j},L}+\lambda^{i}_{L}\,\alpha\,F^{i}_{S_{j},R}\right.\\
+&\hspace{3em}\left.+\beta^{i}\left(\lambda^{i}_{R}\,S_{j,R}+\lambda^{i}_{L}\,S_{j,L}+\alpha\,F^{i}_{S_{j},L}-\alpha\,F^{i}_{S_{j},R}\right)\right]\\
+&-\alpha\,\delta^{i}_{~j}\left(\lambda^{i}_{R}\,S_{j,R}+\lambda^{i}_{L}\,S_{j,L}+\alpha\,F^{i}_{S_{j},L}-\alpha\,F^{i}_{S_{j},R}\right).
+\end{align}
+By making use of the HLL conserved variables and fluxes,
+\begin{align}
+\left(\lambda^{i}_{R}+\lambda^{i}_{L}\right)\bU_{HLL}&=\lambda^{i}_{R}\,\bU_{R}+\lambda^{i}_{L}\,\bU_{L}+\alpha\,\bF^{i}_{L}-\alpha\,\bF^{i}_{R}\\
+\left(\lambda^{i}_{R}+\lambda^{i}_{L}\right)\bF^{i}_{HLL}&=\lambda^{i}_{R}\,\alpha\,\bF^{i}_{L}+\lambda^{i}_{L}\,\alpha\,\bF_{R}-\lambda^{i}_{R}\,\lambda^{i}_{L}\left(\bU_{R}-\bU_{L}\right),
+\end{align}
+we can simplify the quadratic equation to (assuming that $\lambda^{i}_{L}\neq0$ \textbf{and} $\lambda^{i}_{R}\neq0$)
+\begin{equation}
+\left(-F^{i}_{E,HLL}-\beta^{i}\,E_{HLL}\right)\left(\lambda^{*}_{j}\right)^{2}+\left[\alpha\,\delta^{i}_{~j}\,E_{HLL}+F^{i}_{S_{j},HLL}+\beta^{i}\,S_{j,HLL}\right]\lambda^{*}_{j}-\alpha\,\delta^{i}_{~j}\,S_{j,HLL}=0.
+\end{equation}
+Now we just multiply the equation by $-1$, which gives
+\begin{equation}
+\left(F^{i}_{E,HLL}+\beta^{i}\,E_{HLL}\right)\left(\lambda^{*}_{j}\right)^{2}-\left[\alpha\,\delta^{i}_{~j}\,E_{HLL}+F^{i}_{S_{j},HLL}+\beta^{i}\,S_{j,HLL}\right]\lambda^{*}_{j}+\alpha\,\delta^{i}_{~j}\,S_{j,HLL}=0.
+\end{equation}
+Finally, we use the metric to raise the index on the contact wave-speed, which gives
+\begin{equation}
+\left(\gamma_{jk}\right)^{2}\left(F^{i}_{E,HLL}+\beta^{i}\,E_{HLL}\right)\left(\lambda^{*k}\right)^{2}-\gamma_{jk}\left[\alpha\,\delta^{i}_{~j}\,E_{HLL}+F^{i}_{S_{j},HLL}+\beta^{i}\,S_{j,HLL}\right]\lambda^{*k}+\alpha\,\delta^{i}_{~j}\,S_{j,HLL}=0.
+\end{equation}
 
-If we assume that the geometry fields are continuous, then we can simplify further, specifically:
-\begin{align}
-    X^{ii}&=\left(\gamma_{ii}\right)^{2}\left[A^{i}_{R}\left(-\lambda^{i}_{L}+\beta^{i}\right)-A^{i}_{L}\left(\lambda^{i}_{R}+\beta^{i}\right)\right]\\
-    X^{i}&=\gamma_{ii}\left\{\left[\alpha\,A^{i}_{L}-B^{i}_{~i,R}\left(-\lambda^{i}_{L}+\beta^{i}\right)\right]-\left[\alpha\,A^{i}_{R}-B^{i}_{~i,L}\left(\lambda^{i}_{R}+\beta^{i}\right)\right]\right\}\\
-    X&=\alpha\left(B^{i}_{~i,R}-B^{i}_{~i,L}\right).
-\end{align}
+We see that in the special relativistic, Cartesian coordinate limit of $\alpha\rightarrow1$, $\beta^{i}\rightarrow0^{i}$, and $\gamma_{ij}=\delta_{ij}$, we recover the result of \citet{Mignone2005}.
 
 \newpage
 \bibliographystyle{../apj}

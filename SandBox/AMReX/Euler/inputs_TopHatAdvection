@@ -6,7 +6,8 @@ DEBUG = 0
 thornado.ProgramName = "TopHatAdvection"
 
 thornado.t_end     = 1.0      # Final time
-thornado.dt_wrt    = 0.1      # Write time interval
+thornado.dt_wrt    = -0.1      # Write time interval
+thornado.dt_chk    = -0.1      # Time increment to write checkpoint-file
 thornado.Gamma     = 1.4      # Ideal Gas EoS Gamm
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
 thornado.nStages   = 2        # Number of SSP-RK stages for time integration
