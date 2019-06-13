@@ -27,7 +27,8 @@ PROGRAM NeutrinoOpacities
     ComputeNeutrinoOpacities_NES_Points, &
     ComputeNeutrinoOpacitiesAndDerivatives_NES_Point, &
     ComputeNeutrinoOpacities_Pair_Point, &
-    ComputeNeutrinoOpacities_Pair_Points
+    ComputeNeutrinoOpacities_Pair_Points, &
+    ComputeNeutrinoOpacitiesAndDerivatives_Pair_Point
   USE DeviceModule, ONLY: &
     InitializeDevice, &
     FinalizeDevice
@@ -37,7 +38,7 @@ PROGRAM NeutrinoOpacities
   INCLUDE 'mpif.h'
 
   INTEGER, PARAMETER :: &
-    nPointsX = 2**12, &
+    nPointsX = 2**5, &
     nPointsE = 2**5, &
     nSpecies = 2
   REAL(DP), PARAMETER :: &
@@ -62,6 +63,7 @@ PROGRAM NeutrinoOpacities
     Timer_Compute_NES_D_Point, &
     Timer_Compute_Pair, &
     Timer_Compute_Pair_Point, &
+    Timer_Compute_Pair_D_Point, &
     Timer_Total
   REAL(DP), DIMENSION(nPointsX) :: &
     D, T, Y
@@ -73,10 +75,10 @@ PROGRAM NeutrinoOpacities
     Chi_NES, & ! --- Integrated NES Opacity
     Chi_Pair   ! --- Integrated Pair Opacity
   REAL(DP), DIMENSION(nPointsE,nPointsE,nPointsX,nSpecies) :: &
-    Phi_0_NES_In,  dPhi_0_NES_In_dY,  dPhi_0_NES_In_dE, &
-    Phi_0_NES_Out, dPhi_0_NES_Out_dY, dPhi_0_NES_Out_dE, &
-    Phi_0_Pair_In, &
-    Phi_0_Pair_Out
+    Phi_0_NES_In,   dPhi_0_NES_In_dY,   dPhi_0_NES_In_dE, &
+    Phi_0_NES_Out,  dPhi_0_NES_Out_dY,  dPhi_0_NES_Out_dE, &
+    Phi_0_Pair_In,  dPhi_0_Pair_In_dY,  dPhi_0_Pair_In_dE, &
+    Phi_0_Pair_Out, dPhi_0_Pair_Out_dY, dPhi_0_Pair_Out_dE
 
   CALL MPI_INIT( mpierr )
 
@@ -346,6 +348,27 @@ PROGRAM NeutrinoOpacities
   !$ACC UPDATE HOST( Phi_0_Pair_In, Phi_0_Pair_Out )
 #endif
 
+  ! --- Compute Pair Opacities and Derivatives (Point) ---
+
+  Timer_Compute_Pair_D_Point = MPI_WTIME()
+
+  DO iS = 1, nSpecies
+  DO iX = 1, nPointsX
+
+    CALL ComputeNeutrinoOpacitiesAndDerivatives_Pair_Point &
+           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, &
+             Phi_0_Pair_In     (:,:,iX,iS), &
+             Phi_0_Pair_Out    (:,:,iX,iS), &
+             dPhi_0_Pair_In_dY (:,:,iX,iS), &
+             dPhi_0_Pair_In_dE (:,:,iX,iS), &
+             dPhi_0_Pair_Out_dY(:,:,iX,iS), &
+             dPhi_0_Pair_Out_dE(:,:,iX,iS) )
+
+  END DO
+  END DO
+
+  Timer_Compute_Pair_D_Point = MPI_WTIME() - Timer_Compute_Pair_D_Point
+
   ! --- Integrated Pair Opacity ---
 
   DO iS = 1, nSpecies
@@ -413,7 +436,7 @@ PROGRAM NeutrinoOpacities
       + Timer_Compute_ES + Timer_Compute_ES_Point &
       + Timer_Compute_NES + Timer_Compute_NES_Point &
       + Timer_Compute_NES_D_Point + Timer_Compute_Pair &
-      + Timer_Compute_Pair_Point
+      + Timer_Compute_Pair_Point + Timer_Compute_Pair_D_Point
 
   WRITE(*,*)
   WRITE(*,'(A4,A22,1ES10.2E2)') '', 'ReadEos = ',       &
@@ -438,6 +461,8 @@ PROGRAM NeutrinoOpacities
     Timer_Compute_Pair, Timer_Compute_Pair / Timer_Total
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Pair (P) = ',  &
     Timer_Compute_Pair_Point, Timer_Compute_Pair_Point / Timer_Total
+  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Pair_D (P) = ',   &
+    Timer_Compute_Pair_D_Point, Timer_Compute_Pair_D_Point / Timer_Total
   WRITE(*,*)
 
   CALL FinalizeDevice
