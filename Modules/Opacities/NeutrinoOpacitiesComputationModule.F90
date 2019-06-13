@@ -69,7 +69,9 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: ComputeNeutrinoOpacitiesAndDerivatives_NES_Point
   PUBLIC :: ComputeNeutrinoOpacities_Pair_Point
   PUBLIC :: ComputeNeutrinoOpacities_Pair_Points
+  PUBLIC :: ComputeNeutrinoOpacitiesAndDerivatives_Pair_Point
   PUBLIC :: ComputeEquilibriumDistributions_Point
+  PUBLIC :: ComputeEquilibriumDistributionAndDerivatives_Point
   PUBLIC :: FermiDirac
   PUBLIC :: dFermiDiracdT
   PUBLIC :: dFermiDiracdY
@@ -285,6 +287,93 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeEquilibriumDistributions_Point
+
+
+  SUBROUTINE ComputeEquilibriumDistributionAndDerivatives_Point &
+    ( iE_B, iE_E, E, D, T, Y, iSpecies, f0, df0dY, df0dU )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    ! --- Equilibrium Neutrino Distribution and Derivatives (Single D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D, T, Y
+    INTEGER,  INTENT(in)  :: iSpecies
+    REAL(DP), INTENT(out) :: f0   (iE_B:iE_E)
+    REAL(DP), INTENT(out) :: df0dY(iE_B:iE_E)
+    REAL(DP), INTENT(out) :: df0dU(iE_B:iE_E)
+
+    INTEGER  :: iE
+    REAL(DP) :: kT, Exponent
+    REAL(DP) :: Me, dMedD, dMedT, dMedY
+    REAL(DP) :: Mp, dMpdD, dMpdT, dMpdY
+    REAL(DP) :: Mn, dMndD, dMndT, dMndY
+    REAL(DP) :: M,  dMdD,  dMdT,  dMdY
+    REAL(DP) :: U,  dUdD,  dUdT,  dUdY
+    REAL(DP) :: df0dT(iE_B:iE_E)
+    REAL(DP) :: df0dM(iE_B:iE_E)
+
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( D, T, Y, Me, dMedD, dMedT, dMedY )
+
+    CALL ComputeProtonChemicalPotential_TABLE &
+           ( D, T, Y, Mp, dMpdD, dMpdT, dMpdY )
+
+    CALL ComputeNeutronChemicalPotential_TABLE &
+           ( D, T, Y, Mn, dMndD, dMndT, dMndY )
+
+    CALL ComputeSpecificInternalEnergy_TABLE &
+           ( D, T, Y, U,  dUdD,  dUdT,  dUdY )
+
+    IF( iSpecies .EQ. iNuE )THEN
+
+      ! --- Electron Neutrinos ---
+
+      M = ( Me + Mp ) - Mn
+
+      dMdT = dMedT + dMpdT - dMndT
+      dMdY = dMedY + dMpdY - dMndY
+
+    ELSEIF( iSpecies .EQ. iNuE_Bar )THEN
+
+      ! --- Electron Antineutrino ---
+
+      M = Mn - ( Me + Mp )
+
+      dMdT = dMndT - ( dMedT + dMpdT )
+      dMdY = dMndY - ( dMedY + dMpdY )
+
+    ELSE
+
+      M = Zero
+
+    END IF
+
+    kT = BoltzmannConstant * T
+
+    DO iE = iE_B, iE_E
+
+      Exponent = ( E(iE) - M ) / kT
+      Exponent = MIN( MAX( Exponent, - Log1d100 ), + Log1d100 )
+
+      f0(iE) = One / ( EXP( Exponent ) + One )
+
+      df0dT(iE) = - f0(iE)**2 * M / ( kT * T )
+
+      df0dM(iE) =   f0(iE)**2 / kT
+
+    END DO
+
+    df0dU = ( df0dT + dMdT * df0dM ) / dUdT
+
+    df0dY = dMdY * df0dM - dUdY * df0dU
+
+  END SUBROUTINE ComputeEquilibriumDistributionAndDerivatives_Point
 
 
   SUBROUTINE ComputeNeutrinoOpacities_EC &
@@ -1143,19 +1232,13 @@ CONTAINS
 
     DO iE2 = iE_B, iE_E
     DO iE1 = iE_B, iE2
-      Phi_Out(iE1,iE2) = C1 * H1(iE1,iE2) + C2 * H2(iE1,iE2)
+      Phi_Out(iE1,iE2) = ( C1 * H1(iE1,iE2) + C2 * H2(iE1,iE2) ) * UnitNES
     END DO
     END DO
 
     DO iE2 = iE_B,  iE_E
     DO iE1 = iE2+1, iE_E
       Phi_Out(iE1,iE2) = Phi_Out(iE2,iE1) * EXP( ( E(iE2) - E(iE1) ) / kT )
-    END DO
-    END DO
-
-    DO iE2 = iE_B, iE_E
-    DO iE1 = iE_B, iE_E
-      Phi_Out(iE1,iE2) = Phi_Out(iE1,iE2) * UnitNES
     END DO
     END DO
 
@@ -1171,19 +1254,17 @@ CONTAINS
 
     DO iE2 = iE_B, iE_E
     DO iE1 = iE_B, iE2
-      dPhidT(iE1,iE2) = C1 * dH1dT(iE1,iE2) + C2 * dH2dT(iE1,iE2)
+      dPhidT(iE1,iE2) &
+        = ( C1 * dH1dT(iE1,iE2) + C2 * dH2dT(iE1,iE2) ) * UnitNES / UnitT
     END DO
     END DO
 
     DO iE2 = iE_B,  iE_E
     DO iE1 = iE2+1, iE_E
-      dPhidT(iE1,iE2) = dPhidT(iE2,iE1) * EXP( ( E(iE2) - E(iE1) ) / kT )
-    END DO
-    END DO
-
-    DO iE2 = iE_B, iE_E
-    DO iE1 = iE_B, iE_E
-      dPhidT(iE1,iE2) = dPhidT(iE1,iE2) * UnitNES / UnitT
+      dPhidT(iE1,iE2) &
+        = ( dPhidT(iE2,iE1) &
+            - ( Phi_Out(iE2,iE1) / T ) * ( E(iE2) - E(iE1) ) / kT ) &
+          * EXP( ( E(iE2) - E(iE1) ) / kT )
     END DO
     END DO
 
@@ -1191,19 +1272,15 @@ CONTAINS
 
     DO iE2 = iE_B, iE_E
     DO iE1 = iE_B, iE2
-      dPhidEta(iE1,iE2) = C1 * dH1dEta(iE1,iE2) + C2 * dH2dEta(iE1,iE2)
+      dPhidEta(iE1,iE2) &
+        = ( C1 * dH1dEta(iE1,iE2) + C2 * dH2dEta(iE1,iE2) ) * UnitNES
     END DO
     END DO
 
     DO iE2 = iE_B,  iE_E
     DO iE1 = iE2+1, iE_E
-      dPhidEta(iE1,iE2) = dPhidEta(iE2,iE1) * EXP( ( E(iE2) - E(iE1) ) / kT )
-    END DO
-    END DO
-
-    DO iE2 = iE_B, iE_E
-    DO iE1 = iE_B, iE_E
-      dPhidEta(iE1,iE2) = dPhidEta(iE1,iE2) * UnitNES
+      dPhidEta(iE1,iE2) &
+        = dPhidEta(iE2,iE1) * EXP( ( E(iE2) - E(iE1) ) / kT )
     END DO
     END DO
 
@@ -1545,6 +1622,191 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_Pair_Points
+
+
+  SUBROUTINE ComputeNeutrinoOpacitiesAndDerivatives_Pair_Point &
+    ( iE_B, iE_E, E, D, T, Y, iSpecies, iMoment, Phi_In, Phi_Out, &
+      dPhi_In_dY, dPhi_In_dE, dPhi_Out_dY, dPhi_Out_dE )
+
+    ! --- Pair Opacities (Single D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D, T, Y
+    INTEGER,  INTENT(in)  :: iSpecies
+    INTEGER,  INTENT(in)  :: iMoment
+    REAL(DP), INTENT(out) :: Phi_In     (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: Phi_Out    (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: dPhi_In_dY (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: dPhi_In_dE (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: dPhi_Out_dY(iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: dPhi_Out_dE(iE_B:iE_E,iE_B:iE_E)
+
+    INTEGER  :: iE1, iE2, iJ1, iJ2
+    REAL(DP) :: C1, C2, kT, LogT, LogEta, C_Eta, C_T
+    REAL(DP) :: M, dMdD, dMdT, dMdY
+    REAL(DP) :: U, dUdD, dUdT, dUdY
+    REAL(DP) :: LogE(iE_B:iE_E)
+    REAL(DP) :: J1    (iE_B:iE_E,iE_B:iE_E), J2      (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP) :: dJ1dT (iE_B:iE_E,iE_B:iE_E), dJ1dEta (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP) :: dJ2dT (iE_B:iE_E,iE_B:iE_E), dJ2dEta (iE_B:iE_E,iE_B:iE_E)
+    REAL(DP) :: dPhidT(iE_B:iE_E,iE_B:iE_E), dPhidEta(iE_B:iE_E,iE_B:iE_E)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    iJ1 = ( iMoment - 1 ) * 2 + 1
+    iJ2 = ( iMoment - 1 ) * 2 + 2
+
+    IF(     iSpecies == iNuE     )THEN
+
+      C1 = ( cv + ca )**2
+      C2 = ( cv - ca )**2
+
+    ELSEIF( iSpecies == iNuE_Bar )THEN
+
+      C1 = ( cv - ca )**2
+      C2 = ( cv + ca )**2
+
+    END IF
+
+    ! --- Compute Electron Chemical Potential and Derivatives ---
+
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( D, T, Y, M, dMdD, dMdT, dMdY )
+
+    kT = BoltzmannConstant * T
+
+    LogT   = LOG10( T / UnitT )
+    LogEta = LOG10( M / kT )
+
+    DO iE1 = iE_B, iE_E
+      LogE(iE1) = LOG10( E(iE1) / UnitE )
+    END DO
+
+    ! --- Interpolate JI  ---
+
+    CALL LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Point &
+           ( LogE, LogT, LogEta, LogEs_T, LogTs_T, LogEtas_T, &
+             OS_Pair(1,iJ1), Pair_T(:,:,:,:,iJ1,1), J1, dJ1dT, dJ1dEta )
+
+    ! --- Interpolate JII ---
+
+    CALL LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Point &
+           ( LogE, LogT, LogEta, LogEs_T, LogTs_T, LogEtas_T, &
+             OS_Pair(1,iJ2), Pair_T(:,:,:,:,iJ2,1), J2, dJ2dT, dJ2dEta )
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+
+      IF( iE1 <= iE2 )THEN
+        Phi_Out(iE1,iE2) &
+          = ( C1 * J1(iE1,iE2) + C2 * J2(iE1,iE2) ) * UnitPair
+      ELSE
+        Phi_Out(iE1,iE2) &
+          = ( C1 * J2(iE2,iE1) + C2 * J1(iE2,iE1) ) * UnitPair
+      END IF
+
+      Phi_In(iE1,iE2) &
+        = Phi_Out(iE1,iE2) * EXP( - ( E(iE1) + E(iE2) ) / kT )
+
+    END DO
+    END DO
+
+    ! --- Derivative of Phi_Out wrt. Temperature ---
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+
+      IF( iE1 <= iE2 )THEN
+        dPhidT(iE1,iE2) &
+          = ( C1 * dJ1dT(iE1,iE2) + C2 * dJ2dT(iE1,iE2) ) * UnitPair / UnitT
+      ELSE
+        dPhidT(iE1,iE2) &
+          = ( C1 * dJ2dT(iE2,iE1) + C2 * dJ1dT(iE2,iE1) ) * UnitPair / UnitT
+      END IF
+
+    END DO
+    END DO
+
+    ! --- Derivative of Phi_Out wrt. Degeneracy Parameter ---
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+
+      IF( iE1 <= iE2 )THEN
+        dPhidEta(iE1,iE2) &
+          = ( C1 * dJ1dEta(iE1,iE2) + C2 * dJ2dEta(iE1,iE2) ) * UnitPair
+      ELSE
+        dPhidEta(iE1,iE2) &
+          = ( C1 * dJ2dEta(iE2,iE1) + C2 * dJ1dEta(iE2,iE1) ) * UnitPair
+      END IF
+
+    END DO
+    END DO
+
+    ! --- Compute Specific Internal Energy and Derivatives ---
+
+    CALL ComputeSpecificInternalEnergy_TABLE &
+           ( D, T, Y, U, dUdD, dUdT, dUdY )
+
+    ! --- Derivative of Phi_Out wrt. Electron Fraction ---
+
+    C_Eta = ( dMdY - dUdY * ( dMdT - M / T ) / dUdT ) / kT
+    C_T   = - dUdY / dUdT
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      dPhi_Out_dY(iE1,iE2) &
+        = C_Eta * dPhidEta(iE1,iE2) + C_T * dPhidT(iE1,iE2)
+    END DO
+    END DO
+
+    ! --- Derivative of Phi_In wrt. Electron Fraction ---
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      dPhi_In_dY(iE1,iE2) &
+        = ( C_T * ( dPhidT(iE1,iE2) &
+                      + ( Phi_Out(iE1,iE2) / T ) * ( E(iE1) + E(iE2) ) / kT ) &
+            + C_Eta * dPhidEta(iE1,iE2) ) * EXP( - ( E(iE1) + E(iE2) ) / kT )
+    END DO
+    END DO
+
+    ! --- Derivative of Phi_Out wrt. Specific Internal Energy ---
+
+    C_Eta = ( dMdT - M / T ) / ( dUdT * kT )
+    C_T   = One / dUdT
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      dPhi_Out_dE(iE1,iE2) &
+        = C_Eta * dPhidEta(iE1,iE2) + C_T * dPhidT(iE1,iE2)
+    END DO
+    END DO
+
+    ! --- Derivative of Phi_In wrt. Specific Internal Energy ---
+
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      dPhi_In_dE(iE1,iE2) &
+        = ( C_T * ( dPhidT(iE1,iE2) &
+                      + ( Phi_Out(iE1,iE2) / T ) * ( E(iE1) + E(iE2) ) / kT ) &
+            + C_Eta * dPhidEta(iE1,iE2) ) * EXP( - ( E(iE1) + E(iE2) ) / kT )
+    END DO
+    END DO
+
+#else
+
+    Phi_In      = Zero
+    Phi_Out     = Zero
+    dPhi_In_dY  = Zero
+    dPhi_In_dE  = Zero
+    dPhi_Out_dY = Zero
+    dPhi_Out_dE = Zero
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacitiesAndDerivatives_Pair_Point
 
 
   SUBROUTINE ComputeNeutrinoOpacityE_Point &
