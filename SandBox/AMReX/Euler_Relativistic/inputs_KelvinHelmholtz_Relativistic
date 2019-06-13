@@ -25,7 +25,7 @@ geometry.is_periodic   = 01 01 01    # Periodicity. 0 (no), 1 (yes)
 geometry.UseSourceTerm = 0           # Source term in timestep calculation
 
 amr.n_cell          = 32 16 01 # Number of cells in each dimension
-amr.max_grid_size   = 16 08  01 # nBoxes = n_cell / MaxGridSize
+amr.max_grid_size   = 16 08 01 # nBoxes = n_cell / MaxGridSize
 amr.max_level       = 0          # Maximum number of refinement levels
 amr.blocking_factor = 1          # Must be a factor of max_grid_size
 
