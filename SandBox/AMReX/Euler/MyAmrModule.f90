@@ -40,7 +40,7 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName
   INTEGER,          ALLOCATABLE, SAVE :: StepNo(:)
   CHARACTER(LEN=32),             SAVE :: Coordsys
-  LOGICAL,                       SAVE :: DEBUG
+  LOGICAL,                       SAVE :: DEBUG, UseSourceTerm
 
   ! --- Slope limiter ---
   LOGICAL          :: UseSlopeLimiter
@@ -105,9 +105,10 @@ CONTAINS
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
-      CALL PP % get   ( 'coord_sys', coord_sys )
-      CALL PP % getarr( 'prob_lo',   xL )
-      CALL PP % getarr( 'prob_hi',   xR )
+      CALL PP % get   ( 'coord_sys',  coord_sys )
+      CALL PP % getarr( 'prob_lo',    xL )
+      CALL PP % getarr( 'prob_hi',    xR )
+      CALL PP % query( 'UseSourceTerm', UseSourceTerm )
     CALL amrex_parmparse_destroy( PP )
     IF     ( coord_sys .EQ. 0 )THEN
       CoordSys = 'CARTESIAN'

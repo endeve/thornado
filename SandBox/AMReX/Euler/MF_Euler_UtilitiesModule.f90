@@ -175,14 +175,19 @@ CONTAINS
   END SUBROUTINE MF_ComputeFromConserved
 
 
-  SUBROUTINE MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, TimeStepMin )
+  SUBROUTINE MF_ComputeTimeStep &
+    ( MF_uGF, MF_uCF, CFL, TimeStepMin, UseSourceTerm_Option )
 
-    TYPE(amrex_multifab), INTENT(in)  :: &
+    TYPE(amrex_multifab), INTENT(in)           :: &
       MF_uGF(0:nlevels), MF_uCF(0:nLevels)
-    REAL(amrex_real),     INTENT(in)  :: &
+    REAL(amrex_real),     INTENT(in)           :: &
       CFL
-    REAL(amrex_real),     INTENT(out) :: &
+    REAL(amrex_real),     INTENT(out)          :: &
       TimeStepMin(0:nLevels)
+    LOGICAL,              INTENT(in), OPTIONAL :: &
+      UseSourceTerm_Option
+
+    LOGICAL :: UseSourceTerm
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -196,6 +201,10 @@ CONTAINS
     INTEGER :: iLevel, iX_B0(3), iX_E0(3)
 
     REAL(amrex_real) :: TimeStep(0:nLevels)
+
+    UseSourceTerm = .FALSE.
+    IF( PRESENT( UseSourceTerm_Option ) ) &
+      UseSourceTerm = UseSourceTerm_Option
 
     TimeStepMin = HUGE( 1.0e0_amrex_real )
 
@@ -245,7 +254,7 @@ CONTAINS
                  U(1:nDOFX,iX_B0(1):iX_E0(1), &
                            iX_B0(2):iX_E0(2), &
                            iX_B0(3):iX_E0(3),1:nCF), &
-                 CFL, TimeStep(iLevel) )
+                 CFL, TimeStep(iLevel), UseSourceTerm )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 
