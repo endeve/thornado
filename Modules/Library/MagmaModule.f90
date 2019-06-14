@@ -478,6 +478,21 @@ interface
         type(c_ptr),    value  :: queue
     end subroutine
 
+    subroutine magmablas_dgemm_batched_strided( &
+        transA, transB, m, n, k, &
+        alpha, dA, lda, strideA, &
+               dB, ldb, strideB, &
+        beta,  dC, ldc, strideC, &
+        batchcount, queue ) &
+    bind(C, name="magmablas_dgemm_batched_strided")
+        use iso_c_binding
+        integer(c_int), value :: transA, transB, m, n, k, lda, ldb, ldc, batchcount
+        integer(c_int), value :: strideA, strideB, strideC
+        real(c_double), value :: alpha, beta
+        type(c_ptr),    value :: dA, dB, dC
+        type(c_ptr),    value :: queue  !! queue_t
+    end subroutine
+
     !! -------------------------------------------------------------------------
     !! BLAS (matrices in GPU memory)
     real(c_double) function magma_dnrm2( &
