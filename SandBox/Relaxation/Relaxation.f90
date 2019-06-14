@@ -256,7 +256,8 @@ PROGRAM Relaxation
     IF( dt > 0.0_DP )THEN
 
       CALL ComputeIncrement_TwoMoment_Implicit_New &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, uGF, uCF, rhsCF, uCR, rhsCR )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, uGF, &
+               uCF, rhsCF, uCR, rhsCR )
 
       uCF = uCF + dt * rhsCF
 
@@ -305,7 +306,6 @@ PROGRAM Relaxation
   ! --- Finalize ---
 
   CALL FinalizeTimers
-
 
   CALL FinalizeReferenceElementX
 
