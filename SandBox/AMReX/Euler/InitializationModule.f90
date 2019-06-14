@@ -88,12 +88,12 @@ MODULE InitializationModule
 
   PUBLIC :: InitializeProblem
 
-  INTEGER,                            PUBLIC :: iLevel, iDim
-  TYPE(amrex_parmparse),              PUBLIC :: PP
-  TYPE(amrex_box),                    PUBLIC :: BX
-  REAL(amrex_real),                   PUBLIC :: Mass
-  REAL(amrex_real),                   PUBLIC :: t_wrt, t_chk
-  LOGICAL,                            PUBLIC :: wrt, chk
+  INTEGER,               PUBLIC :: iLevel, iDim
+  TYPE(amrex_parmparse), PUBLIC :: PP
+  TYPE(amrex_box),       PUBLIC :: BX
+  REAL(amrex_real),      PUBLIC :: Mass
+  REAL(amrex_real),      PUBLIC :: t_wrt, t_chk
+  LOGICAL,               PUBLIC :: wrt, chk
 
 
 CONTAINS
@@ -150,14 +150,20 @@ CONTAINS
       t     = 0.0_amrex_real
       t_wrt = dt_wrt
       t_chk = dt_chk
-      wrt   = .FALSE.
-      chk   = .FALSE.
 
     ELSE
 
       CALL ReadCheckpointFile( CheckpointRestart_Option )
 
+      t_wrt = t(0)
+      t_chk = t(0)
+
     END IF
+
+    WRITE(*,*) 't_wrt: ', t_wrt
+
+    wrt   = .FALSE.
+    chk   = .FALSE.
 
     ! -- End of initializing AMReX ---
 
@@ -262,9 +268,6 @@ CONTAINS
       CALL amrex_distromap_destroy( DM(iLevel) )
       CALL amrex_boxarray_destroy ( BA(iLevel) )
     END DO
-
-    wrt   = .FALSE.
-    chk   = .FALSE.
 
     IF( .NOT. PRESENT( CheckpointRestart_Option ) )THEN
       CALL WriteFieldsAMReX_PlotFile &
