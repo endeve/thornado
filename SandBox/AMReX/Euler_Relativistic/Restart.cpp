@@ -201,12 +201,6 @@ extern "C"
       }
     }
 
-    /*
-    std::cout << "Pausing here, in Restart.cpp, line ~200" << std::endl;
-    std::cout << "Press enter to continue..." << std::endl;
-    std::cin.get();
-    */
-
     // Read in level 'iLevel' BoxArray from Header
     for( int iLevel = 0; iLevel <= finest_level[0]; ++iLevel )
     {
@@ -219,7 +213,7 @@ extern "C"
 
       // Create a distribution mapping
       DistributionMapping dm1{ ba1, ParallelDescriptor::NProcs() };
-      *dm[iLevel]=dm1;
+      *dm[iLevel] = dm1;
 
     }
 

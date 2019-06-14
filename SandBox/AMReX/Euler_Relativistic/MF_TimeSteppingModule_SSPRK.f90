@@ -86,7 +86,6 @@ CONTAINS
     INTEGER         :: iS, iLevel
     TYPE(amrex_box) :: BX
 
-
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
     ELSE
@@ -225,7 +224,7 @@ CONTAINS
       DO iLevel = 0, nLevels
         CALL MF_U(iLevel) &
                % PARALLEL_COPY( MF_uCF(iLevel), 1, 1, &
-                                MF_uCF(iLevel) % ncomp(), swX(1), swX(1), &
+                                MF_uCF(iLevel) % nComp(), swX(1), swX(1), &
                                 GEOM(iLevel) )
       END DO
 
@@ -247,6 +246,7 @@ CONTAINS
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ComputeIncrement'
         CALL MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_U, MF_D(0:nLevels,iS) )
+
 
       END IF
 

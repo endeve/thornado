@@ -18,6 +18,12 @@ MODULE MyAmrModule
     amrex_parmparse, &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
+  USE amrex_boxarray_module, ONLY: &
+    amrex_boxarray
+  USE amrex_distromap_module, ONLY: &
+    amrex_distromap
+  USE amrex_geometry_module, ONLY: &
+    amrex_geometry
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule, ONLY: &
@@ -53,6 +59,10 @@ MODULE MyAmrModule
   ! --- Positivity limiter ---
   LOGICAL          :: UsePositivityLimiter
   REAL(amrex_real) :: Min_1, Min_2
+
+  TYPE(amrex_boxarray),  ALLOCATABLE, PUBLIC :: BA(:)
+  TYPE(amrex_distromap), ALLOCATABLE, PUBLIC :: DM(:)
+  TYPE(amrex_geometry),  ALLOCATABLE, PUBLIC :: GEOM(:)
 
 
 CONTAINS
@@ -176,6 +186,10 @@ CONTAINS
   SUBROUTINE MyAmrFinalize
 
     CALL FinalizeDataAMReX( nLevels )
+
+    DEALLOCATE( GEOM )
+    DEALLOCATE( DM )
+    DEALLOCATE( BA )
 
     DEALLOCATE( t )
     DEALLOCATE( dt )
