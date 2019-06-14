@@ -355,7 +355,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG &
     !$ACC IF( do_gpu ) &
     !$ACC PRIVATE( Mnu, kT ) &
-    !$ACC PRESENT( Me, Mp, Mn, f_EQ_Points )
+    !$ACC PRESENT( Me, Mp, Mn, E, T, f_EQ_Points )
 #endif
     DO iX = iX_B, iX_E
 
@@ -1190,9 +1190,10 @@ CONTAINS
     REAL(DP), INTENT(out) :: Eta    (iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Chi    (iE_B:iE_E,iX_B:iX_E)
 
-    REAL(DP) :: fEta(iE_B:iE_E,iX_B:iX_E)
-    REAL(DP) :: fChi(iE_B:iE_E,iX_B:iX_E)
-    INTEGER  :: iX, iE, nX, nE
+    REAL(DP) :: fEta(iE_B:iE_E)
+    REAL(DP) :: fChi(iE_B:iE_E)
+    REAL(DP) :: SUM1, SUM2
+    INTEGER  :: iX, iE, iE1, iE2, nX, nE
     LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( W2 ) &
@@ -1219,75 +1220,59 @@ CONTAINS
     nX = iX_E - iX_B + 1
     nE = iE_E - iE_B + 1
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP IF( do_gpu ) &
-    !$OMP MAP( alloc: fEta, fChi )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC IF( do_gpu ) &
-    !$ACC CREATE( fEta, fChi )
-#endif
+    IF ( do_gpu ) THEN
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP IF( do_gpu )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PRIVATE( SUM1, SUM2 )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC IF( do_gpu ) &
-    !$ACC PRESENT( W2, J, fEta, fChi )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+      !$ACC PRIVATE( SUM1, SUM2 ) &
+      !$ACC PRESENT( Phi_In, Phi_Out, Eta, Chi, W2, J )
 #endif
-    DO iX = iX_B, iX_E
-      DO iE = iE_B, iE_E
-        fEta(iE,iX) = W2(iE) * J(iE,iX)
-        fChi(iE,iX) = W2(iE) * ( One - J(iE,iX) )
+      DO iX = iX_B, iX_E
+        DO iE2 = iE_B, iE_E
+
+          SUM1 = Zero
+          SUM2 = Zero
+          DO iE1 = iE_B, iE_E
+            SUM1 = SUM1 + Phi_In (iE1,iE2,iX) * W2(iE1) * J(iE1,iX)
+            SUM2 = SUM2 + Phi_Out(iE1,iE2,iX) * W2(iE1) * ( One - J(iE1,iX) )
+          END DO
+          Eta(iE2,iX) = SUM1
+          Chi(iE2,iX) = SUM1 + SUM2
+
+        END DO
       END DO
-    END DO
 
-    ! --- Emissivity ---
+    ELSE
 
-    DO iX = iX_B, iX_E
+      DO iX = iX_B, iX_E
 
-      CALL MatrixVectorMultiply &
-        ( 'T', nE, nE, One, Phi_In(iE_B,iE_B,iX), nE, &
-          fEta(iE_B,iX), 1, Zero, Eta(iE_B,iX), 1 )
+        DO iE = iE_B, iE_E
+          fEta(iE) = W2(iE) * J(iE,iX)
+          fChi(iE) = W2(iE) * ( One - J(iE,iX) )
+        END DO
 
-    END DO
+        ! --- Emissivity ---
 
-    ! --- Absorptivity ---
+        CALL MatrixVectorMultiply &
+          ( 'T', nE, nE, One, Phi_In(iE_B,iE_B,iX), nE, &
+            fEta(iE_B), 1, Zero, Eta(iE_B,iX), 1 )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP IF( do_gpu )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC IF( do_gpu ) &
-    !$ACC PRESENT( Eta, Chi )
-#endif
-    DO iX = iX_B, iX_E
-      DO iE = iE_B, iE_E
-        Chi(iE,iX) = Eta(iE,iX)
+        DO iE = iE_B, iE_E
+          Chi(iE,iX) = Eta(iE,iX)
+        END DO
+
+        ! --- Absorptivity ---
+
+        CALL MatrixVectorMultiply &
+          ( 'T', nE, nE, One, Phi_Out(iE_B,iE_B,iX), nE, &
+            fChi(iE_B), 1, One, Chi(iE_B,iX), 1 )
+
       END DO
-    END DO
-    !CALL DCOPY( nE*nX, Eta, 1, Chi, 1 )
 
-    DO iX = iX_B, iX_E
-
-      CALL MatrixVectorMultiply &
-        ( 'T', nE, nE, One, Phi_Out(iE_B,iE_B,iX), nE, &
-          fChi(iE_B,iX), 1, One, Chi(iE_B,iX), 1 )
-
-    END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP IF( do_gpu ) &
-    !$OMP MAP( release: fEta, fChi )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC IF( do_gpu ) &
-    !$ACC DELETE( fEta, fChi )
-#endif
+    END IF
 
   END SUBROUTINE ComputeNeutrinoOpacitiesRates_NES_Points
 
@@ -1585,9 +1570,10 @@ CONTAINS
     REAL(DP), INTENT(out) :: Eta    (iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Chi    (iE_B:iE_E,iX_B:iX_E)
 
-    REAL(DP) :: fEta(iE_B:iE_E,iX_B:iX_E)
-    REAL(DP) :: fChi(iE_B:iE_E,iX_B:iX_E)
-    INTEGER  :: iX, iE, nX, nE
+    REAL(DP) :: fEta(iE_B:iE_E)
+    REAL(DP) :: fChi(iE_B:iE_E)
+    REAL(DP) :: SUM1, SUM2
+    INTEGER  :: iX, iE, iE1, iE2, nX, nE
     LOGICAL  :: do_gpu
 
     do_gpu = QueryOnGPU( W2 ) &
@@ -1614,75 +1600,59 @@ CONTAINS
     nX = iX_E - iX_B + 1
     nE = iE_E - iE_B + 1
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP IF( do_gpu ) &
-    !$OMP MAP( alloc: fEta, fChi )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC IF( do_gpu ) &
-    !$ACC CREATE( fEta, fChi )
-#endif
+    IF ( do_gpu ) THEN
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP IF( do_gpu )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PRIVATE( SUM1, SUM2 )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC IF( do_gpu ) &
-    !$ACC PRESENT( W2, J, fEta, fChi )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+      !$ACC PRIVATE( SUM1, SUM2 ) &
+      !$ACC PRESENT( Phi_In, Phi_Out, Eta, Chi, W2, J )
 #endif
-    DO iX = iX_B, iX_E
-      DO iE = iE_B, iE_E
-        fEta(iE,iX) = W2(iE) * ( One - J(iE,iX) )
-        fChi(iE,iX) = W2(iE) * J(iE,iX)
+      DO iX = iX_B, iX_E
+        DO iE2 = iE_B, iE_E
+
+          SUM1 = Zero
+          SUM2 = Zero
+          DO iE1 = iE_B, iE_E
+            SUM1 = SUM1 + Phi_In (iE1,iE2,iX) * W2(iE1) * ( One - J(iE1,iX) )
+            SUM2 = SUM2 + Phi_Out(iE1,iE2,iX) * W2(iE1) * J(iE1,iX)
+          END DO
+          Eta(iE2,iX) = SUM1
+          Chi(iE2,iX) = SUM1 + SUM2
+
+        END DO
       END DO
-    END DO
 
-    ! --- Emissivity ---
+    ELSE
 
-    DO iX = iX_B, iX_E
+      DO iX = iX_B, iX_E
 
-      CALL MatrixVectorMultiply &
-        ( 'T', nE, nE, One, Phi_In(iE_B,iE_B,iX), nE, &
-          fEta(iE_B,iX), 1, Zero, Eta(iE_B,iX), 1 )
+        DO iE = iE_B, iE_E
+          fEta(iE) = W2(iE) * ( One - J(iE,iX) )
+          fChi(iE) = W2(iE) * J(iE,iX)
+        END DO
 
-    END DO
+        ! --- Emissivity ---
 
-    ! --- Absorptivity ---
+        CALL MatrixVectorMultiply &
+          ( 'T', nE, nE, One, Phi_In(iE_B,iE_B,iX), nE, &
+            fEta(iE_B), 1, Zero, Eta(iE_B,iX), 1 )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP IF( do_gpu )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC IF( do_gpu ) &
-    !$ACC PRESENT( Eta, Chi )
-#endif
-    DO iX = iX_B, iX_E
-      DO iE = iE_B, iE_E
-        Chi(iE,iX) = Eta(iE,iX)
+        DO iE = iE_B, iE_E
+          Chi(iE,iX) = Eta(iE,iX)
+        END DO
+
+        ! --- Absorptivity ---
+
+        CALL MatrixVectorMultiply &
+          ( 'T', nE, nE, One, Phi_Out(iE_B,iE_B,iX), nE, &
+            fChi(iE_B), 1, One, Chi(iE_B,iX), 1 )
+
       END DO
-    END DO
-    !CALL DCOPY( nE*nX, Eta, 1, Chi, 1 )
 
-    DO iX = iX_B, iX_E
-
-      CALL MatrixVectorMultiply &
-        ( 'T', nE, nE, One, Phi_Out(iE_B,iE_B,iX), nE, &
-          fChi(iE_B,iX), 1, One, Chi(iE_B,iX), 1 )
-
-    END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP IF( do_gpu ) &
-    !$OMP MAP( release: fEta, fChi )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC IF( do_gpu ) &
-    !$ACC DELETE( fEta, fChi )
-#endif
+    END IF
 
   END SUBROUTINE ComputeNeutrinoOpacitiesRates_Pair_Points
 
