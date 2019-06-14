@@ -33,7 +33,19 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     Timer_Im_Out, &
     Timer_Im_ComputeTS_Prim, &
     Timer_Im_Increment, &
-    Timer_Im_MapBackward
+    Timer_Im_MapBackward, &
+    Timer_FP_FD, &
+    Timer_FP_Op, &
+    Timer_FP_Rate, &
+    Timer_FP_RHS, &
+    Timer_FP_RateK, &
+    Timer_FP_RHSK, &
+    Timer_FP_AA, &
+    Timer_FP_LS, &
+    Timer_FP_Update, &
+    Timer_FP_FDK, &
+    Timer_FP_OpK, &
+    Timer_FP_Shift
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
   USE ReferenceElementModuleX, ONLY: &
@@ -60,6 +72,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     ComputeThermodynamicStates_Auxiliary_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE, &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
+    ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE, &
     ComputeElectronChemicalPotential_TABLE, &
     ComputeProtonChemicalPotential_TABLE, &
     ComputeNeutronChemicalPotential_TABLE, &
@@ -75,6 +88,9 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     FermiDirac, &
     dFermiDiracdT, &
     dFermiDiracdY
+
+  USE wlEOSInversionModule, ONLY: &
+    DescribeEOSInversionError
 
   IMPLICIT NONE
   PRIVATE
@@ -141,7 +157,7 @@ CONTAINS
       dU_R(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
            iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
-    INTEGER  :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iNodeX, iE
+    INTEGER  :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iNodeX, iE, iN_X, nX(3), nX_P
     REAL(DP) :: CF_N(1:nDOFX,1:nCF)
     REAL(DP) :: PF_N(1:nDOFX,1:nPF)
     REAL(DP) :: AF_N(1:nDOFX,1:nAF)
@@ -155,6 +171,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: Eta_NES(:,:,:)
     REAL(DP), ALLOCATABLE :: Chi_Pair(:,:,:)
     REAL(DP), ALLOCATABLE :: Eta_Pair(:,:,:)
+    INTEGER , ALLOCATABLE :: K_FP(:)
 
     CALL TimersStart( Timer_Implicit )
 
@@ -162,6 +179,8 @@ CONTAINS
     iE_B1 = iZ_B1(1);   iE_E1 = iZ_E1(1)
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
+    nX = iX_E0 - iX_B0 + 1
+    nX_P = nDOFX * PRODUCT( nX )
 
 !!$    PRINT*, "ComputeIncrement_TwoMoment_Implicit_New"
 
@@ -177,10 +196,12 @@ CONTAINS
     ALLOCATE( Eta_NES (nE_G,nSpecies,nDOFX) )
     ALLOCATE( Chi_Pair(nE_G,nSpecies,nDOFX) )
     ALLOCATE( Eta_Pair(nE_G,nSpecies,nDOFX) )
+    ALLOCATE( K_FP    (nX_P) )
 
     Iterations_Min = + HUGE( 1 )
     Iterations_Max = - HUGE( 1 )
     Iterations_Ave = 0
+    K_FP           = 0
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -302,6 +323,11 @@ CONTAINS
 
         DO iNodeX = 1, nDOFX
 
+          iN_X = iNodeX &
+                 + ( iX1 - iX_B0(1) ) * nDOFX &
+                 + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
+                 + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
+
           CALL SolveMatterEquations_FP_Coupled &
                  ( dt, iNuE, iNuE_Bar, &
                    CR_N(:,iCR_N,1:2,iNodeX), &
@@ -314,7 +340,8 @@ CONTAINS
                    PF_N(iNodeX,iPF_D ), &
                    AF_N(iNodeX,iAF_T ), &
                    AF_N(iNodeX,iAF_Ye), &
-                   AF_N(iNodeX,iAF_E ) )
+                   AF_N(iNodeX,iAF_E ), &
+                   K_FP(iN_X) )
 
         END DO
 
@@ -428,10 +455,12 @@ CONTAINS
     CALL TimersStop( Timer_Implicit )
 
 #ifdef THORNADO_DEBUG_IMPLICIT
+    WRITE(*,'(a,2i4)')            'MINLOC(K_FP), MINVAL(K_FP)', MINLOC(K_FP), MINVAL(K_FP)
+    WRITE(*,'(a,2i4)')            'MAXLOC(K_FP), MAXVAL(K_FP)', MAXLOC(K_FP), MAXVAL(K_FP)
     WRITE(*,'(a,8x,5i4,es23.15)') 'MINLOC(dU_F), MINVAL(dU_F)', MINLOC(dU_F), MINVAL(dU_F)
     WRITE(*,'(a,8x,5i4,es23.15)') 'MAXLOC(dU_F), MAXVAL(dU_F)', MAXLOC(dU_F), MAXVAL(dU_F)
-    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(dU_R), MINVAL(dU_F)', MINLOC(dU_R), MINVAL(dU_R)
-    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(dU_R), MAXVAL(dU_F)', MAXLOC(dU_R), MAXVAL(dU_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(dU_R), MINVAL(dU_R)', MINLOC(dU_R), MINVAL(dU_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(dU_R), MAXVAL(dU_R)', MAXLOC(dU_R), MAXVAL(dU_R)
 #endif
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_New
@@ -1195,7 +1224,7 @@ CONTAINS
 
   SUBROUTINE SolveMatterEquations_FP_Coupled &
     ( dt, iS_1, iS_2, J, Chi, J0, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
-      D, T, Y, E )
+      D, T, Y, E, K_FP )
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
@@ -1209,12 +1238,13 @@ CONTAINS
     REAL(DP), INTENT(inout) :: Chi_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: Eta_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
+    INTEGER , INTENT(out)   :: K_FP
 
     ! --- Solver Parameters ---
 
     INTEGER,  PARAMETER :: iY = 1
     INTEGER,  PARAMETER :: iE = 2
-    INTEGER,  PARAMETER :: M = 5
+    INTEGER,  PARAMETER :: M = 3
     INTEGER,  PARAMETER :: MaxIter = 100
     INTEGER,  PARAMETER :: LWORK = 2 * M
     REAL(DP), PARAMETER :: Rtol = 1.0d-08
@@ -1223,7 +1253,7 @@ CONTAINS
     ! --- Local Variables ---
 
     LOGICAL  :: CONVERGED
-    INTEGER  :: i, k, mk, INFO
+    INTEGER  :: i, k, mk, INFO, Error
     INTEGER  :: OS_1, OS_2
     REAL(DP) :: h3, N_B
     REAL(DP) :: S_Y, S_E, Yold, Eold
@@ -1251,6 +1281,8 @@ CONTAINS
 !!$    PRINT*, "SolveMatterEquations_FP_Coupled Start"
 !!$    PRINT*
 
+    K_FP = 0
+
     OS_1 = 2
     OS_2 = 2 + nE_G
 
@@ -1269,10 +1301,7 @@ CONTAINS
     W2_S = FourPi * W2_N / h3
     W3_S = FourPi * W3_N / h3
 
-    Unew = One ! --- Initial Guess
-
-    C(iY) = DOT_PRODUCT( W2_S, Jold(:,1) - Jold(:,2) ) / S_Y
-    C(iE) = DOT_PRODUCT( W3_S, Jold(:,1) + Jold(:,2) ) / S_E
+    CALL TimersStart( Timer_FP_FD )
 
     CALL ComputeEquilibriumDistributions_Point &
            ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
@@ -1280,8 +1309,12 @@ CONTAINS
     CALL ComputeEquilibriumDistributions_Point &
            ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
 
+    CALL TimersStop( Timer_FP_FD )
+
     Eta(:,1) = Chi(:,1) * J0(:,1)
     Eta(:,2) = Chi(:,2) * J0(:,2)
+
+    CALL TimersStart( Timer_FP_Op )
 
     ! --- NES Kernels ---
 
@@ -1292,6 +1325,20 @@ CONTAINS
     CALL ComputeNeutrinoOpacities_NES_Point &
            ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
              Phi_0_In_NES(:,:,2), Phi_0_Ot_NES(:,:,2) )
+
+    ! --- Pair Kernels ---
+
+    CALL ComputeNeutrinoOpacities_Pair_Point &
+           ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
+             Phi_0_In_Pair(:,:,1), Phi_0_Ot_Pair(:,:,1) )
+
+    CALL ComputeNeutrinoOpacities_Pair_Point &
+           ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
+             Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
+
+    CALL TimersStop( Timer_FP_Op )
+
+    CALL TimersStart( Timer_FP_Rate )
 
     ! --- NES Emissivities and Opacities ---
 
@@ -1315,16 +1362,6 @@ CONTAINS
     CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_NES(:,:,2), nE_G, &
                 W2_N * (One-Jold(:,2)), 1, One,  Chi_NES(:,2), 1 )
 
-    ! --- Pair Kernels ---
-
-    CALL ComputeNeutrinoOpacities_Pair_Point &
-           ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
-             Phi_0_In_Pair(:,:,1), Phi_0_Ot_Pair(:,:,1) )
-
-    CALL ComputeNeutrinoOpacities_Pair_Point &
-           ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
-             Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
-
     ! --- Pair Emissivities and Opacities ---
 
     ! --- Neutrino ---
@@ -1347,6 +1384,17 @@ CONTAINS
     CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
                 W2_N * Jold(:,1),       1, One,  Chi_Pair(:,2), 1 )
 
+    CALL TimersStop( Timer_FP_Rate )
+
+    ! --- Right-Hand Side Vectors ---
+
+    CALL TimersStart( Timer_FP_RHS )
+
+    Unew = One ! --- Initial Guess
+
+    C(iY) = DOT_PRODUCT( W2_S, Jold(:,1) - Jold(:,2) ) / S_Y
+    C(iE) = DOT_PRODUCT( W3_S, Jold(:,1) + Jold(:,2) ) / S_E
+
     ! --- Update Neutrino Densities ---
 
     Jnew(:,1) &
@@ -1356,6 +1404,8 @@ CONTAINS
     Jnew(:,2) &
       = ( Jold(:,2) + dt * ( Eta(:,2) + Eta_NES(:,2) + Eta_Pair(:,2) ) ) &
             / ( One + dt * ( Chi(:,2) + Chi_NES(:,2) + Chi_Pair(:,2) ) )
+
+    CALL TimersStop( Timer_FP_RHS )
 
     k = 0
     CONVERGED = .FALSE.
@@ -1367,6 +1417,8 @@ CONTAINS
 !!$      PRINT*, "  k, mk = ", k, mk
 
       ! --- NES Emissivities and Opacities ---
+
+      CALL TimersStart( Timer_FP_RateK )
 
       ! --- Neutrino ---
 
@@ -1410,7 +1462,11 @@ CONTAINS
       CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
                   W2_N * Jnew(:,1),       1, One,  Chi_Pair(:,2), 1 )
 
+      CALL TimersStop( Timer_FP_RateK )
+
       ! --- Right-Hand Side Vectors ---
+
+      CALL TimersStart( Timer_FP_RHSK )
 
       GVEC(iY,mk) = One + C(iY) &
                       - DOT_PRODUCT( W2_S, Jnew(:,1) - Jnew(:,2) ) / S_Y
@@ -1439,6 +1495,10 @@ CONTAINS
         FVEC(OS_2+i,mk) = GVEC(OS_2+i,mk) - Jnew(i,2)
       END DO
 
+      CALL TimersStop( Timer_FP_RHSK )
+
+      CALL TimersStart( Timer_FP_AA )
+
       IF( mk == 1 )THEN
 
         GVECm = GVEC(:,mk)
@@ -1450,8 +1510,12 @@ CONTAINS
         AMAT(:,1:mk-1) &
           = FVEC(:,1:mk-1) - SPREAD( FVEC(:,mk), DIM = 2, NCOPIES = mk-1 )
 
+        CALL TimersStart( Timer_FP_LS )
+
         CALL DGELS( 'N', 2*(nE_G+1), mk-1, 1, AMAT(:,1:mk-1), 2*(nE_G+1), &
                     BVEC, 2*(nE_G+1), WORK, LWORK, INFO )
+
+        CALL TimersStop( Timer_FP_LS )
 
         Alpha(1:mk-1) = BVEC(1:mk-1)
 
@@ -1466,6 +1530,10 @@ CONTAINS
 
       END IF
 
+      CALL TimersStop( Timer_FP_AA )
+
+      CALL TimersStart( Timer_FP_Update )
+
       FVECm(iY)               = GVECm(iY)               - Unew(iY)
       FVECm(iE)               = GVECm(iE)               - Unew(iE)
       FVECm(OS_1+1:OS_1+nE_G) = GVECm(OS_1+1:OS_1+nE_G) - Jnew(:,1)
@@ -1478,6 +1546,7 @@ CONTAINS
       THEN
 
         CONVERGED = .TRUE.
+        K_FP = k
 
       END IF
 
@@ -1486,24 +1555,27 @@ CONTAINS
       Jnew(:,1) = GVECm(OS_1+1:OS_1+nE_G)
       Jnew(:,2) = GVECm(OS_2+1:OS_2+nE_G)
 
-      IF( mk == M .AND. .NOT. CONVERGED )THEN
-
-        GVEC = CSHIFT( GVEC, SHIFT = + 1, DIM = 2 )
-        FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
-
-      END IF
-
       ! --- Update Matter ---
 
       Y = Unew(iY) * Yold
       E = Unew(iE) * Eold
 
-      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-             ( [ D ], [ E ], [ Y ], TMP ); T = TMP(1)
+      CALL ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
+             ( D, E, Y, T, Guess_Option = T, Error_Option = Error )
+
+      IF ( Error > 0 ) THEN
+        CALL DescribeEOSInversionError( Error )
+        WRITE(*,'(i4,5es12.5)') k, D, E, Y, Eold, Yold
+        STOP
+      END IF
+
+      CALL TimersStop( Timer_FP_Update )
 
       IF( .NOT. CONVERGED )THEN
 
         ! --- Recompute Equilibrium Distributions and Emissivities ---
+
+        CALL TimersStart( Timer_FP_FDK )
 
         CALL ComputeEquilibriumDistributions_Point &
                ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
@@ -1511,10 +1583,14 @@ CONTAINS
         CALL ComputeEquilibriumDistributions_Point &
                ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
 
+        CALL TimersStop( Timer_FP_FDK )
+
         Eta(:,1) = Chi(:,1) * J0(:,1)
         Eta(:,2) = Chi(:,2) * J0(:,2)
 
         ! --- Recompute Kernels ---
+
+        CALL TimersStart( Timer_FP_OpK )
 
         ! --- NES Kernels ---
 
@@ -1536,7 +1612,20 @@ CONTAINS
                ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
                  Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
 
+        CALL TimersStop( Timer_FP_OpK )
+
       END IF
+
+      CALL TimersStart( Timer_FP_Shift )
+
+      IF( mk == M .AND. .NOT. CONVERGED )THEN
+
+        GVEC = CSHIFT( GVEC, SHIFT = + 1, DIM = 2 )
+        FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
+
+      END IF
+
+      CALL TimersStop( Timer_FP_Shift )
 
     END DO
 

@@ -33,19 +33,18 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     Timer_Im_ComputeTS_Prim, &
     Timer_Im_Increment, &
     Timer_Im_MapBackward, &
-    Timer_FP_RHS, &
-    Timer_FP_J0, &
+    Timer_FP_FD, &
     Timer_FP_Op, &
     Timer_FP_Rate, &
-    Timer_FP_G, &
+    Timer_FP_RHS, &
+    Timer_FP_RateK, &
+    Timer_FP_RHSK, &
+    Timer_FP_AA, &
+    Timer_FP_LS, &
     Timer_FP_Update, &
-    Timer_FP_DGELS, &
-    Timer_FP_Alpha, &
-    Timer_FP_DEY, &
-    Timer_FP_J0P, &
-    Timer_FP_OpP, &
-    Timer_FP_RateP, &
-    Timer_FP_DSWAP
+    Timer_FP_FDK, &
+    Timer_FP_OpK, &
+    Timer_FP_Shift
   USE LinearAlgebraModule, ONLY: &
     MatrixVectorMultiply, &
     LinearLeastSquares, &
@@ -619,8 +618,8 @@ CONTAINS
 #ifdef THORNADO_DEBUG_IMPLICIT
     WRITE(*,'(a,8x,5i4,es23.15)') 'MINLOC(dU_F), MINVAL(dU_F)', MINLOC(dU_F), MINVAL(dU_F)
     WRITE(*,'(a,8x,5i4,es23.15)') 'MAXLOC(dU_F), MAXVAL(dU_F)', MAXLOC(dU_F), MAXVAL(dU_F)
-    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(dU_R), MINVAL(dU_F)', MINLOC(dU_R), MINVAL(dU_R)
-    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(dU_R), MAXVAL(dU_F)', MAXLOC(dU_R), MAXVAL(dU_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(dU_R), MINVAL(dU_R)', MINLOC(dU_R), MINVAL(dU_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(dU_R), MAXVAL(dU_R)', MAXLOC(dU_R), MAXVAL(dU_R)
 #endif
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_New
@@ -768,7 +767,7 @@ CONTAINS
     REAL(DP) :: AA11, AA12, AA22, AB1, AB2, DET_AA, SUM1, SUM2
     REAL(DP) :: Eta_1, Eta_2
     REAL(DP) :: Eta_Total_1, Eta_Total_2, Chi_Total_1, Chi_Total_2
-    INTEGER  :: i, k, iFP, iM, Mk, iN_X, iN_E, i_shift
+    INTEGER  :: i, k, iFP, iM, Mk, iN_X, iN_E
     INTEGER  :: OS_2
 
     ! TODO: matrix-matrix addition interface
@@ -835,49 +834,9 @@ CONTAINS
 
     END DO
 
-    ! --- Fixed Electron Fraction and Internal Energy RHS ---
-
-    CALL TimersStart( Timer_FP_RHS )
-
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, Jold_1, nE_G, W2_S, 1, Zero, C_Y, 1 )
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, -One, Jold_2, nE_G, W2_S, 1,  One, C_Y, 1 )
-
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, Jold_1, nE_G, W3_S, 1, Zero, C_E, 1 )
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, Jold_2, nE_G, W3_S, 1,  One, C_E, 1 )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( Y, Yold, E, Eold, D, S_Y, S_E, C_Y, C_E, Unew_Y, Unew_E )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
-#endif
-    DO iN_X = 1, nX_G
-
-      Yold(iN_X) = Y(iN_X)
-      Eold(iN_X) = E(iN_X)
-
-      S_Y(iN_X) = One / ( D(iN_X) * Yold(iN_X) / AtomicMassUnit )
-      S_E(iN_X) = One / ( D(iN_X) * Eold(iN_X) )
-
-      C_Y(iN_X) = C_Y(iN_X) * S_Y(iN_X)
-      C_E(iN_X) = C_E(iN_X) * S_E(iN_X)
-
-      Unew_Y(iN_X) = One ! --- Initial Guess
-      Unew_E(iN_X) = One ! --- Initial Guess
-
-    END DO
-
-    CALL TimersStop( Timer_FP_RHS )
-
     ! --- Equilibrium Distributions ---
 
-    CALL TimersStart( Timer_FP_J0 )
+    CALL TimersStart( Timer_FP_FD )
 
     CALL ComputeEquilibriumDistributions_Points &
            ( 1, nE_G, 1, nX_G, E_N, D, T, Y, J0_1, iS_1 )
@@ -885,11 +844,13 @@ CONTAINS
     CALL ComputeEquilibriumDistributions_Points &
            ( 1, nE_G, 1, nX_G, E_N, D, T, Y, J0_2, iS_2 )
 
-    CALL TimersStop( Timer_FP_J0 )
+    CALL TimersStop( Timer_FP_FD )
 
-    ! --- NES Kernels ---
+    ! --- Compute Kernels ---
 
     CALL TimersStart( Timer_FP_Op )
+
+    ! --- NES Kernels ---
 
     CALL ComputeNeutrinoOpacities_NES_Points &
            ( 1, nE_G, 1, nX_G, E_N, D, T, Y, iS_1, 1, &
@@ -935,9 +896,47 @@ CONTAINS
 
     CALL TimersStop( Timer_FP_Rate )
 
-    ! --- Update Neutrino Densities ---
+    ! --- Right-Hand Side Vectors ---
 
     CALL TimersStart( Timer_FP_RHS )
+
+    ! --- Fixed Electron Fraction and Internal Energy RHS ---
+
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, +One, Jold_1, nE_G, W2_S, 1, Zero, C_Y, 1 )
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, -One, Jold_2, nE_G, W2_S, 1,  One, C_Y, 1 )
+
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, +One, Jold_1, nE_G, W3_S, 1, Zero, C_E, 1 )
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, +One, Jold_2, nE_G, W3_S, 1,  One, C_E, 1 )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( Y, Yold, E, Eold, D, S_Y, S_E, C_Y, C_E, Unew_Y, Unew_E )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD
+#endif
+    DO iN_X = 1, nX_G
+
+      Yold(iN_X) = Y(iN_X)
+      Eold(iN_X) = E(iN_X)
+
+      S_Y(iN_X) = One / ( D(iN_X) * Yold(iN_X) / AtomicMassUnit )
+      S_E(iN_X) = One / ( D(iN_X) * Eold(iN_X) )
+
+      C_Y(iN_X) = C_Y(iN_X) * S_Y(iN_X)
+      C_E(iN_X) = C_E(iN_X) * S_E(iN_X)
+
+      Unew_Y(iN_X) = One ! --- Initial Guess
+      Unew_E(iN_X) = One ! --- Initial Guess
+
+    END DO
+
+    ! --- Update Neutrino Densities ---
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -981,7 +980,7 @@ CONTAINS
 
       ! --- NES Emissivities and Opacities ---
 
-      CALL TimersStart( Timer_FP_Rate )
+      CALL TimersStart( Timer_FP_RateK )
 
       CALL ComputeNeutrinoOpacitiesRates_NES_Points &
              ( 1, nE_G, 1, nX_G, W2_N, Jnew_1, &
@@ -1001,54 +1000,39 @@ CONTAINS
              ( 1, nE_G, 1, nX_G, W2_N, Jnew_1, &
                Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, Eta_Pair_2, Chi_Pair_2 )
 
-      CALL TimersStop( Timer_FP_Rate )
+      CALL TimersStop( Timer_FP_RateK )
 
       ! --- Right-Hand Side Vectors and Residuals ---
 
-      CALL TimersStart( Timer_FP_G )
+      CALL TimersStart( Timer_FP_RHSK )
 
-      !CALL MatrixVectorMultiply &
-      !  ( 'T', nE_G, nX_G, +One, Jnew_1, nE_G, W2_S, 1, Zero, GVECm(iY,1), nFP )
-      !CALL MatrixVectorMultiply &
-      !  ( 'T', nE_G, nX_G, -One, Jnew_2, nE_G, W2_S, 1,  One, GVECm(iY,1), nFP )
+      CALL MatrixVectorMultiply &
+        ( 'T', nE_G, nX_G, +One, Jnew_1, nE_G, W2_S, 1, Zero, GVECm(iY,1), nFP )
+      CALL MatrixVectorMultiply &
+        ( 'T', nE_G, nX_G, -One, Jnew_2, nE_G, W2_S, 1,  One, GVECm(iY,1), nFP )
 
-      !CALL MatrixVectorMultiply &
-      !  ( 'T', nE_G, nX_G, +One, Jnew_1, nE_G, W3_S, 1, Zero, GVECm(iE,1), nFP )
-      !CALL MatrixVectorMultiply &
-      !  ( 'T', nE_G, nX_G, +One, Jnew_2, nE_G, W3_S, 1,  One, GVECm(iE,1), nFP )
+      CALL MatrixVectorMultiply &
+        ( 'T', nE_G, nX_G, +One, Jnew_1, nE_G, W3_S, 1, Zero, GVECm(iE,1), nFP )
+      CALL MatrixVectorMultiply &
+        ( 'T', nE_G, nX_G, +One, Jnew_2, nE_G, W3_S, 1,  One, GVECm(iE,1), nFP )
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE &
-      !$OMP PRIVATE( SUM1, SUM2 )
+      !$OMP TARGET TEAMS DISTRIBUTE
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG &
-      !$ACC PRIVATE( SUM1, SUM2 ) &
       !$ACC PRESENT( ITERATE, GVECm, C_Y, S_Y, C_E, S_E, FVECm, Unew_Y, Unew_E, W2_S, W3_S, &
       !$ACC          Chi_1, Chi_2, J0_1, J0_2, Eta_NES_1, Eta_Pair_1, Eta_NES_2, Eta_Pair_2, &
       !$ACC          Jold_1, Jold_2, Jnew_1, Jnew_2, Chi_NES_1, Chi_Pair_1, Chi_NES_2, Chi_Pair_2 )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO &
       !$OMP PRIVATE( iN_E, Eta_1, Eta_Total_1, Chi_Total_1, &
-      !$OMP          Eta_2, Eta_Total_2, Chi_Total_2, SUM1, SUM2 )
+      !$OMP          Eta_2, Eta_Total_2, Chi_Total_2 )
 #endif
       DO iN_X = 1, nX_G
         IF ( ITERATE(iN_X) ) THEN
 
-          SUM1 = Zero
-          SUM2 = Zero
-#if defined(THORNADO_OMP_OL)
-          !$OMP PARALLEL DO SIMD &
-          !$OMP REDUCTION( +: SUM1, SUM2 )
-#elif defined(THORNADO_OACC)
-          !$ACC LOOP VECTOR &
-          !$ACC REDUCTION( +: SUM1, SUM2 )
-#endif
-          DO iN_E = 1, nE_G
-            SUM1 = SUM1 + W2_S(iN_E) * ( Jnew_1(iN_E,iN_X) - Jnew_2(iN_E,iN_X) )
-            SUM2 = SUM2 + W3_S(iN_E) * ( Jnew_1(iN_E,iN_X) + Jnew_2(iN_E,iN_X) )
-          END DO
-          GVECm(iY,iN_X) = One + C_Y(iN_X) - SUM1 * S_Y(iN_X)
-          GVECm(iE,iN_X) = One + C_E(iN_X) - SUM2 * S_E(iN_X)
+          GVECm(iY,iN_X) = One + C_Y(iN_X) - GVECm(iY,iN_X) * S_Y(iN_X)
+          GVECm(iE,iN_X) = One + C_E(iN_X) - GVECm(iE,iN_X) * S_E(iN_X)
 
           FVECm(iY,iN_X) = GVECm(iY,iN_X) - Unew_Y(iN_X)
           FVECm(iE,iN_X) = GVECm(iE,iN_X) - Unew_E(iN_X)
@@ -1098,11 +1082,11 @@ CONTAINS
         END IF
       END DO
 
-      CALL TimersStop( Timer_FP_G )
+      CALL TimersStop( Timer_FP_RHSK )
 
       ! --- Update Solution ---
 
-      CALL TimersStart( Timer_FP_Update )
+      CALL TimersStart( Timer_FP_AA )
 
       IF ( Mk == 1 ) THEN
 
@@ -1119,8 +1103,8 @@ CONTAINS
         DO iN_X = 1, nX_G
           DO iFP = 1, nFP
             IF ( ITERATE(iN_X) ) THEN
-              FVEC(iFP,iM,iN_X) = FVECm(iFP,iN_X)
-              GVEC(iFP,iM,iN_X) = GVECm(iFP,iN_X)
+              FVEC(iFP,Mk,iN_X) = FVECm(iFP,iN_X)
+              GVEC(iFP,Mk,iN_X) = GVECm(iFP,iN_X)
             END IF
           END DO
         END DO
@@ -1141,35 +1125,31 @@ CONTAINS
           DO iFP = 1, nFP
             IF ( ITERATE(iN_X) ) THEN
               BVEC(iFP,iN_X)    = - FVECm(iFP,iN_X)
-              FVEC(iFP,iM,iN_X) = FVECm(iFP,iN_X)
-              GVEC(iFP,iM,iN_X) = GVECm(iFP,iN_X)
+              FVEC(iFP,Mk,iN_X) = FVECm(iFP,iN_X)
+              GVEC(iFP,Mk,iN_X) = GVECm(iFP,iN_X)
             END IF
           END DO
         END DO
 
 #if defined(THORNADO_OMP_OL)
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-        !$OMP PRIVATE( i_shift )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-        !$ACC PRIVATE( i_shift ) &
         !$ACC PRESENT( ITERATE, FVEC, FVECm, AMAT )
 #elif defined(THORNADO_OMP)
-        !$OMP DO SIMD COLLAPSE(3) &
-        !$OMP PRIVATE( i_shift )
+        !$OMP DO SIMD COLLAPSE(3)
 #endif
         DO iN_X = 1, nX_G
           DO i = 1, Mk-1
             DO iFP = 1, nFP
               IF ( ITERATE(iN_X) ) THEN
-                i_shift = 1 + MOD( i + iM - 1, Mk )
-                AMAT(iFP,i,iN_X) = FVEC(iFP,i_shift,iN_X) - FVECm(iFP,iN_X)
+                AMAT(iFP,i,iN_X) = FVEC(iFP,i,iN_X) - FVECm(iFP,iN_X)
               END IF
             END DO
           END DO
         END DO
 
-        CALL TimersStart( Timer_FP_DGELS )
+        CALL TimersStart( Timer_FP_LS )
 
         IF ( Mk == 2 ) THEN
 
@@ -1271,31 +1251,28 @@ CONTAINS
 
         END IF
 
-        CALL TimersStop( Timer_FP_DGELS )
-
-        CALL TimersStart( Timer_FP_Alpha )
+        CALL TimersStop( Timer_FP_LS )
 
 #if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-        !$OMP PRIVATE( SUM1, i_shift )
+        !$OMP PRIVATE( SUM1 )
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR &
-        !$ACC PRIVATE( SUM1, i_shift ) &
+        !$ACC PRIVATE( SUM1 ) &
         !$ACC PRESENT( ITERATE, Alpha, BVEC )
 #elif defined(THORNADO_OMP)
         !$OMP PARALLEL DO SIMD &
-        !$OMP PRIVATE( SUM1, i_shift )
+        !$OMP PRIVATE( SUM1 )
 #endif
         DO iN_X = 1, nX_G
           IF ( ITERATE(iN_X) ) THEN
 
             SUM1 = Zero
             DO i = 1, Mk-1
-              i_shift = 1 + MOD( i + iM - 1, Mk )
-              Alpha(i_shift,iN_X) = BVEC(i,iN_X)
+              Alpha(i,iN_X) = BVEC(i,iN_X)
               SUM1 = SUM1 + BVEC(i,iN_X)
             END DO
-            Alpha(iM,iN_X) = One - SUM1
+            Alpha(Mk,iN_X) = One - SUM1
 
           END IF
         END DO
@@ -1329,11 +1306,11 @@ CONTAINS
           END DO
         END DO
 
-        CALL TimersStop( Timer_FP_Alpha )
-
       END IF
 
-      CALL TimersStop( Timer_FP_Update )
+      CALL TimersStop( Timer_FP_AA )
+
+      CALL TimersStart( Timer_FP_Update )
 
       ! --- Update Residuals ---
 
@@ -1370,8 +1347,6 @@ CONTAINS
       END DO
 
       ! --- Update Matter ---
-
-      CALL TimersStart( Timer_FP_DEY )
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
@@ -1416,8 +1391,6 @@ CONTAINS
       END IF
 !      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
 !             ( D, E, Y, T )
-
-      CALL TimersStop( Timer_FP_DEY )
 
       ! --- Check Convergence ---
 
@@ -1471,9 +1444,11 @@ CONTAINS
         END IF
       END DO
 
+      CALL TimersStop( Timer_FP_Update )
+
       ! --- Recompute Equilibrium Distributions ---
 
-      CALL TimersStart( Timer_FP_J0P )
+      CALL TimersStart( Timer_FP_FDK )
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO
@@ -1509,11 +1484,11 @@ CONTAINS
         END IF
       END DO
 
-      CALL TimersStop( Timer_FP_J0P )
+      CALL TimersStop( Timer_FP_FDK )
 
       ! --- Recompute Kernels ---
 
-      CALL TimersStart( Timer_FP_OpP )
+      CALL TimersStart( Timer_FP_OpK )
 
       ! --- NES Kernels ---
 
@@ -1535,11 +1510,49 @@ CONTAINS
              ( 1, nE_G, 1, nX_G, E_N, D, T, Y, iS_2, 1, &
                Phi_0_In_Pair_2, Phi_0_Ot_Pair_2 )
 
-      CALL TimersStop( Timer_FP_OpP )
+!#if defined(THORNADO_OMP_OL)
+!      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO
+!#elif defined(THORNADO_OACC)
+!      !$ACC PARALLEL LOOP GANG VECTOR &
+!      !$ACC PRESENT( CONVERGED, E_N, D, T, Y, &
+!      !$ACC          Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
+!      !$ACC          Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
+!      !$ACC          Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
+!      !$ACC          Phi_0_In_Pair_2, Phi_0_Ot_Pair_2 )
+!#elif defined(THORNADO_OMP)
+!      !$OMP PARALLEL DO
+!#endif
+!      DO iN_X = 1, nX_G
+!        IF ( .NOT. CONVERGED(iN_X) ) THEN
+!
+!          ! --- NES Kernels ---
+!
+!          CALL ComputeNeutrinoOpacities_NES_Point &
+!                 ( 1, nE_G, E_N, D(iN_X), T(iN_X), Y(iN_X), iS_1, 1, &
+!                   Phi_0_In_NES_1(:,:,iN_X), Phi_0_Ot_NES_1(:,:,iN_X) )
+!
+!          CALL ComputeNeutrinoOpacities_NES_Point &
+!                 ( 1, nE_G, E_N, D(iN_X), T(iN_X), Y(iN_X), iS_2, 1, &
+!                   Phi_0_In_NES_2(:,:,iN_X), Phi_0_Ot_NES_2(:,:,iN_X) )
+!
+!          ! --- Pair Kernels ---
+!
+!          CALL ComputeNeutrinoOpacities_Pair_Point &
+!                 ( 1, nE_G, E_N, D(iN_X), T(iN_X), Y(iN_X), iS_1, 1, &
+!                   Phi_0_In_Pair_1(:,:,iN_X), Phi_0_Ot_Pair_1(:,:,iN_X) )
+!
+!          CALL ComputeNeutrinoOpacities_Pair_Point &
+!                 ( 1, nE_G, E_N, D(iN_X), T(iN_X), Y(iN_X), iS_2, 1, &
+!                   Phi_0_In_Pair_2(:,:,iN_X), Phi_0_Ot_Pair_2(:,:,iN_X) )
+!
+!        END IF
+!      END DO
+
+      CALL TimersStop( Timer_FP_OpK )
 
       ! --- Shift History Arrays ---
 
-      CALL TimersStart( Timer_FP_DSWAP )
+      CALL TimersStart( Timer_FP_Shift )
 
       IF ( Mk == M_FP ) THEN
 
@@ -1585,7 +1598,7 @@ CONTAINS
 
       END IF
 
-      CALL TimersStop( Timer_FP_DSWAP )
+      CALL TimersStop( Timer_FP_Shift )
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET UPDATE FROM( ITERATE, CONVERGED )
@@ -1601,8 +1614,8 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE HOST( K_FP )
 #endif
-    WRITE(*,*) 'MINLOC(K_FP), MINVAL(K_FP)', MINLOC(K_FP), MINVAL(K_FP)
-    WRITE(*,*) 'MAXLOC(K_FP), MAXVAL(K_FP)', MAXLOC(K_FP), MAXVAL(K_FP)
+    WRITE(*,'(a,2i4)') 'MINLOC(K_FP), MINVAL(K_FP)', MINLOC(K_FP), MINVAL(K_FP)
+    WRITE(*,'(a,2i4)') 'MAXLOC(K_FP), MAXVAL(K_FP)', MAXLOC(K_FP), MAXVAL(K_FP)
 #endif
 
 #if defined(THORNADO_OMP_OL)
