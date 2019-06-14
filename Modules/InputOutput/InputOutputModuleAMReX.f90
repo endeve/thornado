@@ -72,7 +72,7 @@ MODULE InputOutputModuleAMReX
       IMPLICIT NONE
       INTEGER(c_int),   INTENT(out) :: FinestLevel(*)
       INTEGER(c_int),   INTENT(out) :: StepNo(*)
-      REAL(amrex_real), INTENT(out) :: dt(*),time(*)
+      REAL(amrex_real), INTENT(out) :: dt(*), time(*)
       TYPE(c_ptr),      INTENT(out) :: pBA(*), pDM(*)
       INTEGER(c_int),   VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
@@ -130,36 +130,34 @@ CONTAINS
 
     INTEGER, INTENT(in) :: iChkFile
 
-    INTEGER               :: iLevel, FinestLevel(1), nComps
+    INTEGER               :: iLevel, FinestLevel(1)
     TYPE(c_ptr)           :: pBA(0:amrex_max_level)
     TYPE(c_ptr)           :: pDM(0:amrex_max_level)
     TYPE(c_ptr)           :: pGF(0:amrex_max_level)
     TYPE(c_ptr)           :: pCF(0:amrex_max_level)
     TYPE(c_ptr)           :: pPF(0:amrex_max_level)
     TYPE(c_ptr)           :: pAF(0:amrex_max_level)
-    TYPE(amrex_boxarray)  :: BA(0:amrex_max_level)
-    TYPE(amrex_distromap) :: DM(0:amrex_max_level)
     TYPE(c_ptr)           :: amrcore
-    TYPE(amrex_box)       :: DOMAIN, DOM
-    TYPE(amrex_geometry)  :: GEOM(0:amrex_max_level)
-
-    ! --- Parse parameter file ---
-    CALL MyAmrInit
+    TYPE(amrex_box)       :: BX
 
     amrcore = amrex_get_amrcore()
 
-    ! Dummy variables 
-    DOMAIN = amrex_box( [0,0,0], [1,1,1] )
+    BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
+    ALLOCATE( BA(0:nLevels) )
     DO iLevel = 0, nLevels
-      CALL amrex_geometry_build( GEOM(iLevel), DOMAIN )
+      CALL amrex_boxarray_build ( BA(iLevel), BX )
     END DO
 
-    DOM = GEOM(0) % DOMAIN
-
     DO iLevel = 0, nLevels
-      CALL amrex_boxarray_build ( BA(iLevel), DOM )
-      CALL amrex_distromap_build( DM(iLevel), BA(iLevel) )
+      CALL BA(iLevel) % maxSize( MaxGridSize )
+    END DO
+
+    ALLOCATE( DM  (0:nLevels) )
+    ALLOCATE( GEOM(0:nLevels) )
+    DO iLevel = 0, nLevels
+      CALL amrex_geometry_build( GEOM(iLevel), BX )
+      CALL amrex_distromap_build( DM (iLevel), BA(iLevel) )
     END DO
 
     pBA(0:amrex_max_level) = BA(0:amrex_max_level) % P
@@ -180,8 +178,6 @@ CONTAINS
       CALL amrex_fi_set_boxarray ( iLevel, BA(iLevel) % P, amrcore )
       CALL amrex_fi_set_distromap( iLevel, DM(iLevel) % P, amrcore )
     END DO
-
-    nComps = 1
 
     DO iLevel = 0, nLevels
       CALL amrex_multifab_build &
@@ -212,7 +208,7 @@ CONTAINS
     END DO
 
     CALL amrex_fi_set_finest_level( nLevels, amrcore )
-	
+
   END SUBROUTINE ReadCheckpointFile
 
 
