@@ -234,11 +234,11 @@ LIBRARIES_LAPACK_summit_xl     = -L$(OLCF_ESSL_ROOT)/lib64 -lessl \
                                  -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
 LIBRARIES_LAPACK               = $(LIBRARIES_LAPACK_$(MACHINE))
 
-LIBRARIES_CUDA_titan_gnu       = -L$(CUDATOOLKIT_HOME)/lib64 -lcublas -lcudart -lcuda
-LIBRARIES_CUDA_titan_pgi       = -L$(CUDATOOLKIT_HOME)/lib64 -lcublas -lcudart -lcuda
-LIBRARIES_CUDA_summit_gcc      = -L$(OLCF_CUDA_ROOT)/lib64 -lcublas -lcudart -lcuda
-LIBRARIES_CUDA_summit_pgi      = -L$(OLCF_CUDA_ROOT)/lib64 -lcublas -lcudart -lcuda
-LIBRARIES_CUDA_summit_xl       = -L$(OLCF_CUDA_ROOT)/lib64 -lcublas -lcudart -lcuda
+LIBRARIES_CUDA_titan_gnu       = -L$(CUDATOOLKIT_HOME)/lib64 -lcusolver -lcublas -lcudart -lcuda
+LIBRARIES_CUDA_titan_pgi       = -L$(CUDATOOLKIT_HOME)/lib64 -lcusolver -lcublas -lcudart -lcuda
+LIBRARIES_CUDA_summit_gcc      = -L$(OLCF_CUDA_ROOT)/lib64 -lcusolver -lcublas -lcudart -lcuda
+LIBRARIES_CUDA_summit_pgi      = -L$(OLCF_CUDA_ROOT)/lib64 -lcusolver -lcublas -lcudart -lcuda
+LIBRARIES_CUDA_summit_xl       = -L$(OLCF_CUDA_ROOT)/lib64 -lcusolver -lcublas -lcudart -lcuda
 LIBRARIES_CUDA                 = $(LIBRARIES_CUDA_$(MACHINE))
 
 LIBRARIES_MAGMA_titan_gnu      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
