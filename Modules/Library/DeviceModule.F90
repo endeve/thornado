@@ -18,6 +18,10 @@ MODULE DeviceModule
     cublasCreate_v2, &
     cublasGetStream_v2, &
     cublasSetStream_v2
+  USE CusolverModule, ONLY: &
+    cusolver_handle, &
+    cusolverDnCreate, &
+    cusolverDnSetStream
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
@@ -107,6 +111,9 @@ CONTAINS
     ierr = cudaStreamCreate( stream )
     ierr = cublasSetStream_v2( cublas_handle, stream )
     !ierr = cublasGetStream_v2( cublas_handle, stream )
+
+    ierr = cusolverDnCreate( cusolver_handle )
+    ierr = cusolverDnSetStream( cusolver_handle, stream )
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
@@ -163,8 +170,10 @@ CONTAINS
 
   LOGICAL FUNCTION on_device()
 #if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
     on_device = ( .not. omp_is_initial_device() )
 #elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
     on_device = ( .not. acc_on_device( acc_device_host ) )
 #else
     on_device = .false.
