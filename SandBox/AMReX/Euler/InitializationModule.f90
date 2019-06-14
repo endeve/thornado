@@ -160,8 +160,6 @@ CONTAINS
 
     END IF
 
-    WRITE(*,*) 't_wrt: ', t_wrt
-
     wrt   = .FALSE.
     chk   = .FALSE.
 

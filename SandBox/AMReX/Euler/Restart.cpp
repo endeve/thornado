@@ -140,8 +140,6 @@ extern "C"
            BoxArray** ba, DistributionMapping** dm, int iChkFile )
   {
 
-    std::cout << "iChkFile: " << iChkFile << std::endl;
-
     std::stringstream sChkFile;
     sChkFile << chk_file << std::setw(5) << std::setfill('0') << iChkFile;
     restart_chkfile = sChkFile.str();
