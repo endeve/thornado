@@ -447,7 +447,7 @@ CONTAINS
     DO iP = 1, nP
 
       CALL ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
-             ( D(iP), E(iP), Y(iP), T(iP), Error_Option = Error(iP) )
+             ( D(iP), E(iP), Y(iP), T(iP), Guess_Option = T(iP), Error_Option = Error(iP) )
 
     END DO
 
