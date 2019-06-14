@@ -305,6 +305,31 @@ module CublasModule
     end function cublasDgemmBatched
 
     integer(c_int) function &
+        & cublasDgemmStridedBatched(handle, transa, transb, m, n, k, alpha, &
+        & dA, ldda, strideA, dB, lddb, strideB, beta, dC, lddc, strideC, nbatch) &
+        & bind(c, name="cublasDgemmStridedBatched")
+      use, intrinsic :: iso_c_binding
+      type(c_ptr), value :: handle
+      integer(c_int), value :: transa
+      integer(c_int), value :: transb
+      integer(c_int), value :: m
+      integer(c_int), value :: n
+      integer(c_int), value :: k
+      real(c_double) :: alpha
+      type(c_ptr), value :: dA
+      integer(c_int), value :: ldda
+      integer(c_int), value :: strideA
+      type(c_ptr), value :: dB
+      integer(c_int), value :: lddb
+      integer(c_int), value :: strideB
+      real(c_double) :: beta
+      type(c_ptr), value :: dC
+      integer(c_int), value :: strideC
+      integer(c_int), value :: lddc
+      integer(c_int), value :: nbatch
+    end function cublasDgemmStridedBatched
+
+    integer(c_int) function &
         & cublasDtrsv(uplo, trans, diag, n, dA, ldda, dx, incx) &
         & bind(c, name="cublasDtrsv")
       use, intrinsic :: iso_c_binding
@@ -334,11 +359,11 @@ module CublasModule
     end function cublasDtrsv_v2
 
     integer(c_int) function &
-        & cublasDtrsm(uplo, side, trans, diag, m, n, alpha, dA, ldda, dB, lddb) &
+        & cublasDtrsm(side, uplo, trans, diag, m, n, alpha, dA, ldda, dB, lddb) &
         & bind(c, name="cublasDtrsm")
       use, intrinsic :: iso_c_binding
-      character(c_char), value :: uplo
       character(c_char), value :: side
+      character(c_char), value :: uplo
       character(c_char), value :: trans
       character(c_char), value :: diag
       integer(c_int), value :: m
@@ -351,12 +376,12 @@ module CublasModule
     end function cublasDtrsm
 
     integer(c_int) function &
-        & cublasDtrsm_v2(handle, uplo, side, trans, diag, m, n, alpha, dA, ldda, dB, lddb) &
+        & cublasDtrsm_v2(handle, side, uplo, trans, diag, m, n, alpha, dA, ldda, dB, lddb) &
         & bind(c, name="cublasDtrsm_v2")
       use, intrinsic :: iso_c_binding
       type(c_ptr), value :: handle
-      integer(c_int), value :: uplo
       integer(c_int), value :: side
+      integer(c_int), value :: uplo
       integer(c_int), value :: trans
       integer(c_int), value :: diag
       integer(c_int), value :: m
