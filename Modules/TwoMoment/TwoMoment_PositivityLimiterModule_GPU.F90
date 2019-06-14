@@ -327,7 +327,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, U )
+    !$ACC PRESENT( U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, U, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
@@ -388,7 +388,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRIVATE( Min_K, Max_K, Theta_1 ) &
     !$ACC REDUCTION( min: MinTheta_1 ) &
-    !$ACC PRESENT( U_P_N, U_K_N, U_Q_N, NegativeStates, Min_K_S, Max_K_S, Theta_1_S, MinTheta_1 )
+    !$ACC PRESENT( U_P_N, U_K_N, U_Q_N, NegativeStates, Min_K_S, Max_K_S, Theta_1_S, MinTheta_1, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( Min_K, Max_K, Theta_1 ) &
@@ -521,7 +521,7 @@ CONTAINS
     !$ACC PRESENT( U_P_N, U_P_G1, U_P_G2, U_P_G3, &
     !$ACC          U_K_N, U_K_G1, U_K_G2, U_K_G3, &
     !$ACC          U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, &
-    !$ACC          NegativeStates, Min_Gam_S, Theta_2_S, MinTheta_2, iError )
+    !$ACC          NegativeStates, Min_Gam_S, Theta_2_S, MinTheta_2, iError, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( Gam, Min_Gam, Theta_2, Theta_P ) &
@@ -688,7 +688,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( U, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, NegativeStates )
+    !$ACC PRESENT( U, U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, NegativeStates, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
