@@ -1,7 +1,5 @@
 MODULE MyAmrModule
 
-  USE iso_c_binding
-
   ! --- AMReX Modules ---
   USE amrex_fort_module, ONLY: &
     amrex_real, amrex_spacedim
@@ -18,6 +16,12 @@ MODULE MyAmrModule
     amrex_parmparse, &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
+  USE amrex_boxarray_module, ONLY: &
+    amrex_boxarray
+  USE amrex_distromap_module, ONLY: &
+    amrex_distromap
+  USE amrex_geometry_module, ONLY: &
+    amrex_geometry
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule, ONLY: &
@@ -40,7 +44,7 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName
   INTEGER,          ALLOCATABLE, SAVE :: StepNo(:)
   CHARACTER(LEN=32),             SAVE :: Coordsys
-  LOGICAL,                       SAVE :: DEBUG
+  LOGICAL,                       SAVE :: DEBUG, UseSourceTerm
 
   ! --- Slope limiter ---
   LOGICAL          :: UseSlopeLimiter
@@ -53,6 +57,11 @@ MODULE MyAmrModule
   ! --- Positivity limiter ---
   LOGICAL          :: UsePositivityLimiter
   REAL(amrex_real) :: Min_1, Min_2
+
+  ! --- AMReX Geometry arrays ---
+  TYPE(amrex_boxarray),  ALLOCATABLE, PUBLIC :: BA(:)
+  TYPE(amrex_distromap), ALLOCATABLE, PUBLIC :: DM(:)
+  TYPE(amrex_geometry),  ALLOCATABLE, PUBLIC :: GEOM(:)
 
 
 CONTAINS
@@ -105,9 +114,10 @@ CONTAINS
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
-      CALL PP % get   ( 'coord_sys', coord_sys )
-      CALL PP % getarr( 'prob_lo',   xL )
-      CALL PP % getarr( 'prob_hi',   xR )
+      CALL PP % get   ( 'coord_sys',  coord_sys )
+      CALL PP % getarr( 'prob_lo',    xL )
+      CALL PP % getarr( 'prob_hi',    xR )
+      CALL PP % query( 'UseSourceTerm', UseSourceTerm )
     CALL amrex_parmparse_destroy( PP )
     IF     ( coord_sys .EQ. 0 )THEN
       CoordSys = 'CARTESIAN'
@@ -175,6 +185,10 @@ CONTAINS
   SUBROUTINE MyAmrFinalize
 
     CALL FinalizeDataAMReX( nLevels )
+
+    DEALLOCATE( GEOM )
+    DEALLOCATE( DM )
+    DEALLOCATE( BA )
 
     DEALLOCATE( t )
     DEALLOCATE( dt )

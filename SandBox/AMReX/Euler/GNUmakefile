@@ -1,8 +1,9 @@
 # AMREX_HOME defines the directory in which we will find all the AMReX code
 # If you set AMREX_HOME as an environment variable, this line will be ignored
-AMREX_HOME ?= $(AMREX_DIR)
+AMREX_HOME    ?= $(AMREX_DIR)
+THORNADO_HOME ?= $(THORNADO_DIR)
 
-DEBUG     = FALSE
+DEBUG     = TRUE
 
 USE_MPI   = TRUE
 USE_OMP   = FALSE
@@ -19,7 +20,7 @@ DIM       = 2
 
 EBASE     = main
 
-include ./Make.package
+include $(THORNADO_HOME)/SandBox/AMReX/Euler/Make.package
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 

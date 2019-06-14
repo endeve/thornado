@@ -1,20 +1,20 @@
 PROGRAM main
 
   ! --- AMReX Modules ---
-  USE amrex_fort_module, ONLY: &
+  USE amrex_fort_module,     ONLY: &
     amrex_real
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_communicator
 
   ! --- thornado Modules ---
-  USE MeshModule,                       ONLY: &
+  USE MeshModule,             ONLY: &
     MeshX, DestroyMesh
-  USE InputOutputModuleAMReX,           ONLY: &
+  USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint, &
-    ReadCheckpointFile, &
-    MakeMF_Diff
+    ReadCheckpointFile!, &
+!$$    MakeMF_Diff
 
   ! --- Local Modules ---
   USE MF_Euler_UtilitiesModule,         ONLY: &
@@ -34,7 +34,7 @@ PROGRAM main
     ShowVariableFromMultifab
   USE MyAmrDataModule,                  ONLY: &
     MF_uGF, MF_uCF, MF_uPF, MF_uAF
-  USE ProblemInitializationModule
+  USE InitializationModule
   USE MyAmrModule
 
   IMPLICIT NONE
@@ -46,7 +46,7 @@ PROGRAM main
 
 !!$  CALL MakeMF_Diff( 0, 2929 )
 
-  CALL InitializeProblem(10)
+  CALL InitializeProblem( 10 )
 
   IF( amrex_parallel_ioprocessor() ) &
     Timer_Evolution = MPI_WTIME()
@@ -160,6 +160,7 @@ PROGRAM main
   ! --- Finalize everything ---
 
   CALL FinalizeProgram( GEOM, MeshX )
+
 
 END PROGRAM main
 
