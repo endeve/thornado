@@ -50,6 +50,10 @@ PROGRAM ApplicationDriver
     Euler_InitializeTally, &
     Euler_FinalizeTally, &
     Euler_ComputeTally
+  USE TimersModule_Euler, ONLY: &
+    TimeIt_Euler, &
+    InitializeTimers_Euler, &
+    FinalizeTimers_Euler
 
   IMPLICIT NONE
 
@@ -87,6 +91,9 @@ PROGRAM ApplicationDriver
   LOGICAL :: DEBUG = .FALSE.
   LOGICAL :: WriteGF = .FALSE., WriteFF = .TRUE.
   REAL(DP) :: wTime_UF, wTime_CTS, Timer_Evolution
+
+  TimeIt_Euler = .FALSE.
+  CALL InitializeTimers_Euler
   
   ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2d'
@@ -486,7 +493,7 @@ PROGRAM ApplicationDriver
   END DO
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
   WRITE(*,*)
-  WRITE(*,'(A,ES13.6E3)') 'Total evolution time: ', Timer_Evolution
+  WRITE(*,'(A,ES13.6E3,A)') 'Total evolution time: ', Timer_Evolution, ' s'
 
   CALL Euler_ComputeFromConserved &
          ( iX_B0, iX_E0, &
@@ -519,6 +526,8 @@ PROGRAM ApplicationDriver
   CALL FinalizeEquationOfState
 
   CALL FinalizeProgram
+
+  CALL FinalizeTimers_Euler
 
 CONTAINS
 
