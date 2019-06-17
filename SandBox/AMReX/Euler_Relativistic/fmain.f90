@@ -51,7 +51,7 @@ PROGRAM main
   CALL InitializeProblem()
 
   IF( amrex_parallel_ioprocessor() ) &
-    Timer_Evolution = MPI_WTIME()
+      Timer_Evolution = MPI_WTIME()
 
   CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
@@ -135,12 +135,6 @@ PROGRAM main
 
   ! --- END of evolution ---
 
-  IF( amrex_parallel_ioprocessor() )THEN
-    WRITE(*,*)
-    WRITE(*,'(A,ES13.6E3,A)') &
-      'Total evolution time: ', MPI_WTIME() - Timer_Evolution, ' s'
-  END IF
-
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   StepNo = StepNo + 1
@@ -159,10 +153,15 @@ PROGRAM main
            MF_uPF % P, &
            MF_uAF % P )
 
+  IF( amrex_parallel_ioprocessor() )THEN
+    WRITE(*,*)
+    WRITE(*,'(A,ES13.6E3,A)') &
+      'Total evolution time: ', MPI_WTIME() - Timer_Evolution, ' s'
+  END IF
+
   ! --- Finalize everything ---
 
   CALL FinalizeProgram( GEOM, MeshX )
-
 
 END PROGRAM main
 
