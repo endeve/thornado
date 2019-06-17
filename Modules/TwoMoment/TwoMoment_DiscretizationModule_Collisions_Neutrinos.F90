@@ -162,19 +162,12 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: Chi_Pair(:,:,:)
     REAL(DP), ALLOCATABLE :: Eta_Pair(:,:,:)
 
-    ! TESTING FP
-    REAL(DP) :: DIFFERENCE_FP
-    REAL(DP) :: TMP_D, TMP_T, TMP_Y, TMP_E
-
-
     CALL TimersStart( Timer_Implicit )
 
     iE_B0 = iZ_B0(1);   iE_E0 = iZ_E0(1)
     iE_B1 = iZ_B1(1);   iE_E1 = iZ_E1(1)
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
-
-!!$    PRINT*, "ComputeIncrement_TwoMoment_Implicit_New"
 
     CALL InitializeCollisions_New( iE_B0, iE_E0 )
 
@@ -197,8 +190,6 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-!!$      PRINT*, "iX1,iX2,iX3 = ", iX1,iX2,iX3
-
       CALL TimersStart( Timer_Im_In )
 
       DO iCF = 1, nCF
@@ -217,24 +208,11 @@ CONTAINS
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'Copy to CF_N: ', Timer_Implicit_In
-
-!!$      PRINT*, "D  = ", PF_N(:,iPF_D  )
-!!$      PRINT*, "V1 = ", PF_N(:,iPF_V1 )
-!!$      PRINT*, "V2 = ", PF_N(:,iPF_V2 )
-!!$      PRINT*, "V3 = ", PF_N(:,iPF_V3 )
-!!$      PRINT*, "E  = ", PF_N(:,iPF_E  )
-!!$      PRINT*, "Ne = ", PF_N(:,iPF_Ne )
-
       CALL TimersStart( Timer_Im_ComputeTS_Aux )
 
       CALL ComputeThermodynamicStates_Auxiliary_TABLE &
              ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
                AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
-
-!!$      PRINT*, "T  = ", AF_N(:,iAF_T)
-!!$      PRINT*, "E  = ", AF_N(:,iAF_E)
-!!$      PRINT*, "Ye = ", AF_N(:,iAF_Ye)
 
       CALL TimersStop( Timer_Im_ComputeTS_Aux )
 
@@ -256,8 +234,6 @@ CONTAINS
 
       CALL TimersStop( Timer_Im_ComputeOpacity )
 
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeNeutrinoOpacities: ', Timer_Im_ComputeOpacity
-
       CALL TimersStart( Timer_Im_MapForward )
 
       CALL MapForward_R_New &
@@ -266,8 +242,6 @@ CONTAINS
       CALL TimersStop( Timer_Im_MapForward )
 
       CALL TimersStop( Timer_Im_In )
-
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'MapForward_R: ', Timer_Im_MapR
 
       CALL TimersStart( Timer_Im_Solve )
 
@@ -304,60 +278,43 @@ CONTAINS
 !!$
 !!$        END DO
 
+#ifdef NEUTRINO_MATTER_SOLVER_EMAB
 
+        WRITE(*,*)
+        WRITE(*,'(A6,A)') &
+          '', 'NEUTRINO_MATTER_SOLVER_EMAB not Implemented'
+        WRITE(*,*)
+        STOP
 
-        DIFFERENCE_FP = 0.0
+#elif NEUTRINO_MATTER_SOLVER_FIXED_POINT_COUPLED
+
+        CALL TimersStart( Timer_Im_CoupledAA )
 
         DO iNodeX = 1, nDOFX
 
-          ! CALL SolveMatterEquations_FP_Coupled &
-          !        ( dt, iNuE, iNuE_Bar, &
-          !          CR_N(:,iCR_N,1:2,iNodeX), &
-          !          Chi (:,      1:2,iNodeX), &
-          !          fEQ (:,      1:2,iNodeX), &
-          !          Chi_NES (:,  1:2,iNodeX), &
-          !          Eta_NES (:,  1:2,iNodeX), &
-          !          Chi_Pair(:,  1:2,iNodeX), &
-          !          Eta_Pair(:,  1:2,iNodeX), &
-          !          PF_N(iNodeX,iPF_D ), &
-          !          AF_N(iNodeX,iAF_T ), &
-          !          AF_N(iNodeX,iAF_Ye), &
-          !          AF_N(iNodeX,iAF_E ) )
-
-          TMP_D = PF_N(iNodeX,iPF_D )
-          TMP_T = AF_N(iNodeX,iAF_T )
-          TMP_Y = AF_N(iNodeX,iAF_Ye )
-          TMP_E = AF_N(iNodeX,iAF_E )
-
-          CALL TimersStart( Timer_Im_CoupledAA )
-
           CALL SolveMatterEquations_FP_Coupled &
-                  ( dt, iNuE, iNuE_Bar, &
-                    CR_N(:,iCR_N,1:2,iNodeX), &
-                    Chi (:,      1:2,iNodeX), &
-                    fEQ (:,      1:2,iNodeX), &
-                    Chi_NES (:,  1:2,iNodeX), &
-                    Eta_NES (:,  1:2,iNodeX), &
-                    Chi_Pair(:,  1:2,iNodeX), &
-                    Eta_Pair(:,  1:2,iNodeX), &
-                    TMP_D, &
-                    TMP_T, &
-                    TMP_Y, &
-                    TMP_E )
+                 ( dt, iNuE, iNuE_Bar, &
+                   CR_N(:,iCR_N,1:2,iNodeX), &
+                   Chi (:,      1:2,iNodeX), &
+                   fEQ (:,      1:2,iNodeX), &
+                   Chi_NES (:,  1:2,iNodeX), &
+                   Eta_NES (:,  1:2,iNodeX), &
+                   Chi_Pair(:,  1:2,iNodeX), &
+                   Eta_Pair(:,  1:2,iNodeX), &
+                   PF_N(iNodeX,iPF_D),  &
+                   AF_N(iNodeX,iAF_T),  &
+                   AF_N(iNodeX,iAF_Ye), &
+                   AF_N(iNodeX,iAF_E) )
 
-          CALL TimersStop( Timer_Im_CoupledAA )
+        END DO
 
-!!$          PRINT*, "FP_Coupled:"
-!!$          PRINT*, "T = ", TMP_T
-!!$          PRINT*, "Y = ", TMP_Y
-!!$          PRINT*, "E = ", TMP_E
+        CALL TimersStop( Timer_Im_CoupledAA )
 
-          TMP_D = PF_N(iNodeX,iPF_D )
-          TMP_T = AF_N(iNodeX,iAF_T )
-          TMP_Y = AF_N(iNodeX,iAF_Ye )
-          TMP_E = AF_N(iNodeX,iAF_E )
+#elif NEUTRINO_MATTER_SOLVER_FIXED_POINT_NESTED_AA
 
-          CALL TimersStart( Timer_Im_NestedAA )
+        CALL TimersStart( Timer_Im_NestedAA )
+
+        DO iNodeX = 1, nDOFX
 
           CALL SolveMatterEquations_FP_NestedAA &
                  ( dt, iNuE, iNuE_Bar, &
@@ -368,24 +325,20 @@ CONTAINS
                    Eta_NES (:,  1:2,iNodeX), &
                    Chi_Pair(:,  1:2,iNodeX), &
                    Eta_Pair(:,  1:2,iNodeX), &
-                   TMP_D, &
-                   TMP_T, &
-                   TMP_Y, &
-                   TMP_E )
+                   PF_N(iNodeX,iPF_D),  &
+                   AF_N(iNodeX,iAF_T),  &
+                   AF_N(iNodeX,iAF_Ye), &
+                   AF_N(iNodeX,iAF_E) )
 
-          CALL TimersStop( Timer_Im_NestedAA )
+        END DO
 
-!!$          PRINT*, "FP_NestedAA:"
-!!$          PRINT*, "T = ", TMP_T
-!!$          PRINT*, "Y = ", TMP_Y
-!!$          PRINT*, "E = ", TMP_E
+        CALL TimersStop( Timer_Im_NestedAA )
 
-          TMP_D = PF_N(iNodeX,iPF_D )
-          TMP_T = AF_N(iNodeX,iAF_T )
-          TMP_Y = AF_N(iNodeX,iAF_Ye )
-          TMP_E = AF_N(iNodeX,iAF_E )
+#elif NEUTRINO_MATTER_SOLVER_FIXED_POINT_NESTED_NEWTON
 
-          CALL TimersStart( Timer_Im_NestedNewton )
+        CALL TimersStart( Timer_Im_NestedNewton )
+
+        DO iNodeX = 1, nDOFX
 
           CALL SolveMatterEquations_FP_NestedNewton &
                  ( dt, iNuE, iNuE_Bar, &
@@ -396,24 +349,20 @@ CONTAINS
                    Eta_NES (:,  1:2,iNodeX), &
                    Chi_Pair(:,  1:2,iNodeX), &
                    Eta_Pair(:,  1:2,iNodeX), &
-                   TMP_D, &
-                   TMP_T, &
-                   TMP_Y, &
-                   TMP_E )
+                   PF_N(iNodeX,iPF_D),  &
+                   AF_N(iNodeX,iAF_T),  &
+                   AF_N(iNodeX,iAF_Ye), &
+                   AF_N(iNodeX,iAF_E) )
 
-          CALL TimersStop( Timer_Im_NestedNewton )
+        END DO
 
-!!$          PRINT*, "FP_NestedNewton:"
-!!$          PRINT*, "T = ", TMP_T
-!!$          PRINT*, "Y = ", TMP_Y
-!!$          PRINT*, "E = ", TMP_E
+        CALL TimersStop( Timer_Im_NestedNewton )
 
-          TMP_D = PF_N(iNodeX,iPF_D )
-          TMP_T = AF_N(iNodeX,iAF_T )
-          TMP_Y = AF_N(iNodeX,iAF_Ye )
-          TMP_E = AF_N(iNodeX,iAF_E )
+#elif NEUTRINO_MATTER_SOLVER_NEWTON
 
-          CALL TimersStart( Timer_Im_Newton )
+        CALL TimersStart( Timer_Im_Newton )
+
+        DO iNodeX = 1, nDOFX
 
           CALL SolveMatterEquations_Newton &
                  ( dt, iNuE, iNuE_Bar, &
@@ -424,41 +373,40 @@ CONTAINS
                    Eta_NES (:,  1:2,iNodeX), &
                    Chi_Pair(:,  1:2,iNodeX), &
                    Eta_Pair(:,  1:2,iNodeX), &
-                   TMP_D, &
-                   TMP_T, &
-                   TMP_Y, &
-                   TMP_E )
+                   PF_N(iNodeX,iPF_D),  &
+                   AF_N(iNodeX,iAF_T),  &
+                   AF_N(iNodeX,iAF_Ye), &
+                   AF_N(iNodeX,iAF_E) )
 
-          CALL TimersStop( Timer_Im_Newton )
-
-!!$          PRINT*, "Newton:"
-!!$          PRINT*, "T = ", TMP_T
-!!$          PRINT*, "Y = ", TMP_Y
-!!$          PRINT*, "E = ", TMP_E
-
-          PF_N(iNodeX,iPF_D)  = TMP_D
-          AF_N(iNodeX,iAF_T)  = TMP_T
-          AF_N(iNodeX,iAF_Ye) = TMP_Y
-          AF_N(iNodeX,iAF_E)  = TMP_E
-          !
-          ! DIFFERENCE_FP = DIFFERENCE_FP + ABS(TMP_T - AF_N(iNodeX,iAF_T ))/ABS(TMP_T)
-          ! DIFFERENCE_FP = DIFFERENCE_FP + ABS(TMP_Y - AF_N(iNodeX,iAF_Ye ))/ABS(TMP_Y)
-          ! DIFFERENCE_FP = DIFFERENCE_FP + ABS(TMP_E - AF_N(iNodeX,iAF_E ))/ABS(TMP_E)
-          !
-          ! PRINT*
-          ! PRINT*, "DIFFERENCE = ", DIFFERENCE_FP, " NODES = ", nDOFX
-          !  !PRINT*, "T_Coupled = ", TMP_T / Kelvin, " T_Nested = ", AF_N(iNodeX,iAF_T )  / Kelvin
-          !  !PRINT*, "Y_Coupled = ", TMP_Y, " Y_Nested = ", AF_N(iNodeX,iAF_Ye )
-          !  !PRINT*, "E_Coupled = ", TMP_E / MeV, " E_Nested = ", AF_N(iNodeX,iAF_E ) / MeV
-          ! PRINT*
-          !  !stop "difference test"
         END DO
+
+        CALL TimersStop( Timer_Im_Newton )
+
+#else
+
+        WRITE(*,*)
+        WRITE(*,'(A6,A)') &
+          '', 'ComputeIncrement_TwoMoment_Implicit_New'
+        WRITE(*,'(A6,A)') &
+          '', 'in TwoMoment_DiscretizationModule_Collisions_Neutrinos'
+        WRITE(*,'(A6,A)') &
+          '', 'Invalid NEUTRINO_MATTER_SOLVER'
+        WRITE(*,'(A6,A)') &
+          '', 'Available Options:'
+        WRITE(*,*)
+        WRITE(*,'(A8,A)') '', 'EMAB'
+        WRITE(*,'(A8,A)') '', 'FIXED_POINT_COUPLED'
+        WRITE(*,'(A8,A)') '', 'FIXED_POINT_NESTED_AA'
+        WRITE(*,'(A8,A)') '', 'FIXED_POINT_NESTED_NEWTON'
+        WRITE(*,'(A8,A)') '', 'NEWTON'
+        WRITE(*,*)
+        STOP
+
+#endif
 
       END IF
 
       CALL TimersStop( Timer_Im_Solve )
-
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'SolveMatterEquations_EmAb: ', Timer_Im_Solve
 
       CALL TimersStart( Timer_Im_Out )
 

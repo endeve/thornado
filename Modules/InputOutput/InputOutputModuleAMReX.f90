@@ -38,6 +38,8 @@ MODULE InputOutputModuleAMReX
   USE MF_UtilitiesModule, ONLY: &
     AMReX2thornado, &
     ShowVariableFromMultiFab
+!!$  USE ProblemInitializationModule, ONLY: &
+!!$    InitializeProblem
 
   IMPLICIT NONE
   PRIVATE
@@ -47,18 +49,18 @@ MODULE InputOutputModuleAMReX
   PUBLIC :: WriteFieldsAMReX_PlotFile
   PUBLIC :: WriteFieldsAMReX_Checkpoint
   PUBLIC :: ReadCheckpointFile
-  PUBLIC :: MakeMF_Diff
+!!$  PUBLIC :: MakeMF_Diff
 
   INTERFACE
 
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
-                 ( StepNo, FinestLevel, dt, time, pBA, &
+                 ( StepNo, FinestLevel, dt, time, t_wrt, t_chk, pBA, &
                    pMF_uGF, pMF_uCF, pMF_uPF, pMF_uAF ) BIND(c)
        IMPORT
        IMPLICIT NONE
        INTEGER(c_int),   INTENT(in) :: StepNo(*)
        INTEGER(c_int),   VALUE      :: FinestLevel
-       REAL(amrex_real), INTENT(in) :: dt(*), time(*)
+       REAL(amrex_real), INTENT(in) :: dt(*), time(*), t_wrt, t_chk
        TYPE(c_ptr),      INTENT(in) :: pBA(*)
        TYPE(c_ptr),      INTENT(in) :: pMF_uGF(*)
        TYPE(c_ptr),      INTENT(in) :: pMF_uCF(*)
@@ -67,12 +69,13 @@ MODULE InputOutputModuleAMReX
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
-                 ( FinestLevel, StepNo, dt, time, pBA, pDM, iChkFile ) BIND(c)
+                 ( FinestLevel, StepNo, dt, time, t_wrt, t_chk, &
+                   pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int),   INTENT(out) :: FinestLevel(*)
       INTEGER(c_int),   INTENT(out) :: StepNo(*)
-      REAL(amrex_real), INTENT(out) :: dt(*),time(*)
+      REAL(amrex_real), INTENT(out) :: dt(*), time(*), t_wrt, t_chk
       TYPE(c_ptr),      INTENT(out) :: pBA(*), pDM(*)
       INTEGER(c_int),   VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
@@ -130,36 +133,34 @@ CONTAINS
 
     INTEGER, INTENT(in) :: iChkFile
 
-    INTEGER               :: iLevel, FinestLevel(1), nComps
+    INTEGER               :: iLevel, FinestLevel(1)
     TYPE(c_ptr)           :: pBA(0:amrex_max_level)
     TYPE(c_ptr)           :: pDM(0:amrex_max_level)
     TYPE(c_ptr)           :: pGF(0:amrex_max_level)
     TYPE(c_ptr)           :: pCF(0:amrex_max_level)
     TYPE(c_ptr)           :: pPF(0:amrex_max_level)
     TYPE(c_ptr)           :: pAF(0:amrex_max_level)
-    TYPE(amrex_boxarray)  :: BA(0:amrex_max_level)
-    TYPE(amrex_distromap) :: DM(0:amrex_max_level)
     TYPE(c_ptr)           :: amrcore
-    TYPE(amrex_box)       :: DOMAIN, DOM
-    TYPE(amrex_geometry)  :: GEOM(0:amrex_max_level)
-
-    ! --- Parse parameter file ---
-    CALL MyAmrInit
+    TYPE(amrex_box)       :: BX
 
     amrcore = amrex_get_amrcore()
 
-    ! Dummy variables 
-    DOMAIN = amrex_box( [0,0,0], [1,1,1] )
+    BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
+    ALLOCATE( BA(0:nLevels) )
     DO iLevel = 0, nLevels
-      CALL amrex_geometry_build( GEOM(iLevel), DOMAIN )
+      CALL amrex_boxarray_build ( BA(iLevel), BX )
     END DO
 
-    DOM = GEOM(0) % DOMAIN
-
     DO iLevel = 0, nLevels
-      CALL amrex_boxarray_build ( BA(iLevel), DOM )
-      CALL amrex_distromap_build( DM(iLevel), BA(iLevel) )
+      CALL BA(iLevel) % maxSize( MaxGridSize )
+    END DO
+
+    ALLOCATE( DM  (0:nLevels) )
+    ALLOCATE( GEOM(0:nLevels) )
+    DO iLevel = 0, nLevels
+      CALL amrex_geometry_build( GEOM(iLevel), BX )
+      CALL amrex_distromap_build( DM (iLevel), BA(iLevel) )
     END DO
 
     pBA(0:amrex_max_level) = BA(0:amrex_max_level) % P
@@ -168,7 +169,7 @@ CONTAINS
     FinestLevel = nLevels
 
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevel, StepNo, dt, t, &
+           ( FinestLevel, StepNo, dt, t, t_wrt, t_chk, &
              pBA(0:nLevels), pDM(0:nLevels), iChkFile )
 
     DO iLevel = 0, nLevels
@@ -180,8 +181,6 @@ CONTAINS
       CALL amrex_fi_set_boxarray ( iLevel, BA(iLevel) % P, amrcore )
       CALL amrex_fi_set_distromap( iLevel, DM(iLevel) % P, amrcore )
     END DO
-
-    nComps = 1
 
     DO iLevel = 0, nLevels
       CALL amrex_multifab_build &
@@ -212,7 +211,7 @@ CONTAINS
     END DO
 
     CALL amrex_fi_set_finest_level( nLevels, amrcore )
-	
+
   END SUBROUTINE ReadCheckpointFile
 
 
@@ -436,158 +435,134 @@ CONTAINS
   END SUBROUTINE MF_ComputeCellAverage
 
 
-  SUBROUTINE MakeMF_Diff( chk1, chk2 )
-
-    INTEGER, INTENT(in) :: chk1, chk2
-
-    TYPE(amrex_box)                    :: BX
-    TYPE(amrex_boxarray),  ALLOCATABLE :: BA(:)
-    TYPE(amrex_distromap), ALLOCATABLE :: DM(:)
-    TYPE(amrex_geometry),  ALLOCATABLE :: GEOM(:)
-    TYPE(amrex_multifab),  ALLOCATABLE :: MF_uGF_TEMP(:)
-    TYPE(amrex_multifab),  ALLOCATABLE :: MF_uCF_TEMP(:)
-    TYPE(amrex_multifab),  ALLOCATABLE :: MF_uPF_TEMP(:)
-    TYPE(amrex_multifab),  ALLOCATABLE :: MF_uAF_TEMP(:)
-    INTEGER                            :: iLevel, iComp
-
-    REAL(amrex_real) :: MinD, MaxD
-
-    iComp = 0
-    MinD = 0.0e0_amrex_real
-    MaxD = 0.0e0_amrex_real
-
-    ! --- Initialize AMReX ---
-    CALL amrex_init()
-    CALL amrex_amrcore_init()
-
-    ! --- Parse parameter file ---
-    CALL MyAmrInit
-
-    CALL InitializeProgramHeader &
-           ( ProgramName_Option = TRIM( ProgramName ), &
-             nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
-             xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
-             Verbose_Option = .FALSE. )
-
-    CALL InitializeReferenceElementX
-
-    ALLOCATE( BA         (0:nLevels) )
-    ALLOCATE( DM         (0:nLevels) )
-    ALLOCATE( GEOM       (0:nLevels) )
-    ALLOCATE( MF_uGF_TEMP(0:nLevels) )
-    ALLOCATE( MF_uCF_TEMP(0:nLevels) )
-    ALLOCATE( MF_uPF_TEMP(0:nLevels) )
-    ALLOCATE( MF_uAF_TEMP(0:nLevels) )
-
-    BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
-
-    DO iLevel = 0, nLevels
-      CALL amrex_boxarray_build( BA(iLevel), BX )
-      CALL BA(iLevel) % maxSize( MaxGridSize )
-      CALL amrex_geometry_build ( GEOM(iLevel), BX )
-      CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
-
-      CALL amrex_multifab_build &
-             ( MF_uGF_TEMP(iLevel), BA(iLevel), DM(iLevel), &
-               nDOFX * nGF, swX(1) )
-      CALL MF_uGF_TEMP(iLevel) % SetVal( 0.0d0 )
-      CALL amrex_multifab_build &
-             ( MF_uCF_TEMP(iLevel), BA(iLevel), DM(iLevel), &
-               nDOFX * nCF, swX(1) )
-      CALL MF_uCF_TEMP(iLevel) % SetVal( 0.0d0 )
-      CALL amrex_multifab_build &
-             ( MF_uPF_TEMP(iLevel), BA(iLevel), DM(iLevel), &
-               nDOFX * nPF, swX(1) )
-      CALL MF_uPF_TEMP(iLevel) % SetVal( 0.0d0 )
-      CALL amrex_multifab_build &
-             ( MF_uAF_TEMP(iLevel), BA(iLevel), DM(iLevel), &
-               nDOFX * nAF, swX(1) )
-      CALL MF_uAF_TEMP(iLevel) % SetVal( 0.0d0 )
-    END DO
-
-    CALL MyAmrFinalize
-    CALL ReadCheckpointFile( chk1 )
-
-    DO iLevel = 0, nLevels
-      CALL MF_uGF_TEMP(iLevel) % &
-             PARALLEL_COPY( MF_uGF(iLevel), GEOM(iLevel) )
-      CALL MF_uGF_TEMP(iLevel) % Fill_Boundary( GEOM(iLevel) )
-      CALL MF_uCF_TEMP(iLevel) % &
-             PARALLEL_COPY( MF_uCF(iLevel), GEOM(iLevel) )
-      CALL MF_uCF_TEMP(iLevel) % Fill_Boundary( GEOM(iLevel) )
-      CALL MF_uPF_TEMP(iLevel) % &
-             PARALLEL_COPY( MF_uPF(iLevel), GEOM(iLevel) )
-      CALL MF_uPF_TEMP(iLevel) % Fill_Boundary( GEOM(iLevel) )
-      CALL MF_uAF_TEMP(iLevel) % &
-             PARALLEL_COPY( MF_uAF(iLevel), GEOM(iLevel) )
-      CALL MF_uAF_TEMP(iLevel) % Fill_Boundary( GEOM(iLevel) )
-    END DO
-
-    CALL MyAmrFinalize
-    CALL ReadCheckpointFile( chk2 )
-
-    DO iLevel = 0, nLevels
-      CALL MF_uGF_TEMP(iLevel) &
-             % SUBTRACT( MF_uGF(iLevel), 1, 1, &
-                         MF_uGF(iLevel) % nComp(), swX(1) )
-      CALL MF_uCF_TEMP(iLevel) &
-             % SUBTRACT( MF_uCF(iLevel), 1, 1, &
-                         MF_uCF(iLevel) % nComp(), swX(1) )
-      CALL MF_uPF_TEMP(iLevel) &
-             % SUBTRACT( MF_uPF(iLevel), 1, 1, &
-                         MF_uPF(iLevel) % nComp(), swX(1) )
-      CALL MF_uAF_TEMP(iLevel) &
-             % SUBTRACT( MF_uAF(iLevel), 1, 1, &
-                         MF_uAF(iLevel) % nComp(), swX(1) )
-    END DO
-
-    MinD = +HUGE( 1.0_amrex_real )
-    MaxD = -HUGE( 1.0_amrex_real )
-    DO iLevel = 0, nLevels
-      DO iComp = 1, nDOFX
-        MinD = MIN( MinD, MF_uCF_TEMP(iLevel) % MIN(iComp) )
-        MaxD = MAX( MaxD, MF_uCF_TEMP(iLevel) % MAX(iComp) )
-      END DO
-    END DO
-    WRITE(*,*) 'Linf (CF_D): ', MAX( ABS(MaxD), ABS(MinD) )
-
-    CALL WriteFieldsAMReX_Plotfile &
-           ( t(0), StepNo, &
-             MF_uGF_Option = MF_uGF_TEMP, &
-             MF_uCF_Option = MF_uCF_TEMP, &
-             MF_uPF_Option = MF_uPF_TEMP, &
-             MF_uAF_Option = MF_uAF_TEMP )
-
-    CALL MyAmrFinalize
-
-    CALL FinalizeReferenceElementX
-
-    DO iLevel = 0, nLevels
-      CALL amrex_geometry_destroy ( GEOM(iLevel) )
-      CALL amrex_distromap_destroy( DM  (iLevel) )
-      CALL amrex_boxarray_destroy ( BA  (iLevel) )
-    END DO
-    DEALLOCATE( GEOM )
-    DEALLOCATE( DM   )
-    DEALLOCATE( BA   )
-
-    DO iLevel = 0, nLevels
-      CALL amrex_multifab_destroy( MF_uAF_TEMP(iLevel) )
-      CALL amrex_multifab_destroy( MF_uPF_TEMP(iLevel) )
-      CALL amrex_multifab_destroy( MF_uCF_TEMP(iLevel) )
-      CALL amrex_multifab_destroy( MF_uGF_TEMP(iLevel) )
-    END DO
-    DEALLOCATE( MF_uAF_TEMP )
-    DEALLOCATE( MF_uPF_TEMP )
-    DEALLOCATE( MF_uCF_TEMP )
-    DEALLOCATE( MF_uGF_TEMP )
-
-    CALL amrex_amrcore_finalize()
-    CALL amrex_finalize()
-
-    STOP 'MF_UtilitiesModule.f90'
-
-  END SUBROUTINE MakeMF_Diff
+!!$  SUBROUTINE MakeMF_Diff( chk1, chk2 )
+!!$
+!!$    INTEGER, INTENT(in) :: chk1, chk2
+!!$
+!!$    TYPE(amrex_box)                    :: BX
+!!$    TYPE(amrex_multifab),  ALLOCATABLE :: MF_uGF_TEMP(:)
+!!$    TYPE(amrex_multifab),  ALLOCATABLE :: MF_uCF_TEMP(:)
+!!$    TYPE(amrex_multifab),  ALLOCATABLE :: MF_uPF_TEMP(:)
+!!$    TYPE(amrex_multifab),  ALLOCATABLE :: MF_uAF_TEMP(:)
+!!$    INTEGER                            :: iLevel, iComp
+!!$
+!!$    REAL(amrex_real) :: MinD, MaxD
+!!$
+!!$    iComp = 0
+!!$    MinD = 0.0e0_amrex_real
+!!$    MaxD = 0.0e0_amrex_real
+!!$
+!!$    CALL InitializeProblem( chk1 )
+!!$
+!!$    CALL InitializeProgramHeader &
+!!$           ( ProgramName_Option = TRIM( ProgramName ), &
+!!$             nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
+!!$             xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
+!!$             Verbose_Option = .FALSE. )
+!!$
+!!$    ALLOCATE( MF_uGF_TEMP(0:nLevels) )
+!!$    ALLOCATE( MF_uCF_TEMP(0:nLevels) )
+!!$    ALLOCATE( MF_uPF_TEMP(0:nLevels) )
+!!$    ALLOCATE( MF_uAF_TEMP(0:nLevels) )
+!!$
+!!$    DO iLevel = 0, nLevels
+!!$      WRITE(*,*) '1'
+!!$      CALL amrex_multifab_build &
+!!$             ( MF_uGF_TEMP(iLevel), BA(iLevel), DM(iLevel), &
+!!$               nDOFX * nGF, swX(1) )
+!!$      STOP '2'
+!!$      CALL MF_uGF_TEMP(iLevel) % SetVal( 0.0d0 )
+!!$      CALL amrex_multifab_build &
+!!$             ( MF_uCF_TEMP(iLevel), BA(iLevel), DM(iLevel), &
+!!$               nDOFX * nCF, swX(1) )
+!!$      CALL MF_uCF_TEMP(iLevel) % SetVal( 0.0d0 )
+!!$      CALL amrex_multifab_build &
+!!$             ( MF_uPF_TEMP(iLevel), BA(iLevel), DM(iLevel), &
+!!$               nDOFX * nPF, swX(1) )
+!!$      CALL MF_uPF_TEMP(iLevel) % SetVal( 0.0d0 )
+!!$      CALL amrex_multifab_build &
+!!$             ( MF_uAF_TEMP(iLevel), BA(iLevel), DM(iLevel), &
+!!$               nDOFX * nAF, swX(1) )
+!!$      CALL MF_uAF_TEMP(iLevel) % SetVal( 0.0d0 )
+!!$    END DO
+!!$
+!!$    DO iLevel = 0, nLevels
+!!$      CALL MF_uGF_TEMP(iLevel) % &
+!!$             PARALLEL_COPY( MF_uGF(iLevel), GEOM(iLevel) )
+!!$      CALL MF_uGF_TEMP(iLevel) % Fill_Boundary( GEOM(iLevel) )
+!!$      CALL MF_uCF_TEMP(iLevel) % &
+!!$             PARALLEL_COPY( MF_uCF(iLevel), GEOM(iLevel) )
+!!$      CALL MF_uCF_TEMP(iLevel) % Fill_Boundary( GEOM(iLevel) )
+!!$      CALL MF_uPF_TEMP(iLevel) % &
+!!$             PARALLEL_COPY( MF_uPF(iLevel), GEOM(iLevel) )
+!!$      CALL MF_uPF_TEMP(iLevel) % Fill_Boundary( GEOM(iLevel) )
+!!$      CALL MF_uAF_TEMP(iLevel) % &
+!!$             PARALLEL_COPY( MF_uAF(iLevel), GEOM(iLevel) )
+!!$      CALL MF_uAF_TEMP(iLevel) % Fill_Boundary( GEOM(iLevel) )
+!!$    END DO
+!!$
+!!$    CALL MyAmrFinalize
+!!$    CALL InitializeProblem( chk2 )
+!!$
+!!$    DO iLevel = 0, nLevels
+!!$      CALL MF_uGF_TEMP(iLevel) &
+!!$             % SUBTRACT( MF_uGF(iLevel), 1, 1, &
+!!$                         MF_uGF(iLevel) % nComp(), swX(1) )
+!!$      CALL MF_uCF_TEMP(iLevel) &
+!!$             % SUBTRACT( MF_uCF(iLevel), 1, 1, &
+!!$                         MF_uCF(iLevel) % nComp(), swX(1) )
+!!$      CALL MF_uPF_TEMP(iLevel) &
+!!$             % SUBTRACT( MF_uPF(iLevel), 1, 1, &
+!!$                         MF_uPF(iLevel) % nComp(), swX(1) )
+!!$      CALL MF_uAF_TEMP(iLevel) &
+!!$             % SUBTRACT( MF_uAF(iLevel), 1, 1, &
+!!$                         MF_uAF(iLevel) % nComp(), swX(1) )
+!!$    END DO
+!!$
+!!$    MinD = +HUGE( 1.0_amrex_real )
+!!$    MaxD = -HUGE( 1.0_amrex_real )
+!!$    DO iLevel = 0, nLevels
+!!$      DO iComp = 1, nDOFX
+!!$        MinD = MIN( MinD, MF_uCF_TEMP(iLevel) % MIN(iComp) )
+!!$        MaxD = MAX( MaxD, MF_uCF_TEMP(iLevel) % MAX(iComp) )
+!!$      END DO
+!!$    END DO
+!!$    WRITE(*,*) 'Linf (CF_D): ', MAX( ABS(MaxD), ABS(MinD) )
+!!$
+!!$    CALL WriteFieldsAMReX_Plotfile &
+!!$           ( t(0), StepNo, &
+!!$             MF_uGF_Option = MF_uGF_TEMP, &
+!!$             MF_uCF_Option = MF_uCF_TEMP, &
+!!$             MF_uPF_Option = MF_uPF_TEMP, &
+!!$             MF_uAF_Option = MF_uAF_TEMP )
+!!$
+!!$    CALL FinalizeReferenceElementX
+!!$
+!!$    DO iLevel = 0, nLevels
+!!$      CALL amrex_geometry_destroy ( GEOM(iLevel) )
+!!$      CALL amrex_distromap_destroy( DM  (iLevel) )
+!!$      CALL amrex_boxarray_destroy ( BA  (iLevel) )
+!!$    END DO
+!!$
+!!$    CALL MyAmrFinalize
+!!$
+!!$    DO iLevel = 0, nLevels
+!!$      CALL amrex_multifab_destroy( MF_uAF_TEMP(iLevel) )
+!!$      CALL amrex_multifab_destroy( MF_uPF_TEMP(iLevel) )
+!!$      CALL amrex_multifab_destroy( MF_uCF_TEMP(iLevel) )
+!!$      CALL amrex_multifab_destroy( MF_uGF_TEMP(iLevel) )
+!!$    END DO
+!!$    DEALLOCATE( MF_uAF_TEMP )
+!!$    DEALLOCATE( MF_uPF_TEMP )
+!!$    DEALLOCATE( MF_uCF_TEMP )
+!!$    DEALLOCATE( MF_uGF_TEMP )
+!!$
+!!$    CALL amrex_amrcore_finalize()
+!!$    CALL amrex_finalize()
+!!$
+!!$    STOP 'MF_UtilitiesModule.f90'
+!!$
+!!$  END SUBROUTINE MakeMF_Diff
 
 
 END MODULE InputOutputModuleAMReX

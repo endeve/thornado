@@ -8,6 +8,8 @@ MODULE TimersModule_Euler
   IMPLICIT NONE
   PRIVATE
 
+  LOGICAL,  PUBLIC :: TimeIt_Euler
+
   REAL(DP), PUBLIC :: Timer_Euler_InputOutput
   REAL(DP), PUBLIC :: Timer_Euler_Inc   
   REAL(DP), PUBLIC :: Timer_Euler_Div_X1
@@ -29,6 +31,8 @@ CONTAINS
 
   SUBROUTINE InitializeTimers_Euler
 
+    IF( TimeIt_Euler ) RETURN
+
     Timer_Euler_Inc         = Zero
     Timer_Euler_InputOutput = Zero
     Timer_Euler_Inc         = Zero
@@ -44,6 +48,8 @@ CONTAINS
 
 
   SUBROUTINE FinalizeTimers_Euler
+
+    IF( .NOT. TimeIt_Euler ) RETURN
 
     WRITE(*,'(5x,A)') 'Timers Summary'
     WRITE(*,'(5x,A)') '--------------'
@@ -78,6 +84,8 @@ CONTAINS
 
     REAL(DP), INTENT(inout) :: Timer
 
+    IF( .NOT. TimeIt_Euler ) RETURN
+
     Timer = Timer - TimersWtime_Euler()
 
     RETURN
@@ -87,6 +95,8 @@ CONTAINS
   SUBROUTINE TimersStop_Euler( Timer )
 
     REAL(DP), INTENT(inout) :: Timer
+
+    IF( .NOT. TimeIt_Euler ) RETURN
 
     Timer = Timer + TimersWtime_Euler()
 
@@ -99,6 +109,8 @@ CONTAINS
     INTEGER(I8) :: clock_read
     INTEGER(I8) :: clock_rate
     INTEGER(I8) :: clock_max
+
+    IF( .NOT. TimeIt_Euler ) RETURN
 
     CALL SYSTEM_CLOCK( clock_read, clock_rate, clock_max )
     TimersWtime_Euler = REAL( clock_read, DP ) / REAL( clock_rate, DP )

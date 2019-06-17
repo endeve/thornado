@@ -1,9 +1,8 @@
-DEFINES += -DHYDRO_NONRELATIVISTIC
-DEFINES += -DHYDRO_NUMERICALFLUX_HLL
+# thornado VPATH_LOCATIONS:
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Euler
 
-f90EXE_sources += fmain.f90
 f90EXE_sources += MF_UtilitiesModule.f90
-f90EXE_sources += MF_InitializationModule.f90
+f90EXE_sources += InitializationModule.f90
 f90EXE_sources += FinalizationModule.f90
 f90EXE_sources += MF_GeometryModule.f90
 f90EXE_sources += MF_Euler_UtilitiesModule.f90
@@ -12,8 +11,6 @@ f90EXE_sources += MF_Euler_SlopeLimiterModule.f90
 f90EXE_sources += MF_Euler_PositivityLimiterModule.f90
 f90EXE_sources += MF_Euler_dgDiscretizationModule.f90
 f90EXE_sources += MF_TimeSteppingModule_SSPRK.f90
-
-# Checkpoint
 f90EXE_sources += MyAmrDataModule.f90
 f90EXE_sources += MyAmrModule.f90
 CEXE_sources   += Restart.cpp

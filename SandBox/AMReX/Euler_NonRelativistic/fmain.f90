@@ -1,20 +1,19 @@
 PROGRAM main
 
   ! --- AMReX Modules ---
-  USE amrex_fort_module,     ONLY: &
+  USE amrex_fort_module, ONLY: &
     amrex_real
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_communicator
 
   ! --- thornado Modules ---
-  USE MeshModule,             ONLY: &
+  USE MeshModule,                       ONLY: &
     MeshX, DestroyMesh
-  USE InputOutputModuleAMReX, ONLY: &
+  USE InputOutputModuleAMReX,           ONLY: &
     WriteFieldsAMReX_PlotFile, &
-    WriteFieldsAMReX_Checkpoint, &
     ReadCheckpointFile!, &
-!$$    MakeMF_Diff
+!!$    MakeMF_Diff
 
   ! --- Local Modules ---
   USE MF_Euler_UtilitiesModule,         ONLY: &
@@ -59,7 +58,7 @@ PROGRAM main
 
     StepNo = StepNo + 1
 
-    CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt, UseSourceTerm )
+    CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt )
 
     IF( ALL( t + dt .LE. t_end ) )THEN
       t = t + dt
@@ -128,8 +127,6 @@ PROGRAM main
       chk = .FALSE.
      
     END IF
-
-!!$    IF( StepNo(0) .EQ. 10 ) STOP 'StepNo(0) = 10'
 
   END DO
 
