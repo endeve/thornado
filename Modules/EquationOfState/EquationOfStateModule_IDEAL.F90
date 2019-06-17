@@ -75,7 +75,7 @@ CONTAINS
   END SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL
 
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC
 
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
 
@@ -86,7 +86,7 @@ CONTAINS
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
 
@@ -95,6 +95,17 @@ CONTAINS
 
     Cs = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev &
                  / ( D + Gamma_IDEAL * Ev ) )
+
+  END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL
+
+#else
+
+  SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), DIMENSION(:), INTENT(out) :: Cs
+
+    Cs(:) = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev(:) / D(:) )
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL
 

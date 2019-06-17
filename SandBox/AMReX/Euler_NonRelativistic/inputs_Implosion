@@ -14,7 +14,7 @@ thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 1.0      # CFL number
 thornado.bcX       = 03 03 00 # Boundary conditions
 thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
-thornado.iCycleD   = 0010     # MOD this number to display info
+thornado.iCycleD   = 001     # MOD this number to display info
 thornado.iCycleW   = 0100     # MOD this number to write plotfile
 thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
 
@@ -25,8 +25,8 @@ geometry.prob_lo     = 0.0 0.0 0.0 # Lower domain size
 geometry.prob_hi     = 0.3 0.3 1.0 # Upper domain size
 geometry.is_periodic = 00 00 01      # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell          = 256 256 01 # Number of cells in each dimension
-amr.max_grid_size   = 256 256 01 # nBoxes = n_cell / MaxGridSize
+amr.n_cell          = 32 32 01 # Number of cells in each dimension
+amr.max_grid_size   = 32 32 01 # nBoxes = n_cell / MaxGridSize
 amr.max_level       = 0          # Maximum number of refinement levels
 amr.blocking_factor = 1          # Must be a factor of max_grid_size
 
