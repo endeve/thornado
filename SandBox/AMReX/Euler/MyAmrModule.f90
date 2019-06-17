@@ -36,7 +36,8 @@ MODULE MyAmrModule
 
   IMPLICIT NONE
 
-  REAL(amrex_real)                    :: t_end, dt_wrt, dt_chk, Gamma_IDEAL, CFL
+  REAL(amrex_real)                    :: t_end, Gamma_IDEAL, CFL
+  REAL(amrex_real)                    :: t_wrt, dt_wrt, t_chk, dt_chk
   INTEGER                             :: nNodes, nStages, nLevels, coord_sys
   INTEGER                             :: iCycleD, iCycleW, iCycleChk
   INTEGER,          ALLOCATABLE       :: MaxGridSize(:), nX(:), swX(:), bcX(:)

@@ -92,7 +92,6 @@ MODULE InitializationModule
   TYPE(amrex_parmparse), PUBLIC :: PP
   TYPE(amrex_box),       PUBLIC :: BX
   REAL(amrex_real),      PUBLIC :: Mass
-  REAL(amrex_real),      PUBLIC :: t_wrt, t_chk
   LOGICAL,               PUBLIC :: wrt, chk
 
 
@@ -148,15 +147,13 @@ CONTAINS
       END DO
 
       t     = 0.0_amrex_real
+      dt    = 0.0_amrex_real
       t_wrt = dt_wrt
       t_chk = dt_chk
 
     ELSE
 
       CALL ReadCheckpointFile( CheckpointRestart_Option )
-
-      t_wrt = t(0)
-      t_chk = t(0)
 
     END IF
 
@@ -276,7 +273,7 @@ CONTAINS
                MF_uAF_Option = MF_uAF )
 
       CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, t, &
+             ( StepNo, nLevels, dt, t, t_wrt, t_chk, &
                MF_uGF % BA % P, &
                MF_uGF % P, &
                MF_uCF % P, &

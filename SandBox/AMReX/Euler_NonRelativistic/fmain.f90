@@ -117,7 +117,7 @@ PROGRAM main
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, t, &
+             ( StepNo, nLevels, dt, t, t_wrt, t_chk, &
                MF_uGF % BA % P, &
                MF_uGF % P, &
                MF_uCF % P, &
@@ -149,7 +149,7 @@ PROGRAM main
            MF_uAF_Option = MF_uAF )
 
   CALL WriteFieldsAMReX_Checkpoint &
-         ( StepNo, nLevels, dt, t, &
+         ( StepNo, nLevels, dt, t, t_wrt, t_chk, &
            MF_uGF % BA % P, &
            MF_uGF % P, &
            MF_uCF % P, &
