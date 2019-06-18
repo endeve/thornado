@@ -3,7 +3,7 @@
 
 DEBUG = 0
 
-thornado.ProgramName = "RiemannProblem_2D"
+thornado.ProgramName = "RiemannProblem_2D_Relativistic"
 
 thornado.t_end     = 0.4      # Final time
 thornado.dt_wrt    = -0.004    # Time increment to write plot-file
