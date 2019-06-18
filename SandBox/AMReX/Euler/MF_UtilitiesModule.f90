@@ -17,6 +17,7 @@ MODULE MF_UtilitiesModule
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     nLevels
+  USE TimersModule_AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -41,6 +42,8 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iVar
 
+    CALL TimersStart_AMReX( Timer_AMReX_DataTransfer )
+
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
@@ -53,6 +56,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop_AMReX( Timer_AMReX_DataTransfer )
 
   END SUBROUTINE AMReX2thornado
 
@@ -68,6 +73,8 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iVar
 
+    CALL TimersStart_AMReX( Timer_AMReX_DataTransfer )
+
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
@@ -80,6 +87,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop_AMReX( Timer_AMReX_DataTransfer )
 
   END SUBROUTINE thornado2AMReX
 

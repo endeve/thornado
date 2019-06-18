@@ -67,38 +67,13 @@ PROGRAM main
 
     IF( amrex_parallel_ioprocessor() )THEN
       IF( MOD( StepNo(0), iCycleD ) .EQ. 0 ) &
-        WRITE(*,'(A5,A,I6.6,A,ES13.6E3,A,ES13.6E3)') &
+        WRITE(*,'(A8,A,I6.6,A,ES13.6E3,A,ES13.6E3)') &
           '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
     END IF
 
     CALL MF_UpdateFluid_SSPRK &
            ( t, dt, MF_uGF, MF_uCF, &
              GEOM, MF_Euler_ComputeIncrement )
-
-    IF( iCycleW .GT. 0 )THEN
-      IF( MOD( StepNo(0), iCycleW ) .EQ. 0 ) &
-        wrt = .TRUE.
-    ELSE
-      IF( ALL( t + dt .GT. t_wrt ) )THEN
-        t_wrt = t_wrt + dt_wrt
-        wrt   = .TRUE.
-      END IF
-    END IF
-
-    IF( wrt )THEN
-
-      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-      CALL WriteFieldsAMReX_PlotFile &
-             ( t(0), StepNo, &
-               MF_uGF_Option = MF_uGF, &
-               MF_uCF_Option = MF_uCF, &
-               MF_uPF_Option = MF_uPF, &
-               MF_uAF_Option = MF_uAF )
-
-      wrt = .FALSE.
-
-    END IF
 
     IF( iCycleChk .GT. 0 )THEN
       IF( MOD( StepNo(0), iCycleChk ) .EQ. 0 ) &
@@ -126,6 +101,31 @@ PROGRAM main
      
     END IF
 
+    IF( iCycleW .GT. 0 )THEN
+      IF( MOD( StepNo(0), iCycleW ) .EQ. 0 ) &
+        wrt = .TRUE.
+    ELSE
+      IF( ALL( t + dt .GT. t_wrt ) )THEN
+        t_wrt = t_wrt + dt_wrt
+        wrt   = .TRUE.
+      END IF
+    END IF
+
+    IF( wrt )THEN
+
+      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+      CALL WriteFieldsAMReX_PlotFile &
+             ( t(0), StepNo, &
+               MF_uGF_Option = MF_uGF, &
+               MF_uCF_Option = MF_uCF, &
+               MF_uPF_Option = MF_uPF, &
+               MF_uAF_Option = MF_uAF )
+
+      wrt = .FALSE.
+
+    END IF
+
   END DO
 
   ! --- END of evolution ---
@@ -139,13 +139,6 @@ PROGRAM main
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   StepNo = StepNo + 1
-  CALL WriteFieldsAMReX_PlotFile &
-         ( t(0), StepNo, &
-           MF_uGF_Option = MF_uGF, &
-           MF_uCF_Option = MF_uCF, &
-           MF_uPF_Option = MF_uPF, &
-           MF_uAF_Option = MF_uAF )
-
   CALL WriteFieldsAMReX_Checkpoint &
          ( StepNo, nLevels, dt, t, t_wrt, t_chk, &
            MF_uGF % BA % P, &
@@ -153,6 +146,13 @@ PROGRAM main
            MF_uCF % P, &
            MF_uPF % P, &
            MF_uAF % P )
+
+  CALL WriteFieldsAMReX_PlotFile &
+         ( t(0), StepNo, &
+           MF_uGF_Option = MF_uGF, &
+           MF_uCF_Option = MF_uCF, &
+           MF_uPF_Option = MF_uPF, &
+           MF_uAF_Option = MF_uAF )
 
   ! --- Finalize everything ---
 
