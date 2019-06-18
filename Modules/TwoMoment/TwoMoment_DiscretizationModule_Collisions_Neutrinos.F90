@@ -102,7 +102,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), PARAMETER :: Unit_T = MeV
   REAL(DP), PARAMETER :: Unit_E = Erg / Gram
 
-  LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
+  LOGICAL, PARAMETER :: ReportConvergenceData = .TRUE.
   INTEGER  :: Iterations_Min
   INTEGER  :: Iterations_Max
   INTEGER  :: Iterations_Ave
@@ -114,8 +114,10 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INTEGER, ALLOCATABLE :: MinIterations_K(:,:,:)
   INTEGER, ALLOCATABLE :: MaxIterations_K(:,:,:)
   INTEGER, ALLOCATABLE :: AveIterations_K(:,:,:)
+  INTEGER, ALLOCATABLE :: AveIterationsInner_K(:,:,:)
 
   LOGICAL, PARAMETER :: SolveMatter = .TRUE.
+  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .TRUE.
 
   INTEGER  :: nE_G, nX_G
   INTEGER  :: iE_B0,    iE_E0
@@ -161,6 +163,9 @@ CONTAINS
            iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iNodeX, iE
+    INTEGER  :: nIterations
+    INTEGER  :: nIterations_Inner
+    INTEGER  :: nIterations_Outer
     REAL(DP) :: CF_N(1:nDOFX,1:nCF)
     REAL(DP) :: PF_N(1:nDOFX,1:nPF)
     REAL(DP) :: AF_N(1:nDOFX,1:nAF)
@@ -201,6 +206,15 @@ CONTAINS
     Iterations_Min = + HUGE( 1 )
     Iterations_Max = - HUGE( 1 )
     Iterations_Ave = 0
+
+    IF( TallyNonlinearSolver )THEN
+
+      MinIterations_K      = + HUGE( 1 )
+      MaxIterations_K      = - HUGE( 1 )
+      AveIterations_K      = 0
+      AveIterationsInner_K = 0
+
+    END IF
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -280,27 +294,7 @@ CONTAINS
 
         ! --- Electron Neutrinos and Antineutrinos ---
 
-!!$        DO iNodeX = 1, nDOFX
-!!$
-!!$          CALL SolveMatterEquations_EmAb &
-!!$                 ( CR_N    (:,iCR_N,iNuE,    iNodeX), &
-!!$                   CR_N    (:,iCR_N,iNuE_Bar,iNodeX), &
-!!$                   dt * Chi(:,      iNuE,    iNodeX), &
-!!$                   dt * Chi(:,      iNuE_Bar,iNodeX), &
-!!$                   fEQ     (:,      iNuE,    iNodeX), &
-!!$                   fEQ     (:,      iNuE_Bar,iNodeX), &
-!!$                   PF_N(iNodeX,iPF_D ), AF_N(iNodeX,iAF_T), &
-!!$                   AF_N(iNodeX,iAF_Ye), AF_N(iNodeX,iAF_E) )
-!!$
-!!$        END DO
-
 #ifdef NEUTRINO_MATTER_SOLVER_EMAB
-
-        ! WRITE(*,*)
-        ! WRITE(*,'(A6,A)') &
-        !   '', 'NEUTRINO_MATTER_SOLVER_EMAB not Implemented'
-        ! WRITE(*,*)
-        ! STOP
 
         CALL TimersStart( Timer_Im_EmAb_FP )
 
@@ -314,7 +308,7 @@ CONTAINS
                     PF_N(iNodeX,iPF_D), &
                     AF_N(iNodeX,iAF_T), &
                     AF_N(iNodeX,iAF_Ye), &
-                    AF_N(iNodeX,iAF_E))
+                    AF_N(iNodeX,iAF_E) )
 
         END DO
 
@@ -338,7 +332,19 @@ CONTAINS
                    PF_N(iNodeX,iPF_D),  &
                    AF_N(iNodeX,iAF_T),  &
                    AF_N(iNodeX,iAF_Ye), &
-                   AF_N(iNodeX,iAF_E) )
+                   AF_N(iNodeX,iAF_E), &
+                   nIterations )
+
+          IF( TallyNonlinearSolver )THEN
+
+            MinIterations_K(iX1,iX2,iX2) &
+              = MIN( nIterations, MinIterations_K(iX1,iX2,iX2) )
+            MaxIterations_K(iX1,iX2,iX3) &
+              = MAX( nIterations, MaxIterations_K(iX1,iX2,iX3) )
+            AveIterations_K(iX1,iX2,iX3) &
+              = AveIterations_K(iX1,iX2,iX3) + nIterations
+
+          END IF
 
         END DO
 
@@ -362,8 +368,22 @@ CONTAINS
                    PF_N(iNodeX,iPF_D),  &
                    AF_N(iNodeX,iAF_T),  &
                    AF_N(iNodeX,iAF_Ye), &
-                   AF_N(iNodeX,iAF_E) )
+                   AF_N(iNodeX,iAF_E), &
+                   nIterations_Inner, &
+                   nIterations_Outer )
 
+          IF( TallyNonlinearSolver )THEN
+
+            MinIterations_K(iX1,iX2,iX2) &
+              = MIN( nIterations_Outer, MinIterations_K(iX1,iX2,iX2) )
+            MaxIterations_K(iX1,iX2,iX3) &
+              = MAX( nIterations_Outer, MaxIterations_K(iX1,iX2,iX3) )
+            AveIterations_K(iX1,iX2,iX3) &
+              = AveIterations_K(iX1,iX2,iX3)      + nIterations_Outer
+            AveIterationsInner_K(iX1,iX2,iX3) &
+              = AveIterationsInner_K(iX1,iX2,iX3) + nIterations_Inner
+
+          END IF
 
         END DO
 
@@ -387,7 +407,22 @@ CONTAINS
                    PF_N(iNodeX,iPF_D),  &
                    AF_N(iNodeX,iAF_T),  &
                    AF_N(iNodeX,iAF_Ye), &
-                   AF_N(iNodeX,iAF_E) )
+                   AF_N(iNodeX,iAF_E), &
+                   nIterations_Inner, &
+                   nIterations_Outer )
+
+          IF( TallyNonlinearSolver )THEN
+
+            MinIterations_K(iX1,iX2,iX2) &
+              = MIN( nIterations_Outer, MinIterations_K(iX1,iX2,iX2) )
+            MaxIterations_K(iX1,iX2,iX3) &
+              = MAX( nIterations_Outer, MaxIterations_K(iX1,iX2,iX3) )
+            AveIterations_K(iX1,iX2,iX3) &
+              = AveIterations_K(iX1,iX2,iX3)      + nIterations_Outer
+            AveIterationsInner_K(iX1,iX2,iX3) &
+              = AveIterationsInner_K(iX1,iX2,iX3) + nIterations_Inner
+
+          END IF
 
         END DO
 
@@ -411,7 +446,20 @@ CONTAINS
                    PF_N(iNodeX,iPF_D),  &
                    AF_N(iNodeX,iAF_T),  &
                    AF_N(iNodeX,iAF_Ye), &
-                   AF_N(iNodeX,iAF_E) )
+                   AF_N(iNodeX,iAF_E), &
+                   nIterations )
+
+          IF( TallyNonlinearSolver )THEN
+
+            MinIterations_K(iX1,iX2,iX2) &
+              = MIN( nIterations, MinIterations_K(iX1,iX2,iX2) )
+            MaxIterations_K(iX1,iX2,iX3) &
+              = MAX( nIterations, MaxIterations_K(iX1,iX2,iX3) )
+            AveIterations_K(iX1,iX2,iX3) &
+              = AveIterations_K(iX1,iX2,iX3) + nIterations
+
+          END IF
+
         END DO
 
         CALL TimersStop( Timer_Im_Newton )
@@ -437,6 +485,15 @@ CONTAINS
         STOP
 
 #endif
+
+        IF( TallyNonlinearSolver )THEN
+
+          AveIterations_K(iX1,iX2,iX3) &
+            = FLOOR( DBLE(AveIterations_K(iX1,iX2,iX3)     )/DBLE(nDOFX) )
+          AveIterationsInner_K(iX1,iX2,iX3) &
+            = FLOOR( DBLE(AveIterationsInner_K(iX1,iX2,iX3))/DBLE(nDOFX) )
+
+        END IF
 
       END IF
 
@@ -485,10 +542,7 @@ CONTAINS
         Eta_T = Chi(:,iS,iNodeX) * fEQ(:,iS,iNodeX) &
                   + Eta_NES(:,iS,iNodeX) + Eta_Pair(:,iS,iNodeX)
 
-        ! --- Number Density ---
-
-        CR_N(:,iCR_N,iS,iNodeX) &
-          = ( CR_N(:,iCR_N,iS,iNodeX) + dt * Eta_T ) / ( One + dt * Chi_T )
+        ! --- Number Density Updated in Nonlinear Solvers ---
 
         ! --- Number Flux (1) ---
 
@@ -1089,7 +1143,7 @@ CONTAINS
 
   SUBROUTINE SolveMatterEquations_EmAb_NuE( J, Chi, J0, D, T, Y, E )
 
-    REAL(DP), INTENT(in)    :: J  (1:nE_G)
+    REAL(DP), INTENT(inout) :: J  (1:nE_G)
     REAL(DP), INTENT(in)    :: Chi(1:nE_G)
     REAL(DP), INTENT(inout) :: J0 (1:nE_G)
     REAL(DP), INTENT(inout) :: D, T, Y, E
@@ -1296,6 +1350,8 @@ CONTAINS
 
     END DO
 
+    J = ( J + Chi * J0 ) / ( One + Chi )
+
   END SUBROUTINE SolveMatterEquations_EmAb_NuE
 
 
@@ -1498,10 +1554,6 @@ CONTAINS
 
         CONVERGED = .TRUE.
 
-        Iterations_Min = MIN( Iterations_Min, k )
-        Iterations_Max = MAX( Iterations_Max, k )
-        Iterations_Ave = Iterations_Ave + k
-
       END IF
 
       Unew(iY)  = GVECm(iY)
@@ -1546,9 +1598,10 @@ CONTAINS
 
   END SUBROUTINE SolveMatterEquations_EmAb_FP
 
+
   SUBROUTINE SolveMatterEquations_FP_Coupled &
     ( dt, iS_1, iS_2, J, Chi, J0, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
-      D, T, Y, E)
+      D, T, Y, E, nIterations )
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
@@ -1562,6 +1615,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: Chi_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: Eta_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
+    INTEGER,  INTENT(out)   :: nIterations
 
     ! --- Solver Parameters ---
 
@@ -1610,21 +1664,20 @@ CONTAINS
     Eold = E
     Jold = J
 
-    CALL TimersStart( Timer_Im_EmAb_FP )
+    IF( UsePreconditionerEmAb )THEN
 
-    ! EmAb preconditioner
-    CALL SolveMatterEquations_EmAb_FP &
-            ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
+      CALL TimersStart( Timer_Im_EmAb_FP )
 
-    CALL TimersStop( Timer_Im_EmAb_FP )
+      CALL SolveMatterEquations_EmAb_FP &
+             ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
 
-    ! Unew = One ! --- Initial Guess
+      CALL TimersStop( Timer_Im_EmAb_FP )
+
+    END IF
+
     Unew(iY) = Y / Yold ! --- Initial Guess
     Unew(iE) = E / Eold ! --- Initial Guess
-
-    ! Initial Guess of J
-    Jnew = J
-
+    Jnew     = J        ! --- Initial Guess
 
     S_Y = N_B * Yold
     S_E = D   * Eold
@@ -1663,8 +1716,6 @@ CONTAINS
    CALL ComputeNeutrinoOpacities_Pair_Point &
           ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
             Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
-
-
 
     ! --- NES Emissivities and Opacities ---
 
@@ -1846,6 +1897,8 @@ CONTAINS
         Iterations_Max = MAX( Iterations_Max, k )
         Iterations_Ave = Iterations_Ave + k
 
+        nIterations = k
+
       END IF
 
       Unew(iY)  = GVECm(iY)
@@ -1907,6 +1960,7 @@ CONTAINS
 
     END DO
 
+    J = Jnew
 
 
   END SUBROUTINE SolveMatterEquations_FP_Coupled
@@ -1914,7 +1968,7 @@ CONTAINS
 
   SUBROUTINE SolveMatterEquations_FP_NestedAA &
     ( dt, iS_1, iS_2, J, Chi, J0, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
-    D, T, Y, E)
+      D, T, Y, E, nIterations_Inner, nIterations_Outer )
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
@@ -1928,79 +1982,77 @@ CONTAINS
     REAL(DP), INTENT(inout) :: Chi_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: Eta_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
+    INTEGER,  INTENT(out)   :: nIterations_Inner
+    INTEGER,  INTENT(out)   :: nIterations_Outer
 
-      ! --- Solver Parameters ---
+    ! --- Solver Parameters ---
 
-      INTEGER,  PARAMETER :: iY = 1
-      INTEGER,  PARAMETER :: iE = 2
-      INTEGER,  PARAMETER :: M_inner = 3
-      INTEGER,  PARAMETER :: M = 3
-      INTEGER,  PARAMETER :: MaxIter = 100
-      INTEGER,  PARAMETER :: LWORK = 2 * MAX(M_inner,2)
-      REAL(DP), PARAMETER :: Rtol = 1.0d-08
-      REAL(DP), PARAMETER :: Utol = 1.0d-10
+    INTEGER,  PARAMETER :: iY = 1
+    INTEGER,  PARAMETER :: iE = 2
+    INTEGER,  PARAMETER :: M_inner = 3
+    INTEGER,  PARAMETER :: M = 3
+    INTEGER,  PARAMETER :: MaxIter = 100
+    INTEGER,  PARAMETER :: LWORK = 2 * MAX(M_inner,2)
+    REAL(DP), PARAMETER :: Rtol = 1.0d-08
+    REAL(DP), PARAMETER :: Utol = 1.0d-10
 
-      ! --- Local Variables ---
+    ! --- Local Variables ---
 
-      LOGICAL  :: CONVERGED, CONVERGED_INNER
-      INTEGER  :: i, k, k_inner, mk, mk_inner, INFO
-      INTEGER  :: OS_1, OS_2
-      REAL(DP) :: h3, N_B
-      REAL(DP) :: S_Y, S_E, Yold, Eold
-      REAL(DP) :: TMP(1)
-      REAL(DP) :: C(2), Unew(2), Jnorm(2)
-      REAL(DP) :: W2_S(1:nE_G)
-      REAL(DP) :: W3_S(1:nE_G)
-      REAL(DP) :: Alpha(1:M_inner)
-      REAL(DP) :: WORK(1:LWORK)
-      REAL(DP) :: GVECm(2)
-      REAL(DP) :: FVECm(2)
-      REAL(DP) :: GVEC (1:2,1:M)
-      REAL(DP) :: FVEC (1:2,1:M)
-      REAL(DP) :: GVECm_inner (1:2*nE_G)
-      REAL(DP) :: FVECm_inner (1:2*nE_G)
-      REAL(DP) :: GVEC_inner (1:2*nE_G,1:M_inner)
-      REAL(DP) :: FVEC_inner (1:2*nE_G,1:M_inner)
-      REAL(DP) :: Jold(1:nE_G,1:2)
-      REAL(DP) :: Jnew(1:nE_G,1:2)
-      REAL(DP) :: Eta(1:nE_G,1:2)
-      REAL(DP) :: BVEC(2)
-      REAL(DP) :: AMAT(1:2,1:M)
-      REAL(DP) :: BVEC_inner(1:2*nE_G)
-      REAL(DP) :: AMAT_inner(1:2*nE_G,1:M_inner)
-      REAL(DP) :: Phi_0_In_NES (1:nE_G,1:nE_G,1:2)
-      REAL(DP) :: Phi_0_Ot_NES (1:nE_G,1:nE_G,1:2)
-      REAL(DP) :: Phi_0_In_Pair(1:nE_G,1:nE_G,1:2)
-      REAL(DP) :: Phi_0_Ot_Pair(1:nE_G,1:nE_G,1:2)
+    LOGICAL  :: CONVERGED, CONVERGED_INNER
+    INTEGER  :: i, k, k_inner, mk, mk_inner, INFO
+    INTEGER  :: OS_1, OS_2
+    REAL(DP) :: h3, N_B
+    REAL(DP) :: S_Y, S_E, Yold, Eold
+    REAL(DP) :: TMP(1)
+    REAL(DP) :: C(2), Unew(2), Jnorm(2)
+    REAL(DP) :: W2_S(1:nE_G)
+    REAL(DP) :: W3_S(1:nE_G)
+    REAL(DP) :: Alpha(1:M_inner)
+    REAL(DP) :: WORK(1:LWORK)
+    REAL(DP) :: GVECm(2)
+    REAL(DP) :: FVECm(2)
+    REAL(DP) :: GVEC (1:2,1:M)
+    REAL(DP) :: FVEC (1:2,1:M)
+    REAL(DP) :: GVECm_inner (1:2*nE_G)
+    REAL(DP) :: FVECm_inner (1:2*nE_G)
+    REAL(DP) :: GVEC_inner (1:2*nE_G,1:M_inner)
+    REAL(DP) :: FVEC_inner (1:2*nE_G,1:M_inner)
+    REAL(DP) :: Jold(1:nE_G,1:2)
+    REAL(DP) :: Jnew(1:nE_G,1:2)
+    REAL(DP) :: Eta(1:nE_G,1:2)
+    REAL(DP) :: BVEC(2)
+    REAL(DP) :: AMAT(1:2,1:M)
+    REAL(DP) :: BVEC_inner(1:2*nE_G)
+    REAL(DP) :: AMAT_inner(1:2*nE_G,1:M_inner)
+    REAL(DP) :: Phi_0_In_NES (1:nE_G,1:nE_G,1:2)
+    REAL(DP) :: Phi_0_Ot_NES (1:nE_G,1:nE_G,1:2)
+    REAL(DP) :: Phi_0_In_Pair(1:nE_G,1:nE_G,1:2)
+    REAL(DP) :: Phi_0_Ot_Pair(1:nE_G,1:nE_G,1:2)
 
-      ! PRINT*
-      ! PRINT*, "SolveMatterEquations_FP_NestedAA Start"
-      ! PRINT*
+    OS_1 = 0
+    OS_2 = nE_G
 
-      OS_1 = 0
-      OS_2 = nE_G
+    h3  = PlanckConstant**3
+    N_B = D / AtomicMassUnit
 
-      h3  = PlanckConstant**3
-      N_B = D / AtomicMassUnit
+    Yold = Y
+    Eold = E
+    Jold = J
 
-      Yold = Y
-      Eold = E
-      Jold = J
+    IF( UsePreconditionerEmAb )THEN
 
       CALL TimersStart( Timer_Im_EmAb_FP )
 
-      ! EmAb preconditioner
       CALL SolveMatterEquations_EmAb_FP &
-              ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
+             ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
 
       CALL TimersStop( Timer_Im_EmAb_FP )
 
-      ! Unew = One ! --- Initial Guess
-      Unew(iY) = Y / Yold ! --- Initial Guess
-      Unew(iE) = E / Eold ! --- Initial Guess
+    END IF
 
-      ! Initial Guess of J
-      Jnew = J
+    Unew(iY) = Y / Yold ! --- Initial Guess
+    Unew(iE) = E / Eold ! --- Initial Guess
+    Jnew     = J        ! --- Initial Guess
 
       S_Y = N_B * Yold
       S_E = D   * Eold
@@ -2085,9 +2137,8 @@ CONTAINS
       CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
                   W2_N * Jnew(:,1),       1, One,  Chi_Pair(:,2), 1 )
 
-
-
       k = 0
+      nIterations_Inner = 0
       CONVERGED = .FALSE.
       DO WHILE( .NOT. CONVERGED .AND. k < MaxIter )
 
@@ -2167,6 +2218,8 @@ CONTAINS
           THEN
 
             CONVERGED_INNER = .TRUE.
+
+            nIterations_Inner = nIterations_Inner + k_inner
 
           END IF
 
@@ -2316,6 +2369,14 @@ CONTAINS
 
           CONVERGED = .TRUE.
 
+          Iterations_Min = MIN( Iterations_Min, k )
+          Iterations_Max = MAX( Iterations_Max, k )
+          Iterations_Ave = Iterations_Ave + k
+
+          nIterations_Outer = k
+          nIterations_Inner &
+            = FLOOR( DBLE( nIterations_Inner ) / DBLE( k ) )
+
         END IF
 
         Unew(iY)  = GVECm(iY)
@@ -2378,6 +2439,8 @@ CONTAINS
 
       END DO
 
+      J = Jnew
+
   !     PRINT*
   !     PRINT*, "  D = ", D / Unit_D
   !     PRINT*, "  T = ", T / Kelvin
@@ -2397,7 +2460,7 @@ CONTAINS
 
   SUBROUTINE SolveMatterEquations_FP_NestedNewton &
     ( dt, iS_1, iS_2, J, Chi, J0, NES_Ot, NES_In, Pair_Ot, Pair_In, &
-    D, T, Y, E)
+      D, T, Y, E, nIterations_Inner, nIterations_Outer )
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
@@ -2411,6 +2474,8 @@ CONTAINS
     REAL(DP), INTENT(inout) :: Pair_Ot(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: Pair_In(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
+    INTEGER,  INTENT(out)   :: nIterations_Inner
+    INTEGER,  INTENT(out)   :: nIterations_Outer
 
     ! --- Solver Parameters ---
 
@@ -2454,159 +2519,155 @@ CONTAINS
     REAL(DP) :: Phi_0_In_Pair(1:nE_G,1:nE_G,1:2)
     REAL(DP) :: Phi_0_Ot_Pair(1:nE_G,1:nE_G,1:2)
 
+    OS_1 = 0
+    OS_2 = nE_G
 
-      OS_1 = 0
-      OS_2 = nE_G
+    h3  = PlanckConstant**3
+    N_B = D / AtomicMassUnit
 
-      h3  = PlanckConstant**3
-      N_B = D / AtomicMassUnit
+    Yold = Y
+    Eold = E
+    Jold = J
 
-      Yold = Y
-      Eold = E
-      Jold = J
+    IF( UsePreconditionerEmAb )THEN
 
       CALL TimersStart( Timer_Im_EmAb_FP )
 
-      ! EmAb preconditioner
       CALL SolveMatterEquations_EmAb_FP &
-              ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
+             ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
 
       CALL TimersStop( Timer_Im_EmAb_FP )
 
-      ! Unew = One ! --- Initial Guess
-      Unew(iY) = Y / Yold ! --- Initial Guess
-      Unew(iE) = E / Eold ! --- Initial Guess
+    END IF
 
-      ! Initial Guess of J
-      Jnew = J
+    Unew(iY) = Y / Yold ! --- Initial Guess
+    Unew(iE) = E / Eold ! --- Initial Guess
+    Jnew     = J        ! --- Initial Guess
 
+    S_Y = N_B * Yold
+    S_E = D   * Eold
 
+    W2_S = FourPi * W2_N / h3
+    W3_S = FourPi * W3_N / h3
 
-      S_Y = N_B * Yold
-      S_E = D   * Eold
+    C(iY) = DOT_PRODUCT( W2_S, Jold(:,1) - Jold(:,2) ) / S_Y
+    C(iE) = DOT_PRODUCT( W3_S, Jold(:,1) + Jold(:,2) ) / S_E
 
-      W2_S = FourPi * W2_N / h3
-      W3_S = FourPi * W3_N / h3
+    CALL ComputeEquilibriumDistributions_Point &
+           ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
 
+    CALL ComputeEquilibriumDistributions_Point &
+           ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
 
-      C(iY) = DOT_PRODUCT( W2_S, Jold(:,1) - Jold(:,2) ) / S_Y
-      C(iE) = DOT_PRODUCT( W3_S, Jold(:,1) + Jold(:,2) ) / S_E
+    Eta(:,1) = Chi(:,1) * J0(:,1)
+    Eta(:,2) = Chi(:,2) * J0(:,2)
 
-      CALL ComputeEquilibriumDistributions_Point &
-             ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
+    ! --- NES Kernels ---
 
-      CALL ComputeEquilibriumDistributions_Point &
-             ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
+    CALL ComputeNeutrinoOpacities_NES_Point &
+           ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
+             Phi_0_In_NES(:,:,1), Phi_0_Ot_NES(:,:,1) )
 
-      Eta(:,1) = Chi(:,1) * J0(:,1)
-      Eta(:,2) = Chi(:,2) * J0(:,2)
+    CALL ComputeNeutrinoOpacities_NES_Point &
+           ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
+             Phi_0_In_NES(:,:,2), Phi_0_Ot_NES(:,:,2) )
 
-      ! --- NES Kernels ---
+    ! --- Pair Kernels ---
 
-      CALL ComputeNeutrinoOpacities_NES_Point &
-             ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
-               Phi_0_In_NES(:,:,1), Phi_0_Ot_NES(:,:,1) )
+    CALL ComputeNeutrinoOpacities_Pair_Point &
+           ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
+             Phi_0_In_Pair(:,:,1), Phi_0_Ot_Pair(:,:,1) )
 
-      CALL ComputeNeutrinoOpacities_NES_Point &
-             ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
-               Phi_0_In_NES(:,:,2), Phi_0_Ot_NES(:,:,2) )
+    CALL ComputeNeutrinoOpacities_Pair_Point &
+           ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
+             Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
 
+    k = 0
+    nIterations_Inner = 0
+    CONVERGED = .FALSE.
+    DO WHILE( .NOT. CONVERGED .AND. k < MaxIter )
 
-      ! --- Pair Kernels ---
+      k  = k + 1
+      mk = MIN( M, k )
 
-      CALL ComputeNeutrinoOpacities_Pair_Point &
-             ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
-               Phi_0_In_Pair(:,:,1), Phi_0_Ot_Pair(:,:,1) )
+      k_inner = 0
+      CONVERGED_INNER = .FALSE.
 
-      CALL ComputeNeutrinoOpacities_Pair_Point &
-             ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
-               Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
+      ! Calculate norm of the initial J for inner loop
+      Jnorm(1) = ENORM( Jnew(:,1) )
+      Jnorm(2) = ENORM( Jnew(:,2) )
+      ! START INNER LOOP
 
+      DO WHILE( .NOT. CONVERGED_INNER .AND. k_inner < MaxIter )
 
-      k = 0
-      CONVERGED = .FALSE.
-      DO WHILE( .NOT. CONVERGED .AND. k < MaxIter )
+        k_inner  = k_inner + 1
 
-        k  = k + 1
-        mk = MIN( M, k )
+        ! --- NES Emissivities and Opacities ---
 
-        k_inner = 0
-        CONVERGED_INNER = .FALSE.
+        ! --- Neutrino ---
 
-        ! Calculate norm of the initial J for inner loop
-        Jnorm(1) = ENORM( Jnew(:,1) )
-        Jnorm(2) = ENORM( Jnew(:,2) )
-        ! START INNER LOOP
+        CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_NES(:,:,1), nE_G, &
+                    W2_N * Jnew(:,1),       1, Zero, NES_In(:,1), 1 )
 
-        DO WHILE( .NOT. CONVERGED_INNER .AND. k_inner < MaxIter )
+        CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_NES(:,:,1), nE_G, &
+                    W2_N * (One-Jnew(:,1)), 1, Zero,  NES_Ot(:,1), 1 )
 
-          k_inner  = k_inner + 1
+        ! --- Antineutrino ---
 
+        CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_NES(:,:,2), nE_G, &
+                    W2_N * Jnew(:,2),       1, Zero, NES_In(:,2), 1 )
 
-          ! --- NES Emissivities and Opacities ---
-          ! --- Neutrino ---
+        CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_NES(:,:,2), nE_G, &
+                    W2_N * (One-Jnew(:,2)), 1, Zero,  NES_Ot(:,2), 1 )
 
-          CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_NES(:,:,1), nE_G, &
-                      W2_N * Jnew(:,1),       1, Zero, NES_In(:,1), 1 )
+        ! --- Pair Emissivities and Opacities ---
 
-          CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_NES(:,:,1), nE_G, &
-                      W2_N * (One-Jnew(:,1)), 1, Zero,  NES_Ot(:,1), 1 )
+        ! --- Neutrino ---
 
-          ! --- Antineutrino ---
+        CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_Pair(:,:,1), nE_G, &
+                    W2_N * (One-Jnew(:,2)), 1, Zero, Pair_In(:,1), 1 )
 
-          CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_NES(:,:,2), nE_G, &
-                      W2_N * Jnew(:,2),       1, Zero, NES_In(:,2), 1 )
+        CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,1), nE_G, &
+                    W2_N * Jnew(:,2),       1, Zero,  Pair_Ot(:,1), 1 )
 
-          CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_NES(:,:,2), nE_G, &
-                      W2_N * (One-Jnew(:,2)), 1, Zero,  NES_Ot(:,2), 1 )
+        ! --- Antineutrino ---
 
-          ! --- Pair Emissivities and Opacities ---
-          ! --- Neutrino ---
+        CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_Pair(:,:,2), nE_G, &
+                    W2_N * (One-Jnew(:,1)), 1, Zero, Pair_In(:,2), 1 )
 
-          CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_Pair(:,:,1), nE_G, &
-                      W2_N * (One-Jnew(:,2)), 1, Zero, Pair_In(:,1), 1 )
+        CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
+                    W2_N * Jnew(:,1),       1, Zero,  Pair_Ot(:,2), 1 )
 
-          CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,1), nE_G, &
-                      W2_N * Jnew(:,2),       1, Zero,  Pair_Ot(:,1), 1 )
+        ! --- Right-Hand Side Vectors (inner) ---
 
-          ! --- Antineutrino ---
+        GVEC_inner(OS_1+1:OS_1+nE_G) &
+          = Jnew(:,1) - Jold(:,1) + dt * ( Chi(:,1) * Jnew(:,1) - Eta(:,1) &
+            - (One - Jnew(:,1)) * NES_In(:,1) + Jnew(:,1) * NES_Ot(:,1) &
+            - (One - Jnew(:,1)) * Pair_In(:,1) + Jnew(:,1) * Pair_Ot(:,1) )
 
-          CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_Pair(:,:,2), nE_G, &
-                      W2_N * (One-Jnew(:,1)), 1, Zero, Pair_In(:,2), 1 )
+        GVEC_inner(OS_2+1:OS_2+nE_G) &
+          = Jnew(:,2) - Jold(:,2) + dt * ( Chi(:,2) * Jnew(:,2) - Eta(:,2) &
+            - (One - Jnew(:,2)) * NES_In(:,2) + Jnew(:,2) * NES_Ot(:,2) &
+            - (One - Jnew(:,2)) * Pair_In(:,2) + Jnew(:,2) * Pair_Ot(:,2) )
 
-          CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
-                      W2_N * Jnew(:,1),       1, Zero,  Pair_Ot(:,2), 1 )
+        ! --- Jacobian matrix ---
 
-          ! --- Right-Hand Side Vectors (inner) ---
+        ! --- NES terms ---
+        DO i = 1, nE_G
+        DO l = 1, nE_G
+          GJAC_inner(OS_1+i,OS_1+l) &
+            = - dt * ( Phi_0_In_NES(l,i,1) * (One - Jnew(i,1)) * W2_N(l) &
+                       + Phi_0_Ot_NES(l,i,1) * Jnew(i,1) * W2_N(l) )
+        END DO
+        END DO
 
-          GVEC_inner(OS_1+1:OS_1+nE_G) &
-            = Jnew(:,1) - Jold(:,1) + dt * ( Chi(:,1) * Jnew(:,1) - Eta(:,1)    &
-                - (One - Jnew(:,1)) * NES_In(:,1) + Jnew(:,1) * NES_Ot(:,1)     &
-                - (One - Jnew(:,1)) * Pair_In(:,1) + Jnew(:,1) * Pair_Ot(:,1) )
-
-          GVEC_inner(OS_2+1:OS_2+nE_G) &
-            = Jnew(:,2) - Jold(:,2) + dt * ( Chi(:,2) * Jnew(:,2) - Eta(:,2)    &
-                - (One - Jnew(:,2)) * NES_In(:,2) + Jnew(:,2) * NES_Ot(:,2)     &
-                - (One - Jnew(:,2)) * Pair_In(:,2) + Jnew(:,2) * Pair_Ot(:,2) )
-
-          ! --- Jacobian matrix ---
-
-          ! --- NES terms ---
-          DO i = 1, nE_G
-            DO l = 1, nE_G
-              GJAC_inner(OS_1+i,OS_1+l) =                                    &
-                  - dt * ( Phi_0_In_NES(l,i,1) * (One - Jnew(i,1)) * W2_N(l) &
-                  + Phi_0_Ot_NES(l,i,1) * Jnew(i,1) * W2_N(l) )
-            END DO
-          END DO
-
-          DO i = 1, nE_G
-            DO l = 1, nE_G
-              GJAC_inner(OS_2+i,OS_2+l) =                                    &
-                  - dt * ( Phi_0_In_NES(l,i,2) * (One - Jnew(i,2)) * W2_N(l) &
-                  + Phi_0_Ot_NES(l,i,2) * Jnew(i,2) * W2_N(l) )
-            END DO
-          END DO
+        DO i = 1, nE_G
+        DO l = 1, nE_G
+          GJAC_inner(OS_2+i,OS_2+l) &
+            = - dt * ( Phi_0_In_NES(l,i,2) * (One - Jnew(i,2)) * W2_N(l) &
+                       + Phi_0_Ot_NES(l,i,2) * Jnew(i,2) * W2_N(l) )
+        END DO
+        END DO
 
           ! --- Pair terms ---
           DO i = 1, nE_G
@@ -2651,6 +2712,8 @@ CONTAINS
           THEN
 
             CONVERGED_INNER = .TRUE.
+
+            nIterations_Inner = nIterations_Inner + k_inner
 
           END IF
 
@@ -2743,6 +2806,15 @@ CONTAINS
 
           CONVERGED = .TRUE.
 
+          Iterations_Min = MIN( Iterations_Min, k )
+          Iterations_Max = MAX( Iterations_Max, k )
+          Iterations_Ave = Iterations_Ave + k
+
+          nIterations_Outer = k
+
+          nIterations_Inner &
+            = FLOOR( DBLE( nIterations_Inner ) / DBLE( k ) )
+
         END IF
 
         Unew(iY)  = GVECm(iY)
@@ -2805,6 +2877,8 @@ CONTAINS
 
       END DO
 
+      J = Jnew
+
   !     PRINT*
   !     PRINT*, "  D = ", D / Unit_D
   !     PRINT*, "  T = ", T / Kelvin
@@ -2823,7 +2897,7 @@ CONTAINS
 
   SUBROUTINE SolveMatterEquations_Newton &
     ( dt, iS_1, iS_2, J, Chi, J0, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
-    D, T, Y, E)
+      D, T, Y, E, nIterations )
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
@@ -2837,6 +2911,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: Chi_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: Eta_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
+    INTEGER,  INTENT(out)   :: nIterations
 
     ! --- Solver Parameters ---
 
@@ -2894,16 +2969,20 @@ CONTAINS
     Eold = E
     Jold = J
 
-    CALL TimersStart( Timer_Im_EmAb_FP )
-    ! EmAb preconditioner
-    CALL SolveMatterEquations_EmAb_FP &
-            ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
-    CALL TimersStop( Timer_Im_EmAb_FP )
+    IF( UsePreconditionerEmAb )THEN
 
-    ! --- Initial Guess ---
-    Ynew = Y
-    Enew = E
-    Jnew = J
+      CALL TimersStart( Timer_Im_EmAb_FP )
+
+      CALL SolveMatterEquations_EmAb_FP &
+             ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
+
+      CALL TimersStop( Timer_Im_EmAb_FP )
+
+    END IF
+
+    Ynew = Y ! --- Initial Guess
+    Enew = E ! --- Initial Guess
+    Jnew = J ! --- Initial Guess
 
     S_Y = N_B * Yold
     S_E = D   * Eold
@@ -3260,6 +3339,8 @@ CONTAINS
         Iterations_Max = MAX( Iterations_Max, k )
         Iterations_Ave = Iterations_Ave + k
 
+        nIterations = k
+
       END IF
 
       UVEC = UVEC + DVEC
@@ -3316,6 +3397,8 @@ CONTAINS
       END IF
 
     END DO
+
+    J = Jnew
 
   END SUBROUTINE SolveMatterEquations_Newton
 
@@ -3922,10 +4005,12 @@ CONTAINS
     ALLOCATE( MinIterations_K(nX(1),nX(2),nX(3)) )
     ALLOCATE( MaxIterations_K(nX(1),nX(2),nX(3)) )
     ALLOCATE( AveIterations_K(nX(1),nX(2),nX(3)) )
+    ALLOCATE( AveIterationsInner_K(nX(1),nX(2),nX(3)) )
 
     MinIterations_K = 0
     MaxIterations_K = 0
     AveIterations_K = 0
+    AveIterationsInner_K = 0
 
   END SUBROUTINE InitializeNonlinearSolverTally
 
@@ -3935,6 +4020,7 @@ CONTAINS
     DEALLOCATE( MinIterations_K )
     DEALLOCATE( MaxIterations_K )
     DEALLOCATE( AveIterations_K )
+    DEALLOCATE( AveIterationsInner_K )
 
   END SUBROUTINE FinalizeNonlinearSolverTally
 
@@ -4018,6 +4104,11 @@ CONTAINS
 
     CALL WriteDataset3D_INTEGER &
            ( AveIterations_K, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/Average Iterations (Inner)'
+
+    CALL WriteDataset3D_INTEGER &
+           ( AveIterationsInner_K, DatasetName, FILE_ID )
 
     CALL H5CLOSE_F( HDFERR )
 
