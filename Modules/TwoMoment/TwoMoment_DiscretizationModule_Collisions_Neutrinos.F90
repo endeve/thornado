@@ -91,6 +91,10 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit_New
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit_DGFV
 
+  PUBLIC :: InitializeNonlinearSolverTally
+  PUBLIC :: FinalizeNonlinearSolverTally
+  PUBLIC :: WriteNonlinearSolverTally
+
   ! --- Units Only for Displaying to Screen ---
 
   REAL(DP), PARAMETER :: Unit_D = Gram / Centimeter**3
@@ -101,6 +105,14 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INTEGER  :: Iterations_Min
   INTEGER  :: Iterations_Max
   INTEGER  :: Iterations_Ave
+
+  ! --- Solver Tally ---
+
+  LOGICAL              :: TallyNonlinearSolver = .FALSE.
+  INTEGER              :: TallyFileNumber
+  INTEGER, ALLOCATABLE :: MinIterations_K(:,:,:)
+  INTEGER, ALLOCATABLE :: MaxIterations_K(:,:,:)
+  INTEGER, ALLOCATABLE :: AveIterations_K(:,:,:)
 
   LOGICAL, PARAMETER :: SolveMatter = .TRUE.
 
@@ -3627,6 +3639,206 @@ CONTAINS
 
     RETURN
   END FUNCTION ENORM
+
+
+  SUBROUTINE InitializeNonlinearSolverTally
+
+    USE ProgramHeaderModule, ONLY: nX
+
+    TallyNonlinearSolver = .TRUE.
+    TallyFileNumber = 0
+
+    ALLOCATE( MinIterations_K(nX(1),nX(2),nX(3)) )
+    ALLOCATE( MaxIterations_K(nX(1),nX(2),nX(3)) )
+    ALLOCATE( AveIterations_K(nX(1),nX(2),nX(3)) )
+
+    MinIterations_K = 0
+    MaxIterations_K = 0
+    AveIterations_K = 0
+
+  END SUBROUTINE InitializeNonlinearSolverTally
+
+
+  SUBROUTINE FinalizeNonlinearSolverTally
+
+    DEALLOCATE( MinIterations_K )
+    DEALLOCATE( MaxIterations_K )
+    DEALLOCATE( AveIterations_K )
+
+  END SUBROUTINE FinalizeNonlinearSolverTally
+
+
+  SUBROUTINE WriteNonlinearSolverTally( t )
+
+    USE HDF5
+    USE UnitsModule, ONLY: &
+      Millisecond, &
+      Kilometer
+    USE ProgramHeaderModule, ONLY: &
+      nX
+    USE MeshModule, ONLY: &
+      MeshX
+
+    REAL(DP), INTENT(in) :: t
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: DatasetName
+    CHARACTER(256) :: GroupName
+    INTEGER        :: HDFERR
+    INTEGER(HID_T) :: FILE_ID
+
+    IF( .NOT. TallyNonlinearSolver ) RETURN
+
+    WRITE( FileNumberString, FMT='(i6.6)') TallyFileNumber
+
+    FileName = '../Output/' // 'NonlinearSolverTally_' // &
+               FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
+
+    ! --- Write Time ---
+
+    DatasetName = '/Time'
+
+    CALL WriteDataset1D_REAL &
+           ( [ t ] / Millisecond, DatasetName, FILE_ID )
+
+    ! --- Write Spatial Grid ---
+
+    GroupName = 'Spatial Grid'
+
+    CALL CreateGroupHDF( FileName, GroupName , FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X1'
+
+    CALL WriteDataset1D_REAL &
+           ( MeshX(1) % Center(1:nX(1)) / Kilometer, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2'
+
+    CALL WriteDataset1D_REAL &
+           ( MeshX(2) % Center(1:nX(2)) / Kilometer, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3'
+
+    CALL WriteDataset1D_REAL &
+           ( MeshX(3) % Center(1:nX(3)) / Kilometer, DatasetName, FILE_ID )
+
+    ! --- Write Iteration Counts ---
+
+    GroupName = 'Iteration Counts'
+
+    CALL CreateGroupHDF( FileName, GroupName , FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/Max Iterations'
+
+    CALL WriteDataset3D_INTEGER &
+           ( MaxIterations_K, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/Min Iterations'
+
+    CALL WriteDataset3D_INTEGER &
+           ( MinIterations_K, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/Average Iterations'
+
+    CALL WriteDataset3D_INTEGER &
+           ( AveIterations_K, DatasetName, FILE_ID )
+
+    CALL H5CLOSE_F( HDFERR )
+
+    TallyFileNumber = TallyFileNumber + 1
+
+  END SUBROUTINE WriteNonlinearSolverTally
+
+
+  SUBROUTINE CreateGroupHDF( FileName, GroupName, FILE_ID )
+
+    USE HDF5
+
+    CHARACTER(len=*), INTENT(in) :: FileName
+    CHARACTER(len=*), INTENT(in) :: GroupName
+    INTEGER(HID_T),   INTENT(in) :: FILE_ID
+
+    INTEGER        :: HDFERR
+    INTEGER(HID_T) :: GROUP_ID
+
+    CALL H5GCREATE_F( FILE_ID, TRIM( GroupName ), GROUP_ID, HDFERR )
+
+    CALL H5GCLOSE_F( GROUP_ID, HDFERR )
+
+  END SUBROUTINE CreateGroupHDF
+
+
+  SUBROUTINE WriteDataset1D_REAL( Dataset, DatasetName, FILE_ID )
+
+    USE HDF5
+
+    REAL(DP),         INTENT(in) :: Dataset(:)
+    CHARACTER(LEN=*), INTENT(in) :: DatasetName
+    INTEGER(HID_T),   INTENT(in) :: FILE_ID
+
+    INTEGER          :: HDFERR
+    INTEGER(HSIZE_T) :: DATASIZE(1)
+    INTEGER(HID_T)   :: DATASPACE_ID
+    INTEGER(HID_T)   :: DATASET_ID
+
+    DATASIZE = SIZE( Dataset )
+
+    CALL H5SCREATE_F( H5S_SIMPLE_F, DATASPACE_ID, HDFERR )
+
+    CALL H5SSET_EXTENT_SIMPLE_F &
+           ( DATASPACE_ID, 1, DATASIZE, DATASIZE, HDFERR )
+
+    CALL H5DCREATE_F &
+           ( FILE_ID, TRIM( DatasetName ), H5T_NATIVE_DOUBLE, &
+             DATASPACE_ID, DATASET_ID, HDFERR )
+
+    call H5DWRITE_F &
+           ( DATASET_ID, H5T_NATIVE_DOUBLE, Dataset, DATASIZE, HDFERR )
+
+    call H5SCLOSE_F( DATASPACE_ID, HDFERR )
+
+    call H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE WriteDataset1D_REAL
+
+
+  SUBROUTINE WriteDataset3D_INTEGER( Dataset, DatasetName, FILE_ID )
+
+    USE HDF5
+
+    INTEGER,          INTENT(in) :: Dataset(:,:,:)
+    CHARACTER(LEN=*), INTENT(in) :: DatasetName
+    INTEGER(HID_T),   INTENT(in) :: FILE_ID
+
+    INTEGER          :: HDFERR
+    INTEGER(HSIZE_T) :: DATASIZE(3)
+    INTEGER(HID_T)   :: DATASPACE_ID
+    INTEGER(HID_T)   :: DATASET_ID
+
+    DATASIZE = SHAPE( Dataset )
+
+    CALL H5SCREATE_F( H5S_SIMPLE_F, DATASPACE_ID, HDFERR )
+
+    CALL H5SSET_EXTENT_SIMPLE_F &
+           ( DATASPACE_ID, 3, DATASIZE, DATASIZE, HDFERR )
+
+    CALL H5DCREATE_F &
+           ( FILE_ID, TRIM( DatasetName ), H5T_NATIVE_INTEGER, &
+             DATASPACE_ID, DATASET_ID, HDFERR )
+
+    CALL H5DWRITE_F &
+           ( DATASET_ID, H5T_NATIVE_INTEGER, Dataset, DATASIZE, HDFERR )
+
+    CALL H5SCLOSE_F( DATASPACE_ID, HDFERR )
+
+    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE WriteDataset3D_INTEGER
 
 
 END MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
