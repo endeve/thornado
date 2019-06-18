@@ -98,9 +98,7 @@ MODULE InitializationModule
 CONTAINS
 
 
-  SUBROUTINE InitializeProblem( CheckpointRestart_Option )
-
-    INTEGER, INTENT(in), OPTIONAL :: CheckpointRestart_Option
+  SUBROUTINE InitializeProblem
 
     ! --- Initialize AMReX ---
     CALL amrex_init()
@@ -110,7 +108,7 @@ CONTAINS
     ! --- Parse parameter file ---
     CALL MyAmrInit
 
-    IF( .NOT. PRESENT( CheckpointRestart_Option ) )THEN
+    IF( iRestart < 0 )THEN
 
       BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
@@ -153,7 +151,7 @@ CONTAINS
 
     ELSE
 
-      CALL ReadCheckpointFile( CheckpointRestart_Option )
+      CALL ReadCheckpointFile( iRestart )
 
     END IF
 
@@ -249,9 +247,10 @@ CONTAINS
       '', 'CFL: ', &
       CFL * ( amrex_spacedim * ( 2.0_amrex_real * nNodes - 1.0_amrex_real ) )
 
-    IF( .NOT. PRESENT( CheckpointRestart_Option ) )THEN
+    IF( iRestart < 0 )THEN
       CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
     END IF
+
     CALL CreateFluidFields( nX, swX, amrex_parallel_ioprocessor() )
 
     CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
@@ -264,7 +263,7 @@ CONTAINS
       CALL amrex_boxarray_destroy ( BA(iLevel) )
     END DO
 
-    IF( .NOT. PRESENT( CheckpointRestart_Option ) )THEN
+    IF( iRestart < 0 )THEN
       CALL WriteFieldsAMReX_PlotFile &
              ( 0.0e0_amrex_real, StepNo, &
                MF_uGF_Option = MF_uGF, &
