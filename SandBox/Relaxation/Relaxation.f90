@@ -80,7 +80,10 @@ PROGRAM Relaxation
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
-    ComputeIncrement_TwoMoment_Implicit_New
+    ComputeIncrement_TwoMoment_Implicit_New, &
+    InitializeNonlinearSolverTally, &
+    FinalizeNonlinearSolverTally, &
+    WriteNonlinearSolverTally
 
   IMPLICIT NONE
 
@@ -220,6 +223,8 @@ PROGRAM Relaxation
 
   CALL TimersStop( Timer_Initialize )
 
+  CALL InitializeNonlinearSolverTally
+
   ! --- Evolve ---
 
   wTime = MPI_WTIME( )
@@ -263,9 +268,9 @@ PROGRAM Relaxation
 
       uCR = uCR + dt * rhsCR
 
-    END IF
+      t = t + dt
 
-    t = t + dt
+    END IF
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
@@ -278,6 +283,8 @@ PROGRAM Relaxation
                WriteGF_Option = .TRUE., &
                WriteFF_Option = .TRUE., &
                WriteRF_Option = .TRUE. )
+
+      CALL WriteNonlinearSolverTally( t )
 
     END IF
 
@@ -306,6 +313,8 @@ PROGRAM Relaxation
   ! --- Finalize ---
 
   CALL FinalizeTimers
+
+  CALL FinalizeNonlinearSolverTally
 
   CALL FinalizeReferenceElementX
 
