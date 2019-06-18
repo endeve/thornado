@@ -88,7 +88,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'SquareWaveStreaming'
+  ProgramName = 'RiemannProblem'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -295,6 +295,41 @@ PROGRAM ApplicationDriver
       iCycleT   = 10
       maxCycles = 1000000
 
+    CASE( 'RiemannProblem' )
+
+    ! --- Ref: Olbrant et al. (2012) ---
+    ! --- JCP 231(17)  -----------------
+
+      nX = [ 240, 1, 1 ]
+      xL = [ - 0.05_DP, 0.0_DP, 0.0_DP ]
+      xR = [ + 0.10_DP, 1.0_DP, 1.0_DP ]
+
+      bcX = [ 2, 1, 1 ]
+
+      nE = 1
+      eL = 0.0_DP
+      eR = 1.0_DP
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'SSPRK3'
+
+      N0     = 0.0_DP
+      SigmaA = 0.0_DP
+      SigmaS = 0.0_DP
+
+      UsePositivityLimiter = .TRUE.
+
+      Min_1 = Zero         ! --- Min Density
+      Max_1 = HUGE( ONE )  ! --- Max Density !! not done
+      Min_2 = Zero         ! --- Min "Gamma"
+
+      t_end     = 1.0d-1
+      iCycleD   = 100
+      iCycleW   = 100
+      iCycleT   = 100
+      maxCycles = 1000000
+
     CASE( 'HomogeneousSphere' )
 
       nX = [ 64, 64, 64 ]
@@ -438,12 +473,12 @@ PROGRAM ApplicationDriver
 
   ! --- Initialize Slope Limiter ---
 
-  CALL InitializeSlopeLimiter_TwoMoment &
-         ( BetaTVD_Option = 2.0_DP, & 
-           BetaTVB_Option = 1.d2, & 
-           SlopeTolerance_Option = 1.0d-6, &
-           UseSlopeLimiter_Option = .TRUE., &
-           UseCharacteristicLimiting_Option = .TRUE., &
+  CALL InitializeSlopeLimiter_TwoMoment                &
+         ( BetaTVD_Option = 2.0_DP,                    &
+           BetaTVB_Option = 5.d3,                      &
+           SlopeTolerance_Option = 1.0d-6,             &
+           UseSlopeLimiter_Option = .TRUE.,            &
+           UseCharacteristicLimiting_Option = .FALSE., &
            Verbose_Option = .TRUE. )
  
   ! --- Initialize Positivity Limiter ---

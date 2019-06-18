@@ -17,6 +17,7 @@ thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
 thornado.iCycleD   = 0010     # MOD this number to display info
 thornado.iCycleW   = -1000     # MOD this number to write plotfile
 thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
+thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
 
 geometry.coord_sys     = 0           # CARTESIAN
 geometry.prob_lo       = 0.0 0.0 0.0 # Lower domain size
