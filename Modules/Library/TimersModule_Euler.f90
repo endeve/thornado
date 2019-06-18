@@ -31,7 +31,7 @@ CONTAINS
 
   SUBROUTINE InitializeTimers_Euler
 
-    IF( TimeIt_Euler ) RETURN
+    IF( .NOT. TimeIt_Euler ) RETURN
 
     Timer_Euler_Inc         = Zero
     Timer_Euler_InputOutput = Zero

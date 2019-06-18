@@ -46,9 +46,7 @@ PROGRAM main
 
 !!$  CALL MakeMF_Diff( 0, 2929 )
 
-  ! --- Argument is integer corresponding to
-  !     checkpoint file from which to restart ---
-  CALL InitializeProblem()
+  CALL InitializeProblem
 
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()
