@@ -92,6 +92,10 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit_New
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit_DGFV
 
+  PUBLIC :: InitializeNonlinearSolverTally
+  PUBLIC :: FinalizeNonlinearSolverTally
+  PUBLIC :: WriteNonlinearSolverTally
+
   ! --- Units Only for Displaying to Screen ---
 
   REAL(DP), PARAMETER :: Unit_D = Gram / Centimeter**3
@@ -102,6 +106,14 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INTEGER  :: Iterations_Min
   INTEGER  :: Iterations_Max
   INTEGER  :: Iterations_Ave
+
+  ! --- Solver Tally ---
+
+  LOGICAL              :: TallyNonlinearSolver = .FALSE.
+  INTEGER              :: TallyFileNumber
+  INTEGER, ALLOCATABLE :: MinIterations_K(:,:,:)
+  INTEGER, ALLOCATABLE :: MaxIterations_K(:,:,:)
+  INTEGER, ALLOCATABLE :: AveIterations_K(:,:,:)
 
   LOGICAL, PARAMETER :: SolveMatter = .TRUE.
 
@@ -163,16 +175,6 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: Chi_Pair(:,:,:)
     REAL(DP), ALLOCATABLE :: Eta_Pair(:,:,:)
 
-    ! TESTING FP
-    REAL(DP) :: TMP_T_Ref, TMP_Y_Ref, TMP_E_Ref
-    REAL(DP) :: DIFFERENCE_FP
-    REAL(DP) :: TMP_D, TMP_T, TMP_Y, TMP_E
-    REAL(DP) :: T_in, Y_in, E_in
-    REAL(DP) :: TOL
-    ! REAL(DP) :: J_in(1:nE_G,1:nSpecies)
-    REAL(DP), ALLOCATABLE :: J_in(:,:)
-
-
 
     CALL TimersStart( Timer_Implicit )
 
@@ -180,8 +182,6 @@ CONTAINS
     iE_B1 = iZ_B1(1);   iE_E1 = iZ_E1(1)
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
-
-!!$    PRINT*, "ComputeIncrement_TwoMoment_Implicit_New"
 
     CALL InitializeCollisions_New( iE_B0, iE_E0 )
 
@@ -196,8 +196,6 @@ CONTAINS
     ALLOCATE( Chi_Pair(nE_G,nSpecies,nDOFX) )
     ALLOCATE( Eta_Pair(nE_G,nSpecies,nDOFX) )
 
-    ! J preconditioner
-    ALLOCATE( J_in   (nE_G,nSpecies) )
 
 
     Iterations_Min = + HUGE( 1 )
@@ -207,8 +205,6 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-
-!!$      PRINT*, "iX1,iX2,iX3 = ", iX1,iX2,iX3
 
       CALL TimersStart( Timer_Im_In )
 
@@ -228,24 +224,11 @@ CONTAINS
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'Copy to CF_N: ', Timer_Implicit_In
-
-!!$      PRINT*, "D  = ", PF_N(:,iPF_D  )
-!!$      PRINT*, "V1 = ", PF_N(:,iPF_V1 )
-!!$      PRINT*, "V2 = ", PF_N(:,iPF_V2 )
-!!$      PRINT*, "V3 = ", PF_N(:,iPF_V3 )
-!!$      PRINT*, "E  = ", PF_N(:,iPF_E  )
-!!$      PRINT*, "Ne = ", PF_N(:,iPF_Ne )
-
       CALL TimersStart( Timer_Im_ComputeTS_Aux )
 
       CALL ComputeThermodynamicStates_Auxiliary_TABLE &
              ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
                AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
-
-!!$      PRINT*, "T  = ", AF_N(:,iAF_T)
-!!$      PRINT*, "E  = ", AF_N(:,iAF_E)
-!!$      PRINT*, "Ye = ", AF_N(:,iAF_Ye)
 
       CALL TimersStop( Timer_Im_ComputeTS_Aux )
 
@@ -267,8 +250,6 @@ CONTAINS
 
       CALL TimersStop( Timer_Im_ComputeOpacity )
 
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'ComputeNeutrinoOpacities: ', Timer_Im_ComputeOpacity
-
       CALL TimersStart( Timer_Im_MapForward )
 
       CALL MapForward_R_New &
@@ -277,8 +258,6 @@ CONTAINS
       CALL TimersStop( Timer_Im_MapForward )
 
       CALL TimersStop( Timer_Im_In )
-
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'MapForward_R: ', Timer_Im_MapR
 
       CALL TimersStart( Timer_Im_Solve )
 
@@ -315,88 +294,61 @@ CONTAINS
 !!$
 !!$        END DO
 
+#ifdef NEUTRINO_MATTER_SOLVER_EMAB
 
+        ! WRITE(*,*)
+        ! WRITE(*,'(A6,A)') &
+        !   '', 'NEUTRINO_MATTER_SOLVER_EMAB not Implemented'
+        ! WRITE(*,*)
+        ! STOP
 
-        DIFFERENCE_FP = 0.0
+        CALL TimersStart( Timer_Im_EmAb_FP )
 
         DO iNodeX = 1, nDOFX
-
-          ! CALL SolveMatterEquations_FP_Coupled &
-          !        ( dt, iNuE, iNuE_Bar, &
-          !          CR_N(:,iCR_N,1:2,iNodeX), &
-          !          Chi (:,      1:2,iNodeX), &
-          !          fEQ (:,      1:2,iNodeX), &
-          !          Chi_NES (:,  1:2,iNodeX), &
-          !          Eta_NES (:,  1:2,iNodeX), &
-          !          Chi_Pair(:,  1:2,iNodeX), &
-          !          Eta_Pair(:,  1:2,iNodeX), &
-          !          PF_N(iNodeX,iPF_D ), &
-          !          AF_N(iNodeX,iAF_T ), &
-          !          AF_N(iNodeX,iAF_Ye), &
-          !          AF_N(iNodeX,iAF_E ) )
-
-
-          ! EmAb preconditioning
-          TMP_D = PF_N(iNodeX,iPF_D )
-          T_in = AF_N(iNodeX,iAF_T )
-          Y_in = AF_N(iNodeX,iAF_Ye )
-          E_in = AF_N(iNodeX,iAF_E )
-
-          CALL TimersStart( Timer_Im_EmAb_FP )
-
-          TOL = 1.0d-8
 
           CALL SolveMatterEquations_EmAb_FP &
                   ( dt, iNuE, iNuE_Bar, &
                     CR_N(:,iCR_N,1:2,iNodeX), &
                     Chi (:,      1:2,iNodeX), &
                     fEQ (:,      1:2,iNodeX), &
-                    TMP_D, T_in, Y_in, E_in,  &
-                    J_in, TOL )
-          CALL TimersStop( Timer_Im_EmAb_FP )
-          ! PRINT*, "PRECONDITIONED:"
-          ! PRINT*, "T_in = ", T_in
-          ! PRINT*, "Y_in = ", Y_in
-          ! PRINT*, "E_in = ", E_in
-          ! PRINT*, "J_in = ", J_in
+                    PF_N(iNodeX,iPF_D), &
+                    AF_N(iNodeX,iAF_T), &
+                    AF_N(iNodeX,iAF_Ye), &
+                    AF_N(iNodeX,iAF_E))
 
+        END DO
 
-          TMP_D = PF_N(iNodeX,iPF_D )
-          TMP_T = AF_N(iNodeX,iAF_T )
-          TMP_Y = AF_N(iNodeX,iAF_Ye )
-          TMP_E = AF_N(iNodeX,iAF_E )
+        CALL TimersStop( Timer_Im_EmAb_FP )
 
-          CALL TimersStart( Timer_Im_CoupledAA )
+#elif NEUTRINO_MATTER_SOLVER_FIXED_POINT_COUPLED
+
+        CALL TimersStart( Timer_Im_CoupledAA )
+
+        DO iNodeX = 1, nDOFX
 
           CALL SolveMatterEquations_FP_Coupled &
-                  ( dt, iNuE, iNuE_Bar, &
-                    CR_N(:,iCR_N,1:2,iNodeX), &
-                    Chi (:,      1:2,iNodeX), &
-                    fEQ (:,      1:2,iNodeX), &
-                    Chi_NES (:,  1:2,iNodeX), &
-                    Eta_NES (:,  1:2,iNodeX), &
-                    Chi_Pair(:,  1:2,iNodeX), &
-                    Eta_Pair(:,  1:2,iNodeX), &
-                    TMP_D, TMP_T, TMP_Y, TMP_E,&
-                    T_in, Y_in, E_in, J_in  )
+                 ( dt, iNuE, iNuE_Bar, &
+                   CR_N(:,iCR_N,1:2,iNodeX), &
+                   Chi (:,      1:2,iNodeX), &
+                   fEQ (:,      1:2,iNodeX), &
+                   Chi_NES (:,  1:2,iNodeX), &
+                   Eta_NES (:,  1:2,iNodeX), &
+                   Chi_Pair(:,  1:2,iNodeX), &
+                   Eta_Pair(:,  1:2,iNodeX), &
+                   PF_N(iNodeX,iPF_D),  &
+                   AF_N(iNodeX,iAF_T),  &
+                   AF_N(iNodeX,iAF_Ye), &
+                   AF_N(iNodeX,iAF_E) )
 
-          CALL TimersStop( Timer_Im_CoupledAA )
+        END DO
 
-!!$          PRINT*, "FP_Coupled:"
-!!$          PRINT*, "T = ", TMP_T
-!!$          PRINT*, "Y = ", TMP_Y
-!!$          PRINT*, "E = ", TMP_E
+        CALL TimersStop( Timer_Im_CoupledAA )
 
-          TMP_T_Ref = TMP_T
-          TMP_Y_Ref = TMP_Y
-          TMP_E_Ref = TMP_E
+#elif NEUTRINO_MATTER_SOLVER_FIXED_POINT_NESTED_AA
 
-          TMP_D = PF_N(iNodeX,iPF_D )
-          TMP_T = AF_N(iNodeX,iAF_T )
-          TMP_Y = AF_N(iNodeX,iAF_Ye )
-          TMP_E = AF_N(iNodeX,iAF_E )
+        CALL TimersStart( Timer_Im_NestedAA )
 
-          CALL TimersStart( Timer_Im_NestedAA )
+        DO iNodeX = 1, nDOFX
 
           CALL SolveMatterEquations_FP_NestedAA &
                  ( dt, iNuE, iNuE_Bar, &
@@ -407,22 +359,21 @@ CONTAINS
                    Eta_NES (:,  1:2,iNodeX), &
                    Chi_Pair(:,  1:2,iNodeX), &
                    Eta_Pair(:,  1:2,iNodeX), &
-                   TMP_D, TMP_T, TMP_Y, TMP_E,&
-                   T_in, Y_in, E_in, J_in  )
+                   PF_N(iNodeX,iPF_D),  &
+                   AF_N(iNodeX,iAF_T),  &
+                   AF_N(iNodeX,iAF_Ye), &
+                   AF_N(iNodeX,iAF_E) )
 
-          CALL TimersStop( Timer_Im_NestedAA )
 
-!!$          PRINT*, "FP_NestedAA:"
-!!$          PRINT*, "T = ", TMP_T
-!!$          PRINT*, "Y = ", TMP_Y
-!!$          PRINT*, "E = ", TMP_E
+        END DO
 
-          TMP_D = PF_N(iNodeX,iPF_D )
-          TMP_T = AF_N(iNodeX,iAF_T )
-          TMP_Y = AF_N(iNodeX,iAF_Ye )
-          TMP_E = AF_N(iNodeX,iAF_E )
+        CALL TimersStop( Timer_Im_NestedAA )
 
-          CALL TimersStart( Timer_Im_NestedNewton )
+#elif NEUTRINO_MATTER_SOLVER_FIXED_POINT_NESTED_NEWTON
+
+        CALL TimersStart( Timer_Im_NestedNewton )
+
+        DO iNodeX = 1, nDOFX
 
           CALL SolveMatterEquations_FP_NestedNewton &
                  ( dt, iNuE, iNuE_Bar, &
@@ -433,24 +384,20 @@ CONTAINS
                    Eta_NES (:,  1:2,iNodeX), &
                    Chi_Pair(:,  1:2,iNodeX), &
                    Eta_Pair(:,  1:2,iNodeX), &
-                   TMP_D, TMP_T, TMP_Y, TMP_E,&
-                   T_in, Y_in, E_in, J_in  )
+                   PF_N(iNodeX,iPF_D),  &
+                   AF_N(iNodeX,iAF_T),  &
+                   AF_N(iNodeX,iAF_Ye), &
+                   AF_N(iNodeX,iAF_E) )
 
-          CALL TimersStop( Timer_Im_NestedNewton )
+        END DO
 
-!!$          PRINT*, "FP_NestedNewton:"
-!!$          PRINT*, "T = ", TMP_T
-!!$          PRINT*, "Y = ", TMP_Y
-!!$          PRINT*, "E = ", TMP_E
+        CALL TimersStop( Timer_Im_NestedNewton )
 
+#elif NEUTRINO_MATTER_SOLVER_NEWTON
 
+        CALL TimersStart( Timer_Im_Newton )
 
-          TMP_D = PF_N(iNodeX,iPF_D )
-          TMP_T = AF_N(iNodeX,iAF_T )
-          TMP_Y = AF_N(iNodeX,iAF_Ye )
-          TMP_E = AF_N(iNodeX,iAF_E )
-
-          CALL TimersStart( Timer_Im_Newton )
+        DO iNodeX = 1, nDOFX
 
           CALL SolveMatterEquations_Newton &
                  ( dt, iNuE, iNuE_Bar, &
@@ -461,40 +408,39 @@ CONTAINS
                    Eta_NES (:,  1:2,iNodeX), &
                    Chi_Pair(:,  1:2,iNodeX), &
                    Eta_Pair(:,  1:2,iNodeX), &
-                   TMP_D, TMP_T, TMP_Y, TMP_E,&
-                   T_in, Y_in, E_in, J_in  )
-
-          CALL TimersStop( Timer_Im_Newton )
-
-
-!!$          PRINT*, "Newton:"
-!!$          PRINT*, "T = ", TMP_T
-!!$          PRINT*, "Y = ", TMP_Y
-!!$          PRINT*, "E = ", TMP_E
-
-          PF_N(iNodeX,iPF_D)  = TMP_D
-          AF_N(iNodeX,iAF_T)  = TMP_T
-          AF_N(iNodeX,iAF_Ye) = TMP_Y
-          AF_N(iNodeX,iAF_E)  = TMP_E
-
-          DIFFERENCE_FP = DIFFERENCE_FP + ABS(TMP_T - TMP_T_Ref)/ABS(TMP_T_Ref)
-          DIFFERENCE_FP = DIFFERENCE_FP + ABS(TMP_Y - TMP_Y_Ref)/ABS(TMP_Y_Ref)
-          DIFFERENCE_FP = DIFFERENCE_FP + ABS(TMP_E - TMP_E_Ref)/ABS(TMP_E_Ref)
-
-           PRINT*
-           PRINT*, "DIFFERENCE = ", DIFFERENCE_FP, " NODES = ", nDOFX
-            PRINT*, "T_Coupled = ", TMP_T / Kelvin, " T_Nested = ", TMP_T  / Kelvin
-            PRINT*, "Y_Coupled = ", TMP_Y, " Y_Nested = ", TMP_Y
-            PRINT*, "E_Coupled = ", TMP_E / MeV, " E_Nested = ", TMP_E / MeV
-           PRINT*
-          !  !stop "difference test"
+                   PF_N(iNodeX,iPF_D),  &
+                   AF_N(iNodeX,iAF_T),  &
+                   AF_N(iNodeX,iAF_Ye), &
+                   AF_N(iNodeX,iAF_E) )
         END DO
+
+        CALL TimersStop( Timer_Im_Newton )
+
+#else
+
+        WRITE(*,*)
+        WRITE(*,'(A6,A)') &
+          '', 'ComputeIncrement_TwoMoment_Implicit_New'
+        WRITE(*,'(A6,A)') &
+          '', 'in TwoMoment_DiscretizationModule_Collisions_Neutrinos'
+        WRITE(*,'(A6,A)') &
+          '', 'Invalid NEUTRINO_MATTER_SOLVER'
+        WRITE(*,'(A6,A)') &
+          '', 'Available Options:'
+        WRITE(*,*)
+        WRITE(*,'(A8,A)') '', 'EMAB'
+        WRITE(*,'(A8,A)') '', 'FIXED_POINT_COUPLED'
+        WRITE(*,'(A8,A)') '', 'FIXED_POINT_NESTED_AA'
+        WRITE(*,'(A8,A)') '', 'FIXED_POINT_NESTED_NEWTON'
+        WRITE(*,'(A8,A)') '', 'NEWTON'
+        WRITE(*,*)
+        STOP
+
+#endif
 
       END IF
 
       CALL TimersStop( Timer_Im_Solve )
-
-!!$      WRITE(*,'(A4,A32,ES10.4E2)') '', 'SolveMatterEquations_EmAb: ', Timer_Im_Solve
 
       CALL TimersStart( Timer_Im_Out )
 
@@ -612,8 +558,6 @@ CONTAINS
       ( Kappa, Chi_T, Eta_T, Chi, fEQ, Sig, Chi_NES, Eta_NES, &
         Chi_Pair, Eta_Pair )
 
-    ! J preconditioner
-    DEALLOCATE(J_in)
 
     CALL FinalizeCollisions_New
 
@@ -1386,17 +1330,16 @@ CONTAINS
 
 
   SUBROUTINE SolveMatterEquations_EmAb_FP &
-    ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E, Jout, TOL)
+    ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E, TOL)
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
     REAL(DP), INTENT(in)    :: dt
     INTEGER,  INTENT(in)    :: iS_1, iS_2
-    REAL(DP), INTENT(in)    :: J       (1:nE_G,1:2)
+    REAL(DP), INTENT(inout) :: J       (1:nE_G,1:2)
     REAL(DP), INTENT(in)    :: Chi     (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: J0      (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
-    REAL(DP), INTENT(out)   :: Jout    (1:nE_G,1:2)
     REAL(DP), INTENT(in),  OPTIONAL :: TOL
 
     ! --- Solver Parameters ---
@@ -1599,19 +1542,19 @@ CONTAINS
     END DO
 
     ! output J for preconditioning purpose
-     Jout = Jnew
+     J = Jnew
 
   END SUBROUTINE SolveMatterEquations_EmAb_FP
 
   SUBROUTINE SolveMatterEquations_FP_Coupled &
     ( dt, iS_1, iS_2, J, Chi, J0, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
-      D, T, Y, E, T_in, Y_in, E_in, J_in  )
+      D, T, Y, E)
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
     REAL(DP), INTENT(in)    :: dt
     INTEGER,  INTENT(in)    :: iS_1, iS_2
-    REAL(DP), INTENT(in)    :: J       (1:nE_G,1:2)
+    REAL(DP), INTENT(inout) :: J       (1:nE_G,1:2)
     REAL(DP), INTENT(in)    :: Chi     (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: J0      (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: Chi_NES (1:nE_G,1:2)
@@ -1619,8 +1562,6 @@ CONTAINS
     REAL(DP), INTENT(inout) :: Chi_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: Eta_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
-    REAL(DP), INTENT(in), OPTIONAL :: T_in, Y_in, E_in
-    REAL(DP), INTENT(in), OPTIONAL :: J_in(1:nE_G,1:2)
 
     ! --- Solver Parameters ---
 
@@ -1667,19 +1608,22 @@ CONTAINS
 
     Yold = Y
     Eold = E
-
     Jold = J
 
-    IF(PRESENT(T_in)) THEN
-      T = T_in
-    END IF
-    IF(PRESENT(Y_in)) THEN
-      Y = Y_in
-    END IF
-    IF(PRESENT(E_in)) THEN
-      E = E_in
-    END IF
+    CALL TimersStart( Timer_Im_EmAb_FP )
 
+    ! EmAb preconditioner
+    CALL SolveMatterEquations_EmAb_FP &
+            ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
+
+    CALL TimersStop( Timer_Im_EmAb_FP )
+
+    ! Unew = One ! --- Initial Guess
+    Unew(iY) = Y / Yold ! --- Initial Guess
+    Unew(iE) = E / Eold ! --- Initial Guess
+
+    ! Initial Guess of J
+    Jnew = J
 
 
     S_Y = N_B * Yold
@@ -1687,10 +1631,6 @@ CONTAINS
 
     W2_S = FourPi * W2_N / h3
     W3_S = FourPi * W3_N / h3
-
-    ! Unew = One ! --- Initial Guess
-    Unew(iY) = Y / Yold ! --- Initial Guess
-    Unew(iE) = E / Eold ! --- Initial Guess
 
     C(iY) = DOT_PRODUCT( W2_S, Jold(:,1) - Jold(:,2) ) / S_Y
     C(iE) = DOT_PRODUCT( W3_S, Jold(:,1) + Jold(:,2) ) / S_E
@@ -1725,11 +1665,6 @@ CONTAINS
             Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
 
 
-    IF(PRESENT(J_in)) THEN
-        Jnew = J_in
-    ELSE
-        Jnew = Jold
-    END IF
 
     ! --- NES Emissivities and Opacities ---
 
@@ -1979,13 +1914,13 @@ CONTAINS
 
   SUBROUTINE SolveMatterEquations_FP_NestedAA &
     ( dt, iS_1, iS_2, J, Chi, J0, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
-    D, T, Y, E, T_in, Y_in, E_in, J_in  )
+    D, T, Y, E)
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
     REAL(DP), INTENT(in)    :: dt
     INTEGER,  INTENT(in)    :: iS_1, iS_2
-    REAL(DP), INTENT(in)    :: J       (1:nE_G,1:2)
+    REAL(DP), INTENT(inout) :: J       (1:nE_G,1:2)
     REAL(DP), INTENT(in)    :: Chi     (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: J0      (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: Chi_NES (1:nE_G,1:2)
@@ -1993,8 +1928,6 @@ CONTAINS
     REAL(DP), INTENT(inout) :: Chi_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: Eta_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
-    REAL(DP), INTENT(in), OPTIONAL :: T_in, Y_in, E_in
-    REAL(DP), INTENT(in), OPTIONAL :: J_in(1:nE_G,1:2)
 
       ! --- Solver Parameters ---
 
@@ -2052,30 +1985,28 @@ CONTAINS
 
       Yold = Y
       Eold = E
+      Jold = J
 
-      Jold(:,1) = J(:,1)
-      Jold(:,2) = J(:,2)
+      CALL TimersStart( Timer_Im_EmAb_FP )
 
-      IF(PRESENT(T_in)) THEN
-        T = T_in
-      END IF
-      IF(PRESENT(Y_in)) THEN
-        Y = Y_in
-      END IF
-      IF(PRESENT(E_in)) THEN
-        E = E_in
-      END IF
+      ! EmAb preconditioner
+      CALL SolveMatterEquations_EmAb_FP &
+              ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
+
+      CALL TimersStop( Timer_Im_EmAb_FP )
+
+      ! Unew = One ! --- Initial Guess
+      Unew(iY) = Y / Yold ! --- Initial Guess
+      Unew(iE) = E / Eold ! --- Initial Guess
+
+      ! Initial Guess of J
+      Jnew = J
 
       S_Y = N_B * Yold
       S_E = D   * Eold
 
       W2_S = FourPi * W2_N / h3
       W3_S = FourPi * W3_N / h3
-
-      ! Unew = One ! --- Initial Guess
-      Unew(iY) = Y / Yold ! --- Initial Guess
-      Unew(iE) = E / Eold ! --- Initial Guess
-
 
       C(iY) = DOT_PRODUCT( W2_S, Jold(:,1) - Jold(:,2) ) / S_Y
       C(iE) = DOT_PRODUCT( W3_S, Jold(:,1) + Jold(:,2) ) / S_E
@@ -2109,13 +2040,6 @@ CONTAINS
              ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
                Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
 
-      ! --- Initialize Neutrino Densities ---
-
-      IF(PRESENT(J_in)) THEN
-          Jnew = J_in
-      ELSE
-          Jnew = Jold
-      END IF
 
       ! --- NES Emissivities and Opacities ---
 
@@ -2473,13 +2397,13 @@ CONTAINS
 
   SUBROUTINE SolveMatterEquations_FP_NestedNewton &
     ( dt, iS_1, iS_2, J, Chi, J0, NES_Ot, NES_In, Pair_Ot, Pair_In, &
-    D, T, Y, E, T_in, Y_in, E_in, J_in  )
+    D, T, Y, E)
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
     REAL(DP), INTENT(in)    :: dt
     INTEGER,  INTENT(in)    :: iS_1, iS_2
-    REAL(DP), INTENT(in)    :: J      (1:nE_G,1:2)
+    REAL(DP), INTENT(inout) :: J      (1:nE_G,1:2)
     REAL(DP), INTENT(in)    :: Chi    (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: J0     (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: NES_Ot (1:nE_G,1:2)
@@ -2487,8 +2411,6 @@ CONTAINS
     REAL(DP), INTENT(inout) :: Pair_Ot(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: Pair_In(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
-    REAL(DP), INTENT(in), OPTIONAL :: T_in, Y_in, E_in
-    REAL(DP), INTENT(in), OPTIONAL :: J_in(1:nE_G,1:2)
 
     ! --- Solver Parameters ---
 
@@ -2541,19 +2463,24 @@ CONTAINS
 
       Yold = Y
       Eold = E
+      Jold = J
 
-      Jold(:,1) = J(:,1)
-      Jold(:,2) = J(:,2)
+      CALL TimersStart( Timer_Im_EmAb_FP )
 
-      IF(PRESENT(T_in)) THEN
-        T = T_in
-      END IF
-      IF(PRESENT(Y_in)) THEN
-        Y = Y_in
-      END IF
-      IF(PRESENT(E_in)) THEN
-        E = E_in
-      END IF
+      ! EmAb preconditioner
+      CALL SolveMatterEquations_EmAb_FP &
+              ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
+
+      CALL TimersStop( Timer_Im_EmAb_FP )
+
+      ! Unew = One ! --- Initial Guess
+      Unew(iY) = Y / Yold ! --- Initial Guess
+      Unew(iE) = E / Eold ! --- Initial Guess
+
+      ! Initial Guess of J
+      Jnew = J
+
+
 
       S_Y = N_B * Yold
       S_E = D   * Eold
@@ -2561,9 +2488,6 @@ CONTAINS
       W2_S = FourPi * W2_N / h3
       W3_S = FourPi * W3_N / h3
 
-      ! Unew = One ! --- Initial Guess
-      Unew(iY) = Y / Yold ! --- Initial Guess
-      Unew(iE) = E / Eold ! --- Initial Guess
 
       C(iY) = DOT_PRODUCT( W2_S, Jold(:,1) - Jold(:,2) ) / S_Y
       C(iE) = DOT_PRODUCT( W3_S, Jold(:,1) + Jold(:,2) ) / S_E
@@ -2597,14 +2521,6 @@ CONTAINS
       CALL ComputeNeutrinoOpacities_Pair_Point &
              ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
                Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
-
-
-      ! --- Initialize Neutrino Densities ---
-      IF(PRESENT(J_in)) THEN
-          Jnew = J_in
-      ELSE
-          Jnew = Jold
-      END IF
 
 
       k = 0
@@ -2907,13 +2823,13 @@ CONTAINS
 
   SUBROUTINE SolveMatterEquations_Newton &
     ( dt, iS_1, iS_2, J, Chi, J0, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
-    D, T, Y, E, T_in, Y_in, E_in, J_in  )
+    D, T, Y, E)
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
     REAL(DP), INTENT(in)    :: dt
     INTEGER,  INTENT(in)    :: iS_1, iS_2
-    REAL(DP), INTENT(in)    :: J       (1:nE_G,1:2)
+    REAL(DP), INTENT(inout) :: J       (1:nE_G,1:2)
     REAL(DP), INTENT(in)    :: Chi     (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: J0      (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: Chi_NES (1:nE_G,1:2)
@@ -2921,8 +2837,6 @@ CONTAINS
     REAL(DP), INTENT(inout) :: Chi_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: Eta_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
-    REAL(DP), INTENT(in), OPTIONAL :: T_in, Y_in, E_in
-    REAL(DP), INTENT(in), OPTIONAL :: J_in(1:nE_G,1:2)
 
     ! --- Solver Parameters ---
 
@@ -2980,15 +2894,16 @@ CONTAINS
     Eold = E
     Jold = J
 
-    IF(PRESENT(T_in)) THEN
-      T = T_in
-    END IF
-    IF(PRESENT(Y_in)) THEN
-      Y = Y_in
-    END IF
-    IF(PRESENT(E_in)) THEN
-      E = E_in
-    END IF
+    CALL TimersStart( Timer_Im_EmAb_FP )
+    ! EmAb preconditioner
+    CALL SolveMatterEquations_EmAb_FP &
+            ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
+    CALL TimersStop( Timer_Im_EmAb_FP )
+
+    ! --- Initial Guess ---
+    Ynew = Y
+    Enew = E
+    Jnew = J
 
     S_Y = N_B * Yold
     S_E = D   * Eold
@@ -3038,16 +2953,8 @@ CONTAINS
              dPhi_0_In_Pair_dY(:,:,2), dPhi_0_In_Pair_dE(:,:,2), &
              dPhi_0_Ot_Pair_dY(:,:,2), dPhi_0_Ot_Pair_dE(:,:,2) )
 
-    ! --- Initial Guess ---
 
-    Ynew = Y
-    Enew = E
-    IF(PRESENT(J_in)) THEN
-        Jnew = J_in
-    ELSE
-        Jnew = Jold
-    END IF
-    
+
     k = 0
     CONVERGED = .FALSE.
     DO WHILE( .NOT. CONVERGED .AND. k < MaxIter )
@@ -4003,6 +3910,206 @@ CONTAINS
 
     RETURN
   END FUNCTION ENORM
+
+
+  SUBROUTINE InitializeNonlinearSolverTally
+
+    USE ProgramHeaderModule, ONLY: nX
+
+    TallyNonlinearSolver = .TRUE.
+    TallyFileNumber = 0
+
+    ALLOCATE( MinIterations_K(nX(1),nX(2),nX(3)) )
+    ALLOCATE( MaxIterations_K(nX(1),nX(2),nX(3)) )
+    ALLOCATE( AveIterations_K(nX(1),nX(2),nX(3)) )
+
+    MinIterations_K = 0
+    MaxIterations_K = 0
+    AveIterations_K = 0
+
+  END SUBROUTINE InitializeNonlinearSolverTally
+
+
+  SUBROUTINE FinalizeNonlinearSolverTally
+
+    DEALLOCATE( MinIterations_K )
+    DEALLOCATE( MaxIterations_K )
+    DEALLOCATE( AveIterations_K )
+
+  END SUBROUTINE FinalizeNonlinearSolverTally
+
+
+  SUBROUTINE WriteNonlinearSolverTally( t )
+
+    USE HDF5
+    USE UnitsModule, ONLY: &
+      Millisecond, &
+      Kilometer
+    USE ProgramHeaderModule, ONLY: &
+      nX
+    USE MeshModule, ONLY: &
+      MeshX
+
+    REAL(DP), INTENT(in) :: t
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: DatasetName
+    CHARACTER(256) :: GroupName
+    INTEGER        :: HDFERR
+    INTEGER(HID_T) :: FILE_ID
+
+    IF( .NOT. TallyNonlinearSolver ) RETURN
+
+    WRITE( FileNumberString, FMT='(i6.6)') TallyFileNumber
+
+    FileName = '../Output/' // 'NonlinearSolverTally_' // &
+               FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
+
+    ! --- Write Time ---
+
+    DatasetName = '/Time'
+
+    CALL WriteDataset1D_REAL &
+           ( [ t ] / Millisecond, DatasetName, FILE_ID )
+
+    ! --- Write Spatial Grid ---
+
+    GroupName = 'Spatial Grid'
+
+    CALL CreateGroupHDF( FileName, GroupName , FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X1'
+
+    CALL WriteDataset1D_REAL &
+           ( MeshX(1) % Center(1:nX(1)) / Kilometer, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2'
+
+    CALL WriteDataset1D_REAL &
+           ( MeshX(2) % Center(1:nX(2)) / Kilometer, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3'
+
+    CALL WriteDataset1D_REAL &
+           ( MeshX(3) % Center(1:nX(3)) / Kilometer, DatasetName, FILE_ID )
+
+    ! --- Write Iteration Counts ---
+
+    GroupName = 'Iteration Counts'
+
+    CALL CreateGroupHDF( FileName, GroupName , FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/Max Iterations'
+
+    CALL WriteDataset3D_INTEGER &
+           ( MaxIterations_K, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/Min Iterations'
+
+    CALL WriteDataset3D_INTEGER &
+           ( MinIterations_K, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/Average Iterations'
+
+    CALL WriteDataset3D_INTEGER &
+           ( AveIterations_K, DatasetName, FILE_ID )
+
+    CALL H5CLOSE_F( HDFERR )
+
+    TallyFileNumber = TallyFileNumber + 1
+
+  END SUBROUTINE WriteNonlinearSolverTally
+
+
+  SUBROUTINE CreateGroupHDF( FileName, GroupName, FILE_ID )
+
+    USE HDF5
+
+    CHARACTER(len=*), INTENT(in) :: FileName
+    CHARACTER(len=*), INTENT(in) :: GroupName
+    INTEGER(HID_T),   INTENT(in) :: FILE_ID
+
+    INTEGER        :: HDFERR
+    INTEGER(HID_T) :: GROUP_ID
+
+    CALL H5GCREATE_F( FILE_ID, TRIM( GroupName ), GROUP_ID, HDFERR )
+
+    CALL H5GCLOSE_F( GROUP_ID, HDFERR )
+
+  END SUBROUTINE CreateGroupHDF
+
+
+  SUBROUTINE WriteDataset1D_REAL( Dataset, DatasetName, FILE_ID )
+
+    USE HDF5
+
+    REAL(DP),         INTENT(in) :: Dataset(:)
+    CHARACTER(LEN=*), INTENT(in) :: DatasetName
+    INTEGER(HID_T),   INTENT(in) :: FILE_ID
+
+    INTEGER          :: HDFERR
+    INTEGER(HSIZE_T) :: DATASIZE(1)
+    INTEGER(HID_T)   :: DATASPACE_ID
+    INTEGER(HID_T)   :: DATASET_ID
+
+    DATASIZE = SIZE( Dataset )
+
+    CALL H5SCREATE_F( H5S_SIMPLE_F, DATASPACE_ID, HDFERR )
+
+    CALL H5SSET_EXTENT_SIMPLE_F &
+           ( DATASPACE_ID, 1, DATASIZE, DATASIZE, HDFERR )
+
+    CALL H5DCREATE_F &
+           ( FILE_ID, TRIM( DatasetName ), H5T_NATIVE_DOUBLE, &
+             DATASPACE_ID, DATASET_ID, HDFERR )
+
+    call H5DWRITE_F &
+           ( DATASET_ID, H5T_NATIVE_DOUBLE, Dataset, DATASIZE, HDFERR )
+
+    call H5SCLOSE_F( DATASPACE_ID, HDFERR )
+
+    call H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE WriteDataset1D_REAL
+
+
+  SUBROUTINE WriteDataset3D_INTEGER( Dataset, DatasetName, FILE_ID )
+
+    USE HDF5
+
+    INTEGER,          INTENT(in) :: Dataset(:,:,:)
+    CHARACTER(LEN=*), INTENT(in) :: DatasetName
+    INTEGER(HID_T),   INTENT(in) :: FILE_ID
+
+    INTEGER          :: HDFERR
+    INTEGER(HSIZE_T) :: DATASIZE(3)
+    INTEGER(HID_T)   :: DATASPACE_ID
+    INTEGER(HID_T)   :: DATASET_ID
+
+    DATASIZE = SHAPE( Dataset )
+
+    CALL H5SCREATE_F( H5S_SIMPLE_F, DATASPACE_ID, HDFERR )
+
+    CALL H5SSET_EXTENT_SIMPLE_F &
+           ( DATASPACE_ID, 3, DATASIZE, DATASIZE, HDFERR )
+
+    CALL H5DCREATE_F &
+           ( FILE_ID, TRIM( DatasetName ), H5T_NATIVE_INTEGER, &
+             DATASPACE_ID, DATASET_ID, HDFERR )
+
+    CALL H5DWRITE_F &
+           ( DATASET_ID, H5T_NATIVE_INTEGER, Dataset, DATASIZE, HDFERR )
+
+    CALL H5SCLOSE_F( DATASPACE_ID, HDFERR )
+
+    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE WriteDataset3D_INTEGER
 
 
 END MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos

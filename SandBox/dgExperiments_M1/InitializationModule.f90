@@ -112,6 +112,10 @@ CONTAINS
 
         CALL InitializeFields_LineSource
 
+      CASE ( 'RiemannProblem' )
+
+        CALL InitializeFields_RiemannProblem
+
       CASE ( 'HomogeneousSphere' )
 
         CALL InitializeFields_HomogeneousSphere
@@ -783,7 +787,85 @@ CONTAINS
 
   END SUBROUTINE InitializeFields_LineSource
 
+  
+  SUBROUTINE InitializeFields_RiemannProblem
 
+    INTEGER      :: iE, iX1, iX2, iX3, iS, iK
+    INTEGER      :: iNodeX1
+    INTEGER      :: iNode
+    REAL(DP)     :: X1
+    REAL(DP)     :: Gm_dd_11(nDOF)
+    REAL(DP)     :: Gm_dd_22(nDOF)
+    REAL(DP)     :: Gm_dd_33(nDOF)
+    REAL(DP)     :: Ones(nDOFE)
+
+    Ones = 1.0_DP
+
+    DO iS = 1, nSpecies
+      DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = iX_B0(1), iX_E0(1)
+
+            Gm_dd_11 &
+              = OuterProduct1D3D &
+                  ( Ones, nDOFE, uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), nDOFX )
+
+            Gm_dd_22 &
+              = OuterProduct1D3D &
+                  ( Ones, nDOFE, uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), nDOFX )
+
+            Gm_dd_33 &
+              = OuterProduct1D3D &
+                  ( Ones, nDOFE, uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), nDOFX )
+
+            DO iE = iE_B0, iE_E0
+
+              DO iNode = 1, nDOF
+
+                iNodeX1 = NodeNumberTable(2,iNode)
+
+                X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+                IF( X1 <= 0.0_DP ) THEN
+                  uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS)  &
+                    = 1.0_DP
+                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
+                    = 0.9999_DP 
+                ELSE
+                  uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS)  &
+                    = 0.50_DP
+                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
+                    = 0.0_DP
+                END IF
+
+                uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) &
+                  = 0.0_DP
+
+                uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) &
+                  = 0.0_DP
+
+              END DO
+
+              CALL ComputeConserved_TwoMoment &
+                     ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &
+                       uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                       uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                       uPR(:,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                       uCR(:,iE,iX1,iX2,iX3,iCR_N, iS), &
+                       uCR(:,iE,iX1,iX2,iX3,iCR_G1,iS), &
+                       uCR(:,iE,iX1,iX2,iX3,iCR_G2,iS), &
+                       uCR(:,iE,iX1,iX2,iX3,iCR_G3,iS), &
+                       Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:) )
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_RiemannProblem
+ 
+ 
   SUBROUTINE InitializeFields_HomogeneousSphere
 
     INTEGER   :: iE, iX1, iX2, iX3, iS

@@ -45,8 +45,6 @@ PROGRAM main
 
 !!$  CALL MakeMF_Diff( 0, 2929 )
 
-  ! --- Argument is integer corresponding to
-  !     checkpoint file from which to restart ---
   CALL InitializeProblem()
 
   IF( amrex_parallel_ioprocessor() ) &
@@ -117,7 +115,7 @@ PROGRAM main
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, t, &
+             ( StepNo, nLevels, dt, t, t_wrt, t_chk, &
                MF_uGF % BA % P, &
                MF_uGF % P, &
                MF_uCF % P, &
@@ -149,7 +147,7 @@ PROGRAM main
            MF_uAF_Option = MF_uAF )
 
   CALL WriteFieldsAMReX_Checkpoint &
-         ( StepNo, nLevels, dt, t, &
+         ( StepNo, nLevels, dt, t, t_wrt, t_chk, &
            MF_uGF % BA % P, &
            MF_uGF % P, &
            MF_uCF % P, &

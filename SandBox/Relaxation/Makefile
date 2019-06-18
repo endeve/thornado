@@ -1,5 +1,6 @@
-MICROPHYSICS   = WEAKLIB
-MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
+MICROPHYSICS           = WEAKLIB
+MOMENT_CLOSURE         = MAXIMUM_ENTROPY_CB
+NEUTRINO_MATTER_SOLVER = FIXED_POINT_NESTED_NEWTON
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -21,7 +22,8 @@ Relaxation: \
 	$(thornado) \
 	InitializationModule.o \
 	Relaxation.o
-	$(FLINKER) $(FLAGS) -o Relaxation_$(MACHINE) \
+	$(FLINKER) $(FLAGS) -o \
+	Relaxation_$(NEUTRINO_MATTER_SOLVER)_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
@@ -32,7 +34,7 @@ clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
-	rm -f Relaxation_$(MACHINE)
+	rm -f Relaxation_$(NEUTRINO_MATTER_SOLVER)_$(MACHINE)
 
 Relaxation.o: \
    KindModule.o \

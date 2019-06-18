@@ -92,16 +92,13 @@ MODULE InitializationModule
   TYPE(amrex_parmparse), PUBLIC :: PP
   TYPE(amrex_box),       PUBLIC :: BX
   REAL(amrex_real),      PUBLIC :: Mass
-  REAL(amrex_real),      PUBLIC :: t_wrt, t_chk
   LOGICAL,               PUBLIC :: wrt, chk
 
 
 CONTAINS
 
 
-  SUBROUTINE InitializeProblem( CheckpointRestart_Option )
-
-    INTEGER, INTENT(in), OPTIONAL :: CheckpointRestart_Option
+  SUBROUTINE InitializeProblem
 
     ! --- Initialize AMReX ---
     CALL amrex_init()
@@ -111,7 +108,7 @@ CONTAINS
     ! --- Parse parameter file ---
     CALL MyAmrInit
 
-    IF( .NOT. PRESENT( CheckpointRestart_Option ) )THEN
+    IF( iRestart < 0 )THEN
 
       BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
@@ -148,19 +145,15 @@ CONTAINS
       END DO
 
       t     = 0.0_amrex_real
+      dt    = 0.0_amrex_real
       t_wrt = dt_wrt
       t_chk = dt_chk
 
     ELSE
 
-      CALL ReadCheckpointFile( CheckpointRestart_Option )
-
-      t_wrt = t(0)
-      t_chk = t(0)
+      CALL ReadCheckpointFile( iRestart )
 
     END IF
-
-    WRITE(*,*) 't_wrt: ', t_wrt
 
     wrt   = .FALSE.
     chk   = .FALSE.
@@ -254,37 +247,37 @@ CONTAINS
       '', 'CFL: ', &
       CFL * ( amrex_spacedim * ( 2.0_amrex_real * nNodes - 1.0_amrex_real ) )
 
-    IF( .NOT. PRESENT( CheckpointRestart_Option ) )THEN
-      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
-    END IF
+    ! --- Allocates 'Shock' and sets units for fluid fields ---
     CALL CreateFluidFields( nX, swX, amrex_parallel_ioprocessor() )
 
-    CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
-    CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
+    IF( iRestart < 0 )THEN
+      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
 
-    CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+      CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
+      CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
 
-    DO iLevel = 0, nLevels
-      CALL amrex_distromap_destroy( DM(iLevel) )
-      CALL amrex_boxarray_destroy ( BA(iLevel) )
-    END DO
+      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-    IF( .NOT. PRESENT( CheckpointRestart_Option ) )THEN
       CALL WriteFieldsAMReX_PlotFile &
-             ( 0.0e0_amrex_real, StepNo, &
+             ( t(0), StepNo, &
                MF_uGF_Option = MF_uGF, &
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF )
 
       CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, t, &
+             ( StepNo, nLevels, dt, t, t_wrt, t_chk, &
                MF_uGF % BA % P, &
                MF_uGF % P, &
                MF_uCF % P, &
                MF_uPF % P, &
                MF_uAF % P )
     END IF
+
+    DO iLevel = 0, nLevels
+      CALL amrex_distromap_destroy( DM(iLevel) )
+      CALL amrex_boxarray_destroy ( BA(iLevel) )
+    END DO
 
     IF( amrex_parallel_ioprocessor() )THEN
       WRITE(*,*)

@@ -36,9 +36,10 @@ MODULE MyAmrModule
 
   IMPLICIT NONE
 
-  REAL(amrex_real)                    :: t_end, dt_wrt, dt_chk, Gamma_IDEAL, CFL
+  REAL(amrex_real)                    :: t_end, Gamma_IDEAL, CFL
+  REAL(amrex_real)                    :: t_wrt, dt_wrt, t_chk, dt_chk
   INTEGER                             :: nNodes, nStages, nLevels, coord_sys
-  INTEGER                             :: iCycleD, iCycleW, iCycleChk
+  INTEGER                             :: iCycleD, iCycleW, iCycleChk, iRestart
   INTEGER,          ALLOCATABLE       :: MaxGridSize(:), nX(:), swX(:), bcX(:)
   REAL(amrex_real), ALLOCATABLE       :: xL(:), xR(:), dt(:), t(:)
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName
@@ -97,6 +98,7 @@ CONTAINS
       CALL PP % get   ( 'iCycleD',     iCycleD )
       CALL PP % get   ( 'iCycleW',     iCycleW )
       CALL PP % get   ( 'iCycleChk',   iCycleChk )
+      CALL PP % get   ( 'iRestart',    iRestart )
     CALL amrex_parmparse_destroy( PP )
     IF( iCycleW .GT. 0 .AND. dt_wrt .GT. 0.0_amrex_real )THEN
       WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'
