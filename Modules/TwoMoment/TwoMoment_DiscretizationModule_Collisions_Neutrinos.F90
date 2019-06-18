@@ -2457,7 +2457,6 @@ CONTAINS
   END SUBROUTINE SolveMatterEquations_FP_NestedAA
 
 
-
   SUBROUTINE SolveMatterEquations_FP_NestedNewton &
     ( dt, iS_1, iS_2, J, Chi, J0, NES_Ot, NES_In, Pair_Ot, Pair_In, &
       D, T, Y, E, nIterations_Inner, nIterations_Outer )
@@ -2600,7 +2599,7 @@ CONTAINS
 
       DO WHILE( .NOT. CONVERGED_INNER .AND. k_inner < MaxIter )
 
-        k_inner  = k_inner + 1
+        k_inner = k_inner + 1
 
         ! --- NES Emissivities and Opacities ---
 
