@@ -45,6 +45,7 @@ MODULE TimersModule
   REAL(DP), PUBLIC :: Timer_Im_NestedAA
   REAL(DP), PUBLIC :: Timer_Im_NestedNewton
   REAL(DP), PUBLIC :: Timer_Im_Newton
+  REAL(DP), PUBLIC :: Timer_Im_EmAb_FP
   REAL(DP), PUBLIC :: Timer_Im_Out
   REAL(DP), PUBLIC :: Timer_Im_ComputeTS_Prim
   REAL(DP), PUBLIC :: Timer_Im_Increment
@@ -98,6 +99,7 @@ CONTAINS
     Timer_Im_NestedAA       = Zero
     Timer_Im_NestedNewton   = Zero
     Timer_Im_Newton         = Zero
+    Timer_Im_EmAb_FP        = Zero
     Timer_Im_Out            = Zero
     Timer_Im_ComputeTS_Prim = Zero
     Timer_Im_Increment      = Zero
@@ -149,6 +151,7 @@ CONTAINS
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    NestedAA            :', Timer_Im_NestedAA      , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    NestedNewton        :', Timer_Im_NestedNewton  , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Newton              :', Timer_Im_Newton        , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    EmAb_FP precond     :', Timer_Im_EmAb_FP       , ' s'    
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Im_Out              :', Timer_Im_Out           , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Im_ComputeTS_Prim :', Timer_Im_ComputeTS_Prim, ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Im_Increment      :', Timer_Im_Increment     , ' s'
