@@ -102,7 +102,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), PARAMETER :: Unit_T = MeV
   REAL(DP), PARAMETER :: Unit_E = Erg / Gram
 
-  LOGICAL, PARAMETER :: ReportConvergenceData = .TRUE.
+  LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
   INTEGER  :: Iterations_Min
   INTEGER  :: Iterations_Max
   INTEGER  :: Iterations_Ave
@@ -4109,6 +4109,8 @@ CONTAINS
     CALL WriteDataset3D_INTEGER &
            ( AveIterationsInner_K, DatasetName, FILE_ID )
 
+    CALL H5FCLOSE_F( FILE_ID, HDFERR )
+
     CALL H5CLOSE_F( HDFERR )
 
     TallyFileNumber = TallyFileNumber + 1
@@ -4158,12 +4160,12 @@ CONTAINS
            ( FILE_ID, TRIM( DatasetName ), H5T_NATIVE_DOUBLE, &
              DATASPACE_ID, DATASET_ID, HDFERR )
 
-    call H5DWRITE_F &
+    CALL H5DWRITE_F &
            ( DATASET_ID, H5T_NATIVE_DOUBLE, Dataset, DATASIZE, HDFERR )
 
-    call H5SCLOSE_F( DATASPACE_ID, HDFERR )
+    CALL H5SCLOSE_F( DATASPACE_ID, HDFERR )
 
-    call H5DCLOSE_F( DATASET_ID, HDFERR )
+    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
 
   END SUBROUTINE WriteDataset1D_REAL
 
