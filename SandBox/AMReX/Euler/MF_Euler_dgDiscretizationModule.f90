@@ -32,6 +32,7 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap, ConstructEdgeMap, &
     MF_Euler_ApplyBoundaryConditions
+  USE TimersModule_AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -125,6 +126,7 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nCF), Edge_Map )
 
         IF( DEBUG ) WRITE(*,'(A)') '    CALL Euler_ComputeIncrement_DG_Explicit'
+        CALL TimersStart_AMReX( Timer_AMReX_ComputeInc )
         CALL Euler_ComputeIncrement_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
@@ -137,6 +139,7 @@ CONTAINS
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3),1:nCF), &
                  SuppressBC_Option = .TRUE. )
+        CALL TimersStop_AMReX( Timer_AMReX_ComputeInc )
 
         CALL thornado2AMReX &
                ( nCF, iX_B0, iX_E0, &

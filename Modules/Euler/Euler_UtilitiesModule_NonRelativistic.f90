@@ -451,7 +451,7 @@ CONTAINS
 
       Euler_NumericalFlux_X2_HLLC_NonRelativistic(iCF_D) &
         = D * V2
-      Euler_NumericalFlux_X2_HLLC_NonRelativistic(iCF_S2) &
+      Euler_NumericalFlux_X2_HLLC_NonRelativistic(iCF_S1) &
         = D * V1 * V2
       Euler_NumericalFlux_X2_HLLC_NonRelativistic(iCF_S2) &
         = D * Gm_dd_22 * V2 * V2 + P
@@ -519,7 +519,7 @@ CONTAINS
 
       Euler_NumericalFlux_X3_HLLC_NonRelativistic(iCF_D) &
         = D * V3
-      Euler_NumericalFlux_X3_HLLC_NonRelativistic(iCF_S2) &
+      Euler_NumericalFlux_X3_HLLC_NonRelativistic(iCF_S1) &
         = D * V1 * V3
       Euler_NumericalFlux_X3_HLLC_NonRelativistic(iCF_S2) &
         = D * V2 * V3

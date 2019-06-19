@@ -115,6 +115,7 @@ CONTAINS
 
       ! --- Get initial guess for pressure with bisection method ---
       CALL ComputePressureWithBisectionMethod( CF_D(i), CF_E(i), SSq, Pbisec )
+
       Pold = Pbisec
       IF( Pbisec .LT. SqrtTiny )THEN
         WRITE(*,'(A)') '    EE: Pbisec < SqrTiny. Stopping...'
