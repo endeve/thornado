@@ -117,7 +117,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INTEGER, ALLOCATABLE :: AveIterationsInner_K(:,:,:)
 
   LOGICAL, PARAMETER :: SolveMatter = .TRUE.
-  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .TRUE.
+  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .FALSE.
 
   INTEGER  :: nE_G, nX_G
   INTEGER  :: iE_B0,    iE_E0
@@ -2458,20 +2458,20 @@ CONTAINS
 
 
   SUBROUTINE SolveMatterEquations_FP_NestedNewton &
-    ( dt, iS_1, iS_2, J, Chi, J0, NES_Ot, NES_In, Pair_Ot, Pair_In, &
+    ( dt, iS_1, iS_2, J, Chi, J0, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair, &
       D, T, Y, E, nIterations_Inner, nIterations_Outer )
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
     REAL(DP), INTENT(in)    :: dt
     INTEGER,  INTENT(in)    :: iS_1, iS_2
-    REAL(DP), INTENT(inout) :: J      (1:nE_G,1:2)
-    REAL(DP), INTENT(in)    :: Chi    (1:nE_G,1:2)
-    REAL(DP), INTENT(inout) :: J0     (1:nE_G,1:2)
-    REAL(DP), INTENT(inout) :: NES_Ot (1:nE_G,1:2)
-    REAL(DP), INTENT(inout) :: NES_In (1:nE_G,1:2)
-    REAL(DP), INTENT(inout) :: Pair_Ot(1:nE_G,1:2)
-    REAL(DP), INTENT(inout) :: Pair_In(1:nE_G,1:2)
+    REAL(DP), INTENT(inout) :: J       (1:nE_G,1:2)
+    REAL(DP), INTENT(in)    :: Chi     (1:nE_G,1:2)
+    REAL(DP), INTENT(inout) :: J0      (1:nE_G,1:2)
+    REAL(DP), INTENT(inout) :: Chi_NES (1:nE_G,1:2)
+    REAL(DP), INTENT(inout) :: Eta_NES (1:nE_G,1:2)
+    REAL(DP), INTENT(inout) :: Chi_Pair(1:nE_G,1:2)
+    REAL(DP), INTENT(inout) :: Eta_Pair(1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
     INTEGER,  INTENT(out)   :: nIterations_Inner
     INTEGER,  INTENT(out)   :: nIterations_Outer
@@ -2581,6 +2581,8 @@ CONTAINS
            ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
              Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
 
+
+
     k = 0
     nIterations_Inner = 0
     CONVERGED = .FALSE.
@@ -2601,54 +2603,64 @@ CONTAINS
 
         k_inner = k_inner + 1
 
+
         ! --- NES Emissivities and Opacities ---
 
         ! --- Neutrino ---
 
         CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_NES(:,:,1), nE_G, &
-                    W2_N * Jnew(:,1),       1, Zero, NES_In(:,1), 1 )
+                   W2_N * Jnew(:,1),       1, Zero, Eta_NES(:,1), 1 )
+
+        Chi_NES(:,1) = Eta_NES(:,1)
 
         CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_NES(:,:,1), nE_G, &
-                    W2_N * (One-Jnew(:,1)), 1, Zero,  NES_Ot(:,1), 1 )
+                   W2_N * (One-Jnew(:,1)), 1, One,  Chi_NES(:,1), 1 )
 
         ! --- Antineutrino ---
 
         CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_NES(:,:,2), nE_G, &
-                    W2_N * Jnew(:,2),       1, Zero, NES_In(:,2), 1 )
+                   W2_N * Jnew(:,2),       1, Zero, Eta_NES(:,2), 1 )
+
+        Chi_NES(:,2) = Eta_NES(:,2)
 
         CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_NES(:,:,2), nE_G, &
-                    W2_N * (One-Jnew(:,2)), 1, Zero,  NES_Ot(:,2), 1 )
+                   W2_N * (One-Jnew(:,2)), 1, One,  Chi_NES(:,2), 1 )
 
         ! --- Pair Emissivities and Opacities ---
 
         ! --- Neutrino ---
 
         CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_Pair(:,:,1), nE_G, &
-                    W2_N * (One-Jnew(:,2)), 1, Zero, Pair_In(:,1), 1 )
+                   W2_N * (One-Jnew(:,2)), 1, Zero, Eta_Pair(:,1), 1 )
+
+        Chi_Pair(:,1) = Eta_Pair(:,1)
 
         CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,1), nE_G, &
-                    W2_N * Jnew(:,2),       1, Zero,  Pair_Ot(:,1), 1 )
+                   W2_N * Jnew(:,2),       1, One,  Chi_Pair(:,1), 1 )
 
         ! --- Antineutrino ---
 
         CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_In_Pair(:,:,2), nE_G, &
-                    W2_N * (One-Jnew(:,1)), 1, Zero, Pair_In(:,2), 1 )
+                   W2_N * (One-Jnew(:,1)), 1, Zero, Eta_Pair(:,2), 1 )
+
+        Chi_Pair(:,2) = Eta_Pair(:,2)
 
         CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
-                    W2_N * Jnew(:,1),       1, Zero,  Pair_Ot(:,2), 1 )
+                   W2_N * Jnew(:,1),       1, One,  Chi_Pair(:,2), 1 )
+
 
         ! --- Right-Hand Side Vectors (inner) ---
 
+
         GVEC_inner(OS_1+1:OS_1+nE_G) &
-          = Jnew(:,1) - Jold(:,1) + dt * ( Chi(:,1) * Jnew(:,1) - Eta(:,1) &
-            - (One - Jnew(:,1)) * NES_In(:,1) + Jnew(:,1) * NES_Ot(:,1) &
-            - (One - Jnew(:,1)) * Pair_In(:,1) + Jnew(:,1) * Pair_Ot(:,1) )
+          = ( One + dt * ( Chi(:,1) + Chi_NES(:,1) + Chi_Pair(:,1) ) ) &
+              * Jnew(:,1) - Jold(:,1) &
+              - dt * ( Eta(:,1) + Eta_NES(:,1) + Eta_Pair(:,1) )
 
         GVEC_inner(OS_2+1:OS_2+nE_G) &
-          = Jnew(:,2) - Jold(:,2) + dt * ( Chi(:,2) * Jnew(:,2) - Eta(:,2) &
-            - (One - Jnew(:,2)) * NES_In(:,2) + Jnew(:,2) * NES_Ot(:,2) &
-            - (One - Jnew(:,2)) * Pair_In(:,2) + Jnew(:,2) * Pair_Ot(:,2) )
-
+          = ( One + dt * ( Chi(:,2) + Chi_NES(:,2) + Chi_Pair(:,2) ) ) &
+              * Jnew(:,2) - Jold(:,2) &
+              - dt * ( Eta(:,2) + Eta_NES(:,2) + Eta_Pair(:,2) )
         ! --- Jacobian matrix ---
 
         ! --- NES terms ---
@@ -2688,12 +2700,12 @@ CONTAINS
           ! --- diagonal terms ---
           DO i = 1, nE_G
             GJAC_inner(OS_1+i,OS_1+i) = GJAC_inner(OS_1+i,OS_1+i) + One + dt * &
-                (Chi(i,1) + NES_In(i,1) + NES_Ot(i,1) + Pair_In(i,1) + Pair_Ot(i,1))
+                (Chi(i,1) + Chi_NES(i,1) + Chi_Pair(i,1))
           END DO
 
           DO i = 1, nE_G
             GJAC_inner(OS_2+i,OS_2+i) = GJAC_inner(OS_2+i,OS_2+i) + One + dt * &
-                (Chi(i,2) + NES_In(i,2) + NES_Ot(i,2) + Pair_In(i,2) + Pair_Ot(i,2))
+                (Chi(i,2) + Chi_NES(i,2) + Chi_Pair(i,2))
           END DO
 
 
@@ -2722,6 +2734,7 @@ CONTAINS
 
 
         END DO ! END OF INNER LOOP
+
 
 
         ! --- Right-Hand Side Vectors ---
@@ -2878,18 +2891,18 @@ CONTAINS
 
       J = Jnew
 
-  !     PRINT*
-  !     PRINT*, "  D = ", D / Unit_D
-  !     PRINT*, "  T = ", T / Kelvin
-  !     PRINT*, "  E = ", E / Unit_E
-  !     PRINT*, "  Y = ", Y
-  !     PRINT*
-  !     PRINT*, "SolveMatterEquations_FP_Coupled Done"
-  !     PRINT*
-  !
-  ! PRINT*, "  J_Ne = [", Jnew(:,1), "  ];"
-  ! PRINT*, "  J_ANe = [", Jnew(:,2), "  ];"
-  ! ! stop "stop after printing"
+      ! PRINT*
+      ! PRINT*, "SolveMatterEquations_Nested_Newton Output"
+      ! PRINT*
+      ! PRINT*, "  D = ", D / Unit_D
+      ! PRINT*, "  T = ", T / Kelvin
+      ! PRINT*, "  E = ", E / Unit_E
+      ! PRINT*, "  Y = ", Y
+      !
+      !
+      ! PRINT*, "  J_Ne = [", Jnew(:,1), "  ];"
+      ! PRINT*, "  J_ANe = [", Jnew(:,2), "  ];"
+      ! stop "stop after printing"
 
   END SUBROUTINE SolveMatterEquations_FP_NestedNewton
 

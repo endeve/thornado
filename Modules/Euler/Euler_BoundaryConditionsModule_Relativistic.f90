@@ -99,7 +99,7 @@ CONTAINS
     INTEGER  :: iCF, iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX_0
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX1
-    REAL(DP) :: D_0, E_0, R_0, R_q 
+    REAL(DP) :: D_0, E_0, R_0, R_q
 
     SELECT CASE ( bcX(1) )
 
@@ -288,14 +288,14 @@ CONTAINS
 
     CASE ( 11 ) ! Custom BCs for Accretion Problem
 
-      IF( ApplyInnerBC( iApplyBC ) )THEN
-        R_0 = MeshX(1) % Center(1) &
-                + MeshX(1) % Width(1) &
-                    * MeshX(1) % Nodes(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = 1, swX(1)
 
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = 1, swX(1)
+        IF( ApplyInnerBC( iApplyBC ) )THEN
+          R_0 = MeshX(1) % Center(1) &
+                  + MeshX(1) % Width(1) &
+                      * MeshX(1) % Nodes(1)
 
           ! --- Inner Boundary ---
 
@@ -321,10 +321,18 @@ CONTAINS
           END DO
           END DO
 
-        END DO
-        END DO
-        END DO
-      END IF
+        END IF
+
+        IF( ApplyOuterBC( iApplyBC ) )THEN ! --- Homogeneous ---
+
+          U(:,iX_E0(1)+iX1,iX2,iX3,:) &
+            = U(:,iX_E0(1),iX2,iX3,:)
+
+        END IF
+
+      END DO
+      END DO
+      END DO
 
     CASE DEFAULT
 
