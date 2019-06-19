@@ -32,6 +32,7 @@ MODULE MF_Euler_SlopeLimiterModule
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap, ConstructEdgeMap, &
     MF_Euler_ApplyBoundaryConditions
+  USE TimersModule_AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -67,8 +68,10 @@ CONTAINS
 
     DO iLevel = 0, nLevels
 
+      CALL TimersStart_AMReX( Timer_AMReX_InternalBC )
       ! --- Apply boundary conditions to interior domains ---
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL TimersStop_AMReX( Timer_AMReX_InternalBC )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 

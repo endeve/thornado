@@ -38,6 +38,7 @@ MODULE MF_TimeSteppingModule_SSPRK
     LinComb
   USE MyAmrModule,                      ONLY: &
     nLevels, DEBUG
+  USE TimersModule_AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -222,12 +223,14 @@ CONTAINS
     DO iS = 1, nStages_SSPRK
 
       ! --- Copy data from input MultiFab to temporary MultiFab ---
+      CALL TimersStart_AMReX( Timer_AMReX_CopyMF )
       DO iLevel = 0, nLevels
         CALL MF_U(iLevel) &
                % PARALLEL_COPY( MF_uCF(iLevel), 1, 1, &
                                 MF_uCF(iLevel) % ncomp(), swX(1), swX(1), &
                                 GEOM(iLevel) )
       END DO
+      CALL TimersStop_AMReX( Timer_AMReX_CopyMF )
 
       DO jS = 1, iS - 1
 
