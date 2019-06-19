@@ -37,21 +37,17 @@ MODULE MF_GeometryModule
 CONTAINS
 
 
-  SUBROUTINE MF_ComputeGeometryX( MF_uGF )
+  SUBROUTINE MF_ComputeGeometryX( MF_uGF, Mass )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
+    REAL(amrex_real),     INTENT(in)    :: Mass
 
-    INTEGER :: iX1, iX2, iX3, iLevel
-    INTEGER :: lo(4), hi(4)
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
+    INTEGER                               :: iX1, iX2, iX3, iLevel
+    INTEGER                               :: lo(4), hi(4)
+    TYPE(amrex_box)                       :: BX
+    TYPE(amrex_mfiter)                    :: MFI
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
-
-!!$    IF( amrex_parallel_ioprocessor() )THEN
-!!$      WRITE(*,*)
-!!$      WRITE(*,'(A4,A)') '', 'MF_ComputeGeometryX'
-!!$    END IF
+    REAL(amrex_real), ALLOCATABLE         :: G(:,:,:,:,:)
 
     DO iLevel = 0, nLevels
 
@@ -68,7 +64,8 @@ CONTAINS
         ALLOCATE( G(1:nDOFX,lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:nGF) )
 
         CALL ComputeGeometryX &
-               ( BX % lo(1:3), BX % hi(1:3), lo(1:3), hi(1:3), G )
+               ( BX % lo(1:3), BX % hi(1:3), lo(1:3), hi(1:3), G, &
+                 Mass_Option = Mass )
 
         DO iX3 = lo(3), hi(3)
         DO iX2 = lo(2), hi(2)

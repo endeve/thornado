@@ -15,6 +15,8 @@ PROGRAM main
     WriteFieldsAMReX_Checkpoint, &
     ReadCheckpointFile!, &
 !$$    MakeMF_Diff
+  USE UnitsModule,            ONLY: &
+    Millisecond
 
   ! --- Local Modules ---
   USE MF_Euler_UtilitiesModule,         ONLY: &
@@ -71,9 +73,16 @@ PROGRAM main
     END IF
 
     IF( amrex_parallel_ioprocessor() )THEN
-      IF( MOD( StepNo(0), iCycleD ) .EQ. 0 ) &
-        WRITE(*,'(A8,A,I6.6,A,ES13.6E3,A,ES13.6E3)') &
-          '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
+      IF( MOD( StepNo(0), iCycleD ) .EQ. 0 )THEN
+        IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' )THEN
+          WRITE(*,'(A8,A,I6.6,A,ES13.6E3,A,ES13.6E3,A)') &
+            '', 'StepNo: ', StepNo(0), &
+            ', t = ', t / Millisecond, ' ms, dt = ', dt(0) / Millisecond, ' ms'
+        ELSE
+          WRITE(*,'(A8,A,I6.6,A,ES13.6E3,A,ES13.6E3)') &
+            '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
+        END IF
+      END IF
     END IF
 
     CALL MF_UpdateFluid_SSPRK &
