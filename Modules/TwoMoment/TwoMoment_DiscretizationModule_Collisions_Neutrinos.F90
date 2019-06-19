@@ -34,6 +34,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     Timer_Im_NestedAA, &
     Timer_Im_NestedNewton, &
     Timer_Im_Newton, &
+    Timer_Im_NestInner, &
     Timer_Im_EmAb_FP, &
     Timer_Im_Out, &
     Timer_Im_ComputeTS_Prim, &
@@ -117,7 +118,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INTEGER, ALLOCATABLE :: AveIterationsInner_K(:,:,:)
 
   LOGICAL, PARAMETER :: SolveMatter = .TRUE.
-  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .FALSE.
+  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .TRUE.
 
   INTEGER  :: nE_G, nX_G
   INTEGER  :: iE_B0,    iE_E0
@@ -1463,11 +1464,15 @@ CONTAINS
     C(iY) = DOT_PRODUCT( W2_S, Jold(:,1) - Jold(:,2) ) / S_Y
     C(iE) = DOT_PRODUCT( W3_S, Jold(:,1) + Jold(:,2) ) / S_E
 
+    CALL TimersStart(Timer_Im_ComputeOpacity)
+
     CALL ComputeEquilibriumDistributions_Point &
            ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
 
     CALL ComputeEquilibriumDistributions_Point &
            ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
+
+    CALL TimersStop(Timer_Im_ComputeOpacity)
 
     Eta(:,1) = Chi(:,1) * J0(:,1)
     Eta(:,2) = Chi(:,2) * J0(:,2)
@@ -1579,12 +1584,15 @@ CONTAINS
       IF( .NOT. CONVERGED )THEN
 
         ! --- Recompute Equilibrium Distributions and Emissivities ---
+        CALL TimersStart(Timer_Im_ComputeOpacity)
 
         CALL ComputeEquilibriumDistributions_Point &
                ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
 
         CALL ComputeEquilibriumDistributions_Point &
                ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
+
+        CALL TimersStop(Timer_Im_ComputeOpacity)
 
         Eta(:,1) = Chi(:,1) * J0(:,1)
         Eta(:,2) = Chi(:,2) * J0(:,2)
@@ -1688,14 +1696,13 @@ CONTAINS
     C(iY) = DOT_PRODUCT( W2_S, Jold(:,1) - Jold(:,2) ) / S_Y
     C(iE) = DOT_PRODUCT( W3_S, Jold(:,1) + Jold(:,2) ) / S_E
 
+    CALL TimersStart( Timer_Im_ComputeOpacity )
+
     CALL ComputeEquilibriumDistributions_Point &
            ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
 
     CALL ComputeEquilibriumDistributions_Point &
            ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
-
-    Eta(:,1) = Chi(:,1) * J0(:,1)
-    Eta(:,2) = Chi(:,2) * J0(:,2)
 
     ! --- NES Kernels ---
 
@@ -1707,15 +1714,20 @@ CONTAINS
            ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
              Phi_0_In_NES(:,:,2), Phi_0_Ot_NES(:,:,2) )
 
-   ! --- Pair Kernels ---
+    ! --- Pair Kernels ---
 
-   CALL ComputeNeutrinoOpacities_Pair_Point &
+    CALL ComputeNeutrinoOpacities_Pair_Point &
           ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
             Phi_0_In_Pair(:,:,1), Phi_0_Ot_Pair(:,:,1) )
 
-   CALL ComputeNeutrinoOpacities_Pair_Point &
+    CALL ComputeNeutrinoOpacities_Pair_Point &
           ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
             Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
+
+    CALL TimersStop( Timer_Im_ComputeOpacity )
+
+    Eta(:,1) = Chi(:,1) * J0(:,1)
+    Eta(:,2) = Chi(:,2) * J0(:,2)
 
     ! --- NES Emissivities and Opacities ---
 
@@ -1924,15 +1936,13 @@ CONTAINS
       IF( .NOT. CONVERGED )THEN
 
         ! --- Recompute Equilibrium Distributions and Emissivities ---
+        CALL TimersStart( Timer_Im_ComputeOpacity )
 
         CALL ComputeEquilibriumDistributions_Point &
                ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
 
         CALL ComputeEquilibriumDistributions_Point &
                ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
-
-        Eta(:,1) = Chi(:,1) * J0(:,1)
-        Eta(:,2) = Chi(:,2) * J0(:,2)
 
         ! --- Recompute Kernels ---
 
@@ -1955,6 +1965,10 @@ CONTAINS
         CALL ComputeNeutrinoOpacities_Pair_Point &
                ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
                  Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
+        CALL TimersStop( Timer_Im_ComputeOpacity )
+
+        Eta(:,1) = Chi(:,1) * J0(:,1)
+        Eta(:,2) = Chi(:,2) * J0(:,2)
 
       END IF
 
@@ -2063,14 +2077,13 @@ CONTAINS
       C(iY) = DOT_PRODUCT( W2_S, Jold(:,1) - Jold(:,2) ) / S_Y
       C(iE) = DOT_PRODUCT( W3_S, Jold(:,1) + Jold(:,2) ) / S_E
 
+      CALL TimersStart( Timer_Im_ComputeOpacity )
+
       CALL ComputeEquilibriumDistributions_Point &
              ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
 
       CALL ComputeEquilibriumDistributions_Point &
              ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
-
-      Eta(:,1) = Chi(:,1) * J0(:,1)
-      Eta(:,2) = Chi(:,2) * J0(:,2)
 
       ! --- NES Kernels ---
 
@@ -2092,6 +2105,11 @@ CONTAINS
              ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
                Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
 
+      CALL TimersStop( Timer_Im_ComputeOpacity )
+
+
+      Eta(:,1) = Chi(:,1) * J0(:,1)
+      Eta(:,2) = Chi(:,2) * J0(:,2)
 
       ! --- NES Emissivities and Opacities ---
 
@@ -2151,10 +2169,9 @@ CONTAINS
         ! Calculate norm of the initial J for inner loop
         Jnorm(1) = ENORM( Jnew(:,1) )
         Jnorm(2) = ENORM( Jnew(:,2) )
+
         ! START INNER LOOP
-        ! PRINT*
-        ! PRINT*, "START INNER LOOP"
-        ! PRINT*
+        CALL TimersStart(Timer_Im_NestInner)
 
         DO WHILE( .NOT. CONVERGED_INNER .AND. k_inner < MaxIter )
 
@@ -2282,11 +2299,8 @@ CONTAINS
 
 
         END DO ! END OF INNER LOOP
-        ! PRINT*
-        ! PRINT*, "END INNER LOOP"
-        ! PRINT*, "Jnew1 = ", Jnew(:,1)
-        ! PRINT*, "Jnew2 = ", Jnew(:,2)
-        ! PRINT*
+
+        CALL TimersStop(Timer_Im_NestInner)
 
         ! --- Right-Hand Side Vectors ---
 
@@ -2402,6 +2416,7 @@ CONTAINS
                ( [ D ], [ E ], [ Y ], TMP ); T = TMP(1)
         IF( .NOT. CONVERGED )THEN
 
+          CALL TimersStart( Timer_Im_ComputeOpacity )
           ! --- Recompute Equilibrium Distributions and Emissivities ---
 
           CALL ComputeEquilibriumDistributions_Point &
@@ -2409,9 +2424,6 @@ CONTAINS
 
           CALL ComputeEquilibriumDistributions_Point &
                  ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
-
-          Eta(:,1) = Chi(:,1) * J0(:,1)
-          Eta(:,2) = Chi(:,2) * J0(:,2)
 
           ! --- Recompute Kernels ---
 
@@ -2434,6 +2446,11 @@ CONTAINS
           CALL ComputeNeutrinoOpacities_Pair_Point &
                  ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
                    Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
+
+          CALL TimersStop( Timer_Im_ComputeOpacity )
+
+          Eta(:,1) = Chi(:,1) * J0(:,1)
+          Eta(:,2) = Chi(:,2) * J0(:,2)
 
         END IF
 
@@ -2552,14 +2569,13 @@ CONTAINS
     C(iY) = DOT_PRODUCT( W2_S, Jold(:,1) - Jold(:,2) ) / S_Y
     C(iE) = DOT_PRODUCT( W3_S, Jold(:,1) + Jold(:,2) ) / S_E
 
+    CALL TimersStart( Timer_Im_ComputeOpacity )
+
     CALL ComputeEquilibriumDistributions_Point &
            ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
 
     CALL ComputeEquilibriumDistributions_Point &
            ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
-
-    Eta(:,1) = Chi(:,1) * J0(:,1)
-    Eta(:,2) = Chi(:,2) * J0(:,2)
 
     ! --- NES Kernels ---
 
@@ -2581,7 +2597,10 @@ CONTAINS
            ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
              Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
 
+    CALL TimersStop( Timer_Im_ComputeOpacity )
 
+    Eta(:,1) = Chi(:,1) * J0(:,1)
+    Eta(:,2) = Chi(:,2) * J0(:,2)
 
     k = 0
     nIterations_Inner = 0
@@ -2597,7 +2616,9 @@ CONTAINS
       ! Calculate norm of the initial J for inner loop
       Jnorm(1) = ENORM( Jnew(:,1) )
       Jnorm(2) = ENORM( Jnew(:,2) )
+
       ! START INNER LOOP
+      CALL TimersStart(Timer_Im_NestInner)
 
       DO WHILE( .NOT. CONVERGED_INNER .AND. k_inner < MaxIter )
 
@@ -2734,7 +2755,7 @@ CONTAINS
 
 
         END DO ! END OF INNER LOOP
-
+        CALL TimersStop(Timer_Im_NestInner)
 
 
         ! --- Right-Hand Side Vectors ---
@@ -2850,18 +2871,17 @@ CONTAINS
 
         CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
                ( [ D ], [ E ], [ Y ], TMP ); T = TMP(1)
+
         IF( .NOT. CONVERGED )THEN
 
           ! --- Recompute Equilibrium Distributions and Emissivities ---
+          CALL TimersStart( Timer_Im_ComputeOpacity )
 
           CALL ComputeEquilibriumDistributions_Point &
                  ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
 
           CALL ComputeEquilibriumDistributions_Point &
                  ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
-
-          Eta(:,1) = Chi(:,1) * J0(:,1)
-          Eta(:,2) = Chi(:,2) * J0(:,2)
 
           ! --- Recompute Kernels ---
 
@@ -2884,6 +2904,11 @@ CONTAINS
           CALL ComputeNeutrinoOpacities_Pair_Point &
                  ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
                    Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
+
+          CALL TimersStop( Timer_Im_ComputeOpacity )
+
+          Eta(:,1) = Chi(:,1) * J0(:,1)
+          Eta(:,2) = Chi(:,2) * J0(:,2)
 
         END IF
 
@@ -3008,6 +3033,8 @@ CONTAINS
     CVEC(OS_1+1:OS_1+nE_G) = - Jold(:,1)
     CVEC(OS_2+1:OS_2+nE_G) = - Jold(:,2)
 
+    CALL TimersStart( Timer_Im_ComputeOpacity )
+
     ! --- Equilibrium Distributions ---
 
     CALL ComputeEquilibriumDistributionAndDerivatives_Point &
@@ -3043,6 +3070,8 @@ CONTAINS
               Phi_0_In_Pair   (:,:,2),  Phi_0_Ot_Pair   (:,:,2), &
              dPhi_0_In_Pair_dY(:,:,2), dPhi_0_In_Pair_dE(:,:,2), &
              dPhi_0_Ot_Pair_dY(:,:,2), dPhi_0_Ot_Pair_dE(:,:,2) )
+
+    CALL TimersStop( Timer_Im_ComputeOpacity )
 
     k = 0
     CONVERGED = .FALSE.
@@ -3362,6 +3391,8 @@ CONTAINS
 
       IF( .NOT. CONVERGED )THEN
 
+        CALL TimersStart( Timer_Im_ComputeOpacity )
+
         ! --- Equilibrium Distributions ---
 
         CALL ComputeEquilibriumDistributionAndDerivatives_Point &
@@ -3397,6 +3428,8 @@ CONTAINS
                   Phi_0_In_Pair   (:,:,2),  Phi_0_Ot_Pair   (:,:,2), &
                  dPhi_0_In_Pair_dY(:,:,2), dPhi_0_In_Pair_dE(:,:,2), &
                  dPhi_0_Ot_Pair_dY(:,:,2), dPhi_0_Ot_Pair_dE(:,:,2) )
+
+        CALL TimersStop( Timer_Im_ComputeOpacity )
 
       END IF
 
