@@ -82,13 +82,17 @@ PROGRAM DeleptonizationWave1D
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment, &
     ApplyPositivityLimiter_TwoMoment
+  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
+    InitializeNonlinearSolverTally, &
+    FinalizeNonlinearSolverTally, &
+    WriteNonlinearSolverTally
 
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
 
   LOGICAL  :: wrt
-  INTEGER  :: iCycle, iCycleD
+  INTEGER  :: iCycle, iCycleD, iCycleT
   INTEGER  :: nE, nX(3), nNodes, nSpecies
   REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt
   REAL(DP) :: eL, eR, ZoomE
@@ -108,8 +112,9 @@ PROGRAM DeleptonizationWave1D
 
   t       = 0.0_DP
   t_end   = 5.0d-0 * Millisecond
-  dt_wrt  = 1.0d-1 * Millisecond
+  dt_wrt  = 5.0d-2 * Millisecond
   iCycleD = 1
+  iCycleT = 10
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -244,6 +249,8 @@ PROGRAM DeleptonizationWave1D
   CALL TimersStop( Timer_InputOutput )
   CALL TimersStop( Timer_Initialize )
 
+  CALL InitializeNonlinearSolverTally
+
   ! --- Evolve ---
 
   CALL TimersStart( Timer_Evolve )
@@ -317,6 +324,12 @@ PROGRAM DeleptonizationWave1D
 
     END IF
 
+    IF( MOD( iCycle, iCycleT ) == 0 )THEN
+
+      CALL WriteNonlinearSolverTally( t )
+
+    END IF
+
   END DO
 
   ! --- Write Final Solution ---
@@ -344,6 +357,8 @@ PROGRAM DeleptonizationWave1D
   ! --- Finalize ---
 
   CALL FinalizeTimers
+
+  CALL FinalizeNonlinearSolverTally
 
   CALL FinalizeReferenceElementX
 
