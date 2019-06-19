@@ -2973,7 +2973,7 @@ CONTAINS
       CALL TimersStart( Timer_Im_EmAb_FP )
 
       CALL SolveMatterEquations_EmAb_FP &
-             ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E)
+             ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E )
 
       CALL TimersStop( Timer_Im_EmAb_FP )
 
@@ -3030,8 +3030,6 @@ CONTAINS
               Phi_0_In_Pair   (:,:,2),  Phi_0_Ot_Pair   (:,:,2), &
              dPhi_0_In_Pair_dY(:,:,2), dPhi_0_In_Pair_dE(:,:,2), &
              dPhi_0_Ot_Pair_dY(:,:,2), dPhi_0_Ot_Pair_dE(:,:,2) )
-
-
 
     k = 0
     CONVERGED = .FALSE.
@@ -3319,12 +3317,6 @@ CONTAINS
         PRINT*, "INFO = ", INFO
         STOP
       END IF
-
-      !!$      PRINT*, "k    = ", k
-      !!$      PRINT*, "dY   = ", ABS( dVEC(iY) )/Yold
-      !!$      PRINT*, "dE   = ", ABS( dVEC(iE) )/Eold
-      !!$      PRINT*, "dJ_1 = ", ENORM( dVEC(OS_1+1:OS_1+nE_G) )/ENORM( Jold(:,1) )
-      !!$      PRINT*, "dJ_2 = ", ENORM( dVEC(OS_2+1:OS_2+nE_G) )/ENORM( Jold(:,2) )
 
       IF( ENORM( [ DVEC(iY) ] ) <= Rtol * ENORM( [ Yold ] ) .AND. &
           ENORM( [ DVEC(iE) ] ) <= Rtol * ENORM( [ Eold ] ) .AND. &
