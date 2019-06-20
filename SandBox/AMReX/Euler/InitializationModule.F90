@@ -188,6 +188,12 @@ CONTAINS
       WRITE(*,'(A4,A24,3I7.6)')    '', 'bcX         =', bcX
       WRITE(*,'(A4,A24,3I7.6)')    '', 'MaxGridSize =', MaxGridSize
 
+#if defined HYDRO_NUMERICALFLUX_HLL
+      WRITE(*,'(A4,A24,A)')    '', 'Riemann Solver =', 'HLL'
+#elif defined HYDRO_NUMERICALFLUX_HLLC
+      WRITE(*,'(A4,A24,A)')    '', 'Riemann Solver =', 'HLLC'
+#endif
+
       CALL DescribeProgramHeaderX
 
     END IF
