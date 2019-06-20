@@ -66,6 +66,8 @@ MODULE InitializationModule
   USE Euler_PositivityLimiterModule,    ONLY: &
     Euler_InitializePositivityLimiter
   USE InputOutputModuleAMReX
+  USE UnitsModule,                      ONLY: &
+    SolarMass
 
   ! --- Local modules ---
   USE MF_Euler_UtilitiesModule,         ONLY: &
@@ -160,8 +162,8 @@ CONTAINS
 
     CALL TimersStop_AMReX( Timer_AMReX_Initialize )
 
-    wrt   = .FALSE.
-    chk   = .FALSE.
+    wrt = .FALSE.
+    chk = .FALSE.
 
     ! -- End of initializing AMReX ---
 
@@ -208,14 +210,17 @@ CONTAINS
     CALL InitializeReferenceElementX
     CALL InitializeReferenceElementX_Lagrange
 
-    CALL MF_ComputeGeometryX( MF_uGF )
-
     Mass = 0.0_amrex_real
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % query( 'Mass', Mass )
     CALL amrex_parmparse_destroy( PP )
+    IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' ) &
+      Mass = Mass * SolarMass
 
-    CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
+    CALL MF_ComputeGeometryX( MF_uGF, Mass )
+
+    IF( ProgramName .EQ. 'StandingAccretionShock' ) &
+      CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
 
     CALL InitializeEquationOfState &
            ( EquationOfState_Option = 'IDEAL', &

@@ -5,6 +5,8 @@ MODULE TimersModule_AMReX
 
   USE amrex_fort_module, ONLY: &
     amrex_real
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor
 
   IMPLICIT NONE
   PRIVATE
@@ -54,34 +56,36 @@ CONTAINS
 
     CALL TimersStop_AMReX( Timer_AMReX_Program )
 
-    WRITE(*,*)
-    WRITE(*,'(5x,A)') 'Timers_AMReX Summary'
-    WRITE(*,'(5x,A)') '--------------------'
-    WRITE(*,*)
+    IF( amrex_parallel_ioprocessor() )THEN
+      WRITE(*,*)
+      WRITE(*,'(5x,A)') 'Timers_AMReX Summary'
+      WRITE(*,'(5x,A)') '--------------------'
+      WRITE(*,*)
 
-    WRITE(*,OutputFMT) &
-      'Initialize:       ', &
+      WRITE(*,OutputFMT) &
+        'Initialize:       ', &
         100.0_amrex_real * Timer_AMReX_Initialize / Timer_AMReX_Program, ' %'
-    WRITE(*,OutputFMT) &
-      'ComputeIncrement: ', &
+      WRITE(*,OutputFMT) &
+        'ComputeIncrement: ', &
         100.0_amrex_real * Timer_AMReX_ComputeInc / Timer_AMReX_Program, ' %'
-    WRITE(*,OutputFMT) &
-      'DataTransfer:     ', &
+      WRITE(*,OutputFMT) &
+        'DataTransfer:     ', &
         100.0_amrex_real * Timer_AMReX_DataTransfer / Timer_AMReX_Program, ' %'
-    WRITE(*,OutputFMT) &
-      'InternalBC:       ', &
+      WRITE(*,OutputFMT) &
+        'InternalBC:       ', &
         100.0_amrex_real * Timer_AMReX_InternalBC / Timer_AMReX_Program, ' %'
-    WRITE(*,OutputFMT) &
-      'CopyMF:           ', &
+      WRITE(*,OutputFMT) &
+        'CopyMF:           ', &
         100.0_amrex_real * Timer_AMReX_CopyMF / Timer_AMReX_Program, ' %'
-    WRITE(*,OutputFMT) &
-      'InputOutput:      ', &
+      WRITE(*,OutputFMT) &
+        'InputOutput:      ', &
         100.0_amrex_real * Timer_AMReX_InputOutput / Timer_AMReX_Program, ' %'
-    WRITE(*,*)
-    WRITE(*,'(7x,A,ES13.6E3,A)') &
-      'Program:          ', &
-        Timer_AMReX_Program, ' s'
-    WRITE(*,*)
+      WRITE(*,*)
+      WRITE(*,'(7x,A,ES13.6E3,A)') &
+        'Program:          ', &
+          Timer_AMReX_Program, ' s'
+      WRITE(*,*)
+    END IF
 
     RETURN
   END SUBROUTINE FinalizeTimers_AMReX
