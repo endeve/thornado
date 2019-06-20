@@ -46,7 +46,7 @@ extern "C"
                          = amrex::Concatenate( chk_file, StepNo[0] );
 
     if ( ParallelDescriptor::IOProcessor() )
-      amrex::Print() << "\n    Writing checkpoint " << checkpointname;
+      amrex::Print() << "\n    Writing checkpoint " << checkpointname << "\n";
 
     const int nLevels = FinestLevel+1;
 
