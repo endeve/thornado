@@ -79,7 +79,7 @@ f90EXE_sources += GravitySolutionModule_Newtonian_PointMass.f90
 
 # In THORNADO_DIR/Modules/Fields:
 
-f90EXE_sources += FluidFieldsModule.f90
+F90EXE_sources += FluidFieldsModule.F90
 
 # In THORNADO_DIR/Modules/Euler:
 

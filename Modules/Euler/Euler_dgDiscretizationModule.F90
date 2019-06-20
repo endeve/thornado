@@ -466,6 +466,7 @@ CONTAINS
                 G_F      (iNodeX_X1,iGF_Beta_1),   &
                 AlphaPls, AlphaMns )
 
+        CALL TimersStart_Euler( Timer_Euler_RS )
         NumericalFlux(iNodeX_X1,:) &
           = Euler_NumericalFlux_X1 &
               ( uCF_L    (iNodeX_X1,:),            &
@@ -480,6 +481,7 @@ CONTAINS
                 G_F      (iNodeX_X1,iGF_Alpha),    &
                 G_F      (iNodeX_X1,iGF_Beta_1),   &
                 AlphaPls, AlphaMns, AlphaMdl )
+        CALL TimersStop_Euler( Timer_Euler_RS )
 
       END DO
 
@@ -854,6 +856,7 @@ CONTAINS
                 G_F      (iNodeX_X2,iGF_Beta_2),   &
                 AlphaPls, AlphaMns )
 
+        CALL TimersStart_Euler( Timer_Euler_RS )
         NumericalFlux(iNodeX_X2,:) &
           = Euler_NumericalFlux_X2 &
               ( uCF_L    (iNodeX_X2,:),            &
@@ -868,6 +871,7 @@ CONTAINS
                 G_F      (iNodeX_X2,iGF_Alpha),    &
                 G_F      (iNodeX_X2,iGF_Beta_2),   &
                 AlphaPls, AlphaMns, AlphaMdl )
+        CALL TimersStop_Euler( Timer_Euler_RS )
 
       END DO
 
