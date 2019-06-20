@@ -1675,14 +1675,6 @@ CONTAINS
     FluidFieldData(:,3) = FluidFieldData(:,3) * Meter / Second
     FluidFieldData(:,4) = FluidFieldData(:,4) * Joule / Meter**3
 
-    OPEN(  100, FILE = 'SAS_IC_raw.dat' )
-      DO i = 1, nLines
-        WRITE(100,'(ES22.16E2,1x,ES22.16E2,1x,ES23.16E2,1x,ES22.16E2)') &
-              FluidFieldData(i,:)
-      END DO
-    CLOSE( 100 )
-!!$    STOP 'Wrote SAS initial conditions to file: SAS_IC.dat'
-
   END SUBROUTINE ReadData
 
 
