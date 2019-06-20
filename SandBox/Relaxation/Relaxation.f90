@@ -89,6 +89,7 @@ PROGRAM Relaxation
 
   INCLUDE 'mpif.h'
 
+  INTEGER  :: Configuration
   INTEGER  :: iCycle, iCycleD, iCycleW
   INTEGER  :: nE, nX(3), nNodes, nSpecies
   REAL(DP) :: t, dt, dt_0, t_end, wTime
@@ -107,19 +108,42 @@ PROGRAM Relaxation
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
 
-!!$  D_0 = 6.233d09 * Gram / Centimeter**3
-!!$  T_0 = 3.021d10 * Kelvin
-!!$  Y_0 = 0.3178_DP
+  Configuration = 2
 
-  D_0 = 1.0520d+12 * Gram / Centimeter**3
-  T_0 = 8.9670d+10 * Kelvin
-  Y_0 = 0.1352_DP
+  SELECT CASE( Configuration )
+    CASE( 1 )
+
+      D_0 = 1.232d+14 * Gram / Centimeter**3
+      T_0 = 2.508E+11 * Kelvin
+      Y_0 = 0.2747_DP
+
+    CASE( 2 )
+
+      D_0 = 1.0520d+12 * Gram / Centimeter**3
+      T_0 = 8.9670d+10 * Kelvin
+      Y_0 = 0.1352_DP
+
+    CASE( 3 )
+
+      D_0 = 6.233d09 * Gram / Centimeter**3
+      T_0 = 3.021d10 * Kelvin
+      Y_0 = 0.3178_DP
+
+  END SELECT
+
+  WRITE(*,*)
+  WRITE(*,'(A4,A)') '', 'Relaxation'
+  WRITE(*,*)
+  WRITE(*,'(A6,A,ES8.2E2)') '', 'D [g/cm3] = ', D_0 / ( Gram / Centimeter**3 )
+  WRITE(*,'(A6,A,ES8.2E2)') '', 'T     [K] = ', T_0 / Kelvin
+  WRITE(*,'(A6,A,ES8.2E2)') '', 'Y         = ', Y_0
+  WRITE(*,*)
 
   dt_0    = 1.0d-3 * Millisecond
   t       = 0.0d-0 * Millisecond
   t_end   = 1.0d+0 * Millisecond
   iCycleD = 1
-  iCycleW = 5
+  iCycleW = 1
 
   CALL InitializeProgram &
          ( ProgramName_Option &
