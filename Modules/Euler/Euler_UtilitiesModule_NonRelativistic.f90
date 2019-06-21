@@ -197,15 +197,19 @@ CONTAINS
 
 
   PURE FUNCTION Euler_Eigenvalues_NonRelativistic &
-    ( V, Cs, V1, V2, V3, Gm, Gm11, Gm22, Gm33, Lapse, Shift )
+    ( Vi, Cs, V1, V2, V3, Gmii, Gm11, Gm22, Gm33, Lapse, Shift )
 
-    REAL(DP), INTENT(in)     :: V, Cs
+    ! --- Vi is the ith contravariant component of the three-velocity
+    !     Gmii is the ith covariant component of the spatial three-metric ---
+
+    REAL(DP), INTENT(in)     :: Vi, Cs
     REAL(DP), DIMENSION(nCF) :: Euler_Eigenvalues_NonRelativistic
 
     ! --- Only used for relativistic code ---
-    REAL(DP), INTENT(in) :: V1, V2, V3, Gm, Gm11, Gm22, Gm33, Lapse, Shift
+    REAL(DP), INTENT(in) :: V1, V2, V3, Gmii, Gm11, Gm22, Gm33, Lapse, Shift
 
-    Euler_Eigenvalues_NonRelativistic = [ V - Cs, V, V, V, V, V + Cs ]
+    Euler_Eigenvalues_NonRelativistic &
+      = [ Vi - Cs / SQRT( Gmii ), Vi, Vi, Vi, Vi, Vi + Cs / SQRT( Gmii ) ]
 
     RETURN
   END FUNCTION Euler_Eigenvalues_NonRelativistic

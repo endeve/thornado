@@ -764,40 +764,40 @@ CONTAINS
   
 
   PURE FUNCTION Euler_Eigenvalues_Relativistic &
-    ( V, Cs, V1, V2, V3, Gm, Gm11, Gm22, Gm33, Lapse, Shift )
+    ( Vi, Cs, V1, V2, V3, Gmii, Gm11, Gm22, Gm33, Lapse, Shift )
 
-    ! --- V is the ith contravariant component of the three-velocity
-    !     Gm is the ith covariant component of the spatial three-metric
+    ! --- Vi is the ith contravariant component of the three-velocity
+    !     Gmii is the ith covariant component of the spatial three-metric
     !     Shift is the ith contravariant component of the shift-vector ---
 
-    REAL(DP), INTENT(in) :: V, Cs, V1, V2, V3, &
-                            Gm, Gm11, Gm22, Gm33, Lapse, Shift
+    REAL(DP), INTENT(in) :: Vi, Cs, V1, V2, V3, &
+                            Gmii, Gm11, Gm22, Gm33, Lapse, Shift
 
     REAL(DP) :: VSq, Euler_Eigenvalues_Relativistic(nCF)
 
     VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
 
     Euler_Eigenvalues_Relativistic(1) &
-      = Lapse / ( One - VSq * Cs**2 ) * ( V * ( One - Cs**2 ) &
-        - Cs * SQRT( ( One - VSq ) * ( ( One - VSq * Cs**2 ) / Gm &
-           - V**2 * ( One - Cs**2 ) ) ) ) - Shift
+      = Lapse / ( One - VSq * Cs**2 ) * ( Vi * ( One - Cs**2 ) &
+        - Cs * SQRT( ( One - VSq ) * ( ( One - VSq * Cs**2 ) / Gmii &
+           - Vi**2 * ( One - Cs**2 ) ) ) ) - Shift
 
     Euler_Eigenvalues_Relativistic(2) &
-      = Lapse * V - Shift
+      = Lapse * Vi - Shift
 
     Euler_Eigenvalues_Relativistic(3) &
-      = Lapse / ( One - VSq * Cs**2 ) * ( V * ( One - Cs**2 ) &
-        + Cs * SQRT( ( One - VSq ) * ( ( One - VSq * Cs**2 ) / Gm &
-           - V**2 * ( One - Cs**2 ) ) ) ) - Shift
+      = Lapse / ( One - VSq * Cs**2 ) * ( Vi * ( One - Cs**2 ) &
+        + Cs * SQRT( ( One - VSq ) * ( ( One - VSq * Cs**2 ) / Gmii &
+           - Vi**2 * ( One - Cs**2 ) ) ) ) - Shift
 
     Euler_Eigenvalues_Relativistic(4) &
-      = Lapse * V - Shift
+      = Lapse * Vi - Shift
 
     Euler_Eigenvalues_Relativistic(5) &
-      = Lapse * V - Shift
+      = Lapse * Vi - Shift
 
     Euler_Eigenvalues_Relativistic(6) &
-      = Lapse * V - Shift
+      = Lapse * Vi - Shift
 
     RETURN
   END FUNCTION Euler_Eigenvalues_Relativistic
