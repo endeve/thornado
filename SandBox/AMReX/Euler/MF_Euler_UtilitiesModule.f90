@@ -198,7 +198,7 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     REAL(amrex_real) :: TimeStep(0:nLevels)
 
