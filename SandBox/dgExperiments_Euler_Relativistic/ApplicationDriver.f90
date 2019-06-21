@@ -103,13 +103,13 @@ PROGRAM ApplicationDriver
   CALL TimersStart_Euler( Timer_Euler_Program )
   CALL TimersStart_Euler( Timer_Euler_Initialize )
   
-  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
 !  ProgramName = 'KelvinHelmholtz_Relativistic'
 !  ProgramName = 'KelvinHelmholtz'
-!  ProgramName = 'StandingAccretionShock'
+  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -289,7 +289,7 @@ PROGRAM ApplicationDriver
 
   END SELECT
 
-  nNodes = 3
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
@@ -317,7 +317,7 @@ PROGRAM ApplicationDriver
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = 1
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -437,8 +437,8 @@ PROGRAM ApplicationDriver
       IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL ComputeTimeStep_GR'
       CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
       CALL Euler_ComputeTimeStep &
-             ( iX_B0, iX_E0, &
-               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, &
+               uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
                uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                CFL = CFL / ( nDimsX * ( Two * nNodes - One ) ), &
                TimeStep = dt, UseSourceTerm_Option = UseSourceTerm )

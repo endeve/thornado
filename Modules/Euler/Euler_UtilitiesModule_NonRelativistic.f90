@@ -132,13 +132,13 @@ CONTAINS
 
 
   SUBROUTINE Euler_ComputeTimeStep_NonRelativistic &
-               ( iX_B, iX_E, G, U, CFL, TimeStep )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
 
     INTEGER,  INTENT(in)  :: &
-      iX_B(3), iX_E(3)
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
-      U(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(in)  :: &
       CFL
     REAL(DP), INTENT(out) :: &
@@ -151,9 +151,9 @@ CONTAINS
 
     TimeStep = HUGE( One )
 
-    DO iX3 = iX_B(3), iX_E(3)
-    DO iX2 = iX_B(2), iX_E(2)
-    DO iX1 = iX_B(1), iX_E(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
       dX(1) = MeshX(1) % Width(iX1)
       dX(2) = MeshX(2) % Width(iX2)

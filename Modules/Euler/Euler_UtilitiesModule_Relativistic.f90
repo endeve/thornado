@@ -317,12 +317,12 @@ CONTAINS
 
 
   SUBROUTINE Euler_ComputeTimeStep_Relativistic &
-    ( iX_B0, iX_E0, G, U, CFL, TimeStep, UseSourceTerm )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, UseSourceTerm )
 
     INTEGER,  INTENT(in)  :: &
-      iX_B0(3), iX_E0(3)
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
-      G(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:), &
+      G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
       U(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
     REAL(DP), INTENT(in)  :: &
       CFL
@@ -353,8 +353,8 @@ CONTAINS
     tau = ( Gamma_IDEAL - 1.0d0 ) / Gamma_IDEAL
 
     TimeStep = HUGE( One )
-    dt_X(:)  = HUGE( One )
-    dt_S(:)  = HUGE( One )
+    dt_X     = HUGE( One )
+    dt_S     = HUGE( One )
 
     PosRoot = HUGE( One )
     NegRoot = HUGE( One )

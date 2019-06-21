@@ -16,7 +16,7 @@ MODULE MF_Euler_UtilitiesModule
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,   ONLY: &
-    nDOFX
+    nDOFX, swX
   USE GeometryFieldsModule,  ONLY: &
     nGF
   USE FluidFieldsModule,     ONLY: &
@@ -221,22 +221,24 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
 
-        ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nGF) )
+        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nGF) )
         ALLOCATE( U(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3),1:nCF) )
 
         CALL AMReX2thornado &
-               ( nGF, iX_B0, iX_E0, &
-                 uGF(      iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nDOFX*nGF), &
-                 G(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nGF) )
+               ( nGF, iX_B1, iX_E1, &
+                 uGF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
+                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF) )
         CALL AMReX2thornado &
                ( nCF, iX_B0, iX_E0, &
                  uCF(      iX_B0(1):iX_E0(1), &
@@ -247,10 +249,10 @@ CONTAINS
                            iX_B0(3):iX_E0(3),1:nCF) )
 
         CALL Euler_ComputeTimeStep &
-               ( iX_B0, iX_E0, &
-                 G(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nGF), &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, &
+                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF), &
                  U(1:nDOFX,iX_B0(1):iX_E0(1), &
                            iX_B0(2):iX_E0(2), &
                            iX_B0(3):iX_E0(3),1:nCF), &
