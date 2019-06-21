@@ -132,13 +132,13 @@ CONTAINS
 
 
   SUBROUTINE Euler_ComputeTimeStep_NonRelativistic &
-               ( iX_B, iX_E, G, U, CFL, TimeStep )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
 
     INTEGER,  INTENT(in)  :: &
-      iX_B(3), iX_E(3)
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
-      U(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(in)  :: &
       CFL
     REAL(DP), INTENT(out) :: &
@@ -151,9 +151,9 @@ CONTAINS
 
     TimeStep = HUGE( One )
 
-    DO iX3 = iX_B(3), iX_E(3)
-    DO iX2 = iX_B(2), iX_E(2)
-    DO iX1 = iX_B(1), iX_E(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
       dX(1) = MeshX(1) % Width(iX1)
       dX(2) = MeshX(2) % Width(iX2)
@@ -197,15 +197,19 @@ CONTAINS
 
 
   PURE FUNCTION Euler_Eigenvalues_NonRelativistic &
-    ( V, Cs, V1, V2, V3, Gm, Gm11, Gm22, Gm33, Lapse, Shift )
+    ( Vi, Cs, V1, V2, V3, Gmii, Gm11, Gm22, Gm33, Lapse, Shift )
 
-    REAL(DP), INTENT(in)     :: V, Cs
+    ! --- Vi is the ith contravariant component of the three-velocity
+    !     Gmii is the ith covariant component of the spatial three-metric ---
+
+    REAL(DP), INTENT(in)     :: Vi, Cs
     REAL(DP), DIMENSION(nCF) :: Euler_Eigenvalues_NonRelativistic
 
     ! --- Only used for relativistic code ---
-    REAL(DP), INTENT(in) :: V1, V2, V3, Gm, Gm11, Gm22, Gm33, Lapse, Shift
+    REAL(DP), INTENT(in) :: V1, V2, V3, Gmii, Gm11, Gm22, Gm33, Lapse, Shift
 
-    Euler_Eigenvalues_NonRelativistic = [ V - Cs, V, V, V, V, V + Cs ]
+    Euler_Eigenvalues_NonRelativistic &
+      = [ Vi - Cs / SQRT( Gmii ), Vi, Vi, Vi, Vi, Vi + Cs / SQRT( Gmii ) ]
 
     RETURN
   END FUNCTION Euler_Eigenvalues_NonRelativistic

@@ -1472,7 +1472,7 @@ CONTAINS
     DO iDim = 1, 3
 
       CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(1), &
                xL(iDim), xR(iDim) )
 
     END DO
@@ -1503,7 +1503,7 @@ CONTAINS
 
         DO iX3 = BX % lo(3), BX % hi(3)
         DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1)
+        DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
 
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
