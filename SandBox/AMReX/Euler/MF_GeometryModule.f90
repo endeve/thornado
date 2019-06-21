@@ -24,8 +24,10 @@ MODULE MF_GeometryModule
     ComputeGravitationalPotential
 
   ! --- Local Modules ---
-  USE MyAmrModule,               ONLY: &
+  USE MyAmrModule,        ONLY: &
     nLevels
+  USE MF_UtilitiesModule, ONLY: &
+    AMReX2thornado, thornado2AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -42,10 +44,10 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
     REAL(amrex_real),     INTENT(in)    :: Mass
 
-    INTEGER                               :: iX1, iX2, iX3, iLevel
-    INTEGER                               :: lo(4), hi(4)
-    TYPE(amrex_box)                       :: BX
-    TYPE(amrex_mfiter)                    :: MFI
+    INTEGER            :: iX1, iX2, iX3, iLevel
+    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), ALLOCATABLE         :: G(:,:,:,:,:)
 
@@ -58,25 +60,36 @@ CONTAINS
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
-        lo = LBOUND( uGF )
-        hi = UBOUND( uGF )
 
-        ALLOCATE( G(1:nDOFX,lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:nGF) )
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
+
+        ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nGF) )
+
+        CALL AMReX2thornado &
+               ( nGF, iX_B1, iX_E1, &
+                 uGF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
+                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF) )
 
         CALL ComputeGeometryX &
-               ( BX % lo(1:3), BX % hi(1:3), lo(1:3), hi(1:3), G, &
-                 Mass_Option = Mass )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
 
-        DO iX3 = lo(3), hi(3)
-        DO iX2 = lo(2), hi(2)
-        DO iX1 = lo(1), hi(1)
-
-          uGF(iX1,iX2,iX3,:) &
-            = RESHAPE( G(1:nDOFX,iX1,iX2,iX3,1:nGF), [hi(4)-lo(4)+1] )
-
-        END DO
-        END DO
-        END DO
+        CALL thornado2AMReX &
+               ( nGF, iX_B1, iX_E1, &
+                 uGF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
+                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF) )
 
         DEALLOCATE( G )
 
@@ -94,8 +107,8 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
     REAL(amrex_real),     INTENT(in)    :: Mass
 
-    INTEGER :: iX1, iX2, iX3, iLevel
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER            :: iX1, iX2, iX3, iLevel
+    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
@@ -119,22 +132,29 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
 
+        CALL AMReX2thornado &
+               ( nGF, iX_B1, iX_E1, &
+                 uGF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
+                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF) )
+
         CALL ComputeGravitationalPotential &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nGF), Mass )
 
-        DO iX3 = iX_B1(3), iX_E1(3)
-        DO iX2 = iX_B1(2), iX_E1(2)
-        DO iX1 = iX_B1(1), iX_E1(1)
-
-          uGF(iX1,iX2,iX3,(iGF_Phi_N-1)*nDOFX+1:iGF_Phi_N*nDOFX) &
-            = RESHAPE( G(1:nDOFX,iX1,iX2,iX3,iGF_Phi_N), [nDOFX] )
-
-        END DO
-        END DO
-        END DO
+        CALL thornado2AMReX &
+               ( nGF, iX_B1, iX_E1, &
+                 uGF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
+                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF) )
 
         DEALLOCATE( G )
 
