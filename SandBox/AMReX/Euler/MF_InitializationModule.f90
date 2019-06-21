@@ -1503,7 +1503,7 @@ CONTAINS
 
         DO iX3 = BX % lo(3), BX % hi(3)
         DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1) + swX(1)
+        DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
 
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
