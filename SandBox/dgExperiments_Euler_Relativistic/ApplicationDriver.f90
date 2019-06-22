@@ -70,7 +70,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: SphericalRiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
-  LOGICAL       :: UseFixed_dt, UseSourceTerm
+  LOGICAL       :: UseFixed_dt
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
@@ -308,7 +308,6 @@ PROGRAM ApplicationDriver
   Min_2 = 1.0d-13
 
   UseFixed_dt   = .FALSE.
-  UseSourceTerm = .TRUE.
 
   iCycleD = 10
 !!$  iCycleW = 1000; dt_wrt = -1.0d0
@@ -437,11 +436,11 @@ PROGRAM ApplicationDriver
       IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL ComputeTimeStep_GR'
       CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
       CALL Euler_ComputeTimeStep &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, &
-               uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
+             ( iX_B0, iX_E0, &
+               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                CFL = CFL / ( nDimsX * ( Two * nNodes - One ) ), &
-               TimeStep = dt, UseSourceTerm_Option = UseSourceTerm )
+               TimeStep = dt )
       CALL TimersStop_Euler( Timer_Euler_ComputeTimeStep )
       IF( DEBUG ) wTime_CTS = MPI_WTIME( ) - wTime_CTS
     ELSE
@@ -597,13 +596,6 @@ CONTAINS
       WRITE(*,*)
       UseTroubledCellIndicator = .FALSE.
     END IF
-    IF( TRIM(CoordinateSystem) .EQ. 'CARTESIAN' .AND. UseSourceTerm )THEN
-      WRITE(*,*)
-      WRITE(*,'(A)') 'Cartesian coordinates demand that UseSourceTerm = .FALSE.'
-      WRITE(*,'(A)') 'Setting UseSourceTerm to .FALSE.'
-      WRITE(*,*)
-      UseSourceTerm = .FALSE.
-    END IF
 
     ! --- Write program parameters to header file ---
     OPEN( 100, FILE = '../Output/.ProgramHeader' )
@@ -643,7 +635,6 @@ CONTAINS
       WRITE(100,'(A,F4.2)')      'CFL:           ', CFL
       WRITE(100,'(A,I1.1)')      'nStagesSSPRK:  ', nStagesSSPRK
       WRITE(100,'(A,L)')         'UseFixed_dt:   ', UseFixed_dt
-      WRITE(100,'(A,L)')         'UseSourceTerm: ', UseSourceTerm
       WRITE(100,*)
       WRITE(100,'(A)')           'Slope Limiter'
       WRITE(100,'(A)')           '------------------'

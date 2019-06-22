@@ -63,7 +63,7 @@ PROGRAM main
 
     StepNo = StepNo + 1
 
-    CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt, UseSourceTerm )
+    CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt )
 
     IF( ALL( t + dt .LE. t_end ) )THEN
       t = t + dt
