@@ -176,7 +176,7 @@ CONTAINS
 
 
   SUBROUTINE MF_ComputeTimeStep &
-    ( MF_uGF, MF_uCF, CFL, TimeStepMin, UseSourceTerm_Option )
+    ( MF_uGF, MF_uCF, CFL, TimeStepMin )
 
     TYPE(amrex_multifab), INTENT(in)           :: &
       MF_uGF(0:nlevels), MF_uCF(0:nLevels)
@@ -184,10 +184,6 @@ CONTAINS
       CFL
     REAL(amrex_real),     INTENT(out)          :: &
       TimeStepMin(0:nLevels)
-    LOGICAL,              INTENT(in), OPTIONAL :: &
-      UseSourceTerm_Option
-
-    LOGICAL :: UseSourceTerm
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -198,13 +194,9 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3)
 
     REAL(amrex_real) :: TimeStep(0:nLevels)
-
-    UseSourceTerm = .FALSE.
-    IF( PRESENT( UseSourceTerm_Option ) ) &
-      UseSourceTerm = UseSourceTerm_Option
 
     TimeStepMin = HUGE( 1.0e0_amrex_real )
 
@@ -221,24 +213,22 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
-        iX_B1 = BX % lo - swX
-        iX_E1 = BX % hi + swX
 
-        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                            iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF) )
+        ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3),1:nGF) )
         ALLOCATE( U(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3),1:nCF) )
 
         CALL AMReX2thornado &
-               ( nGF, iX_B1, iX_E1, &
-                 uGF(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
-                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nGF) )
+               ( nGF, iX_B0, iX_E0, &
+                 uGF(      iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nDOFX*nGF), &
+                 G(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nGF) )
         CALL AMReX2thornado &
                ( nCF, iX_B0, iX_E0, &
                  uCF(      iX_B0(1):iX_E0(1), &
@@ -249,14 +239,14 @@ CONTAINS
                            iX_B0(3):iX_E0(3),1:nCF) )
 
         CALL Euler_ComputeTimeStep &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nGF), &
+               ( iX_B0, iX_E0, &
+                 G(1:nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3),1:nGF), &
                  U(1:nDOFX,iX_B0(1):iX_E0(1), &
                            iX_B0(2):iX_E0(2), &
                            iX_B0(3):iX_E0(3),1:nCF), &
-                 CFL, TimeStep(iLevel), UseSourceTerm )
+                 CFL, TimeStep(iLevel) )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 
