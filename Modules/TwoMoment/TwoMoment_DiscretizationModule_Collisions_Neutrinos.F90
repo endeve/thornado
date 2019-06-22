@@ -2998,7 +2998,6 @@ CONTAINS
 
         k_inner = k_inner + 1
 
-
         ! --- NES Emissivities and Opacities ---
 
         ! --- Neutrino ---
@@ -3043,9 +3042,7 @@ CONTAINS
         CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
                    W2_N * Jnew(:,1),       1, One,  Chi_Pair(:,2), 1 )
 
-
         ! --- Right-Hand Side Vectors (inner) ---
-
 
         GVEC_inner(OS_1+1:OS_1+nE_G) &
           = ( One + dt * ( Chi(:,1) + Chi_NES(:,1) + Chi_Pair(:,1) ) ) &
@@ -3056,9 +3053,11 @@ CONTAINS
           = ( One + dt * ( Chi(:,2) + Chi_NES(:,2) + Chi_Pair(:,2) ) ) &
               * Jnew(:,2) - Jold(:,2) &
               - dt * ( Eta(:,2) + Eta_NES(:,2) + Eta_Pair(:,2) )
+
         ! --- Jacobian matrix ---
 
         ! --- NES terms ---
+
         DO i = 1, nE_G
         DO l = 1, nE_G
           GJAC_inner(OS_1+i,OS_1+l) &
@@ -3075,231 +3074,228 @@ CONTAINS
         END DO
         END DO
 
-          ! --- Pair terms ---
-          DO i = 1, nE_G
-            DO l = 1, nE_G
-              GJAC_inner(OS_1+i,OS_2+l) =                                     &
-                  dt * ( Phi_0_In_Pair(l,i,1) * (One - Jnew(i,1)) * W2_N(l) &
-                  + Phi_0_Ot_Pair(l,i,1) * Jnew(i,1) * W2_N(l) )
-            END DO
-          END DO
+        ! --- Pair terms ---
 
-          DO i = 1, nE_G
-            DO l = 1, nE_G
-              GJAC_inner(OS_2+i,OS_1+l) =                                     &
-                  dt * ( Phi_0_In_Pair(l,i,2) * (One - Jnew(i,2)) * W2_N(l) &
-                  + Phi_0_Ot_Pair(l,i,2) * Jnew(i,2) * W2_N(l) )
-            END DO
-          END DO
+        DO i = 1, nE_G
+        DO l = 1, nE_G
+          GJAC_inner(OS_1+i,OS_2+l) &
+            = dt * ( Phi_0_In_Pair(l,i,1) * (One - Jnew(i,1)) * W2_N(l) &
+                     + Phi_0_Ot_Pair(l,i,1) * Jnew(i,1) * W2_N(l) )
+        END DO
+        END DO
 
-          ! --- diagonal terms ---
-          DO i = 1, nE_G
-            GJAC_inner(OS_1+i,OS_1+i) = GJAC_inner(OS_1+i,OS_1+i) + One + dt * &
-                (Chi(i,1) + Chi_NES(i,1) + Chi_Pair(i,1))
-          END DO
+        DO i = 1, nE_G
+        DO l = 1, nE_G
+          GJAC_inner(OS_2+i,OS_1+l) &
+            = dt * ( Phi_0_In_Pair(l,i,2) * (One - Jnew(i,2)) * W2_N(l) &
+                     + Phi_0_Ot_Pair(l,i,2) * Jnew(i,2) * W2_N(l) )
+        END DO
+        END DO
 
-          DO i = 1, nE_G
-            GJAC_inner(OS_2+i,OS_2+i) = GJAC_inner(OS_2+i,OS_2+i) + One + dt * &
-                (Chi(i,2) + Chi_NES(i,2) + Chi_Pair(i,2))
-          END DO
+        ! --- diagonal terms ---
 
+        DO i = 1, nE_G
+          GJAC_inner(OS_1+i,OS_1+i) &
+            = GJAC_inner(OS_1+i,OS_1+i) &
+                + One + dt * ( Chi(i,1) + Chi_NES(i,1) + Chi_Pair(i,1) )
+        END DO
 
+        DO i = 1, nE_G
+          GJAC_inner(OS_2+i,OS_2+i) &
+            = GJAC_inner(OS_2+i,OS_2+i) &
+                + One + dt * ( Chi(i,2) + Chi_NES(i,2) + Chi_Pair(i,2) )
+        END DO
 
-          CALL DGESV( 2*nE_G, 1, GJAC_inner, 2*nE_G, IPIV, GVEC_inner, 2*nE_G, INFO )
+        CALL DGESV( 2*nE_G, 1, GJAC_inner, 2*nE_G, IPIV, GVEC_inner, 2*nE_G, INFO )
 
-          GVECm_inner(OS_1+1:OS_1+nE_G) = Jnew(:,1) - GVEC_inner(OS_1+1:OS_1+nE_G)
-          GVECm_inner(OS_2+1:OS_2+nE_G) = Jnew(:,2) - GVEC_inner(OS_2+1:OS_2+nE_G)
+        GVECm_inner(OS_1+1:OS_1+nE_G) = Jnew(:,1) - GVEC_inner(OS_1+1:OS_1+nE_G)
+        GVECm_inner(OS_2+1:OS_2+nE_G) = Jnew(:,2) - GVEC_inner(OS_2+1:OS_2+nE_G)
 
-          FVECm_inner(OS_1+1:OS_1+nE_G) = GVEC_inner(OS_1+1:OS_1+nE_G)
-          FVECm_inner(OS_2+1:OS_2+nE_G) = GVEC_inner(OS_2+1:OS_2+nE_G)
+        FVECm_inner(OS_1+1:OS_1+nE_G) = GVEC_inner(OS_1+1:OS_1+nE_G)
+        FVECm_inner(OS_2+1:OS_2+nE_G) = GVEC_inner(OS_2+1:OS_2+nE_G)
 
-          IF( ENORM( FVECm_inner(OS_1+1:OS_1+nE_G) ) <= Rtol * Jnorm(1) .AND. &
-              ENORM( FVECm_inner(OS_2+1:OS_2+nE_G) ) <= Rtol * Jnorm(2) ) &
-          THEN
-
-            CONVERGED_INNER = .TRUE.
-
-            nIterations_Inner = nIterations_Inner + k_inner
-
-          END IF
-
-          Jnew(:,1) = GVECm_inner(OS_1+1:OS_1+nE_G)
-          Jnew(:,2) = GVECm_inner(OS_2+1:OS_2+nE_G)
-
-
-
-        END DO ! END OF INNER LOOP
-        CALL TimersStop(Timer_Im_NestInner)
-
-
-        ! --- Right-Hand Side Vectors ---
-
-        GVEC(iY,mk) = One + C(iY) &
-                        - DOT_PRODUCT( W2_S, Jnew(:,1) - Jnew(:,2) ) / S_Y
-        GVEC(iE,mk) = One + C(iE) &
-                        - DOT_PRODUCT( W3_S, Jnew(:,1) + Jnew(:,2) ) / S_E
-
-        ! --- Residuals ---
-
-        FVEC(iY,mk) = GVEC(iY,mk) - Unew(iY)
-
-        FVEC(iE,mk) = GVEC(iE,mk) - Unew(iE)
-
-        IF( mk == 1 )THEN
-
-          GVECm = GVEC(:,mk)
-
-        ELSEIF (mk == 2)THEN
-          BVEC(:) = - FVEC(:,mk)
-          AMAT(:,1) = FVEC(:,1) - FVEC(:,mk)
-
-          Alpha(1) = DOT_PRODUCT( AMAT(:,1), BVEC ) / DOT_PRODUCT( AMAT(:,1), AMAT(:,1) )
-          Alpha(mk) = One - SUM( Alpha(1:mk-1) )
-
-          GVECm = Zero
-          DO i = 1, mk
-
-            GVECm = GVECm + Alpha(i) * GVEC(:,i)
-
-          END DO
-
-        ELSEIF (mk == 3)THEN
-          BVEC(:) = - FVEC(:,mk)
-          AMAT(:,1:mk-1) = FVEC(:,1:mk-1) - SPREAD( FVEC(:,mk), DIM = 2, NCOPIES = 2 )
-
-
-          Alpha(1) = AMAT(2,mk-1) * BVEC(1) - AMAT(1,mk-1) * BVEC(2)
-          Alpha(mk-1) = - AMAT(2,1) * BVEC(1) + AMAT(1,1) * BVEC(2)
-          Alpha(1:mk-1) = Alpha(1:mk-1) / (AMAT(1,1)*AMAT(2,mk-1) - AMAT(1,mk-1)*AMAT(2,1))
-
-          Alpha(mk) = One - SUM( Alpha(1:mk-1) )
-
-          GVECm = Zero
-          DO i = 1, mk
-
-            GVECm = GVECm + Alpha(i) * GVEC(:,i)
-
-          END DO
-
-        ELSE
-          ! SOLVING AN UNDERDETERMINED SYSTEM
-          BVEC(:) &
-            = - FVEC(:,mk)
-          AMAT(:,1:mk-1) &
-            = FVEC(:,1:mk-1) - SPREAD( FVEC(:,mk), DIM = 2, NCOPIES = mk-1 )
-
-          CALL DGELS( 'N', 2, mk-1, 1, AMAT(:,1:mk-1), 2, &
-                      BVEC, mk, WORK, LWORK, INFO )
-
-          Alpha(1:mk-1) = BVEC(1:mk-1)
-
-          Alpha(mk) = One - SUM( Alpha(1:mk-1) )
-
-          GVECm = Zero
-          DO i = 1, mk
-
-            GVECm = GVECm + Alpha(i) * GVEC(:,i)
-
-          END DO
-
-        END IF
-
-        FVECm(iY)               = GVECm(iY)               - Unew(iY)
-        FVECm(iE)               = GVECm(iE)               - Unew(iE)
-
-        IF( ENORM( [ FVECm(iY) ] ) <= Rtol .AND. &
-            ENORM( [ FVECm(iE) ] ) <= Rtol ) &
+        IF( ENORM( FVECm_inner(OS_1+1:OS_1+nE_G) ) <= Rtol * Jnorm(1) .AND. &
+            ENORM( FVECm_inner(OS_2+1:OS_2+nE_G) ) <= Rtol * Jnorm(2) ) &
         THEN
 
-          CONVERGED = .TRUE.
+          CONVERGED_INNER = .TRUE.
 
-          Iterations_Min = MIN( Iterations_Min, k )
-          Iterations_Max = MAX( Iterations_Max, k )
-          Iterations_Ave = Iterations_Ave + k
-
-          nIterations_Outer = k
-
-          nIterations_Inner &
-            = FLOOR( DBLE( nIterations_Inner ) / DBLE( k ) )
+          nIterations_Inner = nIterations_Inner + k_inner
 
         END IF
 
-        Unew(iY)  = GVECm(iY)
-        Unew(iE)  = GVECm(iE)
+        Jnew(:,1) = GVECm_inner(OS_1+1:OS_1+nE_G)
+        Jnew(:,2) = GVECm_inner(OS_2+1:OS_2+nE_G)
 
-        IF( mk == M .AND. .NOT. CONVERGED )THEN
+      END DO ! END OF INNER LOOP
 
-          GVEC = CSHIFT( GVEC, SHIFT = + 1, DIM = 2 )
-          FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
+      CALL TimersStop(Timer_Im_NestInner)
 
-        END IF
+      ! --- Right-Hand Side Vectors ---
 
-        ! --- Update Matter ---
+      GVEC(iY,mk) = One + C(iY) &
+                      - DOT_PRODUCT( W2_S, Jnew(:,1) - Jnew(:,2) ) / S_Y
+      GVEC(iE,mk) = One + C(iE) &
+                      - DOT_PRODUCT( W3_S, Jnew(:,1) + Jnew(:,2) ) / S_E
 
-        Y = Unew(iY) * Yold
-        E = Unew(iE) * Eold
+      ! --- Residuals ---
 
-        ! PRINT*, "U = ", Unew
+      FVEC(iY,mk) = GVEC(iY,mk) - Unew(iY)
 
+      FVEC(iE,mk) = GVEC(iE,mk) - Unew(iE)
 
+      IF( mk == 1 )THEN
 
-        CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-               ( [ D ], [ E ], [ Y ], TMP ); T = TMP(1)
+        GVECm = GVEC(:,mk)
 
-        IF( .NOT. CONVERGED )THEN
+      ELSEIF( mk == 2 )THEN
 
-          ! --- Recompute Equilibrium Distributions and Emissivities ---
-          CALL TimersStart( Timer_Im_ComputeOpacity )
+        BVEC(:) = - FVEC(:,mk)
+        AMAT(:,1) = FVEC(:,1) - FVEC(:,mk)
 
-          CALL ComputeEquilibriumDistributions_Point &
-                 ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
+        Alpha(1) = DOT_PRODUCT( AMAT(:,1), BVEC ) / DOT_PRODUCT( AMAT(:,1), AMAT(:,1) )
+        Alpha(mk) = One - SUM( Alpha(1:mk-1) )
 
-          CALL ComputeEquilibriumDistributions_Point &
-                 ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
+        GVECm = Zero
+        DO i = 1, mk
 
-          ! --- Recompute Kernels ---
+          GVECm = GVECm + Alpha(i) * GVEC(:,i)
 
-          ! --- NES Kernels ---
+        END DO
 
-          CALL ComputeNeutrinoOpacities_NES_Point &
-                 ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
-                   Phi_0_In_NES(:,:,1), Phi_0_Ot_NES(:,:,1) )
+      ELSEIF( mk == 3 )THEN
 
-          CALL ComputeNeutrinoOpacities_NES_Point &
-                 ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
-                   Phi_0_In_NES(:,:,2), Phi_0_Ot_NES(:,:,2) )
+        BVEC(:) = - FVEC(:,mk)
+        AMAT(:,1:mk-1) = FVEC(:,1:mk-1) - SPREAD( FVEC(:,mk), DIM = 2, NCOPIES = 2 )
 
-          ! --- Pair Kernels ---
+        Alpha(1) = AMAT(2,mk-1) * BVEC(1) - AMAT(1,mk-1) * BVEC(2)
+        Alpha(mk-1) = - AMAT(2,1) * BVEC(1) + AMAT(1,1) * BVEC(2)
+        Alpha(1:mk-1) = Alpha(1:mk-1) / (AMAT(1,1)*AMAT(2,mk-1) - AMAT(1,mk-1)*AMAT(2,1))
 
-          CALL ComputeNeutrinoOpacities_Pair_Point &
-                 ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
-                   Phi_0_In_Pair(:,:,1), Phi_0_Ot_Pair(:,:,1) )
+        Alpha(mk) = One - SUM( Alpha(1:mk-1) )
 
-          CALL ComputeNeutrinoOpacities_Pair_Point &
-                 ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
-                   Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
+        GVECm = Zero
+        DO i = 1, mk
 
-          CALL TimersStop( Timer_Im_ComputeOpacity )
+          GVECm = GVECm + Alpha(i) * GVEC(:,i)
 
+        END DO
 
-        END IF
+      ELSE
 
-      END DO
+        ! SOLVING AN UNDERDETERMINED SYSTEM
+        BVEC(:) &
+          = - FVEC(:,mk)
+        AMAT(:,1:mk-1) &
+          = FVEC(:,1:mk-1) - SPREAD( FVEC(:,mk), DIM = 2, NCOPIES = mk-1 )
 
-      J = Jnew
+        CALL DGELS( 'N', 2, mk-1, 1, AMAT(:,1:mk-1), 2, BVEC, mk, WORK, LWORK, INFO )
 
-      ! PRINT*
-      ! PRINT*, "SolveMatterEquations_Nested_Newton Output"
-      ! PRINT*
-      ! PRINT*, "  D = ", D / Unit_D
-      ! PRINT*, "  T = ", T / Kelvin
-      ! PRINT*, "  E = ", E / Unit_E
-      ! PRINT*, "  Y = ", Y
-      !
-      !
-      ! PRINT*, "  J_Ne = [", Jnew(:,1), "  ];"
-      ! PRINT*, "  J_ANe = [", Jnew(:,2), "  ];"
-      ! stop "stop after printing"
+        Alpha(1:mk-1) = BVEC(1:mk-1)
+
+        Alpha(mk) = One - SUM( Alpha(1:mk-1) )
+
+        GVECm = Zero
+        DO i = 1, mk
+
+          GVECm = GVECm + Alpha(i) * GVEC(:,i)
+
+        END DO
+
+      END IF
+
+      FVECm(iY) = GVECm(iY) - Unew(iY)
+      FVECm(iE) = GVECm(iE) - Unew(iE)
+
+      IF( ENORM( [ FVECm(iY) ] ) <= Rtol .AND. &
+          ENORM( [ FVECm(iE) ] ) <= Rtol ) &
+      THEN
+
+        CONVERGED = .TRUE.
+
+        Iterations_Min = MIN( Iterations_Min, k )
+        Iterations_Max = MAX( Iterations_Max, k )
+        Iterations_Ave = Iterations_Ave + k
+
+        nIterations_Outer = k
+
+        nIterations_Inner &
+          = FLOOR( DBLE( nIterations_Inner ) / DBLE( k ) )
+
+      END IF
+
+      Unew(iY)  = GVECm(iY)
+      Unew(iE)  = GVECm(iE)
+
+      IF( mk == M .AND. .NOT. CONVERGED )THEN
+
+        GVEC = CSHIFT( GVEC, SHIFT = + 1, DIM = 2 )
+        FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
+
+      END IF
+
+      ! --- Update Matter ---
+
+      Y = Unew(iY) * Yold
+      E = Unew(iE) * Eold
+
+      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+             ( [ D ], [ E ], [ Y ], TMP ); T = TMP(1)
+
+      IF( .NOT. CONVERGED )THEN
+
+        ! --- Recompute Equilibrium Distributions and Emissivities ---
+
+         CALL TimersStart( Timer_Im_ComputeOpacity )
+
+         CALL ComputeEquilibriumDistributions_Point &
+                ( 1, nE_G, E_N, D, T, Y, J0(:,1), iS_1 )
+
+         CALL ComputeEquilibriumDistributions_Point &
+                ( 1, nE_G, E_N, D, T, Y, J0(:,2), iS_2 )
+
+         ! --- Recompute Kernels ---
+
+         ! --- NES Kernels ---
+
+         CALL ComputeNeutrinoOpacities_NES_Point &
+                ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
+                  Phi_0_In_NES(:,:,1), Phi_0_Ot_NES(:,:,1) )
+
+         CALL ComputeNeutrinoOpacities_NES_Point &
+                ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
+                  Phi_0_In_NES(:,:,2), Phi_0_Ot_NES(:,:,2) )
+
+         ! --- Pair Kernels ---
+
+         CALL ComputeNeutrinoOpacities_Pair_Point &
+                ( 1, nE_G, E_N, D, T, Y, iS_1, 1, &
+                  Phi_0_In_Pair(:,:,1), Phi_0_Ot_Pair(:,:,1) )
+
+         CALL ComputeNeutrinoOpacities_Pair_Point &
+                ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
+                  Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
+
+         CALL TimersStop( Timer_Im_ComputeOpacity )
+
+       END IF
+
+     END DO
+
+     J = Jnew
+
+     ! PRINT*
+     ! PRINT*, "SolveMatterEquations_Nested_Newton Output"
+     ! PRINT*
+     ! PRINT*, "  D = ", D / Unit_D
+     ! PRINT*, "  T = ", T / Kelvin
+     ! PRINT*, "  E = ", E / Unit_E
+     ! PRINT*, "  Y = ", Y
+     !
+     !
+     ! PRINT*, "  J_Ne = [", Jnew(:,1), "  ];"
+     ! PRINT*, "  J_ANe = [", Jnew(:,2), "  ];"
+     ! stop "stop after printing"
 
   END SUBROUTINE SolveMatterEquations_FP_NestedNewton
 
