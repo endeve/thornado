@@ -475,10 +475,10 @@ PROGRAM ApplicationDriver
 
   CALL InitializeSlopeLimiter_TwoMoment                &
          ( BetaTVD_Option = 2.0_DP,                    &
-           BetaTVB_Option = 5.d3,                      &
+           BetaTVB_Option = 0.d0,                      &
            SlopeTolerance_Option = 1.0d-6,             &
            UseSlopeLimiter_Option = .TRUE.,            &
-           UseCharacteristicLimiting_Option = .FALSE., &
+           UseCharacteristicLimiting_Option = .TRUE., &
            Verbose_Option = .TRUE. )
  
   ! --- Initialize Positivity Limiter ---
@@ -599,6 +599,8 @@ PROGRAM ApplicationDriver
   CALL Finalize_IMEX_RK
 
   CALL FinalizeCollisions
+
+  CALL FinalizeSlopeLimiter_TwoMoment
 
   CALL FinalizePositivityLimiter_TwoMoment
 
