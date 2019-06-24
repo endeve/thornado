@@ -74,8 +74,8 @@ MODULE EquationOfStateModule_TABLE
     Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, &
     Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T
 #ifdef MICROPHYSICS_WEAKLIB
-  TYPE(EquationOfStateTableType), POINTER :: EOS
   LOGICAL :: UsingExternalEOS
+  TYPE(EquationOfStateTableType), POINTER :: EOS
 #endif
 
   REAL(DP), PUBLIC :: MinD, MinT, MinY
@@ -96,6 +96,8 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: Auxiliary_Fluid_TABLE
   PUBLIC :: ComputePressure_TABLE
   PUBLIC :: ComputeSpecificInternalEnergy_TABLE
+  PUBLIC :: ComputeSpecificInternalEnergy_Point_TABLE
+  PUBLIC :: ComputeSpecificInternalEnergy_Points_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
   PUBLIC :: ComputeElectronChemicalPotentialPoints_TABLE
   PUBLIC :: ComputeElectronChemicalPotentialPoint_TABLE
@@ -105,6 +107,11 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
   PUBLIC :: ComputeNeutronChemicalPotentialPoints_TABLE
   PUBLIC :: ComputeNeutronChemicalPotentialPoint_TABLE
+
+  INTERFACE ComputeSpecificInternalEnergy_TABLE
+    MODULE PROCEDURE ComputeSpecificInternalEnergy_Point_TABLE
+    MODULE PROCEDURE ComputeSpecificInternalEnergy_Points_TABLE
+  END INTERFACE ComputeSpecificInternalEnergy_TABLE
 
   INTERFACE ComputeElectronChemicalPotential_TABLE
     MODULE PROCEDURE ComputeElectronChemicalPotentialPoints_TABLE
@@ -840,8 +847,65 @@ CONTAINS
   END SUBROUTINE ComputePressure_TABLE
 
 
-  SUBROUTINE ComputeSpecificInternalEnergy_TABLE &
-               ( D, T, Y, E, dEdD_Option, dEdT_Option, dEdY_Option )
+  SUBROUTINE ComputeSpecificInternalEnergy_Point_TABLE &
+    ( D, T, Y, E, dEdD_Option, dEdT_Option, dEdY_Option )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: E
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dEdD_Local, dEdT_Local, dEdY_Local
+    REAL(DP), POINTER :: dEdD,       dEdT,       dEdY
+
+    ComputeDerivatives &
+      =      PRESENT( dEdD_Option ) &
+        .OR. PRESENT( dEdT_Option ) &
+        .OR. PRESENT( dEdY_Option )
+
+    IF ( PRESENT( dEdD_Option ) ) THEN
+      dEdD => dEdD_Option
+    ELSE
+      dEdD => dEdD_Local
+    END IF
+
+    IF ( PRESENT( dEdT_Option ) ) THEN
+      dEdT => dEdT_Option
+    ELSE
+      dEdT => dEdT_Local
+    END IF
+
+    IF ( PRESENT( dEdY_Option ) ) THEN
+      dEdY => dEdY_Option
+    ELSE
+      dEdY => dEdY_Local
+    END IF
+
+    IF( ComputeDerivatives )THEN
+
+      CALL ComputeDependentVariableAndDerivativesPoint_TABLE &
+             ( D, T, Y, E, dEdD, dEdT, dEdY, Es_T, OS_E, Units_V = Erg / Gram )
+
+    ELSE
+
+      CALL ComputeDependentVariablePoint_TABLE &
+             ( D, T, Y, E, Es_T, OS_E, Units_V = Erg / Gram )
+
+    END IF
+
+  END SUBROUTINE ComputeSpecificInternalEnergy_Point_TABLE
+
+
+  SUBROUTINE ComputeSpecificInternalEnergy_Points_TABLE &
+    ( D, T, Y, E, dEdD_Option, dEdT_Option, dEdY_Option )
 
     REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
     REAL(DP), DIMENSION(:), INTENT(out)                   :: E
@@ -892,11 +956,11 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE ComputeSpecificInternalEnergy_TABLE
+  END SUBROUTINE ComputeSpecificInternalEnergy_Points_TABLE
 
 
   SUBROUTINE ComputeElectronChemicalPotentialPoints_TABLE &
-               ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+    ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
     REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
     REAL(DP), DIMENSION(:), INTENT(out)                   :: M

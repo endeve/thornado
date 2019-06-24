@@ -74,7 +74,7 @@ k = 0;
 CONVERGED = false;
 
 % Anderson acceleration truncation parameter
-m = 5;
+m = 3;
 FVEC = zeros(length(J.Ne)+length(J.ANe),1);
 FJAC = zeros(length(J.Ne)+length(J.ANe));
 Uvec = zeros(length(U),m);
@@ -122,8 +122,8 @@ eta_TP.ANe = R_Pr.ANe' * (W2_N .* (1 - J.Ne));
 Chi_TP.ANe = eta_TP.ANe + R_An.ANe' * (W2_N .* J.Ne);
 
 % update J for electron type neutrino and antineutrino
-J.Ne = (Jin.Ne + Chi.Ne.*J0.Ne + eta_NES.Ne + eta_TP.Ne)./(1 + Chi.Ne + Chi_NES.Ne + Chi_TP.Ne);
-J.ANe = (Jin.ANe + Chi.ANe.*J0.ANe + eta_NES.ANe + eta_TP.ANe)./(1 + Chi.ANe + Chi_NES.ANe + Chi_TP.ANe);
+% J.Ne = (Jin.Ne + Chi.Ne.*J0.Ne + eta_NES.Ne + eta_TP.Ne)./(1 + Chi.Ne + Chi_NES.Ne + Chi_TP.Ne);
+% J.ANe = (Jin.ANe + Chi.ANe.*J0.ANe + eta_NES.ANe + eta_TP.ANe)./(1 + Chi.ANe + Chi_NES.ANe + Chi_TP.ANe);
 
     
 while((~CONVERGED)&&(k<=maxIter))
@@ -167,7 +167,7 @@ while((~CONVERGED)&&(k<=maxIter))
         FJAC(iJNe,iJANe) = FJAC(iJNe,iJANe) + (R_Pr.Ne').*((1 - J.Ne)*(W2_N)') ...
             + (R_An.Ne').*(J.Ne*(W2_N)');
         FJAC(iJANe,iJNe) = FJAC(iJANe,iJNe) + (R_Pr.ANe').*((1 - J.ANe)*(W2_N)') ...
-            + (R_An.Ne').*(J.ANe*(W2_N)');
+            + (R_An.ANe').*(J.ANe*(W2_N)');
         
         dJ = FJAC\FVEC;
         

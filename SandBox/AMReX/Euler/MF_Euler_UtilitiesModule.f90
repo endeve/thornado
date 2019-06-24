@@ -16,7 +16,7 @@ MODULE MF_Euler_UtilitiesModule
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,   ONLY: &
-    nDOFX
+    nDOFX, swX
   USE GeometryFieldsModule,  ONLY: &
     nGF
   USE FluidFieldsModule,     ONLY: &
@@ -175,13 +175,14 @@ CONTAINS
   END SUBROUTINE MF_ComputeFromConserved
 
 
-  SUBROUTINE MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, TimeStepMin )
+  SUBROUTINE MF_ComputeTimeStep &
+    ( MF_uGF, MF_uCF, CFL, TimeStepMin )
 
-    TYPE(amrex_multifab), INTENT(in)  :: &
+    TYPE(amrex_multifab), INTENT(in)           :: &
       MF_uGF(0:nlevels), MF_uCF(0:nLevels)
-    REAL(amrex_real),     INTENT(in)  :: &
+    REAL(amrex_real),     INTENT(in)           :: &
       CFL
-    REAL(amrex_real),     INTENT(out) :: &
+    REAL(amrex_real),     INTENT(out)          :: &
       TimeStepMin(0:nLevels)
 
     TYPE(amrex_mfiter) :: MFI

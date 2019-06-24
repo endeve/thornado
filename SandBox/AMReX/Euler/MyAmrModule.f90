@@ -1,15 +1,13 @@
 MODULE MyAmrModule
 
-  USE iso_c_binding
-
   ! --- AMReX Modules ---
-  USE amrex_fort_module, ONLY: &
+  USE amrex_fort_module,      ONLY: &
     amrex_real, amrex_spacedim
-  USE amrex_base_module, ONLY: &
+  USE amrex_base_module,      ONLY: &
     amrex_init, &
     amrex_initialized, &
     amrex_parallel_ioprocessor
-  USE amrex_amr_module, ONLY: &
+  USE amrex_amr_module,       ONLY: &
     amrex_amrcore_init, &
     amrex_amrcore_initialized, &
     amrex_is_all_periodic, &
@@ -18,23 +16,32 @@ MODULE MyAmrModule
     amrex_parmparse, &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
+  USE amrex_boxarray_module,  ONLY: &
+    amrex_boxarray
+  USE amrex_distromap_module, ONLY: &
+    amrex_distromap
+  USE amrex_geometry_module,  ONLY: &
+    amrex_geometry
 
   ! --- thornado Modules ---
-  USE ProgramHeaderModule, ONLY: &
+  USE ProgramHeaderModule,  ONLY: &
     InitializeProgramHeader, nDOFX, nDimsX
-  USE FluidFieldsModule, ONLY: &
+  USE FluidFieldsModule,    ONLY: &
     nCF, nPF, nAF
   USE GeometryFieldsModule, ONLY: &
     nGF
+  USE UnitsModule,          ONLY: &
+    Millisecond, Kilometer
 
   ! --- Local Modules ---
   USE MyAmrDataModule
 
   IMPLICIT NONE
 
-  REAL(amrex_real)                    :: t_end, dt_wrt, Gamma_IDEAL, CFL
+  REAL(amrex_real)                    :: t_end, Gamma_IDEAL, CFL
+  REAL(amrex_real)                    :: t_wrt, dt_wrt, t_chk, dt_chk
   INTEGER                             :: nNodes, nStages, nLevels, coord_sys
-  INTEGER                             :: iCycleD, iCycleW, iCycleChk
+  INTEGER                             :: iCycleD, iCycleW, iCycleChk, iRestart
   INTEGER,          ALLOCATABLE       :: MaxGridSize(:), nX(:), swX(:), bcX(:)
   REAL(amrex_real), ALLOCATABLE       :: xL(:), xR(:), dt(:), t(:)
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName
@@ -53,6 +60,11 @@ MODULE MyAmrModule
   ! --- Positivity limiter ---
   LOGICAL          :: UsePositivityLimiter
   REAL(amrex_real) :: Min_1, Min_2
+
+  ! --- AMReX Geometry arrays ---
+  TYPE(amrex_boxarray),  ALLOCATABLE, PUBLIC :: BA(:)
+  TYPE(amrex_distromap), ALLOCATABLE, PUBLIC :: DM(:)
+  TYPE(amrex_geometry),  ALLOCATABLE, PUBLIC :: GEOM(:)
 
 
 CONTAINS
@@ -76,6 +88,7 @@ CONTAINS
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'dt_wrt',      dt_wrt )
+      CALL PP % get   ( 'dt_chk',      dt_chk )
       CALL PP % get   ( 't_end',       t_end )
       CALL PP % get   ( 'nNodes',      nNodes )
       CALL PP % get   ( 'nStages',     nStages )
@@ -87,15 +100,27 @@ CONTAINS
       CALL PP % get   ( 'iCycleD',     iCycleD )
       CALL PP % get   ( 'iCycleW',     iCycleW )
       CALL PP % get   ( 'iCycleChk',   iCycleChk )
+      CALL PP % get   ( 'iRestart',    iRestart )
     CALL amrex_parmparse_destroy( PP )
+    IF( iCycleW .GT. 0 .AND. dt_wrt .GT. 0.0_amrex_real )THEN
+      WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'
+      WRITE(*,'(A)') 'Stopping...'
+      STOP
+    END IF
+    IF( iCycleChk .GT. 0 .AND. dt_chk .GT. 0.0_amrex_real )THEN
+      WRITE(*,'(A)') 'iCycleChk and dt_chk cannot both be greater than zero.'
+      WRITE(*,'(A)') 'Stopping...'
+      STOP
+    END IF
+
     CFL = CFL &
             / ( amrex_spacedim * ( 2.0_amrex_real * nNodes - 1.0_amrex_real ) )
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
-      CALL PP % get   ( 'coord_sys', coord_sys )
-      CALL PP % getarr( 'prob_lo',   xL )
-      CALL PP % getarr( 'prob_hi',   xR )
+      CALL PP % get   ( 'coord_sys',  coord_sys )
+      CALL PP % getarr( 'prob_lo',    xL )
+      CALL PP % getarr( 'prob_hi',    xR )
     CALL amrex_parmparse_destroy( PP )
     IF     ( coord_sys .EQ. 0 )THEN
       CoordSys = 'CARTESIAN'
@@ -105,6 +130,14 @@ CONTAINS
       CoordSys = 'SPHERICAL'
     ELSE
       STOP 'Invalid choice for coord_sys'
+    END IF
+
+    IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' )THEN
+      t_end  = t_end  * Millisecond
+      dt_wrt = dt_wrt * Millisecond
+      dt_chk = dt_chk * Millisecond
+      xL(1)  = xL(1)  * Kilometer
+      xR(1)  = xR(1)  * Kilometer
     END IF
 
     ! --- Parameters amr.*
@@ -163,6 +196,10 @@ CONTAINS
   SUBROUTINE MyAmrFinalize
 
     CALL FinalizeDataAMReX( nLevels )
+
+    DEALLOCATE( GEOM )
+    DEALLOCATE( DM )
+    DEALLOCATE( BA )
 
     DEALLOCATE( t )
     DEALLOCATE( dt )

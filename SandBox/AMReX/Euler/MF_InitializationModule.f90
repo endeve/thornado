@@ -2,8 +2,6 @@ MODULE MF_InitializationModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_base_module,      ONLY: &
-    amrex_problo, amrex_probhi
   USE amrex_fort_module,      ONLY: &
     amrex_real
   USE amrex_box_module,       ONLY: &
@@ -30,8 +28,7 @@ MODULE MF_InitializationModule
     NodeNumberTableX
   USE MeshModule,              ONLY: &
     MeshType,                        &
-    CreateMesh,                      &
-    DestroyMesh,                     &
+    CreateMesh, DestroyMesh,         &
     NodeCoordinate
   USE GeometryFieldsModule,    ONLY: &
     nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
@@ -43,15 +40,20 @@ MODULE MF_InitializationModule
     Euler_ComputeConserved
   USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive
+  USE UnitsModule, ONLY: &
+    Meter, Kilogram, Second, Joule
+  USE UtilitiesModule, ONLY: &
+    Locate
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
-    nLevels, Gamma_IDEAL
+    nLevels, xL, xR, Gamma_IDEAL
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: MF_InitializeFields
+
 
 CONTAINS
 
@@ -68,6 +70,8 @@ CONTAINS
     END IF
 
     SELECT CASE ( TRIM( ProgramName ) )
+
+      ! --- Non-relativistic ---
 
       CASE ( 'IsentropicVortex' )
 
@@ -93,11 +97,45 @@ CONTAINS
 
         CALL InitializeFields_StandingAccretionShock( MF_uGF, MF_uCF )
 
+
+      ! --- Relativistic ---
+
+      CASE( 'Sod_Relativistic' )
+
+        CALL InitializeFields_Sod_Relativistic( MF_uGF, MF_uCF )
+
+      CASE( 'KelvinHelmholtz_Relativistic' )
+
+        CALL InitializeFields_KelvinHelmholtz_Relativistic( MF_uGF, MF_uCF )
+
+      CASE( 'RiemannProblem_2D_Relativistic' )
+
+        CALL InitializeFields_RiemannProblem_2D_Relativistic( MF_uGF, MF_uCF )
+
+      CASE( 'StandingAccretionShock_Relativistic' )
+
+        CALL InitializeFields_StandingAccretionShock_Relativistic &
+               ( MF_uGF, MF_uCF )
+
       CASE DEFAULT
 
         IF( amrex_parallel_ioprocessor() )THEN
           WRITE(*,*)
           WRITE(*,'(A4,A,A)') '', 'Unknown Program: ', TRIM( ProgramName )
+          WRITE(*,'(A4,A)')   '', 'Valid Options:'
+          WRITE(*,'(A6,A)')   '', 'Non-Relativistic:'
+          WRITE(*,'(A8,A)')   '', 'IsentropicVortex'
+          WRITE(*,'(A8,A)')   '', 'Sod'
+          WRITE(*,'(A8,A)')   '', 'SphericalSod'
+          WRITE(*,'(A8,A)')   '', 'TopHatAdvection'
+          WRITE(*,'(A8,A)')   '', 'Implosion'
+          WRITE(*,'(A8,A)')   '', 'StandingAccretionShock'
+          WRITE(*,'(A6,A)')   '', 'Relativistic:'
+          WRITE(*,'(A8,A)')   '', 'Sod_Relativistic'
+          WRITE(*,'(A8,A)')   '', 'KelvinHelmholtz_Relativistic'
+          WRITE(*,'(A8,A)')   '', 'RiemannProblem_2D_Relativistic'
+          WRITE(*,'(A8,A)')   '', 'StandingAccretionShock_Relativistic'
+          STOP 'MF_InitializationModule.f90'
         END IF
 
     END SELECT
@@ -129,15 +167,15 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    uGF_K = 0.0d0
-    uPF_K = 0.0d0
-    uCF_K = 0.0d0
+    uGF_K = 0.0_amrex_real
+    uPF_K = 0.0_amrex_real
+    uCF_K = 0.0_amrex_real
 
     DO iDim = 1, 3
 
       CALL CreateMesh &
              ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               amrex_problo(iDim), amrex_probhi(iDim) )
+               xL(iDim), xR(iDim) )
 
     END DO
 
@@ -251,15 +289,15 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    uGF_K = 0.0d0
-    uPF_K = 0.0d0
-    uCF_K = 0.0d0
+    uGF_K = 0.0_amrex_real
+    uPF_K = 0.0_amrex_real
+    uCF_K = 0.0_amrex_real
 
     DO iDim = 1, 3
 
       CALL CreateMesh &
              ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               amrex_problo(iDim), amrex_probhi(iDim) )
+               xL(iDim), xR(iDim) )
 
     END DO
 
@@ -370,15 +408,15 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    uGF_K = 0.0d0
-    uPF_K = 0.0d0
-    uCF_K = 0.0d0
+    uGF_K = 0.0_amrex_real
+    uPF_K = 0.0_amrex_real
+    uCF_K = 0.0_amrex_real
 
     DO iDim = 1, 3
 
       CALL CreateMesh &
              ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               amrex_problo(iDim), amrex_probhi(iDim) )
+               xL(iDim), xR(iDim) )
 
     END DO
 
@@ -488,15 +526,15 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    uGF_K = 0.0d0
-    uPF_K = 0.0d0
-    uCF_K = 0.0d0
+    uGF_K = 0.0_amrex_real
+    uPF_K = 0.0_amrex_real
+    uCF_K = 0.0_amrex_real
 
     DO iDim = 1, 3
 
       CALL CreateMesh &
              ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               amrex_problo(iDim), amrex_probhi(iDim) )
+               xL(iDim), xR(iDim) )
 
     END DO
 
@@ -608,15 +646,15 @@ CONTAINS
     REAL(amrex_real), PARAMETER :: D_1 = 1.000_amrex_real
     REAL(amrex_real), PARAMETER :: E_1 = 2.500_amrex_real
 
-    uGF_K = 0.0d0
-    uPF_K = 0.0d0
-    uCF_K = 0.0d0
+    uGF_K = 0.0_amrex_real
+    uPF_K = 0.0_amrex_real
+    uCF_K = 0.0_amrex_real
 
     DO iDim = 1, 3
 
       CALL CreateMesh &
              ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               amrex_problo(iDim), amrex_probhi(iDim) )
+               xL(iDim), xR(iDim) )
 
     END DO
 
@@ -771,7 +809,7 @@ CONTAINS
 
       CALL CreateMesh &
              ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(1), &
-               amrex_problo(iDim), amrex_probhi(iDim) )
+               xL(iDim), xR(iDim) )
 
     END DO
 
@@ -988,6 +1026,656 @@ CONTAINS
         - 2.0_amrex_real * Mass
     RETURN
   END FUNCTION SettlingSpeedFun
+
+
+  SUBROUTINE InitializeFields_Sod_Relativistic( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+
+    INTEGER            :: iDim, iLevel
+    INTEGER            :: iX1, iX2, iX3
+    INTEGER            :: iNodeX
+    INTEGER            :: lo_G(4), hi_G(4)
+    INTEGER            :: lo_F(4), hi_F(4)
+    REAL(amrex_real)   :: X1
+    REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
+    REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
+    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)   :: uAF_K(nDOFX,nAF)
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(MeshType)     :: MeshX(3)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    uGF_K = 0.0_amrex_real
+    uPF_K = 0.0_amrex_real
+    uCF_K = 0.0_amrex_real
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    DO iLevel = 0, nLevels
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          X1 = MeshX(1) % Center(iX1)
+
+          DO iNodeX = 1, nDOFX
+
+            IF( X1 .LE. 0.5_amrex_real ) THEN
+
+              uPF_K(iNodeX,iPF_D)  = 1.0_amrex_real
+              uPF_K(iNodeX,iPF_V1) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_V2) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_V3) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_E)  = 1.0_amrex_real &
+                                       / (Gamma_IDEAL - 1.0_amrex_real)
+
+            ELSE
+
+              uPF_K(iNodeX,iPF_D)  = 0.125_amrex_real
+              uPF_K(iNodeX,iPF_V1) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_V2) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_V3) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_E)  = 0.1_amrex_real &
+                                       / (Gamma_IDEAL - 1.0_amrex_real)
+
+            END IF
+
+          END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+          CALL Euler_ComputeConserved &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_Sod_Relativistic
+
+
+  ! --- Relativistic 2D Kelvin-Helmholtz instability a la
+  !     Radice & Rezzolla, (2012), AA, 547, A26 ---
+  SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+
+    INTEGER          :: iX1, iX2, iX3
+    INTEGER          :: iNodeX, iNodeX1, iNodeX2
+    REAL(amrex_real) :: X1, X2
+    REAL(amrex_real) :: a, Vshear, A0, sigma, rho0, rho1
+
+    INTEGER            :: iDim, iLevel
+    INTEGER            :: lo_G(4), hi_G(4)
+    INTEGER            :: lo_F(4), hi_F(4)
+    REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
+    REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
+    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)   :: uAF_K(nDOFX,nAF)
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(MeshType)     :: MeshX(3)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    uGF_K = 0.0_amrex_real
+    uPF_K = 0.0_amrex_real
+    uCF_K = 0.0_amrex_real
+
+    ! --- Problem-dependent parameters ---
+    a      = 0.01_amrex_real
+    Vshear = 0.5_amrex_real
+
+    A0    = 0.1_amrex_real
+    sigma = 0.1_amrex_real
+
+    rho0 = 0.505_amrex_real
+    rho1 = 0.495_amrex_real
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    DO iLevel = 0, nLevels
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+            ! --- V1 ---
+            IF( X2 .GT. 0.0_amrex_real )THEN
+              uPF_K(iNodeX,iPF_V1) &
+                = +Vshear * TANH( ( X2 - 0.5_amrex_real ) / a )
+            ELSE
+              ! --- Paper has a typo here, the minus sign is required ---
+              uPF_K(iNodeX,iPF_V1) &
+                = -Vshear * TANH( ( X2 + 0.5_amrex_real ) / a )
+            END IF
+
+            ! --- V2 ---
+            IF( X2 .GT. 0.0_amrex_real )THEN
+              uPF_K(iNodeX,iPF_V2) &
+                =  A0 * Vshear * SIN( 2.0_amrex_real * Pi * X1 ) &
+                    * EXP( -( ( X2 - 0.5_amrex_real )**2 / sigma ) )
+            ELSE
+              uPF_K(iNodeX,iPF_V2) &
+                = -A0 * Vshear * SIN( 2.0_amrex_real * Pi * X1 ) &
+                    * EXP( -( ( X2 + 0.5_amrex_real )**2 / sigma ) )
+            END IF
+
+            ! --- rho ---
+            IF( X2 .GT. 0.0_amrex_real )THEN
+              uPF_K(iNodeX,iPF_D) &
+                = rho0 + rho1 * TANH( ( X2 - 0.5_amrex_real ) / a )
+            ELSE
+              uPF_K(iNodeX,iPF_D) &
+                = rho0 - rho1 * TANH( ( X2 + 0.5_amrex_real ) / a )
+            END IF
+
+            uPF_K(iNodeX,iPF_V3) = 0.0_amrex_real
+            uPF_K(iNodeX,iPF_E)  = 1.0_amrex_real / ( Gamma_IDEAL - One )
+
+          END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+          CALL Euler_ComputeConserved &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic
+
+
+  ! --- Relativistic 2D Riemann problem from
+  !     Del Zanna & Bucciantini, (2002), A&A, 390, 1177 ---
+  SUBROUTINE InitializeFields_RiemannProblem_2D_Relativistic( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+
+    INTEGER          :: iX1, iX2, iX3
+    INTEGER          :: iNodeX, iNodeX1, iNodeX2
+    REAL(amrex_real) :: X1, X2
+
+    INTEGER            :: iDim, iLevel
+    INTEGER            :: lo_G(4), hi_G(4)
+    INTEGER            :: lo_F(4), hi_F(4)
+    REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
+    REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
+    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)   :: uAF_K(nDOFX,nAF)
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(MeshType)     :: MeshX(3)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    uGF_K = 0.0_amrex_real
+    uPF_K = 0.0_amrex_real
+    uCF_K = 0.0_amrex_real
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    DO iLevel = 0, nLevels
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+            ! --- NE ---
+            IF     ( X1 .GT. 0.5_amrex_real .AND. X2 .GT. 0.5_amrex_real )THEN
+              uPF_K(iNodeX,iPF_D ) = 0.1_amrex_real
+              uPF_K(iNodeX,iPF_V1) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_V2) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_E ) = 0.01_amrex_real &
+                                       / ( Gamma_IDEAL - 1.0_amrex_real )
+            ! --- NW ---
+            ELSE IF( X1 .LE. 0.5_amrex_real .AND. X2 .GT. 0.5_amrex_real )THEN
+              uPF_K(iNodeX,iPF_D ) = 0.1_amrex_real
+              uPF_K(iNodeX,iPF_V1) = 0.99_amrex_real
+              uPF_K(iNodeX,iPF_V2) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_E ) = 1.0_amrex_real &
+                                       / ( Gamma_IDEAL - 1.0_amrex_real )
+            ! --- SW ---
+            ELSE IF( X1 .LE. 0.5_amrex_real .AND. X2 .LE. 0.5_amrex_real )THEN
+              uPF_K(iNodeX,iPF_D ) = 0.5_amrex_real
+              uPF_K(iNodeX,iPF_V1) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_V2) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_E ) = 1.0_amrex_real &
+                                       / ( Gamma_IDEAL - 1.0_amrex_real )
+
+            ! --- SE ---
+            ELSE
+              uPF_K(iNodeX,iPF_D ) = 0.1_amrex_real
+              uPF_K(iNodeX,iPF_V1) = 0.0_amrex_real
+              uPF_K(iNodeX,iPF_V2) = 0.99_amrex_real
+              uPF_K(iNodeX,iPF_E ) = 1.0_amrex_real &
+                                       / ( Gamma_IDEAL - 1.0_amrex_real )
+            END IF
+
+          END DO
+
+          uPF_K(:,iPF_V3) = 0.0_amrex_real
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+          CALL Euler_ComputeConserved &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_RiemannProblem_2D_Relativistic
+
+
+  SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic &
+    ( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+
+    INTEGER          :: iX1, iX2, iX3
+    INTEGER          :: iNodeX, iNodeX1, iNodeX2
+    REAL(amrex_real) :: X1, X2
+
+    INTEGER            :: iDim, iLevel
+    INTEGER            :: lo_G(4), hi_G(4)
+    INTEGER            :: lo_F(4), hi_F(4)
+    REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
+    REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
+    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)   :: uAF_K(nDOFX,nAF)
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(MeshType)     :: MeshX(3)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    ! --- Problem-specific parameters ---
+    REAL(amrex_real)      :: D, V(3), P
+    INTEGER, PARAMETER    :: i_r = 1, i_D = 2, i_V1 = 3, i_E = 4
+    INTEGER               :: iL, nLines
+    REAL(DP), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
+
+    uGF_K = 0.0_amrex_real
+    uPF_K = 0.0_amrex_real
+    uCF_K = 0.0_amrex_real
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(1), &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    CALL ReadParameters &
+           ( '../Euler_Relativistic/StandingAccretionShock_Parameters.dat', &
+             FluidFieldParameters )
+    CALL ReadData &
+           ( '../Euler_Relativistic/StandingAccretionShock_Data.dat', &
+             nLines, FluidFieldData )
+
+    DO iLevel = 0, nLevels
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+            ! --- Get lower index of input array
+            !     (FluidFieldData) corresponding to physical coordinate (X1) ---
+            iL = Locate( X1, FluidFieldData(:,i_r), nLines )
+
+            ! --- Interpolate to the physical point X1 ---
+
+            uPF_K(iNodeX,iPF_D) &
+              = InterpolateInitialConditionsOntoGrid &
+                  ( i_D, i_r, iL, X1, FluidFieldData )
+
+            uPF_K(iNodeX,iPF_V1) &
+              = InterpolateInitialConditionsOntoGrid &
+                  ( i_V1, i_r, iL, X1, FluidFieldData )
+
+            uPF_K(iNodeX,iPF_V2) = 0.0_amrex_real
+
+            uPF_K(iNodeX,iPF_V3) = 0.0_amrex_real
+
+            uPF_K(iNodeX,iPF_E) &
+              = InterpolateInitialConditionsOntoGrid &
+                  ( i_E, i_r, iL, X1, FluidFieldData )
+
+            uPF_K(iNodeX,iPF_Ne) = 0.0_amrex_real
+
+          END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+          CALL Euler_ComputeConserved &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
+
+
+  ! --- Auxiliary functions/subroutines for relativistic SAS problem ---
+
+  REAL(amrex_real) FUNCTION InterpolateInitialConditionsOntoGrid &
+    ( iVar, i_r, iL, X, FluidFieldData )  RESULT( yInterp )
+
+    INTEGER,  INTENT(in)         :: iVar, i_r, iL
+    REAL(amrex_real), INTENT(in) :: X
+    REAL(amrex_real), INTENT(in) :: FluidFieldData(:,:)
+    REAL(amrex_real)             :: X1, X2, Y1, Y2, m
+
+    X1 = FluidFieldData(iL,i_r)
+    X2 = FLuidFieldData(iL+1,i_r)
+    Y1 = FluidFieldData(iL,iVar)
+    Y2 = FluidFieldData(iL+1,iVar)
+
+    m = ( Y2 - Y1 ) / ( X2 - X1 )
+
+    yInterp = m * ( X - X1 ) + Y1
+
+    RETURN
+  END FUNCTION InterpolateInitialConditionsOntoGrid
+
+
+  SUBROUTINE ReadParameters( FILEIN, FluidFieldParameters )
+
+    CHARACTER(LEN=*), INTENT(in)               :: FILEIN
+    REAL(amrex_real), INTENT(out), ALLOCATABLE :: FluidFieldParameters(:)
+
+    INTEGER :: i, nParams
+
+    ! --- Get number of parameters ---
+    nParams = 0
+    OPEN( 100, FILE = TRIM( FILEIN ) )
+    READ( 100, * ) ! --- Skip the header ---
+    DO
+      READ( 100, *, END = 10 )
+      nParams = nParams + 1
+    END DO
+    10 CLOSE( 100 )
+
+    ! --- Allocate and read in parameters ---
+    ALLOCATE( FluidFieldParameters(nParams) )
+    
+    OPEN( 100, FILE = TRIM( FILEIN ) )
+    READ( 100, * ) ! --- Skip the header ---
+    DO i = 1, nParams
+       READ( 100, '(ES23.16E2)' ) FluidFieldParameters(i)
+    END DO
+    CLOSE( 100 )
+
+    ! --- Convert from physical-units to code-units ---
+    FluidFieldParameters(1) = FluidFieldParameters(1) * Kilogram
+    FluidFieldParameters(2) = FluidFieldParameters(2)
+    FluidFieldParameters(3) = FluidFieldParameters(3) * Meter
+    FluidFieldParameters(4) = FluidFieldParameters(4) * Meter
+    FluidFieldParameters(5) = FluidFieldParameters(5) * Meter
+    FluidFieldParameters(6) = FluidFieldParameters(6) * Meter
+    FluidFieldParameters(7) = FluidFieldParameters(7) * Kilogram / Second
+
+  END SUBROUTINE ReadParameters
+
+
+  SUBROUTINE ReadData( FILEIN, nLines, FluidFieldData )
+
+    CHARACTER(LEN=*), INTENT(in)               :: FILEIN
+    INTEGER,          INTENT(inout)            :: nLines
+    REAL(amrex_real), INTENT(out), ALLOCATABLE :: FluidFieldData(:,:)
+
+    INTEGER :: i
+
+    ! --- Get number of lines in data file ---
+    nLines = 0
+    OPEN( 100, FILE = TRIM( FILEIN ) )
+    READ( 100, * ) ! --- Skip the header ---
+    DO
+      READ( 100, *, END = 10 )
+      nLines = nLines + 1
+    END DO
+    10 CLOSE( 100 )
+
+    ! --- Allocate and read in data ---
+    ALLOCATE( FluidFieldData( 1:nLines, 4 ) )
+
+    OPEN( 100, FILE = TRIM( FILEIN ) )
+    READ( 100, * ) ! --- Skip the header ---
+    DO i = 1, nLines
+       READ( 100, '(ES22.16E2,1x,ES22.16E2,1x,ES23.16E2,1x,ES22.16E2)' ) &
+         FluidFieldData(i,:)
+    END DO
+    CLOSE( 100 )
+
+    ! --- Convert from physical-units to code-units ---
+    FluidFieldData(:,1) = FluidFieldData(:,1) * Meter
+    FluidFieldData(:,2) = FluidFieldData(:,2) * Kilogram / Meter**3
+    FluidFieldData(:,3) = FluidFieldData(:,3) * Meter / Second
+    FluidFieldData(:,4) = FluidFieldData(:,4) * Joule / Meter**3
+
+  END SUBROUTINE ReadData
 
 
 END MODULE MF_InitializationModule

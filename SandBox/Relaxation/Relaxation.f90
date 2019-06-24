@@ -17,6 +17,14 @@ PROGRAM Relaxation
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
+  USE TimersModule, ONLY: &
+    InitializeTimers, &
+    FinalizeTimers, &
+    TimersStart, &
+    TimersStop, &
+    Timer_Initialize, &
+    Timer_InputOutput, &
+    Timer_Evolve
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
@@ -72,12 +80,16 @@ PROGRAM Relaxation
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
-    ComputeIncrement_TwoMoment_Implicit_New
+    ComputeIncrement_TwoMoment_Implicit_New, &
+    InitializeNonlinearSolverTally, &
+    FinalizeNonlinearSolverTally, &
+    WriteNonlinearSolverTally
 
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
 
+  INTEGER  :: Configuration
   INTEGER  :: iCycle, iCycleD, iCycleW
   INTEGER  :: nE, nX(3), nNodes, nSpecies
   REAL(DP) :: t, dt, dt_0, t_end, wTime
@@ -96,19 +108,43 @@ PROGRAM Relaxation
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
 
-!!$  D_0 = 6.233d09 * Gram / Centimeter**3
-!!$  T_0 = 3.021d10 * Kelvin
-!!$  Y_0 = 0.3178_DP
+  Configuration = 2
 
-  D_0 = 1.0520d+12 * Gram / Centimeter**3
-  T_0 = 8.9670d+10 * Kelvin
-  Y_0 = 0.1352_DP
+  SELECT CASE( Configuration )
+    CASE( 1 )
+
+      D_0 = 1.232d+14 * Gram / Centimeter**3
+      T_0 = 2.508E+11 * Kelvin
+      Y_0 = 0.2747_DP
+
+    CASE( 2 )
+
+      D_0 = 1.0520d+12 * Gram / Centimeter**3
+      T_0 = 8.9670d+10 * Kelvin
+      Y_0 = 0.1352_DP
+
+    CASE( 3 )
+
+      D_0 = 6.233d09 * Gram / Centimeter**3
+      T_0 = 3.021d10 * Kelvin
+      Y_0 = 0.3178_DP
+
+  END SELECT
+
+  WRITE(*,*)
+  WRITE(*,'(A4,A)') '', 'Relaxation'
+  WRITE(*,*)
+  WRITE(*,'(A6,A,ES8.2E2)') '', 'D [g/cm3] = ', D_0 / ( Gram / Centimeter**3 )
+  WRITE(*,'(A6,A,ES8.2E2)') '', 'T     [K] = ', T_0 / Kelvin
+  WRITE(*,'(A6,A,ES8.2E2)') '', 'Y         = ', Y_0
+  WRITE(*,*)
+
 
   dt_0    = 1.0d-3 * Millisecond
   t       = 0.0d-0 * Millisecond
   t_end   = 1.0d+0 * Millisecond
   iCycleD = 1
-  iCycleW = 5
+  iCycleW = 1
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -130,7 +166,7 @@ PROGRAM Relaxation
            eR_Option &
              = eR, &
            ZoomE_Option &
-             = 1.2660_DP, &
+             = 1.266038160710160_DP, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -141,6 +177,12 @@ PROGRAM Relaxation
              = nSpecies, &
            BasicInitialization_Option &
              = .TRUE. )
+
+   ! --- Initialize Timers ---
+
+   CALL InitializeTimers
+
+   CALL TimersStart( Timer_Initialize )
 
   ! --- Position Space Reference Element and Geometry ---
 
@@ -204,9 +246,14 @@ PROGRAM Relaxation
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
 
+  CALL TimersStop( Timer_Initialize )
+
+  CALL InitializeNonlinearSolverTally
+
   ! --- Evolve ---
 
   wTime = MPI_WTIME( )
+  CALL TimersStart( Timer_Evolve )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A,ES8.2E2)') &
@@ -239,15 +286,16 @@ PROGRAM Relaxation
     IF( dt > 0.0_DP )THEN
 
       CALL ComputeIncrement_TwoMoment_Implicit_New &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, uGF, uCF, rhsCF, uCR, rhsCR )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, uGF, &
+               uCF, rhsCF, uCR, rhsCR )
 
       uCF = uCF + dt * rhsCF
 
       uCR = uCR + dt * rhsCR
 
-    END IF
+      t = t + dt
 
-    t = t + dt
+    END IF
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
@@ -260,6 +308,8 @@ PROGRAM Relaxation
                WriteGF_Option = .TRUE., &
                WriteFF_Option = .TRUE., &
                WriteRF_Option = .TRUE. )
+
+      CALL WriteNonlinearSolverTally( t )
 
     END IF
 
@@ -278,6 +328,7 @@ PROGRAM Relaxation
            WriteRF_Option = .TRUE. )
 
   wTime = MPI_WTIME( ) - wTime
+  CALL TimersStop( Timer_Evolve )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
@@ -285,6 +336,10 @@ PROGRAM Relaxation
   WRITE(*,*)
 
   ! --- Finalize ---
+
+  CALL FinalizeTimers
+
+  CALL FinalizeNonlinearSolverTally
 
   CALL FinalizeReferenceElementX
 

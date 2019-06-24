@@ -1,54 +1,43 @@
-
 MODULE MyAmrDataModule
 
-  USE ISO_C_BINDING
-
-  ! --- AMReX Modules ---
-  USE amrex_fort_module,     ONLY: &
-    amrex_real
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_destroy
 
-  ! --- Local Modules ---
-  USE amrex_amr_module, ONLY: &
-    amrex_max_level
-
   IMPLICIT NONE
-
   PRIVATE
-  PUBLIC :: MF_uGF, MF_uCF, MF_uPF, MF_uAF
 
-  PUBLIC :: InitializeDataAMReX, FinalizeDataAMReX
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uGF(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCF(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uPF(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uAF(:)
 
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_uGF(:)
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_uCF(:)
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_uPF(:)
-  TYPE(amrex_multifab), ALLOCATABLE :: MF_uAF(:)
+  PUBLIC :: InitializeDataAMReX
+  PUBLIC :: FinalizeDataAMReX
 
   
 CONTAINS
 
 
-  SUBROUTINE InitializeDataAMReX( amrex_max_level )
+  SUBROUTINE InitializeDataAMReX( nLevels )
 
-    INTEGER, INTENT(in) :: amrex_max_level
+    INTEGER, INTENT(in) :: nLevels
 
-    ALLOCATE( MF_uGF(0:amrex_max_level) )
-    ALLOCATE( MF_uCF(0:amrex_max_level) )
-    ALLOCATE( MF_uPF(0:amrex_max_level) )
-    ALLOCATE( MF_uAF(0:amrex_max_level) )
+    ALLOCATE( MF_uGF(0:nLevels) )
+    ALLOCATE( MF_uCF(0:nLevels) )
+    ALLOCATE( MF_uPF(0:nLevels) )
+    ALLOCATE( MF_uAF(0:nLevels) )
 
   END SUBROUTINE InitializeDataAMReX
 
 
-  SUBROUTINE FinalizeDataAMReX( amrex_max_level )
+  SUBROUTINE FinalizeDataAMReX( nLevels )
 
-    INTEGER, INTENT(in) :: amrex_max_level
+    INTEGER, INTENT(in) :: nLevels
 
     INTEGER :: iLevel
 
-    DO iLevel = 0, amrex_max_level
+    DO iLevel = 0, nLevels
       CALL amrex_multifab_destroy( MF_uAF(iLevel) )
       CALL amrex_multifab_destroy( MF_uPF(iLevel) )
       CALL amrex_multifab_destroy( MF_uCF(iLevel) )
@@ -61,5 +50,6 @@ CONTAINS
     DEALLOCATE( MF_uGF )
 
   END SUBROUTINE FinalizeDataAMReX
+
   
 END MODULE MyAmrDataModule

@@ -22,7 +22,7 @@ MODULE EquationOfStateModule
     ComputeSoundSpeedFromPrimitive_TABLE, &
     ComputeAuxiliary_Fluid_TABLE, &
     Auxiliary_Fluid_TABLE, &
-    ComputeSpecificInternalEnergy_TABLE, &
+    ComputeSpecificInternalEnergy_Points_TABLE, &
     ComputeElectronChemicalPotentialPoints_TABLE, &
     ComputeProtonChemicalPotentialPoints_TABLE, &
     ComputeNeutronChemicalPotentialPoints_TABLE
@@ -215,7 +215,7 @@ CONTAINS
         Auxiliary_Fluid &
           => Auxiliary_Fluid_TABLE
         ComputeSpecificInternalEnergy &
-          => ComputeSpecificInternalEnergy_TABLE
+          => ComputeSpecificInternalEnergy_Points_TABLE
         ComputeElectronChemicalPotential &
           => ComputeElectronChemicalPotentialPoints_TABLE
         ComputeProtonChemicalPotential &

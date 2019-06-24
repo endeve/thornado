@@ -28,7 +28,7 @@ C_summit_xl          = mpic++ -std=c++11 $(OPENMP)
 C                    = $(C_$(MACHINE))
 
 FORTRAN_mac_gnu      = mpif90 -fopenmp
-FORTRAN_sn1987b      = mpif90 -fopenmp
+FORTRAN_sn1987b      = mpif90 -fopenmp -cpp
 FORTRAN_bbarker      = mpif90 -fopenmp
 FORTRAN_juliana      = gfortran
 FORTRAN_kristopher   = mpif90
@@ -257,13 +257,18 @@ PP_summit_pgi                  =
 PP_summit_xl                   = -WF,
 PP                             = $(PP_$(MACHINE))
 
-HYDRO ?= NONRELATIVISTIC
+HYDRO         ?= NONRELATIVISTIC
+NUMERICALFLUX ?= HLL
+
+NEUTRINO_MATTER_SOLVER ?= EMAB
 
 DEFINES = \
 $(PP)-DMICROPHYSICS_$(MICROPHYSICS) \
 $(PP)-DMOMENT_CLOSURE_$(MOMENT_CLOSURE) \
+$(PP)-DNEUTRINO_MATTER_SOLVER_$(NEUTRINO_MATTER_SOLVER) \
 $(PP)-DGRAVITY_SOLVER_$(GRAVITY_SOLVER) \
-$(PP)-DHYDRO_$(HYDRO)
+$(PP)-DHYDRO_$(HYDRO) \
+$(PP)-DHYDRO_NUMERICALFLUX_$(NUMERICALFLUX)
 
 ifeq ($(USE_GPU),TRUE)
    INCLUDE      += $(INCLUDE_CUDA)
