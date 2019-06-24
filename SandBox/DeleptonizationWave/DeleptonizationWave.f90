@@ -281,8 +281,6 @@ PROGRAM DeleptonizationWave
 
   ! --- Evolve ---
 
-  CALL TimersStart( Timer_Evolve )
-
   t_wrt   = dt_wrt
   wrt     = .FALSE.
 
@@ -323,6 +321,8 @@ PROGRAM DeleptonizationWave
 
     END IF
 
+    CALL TimersStart( Timer_Evolve )
+
     CALL Update_IMEX_PDARS &
            ( dt, uCF, uCR, &
              Explicit_Option = .TRUE., &
@@ -331,6 +331,8 @@ PROGRAM DeleptonizationWave
              CallFromThornado_Option = .TRUE. )
 
     t = t + dt
+
+    CALL TimersStop( Timer_Evolve )
 
     CALL TallyPositivityLimiter_TwoMoment( t )
 
@@ -356,8 +358,6 @@ PROGRAM DeleptonizationWave
     END IF
 
   END DO
-
-  CALL TimersStop( Timer_Evolve )
 
   ! --- Write Final Solution ---
 

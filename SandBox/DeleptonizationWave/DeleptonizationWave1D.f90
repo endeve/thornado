@@ -263,8 +263,6 @@ PROGRAM DeleptonizationWave1D
 
   ! --- Evolve ---
 
-  CALL TimersStart( Timer_Evolve )
-
   t_wrt = dt_wrt
   wrt   = .FALSE.
 
@@ -305,6 +303,8 @@ PROGRAM DeleptonizationWave1D
 
     END IF
 
+    CALL TimersStart( Timer_Evolve )
+
     CALL Update_IMEX_PDARS &
            ( dt, uCF, uCR, &
              Explicit_Option = .TRUE., &
@@ -313,6 +313,8 @@ PROGRAM DeleptonizationWave1D
              CallFromThornado_Option = .TRUE. )
 
     t = t + dt
+
+    CALL TimersStop( Timer_Evolve )
 
     IF( wrt )THEN
 
@@ -335,8 +337,6 @@ PROGRAM DeleptonizationWave1D
     END IF
 
   END DO
-
-  CALL TimersStop( Timer_Evolve )
 
   ! --- Write Final Solution ---
 
