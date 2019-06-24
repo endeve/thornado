@@ -111,9 +111,13 @@ PROGRAM Relaxation
 !!$  T_0 = 3.021d10 * Kelvin
 !!$  Y_0 = 0.3178_DP
 
-  D_0 = 1.0520d+12 * Gram / Centimeter**3
-  T_0 = 8.9670d+10 * Kelvin
-  Y_0 = 0.1352_DP
+  ! D_0 = 1.0520d+12 * Gram / Centimeter**3
+  ! T_0 = 8.9670d+10 * Kelvin
+  ! Y_0 = 0.1352_DP
+
+  D_0 = 1.2320d+14 * Gram / Centimeter**3
+  T_0 = 2.5080d+11 * Kelvin
+  Y_0 = 0.2747_DP
 
   dt_0    = 1.0d-3 * Millisecond
   t       = 0.0d-0 * Millisecond

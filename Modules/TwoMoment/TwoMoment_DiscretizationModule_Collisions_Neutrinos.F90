@@ -104,7 +104,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), PARAMETER :: Unit_T = MeV
   REAL(DP), PARAMETER :: Unit_E = Erg / Gram
 
-  LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
+  LOGICAL, PARAMETER :: ReportConvergenceData = .TRUE.
   INTEGER  :: Iterations_Min
   INTEGER  :: Iterations_Max
   INTEGER  :: Iterations_Ave
@@ -120,7 +120,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
   LOGICAL, PARAMETER :: SolveMatter = .TRUE.
   LOGICAL, PARAMETER :: UsePreconditionerEmAb = .FALSE.
-  LOGICAL, PARAMETER :: UsePreconditionerPair = .TRUE.
+  LOGICAL, PARAMETER :: UsePreconditionerPair = .FALSE.
   LOGICAL, PARAMETER :: UsePreconditionerPairLagAllButJ0 = .FALSE.
 
   INTEGER  :: nE_G, nX_G
@@ -2851,7 +2851,7 @@ CONTAINS
     INTEGER,  PARAMETER :: M = 3
     INTEGER,  PARAMETER :: MaxIter = 100
     INTEGER,  PARAMETER :: LWORK = 2 * 2
-    REAL(DP), PARAMETER :: Rtol = 1.0d-08
+    REAL(DP), PARAMETER :: Rtol = 1.0d-8
     REAL(DP), PARAMETER :: Utol = 1.0d-10
 
     ! --- Local Variables ---
