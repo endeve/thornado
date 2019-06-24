@@ -115,7 +115,7 @@ PROGRAM DeleptonizationWave1D
 
   t       = 0.0_DP
   t_end   = 1.0d-3 * Millisecond
-  dt_wrt  = 5.0d-3 * Millisecond
+  dt_wrt  = 1.0d-3 * Millisecond
   iCycleD = 1
 
   CALL InitializeProgram &
