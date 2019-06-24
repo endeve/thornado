@@ -22,7 +22,14 @@ PROGRAM DeleptonizationWave1D
     TimersStop, &
     Timer_Initialize, &
     Timer_InputOutput, &
-    Timer_Evolve
+    Timer_Evolve, &
+    Timer_PositivityLimiter, &
+    Timer_PL_In, &
+    Timer_PL_P, &
+    Timer_PL_K, &
+    Timer_PL_Theta_1, &
+    Timer_PL_Theta_2, &
+    Timer_PL_Out
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
@@ -97,7 +104,7 @@ PROGRAM DeleptonizationWave1D
   nNodes   = 2
   nSpecies = 2
 
-  nX = [ 64, 1, 1 ]
+  nX = [ 512, 1, 1 ]
   xL = [ 0.0_DP           , 0.0_DP, 0.0_DP ]
   xR = [ 1.0d2 * Kilometer, Pi    , TwoPi  ]
 
@@ -107,8 +114,8 @@ PROGRAM DeleptonizationWave1D
   ZoomE = 1.183081754893913_DP
 
   t       = 0.0_DP
-  t_end   = 5.0d-0 * Millisecond
-  dt_wrt  = 1.0d-1 * Millisecond
+  t_end   = 1.0d-3 * Millisecond
+  dt_wrt  = 1.0d-3 * Millisecond
   iCycleD = 1
 
   CALL InitializeProgram &
@@ -227,6 +234,15 @@ PROGRAM DeleptonizationWave1D
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
 
+  ! Reset these timers
+  Timer_PositivityLimiter = Zero
+  Timer_PL_In             = Zero
+  Timer_PL_P              = Zero
+  Timer_PL_K              = Zero
+  Timer_PL_Theta_1        = Zero
+  Timer_PL_Theta_2        = Zero
+  Timer_PL_Out            = Zero
+
   ! --- Write Initial Condition After Limiter ---
 
   CALL TimersStart( Timer_InputOutput )
@@ -242,6 +258,7 @@ PROGRAM DeleptonizationWave1D
            WriteRF_Option = .TRUE. )
 
   CALL TimersStop( Timer_InputOutput )
+
   CALL TimersStop( Timer_Initialize )
 
   ! --- Evolve ---
@@ -319,6 +336,8 @@ PROGRAM DeleptonizationWave1D
 
   END DO
 
+  CALL TimersStop( Timer_Evolve )
+
   ! --- Write Final Solution ---
 
   CALL TimersStart( Timer_InputOutput )
@@ -334,7 +353,6 @@ PROGRAM DeleptonizationWave1D
            WriteRF_Option = .TRUE. )
 
   CALL TimersStop( Timer_InputOutput )
-  CALL TimersStop( Timer_Evolve )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &

@@ -22,7 +22,14 @@ PROGRAM DeleptonizationWave
     TimersStop, &
     Timer_Initialize, &
     Timer_InputOutput, &
-    Timer_Evolve
+    Timer_Evolve, &
+    Timer_PositivityLimiter, &
+    Timer_PL_In, &
+    Timer_PL_P, &
+    Timer_PL_K, &
+    Timer_PL_Theta_1, &
+    Timer_PL_Theta_2, &
+    Timer_PL_Out
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
@@ -236,6 +243,15 @@ PROGRAM DeleptonizationWave
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
 
+  ! Reset these timers
+  Timer_PositivityLimiter = Zero
+  Timer_PL_In             = Zero
+  Timer_PL_P              = Zero
+  Timer_PL_K              = Zero
+  Timer_PL_Theta_1        = Zero
+  Timer_PL_Theta_2        = Zero
+  Timer_PL_Out            = Zero
+
   CALL TallyPositivityLimiter_TwoMoment( 0.0_DP )
 
   CALL ComputeNeutrinoOpacities &
@@ -260,6 +276,7 @@ PROGRAM DeleptonizationWave
            WriteOP_Option = .TRUE. )
 
   CALL TimersStop( Timer_InputOutput )
+
   CALL TimersStop( Timer_Initialize )
 
   ! --- Evolve ---
@@ -340,6 +357,8 @@ PROGRAM DeleptonizationWave
 
   END DO
 
+  CALL TimersStop( Timer_Evolve )
+
   ! --- Write Final Solution ---
 
   CALL TimersStart( Timer_InputOutput )
@@ -356,7 +375,6 @@ PROGRAM DeleptonizationWave
            WriteOP_Option = .TRUE. )
 
   CALL TimersStop( Timer_InputOutput )
-  CALL TimersStop( Timer_Evolve )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
