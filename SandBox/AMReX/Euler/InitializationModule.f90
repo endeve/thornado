@@ -214,10 +214,13 @@ CONTAINS
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % query( 'Mass', Mass )
     CALL amrex_parmparse_destroy( PP )
-    IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' ) &
-      Mass = Mass * SolarMass
 
-    CALL MF_ComputeGeometryX( MF_uGF, Mass )
+    IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' )THEN
+      Mass = Mass * SolarMass
+      CALL MF_ComputeGeometryX( MF_uGF, Mass )
+    ELSE
+      CALL MF_ComputeGeometryX( MF_uGF, 0.0_amrex_real )
+    END IF
 
     IF( ProgramName .EQ. 'StandingAccretionShock' ) &
       CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )

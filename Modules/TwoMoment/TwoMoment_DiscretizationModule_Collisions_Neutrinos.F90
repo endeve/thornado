@@ -107,7 +107,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), PARAMETER :: Unit_T = MeV
   REAL(DP), PARAMETER :: Unit_E = Erg / Gram
 
-  LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
+  LOGICAL, PARAMETER :: ReportConvergenceData = .TRUE.
   INTEGER  :: Iterations_Min
   INTEGER  :: Iterations_Max
   INTEGER  :: Iterations_Ave
@@ -2857,7 +2857,7 @@ CONTAINS
     INTEGER,  PARAMETER :: M = 3
     INTEGER,  PARAMETER :: MaxIter = 100
     INTEGER,  PARAMETER :: LWORK = 2 * 2
-    REAL(DP), PARAMETER :: Rtol = 1.0d-08
+    REAL(DP), PARAMETER :: Rtol = 1.0d-8
     REAL(DP), PARAMETER :: Utol = 1.0d-10
 
     ! --- Local Variables ---
@@ -2882,6 +2882,7 @@ CONTAINS
     REAL(DP) :: FVECm_inner(1:(2*nE_G))
     REAL(DP) :: GVEC_inner (1:(2*nE_G))
     REAL(DP) :: GJAC_inner (1:(2*nE_G),1:(2*nE_G))
+    REAL(DP) :: S_J (1:nE_G,1:2)
     REAL(DP) :: Jold(1:nE_G,1:2)
     REAL(DP) :: Jnew(1:nE_G,1:2)
     REAL(DP) :: Eta(1:nE_G,1:2)
@@ -2916,6 +2917,7 @@ CONTAINS
 
     S_Y = N_B * Yold
     S_E = D   * Eold
+    S_J = One / ( One + dt * Chi )
 
     W2_S = FourPi * W2_N / h3
     W3_S = FourPi * W3_N / h3
@@ -3045,14 +3047,14 @@ CONTAINS
         ! --- Right-Hand Side Vectors (inner) ---
 
         GVEC_inner(OS_1+1:OS_1+nE_G) &
-          = ( One + dt * ( Chi(:,1) + Chi_NES(:,1) + Chi_Pair(:,1) ) ) &
-              * Jnew(:,1) - Jold(:,1) &
-              - dt * ( Eta(:,1) + Eta_NES(:,1) + Eta_Pair(:,1) )
+          = ( One + dt * ( Chi_NES(:,1) + Chi_Pair(:,1) ) * S_J(:,1) ) &
+              * Jnew(:,1) - ( Jold(:,1) &
+              + dt * ( Eta(:,1) + Eta_NES(:,1) + Eta_Pair(:,1) ) ) * S_J(:,1)
 
         GVEC_inner(OS_2+1:OS_2+nE_G) &
-          = ( One + dt * ( Chi(:,2) + Chi_NES(:,2) + Chi_Pair(:,2) ) ) &
-              * Jnew(:,2) - Jold(:,2) &
-              - dt * ( Eta(:,2) + Eta_NES(:,2) + Eta_Pair(:,2) )
+          = ( One + dt * ( Chi_NES(:,2) + Chi_Pair(:,2) ) * S_J(:,2) ) &
+              * Jnew(:,2) - ( Jold(:,2) &
+              + dt * ( Eta(:,2) + Eta_NES(:,2) + Eta_Pair(:,2) ) ) * S_J(:,2)
 
         ! --- Jacobian matrix ---
 
@@ -3061,16 +3063,16 @@ CONTAINS
         DO i = 1, nE_G
         DO l = 1, nE_G
           GJAC_inner(OS_1+i,OS_1+l) &
-            = - dt * ( Phi_0_In_NES(l,i,1) * (One - Jnew(i,1)) * W2_N(l) &
-                       + Phi_0_Ot_NES(l,i,1) * Jnew(i,1) * W2_N(l) )
+            = - dt * ( Phi_0_In_NES(l,i,1) * ( One - Jnew(i,1) ) * W2_N(l) &
+                       + Phi_0_Ot_NES(l,i,1) * Jnew(i,1) * W2_N(l) ) * S_J(i,1)
         END DO
         END DO
 
         DO i = 1, nE_G
         DO l = 1, nE_G
           GJAC_inner(OS_2+i,OS_2+l) &
-            = - dt * ( Phi_0_In_NES(l,i,2) * (One - Jnew(i,2)) * W2_N(l) &
-                       + Phi_0_Ot_NES(l,i,2) * Jnew(i,2) * W2_N(l) )
+            = - dt * ( Phi_0_In_NES(l,i,2) * ( One - Jnew(i,2) ) * W2_N(l) &
+                       + Phi_0_Ot_NES(l,i,2) * Jnew(i,2) * W2_N(l) ) * S_J(i,2)
         END DO
         END DO
 
@@ -3079,16 +3081,16 @@ CONTAINS
         DO i = 1, nE_G
         DO l = 1, nE_G
           GJAC_inner(OS_1+i,OS_2+l) &
-            = dt * ( Phi_0_In_Pair(l,i,1) * (One - Jnew(i,1)) * W2_N(l) &
-                     + Phi_0_Ot_Pair(l,i,1) * Jnew(i,1) * W2_N(l) )
+            = dt * ( Phi_0_In_Pair(l,i,1) * ( One - Jnew(i,1) ) * W2_N(l) &
+                     + Phi_0_Ot_Pair(l,i,1) * Jnew(i,1) * W2_N(l) ) * S_J(i,1)
         END DO
         END DO
 
         DO i = 1, nE_G
         DO l = 1, nE_G
           GJAC_inner(OS_2+i,OS_1+l) &
-            = dt * ( Phi_0_In_Pair(l,i,2) * (One - Jnew(i,2)) * W2_N(l) &
-                     + Phi_0_Ot_Pair(l,i,2) * Jnew(i,2) * W2_N(l) )
+            = dt * ( Phi_0_In_Pair(l,i,2) * ( One - Jnew(i,2) ) * W2_N(l) &
+                     + Phi_0_Ot_Pair(l,i,2) * Jnew(i,2) * W2_N(l) ) * S_J(i,2)
         END DO
         END DO
 
@@ -3097,13 +3099,13 @@ CONTAINS
         DO i = 1, nE_G
           GJAC_inner(OS_1+i,OS_1+i) &
             = GJAC_inner(OS_1+i,OS_1+i) &
-                + One + dt * ( Chi(i,1) + Chi_NES(i,1) + Chi_Pair(i,1) )
+                + One + dt * ( Chi_NES(i,1) + Chi_Pair(i,1) ) * S_J(i,1)
         END DO
 
         DO i = 1, nE_G
           GJAC_inner(OS_2+i,OS_2+i) &
             = GJAC_inner(OS_2+i,OS_2+i) &
-                + One + dt * ( Chi(i,2) + Chi_NES(i,2) + Chi_Pair(i,2) )
+                + One + dt * ( Chi_NES(i,2) + Chi_Pair(i,2) ) * S_J(i,2)
         END DO
 
         CALL DGESV( 2*nE_G, 1, GJAC_inner, 2*nE_G, IPIV, GVEC_inner, 2*nE_G, INFO )

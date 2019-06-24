@@ -1,7 +1,7 @@
 clear all;
 % close all;
 plot_track = false;
-saveData = false;
+saveData = true;
 %%%%%%% 
 % start from Gaussian distributions on both nu_e and nu_e_bar
 % evolve the collision equation until equilibrium reached
@@ -38,7 +38,7 @@ Theta3_N = Theta3_N / (hc)^3;
 % for density = [1e8 1e10 1e12]
 % for density = [1e8 1e10 1e12 1e14]
 
-for density = [1e8]
+for density = [1e14]
     
 test_idx = find(MatterProfile(:,2)>=density,1);
 % test_idx = 1;
@@ -54,18 +54,18 @@ T0 = MatterProfile(test_idx,3);
 Y0 = MatterProfile(test_idx,4);
 
 % % original Gaussian initial condition
-% Gau_mean = 2.0 * BoltzmannConstant * T0;
+Gau_mean = 2.0 * BoltzmannConstant * T0;
 % % Gau_mean = 150;
-% Gau_std = 10;
-% Gau_dist = 1/Gau_std/2/sqrt(pi) * exp(-(g_E_N-Gau_mean).^2/2/Gau_std^2);
+Gau_std = 10;
+Gau_dist = 0.99 * exp(-(g_E_N-Gau_mean).^2/2/Gau_std^2);
 % Gau_dist = Gau_dist./max(Gau_dist)*0.99;
 % % Gau_dist = Gau_dist./max(Gau_dist)*0.49;
 
-% % thin Gaussian
-Gau_mean = 10.0* BoltzmannConstant * T0;
-Gau_std = 1;
-Gau_dist = 1/Gau_std/2/sqrt(pi) * exp(-(g_E_N-Gau_mean).^2/2/Gau_std^2);
-Gau_dist = Gau_dist./max(Gau_dist)*0.99;
+% % % thin Gaussian
+% Gau_mean = 10.0* BoltzmannConstant * T0;
+% Gau_std = 1;
+% Gau_dist = 1/Gau_std/2/sqrt(pi) * exp(-(g_E_N-Gau_mean).^2/2/Gau_std^2);
+% Gau_dist = Gau_dist./max(Gau_dist)*0.99;
 
 
 
@@ -92,7 +92,7 @@ switch(dt)
     case 1e-5
         NumSteps = 2000;
     case 1e-6
-        NumSteps = 20;
+        NumSteps = 1000;
     case 1e-7
         NumSteps = 200000;
 end
@@ -154,12 +154,13 @@ while(i<NumSteps)
     [E, dEdT, dEdY] = ComputeSpecificInternalEnergy_TABLE(D, T, Y);
 
     % solve collision equation
-    [~, ~, ~, ~, ~, ~, iter_TP] = SolveMatterEquations_Pair( J, dt, Chi, D, T, Y, E );
+     [~, ~, D_Coupled, T_Coupled, Y_Coupled, E_Coupled, iter_TP] = SolveMatterEquations_Pair( J, dt, Chi, D, T, Y, E );
     iter_in_TP = 0;
     [~, ~, ~, ~, ~, ~, iter_TPPI, iter_in_PI] = SolveMatterEquations_Pair_Nested( J, dt, Chi, D, T, Y, E );
-    [J_TP, J0_TP, D_TP, T_TP, Y_TP, E_TP, iter_TPAA, iter_in_AA] = SolveMatterEquations_Pair_NestedAA( J, dt, Chi, D, T, Y, E );
-    [~, ~, ~, ~, ~, ~, iter_TPNewton, iter_in_Newton] = SolveMatterEquations_Pair_NestedNewton( J, dt, Chi, D, T, Y, E );
+    [~, ~, ~, ~, ~, ~, iter_TPAA, iter_in_AA] = SolveMatterEquations_Pair_NestedAA( J, dt, Chi, D, T, Y, E );
+    [J_TP, J0_TP, D_TP, T_TP, Y_TP, E_TP, iter_TPNewton, iter_in_Newton] = SolveMatterEquations_Pair_NestedNewton( J, dt, Chi, D, T, Y, E );
 
+    diff = abs(T_TP - T_Coupled)/abs(T_Coupled) + abs(Y_TP - Y_Coupled)/abs(Y_Coupled) + abs(E_TP - E_Coupled)/abs(E_Coupled);
     
     % update variables
     D = D_TP; T = T_TP; Y = Y_TP;
@@ -257,7 +258,7 @@ profile viewer
 
 
 if(saveData)
-    save(['Data_' num2str(test_idx) '_dt_' num2str(dt, '%.0e') '_step_' num2str(NumSteps,'%.0e') '_thin_Gaussian.mat'],...
+    save(['Data_' num2str(test_idx) '_dt_' num2str(dt, '%.0e') '_step_' num2str(NumSteps,'%.0e') '_thin_Gaussian_new.mat'],...
         'D0', 'T0', 'Y0', 'Gau_dist', 'J00', 'D', 'T', 'Y', 'J', 'J0', 'Iters', 'Iters_in', 'g_E_N', ...
         'E_hist', 'N_hist', 'T_matter', 'Y_hist', 'Mnu_matter', 'Lepton', 'Energy');
 end
