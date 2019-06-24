@@ -18,14 +18,15 @@ Modified by sjdunham for multiple MultiFabs (not working yet)
 #include <AMReX_MemProfiler.H>
 #endif
 
-#include <Restart.H>
+#include "Restart.H"
 
 using namespace amrex;
 
 extern "C"
 {
   void writefieldsamrex_checkpoint
-         ( int StepNo[], int FinestLevel, Real dt[], Real time[],
+         ( int StepNo[], int FinestLevel,
+           Real dt[], Real time[], Real t_wrt[], Real t_chk[],
            BoxArray** BA, MultiFab** MF_uGF, MultiFab** MF_uCF,
            MultiFab** MF_uPF, MultiFab** MF_uAF )
   {
@@ -45,7 +46,7 @@ extern "C"
                          = amrex::Concatenate( chk_file, StepNo[0] );
 
     if ( ParallelDescriptor::IOProcessor() )
-      amrex::Print() << "Writing checkpoint " << checkpointname << "\n";
+      amrex::Print() << "\n    Writing checkpoint " << checkpointname << "\n";
 
     const int nLevels = FinestLevel+1;
 
@@ -102,6 +103,10 @@ extern "C"
       }
       HeaderFile << "\n";
 
+      // Write out t_wrt and t_chk
+      HeaderFile << t_wrt[0] << "\n";
+      HeaderFile << t_chk[0] << "\n";
+
       // Write the BoxArray at each level
       for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
       {
@@ -136,11 +141,10 @@ extern "C"
   } // End of WriteCheckpointFile function
 
   void readheaderandboxarraydata
-         ( int finest_level[], int stepno[], Real dt[], Real time[],
+         ( int finest_level[], int stepno[],
+	   Real dt[], Real time[], Real t_wrt[], Real t_chk[],
            BoxArray** ba, DistributionMapping** dm, int iChkFile )
   {
-
-    std::cout << "iChkFile: " << iChkFile << std::endl;
 
     std::stringstream sChkFile;
     sChkFile << chk_file << std::setw(5) << std::setfill('0') << iChkFile;
@@ -201,11 +205,27 @@ extern "C"
       }
     }
 
-    /*
-    std::cout << "Pausing here, in Restart.cpp, line ~200" << std::endl;
-    std::cout << "Press enter to continue..." << std::endl;
-    std::cin.get();
-    */
+    // Read in t_wrt
+    std::getline( is, line );
+    {
+      std::istringstream lis( line );
+      int i = 0;
+      while( lis >> word )
+      {
+        t_wrt[i++] = std::stod( word );
+      }
+    }
+
+    // Read in t_chk
+    std::getline( is, line );
+    {
+      std::istringstream lis( line );
+      int i = 0;
+      while( lis >> word )
+      {
+        t_chk[i++] = std::stod( word );
+      }
+    }
 
     // Read in level 'iLevel' BoxArray from Header
     for( int iLevel = 0; iLevel <= finest_level[0]; ++iLevel )

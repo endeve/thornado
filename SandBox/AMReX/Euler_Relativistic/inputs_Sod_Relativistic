@@ -6,7 +6,8 @@ DEBUG = 0
 thornado.ProgramName = "Sod_Relativistic"
 
 thornado.t_end     = 0.4      # Final time
-thornado.dt_wrt    = 0.045
+thornado.dt_wrt    = 0.004    # Time increment to write plot-file
+thornado.dt_chk    = 0.04     # Time increment to write checkpoint-file
 thornado.Gamma     = 1.67     # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
@@ -14,14 +15,14 @@ thornado.CFL       = 0.5      # CFL number
 thornado.bcX       = 02 00 00 # Boundary conditions
 thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
 thornado.iCycleD   = 0010     # MOD this number to display info
-thornado.iCycleW   = 1000     # MOD this number to write plotfile
-thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
+thornado.iCycleW   = -1000     # MOD this number to write plotfile
+thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
+thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
 
 geometry.coord_sys     = 0           # CARTESIAN
 geometry.prob_lo       = 0.0 0.0 0.0 # Lower domain size
 geometry.prob_hi       = 1.0 1.0 1.0 # Upper domain size
 geometry.is_periodic   = 00 01 01    # Periodicity. 0 (no), 1 (yes)
-geometry.UseSourceTerm = 0           # Source term in timestep calculation
 
 amr.n_cell          = 256 01 01 # Number of cells in each dimension
 amr.max_grid_size   = 064 01 01 # nBoxes = n_cell / MaxGridSize

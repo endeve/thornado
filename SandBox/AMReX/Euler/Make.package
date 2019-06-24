@@ -1,8 +1,10 @@
-DEFINES += -DHYDRO_NONRELATIVISTIC
+# thornado VPATH_LOCATIONS:
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Euler
 
-f90EXE_sources += fmain.f90
+f90EXE_sources += TimersModule_AMReX.f90
 f90EXE_sources += MF_UtilitiesModule.f90
 f90EXE_sources += MF_InitializationModule.f90
+f90EXE_sources += InitializationModule.f90
 f90EXE_sources += FinalizationModule.f90
 f90EXE_sources += MF_GeometryModule.f90
 f90EXE_sources += MF_Euler_UtilitiesModule.f90
@@ -11,8 +13,6 @@ f90EXE_sources += MF_Euler_SlopeLimiterModule.f90
 f90EXE_sources += MF_Euler_PositivityLimiterModule.f90
 f90EXE_sources += MF_Euler_dgDiscretizationModule.f90
 f90EXE_sources += MF_TimeSteppingModule_SSPRK.f90
-
-# Checkpoint
 f90EXE_sources += MyAmrDataModule.f90
 f90EXE_sources += MyAmrModule.f90
 CEXE_sources   += Restart.cpp
@@ -79,7 +79,7 @@ f90EXE_sources += GravitySolutionModule_Newtonian_PointMass.f90
 
 # In THORNADO_DIR/Modules/Fields:
 
-f90EXE_sources += FluidFieldsModule.f90
+F90EXE_sources += FluidFieldsModule.F90
 
 # In THORNADO_DIR/Modules/Euler:
 

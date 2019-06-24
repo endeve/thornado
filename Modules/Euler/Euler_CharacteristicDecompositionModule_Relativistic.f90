@@ -245,7 +245,7 @@ CONTAINS
           WRITE(*,*)
 
           LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
-          WRITE(*,*) 'LAMBDA = inv(R) x dFdU x R:'
+!!$          WRITE(*,*) 'LAMBDA = inv(R) x dFdU x R:'
           DO i = 1, nCF
             WRITE(*,'(6ES11.2E3)') LAMBDA(i,1), LAMBDA(i,2), LAMBDA(i,3), &
                                    LAMBDA(i,4), LAMBDA(i,5), LAMBDA(i,6)
@@ -373,7 +373,7 @@ CONTAINS
           WRITE(*,*)
 
           LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
-          WRITE(*,*) 'LAMBDA = inv(R) x dFdU x R:'
+!!$          WRITE(*,*) 'LAMBDA = inv(R) x dFdU x R:'
           DO i = 1, nCF
             WRITE(*,'(6ES11.2E3)') LAMBDA(i,1), LAMBDA(i,2), LAMBDA(i,3), &
                                    LAMBDA(i,4), LAMBDA(i,5), LAMBDA(i,6)
@@ -396,43 +396,43 @@ CONTAINS
   END SUBROUTINE Euler_ComputeCharacteristicDecomposition_Relativistic
   
 
-  ! --- Find the inverse of a matrix, function definition from
-  !     http://fortranwiki.org/fortran/show/Matrix+inversion ---
-
-  ! Returns the inverse of a matrix calculated by finding the LU
-  ! decomposition.  Depends on LAPACK.
-  FUNCTION inv(A) RESULT(Ainv)
-    REAL(DP), DIMENSION(:,:), INTENT(in)     :: A
-    REAL(DP), DIMENSION(SIZE(A,1),SIZE(A,2)) :: Ainv
-
-    REAL(DP), DIMENSION(SIZE(A,1)) :: work  ! work array for LAPACK
-    INTEGER, DIMENSION(SIZE(A,1)) :: ipiv   ! pivot indices
-    INTEGER :: n, info
-
-    ! External procedures defined in LAPACK
-    EXTERNAL DGETRF
-    EXTERNAL DGETRI
-
-    ! Store A in Ainv to prevent it from being overwritten by LAPACK
-    Ainv = A
-    n = SIZE(A,1)
-
-    ! DGETRF computes an LU factorization of a general M-by-N matrix A
-    ! using partial pivoting with row interchanges.
-    CALL DGETRF(n, n, Ainv, n, ipiv, info)
-
-    IF (info /= 0) THEN
-       STOP 'Matrix is numerically singular!'
-    END IF
-
-    ! DGETRI computes the inverse of a matrix using the LU factorization
-    ! computed by DGETRF.
-    CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
-
-    IF (info /= 0) THEN
-       STOP 'Matrix inversion failed!'
-    END IF
-  END FUNCTION inv
+!!$  ! --- Find the inverse of a matrix, function definition from
+!!$  !     http://fortranwiki.org/fortran/show/Matrix+inversion ---
+!!$
+!!$  ! Returns the inverse of a matrix calculated by finding the LU
+!!$  ! decomposition.  Depends on LAPACK.
+!!$  FUNCTION inv(A) RESULT(Ainv)
+!!$    REAL(DP), DIMENSION(:,:), INTENT(in)     :: A
+!!$    REAL(DP), DIMENSION(SIZE(A,1),SIZE(A,2)) :: Ainv
+!!$
+!!$    REAL(DP), DIMENSION(SIZE(A,1)) :: work  ! work array for LAPACK
+!!$    INTEGER, DIMENSION(SIZE(A,1)) :: ipiv   ! pivot indices
+!!$    INTEGER :: n, info
+!!$
+!!$    ! External procedures defined in LAPACK
+!!$    EXTERNAL DGETRF
+!!$    EXTERNAL DGETRI
+!!$
+!!$    ! Store A in Ainv to prevent it from being overwritten by LAPACK
+!!$    Ainv = A
+!!$    n = SIZE(A,1)
+!!$
+!!$    ! DGETRF computes an LU factorization of a general M-by-N matrix A
+!!$    ! using partial pivoting with row interchanges.
+!!$    CALL DGETRF(n, n, Ainv, n, ipiv, info)
+!!$
+!!$    IF (info /= 0) THEN
+!!$       STOP 'Matrix is numerically singular!'
+!!$    END IF
+!!$
+!!$    ! DGETRI computes the inverse of a matrix using the LU factorization
+!!$    ! computed by DGETRF.
+!!$    CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
+!!$
+!!$    IF (info /= 0) THEN
+!!$       STOP 'Matrix inversion failed!'
+!!$    END IF
+!!$  END FUNCTION inv
 
   SUBROUTINE ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
 
@@ -696,7 +696,7 @@ CONTAINS
 
     END SELECT
 
-    dFdU = MATMUL( dFdV, inv(dUdV) )
+!!$    dFdU = MATMUL( dFdV, inv(dUdV) )
 
   END SUBROUTINE ComputeFluxJacConsMatrix
 

@@ -8,15 +8,26 @@ MODULE TimersModule_Euler
   IMPLICIT NONE
   PRIVATE
 
+  LOGICAL,  PUBLIC :: TimeIt_Euler
+
+  ! --- ApplicationDriver ---
+  REAL(DP), PUBLIC :: Timer_Euler_Initialize
+  REAL(DP), PUBLIC :: Timer_Euler_Finalize
   REAL(DP), PUBLIC :: Timer_Euler_InputOutput
-  REAL(DP), PUBLIC :: Timer_Euler_Inc   
+  REAL(DP), PUBLIC :: Timer_Euler_UpdateFluid
+  REAL(DP), PUBLIC :: Timer_Euler_ComputeTimeStep
+  REAL(DP), PUBLIC :: Timer_Euler_Program
+
+  ! --- Euler_dgDiscretizationModule ---
+  REAL(DP), PUBLIC :: Timer_Euler_Inc
   REAL(DP), PUBLIC :: Timer_Euler_Div_X1
   REAL(DP), PUBLIC :: Timer_Euler_Div_X2
   REAL(DP), PUBLIC :: Timer_Euler_Div_X3
   REAL(DP), PUBLIC :: Timer_Euler_Geom
   REAL(DP), PUBLIC :: Timer_Euler_Grav
   REAL(DP), PUBLIC :: Timer_Euler_CompPrim
-  REAL(DP), PUBLIC :: Timer_Euler_MV
+  REAL(DP), PUBLIC :: Timer_Euler_MV       ! --- Matrix-Vector multiplies ---
+  REAL(DP), PUBLIC :: Timer_Euler_RS       ! --- Riemann solvers ---
 
   PUBLIC :: InitializeTimers_Euler
   PUBLIC :: FinalizeTimers_Euler
@@ -24,20 +35,30 @@ MODULE TimersModule_Euler
   PUBLIC :: TimersStop_Euler
   PUBLIC :: TimersWtime_Euler
 
+  CHARACTER(24) :: OutputFMT = '(7x,A,ES13.6E3,A,F6.3,A)'
+
 CONTAINS
 
 
   SUBROUTINE InitializeTimers_Euler
 
-    Timer_Euler_Inc         = Zero
-    Timer_Euler_InputOutput = Zero
-    Timer_Euler_Inc         = Zero
-    Timer_Euler_Div_X1      = Zero
-    Timer_Euler_Div_X2      = Zero
-    Timer_Euler_Div_X3      = Zero
-    Timer_Euler_Geom        = Zero
-    Timer_Euler_Grav        = Zero
-    Timer_Euler_MV          = Zero
+    IF( .NOT. TimeIt_Euler ) RETURN
+
+    Timer_Euler_Initialize      = Zero
+    Timer_Euler_Finalize        = Zero
+    Timer_Euler_InputOutput     = Zero
+    Timer_Euler_UpdateFluid     = Zero
+    Timer_Euler_ComputeTimeStep = Zero
+    Timer_Euler_Program         = Zero
+
+    Timer_Euler_Inc    = Zero
+    Timer_Euler_Div_X1 = Zero
+    Timer_Euler_Div_X2 = Zero
+    Timer_Euler_Div_X3 = Zero
+    Timer_Euler_Geom   = Zero
+    Timer_Euler_Grav   = Zero
+    Timer_Euler_MV     = Zero
+    Timer_Euler_RS     = Zero
 
     RETURN
   END SUBROUTINE InitializeTimers_Euler
@@ -45,29 +66,74 @@ CONTAINS
 
   SUBROUTINE FinalizeTimers_Euler
 
+    REAL(DP) :: TotalTime
+
+    IF( .NOT. TimeIt_Euler ) RETURN
+
     WRITE(*,'(5x,A)') 'Timers Summary'
     WRITE(*,'(5x,A)') '--------------'
     WRITE(*,*)
+
+    WRITE(*,'(5x,A)') 'ApplicationDriver'
+    WRITE(*,'(5x,A)') '-----------------'
+    WRITE(*,OutputFMT) &
+      'Euler_Initialize:      ', Timer_Euler_Initialize, ' s = ', &
+      100.0d0 * Timer_Euler_Initialize / Timer_Euler_Program, ' %'
+    WRITE(*,OutputFMT) &
+      'Euler_UpdateFluid:     ', Timer_Euler_UpdateFluid, ' s = ', &
+      100.0d0 * Timer_Euler_UpdateFluid / Timer_Euler_Program, ' %'
+    WRITE(*,OutputFMT) &
+      'Euler_ComputeTimeStep: ', Timer_Euler_ComputeTimeStep, ' s = ', &
+      100.0d0 * Timer_Euler_ComputeTimeStep / Timer_Euler_Program, ' %'
+    WRITE(*,OutputFMT) &
+      'Euler_Finalize:        ', Timer_Euler_Finalize, ' s = ', &
+      100.0d0 * Timer_Euler_Finalize / Timer_Euler_Program, ' %'
+    WRITE(*,OutputFMT) &
+      'InputOutput:           ', Timer_Euler_InputOutput, ' s = ', &
+      100.0d0 * Timer_Euler_InputOutput / Timer_Euler_Program, ' %'
+    WRITE(*,*)
+
+    TotalTime = Timer_Euler_Initialize + Timer_Euler_Finalize &
+                  + Timer_Euler_UpdateFluid + Timer_Euler_ComputeTimeStep &
+                  + Timer_Euler_Finalize + Timer_Euler_InputOutput
+    WRITE(*,'(5x,A,ES13.6E3,A,F6.3,A)') &
+      'Total:                   ', TotalTime, ' s = ', &
+      100.0d0 * TotalTime / Timer_Euler_Program, ' %'
+    WRITE(*,*)
+
+    WRITE(*,'(5x,A)') 'Euler_dgDiscretizationModule'
+    WRITE(*,'(5x,A)') '----------------------------'
+    WRITE(*,OutputFMT) &
+      'Increment:              ', Timer_Euler_Inc, ' s = ', &
+      100.0d0 * Timer_Euler_Inc / Timer_Euler_Program, ' %'
+    WRITE(*,OutputFMT) &
+      '      Euler_Div_X1:     ', Timer_Euler_Div_X1, ' s = ', &
+      100.0d0 * Timer_Euler_Div_X1 / Timer_Euler_Program, ' %'
+    WRITE(*,OutputFMT) &
+      '      Euler_Div_X2:     ', Timer_Euler_Div_X2, ' s = ', &
+      100.0d0 * Timer_Euler_Div_X2 / Timer_Euler_Program, ' %'
+    WRITE(*,OutputFMT) &
+      '      Euler_Div_X3:     ', Timer_Euler_Div_X3, ' s = ', &
+      100.0d0 * Timer_Euler_Div_X3 / Timer_Euler_Program, ' %'
+    WRITE(*,OutputFMT) &
+      '      Euler_Geom:       ', Timer_Euler_Geom, ' s = ', &
+      100.0d0 * Timer_Euler_Geom / Timer_Euler_Program, ' %'
+    WRITE(*,OutputFMT) &
+      '      Euler_Grav:       ', Timer_Euler_Grav, ' s = ', &
+      100.0d0 * Timer_Euler_Grav / Timer_Euler_Program, ' %'
+    WRITE(*,OutputFMT) &
+      '        Euler_CompPrim: ', Timer_Euler_CompPrim, ' s = ', &
+      100.0d0 * Timer_Euler_CompPrim / Timer_Euler_Program, ' %'
+    WRITE(*,OutputFMT) &
+      '        Euler_MV:       ', Timer_Euler_MV, ' s = ', &
+      100.0d0 * Timer_Euler_MV / Timer_Euler_Program, ' %'
+    WRITE(*,OutputFMT) &
+      '        Euler_RS:       ', Timer_Euler_RS, ' s = ', &
+      100.0d0 * Timer_Euler_RS / Timer_Euler_Program, ' %'
+    WRITE(*,*)
     WRITE(*,'(7x,A,ES13.6E3,A)') &
-      'Increment:              ', Timer_Euler_Inc,         ' s'
-    WRITE(*,'(7x,A,ES13.6E3,A)') &
-      'InputOutput:            ', Timer_Euler_InputOutput, ' s'
-    WRITE(*,'(7x,A,ES13.6E3,A)') &
-      '    Euler_Div:          ', Timer_Euler_Inc,         ' s'
-    WRITE(*,'(7x,A,ES13.6E3,A)') &
-      '      Euler_Div_X1:     ', Timer_Euler_Div_X1,      ' s'
-    WRITE(*,'(7x,A,ES13.6E3,A)') &
-      '      Euler_Div_X2:     ', Timer_Euler_Div_X2,      ' s'
-    WRITE(*,'(7x,A,ES13.6E3,A)') &
-      '      Euler_Div_X3:     ', Timer_Euler_Div_X3,      ' s'
-    WRITE(*,'(7x,A,ES13.6E3,A)') &
-      '      Euler_Geom:       ', Timer_Euler_Geom,       ' s'
-    WRITE(*,'(7x,A,ES13.6E3,A)') &
-      '      Euler_Grav:       ', Timer_Euler_Grav,       ' s'
-    WRITE(*,'(7x,A,ES13.6E3,A)') &
-      '        Euler_CompPrim: ', Timer_Euler_CompPrim,   ' s'
-    WRITE(*,'(7x,A,ES13.6E3,A)') &
-      '        Euler_MV:       ', Timer_Euler_MV,         ' s'
+      'Program:          ', &
+      Timer_Euler_Program, ' s'
     WRITE(*,*)
 
     RETURN
@@ -78,6 +144,8 @@ CONTAINS
 
     REAL(DP), INTENT(inout) :: Timer
 
+    IF( .NOT. TimeIt_Euler ) RETURN
+
     Timer = Timer - TimersWtime_Euler()
 
     RETURN
@@ -87,6 +155,8 @@ CONTAINS
   SUBROUTINE TimersStop_Euler( Timer )
 
     REAL(DP), INTENT(inout) :: Timer
+
+    IF( .NOT. TimeIt_Euler ) RETURN
 
     Timer = Timer + TimersWtime_Euler()
 
@@ -99,6 +169,8 @@ CONTAINS
     INTEGER(I8) :: clock_read
     INTEGER(I8) :: clock_rate
     INTEGER(I8) :: clock_max
+
+    IF( .NOT. TimeIt_Euler ) RETURN
 
     CALL SYSTEM_CLOCK( clock_read, clock_rate, clock_max )
     TimersWtime_Euler = REAL( clock_read, DP ) / REAL( clock_rate, DP )

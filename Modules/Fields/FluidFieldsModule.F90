@@ -144,6 +144,22 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
+#if defined HYDRO_NUMERICALFLUX_HLL
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(5x,A)') 'Fluid Fields'
+      WRITE(*,*)
+      WRITE(*,'(5x,A)') 'Riemann Solver: HLL'
+    END IF
+#elif defined HYDRO_NUMERICALFLUX_HLLC
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(5x,A)') 'Fluid Fields'
+      WRITE(*,*)
+      WRITE(*,'(5x,A)') 'Riemann Solver: HLLC'
+    END IF
+#endif
+
     CALL CreateFluidFields_Conserved( nX, swX )
     CALL CreateFluidFields_Primitive( nX, swX )
     CALL CreateFluidFields_Auxiliary( nX, swX )

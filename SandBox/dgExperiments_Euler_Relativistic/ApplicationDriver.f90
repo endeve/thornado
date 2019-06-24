@@ -50,6 +50,16 @@ PROGRAM ApplicationDriver
     Euler_InitializeTally, &
     Euler_FinalizeTally, &
     Euler_ComputeTally
+  USE TimersModule_Euler, ONLY: &
+    TimeIt_Euler, &
+    InitializeTimers_Euler, FinalizeTimers_Euler, &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_Program, &
+    Timer_Euler_InputOutput, &
+    Timer_Euler_UpdateFluid, &
+    Timer_Euler_Initialize, &
+    Timer_Euler_Finalize, &
+    Timer_Euler_ComputeTimeStep
 
   IMPLICIT NONE
 
@@ -60,7 +70,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: SphericalRiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
-  LOGICAL       :: UseFixed_dt, UseSourceTerm
+  LOGICAL       :: UseFixed_dt
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
@@ -87,14 +97,19 @@ PROGRAM ApplicationDriver
   LOGICAL :: DEBUG = .FALSE.
   LOGICAL :: WriteGF = .FALSE., WriteFF = .TRUE.
   REAL(DP) :: wTime_UF, wTime_CTS, Timer_Evolution
+
+  TimeIt_Euler = .TRUE.
+  CALL InitializeTimers_Euler
+  CALL TimersStart_Euler( Timer_Euler_Program )
+  CALL TimersStart_Euler( Timer_Euler_Initialize )
   
-  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
 !  ProgramName = 'KelvinHelmholtz_Relativistic'
 !  ProgramName = 'KelvinHelmholtz'
-!  ProgramName = 'StandingAccretionShock'
+  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -106,7 +121,7 @@ PROGRAM ApplicationDriver
 
         CASE( 'Sod' )
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.4d0
+          t_end = 0.1d0
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'MBProblem1' )
@@ -274,7 +289,7 @@ PROGRAM ApplicationDriver
 
   END SELECT
 
-  nNodes = 3
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
@@ -293,7 +308,6 @@ PROGRAM ApplicationDriver
   Min_2 = 1.0d-13
 
   UseFixed_dt   = .FALSE.
-  UseSourceTerm = .TRUE.
 
   iCycleD = 10
 !!$  iCycleW = 1000; dt_wrt = -1.0d0
@@ -302,7 +316,7 @@ PROGRAM ApplicationDriver
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = 1
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -372,6 +386,8 @@ PROGRAM ApplicationDriver
              = TRIM( SphericalRiemannProblemName ), &
            nDetCells_Option = nDetCells, Eblast_Option = Eblast )
 
+  CALL TimersStop_Euler( Timer_Euler_Initialize )
+
   CALL Euler_ApplySlopeLimiter &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
@@ -382,8 +398,17 @@ PROGRAM ApplicationDriver
            uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
 
+  CALL TimersStart_Euler( Timer_Euler_InputOutput )
+  CALL Euler_ComputeFromConserved &
+         ( iX_B0, iX_E0, &
+           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+
   CALL WriteFieldsHDF &
        ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+  CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
   WRITE(*,*)
   WRITE(*,*)
@@ -409,12 +434,14 @@ PROGRAM ApplicationDriver
     IF( .NOT. UseFixed_dt )THEN
       IF( DEBUG ) wTime_CTS = MPI_WTIME( )
       IF( DEBUG ) WRITE(*,'(A)') 'AD: CALL ComputeTimeStep_GR'
+      CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
       CALL Euler_ComputeTimeStep &
              ( iX_B0, iX_E0, &
                uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                CFL = CFL / ( nDimsX * ( Two * nNodes - One ) ), &
-               TimeStep = dt, UseSourceTerm_Option = UseSourceTerm )
+               TimeStep = dt )
+      CALL TimersStop_Euler( Timer_Euler_ComputeTimeStep )
       IF( DEBUG ) wTime_CTS = MPI_WTIME( ) - wTime_CTS
     ELSE
       dt = CFL * ( xR(1) - xL(1) ) / DBLE( nX(1) )
@@ -448,8 +475,10 @@ PROGRAM ApplicationDriver
 
     END IF
 
+    CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, Euler_ComputeIncrement_DG_Explicit )
+    CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
     IF( iCycleW .GT. 0 )THEN
       IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
@@ -461,6 +490,7 @@ PROGRAM ApplicationDriver
       END IF
     END IF
 
+    CALL TimersStart_Euler( Timer_Euler_InputOutput )
     IF( wrt )THEN
 
       CALL Euler_ComputeFromConserved &
@@ -482,11 +512,13 @@ PROGRAM ApplicationDriver
       wrt = .FALSE.
 
     END IF
+    CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
   END DO
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
   WRITE(*,*)
-  WRITE(*,'(A,ES13.6E3)') 'Total evolution time: ', Timer_Evolution
+  WRITE(*,'(A,ES13.6E3,A)') 'Total evolution time: ', Timer_Evolution, ' s'
+  WRITE(*,*)
 
   CALL Euler_ComputeFromConserved &
          ( iX_B0, iX_E0, &
@@ -495,8 +527,10 @@ PROGRAM ApplicationDriver
            uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
 
+  CALL TimersStart_Euler( Timer_Euler_InputOutput )
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+  CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
   CALL Euler_ComputeTally &
          ( iX_B0, iX_E0, &
@@ -504,6 +538,7 @@ PROGRAM ApplicationDriver
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
+  CALL TimersStart_Euler( Timer_Euler_Finalize )
   CALL Euler_FinalizeTally
 
   CALL Euler_FinalizePositivityLimiter
@@ -519,6 +554,11 @@ PROGRAM ApplicationDriver
   CALL FinalizeEquationOfState
 
   CALL FinalizeProgram
+
+  CALL TimersStop_Euler( Timer_Euler_Finalize )
+  CALL TimersStop_Euler( Timer_Euler_Program )
+
+  CALL FinalizeTimers_Euler
 
 CONTAINS
 
@@ -555,13 +595,6 @@ CONTAINS
       WRITE(*,'(A)') 'Setting UseTroubledCellIndicator to .FALSE.'
       WRITE(*,*)
       UseTroubledCellIndicator = .FALSE.
-    END IF
-    IF( TRIM(CoordinateSystem) .EQ. 'CARTESIAN' .AND. UseSourceTerm )THEN
-      WRITE(*,*)
-      WRITE(*,'(A)') 'Cartesian coordinates demand that UseSourceTerm = .FALSE.'
-      WRITE(*,'(A)') 'Setting UseSourceTerm to .FALSE.'
-      WRITE(*,*)
-      UseSourceTerm = .FALSE.
     END IF
 
     ! --- Write program parameters to header file ---
@@ -602,7 +635,6 @@ CONTAINS
       WRITE(100,'(A,F4.2)')      'CFL:           ', CFL
       WRITE(100,'(A,I1.1)')      'nStagesSSPRK:  ', nStagesSSPRK
       WRITE(100,'(A,L)')         'UseFixed_dt:   ', UseFixed_dt
-      WRITE(100,'(A,L)')         'UseSourceTerm: ', UseSourceTerm
       WRITE(100,*)
       WRITE(100,'(A)')           'Slope Limiter'
       WRITE(100,'(A)')           '------------------'
