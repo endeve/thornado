@@ -1097,9 +1097,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-      !$ACC LOOP VECTOR
+      !$ACC LOOP WORKER
 #endif
       DO iE2 = iE_B, iE_E
+#if defined(THORNADO_OACC)
+        !$ACC LOOP VECTOR
+#endif
         DO iE1 = iE_B, iE2
           Phi_Out(iE1,iE2,iX) = C1 * Phi_In(iE1,iE2,iX) + C2 * Phi_Out(iE1,iE2,iX)
         END DO
@@ -1110,9 +1113,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-      !$ACC LOOP VECTOR
+      !$ACC LOOP WORKER
 #endif
       DO iE2 = iE_B, iE_E
+#if defined(THORNADO_OACC)
+        !$ACC LOOP VECTOR
+#endif
         DO iE1 = iE2+1, iE_E
           Phi_Out(iE1,iE2,iX) = Phi_Out(iE2,iE1,iX) * EXP( ( E(iE2) - E(iE1) ) / kT )
         END DO
