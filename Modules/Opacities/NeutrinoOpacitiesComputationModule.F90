@@ -2238,6 +2238,11 @@ CONTAINS
 
 
   PURE ELEMENTAL REAL(DP) FUNCTION FermiDirac( E, Mu, kT )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: E, Mu, kT
 
@@ -2253,6 +2258,11 @@ CONTAINS
 
 
   PURE ELEMENTAL REAL(DP) FUNCTION dFermiDiracdT( E, Mu, kT, dMudT, T )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: E, Mu, kT, dMudT, T
 
@@ -2270,6 +2280,11 @@ CONTAINS
 
 
   PURE ELEMENTAL REAL(DP) FUNCTION dFermiDiracdY( E, Mu, kT, dMudY, T )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: E, Mu, kT, dMudY, T
 
