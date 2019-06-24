@@ -49,7 +49,8 @@ MODULE NeutrinoOpacitiesComputationModule
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_1D3D_Custom_Point, &
     LogInterpolateSingleVariable_2D2D_Custom, &
-    LogInterpolateSingleVariable_2D2D_Custom_Point
+    LogInterpolateSingleVariable_2D2D_Custom_Point, &
+    LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Point
 
   ! ----------------------------------------------
 

@@ -33,6 +33,9 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     Timer_Im_ComputeOpacity, &
     Timer_Im_MapForward, &
     Timer_Im_Solve, &
+    Timer_Im_ComputeRate, &
+    Timer_Im_ComputeLS, &
+    Timer_Im_UpdateFP, &
     Timer_Im_CoupledAA, &
     Timer_Im_NestedAA, &
     Timer_Im_NestedNewton, &
@@ -190,6 +193,8 @@ CONTAINS
 
     CALL TimersStart( Timer_Implicit )
 
+    CALL TimersStart( Timer_Im_In )
+
     iE_B0 = iZ_B0(1);   iE_E0 = iZ_E0(1)
     iE_B1 = iZ_B1(1);   iE_E1 = iZ_E1(1)
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
@@ -223,11 +228,15 @@ CONTAINS
 
     END IF
 
+    CALL TimersStop( Timer_Im_In )
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      CALL TimersStart( Timer_Im_In )
+      ! --- Copy inputs to local arrays ---
+
+      CALL TimersStart( Timer_Im_MapForward )
 
       DO iCF = 1, nCF
 
@@ -235,6 +244,13 @@ CONTAINS
         dU_F(:,iX1,iX2,iX3,iCF) = CF_N(:,            iCF)
 
       END DO
+
+      ! --- Rearrange data to group energy nodes together ---
+
+      CALL MapForward_R_New &
+             ( iE_B0, iE_E0, U_R(:,iE_B0:iE_E0,iX1,iX2,iX3,:,:), CR_N )
+
+      ! --- Compute Primitive Quantities ---
 
       CALL ComputePrimitive_Euler &
              ( CF_N(:,iCF_D ), CF_N(:,iCF_S1), CF_N(:,iCF_S2), &
@@ -245,13 +261,21 @@ CONTAINS
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-      CALL TimersStart( Timer_Im_ComputeTS_Aux )
+      CALL TimersStop( Timer_Im_MapForward )
+
+      ! --- EOS Table Lookup ---
+
+      CALL TimersStart( Timer_Im_EosIn )
 
       CALL ComputeThermodynamicStates_Auxiliary_TABLE &
              ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
                AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
 
-      CALL TimersStop( Timer_Im_ComputeTS_Aux )
+      CALL TimersStop( Timer_Im_EosIn )
+
+      CALL TimersStart( Timer_Im_Solve )
+
+      ! --- Opacity Table Lookup ---
 
       CALL TimersStart( Timer_Im_ComputeOpacity )
 
@@ -277,17 +301,6 @@ CONTAINS
       Eta_Pair = Zero
 
       CALL TimersStop( Timer_Im_ComputeOpacity )
-
-      CALL TimersStart( Timer_Im_MapForward )
-
-      CALL MapForward_R_New &
-             ( iE_B0, iE_E0, U_R(:,iE_B0:iE_E0,iX1,iX2,iX3,:,:), CR_N )
-
-      CALL TimersStop( Timer_Im_MapForward )
-
-      CALL TimersStop( Timer_Im_In )
-
-      CALL TimersStart( Timer_Im_Solve )
 
       IF( nSpecies .EQ. 1 )THEN
 
@@ -513,35 +526,7 @@ CONTAINS
 
       CALL TimersStop( Timer_Im_Solve )
 
-      CALL TimersStart( Timer_Im_Out )
-
-      CALL TimersStart( Timer_Im_ComputeTS_Prim )
-
-      CALL ComputeThermodynamicStates_Primitive_TABLE &
-             ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
-               PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
-
-      CALL TimersStop( Timer_Im_ComputeTS_Prim )
-
-      CALL ComputeConserved_Euler &
-             ( PF_N(:,iPF_D ), PF_N(:,iPF_V1), PF_N(:,iPF_V2), &
-               PF_N(:,iPF_V3), PF_N(:,iPF_E ), PF_N(:,iPF_Ne), &
-               CF_N(:,iCF_D ), CF_N(:,iCF_S1), CF_N(:,iCF_S2), &
-               CF_N(:,iCF_S3), CF_N(:,iCF_E ), CF_N(:,iCF_Ne), &
-               GX(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
-
       CALL TimersStart( Timer_Im_Increment )
-
-      ! --- Conserved Fluid Increment ---
-
-      DO iCF = 1, nCF
-
-        dU_F(:,iX1,iX2,iX3,iCF) &
-          = ( CF_N(:,iCF) - dU_F(:,iX1,iX2,iX3,iCF) ) / dt
-
-      END DO
 
       ! --- Update Radiation Fields ---
 
@@ -592,18 +577,44 @@ CONTAINS
 
       CALL TimersStop( Timer_Im_Increment )
 
+      CALL TimersStart( Timer_Im_EosOut )
+
+      CALL ComputeThermodynamicStates_Primitive_TABLE &
+             ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
+               PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
+
+      CALL TimersStop( Timer_Im_EosOut )
+
+      CALL ComputeConserved_Euler &
+             ( PF_N(:,iPF_D ), PF_N(:,iPF_V1), PF_N(:,iPF_V2), &
+               PF_N(:,iPF_V3), PF_N(:,iPF_E ), PF_N(:,iPF_Ne), &
+               CF_N(:,iCF_D ), CF_N(:,iCF_S1), CF_N(:,iCF_S2), &
+               CF_N(:,iCF_S3), CF_N(:,iCF_E ), CF_N(:,iCF_Ne), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               GX(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
       CALL TimersStart( Timer_Im_MapBackward )
+
+      ! --- Conserved Fluid Increment ---
+
+      DO iCF = 1, nCF
+
+        dU_F(:,iX1,iX2,iX3,iCF) &
+          = ( CF_N(:,iCF) - dU_F(:,iX1,iX2,iX3,iCF) ) / dt
+
+      END DO
 
       CALL MapBackward_R_New &
              ( iE_B0, iE_E0, dU_R(:,iE_B0:iE_E0,iX1,iX2,iX3,:,:), dR_N )
 
       CALL TimersStop( Timer_Im_MapBackward )
 
-      CALL TimersStop( Timer_Im_Out )
+    END DO
+    END DO
+    END DO
 
-    END DO
-    END DO
-    END DO
+    CALL TimersStart( Timer_Im_Out )
 
     IF( ReportConvergenceData )THEN
 
@@ -628,6 +639,8 @@ CONTAINS
 
 
     CALL FinalizeCollisions_New
+
+    CALL TimersStop( Timer_Im_Out )
 
     CALL TimersStop( Timer_Implicit )
 
@@ -1524,6 +1537,8 @@ CONTAINS
 
       FVEC(iE,mk) = GVEC(iE,mk) - Unew(iE)
 
+      CALL TimersStart( Timer_Im_ComputeLS )
+
       DO i = 1, nE_G
         FVEC(OS_1+i,mk) = GVEC(OS_1+i,mk) - Jnew(i,1)
       END DO
@@ -1559,6 +1574,10 @@ CONTAINS
 
       END IF
 
+      CALL TimersStop( Timer_Im_ComputeLS )
+
+      CALL TimersStart( Timer_Im_UpdateFP )
+
       FVECm(iY)               = GVECm(iY)               - Unew(iY)
       FVECm(iE)               = GVECm(iE)               - Unew(iE)
       FVECm(OS_1+1:OS_1+nE_G) = GVECm(OS_1+1:OS_1+nE_G) - Jnew(:,1)
@@ -1593,6 +1612,8 @@ CONTAINS
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
              ( [ D ], [ E ], [ Y ], TMP ); T = TMP(1)
+
+      CALL TimersStop( Timer_Im_UpdateFP )
 
       IF( .NOT. CONVERGED )THEN
 
@@ -1708,6 +1729,7 @@ CONTAINS
     C(iY) = DOT_PRODUCT( W2_S, Jold(:,1) - Jold(:,2) ) / S_Y
     C(iE) = DOT_PRODUCT( W3_S, Jold(:,1) + Jold(:,2) ) / S_E
 
+    CALL TimersStart( Timer_Im_ComputeRate )
 
     ! --- Emissivities and Opacities ---
 
@@ -1758,6 +1780,8 @@ CONTAINS
     CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
                 W2_N * Jnew(:,1),       1, One,  Chi_Pair(:,2), 1 )
 
+    CALL TimersStop( Timer_Im_ComputeRate )
+
 
     k = 0
     CONVERGED = .FALSE.
@@ -1796,6 +1820,8 @@ CONTAINS
         FVEC(OS_2+i,mk) = GVEC(OS_2+i,mk) - Jnew(i,2)
       END DO
 
+      CALL TimersStart( Timer_Im_ComputeLS )
+
       IF( mk == 1 )THEN
 
         GVECm = GVEC(:,mk)
@@ -1822,6 +1848,10 @@ CONTAINS
         END DO
 
       END IF
+
+      CALL TimersStop( Timer_Im_ComputeLS )
+
+      CALL TimersStart( Timer_Im_UpdateFP )
 
       FVECm(iY)               = GVECm(iY)               - Unew(iY)
       FVECm(iE)               = GVECm(iE)               - Unew(iE)
@@ -1863,6 +1893,8 @@ CONTAINS
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
              ( [ D ], [ E ], [ Y ], TMP ); T = TMP(1)
 
+      CALL TimersStart( Timer_Im_UpdateFP )
+
       IF( .NOT. CONVERGED )THEN
 
         ! --- Recompute Equilibrium Distributions and Emissivities ---
@@ -1881,6 +1913,9 @@ CONTAINS
         Eta(:,2) = Chi(:,2) * J0(:,2)
 
         IF( .NOT. LagAllButJ0 )THEN
+
+          CALL TimersStart( Timer_Im_ComputeRate )
+
           ! --- NES Emissivities and Opacities ---
 
           ! --- Neutrino ---
@@ -1924,6 +1959,8 @@ CONTAINS
 
           CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
                       W2_N * Jnew(:,1),       1, One,  Chi_Pair(:,2), 1 )
+
+          CALL TimersStop( Timer_Im_ComputeRate )
 
         END IF
       END IF
@@ -2072,6 +2109,8 @@ CONTAINS
 
     IF( .NOT. (UsePreconditionerPair .OR. UsePreconditionerPairLagAllButJ0 ))THEN
 
+      CALL TimersStart( Timer_Im_ComputeRate )
+
       Eta(:,1) = Chi(:,1) * J0(:,1)
       Eta(:,2) = Chi(:,2) * J0(:,2)
 
@@ -2119,6 +2158,8 @@ CONTAINS
 
       CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
                   W2_N * Jnew(:,1),       1, One,  Chi_Pair(:,2), 1 )
+
+      CALL TimersStop( Timer_Im_ComputeRate )
 
       ! --- Update Neutrino Densities ---
 
@@ -2141,6 +2182,8 @@ CONTAINS
 
       ! --- Emissivities and Opacities ---
 
+      CALL TimersStart( Timer_Im_ComputeRate )
+
       Eta(:,1) = Chi(:,1) * J0(:,1)
       Eta(:,2) = Chi(:,2) * J0(:,2)
 
@@ -2187,6 +2230,8 @@ CONTAINS
 
       CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
                   W2_N * Jnew(:,1),       1, One,  Chi_Pair(:,2), 1 )
+
+      CALL TimersStop( Timer_Im_ComputeRate )
 
       ! --- Right-Hand Side Vectors ---
 
@@ -2217,6 +2262,8 @@ CONTAINS
         FVEC(OS_2+i,mk) = GVEC(OS_2+i,mk) - Jnew(i,2)
       END DO
 
+      CALL TimersStart( Timer_Im_ComputeLS )
+
       IF( mk == 1 )THEN
 
         GVECm = GVEC(:,mk)
@@ -2243,6 +2290,10 @@ CONTAINS
         END DO
 
       END IF
+
+      CALL TimersStop( Timer_Im_ComputeLS )
+
+      CALL TimersStart( Timer_Im_UpdateFP )
 
       FVECm(iY)               = GVECm(iY)               - Unew(iY)
       FVECm(iE)               = GVECm(iE)               - Unew(iE)
@@ -2285,9 +2336,12 @@ CONTAINS
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
              ( [ D ], [ E ], [ Y ], TMP ); T = TMP(1)
 
+      CALL TimersStop( Timer_Im_UpdateFP )
+
       IF( .NOT. CONVERGED )THEN
 
         ! --- Recompute Equilibrium Distributions and Emissivities ---
+
         CALL TimersStart( Timer_Im_ComputeOpacity )
 
         CALL ComputeEquilibriumDistributions_Point &
@@ -2317,6 +2371,7 @@ CONTAINS
         CALL ComputeNeutrinoOpacities_Pair_Point &
                ( 1, nE_G, E_N, D, T, Y, iS_2, 1, &
                  Phi_0_In_Pair(:,:,2), Phi_0_Ot_Pair(:,:,2) )
+
         CALL TimersStop( Timer_Im_ComputeOpacity )
 
 
@@ -2500,6 +2555,8 @@ CONTAINS
         k_inner  = k_inner + 1
         mk_inner = MIN( M_inner, k_inner )
 
+        CALL TimersStart( Timer_Im_ComputeRate )
+
         ! --- NES Emissivities and Opacities ---
 
         ! --- Neutrino ---
@@ -2544,6 +2601,8 @@ CONTAINS
         CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
                     W2_N * Jnew(:,1),       1, One,  Chi_Pair(:,2), 1 )
 
+        CALL TimersStop( Timer_Im_ComputeRate )
+
 
         ! --- Right-Hand Side Vectors (inner) ---
 
@@ -2565,6 +2624,7 @@ CONTAINS
           FVEC_inner(OS_2+i,mk_inner) = GVEC_inner(OS_2+i,mk_inner) - Jnew(i,2)
         END DO
 
+        CALL TimersStart( Timer_Im_ComputeLS )
 
         IF( mk_inner == 1 )THEN
 
@@ -2594,6 +2654,10 @@ CONTAINS
 
         END IF
 
+        CALL TimersStop( Timer_Im_ComputeLS )
+
+        CALL TimersStart( Timer_Im_UpdateFP )
+
         FVECm_inner(OS_1+1:OS_1+nE_G) = GVECm_inner(OS_1+1:OS_1+nE_G) - Jnew(:,1)
         FVECm_inner(OS_2+1:OS_2+nE_G) = GVECm_inner(OS_2+1:OS_2+nE_G) - Jnew(:,2)
 
@@ -2617,7 +2681,11 @@ CONTAINS
 
         END IF
 
+        CALL TimersStop( Timer_Im_UpdateFP )
+
         ! IF( .NOT. CONVERGED_INNER )THEN
+        !
+        !   CALL TimersStart( Timer_Im_ComputeRate )
         !
         !   ! --- NES Emissivities and Opacities ---
         !
@@ -2662,6 +2730,9 @@ CONTAINS
         !
         !   CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
         !               W2_N * Jnew(:,1),       1, One,  Chi_Pair(:,2), 1 )
+        !
+        !   CALL TimersStop( Timer_Im_ComputeRate )
+        !
         ! END IF
 
 
@@ -2681,6 +2752,8 @@ CONTAINS
       FVEC(iY,mk) = GVEC(iY,mk) - Unew(iY)
 
       FVEC(iE,mk) = GVEC(iE,mk) - Unew(iE)
+
+      CALL TimersStart( Timer_Im_ComputeLS )
 
       IF( mk == 1 )THEN
 
@@ -2741,6 +2814,10 @@ CONTAINS
 
       END IF
 
+      CALL TimersStop( Timer_Im_ComputeLS )
+
+      CALL TimersStart( Timer_Im_UpdateFP )
+
       FVECm(iY)               = GVECm(iY)               - Unew(iY)
       FVECm(iE)               = GVECm(iE)               - Unew(iE)
 
@@ -2777,10 +2854,11 @@ CONTAINS
 
       ! PRINT*, "U = ", Unew
 
-
-
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
              ( [ D ], [ E ], [ Y ], TMP ); T = TMP(1)
+
+      CALL TimersStop( Timer_Im_UpdateFP )
+
       IF( .NOT. CONVERGED )THEN
 
         CALL TimersStart( Timer_Im_ComputeOpacity )
@@ -3007,6 +3085,8 @@ CONTAINS
 
         k_inner = k_inner + 1
 
+        CALL TimersStart( Timer_Im_ComputeRate )
+
         ! --- NES Emissivities and Opacities ---
 
         ! --- Neutrino ---
@@ -3051,6 +3131,8 @@ CONTAINS
         CALL DGEMV( 'T', nE_G, nE_G, One, Phi_0_Ot_Pair(:,:,2), nE_G, &
                    W2_N * Jnew(:,1),       1, One,  Chi_Pair(:,2), 1 )
 
+        CALL TimersStop( Timer_Im_ComputeRate )
+
         ! --- Right-Hand Side Vectors (inner) ---
 
         GVEC_inner(OS_1+1:OS_1+nE_G) &
@@ -3062,6 +3144,8 @@ CONTAINS
           = ( One + dt * ( Chi_NES(:,2) + Chi_Pair(:,2) ) * S_J(:,2) ) &
               * Jnew(:,2) - ( Jold(:,2) &
               + dt * ( Eta(:,2) + Eta_NES(:,2) + Eta_Pair(:,2) ) ) * S_J(:,2)
+
+        CALL TimersStart( Timer_Im_ComputeLS )
 
         ! --- Jacobian matrix ---
 
@@ -3117,6 +3201,8 @@ CONTAINS
 
         CALL DGESV( 2*nE_G, 1, GJAC_inner, 2*nE_G, IPIV, GVEC_inner, 2*nE_G, INFO )
 
+        CALL TimersStop( Timer_Im_ComputeLS )
+
         GVECm_inner(OS_1+1:OS_1+nE_G) = Jnew(:,1) - GVEC_inner(OS_1+1:OS_1+nE_G)
         GVECm_inner(OS_2+1:OS_2+nE_G) = Jnew(:,2) - GVEC_inner(OS_2+1:OS_2+nE_G)
 
@@ -3152,6 +3238,8 @@ CONTAINS
       FVEC(iY,mk) = GVEC(iY,mk) - Unew(iY)
 
       FVEC(iE,mk) = GVEC(iE,mk) - Unew(iE)
+
+      CALL TimersStart( Timer_Im_ComputeLS )
 
       IF( mk == 1 )THEN
 
@@ -3213,6 +3301,10 @@ CONTAINS
 
       END IF
 
+      CALL TimersStop( Timer_Im_ComputeLS )
+
+      CALL TimersStart( Timer_Im_UpdateFP )
+
       FVECm(iY) = GVECm(iY) - Unew(iY)
       FVECm(iE) = GVECm(iE) - Unew(iE)
 
@@ -3250,6 +3342,8 @@ CONTAINS
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
              ( [ D ], [ E ], [ Y ], TMP ); T = TMP(1)
+
+      CALL TimersStop( Timer_Im_UpdateFP )
 
       IF( .NOT. CONVERGED )THEN
 
@@ -3482,6 +3576,8 @@ CONTAINS
 
       k = k + 1
 
+      CALL TimersStart( Timer_Im_ComputeRate )
+
       ! --- Electron Capture Emissivities ---
 
       Eta    = Chi * J0
@@ -3588,6 +3684,8 @@ CONTAINS
       CALL DGEMV( 'T', nE_G, nE_G, One, dPhi_0_Ot_Pair_dE(:,:,2), nE_G, &
                   W2_N * Jnew(:,1), 1, One, dChi_Pair_dE(:,2), 1 )
 
+      CALL TimersStop( Timer_Im_ComputeRate )
+
       IF( k == 1 )THEN
 
         ! --- Update Initial Guess for Neutrinos and Antineutrinos ---
@@ -3596,6 +3694,8 @@ CONTAINS
                / ( One + dt * ( Chi + Chi_NES + Chi_Pair ) )
 
       END IF
+
+      CALL TimersStart( Timer_Im_ComputeLS )
 
       ! --- Solution Vector ---
 
@@ -3760,6 +3860,8 @@ CONTAINS
 
       CALL DGESV( 2+2*nE_G, 1, FJAC, 2+2*nE_G, IPIV, DVEC, 2+2*nE_G, INFO )
 
+      CALL TimersStop( Timer_Im_ComputeLS )
+
       IF( INFO .NE. 0 )THEN
         PRINT*, "INFO = ", INFO
         STOP
@@ -3779,6 +3881,8 @@ CONTAINS
 !!$      ENORM([DVEC(iE)]), &
 !!$      ENORM(DVEC(OS_1+1:OS_1+nE_G)), &
 !!$      ENORM(DVEC(OS_2+1:OS_2+nE_G))
+
+      CALL TimersStart( Timer_Im_UpdateFP )
 
       IF( ENORM( [ DVEC(iY) ] ) <= Rtol * ENORM( [ Yold ] ) .AND. &
           ENORM( [ DVEC(iE) ] ) <= Rtol * ENORM( [ Eold ] ) .AND. &
@@ -3808,6 +3912,8 @@ CONTAINS
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
              ( [ D ], [ E ], [ Y ], TMP ); T = TMP(1)
+
+      CALL TimersStop( Timer_Im_UpdateFP )
 
       IF( .NOT. CONVERGED )THEN
 

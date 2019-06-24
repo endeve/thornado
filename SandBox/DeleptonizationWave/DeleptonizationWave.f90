@@ -110,8 +110,8 @@ PROGRAM DeleptonizationWave
   ZoomE = 1.183081754893913_DP
 
   t       = 0.0_DP
-  t_end   = 5.0d-2 * Millisecond
-  dt_wrt  = 5.0d-2 * Millisecond
+  t_end   = 1.0d-2 * Millisecond
+  dt_wrt  = 1.0d-2 * Millisecond
   iCycleD = 1
 
   CALL InitializeProgram &
@@ -325,10 +325,6 @@ PROGRAM DeleptonizationWave
     IF( wrt )THEN
 
       CALL TimersStart( Timer_InputOutput )
-
-      CALL ComputeFromConserved_Fluid
-
-      CALL ComputeFromConserved_Radiation
 
       CALL WriteFieldsHDF &
              ( Time = t, &
