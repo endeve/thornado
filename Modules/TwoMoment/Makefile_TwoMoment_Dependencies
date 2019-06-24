@@ -97,6 +97,7 @@ TwoMoment_DiscretizationModule_Streaming_GPU.o: \
 TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
   KindModule.o \
   UnitsModule.o \
+  UtilitiesModule.o \
   ProgramHeaderModule.o \
   TimersModule.o \
   ReferenceElementModule.o \

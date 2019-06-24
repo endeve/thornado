@@ -1,8 +1,8 @@
 PROGRAM DeleptonizationWave1D
 
   USE KindModule, ONLY: &
-    DP, SqrtTiny, Half, &
-    Pi, TwoPi, Zero
+    DP, SqrtTiny, Half, Zero, &
+    Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -62,16 +62,15 @@ PROGRAM DeleptonizationWave1D
   USE FluidFieldsModule, ONLY: &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uAF, iAF_T, iAF_Ye, iAF_E, iAF_Me, iAF_Mp, iAF_Mn
+    uAF, iAF_P, iAF_T,  iAF_Ye, iAF_S,  iAF_E, iAF_Me, &
+    iAF_Mp, iAF_Mn, iAF_Xp, iAF_Xn, iAF_Xa, iAF_Xh, iAF_Gm
   USE RadiationFieldsModule, ONLY: &
     uCR, rhsCR
   USE EquationOfStateModule_TABLE, ONLY: &
     InitializeEquationOfState_TABLE, &
     FinalizeEquationOfState_TABLE, &
     ComputeThermodynamicStates_Auxiliary_TABLE, &
-    ComputeElectronChemicalPotential_Table, &
-    ComputeProtonChemicalPotential_Table, &
-    ComputeNeutronChemicalPotential_Table
+    ApplyEquationOfState_TABLE
   USE OpacityModule_TABLE, ONLY: &
     InitializeOpacities_TABLE, &
     FinalizeOpacities_TABLE
@@ -89,13 +88,17 @@ PROGRAM DeleptonizationWave1D
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment, &
     ApplyPositivityLimiter_TwoMoment
+  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
+    InitializeNonlinearSolverTally, &
+    FinalizeNonlinearSolverTally, &
+    WriteNonlinearSolverTally
 
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
 
   LOGICAL  :: wrt
-  INTEGER  :: iCycle, iCycleD
+  INTEGER  :: iCycle, iCycleD, iCycleT
   INTEGER  :: nE, nX(3), nNodes, nSpecies
   REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt
   REAL(DP) :: eL, eR, ZoomE
@@ -104,7 +107,7 @@ PROGRAM DeleptonizationWave1D
   nNodes   = 2
   nSpecies = 2
 
-  nX = [ 512, 1, 1 ]
+  nX = [ 64, 1, 1 ]
   xL = [ 0.0_DP           , 0.0_DP, 0.0_DP ]
   xR = [ 1.0d2 * Kilometer, Pi    , TwoPi  ]
 
@@ -114,9 +117,10 @@ PROGRAM DeleptonizationWave1D
   ZoomE = 1.183081754893913_DP
 
   t       = 0.0_DP
-  t_end   = 1.0d-3 * Millisecond
-  dt_wrt  = 1.0d-3 * Millisecond
+  t_end   = 5.0d-0 * Millisecond
+  dt_wrt  = 5.0d-2 * Millisecond
   iCycleD = 1
+  iCycleT = 10
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -261,6 +265,8 @@ PROGRAM DeleptonizationWave1D
 
   CALL TimersStop( Timer_Initialize )
 
+  CALL InitializeNonlinearSolverTally
+
   ! --- Evolve ---
 
   t_wrt = dt_wrt
@@ -336,6 +342,12 @@ PROGRAM DeleptonizationWave1D
 
     END IF
 
+    IF( MOD( iCycle, iCycleT ) == 0 )THEN
+
+      CALL WriteNonlinearSolverTally( t )
+
+    END IF
+
   END DO
 
   ! --- Write Final Solution ---
@@ -362,6 +374,8 @@ PROGRAM DeleptonizationWave1D
   ! --- Finalize ---
 
   CALL FinalizeTimers
+
+  CALL FinalizeNonlinearSolverTally
 
   CALL FinalizeReferenceElementX
 
@@ -419,23 +433,21 @@ CONTAINS
                uAF(:,iX1,iX2,iX3,iAF_E ), &
                uAF(:,iX1,iX2,iX3,iAF_Ye) )
 
-      CALL ComputeElectronChemicalPotential_Table &
+      CALL ApplyEquationOfState_TABLE &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), &
                uAF(:,iX1,iX2,iX3,iAF_T ), &
                uAF(:,iX1,iX2,iX3,iAF_Ye), &
-               uAF(:,iX1,iX2,iX3,iAF_Me) )
-
-      CALL ComputeProtonChemicalPotential_Table &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
-               uAF(:,iX1,iX2,iX3,iAF_T ), &
-               uAF(:,iX1,iX2,iX3,iAF_Ye), &
-               uAF(:,iX1,iX2,iX3,iAF_Mp) )
-
-      CALL ComputeNeutronChemicalPotential_Table &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
-               uAF(:,iX1,iX2,iX3,iAF_T ), &
-               uAF(:,iX1,iX2,iX3,iAF_Ye), &
-               uAF(:,iX1,iX2,iX3,iAF_Mn) )
+               uAF(:,iX1,iX2,iX3,iAF_P ), &
+               uAF(:,iX1,iX2,iX3,iAF_S ), &
+               uAF(:,iX1,iX2,iX3,iAF_E ), &
+               uAF(:,iX1,iX2,iX3,iAF_Me), &
+               uAF(:,iX1,iX2,iX3,iAF_Mp), &
+               uAF(:,iX1,iX2,iX3,iAF_Mn), &
+               uAF(:,iX1,iX2,iX3,iAF_Xp), &
+               uAF(:,iX1,iX2,iX3,iAF_Xn), &
+               uAF(:,iX1,iX2,iX3,iAF_Xa), &
+               uAF(:,iX1,iX2,iX3,iAF_Xh), &
+               uAF(:,iX1,iX2,iX3,iAF_Gm) )
 
     END DO
     END DO
