@@ -151,40 +151,32 @@ CONTAINS
 
 
   SUBROUTINE Euler_ComputeTimeStep &
-    ( iX_B, iX_E, G, U, CFL, TimeStep, UseSourceTerm_Option )
+    ( iX_B0, iX_E0, G, U, CFL, TimeStep )
 
     INTEGER,  INTENT(in)          :: &
-      iX_B(3), iX_E(3)
+      iX_B0(3), iX_E0(3)
     REAL(DP), INTENT(in)          :: &
-      G(:,iX_B(1):,iX_B(2):,iX_B(3):,:), &
-      U(:,iX_B(1):,iX_B(2):,iX_B(3):,:)
+      G(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:), &
+      U(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
     REAL(DP), INTENT(in)          :: &
       CFL
     REAL(DP), INTENT(out)         :: &
       TimeStep
-    LOGICAL, INTENT(in), OPTIONAL :: &
-      UseSourceTerm_Option
-
-    LOGICAL :: UseSourceTerm
-
-    UseSourceTerm = .FALSE.
-    IF( PRESENT( UseSourceTerm_Option ) ) &
-      UseSourceTerm = UseSourceTerm_Option
 
 #ifdef HYDRO_NONRELATIVISTIC
 
     CALL Euler_ComputeTimeStep_NonRelativistic &
-           ( iX_B, iX_E, G, U, CFL, TimeStep )
+           ( iX_B0, iX_E0, G, U, CFL, TimeStep )
 
 #elif HYDRO_RELATIVISTIC
 
     CALL Euler_ComputeTimeStep_Relativistic &
-           ( iX_B, iX_E, G, U, CFL, TimeStep, UseSourceTerm )
+           ( iX_B0, iX_E0, G, U, CFL, TimeStep )
 
 #else
 
     CALL Euler_ComputeTimeStep_NonRelativistic &
-           ( iX_B, iX_E, G, U, CFL, TimeStep )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
 
 #endif
 

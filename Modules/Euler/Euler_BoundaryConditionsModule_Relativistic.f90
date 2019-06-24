@@ -99,7 +99,7 @@ CONTAINS
     INTEGER  :: iCF, iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX_0
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX1
-    REAL(DP) :: D_0, E_0, R_0, R_q 
+    REAL(DP) :: D_0, E_0, R_0, R_q
 
     SELECT CASE ( bcX(1) )
 
@@ -297,33 +297,34 @@ CONTAINS
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
 
-          ! --- Inner Boundary ---
+            ! --- Inner Boundary ---
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+            DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+            DO iNodeX1 = 1, nNodesX(1)
 
-            iNodeX   = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-            iNodeX_0 = NodeNumberX( 1,       iNodeX2, iNodeX3 )
+              iNodeX   = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+              iNodeX_0 = NodeNumberX( 1,       iNodeX2, iNodeX3 )
 
-            D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
-            E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
+              D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
+              E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
 
-            R_q = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNodeX1 )
+              R_q = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNodeX1 )
 
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
-              = D_0 * ( R_0 / R_q ) ** 3
+              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+                = D_0 * ( R_0 / R_q )**3
 
-            U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
-              = E_0 * ( R_0 / R_q ) ** 4
+              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+                = E_0 * ( R_0 / R_q )**4
 
-          END DO
-          END DO
-          END DO
+            END DO
+            END DO
+            END DO
 
         END DO
         END DO
         END DO
+
       END IF
 
     CASE DEFAULT

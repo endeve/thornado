@@ -15,6 +15,8 @@ PROGRAM main
     WriteFieldsAMReX_Checkpoint, &
     ReadCheckpointFile!, &
 !$$    MakeMF_Diff
+  USE UnitsModule,            ONLY: &
+    Millisecond
 
   ! --- Local Modules ---
   USE MF_Euler_UtilitiesModule,         ONLY: &
@@ -36,6 +38,7 @@ PROGRAM main
     MF_uGF, MF_uCF, MF_uPF, MF_uAF
   USE InitializationModule
   USE MyAmrModule
+  USE TimersModule_AMReX
 
   IMPLICIT NONE
 
@@ -43,6 +46,9 @@ PROGRAM main
 
   INTEGER          :: iErr
   REAL(amrex_real) :: Timer_Evolution
+
+  TimeIt_AMReX = .TRUE.
+  CALL InitializeTimers_AMReX
 
 !!$  CALL MakeMF_Diff( 0, 2929 )
 
@@ -57,7 +63,7 @@ PROGRAM main
 
     StepNo = StepNo + 1
 
-    CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt, UseSourceTerm )
+    CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt )
 
     IF( ALL( t + dt .LE. t_end ) )THEN
       t = t + dt
@@ -67,39 +73,21 @@ PROGRAM main
     END IF
 
     IF( amrex_parallel_ioprocessor() )THEN
-      IF( MOD( StepNo(0), iCycleD ) .EQ. 0 ) &
-        WRITE(*,'(A5,A,I6.6,A,ES13.6E3,A,ES13.6E3)') &
-          '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
+      IF( MOD( StepNo(0), iCycleD ) .EQ. 0 )THEN
+        IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' )THEN
+          WRITE(*,'(A8,A,I6.6,A,ES13.6E3,A,ES13.6E3,A)') &
+            '', 'StepNo: ', StepNo(0), &
+            ', t = ', t / Millisecond, ' ms, dt = ', dt(0) / Millisecond, ' ms'
+        ELSE
+          WRITE(*,'(A8,A,I6.6,A,ES13.6E3,A,ES13.6E3)') &
+            '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
+        END IF
+      END IF
     END IF
 
     CALL MF_UpdateFluid_SSPRK &
            ( t, dt, MF_uGF, MF_uCF, &
              GEOM, MF_Euler_ComputeIncrement )
-
-    IF( iCycleW .GT. 0 )THEN
-      IF( MOD( StepNo(0), iCycleW ) .EQ. 0 ) &
-        wrt = .TRUE.
-    ELSE
-      IF( ALL( t + dt .GT. t_wrt ) )THEN
-        t_wrt = t_wrt + dt_wrt
-        wrt   = .TRUE.
-      END IF
-    END IF
-
-    IF( wrt )THEN
-
-      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-      CALL WriteFieldsAMReX_PlotFile &
-             ( t(0), StepNo, &
-               MF_uGF_Option = MF_uGF, &
-               MF_uCF_Option = MF_uCF, &
-               MF_uPF_Option = MF_uPF, &
-               MF_uAF_Option = MF_uAF )
-
-      wrt = .FALSE.
-
-    END IF
 
     IF( iCycleChk .GT. 0 )THEN
       IF( MOD( StepNo(0), iCycleChk ) .EQ. 0 ) &
@@ -115,6 +103,7 @@ PROGRAM main
 
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
+      CALL TimersStart_AMReX( Timer_AMReX_InputOutput )
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t, t_wrt, t_chk, &
                MF_uGF % BA % P, &
@@ -122,9 +111,37 @@ PROGRAM main
                MF_uCF % P, &
                MF_uPF % P, &
                MF_uAF % P )
+      CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
 
       chk = .FALSE.
      
+    END IF
+
+    IF( iCycleW .GT. 0 )THEN
+      IF( MOD( StepNo(0), iCycleW ) .EQ. 0 ) &
+        wrt = .TRUE.
+    ELSE
+      IF( ALL( t + dt .GT. t_wrt ) )THEN
+        t_wrt = t_wrt + dt_wrt
+        wrt   = .TRUE.
+      END IF
+    END IF
+
+    IF( wrt )THEN
+
+      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+      CALL TimersStart_AMReX( Timer_AMReX_InputOutput )
+      CALL WriteFieldsAMReX_PlotFile &
+             ( t(0), StepNo, &
+               MF_uGF_Option = MF_uGF, &
+               MF_uCF_Option = MF_uCF, &
+               MF_uPF_Option = MF_uPF, &
+               MF_uAF_Option = MF_uAF )
+      CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
+
+      wrt = .FALSE.
+
     END IF
 
 !!$    IF( StepNo(0) .EQ. 10 ) STOP 'StepNo(0) = 10'
@@ -136,13 +153,7 @@ PROGRAM main
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   StepNo = StepNo + 1
-  CALL WriteFieldsAMReX_PlotFile &
-         ( t(0), StepNo, &
-           MF_uGF_Option = MF_uGF, &
-           MF_uCF_Option = MF_uCF, &
-           MF_uPF_Option = MF_uPF, &
-           MF_uAF_Option = MF_uAF )
-
+  CALL TimersStart_AMReX( Timer_AMReX_InputOutput )
   CALL WriteFieldsAMReX_Checkpoint &
          ( StepNo, nLevels, dt, t, t_wrt, t_chk, &
            MF_uGF % BA % P, &
@@ -150,6 +161,16 @@ PROGRAM main
            MF_uCF % P, &
            MF_uPF % P, &
            MF_uAF % P )
+  CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
+
+  CALL TimersStart_AMReX( Timer_AMReX_InputOutput )
+  CALL WriteFieldsAMReX_PlotFile &
+         ( t(0), StepNo, &
+           MF_uGF_Option = MF_uGF, &
+           MF_uCF_Option = MF_uCF, &
+           MF_uPF_Option = MF_uPF, &
+           MF_uAF_Option = MF_uAF )
+  CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
 
   IF( amrex_parallel_ioprocessor() )THEN
     WRITE(*,*)
@@ -160,6 +181,8 @@ PROGRAM main
   ! --- Finalize everything ---
 
   CALL FinalizeProgram( GEOM, MeshX )
+
+  CALL FinalizeTimers_AMReX
 
 END PROGRAM main
 

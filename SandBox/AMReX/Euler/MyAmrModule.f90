@@ -1,13 +1,13 @@
 MODULE MyAmrModule
 
   ! --- AMReX Modules ---
-  USE amrex_fort_module, ONLY: &
+  USE amrex_fort_module,      ONLY: &
     amrex_real, amrex_spacedim
-  USE amrex_base_module, ONLY: &
+  USE amrex_base_module,      ONLY: &
     amrex_init, &
     amrex_initialized, &
     amrex_parallel_ioprocessor
-  USE amrex_amr_module, ONLY: &
+  USE amrex_amr_module,       ONLY: &
     amrex_amrcore_init, &
     amrex_amrcore_initialized, &
     amrex_is_all_periodic, &
@@ -16,20 +16,22 @@ MODULE MyAmrModule
     amrex_parmparse, &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
-  USE amrex_boxarray_module, ONLY: &
+  USE amrex_boxarray_module,  ONLY: &
     amrex_boxarray
   USE amrex_distromap_module, ONLY: &
     amrex_distromap
-  USE amrex_geometry_module, ONLY: &
+  USE amrex_geometry_module,  ONLY: &
     amrex_geometry
 
   ! --- thornado Modules ---
-  USE ProgramHeaderModule, ONLY: &
+  USE ProgramHeaderModule,  ONLY: &
     InitializeProgramHeader, nDOFX, nDimsX
-  USE FluidFieldsModule, ONLY: &
+  USE FluidFieldsModule,    ONLY: &
     nCF, nPF, nAF
   USE GeometryFieldsModule, ONLY: &
     nGF
+  USE UnitsModule,          ONLY: &
+    Millisecond, Kilometer
 
   ! --- Local Modules ---
   USE MyAmrDataModule
@@ -45,7 +47,7 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName
   INTEGER,          ALLOCATABLE, SAVE :: StepNo(:)
   CHARACTER(LEN=32),             SAVE :: Coordsys
-  LOGICAL,                       SAVE :: DEBUG, UseSourceTerm
+  LOGICAL,                       SAVE :: DEBUG
 
   ! --- Slope limiter ---
   LOGICAL          :: UseSlopeLimiter
@@ -119,7 +121,6 @@ CONTAINS
       CALL PP % get   ( 'coord_sys',  coord_sys )
       CALL PP % getarr( 'prob_lo',    xL )
       CALL PP % getarr( 'prob_hi',    xR )
-      CALL PP % query( 'UseSourceTerm', UseSourceTerm )
     CALL amrex_parmparse_destroy( PP )
     IF     ( coord_sys .EQ. 0 )THEN
       CoordSys = 'CARTESIAN'
@@ -129,6 +130,14 @@ CONTAINS
       CoordSys = 'SPHERICAL'
     ELSE
       STOP 'Invalid choice for coord_sys'
+    END IF
+
+    IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' )THEN
+      t_end  = t_end  * Millisecond
+      dt_wrt = dt_wrt * Millisecond
+      dt_chk = dt_chk * Millisecond
+      xL(1)  = xL(1)  * Kilometer
+      xR(1)  = xR(1)  * Kilometer
     END IF
 
     ! --- Parameters amr.*
