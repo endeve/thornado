@@ -13,10 +13,10 @@ thornado.dt_chk    = 10.0   # Time increment to write checkpoint-file [ms]
 thornado.Gamma     = 1.3333333333333333     # Ideal Gas EoS Gamma
 thornado.nNodes    = 1        # Number of DG nodes in each active dimension
 thornado.nStages   = 1        # Number of SSP-RK stages for time integration
-thornado.CFL       = 0.1      # CFL number
-thornado.bcX       = 11 03 00 # Boundary conditions
-thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
-thornado.iCycleD   = 01     # MOD this number to display info
+thornado.CFL       = 0.05      # CFL number
+thornado.bcX       = 11 00 00 # Boundary conditions
+thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
+thornado.iCycleD   = 0100     # MOD this number to display info
 thornado.iCycleW   = -05     # MOD this number to write plotfile
 thornado.iCycleChk = -10     # MOD this number to write checkpoint file
 thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
@@ -24,10 +24,10 @@ thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for cl
 geometry.coord_sys     = 2 # SPHERICAL
 geometry.prob_lo       = 40.0   0.0               0.0               # Lower domain size [km,rad,rad]
 geometry.prob_hi       = 360.0 3.141592653589793 6.283185307179586 # Upper domain size [km,rad,rad]
-geometry.is_periodic   = 00 00 01    # Periodicity. 0 (no), 1 (yes)
+geometry.is_periodic   = 00 01 01    # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell          = 256 32 01 # Number of cells in each dimension
-amr.max_grid_size   = 256 32 01 # nBoxes = n_cell / MaxGridSize
+amr.n_cell          = 256 01 01 # Number of cells in each dimension
+amr.max_grid_size   = 256 01 01 # nBoxes = n_cell / MaxGridSize
 amr.max_level       = 0          # Maximum number of refinement levels
 amr.blocking_factor = 1          # Must be a factor of max_grid_size
 

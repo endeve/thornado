@@ -315,8 +315,8 @@ CONTAINS
     REAL(DP) :: Mn, dMndD, dMndT, dMndY
     REAL(DP) :: M,  dMdD,  dMdT,  dMdY
     REAL(DP) :: U,  dUdD,  dUdT,  dUdY
-    REAL(DP) :: df0dT(iE_B:iE_E)
-    REAL(DP) :: df0dM(iE_B:iE_E)
+    REAL(DP) :: df0dT_Y(iE_B:iE_E)
+    REAL(DP) :: df0dY_T(iE_B:iE_E)
 
     CALL ComputeElectronChemicalPotential_TABLE &
            ( D, T, Y, Me, dMedD, dMedT, dMedY )
@@ -358,20 +358,15 @@ CONTAINS
 
     DO iE = iE_B, iE_E
 
-      Exponent = ( E(iE) - M ) / kT
-      Exponent = MIN( MAX( Exponent, - Log1d100 ), + Log1d100 )
+      f0(iE) = FermiDirac( E(iE), M, kT )
 
-      f0(iE) = One / ( EXP( Exponent ) + One )
-
-      df0dT(iE) = - f0(iE)**2 * M / ( kT * T )
-
-      df0dM(iE) =   f0(iE)**2 / kT
+      df0dT_Y(iE) = dFermiDiracdT( E(iE), M, kT, dMdT, T ) ! Constant T
+      df0dY_T(iE) = dFermiDiracdY( E(iE), M, kT, dMdY, T ) ! Constant Y
 
     END DO
 
-    df0dU = ( df0dT + dMdT * df0dM ) / dUdT
-
-    df0dY = dMdY * df0dM - dUdY * df0dU
+    df0dU = df0dT_Y / dUdT
+    df0dY = df0dY_T - df0dT_Y * dUdY / dUdT
 
   END SUBROUTINE ComputeEquilibriumDistributionAndDerivatives_Point
 

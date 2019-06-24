@@ -15,9 +15,10 @@ MODULE InitializationModule
     uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
-  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    Euler_ComputeConserved_NonRelativistic
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    uAF, iAF_P
+  USE Euler_UtilitiesModule, ONLY: &
+    Euler_ComputeConserved
 
   IMPLICIT NONE
   PRIVATE
@@ -121,7 +122,7 @@ CONTAINS
 
           END DO
 
-          CALL Euler_ComputeConserved_NonRelativistic &
+          CALL Euler_ComputeConserved &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                    uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                    uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -130,7 +131,8 @@ CONTAINS
                    uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                   uAF(:,iX1,iX2,iX3,iAF_P) )
 
         END DO
       END DO
@@ -182,7 +184,7 @@ CONTAINS
 
           END DO
 
-          CALL Euler_ComputeConserved_NonRelativistic &
+          CALL Euler_ComputeConserved &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                    uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                    uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -191,7 +193,8 @@ CONTAINS
                    uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                   uAF(:,iX1,iX2,iX3,iAF_P) )
  
         END DO
       END DO
