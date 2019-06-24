@@ -2,7 +2,7 @@ PROGRAM DeleptonizationWave1D
 
   USE KindModule, ONLY: &
     DP, SqrtTiny, Half, &
-    Pi, TwoPi
+    Pi, TwoPi, Zero
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
