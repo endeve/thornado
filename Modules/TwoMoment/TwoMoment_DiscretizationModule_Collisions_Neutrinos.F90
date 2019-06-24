@@ -29,10 +29,10 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     TimersStop, &
     Timer_Implicit, &
     Timer_Im_In, &
-    Timer_Im_ComputeTS_Aux, &
-    Timer_Im_ComputeOpacity, &
     Timer_Im_MapForward, &
+    Timer_Im_EosIn, &
     Timer_Im_Solve, &
+    Timer_Im_ComputeOpacity, &
     Timer_Im_ComputeRate, &
     Timer_Im_ComputeLS, &
     Timer_Im_UpdateFP, &
@@ -43,10 +43,10 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     Timer_Im_NestInner, &
     Timer_Im_EmAb_FP, &
     Timer_Im_Presolve, &
-    Timer_Im_Out, &
-    Timer_Im_ComputeTS_Prim, &
     Timer_Im_Increment, &
-    Timer_Im_MapBackward
+    Timer_Im_EosOut, &
+    Timer_Im_MapBackward, &
+    Timer_Im_Out
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
   USE ReferenceElementModuleX, ONLY: &
@@ -83,6 +83,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     ComputeNeutrinoOpacities_EC_Point, &
     ComputeNeutrinoOpacities_EC_Points, &
     ComputeNeutrinoOpacities_ES_Point, &
+    ComputeNeutrinoOpacities_ES_Points, &
     ComputeNeutrinoOpacities_NES_Point, &
     ComputeNeutrinoOpacitiesAndDerivatives_NES_Point, &
     ComputeNeutrinoOpacities_Pair_Point, &
@@ -125,7 +126,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INTEGER, ALLOCATABLE :: AveIterationsInner_K(:,:,:)
 
   LOGICAL, PARAMETER :: SolveMatter = .TRUE.
-  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .TRUE.
+  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .FALSE.
   LOGICAL, PARAMETER :: UsePreconditionerPair = .FALSE.
   LOGICAL, PARAMETER :: UsePreconditionerPairLagAllButJ0 = .FALSE.
 

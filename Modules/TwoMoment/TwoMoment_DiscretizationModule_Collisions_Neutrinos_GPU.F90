@@ -103,7 +103,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   LOGICAL, PARAMETER :: ReportConvergenceData = .TRUE.
   INTEGER  :: Iterations_Min
   INTEGER  :: Iterations_Max
-  INTEGER  :: Iterations_Ave
+  REAL(DP) :: Iterations_Ave
 
   ! --- Solver Tally ---
 
@@ -776,8 +776,8 @@ CONTAINS
 
     ! --- Local Variables ---
 
-    REAL(DP), DIMENSION(              1:nX_G) :: Yold, S_Y, C_Y, Unew_Y
-    REAL(DP), DIMENSION(              1:nX_G) :: Eold, S_E, C_E, Unew_E
+    REAL(DP), DIMENSION(              1:nX_G) :: Yold, S_Y, C_Y, Unew_Y, GVEC_Y
+    REAL(DP), DIMENSION(              1:nX_G) :: Eold, S_E, C_E, Unew_E, GVEC_E
     REAL(DP), DIMENSION(1:nE_G,       1:nX_G) :: Jold_1, Jnew_1
     REAL(DP), DIMENSION(1:nE_G,       1:nX_G) :: Jold_2, Jnew_2
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
@@ -816,8 +816,8 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: CONVERGED, ITERATE ) &
-    !$OMP MAP( alloc: Yold, S_Y, C_Y, Unew_Y, &
-    !$OMP             Eold, S_E, C_E, Unew_E, &
+    !$OMP MAP( alloc: Yold, S_Y, C_Y, Unew_Y, GVEC_Y, &
+    !$OMP             Eold, S_E, C_E, Unew_E, GVEC_E, &
     !$OMP             Jold_1, Jnew_1, JNRM_1, &
     !$OMP             Jold_2, Jnew_2, JNRM_2, &
     !$OMP             Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
@@ -834,8 +834,8 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( CONVERGED, ITERATE ) &
-    !$ACC CREATE( Yold, S_Y, C_Y, Unew_Y, &
-    !$ACC         Eold, S_E, C_E, Unew_E, &
+    !$ACC CREATE( Yold, S_Y, C_Y, Unew_Y, GVEC_Y, &
+    !$ACC         Eold, S_E, C_E, Unew_E, GVEC_E, &
     !$ACC         Jold_1, Jnew_1, JNRM_1, &
     !$ACC         Jold_2, Jnew_2, JNRM_2, &
     !$ACC         Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
@@ -871,12 +871,11 @@ CONTAINS
     !$ACC PRESENT( Jold_1, Jold_2, J_1, J_2 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( iX_P )
 #endif
     DO iN_X = 1, nX_G
       DO iN_E = 1, nE_G
-        Jold_1(iN_E,iN_X) = J_1(iN_E,iX_P)
-        Jold_2(iN_E,iN_X) = J_2(iN_E,iX_P)
+        Jold_1(iN_E,iN_X) = J_1(iN_E,iN_X)
+        Jold_2(iN_E,iN_X) = J_2(iN_E,iN_X)
       END DO
     END DO
 
@@ -993,8 +992,8 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
       DO iN_E = 1, nE_G
-        Jnew_1(iN_E,iN_X) = J_1(iN_E,iX_P) ! --- Initial Guess
-        Jnew_2(iN_E,iN_X) = J_2(iN_E,iX_P) ! --- Initial Guess
+        Jnew_1(iN_E,iN_X) = J_1(iN_E,iN_X) ! --- Initial Guess
+        Jnew_2(iN_E,iN_X) = J_2(iN_E,iN_X) ! --- Initial Guess
       END DO
     END DO
 
@@ -1214,7 +1213,7 @@ CONTAINS
 
       CALL ComputeRHS_FP &
              ( ITERATE, Mk, iY, iE, OS_1, OS_2, &
-               C_Y, S_Y, Unew_Y, C_E, S_E, Unew_E, &
+               C_Y, S_Y, Unew_Y, GVEC_Y, C_E, S_E, Unew_E, GVEC_E, &
                dt, Jold_1, Jold_2, Jnew_1, Jnew_2, &
                Chi_1, Chi_2, J0_1, J0_2, &
                Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
@@ -1311,7 +1310,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRIVATE( iX_P ) &
-      !$ACC PRESENT( ITERATE, UnpackedToPackedTable, T, T_P )
+      !$ACC PRESENT( ITERATE, PackedToUnpackedTable, T, T_P )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD &
       !$OMP PRIVATE( iX_P )
@@ -1400,16 +1399,16 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
       DO iN_E = 1, nE_G
-        J_1(iN_E,iN_X) = Jnew_1(iN_E,iX_P)
-        J_2(iN_E,iN_X) = Jnew_2(iN_E,iX_P)
+        J_1(iN_E,iN_X) = Jnew_1(iN_E,iN_X)
+        J_2(iN_E,iN_X) = Jnew_2(iN_E,iN_X)
       END DO
     END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: CONVERGED, ITERATE, &
-    !$OMP               Yold, S_Y, C_Y, Unew_Y, &
-    !$OMP               Eold, S_E, C_E, Unew_E, &
+    !$OMP               Yold, S_Y, C_Y, Unew_Y, GVEC_Y, &
+    !$OMP               Eold, S_E, C_E, Unew_E, GVEC_E, &
     !$OMP               Jold_1, Jnew_1, JNRM_1, &
     !$OMP               Jold_2, Jnew_2, JNRM_2, &
     !$OMP               Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
@@ -1426,8 +1425,8 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC DELETE( CONVERGED, ITERATE, &
-    !$ACC         Yold, S_Y, C_Y, Unew_Y, &
-    !$ACC         Eold, S_E, C_E, Unew_E, &
+    !$ACC         Yold, S_Y, C_Y, Unew_Y, GVEC_Y, &
+    !$ACC         Eold, S_E, C_E, Unew_E, GVEC_E, &
     !$ACC         Jold_1, Jnew_1, JNRM_1, &
     !$ACC         Jold_2, Jnew_2, JNRM_2, &
     !$ACC         Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
@@ -1546,7 +1545,7 @@ CONTAINS
 
   SUBROUTINE ComputeRHS_FP &
     ( MASK, Mk, iY, iE, OS_1, OS_2, &
-      C_Y, S_Y, Unew_Y, C_E, S_E, Unew_E, &
+      C_Y, S_Y, Unew_Y, G_Y, C_E, S_E, Unew_E, G_E, &
       dt, Jold_1, Jold_2, Jnew_1, Jnew_2, &
       Chi_1, Chi_2, J0_1, J0_2, &
       Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
@@ -1558,9 +1557,11 @@ CONTAINS
     REAL(DP), INTENT(in)    :: C_Y       (1:nX_G)
     REAL(DP), INTENT(in)    :: S_Y       (1:nX_G)
     REAL(DP), INTENT(in)    :: Unew_Y    (1:nX_G)
+    REAL(DP), INTENT(out)   :: G_Y       (1:nX_G)
     REAL(DP), INTENT(in)    :: C_E       (1:nX_G)
     REAL(DP), INTENT(in)    :: S_E       (1:nX_G)
     REAL(DP), INTENT(in)    :: Unew_E    (1:nX_G)
+    REAL(DP), INTENT(out)   :: G_E       (1:nX_G)
     REAL(DP), INTENT(in)    :: dt
     REAL(DP), INTENT(in)    :: Jold_1    (1:nE_G,1:nX_G)
     REAL(DP), INTENT(in)    :: Jold_2    (1:nE_G,1:nX_G)
@@ -1578,40 +1579,43 @@ CONTAINS
     REAL(DP), INTENT(in)    :: Chi_Pair_2(1:nE_G,1:nX_G)
     REAL(DP), INTENT(in)    :: Eta_Pair_1(1:nE_G,1:nX_G)
     REAL(DP), INTENT(in)    :: Eta_Pair_2(1:nE_G,1:nX_G)
-    REAL(DP), INTENT(inout) :: Fm (1:n_FP,1:nX_G)
-    REAL(DP), INTENT(inout) :: Gm (1:n_FP,1:nX_G)
-    REAL(DP), INTENT(inout) :: F  (1:n_FP,1:M_FP,1:nX_G)
-    REAL(DP), INTENT(inout) :: G  (1:n_FP,1:M_FP,1:nX_G)
+    REAL(DP), INTENT(inout) :: Fm        (1:n_FP,1:nX_G)
+    REAL(DP), INTENT(inout) :: Gm        (1:n_FP,1:nX_G)
+    REAL(DP), INTENT(inout) :: F         (1:n_FP,1:M_FP,1:nX_G)
+    REAL(DP), INTENT(inout) :: G         (1:n_FP,1:M_FP,1:nX_G)
 
     REAL(DP) :: Eta, Eta_T, Chi_T
     INTEGER  :: iN_E, iN_X, iFP
 
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, Jnew_1, nE_G, W2_S, 1, Zero, Gm(iY,1), n_FP )
+      ( 'T', nE_G, nX_G, +One, Jnew_1, nE_G, W2_S, 1, Zero, G_Y, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, -One, Jnew_2, nE_G, W2_S, 1,  One, Gm(iY,1), n_FP )
+      ( 'T', nE_G, nX_G, -One, Jnew_2, nE_G, W2_S, 1,  One, G_Y, 1 )
 
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, Jnew_1, nE_G, W3_S, 1, Zero, Gm(iE,1), n_FP )
+      ( 'T', nE_G, nX_G, +One, Jnew_1, nE_G, W3_S, 1, Zero, G_E, 1 )
     CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, +One, Jnew_2, nE_G, W3_S, 1,  One, Gm(iE,1), n_FP )
+      ( 'T', nE_G, nX_G, +One, Jnew_2, nE_G, W3_S, 1,  One, G_E, 1 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( MASK, C_Y, S_Y, Unew_Y, C_E, S_E, Unew_E, Fm, Gm )
+    !$ACC PRESENT( MASK, C_Y, S_Y, Unew_Y, G_Y, C_E, S_E, Unew_E, G_E, Fm, Gm )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD
 #endif
     DO iN_X = 1, nX_G
       IF ( MASK(iN_X) ) THEN
 
-        Gm(iY,iN_X) = One + C_Y(iN_X) - Gm(iY,iN_X) * S_Y(iN_X)
-        Gm(iE,iN_X) = One + C_E(iN_X) - Gm(iE,iN_X) * S_E(iN_X)
+        G_Y(iN_X) = One + C_Y(iN_X) - G_Y(iN_X) * S_Y(iN_X)
+        G_E(iN_X) = One + C_E(iN_X) - G_E(iN_X) * S_E(iN_X)
 
-        Fm(iY,iN_X) = Gm(iY,iN_X) - Unew_Y(iN_X)
-        Fm(iE,iN_X) = Gm(iE,iN_X) - Unew_E(iN_X)
+        Gm(iY,iN_X) = G_Y(iN_X)
+        Gm(iE,iN_X) = G_E(iN_X)
+
+        Fm(iY,iN_X) = G_Y(iN_X) - Unew_Y(iN_X)
+        Fm(iE,iN_X) = G_E(iN_X) - Unew_E(iN_X)
 
       END IF
     END DO
@@ -2320,6 +2324,7 @@ CONTAINS
 
   END SUBROUTINE ComputePrimitive_Euler_Scalar
 
+
   SUBROUTINE ComputePrimitive_Euler_Vector &
     ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
@@ -2328,7 +2333,9 @@ CONTAINS
     REAL(DP), INTENT(out) :: D(:), V_1(:), V_2(:), V_3(:), E(:), De(:)
     REAL(DP), INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
 
-    INTEGER :: iN_X
+    INTEGER :: iN_X, nX_P
+
+    nX_P = SIZE(N)
 
     ! --- Three-Velocity: Index Up   ---
     ! --- Three-Momentum: Index Down ---
@@ -2343,7 +2350,7 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD
 #endif
-    DO iN_X = 1, SIZE(N)
+    DO iN_X = 1, nX_P
 
       D  (iN_X) = N(iN_X)
       V_1(iN_X) = S_1(iN_X) / ( Gm_dd_11(iN_X) * N(iN_X) )
@@ -2386,6 +2393,7 @@ CONTAINS
 
   END SUBROUTINE ComputeConserved_Euler_Scalar
 
+
   SUBROUTINE ComputeConserved_Euler_Vector &
     ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
@@ -2394,7 +2402,9 @@ CONTAINS
     REAL(DP), INTENT(out) :: N(:), S_1(:), S_2(:), S_3(:), G(:), Ne(:)
     REAL(DP), INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
 
-    INTEGER :: iN_X
+    INTEGER :: iN_X, nX_P
+
+    nX_P = SIZE(N)
 
     ! --- Three-Velocity: Index Up   ---
     ! --- Three-Momentum: Index Down ---
@@ -2409,7 +2419,7 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD
 #endif
-    DO iN_X = 1, SIZE(D)
+    DO iN_X = 1, nX_P
 
       N  (iN_X) = D(iN_X)
       S_1(iN_X) = D(iN_X) * Gm_dd_11(iN_X) * V_1(iN_X)
