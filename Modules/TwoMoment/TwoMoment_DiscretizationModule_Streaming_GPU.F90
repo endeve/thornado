@@ -141,10 +141,10 @@ CONTAINS
     ASSOCIATE ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
                 dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
 
-    CALL TimersStart( Timer_Ex_In )
-
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
+
+    CALL TimersStart( Timer_Ex_In )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -157,6 +157,8 @@ CONTAINS
     !$ACC         dZ1, dZ2, dZ3, dZ4 ) &
     !$ACC CREATE( dU )
 #endif
+
+    CALL TimersStop( Timer_Ex_In )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
@@ -182,7 +184,6 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_In )
     CALL TimersStart( Timer_Ex_Div )
     CALL TimersStart( Timer_Ex_Div_X1 )
 
@@ -203,7 +204,6 @@ CONTAINS
 
     CALL TimersStop( Timer_Ex_Div_X3 )
     CALL TimersStop( Timer_Ex_Div )
-    CALL TimersStart( Timer_Ex_Out )
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -241,6 +241,8 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStart( Timer_Ex_Out )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( dU )
 
@@ -255,10 +257,10 @@ CONTAINS
     !$ACC         dZ1, dZ2, dZ3, dZ4, dU )
 #endif
 
+    CALL TimersStop( Timer_Ex_Out )
+
     CALL ComputeIncrement_Geometry &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
-
-    CALL TimersStop( Timer_Ex_Out )
 
     END ASSOCIATE
 
