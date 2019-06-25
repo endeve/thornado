@@ -58,7 +58,7 @@ Relaxation.o: \
    InitializationModule.o \
    InputOutputModuleHDF.o \
    TwoMoment_ClosureModule.o \
-   TwoMoment_DiscretizationModule_Collisions_Neutrinos_GPU.o \
+   TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
    Relaxation.f90
 
 InitializationModule.o: \
