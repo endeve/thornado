@@ -45,21 +45,6 @@ DeleptonizationWave1D: \
 	DeleptonizationWave1D.o \
 	$(LIBRARIES)
 
-TimeSteppingModule_Castro.o: \
-	KindModule.o \
-	ProgramHeaderModule.o \
-	TimersModule.o \
-	FluidFieldsModule.o \
-	RadiationFieldsModule.o \
-	TwoMoment_DiscretizationModule_Streaming_GPU.o \
-	TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
-	TwoMoment_PositivityLimiterModule_GPU.o \
-	PhysicalConstantsModule.o \
-	GeometryFieldsModuleE.o \
-	GeometryFieldsModule.o \
-	$(THORNADO_DIR)/SandBox/Interface_CASTRO/TimeSteppingModule_Castro.f90
-	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(INCLUDE) $(SUFFIX_f90) $<
-
 clean:
 	rm -f *.o *.mod *.ld
 
@@ -137,3 +122,17 @@ InitializationModule.o: \
   EquationOfStateModule_TABLE.o \
   TwoMoment_UtilitiesModule.o \
   InitializationModule.f90
+
+TimeSteppingModule_Castro.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TimersModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_DiscretizationModule_Streaming_GPU.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
+  TwoMoment_PositivityLimiterModule_GPU.o \
+  PhysicalConstantsModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  TimeSteppingModule_Castro.f90
