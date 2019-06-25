@@ -11,6 +11,8 @@ include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
 
+VPATH += $(THORNADO_DIR)/SandBox/Interface_CASTRO
+
 #DEFINES += $(PP)-DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
