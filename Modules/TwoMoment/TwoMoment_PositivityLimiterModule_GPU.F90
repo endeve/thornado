@@ -303,6 +303,8 @@ CONTAINS
     nNeg_1 = 0
     nNeg_2 = 0
 
+    CALL TimersStart( Timer_PL_In )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: iZ_B0, iZ_E0, NegativeStates, &
@@ -321,7 +323,7 @@ CONTAINS
     !$ACC         Min_K_S, Max_K_S, Theta_1_S, Min_Gam_S, Theta_2_S )
 #endif
 
-    CALL TimersStart( Timer_PL_In )
+    CALL TimersStop( Timer_PL_In )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -347,8 +349,6 @@ CONTAINS
         END DO
       END DO
     END DO
-
-    CALL TimersStop( Timer_PL_In )
 
     ! --- Point Values ---
 
@@ -682,8 +682,6 @@ CONTAINS
     END IF
 #endif
 
-    CALL TimersStart( Timer_PL_Out )
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
@@ -717,7 +715,7 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStop( Timer_PL_Out )
+    CALL TimersStart( Timer_PL_Out )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -736,6 +734,8 @@ CONTAINS
     !$ACC         U_K_N, U_K_G1, U_K_G2, U_K_G3, &
     !$ACC         Min_K_S, Max_K_S, Theta_1_S, Min_Gam_S, Theta_2_S )
 #endif
+
+    CALL TimersStop( Timer_PL_Out )
 
     IF ( ANY( iError > 0 ) ) THEN
       DO iS = 1, nSpecies
