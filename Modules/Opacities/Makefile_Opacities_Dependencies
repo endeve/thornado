@@ -35,6 +35,8 @@ NeutrinoOpacitiesComputationModule.o: \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
+  DeviceModule.o \
+  LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   MeshModule.o \
   EquationOfStateModule_TABLE.o \
