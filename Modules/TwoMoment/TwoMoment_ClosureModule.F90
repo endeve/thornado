@@ -293,6 +293,13 @@ CONTAINS
       = Third + Two * Third * ( One - D ) * ( One - Two * D ) &
           * ClosurePolynomial_KE_BL( FF / MAX( One - D, SqrtTiny ) )
 
+#elif  MOMENT_CLOSURE_LEVERMORE
+
+    ! --- Levermore Closure ---
+
+    EddingtonFactor &
+      = Third * ( 5.0_dp - Two * SQRT ( Four - Three * FF * FF) )
+
 #endif
 
     RETURN
@@ -358,6 +365,16 @@ CONTAINS
     dEFdFF_D &
       = Two * Third * ( One - Two * D ) &
           * ClosurePolynomialDerivative_KE_BL( XX )
+
+#elif MOMENT_CLOSURE_LEVERMORE
+
+    ! --- Levermore Closure ---
+
+    dEFdD_FF &
+      = ZERO
+
+    dEFdFF_D &
+      = Two * FF / SQRT( Four - Three * FF * FF )
 
 #endif
 
