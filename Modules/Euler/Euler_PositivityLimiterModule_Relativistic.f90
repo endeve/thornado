@@ -38,7 +38,7 @@ MODULE Euler_PositivityLimiterModule_Relativistic
   INTEGER, PARAMETER    :: nPS = 7  ! Number of Positive Point Sets
   INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
   INTEGER               :: nPT      ! Total number of Positive Points
-  REAL(DP)              :: Min_1, Min_2, Den
+  REAL(DP)              :: Min_1, Min_2
   REAL(DP), ALLOCATABLE :: U_PP(:,:), G_PP(:,:)
 
 CONTAINS
@@ -125,7 +125,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP, iNodeX
     REAL(DP) :: Min_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), G_K(nGF), q(nPT)
     REAL(DP) :: SSq, alpha
@@ -189,8 +189,10 @@ CONTAINS
 
           ! --- Compute q using cell-averages ---
           CALL Computeq( 1, U_K, G_K, q_K )
-          IF( q_K(1) .LT. Zero )THEN
-            WRITE(*,'(A)') 'WARNING: q_K < 0'
+          IF( ANY( q_K .LT. Zero ) )THEN
+            WRITE(*,'(A)') &
+              'Warning: Euler_ApplyPositivityLimiterModule_Relativistic'
+            WRITE(*,'(A)') 'q_K < 0. Ensuring positive q_K.'
             ! --- Ensure positive tau ---
             IF( U_K(iCF_E) .LT. Zero )THEN
               WRITE(*,'(A,ES24.16E3)') 'tau: ', U_K(iCF_E)
@@ -230,10 +232,11 @@ CONTAINS
         CALL Computeq( nPt, U_PP, G_PP, q )
         IF( ANY( q .LT. 0.0d0 ) )THEN
           WRITE(*,*)
-          WRITE(*,'(A)') 'WARNING: q < 0 AFTER limiting. Setting U to U_K'
+          WRITE(*,'(A)') &
+            'Warning: Euler_ApplyPositivityLimiterModule_Relativistic'
+          WRITE(*,'(A)') 'q < 0 AFTER limiting. Setting U to U_K'
           WRITE(*,'(A,3I4.3)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
-          WRITE(*,*) 'q = ', q
-          ! --- Limit all variables towards cell-average ---
+          ! --- Set all variables to cell-average ---
           DO iCF = 1, nCF
             U_q(:,iCF) = U_K(iCF)
           END DO
@@ -243,7 +246,9 @@ CONTAINS
         U(:,iX1,iX2,iX3,:) = U_q
 
       ELSE
-        WRITE(*,'(A)') 'WARNING: PosLimMod: Cell-average of density <= Min_1'
+        WRITE(*,'(A)') &
+            'Warning: Euler_ApplyPositivityLimiterModule_Relativistic'
+        WRITE(*,'(A)') 'Cell-average of density <= Min_1'
         ! --- Compute cell-averages ---
         DO iCF = 1, nCF
           U_K(iCF) &
@@ -253,17 +258,24 @@ CONTAINS
         END DO
       END IF
 
-      ! --- Debugging ---
+      ! --- Ensure that all q > 0 ---
       DO iCF = 1, nCF
         CALL ComputePointValues( U(:,iX1,iX2,iX3,iCF), U_PP(:,iCF) )
       END DO
       CALL Computeq( nPT, U_PP, G_PP, q )
-      IF( ANY( q .LT. 0.0d0 ) )THEN
+      IF( ANY( q .LT. Zero ) )THEN
+        WRITE(*,'(A)') &
+            'FATAL ERROR: Euler_ApplyPositivityLimiterModule_Relativistic'
         WRITE(*,'(A)') 'q < 0 AFTER limiting'
         WRITE(*,'(A,3I4.3)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
-        WRITE(*,*) 'q = ', q
+        DO iNodeX = 1, nDOFX
+          WRITE(*,'(A,I2.2,ES25.16E3)') &
+            'iNodeX, q(iNodeX) = ', iNodeX, q(iNodeX)
+        END DO
         WRITE(*,*) 'Theta_2 = ', Theta_2
         DO iCF = 1, nCF
+          WRITE(*,*)
+          WRITE(*,'(A,I1)') 'iCF = ', iCF
           WRITE(*,*) U(:,iX1,iX2,iX3,iCF)
         END DO
         STOP ''
