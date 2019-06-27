@@ -381,7 +381,7 @@ CONTAINS
     CALL TimersStart( Timer_PL_Theta_1 )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(5) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
     !$OMP PRIVATE( Min_K, Max_K, Theta_1 ) &
     !$OMP REDUCTION( min: MinTheta_1 )
 #elif defined(THORNADO_OACC)
@@ -511,7 +511,7 @@ CONTAINS
     CALL TimersStart( Timer_PL_Theta_2 )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(5) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
     !$OMP PRIVATE( Gam, Min_Gam, Theta_2, Theta_P ) &
     !$OMP REDUCTION( min: MinTheta_2 )
 #elif defined(THORNADO_OACC)

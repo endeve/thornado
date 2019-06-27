@@ -1325,7 +1325,7 @@ CONTAINS
       ! --- Check Convergence ---
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
       !$OMP PRIVATE( AERR_Y, AERR_E, AERR_J1, AERR_J2, &
       !$OMP          RERR_Y, RERR_E, RERR_J1, RERR_J2 )
 #elif defined(THORNADO_OACC)
@@ -1878,7 +1878,7 @@ CONTAINS
     !         Alpha, M_FP, M_FP, Gm, n_FP, n_FP, nX_G )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
     !$OMP PRIVATE( SUM1 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
@@ -2138,7 +2138,7 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: nIterations, nIterations_Inner, nIterations_Outer )
+    !$OMP MAP( from: nIterations, nIterations_Inner, nIterations_Outer ) &
     !$OMP MAP( release: E_N, W2_N, W3_N, W2_S, W3_S, iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, &
     !$OMP               CF_N, PF_N, AF_N, GX_N, dF_N, CR_N, dR_N, AMAT, BVEC, TAU, WORK, INFO, &
     !$OMP               Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )

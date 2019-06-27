@@ -301,11 +301,11 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
-    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
-    REAL(DP), INTENT(out) :: f_EQ_Points(iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E(:)
+    REAL(DP), INTENT(in)  :: D(:)
+    REAL(DP), INTENT(in)  :: T(:)
+    REAL(DP), INTENT(in)  :: Y(:)
+    REAL(DP), INTENT(out) :: f_EQ_Points(:,:)
     INTEGER,  INTENT(in)  :: iSpecies
 
     INTEGER  :: iX, iE
@@ -612,12 +612,12 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
-    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E(:)
+    REAL(DP), INTENT(in)  :: D(:)
+    REAL(DP), INTENT(in)  :: T(:)
+    REAL(DP), INTENT(in)  :: Y(:)
     INTEGER,  INTENT(in)  :: iSpecies
-    REAL(DP), INTENT(out) :: opEC_Points(iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(out) :: opEC_Points(:,:)
 
     INTEGER  :: iX, iE
     REAL(DP) :: LogE_P(iE_B:iE_E), LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
@@ -848,13 +848,13 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
-    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E(:)
+    REAL(DP), INTENT(in)  :: D(:)
+    REAL(DP), INTENT(in)  :: T(:)
+    REAL(DP), INTENT(in)  :: Y(:)
     INTEGER,  INTENT(in)  :: iSpecies
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: opES_Points(iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(out) :: opES_Points(:,:)
 
     INTEGER  :: iX, iE
     REAL(DP) :: LogE_P(iE_B:iE_E), LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
@@ -1060,14 +1060,14 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
-    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E(:)
+    REAL(DP), INTENT(in)  :: D(:)
+    REAL(DP), INTENT(in)  :: T(:)
+    REAL(DP), INTENT(in)  :: Y(:)
     INTEGER,  INTENT(in)  :: iSpecies
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: Phi_In (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
-    REAL(DP), INTENT(out) :: Phi_Out(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(out) :: Phi_In (:,:,:)
+    REAL(DP), INTENT(out) :: Phi_Out(:,:,:)
 
     INTEGER  :: iX, iE1, iE2, iH1, iH2
     REAL(DP) :: C1, C2, kT
@@ -1463,12 +1463,12 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    REAL(DP), INTENT(in)  :: W2     (iE_B:iE_E)
-    REAL(DP), INTENT(in)  :: J      (iE_B:iE_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Phi_In (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Phi_Out(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
-    REAL(DP), INTENT(out) :: Eta    (iE_B:iE_E,iX_B:iX_E)
-    REAL(DP), INTENT(out) :: Chi    (iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: W2     (:)
+    REAL(DP), INTENT(in)  :: J      (:,:)
+    REAL(DP), INTENT(in)  :: Phi_In (:,:,:)
+    REAL(DP), INTENT(in)  :: Phi_Out(:,:,:)
+    REAL(DP), INTENT(out) :: Eta    (:,:)
+    REAL(DP), INTENT(out) :: Chi    (:,:)
 
     REAL(DP) :: fEta(iE_B:iE_E)
     REAL(DP) :: fChi(iE_B:iE_E)
@@ -1537,8 +1537,8 @@ CONTAINS
         ! --- Emissivity ---
 
         CALL MatrixVectorMultiply &
-          ( 'T', nE, nE, One, Phi_In(iE_B,iE_B,iX), nE, &
-            fEta(iE_B), 1, Zero, Eta(iE_B,iX), 1 )
+          ( 'T', nE, nE, One, Phi_In(:,:,iX), nE, &
+            fEta(iE_B), 1, Zero, Eta(:,iX), 1 )
 
         DO iE = iE_B, iE_E
           Chi(iE,iX) = Eta(iE,iX)
@@ -1547,8 +1547,8 @@ CONTAINS
         ! --- Absorptivity ---
 
         CALL MatrixVectorMultiply &
-          ( 'T', nE, nE, One, Phi_Out(iE_B,iE_B,iX), nE, &
-            fChi(iE_B), 1, One, Chi(iE_B,iX), 1 )
+          ( 'T', nE, nE, One, Phi_Out(:,:,iX), nE, &
+            fChi(iE_B), 1, One, Chi(:,iX), 1 )
 
       END DO
 
@@ -1656,14 +1656,14 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
-    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E(:)
+    REAL(DP), INTENT(in)  :: D(:)
+    REAL(DP), INTENT(in)  :: T(:)
+    REAL(DP), INTENT(in)  :: Y(:)
     INTEGER,  INTENT(in)  :: iSpecies
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: Phi_In (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
-    REAL(DP), INTENT(out) :: Phi_Out(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(out) :: Phi_In (:,:,:)
+    REAL(DP), INTENT(out) :: Phi_Out(:,:,:)
 
     INTEGER  :: iX, iE1, iE2, iJ1, iJ2
     REAL(DP) :: C1, C2, kT, Phi_Local(iE_B:iE_E,iE_B:iE_E)
@@ -1845,16 +1845,16 @@ CONTAINS
     ! --- Pair Opacities (Single D,T,Y) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
-    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: E(:)
     REAL(DP), INTENT(in)  :: D, T, Y
     INTEGER,  INTENT(in)  :: iSpecies
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: Phi_In     (iE_B:iE_E,iE_B:iE_E)
-    REAL(DP), INTENT(out) :: Phi_Out    (iE_B:iE_E,iE_B:iE_E)
-    REAL(DP), INTENT(out) :: dPhi_In_dY (iE_B:iE_E,iE_B:iE_E)
-    REAL(DP), INTENT(out) :: dPhi_In_dE (iE_B:iE_E,iE_B:iE_E)
-    REAL(DP), INTENT(out) :: dPhi_Out_dY(iE_B:iE_E,iE_B:iE_E)
-    REAL(DP), INTENT(out) :: dPhi_Out_dE(iE_B:iE_E,iE_B:iE_E)
+    REAL(DP), INTENT(out) :: Phi_In     (:,:)
+    REAL(DP), INTENT(out) :: Phi_Out    (:,:)
+    REAL(DP), INTENT(out) :: dPhi_In_dY (:,:)
+    REAL(DP), INTENT(out) :: dPhi_In_dE (:,:)
+    REAL(DP), INTENT(out) :: dPhi_Out_dY(:,:)
+    REAL(DP), INTENT(out) :: dPhi_Out_dE(:,:)
 
     INTEGER  :: iE1, iE2, iJ1, iJ2
     REAL(DP) :: C1, C2, kT, LogT, LogEta, C_Eta, C_T
@@ -2030,12 +2030,12 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    REAL(DP), INTENT(in)  :: W2     (iE_B:iE_E)
-    REAL(DP), INTENT(in)  :: J      (iE_B:iE_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Phi_In (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Phi_Out(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
-    REAL(DP), INTENT(out) :: Eta    (iE_B:iE_E,iX_B:iX_E)
-    REAL(DP), INTENT(out) :: Chi    (iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: W2     (:)
+    REAL(DP), INTENT(in)  :: J      (:,:)
+    REAL(DP), INTENT(in)  :: Phi_In (:,:,:)
+    REAL(DP), INTENT(in)  :: Phi_Out(:,:,:)
+    REAL(DP), INTENT(out) :: Eta    (:,:)
+    REAL(DP), INTENT(out) :: Chi    (:,:)
 
     REAL(DP) :: fEta(iE_B:iE_E)
     REAL(DP) :: fChi(iE_B:iE_E)
@@ -2104,8 +2104,8 @@ CONTAINS
         ! --- Emissivity ---
 
         CALL MatrixVectorMultiply &
-          ( 'T', nE, nE, One, Phi_In(iE_B,iE_B,iX), nE, &
-            fEta(iE_B), 1, Zero, Eta(iE_B,iX), 1 )
+          ( 'T', nE, nE, One, Phi_In(:,:,iX), nE, &
+            fEta(iE_B), 1, Zero, Eta(:,iX), 1 )
 
         DO iE = iE_B, iE_E
           Chi(iE,iX) = Eta(iE,iX)
@@ -2114,8 +2114,8 @@ CONTAINS
         ! --- Absorptivity ---
 
         CALL MatrixVectorMultiply &
-          ( 'T', nE, nE, One, Phi_Out(iE_B,iE_B,iX), nE, &
-            fChi(iE_B), 1, One, Chi(iE_B,iX), 1 )
+          ( 'T', nE, nE, One, Phi_Out(:,:,iX), nE, &
+            fChi(iE_B), 1, One, Chi(:,iX), 1 )
 
       END DO
 
