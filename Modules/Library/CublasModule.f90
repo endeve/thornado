@@ -450,7 +450,7 @@ module CublasModule
     end function cublasDgetrsBatched
 
     integer(c_int) function &
-        & cublasDgeam(handle, transa, transb, m, n, alpha, dA, ldda, dB, lddb, beta, dC, lddc) &
+        & cublasDgeam(handle, transa, transb, m, n, alpha, dA, ldda, beta, dB, lddb, dC, lddc) &
         & bind(c, name="cublasDgeam")
       use, intrinsic :: iso_c_binding
       type(c_ptr), value :: handle
@@ -461,9 +461,9 @@ module CublasModule
       real(c_double) :: alpha
       type(c_ptr), value :: dA
       integer(c_int), value :: ldda
+      real(c_double) :: beta
       type(c_ptr), value :: dB
       integer(c_int), value :: lddb
-      real(c_double) :: beta
       type(c_ptr), value :: dC
       integer(c_int), value :: lddc
     end function cublasDgeam
