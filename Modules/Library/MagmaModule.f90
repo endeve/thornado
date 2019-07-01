@@ -454,6 +454,35 @@ interface
         integer(c_int), target :: info  !! int*
     end subroutine
 
+    subroutine magmablas_dtranspose( m, n, dA, ldda, dAT, lddat, queue ) &
+    bind(C, name="magmablas_dtranspose")
+        use iso_c_binding
+        integer(c_int), value  :: m, n, ldda, lddat
+        type(c_ptr),    value  :: dA, dAT
+        integer(c_int), value  :: queue
+    end subroutine
+
+    subroutine magmablas_dlacpy( uplo, m, n, dA, ldda, dB, lddb, queue ) &
+    bind(C, name="magmablas_dlacpy")
+        use iso_c_binding
+        integer(c_int), value  :: uplo, m, n, ldda, lddb
+        type(c_ptr),    value  :: dA, dB
+        integer(c_int), value  :: queue
+    end subroutine
+
+    subroutine magmablas_dgeadd2( &
+        m, n, &
+        alpha, dA, ldda, &
+        beta,  dB, lddb, &
+        queue ) &
+    bind(C, name="magmablas_dgeadd2")
+        use iso_c_binding
+        integer(c_int), value  :: m, n, ldda, lddb
+        real(c_double), value  :: alpha, beta
+        type(c_ptr),    value  :: dA, dB
+        type(c_ptr),    value  :: queue  !! queue_t
+    end subroutine
+
     !! -------------------------------------------------------------------------
     !! batched GPU interfaces (all arrays in GPU memory)
     subroutine magma_dgetrf_batched( &
