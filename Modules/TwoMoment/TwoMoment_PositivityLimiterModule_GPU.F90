@@ -388,7 +388,8 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRIVATE( Min_K, Max_K, Theta_1 ) &
     !$ACC REDUCTION( min: MinTheta_1 ) &
-    !$ACC PRESENT( U_P_N, U_K_N, U_Q_N, NegativeStates, Min_K_S, Max_K_S, Theta_1_S, MinTheta_1, iZ_B0, iZ_E0 )
+    !$ACC PRESENT( U_P_N, U_K_N, U_Q_N, NegativeStates, Min_K_S, Max_K_S, &
+    !$ACC          Theta_1_S, MinTheta_1, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( Min_K, Max_K, Theta_1 ) &
@@ -521,7 +522,8 @@ CONTAINS
     !$ACC PRESENT( U_P_N, U_P_G1, U_P_G2, U_P_G3, &
     !$ACC          U_K_N, U_K_G1, U_K_G2, U_K_G3, &
     !$ACC          U_Q_N, U_Q_G1, U_Q_G2, U_Q_G3, &
-    !$ACC          NegativeStates, Min_Gam_S, Theta_2_S, MinTheta_2, iError, iZ_B0, iZ_E0 )
+    !$ACC          NegativeStates, Min_Gam_S, Theta_2_S, &
+    !$ACC          MinTheta_2, iError, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( Gam, Min_Gam, Theta_2, Theta_P ) &
@@ -715,6 +717,16 @@ CONTAINS
       END DO
     END DO
 
+#ifdef THORNADO_DEBUG_POSITIVITYLIMITER
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( U )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( U )
+#endif
+    WRITE(*,'(a20,7i4)')     'MAXLOC(U)', MAXLOC(U)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(U)', MAXVAL(U)
+#endif
+
     CALL TimersStart( Timer_PL_Out )
 
 #if defined(THORNADO_OMP_OL)
@@ -774,11 +786,6 @@ CONTAINS
     END IF
 
     CALL TimersStop( Timer_PositivityLimiter )
-
-#ifdef THORNADO_DEBUG_POSITIVITYLIMITER
-    WRITE(*,'(a20,7i4)')     'MAXLOC(U)', MAXLOC(U)
-    WRITE(*,'(a20,es23.15)') 'MAXVAL(U)', MAXVAL(U)
-#endif
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 
