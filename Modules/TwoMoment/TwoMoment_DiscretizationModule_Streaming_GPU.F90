@@ -130,8 +130,8 @@ CONTAINS
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                  iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                 iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                 iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iNodeX, iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS
     REAL(DP) :: Tau
@@ -164,16 +164,16 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( dU, iZ_B0, iZ_E0 )
+    !$ACC PRESENT( dU, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
-        DO iZ4 = iZ_B0(4), iZ_E0(4)
-          DO iZ3 = iZ_B0(3), iZ_E0(3)
-            DO iZ2 = iZ_B0(2), iZ_E0(2)
-              DO iZ1 = iZ_B0(1), iZ_E0(1)
+        DO iZ4 = iZ_B1(4), iZ_E1(4)
+          DO iZ3 = iZ_B1(3), iZ_E1(3)
+            DO iZ2 = iZ_B1(2), iZ_E1(2)
+              DO iZ1 = iZ_B1(1), iZ_E1(1)
                 DO iNode = 1, nDOF
                   dU(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
                 END DO
@@ -241,6 +241,19 @@ CONTAINS
       END DO
     END DO
 
+    CALL ComputeIncrement_Geometry &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+#ifdef THORNADO_DEBUG_EXPLICIT
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( dU )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( dU )
+#endif
+    WRITE(*,'(a20,7i4)')     'MAXLOC(dU)', MAXLOC(dU)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU)', MAXVAL(dU)
+#endif
+
     CALL TimersStart( Timer_Ex_Out )
 
 #if defined(THORNADO_OMP_OL)
@@ -264,11 +277,6 @@ CONTAINS
 
     END ASSOCIATE
 
-#ifdef THORNADO_DEBUG_EXPLICIT
-    WRITE(*,'(a20,7i4)')     'MAXLOC(dU)', MAXLOC(dU)
-    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU)', MAXVAL(dU)
-#endif
-
     CALL TimersStop( Timer_Explicit )
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit
@@ -288,7 +296,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: nZ(4), nZ_X1(4), nK, nF, nF_GF
     INTEGER  :: iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF
@@ -771,9 +779,9 @@ CONTAINS
 
 #ifdef THORNADO_DEBUG_EXPLICIT
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM(dU_X1)
+    !$OMP TARGET UPDATE FROM( dU_X1 )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST(dU_X1)
+    !$ACC UPDATE HOST( dU_X1 )
 #endif
     WRITE(*,'(a20,7i4)')     'MAXLOC(dU_X1)', MAXLOC(dU_X1)
     WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_X1)', MAXVAL(dU_X1)
@@ -814,7 +822,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: nZ(4), nZ_X2(4), nK, nF, nF_GF
     INTEGER  :: iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF
@@ -1251,9 +1259,9 @@ CONTAINS
 
 #ifdef THORNADO_DEBUG_EXPLICIT
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM(dU_X2)
+    !$OMP TARGET UPDATE FROM( dU_X2 )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST(dU_X2)
+    !$ACC UPDATE HOST( dU_X2 )
 #endif
     WRITE(*,'(a20,7i4)')     'MAXLOC(dU_X2)', MAXLOC(dU_X2)
     WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_X2)', MAXVAL(dU_X2)
@@ -1290,7 +1298,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: nZ(4), nZ_X3(4), nK, nF, nF_GF
     INTEGER  :: iNode, iZ1, iZ2, iZ4, iZ3, iCR, iS, iGF
@@ -1727,9 +1735,9 @@ CONTAINS
 
 #ifdef THORNADO_DEBUG_EXPLICIT
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM(dU_X3)
+    !$OMP TARGET UPDATE FROM( dU_X3 )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST(dU_X3)
+    !$ACC UPDATE HOST( dU_X3 )
 #endif
     WRITE(*,'(a20,7i4)')     'MAXLOC(dU_X3)', MAXLOC(dU_X3)
     WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_X3)', MAXVAL(dU_X3)
@@ -1767,8 +1775,8 @@ CONTAINS
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                  iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                 iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                 iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iGF
     INTEGER  :: iNodeZ, iNodeX
