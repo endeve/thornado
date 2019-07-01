@@ -276,6 +276,14 @@ PROGRAM DeleptonizationWave
     ' to t = ', t_end / Millisecond
   WRITE(*,*)
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET ENTER DATA &
+  !$OMP MAP( to: uCF, uCR, uGE, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC ENTER DATA &
+  !$ACC COPYIN( uCF, uCR, uGE, uGF )
+#endif
+
   iCycle = 0
   DO WHILE( t < t_end )
 
@@ -324,6 +332,12 @@ PROGRAM DeleptonizationWave
 
     IF( wrt )THEN
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM( uCF, uCR )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST( uCF, uCR )
+#endif
+
       CALL TimersStart( Timer_InputOutput )
 
       CALL WriteFieldsHDF &
@@ -340,6 +354,16 @@ PROGRAM DeleptonizationWave
     END IF
 
   END DO
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET EXIT DATA &
+  !$OMP MAP( from: uCF, uCR ) &
+  !$OMP MAP( release: uGE, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC EXIT DATA &
+  !$ACC COPYOUT( uCF, uCR ) &
+  !$ACC DELETE( uGE, uGF )
+#endif
 
   ! --- Write Final Solution ---
 
