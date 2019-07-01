@@ -449,6 +449,25 @@ module CublasModule
       integer(c_int), value :: nbatch
     end function cublasDgetrsBatched
 
+    integer(c_int) function &
+        & cublasDgeam(handle, transa, transb, m, n, alpha, dA, ldda, dB, lddb, beta, dC, lddc) &
+        & bind(c, name="cublasDgeam")
+      use, intrinsic :: iso_c_binding
+      type(c_ptr), value :: handle
+      integer(c_int), value :: transa
+      integer(c_int), value :: transb
+      integer(c_int), value :: m
+      integer(c_int), value :: n
+      real(c_double) :: alpha
+      type(c_ptr), value :: dA
+      integer(c_int), value :: ldda
+      type(c_ptr), value :: dB
+      integer(c_int), value :: lddb
+      real(c_double) :: beta
+      type(c_ptr), value :: dC
+      integer(c_int), value :: lddc
+    end function cublasDgeam
+
   end interface
 
 end module CublasModule

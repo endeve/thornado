@@ -21,6 +21,7 @@ MODULE LinearAlgebraModule
     cublasDgemv_v2, &
     cublasDtrsv_v2, &
     cublasDtrsm_v2, &
+    cublasDgeam, &
     CUBLAS_OP_N, CUBLAS_OP_T, &
     CUBLAS_SIDE_LEFT, &
     CUBLAS_FILL_MODE_UPPER, &
@@ -40,7 +41,12 @@ MODULE LinearAlgebraModule
     magmablas_dgemm_batched_strided, &
     magma_dgemv, &
     magma_dgels_gpu, &
-    MagmaNoTrans, MagmaTrans
+    magmablas_dtranspose, &
+    magmablas_dlacpy, &
+    magmablas_dgeadd2, &
+    magma_dmalloc, &
+    MagmaNoTrans, MagmaTrans, &
+    MagmaFull
 #endif
 
   IMPLICIT NONE
@@ -73,6 +79,189 @@ CONTAINS
 #endif
     RETURN
   END FUNCTION itrans_from_char
+
+
+  SUBROUTINE MatrixMatrixAdd( transa, transb, m, n, alpha, a, lda, b, ldb, beta, c, ldc )
+
+    CHARACTER                          :: transa, transb
+    INTEGER                            :: m, n, lda, ldb, ldc
+    REAL(DP)                           :: alpha, beta
+    REAL(DP), DIMENSION(lda,*), TARGET :: a
+    REAL(DP), DIMENSION(ldb,*), TARGET :: b
+    REAL(DP), DIMENSION(ldc,*), TARGET :: c
+
+    INTEGER                            :: i, j, ierr, info
+    INTEGER(C_INT)                     :: itransa, itransb
+    INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_b, sizeof_c
+    REAL(DP), DIMENSION(:,:), POINTER  :: pa, pb, pc
+    TYPE(C_PTR)                        :: ha, hb, hc
+    TYPE(C_PTR)                        :: da, db, dc
+    TYPE(C_PTR)                        :: dat, dbt
+    INTEGER                            :: ka, kb
+    LOGICAL                            :: data_on_device
+
+    data_on_device = .false.
+    sizeof_a = m * n * c_sizeof(0.0_DP)
+    sizeof_b = m * n * c_sizeof(0.0_DP)
+    sizeof_c = m * n * c_sizeof(0.0_DP)
+
+    IF ( transa == 'N' ) THEN
+      ka = n
+    ELSE
+      ka = m
+    END IF
+
+    IF ( transb == 'N' ) THEN
+      kb = n
+    ELSE
+      kb = m
+    END IF
+
+    pa(1:lda,1:ka) => a(:,1:ka)
+    pb(1:ldb,1:kb) => b(:,1:kb)
+    pc(1:ldc,1:n ) => c(:,1:n )
+
+    ha = C_LOC( pa )
+    hb = C_LOC( pb )
+    hc = C_LOC( pc )
+
+    data_on_device = device_is_present( ha, mydevice, sizeof_a ) &
+               .AND. device_is_present( hb, mydevice, sizeof_b ) &
+               .AND. device_is_present( hc, mydevice, sizeof_c )
+
+    IF ( data_on_device ) THEN
+
+      itransa = itrans_from_char( transa )
+      itransb = itrans_from_char( transb )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
+#endif
+      da = C_LOC( pa )
+      db = C_LOC( pb )
+      dc = C_LOC( pc )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+#endif
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cublasDgeam &
+             ( cublas_handle, itransa, itransb, m, n, alpha, da, lda, db, ldb, beta, dc, ldc )
+      ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_MAGMA)
+      IF ( transb  == 'N' ) THEN
+        CALL magmablas_dlacpy &
+               ( MagmaFull, m, n, db, ldb, dc, ldc, magma_queue )
+      ELSE
+        CALL magmablas_dtranspose &
+               ( n, m, db, ldb, dc, ldc, magma_queue )
+      END IF
+      IF ( transa == 'N' ) THEN
+        CALL magmablas_dgeadd2 &
+               ( m, n, alpha, da, lda, beta, dc, ldc, magma_queue )
+      ELSE
+        ierr = magma_dmalloc( dat, m*n )
+        CALL magmablas_dtranspose &
+               ( n, m, da, lda, dat, m, magma_queue )
+        CALL magmablas_dgeadd2 &
+               ( m, n, alpha, dat, m, beta, dc, ldc, magma_queue )
+      END IF
+      CALL magma_queue_sync( magma_queue )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[MatrixMatrixAdd] Data not present on device'
+      IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
+        WRITE(*,*) '[MatrixMatrixAdd]   A missing'
+      IF ( .not. device_is_present( hb, mydevice, sizeof_b ) ) &
+        WRITE(*,*) '[MatrixMatrixAdd]   B missing'
+      IF ( .not. device_is_present( hc, mydevice, sizeof_c ) ) &
+        WRITE(*,*) '[MatrixMatrixAdd]   C missing'
+#endif
+
+      IF ( alpha == 0.0_DP .AND. beta == 0.0_DP ) THEN
+
+        DO j = 1, n
+          DO i = 1, m
+            c(i,j) = 0.0_DP
+          END DO
+        END DO
+
+      ELSE IF ( alpha == 0.0_DP ) THEN
+
+        IF ( transb == 'N' ) THEN
+          DO j = 1, n
+            DO i = 1, m
+              c(i,j) = + beta * b(i,j)
+            END DO
+          END DO
+        ELSE
+          DO j = 1, n
+            DO i = 1, m
+              c(i,j) = + beta * b(j,i)
+            END DO
+          END DO
+        END IF
+
+      ELSE IF ( beta == 0.0_DP ) THEN
+
+        IF ( transa == 'N' ) THEN
+          DO j = 1, n
+            DO i = 1, m
+              c(i,j) = alpha * a(i,j)
+            END DO
+          END DO
+        ELSE
+          DO j = 1, n
+            DO i = 1, m
+              c(i,j) = alpha * a(j,i)
+            END DO
+          END DO
+        END IF
+
+      ELSE
+
+        IF ( transa == 'N' ) THEN
+          IF ( transb == 'N' ) THEN
+            DO j = 1, n
+              DO i = 1, m
+                c(i,j) = alpha * a(i,j) + beta * b(i,j)
+              END DO
+            END DO
+          ELSE
+            DO j = 1, n
+              DO i = 1, m
+                c(i,j) = alpha * a(i,j) + beta * b(j,i)
+              END DO
+            END DO
+          END IF
+        ELSE
+          IF ( transb == 'N' ) THEN
+            DO j = 1, n
+              DO i = 1, m
+                c(i,j) = alpha * a(j,i) + beta * b(i,j)
+              END DO
+            END DO
+          ELSE
+            DO j = 1, n
+              DO i = 1, m
+                c(i,j) = alpha * a(j,i) + beta * b(j,i)
+              END DO
+            END DO
+          END IF
+        END IF
+
+      END IF
+
+    END IF
+
+  END SUBROUTINE MatrixMatrixAdd
 
 
   SUBROUTINE MatrixMatrixMultiply( transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc )
