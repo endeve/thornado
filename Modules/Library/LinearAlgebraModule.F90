@@ -52,6 +52,7 @@ MODULE LinearAlgebraModule
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: MatrixMatrixAdd
   PUBLIC :: MatrixMatrixMultiply
   PUBLIC :: MatrixMatrixMultiplyBatched
   PUBLIC :: MatrixVectorMultiply
@@ -150,7 +151,7 @@ CONTAINS
 
 #if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgeam &
-             ( cublas_handle, itransa, itransb, m, n, alpha, da, lda, db, ldb, beta, dc, ldc )
+             ( cublas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc )
       ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       IF ( transb  == 'N' ) THEN
