@@ -1495,6 +1495,15 @@ CONTAINS
     END DO
     END DO
 
+#ifdef THORNADO_DEBUG_EXPLICIT
+    WRITE(*,'(a,4i4,es23.15)') 'MINLOC(dh2dX1), MINVAL(dh2dX1)', MINLOC(dh2dX1), MINVAL(dh2dX1)
+    WRITE(*,'(a,4i4,es23.15)') 'MAXLOC(dh2dX1), MAXVAL(dh2dX1)', MAXLOC(dh2dX1), MAXVAL(dh2dX1)
+    WRITE(*,'(a,4i4,es23.15)') 'MINLOC(dh3dX1), MINVAL(dh3dX1)', MINLOC(dh3dX1), MINVAL(dh3dX1)
+    WRITE(*,'(a,4i4,es23.15)') 'MAXLOC(dh3dX1), MAXVAL(dh3dX1)', MAXLOC(dh3dX1), MAXVAL(dh3dX1)
+    WRITE(*,'(a,4i4,es23.15)') 'MINLOC(dh3dX2), MINVAL(dh3dX2)', MINLOC(dh3dX2), MINVAL(dh3dX2)
+    WRITE(*,'(a,4i4,es23.15)') 'MAXLOC(dh3dX2), MAXVAL(dh3dX2)', MAXLOC(dh3dX2), MAXVAL(dh3dX2)
+#endif
+
   END SUBROUTINE ComputeIncrement_Geometry
 
 
