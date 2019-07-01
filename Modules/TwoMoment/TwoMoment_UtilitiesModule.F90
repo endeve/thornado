@@ -216,8 +216,13 @@ CONTAINS
   END FUNCTION Flux_X3
 
 
-  PURE FUNCTION StressTensor_Diagonal &
+  FUNCTION StressTensor_Diagonal &
     ( D, I_1, I_2, I_3, FF, EF, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP)             :: StressTensor_Diagonal(1:3)
     REAL(DP), INTENT(in) :: D, I_1, I_2, I_3, FF, EF
