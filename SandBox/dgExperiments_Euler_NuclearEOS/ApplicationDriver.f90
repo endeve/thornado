@@ -25,6 +25,8 @@ PROGRAM ApplicationDriver
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
+  USE EquationOfStateModule_TABLE, ONLY: &
+    MinD, MaxD, MinT, MaxT, MinY, MaxY
   USE FluidFieldsModule, ONLY: &
     uCF, uPF, uAF
   USE InitializationModule, ONLY: &
@@ -64,6 +66,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
+  LOGICAL       :: UsePositivityLimiter
   INTEGER       :: iCycle, iCycleD
   INTEGER       :: nX(3), bcX(3), nNodes
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, wTime
@@ -98,6 +101,7 @@ PROGRAM ApplicationDriver
 
       UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 1.0d-1
+      UsePositivityLimiter      = .TRUE.
 
       iCycleD = 10
       t_end   = 2.5d-2 * Millisecond
@@ -121,6 +125,7 @@ PROGRAM ApplicationDriver
 
       UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 1.5d-0
+      UsePositivityLimiter      = .TRUE.
 
       iCycleD = 10
       t_end   = 2.5d-2 * Millisecond
@@ -175,9 +180,14 @@ PROGRAM ApplicationDriver
              = LimiterThresholdParameter )
 
   CALL Euler_InitializePositivityLimiter &
-         ( Min_1_Option = 1.0d-12, &
-           Min_2_Option = 1.0d-12, &
-           UsePositivityLimiter_Option = .FALSE. )
+         ( Min_D_Option = ( One + EPSILON(One) ) * MinD, &
+           Max_D_Option = ( One - EPSILON(One) ) * MaxD, &
+           Min_T_Option = ( One + EPSILON(One) ) * MinT, &
+           Max_T_Option = ( One - EPSILON(One) ) * MaxT, &
+           Min_Y_Option = ( One + EPSILON(One) ) * MinY, &
+           Max_Y_Option = ( One - EPSILON(One) ) * MaxY, &
+           UsePositivityLimiter_Option &
+             = UsePositivityLimiter )
 
   CALL InitializeFields &
          ( AdvectionProfile_Option &
@@ -186,7 +196,7 @@ PROGRAM ApplicationDriver
              = TRIM( Direction ), &
            RiemannProblemName_Option &
              = TRIM( RiemannProblemName ) )
-
+ 
   CALL Euler_ApplySlopeLimiter &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
@@ -250,7 +260,7 @@ PROGRAM ApplicationDriver
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
       WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
-          '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, '', 'dt = ', dt
+          '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, '', 'dt = ', dt / Millisecond
 
     END IF
 
