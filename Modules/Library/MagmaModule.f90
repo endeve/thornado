@@ -454,12 +454,22 @@ interface
         integer(c_int), target :: info  !! int*
     end subroutine
 
+    subroutine magma_dgels_gpu( trans, m, n, nrhs, dA, lda, dB, ldb, hwork, lwork, info ) &
+    bind(C, name="magma_dgels_gpu")
+        use iso_c_binding
+        integer(c_int), value  :: trans, m, n, nrhs, lda, ldb
+        type(c_ptr),    value  :: dA, dB
+        type(c_ptr),    value  :: hwork
+        integer(c_int), value  :: lwork
+        integer(c_int), target :: info  !! int*
+    end subroutine
+
     subroutine magmablas_dtranspose( m, n, dA, ldda, dAT, lddat, queue ) &
     bind(C, name="magmablas_dtranspose")
         use iso_c_binding
         integer(c_int), value  :: m, n, ldda, lddat
         type(c_ptr),    value  :: dA, dAT
-        integer(c_int), value  :: queue
+        type(c_ptr),    value  :: queue  !! queue_t
     end subroutine
 
     subroutine magmablas_dlacpy( uplo, m, n, dA, ldda, dB, lddb, queue ) &
@@ -467,7 +477,7 @@ interface
         use iso_c_binding
         integer(c_int), value  :: uplo, m, n, ldda, lddb
         type(c_ptr),    value  :: dA, dB
-        integer(c_int), value  :: queue
+        type(c_ptr),    value  :: queue  !! queue_t
     end subroutine
 
     subroutine magmablas_dgeadd2( &

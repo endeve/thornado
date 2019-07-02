@@ -37,6 +37,7 @@ MODULE LinearAlgebraModule
   USE MagmaModule, ONLY: &
     magma_queue, &
     magma_queue_sync, &
+    magma_dnrm2, &
     magma_dgemm, &
     magmablas_dgemm_batched_strided, &
     magma_dgemv, &
@@ -93,7 +94,7 @@ CONTAINS
 
     INTEGER                            :: i, j, ierr, info
     INTEGER(C_INT)                     :: itransa, itransb
-    INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_b, sizeof_c
+    INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_b, sizeof_c, mn
     REAL(DP), DIMENSION(:,:), POINTER  :: pa, pb, pc
     TYPE(C_PTR)                        :: ha, hb, hc
     TYPE(C_PTR)                        :: da, db, dc
@@ -105,6 +106,7 @@ CONTAINS
     sizeof_a = m * n * c_sizeof(0.0_DP)
     sizeof_b = m * n * c_sizeof(0.0_DP)
     sizeof_c = m * n * c_sizeof(0.0_DP)
+    mn = m * n
 
     IF ( transa == 'N' ) THEN
       ka = n
@@ -165,7 +167,7 @@ CONTAINS
         CALL magmablas_dgeadd2 &
                ( m, n, alpha, da, lda, beta, dc, ldc, magma_queue )
       ELSE
-        ierr = magma_dmalloc( dat, m*n )
+        ierr = magma_dmalloc( dat, mn )
         CALL magmablas_dtranspose &
                ( n, m, da, lda, dat, m, magma_queue )
         CALL magmablas_dgeadd2 &
@@ -610,7 +612,7 @@ CONTAINS
            ( cusolver_handle, m, n, da, lda, lwork )
 #elif defined(THORNADO_LA_MAGMA)
     CALL magma_dgels_gpu &
-           ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info, magma_queue )
+           ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
     lwork = INT( work(1) )
 #else
     CALL DGELS &
@@ -716,7 +718,7 @@ CONTAINS
       ierr = cudaStreamSynchronize( stream )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgels_gpu &
-             ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info, magma_queue )
+             ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
       CALL magma_queue_sync( magma_queue )
 #endif
 
