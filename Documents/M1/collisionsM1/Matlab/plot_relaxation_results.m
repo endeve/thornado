@@ -49,64 +49,66 @@ kT = BoltzmannConstant * T;
 % F = 1.0 ./ ( exp( exponent ) + 1 );
 % F2 = sum(g_W2_M .* F) * kT^3;
 % F3 = sum(g_W3_M .* F) * kT^4;
-
+% 
 % x = linspace(0,8,100)';
 % m = 1:100;
 % F2 = -sum((-exp(x).^m)./(m.^3),2);
 % F3 = -sum((-exp(x).^m)./(m.^4),2);
 
-% 
-% x = linspace(-10,8,10000);
-% % x = Mnu/kT;
-% exponent = min( max( repmat(g_E_N,1,length(x)) - repmat(x,length(g_E_N),1), -100 ), 100 );
-% F = 1.0 ./ ( exp( exponent ) + 1 );
-% F2 = sum(g_W2_N .* F);
-% F3 = sum(g_W3_N .* F);
-% 
-% a = E_hist(:,1); b = N_hist(:,1);
-% 
-% LHS = a./b.^(4/3);
-% RHS = F3./F2.^(4/3);
-% 
-% eta = zeros(length(LHS),1);
-% y2 = zeros(length(LHS),1);
-% y3 = zeros(length(LHS),1);
-% for i = 1:length(LHS)
-% [val, idx] = min(abs(LHS(i) - RHS));
-% 
-% eta(i) = x(idx);
-% y2(i) = (N_hist(i,1)/F2(idx))^(1/3);
-% y3(i) = (E_hist(i,1)/F3(idx))^(1/4);
-% end
-% Mnu_approx = eta.*y2;
-% T_approx = y2/BoltzmannConstant;
-% 
-% x = linspace(-10,8,10000);
-% exponent = min( max( repmat(g_E_N,1,length(x)) + repmat(x,length(g_E_N),1), -100 ), 100 );
-% F_bar = 1.0 ./ ( exp( exponent ) + 1 );
-% F2_bar = sum(g_W2_N .* F_bar);
-% F3_bar = sum(g_W3_N .* F_bar);
-% 
-% a = E_hist(:,2); b = N_hist(:,2);
-% 
-% LHS = a./b.^(4/3);
-% RHS = F3_bar./F2_bar.^(4/3);
-% 
-% eta_bar = zeros(length(LHS),1);
-% y2_bar = zeros(length(LHS),1);
-% y3_bar = zeros(length(LHS),1);
-% for i = 1:length(LHS)
-% [val, idx] = min(abs(LHS(i) - RHS));
-% 
-% eta_bar(i) = x(idx);
-% y2_bar(i) = (N_hist(i,2)/F2_bar(idx))^(1/3);
-% y3_bar(i) = (E_hist(i,2)/F3_bar(idx))^(1/4);
-% end
-% Mnubar_approx = eta_bar.*y2_bar;
-% Tbar_approx = y2_bar/BoltzmannConstant;
 
-[Mnu_approx, T_approx] = ComputeEffectiveTandChemicalPotentials(N_hist(:,1), E_hist(:,1), g_E_N, 1);
-[Mnubar_approx, Tbar_approx] = ComputeEffectiveTandChemicalPotentials(N_hist(:,2), E_hist(:,2), g_E_N, 2);
+x = linspace(-10,8,10000);
+% x = Mnu/kT;
+exponent = min( max( repmat(g_E_N,1,length(x)) - repmat(x,length(g_E_N),1), -100 ), 100 );
+F = 1.0 ./ ( exp( exponent ) + 1 );
+F2 = sum(g_W2_N .* F);
+F3 = sum(g_W3_N .* F);
+
+a = E_hist(:,1); b = N_hist(:,1);
+
+LHS = a./b.^(4/3);
+RHS = F3./F2.^(4/3);
+
+eta = zeros(length(LHS),1);
+y2 = zeros(length(LHS),1);
+y3 = zeros(length(LHS),1);
+for i = 1:length(LHS)
+[val, idx] = min(abs(LHS(i) - RHS));
+
+eta(i) = x(idx);
+y2(i) = (N_hist(i,1)/F2(idx))^(1/3);
+y3(i) = (E_hist(i,1)/F3(idx))^(1/4);
+end
+Mnu_approx = eta.*y2;
+T_approx = y2/BoltzmannConstant;
+
+% [Mnu_approx, T_approx] = ComputeEffectiveTandChemicalPotentials(N_hist(:,1), E_hist(:,1), g_E_N, 1);
+
+
+x = linspace(-10,8,10000);
+exponent = min( max( repmat(g_E_N,1,length(x)) + repmat(x,length(g_E_N),1), -100 ), 100 );
+F_bar = 1.0 ./ ( exp( exponent ) + 1 );
+F2_bar = sum(g_W2_N .* F_bar);
+F3_bar = sum(g_W3_N .* F_bar);
+
+a = E_hist(:,2); b = N_hist(:,2);
+
+LHS = a./b.^(4/3);
+RHS = F3_bar./F2_bar.^(4/3);
+
+eta_bar = zeros(length(LHS),1);
+y2_bar = zeros(length(LHS),1);
+y3_bar = zeros(length(LHS),1);
+for i = 1:length(LHS)
+[val, idx] = min(abs(LHS(i) - RHS));
+
+eta_bar(i) = x(idx);
+y2_bar(i) = (N_hist(i,2)/F2_bar(idx))^(1/3);
+y3_bar(i) = (E_hist(i,2)/F3_bar(idx))^(1/4);
+end
+Mnubar_approx = eta_bar.*y2_bar;
+Tbar_approx = y2_bar/BoltzmannConstant;
+
+% [Mnubar_approx, Tbar_approx] = ComputeEffectiveTandChemicalPotentials(N_hist(:,2), E_hist(:,2), g_E_N, 2);
 
 
 Fig = figure;
@@ -242,19 +244,20 @@ end
 % plot(kT*ones(length(eta),1))
 
 
-function [MnuEff, TEff] = ComputeEffectiveTandChemicalPotentials(J, E_N, iSpecies )
-% global g_W2_N g_W3_N
-% global BoltzmannConstant
-num_solve = size(J,1);
+function [MnuEff, TEff] = ComputeEffectiveTandChemicalPotentials(N_list, E_list, E_N, iSpecies )
+
+BoltzmannConstant =   8.6173e-11;
+
+num_solve = size(N_list,1);
 
 MnuEff = zeros(num_solve,1);
 TEff = zeros(num_solve,1);
 
-Tol = 1e-4;
+Tol = 1e-8;
 if (iSpecies == 1)
-    alpha = 1;
-elseif (iSpecies == 2)
     alpha = -1;
+elseif (iSpecies == 2)
+    alpha = 1;
 else
     error('invalid species');
 end
@@ -268,12 +271,15 @@ for i = 1:num_solve
 
 %     N = sum(g_W2_N .* J);
 %     E = sum(g_W3_N .* J);
-    N = trapz(E_N, J(i,:).*E_N.^2);
-    E = trapz(E_N, J(i,:).*E_N.^3);
-    c = N^(4/3)/E;
+%     N = trapz(E_N, J(i,:).*E_N.^2);
+%     E = trapz(E_N, J(i,:).*E_N.^3);
+    N = N_list(i);
+    E = E_list(i);
+%     c = N^(4/3)/E;
+    c = E/N^(4/3);
     
     k = 0;
-    MaxIter = 1000;
+    MaxIter = 100000;
     while(~Converge && k < MaxIter)
         k = k + 1;
         if (iSpecies == 1)
@@ -288,7 +294,7 @@ for i = 1:num_solve
 %         F3 = sum(g_W3_N .* F);
         F2 = trapz(E_N, F.*E_N.^2);
         F3 = trapz(E_N, F.*E_N.^3);
-        G = F2^(4/3)/F3;
+        G = F3/F2^(4/3);
         x_new = x - alpha*(G - c);
         
         if (abs(x_new - x) < Tol)
@@ -313,5 +319,8 @@ for i = 1:num_solve
     y = (N/F2)^(1/3);
     MnuEff(i) = x*y;
     TEff(i) = y/BoltzmannConstant;
+    if (i == num_solve)
+        warning('here')
+    end
 end
 end

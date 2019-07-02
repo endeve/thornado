@@ -116,6 +116,18 @@ CONTAINS
 
     END IF
 
+#elif  MOMENT_CLOSURE_LEVERMORE
+
+     ! --- Levermore Closure ---
+
+     IF( Verbose )THEN
+
+       WRITE(*,*)
+       WRITE(*,'(A6,A)') &
+         '', 'Two-Moment Closure: Levermore'
+      
+     END IF
+
 #else
 
     WRITE(*,*)
@@ -155,6 +167,7 @@ CONTAINS
 
     RETURN
   END FUNCTION FluxFactor_Scalar
+
 
   FUNCTION FluxFactor_Vector &
     ( D, I_1, I_2, I_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
@@ -226,6 +239,13 @@ CONTAINS
       = Third + Two * Third * ( One - D ) * ( One - Two * D ) &
           * ClosurePolynomial_KE_BL( FF / MAX( One - D, SqrtTiny ) )
 
+#elif  MOMENT_CLOSURE_LEVERMORE
+
+    ! --- Levermore Closure ---
+  
+    EddingtonFactor &
+      = Third * ( 5.0_dp - Two * SQRT ( Four - Three * FF * FF) )
+
 #endif
 
     RETURN
@@ -272,6 +292,13 @@ CONTAINS
     EddingtonFactor &
       = Third + Two * Third * ( One - D ) * ( One - Two * D ) &
           * ClosurePolynomial_KE_BL( FF / MAX( One - D, SqrtTiny ) )
+
+#elif  MOMENT_CLOSURE_LEVERMORE
+
+    ! --- Levermore Closure ---
+
+    EddingtonFactor &
+      = Third * ( 5.0_dp - Two * SQRT ( Four - Three * FF * FF) )
 
 #endif
 
@@ -338,6 +365,16 @@ CONTAINS
     dEFdFF_D &
       = Two * Third * ( One - Two * D ) &
           * ClosurePolynomialDerivative_KE_BL( XX )
+
+#elif MOMENT_CLOSURE_LEVERMORE
+
+    ! --- Levermore Closure ---
+
+    dEFdD_FF &
+      = ZERO
+
+    dEFdFF_D &
+      = Two * FF / SQRT( Four - Three * FF * FF )
 
 #endif
 
