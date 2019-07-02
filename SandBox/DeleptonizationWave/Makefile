@@ -138,4 +138,4 @@ TimeSteppingModule_Castro.o: \
   PhysicalConstantsModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o \
-  TimeSteppingModule_Castro.f90
+  TimeSteppingModule_Castro.F90
