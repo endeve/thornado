@@ -47,7 +47,7 @@ ReferenceElementModuleX.o: \
   KindModule.o \
   QuadratureModule.o \
   ProgramHeaderModule.o \
-  ReferenceElementModuleX.f90
+  ReferenceElementModuleX.F90
 
 ReferenceElementModuleE.o: \
   KindModule.o \
