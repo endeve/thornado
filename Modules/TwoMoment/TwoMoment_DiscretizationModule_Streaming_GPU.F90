@@ -2174,7 +2174,7 @@ CONTAINS
 #endif
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
+    !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
     !$OMP               h2_X1, h3_X1, h3_X2, dh2dX1, dh3dX1, dh3dX2, &
     !$OMP               GX_X1, GX_X2, G )
