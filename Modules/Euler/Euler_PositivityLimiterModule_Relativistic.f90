@@ -367,7 +367,7 @@ CONTAINS
   END SUBROUTINE Computeq
 
 
-  PURE REAL(DP) ELEMENTAL FUNCTION qFun( D, S1, S2, S3, tau, Gm11, Gm22, Gm33 )
+  REAL(DP) ELEMENTAL FUNCTION qFun( D, S1, S2, S3, tau, Gm11, Gm22, Gm33 )
     
     REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, Gm11, Gm22, Gm33
 

@@ -130,8 +130,8 @@ CONTAINS
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                  iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                 iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                 iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iNodeX, iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS
     REAL(DP) :: Tau
@@ -141,10 +141,10 @@ CONTAINS
     ASSOCIATE ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
                 dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
 
-    CALL TimersStart( Timer_Ex_In )
-
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
+
+    CALL TimersStart( Timer_Ex_In )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -158,20 +158,22 @@ CONTAINS
     !$ACC CREATE( dU )
 #endif
 
+    CALL TimersStop( Timer_Ex_In )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( dU )
+    !$ACC PRESENT( dU, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
-        DO iZ4 = iZ_B0(4), iZ_E0(4)
-          DO iZ3 = iZ_B0(3), iZ_E0(3)
-            DO iZ2 = iZ_B0(2), iZ_E0(2)
-              DO iZ1 = iZ_B0(1), iZ_E0(1)
+        DO iZ4 = iZ_B1(4), iZ_E1(4)
+          DO iZ3 = iZ_B1(3), iZ_E1(3)
+            DO iZ2 = iZ_B1(2), iZ_E1(2)
+              DO iZ1 = iZ_B1(1), iZ_E1(1)
                 DO iNode = 1, nDOF
                   dU(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
                 END DO
@@ -182,7 +184,6 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_In )
     CALL TimersStart( Timer_Ex_Div )
     CALL TimersStart( Timer_Ex_Div_X1 )
 
@@ -203,7 +204,6 @@ CONTAINS
 
     CALL TimersStop( Timer_Ex_Div_X3 )
     CALL TimersStop( Timer_Ex_Div )
-    CALL TimersStart( Timer_Ex_Out )
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -213,7 +213,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRIVATE( iNodeX, Tau ) &
-    !$ACC PRESENT( GX, dU, dZ2, dZ3, dZ4, Weights_q )
+    !$ACC PRESENT( GX, dU, dZ2, dZ3, dZ4, Weights_q, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(7) &
     !$OMP PRIVATE( iNodeX, Tau )
@@ -241,6 +241,21 @@ CONTAINS
       END DO
     END DO
 
+    CALL ComputeIncrement_Geometry &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+#ifdef THORNADO_DEBUG_EXPLICIT
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( dU )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( dU )
+#endif
+    WRITE(*,'(a20,7i4)')     'MAXLOC(dU)', MAXLOC(dU)
+    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU)', MAXVAL(dU)
+#endif
+
+    CALL TimersStart( Timer_Ex_Out )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( dU )
 
@@ -255,17 +270,12 @@ CONTAINS
     !$ACC         dZ1, dZ2, dZ3, dZ4, dU )
 #endif
 
+    CALL TimersStop( Timer_Ex_Out )
+
     CALL ComputeIncrement_Geometry &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
-    CALL TimersStop( Timer_Ex_Out )
-
     END ASSOCIATE
-
-#ifdef THORNADO_DEBUG_EXPLICIT
-    WRITE(*,'(a20,7i4)')     'MAXLOC(dU)', MAXLOC(dU)
-    WRITE(*,'(a20,es23.15)') 'MAXVAL(dU)', MAXVAL(dU)
-#endif
 
     CALL TimersStop( Timer_Explicit )
 
@@ -286,7 +296,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: nZ(4), nZ_X1(4), nK, nF, nF_GF
     INTEGER  :: iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF
@@ -352,7 +362,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( GX_K, GX )
+    !$ACC PRESENT( GX_K, GX, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
@@ -412,7 +422,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( iNodeZ ) &
-    !$ACC PRESENT( G_F, GX_F )
+    !$ACC PRESENT( G_F, GX_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
@@ -436,7 +446,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( G_F )
+    !$ACC PRESENT( G_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(4)
 #endif
@@ -466,7 +476,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( uCR_K, U )
+    !$ACC PRESENT( uCR_K, U, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
@@ -509,14 +519,14 @@ CONTAINS
     CALL TimersStart( Timer_Ex_Div_X1_S )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( Flux_X1_L, Flux_X1_R, FF_L, EF_L, FF_R, EF_R, &
     !$OMP          uPR_L, uPR_R, Tau_X1, alpha, absLambda_L, absLambda_R )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( Flux_X1_L, Flux_X1_R, FF_L, EF_L, FF_R, EF_R, &
     !$ACC          uPR_L, uPR_R, Tau_X1, alpha, absLambda_L, absLambda_R ) &
-    !$ACC PRESENT( uCR_L, uCR_R, NumericalFlux, G_F, dZ3, dZ4, Weights_X1 )
+    !$ACC PRESENT( uCR_L, uCR_R, NumericalFlux, G_F, dZ3, dZ4, Weights_X1, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( Flux_X1_L, Flux_X1_R, FF_L, EF_L, FF_R, EF_R, &
@@ -638,7 +648,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( iNodeZ ) &
-    !$ACC PRESENT( G_K, GX_K )
+    !$ACC PRESENT( G_K, GX_K, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
@@ -663,12 +673,12 @@ CONTAINS
     CALL TimersStart( Timer_Ex_Div_X1_V )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( EF, FF, uPR_K, Tau, Flux_X1_K )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( EF, FF, uPR_K, Tau, Flux_X1_K ) &
-    !$ACC PRESENT( Flux_X1_q, uCR_K, G_K, dZ3, dZ4, Weights_q )
+    !$ACC PRESENT( Flux_X1_q, uCR_K, G_K, dZ3, dZ4, Weights_q, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( EF, FF, uPR_K, Tau, Flux_X1_K )
@@ -741,7 +751,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( dU_X1, dU )
+    !$ACC PRESENT( dU_X1, dU, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
@@ -769,9 +779,9 @@ CONTAINS
 
 #ifdef THORNADO_DEBUG_EXPLICIT
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM(dU_X1)
+    !$OMP TARGET UPDATE FROM( dU_X1 )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST(dU_X1)
+    !$ACC UPDATE HOST( dU_X1 )
 #endif
     WRITE(*,'(a20,7i4)')     'MAXLOC(dU_X1)', MAXLOC(dU_X1)
     WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_X1)', MAXVAL(dU_X1)
@@ -812,7 +822,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: nZ(4), nZ_X2(4), nK, nF, nF_GF
     INTEGER  :: iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF
@@ -874,7 +884,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( GX_K, GX )
+    !$ACC PRESENT( GX_K, GX, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
@@ -926,7 +936,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( iNodeZ ) &
-    !$ACC PRESENT( G_F, GX_F )
+    !$ACC PRESENT( G_F, GX_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
@@ -950,7 +960,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( G_F )
+    !$ACC PRESENT( G_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(4)
 #endif
@@ -976,7 +986,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( uCR_K, U )
+    !$ACC PRESENT( uCR_K, U, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
@@ -1011,14 +1021,14 @@ CONTAINS
              uCR_R(1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,1,iZ_B0(3)  ), nDOF_X2 )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( Flux_X2_L, Flux_X2_R, FF_L, EF_L, FF_R, EF_R, &
     !$OMP          uPR_L, uPR_R, Tau_X2, alpha, absLambda_L, absLambda_R )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( Flux_X2_L, Flux_X2_R, FF_L, EF_L, FF_R, EF_R, &
     !$ACC          uPR_L, uPR_R, Tau_X2, alpha, absLambda_L, absLambda_R ) &
-    !$ACC PRESENT( uCR_L, uCR_R, G_F, NumericalFlux, dZ2, dZ4, Weights_X2 )
+    !$ACC PRESENT( uCR_L, uCR_R, G_F, NumericalFlux, dZ2, dZ4, Weights_X2, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( Flux_X2_L, Flux_X2_R, FF_L, EF_L, FF_R, EF_R, &
@@ -1132,7 +1142,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( iNodeZ ) &
-    !$ACC PRESENT( G_K, GX_K )
+    !$ACC PRESENT( G_K, GX_K, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
@@ -1153,12 +1163,12 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( EF, FF, uPR_K, Tau, Flux_X2_K )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( EF, FF, uPR_K, Tau, Flux_X2_K ) &
-    !$ACC PRESENT( uCR_K, G_K, Flux_X2_q, dZ2, dZ4, Weights_q )
+    !$ACC PRESENT( uCR_K, G_K, Flux_X2_q, dZ2, dZ4, Weights_q, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( EF, FF, uPR_K, Tau, Flux_X2_K )
@@ -1223,7 +1233,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( dU, dU_X2 )
+    !$ACC PRESENT( dU, dU_X2, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
@@ -1249,9 +1259,9 @@ CONTAINS
 
 #ifdef THORNADO_DEBUG_EXPLICIT
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM(dU_X2)
+    !$OMP TARGET UPDATE FROM( dU_X2 )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST(dU_X2)
+    !$ACC UPDATE HOST( dU_X2 )
 #endif
     WRITE(*,'(a20,7i4)')     'MAXLOC(dU_X2)', MAXLOC(dU_X2)
     WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_X2)', MAXVAL(dU_X2)
@@ -1288,7 +1298,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: nZ(4), nZ_X3(4), nK, nF, nF_GF
     INTEGER  :: iNode, iZ1, iZ2, iZ4, iZ3, iCR, iS, iGF
@@ -1350,7 +1360,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( GX_K, GX )
+    !$ACC PRESENT( GX_K, GX, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
@@ -1402,7 +1412,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( iNodeZ ) &
-    !$ACC PRESENT( G_F, GX_F )
+    !$ACC PRESENT( G_F, GX_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
@@ -1426,7 +1436,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( G_F )
+    !$ACC PRESENT( G_F, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(4)
 #endif
@@ -1452,7 +1462,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( uCR_K, U )
+    !$ACC PRESENT( uCR_K, U, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
@@ -1487,14 +1497,14 @@ CONTAINS
              uCR_R(1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,1,iZ_B0(4)  ), nDOF_X3 )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( Flux_X3_L, Flux_X3_R, FF_L, EF_L, FF_R, EF_R, &
     !$OMP          uPR_L, uPR_R, Tau_X3, alpha, absLambda_L, absLambda_R )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( Flux_X3_L, Flux_X3_R, FF_L, EF_L, FF_R, EF_R, &
     !$ACC          uPR_L, uPR_R, Tau_X3, alpha, absLambda_L, absLambda_R ) &
-    !$ACC PRESENT( uCR_L, uCR_R, G_F, NumericalFlux, dZ2, dZ3, Weights_X3 )
+    !$ACC PRESENT( uCR_L, uCR_R, G_F, NumericalFlux, dZ2, dZ3, Weights_X3, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( Flux_X3_L, Flux_X3_R, FF_L, EF_L, FF_R, EF_R, &
@@ -1608,7 +1618,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( iNodeZ ) &
-    !$ACC PRESENT( G_K, GX_K )
+    !$ACC PRESENT( G_K, GX_K, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
@@ -1629,12 +1639,12 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( EF, FF, uPR_K, Tau, Flux_X3_K )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( EF, FF, uPR_K, Tau, Flux_X3_K ) &
-    !$ACC PRESENT( uCR_K, G_K, Flux_X3_q, dZ2, dZ3, Weights_q )
+    !$ACC PRESENT( uCR_K, G_K, Flux_X3_q, dZ2, dZ3, Weights_q, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( EF, FF, uPR_K, Tau, Flux_X3_K )
@@ -1699,7 +1709,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( dU, dU_X3 )
+    !$ACC PRESENT( dU, dU_X3, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
@@ -1725,9 +1735,9 @@ CONTAINS
 
 #ifdef THORNADO_DEBUG_EXPLICIT
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM(dU_X3)
+    !$OMP TARGET UPDATE FROM( dU_X3 )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST(dU_X3)
+    !$ACC UPDATE HOST( dU_X3 )
 #endif
     WRITE(*,'(a20,7i4)')     'MAXLOC(dU_X3)', MAXLOC(dU_X3)
     WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_X3)', MAXVAL(dU_X3)
@@ -1765,8 +1775,8 @@ CONTAINS
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                  iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                 iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                 iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iGF
     INTEGER  :: iNodeZ, iNodeX
@@ -2001,6 +2011,18 @@ CONTAINS
     END DO
     END DO
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP               h2_X1, h3_X1, h3_X2, dh2dX1, dh3dX1, dh3dX2, &
+    !$OMP               GX_X1, GX_X2, G )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC         h2_X1, h3_X1, h3_X2, dh2dX1, dh3dX1, dh3dX2, &
+    !$ACC         GX_X1, GX_X2, G )
+#endif
 
   END SUBROUTINE ComputeIncrement_Geometry
 

@@ -1,3 +1,6 @@
+#ifdef THORNADO_DEBUG
+#define THORNADO_DEBUG_IMEX
+#endif
 MODULE TimeSteppingModule_Castro
 
   USE KindModule, ONLY: &
@@ -151,6 +154,16 @@ CONTAINS
       CallFromThornado = .FALSE.
     END IF
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: U_F, U_R, uGE, uGF ) &
+    !$OMP MAP( alloc: U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( U_F, U_R, uGE, uGF ) &
+    !$ACC CREATE( U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R )
+#endif
+
     ! ----------------------------------------------------------------
     ! --- Positive, Diffusion Accurate IMEX Scheme from Chu et al. ---
     ! --- arXiv:1809.06949 -------------------------------------------
@@ -196,13 +209,7 @@ CONTAINS
       CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
                uGE, uGF, &
-               U_R, T0_R &
-                      (1:nDOF, &
-                       iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
-                       iZ_B0(2)-iZ_SW(2):iZ_E0(2)+iZ_SW(2), &
-                       iZ_B0(3)-iZ_SW(3):iZ_E0(3)+iZ_SW(3), &
-                       iZ_B0(4)-iZ_SW(4):iZ_E0(4)+iZ_SW(4), &
-                       1:nCR,1:nSpecies) )
+               U_R, T0_R )
 
     ELSE
 
@@ -227,19 +234,8 @@ CONTAINS
       CALL ComputeIncrement_TwoMoment_Implicit_New &
              ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, dt, &
                uGE, uGF, &
-               U_F, Q1_F &
-                      (1:nDOFX, &
-                       iX_B0(1)-iX_SW(1):iX_E0(1)+iX_SW(1), &
-                       iX_B0(2)-iX_SW(2):iX_E0(2)+iX_SW(2), &
-                       iX_B0(3)-iX_SW(3):iX_E0(3)+iX_SW(3), &
-                       1:nCF), &
-               U_R, Q1_R &
-                      (1:nDOF, &
-                       iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
-                       iZ_B0(2)-iZ_SW(2):iZ_E0(2)+iZ_SW(2), &
-                       iZ_B0(3)-iZ_SW(3):iZ_E0(3)+iZ_SW(3), &
-                       iZ_B0(4)-iZ_SW(4):iZ_E0(4)+iZ_SW(4), &
-                       1:nCR,1:nSpecies) )
+               U_F, Q1_F, &
+               U_R, Q1_R )
 
     ELSE
 
@@ -259,94 +255,104 @@ CONTAINS
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
+    IF( .NOT. SingleStage ) THEN
 
-    IF( SingleStage ) RETURN
+      ! ---------------
+      ! --- Stage 2 ---
+      ! ---------------
 
-    ! ---------------
-    ! --- Stage 2 ---
-    ! ---------------
+      iX_SW = [ 0, 0, 0 ]
+      iZ_SW = [ 0, 0, 0, 0 ]
 
-    iX_SW = [ 0, 0, 0 ]
-    iZ_SW = [ 0, 0, 0, 0 ]
+      ! --- Explicit Step (Radiation Only) ---
 
-    ! --- Explicit Step (Radiation Only) ---
+      IF( Explicit )THEN
 
-    IF( Explicit )THEN
+        CALL ComputeIncrement_TwoMoment_Explicit &
+               ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
+                 uGE, uGF, &
+                 U_R, T1_R )
 
-      CALL ComputeIncrement_TwoMoment_Explicit &
-             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, &
-               uGE, uGF, &
-               U_R, T1_R &
-                      (1:nDOF, &
-                       iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
-                       iZ_B0(2)-iZ_SW(2):iZ_E0(2)+iZ_SW(2), &
-                       iZ_B0(3)-iZ_SW(3):iZ_E0(3)+iZ_SW(3), &
-                       iZ_B0(4)-iZ_SW(4):iZ_E0(4)+iZ_SW(4), &
-                       1:nCR, 1:nSpecies) )
+      ELSE
 
-    ELSE
+        T1_R = 0.0_DP
 
-      T1_R = 0.0_DP
+      END IF
 
-    END IF
+      ! --- Apply Increment ---
 
-    ! --- Apply Increment ---
+      CALL AddFields_Fluid &
+             ( iX_B0-iX_SW, iX_E0+iX_SW, One, Half * dt, U0_F, Q1_F, U_F )
 
-    CALL AddFields_Fluid &
-           ( iX_B0-iX_SW, iX_E0+iX_SW, One, Half * dt, U0_F, Q1_F, U_F )
+      CALL AddFields_Radiation &
+             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, One, Half * dt, U0_R, T0_R, U_R )
 
-    CALL AddFields_Radiation &
-           ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, One, Half * dt, U0_R, T0_R, U_R )
+      CALL AddFields_Radiation &
+             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, One, Half * dt, U_R,  T1_R, U_R )
 
-    CALL AddFields_Radiation &
-           ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, One, Half * dt, U_R,  T1_R, U_R )
+      CALL AddFields_Radiation &
+             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, One, Half * dt, U_R,  Q1_R, U_R )
 
-    CALL AddFields_Radiation &
-           ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, One, Half * dt, U_R,  Q1_R, U_R )
+      ! --- Apply Positivity Limiter ---
 
-    ! --- Apply Positivity Limiter ---
+      CALL ApplyPositivityLimiter_TwoMoment &
+             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
-    CALL ApplyPositivityLimiter_TwoMoment &
-           ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+      ! --- Implicit Step ---
 
-    ! --- Implicit Step ---
+      IF( Implicit )THEN
 
-    IF( Implicit )THEN
+        CALL ComputeIncrement_TwoMoment_Implicit_New &
+               ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, Half * dt, &
+                 uGE, uGF, &
+                 U_F, Q1_F, &
+                 U_R, Q1_R )
 
-      CALL ComputeIncrement_TwoMoment_Implicit_New &
-             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, Half * dt, &
-               uGE, uGF, &
-               U_F, Q1_F &
-                      (1:nDOFX, &
-                       iX_B0(1)-iX_SW(1):iX_E0(1)+iX_SW(1), &
-                       iX_B0(2)-iX_SW(2):iX_E0(2)+iX_SW(2), &
-                       iX_B0(3)-iX_SW(3):iX_E0(3)+iX_SW(3), &
-                       1:nCF), &
-               U_R, Q1_R &
-                      (1:nDOF, &
-                       iZ_B0(1)-iZ_SW(1):iZ_E0(1)+iZ_SW(1), &
-                       iZ_B0(2)-iZ_SW(2):iZ_E0(2)+iZ_SW(2), &
-                       iZ_B0(3)-iZ_SW(3):iZ_E0(3)+iZ_SW(3), &
-                       iZ_B0(4)-iZ_SW(4):iZ_E0(4)+iZ_SW(4), &
-                       1:nCR, 1:nSpecies) )
+      ELSE
 
-    ELSE
+        Q1_F = Zero
+        Q1_R = Zero
 
-      Q1_F = Zero
-      Q1_R = Zero
+      END IF
+
+      CALL AddFields_Fluid &
+             ( iX_B0-iX_SW, iX_E0+iX_SW, One, Half * dt, U_F, Q1_F, U_F )
+
+      CALL AddFields_Radiation &
+             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, One, Half * dt, U_R, Q1_R, U_R )
+
+      ! --- Apply Positivity Limiter ---
+
+      CALL ApplyPositivityLimiter_TwoMoment &
+             ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
 
     END IF
 
-    CALL AddFields_Fluid &
-           ( iX_B0-iX_SW, iX_E0+iX_SW, One, Half * dt, U_F, Q1_F, U_F )
+#ifdef THORNADO_DEBUG_IMEX
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( Q1_F, T0_R, T1_R, Q1_R )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( Q1_F, T0_R, T1_R, Q1_R )
+#endif
+    WRITE(*,'(a,8x,5i4,es23.15)') 'MINLOC(Q1_F), MINVAL(Q1_F)', MINLOC(Q1_F), MINVAL(Q1_F)
+    WRITE(*,'(a,8x,5i4,es23.15)') 'MAXLOC(Q1_F), MAXVAL(Q1_F)', MAXLOC(Q1_F), MAXVAL(Q1_F)
+    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(T0_R), MINVAL(T0_R)', MINLOC(T0_R), MINVAL(T0_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(T0_R), MAXVAL(T0_R)', MAXLOC(T0_R), MAXVAL(T0_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(T1_R), MINVAL(T1_R)', MINLOC(T1_R), MINVAL(T1_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(T1_R), MAXVAL(T1_R)', MAXLOC(T1_R), MAXVAL(T1_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(Q1_R), MINVAL(Q1_R)', MINLOC(Q1_R), MINVAL(Q1_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(Q1_R), MAXVAL(Q1_R)', MAXLOC(Q1_R), MAXVAL(Q1_R)
+#endif
 
-    CALL AddFields_Radiation &
-           ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, One, Half * dt, U_R, Q1_R, U_R )
-
-    ! --- Apply Positivity Limiter ---
-
-    CALL ApplyPositivityLimiter_TwoMoment &
-           ( iZ_B0-iZ_SW, iZ_E0+iZ_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: U_F, U_R ) &
+    !$OMP MAP( release: U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uGE, uGF )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( U_F, U_R ) &
+    !$ACC DELETE( U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uGE, uGF )
+#endif
 
   END SUBROUTINE Update_IMEX_PDARS
 
@@ -364,23 +370,51 @@ CONTAINS
     REAL(DP), INTENT(out)   :: &
       C(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
-    INTEGER :: iX1, iX2, iX3, iFF
+    INTEGER :: iNodeX, iX1, iX2, iX3, iFF
 
     CALL TimersStart( Timer_AddFieldsF )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: A, B, C, iX_B, iX_E )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( A, B, C, iX_B, iX_E )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( A, B, C, iX_B, iX_E )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
     DO iFF = 1, nCF
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
+    DO iNodeX = 1, nDOFX
 
-      C(:,iX1,iX2,iX3,iFF) &
-        = alpha * A(:,iX1,iX2,iX3,iFF) &
-            + beta * B(:,iX1,iX2,iX3,iFF)
+      C(iNodeX,iX1,iX2,iX3,iFF) &
+        = alpha * A(iNodeX,iX1,iX2,iX3,iFF) &
+            + beta * B(iNodeX,iX1,iX2,iX3,iFF)
 
     END DO
     END DO
     END DO
     END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: A, B, C ) &
+    !$OMP MAP( release: iX_B, iX_E )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( A, B, C ) &
+    !$ACC DELETE( iX_B, iX_E )
+#endif
 
     CALL TimersStop( Timer_AddFieldsF )
 
@@ -400,20 +434,37 @@ CONTAINS
     REAL(DP), INTENT(out)   :: &
       C(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iRF, iS
+    INTEGER :: iNode, iZ1, iZ2, iZ3, iZ4, iRF, iS
 
     CALL TimersStart( Timer_AddFieldsR )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: A, B, C, iZ_B, iZ_E )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( A, B, C, iZ_B, iZ_E )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( A, B, C, iZ_B, iZ_E )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
     DO iS = 1, nSpecies
     DO iRF = 1, nCR
     DO iZ4 = iZ_B(4), iZ_E(4)
     DO iZ3 = iZ_B(3), iZ_E(3)
     DO iZ2 = iZ_B(2), iZ_E(2)
     DO iZ1 = iZ_B(1), iZ_E(1)
+    DO iNode = 1, nDOF
 
-      C(:,iZ1,iZ2,iZ3,iZ4,iRF,iS) &
-        = alpha * A(:,iZ1,iZ2,iZ3,iZ4,iRF,iS) &
-            + beta * B(:,iZ1,iZ2,iZ3,iZ4,iRF,iS)
+      C(iNode,iZ1,iZ2,iZ3,iZ4,iRF,iS) &
+        = alpha * A(iNode,iZ1,iZ2,iZ3,iZ4,iRF,iS) &
+            + beta * B(iNode,iZ1,iZ2,iZ3,iZ4,iRF,iS)
 
     END DO
     END DO
@@ -421,6 +472,17 @@ CONTAINS
     END DO
     END DO
     END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: A, B, C ) &
+    !$OMP MAP( release: iZ_B, iZ_E )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( A, B, C ) &
+    !$ACC DELETE( iZ_B, iZ_E )
+#endif
 
     CALL TimersStop( Timer_AddFieldsR )
 

@@ -321,7 +321,7 @@ CONTAINS
   END SUBROUTINE ComputeInternalEnergyDensity
 
 
-  PURE REAL(DP) ELEMENTAL FUNCTION eFun( D, S1, S2, S3, E )
+  REAL(DP) ELEMENTAL FUNCTION eFun( D, S1, S2, S3, E )
 
     REAL(DP), INTENT(in) :: D, S1, S2, S3, E
 

@@ -18,6 +18,10 @@ MODULE DeviceModule
     cublasCreate_v2, &
     cublasGetStream_v2, &
     cublasSetStream_v2
+  USE CusolverModule, ONLY: &
+    cusolver_handle, &
+    cusolverDnCreate, &
+    cusolverDnSetStream
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
@@ -33,15 +37,18 @@ MODULE DeviceModule
   USE OpenMPModule, ONLY: &
     omp_set_default_device, &
     omp_get_default_device, &
+    omp_is_initial_device, &
     omp_target_is_present
 #endif
 
 #if defined(THORNADO_OACC)
   USE OpenACCModule, ONLY: &
     acc_get_device_num, &
+    acc_on_device, &
     acc_is_present, &
     acc_set_cuda_stream, &
     acc_get_default_async, &
+    acc_device_host, &
     acc_device_nvidia, &
     acc_async_default
 #endif
@@ -73,6 +80,7 @@ MODULE DeviceModule
   PUBLIC :: FinalizeDevice
   PUBLIC :: device_is_present
   PUBLIC :: get_device_num
+  PUBLIC :: on_device
   PUBLIC :: QueryOnGpu
 
 CONTAINS
@@ -103,6 +111,9 @@ CONTAINS
     ierr = cudaStreamCreate( stream )
     ierr = cublasSetStream_v2( cublas_handle, stream )
     !ierr = cublasGetStream_v2( cublas_handle, stream )
+
+    ierr = cusolverDnCreate( cusolver_handle )
+    ierr = cusolverDnSetStream( cusolver_handle, stream )
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
@@ -155,6 +166,20 @@ CONTAINS
 #endif
     RETURN
   END FUNCTION get_device_num
+
+
+  LOGICAL FUNCTION on_device()
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+    on_device = ( .not. omp_is_initial_device() )
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+    on_device = ( .not. acc_on_device( acc_device_host ) )
+#else
+    on_device = .false.
+#endif
+    RETURN
+  END FUNCTION on_device
 
 
   FUNCTION QueryOnGPU_3D_DP_1( X1 ) RESULT( QueryOnGPU )
