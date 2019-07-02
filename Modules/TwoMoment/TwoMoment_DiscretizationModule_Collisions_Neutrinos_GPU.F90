@@ -2167,8 +2167,16 @@ CONTAINS
     !$ACC         Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #endif
 
-    CALL LinearLeastSquares_LWORK( 'N', n_FP, M_FP-1, 1, AMAT, n_FP, BVEC, n_FP, TMP, LWORK )
-    ALLOCATE( WORK(LWORK,nX_G) )
+    IF ( M_FP > 3 ) THEN
+
+      CALL LinearLeastSquares_LWORK( 'N', n_FP, M_FP-1, 1, AMAT, n_FP, BVEC, n_FP, TMP, LWORK )
+      ALLOCATE( WORK(LWORK,nX_G) )
+
+    ELSE
+
+      ALLOCATE( WORK(1,1) )
+
+    END IF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
