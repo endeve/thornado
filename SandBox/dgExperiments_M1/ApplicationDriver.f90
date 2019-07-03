@@ -300,11 +300,26 @@ PROGRAM ApplicationDriver
     ! --- Ref: Olbrant et al. (2012) ---
     ! --- JCP 231(17)  -----------------
 
-      nX = [ 240, 1, 1 ]
-      xL = [ - 0.05_DP, 0.0_DP, 0.0_DP ]
-      xR = [ + 0.10_DP, 1.0_DP, 1.0_DP ]
+      Direction = 'Y'
 
-      bcX = [ 2, 1, 1 ]
+      SELECT CASE ( Direction )
+      CASE ( 'X' )
+  
+        nX = [ 240, 1, 1 ]
+        xL = [ - 0.05_DP,  0.0_DP, 0.0_DP ]
+        xR = [ + 0.1_DP,   1.0_DP, 1.0_DP ]
+  
+        bcX = [ 2, 1, 1 ]
+
+      CASE ( 'Y' )
+  
+        nX = [ 1, 240, 1 ]
+        xL = [   0.0_DP, - 0.05_DP, 0.0_DP ]
+        xR = [ + 1.0_DP, + 0.1_DP, 1.0_DP ]
+  
+        bcX = [ 1, 2, 1 ]
+
+      END SELECT
 
       nE = 1
       eL = 0.0_DP
@@ -325,8 +340,8 @@ PROGRAM ApplicationDriver
       Min_2 = Zero         ! --- Min "Gamma"
 
       t_end     = 1.0d-1
-      iCycleD   = 100
-      iCycleW   = 100
+      iCycleD   = 1000
+      iCycleW   = 1000
       iCycleT   = 100
       maxCycles = 1000000
 
@@ -478,7 +493,7 @@ PROGRAM ApplicationDriver
            BetaTVB_Option = 0.d0,                      &
            SlopeTolerance_Option = 1.0d-6,             &
            UseSlopeLimiter_Option = .TRUE.,            &
-           UseCharacteristicLimiting_Option = .TRUE., &
+           UseCharacteristicLimiting_Option = .FALSE., &
            Verbose_Option = .TRUE. )
  
   ! --- Initialize Positivity Limiter ---
