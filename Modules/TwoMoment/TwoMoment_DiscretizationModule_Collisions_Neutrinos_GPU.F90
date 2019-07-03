@@ -187,13 +187,13 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(out) :: &
-      dU_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
+      dU_F(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCF)
     REAL(DP), INTENT(in)    :: &
       U_R (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      dU_R(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+      dU_R(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
 
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iX1, iX2, iX3, iGF, iCF, iCR, iS, iE, iN_E, iN_X
+    INTEGER  :: iX1, iX2, iX3, iGF, iCF, iCR, iS, iE, iN_E, iN_X
     INTEGER  :: iNode, iNodeX, iNodeE, iNodeX1, iNodeX2, iNodeX3
     REAL(DP) :: Chi_T, Eta_T, Eta, Kappa
 
@@ -218,50 +218,6 @@ CONTAINS
     ! --- Copy inputs to local arrays ---
 
     CALL TimersStart( Timer_Im_MapForward )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRESENT( dU_F, iX_B1, iX_E1 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(5)
-#endif
-    DO iCF = 1, nCF
-      DO iX3 = iX_B1(3), iX_E1(3)
-        DO iX2 = iX_B1(2), iX_E1(2)
-          DO iX1 = iX_B1(1), iX_E1(1)
-            DO iNodeX = 1, nDOFX
-              dU_F(iNodeX,iX1,iX2,iX3,iCF) = Zero
-            END DO
-          END DO
-        END DO
-      END DO
-    END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( dU_R, iZ_B1, iZ_E1 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(7)
-#endif
-    DO iS = 1, nSpecies
-      DO iCR = 1, nCR
-        DO iZ4 = iZ_B1(4), iZ_E1(4)
-          DO iZ3 = iZ_B1(3), iZ_E1(3)
-            DO iZ2 = iZ_B1(2), iZ_E1(2)
-              DO iZ1 = iZ_B1(1), iZ_E1(1)
-                DO iNode = 1, nDOF
-                  dU_R(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
-                END DO
-              END DO
-            END DO
-          END DO
-        END DO
-      END DO
-    END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -673,18 +629,6 @@ CONTAINS
 
     CALL TimersStop( Timer_Im_MapBackward )
 
-#ifdef THORNADO_DEBUG_IMPLICIT
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( dU_F, dU_R )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( dU_F, dU_R )
-#endif
-    WRITE(*,'(a,8x,5i4,es23.15)') 'MINLOC(dU_F), MINVAL(dU_F)', MINLOC(dU_F), MINVAL(dU_F)
-    WRITE(*,'(a,8x,5i4,es23.15)') 'MAXLOC(dU_F), MAXVAL(dU_F)', MAXLOC(dU_F), MAXVAL(dU_F)
-    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(dU_R), MINVAL(dU_R)', MINLOC(dU_R), MINVAL(dU_R)
-    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(dU_R), MAXVAL(dU_R)', MAXLOC(dU_R), MAXVAL(dU_R)
-#endif
-
     CALL TimersStart( Timer_Im_Out )
 
 #if defined(THORNADO_OMP_OL)
@@ -702,6 +646,13 @@ CONTAINS
     CALL TimersStop( Timer_Im_Out )
 
     CALL TimersStop( Timer_Implicit )
+
+#ifdef THORNADO_DEBUG_IMPLICIT
+    WRITE(*,'(a,8x,5i4,es23.15)') 'MINLOC(dU_F), MINVAL(dU_F)', MINLOC(dU_F), MINVAL(dU_F)
+    WRITE(*,'(a,8x,5i4,es23.15)') 'MAXLOC(dU_F), MAXVAL(dU_F)', MAXLOC(dU_F), MAXVAL(dU_F)
+    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(dU_R), MINVAL(dU_R)', MINLOC(dU_R), MINVAL(dU_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(dU_R), MAXVAL(dU_R)', MAXLOC(dU_R), MAXVAL(dU_R)
+#endif
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit_New
 
@@ -2167,16 +2118,8 @@ CONTAINS
     !$ACC         Chi, Sig, fEQ, Chi_NES, Eta_NES, Chi_Pair, Eta_Pair )
 #endif
 
-    IF ( M_FP > 3 ) THEN
-
-      CALL LinearLeastSquares_LWORK( 'N', n_FP, M_FP-1, 1, AMAT, n_FP, BVEC, n_FP, TMP, LWORK )
-      ALLOCATE( WORK(LWORK,nX_G) )
-
-    ELSE
-
-      ALLOCATE( WORK(1,1) )
-
-    END IF
+    CALL LinearLeastSquares_LWORK( 'N', n_FP, M_FP-1, 1, AMAT, n_FP, BVEC, n_FP, TMP, LWORK )
+    ALLOCATE( WORK(LWORK,nX_G) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
