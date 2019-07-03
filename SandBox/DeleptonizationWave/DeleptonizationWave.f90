@@ -1,7 +1,7 @@
 PROGRAM DeleptonizationWave
 
   USE KindModule, ONLY: &
-    DP, SqrtTiny, Third
+    DP, SqrtTiny, Third, Zero
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -21,7 +21,14 @@ PROGRAM DeleptonizationWave
     TimersStop, &
     Timer_Initialize, &
     Timer_InputOutput, &
-    Timer_Evolve
+    Timer_Evolve, &
+    Timer_PositivityLimiter, &
+    Timer_PL_In, &
+    Timer_PL_P, &
+    Timer_PL_K, &
+    Timer_PL_Theta_1, &
+    Timer_PL_Theta_2, &
+    Timer_PL_Out
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
@@ -87,19 +94,25 @@ PROGRAM DeleptonizationWave
   INTEGER  :: iCycle, iCycleD
   INTEGER  :: nE, nX(3), nNodes, nSpecies
   REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt
-  REAL(DP) :: eL, eR
+  REAL(DP) :: eL, eR, ZoomE
   REAL(DP) :: xL(3), xR(3)
 
   nNodes   = 2
   nSpecies = 2
 
-  nX = [ 8, 8, 8 ]
+  nX = [ 12, 12, 12 ]
   xL = [ - 0.0d2, - 0.0d2, - 0.0d2 ] * Kilometer
   xR = [ + 1.0d2, + 1.0d2, + 1.0d2 ] * Kilometer
 
   nE = 16
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
+  ZoomE = 1.183081754893913_DP
+
+  t       = 0.0_DP
+  t_end   = 1.0d-2 * Millisecond
+  dt_wrt  = 1.0d-2 * Millisecond
+  iCycleD = 1
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -121,7 +134,7 @@ PROGRAM DeleptonizationWave
            eR_Option &
              = eR, &
            ZoomE_Option &
-             = 1.183081754893913_DP, &
+             = ZoomE, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -179,6 +192,10 @@ PROGRAM DeleptonizationWave
              = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5', &
            OpacityTableName_Iso_Option  &
              = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5', &
+           OpacityTableName_NES_Option &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5', &
+           OpacityTableName_Pair_Option &
+             = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5', &
            Verbose_Option = .TRUE. )
 
   ! --- Create Neutrino Opacities ---
@@ -216,6 +233,15 @@ PROGRAM DeleptonizationWave
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
 
+  ! Reset these timers
+  Timer_PositivityLimiter = Zero
+  Timer_PL_In             = Zero
+  Timer_PL_P              = Zero
+  Timer_PL_K              = Zero
+  Timer_PL_Theta_1        = Zero
+  Timer_PL_Theta_2        = Zero
+  Timer_PL_Out            = Zero
+
   CALL TallyPositivityLimiter_TwoMoment( 0.0_DP )
 
   CALL ComputeNeutrinoOpacities &
@@ -236,24 +262,27 @@ PROGRAM DeleptonizationWave
            WriteOP_Option = .TRUE. )
 
   CALL TimersStop( Timer_InputOutput )
+
   CALL TimersStop( Timer_Initialize )
 
   ! --- Evolve ---
 
-  CALL TimersStart( Timer_Evolve )
-
-  t       = 0.0_DP
-  t_end   = 5.0d-2 * Millisecond
-  dt_wrt  = 5.0d-2 * Millisecond
   t_wrt   = dt_wrt
   wrt     = .FALSE.
-  iCycleD = 1
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
     '', 'Evolving from t = ', t / Millisecond, &
     ' to t = ', t_end / Millisecond
   WRITE(*,*)
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET ENTER DATA &
+  !$OMP MAP( to: uCF, uCR, uGE, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC ENTER DATA &
+  !$ACC COPYIN( uCF, uCR, uGE, uGF )
+#endif
 
   iCycle = 0
   DO WHILE( t < t_end )
@@ -286,6 +315,8 @@ PROGRAM DeleptonizationWave
 
     END IF
 
+    CALL TimersStart( Timer_Evolve )
+
     CALL Update_IMEX_PDARS &
            ( dt, uCF, uCR, &
              Explicit_Option = .TRUE., &
@@ -295,9 +326,17 @@ PROGRAM DeleptonizationWave
 
     t = t + dt
 
+    CALL TimersStop( Timer_Evolve )
+
     CALL TallyPositivityLimiter_TwoMoment( t )
 
     IF( wrt )THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM( uCF, uCR )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST( uCF, uCR )
+#endif
 
       CALL TimersStart( Timer_InputOutput )
 
@@ -316,6 +355,16 @@ PROGRAM DeleptonizationWave
 
   END DO
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET EXIT DATA &
+  !$OMP MAP( from: uCF, uCR ) &
+  !$OMP MAP( release: uGE, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC EXIT DATA &
+  !$ACC COPYOUT( uCF, uCR ) &
+  !$ACC DELETE( uGE, uGF )
+#endif
+
   ! --- Write Final Solution ---
 
   CALL TimersStart( Timer_InputOutput )
@@ -328,7 +377,6 @@ PROGRAM DeleptonizationWave
            WriteOP_Option = .TRUE. )
 
   CALL TimersStop( Timer_InputOutput )
-  CALL TimersStop( Timer_Evolve )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &

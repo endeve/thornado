@@ -1,7 +1,7 @@
 PROGRAM DeleptonizationWave1D
 
   USE KindModule, ONLY: &
-    DP, SqrtTiny, Half, &
+    DP, SqrtTiny, Half, Zero, &
     Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
     nZ, nNodesZ, &
@@ -22,7 +22,14 @@ PROGRAM DeleptonizationWave1D
     TimersStop, &
     Timer_Initialize, &
     Timer_InputOutput, &
-    Timer_Evolve
+    Timer_Evolve, &
+    Timer_PositivityLimiter, &
+    Timer_PL_In, &
+    Timer_PL_P, &
+    Timer_PL_K, &
+    Timer_PL_Theta_1, &
+    Timer_PL_Theta_2, &
+    Timer_PL_Out
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
@@ -231,6 +238,15 @@ PROGRAM DeleptonizationWave1D
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
 
+  ! Reset these timers
+  Timer_PositivityLimiter = Zero
+  Timer_PL_In             = Zero
+  Timer_PL_P              = Zero
+  Timer_PL_K              = Zero
+  Timer_PL_Theta_1        = Zero
+  Timer_PL_Theta_2        = Zero
+  Timer_PL_Out            = Zero
+
   ! --- Write Initial Condition After Limiter ---
 
   CALL TimersStart( Timer_InputOutput )
@@ -246,13 +262,12 @@ PROGRAM DeleptonizationWave1D
            WriteRF_Option = .TRUE. )
 
   CALL TimersStop( Timer_InputOutput )
+
   CALL TimersStop( Timer_Initialize )
 
   CALL InitializeNonlinearSolverTally
 
   ! --- Evolve ---
-
-  CALL TimersStart( Timer_Evolve )
 
   t_wrt = dt_wrt
   wrt   = .FALSE.
@@ -262,6 +277,14 @@ PROGRAM DeleptonizationWave1D
     '', 'Evolving from t = ', t / Millisecond, &
     ' to t = ', t_end / Millisecond
   WRITE(*,*)
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET ENTER DATA &
+  !$OMP MAP( to: uCF, uCR, uGE, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC ENTER DATA &
+  !$ACC COPYIN( uCF, uCR, uGE, uGF )
+#endif
 
   iCycle = 0
   DO WHILE( t < t_end )
@@ -294,6 +317,8 @@ PROGRAM DeleptonizationWave1D
 
     END IF
 
+    CALL TimersStart( Timer_Evolve )
+
     CALL Update_IMEX_PDARS &
            ( dt, uCF, uCR, &
              Explicit_Option = .TRUE., &
@@ -303,7 +328,15 @@ PROGRAM DeleptonizationWave1D
 
     t = t + dt
 
+    CALL TimersStop( Timer_Evolve )
+
     IF( wrt )THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM( uCF, uCR )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST( uCF, uCR )
+#endif
 
       CALL TimersStart( Timer_InputOutput )
 
@@ -331,6 +364,16 @@ PROGRAM DeleptonizationWave1D
 
   END DO
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET EXIT DATA &
+  !$OMP MAP( from: uCF, uCR ) &
+  !$OMP MAP( release: uGE, uGF )
+#elif defined(THORNADO_OACC)
+  !$ACC EXIT DATA &
+  !$ACC COPYOUT( uCF, uCR ) &
+  !$ACC DELETE( uGE, uGF )
+#endif
+
   ! --- Write Final Solution ---
 
   CALL TimersStart( Timer_InputOutput )
@@ -346,7 +389,6 @@ PROGRAM DeleptonizationWave1D
            WriteRF_Option = .TRUE. )
 
   CALL TimersStop( Timer_InputOutput )
-  CALL TimersStop( Timer_Evolve )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &

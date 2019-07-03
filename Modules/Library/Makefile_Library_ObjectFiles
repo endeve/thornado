@@ -34,8 +34,8 @@ endif
 
 ifeq ($(USE_MAGMA),TRUE)
 LIBRARY += \
-  MagmaModule.o CublasModule.o
+  MagmaModule.o CublasModule.o CusolverModule.o
 else ifeq ($(USE_CUBLAS),TRUE)
 LIBRARY += \
-  CublasModule.o
+  CublasModule.o CusolverModule.o
 endif
