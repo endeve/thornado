@@ -15,25 +15,19 @@ MODULE TimersModule
   REAL(DP), PUBLIC :: Timer_AddFieldsR
   REAL(DP), PUBLIC :: Timer_PositivityLimiter
   REAL(DP), PUBLIC :: Timer_PL_In
-  REAL(DP), PUBLIC :: Timer_PL_P
-  REAL(DP), PUBLIC :: Timer_PL_K
+  REAL(DP), PUBLIC :: Timer_PL_Points
+  REAL(DP), PUBLIC :: Timer_PL_CellAverage
   REAL(DP), PUBLIC :: Timer_PL_Theta_1
   REAL(DP), PUBLIC :: Timer_PL_Theta_2
   REAL(DP), PUBLIC :: Timer_PL_Out
   REAL(DP), PUBLIC :: Timer_Explicit
   REAL(DP), PUBLIC :: Timer_Ex_In
   REAL(DP), PUBLIC :: Timer_Ex_Div
-  REAL(DP), PUBLIC :: Timer_Ex_Div_X1
-  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_In
-  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_G
-  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_U
-  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_S
-  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_V
-  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_dU
-  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_Out
-  REAL(DP), PUBLIC :: Timer_Ex_Div_X1_MM
-  REAL(DP), PUBLIC :: Timer_Ex_Div_X2
-  REAL(DP), PUBLIC :: Timer_Ex_Div_X3
+  REAL(DP), PUBLIC :: Timer_Ex_Geometry
+  REAL(DP), PUBLIC :: Timer_Ex_Permute
+  REAL(DP), PUBLIC :: Timer_Ex_Interpolate
+  REAL(DP), PUBLIC :: Timer_Ex_Flux
+  REAL(DP), PUBLIC :: Timer_Ex_Increment
   REAL(DP), PUBLIC :: Timer_Ex_Out
   REAL(DP), PUBLIC :: Timer_Implicit
   REAL(DP), PUBLIC :: Timer_Im_In
@@ -74,25 +68,19 @@ CONTAINS
     Timer_AddFieldsR        = Zero
     Timer_PositivityLimiter = Zero
     Timer_PL_In             = Zero
-    Timer_PL_P              = Zero
-    Timer_PL_K              = Zero
+    Timer_PL_Points         = Zero
+    Timer_PL_CellAverage    = Zero
     Timer_PL_Theta_1        = Zero
     Timer_PL_Theta_2        = Zero
     Timer_PL_Out            = Zero
     Timer_Explicit          = Zero
     Timer_Ex_In             = Zero
     Timer_Ex_Div            = Zero
-    Timer_Ex_Div_X1         = Zero
-    Timer_Ex_Div_X1_In      = Zero
-    Timer_Ex_Div_X1_G       = Zero
-    Timer_Ex_Div_X1_U       = Zero
-    Timer_Ex_Div_X1_S       = Zero
-    Timer_Ex_Div_X1_V       = Zero
-    Timer_Ex_Div_X1_dU      = Zero
-    Timer_Ex_Div_X1_Out     = Zero
-    Timer_Ex_Div_X1_MM      = Zero
-    Timer_Ex_Div_X2         = Zero
-    Timer_Ex_Div_X3         = Zero
+    Timer_Ex_Geometry       = Zero
+    Timer_Ex_Permute        = Zero
+    Timer_Ex_Interpolate    = Zero
+    Timer_Ex_Flux           = Zero
+    Timer_Ex_Increment      = Zero
     Timer_Ex_Out            = Zero
     Timer_Implicit          = Zero
     Timer_Im_In             = Zero
@@ -131,25 +119,19 @@ CONTAINS
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '  AddFieldsR            :', Timer_AddFieldsR       , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '  PositivityLimiter     :', Timer_PositivityLimiter, ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_In               :', Timer_PL_In            , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_P                :', Timer_PL_P             , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_K                :', Timer_PL_K             , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_Points           :', Timer_PL_Points        , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_CellAverage      :', Timer_PL_CellAverage   , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_Theta_1          :', Timer_PL_Theta_1       , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_Theta_2          :', Timer_PL_Theta_2       , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    PL_Out              :', Timer_PL_Out           , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '  Explicit              :', Timer_Explicit         , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_In               :', Timer_Ex_In            , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_Div              :', Timer_Ex_Div           , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Ex_Div_X1         :', Timer_Ex_Div_X1        , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_In    :', Timer_Ex_Div_X1_In     , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_G     :', Timer_Ex_Div_X1_G      , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_U     :', Timer_Ex_Div_X1_U      , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_S     :', Timer_Ex_Div_X1_S      , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_V     :', Timer_Ex_Div_X1_V      , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_dU    :', Timer_Ex_Div_X1_dU     , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_Out   :', Timer_Ex_Div_X1_Out    , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '        Ex_Div_X1_MM    :', Timer_Ex_Div_X1_MM     , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Ex_Div_X2         :', Timer_Ex_Div_X2        , ' s'
-    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '      Ex_Div_X3         :', Timer_Ex_Div_X3        , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_Geometry         :', Timer_Ex_Geometry      , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_Permute          :', Timer_Ex_Permute       , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_Interpolate      :', Timer_Ex_Interpolate   , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_Flux             :', Timer_Ex_Flux          , ' s'
+    WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_Increment        :', Timer_Ex_Increment     , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Ex_Out              :', Timer_Ex_Out           , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '  Implicit              :', Timer_Implicit         , ' s'
     WRITE(*,'(7X,A,5x,ES12.6E2,A)') '    Im_In               :', Timer_Im_In            , ' s'
