@@ -12,8 +12,8 @@ MODULE TwoMoment_PositivityLimiterModule
     TimersStop, &
     Timer_PositivityLimiter, &
     Timer_PL_In, &
-    Timer_PL_P, &
-    Timer_PL_K, &
+    Timer_PL_Points, &
+    Timer_PL_CellAverage, &
     Timer_PL_Theta_1, &
     Timer_PL_Theta_2, &
     Timer_PL_Out
@@ -352,18 +352,18 @@ CONTAINS
 
     ! --- Point Values ---
 
-    CALL TimersStart( Timer_PL_P )
+    CALL TimersStart( Timer_PL_Points )
 
     CALL ComputePointValues( iZ_B0, iZ_E0, U_Q_N , U_P_N  )
     CALL ComputePointValues( iZ_B0, iZ_E0, U_Q_G1, U_P_G1 )
     CALL ComputePointValues( iZ_B0, iZ_E0, U_Q_G2, U_P_G2 )
     CALL ComputePointValues( iZ_B0, iZ_E0, U_Q_G3, U_P_G3 )
 
-    CALL TimersStop( Timer_PL_P )
+    CALL TimersStop( Timer_PL_Points )
 
     ! --- Cell Average ---
 
-    CALL TimersStart( Timer_PL_K )
+    CALL TimersStart( Timer_PL_CellAverage )
 
     CALL MatrixVectorMultiply &
       ( 'T', nDOF, nR_1, One, U_Q_N , nDOF, Weights_q, 1, Zero, U_K_N , 1 )
@@ -374,7 +374,7 @@ CONTAINS
     CALL MatrixVectorMultiply &
       ( 'T', nDOF, nR_1, One, U_Q_G3, nDOF, Weights_q, 1, Zero, U_K_G3, 1 )
 
-    CALL TimersStop( Timer_PL_K )
+    CALL TimersStop( Timer_PL_CellAverage )
 
     ! --- Ensure Bounded Density ---
 
@@ -444,11 +444,11 @@ CONTAINS
 
     ! --- Recompute Point Values ---
 
-    CALL TimersStart( Timer_PL_P )
+    CALL TimersStart( Timer_PL_Points )
 
     CALL ComputePointValues( iZ_B0, iZ_E0, U_Q_N , U_P_N  )
 
-    CALL TimersStop( Timer_PL_P )
+    CALL TimersStop( Timer_PL_Points )
 
 #ifdef THORNADO_DEBUG_POSITIVITYLIMITER
 #if defined(THORNADO_OMP_OL)
