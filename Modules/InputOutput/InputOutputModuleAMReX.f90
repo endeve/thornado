@@ -14,12 +14,8 @@ MODULE InputOutputModuleAMReX
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
-  USE GeometryFieldsModule,    ONLY: &
-    nGF, uGF, ShortNamesGF
-  USE FluidFieldsModule,       ONLY: &
-    nCF, uCF, ShortNamesCF, &
-    nPF, uPF, ShortNamesPF, &
-    nAF, uAF, ShortNamesAF
+  USE GeometryFieldsModule
+  USE FluidFieldsModule
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,     ONLY: &
@@ -31,6 +27,16 @@ MODULE InputOutputModuleAMReX
     nCF, nPF, nAF
   USE GeometryFieldsModule,    ONLY: &
     nGF
+  USE UnitsModule,             ONLY: &
+    Millisecond, &
+    Gram, &
+    Centimeter, &
+    Kilometer, &
+    Second, &
+    Kelvin, &
+    MeV, &
+    Erg, &
+    BoltzmannConstant
 
   ! --- Local Modules ---
   USE MyAmrModule
@@ -218,7 +224,7 @@ CONTAINS
   SUBROUTINE WriteFieldsAMReX_PlotFile &
     ( Time, StepNo, MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, MF_uAF_Option )
 
-    REAL(DP),             INTENT(in)           :: Time
+    REAL(amrex_real),     INTENT(in)           :: Time
     INTEGER,              INTENT(in)           :: StepNo(0:nLevels)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:nLevels)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCF_Option(0:nLevels)
@@ -237,6 +243,7 @@ CONTAINS
     TYPE(amrex_boxarray)            :: BA   (0:nLevels)
     TYPE(amrex_distromap)           :: DM   (0:nLevels)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
+    REAL(amrex_real)                :: TimeUnit
 
     ! --- Offset for C++ indexing ---
     iOS_CPP = 1
@@ -348,30 +355,36 @@ CONTAINS
       iOS = 0
       IF( WriteGF   )THEN
         CALL MF_ComputeCellAverage &
-          ( nGF, MF_uGF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP )
+          ( nGF, MF_uGF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'GF' )
         iOS = iOS + nGF
       END IF
       IF( WriteFF_C )THEN
         CALL MF_ComputeCellAverage &
-          ( nCF, MF_uCF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP )
+          ( nCF, MF_uCF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'CF' )
         iOS = iOS + nCF
       END IF
       IF( WriteFF_P )THEN
         CALL MF_ComputeCellAverage &
-          ( nPF, MF_uPF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP )
+          ( nPF, MF_uPF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'PF' )
         iOS = iOS + nPF
       END IF
       IF( WriteFF_A )THEN
         CALL MF_ComputeCellAverage &
-          ( nAF, MF_uAF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP )
+          ( nAF, MF_uAF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'AF' )
         iOS = iOS + nAF
       END IF
 
     END DO ! End of loop over levels
 
+    IF( UsePhysicalUnits )THEN
+      TimeUnit = Millisecond
+    ELSE
+      TimeUnit = 1.0_amrex_real
+    END IF
+
     CALL amrex_write_plotfile &
            ( PlotFileName, nLevels+1, MF_PF, VarNames, &
-             GEOM, Time, StepNo, amrex_ref_ratio )
+             GEOM, Time / TimeUnit, StepNo, amrex_ref_ratio )
 
     DO iLevel = 0, nLevels
       CALL amrex_multifab_destroy ( MF_PF(iLevel) )
@@ -385,11 +398,12 @@ CONTAINS
   END SUBROUTINE WriteFieldsAMReX_PlotFile
 
 
-  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, iOS, iOS_CPP )
+  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, iOS, iOS_CPP, Field )
 
     INTEGER,              INTENT(in)    :: nComp, iOS, iOS_CPP(3)
     TYPE(amrex_multifab), INTENT(in)    :: MF
     TYPE(amrex_multifab), INTENT(inout) :: MF_A
+    CHARACTER(2),         INTENT(in)    :: Field
 
     INTEGER            :: iX1, iX2, iX3, iComp
     INTEGER            :: lo(4), hi(4)
@@ -419,7 +433,8 @@ CONTAINS
 
         ! --- Compute cell-average ---
         DO iComp = 1, nComp
-          u_A(iX1-iOS_CPP(1),iX2-iOS_CPP(2),iX3-iOS_CPP(3),iComp + iOS) &
+
+          u_A(iX1-iOS_CPP(1),iX2-iOS_CPP(2),iX3-iOS_CPP(3),iComp+iOS) &
             = DOT_PRODUCT( WeightsX_q(:), u_K(:,iComp) )
 
         END DO
@@ -428,11 +443,119 @@ CONTAINS
       END DO
       END DO
 
+      IF( UsePhysicalUnits ) &
+        CALL ConvertToPhysicalUnits( nComp, iOS, u_A, Field )
+
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
 
   END SUBROUTINE MF_ComputeCellAverage
+
+
+  SUBROUTINE ConvertToPhysicalUnits( nComp, iOS, u_A, Field )
+
+    INTEGER,          INTENT(in)    :: nComp, iOS
+    REAL(amrex_real), INTENT(inout) :: u_A(:,:,:,:)
+    CHARACTER(2),     INTENT(in)    :: Field
+
+    INTEGER          :: iComp
+    REAL(amrex_real) :: unitsGF(nGF), unitsCF(nCF), unitsPF(nPF), unitsAF(nAF)
+
+    CALL SetUnitsFields( unitsGF, unitsCF, unitsPF, unitsAF )
+
+    IF     ( Field .EQ. 'GF' )THEN
+
+      DO iComp = 1, nComp
+        u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsGF(iComp)
+      END DO
+
+    ELSE IF( Field .EQ. 'CF' )THEN
+
+      DO iComp = 1, nComp
+        u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsCF(iComp)
+      END DO
+
+    ELSE IF( Field .EQ. 'PF' )THEN
+
+      DO iComp = 1, nComp
+        u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsPF(iComp)
+      END DO
+
+    ELSE IF( Field .EQ. 'AF' )THEN
+
+      DO iComp = 1, nComp
+        u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsAF(iComp)
+      END DO
+
+    ELSE
+
+      RETURN
+
+    END IF
+
+  END SUBROUTINE ConvertToPhysicalUnits
+
+
+  SUBROUTINE SetUnitsFields( unitsGF, unitsCF, unitsPF, unitsAF )
+
+    REAL(amrex_real), INTENT(out) :: unitsGF(nGF)
+    REAL(amrex_real), INTENT(out) :: unitsCF(nCF)
+    REAL(amrex_real), INTENT(out) :: unitsPF(nPF)
+    REAL(amrex_real), INTENT(out) :: unitsAF(nAF)
+
+    ! --- Geometry ---
+
+    unitsGF(iGF_Phi_N)    = Erg / Gram
+    unitsGF(iGF_h_1)      = 1.0_amrex_real
+    unitsGF(iGF_h_2)      = 1.0_amrex_real
+    unitsGF(iGF_h_3)      = 1.0_amrex_real
+    unitsGF(iGF_Gm_dd_11) = 1.0_amrex_real
+    unitsGF(iGF_Gm_dd_22) = 1.0_amrex_real
+    unitsGF(iGF_Gm_dd_33) = 1.0_amrex_real
+    unitsGF(iGF_SqrtGm)   = 1.0_amrex_real
+    unitsGF(iGF_Alpha)    = 1.0_amrex_real
+    unitsGF(iGF_Beta_1)   = 1.0_amrex_real
+    unitsGF(iGF_Beta_2)   = 1.0_amrex_real
+    unitsGF(iGF_Beta_3)   = 1.0_amrex_real
+    unitsGF(iGF_Psi)      = 1.0_amrex_real
+
+    ! --- Conserved ---
+
+    unitsCF(iCF_D)  = Gram / Centimeter**3
+    unitsCF(iCF_S1) = Gram / Centimeter**2 / Second
+    unitsCF(iCF_S2) = Gram / Centimeter**2 / Second
+    unitsCF(iCF_S3) = Gram / Centimeter**2 / Second
+    unitsCF(iCF_E)  = Erg / Centimeter**3
+    unitsCF(iCF_Ne) = 1.0_amrex_real / Centimeter**3
+
+    ! --- Primitive ---
+
+    unitsPF(iPF_D)  = Gram / Centimeter**3
+    unitsPF(iPF_V1) = Kilometer / Second
+    unitsPF(iPF_V2) = Kilometer / Second
+    unitsPF(iPF_V3) = Kilometer / Second
+    unitsPF(iPF_E)  = Erg / Centimeter**3
+    unitsPF(iPF_Ne) = 1.0_amrex_real / Centimeter**3
+
+    ! --- Auxiliary ---
+
+    unitsAF(iAF_P)  = Erg / Centimeter**3
+    unitsAF(iAF_T)  = Kelvin
+    unitsAF(iAF_Ye) = 1.0_amrex_real
+    unitsAF(iAF_S)  = BoltzmannConstant
+    unitsAF(iAF_E)  = Erg / Gram
+    unitsAF(iAF_Me) = MeV
+    unitsAF(iAF_Mp) = MeV
+    unitsAF(iAF_Mn) = MeV
+    unitsAF(iAF_Xp) = 1.0_amrex_real
+    unitsAF(iAF_Xn) = 1.0_amrex_real
+    unitsAF(iAF_Xa) = 1.0_amrex_real
+    unitsAF(iAF_Xh) = 1.0_amrex_real
+    unitsAF(iAF_Gm) = 1.0_amrex_real
+    unitsAF(iAF_Cs) = Kilometer / Second
+
+  END SUBROUTINE SetUnitsFields
 
 
 !!$  SUBROUTINE MakeMF_Diff( chk1, chk2 )
