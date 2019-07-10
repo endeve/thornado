@@ -13,15 +13,20 @@ MODULE NeutrinoOpacitiesComputationModule
     Kelvin, &
     MeV
   USE ProgramHeaderModule, ONLY: &
-    nDOFE, nDOFX
+    nDOF, nDOFE, nDOFX
   USE DeviceModule, ONLY: &
     QueryOnGpu
   USE LinearAlgebraModule, ONLY: &
     MatrixVectorMultiply
   USE ReferenceElementModuleX, ONLY: &
-    WeightsX_q
+    WeightsX_q, &
+    NodeNumberTableX
+  USE ReferenceElementModule, ONLY: &
+    NodeNumbersX, &
+    NodeNumberTable
   USE MeshModule, ONLY: &
-    MeshE
+    MeshE, &
+    NodeCoordinate
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeElectronChemicalPotential_TABLE, &
     ComputeProtonChemicalPotential_TABLE, &
@@ -499,6 +504,7 @@ CONTAINS
       iSpecies
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, nZ(4)
+    INTEGER  :: iNodeX, iNodeE, iNodeX1, iNodeX2, iNodeX3
     INTEGER  :: iOS_X, iOS_E
     REAL(DP) :: D_K(1), T_K(1), Y_K(1), E_K(1), opEC_K(1,1)
 
@@ -509,37 +515,43 @@ CONTAINS
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
+  
+      DO iNodeX = 1, nDOFX
 
-      ! --- Use Cell Averaged D, T, Y ---
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+        iNodeX3 = NodeNumberTableX(3,iNodeX)
 
-      D_K = DOT_PRODUCT( WeightsX_q(:), D(:,iZ2,iZ3,iZ4) )
-      T_K = DOT_PRODUCT( WeightsX_q(:), T(:,iZ2,iZ3,iZ4) )
-      Y_K = DOT_PRODUCT( WeightsX_q(:), Y(:,iZ2,iZ3,iZ4) )
+        D_K = D(iNodeX,iZ2,iZ3,iZ4)      
+        T_K = T(iNodeX,iZ2,iZ3,iZ4)      
+        Y_K = Y(iNodeX,iZ2,iZ3,iZ4)      
+         
+        ! --- Offset (Position) ---
 
-      ! --- Offset (Position) ---
+        iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
 
-      iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
+        DO iZ1 = iZ_B0(1), iZ_E0(1)
+        DO iNodeE = 1, nDOFE
 
-      DO iZ1 = iZ_B0(1), iZ_E0(1)
+          E_K = NodeCoordinate( MeshE, iZ1, iNodeE )
 
-        ! --- Use Cell Center Energy ---
+          ! --- Offset (Energy) ---
 
-        E_K = MeshE % Center(iZ1)
+          iOS_E = (iZ1-1) * nDOFE
 
-        ! --- Offset (Energy) ---
+          CALL LogInterpolateSingleVariable &
+                 ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
+                   LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
+                   LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+                   OS_EmAb(iSpecies), EmAb_T(:,:,:,:,iSpecies), opEC_K )
 
-        iOS_E = (iZ1-1) * nDOFE
+          opEC(iOS_E+iNodeE,iSpecies,iOS_X+iNodeX) &
+            = opEC_K(1,1) * UnitEC
 
-        CALL LogInterpolateSingleVariable &
-               ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
-                 LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
-                 LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-                 OS_EmAb(iSpecies), EmAb_T(:,:,:,:,iSpecies), opEC_K )
-
-        opEC(iOS_E+1:iOS_E+nDOFE,iSpecies,iOS_X+1:iOS_X+nDOFX) &
-          = opEC_K(1,1) * UnitEC
-
-      END DO
+        END DO ! iNodeE
+        END DO ! iZ1
+ 
+      END DO ! iNodeX
 
     END DO
     END DO
@@ -732,6 +744,7 @@ CONTAINS
       iSpecies
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, nZ(4)
+    INTEGER  :: iNodeX, iNodeE, iNodeX1, iNodeX2, iNodeX3
     INTEGER  :: iOS_X, iOS_E
     REAL(DP) :: D_K(1), T_K(1), Y_K(1), E_K(1), opES_K(1,1)
 
@@ -743,38 +756,44 @@ CONTAINS
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-      ! --- Use Cell Averaged D, T, Y ---
+      DO iNodeX = 1, nDOFX
 
-      D_K = DOT_PRODUCT( WeightsX_q(:), D(:,iZ2,iZ3,iZ4) )
-      T_K = DOT_PRODUCT( WeightsX_q(:), T(:,iZ2,iZ3,iZ4) )
-      Y_K = DOT_PRODUCT( WeightsX_q(:), Y(:,iZ2,iZ3,iZ4) )
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+        iNodeX3 = NodeNumberTableX(3,iNodeX)
 
-      ! --- Offset (Position) ---
+        D_K = D(iNodeX,iZ2,iZ3,iZ4)
+        T_K = T(iNodeX,iZ2,iZ3,iZ4)
+        Y_K = Y(iNodeX,iZ2,iZ3,iZ4)
 
-      iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
+        ! --- Offset (Position) ---
 
-      DO iZ1 = iZ_B0(1), iZ_E0(1)
+        iOS_X = ( (iZ4-1)*nZ(3)*nZ(2) + (iZ3-1)*nZ(2) + (iZ2-1) ) * nDOFX
+ 
+        DO iZ1 = iZ_B0(1), iZ_E0(1)
+        DO iNodeE = 1, nDOFE
 
-        ! --- Use Cell Center Energy ---
+          E_K = NodeCoordinate( MeshE, iZ1, iNodeE )
 
-        E_K = MeshE % Center(iZ1)
+          ! --- Offset (Energy) ---
 
-        ! --- Offset (Energy) ---
+          iOS_E = (iZ1-1) * nDOFE
 
-        iOS_E = (iZ1-1) * nDOFE
+          CALL LogInterpolateSingleVariable &
+                 ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
+                   LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
+                   LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+                   OS_Iso(iSpecies,1), &
+                   Iso_T(:,:,:,:,1,iSpecies), &
+                   opES_K )
 
-        CALL LogInterpolateSingleVariable &
-               ( LOG10( E_K / UnitE ), LOG10( D_K / UnitD ), &
-                 LOG10( T_K / UnitT ),      ( Y_K / UnitY ), &
-                 LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-                 OS_Iso(iSpecies,1), &
-                 Iso_T(:,:,:,:,1,iSpecies), &
-                 opES_K )
+          opES(iOS_E+iNodeE,iSpecies,iOS_X+iNodeX) &
+            = opES_K(1,1) * UnitES
 
-        opES(iOS_E+1:iOS_E+nDOFE,iSpecies,iOS_X+1:iOS_X+nDOFX) &
-          = opES_K(1,1) * UnitES
+        END DO ! iNodeE
+        END DO ! iZ1
 
-      END DO
+      END DO ! iNodeX
 
     END DO
     END DO
