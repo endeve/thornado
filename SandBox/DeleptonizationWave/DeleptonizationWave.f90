@@ -24,8 +24,8 @@ PROGRAM DeleptonizationWave
     Timer_Evolve, &
     Timer_PositivityLimiter, &
     Timer_PL_In, &
-    Timer_PL_P, &
-    Timer_PL_K, &
+    Timer_PL_Points, &
+    Timer_PL_CellAverage, &
     Timer_PL_Theta_1, &
     Timer_PL_Theta_2, &
     Timer_PL_Out
@@ -236,8 +236,8 @@ PROGRAM DeleptonizationWave
   ! Reset these timers
   Timer_PositivityLimiter = Zero
   Timer_PL_In             = Zero
-  Timer_PL_P              = Zero
-  Timer_PL_K              = Zero
+  Timer_PL_Points         = Zero
+  Timer_PL_CellAverage    = Zero
   Timer_PL_Theta_1        = Zero
   Timer_PL_Theta_2        = Zero
   Timer_PL_Out            = Zero

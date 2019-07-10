@@ -268,7 +268,7 @@ CONTAINS
             'FATAL ERROR: Euler_ApplyPositivityLimiterModule_Relativistic'
         WRITE(*,'(A)') 'q < 0 AFTER limiting'
         WRITE(*,'(A,3I4.3)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
-        DO iNodeX = 1, nDOFX
+        DO iNodeX = 1, SIZE( q )
           WRITE(*,'(A,I2.2,ES25.16E3)') &
             'iNodeX, q(iNodeX) = ', iNodeX, q(iNodeX)
         END DO

@@ -17,17 +17,11 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     Timer_Explicit, &
     Timer_Ex_In, &
     Timer_Ex_Div, &
-    Timer_Ex_Div_X1, &
-    Timer_Ex_Div_X1_In, &
-    Timer_Ex_Div_X1_G, &
-    Timer_Ex_Div_X1_U, &
-    Timer_Ex_Div_X1_S, &
-    Timer_Ex_Div_X1_V, &
-    Timer_Ex_Div_X1_dU, &
-    Timer_Ex_Div_X1_Out, &
-    Timer_Ex_Div_X1_MM, &
-    Timer_Ex_Div_X2, &
-    Timer_Ex_Div_X3, &
+    Timer_Ex_Geometry, &
+    Timer_Ex_Permute, &
+    Timer_Ex_Interpolate, &
+    Timer_Ex_Flux, &
+    Timer_Ex_Increment, &
     Timer_Ex_Out
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
@@ -130,8 +124,8 @@ CONTAINS
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                  iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                 iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                 iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iNodeX, iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS
     REAL(DP) :: Tau
@@ -140,9 +134,6 @@ CONTAINS
 
     ASSOCIATE ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
                 dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
-
-    CALL ApplyBoundaryConditions_TwoMoment &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
     CALL TimersStart( Timer_Ex_In )
 
@@ -160,20 +151,23 @@ CONTAINS
 
     CALL TimersStop( Timer_Ex_In )
 
+    CALL ApplyBoundaryConditions_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( dU, iZ_B0, iZ_E0 )
+    !$ACC PRESENT( dU, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
-        DO iZ4 = iZ_B0(4), iZ_E0(4)
-          DO iZ3 = iZ_B0(3), iZ_E0(3)
-            DO iZ2 = iZ_B0(2), iZ_E0(2)
-              DO iZ1 = iZ_B0(1), iZ_E0(1)
+        DO iZ4 = iZ_B1(4), iZ_E1(4)
+          DO iZ3 = iZ_B1(3), iZ_E1(3)
+            DO iZ2 = iZ_B1(2), iZ_E1(2)
+              DO iZ1 = iZ_B1(1), iZ_E1(1)
                 DO iNode = 1, nDOF
                   dU(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
                 END DO
@@ -185,24 +179,16 @@ CONTAINS
     END DO
 
     CALL TimersStart( Timer_Ex_Div )
-    CALL TimersStart( Timer_Ex_Div_X1 )
 
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
-    CALL TimersStop( Timer_Ex_Div_X1 )
-    CALL TimersStart( Timer_Ex_Div_X2 )
-
     CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
-
-    CALL TimersStop( Timer_Ex_Div_X2 )
-    CALL TimersStart( Timer_Ex_Div_X3 )
 
     CALL ComputeIncrement_Divergence_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
-    CALL TimersStop( Timer_Ex_Div_X3 )
     CALL TimersStop( Timer_Ex_Div )
 
     ! --- Multiply Inverse Mass Matrix ---
@@ -241,33 +227,40 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStart( Timer_Ex_Out )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( dU )
-
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: GX, U, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    !$OMP               dZ1, dZ2, dZ3, dZ4, dU )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( dU )
-
-    !$ACC EXIT DATA &
-    !$ACC DELETE( GX, U, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    !$ACC         dZ1, dZ2, dZ3, dZ4, dU )
-#endif
-
-    CALL TimersStop( Timer_Ex_Out )
+    CALL TimersStart( Timer_Ex_Geometry )
 
     CALL ComputeIncrement_Geometry &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
-    END ASSOCIATE
+    CALL TimersStop( Timer_Ex_Geometry )
 
 #ifdef THORNADO_DEBUG_EXPLICIT
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( dU )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( dU )
+#endif
     WRITE(*,'(a20,7i4)')     'MAXLOC(dU)', MAXLOC(dU)
     WRITE(*,'(a20,es23.15)') 'MAXVAL(dU)', MAXVAL(dU)
 #endif
+
+    CALL TimersStart( Timer_Ex_Out )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: dU, U ) &
+    !$OMP MAP( release: GX, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP               dZ1, dZ2, dZ3, dZ4 )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( dU, U ) &
+    !$ACC DELETE( GX, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC         dZ1, dZ2, dZ3, dZ4 )
+#endif
+
+    CALL TimersStop( Timer_Ex_Out )
+
+    END ASSOCIATE
 
     CALL TimersStop( Timer_Explicit )
 
@@ -288,7 +281,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: nZ(4), nZ_X1(4), nK, nF, nF_GF
     INTEGER  :: iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF
@@ -328,7 +321,8 @@ CONTAINS
 
     ASSOCIATE ( dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
 
-    CALL TimersStart( Timer_Ex_Div_X1_In )
+    CALL TimersStart( Timer_Ex_In )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
@@ -340,15 +334,12 @@ CONTAINS
     !$ACC CREATE( GX_K, GX_F, G_K, G_F, uCR_K, uCR_L, uCR_R, &
     !$ACC         dU_X1, Flux_X1_q, NumericalFlux )
 #endif
-    CALL TimersStop( Timer_Ex_Div_X1_In )
 
-    !---------------------
-    ! --- Surface Term ---
-    !---------------------
-
-    CALL TimersStart( Timer_Ex_Div_X1_G )
+    CALL TimersStop( Timer_Ex_In )
 
     ! --- Geometry Fields in Element Nodes ---
+
+    CALL TimersStart( Timer_Ex_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -370,15 +361,15 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Div_X1_G )
+    CALL TimersStop( Timer_Ex_Permute )
 
     ! --- Interpolate Geometry Fields on Shared Face ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
 
     ! --- Face States (Average of Left and Right States) ---
 
     ! --- Scale Factors ---
-
-    CALL TimersStart( Timer_Ex_Div_X1_MM )
 
     DO iGF = iGF_h_1, iGF_h_3
       
@@ -404,9 +395,13 @@ CONTAINS
              GX_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_Alpha), nDOFX, Half, &
              GX_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_Alpha), nDOFX_X1 )
 
-    CALL TimersStop( Timer_Ex_Div_X1_MM )
+    CALL TimersStop( Timer_Ex_Interpolate )
 
-    CALL TimersStart( Timer_Ex_Div_X1_G )
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
+
+    CALL TimersStart( Timer_Ex_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -458,12 +453,6 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Div_X1_G )
-
-    ! --- Interpolate Radiation Fields ---
-
-    CALL TimersStart( Timer_Ex_Div_X1_U )
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
@@ -488,11 +477,13 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Div_X1_U )
+    CALL TimersStop( Timer_Ex_Permute )
+
+    ! --- Interpolate Radiation Fields ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
 
     ! --- Interpolate Left State ---
-
-    CALL TimersStart( Timer_Ex_Div_X1_MM )
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Up, nDOF_X1, &
@@ -506,9 +497,11 @@ CONTAINS
              uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF, Zero, &
              uCR_R(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF_X1 )
 
-    CALL TimersStop( Timer_Ex_Div_X1_MM )
+    CALL TimersStop( Timer_Ex_Interpolate )
 
-    CALL TimersStart( Timer_Ex_Div_X1_S )
+    ! --- Numerical Flux ---
+
+    CALL TimersStart( Timer_Ex_Flux )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -577,8 +570,6 @@ CONTAINS
                         G_F(iNode,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                         G_F(iNode,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
 
-                ! --- Numerical Flux ---
-
                 DO iCR = 1, nCR
 
                   absLambda_L = 1.0_DP
@@ -608,9 +599,11 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Div_X1_S )
+    CALL TimersStop( Timer_Ex_Flux )
 
-    CALL TimersStart( Timer_Ex_Div_X1_MM )
+    ! --- Surface Contribution ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
 
     ! --- Contribution from Left Face ---
 
@@ -626,13 +619,13 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)+1), nDOF_X1, One, &
              dU_X1, nDOF )
 
-    CALL TimersStop( Timer_Ex_Div_X1_MM )
+    CALL TimersStop( Timer_Ex_Interpolate )
 
     !---------------------
     ! --- Volume Term ---
     !---------------------
 
-    CALL TimersStart( Timer_Ex_Div_X1_G )
+    CALL TimersStart( Timer_Ex_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -660,9 +653,11 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Div_X1_G )
+    CALL TimersStop( Timer_Ex_Permute )
 
-    CALL TimersStart( Timer_Ex_Div_X1_V )
+    ! --- Numerical Flux ---
+
+    CALL TimersStart( Timer_Ex_Flux )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -725,19 +720,19 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Div_X1_V )
+    CALL TimersStop( Timer_Ex_Flux )
 
     ! --- Contribution from Volume ---
 
-    CALL TimersStart( Timer_Ex_Div_X1_MM )
+    CALL TimersStart( Timer_Ex_Interpolate )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOF, nK, nDOF, One, dLdX1_q, nDOF, &
              Flux_X1_q, nDOF, One, dU_X1, nDOF )
 
-    CALL TimersStop( Timer_Ex_Div_X1_MM )
+    CALL TimersStop( Timer_Ex_Interpolate )
 
-    CALL TimersStart( Timer_Ex_Div_X1_dU )
+    CALL TimersStart( Timer_Ex_Increment )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
@@ -767,19 +762,19 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_Div_X1_dU )
+    CALL TimersStop( Timer_Ex_Increment )
 
 #ifdef THORNADO_DEBUG_EXPLICIT
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM(dU_X1)
+    !$OMP TARGET UPDATE FROM( dU_X1 )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST(dU_X1)
+    !$ACC UPDATE HOST( dU_X1 )
 #endif
     WRITE(*,'(a20,7i4)')     'MAXLOC(dU_X1)', MAXLOC(dU_X1)
     WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_X1)', MAXVAL(dU_X1)
 #endif
 
-    CALL TimersStart( Timer_Ex_Div_X1_Out )
+    CALL TimersStart( Timer_Ex_Out )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -793,7 +788,7 @@ CONTAINS
     !$ACC         dU_X1, Flux_X1_q, NumericalFlux )
 #endif
 
-    CALL TimersStop( Timer_Ex_Div_X1_Out )
+    CALL TimersStop( Timer_Ex_Out )
 
     END ASSOCIATE
 
@@ -814,7 +809,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: nZ(4), nZ_X2(4), nK, nF, nF_GF
     INTEGER  :: iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF
@@ -854,6 +849,8 @@ CONTAINS
 
     ASSOCIATE ( dZ2 => MeshX(1) % Width, dZ4 => MeshX(3) % Width )
 
+    CALL TimersStart( Timer_Ex_In )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
@@ -866,11 +863,11 @@ CONTAINS
     !$ACC         dU_X2, Flux_X2_q, NumericalFlux )
 #endif
 
-    !---------------------
-    ! --- Surface Term ---
-    !---------------------
+    CALL TimersStop( Timer_Ex_In )
 
     ! --- Geometry Fields in Element Nodes ---
+
+    CALL TimersStart( Timer_Ex_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -892,7 +889,11 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStop( Timer_Ex_Permute )
+
     ! --- Interpolate Geometry Fields on Shared Face ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
 
     ! --- Face States (Average of Left and Right States) ---
 
@@ -921,6 +922,14 @@ CONTAINS
            ( 'N', 'N', nDOFX_X2, nF_GF, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
              GX_K(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF_Alpha), nDOFX, Half, &
              GX_F(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF_Alpha), nDOFX_X2 )
+
+    CALL TimersStop( Timer_Ex_Interpolate )
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
+
+    CALL TimersStart( Timer_Ex_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -972,8 +981,6 @@ CONTAINS
       END DO
     END DO
 
-    ! --- Interpolate Radiation Fields ---
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
@@ -998,6 +1005,12 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStop( Timer_Ex_Permute )
+
+    ! --- Interpolate Radiation Fields ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
+
     ! --- Interpolate Left State ---
 
     CALL MatrixMatrixMultiply &
@@ -1011,6 +1024,12 @@ CONTAINS
            ( 'N', 'N', nDOF_X2, nF, nDOF, One, L_X2_Dn, nDOF_X2, &
              uCR_K(1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,1,iZ_B0(3)  ), nDOF, Zero, &
              uCR_R(1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,1,iZ_B0(3)  ), nDOF_X2 )
+
+    CALL TimersStop( Timer_Ex_Interpolate )
+
+    ! --- Numerical Flux ---
+
+    CALL TimersStart( Timer_Ex_Flux )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -1079,8 +1098,6 @@ CONTAINS
                         G_F(iNode,iGF_Gm_dd_22,iZ2,iZ4,iZ3), &
                         G_F(iNode,iGF_Gm_dd_33,iZ2,iZ4,iZ3) )
 
-                ! --- Numerical Flux ---
-
                 DO iCR = 1, nCR
 
                   absLambda_L = 1.0_DP
@@ -1110,6 +1127,12 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStop( Timer_Ex_Flux )
+
+    ! --- Surface Contribution ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
+
     ! --- Contribution from Left Face ---
 
     CALL MatrixMatrixMultiply &
@@ -1124,9 +1147,13 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,iZ_B0(3)+1), nDOF_X2, One, &
              dU_X2, nDOF )
 
+    CALL TimersStop( Timer_Ex_Interpolate )
+
     !---------------------
     ! --- Volume Term ---
     !---------------------
+
+    CALL TimersStart( Timer_Ex_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -1153,6 +1180,12 @@ CONTAINS
         END DO
       END DO
     END DO
+
+    CALL TimersStop( Timer_Ex_Permute )
+
+    ! --- Numerical Flux ---
+
+    CALL TimersStart( Timer_Ex_Flux )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -1215,11 +1248,19 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStop( Timer_Ex_Flux )
+
     ! --- Contribution from Volume ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOF, nK, nDOF, One, dLdX2_q, nDOF, &
              Flux_X2_q, nDOF, One, dU_X2, nDOF )
+
+    CALL TimersStop( Timer_Ex_Interpolate )
+
+    CALL TimersStart( Timer_Ex_Increment )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
@@ -1249,15 +1290,19 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStop( Timer_Ex_Increment )
+
 #ifdef THORNADO_DEBUG_EXPLICIT
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM(dU_X2)
+    !$OMP TARGET UPDATE FROM( dU_X2 )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST(dU_X2)
+    !$ACC UPDATE HOST( dU_X2 )
 #endif
     WRITE(*,'(a20,7i4)')     'MAXLOC(dU_X2)', MAXLOC(dU_X2)
     WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_X2)', MAXVAL(dU_X2)
 #endif
+
+    CALL TimersStart( Timer_Ex_Out )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1270,6 +1315,8 @@ CONTAINS
     !$ACC         GX_K, GX_F, G_K, G_F, uCR_K, uCR_L, uCR_R, &
     !$ACC         dU_X2, Flux_X2_q, NumericalFlux )
 #endif
+
+    CALL TimersStop( Timer_Ex_Out )
 
     END ASSOCIATE
 
@@ -1290,7 +1337,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: nZ(4), nZ_X3(4), nK, nF, nF_GF
     INTEGER  :: iNode, iZ1, iZ2, iZ4, iZ3, iCR, iS, iGF
@@ -1330,6 +1377,8 @@ CONTAINS
 
     ASSOCIATE ( dZ2 => MeshX(1) % Width, dZ3 => MeshX(2) % Width )
 
+    CALL TimersStart( Timer_Ex_In )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
@@ -1342,11 +1391,11 @@ CONTAINS
     !$ACC         dU_X3, Flux_X3_q, NumericalFlux )
 #endif
 
-    !---------------------
-    ! --- Surface Term ---
-    !---------------------
+    CALL TimersStop( Timer_Ex_In )
 
     ! --- Geometry Fields in Element Nodes ---
+
+    CALL TimersStart( Timer_Ex_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -1368,7 +1417,11 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStop( Timer_Ex_Permute )
+
     ! --- Interpolate Geometry Fields on Shared Face ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
 
     ! --- Face States (Average of Left and Right States) ---
 
@@ -1397,6 +1450,14 @@ CONTAINS
            ( 'N', 'N', nDOFX_X3, nF_GF, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
              GX_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF_Alpha), nDOFX, Half, &
              GX_F(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF_Alpha), nDOFX_X3 )
+
+    CALL TimersStop( Timer_Ex_Interpolate )
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
+
+    CALL TimersStart( Timer_Ex_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -1448,8 +1509,6 @@ CONTAINS
       END DO
     END DO
 
-    ! --- Interpolate Radiation Fields ---
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
@@ -1474,6 +1533,12 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStop( Timer_Ex_Permute )
+
+    ! --- Interpolate Radiation Fields ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
+
     ! --- Interpolate Left State ---
 
     CALL MatrixMatrixMultiply &
@@ -1487,6 +1552,12 @@ CONTAINS
            ( 'N', 'N', nDOF_X3, nF, nDOF, One, L_X3_Dn, nDOF_X3, &
              uCR_K(1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,1,iZ_B0(4)  ), nDOF, Zero, &
              uCR_R(1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,1,iZ_B0(4)  ), nDOF_X3 )
+
+    CALL TimersStop( Timer_Ex_Interpolate )
+
+    ! --- Numerical Flux ---
+
+    CALL TimersStart( Timer_Ex_Flux )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -1555,8 +1626,6 @@ CONTAINS
                         G_F(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
                         G_F(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
 
-                ! --- Numerical Flux ---
-
                 DO iCR = 1, nCR
 
                   absLambda_L = 1.0_DP
@@ -1586,6 +1655,12 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStop( Timer_Ex_Flux )
+
+    ! --- Surface Contribution ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
+
     ! --- Contribution from Left Face ---
 
     CALL MatrixMatrixMultiply &
@@ -1600,9 +1675,13 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,iZ_B0(4)+1), nDOF_X3, One, &
              dU_X3, nDOF )
 
+    CALL TimersStop( Timer_Ex_Interpolate )
+
     !---------------------
     ! --- Volume Term ---
     !---------------------
+
+    CALL TimersStart( Timer_Ex_Permute )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -1629,6 +1708,12 @@ CONTAINS
         END DO
       END DO
     END DO
+
+    CALL TimersStop( Timer_Ex_Permute )
+
+    ! --- Numerical Flux ---
+
+    CALL TimersStart( Timer_Ex_Flux )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -1691,11 +1776,19 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStop( Timer_Ex_Flux )
+
     ! --- Contribution from Volume ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOF, nK, nDOF, One, dLdX3_q, nDOF, &
              Flux_X3_q, nDOF, One, dU_X3, nDOF )
+
+    CALL TimersStop( Timer_Ex_Interpolate )
+
+    CALL TimersStart( Timer_Ex_Increment )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
@@ -1725,15 +1818,19 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStop( Timer_Ex_Increment )
+
 #ifdef THORNADO_DEBUG_EXPLICIT
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM(dU_X3)
+    !$OMP TARGET UPDATE FROM( dU_X3 )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST(dU_X3)
+    !$ACC UPDATE HOST( dU_X3 )
 #endif
     WRITE(*,'(a20,7i4)')     'MAXLOC(dU_X3)', MAXLOC(dU_X3)
     WRITE(*,'(a20,es23.15)') 'MAXVAL(dU_X3)', MAXVAL(dU_X3)
 #endif
+
+    CALL TimersStart( Timer_Ex_Out )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1746,6 +1843,8 @@ CONTAINS
     !$ACC         GX_K, GX_F, G_K, G_F, uCR_K, uCR_L, uCR_R, &
     !$ACC         dU_X3, Flux_X3_q, NumericalFlux )
 #endif
+
+    CALL TimersStop( Timer_Ex_Out )
 
     END ASSOCIATE
 
@@ -1767,242 +1866,468 @@ CONTAINS
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                  iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                 iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                 iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
+    INTEGER  :: nZ(4), nZ_X1(4), nZ_X2(4), nF_G, nF_G_X1, nF_G_X2
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iGF
-    INTEGER  :: iNodeZ, iNodeX
-    REAL(DP) :: PR_K(nDOF,nPR), FF(nDOF), EF(nDOF), Stress(3)
+    INTEGER  :: iNodeZ, iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: PR_D, PR_I1, PR_I2, PR_I3, FF, EF, Stress(3)
+    REAL(DP) :: h2, h3, G11, G22, G33, dU_G1, dU_G2
     REAL(DP) :: &
-      h2_X1(nDOFX_X1,iZ_B0(2):iZ_E0(2)+1,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
-      h3_X1(nDOFX_X1,iZ_B0(2):iZ_E0(2)+1,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
-      h3_X2(nDOFX_X2,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3)+1,iZ_B0(4):iZ_E0(4))
+      G     (nDOF   ,nGF,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4)  :iZ_E0(4)      ), &
+      GX_X1 (nDOFX  ,    iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)-1:iZ_E0(2)+1,nGF), &
+      GX_X2 (nDOFX  ,    iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),iZ_B0(3)-1:iZ_E0(3)+1,nGF)
     REAL(DP) :: &
-      dh2dX1(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
-      dh3dX1(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
-      dh3dX2(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+      h2_X1(nDOFX_X1,    iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)  :iZ_E0(2)+1    ), &
+      h3_X1(nDOFX_X1,    iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)  :iZ_E0(2)+1    ), &
+      h3_X2(nDOFX_X2,    iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),iZ_B0(3)  :iZ_E0(3)+1    )
     REAL(DP) :: &
-      G(nDOF,nGF,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+      dh2dX1(nDOFX  ,    iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)  :iZ_E0(2)      ), &
+      dh3dX1(nDOFX  ,    iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),iZ_B0(2)  :iZ_E0(2)      ), &
+      dh3dX2(nDOFX  ,    iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),iZ_B0(3)  :iZ_E0(3)      )
 
     IF( TRIM( CoordinateSystem ) == 'CARTESIAN' ) RETURN
 
+    nZ = iZ_E0 - iZ_B0 + 1
+    nZ_X1 = nZ + [0,1,0,0]
+    nZ_X2 = nZ + [0,0,1,0]
+    nF_G    = PRODUCT( nZ   (2:4) )
+    nF_G_X1 = PRODUCT( nZ_X1(2:4) )
+    nF_G_X2 = PRODUCT( nZ_X2(2:4) )
+
+    ASSOCIATE ( dZ2 => MeshX(1) % Width, dZ3 => MeshX(2) % Width )
+
+    CALL TimersStart( Timer_Ex_In )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
+    !$OMP MAP( alloc: h2_X1, h3_X1, h3_X2, dh2dX1, dh3dX1, dh3dX2, &
+    !$OMP             GX_X1, GX_X2, G )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
+    !$ACC CREATE( h2_X1, h3_X1, h3_X2, dh2dX1, dh3dX1, dh3dX2, &
+    !$ACC         GX_X1, GX_X2, G )
+#endif
+
+    CALL TimersStop( Timer_Ex_In )
+
+    ! --- X1 Face ---
+
+    CALL TimersStart( Timer_Ex_Permute )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( GX_X1, GX, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
+    DO iGF = iGF_h_1, iGF_h_3
+      DO iZ2 = iZ_B0(2) - 1, iZ_E0(2) + 1
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ3 = iZ_B0(3), iZ_E0(3)
+            DO iNodeX = 1, nDOFX
+              GX_X1(iNodeX,iZ3,iZ4,iZ2,iGF) = GX(iNodeX,iZ2,iZ3,iZ4,iGF)
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    CALL TimersStop( Timer_Ex_Permute )
+
+    ! --- h_2 and h_3 on X1 Faces ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nF_G_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+             GX_X1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)-1,iGF_h_2), nDOFX, Zero, &
+             h2_X1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nF_G_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+             GX_X1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_h_2), nDOFX, Half, &
+             h2_X1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1 )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nF_G_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+             GX_X1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)-1,iGF_h_3), nDOFX, Zero, &
+             h3_X1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nF_G_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+             GX_X1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_h_3), nDOFX, Half, &
+             h3_X1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1 )
+
+    CALL TimersStop( Timer_Ex_Interpolate )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( h2_X1, h3_X1, WeightsX_X1, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+    DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iNodeX1 = 1, nDOFX_X1
+
+            h2_X1(iNodeX1,iZ3,iZ4,iZ2) &
+              = WeightsX_X1(iNodeX1) * MAX( h2_X1(iNodeX1,iZ3,iZ4,iZ2), SqrtTiny )
+
+            h3_X1(iNodeX1,iZ3,iZ4,iZ2) &
+              = WeightsX_X1(iNodeX1) * MAX( h3_X1(iNodeX1,iZ3,iZ4,iZ2), SqrtTiny )
+
+          END DO
+        END DO
+      END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( GX_X1, WeightsX_q, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
+    DO iGF = iGF_h_1, iGF_h_3
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ3 = iZ_B0(3), iZ_E0(3)
+            DO iNodeX = 1, nDOFX
+
+              GX_X1(iNodeX,iZ3,iZ4,iZ2,iGF) &
+                = WeightsX_q(iNodeX) * GX_X1(iNodeX,iZ3,iZ4,iZ2,iGF)
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    CALL TimersStart( Timer_Ex_Interpolate )
+
     ! --- Derivative of Scale Factor h_2 wrt X1 ---
 
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
-
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-               GX(:,iZ2-1,iZ3,iZ4,iGF_h_2), 1, Zero, h2_X1(:,iZ2,iZ3,iZ4), 1 )
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-               GX(:,iZ2  ,iZ3,iZ4,iGF_h_2), 1, Half, h2_X1(:,iZ2,iZ3,iZ4), 1 )
-
-      ! --- h_2 on X1 Faces ---
-
-      h2_X1(:,iZ2,iZ3,iZ4) &
-        = WeightsX_X1(:) * MAX( h2_X1(:,iZ2,iZ3,iZ4), SqrtTiny )
-
-    END DO
-    END DO
-    END DO
-
-    ASSOCIATE( dZ2 => MeshX(1) % Width )
-
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-      CALL DGEMV &
-             ( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-               h2_X1(:,iZ2+1,iZ3,iZ4), 1, Zero, dh2dX1(:,iZ2,iZ3,iZ4), 1 )
-      CALL DGEMV &
-             ( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-               h2_X1(:,iZ2  ,iZ3,iZ4), 1,  One, dh2dX1(:,iZ2,iZ3,iZ4), 1 )
-      CALL DGEMV &
-             ( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX, WeightsX_q &
-               * GX(:,iZ2,iZ3,iZ4,iGF_h_2), 1, One, dh2dX1(:,iZ2,iZ3,iZ4), 1 )
-
-      dh2dX1(:,iZ2,iZ3,iZ4) &
-        = dh2dX1(:,iZ2,iZ3,iZ4) / ( WeightsX_q(:) * dZ2(iZ2) )
-
-    END DO
-    END DO
-    END DO
-
-    END ASSOCIATE ! dZ2, etc.
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nF_G, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
+             h2_X1 (1,iZ_B0(3),iZ_B0(4),iZ_B0(2)+1), nDOFX_X1, Zero, &
+             dh2dX1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX )
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nF_G, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
+             h2_X1 (1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1, One, &
+             dh2dX1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX )
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nF_G, nDOFX,    - One, dLXdX1_q, nDOFX, &
+             GX_X1 (1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_h_2), nDOFX, One, &
+             dh2dX1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX )
 
     ! --- Derivative of Scale Factor h_3 wrt X1 ---
 
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nF_G, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
+             h3_X1 (1,iZ_B0(3),iZ_B0(4),iZ_B0(2)+1), nDOFX_X1, Zero, &
+             dh3dX1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX )
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nF_G, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
+             h3_X1 (1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX_X1, One, &
+             dh3dX1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX )
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nF_G, nDOFX,    - One, dLXdX1_q, nDOFX, &
+             GX_X1 (1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_h_3), nDOFX, One, &
+             dh3dX1(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ), nDOFX )
 
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-               GX(:,iZ2-1,iZ3,iZ4,iGF_h_3), 1, Zero, h3_X1(:,iZ2,iZ3,iZ4), 1 )
-      CALL DGEMV &
-             ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-               GX(:,iZ2  ,iZ3,iZ4,iGF_h_3), 1, Half, h3_X1(:,iZ2,iZ3,iZ4), 1 )
+    CALL TimersStop( Timer_Ex_Interpolate )
 
-      ! --- h_3 on X1 Faces ---
-
-      h3_X1(:,iZ2,iZ3,iZ4) &
-        = WeightsX_X1(:) * MAX( h3_X1(:,iZ2,iZ3,iZ4), SqrtTiny )
-
-    END DO
-    END DO
-    END DO
-
-    ASSOCIATE( dZ2 => MeshX(1) % Width )
-
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( dh2dX1, dh3dX1, dZ2, WeightsX_q, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
     DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iNodeX = 1, nDOFX
 
-      CALL DGEMV &
-             ( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
-               h3_X1(:,iZ2+1,iZ3,iZ4), 1, Zero, dh3dX1(:,iZ2,iZ3,iZ4), 1 )
-      CALL DGEMV &
-             ( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
-               h3_X1(:,iZ2  ,iZ3,iZ4), 1,  One, dh3dX1(:,iZ2,iZ3,iZ4), 1 )
-      CALL DGEMV &
-             ( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX, WeightsX_q &
-               * GX(:,iZ2,iZ3,iZ4,iGF_h_3), 1, One, dh3dX1(:,iZ2,iZ3,iZ4), 1 )
+            dh2dX1(iNodeX,iZ3,iZ4,iZ2) &
+              = dh2dX1(iNodeX,iZ3,iZ4,iZ2) / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
 
-      dh3dX1(:,iZ2,iZ3,iZ4) &
-        = dh3dX1(:,iZ2,iZ3,iZ4) / ( WeightsX_q(:) * dZ2(iZ2) )
+            dh3dX1(iNodeX,iZ3,iZ4,iZ2) &
+              = dh3dX1(iNodeX,iZ3,iZ4,iZ2) / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
 
-    END DO
-    END DO
+          END DO
+        END DO
+      END DO
     END DO
 
-    END ASSOCIATE ! dZ2, etc.
+    ! --- X2 Face ---
+
+    CALL TimersStart( Timer_Ex_Permute )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( GX_X2, GX, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
+    DO iGF = iGF_h_1, iGF_h_3
+      DO iZ3 = iZ_B0(3) - 1, iZ_E0(3) + 1
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iNodeX = 1, nDOFX
+              GX_X2(iNodeX,iZ2,iZ4,iZ3,iGF) = GX(iNodeX,iZ2,iZ3,iZ4,iGF)
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    CALL TimersStop( Timer_Ex_Permute )
+
+    ! --- h_3 on X2 Faces ---
+
+    CALL TimersStart( Timer_Ex_Interpolate )
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nF_G_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             GX_X2(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)-1,iGF_h_3), nDOFX, Zero, &
+             h3_X2(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX_X2 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nF_G_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             GX_X2(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF_h_3), nDOFX, Half, &
+             h3_X2(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX_X2 )
+
+    CALL TimersStop( Timer_Ex_Interpolate )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( h3_X2, WeightsX_X2, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
+    DO iZ3 = iZ_B0(3), iZ_E0(3) + 1
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ2 = iZ_B0(2), iZ_E0(2)
+          DO iNodeX2 = 1, nDOFX_X2
+
+            h3_X2(iNodeX2,iZ2,iZ4,iZ3) &
+              = WeightsX_X2(iNodeX2) * MAX( h3_X2(iNodeX2,iZ2,iZ4,iZ3), SqrtTiny )
+
+          END DO
+        END DO
+      END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( GX_X2, WeightsX_q, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
+    DO iGF = iGF_h_1, iGF_h_3
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iNodeX = 1, nDOFX
+
+              GX_X2(iNodeX,iZ2,iZ4,iZ3,iGF) &
+                = WeightsX_q(iNodeX) * GX_X2(iNodeX,iZ2,iZ4,iZ3,iGF)
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    CALL TimersStart( Timer_Ex_Interpolate )
 
     ! --- Derivative of Scale Factor h_3 wrt X2 ---
 
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3) + 1
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nF_G, nDOFX_X2, + One, LX_X2_Up, nDOFX_X2, &
+             h3_X2 (1,iZ_B0(2),iZ_B0(4),iZ_B0(3)+1), nDOFX_X2, Zero, &
+             dh3dX2(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX )
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nF_G, nDOFX_X2, - One, LX_X2_Dn, nDOFX_X2, &
+             h3_X2 (1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX_X2, One, &
+             dh3dX2(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX )
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nF_G, nDOFX,    - One, dLXdX2_q, nDOFX, &
+             GX_X2 (1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF_h_3), nDOFX, One, &
+             dh3dX2(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ), nDOFX )
 
-      CALL DGEMV &
-             ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-               GX(:,iZ2,iZ3-1,iZ4,iGF_h_3), 1, Zero, h3_X2(:,iZ2,iZ3,iZ4), 1 )
-      CALL DGEMV &
-             ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-               GX(:,iZ2,iZ3  ,iZ4,iGF_h_3), 1, Half, h3_X2(:,iZ2,iZ3,iZ4), 1 )
+    CALL TimersStop( Timer_Ex_Interpolate )
 
-      ! --- h_3 on X2 Faces ---
-
-      h3_X2(:,iZ2,iZ3,iZ4) &
-        = WeightsX_X2(:) * MAX( h3_X2(:,iZ2,iZ3,iZ4), SqrtTiny )
-
-    END DO
-    END DO
-    END DO
-
-    ASSOCIATE( dZ3 => MeshX(2) % Width )
-
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( dh3dX2, dZ3, WeightsX_q, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+#endif
     DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ2 = iZ_B0(2), iZ_E0(2)
+          DO iNodeX = 1, nDOFX
 
-      CALL DGEMV &
-             ( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
-               h3_X2(:,iZ2,iZ3+1,iZ4), 1, Zero, dh3dX2(:,iZ2,iZ3,iZ4), 1 )
-      CALL DGEMV &
-             ( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
-               h3_X2(:,iZ2,iZ3  ,iZ4), 1,  One, dh3dX2(:,iZ2,iZ3,iZ4), 1 )
-      CALL DGEMV &
-             ( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX, WeightsX_q &
-               * GX(:,iZ2,iZ3,iZ4,iGF_h_3), 1, One, dh3dX2(:,iZ2,iZ3,iZ4), 1 )
+            dh3dX2(iNodeX,iZ2,iZ4,iZ3) &
+              = dh3dX2(iNodeX,iZ2,iZ4,iZ3) / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
 
-      dh3dX2(:,iZ2,iZ3,iZ4) &
-        = dh3dX2(:,iZ2,iZ3,iZ4) / ( WeightsX_q(:) * dZ3(iZ3) )
-
-    END DO
-    END DO
-    END DO
-
-    END ASSOCIATE ! dZ2, etc.
-
-    DO iGF = 1, nGF
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-      DO iNodeZ = 1, nDOF
-
-        G(iNodeZ,iGF,iZ2,iZ3,iZ3) &
-          = GX(NodeNumbersX(iNodeZ),iZ2,iZ3,iZ4,iGF)
-
+          END DO
+        END DO
       END DO
-
-    END DO
-    END DO
-    END DO
     END DO
 
+    CALL TimersStart( Timer_Ex_Permute )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iNodeX )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( iNodeX ) &
+    !$ACC PRESENT( G, GX, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iNodeX )
+#endif
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+        DO iZ2 = iZ_B0(2), iZ_E0(2)
+          DO iGF = 1, nGF
+            DO iNodeZ = 1, nDOF
+
+              iNodeX = MOD( (iNodeZ-1) / nNodesE, nDOFX ) + 1
+
+              G(iNodeZ,iGF,iZ2,iZ3,iZ3) &
+                = GX(iNodeX,iZ2,iZ3,iZ4,iGF)
+
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    CALL TimersStop( Timer_Ex_Permute )
+
+    ! --- Add to Increments ---
+
+    CALL TimersStart( Timer_Ex_Increment )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( iNodeX, h2, h3, G11, G22, G33, dU_G1, dU_G2, &
+    !$OMP          PR_D, PR_I1, PR_I2, PR_I3, FF, EF, Stress )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRIVATE( iNodeX, h2, h3, G11, G22, G33, dU_G1, dU_G2, &
+    !$ACC          PR_D, PR_I1, PR_I2, PR_I3, FF, EF, Stress ) &
+    !$ACC PRESENT( dh2dX1, dh3dX1, dh3dX2, G, U, dU )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( iNodeX, h2, h3, G11, G22, G33, dU_G1, dU_G2, &
+    !$OMP          PR_D, PR_I1, PR_I2, PR_I3, FF, EF, Stress )
+#endif
     DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+          DO iZ2 = iZ_B0(2), iZ_E0(2)
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
+              DO iNodeZ = 1, nDOF
 
-      CALL ComputePrimitive_TwoMoment &
-             ( U(:,iZ1,iZ2,iZ3,iZ4,iCR_N, iS), &
-               U(:,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
-               U(:,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
-               U(:,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-               PR_K(:,iPR_D ), PR_K(:,iPR_I1), &
-               PR_K(:,iPR_I2), PR_K(:,iPR_I3), &
-               G(:,iGF_Gm_dd_11,iZ2,iZ3,iZ4),  &
-               G(:,iGF_Gm_dd_22,iZ2,iZ3,iZ4),  &
-               G(:,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+                iNodeX = MOD( (iNodeZ-1) / nNodesE, nDOFX   ) + 1
 
-      FF = FluxFactor &
-             ( PR_K(:,iPR_D ), PR_K(:,iPR_I1), &
-               PR_K(:,iPR_I2), PR_K(:,iPR_I3), &
-               G(:,iGF_Gm_dd_11,iZ2,iZ3,iZ4),  &
-               G(:,iGF_Gm_dd_22,iZ2,iZ3,iZ4),  &
-               G(:,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+                h2    = G(iNodeZ,iGF_h_2,iZ2,iZ3,iZ4)
+                h3    = G(iNodeZ,iGF_h_3,iZ2,iZ3,iZ4)
 
-      EF = EddingtonFactor( PR_K(:,iPR_D), FF )
+                G11   = G(iNodeZ,iGF_Gm_dd_11,iZ2,iZ3,iZ4)
+                G22   = G(iNodeZ,iGF_Gm_dd_22,iZ2,iZ3,iZ4)
+                G33   = G(iNodeZ,iGF_Gm_dd_33,iZ2,iZ3,iZ4)
 
-      DO iNodeZ = 1, nDOF
+                PR_D  = U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS)
+                PR_I1 = U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) / G11
+                PR_I2 = U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) / G22
+                PR_I3 = U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS) / G33
 
-        iNodeX = NodeNumbersX(iNodeZ)
+                FF &
+                  = FluxFactor &
+                      ( PR_D, PR_I1, PR_I2, PR_I3, G11, G22, G33 )
 
-        Stress = StressTensor_Diagonal &
-                   ( PR_K(iNodeZ,iPR_D ), PR_K(iNodeZ,iPR_I1), &
-                     PR_K(iNodeZ,iPR_I2), PR_K(iNodeZ,iPR_I3), &
-                     FF(iNodeZ), EF(iNodeZ), &
-                     G(iNodeZ,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
-                     G(iNodeZ,iGF_Gm_dd_22,iZ2,iZ3,iZ4),  &
-                     G(iNodeZ,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+                EF &
+                  = EddingtonFactor &
+                      ( PR_D, FF )
 
-        ! --- Add to Increments ---
+                Stress(1:3) &
+                  = StressTensor_Diagonal &
+                      ( PR_D, PR_I1, PR_I2, PR_I3, FF, EF, G11, G22, G33 )
 
-        dU(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
-          = dU(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
-              + Stress(2) * dh2dX1(iNodeX,iZ2,iZ3,iZ4) &
-                  / G(iNodeZ,iGF_h_2,iZ2,iZ3,iZ4) &
-              + Stress(3) * dh3dX1(iNodeX,iZ2,iZ3,iZ4) &
-                  / G(iNodeZ,iGF_h_3,iZ2,iZ3,iZ4)
+                dU_G1 =   dh2dX1(iNodeX,iZ3,iZ4,iZ2) * Stress(2) / h2 &
+                        + dh3dX1(iNodeX,iZ3,iZ4,iZ2) * Stress(3) / h3
 
-        dU(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
-          = dU(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
-              + Stress(3) * dh3dX2(iNodeX,iZ2,iZ3,iZ4) &
-                  / G(iNodeZ,iGF_h_3,iZ2,iZ3,iZ4)
+                dU_G2 =   dh3dX2(iNodeX,iZ2,iZ4,iZ3) * Stress(3) / h3
 
+                dU(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
+                  = dU(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) + dU_G1
+
+                dU(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
+                  = dU(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) + dU_G2
+
+              END DO
+            END DO
+          END DO
+        END DO
       END DO
+    END DO
 
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL TimersStop( Timer_Ex_Increment )
+
+#ifdef THORNADO_DEBUG_EXPLICIT
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( dh2dX1, dh3dX1, dh3dX2 )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( dh2dX1, dh3dX1, dh3dX2 )
+#endif
+    WRITE(*,'(a,4i4,es23.15)') 'MINLOC(dh2dX1), MINVAL(dh2dX1)', MINLOC(dh2dX1), MINVAL(dh2dX1)
+    WRITE(*,'(a,4i4,es23.15)') 'MAXLOC(dh2dX1), MAXVAL(dh2dX1)', MAXLOC(dh2dX1), MAXVAL(dh2dX1)
+    WRITE(*,'(a,4i4,es23.15)') 'MINLOC(dh3dX1), MINVAL(dh3dX1)', MINLOC(dh3dX1), MINVAL(dh3dX1)
+    WRITE(*,'(a,4i4,es23.15)') 'MAXLOC(dh3dX1), MAXVAL(dh3dX1)', MAXLOC(dh3dX1), MAXVAL(dh3dX1)
+    WRITE(*,'(a,4i4,es23.15)') 'MINLOC(dh3dX2), MINVAL(dh3dX2)', MINLOC(dh3dX2), MINVAL(dh3dX2)
+    WRITE(*,'(a,4i4,es23.15)') 'MAXLOC(dh3dX2), MAXVAL(dh3dX2)', MAXLOC(dh3dX2), MAXVAL(dh3dX2)
+#endif
+
+    CALL TimersStart( Timer_Ex_Out )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP               h2_X1, h3_X1, h3_X2, dh2dX1, dh3dX1, dh3dX2, &
+    !$OMP               GX_X1, GX_X2, G )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC         h2_X1, h3_X1, h3_X2, dh2dX1, dh3dX1, dh3dX2, &
+    !$ACC         GX_X1, GX_X2, G )
+#endif
+
+    CALL TimersStop( Timer_Ex_Out )
+
+    END ASSOCIATE
 
   END SUBROUTINE ComputeIncrement_Geometry
 

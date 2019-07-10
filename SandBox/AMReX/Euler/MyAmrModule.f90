@@ -47,7 +47,7 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE       :: ProgramName
   INTEGER,          ALLOCATABLE, SAVE :: StepNo(:)
   CHARACTER(LEN=32),             SAVE :: Coordsys
-  LOGICAL,                       SAVE :: DEBUG
+  LOGICAL,                       SAVE :: DEBUG, UsePhysicalUnits
 
   ! --- Slope limiter ---
   LOGICAL          :: UseSlopeLimiter
@@ -85,22 +85,24 @@ CONTAINS
       CALL PP % query( 'DEBUG', DEBUG )
     CALL amrex_parmparse_destroy( PP )
 
+    UsePhysicalUnits = .FALSE.
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
-      CALL PP % get   ( 'dt_wrt',      dt_wrt )
-      CALL PP % get   ( 'dt_chk',      dt_chk )
-      CALL PP % get   ( 't_end',       t_end )
-      CALL PP % get   ( 'nNodes',      nNodes )
-      CALL PP % get   ( 'nStages',     nStages )
-      CALL PP % get   ( 'CFL',         CFL )
-      CALL PP % get   ( 'ProgramName', ProgramName )
-      CALL PP % get   ( 'Gamma',       Gamma_IDEAL )
-      CALL PP % getarr( 'bcX',         bcX )
-      CALL PP % getarr( 'swX',         swX )
-      CALL PP % get   ( 'iCycleD',     iCycleD )
-      CALL PP % get   ( 'iCycleW',     iCycleW )
-      CALL PP % get   ( 'iCycleChk',   iCycleChk )
-      CALL PP % get   ( 'iRestart',    iRestart )
+      CALL PP % get   ( 'dt_wrt',           dt_wrt )
+      CALL PP % get   ( 'dt_chk',           dt_chk )
+      CALL PP % get   ( 't_end',            t_end )
+      CALL PP % get   ( 'nNodes',           nNodes )
+      CALL PP % get   ( 'nStages',          nStages )
+      CALL PP % get   ( 'CFL',              CFL )
+      CALL PP % get   ( 'ProgramName',      ProgramName )
+      CALL PP % get   ( 'Gamma',            Gamma_IDEAL )
+      CALL PP % getarr( 'bcX',              bcX )
+      CALL PP % getarr( 'swX',              swX )
+      CALL PP % get   ( 'iCycleD',          iCycleD )
+      CALL PP % get   ( 'iCycleW',          iCycleW )
+      CALL PP % get   ( 'iCycleChk',        iCycleChk )
+      CALL PP % get   ( 'iRestart',         iRestart )
+      CALL PP % query ( 'UsePhysicalUnits', UsePhysicalUnits )
     CALL amrex_parmparse_destroy( PP )
     IF( iCycleW .GT. 0 .AND. dt_wrt .GT. 0.0_amrex_real )THEN
       WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'

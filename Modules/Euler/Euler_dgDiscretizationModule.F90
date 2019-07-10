@@ -1011,7 +1011,7 @@ CONTAINS
 
       END DO
 
-      IF( nDimsX .EQ. 2 )THEN
+      IF( nDimsX .GT. 1 )THEN
         DO iGF = 1, nGF
           G_P_X2(:,iGF) = G(:,iX1,iX2-1,iX3,iGF)
           G_N_X2(:,iGF) = G(:,iX1,iX2+1,iX3,iGF)
@@ -1090,58 +1090,59 @@ CONTAINS
 
       dh3dx1 = dh3dx1 / ( WeightsX_q(:) * dX1 )
 
-      ! --- Scale Factor Derivatives wrt X2 ---
-
-      ! --- Face States (Average of Left and Right States) ---
-
-      DO iGF = iGF_h_3, iGF_h_3
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-                 G_P_X2(:,iGF), 1, Zero, G_X2_Dn(:,iGF), 1 )
-        CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-                 G_K   (:,iGF), 1, Half, G_X2_Dn(:,iGF), 1 )
-
-        G_X2_Dn(1:nDOFX_X2,iGF) &
-          = MAX( G_X2_Dn(1:nDOFX_X2,iGF), SqrtTiny )
-
-        CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
-                 G_K   (:,iGF), 1, Zero, G_X2_Up(:,iGF), 1 )
-        CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-                 G_N_X2(:,iGF), 1, Half, G_X2_Up(:,iGF), 1 )
-
-        G_X2_Up(1:nDOFX_X2,iGF) &
-          = MAX( G_X2_Up(1:nDOFX_X2,iGF), SqrtTiny )
-
-      END DO
-
-      CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
-                  WeightsX_X2(:) * G_X2_Up(:,iGF_h_3), 1, Zero, dh3dX2, 1 )
-      CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
-                  WeightsX_X2(:) * G_X2_Dn(:,iGF_h_3), 1,  One, dh3dX2, 1 )
-      CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
-                  WeightsX_q (:) * G_K    (:,iGF_h_3), 1,  One, dh3dX2, 1 )
-
-      dh3dx2 = dh3dx2 / ( WeightsX_q(:) * dX2 )
-
-      ! --- Compute Increments ---
-
       dU(:,iX1,iX2,iX3,iCF_S1) &
         = dU(:,iX1,iX2,iX3,iCF_S1) &
             + ( Stress(:,2) * dh2dX1(:) ) / G_K(:,iGF_h_2)  &
             + ( Stress(:,3) * dh3dX1(:) ) / G_K(:,iGF_h_3)
 
-      dU(:,iX1,iX2,iX3,iCF_S2) &
-        = dU(:,iX1,iX2,iX3,iCF_S2) &
-            + ( Stress(:,3) * dh3dX2(:) ) / G_K(:,iGF_h_3)
+      IF( nDimsX .GT. 1 )THEN
+
+        ! --- Scale Factor Derivatives wrt X2 ---
+
+        ! --- Face States (Average of Left and Right States) ---
+
+        DO iGF = iGF_h_3, iGF_h_3
+
+          CALL DGEMV &
+                 ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+                   G_P_X2(:,iGF), 1, Zero, G_X2_Dn(:,iGF), 1 )
+          CALL DGEMV &
+                 ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+                   G_K   (:,iGF), 1, Half, G_X2_Dn(:,iGF), 1 )
+
+          G_X2_Dn(1:nDOFX_X2,iGF) &
+            = MAX( G_X2_Dn(1:nDOFX_X2,iGF), SqrtTiny )
+
+          CALL DGEMV &
+                 ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+                   G_K   (:,iGF), 1, Zero, G_X2_Up(:,iGF), 1 )
+          CALL DGEMV &
+                 ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+                   G_N_X2(:,iGF), 1, Half, G_X2_Up(:,iGF), 1 )
+
+          G_X2_Up(1:nDOFX_X2,iGF) &
+            = MAX( G_X2_Up(1:nDOFX_X2,iGF), SqrtTiny )
+
+        END DO
+
+        CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
+                  WeightsX_X2(:) * G_X2_Up(:,iGF_h_3), 1, Zero, dh3dX2, 1 )
+        CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
+                  WeightsX_X2(:) * G_X2_Dn(:,iGF_h_3), 1,  One, dh3dX2, 1 )
+        CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
+                  WeightsX_q (:) * G_K    (:,iGF_h_3), 1,  One, dh3dX2, 1 )
+
+        dh3dx2 = dh3dx2 / ( WeightsX_q(:) * dX2 )
+
+        dU(:,iX1,iX2,iX3,iCF_S2) &
+          = dU(:,iX1,iX2,iX3,iCF_S2) &
+              + ( Stress(:,3) * dh3dX2(:) ) / G_K(:,iGF_h_3)
+
+      END IF
 
     END DO
     END DO
     END DO
-
 
   END SUBROUTINE ComputeIncrement_Geometry_NonRelativistic
 
