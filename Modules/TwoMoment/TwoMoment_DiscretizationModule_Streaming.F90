@@ -17,17 +17,11 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     Timer_Explicit, &
     Timer_Ex_In, &
     Timer_Ex_Div, &
-    Timer_Ex_Div_X1, &
-    Timer_Ex_Div_X1_In, &
-    Timer_Ex_Div_X1_G, &
-    Timer_Ex_Div_X1_U, &
-    Timer_Ex_Div_X1_S, &
-    Timer_Ex_Div_X1_V, &
-    Timer_Ex_Div_X1_dU, &
-    Timer_Ex_Div_X1_Out, &
-    Timer_Ex_Div_X1_MM, &
-    Timer_Ex_Div_X2, &
-    Timer_Ex_Div_X3, &
+    Timer_Ex_Geometry, &
+    Timer_Ex_Permute, &
+    Timer_Ex_Interpolate, &
+    Timer_Ex_Flux, &
+    Timer_Ex_Increment, &
     Timer_Ex_Out
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
@@ -141,8 +135,6 @@ CONTAINS
     ASSOCIATE ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
                 dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
 
-    CALL TimersStart( Timer_Ex_In )
-
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
@@ -162,28 +154,18 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStop( Timer_Ex_In )
     CALL TimersStart( Timer_Ex_Div )
-    CALL TimersStart( Timer_Ex_Div_X1 )
 
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
-    CALL TimersStop( Timer_Ex_Div_X1 )
-    CALL TimersStart( Timer_Ex_Div_X2 )
-
     CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
-
-    CALL TimersStop( Timer_Ex_Div_X2 )
-    CALL TimersStart( Timer_Ex_Div_X3 )
 
     CALL ComputeIncrement_Divergence_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
-    CALL TimersStop( Timer_Ex_Div_X3 )
     CALL TimersStop( Timer_Ex_Div )
-    CALL TimersStart( Timer_Ex_Out )
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -210,10 +192,12 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStart( Timer_Ex_Geometry )
+
     CALL ComputeIncrement_Geometry &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
-    CALL TimersStop( Timer_Ex_Out )
+    CALL TimersStop( Timer_Ex_Geometry )
 
     END ASSOCIATE
 
