@@ -17,11 +17,17 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     Timer_Explicit, &
     Timer_Ex_In, &
     Timer_Ex_Div, &
-    Timer_Ex_Geometry, &
-    Timer_Ex_Permute, &
-    Timer_Ex_Interpolate, &
-    Timer_Ex_Flux, &
-    Timer_Ex_Increment, &
+    Timer_Ex_Div_X1, &
+    Timer_Ex_Div_X1_In, &
+    Timer_Ex_Div_X1_G, &
+    Timer_Ex_Div_X1_U, &
+    Timer_Ex_Div_X1_S, &
+    Timer_Ex_Div_X1_V, &
+    Timer_Ex_Div_X1_dU, &
+    Timer_Ex_Div_X1_Out, &
+    Timer_Ex_Div_X1_MM, &
+    Timer_Ex_Div_X2, &
+    Timer_Ex_Div_X3, &
     Timer_Ex_Out
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
@@ -124,8 +130,8 @@ CONTAINS
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                  iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                 iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                 iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iNodeX, iNode, iZ1, iZ2, iZ3, iZ4, iCR, iS
     REAL(DP) :: Tau
@@ -135,15 +141,17 @@ CONTAINS
     ASSOCIATE ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
                 dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
 
+    CALL TimersStart( Timer_Ex_In )
+
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
     DO iS = 1, nSpecies
       DO iCR = 1, nCR
-        DO iZ4 = iZ_B0(4), iZ_E0(4)
-          DO iZ3 = iZ_B0(3), iZ_E0(3)
-            DO iZ2 = iZ_B0(2), iZ_E0(2)
-              DO iZ1 = iZ_B0(1), iZ_E0(1)
+        DO iZ4 = iZ_B1(4), iZ_E1(4)
+          DO iZ3 = iZ_B1(3), iZ_E1(3)
+            DO iZ2 = iZ_B1(2), iZ_E1(2)
+              DO iZ1 = iZ_B1(1), iZ_E1(1)
                 DO iNode = 1, nDOF
                   dU(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
                 END DO
@@ -154,18 +162,28 @@ CONTAINS
       END DO
     END DO
 
+    CALL TimersStop( Timer_Ex_In )
     CALL TimersStart( Timer_Ex_Div )
+    CALL TimersStart( Timer_Ex_Div_X1 )
 
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
+    CALL TimersStop( Timer_Ex_Div_X1 )
+    CALL TimersStart( Timer_Ex_Div_X2 )
+
     CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
+
+    CALL TimersStop( Timer_Ex_Div_X2 )
+    CALL TimersStart( Timer_Ex_Div_X3 )
 
     CALL ComputeIncrement_Divergence_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
+    CALL TimersStop( Timer_Ex_Div_X3 )
     CALL TimersStop( Timer_Ex_Div )
+    CALL TimersStart( Timer_Ex_Out )
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -192,12 +210,10 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStart( Timer_Ex_Geometry )
-
     CALL ComputeIncrement_Geometry &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
-    CALL TimersStop( Timer_Ex_Geometry )
+    CALL TimersStop( Timer_Ex_Out )
 
     END ASSOCIATE
 
@@ -225,7 +241,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
     REAL(DP), INTENT(inout) :: &
-      dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+      dU(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
     INTEGER  :: iNode
@@ -559,7 +575,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
     REAL(DP), INTENT(inout) :: &
-      dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+      dU(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iNode
     INTEGER  :: iGF, iCR
@@ -900,7 +916,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
     REAL(DP), INTENT(inout) :: &
-      dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+      dU(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iNode
     INTEGER  :: iGF, iCR
@@ -1242,8 +1258,8 @@ CONTAINS
       U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                  iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-                 iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                 iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iGF
     INTEGER  :: iNodeZ, iNodeX
@@ -1478,6 +1494,15 @@ CONTAINS
     END DO
     END DO
     END DO
+
+#ifdef THORNADO_DEBUG_EXPLICIT
+    WRITE(*,'(a,4i4,es23.15)') 'MINLOC(dh2dX1), MINVAL(dh2dX1)', MINLOC(dh2dX1), MINVAL(dh2dX1)
+    WRITE(*,'(a,4i4,es23.15)') 'MAXLOC(dh2dX1), MAXVAL(dh2dX1)', MAXLOC(dh2dX1), MAXVAL(dh2dX1)
+    WRITE(*,'(a,4i4,es23.15)') 'MINLOC(dh3dX1), MINVAL(dh3dX1)', MINLOC(dh3dX1), MINVAL(dh3dX1)
+    WRITE(*,'(a,4i4,es23.15)') 'MAXLOC(dh3dX1), MAXVAL(dh3dX1)', MAXLOC(dh3dX1), MAXVAL(dh3dX1)
+    WRITE(*,'(a,4i4,es23.15)') 'MINLOC(dh3dX2), MINVAL(dh3dX2)', MINLOC(dh3dX2), MINVAL(dh3dX2)
+    WRITE(*,'(a,4i4,es23.15)') 'MAXLOC(dh3dX2), MAXVAL(dh3dX2)', MAXLOC(dh3dX2), MAXVAL(dh3dX2)
+#endif
 
   END SUBROUTINE ComputeIncrement_Geometry
 
