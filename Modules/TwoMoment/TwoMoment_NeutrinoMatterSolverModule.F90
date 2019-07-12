@@ -13,7 +13,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     Gram, &
     MeV
   USE ProgramHeaderModule, ONLY: &
-    nNodesE, &
     nNodesZ, &
     nDOFE
   USE TimersModule, ONLY: &
@@ -55,12 +54,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   
   PUBLIC :: InitializeNeutrinoMatterSolver
   PUBLIC :: FinalizeNeutrinoMatterSolver
-  PUBLIC :: SolveMatterEquations_EmAb
-  !PUBLIC :: SolveMatterEquations_EmAb_NuE
-  PUBLIC :: SolveMatterEquations_FP_Coupled
-
-  ! --- Units Only for Displaying to Screen ---
-
   PUBLIC :: SolveMatterEquations_EmAb
   !PUBLIC :: SolveMatterEquations_EmAb_NuE
   PUBLIC :: SolveMatterEquations_FP_Coupled
