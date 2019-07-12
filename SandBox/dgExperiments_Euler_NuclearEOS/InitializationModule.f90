@@ -69,6 +69,10 @@ CONTAINS
                ( RiemannProblemName_Option &
                    = RiemannProblemName_Option )
 
+      CASE ( 'Jet' )
+
+        CALL InitializeFields_Jet(  )
+
     END SELECT
 
 
@@ -223,8 +227,8 @@ CONTAINS
 
     CHARACTER(32) :: RiemannProblemName
     INTEGER       :: iX1, iX2, iX3
-    INTEGER       :: iNodeX, iNodeX1
-    REAL(DP)      :: X1
+    INTEGER       :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP)      :: X1, X2
 
     RiemannProblemName = 'Sod'
     IF( PRESENT( RiemannProblemName_Option ) ) &
@@ -241,30 +245,49 @@ CONTAINS
           DO iNodeX = 1, nDOFX
 
             iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
             SELECT CASE ( TRIM( RiemannProblemName ) )
 
               CASE( 'Sod' )
 
-                IF( X1 <= Half )THEN
+                ! IF( X2 <= Zero )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)   = 1.00d12 * Gram / Centimeter**3
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_D)   = 1.00d12 * Gram / Centimeter**3
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 7.275d4 * Kilometer / Second
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+                !   uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d32 * Erg / Centimeter**3
+                !   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.3_DP
+
+                ! ELSE
+
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.5313d12 * Gram / Centimeter**3
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V1)  = 0.0_DP * Kilometer / Second
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V2)  = 0.0_DP * Kilometer / Second
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V3)  = 0.0_DP * Kilometer / Second
+                !   uAF(iNodeX,iX1,iX2,iX3,iAF_P)   = 0.4d32 * Erg / Centimeter**3
+                !   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)  = 0.3_DP
+
+                IF( X1 <= 0.0_DP )THEN
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0d14 * Gram / Centimeter**3
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d33 * Erg / Centimeter**3
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 1.5d-1
+  
+                ELSE
+  
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.25d13 * Gram / Centimeter**3
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
                   uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d32 * Erg / Centimeter**3
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.4_DP
-
-                ELSE
-
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.25d11 * Gram / Centimeter**3
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1)  = 0.0_DP * Kilometer / Second
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2)  = 0.0_DP * Kilometer / Second
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3)  = 0.0_DP * Kilometer / Second
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)   = 1.0d31 * Erg / Centimeter**3
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)  = 0.3_DP
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 1.35d-1  
 
                 END IF
 
@@ -272,21 +295,21 @@ CONTAINS
 
                 IF( X1 <= 0.0_DP )THEN
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0d13 * Gram / Centimeter**3
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0d14 * Gram / Centimeter**3
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d32 * Erg / Centimeter**3!1.5d32 * Erg / Centimeter**3
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d33 * Erg / Centimeter**3!1.5d32 * Erg / Centimeter**3
                   !uAF(iNodeX,iX1,iX2,iX3,iAF_T)  = 1.26d11 * Kelvin
                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 1.5d-1
 
                 ELSE
 
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.25d12 * Gram / Centimeter**3
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.25d13 * Gram / Centimeter**3
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d31 * Erg / Centimeter**3
+                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d32 * Erg / Centimeter**3
                   !uAF(iNodeX,iX1,iX2,iX3,iAF_T)  = 6.9d9 * Kelvin
                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 1.35d-1
 
@@ -387,5 +410,94 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_RiemannProblem
+
+  SUBROUTINE InitializeFields_Jet
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX = 1, nDOFX
+
+           iNodeX1 = NodeNumberTableX(1,iNodeX)
+           iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+           X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) !* Kilometer
+           X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 ) !* Kilometer
+
+           IF( X1 .LE. Half*Kilometer .AND. X2 .LE. Half*Kilometer )THEN
+
+            !SW
+             uPF(iNodeX,iX1,iX2,iX3,iPF_D)   = 0.80d12 * Gram / Centimeter**3
+             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+             uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+             uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+             uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d32 * Erg / Centimeter**3
+             uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.3_DP
+
+           !NW
+           ELSE IF ( X1 .LE. Half*Kilometer .AND. X2 .GT. Half*Kilometer )THEN
+
+             uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0d12 * Gram / Centimeter**3
+             uPF(iNodeX,iX1,iX2,iX3,iPF_V1)  = 7.275d4 * Kilometer / Second
+             uPF(iNodeX,iX1,iX2,iX3,iPF_V2)  = 0.0_DP * Kilometer / Second
+             uPF(iNodeX,iX1,iX2,iX3,iPF_V3)  = 0.0_DP * Kilometer / Second
+             uAF(iNodeX,iX1,iX2,iX3,iAF_P)   = 1.0d32 * Erg / Centimeter**3
+             uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)  = 0.3_DP
+
+           !NE
+           ELSE IF( X1 .GT. Half*Kilometer .AND. X2 .GT. Half*Kilometer )THEN
+
+             uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.5313d12 * Gram / Centimeter**3
+             uPF(iNodeX,iX1,iX2,iX3,iPF_V1)  = 0.0_DP * Kilometer / Second
+             uPF(iNodeX,iX1,iX2,iX3,iPF_V2)  = 0.0_DP * Kilometer / Second
+             uPF(iNodeX,iX1,iX2,iX3,iPF_V3)  = 0.0_DP * Kilometer / Second
+             uAF(iNodeX,iX1,iX2,iX3,iAF_P)   = 0.4d32 * Erg / Centimeter**3
+             uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)  = 0.3_DP
+
+           !SE 
+           ELSE
+
+             uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0d12 * Gram / Centimeter**3
+             uPF(iNodeX,iX1,iX2,iX3,iPF_V1)  = 0.0_DP * Kilometer / Second
+             uPF(iNodeX,iX1,iX2,iX3,iPF_V2)  = 7.275d4 * Kilometer / Second
+             uPF(iNodeX,iX1,iX2,iX3,iPF_V3)  = 0.0_DP * Kilometer / Second
+             uAF(iNodeX,iX1,iX2,iX3,iAF_P)   = 1.0d32 * Erg / Centimeter**3
+             uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)  = 0.3_DP
+
+          END IF
+
+          END DO
+
+         ! CALL TempFromPRessure
+         CALL ComputeTemperatureFromPressure &
+                ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_P), &
+                  uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_T) )
+
+         CALL ComputeThermodynamicStates_Primitive &
+                ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
+                  uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E ),&
+                  uAF(:,iX1,iX2,iX3,iAF_E),  uPF(:,iX1,iX2,iX3,iPF_Ne) )
+                  ! iAF_E = Em. Ev = iPF_E
+
+         CALL ComputeConserved &
+                ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                  uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                  uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                  uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                  uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                  uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                  uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                  uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                  uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Jet
 
 END MODULE InitializationModule

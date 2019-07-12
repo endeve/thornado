@@ -116,7 +116,7 @@ OPTIMIZE              = $(OPTIMIZE_$(MACHINE))
 
 INCLUDE_HDF5_mac_gnu           = -I/usr/local/Cellar/hdf5/1.8.16_1/include
 INCLUDE_HDF5_sn1987b           = -I/usr/local/Cellar/hdf5/1.10.5/include
-INCLUDE_HDF5_bbarker           = -I/usr/local/Cellar/hdf5/1.10.2_1/include
+INCLUDE_HDF5_bbarker           = -I/usr/local/Cellar/hdf5/1.10.5_1/include
 INCLUDE_HDF5_juliana           = -I/usr/local/hdf5/include
 INCLUDE_HDF5_kristopher        = -I/usr/local/Cellar/hdf5/1.10.2_1/include
 INCLUDE_HDF5_ranchu            = -I/usr/local/hdf5/include
@@ -161,7 +161,7 @@ INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_POS
 
 LIBRARIES_HDF5_mac_gnu         = -L/usr/local/Cellar/hdf5/1.8.16_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_sn1987b         = -L/usr/local/Cellar/hdf5/1.10.5/lib -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_bbarker         = -L/usr/local/Cellar/hdf5/1.10.2_1/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_bbarker         = -L/usr/local/Cellar/hdf5/1.10.5_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_juliana         = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_kristopher      = -L/usr/local/Cellar/hdf5/1.10.2_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_ranchu          = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5

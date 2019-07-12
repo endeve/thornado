@@ -83,33 +83,10 @@ PROGRAM ApplicationDriver
       RiemannProblemName = 'Sod'
 
       nX = [ 100, 1, 1 ]
-      xL = [ - 5.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
-      xR = [ + 5.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+      xL = [ - 1.0_DP, - 1.0_DP, 0.0_DP ] * Kilometer
+      xR = [ + 1.0_DP, + 1.0_DP, 1.0_DP ] * Kilometer
 
-      bcX = [ 2, 0, 0 ]
-
-      nNodes = 3
-
-      BetaTVD = 2.0_DP
-      BetaTVB = 0.0d+00
-
-      UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .FALSE.
-
-      UseTroubledCellIndicator  = .FALSE.
-      LimiterThresholdParameter = 1.0d-1
-
-      iCycleD = 10
-      t_end   = 2.5d-2 * Millisecond
-      dt_wrt  = 2.5d-4 * Millisecond
-
-    CASE( 'ChimeraProfile' )
-
-      nX = [ 100, 1, 1 ]
-      xL = [ 2.9d4, 0.0_DP, 0.0_DP ] * Kilometer
-      xR = [ 2.275d7, 1.0_DP, 1.0_DP ] * Kilometer
-
-      bcX = [ 2, 0, 0 ]
+      bcX = [ 2, 2, 0 ]
 
       nNodes = 3
 
@@ -117,14 +94,37 @@ PROGRAM ApplicationDriver
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
 
-      UseTroubledCellIndicator  = .FALSE.
-      LimiterThresholdParameter = 1.5d-0
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 5.0d-2
 
       iCycleD = 10
-      t_end   = 2.5d-2 * Millisecond
-      dt_wrt  = 2.5d-4 * Millisecond
+      t_end   = 7.5d-2 * Millisecond
+      dt_wrt  = 2.5d-5 * Millisecond
+
+    CASE( 'Jet' )
+
+      nX = [ 100, 100, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
+      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+
+      bcX = [ 2, 2, 0 ]
+
+      nNodes = 3
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 5.0d-2
+
+      iCycleD = 10
+      t_end   = 7.5d-2 * Millisecond
+      dt_wrt  = 2.5d-5 * Millisecond !d-6
 
   END SELECT
 
@@ -158,7 +158,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'TABLE', &
-           EquationOfStateTableName_Option = 'wl-EOS-DD2-25-50-100.h5' )
+           EquationOfStateTableName_Option = 'wl-EOS-SFHo-15-25-50.h5' )
 
   CALL Euler_InitializeSlopeLimiter &
          ( BetaTVD_Option = BetaTVD, &
