@@ -2,26 +2,25 @@ MODULE Euler_PositivityLimiterModule
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One
+  USE UnitsModule, ONLY: &
+    Gram, Centimeter, Kelvin, AtomicMassUnit, Erg
   USE ProgramHeaderModule, ONLY: &
     nNodesX, nDOFX
-
   USE ReferenceElementModuleX, ONLY: &
     NodesX_q, WeightsX_q, &
     nDOFX_X1, NodesX1, &
     nDOFX_X2, NodesX2, &
     nDOFX_X3, NodesX3
-    
-
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     LX_X1_Dn, LX_X1_Up, &
     LX_X2_Dn, LX_X2_Up, &
     LX_X3_Dn, LX_X3_Up
-
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm
-
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
+  USE EquationOfStateModule_TABLE, ONLY: &
+    ComputeSpecificInternalEnergy_TABLE
 
   IMPLICIT NONE
   PRIVATE
@@ -30,34 +29,58 @@ MODULE Euler_PositivityLimiterModule
   PUBLIC :: Euler_FinalizePositivityLimiter
   PUBLIC :: Euler_ApplyPositivityLimiter
 
+  REAL(DP), PARAMETER   :: Unit_D     = Gram / Centimeter**3
+  REAL(DP), PARAMETER   :: Unit_T     = Kelvin
+  REAL(DP), PARAMETER   :: BaryonMass = AtomicMassUnit
+
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: Verbose
   INTEGER, PARAMETER    :: nPS = 7
   INTEGER               :: nPP(nPS)
   INTEGER               :: nPT
-  REAL(DP)              :: Min_1, Min_2
+  REAL(DP)              :: Min_D, Max_D, Min_T, Max_T, &
+                           Min_Y, Max_Y
   REAL(DP), ALLOCATABLE :: U_PP(:,:)
 
 CONTAINS
 
 
   SUBROUTINE Euler_InitializePositivityLimiter &
-    ( Min_1_Option, Min_2_Option, UsePositivityLimiter_Option, Verbose_Option )
+    ( Min_D_Option, Max_D_Option, Min_T_Option, Max_T_Option, &
+      Min_Y_Option, Max_Y_Option, UsePositivityLimiter_Option, &
+      Verbose_Option )
 
-    REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
-    REAL(DP), INTENT(in), OPTIONAL :: Min_2_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Min_D_Option, Max_D_Option, &
+                                      Min_T_Option, Max_T_Option, &
+                                      Min_Y_Option, Max_Y_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
     LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: i
 
-    Min_1 = - HUGE( One )
-    IF( PRESENT( Min_1_Option ) ) &
-      Min_1 = Min_1_Option
+    Min_D = - HUGE( One )
+    IF( PRESENT( Min_D_Option ) ) &
+      Min_D = Min_D_Option
 
-    Min_2 = - HUGE( One )
-    IF( PRESENT( Min_2_Option ) ) &
-      Min_2 = Min_2_Option
+    Max_D = - HUGE( One )
+    IF( PRESENT( Max_D_Option ) ) &
+      Max_D = Max_D_Option
+
+    Min_T = - HUGE( One )
+    IF( PRESENT( Min_T_Option ) ) &
+      Min_T = Min_T_Option
+
+    Max_T = - HUGE( One )
+    IF( PRESENT( Max_T_Option ) ) &
+      Max_T = Max_T_Option
+
+    Min_Y = - HUGE( One )
+    IF( PRESENT( Min_Y_Option ) ) &
+      Min_Y = Min_Y_Option
+
+    Max_Y = - HUGE( One )
+    IF( PRESENT( Max_Y_Option ) ) &
+      Max_Y = Max_Y_Option
 
     UsePositivityLimiter = .TRUE.
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
@@ -77,8 +100,13 @@ CONTAINS
       WRITE(*,'(A6,A,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter
       WRITE(*,*)
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_D = ', Min_D / Unit_D
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_D = ', Max_D / Unit_D
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_T = ', Min_T / Unit_T
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_T = ', Max_T / Unit_T
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_Y = ', Min_Y
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_Y = ', Max_Y
+
     END IF
 
     ! --- Compute Number of Positive Points per Set ---
@@ -125,10 +153,16 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    LOGICAL  :: NegativeStates(2)
+    LOGICAL  :: NegativeStates(3)
     INTEGER  :: iX1, iX2, iX3, iCF, iP
-    REAL(DP) :: Min_K, Theta_1, Theta_2, Theta_P
-    REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF), IntE(nPT)
+    REAL(DP) :: Min_D_K, Max_D_K, Min_N_K, Max_N_K, &
+                Min_N, Max_N, Min_E(nPT),  &
+                Theta_1, Theta_2, Theta_3, Theta_P
+    REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF), E_K, Min_E_K(1), Min_E_PP
+    REAL(DP) :: Y_PP(nPT), E_PP(nPT), Y_K
+
+    Min_N = Min_D * Min_Y / BaryonMass
+    Max_N = Max_D * Max_Y / BaryonMass
 
     IF( nDOFX == 1 ) RETURN
 
@@ -146,9 +180,10 @@ CONTAINS
 
       ! --- Ensure Positive Mass Density ---
 
-      Min_K = MINVAL( U_PP(:,iCF_D) )
+      Min_D_K = MINVAL( U_PP(:,iCF_D) )
+      Max_D_K = MAXVAL( U_PP(:,iCF_D) )
 
-      IF( Min_K < Min_1 )THEN
+      IF( Min_D_K < Min_D .OR. Max_D_K > Max_D )THEN
 
         ! --- Cell Average ---
 
@@ -156,7 +191,9 @@ CONTAINS
           = SUM( WeightsX_q(:) * U_q(:,iCF_D) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
               / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
-        Theta_1 = MIN( One, (U_K(iCF_D)-Min_1)/(U_K(iCF_D)-Min_K) )
+        Theta_1 = MIN( One, &
+                       ABS( ( Min_D-U_K(iCF_D) ) / ( Min_D_K-U_K(iCF_D) ) ), &
+                       ABS( ( Max_D-U_K(iCF_D) ) / ( Max_D_K-U_K(iCF_D) ) ) )
 
         ! --- Limit Density Towards Cell Average ---
 
@@ -173,12 +210,52 @@ CONTAINS
 
       END IF
 
-      ! --- Ensure Positive Internal Energy Density ---
+      ! --- Ensure Bounded Electron Density ---
 
-      CALL ComputeInternalEnergyDensity &
-             ( nPT, U_PP(1:nPT,1:nCF), IntE(1:nPT) )
+      Min_N_K = MINVAL( U_PP(:,iCF_Ne) )
+      Max_N_K = MAXVAL( U_PP(:,iCF_Ne) )
 
-      IF( ANY( IntE(:) < Min_2 ) )THEN
+      IF( Min_N_K < Min_N  .OR. Max_N_K > Max_N )THEN
+
+        ! --- Cell Average ---
+
+        U_K(iCF_Ne) &
+          = SUM( WeightsX_q(:) * U_q(:,iCF_Ne) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
+              / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
+
+        Theta_2 = MIN( One, &
+                       ABS( ( Min_N-U_K(iCF_Ne) ) / ( Min_N_K-U_K(iCF_Ne) ) ), &
+                       ABS( ( Max_N-U_K(iCF_Ne) ) / ( Max_N_K-U_K(iCF_Ne) ) ) )
+
+        ! --- Limit Electron Density Towards Cell Average ---
+
+        U_q(:,iCF_Ne) = Theta_2 * U_q(:,iCF_Ne) &
+                        + ( One - Theta_2 ) * U_K(iCF_Ne)
+
+        ! --- Recompute Point Values ---
+
+        CALL ComputePointValues_Fluid( U_q, U_PP )
+
+        ! --- Flag for Negative Electron Density --
+
+        NegativeStates(2) = .TRUE.
+
+      END IF
+
+      ! --- Ensure Positive Specific Internal Energy ---
+
+
+      DO iP = 1, nPT
+
+         CALL ComputeSpecificInternalEnergyAndElectronFraction &
+                ( U_PP(iP,1:nCF), E_PP(iP), Y_PP(iP) )
+
+         CALL ComputeSpecificInternalEnergy_TABLE &
+                ( [U_PP(iP,iCF_D)], [Min_T], [Y_PP(iP)], Min_E(iP:iP) )
+
+      END DO
+ 
+      IF( ANY( E_PP(:) < Min_E(:) ) )THEN
 
         ! --- Cell Average ---
 
@@ -190,33 +267,60 @@ CONTAINS
 
         END DO
 
-        Theta_2 = One
-        DO iP = 1, nPT
+        CALL ComputeSpecificInternalEnergyAndElectronFraction &
+               ( U_K(1:nCF), E_K, Y_K )
 
-          IF( IntE(iP) < Min_2 )THEN
+        CALL ComputeSpecificInternalEnergy_TABLE &
+               ( [U_K(iCF_D)], [Min_T], [Y_K], Min_E_K )
 
-            CALL SolveTheta_Bisection &
-                   ( U_PP(iP,1:nCF), U_K(1:nCF), Min_2, Theta_P )
+        DO
 
-            Theta_2 = MIN( Theta_2, Theta_P )
+          IF( ALL( E_PP(:) > Min_E(:) ) )EXIT
 
-          END IF
+          Theta_3 = One
+          DO iP = 1, nPT
 
-        END DO
+            IF( E_PP(iP) < Min_E(iP) )THEN
 
-        ! --- Limit Towards Cell Average ---
+              CALL SolveTheta_Bisection &
+                     ( U_PP(iP,1:nCF), U_K(1:nCF), Min_E(iP), &
+                       Min_E_K(1), Theta_P )
 
-        DO iCF = 1, nCF
+              Theta_3 = MIN( Theta_3, 0.99_DP * Theta_P )
 
-          U_q(:,iCF) = Theta_2 * U_q(:,iCF) &
-                       + ( One - Theta_2 ) * U_K(iCF)
+            END IF
+
+          END DO
+
+          ! --- Limit Towards Cell Average ---
+
+          DO iCF = 1, nCF
+
+            U_q(:,iCF) = Theta_3 * U_q(:,iCF) &
+                         + ( One - Theta_3 ) * U_K(iCF)
+
+          END DO
+
+          CALL ComputePointValues_Fluid( U_q, U_PP )
+
+
+          DO iP = 1, nPT
+
+            CALL ComputeSpecificInternalEnergyAndElectronFraction &
+                   ( U_PP(iP,1:nCF), E_PP(iP), Y_PP(iP) )
+
+            CALL ComputeSpecificInternalEnergy_TABLE &
+                   ( [U_PP(iP,iCF_D)], [Min_T], [Y_PP(iP)], Min_E(iP:iP) )
+
+          END DO
 
         END DO
 
         ! --- Flag for Negative Internal Energy Density ---
 
         NegativeStates(1) = .FALSE.
-        NegativeStates(2) = .TRUE.
+        NegativeStates(2) = .FALSE.
+        NegativeStates(3) = .TRUE.
 
       END IF
 
@@ -226,6 +330,11 @@ CONTAINS
           = U_q(1:nDOFX,iCF_D)
 
       ELSEIF( NegativeStates(2) )THEN
+
+        U(1:nDOFX,iX1,iX2,iX3,iCF_Ne) &
+          = U_q(1:nDOFX,iCF_Ne)
+
+      ELSEIF( NegativeStates(3) )THEN
 
         U(1:nDOFX,iX1,iX2,iX3,1:nCF) &
           = U_q(1:nDOFX,1:nCF)
@@ -309,31 +418,30 @@ CONTAINS
   END SUBROUTINE ComputePointValues_Fluid
 
 
-  SUBROUTINE ComputeInternalEnergyDensity( N, U, IntE )
+  SUBROUTINE ComputeSpecificInternalEnergyAndElectronFraction( U, E, Y )
 
-    INTEGER,  INTENT(in)  :: N
-    REAL(DP), INTENT(in)  :: U(N,nCF)
-    REAL(DP), INTENT(out) :: IntE(N)
+    REAL(DP), INTENT(in)  :: U(nCF)
+    REAL(DP), INTENT(out) :: E, Y
 
-    IntE &
-      = eFun( U(:,iCF_D), U(:,iCF_S1), U(:,iCF_S2), U(:,iCF_S3), U(:,iCF_E) )
+    E = eFun( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E) )
+    Y = BaryonMass * U(iCF_Ne) / U(iCF_D)
 
-  END SUBROUTINE ComputeInternalEnergyDensity
+  END SUBROUTINE ComputeSpecificInternalEnergyAndElectronFraction
 
 
   PURE REAL(DP) ELEMENTAL FUNCTION eFun( D, S1, S2, S3, E )
 
     REAL(DP), INTENT(in) :: D, S1, S2, S3, E
 
-    eFun = E - Half * ( S1**2 + S2**2 + S3**2 ) / D
+    eFun = ( E - Half * ( S1**2 + S2**2 + S3**2 ) / D ) / D
 
     RETURN
   END FUNCTION eFun
 
 
-  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, MinE, Theta_P )
+  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, MinE, MinEK, Theta_P )
 
-    REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), MinE
+    REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), MinE, MinEK
     REAL(DP), INTENT(out) :: Theta_P
 
     INTEGER,  PARAMETER :: MAX_IT = 19
@@ -351,7 +459,7 @@ CONTAINS
               x_a * U_Q(iCF_S2) + ( One - x_a ) * U_K(iCF_S2), &
               x_a * U_Q(iCF_S3) + ( One - x_a ) * U_K(iCF_S3), &
               x_a * U_Q(iCF_E)  + ( One - x_a ) * U_K(iCF_E) ) &
-          - MinE
+          - ( x_a * MinE + ( One - x_a ) * MinEK )
 
     x_b = One
     f_b = eFun &
@@ -360,7 +468,7 @@ CONTAINS
               x_b * U_Q(iCF_S2) + ( One - x_b ) * U_K(iCF_S2), &
               x_b * U_Q(iCF_S3) + ( One - x_b ) * U_K(iCF_S3), &
               x_b * U_Q(iCF_E)  + ( One - x_b ) * U_K(iCF_E) ) &
-          - MinE
+          - ( x_b * MinE + ( One - x_b ) * MinEK )
 
     IF( .NOT. f_a * f_b < 0 )THEN
 
@@ -393,7 +501,7 @@ CONTAINS
                 x_c * U_Q(iCF_S2) + ( One - x_c ) * U_K(iCF_S2), &
                 x_c * U_Q(iCF_S3) + ( One - x_c ) * U_K(iCF_S3), &
                 x_c * U_Q(iCF_E)  + ( One - x_c ) * U_K(iCF_E) ) &
-            - MinE
+            - ( x_c * MinE + ( One - x_c ) * MinEK )
 
       IF( f_a * f_c < Zero )THEN
 
