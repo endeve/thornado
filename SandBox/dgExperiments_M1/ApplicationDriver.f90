@@ -313,7 +313,7 @@ PROGRAM ApplicationDriver
 
       CASE ( 'Y' )
   
-        nX = [ 1, 240, 1 ]
+        nX = [ 2, 240, 1 ] ! need nonzero nX(1) to trigger limiter in X2
         xL = [   0.0_DP, - 0.05_DP, 0.0_DP ]
         xR = [ + 1.0_DP, + 0.1_DP, 1.0_DP ]
   
@@ -339,7 +339,7 @@ PROGRAM ApplicationDriver
       Max_1 = HUGE( ONE )  ! --- Max Density !! not done
       Min_2 = Zero         ! --- Min "Gamma"
 
-      t_end     = 1.0d-1
+      t_end     = 1.0d-2
       iCycleD   = 1000
       iCycleW   = 1000
       iCycleT   = 100
@@ -492,7 +492,7 @@ PROGRAM ApplicationDriver
          ( BetaTVD_Option = 2.0_DP,                    &
            BetaTVB_Option = 0.d0,                      &
            SlopeTolerance_Option = 1.0d-6,             &
-           UseSlopeLimiter_Option = .TRUE.,            &
+           UseSlopeLimiter_Option = .FALSE.,            &
            UseCharacteristicLimiting_Option = .FALSE., &
            Verbose_Option = .TRUE. )
  
