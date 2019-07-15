@@ -54,19 +54,6 @@ MODULE TimeSteppingModule_IMEX_RK
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                  iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
-
-!      INTEGER, INTENT(in)     :: &
-!        iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-!      REAL(DP), INTENT(in)    :: &
-!        GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
-!      REAL(DP), INTENT(in)    :: &
-!        GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
-!      REAL(DP), INTENT(inout) :: &
-!        U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-!                   iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
-!      REAL(DP), INTENT(inout) :: &
-!        dU(1:nDOF ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
-!                   iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
     END SUBROUTINE IncrementExplicit
   END INTERFACE
 
@@ -85,7 +72,7 @@ MODULE TimeSteppingModule_IMEX_RK
       REAL(DP), INTENT(inout) :: &
         U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
       REAL(DP), INTENT(inout) :: &
-        dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+        dU(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
     END SUBROUTINE IncrementImplicit
   END INTERFACE
 
@@ -106,7 +93,7 @@ MODULE TimeSteppingModule_IMEX_RK
       REAL(DP), INTENT(inout) :: &
         U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
       REAL(DP), INTENT(inout) :: &
-        dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+        dU(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
     END SUBROUTINE IncrementCorrection
   END INTERFACE
 
@@ -607,8 +594,13 @@ CONTAINS
         WRITE(*,'(A6,A)') '', 'SSPRK1'
         WRITE(*,'(A6,A)') '', 'SSPRK2'
         WRITE(*,'(A6,A)') '', 'SSPRK3'
+        WRITE(*,'(A6,A)') '', 'IMEX_ARS_111'
         WRITE(*,'(A6,A)') '', 'IMEX_P_A2'
         WRITE(*,'(A6,A)') '', 'IMEX_P_A2_RC'
+        WRITE(*,'(A6,A)') '', 'IMEX_P_A2_RC2'
+        WRITE(*,'(A6,A)') '', 'IMEX_P_A2_RC3'
+        WRITE(*,'(A6,A)') '', 'IMEX_P_A2_RC4'
+        WRITE(*,'(A6,A)') '', 'IMEX_P_A2_RC5'
         WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2'
         WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2_RC'
         WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2_RC2'
@@ -616,6 +608,8 @@ CONTAINS
         WRITE(*,'(A6,A)') '', 'IMEX_SSP2322'
         WRITE(*,'(A6,A)') '', 'IMEX_RKCB2'
         WRITE(*,'(A6,A)') '', 'IMEX_SIRK2'
+        WRITE(*,'(A6,A)') '', 'IMEX_PDARS_3'
+        WRITE(*,'(A6,A)') '', 'IMEX_PDARS_4'
         WRITE(*,'(A6,A)') '', 'IMEX_PC2'
 
         WRITE(*,*)
@@ -658,10 +652,10 @@ CONTAINS
 
     ALLOCATE &
       ( dU(1:nDOF, &
-           iZ_B0(1):iZ_E0(1), &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
+           iZ_B1(1):iZ_E1(1), &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
            1:nCR, 1:nSpecies) )
 
     nDOF_IMEX = nDOF * PRODUCT( iZ_E0 ) * nCR * nSpecies
