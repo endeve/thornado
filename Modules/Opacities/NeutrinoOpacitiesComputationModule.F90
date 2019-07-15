@@ -104,6 +104,21 @@ MODULE NeutrinoOpacitiesComputationModule
     MODULE PROCEDURE ComputeNeutrinoOpacity_E_E_T_Eta_Point
   END INTERFACE
 
+  INTERFACE FermiDirac
+    MODULE PROCEDURE FermiDirac_Scalar
+    MODULE PROCEDURE FermiDirac_Vector
+  END INTERFACE
+
+  INTERFACE dFermiDiracdT
+    MODULE PROCEDURE dFermiDiracdT_Scalar
+    MODULE PROCEDURE dFermiDiracdT_Vector
+  END INTERFACE
+
+  INTERFACE dFermiDiracdY
+    MODULE PROCEDURE dFermiDiracdY_Scalar
+    MODULE PROCEDURE dFermiDiracdY_Vector
+  END INTERFACE
+
 CONTAINS
 
 
@@ -2256,7 +2271,7 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacity_E_E_T_Eta_Point
 
 
-  PURE ELEMENTAL REAL(DP) FUNCTION FermiDirac( E, Mu, kT )
+  FUNCTION FermiDirac_Scalar( E, Mu, kT ) RESULT( FermiDirac )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -2264,6 +2279,7 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in) :: E, Mu, kT
+    REAL(DP) :: FermiDirac
 
     REAL(DP) :: Exponent
 
@@ -2273,10 +2289,31 @@ CONTAINS
       = One / ( EXP( Exponent ) + One )
 
     RETURN
-  END FUNCTION FermiDirac
+  END FUNCTION FermiDirac_Scalar
 
 
-  PURE ELEMENTAL REAL(DP) FUNCTION dFermiDiracdT( E, Mu, kT, dMudT, T )
+  FUNCTION FermiDirac_Vector( E, Mu, kT ) RESULT( FermiDirac )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: E(:), Mu, kT
+    REAL(DP) :: FermiDirac(SIZE(E))
+
+    REAL(DP) :: Exponent(SIZE(E))
+
+    Exponent = MIN( MAX( ( E - Mu ) / kT, - Log1d100 ), + Log1d100 )
+
+    FermiDirac &
+      = One / ( EXP( Exponent ) + One )
+
+    RETURN
+  END FUNCTION FermiDirac_Vector
+
+
+  FUNCTION dFermiDiracdT_Scalar( E, Mu, kT, dMudT, T ) RESULT( dFermiDiracdT )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -2284,6 +2321,7 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in) :: E, Mu, kT, dMudT, T
+    REAL(DP) :: dFermiDiracdT
 
     REAL(DP) :: Exponent, FD
 
@@ -2295,10 +2333,33 @@ CONTAINS
       = ( FD * EXP( Exponent ) ) * FD * ( dMudT + ( E - Mu ) / T ) / kT
 
     RETURN
-  END FUNCTION dFermiDiracdT
+  END FUNCTION dFermiDiracdT_Scalar
 
 
-  PURE ELEMENTAL REAL(DP) FUNCTION dFermiDiracdY( E, Mu, kT, dMudY, T )
+  FUNCTION dFermiDiracdT_Vector( E, Mu, kT, dMudT, T ) RESULT( dFermiDiracdT )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: E(:), Mu, kT, dMudT, T
+    REAL(DP) :: dFermiDiracdT(SIZE(E))
+
+    REAL(DP) :: Exponent(SIZE(E)), FD(SIZE(E))
+
+    Exponent = MIN( MAX( ( E - Mu ) / kT, - Log1d100 ), + Log1d100 )
+
+    FD = FermiDirac( E, Mu, kT )
+
+    dFermiDiracdT &
+      = ( FD * EXP( Exponent ) ) * FD * ( dMudT + ( E - Mu ) / T ) / kT
+
+    RETURN
+  END FUNCTION dFermiDiracdT_Vector
+
+
+  FUNCTION dFermiDiracdY_Scalar( E, Mu, kT, dMudY, T ) RESULT( dFermiDiracdY )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -2306,6 +2367,7 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in) :: E, Mu, kT, dMudY, T
+    REAL(DP) :: dFermiDiracdY
 
     REAL(DP) :: Exponent, FD
 
@@ -2317,7 +2379,30 @@ CONTAINS
       = ( FD * EXP( Exponent ) ) * FD * dMudY / kT
 
     RETURN
-  END FUNCTION dFermiDiracdY
+  END FUNCTION dFermiDiracdY_Scalar
+
+
+  FUNCTION dFermiDiracdY_Vector( E, Mu, kT, dMudY, T ) RESULT( dFermiDiracdY )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: E(:), Mu, kT, dMudY, T
+    REAL(DP) :: dFermiDiracdY(SIZE(E))
+
+    REAL(DP) :: Exponent(SIZE(E)), FD(SIZE(E))
+
+    Exponent = MIN( MAX( ( E - Mu ) / kT, - Log1d100 ), + Log1d100 )
+
+    FD = FermiDirac( E, Mu, kT )
+
+    dFermiDiracdY &
+      = ( FD * EXP( Exponent ) ) * FD * dMudY / kT
+
+    RETURN
+  END FUNCTION dFermiDiracdY_Vector
 
 
 END MODULE NeutrinoOpacitiesComputationModule
