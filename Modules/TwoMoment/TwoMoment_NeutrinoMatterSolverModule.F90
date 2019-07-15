@@ -61,12 +61,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
 
   ! --- Units Only for Displaying to Screen ---
 
-  PUBLIC :: SolveMatterEquations_EmAb
-  !PUBLIC :: SolveMatterEquations_EmAb_NuE
-  PUBLIC :: SolveMatterEquations_FP_Coupled
-
-  ! --- Units Only for Displaying to Screen ---
-
   REAL(DP), PARAMETER :: Unit_D = Gram / Centimeter**3
   REAL(DP), PARAMETER :: Unit_T = MeV
 
