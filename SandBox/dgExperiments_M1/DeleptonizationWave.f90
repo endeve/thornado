@@ -95,7 +95,7 @@ PROGRAM DeleptonizationWave
   REAL(DP) :: eL, eR
   REAL(DP) :: xL(3), xR(3), ZoomX(3)
 
-  CoordinateSystem = 'CARTESIAN'
+  CoordinateSystem = 'SPHERICAL'
 
   SELECT CASE( CoordinateSystem)
 
@@ -130,7 +130,6 @@ PROGRAM DeleptonizationWave
 
   nE = 10
   eL = 0.0d0 * MeV
-  !eR = 1.0d1 * MeV
   eR = 3.0d2 * MeV
 
   CALL InitializeProgram &
@@ -212,11 +211,11 @@ PROGRAM DeleptonizationWave
   ! --- Initialize Slope Limiter ---
 
   CALL InitializeSlopeLimiter_TwoMoment                &
-         ( BetaTVD_Option = 1.0_DP,                    &
+         ( BetaTVD_Option = 2.0_DP,                    &
            BetaTVB_Option = 0.0d0,                      &
            SlopeTolerance_Option = 1.0d-6,             &
            UseSlopeLimiter_Option = .TRUE.,            &
-           UseCharacteristicLimiting_Option = .TRUE., &
+           UseCharacteristicLimiting_Option = .FALSE., &
            Verbose_Option = .TRUE. )
 
   ! --- Initialize Positivity Limiter ---
@@ -266,21 +265,18 @@ PROGRAM DeleptonizationWave
   t     = 0.0_DP
   t_end = 5.0d1 * Millisecond
 
-!  dt    = 1.0d-7 * Millisecond
-
-!  dt    = Third * (xR(1)-xL(1)) / DBLE( nX(1) ) &
-!            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
-
-!  ! Spherical Coordinate time step
-!  dt    = Third * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
-!            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
-
-  ! Cartesian Coordinate time step
-  dt    = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+  IF ( CoordinateSystem == 'SPHERICAL') THEN
+  ! Spherical Coordinate time step
+    dt  = Third * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+  ELSE IF ( CoordinateSystem == 'CARTESIAN' ) THEN
+  ! Cartesian Coordinate time step
+    dt  = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+  END IF
 
   iCycleD = 1
-  iCycleW = 20 ! 200 -> 128, 150 -> 96 
+  iCycleW = 1 ! 200 -> 128, 150 -> 96 
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
