@@ -51,6 +51,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     InitializeNeutrinoMatterSolver, &
     FinalizeNeutrinoMatterSolver, &
+    SolveMatterEquations_EmAb_NuE, &
     SolveMatterEquations_FP_Coupled, &
     E_N
 
@@ -378,14 +379,16 @@ CONTAINS
 
       ! --- Single Species (Electron Neutrinos) ---
 
-      !CALL SolveMatterEquations_EmAb_NuE &
-      !       ( CR_N    (:,:,iCR_N,iNuE    ), &
-      !         dt * Chi(:,:,      iNuE    ), &
-      !         fEQ     (:,:,      iNuE    ), &
-      !         PF_N    (:,iPF_D ), &
-      !         AF_N    (:,iAF_T ), &
-      !         AF_N    (:,iAF_Ye), &
-      !         AF_N    (:,iAF_E ) )
+      CALL SolveMatterEquations_EmAb_NuE &
+             ( dt,                       &
+               CR_N(:,:,iCR_N,iNuE    ), &
+               Chi (:,:,      iNuE    ), &
+               fEQ (:,:,      iNuE    ), &
+               PF_N(:,iPF_D ), &
+               AF_N(:,iAF_T ), &
+               AF_N(:,iAF_Ye), &
+               AF_N(:,iAF_E ), &
+               nIterations(:) )
 
     ELSE
 
