@@ -83,7 +83,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), ALLOCATABLE :: W3_N(:)       ! --- Integration Weights (E^3)
   REAL(DP), ALLOCATABLE :: W2_S(:)
   REAL(DP), ALLOCATABLE :: W3_S(:)
-  REAL(DP), ALLOCATABLE :: W3_EmAb_NuE(:)
 
   REAL(DP), ALLOCATABLE :: AMAT(:,:,:)
   REAL(DP), ALLOCATABLE :: BVEC(:,:)
@@ -120,7 +119,7 @@ CONTAINS
     CALL ComputePointsAndWeightsE( E_N, W2_N, W3_N )
 
     W2_S(:) = WFactor_FP * W2_N(:)
-    W3_S(:) = WFactor_FP * W3_N(:) / AtomicMassUnit
+    W3_S(:) = WFactor_FP * W3_N(:)
 
     ALLOCATE( AMAT(n_FP,M_FP,nX_G) )
     ALLOCATE( BVEC(n_FP,nX_G) )
@@ -408,7 +407,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( N_B, Y, Yold, C_Y, F_Y, U_Y, E, Eold, C_E, F_E, U_E, FNRM0 )
+    !$ACC PRESENT( D, N_B, Y, Yold, C_Y, F_Y, U_Y, E, Eold, C_E, F_E, U_E, FNRM0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD
 #endif
@@ -434,8 +433,8 @@ CONTAINS
 
       ! --- Internal Energy Equation ---
 
-      C_E(iN_X) = C_E(iN_X) + N_B(iN_X) * U_E(iN_X)
-      F_E(iN_X) = F_E(iN_X) + N_B(iN_X) * U_E(iN_X) - C_E(iN_X)
+      C_E(iN_X) = C_E(iN_X) + D  (iN_X) * U_E(iN_X)
+      F_E(iN_X) = F_E(iN_X) + D  (iN_X) * U_E(iN_X) - C_E(iN_X)
       F_E(iN_X) = F_E(iN_X) / C_E(iN_X)
 
       FNRM0(iN_X) = SQRT( F_Y(iN_X)**2 + F_E(iN_X)**2 )
@@ -553,7 +552,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRIVATE( DJAC ) &
-      !$ACC PRESENT( ITERATE, N_B, FJAC11, FJAC21, FJAC12, FJAC22, &
+      !$ACC PRESENT( ITERATE, D, N_B, FJAC11, FJAC21, FJAC12, FJAC22, &
       !$ACC          C_Y, F_Y, U_Y, dU_Y, C_E, F_E, U_E, dU_E )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD &
@@ -568,7 +567,7 @@ CONTAINS
           FJAC12(iN_X) = FJAC12(iN_X) / C_Y(iN_X)
 
           FJAC21(iN_X) = FJAC21(iN_X) / C_E(iN_X)
-          FJAC22(iN_X) = ( FJAC22(iN_X) + N_B(iN_X) ) / C_E(iN_X)
+          FJAC22(iN_X) = ( FJAC22(iN_X) + D  (iN_X) ) / C_E(iN_X)
 
           ! --- Determinant of Jacobian ---
 
@@ -588,7 +587,7 @@ CONTAINS
           E(iN_X) = U_E(iN_X)
 
           !F_Y(iN_X) = N_B(iN_X) * U_Y(iN_X) - C_Y(iN_X)
-          !F_E(iN_X) = N_B(iN_X) * U_E(iN_X) - C_E(iN_X)
+          !F_E(iN_X) = D  (iN_X) * U_E(iN_X) - C_E(iN_X)
 
         END IF
       END DO
@@ -689,7 +688,8 @@ CONTAINS
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRIVATE( AERR, RERR, UERR ) &
-      !$ACC PRESENT( ITERATE, CONVERGED, nIterations, FNRM0, C_Y, F_Y, U_Y, dU_Y )
+      !$ACC PRESENT( ITERATE, CONVERGED, nIterations, FNRM0, D, N_B, &
+      !$ACC          C_Y, F_Y, U_Y, dU_Y, C_E, F_E, U_E, dU_E )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO &
       !$OMP PRIVATE( AERR, RERR, UERR )
@@ -700,7 +700,7 @@ CONTAINS
           F_Y(iN_X) = F_Y(iN_X) + N_B(iN_X) * U_Y(iN_X) - C_Y(iN_X)
           F_Y(iN_X) = F_Y(iN_X) / C_Y(iN_X)
 
-          F_E(iN_X) = F_E(iN_X) + N_B(iN_X) * U_E(iN_X) - C_E(iN_X)
+          F_E(iN_X) = F_E(iN_X) + D  (iN_X) * U_E(iN_X) - C_E(iN_X)
           F_E(iN_X) = F_E(iN_X) / C_E(iN_X)
 
           AERR = SQRT( F_Y(iN_X)**2 + F_E(iN_X)**2 )
