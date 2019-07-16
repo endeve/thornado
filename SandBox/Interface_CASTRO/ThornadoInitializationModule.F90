@@ -165,10 +165,29 @@ contains
     
     ! --- Neutrino Opacities ---
 
-    call InitializeOpacities_TABLE &
-           ( OpacityTableName_EmAb_Option = 'OpacityTable_EmAb.h5', &
-             OpacityTableName_Iso_Option  = 'OpacityTable_Iso.h5',  &
-             Verbose_Option = .false. )
+    if( nSpecies == 1 )then
+
+      call InitializeOpacities_TABLE &
+             ( OpacityTableName_EmAb_Option &
+                 = 'OpacityTable_EmAb.h5',  &
+               OpacityTableName_Iso_Option  &
+                 = 'OpacityTable_Iso.h5',   &
+               Verbose_Option = .false. )
+
+    else
+
+      call InitializeOpacities_TABLE &
+             ( OpacityTableName_EmAb_Option &
+                 = 'OpacityTable_EmAb.h5',  &
+               OpacityTableName_Iso_Option  &
+                 = 'OpacityTable_Iso.h5',   &
+               OpacityTableName_NES_Option  &
+                 = 'OpacityTable_NES.h5',   &
+               OpacityTableName_Pair_Option &
+                 = 'OpacityTable_Pair.h5',  &
+               Verbose_Option = .false. )
+
+    end if
 
     ! --- For refinement and coarsening of DG data
 
