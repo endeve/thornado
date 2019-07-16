@@ -414,7 +414,7 @@ CONTAINS
     !$OMP PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
 #endif
-    DO iGF = 1, nGF
+    DO iGF = iGF_h_1, iGF_h_3
       DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
         DO iZ4 = iZ_B0(4), iZ_E0(4)
           DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -428,6 +428,30 @@ CONTAINS
         END DO
       END DO
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iNodeZ )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( iNodeZ ) &
+    !$ACC PRESENT( G_F, GX_F, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iNodeZ )
+#endif
+  DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+        DO iNodeX = 1, nDOFX_X1
+          DO iNodeE = 1, nDOFE
+            iNodeZ = (iNodeX-1)*nDOFE + iNodeE
+            G_F(iNodeZ,iGF_Alpha,iZ3,iZ4,iZ2) = MAX( GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Alpha), SqrtTiny )
+          END DO
+        END DO
+      END DO
+    END DO
+  END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -942,7 +966,7 @@ CONTAINS
     !$OMP PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
 #endif
-    DO iGF = 1, nGF
+    DO iGF = iGF_h_1, iGF_h_3
       DO iZ3 = iZ_B0(3), iZ_E0(3) + 1
         DO iZ4 = iZ_B0(4), iZ_E0(4)
           DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -956,6 +980,30 @@ CONTAINS
         END DO
       END DO
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iNodeZ )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( iNodeZ ) &
+    !$ACC PRESENT( G_F, GX_F, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iNodeZ )
+#endif
+  DO iZ3 = iZ_B0(3), iZ_E0(3) + 1
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+        DO iNodeX = 1, nDOFX_X2
+          DO iNodeE = 1, nDOFE
+            iNodeZ = (iNodeX-1)*nDOFE + iNodeE
+            G_F(iNodeZ,iGF_Alpha,iZ2,iZ4,iZ3) = MAX( GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Alpha), SqrtTiny )
+          END DO
+        END DO
+      END DO
+    END DO
+  END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -1470,7 +1518,7 @@ CONTAINS
     !$OMP PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ )
 #endif
-    DO iGF = 1, nGF
+    DO iGF = iGF_h_1, iGF_h_3
       DO iZ4 = iZ_B0(4), iZ_E0(4) + 1
         DO iZ3 = iZ_B0(3), iZ_E0(3)
           DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1484,6 +1532,30 @@ CONTAINS
         END DO
       END DO
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iNodeZ )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRIVATE( iNodeZ ) &
+    !$ACC PRESENT( G_F, GX_F, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iNodeZ )
+#endif
+  DO iZ4 = iZ_B0(4), iZ_E0(4) + 1
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+        DO iNodeX = 1, nDOFX_X3
+          DO iNodeE = 1, nDOFE
+            iNodeZ = (iNodeX-1)*nDOFE + iNodeE
+            G_F(iNodeZ,iGF_Alpha,iZ2,iZ3,iZ4) = MAX( GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Alpha), SqrtTiny )
+          END DO
+        END DO
+      END DO
+    END DO
+  END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
