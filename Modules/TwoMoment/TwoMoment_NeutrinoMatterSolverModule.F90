@@ -322,7 +322,7 @@ CONTAINS
 
     REAL(DP) :: kT, Eta
     REAL(DP) :: dJ0dT_Y, dJ0dY_T, dJ0dE_Y, dJ0dY_E
-    REAL(DP) :: DJAC, AERR, RERR, UERR
+    REAL(DP) :: DJAC, FERR, UERR
     INTEGER  :: i, k, iN_X, iN_E, iX_P, nX_P
 
     ITERATE(:) = .TRUE.
@@ -684,15 +684,15 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( AERR, RERR, UERR )
+      !$OMP PRIVATE( FERR, UERR )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( AERR, RERR, UERR ) &
+      !$ACC PRIVATE( FERR, UERR ) &
       !$ACC PRESENT( ITERATE, CONVERGED, nIterations, FNRM0, D, N_B, &
       !$ACC          C_Y, F_Y, U_Y, dU_Y, C_E, F_E, U_E, dU_E )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO &
-      !$OMP PRIVATE( AERR, RERR, UERR )
+      !$OMP PRIVATE( FERR, UERR )
 #endif
       DO iN_X = 1, nX_G
         IF ( ITERATE(iN_X) ) THEN
@@ -703,12 +703,11 @@ CONTAINS
           F_E(iN_X) = F_E(iN_X) + D  (iN_X) * U_E(iN_X) - C_E(iN_X)
           F_E(iN_X) = F_E(iN_X) / C_E(iN_X)
 
-          AERR = SQRT( F_Y(iN_X)**2 + F_E(iN_X)**2 )
-          RERR = AERR / FNRM0(iN_X)
+          FERR = SQRT( F_Y(iN_X)**2 + F_E(iN_X)**2 )
 
           UERR = SQRT( (dU_Y(iN_X)/U_Y(iN_X))**2 + (dU_E(iN_X)/U_E(iN_X))**2 )
 
-          CONVERGED(iN_X) = RERR <= Rtol &
+          CONVERGED(iN_X) = FERR <= Rtol * FNRM0(iN_X) &
                        .OR. UERR <= Utol
 
           ITERATE(iN_X) = .NOT. CONVERGED(iN_X)
