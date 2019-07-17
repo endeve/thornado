@@ -40,7 +40,13 @@ MODULE TimersModule_Euler
 CONTAINS
 
 
-  SUBROUTINE InitializeTimers_Euler
+  SUBROUTINE InitializeTimers_Euler( TimeIt_Euler_Option )
+
+    LOGICAL, INTENT(in), OPTIONAL :: TimeIt_Euler_Option
+
+    IF( PRESENT( TimeIt_Euler_Option ) )THEN
+      TimeIt_Euler = TimeIt_Euler_Option
+    END IF
 
     IF( .NOT. TimeIt_Euler ) RETURN
 
