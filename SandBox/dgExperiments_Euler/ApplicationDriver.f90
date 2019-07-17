@@ -47,6 +47,12 @@ PROGRAM ApplicationDriver
     Euler_InitializeTally, &
     Euler_FinalizeTally, &
     Euler_ComputeTally
+  USE TimersModule_Euler, ONLY: &
+    InitializeTimers_Euler, &
+    FinalizeTimers_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
+    Timer_Euler_Program
 
   IMPLICIT NONE
 
@@ -71,7 +77,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'RiemannProblem'
+  ProgramName = 'IsentropicVortex'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -328,6 +334,10 @@ PROGRAM ApplicationDriver
            BasicInitialization_Option &
              = .TRUE. )
 
+  CALL InitializeTimers_Euler( .TRUE. )
+
+  CALL TimersStart_Euler( Timer_Euler_Program )
+
   CALL InitializeReferenceElementX
 
   CALL InitializeReferenceElementX_Lagrange
@@ -486,6 +496,10 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
     '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
   WRITE(*,*)
+
+  CALL TimersStop_Euler( Timer_Euler_Program )
+
+  CALL FinalizeTimers_Euler
 
   CALL Euler_FinalizePositivityLimiter
 
