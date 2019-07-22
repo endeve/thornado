@@ -18,6 +18,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   USE TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
+    Timer_Im_EmAb_FP, &
     Timer_Im_ComputeOpacity, &
     Timer_Im_ComputeRate, &
     Timer_Im_ComputeLS, &
