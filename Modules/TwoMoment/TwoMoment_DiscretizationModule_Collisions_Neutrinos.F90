@@ -126,7 +126,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INTEGER, ALLOCATABLE :: AveIterationsInner_K(:,:,:)
 
   LOGICAL, PARAMETER :: SolveMatter = .TRUE.
-  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .FALSE.
+  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .TRUE.
   LOGICAL, PARAMETER :: UsePreconditionerPair = .FALSE.
   LOGICAL, PARAMETER :: UsePreconditionerPairLagAllButJ0 = .FALSE.
 
@@ -338,6 +338,10 @@ CONTAINS
                     AF_N(iNodeX,iAF_Ye), &
                     AF_N(iNodeX,iAF_E), &
                     nIterations_Out = nIterations )
+
+          Iterations_Min = MIN( Iterations_Min, nIterations )
+          Iterations_Max = MAX( Iterations_Max, nIterations )
+          Iterations_Ave = Iterations_Ave + nIterations
 
         END DO
 
@@ -1594,10 +1598,6 @@ CONTAINS
       THEN
 
         CONVERGED = .TRUE.
-
-        Iterations_Min = MIN( Iterations_Min, k )
-        Iterations_Max = MAX( Iterations_Max, k )
-        Iterations_Ave = Iterations_Ave + k
 
         nIterations = k
 

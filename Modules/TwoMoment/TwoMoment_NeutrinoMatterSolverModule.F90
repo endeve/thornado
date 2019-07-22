@@ -71,7 +71,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), PARAMETER :: Unit_T = MeV
 
   LOGICAL, PARAMETER :: SolveMatter = .TRUE.
-  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .FALSE.
+  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .TRUE.
   LOGICAL, PARAMETER :: UsePreconditionerPair = .FALSE.
   LOGICAL, PARAMETER :: UsePreconditionerPairLagAllButJ0 = .FALSE.
 
