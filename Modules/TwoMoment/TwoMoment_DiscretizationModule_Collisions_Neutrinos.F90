@@ -336,7 +336,8 @@ CONTAINS
                     PF_N(iNodeX,iPF_D), &
                     AF_N(iNodeX,iAF_T), &
                     AF_N(iNodeX,iAF_Ye), &
-                    AF_N(iNodeX,iAF_E) )
+                    AF_N(iNodeX,iAF_E), &
+                    nIterations_Out = nIterations )
 
         END DO
 
@@ -1414,7 +1415,7 @@ CONTAINS
 
 
   SUBROUTINE SolveMatterEquations_EmAb_FP &
-    ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E, TOL )
+    ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E, nIterations_Out, TOL )
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
@@ -1424,6 +1425,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: Chi     (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: J0      (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
+    INTEGER,  INTENT(out), OPTIONAL :: nIterations_Out
     REAL(DP), INTENT(in),  OPTIONAL :: TOL
 
     ! --- Solver Parameters ---
@@ -1460,6 +1462,7 @@ CONTAINS
     REAL(DP) :: BVEC(1:2*(1+nE_G))
     REAL(DP) :: AMAT(1:2*(1+nE_G),1:M)
 
+    INTEGER  :: nIterations
     REAL(DP) :: Rtol
 
     IF(PRESENT(TOL)) THEN
@@ -1592,6 +1595,12 @@ CONTAINS
 
         CONVERGED = .TRUE.
 
+        Iterations_Min = MIN( Iterations_Min, k )
+        Iterations_Max = MAX( Iterations_Max, k )
+        Iterations_Ave = Iterations_Ave + k
+
+        nIterations = k
+
       END IF
 
       Unew(iY)  = GVECm(iY)
@@ -1638,6 +1647,10 @@ CONTAINS
 
     ! output J for preconditioning purpose
      J = Jnew
+
+    IF(PRESENT(nIterations_Out)) THEN
+      nIterations_Out = nIterations
+    END IF
 
   END SUBROUTINE SolveMatterEquations_EmAb_FP
 
@@ -3483,7 +3496,7 @@ CONTAINS
       CALL TimersStart( Timer_Im_EmAb_FP )
 
       CALL SolveMatterEquations_EmAb_FP &
-             ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E, Rtol )
+             ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E, TOL = Rtol )
 
       CALL TimersStop( Timer_Im_EmAb_FP )
 
