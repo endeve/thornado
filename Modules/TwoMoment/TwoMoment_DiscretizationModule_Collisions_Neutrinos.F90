@@ -1203,7 +1203,7 @@ CONTAINS
     IF( SolveMatter )THEN
 
       W2_S = W2_N / PlanckConstant**3
-      W3_S = W3_N / PlanckConstant**3 / AtomicMassUnit
+      W3_S = W3_N / PlanckConstant**3
 
       Theta2_N = FourPi * W2_S * Chi / ( One + Chi )
       Theta3_N = FourPi * W3_S * Chi / ( One + Chi )
@@ -1231,7 +1231,7 @@ CONTAINS
     ! --- Old States (Constant) ---
 
     C(iY) = DOT_PRODUCT( Theta2_N(:), J(:) ) + N_B * U(iY)
-    C(iE) = DOT_PRODUCT( Theta3_N(:), J(:) ) + N_B * U(iE)
+    C(iE) = DOT_PRODUCT( Theta3_N(:), J(:) ) + D   * U(iE)
 
     ! --- Electron Fraction Equation ---
 
@@ -1239,7 +1239,7 @@ CONTAINS
 
     ! --- Internal Energy Equation ---
 
-    FVEC(iE) = DOT_PRODUCT( Theta3_N(:), J0(:) ) + N_B * U(iE) - C(iE)
+    FVEC(iE) = DOT_PRODUCT( Theta3_N(:), J0(:) ) + D   * U(iE) - C(iE)
 
     ! --- Scale Equations and Save Initial Evaluation ---
 
@@ -1281,7 +1281,7 @@ CONTAINS
 
       FJAC(2,1) = DOT_PRODUCT( Theta3_N(:), dJ0dY_E(:) )
 
-      FJAC(2,2) = DOT_PRODUCT( Theta3_N(:), dJ0dE_Y(:) ) + N_B
+      FJAC(2,2) = DOT_PRODUCT( Theta3_N(:), dJ0dE_Y(:) ) + D
 
       ! --- Scale Jacobian ---
 
@@ -1328,7 +1328,7 @@ CONTAINS
 
       ! --- Internal Energy Equation ---
 
-      FVEC(2) = DOT_PRODUCT( Theta3_N(:), J0(:) ) + N_B * U(2) - C(2)
+      FVEC(2) = DOT_PRODUCT( Theta3_N(:), J0(:) ) + D   * U(2) - C(2)
 
       ! --- Scale Equations ---
 
