@@ -1975,7 +1975,8 @@ CONTAINS
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
 
-    INTEGER,  DIMENSION(       1:nX_G) :: PackedIndex, UnpackedIndex
+    INTEGER,  DIMENSION(       1:nX_G) :: PackedIndex_outer, UnpackedIndex_outer
+    INTEGER,  DIMENSION(       1:nX_G) :: PackedIndex_inner, UnpackedIndex_inner
     REAL(DP), DIMENSION(       1:nX_G) :: D_P, T_P, Y_P, E_P
     REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: J0_1_P, J0_2_P, Jnew_1_P, Jnew_2_P
     REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Eta_NES_1_P, Eta_NES_2_P
@@ -2085,7 +2086,7 @@ CONTAINS
 
     CALL InitializeRHS_FP &
            ( Jold_1, Jold_2, J_1, J_2, Jnew_1, Jnew_2, &
-             Y, Yold, C_Y, S_Y, Unew_Y, E, Eold, C_E, S_E, Unew_E )
+             D, Y, Yold, C_Y, S_Y, Unew_Y, E, Eold, C_E, S_E, Unew_E )
 
     k_outer = 0
     DO WHILE( ANY( ITERATE_OUTER(:) ) .AND. k_outer < MaxIter )
@@ -2207,7 +2208,7 @@ CONTAINS
 
         CALL CheckConvergenceInner_FP &
                ( ITERATE_INNER, n_FP_inner, OS_1, OS_2, k_inner, &
-                 FVECm_inner, Jnorm_1, Jnorm_2, Rtol nIterations_Inner )
+                 FVECm_inner, Jnorm_1, Jnorm_2, Rtol, nIterations_Inner )
 
         ! --- Shift History Arrays (inner) ---
 
@@ -2273,7 +2274,7 @@ CONTAINS
 
       CALL CheckConvergenceOuter_FP &
              ( ITERATE_OUTER, ITERATE_INNER, n_FP_outer, iY, iE, k_outer, &
-               FVECm_outer, Rtol nIterations_Outer )
+               FVECm_outer, Rtol, nIterations_Outer )
 
       ! --- Shift History Arrays (outer) ---
 
@@ -2720,8 +2721,8 @@ CONTAINS
 
     INTEGER,                                   INTENT(in)    :: nX_P, iS_1, iS_2
     REAL(DP), DIMENSION(              1:nX_G), INTENT(in)    :: D_P, T_P, Y_P
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(inout) :: Phi_0_In_NES_1, Phi_Ot_NES_1
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(inout) :: Phi_0_In_NES_2, Phi_Ot_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(inout) :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(inout) :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(inout) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(inout) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
 
@@ -2761,8 +2762,8 @@ CONTAINS
 
     INTEGER,                                   INTENT(in)    :: nX_P
     REAL(DP), DIMENSION(       1:nE_G,1:nX_G), INTENT(in)    :: J_1_P, J_2_P
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)    :: Phi_0_In_NES_1, Phi_Ot_NES_1
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)    :: Phi_0_In_NES_2, Phi_Ot_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)    :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)    :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)    :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)    :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
     REAL(DP), DIMENSION(       1:nE_G,1:nX_G), INTENT(inout) :: Chi_NES_1_P, Chi_NES_2_P, Eta_NES_1_P, Eta_NES_2_P
@@ -2851,11 +2852,12 @@ CONTAINS
 
   SUBROUTINE InitializeRHS_FP &
     ( Jold_1, Jold_2, J_1, J_2, Jnew_1, Jnew_2, &
-      Y, Yold, C_Y, S_Y, U_Y, E, Eold, C_E, S_E, U_E )
+      D, Y, Yold, C_Y, S_Y, U_Y, E, Eold, C_E, S_E, U_E )
 
     REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)  :: Jold_1, Jold_2
     REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)  :: J_1, J_2
     REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out) :: Jnew_1, Jnew_2
+    REAL(DP), DIMENSION(       1:nX_G), INTENT(in)  :: D
     REAL(DP), DIMENSION(       1:nX_G), INTENT(in)  :: Y, Yold
     REAL(DP), DIMENSION(       1:nX_G), INTENT(out) :: C_Y, S_Y, U_Y
     REAL(DP), DIMENSION(       1:nX_G), INTENT(in)  :: E, Eold
@@ -2971,6 +2973,8 @@ CONTAINS
     REAL(DP), DIMENSION(       1:nX_G), INTENT(in)    :: Yold, Eold
     REAL(DP), DIMENSION(       1:nX_G), INTENT(inout) :: Y, U_Y, E, U_E
 
+    INTEGER  :: iN_X
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
@@ -2980,7 +2984,7 @@ CONTAINS
     !$OMP PARALLEL DO SIMD
 #endif
     DO iN_X = 1, nX_G
-      IF ( ITERATE(iN_X) ) THEN
+      IF ( MASK(iN_X) ) THEN
 
         Fm(iY,iN_X) = Gm(iY,iN_X) - U_Y(iN_X)
         Fm(iE,iN_X) = Gm(iE,iN_X) - U_E(iN_X)
@@ -3128,7 +3132,7 @@ CONTAINS
     LOGICAL,  DIMENSION(           1:nX_G), INTENT(in)    :: MASK
     INTEGER,                                INTENT(in)    :: n_FP, M, Mk
     REAL(DP), DIMENSION(1:n_FP,    1:nX_G), INTENT(in)    :: Fm
-    REAL(DP), DIMENSION(1:n_FP,1:M 1:nX_G), INTENT(in)    :: F
+    REAL(DP), DIMENSION(1:n_FP,1:M,1:nX_G), INTENT(in)    :: F
     REAL(DP), DIMENSION(1:n_FP,1:M,1:nX_G), INTENT(inout) :: A
     REAL(DP), DIMENSION(1:n_FP,    1:nX_G), INTENT(inout) :: B
 
@@ -3406,6 +3410,8 @@ CONTAINS
 
         END IF
       END DO
+
+    END IF
 
   END SUBROUTINE ShiftRHS_FP
 
