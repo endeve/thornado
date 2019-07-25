@@ -1,4 +1,5 @@
 LIBRARY = \
+  ArrayUtilitiesModule.o \
   DeviceModule.o \
   TimersModule.o \
   TimersModule_Euler.o \

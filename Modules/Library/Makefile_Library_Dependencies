@@ -12,6 +12,10 @@ else ifeq ($(USE_CUBLAS),TRUE)
 DeviceModule_prereqs += CublasModule.o CusolverModule.o
 endif
 
+ArrayUtilitiesModule.o: \
+  KindModule.o \
+  ArrayUtilitiesModule.F90
+
 DeviceModule.o: \
   $(DeviceModule_prereqs) \
   KindModule.o \

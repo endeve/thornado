@@ -24,6 +24,11 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     Timer_Im_ComputeRate, &
     Timer_Im_ComputeLS, &
     Timer_Im_UpdateFP
+  USE ArrayUtilitiesModule, ONLY: &
+    CreatePackIndex, &
+    ArrayPack, &
+    ArrayUnpack, &
+    ArrayCopy
   USE LinearAlgebraModule, ONLY: &
     MatrixVectorMultiply, &
     LinearLeastSquares, &
@@ -324,7 +329,7 @@ CONTAINS
     REAL(DP), DIMENSION(1:nX_G) :: Mnu, dMnudT, dMnudY
     REAL(DP), DIMENSION(1:nX_G) :: dEdD, dEdT, dEdY
 
-    INTEGER,  DIMENSION(1:nX_G) :: PackedIndex, UnpackedIndex
+    INTEGER,  DIMENSION(1:nX_G) :: PackIndex, UnpackIndex
     REAL(DP), DIMENSION(1:nX_G) :: D_P, T_P, Y_P, E_P
     REAL(DP), DIMENSION(1:nX_G) :: Mnu_P, dMnudT_P, dMnudY_P
     REAL(DP), DIMENSION(1:nX_G) :: dEdD_P, dEdT_P, dEdY_P
@@ -347,7 +352,7 @@ CONTAINS
     !$OMP             Yold, C_Y, F_Y, U_Y, dU_Y, &
     !$OMP             Eold, C_E, F_E, U_E, dU_E, &
     !$OMP             Mnu, dMnudT, dMnudY, dEdD, dEdT, dEdY, &
-    !$OMP             PackedIndex, UnpackedIndex, &
+    !$OMP             PackIndex, UnpackIndex, &
     !$OMP             D_P, T_P, Y_P, E_P, &
     !$OMP             Mnu_P, dMnudT_P, dMnudY_P, dEdD_P, dEdT_P, dEdY_P, &
     !$OMP             FJAC11, FJAC21, FJAC12, FJAC22, FNRM0 )
@@ -358,7 +363,7 @@ CONTAINS
     !$ACC         Yold, C_Y, F_Y, U_Y, dU_Y, &
     !$ACC         Eold, C_E, F_E, U_E, dU_E, &
     !$ACC         Mnu, dMnudT, dMnudY, dEdD, dEdT, dEdY, &
-    !$ACC         PackedIndex, UnpackedIndex, &
+    !$ACC         PackIndex, UnpackIndex, &
     !$ACC         D_P, T_P, Y_P, E_P, &
     !$ACC         Mnu_P, dMnudT_P, dMnudY_P, dEdD_P, dEdT_P, dEdY_P, &
     !$ACC         FJAC11, FJAC21, FJAC12, FJAC22, FNRM0 )
@@ -459,7 +464,7 @@ CONTAINS
       k  = k + 1
 
       CALL CreatePackIndex &
-             ( ITERATE, nX_P, PackedIndex, UnpackedIndex )
+             ( nX_G, ITERATE, nX_P, PackIndex, UnpackIndex )
 
       ! --- Internal Energy Derivatives ---
 
@@ -469,13 +474,13 @@ CONTAINS
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRIVATE( iN_X ) &
-      !$ACC PRESENT( UnpackedIndex, D, T, Y, D_P, T_P, Y_P )
+      !$ACC PRESENT( UnpackIndex, D, T, Y, D_P, T_P, Y_P )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD &
       !$OMP PRIVATE( iN_X )
 #endif
       DO iX_P = 1, nX_P
-        iN_X = UnpackedIndex(iX_P)
+        iN_X = UnpackIndex(iX_P)
         D_P(iX_P) = D(iN_X)
         T_P(iX_P) = T(iN_X)
         Y_P(iX_P) = Y(iN_X)
@@ -491,14 +496,14 @@ CONTAINS
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRIVATE( iX_P ) &
-      !$ACC PRESENT( ITERATE, PackedIndex, dEdT, dEdY, dEdT_P, dEdY_P )
+      !$ACC PRESENT( ITERATE, PackIndex, dEdT, dEdY, dEdT_P, dEdY_P )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD &
       !$OMP PRIVATE( iX_P )
 #endif
       DO iN_X = 1, nX_G
         IF ( ITERATE(iN_X) ) THEN
-          iX_P = PackedIndex(iN_X)
+          iX_P = PackIndex(iN_X)
           dEdT(iN_X) = dEdT_P(iX_P)
           dEdY(iN_X) = dEdY_P(iX_P)
         END IF
@@ -606,8 +611,8 @@ CONTAINS
 
       ! --- Update Temperature ---
 
-      CALL Pack1D_2 &
-             ( nX_P, UnpackedIndex, Y, E, Y_P, E_P )
+      CALL ArrayPack &
+             ( nX_G, nX_P, UnpackIndex, Y, E, Y_P, E_P )
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
              ( D_P(1:nX_P), E_P(1:nX_P), Y_P(1:nX_P), T_P(1:nX_P) )
@@ -618,8 +623,8 @@ CONTAINS
              ( D_P(1:nX_P), T_P(1:nX_P), Y_P(1:nX_P), Mnu_P(1:nX_P), &
                dMnudT_P(1:nX_P), dMnudY_P(1:nX_P), iSpecies = iNuE )
 
-      CALL Unpack1D_4 &
-             ( ITERATE, nX_P, PackedIndex, &
+      CALL ArrayUnpack &
+             ( nX_G, nX_P, ITERATE, PackIndex, &
                T_P, Mnu_P, dMnudT_P, dMnudY_P, T, Mnu, dMnudT, dMnudY )
 
 #if defined(THORNADO_OMP_OL)
@@ -728,7 +733,7 @@ CONTAINS
     !$OMP               Yold, C_Y, F_Y, U_Y, dU_Y, &
     !$OMP               Eold, C_E, F_E, U_E, dU_E, &
     !$OMP               Mnu, dMnudT, dMnudY, dEdD, dEdT, dEdY, &
-    !$OMP               PackedIndex, UnpackedIndex, &
+    !$OMP               PackIndex, UnpackIndex, &
     !$OMP               D_P, T_P, Y_P, E_P, &
     !$OMP               Mnu_P, dMnudT_P, dMnudY_P, dEdD_P, dEdT_P, dEdY_P, &
     !$OMP               FJAC11, FJAC21, FJAC12, FJAC22, FNRM0 )
@@ -739,7 +744,7 @@ CONTAINS
     !$ACC         Yold, C_Y, F_Y, U_Y, dU_Y, &
     !$ACC         Eold, C_E, F_E, U_E, dU_E, &
     !$ACC         Mnu, dMnudT, dMnudY, dEdD, dEdT, dEdY, &
-    !$ACC         PackedIndex, UnpackedIndex, &
+    !$ACC         PackIndex, UnpackIndex, &
     !$ACC         D_P, T_P, Y_P, E_P, &
     !$ACC         Mnu_P, dMnudT_P, dMnudY_P, dEdD_P, dEdT_P, dEdY_P, &
     !$ACC         FJAC11, FJAC21, FJAC12, FJAC22, FNRM0 )
@@ -783,7 +788,7 @@ CONTAINS
     REAL(DP), DIMENSION(1:nE_G,       1:nX_G) :: Jold_1, Jnew_1
     REAL(DP), DIMENSION(1:nE_G,       1:nX_G) :: Jold_2, Jnew_2
 
-    INTEGER,  DIMENSION(       1:nX_G) :: PackedIndex, UnpackedIndex
+    INTEGER,  DIMENSION(       1:nX_G) :: PackIndex, UnpackIndex
     REAL(DP), DIMENSION(       1:nX_G) :: D_P, T_P, Y_P, E_P
     REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: J0_1_P
     REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: J0_2_P
@@ -821,7 +826,7 @@ CONTAINS
     !$OMP             Eold, S_E, C_E, Unew_E, GVEC_E, &
     !$OMP             Jold_1, Jnew_1, Jnorm_1, &
     !$OMP             Jold_2, Jnew_2, Jnorm_2, &
-    !$OMP             PackedIndex, UnpackedIndex, &
+    !$OMP             PackIndex, UnpackIndex, &
     !$OMP             D_P, T_P, Y_P, E_P, J0_1_P, J0_2_P, &
     !$OMP             GVEC, FVEC, GVECm, FVECm, Alpha, nIterations )
 #elif defined(THORNADO_OACC)
@@ -831,7 +836,7 @@ CONTAINS
     !$ACC         Eold, S_E, C_E, Unew_E, GVEC_E, &
     !$ACC         Jold_1, Jnew_1, Jnorm_1, &
     !$ACC         Jold_2, Jnew_2, Jnorm_2, &
-    !$ACC         PackedIndex, UnpackedIndex, &
+    !$ACC         PackIndex, UnpackIndex, &
     !$ACC         D_P, T_P, Y_P, E_P, J0_1_P, J0_2_P, &
     !$ACC         GVEC, FVEC, GVECm, FVECm, Alpha, nIterations )
 #endif
@@ -960,7 +965,7 @@ CONTAINS
       !iM = 1 + MOD( k-1, M_FP )
 
       CALL CreatePackIndex &
-             ( ITERATE, nX_P, PackedIndex, UnpackedIndex )
+             ( nX_G, ITERATE, nX_P, PackIndex, UnpackIndex )
 
       IF ( k > 1 ) THEN
 
@@ -974,13 +979,13 @@ CONTAINS
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR &
         !$ACC PRIVATE( iN_X ) &
-        !$ACC PRESENT( UnpackedIndex, D, T, Y, D_P, T_P, Y_P )
+        !$ACC PRESENT( UnpackIndex, D, T, Y, D_P, T_P, Y_P )
 #elif defined(THORNADO_OMP)
         !$OMP PARALLEL DO SIMD &
         !$OMP PRIVATE( iN_X )
 #endif
         DO iX_P = 1, nX_P
-          iN_X = UnpackedIndex(iX_P)
+          iN_X = UnpackIndex(iX_P)
           D_P(iX_P) = D(iN_X)
           T_P(iX_P) = T(iN_X)
           Y_P(iX_P) = Y(iN_X)
@@ -1004,7 +1009,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
         !$ACC PRIVATE( iX_P ) &
-        !$ACC PRESENT( ITERATE, PackedIndex, J0_1, J0_2, J0_1_P, J0_2_P )
+        !$ACC PRESENT( ITERATE, PackIndex, J0_1, J0_2, J0_1_P, J0_2_P )
 #elif defined(THORNADO_OMP)
         !$OMP PARALLEL DO SIMD COLLAPSE(2) &
         !$OMP PRIVATE( iX_P )
@@ -1012,7 +1017,7 @@ CONTAINS
         DO iN_X = 1, nX_G
           DO iN_E = 1, nE_G
             IF ( ITERATE(iN_X) ) THEN
-              iX_P = PackedIndex(iN_X)
+              iX_P = PackIndex(iN_X)
               J0_1(iN_E,iN_X) = J0_1_P(iN_E,iX_P)
               J0_2(iN_E,iN_X) = J0_2_P(iN_E,iX_P)
             END IF
@@ -1167,14 +1172,14 @@ CONTAINS
 
       ! --- Update Temperature ---
 
-      CALL Pack1D_4 &
-             ( nX_P, UnpackedIndex, D, T, Y, E, D_P, T_P, Y_P, E_P )
+      CALL ArrayPack &
+             ( nX_G, nX_P, UnpackIndex, D, T, Y, E, D_P, T_P, Y_P, E_P )
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
              ( D_P(1:nX_P), E_P(1:nX_P), Y_P(1:nX_P), T_P(1:nX_P) )
 
-      CALL Unpack1D_1 &
-             ( ITERATE, nX_P, PackedIndex, T_P, T )
+      CALL ArrayUnpack &
+             ( nX_G, nX_P, ITERATE, PackIndex, T_P, T )
 
       ! --- Check Convergence ---
 
@@ -1273,7 +1278,7 @@ CONTAINS
     !$OMP               Eold, S_E, C_E, Unew_E, GVEC_E, &
     !$OMP               Jold_1, Jnew_1, Jnorm_1, &
     !$OMP               Jold_2, Jnew_2, Jnorm_2, &
-    !$OMP               PackedIndex, UnpackedIndex, &
+    !$OMP               PackIndex, UnpackIndex, &
     !$OMP               D_P, T_P, Y_P, E_P, J0_1_P, J0_2_P, &
     !$OMP               GVEC, FVEC, GVECm, FVECm, Alpha, nIterations )
 #elif defined(THORNADO_OACC)
@@ -1283,7 +1288,7 @@ CONTAINS
     !$ACC         Eold, S_E, C_E, Unew_E, GVEC_E, &
     !$ACC         Jold_1, Jnew_1, Jnorm_1, &
     !$ACC         Jold_2, Jnew_2, Jnorm_2, &
-    !$ACC         PackedIndex, UnpackedIndex, &
+    !$ACC         PackIndex, UnpackIndex, &
     !$ACC         D_P, T_P, Y_P, E_P, J0_1_P, J0_2_P, &
     !$ACC         GVEC, FVEC, GVECm, FVECm, Alpha, nIterations )
 #endif
@@ -1341,7 +1346,7 @@ CONTAINS
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
 
-    INTEGER,  DIMENSION(       1:nX_G) :: PackedIndex, UnpackedIndex
+    INTEGER,  DIMENSION(       1:nX_G) :: PackIndex, UnpackIndex
     REAL(DP), DIMENSION(       1:nX_G) :: D_P, T_P, Y_P, E_P
     REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: J0_1_P, Jnew_1_P
     REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: J0_2_P, Jnew_2_P
@@ -1380,7 +1385,7 @@ CONTAINS
     !$OMP             Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$OMP             Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
     !$OMP             Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-    !$OMP             PackedIndex, UnpackedIndex, &
+    !$OMP             PackIndex, UnpackIndex, &
     !$OMP             D_P, T_P, Y_P, E_P, J0_1_P, Jnew_1_P, J0_2_P, Jnew_2_P, &
     !$OMP             Eta_NES_1_P, Eta_NES_2_P, &
     !$OMP             Chi_NES_1_P, Chi_NES_2_P, &
@@ -1398,7 +1403,7 @@ CONTAINS
     !$ACC         Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$ACC         Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
     !$ACC         Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-    !$ACC         PackedIndex, UnpackedIndex, &
+    !$ACC         PackIndex, UnpackIndex, &
     !$ACC         D_P, T_P, Y_P, E_P, J0_1_P, Jnew_1_P, J0_2_P, Jnew_2_P, &
     !$ACC         Eta_NES_1_P, Eta_NES_2_P, &
     !$ACC         Chi_NES_1_P, Chi_NES_2_P, &
@@ -1587,7 +1592,7 @@ CONTAINS
       !iM = 1 + MOD( k-1, M_FP )
 
       CALL CreatePackIndex &
-             ( ITERATE, nX_P, PackedIndex, UnpackedIndex )
+             ( nX_G, ITERATE, nX_P, PackIndex, UnpackIndex )
 
       IF ( k > 1 ) THEN
 
@@ -1601,13 +1606,13 @@ CONTAINS
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR &
         !$ACC PRIVATE( iN_X ) &
-        !$ACC PRESENT( UnpackedIndex, D, T, Y, D_P, T_P, Y_P )
+        !$ACC PRESENT( UnpackIndex, D, T, Y, D_P, T_P, Y_P )
 #elif defined(THORNADO_OMP)
         !$OMP PARALLEL DO SIMD &
         !$OMP PRIVATE( iN_X )
 #endif
         DO iX_P = 1, nX_P
-          iN_X = UnpackedIndex(iX_P)
+          iN_X = UnpackIndex(iX_P)
           D_P(iX_P) = D(iN_X)
           T_P(iX_P) = T(iN_X)
           Y_P(iX_P) = Y(iN_X)
@@ -1631,7 +1636,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
         !$ACC PRIVATE( iX_P ) &
-        !$ACC PRESENT( ITERATE, PackedIndex, J0_1, J0_2, J0_1_P, J0_2_P )
+        !$ACC PRESENT( ITERATE, PackIndex, J0_1, J0_2, J0_1_P, J0_2_P )
 #elif defined(THORNADO_OMP)
         !$OMP PARALLEL DO SIMD COLLAPSE(2) &
         !$OMP PRIVATE( iX_P )
@@ -1639,7 +1644,7 @@ CONTAINS
         DO iN_X = 1, nX_G
           DO iN_E = 1, nE_G
             IF ( ITERATE(iN_X) ) THEN
-              iX_P = PackedIndex(iN_X)
+              iX_P = PackIndex(iN_X)
               J0_1(iN_E,iN_X) = J0_1_P(iN_E,iX_P)
               J0_2(iN_E,iN_X) = J0_2_P(iN_E,iX_P)
             END IF
@@ -1684,14 +1689,14 @@ CONTAINS
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
       !$ACC PRIVATE( iN_X ) &
-      !$ACC PRESENT( UnpackedIndex, Jnew_1, Jnew_2, Jnew_1_P, Jnew_2_P )
+      !$ACC PRESENT( UnpackIndex, Jnew_1, Jnew_2, Jnew_1_P, Jnew_2_P )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP PRIVATE( iN_X )
 #endif
       DO iX_P = 1, nX_P
         DO iN_E = 1, nE_G
-          iN_X = UnpackedIndex(iX_P)
+          iN_X = UnpackIndex(iX_P)
           Jnew_1_P(iN_E,iX_P) = Jnew_1(iN_E,iN_X)
           Jnew_2_P(iN_E,iX_P) = Jnew_2(iN_E,iN_X)
         END DO
@@ -1725,7 +1730,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
       !$ACC PRIVATE( iX_P ) &
-      !$ACC PRESENT( ITERATE, PackedIndex, &
+      !$ACC PRESENT( ITERATE, PackIndex, &
       !$ACC          Chi_NES_1, Chi_NES_2, Chi_NES_1_P, Chi_NES_2_P, &
       !$ACC          Eta_NES_1, Eta_NES_2, Eta_NES_1_P, Eta_NES_2_P, &
       !$ACC          Chi_Pair_1, Chi_Pair_2, Chi_Pair_1_P, Chi_Pair_2_P, &
@@ -1737,7 +1742,7 @@ CONTAINS
       DO iN_X = 1, nX_G
         DO iN_E = 1, nE_G
           IF ( ITERATE(iN_X) ) THEN
-            iX_P = PackedIndex(iN_X)
+            iX_P = PackIndex(iN_X)
             Chi_NES_1(iN_E,iN_X) = Chi_NES_1_P(iN_E,iX_P)
             Chi_NES_2(iN_E,iN_X) = Chi_NES_2_P(iN_E,iX_P)
             Eta_NES_1(iN_E,iN_X) = Eta_NES_1_P(iN_E,iX_P)
@@ -1801,14 +1806,14 @@ CONTAINS
 
       ! --- Update Temperature ---
 
-      CALL Pack1D_4 &
-             ( nX_P, UnpackedIndex, D, T, Y, E, D_P, T_P, Y_P, E_P )
+      CALL ArrayPack &
+             ( nX_G, nX_P, UnpackIndex, D, T, Y, E, D_P, T_P, Y_P, E_P )
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
              ( D_P(1:nX_P), E_P(1:nX_P), Y_P(1:nX_P), T_P(1:nX_P) )
 
-      CALL Unpack1D_1 &
-             ( ITERATE, nX_P, PackedIndex, T_P, T )
+      CALL ArrayUnpack &
+             ( nX_G, nX_P, ITERATE, PackIndex, T_P, T )
 
       ! --- Check Convergence ---
 
@@ -1897,7 +1902,7 @@ CONTAINS
     !$OMP               Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$OMP               Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
     !$OMP               Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-    !$OMP               PackedIndex, UnpackedIndex, &
+    !$OMP               PackIndex, UnpackIndex, &
     !$OMP               D_P, T_P, Y_P, E_P, J0_1_P, Jnew_1_P, J0_2_P, Jnew_2_P, &
     !$OMP               Eta_NES_1_P, Eta_NES_2_P, &
     !$OMP               Chi_NES_1_P, Chi_NES_2_P, &
@@ -1915,7 +1920,7 @@ CONTAINS
     !$ACC         Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$ACC         Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
     !$ACC         Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-    !$ACC         PackedIndex, UnpackedIndex, &
+    !$ACC         PackIndex, UnpackIndex, &
     !$ACC         D_P, T_P, Y_P, E_P, J0_1_P, Jnew_1_P, J0_2_P, Jnew_2_P, &
     !$ACC         Eta_NES_1_P, Eta_NES_2_P, &
     !$ACC         Chi_NES_1_P, Chi_NES_2_P, &
@@ -1977,8 +1982,8 @@ CONTAINS
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
 
-    INTEGER,  DIMENSION(       1:nX_G) :: PackedIndex_outer, UnpackedIndex_outer
-    INTEGER,  DIMENSION(       1:nX_G) :: PackedIndex_inner, UnpackedIndex_inner
+    INTEGER,  DIMENSION(       1:nX_G) :: PackIndex_outer, UnpackIndex_outer
+    INTEGER,  DIMENSION(       1:nX_G) :: PackIndex_inner, UnpackIndex_inner
     REAL(DP), DIMENSION(       1:nX_G) :: D_P, T_P, Y_P, E_P
     REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: J0_1_P, J0_2_P, Jnew_1_P, Jnew_2_P
     REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Eta_NES_1_P, Eta_NES_2_P
@@ -2008,8 +2013,6 @@ CONTAINS
     INTEGER :: nX_P_inner, k_inner, Mk_inner
     INTEGER :: OS_2, iN_X, iN_E
 
-    INTEGER :: iNode, iNodeE, iNodeX, iZ1, iZ2, iZ3, iZ4
-
     OS_2 = OS_1 + nE_G
 
     ITERATE_OUTER(:) = .TRUE.
@@ -2026,8 +2029,8 @@ CONTAINS
     !$OMP             Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$OMP             Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
     !$OMP             Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-    !$OMP             PackedIndex_outer, UnpackedIndex_outer, &
-    !$OMP             PackedIndex_inner, UnpackedIndex_inner, &
+    !$OMP             PackIndex_outer, UnpackIndex_outer, &
+    !$OMP             PackIndex_inner, UnpackIndex_inner, &
     !$OMP             D_P, T_P, Y_P, E_P, J0_1_P, Jnew_1_P, J0_2_P, Jnew_2_P, &
     !$OMP             Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
     !$OMP             Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
@@ -2052,8 +2055,8 @@ CONTAINS
     !$ACC         Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$ACC         Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
     !$ACC         Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-    !$ACC         PackedIndex_outer, UnpackedIndex_outer, &
-    !$ACC         PackedIndex_inner, UnpackedIndex_inner, &
+    !$ACC         PackIndex_outer, UnpackIndex_outer, &
+    !$ACC         PackIndex_inner, UnpackIndex_inner, &
     !$ACC         D_P, T_P, Y_P, E_P, J0_1_P, Jnew_1_P, J0_2_P, Jnew_2_P, &
     !$ACC         Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
     !$ACC         Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
@@ -2069,9 +2072,9 @@ CONTAINS
     !$ACC         GVECm_inner, FVECm_inner, Alpha_inner )
 #endif
 
-    CALL Copy1D_2( Y, E, Yold, Eold )
+    CALL ArrayCopy( nX_G, Y, E, Yold, Eold )
 
-    CALL Copy2D_2( J_1, J_2, Jold_1, Jold_2 )
+    CALL ArrayCopy( nE_G, nX_G, J_1, J_2, Jold_1, Jold_2 )
 
     IF( UsePreconditionerEmAb )THEN
 
@@ -2116,20 +2119,20 @@ CONTAINS
       CALL ComputeJNorm( ITERATE_OUTER, Jnew_1, Jnew_2, Jnorm_1, Jnorm_2 )
 
       CALL CreatePackIndex &
-             ( ITERATE_OUTER, nX_P_outer, PackedIndex_outer, UnpackedIndex_outer )
+             ( nX_G, ITERATE_OUTER, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
       IF ( k_outer > 1 ) THEN
 
         ! --- Recompute Equilibrium Distributions ---
 
-        CALL Pack1D_3 &
-               ( nX_P_outer, UnpackedIndex_outer, D, T, Y, D_P, T_P, Y_P )
+        CALL ArrayPack &
+               ( nX_G, nX_P_outer, UnpackIndex_outer, D, T, Y, D_P, T_P, Y_P )
 
         CALL ComputeEquilibriumDistributions_Packed &
                ( nX_P_outer, iS_1, iS_2, D_P, T_P, Y_P, J0_1_P, J0_2_P )
 
-        CALL Unpack2D_2 &
-               ( ITERATE_OUTER, nX_P_outer, PackedIndex_outer, &
+        CALL ArrayUnpack &
+               ( nE_G, nX_G, nX_P_outer, ITERATE_OUTER, PackIndex_outer, &
                  J0_1_P, J0_2_P, J0_1, J0_2 )
 
         ! --- Recompute Opacity Kernels ---
@@ -2141,8 +2144,8 @@ CONTAINS
                  Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
                  Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P )
 
-        CALL Unpack3D_8 &
-               ( ITERATE_OUTER, nX_P_outer, PackedIndex_outer, &
+        CALL ArrayUnpack &
+               ( nE_G, nE_G, nX_G, nX_P_outer, ITERATE_OUTER, PackIndex_outer, &
                  Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
                  Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
                  Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
@@ -2162,17 +2165,18 @@ CONTAINS
         Mk_inner = MIN( M_inner, k_inner )
 
         CALL CreatePackIndex &
-               ( ITERATE_INNER, nX_P_inner, PackedIndex_inner, UnpackedIndex_inner )
+               ( nX_G, ITERATE_INNER, nX_P_inner, PackIndex_inner, UnpackIndex_inner )
 
         ! --- Compute Neutrino Rates ---
 
         CALL TimersStart( Timer_Im_ComputeRate )
 
-        CALL Pack2D_2 &
-               ( nX_P_inner, UnpackedIndex_inner, Jnew_1, Jnew_2, Jnew_1_P, Jnew_2_P )
+        CALL ArrayPack &
+               ( nE_G, nX_G, nX_P_inner, UnpackIndex_inner, &
+                 Jnew_1, Jnew_2, Jnew_1_P, Jnew_2_P )
 
-        CALL Pack3D_8 &
-               ( nX_P_inner, UnpackedIndex_inner, &
+        CALL ArrayPack &
+               ( nE_G, nE_G, nX_G, nX_P_inner, UnpackIndex_inner, &
                  Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
                  Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
                  Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
@@ -2185,8 +2189,8 @@ CONTAINS
                  Chi_NES_1_P, Chi_NES_2_P, Eta_NES_1_P, Eta_NES_2_P, &
                  Chi_Pair_1_P, Chi_Pair_2_P, Eta_Pair_1_P, Eta_Pair_2_P )
 
-        CALL Unpack2D_8 &
-               ( ITERATE_INNER, nX_P_inner, PackedIndex_inner, &
+        CALL ArrayUnpack &
+               ( nE_G, nX_G, nX_P_inner, ITERATE_INNER, PackIndex_inner, &
                  Chi_NES_1_P, Chi_NES_2_P, Eta_NES_1_P, Eta_NES_2_P, &
                  Chi_Pair_1_P, Chi_Pair_2_P, Eta_Pair_1_P, Eta_Pair_2_P, &
                  Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
@@ -2297,14 +2301,14 @@ CONTAINS
 
       ! --- Update Temperature ---
 
-      CALL Pack1D_4 &
-             ( nX_P_outer, UnpackedIndex_outer, D, T, Y, E, D_P, T_P, Y_P, E_P )
+      CALL ArrayPack &
+             ( nX_G, nX_P_outer, UnpackIndex_outer, D, T, Y, E, D_P, T_P, Y_P, E_P )
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
              ( D_P(1:nX_P_outer), E_P(1:nX_P_outer), Y_P(1:nX_P_outer), T_P(1:nX_P_outer) )
 
-      CALL Unpack1D_1 &
-             ( ITERATE_OUTER, nX_P_outer, PackedIndex_outer, T_P, T )
+      CALL ArrayUnpack &
+             ( nX_G, nX_P_outer, ITERATE_OUTER, PackIndex_outer, T_P, T )
 
       ! --- Check Convergence (outer) ---
 
@@ -2321,7 +2325,7 @@ CONTAINS
 
     END DO
 
-    CALL Copy2D_2( Jnew_1, Jnew_2, J_1, J_2 )
+    CALL ArrayCopy( nE_G, nX_G, Jnew_1, Jnew_2, J_1, J_2 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -2334,8 +2338,8 @@ CONTAINS
     !$OMP               Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$OMP               Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
     !$OMP               Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-    !$OMP               PackedIndex_outer, UnpackedIndex_outer, &
-    !$OMP               PackedIndex_inner, UnpackedIndex_inner, &
+    !$OMP               PackIndex_outer, UnpackIndex_outer, &
+    !$OMP               PackIndex_inner, UnpackIndex_inner, &
     !$OMP               D_P, T_P, Y_P, E_P, J0_1_P, Jnew_1_P, J0_2_P, Jnew_2_P, &
     !$OMP               Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
     !$OMP               Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
@@ -2360,8 +2364,8 @@ CONTAINS
     !$ACC         Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$ACC         Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
     !$ACC         Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-    !$ACC         PackedIndex_outer, UnpackedIndex_outer, &
-    !$ACC         PackedIndex_inner, UnpackedIndex_inner, &
+    !$ACC         PackIndex_outer, UnpackIndex_outer, &
+    !$ACC         PackIndex_inner, UnpackIndex_inner, &
     !$ACC         D_P, T_P, Y_P, E_P, J0_1_P, Jnew_1_P, J0_2_P, Jnew_2_P, &
     !$ACC         Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
     !$ACC         Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
@@ -2378,691 +2382,6 @@ CONTAINS
 #endif
 
   END SUBROUTINE SolveMatterEquations_FP_NestedAA
-
-
-  SUBROUTINE Copy1D_1 &
-    ( X1, Y1 )
-
-    REAL(DP), DIMENSION(1:nX_G), INTENT(in)  :: X1
-    REAL(DP), DIMENSION(1:nX_G), INTENT(out) :: Y1
-
-    INTEGER  :: iN_X
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( X1, Y1 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
-#endif
-    DO iN_X = 1, nX_G
-      Y1(iN_X) = X1(iN_X)
-    END DO
-
-  END SUBROUTINE Copy1D_1
-
-
-  SUBROUTINE Copy1D_2 &
-    ( X1, X2, Y1, Y2 )
-
-    REAL(DP), DIMENSION(1:nX_G), INTENT(in)  :: X1, X2
-    REAL(DP), DIMENSION(1:nX_G), INTENT(out) :: Y1, Y2
-
-    INTEGER  :: iN_X
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( X1, X2, Y1, Y2 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
-#endif
-    DO iN_X = 1, nX_G
-      Y1(iN_X) = X1(iN_X)
-      Y2(iN_X) = X2(iN_X)
-    END DO
-
-  END SUBROUTINE Copy1D_2
-
-
-  SUBROUTINE Copy1D_3 &
-    ( X1, X2, X3, Y1, Y2, Y3 )
-
-    REAL(DP), DIMENSION(1:nX_G), INTENT(in)  :: X1, X2, X3
-    REAL(DP), DIMENSION(1:nX_G), INTENT(out) :: Y1, Y2, Y3
-
-    INTEGER  :: iN_X
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( X1, X2, X3, Y1, Y2, Y3 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
-#endif
-    DO iN_X = 1, nX_G
-      Y1(iN_X) = X1(iN_X)
-      Y2(iN_X) = X2(iN_X)
-      Y3(iN_X) = X3(iN_X)
-    END DO
-
-  END SUBROUTINE Copy1D_3
-
-
-  SUBROUTINE Copy1D_4 &
-    ( X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
-
-    REAL(DP), DIMENSION(1:nX_G), INTENT(in)  :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(1:nX_G), INTENT(out) :: Y1, Y2, Y3, Y4
-
-    INTEGER  :: iN_X
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
-#endif
-    DO iN_X = 1, nX_G
-      Y1(iN_X) = X1(iN_X)
-      Y2(iN_X) = X2(iN_X)
-      Y3(iN_X) = X3(iN_X)
-      Y4(iN_X) = X4(iN_X)
-    END DO
-
-  END SUBROUTINE Copy1D_4
-
-
-  SUBROUTINE Copy2D_2 &
-    ( X1, X2, Y1, Y2 )
-
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)  :: X1, X2
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out) :: Y1, Y2
-
-    INTEGER  :: iN_E, iN_X
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRESENT( X1, X2, Y1, Y2 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2)
-#endif
-    DO iN_X = 1, nX_G
-      DO iN_E = 1, nE_G
-        Y1(iN_E,iN_X) = X1(iN_E,iN_X)
-        Y2(iN_E,iN_X) = X2(iN_E,iN_X)
-      END DO
-    END DO
-
-  END SUBROUTINE Copy2D_2
-
-
-  SUBROUTINE Copy2D_8 &
-    ( X1, X2, X3, X4, X5, X6, X7, X8, &
-      Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
-
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
-
-    INTEGER  :: iN_E, iN_X
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRESENT( X1, X2, X3, X4, X5, X6, X7, X8, &
-    !$ACC          Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2)
-#endif
-    DO iN_X = 1, nX_G
-      DO iN_E = 1, nE_G
-        Y1(iN_E,iN_X) = X1(iN_E,iN_X)
-        Y2(iN_E,iN_X) = X2(iN_E,iN_X)
-        Y3(iN_E,iN_X) = X3(iN_E,iN_X)
-        Y4(iN_E,iN_X) = X4(iN_E,iN_X)
-        Y5(iN_E,iN_X) = X5(iN_E,iN_X)
-        Y6(iN_E,iN_X) = X6(iN_E,iN_X)
-        Y7(iN_E,iN_X) = X7(iN_E,iN_X)
-        Y8(iN_E,iN_X) = X8(iN_E,iN_X)
-      END DO
-    END DO
-
-  END SUBROUTINE Copy2D_8
-
-
-  SUBROUTINE Copy3D_8 &
-    ( X1, X2, X3, X4, X5, X6, X7, X8, &
-      Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
-
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
-
-    INTEGER  :: iN_E1, iN_E2, iN_X
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRESENT( X1, X2, X3, X4, X5, X6, X7, X8, &
-    !$ACC          Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2)
-#endif
-    DO iN_X = 1, nX_G
-      DO iN_E2 = 1, nE_G
-        DO iN_E1 = 1, nE_G
-          Y1(iN_E1,iN_E2,iN_X) = X1(iN_E1,iN_E2,iN_X)
-          Y2(iN_E1,iN_E2,iN_X) = X2(iN_E1,iN_E2,iN_X)
-          Y3(iN_E1,iN_E2,iN_X) = X3(iN_E1,iN_E2,iN_X)
-          Y4(iN_E1,iN_E2,iN_X) = X4(iN_E1,iN_E2,iN_X)
-          Y5(iN_E1,iN_E2,iN_X) = X5(iN_E1,iN_E2,iN_X)
-          Y6(iN_E1,iN_E2,iN_X) = X6(iN_E1,iN_E2,iN_X)
-          Y7(iN_E1,iN_E2,iN_X) = X7(iN_E1,iN_E2,iN_X)
-          Y8(iN_E1,iN_E2,iN_X) = X8(iN_E1,iN_E2,iN_X)
-        END DO
-      END DO
-    END DO
-
-  END SUBROUTINE Copy3D_8
-
-
-  SUBROUTINE CreatePackIndex &
-    ( MASK, nX_P, PackedIndex, UnpackedIndex )
-
-    LOGICAL,  INTENT(in)  :: MASK(1:nX_G)
-    INTEGER,  INTENT(out) :: nX_P
-    INTEGER,  INTENT(out) :: PackedIndex(1:nX_G)
-    INTEGER,  INTENT(out) :: UnpackedIndex(1:nX_G)
-
-    INTEGER  :: iN_X, iX_P, iX_U
-
-    ! --- Build Lookup Tables ---
-
-    nX_P = COUNT( MASK(:) )
-    iX_P = 0
-    iX_U = nX_P
-    DO iN_X = 1, nX_G
-      IF ( MASK(iN_X) ) THEN
-        iX_P = iX_P + 1
-        PackedIndex(iN_X) = iX_P
-        UnpackedIndex(iX_P) = iN_X
-      ELSE
-        iX_U = iX_U + 1
-        PackedIndex(iN_X) = iX_U
-        UnpackedIndex(iX_U) = iN_X
-      END IF
-    END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( PackedIndex, UnpackedIndex )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( PackedIndex, UnpackedIndex )
-#endif
-
-  END SUBROUTINE CreatePackIndex
-
-
-  SUBROUTINE Pack1D_2 &
-    ( nX_P, UnpackedIndex, X1, X2, X1_P, X2_P )
-
-    INTEGER,                     INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(1:nX_G), INTENT(in)    :: UnpackedIndex
-    REAL(DP), DIMENSION(1:nX_G), INTENT(in)    :: X1, X2
-    REAL(DP), DIMENSION(1:nX_G), INTENT(inout) :: X1_P, X2_P
-
-    INTEGER  :: iN_X, iX_P
-
-    IF ( nX_P < nX_G ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iN_X )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iN_X ) &
-      !$ACC PRESENT( UnpackedIndex, X1, X2, X1_P, X2_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
-      !$OMP PRIVATE( iN_X )
-#endif
-      DO iX_P = 1, nX_P
-        iN_X = UnpackedIndex(iX_P)
-        X1_P(iX_P) = X1(iN_X)
-        X2_P(iX_P) = X2(iN_X)
-      END DO
-
-    ELSE
-
-      CALL Copy1D_2( X1, X2, X1_P, X2_P )
-
-    END IF
-
-  END SUBROUTINE Pack1D_2
-
-
-  SUBROUTINE Pack1D_3 &
-    ( nX_P, UnpackedIndex, X1, X2, X3, X1_P, X2_P, X3_P )
-
-    INTEGER,                     INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(1:nX_G), INTENT(in)    :: UnpackedIndex
-    REAL(DP), DIMENSION(1:nX_G), INTENT(in)    :: X1, X2, X3
-    REAL(DP), DIMENSION(1:nX_G), INTENT(inout) :: X1_P, X2_P, X3_P
-
-    INTEGER  :: iN_X, iX_P
-
-    IF ( nX_P < nX_G ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iN_X )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iN_X ) &
-      !$ACC PRESENT( UnpackedIndex, X1, X2, X3, X1_P, X2_P, X3_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
-      !$OMP PRIVATE( iN_X )
-#endif
-      DO iX_P = 1, nX_P
-        iN_X = UnpackedIndex(iX_P)
-        X1_P(iX_P) = X1(iN_X)
-        X2_P(iX_P) = X2(iN_X)
-        X3_P(iX_P) = X3(iN_X)
-      END DO
-
-    ELSE
-
-      CALL Copy1D_3( X1, X2, X3, X1_P, X2_P, X3_P )
-
-    END IF
-
-  END SUBROUTINE Pack1D_3
-
-
-  SUBROUTINE Pack1D_4 &
-    ( nX_P, UnpackedIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
-
-    INTEGER,                     INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(1:nX_G), INTENT(in)    :: UnpackedIndex
-    REAL(DP), DIMENSION(1:nX_G), INTENT(in)    :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(1:nX_G), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
-
-    INTEGER  :: iN_X, iX_P
-
-    IF ( nX_P < nX_G ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iN_X )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iN_X ) &
-      !$ACC PRESENT( UnpackedIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
-      !$OMP PRIVATE( iN_X )
-#endif
-      DO iX_P = 1, nX_P
-        iN_X = UnpackedIndex(iX_P)
-        X1_P(iX_P) = X1(iN_X)
-        X2_P(iX_P) = X2(iN_X)
-        X3_P(iX_P) = X3(iN_X)
-        X4_P(iX_P) = X4(iN_X)
-      END DO
-
-    ELSE
-
-      CALL Copy1D_4( X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
-
-    END IF
-
-  END SUBROUTINE Pack1D_4
-
-
-  SUBROUTINE Pack2D_2 &
-    ( nX_P, UnpackedIndex, X1, X2, X1_P, X2_P )
-
-    INTEGER,                            INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(       1:nX_G), INTENT(in)    :: UnpackedIndex
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: X1, X2
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: X1_P, X2_P
-
-    INTEGER  :: iN_E, iN_X, iX_P
-
-    IF ( nX_P < nX_G ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iN_X )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( iN_X ) &
-      !$ACC PRESENT( UnpackedIndex, X1, X2, X1_P, X2_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iN_X )
-#endif
-      DO iX_P = 1, nX_P
-        DO iN_E = 1, nE_G
-          iN_X = UnpackedIndex(iX_P)
-          X1_P(iN_E,iX_P) = X1(iN_E,iN_X)
-          X2_P(iN_E,iX_P) = X2(iN_E,iN_X)
-        END DO
-      END DO
-
-    ELSE
-
-      CALL Copy2D_2( X1, X2, X1_P, X2_P )
-
-    END IF
-
-  END SUBROUTINE Pack2D_2
-
-
-  SUBROUTINE Pack3D_8 &
-    ( nX_P, UnpackedIndex, &
-      X1, X2, X3, X4, X5, X6, X7, X8, &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
-
-    INTEGER,                                   INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(              1:nX_G), INTENT(in)    :: UnpackedIndex
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
-
-    INTEGER  :: iN_E1, iN_E2, iN_X, iX_P
-
-    IF ( nX_P < nX_G ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( iX_P )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( iX_P ) &
-      !$ACC PRESENT( MASK, UnpackedIndex, &
-      !$ACC          X1, X2, X1_P, X2_P, &
-      !$ACC          X3, X4, X3_P, X4_P, &
-      !$ACC          X5, X6, X5_P, X6_P, &
-      !$ACC          X7, X8, X7_P, X8_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( iX_P )
-#endif
-      DO iX_P = 1, nX_P
-        DO iN_E2 = 1, nE_G
-          DO iN_E1 = 1, nE_G
-            iN_X = UnpackedIndex(iX_P)
-            X1_P(iN_E1,iN_E2,iX_P) = X1(iN_E1,iN_E2,iN_X)
-            X2_P(iN_E1,iN_E2,iX_P) = X2(iN_E1,iN_E2,iN_X)
-            X3_P(iN_E1,iN_E2,iX_P) = X3(iN_E1,iN_E2,iN_X)
-            X4_P(iN_E1,iN_E2,iX_P) = X4(iN_E1,iN_E2,iN_X)
-            X5_P(iN_E1,iN_E2,iX_P) = X5(iN_E1,iN_E2,iN_X)
-            X6_P(iN_E1,iN_E2,iX_P) = X6(iN_E1,iN_E2,iN_X)
-            X7_P(iN_E1,iN_E2,iX_P) = X7(iN_E1,iN_E2,iN_X)
-            X8_P(iN_E1,iN_E2,iX_P) = X8(iN_E1,iN_E2,iN_X)
-          END DO
-        END DO
-      END DO
-
-    ELSE
-
-      CALL Copy3D_8 &
-             ( X1, X2, X3, X4, X5, X6, X7, X8, &
-               X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
-
-    END IF
-
-  END SUBROUTINE Pack3D_8
-
-
-  SUBROUTINE Unpack1D_1 &
-    ( MASK, nX_P, PackedIndex, X1_P, X1 )
-
-    LOGICAL,  DIMENSION(1:nX_G), INTENT(in)    :: MASK
-    INTEGER,                     INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(1:nX_G), INTENT(in)    :: PackedIndex
-    REAL(DP), DIMENSION(1:nX_G), INTENT(in)    :: X1_P
-    REAL(DP), DIMENSION(1:nX_G), INTENT(inout) :: X1
-
-    INTEGER  :: iN_X, iX_P
-
-    IF ( nX_P < nX_G ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX_P )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iX_P ) &
-      !$ACC PRESENT( MASK, PackedIndex, X1, X1_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX_P )
-#endif
-      DO iN_X = 1, nX_G
-        IF ( MASK(iN_X) ) THEN
-          iX_P = PackedIndex(iN_X)
-          X1(iN_X) = X1_P(iX_P)
-        END IF
-      END DO
-
-    ELSE
-
-      CALL Copy1D_1( X1_P, X1 )
-
-    END IF
-
-  END SUBROUTINE Unpack1D_1
-
-
-  SUBROUTINE Unpack1D_4 &
-    ( MASK, nX_P, PackedIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
-
-    LOGICAL,  DIMENSION(1:nX_G), INTENT(in)    :: MASK
-    INTEGER,                     INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(1:nX_G), INTENT(in)    :: PackedIndex
-    REAL(DP), DIMENSION(1:nX_G), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
-    REAL(DP), DIMENSION(1:nX_G), INTENT(inout) :: X1, X2, X3, X4
-
-    INTEGER  :: iN_X, iX_P
-
-    IF ( nX_P < nX_G ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX_P )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iX_P ) &
-      !$ACC PRESENT( MASK, PackedIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX_P )
-#endif
-      DO iN_X = 1, nX_G
-        IF ( MASK(iN_X) ) THEN
-          iX_P = PackedIndex(iN_X)
-          X1(iN_X) = X1_P(iX_P)
-          X2(iN_X) = X2_P(iX_P)
-          X3(iN_X) = X3_P(iX_P)
-          X4(iN_X) = X4_P(iX_P)
-        END IF
-      END DO
-
-    ELSE
-
-      CALL Copy1D_4( X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
-
-    END IF
-
-  END SUBROUTINE Unpack1D_4
-
-
-  SUBROUTINE Unpack2D_2 &
-    ( MASK, nX_P, PackedIndex, X1_P, X2_P, X1, X2 )
-
-    LOGICAL,  DIMENSION(       1:nX_G), INTENT(in)    :: MASK
-    INTEGER,                            INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(       1:nX_G), INTENT(in)    :: PackedIndex
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: X1_P, X2_P
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: X1, X2
-
-    INTEGER  :: iN_E, iN_X, iX_P
-
-    IF ( nX_P < nX_G ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iX_P )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( iX_P ) &
-      !$ACC PRESENT( MASK, PackedIndex, X1, X2, X1_P, X2_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iX_P )
-#endif
-      DO iN_X = 1, nX_G
-        DO iN_E = 1, nE_G
-          IF ( MASK(iN_X) ) THEN
-            iX_P = PackedIndex(iN_X)
-            X1(iN_E,iN_X) = X1_P(iN_E,iX_P)
-            X2(iN_E,iN_X) = X2_P(iN_E,iX_P)
-          END IF
-        END DO
-      END DO
-
-    ELSE
-
-      CALL Copy2D_2( X1_P, X2_P, X1, X2 )
-
-    END IF
-
-  END SUBROUTINE Unpack2D_2
-
-
-  SUBROUTINE Unpack2D_8 &
-    ( MASK, nX_P, PackedIndex, &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      X1, X2, X3, X4, X5, X6, X7, X8 )
-
-    LOGICAL,  DIMENSION(       1:nX_G), INTENT(in)    :: MASK
-    INTEGER,                            INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(       1:nX_G), INTENT(in)    :: PackedIndex
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
-
-    INTEGER  :: iN_E, iN_X, iX_P
-
-    IF ( nX_P < nX_G ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iX_P )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( iX_P ) &
-      !$ACC PRESENT( MASK, PackedIndex, &
-      !$ACC          X1, X2, X1_P, X2_P, &
-      !$ACC          X3, X4, X3_P, X4_P, &
-      !$ACC          X5, X6, X5_P, X6_P, &
-      !$ACC          X7, X8, X7_P, X8_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iX_P )
-#endif
-      DO iN_X = 1, nX_G
-        DO iN_E = 1, nE_G
-          IF ( MASK(iN_X) ) THEN
-            iX_P = PackedIndex(iN_X)
-            X1(iN_E,iN_X) = X1_P(iN_E,iX_P)
-            X2(iN_E,iN_X) = X2_P(iN_E,iX_P)
-            X3(iN_E,iN_X) = X3_P(iN_E,iX_P)
-            X4(iN_E,iN_X) = X4_P(iN_E,iX_P)
-            X5(iN_E,iN_X) = X5_P(iN_E,iX_P)
-            X6(iN_E,iN_X) = X6_P(iN_E,iX_P)
-            X7(iN_E,iN_X) = X7_P(iN_E,iX_P)
-            X8(iN_E,iN_X) = X8_P(iN_E,iX_P)
-          END IF
-        END DO
-      END DO
-
-    ELSE
-
-      CALL Copy2D_8 &
-             ( X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-               X1, X2, X3, X4, X5, X6, X7, X8 )
-
-    END IF
-
-  END SUBROUTINE Unpack2D_8
-
-
-  SUBROUTINE Unpack3D_8 &
-    ( MASK, nX_P, PackedIndex, &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      X1, X2, X3, X4, X5, X6, X7, X8 )
-
-    LOGICAL,  DIMENSION(              1:nX_G), INTENT(in)    :: MASK
-    INTEGER,                                   INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(              1:nX_G), INTENT(in)    :: PackedIndex
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
-
-    INTEGER  :: iN_E1, iN_E2, iN_X, iX_P
-
-    IF ( nX_P < nX_G ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iX_P )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( iX_P ) &
-      !$ACC PRESENT( MASK, PackedIndex, &
-      !$ACC          X1, X2, X1_P, X2_P, &
-      !$ACC          X3, X4, X3_P, X4_P, &
-      !$ACC          X5, X6, X5_P, X6_P, &
-      !$ACC          X7, X8, X7_P, X8_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iX_P )
-#endif
-      DO iN_X = 1, nX_G
-        DO iN_E2 = 1, nE_G
-          DO iN_E1 = 1, nE_G
-            IF ( MASK(iN_X) ) THEN
-              iX_P = PackedIndex(iN_X)
-              X1(iN_E1,iN_E2,iN_X) = X1_P(iN_E1,iN_E2,iX_P)
-              X2(iN_E1,iN_E2,iN_X) = X2_P(iN_E1,iN_E2,iX_P)
-              X3(iN_E1,iN_E2,iN_X) = X3_P(iN_E1,iN_E2,iX_P)
-              X4(iN_E1,iN_E2,iN_X) = X4_P(iN_E1,iN_E2,iX_P)
-              X5(iN_E1,iN_E2,iN_X) = X5_P(iN_E1,iN_E2,iX_P)
-              X6(iN_E1,iN_E2,iN_X) = X6_P(iN_E1,iN_E2,iX_P)
-              X7(iN_E1,iN_E2,iN_X) = X7_P(iN_E1,iN_E2,iX_P)
-              X8(iN_E1,iN_E2,iN_X) = X8_P(iN_E1,iN_E2,iX_P)
-            END IF
-          END DO
-        END DO
-      END DO
-
-    ELSE
-
-      CALL Copy3D_8 &
-             ( X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-               X1, X2, X3, X4, X5, X6, X7, X8 )
-
-    END IF
-
-  END SUBROUTINE Unpack3D_8
 
 
   SUBROUTINE ComputeEquilibriumDistributions_Packed &

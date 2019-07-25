@@ -131,6 +131,7 @@ TwoMoment_NeutrinoMatterSolverModule.o: \
   UnitsModule.o \
   ProgramHeaderModule.o \
   TimersModule.o \
+  ArrayUtilitiesModule.o \
   LinearAlgebraModule.o \
   ReferenceElementModuleE.o \
   MeshModule.o \
