@@ -2156,7 +2156,7 @@ CONTAINS
       END IF
 
       ! START INNER LOOP
-      CALL TimersStart(Timer_Im_NestInner)
+      CALL TimersStart( Timer_Im_NestInner )
 
       k_inner = 0
       DO WHILE( ANY( ITERATE_INNER(:) ) .AND. k_inner < MaxIter )
@@ -2258,6 +2258,8 @@ CONTAINS
         CALL TimersStop( Timer_Im_UpdateFP )
 
       END DO
+
+      CALL TimersStop( Timer_Im_NestInner )
 
       ! --- Right-Hand Side Vectors and Residuals (outer) ---
 
