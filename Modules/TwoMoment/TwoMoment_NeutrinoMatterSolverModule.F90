@@ -3157,7 +3157,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( SUM1, SUM2 ) &
-    !$ACC PRESENT( Jnorm_1 Jnorm_2, J_1, J_2 )
+    !$ACC PRESENT( Jnorm_1, Jnorm_2, J_1, J_2 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD &
     !$OMP PRIVATE( SUM1, SUM2 )
@@ -3195,7 +3195,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( SUM1, SUM2 ) &
-    !$ACC PRESENT( Fnorm_1 Fnorm_2, Fm )
+    !$ACC PRESENT( Fnorm_1, Fnorm_2, Fm )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD &
     !$OMP PRIVATE( SUM1, SUM2 )
