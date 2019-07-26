@@ -227,9 +227,10 @@ CONTAINS
       DO iLevel = 0, nLevels
         CALL MF_U(iLevel) &
                % PARALLEL_COPY( MF_uCF(iLevel), 1, 1, &
-                                MF_uCF(iLevel) % ncomp(), swX(1), swX(1), &
+                                MF_uCF(iLevel) % ncomp(), 0, swX(1), &
                                 GEOM(iLevel) )
       END DO
+
       CALL TimersStop_AMReX( Timer_AMReX_CopyMF )
 
       DO jS = 1, iS - 1
