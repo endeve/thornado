@@ -79,7 +79,7 @@ CONTAINS
       WRITE(*,'(A)') '    ----------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)') &
-        '', 'Use Positivity Limiter: ', UsePositivityLimiter 
+        '', 'Use Positivity Limiter: ', UsePositivityLimiter
       WRITE(*,*)
       WRITE(*,'(A4,A27,ES10.3E3)') '', 'Min_1: ', Min_1
       WRITE(*,'(A4,A27,ES10.3E3)') '', 'Min_2: ', Min_2
@@ -106,7 +106,7 @@ CONTAINS
 
   END SUBROUTINE Euler_InitializePositivityLimiter_Relativistic
 
-  
+
   SUBROUTINE Euler_FinalizePositivityLimiter_Relativistic
 
     DEALLOCATE( U_PP )
@@ -125,20 +125,16 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP, iNodeX
-    REAL(DP) :: Min_K, Theta_1, Theta_2, Theta_P
-    REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), G_K(nGF), q(nPT)
-    REAL(DP) :: SSq, alpha
-    REAL(DP) :: q_K(1), alphaMax
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
+    REAL(DP) :: Min_K, Theta_D, Theta_q, Theta_P
+    REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), q(nPT)
 
     IF( nDOFX == 1 ) RETURN
-    
+
     IF( .NOT. UsePositivityLimiter ) RETURN
 
     ! --- Implement bound-preserving limiter from
     !     Qin et al., (2016), JCP, 315, 323 ---
-
-    alphaMax = -HUGE( One )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -147,138 +143,83 @@ CONTAINS
       U_q = U(:,iX1,iX2,iX3,:)
       G_q = G(:,iX1,iX2,iX3,:)
 
-      DO iCF = 1, nCF
-        CALL ComputePointValues( U_q(:,iCF), U_PP(:,iCF) )
-      END DO
+      ! --- Check if cell-average of density is physical ---
 
-      DO iGF = iGF_h_1, iGF_h_3
-        CALL ComputePointValues( G_q(:,iGF), G_PP(:,iGF) )
-      END DO
-      CALL ComputeGeometryX_FromScaleFactors( G_PP )
-
-      U_K(iCF_D) = SUM( WeightsX_q * G_q(:,iGF_SqrtGm) * U_q(:,iCF_D) ) &
-                   / SUM( WeightsX_q * G_q(:,iGF_SqrtGm) )
+      U_K(iCF_D) &
+        = SUM( WeightsX_q * G_q(:,iGF_SqrtGm) * U_q(:,iCF_D) ) &
+            / SUM( WeightsX_q * G_q(:,iGF_SqrtGm) )
 
       IF( U_K(iCF_D) .GT. Min_1 )THEN
 
+        CALL ComputePointValues( U_q(:,iCF_D), U_PP(:,iCF_D) )
+
         Min_K = MINVAL( U_PP(:,iCF_D) )
+
         IF( Min_K .LT. Min_1 )THEN
 
-          Theta_1 = ( U_K(iCF_D) - Min_1 ) / ( U_K(iCF_D) - Min_K )
+          ! --- Limit point-values of density towards cell-average ---
+          Theta_D      = ( U_K(iCF_D) - Min_1 ) / ( U_K(iCF_D) - Min_K )
+          U_q(:,iCF_D) = U_K(iCF_D) + Theta_D * ( U_q(:,iCF_D) - U_K(iCF_D) )
 
-          U_q(:,iCF_D) = U_K(iCF_D) + Theta_1 * ( U_q(:,iCF_D) - U_K(iCF_D) )
-
-          ! --- Recompute point-values for CF_D using limited density ---
+          ! --- Recompute point-values using limited density ---
           CALL ComputePointValues( U_q(:,iCF_D), U_PP(:,iCF_D) )
+
         END IF
 
+        ! --- Modify point-values of q if necessary ---
+
+        DO iCF = 1, nCF
+          CALL ComputePointValues( U_q(:,iCF), U_PP(:,iCF) )
+        END DO
+
+        DO iGF = iGF_h_1, iGF_h_3
+          CALL ComputePointValues( G_q(:,iGF), G_PP(:,iGF) )
+        END DO
+        CALL ComputeGeometryX_FromScaleFactors( G_PP )
+
         CALL Computeq( nPT, U_PP, G_PP, q )
-        IF( ANY( q .LT. 0.0d0 ) )THEN
+
+        IF( ANY( q .LT. Zero ) )THEN
 
           DO iCF = 1, nCF
-            U_K(iCF) &
-              = SUM( WeightsX_q * G_q(:,iGF_SqrtGm) * U_q(:,iCF) ) &
-                / SUM( WeightsX_q * G_q(:,iGF_SqrtGm) )
+            U_K(iCF) = SUM( WeightsX_q * G_q(:,iGF_SqrtGm) * U_q(:,iCF) ) &
+                         / SUM( WeightsX_q * G_q(:,iGF_SqrtGm) )
           END DO
 
-          DO iGF = 1, nGF
-            G_K(iGF) &
-              = SUM( WeightsX_q * G_q(:,iGF_SqrtGm) * G_q(:,iGF) ) &
-                  / SUM( WeightsX_q * G_q(:,iGF_SqrtGm) )
-          END DO
-
-          ! --- Compute q using cell-averages ---
-          CALL Computeq( 1, U_K, G_K, q_K )
-          IF( ANY( q_K .LT. Zero ) )THEN
-            WRITE(*,'(A)') &
-              'Warning: Euler_ApplyPositivityLimiterModule_Relativistic'
-            WRITE(*,'(A)') 'q_K < 0. Ensuring positive q_K.'
-            ! --- Ensure positive tau ---
-            IF( U_K(iCF_E) .LT. Zero )THEN
-              WRITE(*,'(A,ES24.16E3)') 'tau: ', U_K(iCF_E)
-              U_K(iCF_E) = MAX( SqrtTiny, U_K(iCF_E) )
-            END IF
-            SSq =  U_K(iCF_S1)**2 / G_K(iGF_Gm_dd_11) &
-                 + U_K(iCF_S2)**2 / G_K(iGF_Gm_dd_22) &
-                 + U_K(iCF_S3)**2 / G_K(iGF_Gm_dd_33)
-            ! --- Demand that q_K > 0 by modifying tau (alpha > 1) ---
-            alpha = ( Min_2 - U_K(iCF_D) &
-                      + SQRT( U_K(iCF_D)**2 + SSq + Min_2 ) ) / U_K(iCF_E)
-            U_K(iCF_E) = alpha * U_K(iCF_E)
-            alphaMax = MAX( alphaMax, alpha )
-          END IF
-
-          ! --- Compute Theta_2 ---
-          Theta_2 = One
+          ! --- Solve for Theta_q such that all point-values
+          !     of q are physical ---
+          Theta_q = One
           DO iP = 1, nPT
             IF( q(iP) .LT. Zero )THEN
               CALL SolveTheta_Bisection &
-                     ( U_PP(iP,:), U_K, G_PP(iP,:), G_K, Theta_P )
-              Theta_2 = MIN( Theta_2, Theta_P )
+                     ( U_PP(iP,:), U_K, G_PP(iP,:), Theta_P )
+              Theta_q = MIN( Theta_q, Theta_P )
             END IF
           END DO
 
           ! --- Limit all variables towards cell-average ---
           DO iCF = 1, nCF
-            U_q(:,iCF) = U_K(iCF) + Theta_2 * ( U_q(:,iCF) - U_K(iCF) )
+            U_q(:,iCF) = U_K(iCF) + Theta_q * ( U_q(:,iCF) - U_K(iCF) )
           END DO
 
         END IF ! q < 0
 
-        ! --- If q < 0 after limiting, set U = U_K ---
-        DO iCF = 1, nCF
-          CALL ComputePointValues( U_q(:,iCF), U_PP(:,iCF) )
-        END DO
-        CALL Computeq( nPt, U_PP, G_PP, q )
-        IF( ANY( q .LT. 0.0d0 ) )THEN
-          WRITE(*,*)
-          WRITE(*,'(A)') &
-            'Warning: Euler_ApplyPositivityLimiterModule_Relativistic'
-          WRITE(*,'(A)') 'q < 0 AFTER limiting. Setting U to U_K'
-          WRITE(*,'(A,3I4.3)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
-          ! --- Set all variables to cell-average ---
-          DO iCF = 1, nCF
-            U_q(:,iCF) = U_K(iCF)
-          END DO
-          WRITE(*,*)
-        END IF
-
         U(:,iX1,iX2,iX3,:) = U_q
 
       ELSE
+
         WRITE(*,'(A)') &
-            'Warning: Euler_ApplyPositivityLimiterModule_Relativistic'
+          'Warning: Euler_ApplyPositivityLimiterModule_Relativistic'
         WRITE(*,'(A)') 'Cell-average of density <= Min_1'
-        ! --- Compute cell-averages ---
+        WRITE(*,'(A)') 'Setting all values to cell-average'
+
         DO iCF = 1, nCF
           U_K(iCF) &
             = SUM( WeightsX_q * G_q(:,iGF_SqrtGm) * U_q(:,iCF) ) &
               / SUM( WeightsX_q * G_q(:,iGF_SqrtGm) )
           U(:,iX1,iX2,iX3,iCF) = U_K(iCF)
         END DO
-      END IF
 
-      ! --- Ensure that all q > 0 ---
-      DO iCF = 1, nCF
-        CALL ComputePointValues( U(:,iX1,iX2,iX3,iCF), U_PP(:,iCF) )
-      END DO
-      CALL Computeq( nPT, U_PP, G_PP, q )
-      IF( ANY( q .LT. Zero ) )THEN
-        WRITE(*,'(A)') &
-            'FATAL ERROR: Euler_ApplyPositivityLimiterModule_Relativistic'
-        WRITE(*,'(A)') 'q < 0 AFTER limiting'
-        WRITE(*,'(A,3I4.3)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
-        DO iNodeX = 1, SIZE( q )
-          WRITE(*,'(A,I2.2,ES25.16E3)') &
-            'iNodeX, q(iNodeX) = ', iNodeX, q(iNodeX)
-        END DO
-        WRITE(*,*) 'Theta_2 = ', Theta_2
-        DO iCF = 1, nCF
-          WRITE(*,*)
-          WRITE(*,'(A,I1)') 'iCF = ', iCF
-          WRITE(*,*) U(:,iX1,iX2,iX3,iCF)
-        END DO
-        STOP ''
       END IF
 
     END DO
@@ -323,7 +264,7 @@ CONTAINS
 
       CALL DGEMV &
              ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
-               X_Q(1:nDOFX), 1, Zero, X_P(iOS+1:iOS+nDOFX_X2), 1 )
+               X_Q, 1, Zero, X_P(iOS+1:iOS+nDOFX_X2), 1 )
 
       iOS = iOS + nPP(4)
 
@@ -368,19 +309,19 @@ CONTAINS
 
 
   REAL(DP) ELEMENTAL FUNCTION qFun( D, S1, S2, S3, tau, Gm11, Gm22, Gm33 )
-    
+
     REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, Gm11, Gm22, Gm33
 
-    qFun = tau + D - SQRT( D**2 + ( S1**2 / Gm11 + S2**2 / Gm22 &
-                                     + S3**2 / Gm33 ) + Min_2 )
+    qFun = tau + D - SQRT( D**2 + ( S1**2 / Gm11 &
+                                    + S2**2 / Gm22 + S3**2 / Gm33 ) + Min_2 )
 
     RETURN
   END FUNCTION qFun
 
-  
-  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, G_Q, G_K, Theta_P )
 
-    REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), G_Q(nGF), G_K(nGF)
+  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, G_Q, Theta_P )
+
+    REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), G_Q(nGF)
     REAL(DP), INTENT(out) :: Theta_P
 
     INTEGER,  PARAMETER :: MAX_IT = 19
@@ -393,25 +334,21 @@ CONTAINS
 
     x_a = Zero
     f_a = qFun &
-            ( x_a * U_Q(iCF_D)        + ( One - x_a ) * U_K(iCF_D),         &
-              x_a * U_Q(iCF_S1)       + ( One - x_a ) * U_K(iCF_S1),        &
-              x_a * U_Q(iCF_S2)       + ( One - x_a ) * U_K(iCF_S2),        &
-              x_a * U_Q(iCF_S3)       + ( One - x_a ) * U_K(iCF_S3),        &
-              x_a * U_Q(iCF_E)        + ( One - x_a ) * U_K(iCF_E),         &
-              x_a * G_Q(iGF_Gm_dd_11) + ( One - x_a ) * G_K(iGF_Gm_dd_11),  &
-              x_a * G_Q(iGF_Gm_dd_22) + ( One - x_a ) * G_K(iGF_Gm_dd_22),  &
-              x_a * G_Q(iGF_Gm_dd_33) + ( One - x_a ) * G_K(iGF_Gm_dd_33) )
+            ( x_a * U_Q(iCF_D)  + ( One - x_a ) * U_K(iCF_D),         &
+              x_a * U_Q(iCF_S1) + ( One - x_a ) * U_K(iCF_S1),        &
+              x_a * U_Q(iCF_S2) + ( One - x_a ) * U_K(iCF_S2),        &
+              x_a * U_Q(iCF_S3) + ( One - x_a ) * U_K(iCF_S3),        &
+              x_a * U_Q(iCF_E)  + ( One - x_a ) * U_K(iCF_E),         &
+              G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33) )
 
     x_b = One
     f_b = qFun &
-            ( x_b * U_Q(iCF_D)        + ( One - x_b ) * U_K(iCF_D),         &
-              x_b * U_Q(iCF_S1)       + ( One - x_b ) * U_K(iCF_S1),        &
-              x_b * U_Q(iCF_S2)       + ( One - x_b ) * U_K(iCF_S2),        &
-              x_b * U_Q(iCF_S3)       + ( One - x_b ) * U_K(iCF_S3),        &
-              x_b * U_Q(iCF_E)        + ( One - x_b ) * U_K(iCF_E),         &
-              x_b * G_Q(iGF_Gm_dd_11) + ( One - x_b ) * G_K(iGF_Gm_dd_11),  &
-              x_b * G_Q(iGF_Gm_dd_22) + ( One - x_b ) * G_K(iGF_Gm_dd_22),  &
-              x_b * G_Q(iGF_Gm_dd_33) + ( One - x_b ) * G_K(iGF_Gm_dd_33) )
+            ( x_b * U_Q(iCF_D)  + ( One - x_b ) * U_K(iCF_D),         &
+              x_b * U_Q(iCF_S1) + ( One - x_b ) * U_K(iCF_S1),        &
+              x_b * U_Q(iCF_S2) + ( One - x_b ) * U_K(iCF_S2),        &
+              x_b * U_Q(iCF_S3) + ( One - x_b ) * U_K(iCF_S3),        &
+              x_b * U_Q(iCF_E)  + ( One - x_b ) * U_K(iCF_E),         &
+              G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33) )
 
     IF( .NOT. f_a * f_b < 0 )THEN
 
@@ -441,16 +378,13 @@ CONTAINS
 
       dx = Half * dx
       x_c = x_a + dx
-
       f_c = qFun &
-            ( x_c * U_Q(iCF_D)        + ( One - x_c ) * U_K(iCF_D),         &
-              x_c * U_Q(iCF_S1)       + ( One - x_c ) * U_K(iCF_S1),        &
-              x_c * U_Q(iCF_S2)       + ( One - x_c ) * U_K(iCF_S2),        &
-              x_c * U_Q(iCF_S3)       + ( One - x_c ) * U_K(iCF_S3),        &
-              x_c * U_Q(iCF_E)        + ( One - x_c ) * U_K(iCF_E),         &
-              x_c * G_Q(iGF_Gm_dd_11) + ( One - x_c ) * G_K(iGF_Gm_dd_11),  &
-              x_c * G_Q(iGF_Gm_dd_22) + ( One - x_c ) * G_K(iGF_Gm_dd_22),  &
-              x_c * G_Q(iGF_Gm_dd_33) + ( One - x_c ) * G_K(iGF_Gm_dd_33) )
+            ( x_c * U_Q(iCF_D)  + ( One - x_c ) * U_K(iCF_D),         &
+              x_c * U_Q(iCF_S1) + ( One - x_c ) * U_K(iCF_S1),        &
+              x_c * U_Q(iCF_S2) + ( One - x_c ) * U_K(iCF_S2),        &
+              x_c * U_Q(iCF_S3) + ( One - x_c ) * U_K(iCF_S3),        &
+              x_c * U_Q(iCF_E)  + ( One - x_c ) * U_K(iCF_E),         &
+              G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33) )
 
       IF( f_a * f_c < Zero )THEN
 
@@ -468,8 +402,8 @@ CONTAINS
 
       IF( ITERATION > MAX_IT .AND. .NOT. CONVERGED )THEN
 
-        WRITE(*,'(A6,A)') &
-          '', 'SolveTheta_Bisection (Euler_GR):'
+        WRITE(*,'(6x,A)') &
+          'SolveTheta_Bisection (Euler_ApplyPositivityLimiter_Relativistic):'
         WRITE(*,'(A8,A,I3.3)') &
           '', 'ITERATION ', ITERATION
         WRITE(*,'(A8,A,4ES15.6e3)') &
