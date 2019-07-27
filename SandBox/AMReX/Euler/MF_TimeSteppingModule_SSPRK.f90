@@ -9,16 +9,15 @@ MODULE MF_TimeSteppingModule_SSPRK
     amrex_geometry
   USE amrex_multifab_module,  ONLY: &
     amrex_multifab, &
-    amrex_multifab_build, &
-    amrex_multifab_destroy
+    amrex_multifab_build, amrex_multifab_destroy, &
+    amrex_mfiter, &
+    amrex_mfiter_build, amrex_mfiter_destroy
   USE amrex_boxarray_module,  ONLY: &
     amrex_boxarray, &
-    amrex_boxarray_build, &
-    amrex_boxarray_destroy
+    amrex_boxarray_build, amrex_boxarray_destroy
   USE amrex_distromap_module, ONLY: &
     amrex_distromap, &
-    amrex_distromap_build, &
-    amrex_distromap_destroy
+    amrex_distromap_build, amrex_distromap_destroy
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,  ONLY: &
@@ -34,7 +33,6 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     MF_Euler_ApplyPositivityLimiter
   USE MF_UtilitiesModule,               ONLY: &
-    ShowVariableFromMultiFab, &
     LinComb
   USE MyAmrModule,                      ONLY: &
     nLevels, DEBUG
@@ -203,6 +201,8 @@ CONTAINS
   SUBROUTINE MF_UpdateFluid_SSPRK &
     ( t, dt, MF_uGF, MF_uCF, GEOM, MF_Euler_ComputeIncrement )
 
+    ! --- Ideally will, in the future, incorporate LinComb from AMReX ---
+
     REAL(amrex_real),     INTENT(in)    :: t(0:nLevels), dt(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
@@ -211,6 +211,10 @@ CONTAINS
 
     INTEGER :: iLevel
     INTEGER :: iS, jS
+
+    ! --- For physical boundary conditions ---
+    TYPE(amrex_mfiter)                    :: MFI
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:), U(:,:,:,:)
 
     ! --- Set temporary MultiFabs U and dU to zero ---
     DO iLevel = 0, nLevels
@@ -225,10 +229,28 @@ CONTAINS
       ! --- Copy data from input MultiFab to temporary MultiFab ---
       CALL TimersStart_AMReX( Timer_AMReX_CopyMF )
       DO iLevel = 0, nLevels
+
         CALL MF_U(iLevel) &
                % PARALLEL_COPY( MF_uCF(iLevel), 1, 1, &
-                                MF_uCF(iLevel) % ncomp(), 0, swX(1), &
+                                MF_uCF(iLevel) % nComp(), 0, swX(1), &
                                 GEOM(iLevel) )
+
+        ! --- Apply boundary conditions to interior domains ---
+        CALL MF_U(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+        ! --- Copy ghost data from physical boundaries ---
+        CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+        DO WHILE( MFI % next() )
+
+          uCF => MF_uCF(iLevel) % DataPtr( MFI )
+          U   => MF_U  (iLevel) % DataPtr( MFI )
+          U   =  uCF
+
+        END DO
+
+        CALL amrex_mfiter_destroy( MFI )
+
       END DO
 
       CALL TimersStop_AMReX( Timer_AMReX_CopyMF )
