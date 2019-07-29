@@ -48,11 +48,13 @@ PROGRAM ApplicationDriver
     Euler_FinalizeTally, &
     Euler_ComputeTally
   USE TimersModule_Euler, ONLY: &
-    InitializeTimers_Euler, &
-    FinalizeTimers_Euler, &
-    TimersStart_Euler, &
-    TimersStop_Euler, &
-    Timer_Euler_Program
+    TimeIt_Euler, &
+    InitializeTimers_Euler, FinalizeTimers_Euler, &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_Program, &
+    Timer_Euler_InputOutput, &
+    Timer_Euler_Initialize, &
+    Timer_Euler_Finalize
 
   IMPLICIT NONE
 
@@ -75,9 +77,14 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: Eblast
 
+  TimeIt_Euler = .TRUE.
+  CALL InitializeTimers_Euler
+  CALL TimersStart_Euler( Timer_Euler_Program )
+  CALL TimersStart_Euler( Timer_Euler_Initialize )
+
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'IsentropicVortex'
+  ProgramName = 'RiemannProblem'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -176,7 +183,7 @@ PROGRAM ApplicationDriver
 
       BetaTVD = 1.75d+00
       BetaTVB = 0.00d+00
- 
+
       UseSlopeLimiter           = .TRUE.
       UseCharacteristicLimiting = .TRUE.
 
@@ -265,7 +272,7 @@ PROGRAM ApplicationDriver
     CASE( 'Implosion' )
 
       Gamma = 1.4_DP
-      
+
       nX = [ 256, 256, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 0.3_DP, 0.3_DP, 1.0_DP ]
@@ -290,7 +297,7 @@ PROGRAM ApplicationDriver
     CASE( 'Explosion' )
 
       Gamma = 1.4_DP
-      
+
       nX = [ 256, 256, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.5_DP, 1.5_DP, 1.0_DP ]
@@ -333,10 +340,6 @@ PROGRAM ApplicationDriver
              = TRIM( CoordinateSystem ), &
            BasicInitialization_Option &
              = .TRUE. )
-
-  CALL InitializeTimers_Euler( .TRUE. )
-
-  CALL TimersStart_Euler( Timer_Euler_Program )
 
   CALL InitializeReferenceElementX
 
@@ -386,6 +389,7 @@ PROGRAM ApplicationDriver
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
+  CALL TimersStart_Euler( Timer_Euler_InputOutput )
   CALL Euler_ComputeFromConserved &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -395,6 +399,7 @@ PROGRAM ApplicationDriver
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+  CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
   CALL InitializeFluid_SSPRK( nStages = 3 )
 
@@ -410,6 +415,8 @@ PROGRAM ApplicationDriver
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+
+  CALL TimersStop_Euler( Timer_Euler_Initialize )
 
   iCycle = 0
   DO WHILE ( t < t_end )
@@ -436,18 +443,21 @@ PROGRAM ApplicationDriver
 
     END IF
 
+    CALL TimersStart_Euler( Timer_Euler_InputOutput )
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
       WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
           '', 'Cycle = ', iCycle, '', 't = ',  t, '', 'dt = ', dt
 
     END IF
+    CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, Euler_ComputeIncrement_DG_Explicit )
 
     t = t + dt
 
+    CALL TimersStart_Euler( Timer_Euler_InputOutput )
     IF( wrt )THEN
 
       CALL Euler_ComputeFromConserved &
@@ -469,9 +479,11 @@ PROGRAM ApplicationDriver
       wrt = .FALSE.
 
     END IF
+    CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
   END DO
 
+  CALL TimersStart_Euler( Timer_Euler_InputOutput )
   CALL Euler_ComputeFromConserved &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -481,6 +493,7 @@ PROGRAM ApplicationDriver
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+  CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
   CALL Euler_ComputeTally &
          ( iX_B0, iX_E0, &
@@ -488,6 +501,7 @@ PROGRAM ApplicationDriver
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
+  CALL TimersStart_Euler( Timer_Euler_Finalize )
   CALL Euler_FinalizeTally
 
   wTime = MPI_WTIME( ) - wTime
@@ -496,10 +510,6 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
     '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
   WRITE(*,*)
-
-  CALL TimersStop_Euler( Timer_Euler_Program )
-
-  CALL FinalizeTimers_Euler
 
   CALL Euler_FinalizePositivityLimiter
 
@@ -514,5 +524,10 @@ PROGRAM ApplicationDriver
   CALL FinalizeReferenceElementX
 
   CALL FinalizeProgram
+
+  CALL TimersStop_Euler( Timer_Euler_Finalize )
+  CALL TimersStop_Euler( Timer_Euler_Program )
+
+  CALL FinalizeTimers_Euler
 
 END PROGRAM ApplicationDriver

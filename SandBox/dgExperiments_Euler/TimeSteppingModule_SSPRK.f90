@@ -11,7 +11,10 @@ MODULE TimeSteppingModule_SSPRK
     Euler_ApplySlopeLimiter
   USE Euler_PositivityLimiterModule, ONLY: &
     Euler_ApplyPositivityLimiter
-  
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_UpdateFluid
+
   IMPLICIT NONE
   PRIVATE
 
@@ -188,6 +191,8 @@ CONTAINS
     LOGICAL :: SolveGravity
     INTEGER :: iS, jS
 
+    CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
+
     IF( PRESENT( ComputeGravitationalPotential ) )THEN
       SolveGravity = .TRUE.
     ELSE
@@ -250,7 +255,7 @@ CONTAINS
     DO iS = 1, nStages_SSPRK
 
       IF( w_SSPRK(iS) .NE. Zero )THEN
-          
+
         CALL AddIncrement_Fluid &
                ( One, &
                  U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
@@ -280,8 +285,10 @@ CONTAINS
 
     END IF
 
+    CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
+
   END SUBROUTINE UpdateFluid_SSPRK
- 
+
 
   SUBROUTINE AddIncrement_Fluid( alpha, U, beta, D )
 
