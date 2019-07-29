@@ -104,6 +104,33 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   INTEGER,  ALLOCATABLE :: INFO(:)  
   INTEGER               :: LWORK
 
+  ! --- Temporary arrays for scatter/gather (packing)
+
+  REAL(DP), ALLOCATABLE, TARGET :: P1D_1(:)
+  REAL(DP), ALLOCATABLE, TARGET :: P1D_2(:)
+  REAL(DP), ALLOCATABLE, TARGET :: P1D_3(:)
+  REAL(DP), ALLOCATABLE, TARGET :: P1D_4(:)
+
+  REAL(DP), ALLOCATABLE, TARGET :: P2D_1 (:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P2D_2 (:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P2D_3 (:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P2D_4 (:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P2D_5 (:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P2D_6 (:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P2D_7 (:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P2D_8 (:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P2D_9 (:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P2D_10(:,:)
+
+  REAL(DP), ALLOCATABLE, TARGET :: P3D_1(:,:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P3D_2(:,:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P3D_3(:,:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P3D_4(:,:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P3D_5(:,:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P3D_6(:,:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P3D_7(:,:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: P3D_8(:,:,:)
+
   PUBLIC :: E_N
 
 CONTAINS
@@ -142,20 +169,51 @@ CONTAINS
     ALLOCATE( TAU (n_FP,nX_G) )
     ALLOCATE( INFO(nX_G) )
 
+    ALLOCATE( P1D_1(nX_G) )
+    ALLOCATE( P1D_2(nX_G) )
+    ALLOCATE( P1D_3(nX_G) )
+    ALLOCATE( P1D_4(nX_G) )
+
+    ALLOCATE( P2D_1 (nE_G,nX_G) )
+    ALLOCATE( P2D_2 (nE_G,nX_G) )
+    ALLOCATE( P2D_3 (nE_G,nX_G) )
+    ALLOCATE( P2D_4 (nE_G,nX_G) )
+    ALLOCATE( P2D_5 (nE_G,nX_G) )
+    ALLOCATE( P2D_6 (nE_G,nX_G) )
+    ALLOCATE( P2D_7 (nE_G,nX_G) )
+    ALLOCATE( P2D_8 (nE_G,nX_G) )
+    ALLOCATE( P2D_9 (nE_G,nX_G) )
+    ALLOCATE( P2D_10(nE_G,nX_G) )
+
+    ALLOCATE( P3D_1(nE_G,nE_G,nX_G) )
+    ALLOCATE( P3D_2(nE_G,nE_G,nX_G) )
+    ALLOCATE( P3D_3(nE_G,nE_G,nX_G) )
+    ALLOCATE( P3D_4(nE_G,nE_G,nX_G) )
+    ALLOCATE( P3D_5(nE_G,nE_G,nX_G) )
+    ALLOCATE( P3D_6(nE_G,nE_G,nX_G) )
+    ALLOCATE( P3D_7(nE_G,nE_G,nX_G) )
+    ALLOCATE( P3D_8(nE_G,nE_G,nX_G) )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: E_N, W2_N, W3_N, W2_S, W3_S ) &
-    !$OMP MAP( alloc: AMAT, BVEC, TAU, INFO )
+    !$OMP MAP( alloc: AMAT, BVEC, TAU, INFO, &
+    !$OMP             P1D_1, P1D_2, P1D_3, P1D_4, &
+    !$OMP             P2D_1, P2D_2, P2D_3, P2D_4, P2D_5, P2D_6, P2D_7, P2D_8, P2D_9, P2D_10, &
+    !$OMP             P3D_1, P3D_2, P3D_3, P3D_4, P3D_5, P3D_6, P3D_7, P3D_8 )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S ) &
-    !$ACC CREATE( AMAT, BVEC, TAU, INFO )
+    !$ACC CREATE( AMAT, BVEC, TAU, INFO, &
+    !$ACC         P1D_1, P1D_2, P1D_3, P1D_4, &
+    !$ACC         P2D_1, P2D_2, P2D_3, P2D_4, P2D_5, P2D_6, P2D_7, P2D_8, P2D_9, P2D_10, &
+    !$ACC         P3D_1, P3D_2, P3D_3, P3D_4, P3D_5, P3D_6, P3D_7, P3D_8 )
 #endif
 
     IF ( M_FP > 3 ) THEN
 
       CALL LinearLeastSquares_LWORK &
-             ( 'N', n_FP, MAX(M_FP,M_inner)-1, 1, &
+             ( 'N', n_FP, MAX(M_FP,M_outer,M_inner)-1, 1, &
                AMAT, n_FP, BVEC, n_FP, TMP, LWORK )
       ALLOCATE( WORK(LWORK,nX_G) )
 
@@ -181,15 +239,24 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: E_N, W2_N, W3_N, W2_S, W3_S, &
-    !$OMP               AMAT, BVEC, TAU, WORK, INFO )
+    !$OMP               AMAT, BVEC, TAU, WORK, INFO, &
+    !$OMP               P1D_1, P1D_2, P1D_3, P1D_4, &
+    !$OMP               P2D_1, P2D_2, P2D_3, P2D_4, P2D_5, P2D_6, P2D_7, P2D_8, P2D_9, P2D_10, &
+    !$OMP               P3D_1, P3D_2, P3D_3, P3D_4, P3D_5, P3D_6, P3D_7, P3D_8 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, &
-    !$ACC         AMAT, BVEC, TAU, WORK, INFO )
+    !$ACC         AMAT, BVEC, TAU, INFO, &
+    !$ACC         P1D_1, P1D_2, P1D_3, P1D_4, &
+    !$ACC         P2D_1, P2D_2, P2D_3, P2D_4, P2D_5, P2D_6, P2D_7, P2D_8, P2D_9, P2D_10, &
+    !$ACC         P3D_1, P3D_2, P3D_3, P3D_4, P3D_5, P3D_6, P3D_7, P3D_8 )
 #endif
 
     DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S )
     DEALLOCATE( AMAT, BVEC, TAU, WORK, INFO )
+    DEALLOCATE( P1D_1, P1D_2, P1D_3, P1D_4 )
+    DEALLOCATE( P2D_1, P2D_2, P2D_3, P2D_4, P2D_5, P2D_6, P2D_7, P2D_8, P2D_9, P2D_10 )
+    DEALLOCATE( P3D_1, P3D_2, P3D_3, P3D_4, P3D_5, P3D_6, P3D_7, P3D_8 )
 
   END SUBROUTINE FinalizeNeutrinoMatterSolver
 
@@ -1360,7 +1427,6 @@ CONTAINS
     REAL(DP), DIMENSION(       1:M_FP,1:nX_G) :: Alpha
 
     REAL(DP), DIMENSION(    1:nX_G) :: Jnorm_1, Jnorm_2
-    REAL(DP), DIMENSION(    1:nX_G) :: Fnorm_1, Fnorm_2
     LOGICAL,  DIMENSION(    1:nX_G) :: ITERATE
     INTEGER,  DIMENSION(    1:nX_G) :: Error
 
@@ -1379,8 +1445,8 @@ CONTAINS
     !$OMP MAP( to: ITERATE ) &
     !$OMP MAP( alloc: Yold, S_Y, C_Y, Unew_Y, GVEC_Y, &
     !$OMP             Eold, S_E, C_E, Unew_E, GVEC_E, &
-    !$OMP             Jold_1, Jnew_1, Jnorm_1, Fnorm_1, &
-    !$OMP             Jold_2, Jnew_2, Jnorm_2, Fnorm_2, &
+    !$OMP             Jold_1, Jnew_1, Jnorm_1, &
+    !$OMP             Jold_2, Jnew_2, Jnorm_2, &
     !$OMP             Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
     !$OMP             Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$OMP             Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
@@ -1397,8 +1463,8 @@ CONTAINS
     !$ACC COPYIN( ITERATE ) &
     !$ACC CREATE( Yold, S_Y, C_Y, Unew_Y, GVEC_Y, &
     !$ACC         Eold, S_E, C_E, Unew_E, GVEC_E, &
-    !$ACC         Jold_1, Jnew_1, Jnorm_1, Fnorm_1, &
-    !$ACC         Jold_2, Jnew_2, Jnorm_2, Fnorm_2, &
+    !$ACC         Jold_1, Jnew_1, Jnorm_1, &
+    !$ACC         Jold_2, Jnew_2, Jnorm_2, &
     !$ACC         Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
     !$ACC         Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$ACC         Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
@@ -1567,7 +1633,7 @@ CONTAINS
     CALL TimersStart( Timer_Im_ComputeRate )
 
     CALL ComputeRates_Packed &
-           ( nX_G, Jnew_1, Jnew_2, &
+           ( Jnew_1, Jnew_2, &
              Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
              Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
              Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
@@ -1797,8 +1863,8 @@ CONTAINS
       CALL TimersStart( Timer_Im_UpdateFP )
 
       CALL UpdateMatterRHS_FP &
-             ( ITERATE, n_FP, iY, iE, &
-               FVECm, GVECm, Yold, Y, Unew_Y, Eold, E, Unew_E )
+             ( ITERATE, iY, iE, Yold, Eold, Y, E, &
+               Unew_Y, Unew_E, FVECm, GVECm )
 
       CALL UpdateNeutrinoRHS_FP &
              ( ITERATE, n_FP, OS_1, OS_2, &
@@ -1806,14 +1872,9 @@ CONTAINS
 
       ! --- Update Temperature ---
 
-      CALL ArrayPack &
-             ( nX_G, nX_P, UnpackIndex, D, T, Y, E, D_P, T_P, Y_P, E_P )
-
-      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-             ( D_P(1:nX_P), E_P(1:nX_P), Y_P(1:nX_P), T_P(1:nX_P) )
-
-      CALL ArrayUnpack &
-             ( nX_G, nX_P, ITERATE, PackIndex, T_P, T )
+      CALL UpdateTemperature_Packed &
+             ( D, E, Y, T, &
+               ITERATE, nX_P, PackIndex, UnpackIndex )
 
       ! --- Check Convergence ---
 
@@ -1896,8 +1957,8 @@ CONTAINS
     !$OMP MAP( release: ITERATE, &
     !$OMP               Yold, S_Y, C_Y, Unew_Y, GVEC_Y, &
     !$OMP               Eold, S_E, C_E, Unew_E, GVEC_E, &
-    !$OMP               Jold_1, Jnew_1, Jnorm_1, Fnorm_1, &
-    !$OMP               Jold_2, Jnew_2, Jnorm_2, FNorm_2, &
+    !$OMP               Jold_1, Jnew_1, Jnorm_1, &
+    !$OMP               Jold_2, Jnew_2, Jnorm_2, &
     !$OMP               Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
     !$OMP               Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$OMP               Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
@@ -1914,8 +1975,8 @@ CONTAINS
     !$ACC DELETE( ITERATE, &
     !$ACC         Yold, S_Y, C_Y, Unew_Y, GVEC_Y, &
     !$ACC         Eold, S_E, C_E, Unew_E, GVEC_E, &
-    !$ACC         Jold_1, Jnew_1, Jnorm_1, Fnorm_1, &
-    !$ACC         Jold_2, Jnew_2, Jnorm_2, Fnorm_2, &
+    !$ACC         Jold_1, Jnew_1, Jnorm_1, &
+    !$ACC         Jold_2, Jnew_2, Jnorm_2, &
     !$ACC         Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
     !$ACC         Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$ACC         Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
@@ -1982,19 +2043,6 @@ CONTAINS
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
 
-    INTEGER,  DIMENSION(       1:nX_G) :: PackIndex_outer, UnpackIndex_outer
-    INTEGER,  DIMENSION(       1:nX_G) :: PackIndex_inner, UnpackIndex_inner
-    REAL(DP), DIMENSION(       1:nX_G) :: D_P, T_P, Y_P, E_P
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: J0_1_P, J0_2_P, Jnew_1_P, Jnew_2_P
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Eta_NES_1_P, Eta_NES_2_P
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Chi_NES_1_P, Chi_NES_2_P
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Eta_Pair_1_P, Eta_Pair_2_P
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Chi_Pair_1_P, Chi_Pair_2_P
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
-
     REAL(DP), DIMENSION(1:n_FP_outer,1:M_outer,1:nX_G) :: AMAT_outer, GVEC_outer, FVEC_outer
     REAL(DP), DIMENSION(1:n_FP_outer,          1:nX_G) :: GVECm_outer, FVECm_outer
     REAL(DP), DIMENSION(1:n_FP_outer,          1:nX_G) :: BVEC_outer
@@ -2006,8 +2054,10 @@ CONTAINS
     REAL(DP), DIMENSION(             1:M_inner,1:nX_G) :: Alpha_inner
 
     REAL(DP), DIMENSION(1:nX_G) :: Jnorm_1, Jnorm_2
-    REAL(DP), DIMENSION(1:nX_G) :: Fnorm_1, Fnorm_2
+
     LOGICAL,  DIMENSION(1:nX_G) :: ITERATE_OUTER, ITERATE_INNER
+    INTEGER,  DIMENSION(1:nX_G) :: PackIndex_outer, UnpackIndex_outer
+    INTEGER,  DIMENSION(1:nX_G) :: PackIndex_inner, UnpackIndex_inner
 
     INTEGER :: nX_P_outer, k_outer, Mk_outer
     INTEGER :: nX_P_inner, k_inner, Mk_inner
@@ -2023,23 +2073,14 @@ CONTAINS
     !$OMP MAP( to: ITERATE_OUTER, ITERATE_INNER ) &
     !$OMP MAP( alloc: Yold, S_Y, C_Y, Unew_Y, GVEC_Y, &
     !$OMP             Eold, S_E, C_E, Unew_E, GVEC_E, &
-    !$OMP             Jold_1, Jnew_1, Jnorm_1, Fnorm_1, &
-    !$OMP             Jold_2, Jnew_2, Jnorm_2, Fnorm_2, &
+    !$OMP             Jold_1, Jnew_1, Jnorm_1, &
+    !$OMP             Jold_2, Jnew_2, Jnorm_2, &
     !$OMP             Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
     !$OMP             Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$OMP             Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
     !$OMP             Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
     !$OMP             PackIndex_outer, UnpackIndex_outer, &
     !$OMP             PackIndex_inner, UnpackIndex_inner, &
-    !$OMP             D_P, T_P, Y_P, E_P, J0_1_P, Jnew_1_P, J0_2_P, Jnew_2_P, &
-    !$OMP             Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
-    !$OMP             Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-    !$OMP             Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
-    !$OMP             Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-    !$OMP             Eta_NES_1_P, Eta_NES_2_P, &
-    !$OMP             Chi_NES_1_P, Chi_NES_2_P, &
-    !$OMP             Eta_Pair_1_P, Eta_Pair_2_P, &
-    !$OMP             Chi_Pair_1_P, Chi_Pair_2_P, &
     !$OMP             AMAT_outer, BVEC_outer, GVEC_outer, FVEC_outer, &
     !$OMP             GVECm_outer, FVECm_outer, Alpha_outer, &
     !$OMP             AMAT_inner, BVEC_inner, GVEC_inner, FVEC_inner, &
@@ -2049,23 +2090,14 @@ CONTAINS
     !$ACC COPYIN( ITERATE_OUTER, ITERATE_INNER ) &
     !$ACC CREATE( Yold, S_Y, C_Y, Unew_Y, GVEC_Y, &
     !$ACC         Eold, S_E, C_E, Unew_E, GVEC_E, &
-    !$ACC         Jold_1, Jnew_1, Jnorm_1, Fnorm_1, &
-    !$ACC         Jold_2, Jnew_2, Jnorm_2, Fnorm_2, &
+    !$ACC         Jold_1, Jnew_1, Jnorm_1, &
+    !$ACC         Jold_2, Jnew_2, Jnorm_2, &
     !$ACC         Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
     !$ACC         Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$ACC         Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
     !$ACC         Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
     !$ACC         PackIndex_outer, UnpackIndex_outer, &
     !$ACC         PackIndex_inner, UnpackIndex_inner, &
-    !$ACC         D_P, T_P, Y_P, E_P, J0_1_P, Jnew_1_P, J0_2_P, Jnew_2_P, &
-    !$ACC         Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
-    !$ACC         Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-    !$ACC         Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
-    !$ACC         Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-    !$ACC         Eta_NES_1_P, Eta_NES_2_P, &
-    !$ACC         Chi_NES_1_P, Chi_NES_2_P, &
-    !$ACC         Eta_Pair_1_P, Eta_Pair_2_P, &
-    !$ACC         Chi_Pair_1_P, Chi_Pair_2_P, &
     !$ACC         AMAT_outer, BVEC_outer, GVEC_outer, FVEC_outer, &
     !$ACC         GVECm_outer, FVECm_outer, Alpha_outer, &
     !$ACC         AMAT_inner, BVEC_inner, GVEC_inner, FVEC_inner, &
@@ -2088,17 +2120,12 @@ CONTAINS
 
     END IF
 
-    ! --- Equilibrium Distributions ---
-
-    CALL ComputeEquilibriumDistributions_Packed &
-           ( nX_G, iS_1, iS_2, D, T, Y, J0_1, J0_2 )
-
     ! --- Compute Opacity Kernels ---
 
     CALL TimersStart( Timer_Im_ComputeOpacity )
 
     CALL ComputeOpacities_Packed &
-           ( nX_G, iS_1, iS_2, D, T, Y, &
+           ( iS_1, iS_2, D, T, Y, J0_1, J0_2, &
              Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
              Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2 )
 
@@ -2116,40 +2143,23 @@ CONTAINS
       k_outer  = k_outer + 1
       Mk_outer = MIN( M_outer, k_outer )
 
-      CALL ComputeJNorm( ITERATE_OUTER, Jnew_1, Jnew_2, Jnorm_1, Jnorm_2 )
+      CALL ComputeJNorm &
+             ( ITERATE_OUTER, Jnew_1, Jnew_2, Jnorm_1, Jnorm_2 )
 
       CALL CreatePackIndex &
              ( nX_G, ITERATE_OUTER, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
       IF ( k_outer > 1 ) THEN
 
-        ! --- Recompute Equilibrium Distributions ---
-
-        CALL ArrayPack &
-               ( nX_G, nX_P_outer, UnpackIndex_outer, D, T, Y, D_P, T_P, Y_P )
-
-        CALL ComputeEquilibriumDistributions_Packed &
-               ( nX_P_outer, iS_1, iS_2, D_P, T_P, Y_P, J0_1_P, J0_2_P )
-
-        CALL ArrayUnpack &
-               ( nE_G, nX_G, nX_P_outer, ITERATE_OUTER, PackIndex_outer, &
-                 J0_1_P, J0_2_P, J0_1, J0_2 )
-
         ! --- Recompute Opacity Kernels ---
 
         CALL TimersStart( Timer_Im_ComputeOpacity )
 
         CALL ComputeOpacities_Packed &
-               ( nX_P_outer, iS_1, iS_2, D_P, T_P, Y_P, &
-                 Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-                 Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P )
-
-        CALL ArrayUnpack &
-               ( nE_G, nE_G, nX_G, nX_P_outer, ITERATE_OUTER, PackIndex_outer, &
-                 Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-                 Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
+               ( iS_1, iS_2, D, T, Y, J0_1, J0_2, &
                  Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
-                 Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2 )
+                 Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
+                 ITERATE_OUTER, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
         CALL TimersStop( Timer_Im_ComputeOpacity )
 
@@ -2171,30 +2181,13 @@ CONTAINS
 
         CALL TimersStart( Timer_Im_ComputeRate )
 
-        CALL ArrayPack &
-               ( nE_G, nX_G, nX_P_inner, UnpackIndex_inner, &
-                 Jnew_1, Jnew_2, Jnew_1_P, Jnew_2_P )
-
-        CALL ArrayPack &
-               ( nE_G, nE_G, nX_G, nX_P_inner, UnpackIndex_inner, &
+        CALL ComputeRates_Packed &
+               ( Jnew_1, Jnew_2, &
                  Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
                  Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-                 Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-                 Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P )
-
-        CALL ComputeRates_Packed &
-               ( nX_P_inner, Jnew_1_P, Jnew_2_P, &
-                 Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-                 Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-                 Chi_NES_1_P, Chi_NES_2_P, Eta_NES_1_P, Eta_NES_2_P, &
-                 Chi_Pair_1_P, Chi_Pair_2_P, Eta_Pair_1_P, Eta_Pair_2_P )
-
-        CALL ArrayUnpack &
-               ( nE_G, nX_G, nX_P_inner, ITERATE_INNER, PackIndex_inner, &
-                 Chi_NES_1_P, Chi_NES_2_P, Eta_NES_1_P, Eta_NES_2_P, &
-                 Chi_Pair_1_P, Chi_Pair_2_P, Eta_Pair_1_P, Eta_Pair_2_P, &
                  Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
-                 Chi_Pair_1, Chi_Pair_2, Eta_Pair_1, Eta_Pair_2 )
+                 Chi_Pair_1, Chi_Pair_2, Eta_Pair_1, Eta_Pair_2, &
+                 ITERATE_INNER, nX_P_inner, PackIndex_inner, UnpackIndex_inner, nX_P_outer )
 
         CALL TimersStop( Timer_Im_ComputeRate )
 
@@ -2243,12 +2236,9 @@ CONTAINS
 
         ! --- Check Convergence (inner) ---
 
-        CALL ComputeFNorm( ITERATE_INNER, n_FP_inner, OS_1, OS_2, &
-                           FVECm_inner, Fnorm_1, Fnorm_2 )
-
         CALL CheckConvergenceInner_FP &
-               ( ITERATE_INNER, k_inner, Rtol, nIterations_Inner, &
-                 Jnorm_1, Jnorm_2, Fnorm_1, Fnorm_2 )
+               ( ITERATE_INNER, n_FP_inner, k_inner, OS_1, OS_2, Rtol, &
+                 nIterations_Inner, FVECm_inner, Jnorm_1, Jnorm_2 )
 
         ! --- Shift History Arrays (inner) ---
 
@@ -2298,19 +2288,14 @@ CONTAINS
       CALL TimersStart( Timer_Im_UpdateFP )
 
       CALL UpdateMatterRHS_FP &
-             ( ITERATE_OUTER, n_FP_outer, iY, iE, &
-               FVECm_outer, GVECm_outer, Yold, Y, Unew_Y, Eold, E, Unew_E )
+             ( ITERATE_OUTER, iY, iE, Yold, Eold, Y, E, &
+               Unew_Y, Unew_E, FVECm_outer, GVECm_outer )
 
       ! --- Update Temperature ---
 
-      CALL ArrayPack &
-             ( nX_G, nX_P_outer, UnpackIndex_outer, D, T, Y, E, D_P, T_P, Y_P, E_P )
-
-      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-             ( D_P(1:nX_P_outer), E_P(1:nX_P_outer), Y_P(1:nX_P_outer), T_P(1:nX_P_outer) )
-
-      CALL ArrayUnpack &
-             ( nX_G, nX_P_outer, ITERATE_OUTER, PackIndex_outer, T_P, T )
+      CALL UpdateTemperature_Packed &
+             ( D, E, Y, T, &
+               ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
       ! --- Check Convergence (outer) ---
 
@@ -2334,23 +2319,14 @@ CONTAINS
     !$OMP MAP( release: ITERATE_OUTER, ITERATE_INNER, &
     !$OMP               Yold, S_Y, C_Y, Unew_Y, GVEC_Y, &
     !$OMP               Eold, S_E, C_E, Unew_E, GVEC_E, &
-    !$OMP               Jold_1, Jnew_1, Jnorm_1, Fnorm_1,&
-    !$OMP               Jold_2, Jnew_2, Jnorm_2, Fnorm_2, &
+    !$OMP               Jold_1, Jnew_1, Jnorm_1, &
+    !$OMP               Jold_2, Jnew_2, Jnorm_2, &
     !$OMP               Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
     !$OMP               Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$OMP               Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
     !$OMP               Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
     !$OMP               PackIndex_outer, UnpackIndex_outer, &
     !$OMP               PackIndex_inner, UnpackIndex_inner, &
-    !$OMP               D_P, T_P, Y_P, E_P, J0_1_P, Jnew_1_P, J0_2_P, Jnew_2_P, &
-    !$OMP               Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
-    !$OMP               Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-    !$OMP               Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
-    !$OMP               Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-    !$OMP               Eta_NES_1_P, Eta_NES_2_P, &
-    !$OMP               Chi_NES_1_P, Chi_NES_2_P, &
-    !$OMP               Eta_Pair_1_P, Eta_Pair_2_P, &
-    !$OMP               Chi_Pair_1_P, Chi_Pair_2_P, &
     !$OMP               AMAT_outer, BVEC_outer, GVEC_outer, FVEC_outer, &
     !$OMP               GVECm_outer, FVECm_outer, Alpha_outer, &
     !$OMP               AMAT_inner, BVEC_inner, GVEC_inner, FVEC_inner, &
@@ -2360,23 +2336,14 @@ CONTAINS
     !$ACC DELETE( ITERATE_OUTER, ITERATE_INNER, &
     !$ACC         Yold, S_Y, C_Y, Unew_Y, GVEC_Y, &
     !$ACC         Eold, S_E, C_E, Unew_E, GVEC_E, &
-    !$ACC         Jold_1, Jnew_1, Jnorm_1, Fnorm_1, &
-    !$ACC         Jold_2, Jnew_2, Jnorm_2, Fnorm_2, &
+    !$ACC         Jold_1, Jnew_1, Jnorm_1, &
+    !$ACC         Jold_2, Jnew_2, Jnorm_2, &
     !$ACC         Phi_0_In_NES_1, Phi_0_Ot_NES_1, &
     !$ACC         Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
     !$ACC         Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, &
     !$ACC         Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
     !$ACC         PackIndex_outer, UnpackIndex_outer, &
     !$ACC         PackIndex_inner, UnpackIndex_inner, &
-    !$ACC         D_P, T_P, Y_P, E_P, J0_1_P, Jnew_1_P, J0_2_P, Jnew_2_P, &
-    !$ACC         Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
-    !$ACC         Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
-    !$ACC         Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
-    !$ACC         Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
-    !$ACC         Eta_NES_1_P, Eta_NES_2_P, &
-    !$ACC         Chi_NES_1_P, Chi_NES_2_P, &
-    !$ACC         Eta_Pair_1_P, Eta_Pair_2_P, &
-    !$ACC         Chi_Pair_1_P, Chi_Pair_2_P, &
     !$ACC         AMAT_outer, BVEC_outer, GVEC_outer, FVEC_outer, &
     !$ACC         GVECm_outer, FVECm_outer, Alpha_outer, &
     !$ACC         AMAT_inner, BVEC_inner, GVEC_inner, FVEC_inner, &
@@ -2386,104 +2353,339 @@ CONTAINS
   END SUBROUTINE SolveMatterEquations_FP_NestedAA
 
 
-  SUBROUTINE ComputeEquilibriumDistributions_Packed &
-    ( nX_P, iS_1, iS_2, D_P, T_P, Y_P, J0_1_P, J0_2_P )
-
-    INTEGER,                            INTENT(in)    :: nX_P, iS_1, iS_2
-    REAL(DP), DIMENSION(       1:nX_G), INTENT(in)    :: D_P, T_P, Y_P
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: J0_1_P, J0_2_P
-
-    CALL ComputeEquilibriumDistributions_Points &
-           ( 1, nE_G, 1, nX_P, E_N, D_P(1:nX_P), T_P(1:nX_P), Y_P(1:nX_P), &
-             J0_1_P(:,1:nX_P), iS_1 )
-
-    CALL ComputeEquilibriumDistributions_Points &
-           ( 1, nE_G, 1, nX_P, E_N, D_P(1:nX_P), T_P(1:nX_P), Y_P(1:nX_P), &
-             J0_2_P(:,1:nX_P), iS_2 )
-
-  END SUBROUTINE ComputeEquilibriumDistributions_Packed
-
-
   SUBROUTINE ComputeOpacities_Packed &
-    ( nX_P, iS_1, iS_2, D_P, T_P, Y_P, &
+    ( iS_1, iS_2, D, T, Y, J0_1, J0_2, &
       Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
-      Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2 )
+      Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
+      MASK, nX_P, PackIndex, UnpackIndex )
 
-    INTEGER,                                   INTENT(in)    :: nX_P, iS_1, iS_2
-    REAL(DP), DIMENSION(              1:nX_G), INTENT(in)    :: D_P, T_P, Y_P
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(inout) :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(inout) :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(inout) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(inout) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
+    INTEGER,                              INTENT(in)    :: iS_1, iS_2
+    REAL(DP), DIMENSION(:),     TARGET,   INTENT(in)    :: D, T, Y
+    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: J0_1, J0_2
+    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(inout) :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
+    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(inout) :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
+    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(inout) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
+    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(inout) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
+    LOGICAL,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: MASK
+    INTEGER,                    OPTIONAL, INTENT(in)    :: nX_P
+    INTEGER,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
+
+    REAL(DP), DIMENSION(:),     POINTER,  CONTIGUOUS    :: D_P, T_P, Y_P
+    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: J0_1_P, J0_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
+
+    INTEGER :: nX
+
+    IF ( PRESENT( nX_P ) ) THEN
+      nX = nX_P
+    ELSE
+      nX = nX_G
+    END IF
+
+    IF ( nX < nX_G ) THEN
+
+      ! --- Pack Arrays ---
+
+      CALL ArrayPack &
+             ( nX_G, nX, UnpackIndex, &
+               D, T, Y, &
+               P1D_1, P1D_2, P1D_3 )
+
+      D_P => P1D_1(1:nX)
+      T_P => P1D_2(1:nX)
+      Y_P => P1D_3(1:nX)
+
+      J0_1_P => P2D_1(:,1:nX)
+      J0_2_P => P2D_2(:,1:nX)
+
+      Phi_0_In_NES_1_P  => P3D_1(:,:,1:nX)
+      Phi_0_Ot_NES_1_P  => P3D_2(:,:,1:nX)
+      Phi_0_In_NES_2_P  => P3D_3(:,:,1:nX)
+      Phi_0_Ot_NES_2_P  => P3D_4(:,:,1:nX)
+      Phi_0_In_Pair_1_P => P3D_5(:,:,1:nX)
+      Phi_0_Ot_Pair_1_P => P3D_6(:,:,1:nX)
+      Phi_0_In_Pair_2_P => P3D_7(:,:,1:nX)
+      Phi_0_Ot_Pair_2_P => P3D_8(:,:,1:nX)
+
+    ELSE
+
+      D_P => D(:)
+      T_P => T(:)
+      Y_P => Y(:)
+
+      J0_1_P => J0_1(:,:)
+      J0_2_P => J0_2(:,:)
+
+      Phi_0_In_NES_1_P  => Phi_0_In_NES_1 (:,:,:)
+      Phi_0_Ot_NES_1_P  => Phi_0_Ot_NES_1 (:,:,:)
+      Phi_0_In_NES_2_P  => Phi_0_In_NES_2 (:,:,:)
+      Phi_0_Ot_NES_2_P  => Phi_0_Ot_NES_2 (:,:,:)
+      Phi_0_In_Pair_1_P => Phi_0_In_Pair_1(:,:,:)
+      Phi_0_Ot_Pair_1_P => Phi_0_Ot_Pair_1(:,:,:)
+      Phi_0_In_Pair_2_P => Phi_0_In_Pair_2(:,:,:)
+      Phi_0_Ot_Pair_2_P => Phi_0_Ot_Pair_2(:,:,:)
+
+    END IF
+
+    ! --- Equilibrium Distributions ---
+
+    CALL ComputeEquilibriumDistributions_Points &
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, iS_1 )
+
+    CALL ComputeEquilibriumDistributions_Points &
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_2_P, iS_2 )
 
     ! --- NES Kernels ---
 
     CALL ComputeNeutrinoOpacities_NES_Points &
-           ( 1, nE_G, 1, nX_P, E_N, &
-             D_P(1:nX_P), T_P(1:nX_P), Y_P(1:nX_P), iS_1, 1, &
-             Phi_0_In_NES_1(:,:,1:nX_P), Phi_0_Ot_NES_1(:,:,1:nX_P) )
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, 1, &
+             Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P )
 
     CALL ComputeNeutrinoOpacities_NES_Points &
-           ( 1, nE_G, 1, nX_P, E_N, &
-             D_P(1:nX_P), T_P(1:nX_P), Y_P(1:nX_P), iS_2, 1, &
-             Phi_0_In_NES_2(:,:,1:nX_P), Phi_0_Ot_NES_2(:,:,1:nX_P) )
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, 1, &
+             Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P )
 
     ! --- Pair Kernels ---
 
     CALL ComputeNeutrinoOpacities_Pair_Points &
-           ( 1, nE_G, 1, nX_P, E_N, &
-             D_P(1:nX_P), T_P(1:nX_P), Y_P(1:nX_P), iS_1, 1, &
-             Phi_0_In_Pair_1(:,:,1:nX_P), Phi_0_Ot_Pair_1(:,:,1:nX_P) )
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, 1, &
+             Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P )
 
     CALL ComputeNeutrinoOpacities_Pair_Points &
-           ( 1, nE_G, 1, nX_P, E_N, &
-             D_P(1:nX_P), T_P(1:nX_P), Y_P(1:nX_P), iS_2, 1, &
-             Phi_0_In_Pair_2(:,:,1:nX_P), Phi_0_Ot_Pair_2(:,:,1:nX_P) )
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, 1, &
+             Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P )
+
+    IF ( nX < nX_G ) THEN
+
+      ! --- Unpack Results ---
+
+      CALL ArrayUnpack &
+             ( nE_G, nX_G, nX, MASK, PackIndex, &
+               P2D_1, P2D_2, &
+               J0_1, J0_2 )
+
+      CALL ArrayUnpack &
+             ( nE_G, nE_G, nX_G, nX, MASK, PackIndex, &
+               P3D_1, P3D_2, P3D_3, P3D_4, P3D_5, P3D_6, P3D_7, P3D_8, &
+               Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
+               Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2 )
+
+    END IF
 
   END SUBROUTINE ComputeOpacities_Packed
 
 
   SUBROUTINE ComputeRates_Packed &
-    ( nX_P, J_1_P, J_2_P, &
+    ( J_1, J_2, &
       Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
       Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
-      Chi_NES_1_P, Chi_NES_2_P, Eta_NES_1_P, Eta_NES_2_P, &
-      Chi_Pair_1_P, Chi_Pair_2_P, Eta_Pair_1_P, Eta_Pair_2_P )
+      Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
+      Chi_Pair_1, Chi_Pair_2, Eta_Pair_1, Eta_Pair_2, &
+      MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
 
-    INTEGER,                                   INTENT(in)    :: nX_P
-    REAL(DP), DIMENSION(       1:nE_G,1:nX_G), INTENT(in)    :: J_1_P, J_2_P
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)    :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)    :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)    :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
-    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), INTENT(in)    :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
-    REAL(DP), DIMENSION(       1:nE_G,1:nX_G), INTENT(inout) :: Chi_NES_1_P, Chi_NES_2_P, Eta_NES_1_P, Eta_NES_2_P
-    REAL(DP), DIMENSION(       1:nE_G,1:nX_G), INTENT(inout) :: Chi_Pair_1_P, Chi_Pair_2_P, Eta_Pair_1_P, Eta_Pair_2_P
+    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(in)    :: J_1, J_2
+    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(in)    :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
+    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(in)    :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
+    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(in)    :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
+    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(in)    :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
+    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: Chi_NES_1, Chi_NES_2
+    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: Eta_NES_1, Eta_NES_2
+    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: Chi_Pair_1, Chi_Pair_2
+    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: Eta_Pair_1, Eta_Pair_2
+
+    LOGICAL,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: MASK
+    INTEGER,                    OPTIONAL, INTENT(in)    :: nX_P, nX_P0
+    INTEGER,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
+
+    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: J_1_P, J_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
+    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: Chi_NES_1_P, Chi_NES_2_P
+    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: Eta_NES_1_P, Eta_NES_2_P
+    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: Chi_Pair_1_P, Chi_Pair_2_P
+    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: Eta_Pair_1_P, Eta_Pair_2_P
+
+    INTEGER :: nX, nX0
+
+    IF ( PRESENT( nX_P ) ) THEN
+      nX = nX_P
+    ELSE
+      nX = nX_G
+    END IF
+
+    IF ( PRESENT( nX_P0 ) ) THEN
+      nX0 = nX_P0
+    ELSE
+      nX0 = nX_G
+    END IF
+
+    IF ( nX < nX_G ) THEN
+
+      ! --- Pack Arrays ---
+
+      Chi_NES_1_P  => P2D_1(:,1:nX)
+      Chi_NES_2_P  => P2D_2(:,1:nX)
+      Eta_NES_1_P  => P2D_3(:,1:nX)
+      Eta_NES_2_P  => P2D_4(:,1:nX)
+      Chi_Pair_1_P => P2D_5(:,1:nX)
+      Chi_Pair_2_P => P2D_6(:,1:nX)
+      Eta_Pair_1_P => P2D_7(:,1:nX)
+      Eta_Pair_2_P => P2D_8(:,1:nX)
+
+      CALL ArrayPack &
+             ( nE_G, nX_G, nX, UnpackIndex, &
+               J_1, J_2, &
+               P2D_9, P2D_10 )
+
+      J_1_P => P2D_9 (:,1:nX)
+      J_2_P => P2D_10(:,1:nX)
+
+      IF ( nX < nX0 ) THEN
+
+        CALL ArrayPack &
+               ( nE_G, nE_G, nX_G, nX, UnpackIndex, &
+                 Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
+                 Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
+                 P3D_1, P3D_2, P3D_3, P3D_4, P3D_5, P3D_6, P3D_7, P3D_8 )
+
+      END IF
+
+      Phi_0_In_NES_1_P  => P3D_1(:,:,1:nX)
+      Phi_0_Ot_NES_1_P  => P3D_2(:,:,1:nX)
+      Phi_0_In_NES_2_P  => P3D_3(:,:,1:nX)
+      Phi_0_Ot_NES_2_P  => P3D_4(:,:,1:nX)
+      Phi_0_In_Pair_1_P => P3D_5(:,:,1:nX)
+      Phi_0_Ot_Pair_1_P => P3D_6(:,:,1:nX)
+      Phi_0_In_Pair_2_P => P3D_7(:,:,1:nX)
+      Phi_0_Ot_Pair_2_P => P3D_8(:,:,1:nX)
+
+    ELSE
+
+      Chi_NES_1_P  => Chi_NES_1 (:,:)
+      Chi_NES_2_P  => Chi_NES_2 (:,:)
+      Eta_NES_1_P  => Eta_NES_1 (:,:)
+      Eta_NES_2_P  => Eta_NES_2 (:,:)
+      Chi_Pair_1_P => Chi_Pair_1(:,:)
+      Chi_Pair_2_P => Chi_Pair_2(:,:)
+      Eta_Pair_1_P => Eta_Pair_1(:,:)
+      Eta_Pair_2_P => Eta_Pair_2(:,:)
+
+      J_1_P => J_1(:,:)
+      J_2_P => J_2(:,:)
+
+      Phi_0_In_NES_1_P  => Phi_0_In_NES_1 (:,:,:)
+      Phi_0_Ot_NES_1_P  => Phi_0_Ot_NES_1 (:,:,:)
+      Phi_0_In_NES_2_P  => Phi_0_In_NES_2 (:,:,:)
+      Phi_0_Ot_NES_2_P  => Phi_0_Ot_NES_2 (:,:,:)
+      Phi_0_In_Pair_1_P => Phi_0_In_Pair_1(:,:,:)
+      Phi_0_Ot_Pair_1_P => Phi_0_Ot_Pair_1(:,:,:)
+      Phi_0_In_Pair_2_P => Phi_0_In_Pair_2(:,:,:)
+      Phi_0_Ot_Pair_2_P => Phi_0_Ot_Pair_2(:,:,:)
+
+    END IF
 
     ! --- NES Emissivities and Opacities ---
 
     CALL ComputeNeutrinoOpacitiesRates_NES_Points &
-           ( 1, nE_G, 1, nX_P, W2_N, J_1_P(:,1:nX_P), &
-             Phi_0_In_NES_1(:,:,1:nX_P), Phi_0_Ot_NES_1(:,:,1:nX_P), &
-             Eta_NES_1_P(:,1:nX_P), Chi_NES_1_P(:,1:nX_P) )
+           ( 1, nE_G, 1, nX, W2_N, J_1_P, &
+             Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
+             Eta_NES_1_P, Chi_NES_1_P )
 
     CALL ComputeNeutrinoOpacitiesRates_NES_Points &
-           ( 1, nE_G, 1, nX_P, W2_N, J_2_P(:,1:nX_P), &
-             Phi_0_In_NES_2(:,:,1:nX_P), Phi_0_Ot_NES_2(:,:,1:nX_P), &
-             Eta_NES_2_P(:,1:nX_P), Chi_NES_2_P(:,1:nX_P) )
+           ( 1, nE_G, 1, nX, W2_N, J_2_P, &
+             Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
+             Eta_NES_2_P, Chi_NES_2_P )
 
     ! --- Pair Emissivities and Opacities ---
 
     CALL ComputeNeutrinoOpacitiesRates_Pair_Points &
-           ( 1, nE_G, 1, nX_P, W2_N, J_2_P(:,1:nX_P), &
-             Phi_0_In_Pair_1(:,:,1:nX_P), Phi_0_Ot_Pair_1(:,:,1:nX_P), &
-             Eta_Pair_1_P(:,1:nX_P), Chi_Pair_1_P(:,1:nX_P) )
+           ( 1, nE_G, 1, nX, W2_N, J_2_P, &
+             Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
+             Eta_Pair_1_P, Chi_Pair_1_P )
 
     CALL ComputeNeutrinoOpacitiesRates_Pair_Points &
-           ( 1, nE_G, 1, nX_P, W2_N, J_1_P(:,1:nX_P), &
-             Phi_0_In_Pair_2(:,:,1:nX_P), Phi_0_Ot_Pair_2(:,:,1:nX_P), &
-             Eta_Pair_2_P(:,1:nX_P), Chi_Pair_2_P(:,1:nX_P) )
+           ( 1, nE_G, 1, nX, W2_N, J_1_P, &
+             Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
+             Eta_Pair_2_P, Chi_Pair_2_P )
+
+    IF ( nX < nX_G ) THEN
+
+      ! --- Unpack Results ---
+
+      CALL ArrayUnpack &
+             ( nE_G, nX_G, nX, MASK, PackIndex, &
+               P2D_1, P2D_2, P2D_3, P2D_4, P2D_5, P2D_6, P2D_7, P2D_8, &
+               Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
+               Chi_Pair_1, Chi_Pair_2, Eta_Pair_1, Eta_Pair_2 )
+
+    END IF
 
   END SUBROUTINE ComputeRates_Packed
+
+
+  SUBROUTINE UpdateTemperature_Packed &
+    ( D, E, Y, T, MASK, nX_P, PackIndex, UnpackIndex )
+
+    REAL(DP), DIMENSION(:), TARGET,   INTENT(in)    :: D, E, Y
+    REAL(DP), DIMENSION(:), TARGET,   INTENT(inout) :: T
+
+    LOGICAL,  DIMENSION(:), OPTIONAL, INTENT(in)    :: MASK
+    INTEGER,                OPTIONAL, INTENT(in)    :: nX_P
+    INTEGER,  DIMENSION(:), OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
+
+    REAL(DP), DIMENSION(:), POINTER,  CONTIGUOUS    :: D_P, E_P, Y_P, T_P
+
+    INTEGER  :: nX
+
+    IF ( PRESENT( nX_P ) ) THEN
+      nX = nX_P
+    ELSE
+      nX = nX_G
+    END IF
+
+    IF ( nX < nX_G ) THEN
+
+      ! --- Pack Arrays ---
+
+      CALL ArrayPack &
+             ( nX_G, nX, UnpackIndex, &
+               D, E, Y, T, &
+               P1D_1, P1D_2, P1D_3, P1D_4 )
+
+      D_P => P1D_1(1:nX)
+      E_P => P1D_2(1:nX)
+      Y_P => P1D_3(1:nX)
+      T_P => P1D_4(1:nX)
+
+    ELSE
+
+      D_P => D(:)
+      E_P => E(:)
+      Y_P => Y(:)
+      T_P => T(:)
+
+    END IF
+
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+           ( D_P, E_P, Y_P, T_P )
+
+    IF ( nX < nX_G ) THEN
+
+      ! --- Unpack Results ---
+
+      CALL ArrayUnpack &
+             ( nX_G, nX, MASK, PackIndex, &
+               P1D_4, &
+               T )
+
+    END IF
+
+  END SUBROUTINE UpdateTemperature_Packed
 
 
   SUBROUTINE UpdateNumberDensity_FP &
@@ -2492,16 +2694,16 @@ CONTAINS
       Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
       Chi_Pair_1, Chi_Pair_2, Eta_Pair_1, Eta_Pair_2 )
 
-    LOGICAL,  DIMENSION(       1:nX_G), INTENT(in)    :: MASK
-    REAL(DP),                           INTENT(in)    :: dt
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Jold_1, Jold_2
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Jnew_1, Jnew_2
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_1, Chi_2
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: J0_1, J0_2
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_NES_1, Chi_NES_2
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Eta_NES_1, Eta_NES_2
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_Pair_1, Chi_Pair_2
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Eta_Pair_1, Eta_Pair_2
+    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
+    REAL(DP),                 INTENT(in)    :: dt
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Jold_1, Jold_2
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Jnew_1, Jnew_2
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_1, Chi_2
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: J0_1, J0_2
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_NES_1, Chi_NES_2
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Eta_NES_1, Eta_NES_2
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_Pair_1, Chi_Pair_2
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Eta_Pair_1, Eta_Pair_2
 
     REAL(DP) :: Eta, Eta_T, Chi_T
     INTEGER  :: iN_E, iN_X
@@ -2655,13 +2857,14 @@ CONTAINS
 
 
   SUBROUTINE UpdateMatterRHS_FP &
-    ( MASK, n_FP, iY, iE, Fm, Gm, Yold, Y, U_Y, Eold, E, U_E )
+    ( MASK, iY, iE, Yold, Eold, Y, E, U_Y, U_E, Fm, Gm )
 
-    LOGICAL,  DIMENSION(       1:nX_G), INTENT(in)    :: MASK
-    INTEGER,                            INTENT(in)    :: n_FP, iY, iE
-    REAL(DP), DIMENSION(1:n_FP,1:nX_G), INTENT(inout) :: Fm, Gm
-    REAL(DP), DIMENSION(       1:nX_G), INTENT(in)    :: Yold, Eold
-    REAL(DP), DIMENSION(       1:nX_G), INTENT(inout) :: Y, U_Y, E, U_E
+    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
+    INTEGER,                  INTENT(in)    :: iY, iE
+    REAL(DP), DIMENSION(:),   INTENT(in)    :: Yold, Eold
+    REAL(DP), DIMENSION(:),   INTENT(inout) :: Y, E
+    REAL(DP), DIMENSION(:),   INTENT(inout) :: U_Y, U_E
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Fm, Gm
 
     INTEGER  :: iN_X
 
@@ -3157,7 +3360,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( SUM1, SUM2 ) &
-    !$ACC PRESENT( Jnorm_1, Jnorm_2, J_1, J_2 )
+    !$ACC PRESENT( MASK, Jnorm_1, Jnorm_2, J_1, J_2 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD &
     !$OMP PRIVATE( SUM1, SUM2 )
@@ -3178,71 +3381,39 @@ CONTAINS
   END SUBROUTINE ComputeJNorm
 
 
-  SUBROUTINE ComputeFNorm &
-    ( MASK, n_FP, OS_1, OS_2, Fm, Fnorm_1, Fnorm_2 )
+  SUBROUTINE CheckConvergenceInner_FP &
+    ( MASK, n_FP, k_inner, OS_1, OS_2, Rtol, nIterations_Inner, Fm, Jnorm_1, Jnorm_2 )
 
-    LOGICAL,  DIMENSION(       1:nX_G), INTENT(in)    :: MASK
-    INTEGER,                            INTENT(in)    :: n_FP, OS_1, OS_2
+    LOGICAL,  DIMENSION(       1:nX_G), INTENT(inout) :: MASK
+    INTEGER,                            INTENT(in)    :: n_FP, k_inner, OS_1, OS_2
+    REAL(DP),                           INTENT(in)    :: Rtol
+    INTEGER,  DIMENSION(       1:nX_G), INTENT(inout) :: nIterations_Inner
     REAL(DP), DIMENSION(1:n_FP,1:nX_G), INTENT(in)    :: Fm
-    REAL(DP), DIMENSION(       1:nX_G), INTENT(inout) :: Fnorm_1, Fnorm_2
+    REAL(DP), DIMENSION(       1:nX_G), INTENT(in)    :: Jnorm_1, Jnorm_2
 
-    REAL(DP) :: SUM1, SUM2
+    REAL(DP) :: Fnorm_1, Fnorm_2
+    LOGICAL  :: CONVERGED
     INTEGER  :: iN_E, iN_X
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( SUM1, SUM2 )
+    !$OMP PRIVATE( CONVERGED, Fnorm_1, Fnorm_2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( SUM1, SUM2 ) &
-    !$ACC PRESENT( Fnorm_1, Fnorm_2, Fm )
+    !$ACC PRIVATE( CONVERGED, Fnorm_1, Fnorm_2 ) &
+    !$ACC PRESENT( MASK, nIterations_Inner, Fm, Jnorm_1, Jnorm_2 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD &
-    !$OMP PRIVATE( SUM1, SUM2 )
-#endif
-    DO iN_X = 1, nX_G
-      IF ( MASK(iN_X) ) THEN
-        SUM1 = Zero
-        SUM2 = Zero
-        DO iN_E = 1, nE_G
-          SUM1 = SUM1 + Fm(OS_1+iN_E,iN_X)**2
-          SUM2 = SUM2 + Fm(OS_2+iN_E,iN_X)**2
-        END DO
-        Fnorm_1(iN_X) = SQRT( SUM1 )
-        Fnorm_2(iN_X) = SQRT( SUM2 )
-      END IF
-    END DO
-
-  END SUBROUTINE ComputeFNorm
-
-
-  SUBROUTINE CheckConvergenceInner_FP &
-    ( MASK, k_inner, Rtol, nIterations_Inner, &
-      Jnorm_1, Jnorm_2, Fnorm_1, Fnorm_2 )
-
-    LOGICAL,  DIMENSION(1:nX_G), INTENT(inout) :: MASK
-    INTEGER,                     INTENT(in)    :: k_inner
-    REAL(DP),                    INTENT(in)    :: Rtol
-    INTEGER,  DIMENSION(1:nX_G), INTENT(inout) :: nIterations_Inner
-    REAL(DP), DIMENSION(1:nX_G), INTENT(in)    :: Jnorm_1, Jnorm_2
-    REAL(DP), DIMENSION(1:nX_G), INTENT(in)    :: Fnorm_1, Fnorm_2
-
-    LOGICAL :: CONVERGED
-    INTEGER :: iN_E, iN_X
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( MASK, nIterations_Inner, Jnorm_1, Jnorm_2, Fnorm_1, Fnorm_2 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
+    !$OMP PRIVATE( CONVERGED, Fnorm_1, Fnorm_2 )
 #endif
     DO iN_X = 1, nX_G
       IF ( MASK(iN_X) ) THEN
 
-        CONVERGED = Fnorm_1(iN_X) <= Rtol * Jnorm_1(iN_X) .AND. &
-                    Fnorm_2(iN_X) <= Rtol * Jnorm_2(iN_X)
+        Fnorm_1 = SQRT( SUM( Fm(OS_1+1:OS_1+nE_G,iN_X)**2 ) )
+        Fnorm_2 = SQRT( SUM( Fm(OS_2+1:OS_2+nE_G,iN_X)**2 ) )
+
+        CONVERGED = Fnorm_1 <= Rtol * Jnorm_1(iN_X) .AND. &
+                    Fnorm_2 <= Rtol * Jnorm_2(iN_X)
 
         IF ( CONVERGED ) THEN
           MASK(iN_X) = .FALSE.
