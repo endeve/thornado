@@ -7,9 +7,9 @@ else ifeq ($(USE_OMP_OL),TRUE)
 DeviceModule_prereqs += OpenMPModule.o
 endif
 ifeq ($(USE_MAGMA),TRUE)
-DeviceModule_prereqs += MagmaModule.o CublasModule.o CusolverModule.o
+DeviceModule_prereqs += MagmaModule.o CublasModule.o CusolverModule.o CusparseModule.o
 else ifeq ($(USE_CUBLAS),TRUE)
-DeviceModule_prereqs += CublasModule.o CusolverModule.o
+DeviceModule_prereqs += CublasModule.o CusolverModule.o CusparseModule.o
 endif
 
 ArrayUtilitiesModule.o: \

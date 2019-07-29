@@ -31,6 +31,10 @@ MODULE LinearAlgebraModule
     cusolverDnDgeqrf_bufferSize, &
     cusolverDnDgeqrf, &
     cusolverDnDormqr
+  USE CusparseModule, ONLY: &
+    cusparse_handle, &
+    cusparseDgthr, &
+    CUSPARSE_INDEX_BASE_ONE
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
@@ -59,6 +63,7 @@ MODULE LinearAlgebraModule
   PUBLIC :: MatrixVectorMultiply
   PUBLIC :: VectorNorm2
   PUBLIC :: VectorNorm2_Kernel
+  PUBLIC :: VectorGather
   PUBLIC :: LinearLeastSquares_LWORK
   PUBLIC :: LinearLeastSquares
 
@@ -842,6 +847,79 @@ CONTAINS
     END IF
 
   END SUBROUTINE VectorNorm2_Kernel
+
+
+  SUBROUTINE VectorGather( nnz, y, xval, xind )
+
+    INTEGER                         :: nnz
+    REAL(DP), DIMENSION(*), TARGET  :: y, xval
+    INTEGER,  DIMENSION(*), TARGET  :: xind
+
+    INTEGER                         :: ierr, i
+    INTEGER(C_SIZE_T)               :: sizeof_xval, sizeof_xind, sizeof_y
+    REAL(DP), DIMENSION(:), POINTER :: pxval, py
+    INTEGER,  DIMENSION(:), POINTER :: pxind
+    TYPE(C_PTR)                     :: hxval, hxind, hy
+    TYPE(C_PTR)                     :: dxval, dxind, dy
+    LOGICAL                         :: data_on_device
+
+    data_on_device = .false.
+    sizeof_xval = nnz * c_sizeof(0.0_DP)
+    sizeof_xind = nnz * c_sizeof(0)
+    sizeof_y    = nnz * c_sizeof(0.0_DP)
+
+    pxval(1:nnz) => xval(1:nnz)
+    pxind(1:nnz) => xind(1:nnz)
+    py(1:nnz) => y(1:nnz)
+
+    hxval = C_LOC( pxval )
+    hxind = C_LOC( pxind )
+    hy = C_LOC( py )
+
+    data_on_device = device_is_present( hxval, mydevice, sizeof_xval ) &
+               .AND. device_is_present( hxind, mydevice, sizeof_xind ) &
+               .AND. device_is_present( hy,    mydevice, sizeof_y    )
+
+    IF ( data_on_device ) THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( pxval, pxind, py )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( pxval, pxind, py )
+#endif
+      dxval = C_LOC( pxval )
+      dxind = C_LOC( pxind )
+      dy = C_LOC( py )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+#endif
+
+#if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
+      ierr = cusparseDgthr( cusparse_handle, nnz, dy, dxval, dxind, CUSPARSE_INDEX_BASE_ONE )
+      ierr = cudaStreamSynchronize( stream )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[VectorGather] Data not present on device'
+      IF ( .not. device_is_present( hxval, mydevice, sizeof_xval ) ) &
+        WRITE(*,*) '[VectorGather]   xval missing'
+      IF ( .not. device_is_present( hxind, mydevice, sizeof_xind ) ) &
+        WRITE(*,*) '[VectorGather]   xind missing'
+      IF ( .not. device_is_present( hy, mydevice, sizeof_y ) ) &
+        WRITE(*,*) '[VectorGather]   y missing'
+#endif
+
+      DO i = 1, nnz
+        xval(i) = y(xind(i))
+      END DO
+
+    END IF
+
+  END SUBROUTINE VectorGather
 
 
 END MODULE LinearAlgebraModule

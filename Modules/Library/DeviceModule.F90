@@ -22,6 +22,10 @@ MODULE DeviceModule
     cusolver_handle, &
     cusolverDnCreate, &
     cusolverDnSetStream
+  USE CusparseModule, ONLY: &
+    cusparse_handle, &
+    cusparseCreate, &
+    cusparseSetStream
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
@@ -114,13 +118,16 @@ CONTAINS
 
     ierr = cusolverDnCreate( cusolver_handle )
     ierr = cusolverDnSetStream( cusolver_handle, stream )
+
+    ierr = cusparseCreate( cusparse_handle )
+    ierr = cusparseSetStream( cusparse_handle, stream )
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
     CALL magma_getdevice( magma_device )
     CALL magma_init()
     CALL magma_queue_create_from_cuda &
-           ( magma_device, stream, cublas_handle, C_NULL_PTR, magma_queue )
+           ( magma_device, stream, cublas_handle, cusparse_handle, magma_queue )
 #endif
 
 #if defined(THORNADO_OMP_OL)
