@@ -161,9 +161,6 @@ CONTAINS
           Theta_D      = ( U_K(iCF_D) - Min_1 ) / ( U_K(iCF_D) - Min_K )
           U_q(:,iCF_D) = U_K(iCF_D) + Theta_D * ( U_q(:,iCF_D) - U_K(iCF_D) )
 
-          ! --- Recompute point-values using limited density ---
-          CALL ComputePointValues( U_q(:,iCF_D), U_PP(:,iCF_D) )
-
         END IF
 
         ! --- Modify point-values of q if necessary ---
@@ -187,12 +184,12 @@ CONTAINS
           END DO
 
           ! --- Solve for Theta_q such that all point-values
-          !     of q are physical ---
+          !     of q are positive ---
           Theta_q = One
           DO iP = 1, nPT
             IF( q(iP) .LT. Zero )THEN
               CALL SolveTheta_Bisection &
-                     ( U_PP(iP,:), U_K, G_PP(iP,:), Theta_P )
+                ( U_PP(iP,:), U_K, G_PP(iP,:), Theta_P, iP )
               Theta_q = MIN( Theta_q, Theta_P )
             END IF
           END DO
@@ -319,16 +316,18 @@ CONTAINS
   END FUNCTION qFun
 
 
-  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, G_Q, Theta_P )
+  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, G_Q, Theta_P, iP )
 
     REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), G_Q(nGF)
     REAL(DP), INTENT(out) :: Theta_P
+    INTEGER,  INTENT(in)  :: iP
 
     INTEGER,  PARAMETER :: MAX_IT = 19
     REAL(DP), PARAMETER :: dx_min = 1.0d-3
 
     LOGICAL  :: CONVERGED
     INTEGER  :: ITERATION
+    INTEGER  :: i
     REAL(DP) :: x_a, x_b, x_c, dx
     REAL(DP) :: f_a, f_b, f_c
 
@@ -353,11 +352,30 @@ CONTAINS
     IF( .NOT. f_a * f_b < 0 )THEN
 
       WRITE(*,'(A6,A)') &
-        '', 'SolveTheta_Bisection (Euler_GR):'
-      WRITE(*,'(A8,A,6ES10.1E3)') &
-        '', 'U_q: ', U_Q
-      WRITE(*,'(A8,A,6ES10.1E3)') &
-        '', 'U_K: ', U_K
+        '', 'SolveTheta_Bisection (Euler_PositivityLimiterModule_Relativistic):'
+      WRITE(*,'(A8,A,I2.2)') &
+        '', 'iP: ', iP
+      WRITE(*,'(A)') &
+        'U_Q = np.array( [ \'
+      DO i = 1, nCF-1
+        WRITE(*,'(ES24.16E3,A)') U_Q(i), ', \'
+      END DO
+        WRITE(*,'(ES24.16E3,A)') U_Q(i), ' ] )'
+      WRITE(*,*)
+      WRITE(*,'(A)') &
+        'U_K = np.array( [ \'
+      DO i = 1, nCF-1
+        WRITE(*,'(ES24.16E3,A)') U_K(i), ', \'
+      END DO
+        WRITE(*,'(ES24.16E3,A)') U_K(i), ' ] )'
+      WRITE(*,*)
+      WRITE(*,'(A)') &
+        'G_Q = np.array( [ \'
+      DO i = iGF_Gm_dd_11, iGF_Gm_dd_33-1
+        WRITE(*,'(ES24.16E3,A)') G_Q(i), ', \'
+      END DO
+        WRITE(*,'(ES24.16E3,A)') G_Q(i), ' ] )'
+
       WRITE(*,'(A8,A,I3.3)') &
         '', 'Error: No Root in Interval'
       WRITE(*,'(A8,A,2ES15.6e3)') &
