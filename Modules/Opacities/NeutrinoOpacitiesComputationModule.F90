@@ -623,9 +623,9 @@ CONTAINS
       !$OMP PARALLEL DO SIMD
 #endif
       DO iX = iX_B, iX_E
-        Mnu   (iX) = ( Me   (iX) + Mp   (iX) ) - Mn   (iX)
-        dMnudT(iX) = ( dMedT(iX) + dMpdT(iX) ) - dMndT(iX)
-        dMnudY(iX) = ( dMedY(iX) + dMpdY(iX) ) - dMndY(iX)
+        Mnu   (iX) = Mn   (iX) - ( Me   (iX) + Mp   (iX) )
+        dMnudT(iX) = dMndT(iX) - ( dMedT(iX) + dMpdT(iX) )
+        dMnudY(iX) = dMndY(iX) - ( dMedY(iX) + dMpdY(iX) )
       END DO
 
     ELSE
@@ -666,12 +666,12 @@ CONTAINS
 
         kT = BoltzmannConstant * T(iX)
 
-        f0(iX,iE) = FermiDirac   ( E(iE), Mnu(iX), kT )
+        f0(iE,iX) = FermiDirac   ( E(iE), Mnu(iX), kT )
         df0dT_Y   = dFermiDiracdT( E(iE), Mnu(iX), kT, dMnudT(iX), T(iX) ) ! Constant T
         df0dY_T   = dFermiDiracdY( E(iE), Mnu(iX), kT, dMnudY(iX), T(iX) ) ! Constant Y
 
-        df0dU(iX,iE) = df0dT_Y / dUdT(iX)
-        df0dY(iX,iE) = df0dY_T - df0dU(iX,iE) * dUdY(iX)
+        df0dU(iE,iX) = df0dT_Y / dUdT(iX)
+        df0dY(iE,iX) = df0dY_T - df0dU(iE,iX) * dUdY(iX)
 
       END DO
     END DO
