@@ -283,7 +283,7 @@ CONTAINS
             iNode  = iNodeE &
                      + ( iNodeX - 1 ) * nDOFE
 
-            CR_N(iN_E,iN_X,iCR,iS) = U_R(iNode,iE,iX1,iX2,iX3,iCR,iS)
+            CR_N(iN_E,iN_X,iS,iCR) = U_R(iNode,iE,iX1,iX2,iX3,iCR,iS)
 
           END DO
         END DO
@@ -382,10 +382,10 @@ CONTAINS
       ! --- Single Species (Electron Neutrinos) ---
 
       CALL SolveMatterEquations_EmAb_NuE &
-             ( dt,                       &
-               CR_N(:,:,iCR_N,iNuE    ), &
-               Chi (:,:,      iNuE    ), &
-               fEQ (:,:,      iNuE    ), &
+             ( dt, &
+               CR_N(:,:,iNuE,iCR_N), &
+               Chi (:,:,iNuE), &
+               fEQ (:,:,iNuE), &
                PF_N(:,iPF_D ), &
                AF_N(:,iAF_T ), &
                AF_N(:,iAF_Ye), &
@@ -401,13 +401,13 @@ CONTAINS
       CALL TimersStart( Timer_Im_EmAb_FP )
 
       CALL SolveMatterEquations_EmAb_FP &
-             ( dt, iNuE, iNuE_Bar,           &
-               CR_N    (:,:,iCR_N,iNuE    ), &
-               CR_N    (:,:,iCR_N,iNuE_Bar), &
-               Chi     (:,:,      iNuE    ), &
-               Chi     (:,:,      iNuE_Bar), &
-               fEQ     (:,:,      iNuE    ), &
-               fEQ     (:,:,      iNuE_Bar), &
+             ( dt, iNuE, iNuE_Bar, &
+               CR_N    (:,:,iNuE    ,iCR_N), &
+               CR_N    (:,:,iNuE_Bar,iCR_N), &
+               Chi     (:,:,iNuE    ), &
+               Chi     (:,:,iNuE_Bar), &
+               fEQ     (:,:,iNuE    ), &
+               fEQ     (:,:,iNuE_Bar), &
                PF_N(:,iPF_D ), &
                AF_N(:,iAF_T ), &
                AF_N(:,iAF_Ye), &
@@ -422,20 +422,20 @@ CONTAINS
 
       CALL SolveMatterEquations_FP_Coupled &
              ( dt, iNuE, iNuE_Bar, &
-               CR_N    (:,:,iCR_N,iNuE    ), &
-               CR_N    (:,:,iCR_N,iNuE_Bar), &
-               Chi     (:,:,      iNuE    ), &
-               Chi     (:,:,      iNuE_Bar), &
-               fEQ     (:,:,      iNuE    ), &
-               fEQ     (:,:,      iNuE_Bar), &
-               Chi_NES (:,:,      iNuE    ), &
-               Chi_NES (:,:,      iNuE_Bar), &
-               Eta_NES (:,:,      iNuE    ), &
-               Eta_NES (:,:,      iNuE_Bar), &
-               Chi_Pair(:,:,      iNuE    ), &
-               Chi_Pair(:,:,      iNuE_Bar), &
-               Eta_Pair(:,:,      iNuE    ), &
-               Eta_Pair(:,:,      iNuE_Bar), &
+               CR_N    (:,:,iNuE    ,iCR_N), &
+               CR_N    (:,:,iNuE_Bar,iCR_N), &
+               Chi     (:,:,iNuE    ), &
+               Chi     (:,:,iNuE_Bar), &
+               fEQ     (:,:,iNuE    ), &
+               fEQ     (:,:,iNuE_Bar), &
+               Chi_NES (:,:,iNuE    ), &
+               Chi_NES (:,:,iNuE_Bar), &
+               Eta_NES (:,:,iNuE    ), &
+               Eta_NES (:,:,iNuE_Bar), &
+               Chi_Pair(:,:,iNuE    ), &
+               Chi_Pair(:,:,iNuE_Bar), &
+               Eta_Pair(:,:,iNuE    ), &
+               Eta_Pair(:,:,iNuE_Bar), &
                PF_N    (:,iPF_D ), &
                AF_N    (:,iAF_T ), &
                AF_N    (:,iAF_Ye), &
@@ -450,20 +450,20 @@ CONTAINS
 
       CALL SolveMatterEquations_FP_NestedAA &
              ( dt, iNuE, iNuE_Bar, &
-               CR_N    (:,:,iCR_N,iNuE    ), &
-               CR_N    (:,:,iCR_N,iNuE_Bar), &
-               Chi     (:,:,      iNuE    ), &
-               Chi     (:,:,      iNuE_Bar), &
-               fEQ     (:,:,      iNuE    ), &
-               fEQ     (:,:,      iNuE_Bar), &
-               Chi_NES (:,:,      iNuE    ), &
-               Chi_NES (:,:,      iNuE_Bar), &
-               Eta_NES (:,:,      iNuE    ), &
-               Eta_NES (:,:,      iNuE_Bar), &
-               Chi_Pair(:,:,      iNuE    ), &
-               Chi_Pair(:,:,      iNuE_Bar), &
-               Eta_Pair(:,:,      iNuE    ), &
-               Eta_Pair(:,:,      iNuE_Bar), &
+               CR_N    (:,:,iNuE    ,iCR_N), &
+               CR_N    (:,:,iNuE_Bar,iCR_N), &
+               Chi     (:,:,iNuE    ), &
+               Chi     (:,:,iNuE_Bar), &
+               fEQ     (:,:,iNuE    ), &
+               fEQ     (:,:,iNuE_Bar), &
+               Chi_NES (:,:,iNuE    ), &
+               Chi_NES (:,:,iNuE_Bar), &
+               Eta_NES (:,:,iNuE    ), &
+               Eta_NES (:,:,iNuE_Bar), &
+               Chi_Pair(:,:,iNuE    ), &
+               Chi_Pair(:,:,iNuE_Bar), &
+               Eta_Pair(:,:,iNuE    ), &
+               Eta_Pair(:,:,iNuE_Bar), &
                PF_N    (:,iPF_D ), &
                AF_N    (:,iAF_T ), &
                AF_N    (:,iAF_Ye), &
@@ -531,32 +531,32 @@ CONTAINS
 
           ! --- Number Flux (1) ---
 
-          CR_N(iN_E,iN_X,iCR_G1,iS) &
-            = CR_N(iN_E,iN_X,iCR_G1,iS) / ( One + dt * Kappa )
+          CR_N(iN_E,iN_X,iS,iCR_G1) &
+            = CR_N(iN_E,iN_X,iS,iCR_G1) / ( One + dt * Kappa )
 
           ! --- Number Flux (2) ---
 
-          CR_N(iN_E,iN_X,iCR_G2,iS) &
-            = CR_N(iN_E,iN_X,iCR_G2,iS) / ( One + dt * Kappa )
+          CR_N(iN_E,iN_X,iS,iCR_G2) &
+            = CR_N(iN_E,iN_X,iS,iCR_G2) / ( One + dt * Kappa )
 
           ! --- Number Flux (3) ---
 
-          CR_N(iN_E,iN_X,iCR_G3,iS) &
-            = CR_N(iN_E,iN_X,iCR_G3,iS) / ( One + dt * Kappa )
+          CR_N(iN_E,iN_X,iS,iCR_G3) &
+            = CR_N(iN_E,iN_X,iS,iCR_G3) / ( One + dt * Kappa )
 
           ! --- Increments ---
 
           dR_N(iN_E,iN_X,iCR_N,iS) &
-            = Eta_T - Chi_T * CR_N(iN_E,iN_X,iCR_N,iS)
+            = Eta_T - Chi_T * CR_N(iN_E,iN_X,iS,iCR_N)
 
           dR_N(iN_E,iN_X,iCR_G1,iS) &
-            = - Kappa * CR_N(iN_E,iN_X,iCR_G1,iS)
+            = - Kappa * CR_N(iN_E,iN_X,iS,iCR_G1)
 
           dR_N(iN_E,iN_X,iCR_G2,iS) &
-            = - Kappa * CR_N(iN_E,iN_X,iCR_G2,iS)
+            = - Kappa * CR_N(iN_E,iN_X,iS,iCR_G2)
 
           dR_N(iN_E,iN_X,iCR_G3,iS) &
-            = - Kappa * CR_N(iN_E,iN_X,iCR_G3,iS)
+            = - Kappa * CR_N(iN_E,iN_X,iS,iCR_G3)
             
         END DO
       END DO
@@ -730,7 +730,7 @@ CONTAINS
     ALLOCATE( Chi_Pair(nE_G,nX_G,nSpecies) )
     ALLOCATE( Eta_Pair(nE_G,nX_G,nSpecies) )
 
-    ALLOCATE( CR_N(nE_G,nX_G,nCR,nSpecies) )
+    ALLOCATE( CR_N(nE_G,nX_G,nSpecies,nCR) )
     ALLOCATE( dR_N(nE_G,nX_G,nCR,nSpecies) )
 
     ALLOCATE( nIterations(nX_G) )
