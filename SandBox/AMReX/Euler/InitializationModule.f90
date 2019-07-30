@@ -157,7 +157,7 @@ CONTAINS
     ELSE
 
       CALL ReadCheckpointFile( iRestart )
-      t_chk = t(0)
+      t_chk = t(0) + dt_chk
 
     END IF
 
@@ -180,9 +180,11 @@ CONTAINS
       IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock_Relativistic' )THEN
         WRITE(*,'(4x,A24,ES10.3E2,A)') 't_end   =', t_end  / Millisecond, ' ms'
         WRITE(*,'(4x,A24,ES10.3E2,A)') 'dt_wrt  =', dt_wrt / Millisecond, ' ms'
+        WRITE(*,'(4x,A24,ES10.3E2,A)') 'dt_chk  =', dt_chk / Millisecond, ' ms'
       ELSE
         WRITE(*,'(A4,A24,ES10.3E2)') '', 't_end   =', t_end
         WRITE(*,'(A4,A24,ES10.3E2)') '', 'dt_wrt  =', dt_wrt
+        WRITE(*,'(A4,A24,ES10.3E2)') '', 'dt_chk  =', dt_chk
       END IF
       WRITE(*,'(A4,A24,I3.2)')     '', 'nNodes  =', nNodes
       WRITE(*,'(A4,A24,I3.2)')     '', 'nStages =', nStages
