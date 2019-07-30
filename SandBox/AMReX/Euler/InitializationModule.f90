@@ -157,6 +157,7 @@ CONTAINS
     ELSE
 
       CALL ReadCheckpointFile( iRestart )
+      t_chk = t(0)
 
     END IF
 
@@ -176,10 +177,15 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A4,A6,A)')         '', 'Name: ', TRIM( ProgramName )
       WRITE(*,*)
-      WRITE(*,'(A4,A24,ES10.3E2)') '', 't_end   =', t_end
-      WRITE(*,'(A4,A24,ES10.3E2)') '', 'dt_wrt  =', dt_wrt
-      WRITE(*,'(A4,A24,I7.6)')     '', 'nNodes  =', nNodes
-      WRITE(*,'(A4,A24,I7.6)')     '', 'nStages =', nStages
+      IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock_Relativistic' )THEN
+        WRITE(*,'(4x,A24,ES10.3E2,A)') 't_end   =', t_end  / Millisecond, ' ms'
+        WRITE(*,'(4x,A24,ES10.3E2,A)') 'dt_wrt  =', dt_wrt / Millisecond, ' ms'
+      ELSE
+        WRITE(*,'(A4,A24,ES10.3E2)') '', 't_end   =', t_end
+        WRITE(*,'(A4,A24,ES10.3E2)') '', 'dt_wrt  =', dt_wrt
+      END IF
+      WRITE(*,'(A4,A24,I3.2)')     '', 'nNodes  =', nNodes
+      WRITE(*,'(A4,A24,I3.2)')     '', 'nStages =', nStages
       WRITE(*,'(A4,A24,I3.2)')     '', 'nDimsX  =', amrex_spacedim
       WRITE(*,'(A4,A24,ES10.3E2)') '', 'Gamma   =', Gamma_IDEAL
       WRITE(*,'(A5,A24,A)')        '', 'CoordinateSystem = ', CoordinateSystem
@@ -273,7 +279,7 @@ CONTAINS
 
       CALL TimersStart_AMReX( Timer_AMReX_InputOutput )
       CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, t, t_wrt, t_chk, &
+             ( StepNo, nLevels, dt, t, t_wrt, &
                MF_uGF % BA % P, &
                MF_uGF % P, &
                MF_uCF % P, &

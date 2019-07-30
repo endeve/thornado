@@ -105,7 +105,7 @@ PROGRAM main
 
       CALL TimersStart_AMReX( Timer_AMReX_InputOutput )
       CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, t, t_wrt, t_chk, &
+             ( StepNo, nLevels, dt, t, t_wrt, &
                MF_uGF % BA % P, &
                MF_uGF % P, &
                MF_uCF % P, &
@@ -114,7 +114,7 @@ PROGRAM main
       CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
 
       chk = .FALSE.
-     
+
     END IF
 
     IF( iCycleW .GT. 0 )THEN
@@ -155,7 +155,7 @@ PROGRAM main
   StepNo = StepNo + 1
   CALL TimersStart_AMReX( Timer_AMReX_InputOutput )
   CALL WriteFieldsAMReX_Checkpoint &
-         ( StepNo, nLevels, dt, t, t_wrt, t_chk, &
+         ( StepNo, nLevels, dt, t, t_wrt, &
            MF_uGF % BA % P, &
            MF_uGF % P, &
            MF_uCF % P, &
@@ -185,4 +185,3 @@ PROGRAM main
   CALL FinalizeTimers_AMReX
 
 END PROGRAM main
-
