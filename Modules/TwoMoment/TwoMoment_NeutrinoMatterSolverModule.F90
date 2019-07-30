@@ -48,6 +48,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeSpecificInternalEnergy_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions_Points, &
+    ComputeEquilibriumDistributionAndDerivatives_Points, &
     ComputeNeutrinoOpacities_EC_Points, &
     ComputeNeutrinoOpacities_ES_Points, &
     ComputeNeutrinoOpacities_NES_Points, &
@@ -322,144 +323,54 @@ CONTAINS
 
     ! --- Local Variables ---
 
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Theta, Theta_J, Theta_J0
-    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Theta_1, Theta_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Gam, GamJ, GamJ0
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: dGamJ0dY, dGamJ0dE
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: dJ0dE, dJ0dY
 
-    REAL(DP), DIMENSION(1:nX_G) :: N_B
     REAL(DP), DIMENSION(1:nX_G) :: Yold, C_Y, F_Y, U_Y, dU_Y
     REAL(DP), DIMENSION(1:nX_G) :: Eold, C_E, F_E, U_E, dU_E
 
-    REAL(DP), DIMENSION(1:nX_G) :: Mnu, dMnudT, dMnudY
-    REAL(DP), DIMENSION(1:nX_G) :: dEdD, dEdT, dEdY
-
-    INTEGER,  DIMENSION(1:nX_G) :: PackIndex, UnpackIndex
-    REAL(DP), DIMENSION(1:nX_G) :: D_P, T_P, Y_P, E_P
-    REAL(DP), DIMENSION(1:nX_G) :: Mnu_P, dMnudT_P, dMnudY_P
-    REAL(DP), DIMENSION(1:nX_G) :: dEdD_P, dEdT_P, dEdY_P
-
     REAL(DP), DIMENSION(1:nX_G) :: FJAC11, FJAC21, FJAC12, FJAC22
     REAL(DP), DIMENSION(1:nX_G) :: FNRM0
-    LOGICAL,  DIMENSION(1:nX_G) :: ITERATE
 
-    REAL(DP) :: kT, Eta
-    REAL(DP) :: dJ0dT_Y, dJ0dY_T, dJ0dE_Y, dJ0dY_E
-    REAL(DP) :: DJAC, FERR, UERR
-    INTEGER  :: k, iN_X, iN_E, iX_P, nX_P
+    LOGICAL,  DIMENSION(1:nX_G) :: ITERATE
+    INTEGER,  DIMENSION(1:nX_G) :: PackIndex, UnpackIndex
+
+    INTEGER  :: k, nX_P
 
     ITERATE(:) = .TRUE.
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: ITERATE ) &
-    !$OMP MAP( alloc: Theta, Theta_J, Theta_J0, Theta_1, Theta_2, N_B, &
+    !$OMP MAP( alloc: Gam, GamJ, GamJ0, dGamJ0dY, dGamJ0dE, &
+    !$OMP             dJ0dE, dJ0dY, &
     !$OMP             Yold, C_Y, F_Y, U_Y, dU_Y, &
     !$OMP             Eold, C_E, F_E, U_E, dU_E, &
-    !$OMP             Mnu, dMnudT, dMnudY, dEdD, dEdT, dEdY, &
     !$OMP             PackIndex, UnpackIndex, &
-    !$OMP             D_P, T_P, Y_P, E_P, &
-    !$OMP             Mnu_P, dMnudT_P, dMnudY_P, dEdD_P, dEdT_P, dEdY_P, &
     !$OMP             FJAC11, FJAC21, FJAC12, FJAC22, FNRM0 )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( ITERATE ) &
-    !$ACC CREATE( Theta, Theta_J, Theta_J0, Theta_1, Theta_2, N_B, &
+    !$ACC CREATE( Gam, GamJ, GamJ0, dGamJ0dY, dGamJ0dE, &
+    !$ACC         dJ0dE, dJ0dY, &
     !$ACC         Yold, C_Y, F_Y, U_Y, dU_Y, &
     !$ACC         Eold, C_E, F_E, U_E, dU_E, &
-    !$ACC         Mnu, dMnudT, dMnudY, dEdD, dEdT, dEdY, &
     !$ACC         PackIndex, UnpackIndex, &
-    !$ACC         D_P, T_P, Y_P, E_P, &
-    !$ACC         Mnu_P, dMnudT_P, dMnudY_P, dEdD_P, dEdT_P, dEdY_P, &
     !$ACC         FJAC11, FJAC21, FJAC12, FJAC22, FNRM0 )
 #endif
 
-    ! --- Neutrino Chemical Potential and Derivatives ---
+    ! --- Equilibrium Distribution and Derivatives ---
 
-    CALL ComputeNeutrinoChemicalPotentials &
-           ( D, T, Y, Mnu, dMnudT, dMnudY, iSpecies = iNuE )
+    CALL ComputeEquilibriumDistributionsAndDerivatives_Packed &
+           ( iNuE, D, T, Y, J0, dJ0dY, dJ0dE )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( kT )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRIVATE( kT ) &
-    !$ACC PRESENT( E_N, T, Mnu, Chi, Theta, J0, Theta_J0, J, Theta_J )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( kT )
-#endif
-    DO iN_X = 1, nX_G
-      DO iN_E = 1, nE_G
+    ! --- Initial RHS ---
 
-        ! --- Equilibrium Distribution ---
-
-        kT = BoltzmannConstant * T(iN_X)
-        J0(iN_E,iN_X) = FermiDirac( E_N(iN_E), Mnu(iN_X), kT )
-
-        ! --- Auxiliary Variables ---
-
-        Theta   (iN_E,iN_X) = dt * Chi(iN_E,iN_X) / ( One + dt * Chi(iN_E,iN_X) )
-        Theta_J0(iN_E,iN_X) = Theta(iN_E,iN_X) * J0(iN_E,iN_X)
-        Theta_J (iN_E,iN_X) = Theta(iN_E,iN_X) * J(iN_E,iN_X)
-
-      END DO
-    END DO
-
-    ! --- Old States (Constant) ---
-
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, One, Theta_J , nE_G, W2_S, 1, Zero, C_Y, 1 )
-
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, One, Theta_J , nE_G, W3_S, 1, Zero, C_E, 1 )
-
-    ! --- Electron Fraction Equation ---
-
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, One, Theta_J0, nE_G, W2_S, 1, Zero, F_Y, 1 )
-
-    ! --- Internal Energy Equation ---
-
-    CALL MatrixVectorMultiply &
-      ( 'T', nE_G, nX_G, One, Theta_J0, nE_G, W3_S, 1, Zero, F_E, 1 )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( D, N_B, Y, Yold, C_Y, F_Y, U_Y, E, Eold, C_E, F_E, U_E, FNRM0 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD
-#endif
-    DO iN_X = 1, nX_G
-
-      N_B(iN_X) = D(iN_X) / AtomicMassUnit
-
-      ! --- Initial Guess ---
-
-      Yold(iN_X) = Y(iN_X)
-      Eold(iN_X) = E(iN_X)
-
-      U_Y(iN_X) = Yold(iN_X)
-      U_E(iN_X) = Eold(iN_X)
-
-      ! --- Scale Equations and Save Initial Evaluation ---
-
-      ! --- Electron Fraction Equation ---
-
-      C_Y(iN_X) = C_Y(iN_X) + N_B(iN_X) * U_Y(iN_X)
-      F_Y(iN_X) = F_Y(iN_X) + N_B(iN_X) * U_Y(iN_X) - C_Y(iN_X)
-      F_Y(iN_X) = F_Y(iN_X) / C_Y(iN_X)
-
-      ! --- Internal Energy Equation ---
-
-      C_E(iN_X) = C_E(iN_X) + D  (iN_X) * U_E(iN_X)
-      F_E(iN_X) = F_E(iN_X) + D  (iN_X) * U_E(iN_X) - C_E(iN_X)
-      F_E(iN_X) = F_E(iN_X) / C_E(iN_X)
-
-      FNRM0(iN_X) = SQRT( F_Y(iN_X)**2 + F_E(iN_X)**2 )
-
-    END DO
+    CALL InitializeRHS_EmAb_NuE &
+           ( dt, J, Chi, J0, dJ0dY, dJ0dE, D, Y, E, &
+             Gam, GamJ0, GamJ, dGamJ0dY, dGamJ0dE, &
+             Yold, Eold, U_Y, U_E, C_Y, C_E, F_Y, F_E, FNRM0 )
 
     k = 0
     DO WHILE( ANY( ITERATE(:) ) .AND. k < MaxIter )
@@ -469,287 +380,59 @@ CONTAINS
       CALL CreatePackIndex &
              ( nX_G, ITERATE, nX_P, PackIndex, UnpackIndex )
 
-      ! --- Internal Energy Derivatives ---
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iN_X )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iN_X ) &
-      !$ACC PRESENT( UnpackIndex, D, T, Y, D_P, T_P, Y_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
-      !$OMP PRIVATE( iN_X )
-#endif
-      DO iX_P = 1, nX_P
-        iN_X = UnpackIndex(iX_P)
-        D_P(iX_P) = D(iN_X)
-        T_P(iX_P) = T(iN_X)
-        Y_P(iX_P) = Y(iN_X)
-      END DO
-
-      CALL ComputeSpecificInternalEnergy_TABLE &
-             ( D_P(1:nX_P), T_P(1:nX_P), Y_P(1:nX_P), E_P(1:nX_P), &
-               dEdD_P(1:nX_P), dEdT_P(1:nX_P), dEdY_P(1:nX_P) )
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX_P )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iX_P ) &
-      !$ACC PRESENT( ITERATE, PackIndex, dEdT, dEdY, dEdT_P, dEdY_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX_P )
-#endif
-      DO iN_X = 1, nX_G
-        IF ( ITERATE(iN_X) ) THEN
-          iX_P = PackIndex(iN_X)
-          dEdT(iN_X) = dEdT_P(iX_P)
-          dEdY(iN_X) = dEdY_P(iX_P)
-        END IF
-      END DO
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( kT, dJ0dT_Y, dJ0dY_T, dJ0dE_Y, dJ0dY_E )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( kT, dJ0dT_Y, dJ0dY_T, dJ0dE_Y, dJ0dY_E ) &
-      !$ACC PRESENT( ITERATE, T, E_N, Mnu, dMnudT, dMnudY, &
-      !$ACC          dEdT, dEdY, Theta, Theta_1, Theta_2 )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( kT, dJ0dT_Y, dJ0dY_T, dJ0dE_Y, dJ0dY_E )
-#endif
-      DO iN_X = 1, nX_G
-        DO iN_E = 1, nE_G
-          IF ( ITERATE(iN_X) ) THEN
-
-            kT = BoltzmannConstant * T(iN_X)
-
-            ! --- Derivative of J0 wrt. T (Constant Y) ---
-
-            dJ0dT_Y = dFermiDiracdT( E_N(iN_E), Mnu(iN_X), kT, dMnudT(iN_X), T(iN_X) )
-
-            ! --- Derivative of J0 wrt. Y (Constant T) ---
-
-            dJ0dY_T = dFermiDiracdY( E_N(iN_E), Mnu(iN_X), kT, dMnudY(iN_X), T(iN_X) )
-
-            ! --- Derivative of J0 wrt. E (Constant Y) ---
-
-            dJ0dE_Y = dJ0dT_Y / dEdT(iN_X)
-
-            ! --- Derivative of J0 wrt. Y (Constant E) ---
-
-            dJ0dY_E = dJ0dY_T - dJ0dE_Y * dEdY(iN_X)
-
-            ! --- Auxiliary Variables ---
-
-            Theta_1(iN_E,iN_X) = Theta(iN_E,iN_X) * dJ0dY_E
-            Theta_2(iN_E,iN_X) = Theta(iN_E,iN_X) * dJ0dE_Y
-
-          END IF
-        END DO
-      END DO
-
       ! --- Jacobian ---
 
-      CALL MatrixVectorMultiply &
-        ( 'T', nE_G, nX_G, One, Theta_1, nE_G, W2_S, 1, Zero, FJAC11, 1 )
-      CALL MatrixVectorMultiply &
-        ( 'T', nE_G, nX_G, One, Theta_1, nE_G, W3_S, 1, Zero, FJAC21, 1 )
-      CALL MatrixVectorMultiply &
-        ( 'T', nE_G, nX_G, One, Theta_2, nE_G, W2_S, 1, Zero, FJAC12, 1 )
-      CALL MatrixVectorMultiply &
-        ( 'T', nE_G, nX_G, One, Theta_2, nE_G, W3_S, 1, Zero, FJAC22, 1 )
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( DJAC )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( DJAC ) &
-      !$ACC PRESENT( ITERATE, D, N_B, FJAC11, FJAC21, FJAC12, FJAC22, &
-      !$ACC          C_Y, F_Y, U_Y, dU_Y, C_E, F_E, U_E, dU_E )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD &
-      !$OMP PRIVATE( DJAC )
-#endif
-      DO iN_X = 1, nX_G
-        IF ( ITERATE(iN_X) ) THEN
-
-          ! --- Scale Jacobian ---
-
-          FJAC11(iN_X) = ( FJAC11(iN_X) + N_B(iN_X) ) / C_Y(iN_X)
-          FJAC12(iN_X) = FJAC12(iN_X) / C_Y(iN_X)
-
-          FJAC21(iN_X) = FJAC21(iN_X) / C_E(iN_X)
-          FJAC22(iN_X) = ( FJAC22(iN_X) + D  (iN_X) ) / C_E(iN_X)
-
-          ! --- Determinant of Jacobian ---
-
-          DJAC = FJAC11(iN_X) * FJAC22(iN_X) - FJAC21(iN_X) * FJAC12(iN_X)
-
-          ! --- Correction ---
-
-          dU_Y(iN_X) = - ( + FJAC22(iN_X) * F_Y(iN_X) - FJAC12(iN_X) * F_E(iN_X) ) / DJAC
-          dU_E(iN_X) = - ( - FJAC21(iN_X) * F_Y(iN_X) + FJAC11(iN_X) * F_E(iN_X) ) / DJAC
-
-          ! --- Apply Correction ---
-
-          U_Y(iN_X) = U_Y(iN_X) + dU_Y(iN_X)
-          U_E(iN_X) = U_E(iN_X) + dU_E(iN_X)
-
-          Y(iN_X) = U_Y(iN_X)
-          E(iN_X) = U_E(iN_X)
-
-          !F_Y(iN_X) = N_B(iN_X) * U_Y(iN_X) - C_Y(iN_X)
-          !F_E(iN_X) = D  (iN_X) * U_E(iN_X) - C_E(iN_X)
-
-        END IF
-      END DO
+      CALL SolveLS_EmAb_NuE &
+             ( ITERATE, D, C_Y, C_E, F_Y, F_E, dGamJ0dY, dGamJ0dE, &
+               FJAC11, FJAC21, FJAC12, FJAC22, &
+               dU_Y, dU_E, U_Y, U_E, Y, E )
 
       ! --- Update Temperature ---
 
-      CALL ArrayPack &
-             ( nX_G, nX_P, UnpackIndex, Y, E, Y_P, E_P )
+      CALL UpdateTemperature_Packed &
+             ( D, E, Y, T, &
+               ITERATE, nX_P, PackIndex, UnpackIndex )
 
-      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-             ( D_P(1:nX_P), E_P(1:nX_P), Y_P(1:nX_P), T_P(1:nX_P) )
+      ! --- Equilibrium Distribution and Derivatives ---
 
-      ! --- Neutrino Chemical Potential and Derivatives ---
+      CALL ComputeEquilibriumDistributionsAndDerivatives_Packed &
+             ( iNuE, D, T, Y, J0, dJ0dY, dJ0dE, &
+               ITERATE, nX_P, PackIndex, UnpackIndex )
 
-      CALL ComputeNeutrinoChemicalPotentials &
-             ( D_P(1:nX_P), T_P(1:nX_P), Y_P(1:nX_P), Mnu_P(1:nX_P), &
-               dMnudT_P(1:nX_P), dMnudY_P(1:nX_P), iSpecies = iNuE )
+      ! --- Update Residuals and Solution Vectors ---
 
-      CALL ArrayUnpack &
-             ( nX_G, nX_P, ITERATE, PackIndex, &
-               T_P, Mnu_P, dMnudT_P, dMnudY_P, T, Mnu, dMnudT, dMnudY )
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( kT )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( kT ) &
-      !$ACC PRESENT( ITERATE, E_N, T, Mnu, J0, Theta_J0, Theta )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( kT )
-#endif
-      DO iN_X = 1, nX_G
-        DO iN_E = 1, nE_G
-          IF ( ITERATE(iN_X) ) THEN
-
-            ! --- Equilibrium Distribution ---
-
-            kT = BoltzmannConstant * T(iN_X)
-            J0(iN_E,iN_X) = FermiDirac( E_N(iN_E), Mnu(iN_X), kT )
-
-            ! --- Auxiliary Variables ---
-
-            Theta_J0(iN_E,iN_X) = Theta(iN_E,iN_X) * J0(iN_E,iN_X)
-
-          END IF
-        END DO
-      END DO
-
-      ! --- Electron Fraction Equation ---
-
-      CALL MatrixVectorMultiply &
-        ( 'T', nE_G, nX_G, One, Theta_J0, nE_G, W2_S, 1, Zero, F_Y, 1 )
-
-      ! --- Internal Energy Equation ---
-
-      CALL MatrixVectorMultiply &
-        ( 'T', nE_G, nX_G, One, Theta_J0, nE_G, W3_S, 1, Zero, F_E, 1 )
+      CALL ComputeMatterRHS_EmAb_NuE &
+             ( ITERATE, D, U_Y, U_E, C_Y, C_E, Gam, J0, dJ0dY, dJ0dE, &
+               GamJ0, dGamJ0dY, dGamJ0dE, F_Y, F_E )
 
       ! --- Check for Convergence ---
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( FERR, UERR )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( FERR, UERR ) &
-      !$ACC PRESENT( ITERATE, nIterations, FNRM0, D, N_B, &
-      !$ACC          C_Y, F_Y, U_Y, dU_Y, C_E, F_E, U_E, dU_E )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( FERR, UERR )
-#endif
-      DO iN_X = 1, nX_G
-        IF ( ITERATE(iN_X) ) THEN
-
-          F_Y(iN_X) = F_Y(iN_X) + N_B(iN_X) * U_Y(iN_X) - C_Y(iN_X)
-          F_Y(iN_X) = F_Y(iN_X) / C_Y(iN_X)
-
-          F_E(iN_X) = F_E(iN_X) + D  (iN_X) * U_E(iN_X) - C_E(iN_X)
-          F_E(iN_X) = F_E(iN_X) / C_E(iN_X)
-
-          FERR = SQRT( F_Y(iN_X)**2 + F_E(iN_X)**2 )
-
-          UERR = SQRT( (dU_Y(iN_X)/U_Y(iN_X))**2 + (dU_E(iN_X)/U_E(iN_X))**2 )
-
-          ITERATE(iN_X) = FERR > Rtol * FNRM0(iN_X) &
-                    .AND. UERR > Utol
-
-          IF ( .NOT. ITERATE(iN_X) ) nIterations(iN_X) = k
-
-        END IF
-      END DO
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM( ITERATE )
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST( ITERATE )
-#endif
+      CALL CheckConvergence_EmAb_NuE &
+             ( ITERATE, k, Rtol, Utol, nIterations, &
+               F_Y, U_Y, dU_Y, F_E, U_E, dU_E, FNRM0 )
 
     END DO
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( Eta )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRIVATE( Eta ) &
-    !$ACC PRESENT( Chi, J0, J )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( Eta )
-#endif
-    DO iN_X = 1, nX_G
-      DO iN_E = 1, nE_G
-        Eta = Chi(iN_E,iN_X) * J0(iN_E,iN_X)
-        J(iN_E,iN_X) = ( J(iN_E,iN_X) + dt * Eta ) / ( One + dt * Chi(iN_E,iN_X) )
-      END DO
-    END DO
+    CALL ComputeNumberDensity_EmAb_NuE &
+           ( dt, J, Chi, J0 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: ITERATE, &
-    !$OMP               Theta, Theta_J, Theta_J0, Theta_1, Theta_2, N_B, &
+    !$OMP               Gam, GamJ, GamJ0, dGamJ0dY, dGamJ0dE, &
+    !$OMP               dJ0dE, dJ0dY, &
     !$OMP               Yold, C_Y, F_Y, U_Y, dU_Y, &
     !$OMP               Eold, C_E, F_E, U_E, dU_E, &
-    !$OMP               Mnu, dMnudT, dMnudY, dEdD, dEdT, dEdY, &
     !$OMP               PackIndex, UnpackIndex, &
-    !$OMP               D_P, T_P, Y_P, E_P, &
-    !$OMP               Mnu_P, dMnudT_P, dMnudY_P, dEdD_P, dEdT_P, dEdY_P, &
     !$OMP               FJAC11, FJAC21, FJAC12, FJAC22, FNRM0 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC DELETE( ITERATE, &
-    !$ACC         Theta, Theta_J, Theta_J0, Theta_1, Theta_2, N_B, &
+    !$ACC         Gam, GamJ, GamJ0, dGamJ0dY, dGamJ0dE, &
+    !$ACC         dJ0dE, dJ0dY, &
     !$ACC         Yold, C_Y, F_Y, U_Y, dU_Y, &
     !$ACC         Eold, C_E, F_E, U_E, dU_E, &
-    !$ACC         Mnu, dMnudT, dMnudY, dEdD, dEdT, dEdY, &
     !$ACC         PackIndex, UnpackIndex, &
-    !$ACC         D_P, T_P, Y_P, E_P, &
-    !$ACC         Mnu_P, dMnudT_P, dMnudY_P, dEdD_P, dEdT_P, dEdY_P, &
     !$ACC         FJAC11, FJAC21, FJAC12, FJAC22, FNRM0 )
 #endif
 
@@ -1618,6 +1301,76 @@ CONTAINS
   END SUBROUTINE SolveMatterEquations_FP_NestedAA
 
 
+  SUBROUTINE ComputeEquilibriumDistributionsAndDerivatives_Packed &
+    ( iSpecies, D, T, Y, J0, dJ0dY, dJ0dE, &
+      MASK, nX_P, PackIndex, UnpackIndex )
+
+    INTEGER,                              INTENT(in)    :: iSpecies
+    REAL(DP), DIMENSION(:),     TARGET,   INTENT(in)    :: D, T, Y
+    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: J0, dJ0dY, dJ0dE
+    LOGICAL,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: MASK
+    INTEGER,                    OPTIONAL, INTENT(in)    :: nX_P
+    INTEGER,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
+
+    REAL(DP), DIMENSION(:),     POINTER,  CONTIGUOUS    :: D_P, T_P, Y_P
+    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: J0_P, dJ0dY_P, dJ0dE_P
+
+    INTEGER :: nX
+
+    IF ( PRESENT( nX_P ) ) THEN
+      nX = nX_P
+    ELSE
+      nX = nX_G
+    END IF
+
+    IF ( nX < nX_G ) THEN
+
+      ! --- Pack Arrays ---
+
+      CALL ArrayPack &
+             ( nX_G, nX, UnpackIndex, &
+               D, T, Y, &
+               P1D_1, P1D_2, P1D_3 )
+
+      D_P => P1D_1(1:nX)
+      T_P => P1D_2(1:nX)
+      Y_P => P1D_3(1:nX)
+
+      J0_P    => P2D_1(:,1:nX)
+      dJ0dY_P => P2D_2(:,1:nX)
+      dJ0dE_P => P2D_3(:,1:nX)
+
+    ELSE
+
+      D_P => D(:)
+      T_P => T(:)
+      Y_P => Y(:)
+
+      J0_P    => J0(:,:)
+      dJ0dY_P => dJ0dY(:,:)
+      dJ0dE_P => dJ0dE(:,:)
+
+    END IF
+
+    ! --- Equilibrium Distributions ---
+
+    CALL ComputeEquilibriumDistributionAndDerivatives_Points &
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_P, dJ0dY_P, dJ0dE_P, iSpecies )
+
+    IF ( nX < nX_G ) THEN
+
+      ! --- Unpack Results ---
+
+      CALL ArrayUnpack &
+             ( nE_G, nX_G, nX, MASK, PackIndex, &
+               P2D_1, P2D_2, P2D_3, &
+               J0, dJ0dY, dJ0dE )
+
+    END IF
+
+  END SUBROUTINE ComputeEquilibriumDistributionsAndDerivatives_Packed
+
+
   SUBROUTINE ComputeEquilibriumDistributions_Packed &
     ( iS_1, iS_2, D, T, Y, J0_1, J0_2, &
       MASK, nX_P, PackIndex, UnpackIndex )
@@ -1685,13 +1438,6 @@ CONTAINS
                J0_1, J0_2 )
 
     END IF
-
-    D_P => NULL()
-    T_P => NULL()
-    Y_P => NULL()
-
-    J0_1_P => NULL()
-    J0_2_P => NULL()
 
   END SUBROUTINE ComputeEquilibriumDistributions_Packed
 
@@ -1827,22 +1573,6 @@ CONTAINS
       END IF
 
     END IF
-
-    D_P => NULL()
-    T_P => NULL()
-    Y_P => NULL()
-
-    J0_1_P => NULL()
-    J0_2_P => NULL()
-
-    Phi_0_In_NES_1_P  => NULL()
-    Phi_0_Ot_NES_1_P  => NULL()
-    Phi_0_In_NES_2_P  => NULL()
-    Phi_0_Ot_NES_2_P  => NULL()
-    Phi_0_In_Pair_1_P => NULL()
-    Phi_0_Ot_Pair_1_P => NULL()
-    Phi_0_In_Pair_2_P => NULL()
-    Phi_0_Ot_Pair_2_P => NULL()
 
   END SUBROUTINE ComputeOpacities_Packed
 
@@ -1994,27 +1724,6 @@ CONTAINS
 
     END IF
 
-    Chi_NES_1_P  => NULL()
-    Chi_NES_2_P  => NULL()
-    Eta_NES_1_P  => NULL()
-    Eta_NES_2_P  => NULL()
-    Chi_Pair_1_P => NULL()
-    Chi_Pair_2_P => NULL()
-    Eta_Pair_1_P => NULL()
-    Eta_Pair_2_P => NULL()
-
-    J_1_P => NULL()
-    J_2_P => NULL()
-
-    Phi_0_In_NES_1_P  => NULL()
-    Phi_0_Ot_NES_1_P  => NULL()
-    Phi_0_In_NES_2_P  => NULL()
-    Phi_0_Ot_NES_2_P  => NULL()
-    Phi_0_In_Pair_1_P => NULL()
-    Phi_0_Ot_Pair_1_P => NULL()
-    Phi_0_In_Pair_2_P => NULL()
-    Phi_0_Ot_Pair_2_P => NULL()
-
   END SUBROUTINE ComputeRates_Packed
 
 
@@ -2075,12 +1784,173 @@ CONTAINS
 
     END IF
 
-    D_P => NULL()
-    E_P => NULL()
-    Y_P => NULL()
-    T_P => NULL()
-
   END SUBROUTINE UpdateTemperature_Packed
+
+
+  SUBROUTINE InitializeRHS_EmAb_NuE &
+    ( dt, J, Chi, J0, dJ0dY, dJ0dE, D, Y, E, &
+      Gam, GamJ, GamJ0, dGamJ0dY, dGamJ0dE, &
+      Yold, Eold, U_Y, U_E, C_Y, C_E, F_Y, F_E, FNRM0 )
+
+    REAL(DP),                 INTENT(in)  :: dt
+    REAL(DP), DIMENSION(:,:), INTENT(in)  :: J, Chi, J0, dJ0dY, dJ0dE
+    REAL(DP), DIMENSION(:),   INTENT(in)  :: D, Y, E
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: Gam, GamJ, GamJ0, dGamJ0dY, dGamJ0dE
+    REAL(DP), DIMENSION(:),   INTENT(out) :: Yold, Eold, U_Y, U_E, C_Y, C_E, F_Y, F_E, FNRM0
+
+    REAL(DP) :: N_B
+    INTEGER  :: iN_E, iN_X
+
+    ! --- Auxiliary Variables ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRESENT( J, Chi, J0, dJ0dY, dJ0dE, Gam, GamJ0, GamJ, dGamJ0dY, dGamJ0dE )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(2)
+#endif
+    DO iN_X = 1, nX_G
+      DO iN_E = 1, nE_G
+
+        Gam     (iN_E,iN_X) = dt * Chi(iN_E,iN_X) / ( One + dt * Chi(iN_E,iN_X) )
+        GamJ    (iN_E,iN_X) = Gam(iN_E,iN_X) * J    (iN_E,iN_X)
+        GamJ0   (iN_E,iN_X) = Gam(iN_E,iN_X) * J0   (iN_E,iN_X)
+        dGamJ0dY(iN_E,iN_X) = Gam(iN_E,iN_X) * dJ0dY(iN_E,iN_X)
+        dGamJ0dE(iN_E,iN_X) = Gam(iN_E,iN_X) * dJ0dE(iN_E,iN_X)
+
+      END DO
+    END DO
+
+    ! --- Old States (Constant) ---
+
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, One, GamJ , nE_G, W2_S, 1, Zero, C_Y, 1 )
+
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, One, GamJ , nE_G, W3_S, 1, Zero, C_E, 1 )
+
+    ! --- Electron Fraction Equation ---
+
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, One, GamJ0, nE_G, W2_S, 1, Zero, F_Y, 1 )
+
+    ! --- Internal Energy Equation ---
+
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, One, GamJ0, nE_G, W3_S, 1, Zero, F_E, 1 )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( N_B )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( N_B ) &
+    !$ACC PRESENT( D, Y, E, Yold, Eold, U_Y, U_E, C_Y, C_E, F_Y, F_E, FNRM0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD &
+    !$OMP PRIVATE( N_B )
+#endif
+    DO iN_X = 1, nX_G
+
+      N_B = D(iN_X) / AtomicMassUnit
+
+      ! --- Initial Guess ---
+
+      Yold(iN_X) = Y(iN_X)
+      Eold(iN_X) = E(iN_X)
+
+      U_Y(iN_X) = Yold(iN_X)
+      U_E(iN_X) = Eold(iN_X)
+
+      ! --- Scale Equations and Save Initial Evaluation ---
+
+      ! --- Electron Fraction Equation ---
+
+      C_Y(iN_X) =   C_Y(iN_X) + N_B     * U_Y(iN_X)
+      F_Y(iN_X) = ( F_Y(iN_X) + N_B     * U_Y(iN_X) - C_Y(iN_X) ) / C_Y(iN_X)
+
+      ! --- Internal Energy Equation ---
+
+      C_E(iN_X) =   C_E(iN_X) + D(iN_X) * U_E(iN_X)
+      F_E(iN_X) = ( F_E(iN_X) + D(iN_X) * U_E(iN_X) - C_E(iN_X) ) / C_E(iN_X)
+
+      FNRM0(iN_X) = SQRT( F_Y(iN_X)**2 + F_E(iN_X)**2 )
+
+    END DO
+
+  END SUBROUTINE InitializeRHS_EmAb_NuE
+
+
+  SUBROUTINE ComputeMatterRHS_EmAb_NuE &
+    ( MASK, D, U_Y, U_E, C_Y, C_E, Gam, J0, dJ0dY, dJ0dE, &
+      GamJ0, dGamJ0dY, dGamJ0dE, F_Y, F_E )
+
+    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:),   INTENT(in)    :: D, U_Y, U_E, C_Y, C_E
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Gam, J0, dJ0dY, dJ0dE
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: GamJ0, dGamJ0dY, dGamJ0dE
+    REAL(DP), DIMENSION(:),   INTENT(inout) :: F_Y, F_E
+
+    REAL(DP) :: N_B
+    INTEGER  :: iN_E, iN_X
+
+    ! --- Auxiliary Variables ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRESENT( MASK, Gam, J0, dJ0dY, dJ0dE, GamJ0, dGamJ0dY, dGamJ0dE )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(2)
+#endif
+    DO iN_X = 1, nX_G
+      DO iN_E = 1, nE_G
+        IF ( MASK(iN_X) ) THEN
+
+          GamJ0   (iN_E,iN_X) = Gam(iN_E,iN_X) * J0   (iN_E,iN_X)
+          dGamJ0dY(iN_E,iN_X) = Gam(iN_E,iN_X) * dJ0dY(iN_E,iN_X)
+          dGamJ0dE(iN_E,iN_X) = Gam(iN_E,iN_X) * dJ0dE(iN_E,iN_X)
+
+        END IF
+      END DO
+    END DO
+
+    ! --- Electron Fraction Equation ---
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nE_G, nX_G, One, GamJ0, nE_G, W2_S, 1, Zero, F_Y, 1 )
+
+    ! --- Internal Energy Equation ---
+
+    CALL MatrixVectorMultiply &
+           ( 'T', nE_G, nX_G, One, GamJ0, nE_G, W3_S, 1, Zero, F_E, 1 )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( N_B )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( N_B ) &
+    !$ACC PRESENT( MASK, GamJ0, D, U_Y, U_E, C_Y, C_E, F_Y, F_E )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD &
+    !$OMP PRIVATE( N_B )
+#endif
+    DO iN_X = 1, nX_G
+      IF ( MASK(iN_X) ) THEN
+
+        N_B = D(iN_X) / AtomicMassUnit
+
+        F_Y(iN_X) = ( F_Y(iN_X) + N_B     * U_Y(iN_X) - C_Y(iN_X) ) / C_Y(iN_X)
+        F_E(iN_X) = ( F_E(iN_X) + D(iN_X) * U_E(iN_X) - C_E(iN_X) ) / C_E(iN_X)
+
+      END IF
+    END DO
+
+  END SUBROUTINE ComputeMatterRHS_EmAb_NuE
 
 
   SUBROUTINE InitializeRHS_FP &
@@ -2314,7 +2184,7 @@ CONTAINS
     !$ACC          Jold_2, Jnew_2, J0_2, Chi_2 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( Eta, Eta_T, Chi_T )
+    !$OMP PRIVATE( Eta )
 #endif
     DO iN_X = 1, nX_G
       DO iN_E = 1, nE_G
@@ -2331,6 +2201,40 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeNumberDensity_EmAb_FP
+
+
+  SUBROUTINE ComputeNumberDensity_EmAb_NuE &
+    ( dt, J, Chi, J0 )
+
+    REAL(DP),                 INTENT(in)    :: dt
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: J
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: J0
+
+    REAL(DP) :: Eta
+    INTEGER  :: iN_E, iN_X
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( Eta )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( Eta ) &
+    !$ACC PRESENT( J, J0, Chi )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( Eta )
+#endif
+    DO iN_X = 1, nX_G
+      DO iN_E = 1, nE_G
+
+        Eta = Chi(iN_E,iN_X) * J0(iN_E,iN_X)
+        J(iN_E,iN_X) = ( J(iN_E,iN_X) + dt * Eta ) / ( One + dt * Chi(iN_E,iN_X) )
+
+      END DO
+    END DO
+
+  END SUBROUTINE ComputeNumberDensity_EmAb_NuE
 
 
   SUBROUTINE ComputeNeutrinoRHS_FP &
@@ -2354,7 +2258,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:), INTENT(in)    :: Eta_Pair_1, Eta_Pair_2
 
     REAL(DP) :: Eta, Eta_T, Chi_T
-    INTEGER  :: iN_E, iN_X, iFP
+    INTEGER  :: iN_E, iN_X
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -2407,7 +2311,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:), INTENT(in)    :: J0_1, J0_2
 
     REAL(DP) :: Eta
-    INTEGER  :: iN_E, iN_X, iFP
+    INTEGER  :: iN_E, iN_X
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -2504,6 +2408,80 @@ CONTAINS
     END DO
 
   END SUBROUTINE StoreRHS_FP
+
+
+  SUBROUTINE SolveLS_EmAb_NuE &
+    ( MASK, D, C_Y, C_E, F_Y, F_E, dGamJ0dY, dGamJ0dE, &
+      FJAC11, FJAC21, FJAC12, FJAC22, &
+      dU_Y, dU_E, U_Y, U_E, Y, E )
+
+    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:),   INTENT(in)    :: D, C_Y, C_E, F_Y, F_E
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: dGamJ0dY, dGamJ0dE
+    REAL(DP), DIMENSION(:),   INTENT(inout) :: FJAC11, FJAC21, FJAC12, FJAC22
+    REAL(DP), DIMENSION(:),   INTENT(inout) :: dU_Y, dU_E, U_Y, U_E, Y, E
+
+    REAL(DP) :: N_B, DJAC
+    INTEGER  :: iN_X
+
+    ! --- Build Jacobian ---
+
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, One, dGamJ0dY, nE_G, W2_S, 1, Zero, FJAC11, 1 )
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, One, dGamJ0dY, nE_G, W3_S, 1, Zero, FJAC21, 1 )
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, One, dGamJ0dE, nE_G, W2_S, 1, Zero, FJAC12, 1 )
+    CALL MatrixVectorMultiply &
+      ( 'T', nE_G, nX_G, One, dGamJ0dE, nE_G, W3_S, 1, Zero, FJAC22, 1 )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( DJAC, N_B )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( DJAC, N_B ) &
+    !$ACC PRESENT( MASK, D, C_Y, C_E, F_Y, F_E, &
+    !$ACC          FJAC11, FJAC21, FJAC12, FJAC22, &
+    !$ACC          dU_Y, dU_E, U_Y, U_E, Y, E )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD &
+    !$OMP PRIVATE( DJAC, N_B )
+#endif
+    DO iN_X = 1, nX_G
+      IF ( MASK(iN_X) ) THEN
+
+        N_B = D(iN_X) / AtomicMassUnit
+
+        ! --- Scale Jacobian ---
+
+        FJAC11(iN_X) = ( FJAC11(iN_X) + N_B ) / C_Y(iN_X)
+        FJAC12(iN_X) = FJAC12(iN_X) / C_Y(iN_X)
+
+        FJAC21(iN_X) = FJAC21(iN_X) / C_E(iN_X)
+        FJAC22(iN_X) = ( FJAC22(iN_X) + D  (iN_X) ) / C_E(iN_X)
+
+        ! --- Determinant of Jacobian ---
+
+        DJAC = FJAC11(iN_X) * FJAC22(iN_X) - FJAC21(iN_X) * FJAC12(iN_X)
+
+        ! --- Correction ---
+
+        dU_Y(iN_X) = - ( + FJAC22(iN_X) * F_Y(iN_X) - FJAC12(iN_X) * F_E(iN_X) ) / DJAC
+        dU_E(iN_X) = - ( - FJAC21(iN_X) * F_Y(iN_X) + FJAC11(iN_X) * F_E(iN_X) ) / DJAC
+
+        ! --- Apply Correction ---
+
+        U_Y(iN_X) = U_Y(iN_X) + dU_Y(iN_X)
+        U_E(iN_X) = U_E(iN_X) + dU_E(iN_X)
+
+        Y(iN_X) = U_Y(iN_X)
+        E(iN_X) = U_E(iN_X)
+
+      END IF
+    END DO
+
+  END SUBROUTINE SolveLS_EmAb_NuE
 
 
   SUBROUTINE BuildLS_FP &
@@ -2919,19 +2897,20 @@ CONTAINS
     REAL(DP),                 INTENT(in)    :: Rtol
     INTEGER,  DIMENSION(:),   INTENT(inout) :: nIterations_Outer
 
+    LOGICAL  :: CONVERGED
     REAL(DP) :: Fnorm_Y, Fnorm_E
     INTEGER  :: iN_X
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( Fnorm_Y, Fnorm_E )
+    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_E )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( Fnorm_Y, Fnorm_E ) &
+    !$ACC PRIVATE( CONVERGED, Fnorm_Y, Fnorm_E ) &
     !$ACC PRESENT( MASK_OUTER, MASK_INNER, nIterations_Outer, Fm )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( AERR_Y, AERR_E, RERR_Y, RERR_E )
+    !$OMP PARALLEL DO SIMD &
+    !$OMP PRIVATE( CONVERGED, Fnorm_Y, Fnorm_E )
 #endif
     DO iN_X = 1, nX_G
       IF ( MASK_OUTER(iN_X) ) THEN
@@ -2939,12 +2918,15 @@ CONTAINS
         Fnorm_Y = ABS( Fm(iY,iN_X) )
         Fnorm_E = ABS( Fm(iE,iN_X) )
 
-        MASK_OUTER(iN_X) = Fnorm_Y > Rtol &
-                      .OR. Fnorm_E > Rtol
+        CONVERGED = Fnorm_Y <= Rtol .AND. &
+                    Fnorm_E <= Rtol
+
+        IF ( CONVERGED ) THEN
+          MASK_OUTER(iN_X) = .FALSE.
+          nIterations_Outer(iN_X) = k_outer
+        END IF
 
         MASK_INNER(iN_X) = MASK_OUTER(iN_X)
-
-        IF ( .NOT. MASK_OUTER(iN_X) ) nIterations_Outer(iN_X) = k_outer
 
       END IF
     END DO
@@ -3014,88 +2996,57 @@ CONTAINS
   END SUBROUTINE CheckConvergenceCoupled_FP
 
 
-  SUBROUTINE ComputeNeutrinoChemicalPotentials &
-    ( D, T, Y, M, dMdT, dMdY, iSpecies )
+  SUBROUTINE CheckConvergence_EmAb_NuE &
+    ( MASK, k, Rtol, Utol, nIterations, &
+      F_Y, U_Y, dU_Y, F_E, U_E, dU_E, FNRM0 )
 
-    REAL(DP), INTENT(in)  :: D   (1:nX_G)
-    REAL(DP), INTENT(in)  :: T   (1:nX_G)
-    REAL(DP), INTENT(in)  :: Y   (1:nX_G)
-    REAL(DP), INTENT(out) :: M   (1:nX_G)
-    REAL(DP), INTENT(out) :: dMdT(1:nX_G)
-    REAL(DP), INTENT(out) :: dMdY(1:nX_G)
-    INTEGER,  INTENT(in)  :: iSpecies
+    LOGICAL,  DIMENSION(:), INTENT(inout) :: MASK
+    INTEGER,                INTENT(in)    :: k
+    REAL(DP),               INTENT(in)    :: Rtol, Utol
+    INTEGER,  DIMENSION(:), INTENT(inout) :: nIterations
+    REAL(DP), DIMENSION(:), INTENT(in)    :: F_Y, U_Y, dU_Y, F_E, U_E, dU_E, FNRM0
 
-    REAL(DP) :: dMdD(1:nX_G)
-    REAL(DP) :: Me(1:nX_G), dMedT(1:nX_G), dMedY(1:nX_G)
-    REAL(DP) :: Mp(1:nX_G), dMpdT(1:nX_G), dMpdY(1:nX_G)
-    REAL(DP) :: Mn(1:nX_G), dMndT(1:nX_G), dMndY(1:nX_G)
-
-    INTEGER :: i
+    LOGICAL  :: CONVERGED
+    REAL(DP) :: FERR, UERR
+    INTEGER  :: iN_X
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY, dMdD )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( CONVERGED, FERR, UERR )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC CREATE( Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY, dMdD )
-#endif
-
-    ! --- Matter Chemical Potentials and Derivatives ---
-
-    CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, M = Me, dMdD_Option = dMdD, dMdT_Option = dMedT, dMdY_Option = dMedY )
-
-    CALL ComputeProtonChemicalPotential_TABLE &
-           ( D, T, Y, M = Mp, dMdD_Option = dMdD, dMdT_Option = dMpdT, dMdY_Option = dMpdY )
-
-    CALL ComputeNeutronChemicalPotential_TABLE &
-           ( D, T, Y, M = Mn, dMdD_Option = dMdD, dMdT_Option = dMndT, dMdY_Option = dMndY )
-
-    ! --- Neutrino Chemical Potential and Derivatives ---
-
-    IF ( iSpecies == iNuE )THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRESENT( M, dMdT, dMdY, Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( CONVERGED, FERR, UERR ) &
+    !$ACC PRESENT( MASK, nIterations, &
+    !$ACC          F_Y, U_Y, dU_Y, F_E, U_E, dU_E, FNRM0 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD
+    !$OMP PARALLEL DO SIMD &
+    !$OMP PRIVATE( CONVERGED, FERR, UERR )
 #endif
-      DO i = 1, nX_G
-        M   (i) = ( Me   (i) + Mp   (i) ) - Mn   (i)
-        dMdT(i) = ( dMedT(i) + dMpdT(i) ) - dMndT(i)
-        dMdY(i) = ( dMedY(i) + dMpdY(i) ) - dMndY(i)
-      END DO
+    DO iN_X = 1, nX_G
+      IF ( MASK(iN_X) ) THEN
 
-    ELSE IF ( iSpecies == iNuE_Bar )THEN
+        FERR = SQRT( F_Y(iN_X)**2 + F_E(iN_X)**2 )
+
+        UERR = SQRT( (dU_Y(iN_X)/U_Y(iN_X))**2 + (dU_E(iN_X)/U_E(iN_X))**2 )
+
+        CONVERGED = FERR <= Rtol * FNRM0(iN_X) .OR. &
+                    UERR <= Utol
+
+        IF ( CONVERGED ) THEN
+          MASK(iN_X) = .FALSE.
+          nIterations(iN_X) = k
+        END IF
+
+      END IF
+    END DO
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+    !$OMP TARGET UPDATE FROM( MASK )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRESENT( M, dMdT, dMdY, Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO SIMD
-#endif
-      DO i = 1, nX_G
-        M   (i) = Mn   (i) - ( Me   (i) + Mp   (i) )
-        dMdT(i) = dMndT(i) - ( dMedT(i) + dMpdT(i) )
-        dMdY(i) = dMndY(i) - ( dMedY(i) + dMpdY(i) )
-      END DO
-
-    END IF
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY, dMdD )
-#elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC DELETE( Me, dMedT, dMedY, Mp, dMpdT, dMpdY, Mn, dMndT, dMndY, dMdD )
+    !$ACC UPDATE HOST( MASK )
 #endif
 
-  END SUBROUTINE ComputeNeutrinoChemicalPotentials
+  END SUBROUTINE CheckConvergence_EmAb_NuE
 
 
 END MODULE TwoMoment_NeutrinoMatterSolverModule
