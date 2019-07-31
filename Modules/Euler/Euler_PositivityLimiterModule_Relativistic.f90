@@ -189,7 +189,7 @@ CONTAINS
           DO iP = 1, nPT
             IF( q(iP) .LT. Zero )THEN
               CALL SolveTheta_Bisection &
-                ( U_PP(iP,:), U_K, G_PP(iP,:), Theta_P, iP )
+                ( U_PP(iP,:), U_K, G_PP(iP,:), Theta_P, iP, iX1, iX2, iX3 )
               Theta_q = MIN( Theta_q, Theta_P )
             END IF
           END DO
@@ -316,11 +316,13 @@ CONTAINS
   END FUNCTION qFun
 
 
-  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, G_Q, Theta_P, iP )
+  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, G_Q, Theta_P, iP, iX1, iX2, iX3 )
 
     REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), G_Q(nGF)
     REAL(DP), INTENT(out) :: Theta_P
-    INTEGER,  INTENT(in)  :: iP
+
+    ! --- For de-bugging ---
+    INTEGER,  INTENT(in)  :: iP, iX1, iX2, iX3
 
     INTEGER,  PARAMETER :: MAX_IT = 19
     REAL(DP), PARAMETER :: dx_min = 1.0d-3
@@ -353,8 +355,10 @@ CONTAINS
 
       WRITE(*,'(A6,A)') &
         '', 'SolveTheta_Bisection (Euler_PositivityLimiterModule_Relativistic):'
-      WRITE(*,'(A8,A,I2.2)') &
-        '', 'iP: ', iP
+      WRITE(*,'(A,3I4.3)') &
+        'iX1, iX2, iX3 = ', iX1, iX2, iX3
+      WRITE(*,'(A,I2.2)') &
+        'iP = ', iP
       WRITE(*,'(A)') &
         'U_Q = np.array( [ \'
       DO i = 1, nCF-1
