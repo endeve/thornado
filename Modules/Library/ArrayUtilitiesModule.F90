@@ -72,9 +72,9 @@ CONTAINS
     ( n, MASK, nP, PackIndex, UnpackIndex )
 
     INTEGER,               INTENT(in)  :: n
-    LOGICAL, DIMENSION(n), INTENT(in)  :: MASK
+    LOGICAL, DIMENSION(:), INTENT(in)  :: MASK
     INTEGER,               INTENT(out) :: nP
-    INTEGER, DIMENSION(n), INTENT(out) :: PackIndex, UnpackIndex
+    INTEGER, DIMENSION(:), INTENT(out) :: PackIndex, UnpackIndex
 
     INTEGER :: i, iPack, iUnpack
 
@@ -108,9 +108,9 @@ CONTAINS
     ( n, nP, UnpackIndex, X1, X1_P )
 
     INTEGER,                INTENT(in)    :: n, nP
-    INTEGER,  DIMENSION(n), INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(n), INTENT(in)    :: X1
-    REAL(DP), DIMENSION(n), INTENT(inout) :: X1_P
+    INTEGER,  DIMENSION(:), INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:), INTENT(in)    :: X1
+    REAL(DP), DIMENSION(:), INTENT(inout) :: X1_P
 
     INTEGER  :: i, iPack
 
@@ -145,9 +145,9 @@ CONTAINS
     ( n, nP, UnpackIndex, X1, X2, X1_P, X2_P )
 
     INTEGER,                INTENT(in)    :: n, nP
-    INTEGER,  DIMENSION(n), INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(n), INTENT(in)    :: X1, X2
-    REAL(DP), DIMENSION(n), INTENT(inout) :: X1_P, X2_P
+    INTEGER,  DIMENSION(:), INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:), INTENT(in)    :: X1, X2
+    REAL(DP), DIMENSION(:), INTENT(inout) :: X1_P, X2_P
 
     INTEGER  :: i, iPack
 
@@ -183,9 +183,9 @@ CONTAINS
     ( n, nP, UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
 
     INTEGER,                INTENT(in)    :: n, nP
-    INTEGER,  DIMENSION(n), INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(n), INTENT(in)    :: X1, X2, X3
-    REAL(DP), DIMENSION(n), INTENT(inout) :: X1_P, X2_P, X3_P
+    INTEGER,  DIMENSION(:), INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:), INTENT(in)    :: X1, X2, X3
+    REAL(DP), DIMENSION(:), INTENT(inout) :: X1_P, X2_P, X3_P
 
     INTEGER  :: i, iPack
 
@@ -222,9 +222,9 @@ CONTAINS
     ( n, nP, UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 
     INTEGER,                INTENT(in)    :: n, nP
-    INTEGER,  DIMENSION(n), INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(n), INTENT(in)    :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(n), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
+    INTEGER,  DIMENSION(:), INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:), INTENT(in)    :: X1, X2, X3, X4
+    REAL(DP), DIMENSION(:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
 
     INTEGER  :: i, iPack
 
@@ -264,9 +264,9 @@ CONTAINS
       X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 
     INTEGER,                INTENT(in)    :: n, nP
-    INTEGER,  DIMENSION(n), INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(n), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(n), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
+    INTEGER,  DIMENSION(:), INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
+    REAL(DP), DIMENSION(:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
 
     INTEGER  :: i, iPack
 
@@ -312,9 +312,9 @@ CONTAINS
     ( m, n, nP, UnpackIndex, X1, X1_P )
 
     INTEGER,                  INTENT(in)    :: m, n, nP
-    INTEGER,  DIMENSION(n),   INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(m,n), INTENT(in)    :: X1
-    REAL(DP), DIMENSION(m,n), INTENT(inout) :: X1_P
+    INTEGER,  DIMENSION(:),   INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1_P
 
     INTEGER  :: i, iPack, j
 
@@ -349,9 +349,9 @@ CONTAINS
     ( m, n, nP, UnpackIndex, X1, X2, X1_P, X2_P )
 
     INTEGER,                  INTENT(in)    :: m, n, nP
-    INTEGER,  DIMENSION(n),   INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(m,n), INTENT(in)    :: X1, X2
-    REAL(DP), DIMENSION(m,n), INTENT(inout) :: X1_P, X2_P
+    INTEGER,  DIMENSION(:),   INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1, X2
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1_P, X2_P
 
     INTEGER  :: i, iPack, j
 
@@ -387,9 +387,9 @@ CONTAINS
     ( m, n, nP, UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
 
     INTEGER,                  INTENT(in)    :: m, n, nP
-    INTEGER,  DIMENSION(n),   INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(m,n), INTENT(in)    :: X1, X2, X3
-    REAL(DP), DIMENSION(m,n), INTENT(inout) :: X1_P, X2_P, X3_P
+    INTEGER,  DIMENSION(:),   INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1, X2, X3
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1_P, X2_P, X3_P
 
     INTEGER  :: i, iPack, j
 
@@ -426,9 +426,9 @@ CONTAINS
     ( m, n, nP, UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 
     INTEGER,                  INTENT(in)    :: m, n, nP
-    INTEGER,  DIMENSION(n),   INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(m,n), INTENT(in)    :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(m,n), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
+    INTEGER,  DIMENSION(:),   INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1, X2, X3, X4
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
 
     INTEGER  :: i, iPack, j
 
@@ -468,9 +468,9 @@ CONTAINS
       X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 
     INTEGER,                  INTENT(in)    :: m, n, nP
-    INTEGER,  DIMENSION(n),   INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(m,n), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(m,n), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
+    INTEGER,  DIMENSION(:),   INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
 
     INTEGER  :: i, iPack, j
 
@@ -516,9 +516,9 @@ CONTAINS
     ( l, m, n, nP, UnpackIndex, X1, X1_P )
 
     INTEGER,                    INTENT(in)    :: l, m, n, nP
-    INTEGER,  DIMENSION(n),     INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)    :: X1
-    REAL(DP), DIMENSION(l,m,n), INTENT(inout) :: X1_P
+    INTEGER,  DIMENSION(:),     INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1_P
 
     INTEGER  :: i, iPack, j, k
 
@@ -553,9 +553,9 @@ CONTAINS
     ( l, m, n, nP, UnpackIndex, X1, X2, X1_P, X2_P )
 
     INTEGER,                    INTENT(in)    :: l, m, n, nP
-    INTEGER,  DIMENSION(n),     INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)    :: X1, X2
-    REAL(DP), DIMENSION(l,m,n), INTENT(inout) :: X1_P, X2_P
+    INTEGER,  DIMENSION(:),     INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1, X2
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1_P, X2_P
 
     INTEGER  :: i, iPack, j, k
 
@@ -591,9 +591,9 @@ CONTAINS
     ( l, m, n, nP, UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
 
     INTEGER,                    INTENT(in)    :: l, m, n, nP
-    INTEGER,  DIMENSION(n),     INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)    :: X1, X2, X3
-    REAL(DP), DIMENSION(l,m,n), INTENT(inout) :: X1_P, X2_P, X3_P
+    INTEGER,  DIMENSION(:),     INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1, X2, X3
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1_P, X2_P, X3_P
 
     INTEGER  :: i, iPack, j, k
 
@@ -630,9 +630,9 @@ CONTAINS
     ( l, m, n, nP, UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 
     INTEGER,                    INTENT(in)    :: l, m, n, nP
-    INTEGER,  DIMENSION(n),     INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)    :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(l,m,n), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
+    INTEGER,  DIMENSION(:),     INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1, X2, X3, X4
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
 
     INTEGER  :: i, iPack, j, k
 
@@ -672,9 +672,9 @@ CONTAINS
       X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 
     INTEGER,                    INTENT(in)    :: l, m, n, nP
-    INTEGER,  DIMENSION(n),     INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(l,m,n), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
+    INTEGER,  DIMENSION(:),     INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
 
     INTEGER  :: i, iPack, j, k
 
@@ -720,10 +720,10 @@ CONTAINS
     ( n, nP, MASK, PackIndex, X1_P, X1 )
 
     INTEGER,                INTENT(in)    :: n, nP
-    LOGICAL,  DIMENSION(n), INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n), INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(n), INTENT(in)    :: X1_P
-    REAL(DP), DIMENSION(n), INTENT(inout) :: X1
+    LOGICAL,  DIMENSION(:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:), INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:), INTENT(in)    :: X1_P
+    REAL(DP), DIMENSION(:), INTENT(inout) :: X1
 
     INTEGER  :: i, iPack
 
@@ -760,10 +760,10 @@ CONTAINS
     ( n, nP, MASK, PackIndex, X1_P, X2_P, X1, X2 )
 
     INTEGER,                INTENT(in)    :: n, nP
-    LOGICAL,  DIMENSION(n), INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n), INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(n), INTENT(in)    :: X1_P, X2_P
-    REAL(DP), DIMENSION(n), INTENT(inout) :: X1, X2
+    LOGICAL,  DIMENSION(:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:), INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:), INTENT(in)    :: X1_P, X2_P
+    REAL(DP), DIMENSION(:), INTENT(inout) :: X1, X2
 
     INTEGER  :: i, iPack
 
@@ -801,10 +801,10 @@ CONTAINS
     ( n, nP, MASK, PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
 
     INTEGER,                INTENT(in)    :: n, nP
-    LOGICAL,  DIMENSION(n), INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n), INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(n), INTENT(in)    :: X1_P, X2_P, X3_P
-    REAL(DP), DIMENSION(n), INTENT(inout) :: X1, X2, X3
+    LOGICAL,  DIMENSION(:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:), INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:), INTENT(in)    :: X1_P, X2_P, X3_P
+    REAL(DP), DIMENSION(:), INTENT(inout) :: X1, X2, X3
 
     INTEGER  :: i, iPack
 
@@ -843,10 +843,10 @@ CONTAINS
     ( n, nP, MASK, PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 
     INTEGER,                INTENT(in)    :: n, nP
-    LOGICAL,  DIMENSION(n), INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n), INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(n), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
-    REAL(DP), DIMENSION(n), INTENT(inout) :: X1, X2, X3, X4
+    LOGICAL,  DIMENSION(:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:), INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
+    REAL(DP), DIMENSION(:), INTENT(inout) :: X1, X2, X3, X4
 
     INTEGER  :: i, iPack
 
@@ -888,10 +888,10 @@ CONTAINS
       X1, X2, X3, X4, X5, X6, X7, X8 )
 
     INTEGER,                INTENT(in)    :: n, nP
-    LOGICAL,  DIMENSION(n), INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n), INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(n), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
-    REAL(DP), DIMENSION(n), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
+    LOGICAL,  DIMENSION(:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:), INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
+    REAL(DP), DIMENSION(:), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
 
     INTEGER  :: i, iPack
 
@@ -939,10 +939,10 @@ CONTAINS
     ( m, n, nP, MASK, PackIndex, X1_P, X1 )
 
     INTEGER,                  INTENT(in)    :: m, n, nP
-    LOGICAL,  DIMENSION(n),   INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n),   INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(m,n), INTENT(in)    :: X1_P
-    REAL(DP), DIMENSION(m,n), INTENT(inout) :: X1
+    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:),   INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1_P
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1
 
     INTEGER  :: i, iPack, j
 
@@ -979,10 +979,10 @@ CONTAINS
     ( m, n, nP, MASK, PackIndex, X1_P, X2_P, X1, X2 )
 
     INTEGER,                  INTENT(in)    :: m, n, nP
-    LOGICAL,  DIMENSION(n),   INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n),   INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(m,n), INTENT(in)    :: X1_P, X2_P
-    REAL(DP), DIMENSION(m,n), INTENT(inout) :: X1, X2
+    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:),   INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1_P, X2_P
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1, X2
 
     INTEGER  :: i, iPack, j
 
@@ -1020,10 +1020,10 @@ CONTAINS
     ( m, n, nP, MASK, PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
 
     INTEGER,                  INTENT(in)    :: m, n, nP
-    LOGICAL,  DIMENSION(n),   INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n),   INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(m,n), INTENT(in)    :: X1_P, X2_P, X3_P
-    REAL(DP), DIMENSION(m,n), INTENT(inout) :: X1, X2, X3
+    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:),   INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1_P, X2_P, X3_P
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1, X2, X3
 
     INTEGER  :: i, iPack, j
 
@@ -1062,10 +1062,10 @@ CONTAINS
     ( m, n, nP, MASK, PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 
     INTEGER,                  INTENT(in)    :: m, n, nP
-    LOGICAL,  DIMENSION(n),   INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n),   INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(m,n), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
-    REAL(DP), DIMENSION(m,n), INTENT(inout) :: X1, X2, X3, X4
+    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:),   INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1, X2, X3, X4
 
     INTEGER  :: i, iPack, j
 
@@ -1107,10 +1107,10 @@ CONTAINS
       X1, X2, X3, X4, X5, X6, X7, X8 )
 
     INTEGER,                  INTENT(in)    :: m, n, nP
-    LOGICAL,  DIMENSION(n),   INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n),   INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(m,n), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
-    REAL(DP), DIMENSION(m,n), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
+    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:),   INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
 
     INTEGER  :: i, iPack, j
 
@@ -1158,10 +1158,10 @@ CONTAINS
     ( l, m, n, nP, MASK, PackIndex, X1_P, X1 )
 
     INTEGER,                    INTENT(in)    :: l, m, n, nP
-    LOGICAL,  DIMENSION(n),     INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n),     INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)    :: X1_P
-    REAL(DP), DIMENSION(l,m,n), INTENT(inout) :: X1
+    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1_P
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1
 
     INTEGER  :: i, iPack, j, k
 
@@ -1198,10 +1198,10 @@ CONTAINS
     ( l, m, n, nP, MASK, PackIndex, X1_P, X2_P, X1, X2 )
 
     INTEGER,                    INTENT(in)    :: l, m, n, nP
-    LOGICAL,  DIMENSION(n),     INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n),     INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)    :: X1_P, X2_P
-    REAL(DP), DIMENSION(l,m,n), INTENT(inout) :: X1, X2
+    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1_P, X2_P
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1, X2
 
     INTEGER  :: i, iPack, j, k
 
@@ -1239,10 +1239,10 @@ CONTAINS
     ( l, m, n, nP, MASK, PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
 
     INTEGER,                    INTENT(in)    :: l, m, n, nP
-    LOGICAL,  DIMENSION(n),     INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n),     INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)    :: X1_P, X2_P, X3_P
-    REAL(DP), DIMENSION(l,m,n), INTENT(inout) :: X1, X2, X3
+    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1_P, X2_P, X3_P
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1, X2, X3
 
     INTEGER  :: i, iPack, j, k
 
@@ -1281,10 +1281,10 @@ CONTAINS
     ( l, m, n, nP, MASK, PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 
     INTEGER,                    INTENT(in)    :: l, m, n, nP
-    LOGICAL,  DIMENSION(n),     INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n),     INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
-    REAL(DP), DIMENSION(l,m,n), INTENT(inout) :: X1, X2, X3, X4
+    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1, X2, X3, X4
 
     INTEGER  :: i, iPack, j, k
 
@@ -1326,10 +1326,10 @@ CONTAINS
       X1, X2, X3, X4, X5, X6, X7, X8 )
 
     INTEGER,                    INTENT(in)    :: l, m, n, nP
-    LOGICAL,  DIMENSION(n),     INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(n),     INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
-    REAL(DP), DIMENSION(l,m,n), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
+    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
 
     INTEGER  :: i, iPack, j, k
 
@@ -1377,8 +1377,8 @@ CONTAINS
     ( n, X1, Y1 )
 
     INTEGER,                INTENT(in)  :: n
-    REAL(DP), DIMENSION(n), INTENT(in)  :: X1
-    REAL(DP), DIMENSION(n), INTENT(out) :: Y1
+    REAL(DP), DIMENSION(:), INTENT(in)  :: X1
+    REAL(DP), DIMENSION(:), INTENT(out) :: Y1
 
     INTEGER  :: i
 
@@ -1401,8 +1401,8 @@ CONTAINS
     ( n, X1, X2, Y1, Y2 )
 
     INTEGER,                INTENT(in)  :: n
-    REAL(DP), DIMENSION(n), INTENT(in)  :: X1, X2
-    REAL(DP), DIMENSION(n), INTENT(out) :: Y1, Y2
+    REAL(DP), DIMENSION(:), INTENT(in)  :: X1, X2
+    REAL(DP), DIMENSION(:), INTENT(out) :: Y1, Y2
 
     INTEGER  :: i
 
@@ -1426,8 +1426,8 @@ CONTAINS
     ( n, X1, X2, X3, Y1, Y2, Y3 )
 
     INTEGER,                INTENT(in)  :: n
-    REAL(DP), DIMENSION(n), INTENT(in)  :: X1, X2, X3
-    REAL(DP), DIMENSION(n), INTENT(out) :: Y1, Y2, Y3
+    REAL(DP), DIMENSION(:), INTENT(in)  :: X1, X2, X3
+    REAL(DP), DIMENSION(:), INTENT(out) :: Y1, Y2, Y3
 
     INTEGER  :: i
 
@@ -1452,8 +1452,8 @@ CONTAINS
     ( n, X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
 
     INTEGER,                INTENT(in)  :: n
-    REAL(DP), DIMENSION(n), INTENT(in)  :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(n), INTENT(out) :: Y1, Y2, Y3, Y4
+    REAL(DP), DIMENSION(:), INTENT(in)  :: X1, X2, X3, X4
+    REAL(DP), DIMENSION(:), INTENT(out) :: Y1, Y2, Y3, Y4
 
     INTEGER  :: i
 
@@ -1479,8 +1479,8 @@ CONTAINS
     ( n, X1, X2, X3, X4, X5, X6, X7, X8, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
 
     INTEGER,                INTENT(in)  :: n
-    REAL(DP), DIMENSION(n), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(n), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
+    REAL(DP), DIMENSION(:), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
+    REAL(DP), DIMENSION(:), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
 
     INTEGER  :: i
 
@@ -1511,8 +1511,8 @@ CONTAINS
     ( m, n, X1, Y1 )
 
     INTEGER,                  INTENT(in)  :: m, n
-    REAL(DP), DIMENSION(m,n), INTENT(in)  :: X1
-    REAL(DP), DIMENSION(m,n), INTENT(out) :: Y1
+    REAL(DP), DIMENSION(:,:), INTENT(in)  :: X1
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: Y1
 
     INTEGER  :: i, j
 
@@ -1535,8 +1535,8 @@ CONTAINS
     ( m, n, X1, X2, Y1, Y2 )
 
     INTEGER,                  INTENT(in)  :: m, n
-    REAL(DP), DIMENSION(m,n), INTENT(in)  :: X1, X2
-    REAL(DP), DIMENSION(m,n), INTENT(out) :: Y1, Y2
+    REAL(DP), DIMENSION(:,:), INTENT(in)  :: X1, X2
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: Y1, Y2
 
     INTEGER  :: i, j
 
@@ -1560,8 +1560,8 @@ CONTAINS
     ( m, n, X1, X2, X3, Y1, Y2, Y3 )
 
     INTEGER,                  INTENT(in)  :: m, n
-    REAL(DP), DIMENSION(m,n), INTENT(in)  :: X1, X2, X3
-    REAL(DP), DIMENSION(m,n), INTENT(out) :: Y1, Y2, Y3
+    REAL(DP), DIMENSION(:,:), INTENT(in)  :: X1, X2, X3
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: Y1, Y2, Y3
 
     INTEGER  :: i, j
 
@@ -1586,8 +1586,8 @@ CONTAINS
     ( m, n, X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
 
     INTEGER,                  INTENT(in)  :: m, n
-    REAL(DP), DIMENSION(m,n), INTENT(in)  :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(m,n), INTENT(out) :: Y1, Y2, Y3, Y4
+    REAL(DP), DIMENSION(:,:), INTENT(in)  :: X1, X2, X3, X4
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: Y1, Y2, Y3, Y4
 
     INTEGER  :: i, j
 
@@ -1613,8 +1613,8 @@ CONTAINS
     ( m, n, X1, X2, X3, X4, X5, X6, X7, X8, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
 
     INTEGER,                  INTENT(in)  :: m, n
-    REAL(DP), DIMENSION(m,n), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(m,n), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
+    REAL(DP), DIMENSION(:,:), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
 
     INTEGER  :: i, j
 
@@ -1645,8 +1645,8 @@ CONTAINS
     ( l, m, n, X1, Y1 )
 
     INTEGER,                    INTENT(in)  :: l, m, n
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)  :: X1
-    REAL(DP), DIMENSION(l,m,n), INTENT(out) :: Y1
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: X1
+    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: Y1
 
     INTEGER  :: i, j, k
 
@@ -1669,8 +1669,8 @@ CONTAINS
     ( l, m, n, X1, X2, Y1, Y2 )
 
     INTEGER,                    INTENT(in)  :: l, m, n
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)  :: X1, X2
-    REAL(DP), DIMENSION(l,m,n), INTENT(out) :: Y1, Y2
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: X1, X2
+    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: Y1, Y2
 
     INTEGER  :: i, j, k
 
@@ -1694,8 +1694,8 @@ CONTAINS
     ( l, m, n, X1, X2, X3, Y1, Y2, Y3 )
 
     INTEGER,                    INTENT(in)  :: l, m, n
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)  :: X1, X2, X3
-    REAL(DP), DIMENSION(l,m,n), INTENT(out) :: Y1, Y2, Y3
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: X1, X2, X3
+    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: Y1, Y2, Y3
 
     INTEGER  :: i, j, k
 
@@ -1720,8 +1720,8 @@ CONTAINS
     ( l, m, n, X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
 
     INTEGER,                    INTENT(in)  :: l, m, n
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)  :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(l,m,n), INTENT(out) :: Y1, Y2, Y3, Y4
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: X1, X2, X3, X4
+    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: Y1, Y2, Y3, Y4
 
     INTEGER  :: i, j, k
 
@@ -1747,8 +1747,8 @@ CONTAINS
     ( l, m, n, X1, X2, X3, X4, X5, X6, X7, X8, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
 
     INTEGER,                    INTENT(in)  :: l, m, n
-    REAL(DP), DIMENSION(l,m,n), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(l,m,n), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
+    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
 
     INTEGER  :: i, j, k
 
