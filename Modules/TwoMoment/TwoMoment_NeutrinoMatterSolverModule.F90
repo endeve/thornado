@@ -396,16 +396,16 @@ CONTAINS
 
     ! --- Local Variables ---
 
-    REAL(DP), DIMENSION(       1:nX_G) :: Yold, S_Y, C_Y, Unew_Y, GVEC_Y
-    REAL(DP), DIMENSION(       1:nX_G) :: Eold, S_E, C_E, Unew_E, GVEC_E
+    REAL(DP), DIMENSION(1:nX_G) :: Yold, S_Y, C_Y, Unew_Y, GVEC_Y
+    REAL(DP), DIMENSION(1:nX_G) :: Eold, S_E, C_E, Unew_E, GVEC_E
+
     REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Jold_1, Jnew_1
     REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Jold_2, Jnew_2
+    REAL(DP), DIMENSION(       1:nX_G) :: Jnorm_1, Jnorm_2
 
     REAL(DP), DIMENSION(1:n_FP,1:M_FP,1:nX_G) :: GVEC, FVEC
     REAL(DP), DIMENSION(1:n_FP,       1:nX_G) :: GVECm, FVECm
     REAL(DP), DIMENSION(       1:M_FP,1:nX_G) :: Alpha
-
-    REAL(DP), DIMENSION(1:nX_G) :: Jnorm_1, Jnorm_2
 
     LOGICAL,  DIMENSION(1:nX_G) :: ITERATE
     INTEGER,  DIMENSION(1:nX_G) :: PackIndex, UnpackIndex
@@ -622,10 +622,13 @@ CONTAINS
 
     ! --- Local Variables ---
 
-    REAL(DP), DIMENSION(              1:nX_G) :: Yold, S_Y, C_Y, Unew_Y, GVEC_Y
-    REAL(DP), DIMENSION(              1:nX_G) :: Eold, S_E, C_E, Unew_E, GVEC_E
-    REAL(DP), DIMENSION(1:nE_G,       1:nX_G) :: Jold_1, Jnew_1
-    REAL(DP), DIMENSION(1:nE_G,       1:nX_G) :: Jold_2, Jnew_2
+    REAL(DP), DIMENSION(1:nX_G) :: Yold, S_Y, C_Y, Unew_Y, GVEC_Y
+    REAL(DP), DIMENSION(1:nX_G) :: Eold, S_E, C_E, Unew_E, GVEC_E
+
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Jold_1, Jnew_1
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Jold_2, Jnew_2
+    REAL(DP), DIMENSION(       1:nX_G) :: Jnorm_1, Jnorm_2
+
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
@@ -634,8 +637,6 @@ CONTAINS
     REAL(DP), DIMENSION(1:n_FP,1:M_FP,1:nX_G) :: GVEC, FVEC
     REAL(DP), DIMENSION(1:n_FP,       1:nX_G) :: GVECm, FVECm
     REAL(DP), DIMENSION(       1:M_FP,1:nX_G) :: Alpha
-
-    REAL(DP), DIMENSION(1:nX_G) :: Jnorm_1, Jnorm_2
 
     LOGICAL,  DIMENSION(1:nX_G) :: ITERATE
     INTEGER,  DIMENSION(1:nX_G) :: PackIndex, UnpackIndex
@@ -890,9 +891,13 @@ CONTAINS
 
     ! --- Local Variables ---
 
-    REAL(DP), DIMENSION(              1:nX_G) :: Yold, S_Y, C_Y, Unew_Y, GVEC_Y
-    REAL(DP), DIMENSION(              1:nX_G) :: Eold, S_E, C_E, Unew_E, GVEC_E
-    REAL(DP), DIMENSION(1:nE_G,       1:nX_G) :: Jold_1, Jold_2, Jnew_1, Jnew_2
+    REAL(DP), DIMENSION(1:nX_G) :: Yold, S_Y, C_Y, Unew_Y, GVEC_Y
+    REAL(DP), DIMENSION(1:nX_G) :: Eold, S_E, C_E, Unew_E, GVEC_E
+
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Jold_1, Jnew_1
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G) :: Jold_2, Jnew_2
+    REAL(DP), DIMENSION(       1:nX_G) :: Jnorm_1, Jnorm_2
+
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
     REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
@@ -907,8 +912,6 @@ CONTAINS
     REAL(DP), DIMENSION(1:n_FP_inner,          1:nX_G) :: GVECm_inner, FVECm_inner
     REAL(DP), DIMENSION(1:n_FP_inner,          1:nX_G) :: BVEC_inner
     REAL(DP), DIMENSION(             1:M_inner,1:nX_G) :: Alpha_inner
-
-    REAL(DP), DIMENSION(1:nX_G) :: Jnorm_1, Jnorm_2
 
     LOGICAL,  DIMENSION(1:nX_G) :: ITERATE_OUTER, ITERATE_INNER
     INTEGER,  DIMENSION(1:nX_G) :: PackIndex_outer, UnpackIndex_outer
@@ -1182,15 +1185,15 @@ CONTAINS
     ( iSpecies, D, T, Y, J0, dJ0dY, dJ0dE, &
       MASK, nX_P, PackIndex, UnpackIndex )
 
-    INTEGER,                              INTENT(in)    :: iSpecies
-    REAL(DP), DIMENSION(:),     TARGET,   INTENT(in)    :: D, T, Y
-    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: J0, dJ0dY, dJ0dE
-    LOGICAL,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: MASK
-    INTEGER,                    OPTIONAL, INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
+    INTEGER,                            INTENT(in)    :: iSpecies
+    REAL(DP), DIMENSION(:),   TARGET,   INTENT(in)    :: D, T, Y
+    REAL(DP), DIMENSION(:,:), TARGET,   INTENT(inout) :: J0, dJ0dY, dJ0dE
+    LOGICAL,  DIMENSION(:),   OPTIONAL, INTENT(in)    :: MASK
+    INTEGER,                  OPTIONAL, INTENT(in)    :: nX_P
+    INTEGER,  DIMENSION(:),   OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
 
-    REAL(DP), DIMENSION(:),     POINTER,  CONTIGUOUS    :: D_P, T_P, Y_P
-    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: J0_P, dJ0dY_P, dJ0dE_P
+    REAL(DP), DIMENSION(:),   POINTER,  CONTIGUOUS    :: D_P, T_P, Y_P
+    REAL(DP), DIMENSION(:,:), POINTER,  CONTIGUOUS    :: J0_P, dJ0dY_P, dJ0dE_P
 
     INTEGER :: nX
 
@@ -1250,15 +1253,15 @@ CONTAINS
     ( iS_1, iS_2, D, T, Y, J0_1, J0_2, &
       MASK, nX_P, PackIndex, UnpackIndex )
 
-    INTEGER,                              INTENT(in)    :: iS_1, iS_2
-    REAL(DP), DIMENSION(:),     TARGET,   INTENT(in)    :: D, T, Y
-    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: J0_1, J0_2
-    LOGICAL,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: MASK
-    INTEGER,                    OPTIONAL, INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
+    INTEGER,                            INTENT(in)    :: iS_1, iS_2
+    REAL(DP), DIMENSION(:),   TARGET,   INTENT(in)    :: D, T, Y
+    REAL(DP), DIMENSION(:,:), TARGET,   INTENT(inout) :: J0_1, J0_2
+    LOGICAL,  DIMENSION(:),   OPTIONAL, INTENT(in)    :: MASK
+    INTEGER,                  OPTIONAL, INTENT(in)    :: nX_P
+    INTEGER,  DIMENSION(:),   OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
 
-    REAL(DP), DIMENSION(:),     POINTER,  CONTIGUOUS    :: D_P, T_P, Y_P
-    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: J0_1_P, J0_2_P
+    REAL(DP), DIMENSION(:),   POINTER,  CONTIGUOUS    :: D_P, T_P, Y_P
+    REAL(DP), DIMENSION(:,:), POINTER,  CONTIGUOUS    :: J0_1_P, J0_2_P
 
     INTEGER :: nX
 
