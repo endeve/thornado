@@ -69,21 +69,20 @@ CONTAINS
 
 
   SUBROUTINE CreatePackIndex &
-    ( n, MASK, nP, PackIndex, UnpackIndex )
+    ( MASK, nP, PackIndex, UnpackIndex )
 
-    INTEGER,               INTENT(in)  :: n
-    LOGICAL, DIMENSION(:), INTENT(in)  :: MASK
-    INTEGER,               INTENT(out) :: nP
-    INTEGER, DIMENSION(:), INTENT(out) :: PackIndex, UnpackIndex
+    LOGICAL, DIMENSION(1:), INTENT(in)  :: MASK
+    INTEGER,                INTENT(out) :: nP
+    INTEGER, DIMENSION(1:), INTENT(out) :: PackIndex, UnpackIndex
 
     INTEGER :: i, iPack, iUnpack
 
     ! --- Build Lookup Tables ---
 
-    nP      = COUNT( MASK(:) )
+    nP      = COUNT( MASK )
     iPack   = 0
     iUnpack = nP
-    DO i = 1, n
+    DO i = 1, SIZE( MASK )
       IF ( MASK(i) ) THEN
         iPack = iPack + 1
         PackIndex(i) = iPack
@@ -105,16 +104,16 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack1D_1 &
-    ( n, nP, UnpackIndex, X1, X1_P )
+    ( nP, UnpackIndex, X1, X1_P )
 
-    INTEGER,                INTENT(in)    :: n, nP
-    INTEGER,  DIMENSION(:), INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:), INTENT(in)    :: X1
-    REAL(DP), DIMENSION(:), INTENT(inout) :: X1_P
+    INTEGER,                 INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:), INTENT(in)    :: X1
+    REAL(DP), DIMENSION(1:), INTENT(inout) :: X1_P
 
     INTEGER  :: i, iPack
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -134,7 +133,7 @@ CONTAINS
 
     ELSE
 
-      CALL ArrayCopy( n, X1, X1_P )
+      CALL ArrayCopy( X1, X1_P )
 
     END IF
 
@@ -142,16 +141,16 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack1D_2 &
-    ( n, nP, UnpackIndex, X1, X2, X1_P, X2_P )
+    ( nP, UnpackIndex, X1, X2, X1_P, X2_P )
 
-    INTEGER,                INTENT(in)    :: n, nP
-    INTEGER,  DIMENSION(:), INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:), INTENT(in)    :: X1, X2
-    REAL(DP), DIMENSION(:), INTENT(inout) :: X1_P, X2_P
+    INTEGER,                 INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:), INTENT(in)    :: X1, X2
+    REAL(DP), DIMENSION(1:), INTENT(inout) :: X1_P, X2_P
 
     INTEGER  :: i, iPack
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -172,7 +171,7 @@ CONTAINS
 
     ELSE
 
-      CALL ArrayCopy( n, X1, X2, X1_P, X2_P )
+      CALL ArrayCopy( X1, X2, X1_P, X2_P )
 
     END IF
 
@@ -180,16 +179,16 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack1D_3 &
-    ( n, nP, UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
+    ( nP, UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
 
-    INTEGER,                INTENT(in)    :: n, nP
-    INTEGER,  DIMENSION(:), INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:), INTENT(in)    :: X1, X2, X3
-    REAL(DP), DIMENSION(:), INTENT(inout) :: X1_P, X2_P, X3_P
+    INTEGER,                 INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:), INTENT(in)    :: X1, X2, X3
+    REAL(DP), DIMENSION(1:), INTENT(inout) :: X1_P, X2_P, X3_P
 
     INTEGER  :: i, iPack
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -211,7 +210,7 @@ CONTAINS
 
     ELSE
 
-      CALL ArrayCopy( n, X1, X2, X3, X1_P, X2_P, X3_P )
+      CALL ArrayCopy( X1, X2, X3, X1_P, X2_P, X3_P )
 
     END IF
 
@@ -219,16 +218,16 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack1D_4 &
-    ( n, nP, UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
+    ( nP, UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 
-    INTEGER,                INTENT(in)    :: n, nP
-    INTEGER,  DIMENSION(:), INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:), INTENT(in)    :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
+    INTEGER,                 INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:), INTENT(in)    :: X1, X2, X3, X4
+    REAL(DP), DIMENSION(1:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
 
     INTEGER  :: i, iPack
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -251,7 +250,7 @@ CONTAINS
 
     ELSE
 
-      CALL ArrayCopy( n, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
+      CALL ArrayCopy( X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 
     END IF
 
@@ -259,18 +258,18 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack1D_8 &
-    ( n, nP, UnpackIndex, &
+    ( nP, UnpackIndex, &
       X1, X2, X3, X4, X5, X6, X7, X8, &
       X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 
-    INTEGER,                INTENT(in)    :: n, nP
-    INTEGER,  DIMENSION(:), INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
+    INTEGER,                 INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
+    REAL(DP), DIMENSION(1:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
 
     INTEGER  :: i, iPack
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -300,7 +299,7 @@ CONTAINS
     ELSE
 
       CALL ArrayCopy &
-             ( n, X1, X2, X3, X4, X5, X6, X7, X8, &
+             ( X1, X2, X3, X4, X5, X6, X7, X8, &
                X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 
     END IF
@@ -309,16 +308,16 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack2D_1 &
-    ( m, n, nP, UnpackIndex, X1, X1_P )
+    ( nP, UnpackIndex, X1, X1_P )
 
-    INTEGER,                  INTENT(in)    :: m, n, nP
-    INTEGER,  DIMENSION(:),   INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1_P
+    INTEGER,                    INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:),    INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)    :: X1
+    REAL(DP), DIMENSION(1:,1:), INTENT(inout) :: X1_P
 
     INTEGER  :: i, iPack, j
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -331,14 +330,16 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP PRIVATE( i )
 #endif
-      DO iPack = 1, nP ; DO j = 1, m
+      DO iPack = 1, nP
+      DO j = 1, SIZE(X1,1)
         i = UnpackIndex(iPack)
         X1_P(j,iPack) = X1(j,i)
-      END DO ; END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( m, n, X1, X1_P )
+      CALL ArrayCopy( X1, X1_P )
 
     END IF
 
@@ -346,16 +347,16 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack2D_2 &
-    ( m, n, nP, UnpackIndex, X1, X2, X1_P, X2_P )
+    ( nP, UnpackIndex, X1, X2, X1_P, X2_P )
 
-    INTEGER,                  INTENT(in)    :: m, n, nP
-    INTEGER,  DIMENSION(:),   INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1, X2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1_P, X2_P
+    INTEGER,                    INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:),    INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)    :: X1, X2
+    REAL(DP), DIMENSION(1:,1:), INTENT(inout) :: X1_P, X2_P
 
     INTEGER  :: i, iPack, j
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -368,15 +369,17 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP PRIVATE( i )
 #endif
-      DO iPack = 1, nP ; DO j = 1, m
+      DO iPack = 1, nP
+      DO j = 1, SIZE(X1,1)
         i = UnpackIndex(iPack)
         X1_P(j,iPack) = X1(j,i)
         X2_P(j,iPack) = X2(j,i)
-      END DO ; END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( m, n, X1, X2, X1_P, X2_P )
+      CALL ArrayCopy( X1, X2, X1_P, X2_P )
 
     END IF
 
@@ -384,16 +387,16 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack2D_3 &
-    ( m, n, nP, UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
+    ( nP, UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
 
-    INTEGER,                  INTENT(in)    :: m, n, nP
-    INTEGER,  DIMENSION(:),   INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1, X2, X3
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1_P, X2_P, X3_P
+    INTEGER,                    INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:),    INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)    :: X1, X2, X3
+    REAL(DP), DIMENSION(1:,1:), INTENT(inout) :: X1_P, X2_P, X3_P
 
     INTEGER  :: i, iPack, j
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -406,16 +409,18 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP PRIVATE( i )
 #endif
-      DO iPack = 1, nP ; DO j = 1, m
+      DO iPack = 1, nP
+      DO j = 1, SIZE(X1,1)
         i = UnpackIndex(iPack)
         X1_P(j,iPack) = X1(j,i)
         X2_P(j,iPack) = X2(j,i)
         X3_P(j,iPack) = X3(j,i)
-      END DO ; END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( m, n, X1, X2, X3, X1_P, X2_P, X3_P )
+      CALL ArrayCopy( X1, X2, X3, X1_P, X2_P, X3_P )
 
     END IF
 
@@ -423,16 +428,16 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack2D_4 &
-    ( m, n, nP, UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
+    ( nP, UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 
-    INTEGER,                  INTENT(in)    :: m, n, nP
-    INTEGER,  DIMENSION(:),   INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
+    INTEGER,                    INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:),    INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)    :: X1, X2, X3, X4
+    REAL(DP), DIMENSION(1:,1:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
 
     INTEGER  :: i, iPack, j
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -445,17 +450,19 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP PRIVATE( i )
 #endif
-      DO iPack = 1, nP ; DO j = 1, m
+      DO iPack = 1, nP
+      DO j = 1, SIZE(X1,1)
         i = UnpackIndex(iPack)
         X1_P(j,iPack) = X1(j,i)
         X2_P(j,iPack) = X2(j,i)
         X3_P(j,iPack) = X3(j,i)
         X4_P(j,iPack) = X4(j,i)
-      END DO ; END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( m, n, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
+      CALL ArrayCopy( X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 
     END IF
 
@@ -463,18 +470,18 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack2D_8 &
-    ( m, n, nP, UnpackIndex, &
+    ( nP, UnpackIndex, &
       X1, X2, X3, X4, X5, X6, X7, X8, &
       X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 
-    INTEGER,                  INTENT(in)    :: m, n, nP
-    INTEGER,  DIMENSION(:),   INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
+    INTEGER,                    INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:),    INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
+    REAL(DP), DIMENSION(1:,1:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
 
     INTEGER  :: i, iPack, j
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -489,7 +496,8 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP PRIVATE( i )
 #endif
-      DO iPack = 1, nP ; DO j = 1, m
+      DO iPack = 1, nP
+      DO j = 1, SIZE(X1,1)
         i = UnpackIndex(iPack)
         X1_P(j,iPack) = X1(j,i)
         X2_P(j,iPack) = X2(j,i)
@@ -499,12 +507,13 @@ CONTAINS
         X6_P(j,iPack) = X6(j,i)
         X7_P(j,iPack) = X7(j,i)
         X8_P(j,iPack) = X8(j,i)
-      END DO ; END DO
+      END DO
+      END DO
 
     ELSE
 
       CALL ArrayCopy &
-             ( m, n, X1, X2, X3, X4, X5, X6, X7, X8, &
+             ( X1, X2, X3, X4, X5, X6, X7, X8, &
                X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 
     END IF
@@ -513,16 +522,16 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack3D_1 &
-    ( l, m, n, nP, UnpackIndex, X1, X1_P )
+    ( nP, UnpackIndex, X1, X1_P )
 
-    INTEGER,                    INTENT(in)    :: l, m, n, nP
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1_P
+    INTEGER,                       INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:),       INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: X1
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: X1_P
 
     INTEGER  :: i, iPack, j, k
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -535,14 +544,18 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(3) &
       !$OMP PRIVATE( i )
 #endif
-      DO iPack = 1, nP ; DO j = 1, m ; DO k = 1, l
+      DO iPack = 1, nP
+      DO j = 1, SIZE(X1,2)
+      DO k = 1, SIZE(X1,1)
         i = UnpackIndex(iPack)
         X1_P(k,j,iPack) = X1(k,j,i)
-      END DO ; END DO ; END DO
+      END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( l, m, n, X1, X1_P )
+      CALL ArrayCopy( X1, X1_P )
 
     END IF
 
@@ -550,16 +563,16 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack3D_2 &
-    ( l, m, n, nP, UnpackIndex, X1, X2, X1_P, X2_P )
+    ( nP, UnpackIndex, X1, X2, X1_P, X2_P )
 
-    INTEGER,                    INTENT(in)    :: l, m, n, nP
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1, X2
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1_P, X2_P
+    INTEGER,                       INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:),       INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: X1, X2
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: X1_P, X2_P
 
     INTEGER  :: i, iPack, j, k
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -572,15 +585,19 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(3) &
       !$OMP PRIVATE( i )
 #endif
-      DO iPack = 1, nP ; DO j = 1, m ; DO k = 1, l
+      DO iPack = 1, nP
+      DO j = 1, SIZE(X1,2)
+      DO k = 1, SIZE(X1,1)
         i = UnpackIndex(iPack)
         X1_P(k,j,iPack) = X1(k,j,i)
         X2_P(k,j,iPack) = X2(k,j,i)
-      END DO ; END DO ; END DO
+      END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( l, m, n, X1, X2, X1_P, X2_P )
+      CALL ArrayCopy( X1, X2, X1_P, X2_P )
 
     END IF
 
@@ -588,16 +605,16 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack3D_3 &
-    ( l, m, n, nP, UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
+    ( nP, UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
 
-    INTEGER,                    INTENT(in)    :: l, m, n, nP
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1, X2, X3
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1_P, X2_P, X3_P
+    INTEGER,                       INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:),       INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: X1, X2, X3
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: X1_P, X2_P, X3_P
 
     INTEGER  :: i, iPack, j, k
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -610,16 +627,20 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(3) &
       !$OMP PRIVATE( i )
 #endif
-      DO iPack = 1, nP ; DO j = 1, m ; DO k = 1, l
+      DO iPack = 1, nP
+      DO j = 1, SIZE(X1,2)
+      DO k = 1, SIZE(X1,1)
         i = UnpackIndex(iPack)
         X1_P(k,j,iPack) = X1(k,j,i)
         X2_P(k,j,iPack) = X2(k,j,i)
         X3_P(k,j,iPack) = X3(k,j,i)
-      END DO ; END DO ; END DO
+      END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( l, m, n, X1, X2, X3, X1_P, X2_P, X3_P )
+      CALL ArrayCopy( X1, X2, X3, X1_P, X2_P, X3_P )
 
     END IF
 
@@ -627,16 +648,16 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack3D_4 &
-    ( l, m, n, nP, UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
+    ( nP, UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 
-    INTEGER,                    INTENT(in)    :: l, m, n, nP
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
+    INTEGER,                       INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:),       INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: X1, X2, X3, X4
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P
 
     INTEGER  :: i, iPack, j, k
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -649,17 +670,21 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(3) &
       !$OMP PRIVATE( i )
 #endif
-      DO iPack = 1, nP ; DO j = 1, m ; DO k = 1, l
+      DO iPack = 1, nP
+      DO j = 1, SIZE(X1,2)
+      DO k = 1, SIZE(X1,1)
         i = UnpackIndex(iPack)
         X1_P(k,j,iPack) = X1(k,j,i)
         X2_P(k,j,iPack) = X2(k,j,i)
         X3_P(k,j,iPack) = X3(k,j,i)
         X4_P(k,j,iPack) = X4(k,j,i)
-      END DO ; END DO ; END DO
+      END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( l, m, n, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
+      CALL ArrayCopy( X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 
     END IF
 
@@ -667,18 +692,18 @@ CONTAINS
 
 
   SUBROUTINE ArrayPack3D_8 &
-    ( l, m, n, nP, UnpackIndex, &
+    ( nP, UnpackIndex, &
       X1, X2, X3, X4, X5, X6, X7, X8, &
       X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 
-    INTEGER,                    INTENT(in)    :: l, m, n, nP
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
+    INTEGER,                       INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:),       INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: X1, X2, X3, X4, X5, X6, X7, X8
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
 
     INTEGER  :: i, iPack, j, k
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -693,7 +718,9 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(3) &
       !$OMP PRIVATE( i )
 #endif
-      DO iPack = 1, nP ; DO j = 1, m ; DO k = 1, l
+      DO iPack = 1, nP
+      DO j = 1, SIZE(X1,2)
+      DO k = 1, SIZE(X1,1)
         i = UnpackIndex(iPack)
         X1_P(k,j,iPack) = X1(k,j,i)
         X2_P(k,j,iPack) = X2(k,j,i)
@@ -703,12 +730,14 @@ CONTAINS
         X6_P(k,j,iPack) = X6(k,j,i)
         X7_P(k,j,iPack) = X7(k,j,i)
         X8_P(k,j,iPack) = X8(k,j,i)
-      END DO ; END DO ; END DO
+      END DO
+      END DO
+      END DO
 
     ELSE
 
       CALL ArrayCopy &
-             ( l, m, n, X1, X2, X3, X4, X5, X6, X7, X8, &
+             ( X1, X2, X3, X4, X5, X6, X7, X8, &
                X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 
     END IF
@@ -717,17 +746,17 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack1D_1 &
-    ( n, nP, MASK, PackIndex, X1_P, X1 )
+    ( nP, MASK, PackIndex, X1_P, X1 )
 
-    INTEGER,                INTENT(in)    :: n, nP
-    LOGICAL,  DIMENSION(:), INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:), INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:), INTENT(in)    :: X1_P
-    REAL(DP), DIMENSION(:), INTENT(inout) :: X1
+    INTEGER,                 INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:), INTENT(in)    :: X1_P
+    REAL(DP), DIMENSION(1:), INTENT(inout) :: X1
 
     INTEGER  :: i, iPack
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -740,7 +769,7 @@ CONTAINS
       !$OMP PARALLEL DO SIMD &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n
+      DO i = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(i) = X1_P(iPack)
@@ -749,7 +778,7 @@ CONTAINS
 
     ELSE
 
-      CALL ArrayCopy( n, X1_P, X1 )
+      CALL ArrayCopy( X1_P, X1 )
 
     END IF
 
@@ -757,17 +786,17 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack1D_2 &
-    ( n, nP, MASK, PackIndex, X1_P, X2_P, X1, X2 )
+    ( nP, MASK, PackIndex, X1_P, X2_P, X1, X2 )
 
-    INTEGER,                INTENT(in)    :: n, nP
-    LOGICAL,  DIMENSION(:), INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:), INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:), INTENT(in)    :: X1_P, X2_P
-    REAL(DP), DIMENSION(:), INTENT(inout) :: X1, X2
+    INTEGER,                 INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:), INTENT(in)    :: X1_P, X2_P
+    REAL(DP), DIMENSION(1:), INTENT(inout) :: X1, X2
 
     INTEGER  :: i, iPack
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -780,7 +809,7 @@ CONTAINS
       !$OMP PARALLEL DO SIMD &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n
+      DO i = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(i) = X1_P(iPack)
@@ -790,7 +819,7 @@ CONTAINS
 
     ELSE
 
-      CALL ArrayCopy( n, X1_P, X2_P, X1, X2 )
+      CALL ArrayCopy( X1_P, X2_P, X1, X2 )
 
     END IF
 
@@ -798,17 +827,17 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack1D_3 &
-    ( n, nP, MASK, PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
+    ( nP, MASK, PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
 
-    INTEGER,                INTENT(in)    :: n, nP
-    LOGICAL,  DIMENSION(:), INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:), INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:), INTENT(in)    :: X1_P, X2_P, X3_P
-    REAL(DP), DIMENSION(:), INTENT(inout) :: X1, X2, X3
+    INTEGER,                 INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:), INTENT(in)    :: X1_P, X2_P, X3_P
+    REAL(DP), DIMENSION(1:), INTENT(inout) :: X1, X2, X3
 
     INTEGER  :: i, iPack
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -821,7 +850,7 @@ CONTAINS
       !$OMP PARALLEL DO SIMD &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n
+      DO i = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(i) = X1_P(iPack)
@@ -832,7 +861,7 @@ CONTAINS
 
     ELSE
 
-      CALL ArrayCopy( n, X1_P, X2_P, X3_P, X1, X2, X3 )
+      CALL ArrayCopy( X1_P, X2_P, X3_P, X1, X2, X3 )
 
     END IF
 
@@ -840,17 +869,17 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack1D_4 &
-    ( n, nP, MASK, PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
+    ( nP, MASK, PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 
-    INTEGER,                INTENT(in)    :: n, nP
-    LOGICAL,  DIMENSION(:), INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:), INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
-    REAL(DP), DIMENSION(:), INTENT(inout) :: X1, X2, X3, X4
+    INTEGER,                 INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
+    REAL(DP), DIMENSION(1:), INTENT(inout) :: X1, X2, X3, X4
 
     INTEGER  :: i, iPack
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -863,7 +892,7 @@ CONTAINS
       !$OMP PARALLEL DO SIMD &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n
+      DO i = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(i) = X1_P(iPack)
@@ -875,7 +904,7 @@ CONTAINS
 
     ELSE
 
-      CALL ArrayCopy( n, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
+      CALL ArrayCopy( X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 
     END IF
 
@@ -883,19 +912,19 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack1D_8 &
-    ( n, nP, MASK, PackIndex, &
+    ( nP, MASK, PackIndex, &
       X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
       X1, X2, X3, X4, X5, X6, X7, X8 )
 
-    INTEGER,                INTENT(in)    :: n, nP
-    LOGICAL,  DIMENSION(:), INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:), INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
-    REAL(DP), DIMENSION(:), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
+    INTEGER,                 INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
+    REAL(DP), DIMENSION(1:), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
 
     INTEGER  :: i, iPack
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -910,7 +939,7 @@ CONTAINS
       !$OMP PARALLEL DO SIMD &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n
+      DO i = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(i) = X1_P(iPack)
@@ -927,7 +956,7 @@ CONTAINS
     ELSE
 
       CALL ArrayCopy &
-             ( n, X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
+             ( X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
                X1, X2, X3, X4, X5, X6, X7, X8 )
 
     END IF
@@ -936,17 +965,17 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack2D_1 &
-    ( m, n, nP, MASK, PackIndex, X1_P, X1 )
+    ( nP, MASK, PackIndex, X1_P, X1 )
 
-    INTEGER,                  INTENT(in)    :: m, n, nP
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:),   INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1_P
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1
+    INTEGER,                    INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:),    INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:),    INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)    :: X1_P
+    REAL(DP), DIMENSION(1:,1:), INTENT(inout) :: X1
 
     INTEGER  :: i, iPack, j
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -959,16 +988,18 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n ; DO j = 1, m
+      DO i = 1, SIZE(X1,2)
+      DO j = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(j,i) = X1_P(j,iPack)
       END IF
-      END DO ; END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( m, n, X1_P, X1 )
+      CALL ArrayCopy( X1_P, X1 )
 
     END IF
 
@@ -976,17 +1007,17 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack2D_2 &
-    ( m, n, nP, MASK, PackIndex, X1_P, X2_P, X1, X2 )
+    ( nP, MASK, PackIndex, X1_P, X2_P, X1, X2 )
 
-    INTEGER,                  INTENT(in)    :: m, n, nP
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:),   INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1_P, X2_P
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1, X2
+    INTEGER,                    INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:),    INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:),    INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)    :: X1_P, X2_P
+    REAL(DP), DIMENSION(1:,1:), INTENT(inout) :: X1, X2
 
     INTEGER  :: i, iPack, j
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -999,17 +1030,19 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n ; DO j = 1, m
+      DO i = 1, SIZE(X1,2)
+      DO j = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(j,i) = X1_P(j,iPack)
         X2(j,i) = X2_P(j,iPack)
       END IF
-      END DO ; END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( m, n, X1_P, X2_P, X1, X2 )
+      CALL ArrayCopy( X1_P, X2_P, X1, X2 )
 
     END IF
 
@@ -1017,17 +1050,17 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack2D_3 &
-    ( m, n, nP, MASK, PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
+    ( nP, MASK, PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
 
-    INTEGER,                  INTENT(in)    :: m, n, nP
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:),   INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1_P, X2_P, X3_P
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1, X2, X3
+    INTEGER,                    INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:),    INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:),    INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)    :: X1_P, X2_P, X3_P
+    REAL(DP), DIMENSION(1:,1:), INTENT(inout) :: X1, X2, X3
 
     INTEGER  :: i, iPack, j
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -1040,18 +1073,20 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n ; DO j = 1, m
+      DO i = 1, SIZE(X1,2)
+      DO j = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(j,i) = X1_P(j,iPack)
         X2(j,i) = X2_P(j,iPack)
         X3(j,i) = X3_P(j,iPack)
       END IF
-      END DO ; END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( m, n, X1_P, X2_P, X3_P, X1, X2, X3 )
+      CALL ArrayCopy( X1_P, X2_P, X3_P, X1, X2, X3 )
 
     END IF
 
@@ -1059,17 +1094,17 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack2D_4 &
-    ( m, n, nP, MASK, PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
+    ( nP, MASK, PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 
-    INTEGER,                  INTENT(in)    :: m, n, nP
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:),   INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1, X2, X3, X4
+    INTEGER,                    INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:),    INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:),    INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
+    REAL(DP), DIMENSION(1:,1:), INTENT(inout) :: X1, X2, X3, X4
 
     INTEGER  :: i, iPack, j
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -1082,7 +1117,8 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n ; DO j = 1, m
+      DO i = 1, SIZE(X1,2)
+      DO j = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(j,i) = X1_P(j,iPack)
@@ -1090,11 +1126,12 @@ CONTAINS
         X3(j,i) = X3_P(j,iPack)
         X4(j,i) = X4_P(j,iPack)
       END IF
-      END DO ; END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( m, n, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
+      CALL ArrayCopy( X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 
     END IF
 
@@ -1102,19 +1139,19 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack2D_8 &
-    ( m, n, nP, MASK, PackIndex, &
+    ( nP, MASK, PackIndex, &
       X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
       X1, X2, X3, X4, X5, X6, X7, X8 )
 
-    INTEGER,                  INTENT(in)    :: m, n, nP
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:),   INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
+    INTEGER,                    INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:),    INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:),    INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
+    REAL(DP), DIMENSION(1:,1:), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
 
     INTEGER  :: i, iPack, j
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
@@ -1129,7 +1166,8 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n ; DO j = 1, m
+      DO i = 1, SIZE(X1,2)
+      DO j = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(j,i) = X1_P(j,iPack)
@@ -1141,12 +1179,13 @@ CONTAINS
         X7(j,i) = X7_P(j,iPack)
         X8(j,i) = X8_P(j,iPack)
       END IF
-      END DO ; END DO
+      END DO
+      END DO
 
     ELSE
 
       CALL ArrayCopy &
-             ( m, n, X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
+             ( X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
                X1, X2, X3, X4, X5, X6, X7, X8 )
 
     END IF
@@ -1155,17 +1194,17 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack3D_1 &
-    ( l, m, n, nP, MASK, PackIndex, X1_P, X1 )
+    ( nP, MASK, PackIndex, X1_P, X1 )
 
-    INTEGER,                    INTENT(in)    :: l, m, n, nP
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1_P
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1
+    INTEGER,                       INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:),       INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:),       INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: X1_P
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: X1
 
     INTEGER  :: i, iPack, j, k
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1178,16 +1217,20 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(3) &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n ; DO j = 1, m ; DO k = 1, l
+      DO i = 1, SIZE(X1,3)
+      DO j = 1, SIZE(X1,2)
+      DO k = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(k,j,i) = X1_P(k,j,iPack)
       END IF
-      END DO ; END DO ; END DO
+      END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( l, m, n, X1_P, X1 )
+      CALL ArrayCopy( X1_P, X1 )
 
     END IF
 
@@ -1195,17 +1238,17 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack3D_2 &
-    ( l, m, n, nP, MASK, PackIndex, X1_P, X2_P, X1, X2 )
+    ( nP, MASK, PackIndex, X1_P, X2_P, X1, X2 )
 
-    INTEGER,                    INTENT(in)    :: l, m, n, nP
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1_P, X2_P
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1, X2
+    INTEGER,                       INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:),       INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:),       INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: X1_P, X2_P
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: X1, X2
 
     INTEGER  :: i, iPack, j, k
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1218,17 +1261,21 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(3) &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n ; DO j = 1, m ; DO k = 1, l
+      DO i = 1, SIZE(X1,3)
+      DO j = 1, SIZE(X1,2)
+      DO k = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(k,j,i) = X1_P(k,j,iPack)
         X2(k,j,i) = X2_P(k,j,iPack)
       END IF
-      END DO ; END DO ; END DO
+      END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( l, m, n, X1_P, X2_P, X1, X2 )
+      CALL ArrayCopy( X1_P, X2_P, X1, X2 )
 
     END IF
 
@@ -1236,17 +1283,17 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack3D_3 &
-    ( l, m, n, nP, MASK, PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
+    ( nP, MASK, PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
 
-    INTEGER,                    INTENT(in)    :: l, m, n, nP
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1_P, X2_P, X3_P
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1, X2, X3
+    INTEGER,                       INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:),       INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:),       INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: X1_P, X2_P, X3_P
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: X1, X2, X3
 
     INTEGER  :: i, iPack, j, k
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1259,18 +1306,22 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(3) &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n ; DO j = 1, m ; DO k = 1, l
+      DO i = 1, SIZE(X1,3)
+      DO j = 1, SIZE(X1,2)
+      DO k = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(k,j,i) = X1_P(k,j,iPack)
         X2(k,j,i) = X2_P(k,j,iPack)
         X3(k,j,i) = X3_P(k,j,iPack)
       END IF
-      END DO ; END DO ; END DO
+      END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( l, m, n, X1_P, X2_P, X3_P, X1, X2, X3 )
+      CALL ArrayCopy( X1_P, X2_P, X3_P, X1, X2, X3 )
 
     END IF
 
@@ -1278,17 +1329,17 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack3D_4 &
-    ( l, m, n, nP, MASK, PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
+    ( nP, MASK, PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 
-    INTEGER,                    INTENT(in)    :: l, m, n, nP
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1, X2, X3, X4
+    INTEGER,                       INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:),       INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:),       INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: X1, X2, X3, X4
 
     INTEGER  :: i, iPack, j, k
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1301,7 +1352,9 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(3) &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n ; DO j = 1, m ; DO k = 1, l
+      DO i = 1, SIZE(X1,3)
+      DO j = 1, SIZE(X1,2)
+      DO k = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(k,j,i) = X1_P(k,j,iPack)
@@ -1309,11 +1362,13 @@ CONTAINS
         X3(k,j,i) = X3_P(k,j,iPack)
         X4(k,j,i) = X4_P(k,j,iPack)
       END IF
-      END DO ; END DO ; END DO
+      END DO
+      END DO
+      END DO
 
     ELSE
 
-      CALL ArrayCopy( l, m, n, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
+      CALL ArrayCopy( X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 
     END IF
 
@@ -1321,19 +1376,19 @@ CONTAINS
 
 
   SUBROUTINE ArrayUnpack3D_8 &
-    ( l, m, n, nP, MASK, PackIndex, &
+    ( nP, MASK, PackIndex, &
       X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
       X1, X2, X3, X4, X5, X6, X7, X8 )
 
-    INTEGER,                    INTENT(in)    :: l, m, n, nP
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
+    INTEGER,                       INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:),       INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:),       INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: X1, X2, X3, X4, X5, X6, X7, X8
 
     INTEGER  :: i, iPack, j, k
 
-    IF ( nP < n ) THEN
+    IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1348,7 +1403,9 @@ CONTAINS
       !$OMP PARALLEL DO SIMD COLLAPSE(3) &
       !$OMP PRIVATE( iPack )
 #endif
-      DO i = 1, n ; DO j = 1, m ; DO k = 1, l
+      DO i = 1, SIZE(X1,3)
+      DO j = 1, SIZE(X1,2)
+      DO k = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
         iPack = PackIndex(i)
         X1(k,j,i) = X1_P(k,j,iPack)
@@ -1360,12 +1417,14 @@ CONTAINS
         X7(k,j,i) = X7_P(k,j,iPack)
         X8(k,j,i) = X8_P(k,j,iPack)
       END IF
-      END DO ; END DO ; END DO
+      END DO
+      END DO
+      END DO
 
     ELSE
 
       CALL ArrayCopy &
-             ( l, m, n, X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
+             ( X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
                X1, X2, X3, X4, X5, X6, X7, X8 )
 
     END IF
@@ -1374,11 +1433,10 @@ CONTAINS
 
 
   SUBROUTINE ArrayCopy1D_1 &
-    ( n, X1, Y1 )
+    ( X1, Y1 )
 
-    INTEGER,                INTENT(in)  :: n
-    REAL(DP), DIMENSION(:), INTENT(in)  :: X1
-    REAL(DP), DIMENSION(:), INTENT(out) :: Y1
+    REAL(DP), DIMENSION(1:), INTENT(in)  :: X1
+    REAL(DP), DIMENSION(1:), INTENT(out) :: Y1
 
     INTEGER  :: i
 
@@ -1390,7 +1448,7 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD
 #endif
-    DO i = 1, n
+    DO i = 1, SIZE(X1,1)
       Y1(i) = X1(i)
     END DO
 
@@ -1398,11 +1456,10 @@ CONTAINS
 
 
   SUBROUTINE ArrayCopy1D_2 &
-    ( n, X1, X2, Y1, Y2 )
+    ( X1, X2, Y1, Y2 )
 
-    INTEGER,                INTENT(in)  :: n
-    REAL(DP), DIMENSION(:), INTENT(in)  :: X1, X2
-    REAL(DP), DIMENSION(:), INTENT(out) :: Y1, Y2
+    REAL(DP), DIMENSION(1:), INTENT(in)  :: X1, X2
+    REAL(DP), DIMENSION(1:), INTENT(out) :: Y1, Y2
 
     INTEGER  :: i
 
@@ -1414,7 +1471,7 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD
 #endif
-    DO i = 1, n
+    DO i = 1, SIZE(X1,1)
       Y1(i) = X1(i)
       Y2(i) = X2(i)
     END DO
@@ -1423,11 +1480,10 @@ CONTAINS
 
 
   SUBROUTINE ArrayCopy1D_3 &
-    ( n, X1, X2, X3, Y1, Y2, Y3 )
+    ( X1, X2, X3, Y1, Y2, Y3 )
 
-    INTEGER,                INTENT(in)  :: n
-    REAL(DP), DIMENSION(:), INTENT(in)  :: X1, X2, X3
-    REAL(DP), DIMENSION(:), INTENT(out) :: Y1, Y2, Y3
+    REAL(DP), DIMENSION(1:), INTENT(in)  :: X1, X2, X3
+    REAL(DP), DIMENSION(1:), INTENT(out) :: Y1, Y2, Y3
 
     INTEGER  :: i
 
@@ -1439,7 +1495,7 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD
 #endif
-    DO i = 1, n
+    DO i = 1, SIZE(X1,1)
       Y1(i) = X1(i)
       Y2(i) = X2(i)
       Y3(i) = X3(i)
@@ -1449,11 +1505,10 @@ CONTAINS
 
 
   SUBROUTINE ArrayCopy1D_4 &
-    ( n, X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
+    ( X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
 
-    INTEGER,                INTENT(in)  :: n
-    REAL(DP), DIMENSION(:), INTENT(in)  :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(:), INTENT(out) :: Y1, Y2, Y3, Y4
+    REAL(DP), DIMENSION(1:), INTENT(in)  :: X1, X2, X3, X4
+    REAL(DP), DIMENSION(1:), INTENT(out) :: Y1, Y2, Y3, Y4
 
     INTEGER  :: i
 
@@ -1465,7 +1520,7 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD
 #endif
-    DO i = 1, n
+    DO i = 1, SIZE(X1,1)
       Y1(i) = X1(i)
       Y2(i) = X2(i)
       Y3(i) = X3(i)
@@ -1476,11 +1531,10 @@ CONTAINS
 
 
   SUBROUTINE ArrayCopy1D_8 &
-    ( n, X1, X2, X3, X4, X5, X6, X7, X8, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
+    ( X1, X2, X3, X4, X5, X6, X7, X8, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
 
-    INTEGER,                INTENT(in)  :: n
-    REAL(DP), DIMENSION(:), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(:), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
+    REAL(DP), DIMENSION(1:), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
+    REAL(DP), DIMENSION(1:), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
 
     INTEGER  :: i
 
@@ -1493,7 +1547,7 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD
 #endif
-    DO i = 1, n
+    DO i = 1, SIZE(X1,1)
       Y1(i) = X1(i)
       Y2(i) = X2(i)
       Y3(i) = X3(i)
@@ -1508,11 +1562,10 @@ CONTAINS
 
 
   SUBROUTINE ArrayCopy2D_1 &
-    ( m, n, X1, Y1 )
+    ( X1, Y1 )
 
-    INTEGER,                  INTENT(in)  :: m, n
-    REAL(DP), DIMENSION(:,:), INTENT(in)  :: X1
-    REAL(DP), DIMENSION(:,:), INTENT(out) :: Y1
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)  :: X1
+    REAL(DP), DIMENSION(1:,1:), INTENT(out) :: Y1
 
     INTEGER  :: i, j
 
@@ -1524,19 +1577,20 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(2)
 #endif
-    DO i = 1, n ; DO j = 1, m
+    DO i = 1, SIZE(X1,2)
+    DO j = 1, SIZE(X1,1)
       Y1(j,i) = X1(j,i)
-    END DO ; END DO
+    END DO
+    END DO
 
   END SUBROUTINE ArrayCopy2D_1
 
 
   SUBROUTINE ArrayCopy2D_2 &
-    ( m, n, X1, X2, Y1, Y2 )
+    ( X1, X2, Y1, Y2 )
 
-    INTEGER,                  INTENT(in)  :: m, n
-    REAL(DP), DIMENSION(:,:), INTENT(in)  :: X1, X2
-    REAL(DP), DIMENSION(:,:), INTENT(out) :: Y1, Y2
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)  :: X1, X2
+    REAL(DP), DIMENSION(1:,1:), INTENT(out) :: Y1, Y2
 
     INTEGER  :: i, j
 
@@ -1548,20 +1602,21 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(2)
 #endif
-    DO i = 1, n ; DO j = 1, m
+    DO i = 1, SIZE(X1,2)
+    DO j = 1, SIZE(X1,1)
       Y1(j,i) = X1(j,i)
       Y2(j,i) = X2(j,i)
-    END DO ; END DO
+    END DO
+    END DO
 
   END SUBROUTINE ArrayCopy2D_2
 
 
   SUBROUTINE ArrayCopy2D_3 &
-    ( m, n, X1, X2, X3, Y1, Y2, Y3 )
+    ( X1, X2, X3, Y1, Y2, Y3 )
 
-    INTEGER,                  INTENT(in)  :: m, n
-    REAL(DP), DIMENSION(:,:), INTENT(in)  :: X1, X2, X3
-    REAL(DP), DIMENSION(:,:), INTENT(out) :: Y1, Y2, Y3
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)  :: X1, X2, X3
+    REAL(DP), DIMENSION(1:,1:), INTENT(out) :: Y1, Y2, Y3
 
     INTEGER  :: i, j
 
@@ -1573,21 +1628,22 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(2)
 #endif
-    DO i = 1, n ; DO j = 1, m
+    DO i = 1, SIZE(X1,2)
+    DO j = 1, SIZE(X1,1)
       Y1(j,i) = X1(j,i)
       Y2(j,i) = X2(j,i)
       Y3(j,i) = X3(j,i)
-    END DO ; END DO
+    END DO
+    END DO
 
   END SUBROUTINE ArrayCopy2D_3
 
 
   SUBROUTINE ArrayCopy2D_4 &
-    ( m, n, X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
+    ( X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
 
-    INTEGER,                  INTENT(in)  :: m, n
-    REAL(DP), DIMENSION(:,:), INTENT(in)  :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(:,:), INTENT(out) :: Y1, Y2, Y3, Y4
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)  :: X1, X2, X3, X4
+    REAL(DP), DIMENSION(1:,1:), INTENT(out) :: Y1, Y2, Y3, Y4
 
     INTEGER  :: i, j
 
@@ -1599,22 +1655,23 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(2)
 #endif
-    DO i = 1, n ; DO j = 1, m
+    DO i = 1, SIZE(X1,2)
+    DO j = 1, SIZE(X1,1)
       Y1(j,i) = X1(j,i)
       Y2(j,i) = X2(j,i)
       Y3(j,i) = X3(j,i)
       Y4(j,i) = X4(j,i)
-    END DO ; END DO
+    END DO
+    END DO
 
   END SUBROUTINE ArrayCopy2D_4
 
 
   SUBROUTINE ArrayCopy2D_8 &
-    ( m, n, X1, X2, X3, X4, X5, X6, X7, X8, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
+    ( X1, X2, X3, X4, X5, X6, X7, X8, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
 
-    INTEGER,                  INTENT(in)  :: m, n
-    REAL(DP), DIMENSION(:,:), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(:,:), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
+    REAL(DP), DIMENSION(1:,1:), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
+    REAL(DP), DIMENSION(1:,1:), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
 
     INTEGER  :: i, j
 
@@ -1627,7 +1684,8 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(2)
 #endif
-    DO i = 1, n ; DO j = 1, m
+    DO i = 1, SIZE(X1,2)
+    DO j = 1, SIZE(X1,1)
       Y1(j,i) = X1(j,i)
       Y2(j,i) = X2(j,i)
       Y3(j,i) = X3(j,i)
@@ -1636,17 +1694,17 @@ CONTAINS
       Y6(j,i) = X6(j,i)
       Y7(j,i) = X7(j,i)
       Y8(j,i) = X8(j,i)
-    END DO ; END DO
+    END DO
+    END DO
 
   END SUBROUTINE ArrayCopy2D_8
 
 
   SUBROUTINE ArrayCopy3D_1 &
-    ( l, m, n, X1, Y1 )
+    ( X1, Y1 )
 
-    INTEGER,                    INTENT(in)  :: l, m, n
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: X1
-    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: Y1
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)  :: X1
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(out) :: Y1
 
     INTEGER  :: i, j, k
 
@@ -1658,19 +1716,22 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
-    DO i = 1, n ; DO j = 1, m ; DO k = 1, l
+    DO i = 1, SIZE(X1,3)
+    DO j = 1, SIZE(X1,2)
+    DO k = 1, SIZE(X1,1)
       Y1(k,j,i) = X1(k,j,i)
-    END DO ; END DO ; END DO
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE ArrayCopy3D_1
 
 
   SUBROUTINE ArrayCopy3D_2 &
-    ( l, m, n, X1, X2, Y1, Y2 )
+    ( X1, X2, Y1, Y2 )
 
-    INTEGER,                    INTENT(in)  :: l, m, n
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: X1, X2
-    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: Y1, Y2
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)  :: X1, X2
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(out) :: Y1, Y2
 
     INTEGER  :: i, j, k
 
@@ -1682,20 +1743,23 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
-    DO i = 1, n ; DO j = 1, m ; DO k = 1, l
+    DO i = 1, SIZE(X1,3)
+    DO j = 1, SIZE(X1,2)
+    DO k = 1, SIZE(X1,1)
       Y1(k,j,i) = X1(k,j,i)
       Y2(k,j,i) = X2(k,j,i)
-    END DO ; END DO ; END DO
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE ArrayCopy3D_2
 
 
   SUBROUTINE ArrayCopy3D_3 &
-    ( l, m, n, X1, X2, X3, Y1, Y2, Y3 )
+    ( X1, X2, X3, Y1, Y2, Y3 )
 
-    INTEGER,                    INTENT(in)  :: l, m, n
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: X1, X2, X3
-    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: Y1, Y2, Y3
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)  :: X1, X2, X3
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(out) :: Y1, Y2, Y3
 
     INTEGER  :: i, j, k
 
@@ -1707,21 +1771,24 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
-    DO i = 1, n ; DO j = 1, m ; DO k = 1, l
+    DO i = 1, SIZE(X1,3)
+    DO j = 1, SIZE(X1,2)
+    DO k = 1, SIZE(X1,1)
       Y1(k,j,i) = X1(k,j,i)
       Y2(k,j,i) = X2(k,j,i)
       Y3(k,j,i) = X3(k,j,i)
-    END DO ; END DO ; END DO
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE ArrayCopy3D_3
 
 
   SUBROUTINE ArrayCopy3D_4 &
-    ( l, m, n, X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
+    ( X1, X2, X3, X4, Y1, Y2, Y3, Y4 )
 
-    INTEGER,                    INTENT(in)  :: l, m, n
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: X1, X2, X3, X4
-    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: Y1, Y2, Y3, Y4
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)  :: X1, X2, X3, X4
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(out) :: Y1, Y2, Y3, Y4
 
     INTEGER  :: i, j, k
 
@@ -1733,22 +1800,25 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
-    DO i = 1, n ; DO j = 1, m ; DO k = 1, l
+    DO i = 1, SIZE(X1,3)
+    DO j = 1, SIZE(X1,2)
+    DO k = 1, SIZE(X1,1)
       Y1(k,j,i) = X1(k,j,i)
       Y2(k,j,i) = X2(k,j,i)
       Y3(k,j,i) = X3(k,j,i)
       Y4(k,j,i) = X4(k,j,i)
-    END DO ; END DO ; END DO
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE ArrayCopy3D_4
 
 
   SUBROUTINE ArrayCopy3D_8 &
-    ( l, m, n, X1, X2, X3, X4, X5, X6, X7, X8, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
+    ( X1, X2, X3, X4, X5, X6, X7, X8, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 )
 
-    INTEGER,                    INTENT(in)  :: l, m, n
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
-    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)  :: X1, X2, X3, X4, X5, X6, X7, X8
+    REAL(DP), DIMENSION(1:,1:,1:), INTENT(out) :: Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8
 
     INTEGER  :: i, j, k
 
@@ -1761,7 +1831,9 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO SIMD COLLAPSE(3)
 #endif
-    DO i = 1, n ; DO j = 1, m ; DO k = 1, l
+    DO i = 1, SIZE(X1,3)
+    DO j = 1, SIZE(X1,2)
+    DO k = 1, SIZE(X1,1)
       Y1(k,j,i) = X1(k,j,i)
       Y2(k,j,i) = X2(k,j,i)
       Y3(k,j,i) = X3(k,j,i)
@@ -1770,7 +1842,9 @@ CONTAINS
       Y6(k,j,i) = X6(k,j,i)
       Y7(k,j,i) = X7(k,j,i)
       Y8(k,j,i) = X8(k,j,i)
-    END DO ; END DO ; END DO
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE ArrayCopy3D_8
 

@@ -312,7 +312,7 @@ CONTAINS
       k  = k + 1
 
       CALL CreatePackIndex &
-             ( nX_G, ITERATE, nX_P, PackIndex, UnpackIndex )
+             ( ITERATE, nX_P, PackIndex, UnpackIndex )
 
       ! --- Jacobian ---
 
@@ -446,9 +446,9 @@ CONTAINS
     !$ACC         GVEC, FVEC, GVECm, FVECm, Alpha, nIterations )
 #endif
 
-    CALL ArrayCopy( nX_G, Y, E, Yold, Eold )
+    CALL ArrayCopy( Y, E, Yold, Eold )
 
-    CALL ArrayCopy( nE_G, nX_G, J_1, J_2, Jold_1, Jold_2 )
+    CALL ArrayCopy( J_1, J_2, Jold_1, Jold_2 )
 
     CALL TimersStart( Timer_Im_ComputeOpacity )
 
@@ -483,7 +483,7 @@ CONTAINS
       Mk = MIN( M_FP, k )
 
       CALL CreatePackIndex &
-             ( nX_G, ITERATE, nX_P, PackIndex, UnpackIndex )
+             ( ITERATE, nX_P, PackIndex, UnpackIndex )
 
       IF ( k > 1 ) THEN
 
@@ -553,7 +553,7 @@ CONTAINS
 
     END DO
 
-    CALL ArrayCopy( nE_G, nX_G, Jnew_1, Jnew_2, J_1, J_2 )
+    CALL ArrayCopy( Jnew_1, Jnew_2, J_1, J_2 )
 
     IF(PRESENT(nIterations_Out)) THEN
 #if defined(THORNADO_OMP_OL)
@@ -674,9 +674,9 @@ CONTAINS
     !$ACC         GVEC, FVEC, GVECm, FVECm, Alpha )
 #endif
 
-    CALL ArrayCopy( nX_G, Y, E, Yold, Eold )
+    CALL ArrayCopy( Y, E, Yold, Eold )
 
-    CALL ArrayCopy( nE_G, nX_G, J_1, J_2, Jold_1, Jold_2 )
+    CALL ArrayCopy( J_1, J_2, Jold_1, Jold_2 )
 
     IF( UsePreconditionerEmAb )THEN
 
@@ -738,7 +738,7 @@ CONTAINS
       Mk = MIN( M_FP, k )
 
       CALL CreatePackIndex &
-             ( nX_G, ITERATE, nX_P, PackIndex, UnpackIndex )
+             ( ITERATE, nX_P, PackIndex, UnpackIndex )
 
       IF ( k > 1 ) THEN
 
@@ -826,7 +826,7 @@ CONTAINS
 
     END DO
 
-    CALL ArrayCopy( nE_G, nX_G, Jnew_1, Jnew_2, J_1, J_2 )
+    CALL ArrayCopy( Jnew_1, Jnew_2, J_1, J_2 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -959,9 +959,9 @@ CONTAINS
     !$ACC         GVECm_inner, FVECm_inner, Alpha_inner )
 #endif
 
-    CALL ArrayCopy( nX_G, Y, E, Yold, Eold )
+    CALL ArrayCopy( Y, E, Yold, Eold )
 
-    CALL ArrayCopy( nE_G, nX_G, J_1, J_2, Jold_1, Jold_2 )
+    CALL ArrayCopy( J_1, J_2, Jold_1, Jold_2 )
 
     IF( UsePreconditionerEmAb )THEN
 
@@ -1002,7 +1002,7 @@ CONTAINS
              ( ITERATE_OUTER, Jnew_1, Jnew_2, Jnorm_1, Jnorm_2 )
 
       CALL CreatePackIndex &
-             ( nX_G, ITERATE_OUTER, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
+             ( ITERATE_OUTER, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
       IF ( k_outer > 1 ) THEN
 
@@ -1030,7 +1030,7 @@ CONTAINS
         Mk_inner = MIN( M_inner, k_inner )
 
         CALL CreatePackIndex &
-               ( nX_G, ITERATE_INNER, nX_P_inner, PackIndex_inner, UnpackIndex_inner )
+               ( ITERATE_INNER, nX_P_inner, PackIndex_inner, UnpackIndex_inner )
 
         ! --- Compute Neutrino Rates ---
 
@@ -1137,7 +1137,7 @@ CONTAINS
 
     END DO
 
-    CALL ArrayCopy( nE_G, nX_G, Jnew_1, Jnew_2, J_1, J_2 )
+    CALL ArrayCopy( Jnew_1, Jnew_2, J_1, J_2 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1205,7 +1205,7 @@ CONTAINS
       ! --- Pack Arrays ---
 
       CALL ArrayPack &
-             ( nX_G, nX, UnpackIndex, &
+             ( nX, UnpackIndex, &
                D, T, Y, P1D(:,1), P1D(:,2), P1D(:,3) )
 
       D_P => P1D(1:nX,1)
@@ -1238,7 +1238,7 @@ CONTAINS
       ! --- Unpack Results ---
 
       CALL ArrayUnpack &
-             ( nE_G, nX_G, nX, MASK, PackIndex, &
+             ( nX, MASK, PackIndex, &
                P2D(:,:,1), P2D(:,:,2), P2D(:,:,3), J0, dJ0dY, dJ0dE )
 
     END IF
@@ -1273,7 +1273,7 @@ CONTAINS
       ! --- Pack Arrays ---
 
       CALL ArrayPack &
-             ( nX_G, nX, UnpackIndex, &
+             ( nX, UnpackIndex, &
                D, T, Y, P1D(:,1), P1D(:,2), P1D(:,3) )
 
       D_P => P1D(1:nX,1)
@@ -1307,7 +1307,7 @@ CONTAINS
       ! --- Unpack Results ---
 
       CALL ArrayUnpack &
-             ( nE_G, nX_G, nX, MASK, PackIndex, &
+             ( nX, MASK, PackIndex, &
                P2D(:,:,1), P2D(:,:,2), J0_1, J0_2 )
 
     END IF
@@ -1358,7 +1358,7 @@ CONTAINS
       ! --- Pack Arrays ---
 
       CALL ArrayPack &
-             ( nX_G, nX, UnpackIndex, &
+             ( nX, UnpackIndex, &
                D, T, Y, P1D(:,1), P1D(:,2), P1D(:,3) )
 
       D_P => P1D(1:nX,1)
@@ -1430,13 +1430,13 @@ CONTAINS
       ! --- Unpack Results ---
 
       CALL ArrayUnpack &
-             ( nE_G, nX_G, nX, MASK, PackIndex, &
+             ( nX, MASK, PackIndex, &
                P2D(:,:,1), P2D(:,:,2), J0_1, J0_2 )
 
       IF ( nX < nX0 ) THEN
 
         CALL ArrayUnpack &
-               ( nE_G, nE_G, nX_G, nX, MASK, PackIndex, &
+               ( nX, MASK, PackIndex, &
                  P3D(:,:,:,1), P3D(:,:,:,2), P3D(:,:,:,3), P3D(:,:,:,4), &
                  P3D(:,:,:,5), P3D(:,:,:,6), P3D(:,:,:,7), P3D(:,:,:,8), &
                  Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
@@ -1509,7 +1509,7 @@ CONTAINS
       Eta_Pair_2_P => P2D(:,1:nX,8)
 
       CALL ArrayPack &
-             ( nE_G, nX_G, nX, UnpackIndex, &
+             ( nX, UnpackIndex, &
                J_1, J_2, &
                P2D(:,:,9), P2D(:,:,10) )
 
@@ -1519,7 +1519,7 @@ CONTAINS
       IF ( nX < nX0 ) THEN
 
         CALL ArrayPack &
-               ( nE_G, nE_G, nX_G, nX, UnpackIndex, &
+               ( nX, UnpackIndex, &
                  Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
                  Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
                  P3D(:,:,:,1), P3D(:,:,:,2), P3D(:,:,:,3), P3D(:,:,:,4), &
@@ -1590,7 +1590,7 @@ CONTAINS
       ! --- Unpack Results ---
 
       CALL ArrayUnpack &
-             ( nE_G, nX_G, nX, MASK, PackIndex, &
+             ( nX, MASK, PackIndex, &
                P2D(:,:,1), P2D(:,:,2), P2D(:,:,3), P2D(:,:,4), &
                P2D(:,:,5), P2D(:,:,6), P2D(:,:,7), P2D(:,:,8), &
                Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
@@ -1626,7 +1626,7 @@ CONTAINS
       ! --- Pack Arrays ---
 
       CALL ArrayPack &
-             ( nX_G, nX, UnpackIndex, D, E, Y, T, &
+             ( nX, UnpackIndex, D, E, Y, T, &
                P1D(:,1), P1D(:,2), P1D(:,3), P1D(:,4) )
 
       D_P => P1D(1:nX,1)
@@ -1651,7 +1651,7 @@ CONTAINS
       ! --- Unpack Results ---
 
       CALL ArrayUnpack &
-             ( nX_G, nX, MASK, PackIndex, P1D(:,4), T )
+             ( nX, MASK, PackIndex, P1D(:,4), T )
 
     END IF
 
@@ -1703,7 +1703,7 @@ CONTAINS
 
     END DO
 
-    CALL ArrayCopy( nE_G, nX_G, J_1, J_2, Jnew_1, Jnew_2 )
+    CALL ArrayCopy( J_1, J_2, Jnew_1, Jnew_2 )
 
   END SUBROUTINE InitializeRHS_FP
 
