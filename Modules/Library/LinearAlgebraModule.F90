@@ -18,6 +18,8 @@ MODULE LinearAlgebraModule
     cublasDnrm2_v2, &
     cublasDgemm_v2, &
     cublasDgemmStridedBatched, &
+    cublasDgetrfBatched, &
+    cublasDgetrsBatched, &
     cublasDgemv_v2, &
     cublasDtrsv_v2, &
     cublasDtrsm_v2, &
@@ -44,6 +46,8 @@ MODULE LinearAlgebraModule
     magma_dnrm2, &
     magma_dgemm, &
     magmablas_dgemm_batched_strided, &
+    magma_dgetrf_batched, &
+    magma_dgetrs_batched, &
     magma_dgemv, &
     magma_dgels_gpu, &
     magmablas_dtranspose, &
@@ -66,6 +70,7 @@ MODULE LinearAlgebraModule
   PUBLIC :: VectorGather
   PUBLIC :: LinearLeastSquares_LWORK
   PUBLIC :: LinearLeastSquares
+  PUBLIC :: LinearSolveBatched
 
 CONTAINS
 
@@ -471,6 +476,146 @@ CONTAINS
     END IF
 
   END SUBROUTINE MatrixMatrixMultiplyBatched
+
+
+  SUBROUTINE LinearSolveBatched( trans, n, nrhs, a, lda, ipiv, b, ldb, info, batchcount )
+
+    CHARACTER                          :: trans
+    INTEGER                            :: n, nrhs, lda, ldb, batchcount
+    REAL(DP), DIMENSION(lda,*), TARGET :: a
+    REAL(DP), DIMENSION(ldb,*), TARGET :: b
+    INTEGER,  DIMENSION(*),     TARGET :: ipiv
+    INTEGER,  DIMENSION(*),     TARGET :: info
+
+    INTEGER                                    :: ierr, i
+    INTEGER(C_INT)                             :: itrans
+    INTEGER(C_SIZE_T)                          :: sizeof_a, sizeof_b, sizeof_ipiv, sizeof_info
+    REAL(DP), DIMENSION(:,:), POINTER          :: pa, pb
+    INTEGER,  DIMENSION(:),   POINTER          :: pipiv, pinfo
+    TYPE(C_PTR)                                :: ha, hb, hipiv, hinfo
+    TYPE(C_PTR), DIMENSION(batchcount), TARGET :: da, db, dipiv
+    TYPE(C_PTR)                                :: da_array, db_array, dipiv_array, dinfo
+    INTEGER                                    :: osa, osb
+    LOGICAL                                    :: data_on_device
+
+    data_on_device = .false.
+    sizeof_a    = n * n * batchcount * c_sizeof(0.0_DP)
+    sizeof_b    = n * nrhs * batchcount * c_sizeof(0.0_DP)
+    sizeof_ipiv = n * batchcount * c_sizeof(0)
+    sizeof_info = batchcount * c_sizeof(0)
+
+    pa(1:lda,1:n*batchcount) => a(:,1:n*batchcount)
+    pb(1:ldb,1:nrhs*batchcount) => b(:,1:nrhs*batchcount)
+    pipiv(1:n*batchcount) => ipiv(1:n*batchcount)
+    pinfo(1:batchcount) => info(1:batchcount)
+
+    ha = C_LOC( pa )
+    hb = C_LOC( pb )
+    hipiv = C_LOC( pipiv )
+    hinfo = C_LOC( pinfo )
+
+    data_on_device = device_is_present( ha,    mydevice, sizeof_a    ) &
+               .AND. device_is_present( hb,    mydevice, sizeof_b    ) &
+               .AND. device_is_present( hipiv, mydevice, sizeof_ipiv ) &
+               .AND. device_is_present( hinfo, mydevice, sizeof_info )
+
+    IF ( data_on_device ) THEN
+
+      itrans = itrans_from_char( trans )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( alloc: da, db, dipiv, da_array, db_array, dipiv_array )
+#elif defined(THORNADO_OACC)
+      !$ACC ENTER DATA &
+      !$ACC CREATE( da, db, dipiv, da_array, db_array, dipiv_array )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pipiv, pinfo )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( pa, pb, pipiv, pinfo )
+#endif
+      dinfo = C_LOC( pinfo )
+      DO i = 1, batchcount
+        osa = (i-1) * n + 1
+        osb = (i-1) * nrhs + 1
+        da(i) = C_LOC( pa(1,osa) )
+        db(i) = C_LOC( pb(1,osb) )
+        dipiv(i) = C_LOC( pipiv(osa) )
+      END DO
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+      !$OMP TARGET UPDATE TO( da, db, dipiv )
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+      !$ACC UPDATE DEVICE( da, db, dipiv )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( da, db, dipiv )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( da, db, dipiv )
+#endif
+      da_array = C_LOC( da )
+      db_array = C_LOC( db )
+      dipiv_array = C_LOC( dipiv )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+      !$OMP TARGET UPDATE TO( da_array, db_array, dipiv )
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+      !$ACC UPDATE DEVICE( da_array, db_array, dipiv )
+#endif
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cublasDgetrfBatched &
+             ( cublas_handle, n, da_array, lda, dipiv(1), dinfo, batchcount )
+      ierr = cublasDgetrsBatched &
+             ( cublas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
+      ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_MAGMA)
+      CALL magma_dgetrf_batched &
+             ( n, n, da_array, lda, dipiv_array, dinfo, batchcount, magma_queue )
+      CALL magma_dgetrs_batched &
+             ( itrans, n, nrhs, da_array, lda, dipiv_array, db_array, ldb, batchcount, magma_queue )
+      CALL magma_queue_sync( magma_queue )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: da, db, dipiv, da_array, db_array, dipiv_array )
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA &
+      !$ACC DELETE( da, db, dipiv, da_array, db_array, dipiv_array )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[LinearSolveBatched] Data not present on device'
+      IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
+        WRITE(*,*) '[LinearSolveBatched]   A missing'
+      IF ( .not. device_is_present( hb, mydevice, sizeof_b ) ) &
+        WRITE(*,*) '[LinearSolveBatched]   B missing'
+      IF ( .not. device_is_present( hipiv, mydevice, sizeof_ipiv ) ) &
+        WRITE(*,*) '[LinearSolveBatched]   ipiv missing'
+      IF ( .not. device_is_present( hinfo, mydevice, sizeof_info ) ) &
+        WRITE(*,*) '[LinearSolveBatched]   info missing'
+#endif
+
+      DO i = 1, batchcount
+        osa = (i-1) * n + 1
+        osb = (i-1) * nrhs + 1
+        CALL DGETRF &
+               ( n, n, a(1,osa), lda, ipiv(osa), info(i) )
+        CALL DGETRS &
+               ( trans, n, nrhs, a(1,osa), lda, ipiv(osa), b(1,osb), ldb, info(i) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE LinearSolveBatched
 
 
   SUBROUTINE MatrixVectorMultiply( trans, m, n, alpha, a, lda, x, incx, beta, y, incy )
