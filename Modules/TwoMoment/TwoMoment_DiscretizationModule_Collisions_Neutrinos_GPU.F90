@@ -55,6 +55,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     SolveMatterEquations_EmAb_FP, &
     SolveMatterEquations_FP_Coupled, &
     SolveMatterEquations_FP_NestedAA, &
+    SolveMatterEquations_FP_NestedNewton, &
     E_N
 
   IMPLICIT NONE
@@ -474,6 +475,33 @@ CONTAINS
       CALL TimersStop( Timer_Im_NestedAA )
 
 #elif defined(NEUTRINO_MATTER_SOLVER_FIXED_POINT_NESTED_NEWTON)
+
+      CALL TimersStart( Timer_Im_NestedNewton )
+
+      CALL SolveMatterEquations_FP_NestedNewton &
+             ( dt, iNuE, iNuE_Bar, &
+               CR_N    (:,:,iNuE    ,iCR_N), &
+               CR_N    (:,:,iNuE_Bar,iCR_N), &
+               Chi     (:,:,iNuE    ), &
+               Chi     (:,:,iNuE_Bar), &
+               fEQ     (:,:,iNuE    ), &
+               fEQ     (:,:,iNuE_Bar), &
+               Chi_NES (:,:,iNuE    ), &
+               Chi_NES (:,:,iNuE_Bar), &
+               Eta_NES (:,:,iNuE    ), &
+               Eta_NES (:,:,iNuE_Bar), &
+               Chi_Pair(:,:,iNuE    ), &
+               Chi_Pair(:,:,iNuE_Bar), &
+               Eta_Pair(:,:,iNuE    ), &
+               Eta_Pair(:,:,iNuE_Bar), &
+               PF_N    (:,iPF_D ), &
+               AF_N    (:,iAF_T ), &
+               AF_N    (:,iAF_Ye), &
+               AF_N    (:,iAF_E ), &
+               nIterations_Inner(:), &
+               nIterations_Outer(:) )
+
+      CALL TimersStop( Timer_Im_NestedNewton )
 
 #elif defined(NEUTRINO_MATTER_SOLVER_NEWTON)
 
