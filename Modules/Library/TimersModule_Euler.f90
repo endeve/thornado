@@ -75,6 +75,8 @@ CONTAINS
     Timer_Euler_SlopeLimiter          = Zero
     Timer_Euler_TroubledCellIndicator = Zero
 
+    CALL TimersStart_Euler( Timer_Euler_Program )
+
     RETURN
   END SUBROUTINE InitializeTimers_Euler
 
@@ -84,6 +86,8 @@ CONTAINS
     REAL(DP) :: TotalTime
 
     IF( .NOT. TimeIt_Euler ) RETURN
+
+    CALL TimersStop_Euler( Timer_Euler_Program )
 
     WRITE(*,'(5x,A)') 'Timers Summary'
     WRITE(*,'(5x,A)') '--------------'

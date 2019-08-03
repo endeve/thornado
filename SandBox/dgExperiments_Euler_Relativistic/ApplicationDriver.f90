@@ -54,7 +54,6 @@ PROGRAM ApplicationDriver
     TimeIt_Euler, &
     InitializeTimers_Euler, FinalizeTimers_Euler, &
     TimersStart_Euler, TimersStop_Euler, &
-    Timer_Euler_Program, &
     Timer_Euler_InputOutput, &
     Timer_Euler_Initialize, &
     Timer_Euler_Finalize
@@ -96,7 +95,6 @@ PROGRAM ApplicationDriver
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
-  CALL TimersStart_Euler( Timer_Euler_Program )
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
   ProgramName = 'RiemannProblem'
@@ -117,7 +115,7 @@ PROGRAM ApplicationDriver
 
         CASE( 'Sod' )
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.4d0
+          t_end = 0.1d0
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'MBProblem1' )
@@ -536,7 +534,6 @@ PROGRAM ApplicationDriver
   CALL FinalizeProgram
 
   CALL TimersStop_Euler( Timer_Euler_Finalize )
-  CALL TimersStop_Euler( Timer_Euler_Program )
 
   CALL FinalizeTimers_Euler
 
