@@ -1,4 +1,4 @@
-MODULE TimersModule_AMReX
+MODULE TimersModule_AMReX_Euler
 
   USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: &
     I8=>INT64
@@ -11,108 +11,148 @@ MODULE TimersModule_AMReX
   IMPLICIT NONE
   PRIVATE
 
-  LOGICAL,  PUBLIC :: TimeIt_AMReX
+  LOGICAL,  PUBLIC :: TimeIt_AMReX_Euler
 
-  REAL(amrex_real), PUBLIC :: Timer_AMReX_Program
-  REAL(amrex_real), PUBLIC :: Timer_AMReX_InputOutput
-  REAL(amrex_real), PUBLIC :: Timer_AMReX_ComputeInc
-  REAL(amrex_real), PUBLIC :: Timer_AMReX_Initialize   
-  REAL(amrex_real), PUBLIC :: Timer_AMReX_DataTransfer
-  REAL(amrex_real), PUBLIC :: Timer_AMReX_InternalBC
-  REAL(amrex_real), PUBLIC :: Timer_AMReX_CopyMF
+  REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_Program
+  REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_Initialize
+  REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_Finalize
+  REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_InputOutput
+  REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_DataTransfer
+  REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_InteriorBC
+  REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_CopyMultiFab
+  REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_ConstructEdgeMap
 
-  CHARACTER(17) :: OutputFMT = '(7x,A,F6.3,A)'
+  CHARACTER(24) :: OutputFMT = '(7x,A,ES13.6E3,A,F6.3,A)'
 
-  PUBLIC :: InitializeTimers_AMReX
-  PUBLIC :: FinalizeTimers_AMReX
-  PUBLIC :: TimersStart_AMReX
-  PUBLIC :: TimersStop_AMReX
+  PUBLIC :: InitializeTimers_AMReX_Euler
+  PUBLIC :: FinalizeTimers_AMReX_Euler
+  PUBLIC :: TimersStart_AMReX_Euler
+  PUBLIC :: TimersStop_AMReX_Euler
   PUBLIC :: TimersWtime_AMReX
 
 CONTAINS
 
 
-  SUBROUTINE InitializeTimers_AMReX
+  SUBROUTINE InitializeTimers_AMReX_Euler
 
-    IF( .NOT. TimeIt_AMReX ) RETURN
+    IF( .NOT. TimeIt_AMReX_Euler ) RETURN
 
-    Timer_AMReX_InputOutput  = 0.0_amrex_real
-    Timer_AMReX_Initialize   = 0.0_amrex_real
-    Timer_AMReX_DataTransfer = 0.0_amrex_real
-    Timer_AMReX_ComputeInc   = 0.0_amrex_real
-    Timer_AMReX_InternalBC   = 0.0_amrex_real
-    Timer_AMReX_CopyMF       = 0.0_amrex_real
-    Timer_AMReX_Program      = 0.0_amrex_real
+    Timer_AMReX_Euler_Program          = 0.0_amrex_real
 
-    CALL TimersStart_AMReX( Timer_AMReX_Program )
+    Timer_AMReX_Euler_Initialize       = 0.0_amrex_real
+    Timer_AMReX_Euler_InputOutput      = 0.0_amrex_real
+    Timer_AMReX_Euler_DataTransfer     = 0.0_amrex_real
+    Timer_AMReX_Euler_InteriorBC       = 0.0_amrex_real
+    Timer_AMReX_Euler_CopyMultiFab     = 0.0_amrex_real
+    Timer_AMReX_Euler_ConstructEdgeMap = 0.0_amrex_real
+    Timer_AMReX_Euler_Finalize         = 0.0_amrex_real
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Program )
 
     RETURN
-  END SUBROUTINE InitializeTimers_AMReX
+  END SUBROUTINE InitializeTimers_AMReX_Euler
 
 
-  SUBROUTINE FinalizeTimers_AMReX
+  SUBROUTINE FinalizeTimers_AMReX_Euler
 
-    IF( .NOT. TimeIt_AMReX ) RETURN
+    REAL(amrex_real) :: TotalTime_AMReX
 
-    CALL TimersStop_AMReX( Timer_AMReX_Program )
+    IF( .NOT. TimeIt_AMReX_Euler ) RETURN
+
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Program )
 
     IF( amrex_parallel_ioprocessor() )THEN
+
+      TotalTime_AMReX = 0.0_amrex_real
+
       WRITE(*,*)
-      WRITE(*,'(5x,A)') 'Timers_AMReX Summary'
-      WRITE(*,'(5x,A)') '--------------------'
+      WRITE(*,'(5x,A)') 'Timers_AMReX_Euler Summary'
+      WRITE(*,'(5x,A)') '--------------------------'
       WRITE(*,*)
 
       WRITE(*,OutputFMT) &
-        'Initialize:       ', &
-        100.0_amrex_real * Timer_AMReX_Initialize / Timer_AMReX_Program, ' %'
+        'AMReX_Euler_Initialize:       ', &
+        Timer_AMReX_Euler_Initialize, ' s = ', &
+        100.0_amrex_real &
+        * Timer_AMReX_Euler_Initialize / Timer_AMReX_Euler_Program, ' %'
+      TotalTime_AMReX = TotalTime_AMReX + Timer_AMReX_Euler_Initialize
+
       WRITE(*,OutputFMT) &
-        'ComputeIncrement: ', &
-        100.0_amrex_real * Timer_AMReX_ComputeInc / Timer_AMReX_Program, ' %'
+        'AMReX_Euler_InputOutput:      ', &
+        Timer_AMReX_Euler_InputOutput , ' s = ', &
+        100.0_amrex_real &
+        * Timer_AMReX_Euler_InputOutput / Timer_AMReX_Euler_Program, ' %'
+      TotalTime_AMReX = TotalTime_AMReX + Timer_AMReX_Euler_InputOutput
+
       WRITE(*,OutputFMT) &
-        'DataTransfer:     ', &
-        100.0_amrex_real * Timer_AMReX_DataTransfer / Timer_AMReX_Program, ' %'
+        'AMReX_Euler_DataTransfer:     ', &
+        Timer_AMReX_Euler_DataTransfer, ' s = ', &
+        100.0_amrex_real &
+        * Timer_AMReX_Euler_DataTransfer / Timer_AMReX_Euler_Program, ' %'
+      TotalTime_AMReX = TotalTime_AMReX + Timer_AMReX_Euler_DataTransfer
+
       WRITE(*,OutputFMT) &
-        'InternalBC:       ', &
-        100.0_amrex_real * Timer_AMReX_InternalBC / Timer_AMReX_Program, ' %'
+        'AMReX_Euler_InteriorBC:       ', &
+        Timer_AMReX_Euler_InteriorBC, ' s = ', &
+        100.0_amrex_real &
+          * Timer_AMReX_Euler_InteriorBC / Timer_AMReX_Euler_Program, ' %'
+      TotalTime_AMReX = TotalTime_AMReX + Timer_AMReX_Euler_InteriorBC
+
       WRITE(*,OutputFMT) &
-        'CopyMF:           ', &
-        100.0_amrex_real * Timer_AMReX_CopyMF / Timer_AMReX_Program, ' %'
+        'AMReX_Euler_CopyMultiFab:     ', &
+        Timer_AMReX_Euler_CopyMultiFab, ' s = ', &
+        100.0_amrex_real &
+          * Timer_AMReX_Euler_CopyMultiFab / Timer_AMReX_Euler_Program, ' %'
+      TotalTime_AMReX = TotalTime_AMReX + Timer_AMReX_Euler_CopyMultiFab
+
       WRITE(*,OutputFMT) &
-        'InputOutput:      ', &
-        100.0_amrex_real * Timer_AMReX_InputOutput / Timer_AMReX_Program, ' %'
+        'AMReX_Euler_ConstructEdgeMap: ', &
+        Timer_AMReX_Euler_ConstructEdgeMap, ' s = ', &
+        100.0_amrex_real &
+          * Timer_AMReX_Euler_ConstructEdgeMap / Timer_AMReX_Euler_Program, ' %'
+      TotalTime_AMReX = TotalTime_AMReX + Timer_AMReX_Euler_ConstructEdgeMap
+
+      WRITE(*,OutputFMT) &
+        'AMReX_Euler_Finalize:         ', &
+        Timer_AMReX_Euler_Finalize, ' s = ', &
+        100.0_amrex_real &
+        * Timer_AMReX_Euler_Finalize / Timer_AMReX_Euler_Program, ' %'
+      TotalTime_AMReX = TotalTime_AMReX + Timer_AMReX_Euler_Finalize
+
       WRITE(*,*)
-      WRITE(*,'(7x,A,ES13.6E3,A)') &
-        'Program:          ', &
-          Timer_AMReX_Program, ' s'
+      WRITE(*,'(7x,A,F6.3,A)') &
+        'Timer_AMReX / TotalRunTime = ', &
+        100.0_amrex_real &
+        * TotalTime_AMReX / Timer_AMReX_Euler_Program, ' %'
       WRITE(*,*)
     END IF
 
     RETURN
-  END SUBROUTINE FinalizeTimers_AMReX
+  END SUBROUTINE FinalizeTimers_AMReX_Euler
 
 
-  SUBROUTINE TimersStart_AMReX( Timer )
+  SUBROUTINE TimersStart_AMReX_Euler( Timer )
 
     REAL(amrex_real), INTENT(inout) :: Timer
 
-    IF( .NOT. TimeIt_AMReX ) RETURN
+    IF( .NOT. TimeIt_AMReX_Euler ) RETURN
 
     Timer = Timer - TimersWtime_AMReX()
 
     RETURN
-  END SUBROUTINE TimersStart_AMReX
+  END SUBROUTINE TimersStart_AMReX_Euler
 
 
-  SUBROUTINE TimersStop_AMReX( Timer )
+  SUBROUTINE TimersStop_AMReX_Euler( Timer )
 
     REAL(amrex_real), INTENT(inout) :: Timer
 
-    IF( .NOT. TimeIt_AMReX ) RETURN
+    IF( .NOT. TimeIt_AMReX_Euler ) RETURN
 
     Timer = Timer + TimersWtime_AMReX()
 
     RETURN
-  END SUBROUTINE TimersStop_AMReX
+  END SUBROUTINE TimersStop_AMReX_Euler
 
 
   REAL(amrex_real) FUNCTION TimersWtime_AMReX()
@@ -121,7 +161,7 @@ CONTAINS
     INTEGER(I8) :: clock_rate
     INTEGER(I8) :: clock_max
 
-    IF( .NOT. TimeIt_AMReX ) RETURN
+    IF( .NOT. TimeIt_AMReX_Euler ) RETURN
 
     CALL SYSTEM_CLOCK( clock_read, clock_rate, clock_max )
     TimersWtime_AMReX = REAL( clock_read, amrex_real ) &
@@ -131,4 +171,4 @@ CONTAINS
   END FUNCTION TimersWtime_AMReX
 
 
-END MODULE TimersModule_AMReX
+END MODULE TimersModule_AMReX_Euler

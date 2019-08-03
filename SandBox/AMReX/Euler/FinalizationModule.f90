@@ -29,6 +29,9 @@ MODULE FinalizationModule
     nLevels, MyAmrFinalize
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     MF_FinalizeFluid_SSPRK
+  USE TimersModule_AMReX_Euler,    ONLY: &
+    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_Finalize
 
   IMPLICIT NONE
   PRIVATE
@@ -67,11 +70,15 @@ CONTAINS
       CALL amrex_geometry_destroy( GEOM(iLevel) )
     END DO
 
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Finalize )
+
     CALL MyAmrFinalize
 
     CALL amrex_amrcore_finalize
 
     CALL amrex_finalize
+
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
  END SUBROUTINE FinalizeProgram
 

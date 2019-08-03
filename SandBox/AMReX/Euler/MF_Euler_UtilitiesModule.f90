@@ -34,6 +34,9 @@ MODULE MF_Euler_UtilitiesModule
   USE MF_UtilitiesModule, ONLY: &
     AMReX2thornado, &
     thornado2AMReX
+  USE TimersModule_AMReX_Euler, ONLY: &
+    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_DataTransfer
 
   IMPLICIT NONE
   PRIVATE
@@ -83,6 +86,7 @@ CONTAINS
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3), 1:nGF ) )
@@ -128,6 +132,7 @@ CONTAINS
                  A(1:nDOFX,iX_B0(1):iX_E0(1), &
                            iX_B0(2):iX_E0(2), &
                            iX_B0(3):iX_E0(3),1:nAF) )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         CALL Euler_ComputeFromConserved &
                ( iX_B0, iX_E0, &
@@ -144,6 +149,7 @@ CONTAINS
                            iX_B0(2):iX_E0(2), &
                            iX_B0(3):iX_E0(3),1:nAF) )
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         CALL thornado2AMReX &
                ( nPF, iX_B0, iX_E0, &
                  uPF(      iX_B0(1):iX_E0(1), &
@@ -165,6 +171,7 @@ CONTAINS
         DEALLOCATE( P )
         DEALLOCATE( U )
         DEALLOCATE( G )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO
 
@@ -214,6 +221,7 @@ CONTAINS
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3),1:nGF) )
@@ -237,6 +245,7 @@ CONTAINS
                  U(1:nDOFX,iX_B0(1):iX_E0(1), &
                            iX_B0(2):iX_E0(2), &
                            iX_B0(3):iX_E0(3),1:nCF) )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         CALL Euler_ComputeTimeStep &
                ( iX_B0, iX_E0, &
@@ -250,8 +259,10 @@ CONTAINS
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         DEALLOCATE( U )
         DEALLOCATE( G )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO ! --- Loop over grids (boxes) ---
 

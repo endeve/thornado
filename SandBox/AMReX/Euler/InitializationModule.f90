@@ -85,7 +85,7 @@ MODULE InitializationModule
     MF_InitializeFluid_SSPRK
   USE MyAmrDataModule
   USE MyAmrModule
-  USE TimersModule_AMReX
+  USE TimersModule_AMReX_Euler
 
   IMPLICIT NONE
 
@@ -103,7 +103,7 @@ CONTAINS
 
   SUBROUTINE InitializeProblem
 
-    CALL TimersStart_AMReX( Timer_AMReX_Initialize )
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     ! --- Initialize AMReX ---
     CALL amrex_init()
@@ -161,7 +161,7 @@ CONTAINS
 
     END IF
 
-    CALL TimersStop_AMReX( Timer_AMReX_Initialize )
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     wrt = .FALSE.
     chk = .FALSE.
@@ -277,9 +277,9 @@ CONTAINS
       CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
       CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
 
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-      CALL TimersStart_AMReX( Timer_AMReX_InputOutput )
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t, t_wrt, &
                MF_uGF % BA % P, &
@@ -287,16 +287,14 @@ CONTAINS
                MF_uCF % P, &
                MF_uPF % P, &
                MF_uAF % P )
-      CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
 
-      CALL TimersStart_AMReX( Timer_AMReX_InputOutput )
       CALL WriteFieldsAMReX_PlotFile &
              ( t(0), StepNo, &
                MF_uGF_Option = MF_uGF, &
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF )
-      CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
     END IF
 
     DO iLevel = 0, nLevels
