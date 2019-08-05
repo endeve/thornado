@@ -1,7 +1,7 @@
 # thornado VPATH_LOCATIONS:
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Euler
 
-f90EXE_sources += TimersModule_AMReX.f90
+f90EXE_sources += TimersModule_AMReX_Euler.f90
 f90EXE_sources += MF_UtilitiesModule.f90
 f90EXE_sources += MF_InitializationModule.f90
 f90EXE_sources += InitializationModule.f90

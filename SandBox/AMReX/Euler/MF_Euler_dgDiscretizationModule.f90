@@ -32,7 +32,10 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap, ConstructEdgeMap, &
     MF_Euler_ApplyBoundaryConditions
-  USE TimersModule_AMReX
+  USE TimersModule_AMReX_Euler, ONLY: &
+    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_InteriorBC, &
+    Timer_AMReX_Euler_DataTransfer
 
   IMPLICIT NONE
   PRIVATE
@@ -44,7 +47,7 @@ CONTAINS
 
 
   SUBROUTINE MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_uCF, MF_duCF )
- 
+
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels)
@@ -69,7 +72,9 @@ CONTAINS
     DO iLevel = 0, nLevels
 
       ! --- Apply boundary conditions to interior domains ---
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
       CALL MF_duCF(iLevel) % setval( 0.0_amrex_real )
 
@@ -88,6 +93,7 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nGF) )
@@ -115,6 +121,7 @@ CONTAINS
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         ! --- Apply boundary conditions to physical boundaries ---
         CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
@@ -126,7 +133,6 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nCF), Edge_Map )
 
         IF( DEBUG ) WRITE(*,'(A)') '    CALL Euler_ComputeIncrement_DG_Explicit'
-        CALL TimersStart_AMReX( Timer_AMReX_ComputeInc )
         CALL Euler_ComputeIncrement_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
@@ -139,8 +145,8 @@ CONTAINS
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3),1:nCF), &
                  SuppressBC_Option = .TRUE. )
-        CALL TimersStop_AMReX( Timer_AMReX_ComputeInc )
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         CALL thornado2AMReX &
                ( nCF, iX_B0, iX_E0, &
                  duCF(      iX_B0(1):iX_E0(1), &
@@ -153,6 +159,7 @@ CONTAINS
         DEALLOCATE( dU )
         DEALLOCATE( U  )
         DEALLOCATE( G  )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO
 

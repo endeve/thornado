@@ -2,6 +2,10 @@ MODULE Euler_PositivityLimiterModule
 
   USE KindModule, ONLY: &
     DP
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_PositivityLimiter
+
 
 #ifdef HYDRO_NONRELATIVISTIC
 
@@ -75,6 +79,8 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
+    CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
+
 #ifdef HYDRO_NONRELATIVISTIC
 
     CALL Euler_ApplyPositivityLimiter_NonRelativistic &
@@ -86,6 +92,8 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
 #endif
+
+    CALL TimersStop_Euler( Timer_Euler_PositivityLimiter )
 
   END SUBROUTINE Euler_ApplyPositivityLimiter
 

@@ -35,6 +35,13 @@ elif [[ $THORNADO_MACHINE == beacon* ]]; then
   module unload pgi gcc cce intel
   module unload PE-gnu PE-intel
 
+elif [[ $THORNADO_MACHINE == acf* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  module unload PE-intel PE-gnu 
+
 elif [[ $THORNADO_MACHINE == sn1987b* ]]; then
 
   echo
@@ -134,6 +141,15 @@ elif [[ $THORNADO_MACHINE == beacon_intel ]]; then
 
   module load PE-intel
   module load hdf5/1.8.14
+
+elif [[ $THORNADO_MACHINE == acf_gnu ]]; then
+
+  echo 
+
+  module load PE-gnu
+  module swap intel-mpi/2017.2.174 openmpi/2.1.1-gcc4.8.2
+  module load hdf5
+  module load lapack 
 
 elif [[ $THORNADO_MACHINE == sn1987b ]]; then
 
