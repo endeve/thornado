@@ -105,7 +105,7 @@ CONTAINS
         WRITE(*,'(A9,ES18.10E3)') 'S3(i):   ', CF_S3(i)
         STOP 'q < 0'
       END IF
-    
+
       SSq =   CF_S1(i)**2 / GF_Gm_dd_11(i) &
             + CF_S2(i)**2 / GF_Gm_dd_22(i) &
             + CF_S3(i)**2 / GF_Gm_dd_33(i)
@@ -120,7 +120,7 @@ CONTAINS
         WRITE(*,'(A)') '    EE: Pbisec < SqrTiny. Stopping...'
         STOP
       END IF
-     
+
       ! --- Get initial value for FunP ---
       CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
 
@@ -128,7 +128,7 @@ CONTAINS
 
       IF( ABS( FunP ) .LT. TolFunP * ABS( TolFunP ) )THEN
         Pnew = Pold
-        CONVERGED = .TRUE. 
+        CONVERGED = .TRUE.
       END IF
 
       ITERATION = 0
@@ -217,7 +217,7 @@ CONTAINS
       ! --- Recover Primitive Variables ---
 
       PF_D(i)  = CF_D(i) / W
-      
+
       PF_V1(i) = CF_S1(i) / ( CF_D(i) * h * W * GF_Gm_dd_11(i) )
 
       PF_V2(i) = CF_S2(i) / ( CF_D(i) * h * W * GF_Gm_dd_22(i) )
@@ -225,7 +225,7 @@ CONTAINS
       PF_V3(i) = CF_S3(i) / ( CF_D(i) * h * W * GF_Gm_dd_33(i) )
 
       PF_E(i)  = CF_D(i) * ( h - 1.0_DP ) / W - Pnew
-      
+
       PF_Ne(i) = CF_Ne(i) / W
 
    END DO ! --- End of loop over nodes ---
@@ -254,7 +254,7 @@ CONTAINS
 
     W = 1.0_DP / SQRT( 1.0_DP - VSq )
     h = 1.0_DP + ( PF_E + AF_P ) / PF_D
-    
+
     CF_D  = W * PF_D
     CF_S1 = h * W**2 * PF_D * GF_Gm_dd_11 * PF_V1
     CF_S2 = h * W**2 * PF_D * GF_Gm_dd_22 * PF_V2
@@ -365,30 +365,46 @@ CONTAINS
       CALL ComputeSoundSpeedFromPrimitive &
              ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), SoundSpeed(:) )
 
-      DO iNodeX = 1, nDOFX
 
-        EigVals_X1(:,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                 ( P         (iNodeX,iPF_V1), &
-                                   SoundSpeed(iNodeX),        &
-                                   P         (iNodeX,iPF_V1), &
-                                   P         (iNodeX,iPF_V2), &
-                                   P         (iNodeX,iPF_V3), &
-                                   G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                   G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                   G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                   G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                   G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                   G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
-
-      END DO
-
-      alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1 ) ) )
-
-      dt(1) = dX(1) / alpha_X1
-
-      IF( nDimsX .GT. 1 )THEN
+      IF     ( nDimsX .EQ. 1 )THEN
 
         DO iNodeX = 1, nDOFX
+
+          EigVals_X1(:,iNodeX) = Euler_Eigenvalues_Relativistic &
+                                   ( P         (iNodeX,iPF_V1), &
+                                     SoundSpeed(iNodeX),        &
+                                     P         (iNodeX,iPF_V1), &
+                                     P         (iNodeX,iPF_V2), &
+                                     P         (iNodeX,iPF_V3), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
+
+        END DO
+
+        alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1 ) ) )
+
+        dt(1) = dX(1) / alpha_X1
+
+      ELSE IF( nDimsX .EQ. 2 )THEN
+
+        DO iNodeX = 1, nDOFX
+
+          EigVals_X1(:,iNodeX) = Euler_Eigenvalues_Relativistic &
+                                   ( P         (iNodeX,iPF_V1), &
+                                     SoundSpeed(iNodeX),        &
+                                     P         (iNodeX,iPF_V1), &
+                                     P         (iNodeX,iPF_V2), &
+                                     P         (iNodeX,iPF_V3), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
 
           EigVals_X2(:,iNodeX) = Euler_Eigenvalues_Relativistic &
                                    ( P         (iNodeX,iPF_V2), &
@@ -404,15 +420,41 @@ CONTAINS
                                      G(iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
         END DO
 
+        alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1 ) ) )
         alpha_X2 = MAX( alpha_X2, MAXVAL( ABS( EigVals_X2 ) ) )
 
+        dt(1) = dX(1) / alpha_X1
         dt(2) = dX(2) / alpha_X2
 
-      END IF
-
-      IF( nDimsX .GT. 2 )THEN
+      ELSE
 
         DO iNodeX = 1, nDOFX
+
+          EigVals_X1(:,iNodeX) = Euler_Eigenvalues_Relativistic &
+                                   ( P         (iNodeX,iPF_V1), &
+                                     SoundSpeed(iNodeX),        &
+                                     P         (iNodeX,iPF_V1), &
+                                     P         (iNodeX,iPF_V2), &
+                                     P         (iNodeX,iPF_V3), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
+
+          EigVals_X2(:,iNodeX) = Euler_Eigenvalues_Relativistic &
+                                   ( P         (iNodeX,iPF_V2), &
+                                     SoundSpeed(iNodeX),        &
+                                     P         (iNodeX,iPF_V1), &
+                                     P         (iNodeX,iPF_V2), &
+                                     P         (iNodeX,iPF_V3), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
 
           EigVals_X3(:,iNodeX) = Euler_Eigenvalues_Relativistic &
                                    ( P         (iNodeX,iPF_V3),   &
@@ -428,8 +470,12 @@ CONTAINS
                                      G(iNodeX,iX1,iX2,iX3,iGF_Beta_3) )
         END DO
 
+        alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1 ) ) )
+        alpha_X2 = MAX( alpha_X2, MAXVAL( ABS( EigVals_X2 ) ) )
         alpha_X3 = MAX( alpha_X3, MAXVAL( ABS( EigVals_X3 ) ) )
 
+        dt(1) = dX(1) / alpha_X1
+        dt(2) = dX(2) / alpha_X2
         dt(3) = dX(3) / alpha_X3
 
       END IF
@@ -1121,7 +1167,7 @@ CONTAINS
 
   END SUBROUTINE ComputePressureWithBisectionMethod
 
-  
+
   SUBROUTINE ComputePressureWithBrentsMethod( CF_D, CF_E, SSq, Pbrent )
 
     REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq
@@ -1177,7 +1223,7 @@ CONTAINS
       ITERATION = ITERATION + 1
 
       IF( ( FunPA .NE. FunPC ) .AND. ( FunPB .NE. FunPC ) )THEN
-        ! --- Inverse quadratic interpolation ---  
+        ! --- Inverse quadratic interpolation ---
         PS =   PA * FunPB * FunPC / ( ( FunPA - FunPB ) * ( FunPA - FunPC ) ) &
              + PB * FunPA * FunPC / ( ( FunPB - FunPA ) * ( FunPB - FunPC ) ) &
              + PC * FunPA * FunPB / ( ( FunPC - FunPA ) * ( FunPC - FunPB ) )

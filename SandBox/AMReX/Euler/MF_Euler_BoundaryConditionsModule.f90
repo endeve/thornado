@@ -16,6 +16,9 @@ MODULE MF_Euler_BoundaryConditionsModule
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     DEBUG
+  USE TimersModule_AMReX_Euler, ONLY: &
+    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_ConstructEdgeMap
 
   IMPLICIT NONE
   PRIVATE
@@ -71,6 +74,8 @@ CONTAINS
 
     INTEGER :: iDim
 
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_ConstructEdgeMap )
+
     Edge_Map % IsLowerBoundary = .FALSE.
     Edge_Map % IsUpperBoundary = .FALSE.
     DO iDim = 1, 3
@@ -81,6 +86,8 @@ CONTAINS
           Edge_Map % IsUpperBoundary( iDim ) = .TRUE.
       END IF
     END DO
+
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_ConstructEdgeMap )
 
   END SUBROUTINE ConstructEdgeMap
 

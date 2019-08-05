@@ -60,13 +60,13 @@ MODULE InputOutputModuleAMReX
   INTERFACE
 
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
-                 ( StepNo, FinestLevel, dt, time, t_wrt, t_chk, pBA, &
+                 ( StepNo, FinestLevel, dt, time, t_wrt, pBA, &
                    pMF_uGF, pMF_uCF, pMF_uPF, pMF_uAF ) BIND(c)
        IMPORT
        IMPLICIT NONE
        INTEGER(c_int),   INTENT(in) :: StepNo(*)
        INTEGER(c_int),   VALUE      :: FinestLevel
-       REAL(amrex_real), INTENT(in) :: dt(*), time(*), t_wrt, t_chk
+       REAL(amrex_real), INTENT(in) :: dt(*), time(*), t_wrt
        TYPE(c_ptr),      INTENT(in) :: pBA(*)
        TYPE(c_ptr),      INTENT(in) :: pMF_uGF(*)
        TYPE(c_ptr),      INTENT(in) :: pMF_uCF(*)
@@ -75,13 +75,13 @@ MODULE InputOutputModuleAMReX
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
-                 ( FinestLevel, StepNo, dt, time, t_wrt, t_chk, &
+                 ( FinestLevel, StepNo, dt, time, t_wrt, &
                    pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int),   INTENT(out) :: FinestLevel(*)
       INTEGER(c_int),   INTENT(out) :: StepNo(*)
-      REAL(amrex_real), INTENT(out) :: dt(*), time(*), t_wrt, t_chk
+      REAL(amrex_real), INTENT(out) :: dt(*), time(*), t_wrt
       TYPE(c_ptr),      INTENT(out) :: pBA(*), pDM(*)
       INTEGER(c_int),   VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
@@ -139,15 +139,15 @@ CONTAINS
 
     INTEGER, INTENT(in) :: iChkFile
 
-    INTEGER               :: iLevel, FinestLevel(1)
-    TYPE(c_ptr)           :: pBA(0:amrex_max_level)
-    TYPE(c_ptr)           :: pDM(0:amrex_max_level)
-    TYPE(c_ptr)           :: pGF(0:amrex_max_level)
-    TYPE(c_ptr)           :: pCF(0:amrex_max_level)
-    TYPE(c_ptr)           :: pPF(0:amrex_max_level)
-    TYPE(c_ptr)           :: pAF(0:amrex_max_level)
-    TYPE(c_ptr)           :: amrcore
-    TYPE(amrex_box)       :: BX
+    INTEGER         :: iLevel, FinestLevel(1)
+    TYPE(c_ptr)     :: pBA(0:amrex_max_level)
+    TYPE(c_ptr)     :: pDM(0:amrex_max_level)
+    TYPE(c_ptr)     :: pGF(0:amrex_max_level)
+    TYPE(c_ptr)     :: pCF(0:amrex_max_level)
+    TYPE(c_ptr)     :: pPF(0:amrex_max_level)
+    TYPE(c_ptr)     :: pAF(0:amrex_max_level)
+    TYPE(c_ptr)     :: amrcore
+    TYPE(amrex_box) :: BX
 
     amrcore = amrex_get_amrcore()
 
@@ -175,7 +175,7 @@ CONTAINS
     FinestLevel = nLevels
 
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevel, StepNo, dt, t, t_wrt, t_chk, &
+           ( FinestLevel, StepNo, dt, t, t_wrt, &
              pBA(0:nLevels), pDM(0:nLevels), iChkFile )
 
     DO iLevel = 0, nLevels
