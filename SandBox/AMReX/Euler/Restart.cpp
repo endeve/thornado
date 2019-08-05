@@ -26,7 +26,7 @@ extern "C"
 {
   void writefieldsamrex_checkpoint
          ( int StepNo[], int FinestLevel,
-           Real dt[], Real time[], Real t_wrt[], Real t_chk[],
+           Real dt[], Real time[], Real t_wrt[],
            BoxArray** BA, MultiFab** MF_uGF, MultiFab** MF_uCF,
            MultiFab** MF_uPF, MultiFab** MF_uAF )
   {
@@ -103,9 +103,8 @@ extern "C"
       }
       HeaderFile << "\n";
 
-      // Write out t_wrt and t_chk
+      // Write out t_wrt
       HeaderFile << t_wrt[0] << "\n";
-      HeaderFile << t_chk[0] << "\n";
 
       // Write the BoxArray at each level
       for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
@@ -142,7 +141,7 @@ extern "C"
 
   void readheaderandboxarraydata
          ( int finest_level[], int stepno[],
-	   Real dt[], Real time[], Real t_wrt[], Real t_chk[],
+	   Real dt[], Real time[], Real t_wrt[],
            BoxArray** ba, DistributionMapping** dm, int iChkFile )
   {
 
@@ -216,23 +215,12 @@ extern "C"
       }
     }
 
-    // Read in t_chk
-    std::getline( is, line );
-    {
-      std::istringstream lis( line );
-      int i = 0;
-      while( lis >> word )
-      {
-        t_chk[i++] = std::stod( word );
-      }
-    }
-
     // Read in level 'iLevel' BoxArray from Header
     for( int iLevel = 0; iLevel <= finest_level[0]; ++iLevel )
     {
 
       BoxArray& ba1 = *ba[iLevel];
-      ba1 = BoxArray(); 
+      ba1 = BoxArray();
       ba1.readFrom( is );
       ba[iLevel] = &ba1;
       GotoNextLine( is );
@@ -286,7 +274,7 @@ extern "C"
 
     for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
     {
-      VisMF::Read( *MF[iLevel], 
+      VisMF::Read( *MF[iLevel],
         amrex::MultiFabFileFullPrefix
                  ( iLevel, restart_chkfile, "Level_", MF_Name ) );
     }

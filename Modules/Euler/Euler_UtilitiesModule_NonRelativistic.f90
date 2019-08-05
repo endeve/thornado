@@ -8,7 +8,8 @@ MODULE Euler_UtilitiesModule_NonRelativistic
     MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, iGF_h_1, iGF_h_2, iGF_h_3, &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
@@ -53,6 +54,7 @@ CONTAINS
     V_1 = S_1 / ( Gm_dd_11 * N )
     V_2 = S_2 / ( Gm_dd_22 * N )
     V_3 = S_3 / ( Gm_dd_33 * N )
+
     E   = G - Half * ( S_1**2 / Gm_dd_11 &
                        + S_2**2 / Gm_dd_22 &
                        + S_3**2 / Gm_dd_33 ) / N
@@ -132,24 +134,34 @@ CONTAINS
 
 
   SUBROUTINE Euler_ComputeTimeStep_NonRelativistic &
-    ( iX_B0, iX_E0, G, U, CFL, TimeStep )
+               ( iX_B0, iX_E0, G, U, CFL, TimeStep )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3)
     REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:), &
-      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      G(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:), &
+      U(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
     REAL(DP), INTENT(in)  :: &
       CFL
     REAL(DP), INTENT(out) :: &
       TimeStep
 
-    INTEGER  :: iX1, iX2, iX3
-    REAL(DP) :: dX(3), dt_X(nDOFX,3)
+    INTEGER  :: iX1, iX2, iX3, iNodeX
+    REAL(DP) :: dX(3), dt(3)
     REAL(DP) :: P(nDOFX,nPF)
-    REAL(DP) :: A(nDOFX,nAF)
+    REAL(DP) :: SoundSpeed(nDOFX)
+    REAL(DP) :: EigVals_X1(nCF,nDOFX), alpha_X1, &
+                EigVals_X2(nCF,nDOFX), alpha_X2, &
+                EigVals_X3(nCF,nDOFX), alpha_X3
 
     TimeStep = HUGE( One )
+    dt       = HUGE( One )
+
+    ! --- Maximum wave-speeds ---
+
+    alpha_X1 = -HUGE( One )
+    alpha_X2 = -HUGE( One )
+    alpha_X3 = -HUGE( One )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -169,29 +181,87 @@ CONTAINS
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-      CALL ComputePressureFromPrimitive &
-             ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_P) )
-
       CALL ComputeSoundSpeedFromPrimitive &
-             ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), A(:,iAF_Cs) )
+             ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), SoundSpeed(:) )
 
-      dt_X(:,1) &
-        = dX(1) * G(:,iX1,iX2,iX3,iGF_h_1) &
-            / MAX( ABS( P(:,iPF_V1) ) + A(:,iAF_Cs), SqrtTiny )
-      dt_X(:,2) &
-        = dX(2) * G(:,iX1,iX2,iX3,iGF_h_2) &
-            / MAX( ABS( P(:,iPF_V2) ) + A(:,iAF_Cs), SqrtTiny )
-      dt_X(:,3) &
-        = dX(3) * G(:,iX1,iX2,iX3,iGF_h_3) &
-            / MAX( ABS( P(:,iPF_V3) ) + A(:,iAF_Cs), SqrtTiny )
+      DO iNodeX = 1, nDOFX
 
-      TimeStep = MIN( TimeStep, MINVAL( dt_X ) )
+        EigVals_X1(:,iNodeX) = Euler_Eigenvalues_NonRelativistic &
+                                 ( P            (iNodeX,iPF_V1), &
+                                   SoundSpeed   (iNodeX),        &
+                                   P            (iNodeX,iPF_V1), &
+                                   P            (iNodeX,iPF_V2), &
+                                   P            (iNodeX,iPF_V3), &
+                                   G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                   G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                   G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                   G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                   G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                   G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
+
+      END DO
+
+      alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1 ) ) )
+
+      dt(1) = dX(1) / alpha_X1
+
+      IF( nDimsX .GT. 1 )THEN
+
+        DO iNodeX = 1, nDOFX
+
+          EigVals_X2(:,iNodeX) = Euler_Eigenvalues_NonRelativistic &
+                                   ( P            (iNodeX,iPF_V2), &
+                                     SoundSpeed   (iNodeX),        &
+                                     P            (iNodeX,iPF_V1), &
+                                     P            (iNodeX,iPF_V2), &
+                                     P            (iNodeX,iPF_V3), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
+
+        END DO
+
+        alpha_X2 = MAX( alpha_X2, MAXVAL( ABS( EigVals_X2 ) ) )
+
+        dt(2) = dX(2) / alpha_X2
+
+      END IF
+
+      IF( nDimsX .GT. 2 )THEN
+
+        DO iNodeX = 1, nDOFX
+
+          EigVals_X3(:,iNodeX) = Euler_Eigenvalues_NonRelativistic &
+                                   ( P            (iNodeX,iPF_V3), &
+                                     SoundSpeed   (iNodeX),        &
+                                     P            (iNodeX,iPF_V1), &
+                                     P            (iNodeX,iPF_V2), &
+                                     P            (iNodeX,iPF_V3), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                     G(iNodeX,iX1,iX2,iX3,iGF_Beta_3) )
+
+        END DO
+
+        alpha_X3 = MAX( alpha_X3, MAXVAL( ABS( EigVals_X3 ) ) )
+
+        dt(3) = dX(3) / alpha_X3
+
+      END IF
+
+      TimeStep = MIN( TimeStep, MINVAL( dt ) )
 
     END DO
     END DO
     END DO
 
-    TimeStep = CFL * TimeStep
+    TimeStep = MAX( CFL * TimeStep, SqrtTiny )
 
   END SUBROUTINE Euler_ComputeTimeStep_NonRelativistic
 
@@ -414,7 +484,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift_2
 
     REAL(DP) :: Euler_NumericalFlux_X2_HLLC_NonRelativistic(nCF)
-    
+
     REAL(DP) :: D, V1, V2, V3, P, E, Ne, TMP(nCF)
 
     IF( aM .EQ. Zero )THEN
@@ -538,6 +608,5 @@ CONTAINS
 
     RETURN
   END FUNCTION Euler_NumericalFlux_X3_HLLC_NonRelativistic
-
 
 END MODULE Euler_UtilitiesModule_NonRelativistic

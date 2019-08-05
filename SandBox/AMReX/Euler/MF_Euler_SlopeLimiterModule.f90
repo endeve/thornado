@@ -32,7 +32,10 @@ MODULE MF_Euler_SlopeLimiterModule
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap, ConstructEdgeMap, &
     MF_Euler_ApplyBoundaryConditions
-  USE TimersModule_AMReX
+  USE TimersModule_AMReX_Euler, ONLY: &
+    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_InteriorBC, &
+    Timer_AMReX_Euler_DataTransfer
 
   IMPLICIT NONE
   PRIVATE
@@ -68,10 +71,10 @@ CONTAINS
 
     DO iLevel = 0, nLevels
 
-      CALL TimersStart_AMReX( Timer_AMReX_InternalBC )
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
       ! --- Apply boundary conditions to interior domains ---
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
-      CALL TimersStop_AMReX( Timer_AMReX_InternalBC )
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -87,6 +90,7 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF ) )
@@ -111,6 +115,7 @@ CONTAINS
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         ! --- Apply boundary conditions to physical boundaries ---
         CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
@@ -134,6 +139,7 @@ CONTAINS
                  SuppressBC_Option = .TRUE. )
 
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         CALL thornado2AMReX &
                ( nCF, iX_B1, iX_E1, &
                  uCF(      iX_B1(1):iX_E1(1), &
@@ -145,6 +151,7 @@ CONTAINS
 
         DEALLOCATE( U )
         DEALLOCATE( G )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO
 
