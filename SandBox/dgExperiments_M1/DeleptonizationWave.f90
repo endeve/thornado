@@ -98,7 +98,7 @@ PROGRAM DeleptonizationWave
 
   CoordinateSystem = 'CARTESIAN'
 
-  TEST_DEBUG = .true.
+  TEST_DEBUG = .TRUE.
 
   SELECT CASE( CoordinateSystem )
 
