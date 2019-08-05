@@ -359,26 +359,22 @@ CONTAINS
         'iX1, iX2, iX3 = ', iX1, iX2, iX3
       WRITE(*,'(A,I2.2)') &
         'iP = ', iP
-      WRITE(*,'(A)') &
-        'U_Q = np.array( [ \'
+      WRITE(*,'(A)', ADVANCE = 'NO') 'U_Q = np.array( ['
       DO i = 1, nCF-1
-        WRITE(*,'(ES24.16E3,A)') U_Q(i), ', \'
+        WRITE(*,'(ES24.16E3,A)', ADVANCE = 'NO' ) U_Q(i), ', '
       END DO
-        WRITE(*,'(ES24.16E3,A)') U_Q(i), ' ] )'
-      WRITE(*,*)
-      WRITE(*,'(A)') &
-        'U_K = np.array( [ \'
+      WRITE(*,'(ES24.16E3,A)') U_Q(nCF), ' ] )'
+      WRITE(*,'(A)', ADVANCE = 'NO') 'U_K = np.array( ['
       DO i = 1, nCF-1
-        WRITE(*,'(ES24.16E3,A)') U_K(i), ', \'
+        WRITE(*,'(ES24.16E3,A)', ADVANCE = 'NO' ) U_K(i), ', '
       END DO
-        WRITE(*,'(ES24.16E3,A)') U_K(i), ' ] )'
-      WRITE(*,*)
-      WRITE(*,'(A)') &
-        'G_Q = np.array( [ \'
+      WRITE(*,'(ES24.16E3,A)') U_K(nCF), ' ] )'
+      WRITE(*,'(A)', ADVANCE = 'NO') 'G_Q = np.array( ['
       DO i = iGF_Gm_dd_11, iGF_Gm_dd_33-1
-        WRITE(*,'(ES24.16E3,A)') G_Q(i), ', \'
+        WRITE(*,'(ES24.16E3,A)', ADVANCE = 'NO' ) G_Q(i), ', '
       END DO
-        WRITE(*,'(ES24.16E3,A)') G_Q(i), ' ] )'
+      WRITE(*,'(ES24.16E3,A)') G_Q(iGF_Gm_dd_33), ' ] )'
+      WRITE(*,*)
 
       WRITE(*,'(A8,A,I3.3)') &
         '', 'Error: No Root in Interval'
