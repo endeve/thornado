@@ -87,6 +87,7 @@ PROGRAM DeleptonizationWave
 
   INCLUDE 'mpif.h'
 
+  LOGICAL  :: TEST_DEBUG
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem
   INTEGER  :: iCycle, iCycleD, iCycleW
@@ -95,9 +96,11 @@ PROGRAM DeleptonizationWave
   REAL(DP) :: eL, eR
   REAL(DP) :: xL(3), xR(3), ZoomX(3)
 
-  CoordinateSystem = 'SPHERICAL'
+  CoordinateSystem = 'CARTESIAN'
 
-  SELECT CASE( CoordinateSystem)
+  TEST_DEBUG = .true.
+
+  SELECT CASE( CoordinateSystem )
 
     CASE( 'CARTESIAN' )
 
@@ -126,7 +129,7 @@ PROGRAM DeleptonizationWave
 
   END SELECT
  
-  nNodes = 2
+  nNodes = 1
 
   nE = 10
   eL = 0.0d0 * MeV
@@ -214,7 +217,7 @@ PROGRAM DeleptonizationWave
          ( BetaTVD_Option = 2.0_DP,                    &
            BetaTVB_Option = 0.0d0,                      &
            SlopeTolerance_Option = 1.0d-6,             &
-           UseSlopeLimiter_Option = .TRUE.,            &
+           UseSlopeLimiter_Option = .FALSE.,            &
            UseCharacteristicLimiting_Option = .FALSE., &
            Verbose_Option = .TRUE. )
 
@@ -225,7 +228,7 @@ PROGRAM DeleptonizationWave
            Max_1_Option = 1.0d0 - SqrtTiny, &
            Min_2_Option = 0.0d0 + SqrtTiny, &
            UsePositivityLimiter_Option &
-             = .TRUE. )
+             = .FALSE. )
 
   ! --- Initialize Time Stepper ---
 
@@ -266,17 +269,21 @@ PROGRAM DeleptonizationWave
   t_end = 5.0d1 * Millisecond
 
   IF ( CoordinateSystem == 'SPHERICAL') THEN
-  ! Spherical Coordinate time step
+    ! Spherical Coordinate time step
     dt  = Third * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
   ELSE IF ( CoordinateSystem == 'CARTESIAN' ) THEN
-  ! Cartesian Coordinate time step
+    ! Cartesian Coordinate time step
     dt  = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
   END IF
 
   iCycleD = 1
-  iCycleW = 1 ! 200 -> 128, 150 -> 96 
+  IF( TEST_DEBUG ) THEN
+    iCycleW = 1 ! 200 -> 128, 150 -> 96
+  ELSE
+    iCycleW = 200
+  END IF
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
