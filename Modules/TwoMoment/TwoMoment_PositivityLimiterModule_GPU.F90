@@ -4,7 +4,7 @@
 MODULE TwoMoment_PositivityLimiterModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, Zero, Half, One. SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, nDOF, nDOFE, nDOFX
   USE TimersModule, ONLY: &
@@ -420,8 +420,10 @@ CONTAINS
 
                 Theta_1 &
                   = Theta_Eps * MIN( One, &
-                    ABS( (Min_1-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) / (Min_K-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) ), &
-                    ABS( (Max_1-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) / (Max_K-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) ) )
+                    ABS( (Min_1-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) &
+                          / (Min_K-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny) ), &
+                    ABS( (Max_1-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) &
+                          / (Max_K-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny) ) )
 
                 U_Q_N(:,iZ1,iZ2,iZ3,iZ4,iS) &
                   =   U_Q_N(:,iZ1,iZ2,iZ3,iZ4,iS) * Theta_1 &

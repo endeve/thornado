@@ -4,7 +4,7 @@
 MODULE TwoMoment_PositivityLimiterModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, Zero, Half, One, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, nDOF, nDOFE, nDOFX
   USE TimersModule, ONLY: &
@@ -260,8 +260,8 @@ CONTAINS
 
         Theta_1 &
           = Theta_Eps * MIN( One, &
-                 ABS( (Min_1-U_K(iCR_N)) / (Min_K-U_K(iCR_N)) ), &
-                 ABS( (Max_1-U_K(iCR_N)) / (Max_K-U_K(iCR_N)) ) )
+                 ABS( (Min_1-U_K(iCR_N)) / (Min_K-U_K(iCR_N) + SqrtTiny) ), &
+                 ABS( (Max_1-U_K(iCR_N)) / (Max_K-U_K(iCR_N) + SqrtTiny) ) )
 
         ! --- Limit Density Towards Cell Average ---
 
