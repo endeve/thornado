@@ -4,7 +4,7 @@
 MODULE TwoMoment_PositivityLimiterModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One. SqrtTiny
+    DP, Zero, Half, One, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, nDOF, nDOFE, nDOFX
   USE TimersModule, ONLY: &
