@@ -347,7 +347,6 @@ CONTAINS
 
     LOGICAL  :: CONVERGED
     INTEGER  :: ITERATION
-    INTEGER  :: i
     REAL(DP) :: x_a, x_b, x_c, dx
     REAL(DP) :: f_a, f_b, f_c
 
