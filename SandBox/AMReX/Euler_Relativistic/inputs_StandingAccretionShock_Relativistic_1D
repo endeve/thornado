@@ -7,43 +7,43 @@ DEBUG = 0
 
 thornado.ProgramName = "StandingAccretionShock_Relativistic"
 
-SAS.Mass           = 1.4 # [Msun]
+SAS.Mass = 1.4 # [Msun]
 
-thornado.t_end     = 300.0  # Final time [ms]
-thornado.dt_wrt    = 1.0    # Time increment to write plot-file [ms]
-thornado.dt_chk    = 30.0   # Time increment to write checkpoint-file [ms]
-thornado.Gamma     = 1.3333333333333333     # Ideal Gas EoS Gamma
+thornado.t_end     = 3.0e+2   # Final time [ms]
+thornado.dt_wrt    = 1.0e+0   # Time increment to write plot-file [ms]
+thornado.dt_chk    = 3.0e+1   # Time increment to write checkpoint-file [ms]
+thornado.Gamma     = 1.3333333333333333 # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
 thornado.bcX       = 11 00 00 # Boundary conditions
 thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
-thornado.iCycleD   = 0100     # MOD this number to display info
+thornado.iCycleD   = 10       # MOD this number to display info
 thornado.iCycleW   = -1       # MOD this number to write plotfile
 thornado.iCycleChk = -1       # MOD this number to write checkpoint file
 thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
 thornado.UsePhysicalUnits = 1 # LOGICAL, OPTIONAL, default 0 (.FALSE.)
 
-geometry.coord_sys     = 2 # SPHERICAL
+geometry.coord_sys     = 2     # SPHERICAL
 geometry.prob_lo       = 40.0  0.0               0.0               # Lower domain size [km,rad,rad]
 geometry.prob_hi       = 360.0 3.141592653589793 6.283185307179586 # Upper domain size [km,rad,rad]
-geometry.is_periodic   = 00 01 01    # Periodicity. 0 (no), 1 (yes)
+geometry.is_periodic   = 0 1 1 # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell          = 256 01 01 # Number of cells in each dimension
-amr.max_grid_size   = 032 01 01 # nBoxes = n_cell / MaxGridSize
-amr.max_level       = 0          # Maximum number of refinement levels
-amr.blocking_factor = 1          # Must be a factor of max_grid_size
+amr.n_cell          = 256 001 001 # Number of cells in each dimension
+amr.max_grid_size   = 032 001 001 # nBoxes = n_cell / MaxGridSize
+amr.max_level       = 0           # Maximum number of refinement levels
+amr.blocking_factor = 1           # Must be a factor of max_grid_size
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1
 SL.UseCharacteristicLimiting = 1
 SL.UseTroubledCellIndicator  = 1
-SL.SlopeTolerance            = 1.0e-6
-SL.BetaTVD                   = 1.75e0
-SL.BetaTVB                   = 0.0e0
-SL.LimiterThresholdParameter = 3.0e-2
+SL.SlopeTolerance            = 1.00e-6
+SL.BetaTVD                   = 1.75e+0
+SL.BetaTVB                   = 0.00e+0
+SL.LimiterThresholdParameter = 3.00e-2
 
 # Positivity limiter parameters
 PL.UsePositivityLimiter = 1
-PL.Min_1                = 0.0e-13
-PL.Min_2                = 0.0e-13
+PL.Min_1                = 1.0e-13
+PL.Min_2                = 1.0e-13
