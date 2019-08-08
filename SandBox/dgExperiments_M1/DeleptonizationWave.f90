@@ -88,6 +88,7 @@ PROGRAM DeleptonizationWave
   INCLUDE 'mpif.h'
 
   LOGICAL  :: TEST_DEBUG
+  LOGICAL  :: UsePositivityLimiter
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem
   INTEGER  :: iCycle, iCycleD, iCycleW
@@ -118,7 +119,7 @@ PROGRAM DeleptonizationWave
 
       ProgramName = 'DeleptonizationWave_Spherical'
 
-      nX = [ 512, 1, 1 ]
+      nX = [ 128, 1, 1 ] ! 512
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 5.0d2 * Kilometer, Pi,     TwoPi  ]
       !xR = [ 3.0d3 * Kilometer, Pi,     TwoPi  ]
@@ -131,7 +132,11 @@ PROGRAM DeleptonizationWave
  
   nNodes = 1
 
-  nE = 10
+  UsePositivityLimiter = .TRUE.
+
+  IF( nNodes == 1 ) UsePositivityLimiter = .FALSE.
+
+  nE = 5
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
 
@@ -228,7 +233,7 @@ PROGRAM DeleptonizationWave
            Max_1_Option = 1.0d0 - SqrtTiny, &
            Min_2_Option = 0.0d0 + SqrtTiny, &
            UsePositivityLimiter_Option &
-             = .FALSE. )
+             = UsePositivityLimiter )
 
   ! --- Initialize Time Stepper ---
 
@@ -238,7 +243,7 @@ PROGRAM DeleptonizationWave
   ! --- Set Initial Condition ---
 
   CALL InitializeFields
-  !CALL InitializeFields( Profile_Option = 'Chimera100ms_fined.d')
+  !CALL InitializeFields( Profile_Option = 'ChimeraBounce_fined.d')
 
   CALL ApplySlopeLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
@@ -274,15 +279,19 @@ PROGRAM DeleptonizationWave
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
   ELSE IF ( CoordinateSystem == 'CARTESIAN' ) THEN
     ! Cartesian Coordinate time step
-    dt  = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+    dt  = 0.75_DP *  Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+    WRITE(*,*)
+    WRITE(*,*) 'MINVAL( (xR-xL) / DBLE( nX ) )', MINVAL( (xR-xL) / DBLE( nX ) )
+    WRITE(*,*) 'DENUM', ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+    WRITE(*,*)
   END IF
 
-  iCycleD = 1
+  iCycleD = 10
   IF( TEST_DEBUG ) THEN
-    iCycleW = 1 ! 200 -> 128, 150 -> 96
+    iCycleW = 1!int(t_end / dt / 2)
   ELSE
-    iCycleW = 200
+    iCycleW = 200 ! 200 -> 128, 150 -> 96
   END IF
 
   WRITE(*,*)
@@ -299,12 +308,6 @@ PROGRAM DeleptonizationWave
     IF( t + dt > t_end )THEN
 
       dt = t_end - t
-
-!    ELSE
-!
-!      dt = MIN( dt * 1.01_dp, &
-!                Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
-!              / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) )
 
     END IF
     
