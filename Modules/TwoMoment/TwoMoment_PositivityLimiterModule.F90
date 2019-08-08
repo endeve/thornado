@@ -223,6 +223,8 @@ CONTAINS
     REAL(DP) :: U_q(nDOF,nCR), U_K(nCR), Gamma(nPT)
     REAL(DP), EXTERNAL :: DDOT
 
+    IF( nDOFX == 1 ) RETURN
+
     IF( .NOT. UsePositivityLimiter ) RETURN
 
     CALL TimersStart( Timer_PositivityLimiter )
