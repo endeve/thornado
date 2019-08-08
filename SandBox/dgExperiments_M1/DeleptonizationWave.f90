@@ -36,11 +36,11 @@ PROGRAM DeleptonizationWave
     uGF
   USE MeshModule, ONLY: &
     MeshX
-  USE GeometryComputationModule_Beta, ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE GeometryFieldsModuleE, ONLY: &
     uGE
-  USE GeometryComputationModuleE_Beta, ONLY: &
+  USE GeometryComputationModuleE, ONLY: &
     ComputeGeometryE
   USE FluidFieldsModule, ONLY: &
     uPF, iPF_D, &
