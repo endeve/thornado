@@ -1,5 +1,6 @@
 GeometryFieldsModule.o: \
   KindModule.o \
+  UnitsModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModule.f90
 
