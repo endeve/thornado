@@ -38,11 +38,6 @@ DeleptonizationWave: \
 	$(weaklib) \
 	$(thornado) \
 	ProgenitorModule.o \
-	GeometryComputationModule_Beta.o \
-	GeometryComputationModuleE_Beta.o \
-	MomentEquationsUtilitiesModule_Beta.o \
-	ClosureModule_M1.o \
-	PositivityLimiterModule.o \
 	TimeSteppingModule_IMEX_RK.o \
 	InitializationModule.o \
 	dgDiscretizationModule_Collisions_Neutrinos.o \
@@ -51,11 +46,6 @@ DeleptonizationWave: \
 	$(weaklib) \
 	$(thornado) \
 	ProgenitorModule.o \
-	GeometryComputationModule_Beta.o \
-	GeometryComputationModuleE_Beta.o \
-	MomentEquationsUtilitiesModule_Beta.o \
-	ClosureModule_M1.o \
-	PositivityLimiterModule.o \
 	TimeSteppingModule_IMEX_RK.o \
 	InitializationModule.o \
 	dgDiscretizationModule_Collisions_Neutrinos.o \
