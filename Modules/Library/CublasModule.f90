@@ -219,6 +219,19 @@ module CublasModule
     end function cublasDnrm2_v2
 
     integer(c_int) function &
+        & cublasDaxpy_v2(handle, n, alpha, dx, incx, dy, incy) &
+        & bind(c, name="cublasDaxpy_v2")
+      use, intrinsic :: iso_c_binding
+      type(c_ptr), value :: handle
+      integer(c_int), value :: n
+      real(c_double), value :: alpha
+      type(c_ptr), value :: dx
+      integer(c_int), value :: incx
+      type(c_ptr), value :: dy
+      integer(c_int), value :: incy
+    end function cublasDaxpy_v2
+
+    integer(c_int) function &
         & cublasDgemv_v2(handle, trans, m, n, alpha, dA, ldda, dx, incx, beta, dy, incy) &
         & bind(c, name="cublasDgemv_v2")
       use, intrinsic :: iso_c_binding
@@ -467,6 +480,22 @@ module CublasModule
       type(c_ptr), value :: dC
       integer(c_int), value :: lddc
     end function cublasDgeam
+
+    integer(c_int) function &
+        & cublasDdgmm(handle, mode, m, n, dA, ldda, dx, incx, dC, lddc) &
+        & bind(c, name="cublasDdgmm")
+      use, intrinsic :: iso_c_binding
+      type(c_ptr), value :: handle
+      integer(c_int), value :: mode
+      integer(c_int), value :: m
+      integer(c_int), value :: n
+      type(c_ptr), value :: dA
+      integer(c_int), value :: ldda
+      type(c_ptr), value :: dx
+      integer(c_int), value :: incx
+      type(c_ptr), value :: dC
+      integer(c_int), value :: lddc
+    end function cublasDdgmm
 
   end interface
 
