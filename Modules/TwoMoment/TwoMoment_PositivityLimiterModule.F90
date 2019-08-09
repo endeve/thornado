@@ -221,9 +221,10 @@ CONTAINS
     INTEGER  :: nNeg_1, nNeg_2
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: U_q(nDOF,nCR), U_K(nCR), Gamma(nPT)
+    REAL(DP) :: Tau_q(nDOF)
     REAL(DP), EXTERNAL :: DDOT
 
-    IF( nDOFX == 1 ) RETURN
+    IF( nDOF == 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
@@ -241,6 +242,7 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
+      !Tau_q()
       U_q(1:nDOF,1:nCR) = U(1:nDOF,iZ1,iZ2,iZ3,iZ4,1:nCR,iS)
 
       NegativeStates = .FALSE.

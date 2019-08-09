@@ -286,7 +286,7 @@ CONTAINS
     REAL(DP) :: U_K_G2 (     iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
     REAL(DP) :: U_K_G3 (     iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
 
-    IF( nDOFX == 1 ) RETURN
+    IF( nDOF == 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
