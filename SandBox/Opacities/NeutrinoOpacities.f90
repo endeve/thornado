@@ -314,20 +314,20 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_NES_D_Point = MPI_WTIME()
 
-  !DO iS = 1, nSpecies
-  !DO iX = 1, nPointsX
+  DO iS = 1, nSpecies
+  DO iX = 1, nPointsX
 
-  !  CALL ComputeNeutrinoOpacitiesAndDerivatives_NES_Point &
-  !         ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, &
-  !           Phi_0_NES_In     (:,:,iX,iS), &
-  !           Phi_0_NES_Out    (:,:,iX,iS), &
-  !           dPhi_0_NES_In_dY (:,:,iX,iS), &
-  !           dPhi_0_NES_In_dE (:,:,iX,iS), &
-  !           dPhi_0_NES_Out_dY(:,:,iX,iS), &
-  !           dPhi_0_NES_Out_dE(:,:,iX,iS) )
+    CALL ComputeNeutrinoOpacitiesAndDerivatives_NES_Point &
+           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, &
+             Phi_0_NES_In     (:,:,iX,iS), &
+             Phi_0_NES_Out    (:,:,iX,iS), &
+             dPhi_0_NES_In_dY (:,:,iX,iS), &
+             dPhi_0_NES_In_dE (:,:,iX,iS), &
+             dPhi_0_NES_Out_dY(:,:,iX,iS), &
+             dPhi_0_NES_Out_dE(:,:,iX,iS) )
 
-  !END DO
-  !END DO
+  END DO
+  END DO
 
   Timer_Compute_NES_D_Point = MPI_WTIME() - Timer_Compute_NES_D_Point
 
@@ -390,20 +390,20 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_Pair_D_Point = MPI_WTIME()
 
-  !DO iS = 1, nSpecies
-  !DO iX = 1, nPointsX
+  DO iS = 1, nSpecies
+  DO iX = 1, nPointsX
 
-  !  CALL ComputeNeutrinoOpacitiesAndDerivatives_Pair_Point &
-  !         ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, &
-  !           Phi_0_Pair_In     (:,:,iX,iS), &
-  !           Phi_0_Pair_Out    (:,:,iX,iS), &
-  !           dPhi_0_Pair_In_dY (:,:,iX,iS), &
-  !           dPhi_0_Pair_In_dE (:,:,iX,iS), &
-  !           dPhi_0_Pair_Out_dY(:,:,iX,iS), &
-  !           dPhi_0_Pair_Out_dE(:,:,iX,iS) )
+    CALL ComputeNeutrinoOpacitiesAndDerivatives_Pair_Point &
+           ( 1, nPointsE, E, D(iX), T(iX), Y(iX), iS, 1, &
+             Phi_0_Pair_In     (:,:,iX,iS), &
+             Phi_0_Pair_Out    (:,:,iX,iS), &
+             dPhi_0_Pair_In_dY (:,:,iX,iS), &
+             dPhi_0_Pair_In_dE (:,:,iX,iS), &
+             dPhi_0_Pair_Out_dY(:,:,iX,iS), &
+             dPhi_0_Pair_Out_dE(:,:,iX,iS) )
 
-  !END DO
-  !END DO
+  END DO
+  END DO
 
   Timer_Compute_Pair_D_Point = MPI_WTIME() - Timer_Compute_Pair_D_Point
 
