@@ -480,6 +480,15 @@ interface
         type(c_ptr),    value  :: queue  !! queue_t
     end subroutine
 
+    subroutine magmablas_dlascl2( uplo, m, n, dD, dA, ldda, queue, info ) &
+    bind(C, name="magmablas_dlascl2")
+        use iso_c_binding
+        integer(c_int), value  :: uplo, m, n, ldda
+        type(c_ptr),    value  :: dD, dA
+        type(c_ptr),    value  :: queue  !! queue_t
+        integer(c_int), target :: info  !! int*
+    end subroutine
+
     subroutine magmablas_dgeadd2( &
         m, n, &
         alpha, dA, ldda, &
