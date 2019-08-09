@@ -126,7 +126,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INTEGER, ALLOCATABLE :: AveIterationsInner_K(:,:,:)
 
   LOGICAL, PARAMETER :: SolveMatter = .TRUE.
-  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .FALSE.
+  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .TRUE.
   LOGICAL, PARAMETER :: UsePreconditionerPair = .FALSE.
   LOGICAL, PARAMETER :: UsePreconditionerPairLagAllButJ0 = .FALSE.
 
@@ -336,7 +336,12 @@ CONTAINS
                     PF_N(iNodeX,iPF_D), &
                     AF_N(iNodeX,iAF_T), &
                     AF_N(iNodeX,iAF_Ye), &
-                    AF_N(iNodeX,iAF_E) )
+                    AF_N(iNodeX,iAF_E), &
+                    nIterations_Out = nIterations )
+
+          Iterations_Min = MIN( Iterations_Min, nIterations )
+          Iterations_Max = MAX( Iterations_Max, nIterations )
+          Iterations_Ave = Iterations_Ave + nIterations
 
         END DO
 
@@ -1203,7 +1208,7 @@ CONTAINS
     IF( SolveMatter )THEN
 
       W2_S = W2_N / PlanckConstant**3
-      W3_S = W3_N / PlanckConstant**3 / AtomicMassUnit
+      W3_S = W3_N / PlanckConstant**3
 
       Theta2_N = FourPi * W2_S * Chi / ( One + Chi )
       Theta3_N = FourPi * W3_S * Chi / ( One + Chi )
@@ -1231,7 +1236,7 @@ CONTAINS
     ! --- Old States (Constant) ---
 
     C(iY) = DOT_PRODUCT( Theta2_N(:), J(:) ) + N_B * U(iY)
-    C(iE) = DOT_PRODUCT( Theta3_N(:), J(:) ) + N_B * U(iE)
+    C(iE) = DOT_PRODUCT( Theta3_N(:), J(:) ) + D   * U(iE)
 
     ! --- Electron Fraction Equation ---
 
@@ -1239,7 +1244,7 @@ CONTAINS
 
     ! --- Internal Energy Equation ---
 
-    FVEC(iE) = DOT_PRODUCT( Theta3_N(:), J0(:) ) + N_B * U(iE) - C(iE)
+    FVEC(iE) = DOT_PRODUCT( Theta3_N(:), J0(:) ) + D   * U(iE) - C(iE)
 
     ! --- Scale Equations and Save Initial Evaluation ---
 
@@ -1281,7 +1286,7 @@ CONTAINS
 
       FJAC(2,1) = DOT_PRODUCT( Theta3_N(:), dJ0dY_E(:) )
 
-      FJAC(2,2) = DOT_PRODUCT( Theta3_N(:), dJ0dE_Y(:) ) + N_B
+      FJAC(2,2) = DOT_PRODUCT( Theta3_N(:), dJ0dE_Y(:) ) + D
 
       ! --- Scale Jacobian ---
 
@@ -1328,7 +1333,7 @@ CONTAINS
 
       ! --- Internal Energy Equation ---
 
-      FVEC(2) = DOT_PRODUCT( Theta3_N(:), J0(:) ) + N_B * U(2) - C(2)
+      FVEC(2) = DOT_PRODUCT( Theta3_N(:), J0(:) ) + D   * U(2) - C(2)
 
       ! --- Scale Equations ---
 
@@ -1414,7 +1419,7 @@ CONTAINS
 
 
   SUBROUTINE SolveMatterEquations_EmAb_FP &
-    ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E, TOL )
+    ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E, nIterations_Out, TOL )
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
@@ -1424,6 +1429,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: Chi     (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: J0      (1:nE_G,1:2)
     REAL(DP), INTENT(inout) :: D, T, Y, E
+    INTEGER,  INTENT(out), OPTIONAL :: nIterations_Out
     REAL(DP), INTENT(in),  OPTIONAL :: TOL
 
     ! --- Solver Parameters ---
@@ -1460,6 +1466,7 @@ CONTAINS
     REAL(DP) :: BVEC(1:2*(1+nE_G))
     REAL(DP) :: AMAT(1:2*(1+nE_G),1:M)
 
+    INTEGER  :: nIterations
     REAL(DP) :: Rtol
 
     IF(PRESENT(TOL)) THEN
@@ -1592,6 +1599,8 @@ CONTAINS
 
         CONVERGED = .TRUE.
 
+        nIterations = k
+
       END IF
 
       Unew(iY)  = GVECm(iY)
@@ -1638,6 +1647,10 @@ CONTAINS
 
     ! output J for preconditioning purpose
      J = Jnew
+
+    IF(PRESENT(nIterations_Out)) THEN
+      nIterations_Out = nIterations
+    END IF
 
   END SUBROUTINE SolveMatterEquations_EmAb_FP
 
@@ -3483,7 +3496,7 @@ CONTAINS
       CALL TimersStart( Timer_Im_EmAb_FP )
 
       CALL SolveMatterEquations_EmAb_FP &
-             ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E, Rtol )
+             ( dt, iS_1, iS_2, J, Chi, J0, D, T, Y, E, TOL = Rtol )
 
       CALL TimersStop( Timer_Im_EmAb_FP )
 

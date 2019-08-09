@@ -82,6 +82,7 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: ComputeEquilibriumDistributions_Point
   PUBLIC :: ComputeEquilibriumDistributions_Points
   PUBLIC :: ComputeEquilibriumDistributionAndDerivatives_Point
+  PUBLIC :: ComputeEquilibriumDistributionAndDerivatives_Points
   PUBLIC :: FermiDirac
   PUBLIC :: dFermiDiracdT
   PUBLIC :: dFermiDiracdY
@@ -502,6 +503,198 @@ CONTAINS
     df0dY = df0dY_T - df0dT_Y * dUdY / dUdT
 
   END SUBROUTINE ComputeEquilibriumDistributionAndDerivatives_Point
+
+
+  SUBROUTINE ComputeEquilibriumDistributionAndDerivatives_Points &
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, f0, df0dY, df0dU, iSpecies )
+
+    ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: E(:)
+    REAL(DP), INTENT(in)  :: D(:)
+    REAL(DP), INTENT(in)  :: T(:)
+    REAL(DP), INTENT(in)  :: Y(:)
+    REAL(DP), INTENT(out) :: f0   (:,:)
+    REAL(DP), INTENT(out) :: df0dY(:,:)
+    REAL(DP), INTENT(out) :: df0dU(:,:)
+    INTEGER,  INTENT(in)  :: iSpecies
+
+    REAL(DP), DIMENSION(iX_B:iX_E) :: Me,  dMedT , dMedY
+    REAL(DP), DIMENSION(iX_B:iX_E) :: Mp,  dMpdT , dMpdY
+    REAL(DP), DIMENSION(iX_B:iX_E) :: Mn,  dMndT , dMndY
+    REAL(DP), DIMENSION(iX_B:iX_E) :: Mnu, dMnudT, dMnudY
+    REAL(DP), DIMENSION(iX_B:iX_E) :: U,   dUdT,   dUdY, dUdD
+
+    REAL(DP) :: kT, df0dT_Y, df0dY_T
+    INTEGER  :: iX, iE
+    LOGICAL  :: do_gpu
+
+    do_gpu = QueryOnGPU( E, D, T, Y ) &
+       .AND. QueryOnGPU( f0, df0dY, df0dU )
+#if defined(THORNADO_DEBUG_OPACITY) && defined(THORNADO_GPU)
+    IF ( .not. do_gpu ) THEN
+      WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives_Points] Data not present on device'
+      IF ( .not. QueryOnGPU( E ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives_Points]   E missing'
+      IF ( .not. QueryOnGPU( D ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives_Points]   D missing'
+      IF ( .not. QueryOnGPU( T ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives_Points]   T missing'
+      IF ( .not. QueryOnGPU( Y ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives_Points]   Y missing'
+      IF ( .not. QueryOnGPU( f0 ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives_Points]   f0 missing'
+      IF ( .not. QueryOnGPU( df0dY ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives_Points]   df0dY missing'
+      IF ( .not. QueryOnGPU( df0dU ) ) &
+        WRITE(*,*) '[ComputeEquilibriumDistributionAndDerivatives_Points]   df0dU missing'
+    END IF
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( alloc: Me,  dMedT,  dMedY, &
+    !$OMP             Mp,  dMpdT,  dMpdY, &
+    !$OMP             Mn,  dMndT,  dMndY, &
+    !$OMP             Mnu, dMnudT, dMnudY, &
+    !$OMP             U,   dUdT,   dUdY, dUdD )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC IF( do_gpu ) &
+    !$ACC CREATE( Me,  dMedT,  dMedY, &
+    !$ACC         Mp,  dMpdT,  dMpdY, &
+    !$ACC         Mn,  dMndT,  dMndY, &
+    !$ACC         Mnu, dMnudT, dMnudY, &
+    !$ACC         U,   dUdT,   dUdY, dUdD )
+#endif
+
+    ! --- Compute Chemical Potentials ---
+
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( D, T, Y, Me, dUdD, dMedT, dMedY )
+
+    CALL ComputeProtonChemicalPotential_TABLE &
+           ( D, T, Y, Mp, dUdD, dMpdT, dMpdY )
+
+    CALL ComputeNeutronChemicalPotential_TABLE &
+           ( D, T, Y, Mn, dUdD, dMndT, dMndY )
+
+    CALL ComputeSpecificInternalEnergy_TABLE &
+           ( D, T, Y, U,  dUdD, dUdT,  dUdY  )
+
+
+    IF ( iSpecies == iNuE ) THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG &
+      !$ACC IF( do_gpu ) &
+      !$ACC PRESENT( Me,   dMedT,   dMedY, &
+      !$ACC          Mp,   dMpdT,   dMpdY, &
+      !$ACC          Mn,   dMndT,   dMndY, &
+      !$ACC          Mnu,  dMnudT,  dMnudY )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD
+#endif
+      DO iX = iX_B, iX_E
+        Mnu   (iX) = ( Me   (iX) + Mp   (iX) ) - Mn   (iX)
+        dMnudT(iX) = ( dMedT(iX) + dMpdT(iX) ) - dMndT(iX)
+        dMnudY(iX) = ( dMedY(iX) + dMpdY(iX) ) - dMndY(iX)
+      END DO
+
+    ELSE IF ( iSpecies == iNuE_Bar ) THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG &
+      !$ACC IF( do_gpu ) &
+      !$ACC PRESENT( Me,   dMedT,   dMedY, &
+      !$ACC          Mp,   dMpdT,   dMpdY, &
+      !$ACC          Mn,   dMndT,   dMndY, &
+      !$ACC          Mnu,  dMnudT,  dMnudY )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD
+#endif
+      DO iX = iX_B, iX_E
+        Mnu   (iX) = Mn   (iX) - ( Me   (iX) + Mp   (iX) )
+        dMnudT(iX) = dMndT(iX) - ( dMedT(iX) + dMpdT(iX) )
+        dMnudY(iX) = dMndY(iX) - ( dMedY(iX) + dMpdY(iX) )
+      END DO
+
+    ELSE
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG &
+      !$ACC IF( do_gpu ) &
+      !$ACC PRESENT( Mnu,  dMnudT,  dMnudY )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD
+#endif
+      DO iX = iX_B, iX_E
+        Mnu   (iX) = Zero
+        dMnudT(iX) = Zero
+        dMnudY(iX) = Zero
+      END DO
+
+    END IF
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( kT ) &
+    !$OMP IF( do_gpu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRIVATE( kT ) &
+    !$ACC PRESENT( Mnu,  dMnudT,  dMnudY, f0, df0dY, df0dU, E, T, dUdT, dUdY )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( kT ) &
+#endif
+    DO iX = iX_B, iX_E
+      DO iE = iE_B, iE_E
+
+        kT = BoltzmannConstant * T(iX)
+
+        f0(iE,iX) = FermiDirac   ( E(iE), Mnu(iX), kT )
+        df0dT_Y   = dFermiDiracdT( E(iE), Mnu(iX), kT, dMnudT(iX), T(iX) ) ! Constant T
+        df0dY_T   = dFermiDiracdY( E(iE), Mnu(iX), kT, dMnudY(iX), T(iX) ) ! Constant Y
+
+        df0dU(iE,iX) = df0dT_Y / dUdT(iX)
+        df0dY(iE,iX) = df0dY_T - df0dU(iE,iX) * dUdY(iX)
+
+      END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( release: Me,  dMedT,  dMedY, &
+    !$OMP               Mp,  dMpdT,  dMpdY, &
+    !$OMP               Mn,  dMndT,  dMndY, &
+    !$OMP               Mnu, dMnudT, dMnudY, &
+    !$OMP               U,   dUdT,   dUdY, dUdD )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC IF( do_gpu ) &
+    !$ACC DELETE( Me,  dMedT,  dMedY, &
+    !$ACC         Mp,  dMpdT,  dMpdY, &
+    !$ACC         Mn,  dMndT,  dMndY, &
+    !$ACC         Mnu, dMnudT, dMnudY, &
+    !$ACC         U,   dUdT,   dUdY, dUdD )
+#endif
+
+  END SUBROUTINE ComputeEquilibriumDistributionAndDerivatives_Points
 
 
   SUBROUTINE ComputeNeutrinoOpacities_EC &

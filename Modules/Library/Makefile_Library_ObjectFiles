@@ -1,4 +1,5 @@
 LIBRARY = \
+  ArrayUtilitiesModule.o \
   DeviceModule.o \
   TimersModule.o \
   TimersModule_Euler.o \
@@ -34,8 +35,8 @@ endif
 
 ifeq ($(USE_MAGMA),TRUE)
 LIBRARY += \
-  MagmaModule.o CublasModule.o CusolverModule.o
+  MagmaModule.o CublasModule.o CusolverModule.o CusparseModule.o
 else ifeq ($(USE_CUBLAS),TRUE)
 LIBRARY += \
-  CublasModule.o CusolverModule.o
+  CublasModule.o CusolverModule.o CusparseModule.o
 endif

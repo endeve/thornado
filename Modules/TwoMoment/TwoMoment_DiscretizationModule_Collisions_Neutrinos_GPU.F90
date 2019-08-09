@@ -52,7 +52,10 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     InitializeNeutrinoMatterSolver, &
     FinalizeNeutrinoMatterSolver, &
     SolveMatterEquations_EmAb_NuE, &
+    SolveMatterEquations_EmAb_FP, &
     SolveMatterEquations_FP_Coupled, &
+    SolveMatterEquations_FP_NestedAA, &
+    SolveMatterEquations_FP_NestedNewton, &
     E_N
 
   IMPLICIT NONE
@@ -281,7 +284,7 @@ CONTAINS
             iNode  = iNodeE &
                      + ( iNodeX - 1 ) * nDOFE
 
-            CR_N(iN_E,iN_X,iCR,iS) = U_R(iNode,iE,iX1,iX2,iX3,iCR,iS)
+            CR_N(iN_E,iN_X,iS,iCR) = U_R(iNode,iE,iX1,iX2,iX3,iCR,iS)
 
           END DO
         END DO
@@ -380,10 +383,10 @@ CONTAINS
       ! --- Single Species (Electron Neutrinos) ---
 
       CALL SolveMatterEquations_EmAb_NuE &
-             ( dt,                       &
-               CR_N(:,:,iCR_N,iNuE    ), &
-               Chi (:,:,      iNuE    ), &
-               fEQ (:,:,      iNuE    ), &
+             ( dt, &
+               CR_N(:,:,iNuE,iCR_N), &
+               Chi (:,:,iNuE), &
+               fEQ (:,:,iNuE), &
                PF_N(:,iPF_D ), &
                AF_N(:,iAF_T ), &
                AF_N(:,iAF_Ye), &
@@ -396,26 +399,44 @@ CONTAINS
 
 #if defined(NEUTRINO_MATTER_SOLVER_EMAB)
 
+      CALL TimersStart( Timer_Im_EmAb_FP )
+
+      CALL SolveMatterEquations_EmAb_FP &
+             ( dt, iNuE, iNuE_Bar, &
+               CR_N    (:,:,iNuE    ,iCR_N), &
+               CR_N    (:,:,iNuE_Bar,iCR_N), &
+               Chi     (:,:,iNuE    ), &
+               Chi     (:,:,iNuE_Bar), &
+               fEQ     (:,:,iNuE    ), &
+               fEQ     (:,:,iNuE_Bar), &
+               PF_N(:,iPF_D ), &
+               AF_N(:,iAF_T ), &
+               AF_N(:,iAF_Ye), &
+               AF_N(:,iAF_E ), &
+               nIterations(:) )
+
+      CALL TimersStop( Timer_Im_EmAb_FP )
+
 #elif defined(NEUTRINO_MATTER_SOLVER_FIXED_POINT_COUPLED)
 
       CALL TimersStart( Timer_Im_CoupledAA )
 
       CALL SolveMatterEquations_FP_Coupled &
              ( dt, iNuE, iNuE_Bar, &
-               CR_N    (:,:,iCR_N,iNuE    ), &
-               CR_N    (:,:,iCR_N,iNuE_Bar), &
-               Chi     (:,:,      iNuE    ), &
-               Chi     (:,:,      iNuE_Bar), &
-               fEQ     (:,:,      iNuE    ), &
-               fEQ     (:,:,      iNuE_Bar), &
-               Chi_NES (:,:,      iNuE    ), &
-               Chi_NES (:,:,      iNuE_Bar), &
-               Eta_NES (:,:,      iNuE    ), &
-               Eta_NES (:,:,      iNuE_Bar), &
-               Chi_Pair(:,:,      iNuE    ), &
-               Chi_Pair(:,:,      iNuE_Bar), &
-               Eta_Pair(:,:,      iNuE    ), &
-               Eta_Pair(:,:,      iNuE_Bar), &
+               CR_N    (:,:,iNuE    ,iCR_N), &
+               CR_N    (:,:,iNuE_Bar,iCR_N), &
+               Chi     (:,:,iNuE    ), &
+               Chi     (:,:,iNuE_Bar), &
+               fEQ     (:,:,iNuE    ), &
+               fEQ     (:,:,iNuE_Bar), &
+               Chi_NES (:,:,iNuE    ), &
+               Chi_NES (:,:,iNuE_Bar), &
+               Eta_NES (:,:,iNuE    ), &
+               Eta_NES (:,:,iNuE_Bar), &
+               Chi_Pair(:,:,iNuE    ), &
+               Chi_Pair(:,:,iNuE_Bar), &
+               Eta_Pair(:,:,iNuE    ), &
+               Eta_Pair(:,:,iNuE_Bar), &
                PF_N    (:,iPF_D ), &
                AF_N    (:,iAF_T ), &
                AF_N    (:,iAF_Ye), &
@@ -426,7 +447,61 @@ CONTAINS
 
 #elif defined(NEUTRINO_MATTER_SOLVER_FIXED_POINT_NESTED_AA)
 
+      CALL TimersStart( Timer_Im_NestedAA )
+
+      CALL SolveMatterEquations_FP_NestedAA &
+             ( dt, iNuE, iNuE_Bar, &
+               CR_N    (:,:,iNuE    ,iCR_N), &
+               CR_N    (:,:,iNuE_Bar,iCR_N), &
+               Chi     (:,:,iNuE    ), &
+               Chi     (:,:,iNuE_Bar), &
+               fEQ     (:,:,iNuE    ), &
+               fEQ     (:,:,iNuE_Bar), &
+               Chi_NES (:,:,iNuE    ), &
+               Chi_NES (:,:,iNuE_Bar), &
+               Eta_NES (:,:,iNuE    ), &
+               Eta_NES (:,:,iNuE_Bar), &
+               Chi_Pair(:,:,iNuE    ), &
+               Chi_Pair(:,:,iNuE_Bar), &
+               Eta_Pair(:,:,iNuE    ), &
+               Eta_Pair(:,:,iNuE_Bar), &
+               PF_N    (:,iPF_D ), &
+               AF_N    (:,iAF_T ), &
+               AF_N    (:,iAF_Ye), &
+               AF_N    (:,iAF_E ), &
+               nIterations_Inner(:), &
+               nIterations_Outer(:) )
+
+      CALL TimersStop( Timer_Im_NestedAA )
+
 #elif defined(NEUTRINO_MATTER_SOLVER_FIXED_POINT_NESTED_NEWTON)
+
+      CALL TimersStart( Timer_Im_NestedNewton )
+
+      CALL SolveMatterEquations_FP_NestedNewton &
+             ( dt, iNuE, iNuE_Bar, &
+               CR_N    (:,:,iNuE    ,iCR_N), &
+               CR_N    (:,:,iNuE_Bar,iCR_N), &
+               Chi     (:,:,iNuE    ), &
+               Chi     (:,:,iNuE_Bar), &
+               fEQ     (:,:,iNuE    ), &
+               fEQ     (:,:,iNuE_Bar), &
+               Chi_NES (:,:,iNuE    ), &
+               Chi_NES (:,:,iNuE_Bar), &
+               Eta_NES (:,:,iNuE    ), &
+               Eta_NES (:,:,iNuE_Bar), &
+               Chi_Pair(:,:,iNuE    ), &
+               Chi_Pair(:,:,iNuE_Bar), &
+               Eta_Pair(:,:,iNuE    ), &
+               Eta_Pair(:,:,iNuE_Bar), &
+               PF_N    (:,iPF_D ), &
+               AF_N    (:,iAF_T ), &
+               AF_N    (:,iAF_Ye), &
+               AF_N    (:,iAF_E ), &
+               nIterations_Inner(:), &
+               nIterations_Outer(:) )
+
+      CALL TimersStop( Timer_Im_NestedNewton )
 
 #elif defined(NEUTRINO_MATTER_SOLVER_NEWTON)
 
@@ -484,32 +559,32 @@ CONTAINS
 
           ! --- Number Flux (1) ---
 
-          CR_N(iN_E,iN_X,iCR_G1,iS) &
-            = CR_N(iN_E,iN_X,iCR_G1,iS) / ( One + dt * Kappa )
+          CR_N(iN_E,iN_X,iS,iCR_G1) &
+            = CR_N(iN_E,iN_X,iS,iCR_G1) / ( One + dt * Kappa )
 
           ! --- Number Flux (2) ---
 
-          CR_N(iN_E,iN_X,iCR_G2,iS) &
-            = CR_N(iN_E,iN_X,iCR_G2,iS) / ( One + dt * Kappa )
+          CR_N(iN_E,iN_X,iS,iCR_G2) &
+            = CR_N(iN_E,iN_X,iS,iCR_G2) / ( One + dt * Kappa )
 
           ! --- Number Flux (3) ---
 
-          CR_N(iN_E,iN_X,iCR_G3,iS) &
-            = CR_N(iN_E,iN_X,iCR_G3,iS) / ( One + dt * Kappa )
+          CR_N(iN_E,iN_X,iS,iCR_G3) &
+            = CR_N(iN_E,iN_X,iS,iCR_G3) / ( One + dt * Kappa )
 
           ! --- Increments ---
 
           dR_N(iN_E,iN_X,iCR_N,iS) &
-            = Eta_T - Chi_T * CR_N(iN_E,iN_X,iCR_N,iS)
+            = Eta_T - Chi_T * CR_N(iN_E,iN_X,iS,iCR_N)
 
           dR_N(iN_E,iN_X,iCR_G1,iS) &
-            = - Kappa * CR_N(iN_E,iN_X,iCR_G1,iS)
+            = - Kappa * CR_N(iN_E,iN_X,iS,iCR_G1)
 
           dR_N(iN_E,iN_X,iCR_G2,iS) &
-            = - Kappa * CR_N(iN_E,iN_X,iCR_G2,iS)
+            = - Kappa * CR_N(iN_E,iN_X,iS,iCR_G2)
 
           dR_N(iN_E,iN_X,iCR_G3,iS) &
-            = - Kappa * CR_N(iN_E,iN_X,iCR_G3,iS)
+            = - Kappa * CR_N(iN_E,iN_X,iS,iCR_G3)
             
         END DO
       END DO
@@ -683,7 +758,7 @@ CONTAINS
     ALLOCATE( Chi_Pair(nE_G,nX_G,nSpecies) )
     ALLOCATE( Eta_Pair(nE_G,nX_G,nSpecies) )
 
-    ALLOCATE( CR_N(nE_G,nX_G,nCR,nSpecies) )
+    ALLOCATE( CR_N(nE_G,nX_G,nSpecies,nCR) )
     ALLOCATE( dR_N(nE_G,nX_G,nCR,nSpecies) )
 
     ALLOCATE( nIterations(nX_G) )
@@ -750,6 +825,13 @@ CONTAINS
 
 #if defined(NEUTRINO_MATTER_SOLVER_EMAB)
 
+              MinIterations_K(iX1,iX2,iX2) &
+                = MIN( nIterations(iN_X), MinIterations_K(iX1,iX2,iX2) )
+              MaxIterations_K(iX1,iX2,iX3) &
+                = MAX( nIterations(iN_X), MaxIterations_K(iX1,iX2,iX3) )
+              AveIterations_K(iX1,iX2,iX3) &
+                = AveIterations_K(iX1,iX2,iX3) + nIterations(iN_X)
+
 #elif defined(NEUTRINO_MATTER_SOLVER_FIXED_POINT_COUPLED)
 
               MinIterations_K(iX1,iX2,iX2) &
@@ -808,6 +890,9 @@ CONTAINS
     IF( ReportConvergenceData )THEN
 
 #if defined(NEUTRINO_MATTER_SOLVER_EMAB)
+      Iterations_Min = MINVAL( nIterations(:) )
+      Iterations_Max = MAXVAL( nIterations(:) )
+      Iterations_Ave = DBLE( SUM( nIterations(:) ) ) / DBLE( nX_G )
 #elif defined(NEUTRINO_MATTER_SOLVER_FIXED_POINT_COUPLED)
       Iterations_Min = MINVAL( nIterations(:) )
       Iterations_Max = MAXVAL( nIterations(:) )
