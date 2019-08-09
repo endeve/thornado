@@ -36,11 +36,11 @@ PROGRAM DeleptonizationWave
     uGF
   USE MeshModule, ONLY: &
     MeshX
-  USE GeometryComputationModule_Beta, ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE GeometryFieldsModuleE, ONLY: &
     uGE
-  USE GeometryComputationModuleE_Beta, ONLY: &
+  USE GeometryComputationModuleE, ONLY: &
     ComputeGeometryE
   USE FluidFieldsModule, ONLY: &
     uPF, iPF_D, &
@@ -87,6 +87,8 @@ PROGRAM DeleptonizationWave
 
   INCLUDE 'mpif.h'
 
+  LOGICAL  :: TEST_DEBUG
+  LOGICAL  :: UsePositivityLimiter
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem
   INTEGER  :: iCycle, iCycleD, iCycleW
@@ -95,9 +97,11 @@ PROGRAM DeleptonizationWave
   REAL(DP) :: eL, eR
   REAL(DP) :: xL(3), xR(3), ZoomX(3)
 
-  CoordinateSystem = 'SPHERICAL'
+  CoordinateSystem = 'CARTESIAN'
 
-  SELECT CASE( CoordinateSystem)
+  TEST_DEBUG = .TRUE.
+
+  SELECT CASE( CoordinateSystem )
 
     CASE( 'CARTESIAN' )
 
@@ -115,7 +119,7 @@ PROGRAM DeleptonizationWave
 
       ProgramName = 'DeleptonizationWave_Spherical'
 
-      nX = [ 512, 1, 1 ]
+      nX = [ 128, 1, 1 ] ! 512
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 5.0d2 * Kilometer, Pi,     TwoPi  ]
       !xR = [ 3.0d3 * Kilometer, Pi,     TwoPi  ]
@@ -126,9 +130,13 @@ PROGRAM DeleptonizationWave
 
   END SELECT
  
-  nNodes = 2
+  nNodes = 1
 
-  nE = 10
+  UsePositivityLimiter = .TRUE.
+
+  IF( nNodes == 1 ) UsePositivityLimiter = .FALSE.
+
+  nE = 5
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
 
@@ -214,7 +222,7 @@ PROGRAM DeleptonizationWave
          ( BetaTVD_Option = 2.0_DP,                    &
            BetaTVB_Option = 0.0d0,                      &
            SlopeTolerance_Option = 1.0d-6,             &
-           UseSlopeLimiter_Option = .TRUE.,            &
+           UseSlopeLimiter_Option = .FALSE.,            &
            UseCharacteristicLimiting_Option = .FALSE., &
            Verbose_Option = .TRUE. )
 
@@ -225,7 +233,7 @@ PROGRAM DeleptonizationWave
            Max_1_Option = 1.0d0 - SqrtTiny, &
            Min_2_Option = 0.0d0 + SqrtTiny, &
            UsePositivityLimiter_Option &
-             = .TRUE. )
+             = UsePositivityLimiter )
 
   ! --- Initialize Time Stepper ---
 
@@ -235,7 +243,7 @@ PROGRAM DeleptonizationWave
   ! --- Set Initial Condition ---
 
   CALL InitializeFields
-  !CALL InitializeFields( Profile_Option = 'Chimera100ms_fined.d')
+  !CALL InitializeFields( Profile_Option = 'ChimeraBounce_fined.d')
 
   CALL ApplySlopeLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
@@ -266,17 +274,25 @@ PROGRAM DeleptonizationWave
   t_end = 5.0d1 * Millisecond
 
   IF ( CoordinateSystem == 'SPHERICAL') THEN
-  ! Spherical Coordinate time step
+    ! Spherical Coordinate time step
     dt  = Third * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
   ELSE IF ( CoordinateSystem == 'CARTESIAN' ) THEN
-  ! Cartesian Coordinate time step
-    dt  = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+    ! Cartesian Coordinate time step
+    dt  = 0.75_DP *  Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+    WRITE(*,*)
+    WRITE(*,*) 'MINVAL( (xR-xL) / DBLE( nX ) )', MINVAL( (xR-xL) / DBLE( nX ) )
+    WRITE(*,*) 'DENUM', ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+    WRITE(*,*)
   END IF
 
-  iCycleD = 1
-  iCycleW = 1 ! 200 -> 128, 150 -> 96 
+  iCycleD = 10
+  IF( TEST_DEBUG ) THEN
+    iCycleW = 1!int(t_end / dt / 2)
+  ELSE
+    iCycleW = 200 ! 200 -> 128, 150 -> 96
+  END IF
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
@@ -292,12 +308,6 @@ PROGRAM DeleptonizationWave
     IF( t + dt > t_end )THEN
 
       dt = t_end - t
-
-!    ELSE
-!
-!      dt = MIN( dt * 1.01_dp, &
-!                Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
-!              / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) )
 
     END IF
     

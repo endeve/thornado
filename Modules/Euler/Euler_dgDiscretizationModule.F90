@@ -12,7 +12,7 @@ MODULE Euler_dgDiscretizationModule
     nDOFX_X1, WeightsX_X1, &
     nDOFX_X2, WeightsX_X2, &
     nDOFX_X3, WeightsX_X3, &
-    WeightsX_q,            &    
+    WeightsX_q,            &
     NodeNumberTableX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     dLXdX1_q, LX_X1_Dn, LX_X1_Up, &
@@ -153,7 +153,7 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X1
     REAL(DP) :: dX2, dX3
     REAL(DP) :: AlphaPls, AlphaMns, AlphaMdl
-    REAL(DP) :: G_F(nDOFX_X1,nGF) 
+    REAL(DP) :: G_F(nDOFX_X1,nGF)
     REAL(DP) :: uCF_L(nDOFX_X1,nCF), uCF_R(nDOFX_X1,nCF)
     REAL(DP) :: uPF_L(nDOFX_X1,nPF), uPF_R(nDOFX_X1,nPF)
     REAL(DP) :: P_L(nDOFX_X1), P_R(nDOFX_X1)
@@ -161,7 +161,7 @@ CONTAINS
     REAL(DP) :: G_P(nDOFX,nGF), G_K(nDOFX,nGF)
     REAL(DP) :: uCF_P(nDOFX,nCF), uCF_K(nDOFX,nCF)
     REAL(DP) :: uPF_K(nDOFX,nPF)
-    REAL(DP) :: P_K(nDOFX) 
+    REAL(DP) :: P_K(nDOFX)
     REAL(DP) :: EigVals_L(nDOFX_X1,nCF), EigVals_R(nDOFX_X1,nCF)
     REAL(DP) :: Flux_X1_L(nDOFX_X1,nCF), Flux_X1_R(nDOFX_X1,nCF)
     REAL(DP) :: Flux_X1_q(nDOFX,nCF)
@@ -547,7 +547,7 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X2
     REAL(DP) :: dX1, dX3
     REAL(DP) :: AlphaPls, AlphaMns, AlphaMdl
-    REAL(DP) :: G_F(nDOFX_X2,nGF) 
+    REAL(DP) :: G_F(nDOFX_X2,nGF)
     REAL(DP) :: uCF_L(nDOFX_X2,nCF), uCF_R(nDOFX_X2,nCF)
     REAL(DP) :: uPF_L(nDOFX_X2,nPF), uPF_R(nDOFX_X2,nPF)
     REAL(DP) :: P_L(nDOFX_X2), P_R(nDOFX_X2)
@@ -555,7 +555,7 @@ CONTAINS
     REAL(DP) :: G_P(nDOFX,nGF), G_K(nDOFX,nGF)
     REAL(DP) :: uCF_P(nDOFX,nCF), uCF_K(nDOFX,nCF)
     REAL(DP) :: uPF_K(nDOFX,nPF)
-    REAL(DP) :: P_K(nDOFX) 
+    REAL(DP) :: P_K(nDOFX)
     REAL(DP) :: EigVals_L(nDOFX_X2,nCF), EigVals_R(nDOFX_X2,nCF)
     REAL(DP) :: Flux_X2_L(nDOFX_X2,nCF), Flux_X2_R(nDOFX_X2,nCF)
     REAL(DP) :: Flux_X2_q(nDOFX,nCF)

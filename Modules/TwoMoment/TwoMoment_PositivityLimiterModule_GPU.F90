@@ -4,7 +4,7 @@
 MODULE TwoMoment_PositivityLimiterModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, Zero, Half, One, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, nDOF, nDOFE, nDOFX
   USE TimersModule, ONLY: &
@@ -286,6 +286,8 @@ CONTAINS
     REAL(DP) :: U_K_G2 (     iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
     REAL(DP) :: U_K_G3 (     iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
 
+    IF( nDOF == 1 ) RETURN
+
     IF( .NOT. UsePositivityLimiter ) RETURN
 
     CALL TimersStart( Timer_PositivityLimiter )
@@ -420,8 +422,10 @@ CONTAINS
 
                 Theta_1 &
                   = Theta_Eps * MIN( One, &
-                    ABS( (Min_1-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) / (Min_K-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) ), &
-                    ABS( (Max_1-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) / (Max_K-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) ) )
+                    ABS( (Min_1-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) &
+                          / (Min_K-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny) ), &
+                    ABS( (Max_1-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)) &
+                          / (Max_K-U_K_N(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny) ) )
 
                 U_Q_N(:,iZ1,iZ2,iZ3,iZ4,iS) &
                   =   U_Q_N(:,iZ1,iZ2,iZ3,iZ4,iS) * Theta_1 &
