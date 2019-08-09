@@ -15,7 +15,8 @@ MODULE OpacityModule_TABLE
     LogInterpolateSingleVariable_1D3D, &
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_2D2D, &
-    LogInterpolateSingleVariable_2D2D_Custom
+    LogInterpolateSingleVariable_2D2D_Custom, &
+    LogInterpolateSingleVariable_2D_Custom_Point
 
   ! ----------------------------------------------
 
@@ -28,6 +29,11 @@ MODULE OpacityModule_TABLE
     Centimeter, &
     Kelvin, &
     MeV
+  USE ProgramHeaderModule, ONLY: &
+    nE, &
+    nNodesE
+  USE MeshModule, ONLY: &
+    MeshE
 
   IMPLICIT NONE
   PRIVATE
@@ -50,7 +56,7 @@ MODULE OpacityModule_TABLE
   REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
     EmAb_T
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
-    Iso_T, NES_T, Pair_T
+    Iso_T, NES_T, Pair_T, NES_AT, Pair_AT
 #ifdef MICROPHYSICS_WEAKLIB
   TYPE(OpacityTableType), PUBLIC :: &
     OPACITIES
@@ -66,12 +72,12 @@ MODULE OpacityModule_TABLE
   !$OMP DECLARE TARGET &
   !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
   !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
-  !$OMP   EmAb_T, Iso_T, NES_T, Pair_T )
+  !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
   !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
-  !$ACC   EmAb_T, Iso_T, NES_T, Pair_T )
+  !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT )
 #endif
 
 CONTAINS
@@ -88,7 +94,8 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Pair_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
-    INTEGER :: iS, iM
+    REAL(DP) :: E1, E2
+    INTEGER :: iS, iM, iEta, iT, iN_E1, iN_E2, iE1, iE2, iNodeE1, iNodeE2, nPointsE
     LOGICAL :: Include_NES
     LOGICAL :: Include_Pair
     LOGICAL :: Verbose
@@ -180,6 +187,8 @@ CONTAINS
     END IF
 
     CALL FinalizeHDF( )
+
+    nPointsE = nE * nNodesE
 
     ! --- Thermodynamic State Indices ---
 
@@ -286,16 +295,137 @@ CONTAINS
       END DO
     END DO
 
+    ALLOCATE( NES_AT(1:nPointsE, &
+                     1:nPointsE, &
+                     1:OPACITIES % Scat_NES % nPoints(4), &
+                     1:OPACITIES % Scat_NES % nPoints(5), &
+                     1:OPACITIES % Scat_NES % nMoments, &
+                     1:OPACITIES % Scat_NES % nOpacities) )
+
+    ALLOCATE( Pair_AT(1:nPointsE, &
+                      1:nPointsE, &
+                      1:OPACITIES % Scat_Pair % nPoints(4), &
+                      1:OPACITIES % Scat_Pair % nPoints(5), &
+                      1:OPACITIES % Scat_Pair % nMoments, &
+                      1:OPACITIES % Scat_Pair % nOpacities) )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
-    !$OMP          EmAb_T, Iso_T, NES_T, Pair_T )
+    !$OMP          EmAb_T, Iso_T, NES_T, Pair_T ) &
+    !$OMP MAP( alloc: NES_AT, Pair_AT )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
     !$ACC   EmAb_T, Iso_T, NES_T, Pair_T )
+#endif
+
+    ASSOCIATE ( CenterE => MeshE % Center, &
+                WidthE  => MeshE % Width, &
+                NodesE  => MeshE % Nodes )
+
+    ASSOCIATE ( nSpecies   => OPACITIES % Scat_NES % nOpacities, &
+                nMoments   => OPACITIES % Scat_NES % nMoments, &
+                nPointsEta => OPACITIES % Scat_NES % nPoints(5), &
+                nPointsT   => OPACITIES % Scat_NES % nPoints(4) )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
+    !$OMP PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC COPYIN( CenterE, WidthE, NodesE ) &
+    !$ACC PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
+#endif
+    DO iS = 1, nSpecies
+      DO iM = 1, nMoments
+        DO iEta = 1, nPointsEta
+          DO iT = 1, nPointsT
+            DO iN_E2 = 1, nPointsE
+              DO iN_E1 = 1, nPointsE
+
+                iE1     = MOD( (iN_E1-1) / nNodesE, nE      ) + 1
+                iNodeE1 = MOD( (iN_E1-1)          , nNodesE ) + 1
+
+                iE2     = MOD( (iN_E2-1) / nNodesE, nE      ) + 1
+                iNodeE2 = MOD( (iN_E2-1)          , nNodesE ) + 1
+
+                E1 = ( CenterE(iE1) + WidthE(iE1) * NodesE(iNodeE1) ) / MeV
+                E2 = ( CenterE(iE2) + WidthE(iE2) * NodesE(iNodeE2) ) / MeV
+
+                CALL LogInterpolateSingleVariable_2D_Custom_Point &
+                       ( E1, E2, Es_T, Es_T, OS_NES(iS,iM), NES_T(:,:,iT,iEta,iM,iS), &
+                         NES_AT(iN_E1,iN_E2,iT,iEta,iM,iS) )
+
+                NES_AT(iN_E1,iN_E2,iT,iEta,iM,iS) &
+                  = LOG10( NES_AT(iN_E1,iN_E2,iT,iEta,iM,iS) + OS_NES(iS,iM) )
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    END ASSOCIATE
+
+    ASSOCIATE ( nSpecies   => OPACITIES % Scat_Pair % nOpacities, &
+                nMoments   => OPACITIES % Scat_Pair % nMoments, &
+                nPointsEta => OPACITIES % Scat_Pair % nPoints(5), &
+                nPointsT   => OPACITIES % Scat_Pair % nPoints(4) )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
+    !$OMP PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC COPYIN( CenterE, WidthE, NodesE ) &
+    !$ACC PRIVATE( E1, E2, iE1, iE2, iNodeE1, iNodeE2 )
+#endif
+    DO iS = 1, nSpecies
+      DO iM = 1, nMoments
+        DO iEta = 1, nPointsEta
+          DO iT = 1, nPointsT
+            DO iN_E2 = 1, nPointsE
+              DO iN_E1 = 1, nPointsE
+
+                iE1     = MOD( (iN_E1-1) / nNodesE, nE      ) + 1
+                iNodeE1 = MOD( (iN_E1-1)          , nNodesE ) + 1
+
+                iE2     = MOD( (iN_E2-1) / nNodesE, nE      ) + 1
+                iNodeE2 = MOD( (iN_E2-1)          , nNodesE ) + 1
+
+                E1 = ( CenterE(iE1) + WidthE(iE1) * NodesE(iNodeE1) ) / MeV
+                E2 = ( CenterE(iE2) + WidthE(iE2) * NodesE(iNodeE2) ) / MeV
+
+                CALL LogInterpolateSingleVariable_2D_Custom_Point &
+                       ( E1, E2, Es_T, Es_T, OS_Pair(iS,iM), Pair_T(:,:,iT,iEta,iM,iS), &
+                         Pair_AT(iN_E1,iN_E2,iT,iEta,iM,iS) )
+
+                Pair_AT(iN_E1,iN_E2,iT,iEta,iM,iS) &
+                  = LOG10( Pair_AT(iN_E1,iN_E2,iT,iEta,iM,iS) + OS_Pair(iS,iM) )
+
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    END ASSOCIATE
+
+    END ASSOCIATE
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM &
+    !$OMP ( NES_AT, Pair_AT )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST &
+    !$ACC ( NES_AT, Pair_AT )
 #endif
 
 #endif
@@ -311,7 +441,7 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, &
-    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T )
+    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT )
 #endif
 
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
@@ -319,6 +449,7 @@ CONTAINS
 
     DEALLOCATE( OS_EmAb, OS_Iso, OS_NES, OS_Pair )
     DEALLOCATE( EmAb_T, Iso_T, NES_T, Pair_T )
+    DEALLOCATE( NES_AT, Pair_AT )
 
 #endif
 

@@ -47,9 +47,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeEquilibriumDistributions_Points, &
     ComputeEquilibriumDistributionAndDerivatives_Points, &
     ComputeNeutrinoOpacities_NES_Points, &
-    ComputeNeutrinoOpacities_NES_Point, &
     ComputeNeutrinoOpacities_Pair_Points, &
-    ComputeNeutrinoOpacities_Pair_Point, &
     ComputeNeutrinoOpacitiesRates_NES_Points, &
     ComputeNeutrinoOpacitiesRates_Pair_Points
 
@@ -134,7 +132,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   INTEGER, PARAMETER :: iP2D_S_1        = 15
   INTEGER, PARAMETER :: iP2D_S_2        = 16
 
-  INTEGER, PARAMETER :: nP3D = 8
+  INTEGER, PARAMETER :: nP3D = 10
   INTEGER, PARAMETER :: iP3D_Phi_0_In_NES_1  = 1
   INTEGER, PARAMETER :: iP3D_Phi_0_Ot_NES_1  = 2
   INTEGER, PARAMETER :: iP3D_Phi_0_In_NES_2  = 3
@@ -143,6 +141,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   INTEGER, PARAMETER :: iP3D_Phi_0_Ot_Pair_1 = 6
   INTEGER, PARAMETER :: iP3D_Phi_0_In_Pair_2 = 7
   INTEGER, PARAMETER :: iP3D_Phi_0_Ot_Pair_2 = 8
+  INTEGER, PARAMETER :: iP3D_WORK1 = 9
+  INTEGER, PARAMETER :: iP3D_WORK2 = 10
 
   PUBLIC :: E_N
 
@@ -1682,10 +1682,7 @@ CONTAINS
     ! --- Equilibrium Distributions ---
 
     CALL ComputeEquilibriumDistributions_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, iS_1 )
-
-    CALL ComputeEquilibriumDistributions_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_2_P, iS_2 )
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, J0_2_P, iS_1, iS_2 )
 
     IF ( nX < nX_G ) THEN
 
@@ -1785,30 +1782,23 @@ CONTAINS
     ! --- Equilibrium Distributions ---
 
     CALL ComputeEquilibriumDistributions_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, iS_1 )
-
-    CALL ComputeEquilibriumDistributions_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_2_P, iS_2 )
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, J0_1_P, J0_2_P, iS_1, iS_2 )
 
     ! --- NES Kernels ---
 
     CALL ComputeNeutrinoOpacities_NES_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, 1, &
-             Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P )
-
-    CALL ComputeNeutrinoOpacities_NES_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, 1, &
-             Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P )
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, iS_2, 1, &
+             Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P, &
+             Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P, &
+             P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
 
     ! --- Pair Kernels ---
 
     CALL ComputeNeutrinoOpacities_Pair_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, 1, &
-             Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P )
-
-    CALL ComputeNeutrinoOpacities_Pair_Points &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_2, 1, &
-             Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P )
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, iS_1, iS_2, 1, &
+             Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P, &
+             Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P, &
+             P3D(:,:,:,iP3D_WORK1), P3D(:,:,:,iP3D_WORK2) )
 
     IF ( nX < nX_G ) THEN
 
