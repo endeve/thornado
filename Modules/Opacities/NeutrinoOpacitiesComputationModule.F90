@@ -1516,8 +1516,10 @@ CONTAINS
 
 #else
 
-    Phi_In  = Zero
-    Phi_Out = Zero
+    Phi_In_1  = Zero
+    Phi_Out_1 = Zero
+    Phi_In_2  = Zero
+    Phi_Out_2 = Zero
 
 #endif
 
@@ -2321,8 +2323,10 @@ CONTAINS
 
 #else
 
-    Phi_In  = Zero
-    Phi_Out = Zero
+    Phi_In_1  = Zero
+    Phi_Out_1 = Zero
+    Phi_In_2  = Zero
+    Phi_Out_2 = Zero
 
 #endif
 
