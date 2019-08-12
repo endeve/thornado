@@ -59,7 +59,7 @@ MODULE NeutrinoOpacitiesComputationModule
     LogInterpolateSingleVariable_2D2D_Custom_Aligned, &
     LogInterpolateSingleVariable_2D2D_Custom_Aligned_Point, &
     LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Point, &
-    LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_Point
+    LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_P
 
   ! ----------------------------------------------
 
@@ -1544,7 +1544,7 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: WORK1(:,:,:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: WORK2(:,:,:)
 
-    REAL(DP), POINTER :: H1(:,:,:), H2(:,:,:)
+    REAL(DP), POINTER, CONTIGUOUS :: H1(:,:,:), H2(:,:,:)
     INTEGER  :: iX, iE1, iE2, iH1, iH2, nE, nX
     INTEGER  :: i, j, k
     REAL(DP) :: kT, DetBal
@@ -1581,12 +1581,12 @@ CONTAINS
     nX = iX_E - iX_B + 1
 
     IF ( PRESENT( WORK1 ) ) THEN
-      H1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) => WORK1(:,:,:)
+      H1(iE_B:,iE_B:,iX_B:) => WORK1(:,:,:)
     ELSE
       ALLOCATE( H1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
     IF ( PRESENT( WORK2 ) ) THEN
-      H2(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) => WORK2(:,:,:)
+      H2(iE_B:,iE_B:,iX_B:) => WORK2(:,:,:)
     ELSE
       ALLOCATE( H2(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
@@ -1765,12 +1765,12 @@ CONTAINS
     nX = iX_E - iX_B + 1
 
     IF ( PRESENT( WORK1 ) ) THEN
-      H1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) => WORK1(:,:,:)
+      H1(iE_B:,iE_B:,iX_B:) => WORK1(:,:,:)
     ELSE
       ALLOCATE( H1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
     IF ( PRESENT( WORK2 ) ) THEN
-      H2(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) => WORK2(:,:,:)
+      H2(iE_B:,iE_B:,iX_B:) => WORK2(:,:,:)
     ELSE
       ALLOCATE( H2(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
@@ -1946,13 +1946,13 @@ CONTAINS
 
     ! --- Interpolate HI  ---
 
-    CALL LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_Point &
+    CALL LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_P &
            ( LogT, LogEta, LogTs_T, LogEtas_T, &
              OS_NES(1,iH1), NES_AT(:,:,:,:,iH1,1), H1, dH1dT, dH1dEta )
 
     ! --- Interpolate HII ---
 
-    CALL LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_Point &
+    CALL LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_P &
            ( LogT, LogEta, LogTs_T, LogEtas_T, &
              OS_NES(1,iH2), NES_AT(:,:,:,:,iH2,1), H2, dH2dT, dH2dEta )
 
@@ -2387,12 +2387,12 @@ CONTAINS
     nX = iX_E - iX_B + 1
 
     IF ( PRESENT( WORK1 ) ) THEN
-      J1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) => WORK1(:,:,:)
+      J1(iE_B:,iE_B:,iX_B:) => WORK1(:,:,:)
     ELSE
       ALLOCATE( J1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
     IF ( PRESENT( WORK2 ) ) THEN
-      J2(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) => WORK2(:,:,:)
+      J2(iE_B:,iE_B:,iX_B:) => WORK2(:,:,:)
     ELSE
       ALLOCATE( J2(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
@@ -2525,7 +2525,7 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: WORK1(:,:,:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: WORK2(:,:,:)
 
-    REAL(DP), POINTER :: J1(:,:,:), J2(:,:,:)
+    REAL(DP), POINTER, CONTIGUOUS :: J1(:,:,:), J2(:,:,:)
     INTEGER  :: iX, iE1, iE2, iJ1, iJ2, nE, nX
     INTEGER  :: i, j, k
     REAL(DP) :: kT, DetBal
@@ -2566,12 +2566,12 @@ CONTAINS
     nX = iX_E - iX_B + 1
 
     IF ( PRESENT( WORK1 ) ) THEN
-      J1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) => WORK1(:,:,:)
+      J1(iE_B:,iE_B:,iX_B:) => WORK1(:,:,:)
     ELSE
       ALLOCATE( J1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
     IF ( PRESENT( WORK2 ) ) THEN
-      J2(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) => WORK2(:,:,:)
+      J2(iE_B:,iE_B:,iX_B:) => WORK2(:,:,:)
     ELSE
       ALLOCATE( J2(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
@@ -2739,13 +2739,13 @@ CONTAINS
 
     ! --- Interpolate JI  ---
 
-    CALL LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_Point &
+    CALL LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_P &
            ( LogT, LogEta, LogTs_T, LogEtas_T, &
              OS_Pair(1,iJ1), Pair_AT(:,:,:,:,iJ1,1), J1, dJ1dT, dJ1dEta )
 
     ! --- Interpolate JII ---
 
-    CALL LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_Point &
+    CALL LogInterpolateDifferentiateSingleVariable_2D2D_Custom_Aligned_P &
            ( LogT, LogEta, LogTs_T, LogEtas_T, &
              OS_Pair(1,iJ2), Pair_AT(:,:,:,:,iJ2,1), J2, dJ2dT, dJ2dEta )
 

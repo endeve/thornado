@@ -69,7 +69,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), PARAMETER :: Unit_T = MeV
 
   LOGICAL, PARAMETER :: SolveMatter = .TRUE.
-  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .TRUE.
+  LOGICAL, PARAMETER :: UsePreconditionerEmAb = .FALSE.
   LOGICAL, PARAMETER :: UsePreconditionerPair = .FALSE.
   LOGICAL, PARAMETER :: UsePreconditionerPairLagAllButJ0 = .FALSE.
 
@@ -2906,8 +2906,8 @@ CONTAINS
           IF ( MASK(iN_X) ) THEN
 
             CALL LinearLeastSquares &
-              ( 'N', n_FP, Mk-1, 1, A(1,1,iN_X), n_FP, &
-                B(1,iN_X), n_FP, TAU(1,iN_X), WORK(1,iN_X), LWORK, INFO(iN_X) )
+              ( 'N', n_FP, Mk-1, 1, A(:,:,iN_X), n_FP, &
+                B(:,iN_X), n_FP, TAU(1,iN_X), WORK(1,iN_X), LWORK, INFO(iN_X) )
 
           END IF
         END DO
@@ -3238,7 +3238,7 @@ CONTAINS
     LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:),     INTENT(in)    :: D, C_Y, C_E, F_Y, F_E
     REAL(DP), DIMENSION(:,:),   INTENT(in)    :: dGamJ0dY, dGamJ0dE
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: FJAC
+    REAL(DP), DIMENSION(2,2,*), INTENT(inout) :: FJAC
     REAL(DP), DIMENSION(:),     INTENT(inout) :: dU_Y, dU_E, U_Y, U_E, Y, E
 
     REAL(DP) :: N_B, DJAC
