@@ -1570,12 +1570,13 @@ CONTAINS
     INTEGER,                            INTENT(in)    :: iSpecies
     REAL(DP), DIMENSION(:),   TARGET,   INTENT(in)    :: D, T, Y
     REAL(DP), DIMENSION(:,:), TARGET,   INTENT(inout) :: J0, dJ0dY, dJ0dE
+
     LOGICAL,  DIMENSION(:),   OPTIONAL, INTENT(in)    :: MASK
     INTEGER,                  OPTIONAL, INTENT(in)    :: nX_P
     INTEGER,  DIMENSION(:),   OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
 
-    REAL(DP), DIMENSION(:),   POINTER,  CONTIGUOUS    :: D_P, T_P, Y_P
-    REAL(DP), DIMENSION(:,:), POINTER,  CONTIGUOUS    :: J0_P, dJ0dY_P, dJ0dE_P
+    REAL(DP), DIMENSION(:),   POINTER :: D_P, T_P, Y_P
+    REAL(DP), DIMENSION(:,:), POINTER :: J0_P, dJ0dY_P, dJ0dE_P
 
     INTEGER :: nX
 
@@ -1638,12 +1639,13 @@ CONTAINS
     INTEGER,                            INTENT(in)    :: iS_1, iS_2
     REAL(DP), DIMENSION(:),   TARGET,   INTENT(in)    :: D, T, Y
     REAL(DP), DIMENSION(:,:), TARGET,   INTENT(inout) :: J0_1, J0_2
+
     LOGICAL,  DIMENSION(:),   OPTIONAL, INTENT(in)    :: MASK
     INTEGER,                  OPTIONAL, INTENT(in)    :: nX_P
     INTEGER,  DIMENSION(:),   OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
 
-    REAL(DP), DIMENSION(:),   POINTER,  CONTIGUOUS    :: D_P, T_P, Y_P
-    REAL(DP), DIMENSION(:,:), POINTER,  CONTIGUOUS    :: J0_1_P, J0_2_P
+    REAL(DP), DIMENSION(:),   POINTER :: D_P, T_P, Y_P
+    REAL(DP), DIMENSION(:,:), POINTER :: J0_1_P, J0_2_P
 
     INTEGER :: nX
 
@@ -1710,16 +1712,17 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(inout) :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
     REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(inout) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
     REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(inout) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
+
     LOGICAL,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: MASK
     INTEGER,                    OPTIONAL, INTENT(in)    :: nX_P, nX_P0
     INTEGER,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
 
-    REAL(DP), DIMENSION(:),     POINTER,  CONTIGUOUS    :: D_P, T_P, Y_P
-    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: J0_1_P, J0_2_P
-    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
-    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P
-    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P
-    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
+    REAL(DP), DIMENSION(:),     POINTER :: D_P, T_P, Y_P
+    REAL(DP), DIMENSION(:,:),   POINTER :: J0_1_P, J0_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
 
     INTEGER :: nX, nX0
 
@@ -1846,15 +1849,15 @@ CONTAINS
     INTEGER,                    OPTIONAL, INTENT(in)    :: nX_P, nX_P0
     INTEGER,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
 
-    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: J_1_P, J_2_P
-    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
-    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P
-    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P
-    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
-    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: Chi_NES_1_P, Chi_NES_2_P
-    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: Eta_NES_1_P, Eta_NES_2_P
-    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: Chi_Pair_1_P, Chi_Pair_2_P
-    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: Eta_Pair_1_P, Eta_Pair_2_P
+    REAL(DP), DIMENSION(:,:),   POINTER :: J_1_P, J_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
+    REAL(DP), DIMENSION(:,:),   POINTER :: Chi_NES_1_P, Chi_NES_2_P
+    REAL(DP), DIMENSION(:,:),   POINTER :: Eta_NES_1_P, Eta_NES_2_P
+    REAL(DP), DIMENSION(:,:),   POINTER :: Chi_Pair_1_P, Chi_Pair_2_P
+    REAL(DP), DIMENSION(:,:),   POINTER :: Eta_Pair_1_P, Eta_Pair_2_P
 
     INTEGER :: nX, nX0
 
@@ -1985,7 +1988,7 @@ CONTAINS
     INTEGER,                OPTIONAL, INTENT(in)    :: nX_P
     INTEGER,  DIMENSION(:), OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
 
-    REAL(DP), DIMENSION(:), POINTER,  CONTIGUOUS    :: D_P, E_P, Y_P, T_P
+    REAL(DP), DIMENSION(:), POINTER :: D_P, E_P, Y_P, T_P
 
     INTEGER  :: nX
 
@@ -2974,28 +2977,28 @@ CONTAINS
       Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
       GJAC )
 
-    LOGICAL,  DIMENSION(:),               INTENT(in)    :: MASK
-    INTEGER,                              INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(:),               INTENT(in)    :: UnpackIndex
-    INTEGER,                              INTENT(in)    :: n_FP, OS_1, OS_2
-    REAL(DP),                             INTENT(in)    :: dt
-    REAL(DP), DIMENSION(:,:),             INTENT(in)    :: Jnew_1, Jnew_2
-    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(in)    :: S_1, S_2
-    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(in)    :: Chi_NES_1, Chi_NES_2
-    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(in)    :: Chi_Pair_1, Chi_Pair_2
-    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(in)    :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
-    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(in)    :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
-    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(in)    :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
-    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(in)    :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
-    REAL(DP), DIMENSION(:,:,:),           INTENT(inout) :: GJAC
+    LOGICAL,  DIMENSION(:),             INTENT(in)    :: MASK
+    INTEGER,                            INTENT(in)    :: nX_P
+    INTEGER,  DIMENSION(:),             INTENT(in)    :: UnpackIndex
+    INTEGER,                            INTENT(in)    :: n_FP, OS_1, OS_2
+    REAL(DP),                           INTENT(in)    :: dt
+    REAL(DP), DIMENSION(:,:),           INTENT(in)    :: Jnew_1, Jnew_2
+    REAL(DP), DIMENSION(:,:),   TARGET, INTENT(in)    :: S_1, S_2
+    REAL(DP), DIMENSION(:,:),   TARGET, INTENT(in)    :: Chi_NES_1, Chi_NES_2
+    REAL(DP), DIMENSION(:,:),   TARGET, INTENT(in)    :: Chi_Pair_1, Chi_Pair_2
+    REAL(DP), DIMENSION(:,:,:), TARGET, INTENT(in)    :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
+    REAL(DP), DIMENSION(:,:,:), TARGET, INTENT(in)    :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
+    REAL(DP), DIMENSION(:,:,:), TARGET, INTENT(in)    :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
+    REAL(DP), DIMENSION(:,:,:), TARGET, INTENT(in)    :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
+    REAL(DP), DIMENSION(:,:,:),         INTENT(inout) :: GJAC
 
-    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: S_1_P, S_2_P, SJ_1_P, SJ_2_P
-    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
-    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P
-    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P
-    REAL(DP), DIMENSION(:,:,:), POINTER,  CONTIGUOUS    :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
-    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: Chi_NES_1_P, Chi_NES_2_P
-    REAL(DP), DIMENSION(:,:),   POINTER,  CONTIGUOUS    :: Chi_Pair_1_P, Chi_Pair_2_P
+    REAL(DP), DIMENSION(:,:),   POINTER :: S_1_P, S_2_P, SJ_1_P, SJ_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_NES_2_P, Phi_0_Ot_NES_2_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Pair_1_P, Phi_0_Ot_Pair_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_Pair_2_P, Phi_0_Ot_Pair_2_P
+    REAL(DP), DIMENSION(:,:),   POINTER :: Chi_NES_1_P, Chi_NES_2_P
+    REAL(DP), DIMENSION(:,:),   POINTER :: Chi_Pair_1_P, Chi_Pair_2_P
 
     REAL(DP) :: GJACT(1:n_FP,1:n_FP)
     REAL(DP) :: Eta, Eta_T, Chi_T

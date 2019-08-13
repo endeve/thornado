@@ -1544,7 +1544,7 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: WORK1(:,:,:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: WORK2(:,:,:)
 
-    REAL(DP), POINTER, CONTIGUOUS :: H1(:,:,:), H2(:,:,:)
+    REAL(DP), POINTER :: H1(:,:,:), H2(:,:,:)
     INTEGER  :: iX, iE1, iE2, iH1, iH2, nE, nX
     INTEGER  :: i, j, k
     REAL(DP) :: kT, DetBal
@@ -1581,12 +1581,12 @@ CONTAINS
     nX = iX_E - iX_B + 1
 
     IF ( PRESENT( WORK1 ) ) THEN
-      H1(iE_B:,iE_B:,iX_B:) => WORK1(:,:,:)
+      H1 => WORK1(:,:,:)
     ELSE
       ALLOCATE( H1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
     IF ( PRESENT( WORK2 ) ) THEN
-      H2(iE_B:,iE_B:,iX_B:) => WORK2(:,:,:)
+      H2 => WORK2(:,:,:)
     ELSE
       ALLOCATE( H2(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
@@ -1765,12 +1765,12 @@ CONTAINS
     nX = iX_E - iX_B + 1
 
     IF ( PRESENT( WORK1 ) ) THEN
-      H1(iE_B:,iE_B:,iX_B:) => WORK1(:,:,:)
+      H1 => WORK1(:,:,:)
     ELSE
       ALLOCATE( H1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
     IF ( PRESENT( WORK2 ) ) THEN
-      H2(iE_B:,iE_B:,iX_B:) => WORK2(:,:,:)
+      H2 => WORK2(:,:,:)
     ELSE
       ALLOCATE( H2(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
@@ -2387,12 +2387,12 @@ CONTAINS
     nX = iX_E - iX_B + 1
 
     IF ( PRESENT( WORK1 ) ) THEN
-      J1(iE_B:,iE_B:,iX_B:) => WORK1(:,:,:)
+      J1 => WORK1(:,:,:)
     ELSE
       ALLOCATE( J1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
     IF ( PRESENT( WORK2 ) ) THEN
-      J2(iE_B:,iE_B:,iX_B:) => WORK2(:,:,:)
+      J2 => WORK2(:,:,:)
     ELSE
       ALLOCATE( J2(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
@@ -2525,7 +2525,7 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: WORK1(:,:,:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: WORK2(:,:,:)
 
-    REAL(DP), POINTER, CONTIGUOUS :: J1(:,:,:), J2(:,:,:)
+    REAL(DP), POINTER :: J1(:,:,:), J2(:,:,:)
     INTEGER  :: iX, iE1, iE2, iJ1, iJ2, nE, nX
     INTEGER  :: i, j, k
     REAL(DP) :: kT, DetBal
@@ -2566,12 +2566,12 @@ CONTAINS
     nX = iX_E - iX_B + 1
 
     IF ( PRESENT( WORK1 ) ) THEN
-      J1(iE_B:,iE_B:,iX_B:) => WORK1(:,:,:)
+      J1 => WORK1(:,:,:)
     ELSE
       ALLOCATE( J1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
     IF ( PRESENT( WORK2 ) ) THEN
-      J2(iE_B:,iE_B:,iX_B:) => WORK2(:,:,:)
+      J2 => WORK2(:,:,:)
     ELSE
       ALLOCATE( J2(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     END IF
