@@ -2,19 +2,25 @@ TwoMoment_ClosureModule.o: \
   KindModule.o \
   TwoMoment_ClosureModule.F90
 
-TwoMoment_CharacteristicDecompositionModule.o: \
-  KindModule.o \
-  RadiationFieldsModule.o \
-  TwoMoment_ClosureModule.o \
-  TwoMoment_CharacteristicDecompositionModule.f90
-
 TwoMoment_UtilitiesModule.o: \
   KindModule.o \
   TwoMoment_UtilitiesModule.F90
 
-TwoMoment_RefinementModule.o: \
+TwoMoment_CharacteristicDecompositionModule.o: \
   KindModule.o \
-  TwoMoment_RefinementModule.f90
+  GeometryFieldsModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_CharacteristicDecompositionModule.f90
+
+TwoMoment_MeshRefinementModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  TwoMoment_MeshRefinementModule.f90
 
 TwoMoment_BoundaryConditionsModule.o: \
   KindModule.o \
@@ -43,6 +49,8 @@ TwoMoment_PositivityLimiterModule_Old.o: \
   TimersModule.o \
   ReferenceElementModule.o \
   ReferenceElementModule_Lagrange.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
   RadiationFieldsModule.o \
   TwoMoment_PositivityLimiterModule_Old.F90
 
@@ -116,19 +124,6 @@ TwoMoment_DiscretizationModule_Collisions_Neutrinos_Old.o: \
   NeutrinoOpacitiesComputationModule.o \
   TwoMoment_DiscretizationModule_Collisions_Neutrinos_Old.F90
 
-TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  TimersModule.o \
-  GeometryFieldsModule.o \
-  GeometryFieldsModuleE.o \
-  FluidFieldsModule.o \
-  RadiationFieldsModule.o \
-  EquationOfStateModule_TABLE.o \
-  NeutrinoOpacitiesComputationModule.o \
-  TwoMoment_NeutrinoMatterSolverModule.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90
-
 TwoMoment_NeutrinoMatterSolverModule.o: \
   KindModule.o \
   UnitsModule.o \
@@ -143,10 +138,15 @@ TwoMoment_NeutrinoMatterSolverModule.o: \
   NeutrinoOpacitiesComputationModule.o \
   TwoMoment_NeutrinoMatterSolverModule.F90
 
-TwoMoment_MeshRefinementModule.o: \
+TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  ReferenceElementModuleX.o \
-  ReferenceElementModule.o \
-  PolynomialBasisModule_Lagrange.o \
-  TwoMoment_MeshRefinementModule.f90
+  TimersModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
+  NeutrinoOpacitiesComputationModule.o \
+  TwoMoment_NeutrinoMatterSolverModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90
