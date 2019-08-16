@@ -48,7 +48,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U_R (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
     REAL(DP), INTENT(inout) :: &
-      dU_R(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+      dU_R(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
 
     INTEGER :: iCR, iS, iX_G
 
