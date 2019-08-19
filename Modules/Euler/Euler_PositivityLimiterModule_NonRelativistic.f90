@@ -4,22 +4,22 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic
     DP, Zero, Half, One
   USE ProgramHeaderModule, ONLY: &
     nNodesX, nDOFX
-
   USE ReferenceElementModuleX, ONLY: &
     NodesX_q, WeightsX_q, &
     nDOFX_X1, NodesX1, &
     nDOFX_X2, NodesX2, &
     nDOFX_X3, NodesX3
-    
-
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     LX_X1_Dn, LX_X1_Up, &
     LX_X2_Dn, LX_X2_Up, &
     LX_X3_Dn, LX_X3_Up
-
+  USE GeometryComputationModule, ONLY: &
+    ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
+    nGF, &
+    iGF_h_1, iGF_h_2, iGF_h_3, &
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
     iGF_SqrtGm
-
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
 
@@ -36,7 +36,7 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic
   INTEGER               :: nPP(nPS)
   INTEGER               :: nPT
   REAL(DP)              :: Min_1, Min_2
-  REAL(DP), ALLOCATABLE :: U_PP(:,:)
+  REAL(DP), ALLOCATABLE :: U_PP(:,:), G_PP(:,:)
 
 CONTAINS
 
@@ -105,12 +105,17 @@ CONTAINS
 
     ALLOCATE( U_PP(nPT,nCF) )
 
+    ! --- Geometry in Positive Points ---
+
+    ALLOCATE( G_PP(nPT,nGF) )
+
   END SUBROUTINE Euler_InitializePositivityLimiter_NonRelativistic
 
 
   SUBROUTINE Euler_FinalizePositivityLimiter_NonRelativistic
 
     DEALLOCATE( U_PP )
+    DEALLOCATE( G_PP )
 
   END SUBROUTINE Euler_FinalizePositivityLimiter_NonRelativistic
 
@@ -126,9 +131,9 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     LOGICAL  :: NegativeStates(2)
-    INTEGER  :: iX1, iX2, iX3, iCF, iP
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
     REAL(DP) :: Min_K, Theta_1, Theta_2, Theta_P
-    REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF), IntE(nPT)
+    REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), IntE(nPT)
 
     IF( nDOFX == 1 ) RETURN
 
@@ -139,10 +144,19 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
+      G_q(1:nDOFX,1:nGF) = G(1:nDOFX,iX1,iX2,iX3,1:nGF)
 
       NegativeStates = .FALSE.
 
-      CALL ComputePointValues_Fluid( U_q, U_PP )
+      DO iCF = 1, nCF
+        CALL ComputePointValues( U_q(:,iCF), U_PP(:,iCF) )
+      END DO
+
+      DO iGF = iGF_h_1, iGF_h_3
+        CALL ComputePointValues( G_q(:,iGF), G_PP(:,iGF) )
+      END DO
+
+      CALL ComputeGeometryX_FromScaleFactors( G_PP )
 
       ! --- Ensure Positive Mass Density ---
 
@@ -153,10 +167,10 @@ CONTAINS
         ! --- Cell Average ---
 
         U_K(iCF_D) &
-          = SUM( WeightsX_q(:) * U_q(:,iCF_D) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
-              / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
+          = SUM( WeightsX_q(:) * U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
+              / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
 
-        Theta_1 = MIN( One, (U_K(iCF_D)-Min_1)/(U_K(iCF_D)-Min_K) )
+        Theta_1 = MIN( One, ( U_K(iCF_D) - Min_1 ) / ( U_K(iCF_D) - Min_K ) )
 
         ! --- Limit Density Towards Cell Average ---
 
@@ -165,7 +179,7 @@ CONTAINS
 
         ! --- Recompute Point Values ---
 
-        CALL ComputePointValues_Fluid( U_q, U_PP )
+        CALL ComputePointValues( U_q(1:nDOFX,iCF_D), U_PP(1:nPT,iCF_D) )
 
         ! --- Flag for Negative Density ---
 
@@ -176,7 +190,7 @@ CONTAINS
       ! --- Ensure Positive Internal Energy Density ---
 
       CALL ComputeInternalEnergyDensity &
-             ( nPT, U_PP(1:nPT,1:nCF), IntE(1:nPT) )
+             ( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), IntE(1:nPT) )
 
       IF( ANY( IntE(:) < Min_2 ) )THEN
 
@@ -185,8 +199,8 @@ CONTAINS
         DO iCF = 1, nCF
 
           U_K(iCF) &
-            = SUM( WeightsX_q(:) * U_q(:,iCF) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
-                / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
+            = SUM( WeightsX_q(:) * U_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
+                / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
 
         END DO
 
@@ -196,7 +210,7 @@ CONTAINS
           IF( IntE(iP) < Min_2 )THEN
 
             CALL SolveTheta_Bisection &
-                   ( U_PP(iP,1:nCF), U_K(1:nCF), Min_2, Theta_P )
+                   ( U_PP(iP,1:nCF), G_PP(iP,1:nGF), U_K(1:nCF), Min_2, Theta_P )
 
             Theta_2 = MIN( Theta_2, Theta_P )
 
@@ -239,101 +253,99 @@ CONTAINS
   END SUBROUTINE Euler_ApplyPositivityLimiter_NonRelativistic
 
 
-  SUBROUTINE ComputePointValues_Fluid( U_q, U_p )
+  SUBROUTINE ComputePointValues( X_q, X_p )
 
-    REAL(DP), INTENT(in)  :: U_q(nDOFX,nCF)
-    REAL(DP), INTENT(out) :: U_p(nPT,  nCF)
+    REAL(DP), INTENT(in)  :: X_q(nDOFX)
+    REAL(DP), INTENT(out) :: X_p(nPT)
 
-    INTEGER :: iCF, iOS
+    INTEGER :: iOS
 
-    DO iCF = 1, nCF
+    X_p(1:nDOFX) = X_q(1:nDOFX)
 
-      U_p(1:nDOFX,iCF) = U_q(1:nDOFX,iCF)
+    IF( SUM( nPP(2:3) ) > 0 )THEN
 
-      IF( SUM( nPP(2:3) ) > 0 )THEN
+      ! --- Points of Faces with Normal in X1 Direction ---
 
-        ! --- Points of Faces with Normal in X1 Direction ---
+      iOS = nPP(1)
 
-        iOS = nPP(1)
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
+               X_q(1:nDOFX), 1, Zero, X_p(iOS+1:iOS+nDOFX_X1), 1 )
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
-                 U_q(1:nDOFX,iCF), 1, Zero, U_p(iOS+1:iOS+nDOFX_X1,iCF), 1 )
+      iOS = iOS + nPP(2)
 
-        iOS = iOS + nPP(2)
+      CALL DGEMV &
+             ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Up, nDOFX_X1, &
+               X_q(1:nDOFX), 1, Zero, X_p(iOS+1:iOS+nDOFX_X1), 1 )
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Up, nDOFX_X1, &
-                 U_q(1:nDOFX,iCF), 1, Zero, U_p(iOS+1:iOS+nDOFX_X1,iCF), 1 )
+    END IF
 
-      END IF
+    IF( SUM( nPP(4:5) ) > 0 )THEN
 
-      IF( SUM( nPP(4:5) ) > 0 )THEN
+      ! --- Points of Faces with Normal in X2 Direction ---
 
-        ! --- Points of Faces with Normal in X2 Direction ---
+      iOS = SUM( nPP(1:3) )
 
-        iOS = SUM( nPP(1:3) )
+      CALL DGEMV &
+             ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
+               X_q(1:nDOFX), 1, Zero, X_p(iOS+1:iOS+nDOFX_X2), 1 )
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
-                 U_q(1:nDOFX,iCF), 1, Zero, U_p(iOS+1:iOS+nDOFX_X2,iCF), 1 )
+      iOS = iOS + nPP(4)
 
-        iOS = iOS + nPP(4)
+      CALL DGEMV &
+             ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Up, nDOFX_X2, &
+               X_q(1:nDOFX), 1, Zero, X_p(iOS+1:iOS+nDOFX_X2), 1 )
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Up, nDOFX_X2, &
-                 U_q(1:nDOFX,iCF), 1, Zero, U_p(iOS+1:iOS+nDOFX_X2,iCF), 1 )
+    END IF
 
-      END IF
+    IF( SUM( nPP(6:7) ) > 0 )THEN
 
-      IF( SUM( nPP(6:7) ) > 0 )THEN
+      ! --- Points of Faces with Normal in X3 Direction ---
 
-        ! --- Points of Faces with Normal in X3 Direction ---
+      iOS = SUM( nPP(1:5) )
 
-        iOS = SUM( nPP(1:5) )
+      CALL DGEMV &
+             ( 'N', nDOFX_X3, nDOFX, One, LX_X3_Dn, nDOFX_X3, &
+               X_q(1:nDOFX), 1, Zero, X_p(iOS+1:iOS+nDOFX_X3), 1 )
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X3, nDOFX, One, LX_X3_Dn, nDOFX_X3, &
-                 U_q(1:nDOFX,iCF), 1, Zero, U_p(iOS+1:iOS+nDOFX_X3,iCF), 1 )
+      iOS = iOS + nPP(6)
 
-        iOS = iOS + nPP(6)
+      CALL DGEMV &
+             ( 'N', nDOFX_X3, nDOFX, One, LX_X3_Up, nDOFX_X3, &
+               X_q(1:nDOFX), 1, Zero, X_p(iOS+1:iOS+nDOFX_X3), 1 )
 
-        CALL DGEMV &
-               ( 'N', nDOFX_X3, nDOFX, One, LX_X3_Up, nDOFX_X3, &
-                 U_q(1:nDOFX,iCF), 1, Zero, U_p(iOS+1:iOS+nDOFX_X3,iCF), 1 )
+    END IF
 
-      END IF
-
-    END DO
-
-  END SUBROUTINE ComputePointValues_Fluid
+  END SUBROUTINE ComputePointValues
 
 
-  SUBROUTINE ComputeInternalEnergyDensity( N, U, IntE )
+  SUBROUTINE ComputeInternalEnergyDensity( N, U, G, IntE )
 
     INTEGER,  INTENT(in)  :: N
-    REAL(DP), INTENT(in)  :: U(N,nCF)
+    REAL(DP), INTENT(in)  :: U(N,nCF), G(N,nGF)
     REAL(DP), INTENT(out) :: IntE(N)
 
     IntE &
-      = eFun( U(:,iCF_D), U(:,iCF_S1), U(:,iCF_S2), U(:,iCF_S3), U(:,iCF_E) )
+      = eFun( U(:,iCF_D), U(:,iCF_S1), U(:,iCF_S2), U(:,iCF_S3), U(:,iCF_E), &
+              G(:,iGF_Gm_dd_11), G(:,iGF_Gm_dd_22), G(:,iGF_Gm_dd_33) )
 
   END SUBROUTINE ComputeInternalEnergyDensity
 
 
-  REAL(DP) ELEMENTAL FUNCTION eFun( D, S1, S2, S3, E )
+  REAL(DP) ELEMENTAL FUNCTION eFun( D, S1, S2, S3, E, Gm11, Gm22, Gm33 )
 
     REAL(DP), INTENT(in) :: D, S1, S2, S3, E
+    REAL(DP), INTENT(in) :: Gm11, Gm22, Gm33
 
-    eFun = E - Half * ( S1**2 + S2**2 + S3**2 ) / D
+    eFun = E - Half * ( S1**2 / Gm11 + S2**2 / Gm22 + S3**2 / Gm33 ) / D
 
     RETURN
   END FUNCTION eFun
 
 
-  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, MinE, Theta_P )
+  SUBROUTINE SolveTheta_Bisection( U_Q, G_Q, U_K, MinE, Theta_P )
 
-    REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), MinE
+    REAL(DP), INTENT(in)  :: U_Q(nCF), G_Q(nGF), U_K(nCF), MinE
     REAL(DP), INTENT(out) :: Theta_P
 
     INTEGER,  PARAMETER :: MAX_IT = 19
@@ -346,20 +358,22 @@ CONTAINS
 
     x_a = Zero
     f_a = eFun &
-            ( x_a * U_Q(iCF_D)  + ( One - x_a ) * U_K(iCF_D),  &
-              x_a * U_Q(iCF_S1) + ( One - x_a ) * U_K(iCF_S1), &
-              x_a * U_Q(iCF_S2) + ( One - x_a ) * U_K(iCF_S2), &
-              x_a * U_Q(iCF_S3) + ( One - x_a ) * U_K(iCF_S3), &
-              x_a * U_Q(iCF_E)  + ( One - x_a ) * U_K(iCF_E) ) &
+            ( x_a * U_Q(iCF_D)  + ( One - x_a ) * U_K(iCF_D),         &
+              x_a * U_Q(iCF_S1) + ( One - x_a ) * U_K(iCF_S1),        &
+              x_a * U_Q(iCF_S2) + ( One - x_a ) * U_K(iCF_S2),        &
+              x_a * U_Q(iCF_S3) + ( One - x_a ) * U_K(iCF_S3),        &
+              x_a * U_Q(iCF_E)  + ( One - x_a ) * U_K(iCF_E),         &
+              G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33) ) &
           - MinE
 
     x_b = One
     f_b = eFun &
-            ( x_b * U_Q(iCF_D)  + ( One - x_b ) * U_K(iCF_D),  &
-              x_b * U_Q(iCF_S1) + ( One - x_b ) * U_K(iCF_S1), &
-              x_b * U_Q(iCF_S2) + ( One - x_b ) * U_K(iCF_S2), &
-              x_b * U_Q(iCF_S3) + ( One - x_b ) * U_K(iCF_S3), &
-              x_b * U_Q(iCF_E)  + ( One - x_b ) * U_K(iCF_E) ) &
+            ( x_b * U_Q(iCF_D)  + ( One - x_b ) * U_K(iCF_D),         &
+              x_b * U_Q(iCF_S1) + ( One - x_b ) * U_K(iCF_S1),        &
+              x_b * U_Q(iCF_S2) + ( One - x_b ) * U_K(iCF_S2),        &
+              x_b * U_Q(iCF_S3) + ( One - x_b ) * U_K(iCF_S3),        &
+              x_b * U_Q(iCF_E)  + ( One - x_b ) * U_K(iCF_E),         &
+              G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33) ) &
           - MinE
 
     IF( .NOT. f_a * f_b < 0 )THEN
@@ -388,11 +402,12 @@ CONTAINS
       x_c = x_a + dx
 
       f_c = eFun &
-              ( x_c * U_Q(iCF_D)  + ( One - x_c ) * U_K(iCF_D),  &
-                x_c * U_Q(iCF_S1) + ( One - x_c ) * U_K(iCF_S1), &
-                x_c * U_Q(iCF_S2) + ( One - x_c ) * U_K(iCF_S2), &
-                x_c * U_Q(iCF_S3) + ( One - x_c ) * U_K(iCF_S3), &
-                x_c * U_Q(iCF_E)  + ( One - x_c ) * U_K(iCF_E) ) &
+              ( x_c * U_Q(iCF_D)  + ( One - x_c ) * U_K(iCF_D),         &
+                x_c * U_Q(iCF_S1) + ( One - x_c ) * U_K(iCF_S1),        &
+                x_c * U_Q(iCF_S2) + ( One - x_c ) * U_K(iCF_S2),        &
+                x_c * U_Q(iCF_S3) + ( One - x_c ) * U_K(iCF_S3),        &
+                x_c * U_Q(iCF_E)  + ( One - x_c ) * U_K(iCF_E),         &
+                G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33) ) &
             - MinE
 
       IF( f_a * f_c < Zero )THEN
