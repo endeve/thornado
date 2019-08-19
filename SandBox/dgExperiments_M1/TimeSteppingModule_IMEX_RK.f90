@@ -751,7 +751,7 @@ CONTAINS
 
         IF( jS == iS - 1 )THEN
 
-          ! --- Apply Positivity Limiter ---
+          ! --- Apply Positivity and Slope Limiter ---
 
           CALL MapFromStage( iZ_B1, U, U_IMEX )
 
@@ -765,7 +765,7 @@ CONTAINS
 
         END IF
 
-      END DO
+      END DO ! jS = 1, iS - 1
 
       IF( ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero ) )THEN
 
@@ -780,7 +780,7 @@ CONTAINS
 
         U_IMEX(:) = U_IMEX(:) + dt * a_IM(iS,iS) * dU_IM(:,iS)
 
-        ! --- Apply Positivity Limiter ---
+        ! --- Apply Positivity and Slope Limiter ---
 
         CALL MapFromStage( iZ_B1, U, U_IMEX )
 
@@ -807,7 +807,9 @@ CONTAINS
 
       END IF
 
-    END DO
+    END DO ! iS
+
+    ! --- Weighted Sum ---
 
     IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) &
           .OR. ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
@@ -838,7 +840,9 @@ CONTAINS
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
 
     CALL ApplyPositivityLimiter_TwoMoment &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U ) ! Possibly move this
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
+
+    ! --- Correction Step ---
 
     IF( ANY( [ alpha_IM, alpha_EX ] > Zero ) )THEN
 
@@ -859,6 +863,12 @@ CONTAINS
               iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:) &
           + dt**2 * dU(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
                          iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:)
+
+      CALL ApplySlopeLimiter_TwoMoment &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
+
+      CALL ApplyPositivityLimiter_TwoMoment &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
 
     END IF
 

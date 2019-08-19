@@ -154,7 +154,7 @@ CONTAINS
 
         Min_D = Min_1 * U_K(iCF_D)
 
-        CALL ComputePointValues( U_q(1:nDOFX,iCF_D), U_PP(1:nDOFX,iCF_D) )
+        CALL ComputePointValues( U_q(1:nDOFX,iCF_D), U_PP(1:nPT,iCF_D) )
 
         Min_K = MINVAL( U_PP(1:nPT,iCF_D) )
 
