@@ -267,9 +267,9 @@ CONTAINS
 
   SUBROUTINE ComputePointsAndWeightsE( E, W2, W3 )
 
-    REAL(DP), INTENT(out) :: E (:)
-    REAL(DP), INTENT(out) :: W2(:)
-    REAL(DP), INTENT(out) :: W3(:)
+    REAL(DP), INTENT(out) :: E (1:nE_G)
+    REAL(DP), INTENT(out) :: W2(1:nE_G)
+    REAL(DP), INTENT(out) :: W3(1:nE_G)
 
     INTEGER  :: iN_E, iE, iNodeE
 
@@ -293,10 +293,10 @@ CONTAINS
 
     ! --- Electron Neutrinos (1) and Electron Antineutrinos (2) ---
 
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: J_1, J_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_1, Chi_2
-    REAL(DP), DIMENSION(:,:), INTENT(out)   :: J0_1, J0_2
-    REAL(DP), DIMENSION(:),   INTENT(in)    :: D, T, Y, E
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: J_1, J_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_1, Chi_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out)   :: J0_1, J0_2
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)    :: D, T, Y, E
 
     CALL ComputeEquilibriumDistributions_Packed &
            ( iNuE, iNuE_Bar, D, T, Y, J0_1, J0_2 )
@@ -309,12 +309,12 @@ CONTAINS
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
-    REAL(DP),                 INTENT(in)    :: dt
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: J
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi
-    REAL(DP), DIMENSION(:,:), INTENT(out)   :: J0
-    REAL(DP), DIMENSION(:),   INTENT(inout) :: D, T, Y, E
-    INTEGER,  DIMENSION(:),   INTENT(out)   :: nIterations
+    REAL(DP),                           INTENT(in)    :: dt
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: J
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out)   :: J0
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(inout) :: D, T, Y, E
+    INTEGER,  DIMENSION(1:nX_G),        INTENT(out)   :: nIterations
 
     ! --- Solver Parameters ---
 
@@ -447,14 +447,14 @@ CONTAINS
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
-    REAL(DP),                 INTENT(in)    :: dt
-    INTEGER,                  INTENT(in)    :: iS_1, iS_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: J_1, J_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_1, Chi_2
-    REAL(DP), DIMENSION(:,:), INTENT(out)   :: J0_1, J0_2
-    REAL(DP), DIMENSION(:),   INTENT(inout) :: D, T, Y, E
-    INTEGER,  DIMENSION(:),   INTENT(out), OPTIONAL :: nIterations_Out(:)
-    REAL(DP),                 INTENT(in),  OPTIONAL :: TOL
+    REAL(DP),                           INTENT(in)    :: dt
+    INTEGER,                            INTENT(in)    :: iS_1, iS_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: J_1, J_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_1, Chi_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out)   :: J0_1, J0_2
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(inout) :: D, T, Y, E
+    INTEGER,  DIMENSION(1:nX_G),        INTENT(out), OPTIONAL :: nIterations_Out
+    REAL(DP),                           INTENT(in),  OPTIONAL :: TOL
 
     ! --- Solver Parameters ---
 
@@ -594,7 +594,7 @@ CONTAINS
       CALL TimersStart( Timer_Im_UpdateFP )
 
       CALL UpdateMatterRHS_FP &
-             ( ITERATE, iY, iE, Yold, Eold, Y, E, &
+             ( ITERATE, n_FP, iY, iE, Yold, Eold, Y, E, &
                Unew_Y, Unew_E, FVECm, GVECm )
 
       CALL UpdateNeutrinoRHS_FP &
@@ -668,17 +668,17 @@ CONTAINS
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
-    REAL(DP),                 INTENT(in)    :: dt
-    INTEGER,                  INTENT(in)    :: iS_1, iS_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: J_1, J_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_1, Chi_2
-    REAL(DP), DIMENSION(:,:), INTENT(out)   :: J0_1, J0_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Chi_NES_1, Chi_NES_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Eta_NES_1, Eta_NES_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Chi_Pair_1, Chi_Pair_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Eta_Pair_1, Eta_Pair_2
-    REAL(DP), DIMENSION(:),   INTENT(inout) :: D, T, Y, E
-    INTEGER,  DIMENSION(:),   INTENT(out)   :: nIterations
+    REAL(DP),                           INTENT(in)    :: dt
+    INTEGER,                            INTENT(in)    :: iS_1, iS_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: J_1, J_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_1, Chi_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out)   :: J0_1, J0_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Chi_NES_1, Chi_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Eta_NES_1, Eta_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Chi_Pair_1, Chi_Pair_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Eta_Pair_1, Eta_Pair_2
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(inout) :: D, T, Y, E
+    INTEGER,  DIMENSION(1:nX_G),        INTENT(out)   :: nIterations
 
     ! --- Solver Parameters ---
 
@@ -868,7 +868,7 @@ CONTAINS
       CALL TimersStart( Timer_Im_UpdateFP )
 
       CALL UpdateMatterRHS_FP &
-             ( ITERATE, iY, iE, Yold, Eold, Y, E, &
+             ( ITERATE, n_FP, iY, iE, Yold, Eold, Y, E, &
                Unew_Y, Unew_E, FVECm, GVECm )
 
       CALL UpdateNeutrinoRHS_FP &
@@ -937,17 +937,17 @@ CONTAINS
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
-    REAL(DP),                 INTENT(in)    :: dt
-    INTEGER,                  INTENT(in)    :: iS_1, iS_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: J_1, J_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_1, Chi_2
-    REAL(DP), DIMENSION(:,:), INTENT(out)   :: J0_1, J0_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Chi_NES_1, Chi_NES_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Eta_NES_1, Eta_NES_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Chi_Pair_1, Chi_Pair_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Eta_Pair_1, Eta_Pair_2
-    REAL(DP), DIMENSION(:),   INTENT(inout) :: D, T, Y, E
-    INTEGER,  DIMENSION(:),   INTENT(out)   :: nIterations_Inner, nIterations_Outer
+    REAL(DP),                           INTENT(in)    :: dt
+    INTEGER,                            INTENT(in)    :: iS_1, iS_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: J_1, J_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_1, Chi_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out)   :: J0_1, J0_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Chi_NES_1, Chi_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Eta_NES_1, Eta_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Chi_Pair_1, Chi_Pair_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Eta_Pair_1, Eta_Pair_2
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(inout) :: D, T, Y, E
+    INTEGER,  DIMENSION(1:nX_G),        INTENT(out)   :: nIterations_Inner, nIterations_Outer
 
     ! --- Solver Parameters ---
 
@@ -1185,7 +1185,7 @@ CONTAINS
       CALL TimersStart( Timer_Im_UpdateFP )
 
       CALL UpdateMatterRHS_FP &
-             ( ITERATE_OUTER, iY, iE, Yold, Eold, Y, E, &
+             ( ITERATE_OUTER, n_FP_outer, iY, iE, Yold, Eold, Y, E, &
                Unew_Y, Unew_E, FVECm_outer, GVECm_outer )
 
       ! --- Update Temperature ---
@@ -1258,17 +1258,17 @@ CONTAINS
 
     ! --- Neutrino (1) and Antineutrino (2) ---
 
-    REAL(DP),                 INTENT(in)    :: dt
-    INTEGER,                  INTENT(in)    :: iS_1, iS_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: J_1, J_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_1, Chi_2
-    REAL(DP), DIMENSION(:,:), INTENT(out)   :: J0_1, J0_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Chi_NES_1, Chi_NES_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Eta_NES_1, Eta_NES_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Chi_Pair_1, Chi_Pair_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Eta_Pair_1, Eta_Pair_2
-    REAL(DP), DIMENSION(:),   INTENT(inout) :: D, T, Y, E
-    INTEGER,  DIMENSION(:),   INTENT(out)   :: nIterations_Inner, nIterations_Outer
+    REAL(DP),                           INTENT(in)    :: dt
+    INTEGER,                            INTENT(in)    :: iS_1, iS_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: J_1, J_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_1, Chi_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out)   :: J0_1, J0_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Chi_NES_1, Chi_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Eta_NES_1, Eta_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Chi_Pair_1, Chi_Pair_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Eta_Pair_1, Eta_Pair_2
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(inout) :: D, T, Y, E
+    INTEGER,  DIMENSION(1:nX_G),        INTENT(out)   :: nIterations_Inner, nIterations_Outer
 
     ! --- Solver Parameters ---
 
@@ -1436,8 +1436,8 @@ CONTAINS
         CALL TimersStop( Timer_Im_ComputeRate )
 
         CALL ComputeNeutrinoRHS_Newton &
-               ( ITERATE_INNER, nX_P_inner, UnpackIndex_inner, &
-                 OS_1, OS_2, dt, Jold_1, Jold_2, Jnew_1, Jnew_2, &
+               ( ITERATE_INNER, nX_P_inner, UnpackIndex_inner, n_FP_inner, OS_1, OS_2, &
+                 dt, Jold_1, Jold_2, Jnew_1, Jnew_2, &
                  S_1, S_2, Chi_1, Chi_2, J0_1, J0_2, &
                  Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
                  Chi_Pair_1, Chi_Pair_2, Eta_Pair_1, Eta_Pair_2, &
@@ -1448,17 +1448,16 @@ CONTAINS
         CALL TimersStart( Timer_Im_ComputeLS )
 
         CALL BuildJacobian_Newton &
-               ( ITERATE_INNER, nX_P_inner, UnpackIndex_inner, n_FP_inner, &
-                 OS_1, OS_2, dt, Jnew_1, Jnew_2, S_1, S_2, &
+               ( ITERATE_INNER, nX_P_inner, UnpackIndex_inner, n_FP_inner, OS_1, OS_2, &
+                 dt, Jnew_1, Jnew_2, S_1, S_2, &
                  Chi_NES_1, Chi_NES_2, Chi_Pair_1, Chi_Pair_2, &
                  Phi_0_In_NES_1, Phi_0_Ot_NES_1, Phi_0_In_NES_2, Phi_0_Ot_NES_2, &
                  Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
                  GJAC_inner )
 
         CALL SolveLS_Newton &
-               ( ITERATE_INNER, nX_P_inner, PackIndex_inner, n_FP_inner, &
-                 OS_1, OS_2, Jnew_1, Jnew_2, &
-                 FVECm_inner, GVECm_inner, GJAC_inner )
+               ( ITERATE_INNER, nX_P_inner, PackIndex_inner, n_FP_inner, OS_1, OS_2, &
+                 Jnew_1, Jnew_2, FVECm_inner, GVECm_inner, GJAC_inner )
 
         CALL TimersStop( Timer_Im_ComputeLS )
 
@@ -1500,7 +1499,7 @@ CONTAINS
       CALL TimersStart( Timer_Im_UpdateFP )
 
       CALL UpdateMatterRHS_FP &
-             ( ITERATE_OUTER, iY, iE, Yold, Eold, Y, E, &
+             ( ITERATE_OUTER, n_FP_outer, iY, iE, Yold, Eold, Y, E, &
                Unew_Y, Unew_E, FVECm_outer, GVECm_outer )
 
       ! --- Update Temperature ---
@@ -1567,13 +1566,13 @@ CONTAINS
     ( iSpecies, D, T, Y, J0, dJ0dY, dJ0dE, &
       MASK, nX_P, PackIndex, UnpackIndex )
 
-    INTEGER,                            INTENT(in)    :: iSpecies
-    REAL(DP), DIMENSION(:),   TARGET,   INTENT(in)    :: D, T, Y
-    REAL(DP), DIMENSION(:,:), TARGET,   INTENT(inout) :: J0, dJ0dY, dJ0dE
+    INTEGER,                                      INTENT(in)    :: iSpecies
+    REAL(DP), DIMENSION(1:nX_G),        TARGET,   INTENT(in)    :: D, T, Y
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), TARGET,   INTENT(inout) :: J0, dJ0dY, dJ0dE
 
-    LOGICAL,  DIMENSION(:),   OPTIONAL, INTENT(in)    :: MASK
-    INTEGER,                  OPTIONAL, INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(:),   OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
+    LOGICAL,  DIMENSION(1:nX_G),        OPTIONAL, INTENT(in)    :: MASK
+    INTEGER,                            OPTIONAL, INTENT(in)    :: nX_P
+    INTEGER,  DIMENSION(1:nX_G),        OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
 
     REAL(DP), DIMENSION(:),   POINTER :: D_P, T_P, Y_P
     REAL(DP), DIMENSION(:,:), POINTER :: J0_P, dJ0dY_P, dJ0dE_P
@@ -1636,13 +1635,13 @@ CONTAINS
     ( iS_1, iS_2, D, T, Y, J0_1, J0_2, &
       MASK, nX_P, PackIndex, UnpackIndex )
 
-    INTEGER,                            INTENT(in)    :: iS_1, iS_2
-    REAL(DP), DIMENSION(:),   TARGET,   INTENT(in)    :: D, T, Y
-    REAL(DP), DIMENSION(:,:), TARGET,   INTENT(inout) :: J0_1, J0_2
+    INTEGER,                                      INTENT(in)    :: iS_1, iS_2
+    REAL(DP), DIMENSION(1:nX_G),        TARGET,   INTENT(in)    :: D, T, Y
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), TARGET,   INTENT(inout) :: J0_1, J0_2
 
-    LOGICAL,  DIMENSION(:),   OPTIONAL, INTENT(in)    :: MASK
-    INTEGER,                  OPTIONAL, INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(:),   OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
+    LOGICAL,  DIMENSION(1:nX_G),        OPTIONAL, INTENT(in)    :: MASK
+    INTEGER,                            OPTIONAL, INTENT(in)    :: nX_P
+    INTEGER,  DIMENSION(1:nX_G),        OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
 
     REAL(DP), DIMENSION(:),   POINTER :: D_P, T_P, Y_P
     REAL(DP), DIMENSION(:,:), POINTER :: J0_1_P, J0_2_P
@@ -1705,17 +1704,17 @@ CONTAINS
       Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
       MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
 
-    INTEGER,                              INTENT(in)    :: iS_1, iS_2
-    REAL(DP), DIMENSION(:),     TARGET,   INTENT(in)    :: D, T, Y
-    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: J0_1, J0_2
-    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(inout) :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
-    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(inout) :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
-    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(inout) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
-    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(inout) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
+    INTEGER,                                             INTENT(in)    :: iS_1, iS_2
+    REAL(DP), DIMENSION(1:nX_G),               TARGET,   INTENT(in)    :: D, T, Y
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G),        TARGET,   INTENT(inout) :: J0_1, J0_2
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), TARGET,   INTENT(inout) :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), TARGET,   INTENT(inout) :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), TARGET,   INTENT(inout) :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), TARGET,   INTENT(inout) :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
 
-    LOGICAL,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: MASK
-    INTEGER,                    OPTIONAL, INTENT(in)    :: nX_P, nX_P0
-    INTEGER,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
+    LOGICAL,  DIMENSION(1:nX_G),               OPTIONAL, INTENT(in)    :: MASK
+    INTEGER,                                   OPTIONAL, INTENT(in)    :: nX_P, nX_P0
+    INTEGER,  DIMENSION(1:nX_G),               OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
 
     REAL(DP), DIMENSION(:),     POINTER :: D_P, T_P, Y_P
     REAL(DP), DIMENSION(:,:),   POINTER :: J0_1_P, J0_2_P
@@ -1835,19 +1834,19 @@ CONTAINS
       Chi_Pair_1, Chi_Pair_2, Eta_Pair_1, Eta_Pair_2, &
       MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
 
-    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(in)    :: J_1, J_2
-    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(in)    :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
-    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(in)    :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
-    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(in)    :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
-    REAL(DP), DIMENSION(:,:,:), TARGET,   INTENT(in)    :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
-    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: Chi_NES_1, Chi_NES_2
-    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: Eta_NES_1, Eta_NES_2
-    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: Chi_Pair_1, Chi_Pair_2
-    REAL(DP), DIMENSION(:,:),   TARGET,   INTENT(inout) :: Eta_Pair_1, Eta_Pair_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G),        TARGET,   INTENT(in)    :: J_1, J_2
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), TARGET,   INTENT(in)    :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), TARGET,   INTENT(in)    :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), TARGET,   INTENT(in)    :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), TARGET,   INTENT(in)    :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G),        TARGET,   INTENT(inout) :: Chi_NES_1, Chi_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G),        TARGET,   INTENT(inout) :: Eta_NES_1, Eta_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G),        TARGET,   INTENT(inout) :: Chi_Pair_1, Chi_Pair_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G),        TARGET,   INTENT(inout) :: Eta_Pair_1, Eta_Pair_2
 
-    LOGICAL,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: MASK
-    INTEGER,                    OPTIONAL, INTENT(in)    :: nX_P, nX_P0
-    INTEGER,  DIMENSION(:),     OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
+    LOGICAL,  DIMENSION(1:nX_G),               OPTIONAL, INTENT(in)    :: MASK
+    INTEGER,                                   OPTIONAL, INTENT(in)    :: nX_P, nX_P0
+    INTEGER,  DIMENSION(1:nX_G),               OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
 
     REAL(DP), DIMENSION(:,:),   POINTER :: J_1_P, J_2_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
@@ -1981,12 +1980,12 @@ CONTAINS
   SUBROUTINE UpdateTemperature_Packed &
     ( D, E, Y, T, MASK, nX_P, PackIndex, UnpackIndex )
 
-    REAL(DP), DIMENSION(:), TARGET,   INTENT(in)    :: D, E, Y
-    REAL(DP), DIMENSION(:), TARGET,   INTENT(inout) :: T
+    REAL(DP), DIMENSION(1:nX_G), TARGET,   INTENT(in)    :: D, E, Y
+    REAL(DP), DIMENSION(1:nX_G), TARGET,   INTENT(inout) :: T
 
-    LOGICAL,  DIMENSION(:), OPTIONAL, INTENT(in)    :: MASK
-    INTEGER,                OPTIONAL, INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(:), OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
+    LOGICAL,  DIMENSION(1:nX_G), OPTIONAL, INTENT(in)    :: MASK
+    INTEGER,                     OPTIONAL, INTENT(in)    :: nX_P
+    INTEGER,  DIMENSION(1:nX_G), OPTIONAL, INTENT(in)    :: PackIndex, UnpackIndex
 
     REAL(DP), DIMENSION(:), POINTER :: D_P, E_P, Y_P, T_P
 
@@ -2039,14 +2038,14 @@ CONTAINS
     ( Jold_1, Jold_2, J_1, J_2, Jnew_1, Jnew_2, &
       D, Y, Yold, C_Y, S_Y, U_Y, E, Eold, C_E, S_E, U_E )
 
-    REAL(DP), DIMENSION(:,:), INTENT(in)  :: Jold_1, Jold_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)  :: J_1, J_2
-    REAL(DP), DIMENSION(:,:), INTENT(out) :: Jnew_1, Jnew_2
-    REAL(DP), DIMENSION(:),   INTENT(in)  :: D
-    REAL(DP), DIMENSION(:),   INTENT(in)  :: Y, Yold
-    REAL(DP), DIMENSION(:),   INTENT(out) :: C_Y, S_Y, U_Y
-    REAL(DP), DIMENSION(:),   INTENT(in)  :: E, Eold
-    REAL(DP), DIMENSION(:),   INTENT(out) :: C_E, S_E, U_E
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)  :: Jold_1, Jold_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)  :: J_1, J_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out) :: Jnew_1, Jnew_2
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)  :: D
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)  :: Y, Yold
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(out) :: C_Y, S_Y, U_Y
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)  :: E, Eold
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(out) :: C_E, S_E, U_E
 
     INTEGER  :: iN_E, iN_X
 
@@ -2090,17 +2089,17 @@ CONTAINS
       dt, Chi_1, Chi_2, S_1, S_2, &
       D, Y, Yold, C_Y, S_Y, U_Y, E, Eold, C_E, S_E, U_E )
 
-    REAL(DP), DIMENSION(:,:), INTENT(in)  :: Jold_1, Jold_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)  :: J_1, J_2
-    REAL(DP), DIMENSION(:,:), INTENT(out) :: Jnew_1, Jnew_2
-    REAL(DP),                 INTENT(in)  :: dt
-    REAL(DP), DIMENSION(:,:), INTENT(in)  :: Chi_1, Chi_2
-    REAL(DP), DIMENSION(:,:), INTENT(out) :: S_1, S_2
-    REAL(DP), DIMENSION(:),   INTENT(in)  :: D
-    REAL(DP), DIMENSION(:),   INTENT(in)  :: Y, Yold
-    REAL(DP), DIMENSION(:),   INTENT(out) :: C_Y, S_Y, U_Y
-    REAL(DP), DIMENSION(:),   INTENT(in)  :: E, Eold
-    REAL(DP), DIMENSION(:),   INTENT(out) :: C_E, S_E, U_E
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)  :: Jold_1, Jold_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)  :: J_1, J_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out) :: Jnew_1, Jnew_2
+    REAL(DP),                           INTENT(in)  :: dt
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)  :: Chi_1, Chi_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out) :: S_1, S_2
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)  :: D
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)  :: Y, Yold
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(out) :: C_Y, S_Y, U_Y
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)  :: E, Eold
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(out) :: C_E, S_E, U_E
 
     INTEGER  :: iN_E, iN_X
 
@@ -2132,11 +2131,11 @@ CONTAINS
       Gam, GamJ, GamJ0, dGamJ0dY, dGamJ0dE, &
       Yold, Eold, U_Y, U_E, C_Y, C_E, F_Y, F_E, FNRM0 )
 
-    REAL(DP),                 INTENT(in)  :: dt
-    REAL(DP), DIMENSION(:,:), INTENT(in)  :: J, Chi, J0, dJ0dY, dJ0dE
-    REAL(DP), DIMENSION(:),   INTENT(in)  :: D, Y, E
-    REAL(DP), DIMENSION(:,:), INTENT(out) :: Gam, GamJ, GamJ0, dGamJ0dY, dGamJ0dE
-    REAL(DP), DIMENSION(:),   INTENT(out) :: Yold, Eold, U_Y, U_E, C_Y, C_E, F_Y, F_E, FNRM0
+    REAL(DP),                           INTENT(in)  :: dt
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)  :: J, Chi, J0, dJ0dY, dJ0dE
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)  :: D, Y, E
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(out) :: Gam, GamJ, GamJ0, dGamJ0dY, dGamJ0dE
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(out) :: Yold, Eold, U_Y, U_E, C_Y, C_E, F_Y, F_E, FNRM0
 
     REAL(DP) :: N_B
     INTEGER  :: iN_E, iN_X
@@ -2224,9 +2223,9 @@ CONTAINS
   SUBROUTINE ComputeJNorm &
     ( MASK, J_1, J_2, Jnorm_1, Jnorm_2 )
 
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: J_1, J_2
-    REAL(DP), DIMENSION(:),   INTENT(inout) :: Jnorm_1, Jnorm_2
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: J_1, J_2
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(inout) :: Jnorm_1, Jnorm_2
 
     INTEGER  :: iN_E, iN_X
 
@@ -2253,16 +2252,16 @@ CONTAINS
       Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
       Chi_Pair_1, Chi_Pair_2, Eta_Pair_1, Eta_Pair_2 )
 
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    REAL(DP),                 INTENT(in)    :: dt
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Jold_1, Jold_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Jnew_1, Jnew_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_1, Chi_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: J0_1, J0_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_NES_1, Chi_NES_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Eta_NES_1, Eta_NES_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_Pair_1, Chi_Pair_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Eta_Pair_1, Eta_Pair_2
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
+    REAL(DP),                           INTENT(in)    :: dt
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Jold_1, Jold_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Jnew_1, Jnew_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_1, Chi_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: J0_1, J0_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_NES_1, Chi_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Eta_NES_1, Eta_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_Pair_1, Chi_Pair_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Eta_Pair_1, Eta_Pair_2
 
     REAL(DP) :: Eta, Eta_T, Chi_T
     INTEGER  :: iN_E, iN_X
@@ -2302,12 +2301,12 @@ CONTAINS
     ( MASK, dt, Jold_1, Jold_2, Jnew_1, Jnew_2, &
       Chi_1, Chi_2, J0_1, J0_2 )
 
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    REAL(DP),                 INTENT(in)    :: dt
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Jold_1, Jold_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Jnew_1, Jnew_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_1, Chi_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: J0_1, J0_2
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
+    REAL(DP),                           INTENT(in)    :: dt
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Jold_1, Jold_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Jnew_1, Jnew_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_1, Chi_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: J0_1, J0_2
 
     REAL(DP) :: Eta
     INTEGER  :: iN_E, iN_X
@@ -2342,10 +2341,10 @@ CONTAINS
   SUBROUTINE ComputeNumberDensity_EmAb_NuE &
     ( dt, J, Chi, J0 )
 
-    REAL(DP),                 INTENT(in)    :: dt
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: J
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: J0
+    REAL(DP),                           INTENT(in)    :: dt
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: J
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: J0
 
     REAL(DP) :: Eta
     INTEGER  :: iN_E, iN_X
@@ -2375,13 +2374,13 @@ CONTAINS
   SUBROUTINE ComputeMatterRHS_FP &
     ( MASK, n_FP, iY, iE, Fm, Gm, J_1, J_2, C_Y, S_Y, U_Y, G_Y, C_E, S_E, U_E, G_E )
 
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    INTEGER,                  INTENT(in)    :: n_FP, iY, iE
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Fm, Gm
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: J_1, J_2
-    REAL(DP), DIMENSION(:),   INTENT(in)    :: C_Y, S_Y, U_Y
-    REAL(DP), DIMENSION(:),   INTENT(in)    :: C_E, S_E, U_E
-    REAL(DP), DIMENSION(:),   INTENT(out)   :: G_Y, G_E
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
+    INTEGER,                            INTENT(in)    :: n_FP, iY, iE
+    REAL(DP), DIMENSION(1:n_FP,1:nX_G), INTENT(inout) :: Fm, Gm
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: J_1, J_2
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)    :: C_Y, S_Y, U_Y
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)    :: C_E, S_E, U_E
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(out)   :: G_Y, G_E
 
     INTEGER  :: iN_X
 
@@ -2424,11 +2423,11 @@ CONTAINS
     ( MASK, D, U_Y, U_E, C_Y, C_E, Gam, J0, dJ0dY, dJ0dE, &
       GamJ0, dGamJ0dY, dGamJ0dE, F_Y, F_E )
 
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:),   INTENT(in)    :: D, U_Y, U_E, C_Y, C_E
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Gam, J0, dJ0dY, dJ0dE
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: GamJ0, dGamJ0dY, dGamJ0dE
-    REAL(DP), DIMENSION(:),   INTENT(inout) :: F_Y, F_E
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)    :: D, U_Y, U_E, C_Y, C_E
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Gam, J0, dJ0dY, dJ0dE
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: GamJ0, dGamJ0dY, dGamJ0dE
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(inout) :: F_Y, F_E
 
     REAL(DP) :: N_B
     INTEGER  :: iN_E, iN_X
@@ -2495,18 +2494,18 @@ CONTAINS
       Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
       Chi_Pair_1, Chi_Pair_2, Eta_Pair_1, Eta_Pair_2 )
 
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    INTEGER,                  INTENT(in)    :: n_FP, OS_1, OS_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Fm, Gm
-    REAL(DP),                 INTENT(in)    :: dt
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Jold_1, Jold_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Jnew_1, Jnew_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_1, Chi_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: J0_1, J0_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_NES_1, Chi_NES_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Eta_NES_1, Eta_NES_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_Pair_1, Chi_Pair_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Eta_Pair_1, Eta_Pair_2
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
+    INTEGER,                            INTENT(in)    :: n_FP, OS_1, OS_2
+    REAL(DP), DIMENSION(1:n_FP,1:nX_G), INTENT(inout) :: Fm, Gm
+    REAL(DP),                           INTENT(in)    :: dt
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Jold_1, Jold_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Jnew_1, Jnew_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_1, Chi_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: J0_1, J0_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_NES_1, Chi_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Eta_NES_1, Eta_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_Pair_1, Chi_Pair_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Eta_Pair_1, Eta_Pair_2
 
     REAL(DP) :: Eta, Eta_T, Chi_T
     INTEGER  :: iN_E, iN_X
@@ -2545,28 +2544,28 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoRHS_Newton &
-    ( MASK, nX_P, UnpackIndex, &
-      OS_1, OS_2, dt, Jold_1, Jold_2, Jnew_1, Jnew_2, &
+    ( MASK, nX_P, UnpackIndex, n_FP, OS_1, OS_2, &
+      dt, Jold_1, Jold_2, Jnew_1, Jnew_2, &
       S_1, S_2, Chi_1, Chi_2, J0_1, J0_2, &
       Chi_NES_1, Chi_NES_2, Eta_NES_1, Eta_NES_2, &
       Chi_Pair_1, Chi_Pair_2, Eta_Pair_1, Eta_Pair_2, &
       G )
 
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    INTEGER,                  INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(:),   INTENT(in)    :: UnpackIndex
-    INTEGER,                  INTENT(in)    :: OS_1, OS_2
-    REAL(DP),                 INTENT(in)    :: dt
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Jold_1, Jold_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Jnew_1, Jnew_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: S_1, S_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_1, Chi_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: J0_1, J0_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_NES_1, Chi_NES_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Eta_NES_1, Eta_NES_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_Pair_1, Chi_Pair_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Eta_Pair_1, Eta_Pair_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: G
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
+    INTEGER,                            INTENT(in)    :: nX_P
+    INTEGER,  DIMENSION(1:nX_G),        INTENT(in)    :: UnpackIndex
+    INTEGER,                            INTENT(in)    :: n_FP, OS_1, OS_2
+    REAL(DP),                           INTENT(in)    :: dt
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Jold_1, Jold_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Jnew_1, Jnew_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: S_1, S_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_1, Chi_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: J0_1, J0_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_NES_1, Chi_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Eta_NES_1, Eta_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_Pair_1, Chi_Pair_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Eta_Pair_1, Eta_Pair_2
+    REAL(DP), DIMENSION(1:n_FP,1:nX_G), INTENT(inout) :: G
 
     REAL(DP) :: EtaT_1, EtaT_2
     INTEGER  :: iN_E, iN_X, iX_P
@@ -2609,14 +2608,14 @@ CONTAINS
       dt, Jold_1, Jold_2, Jnew_1, Jnew_2, &
       Chi_1, Chi_2, J0_1, J0_2 )
 
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    INTEGER,                  INTENT(in)    :: n_FP, OS_1, OS_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Fm, Gm
-    REAL(DP),                 INTENT(in)    :: dt
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Jold_1, Jold_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Jnew_1, Jnew_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Chi_1, Chi_2
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: J0_1, J0_2
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
+    INTEGER,                            INTENT(in)    :: n_FP, OS_1, OS_2
+    REAL(DP), DIMENSION(1:n_FP,1:nX_G), INTENT(inout) :: Fm, Gm
+    REAL(DP),                           INTENT(in)    :: dt
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Jold_1, Jold_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Jnew_1, Jnew_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: Chi_1, Chi_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(in)    :: J0_1, J0_2
 
     REAL(DP) :: Eta
     INTEGER  :: iN_E, iN_X
@@ -2651,14 +2650,14 @@ CONTAINS
 
 
   SUBROUTINE UpdateMatterRHS_FP &
-    ( MASK, iY, iE, Yold, Eold, Y, E, U_Y, U_E, Fm, Gm )
+    ( MASK, n_FP, iY, iE, Yold, Eold, Y, E, U_Y, U_E, Fm, Gm )
 
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    INTEGER,                  INTENT(in)    :: iY, iE
-    REAL(DP), DIMENSION(:),   INTENT(in)    :: Yold, Eold
-    REAL(DP), DIMENSION(:),   INTENT(inout) :: Y, E
-    REAL(DP), DIMENSION(:),   INTENT(inout) :: U_Y, U_E
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Fm, Gm
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
+    INTEGER,                            INTENT(in)    :: n_FP, iY, iE
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)    :: Yold, Eold
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(inout) :: Y, E
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(inout) :: U_Y, U_E
+    REAL(DP), DIMENSION(1:n_FP,1:nX_G), INTENT(inout) :: Fm, Gm
 
     INTEGER  :: iN_X
 
@@ -2690,10 +2689,10 @@ CONTAINS
   SUBROUTINE UpdateNeutrinoRHS_FP &
     ( MASK, n_FP, OS_1, OS_2, Fm, Gm, Jnew_1, Jnew_2 )
 
-    LOGICAL,  DIMENSION(:),   INTENT(in)    :: MASK
-    INTEGER,                  INTENT(in)    :: n_FP, OS_1, OS_2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Fm, Gm
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: Jnew_1, Jnew_2
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(in)    :: MASK
+    INTEGER,                            INTENT(in)    :: n_FP, OS_1, OS_2
+    REAL(DP), DIMENSION(1:n_FP,1:nX_G), INTENT(inout) :: Fm, Gm
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G), INTENT(inout) :: Jnew_1, Jnew_2
 
     INTEGER  :: iN_E, iN_X, iFP
 
@@ -2724,12 +2723,11 @@ CONTAINS
   SUBROUTINE SolveLS_FP &
     ( MASK, n_FP, M, Mk, Fm, Gm, F, G, A, B, Alpha )
 
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    INTEGER,                    INTENT(in)    :: n_FP, M, Mk
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: Fm, Gm
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F, G
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: A
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: B, Alpha
+    LOGICAL,  DIMENSION(1:nX_G),            INTENT(in)    :: MASK
+    INTEGER,                                INTENT(in)    :: n_FP, M, Mk
+    REAL(DP), DIMENSION(1:n_FP,1:nX_G),     INTENT(inout) :: Fm, Gm, B
+    REAL(DP), DIMENSION(1:n_FP,1:M,1:nX_G), INTENT(inout) :: F, G, A
+    REAL(DP), DIMENSION(1:M,1:nX_G),        INTENT(inout) :: Alpha
 
     REAL(DP) :: AA11, AA12, AA21, AA22, AB1, AB2, DET_AA, SUM1
     INTEGER  :: iN_X, iFP, iM
@@ -2977,20 +2975,20 @@ CONTAINS
       Phi_0_In_Pair_1, Phi_0_Ot_Pair_1, Phi_0_In_Pair_2, Phi_0_Ot_Pair_2, &
       GJAC )
 
-    LOGICAL,  DIMENSION(:),             INTENT(in)    :: MASK
-    INTEGER,                            INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(:),             INTENT(in)    :: UnpackIndex
-    INTEGER,                            INTENT(in)    :: n_FP, OS_1, OS_2
-    REAL(DP),                           INTENT(in)    :: dt
-    REAL(DP), DIMENSION(:,:),           INTENT(in)    :: Jnew_1, Jnew_2
-    REAL(DP), DIMENSION(:,:),   TARGET, INTENT(in)    :: S_1, S_2
-    REAL(DP), DIMENSION(:,:),   TARGET, INTENT(in)    :: Chi_NES_1, Chi_NES_2
-    REAL(DP), DIMENSION(:,:),   TARGET, INTENT(in)    :: Chi_Pair_1, Chi_Pair_2
-    REAL(DP), DIMENSION(:,:,:), TARGET, INTENT(in)    :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
-    REAL(DP), DIMENSION(:,:,:), TARGET, INTENT(in)    :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
-    REAL(DP), DIMENSION(:,:,:), TARGET, INTENT(in)    :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
-    REAL(DP), DIMENSION(:,:,:), TARGET, INTENT(in)    :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
-    REAL(DP), DIMENSION(:,:,:),         INTENT(inout) :: GJAC
+    LOGICAL,  DIMENSION(1:nX_G),                       INTENT(in)    :: MASK
+    INTEGER,                                           INTENT(in)    :: nX_P
+    INTEGER,  DIMENSION(1:nX_G),                       INTENT(in)    :: UnpackIndex
+    INTEGER,                                           INTENT(in)    :: n_FP, OS_1, OS_2
+    REAL(DP),                                          INTENT(in)    :: dt
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G),                INTENT(in)    :: Jnew_1, Jnew_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G),        TARGET, INTENT(in)    :: S_1, S_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G),        TARGET, INTENT(in)    :: Chi_NES_1, Chi_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G),        TARGET, INTENT(in)    :: Chi_Pair_1, Chi_Pair_2
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), TARGET, INTENT(in)    :: Phi_0_In_NES_1, Phi_0_Ot_NES_1
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), TARGET, INTENT(in)    :: Phi_0_In_NES_2, Phi_0_Ot_NES_2
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), TARGET, INTENT(in)    :: Phi_0_In_Pair_1, Phi_0_Ot_Pair_1
+    REAL(DP), DIMENSION(1:nE_G,1:nE_G,1:nX_G), TARGET, INTENT(in)    :: Phi_0_In_Pair_2, Phi_0_Ot_Pair_2
+    REAL(DP), DIMENSION(1:n_FP,1:n_FP,1:nX_G),         INTENT(inout) :: GJAC
 
     REAL(DP), DIMENSION(:,:),   POINTER :: S_1_P, S_2_P, SJ_1_P, SJ_2_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_In_NES_1_P, Phi_0_Ot_NES_1_P
@@ -3194,16 +3192,16 @@ CONTAINS
 
 
   SUBROUTINE SolveLS_Newton &
-      ( MASK, nX_P, PackIndex, n_FP, &
-        OS_1, OS_2, Jnew_1, Jnew_2, F, G, GJAC )
+    ( MASK, nX_P, PackIndex, n_FP, OS_1, OS_2, &
+      Jnew_1, Jnew_2, F, G, GJAC )
 
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    INTEGER,                    INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex
-    INTEGER,                    INTENT(in)    :: n_FP, OS_1, OS_2
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: Jnew_1, Jnew_2
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: F, G
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: GJAC
+    LOGICAL,  DIMENSION(1:nX_G),               INTENT(in)    :: MASK
+    INTEGER,                                   INTENT(in)    :: nX_P
+    INTEGER,  DIMENSION(1:nX_G),               INTENT(in)    :: PackIndex
+    INTEGER,                                   INTENT(in)    :: n_FP, OS_1, OS_2
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G),        INTENT(inout) :: Jnew_1, Jnew_2
+    REAL(DP), DIMENSION(1:n_FP,1:nX_G),        INTENT(inout) :: F, G
+    REAL(DP), DIMENSION(1:n_FP,1:n_FP,1:nX_G), INTENT(inout) :: GJAC
 
     INTEGER  :: iN_E, iN_X
 
@@ -3238,11 +3236,11 @@ CONTAINS
     ( MASK, D, C_Y, C_E, F_Y, F_E, dGamJ0dY, dGamJ0dE, &
       FJAC, dU_Y, dU_E, U_Y, U_E, Y, E )
 
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: D, C_Y, C_E, F_Y, F_E
-    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: dGamJ0dY, dGamJ0dE
-    REAL(DP), DIMENSION(2,2,*), INTENT(inout) :: FJAC
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: dU_Y, dU_E, U_Y, U_E, Y, E
+    LOGICAL,  DIMENSION(1:nX_G),         INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(1:nX_G),         INTENT(in)    :: D, C_Y, C_E, F_Y, F_E
+    REAL(DP), DIMENSION(1:nE_G,1:nX_G),  INTENT(in)    :: dGamJ0dY, dGamJ0dE
+    REAL(DP), DIMENSION(1:2,1:2,1:nX_G), INTENT(inout) :: FJAC
+    REAL(DP), DIMENSION(1:nX_G),         INTENT(inout) :: dU_Y, dU_E, U_Y, U_E, Y, E
 
     REAL(DP) :: N_B, DJAC
     INTEGER  :: iN_X
@@ -3307,9 +3305,9 @@ CONTAINS
   SUBROUTINE ShiftRHS_FP &
     ( MASK, n_FP, M, Mk, F, G )
 
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    INTEGER,                    INTENT(in)    :: n_FP, M, Mk
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F, G
+    LOGICAL,  DIMENSION(1:nX_G),            INTENT(in)    :: MASK
+    INTEGER,                                INTENT(in)    :: n_FP, M, Mk
+    REAL(DP), DIMENSION(1:n_FP,1:M,1:nX_G), INTENT(inout) :: F, G
 
     REAL(DP) :: FTMP(1:n_FP,1:M), GTMP(1:n_FP,1:M)
     INTEGER  :: iN_X, iFP, iM
@@ -3364,12 +3362,12 @@ CONTAINS
   SUBROUTINE CheckConvergenceInner &
     ( MASK, n_FP, k_inner, OS_1, OS_2, Rtol, nIterations_Inner, Fm, Jnorm_1, Jnorm_2 )
 
-    LOGICAL,  DIMENSION(:),   INTENT(inout) :: MASK
-    INTEGER,                  INTENT(in)    :: n_FP, k_inner, OS_1, OS_2
-    REAL(DP),                 INTENT(in)    :: Rtol
-    INTEGER,  DIMENSION(:),   INTENT(inout) :: nIterations_Inner
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Fm
-    REAL(DP), DIMENSION(:),   INTENT(in)    :: Jnorm_1, Jnorm_2
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(inout) :: MASK
+    INTEGER,                            INTENT(in)    :: n_FP, k_inner, OS_1, OS_2
+    REAL(DP),                           INTENT(in)    :: Rtol
+    INTEGER,  DIMENSION(1:nX_G),        INTENT(inout) :: nIterations_Inner
+    REAL(DP), DIMENSION(1:n_FP,1:nX_G), INTENT(in)    :: Fm
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)    :: Jnorm_1, Jnorm_2
 
     REAL(DP) :: Fnorm_1, Fnorm_2
     LOGICAL  :: CONVERGED
@@ -3414,11 +3412,11 @@ CONTAINS
   SUBROUTINE CheckConvergenceOuter &
     ( MASK_OUTER, MASK_INNER, n_FP, iY, iE, k_outer, Fm, Rtol, nIterations_Outer )
 
-    LOGICAL,  DIMENSION(:),   INTENT(inout) :: MASK_OUTER, MASK_INNER
-    INTEGER,                  INTENT(in)    :: n_FP, iY, iE, k_outer
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Fm
-    REAL(DP),                 INTENT(in)    :: Rtol
-    INTEGER,  DIMENSION(:),   INTENT(inout) :: nIterations_Outer
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(inout) :: MASK_OUTER, MASK_INNER
+    INTEGER,                            INTENT(in)    :: n_FP, iY, iE, k_outer
+    REAL(DP), DIMENSION(1:n_FP,1:nX_G), INTENT(in)    :: Fm
+    REAL(DP),                           INTENT(in)    :: Rtol
+    INTEGER,  DIMENSION(1:nX_G),        INTENT(inout) :: nIterations_Outer
 
     LOGICAL  :: CONVERGED
     REAL(DP) :: Fnorm_Y, Fnorm_E
@@ -3465,12 +3463,12 @@ CONTAINS
   SUBROUTINE CheckConvergenceCoupled &
     ( MASK, n_FP, k, iY, iE, OS_1, OS_2, Rtol, nIterations, Fm, Jnorm_1, Jnorm_2 )
 
-    LOGICAL,  DIMENSION(:),   INTENT(inout) :: MASK
-    INTEGER,                  INTENT(in)    :: n_FP, k, iY, iE, OS_1, OS_2
-    REAL(DP),                 INTENT(in)    :: Rtol
-    INTEGER,  DIMENSION(:),   INTENT(inout) :: nIterations
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Fm
-    REAL(DP), DIMENSION(:),   INTENT(in)    :: Jnorm_1, Jnorm_2
+    LOGICAL,  DIMENSION(1:nX_G),        INTENT(inout) :: MASK
+    INTEGER,                            INTENT(in)    :: n_FP, k, iY, iE, OS_1, OS_2
+    REAL(DP),                           INTENT(in)    :: Rtol
+    INTEGER,  DIMENSION(1:nX_G),        INTENT(inout) :: nIterations
+    REAL(DP), DIMENSION(1:n_FP,1:nX_G), INTENT(in)    :: Fm
+    REAL(DP), DIMENSION(1:nX_G),        INTENT(in)    :: Jnorm_1, Jnorm_2
 
     REAL(DP) :: Fnorm_Y, Fnorm_E, Fnorm_1, Fnorm_2
     LOGICAL  :: CONVERGED
@@ -3521,11 +3519,11 @@ CONTAINS
     ( MASK, k, Rtol, Utol, nIterations, &
       F_Y, U_Y, dU_Y, F_E, U_E, dU_E, FNRM0 )
 
-    LOGICAL,  DIMENSION(:), INTENT(inout) :: MASK
-    INTEGER,                INTENT(in)    :: k
-    REAL(DP),               INTENT(in)    :: Rtol, Utol
-    INTEGER,  DIMENSION(:), INTENT(inout) :: nIterations
-    REAL(DP), DIMENSION(:), INTENT(in)    :: F_Y, U_Y, dU_Y, F_E, U_E, dU_E, FNRM0
+    LOGICAL,  DIMENSION(1:nX_G), INTENT(inout) :: MASK
+    INTEGER,                     INTENT(in)    :: k
+    REAL(DP),                    INTENT(in)    :: Rtol, Utol
+    INTEGER,  DIMENSION(1:nX_G), INTENT(inout) :: nIterations
+    REAL(DP), DIMENSION(1:nX_G), INTENT(in)    :: F_Y, U_Y, dU_Y, F_E, U_E, dU_E, FNRM0
 
     LOGICAL  :: CONVERGED
     REAL(DP) :: FERR, UERR
