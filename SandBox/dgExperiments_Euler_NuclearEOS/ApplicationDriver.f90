@@ -86,10 +86,10 @@ PROGRAM ApplicationDriver
       RiemannProblemName = 'Sod'
 
       nX = [ 100, 1, 1 ]
-      xL = [ - 1.0_DP, - 1.0_DP, 0.0_DP ] * Kilometer
-      xR = [ + 1.0_DP, + 1.0_DP, 1.0_DP ] * Kilometer
+      xL = [ - 5.0_DP,   0.0_DP, 0.0_DP ] * Kilometer
+      xR = [ + 5.0_DP, + 1.0_DP, 1.0_DP ] * Kilometer
 
-      bcX = [ 2, 2, 0 ]
+      bcX = [ 2, 0, 0 ]
 
       nNodes = 3
 
@@ -97,7 +97,7 @@ PROGRAM ApplicationDriver
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .TRUE.
+      UseCharacteristicLimiting = .FALSE.
 
       UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 1.0d-1
@@ -105,7 +105,7 @@ PROGRAM ApplicationDriver
 
       iCycleD = 10
       t_end   = 7.5d-2 * Millisecond
-      dt_wrt  = 2.5d-5 * Millisecond
+      dt_wrt  = 7.5d-5 * Millisecond
 
     CASE( 'Jet' )
 
@@ -128,8 +128,8 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter      = .TRUE.
 
       iCycleD = 10
-      t_end   = 7.5d-2 * Millisecond
-      dt_wrt  = 2.5d-5 * Millisecond !d-6
+      t_end   = 2.5d-1 * Millisecond
+      dt_wrt  = 2.5d-6 * Millisecond !d-6
 
   END SELECT
 
@@ -163,7 +163,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'TABLE', &
-           EquationOfStateTableName_Option = 'wl-EOS-SFHo-15-25-50.h5' )
+           EquationOfStateTableName_Option = 'wl-EOS-DD2-25-50-100.h5' ) !wl-EOS-DD2-25-50-100.h5 wl-EOS-SFHo-25-50-100.h5
 
   CALL Euler_InitializeSlopeLimiter &
          ( BetaTVD_Option = BetaTVD, &

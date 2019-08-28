@@ -78,10 +78,11 @@ CONTAINS
     Vsq = V1**2 + V2**2 + V3**2
 
     IF ( Tau(1)**2 * ( P(1) * dPdE(1) - dPdTau(1) ) + Y(1) * dPdDe(1) .GT. Zero) THEN
-      Cs = SQRT( Tau**2 * ( P * dPdE - dPdTau) + Y * dPdDe   )
+      ! Cs = SQRT( Tau**2 * ( P * dPdE - dPdTau) + Y * dPdDe   )
+      Cs = Cs_table
     ELSE
       Cs = Cs_table  
-      write(*,*) "Switching Sound Speed to TABLE value"
+      ! write(*,*) "Switching Sound Speed to TABLE value"
     END IF
 
     K = ( (- (Y/Tau) * dPdDe + dPdE * ( &

@@ -254,40 +254,37 @@ CONTAINS
 
               CASE( 'Sod' )
 
-                ! IF( X2 <= Zero )THEN
-
-                !   uPF(iNodeX,iX1,iX2,iX3,iPF_D)   = 1.00d12 * Gram / Centimeter**3
-                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
-                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 7.275d4 * Kilometer / Second
-                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
-                !   uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d32 * Erg / Centimeter**3
-                !   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.3_DP
-
-                ! ELSE
-
-                !   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.5313d12 * Gram / Centimeter**3
-                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V1)  = 0.0_DP * Kilometer / Second
-                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V2)  = 0.0_DP * Kilometer / Second
-                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V3)  = 0.0_DP * Kilometer / Second
-                !   uAF(iNodeX,iX1,iX2,iX3,iAF_P)   = 0.4d32 * Erg / Centimeter**3
-                !   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)  = 0.3_DP
-
                 IF( X1 <= 0.0_DP )THEN
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0d14 * Gram / Centimeter**3
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d33 * Erg / Centimeter**3
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 1.5d-1
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0d14 * Gram / Centimeter**3
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d33 * Erg / Centimeter**3
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 1.5d-1
+               ELSE
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.25d13 * Gram / Centimeter**3
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d32 * Erg / Centimeter**3
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 1.35d-1
+
+                ! IF( X1 <= Half )THEN
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0d15 * Gram / Centimeter**3
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+                !   uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 4.18d35 * Erg / Centimeter**3
+                !   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 3.0d-1
   
-                ELSE
+                ! ELSE
   
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.25d13 * Gram / Centimeter**3
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
-                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d32 * Erg / Centimeter**3
-                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 1.35d-1  
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.25d14 * Gram / Centimeter**3
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+                !   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+                !   uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 4.5d34 * Erg / Centimeter**3
+                !   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 3.00d-1  
 
                 END IF
 
