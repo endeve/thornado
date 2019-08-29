@@ -52,9 +52,6 @@ CONTAINS
 
     INTEGER :: iCR, iS, iX_G
 
-!    CALL ApplyPositivityLimiter_TwoMoment &
-!           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_R )
-
     wTime = MPI_WTIME( )
 
     CALL InitializeCollisions( iZ_B0, iZ_E0 )
