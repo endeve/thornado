@@ -300,7 +300,7 @@ PROGRAM ApplicationDriver
     ! --- Ref: Olbrant et al. (2012) ---
     ! --- JCP 231(17)  -----------------
 
-      Direction = 'Y'
+      Direction = 'X'
 
       SELECT CASE ( Direction )
       CASE ( 'X' )
@@ -339,7 +339,7 @@ PROGRAM ApplicationDriver
       Max_1 = HUGE( ONE )  ! --- Max Density !! not done
       Min_2 = Zero         ! --- Min "Gamma"
 
-      t_end     = 1.0d-2
+      t_end     = 1.0d-1
       iCycleD   = 1000
       iCycleW   = 1000
       iCycleT   = 100
@@ -492,7 +492,7 @@ PROGRAM ApplicationDriver
          ( BetaTVD_Option = 2.0_DP,                    &
            BetaTVB_Option = 0.d0,                      &
            SlopeTolerance_Option = 1.0d-6,             &
-           UseSlopeLimiter_Option = .FALSE.,            &
+           UseSlopeLimiter_Option = .FALSE.,           &
            UseCharacteristicLimiting_Option = .FALSE., &
            Verbose_Option = .TRUE. )
  
