@@ -18,10 +18,13 @@ MODULE TwoMoment_PositivityLimiterModule
     L_X1_Dn, L_X1_Up, &
     L_X2_Dn, L_X2_Up, &
     L_X3_Dn, L_X3_Up
+  USE GeometryComputationModule, ONLY: &
+    ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
-    nGF
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    iGF_SqrtGm, nGF
   USE GeometryFieldsModuleE, ONLY: &
-    nGE
+    iGE_Ep2, nGE
   USE RadiationFieldsModule, ONLY: &
     nSpecies, nCR, &
     iCR_N, iCR_G1, iCR_G2, iCR_G3
@@ -35,6 +38,7 @@ MODULE TwoMoment_PositivityLimiterModule
   PUBLIC :: TallyPositivityLimiter_TwoMoment
 
   CHARACTER(256)        :: TallyFileName
+  LOGICAL               :: Debug = .TRUE.
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: UsePositivityLimiterTally
   INTEGER,    PARAMETER :: nPS = 9  ! Number of Positive Point Sets
@@ -43,7 +47,7 @@ MODULE TwoMoment_PositivityLimiterModule
   REAL(DP)              :: Min_1, Max_1, Min_2
   REAL(DP)              :: Theta_FD, MinTheta_1, MinTheta_2
   REAL(DP),   PARAMETER :: Theta_Eps = 1.0_DP - EPSILON(1.0_DP)
-  REAL(DP), ALLOCATABLE :: U_PP(:,:)
+  REAL(DP), ALLOCATABLE :: U_PP(:,:), GX_PP(:,:)
   REAL(DP), ALLOCATABLE :: L_X(:,:)
 
 CONTAINS
@@ -116,8 +120,9 @@ CONTAINS
       WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_1 = ', Max_1
       WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
       WRITE(*,'(A6,A12,ES12.4E3)') '', 'Theta_FD = ', Theta_FD
-
     END IF
+
+    ! --- Compute Number of Positive Points per Set ---
 
     nPP = 0
     nPP(1) = PRODUCT( nNodesZ )
@@ -133,9 +138,19 @@ CONTAINS
 
     END DO
 
+    ! --- Total Number of Positive Points ---
+
     nPT = SUM( nPP )
 
+    ! --- Conserved Variables in Positive Points ---
+
     ALLOCATE( U_PP(nPT,nCR) )
+
+    ! --- Geometry in Positive Points ---
+
+    ALLOCATE( GX_PP(nPT,nGF) )
+
+    ! ---                             ---
 
     ALLOCATE( L_X(nPT,nDOF) )
     L_X = Zero
@@ -174,7 +189,7 @@ CONTAINS
       END IF
 
     END DO
-
+ 
     ! --- For Tally of Positivity Limiter ---
 
     IF( UsePositivityLimiterTally )THEN
@@ -197,6 +212,9 @@ CONTAINS
     IF( ALLOCATED( U_PP ) )THEN
        DEALLOCATE( U_PP )
     END IF
+    IF( ALLOCATED( GX_PP ) )THEN
+       DEALLOCATE( GX_PP )
+    END IF
     IF( ALLOCATED( L_X ) )THEN
        DEALLOCATE( L_X )
     END IF
@@ -218,10 +236,12 @@ CONTAINS
 
     LOGICAL  :: NegativeStates(2)
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iCR, iP
+    INTEGER  :: iNode, iNodeE, iNodeX
     INTEGER  :: nNeg_1, nNeg_2
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
-    REAL(DP) :: U_q(nDOF,nCR), U_K(nCR), Gamma(nPT)
-    REAL(DP) :: Tau_q(nDOF)
+    REAL(DP) :: U_q(nDOF,nCR), U_K(nCR), Gamma(nPT), Gamma2(nPT)
+    REAL(DP) :: GX_q(nDOF,nGF)
+    REAL(DP) :: Tau_q(nDOF), Tau_K, U_K_2(nCR)
     REAL(DP), EXTERNAL :: DDOT
 
     IF( nDOF == 1 ) RETURN
@@ -242,12 +262,26 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      !Tau_q()
       U_q(1:nDOF,1:nCR) = U(1:nDOF,iZ1,iZ2,iZ3,iZ4,1:nCR,iS)
+
+      DO iNodeX = 1, nDOFX
+        DO iNodeE = 1, nDOFE
+          iNode = iNodeE+(iNodeX-1)*nDOFE
+          Tau_q(iNode) = &
+            GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm) * GE(iNodeE,iZ1,iGE_Ep2)
+          GX_q(iNode,1:nGF) = GX(iNodeX,iZ2,iZ3,iZ4,1:nGF) 
+        END DO ! iNodeE
+      END DO ! iNodeX
+
+      Tau_K = DDOT( nDOF, Weights_q, 1, Tau_q, 1 )
 
       NegativeStates = .FALSE.
 
-      CALL ComputePointValues( U_q, U_PP )
+      CALL ComputePointValues( nCR, U_q, U_PP )
+
+      CALL ComputePointValues( nGF, GX_q, GX_PP )
+      CALL ComputeGeometryX_FromScaleFactors( GX_PP )
+
 
       ! --- Ensure Bounded Density ---
 
@@ -256,11 +290,24 @@ CONTAINS
 
       IF( Min_K < Min_1 .OR. Max_K > Max_1 )THEN
 
+        IF( Debug ) WRITE(*,*) 'Positivity trigger 1128'
+
         ! --- Cell Average ---
 
         !U_K(iCR_N) = DOT_PRODUCT( Weights_q, U_q(:,iCR_N) )
         !U_K(iCR_N) = DDOT( nDOF, Weights_q, 1, U_q(:,iCR_N), 1 )
         CALL DGEMV( 'T', nDOF, 1, One, U_q(:,iCR_N), nDOF, Weights_q, 1, Zero, U_K(iCR_N), 1 )
+
+        CALL DGEMV( 'T', nDOF, 1, One, U_q(:,iCR_N), nDOF, Weights_q*Tau_q, 1, Zero, U_K_2(iCR_N), 1 )
+        U_K_2(iCR_N) = U_K_2(iCR_N) / Tau_K 
+
+        IF( ABS(U_K_2(iCR_N) - U_K(iCR_N) )/U_K(iCR_N) > 5.0d-1  ) THEN
+          IF( Debug ) THEN
+            WRITE(*,*) 'U_K', U_K(iCR_N)
+            WRITE(*,*) 'U_K_2', U_K_2(iCR_N)
+          END IF
+        END IF
+        U_K(iCR_N) = U_K_2(iCR_N)
 
         Theta_1 &
           = Theta_Eps * MIN( One, &
@@ -273,11 +320,9 @@ CONTAINS
 
         ! --- Recompute Point Values ---
 
-        CALL ComputePointValues( U_q, U_PP )
+        CALL ComputePointValues( nCR, U_q, U_PP )
 
         NegativeStates(1) = .TRUE.
-
-        MinTheta_1 = MIN( Theta_1, MinTheta_1 )
 
       END IF
 
@@ -302,8 +347,41 @@ CONTAINS
                        U_PP(1:nPT,iCR_G2), &
                        U_PP(1:nPT,iCR_G3) )
 
+      Gamma2(1:nPT) = GammaFun &
+                     ( U_PP(1:nPT,iCR_N ), &
+                       U_PP(1:nPT,iCR_G1) / SQRT(GX_PP(1:nPT,iGF_Gm_dd_11)), &
+                       U_PP(1:nPT,iCR_G2) / SQRT(GX_PP(1:nPT,iGF_Gm_dd_22)), &
+                       U_PP(1:nPT,iCR_G3) / SQRT(GX_PP(1:nPT,iGF_Gm_dd_33)) )
+
+  !! RC DEBUG PRINT
+      IF( ANY( ABS(Gamma2 - Gamma) > 1.d-10 ) .and. Debug ) THEN
+        WRITE(*,*) ' ===== Every Positivity Limiter Call ===='
+        WRITE(*,*) 'CammaFun inputs 1 : '
+        WRITE(*,'(4ES12.3)') U_PP(1,iCR_N:iCR_G3 )
+        WRITE(*,*) 'CammaFun output 1 : '
+        WRITE(*,'(ES12.3)') Gamma(1)
+        WRITE(*,*)
+        WRITE(*,*) 'CammaFun inputs 2 : '
+        WRITE(*,'(4ES12.3)') U_PP(1,iCR_N ), &
+                             U_PP(1,iCR_G1) / SQRT(GX_PP(1,iGF_Gm_dd_11)) , &
+                             U_PP(1,iCR_G2) / SQRT(GX_PP(1,iGF_Gm_dd_22)), &
+                             U_PP(1,iCR_G3) / SQRT(GX_PP(1,iGF_Gm_dd_33))
+        WRITE(*,*) 'CammaFun output 2 : '
+        WRITE(*,'(ES12.3)') Gamma2(1)
+        WRITE(*,*) 'The geometric metric is'
+        WRITE(*,'(3ES12.3)') GX_PP(1,iGF_Gm_dd_11:iGF_Gm_dd_33)
+        IF( ANY( ABS(Gamma2 - Gamma) > 1.d-3 ) &
+          .and. MAXVAL(U_PP(:,iCR_N) ) > 1.d-1 ) THEN
+          WRITE(*,*) 'ABS(Gamma2 - Gamma)',ABS(Gamma2 - Gamma)
+          STOP
+        END IF
+      END IF
+
+      Gamma = Gamma2
+
       IF( ANY( Gamma(:) < Min_2 ) )THEN
 
+        IF( Debug ) WRITE(*,*) 'Positivity trigger 1129'
         ! --- Cell Average ---
 
         !DO iCR = 1, nCR
@@ -311,7 +389,16 @@ CONTAINS
         !  !U_K(iCR) = DDOT( nDOF, Weights_q, 1, U_q(:,iCR), 1 )
         !END DO
         CALL DGEMV( 'T', nDOF, nCR, One, U_q, nDOF, Weights_q, 1, Zero, U_K, 1 )
+        CALL DGEMV( 'T', nDOF, nCR, One, U_q, nDOF, Weights_q*Tau_q, 1, Zero, U_K_2, 1 )
+        U_K_2 = U_K_2 / Tau_K
 
+        IF( Debug .and. MAXVAL(ABS(U_K_2 - U_K) ) > 5.d-1 ) THEN
+          WRITE(*,*) 'U_K', U_K
+          WRITE(*,*) 'U_K_2', U_K_2
+          STOP
+        END IF
+        U_K = U_K_2
+ 
         Theta_2 = One
         DO iP = 1, nPT
 
@@ -399,16 +486,18 @@ CONTAINS
   END SUBROUTINE TallyPositivityLimiter_TwoMoment
 
 
-  SUBROUTINE ComputePointValues( U_Q, U_P )
+  SUBROUTINE ComputePointValues( nDim, U_Q, U_P )
 
-    REAL(DP), INTENT(in)  :: U_Q(nDOF,nCR)
-    REAL(DP), INTENT(out) :: U_P(nPT, nCR)
+    INTEGER,  INTENT(in)  :: nDim
+    REAL(DP), INTENT(in)  :: U_Q(nDOF,nDim)
+    REAL(DP), INTENT(out) :: U_P(nPT, nDim)
 
-    INTEGER :: iOS, iCR
+    ! --- Compute U_P = One * L_X * U_Q ---
 
     CALL DGEMM &
-           ( 'N', 'N', nPT, nCR, nDOF, One, L_X, nPT, &
+           ( 'N', 'N', nPT, nDim, nDOF, One, L_X, nPT, &
              U_Q, nDOF, Zero, U_P, nPT )
+
 
   END SUBROUTINE ComputePointValues
 
