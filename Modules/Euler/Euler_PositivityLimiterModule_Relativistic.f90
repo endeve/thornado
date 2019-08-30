@@ -38,7 +38,7 @@ MODULE Euler_PositivityLimiterModule_Relativistic
   INTEGER, PARAMETER    :: nPS = 7  ! Number of Positive Point Sets
   INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
   INTEGER               :: nPT      ! Total number of Positive Points
-  REAL(DP)              :: Min_1, Min_2, Min_D, Min_ESq
+  REAL(DP)              :: Min_1, Min_2
   REAL(DP), ALLOCATABLE :: U_PP(:,:), G_PP(:,:)
 
 CONTAINS
@@ -127,8 +127,11 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
     REAL(DP) :: Theta_D, Theta_q, Theta_P
-    REAL(DP) :: Min_K
+    REAL(DP) :: Min_K, Min_D, Min_ESq
     REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), q(nPT)
+
+    ! --- For de-bugging ---
+    REAL(DP) :: q_K(nPT)
 
     IF( nDOFX == 1 ) RETURN
 
@@ -186,7 +189,8 @@ CONTAINS
 
         Min_ESq = Min_2 * U_K(iCF_E)**2
 
-        CALL Computeq( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), q(1:nPT) )
+        CALL Computeq &
+               ( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), Min_ESq, q(1:nPT) )
 
         IF( ANY( q(1:nPT) .LT. Zero ) )THEN
 
@@ -202,7 +206,8 @@ CONTAINS
           DO iP = 1, nPT
             IF( q(iP) .LT. Zero )THEN
               CALL SolveTheta_Bisection &
-                ( U_PP(iP,1:nCF), U_K, G_PP(iP,1:nGF), Theta_P )
+                ( U_PP(iP,1:nCF), U_K, G_PP(iP,1:nGF), Min_ESq, Theta_P, &
+                  iX1, iX2, iX3, iP )
               Theta_q = MIN( Theta_q, Theta_P )
             END IF
           END DO
@@ -232,6 +237,64 @@ CONTAINS
           U(1:nDOFX,iX1,iX2,iX3,iCF) = U_K(iCF)
         END DO
 
+      END IF
+
+      ! --- Ensure that all point-values of q are positive after limiting ---
+      DO iCF = 1, nCF
+        CALL ComputePointValues( U(1:nDOFX,iX1,iX2,iX3,iCF), U_PP(1:nPT,iCF) )
+      END DO
+      DO iGF = iGF_h_1, iGF_h_3
+        CALL ComputePointValues( G(1:nDOFX,iX1,iX2,iX3,iGF), G_PP(1:nPT,iGF) )
+      END DO
+      CALL ComputeGeometryX_FromScaleFactors( G_PP(1:nPT,1:nGF) )
+
+      CALL Computeq &
+             ( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), Min_ESq, q(1:nPT) )
+      IF( ANY( q(1:nPT) .LT. Zero ) )THEN
+        WRITE(*,*)
+        WRITE(*,'(A)') &
+            'FATAL ERROR: Euler_ApplyPositivityLimiterModule_Relativistic'
+        WRITE(*,'(A)') &
+            '------------------------------------------------------------'
+        WRITE(*,'(A)') 'q < 0 after all limiting'
+        WRITE(*,*)
+        WRITE(*,'(A,3I5.4)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
+        WRITE(*,*)
+        DO iP = 1, SIZE( q(1:nPT) )
+          WRITE(*,'(A,I2.2,ES25.16E3)') &
+            'iP, q(iP) = ', iP, q(iP)
+          WRITE(*,'(A,6ES12.3E3)') &
+            'U_PP = ', U_PP(iP,:)
+          WRITE(*,'(A,ES23.16E3)') &
+            'SSq = ', &
+            U_PP(iP,iCF_S1)**2 / G_PP(iP,iGF_Gm_dd_11) &
+            + U_PP(iP,iCF_S2)**2 / G_PP(iP,iGF_Gm_dd_22) &
+            + U_PP(iP,iCF_S3)**2 / G_PP(iP,iGF_Gm_dd_33)
+          WRITE(*,'(A,3ES11.3E3)') &
+            'G_PP(Gm11:Gm33) = ', G_PP(iP,iGF_Gm_dd_11:iGF_Gm_dd_33)
+          WRITE(*,*)
+        END DO
+        ! --- Compute cell-average of q ---
+        DO iP = 1, nPT
+          CALL Computeq( 1, U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, q_K(iP) )
+        END DO
+        IF( ANY( q_K(1:nPT) .LT. Zero ) )THEN
+          WRITE(*,'(A)') 'At least one q_K(1:nPT) < 0'
+          DO iP = 1, nPT
+            WRITE(*,'(A,I2.2,ES25.16E3)') 'iP, q_K(iP) = ', iP, q_K(iP)
+          END DO
+        WRITE(*,*)
+        END IF
+        WRITE(*,'(A,F18.16)')    'Theta_q = ', Theta_q
+        WRITE(*,*)
+        WRITE(*,'(A)') 'U(1:nDOFX,iX1,iX2,iX3,iCF)'
+        WRITE(*,'(A)') '--------------------------'
+        DO iCF = 1, nCF
+          WRITE(*,'(A,I1)') 'iCF = ', iCF
+          WRITE(*,*) U(1:nDOFX,iX1,iX2,iX3,iCF)
+          WRITE(*,*)
+        END DO
+        STOP ''
       END IF
 
     END DO
@@ -307,10 +370,10 @@ CONTAINS
   END SUBROUTINE ComputePointValues
 
 
-  SUBROUTINE Computeq( N, U, G, q )
+  SUBROUTINE Computeq( N, U, G, Min_ESq, q )
 
     INTEGER,  INTENT(in)  :: N
-    REAL(DP), INTENT(in)  :: U(N,nCF), G(N,nGF)
+    REAL(DP), INTENT(in)  :: U(N,nCF), G(N,nGF), Min_ESq
     REAL(DP), INTENT(out) :: q(N)
 
     q = qFun( U(1:N,iCF_D ), &
@@ -320,14 +383,16 @@ CONTAINS
               U(1:N,iCF_E ), &
               G(1:N,iGF_Gm_dd_11), &
               G(1:N,iGF_Gm_dd_22), &
-              G(1:N,iGF_Gm_dd_33) )
+              G(1:N,iGF_Gm_dd_33), &
+              Min_ESq )
 
   END SUBROUTINE Computeq
 
 
-  REAL(DP) ELEMENTAL FUNCTION qFun( D, S1, S2, S3, tau, Gm11, Gm22, Gm33 )
+  REAL(DP) ELEMENTAL FUNCTION qFun &
+    ( D, S1, S2, S3, tau, Gm11, Gm22, Gm33, Min_ESq )
 
-    REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, Gm11, Gm22, Gm33
+    REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, Gm11, Gm22, Gm33, Min_ESq
 
     qFun = tau + D &
              - SQRT( D**2 + ( S1**2 / Gm11 + S2**2 / Gm22 + S3**2 / Gm33 ) &
@@ -337,10 +402,14 @@ CONTAINS
   END FUNCTION qFun
 
 
-  SUBROUTINE SolveTheta_Bisection( U_Q, U_K, G_Q, Theta_P )
+  SUBROUTINE SolveTheta_Bisection &
+    ( U_Q, U_K, G_Q, Min_ESq, Theta_P, iX1, iX2, iX3, iP )
 
-    REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), G_Q(nGF)
+    REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), G_Q(nGF), Min_ESq
     REAL(DP), INTENT(out) :: Theta_P
+
+    ! --- For de-bugging ---
+    INTEGER,  INTENT(in) :: iX1, iX2, iX3, iP
 
     INTEGER,  PARAMETER :: MAX_IT = 19
     REAL(DP), PARAMETER :: dx_min = 1.0d-3
@@ -357,7 +426,7 @@ CONTAINS
               x_a * U_Q(iCF_S2) + ( One - x_a ) * U_K(iCF_S2),        &
               x_a * U_Q(iCF_S3) + ( One - x_a ) * U_K(iCF_S3),        &
               x_a * U_Q(iCF_E)  + ( One - x_a ) * U_K(iCF_E),         &
-              G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33) )
+              G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33), Min_ESq )
 
     x_b = One
     f_b = qFun &
@@ -366,12 +435,18 @@ CONTAINS
               x_b * U_Q(iCF_S2) + ( One - x_b ) * U_K(iCF_S2),        &
               x_b * U_Q(iCF_S3) + ( One - x_b ) * U_K(iCF_S3),        &
               x_b * U_Q(iCF_E)  + ( One - x_b ) * U_K(iCF_E),         &
-              G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33) )
+              G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33), Min_ESq )
 
     IF( .NOT. f_a * f_b < 0 )THEN
 
       WRITE(*,'(A6,A)') &
         '', 'SolveTheta_Bisection (Euler_PositivityLimiterModule_Relativistic):'
+
+      WRITE(*,*) 'iP = ', iP
+      WRITE(*,*) 'iX1, iX2, iX3 = ', iX1, iX2, iX3
+      WRITE(*,*) 'U_Q: ', U_Q
+      WRITE(*,*) 'U_K: ', U_K
+      WRITE(*,*) 'G_Q: ', G_Q(iGF_Gm_dd_11:iGF_Gm_dd_33)
       WRITE(*,'(A8,A,I3.3)') &
         '', 'Error: No Root in Interval'
       WRITE(*,'(A8,A,2ES15.6e3)') &
@@ -398,7 +473,7 @@ CONTAINS
               x_c * U_Q(iCF_S2) + ( One - x_c ) * U_K(iCF_S2),        &
               x_c * U_Q(iCF_S3) + ( One - x_c ) * U_K(iCF_S3),        &
               x_c * U_Q(iCF_E)  + ( One - x_c ) * U_K(iCF_E),         &
-              G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33) )
+              G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33), Min_ESq )
 
       IF( f_a * f_c < Zero )THEN
 

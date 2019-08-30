@@ -54,7 +54,7 @@ CONTAINS
     REAL(DP) :: LAMBDA_m, LAMBDA_p
     REAL(DP) :: Vm, Vp, Am, Ap, Nm, Np, Cm, Cp
     REAL(DP) :: xi, DELTA
-    REAL(DP) :: GAMMA_11, GAMMA_22, GAMMA_33
+    REAL(DP) :: GAMMA_11, GAMMA_22
 
     LOGICAL  :: DEBUG = .FALSE.
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
@@ -394,7 +394,7 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE Euler_ComputeCharacteristicDecomposition_Relativistic
-  
+
 
 !!$  ! --- Find the inverse of a matrix, function definition from
 !!$  !     http://fortranwiki.org/fortran/show/Matrix+inversion ---
@@ -472,7 +472,7 @@ CONTAINS
 
     chi   = ( Gamma_IDEAL - One ) * epsilon
     kappa = ( Gamma_IDEAL - One ) * rho
-    
+
     Vu1 = V1(1)
     Vu2 = V2(1)
     Vu3 = V3(1)
@@ -480,7 +480,7 @@ CONTAINS
     Vd1 = Gmdd11 * Vu1
     Vd2 = Gmdd22 * Vu2
     Vd3 = Gmdd33 * Vu3
- 
+
     VSq = Vu1*Vd1 + Vu2*Vd2 + Vu3*Vd3
 
     W = One / SQRT( One - VSq )

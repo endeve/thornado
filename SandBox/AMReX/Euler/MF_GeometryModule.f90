@@ -47,7 +47,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
     REAL(amrex_real),     INTENT(in)    :: Mass
 
-    INTEGER            :: iX1, iX2, iX3, iLevel
+    INTEGER            :: iLevel
     INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
@@ -114,7 +114,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
     REAL(amrex_real),     INTENT(in)    :: Mass
 
-    INTEGER            :: iX1, iX2, iX3, iLevel
+    INTEGER            :: iLevel
     INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI

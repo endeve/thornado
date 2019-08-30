@@ -691,12 +691,12 @@ CONTAINS
             X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
             IF( X1 + X2 .LT. 0.15_amrex_real )THEN
-   
+
               uPF_K(iNodeX,iPF_D) &
                 = D_0
               uPF_K(iNodeX,iPF_E) &
                 = E_0
-           
+
             ELSE
 
               uPF_K(iNodeX,iPF_D) &
@@ -1460,7 +1460,6 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-specific parameters ---
-    REAL(amrex_real)      :: D, V(3), P
     INTEGER, PARAMETER    :: i_r = 1, i_D = 2, i_V1 = 3, i_E = 4
     INTEGER               :: iL, nLines
     REAL(DP), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
@@ -1620,7 +1619,7 @@ CONTAINS
 
     ! --- Allocate and read in parameters ---
     ALLOCATE( FluidFieldParameters(nParams) )
-    
+
     OPEN( 100, FILE = TRIM( FILEIN ) )
     READ( 100, * ) ! --- Skip the header ---
     DO i = 1, nParams
