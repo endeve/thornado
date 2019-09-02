@@ -41,7 +41,7 @@ MODULE MF_InitializationModule
   USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive
   USE UnitsModule, ONLY: &
-    Meter, Kilogram, Second, Joule
+    Meter, Kilometer, Kilogram, Second, Joule
   USE UtilitiesModule, ONLY: &
     Locate
 
@@ -1463,6 +1463,19 @@ CONTAINS
     INTEGER, PARAMETER    :: i_r = 1, i_D = 2, i_V1 = 3, i_E = 4
     INTEGER               :: iL, nLines
     REAL(DP), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
+    TYPE(amrex_parmparse) :: PP
+    LOGICAL               :: Perturb
+    REAL(amrex_real)      :: rPerturbationInner, rPerturbationOuter, &
+                             PerturbationAmplitude
+
+    CALL amrex_parmparse_build( PP, 'SAS' )
+      CALL PP % get( 'Perturb',               Perturb )
+      CALL PP % get( 'rPerturbationInner',    rPerturbationInner )
+      CALL PP % get( 'rPerturbationOuter',    rPerturbationOuter )
+      CALL PP % get( 'PerturbationAmplitude', PerturbationAmplitude )
+    CALL amrex_parmparse_destroy( PP )
+    rPerturbationInner = rPerturbationInner * Kilometer
+    rPerturbationOuter = rPerturbationOuter * Kilometer
 
     uGF_K = 0.0_amrex_real
     uPF_K = 0.0_amrex_real
@@ -1538,6 +1551,18 @@ CONTAINS
                   ( i_E, i_r, iL, X1, FluidFieldData )
 
             uPF_K(iNodeX,iPF_Ne) = 0.0_amrex_real
+
+            ! --- Apply perturbations ---
+            IF( Perturb )THEN
+              IF( X1 .GE. rPerturbationInner &
+                    .AND. X1 .LE. rPerturbationOuter )THEN
+
+                uPF_K(iNodeX,iPF_D) &
+                  = uPF_K(iNodeX,iPF_D) &
+                      * ( 1.0e0_amrex_real + PerturbationAmplitude )
+
+              END IF
+            END IF
 
           END DO
 
