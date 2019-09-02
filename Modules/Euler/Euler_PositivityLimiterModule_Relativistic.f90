@@ -125,10 +125,11 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP, P0(1), iP0
     REAL(DP) :: Theta_D, Theta_q, Theta_P
     REAL(DP) :: Min_K, Min_D, Min_ESq
     REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), q(nPT)
+    REAL(DP) :: chi
 
     ! --- For de-bugging ---
     REAL(DP) :: q_K(nPT)
@@ -187,6 +188,8 @@ CONTAINS
                      * U_q(1:nDOFX,iCF_E) ) &
                 / SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) ) )
 
+        IF( U_K(iCF_E) .LT. Zero ) STOP 'U_K(iCF_E) < 0'
+
         Min_ESq = Min_2 * U_K(iCF_E)**2
 
         CALL Computeq &
@@ -200,17 +203,41 @@ CONTAINS
                          / SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) )
           END DO
 
+          ! --- Compute cell-average of q ---
+          DO iP = 1, nPT
+            CALL Computeq( 1, U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, q_K(iP) )
+          END DO
+
+          ! --- Artificially inject some thermal energy if any q_K < 0 ---
+          IF( ANY( q_K(1:nPT) .LT. Zero ) )THEN
+            WRITE(*,*)
+            WRITE(*,'(A)') 'Adding internal energy'
+            WRITE(*,'(A,3I5.4)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
+            P0  = MINLOC( q_K(1:nPT) ); iP0 = P0(1)
+            WRITE(*,'(A,ES24.16E3)') 'tau_K:', U_K(iCF_E)
+            chi = ( Min_2 * U_K(iCF_E) - U_K(iCF_D) &
+                      + SQRT( U_K(iCF_D)**2 &
+                                + U_K(iCF_S1)**2 / G_PP(iP0,iGF_Gm_dd_11) &
+                                + U_K(iCF_S2)**2 / G_PP(iP0,iGF_Gm_dd_22) &
+                                + U_K(iCF_S3)**2 / G_PP(iP0,iGF_Gm_dd_33) &
+                                + Min_ESq ) ) / U_K(iCF_E) - One
+            U_K(iCF_E) = U_K(iCF_E) * ( One + chi )
+            WRITE(*,'(A,ES13.6E3)') &
+              'Fractional amount of internal energy added: ', chi
+          END IF
+
           ! --- Solve for Theta_q such that all point-values
           !     of q are positive ---
           Theta_q = One
           DO iP = 1, nPT
             IF( q(iP) .LT. Zero )THEN
               CALL SolveTheta_Bisection &
-                ( U_PP(iP,1:nCF), U_K, G_PP(iP,1:nGF), Min_ESq, Theta_P, &
-                  iX1, iX2, iX3, iP )
+                ( U_PP(iP,1:nCF), U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, &
+                  Theta_P, iX1, iX2, iX3, iP )
               Theta_q = MIN( Theta_q, Theta_P )
             END IF
           END DO
+          Theta_q = 0.9d0 * Theta_q
 
           ! --- Limit all variables towards cell-average ---
           DO iCF = 1, nCF
