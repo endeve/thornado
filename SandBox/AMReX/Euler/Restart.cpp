@@ -42,8 +42,9 @@ extern "C"
 
     // Checkpoint file name, e.g., chk00010
 
+
     const std::string& checkpointname
-                         = amrex::Concatenate( chk_file, StepNo[0] );
+                         = amrex::Concatenate( chk_file, StepNo[0], 8 );
 
     if ( ParallelDescriptor::IOProcessor() )
       amrex::Print() << "\n    Writing checkpoint " << checkpointname << "\n";
