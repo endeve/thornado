@@ -2287,7 +2287,7 @@ CONTAINS
 
               iNodeX = MOD( (iNodeZ-1) / nNodesE, nDOFX ) + 1
 
-              G(iNodeZ,iGF,iZ2,iZ3,iZ3) &
+              G(iNodeZ,iGF,iZ2,iZ3,iZ4) &
                 = GX(iNodeX,iZ2,iZ3,iZ4,iGF)
 
             END DO

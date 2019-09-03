@@ -47,6 +47,7 @@ Euler_PositivityLimiterModule_NonRelativistic.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
+  GeometryComputationModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_PositivityLimiterModule_NonRelativistic.f90

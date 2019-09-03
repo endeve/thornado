@@ -202,7 +202,7 @@ CONTAINS
 
     LOGICAL  :: LimitedCell &
                   (nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
-    INTEGER  :: iX1, iX2, iX3, iGF, iCF, iDimX
+    INTEGER  :: iX1, iX2, iX3, iGF, iCF
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
     REAL(DP) :: G_K(nGF)

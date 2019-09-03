@@ -41,7 +41,7 @@ MODULE MF_InitializationModule
   USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive
   USE UnitsModule, ONLY: &
-    Meter, Kilogram, Second, Joule
+    Meter, Kilometer, Kilogram, Second, Joule
   USE UtilitiesModule, ONLY: &
     Locate
 
@@ -691,12 +691,12 @@ CONTAINS
             X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
             IF( X1 + X2 .LT. 0.15_amrex_real )THEN
-   
+
               uPF_K(iNodeX,iPF_D) &
                 = D_0
               uPF_K(iNodeX,iPF_E) &
                 = E_0
-           
+
             ELSE
 
               uPF_K(iNodeX,iPF_D) &
@@ -1460,10 +1460,22 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-specific parameters ---
-    REAL(amrex_real)      :: D, V(3), P
     INTEGER, PARAMETER    :: i_r = 1, i_D = 2, i_V1 = 3, i_E = 4
     INTEGER               :: iL, nLines
     REAL(DP), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
+    TYPE(amrex_parmparse) :: PP
+    LOGICAL               :: Perturb
+    REAL(amrex_real)      :: rPerturbationInner, rPerturbationOuter, &
+                             PerturbationAmplitude
+
+    CALL amrex_parmparse_build( PP, 'SAS' )
+      CALL PP % get( 'Perturb',               Perturb )
+      CALL PP % get( 'rPerturbationInner',    rPerturbationInner )
+      CALL PP % get( 'rPerturbationOuter',    rPerturbationOuter )
+      CALL PP % get( 'PerturbationAmplitude', PerturbationAmplitude )
+    CALL amrex_parmparse_destroy( PP )
+    rPerturbationInner = rPerturbationInner * Kilometer
+    rPerturbationOuter = rPerturbationOuter * Kilometer
 
     uGF_K = 0.0_amrex_real
     uPF_K = 0.0_amrex_real
@@ -1539,6 +1551,18 @@ CONTAINS
                   ( i_E, i_r, iL, X1, FluidFieldData )
 
             uPF_K(iNodeX,iPF_Ne) = 0.0_amrex_real
+
+            ! --- Apply perturbations ---
+            IF( Perturb )THEN
+              IF( X1 .GE. rPerturbationInner &
+                    .AND. X1 .LE. rPerturbationOuter )THEN
+
+                uPF_K(iNodeX,iPF_D) &
+                  = uPF_K(iNodeX,iPF_D) &
+                      * ( 1.0e0_amrex_real + PerturbationAmplitude )
+
+              END IF
+            END IF
 
           END DO
 
@@ -1620,7 +1644,7 @@ CONTAINS
 
     ! --- Allocate and read in parameters ---
     ALLOCATE( FluidFieldParameters(nParams) )
-    
+
     OPEN( 100, FILE = TRIM( FILEIN ) )
     READ( 100, * ) ! --- Skip the header ---
     DO i = 1, nParams

@@ -7,11 +7,15 @@ DEBUG = 0
 
 thornado.ProgramName = "StandingAccretionShock_Relativistic"
 
-SAS.Mass = 1.4 # [Msun]
+SAS.Mass                  = 1.4   # [Msun]
+SAS.Perturb               = 1
+SAS.rPerturbationInner    = 260.0 # [km]
+SAS.rPerturbationOuter    = 280.0 # [km]
+SAS.PerturbationAmplitude = 0.5   # Fractional density increase
 
 thornado.t_end     = 3.0e+2   # Final time [ms]
 thornado.dt_wrt    = 1.0e+0   # Time increment to write plot-file [ms]
-thornado.dt_chk    = 1.0e+1   # Time increment to write checkpoint-file [ms]
+thornado.dt_chk    = 5.0e+1   # Time increment to write checkpoint-file [ms]
 thornado.Gamma     = 1.3333333333333333 # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration

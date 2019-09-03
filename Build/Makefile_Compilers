@@ -36,7 +36,7 @@ C_summit_pgi         = mpic++ --c++11 $(OPENMP)
 C_summit_xl          = mpic++ -std=c++11 $(OPENMP)
 C                    = $(C_$(MACHINE))
 
-FORTRAN_mac_gnu      = mpif90 -fopenmp
+FORTRAN_mac_gnu      = mpif90 -fopenmp -cpp
 FORTRAN_sn1987b      = mpif90 -fopenmp -cpp
 FORTRAN_bbarker      = mpif90 -fopenmp
 FORTRAN_juliana      = gfortran
@@ -158,7 +158,7 @@ OPTIMIZE_summit_pgi   = -g -O3 -tp=pwr9
 OPTIMIZE_summit_xl    = -g -O3 -qnohot -qarch=pwr9 -qtune=pwr9 -qsclk=micro -qsuppress=cmpmsg -w
 OPTIMIZE              = $(OPTIMIZE_$(MACHINE))
 
-INCLUDE_HDF5_mac_gnu           = -I/usr/local/Cellar/hdf5/1.8.16_1/include
+INCLUDE_HDF5_mac_gnu           = -I/usr/local/include
 INCLUDE_HDF5_sn1987b           = -I/usr/local/Cellar/hdf5/1.10.5/include
 INCLUDE_HDF5_bbarker           = -I/usr/local/Cellar/hdf5/1.10.2_1/include
 INCLUDE_HDF5_juliana           = -I/usr/local/hdf5/include
@@ -225,7 +225,7 @@ INCLUDE_MAGMA                  = $(INCLUDE_MAGMA_$(MACHINE))
 
 INCLUDE                        = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_POSEIDON)
 
-LIBRARIES_HDF5_mac_gnu         = -L/usr/local/Cellar/hdf5/1.8.16_1/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_mac_gnu         = -L/usr/local/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_sn1987b         = -L/usr/local/Cellar/hdf5/1.10.5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_bbarker         = -L/usr/local/Cellar/hdf5/1.10.2_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_juliana         = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5

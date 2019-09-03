@@ -78,7 +78,7 @@ CONTAINS
     INTEGER, PARAMETER :: MAX_IT = 100
     INTEGER            :: i, ITERATION, nNodes
     REAL(DP)           :: SSq, Pold, vSq, W, h, Pnew, q, Pbisec
-    REAL(DP)           :: FunP, JacP, FunP1, AF_P(SIZE(PF_D))
+    REAL(DP)           :: FunP, JacP, AF_P(SIZE(PF_D))
 
     ! --- Loop through all the nodes ---
     nNodes = SIZE( CF_D )
@@ -270,11 +270,11 @@ CONTAINS
     INTEGER, INTENT(in)  :: &
       iX_B0(3), iX_E0(3)
     REAL(DP), INTENT(in) :: &
-      G(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:), &
-      U(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+      G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:), &
+      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(inout)  :: &
-      P(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:), &
-      A(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+      P(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:), &
+      A(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     INTEGER :: iX1, iX2, iX3
 
@@ -284,29 +284,29 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       CALL Euler_ComputePrimitive_Relativistic &
-             ( U(:,iX1,iX2,iX3,iCF_D),         &
-               U(:,iX1,iX2,iX3,iCF_S1),        &
-               U(:,iX1,iX2,iX3,iCF_S2),        &
-               U(:,iX1,iX2,iX3,iCF_S3),        &
-               U(:,iX1,iX2,iX3,iCF_E),         &
-               U(:,iX1,iX2,iX3,iCF_Ne),        &
-               P(:,iX1,iX2,iX3,iPF_D),         &
-               P(:,iX1,iX2,iX3,iPF_V1),        &
-               P(:,iX1,iX2,iX3,iPF_V2),        &
-               P(:,iX1,iX2,iX3,iPF_V3),        &
-               P(:,iX1,iX2,iX3,iPF_E),         &
-               P(:,iX1,iX2,iX3,iPF_Ne),        &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_11),  &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_22),  &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+             ( U(1:nDOFX,iX1,iX2,iX3,iCF_D),         &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_S1),        &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_S2),        &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_S3),        &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_E),         &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_Ne),        &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_D),         &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_V1),        &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_V2),        &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_V3),        &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_E),         &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne),        &
+               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
+               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
+               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
       CALL ComputePressureFromPrimitive &
-             ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E ), &
-               P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_P) )
+             ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), A(1:nDOFX,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E ), &
-               P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_Cs) )
+             ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), A(1:nDOFX,iX1,iX2,iX3,iAF_Cs) )
 
     END DO
     END DO
@@ -321,8 +321,8 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3)
     REAL(DP), INTENT(in)  :: &
-      G(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:), &
-      U(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+      G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:), &
+      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(in)  :: &
       CFL
     REAL(DP), INTENT(out) :: &
@@ -331,7 +331,7 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iNodeX
     REAL(DP) :: dX(3), dt(3)
     REAL(DP) :: P(nDOFX,nPF)
-    REAL(DP) :: SoundSpeed(nDOFX)
+    REAL(DP) :: Cs(nDOFX)
     REAL(DP) :: EigVals_X1(nCF,nDOFX), alpha_X1, &
                 EigVals_X2(nCF,nDOFX), alpha_X2, &
                 EigVals_X3(nCF,nDOFX), alpha_X3
@@ -353,39 +353,46 @@ CONTAINS
       dX(3) = MeshX(3) % Width(iX3)
 
       CALL Euler_ComputePrimitive_Relativistic &
-             ( U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
-               U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
-               U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
-               P(:,iPF_D), P(:,iPF_V1), P(:,iPF_V2), P(:,iPF_V3), &
-               P(:,iPF_E), P(:,iPF_Ne), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+             ( U(1:nDOFX,iX1,iX2,iX3,iCF_D ), &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_S1), &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_S2), &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_S3), &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_E ), &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_Ne), &
+               P(1:nDOFX,iPF_D ), &
+               P(1:nDOFX,iPF_V1), &
+               P(1:nDOFX,iPF_V2), &
+               P(1:nDOFX,iPF_V3), &
+               P(1:nDOFX,iPF_E ), &
+               P(1:nDOFX,iPF_Ne), &
+               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), SoundSpeed(:) )
-
+             ( P(1:nDOFX,iPF_D), P(1:nDOFX,iPF_E), P(1:nDOFX,iPF_Ne), &
+               Cs(1:nDOFX) )
 
       IF     ( nDimsX .EQ. 1 )THEN
 
         DO iNodeX = 1, nDOFX
 
-          EigVals_X1(:,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                   ( P         (iNodeX,iPF_V1), &
-                                     SoundSpeed(iNodeX),        &
-                                     P         (iNodeX,iPF_V1), &
-                                     P         (iNodeX,iPF_V2), &
-                                     P         (iNodeX,iPF_V3), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
+          EigVals_X1(1:nCF,iNodeX) = Euler_Eigenvalues_Relativistic &
+                                       ( P (iNodeX,iPF_V1), &
+                                         Cs(iNodeX),        &
+                                         P (iNodeX,iPF_V1), &
+                                         P (iNodeX,iPF_V2), &
+                                         P (iNodeX,iPF_V3), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
 
         END DO
 
-        alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1 ) ) )
+        alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1(1:nCF,1:nDOFX) ) ) )
 
         dt(1) = dX(1) / alpha_X1
 
@@ -393,35 +400,35 @@ CONTAINS
 
         DO iNodeX = 1, nDOFX
 
-          EigVals_X1(:,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                   ( P         (iNodeX,iPF_V1), &
-                                     SoundSpeed(iNodeX),        &
-                                     P         (iNodeX,iPF_V1), &
-                                     P         (iNodeX,iPF_V2), &
-                                     P         (iNodeX,iPF_V3), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
+          EigVals_X1(1:nCF,iNodeX) = Euler_Eigenvalues_Relativistic &
+                                       ( P (iNodeX,iPF_V1), &
+                                         Cs(iNodeX),        &
+                                         P (iNodeX,iPF_V1), &
+                                         P (iNodeX,iPF_V2), &
+                                         P (iNodeX,iPF_V3), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
 
-          EigVals_X2(:,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                   ( P         (iNodeX,iPF_V2), &
-                                     SoundSpeed(iNodeX),        &
-                                     P         (iNodeX,iPF_V1), &
-                                     P         (iNodeX,iPF_V2), &
-                                     P         (iNodeX,iPF_V3), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
+          EigVals_X2(1:nCF,iNodeX) = Euler_Eigenvalues_Relativistic &
+                                       ( P (iNodeX,iPF_V2), &
+                                         Cs(iNodeX),        &
+                                         P (iNodeX,iPF_V1), &
+                                         P (iNodeX,iPF_V2), &
+                                         P (iNodeX,iPF_V3), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
         END DO
 
-        alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1 ) ) )
-        alpha_X2 = MAX( alpha_X2, MAXVAL( ABS( EigVals_X2 ) ) )
+        alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1(1:nCF,1:nDOFX) ) ) )
+        alpha_X2 = MAX( alpha_X2, MAXVAL( ABS( EigVals_X2(1:nCF,1:nDOFX) ) ) )
 
         dt(1) = dX(1) / alpha_X1
         dt(2) = dX(2) / alpha_X2
@@ -430,49 +437,49 @@ CONTAINS
 
         DO iNodeX = 1, nDOFX
 
-          EigVals_X1(:,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                   ( P         (iNodeX,iPF_V1), &
-                                     SoundSpeed(iNodeX),        &
-                                     P         (iNodeX,iPF_V1), &
-                                     P         (iNodeX,iPF_V2), &
-                                     P         (iNodeX,iPF_V3), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
+          EigVals_X1(1:nCF,iNodeX) = Euler_Eigenvalues_Relativistic &
+                                       ( P (iNodeX,iPF_V1), &
+                                         Cs(iNodeX),        &
+                                         P (iNodeX,iPF_V1), &
+                                         P (iNodeX,iPF_V2), &
+                                         P (iNodeX,iPF_V3), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
 
-          EigVals_X2(:,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                   ( P         (iNodeX,iPF_V2), &
-                                     SoundSpeed(iNodeX),        &
-                                     P         (iNodeX,iPF_V1), &
-                                     P         (iNodeX,iPF_V2), &
-                                     P         (iNodeX,iPF_V3), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
+          EigVals_X2(1:nCF,iNodeX) = Euler_Eigenvalues_Relativistic &
+                                       ( P (iNodeX,iPF_V2), &
+                                         Cs(iNodeX),        &
+                                         P (iNodeX,iPF_V1), &
+                                         P (iNodeX,iPF_V2), &
+                                         P (iNodeX,iPF_V3), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
 
-          EigVals_X3(:,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                   ( P         (iNodeX,iPF_V3),   &
-                                     SoundSpeed(iNodeX),          &
-                                     P         (iNodeX,iPF_V1),   &
-                                     P         (iNodeX,iPF_V2),   &
-                                     P         (iNodeX,iPF_V3),   &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                     G(iNodeX,iX1,iX2,iX3,iGF_Beta_3) )
+          EigVals_X3(1:nCF,iNodeX) = Euler_Eigenvalues_Relativistic &
+                                       ( P (iNodeX,iPF_V3),   &
+                                         Cs(iNodeX),          &
+                                         P (iNodeX,iPF_V1),   &
+                                         P (iNodeX,iPF_V2),   &
+                                         P (iNodeX,iPF_V3),   &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                                         G (iNodeX,iX1,iX2,iX3,iGF_Beta_3) )
         END DO
 
-        alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1 ) ) )
-        alpha_X2 = MAX( alpha_X2, MAXVAL( ABS( EigVals_X2 ) ) )
-        alpha_X3 = MAX( alpha_X3, MAXVAL( ABS( EigVals_X3 ) ) )
+        alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1(1:nCF,1:nDOFX) ) ) )
+        alpha_X2 = MAX( alpha_X2, MAXVAL( ABS( EigVals_X2(1:nCF,1:nDOFX) ) ) )
+        alpha_X3 = MAX( alpha_X3, MAXVAL( ABS( EigVals_X3(1:nCF,1:nDOFX) ) ) )
 
         dt(1) = dX(1) / alpha_X1
         dt(2) = dX(2) / alpha_X2
@@ -480,7 +487,7 @@ CONTAINS
 
       END IF
 
-      TimeStep = MIN( TimeStep, MINVAL( dt ) )
+      TimeStep = MIN( TimeStep, MINVAL( dt(1:3) ) )
 
     END DO
     END DO
@@ -497,6 +504,8 @@ CONTAINS
     ! --- Vi is the ith contravariant component of the three-velocity
     !     Gmii is the ith covariant component of the spatial three-metric
     !     Shift is the ith contravariant component of the shift-vector ---
+
+    ! --- Find the expressions in Font et al., (1998), Eq. (14) and (18) ---
 
     REAL(DP), INTENT(in) :: Vi, Cs, V1, V2, V3, &
                             Gmii, Gm11, Gm22, Gm33, Lapse, Shift
@@ -1174,8 +1183,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: Pbrent
 
     REAL(DP) :: PA, PB, PC, PD, PS, PSwap, Pbisec
-    REAL(DP) :: FunPA, FunPB, FunPC, FunPD, FunPS
-    REAL(DP) :: JacPA, JacPB, JacPC, JacPD, JacPS
+    REAL(DP) :: FunPA, FunPB, FunPC, FunPS
+    REAL(DP) :: JacPA, JacPB, JacPC, JacPS
 
     LOGICAL            :: mflag, COND1, COND2, COND3, COND4, COND5
     INTEGER, PARAMETER :: MAX_IT = 100
