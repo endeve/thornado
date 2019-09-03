@@ -1209,6 +1209,9 @@ CONTAINS
 
     END DO
 
+    nIterations_Inner &
+      = FLOOR( DBLE( nIterations_Inner ) / DBLE( nIterations_Outer ) )
+
     CALL ArrayCopy( Jnew_1, Jnew_2, J_1, J_2 )
 
 #if defined(THORNADO_OMP_OL)
