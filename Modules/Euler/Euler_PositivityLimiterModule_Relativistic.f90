@@ -237,7 +237,6 @@ CONTAINS
               Theta_q = MIN( Theta_q, Theta_P )
             END IF
           END DO
-          Theta_q = 0.9d0 * Theta_q
 
           ! --- Limit all variables towards cell-average ---
           DO iCF = 1, nCF
