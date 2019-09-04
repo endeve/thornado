@@ -41,6 +41,8 @@ PROGRAM PrimitiveConserved
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
+  USE UtilitiesModule, ONLY: &
+    WriteVector
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
@@ -49,11 +51,12 @@ PROGRAM PrimitiveConserved
 
   IMPLICIT NONE
 
-  INTEGER  :: nNodes
+  INTEGER  :: nNodes, nPoints, iPoint
   INTEGER  :: nE, nX(3)
   INTEGER  :: iNode, iE, iX1, iX2, iX3, iS
   REAL(DP) :: eL, eR, xL(3), xR(3)
-  REAL(DP) :: D, absI, I1, I2, I3
+  REAL(DP) :: D, absI, I1, I2, I3, V1, V2, V3
+  INTEGER, ALLOCATABLE :: nIterations(:)
 
   nNodes = 2
 
@@ -64,6 +67,10 @@ PROGRAM PrimitiveConserved
   nE = 8
   eL = Zero
   eR = One
+
+  V1 = 0.5_DP
+  V2 = 0.0_DP
+  V3 = 0.0_DP
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -159,8 +166,7 @@ PROGRAM PrimitiveConserved
                  uCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS), &
                  uCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS), &
                  uCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS), &
-                 0.5_DP, 0.0_DP, 0.0_DP, &
-                 1.0_DP, 1.0_DP, 1.0_DP )
+                 V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP )
 
       END DO
 
@@ -176,6 +182,57 @@ PROGRAM PrimitiveConserved
            WriteGF_Option = .TRUE., &
            WriteFF_Option = .TRUE., &
            WriteRF_Option = .TRUE. )
+
+  ! --- Compute Primitive From Conserved ---
+
+  nPoints = nSpecies * PRODUCT( iX_E0 - iX_B0 + 1 ) &
+              * ( iE_E0 - iE_B0 + 1 ) * nDOF
+
+  ALLOCATE( nIterations(nPoints) )
+
+  iPoint = 0
+
+  DO iS  = 1, nSpecies
+  DO iX3 = iX_B0(3), iX_E0(3)
+  DO iX2 = iX_B0(2), iX_E0(2)
+  DO iX1 = iX_B0(1), iX_E0(1)
+
+    DO iE = iE_B0, iE_E0
+
+      DO iNode = 1, nDOF
+
+        iPoint = iPoint + 1
+
+        CALL ComputePrimitive_TwoMoment &
+               ( uCR(iNode,iE,iX1,iX2,iX3,iCR_N ,iS), &
+                 uCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS), &
+                 uCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS), &
+                 uCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS), &
+                 uPR(iNode,iE,iX1,iX2,iX3,iPR_D ,iS), &
+                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                 V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP, &
+                 nIterations(iPoint) )
+
+      END DO
+
+    END DO
+
+  END DO
+  END DO
+  END DO
+  END DO
+
+  CALL WriteFieldsHDF &
+         ( Time = 0.0_DP, &
+           WriteGF_Option = .TRUE., &
+           WriteFF_Option = .TRUE., &
+           WriteRF_Option = .TRUE. )
+
+  CALL WriteVector( nPoints, DBLE( nIterations ), 'nIterations.dat' )
+
+  DEALLOCATE( nIterations )
 
   CALL FinalizeReferenceElementX
 
