@@ -12,9 +12,11 @@ all: PrimitiveConserved
 
 PrimitiveConserved: \
 	$(thornado) \
+	TwoMoment_UtilitiesModule_OrderV.o \
 	PrimitiveConserved.o
 	$(FLINKER) $(FLAGS) -o PrimitiveConserved_$(MACHINE) \
 	$(thornado) \
+	TwoMoment_UtilitiesModule_OrderV.o \
 	PrimitiveConserved.o \
 	$(LIBRARIES)
 

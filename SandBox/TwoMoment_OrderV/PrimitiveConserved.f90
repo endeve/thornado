@@ -37,11 +37,15 @@ PROGRAM PrimitiveConserved
     uGE
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
+    uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
+    uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
+  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+    ComputePrimitive_TwoMoment, &
+    ComputeConserved_TwoMoment
 
   IMPLICIT NONE
 
@@ -51,13 +55,13 @@ PROGRAM PrimitiveConserved
   REAL(DP) :: eL, eR, xL(3), xR(3)
   REAL(DP) :: D, absI, I1, I2, I3
 
-  nNodes   = 2
+  nNodes = 2
 
-  nX = [ 32, 32, 32 ]
+  nX = [ 24, 24, 24 ]
   xL = [ Zero, Zero, Zero ]
   xR = [ One,  One,  One  ]
 
-  nE = 16
+  nE = 8
   eL = Zero
   eR = One
 
@@ -145,6 +149,18 @@ PROGRAM PrimitiveConserved
         uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) = I1
         uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
         uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
+
+        CALL ComputeConserved_TwoMoment &
+               ( uPR(iNode,iE,iX1,iX2,iX3,iPR_D ,iS), &
+                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                 uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                 uCR(iNode,iE,iX1,iX2,iX3,iCR_N ,iS), &
+                 uCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS), &
+                 uCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS), &
+                 uCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS), &
+                 0.5_DP, 0.0_DP, 0.0_DP, &
+                 1.0_DP, 1.0_DP, 1.0_DP )
 
       END DO
 
