@@ -3,7 +3,7 @@ MODULE Euler_PositivityLimiterModule
   USE KindModule, ONLY: &
     DP, Zero, Half, One
   USE UnitsModule, ONLY: &
-    Gram, Centimeter, Kelvin, AtomicMassUnit, Erg
+    Gram, Centimeter, Kelvin, AtomicMassUnit, Erg, Second
   USE ProgramHeaderModule, ONLY: &
     nNodesX, nDOFX
   USE ReferenceElementModuleX, ONLY: &
@@ -18,7 +18,8 @@ MODULE Euler_PositivityLimiterModule
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    Theta1, Theta2, Theta3, E_Minimum
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeSpecificInternalEnergy_TABLE
 
@@ -144,7 +145,7 @@ CONTAINS
 
 
   SUBROUTINE Euler_ApplyPositivityLimiter &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, ResetIndicators_Option )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -152,7 +153,10 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    LOGICAL, INTENT(in), OPTIONAL :: &
+      ResetIndicators_Option
 
+    LOGICAL  :: ResetIndicators
     LOGICAL  :: NegativeStates(3)
     INTEGER  :: iX1, iX2, iX3, iCF, iP
     REAL(DP) :: Min_D_K, Max_D_K, Min_N_K, Max_N_K, &
@@ -168,6 +172,12 @@ CONTAINS
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
+    IF( PRESENT( ResetIndicators_Option ) )THEN
+      ResetIndicators = ResetIndicators_Option
+    ELSE
+      ResetIndicators = .FALSE.
+    END IF
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -175,6 +185,14 @@ CONTAINS
       U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
 
       NegativeStates = .FALSE.
+
+      IF( ResetIndicators )THEN
+
+        Theta1(iX1,iX2,iX3) = One
+        Theta2(iX1,iX2,iX3) = One
+        Theta3(iX1,iX2,iX3) = One
+
+      END IF
 
       CALL ComputePointValues_Fluid( U_q, U_PP )
 
@@ -208,6 +226,8 @@ CONTAINS
 
         NegativeStates(1) = .TRUE.
 
+        Theta1(iX1,iX2,iX3) = MIN( Theta1(iX1,iX2,iX3), Theta_1 )
+
       END IF
 
       ! --- Ensure Bounded Electron Density ---
@@ -240,6 +260,8 @@ CONTAINS
 
         NegativeStates(2) = .TRUE.
 
+        Theta2(iX1,iX2,iX3) = MIN( Theta2(iX1,iX2,iX3), Theta_2 )
+
       END IF
 
       ! --- Ensure Positive Specific Internal Energy ---
@@ -254,7 +276,13 @@ CONTAINS
                 ( [U_PP(iP,iCF_D)], [Min_T], [Y_PP(iP)], Min_E(iP:iP) )
 
       END DO
- 
+
+       DO iP = 1, nDOFX
+
+        E_Minimum(iP,iX1,iX2,iX3) = Min_E(iP) / ( Erg / Gram )
+
+      END DO
+
       IF( ANY( E_PP(:) < Min_E(:) ) )THEN
 
         ! --- Cell Average ---
@@ -303,7 +331,6 @@ CONTAINS
 
           CALL ComputePointValues_Fluid( U_q, U_PP )
 
-
           DO iP = 1, nPT
 
             CALL ComputeSpecificInternalEnergyAndElectronFraction &
@@ -321,6 +348,8 @@ CONTAINS
         NegativeStates(1) = .FALSE.
         NegativeStates(2) = .FALSE.
         NegativeStates(3) = .TRUE.
+
+        Theta3(iX1,iX2,iX3) = MIN( Theta3(iX1,iX2,iX3), Theta_3 )
 
       END IF
 
