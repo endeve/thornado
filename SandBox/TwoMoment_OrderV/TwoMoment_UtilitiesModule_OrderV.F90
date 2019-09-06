@@ -241,6 +241,49 @@ CONTAINS
   END SUBROUTINE ComputeConserved_TwoMoment
 
 
+  FUNCTION Flux_X1 &
+    ( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
+    RESULT( Flux_X1 )
+
+    REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
+    REAL(DP), INTENT(in) ::    V_u_1, V_u_2, V_u_3
+    REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP)             :: Flux_X1(4)
+
+    REAL(DP) :: FF, EF, a, b
+    REAL(DP) :: h_u_1, h_d_1, h_d_2, h_d_3
+    REAL(DP) :: K_ud_11, K_ud_12, K_ud_13
+
+    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    EF = EddingtonFactor( D, FF )
+
+    a = Half * ( One - EF )
+    b = Half * ( Three * EF - One )
+
+    h_u_1 = I_u_1 / ( FF * D )
+
+    h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
+    h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
+    h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
+
+    K_ud_11 = ( a + b * h_u_1 * h_d_1 ) * D
+    K_ud_12 =     ( b * h_u_1 * h_d_2 ) * D
+    K_ud_13 =     ( b * h_u_1 * h_d_3 ) * D
+
+    Flux_X1(1) = I_u_1 + D * V_u_1
+
+    Flux_X1(2) = K_ud_11 + V_u_1 * Gm_dd_11 * I_u_1
+
+    Flux_X1(3) = K_ud_12 + V_u_1 * Gm_dd_22 * I_u_2
+
+    Flux_X1(4) = K_ud_13 + V_u_1 * Gm_dd_33 * I_u_3
+
+    RETURN
+  END FUNCTION Flux_X1
+
+
   SUBROUTINE ComputeEddingtonTensorComponents_dd &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
