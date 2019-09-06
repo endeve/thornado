@@ -128,6 +128,10 @@ MODULE FluidFieldsModule
   ! --- Diagnostic Variables ---
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Shock
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta1
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta2
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta3
+  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: E_Minimum
 
   PUBLIC :: CreateFluidFields
   PUBLIC :: DestroyFluidFields
@@ -152,6 +156,16 @@ CONTAINS
 
     ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
     Shock = 0.0_DP
+
+    ALLOCATE( Theta1(1:nX(1),1:nX(2),1:nX(3)) )
+    ALLOCATE( Theta2(1:nX(1),1:nX(2),1:nX(3)) )
+    ALLOCATE( Theta3(1:nX(1),1:nX(2),1:nX(3)) )
+
+    Theta1 = 1.0_DP
+    Theta2 = 1.0_DP
+    Theta3 = 1.0_DP
+
+    ALLOCATE( E_Minimum(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)) )
 
     CALL SetUnitsFluidFields
 
@@ -235,6 +249,10 @@ CONTAINS
 
     DEALLOCATE( uCF, rhsCF, uPF, uAF )
     DEALLOCATE( Shock )
+    DEALLOCATE( Theta1 )
+    DEALLOCATE( Theta2 )
+    DEALLOCATE( Theta3 )
+    DEALLOCATE( E_Minimum )
 
   END SUBROUTINE DestroyFluidFields
 
