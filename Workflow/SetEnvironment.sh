@@ -178,7 +178,7 @@ elif [[ $THORNADO_MACHINE == mcarpe21 ]]; then
 elif [[ $THORNADO_MACHINE == dpochik ]]; then
  
   echo
-  export WEAKLIB_DIR=/home/dpochik/weaklib_r511
+  export WEAKLIB_DIR=/home/dpochik/weaklib
   export THORNADO_DIR=/home/dpochik/thornado_neos
 
 else
