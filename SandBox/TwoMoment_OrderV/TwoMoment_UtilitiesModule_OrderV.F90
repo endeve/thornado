@@ -241,7 +241,7 @@ CONTAINS
   END SUBROUTINE ComputeConserved_TwoMoment
 
 
-  FUNCTION Flux_X1 &
+  FUNCTION Flux_X1_Scalar &
     ( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
     RESULT( Flux_X1 )
@@ -281,7 +281,7 @@ CONTAINS
     Flux_X1(4) = K_ud_13 + V_u_1 * Gm_dd_33 * I_u_3
 
     RETURN
-  END FUNCTION Flux_X1
+  END FUNCTION Flux_X1_Scalar
 
 
   SUBROUTINE ComputeEddingtonTensorComponents_dd &
