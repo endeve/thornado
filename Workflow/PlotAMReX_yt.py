@@ -287,6 +287,9 @@ elif( nDims == 2 ):
     #slc.set_zlim( field, 0.0, 2.0 ) # Set colorbar limits
     #slc.set_colorbar_label( field, VariableToPlot )
 
+    if( CoordinateSystem == 'spherical' ):
+        slc.set_width( 2 * xH[0].to_ndarray() )
+
     slc.save( ProblemName + '_' + VariableToPlot \
                 + '_{:}.png'.format( File[-8:] ) )
 
