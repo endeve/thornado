@@ -285,10 +285,10 @@ elif( nDims == 2 ):
 
     #slc.set_log( field, False ) # set_log is True by default
     #slc.set_zlim( field, 0.0, 2.0 ) # Set colorbar limits
-    #slc.set_colorbar_label( field, VariableToPlot )
+    slc.set_colorbar_label( field, 'Entropy [erg K$^{-1}$]' )
 
     if( CoordinateSystem == 'spherical' ):
-        slc.set_width( 2 * xH[0].to_ndarray() )
+        slc.set_width( 2 * xH[0].to_ndarray(), length_unit )
 
     slc.save( ProblemName + '_' + VariableToPlot \
                 + '_{:}.png'.format( File[-8:] ) )
