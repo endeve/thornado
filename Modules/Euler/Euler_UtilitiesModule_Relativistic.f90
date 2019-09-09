@@ -1130,14 +1130,17 @@ CONTAINS
     ! --- Check that sign of FunP changes across bounds ---
     IF( .NOT. FunPA * FunPB .LT. 0 )THEN
 
-      WRITE(*,'(A6,A)') &
-        '', 'ComputePressureWithBisectionMethod:'
-      WRITE(*,'(A8,A)') &
-        '', 'Error: No Root in Interval'
-      WRITE(*,'(A8,A,2ES15.6E3)') &
-        '', 'PA, PB = ', PA, PB
-      WRITE(*,'(A8,A,2ES15.6E3)') &
-        '', 'FunPA, FunPB = ', FunPA, FunPB
+      WRITE(*,'(6x,A)') &
+        'ComputePressureWithBisectionMethod:'
+      WRITE(*,'(8x,A)') &
+        'Error: No Root in Interval'
+      WRITE(*,'(8x,A,ES24.16E3)') 'CF_D: ', CF_D
+      WRITE(*,'(8x,A,ES24.16E3)') 'CF_E: ', CF_E
+      WRITE(*,'(8x,A,ES24.16E3)') 'SSq:  ', SSq
+      WRITE(*,'(8x,A,2ES15.6E3)') &
+        'PA, PB = ', PA, PB
+      WRITE(*,'(8x,A,2ES15.6E3)') &
+        'FunPA, FunPB = ', FunPA, FunPB
       STOP
 
     END IF
