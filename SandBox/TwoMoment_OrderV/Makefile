@@ -13,10 +13,14 @@ all: PrimitiveConserved
 PrimitiveConserved: \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
 	PrimitiveConserved.o
 	$(FLINKER) $(FLAGS) -o PrimitiveConserved_$(MACHINE) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
 	PrimitiveConserved.o \
 	$(LIBRARIES)
 
@@ -30,3 +34,16 @@ PrimitiveConserved.o: \
   KindModule.o \
   ProgramInitializationModule.o \
   PrimitiveConserved.f90
+
+TwoMoment_UtilitiesModule.o: \
+  KindModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_UtilitiesModule.F90
+
+TwoMoment_DiscretizationModule_Streaming_OrderV.o: \
+  KindModule.o \
+  TwoMoment_DiscretizationModule_Streaming_OrderV.F90
+
+TwoMoment_DiscretizationModule_Collisions_OrderV.o: \
+  KindModule.o \
+  TwoMoment_DiscretizationModule_Collisions_OrderV.F90
