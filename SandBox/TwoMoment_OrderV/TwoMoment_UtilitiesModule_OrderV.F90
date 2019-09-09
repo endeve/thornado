@@ -241,15 +241,14 @@ CONTAINS
   END SUBROUTINE ComputeConserved_TwoMoment
 
 
-  FUNCTION Flux_X1_Scalar &
+  FUNCTION Flux_X1 &
     ( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
-    RESULT( Flux_X1 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
+    REAL(DP)             :: Flux_X1(4)
     REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
     REAL(DP), INTENT(in) ::    V_u_1, V_u_2, V_u_3
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP)             :: Flux_X1(4)
 
     REAL(DP) :: FF, EF, a, b
     REAL(DP) :: h_u_1, h_d_1, h_d_2, h_d_3
@@ -281,7 +280,7 @@ CONTAINS
     Flux_X1(4) = K_ud_13 + V_u_1 * Gm_dd_33 * I_u_3
 
     RETURN
-  END FUNCTION Flux_X1_Scalar
+  END FUNCTION Flux_X1
 
 
   SUBROUTINE ComputeEddingtonTensorComponents_dd &
