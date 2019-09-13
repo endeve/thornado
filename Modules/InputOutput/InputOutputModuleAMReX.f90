@@ -44,17 +44,15 @@ MODULE InputOutputModuleAMReX
   USE MF_UtilitiesModule, ONLY: &
     AMReX2thornado, &
     ShowVariableFromMultiFab
-!!$  USE ProblemInitializationModule, ONLY: &
-!!$    InitializeProblem
 
   IMPLICIT NONE
   PRIVATE
 
   CHARACTER(8) :: BaseFileName = 'thornado'
 
-  PUBLIC :: WriteFieldsAMReX_PlotFile
-  PUBLIC :: WriteFieldsAMReX_Checkpoint
   PUBLIC :: ReadCheckpointFile
+  PUBLIC :: WriteFieldsAMReX_Checkpoint
+  PUBLIC :: WriteFieldsAMReX_PlotFile
 !!$  PUBLIC :: MakeMF_Diff
 
   INTERFACE
