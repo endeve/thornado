@@ -23,12 +23,12 @@ HOME = HOME[:-1].decode( "utf-8" ) + '/'
 
 # Specify directory containing plotfiles
 
-#'''
+'''
 ProblemDirectory \
   = HOME + 'Research/DataFromPastRuns/' + 'SAS2D_20190904/'
 ProblemName = 'SAS_R'
 VariableToPlot = 'Entropy'
-#'''
+'''
 
 '''
 ProblemDirectory \
@@ -37,12 +37,12 @@ ProblemName = 'SAS_R'
 VariableToPlot = 'PF_D'
 '''
 
-'''
+#'''
 ProblemDirectory \
   = HOME + 'Desktop/'
-ProblemName = 'KHI_R'
+ProblemName = 'SAS_R'
 VariableToPlot = 'PF_D'
-'''
+#'''
 
 UsePhysicalUnits = False
 CoordinateSystem = 'cartesian'
@@ -285,7 +285,11 @@ elif( nDims == 2 ):
 
     #slc.set_log( field, False ) # set_log is True by default
     #slc.set_zlim( field, 0.0, 2.0 ) # Set colorbar limits
-    #slc.set_colorbar_label( field, 'Entropy [erg K$^{-1}$]' )
+    #slc.set_colorbar_label( field, 'Primitive Rest-Mass-Density' )
+
+    # Only works in Cartesian coordinates
+    #slc.annotate_text( [-0.48,0.9], 't = 3.00', coord_system = 'plot', \
+    #                   text_args={'color':'black'} )
 
     if( CoordinateSystem == 'spherical' ):
         slc.set_width( 2 * xH[0].to_ndarray(), length_unit )
