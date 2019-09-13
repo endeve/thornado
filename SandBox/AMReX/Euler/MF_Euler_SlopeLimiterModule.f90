@@ -138,7 +138,6 @@ CONTAINS
                             iX_B1(3):iX_E1(3),1:nCF), &
                  SuppressBC_Option = .TRUE. )
 
-
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         CALL thornado2AMReX &
                ( nCF, iX_B1, iX_E1, &
