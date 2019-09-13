@@ -65,7 +65,10 @@ MODULE InitializationModule
     InitializePolynomialBasis_Legendre
   USE Euler_PositivityLimiterModule,    ONLY: &
     Euler_InitializePositivityLimiter
-  USE InputOutputModuleAMReX
+  USE InputOutputModuleAMReX,           ONLY: &
+    ReadCheckpointFile,          &
+    WriteFieldsAMReX_Checkpoint, &
+    WriteFieldsAMReX_PlotFile
   USE UnitsModule,                      ONLY: &
     SolarMass
 
@@ -160,8 +163,6 @@ CONTAINS
       t_chk = t(0) + dt_chk
 
     END IF
-
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     wrt = .FALSE.
     chk = .FALSE.
@@ -271,8 +272,12 @@ CONTAINS
     ! --- Allocates 'Shock' and sets units for fluid fields ---
     CALL CreateFluidFields( nX, swX, amrex_parallel_ioprocessor() )
 
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
+
     IF( iRestart < 0 )THEN
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
       CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
@@ -284,8 +289,10 @@ CONTAINS
                MF_uAF_Option = MF_uAF )
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
       CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
       CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
@@ -297,6 +304,8 @@ CONTAINS
                MF_uAF_Option = MF_uAF )
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
     END IF
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     DO iLevel = 0, nLevels
       CALL amrex_distromap_destroy( DM(iLevel) )
@@ -308,6 +317,8 @@ CONTAINS
       WRITE(*,'(A)') '  Evolving fields...'
       WRITE(*,*)
     END IF
+
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
   END SUBROUTINE InitializeProblem
 

@@ -49,6 +49,8 @@ CONTAINS
 
     INTEGER :: iLevel, iDim
 
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Finalize )
+
     CALL MF_FinalizeFluid_SSPRK
 
     CALL DestroyFluidFields
@@ -69,8 +71,6 @@ CONTAINS
     DO iLevel = 0, nLevels
       CALL amrex_geometry_destroy( GEOM(iLevel) )
     END DO
-
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
     CALL MyAmrFinalize
 

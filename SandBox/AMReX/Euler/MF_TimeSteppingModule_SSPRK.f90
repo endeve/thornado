@@ -36,7 +36,10 @@ MODULE MF_TimeSteppingModule_SSPRK
     LinComb
   USE MyAmrModule,                      ONLY: &
     nLevels, DEBUG
-  USE TimersModule_AMReX_Euler
+  USE TimersModule_AMReX_Euler,         ONLY: &
+    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler,  &
+    Timer_AMReX_Euler_UpdateFluid, &
+    Timer_AMReX_Euler_CopyMultiFab
 
   IMPLICIT NONE
   PRIVATE
@@ -216,6 +219,8 @@ CONTAINS
     TYPE(amrex_mfiter)                    :: MFI
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:), U(:,:,:,:)
 
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
+
     ! --- Set temporary MultiFabs U and dU to zero ---
     DO iLevel = 0, nLevels
       CALL MF_U(iLevel) % setval( 0.0_amrex_real )
@@ -290,6 +295,8 @@ CONTAINS
     CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplyPositivityLimiter (2)'
     CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
+
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
   END SUBROUTINE MF_UpdateFluid_SSPRK
 

@@ -36,7 +36,8 @@ MODULE MF_Euler_UtilitiesModule
     thornado2AMReX
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
-    Timer_AMReX_Euler_DataTransfer
+    Timer_AMReX_Euler_DataTransfer, &
+    Timer_AMReX_Euler_ComputeTimeStep
 
   IMPLICIT NONE
   PRIVATE
@@ -201,6 +202,8 @@ CONTAINS
 
     REAL(amrex_real) :: TimeStep(0:nLevels)
 
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_ComputeTimeStep )
+
     TimeStepMin = HUGE( 1.0e0_amrex_real )
 
     DO iLevel = 0, nLevels
@@ -267,6 +270,8 @@ CONTAINS
     END DO ! --- Loop over levels ---
 
     CALL amrex_parallel_reduce_min( TimeStepMin, nLevels+1 )
+
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_ComputeTimeStep )
 
   END SUBROUTINE MF_ComputeTimeStep
 
