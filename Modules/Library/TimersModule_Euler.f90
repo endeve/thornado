@@ -59,14 +59,15 @@ CONTAINS
     Timer_Euler_InputOutput     = Zero
     Timer_Euler_Finalize        = Zero
 
-    Timer_Euler_Inc    = Zero
-    Timer_Euler_MV     = Zero
-    Timer_Euler_RS     = Zero
-    Timer_Euler_Div_X1 = Zero
-    Timer_Euler_Div_X2 = Zero
-    Timer_Euler_Div_X3 = Zero
-    Timer_Euler_Geom   = Zero
-    Timer_Euler_Grav   = Zero
+    Timer_Euler_Inc      = Zero
+    Timer_Euler_MV       = Zero
+    Timer_Euler_RS       = Zero
+    Timer_Euler_Div_X1   = Zero
+    Timer_Euler_Div_X2   = Zero
+    Timer_Euler_Div_X3   = Zero
+    Timer_Euler_Geom     = Zero
+    Timer_Euler_Grav     = Zero
+    Timer_Euler_CompPrim = Zero
 
     Timer_Euler_PositivityLimiter     = Zero
     Timer_Euler_SlopeLimiter          = Zero
