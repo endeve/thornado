@@ -170,6 +170,27 @@ CONTAINS
         a_EX(1,1) = 0.0_DP
         w_EX(1)   = 1.0_DP
 
+      CASE ( 'SSPRK2' )
+
+        nStages = 2
+
+        CALL AllocateButcherTables
+
+        a_EX(1,1:2) = [ 0.0_DP, 0.0_DP ]
+        a_EX(2,1:2) = [ 1.0_DP, 0.0_DP ]
+        w_EX(1:2)   = [ 0.5_DP, 0.5_DP ]
+
+      CASE ( 'SSPRK3' )
+
+        nStages = 3
+
+        CALL AllocateButcherTables
+
+        a_EX(1,1:3) = [ 0.00_DP, 0.00_DP, 0.00_DP ]
+        a_EX(2,1:3) = [ 1.00_DP, 0.00_DP, 0.00_DP ]
+        a_EX(3,1:3) = [ 0.25_DP, 0.25_DP, 0.00_DP ]
+        w_EX(1:3)   = [ 1.00_DP, 1.00_DP, 4.00_DP ] / 6.0_DP
+
       CASE ( 'IMEX_ARS_111' )
 
         nStages = 2
@@ -184,6 +205,26 @@ CONTAINS
         a_IM(2,2) = 1.0_DP
         w_IM(2)   = a_IM(2,2)
 
+      CASE ( 'IMEX_PDARS' )
+
+        nStages = 3
+
+        CALL AllocateButcherTables
+
+        a_EX(2,1) = 1.0_DP
+        a_EX(3,1) = 0.5_DP
+        a_EX(3,2) = 0.5_DP
+
+        w_EX(1)   = a_EX(3,1)
+        w_EX(2)   = a_EX(3,2)
+
+        a_IM(2,2) = 1.0_DP
+        a_IM(3,2) = 0.5_DP
+        a_IM(3,3) = 0.5_DP
+
+        w_IM(2)   = a_IM(3,2)
+        w_IM(3)   = a_IM(3,3)
+
       CASE DEFAULT
 
         WRITE(*,*)
@@ -194,7 +235,10 @@ CONTAINS
           '', 'Available Options:'
         WRITE(*,*)
         WRITE(*,'(A6,A)') '', 'SSPRK1'
+        WRITE(*,'(A6,A)') '', 'SSPRK2'
+        WRITE(*,'(A6,A)') '', 'SSPRK3'
         WRITE(*,'(A6,A)') '', 'IMEX_ARS_111'
+        WRITE(*,'(A6,A)') '', 'IMEX_PDARS'
         WRITE(*,*)
         STOP
 
