@@ -32,8 +32,6 @@ MODULE MF_TimeSteppingModule_SSPRK
     MF_Euler_ApplySlopeLimiter
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     MF_Euler_ApplyPositivityLimiter
-  USE MF_UtilitiesModule,               ONLY: &
-    LinComb
   USE MyAmrModule,                      ONLY: &
     nLevels, DEBUG
   USE TimersModule_AMReX_Euler,         ONLY: &
@@ -204,8 +202,6 @@ CONTAINS
   SUBROUTINE MF_UpdateFluid_SSPRK &
     ( t, dt, MF_uGF, MF_uCF, GEOM, MF_Euler_ComputeIncrement )
 
-    ! --- Ideally will, in the future, incorporate LinComb from AMReX ---
-
     REAL(amrex_real),     INTENT(in)    :: t(0:nLevels), dt(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
@@ -257,44 +253,57 @@ CONTAINS
         CALL amrex_mfiter_destroy( MFI )
 
       END DO
-
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
 
-      DO jS = 1, iS - 1
+      DO iLevel = 0, nLevels
+        DO jS = 1, iS - 1
 
-        IF( a_SSPRK(iS,jS) .NE. 0.0_amrex_real ) &
-          CALL LinComb( 1.0_amrex_real, MF_U, &
-                        dt * a_SSPRK(iS,jS), MF_D(0:nLevels,jS) )
+          IF( a_SSPRK(iS,jS) .NE. 0.0_amrex_real ) &
+            CALL MF_U(iLevel) &
+                   % LinComb( 1.0_amrex_real,              MF_U(iLevel),    1, &
+                              dt(iLevel) * a_SSPRK(iS,jS), MF_D(iLevel,jS), 1, &
+                              1, MF_U(iLevel) % nComp(), 0 )
 
+        END DO
       END DO
 
       IF( ANY( a_SSPRK(:,iS) .NE. 0.0_amrex_real ) &
           .OR. ( w_SSPRK(iS) .NE. 0.0_amrex_real ) )THEN
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplySlopeLimiter (1)'
-        CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_U, GEOM )
+        CALL MF_Euler_ApplySlopeLimiter &
+          ( MF_uGF(0:nLevels), MF_U(0:nLevels), GEOM(0:nLevels) )
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplyPositivityLimiter (1)'
-        CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_U )
+        CALL MF_Euler_ApplyPositivityLimiter &
+          ( MF_uGF(0:nLevels), MF_U(0:nLevels) )
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ComputeIncrement'
-        CALL MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_U, MF_D(0:nLevels,iS) )
+        CALL MF_Euler_ComputeIncrement &
+          ( GEOM(0:nLevels), MF_uGF(0:nLevels), &
+            MF_U(0:nLevels), MF_D(0:nLevels,iS) )
 
       END IF
 
     END DO
 
-    DO iS = 1, nStages_SSPRK
+    DO iLevel = 0, nLevels
+      DO iS = 1, nStages_SSPRK
 
-      IF( w_SSPRK(iS) .NE. 0.0_amrex_real ) &
-        CALL LinComb( 1.0_amrex_real,   MF_uCF, &
-                      dt * w_SSPRK(iS), MF_D(0:nLevels,iS) )
+        IF( w_SSPRK(iS) .NE. 0.0_amrex_real ) &
+          CALL MF_uCF(iLevel) &
+                 % LinComb( 1.0_amrex_real,           MF_uCF(iLevel),  1, &
+                            dt(iLevel) * w_SSPRK(iS), MF_D(iLevel,iS), 1, &
+                            1, MF_uCF(iLevel) % nComp(), 0 )
 
+      END DO
     END DO
 
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplySlopeLimiter (2)'
-    CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
+    CALL MF_Euler_ApplySlopeLimiter &
+      ( MF_uGF(0:nLevels), MF_uCF(0:nLevels), GEOM(0:nLevels) )
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplyPositivityLimiter (2)'
-    CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
+    CALL MF_Euler_ApplyPositivityLimiter &
+      ( MF_uGF(0:nLevels), MF_uCF(0:nLevels) )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 

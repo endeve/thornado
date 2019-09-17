@@ -2,7 +2,17 @@ MODULE Euler_dgDiscretizationModule
 
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Pi, TwoPi
-  USE TimersModule_Euler
+  USE TimersModule_Euler,  ONLY: &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_Inc, &
+    Timer_Euler_Div_X1, &
+    Timer_Euler_Div_X2, &
+    Timer_Euler_Div_X3, &
+    Timer_Euler_CompPrim, &
+    Timer_Euler_Grav, &
+    Timer_Euler_Geom, &
+    Timer_Euler_MV, &
+    Timer_Euler_RS
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDimsX
   USE MeshModule, ONLY: &
@@ -135,6 +145,7 @@ CONTAINS
     CALL TimersStop_Euler( Timer_Euler_Grav )
 
     CALL TimersStop_Euler( Timer_Euler_Inc )
+
 
   END SUBROUTINE Euler_ComputeIncrement_DG_Explicit
 
