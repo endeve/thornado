@@ -11,6 +11,8 @@ MODULE TwoMoment_UtilitiesModule_OrderV
 
   PUBLIC :: ComputePrimitive_TwoMoment
   PUBLIC :: ComputeConserved_TwoMoment
+  PUBLIC :: Flux_X1
+  PUBLIC :: NumericalFlux_LLF
 
 CONTAINS
 
@@ -319,6 +321,18 @@ CONTAINS
     k_dd_23 = b * h_d_2 * h_d_3
 
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
+
+
+  FUNCTION NumericalFlux_LLF( u_L, u_R, Flux_L, Flux_R, alpha )
+
+    REAL(DP)             :: NumericalFlux_LLF
+    REAL(DP), INTENT(in) :: u_L, u_R, flux_L, flux_R, alpha
+
+    NumericalFlux_LLF &
+      = Half * ( flux_L + flux_R - alpha * ( u_R - u_L ) )
+
+    RETURN
+  END FUNCTION NumericalFlux_LLF
 
 
 END MODULE TwoMoment_UtilitiesModule_OrderV
