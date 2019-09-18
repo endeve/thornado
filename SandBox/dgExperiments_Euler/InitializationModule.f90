@@ -17,9 +17,9 @@ MODULE InitializationModule
   USE FluidFieldsModule, ONLY: &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    uAF, iAF_P
-  USE Euler_UtilitiesModule, ONLY: &
-    Euler_ComputeConserved
+    uAF
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
+    Euler_ComputeConserved_NonRelativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -42,7 +42,7 @@ CONTAINS
       RiemannProblemName_Option
 
     REAL(DP), INTENT(in), OPTIONAL :: SedovEnergy_Option
-      
+
     INTEGER, INTENT(in), OPTIONAL :: nDetCells_Option
 
     WRITE(*,*)
@@ -69,7 +69,7 @@ CONTAINS
         CALL InitializeFields_RiemannProblemSpherical
 
       CASE ( 'SphericalSedov' )
-       
+
         CALL InitializeFields_SphericalSedov &
                ( SedovEnergy_Option &
                    = SedovEnergy_Option, &
@@ -225,7 +225,7 @@ CONTAINS
 
           END DO
 
-          CALL Euler_ComputeConserved &
+          CALL Euler_ComputeConserved_NonRelativistic &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                    uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                    uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -234,8 +234,7 @@ CONTAINS
                    uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   uAF(:,iX1,iX2,iX3,iAF_P) )
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         END DO
       END DO
@@ -363,7 +362,7 @@ CONTAINS
 
           END DO
 
-          CALL Euler_ComputeConserved &
+          CALL Euler_ComputeConserved_NonRelativistic &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                    uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                    uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -372,8 +371,7 @@ CONTAINS
                    uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   uAF(:,iX1,iX2,iX3,iAF_P) )
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         END DO
       END DO
@@ -418,7 +416,7 @@ CONTAINS
 
           END DO
 
-          CALL Euler_ComputeConserved &
+          CALL Euler_ComputeConserved_NonRelativistic &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                    uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                    uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -427,8 +425,7 @@ CONTAINS
                    uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   uAF(:,iX1,iX2,iX3,iAF_P) )
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         END DO
       END DO
@@ -456,10 +453,10 @@ CONTAINS
       E_0 = SedovEnergy_Option
 
     R_0 = REAL( nDetCells ) * MeshX(1) % Width(1)
-  
+
     WRITE(*,*)
     WRITE(*,'(A7,A,ES10.3E2,A2,I2.2,A2,ES10.3E2)') &
-      '', 'E_0, # of Detonation Cells, R_0 = ', E_0, ', ', nDetCells, ',', R_0 
+      '', 'E_0, # of Detonation Cells, R_0 = ', E_0, ', ', nDetCells, ',', R_0
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
@@ -481,7 +478,7 @@ CONTAINS
               uPF(iNodeX,iX1,iX2,iX3,iPF_E) = 3.0_DP * E_0 &
                                             / ( 4.0_DP * Pi * R_0**3 )
 
-            ELSE 
+            ELSE
 
               uPF(iNodeX,iX1,iX2,iX3,iPF_E) = 1.0d-5
 
@@ -489,7 +486,7 @@ CONTAINS
 
           END DO
 
-          CALL Euler_ComputeConserved &
+          CALL Euler_ComputeConserved_NonRelativistic &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                    uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                    uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -498,8 +495,7 @@ CONTAINS
                    uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   uAF(:,iX1,iX2,iX3,iAF_P) )
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         END DO
       END DO
@@ -552,7 +548,7 @@ CONTAINS
 
       END DO
 
-      CALL Euler_ComputeConserved &
+      CALL Euler_ComputeConserved_NonRelativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -561,8 +557,7 @@ CONTAINS
                uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               uAF(:,iX1,iX2,iX3,iAF_P) )
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
     END DO
     END DO
@@ -636,7 +631,7 @@ CONTAINS
 
           END DO
 
-          CALL Euler_ComputeConserved &
+          CALL Euler_ComputeConserved_NonRelativistic &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                    uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                    uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -645,8 +640,7 @@ CONTAINS
                    uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   uAF(:,iX1,iX2,iX3,iAF_P) )
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         END DO
       END DO
@@ -670,12 +664,12 @@ CONTAINS
     DO iX3 = 1, nX(3)
        DO iX2 = 1, nX(2)
           DO iX1 = 0, nX(1) + 1
-             
+
              DO iNodeX = 1, nDOFX
-                
+
                 iNodeX1 = NodeNumberTableX(1,iNodeX)
                 iNodeX2 = NodeNumberTableX(2,iNodeX)
-                
+
                 X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
                 X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
@@ -688,7 +682,7 @@ CONTAINS
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D) = D_2
 
                 END IF
-                
+
                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
                   = 0.0025_DP * ( One + COS( FourPi * X2 ) ) &
                       * ( One + COS( Three * Pi * X1 ) )
@@ -705,8 +699,8 @@ CONTAINS
                   = g * X1
 
              END DO
-             
-             CALL Euler_ComputeConserved &
+
+             CALL Euler_ComputeConserved_NonRelativistic &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                    uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                    uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -715,8 +709,7 @@ CONTAINS
                    uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   uAF(:,iX1,iX2,iX3,iAF_P) )
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
           END DO
        END DO
@@ -749,12 +742,12 @@ CONTAINS
            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
            IF( X1 + X2 .LT. 0.15_DP )THEN
-   
+
              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
                = D_0
              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
                = E_0
-           
+
            ELSE
 
              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
@@ -773,7 +766,7 @@ CONTAINS
 
          END DO
 
-         CALL Euler_ComputeConserved &
+         CALL Euler_ComputeConserved_NonRelativistic &
                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -782,8 +775,7 @@ CONTAINS
                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                  uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                  uAF(:,iX1,iX2,iX3,iAF_P) )
+                  uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
         END DO
       END DO
     END DO
@@ -824,7 +816,7 @@ CONTAINS
           = ( E_I + (R/R_0)**p * E_O ) / ( One + (R/R_0)**p )
 
 !!$        IF( R <= R_0 )THEN
-!!$   
+!!$
 !!$          uPF(iNodeX,iX1,iX2,iX3,iPF_D) = D_I
 !!$          uPF(iNodeX,iX1,iX2,iX3,iPF_E) = E_I
 !!$
@@ -841,7 +833,7 @@ CONTAINS
 
       END DO
 
-      CALL Euler_ComputeConserved &
+      CALL Euler_ComputeConserved_NonRelativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -850,8 +842,7 @@ CONTAINS
                uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               uAF(:,iX1,iX2,iX3,iAF_P) )
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
     END DO
     END DO
