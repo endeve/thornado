@@ -55,7 +55,9 @@ PROGRAM PrimitiveConserved
   INTEGER  :: nE, nX(3)
   INTEGER  :: iNode, iE, iX1, iX2, iX3, iS
   REAL(DP) :: eL, eR, xL(3), xR(3)
-  REAL(DP) :: D, absI, I1, I2, I3, V1, V2, V3
+  REAL(DP) :: nVec(3)
+  !REAL(DP) :: nVec
+  REAL(DP) :: D, absI, modI,  I1, I2, I3, V1, V2, V3
   INTEGER, ALLOCATABLE :: nIterations(:)
 
   nNodes = 2
@@ -150,12 +152,28 @@ PROGRAM PrimitiveConserved
         ! --- Number Flux: Realizable with Random Direction ---
 
         CALL RANDOM_NUMBER( absI )
+        CALL RANDOM_NUMBER( nVec )
+        nVec=(nVec-0.5)*2
 
-        I1 = - absI * (One-D) * D + (One-absI) * (One-D) * D
+        absI = absI*(One-D)*D
+        !modI=SQRT(nVec(1)*nVec(1)+nVec(2)*nVec(2))
+        modI=SQRT(nVec(1)*nVec(1)+nVec(2)*nVec(2)+nVec(3)*nVec(3)) 
+        
+       
+        nVec=nVec/modI
+        
+        I1=absI*nVec(1)
+        I2=absI*nVec(2)
+        I3=absI*nVec(3)
+        !I1=0
+        !I2=0
+        !I3=nVec*D*(1-D)
+        
+       
 
         uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) = I1
-        uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
-        uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
+        uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) = I2
+        uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) = I3
 
         CALL ComputeConserved_TwoMoment &
                ( uPR(iNode,iE,iX1,iX2,iX3,iPR_D ,iS), &
