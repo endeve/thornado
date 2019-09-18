@@ -50,6 +50,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
     EddingtonFactor
+  USE TwoMoment_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_TwoMoment
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputePrimitive_TwoMoment, &
     Flux_X1, &
@@ -93,6 +95,9 @@ CONTAINS
       ( dZ2 => MeshX(1) % Width, &
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
+
+    CALL ApplyBoundaryConditions_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -147,8 +152,6 @@ CONTAINS
     END ASSOCIATE ! dZ2, etc.
 
     PRINT*, "      ComputeIncrement_TwoMoment_Explicit (End)"
-
-    PRINT*, "        dU_R = ", MINVAL( dU_R ), MAXVAL( dU_R )
 
     CALL TimersStop( Timer_Explicit )
 
