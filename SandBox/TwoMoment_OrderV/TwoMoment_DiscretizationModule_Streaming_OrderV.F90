@@ -94,7 +94,7 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
-    DO iS = 1, nSpecies
+    DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B1(4), iZ_E1(4)
     DO iZ3 = iZ_B1(3), iZ_E1(3)

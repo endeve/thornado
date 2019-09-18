@@ -1,4 +1,4 @@
-MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
+MOMENT_CLOSURE = MINERBO
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -8,7 +8,7 @@ VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 
 .DEFAULT_GOAL := all
 
-all: PrimitiveConserved TimeStepper
+all: PrimitiveConserved TimeStepper ApplicationDriver
 
 PrimitiveConserved: \
 	$(thornado) \
@@ -36,12 +36,31 @@ TimeStepper: \
 	TimeStepper.o \
 	$(LIBRARIES)
 
+ApplicationDriver: \
+	$(thornado) \
+	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+	TwoMoment_TimeSteppingModule_OrderV.o \
+	InitializationModule.o \
+	ApplicationDriver.o
+	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
+	$(thornado) \
+	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
+	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
+	TwoMoment_TimeSteppingModule_OrderV.o \
+	InitializationModule.o \
+	ApplicationDriver.o \
+	$(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
 	rm -f PrimitiveConserved_$(MACHINE)
 	rm -f TimeStepper_$(MACHINE)
+	rm -f ApplicationDriver_$(MACHINE)
 
 PrimitiveConserved.o: \
   KindModule.o \
@@ -66,6 +85,14 @@ TimeStepper.o: \
   TwoMoment_ClosureModule.o \
   TwoMoment_TimeSteppingModule_OrderV.o \
   TimeStepper.f90
+
+ApplicationDriver.o: \
+  KindModule.o \
+  ApplicationDriver.f90
+
+InitializationModule.o: \
+  KindModule.o \
+  InitializationModule.F90
 
 TwoMoment_UtilitiesModule.o: \
   KindModule.o \
