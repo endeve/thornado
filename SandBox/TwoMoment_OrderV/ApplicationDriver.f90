@@ -38,13 +38,18 @@ PROGRAM ApplicationDriver
     uGF
   USE GeometryFieldsModuleE, ONLY: &
     uGE
+  USE FluidFieldsModule, ONLY: &
+    uCF
+  USE RadiationFieldsModule, ONLY: &
+    uCR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Initialize_IMEX_RK, &
-    Finalize_IMEX_RK
+    Finalize_IMEX_RK, &
+    Update_IMEX_RK
   USE InitializationModule, ONLY: &
     InitializeFields
 
@@ -79,9 +84,9 @@ PROGRAM ApplicationDriver
       eR  = 1.0_DP
       bcE = 0
 
-      nNodes = 1
+      nNodes = 3
 
-      TimeSteppingScheme = 'SSPRK1'
+      TimeSteppingScheme = 'SSPRK3'
 
       t_end   = 1.0d0
       iCycleD = 1
@@ -180,6 +185,51 @@ PROGRAM ApplicationDriver
   t = 0.0_DP
   dt = 0.5_DP * MINVAL( (xR-xL) / DBLE(nX) ) &
        / ( Two * DBLE(nNodes-1) + One )
+
+  WRITE(*,*)
+  WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
+    '', 'Evolving from t = ', t, ' to t = ', t_end
+  WRITE(*,*)
+
+  iCycle = 0
+  DO WHILE( t < t_end .AND. iCycle < maxCycles )
+
+    iCycle = iCycle + 1
+
+    IF( t + dt > t_end )THEN
+
+      dt = t_end - t
+
+    END IF
+
+    IF( MOD( iCycle, iCycleD ) == 0 )THEN
+
+      WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A5,ES12.6E2)') &
+          '', 'Cycle = ', iCycle, '', 't = ',  t, '', 'dt = ', dt
+
+    END IF
+
+    CALL Update_IMEX_RK( dt, uGE, uGF, uCF, uCR )
+
+    t = t + dt
+
+    IF( MOD( iCycle, iCycleW ) == 0 )THEN
+
+      CALL WriteFieldsHDF &
+             ( Time = t, &
+               WriteGF_Option = .TRUE., &
+               WriteFF_Option = .TRUE., &
+               WriteRF_Option = .TRUE. )
+
+    END IF
+
+  END DO
+
+  CALL WriteFieldsHDF &
+         ( Time = t, &
+           WriteGF_Option = .TRUE., &
+           WriteFF_Option = .TRUE., &
+           WriteRF_Option = .TRUE. )
 
   ! --- Finalize ---
 
