@@ -56,10 +56,6 @@ CONTAINS
 
     INTEGER :: iS, jS
 
-    PRINT*
-    PRINT*, "  Update_IMEX_RK, dt = ", dt
-    PRINT*
-
     U0 = UR
 
     DO iS = 1, nStages
@@ -92,7 +88,7 @@ CONTAINS
 
         ! --- Implicit Solve ---
 
-        PRINT*, "    IMPLICIT:"
+        PRINT*, "    IMPLICIT: ", iS
 
         CALL ComputeIncrement_TwoMoment_Implicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), &
@@ -104,7 +100,7 @@ CONTAINS
 
         ! --- Explicit Solve ---
 
-        PRINT*, "    EXPLICIT:"
+        PRINT*, "    EXPLICIT: ", iS
 
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
@@ -131,9 +127,9 @@ CONTAINS
 
         END IF
 
-        IF( w_IM(iS) .NE. Zero )THEN
+        IF( w_EX(iS) .NE. Zero )THEN
 
-          Ui = Ui + dt * w_IM(iS) * StageData(iS) % dU_EX
+          Ui = Ui + dt * w_EX(iS) * StageData(iS) % dU_EX
 
         END IF
 
@@ -142,10 +138,6 @@ CONTAINS
     END IF
 
     UR = Ui
-
-    PRINT*
-    PRINT*, "  Update_IMEX_RK. Done"
-    PRINT*
 
   END SUBROUTINE Update_IMEX_RK
 
