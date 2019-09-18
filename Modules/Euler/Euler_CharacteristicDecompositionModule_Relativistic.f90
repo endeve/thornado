@@ -129,8 +129,8 @@ CONTAINS
       CASE( 1 )
 
         EigVals = Euler_Eigenvalues_Relativistic &
-                    ( Vu1, Cs(1), Vu1, Vu2, Vu3, &
-                      Gmdd11, Gmdd11, Gmdd22, Gmdd33, &
+                    ( Vu1, Cs(1), Gmdd11, Vu1, Vu2, Vu3, &
+                      Gmdd11, Gmdd22, Gmdd33, &
                       LapseFunction, ShiftVector(1) )
 
         ! --- lambda_m = EigVals(1) ---
@@ -257,8 +257,8 @@ CONTAINS
       CASE( 2 )
 
         EigVals = Euler_Eigenvalues_Relativistic &
-                    ( Vu2, Cs(1), Vu1, Vu2, Vu3, &
-                      Gmdd22, Gmdd11, Gmdd22, Gmdd33, &
+                    ( Vu2, Cs(1), Gmdd22, Vu1, Vu2, Vu3, &
+                      Gmdd11, Gmdd22, Gmdd33, &
                       LapseFunction, ShiftVector(2) )
 
         ! --- lambda_m = EigVals(1) ---

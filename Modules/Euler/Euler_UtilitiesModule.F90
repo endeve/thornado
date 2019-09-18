@@ -100,8 +100,7 @@ CONTAINS
     CALL Euler_ComputeConserved_NonRelativistic &
            ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
              CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
-             AF_P )
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #elif HYDRO_RELATIVISTIC
 
@@ -116,8 +115,7 @@ CONTAINS
     CALL Euler_ComputeConserved_NonRelativistic &
            ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
              CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
-             AF_P )
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #endif
 
@@ -191,33 +189,30 @@ CONTAINS
 
 
   PURE FUNCTION Euler_Eigenvalues &
-    ( V, Cs, V1, V2, V3, Gm, Gm11, Gm22, Gm33, Lapse, Shift )
+    ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift )
 
-    REAL(DP), INTENT(in) :: V, Cs
+    REAL(DP), INTENT(in) :: V, Cs, Gmii
 
     ! --- Only needed for relativistic code ---
-    REAL(DP), INTENT(in) :: V1, V2, V3, Gm, Gm11, Gm22, Gm33, &
-                            Lapse, Shift
+    REAL(DP), INTENT(in) :: V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift
 
     REAL(DP) :: Euler_Eigenvalues(nCF)
 
 #ifdef HYDRO_NONRELATIVISTIC
 
     Euler_Eigenvalues = Euler_Eigenvalues_NonRelativistic &
-                          ( V, Cs, V1, V2, V3, Gm, Gm11, Gm22, Gm33, &
-                            Lapse, Shift )
+                          ( V, Cs, Gmii )
 
 #elif HYDRO_RELATIVISTIC
 
     Euler_Eigenvalues = Euler_Eigenvalues_Relativistic &
-                          ( V, Cs, V1, V2, V3, Gm, Gm11, Gm22, Gm33, &
+                          ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, &
                             Lapse, Shift )
 
 #else
 
     Euler_Eigenvalues = Euler_Eigenvalues_NonRelativistic &
-                          ( V, Cs, V1, V2, V3, Gm, Gm11, Gm22, Gm33, &
-                            Lapse, Shift )
+                          ( V, Cs, Gmii )
 
 #endif
 
@@ -226,14 +221,14 @@ CONTAINS
 
   REAL(DP) FUNCTION Euler_AlphaMiddle &
     ( DL, SL, EL, F_DL, F_SL, F_EL, DR, SR, ER, F_DR, F_SR, F_ER, &
-      Gm, Lapse, Shift, aP, aM )
+      Gmii, aP, aM, Lapse, Shift )
 
     ! --- Gm is the covariant ii-component of the spatial three-metric
     !     Shift is the ith contravariant component of the shift-vector ---
 
     REAL(DP), INTENT(in) :: DL, SL, EL, F_DL, F_SL, F_EL, &
                             DR, SR, ER, F_DR, F_SR, F_ER, &
-                            Gm, aP, aM
+                            Gmii, aP, aM
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: Lapse, Shift
@@ -243,21 +238,21 @@ CONTAINS
     Euler_AlphaMiddle = Euler_AlphaMiddle_NonRelativistic &
                           ( DL, SL, EL, F_DL, F_SL, F_EL, &
                             DR, SR, ER, F_DR, F_SR, F_ER, &
-                            Gm, Lapse, Shift, aP, aM )
+                            Gmii, aP, aM )
 
 #elif HYDRO_RELATIVISTIC
 
     Euler_AlphaMiddle = Euler_AlphaMiddle_Relativistic &
                           ( DL, SL, EL, F_DL, F_SL, F_EL, &
                             DR, SR, ER, F_DR, F_SR, F_ER, &
-                            Gm, Lapse, Shift, aP, aM )
+                            Gmii, aP, aM, Lapse, Shift )
 
 #else
 
     Euler_AlphaMiddle = Euler_AlphaMiddle_NonRelativistic &
                           ( DL, SL, EL, F_DL, F_SL, F_EL, &
                             DR, SR, ER, F_DR, F_SR, F_ER, &
-                            Gm, Lapse, Shift, aP, aM )
+                            Gmii, aP, aM )
 
 #endif
 
@@ -280,8 +275,7 @@ CONTAINS
 #ifdef HYDRO_NONRELATIVISTIC
 
     Euler_Flux_X1 = Euler_Flux_X1_NonRelativistic &
-                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
-                        Lapse, Shift )
+                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33 )
 
 #elif HYDRO_RELATIVISTIC
 
@@ -292,8 +286,7 @@ CONTAINS
 #else
 
     Euler_Flux_X1 = Euler_Flux_X1_NonRelativistic &
-                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
-                        Lapse, Shift )
+                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33 )
 
 #endif
 
@@ -316,8 +309,7 @@ CONTAINS
 #ifdef HYDRO_NONRELATIVISTIC
 
     Euler_Flux_X2 = Euler_Flux_X2_NonRelativistic &
-                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
-                        Lapse, Shift )
+                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33 )
 
 #elif HYDRO_RELATIVISTIC
 
@@ -328,8 +320,8 @@ CONTAINS
 #else
 
     Euler_Flux_X2 = Euler_Flux_X2_NonRelativistic &
-                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
-                        Lapse, Shift )
+                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33 )
+
 #endif
 
     RETURN
@@ -351,8 +343,7 @@ CONTAINS
 #ifdef HYDRO_NONRELATIVISTIC
 
     Euler_Flux_X3 = Euler_Flux_X3_NonRelativistic &
-                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
-                        Lapse, Shift )
+                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33 )
 
 #elif HYDRO_RELATIVISTIC
 
@@ -363,8 +354,7 @@ CONTAINS
 #else
 
     Euler_Flux_X3 = Euler_Flux_X3_NonRelativistic &
-                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
-                        Lapse, Shift )
+                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33 )
 
 #endif
 
@@ -400,10 +390,10 @@ CONTAINS
 
 
   PURE FUNCTION Euler_NumericalFlux_X1 &
-    ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
+    ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            Gm, aP, aM, aC
+                            aP, aM, aC, Gm11
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift
@@ -415,20 +405,17 @@ CONTAINS
 #if defined HYDRO_NUMERICALFLUX_HLL
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_HLL_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #elif defined HYDRO_NUMERICALFLUX_HLLC
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_X1_HLLC_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM, aC, Gm11 )
 
 #else
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_HLL_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #endif
 
@@ -437,20 +424,18 @@ CONTAINS
 #if defined HYDRO_NUMERICALFLUX_HLL
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_HLL_Relativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #elif defined HYDRO_NUMERICALFLUX_HLLC
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_X1_HLLC_Relativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM, aC, Gm11, &
+                                 vL, vR, pL, pR, Lapse, Shift )
 
 #else
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_HLL_Relativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #endif
 
@@ -459,20 +444,17 @@ CONTAINS
 #if defined HYDRO_NUMERICALFLUX_HLL
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_HLL_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #elif defined HYDRO_NUMERICALFLUX_HLLC
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_X1_HLLC_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM, aC, Gm11 )
 
 #else
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_HLL_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #endif
 
@@ -483,10 +465,10 @@ CONTAINS
 
 
   PURE FUNCTION Euler_NumericalFlux_X2 &
-    ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
+    ( uL, uR, fL, fR, aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            Gm, aP, aM, aC
+                            aP, aM, aC, Gm22
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift
@@ -498,20 +480,17 @@ CONTAINS
 #if defined HYDRO_NUMERICALFLUX_HLL
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_HLL_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #elif defined HYDRO_NUMERICALFLUX_HLLC
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_X2_HLLC_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM, aC, Gm22 )
 
 #else
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_HLL_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #endif
 
@@ -520,20 +499,18 @@ CONTAINS
 #if defined HYDRO_NUMERICALFLUX_HLL
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_HLL_Relativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #elif defined HYDRO_NUMERICALFLUX_HLLC
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_X2_HLLC_Relativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM, aC, Gm22, &
+                                 vL, vR, pL, pR, Lapse, Shift )
 
 #else
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_HLL_Relativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #endif
 
@@ -542,20 +519,17 @@ CONTAINS
 #if defined HYDRO_NUMERICALFLUX_HLL
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_HLL_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #elif defined HYDRO_NUMERICALFLUX_HLLC
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_X2_HLLC_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM, aC, Gm22 )
 
 #else
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_HLL_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #endif
 
@@ -566,10 +540,10 @@ CONTAINS
 
 
   PURE FUNCTION Euler_NumericalFlux_X3 &
-    ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
+    ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            Gm, aP, aM, aC
+                            aP, aM, aC, Gm33
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift
@@ -581,20 +555,17 @@ CONTAINS
 #if defined HYDRO_NUMERICALFLUX_HLL
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_HLL_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #elif defined HYDRO_NUMERICALFLUX_HLLC
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_X3_HLLC_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM, aC, Gm33 )
 
 #else
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_HLL_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #endif
 
@@ -603,20 +574,18 @@ CONTAINS
 #if defined HYDRO_NUMERICALFLUX_HLL
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_HLL_Relativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #elif defined HYDRO_NUMERICALFLUX_HLLC
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_X3_HLLC_Relativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM, aC, Gm33, &
+                                 vL, vR, pL, pR, Lapse, Shift )
 
 #else
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_HLL_Relativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #endif
 
@@ -625,20 +594,17 @@ CONTAINS
 #if defined HYDRO_NUMERICALFLUX_HLL
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_HLL_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #elif defined HYDRO_NUMERICALFLUX_HLLC
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_X3_HLLC_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM, aC, Gm33 )
 
 #else
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_HLL_NonRelativistic &
-                               ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, &
-                                 Lapse, Shift, aP, aM, aC )
+                               ( uL, uR, fL, fR, aP, aM )
 
 #endif
 

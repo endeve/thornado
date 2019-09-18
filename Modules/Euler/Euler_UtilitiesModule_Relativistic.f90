@@ -377,18 +377,19 @@ CONTAINS
 
         DO iNodeX = 1, nDOFX
 
-          EigVals_X1(1:nCF,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                       ( P (iNodeX,iPF_V1), &
-                                         Cs(iNodeX),        &
-                                         P (iNodeX,iPF_V1), &
-                                         P (iNodeX,iPF_V2), &
-                                         P (iNodeX,iPF_V3), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
+          EigVals_X1(1:nCF,iNodeX) &
+            = Euler_Eigenvalues_Relativistic &
+                ( P (iNodeX,iPF_V1), &
+                  Cs(iNodeX),        &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                  P (iNodeX,iPF_V1), &
+                  P (iNodeX,iPF_V2), &
+                  P (iNodeX,iPF_V3), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
 
         END DO
 
@@ -400,31 +401,33 @@ CONTAINS
 
         DO iNodeX = 1, nDOFX
 
-          EigVals_X1(1:nCF,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                       ( P (iNodeX,iPF_V1), &
-                                         Cs(iNodeX),        &
-                                         P (iNodeX,iPF_V1), &
-                                         P (iNodeX,iPF_V2), &
-                                         P (iNodeX,iPF_V3), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
+          EigVals_X1(1:nCF,iNodeX) &
+            = Euler_Eigenvalues_Relativistic &
+                ( P (iNodeX,iPF_V1), &
+                  Cs(iNodeX),        &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                  P (iNodeX,iPF_V1), &
+                  P (iNodeX,iPF_V2), &
+                  P (iNodeX,iPF_V3), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
 
-          EigVals_X2(1:nCF,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                       ( P (iNodeX,iPF_V2), &
-                                         Cs(iNodeX),        &
-                                         P (iNodeX,iPF_V1), &
-                                         P (iNodeX,iPF_V2), &
-                                         P (iNodeX,iPF_V3), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
+          EigVals_X2(1:nCF,iNodeX) &
+            = Euler_Eigenvalues_Relativistic &
+                ( P (iNodeX,iPF_V2), &
+                  Cs(iNodeX),        &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                  P (iNodeX,iPF_V1), &
+                  P (iNodeX,iPF_V2), &
+                  P (iNodeX,iPF_V3), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
         END DO
 
         alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1(1:nCF,1:nDOFX) ) ) )
@@ -437,44 +440,48 @@ CONTAINS
 
         DO iNodeX = 1, nDOFX
 
-          EigVals_X1(1:nCF,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                       ( P (iNodeX,iPF_V1), &
-                                         Cs(iNodeX),        &
-                                         P (iNodeX,iPF_V1), &
-                                         P (iNodeX,iPF_V2), &
-                                         P (iNodeX,iPF_V3), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
+          EigVals_X1(1:nCF,iNodeX) &
+            = Euler_Eigenvalues_Relativistic &
+                ( P (iNodeX,iPF_V1), &
+                  Cs(iNodeX),        &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                  P (iNodeX,iPF_V1), &
+                  P (iNodeX,iPF_V2), &
+                  P (iNodeX,iPF_V3), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
 
-          EigVals_X2(1:nCF,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                       ( P (iNodeX,iPF_V2), &
-                                         Cs(iNodeX),        &
-                                         P (iNodeX,iPF_V1), &
-                                         P (iNodeX,iPF_V2), &
-                                         P (iNodeX,iPF_V3), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
+          EigVals_X2(1:nCF,iNodeX) &
+            = Euler_Eigenvalues_Relativistic &
+                ( P (iNodeX,iPF_V2), &
+                  Cs(iNodeX),        &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                  P (iNodeX,iPF_V1), &
+                  P (iNodeX,iPF_V2), &
+                  P (iNodeX,iPF_V3), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
 
-          EigVals_X3(1:nCF,iNodeX) = Euler_Eigenvalues_Relativistic &
-                                       ( P (iNodeX,iPF_V3),   &
-                                         Cs(iNodeX),          &
-                                         P (iNodeX,iPF_V1),   &
-                                         P (iNodeX,iPF_V2),   &
-                                         P (iNodeX,iPF_V3),   &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                                         G (iNodeX,iX1,iX2,iX3,iGF_Beta_3) )
+          EigVals_X3(1:nCF,iNodeX) &
+            = Euler_Eigenvalues_Relativistic &
+                ( P (iNodeX,iPF_V3),   &
+                  Cs(iNodeX),          &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                  P (iNodeX,iPF_V1),   &
+                  P (iNodeX,iPF_V2),   &
+                  P (iNodeX,iPF_V3),   &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                  G (iNodeX,iX1,iX2,iX3,iGF_Beta_3) )
+
         END DO
 
         alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1(1:nCF,1:nDOFX) ) ) )
@@ -499,7 +506,7 @@ CONTAINS
 
 
   PURE FUNCTION Euler_Eigenvalues_Relativistic &
-    ( Vi, Cs, V1, V2, V3, Gmii, Gm11, Gm22, Gm33, Lapse, Shift )
+    ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift )
 
     ! --- Vi is the ith contravariant component of the three-velocity
     !     Gmii is the ith covariant component of the spatial three-metric
@@ -507,8 +514,8 @@ CONTAINS
 
     ! --- Find the expressions in Font et al., (1998), Eq. (14) and (18) ---
 
-    REAL(DP), INTENT(in) :: Vi, Cs, V1, V2, V3, &
-                            Gmii, Gm11, Gm22, Gm33, Lapse, Shift
+    REAL(DP), INTENT(in) :: Vi, Cs, Gmii, V1, V2, V3, &
+                            Gm11, Gm22, Gm33, Lapse, Shift
 
     REAL(DP) :: VSq, Euler_Eigenvalues_Relativistic(nCF)
 
@@ -542,16 +549,16 @@ CONTAINS
 
   REAL(DP) FUNCTION Euler_AlphaMiddle_Relativistic &
     ( DL, SL, tauL, F_DL, F_SL, F_tauL, DR, SR, tauR, F_DR, F_SR, F_tauR, &
-      Gm, Lapse, Shift, aP, aM )
+      Gmii, aP, aM, Lapse, Shift )
 
     ! --- Middle Wavespeed as suggested by Mignone and Bodo (2005) ---
 
     ! --- Shift is the ith contravariant component of the shift-vector
-    !     Gm is the ith covariant component of the spatial three-metric ---
+    !     Gmii is the ith covariant component of the spatial three-metric ---
 
     REAL(DP), INTENT(in) :: DL, SL, tauL, F_DL, F_SL, F_tauL, &
                             DR, SR, tauR, F_DR, F_SR, F_tauR, &
-                            Gm, Lapse, Shift, aP, aM
+                            Gmii, aP, aM, Lapse, Shift
 
     REAL(DP) :: EL, F_EL, ER, F_ER, a2, a1, a0
     REAL(DP) :: E_HLL, S_HLL, FE_HLL, FS_HLL
@@ -567,8 +574,8 @@ CONTAINS
     FS_HLL = Lapse * ( aP * F_SL + aM * F_SR ) - aM * aP * ( SR - SL )
 
     ! --- Coefficients in quadratic equation ---
-    a2 = Gm**2 * ( FE_HLL + Shift * E_HLL )
-    a1 = -Gm * ( Lapse * E_HLL + FS_HLL + Shift * S_HLL )
+    a2 = Gmii**2 * ( FE_HLL + Shift * E_HLL )
+    a1 = -Gmii * ( Lapse * E_HLL + FS_HLL + Shift * S_HLL )
     a0 = Lapse * S_HLL
 
     ! --- Accounting for special cases of the solution to a
@@ -728,12 +735,11 @@ CONTAINS
 
 
   PURE FUNCTION Euler_NumericalFlux_LLF_Relativistic &
-    ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
+    ( uL, uR, fL, fR, aP, aM )
 
     ! --- Local Lax-Friedrichs Flux ---
 
-    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC
+    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), aP, aM
 
     REAL(DP) :: Euler_NumericalFlux_LLF_Relativistic(nCF)
 
@@ -749,10 +755,9 @@ CONTAINS
 
 
   PURE FUNCTION Euler_NumericalFlux_HLL_Relativistic &
-    ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
+    ( uL, uR, fL, fR, aP, aM )
 
-    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC
+    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), aP, aM
 
     REAL(DP) :: Euler_NumericalFlux_HLL_Relativistic(nCF)
 
@@ -764,13 +769,13 @@ CONTAINS
 
 
   PURE FUNCTION Euler_NumericalFlux_X1_HLLC_Relativistic &
-    ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
+    ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift )
 
     ! --- Shift is the first contravariant component of the shift-vector
     !     Gm is the first covariant component of the spatial three-metric ---
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC
+                            aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift
 
     REAL(DP) :: p, D, S1, S2, S3, E, Ne, UE, FE, FS, VelocityRatio, &
                 Euler_NumericalFlux_X1_HLLC_Relativistic(nCF)
@@ -796,12 +801,12 @@ CONTAINS
 
         ! --- uL_star ---
         UE = uL(iCF_E) + uL(iCF_D)
-        FE = uL(iCF_S1) / Gm - Shift / Lapse * UE
+        FE = uL(iCF_S1) / Gm11 - Shift / Lapse * UE
         FS = uL(iCF_S1) * ( vL - Shift / Lapse ) + pL
 
-        p  = ( Gm * aC * ( -aM * UE - Lapse * FE ) &
+        p  = ( Gm11 * aC * ( -aM * UE - Lapse * FE ) &
                - ( -aM * uL(iCF_S1) - Lapse * FS ) ) &
-             / ( Lapse - Gm * aC * ( -aM + Shift ) )
+             / ( Lapse - Gm11 * aC * ( -aM + Shift ) )
 
         D  = uL(iCF_D)  * VelocityRatio
 
@@ -824,12 +829,12 @@ CONTAINS
 
         ! --- uR_star ---
         UE = uR(iCF_E) + uR(iCF_D)
-        FE = uR(iCF_S1) / Gm - Shift / Lapse * UE
+        FE = uR(iCF_S1) / Gm11 - Shift / Lapse * UE
         FS = uR(iCF_S1) * ( vR - Shift / Lapse ) + pR
 
-        p  = ( Gm * aC * ( aP * UE - Lapse * FE ) &
+        p  = ( Gm11 * aC * ( aP * UE - Lapse * FE ) &
                - ( aP * uR(iCF_S1) - Lapse * FS ) ) &
-               / ( Lapse - Gm * aC * ( aP + Shift ) )
+               / ( Lapse - Gm11 * aC * ( aP + Shift ) )
 
         D  = uR(iCF_D)  * VelocityRatio
 
@@ -856,7 +861,7 @@ CONTAINS
       Euler_NumericalFlux_X1_HLLC_Relativistic(iCF_S3) &
         = S3 * ( aC - Shift / Lapse )
       Euler_NumericalFlux_X1_HLLC_Relativistic(iCF_E)  &
-        = S1 / Gm - D * aC - Shift / Lapse * ( E - D )
+        = S1 / Gm11 - D * aC - Shift / Lapse * ( E - D )
       Euler_NumericalFlux_X1_HLLC_Relativistic(iCF_Ne) &
         = Ne * ( aC - Shift / Lapse )
 
@@ -867,13 +872,13 @@ CONTAINS
 
 
   PURE FUNCTION Euler_NumericalFlux_X2_HLLC_Relativistic &
-    ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
+    ( uL, uR, fL, fR, aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift )
 
     ! --- Shift is the second contravariant component of the shift-vector
     !     Gm is the second covariant component of the spatial three-metric ---
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC
+                            aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift
 
     REAL(DP) :: p, D, S1, S2, S3, E, Ne, UE, FE, FS, VelocityRatio
     REAL(DP) :: Euler_NumericalFlux_X2_HLLC_Relativistic(nCF)
@@ -899,12 +904,12 @@ CONTAINS
 
         ! --- uL_star ---
         UE = uL(iCF_E) + uL(iCF_D)
-        FE = uL(iCF_S2) / Gm - Shift / Lapse * UE
+        FE = uL(iCF_S2) / Gm22 - Shift / Lapse * UE
         FS = uL(iCF_S2) * ( vL - Shift / Lapse ) + pL
 
-        p  = ( Gm * aC * ( -aM * UE - Lapse * FE ) &
+        p  = ( Gm22 * aC * ( -aM * UE - Lapse * FE ) &
                - ( -aM * uL(iCF_S2) - Lapse * FS ) ) &
-             / ( Lapse - Gm * aC * ( -aM + Shift ) )
+             / ( Lapse - Gm22 * aC * ( -aM + Shift ) )
 
         D  = uL(iCF_D)  * VelocityRatio
 
@@ -927,12 +932,12 @@ CONTAINS
 
         ! --- uR_star ---
         UE = uR(iCF_E) + uR(iCF_D)
-        FE = uR(iCF_S2) / Gm - Shift / Lapse * UE
+        FE = uR(iCF_S2) / Gm22 - Shift / Lapse * UE
         FS = uR(iCF_S2) * ( vR - Shift / Lapse ) + pR
 
-        p  = ( Gm * aC * ( aP * UE - Lapse * FE ) &
+        p  = ( Gm22 * aC * ( aP * UE - Lapse * FE ) &
                - ( aP * uR(iCF_S2) - Lapse * FS ) ) &
-               / ( Lapse - Gm * aC * ( aP + Shift ) )
+               / ( Lapse - Gm22 * aC * ( aP + Shift ) )
 
         D  = uR(iCF_D)  * VelocityRatio
 
@@ -959,7 +964,7 @@ CONTAINS
       Euler_NumericalFlux_X2_HLLC_Relativistic(iCF_S3) &
         = S3 * ( aC - Shift / Lapse )
       Euler_NumericalFlux_X2_HLLC_Relativistic(iCF_E)  &
-        = S2 / Gm - D * aC - Shift / Lapse * ( E - D )
+        = S2 / Gm22 - D * aC - Shift / Lapse * ( E - D )
       Euler_NumericalFlux_X2_HLLC_Relativistic(iCF_Ne) &
         = Ne * ( aC - Shift / Lapse )
 
@@ -970,13 +975,13 @@ CONTAINS
 
 
   PURE FUNCTION Euler_NumericalFlux_X3_HLLC_Relativistic &
-      ( uL, uR, fL, fR, Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC )
+      ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift )
 
     ! --- Shift is the third contravariant component of the shift-vector
     !     Gm is the third covariant component of the spatial three-metric ---
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            Gm, vL, vR, pL, pR, Lapse, Shift, aP, aM, aC
+                            aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift
 
     REAL(DP) :: p, D, S1, S2, S3, E, Ne, UE, FE, FS, VelocityRatio
     REAL(DP) :: Euler_NumericalFlux_X3_HLLC_Relativistic(nCF)
@@ -1002,12 +1007,12 @@ CONTAINS
 
         ! --- uL_star ---
         UE = uL(iCF_E) + uL(iCF_D)
-        FE = uL(iCF_S3) / Gm - Shift / Lapse * UE
+        FE = uL(iCF_S3) / Gm33 - Shift / Lapse * UE
         FS = uL(iCF_S3) * ( vL - Shift / Lapse ) + pL
 
-        p  = ( Gm * aC * ( -aM * UE - Lapse * FE ) &
+        p  = ( Gm33 * aC * ( -aM * UE - Lapse * FE ) &
                - ( -aM * uL(iCF_S3) - Lapse * FS ) ) &
-             / ( Lapse - Gm * aC * ( -aM + Shift ) )
+             / ( Lapse - Gm33 * aC * ( -aM + Shift ) )
 
         D  = uL(iCF_D)  * VelocityRatio
 
@@ -1030,12 +1035,12 @@ CONTAINS
 
         ! --- uR_star ---
         UE = uR(iCF_E) + uR(iCF_D)
-        FE = uR(iCF_S3) / Gm - Shift / Lapse * UE
+        FE = uR(iCF_S3) / Gm33 - Shift / Lapse * UE
         FS = uR(iCF_S3) * ( vR - Shift / Lapse ) + pR
 
-        p  = ( Gm * aC * ( aP * UE - Lapse * FE ) &
+        p  = ( Gm33 * aC * ( aP * UE - Lapse * FE ) &
                - ( aP * uR(iCF_S3) - Lapse * FS ) ) &
-               / ( Lapse - Gm * aC * ( aP + Shift ) )
+               / ( Lapse - Gm33 * aC * ( aP + Shift ) )
 
         D  = uR(iCF_D)  * VelocityRatio
 
@@ -1062,7 +1067,7 @@ CONTAINS
       Euler_NumericalFlux_X3_HLLC_Relativistic(iCF_S3) &
         = S3 * ( aC - Shift / Lapse ) + p
       Euler_NumericalFlux_X3_HLLC_Relativistic(iCF_E)  &
-        = S3 / Gm - D * aC - Shift / Lapse * ( E - D )
+        = S3 / Gm33 - D * aC - Shift / Lapse * ( E - D )
       Euler_NumericalFlux_X3_HLLC_Relativistic(iCF_Ne) &
         = Ne * ( aC - Shift / Lapse )
 

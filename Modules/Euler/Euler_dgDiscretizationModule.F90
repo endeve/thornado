@@ -357,10 +357,10 @@ CONTAINS
           = Euler_Eigenvalues &
               ( uPF_L(iNodeX_X1,iPF_V1),       &
                 Cs_L (iNodeX_X1),              &
+                G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                 uPF_L(iNodeX_X1,iPF_V1),       &
                 uPF_L(iNodeX_X1,iPF_V2),       &
                 uPF_L(iNodeX_X1,iPF_V3),       &
-                G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X1,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X1,iGF_Gm_dd_33), &
@@ -417,10 +417,10 @@ CONTAINS
           = Euler_Eigenvalues &
               ( uPF_R(iNodeX_X1,iPF_V1),       &
                 Cs_R (iNodeX_X1),              &
+                G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                 uPF_R(iNodeX_X1,iPF_V1),       &
                 uPF_R(iNodeX_X1,iPF_V2),       &
                 uPF_R(iNodeX_X1,iPF_V3),       &
-                G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X1,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X1,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X1,iGF_Gm_dd_33), &
@@ -473,9 +473,9 @@ CONTAINS
                 Flux_X1_R(iNodeX_X1,iCF_S1),       &
                 Flux_X1_R(iNodeX_X1,iCF_E ),       &
                 G_F      (iNodeX_X1,iGF_Gm_dd_11), &
+                AlphaPls, AlphaMns,                &
                 G_F      (iNodeX_X1,iGF_Alpha),    &
-                G_F      (iNodeX_X1,iGF_Beta_1),   &
-                AlphaPls, AlphaMns )
+                G_F      (iNodeX_X1,iGF_Beta_1) )
 
         CALL TimersStart_Euler( Timer_Euler_RS )
         NumericalFlux(iNodeX_X1,:) &
@@ -484,14 +484,14 @@ CONTAINS
                 uCF_R    (iNodeX_X1,:),            &
                 Flux_X1_L(iNodeX_X1,:),            &
                 Flux_X1_R(iNodeX_X1,:),            &
+                AlphaPls, AlphaMns, AlphaMdl,      &
                 G_F      (iNodeX_X1,iGF_Gm_dd_11), &
                 uPF_L    (iNodeX_X1,iPF_V1),       &
                 uPF_R    (iNodeX_X1,iPF_V1),       &
                 P_L      (iNodeX_X1),              &
                 P_R      (iNodeX_X1),              &
                 G_F      (iNodeX_X1,iGF_Alpha),    &
-                G_F      (iNodeX_X1,iGF_Beta_1),   &
-                AlphaPls, AlphaMns, AlphaMdl )
+                G_F      (iNodeX_X1,iGF_Beta_1) )
         CALL TimersStop_Euler( Timer_Euler_RS )
 
       END DO
@@ -747,10 +747,10 @@ CONTAINS
           = Euler_Eigenvalues &
               ( uPF_L(iNodeX_X2,iPF_V2),       &
                 Cs_L (iNodeX_X2),              &
+                G_F  (iNodeX_X2,iGF_Gm_dd_22), &
                 uPF_L(iNodeX_X2,iPF_V1),       &
                 uPF_L(iNodeX_X2,iPF_V2),       &
                 uPF_L(iNodeX_X2,iPF_V3),       &
-                G_F  (iNodeX_X2,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X2,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X2,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X2,iGF_Gm_dd_33), &
@@ -807,10 +807,10 @@ CONTAINS
           = Euler_Eigenvalues &
               ( uPF_R(iNodeX_X2,iPF_V2),       &
                 Cs_R (iNodeX_X2),              &
+                G_F  (iNodeX_X2,iGF_Gm_dd_22), &
                 uPF_R(iNodeX_X2,iPF_V1),       &
                 uPF_R(iNodeX_X2,iPF_V2),       &
                 uPF_R(iNodeX_X2,iPF_V3),       &
-                G_F  (iNodeX_X2,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X2,iGF_Gm_dd_11), &
                 G_F  (iNodeX_X2,iGF_Gm_dd_22), &
                 G_F  (iNodeX_X2,iGF_Gm_dd_33), &
@@ -863,9 +863,9 @@ CONTAINS
                 Flux_X2_R(iNodeX_X2,iCF_S2),       &
                 Flux_X2_R(iNodeX_X2,iCF_E ),       &
                 G_F      (iNodeX_X2,iGF_Gm_dd_22), &
+                AlphaPls, AlphaMns,                &
                 G_F      (iNodeX_X2,iGF_Alpha),    &
-                G_F      (iNodeX_X2,iGF_Beta_2),   &
-                AlphaPls, AlphaMns )
+                G_F      (iNodeX_X2,iGF_Beta_2) )
 
         CALL TimersStart_Euler( Timer_Euler_RS )
         NumericalFlux(iNodeX_X2,:) &
@@ -874,14 +874,14 @@ CONTAINS
                 uCF_R    (iNodeX_X2,:),            &
                 Flux_X2_L(iNodeX_X2,:),            &
                 Flux_X2_R(iNodeX_X2,:),            &
+                AlphaPls, AlphaMns, AlphaMdl,      &
                 G_F      (iNodeX_X2,iGF_Gm_dd_22), &
                 uPF_L    (iNodeX_X2,iPF_V2),       &
                 uPF_R    (iNodeX_X2,iPF_V2),       &
                 P_L      (iNodeX_X2),              &
                 P_R      (iNodeX_X2),              &
                 G_F      (iNodeX_X2,iGF_Alpha),    &
-                G_F      (iNodeX_X2,iGF_Beta_2),   &
-                AlphaPls, AlphaMns, AlphaMdl )
+                G_F      (iNodeX_X2,iGF_Beta_2) )
         CALL TimersStop_Euler( Timer_Euler_RS )
 
       END DO
