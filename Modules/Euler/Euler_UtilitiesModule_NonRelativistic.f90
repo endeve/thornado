@@ -17,6 +17,8 @@ MODULE Euler_UtilitiesModule_NonRelativistic
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
+  USE EquationOfStateModule_IDEAL, ONLY: &
+    Gamma_IDEAL
 
   IMPLICIT NONE
   PRIVATE
