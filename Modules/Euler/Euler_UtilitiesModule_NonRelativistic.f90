@@ -1,7 +1,7 @@
 MODULE Euler_UtilitiesModule_NonRelativistic
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, SqrtTiny
+    DP, Zero, SqrtTiny, Half, One
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDimsX
   USE MeshModule, ONLY: &
@@ -13,12 +13,10 @@ MODULE Euler_UtilitiesModule_NonRelativistic
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_P, iAF_Cs, iAF_Gm
+    nAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, iAF_Gm, iAF_Cs
   USE EquationOfStateModule, ONLY: &
-    ComputePressureFromPrimitive, &
-    ComputeSoundSpeedFromPrimitive
-  USE EquationOfStateModule_IDEAL, ONLY: &
-    Gamma_IDEAL
+    ComputeSoundSpeedFromPrimitive, &
+    ComputeAuxiliary_Fluid
 
   IMPLICIT NONE
   PRIVATE
@@ -117,15 +115,12 @@ CONTAINS
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-      CALL ComputePressureFromPrimitive &
-             ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E), &
-               P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_P) )
-
-      CALL ComputeSoundSpeedFromPrimitive &
-             ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E ), &
-               P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_Cs) )
-
-      A(:,iX1,iX2,iX3,iAF_Gm) = Gamma_IDEAL
+      CALL ComputeAuxiliary_Fluid &
+             ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), A(1:nDOFX,iX1,iX2,iX3,iAF_P ), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_T ), A(1:nDOFX,iX1,iX2,iX3,iAF_Ye), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_S ), A(1:nDOFX,iX1,iX2,iX3,iAF_E ), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Gm), A(1:nDOFX,iX1,iX2,iX3,iAF_Cs) )
 
     END DO
     END DO
