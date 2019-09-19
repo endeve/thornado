@@ -47,8 +47,8 @@ CONTAINS
 
   SUBROUTINE ComputeInternalEnergyDensityFromPressure_IDEAL( D, P, Y, Ev )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, P, Y
-    REAL(DP), DIMENSION(:), INTENT(out) :: Ev
+    REAL(DP), INTENT(in)  :: D(:), P(:), Y(:)
+    REAL(DP), INTENT(out) :: Ev(:)
 
     Ev(:) = P(:) / ( Gamma_IDEAL - 1.0_DP )
 
@@ -57,8 +57,8 @@ CONTAINS
 
   SUBROUTINE ComputePressureFromPrimitive_IDEAL( D, Ev, Ne, P )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: P
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: P(:)
 
     P(:) = ( Gamma_IDEAL - 1.0_DP ) * Ev(:)
 
@@ -67,8 +67,8 @@ CONTAINS
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Y, P )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Em, Y
-    REAL(DP), DIMENSION(:), INTENT(out) :: P
+    REAL(DP), INTENT(in)  :: D(:), Em(:), Y(:)
+    REAL(DP), INTENT(out) :: P(:)
 
     P(:) = ( Gamma_IDEAL - 1.0_DP ) * D(:) * Em(:)
 
@@ -79,8 +79,8 @@ CONTAINS
 
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: Cs
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: Cs(:)
 
     Cs(:) = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev(:) / D(:) )
 
@@ -102,8 +102,8 @@ CONTAINS
 
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: Cs
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: Cs(:)
 
     Cs(:) = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev(:) / D(:) )
 
@@ -114,21 +114,21 @@ CONTAINS
 
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: P, T, Y, S, Em, Gm, Cs
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: P(:), T(:), Y(:), S(:), Em(:), Gm(:), Cs(:)
 
     P (:) = ( Gamma_IDEAL - 1.0_DP ) * Ev(:)
     Gm(:) = Gamma_IDEAL
     Em(:) = Ev(:) / D(:)
-    Cs(:) = SQRT( Gamma_IDEAL * P(:) / D(:) )
+    CALL ComputeSoundSpeedFromPrimitive_IDEAL( D(:), Ev(:), Ne(:), Cs(:) )
 
   END SUBROUTINE ComputeAuxiliary_Fluid_IDEAL
 
 
   FUNCTION Auxiliary_Fluid_IDEAL( PF )
 
-    REAL(DP), DIMENSION(nPF), INTENT(in) :: PF
-    REAL(DP), DIMENSION(nAF)             :: Auxiliary_Fluid_IDEAL
+    REAL(DP), INTENT(in) :: PF(nPF)
+    REAL(DP)             :: Auxiliary_Fluid_IDEAL(nAF)
 
     Auxiliary_Fluid_IDEAL(iAF_P)  &
       = ( Gamma_IDEAL - 1.0_DP ) * PF(iPF_E)

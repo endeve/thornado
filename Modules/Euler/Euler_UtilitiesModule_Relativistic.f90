@@ -11,32 +11,21 @@ MODULE Euler_UtilitiesModule_Relativistic
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Two, Three, Four
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX, nX
+    nDOFX, nDimsX
   USE MeshModule, ONLY: &
     MeshX
-  USE ReferenceElementModuleX, ONLY:          &
-    nDOFX_X1, nDOFX_X2, nDOFX_X3, WeightsX_q, &
-    WeightsX_X1, WeightsX_X2, WeightsX_X3
-  USE ReferenceElementModuleX_Lagrange, ONLY: &
-    dLXdX1_q, dLXdX2_q, dLXdX3_q,             &
-    LX_X1_Dn, LX_X1_Up,                       &
-    LX_X2_Dn, LX_X2_Up,                       &
-    LX_X3_Dn, LX_X3_Up
-  USE FluidFieldsModule, ONLY:                         &
+  USE GeometryFieldsModule, ONLY: &
+    nGF, iGF_h_1, iGF_h_2, iGF_h_3,           &
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
+  USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_P, iAF_Cs, iAF_Gm
-  USE GeometryFieldsModule, ONLY:             &
-    iGF_h_1, iGF_h_2, iGF_h_3,                &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
-    iGF_Alpha, &
-    iGF_Beta_1, iGF_Beta_2, iGF_Beta_3, nGF
-  USE EquationOfStateModule, ONLY:             &
-    ComputePressureFromSpecificInternalEnergy, &
+    nAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, iAF_Gm, iAF_Cs
+  USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
-    ComputePressureFromPrimitive
-  USE EquationOfStateModule_IDEAL, ONLY: &
-    Gamma_IDEAL
+    ComputeAuxiliary_Fluid,         &
+    ComputePressureFromSpecificInternalEnergy
 
   IMPLICIT NONE
   PRIVATE
@@ -57,11 +46,9 @@ MODULE Euler_UtilitiesModule_Relativistic
   PUBLIC :: Euler_NumericalFlux_X2_HLLC_Relativistic
   PUBLIC :: Euler_NumericalFlux_X3_HLLC_Relativistic
 
-  ! --- These will all be private once
-  !     Euler_ComputePrimitive_Relativistic is satisfactory ---
-  PUBLIC :: ComputeFunJacP
-  PUBLIC :: ComputePressureWithBisectionMethod
-  PUBLIC :: ComputePressureWithBrentsMethod
+  PRIVATE :: ComputeFunJacP
+  PRIVATE :: ComputePressureWithBisectionMethod
+  PRIVATE :: ComputePressureWithBrentsMethod
   PRIVATE :: ComputeFunP
 
   REAL(DP), PARAMETER :: TolP = 1.0d-8, TolFunP = 1.0d-6, MachineEPS = 1.0d-16
@@ -313,15 +300,12 @@ CONTAINS
                G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
                G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-      CALL ComputePressureFromPrimitive &
+      CALL ComputeAuxiliary_Fluid &
              ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), A(1:nDOFX,iX1,iX2,iX3,iAF_P) )
-
-      CALL ComputeSoundSpeedFromPrimitive &
-             ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), A(1:nDOFX,iX1,iX2,iX3,iAF_Cs) )
-
-      A(1:nDOFX,iX1,iX2,iX3,iAF_Gm) = Gamma_IDEAL
+               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), A(1:nDOFX,iX1,iX2,iX3,iAF_P ), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_T ), A(1:nDOFX,iX1,iX2,iX3,iAF_Ye), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_S ), A(1:nDOFX,iX1,iX2,iX3,iAF_E ), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Gm), A(1:nDOFX,iX1,iX2,iX3,iAF_Cs) )
 
     END DO
     END DO
