@@ -7,8 +7,6 @@ from os import listdir
 from sys import argv, exit
 import matplotlib.pyplot as plt
 
-# NOTE: Adiabatic gamma must be set by hand (lines 143 and 146)
-
 """
 To-Do:
   - Make PNS circular
@@ -23,26 +21,19 @@ HOME = HOME[:-1].decode( "utf-8" ) + '/'
 
 # Specify directory containing plotfiles
 
-'''
-ProblemDirectory \
-  = HOME + 'Research/DataFromPastRuns/' + 'SAS2D_20190904/'
-ProblemName = 'SAS_R'
-VariableToPlot = 'Entropy'
-'''
-
-'''
+#'''
 ProblemDirectory \
   = HOME + 'Research/SN/thornado/SandBox/AMReX/Euler_Relativistic/'
 ProblemName = 'SAS_R'
-VariableToPlot = 'PF_D'
-'''
-
+VariableToPlot = 'Entropy'
 #'''
+
+'''
 ProblemDirectory \
   = HOME + 'Desktop/'
 ProblemName = 'SAS_R'
 VariableToPlot = 'PF_D'
-#'''
+'''
 
 UsePhysicalUnits = False
 CoordinateSystem = 'cartesian'
@@ -148,10 +139,15 @@ elif( VariableToPlot == 'AF_P'  ):
 elif( VariableToPlot == 'Entropy' ):
     PF_D  = CoveringGrid['PF_D' ].to_ndarray()
     AF_P  = CoveringGrid['AF_P' ].to_ndarray()
-    AF_Gm = 4/3#CoveringGrid['AF_Gm'].to_ndarray()
+    AF_Gm = CoveringGrid['AF_Gm'].to_ndarray()
     Data  = AF_P / PF_D**AF_Gm
     if( UsePhysicalUnits ):
-        DataUnit = 'erg/cm**3/(g/cm**3)**(4/3)'
+        if( round( AF_Gm[0][0][0], 1 ) == 1.4 ):
+            DataUnit = 'erg/cm**3/(g/cm**3)**({:})'.format( \
+                         AF_Gm[0][0][0] )
+        else:
+            DataUnit = 'erg/cm**3/(g/cm**3)**({:}/3)'.format( \
+                         int( 3 * AF_Gm[0][0][0] ) )
 
 if  ( nDims == 1 ):
 
