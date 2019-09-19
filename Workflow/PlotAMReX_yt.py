@@ -43,20 +43,19 @@ if( ProblemName == 'SAS_R' ):
     CoordinateSystem = 'spherical'
     UsePhysicalUnits = True
 
-# Get last plotfile in directory
-FileArray \
-  = np.sort(np.array( [ file for file in listdir( ProblemDirectory ) ] ))
-FileList = []
-for iFile in range( FileArray.shape[0] ):
-    sFile = FileArray[iFile]
-    if( sFile[0:8] == 'thornado' ):
-        FileList.append( sFile )
-FileArray = np.array( FileList )
-File = FileArray[-1]
-
-# Also allow user to plot specific file
 if( len( argv ) > 1 ):
     File = argv[1]
+else:
+    # Get last plotfile in directory
+    FileArray \
+      = np.sort(np.array( [ file for file in listdir( ProblemDirectory ) ] ))
+    FileList = []
+    for iFile in range( FileArray.shape[0] ):
+        sFile = FileArray[iFile]
+        if( sFile[0:8] == 'thornado' ):
+            FileList.append( sFile )
+    FileArray = np.array( FileList )
+    File = FileArray[-1]
 
 # Change aspect ratio to make plotting cells square
 aspect = 1.0
@@ -275,7 +274,8 @@ elif( nDims == 2 ):
 
     slc = yt.SlicePlot( ds, SliceVariable, field, \
                         axes_unit = length_unit, \
-                        aspect = aspect )
+                        aspect = aspect, \
+                        origin = 'lower-left-window'  )
 
     slc.set_cmap( field = field, cmap = 'jet' )
 
