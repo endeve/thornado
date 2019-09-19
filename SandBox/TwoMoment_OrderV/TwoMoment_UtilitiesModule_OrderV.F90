@@ -38,7 +38,7 @@ CONTAINS
 
     LOGICAL  :: CONVERGED
     INTEGER  :: i, k, mk, INFO
-    REAL(DP) :: I_d_1, I_d_2, I_d_3
+    REAL(DP) :: I_d_1, I_d_2, I_d_3, A_d_1, A_d_2, A_d_3
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: UVEC(4), CVEC(4)
     REAL(DP) :: GVEC(4,M), GVECm(4)
@@ -72,32 +72,31 @@ CONTAINS
              ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
 
-      DET = One - (   V_u_1**2 * k_dd_11 &
-                    + V_u_2**2 * k_dd_22 &
-                    + V_u_3**2 * k_dd_33 &
-                    + Two * (   V_u_1 * V_u_2 * k_dd_12 &
-                              + V_u_1 * V_u_3 * k_dd_13 &
-                              + V_u_2 * V_u_3 * k_dd_23 ) )
+      A_d_1 = V_u_1 * k_dd_11 + V_u_2 * k_dd_12 + V_u_3 * k_dd_13
+      A_d_2 = V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_23
+      A_d_3 = V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33
+
+      DET = One - ( V_u_1 * A_d_1 + V_u_2 * A_d_2 + V_u_3 * A_d_3 )
 
       LMAT(1,1) = One
-      LMAT(2,1) = - ( V_u_1 * k_dd_11 + V_u_2 * k_dd_12 + V_u_3 * k_dd_13 )
-      LMAT(3,1) = - ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_23 )
-      LMAT(4,1) = - ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 )
+      LMAT(2,1) = - A_d_1
+      LMAT(3,1) = - A_d_2
+      LMAT(4,1) = - A_d_3
 
       LMAT(1,2) = - V_u_1
-      LMAT(2,2) = One
-      LMAT(3,2) = Zero
-      LMAT(4,2) = Zero
+      LMAT(2,2) = One - ( V_u_2 * A_d_2 + V_u_3 * A_d_3 )
+      LMAT(3,2) = V_u_1 * A_d_2
+      LMAT(4,2) = V_u_1 * A_d_3
 
       LMAT(1,3) = - V_u_2
-      LMAT(2,3) = Zero
-      LMAT(3,3) = One
-      LMAT(4,3) = Zero
+      LMAT(2,3) = V_u_2 * A_d_1
+      LMAT(3,3) = One - ( V_u_1 * A_d_1 + V_u_3 * A_d_3 )
+      LMAT(4,3) = V_u_2 * A_d_3
 
       LMAT(1,4) = - V_u_3
-      LMAT(2,4) = Zero
-      LMAT(3,4) = Zero
-      LMAT(4,4) = One
+      LMAT(2,4) = V_u_3 * A_d_1
+      LMAT(3,4) = V_u_3 * A_d_2
+      LMAT(4,4) = One - ( V_u_1 * A_d_1 + V_u_2 * A_d_2 )
 
       LMAT = LMAT / DET
 
