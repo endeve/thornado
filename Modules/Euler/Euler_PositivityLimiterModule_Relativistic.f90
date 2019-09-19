@@ -1,3 +1,5 @@
+!> Initialize, finalize, and apply positivity limiter from
+!> Qin et al., (2016), JCP, 315, 323
 MODULE Euler_PositivityLimiterModule_Relativistic
 
   USE KindModule, ONLY: &
@@ -115,6 +117,12 @@ CONTAINS
   END SUBROUTINE Euler_FinalizePositivityLimiter_Relativistic
 
 
+  !> Iterate through the entire spatial domain and apply the positivity
+  !> limiter from Qin et al., (2016), JCP, 315, 323 to each element.
+  !> @param Theta_D minimum value to ensure physical density
+  !> @param Theta_q minimum value to ensure physical internal energy-density
+  !>        and velocity
+  !> @todo Modify to accomodate GR
   SUBROUTINE Euler_ApplyPositivityLimiter_Relativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
@@ -137,9 +145,6 @@ CONTAINS
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
-
-    ! --- Implement bound-preserving limiter from
-    !     Qin et al., (2016), JCP, 315, 323 ---
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)

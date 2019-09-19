@@ -1,3 +1,11 @@
+!> Perform computations related to the 3+1, CFA Euler equations.
+!> Find the equations in Rezzolla & Zanotti, Relativistic Hydrodynamics, 2013,
+!> Equation 7.234.
+!> @param TolP Threshold for step-size in Newton-Raphson algorithm in
+!>             Euler_ComputePrimitive_Relativistic to accept solution.
+!> @param TolFunP Threshold for function in Newton-Raphson algorithm in
+!>                Euler_ComputePrimitive_Relativistic to accept solution.
+!> @todo Find optimal values for parameters TolP and TolFunP.
 MODULE Euler_UtilitiesModule_Relativistic
 
   USE KindModule, ONLY: &
@@ -62,7 +70,11 @@ MODULE Euler_UtilitiesModule_Relativistic
 
 CONTAINS
 
-
+  !> Compute the primitive variables from the conserved variables,
+  !> a la Rezzolla & Zanotti, Relativistic Hydrodynamics, 2013, Appendix D.
+  !> Use bisection algorithm to obtain an initial guess for the pressure,
+  !> then use Newton-Raphson method hone-in on the actual pressure
+  !> @todo Decide whether or not to send in previous pressure as initial guess.
   SUBROUTINE Euler_ComputePrimitive_Relativistic &
               ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
                 PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
@@ -234,37 +246,38 @@ CONTAINS
   END SUBROUTINE Euler_ComputePrimitive_Relativistic
 
 
+  !> Compute conserved variables from primitive variables.
   SUBROUTINE Euler_ComputeConserved_Relativistic &
     ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
+      Gm11, Gm22, Gm33, &
       AF_P )
 
     REAL(DP), INTENT(in)  :: PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), &
                              PF_E(:), PF_Ne(:), AF_P(:), &
-                             GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
+                             Gm11(:), Gm22(:), Gm33(:)
     REAL(DP), INTENT(out) :: CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), &
                              CF_E(:), CF_Ne(:)
 
     REAL(DP) :: VSq(SIZE(PF_D)), W(SIZE(PF_D)), h(SIZE(PF_D))
 
-    VSq = GF_Gm_dd_11 * PF_V1**2 &
-          + GF_Gm_dd_22 * PF_V2**2 &
-          + GF_Gm_dd_33 * PF_V3**2
+    VSq = Gm11 * PF_V1**2 + Gm22 * PF_V2**2 + Gm33 * PF_V3**2
 
     W = 1.0_DP / SQRT( 1.0_DP - VSq )
     h = 1.0_DP + ( PF_E + AF_P ) / PF_D
 
     CF_D  = W * PF_D
-    CF_S1 = h * W**2 * PF_D * GF_Gm_dd_11 * PF_V1
-    CF_S2 = h * W**2 * PF_D * GF_Gm_dd_22 * PF_V2
-    CF_S3 = h * W**2 * PF_D * GF_Gm_dd_33 * PF_V3
+    CF_S1 = h * W**2 * PF_D * Gm11 * PF_V1
+    CF_S2 = h * W**2 * PF_D * Gm22 * PF_V2
+    CF_S3 = h * W**2 * PF_D * Gm33 * PF_V3
     CF_E  = h * W**2 * PF_D - AF_P - W * PF_D
     CF_Ne = W * PF_Ne
 
   END SUBROUTINE Euler_ComputeConserved_Relativistic
 
 
+  !> Compute primitive variables, pressure, and sound-speed from conserved
+  !> variables. Only used for IO.
   SUBROUTINE Euler_ComputeFromConserved_Relativistic( iX_B0, iX_E0, G, U, P, A )
 
     INTEGER, INTENT(in)  :: &
@@ -315,6 +328,8 @@ CONTAINS
   END SUBROUTINE Euler_ComputeFromConserved_Relativistic
 
 
+  !> Loop over all the elements in the spatial domain and compute the minimum
+  !> required time-step for numerical stability.
   SUBROUTINE Euler_ComputeTimeStep_Relativistic &
     ( iX_B0, iX_E0, G, U, CFL, TimeStep )
 
@@ -505,14 +520,13 @@ CONTAINS
   END SUBROUTINE Euler_ComputeTimeStep_Relativistic
 
 
+  !> Compute the eigenvalues of the flux-Jacobian.
+  !> Find the expressions in Font et al., (1998), Eqs. (14) and (18).
+  !> @param Vi The ith contravariant component of the three-velocity.
+  !> @param Gmii The ith covariant component of the spatial three-metric.
+  !> @param Shift The ith contravariant component of the shift-vector.
   PURE FUNCTION Euler_Eigenvalues_Relativistic &
     ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift )
-
-    ! --- Vi is the ith contravariant component of the three-velocity
-    !     Gmii is the ith covariant component of the spatial three-metric
-    !     Shift is the ith contravariant component of the shift-vector ---
-
-    ! --- Find the expressions in Font et al., (1998), Eq. (14) and (18) ---
 
     REAL(DP), INTENT(in) :: Vi, Cs, Gmii, V1, V2, V3, &
                             Gm11, Gm22, Gm33, Lapse, Shift
@@ -547,14 +561,13 @@ CONTAINS
   END FUNCTION Euler_Eigenvalues_Relativistic
 
 
+  !> Estimate the contact wave-speed as suggested by
+  !> Mignone & Bodo, (2005), MNRAS, 364, 126.
+  !> @param Shift The ith contravariant component of the shift-vector.
+  !> @param Gmii The ith covariant component of the spatial three-metric.
   REAL(DP) FUNCTION Euler_AlphaMiddle_Relativistic &
     ( DL, SL, tauL, F_DL, F_SL, F_tauL, DR, SR, tauR, F_DR, F_SR, F_tauR, &
       Gmii, aP, aM, Lapse, Shift )
-
-    ! --- Middle Wavespeed as suggested by Mignone and Bodo (2005) ---
-
-    ! --- Shift is the ith contravariant component of the shift-vector
-    !     Gmii is the ith covariant component of the spatial three-metric ---
 
     REAL(DP), INTENT(in) :: DL, SL, tauL, F_DL, F_SL, F_tauL, &
                             DR, SR, tauR, F_DR, F_SR, F_tauR, &
@@ -602,12 +615,12 @@ CONTAINS
   END FUNCTION Euler_AlphaMiddle_Relativistic
 
 
+  !> Compute the physical flux in the X1-direction.
+  !> @param Vi The ith contravariant components of the three-velocity.
+  !> @param Gmii The ith covariant components of the spatial three-metric.
+  !> @param Shift The first contravariant component of the shift-vector.
   PURE FUNCTION Euler_Flux_X1_Relativistic &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
-
-    ! --- Vi are the ith contravariant components of the three-velocity
-    !     Gmii are the ith covariant components of the spatial three-metric
-    !     Shift is the first contravariant component of the shift-vector ---
 
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
                             Gm11, Gm22, Gm33, Lapse, Shift
@@ -640,12 +653,12 @@ CONTAINS
   END FUNCTION Euler_Flux_X1_Relativistic
 
 
+  !> Compute the physical flux in the X2-direction.
+  !> @param Vi The ith contravariant components of the three-velocity.
+  !> @param Gmii The ith covariant components of the spatial three-metric.
+  !> @param Shift The first contravariant component of the shift-vector.
   PURE FUNCTION Euler_Flux_X2_Relativistic &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
-
-    ! --- Vi are the ith contravariant components of the three-velocity
-    !     Gmii are the ith covariant components of the spatial three-metric
-    !     Shift is the second contravariant component of the shift-vector ---
 
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
                             Gm11, Gm22, Gm33, Lapse, Shift
@@ -678,12 +691,12 @@ CONTAINS
   END FUNCTION Euler_Flux_X2_Relativistic
 
 
+  !> Compute the physical flux in the X3-direction.
+  !> @param Vi The ith contravariant components of the three-velocity.
+  !> @param Gmii The ith covariant components of the spatial three-metric.
+  !> @param Shift The first contravariant component of the shift-vector.
   PURE FUNCTION Euler_Flux_X3_Relativistic &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
-
-    ! --- Vi are the ith contravariant components of the three-velocity
-    !     Gmii are the ith covariant components of the spatial three-metric
-    !     Shift is the third contravariant component of the shift-vector ---
 
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
                             Gm11, Gm22, Gm33, Lapse, Shift
@@ -716,11 +729,12 @@ CONTAINS
   END FUNCTION Euler_Flux_X3_Relativistic
 
 
+  !> Compute the diagonal elements of the stress-tensor, needed for the
+  !> source-terms in the hydro equations.
+  !> @param Si The ith covariant components of the conserved momentum-density.
+  !> @param Vi The ith contravavriant components of the three-velocity.
   PURE FUNCTION Euler_StressTensor_Diagonal_Relativistic &
     ( S1, S2, S3, V1, V2, V3, P )
-
-    ! --- Si are the ith covariant components of the conserved momentum-density
-    !     Vi are the ith contravavriant components of the three-velocity ---
 
     REAL(DP), INTENT(in) :: S1, S2, S3, V1, V2, V3, P
 
@@ -734,6 +748,8 @@ CONTAINS
   END FUNCTION Euler_StressTensor_Diagonal_Relativistic
 
 
+  !> Compute the Local-Lax-Friedrichs numerical flux at a given element
+  !> interface, in a given dimension.
   PURE FUNCTION Euler_NumericalFlux_LLF_Relativistic &
     ( uL, uR, fL, fR, aP, aM )
 
@@ -754,6 +770,8 @@ CONTAINS
   END FUNCTION Euler_NumericalFlux_LLF_Relativistic
 
 
+  !> Compute the Harten-Lax-van-Leer numerical flux at a given element
+  !> interface, in a given dimension.
   PURE FUNCTION Euler_NumericalFlux_HLL_Relativistic &
     ( uL, uR, fL, fR, aP, aM )
 
@@ -768,11 +786,12 @@ CONTAINS
   END FUNCTION Euler_NumericalFlux_HLL_Relativistic
 
 
+  !> Compute the Harten-Lax-van-Leer-Contact numerical flux at a given element
+  !> in the X1-direction.
+  !> @param Shift The first contravariant component of the shift-vector.
+  !> @param Gm11 The first covariant component of the spatial three-metric.
   PURE FUNCTION Euler_NumericalFlux_X1_HLLC_Relativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift )
-
-    ! --- Shift is the first contravariant component of the shift-vector
-    !     Gm is the first covariant component of the spatial three-metric ---
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift
@@ -871,11 +890,12 @@ CONTAINS
   END FUNCTION Euler_NumericalFlux_X1_HLLC_Relativistic
 
 
+  !> Compute the Harten-Lax-van-Leer-Contact numerical flux at a given element
+  !> in the X2-direction.
+  !> @param Shift The second contravariant component of the shift-vector.
+  !> @param Gm22 The second covariant component of the spatial three-metric.
   PURE FUNCTION Euler_NumericalFlux_X2_HLLC_Relativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift )
-
-    ! --- Shift is the second contravariant component of the shift-vector
-    !     Gm is the second covariant component of the spatial three-metric ---
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift
@@ -974,6 +994,10 @@ CONTAINS
   END FUNCTION Euler_NumericalFlux_X2_HLLC_Relativistic
 
 
+  !> Compute the Harten-Lax-van-Leer-Contact numerical flux at a given element
+  !> in the X3-direction.
+  !> @param Shift The third contravariant component of the shift-vector.
+  !> @param Gm33 The third covariant component of the spatial three-metric.
   PURE FUNCTION Euler_NumericalFlux_X3_HLLC_Relativistic &
       ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift )
 
