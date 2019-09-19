@@ -15,7 +15,10 @@ MODULE InitializationModule
   USE GeometryFieldsModule, ONLY: &
     uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
+    Euler_ComputeConserved_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
@@ -55,6 +58,15 @@ CONTAINS
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
     REAL(DP) :: X1
 
+#ifndef MOMENT_CLOSURE_MINERBO
+
+    WRITE(*,*)
+    WRITE(*,'(A8,A)') &
+      '', 'Must use Minerbo closure for this application'
+    STOP
+
+#endif
+
     ! --- Fluid Fields ---
 
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -64,13 +76,30 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.3_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
       END DO
+
+      CALL Euler_ComputeConserved_NonRelativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
+               uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), &
+               uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), &
+               uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), &
+               uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), &
+               uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
     END DO
     END DO
