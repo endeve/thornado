@@ -13,7 +13,7 @@ MODULE Euler_UtilitiesModule_NonRelativistic
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_P, iAF_Cs
+    nAF, iAF_P, iAF_Cs, iAF_Gm
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -122,6 +122,8 @@ CONTAINS
       CALL ComputeSoundSpeedFromPrimitive &
              ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E ), &
                P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_Cs) )
+
+      A(:,iX1,iX2,iX3,iAF_Gm) = Gamma_IDEAL
 
     END DO
     END DO

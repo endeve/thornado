@@ -25,7 +25,7 @@ MODULE Euler_UtilitiesModule_Relativistic
   USE FluidFieldsModule, ONLY:                         &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_P, iAF_Cs
+    nAF, iAF_P, iAF_Cs, iAF_Gm
   USE GeometryFieldsModule, ONLY:             &
     iGF_h_1, iGF_h_2, iGF_h_3,                &
     iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
@@ -320,6 +320,8 @@ CONTAINS
       CALL ComputeSoundSpeedFromPrimitive &
              ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
                P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), A(1:nDOFX,iX1,iX2,iX3,iAF_Cs) )
+
+      A(1:nDOFX,iX1,iX2,iX3,iAF_Gm) = Gamma_IDEAL
 
     END DO
     END DO
