@@ -43,6 +43,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF
+  USE Euler_BoundaryConditionsModule_NonRelativistic, ONLY: &
+    Euler_ApplyBoundaryConditions_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
@@ -75,9 +77,11 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       GE  (1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
-      GX  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
+      GX  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+                   iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(in)    :: &
-      U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
+      U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+                   iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
       U_R (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                    iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
@@ -85,16 +89,23 @@ CONTAINS
       dU_R(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                    iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
 
     CALL TimersStart( Timer_Explicit )
 
     PRINT*, "      ComputeIncrement_TwoMoment_Explicit (Start)"
 
+    iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
+    iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
+
     ASSOCIATE &
       ( dZ2 => MeshX(1) % Width, &
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
+
+!!$    CALL Euler_ApplyBoundaryConditions_NonRelativistic &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
 
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
