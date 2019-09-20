@@ -4,13 +4,17 @@ import yt
 import numpy as np
 import subprocess
 from os import listdir
+from os.path import isfile
 from sys import argv, exit
 import matplotlib.pyplot as plt
 
 """
 To-Do:
   - Make PNS circular
+    - Fix plot-window limits
   - Add 2D movie-making capability
+    - Implement movie-making capability for curvilinear coordinates
+    - Allow custom variables, i.e. Entropy, to be made into movies
 """
 
 yt.funcs.mylog.setLevel(0) # Suppress initial yt output to screen
@@ -24,8 +28,10 @@ HOME = HOME[:-1].decode( "utf-8" ) + '/'
 #'''
 ProblemDirectory \
   = HOME + 'Research/SN/thornado/SandBox/AMReX/Euler_Relativistic/'
-ProblemName = 'SAS_R'
-VariableToPlot = 'Entropy'
+ProblemName = '2DRP'
+VariableToPlot = 'PF_D'
+MakeMovie = True
+DataFileName = 'MovieData.dat'
 #'''
 
 '''
@@ -33,6 +39,8 @@ ProblemDirectory \
   = HOME + 'Desktop/'
 ProblemName = 'SAS_R'
 VariableToPlot = 'PF_D'
+MakeMovie = False
+DataFileName = 'MovieData.dat'
 '''
 
 UsePhysicalUnits = False
@@ -161,34 +169,43 @@ if  ( nDims == 1 ):
     plt.close()
     #"""
 
-    MakeMovie = False
     if( MakeMovie ):
         print( 'Making a movie...' )
         from matplotlib import animation
 
-        #'''
-        # Put all time-slices into one array to use for movie making
-        Data = np.empty( (FileArray.shape[0],nX[0]), float )
-        Time = np.empty( FileArray.shape[0], float )
-        for i in range( FileArray.shape[0] ):
-            print( '{:}/{:}'.format( i, FileArray.shape[0] ) )
-            ds = yt.load( '{:}'.format( ProblemDirectory + FileArray[i] ) )
+        Overwrite = True
+        if( isfile( DataFileName ) ):
+            Overwrite = input( 'File: "{:}" exists. overwrite? (Y/N): '.format \
+                          ( DataFileName ) )
+            if( not Overwrite == 'Y' ):
+                print( 'Not overwriting file, using existing file for movie.' )
+                Overwrite = False
+            else:
+                Overwrite = True
 
-            CoveringGrid \
-              = ds.covering_grid \
-                  ( level           = MaxLevel, \
-                    left_edge       = xL, \
-                    dims            = nX * 2**MaxLevel, \
-                    num_ghost_zones = nX[0] )
+        if( Overwrite ):
+            # Put all time-slices into one array to use for movie making
+            Data = np.empty( (FileArray.shape[0],nX[0]), float )
+            Time = np.empty( FileArray.shape[0], float )
+            for i in range( FileArray.shape[0] ):
+                print( '{:}/{:}'.format( i+1, FileArray.shape[0] ) )
+                ds = yt.load( '{:}'.format( ProblemDirectory + FileArray[i] ) )
 
-            Data[i] = CoveringGrid[VariableToPlot].to_ndarray()[:,0,0]
-            Time[i] = ds.current_time
+                CoveringGrid \
+                  = ds.covering_grid \
+                      ( level           = MaxLevel, \
+                        left_edge       = xL, \
+                        dims            = nX * 2**MaxLevel, \
+                        num_ghost_zones = nX[0] )
 
-        np.savetxt( 'Data', Data )
-        np.savetxt( 'Time', Time )
-        #'''
-        Data = np.loadtxt( 'Data' )
-        Time = np.loadtxt( 'Time' )
+                Data[i] = CoveringGrid[VariableToPlot].to_ndarray()[:,0,0]
+                Time[i] = ds.current_time
+
+            np.savetxt( DataFileName, Data )
+            np.savetxt( 'MovieTime.dat', Time )
+
+        Data = np.loadtxt( DataFileName )
+        Time = np.loadtxt( 'MovieTime.dat' )
 
         fig, ax = plt.subplots()
 
@@ -229,7 +246,7 @@ if  ( nDims == 1 ):
 
     """
     # Plot slices from 'Data' file, created with MakeMovie script above
-    Data = np.loadtxt( 'Data' )
+    Data = np.loadtxt( DataFileName )
     plt.semilogy( x, Data[0],  'k-',  label = 't = 0 ms'   )
     plt.semilogy( x, Data[-1], 'k--', label = 't = 300 ms' )
     plt.xlabel( 'Radial Distance [km]' )
@@ -275,7 +292,7 @@ elif( nDims == 2 ):
     slc = yt.SlicePlot( ds, SliceVariable, field, \
                         axes_unit = length_unit, \
                         aspect = aspect, \
-                        origin = 'lower-left-window'  )
+                        origin = 'lower-left-window' )
 
     slc.set_cmap( field = field, cmap = 'jet' )
 
@@ -292,6 +309,114 @@ elif( nDims == 2 ):
 
     slc.save( ProblemName + '_' + VariableToPlot \
                 + '_{:}.png'.format( File[-8:] ) )
+
+    if( MakeMovie ):
+        from matplotlib import animation
+
+        Overwrite = True
+        if( isfile( DataFileName ) ):
+            Overwrite = input( 'File: "{:}" exists. overwrite? (Y/N): '.format \
+                          ( DataFileName ) )
+            if( not Overwrite == 'Y' ):
+                print( 'Not overwriting file, using existing file for movie.' )
+                Overwrite = False
+            else:
+                Overwrite = True
+
+        if( Overwrite ):
+            # Put all time-slices into one array to use for movie making
+            Data = np.empty( (FileArray.shape[0],nX[0],nX[1]), float )
+            Time = np.empty( FileArray.shape[0], float )
+            for i in range( FileArray.shape[0] ):
+                print( '{:}/{:}'.format( i+1, FileArray.shape[0] ) )
+                ds = yt.load( '{:}'.format( ProblemDirectory + FileArray[i] ) )
+
+                CoveringGrid \
+                  = ds.covering_grid \
+                      ( level           = MaxLevel, \
+                        left_edge       = xL, \
+                        dims            = nX * 2**MaxLevel, \
+                        num_ghost_zones = nX[0] )
+
+                Data[i] = CoveringGrid[VariableToPlot].to_ndarray()[:,:,0]
+                Time[i] = ds.current_time
+
+            # Save multi-D array with np.savetxt. Taken from:
+            # https://stackoverflow.com/questions/3685265/how-to-write-a-multidimensional-array-to-a-text-file
+
+            with open( DataFileName, 'w' ) as FileOut:
+                FileOut.write( '# Array shape: {0}\n'.format( Data.shape ) )
+
+                # Iterating through an n-dimensional array produces slices along
+                # the last axis. This is equivalent to Data[i] in this case
+                for TimeSlice in Data:
+                    np.savetxt( FileOut, TimeSlice )
+                    FileOut.write( '# New slice\n' )
+
+            np.savetxt( 'MovieTime.dat', Time )
+
+        Data = np.loadtxt( DataFileName ).reshape( \
+                                            (FileArray.shape[0],nX[0],nX[1]) )
+        Time = np.loadtxt( 'MovieTime.dat' )
+
+        fig = plt.figure()
+        def f(t):
+            return Data[t]
+
+        PlotTranspose = False
+        if( PlotTranspose ):
+            fig.suptitle( '|{:}-{:}.T|'.format \
+                          ( VariableToPlot, VariableToPlot ), \
+                          fontsize = 20 )
+            def f(t):
+                return np.abs( Data[t] - Data[t].T )
+
+        UseLogScale = True
+        if( UseLogScale ):
+            from matplotlib.colors import LogNorm
+            vmin = min( +np.inf, np.min( np.abs( Data ) ) )
+            vmax = max( -np.inf, np.max( np.abs( Data ) ) )
+
+            im = plt.imshow( np.abs(f(0)), cmap = 'jet', animated = True, \
+                             vmin = vmin, vmax = vmax, \
+                             extent = [ xL[0], xH[0], xL[1], xH[1] ], \
+                             aspect = 'equal', \
+                             origin = 'lower', norm = LogNorm() )
+        else:
+            im = plt.imshow( f(0), \
+                             cmap = 'jet', \
+                             animated = True, \
+                             vmin = np.min(Data), vmax = np.max(Data), \
+                             extent = [ xL[0], xH[0], xL[1], xH[1] ], \
+                             aspect = 'equal', \
+                             origin = 'lower'  )
+
+        plt.colorbar(im)
+
+        Width  = xH[0] - xL[0]
+        Height = xH[1] - xL[1]
+
+        time_text = plt.text( xL[0] + 0.5 * Width, xL[1] + 0.9 * Height, '' )
+
+        if( UseLogScale ):
+            def UpdateFrame(t):
+                im.set_array( np.abs(f(t)) )
+                time_text.set_text('time = {:.3e}'.format( Time[t] ) )
+                return im,
+        else:
+            def UpdateFrame(t):
+                im.set_array( f(t) )
+                time_text.set_text('time = {:.3e}'.format( Time[t] ) )
+                return im,
+
+        # Call the animator
+        anim = animation.FuncAnimation \
+                 ( fig, UpdateFrame, frames = FileArray.shape[0], \
+                   interval = 100, blit = True)
+
+        anim.save( '{:}_{:}.mp4'.format( ProblemName, VariableToPlot ), \
+                   fps = 5 )
+        plt.close()
 
     exit()
 
