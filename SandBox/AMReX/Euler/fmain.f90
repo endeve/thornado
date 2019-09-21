@@ -161,6 +161,8 @@ PROGRAM main
     END IF
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
+    IF( StepNo(0) .EQ. 100 ) STOP 'fmain'
+
   END DO
 
   ! --- END of evolution ---

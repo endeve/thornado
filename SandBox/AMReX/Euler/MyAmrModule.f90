@@ -56,6 +56,7 @@ MODULE MyAmrModule
   REAL(amrex_real) :: SlopeTolerance
   REAL(amrex_real) :: BetaTVD, BetaTVB
   REAL(amrex_real) :: LimiterThresholdParameter
+  LOGICAL          :: UseConservativeCorrection
 
   ! --- Positivity limiter ---
   LOGICAL          :: UsePositivityLimiter
@@ -158,6 +159,7 @@ CONTAINS
       CALL PP % get( 'BetaTVD',                   BetaTVD )
       CALL PP % get( 'BetaTVB',                   BetaTVB )
       CALL PP % get( 'LimiterThresholdParameter', LimiterThresholdParameter )
+      CALL PP % get( 'UseConservativeCorrection', UseConservativeCorrection )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Positivitiy limiter parameters PL.*

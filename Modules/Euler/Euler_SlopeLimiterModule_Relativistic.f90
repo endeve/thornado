@@ -51,7 +51,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic
 
   LOGICAL  :: UseSlopeLimiter
   LOGICAL  :: UseCharacteristicLimiting
-  LOGICAL  :: UseCorrection
+  LOGICAL  :: UseConservativeCorrection
   LOGICAL  :: UseTroubledCellIndicator
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
@@ -70,7 +70,7 @@ CONTAINS
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
-      Verbose_Option )
+      UseConservativeCorrection_Option, Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
@@ -79,7 +79,8 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: &
       UseSlopeLimiter_Option, &
       UseCharacteristicLimiting_Option, &
-      UseTroubledCellIndicator_Option, &
+      UseTroubledCellIndicator_Option,  &
+      UseConservativeCorrection_Option, &
       Verbose_Option
     REAL(DP), INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
@@ -87,55 +88,42 @@ CONTAINS
     INTEGER :: i
     LOGICAL :: Verbose
 
-    IF( PRESENT( BetaTVD_Option ) )THEN
+    BetaTVD = One
+    IF( PRESENT( BetaTVD_Option ) ) &
       BetaTVD = BetaTVD_Option
-    ELSE
-      BetaTVD = One
-    END IF
 
-    IF( PRESENT( BetaTVB_Option ) )THEN
+    BetaTVB = Zero
+    IF( PRESENT( BetaTVB_Option ) ) &
       BetaTVB = BetaTVB_Option
-    ELSE
-      BetaTVB = Zero
-    END IF
 
-    IF( PRESENT( SlopeTolerance_Option ) )THEN
+    SlopeTolerance = 1.0d-3
+    IF( PRESENT( SlopeTolerance_Option ) ) &
       SlopeTolerance = SlopeTolerance_Option
-    ELSE
-      SlopeTolerance = 1.0d-3
-    END IF
 
-    IF( PRESENT( UseSlopeLimiter_Option ) )THEN
+    UseSlopeLimiter = .TRUE.
+    IF( PRESENT( UseSlopeLimiter_Option ) ) &
       UseSlopeLimiter = UseSlopeLimiter_Option
-    ELSE
-      UseSlopeLimiter = .TRUE.
-    END IF
 
-    IF( PRESENT( UseCharacteristicLimiting_Option ) )THEN
+    UseCharacteristicLimiting = .FALSE.
+    IF( PRESENT( UseCharacteristicLimiting_Option ) ) &
       UseCharacteristicLimiting = UseCharacteristicLimiting_Option
-    ELSE
-      UseCharacteristicLimiting = .FALSE.
-    END IF
 
-    IF( PRESENT( UseTroubledCellIndicator_Option ) )THEN
+    UseTroubledCellIndicator = .TRUE.
+    IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
       UseTroubledCellIndicator = UseTroubledCellIndicator_Option
-    ELSE
-      UseTroubledCellIndicator = .TRUE.
-    END IF
 
-    IF( PRESENT( LimiterThresholdParameter_Option ) )THEN
+    LimiterThresholdParameter = 0.03_DP
+    IF( PRESENT( LimiterThresholdParameter_Option ) ) &
       LimiterThresholdParameter = LimiterThresholdParameter_Option
-    ELSE
-      LimiterThresholdParameter = 0.03_DP
-    END IF
-
     LimiterThreshold = LimiterThresholdParameter * 2.0_DP**( nNodes - 2 )
 
-    IF( PRESENT( Verbose_Option ) )THEN
+    UseConservativeCorrection = .TRUE.
+    IF( PRESENT( UseConservativeCorrection_Option ) ) &
+      UseConservativeCorrection = UseConservativeCorrection_Option
+
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
-    ELSE
-      Verbose = .TRUE.
-    END IF
 
     IF( Verbose )THEN
       WRITE(*,*)
@@ -163,11 +151,8 @@ CONTAINS
         LimiterThreshold
     END IF
 
-    IF( UseTroubledCellIndicator )THEN
-
+    IF( UseTroubledCellIndicator ) &
       CALL InitializeTroubledCellIndicator
-
-    END IF
 
     I_6x6 = Zero
     DO i = 1, 6
@@ -179,11 +164,8 @@ CONTAINS
 
   SUBROUTINE Euler_FinalizeSlopeLimiter_Relativistic
 
-    IF( UseTroubledCellIndicator )THEN
-
+    IF( UseTroubledCellIndicator ) &
       CALL FinalizeTroubledCellIndicator
-
-    END IF
 
   END SUBROUTINE Euler_FinalizeSlopeLimiter_Relativistic
 
@@ -194,9 +176,9 @@ CONTAINS
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
-      U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in)    :: &
       SuppressBC
 
@@ -257,12 +239,8 @@ CONTAINS
       ! --- Cell Average of Geometry (Spatial Metric, Lapse Function,
       !     and Shift Vector) ---
 
-      DO iGF = iGF_Gm_dd_11, iGF_SqrtGm
+      DO iGF = iGF_Gm_dd_11, iGF_Beta_3
         G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF) )
-      END DO
-
-      DO iGF = iGF_Alpha, iGF_Beta_3
-         G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF))
       END DO
 
       ! --- Map to Modal Representation ---
@@ -724,12 +702,13 @@ CONTAINS
     LOGICAL, INTENT(in)     :: &
       LimitedCell(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
 
-    LOGICAL  :: UseCorrection
     INTEGER  :: iX1, iX2, iX3, iCF, iPol, iDimX
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
     REAL(DP) :: Correction
     REAL(DP) :: LegendreX(nDOFX,nDOFX)
     REAL(DP) :: U_M(nCF,0:2**nDimsX,nDOFX)
+
+    IF( .NOT. UseConservativeCorrection ) RETURN
 
     DO iPol = 1, nDOFX ! Only need for iPol = 2,3,4 (FIXME)
 
@@ -750,48 +729,42 @@ CONTAINS
 
     END DO
 
-    UseCorrection = .TRUE.
+    ! --- Applies a correction to the 0-th order ---
+    ! --- mode to maintain the cell average.     ---
 
-    IF( UseCorrection )THEN
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
-      ! --- Applies a correction to the 0-th order ---
-      ! --- mode to maintain the cell average.     ---
+      DO iCF = 1, nCF
 
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+        IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
 
-        DO iCF = 1, nCF
+          CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
 
-          IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
+          Correction = Zero
+          DO iDimX = 1, nDimsX
 
-            CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+            Correction &
+              = Correction &
+                  + ( U_M(iCF,0,iDimX+1) &
+                      * SUM( WeightsX_q(:) * LegendreX(:,iDimX+1) &
+                             * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) ) &
+                    / V_K(iX1,iX2,iX3)
 
-            Correction = Zero
-            DO iDimX = 1, nDimsX
+          END DO
 
-              Correction &
-                = Correction &
-                    + ( U_M(iCF,0,iDimX+1) &
-                        * SUM( WeightsX_q * LegendreX(:,iDimX+1) &
-                               * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) ) &
-                      / V_K(iX1,iX2,iX3)
+          U_M(iCF,0,1) = U_K(iCF,iX1,iX2,iX3) - Correction
 
-            END DO
+          CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
 
-            U_M(iCF,0,1) = U_K(iCF,iX1,iX2,iX3) - Correction
-
-            CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
-
-          END IF
-
-        END DO
+        END IF
 
       END DO
-      END DO
-      END DO
 
-    END IF
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE ApplyConservativeCorrection
 

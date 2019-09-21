@@ -118,6 +118,7 @@ PROGRAM ApplicationDriver
            UseSlopeLimiter_Option           = .TRUE., &
            UseCharacteristicLimiting_Option = .TRUE., &
            UseTroubledCellIndicator_Option  = .TRUE., &
+           UseConservativeCorrection_Option = .TRUE., &
            LimiterThresholdParameter_Option = 0.015_DP )
 
   CALL Euler_InitializePositivityLimiter &

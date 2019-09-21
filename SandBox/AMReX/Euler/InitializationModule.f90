@@ -253,6 +253,8 @@ CONTAINS
                = UseTroubledCellIndicator, &
              LimiterThresholdParameter_Option &
                = LimiterThresholdParameter, &
+             UseConservativeCorrection_Option &
+               = UseConservativeCorrection, &
              Verbose_Option &
                = amrex_parallel_ioprocessor() )
 

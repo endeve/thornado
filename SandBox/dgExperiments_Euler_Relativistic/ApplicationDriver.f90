@@ -71,6 +71,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: UsePositivityLimiter
+  LOGICAL       :: UseConservativeCorrection
   INTEGER       :: iCycle, iCycleD, iCycleW = 0
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
@@ -297,6 +298,8 @@ PROGRAM ApplicationDriver
   UseTroubledCellIndicator  = .TRUE.
   LimiterThresholdParameter = 0.015_DP
 
+  UseConservativeCorrection = .TRUE.
+
   UsePositivityLimiter = .TRUE.
   Min_1 = 1.0d-13
   Min_2 = 1.0d-13
@@ -360,7 +363,9 @@ PROGRAM ApplicationDriver
            UseTroubledCellIndicator_Option &
              = UseTroubledCellIndicator, &
            LimiterThresholdParameter_Option &
-             = LimiterThresholdParameter )
+             = LimiterThresholdParameter, &
+           UseConservativeCorrection_Option &
+             = UseConservativeCorrection )
 
   CALL Euler_InitializePositivityLimiter &
          ( Min_1_Option = Min_1, &
