@@ -157,6 +157,15 @@ CONTAINS
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP) :: FluxFactor
 
+    IF( (ABS(D) > D) .OR. (D > One) ) THEN
+      WRITE(*,*)
+      WRITE(*,'(A,ES18.6)') &
+      'WARN! FluxFactor_Scalar: D', D
+      FluxFactor = SQRT( D )
+      WRITE(*,'(A,ES18.6)') 'RETURN FluxFactor = NAN', FluxFactor
+      RETURN
+    END IF
+
     FluxFactor &
       = MIN( MAX( SQRT( Gm_dd_11 * I_1**2 &
                         + Gm_dd_22 * I_2**2 &
@@ -208,6 +217,15 @@ CONTAINS
     REAL(DP), INTENT(in) :: D, FF
     REAL(DP) :: EddingtonFactor
 
+    IF( (ABS(D) > D) .OR. (D > One) ) THEN
+      WRITE(*,*)
+      WRITE(*,'(A,2ES18.6)') &
+      'WARN! EddingtonFactor_Scalar: D, FF', D, FF
+      EddingtonFactor = SQRT( D )
+      WRITE(*,'(A,ES18.6)') 'RETURN EddingtonFactor = NAN', EddingtonFactor
+      WRITE(*,*)
+      RETURN
+    END IF
 #ifdef MOMENT_CLOSURE_MINERBO
 
     ! --- Maximum Entropy (ME) Minerbo Closure ---
@@ -247,6 +265,17 @@ CONTAINS
       = Third * ( 5.0_dp - Two * SQRT ( Four - Three * FF * FF) )
 
 #endif
+
+    IF(EddingtonFactor > (1.0_DP + 1.0E-10) ) THEN
+      WRITE(*,*)
+      WRITE(*,'(A,3ES18.6)') &
+      'WARN! EddingtonFactor_Scalar: D, FF, EF', D, FF, EddingtonFactor
+      WRITE(*,'(A,ES18.6,A18,ES18.6)') &
+      ' Difference from ONE in persentage (%) ', &
+      (D-1.0_DP)*100.0_DP, '', (EddingtonFactor-1.0_DP) * 100.0_DP
+      WRITE(*,*)
+!!!RC:      IF( EddingtonFactor > 2.0_DP ) STOP
+    END IF
 
     RETURN
   END FUNCTION EddingtonFactor_Scalar
