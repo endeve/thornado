@@ -9,8 +9,8 @@ MODULE TimeSteppingModule_SSPRK
     nCF
   USE Euler_SlopeLimiterModule, ONLY: &
     Euler_ApplySlopeLimiter
-  USE Euler_PositivityLimiterModule, ONLY: &
-    Euler_ApplyPositivityLimiter
+  USE Euler_PositivityLimiterModule_TABLE, ONLY: &
+    Euler_ApplyPositivityLimiter_TABLE
   
   IMPLICIT NONE
   PRIVATE
@@ -223,7 +223,7 @@ CONTAINS
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-        CALL Euler_ApplyPositivityLimiter &
+        CALL Euler_ApplyPositivityLimiter_TABLE &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
@@ -267,7 +267,7 @@ CONTAINS
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-    CALL Euler_ApplyPositivityLimiter &
+    CALL Euler_ApplyPositivityLimiter_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )

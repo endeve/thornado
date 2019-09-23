@@ -12,6 +12,7 @@ all: ApplicationDriver ComputeLeftState_NuclearEOS
 ApplicationDriver: \
 	$(weaklib) \
 	$(thornado) \
+	Euler_PositivityLimiterModule_TABLE.o \
 	InitializationModule.o \
 	TimeSteppingModule_SSPRK.o \
 	Euler_TallyModule.o \
@@ -19,6 +20,7 @@ ApplicationDriver: \
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
+	Euler_PositivityLimiterModule_TABLE.o \
 	InitializationModule.o \
 	TimeSteppingModule_SSPRK.o \
 	Euler_TallyModule.o \

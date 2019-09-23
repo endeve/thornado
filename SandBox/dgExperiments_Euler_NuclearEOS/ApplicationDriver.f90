@@ -39,10 +39,10 @@ PROGRAM ApplicationDriver
     Euler_InitializeSlopeLimiter, &
     Euler_FinalizeSlopeLimiter, &
     Euler_ApplySlopeLimiter
-  USE Euler_PositivityLimiterModule, ONLY: &
-    Euler_InitializePositivityLimiter, &
-    Euler_FinalizePositivityLimiter, &
-    Euler_ApplyPositivityLimiter
+  USE Euler_PositivityLimiterModule_TABLE, ONLY: &
+    Euler_InitializePositivityLimiter_TABLE, &
+    Euler_FinalizePositivityLimiter_TABLE, &
+    Euler_ApplyPositivityLimiter_TABLE
   USE Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved, &
     ComputeTimeStep
@@ -179,7 +179,7 @@ PROGRAM ApplicationDriver
            LimiterThresholdParameter_Option &
              = LimiterThresholdParameter )
 
-  CALL Euler_InitializePositivityLimiter &
+  CALL Euler_InitializePositivityLimiter_TABLE &
          ( Min_D_Option = ( One + EPSILON(One) ) * MinD, &
            Max_D_Option = ( One - EPSILON(One) ) * MaxD, &
            Min_T_Option = ( One + EPSILON(One) ) * MinT, &
@@ -196,13 +196,13 @@ PROGRAM ApplicationDriver
              = TRIM( Direction ), &
            RiemannProblemName_Option &
              = TRIM( RiemannProblemName ) )
- 
+
   CALL Euler_ApplySlopeLimiter &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-  CALL Euler_ApplyPositivityLimiter &
+  CALL Euler_ApplyPositivityLimiter_TABLE &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
@@ -318,7 +318,7 @@ PROGRAM ApplicationDriver
     '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
   WRITE(*,*)
 
-  CALL Euler_FinalizePositivityLimiter
+  CALL Euler_FinalizePositivityLimiter_TABLE
 
   CALL Euler_FinalizeSlopeLimiter
 
