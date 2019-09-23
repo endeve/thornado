@@ -8,10 +8,11 @@ DEBUG = 0
 thornado.ProgramName = "StandingAccretionShock_Relativistic"
 
 SAS.Mass                  = 1.4   # [Msun]
-SAS.Perturb               = 1
+SAS.ApplyPerturbation     = 1
+SAS.PerturbationOrder     = 4
 SAS.rPerturbationInner    = 260.0 # [km]
 SAS.rPerturbationOuter    = 280.0 # [km]
-SAS.PerturbationAmplitude = 0.5   # Fractional density increase
+SAS.PerturbationAmplitude = 0.1   # Fractional density increase
 
 thornado.t_end     = 3.0e+2   # Final time [ms]
 thornado.dt_wrt    = 1.0e+0   # Time increment to write plot-file [ms]

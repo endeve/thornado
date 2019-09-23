@@ -23,7 +23,7 @@ MODULE MF_InitializationModule
   USE KindModule,              ONLY: &
     DP, Half, One, Pi, TwoPi, FourPi
   USE ProgramHeaderModule,     ONLY: &
-    nDOFX, nX, nNodesX, swX
+    nDOFX, nX, nNodesX, swX, nDimsX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE MeshModule,              ONLY: &
@@ -1464,12 +1464,14 @@ CONTAINS
     INTEGER               :: iL, nLines
     REAL(DP), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
     TYPE(amrex_parmparse) :: PP
-    LOGICAL               :: Perturb
+    LOGICAL               :: ApplyPerturbation
+    INTEGER               :: PerturbationOrder
     REAL(amrex_real)      :: rPerturbationInner, rPerturbationOuter, &
                              PerturbationAmplitude
 
     CALL amrex_parmparse_build( PP, 'SAS' )
-      CALL PP % get( 'Perturb',               Perturb )
+      CALL PP % get( 'ApplyPerturbation',     ApplyPerturbation )
+      CALL PP % get( 'PerturbationOrder',     PerturbationOrder )
       CALL PP % get( 'rPerturbationInner',    rPerturbationInner )
       CALL PP % get( 'rPerturbationOuter',    rPerturbationOuter )
       CALL PP % get( 'PerturbationAmplitude', PerturbationAmplitude )
@@ -1553,15 +1555,49 @@ CONTAINS
             uPF_K(iNodeX,iPF_Ne) = 0.0_amrex_real
 
             ! --- Apply perturbations ---
-            IF( Perturb )THEN
-              IF( X1 .GE. rPerturbationInner &
-                    .AND. X1 .LE. rPerturbationOuter )THEN
+            IF( ApplyPerturbation )THEN
 
-                uPF_K(iNodeX,iPF_D) &
-                  = uPF_K(iNodeX,iPF_D) &
-                      * ( 1.0e0_amrex_real + PerturbationAmplitude )
+              IF     ( PerturbationOrder .EQ. 0 )THEN
+
+                IF( X1 .GE. rPerturbationInner &
+                      .AND. X1 .LE. rPerturbationOuter )THEN
+
+                  uPF_K(iNodeX,iPF_D) &
+                    = uPF_K(iNodeX,iPF_D) &
+                        * ( 1.0e0_amrex_real &
+                              + PerturbationAmplitude )
+
+                END IF
+
+              ELSE IF( PerturbationOrder .EQ. 1 )THEN
+
+                IF( nDimsX .EQ. 1 )THEN
+                  WRITE(*,'(A)') 'Cannot have l = 1 mode perturbation in 1D.'
+                  WRITE(*,'(A)') 'Stopping...'
+                  STOP
+                END IF
+
+                IF( X1 .GE. rPerturbationInner &
+                      .AND. X1 .LE. rPerturbationOuter )THEN
+
+                  uPF_K(iNodeX,iPF_D) &
+                    = uPF_K(iNodeX,iPF_D) &
+                        * ( 1.0e0_amrex_real &
+                              + PerturbationAmplitude * COS( X2 ) )
+                END IF
+
+              ELSE
+
+                WRITE(*,'(A)') 'Fatal Error'
+                WRITE(*,'(A)') '-----------'
+                WRITE(*,'(A,I1)') 'Invalid value of PerturbationOrder: ', &
+                             PerturbationOrder
+                WRITE(*,'(A)') 'Valid values: 0, 1'
+                WRITE(*,'(A)') 'Stopping...'
+                STOP
 
               END IF
+
             END IF
 
           END DO
