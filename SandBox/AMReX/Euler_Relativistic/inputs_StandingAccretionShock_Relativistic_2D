@@ -9,7 +9,7 @@ thornado.ProgramName = "StandingAccretionShock_Relativistic"
 
 SAS.Mass                  = 1.4   # [Msun]
 SAS.ApplyPerturbation     = 1
-SAS.PerturbationOrder     = 4
+SAS.PerturbationOrder     = 1
 SAS.rPerturbationInner    = 260.0 # [km]
 SAS.rPerturbationOuter    = 280.0 # [km]
 SAS.PerturbationAmplitude = 0.1   # Fractional density increase
