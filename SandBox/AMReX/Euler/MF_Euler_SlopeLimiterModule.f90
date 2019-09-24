@@ -1,3 +1,5 @@
+!> Module to apply slope-limiter to AMReX MultiFabs.
+!> @todo Fix issue of multiple grids giving different results.
 MODULE MF_Euler_SlopeLimiterModule
 
   ! --- AMReX Modules ---
@@ -93,10 +95,10 @@ CONTAINS
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF ) )
+                            iX_B1(3):iX_E1(3),1:nGF) )
         ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nCF ) )
+                            iX_B1(3):iX_E1(3),1:nCF) )
 
         CALL AMReX2thornado &
                ( nGF, iX_B1, iX_E1, &
@@ -137,7 +139,6 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nCF), &
                  SuppressBC_Option = .TRUE. )
-
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         CALL thornado2AMReX &

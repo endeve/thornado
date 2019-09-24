@@ -1,3 +1,5 @@
+!> Initialize, finalize, and apply positivity limiter from
+!> Qin et al., (2016), JCP, 315, 323
 MODULE Euler_PositivityLimiterModule_Relativistic
 
   USE KindModule, ONLY: &
@@ -115,6 +117,12 @@ CONTAINS
   END SUBROUTINE Euler_FinalizePositivityLimiter_Relativistic
 
 
+  !> Iterate through the entire spatial domain and apply the positivity
+  !> limiter from Qin et al., (2016), JCP, 315, 323 to each element.
+  !> @param Theta_D minimum value to ensure physical density
+  !> @param Theta_q minimum value to ensure physical internal energy-density
+  !>        and velocity
+  !> @todo Modify to accomodate GR
   SUBROUTINE Euler_ApplyPositivityLimiter_Relativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
@@ -128,7 +136,8 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
     REAL(DP) :: Theta_D, Theta_q, Theta_P
     REAL(DP) :: Min_K, Min_D, Min_ESq
-    REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), q(nPT)
+    REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), q(nPT), SSq(nPT)
+    REAL(DP) :: chi
 
     ! --- For de-bugging ---
     REAL(DP) :: q_K(nPT)
@@ -136,9 +145,6 @@ CONTAINS
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
-
-    ! --- Implement bound-preserving limiter from
-    !     Qin et al., (2016), JCP, 315, 323 ---
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -187,6 +193,8 @@ CONTAINS
                      * U_q(1:nDOFX,iCF_E) ) &
                 / SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) ) )
 
+        IF( U_K(iCF_E) .LT. Zero ) STOP 'U_K(iCF_E) < 0'
+
         Min_ESq = Min_2 * U_K(iCF_E)**2
 
         CALL Computeq &
@@ -200,23 +208,59 @@ CONTAINS
                          / SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) )
           END DO
 
-          ! --- Solve for Theta_q such that all point-values
-          !     of q are positive ---
-          Theta_q = One
+          ! --- Compute cell-average of q ---
           DO iP = 1, nPT
-            IF( q(iP) .LT. Zero )THEN
-              CALL SolveTheta_Bisection &
-                ( U_PP(iP,1:nCF), U_K, G_PP(iP,1:nGF), Min_ESq, Theta_P, &
-                  iX1, iX2, iX3, iP )
-              Theta_q = MIN( Theta_q, Theta_P )
-            END IF
+            CALL Computeq( 1, U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, q_K(iP) )
           END DO
 
-          ! --- Limit all variables towards cell-average ---
-          DO iCF = 1, nCF
-            U_q(1:nDOFX,iCF) &
-              = U_K(iCF) + Theta_q * ( U_q(1:nDOFX,iCF) - U_K(iCF) )
-          END DO
+          ! --- Artificially inject some thermal energy if any q_K < 0 ---
+          IF( ANY( q_K(1:nPT) .LT. Zero ) )THEN
+
+            WRITE(*,*)
+            WRITE(*,'(A)') 'Adding internal energy'
+            WRITE(*,'(A,3I5.4)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
+
+            ! --- Use maximum value of SSq(1:nPT) to determine how much
+            !     internal energy to inject ---
+            DO iP = 1, nPT
+              SSq(iP) = U_K(iCF_S1)**2 / G_PP(iP,iGF_Gm_dd_11) &
+                           + U_K(iCF_S2)**2 / G_PP(iP,iGF_Gm_dd_22) &
+                           + U_K(iCF_S3)**2 / G_PP(iP,iGF_Gm_dd_33)
+            END DO
+
+            WRITE(*,'(A,ES24.16E3)') 'tau_K (old):', U_K(iCF_E)
+            chi = ( Min_2 * U_K(iCF_E) - U_K(iCF_D) &
+                      + SQRT( U_K(iCF_D)**2 + MAXVAL( SSq ) &
+                                + Min_ESq ) ) / U_K(iCF_E) - One
+            U_K(iCF_E) = U_K(iCF_E) * ( One + chi )
+            WRITE(*,'(A,ES13.6E3)') &
+              'Fractional amount of internal energy added: ', chi
+
+            DO iCF = 1, nCF
+              U_q(1:nDOFX,iCF) = U_K(iCF)
+            END DO
+
+          ELSE
+
+            ! --- Solve for Theta_q such that all point-values
+            !     of q are positive ---
+            Theta_q = One
+            DO iP = 1, nPT
+              IF( q(iP) .LT. Zero )THEN
+                CALL SolveTheta_Bisection &
+                  ( U_PP(iP,1:nCF), U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, &
+                    Theta_P, iX1, iX2, iX3, iP )
+                Theta_q = MIN( Theta_q, Theta_P )
+              END IF
+            END DO
+
+            ! --- Limit all variables towards cell-average ---
+            DO iCF = 1, nCF
+              U_q(1:nDOFX,iCF) &
+                = U_K(iCF) + Theta_q * ( U_q(1:nDOFX,iCF) - U_K(iCF) )
+            END DO
+
+          END IF
 
         END IF ! q < 0
 
@@ -410,6 +454,7 @@ CONTAINS
 
     ! --- For de-bugging ---
     INTEGER,  INTENT(in) :: iX1, iX2, iX3, iP
+    INTEGER :: iCF, iGF
 
     INTEGER,  PARAMETER :: MAX_IT = 19
     REAL(DP), PARAMETER :: dx_min = 1.0d-3
@@ -418,6 +463,27 @@ CONTAINS
     INTEGER  :: ITERATION
     REAL(DP) :: x_a, x_b, x_c, dx
     REAL(DP) :: f_a, f_b, f_c
+
+!!$    WRITE(*,*)
+!!$    WRITE(*,'(A,I3)') 'iP = ', iP
+!!$    WRITE(*,'(A)') 'U_Q = np.array( ['
+!!$    DO iCF = 1, nCF-1
+!!$      WRITE(*,'(ES24.16E3,A)') U_Q(iCF), ','
+!!$    END DO
+!!$    WRITE(*,'(ES24.16E3,A)') U_Q(iCF), ' ] )'
+!!$    WRITE(*,*)
+!!$    WRITE(*,'(A)') 'U_K = np.array( ['
+!!$    DO iCF = 1, nCF-1
+!!$      WRITE(*,'(ES24.16E3,A)') U_K(iCF), ','
+!!$    END DO
+!!$    WRITE(*,'(ES24.16E3,A)') U_K(iCF), ' ] )'
+!!$    WRITE(*,*)
+!!$    WRITE(*,'(A)') 'G_Q = np.array( ['
+!!$    DO iGF = iGF_Gm_dd_11, iGF_Gm_dd_33-1
+!!$      WRITE(*,'(ES24.16E3,A)') G_Q(iCF), ','
+!!$    END DO
+!!$    WRITE(*,'(ES24.16E3,A)') G_Q(iGF), ' ] )'
+!!$    WRITE(*,*)
 
     x_a = Zero
     f_a = qFun &

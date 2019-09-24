@@ -32,7 +32,7 @@ CONTAINS
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
-      Verbose_Option )
+      UseConservativeCorrection_Option, Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
@@ -42,6 +42,7 @@ CONTAINS
       UseSlopeLimiter_Option, &
       UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, &
+      UseConservativeCorrection_Option, &
       Verbose_Option
     REAL(DP), INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
@@ -52,7 +53,9 @@ CONTAINS
            ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
              UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
              UseTroubledCellIndicator_Option, &
-             LimiterThresholdParameter_Option, Verbose_Option )
+             LimiterThresholdParameter_Option, &
+             UseConservativeCorrection_Option, &
+             Verbose_Option )
 
 #elif HYDRO_RELATIVISTIC
 
@@ -60,7 +63,9 @@ CONTAINS
            ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
              UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
              UseTroubledCellIndicator_Option, &
-             LimiterThresholdParameter_Option, Verbose_Option )
+             LimiterThresholdParameter_Option, &
+             UseConservativeCorrection_Option, &
+             Verbose_Option )
 
 #endif
 

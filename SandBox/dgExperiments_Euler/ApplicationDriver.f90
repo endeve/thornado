@@ -68,6 +68,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
+  LOGICAL       :: UseConservativeCorrection
   INTEGER       :: iCycle, iCycleD
   INTEGER       :: nX(3), bcX(3), nNodes
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, wTime
@@ -262,6 +263,8 @@ PROGRAM ApplicationDriver
 
       UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 0.03_DP
+
+      UseConservativeCorrection = .TRUE.
 
       iCycleD = 10
       t_end   = 8.5_DP

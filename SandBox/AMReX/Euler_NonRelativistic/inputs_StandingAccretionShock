@@ -50,6 +50,7 @@ SL.SlopeTolerance            = 1.0e-6
 SL.BetaTVD                   = 1.15e0
 SL.BetaTVB                   = 0.0e0
 SL.LimiterThresholdParameter = 1.5e-2
+SL.UseConservativeCorrection = 1
 
 # Positivity limiter parameters
 PL.UsePositivityLimiter = 1

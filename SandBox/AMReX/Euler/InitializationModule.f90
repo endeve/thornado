@@ -65,7 +65,10 @@ MODULE InitializationModule
     InitializePolynomialBasis_Legendre
   USE Euler_PositivityLimiterModule,    ONLY: &
     Euler_InitializePositivityLimiter
-  USE InputOutputModuleAMReX
+  USE InputOutputModuleAMReX,           ONLY: &
+    ReadCheckpointFile,          &
+    WriteFieldsAMReX_Checkpoint, &
+    WriteFieldsAMReX_PlotFile
   USE UnitsModule,                      ONLY: &
     SolarMass
 
@@ -161,8 +164,6 @@ CONTAINS
 
     END IF
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
-
     wrt = .FALSE.
     chk = .FALSE.
 
@@ -252,6 +253,8 @@ CONTAINS
                = UseTroubledCellIndicator, &
              LimiterThresholdParameter_Option &
                = LimiterThresholdParameter, &
+             UseConservativeCorrection_Option &
+               = UseConservativeCorrection, &
              Verbose_Option &
                = amrex_parallel_ioprocessor() )
 
@@ -271,23 +274,30 @@ CONTAINS
     ! --- Allocates 'Shock' and sets units for fluid fields ---
     CALL CreateFluidFields( nX, swX, amrex_parallel_ioprocessor() )
 
-    IF( iRestart < 0 )THEN
-      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
-      CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
-      CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
+    IF( iRestart < 0 )THEN
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
+      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+      CALL WriteFieldsAMReX_PlotFile &
+             ( t(0), StepNo, &
+               MF_uGF_Option = MF_uGF, &
+               MF_uCF_Option = MF_uCF, &
+               MF_uPF_Option = MF_uPF, &
+               MF_uAF_Option = MF_uAF )
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
-      CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, t, t_wrt, &
-               MF_uGF % BA % P, &
-               MF_uGF % P, &
-               MF_uCF % P, &
-               MF_uPF % P, &
-               MF_uAF % P )
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
+      CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
+      CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
       CALL WriteFieldsAMReX_PlotFile &
              ( t(0), StepNo, &
                MF_uGF_Option = MF_uGF, &
@@ -296,6 +306,8 @@ CONTAINS
                MF_uAF_Option = MF_uAF )
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
     END IF
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     DO iLevel = 0, nLevels
       CALL amrex_distromap_destroy( DM(iLevel) )
@@ -307,6 +319,8 @@ CONTAINS
       WRITE(*,'(A)') '  Evolving fields...'
       WRITE(*,*)
     END IF
+
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
   END SUBROUTINE InitializeProblem
 
