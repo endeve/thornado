@@ -97,7 +97,7 @@ PROGRAM DeleptonizationWave
   REAL(DP) :: eL, eR
   REAL(DP) :: xL(3), xR(3), ZoomX(3)
 
-  CoordinateSystem = 'CARTESIAN'
+  CoordinateSystem = 'SPHERICAL'
 
   TEST_DEBUG = .TRUE.
 
@@ -108,8 +108,8 @@ PROGRAM DeleptonizationWave
       ProgramName = 'DeleptonizationWave'
 
       nX = [  128, 128, 1 ]  ! 96 / 128 [96, 96, 1]
-      xL = [  0.0d2,  0.0d2, - 1.0d2 ] * Kilometer
-      xR = [  2.0d2,  2.0d2, + 1.0d2 ] * Kilometer
+      xL = [  0.0_DP, 0.0_DP, - 1.0d2 ] * Kilometer
+      xR = [  4.0d2,  4.0d2,  + 1.0d2 ] * Kilometer
       
       bcX = [ 32, 32, 32 ]
 
@@ -119,14 +119,15 @@ PROGRAM DeleptonizationWave
 
       ProgramName = 'DeleptonizationWave_Spherical'
 
-      nX = [ 128, 1, 1 ] ! 512
+      nX = [ 181, 1, 1 ] ! 512
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 5.0d2 * Kilometer, Pi,     TwoPi  ]
+      xR = [ 5.66d2 * Kilometer, Pi,     TwoPi  ]
       !xR = [ 3.0d3 * Kilometer, Pi,     TwoPi  ]
 
-      bcX = [ 32, 0, 0 ]
+      bcX = [ 32, 3, 0 ]
 
-      zoomX = [ 1.007_DP, 1.0_DP, 1.0_DP ]
+      zoomX = [ 1.007_DP, 1.0_DP, 1.0_DP ] ! need fix: compute correct zoomX
+      !IF( TEST_DEBUG ) zoomX = [ 1.0_DP, 1.0_DP, 1.0_DP ] ! debug use only
 
   END SELECT
  
@@ -136,9 +137,9 @@ PROGRAM DeleptonizationWave
 
   IF( nNodes == 1 ) UsePositivityLimiter = .FALSE.
 
-  nE = 5
+  nE = 2
   eL = 0.0d0 * MeV
-  eR = 3.0d2 * MeV
+  eR = 10.0d0 * MeV
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -275,29 +276,40 @@ PROGRAM DeleptonizationWave
 
   IF ( CoordinateSystem == 'SPHERICAL') THEN
     ! Spherical Coordinate time step
-    dt  = Third * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
-            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
-  ELSE IF ( CoordinateSystem == 'CARTESIAN' ) THEN
-    ! Cartesian Coordinate time step
-    dt  = 0.75_DP *  Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
+    !!! NEED FIX for 2D
+    dt  = 0.01_DP * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
     WRITE(*,*)
-    WRITE(*,*) 'MINVAL( (xR-xL) / DBLE( nX ) )', MINVAL( (xR-xL) / DBLE( nX ) )
-    WRITE(*,*) 'DENUM', ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+    WRITE(*,*) 'dr [km]', MINVAL( MeshX(1) % Width ) / Kilometer
+    WRITE(*,*) 'dr [km]', MINLOC( MeshX(1) % Width )
+    WRITE(*,*) 'dr [km]', MeshX(1) % Width(1),MeshX(1) % Width(nX(1))
+    WRITE(*,*) 'para   ', 0.1_DP / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+    WRITE(*,*) 'dt [dimless]', dt
+    WRITE(*,*) 'Millisecond', Millisecond
+    WRITE(*,*)
+!    dt = 15.631964188672887
+  ELSE IF ( CoordinateSystem == 'CARTESIAN' ) THEN
+    ! Cartesian Coordinate time step
+    ! dt  = 0.49_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
+    dt  = 0.01_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
+            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+    WRITE(*,*)
+    WRITE(*,*) 'dx [km]', MINVAL( (xR-xL) / DBLE( nX ) ) / Kilometer
     WRITE(*,*)
   END IF
 
-  iCycleD = 10
+  iCycleD = 1
   IF( TEST_DEBUG ) THEN
-    iCycleW = 1!int(t_end / dt / 2)
+    iCycleW = 1 ! INT(t_end / dt / 10)
+    !t_end = 10 * dt
   ELSE
     iCycleW = 200 ! 200 -> 128, 150 -> 96
   END IF
 
   WRITE(*,*)
-  WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
-    '', 'Evolving from t = ', t / Millisecond, &
-    ' to t = ', t_end / Millisecond
+  WRITE(*,'(A6,A,ES8.2E2,A3,A8,ES8.2E2,A3)') &
+    '', 'Evolving from t = ', t / Millisecond, 'ms', &
+    ' to t = ', t_end / Millisecond, 'ms'
   WRITE(*,*)
 
   iCycle = 0
