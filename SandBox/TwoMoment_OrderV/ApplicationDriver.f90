@@ -41,7 +41,7 @@ PROGRAM ApplicationDriver
   USE FluidFieldsModule, ONLY: &
     uCF
   USE RadiationFieldsModule, ONLY: &
-    uCR
+    uCR, uPR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE EquationOfStateModule, ONLY: &
@@ -49,6 +49,8 @@ PROGRAM ApplicationDriver
     FinalizeEquationOfState
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
+  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+    ComputeFromConserved_TwoMoment
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Initialize_IMEX_RK, &
     Finalize_IMEX_RK, &
@@ -225,6 +227,9 @@ PROGRAM ApplicationDriver
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
+      CALL ComputeFromConserved_TwoMoment &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCR, uPR )
+
       CALL WriteFieldsHDF &
              ( Time = t, &
                WriteGF_Option = .TRUE., &
@@ -234,6 +239,9 @@ PROGRAM ApplicationDriver
     END IF
 
   END DO
+
+  CALL ComputeFromConserved_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCR, uPR )
 
   CALL WriteFieldsHDF &
          ( Time = t, &
