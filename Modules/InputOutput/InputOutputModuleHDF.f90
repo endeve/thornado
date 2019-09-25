@@ -26,7 +26,7 @@ MODULE InputOutputModuleHDF
     uCF, nCF, namesCF, unitsCF, &
     uPF, nPF, namesPF, unitsPF, &
     uAF, nAF, namesAF, unitsAF, &
-    Shock
+    Shock, Theta1, Theta2, Theta3, E_Minimum
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     uCR, nCR, namesCR, unitsCR, &
@@ -364,6 +364,32 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Shock(1:nX(1),1:nX(2),1:nX(3)), DatasetName, FILE_ID )
+
+    ! --- Positivity Limiter Parameters ---
+
+    GroupName = 'Positivity Limiter'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ) , FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/Theta 1'
+
+    CALL WriteDataset3DHDF &
+           ( Theta1(1:nX(1),1:nX(2),1:nX(3)), DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/Theta 2'
+
+    CALL WriteDataset3DHDF &
+           ( Theta2(1:nX(1),1:nX(2),1:nX(3)), DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/Theta 3'
+
+    CALL WriteDataset3DHDF &
+           ( Theta3(1:nX(1),1:nX(2),1:nX(3)), DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/Minimum Energy'
+
+    CALL WriteDataset4DHDF &
+           ( E_Minimum(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), DatasetName, FILE_ID )
 
     CALL H5FCLOSE_F( FILE_ID, HDFERR )
 
