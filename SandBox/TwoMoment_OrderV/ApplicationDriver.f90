@@ -44,6 +44,9 @@ PROGRAM ApplicationDriver
     uCR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
+  USE EquationOfStateModule, ONLY: &
+    InitializeEquationOfState, &
+    FinalizeEquationOfState
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
@@ -160,6 +163,13 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElement_Lagrange
 
+  ! --- Initialize Equation of State ---
+
+  CALL InitializeEquationOfState &
+         ( EquationOfState_Option = 'IDEAL', &
+           Gamma_IDEAL_Option = 4.0_DP / 3.0_DP, &
+           Verbose_Option = .TRUE. )
+
   ! --- Initialize Moment Closure ---
 
   CALL InitializeClosure_TwoMoment
@@ -234,6 +244,8 @@ PROGRAM ApplicationDriver
   ! --- Finalize ---
 
   CALL Finalize_IMEX_RK
+
+  CALL FinalizeEquationOfState
 
   CALL FinalizeTimers
 
