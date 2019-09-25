@@ -748,6 +748,23 @@ CONTAINS
           U_IMEX(:) = U_IMEX(:) + dt * a_EX(iS,jS) * dU_EX(:,jS)
 
         END IF
+       
+        IF( MAXVAL( U_IMEX ) > 1.0_DP ) THEN
+          WRITE(*,*) '===================== ERROR =========================' 
+          WRITE(*,*) 'Max Moments Beyond ONE after IMEX update!!' 
+          WRITE(*,'(A,I3,A,I3)') ' At iS =',iS, ', jS =', jS
+          WRITE(*,'(A,ES15.5)') &
+          ' dt * a_EX(iS,jS) * dU_EX(:,jS) =', MAXVAL( dt * a_EX(iS,jS) * dU_EX(:,jS) )
+          WRITE(*,'(A,ES15.5)') &
+          ' dt * a_IM(iS,jS) * dU_IM(:,jS) =', MAXVAL( dt * a_IM(iS,jS) * dU_IM(:,jS) )
+          WRITE(*,'(A,ES15.5)') &
+          ' MAXVAL( U_IMEX ) - ONE =', MAXVAL( U_IMEX ) - 1.0_DP
+          WRITE(*,*) 'STOP the program' 
+          STOP
+        END IF
+
+        IF( MAXVAL( U_IMEX ) > 1.0_DP ) WRITE(*,*) &
+          '=== 1 a 0 === jS',jS, ' MAX D ', MAXVAL( U_IMEX )
 
         IF( jS == iS - 1 )THEN
 
@@ -762,8 +779,11 @@ CONTAINS
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
 
           CALL MapToStage( iZ_B1, U, U_IMEX )
-
+        
         END IF
+
+      IF( MAXVAL( U ) > 1.0_DP ) WRITE(*,*) &
+        '=== 2 === jS',jS, ' MAX D ', MAXVAL( U )
 
       END DO ! jS = 1, iS - 1
 
@@ -794,17 +814,33 @@ CONTAINS
 
       END IF
 
+      IF( MAXVAL( U ) > 1.0_DP ) WRITE(*,*) &
+        ' Implicit Solve MAX D ', MAXVAL( U )
+
       IF( ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero ) )THEN
 
         ! --- Explicit Solve ---
 
         CALL MapFromStage( iZ_B1, U, U_IMEX )
-
+        
         CALL ComputeIncrement_Explicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
+        IF( MAXVAL( dU ) > 1.0_DP ) THEN
+          WRITE(*,*)
+          WRITE(*,'(A,ES15.5)') ' ---------- > NEW dU going to apply: max=',&
+                                 MAXVAL( dU )
+          WRITE(*,*) 'loc=', MAXLOC( dU )
+        END IF
+
         CALL MapToStage( iZ_B1, dU, dU_EX(:,iS) )
 
+      END IF
+
+      IF( MAXVAL( dU ) > 1.0_DP ) THEN
+        WRITE(*,*) '==>'
+        WRITE(*,'(A,ES15.6)') ' Before move to next iS, MAX U =', MAXVAL( U )
+        WRITE(*,*)
       END IF
 
     END DO ! iS

@@ -138,7 +138,7 @@ CONTAINS
       WRITE(*,'(7x,A,ES13.6E3,A)') &
         '  Timers = ', TotalTime, ' s'
       WRITE(*,*)
-      WRITE(*,'(7x,A,F6.3,A)') &
+      WRITE(*,'(7x,A,F7.3,A)') &
         '  Timers / TotalRunTime = ', &
         100.0_amrex_real &
         * TotalTime / Timer_AMReX_Euler_Program, ' %'
