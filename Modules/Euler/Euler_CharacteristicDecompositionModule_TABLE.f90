@@ -13,7 +13,7 @@ MODULE Euler_CharacteristicDecompositionModule_TABLE
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE Euler_UtilitiesModule, ONLY: &
-    ComputePrimitive
+    Euler_ComputePrimitive
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -51,7 +51,7 @@ CONTAINS
     REAL(DP), DIMENSION(1) :: X, Alpha, B, Delta, Zero2
     REAL(DP), DIMENSION(3) :: Phi
 
-    CALL ComputePrimitive &
+    CALL Euler_ComputePrimitive &
            ( [ U(iCF_D ) ], [ U(iCF_S1) ], [ U(iCF_S2) ], &
              [ U(iCF_S3) ], [ U(iCF_E ) ], [ U(iCF_Ne) ], &
              D, V1, V2, V3, E, Ne, &
@@ -81,7 +81,7 @@ CONTAINS
       ! Cs = SQRT( Tau**2 * ( P * dPdE - dPdTau) + Y * dPdDe   )
       Cs = Cs_table
     ELSE
-      Cs = Cs_table  
+      Cs = Cs_table
       ! write(*,*) "Switching Sound Speed to TABLE value"
     END IF
 
