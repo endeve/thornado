@@ -14,14 +14,12 @@ ApplicationDriver: \
 	$(thornado) \
 	InitializationModule.o \
 	TimeSteppingModule_SSPRK.o \
-	Euler_TallyModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
 	TimeSteppingModule_SSPRK.o \
-	Euler_TallyModule.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 

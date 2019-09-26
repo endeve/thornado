@@ -33,23 +33,23 @@ PROGRAM ApplicationDriver
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
-  USE Euler_SlopeLimiterModule, ONLY: &
-    Euler_InitializeSlopeLimiter, &
-    Euler_FinalizeSlopeLimiter, &
-    Euler_ApplySlopeLimiter
-  USE Euler_PositivityLimiterModule, ONLY: &
-    Euler_InitializePositivityLimiter, &
-    Euler_FinalizePositivityLimiter, &
-    Euler_ApplyPositivityLimiter
-  USE Euler_UtilitiesModule, ONLY: &
-    ComputeFromConserved, &
-    ComputeTimeStep
+  USE Euler_SlopeLimiterModule_NonRelativistic, ONLY: &
+    Euler_InitializeSlopeLimiter_NonRelativistic, &
+    Euler_FinalizeSlopeLimiter_NonRelativistic, &
+    Euler_ApplySlopeLimiter_NonRelativistic
+  USE Euler_PositivityLimiterModule_NonRelativistic, ONLY: &
+    Euler_InitializePositivityLimiter_NonRelativistic, &
+    Euler_FinalizePositivityLimiter_NonRelativistic, &
+    Euler_ApplyPositivityLimiter_NonRelativistic
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
+    Euler_ComputeFromConserved_NonRelativistic, &
+    Euler_ComputeTimeStep_NonRelativistic
   USE Euler_dgDiscretizationModule, ONLY: &
     Euler_ComputeIncrement_DG_Explicit
-  USE Euler_TallyModule, ONLY: &
-    InitializeTally_Euler, &
-    FinalizeTally_Euler, &
-    ComputeTally_Euler
+  USE Euler_TallyModule_NonRelativistic, ONLY: &
+    Euler_InitializeTally_NonRelativistic, &
+    Euler_FinalizeTally_NonRelativistic, &
+    Euler_ComputeTally_NonRelativistic
 
   IMPLICIT NONE
 
@@ -160,7 +160,7 @@ PROGRAM ApplicationDriver
          ( EquationOfState_Option = 'TABLE', &
            EquationOfStateTableName_Option = 'EquationOfStateTable.h5' )
 
-  CALL Euler_InitializeSlopeLimiter &
+  CALL Euler_InitializeSlopeLimiter_NonRelativistic &
          ( BetaTVD_Option = BetaTVD, &
            BetaTVB_Option = BetaTVB, &
            SlopeTolerance_Option &
@@ -174,7 +174,7 @@ PROGRAM ApplicationDriver
            LimiterThresholdParameter_Option &
              = LimiterThresholdParameter )
 
-  CALL Euler_InitializePositivityLimiter &
+  CALL Euler_InitializePositivityLimiter_NonRelativistic &
          ( Min_1_Option = 1.0d-12, &
            Min_2_Option = 1.0d-12, &
            UsePositivityLimiter_Option = .FALSE. )
@@ -188,18 +188,19 @@ PROGRAM ApplicationDriver
              = TRIM( RiemannProblemName ), &
            SedovEnergy_Option = Eblast )
 
-  CALL Euler_ApplySlopeLimiter &
+  CALL Euler_ApplySlopeLimiter_NonRelativistic &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, &
+           uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+           uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+           SuppressBC = .FALSE. )
+
+  CALL Euler_ApplyPositivityLimiter_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-  CALL Euler_ApplyPositivityLimiter &
+  CALL Euler_ComputeFromConserved_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
-           uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-           uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
-
-  CALL ComputeFromConserved &
-         ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -218,7 +219,7 @@ PROGRAM ApplicationDriver
   t_wrt = dt_wrt !* Millisecond
   wrt   = .TRUE.
 
-  CALL InitializeTally_Euler &
+  CALL Euler_InitializeTally_NonRelativistic &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
@@ -228,8 +229,8 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    CALL ComputeTimeStep &
-           ( iX_B0, iX_E0, &
+    CALL Euler_ComputeTimeStep_NonRelativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              CFL = 0.5_DP / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
@@ -262,8 +263,8 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
-      CALL ComputeFromConserved &
-             ( iX_B0, iX_E0, &
+      CALL Euler_ComputeFromConserved_NonRelativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, &
                uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -272,7 +273,7 @@ PROGRAM ApplicationDriver
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-      CALL ComputeTally_Euler &
+      CALL Euler_ComputeTally_NonRelativistic &
            ( iX_B0, iX_E0, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -284,8 +285,8 @@ PROGRAM ApplicationDriver
 
   END DO
 
-  CALL ComputeFromConserved &
-         ( iX_B0, iX_E0, &
+  CALL Euler_ComputeFromConserved_NonRelativistic &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -294,13 +295,13 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL ComputeTally_Euler &
+  CALL Euler_ComputeTally_NonRelativistic &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
-  CALL FinalizeTally_Euler
+  CALL Euler_FinalizeTally_NonRelativistic
 
   wTime = MPI_WTIME( ) - wTime
 
@@ -309,9 +310,9 @@ PROGRAM ApplicationDriver
     '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
   WRITE(*,*)
 
-  CALL Euler_FinalizePositivityLimiter
+  CALL Euler_FinalizePositivityLimiter_NonRelativistic
 
-  CALL Euler_FinalizeSlopeLimiter
+  CALL Euler_FinalizeSlopeLimiter_NonRelativistic
 
   CALL FinalizeEquationOfState
 
