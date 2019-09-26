@@ -1,10 +1,10 @@
 MODULE InitializationModule
 
   USE KindModule, ONLY: &
-    DP, TwoPi
+    DP, Three, TwoPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nDOF, nDOFX, nDOFE, &
+    nDOFZ, nDOFX, nDOFE, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iZ_B0, iZ_E0, iZ_B1, iZ_E1
   USE ReferenceElementModule, ONLY: &
@@ -42,9 +42,13 @@ CONTAINS
 
     SELECT CASE( TRIM( ProgramName ) )
 
-      CASE ( 'SineWaveStreaming' )
+      CASE( 'SineWaveStreaming' )
 
         CALL InitializeFields_SineWaveStreaming
+
+      CASE( 'SineWaveDiffusion' )
+
+        CALL InitializeFields_SineWaveDiffusion
 
     END SELECT
 
@@ -113,7 +117,7 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      DO iNodeZ = 1, nDOF
+      DO iNodeZ = 1, nDOFZ
 
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
@@ -155,6 +159,102 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_SineWaveStreaming
+
+
+  SUBROUTINE InitializeFields_SineWaveDiffusion
+
+    INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeZ2
+    INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
+    REAL(DP) :: X1
+
+    ! --- Fluid Fields ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.3_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+
+      END DO
+
+      CALL Euler_ComputeConserved_NonRelativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
+               uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), &
+               uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), &
+               uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), &
+               uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), &
+               uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Radiation Fields ---
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+
+        iNodeZ2 = NodeNumberTable(2,iNodeZ)
+
+        X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
+
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
+          = 0.50_DP + 0.49_DP * SIN( TwoPi * X1 )
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
+          = - 0.49_DP * TwoPi/(Three*1.0d2) * COS( TwoPi * X1 )
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
+          = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
+          = 0.0_DP
+
+        CALL ComputeConserved_TwoMoment &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_SineWaveDiffusion
 
 
 END MODULE InitializationModule

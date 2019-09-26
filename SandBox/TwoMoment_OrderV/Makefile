@@ -59,9 +59,12 @@ clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
-	rm -f PrimitiveConserved_$(MACHINE)
-	rm -f TimeStepper_$(MACHINE)
-	rm -f ApplicationDriver_$(MACHINE)
+	rm -f  PrimitiveConserved_$(MACHINE)
+	rm -rf PrimitiveConserved_$(MACHINE).dSYM
+	rm -f  TimeStepper_$(MACHINE)
+	rm -rf TimeStepper_$(MACHINE).dSYM
+	rm -f  ApplicationDriver_$(MACHINE)
+	rm -rf ApplicationDriver_$(MACHINE).dSYM
 
 PrimitiveConserved.o: \
   KindModule.o \

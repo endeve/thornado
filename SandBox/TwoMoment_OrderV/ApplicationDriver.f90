@@ -71,7 +71,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'SineWaveStreaming'
+  ProgramName = 'SineWaveDiffusion'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -97,6 +97,27 @@ PROGRAM ApplicationDriver
       iCycleD = 1
       iCycleW = 1
       maxCycles = 10000
+
+    CASE( 'SineWaveDiffusion' )
+
+      nX  = [ 16, 1, 1 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      bcX = [ 1, 0, 0 ]
+
+      nE  = 1
+      eL  = 0.0_DP
+      eR  = 1.0_DP
+      bcE = 0
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 1.0d0
+      iCycleD = 1
+      iCycleW = 1
+      maxCycles = 1000000
 
     CASE DEFAULT
 
@@ -223,7 +244,7 @@ PROGRAM ApplicationDriver
 
     CALL Update_IMEX_RK( dt, uGE, uGF, uCF, uCR )
 
-    t = t + dt
+    t = t_end!t + dt
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
