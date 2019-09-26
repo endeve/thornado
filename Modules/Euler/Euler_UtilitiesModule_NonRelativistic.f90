@@ -36,10 +36,38 @@ MODULE Euler_UtilitiesModule_NonRelativistic
   PUBLIC :: Euler_NumericalFlux_X2_HLLC_NonRelativistic
   PUBLIC :: Euler_NumericalFlux_X3_HLLC_NonRelativistic
 
+  INTERFACE Euler_ComputePrimitive_NonRelativistic
+    MODULE PROCEDURE ComputePrimitive_Scalar
+    MODULE PROCEDURE ComputePrimitive_Vector
+  END INTERFACE Euler_ComputePrimitive_NonRelativistic
+
 CONTAINS
 
 
-  SUBROUTINE Euler_ComputePrimitive_NonRelativistic &
+  SUBROUTINE ComputePrimitive_Scalar &
+    ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    REAL(DP), INTENT(in ) :: N, S_1, S_2, S_3, G, Ne
+    REAL(DP), INTENT(out) :: D, V_1, V_2, V_3, E, De
+    REAL(DP), INTENT(in ) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+    ! --- Three-Velocity: Index Up   ---
+    ! --- Three-Momentum: Index Down ---
+
+    D   = N
+    V_1 = S_1 / ( Gm_dd_11 * N )
+    V_2 = S_2 / ( Gm_dd_22 * N )
+    V_3 = S_3 / ( Gm_dd_33 * N )
+    E   = G - Half * ( S_1**2 / Gm_dd_11 &
+                       + S_2**2 / Gm_dd_22 &
+                       + S_3**2 / Gm_dd_33 ) / N
+    De  = Ne
+
+  END SUBROUTINE ComputePrimitive_Scalar
+
+
+  SUBROUTINE ComputePrimitive_Vector &
                ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
                  Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
@@ -54,13 +82,12 @@ CONTAINS
     V_1 = S_1 / ( Gm_dd_11 * N )
     V_2 = S_2 / ( Gm_dd_22 * N )
     V_3 = S_3 / ( Gm_dd_33 * N )
-
     E   = G - Half * ( S_1**2 / Gm_dd_11 &
                        + S_2**2 / Gm_dd_22 &
                        + S_3**2 / Gm_dd_33 ) / N
     De  = Ne
 
-  END SUBROUTINE Euler_ComputePrimitive_NonRelativistic
+  END SUBROUTINE ComputePrimitive_Vector
 
 
   SUBROUTINE Euler_ComputeConserved_NonRelativistic &
