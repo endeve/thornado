@@ -19,10 +19,12 @@ all: Decoherence
 Decoherence: \
 	$(weaklib) \
 	$(thornado) \
+	InitializationModule.o \
 	Decoherence.o
 	$(FLINKER) $(FLAGS) -o Decoherence_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
+	InitializationModule.o \
 	Decoherence.o \
 	$(LIBRARIES)
 

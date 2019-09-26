@@ -1,7 +1,9 @@
 PROGRAM Decoherence
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two
+    DP, Zero, One, Two, Pi, TwoPi
+  USE UnitsModule, ONLY: &
+    Kilometer, MeV
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
@@ -42,6 +44,8 @@ PROGRAM Decoherence
     FinalizeEquationOfState
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
+  USE InitializationModule, ONLY: &
+    InitializeFields_Decoherence
 
   IMPLICIT NONE
 
@@ -49,17 +53,17 @@ PROGRAM Decoherence
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   REAL(DP)      :: eL, eR, xL(3), xR(3)
 
-  nX  = [ 16, 1, 1 ]
-  xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-  xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+  nX  = [ 128, 1, 1 ]
+  xL  = [ 1.0d0 * Kilometer, 0.0_DP, 0.0_DP ]
+  xR  = [ 1.0d2 * Kilometer, Pi,     TwoPi  ]
   bcX = [ 1, 0, 0 ]
 
-  nE  = 1
-  eL  = 0.0_DP
-  eR  = 1.0_DP
+  nE  = 40
+  eL  = 0.0d0 * MeV
+  eR  = 2.5d2 * MeV
   bcE = 0
 
-  nNodes = 3
+  nNodes = 1
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -128,6 +132,14 @@ PROGRAM Decoherence
   ! --- Initialize Moment Closure ---
 
   CALL InitializeClosure_TwoMoment
+
+  CALL InitializeFields_Decoherence
+
+  CALL WriteFieldsHDF &
+         ( Time = 0.0_DP, &
+           WriteGF_Option = .TRUE., &
+           WriteFF_Option = .TRUE., &
+           WriteRF_Option = .TRUE. )
 
   !!! Stuff will go here 
 
