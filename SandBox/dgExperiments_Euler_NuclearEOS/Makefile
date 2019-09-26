@@ -44,5 +44,5 @@ clean:
 
 clobber: clean
 	rm -f ApplicationDriver_$(MACHINE)
-	rm -f ComputeEigensystem_NuclearEOS_$(MACHINE)
+	rm -f ComputeLeftState_NuclearEOS_$(MACHINE)
 	rm -rf *.dSYM

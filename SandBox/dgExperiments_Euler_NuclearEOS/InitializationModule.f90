@@ -73,6 +73,10 @@ CONTAINS
 
         CALL InitializeFields_Jet(  )
 
+      CASE ( 'Implosion' )
+
+        CALL InitializeFields_Implosion
+
     END SELECT
 
 
@@ -496,5 +500,85 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_Jet
+
+  SUBROUTINE InitializeFields_Implosion
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2
+    REAL(DP), PARAMETER :: D_0  = 1.25d13 * ( Gram / Centimeter**3 )
+    REAL(DP), PARAMETER :: P_0  = 1.0d32  * ( Erg / Centimeter**3 )
+    REAL(DP), PARAMETER :: Ye_0 = 1.35d-1
+    REAL(DP), PARAMETER :: D_1  = 1.0d14  * ( Gram / Centimeter**3 )
+    REAL(DP), PARAMETER :: P_1  = 1.0d33  * ( Erg / Centimeter**3 )
+    REAL(DP), PARAMETER :: Ye_1 = 1.5d-1
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX = 1, nDOFX
+
+           iNodeX1 = NodeNumberTableX(1,iNodeX)
+           iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+           X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+           X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+           IF( X1 + X2 .LT. 0.15_DP )THEN
+
+             uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+               = D_0
+             uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+               = P_0
+             uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+               = Ye_0
+
+           ELSE
+
+             uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+               = D_1
+             uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+               = P_1
+             uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+               = Ye_1
+
+           ENDIF
+
+           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+             = Zero
+           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+             = Zero
+           uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+             = Zero
+
+         END DO
+
+         CALL ComputeTemperatureFromPressure &
+                ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_P), &
+                  uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_T) )
+
+         CALL ComputeThermodynamicStates_Primitive &
+                ( uPF(:,iX1,iX2,iX3,iPF_D),  uAF(:,iX1,iX2,iX3,iAF_T), &
+                  uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E ),&
+                  uAF(:,iX1,iX2,iX3,iAF_E),  uPF(:,iX1,iX2,iX3,iPF_Ne) )
+
+         CALL ComputeConserved &
+                ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                  uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                  uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                  uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                  uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                  uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                  uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                  uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                  uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Implosion
+
 
 END MODULE InitializationModule

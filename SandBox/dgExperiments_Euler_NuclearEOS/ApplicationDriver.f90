@@ -77,7 +77,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'RiemannProblem'
+  ProgramName = 'Implosion'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -130,6 +130,32 @@ PROGRAM ApplicationDriver
       iCycleD = 10
       t_end   = 2.5d-1 * Millisecond
       dt_wrt  = 2.5d-6 * Millisecond !d-6
+
+    CASE( 'Implosion' )
+
+!      Gamma = 1.4_DP
+
+      nX = [ 64, 64, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
+      xR = [ 0.3_DP, 0.3_DP, 1.0_DP ] * Kilometer
+
+      bcX = [ 3, 3, 0 ]
+
+      nNodes = 3
+
+      BetaTVD = 1.50_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .TRUE.
+      UsePositivityLimiter      = .TRUE.
+
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 0.30_DP
+
+      iCycleD = 1
+      t_end   = 2.500_DP * Millisecond
+      dt_wrt  = 0.045_DP * Millisecond
 
   END SELECT
 
