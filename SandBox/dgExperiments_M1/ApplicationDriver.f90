@@ -37,6 +37,8 @@ PROGRAM ApplicationDriver
     ComputeGeometryX
   USE GeometryFieldsModuleE, ONLY: &
     uGE
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryComputationModuleE, ONLY: &
     ComputeGeometryE
   USE RadiationFieldsModule, ONLY: &
@@ -79,8 +81,8 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UsePositivityLimiter
   INTEGER       :: iCycle, iCycleD, iCycleW, iCycleT, maxCycles
   INTEGER       :: nE, nX(3), bcX(3), nNodes
-  REAL(DP)      :: t, dt, t_end, wTime
-  REAL(DP)      :: xL(3), xR(3)
+  REAL(DP)      :: t, dt, t_end, wTime, dt_para
+  REAL(DP)      :: xL(3), xR(3), ZoomX(3)
   REAL(DP)      :: eL,    eR
   REAL(DP)      :: N0, SigmaA, SigmaS
   REAL(DP)      :: Radius = 1.0d16
@@ -88,7 +90,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'RiemannProblem'
+  ProgramName = 'HomogeneousSphere_Spherical'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -387,7 +389,7 @@ PROGRAM ApplicationDriver
       xR = [ 5.0_DP, Pi,     TwoPi  ]
 
       bcX = [ 32, 3, 0 ]
-
+ 
       nE = 1
       eL = 0.0_DP
       eR = 1.0_DP
@@ -407,7 +409,7 @@ PROGRAM ApplicationDriver
       Max_1 = One  - SqrtTiny ! --- Max Density
       Min_2 = Zero + SqrtTiny ! --- Min "Gamma"
 
-      t_end     = 2.0d+1
+      t_end     = 2.0d+1 
       iCycleD   = 10
       iCycleW   = 500
       iCycleT   = 10
@@ -530,8 +532,14 @@ PROGRAM ApplicationDriver
   wTime = MPI_WTIME( )
 
   t  = 0.0d-0
-  dt = 0.1_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
-       / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+
+  IF ( CoordinateSystem == 'SPHERICAL') THEN
+     dt = 0.1_DP * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
+            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) 
+  ELSE IF ( CoordinateSystem == 'CARTESIAN' ) THEN
+    dt  = 0.1_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
+            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+  END IF
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
