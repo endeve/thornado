@@ -402,12 +402,12 @@ CONTAINS
 
 #if defined HYDRO_NONRELATIVISTIC
 
-#if defined HYDRO_NUMERICALFLUX_HLL
+#if defined HYDRO_RIEMANN_SOLVER_HLL
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_HLL_NonRelativistic &
                                ( uL, uR, fL, fR, aP, aM )
 
-#elif defined HYDRO_NUMERICALFLUX_HLLC
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_X1_HLLC_NonRelativistic &
                                ( uL, uR, fL, fR, aP, aM, aC, Gm11 )
@@ -421,12 +421,12 @@ CONTAINS
 
 #elif defined HYDRO_RELATIVISTIC
 
-#if defined HYDRO_NUMERICALFLUX_HLL
+#if defined HYDRO_RIEMANN_SOLVER_HLL
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_HLL_Relativistic &
                                ( uL, uR, fL, fR, aP, aM )
 
-#elif defined HYDRO_NUMERICALFLUX_HLLC
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_X1_HLLC_Relativistic &
                                ( uL, uR, fL, fR, aP, aM, aC, Gm11, &
@@ -441,12 +441,12 @@ CONTAINS
 
 #else
 
-#if defined HYDRO_NUMERICALFLUX_HLL
+#if defined HYDRO_RIEMANN_SOLVER_HLL
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_HLL_NonRelativistic &
                                ( uL, uR, fL, fR, aP, aM )
 
-#elif defined HYDRO_NUMERICALFLUX_HLLC
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
 
     Euler_NumericalFlux_X1 = Euler_NumericalFlux_X1_HLLC_NonRelativistic &
                                ( uL, uR, fL, fR, aP, aM, aC, Gm11 )
@@ -477,12 +477,12 @@ CONTAINS
 
 #if defined HYDRO_NONRELATIVISTIC
 
-#if defined HYDRO_NUMERICALFLUX_HLL
+#if defined HYDRO_RIEMANN_SOLVER_HLL
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_HLL_NonRelativistic &
                                ( uL, uR, fL, fR, aP, aM )
 
-#elif defined HYDRO_NUMERICALFLUX_HLLC
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_X2_HLLC_NonRelativistic &
                                ( uL, uR, fL, fR, aP, aM, aC, Gm22 )
@@ -496,12 +496,12 @@ CONTAINS
 
 #elif defined HYDRO_RELATIVISTIC
 
-#if defined HYDRO_NUMERICALFLUX_HLL
+#if defined HYDRO_RIEMANN_SOLVER_HLL
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_HLL_Relativistic &
                                ( uL, uR, fL, fR, aP, aM )
 
-#elif defined HYDRO_NUMERICALFLUX_HLLC
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_X2_HLLC_Relativistic &
                                ( uL, uR, fL, fR, aP, aM, aC, Gm22, &
@@ -516,12 +516,12 @@ CONTAINS
 
 #else
 
-#if defined HYDRO_NUMERICALFLUX_HLL
+#if defined HYDRO_RIEMANN_SOLVER_HLL
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_HLL_NonRelativistic &
                                ( uL, uR, fL, fR, aP, aM )
 
-#elif defined HYDRO_NUMERICALFLUX_HLLC
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
 
     Euler_NumericalFlux_X2 = Euler_NumericalFlux_X2_HLLC_NonRelativistic &
                                ( uL, uR, fL, fR, aP, aM, aC, Gm22 )
@@ -552,12 +552,12 @@ CONTAINS
 
 #if defined HYDRO_NONRELATIVISTIC
 
-#if defined HYDRO_NUMERICALFLUX_HLL
+#if defined HYDRO_RIEMANN_SOLVER_HLL
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_HLL_NonRelativistic &
                                ( uL, uR, fL, fR, aP, aM )
 
-#elif defined HYDRO_NUMERICALFLUX_HLLC
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_X3_HLLC_NonRelativistic &
                                ( uL, uR, fL, fR, aP, aM, aC, Gm33 )
@@ -571,12 +571,12 @@ CONTAINS
 
 #elif defined HYDRO_RELATIVISTIC
 
-#if defined HYDRO_NUMERICALFLUX_HLL
+#if defined HYDRO_RIEMANN_SOLVER_HLL
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_HLL_Relativistic &
                                ( uL, uR, fL, fR, aP, aM )
 
-#elif defined HYDRO_NUMERICALFLUX_HLLC
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_X3_HLLC_Relativistic &
                                ( uL, uR, fL, fR, aP, aM, aC, Gm33, &
@@ -591,12 +591,12 @@ CONTAINS
 
 #else
 
-#if defined HYDRO_NUMERICALFLUX_HLL
+#if defined HYDRO_RIEMANN_SOLVER_HLL
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_HLL_NonRelativistic &
                                ( uL, uR, fL, fR, aP, aM )
 
-#elif defined HYDRO_NUMERICALFLUX_HLLC
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
 
     Euler_NumericalFlux_X3 = Euler_NumericalFlux_X3_HLLC_NonRelativistic &
                                ( uL, uR, fL, fR, aP, aM, aC, Gm33 )

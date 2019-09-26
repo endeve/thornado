@@ -144,14 +144,14 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-#if defined HYDRO_NUMERICALFLUX_HLL
+#if defined HYDRO_RIEMANN_SOLVER_HLL
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,'(5x,A)') 'Fluid Fields'
       WRITE(*,*)
       WRITE(*,'(5x,A)') 'Riemann Solver: HLL'
     END IF
-#elif defined HYDRO_NUMERICALFLUX_HLLC
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,'(5x,A)') 'Fluid Fields'
