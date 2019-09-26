@@ -1,7 +1,7 @@
 MODULE Euler_CharacteristicDecompositionModule_TABLE
 
-  USE KindModule,           ONLY: &
-    DP
+  USE KindModule, ONLY: &
+    DP, Zero, Half, One
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_Gm_dd_11, &
@@ -32,8 +32,7 @@ MODULE Euler_CharacteristicDecompositionModule_TABLE
 CONTAINS
 
 
-  SUBROUTINE ComputeCharacteristicDecomposition &
-    ( iDim, G, U, R, invR )
+  SUBROUTINE ComputeCharacteristicDecomposition( iDim, G, U, R, invR )
 
     INTEGER,  INTENT(in)  :: iDim
     REAL(DP), INTENT(in)  :: G(nGF)
@@ -256,5 +255,6 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE ComputeCharacteristicDecomposition
+
 
 END MODULE Euler_CharacteristicDecompositionModule_TABLE
