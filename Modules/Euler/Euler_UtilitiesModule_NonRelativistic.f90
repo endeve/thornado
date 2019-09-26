@@ -87,40 +87,51 @@ CONTAINS
 
 
   SUBROUTINE Euler_ComputeFromConserved_NonRelativistic &
-               ( iX_B, iX_E, G, U, P, A )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
 
     INTEGER,  INTENT(in)  :: &
-      iX_B(3), iX_E(3)
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
-      U(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(out) :: &
-      P(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:), &
-      A(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+      P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iX1, iX2, iX3
 
-    DO iX3 = iX_B(3), iX_E(3)
-    DO iX2 = iX_B(2), iX_E(2)
-    DO iX1 = iX_B(1), iX_E(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
       CALL Euler_ComputePrimitive_NonRelativistic &
-             ( U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
-               U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
-               U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
-               P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_V1), &
-               P(:,iX1,iX2,iX3,iPF_V2), P(:,iX1,iX2,iX3,iPF_V3), &
-               P(:,iX1,iX2,iX3,iPF_E ), P(:,iX1,iX2,iX3,iPF_Ne), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+             ( U(1:nDOFX,iX1,iX2,iX3,iCF_D),         &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_S1),        &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_S2),        &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_S3),        &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_E),         &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_Ne),        &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_D),         &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_V1),        &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_V2),        &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_V3),        &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_E),         &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne),        &
+               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
+               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
+               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
       CALL ComputeAuxiliary_Fluid &
-             ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), A(1:nDOFX,iX1,iX2,iX3,iAF_P ), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_T ), A(1:nDOFX,iX1,iX2,iX3,iAF_Ye), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_S ), A(1:nDOFX,iX1,iX2,iX3,iAF_E ), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Gm), A(1:nDOFX,iX1,iX2,iX3,iAF_Cs) )
+             ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_P ), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_T ), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Ye), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_S ), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_E ), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Gm), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Cs) )
 
     END DO
     END DO
@@ -130,13 +141,13 @@ CONTAINS
 
 
   SUBROUTINE Euler_ComputeTimeStep_NonRelativistic &
-               ( iX_B0, iX_E0, G, U, CFL, TimeStep )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
 
     INTEGER,  INTENT(in)  :: &
-      iX_B0(3), iX_E0(3)
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
-      G(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:), &
-      U(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)  :: &
       CFL
     REAL(DP), INTENT(out) :: &

@@ -69,7 +69,7 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: P(:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: A(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     DO iLevel = 0, nLevels
 
@@ -84,89 +84,91 @@ CONTAINS
 
         BX = MFI % tilebox()
 
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
+        iX_B0(1:3) = BX % lo(1:3)
+        iX_E0(1:3) = BX % hi(1:3)
+        iX_B1(1:3) = BX % lo(1:3) - swX(1:3)
+        iX_E1(1:3) = BX % hi(1:3) + swX(1:3)
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
-        ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3), 1:nGF ) )
-        ALLOCATE( U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3), 1:nCF ) )
-        ALLOCATE( P(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3), 1:nPF ) )
-        ALLOCATE( A(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3), 1:nAF ) )
+        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nGF) )
+        ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nCF) )
+        ALLOCATE( P(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nPF) )
+        ALLOCATE( A(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nAF) )
 
         CALL AMReX2thornado &
-               ( nGF, iX_B0, iX_E0, &
-                 uGF(      iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nDOFX*nGF), &
-                 G(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nGF) )
+               ( nGF, iX_B1(1:3), iX_E1(1:3), &
+                 uGF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
+                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF) )
         CALL AMReX2thornado &
-               ( nCF, iX_B0, iX_E0, &
-                 uCF(      iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nDOFX*nCF), &
-                 U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nCF) )
+               ( nCF, iX_B1(1:3), iX_E1(1:3), &
+                 uCF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nCF), &
+                 U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nCF) )
         CALL AMReX2thornado &
-               ( nPF, iX_B0, iX_E0, &
-                 uPF(      iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nDOFX*nPF), &
-                 P(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nPF) )
+               ( nPF, iX_B1(1:3), iX_E1(1:3), &
+                 uPF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nPF), &
+                 P(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nPF) )
         CALL AMReX2thornado &
-               ( nAF, iX_B0, iX_E0, &
-                 uAF(      iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nDOFX*nAF), &
-                 A(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nAF) )
+               ( nAF, iX_B1(1:3), iX_E1(1:3), &
+                 uAF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nAF), &
+                 A(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nAF) )
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         CALL Euler_ComputeFromConserved &
-               ( iX_B0, iX_E0, &
-                 G(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nGF), &
-                 U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nCF), &
-                 P(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nPF), &
-                 A(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nAF) )
+               ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF), &
+                 U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nCF), &
+                 P(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nPF), &
+                 A(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nAF) )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         CALL thornado2AMReX &
-               ( nPF, iX_B0, iX_E0, &
-                 uPF(      iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nDOFX*nPF), &
-                 P(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nPF) )
+               ( nPF, iX_B1(1:3), iX_E1(1:3), &
+                 uPF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nPF), &
+                 P(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nPF) )
         CALL thornado2AMReX &
-               ( nAF, iX_B0, iX_E0, &
-                 uAF(      iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nDOFX*nAF), &
-                 A(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nAF) )
+               ( nAF, iX_B1(1:3), iX_E1(1:3), &
+                 uAF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nAF), &
+                 A(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nAF) )
 
         DEALLOCATE( A )
         DEALLOCATE( P )
@@ -198,7 +200,7 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     REAL(amrex_real) :: TimeStep(0:nLevels)
 
@@ -217,43 +219,45 @@ CONTAINS
 
         BX = MFI % tilebox()
 
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
+        iX_B0(1:3) = BX % lo(1:3)
+        iX_E0(1:3) = BX % hi(1:3)
+        iX_B1(1:3) = BX % lo(1:3) - swX(1:3)
+        iX_E1(1:3) = BX % hi(1:3) + swX(1:3)
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
-        ALLOCATE( G(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nGF) )
-        ALLOCATE( U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3),1:nCF) )
+        ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nGF) )
+        ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nCF) )
 
         CALL AMReX2thornado &
-               ( nGF, iX_B0, iX_E0, &
-                 uGF(      iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nDOFX*nGF), &
-                 G(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nGF) )
+               ( nGF, iX_B1(1:3), iX_E1(1:3), &
+                 uGF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nGF), &
+                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF) )
         CALL AMReX2thornado &
-               ( nCF, iX_B0, iX_E0, &
-                 uCF(      iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nDOFX*nCF), &
-                 U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nCF) )
+               ( nCF, iX_B1(1:3), iX_E1(1:3), &
+                 uCF(      iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nDOFX*nCF), &
+                 U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nCF) )
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         CALL Euler_ComputeTimeStep &
-               ( iX_B0, iX_E0, &
-                 G(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nGF), &
-                 U(1:nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3),1:nCF), &
+               ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+                 G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF), &
+                 U(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nCF), &
                  CFL, TimeStep(iLevel) )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
