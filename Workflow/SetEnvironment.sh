@@ -102,6 +102,11 @@ elif [[ $THORNADO_MACHINE == mcarpe21* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == dpochik* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 elif [[ $THORNADO_MACHINE == paullaiu_gnu* ]]; then
 
   echo
@@ -218,6 +223,12 @@ elif [[ $THORNADO_MACHINE == mcarpe21 ]]; then
   echo
   export THORNADO_DIR=~/thornado
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/hdf5/lib/
+
+elif [[ $THORNADO_MACHINE == dpochik ]]; then
+
+  echo
+  export WEAKLIB_DIR=/home/dpochik/weaklib
+  export THORNADO_DIR=/home/dpochik/thornado_neos
 
 elif [[ $THORNADO_MACHINE == paullaiu_gnu ]]; then
 

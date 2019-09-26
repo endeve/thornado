@@ -41,11 +41,16 @@ PROGRAM ApplicationDriver
   USE FluidFieldsModule, ONLY: &
     uCF
   USE RadiationFieldsModule, ONLY: &
-    uCR
+    uCR, uPR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
+  USE EquationOfStateModule, ONLY: &
+    InitializeEquationOfState, &
+    FinalizeEquationOfState
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
+  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+    ComputeFromConserved_TwoMoment
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Initialize_IMEX_RK, &
     Finalize_IMEX_RK, &
@@ -160,6 +165,13 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElement_Lagrange
 
+  ! --- Initialize Equation of State ---
+
+  CALL InitializeEquationOfState &
+         ( EquationOfState_Option = 'IDEAL', &
+           Gamma_IDEAL_Option = 4.0_DP / 3.0_DP, &
+           Verbose_Option = .TRUE. )
+
   ! --- Initialize Moment Closure ---
 
   CALL InitializeClosure_TwoMoment
@@ -215,6 +227,9 @@ PROGRAM ApplicationDriver
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
+      CALL ComputeFromConserved_TwoMoment &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCR, uPR )
+
       CALL WriteFieldsHDF &
              ( Time = t, &
                WriteGF_Option = .TRUE., &
@@ -225,6 +240,9 @@ PROGRAM ApplicationDriver
 
   END DO
 
+  CALL ComputeFromConserved_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCR, uPR )
+
   CALL WriteFieldsHDF &
          ( Time = t, &
            WriteGF_Option = .TRUE., &
@@ -234,6 +252,8 @@ PROGRAM ApplicationDriver
   ! --- Finalize ---
 
   CALL Finalize_IMEX_RK
+
+  CALL FinalizeEquationOfState
 
   CALL FinalizeTimers
 

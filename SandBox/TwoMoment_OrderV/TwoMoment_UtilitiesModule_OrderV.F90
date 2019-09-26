@@ -2,6 +2,17 @@ MODULE TwoMoment_UtilitiesModule_OrderV
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three
+  USE ProgramHeaderModule, ONLY: &
+    nDOFZ, nDOFX, nDOFE
+  USE GeometryFieldsModule, ONLY: &
+    nGF, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33
+  USE RadiationFieldsModule, ONLY: &
+    nSpecies, &
+    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
+    nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
     EddingtonFactor
@@ -11,6 +22,7 @@ MODULE TwoMoment_UtilitiesModule_OrderV
 
   PUBLIC :: ComputePrimitive_TwoMoment
   PUBLIC :: ComputeConserved_TwoMoment
+  PUBLIC :: ComputeFromConserved_TwoMoment
   PUBLIC :: Flux_X1
   PUBLIC :: NumericalFlux_LLF
 
@@ -240,6 +252,58 @@ CONTAINS
                   + V_u_3 * k_dd_33 ) * D
 
   END SUBROUTINE ComputeConserved_TwoMoment
+
+
+  SUBROUTINE ComputeFromConserved_TwoMoment &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, G, U, P )
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)  :: &
+      G(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      U(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+        iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      P(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+        iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies)
+
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iNodeZ, iNodeX
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+
+        CALL ComputePrimitive_TwoMoment &
+               ( U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                 U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                 U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                 U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                 P(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 P(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 P(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 P(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                 0.3_DP, 0.0_DP, 0.0_DP, &
+                 G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+                 G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+                 G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeFromConserved_TwoMoment
 
 
   FUNCTION Flux_X1 &

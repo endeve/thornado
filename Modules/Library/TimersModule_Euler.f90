@@ -160,7 +160,7 @@ CONTAINS
       WRITE(*,'(7x,A,ES13.6E3,A)') &
         '  Timers = ', TotalTime, ' s'
       WRITE(*,*)
-      WRITE(*,'(7x,A,F6.3,A)') &
+      WRITE(*,'(7x,A,F7.3,A)') &
         '  Timers / TotalRunTime = ', &
         100.0_DP &
         * TotalTime / Timer_Euler_Program, ' %'
@@ -264,7 +264,6 @@ CONTAINS
         Timer_Euler_TroubledCellIndicator, ' s = ', &
         100.0_DP &
           * Timer_Euler_TroubledCellIndicator / Timer_Euler_Program, ' %'
-      TotalTime = TotalTime + Timer_Euler_TroubledCellIndicator
 
       WRITE(*,*)
       WRITE(*,'(7x,A,ES13.6E3,A)') &
