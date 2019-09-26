@@ -56,7 +56,7 @@ PROGRAM PrimitiveConserved
   INTEGER  :: iNode, iE, iX1, iX2, iX3, iS
   REAL(DP) :: eL, eR, xL(3), xR(3)
   REAL(DP) :: D, I1, I2, I3, V1, V2, V3
-  REAL(DP) :: absI, nVec(3)
+  REAL(DP) :: absI, nVec(3), Vmax, absV, Vvec(3)
   INTEGER, ALLOCATABLE :: nIterations(:)
 
   nNodes = 2
@@ -69,9 +69,15 @@ PROGRAM PrimitiveConserved
   eL = Zero
   eR = One
 
-  V1 = 0.3_DP
-  V2 = 0.0_DP
-  V3 = 0.0_DP
+  Vmax=0.3_DP
+  CALL RANDOM_NUMBER(absV)
+  CALL RANDOM_NUMBER(Vvec)
+  absV=absV*Vmax
+  Vvec = 2.0_DP * ( Vvec - 0.5_DP )
+  Vvec = Vvec / SQRT( DOT_PRODUCT( Vvec, Vvec ) )
+  V1=absV*Vvec(1)
+  V2=absV*Vvec(2)
+  V3=absV*Vvec(3)
 
   CALL InitializeProgram &
          ( ProgramName_Option &
