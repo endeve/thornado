@@ -2,8 +2,12 @@ MODULE Euler_UtilitiesModule
 
   USE KindModule, ONLY: &
     DP
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX
+  USE GeometryFieldsModule, ONLY: &
+    nGF
   USE FluidFieldsModule, ONLY: &
-    nCF
+    nCF, nPF, nAF
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_ComputeTimeStep
@@ -122,28 +126,68 @@ CONTAINS
   END SUBROUTINE Euler_ComputeConserved
 
 
-  SUBROUTINE Euler_ComputeFromConserved( iX_B, iX_E, G, U, P, A )
+  SUBROUTINE Euler_ComputeFromConserved &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
 
     INTEGER,  INTENT(in)  :: &
-      iX_B(3), iX_E(3)
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
-      G(:,iX_B(1):,iX_B(2):,iX_B(3):,:), &
-      U(:,iX_B(1):,iX_B(2):,iX_B(3):,:)
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(out) :: &
-      P(:,iX_B(1):,iX_B(2):,iX_B(3):,:), &
-      A(:,iX_B(1):,iX_B(2):,iX_B(3):,:)
+      P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
 #ifdef HYDRO_NONRELATIVISTIC
 
-    CALL Euler_ComputeFromConserved_NonRelativistic( iX_B, iX_E, G, U, P, A )
+    CALL Euler_ComputeFromConserved_NonRelativistic &
+           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+             G(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nGF), &
+             U(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nCF), &
+             P(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nPF), &
+             A(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nAF) )
 
 #elif HYDRO_RELATIVISTIC
 
-    CALL Euler_ComputeFromConserved_Relativistic( iX_B, iX_E, G, U, P, A )
+    CALL Euler_ComputeFromConserved_Relativistic &
+           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+             G(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nGF), &
+             U(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nCF), &
+             P(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nPF), &
+             A(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nAF) )
 
 #else
 
-    CALL Euler_ComputeFromConserved_NonRelativistic( iX_B, iX_E, G, U, P, A )
+    CALL Euler_ComputeFromConserved_NonRelativistic &
+           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+             G(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nGF), &
+             U(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nCF), &
+             P(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nPF), &
+             A(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nAF) )
 
 
 #endif
@@ -169,17 +213,38 @@ CONTAINS
 #ifdef HYDRO_NONRELATIVISTIC
 
     CALL Euler_ComputeTimeStep_NonRelativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+             G(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nGF), &
+             U(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nCF), &
+             CFL, TimeStep )
 
 #elif HYDRO_RELATIVISTIC
 
     CALL Euler_ComputeTimeStep_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+             G(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nGF), &
+             U(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nCF), &
+             CFL, TimeStep )
 
 #else
 
     CALL Euler_ComputeTimeStep_NonRelativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+             G(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nGF), &
+             U(1:nDOFX,iX_B1(1):iX_E1(1),&
+                       iX_B1(2):iX_E1(2),&
+                       iX_B1(3):iX_E1(3),1:nCF), &
+             CFL, TimeStep )
 
 #endif
 
