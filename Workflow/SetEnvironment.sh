@@ -107,6 +107,11 @@ elif [[ $THORNADO_MACHINE == dpochik* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == lucalin* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 elif [[ $THORNADO_MACHINE == paullaiu_gnu* ]]; then
 
   echo
@@ -229,6 +234,12 @@ elif [[ $THORNADO_MACHINE == dpochik ]]; then
   echo
   export WEAKLIB_DIR=/home/dpochik/weaklib
   export THORNADO_DIR=/home/dpochik/thornado_neos
+
+elif [[ $THORNADO_MACHINE == lucalin ]]; then
+
+  echo
+  export WEAKLIB_DIR=/home/luca/EOS_tables/weaklib
+  export THORNADO_DIR=/home/luca/thornado
 
 elif [[ $THORNADO_MACHINE == paullaiu_gnu ]]; then
 
