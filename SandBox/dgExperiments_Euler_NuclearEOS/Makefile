@@ -13,12 +13,18 @@ ApplicationDriver: \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
+	Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o \
+	Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
+	Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
 	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
 	InitializationModule.o \
+	Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o \
+	Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
+	Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
 	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
