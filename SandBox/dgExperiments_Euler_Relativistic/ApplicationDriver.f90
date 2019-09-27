@@ -445,7 +445,8 @@ PROGRAM ApplicationDriver
              uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
                          iX_B1(2):iX_E1(2), &
                          iX_B1(3):iX_E1(3),1:nCF), &
-             CFL = CFL / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
+             CFL = CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
+             TimeStep = dt )
 
     IF( t + dt .LT. t_end )THEN
       t = t + dt

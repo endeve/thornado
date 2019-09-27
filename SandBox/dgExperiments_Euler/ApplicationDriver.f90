@@ -442,7 +442,7 @@ PROGRAM ApplicationDriver
              uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
                          iX_B1(2):iX_E1(2), &
                          iX_B1(3):iX_E1(3),1:nCF), &
-             CFL = 0.5_DP / ( nDimsX * DBLE( nNodes - 1 ) + One ), &
+             CFL = 0.5_DP / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
              TimeStep = dt )
 
     IF( t + dt > t_end )THEN
