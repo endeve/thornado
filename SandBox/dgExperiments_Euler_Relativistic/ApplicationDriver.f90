@@ -99,13 +99,13 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
 !  ProgramName = 'KelvinHelmholtz_Relativistic'
 !  ProgramName = 'KelvinHelmholtz'
-!  ProgramName = 'StandingAccretionShock'
+  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -306,8 +306,8 @@ PROGRAM ApplicationDriver
   Min_2 = 1.0d-13
 
   iCycleD = 10
-!!$  iCycleW = 1000; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * t_end; iCycleW = -1
+  iCycleW = 10; dt_wrt = -1.0d0
+!!$  dt_wrt = 1.0d-2 * t_end; iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -446,13 +446,6 @@ PROGRAM ApplicationDriver
                          iX_B1(2):iX_E1(2), &
                          iX_B1(3):iX_E1(3),1:nCF), &
              CFL = CFL / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
-
-    CALL Euler_ComputeTimeStep &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             uGF(1:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:), &
-             uCF(1:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:), &
-             CFL = CFL / ( nDimsX * ( Two * nNodes - One ) ), &
-             TimeStep = dt )
 
     IF( t + dt .LT. t_end )THEN
       t = t + dt
