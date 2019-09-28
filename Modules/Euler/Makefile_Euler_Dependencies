@@ -32,16 +32,6 @@ Euler_CharacteristicDecompositionModule_Relativistic.o: \
   EquationOfStateModule.o \
   Euler_CharacteristicDecompositionModule_Relativistic.f90
 
-Euler_CharacteristicDecompositionModule_TABLE_NonRelativistic.o: \
-  KindModule.o \
-  GeometryFieldsModule.o \
-  UnitsModule.o \
-  FluidFieldsModule.o \
-  Euler_UtilitiesModule.o \
-  EquationOfStateModule.o \
-  EquationOfStateModule_TABLE.o \
-  Euler_CharacteristicDecompositionModule_TABLE_NonRelativistic.f90
-
 Euler_PositivityLimiterModule_NonRelativistic.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -162,13 +152,6 @@ Euler_CharacteristicDecompositionModule.o: \
   Euler_CharacteristicDecompositionModule_NonRelativistic.o \
   Euler_CharacteristicDecompositionModule.F90
 
-Euler_CharacteristicDecompositionModule_TABLE.o: \
-  KindModule.o \
-  FluidFieldsModule.o \
-  GeometryFieldsModule.o \
-  Euler_CharacteristicDecompositionModule_TABLE_NonRelativistic.o \
-  Euler_CharacteristicDecompositionModule_TABLE.F90
-
 Euler_PositivityLimiterModule.o: \
   KindModule.o \
   Euler_PositivityLimiterModule_NonRelativistic.o \
@@ -202,13 +185,6 @@ Euler_CharacteristicDecompositionModule.o: \
   GeometryFieldsModule.o \
   Euler_CharacteristicDecompositionModule_Relativistic.o \
   Euler_CharacteristicDecompositionModule.F90
-
-Euler_CharacteristicDecompositionModule_TABLE.o: \
-  KindModule.o \
-  FluidFieldsModule.o \
-  GeometryFieldsModule.o \
-  Euler_CharacteristicDecompositionModule_TABLE_Relativistic.o \
-  Euler_CharacteristicDecompositionModule_TABLE.F90
 
 Euler_PositivityLimiterModule.o: \
   KindModule.o \

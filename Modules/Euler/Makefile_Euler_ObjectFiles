@@ -8,8 +8,6 @@ EULER = \
   Euler_CharacteristicDecompositionModule_NonRelativistic.o \
   Euler_CharacteristicDecompositionModule_Relativistic.o \
   Euler_CharacteristicDecompositionModule.o \
-  Euler_CharacteristicDecompositionModule_TABLE_NonRelativistic.o \
-  Euler_CharacteristicDecompositionModule_TABLE.o \
   Euler_SlopeLimiterModule_NonRelativistic.o \
   Euler_SlopeLimiterModule_Relativistic.o \
   Euler_SlopeLimiterModule.o \
