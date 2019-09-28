@@ -264,7 +264,7 @@ CONTAINS
 
 
   !> Compute primitive variables, pressure, and sound-speed from conserved
-  !> variables. Only used for IO.
+  !> variables for a data block.
   SUBROUTINE Euler_ComputeFromConserved_Relativistic &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
 
