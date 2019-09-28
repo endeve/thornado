@@ -1,4 +1,4 @@
-MODULE Euler_UtilitiesModule_NonRelativistic
+MODULE Euler_UtilitiesModule_NonRelativistic_TABLE
 
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One
@@ -594,4 +594,4 @@ CONTAINS
     RETURN
   END FUNCTION Euler_NumericalFlux_X3_HLLC_NonRelativistic
 
-END MODULE Euler_UtilitiesModule_NonRelativistic
+END MODULE Euler_UtilitiesModule_NonRelativistic_TABLE

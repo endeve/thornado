@@ -6,7 +6,7 @@
 !> @param TolFunP Threshold for function in Newton-Raphson algorithm in
 !>                Euler_ComputePrimitive_Relativistic to accept solution.
 !> @todo Find optimal values for parameters TolP and TolFunP.
-MODULE Euler_UtilitiesModule_Relativistic
+MODULE Euler_UtilitiesModule_Relativistic_IDEAL
 
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Two, Three, Four
@@ -1380,4 +1380,4 @@ CONTAINS
   END SUBROUTINE ComputeFunP
 
 
-END MODULE Euler_UtilitiesModule_Relativistic
+END MODULE Euler_UtilitiesModule_Relativistic_IDEAL

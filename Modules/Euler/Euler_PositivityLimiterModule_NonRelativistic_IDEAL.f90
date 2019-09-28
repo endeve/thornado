@@ -1,4 +1,4 @@
-MODULE Euler_PositivityLimiterModule_NonRelativistic
+MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One
@@ -446,4 +446,4 @@ CONTAINS
   END SUBROUTINE SolveTheta_Bisection
 
 
-END MODULE Euler_PositivityLimiterModule_NonRelativistic
+END MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL

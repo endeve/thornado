@@ -1,4 +1,4 @@
-MODULE Euler_CharacteristicDecompositionModule_NonRelativistic
+MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One
@@ -10,7 +10,7 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
+  USE Euler_UtilitiesModule_NonRelativistic_IDEAL, ONLY: &
     Euler_ComputePrimitive_NonRelativistic
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
@@ -239,4 +239,4 @@ CONTAINS
   END SUBROUTINE Euler_ComputeCharacteristicDecomposition_NonRelativistic
 
 
-END MODULE Euler_CharacteristicDecompositionModule_NonRelativistic
+END MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL

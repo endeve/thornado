@@ -5,7 +5,7 @@ MODULE Euler_BoundaryConditionsModule
 
 #ifdef HYDRO_NONRELATIVISTIC
 
-  USE Euler_BoundaryConditionsModule_NonRelativistic, ONLY: &
+  USE Euler_BoundaryConditionsModule_NonRelativistic_IDEAL, ONLY: &
     Euler_ApplyBoundaryConditions_NonRelativistic, &
     iEuler_ApplyBC_Both, &
     iEuler_ApplyBC_Inner, &
@@ -14,7 +14,7 @@ MODULE Euler_BoundaryConditionsModule
 
 #elif HYDRO_RELATIVISTIC
 
-  USE Euler_BoundaryConditionsModule_Relativistic, ONLY: &
+  USE Euler_BoundaryConditionsModule_Relativistic_IDEAL, ONLY: &
     Euler_ApplyBoundaryConditions_Relativistic, &
     iEuler_ApplyBC_Both, &
     iEuler_ApplyBC_Inner, &

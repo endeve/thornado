@@ -20,7 +20,7 @@ MODULE InitializationModule_Relativistic
     uAF, iAF_P
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
-  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+  USE Euler_UtilitiesModule_Relativistic_IDEAL, ONLY: &
     Euler_ComputeConserved_Relativistic
   USE UnitsModule, ONLY: &
     Meter, Kilogram, Second, Joule

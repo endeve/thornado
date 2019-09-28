@@ -1,6 +1,6 @@
 !> Initialize, finalize, and apply positivity limiter from
 !> Qin et al., (2016), JCP, 315, 323
-MODULE Euler_PositivityLimiterModule_Relativistic
+MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, SqrtTiny
@@ -506,7 +506,7 @@ CONTAINS
     IF( .NOT. f_a * f_b < 0 )THEN
 
       WRITE(*,'(A6,A)') &
-        '', 'SolveTheta_Bisection (Euler_PositivityLimiterModule_Relativistic):'
+        '', 'SolveTheta_Bisection (Euler_PositivityLimiterModule_Relativistic_IDEAL):'
 
       WRITE(*,*) 'iP = ', iP
       WRITE(*,*) 'iX1, iX2, iX3 = ', iX1, iX2, iX3
@@ -577,4 +577,4 @@ CONTAINS
   END SUBROUTINE SolveTheta_Bisection
 
 
-END MODULE Euler_PositivityLimiterModule_Relativistic
+END MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL

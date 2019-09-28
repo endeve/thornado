@@ -1,10 +1,7 @@
-MODULE Euler_SlopeLimiterModule_Relativistic
+MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
 
   USE KindModule, ONLY: &
     DP, Zero, One, SqrtTiny
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
-    Timer_Euler_TroubledCellIndicator
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDimsX, nNodes, nNodesX
   USE ReferenceElementModuleX, ONLY: &
@@ -25,34 +22,34 @@ MODULE Euler_SlopeLimiterModule_Relativistic
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    nGF,          &
+    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_Alpha,    &
-    iGF_Beta_1,   &
-    iGF_Beta_2,   &
-    iGF_Beta_3,   &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
     Shock
-  USE Euler_BoundaryConditionsModule_Relativistic, ONLY: &
-    Euler_ApplyBoundaryConditions_Relativistic
-  USE Euler_CharacteristicDecompositionModule_Relativistic, ONLY: &
-    Euler_ComputeCharacteristicDecomposition_Relativistic
+  USE Euler_BoundaryConditionsModule_NonRelativistic_IDEAL, ONLY: &
+    Euler_ApplyBoundaryConditions_NonRelativistic
+  USE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL, ONLY: &
+    Euler_ComputeCharacteristicDecomposition_NonRelativistic
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_TroubledCellIndicator
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializeSlopeLimiter_Relativistic
-  PUBLIC :: Euler_FinalizeSlopeLimiter_Relativistic
-  PUBLIC :: Euler_ApplySlopeLimiter_Relativistic
+  PUBLIC :: Euler_InitializeSlopeLimiter_NonRelativistic
+  PUBLIC :: Euler_FinalizeSlopeLimiter_NonRelativistic
+  PUBLIC :: Euler_ApplySlopeLimiter_NonRelativistic
 
   LOGICAL  :: UseSlopeLimiter
   LOGICAL  :: UseCharacteristicLimiting
   LOGICAL  :: UseConservativeCorrection
   LOGICAL  :: UseTroubledCellIndicator
+  LOGICAL  :: Verbose
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
   REAL(DP) :: LimiterThreshold
@@ -66,7 +63,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializeSlopeLimiter_Relativistic &
+  SUBROUTINE Euler_InitializeSlopeLimiter_NonRelativistic &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
@@ -86,7 +83,6 @@ CONTAINS
       LimiterThresholdParameter_Option
 
     INTEGER :: i
-    LOGICAL :: Verbose
 
     BetaTVD = One
     IF( PRESENT( BetaTVD_Option ) ) &
@@ -127,27 +123,25 @@ CONTAINS
 
     IF( Verbose )THEN
       WRITE(*,*)
-      WRITE(*,*)
-      WRITE(*,'(A)') '    INFO: Euler_InitializeSlopeLimiter_Relativistic:'
-      WRITE(*,'(A)') '    ------------------------------------------------'
+      WRITE(*,'(A)') '  INFO: Euler_InitializeSlopeLimiter:'
+      WRITE(*,'(A)') '  -----------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
       WRITE(*,*)
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVD: ' , &
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVD: ' , &
         BetaTVD
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVB: ' , &
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'BetaTVB: ' , &
         BetaTVB
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'SlopeTolerance: ' , &
         SlopeTolerance
-      WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
         UseCharacteristicLimiting
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'      ) '', 'UseTroubledCellIndicator: ' , &
         UseTroubledCellIndicator
       WRITE(*,*)
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
+      WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
         LimiterThreshold
     END IF
 
@@ -159,21 +153,21 @@ CONTAINS
       I_6x6(i,i) = One
     END DO
 
-  END SUBROUTINE Euler_InitializeSlopeLimiter_Relativistic
+  END SUBROUTINE Euler_InitializeSlopeLimiter_NonRelativistic
 
 
-  SUBROUTINE Euler_FinalizeSlopeLimiter_Relativistic
+  SUBROUTINE Euler_FinalizeSlopeLimiter_NonRelativistic
 
     IF( UseTroubledCellIndicator ) &
       CALL FinalizeTroubledCellIndicator
 
-  END SUBROUTINE Euler_FinalizeSlopeLimiter_Relativistic
+  END SUBROUTINE Euler_FinalizeSlopeLimiter_NonRelativistic
 
 
-  SUBROUTINE Euler_ApplySlopeLimiter_Relativistic &
+  SUBROUTINE Euler_ApplySlopeLimiter_NonRelativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
 
-    INTEGER, INTENT(in)            :: &
+    INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)           :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
@@ -198,7 +192,7 @@ CONTAINS
     REAL(DP) :: V_K(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP) :: U_K(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
 
-    IF( nDOFX .EQ. 1 ) RETURN
+    IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. UseSlopeLimiter ) RETURN
 
@@ -207,12 +201,12 @@ CONTAINS
       SuppressBC = SuppressBC_Option
 
     IF( .NOT. SuppressBC ) &
-      CALL Euler_ApplyBoundaryConditions_Relativistic &
+      CALL Euler_ApplyBoundaryConditions_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL TimersStart_Euler( Timer_Euler_TroubledCellIndicator )
     CALL DetectTroubledCells &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U )
     CALL TimersStop_Euler( Timer_Euler_TroubledCellIndicator )
 
     LimitedCell = .FALSE.
@@ -221,7 +215,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( Shock(iX1,iX2,iX3) .LT. LimiterThreshold ) CYCLE
+      IF( Shock(iX1,iX2,iX3) < LimiterThreshold ) CYCLE
 
       dX1 = MeshX(1) % Width(iX1)
       dX2 = MeshX(2) % Width(iX2)
@@ -230,54 +224,62 @@ CONTAINS
       ! --- Cell Volume ---
 
       V_K(iX1,iX2,iX3) &
-        = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_SqrtGm) )
+        = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
       ! --- Cell Average of Conserved Fluid ---
 
       DO iCF = 1, nCF
 
         U_K(iCF,iX1,iX2,iX3) &
-          = SUM( WeightsX_q * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
+          = SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
                    * U(:,iX1,iX2,iX3,iCF) ) / V_K(iX1,iX2,iX3)
 
       END DO
 
-      ! --- Cell Average of Geometry (Spatial Metric, Lapse Function,
-      !     and Shift Vector) ---
+      ! --- Cell Average of Geometry (Spatial Metric Only) ---
 
-      DO iGF = iGF_Gm_dd_11, iGF_Beta_3
-        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF) )
+      DO iGF = iGF_Gm_dd_11, iGF_Gm_dd_33
+
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q(:), G(:,iX1,iX2,iX3,iGF) )
+
       END DO
 
       ! --- Map to Modal Representation ---
 
       DO iCF = 1, nCF
 
-        CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+        CALL MapNodalToModal_Fluid &
+               ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
 
         ! --- Cell Average of Neighbors in X1 Direction ---
 
-        U_M(iCF,1,1) = DOT_PRODUCT( WeightsX_q, U(:,iX1-1,iX2,iX3,iCF) )
+        U_M(iCF,1,1) &
+          = DOT_PRODUCT( WeightsX_q(:), U(:,iX1-1,iX2,iX3,iCF) )
 
-        U_M(iCF,2,1) = DOT_PRODUCT( WeightsX_q, U(:,iX1+1,iX2,iX3,iCF) )
+        U_M(iCF,2,1) &
+          = DOT_PRODUCT( WeightsX_q(:), U(:,iX1+1,iX2,iX3,iCF) )
 
-        IF( nDimsX .GT. 1 )THEN
+        IF( nDimsX > 1 )THEN
 
           ! --- Cell Average of Neighbors in X2 Direction ---
 
-          U_M(iCF,3,1) = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2-1,iX3,iCF) )
+          U_M(iCF,3,1) &
+            = DOT_PRODUCT( WeightsX_q(:), U(:,iX1,iX2-1,iX3,iCF) )
 
-          U_M(iCF,4,1) = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2+1,iX3,iCF) )
+          U_M(iCF,4,1) &
+            = DOT_PRODUCT( WeightsX_q(:), U(:,iX1,iX2+1,iX3,iCF) )
 
         END IF
 
-        IF( nDimsX .GT. 2 )THEN
+        IF( nDimsX > 2 )THEN
 
           ! --- Cell Average of Neighbors in X3 Direction ---
 
-          U_M(iCF,5,1) = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2,iX3-1,iCF) )
+          U_M(iCF,5,1) &
+            = DOT_PRODUCT( WeightsX_q(:), U(:,iX1,iX2,iX3-1,iCF) )
 
-          U_M(iCF,6,1) = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2,iX3+1,iCF) )
+          U_M(iCF,6,1) &
+            = DOT_PRODUCT( WeightsX_q(:), U(:,iX1,iX2,iX3+1,iCF) )
 
         END IF
 
@@ -287,20 +289,20 @@ CONTAINS
 
         ! --- Compute Eigenvectors ---
 
-        CALL Euler_ComputeCharacteristicDecomposition_Relativistic &
-               ( 1, G_K, U_M(:,0,1), R_X1, invR_X1 )
+        CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic &
+               ( 1, G_K(:), U_M(:,0,1), R_X1, invR_X1 )
 
-        IF( nDimsX .GT. 1 )THEN
+        IF( nDimsX > 1 )THEN
 
-          CALL Euler_ComputeCharacteristicDecomposition_Relativistic &
-                 ( 2, G_K, U_M(:,0,1), R_X2, invR_X2 )
+          CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic &
+                 ( 2, G_K(:), U_M(:,0,1), R_X2, invR_X2 )
 
         END IF
 
-        IF( nDimsX .GT. 2 )THEN
+        IF( nDimsX > 2 )THEN
 
-          CALL Euler_ComputeCharacteristicDecomposition_Relativistic &
-                 ( 3, G_K, U_M(:,0,1), R_X3, invR_X3 )
+          CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic &
+                 ( 3, G_K(:), U_M(:,0,1), R_X3, invR_X3 )
 
         END IF
 
@@ -323,7 +325,7 @@ CONTAINS
               BetaTVD * MATMUL( invR_X1, (U_M(:,2,1)-U_M(:,0,1)) ), &
               dX1, BetaTVB )
 
-      IF( nDimsX .GT. 1 )THEN
+      IF( nDimsX > 1 )THEN
 
         dU(:,2) &
           = MinModB &
@@ -334,7 +336,7 @@ CONTAINS
 
       END IF
 
-      IF( nDimsX .GT. 2 )THEN
+      IF( nDimsX > 2 )THEN
 
         dU(:,3) &
           = MinModB &
@@ -351,13 +353,13 @@ CONTAINS
 
         dU(:,1) = MATMUL( R_X1, dU(:,1) )
 
-        IF( nDimsX .GT. 1 )THEN
+        IF( nDimsX > 1 )THEN
 
           dU(:,2) = MATMUL( R_X2, dU(:,2) )
 
         END IF
 
-        IF( nDimsX .GT. 2 )THEN
+        IF( nDimsX > 2 )THEN
 
           dU(:,3) = MATMUL( R_X3, dU(:,3) )
 
@@ -369,9 +371,10 @@ CONTAINS
 
       DO iCF = 1, nCF
 
-        SlopeDifference(iCF) = ABS( U_M(iCF,0,2) - dU(iCF,1) )
+        SlopeDifference(iCF) &
+          = ABS( U_M(iCF,0,2) - dU(iCF,1) )
 
-        IF( nDimsX .GT. 1 )THEN
+        IF( nDimsX > 1 )THEN
 
           SlopeDifference(iCF) &
             = MAX( SlopeDifference(iCF), &
@@ -379,7 +382,7 @@ CONTAINS
 
         END IF
 
-        IF( nDimsX .GT. 2 )THEN
+        IF( nDimsX > 2 )THEN
 
           SlopeDifference(iCF) &
             = MAX( SlopeDifference(iCF), &
@@ -394,17 +397,21 @@ CONTAINS
 
       DO iCF = 1, nCF
 
-        IF( SlopeDifference(iCF) .GT. SlopeTolerance * ABS( U_M(iCF,0,1) ) )THEN
+        IF( SlopeDifference(iCF) &
+              > SlopeTolerance * ABS( U_M(iCF,0,1) ) )THEN
 
           U_M(iCF,0,2:nDOFX) = Zero
 
           U_M(:,0,2) = dU(:,1)
 
-          IF( nDimsX .GT. 1 ) U_M(iCF,0,3) = dU(iCF,2)
+          IF( nDimsX > 1 ) &
+            U_M(iCF,0,3) = dU(iCF,2)
 
-          IF( nDimsX .GT. 2 ) U_M(iCF,0,4) = dU(iCF,3)
+          IF( nDimsX > 2 ) &
+            U_M(iCF,0,4) = dU(iCF,3)
 
-          CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+          CALL MapModalToNodal_Fluid &
+                 ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
 
           LimitedCell(iCF,iX1,iX2,iX3) = .TRUE.
 
@@ -419,7 +426,7 @@ CONTAINS
     CALL ApplyConservativeCorrection &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
-  END SUBROUTINE Euler_ApplySlopeLimiter_Relativistic
+  END SUBROUTINE Euler_ApplySlopeLimiter_NonRelativistic
 
 
   SUBROUTINE InitializeTroubledCellIndicator
@@ -515,16 +522,14 @@ CONTAINS
   END SUBROUTINE FinalizeTroubledCellIndicator
 
 
-  SUBROUTINE DetectTroubledCells( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+  SUBROUTINE DetectTroubledCells( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in) :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iX1, iX2, iX3, iCF
-    REAL(DP) :: V_K (0:2*nDimsX)
     REAL(DP) :: U_K (0:2*nDimsX,nCF)
     REAL(DP) :: U_K0(0:2*nDimsX,nCF)
 
@@ -544,129 +549,67 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      ! --- Compute Cell Volumes and Cell Averages ---------
+      ! --- Compute Cell Averages --------------------------
       ! --- in Target Cell and Neighbors in X1 Direction ---
-
-      V_K(0) = DOT_PRODUCT &
-                 ( WeightsX_q, G(:,iX1,  iX2,iX3,iGF_SqrtGm) )
-
-      V_K(1) = DOT_PRODUCT &
-                 ( WeightsX_q, G(:,iX1-1,iX2,iX3,iGF_SqrtGm) )
-
-      V_K(2) = DOT_PRODUCT &
-                 ( WeightsX_q, G(:,iX1+1,iX2,iX3,iGF_SqrtGm) )
 
       DO iCF = 1, nCF
 
         U_K(0,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1,iX2,iX3,iCF) ) / V_K(0)
+          = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1,  iX2,iX3,iCF) )
 
         U_K(1,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1-1,iX2,iX3,iCF) ) / V_K(1)
+          = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1-1,iX2,iX3,iCF) )
 
         U_K0(1,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_X1_P, &
-                G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1-1,iX2,iX3,iCF) ) / V_K(0)
+          = DOT_PRODUCT( WeightsX_X1_P(:), U(:,iX1-1,iX2,iX3,iCF) )
 
         U_K(2,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1+1,iX2,iX3,iCF) ) / V_K(2)
+          = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1+1,iX2,iX3,iCF) )
 
         U_K0(2,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_X1_N, &
-                G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1+1,iX2,iX3,iCF) ) / V_K(0)
+          = DOT_PRODUCT( WeightsX_X1_N(:), U(:,iX1+1,iX2,iX3,iCF) )
 
       END DO
 
-      ! --- Compute Cell Volumes and Cell Averages ---
-      ! --- in Neighbors in X2 Direction -------------
+      ! --- Compute Cell Averages in Neighbors in X2 Direction ---
 
-      IF( nDimsX .GT. 1 )THEN
-
-        V_K(3) = DOT_PRODUCT &
-                   ( WeightsX_q, G(:,iX1,iX2-1,iX3,iGF_SqrtGm) )
-
-        V_K(4) = DOT_PRODUCT &
-                   ( WeightsX_q, G(:,iX1,iX2+1,iX3,iGF_SqrtGm) )
+      IF( nDimsX > 1 )THEN
 
         DO iCF = 1, nCF
 
           U_K(3,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2-1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2-1,iX3,iCF) ) / V_K(3)
+            = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1,iX2-1,iX3,iCF) )
 
           U_K0(3,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X2_P, &
-                  G(:,iX1,iX2-1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2-1,iX3,iCF) ) / V_K(0)
+            = DOT_PRODUCT( WeightsX_X2_P(:), U(:,iX1,iX2-1,iX3,iCF) )
 
           U_K(4,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2+1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2+1,iX3,iCF) ) / V_K(4)
+            = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1,iX2+1,iX3,iCF) )
 
           U_K0(4,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X2_N, &
-                  G(:,iX1,iX2+1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2+1,iX3,iCF) ) / V_K(0)
+            = DOT_PRODUCT( WeightsX_X2_N(:), U(:,iX1,iX2+1,iX3,iCF) )
 
         END DO
 
       END IF
 
-      ! --- Compute Cell Volumes and Cell Averages ---
-      ! --- in Neighbors in X3 Direction -------------
+      ! --- Compute Cell Averages in Neighbors in X3 Direction ---
 
-      IF( nDimsX .GT. 2 )THEN
-
-        V_K(5) = DOT_PRODUCT &
-                   ( WeightsX_q, G(:,iX1,iX2,iX3-1,iGF_SqrtGm) )
-
-        V_K(6) = DOT_PRODUCT &
-                   ( WeightsX_q, G(:,iX1,iX2,iX3+1,iGF_SqrtGm) )
+      IF( nDimsX > 2 )THEN
 
         DO iCF = 1, nCF
 
           U_K(5,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2,iX3-1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3-1,iCF) ) / V_K(5)
+            = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1,iX2,iX3-1,iCF) )
 
           U_K0(5,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X3_P, &
-                  G(:,iX1,iX2,iX3-1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3-1,iCF) ) / V_K(0)
+            = DOT_PRODUCT( WeightsX_X3_P(:), U(:,iX1,iX2,iX3-1,iCF) )
 
           U_K(6,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2,iX3+1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3+1,iCF) ) / V_K(6)
+            = DOT_PRODUCT( WeightsX_q(:),    U(:,iX1,iX2,iX3+1,iCF) )
 
           U_K0(6,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X3_N, &
-                  G(:,iX1,iX2,iX3+1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3+1,iCF) ) / V_K(0)
+            = DOT_PRODUCT( WeightsX_X3_N(:), U(:,iX1,iX2,iX3+1,iCF) )
 
         END DO
 
@@ -775,4 +718,4 @@ CONTAINS
   END SUBROUTINE ApplyConservativeCorrection
 
 
-END MODULE Euler_SlopeLimiterModule_Relativistic
+END MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL

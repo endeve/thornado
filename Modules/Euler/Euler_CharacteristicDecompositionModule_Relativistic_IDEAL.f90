@@ -1,4 +1,4 @@
-MODULE Euler_CharacteristicDecompositionModule_Relativistic
+MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
 
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Two, Four
@@ -17,7 +17,7 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
-  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+  USE Euler_UtilitiesModule_Relativistic_IDEAL, ONLY: &
     Euler_ComputePrimitive_Relativistic, &
     Euler_Eigenvalues_Relativistic
   USE EquationOfStateModule, ONLY: &
@@ -701,4 +701,4 @@ CONTAINS
   END SUBROUTINE ComputeFluxJacConsMatrix
 
 
-END MODULE Euler_CharacteristicDecompositionModule_Relativistic
+END MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
