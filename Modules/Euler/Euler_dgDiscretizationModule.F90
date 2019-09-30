@@ -958,12 +958,12 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC
 
     CALL ComputeIncrement_Geometry_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     CALL ComputeIncrement_Geometry_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
@@ -1597,12 +1597,12 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC
 
     CALL ComputeIncrement_Gravity_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     CALL ComputeIncrement_Gravity_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )

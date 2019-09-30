@@ -58,14 +58,14 @@ CONTAINS
                              PF_E(:), PF_Ne(:)
     REAL(DP), INTENT(in)  :: GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC
 
     CALL Euler_ComputePrimitive_NonRelativistic &
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
              PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     CALL Euler_ComputePrimitive_Relativistic &
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
@@ -99,14 +99,14 @@ CONTAINS
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: AF_P(:)
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC
 
     CALL Euler_ComputeConserved_NonRelativistic &
            ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
              CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     CALL Euler_ComputeConserved_Relativistic &
            ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
@@ -138,7 +138,7 @@ CONTAINS
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC
 
     CALL Euler_ComputeFromConserved_NonRelativistic &
            ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
@@ -155,7 +155,7 @@ CONTAINS
                        iX_B1(2):iX_E1(2),&
                        iX_B1(3):iX_E1(3),1:nAF) )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     CALL Euler_ComputeFromConserved_Relativistic &
            ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
@@ -210,7 +210,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC
 
     CALL Euler_ComputeTimeStep_NonRelativistic &
            ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
@@ -222,7 +222,7 @@ CONTAINS
                        iX_B1(3):iX_E1(3),1:nCF), &
              CFL, TimeStep )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     CALL Euler_ComputeTimeStep_Relativistic &
            ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
@@ -263,12 +263,12 @@ CONTAINS
 
     REAL(DP) :: Euler_Eigenvalues(nCF)
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC
 
     Euler_Eigenvalues = Euler_Eigenvalues_NonRelativistic &
                           ( V, Cs, Gmii )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     Euler_Eigenvalues = Euler_Eigenvalues_Relativistic &
                           ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, &
@@ -298,14 +298,14 @@ CONTAINS
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: Lapse, Shift
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC
 
     Euler_AlphaMiddle = Euler_AlphaMiddle_NonRelativistic &
                           ( DL, SL, EL, F_DL, F_SL, F_EL, &
                             DR, SR, ER, F_DR, F_SR, F_ER, &
                             Gmii, aP, aM )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     Euler_AlphaMiddle = Euler_AlphaMiddle_Relativistic &
                           ( DL, SL, EL, F_DL, F_SL, F_EL, &
@@ -337,12 +337,12 @@ CONTAINS
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: Lapse, Shift
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC
 
     Euler_Flux_X1 = Euler_Flux_X1_NonRelativistic &
                       ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33 )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     Euler_Flux_X1 = Euler_Flux_X1_Relativistic &
                       ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
@@ -371,12 +371,12 @@ CONTAINS
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: Lapse, Shift
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC
 
     Euler_Flux_X2 = Euler_Flux_X2_NonRelativistic &
                       ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33 )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     Euler_Flux_X2 = Euler_Flux_X2_Relativistic &
                       ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
@@ -405,12 +405,12 @@ CONTAINS
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: Lapse, Shift
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC
 
     Euler_Flux_X3 = Euler_Flux_X3_NonRelativistic &
                       ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33 )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     Euler_Flux_X3 = Euler_Flux_X3_Relativistic &
                       ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
