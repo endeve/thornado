@@ -263,7 +263,7 @@ PROGRAM ApplicationDriver
       xL = [ R_PNS, 0.0_DP, 0.0_DP ]
       xR = [ Two * R_shock, Pi, Four ]
 
-      bcX = [ 11, 0, 0 ]
+      bcX = [ 110, 0, 0 ]
 
       t_end = 3.0d2 * Millisecond
 
