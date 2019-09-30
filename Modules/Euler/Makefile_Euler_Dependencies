@@ -52,6 +52,15 @@ Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
   GeometryFieldsModule.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.f90
 
+Euler_BoundaryConditionsModule.o: \
+  KindModule.o \
+  MeshModule.o \
+  ReferenceElementModuleX.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  FluidFieldsModule.o \
+  Euler_BoundaryConditionsModule.f90
+
 Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -63,7 +72,7 @@ Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o: \
   MeshModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
-  Euler_BoundaryConditionsModule_NonRelativistic_IDEAL.o \
+  Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL.o \
   Euler_SlopeLimiterModule_NonRelativistic_IDEAL.f90
 
@@ -78,28 +87,9 @@ Euler_SlopeLimiterModule_Relativistic_IDEAL.o: \
   MeshModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
-  Euler_BoundaryConditionsModule_Relativistic_IDEAL.o \
+  Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.f90
-
-Euler_BoundaryConditionsModule_NonRelativistic_IDEAL.o: \
-  KindModule.o \
-  GeometryFieldsModule.o \
-  UnitsModule.o \
-  FluidFieldsModule.o \
-  Euler_UtilitiesModule.o \
-  EquationOfStateModule.o \
-  EquationOfStateModule_TABLE.o \
-  Euler_BoundaryConditionsModule_NonRelativistic_IDEAL.f90
-
-Euler_BoundaryConditionsModule_Relativistic_IDEAL.o: \
-  KindModule.o \
-  MeshModule.o \
-  ReferenceElementModuleX.o \
-  ProgramHeaderModule.o \
-  UtilitiesModule.o \
-  FluidFieldsModule.o \
-  Euler_BoundaryConditionsModule_Relativistic_IDEAL.f90
 
 Euler_dgDiscretizationModule.o: \
   KindModule.o \
@@ -162,11 +152,6 @@ Euler_SlopeLimiterModule.o: \
   Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o \
   Euler_SlopeLimiterModule.F90
 
-Euler_BoundaryConditionsModule.o: \
-  KindModule.o \
-  Euler_BoundaryConditionsModule_NonRelativistic_IDEAL.o \
-  Euler_BoundaryConditionsModule.F90
-
 Euler_TallyModule.o: \
   KindModule.o \
   Euler_TallyModule_NonRelativistic_IDEAL.o \
@@ -195,11 +180,6 @@ Euler_SlopeLimiterModule.o: \
   KindModule.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
   Euler_SlopeLimiterModule.F90
-
-Euler_BoundaryConditionsModule.o: \
-  KindModule.o \
-  Euler_BoundaryConditionsModule_Relativistic_IDEAL.o \
-  Euler_BoundaryConditionsModule.F90
 
 Euler_TallyModule.o: \
   KindModule.o \
