@@ -3,8 +3,8 @@ PROGRAM ApplicationDriver
   USE KindModule, ONLY: &
     DP, One, Two, Pi, TwoPi
   USE UnitsModule, ONLY: &
-      Millisecond, Microsecond, &
-      Kilometer
+    Millisecond, Microsecond, &
+    Kilometer
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_B1, iX_E0, iX_E1
   USE ProgramInitializationModule, ONLY: &
@@ -58,30 +58,30 @@ PROGRAM ApplicationDriver
   INCLUDE 'mpif.h'
 
   CHARACTER(32) :: ProgramName
-  CHARACTER(32) :: AdvectionProfile
-  CHARACTER(32) :: Direction
   CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
+  CHARACTER(32) :: EosTableName
   LOGICAL       :: wrt
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: UsePositivityLimiter
   INTEGER       :: iCycle, iCycleD
-  INTEGER       :: nX(3), bcX(3), nNodes
+  INTEGER       :: nX(3), bcX(3), nNodes, nStages
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, wTime
-  REAL(DP)      :: xL(3), xR(3), Gamma
+  REAL(DP)      :: xL(3), xR(3)
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
-  REAL(DP)      :: Eblast
 
   CoordinateSystem = 'CARTESIAN'
 
   ProgramName = 'RiemannProblem'
 
+  EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
+
   SELECT CASE ( TRIM( ProgramName ) )
 
-  CASE( 'RiemannProblem' )
+    CASE( 'RiemannProblem' )
 
       RiemannProblemName = 'Sod'
 
@@ -91,7 +91,8 @@ PROGRAM ApplicationDriver
 
       bcX = [ 2, 0, 0 ]
 
-      nNodes = 3
+      nNodes  = 3
+      nStages = 3
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
@@ -115,7 +116,8 @@ PROGRAM ApplicationDriver
 
       bcX = [ 2, 2, 0 ]
 
-      nNodes = 3
+      nNodes  = 3
+      nStages = 3
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
@@ -129,11 +131,9 @@ PROGRAM ApplicationDriver
 
       iCycleD = 10
       t_end   = 2.5d-1 * Millisecond
-      dt_wrt  = 2.5d-6 * Millisecond !d-6
+      dt_wrt  = 2.5d-6 * Millisecond
 
     CASE( 'Implosion' )
-
-!      Gamma = 1.4_DP
 
       nX = [ 64, 64, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
@@ -141,7 +141,8 @@ PROGRAM ApplicationDriver
 
       bcX = [ 3, 3, 0 ]
 
-      nNodes = 3
+      nNodes  = 3
+      nStages = 3
 
       BetaTVD = 1.50_DP
       BetaTVB = 0.0d+00
@@ -156,6 +157,10 @@ PROGRAM ApplicationDriver
       iCycleD = 1
       t_end   = 2.500_DP * Millisecond
       dt_wrt  = 0.045_DP * Millisecond
+
+    CASE DEFAULT
+
+      STOP
 
   END SELECT
 
@@ -188,8 +193,10 @@ PROGRAM ApplicationDriver
   CALL ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   CALL InitializeEquationOfState &
-         ( EquationOfState_Option = 'TABLE', &
-           EquationOfStateTableName_Option = 'wl-EOS-DD2-25-50-100.h5' ) !wl-EOS-DD2-25-50-100.h5 wl-EOS-SFHo-25-50-100.h5
+         ( EquationOfState_Option &
+             = 'TABLE', &
+           EquationOfStateTableName_Option &
+             = EosTableName )
 
   CALL Euler_InitializeSlopeLimiter_NonRelativistic_TABLE &
          ( BetaTVD_Option = BetaTVD, &
@@ -216,11 +223,7 @@ PROGRAM ApplicationDriver
              = UsePositivityLimiter )
 
   CALL InitializeFields &
-         ( AdvectionProfile_Option &
-             = TRIM( AdvectionProfile ), &
-           Direction_Option &
-             = TRIM( Direction ), &
-           RiemannProblemName_Option &
+         ( RiemannProblemName_Option &
              = TRIM( RiemannProblemName ) )
 
   CALL Euler_ApplySlopeLimiter_NonRelativistic_TABLE &
@@ -243,7 +246,7 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL InitializeFluid_SSPRK( nStages = 3 )
+  CALL InitializeFluid_SSPRK( nStages )
 
   ! --- Evolve ---
 
@@ -263,7 +266,7 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    CALL Euler_ComputeTimeStep_NonRelativistic&
+    CALL Euler_ComputeTimeStep_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
              uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
