@@ -14,15 +14,15 @@ MODULE Euler_UtilitiesModule
 
 #if defined HYDRO_NONRELATIVISTIC
 
-  USE Euler_UtilitiesModule_NonRelativistic
+  USE Euler_UtilitiesModule_NonRelativistic_IDEAL
 
 #elif defined HYDRO_RELATIVISTIC
 
-  USE Euler_UtilitiesModule_Relativistic
+  USE Euler_UtilitiesModule_Relativistic_IDEAL
 
 #else
 
-  USE Euler_UtilitiesModule_NonRelativistic
+  USE Euler_UtilitiesModule_NonRelativistic_IDEAL
 
 #endif
 

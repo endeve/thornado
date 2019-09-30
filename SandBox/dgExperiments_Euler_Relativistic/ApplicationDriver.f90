@@ -21,17 +21,17 @@ PROGRAM ApplicationDriver
     ComputeGeometryX
   USE InitializationModule_Relativistic, ONLY: &
     InitializeFields_Relativistic, ReadParameters
-  USE Euler_SlopeLimiterModule, ONLY: &
-    Euler_InitializeSlopeLimiter, &
-    Euler_FinalizeSlopeLimiter, &
-    Euler_ApplySlopeLimiter
-  USE Euler_PositivityLimiterModule, ONLY: &
-    Euler_InitializePositivityLimiter, &
-    Euler_FinalizePositivityLimiter, &
-    Euler_ApplyPositivityLimiter
-  USE Euler_UtilitiesModule, ONLY: &
-    Euler_ComputeFromConserved, &
-    Euler_ComputeTimeStep
+  USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
+    Euler_InitializeSlopeLimiter_Relativistic, &
+    Euler_FinalizeSlopeLimiter_Relativistic, &
+    Euler_ApplySlopeLimiter_Relativistic
+  USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
+    Euler_InitializePositivityLimiter_Relativistic, &
+    Euler_FinalizePositivityLimiter_Relativistic, &
+    Euler_ApplyPositivityLimiter_Relativistic
+  USE Euler_UtilitiesModule_Relativistic_IDEAL, ONLY: &
+    Euler_ComputeFromConserved_Relativistic, &
+    Euler_ComputeTimeStep_Relativistic
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE FluidFieldsModule, ONLY: &
@@ -47,10 +47,10 @@ PROGRAM ApplicationDriver
     UpdateFluid_SSPRK
   USE UnitsModule, ONLY: &
     Millisecond
-  USE Euler_TallyModule, ONLY: &
-    Euler_InitializeTally, &
-    Euler_FinalizeTally, &
-    Euler_ComputeTally
+  USE Euler_TallyModule_Relativistic_IDEAL, ONLY: &
+    Euler_InitializeTally_Relativistic, &
+    Euler_FinalizeTally_Relativistic, &
+    Euler_ComputeTally_Relativistic
   USE TimersModule_Euler, ONLY: &
     TimeIt_Euler, &
     InitializeTimers_Euler, FinalizeTimers_Euler, &
@@ -99,13 +99,13 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
 !  ProgramName = 'KelvinHelmholtz_Relativistic'
 !  ProgramName = 'KelvinHelmholtz'
-!  ProgramName = 'StandingAccretionShock'
+  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -306,8 +306,8 @@ PROGRAM ApplicationDriver
   Min_2 = 1.0d-13
 
   iCycleD = 10
-!!$  iCycleW = 1000; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * t_end; iCycleW = -1
+  iCycleW = 10; dt_wrt = -1.0d0
+!!$  dt_wrt = 1.0d-2 * t_end; iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -352,7 +352,7 @@ PROGRAM ApplicationDriver
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
-  CALL Euler_InitializeSlopeLimiter &
+  CALL Euler_InitializeSlopeLimiter_Relativistic &
          ( BetaTVD_Option = BetaTVD, &
            BetaTVB_Option = BetaTVB, &
            SlopeTolerance_Option &
@@ -368,7 +368,7 @@ PROGRAM ApplicationDriver
            UseConservativeCorrection_Option &
              = UseConservativeCorrection )
 
-  CALL Euler_InitializePositivityLimiter &
+  CALL Euler_InitializePositivityLimiter_Relativistic &
          ( Min_1_Option = Min_1, &
            Min_2_Option = Min_2, &
            UsePositivityLimiter_Option = UsePositivityLimiter )
@@ -384,18 +384,18 @@ PROGRAM ApplicationDriver
              = TRIM( SphericalRiemannProblemName ), &
            nDetCells_Option = nDetCells, Eblast_Option = Eblast )
 
-  CALL Euler_ApplySlopeLimiter &
+  CALL Euler_ApplySlopeLimiter_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
 
-  CALL Euler_ApplyPositivityLimiter &
+  CALL Euler_ApplyPositivityLimiter_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
 
   CALL TimersStart_Euler( Timer_Euler_InputOutput )
-  CALL Euler_ComputeFromConserved &
+  CALL Euler_ComputeFromConserved_Relativistic &
          ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
            uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
@@ -424,7 +424,7 @@ PROGRAM ApplicationDriver
   t_wrt = dt_wrt
   wrt   = .FALSE.
 
-  CALL Euler_InitializeTally &
+  CALL Euler_InitializeTally_Relativistic &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
@@ -437,7 +437,7 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    CALL Euler_ComputeTimeStep &
+    CALL Euler_ComputeTimeStep_Relativistic &
            ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
              uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                          iX_B1(2):iX_E1(2), &
@@ -445,13 +445,7 @@ PROGRAM ApplicationDriver
              uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
                          iX_B1(2):iX_E1(2), &
                          iX_B1(3):iX_E1(3),1:nCF), &
-             CFL = CFL / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
-
-    CALL Euler_ComputeTimeStep &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             uGF(1:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:), &
-             uCF(1:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:), &
-             CFL = CFL / ( nDimsX * ( Two * nNodes - One ) ), &
+             CFL = CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
              TimeStep = dt )
 
     IF( t + dt .LT. t_end )THEN
@@ -494,7 +488,7 @@ PROGRAM ApplicationDriver
     IF( wrt )THEN
 
       CALL TimersStart_Euler( Timer_Euler_InputOutput )
-      CALL Euler_ComputeFromConserved &
+      CALL Euler_ComputeFromConserved_Relativistic &
              ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
                uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
@@ -513,7 +507,7 @@ PROGRAM ApplicationDriver
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
       CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
-      CALL Euler_ComputeTally &
+      CALL Euler_ComputeTally_Relativistic &
            ( iX_B0, iX_E0, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -531,7 +525,7 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
 
   CALL TimersStart_Euler( Timer_Euler_InputOutput )
-  CALL Euler_ComputeFromConserved &
+  CALL Euler_ComputeFromConserved_Relativistic &
          ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
            uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
@@ -550,18 +544,18 @@ PROGRAM ApplicationDriver
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
   CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
-  CALL Euler_ComputeTally &
+  CALL Euler_ComputeTally_Relativistic &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
-  CALL Euler_FinalizeTally
+  CALL Euler_FinalizeTally_Relativistic
 
-  CALL Euler_FinalizePositivityLimiter
+  CALL Euler_FinalizePositivityLimiter_Relativistic
 
-  CALL Euler_FinalizeSlopeLimiter
+  CALL Euler_FinalizeSlopeLimiter_Relativistic
 
   CALL FinalizeFluid_SSPRK
 

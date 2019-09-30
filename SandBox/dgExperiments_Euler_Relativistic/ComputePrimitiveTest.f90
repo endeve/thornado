@@ -11,7 +11,7 @@ PROGRAM ComputePrimitiveTest
     InitializeEquationOfState, &
     FinalizeEquationOfState, &
     ComputePressureFromPrimitive
-  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+  USE Euler_UtilitiesModule_Relativistic_IDEAL, ONLY: &
     Euler_ComputePrimitive_Relativistic, &
     ComputeFunJacP, &
     ComputePressureWithBisectionMethod, &

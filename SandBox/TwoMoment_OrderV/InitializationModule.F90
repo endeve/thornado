@@ -17,7 +17,7 @@ MODULE InitializationModule
   USE FluidFieldsModule, ONLY: &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
-  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
+  USE Euler_UtilitiesModule_NonRelativistic_IDEAL, ONLY: &
     Euler_ComputeConserved_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
