@@ -67,7 +67,7 @@ PROGRAM ApplicationDriver
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   REAL(DP)      :: eL, eR, xL(3), xR(3)
-  REAL(DP)      :: t, dt, t_end
+  REAL(DP)      :: t, dt, t_end, V_0(3)
 
   CoordinateSystem = 'CARTESIAN'
 
@@ -98,11 +98,13 @@ PROGRAM ApplicationDriver
       iCycleW = 1
       maxCycles = 10000
 
+      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+
     CASE( 'SineWaveDiffusion' )
 
       nX  = [ 16, 1, 1 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      xL  = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ + 3.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 0, 0 ]
 
       nE  = 1
@@ -114,10 +116,12 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end   = 1.0d0
-      iCycleD = 1
-      iCycleW = 1
+      t_end   = 2.0d1
+      iCycleD = 10
+      iCycleW = 10
       maxCycles = 1000000
+
+      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
 
     CASE DEFAULT
 
@@ -203,7 +207,7 @@ PROGRAM ApplicationDriver
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields
+  CALL InitializeFields( V_0 )
 
   ! --- Write Initial Condition ---
 
@@ -244,12 +248,12 @@ PROGRAM ApplicationDriver
 
     CALL Update_IMEX_RK( dt, uGE, uGF, uCF, uCR )
 
-    t = t_end!t + dt
+    t = t + dt
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
       CALL ComputeFromConserved_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCR, uPR )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
 
       CALL WriteFieldsHDF &
              ( Time = t, &
@@ -262,7 +266,7 @@ PROGRAM ApplicationDriver
   END DO
 
   CALL ComputeFromConserved_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCR, uPR )
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
 
   CALL WriteFieldsHDF &
          ( Time = t, &
