@@ -3,7 +3,7 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
   USE KindModule, ONLY: &
     DP, Zero
   USE ProgramHeaderModule, ONLY: &
-    nDOF, nDOFX, nDOFE, &
+    nDOFZ, nDOFX, nDOFE, &
     iZ_B0, iZ_B1, iZ_E0, iZ_E1
   USE GeometryFieldsModuleE, ONLY: &
     nGE
@@ -51,7 +51,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       UF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      UR(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+      UR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
                  iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER :: iS, jS
@@ -93,6 +93,8 @@ CONTAINS
         CALL ComputeIncrement_TwoMoment_Implicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), &
                  GE, GX, UF, Ui, StageData(iS) % dU_IM )
+
+        Ui = Ui + dt * a_IM(iS,iS) * StageData(iS) % dU_IM
 
       END IF
 
@@ -138,6 +140,8 @@ CONTAINS
     END IF
 
     UR = Ui
+
+    PRINT*, "Update_IMEX_RK (out)"
 
   END SUBROUTINE Update_IMEX_RK
 
@@ -324,8 +328,8 @@ CONTAINS
     REAL(DP), ALLOCATABLE, INTENT(inout) :: Array7D(:,:,:,:,:,:,:)
 
     ALLOCATE &
-      ( Array7D(nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                     iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+      ( Array7D(nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                      iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
                 nCR,nSpecies) )
 
     Array7D = Zero
