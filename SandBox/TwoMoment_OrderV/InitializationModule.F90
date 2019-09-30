@@ -25,6 +25,8 @@ MODULE InitializationModule
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeConserved_TwoMoment
+  USE TwoMoment_OpacityModule_OrderV, ONLY: &
+    uOP, iOP_Sigma
 
   IMPLICIT NONE
   PRIVATE
@@ -171,7 +173,7 @@ CONTAINS
 
     INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeZ2
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
-    REAL(DP) :: X1
+    REAL(DP) :: X1, Sigma
 
     ! --- Fluid Fields ---
 
@@ -227,10 +229,12 @@ CONTAINS
 
         X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
 
+        Sigma = uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS)
+
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
           = 0.49_DP * SIN( Third * Pi * X1 ) + 0.5_DP
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
-          = - ( 0.49_DP * Pi / ( 9.0_DP * 1.0d2 ) ) * COS( Third * Pi * X1 )
+          = - ( 0.49_DP * Pi / ( 9.0_DP * Sigma ) ) * COS( Third * Pi * X1 )
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
           = 0.0_DP
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &

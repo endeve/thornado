@@ -9,6 +9,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
   USE TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
+    Timer_Implicit, &
     Timer_Im_MapForward, &
     Timer_Im_MapBackward, &
     Timer_Im_CoupledAA
@@ -26,6 +27,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeEddingtonTensorComponents_dd
+  USE TwoMoment_OpacityModule_OrderV, ONLY: &
+    uOP, iOP_D0, iOP_Chi, iOP_Sigma, nOP
 
   IMPLICIT NONE
   PRIVATE
@@ -41,6 +44,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
   REAL(DP), ALLOCATABLE :: CF_N(:,:)
   REAL(DP), ALLOCATABLE :: CR_N(:,:,:,:)
   REAL(DP), ALLOCATABLE :: dCR_N(:,:,:,:)
+  REAL(DP), ALLOCATABLE :: OP_N(:,:,:,:)
 
 CONTAINS
 
@@ -69,11 +73,13 @@ CONTAINS
       dU_R(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                    iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iOP
     INTEGER :: iX1, iX2, iX3, iE
     INTEGER :: iNodeZ, iNodeX, iNodeE, iN_X, iN_E
 
-    PRINT*, "      ComputeIncrement_TwoMoment_Implicit (In)"
+    CALL TimersStart( Timer_Implicit )
+
+    PRINT*, "      ComputeIncrement_TwoMoment_Implicit (Start)"
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
@@ -153,6 +159,30 @@ CONTAINS
     END DO
     END DO
 
+    ! --- Arrange Opacities ---
+
+    DO iS   = 1, nSpecies
+    DO iOP  = 1, nOP
+    DO iN_X = 1, nX_G
+    DO iN_E = 1, nE_G
+
+      iE     = MOD( (iN_E-1) / nDOFE, nZ(1) ) + iE_B0
+      iNodeE = MOD( (iN_E-1)        , nDOFE ) + 1
+
+      iX3    = MOD( (iN_X-1) / ( nDOFX * nX(1) * nX(2) ), nX(3) ) + iX_B0(3)
+      iX2    = MOD( (iN_X-1) / ( nDOFX * nX(1)         ), nX(2) ) + iX_B0(2)
+      iX1    = MOD( (iN_X-1) / ( nDOFX                 ), nX(1) ) + iX_B0(1)
+      iNodeX = MOD( (iN_X-1)                            , nDOFX ) + 1
+
+      iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+
+      OP_N(iOP,iS,iN_E,iN_X) = uOP(iNodeZ,iE,iX1,iX2,iX3,iOP,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
     CALL TimersStop( Timer_Im_MapForward )
 
     CALL TimersStart( Timer_Im_CoupledAA )
@@ -191,7 +221,9 @@ CONTAINS
                  GX_N(iGF_Gm_dd_11,iN_X), &
                  GX_N(iGF_Gm_dd_22,iN_X), &
                  GX_N(iGF_Gm_dd_33,iN_X), &
-                 0.0_DP, 0.0_DP, 1.0d2, &
+                 OP_N(iOP_D0   ,iS,iN_E,iN_X), &
+                 OP_N(iOP_Chi  ,iS,iN_E,iN_X), &
+                 OP_N(iOP_Sigma,iS,iN_E,iN_X), &
                  dCR_N(iCR_N ,iS,iN_E,iN_X), &
                  dCR_N(iCR_G1,iS,iN_E,iN_X), &
                  dCR_N(iCR_G2,iS,iN_E,iN_X), &
@@ -243,7 +275,9 @@ CONTAINS
 
     CALL FinalizeCollisions
 
-    PRINT*, "      ComputeIncrement_TwoMoment_Implicit (Out)"
+    PRINT*, "      ComputeIncrement_TwoMoment_Implicit (End)"
+
+    CALL TimersStop( Timer_Implicit )
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit
 
@@ -463,13 +497,14 @@ CONTAINS
     ALLOCATE( CF_N(nCF,nX_G) )
     ALLOCATE( CR_N (nCR,nSpecies,nE_G,nX_G) )
     ALLOCATE( dCR_N(nCR,nSpecies,nE_G,nX_G) )
+    ALLOCATE( OP_N (nOP,nSpecies,nE_G,nX_G) )
 
   END SUBROUTINE InitializeCollisions
 
 
   SUBROUTINE FinalizeCollisions
 
-    DEALLOCATE( GX_N, CF_N, CR_N, dCR_N )
+    DEALLOCATE( GX_N, CF_N, CR_N, dCR_N, OP_N )
 
   END SUBROUTINE FinalizeCollisions
 
