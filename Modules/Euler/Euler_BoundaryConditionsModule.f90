@@ -1,4 +1,4 @@
-MODULE Euler_BoundaryConditionsModule_NonRelativistic_IDEAL
+MODULE Euler_BoundaryConditionsModule
 
   USE KindModule, ONLY: &
     DP
@@ -16,7 +16,7 @@ MODULE Euler_BoundaryConditionsModule_NonRelativistic_IDEAL
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_ApplyBoundaryConditions_NonRelativistic
+  PUBLIC :: Euler_ApplyBoundaryConditions
 
   INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Both  = 0
   INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Inner = 1
@@ -51,7 +51,7 @@ CONTAINS
   END FUNCTION ApplyOuterBC
 
 
-  SUBROUTINE Euler_ApplyBoundaryConditions_NonRelativistic &
+  SUBROUTINE Euler_ApplyBoundaryConditions &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
@@ -85,7 +85,7 @@ CONTAINS
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), iApplyBC(3) )
 
-  END SUBROUTINE Euler_ApplyBoundaryConditions_NonRelativistic
+  END SUBROUTINE Euler_ApplyBoundaryConditions
 
 
   SUBROUTINE Euler_ApplyBC_X1( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
@@ -99,7 +99,7 @@ CONTAINS
     INTEGER :: iCF, iX1, iX2, iX3
     INTEGER :: iNodeX, iNodeX_0
     INTEGER :: iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX1
-    REAL(DP) :: D_0, E_0, R_0, R_q 
+    REAL(DP) :: D_0, E_0, R_0, R_q
 
     SELECT CASE ( bcX(1) )
 
@@ -148,7 +148,7 @@ CONTAINS
         END DO
         END DO
       END DO
- 
+
     CASE ( 3 ) ! Reflecting
 
       DO iX3 = iX_B0(3), iX_E0(3)
@@ -170,7 +170,7 @@ CONTAINS
             IF( ApplyInnerBC( iApplyBC ) ) &
               U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF) &
                 = U(jNodeX,iX_B0(1),iX2,iX3,iCF)
-              
+
             ! --- Outer boundary ---
             IF( ApplyOuterBC( iApplyBC ) ) &
               U(iNodeX,iX_E0(1)+iX1,iX2,iX3,iCF) &
@@ -204,7 +204,7 @@ CONTAINS
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
-            
+
           DO iNodeX3 = 1, nNodesX(3)
           DO iNodeX2 = 1, nNodesX(2)
           DO iNodeX1 = 1, nNodesX(1)
@@ -314,6 +314,47 @@ CONTAINS
           END DO
           END DO
           END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE ( 110 ) ! Custom BCs for Relativistic Accretion Problem
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+        R_0 = MeshX(1) % Center(1) &
+                + MeshX(1) % Width(1) &
+                    * MeshX(1) % Nodes(1)
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+
+            ! --- Inner Boundary ---
+
+            DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+            DO iNodeX1 = 1, nNodesX(1)
+
+              iNodeX   = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+              iNodeX_0 = NodeNumberX( 1,       iNodeX2, iNodeX3 )
+
+              D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
+              E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
+
+              R_q = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNodeX1 )
+
+              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+                = D_0 * ( R_0 / R_q )**3
+
+              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+                = E_0 * ( R_0 / R_q )**4
+
+            END DO
+            END DO
+            END DO
 
         END DO
         END DO
@@ -567,4 +608,4 @@ CONTAINS
   END SUBROUTINE Euler_ApplyBC_X3
 
 
-END MODULE Euler_BoundaryConditionsModule_NonRelativistic_IDEAL
+END MODULE Euler_BoundaryConditionsModule

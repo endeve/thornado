@@ -12,7 +12,6 @@ all: ApplicationDriver
 ApplicationDriver: \
 	$(weaklib) \
 	$(thornado) \
-	Euler_UtilitiesModule_NonRelativistic_TABLE.o \
 	InitializationModule.o \
 	Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o \
 	Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
@@ -23,7 +22,6 @@ ApplicationDriver: \
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
-	Euler_UtilitiesModule_NonRelativistic_TABLE.o \
 	InitializationModule.o \
 	Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o \
 	Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \

@@ -1,9 +1,7 @@
 EULER = \
-  Euler_UtilitiesModule_NonRelativistic_IDEAL.o \
-  Euler_UtilitiesModule_Relativistic_IDEAL.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  Euler_UtilitiesModule_Relativistic.o \
   Euler_UtilitiesModule.o \
-  Euler_BoundaryConditionsModule_NonRelativistic_IDEAL.o \
-  Euler_BoundaryConditionsModule_Relativistic_IDEAL.o \
   Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL.o \
   Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o \

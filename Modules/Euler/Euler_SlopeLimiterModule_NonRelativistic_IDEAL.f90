@@ -30,8 +30,8 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
     Shock
-  USE Euler_BoundaryConditionsModule_NonRelativistic_IDEAL, ONLY: &
-    Euler_ApplyBoundaryConditions_NonRelativistic
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    Euler_ApplyBoundaryConditions
   USE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL, ONLY: &
     Euler_ComputeCharacteristicDecomposition_NonRelativistic
   USE TimersModule_Euler, ONLY: &
@@ -201,7 +201,7 @@ CONTAINS
       SuppressBC = SuppressBC_Option
 
     IF( .NOT. SuppressBC ) &
-      CALL Euler_ApplyBoundaryConditions_NonRelativistic &
+      CALL Euler_ApplyBoundaryConditions &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL TimersStart_Euler( Timer_Euler_TroubledCellIndicator )

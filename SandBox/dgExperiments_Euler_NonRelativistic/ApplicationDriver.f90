@@ -40,7 +40,7 @@ PROGRAM ApplicationDriver
     Euler_InitializePositivityLimiter_NonRelativistic, &
     Euler_FinalizePositivityLimiter_NonRelativistic, &
     Euler_ApplyPositivityLimiter_NonRelativistic
-  USE Euler_UtilitiesModule_NonRelativistic_IDEAL, ONLY: &
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     Euler_ComputeFromConserved_NonRelativistic, &
     Euler_ComputeTimeStep_NonRelativistic
   USE Euler_dgDiscretizationModule, ONLY: &

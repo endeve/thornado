@@ -147,7 +147,7 @@ extern "C"
   {
 
     std::stringstream sChkFile;
-    sChkFile << chk_file << std::setw(5) << std::setfill('0') << iChkFile;
+    sChkFile << chk_file << std::setw(8) << std::setfill('0') << iChkFile;
     restart_chkfile = sChkFile.str();
 
     amrex::Print() << "Restart from checkpoint " << restart_chkfile << "\n";
@@ -240,7 +240,7 @@ extern "C"
 
     std::stringstream sChkFile;
 
-    sChkFile << chk_file << std::setw(5) << std::setfill('0') << iChkFile;
+    sChkFile << chk_file << std::setw(8) << std::setfill('0') << iChkFile;
     restart_chkfile = sChkFile.str();
 
     // Header

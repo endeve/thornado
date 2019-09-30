@@ -21,7 +21,7 @@ MODULE InitializationModule
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uAF, iAF_P, iAF_Ye, iAF_T, iAF_E
-  USE Euler_UtilitiesModule_NonRelativistic_TABLE, ONLY: &
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
    Euler_ComputeConserved_NonRelativistic
   USE EquationOfStateModule, ONLY: &
     ComputeTemperatureFromPressure, &

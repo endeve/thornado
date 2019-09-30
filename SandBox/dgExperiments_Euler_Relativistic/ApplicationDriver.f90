@@ -29,7 +29,7 @@ PROGRAM ApplicationDriver
     Euler_InitializePositivityLimiter_Relativistic, &
     Euler_FinalizePositivityLimiter_Relativistic, &
     Euler_ApplyPositivityLimiter_Relativistic
-  USE Euler_UtilitiesModule_Relativistic_IDEAL, ONLY: &
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
     Euler_ComputeFromConserved_Relativistic, &
     Euler_ComputeTimeStep_Relativistic
   USE InputOutputModuleHDF, ONLY: &
@@ -263,7 +263,7 @@ PROGRAM ApplicationDriver
       xL = [ R_PNS, 0.0_DP, 0.0_DP ]
       xR = [ Two * R_shock, Pi, Four ]
 
-      bcX = [ 11, 0, 0 ]
+      bcX = [ 110, 0, 0 ]
 
       t_end = 3.0d2 * Millisecond
 

@@ -44,9 +44,9 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE Euler_BoundaryConditionsModule_NonRelativistic_IDEAL, ONLY: &
-    Euler_ApplyBoundaryConditions_NonRelativistic
-  USE Euler_UtilitiesModule_NonRelativistic_IDEAL, ONLY: &
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    Euler_ApplyBoundaryConditions
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     Euler_ComputePrimitive_NonRelativistic
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
@@ -110,7 +110,7 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
-    CALL Euler_ApplyBoundaryConditions_NonRelativistic &
+    CALL Euler_ApplyBoundaryConditions &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
 
     CALL ApplyBoundaryConditions_TwoMoment &
