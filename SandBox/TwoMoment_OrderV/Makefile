@@ -1,5 +1,5 @@
-#MOMENT_CLOSURE = MINERBO
-MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
+MOMENT_CLOSURE = MINERBO
+#MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -24,6 +24,7 @@ PrimitiveConserved: \
 TimeStepper: \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
@@ -31,6 +32,7 @@ TimeStepper: \
 	$(FLINKER) $(FLAGS) -o TimeStepper_$(MACHINE) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
@@ -40,6 +42,7 @@ TimeStepper: \
 ApplicationDriver: \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
@@ -48,6 +51,7 @@ ApplicationDriver: \
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
@@ -102,6 +106,10 @@ TwoMoment_UtilitiesModule.o: \
   KindModule.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_UtilitiesModule.F90
+
+TwoMoment_OpacityModule_OrderV.o: \
+  KindModule.o \
+  TwoMoment_OpacityModule_OrderV.F90
 
 TwoMoment_DiscretizationModule_Streaming_OrderV.o: \
   KindModule.o \

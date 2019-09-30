@@ -108,12 +108,12 @@ CONTAINS
     END DO
 
     DO i = 0, 1 - SW, - 1
-      Width (i) = Width(i+1) / Zoom
+      Width (i) = Width(1)
       Center(i) = xL - SUM( Width(i+1:1-SW) ) - 0.5_DP * Width(i)
     END DO
 
     DO i = N + 1, N + SW
-      Width (i) = Width(i-1) * Zoom
+      Width (i) = Width(N)
       Center(i) = xL + SUM( Width(1:i-1) ) + 0.5_DP * Width(i)
     END DO
 

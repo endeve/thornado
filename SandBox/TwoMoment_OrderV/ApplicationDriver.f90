@@ -51,6 +51,10 @@ PROGRAM ApplicationDriver
     InitializeClosure_TwoMoment
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeFromConserved_TwoMoment
+  USE TwoMoment_OpacityModule_OrderV, ONLY: &
+    CreateOpacities, &
+    SetConstantOpacities, &
+    DestroyOpacities
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Initialize_IMEX_RK, &
     Finalize_IMEX_RK, &
@@ -68,6 +72,7 @@ PROGRAM ApplicationDriver
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   REAL(DP)      :: eL, eR, xL(3), xR(3)
   REAL(DP)      :: t, dt, t_end, V_0(3)
+  REAL(DP)      :: D_0, Chi, Sigma
 
   CoordinateSystem = 'CARTESIAN'
 
@@ -100,6 +105,10 @@ PROGRAM ApplicationDriver
 
       V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
 
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
     CASE( 'SineWaveDiffusion' )
 
       nX  = [ 16, 1, 1 ]
@@ -121,7 +130,11 @@ PROGRAM ApplicationDriver
       iCycleW = 10
       maxCycles = 1000000
 
-      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 1.0d+2
 
     CASE DEFAULT
 
@@ -148,7 +161,7 @@ PROGRAM ApplicationDriver
            nE_Option &
              = nE, &
            swE_Option &
-             = 0, &
+             = 1, &
            bcE_Option &
              = bcE, &
            eL_Option &
@@ -200,6 +213,13 @@ PROGRAM ApplicationDriver
   ! --- Initialize Moment Closure ---
 
   CALL InitializeClosure_TwoMoment
+
+  ! --- Initialize Opacities ---
+
+  CALL CreateOpacities &
+         ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = .TRUE. )
+
+  CALL SetConstantOpacities( D_0, Chi, Sigma )
 
   ! --- Initialize Time Stepper ---
 
@@ -275,6 +295,8 @@ PROGRAM ApplicationDriver
            WriteRF_Option = .TRUE. )
 
   ! --- Finalize ---
+
+  CALL DestroyOpacities
 
   CALL Finalize_IMEX_RK
 
