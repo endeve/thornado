@@ -1,4 +1,3 @@
-
 ##### inputs_StandingAccretionShock_Relativistic_1D #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
@@ -22,7 +21,7 @@ thornado.Gamma     = 1.3333333333333333 # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
-thornado.bcX       = 11 00 00 # Boundary conditions
+thornado.bcX       = 110 00 00 # Boundary conditions
 thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
 thornado.iCycleD   = 10       # MOD this number to display info
 thornado.iCycleW   = -1       # MOD this number to write plotfile
@@ -30,10 +29,10 @@ thornado.iCycleChk = -1       # MOD this number to write checkpoint file
 thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
 thornado.UsePhysicalUnits = 1 # LOGICAL, OPTIONAL, default 0 (.FALSE.)
 
-geometry.coord_sys     = 2     # SPHERICAL
-geometry.prob_lo       = 40.0  0.0               0.0               # Lower domain size [km,rad,rad]
-geometry.prob_hi       = 360.0 3.141592653589793 6.283185307179586 # Upper domain size [km,rad,rad]
-geometry.is_periodic   = 0 1 1 # Periodicity. 0 (no), 1 (yes)
+geometry.coord_sys   = 2     # SPHERICAL
+geometry.prob_lo     = 40.0  0.0               0.0               # Lower domain size [km,rad,rad]
+geometry.prob_hi     = 360.0 3.141592653589793 6.283185307179586 # Upper domain size [km,rad,rad]
+geometry.is_periodic = 0 1 1 # Periodicity. 0 (no), 1 (yes)
 
 amr.n_cell          = 256 001 001 # Number of cells in each dimension
 amr.max_grid_size   = 032 001 001 # nBoxes = n_cell / MaxGridSize

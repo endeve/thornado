@@ -9,11 +9,11 @@ MODULE Euler_CharacteristicDecompositionModule
 
 #ifdef HYDRO_NONRELATIVISTIC
 
-  USE Euler_CharacteristicDecompositionModule_NonRelativistic
+  USE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL
 
 #elif HYDRO_RELATIVISTIC
 
-  USE Euler_CharacteristicDecompositionModule_Relativistic
+  USE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
 
 #endif
 

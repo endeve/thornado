@@ -8,11 +8,11 @@ MODULE Euler_SlopeLimiterModule
 
 #ifdef HYDRO_NONRELATIVISTIC
 
-  USE Euler_SlopeLimiterModule_NonRelativistic
+  USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
 
 #elif HYDRO_RELATIVISTIC
 
-  USE Euler_SlopeLimiterModule_Relativistic
+  USE Euler_SlopeLimiterModule_Relativistic_IDEAL
 
 #endif
 

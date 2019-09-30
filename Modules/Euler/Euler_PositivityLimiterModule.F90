@@ -9,11 +9,11 @@ MODULE Euler_PositivityLimiterModule
 
 #ifdef HYDRO_NONRELATIVISTIC
 
-  USE Euler_PositivityLimiterModule_NonRelativistic
+  USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
 
 #elif HYDRO_RELATIVISTIC
 
-  USE Euler_PositivityLimiterModule_Relativistic
+  USE Euler_PositivityLimiterModule_Relativistic_IDEAL
 
 #endif
 

@@ -5,11 +5,11 @@ MODULE Euler_TallyModule
 
 #ifdef HYDRO_NONRELATIVISTIC
 
-  USE Euler_TallyModule_NonRelativistic
+  USE Euler_TallyModule_NonRelativistic_IDEAL
 
 #elif HYDRO_RELATIVISTIC
 
-  USE Euler_TallyModule_Relativistic
+  USE Euler_TallyModule_Relativistic_IDEAL
 
 #endif
 

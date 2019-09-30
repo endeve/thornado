@@ -6,7 +6,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDOFE, &
-    nDOF
+    nDOFZ
   USE TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
@@ -44,8 +44,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE Euler_BoundaryConditionsModule_NonRelativistic, ONLY: &
-    Euler_ApplyBoundaryConditions_NonRelativistic
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    Euler_ApplyBoundaryConditions
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     Euler_ComputePrimitive_NonRelativistic
   USE EquationOfStateModule, ONLY: &
@@ -89,10 +89,10 @@ CONTAINS
       U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
                    iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      U_R (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+      U_R (1:nDOFZ ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                    iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU_R(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+      dU_R(1:nDOFZ ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                    iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -110,7 +110,7 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
-    CALL Euler_ApplyBoundaryConditions_NonRelativistic &
+    CALL Euler_ApplyBoundaryConditions &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
 
     CALL ApplyBoundaryConditions_TwoMoment &
@@ -123,7 +123,7 @@ CONTAINS
     DO iZ2 = iZ_B1(2), iZ_E1(2)
     DO iZ1 = iZ_B1(1), iZ_E1(1)
 
-      DO iNodeZ = 1, nDOF
+      DO iNodeZ = 1, nDOFZ
 
         dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
 
@@ -148,7 +148,7 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      DO iNodeZ = 1, nDOF
+      DO iNodeZ = 1, nDOFZ
 
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
@@ -189,10 +189,10 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
     REAL(DP), INTENT(in)    :: &
-      U_R (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+      U_R (1:nDOFZ ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                    iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
-      dU_R(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+      dU_R(1:nDOFZ ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                    iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER  :: iNode, iNodeZ, iNodeE, iNodeX, iDim
@@ -208,7 +208,7 @@ CONTAINS
                               iZ_B1(2):iZ_E1(2),nGF)
     REAL(DP) :: GX_F(nDOFX_X1,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
                            iZ_B0(2):iZ_E1(2),nGF)
-    REAL(DP) :: G_K(nDOF,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+    REAL(DP) :: G_K(nDOFZ,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
                     iZ_B0(2):iZ_E0(2)  )
     REAL(DP) :: G_F(nDOF_X1,nGF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
                                 iZ_B0(2):iZ_E1(2))
@@ -220,13 +220,13 @@ CONTAINS
                             iZ_B0(2):iZ_E1(2),nCF)
     REAL(DP) :: uPF_KX(nDOFX,nPF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
                        iZ_B0(2):iZ_E0(2))
-    REAL(DP) :: uPF_K(nDOF,nPF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+    REAL(DP) :: uPF_K(nDOFZ,nPF,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
                       iZ_B0(2):iZ_E0(2))
     REAL(DP) :: V_u_X1(3,nDOFX_X1,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
                        iZ_B0(2):iZ_E1(2))
     REAL(DP) :: V_u(3,nDOF_X1,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
                     iZ_B0(2):iZ_E1(2))
-    REAL(DP) :: uCR_K(nDOF,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3), &
+    REAL(DP) :: uCR_K(nDOFZ,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3), &
                       iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B1(2):iZ_E1(2))
     REAL(DP) :: uCR_L(nDOF_X1,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3), &
                       iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2):iZ_E1(2))
@@ -234,9 +234,9 @@ CONTAINS
                       iZ_B0(4):iZ_E0(4),nCR,nSpecies,iZ_B0(2):iZ_E1(2))
     REAL(DP) :: NumericalFlux(nDOF_X1,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3), &
                       iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(2):iZ_E1(2))
-    REAL(DP) :: dU_X1(nDOF,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3), &
+    REAL(DP) :: dU_X1(nDOFZ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3), &
                       iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(2):iZ_E0(2)  )
-    REAL(DP) :: Flux_q(nDOF,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3), &
+    REAL(DP) :: Flux_q(nDOFZ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3), &
                        iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(2):iZ_E0(2)  )
 
     PRINT*, "      ComputeIncrement_Divergence_X1"
@@ -517,7 +517,7 @@ CONTAINS
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      DO iNodeZ = 1, nDOF
+      DO iNodeZ = 1, nDOFZ
 
         uCR_K(iNodeZ,iZ1,iZ3,iZ4,iCR,iS,iZ2) &
           = U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
@@ -540,15 +540,15 @@ CONTAINS
     ! --- Interpolate Left State ---
 
     CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Up, nDOF_X1, &
-             uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)-1), nDOF, Zero, &
+           ( 'N', 'N', nDOF_X1, nF, nDOFZ, One, L_X1_Up, nDOF_X1, &
+             uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)-1), nDOFZ, Zero, &
              uCR_L(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF_X1 )
 
     ! --- Interpolate Right State ---
 
     CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOF_X1, nF, nDOF, One, L_X1_Dn, nDOF_X1, &
-             uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF, Zero, &
+           ( 'N', 'N', nDOF_X1, nF, nDOFZ, One, L_X1_Dn, nDOF_X1, &
+             uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOFZ, Zero, &
              uCR_R(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,1,iZ_B0(2)  ), nDOF_X1 )
 
     CALL TimersStop( Timer_Ex_Interpolate )
@@ -655,16 +655,16 @@ CONTAINS
     ! --- Contribution from Left Face ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOF, nK, nDOF_X1, + One, L_X1_Dn, nDOF_X1, &
+           ( 'T', 'N', nDOFZ, nK, nDOF_X1, + One, L_X1_Dn, nDOF_X1, &
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)  ), &
-             nDOF_X1, Zero, dU_X1, nDOF )
+             nDOF_X1, Zero, dU_X1, nDOFZ )
 
     ! --- Contribution from Right Face ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOF, nK, nDOF_X1, - One, L_X1_Up, nDOF_X1, &
+           ( 'T', 'N', nDOFZ, nK, nDOF_X1, - One, L_X1_Up, nDOF_X1, &
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)+1), &
-             nDOF_X1, One,  dU_X1, nDOF )
+             nDOF_X1, One,  dU_X1, nDOFZ )
 
     CALL TimersStop( Timer_Ex_Interpolate )
 
@@ -757,7 +757,7 @@ CONTAINS
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      DO iNode = 1, nDOF
+      DO iNode = 1, nDOFZ
 
         CALL ComputePrimitive_TwoMoment &
                ( uCR_K(iNode,iZ1,iZ3,iZ4,iCR_N, iS,iZ2), &
@@ -809,8 +809,8 @@ CONTAINS
     ! --- Volume Contributions ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOF, nK, nDOF, One, dLdX1_q, nDOF, &
-             Flux_q, nDOF, One, dU_X1, nDOF )
+           ( 'T', 'N', nDOFZ, nK, nDOFZ, One, dLdX1_q, nDOFZ, &
+             Flux_q, nDOFZ, One, dU_X1, nDOFZ )
 
     CALL TimersStop( Timer_Ex_Interpolate )
 
@@ -823,7 +823,7 @@ CONTAINS
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      DO iNode = 1, nDOF
+      DO iNode = 1, nDOFZ
 
         dU_R(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
           = dU_R(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) &

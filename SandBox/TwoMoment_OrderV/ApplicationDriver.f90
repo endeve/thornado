@@ -51,6 +51,10 @@ PROGRAM ApplicationDriver
     InitializeClosure_TwoMoment
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeFromConserved_TwoMoment
+  USE TwoMoment_OpacityModule_OrderV, ONLY: &
+    CreateOpacities, &
+    SetConstantOpacities, &
+    DestroyOpacities
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Initialize_IMEX_RK, &
     Finalize_IMEX_RK, &
@@ -67,11 +71,12 @@ PROGRAM ApplicationDriver
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   REAL(DP)      :: eL, eR, xL(3), xR(3)
-  REAL(DP)      :: t, dt, t_end
+  REAL(DP)      :: t, dt, t_end, V_0(3)
+  REAL(DP)      :: D_0, Chi, Sigma
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'SineWaveStreaming'
+  ProgramName = 'SineWaveDiffusion'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -98,6 +103,39 @@ PROGRAM ApplicationDriver
       iCycleW = 1
       maxCycles = 10000
 
+      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+    CASE( 'SineWaveDiffusion' )
+
+      nX  = [ 16, 1, 1 ]
+      xL  = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ + 3.0_DP, 1.0_DP, 1.0_DP ]
+      bcX = [ 1, 0, 0 ]
+
+      nE  = 1
+      eL  = 0.0_DP
+      eR  = 1.0_DP
+      bcE = 0
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 2.0d1
+      iCycleD = 10
+      iCycleW = 10
+      maxCycles = 1000000
+
+      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 1.0d+2
+
     CASE DEFAULT
 
       WRITE(*,*)
@@ -123,7 +161,7 @@ PROGRAM ApplicationDriver
            nE_Option &
              = nE, &
            swE_Option &
-             = 0, &
+             = 1, &
            bcE_Option &
              = bcE, &
            eL_Option &
@@ -176,13 +214,20 @@ PROGRAM ApplicationDriver
 
   CALL InitializeClosure_TwoMoment
 
+  ! --- Initialize Opacities ---
+
+  CALL CreateOpacities &
+         ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = .TRUE. )
+
+  CALL SetConstantOpacities( D_0, Chi, Sigma )
+
   ! --- Initialize Time Stepper ---
 
   CALL Initialize_IMEX_RK( TRIM( TimeSteppingScheme ) )
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields
+  CALL InitializeFields( V_0 )
 
   ! --- Write Initial Condition ---
 
@@ -228,7 +273,7 @@ PROGRAM ApplicationDriver
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
       CALL ComputeFromConserved_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCR, uPR )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
 
       CALL WriteFieldsHDF &
              ( Time = t, &
@@ -241,7 +286,7 @@ PROGRAM ApplicationDriver
   END DO
 
   CALL ComputeFromConserved_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCR, uPR )
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
 
   CALL WriteFieldsHDF &
          ( Time = t, &
@@ -250,6 +295,8 @@ PROGRAM ApplicationDriver
            WriteRF_Option = .TRUE. )
 
   ! --- Finalize ---
+
+  CALL DestroyOpacities
 
   CALL Finalize_IMEX_RK
 

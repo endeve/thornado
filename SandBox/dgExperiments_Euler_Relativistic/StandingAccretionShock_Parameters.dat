@@ -1,4 +1,4 @@
-# M [kg], gamma, Ri [m], R_PNS [m], R_shock [m], Rf [m], Mdot [kg/s]
+# M [kg], Gamma_IDEAL, R_inner [m], R_PNS [m], R_shock [m], R_outer [m], Mdot [kg/s]
 2.7844879999999997E+30
 1.3333333333333333E+00
 3.1011039819734442E+03
