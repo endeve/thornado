@@ -17,7 +17,7 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
-  USE Euler_UtilitiesModule_Relativistic_IDEAL, ONLY: &
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
     Euler_ComputePrimitive_Relativistic, &
     Euler_Eigenvalues_Relativistic
   USE EquationOfStateModule, ONLY: &

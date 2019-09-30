@@ -29,7 +29,7 @@ PROGRAM ApplicationDriver
     Euler_InitializePositivityLimiter_Relativistic, &
     Euler_FinalizePositivityLimiter_Relativistic, &
     Euler_ApplyPositivityLimiter_Relativistic
-  USE Euler_UtilitiesModule_Relativistic_IDEAL, ONLY: &
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
     Euler_ComputeFromConserved_Relativistic, &
     Euler_ComputeTimeStep_Relativistic
   USE InputOutputModuleHDF, ONLY: &

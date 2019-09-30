@@ -46,7 +46,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE Euler_BoundaryConditionsModule, ONLY: &
     Euler_ApplyBoundaryConditions
-  USE Euler_UtilitiesModule_NonRelativistic_IDEAL, ONLY: &
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     Euler_ComputePrimitive_NonRelativistic
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
