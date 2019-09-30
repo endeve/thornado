@@ -1,7 +1,7 @@
 MODULE InitializationModule
 
   USE KindModule, ONLY: &
-    DP, Three, TwoPi
+    DP, Third, Three, Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nDOFZ, nDOFX, nDOFE, &
@@ -35,7 +35,9 @@ MODULE InitializationModule
 CONTAINS
 
 
-  SUBROUTINE InitializeFields
+  SUBROUTINE InitializeFields( V_0 )
+
+    REAL(DP), INTENT(in) :: V_0(3)
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
@@ -44,11 +46,11 @@ CONTAINS
 
       CASE( 'SineWaveStreaming' )
 
-        CALL InitializeFields_SineWaveStreaming
+        CALL InitializeFields_SineWaveStreaming( V_0 )
 
       CASE( 'SineWaveDiffusion' )
 
-        CALL InitializeFields_SineWaveDiffusion
+        CALL InitializeFields_SineWaveDiffusion( V_0 )
 
     END SELECT
 
@@ -56,7 +58,9 @@ CONTAINS
   END SUBROUTINE InitializeFields
 
 
-  SUBROUTINE InitializeFields_SineWaveStreaming
+  SUBROUTINE InitializeFields_SineWaveStreaming( V_0 )
+
+    REAL(DP), INTENT(in) :: V_0(3)
 
     INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeZ2
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
@@ -80,9 +84,9 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.3_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_0(1)
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_0(2)
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
@@ -161,7 +165,9 @@ CONTAINS
   END SUBROUTINE InitializeFields_SineWaveStreaming
 
 
-  SUBROUTINE InitializeFields_SineWaveDiffusion
+  SUBROUTINE InitializeFields_SineWaveDiffusion( V_0 )
+
+    REAL(DP), INTENT(in) :: V_0(3)
 
     INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeZ2
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
@@ -176,9 +182,9 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.3_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_0(1)
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_0(2)
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
@@ -222,9 +228,9 @@ CONTAINS
         X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
 
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
-          = 0.50_DP + 0.49_DP * SIN( TwoPi * X1 )
+          = 0.49_DP * SIN( Third * Pi * X1 ) + 0.5_DP
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
-          = - 0.49_DP * TwoPi/(Three*1.0d2) * COS( TwoPi * X1 )
+          = - ( 0.49_DP * Pi / ( 9.0_DP * 1.0d2 ) ) * COS( Third * Pi * X1 )
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
           = 0.0_DP
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
