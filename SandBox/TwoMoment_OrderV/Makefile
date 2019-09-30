@@ -24,6 +24,7 @@ PrimitiveConserved: \
 TimeStepper: \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
@@ -31,6 +32,7 @@ TimeStepper: \
 	$(FLINKER) $(FLAGS) -o TimeStepper_$(MACHINE) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
 	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
 	TwoMoment_TimeSteppingModule_OrderV.o \
