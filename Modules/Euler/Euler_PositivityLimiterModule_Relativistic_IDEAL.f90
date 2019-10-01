@@ -202,7 +202,7 @@ CONTAINS
         IF( U_K(iCF_E) .LT. Zero )THEN
           WRITE(*,*) 'U_K(iCF_E) < 0'
           iErr = -1
-          STOP ''
+          IF( .NOT. PRESENT( iErr_Option ) ) STOP ''
         END IF
 
         Min_ESq = Min_2 * U_K(iCF_E)**2
@@ -349,7 +349,7 @@ CONTAINS
           WRITE(*,*)
         END DO
         iErr = -1
-        STOP ''
+        IF( .NOT. PRESENT( iErr_Option ) ) STOP ''
       END IF
 
     END DO
@@ -460,15 +460,15 @@ CONTAINS
 
 
   SUBROUTINE SolveTheta_Bisection &
-    ( U_Q, U_K, G_Q, Min_ESq, Theta_P, iX1, iX2, iX3, iP, iErr )
+    ( U_Q, U_K, G_Q, Min_ESq, Theta_P, iX1, iX2, iX3, iP, iErr_Option )
 
     REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), G_Q(nGF), Min_ESq
     REAL(DP), INTENT(out) :: Theta_P
 
     ! --- For de-bugging ---
     INTEGER, INTENT(in)    :: iX1, iX2, iX3, iP
-    INTEGER, INTENT(inout) :: iErr
-    INTEGER :: iCF, iGF
+    INTEGER, INTENT(inout), OPTIONAL :: iErr_Option
+    INTEGER :: iCF, iGF, iErr
 
     INTEGER,  PARAMETER :: MAX_IT = 19
     REAL(DP), PARAMETER :: dx_min = 1.0d-3
@@ -477,6 +477,9 @@ CONTAINS
     INTEGER  :: ITERATION
     REAL(DP) :: x_a, x_b, x_c, dx
     REAL(DP) :: f_a, f_b, f_c
+
+    iErr = 0
+    IF( PRESENT( iErr_Option ) ) iErr = iErr_Option
 
 !!$    WRITE(*,*)
 !!$    WRITE(*,'(A,I3)') 'iP = ', iP
@@ -534,7 +537,11 @@ CONTAINS
       WRITE(*,'(A8,A,2ES15.6e3)') &
         '', 'f_a, f_b = ', f_a, f_b
       iErr = -1
-      STOP
+      IF( PRESENT( iErr_Option ) )THEN
+        iErr_Option = iErr
+      ELSE
+        STOP ''
+      END IF
 
     END IF
 
@@ -583,7 +590,7 @@ CONTAINS
 
         IF( ITERATION > MAX_IT + 3 )THEN
           iErr = -1
-          STOP
+          IF( PRESENT( iErr_Option ) ) STOP
         END IF
 
       END IF

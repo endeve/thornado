@@ -117,6 +117,8 @@ CONTAINS
 
 #endif
 
+    IF( PRESENT( iErr_Option ) ) iErr_Option = iErr
+
     CALL TimersStop_Euler( Timer_Euler_PositivityLimiter )
 
   END SUBROUTINE Euler_ApplyPositivityLimiter

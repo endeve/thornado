@@ -117,6 +117,7 @@ CONTAINS
                  U (1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nCF), iErr_Option = iErr )
+
         IF( iErr .EQ. -1 )THEN
           WRITE(*,*) 'Failure in Euler_ApplyPositivityLimiter'
           CALL MPI_ABORT( amrex_parallel_communicator(), iErr )
