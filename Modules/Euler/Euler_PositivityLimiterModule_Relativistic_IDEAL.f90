@@ -47,14 +47,23 @@ CONTAINS
 
 
   SUBROUTINE Euler_InitializePositivityLimiter_Relativistic &
-    ( Min_1_Option, Min_2_Option, UsePositivityLimiter_Option, Verbose_Option )
+    ( UsePositivityLimiter_Option, Verbose_Option, Min_1_Option, Min_2_Option )
 
-    REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option, Min_2_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option, &
                                       Verbose_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option, Min_2_Option
 
     INTEGER :: iDim
     LOGICAL :: Verbose
+
+
+    UsePositivityLimiter = .TRUE.
+    IF( PRESENT( UsePositivityLimiter_Option ) ) &
+      UsePositivityLimiter = UsePositivityLimiter_Option
+
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
     Min_1 = - HUGE( One )
     IF( PRESENT( Min_1_Option ) ) &
@@ -63,16 +72,6 @@ CONTAINS
     Min_2 = - HUGE( One )
     IF( PRESENT( Min_2_Option ) ) &
       Min_2 = Min_2_Option
-
-    UsePositivityLimiter = .TRUE.
-    IF( PRESENT( UsePositivityLimiter_Option ) ) &
-      UsePositivityLimiter = UsePositivityLimiter_Option
-
-    IF( PRESENT( Verbose_Option ) )THEN
-      Verbose = Verbose_Option
-    ELSE
-      Verbose = .TRUE.
-    END IF
 
     IF( Verbose )THEN
       WRITE(*,*)

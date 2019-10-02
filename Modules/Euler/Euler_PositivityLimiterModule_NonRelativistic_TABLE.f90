@@ -44,53 +44,53 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
 
 CONTAINS
 
-
+  !> @param Min_1 Minimum table Density
+  !> @param Min_2 Minimum table Temperature
+  !> @param Min_3 Minimum table Electron Fraction
   SUBROUTINE Euler_InitializePositivityLimiter_NonRelativistic_TABLE &
-    ( Min_D_Option, Max_D_Option, Min_T_Option, Max_T_Option, &
-      Min_Y_Option, Max_Y_Option, UsePositivityLimiter_Option, &
-      Verbose_Option )
+    ( UsePositivityLimiter_Option, Verbose_Option, &
+      Min_1_Option, Min_2_Option, Min_3_Option, &
+      Max_1_Option, Max_2_Option, Max_3_Option )
 
-    REAL(DP), INTENT(in), OPTIONAL :: Min_D_Option, Max_D_Option, &
-                                      Min_T_Option, Max_T_Option, &
-                                      Min_Y_Option, Max_Y_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
     LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option, Max_1_Option, &
+                                      Min_2_Option, Max_2_Option, &
+                                      Min_3_Option, Max_3_Option
 
     INTEGER :: i
-
-    Min_D = - HUGE( One )
-    IF( PRESENT( Min_D_Option ) ) &
-      Min_D = Min_D_Option
-
-    Max_D = - HUGE( One )
-    IF( PRESENT( Max_D_Option ) ) &
-      Max_D = Max_D_Option
-
-    Min_T = - HUGE( One )
-    IF( PRESENT( Min_T_Option ) ) &
-      Min_T = Min_T_Option
-
-    Max_T = - HUGE( One )
-    IF( PRESENT( Max_T_Option ) ) &
-      Max_T = Max_T_Option
-
-    Min_Y = - HUGE( One )
-    IF( PRESENT( Min_Y_Option ) ) &
-      Min_Y = Min_Y_Option
-
-    Max_Y = - HUGE( One )
-    IF( PRESENT( Max_Y_Option ) ) &
-      Max_Y = Max_Y_Option
 
     UsePositivityLimiter = .TRUE.
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
       UsePositivityLimiter = UsePositivityLimiter_Option
 
-    IF( PRESENT( Verbose_Option ) )THEN
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
-    ELSE
-      Verbose = .TRUE.
-    END IF
+
+    Min_D = - HUGE( One )
+    IF( PRESENT( Min_1_Option ) ) &
+      Min_D = Min_1_Option
+
+    Max_D = - HUGE( One )
+    IF( PRESENT( Max_1_Option ) ) &
+      Max_D = Max_1_Option
+
+    Min_T = - HUGE( One )
+    IF( PRESENT( Min_2_Option ) ) &
+      Min_T = Min_2_Option
+
+    Max_T = - HUGE( One )
+    IF( PRESENT( Max_2_Option ) ) &
+      Max_T = Max_2_Option
+
+    Min_Y = - HUGE( One )
+    IF( PRESENT( Min_3_Option ) ) &
+      Min_Y = Min_3_Option
+
+    Max_Y = - HUGE( One )
+    IF( PRESENT( Max_3_Option ) ) &
+      Max_Y = Max_3_Option
 
     IF( Verbose )THEN
       WRITE(*,*)

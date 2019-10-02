@@ -14,9 +14,6 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     Euler_ComputePrimitive_NonRelativistic
-  USE EquationOfStateModule, ONLY: &
-    ComputePressureFromPrimitive, &
-    ComputeSoundSpeedFromPrimitive
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeSpecificInternalEnergy_TABLE, &
     ComputeAuxiliary_Fluid_TABLE, &
@@ -32,7 +29,8 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
 CONTAINS
 
 
-  SUBROUTINE Euler_ComputeCharacteristicDecomposition_NonRelativistic_TABLE( iDim, G, U, R, invR )
+  SUBROUTINE Euler_ComputeCharacteristicDecomposition_NonRelativistic_TABLE &
+    ( iDim, G, U, R, invR )
 
     INTEGER,  INTENT(in)  :: iDim
     REAL(DP), INTENT(in)  :: G(nGF)

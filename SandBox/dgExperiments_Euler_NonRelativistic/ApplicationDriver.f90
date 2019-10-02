@@ -369,9 +369,10 @@ PROGRAM ApplicationDriver
              = LimiterThresholdParameter )
 
   CALL Euler_InitializePositivityLimiter_NonRelativistic &
-         ( Min_1_Option = 1.0d-12, &
-           Min_2_Option = 1.0d-12, &
-           UsePositivityLimiter_Option = .TRUE. )
+         ( UsePositivityLimiter_Option = .TRUE., &
+           Verbose_Option = .TRUE., &
+           Min_1_Option = 1.0d-12, &
+           Min_2_Option = 1.0d-12 )
 
   CALL InitializeFields &
          ( AdvectionProfile_Option &
