@@ -75,7 +75,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'RiemannProblem'
+  ProgramName = 'RiemannProblemSpherical'
 
   EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
@@ -107,6 +107,36 @@ PROGRAM ApplicationDriver
       iCycleD = 10
       t_end   = 7.5d-2 * Millisecond
       dt_wrt  = 7.5d-5 * Millisecond
+
+   CASE( 'RiemannProblemSpherical' )
+
+      RiemannProblemName = 'SphericalSod'
+
+      CoordinateSystem = 'SPHERICAL'
+
+      nX = [ 128, 16, 1 ]
+      xL = [ 1.0d-3 * Kilometer, 0.0_DP, 0.0_DP ]
+      xR = [ 2.0_DP * Kilometer, Pi,     4.0_DP ]
+
+      bcX = [ 3, 3, 0 ]
+
+      nNodes = 3
+      nStages = 3
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 0.03_DP
+
+      UsePositivityLimiter      = .TRUE.
+
+      iCycleD = 10
+      t_end   = 5.0d-1 * Millisecond
+      dt_wrt  = 2.5d-2 * Millisecond
 
     CASE( 'Jet' )
 

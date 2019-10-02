@@ -54,7 +54,9 @@ CONTAINS
 
       CASE ( 'RiemannProblemSpherical' )
 
-        CALL InitializeFields_RiemannProblemSpherical
+        CALL InitializeFields_RiemannProblemSpherical &
+               ( RiemannProblemName_Option &
+                   = RiemannProblemName_Option )
 
       CASE( 'Implosion' )
 
@@ -153,11 +155,24 @@ CONTAINS
   END SUBROUTINE InitializeFields_RiemannProblem
 
 
-  SUBROUTINE InitializeFields_RiemannProblemSpherical
+  SUBROUTINE InitializeFields_RiemannProblemSpherical &
+    ( RiemannProblemName_Option )
 
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX, iNodeX1
-    REAL(DP) :: X1
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
+      RiemannProblemName_Option
+
+    CHARACTER(32) :: RiemannProblemName
+    INTEGER       :: iX1, iX2, iX3
+    INTEGER       :: iNodeX, iNodeX1
+    REAL(DP)      :: X1
+
+    RiemannProblemName = 'SphericalSod'
+    IF( PRESENT( RiemannProblemName_Option ) ) &
+       RiemannProblemName = TRIM( RiemannProblemName_Option )
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A,A)') &
+      '', 'Riemann Problem Name: ', TRIM( RiemannProblemName )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -169,25 +184,42 @@ CONTAINS
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        IF( X1 <= One )THEN
+        SELECT CASE ( TRIM( RiemannProblemName ) )
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
+          CASE( 'SphericalSod' )
 
-        ELSE
+            IF( X1 <= One * Kilometer )THEN
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.1_DP / 0.4_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.00d12 * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0d32 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.4_DP
 
-        END IF
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.25d11 * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0d30 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.3_DP
+
+            END IF
+
+        END SELECT
 
       END DO
+
+      CALL ComputeTemperatureFromPressure &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_P), &
+               uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_T) )
+
+      CALL ComputeThermodynamicStates_Primitive &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
+               uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E ), &
+               uAF(:,iX1,iX2,iX3,iAF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne) )
 
       CALL Euler_ComputeConserved_NonRelativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
