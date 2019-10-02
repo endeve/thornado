@@ -38,7 +38,7 @@ MODULE TwoMoment_PositivityLimiterModule
   PUBLIC :: TallyPositivityLimiter_TwoMoment
 
   CHARACTER(256)        :: TallyFileName
-  LOGICAL               :: Debug = .TRUE.
+  LOGICAL               :: Debug = .FALSE.
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: UsePositivityLimiterTally
   INTEGER,    PARAMETER :: nPS = 9  ! Number of Positive Point Sets
@@ -290,7 +290,7 @@ CONTAINS
 
       IF( Min_K < Min_1 .OR. Max_K > Max_1 )THEN
 
-        IF( Debug ) WRITE(*,*) 'Positivity trigger 1128'
+        IF( Debug ) WRITE(*,*) 'Positivity trigger 1128 MinMax'
 
         ! --- Cell Average ---
 
@@ -381,7 +381,7 @@ CONTAINS
 
       IF( ANY( Gamma(:) < Min_2 ) )THEN
 
-        IF( Debug ) WRITE(*,*) 'Positivity trigger 1129'
+        IF( Debug ) WRITE(*,*) 'Positivity trigger 1129 Gamma'
         ! --- Cell Average ---
 
         !DO iCR = 1, nCR
