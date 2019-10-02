@@ -3,7 +3,11 @@ MODULE Euler_TallyModule
   USE KindModule, ONLY: &
     DP
 
-#if defined HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+
+  USE Euler_TallyModule_NonRelativistic_TABLE
+
+#elif defined HYDRO_NONRELATIVISTIC
 
   USE Euler_TallyModule_NonRelativistic_IDEAL
 
@@ -38,7 +42,11 @@ CONTAINS
     REAL(DP), INTENT(in) :: &
       U(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
-#if defined HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+
+    CALL Euler_InitializeTally_NonRelativistic_TABLE( iX_B0, iX_E0, G, U )
+
+#elif defined HYDRO_NONRELATIVISTIC
 
     CALL Euler_InitializeTally_NonRelativistic( iX_B0, iX_E0, G, U )
 
@@ -57,7 +65,11 @@ CONTAINS
 
   SUBROUTINE Euler_FinalizeTally
 
-#if defined HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+
+    CALL Euler_FinalizeTally_NonRelativistic_TABLE
+
+#elif defined HYDRO_NONRELATIVISTIC
 
     CALL Euler_FinalizeTally_NonRelativistic
 
@@ -90,7 +102,13 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: &
       DisplayTally_Option
 
-#if defined HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+
+    CALL Euler_ComputeTally_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
+
+
+#elif defined HYDRO_NONRELATIVISTIC
 
     CALL Euler_ComputeTally_NonRelativistic &
            ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )

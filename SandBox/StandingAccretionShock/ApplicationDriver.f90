@@ -124,9 +124,10 @@ PROGRAM ApplicationDriver
            LimiterThresholdParameter_Option = 0.015_DP )
 
   CALL Euler_InitializePositivityLimiter &
-         ( Min_1_Option = 1.0d-12, &
-           Min_2_Option = 1.0d-12, &
-           UsePositivityLimiter_Option = .TRUE. )
+         ( UsePositivityLimiter_Option = .TRUE., &
+           Verbose_Option = .TRUE., &
+           Min_1_Option = 1.0d-12, &
+           Min_2_Option = 1.0d-12 )
 
   CALL InitializeFields &
          ( mDot, Mass, rShock, Gamma, Mach )

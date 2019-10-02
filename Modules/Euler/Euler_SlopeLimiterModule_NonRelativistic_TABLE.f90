@@ -46,7 +46,7 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
 
   LOGICAL  :: UseSlopeLimiter
   LOGICAL  :: UseCharacteristicLimiting
-  LOGICAL  :: UseCorrection
+  LOGICAL  :: UseConservativeCorrection
   LOGICAL  :: UseTroubledCellIndicator
   LOGICAL  :: Verbose
   REAL(DP) :: BetaTVD, BetaTVB
@@ -66,7 +66,7 @@ CONTAINS
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
-      Verbose_Option )
+      UseConservativeCorrection_Option, Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
@@ -76,6 +76,7 @@ CONTAINS
       UseSlopeLimiter_Option, &
       UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, &
+      UseConservativeCorrection_Option, &
       Verbose_Option
     REAL(DP), INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
@@ -125,6 +126,12 @@ CONTAINS
     END IF
 
     LimiterThreshold = LimiterThresholdParameter * 2.0_DP**( nNodes - 2 )
+
+    IF( PRESENT( UseConservativeCorrection_Option ) )THEN
+      UseConservativeCorrection = UseConservativeCorrection_Option
+    ELSE
+      UseConservativeCorrection = .TRUE.
+    END IF 
 
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
@@ -671,12 +678,13 @@ CONTAINS
     LOGICAL, INTENT(in)     :: &
       LimitedCell(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
 
-    LOGICAL  :: UseCorrection
     INTEGER  :: iX1, iX2, iX3, iCF, iPol, iDimX
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeX
     REAL(DP) :: Correction
     REAL(DP) :: LegendreX(nDOFX,nDOFX)
     REAL(DP) :: U_M(nCF,0:2**nDimsX,nDOFX)
+
+    IF( .NOT. UseConservativeCorrection ) RETURN
 
     DO iPol = 1, nDOFX ! Only need for iPol = 2,3,4 (FIXME)
 
@@ -697,48 +705,42 @@ CONTAINS
 
     END DO
 
-    UseCorrection = .TRUE.
+    ! --- Applies a correction to the 0-th order ---
+    ! --- mode to maintain the cell average.     ---
 
-    IF( UseCorrection )THEN
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
-      ! --- Applies a correction to the 0-th order ---
-      ! --- mode to maintain the cell average.     ---
+      DO iCF = 1, nCF
 
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+        IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
 
-        DO iCF = 1, nCF
+          CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
 
-          IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
+          Correction = Zero
+          DO iDimX = 1, nDimsX
 
-            CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+            Correction &
+              = Correction &
+                  + ( U_M(iCF,0,iDimX+1) &
+                      * SUM( WeightsX_q(:) * LegendreX(:,iDimX+1) &
+                             * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) ) &
+                    / V_K(iX1,iX2,iX3)
 
-            Correction = Zero
-            DO iDimX = 1, nDimsX
+          END DO
 
-              Correction &
-                = Correction &
-                    + ( U_M(iCF,0,iDimX+1) &
-                        * SUM( WeightsX_q(:) * LegendreX(:,iDimX+1) &
-                               * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) ) &
-                      / V_K(iX1,iX2,iX3)
+          U_M(iCF,0,1) = U_K(iCF,iX1,iX2,iX3) - Correction
 
-            END DO
+          CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
 
-            U_M(iCF,0,1) = U_K(iCF,iX1,iX2,iX3) - Correction
-
-            CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
-
-          END IF
-
-        END DO
+        END IF
 
       END DO
-      END DO
-      END DO
 
-    END IF
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE ApplyConservativeCorrection
 

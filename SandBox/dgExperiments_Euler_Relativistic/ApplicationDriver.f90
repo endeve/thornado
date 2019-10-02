@@ -369,9 +369,10 @@ PROGRAM ApplicationDriver
              = UseConservativeCorrection )
 
   CALL Euler_InitializePositivityLimiter_Relativistic &
-         ( Min_1_Option = Min_1, &
-           Min_2_Option = Min_2, &
-           UsePositivityLimiter_Option = UsePositivityLimiter )
+         ( UsePositivityLimiter_Option = UsePositivityLimiter, &
+           Verbose_Option = .TRUE., &
+           Min_1_Option = Min_1, &
+           Min_2_Option = Min_2 )
 
   CALL InitializeFluid_SSPRK( nStages = nStagesSSPRK )
   WRITE(*,*)
