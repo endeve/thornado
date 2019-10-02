@@ -38,7 +38,7 @@ MODULE TwoMoment_PositivityLimiterModule
   PUBLIC :: TallyPositivityLimiter_TwoMoment
 
   CHARACTER(256)        :: TallyFileName
-  LOGICAL               :: Debug = .FALSE.
+  LOGICAL               :: Debug = .TRUE.
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: UsePositivityLimiterTally
   INTEGER,    PARAMETER :: nPS = 9  ! Number of Positive Point Sets
@@ -239,9 +239,9 @@ CONTAINS
     INTEGER  :: iNode, iNodeE, iNodeX
     INTEGER  :: nNeg_1, nNeg_2
     REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
-    REAL(DP) :: U_q(nDOF,nCR), U_K(nCR), Gamma(nPT), Gamma2(nPT)
+    REAL(DP) :: U_q(nDOF,nCR), U_K(nCR), Gamma(nPT)
     REAL(DP) :: GX_q(nDOF,nGF)
-    REAL(DP) :: Tau_q(nDOF), Tau_K, U_K_2(nCR)
+    REAL(DP) :: Tau_q(nDOF), Tau_K
     REAL(DP), EXTERNAL :: DDOT
 
     IF( nDOF == 1 ) RETURN
@@ -298,16 +298,8 @@ CONTAINS
         !U_K(iCR_N) = DDOT( nDOF, Weights_q, 1, U_q(:,iCR_N), 1 )
         CALL DGEMV( 'T', nDOF, 1, One, U_q(:,iCR_N), nDOF, Weights_q, 1, Zero, U_K(iCR_N), 1 )
 
-        CALL DGEMV( 'T', nDOF, 1, One, U_q(:,iCR_N), nDOF, Weights_q*Tau_q, 1, Zero, U_K_2(iCR_N), 1 )
-        U_K_2(iCR_N) = U_K_2(iCR_N) / Tau_K 
-
-        IF( ABS(U_K_2(iCR_N) - U_K(iCR_N) )/U_K(iCR_N) > 5.0d-1  ) THEN
-          IF( Debug ) THEN
-            WRITE(*,*) 'U_K', U_K(iCR_N)
-            WRITE(*,*) 'U_K_2', U_K_2(iCR_N)
-          END IF
-        END IF
-        U_K(iCR_N) = U_K_2(iCR_N)
+        CALL DGEMV( 'T', nDOF, 1, One, U_q(:,iCR_N), nDOF, Weights_q*Tau_q, 1, Zero, U_K(iCR_N), 1 )
+        U_K(iCR_N) = U_K(iCR_N) / Tau_K 
 
         Theta_1 &
           = Theta_Eps * MIN( One, &
@@ -340,44 +332,11 @@ CONTAINS
 
       ! --- Ensure Positive Gamma ---
 
-      !CALL ComputeGamma( nPT, U_PP(1:nPT,1:nCR), Gamma(1:nPT) )
       Gamma(1:nPT) = GammaFun &
-                     ( U_PP(1:nPT,iCR_N ), &
-                       U_PP(1:nPT,iCR_G1), &
-                       U_PP(1:nPT,iCR_G2), &
-                       U_PP(1:nPT,iCR_G3) )
-
-      Gamma2(1:nPT) = GammaFun &
                      ( U_PP(1:nPT,iCR_N ), &
                        U_PP(1:nPT,iCR_G1) / SQRT(GX_PP(1:nPT,iGF_Gm_dd_11)), &
                        U_PP(1:nPT,iCR_G2) / SQRT(GX_PP(1:nPT,iGF_Gm_dd_22)), &
                        U_PP(1:nPT,iCR_G3) / SQRT(GX_PP(1:nPT,iGF_Gm_dd_33)) )
-
-  !! RC DEBUG PRINT
-      IF( ANY( ABS(Gamma2 - Gamma) > 1.d-10 ) .and. Debug ) THEN
-        WRITE(*,*) ' ===== Every Positivity Limiter Call ===='
-        WRITE(*,*) 'CammaFun inputs 1 : '
-        WRITE(*,'(4ES12.3)') U_PP(1,iCR_N:iCR_G3 )
-        WRITE(*,*) 'CammaFun output 1 : '
-        WRITE(*,'(ES12.3)') Gamma(1)
-        WRITE(*,*)
-        WRITE(*,*) 'CammaFun inputs 2 : '
-        WRITE(*,'(4ES12.3)') U_PP(1,iCR_N ), &
-                             U_PP(1,iCR_G1) / SQRT(GX_PP(1,iGF_Gm_dd_11)) , &
-                             U_PP(1,iCR_G2) / SQRT(GX_PP(1,iGF_Gm_dd_22)), &
-                             U_PP(1,iCR_G3) / SQRT(GX_PP(1,iGF_Gm_dd_33))
-        WRITE(*,*) 'CammaFun output 2 : '
-        WRITE(*,'(ES12.3)') Gamma2(1)
-        WRITE(*,*) 'The geometric metric is'
-        WRITE(*,'(3ES12.3)') GX_PP(1,iGF_Gm_dd_11:iGF_Gm_dd_33)
-        IF( ANY( ABS(Gamma2 - Gamma) > 1.d-3 ) &
-          .and. MAXVAL(U_PP(:,iCR_N) ) > 1.d-1 ) THEN
-          WRITE(*,*) 'ABS(Gamma2 - Gamma)',ABS(Gamma2 - Gamma)
-          STOP
-        END IF
-      END IF
-
-      Gamma = Gamma2
 
       IF( ANY( Gamma(:) < Min_2 ) )THEN
 
@@ -388,17 +347,9 @@ CONTAINS
         !  U_K(iCR) = DOT_PRODUCT( Weights_q, U_q(:,iCR) )
         !  !U_K(iCR) = DDOT( nDOF, Weights_q, 1, U_q(:,iCR), 1 )
         !END DO
-        CALL DGEMV( 'T', nDOF, nCR, One, U_q, nDOF, Weights_q, 1, Zero, U_K, 1 )
-        CALL DGEMV( 'T', nDOF, nCR, One, U_q, nDOF, Weights_q*Tau_q, 1, Zero, U_K_2, 1 )
-        U_K_2 = U_K_2 / Tau_K
+        CALL DGEMV( 'T', nDOF, nCR, One, U_q, nDOF, Weights_q*Tau_q, 1, Zero, U_K, 1 )
+        U_K = U_K / Tau_K
 
-        IF( Debug .and. MAXVAL(ABS(U_K_2 - U_K) ) > 5.d-1 ) THEN
-          WRITE(*,*) 'U_K', U_K
-          WRITE(*,*) 'U_K_2', U_K_2
-          STOP
-        END IF
-        U_K = U_K_2
- 
         Theta_2 = One
         DO iP = 1, nPT
 
