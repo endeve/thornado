@@ -120,26 +120,25 @@ PROGRAM DeleptonizationWave
       ProgramName = 'DeleptonizationWave_Spherical'
 
       nX = [ 181, 1, 1 ] ! 512
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xL = [ 0.0d0 * Kilometer, 0.0_DP, 0.0_DP ]
       xR = [ 5.66d2 * Kilometer, Pi,     TwoPi  ]
       !xR = [ 3.0d3 * Kilometer, Pi,     TwoPi  ]
 
-      bcX = [ 32, 3, 0 ]
+      bcX = [ 32, 0, 0 ]
 
-      zoomX = [ 1.007_DP, 1.0_DP, 1.0_DP ] ! need fix: compute correct zoomX
-      !IF( TEST_DEBUG ) zoomX = [ 1.0_DP, 1.0_DP, 1.0_DP ] ! debug use only
+      zoomX = [ 1.007_DP, 1.0_DP, 1.0_DP ]
 
   END SELECT
  
-  nNodes = 1
+  nNodes = 2
 
   UsePositivityLimiter = .TRUE.
 
   IF( nNodes == 1 ) UsePositivityLimiter = .FALSE.
 
-  nE = 2
+  nE = 10
   eL = 0.0d0 * MeV
-  eR = 10.0d0 * MeV
+  eR = 300.0d0 * MeV
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -277,7 +276,7 @@ PROGRAM DeleptonizationWave
   IF ( CoordinateSystem == 'SPHERICAL') THEN
     ! Spherical Coordinate time step
     !!! NEED FIX for 2D
-    dt  = 0.01_DP * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
+    dt  = 0.2_DP * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
     WRITE(*,*)
     WRITE(*,*) 'dr [km]', MINVAL( MeshX(1) % Width ) / Kilometer
@@ -287,21 +286,20 @@ PROGRAM DeleptonizationWave
     WRITE(*,*) 'dt [dimless]', dt
     WRITE(*,*) 'Millisecond', Millisecond
     WRITE(*,*)
-!    dt = 15.631964188672887
   ELSE IF ( CoordinateSystem == 'CARTESIAN' ) THEN
     ! Cartesian Coordinate time step
     ! dt  = 0.49_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
-    dt  = 0.01_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
+    dt  = 0.2_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
     WRITE(*,*)
     WRITE(*,*) 'dx [km]', MINVAL( (xR-xL) / DBLE( nX ) ) / Kilometer
     WRITE(*,*)
   END IF
 
-  iCycleD = 1
+  iCycleD = 10
   IF( TEST_DEBUG ) THEN
-    iCycleW = 1 ! INT(t_end / dt / 10)
-    !t_end = 10 * dt
+    iCycleW = INT(t_end / dt / 40)
+    !t_end = 6602 * dt
   ELSE
     iCycleW = 200 ! 200 -> 128, 150 -> 96
   END IF
