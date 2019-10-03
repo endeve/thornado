@@ -230,7 +230,10 @@ Euler_TallyModule.o: \
   Euler_TallyModule_NonRelativistic_IDEAL.o \
   Euler_TallyModule.F90
 
-else
+endif
+endif
+
+ifeq ($(HYDRO),RELATIVISTIC)
 
 Euler_UtilitiesModule.o: \
   KindModule.o \
