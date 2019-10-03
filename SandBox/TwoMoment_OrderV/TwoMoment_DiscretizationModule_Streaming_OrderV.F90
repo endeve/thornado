@@ -139,6 +139,9 @@ CONTAINS
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
+    CALL ComputeWeakDerivatives_X1 &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F )
+
     ! --- Multiply Inverse Mass Matrix ---
 
     DO iS  = 1, nSpecies
@@ -843,6 +846,95 @@ CONTAINS
     END ASSOCIATE ! dZ3, etc.
 
   END SUBROUTINE ComputeIncrement_Divergence_X1
+
+
+  SUBROUTINE ComputeWeakDerivatives_X1 &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)  :: &
+      GX (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      uCF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
+
+    INTEGER  :: nK(4), nK_X1(4), nX_X1
+    INTEGER  :: iNodeX
+    INTEGER  :: iZ2, iZ3, iZ4, iCF
+    REAL(DP) :: &
+      uCF_K(nDOFX   ,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+            iZ_B1(2):iZ_E1(2)  ,nCF), &
+      uCF_L(nDOFX_X1,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+            iZ_B0(2):iZ_E0(2)+1,nCF), &
+      uCF_R(nDOFX_X1,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
+            iZ_B0(2):iZ_E0(2)+1,nCF)
+
+    PRINT*, "      ComputeWeakDerivatives_X1"
+
+    IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
+
+    nK    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
+    nK_X1 = nK + [0,1,0,0]    ! Number of X1 Faces per Phase Space Dimension
+    nX_X1 = PRODUCT( nK_X1(2:4) ) ! Number of X1 Faces in Position Space
+
+    PRINT*, "nK    = ", nK
+    PRINT*, "nK_X1 = ", nK_X1
+    PRINT*, "nX_X1 = ", nX_X1
+
+    ! --- Permute Fluid Fields ---
+
+    DO iCF = 1, nCF
+    DO iZ2 = iZ_B1(2), iZ_E1(2)
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+
+      DO iNodeX = 1, nDOFX
+
+        uCF_K(iNodeX,iZ3,iZ4,iZ2,iCF) = uCF(iNodeX,iZ2,iZ3,iZ4,iCF)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    ! --- Interpolate Fluid Fields ---
+
+    DO iCF = 1, nCF
+
+      ! --- Interpolate Left State ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nX_X1, nDOFX, One, LX_X1_Up, nDOFX_X1, &
+               uCF_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)-1,iCF), nDOFX, Zero, &
+               uCF_L(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iCF), nDOFX_X1 )
+
+      ! --- Interpolate Right State ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nX_X1, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
+               uCF_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iCF), nDOFX, Zero, &
+               uCF_R(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iCF), nDOFX_X1 )
+
+    END DO
+
+    DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+
+      
+
+    END DO
+    END DO
+    END DO
+
+    PRINT*, "      Done..."
+    STOP
+
+  END SUBROUTINE ComputeWeakDerivatives_X1
 
 
   FUNCTION FaceVelocity_X1 &
