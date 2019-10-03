@@ -67,8 +67,8 @@ f90EXE_sources += MeshModule.f90
 
 # In THORNADO_DIR/Modules/EquationOfState:
 
-F90EXE_sources += EquationOfStateModule_TABLE.F90
 F90EXE_sources += EquationOfStateModule_IDEAL.F90
+F90EXE_sources += EquationOfStateModule_TABLE.F90
 f90EXE_sources += EquationOfStateModule.f90
 
 # In THORNADO_DIR/Modules/Geometry:
@@ -88,12 +88,15 @@ f90EXE_sources += Euler_UtilitiesModule_Relativistic.f90
 F90EXE_sources += Euler_UtilitiesModule.F90
 f90EXE_sources += Euler_BoundaryConditionsModule.f90
 f90EXE_sources += Euler_SlopeLimiterModule_NonRelativistic_IDEAL.f90
+f90EXE_sources += Euler_SlopeLimiterModule_NonRelativistic_TABLE.f90
 f90EXE_sources += Euler_SlopeLimiterModule_Relativistic_IDEAL.f90
 F90EXE_sources += Euler_SlopeLimiterModule.F90
 f90EXE_sources += Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL.f90
+f90EXE_sources += Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.f90
 f90EXE_sources += Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.f90
 F90EXE_sources += Euler_CharacteristicDecompositionModule.F90
 f90EXE_sources += Euler_PositivityLimiterModule_NonRelativistic_IDEAL.f90
+f90EXE_sources += Euler_PositivityLimiterModule_NonRelativistic_TABLE.f90
 f90EXE_sources += Euler_PositivityLimiterModule_Relativistic_IDEAL.f90
 F90EXE_sources += Euler_PositivityLimiterModule.F90
 F90EXE_sources += Euler_dgDiscretizationModule.F90

@@ -1,5 +1,13 @@
 #!/usr/local/bin/python3
 
+"""
+Given a directory with 2D AMReX plot-files
+in spherical-polar coordinates, create a data
+file containing all the values of a specified
+variable for each time-step and use that to
+generate a movie.
+"""
+
 import yt
 import numpy as np
 import subprocess
@@ -8,6 +16,7 @@ from os.path import isfile
 from sys import argv, exit
 import matplotlib.pyplot as plt
 from matplotlib import animation
+import matplotlib.ticker as ticker
 
 yt.funcs.mylog.setLevel(0) # Suppress initial yt output to screen
 
@@ -16,25 +25,26 @@ HOME = subprocess.check_output( ["echo $HOME"], shell = True)
 HOME = HOME[:-1].decode( "utf-8" ) + '/'
 
 ############# User input #############
-DataDirectory \
-  = HOME + 'Research/DataFromPastRuns/AstroNum2019/SAS2D_HLL/'
-ProblemName      = 'SAS'
-VariableToPlot   = 'Entropy'
+DataDirectory = HOME + 'Research/DataFromPastRuns/AstroNum2019/SAS2D_HLL/'
+ProblemName   = 'SAS' # Only used for name of movie file
+
+# Create new variables following method used near line 97
+VariableToPlot = 'PF_D'
+
 MakeMovie        = True
 DataFileName     = 'MovieData_{:}.dat'.format( VariableToPlot )
 TimeFileName     = 'MovieTime.dat'
-UseLogScale      = False
-UsePhysicalUnits = True
-Relativistic     = True
+UseLogScale      = True      # Do you want your movie in log scale?
+UsePhysicalUnits = True      # Are you using physical units?
+Relativistic     = True      # Are you plotting results from relativistic hydro?
+cmap             = 'Purples' # Color scheme for movie
+UseCustomTicks   = True      # Define limits for colorbar near line 171
 ############# End of user input #############
 
 if( UsePhysicalUnits ):
     c = 2.99792458e8
 else:
     c = 1.0
-
-if( VariableToPlot == 'SpecificEnthalpy' and not Relativistic ):
-    c = 0.0
 
 # Get last plotfile in directory
 FileArray = np.sort(np.array( [ file for file in listdir( DataDirectory ) ] ) )
@@ -59,7 +69,8 @@ if( isfile( DataFileName ) ):
     Overwrite = input( 'File: "{:}" exists. overwrite? (Y/N): '.format \
                   ( DataFileName ) )
     if( not Overwrite == 'Y' ):
-        print( 'Not overwriting file, using existing file for movie.' )
+        print( 'Not overwriting file, using file {:} for movie.'.format( \
+          DataFileName ) )
         Overwrite = False
     else:
         Overwrite = True
@@ -100,7 +111,10 @@ if( Overwrite ):
             PF_D = CoveringGrid['PF_D'].to_ndarray()[:,:,0]
             PF_E = CoveringGrid['PF_E'].to_ndarray()[:,:,0]
             AF_P = CoveringGrid['AF_P'].to_ndarray()[:,:,0]
-            Data[i] = c**2 + ( PF_E + AF_P ) / PF_D
+            if( Relativistic ): # Plot h/c^2
+                Data[i] = ( c**2 + ( PF_E + AF_P ) / PF_D ) / c**2
+            else:
+                Data[i] = ( PF_E + AF_P ) / PF_D
         else:
             Data[i] = CoveringGrid[VariableToPlot].to_ndarray()[:,:,0]
         Time[i] = ds.current_time
@@ -125,13 +139,13 @@ Data = np.loadtxt( DataFileName ).reshape( \
 Time = np.loadtxt( TimeFileName )
 
 fig = plt.figure()
-ax = fig.add_subplot( 111, polar = True )
-xL = xL.to_ndarray()
-xH = xH.to_ndarray()
+ax  = fig.add_subplot( 111, polar = True )
+xL  = xL.to_ndarray()
+xH  = xH.to_ndarray()
 dX1 = ( xH[0] - xL[0] ) / nX[0]
 dX2 = ( xH[1] - xL[1] ) / nX[1]
-X1 = np.linspace( xL[0] + dX1, xH[0] - dX1, nX[0] )
-X2 = np.linspace( xL[1] + dX2, xH[1] - dX2, nX[1] )
+X1  = np.linspace( xL[0] + dX1, xH[0] - dX1, nX[0] )
+X2  = np.linspace( xL[1] + dX2, xH[1] - dX2, nX[1] )
 theta, r = np.meshgrid( X2, X1 )
 
 if( UseLogScale ):
@@ -144,16 +158,32 @@ else:
     def f(t):
         return Data[t]
 
-vmin = min( +np.inf, np.min( np.abs( Data ) ) )
-vmax = max( -np.inf, np.max( np.abs( Data ) ) )
+if( UseCustomTicks ):
+    vmin = 1.0e8
+    vmax = max( -np.inf, np.max( Data ) )
+    if( UseLogScale ):
+        ticks = np.logspace( np.log10( vmin ), np.log10( vmax ), 5 )
+    else:
+        ticks = np.linspace( vmin, vmax, 5 )
+    ticklabels = []
+    for tick in ticks:
+        ticklabels.append( '{:.3e}'.format( tick ) )
+else:
+    vmin = min( +np.inf, np.min( Data ) )
+    vmax = max( -np.inf, np.max( Data ) )
 
 # Taken from:
 # https://brushingupscience.com/2016/06/21/matplotlib-animations-the-easy-way/
 im = ax.pcolormesh( theta, r, f(0)[:-1,:-1], \
-                    cmap = 'Purples', \
+                    cmap = cmap, \
                     vmin = vmin, vmax = vmax, \
                     norm = norm )
-fig.colorbar( im )
+
+if( UseCustomTicks ):
+    cbar = fig.colorbar( im, ticks = ticks )
+    cbar.ax.set_yticklabels( ticklabels )
+else:
+    fig.colorbar( im )
 
 time_text = plt.text( 2.5 * np.pi / 2, xL[0] + 0.5 * ( xH[0] - xL[0] ), '' )
 
@@ -167,10 +197,8 @@ def UpdateFrame(t):
 
 # Call the animator
 print( 'Making movie...' )
-anim = animation.FuncAnimation \
-         ( fig, UpdateFrame, frames = FileArray.shape[0], \
-           interval = 100, blit = True )
+anim = animation.FuncAnimation( fig, UpdateFrame, frames = FileArray.shape[0], \
+                                interval = 100, blit = True )
 
-anim.save( '{:}_{:}.mp4'.format( ProblemName, VariableToPlot ), \
-           fps = 5 )
+anim.save( '{:}_{:}.mp4'.format( ProblemName, VariableToPlot ), fps = 5 )
 plt.close()

@@ -3,24 +3,9 @@ MODULE Euler_TallyModule
   USE KindModule, ONLY: &
     DP
 
-#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
-
+  USE Euler_TallyModule_NonRelativistic_IDEAL
   USE Euler_TallyModule_NonRelativistic_TABLE
-
-#elif defined HYDRO_NONRELATIVISTIC
-
-  USE Euler_TallyModule_NonRelativistic_IDEAL
-
-#elif defined HYDRO_RELATIVISTIC
-
   USE Euler_TallyModule_Relativistic_IDEAL
-
-#else
-
-  USE Euler_TallyModule_NonRelativistic_IDEAL
-
-#endif
-
 
   IMPLICIT NONE
   PRIVATE

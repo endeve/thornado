@@ -128,10 +128,10 @@ CONTAINS
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,*)
-      WRITE(*,'(A)') '    INFO: Euler_InitializeSlopeLimiter_Relativistic:'
-      WRITE(*,'(A)') '    ------------------------------------------------'
+      WRITE(*,'(A)') '    INFO: Euler_InitializeSlopeLimiter_Relativistic'
+      WRITE(*,'(A)') '    -----------------------------------------------'
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
+      WRITE(*,'(A4,A27,L1)'       ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
       WRITE(*,*)
       WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVD: ' , &
@@ -141,14 +141,17 @@ CONTAINS
       WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
         SlopeTolerance
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
+      WRITE(*,'(A4,A27,L1)'       ) '', 'UseCharacteristicLimiting: ' , &
         UseCharacteristicLimiting
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)'      ) '', 'UseTroubledCellIndicator: ' , &
+      WRITE(*,'(A4,A27,L1)'       ) '', 'UseTroubledCellIndicator: ' , &
         UseTroubledCellIndicator
       WRITE(*,*)
       WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
         LimiterThreshold
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
+        UseConservativeCorrection
     END IF
 
     IF( UseTroubledCellIndicator ) &
@@ -398,7 +401,7 @@ CONTAINS
 
           U_M(iCF,0,2:nDOFX) = Zero
 
-          U_M(:,0,2) = dU(:,1)
+          U_M(iCF,0,2) = dU(iCF,1)
 
           IF( nDimsX .GT. 1 ) U_M(iCF,0,3) = dU(iCF,2)
 

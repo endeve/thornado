@@ -402,7 +402,7 @@ CONTAINS
 
           U_M(iCF,0,2:nDOFX) = Zero
 
-          U_M(:,0,2) = dU(:,1)
+          U_M(iCF,0,2) = dU(iCF,1)
 
           IF( nDimsX > 1 ) &
             U_M(iCF,0,3) = dU(iCF,2)
