@@ -932,7 +932,6 @@ CONTAINS
     END DO
 
     PRINT*, "      Done..."
-    STOP
 
   END SUBROUTINE ComputeWeakDerivatives_X1
 
