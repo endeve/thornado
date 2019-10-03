@@ -10,6 +10,8 @@ MODULE MF_Euler_PositivityLimiterModule
     amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_communicator
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,           ONLY: &
@@ -54,11 +56,13 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iErr
 
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
+
+    iErr = 0
 
     DO iLevel = 0, nLevels
 
@@ -112,7 +116,12 @@ CONTAINS
                             iX_B1(3):iX_E1(3),1:nGF), &
                  U (1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nCF) )
+                            iX_B1(3):iX_E1(3),1:nCF), iErr_Option = iErr )
+
+        IF( iErr .EQ. -1 )THEN
+          WRITE(*,*) 'Failure in Euler_ApplyPositivityLimiter'
+          CALL MPI_ABORT( amrex_parallel_communicator(), iErr )
+        END IF
 
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )

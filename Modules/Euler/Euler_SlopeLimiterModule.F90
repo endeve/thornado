@@ -6,13 +6,21 @@ MODULE Euler_SlopeLimiterModule
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_SlopeLimiter
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+
+  USE Euler_SlopeLimiterModule_NonRelativistic_TABLE
+
+#elif defined HYDRO_NONRELATIVISTIC
 
   USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL
+
+#else
+
+  USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
 
 #endif
 
@@ -47,7 +55,17 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+
+    CALL Euler_InitializeSlopeLimiter_NonRelativistic_TABLE &
+           ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
+             UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
+             UseTroubledCellIndicator_Option, &
+             LimiterThresholdParameter_Option, &
+             UseConservativeCorrection_Option, &
+             Verbose_Option )
+
+#elif defined HYDRO_NONRELATIVISTIC
 
     CALL Euler_InitializeSlopeLimiter_NonRelativistic &
            ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
@@ -57,9 +75,19 @@ CONTAINS
              UseConservativeCorrection_Option, &
              Verbose_Option )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     CALL Euler_InitializeSlopeLimiter_Relativistic &
+           ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
+             UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
+             UseTroubledCellIndicator_Option, &
+             LimiterThresholdParameter_Option, &
+             UseConservativeCorrection_Option, &
+             Verbose_Option )
+
+#else
+
+    CALL Euler_InitializeSlopeLimiter_NonRelativistic &
            ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
              UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
              UseTroubledCellIndicator_Option, &
@@ -74,13 +102,21 @@ CONTAINS
 
   SUBROUTINE Euler_FinalizeSlopeLimiter
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+
+    CALL Euler_FinalizeSlopeLimiter_NonRelativistic_TABLE
+
+#elif defined HYDRO_NONRELATIVISTIC
 
     CALL Euler_FinalizeSlopeLimiter_NonRelativistic
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     CALL Euler_FinalizeSlopeLimiter_Relativistic
+
+#else
+
+    CALL Euler_FinalizeSlopeLimiter_NonRelativistic
 
 #endif
 
@@ -107,16 +143,25 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
+
+    CALL Euler_ApplySlopeLimiter_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
+
+#elif defined HYDRO_NONRELATIVISTIC
 
     CALL Euler_ApplySlopeLimiter_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_RELATIVISTIC
 
     CALL Euler_ApplySlopeLimiter_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 
+#else
+
+    CALL Euler_ApplySlopeLimiter_NonRelativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )

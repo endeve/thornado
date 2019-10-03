@@ -47,14 +47,23 @@ CONTAINS
 
 
   SUBROUTINE Euler_InitializePositivityLimiter_Relativistic &
-    ( Min_1_Option, Min_2_Option, UsePositivityLimiter_Option, Verbose_Option )
+    ( UsePositivityLimiter_Option, Verbose_Option, Min_1_Option, Min_2_Option )
 
-    REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option, Min_2_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option, &
                                       Verbose_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option, Min_2_Option
 
     INTEGER :: iDim
     LOGICAL :: Verbose
+
+
+    UsePositivityLimiter = .TRUE.
+    IF( PRESENT( UsePositivityLimiter_Option ) ) &
+      UsePositivityLimiter = UsePositivityLimiter_Option
+
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
     Min_1 = - HUGE( One )
     IF( PRESENT( Min_1_Option ) ) &
@@ -63,16 +72,6 @@ CONTAINS
     Min_2 = - HUGE( One )
     IF( PRESENT( Min_2_Option ) ) &
       Min_2 = Min_2_Option
-
-    UsePositivityLimiter = .TRUE.
-    IF( PRESENT( UsePositivityLimiter_Option ) ) &
-      UsePositivityLimiter = UsePositivityLimiter_Option
-
-    IF( PRESENT( Verbose_Option ) )THEN
-      Verbose = Verbose_Option
-    ELSE
-      Verbose = .TRUE.
-    END IF
 
     IF( Verbose )THEN
       WRITE(*,*)
@@ -124,14 +123,16 @@ CONTAINS
   !>        and velocity
   !> @todo Modify to accomodate GR
   SUBROUTINE Euler_ApplyPositivityLimiter_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr_Option )
 
-    INTEGER,  INTENT(in)    :: &
+    INTEGER,  INTENT(in)             :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(in)             :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(inout)          :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER, INTENT(inout), OPTIONAL :: &
+      iErr_Option
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
     REAL(DP) :: Theta_D, Theta_q, Theta_P
@@ -141,10 +142,14 @@ CONTAINS
 
     ! --- For de-bugging ---
     REAL(DP) :: q_K(nPT)
+    INTEGER  :: iErr
 
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
+
+    iErr = 0
+    IF( PRESENT( iErr_Option ) ) iErr = iErr_Option
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -193,7 +198,11 @@ CONTAINS
                      * U_q(1:nDOFX,iCF_E) ) &
                 / SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) ) )
 
-        IF( U_K(iCF_E) .LT. Zero ) STOP 'U_K(iCF_E) < 0'
+        IF( U_K(iCF_E) .LT. Zero )THEN
+          WRITE(*,*) 'U_K(iCF_E) < 0'
+          iErr = -1
+          IF( .NOT. PRESENT( iErr_Option ) ) STOP ''
+        END IF
 
         Min_ESq = Min_2 * U_K(iCF_E)**2
 
@@ -249,7 +258,7 @@ CONTAINS
               IF( q(iP) .LT. Zero )THEN
                 CALL SolveTheta_Bisection &
                   ( U_PP(iP,1:nCF), U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, &
-                    Theta_P, iX1, iX2, iX3, iP )
+                    Theta_P, iX1, iX2, iX3, iP, iErr )
                 Theta_q = MIN( Theta_q, Theta_P )
               END IF
             END DO
@@ -338,12 +347,15 @@ CONTAINS
           WRITE(*,*) U(1:nDOFX,iX1,iX2,iX3,iCF)
           WRITE(*,*)
         END DO
-        STOP ''
+        iErr = -1
+        IF( .NOT. PRESENT( iErr_Option ) ) STOP ''
       END IF
 
     END DO
     END DO
     END DO
+
+    IF( PRESENT( iErr_Option ) ) iErr_Option = iErr
 
   END SUBROUTINE Euler_ApplyPositivityLimiter_Relativistic
 
@@ -447,14 +459,15 @@ CONTAINS
 
 
   SUBROUTINE SolveTheta_Bisection &
-    ( U_Q, U_K, G_Q, Min_ESq, Theta_P, iX1, iX2, iX3, iP )
+    ( U_Q, U_K, G_Q, Min_ESq, Theta_P, iX1, iX2, iX3, iP, iErr_Option )
 
     REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), G_Q(nGF), Min_ESq
     REAL(DP), INTENT(out) :: Theta_P
 
     ! --- For de-bugging ---
-    INTEGER,  INTENT(in) :: iX1, iX2, iX3, iP
-    INTEGER :: iCF, iGF
+    INTEGER, INTENT(in)    :: iX1, iX2, iX3, iP
+    INTEGER, INTENT(inout), OPTIONAL :: iErr_Option
+    INTEGER :: iCF, iGF, iErr
 
     INTEGER,  PARAMETER :: MAX_IT = 19
     REAL(DP), PARAMETER :: dx_min = 1.0d-3
@@ -463,6 +476,9 @@ CONTAINS
     INTEGER  :: ITERATION
     REAL(DP) :: x_a, x_b, x_c, dx
     REAL(DP) :: f_a, f_b, f_c
+
+    iErr = 0
+    IF( PRESENT( iErr_Option ) ) iErr = iErr_Option
 
 !!$    WRITE(*,*)
 !!$    WRITE(*,'(A,I3)') 'iP = ', iP
@@ -519,7 +535,12 @@ CONTAINS
         '', 'x_a, x_b = ', x_a, x_b
       WRITE(*,'(A8,A,2ES15.6e3)') &
         '', 'f_a, f_b = ', f_a, f_b
-      STOP
+      iErr = -1
+      IF( PRESENT( iErr_Option ) )THEN
+        iErr_Option = iErr
+      ELSE
+        STOP ''
+      END IF
 
     END IF
 
@@ -566,7 +587,10 @@ CONTAINS
         WRITE(*,'(A8,A,3ES15.6e3)') &
           '', 'f_a, f_c, f_b     = ', f_a, f_c, f_b
 
-        IF( ITERATION > MAX_IT + 3 ) STOP
+        IF( ITERATION > MAX_IT + 3 )THEN
+          iErr = -1
+          IF( PRESENT( iErr_Option ) ) STOP
+        END IF
 
       END IF
 

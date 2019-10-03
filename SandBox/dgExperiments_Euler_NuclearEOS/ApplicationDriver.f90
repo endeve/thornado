@@ -3,8 +3,8 @@ PROGRAM ApplicationDriver
   USE KindModule, ONLY: &
     DP, One, Two, Pi, TwoPi
   USE UnitsModule, ONLY: &
-      Millisecond, Microsecond, &
-      Kilometer
+    Millisecond, Microsecond, &
+    Kilometer
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_B1, iX_E0, iX_E1
   USE ProgramInitializationModule, ONLY: &
@@ -49,39 +49,39 @@ PROGRAM ApplicationDriver
   USE Euler_dgDiscretizationModule, ONLY: &
     Euler_ComputeIncrement_DG_Explicit
   USE Euler_TallyModule_NonRelativistic_TABLE, ONLY: &
-    Euler_InitializeTally_NonRelativistic, &
-    Euler_FinalizeTally_NonRelativistic, &
-    Euler_ComputeTally_NonRelativistic
+    Euler_InitializeTally_NonRelativistic_TABLE, &
+    Euler_FinalizeTally_NonRelativistic_TABLE, &
+    Euler_ComputeTally_NonRelativistic_TABLE
 
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
 
   CHARACTER(32) :: ProgramName
-  CHARACTER(32) :: AdvectionProfile
-  CHARACTER(32) :: Direction
   CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
+  CHARACTER(32) :: EosTableName
   LOGICAL       :: wrt
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: UsePositivityLimiter
   INTEGER       :: iCycle, iCycleD
-  INTEGER       :: nX(3), bcX(3), nNodes
+  INTEGER       :: nX(3), bcX(3), nNodes, nStages
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, wTime
-  REAL(DP)      :: xL(3), xR(3), Gamma
+  REAL(DP)      :: xL(3), xR(3)
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
-  REAL(DP)      :: Eblast
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'RiemannProblem'
+  ProgramName = 'RiemannProblemSpherical'
+
+  EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
-  CASE( 'RiemannProblem' )
+    CASE( 'RiemannProblem' )
 
       RiemannProblemName = 'Sod'
 
@@ -91,7 +91,8 @@ PROGRAM ApplicationDriver
 
       bcX = [ 2, 0, 0 ]
 
-      nNodes = 3
+      nNodes  = 3
+      nStages = 3
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
@@ -107,6 +108,36 @@ PROGRAM ApplicationDriver
       t_end   = 7.5d-2 * Millisecond
       dt_wrt  = 7.5d-5 * Millisecond
 
+   CASE( 'RiemannProblemSpherical' )
+
+      RiemannProblemName = 'SphericalSod'
+
+      CoordinateSystem = 'SPHERICAL'
+
+      nX = [ 128, 16, 1 ]
+      xL = [ 1.0d-3 * Kilometer, 0.0_DP, 0.0_DP ]
+      xR = [ 2.0_DP * Kilometer, Pi,     4.0_DP ]
+
+      bcX = [ 3, 3, 0 ]
+
+      nNodes = 3
+      nStages = 3
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 0.03_DP
+
+      UsePositivityLimiter      = .TRUE.
+
+      iCycleD = 10
+      t_end   = 5.0d-1 * Millisecond
+      dt_wrt  = 2.5d-2 * Millisecond
+
     CASE( 'Jet' )
 
       nX = [ 100, 100, 1 ]
@@ -115,7 +146,8 @@ PROGRAM ApplicationDriver
 
       bcX = [ 2, 2, 0 ]
 
-      nNodes = 3
+      nNodes  = 3
+      nStages = 3
 
       BetaTVD = 1.75_DP
       BetaTVB = 0.0d+00
@@ -129,11 +161,9 @@ PROGRAM ApplicationDriver
 
       iCycleD = 10
       t_end   = 2.5d-1 * Millisecond
-      dt_wrt  = 2.5d-6 * Millisecond !d-6
+      dt_wrt  = 2.5d-6 * Millisecond
 
     CASE( 'Implosion' )
-
-!      Gamma = 1.4_DP
 
       nX = [ 64, 64, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
@@ -141,7 +171,8 @@ PROGRAM ApplicationDriver
 
       bcX = [ 3, 3, 0 ]
 
-      nNodes = 3
+      nNodes  = 3
+      nStages = 3
 
       BetaTVD = 1.50_DP
       BetaTVB = 0.0d+00
@@ -156,6 +187,10 @@ PROGRAM ApplicationDriver
       iCycleD = 1
       t_end   = 2.500_DP * Millisecond
       dt_wrt  = 0.045_DP * Millisecond
+
+    CASE DEFAULT
+
+      STOP
 
   END SELECT
 
@@ -188,8 +223,10 @@ PROGRAM ApplicationDriver
   CALL ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   CALL InitializeEquationOfState &
-         ( EquationOfState_Option = 'TABLE', &
-           EquationOfStateTableName_Option = 'wl-EOS-DD2-25-50-100.h5' ) !wl-EOS-DD2-25-50-100.h5 wl-EOS-SFHo-25-50-100.h5
+         ( EquationOfState_Option &
+             = 'TABLE', &
+           EquationOfStateTableName_Option &
+             = EosTableName )
 
   CALL Euler_InitializeSlopeLimiter_NonRelativistic_TABLE &
          ( BetaTVD_Option = BetaTVD, &
@@ -206,21 +243,17 @@ PROGRAM ApplicationDriver
              = LimiterThresholdParameter )
 
   CALL Euler_InitializePositivityLimiter_NonRelativistic_TABLE &
-         ( Min_D_Option = ( One + EPSILON(One) ) * MinD, &
-           Max_D_Option = ( One - EPSILON(One) ) * MaxD, &
-           Min_T_Option = ( One + EPSILON(One) ) * MinT, &
-           Max_T_Option = ( One - EPSILON(One) ) * MaxT, &
-           Min_Y_Option = ( One + EPSILON(One) ) * MinY, &
-           Max_Y_Option = ( One - EPSILON(One) ) * MaxY, &
-           UsePositivityLimiter_Option &
-             = UsePositivityLimiter )
+         ( UsePositivityLimiter_Option = UsePositivityLimiter, &
+           Verbose_Option = .TRUE., &
+           Min_1_Option = ( One + EPSILON(One) ) * MinD, &
+           Min_2_Option = ( One + EPSILON(One) ) * MinT, &
+           Min_3_Option = ( One + EPSILON(One) ) * MinY, &
+           Max_1_Option = ( One - EPSILON(One) ) * MaxD, &
+           Max_2_Option = ( One - EPSILON(One) ) * MaxT, &
+           Max_3_Option = ( One - EPSILON(One) ) * MaxY )
 
   CALL InitializeFields &
-         ( AdvectionProfile_Option &
-             = TRIM( AdvectionProfile ), &
-           Direction_Option &
-             = TRIM( Direction ), &
-           RiemannProblemName_Option &
+         ( RiemannProblemName_Option &
              = TRIM( RiemannProblemName ) )
 
   CALL Euler_ApplySlopeLimiter_NonRelativistic_TABLE &
@@ -243,7 +276,7 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL InitializeFluid_SSPRK( nStages = 3 )
+  CALL InitializeFluid_SSPRK( nStages )
 
   ! --- Evolve ---
 
@@ -253,7 +286,7 @@ PROGRAM ApplicationDriver
   t_wrt = dt_wrt
   wrt   = .TRUE.
 
-  CALL Euler_InitializeTally_NonRelativistic &
+  CALL Euler_InitializeTally_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
@@ -263,7 +296,7 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    CALL Euler_ComputeTimeStep_NonRelativistic&
+    CALL Euler_ComputeTimeStep_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
              uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
@@ -307,7 +340,7 @@ PROGRAM ApplicationDriver
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-      CALL Euler_ComputeTally_NonRelativistic &
+      CALL Euler_ComputeTally_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -329,13 +362,13 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL Euler_ComputeTally_NonRelativistic &
+  CALL Euler_ComputeTally_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
-  CALL Euler_FinalizeTally_NonRelativistic
+  CALL Euler_FinalizeTally_NonRelativistic_TABLE
 
   wTime = MPI_WTIME( ) - wTime
 

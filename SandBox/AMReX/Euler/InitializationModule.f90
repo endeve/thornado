@@ -259,10 +259,10 @@ CONTAINS
                = amrex_parallel_ioprocessor() )
 
     CALL Euler_InitializePositivityLimiter &
-           ( Min_1_Option = Min_1, &
-             Min_2_Option = Min_2, &
-             UsePositivityLimiter_Option = UsePositivityLimiter, &
-             Verbose_Option = amrex_parallel_ioprocessor() )
+           ( UsePositivityLimiter_Option = UsePositivityLimiter, &
+             Verbose_Option = amrex_parallel_ioprocessor(), &
+             Min_1_Option = Min_1, &
+             Min_2_Option = Min_2 )
 
     CALL MF_InitializeFluid_SSPRK &
            ( nStages, BA, DM, &

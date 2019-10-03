@@ -1712,6 +1712,7 @@ CONTAINS
     nLines = 0
     OPEN( 100, FILE = TRIM( FILEIN ) )
     READ( 100, * ) ! --- Skip the header ---
+    READ( 100, * ) ! --- Skip the header ---
     DO
       READ( 100, *, END = 10 )
       nLines = nLines + 1
@@ -1722,6 +1723,7 @@ CONTAINS
     ALLOCATE( FluidFieldData( 1:nLines, 4 ) )
 
     OPEN( 100, FILE = TRIM( FILEIN ) )
+    READ( 100, * ) ! --- Skip the header ---
     READ( 100, * ) ! --- Skip the header ---
     DO i = 1, nLines
        READ( 100, '(ES22.16E2,1x,ES22.16E2,1x,ES23.16E2,1x,ES22.16E2)' ) &
