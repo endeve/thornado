@@ -6,24 +6,9 @@ MODULE Euler_PositivityLimiterModule
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_PositivityLimiter
 
-#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
-
+  USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE
-
-#elif defined HYDRO_NONRELATIVISTIC
-
-  USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
-
-#elif defined HYDRO_RELATIVISTIC
-
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL
-
-#else
-
-  USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
-
-#endif
-
 
   IMPLICIT NONE
   PRIVATE

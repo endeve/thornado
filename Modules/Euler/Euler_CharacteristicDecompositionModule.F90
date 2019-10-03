@@ -7,23 +7,9 @@ MODULE Euler_CharacteristicDecompositionModule
   USE GeometryFieldsModule, ONLY: &
     nGF
 
-#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
-
+  USE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL
   USE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
-
-#elif defined HYDRO_NONRELATIVISTIC
-
-  USE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL
-
-#elif defined HYDRO_RELATIVISTIC
-
   USE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
-
-#else
-
-  USE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL
-
-#endif
 
   IMPLICIT NONE
   PRIVATE
