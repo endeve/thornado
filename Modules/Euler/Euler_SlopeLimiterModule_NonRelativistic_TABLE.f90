@@ -131,7 +131,7 @@ CONTAINS
       UseConservativeCorrection = UseConservativeCorrection_Option
     ELSE
       UseConservativeCorrection = .TRUE.
-    END IF 
+    END IF
 
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
@@ -429,7 +429,7 @@ CONTAINS
 
           U_M(iCF,0,2:nDOFX) = Zero
 
-          U_M(:,0,2) = dU(:,1)
+          U_M(iCF,0,2) = dU(iCF,1)
 
           IF( nDimsX > 1 ) &
             U_M(iCF,0,3) = dU(iCF,2)
