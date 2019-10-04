@@ -13,7 +13,7 @@ MODULE FinalizationModule
     FinalizeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     FinalizeReferenceElementX_Lagrange
-   USE MeshModule,                      ONLY: &
+  USE MeshModule,                       ONLY: &
     MeshType, DestroyMesh
   USE FluidFieldsModule,                ONLY: &
     DestroyFluidFields
