@@ -312,9 +312,9 @@ CONTAINS
   END FUNCTION EddingtonFactor_Vector
 
 
-  FUNCTION HeatFluxFactor_Scalar( D ) RESULT( HeatFluxFactor )
+  FUNCTION HeatFluxFactor_Scalar( D, FF ) RESULT( HeatFluxFactor )
 
-    REAL(DP), INTENT(in) :: D
+    REAL(DP), INTENT(in) :: D, FF
     REAL(DP)             :: HeatFluxFactor
 
 #ifdef MOMENT_CLOSURE_MINERBO
@@ -343,9 +343,9 @@ CONTAINS
   END FUNCTION HeatFluxFactor_Scalar
 
 
-  FUNCTION HeatFluxFactor_Vector( D ) RESULT( HeatFluxFactor )
+  FUNCTION HeatFluxFactor_Vector( D, FF ) RESULT( HeatFluxFactor )
 
-    REAL(DP), INTENT(in) :: D(:)
+    REAL(DP), INTENT(in) :: D(:), FF(:)
     REAL(DP)             :: HeatFluxFactor(SIZE(D))
 
 #ifdef MOMENT_CLOSURE_MINERBO
