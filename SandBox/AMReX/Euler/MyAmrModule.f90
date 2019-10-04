@@ -64,8 +64,8 @@ MODULE MyAmrModule
   REAL(amrex_real) :: Max_1, Max_2, Max_3
 
   ! --- Equation Of State ---
-  CHARACTER(LEN=32), SAVE :: EquationOfState
-  CHARACTER(LEN=32), SAVE :: EosTableName
+  CHARACTER(LEN=:), ALLOCATABLE :: EquationOfState
+  CHARACTER(LEN=:), ALLOCATABLE :: EosTableName
 
   ! --- AMReX Geometry arrays ---
   TYPE(amrex_boxarray),  ALLOCATABLE, PUBLIC :: BA(:)
@@ -183,6 +183,7 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     EquationOfState = 'IDEAL'
+    EosTableName    = ''
     CALL amrex_parmparse_build( PP, 'EoS' )
       CALL PP % query( 'EquationOfState', EquationOfState )
       CALL PP % query( 'EosTableName',    EosTableName    )
