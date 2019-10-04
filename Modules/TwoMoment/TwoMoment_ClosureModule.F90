@@ -11,6 +11,7 @@ MODULE TwoMoment_ClosureModule
   PUBLIC :: InitializeClosure_TwoMoment
   PUBLIC :: FluxFactor
   PUBLIC :: EddingtonFactor
+  PUBLIC :: HeatFluxFactor
   PUBLIC :: ComputeEddingtonFactorDerivatives
 
   INTERFACE FluxFactor
@@ -22,6 +23,11 @@ MODULE TwoMoment_ClosureModule
     MODULE PROCEDURE EddingtonFactor_Scalar
     MODULE PROCEDURE EddingtonFactor_Vector
   END INTERFACE
+
+  INTERFACE HeatFluxFactor
+    MODULE PROCEDURE HeatFluxFactor_Scalar
+    MODULE PROCEDURE HeatFluxFactor_Vector
+  END INTERFACE HeatFluxFactor
 
   INTERFACE ClosurePolynomial_ME_CB
     MODULE PROCEDURE ClosurePolynomial_ME_CB_Scalar
@@ -304,6 +310,68 @@ CONTAINS
 
     RETURN
   END FUNCTION EddingtonFactor_Vector
+
+
+  FUNCTION HeatFluxFactor_Scalar( D ) RESULT( HeatFluxFactor )
+
+    REAL(DP), INTENT(in) :: D
+    REAL(DP)             :: HeatFluxFactor
+
+#ifdef MOMENT_CLOSURE_MINERBO
+
+    HeatFluxFactor = 0.0_DP
+
+#elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
+
+    HeatFluxFactor = 0.0_DP
+
+#elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_BL
+
+    HeatFluxFactor = 0.0_DP
+
+#elif  MOMENT_CLOSURE_KERSHAW_BL
+
+    HeatFluxFactor = 0.0_DP
+
+#elif  MOMENT_CLOSURE_LEVERMORE
+
+    HeatFluxFactor = 0.0_DP
+
+#endif
+
+    RETURN
+  END FUNCTION HeatFluxFactor_Scalar
+
+
+  FUNCTION HeatFluxFactor_Vector( D ) RESULT( HeatFluxFactor )
+
+    REAL(DP), INTENT(in) :: D(:)
+    REAL(DP)             :: HeatFluxFactor(SIZE(D))
+
+#ifdef MOMENT_CLOSURE_MINERBO
+
+    HeatFluxFactor = 0.0_DP
+
+#elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
+
+    HeatFluxFactor = 0.0_DP
+
+#elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_BL
+
+    HeatFluxFactor = 0.0_DP
+
+#elif  MOMENT_CLOSURE_KERSHAW_BL
+
+    HeatFluxFactor = 0.0_DP
+
+#elif  MOMENT_CLOSURE_LEVERMORE
+
+    HeatFluxFactor = 0.0_DP
+
+#endif
+
+    RETURN
+  END FUNCTION HeatFluxFactor_Vector
 
 
   SUBROUTINE ComputeEddingtonFactorDerivatives( D, FF, dEFdD_FF, dEFdFF_D )
