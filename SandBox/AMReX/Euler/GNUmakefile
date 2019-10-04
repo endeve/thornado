@@ -2,6 +2,7 @@
 # If you set AMREX_HOME as an environment variable, this line will be ignored
 AMREX_HOME    ?= $(AMREX_DIR)
 THORNADO_HOME ?= $(THORNADO_DIR)
+WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
 
 DEBUG     = TRUE
 

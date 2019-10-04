@@ -22,6 +22,9 @@ MODULE MF_InitializationModule
 
   USE KindModule,              ONLY: &
     DP, Half, One, Pi, TwoPi, FourPi
+  USE UnitsModule, ONLY: &
+    Gram, Centimeter, &
+    Kilometer, Erg, Second, Kelvin
   USE ProgramHeaderModule,     ONLY: &
     nDOFX, nX, nNodesX, swX, nDimsX
   USE ReferenceElementModuleX, ONLY: &
@@ -35,11 +38,13 @@ MODULE MF_InitializationModule
   USE FluidFieldsModule,       ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iPF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iCF_Ne, &
-    nAF, iAF_P
+    nAF, iAF_P, iAF_E, iAF_T, iAF_Ye
   USE Euler_UtilitiesModule,   ONLY: &
     Euler_ComputeConserved
   USE EquationOfStateModule,   ONLY: &
-    ComputePressureFromPrimitive
+    ComputePressureFromPrimitive, &
+    ComputeTemperatureFromPressure, &
+    ComputeThermodynamicStates_Primitive
   USE UnitsModule, ONLY: &
     Meter, Kilometer, Kilogram, Second, Joule
   USE UtilitiesModule, ONLY: &
@@ -97,6 +102,11 @@ CONTAINS
 
         CALL InitializeFields_StandingAccretionShock( MF_uGF, MF_uCF )
 
+      ! --- Table ---
+
+      CASE( 'Sod_TABLE' )
+
+        CALL InitializeFields_Sod_TABLE( MF_uGF, MF_uCF )
 
       ! --- Relativistic ---
 
@@ -123,13 +133,15 @@ CONTAINS
           WRITE(*,*)
           WRITE(*,'(A4,A,A)') '', 'Unknown Program: ', TRIM( ProgramName )
           WRITE(*,'(A4,A)')   '', 'Valid Options:'
-          WRITE(*,'(A6,A)')   '', 'Non-Relativistic:'
+          WRITE(*,'(A6,A)')   '', 'Non-Relativistic (IDEAL):'
           WRITE(*,'(A8,A)')   '', 'IsentropicVortex'
           WRITE(*,'(A8,A)')   '', 'Sod'
           WRITE(*,'(A8,A)')   '', 'SphericalSod'
           WRITE(*,'(A8,A)')   '', 'TopHatAdvection'
           WRITE(*,'(A8,A)')   '', 'Implosion'
           WRITE(*,'(A8,A)')   '', 'StandingAccretionShock'
+          WRITE(*,'(A6,A)')   '', 'Non-Relativistic (TABLE):'
+          WRITE(*,'(A8,A)')   '', 'Sod_TABLE'
           WRITE(*,'(A6,A)')   '', 'Relativistic:'
           WRITE(*,'(A8,A)')   '', 'Sod_Relativistic'
           WRITE(*,'(A8,A)')   '', 'KelvinHelmholtz_Relativistic'
@@ -1026,6 +1038,132 @@ CONTAINS
         - 2.0_amrex_real * Mass
     RETURN
   END FUNCTION SettlingSpeedFun
+
+
+  SUBROUTINE InitializeFields_Sod_TABLE( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+
+    INTEGER            :: iDim, iLevel
+    INTEGER            :: iX1, iX2, iX3
+    INTEGER            :: iNodeX
+    INTEGER            :: lo_G(4), hi_G(4)
+    INTEGER            :: lo_F(4), hi_F(4)
+    REAL(amrex_real)   :: X1
+    REAL(amrex_real)   :: uGF_K(nDOFX,nGF)
+    REAL(amrex_real)   :: uCF_K(nDOFX,nCF)
+    REAL(amrex_real)   :: uPF_K(nDOFX,nPF)
+    REAL(amrex_real)   :: uAF_K(nDOFX,nAF)
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(MeshType)     :: MeshX(3)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    uGF_K = 0.0_amrex_real
+    uPF_K = 0.0_amrex_real
+    uCF_K = 0.0_amrex_real
+    uAF_K = 0.0_amrex_real
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    DO iLevel = 0, nLevels
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          X1 = MeshX(1) % Center(iX1)
+
+          DO iNodeX = 1, nDOFX
+
+            IF( X1 .LE. 0.0_amrex_real ) THEN
+
+              uPF_K(iNodeX,iPF_D ) = 1.00e12_amrex_real * Gram / Centimeter**3
+              uPF_K(iNodeX,iPF_V1) = 0.0_amrex_real     * Kilometer / Second
+              uPF_K(iNodeX,iPF_V2) = 0.0_amrex_real     * Kilometer / Second
+              uPF_K(iNodeX,iPF_V3) = 0.0_amrex_real     * Kilometer / Second
+              uAF_K(iNodeX,iAF_P ) = 1.0e32_amrex_real  * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_Ye) = 0.4_amrex_real
+
+            ELSE
+
+              uPF_K(iNodeX,iPF_D ) = 1.25e11_amrex_real * Gram / Centimeter**3
+              uPF_K(iNodeX,iPF_V1) = 0.0_amrex_real     * Kilometer / Second
+              uPF_K(iNodeX,iPF_V2) = 0.0_amrex_real     * Kilometer / Second
+              uPF_K(iNodeX,iPF_V3) = 0.0_amrex_real     * Kilometer / Second
+              uAF_K(iNodeX,iAF_P ) = 1.0e31_amrex_real  * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_Ye) = 0.3_amrex_real
+
+            END IF
+
+          END DO
+
+
+          CALL ComputeTemperatureFromPressure &
+                 ( uPF_K(:,iPF_D ), uAF_K(:,iAF_P), &
+                   uAF_K(:,iAF_Ye), uAF_K(:,iAF_T) )
+
+          CALL ComputeThermodynamicStates_Primitive &
+                 ( uPF_K(:,iPF_D ), uAF_K(:,iAF_T ), &
+                   uAF_K(:,iAF_Ye), uPF_K(:,iPF_E ), &
+                   uAF_K(:,iAF_E ), uPF_K(:,iPF_Ne) )
+
+          CALL Euler_ComputeConserved &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_Sod_TABLE
 
 
   SUBROUTINE InitializeFields_Sod_Relativistic( MF_uGF, MF_uCF )

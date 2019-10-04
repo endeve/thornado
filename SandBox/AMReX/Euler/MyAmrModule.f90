@@ -189,6 +189,16 @@ CONTAINS
       CALL PP % query( 'EosTableName',    EosTableName    )
     CALL amrex_parmparse_destroy( PP )
 
+    IF( EquationOfState .EQ. 'TABLE' )THEN
+
+      t_end  = t_end  * Millisecond
+      dt_wrt = dt_wrt * Millisecond
+      dt_chk = dt_chk * Millisecond
+      xL(1)  = xL(1)  * Kilometer
+      xR(1)  = xR(1)  * Kilometer
+
+    END IF
+
     CALL InitializeProgramHeader &
            ( ProgramName_Option = TRIM( ProgramName ), &
              nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &

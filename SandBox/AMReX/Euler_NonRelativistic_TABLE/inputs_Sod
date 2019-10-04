@@ -3,12 +3,11 @@
 
 DEBUG = 0
 
-thornado.ProgramName = "Sod"
+thornado.ProgramName = "Sod_TABLE"
 
-thornado.t_end     = 0.2      # Final time
+thornado.t_end     = 7.5e-2      # Final time
 thornado.dt_wrt    = -0.045    # Time increment to write plot-file
 thornado.dt_chk    = -0.045    # Time increment to write checkpoint-file
-thornado.Gamma     = 1.4      # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
@@ -20,8 +19,8 @@ thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
 
 geometry.coord_sys   = 0             # CARTESIAN
-geometry.prob_lo     = 0.0 0.0 0.0 # Lower domain size
-geometry.prob_hi     = 1.0 1.0 1.0 # Upper domain size
+geometry.prob_lo     = -5.0 0.0 0.0 # Lower domain size
+geometry.prob_hi     = +5.0 1.0 1.0 # Upper domain size
 geometry.is_periodic = 00 01 01      # Periodicity. 0 (no), 1 (yes)
 
 amr.n_cell          = 256 01 01 # Number of cells in each dimension
@@ -45,5 +44,5 @@ PL.Min_1                = 1.0e-12
 PL.Min_2                = 1.0e-12
 
 # Equation of State parameters
-EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
-EquationOfState = 'TABLE'
+EoS.EosTableName = "wl-EOS-SFHo-25-50-100.h5"
+EoS.EquationOfState = "TABLE"
