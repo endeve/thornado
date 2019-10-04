@@ -60,13 +60,17 @@ MODULE MyAmrModule
 
   ! --- Positivity limiter ---
   LOGICAL          :: UsePositivityLimiter
-  REAL(amrex_real) :: Min_1, Min_2
+  REAL(amrex_real) :: Min_1, Min_2, Min_3
+  REAL(amrex_real) :: Max_1, Max_2, Max_3
+
+  ! --- Equation Of State ---
+  CHARACTER(LEN=32), SAVE :: EquationOfState
+  CHARACTER(LEN=32), SAVE :: EosTableName
 
   ! --- AMReX Geometry arrays ---
   TYPE(amrex_boxarray),  ALLOCATABLE, PUBLIC :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE, PUBLIC :: DM(:)
   TYPE(amrex_geometry),  ALLOCATABLE, PUBLIC :: GEOM(:)
-
 
 CONTAINS
 
@@ -87,6 +91,7 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     UsePhysicalUnits = .FALSE.
+    Gamma_IDEAL = 5.0_amrex_real / 3.0_amrex_real
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'dt_wrt',           dt_wrt )
@@ -96,7 +101,7 @@ CONTAINS
       CALL PP % get   ( 'nStages',          nStages )
       CALL PP % get   ( 'CFL',              CFL )
       CALL PP % get   ( 'ProgramName',      ProgramName )
-      CALL PP % get   ( 'Gamma',            Gamma_IDEAL )
+      CALL PP % query ( 'Gamma',            Gamma_IDEAL )
       CALL PP % getarr( 'bcX',              bcX )
       CALL PP % getarr( 'swX',              swX )
       CALL PP % get   ( 'iCycleD',          iCycleD )
@@ -163,10 +168,24 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Positivitiy limiter parameters PL.*
+    Min_3 = 0.0_amrex_real
+    Max_1 = 0.0_amrex_real
+    Max_2 = 0.0_amrex_real
+    Max_3 = 0.0_amrex_real
     CALL amrex_parmparse_build( PP, 'PL' )
       CALL PP % get( 'UsePositivityLimiter', UsePositivityLimiter )
       CALL PP % get( 'Min_1',                Min_1 )
       CALL PP % get( 'Min_2',                Min_2 )
+      CALL PP % query( 'Min_3',              Min_3 )
+      CALL PP % query( 'Max_1',              Max_1 )
+      CALL PP % query( 'Max_2',              Min_2 )
+      CALL PP % query( 'Max_3',              Max_3 )
+    CALL amrex_parmparse_destroy( PP )
+
+    EquationOfState = 'IDEAL'
+    CALL amrex_parmparse_build( PP, 'EoS' )
+      CALL PP % query( 'EquationOfState', EquationOfState )
+      CALL PP % query( 'EosTableName',    EosTableName    )
     CALL amrex_parmparse_destroy( PP )
 
     CALL InitializeProgramHeader &
