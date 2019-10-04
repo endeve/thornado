@@ -50,6 +50,8 @@ MODULE InitializationModule
     MeshX, CreateMesh, DestroyMesh
   USE EquationOfStateModule,            ONLY: &
     InitializeEquationOfState
+  USE EquationOfStateModule_TABLE,      ONLY: &
+    MinD, MaxD, MinT, MaxT, MinY, MaxY
   USE GeometryFieldsModule,             ONLY: &
     nGF, CoordinateSystem
   USE FluidFieldsModule,                ONLY: &
@@ -100,6 +102,7 @@ MODULE InitializationModule
   REAL(amrex_real),      PUBLIC :: Mass
   LOGICAL,               PUBLIC :: wrt, chk
 
+  REAL(amrex_real), PARAMETER :: One = KIND( 1.d0 )
 
 CONTAINS
 
@@ -234,9 +237,36 @@ CONTAINS
     IF( ProgramName .EQ. 'StandingAccretionShock' ) &
       CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
 
-    CALL InitializeEquationOfState &
-           ( EquationOfState_Option = 'IDEAL', &
-             Gamma_IDEAL_Option = Gamma_IDEAL )
+    IF( EquationOfState .EQ. 'TABLE')THEN
+
+      CALL InitializeEquationOfState &
+             ( EquationOfState_Option = EquationOfState, &
+               EquationOfStateTableName_Option &
+                 = EosTableName )
+
+      CALL Euler_InitializePositivityLimiter &
+             ( UsePositivityLimiter_Option = UsePositivityLimiter, &
+               Verbose_Option = amrex_parallel_ioprocessor(), &
+               Min_1_Option = ( One + EPSILON(One) ) * MinD, &
+               Min_2_Option = ( One + EPSILON(One) ) * MinT, &
+               Min_3_Option = ( One + EPSILON(One) ) * MinY, &
+               Max_1_Option = ( One - EPSILON(One) ) * MaxD, &
+               Max_2_Option = ( One - EPSILON(One) ) * MaxT, &
+               Max_3_Option = ( One - EPSILON(One) ) * MaxY )
+
+    ELSE
+
+      CALL InitializeEquationOfState &
+             ( EquationOfState_Option = EquationOfState, &
+               Gamma_IDEAL_Option = Gamma_IDEAL )
+
+      CALL Euler_InitializePositivityLimiter &
+             ( UsePositivityLimiter_Option = UsePositivityLimiter, &
+               Verbose_Option = amrex_parallel_ioprocessor(), &
+               Min_1_Option = Min_1, &
+               Min_2_Option = Min_2 )
+
+    END IF
 
     CALL Euler_InitializeSlopeLimiter &
            ( BetaTVD_Option &
@@ -257,12 +287,6 @@ CONTAINS
                = UseConservativeCorrection, &
              Verbose_Option &
                = amrex_parallel_ioprocessor() )
-
-    CALL Euler_InitializePositivityLimiter &
-           ( UsePositivityLimiter_Option = UsePositivityLimiter, &
-             Verbose_Option = amrex_parallel_ioprocessor(), &
-             Min_1_Option = Min_1, &
-             Min_2_Option = Min_2 )
 
     CALL MF_InitializeFluid_SSPRK &
            ( nStages, BA, DM, &
