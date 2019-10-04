@@ -250,7 +250,7 @@ CONTAINS
     ! --- Levermore Closure ---
   
     EddingtonFactor &
-      = Third * ( 5.0_dp - Two * SQRT ( Four - Three * FF * FF) )
+      = Third * ( 5.0_dp - Two * SQRT( Four - Three * FF * FF ) )
 
 #endif
 
@@ -304,7 +304,7 @@ CONTAINS
     ! --- Levermore Closure ---
 
     EddingtonFactor &
-      = Third * ( 5.0_dp - Two * SQRT ( Four - Three * FF * FF) )
+      = Third * ( 5.0_dp - Two * SQRT( Four - Three * FF * FF ) )
 
 #endif
 
@@ -319,7 +319,13 @@ CONTAINS
 
 #ifdef MOMENT_CLOSURE_MINERBO
 
-    HeatFluxFactor = 0.0_DP
+    ! --- Maximum Entropy (ME) Minerbo Closure -------------------
+    ! --- Expression from Just et al. (2015), MNRAS, 453, 3386 ---
+
+    HeatFluxFactor &
+      = ( 45.0_DP + 10.0_DP * FF - 12.0 * FF**2 - 12.0_DP * FF**3 &
+          + 38.0_DP * FF**4 - 12.0_DP * FF**5 + 18.0_DP * FF**6 ) &
+        * FF / 75.0_DP
 
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
 
@@ -350,7 +356,13 @@ CONTAINS
 
 #ifdef MOMENT_CLOSURE_MINERBO
 
-    HeatFluxFactor = 0.0_DP
+    ! --- Maximum Entropy (ME) Minerbo Closure -------------------
+    ! --- Expression from Just et al. (2015), MNRAS, 453, 3386 ---
+
+    HeatFluxFactor &
+      = ( 45.0_DP + 10.0_DP * FF - 12.0 * FF**2 - 12.0_DP * FF**3 &
+          + 38.0_DP * FF**4 - 12.0_DP * FF**5 + 18.0_DP * FF**6 ) &
+        * FF / 75.0_DP
 
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
 
