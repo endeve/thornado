@@ -25,9 +25,9 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializePositivityLimiter_NonRelativistic_TABLE
-  PUBLIC :: Euler_FinalizePositivityLimiter_NonRelativistic_TABLE
-  PUBLIC :: Euler_ApplyPositivityLimiter_NonRelativistic_TABLE
+  PUBLIC :: InitializePositivityLimiter_Euler_NonRelativistic_TABLE
+  PUBLIC :: FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
+  PUBLIC :: ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 
   REAL(DP), PARAMETER   :: Unit_D     = Gram / Centimeter**3
   REAL(DP), PARAMETER   :: Unit_T     = Kelvin
@@ -47,7 +47,7 @@ CONTAINS
   !> @param Min_1 Minimum table Density
   !> @param Min_2 Minimum table Temperature
   !> @param Min_3 Minimum table Electron Fraction
-  SUBROUTINE Euler_InitializePositivityLimiter_NonRelativistic_TABLE &
+  SUBROUTINE InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
     ( UsePositivityLimiter_Option, Verbose_Option, &
       Min_1_Option, Min_2_Option, Min_3_Option, &
       Max_1_Option, Max_2_Option, Max_3_Option )
@@ -133,17 +133,17 @@ CONTAINS
 
     ALLOCATE( U_PP(nPT,nCF) )
 
-  END SUBROUTINE Euler_InitializePositivityLimiter_NonRelativistic_TABLE
+  END SUBROUTINE InitializePositivityLimiter_Euler_NonRelativistic_TABLE
 
 
-  SUBROUTINE Euler_FinalizePositivityLimiter_NonRelativistic_TABLE
+  SUBROUTINE FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 
     DEALLOCATE( U_PP )
 
-  END SUBROUTINE Euler_FinalizePositivityLimiter_NonRelativistic_TABLE
+  END SUBROUTINE FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 
 
-  SUBROUTINE Euler_ApplyPositivityLimiter_NonRelativistic_TABLE &
+  SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER,  INTENT(in)    :: &
@@ -344,7 +344,7 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE Euler_ApplyPositivityLimiter_NonRelativistic_TABLE
+  END SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 
 
   SUBROUTINE ComputePointValues_Fluid( U_q, U_p )

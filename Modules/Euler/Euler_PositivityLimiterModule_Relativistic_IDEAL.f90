@@ -32,9 +32,9 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
 
   INCLUDE 'mpif.h'
 
-  PUBLIC :: Euler_InitializePositivityLimiter_Relativistic
-  PUBLIC :: Euler_FinalizePositivityLimiter_Relativistic
-  PUBLIC :: Euler_ApplyPositivityLimiter_Relativistic
+  PUBLIC :: InitializePositivityLimiter_Euler_Relativistic_IDEAL
+  PUBLIC :: FinalizePositivityLimiter_Euler_Relativistic_IDEAL
+  PUBLIC :: ApplyPositivityLimiter_Euler_Relativistic_IDEAL
 
   LOGICAL               :: UsePositivityLimiter
   INTEGER, PARAMETER    :: nPS = 7  ! Number of Positive Point Sets
@@ -46,7 +46,7 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializePositivityLimiter_Relativistic &
+  SUBROUTINE InitializePositivityLimiter_Euler_Relativistic_IDEAL &
     ( UsePositivityLimiter_Option, Verbose_Option, Min_1_Option, Min_2_Option )
 
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option, &
@@ -76,8 +76,10 @@ CONTAINS
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,*)
-      WRITE(*,'(A)') '    INFO: Euler_InitializePositivityLimiter_Relativistic'
-      WRITE(*,'(A)') '    ----------------------------------------------------'
+      WRITE(*,'(A)') &
+        '    INFO: InitializePositivityLimiter_Euler_Relativistic_IDEAL'
+      WRITE(*,'(A)') &
+        '    ----------------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter
@@ -105,15 +107,15 @@ CONTAINS
     ALLOCATE( U_PP(nPT,nCF) )
     ALLOCATE( G_PP(nPT,nGF) )
 
-  END SUBROUTINE Euler_InitializePositivityLimiter_Relativistic
+  END SUBROUTINE InitializePositivityLimiter_Euler_Relativistic_IDEAL
 
 
-  SUBROUTINE Euler_FinalizePositivityLimiter_Relativistic
+  SUBROUTINE FinalizePositivityLimiter_Euler_Relativistic_IDEAL
 
     DEALLOCATE( U_PP )
     DEALLOCATE( G_PP )
 
-  END SUBROUTINE Euler_FinalizePositivityLimiter_Relativistic
+  END SUBROUTINE FinalizePositivityLimiter_Euler_Relativistic_IDEAL
 
 
   !> Iterate through the entire spatial domain and apply the positivity
@@ -122,7 +124,7 @@ CONTAINS
   !> @param Theta_q minimum value to ensure physical internal energy-density
   !>        and velocity
   !> @todo Modify to accomodate GR
-  SUBROUTINE Euler_ApplyPositivityLimiter_Relativistic &
+  SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr_Option )
 
     INTEGER,  INTENT(in)             :: &
@@ -278,7 +280,7 @@ CONTAINS
       ELSE
 
         WRITE(*,'(A)') &
-          'Warning: Euler_ApplyPositivityLimiterModule_Relativistic'
+          'Warning: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
         WRITE(*,'(A)') 'Cell-average of density <= 0'
         WRITE(*,'(A)') 'Setting all values to cell-average'
 
@@ -306,9 +308,9 @@ CONTAINS
       IF( ANY( q(1:nPT) .LT. Zero ) )THEN
         WRITE(*,*)
         WRITE(*,'(A)') &
-            'FATAL ERROR: Euler_ApplyPositivityLimiterModule_Relativistic'
+            'FATAL ERROR: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
         WRITE(*,'(A)') &
-            '------------------------------------------------------------'
+            '------------------------------------------------------'
         WRITE(*,'(A)') 'q < 0 after all limiting'
         WRITE(*,*)
         WRITE(*,'(A,3I5.4)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
@@ -357,7 +359,7 @@ CONTAINS
 
     IF( PRESENT( iErr_Option ) ) iErr_Option = iErr
 
-  END SUBROUTINE Euler_ApplyPositivityLimiter_Relativistic
+  END SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL
 
 
   SUBROUTINE ComputePointValues( X_Q, X_P )
@@ -579,7 +581,7 @@ CONTAINS
       IF( ITERATION > MAX_IT .AND. .NOT. CONVERGED )THEN
 
         WRITE(*,'(6x,A)') &
-          'SolveTheta_Bisection (Euler_ApplyPositivityLimiter_Relativistic):'
+          'SolveTheta_Bisection (ApplyPositivityLimiter_Euler_Relativistic_IDEAL):'
         WRITE(*,'(A8,A,I3.3)') &
           '', 'ITERATION ', ITERATION
         WRITE(*,'(A8,A,4ES15.6e3)') &

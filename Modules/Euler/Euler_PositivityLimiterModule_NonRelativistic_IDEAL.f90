@@ -26,9 +26,9 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializePositivityLimiter_NonRelativistic
-  PUBLIC :: Euler_FinalizePositivityLimiter_NonRelativistic
-  PUBLIC :: Euler_ApplyPositivityLimiter_NonRelativistic
+  PUBLIC :: InitializePositivityLimiter_Euler_NonRelativistic_IDEAL
+  PUBLIC :: FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
+  PUBLIC :: ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL
 
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: Verbose
@@ -41,7 +41,7 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializePositivityLimiter_NonRelativistic &
+  SUBROUTINE InitializePositivityLimiter_Euler_NonRelativistic_IDEAL &
     ( UsePositivityLimiter_Option, Verbose_Option, Min_1_Option, Min_2_Option )
 
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
@@ -69,8 +69,10 @@ CONTAINS
 
     IF( Verbose )THEN
       WRITE(*,*)
-      WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'Euler_InitializePositivityLimiter'
-      WRITE(*,'(A2,A)') '',    '-------------------------------------------'
+      WRITE(*,'(A2,A6,A)') '', &
+        'INFO: ', 'InitializePositivityLimiter_Euler_NonRelativistic_IDEAL'
+      WRITE(*,'(A2,A)') '',    &
+        '-----------------------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A6,A,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter
@@ -107,18 +109,18 @@ CONTAINS
 
     ALLOCATE( G_PP(nPT,nGF) )
 
-  END SUBROUTINE Euler_InitializePositivityLimiter_NonRelativistic
+  END SUBROUTINE InitializePositivityLimiter_Euler_NonRelativistic_IDEAL
 
 
-  SUBROUTINE Euler_FinalizePositivityLimiter_NonRelativistic
+  SUBROUTINE FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
     DEALLOCATE( U_PP )
     DEALLOCATE( G_PP )
 
-  END SUBROUTINE Euler_FinalizePositivityLimiter_NonRelativistic
+  END SUBROUTINE FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
 
-  SUBROUTINE Euler_ApplyPositivityLimiter_NonRelativistic &
+  SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER,  INTENT(in)    :: &
@@ -248,7 +250,7 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE Euler_ApplyPositivityLimiter_NonRelativistic
+  END SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL
 
 
   SUBROUTINE ComputePointValues( X_q, X_p )

@@ -27,7 +27,7 @@ PROGRAM main
   USE MF_Euler_SlopeLimiterModule,      ONLY: &
     MF_Euler_ApplySlopeLimiter
   USE MF_Euler_PositivityLimiterModule, ONLY: &
-    MF_Euler_ApplyPositivityLimiter
+    MF_ApplyPositivityLimiter_Euler
   USE MF_Euler_dgDiscretizationModule,  ONLY: &
     MF_Euler_ComputeIncrement
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &

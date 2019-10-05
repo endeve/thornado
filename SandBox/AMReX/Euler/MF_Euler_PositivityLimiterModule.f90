@@ -21,7 +21,7 @@ MODULE MF_Euler_PositivityLimiterModule
   USE GeometryFieldsModule,          ONLY: &
     nGF
   USE Euler_PositivityLimiterModule, ONLY: &
-    Euler_ApplyPositivityLimiter
+    ApplyPositivityLimiter_Euler
 
   ! --- Local Modules ---
   USE MF_UtilitiesModule, ONLY: &
@@ -36,13 +36,13 @@ MODULE MF_Euler_PositivityLimiterModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_Euler_ApplyPositivityLimiter
+  PUBLIC :: MF_ApplyPositivityLimiter_Euler
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
+  SUBROUTINE MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
@@ -108,8 +108,8 @@ CONTAINS
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
 
-        IF( DEBUG ) WRITE(*,'(A)') '    CALL Euler_ApplyPositivityLimiter'
-        CALL Euler_ApplyPositivityLimiter &
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplyPositivityLimiter_Euler'
+        CALL ApplyPositivityLimiter_Euler &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
@@ -119,7 +119,7 @@ CONTAINS
                             iX_B1(3):iX_E1(3),1:nCF), iErr_Option = iErr )
 
         IF( iErr .EQ. -1 )THEN
-          WRITE(*,*) 'Failure in Euler_ApplyPositivityLimiter'
+          WRITE(*,*) 'Failure in ApplyPositivityLimiter_Euler'
           CALL MPI_ABORT( amrex_parallel_communicator(), iErr )
         END IF
 
@@ -144,7 +144,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_Euler_ApplyPositivityLimiter
+  END SUBROUTINE MF_ApplyPositivityLimiter_Euler
 
 
 END MODULE MF_Euler_PositivityLimiterModule

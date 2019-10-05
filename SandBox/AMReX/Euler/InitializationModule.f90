@@ -66,7 +66,7 @@ MODULE InitializationModule
   USE PolynomialBasisModule_Legendre,   ONLY: &
     InitializePolynomialBasis_Legendre
   USE Euler_PositivityLimiterModule,    ONLY: &
-    Euler_InitializePositivityLimiter
+    InitializePositivityLimiter_Euler
   USE InputOutputModuleAMReX,           ONLY: &
     ReadCheckpointFile,          &
     WriteFieldsAMReX_Checkpoint, &
@@ -83,7 +83,7 @@ MODULE InitializationModule
   USE MF_Euler_SlopeLimiterModule,      ONLY: &
     MF_Euler_ApplySlopeLimiter
   USE MF_Euler_PositivityLimiterModule, ONLY: &
-    MF_Euler_ApplyPositivityLimiter
+    MF_ApplyPositivityLimiter_Euler
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
@@ -244,7 +244,7 @@ CONTAINS
                EquationOfStateTableName_Option &
                  = EosTableName )
 
-      CALL Euler_InitializePositivityLimiter &
+      CALL InitializePositivityLimiter_Euler &
              ( UsePositivityLimiter_Option = UsePositivityLimiter, &
                Verbose_Option = amrex_parallel_ioprocessor(), &
                Min_1_Option = ( One + EPSILON(One) ) * MinD, &
@@ -260,7 +260,7 @@ CONTAINS
              ( EquationOfState_Option = EquationOfState, &
                Gamma_IDEAL_Option = Gamma_IDEAL )
 
-      CALL Euler_InitializePositivityLimiter &
+      CALL InitializePositivityLimiter_Euler &
              ( UsePositivityLimiter_Option = UsePositivityLimiter, &
                Verbose_Option = amrex_parallel_ioprocessor(), &
                Min_1_Option = Min_1, &
@@ -317,7 +317,7 @@ CONTAINS
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
       CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
-      CALL MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
+      CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )

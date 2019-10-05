@@ -22,7 +22,7 @@ MODULE FinalizationModule
   USE Euler_SlopeLimiterModule,         ONLY: &
     Euler_FinalizeSlopeLimiter
   USE Euler_PositivityLimiterModule,    ONLY: &
-    Euler_FinalizePositivityLimiter
+    FinalizePositivityLimiter_Euler
 
   ! --- Local Modules ---
   USE MyAmrModule,                 ONLY: &
@@ -55,7 +55,7 @@ CONTAINS
 
     CALL DestroyFluidFields
 
-    CALL Euler_FinalizePositivityLimiter
+    CALL FinalizePositivityLimiter_Euler
 
     CALL Euler_FinalizeSlopeLimiter
 

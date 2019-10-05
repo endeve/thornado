@@ -13,15 +13,15 @@ MODULE Euler_PositivityLimiterModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializePositivityLimiter
-  PUBLIC :: Euler_FinalizePositivityLimiter
-  PUBLIC :: Euler_ApplyPositivityLimiter
+  PUBLIC :: InitializePositivityLimiter_Euler
+  PUBLIC :: FinalizePositivityLimiter_Euler
+  PUBLIC :: ApplyPositivityLimiter_Euler
 
 
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializePositivityLimiter &
+  SUBROUTINE InitializePositivityLimiter_Euler &
     ( UsePositivityLimiter_Option, Verbose_Option, &
       Min_1_Option, Min_2_Option, Min_3_Option, &
       Max_1_Option, Max_2_Option, Max_3_Option )
@@ -34,58 +34,58 @@ CONTAINS
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_InitializePositivityLimiter_NonRelativistic_TABLE &
+    CALL InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
            ( UsePositivityLimiter_Option, Verbose_Option, &
              Min_1_Option, Min_2_Option, Min_3_Option, &
              Max_1_Option, Max_2_Option, Max_3_Option )
 
 #elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_InitializePositivityLimiter_NonRelativistic &
+    CALL InitializePositivityLimiter_Euler_NonRelativistic_IDEAL &
            ( UsePositivityLimiter_Option, Verbose_Option, &
              Min_1_Option, Min_2_Option )
 
 #elif defined HYDRO_RELATIVISTIC
 
-    CALL Euler_InitializePositivityLimiter_Relativistic &
+    CALL InitializePositivityLimiter_Euler_Relativistic_IDEAL &
            ( UsePositivityLimiter_Option, Verbose_Option, &
              Min_1_Option, Min_2_Option )
 
 #else
 
-    CALL Euler_InitializePositivityLimiter_NonRelativistic &
+    CALL InitializePositivityLimiter_Euler_NonRelativistic_IDEAL &
            ( UsePositivityLimiter_Option, Verbose_Option, &
              Min_1_Option, Min_2_Option )
 
 #endif
 
-  END SUBROUTINE Euler_InitializePositivityLimiter
+  END SUBROUTINE InitializePositivityLimiter_Euler
 
 
-  SUBROUTINE Euler_FinalizePositivityLimiter
+  SUBROUTINE FinalizePositivityLimiter_Euler
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_FinalizePositivityLimiter_NonRelativistic_TABLE
+    CALL FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 
 #elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_FinalizePositivityLimiter_NonRelativistic
+    CALL FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
 #elif defined HYDRO_RELATIVISTIC
 
-    CALL Euler_FinalizePositivityLimiter_Relativistic
+    CALL FinalizePositivityLimiter_Euler_Relativistic_IDEAL
 
 #else
 
-    CALL Euler_FinalizePositivityLimiter_NonRelativistic
+    CALL FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
 #endif
 
-  END SUBROUTINE Euler_FinalizePositivityLimiter
+  END SUBROUTINE FinalizePositivityLimiter_Euler
 
 
-  SUBROUTINE Euler_ApplyPositivityLimiter &
+  SUBROUTINE ApplyPositivityLimiter_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr_Option )
 
     INTEGER,  INTENT(in)             :: &
@@ -104,22 +104,22 @@ CONTAINS
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_ApplyPositivityLimiter_NonRelativistic_TABLE &
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
 #elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_ApplyPositivityLimiter_NonRelativistic &
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
 #elif defined HYDRO_RELATIVISTIC
 
-    CALL Euler_ApplyPositivityLimiter_Relativistic &
+    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr_Option = iErr )
 
 #else
 
-    CALL Euler_ApplyPositivityLimiter_NonRelativistic &
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
 #endif
@@ -128,7 +128,7 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_PositivityLimiter )
 
-  END SUBROUTINE Euler_ApplyPositivityLimiter
+  END SUBROUTINE ApplyPositivityLimiter_Euler
 
 
 END MODULE Euler_PositivityLimiterModule

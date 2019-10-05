@@ -10,7 +10,7 @@ MODULE TimeSteppingModule_SSPRK
   USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
     Euler_ApplySlopeLimiter_NonRelativistic_TABLE
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
-    Euler_ApplyPositivityLimiter_NonRelativistic_TABLE
+    ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 
   IMPLICIT NONE
   PRIVATE
@@ -223,7 +223,7 @@ CONTAINS
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-        CALL Euler_ApplyPositivityLimiter_NonRelativistic_TABLE &
+        CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
@@ -267,7 +267,7 @@ CONTAINS
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-    CALL Euler_ApplyPositivityLimiter_NonRelativistic_TABLE &
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )

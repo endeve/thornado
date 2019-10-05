@@ -26,9 +26,9 @@ PROGRAM ApplicationDriver
     Euler_FinalizeSlopeLimiter_Relativistic, &
     Euler_ApplySlopeLimiter_Relativistic
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
-    Euler_InitializePositivityLimiter_Relativistic, &
-    Euler_FinalizePositivityLimiter_Relativistic, &
-    Euler_ApplyPositivityLimiter_Relativistic
+    InitializePositivityLimiter_Euler_Relativistic_IDEAL, &
+    FinalizePositivityLimiter_Euler_Relativistic_IDEAL, &
+    ApplyPositivityLimiter_Euler_Relativistic_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     Euler_ComputeFromConserved_Relativistic, &
     Euler_ComputeTimeStep_Relativistic
@@ -368,7 +368,7 @@ PROGRAM ApplicationDriver
            UseConservativeCorrection_Option &
              = UseConservativeCorrection )
 
-  CALL Euler_InitializePositivityLimiter_Relativistic &
+  CALL InitializePositivityLimiter_Euler_Relativistic_IDEAL &
          ( UsePositivityLimiter_Option = UsePositivityLimiter, &
            Verbose_Option = .TRUE., &
            Min_1_Option = Min_1, &
@@ -390,7 +390,7 @@ PROGRAM ApplicationDriver
            uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
 
-  CALL Euler_ApplyPositivityLimiter_Relativistic &
+  CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
@@ -554,7 +554,7 @@ PROGRAM ApplicationDriver
   CALL TimersStart_Euler( Timer_Euler_Finalize )
   CALL Euler_FinalizeTally_Relativistic
 
-  CALL Euler_FinalizePositivityLimiter_Relativistic
+  CALL FinalizePositivityLimiter_Euler_Relativistic_IDEAL
 
   CALL Euler_FinalizeSlopeLimiter_Relativistic
 

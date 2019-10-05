@@ -33,9 +33,9 @@ PROGRAM ApplicationDriver
     Euler_FinalizeSlopeLimiter, &
     Euler_ApplySlopeLimiter
   USE Euler_PositivityLimiterModule, ONLY: &
-    Euler_InitializePositivityLimiter, &
-    Euler_FinalizePositivityLimiter, &
-    Euler_ApplyPositivityLimiter
+    InitializePositivityLimiter_Euler_NonRelativistic_IDEAL, &
+    FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL, &
+    ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL
   USE GeometryFieldsModule, ONLY: &
     nGF, uGF
   USE EquationOfStateModule, ONLY: &
@@ -123,7 +123,7 @@ PROGRAM ApplicationDriver
            UseConservativeCorrection_Option = .TRUE., &
            LimiterThresholdParameter_Option = 0.015_DP )
 
-  CALL Euler_InitializePositivityLimiter &
+  CALL InitializePositivityLimiter_Euler_NonRelativistic_IDEAL &
          ( UsePositivityLimiter_Option = .TRUE., &
            Verbose_Option = .TRUE., &
            Min_1_Option = 1.0d-12, &
@@ -139,7 +139,7 @@ PROGRAM ApplicationDriver
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-  CALL Euler_ApplyPositivityLimiter &
+  CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
@@ -284,7 +284,7 @@ PROGRAM ApplicationDriver
 
   ! --- Finalize ---
 
-  CALL Euler_FinalizePositivityLimiter
+  CALL FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
   CALL Euler_FinalizeSlopeLimiter
 

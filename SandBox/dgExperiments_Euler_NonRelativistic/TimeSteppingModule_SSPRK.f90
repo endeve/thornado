@@ -10,7 +10,7 @@ MODULE TimeSteppingModule_SSPRK
   USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
     Euler_ApplySlopeLimiter_NonRelativistic
   USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL, ONLY: &
-    Euler_ApplyPositivityLimiter_NonRelativistic
+    ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_UpdateFluid
@@ -228,7 +228,7 @@ CONTAINS
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-        CALL Euler_ApplyPositivityLimiter_NonRelativistic &
+        CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
@@ -271,7 +271,7 @@ CONTAINS
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-    CALL Euler_ApplyPositivityLimiter_NonRelativistic &
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )

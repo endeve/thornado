@@ -40,9 +40,9 @@ PROGRAM ApplicationDriver
     Euler_FinalizeSlopeLimiter_NonRelativistic_TABLE, &
     Euler_ApplySlopeLimiter_NonRelativistic_TABLE
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
-    Euler_InitializePositivityLimiter_NonRelativistic_TABLE, &
-    Euler_FinalizePositivityLimiter_NonRelativistic_TABLE, &
-    Euler_ApplyPositivityLimiter_NonRelativistic_TABLE
+    InitializePositivityLimiter_Euler_NonRelativistic_TABLE, &
+    FinalizePositivityLimiter_Euler_NonRelativistic_TABLE, &
+    ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     Euler_ComputeFromConserved_NonRelativistic, &
     Euler_ComputeTimeStep_NonRelativistic
@@ -242,7 +242,7 @@ PROGRAM ApplicationDriver
            LimiterThresholdParameter_Option &
              = LimiterThresholdParameter )
 
-  CALL Euler_InitializePositivityLimiter_NonRelativistic_TABLE &
+  CALL InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
          ( UsePositivityLimiter_Option = UsePositivityLimiter, &
            Verbose_Option = .TRUE., &
            Min_1_Option = ( One + EPSILON(One) ) * MinD, &
@@ -261,7 +261,7 @@ PROGRAM ApplicationDriver
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-  CALL Euler_ApplyPositivityLimiter_NonRelativistic_TABLE &
+  CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
@@ -377,7 +377,7 @@ PROGRAM ApplicationDriver
     '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
   WRITE(*,*)
 
-  CALL Euler_FinalizePositivityLimiter_NonRelativistic_TABLE
+  CALL FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 
   CALL Euler_FinalizeSlopeLimiter_NonRelativistic_TABLE
 

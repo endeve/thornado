@@ -26,9 +26,9 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializePositivityLimiter_NonRelativistic_TABLE
-  PUBLIC :: Euler_FinalizePositivityLimiter_NonRelativistic_TABLE
-  PUBLIC :: Euler_ApplyPositivityLimiter_NonRelativistic_TABLE
+  PUBLIC :: InitializePositivityLimiter_Euler_NonRelativistic_TABLE
+  PUBLIC :: FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
+  PUBLIC :: ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 
   REAL(DP), PARAMETER   :: Unit_D     = Gram / Centimeter**3
   REAL(DP), PARAMETER   :: Unit_T     = Kelvin
@@ -46,7 +46,7 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializePositivityLimiter_NonRelativistic_TABLE &
+  SUBROUTINE InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
     ( Min_D_Option, Max_D_Option, Min_T_Option, Max_T_Option, &
       Min_Y_Option, Max_Y_Option, UsePositivityLimiter_Option, &
       Verbose_Option )
@@ -134,17 +134,17 @@ CONTAINS
 
     ALLOCATE( U_PP(nPT,nCF) )
 
-  END SUBROUTINE Euler_InitializePositivityLimiter_NonRelativistic_TABLE
+  END SUBROUTINE InitializePositivityLimiter_Euler_NonRelativistic_TABLE
 
 
-  SUBROUTINE Euler_FinalizePositivityLimiter_NonRelativistic_TABLE
+  SUBROUTINE FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 
     DEALLOCATE( U_PP )
 
-  END SUBROUTINE Euler_FinalizePositivityLimiter_NonRelativistic_TABLE
+  END SUBROUTINE FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 
 
-  SUBROUTINE Euler_ApplyPositivityLimiter_NonRelativistic_TABLE &
+  SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, ResetIndicators_Option )
 
     INTEGER,  INTENT(in)    :: &
@@ -374,7 +374,7 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE Euler_ApplyPositivityLimiter_NonRelativistic_TABLE
+  END SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 
 
   SUBROUTINE ComputePointValues_Fluid( U_q, U_p )
