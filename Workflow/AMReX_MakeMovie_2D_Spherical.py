@@ -25,26 +25,29 @@ HOME = subprocess.check_output( ["echo $HOME"], shell = True)
 HOME = HOME[:-1].decode( "utf-8" ) + '/'
 
 ############# User input #############
-DataDirectory = HOME + 'Research/DataFromPastRuns/AstroNum2019/SAS2D_HLL/'
-ProblemName   = 'SAS' # Only used for name of movie file
+DataDirectory \
+  = HOME + 'Research/DataFromPastRuns/SASI_nNodes3_HLL_NoTCI_200x128/'
 
-# Create new variables following method used near line 97
-VariableToPlot = 'PF_D'
+ProblemName   = 'SASI' # Only used for name of movie file
 
-MakeMovie        = True
+# Create new variables following method used near line 95
+VariableToPlot = 'LorentzFactor'
+
 DataFileName     = 'MovieData_{:}.dat'.format( VariableToPlot )
 TimeFileName     = 'MovieTime.dat'
-UseLogScale      = True      # Do you want your movie in log scale?
+UseLogScale      = False      # Do you want your movie in log scale?
 UsePhysicalUnits = True      # Are you using physical units?
 Relativistic     = True      # Are you plotting results from relativistic hydro?
 cmap             = 'Purples' # Color scheme for movie
-UseCustomTicks   = True      # Define limits for colorbar near line 171
+UseCustomTicks   = True      # Define limits for colorbar near line 164
 ############# End of user input #############
 
 if( UsePhysicalUnits ):
-    c = 2.99792458e8
+    c = 2.99792458e10
+    Centimeter = 1.0e5 # Centimeters per kilometer
 else:
     c = 1.0
+    Centimeter = 1.0
 
 # Get last plotfile in directory
 FileArray = np.sort(np.array( [ file for file in listdir( DataDirectory ) ] ) )
@@ -97,9 +100,9 @@ if( Overwrite ):
             AF_Gm = CoveringGrid['AF_Gm'].to_ndarray()[:,:,0]
             Data[i] = AF_P / PF_D**AF_Gm
         elif( VariableToPlot == 'LorentzFactor' ):
-            PF_V1 = CoveringGrid['PF_V1'   ].to_ndarray()[:,:,0]
-            PF_V2 = CoveringGrid['PF_V2'   ].to_ndarray()[:,:,0]
-            PF_V3 = CoveringGrid['PF_V3'   ].to_ndarray()[:,:,0]
+            PF_V1 = CoveringGrid['PF_V1'   ].to_ndarray()[:,:,0] * Centimeter
+            PF_V2 = CoveringGrid['PF_V2'   ].to_ndarray()[:,:,0] * Centimeter
+            PF_V3 = CoveringGrid['PF_V3'   ].to_ndarray()[:,:,0] * Centimeter
             GF_g1 = CoveringGrid['GF_Gm_11'].to_ndarray()[:,:,0]
             GF_g2 = CoveringGrid['GF_Gm_22'].to_ndarray()[:,:,0]
             GF_g3 = CoveringGrid['GF_Gm_33'].to_ndarray()[:,:,0]
@@ -117,6 +120,9 @@ if( Overwrite ):
                 Data[i] = ( PF_E + AF_P ) / PF_D
         else:
             Data[i] = CoveringGrid[VariableToPlot].to_ndarray()[:,:,0]
+            if( VariableToPlot[-2] == 'V' ):
+                Data[i] *= Centimeter
+
         Time[i] = ds.current_time
 
     # Save multi-D array with np.savetxt. Taken from:
@@ -159,7 +165,7 @@ else:
         return Data[t]
 
 if( UseCustomTicks ):
-    vmin = 1.0e8
+    vmin = 1.0
     vmax = max( -np.inf, np.max( Data ) )
     if( UseLogScale ):
         ticks = np.logspace( np.log10( vmin ), np.log10( vmax ), 5 )

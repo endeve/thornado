@@ -514,9 +514,9 @@ CONTAINS
     unitsGF(iGF_Gm_dd_33) = 1.0_amrex_real
     unitsGF(iGF_SqrtGm)   = 1.0_amrex_real
     unitsGF(iGF_Alpha)    = 1.0_amrex_real
-    unitsGF(iGF_Beta_1)   = 1.0_amrex_real
-    unitsGF(iGF_Beta_2)   = 1.0_amrex_real
-    unitsGF(iGF_Beta_3)   = 1.0_amrex_real
+    unitsGF(iGF_Beta_1)   = Kilometer / Second
+    unitsGF(iGF_Beta_2)   = Kilometer / Second
+    unitsGF(iGF_Beta_3)   = Kilometer / Second
     unitsGF(iGF_Psi)      = 1.0_amrex_real
 
     ! --- Conserved ---
