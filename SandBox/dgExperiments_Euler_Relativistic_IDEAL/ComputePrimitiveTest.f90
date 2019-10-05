@@ -12,7 +12,7 @@ PROGRAM ComputePrimitiveTest
     FinalizeEquationOfState, &
     ComputePressureFromPrimitive
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    Euler_ComputePrimitive_Relativistic, &
+    ComputePrimitive_Euler_Relativistic, &
     ComputeFunJacP, &
     ComputePressureWithBisectionMethod, &
     ComputePressureWithBrentsMethod
@@ -70,9 +70,9 @@ PROGRAM ComputePrimitiveTest
   WRITE(*,'(A)') 'Created FunP array!'
   WRITE(*,*)
 
-  WRITE(*,'(A)') 'CALL Euler_ComputePrimitive_Relativistic:'
+  WRITE(*,'(A)') 'CALL ComputePrimitive_Euler_Relativistic:'
   WRITE(*,'(A)') '-----------------------------------------'
-  CALL Euler_ComputePrimitive_Relativistic &
+  CALL ComputePrimitive_Euler_Relativistic &
          ( U(:,iCF_D), &
            U(:,iCF_S1), U(:,iCF_S2), U(:,iCF_S3), &
            U(:,iCF_E), U(:,iCF_Ne), &

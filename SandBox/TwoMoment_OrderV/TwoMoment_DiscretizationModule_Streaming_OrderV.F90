@@ -50,7 +50,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    Euler_ComputePrimitive_NonRelativistic
+    ComputePrimitive_Euler_NonRelativistic
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -428,7 +428,7 @@ CONTAINS
 
       ! --- Left States ---
 
-      CALL Euler_ComputePrimitive_NonRelativistic &
+      CALL ComputePrimitive_Euler_NonRelativistic &
              ( uCF_L(:,iZ3,iZ4,iZ2,iCF_D ), &
                uCF_L(:,iZ3,iZ4,iZ2,iCF_S1), &
                uCF_L(:,iZ3,iZ4,iZ2,iCF_S2), &
@@ -450,7 +450,7 @@ CONTAINS
 
       ! --- Right States ---
 
-      CALL Euler_ComputePrimitive_NonRelativistic &
+      CALL ComputePrimitive_Euler_NonRelativistic &
              ( uCF_R(:,iZ3,iZ4,iZ2,iCF_D ), &
                uCF_R(:,iZ3,iZ4,iZ2,iCF_S1), &
                uCF_R(:,iZ3,iZ4,iZ2,iCF_S2), &
@@ -708,7 +708,7 @@ CONTAINS
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
 
-      CALL Euler_ComputePrimitive_NonRelativistic &
+      CALL ComputePrimitive_Euler_NonRelativistic &
              ( uCF_K (:,iZ3,iZ4,iZ2,iCF_D ), &
                uCF_K (:,iZ3,iZ4,iZ2,iCF_S1), &
                uCF_K (:,iZ3,iZ4,iZ2,iCF_S2), &
@@ -1003,7 +1003,7 @@ CONTAINS
 
       DO iNodeX = 1, nDOFX_X1
 
-        CALL Euler_ComputePrimitive_NonRelativistic &
+        CALL ComputePrimitive_Euler_NonRelativistic &
                ( uCF_L(iNodeX,iZ3,iZ4,iZ2,iCF_D ), &
                  uCF_L(iNodeX,iZ3,iZ4,iZ2,iCF_S1), &
                  uCF_L(iNodeX,iZ3,iZ4,iZ2,iCF_S2), &
@@ -1020,7 +1020,7 @@ CONTAINS
                  GX_F (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_22), &
                  GX_F (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_33) )
 
-        CALL Euler_ComputePrimitive_NonRelativistic &
+        CALL ComputePrimitive_Euler_NonRelativistic &
                ( uCF_R(iNodeX,iZ3,iZ4,iZ2,iCF_D ), &
                  uCF_R(iNodeX,iZ3,iZ4,iZ2,iCF_S1), &
                  uCF_R(iNodeX,iZ3,iZ4,iZ2,iCF_S2), &
@@ -1124,7 +1124,7 @@ CONTAINS
 
       DO iNodeX = 1, nDOFX
 
-        CALL Euler_ComputePrimitive_NonRelativistic &
+        CALL ComputePrimitive_Euler_NonRelativistic &
                ( uCF_K(iNodeX,iZ3,iZ4,iZ2,iCF_D ), &
                  uCF_K(iNodeX,iZ3,iZ4,iZ2,iCF_S1), &
                  uCF_K(iNodeX,iZ3,iZ4,iZ2,iCF_S2), &

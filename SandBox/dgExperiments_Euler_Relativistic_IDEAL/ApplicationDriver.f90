@@ -30,8 +30,8 @@ PROGRAM ApplicationDriver
     FinalizePositivityLimiter_Euler_Relativistic_IDEAL, &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    Euler_ComputeFromConserved_Relativistic, &
-    Euler_ComputeTimeStep_Relativistic
+    ComputeFromConserved_Euler_Relativistic, &
+    ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE FluidFieldsModule, ONLY: &
@@ -396,7 +396,7 @@ PROGRAM ApplicationDriver
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
 
   CALL TimersStart_Euler( Timer_Euler_InputOutput )
-  CALL Euler_ComputeFromConserved_Relativistic &
+  CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
            uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
@@ -438,7 +438,7 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    CALL Euler_ComputeTimeStep_Relativistic &
+    CALL ComputeTimeStep_Euler_Relativistic &
            ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
              uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                          iX_B1(2):iX_E1(2), &
@@ -489,7 +489,7 @@ PROGRAM ApplicationDriver
     IF( wrt )THEN
 
       CALL TimersStart_Euler( Timer_Euler_InputOutput )
-      CALL Euler_ComputeFromConserved_Relativistic &
+      CALL ComputeFromConserved_Euler_Relativistic &
              ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
                uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
@@ -526,7 +526,7 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
 
   CALL TimersStart_Euler( Timer_Euler_InputOutput )
-  CALL Euler_ComputeFromConserved_Relativistic &
+  CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
            uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &

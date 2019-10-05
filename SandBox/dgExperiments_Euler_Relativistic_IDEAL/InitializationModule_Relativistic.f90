@@ -21,7 +21,7 @@ MODULE InitializationModule_Relativistic
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    Euler_ComputeConserved_Relativistic
+    ComputeConserved_Euler_Relativistic
   USE UnitsModule, ONLY: &
     Meter, Kilogram, Second, Joule
   USE UtilitiesModule, ONLY: &
@@ -322,7 +322,7 @@ CONTAINS
 
         END DO
 
-      CALL Euler_ComputeConserved_Relativistic &
+      CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -440,7 +440,7 @@ CONTAINS
 
       END DO
 
-      CALL Euler_ComputeConserved_Relativistic &
+      CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -533,7 +533,7 @@ CONTAINS
 
         END DO
 
-      CALL Euler_ComputeConserved_Relativistic &
+      CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -616,7 +616,7 @@ CONTAINS
 
       END DO
 
-      CALL Euler_ComputeConserved_Relativistic &
+      CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -699,7 +699,7 @@ CONTAINS
 
       END DO
 
-      CALL Euler_ComputeConserved_Relativistic &
+      CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -784,7 +784,7 @@ CONTAINS
 
       END DO
 
-      CALL Euler_ComputeConserved_Relativistic &
+      CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -864,7 +864,7 @@ CONTAINS
 
       END DO ! --- Loop over nodes ---
 
-      CALL Euler_ComputeConserved_Relativistic &
+      CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &

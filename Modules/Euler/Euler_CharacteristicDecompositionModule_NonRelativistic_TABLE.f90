@@ -13,7 +13,7 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    Euler_ComputePrimitive_NonRelativistic
+    ComputePrimitive_Euler_NonRelativistic
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeSpecificInternalEnergy_TABLE, &
     ComputeAuxiliary_Fluid_TABLE, &
@@ -49,7 +49,7 @@ CONTAINS
     REAL(DP), DIMENSION(1) :: X, Alpha, B, Delta, Zero2
     REAL(DP), DIMENSION(3) :: Phi
 
-    CALL Euler_ComputePrimitive_NonRelativistic &
+    CALL ComputePrimitive_Euler_NonRelativistic &
            ( [ U(iCF_D ) ], [ U(iCF_S1) ], [ U(iCF_S2) ], &
              [ U(iCF_S3) ], [ U(iCF_E ) ], [ U(iCF_Ne) ], &
              D, V1, V2, V3, E, Ne, &

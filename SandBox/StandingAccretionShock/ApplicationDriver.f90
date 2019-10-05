@@ -44,8 +44,8 @@ PROGRAM ApplicationDriver
   USE InitializationModule, ONLY: &
     InitializeFields, ApplyPerturbations
   USE Euler_UtilitiesModule, ONLY: &
-    Euler_ComputeFromConserved, &
-    Euler_ComputeTimeStep
+    ComputeFromConserved_Euler, &
+    ComputeTimeStep_Euler
   USE Euler_dgDiscretizationModule, ONLY: &
     Euler_ComputeIncrement_DG_Explicit
   USE Euler_TallyModule_NonRelativistic, ONLY: &
@@ -144,7 +144,7 @@ PROGRAM ApplicationDriver
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-  CALL Euler_ComputeFromConserved &
+  CALL ComputeFromConserved_Euler &
          ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
            uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
@@ -180,7 +180,7 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    CALL Euler_ComputeTimeStep &
+    CALL ComputeTimeStep_Euler &
            ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
              uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                          iX_B1(2):iX_E1(2), &
@@ -219,7 +219,7 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
-      CALL Euler_ComputeFromConserved &
+      CALL ComputeFromConserved_Euler &
              ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
                uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
@@ -249,7 +249,7 @@ PROGRAM ApplicationDriver
 
   END DO
 
-  CALL Euler_ComputeFromConserved &
+  CALL ComputeFromConserved_Euler &
          ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
            uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &

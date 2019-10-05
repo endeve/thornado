@@ -18,7 +18,7 @@ MODULE InitializationModule
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    Euler_ComputeConserved_NonRelativistic
+    ComputeConserved_Euler_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
@@ -94,7 +94,7 @@ CONTAINS
 
       END DO
 
-      CALL Euler_ComputeConserved_NonRelativistic &
+      CALL ComputeConserved_Euler_NonRelativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), &
                uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), &
@@ -192,7 +192,7 @@ CONTAINS
 
       END DO
 
-      CALL Euler_ComputeConserved_NonRelativistic &
+      CALL ComputeConserved_Euler_NonRelativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), &
                uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), &

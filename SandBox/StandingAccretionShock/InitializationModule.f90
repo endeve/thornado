@@ -18,7 +18,7 @@ MODULE InitializationModule
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uAF, iAF_P
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    Euler_ComputeConserved_NonRelativistic
+    ComputeConserved_Euler_NonRelativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -122,7 +122,7 @@ CONTAINS
 
           END DO
 
-          CALL Euler_ComputeConserved_NonRelativistic &
+          CALL ComputeConserved_Euler_NonRelativistic &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                    uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                    uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -183,7 +183,7 @@ CONTAINS
 
           END DO
 
-          CALL Euler_ComputeConserved_NonRelativistic &
+          CALL ComputeConserved_Euler_NonRelativistic &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                    uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                    uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &

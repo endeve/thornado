@@ -2,9 +2,9 @@
 !> Find the equations in Rezzolla & Zanotti, Relativistic Hydrodynamics, 2013,
 !> Equation 7.234.
 !> @param TolP Threshold for step-size in Newton-Raphson algorithm in
-!>             Euler_ComputePrimitive_Relativistic to accept solution.
+!>             ComputePrimitive_Euler_Relativistic to accept solution.
 !> @param TolFunP Threshold for function in Newton-Raphson algorithm in
-!>                Euler_ComputePrimitive_Relativistic to accept solution.
+!>                ComputePrimitive_Euler_Relativistic to accept solution.
 !> @todo Find optimal values for parameters TolP and TolFunP.
 MODULE Euler_UtilitiesModule_Relativistic
 
@@ -30,21 +30,21 @@ MODULE Euler_UtilitiesModule_Relativistic
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_ComputePrimitive_Relativistic
-  PUBLIC :: Euler_ComputeConserved_Relativistic
-  PUBLIC :: Euler_ComputeFromConserved_Relativistic
-  PUBLIC :: Euler_ComputeTimeStep_Relativistic
-  PUBLIC :: Euler_Eigenvalues_Relativistic
-  PUBLIC :: Euler_AlphaMiddle_Relativistic
-  PUBLIC :: Euler_Flux_X1_Relativistic
-  PUBLIC :: Euler_Flux_X2_Relativistic
-  PUBLIC :: Euler_Flux_X3_Relativistic
-  PUBLIC :: Euler_StressTensor_Diagonal_Relativistic
-  PUBLIC :: Euler_NumericalFlux_LLF_Relativistic
-  PUBLIC :: Euler_NumericalFlux_HLL_Relativistic
-  PUBLIC :: Euler_NumericalFlux_X1_HLLC_Relativistic
-  PUBLIC :: Euler_NumericalFlux_X2_HLLC_Relativistic
-  PUBLIC :: Euler_NumericalFlux_X3_HLLC_Relativistic
+  PUBLIC :: ComputePrimitive_Euler_Relativistic
+  PUBLIC :: ComputeConserved_Euler_Relativistic
+  PUBLIC :: ComputeFromConserved_Euler_Relativistic
+  PUBLIC :: ComputeTimeStep_Euler_Relativistic
+  PUBLIC :: Eigenvalues_Euler_Relativistic
+  PUBLIC :: AlphaMiddle_Euler_Relativistic
+  PUBLIC :: Flux_X1_Euler_Relativistic
+  PUBLIC :: Flux_X2_Euler_Relativistic
+  PUBLIC :: Flux_X3_Euler_Relativistic
+  PUBLIC :: StressTensor_Diagonal_Euler_Relativistic
+  PUBLIC :: NumericalFlux_LLF_Euler_Relativistic
+  PUBLIC :: NumericalFlux_HLL_Euler_Relativistic
+  PUBLIC :: NumericalFlux_X1_HLLC_Euler_Relativistic
+  PUBLIC :: NumericalFlux_X2_HLLC_Euler_Relativistic
+  PUBLIC :: NumericalFlux_X3_HLLC_Euler_Relativistic
 
   PRIVATE :: ComputeFunJacP
   PRIVATE :: ComputePressureWithBisectionMethod
@@ -62,7 +62,7 @@ CONTAINS
   !> Use bisection algorithm to obtain an initial guess for the pressure,
   !> then use Newton-Raphson method hone-in on the actual pressure
   !> @todo Decide whether or not to send in previous pressure as initial guess.
-  SUBROUTINE Euler_ComputePrimitive_Relativistic &
+  SUBROUTINE ComputePrimitive_Euler_Relativistic &
               ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
                 PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
                 GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
@@ -90,7 +90,7 @@ CONTAINS
 
       IF( q .LT. Zero )THEN
         WRITE(*,*)
-        WRITE(*,'(A)')            'Euler_ComputePrimitive_Relativistic'
+        WRITE(*,'(A)')            'ComputePrimitive_Euler_Relativistic'
         WRITE(*,'(A)')            '-----------------------------------'
         WRITE(*,'(A6,I1)')        'Node:    ', i
         WRITE(*,'(A9,ES18.10E3)') 'q:       ', q
@@ -230,11 +230,11 @@ CONTAINS
    END DO ! --- End of loop over nodes ---
 
 
-  END SUBROUTINE Euler_ComputePrimitive_Relativistic
+  END SUBROUTINE ComputePrimitive_Euler_Relativistic
 
 
   !> Compute conserved variables from primitive variables.
-  SUBROUTINE Euler_ComputeConserved_Relativistic &
+  SUBROUTINE ComputeConserved_Euler_Relativistic &
     ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       Gm11, Gm22, Gm33, &
@@ -260,12 +260,12 @@ CONTAINS
     CF_E  = h * W**2 * PF_D - AF_P - W * PF_D
     CF_Ne = W * PF_Ne
 
-  END SUBROUTINE Euler_ComputeConserved_Relativistic
+  END SUBROUTINE ComputeConserved_Euler_Relativistic
 
 
   !> Compute primitive variables, pressure, and sound-speed from conserved
   !> variables for a data block.
-  SUBROUTINE Euler_ComputeFromConserved_Relativistic &
+  SUBROUTINE ComputeFromConserved_Euler_Relativistic &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
 
     INTEGER,  INTENT(in)  :: &
@@ -284,7 +284,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      CALL Euler_ComputePrimitive_Relativistic &
+      CALL ComputePrimitive_Euler_Relativistic &
              ( U(1:nDOFX,iX1,iX2,iX3,iCF_D),         &
                U(1:nDOFX,iX1,iX2,iX3,iCF_S1),        &
                U(1:nDOFX,iX1,iX2,iX3,iCF_S2),        &
@@ -317,12 +317,12 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE Euler_ComputeFromConserved_Relativistic
+  END SUBROUTINE ComputeFromConserved_Euler_Relativistic
 
 
   !> Loop over all the elements in the spatial domain and compute the minimum
   !> required time-step for numerical stability.
-  SUBROUTINE Euler_ComputeTimeStep_Relativistic &
+  SUBROUTINE ComputeTimeStep_Euler_Relativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
 
     INTEGER,  INTENT(in)  :: &
@@ -359,7 +359,7 @@ CONTAINS
       dX(2) = MeshX(2) % Width(iX2)
       dX(3) = MeshX(3) % Width(iX3)
 
-      CALL Euler_ComputePrimitive_Relativistic &
+      CALL ComputePrimitive_Euler_Relativistic &
              ( U(1:nDOFX,iX1,iX2,iX3,iCF_D ), &
                U(1:nDOFX,iX1,iX2,iX3,iCF_S1), &
                U(1:nDOFX,iX1,iX2,iX3,iCF_S2), &
@@ -385,7 +385,7 @@ CONTAINS
         DO iNodeX = 1, nDOFX
 
           EigVals_X1(1:nCF,iNodeX) &
-            = Euler_Eigenvalues_Relativistic &
+            = Eigenvalues_Euler_Relativistic &
                 ( P (iNodeX,iPF_V1), &
                   Cs(iNodeX),        &
                   G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
@@ -409,7 +409,7 @@ CONTAINS
         DO iNodeX = 1, nDOFX
 
           EigVals_X1(1:nCF,iNodeX) &
-            = Euler_Eigenvalues_Relativistic &
+            = Eigenvalues_Euler_Relativistic &
                 ( P (iNodeX,iPF_V1), &
                   Cs(iNodeX),        &
                   G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
@@ -423,7 +423,7 @@ CONTAINS
                   G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
 
           EigVals_X2(1:nCF,iNodeX) &
-            = Euler_Eigenvalues_Relativistic &
+            = Eigenvalues_Euler_Relativistic &
                 ( P (iNodeX,iPF_V2), &
                   Cs(iNodeX),        &
                   G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
@@ -448,7 +448,7 @@ CONTAINS
         DO iNodeX = 1, nDOFX
 
           EigVals_X1(1:nCF,iNodeX) &
-            = Euler_Eigenvalues_Relativistic &
+            = Eigenvalues_Euler_Relativistic &
                 ( P (iNodeX,iPF_V1), &
                   Cs(iNodeX),        &
                   G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
@@ -462,7 +462,7 @@ CONTAINS
                   G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
 
           EigVals_X2(1:nCF,iNodeX) &
-            = Euler_Eigenvalues_Relativistic &
+            = Eigenvalues_Euler_Relativistic &
                 ( P (iNodeX,iPF_V2), &
                   Cs(iNodeX),        &
                   G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
@@ -476,7 +476,7 @@ CONTAINS
                   G (iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
 
           EigVals_X3(1:nCF,iNodeX) &
-            = Euler_Eigenvalues_Relativistic &
+            = Eigenvalues_Euler_Relativistic &
                 ( P (iNodeX,iPF_V3),   &
                   Cs(iNodeX),          &
                   G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
@@ -509,7 +509,7 @@ CONTAINS
 
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
 
-  END SUBROUTINE Euler_ComputeTimeStep_Relativistic
+  END SUBROUTINE ComputeTimeStep_Euler_Relativistic
 
 
   !> Compute the eigenvalues of the flux-Jacobian.
@@ -517,47 +517,47 @@ CONTAINS
   !> @param Vi The ith contravariant component of the three-velocity.
   !> @param Gmii The ith covariant component of the spatial three-metric.
   !> @param Shift The ith contravariant component of the shift-vector.
-  PURE FUNCTION Euler_Eigenvalues_Relativistic &
+  PURE FUNCTION Eigenvalues_Euler_Relativistic &
     ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift )
 
     REAL(DP), INTENT(in) :: Vi, Cs, Gmii, V1, V2, V3, &
                             Gm11, Gm22, Gm33, Lapse, Shift
 
-    REAL(DP) :: VSq, Euler_Eigenvalues_Relativistic(nCF)
+    REAL(DP) :: VSq, Eigenvalues_Euler_Relativistic(nCF)
 
     VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
 
-    Euler_Eigenvalues_Relativistic(1) &
+    Eigenvalues_Euler_Relativistic(1) &
       = Lapse / ( One - VSq * Cs**2 ) * ( Vi * ( One - Cs**2 ) &
         - Cs * SQRT( ( One - VSq ) * ( ( One - VSq * Cs**2 ) / Gmii &
            - Vi**2 * ( One - Cs**2 ) ) ) ) - Shift
 
-    Euler_Eigenvalues_Relativistic(2) &
+    Eigenvalues_Euler_Relativistic(2) &
       = Lapse * Vi - Shift
 
-    Euler_Eigenvalues_Relativistic(3) &
+    Eigenvalues_Euler_Relativistic(3) &
       = Lapse / ( One - VSq * Cs**2 ) * ( Vi * ( One - Cs**2 ) &
         + Cs * SQRT( ( One - VSq ) * ( ( One - VSq * Cs**2 ) / Gmii &
            - Vi**2 * ( One - Cs**2 ) ) ) ) - Shift
 
-    Euler_Eigenvalues_Relativistic(4) &
+    Eigenvalues_Euler_Relativistic(4) &
       = Lapse * Vi - Shift
 
-    Euler_Eigenvalues_Relativistic(5) &
+    Eigenvalues_Euler_Relativistic(5) &
       = Lapse * Vi - Shift
 
-    Euler_Eigenvalues_Relativistic(6) &
+    Eigenvalues_Euler_Relativistic(6) &
       = Lapse * Vi - Shift
 
     RETURN
-  END FUNCTION Euler_Eigenvalues_Relativistic
+  END FUNCTION Eigenvalues_Euler_Relativistic
 
 
   !> Estimate the contact wave-speed as suggested by
   !> Mignone & Bodo, (2005), MNRAS, 364, 126.
   !> @param Shift The ith contravariant component of the shift-vector.
   !> @param Gmii The ith covariant component of the spatial three-metric.
-  REAL(DP) FUNCTION Euler_AlphaMiddle_Relativistic &
+  REAL(DP) FUNCTION AlphaMiddle_Euler_Relativistic &
     ( DL, SL, tauL, F_DL, F_SL, F_tauL, DR, SR, tauR, F_DR, F_SR, F_tauR, &
       Gmii, aP, aM, Lapse, Shift )
 
@@ -592,212 +592,212 @@ CONTAINS
     ELSE IF( ( ABS( a2 ) .LT. SqrtTiny ) .AND. ( ABS( a1 ) .LT. SqrtTiny ) )THEN
       STOP 'AlphaMiddle is undefined'
     ELSE IF( ( ABS( a2 ) .LT. SqrtTiny ) .AND. ( ABS( a0 ) .LT. SqrtTiny ) )THEN
-      Euler_AlphaMiddle_Relativistic = Zero
+      AlphaMiddle_Euler_Relativistic = Zero
     ELSE IF( ABS( a2 ) .LT. SqrtTiny )THEN
-      Euler_AlphaMiddle_Relativistic = -a0 / a1
+      AlphaMiddle_Euler_Relativistic = -a0 / a1
     ELSE IF( ABS( a0 ) .LT. SqrtTiny )THEN
-       Euler_AlphaMiddle_Relativistic = Zero
+       AlphaMiddle_Euler_Relativistic = Zero
     ELSE
-      Euler_AlphaMiddle_Relativistic &
+      AlphaMiddle_Euler_Relativistic &
         = ( -a1 - SQRT( MAX( a1**2 - Four * a2 * a0, SqrtTiny ) ) ) &
             / ( Two * a2 )
     END IF
 
     RETURN
-  END FUNCTION Euler_AlphaMiddle_Relativistic
+  END FUNCTION AlphaMiddle_Euler_Relativistic
 
 
   !> Compute the physical flux in the X1-direction.
   !> @param Vi The ith contravariant components of the three-velocity.
   !> @param Gmii The ith covariant components of the spatial three-metric.
   !> @param Shift The first contravariant component of the shift-vector.
-  PURE FUNCTION Euler_Flux_X1_Relativistic &
+  PURE FUNCTION Flux_X1_Euler_Relativistic &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
 
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
                             Gm11, Gm22, Gm33, Lapse, Shift
 
-    REAL(DP) :: VSq, W, h, Euler_Flux_X1_Relativistic(nCF)
+    REAL(DP) :: VSq, W, h, Flux_X1_Euler_Relativistic(nCF)
 
     VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
     W   = 1.0d0 / SQRT( 1.0d0 - VSq )
     h   = 1.0d0 + ( E + P ) / D
 
-    Euler_Flux_X1_Relativistic(iCF_D)  &
+    Flux_X1_Euler_Relativistic(iCF_D)  &
       = D * W * ( V1 - Shift / Lapse )
 
-    Euler_Flux_X1_Relativistic(iCF_S1) &
+    Flux_X1_Euler_Relativistic(iCF_S1) &
       = D * h * W**2 * Gm11 * V1  * ( V1 - Shift / Lapse ) + P
 
-    Euler_Flux_X1_Relativistic(iCF_S2) &
+    Flux_X1_Euler_Relativistic(iCF_S2) &
       = D * h * W**2 * Gm22 * V2  * ( V1 - Shift / Lapse )
 
-    Euler_Flux_X1_Relativistic(iCF_S3) &
+    Flux_X1_Euler_Relativistic(iCF_S3) &
       = D * h * W**2 * Gm33 * V3  * ( V1 - Shift / Lapse )
 
-    Euler_Flux_X1_Relativistic(iCF_E)  &
+    Flux_X1_Euler_Relativistic(iCF_E)  &
       = D * W * ( h * W - 1.0d0 ) * ( V1 - Shift / Lapse ) + Shift / Lapse * P
 
-    Euler_Flux_X1_Relativistic(iCF_Ne) &
+    Flux_X1_Euler_Relativistic(iCF_Ne) &
       = Ne * W * ( V1 - Shift / Lapse )
 
     RETURN
-  END FUNCTION Euler_Flux_X1_Relativistic
+  END FUNCTION Flux_X1_Euler_Relativistic
 
 
   !> Compute the physical flux in the X2-direction.
   !> @param Vi The ith contravariant components of the three-velocity.
   !> @param Gmii The ith covariant components of the spatial three-metric.
   !> @param Shift The first contravariant component of the shift-vector.
-  PURE FUNCTION Euler_Flux_X2_Relativistic &
+  PURE FUNCTION Flux_X2_Euler_Relativistic &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
 
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
                             Gm11, Gm22, Gm33, Lapse, Shift
 
-    REAL(DP) :: VSq, W, h, Euler_Flux_X2_Relativistic(nCF)
+    REAL(DP) :: VSq, W, h, Flux_X2_Euler_Relativistic(nCF)
 
     VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
     W   = 1.0d0 / SQRT( 1.0d0 - VSq )
     h   = 1.0d0 + ( E + P ) / D
 
-    Euler_Flux_X2_Relativistic(iCF_D)  &
+    Flux_X2_Euler_Relativistic(iCF_D)  &
       = D * W * ( V2 - Shift / Lapse )
 
-    Euler_Flux_X2_Relativistic(iCF_S1) &
+    Flux_X2_Euler_Relativistic(iCF_S1) &
       = D * h * W**2 * Gm11 * V1  * ( V2 - Shift / Lapse )
 
-    Euler_Flux_X2_Relativistic(iCF_S2) &
+    Flux_X2_Euler_Relativistic(iCF_S2) &
       = D * h * W**2 * Gm22 * V2  * ( V2 - Shift / Lapse ) + P
 
-    Euler_Flux_X2_Relativistic(iCF_S3) &
+    Flux_X2_Euler_Relativistic(iCF_S3) &
       = D * h * W**2 * Gm33 * V3  * ( V2 - Shift / Lapse )
 
-    Euler_Flux_X2_Relativistic(iCF_E)  &
+    Flux_X2_Euler_Relativistic(iCF_E)  &
       = D * W * ( h * W - 1.0d0 ) * ( V2 - Shift / Lapse ) + Shift / Lapse * P
 
-    Euler_Flux_X2_Relativistic(iCF_Ne) &
+    Flux_X2_Euler_Relativistic(iCF_Ne) &
       = Ne * W * ( V2 - Shift / Lapse )
 
     RETURN
-  END FUNCTION Euler_Flux_X2_Relativistic
+  END FUNCTION Flux_X2_Euler_Relativistic
 
 
   !> Compute the physical flux in the X3-direction.
   !> @param Vi The ith contravariant components of the three-velocity.
   !> @param Gmii The ith covariant components of the spatial three-metric.
   !> @param Shift The first contravariant component of the shift-vector.
-  PURE FUNCTION Euler_Flux_X3_Relativistic &
+  PURE FUNCTION Flux_X3_Euler_Relativistic &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
 
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
                             Gm11, Gm22, Gm33, Lapse, Shift
 
-    REAL(DP) :: VSq, W, h, Euler_Flux_X3_Relativistic(nCF)
+    REAL(DP) :: VSq, W, h, Flux_X3_Euler_Relativistic(nCF)
 
     VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
     W   = 1.0d0 / SQRT( 1.0d0 - VSq )
     h   = 1.0d0 + ( E + P ) / D
 
-    Euler_Flux_X3_Relativistic(iCF_D)  &
+    Flux_X3_Euler_Relativistic(iCF_D)  &
       = D * W * ( V3 - Shift / Lapse )
 
-    Euler_Flux_X3_Relativistic(iCF_S1) &
+    Flux_X3_Euler_Relativistic(iCF_S1) &
       = D * h * W**2 * Gm11 * V1  * ( V3 - Shift / Lapse )
 
-    Euler_Flux_X3_Relativistic(iCF_S2) &
+    Flux_X3_Euler_Relativistic(iCF_S2) &
       = D * h * W**2 * Gm22 * V2  * ( V3 - Shift / Lapse )
 
-    Euler_Flux_X3_Relativistic(iCF_S3) &
+    Flux_X3_Euler_Relativistic(iCF_S3) &
       = D * h * W**2 * Gm33 * V3  * ( V3 - Shift / Lapse ) + P
 
-    Euler_Flux_X3_Relativistic(iCF_E)  &
+    Flux_X3_Euler_Relativistic(iCF_E)  &
       = D * W * ( h * W - 1.0d0 ) * ( V3 - Shift / Lapse ) + Shift / Lapse * P
 
-    Euler_Flux_X3_Relativistic(iCF_Ne) &
+    Flux_X3_Euler_Relativistic(iCF_Ne) &
       = Ne * W * ( V3 - Shift / Lapse )
 
     RETURN
-  END FUNCTION Euler_Flux_X3_Relativistic
+  END FUNCTION Flux_X3_Euler_Relativistic
 
 
   !> Compute the diagonal elements of the stress-tensor, needed for the
   !> source-terms in the hydro equations.
   !> @param Si The ith covariant components of the conserved momentum-density.
   !> @param Vi The ith contravavriant components of the three-velocity.
-  PURE FUNCTION Euler_StressTensor_Diagonal_Relativistic &
+  PURE FUNCTION StressTensor_Diagonal_Euler_Relativistic &
     ( S1, S2, S3, V1, V2, V3, P )
 
     REAL(DP), INTENT(in) :: S1, S2, S3, V1, V2, V3, P
 
-    REAL(DP) :: Euler_StressTensor_Diagonal_Relativistic(3)
+    REAL(DP) :: StressTensor_Diagonal_Euler_Relativistic(3)
 
-    Euler_StressTensor_Diagonal_Relativistic(1) = S1 * V1 + P
-    Euler_StressTensor_Diagonal_Relativistic(2) = S2 * V2 + P
-    Euler_StressTensor_Diagonal_Relativistic(3) = S3 * V3 + P
+    StressTensor_Diagonal_Euler_Relativistic(1) = S1 * V1 + P
+    StressTensor_Diagonal_Euler_Relativistic(2) = S2 * V2 + P
+    StressTensor_Diagonal_Euler_Relativistic(3) = S3 * V3 + P
 
     RETURN
-  END FUNCTION Euler_StressTensor_Diagonal_Relativistic
+  END FUNCTION StressTensor_Diagonal_Euler_Relativistic
 
 
   !> Compute the Local-Lax-Friedrichs numerical flux at a given element
   !> interface, in a given dimension.
-  PURE FUNCTION Euler_NumericalFlux_LLF_Relativistic &
+  PURE FUNCTION NumericalFlux_LLF_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM )
 
     ! --- Local Lax-Friedrichs Flux ---
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), aP, aM
 
-    REAL(DP) :: Euler_NumericalFlux_LLF_Relativistic(nCF)
+    REAL(DP) :: NumericalFlux_LLF_Euler_Relativistic(nCF)
 
     REAL(DP) :: alpha
 
     alpha = MAX( aM, aP )
 
-    Euler_NumericalFlux_LLF_Relativistic &
+    NumericalFlux_LLF_Euler_Relativistic &
       = Half * ( fL + fR - alpha * ( uR - uL ) )
 
     RETURN
-  END FUNCTION Euler_NumericalFlux_LLF_Relativistic
+  END FUNCTION NumericalFlux_LLF_Euler_Relativistic
 
 
   !> Compute the Harten-Lax-van-Leer numerical flux at a given element
   !> interface, in a given dimension.
-  PURE FUNCTION Euler_NumericalFlux_HLL_Relativistic &
+  PURE FUNCTION NumericalFlux_HLL_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), aP, aM
 
-    REAL(DP) :: Euler_NumericalFlux_HLL_Relativistic(nCF)
+    REAL(DP) :: NumericalFlux_HLL_Euler_Relativistic(nCF)
 
-    Euler_NumericalFlux_HLL_Relativistic &
+    NumericalFlux_HLL_Euler_Relativistic &
       = ( aP * fL + aM * fR - aP * aM * ( uR - uL ) ) / ( aP + aM )
 
     RETURN
-  END FUNCTION Euler_NumericalFlux_HLL_Relativistic
+  END FUNCTION NumericalFlux_HLL_Euler_Relativistic
 
 
   !> Compute the Harten-Lax-van-Leer-Contact numerical flux at a given element
   !> in the X1-direction.
   !> @param Shift The first contravariant component of the shift-vector.
   !> @param Gm11 The first covariant component of the spatial three-metric.
-  PURE FUNCTION Euler_NumericalFlux_X1_HLLC_Relativistic &
+  PURE FUNCTION NumericalFlux_X1_HLLC_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift
 
     REAL(DP) :: p, D, S1, S2, S3, E, Ne, UE, FE, FS, VelocityRatio, &
-                Euler_NumericalFlux_X1_HLLC_Relativistic(nCF)
+                NumericalFlux_X1_HLLC_Euler_Relativistic(nCF)
 
     IF( aM .EQ. Zero )THEN
 
-      Euler_NumericalFlux_X1_HLLC_Relativistic = fL
+      NumericalFlux_X1_HLLC_Euler_Relativistic = fL
 
     ELSEIF( aP .EQ. Zero )THEN
 
-      Euler_NumericalFlux_X1_HLLC_Relativistic = fR
+      NumericalFlux_X1_HLLC_Euler_Relativistic = fR
 
     ELSE
 
@@ -863,45 +863,45 @@ CONTAINS
 
       END IF
 
-      Euler_NumericalFlux_X1_HLLC_Relativistic(iCF_D)  &
+      NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_D)  &
         = D  * ( aC - Shift / Lapse )
-      Euler_NumericalFlux_X1_HLLC_Relativistic(iCF_S1) &
+      NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_S1) &
         = S1 * ( aC - Shift / Lapse ) + p
-      Euler_NumericalFlux_X1_HLLC_Relativistic(iCF_S2) &
+      NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_S2) &
         = S2 * ( aC - Shift / Lapse )
-      Euler_NumericalFlux_X1_HLLC_Relativistic(iCF_S3) &
+      NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_S3) &
         = S3 * ( aC - Shift / Lapse )
-      Euler_NumericalFlux_X1_HLLC_Relativistic(iCF_E)  &
+      NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_E)  &
         = S1 / Gm11 - D * aC - Shift / Lapse * ( E - D )
-      Euler_NumericalFlux_X1_HLLC_Relativistic(iCF_Ne) &
+      NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_Ne) &
         = Ne * ( aC - Shift / Lapse )
 
     END IF
 
     RETURN
-  END FUNCTION Euler_NumericalFlux_X1_HLLC_Relativistic
+  END FUNCTION NumericalFlux_X1_HLLC_Euler_Relativistic
 
 
   !> Compute the Harten-Lax-van-Leer-Contact numerical flux at a given element
   !> in the X2-direction.
   !> @param Shift The second contravariant component of the shift-vector.
   !> @param Gm22 The second covariant component of the spatial three-metric.
-  PURE FUNCTION Euler_NumericalFlux_X2_HLLC_Relativistic &
+  PURE FUNCTION NumericalFlux_X2_HLLC_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift
 
     REAL(DP) :: p, D, S1, S2, S3, E, Ne, UE, FE, FS, VelocityRatio
-    REAL(DP) :: Euler_NumericalFlux_X2_HLLC_Relativistic(nCF)
+    REAL(DP) :: NumericalFlux_X2_HLLC_Euler_Relativistic(nCF)
 
     IF( aM .EQ. Zero )THEN
 
-      Euler_NumericalFlux_X2_HLLC_Relativistic = fL
+      NumericalFlux_X2_HLLC_Euler_Relativistic = fL
 
     ELSEIF( aP .EQ. Zero )THEN
 
-      Euler_NumericalFlux_X2_HLLC_Relativistic = fR
+      NumericalFlux_X2_HLLC_Euler_Relativistic = fR
 
     ELSE
 
@@ -967,30 +967,30 @@ CONTAINS
 
       END IF
 
-      Euler_NumericalFlux_X2_HLLC_Relativistic(iCF_D)  &
+      NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_D)  &
         = D  * ( aC - Shift / Lapse )
-      Euler_NumericalFlux_X2_HLLC_Relativistic(iCF_S1) &
+      NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_S1) &
         = S1 * ( aC - Shift / Lapse )
-      Euler_NumericalFlux_X2_HLLC_Relativistic(iCF_S2) &
+      NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_S2) &
         = S2 * ( aC - Shift / Lapse ) + p
-      Euler_NumericalFlux_X2_HLLC_Relativistic(iCF_S3) &
+      NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_S3) &
         = S3 * ( aC - Shift / Lapse )
-      Euler_NumericalFlux_X2_HLLC_Relativistic(iCF_E)  &
+      NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_E)  &
         = S2 / Gm22 - D * aC - Shift / Lapse * ( E - D )
-      Euler_NumericalFlux_X2_HLLC_Relativistic(iCF_Ne) &
+      NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_Ne) &
         = Ne * ( aC - Shift / Lapse )
 
     END IF
 
     RETURN
-  END FUNCTION Euler_NumericalFlux_X2_HLLC_Relativistic
+  END FUNCTION NumericalFlux_X2_HLLC_Euler_Relativistic
 
 
   !> Compute the Harten-Lax-van-Leer-Contact numerical flux at a given element
   !> in the X3-direction.
   !> @param Shift The third contravariant component of the shift-vector.
   !> @param Gm33 The third covariant component of the spatial three-metric.
-  PURE FUNCTION Euler_NumericalFlux_X3_HLLC_Relativistic &
+  PURE FUNCTION NumericalFlux_X3_HLLC_Euler_Relativistic &
       ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift )
 
     ! --- Shift is the third contravariant component of the shift-vector
@@ -1000,15 +1000,15 @@ CONTAINS
                             aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift
 
     REAL(DP) :: p, D, S1, S2, S3, E, Ne, UE, FE, FS, VelocityRatio
-    REAL(DP) :: Euler_NumericalFlux_X3_HLLC_Relativistic(nCF)
+    REAL(DP) :: NumericalFlux_X3_HLLC_Euler_Relativistic(nCF)
 
     IF( aM .EQ. Zero )THEN
 
-      Euler_NumericalFlux_X3_HLLC_Relativistic = fL
+      NumericalFlux_X3_HLLC_Euler_Relativistic = fL
 
     ELSEIF( aP .EQ. Zero )THEN
 
-      Euler_NumericalFlux_X3_HLLC_Relativistic = fR
+      NumericalFlux_X3_HLLC_Euler_Relativistic = fR
 
     ELSE
 
@@ -1074,23 +1074,23 @@ CONTAINS
 
       END IF
 
-      Euler_NumericalFlux_X3_HLLC_Relativistic(iCF_D)  &
+      NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_D)  &
         = D  * ( aC - Shift / Lapse )
-      Euler_NumericalFlux_X3_HLLC_Relativistic(iCF_S1) &
+      NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_S1) &
         = S1 * ( aC - Shift / Lapse )
-      Euler_NumericalFlux_X3_HLLC_Relativistic(iCF_S2) &
+      NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_S2) &
         = S2 * ( aC - Shift / Lapse )
-      Euler_NumericalFlux_X3_HLLC_Relativistic(iCF_S3) &
+      NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_S3) &
         = S3 * ( aC - Shift / Lapse ) + p
-      Euler_NumericalFlux_X3_HLLC_Relativistic(iCF_E)  &
+      NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_E)  &
         = S3 / Gm33 - D * aC - Shift / Lapse * ( E - D )
-      Euler_NumericalFlux_X3_HLLC_Relativistic(iCF_Ne) &
+      NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_Ne) &
         = Ne * ( aC - Shift / Lapse )
 
     END IF
 
     RETURN
-  END FUNCTION Euler_NumericalFlux_X3_HLLC_Relativistic
+  END FUNCTION NumericalFlux_X3_HLLC_Euler_Relativistic
 
 
   ! --- PRIVATE FUNCTIONS/SUBROUTINES ---

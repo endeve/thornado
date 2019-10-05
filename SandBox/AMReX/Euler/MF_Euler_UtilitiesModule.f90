@@ -22,8 +22,8 @@ MODULE MF_Euler_UtilitiesModule
   USE FluidFieldsModule,     ONLY: &
     nCF, nPF, nAF
   USE Euler_UtilitiesModule, ONLY: &
-    Euler_ComputeTimeStep, &
-    Euler_ComputeFromConserved
+    ComputeTimeStep_Euler, &
+    ComputeFromConserved_Euler
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -37,7 +37,7 @@ MODULE MF_Euler_UtilitiesModule
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_DataTransfer, &
-    Timer_AMReX_Euler_ComputeTimeStep
+    Timer_AMReX_ComputeTimeStep_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -137,7 +137,7 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nAF) )
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-        CALL Euler_ComputeFromConserved &
+        CALL ComputeFromConserved_Euler &
                ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
                  G(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
@@ -204,7 +204,7 @@ CONTAINS
 
     REAL(amrex_real) :: TimeStep(0:nLevels)
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_ComputeTimeStep )
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_ComputeTimeStep_Euler )
 
     TimeStepMin = HUGE( 1.0e0_amrex_real )
 
@@ -250,7 +250,7 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nCF) )
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-        CALL Euler_ComputeTimeStep &
+        CALL ComputeTimeStep_Euler &
                ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
                  G(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
@@ -275,7 +275,7 @@ CONTAINS
 
     CALL amrex_parallel_reduce_min( TimeStepMin, nLevels+1 )
 
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_ComputeTimeStep )
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_ComputeTimeStep_Euler )
 
   END SUBROUTINE MF_ComputeTimeStep
 

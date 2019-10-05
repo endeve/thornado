@@ -41,8 +41,8 @@ PROGRAM ApplicationDriver
     FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL, &
     ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    Euler_ComputeFromConserved_NonRelativistic, &
-    Euler_ComputeTimeStep_NonRelativistic
+    ComputeFromConserved_Euler_NonRelativistic, &
+    ComputeTimeStep_Euler_NonRelativistic
   USE Euler_dgDiscretizationModule, ONLY: &
     Euler_ComputeIncrement_DG_Explicit
   USE Euler_TallyModule_NonRelativistic_IDEAL, ONLY: &
@@ -394,7 +394,7 @@ PROGRAM ApplicationDriver
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
   CALL TimersStart_Euler( Timer_Euler_InputOutput )
-  CALL Euler_ComputeFromConserved_NonRelativistic &
+  CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
            uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
@@ -435,7 +435,7 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    CALL Euler_ComputeTimeStep_NonRelativistic &
+    CALL ComputeTimeStep_Euler_NonRelativistic &
            ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
              uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                          iX_B1(2):iX_E1(2), &
@@ -477,7 +477,7 @@ PROGRAM ApplicationDriver
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
     IF( wrt )THEN
 
-      CALL Euler_ComputeFromConserved_NonRelativistic &
+      CALL ComputeFromConserved_Euler_NonRelativistic &
              ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
                uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
@@ -509,7 +509,7 @@ PROGRAM ApplicationDriver
   END DO
 
   CALL TimersStart_Euler( Timer_Euler_InputOutput )
-  CALL Euler_ComputeFromConserved_NonRelativistic &
+  CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
            uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &

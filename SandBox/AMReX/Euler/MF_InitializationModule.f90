@@ -40,7 +40,7 @@ MODULE MF_InitializationModule
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iCF_Ne, &
     nAF, iAF_P, iAF_E, iAF_T, iAF_Ye
   USE Euler_UtilitiesModule,   ONLY: &
-    Euler_ComputeConserved
+    ComputeConserved_Euler
   USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive, &
     ComputeTemperatureFromPressure, &
@@ -248,7 +248,7 @@ CONTAINS
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
                    uAF_K(:,iAF_P) )
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -367,7 +367,7 @@ CONTAINS
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
                    uAF_K(:,iAF_P) )
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -484,7 +484,7 @@ CONTAINS
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
                    uAF_K(:,iAF_P) )
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -597,7 +597,7 @@ CONTAINS
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
                    uAF_K(:,iAF_P) )
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -731,7 +731,7 @@ CONTAINS
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
                    uAF_K(:,iAF_P) )
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -940,7 +940,7 @@ CONTAINS
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
                    uAF_K(:,iAF_P) )
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -1134,7 +1134,7 @@ CONTAINS
                    uAF_K(:,iAF_Ye), uPF_K(:,iPF_E ), &
                    uAF_K(:,iAF_E ), uPF_K(:,iPF_Ne) )
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -1253,7 +1253,7 @@ CONTAINS
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
                    uAF_K(:,iAF_P) )
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -1403,7 +1403,7 @@ CONTAINS
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
                    uAF_K(:,iAF_P) )
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -1542,7 +1542,7 @@ CONTAINS
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
                    uAF_K(:,iAF_P) )
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
@@ -1744,7 +1744,7 @@ CONTAINS
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
                    uAF_K(:,iAF_P) )
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
                    uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
                    uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &

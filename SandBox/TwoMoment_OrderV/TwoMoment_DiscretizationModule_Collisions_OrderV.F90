@@ -21,7 +21,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_OrderV
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    Euler_ComputePrimitive_NonRelativistic
+    ComputePrimitive_Euler_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
@@ -189,7 +189,7 @@ CONTAINS
 
     DO iN_X = 1, nX_G
 
-      CALL Euler_ComputePrimitive_NonRelativistic &
+      CALL ComputePrimitive_Euler_NonRelativistic &
              ( CF_N(iCF_D ,iN_X), &
                CF_N(iCF_S1,iN_X), &
                CF_N(iCF_S2,iN_X), &

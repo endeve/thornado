@@ -18,8 +18,8 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    Euler_ComputePrimitive_Relativistic, &
-    Euler_Eigenvalues_Relativistic
+    ComputePrimitive_Euler_Relativistic, &
+    Eigenvalues_Euler_Relativistic
   USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
     ComputePressureFromPrimitive
@@ -69,7 +69,7 @@ CONTAINS
     ShiftVector(2) = G(iGF_Beta_2)
     ShiftVector(3) = G(iGF_Beta_3)
 
-    CALL Euler_ComputePrimitive_Relativistic &
+    CALL ComputePrimitive_Euler_Relativistic &
            ( [U(iCF_D )], [U(iCF_S1)], [U(iCF_S2)], &
              [U(iCF_S3)], [U(iCF_E )], [U(iCF_Ne)], &
              D, V1, V2, V3, E, Ne, &
@@ -128,7 +128,7 @@ CONTAINS
 
       CASE( 1 )
 
-        EigVals = Euler_Eigenvalues_Relativistic &
+        EigVals = Eigenvalues_Euler_Relativistic &
                     ( Vu1, Cs(1), Gmdd11, Vu1, Vu2, Vu3, &
                       Gmdd11, Gmdd22, Gmdd33, &
                       LapseFunction, ShiftVector(1) )
@@ -256,7 +256,7 @@ CONTAINS
 
       CASE( 2 )
 
-        EigVals = Euler_Eigenvalues_Relativistic &
+        EigVals = Eigenvalues_Euler_Relativistic &
                     ( Vu2, Cs(1), Gmdd22, Vu1, Vu2, Vu3, &
                       Gmdd11, Gmdd22, Gmdd33, &
                       LapseFunction, ShiftVector(2) )
@@ -454,7 +454,7 @@ CONTAINS
     ShiftVector(2) = G(iGF_Beta_2)
     ShiftVector(3) = G(iGF_Beta_3)
 
-    CALL Euler_ComputePrimitive_Relativistic &
+    CALL ComputePrimitive_Euler_Relativistic &
            ( [U(iCF_D )], [U(iCF_S1)], [U(iCF_S2)], &
              [U(iCF_S3)], [U(iCF_E )], [U(iCF_Ne)], &
              D, V1, V2, V3, E, Ne, &

@@ -44,8 +44,8 @@ PROGRAM ApplicationDriver
     FinalizePositivityLimiter_Euler_NonRelativistic_TABLE, &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    Euler_ComputeFromConserved_NonRelativistic, &
-    Euler_ComputeTimeStep_NonRelativistic
+    ComputeFromConserved_Euler_NonRelativistic, &
+    ComputeTimeStep_Euler_NonRelativistic
   USE Euler_dgDiscretizationModule, ONLY: &
     Euler_ComputeIncrement_DG_Explicit
   USE Euler_TallyModule_NonRelativistic_TABLE, ONLY: &
@@ -266,7 +266,7 @@ PROGRAM ApplicationDriver
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-  CALL Euler_ComputeFromConserved_NonRelativistic &
+  CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
@@ -296,7 +296,7 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    CALL Euler_ComputeTimeStep_NonRelativistic &
+    CALL ComputeTimeStep_Euler_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
              uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
@@ -330,7 +330,7 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
-      CALL Euler_ComputeFromConserved_NonRelativistic &
+      CALL ComputeFromConserved_Euler_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, &
                uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
                uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
@@ -352,7 +352,7 @@ PROGRAM ApplicationDriver
 
   END DO
 
-  CALL Euler_ComputeFromConserved_NonRelativistic &
+  CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &

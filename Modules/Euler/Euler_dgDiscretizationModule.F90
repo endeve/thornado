@@ -45,12 +45,12 @@ MODULE Euler_dgDiscretizationModule
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule, ONLY: &
-    Euler_ComputePrimitive,      &
-    Euler_Eigenvalues,           &
-    Euler_AlphaMiddle,           &
-    Euler_Flux_X1,               &
-    Euler_Flux_X2,               &
-    Euler_StressTensor_Diagonal, &
+    ComputePrimitive_Euler,      &
+    Eigenvalues_Euler,           &
+    AlphaMiddle_Euler,           &
+    Flux_X1_Euler,               &
+    Flux_X2_Euler,               &
+    StressTensor_Diagonal_Euler, &
     Euler_NumericalFlux_X1,      &
     Euler_NumericalFlux_X2,      &
     Euler_NumericalFlux_X3
@@ -213,7 +213,7 @@ CONTAINS
       IF( iX1 .LT. iX_E0(1) + 1 )THEN
 
         CALL TimersStart_Euler( Timer_Euler_CompPrim )
-        CALL Euler_ComputePrimitive &
+        CALL ComputePrimitive_Euler &
                ( uCF_K(:,iCF_D ),     &
                  uCF_K(:,iCF_S1),     &
                  uCF_K(:,iCF_S2),     &
@@ -237,7 +237,7 @@ CONTAINS
         DO iNodeX = 1, nDOFX
 
           Flux_X1_q(iNodeX,:) &
-            = Euler_Flux_X1 &
+            = Flux_X1_Euler &
                 ( uPF_K(iNodeX,iPF_D ),       &
                   uPF_K(iNodeX,iPF_V1),       &
                   uPF_K(iNodeX,iPF_V2),       &
@@ -327,7 +327,7 @@ CONTAINS
       ! --- Left State Primitive, etc. ---
 
       CALL TimersStart_Euler( Timer_Euler_CompPrim )
-      CALL Euler_ComputePrimitive &
+      CALL ComputePrimitive_Euler &
              ( uCF_L(:,iCF_D ),       &
                uCF_L(:,iCF_S1),       &
                uCF_L(:,iCF_S2),       &
@@ -354,7 +354,7 @@ CONTAINS
       DO iNodeX_X1 = 1, nDOFX_X1
 
         EigVals_L(iNodeX_X1,:) &
-          = Euler_Eigenvalues &
+          = Eigenvalues_Euler &
               ( uPF_L(iNodeX_X1,iPF_V1),       &
                 Cs_L (iNodeX_X1),              &
                 G_F  (iNodeX_X1,iGF_Gm_dd_11), &
@@ -368,7 +368,7 @@ CONTAINS
                 G_F  (iNodeX_X1,iGF_Beta_1) )
 
         Flux_X1_L(iNodeX_X1,:) &
-          = Euler_Flux_X1 &
+          = Flux_X1_Euler &
               ( uPF_L(iNodeX_X1,iPF_D ),       &
                 uPF_L(iNodeX_X1,iPF_V1),       &
                 uPF_L(iNodeX_X1,iPF_V2),       &
@@ -387,7 +387,7 @@ CONTAINS
       ! --- Right State Primitive, etc. ---
 
       CALL TimersStart_Euler( Timer_Euler_CompPrim )
-      CALL Euler_ComputePrimitive &
+      CALL ComputePrimitive_Euler &
              ( uCF_R(:,iCF_D ),       &
                uCF_R(:,iCF_S1),       &
                uCF_R(:,iCF_S2),       &
@@ -414,7 +414,7 @@ CONTAINS
       DO iNodeX_X1 = 1, nDOFX_X1
 
         EigVals_R(iNodeX_X1,:) &
-          = Euler_Eigenvalues &
+          = Eigenvalues_Euler &
               ( uPF_R(iNodeX_X1,iPF_V1),       &
                 Cs_R (iNodeX_X1),              &
                 G_F  (iNodeX_X1,iGF_Gm_dd_11), &
@@ -428,7 +428,7 @@ CONTAINS
                 G_F  (iNodeX_X1,iGF_Beta_1) )
 
         Flux_X1_R(iNodeX_X1,:) &
-          = Euler_Flux_X1 &
+          = Flux_X1_Euler &
               ( uPF_R(iNodeX_X1,iPF_D ),       &
                 uPF_R(iNodeX_X1,iPF_V1),       &
                 uPF_R(iNodeX_X1,iPF_V2),       &
@@ -459,7 +459,7 @@ CONTAINS
                  MAXVAL( + EigVals_R(iNodeX_X1,:) ) )
 
         AlphaMdl &
-          = Euler_AlphaMiddle &
+          = AlphaMiddle_Euler &
               ( uCF_L    (iNodeX_X1,iCF_D ),       &
                 uCF_L    (iNodeX_X1,iCF_S1),       &
                 uCF_L    (iNodeX_X1,iCF_E ),       &
@@ -602,7 +602,7 @@ CONTAINS
       IF( iX2 .LT. iX_E0(2) + 1 )THEN
 
         CALL TimersStart_Euler( Timer_Euler_CompPrim )
-        CALL Euler_ComputePrimitive &
+        CALL ComputePrimitive_Euler &
                ( uCF_K(:,iCF_D ),     &
                  uCF_K(:,iCF_S1),     &
                  uCF_K(:,iCF_S2),     &
@@ -626,7 +626,7 @@ CONTAINS
         DO iNodeX = 1, nDOFX
 
           Flux_X2_q(iNodeX,:) &
-            = Euler_Flux_X2 &
+            = Flux_X2_Euler &
                 ( uPF_K(iNodeX,iPF_D ),       &
                   uPF_K(iNodeX,iPF_V1),       &
                   uPF_K(iNodeX,iPF_V2),       &
@@ -717,7 +717,7 @@ CONTAINS
       ! --- Left State Primitive, etc. ---
 
       CALL TimersStart_Euler( Timer_Euler_CompPrim )
-      CALL Euler_ComputePrimitive &
+      CALL ComputePrimitive_Euler &
              ( uCF_L(:,iCF_D ),       &
                uCF_L(:,iCF_S1),       &
                uCF_L(:,iCF_S2),       &
@@ -744,7 +744,7 @@ CONTAINS
       DO iNodeX_X2 = 1, nDOFX_X2
 
         EigVals_L(iNodeX_X2,:) &
-          = Euler_Eigenvalues &
+          = Eigenvalues_Euler &
               ( uPF_L(iNodeX_X2,iPF_V2),       &
                 Cs_L (iNodeX_X2),              &
                 G_F  (iNodeX_X2,iGF_Gm_dd_22), &
@@ -758,7 +758,7 @@ CONTAINS
                 G_F  (iNodeX_X2,iGF_Beta_2) )
 
         Flux_X2_L(iNodeX_X2,:) &
-          = Euler_Flux_X2 &
+          = Flux_X2_Euler &
               ( uPF_L(iNodeX_X2,iPF_D ),       &
                 uPF_L(iNodeX_X2,iPF_V1),       &
                 uPF_L(iNodeX_X2,iPF_V2),       &
@@ -777,7 +777,7 @@ CONTAINS
       ! --- Right State Primitive, etc. ---
 
       CALL TimersStart_Euler( Timer_Euler_CompPrim )
-      CALL Euler_ComputePrimitive &
+      CALL ComputePrimitive_Euler &
              ( uCF_R(:,iCF_D ),       &
                uCF_R(:,iCF_S1),       &
                uCF_R(:,iCF_S2),       &
@@ -804,7 +804,7 @@ CONTAINS
       DO iNodeX_X2 = 1, nDOFX_X2
 
         EigVals_R(iNodeX_X2,:) &
-          = Euler_Eigenvalues &
+          = Eigenvalues_Euler &
               ( uPF_R(iNodeX_X2,iPF_V2),       &
                 Cs_R (iNodeX_X2),              &
                 G_F  (iNodeX_X2,iGF_Gm_dd_22), &
@@ -818,7 +818,7 @@ CONTAINS
                 G_F  (iNodeX_X2,iGF_Beta_2) )
 
         Flux_X2_R(iNodeX_X2,:) &
-          = Euler_Flux_X2 &
+          = Flux_X2_Euler &
               ( uPF_R(iNodeX_X2,iPF_D ),       &
                 uPF_R(iNodeX_X2,iPF_V1),       &
                 uPF_R(iNodeX_X2,iPF_V2),       &
@@ -849,7 +849,7 @@ CONTAINS
                  MAXVAL( + EigVals_R(iNodeX_X2,:) ) )
 
         AlphaMdl &
-          = Euler_AlphaMiddle &
+          = AlphaMiddle_Euler &
               ( uCF_L    (iNodeX_X2,iCF_D ),       &
                 uCF_L    (iNodeX_X2,iCF_S2),       &
                 uCF_L    (iNodeX_X2,iCF_E ),       &
@@ -1029,7 +1029,7 @@ CONTAINS
         END DO
       END IF
 
-      CALL Euler_ComputePrimitive &
+      CALL ComputePrimitive_Euler &
              ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
                uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
                uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
@@ -1044,7 +1044,7 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         Stress(iNodeX,1:3) &
-          = Euler_StressTensor_Diagonal &
+          = StressTensor_Diagonal_Euler &
               ( uCF_K(iNodeX,iCF_S1), &
                 uCF_K(iNodeX,iCF_S2), &
                 uCF_K(iNodeX,iCF_S3), &
@@ -1229,7 +1229,7 @@ CONTAINS
         END DO
       END IF
 
-      CALL Euler_ComputePrimitive &
+      CALL ComputePrimitive_Euler &
            ( uCF_K(:,iCF_D ),     &
              uCF_K(:,iCF_S1),     &
              uCF_K(:,iCF_S2),     &
@@ -1252,7 +1252,7 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         Stress(iNodeX,:) &
-          = Euler_StressTensor_Diagonal &
+          = StressTensor_Diagonal_Euler &
               ( uCF_K(iNodeX,iCF_S1), &
                 uCF_K(iNodeX,iCF_S2), &
                 uCF_K(iNodeX,iCF_S3), &

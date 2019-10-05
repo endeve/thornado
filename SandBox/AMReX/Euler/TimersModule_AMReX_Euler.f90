@@ -18,7 +18,7 @@ MODULE TimersModule_AMReX_Euler
   ! --- fmain ---
   REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_Initialize
   REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_MPI_Barrier
-  REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_ComputeTimeStep
+  REAL(amrex_real), PUBLIC :: Timer_AMReX_ComputeTimeStep_Euler
   REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_UpdateFluid
   REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_InputOutput
   REAL(amrex_real), PUBLIC :: Timer_AMReX_Euler_Finalize
@@ -50,7 +50,7 @@ CONTAINS
 
     Timer_AMReX_Euler_Initialize       = 0.0_amrex_real
     Timer_AMReX_Euler_MPI_Barrier      = 0.0_amrex_real
-    Timer_AMReX_Euler_ComputeTimeStep  = 0.0_amrex_real
+    Timer_AMReX_ComputeTimeStep_Euler  = 0.0_amrex_real
     Timer_AMReX_Euler_UpdateFluid      = 0.0_amrex_real
     Timer_AMReX_Euler_InputOutput      = 0.0_amrex_real
     Timer_AMReX_Euler_Finalize         = 0.0_amrex_real
@@ -108,10 +108,10 @@ CONTAINS
 
       WRITE(*,OutputFMT) &
         '  Compute Time-Step: ', &
-        Timer_AMReX_Euler_ComputeTimeStep, ' s = ', &
+        Timer_AMReX_ComputeTimeStep_Euler, ' s = ', &
         100.0_amrex_real &
-          * Timer_AMReX_Euler_ComputeTimeStep / Timer_AMReX_Euler_Program, ' %'
-      TotalTime = TotalTime + Timer_AMReX_Euler_ComputeTimeStep
+          * Timer_AMReX_ComputeTimeStep_Euler / Timer_AMReX_Euler_Program, ' %'
+      TotalTime = TotalTime + Timer_AMReX_ComputeTimeStep_Euler
 
       WRITE(*,OutputFMT) &
         '  Update Fluid:      ', &
