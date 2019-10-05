@@ -40,9 +40,9 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializeSlopeLimiter_NonRelativistic_TABLE
-  PUBLIC :: Euler_FinalizeSlopeLimiter_NonRelativistic_TABLE
-  PUBLIC :: Euler_ApplySlopeLimiter_NonRelativistic_TABLE
+  PUBLIC :: InitializeSlopeLimiter_Euler_NonRelativistic_TABLE
+  PUBLIC :: FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
+  PUBLIC :: ApplySlopeLimiter_Euler_NonRelativistic_TABLE
 
   LOGICAL  :: UseSlopeLimiter
   LOGICAL  :: UseCharacteristicLimiting
@@ -62,7 +62,7 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializeSlopeLimiter_NonRelativistic_TABLE &
+  SUBROUTINE InitializeSlopeLimiter_Euler_NonRelativistic_TABLE &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
@@ -141,7 +141,7 @@ CONTAINS
 
     IF( Verbose )THEN
       WRITE(*,*)
-      WRITE(*,'(A)') '  INFO: Euler_InitializeSlopeLimiter_NonRelativistic_TABLE:'
+      WRITE(*,'(A)') '  INFO: InitializeSlopeLimiter_Euler_NonRelativistic_TABLE:'
       WRITE(*,'(A)') '  ---------------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
@@ -174,10 +174,10 @@ CONTAINS
       I_6x6(i,i) = One
     END DO
 
-  END SUBROUTINE Euler_InitializeSlopeLimiter_NonRelativistic_TABLE
+  END SUBROUTINE InitializeSlopeLimiter_Euler_NonRelativistic_TABLE
 
 
-  SUBROUTINE Euler_FinalizeSlopeLimiter_NonRelativistic_TABLE
+  SUBROUTINE FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
 
     IF( UseTroubledCellIndicator )THEN
 
@@ -185,10 +185,10 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE Euler_FinalizeSlopeLimiter_NonRelativistic_TABLE
+  END SUBROUTINE FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
 
 
-  SUBROUTINE Euler_ApplySlopeLimiter_NonRelativistic_TABLE &
+  SUBROUTINE ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
 
     INTEGER,  INTENT(in)           :: &
@@ -453,7 +453,7 @@ CONTAINS
     CALL ApplyConservativeCorrection &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
-  END SUBROUTINE Euler_ApplySlopeLimiter_NonRelativistic_TABLE
+  END SUBROUTINE ApplySlopeLimiter_Euler_NonRelativistic_TABLE
 
 
   SUBROUTINE InitializeTroubledCellIndicator

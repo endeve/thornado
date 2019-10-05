@@ -20,7 +20,7 @@ MODULE FinalizationModule
   USE EquationOfStateModule,            ONLY: &
     FinalizeEquationOfState
   USE Euler_SlopeLimiterModule,         ONLY: &
-    Euler_FinalizeSlopeLimiter
+    FinalizeSlopeLimiter_Euler
   USE Euler_PositivityLimiterModule,    ONLY: &
     FinalizePositivityLimiter_Euler
 
@@ -57,7 +57,7 @@ CONTAINS
 
     CALL FinalizePositivityLimiter_Euler
 
-    CALL Euler_FinalizeSlopeLimiter
+    CALL FinalizeSlopeLimiter_Euler
 
     CALL FinalizeEquationOfState
 

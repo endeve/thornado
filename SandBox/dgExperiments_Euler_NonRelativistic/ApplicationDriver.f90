@@ -33,9 +33,9 @@ PROGRAM ApplicationDriver
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
   USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
-    Euler_InitializeSlopeLimiter_NonRelativistic, &
-    Euler_FinalizeSlopeLimiter_NonRelativistic, &
-    Euler_ApplySlopeLimiter_NonRelativistic
+    InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL, &
+    FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL, &
+    ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
   USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL, ONLY: &
     InitializePositivityLimiter_Euler_NonRelativistic_IDEAL, &
     FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL, &
@@ -354,7 +354,7 @@ PROGRAM ApplicationDriver
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
-  CALL Euler_InitializeSlopeLimiter_NonRelativistic &
+  CALL InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL &
          ( BetaTVD_Option = BetaTVD, &
            BetaTVB_Option = BetaTVB, &
            SlopeTolerance_Option &
@@ -383,7 +383,7 @@ PROGRAM ApplicationDriver
              = TRIM( RiemannProblemName ), &
            SedovEnergy_Option = Eblast )
 
-  CALL Euler_ApplySlopeLimiter_NonRelativistic &
+  CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
@@ -546,7 +546,7 @@ PROGRAM ApplicationDriver
 
   CALL FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
-  CALL Euler_FinalizeSlopeLimiter_NonRelativistic
+  CALL FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
 
   CALL FinalizeEquationOfState
 

@@ -23,7 +23,7 @@ MODULE MF_Euler_SlopeLimiterModule
   USE GeometryFieldsModule,     ONLY: &
     nGF
   USE Euler_SlopeLimiterModule, ONLY: &
-    Euler_ApplySlopeLimiter
+    ApplySlopeLimiter_Euler
 
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
@@ -42,13 +42,13 @@ MODULE MF_Euler_SlopeLimiterModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_Euler_ApplySlopeLimiter
+  PUBLIC :: MF_ApplySlopeLimiter_Euler
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ApplySlopeLimiter( MF_uGF, MF_uCF, GEOM )
+  SUBROUTINE MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, GEOM )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
@@ -129,8 +129,8 @@ CONTAINS
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF), Edge_Map )
 
-        IF( DEBUG ) WRITE(*,'(A)') '    CALL Euler_ApplySlopeLimiter'
-        CALL Euler_ApplySlopeLimiter &
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplySlopeLimiter_Euler'
+        CALL ApplySlopeLimiter_Euler &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
@@ -160,7 +160,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_Euler_ApplySlopeLimiter
+  END SUBROUTINE MF_ApplySlopeLimiter_Euler
 
 
 END MODULE MF_Euler_SlopeLimiterModule

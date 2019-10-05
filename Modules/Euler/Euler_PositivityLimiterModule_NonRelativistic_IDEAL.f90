@@ -69,10 +69,10 @@ CONTAINS
 
     IF( Verbose )THEN
       WRITE(*,*)
-      WRITE(*,'(A2,A6,A)') '', &
-        'INFO: ', 'InitializePositivityLimiter_Euler_NonRelativistic_IDEAL'
-      WRITE(*,'(A2,A)') '',    &
-        '-----------------------------------------------------------------'
+      WRITE(*,'(A)') &
+        '  INFO: InitializePositivityLimiter_Euler_NonRelativistic_IDEAL:'
+      WRITE(*,'(A)') &
+        '  --------------------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A6,A,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter

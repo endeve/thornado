@@ -28,11 +28,11 @@ PROGRAM ApplicationDriver
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
-  USE Euler_SlopeLimiterModule, ONLY: &
-    Euler_InitializeSlopeLimiter, &
-    Euler_FinalizeSlopeLimiter, &
-    Euler_ApplySlopeLimiter
-  USE Euler_PositivityLimiterModule, ONLY: &
+  USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
+    InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL, &
+    FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL, &
+    ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
+  USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL, ONLY: &
     InitializePositivityLimiter_Euler_NonRelativistic_IDEAL, &
     FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL, &
     ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL
@@ -113,7 +113,7 @@ PROGRAM ApplicationDriver
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
-  CALL Euler_InitializeSlopeLimiter &
+  CALL InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL &
          ( BetaTVD_Option                   = 1.15_DP, &
            BetaTVB_Option                   = 0.00_DP, &
            SlopeTolerance_Option            = 1.00d-6, &
@@ -134,7 +134,7 @@ PROGRAM ApplicationDriver
 
   CALL ApplyPerturbations( 1.4_DP, 1.6_DP, 0, 2.0_DP )
 
-  CALL Euler_ApplySlopeLimiter &
+  CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
@@ -286,7 +286,7 @@ PROGRAM ApplicationDriver
 
   CALL FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
-  CALL Euler_FinalizeSlopeLimiter
+  CALL FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
 
   CALL FinalizeEquationOfState
 

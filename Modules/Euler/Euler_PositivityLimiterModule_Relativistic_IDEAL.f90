@@ -75,17 +75,16 @@ CONTAINS
 
     IF( Verbose )THEN
       WRITE(*,*)
-      WRITE(*,*)
       WRITE(*,'(A)') &
         '    INFO: InitializePositivityLimiter_Euler_Relativistic_IDEAL'
       WRITE(*,'(A)') &
         '    ----------------------------------------------------------'
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)') &
+      WRITE(*,'(A6,A,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter
       WRITE(*,*)
-      WRITE(*,'(A4,A27,ES10.3E3)') '', 'Min_1: ', Min_1
-      WRITE(*,'(A4,A27,ES10.3E3)') '', 'Min_2: ', Min_2
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
     END IF
 
     nPP(1:nPS) = 0

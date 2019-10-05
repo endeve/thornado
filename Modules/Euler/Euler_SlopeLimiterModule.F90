@@ -13,15 +13,15 @@ MODULE Euler_SlopeLimiterModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializeSlopeLimiter
-  PUBLIC :: Euler_FinalizeSlopeLimiter
-  PUBLIC :: Euler_ApplySlopeLimiter
+  PUBLIC :: InitializeSlopeLimiter_Euler
+  PUBLIC :: FinalizeSlopeLimiter_Euler
+  PUBLIC :: ApplySlopeLimiter_Euler
 
 
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializeSlopeLimiter &
+  SUBROUTINE InitializeSlopeLimiter_Euler &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
@@ -42,7 +42,7 @@ CONTAINS
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_InitializeSlopeLimiter_NonRelativistic_TABLE &
+    CALL InitializeSlopeLimiter_Euler_NonRelativistic_TABLE &
            ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
              UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
              UseTroubledCellIndicator_Option, &
@@ -52,7 +52,7 @@ CONTAINS
 
 #elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_InitializeSlopeLimiter_NonRelativistic &
+    CALL InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL &
            ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
              UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
              UseTroubledCellIndicator_Option, &
@@ -62,7 +62,7 @@ CONTAINS
 
 #elif defined HYDRO_RELATIVISTIC
 
-    CALL Euler_InitializeSlopeLimiter_Relativistic &
+    CALL InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
            ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
              UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
              UseTroubledCellIndicator_Option, &
@@ -72,7 +72,7 @@ CONTAINS
 
 #else
 
-    CALL Euler_InitializeSlopeLimiter_NonRelativistic &
+    CALL InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL &
            ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
              UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
              UseTroubledCellIndicator_Option, &
@@ -82,33 +82,33 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE Euler_InitializeSlopeLimiter
+  END SUBROUTINE InitializeSlopeLimiter_Euler
 
 
-  SUBROUTINE Euler_FinalizeSlopeLimiter
+  SUBROUTINE FinalizeSlopeLimiter_Euler
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_FinalizeSlopeLimiter_NonRelativistic_TABLE
+    CALL FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
 
 #elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_FinalizeSlopeLimiter_NonRelativistic
+    CALL FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
 
 #elif defined HYDRO_RELATIVISTIC
 
-    CALL Euler_FinalizeSlopeLimiter_Relativistic
+    CALL FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
 #else
 
-    CALL Euler_FinalizeSlopeLimiter_NonRelativistic
+    CALL FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
 
 #endif
 
-  END SUBROUTINE Euler_FinalizeSlopeLimiter
+  END SUBROUTINE FinalizeSlopeLimiter_Euler
 
 
-  SUBROUTINE Euler_ApplySlopeLimiter &
+  SUBROUTINE ApplySlopeLimiter_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
 
     INTEGER,  INTENT(in)           :: &
@@ -130,28 +130,28 @@ CONTAINS
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_ApplySlopeLimiter_NonRelativistic_TABLE &
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 
 #elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_ApplySlopeLimiter_NonRelativistic &
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 
 #elif defined HYDRO_RELATIVISTIC
 
-    CALL Euler_ApplySlopeLimiter_Relativistic &
+    CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 
 #else
 
-    CALL Euler_ApplySlopeLimiter_NonRelativistic &
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
 
-  END SUBROUTINE Euler_ApplySlopeLimiter
+  END SUBROUTINE ApplySlopeLimiter_Euler
 
 
 END MODULE Euler_SlopeLimiterModule

@@ -25,7 +25,7 @@ PROGRAM main
     MF_ComputeFromConserved, &
     MF_ComputeTimeStep
   USE MF_Euler_SlopeLimiterModule,      ONLY: &
-    MF_Euler_ApplySlopeLimiter
+    MF_ApplySlopeLimiter_Euler
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     MF_ApplyPositivityLimiter_Euler
   USE MF_Euler_dgDiscretizationModule,  ONLY: &

@@ -8,7 +8,7 @@ MODULE TimeSteppingModule_SSPRK
   USE FluidFieldsModule, ONLY: &
     nCF
   USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
-    Euler_ApplySlopeLimiter_NonRelativistic_TABLE
+    ApplySlopeLimiter_Euler_NonRelativistic_TABLE
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 
@@ -218,7 +218,7 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-        CALL Euler_ApplySlopeLimiter_NonRelativistic_TABLE &
+        CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
                  U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
@@ -262,7 +262,7 @@ CONTAINS
 
     END DO
 
-    CALL Euler_ApplySlopeLimiter_NonRelativistic_TABLE &
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )

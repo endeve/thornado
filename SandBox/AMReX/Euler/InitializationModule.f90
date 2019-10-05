@@ -58,7 +58,7 @@ MODULE InitializationModule
     nCF, nPF, nAF, &
     CreateFluidFields
   USE Euler_SlopeLimiterModule,         ONLY: &
-    Euler_InitializeSlopeLimiter
+    InitializeSlopeLimiter_Euler
   USE PolynomialBasisMappingModule,     ONLY: &
     InitializePolynomialBasisMapping
   USE PolynomialBasisModule_Lagrange,   ONLY: &
@@ -81,7 +81,7 @@ MODULE InitializationModule
     MF_ComputeGeometryX, &
     MF_ComputeGravitationalPotential
   USE MF_Euler_SlopeLimiterModule,      ONLY: &
-    MF_Euler_ApplySlopeLimiter
+    MF_ApplySlopeLimiter_Euler
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     MF_ApplyPositivityLimiter_Euler
   USE MF_InitializationModule,          ONLY: &
@@ -268,7 +268,7 @@ CONTAINS
 
     END IF
 
-    CALL Euler_InitializeSlopeLimiter &
+    CALL InitializeSlopeLimiter_Euler &
            ( BetaTVD_Option &
                = BetaTVD, &
              BetaTVB_Option &
@@ -316,7 +316,7 @@ CONTAINS
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
-      CALL MF_Euler_ApplySlopeLimiter     ( MF_uGF, MF_uCF, GEOM )
+      CALL MF_ApplySlopeLimiter_Euler     ( MF_uGF, MF_uCF, GEOM )
       CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

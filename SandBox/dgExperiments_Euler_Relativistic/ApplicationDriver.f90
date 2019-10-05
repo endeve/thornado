@@ -22,9 +22,9 @@ PROGRAM ApplicationDriver
   USE InitializationModule_Relativistic, ONLY: &
     InitializeFields_Relativistic, ReadParameters
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
-    Euler_InitializeSlopeLimiter_Relativistic, &
-    Euler_FinalizeSlopeLimiter_Relativistic, &
-    Euler_ApplySlopeLimiter_Relativistic
+    InitializeSlopeLimiter_Euler_Relativistic_IDEAL, &
+    FinalizeSlopeLimiter_Euler_Relativistic_IDEAL, &
+    ApplySlopeLimiter_Euler_Relativistic_IDEAL
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializePositivityLimiter_Euler_Relativistic_IDEAL, &
     FinalizePositivityLimiter_Euler_Relativistic_IDEAL, &
@@ -352,7 +352,7 @@ PROGRAM ApplicationDriver
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
-  CALL Euler_InitializeSlopeLimiter_Relativistic &
+  CALL InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
          ( BetaTVD_Option = BetaTVD, &
            BetaTVB_Option = BetaTVB, &
            SlopeTolerance_Option &
@@ -385,7 +385,7 @@ PROGRAM ApplicationDriver
              = TRIM( SphericalRiemannProblemName ), &
            nDetCells_Option = nDetCells, Eblast_Option = Eblast )
 
-  CALL Euler_ApplySlopeLimiter_Relativistic &
+  CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
@@ -556,7 +556,7 @@ PROGRAM ApplicationDriver
 
   CALL FinalizePositivityLimiter_Euler_Relativistic_IDEAL
 
-  CALL Euler_FinalizeSlopeLimiter_Relativistic
+  CALL FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
   CALL FinalizeFluid_SSPRK
 

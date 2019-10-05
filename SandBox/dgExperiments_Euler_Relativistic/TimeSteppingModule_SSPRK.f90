@@ -8,7 +8,7 @@ MODULE TimeSteppingModule_SSPRK
   USE FluidFieldsModule, ONLY: &
     nCF
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
-    Euler_ApplySlopeLimiter_Relativistic
+    ApplySlopeLimiter_Euler_Relativistic_IDEAL
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
@@ -196,7 +196,7 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-        CALL Euler_ApplySlopeLimiter_Relativistic &
+        CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
                  U_SSPRK(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:) )
@@ -230,7 +230,7 @@ CONTAINS
 
     END DO
 
-    CALL Euler_ApplySlopeLimiter_Relativistic &
+    CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
              U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:) )

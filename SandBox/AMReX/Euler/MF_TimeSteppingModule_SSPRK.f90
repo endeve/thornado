@@ -29,7 +29,7 @@ MODULE MF_TimeSteppingModule_SSPRK
 
   ! --- Local Modules ---
   USE MF_Euler_SlopeLimiterModule,      ONLY: &
-    MF_Euler_ApplySlopeLimiter
+    MF_ApplySlopeLimiter_Euler
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     MF_ApplyPositivityLimiter_Euler
   USE MyAmrModule,                      ONLY: &
@@ -270,8 +270,8 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. 0.0_amrex_real ) &
           .OR. ( w_SSPRK(iS) .NE. 0.0_amrex_real ) )THEN
 
-        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplySlopeLimiter (1)'
-        CALL MF_Euler_ApplySlopeLimiter &
+        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_Euler (1)'
+        CALL MF_ApplySlopeLimiter_Euler &
           ( MF_uGF(0:nLevels), MF_U(0:nLevels), GEOM(0:nLevels) )
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (1)'
         CALL MF_ApplyPositivityLimiter_Euler &
@@ -298,8 +298,8 @@ CONTAINS
       END DO
     END DO
 
-    IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ApplySlopeLimiter (2)'
-    CALL MF_Euler_ApplySlopeLimiter &
+    IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_Euler (2)'
+    CALL MF_ApplySlopeLimiter_Euler &
       ( MF_uGF(0:nLevels), MF_uCF(0:nLevels), GEOM(0:nLevels) )
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (2)'
     CALL MF_ApplyPositivityLimiter_Euler &

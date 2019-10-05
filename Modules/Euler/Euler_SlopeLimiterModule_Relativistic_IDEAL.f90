@@ -45,9 +45,9 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializeSlopeLimiter_Relativistic
-  PUBLIC :: Euler_FinalizeSlopeLimiter_Relativistic
-  PUBLIC :: Euler_ApplySlopeLimiter_Relativistic
+  PUBLIC :: InitializeSlopeLimiter_Euler_Relativistic_IDEAL
+  PUBLIC :: FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
+  PUBLIC :: ApplySlopeLimiter_Euler_Relativistic_IDEAL
 
   LOGICAL  :: UseSlopeLimiter
   LOGICAL  :: UseCharacteristicLimiting
@@ -66,7 +66,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializeSlopeLimiter_Relativistic &
+  SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
@@ -127,9 +127,10 @@ CONTAINS
 
     IF( Verbose )THEN
       WRITE(*,*)
-      WRITE(*,*)
-      WRITE(*,'(A)') '    INFO: Euler_InitializeSlopeLimiter_Relativistic'
-      WRITE(*,'(A)') '    -----------------------------------------------'
+      WRITE(*,'(A)') &
+        '    INFO: InitializeSlopeLimiter_Euler_Relativistic_IDEAL'
+      WRITE(*,'(A)') &
+        '    -----------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
@@ -140,7 +141,6 @@ CONTAINS
         BetaTVB
       WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
         SlopeTolerance
-      WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseCharacteristicLimiting: ' , &
         UseCharacteristicLimiting
       WRITE(*,*)
@@ -162,18 +162,18 @@ CONTAINS
       I_6x6(i,i) = One
     END DO
 
-  END SUBROUTINE Euler_InitializeSlopeLimiter_Relativistic
+  END SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL
 
 
-  SUBROUTINE Euler_FinalizeSlopeLimiter_Relativistic
+  SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
     IF( UseTroubledCellIndicator ) &
       CALL FinalizeTroubledCellIndicator
 
-  END SUBROUTINE Euler_FinalizeSlopeLimiter_Relativistic
+  END SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
 
-  SUBROUTINE Euler_ApplySlopeLimiter_Relativistic &
+  SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
 
     INTEGER, INTENT(in)            :: &
@@ -422,7 +422,7 @@ CONTAINS
     CALL ApplyConservativeCorrection &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
-  END SUBROUTINE Euler_ApplySlopeLimiter_Relativistic
+  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL
 
 
   SUBROUTINE InitializeTroubledCellIndicator

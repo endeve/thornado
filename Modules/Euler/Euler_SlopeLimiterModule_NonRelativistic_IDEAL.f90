@@ -41,9 +41,9 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializeSlopeLimiter_NonRelativistic
-  PUBLIC :: Euler_FinalizeSlopeLimiter_NonRelativistic
-  PUBLIC :: Euler_ApplySlopeLimiter_NonRelativistic
+  PUBLIC :: InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL
+  PUBLIC :: FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
+  PUBLIC :: ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
 
   LOGICAL  :: UseSlopeLimiter
   LOGICAL  :: UseCharacteristicLimiting
@@ -63,7 +63,7 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializeSlopeLimiter_NonRelativistic &
+  SUBROUTINE InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
@@ -123,8 +123,10 @@ CONTAINS
 
     IF( Verbose )THEN
       WRITE(*,*)
-      WRITE(*,'(A)') '  INFO: Euler_InitializeSlopeLimiter:'
-      WRITE(*,'(A)') '  -----------------------------------'
+      WRITE(*,'(A)') &
+        '  INFO: InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL:'
+      WRITE(*,'(A)') &
+        '  ---------------------------------------------------------'
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'      ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
@@ -143,6 +145,9 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A4,A27,ES9.3E2)' ) '', 'LimiterThreshold: ' , &
         LimiterThreshold
+      WRITE(*,*)
+      WRITE(*,'(A4,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
+        UseConservativeCorrection
     END IF
 
     IF( UseTroubledCellIndicator ) &
@@ -153,18 +158,18 @@ CONTAINS
       I_6x6(i,i) = One
     END DO
 
-  END SUBROUTINE Euler_InitializeSlopeLimiter_NonRelativistic
+  END SUBROUTINE InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL
 
 
-  SUBROUTINE Euler_FinalizeSlopeLimiter_NonRelativistic
+  SUBROUTINE FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
 
     IF( UseTroubledCellIndicator ) &
       CALL FinalizeTroubledCellIndicator
 
-  END SUBROUTINE Euler_FinalizeSlopeLimiter_NonRelativistic
+  END SUBROUTINE FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
 
 
-  SUBROUTINE Euler_ApplySlopeLimiter_NonRelativistic &
+  SUBROUTINE ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
 
     INTEGER,  INTENT(in)           :: &
@@ -426,7 +431,7 @@ CONTAINS
     CALL ApplyConservativeCorrection &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
-  END SUBROUTINE Euler_ApplySlopeLimiter_NonRelativistic
+  END SUBROUTINE ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
 
 
   SUBROUTINE InitializeTroubledCellIndicator
