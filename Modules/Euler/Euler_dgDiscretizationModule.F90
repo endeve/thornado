@@ -43,7 +43,7 @@ MODULE Euler_dgDiscretizationModule
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_P
   USE Euler_BoundaryConditionsModule, ONLY: &
-    Euler_ApplyBoundaryConditions
+    ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule, ONLY: &
     Euler_ComputePrimitive,      &
     Euler_Eigenvalues,           &
@@ -96,7 +96,7 @@ CONTAINS
       SuppressBC = SuppressBC_Option
 
     IF( .NOT. SuppressBC ) &
-      CALL Euler_ApplyBoundaryConditions &
+      CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL TimersStart_Euler( Timer_Euler_Div_X1 )

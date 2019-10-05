@@ -38,7 +38,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     nCF, iCF_D, iCF_E, &
     Shock
   USE Euler_BoundaryConditionsModule, ONLY: &
-    Euler_ApplyBoundaryConditions
+    ApplyBoundaryConditions_Euler
   USE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL, ONLY: &
     ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
 
@@ -210,7 +210,7 @@ CONTAINS
       SuppressBC = SuppressBC_Option
 
     IF( .NOT. SuppressBC ) &
-      CALL Euler_ApplyBoundaryConditions &
+      CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL TimersStart_Euler( Timer_Euler_TroubledCellIndicator )

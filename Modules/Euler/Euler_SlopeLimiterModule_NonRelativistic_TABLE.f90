@@ -33,7 +33,7 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
     nCF, iCF_D, iCF_E, iCF_Ne, &
     Shock
   USE Euler_BoundaryConditionsModule, ONLY: &
-    Euler_ApplyBoundaryConditions
+    ApplyBoundaryConditions_Euler
   USE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE, ONLY: &
     ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE
 
@@ -225,7 +225,7 @@ CONTAINS
       SuppressBC = SuppressBC_Option
 
     IF( .NOT. SuppressBC ) &
-      CALL Euler_ApplyBoundaryConditions &
+      CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL DetectTroubledCells &

@@ -16,7 +16,7 @@ MODULE Euler_BoundaryConditionsModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_ApplyBoundaryConditions
+  PUBLIC :: ApplyBoundaryConditions_Euler
 
   INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Both  = 0
   INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Inner = 1
@@ -51,7 +51,7 @@ CONTAINS
   END FUNCTION ApplyOuterBC
 
 
-  SUBROUTINE Euler_ApplyBoundaryConditions &
+  SUBROUTINE ApplyBoundaryConditions_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
@@ -85,7 +85,7 @@ CONTAINS
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), iApplyBC(3) )
 
-  END SUBROUTINE Euler_ApplyBoundaryConditions
+  END SUBROUTINE ApplyBoundaryConditions_Euler
 
 
   SUBROUTINE Euler_ApplyBC_X1( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )

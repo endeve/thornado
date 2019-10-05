@@ -33,7 +33,7 @@ MODULE MF_Euler_SlopeLimiterModule
     nLevels, UseSlopeLimiter, DEBUG
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap, ConstructEdgeMap, &
-    MF_Euler_ApplyBoundaryConditions
+    MF_ApplyBoundaryConditions_Euler
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_InteriorBC, &
@@ -122,8 +122,8 @@ CONTAINS
         ! --- Apply boundary conditions to physical boundaries ---
         CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
 
-        IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_Euler_ApplyBoundaryConditions'
-        CALL MF_Euler_ApplyBoundaryConditions &
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_ApplyBoundaryConditions_Euler'
+        CALL MF_ApplyBoundaryConditions_Euler &
                ( iX_B0, iX_E0, iX_B1, iX_E1,  &
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &

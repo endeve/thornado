@@ -11,7 +11,7 @@ MODULE MF_Euler_BoundaryConditionsModule
 
   ! --- thornado Modules ---
   USE Euler_BoundaryConditionsModule, ONLY: &
-    Euler_ApplyBoundaryConditions
+    ApplyBoundaryConditions_Euler
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -31,7 +31,7 @@ MODULE MF_Euler_BoundaryConditionsModule
   INTEGER, PARAMETER :: iEuler_ApplyBC_None  = 3
 
 
-  PUBLIC :: MF_Euler_ApplyBoundaryConditions
+  PUBLIC :: MF_ApplyBoundaryConditions_Euler
   PUBLIC :: ConstructEdgeMap
 
   TYPE, PUBLIC :: EdgeMap
@@ -45,7 +45,7 @@ MODULE MF_Euler_BoundaryConditionsModule
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ApplyBoundaryConditions &
+  SUBROUTINE MF_ApplyBoundaryConditions_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
     INTEGER,          INTENT(in)    :: &
@@ -59,12 +59,12 @@ CONTAINS
 
     CALL Edge_Map % Euler_GetBC( iApplyBC )
 
-    IF( DEBUG ) WRITE(*,'(A)') '      CALL Euler_ApplyBoundaryConditions'
-    CALL Euler_ApplyBoundaryConditions &
+    IF( DEBUG ) WRITE(*,'(A)') '      CALL ApplyBoundaryConditions_Euler'
+    CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), iApplyBC )
 
-  END SUBROUTINE MF_Euler_ApplyBoundaryConditions
+  END SUBROUTINE MF_ApplyBoundaryConditions_Euler
 
 
   SUBROUTINE ConstructEdgeMap( GEOM, BX, Edge_Map )
