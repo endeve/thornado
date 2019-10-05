@@ -49,9 +49,9 @@ PROGRAM ApplicationDriver
   USE Euler_dgDiscretizationModule, ONLY: &
     Euler_ComputeIncrement_DG_Explicit
   USE Euler_TallyModule_NonRelativistic_TABLE, ONLY: &
-    Euler_InitializeTally_NonRelativistic_TABLE, &
-    Euler_FinalizeTally_NonRelativistic_TABLE, &
-    Euler_ComputeTally_NonRelativistic_TABLE
+    InitializeTally_Euler_NonRelativistic_TABLE, &
+    FinalizeTally_Euler_NonRelativistic_TABLE, &
+    ComputeTally_Euler_NonRelativistic_TABLE
 
   IMPLICIT NONE
 
@@ -286,7 +286,7 @@ PROGRAM ApplicationDriver
   t_wrt = dt_wrt
   wrt   = .TRUE.
 
-  CALL Euler_InitializeTally_NonRelativistic_TABLE &
+  CALL InitializeTally_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
@@ -340,7 +340,7 @@ PROGRAM ApplicationDriver
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-      CALL Euler_ComputeTally_NonRelativistic_TABLE &
+      CALL ComputeTally_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -362,13 +362,13 @@ PROGRAM ApplicationDriver
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL Euler_ComputeTally_NonRelativistic_TABLE &
+  CALL ComputeTally_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
-  CALL Euler_FinalizeTally_NonRelativistic_TABLE
+  CALL FinalizeTally_Euler_NonRelativistic_TABLE
 
   wTime = MPI_WTIME( ) - wTime
 

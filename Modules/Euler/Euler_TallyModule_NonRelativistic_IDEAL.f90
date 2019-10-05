@@ -25,9 +25,9 @@ MODULE Euler_TallyModule_NonRelativistic_IDEAL
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializeTally_NonRelativistic
-  PUBLIC :: Euler_FinalizeTally_NonRelativistic
-  PUBLIC :: Euler_ComputeTally_NonRelativistic
+  PUBLIC :: InitializeTally_Euler_NonRelativistic_IDEAL
+  PUBLIC :: FinalizeTally_Euler_NonRelativistic_IDEAL
+  PUBLIC :: ComputeTally_Euler_NonRelativistic_IDEAL
 
   CHARACTER(256)        :: TallyFileName
   INTEGER               :: nTallies
@@ -39,7 +39,7 @@ MODULE Euler_TallyModule_NonRelativistic_IDEAL
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializeTally_NonRelativistic( iX_B0, iX_E0, G, U )
+  SUBROUTINE InitializeTally_Euler_NonRelativistic_IDEAL( iX_B0, iX_E0, G, U )
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3)
@@ -66,25 +66,25 @@ CONTAINS
 
     CLOSE( FileUnit )
 
-    CALL Euler_ComputeTally_NonRelativistic &
+    CALL ComputeTally_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, G, U, Time = Zero, &
              iState_Option = 0, DisplayTally_Option = .FALSE. )
 
-    CALL Euler_ComputeTally_NonRelativistic &
+    CALL ComputeTally_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, G, U, Time = Zero, &
              iState_Option = 1, DisplayTally_Option = .TRUE. )
 
-  END SUBROUTINE Euler_InitializeTally_NonRelativistic
+  END SUBROUTINE InitializeTally_Euler_NonRelativistic_IDEAL
 
 
-  SUBROUTINE Euler_FinalizeTally_NonRelativistic
+  SUBROUTINE FinalizeTally_Euler_NonRelativistic_IDEAL
 
     DEALLOCATE( EulerTally )
 
-  END SUBROUTINE Euler_FinalizeTally_NonRelativistic
+  END SUBROUTINE FinalizeTally_Euler_NonRelativistic_IDEAL
 
 
-  SUBROUTINE Euler_ComputeTally_NonRelativistic &
+  SUBROUTINE ComputeTally_Euler_NonRelativistic_IDEAL &
     ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
 
     INTEGER,  INTENT(in) :: &
@@ -201,7 +201,7 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE Euler_ComputeTally_NonRelativistic
+  END SUBROUTINE ComputeTally_Euler_NonRelativistic_IDEAL
 
 
   SUBROUTINE WriteTally_Euler( Time )

@@ -26,9 +26,9 @@ MODULE Euler_TallyModule_Relativistic_IDEAL
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializeTally_Relativistic
-  PUBLIC :: Euler_FinalizeTally_Relativistic
-  PUBLIC :: Euler_ComputeTally_Relativistic
+  PUBLIC :: InitializeTally_Euler_Relativistic_IDEAL
+  PUBLIC :: FinalizeTally_Euler_Relativistic_IDEAL
+  PUBLIC :: ComputeTally_Euler_Relativistic_IDEAL
 
   CHARACTER(256)        :: TallyFileName
   INTEGER               :: nTallies
@@ -39,7 +39,7 @@ MODULE Euler_TallyModule_Relativistic_IDEAL
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializeTally_Relativistic( iX_B0, iX_E0, G, U )
+  SUBROUTINE InitializeTally_Euler_Relativistic_IDEAL( iX_B0, iX_E0, G, U )
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3)
@@ -64,25 +64,25 @@ CONTAINS
 
     CLOSE( FileUnit )
 
-    CALL Euler_ComputeTally_Relativistic &
+    CALL ComputeTally_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, G, U, Time = Zero, &
              iState_Option = 0, DisplayTally_Option = .FALSE. )
 
-    CALL Euler_ComputeTally_Relativistic &
+    CALL ComputeTally_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, G, U, Time = Zero, &
              iState_Option = 1, DisplayTally_Option = .TRUE. )
 
-  END SUBROUTINE Euler_InitializeTally_Relativistic
+  END SUBROUTINE InitializeTally_Euler_Relativistic_IDEAL
 
 
-  SUBROUTINE Euler_FinalizeTally_Relativistic
+  SUBROUTINE FinalizeTally_Euler_Relativistic_IDEAL
 
     DEALLOCATE( EulerTally )
 
-  END SUBROUTINE Euler_FinalizeTally_Relativistic
+  END SUBROUTINE FinalizeTally_Euler_Relativistic_IDEAL
 
 
-  SUBROUTINE Euler_ComputeTally_Relativistic &
+  SUBROUTINE ComputeTally_Euler_Relativistic_IDEAL &
     ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
 
     INTEGER,  INTENT(in) :: &
@@ -181,7 +181,7 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE Euler_ComputeTally_Relativistic
+  END SUBROUTINE ComputeTally_Euler_Relativistic_IDEAL
 
 
   SUBROUTINE WriteTally_Euler( Time )

@@ -10,15 +10,15 @@ MODULE Euler_TallyModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializeTally
-  PUBLIC :: Euler_FinalizeTally
-  PUBLIC :: Euler_ComputeTally
+  PUBLIC :: InitializeTally_Euler
+  PUBLIC :: FinalizeTally_Euler
+  PUBLIC :: ComputeTally_Euler
 
 
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializeTally( iX_B0, iX_E0, G, U )
+  SUBROUTINE InitializeTally_Euler( iX_B0, iX_E0, G, U )
 
     INTEGER,  INTENT(in) :: &
       iX_B0(3), iX_E0(3)
@@ -29,49 +29,49 @@ CONTAINS
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_InitializeTally_NonRelativistic_TABLE( iX_B0, iX_E0, G, U )
+    CALL InitializeTally_Euler_NonRelativistic_TABLE( iX_B0, iX_E0, G, U )
 
 #elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_InitializeTally_NonRelativistic( iX_B0, iX_E0, G, U )
+    CALL InitializeTally_Euler_NonRelativistic_IDEAL( iX_B0, iX_E0, G, U )
 
 #elif defined HYDRO_RELATIVISTIC
 
-    CALL Euler_InitializeTally_Relativistic( iX_B0, iX_E0, G, U )
+    CALL InitializeTally_Euler_Relativistic_IDEAL( iX_B0, iX_E0, G, U )
 
 #else
 
-    CALL Euler_InitializeTally_NonRelativistic( iX_B0, iX_E0, G, U )
+    CALL InitializeTally_Euler_NonRelativistic_IDEAL( iX_B0, iX_E0, G, U )
 
 #endif
 
-  END SUBROUTINE Euler_InitializeTally
+  END SUBROUTINE InitializeTally_Euler
 
 
-  SUBROUTINE Euler_FinalizeTally
+  SUBROUTINE FinalizeTally_Euler
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_FinalizeTally_NonRelativistic_TABLE
+    CALL FinalizeTally_Euler_NonRelativistic_TABLE
 
 #elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_FinalizeTally_NonRelativistic
+    CALL FinalizeTally_Euler_NonRelativistic_IDEAL
 
 #elif defined HYDRO_RELATIVISTIC
 
-    CALL Euler_FinalizeTally_Relativistic
+    CALL FinalizeTally_Euler_Relativistic_IDEAL
 
 #else
 
-    CALL Euler_FinalizeTally_NonRelativistic
+    CALL FinalizeTally_Euler_NonRelativistic_IDEAL
 
 #endif
 
-  END SUBROUTINE Euler_FinalizeTally
+  END SUBROUTINE FinalizeTally_Euler
 
 
-  SUBROUTINE Euler_ComputeTally &
+  SUBROUTINE ComputeTally_Euler &
     ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
 
     INTEGER,  INTENT(in) :: &
@@ -89,28 +89,28 @@ CONTAINS
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_ComputeTally_NonRelativistic_TABLE &
+    CALL ComputeTally_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
 
 
 #elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_ComputeTally_NonRelativistic &
+    CALL ComputeTally_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
 
 #elif defined HYDRO_RELATIVISTIC
 
-    CALL Euler_ComputeTally_Relativistic &
+    CALL ComputeTally_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
 
 #else
 
-    CALL Euler_ComputeTally_NonRelativistic &
+    CALL ComputeTally_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
 
 #endif
 
-  END SUBROUTINE Euler_ComputeTally
+  END SUBROUTINE ComputeTally_Euler
 
 
 END MODULE Euler_TallyModule

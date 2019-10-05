@@ -46,9 +46,9 @@ PROGRAM ApplicationDriver
   USE Euler_dgDiscretizationModule, ONLY: &
     Euler_ComputeIncrement_DG_Explicit
   USE Euler_TallyModule_NonRelativistic_IDEAL, ONLY: &
-    Euler_InitializeTally_NonRelativistic, &
-    Euler_FinalizeTally_NonRelativistic, &
-    Euler_ComputeTally_NonRelativistic
+    InitializeTally_Euler_NonRelativistic_IDEAL, &
+    FinalizeTally_Euler_NonRelativistic_IDEAL, &
+    ComputeTally_Euler_NonRelativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
     TimeIt_Euler, &
     InitializeTimers_Euler, FinalizeTimers_Euler, &
@@ -423,7 +423,7 @@ PROGRAM ApplicationDriver
   t_wrt = dt_wrt
   wrt   = .FALSE.
 
-  CALL Euler_InitializeTally_NonRelativistic &
+  CALL InitializeTally_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
@@ -495,7 +495,7 @@ PROGRAM ApplicationDriver
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-      CALL Euler_ComputeTally_NonRelativistic &
+      CALL ComputeTally_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -528,14 +528,14 @@ PROGRAM ApplicationDriver
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
   CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
-  CALL Euler_ComputeTally_NonRelativistic &
+  CALL ComputeTally_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
-  CALL Euler_FinalizeTally_NonRelativistic
+  CALL FinalizeTally_Euler_NonRelativistic_IDEAL
 
   wTime = MPI_WTIME( ) - wTime
 

@@ -48,9 +48,9 @@ PROGRAM ApplicationDriver
   USE UnitsModule, ONLY: &
     Millisecond
   USE Euler_TallyModule_Relativistic_IDEAL, ONLY: &
-    Euler_InitializeTally_Relativistic, &
-    Euler_FinalizeTally_Relativistic, &
-    Euler_ComputeTally_Relativistic
+    InitializeTally_Euler_Relativistic_IDEAL, &
+    FinalizeTally_Euler_Relativistic_IDEAL, &
+    ComputeTally_Euler_Relativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
     TimeIt_Euler, &
     InitializeTimers_Euler, FinalizeTimers_Euler, &
@@ -425,7 +425,7 @@ PROGRAM ApplicationDriver
   t_wrt = dt_wrt
   wrt   = .FALSE.
 
-  CALL Euler_InitializeTally_Relativistic &
+  CALL InitializeTally_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
@@ -508,7 +508,7 @@ PROGRAM ApplicationDriver
              ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
       CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
-      CALL Euler_ComputeTally_Relativistic &
+      CALL ComputeTally_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, &
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -545,14 +545,14 @@ PROGRAM ApplicationDriver
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
   CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
-  CALL Euler_ComputeTally_Relativistic &
+  CALL ComputeTally_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
-  CALL Euler_FinalizeTally_Relativistic
+  CALL FinalizeTally_Euler_Relativistic_IDEAL
 
   CALL FinalizePositivityLimiter_Euler_Relativistic_IDEAL
 
