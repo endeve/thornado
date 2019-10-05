@@ -33,7 +33,7 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   USE Euler_BoundaryConditionsModule, ONLY: &
     Euler_ApplyBoundaryConditions
   USE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL, ONLY: &
-    Euler_ComputeCharacteristicDecomposition_NonRelativistic
+    ComputeCharacteristicDecomposition_Euler_NonRelativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_TroubledCellIndicator
@@ -289,19 +289,19 @@ CONTAINS
 
         ! --- Compute Eigenvectors ---
 
-        CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic &
+        CALL ComputeCharacteristicDecomposition_Euler_NonRelativistic_IDEAL &
                ( 1, G_K(:), U_M(:,0,1), R_X1, invR_X1 )
 
         IF( nDimsX > 1 )THEN
 
-          CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic &
+          CALL ComputeCharacteristicDecomposition_Euler_NonRelativistic_IDEAL &
                  ( 2, G_K(:), U_M(:,0,1), R_X2, invR_X2 )
 
         END IF
 
         IF( nDimsX > 2 )THEN
 
-          CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic &
+          CALL ComputeCharacteristicDecomposition_Euler_NonRelativistic_IDEAL &
                  ( 3, G_K(:), U_M(:,0,1), R_X3, invR_X3 )
 
         END IF

@@ -35,7 +35,7 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
   USE Euler_BoundaryConditionsModule, ONLY: &
     Euler_ApplyBoundaryConditions
   USE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE, ONLY: &
-    Euler_ComputeCharacteristicDecomposition_NonRelativistic_TABLE
+    ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE
 
   IMPLICIT NONE
   PRIVATE
@@ -311,19 +311,19 @@ CONTAINS
 
         ! --- Compute Eigenvectors ---
 
-        CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic_TABLE &
+        CALL ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE &
                ( 1, G_K(:), U_M(:,0,1), R_X1, invR_X1 )
 
         IF( nDimsX > 1 )THEN
 
-          CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic_TABLE &
+          CALL ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE &
                  ( 2, G_K(:), U_M(:,0,1), R_X2, invR_X2 )
 
         END IF
 
         IF( nDimsX > 2 )THEN
 
-          CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic_TABLE &
+          CALL ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE &
                  ( 3, G_K(:), U_M(:,0,1), R_X3, invR_X3 )
 
         END IF

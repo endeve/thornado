@@ -40,7 +40,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   USE Euler_BoundaryConditionsModule, ONLY: &
     Euler_ApplyBoundaryConditions
   USE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL, ONLY: &
-    Euler_ComputeCharacteristicDecomposition_Relativistic
+    ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
 
   IMPLICIT NONE
   PRIVATE
@@ -290,19 +290,19 @@ CONTAINS
 
         ! --- Compute Eigenvectors ---
 
-        CALL Euler_ComputeCharacteristicDecomposition_Relativistic &
+        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
                ( 1, G_K, U_M(:,0,1), R_X1, invR_X1 )
 
         IF( nDimsX .GT. 1 )THEN
 
-          CALL Euler_ComputeCharacteristicDecomposition_Relativistic &
+          CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
                  ( 2, G_K, U_M(:,0,1), R_X2, invR_X2 )
 
         END IF
 
         IF( nDimsX .GT. 2 )THEN
 
-          CALL Euler_ComputeCharacteristicDecomposition_Relativistic &
+          CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
                  ( 3, G_K, U_M(:,0,1), R_X3, invR_X3 )
 
         END IF

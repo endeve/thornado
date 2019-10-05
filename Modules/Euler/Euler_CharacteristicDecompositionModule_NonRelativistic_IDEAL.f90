@@ -21,12 +21,12 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL
 
   LOGICAL, PARAMETER :: Debug = .FALSE.
 
-  PUBLIC :: Euler_ComputeCharacteristicDecomposition_NonRelativistic
+  PUBLIC :: ComputeCharacteristicDecomposition_Euler_NonRelativistic_IDEAL
 
 CONTAINS
 
 
-  SUBROUTINE Euler_ComputeCharacteristicDecomposition_NonRelativistic &
+  SUBROUTINE ComputeCharacteristicDecomposition_Euler_NonRelativistic_IDEAL &
     ( iDim, G, U, R, invR )
 
     INTEGER,  INTENT(in)  :: iDim
@@ -236,7 +236,7 @@ CONTAINS
 
     END SELECT
 
-  END SUBROUTINE Euler_ComputeCharacteristicDecomposition_NonRelativistic
+  END SUBROUTINE ComputeCharacteristicDecomposition_Euler_NonRelativistic_IDEAL
 
 
 END MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL

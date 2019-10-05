@@ -29,13 +29,13 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
 
   INCLUDE 'mpif.h'
 
-  PUBLIC :: Euler_ComputeCharacteristicDecomposition_Relativistic
+  PUBLIC :: ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
 
 
 CONTAINS
 
 
-  SUBROUTINE Euler_ComputeCharacteristicDecomposition_Relativistic &
+  SUBROUTINE ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
     ( iDim, G, U, R, invR )
 
     INTEGER,  INTENT(in)  :: iDim
@@ -393,7 +393,7 @@ CONTAINS
 
     END SELECT
 
-  END SUBROUTINE Euler_ComputeCharacteristicDecomposition_Relativistic
+  END SUBROUTINE ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
 
 
 !!$  ! --- Find the inverse of a matrix, function definition from
