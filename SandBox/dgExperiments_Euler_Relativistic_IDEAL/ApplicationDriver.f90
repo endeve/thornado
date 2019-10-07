@@ -1,7 +1,7 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two, Pi, Four, TwoPi
+    DP, Zero, One, Two, Pi, TwoPi
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -261,7 +261,7 @@ PROGRAM ApplicationDriver
 
       nX = [ 256, 1, 1 ]
       xL = [ R_PNS, 0.0_DP, 0.0_DP ]
-      xR = [ Two * R_shock, Pi, Four ]
+      xR = [ Two * R_shock, Pi, TwoPi ]
 
       bcX = [ 110, 0, 0 ]
 
