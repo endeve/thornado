@@ -3,6 +3,7 @@
 AMREX_HOME    ?= $(AMREX_DIR)
 THORNADO_HOME ?= $(THORNADO_DIR)
 WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
+HDF5_HOME     ?= $(HDF5_DIR)
 
 DEBUG     = TRUE
 
@@ -20,6 +21,11 @@ COMP      = gnu
 DIM       = 2
 
 EBASE     = main
+
+# HDF5
+INCLUDE_LOCATIONS += $(HDF5_HOME)/include
+LIBRARY_LOCATIONS += $(HDF5_HOME)/lib
+LIBRARIES += -lhdf5_fortran -lhdf5
 
 include $(THORNADO_HOME)/SandBox/AMReX/Euler/Make.package
 
