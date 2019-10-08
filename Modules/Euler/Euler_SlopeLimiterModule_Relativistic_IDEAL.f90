@@ -245,13 +245,6 @@ CONTAINS
 
       END DO
 
-      ! --- Cell Average of Geometry (Spatial Metric, Lapse Function,
-      !     and Shift Vector) ---
-
-      DO iGF = iGF_Gm_dd_11, iGF_Beta_3
-        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF) )
-      END DO
-
       ! --- Map to Modal Representation ---
 
       DO iCF = 1, nCF
@@ -287,6 +280,13 @@ CONTAINS
       END DO
 
       IF( UseCharacteristicLimiting )THEN
+
+        ! --- Cell Average of Geometry (Spatial Metric, Lapse Function,
+        !     and Shift Vector) ---
+
+        DO iGF = iGF_Gm_dd_11, iGF_Beta_3
+          G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF) )
+        END DO
 
         ! --- Compute Eigenvectors ---
 
