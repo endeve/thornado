@@ -141,21 +141,23 @@ CONTAINS
     END IF
 
     IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' )THEN
+
       t_end  = t_end  * Millisecond
       dt_wrt = dt_wrt * Millisecond
       dt_chk = dt_chk * Millisecond
       xL(1)  = xL(1)  * Kilometer
       xR(1)  = xR(1)  * Kilometer
+
     END IF
 
-    ! --- Parameters amr.*
+    ! --- Parameters amr.* ---
     CALL amrex_parmparse_build( PP, 'amr' )
       CALL PP % getarr( 'n_cell',        nX )
       CALL PP % getarr( 'max_grid_size', MaxGridSize )
       CALL PP % get   ( 'max_level',     nLevels )
     CALL amrex_parmparse_destroy( PP )
 
-    ! --- Slope limiter parameters SL.*
+    ! --- Slope limiter parameters SL.* ---
     CALL amrex_parmparse_build( PP, 'SL' )
       CALL PP % get( 'UseSlopeLimiter',           UseSlopeLimiter )
       CALL PP % get( 'UseCharacteristicLimiting', UseCharacteristicLimiting )
@@ -167,7 +169,7 @@ CONTAINS
       CALL PP % get( 'UseConservativeCorrection', UseConservativeCorrection )
     CALL amrex_parmparse_destroy( PP )
 
-    ! --- Positivitiy limiter parameters PL.*
+    ! --- Positivitiy limiter parameters PL.* ---
     Min_3 = 0.0_amrex_real
     Max_1 = 0.0_amrex_real
     Max_2 = 0.0_amrex_real
@@ -182,6 +184,7 @@ CONTAINS
       CALL PP % query( 'Max_3',              Max_3 )
     CALL amrex_parmparse_destroy( PP )
 
+    ! --- Equation of state parameters EoS.* ---
     EquationOfState = 'IDEAL'
     EosTableName    = ''
     CALL amrex_parmparse_build( PP, 'EoS' )
@@ -194,8 +197,19 @@ CONTAINS
       t_end  = t_end  * Millisecond
       dt_wrt = dt_wrt * Millisecond
       dt_chk = dt_chk * Millisecond
-      xL(1)  = xL(1)  * Kilometer
-      xR(1)  = xR(1)  * Kilometer
+
+      IF     ( CoordSys .EQ. 'CARTESIAN'   )THEN
+        xL(1:3) = xL(1:3) * Kilometer
+        xR(1:3) = xR(1:3) * Kilometer
+      ELSE IF( CoordSys .EQ. 'CYLINDRICAL' )THEN
+        xL(1:2) = xL(1:2) * Kilometer
+        xR(1:2) = xR(1:2) * Kilometer
+      ELSE IF( CoordSys .EQ. 'SPHERICAL'   )THEN
+        xL(1)   = xL(1)   * Kilometer
+        xR(1)   = xR(1)   * Kilometer
+      ELSE
+        STOP 'Invalid choice for CoordSys'
+      END IF
 
     END IF
 
