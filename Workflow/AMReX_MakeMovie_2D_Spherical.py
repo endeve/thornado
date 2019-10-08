@@ -25,13 +25,12 @@ HOME = subprocess.check_output( ["echo $HOME"], shell = True)
 HOME = HOME[:-1].decode( "utf-8" ) + '/'
 
 ############# User input #############
-DataDirectory \
-  = HOME + 'Research/DataFromPastRuns/SASI_nNodes3_HLL_NoTCI_200x128/'
+DataDirectory = HOME + 'Desktop/'
 
-ProblemName   = 'SASI' # Only used for name of movie file
+ProblemName = 'SASI' # Only used for name of movie file
 
-# Create new variables following method used near line 95
-VariableToPlot = 'LorentzFactor'
+# Create new variables following method used near line 98
+VariableToPlot = 'Entropy'
 
 DataFileName     = 'MovieData_{:}.dat'.format( VariableToPlot )
 TimeFileName     = 'MovieTime.dat'
@@ -39,7 +38,8 @@ UseLogScale      = False      # Do you want your movie in log scale?
 UsePhysicalUnits = True      # Are you using physical units?
 Relativistic     = True      # Are you plotting results from relativistic hydro?
 cmap             = 'Purples' # Color scheme for movie
-UseCustomTicks   = True      # Define limits for colorbar near line 164
+UseCustomTicks   = True      # Define limits for colorbar near line 166
+zAxisVertical    = True     # Orient z-axis
 ############# End of user input #############
 
 if( UsePhysicalUnits ):
@@ -148,10 +148,8 @@ fig = plt.figure()
 ax  = fig.add_subplot( 111, polar = True )
 xL  = xL.to_ndarray()
 xH  = xH.to_ndarray()
-dX1 = ( xH[0] - xL[0] ) / nX[0]
-dX2 = ( xH[1] - xL[1] ) / nX[1]
-X1  = np.linspace( xL[0] + dX1, xH[0] - dX1, nX[0] )
-X2  = np.linspace( xL[1] + dX2, xH[1] - dX2, nX[1] )
+X1  = np.linspace( xL[0], xH[0], nX[0] )
+X2  = np.linspace( xL[1], xH[1], nX[1] )
 theta, r = np.meshgrid( X2, X1 )
 
 if( UseLogScale ):
@@ -184,14 +182,22 @@ im = ax.pcolormesh( theta, r, f(0)[:-1,:-1], \
                     cmap = cmap, \
                     vmin = vmin, vmax = vmax, \
                     norm = norm )
+ax.set_thetamin( 180.0/np.pi * X2[0 ] )
+ax.set_thetamax( 180.0/np.pi * X2[-1] )
+ax.set_theta_direction( -1 )
+
+if( zAxisVertical ):
+    ax.set_theta_zero_location( 'N' ) # z-axis vertical
+    time_text = plt.text( 0.5 * np.pi / 2, xH[0] * ( 1.0 + 0.3 ), '' )
+else:
+    ax.set_theta_zero_location( 'W' ) # z-axis horizontal
+    time_text = plt.text( 0.9 *np.pi / 2, xH[0] * ( 1.0 + 0.3 ), '' )
 
 if( UseCustomTicks ):
     cbar = fig.colorbar( im, ticks = ticks )
     cbar.ax.set_yticklabels( ticklabels )
 else:
     fig.colorbar( im )
-
-time_text = plt.text( 2.5 * np.pi / 2, xL[0] + 0.5 * ( xH[0] - xL[0] ), '' )
 
 def UpdateFrame(t):
     im.set_array( f(t)[:-1,:-1].flatten() )
