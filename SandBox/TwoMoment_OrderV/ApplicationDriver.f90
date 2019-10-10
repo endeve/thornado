@@ -76,7 +76,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'SineWaveDiffusion'
+  ProgramName = 'IsotropicRadiation'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -135,6 +135,33 @@ PROGRAM ApplicationDriver
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 1.0d+2
+
+    CASE( 'IsotropicRadiation' )
+
+      nX  = [ 10, 1, 1 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      bcX = [ 1, 0, 0 ]
+
+      nE  = 10
+      eL  = 0.0_DP
+      eR  = 1.0_DP
+      bcE = 0
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'SSPRK3'
+
+      t_end   = 1.0d0
+      iCycleD = 10
+      iCycleW = 10
+      maxCycles = 1000000
+
+      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
 
     CASE DEFAULT
 
