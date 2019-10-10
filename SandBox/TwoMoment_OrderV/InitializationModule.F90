@@ -9,8 +9,8 @@ MODULE InitializationModule
     iZ_B0, iZ_E0, iZ_B1, iZ_E1
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
-  USE ReferenceElementModule, ONLY: &
-    NodeNumberTable
+  USE ReferenceElementModuleZ, ONLY: &
+    NodeNumberTableZ
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
@@ -133,7 +133,7 @@ CONTAINS
 
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
-        iNodeZ2 = NodeNumberTable(2,iNodeZ)
+        iNodeZ2 = NodeNumberTableZ(2,iNodeZ)
 
         X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
 
@@ -231,7 +231,7 @@ CONTAINS
 
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
-        iNodeZ2 = NodeNumberTable(2,iNodeZ)
+        iNodeZ2 = NodeNumberTableZ(2,iNodeZ)
 
         X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
 

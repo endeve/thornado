@@ -24,6 +24,9 @@ PROGRAM ApplicationDriver
   USE ReferenceElementModuleE_Lagrange, ONLY: &
     InitializeReferenceElementE_Lagrange, &
     FinalizeReferenceElementE_Lagrange
+  USE ReferenceElementModuleZ, ONLY: &
+    InitializeReferenceElementZ, &
+    FinalizeReferenceElementZ
   USE ReferenceElementModule, ONLY: &
     InitializeReferenceElement, &
     FinalizeReferenceElement
@@ -226,6 +229,8 @@ PROGRAM ApplicationDriver
 
   ! --- Phase Space Reference Element ---
 
+  CALL InitializeReferenceElementZ
+
   CALL InitializeReferenceElement
 
   CALL InitializeReferenceElement_Lagrange
@@ -338,6 +343,8 @@ PROGRAM ApplicationDriver
   CALL FinalizeReferenceElementE
 
   CALL FinalizeReferenceElementE_Lagrange
+
+  CALL FinalizeReferenceElementZ
 
   CALL FinalizeReferenceElement
 
