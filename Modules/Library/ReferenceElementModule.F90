@@ -15,21 +15,24 @@ MODULE ReferenceElementModule
   IMPLICIT NONE
   PRIVATE
 
+  INTEGER,               PUBLIC :: nDOF_E
   INTEGER,               PUBLIC :: nDOF_X1
   INTEGER,               PUBLIC :: nDOF_X2
   INTEGER,               PUBLIC :: nDOF_X3
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumbersX(:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumbersE(:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable(:,:)
+  INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable_E (:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable_X1(:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable_X2(:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable_X3(:,:)
   INTEGER,  ALLOCATABLE, PUBLIC :: NodeNumberTable4D(:,:,:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: NodesE(:),  WeightsE(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: NodesE (:), WeightsE (:)
   REAL(DP), ALLOCATABLE, PUBLIC :: NodesX1(:), WeightsX1(:)
   REAL(DP), ALLOCATABLE, PUBLIC :: NodesX2(:), WeightsX2(:)
   REAL(DP), ALLOCATABLE, PUBLIC :: NodesX3(:), WeightsX3(:)
   REAL(DP), ALLOCATABLE, PUBLIC :: Weights_q(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: Weights_E (:)
   REAL(DP), ALLOCATABLE, PUBLIC :: Weights_X1(:)
   REAL(DP), ALLOCATABLE, PUBLIC :: Weights_X2(:)
   REAL(DP), ALLOCATABLE, PUBLIC :: Weights_X3(:)
@@ -47,6 +50,7 @@ CONTAINS
     INTEGER :: iNode, iNodeX
     INTEGER :: iNodeE, iNodeX1, iNodeX2, iNodeX3
 
+    nDOF_E  = nNodesX(1) * nNodesX(2) * nNodesX(3)
     nDOF_X1 = nNodesX(2) * nNodesX(3) * nNodesE
     nDOF_X2 = nNodesX(1) * nNodesX(3) * nNodesE
     nDOF_X3 = nNodesX(1) * nNodesX(2) * nNodesE
@@ -56,20 +60,21 @@ CONTAINS
     iNode  = 0
     iNodeX = 0
     DO iNodeX3 = 1, nNodesX(3)
-      DO iNodeX2 = 1, nNodesX(2)
-        DO iNodeX1 = 1, nNodesX(1)
+    DO iNodeX2 = 1, nNodesX(2)
+    DO iNodeX1 = 1, nNodesX(1)
 
-          iNodeX = iNodeX + 1
+      iNodeX = iNodeX + 1
 
-          DO iNodeE = 1, nNodesE
+      DO iNodeE = 1, nNodesE
 
-            iNode = iNode + 1
+        iNode = iNode + 1
 
-            NodeNumbersX(iNode) = iNodeX
+        NodeNumbersX(iNode) = iNodeX
 
-          END DO
-        END DO
       END DO
+
+    END DO
+    END DO
     END DO
 
     ALLOCATE( NodeNumbersE(nDOFX,nDOFE) )
@@ -99,69 +104,85 @@ CONTAINS
 
     iNode = 0
     DO iNodeX3 = 1, nNodesX(3)
-      DO iNodeX2 = 1, nNodesX(2)
-        DO iNodeX1 = 1, nNodesX(1)
-          DO iNodeE = 1, nNodesE
+    DO iNodeX2 = 1, nNodesX(2)
+    DO iNodeX1 = 1, nNodesX(1)
+    DO iNodeE  = 1, nNodesE
 
-            iNode = iNode + 1
+      iNode = iNode + 1
 
-            NodeNumberTable(1:4,iNode) &
-              = [ iNodeE, iNodeX1, iNodeX2, iNodeX3 ]
+      NodeNumberTable(1:4,iNode) &
+        = [ iNodeE, iNodeX1, iNodeX2, iNodeX3 ]
 
-            NodeNumberTable4D(iNodeE,iNodeX1,iNodeX2,iNodeX3) &
-              = iNode
+      NodeNumberTable4D(iNodeE,iNodeX1,iNodeX2,iNodeX3) &
+        = iNode
 
-          END DO
-        END DO
-      END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    ALLOCATE( NodeNumberTable_E(3,nDOF_E) )
+
+    iNode = 0
+    DO iNodeX3 = 1, nNodesX(3)
+    DO iNodeX2 = 1, nNodesX(2)
+    DO iNodeX1 = 1, nNodesX(1)
+
+      iNode = iNode + 1
+
+      NodeNumberTable_E(1:3,iNode) &
+        = [ iNodeX1, iNodeX2, iNodeX3 ]
+
+    END DO
+    END DO
     END DO
 
     ALLOCATE( NodeNumberTable_X1(3,nDOF_X1) )
 
-    iNode = 1
+    iNode = 0
     DO iNodeX3 = 1, nNodesX(3)
-      DO iNodeX2 = 1, nNodesX(2)
-        DO iNodeE = 1, nNodesE
+    DO iNodeX2 = 1, nNodesX(2)
+    DO iNodeE  = 1, nNodesE
 
-          NodeNumberTable_X1(1:3,iNode) &
-            = [ iNodeE, iNodeX2, iNodeX3 ]
+      iNode = iNode + 1
 
-          iNode = iNode + 1
+      NodeNumberTable_X1(1:3,iNode) &
+        = [ iNodeE, iNodeX2, iNodeX3 ]
 
-        END DO
-      END DO
+    END DO
+    END DO
     END DO
 
     ALLOCATE( NodeNumberTable_X2(3,nDOF_X2) )
 
-    iNode = 1
+    iNode = 0
     DO iNodeX3 = 1, nNodesX(3)
-      DO iNodeX1 = 1, nNodesX(1)
-        DO iNodeE = 1, nNodesE
+    DO iNodeX1 = 1, nNodesX(1)
+    DO iNodeE  = 1, nNodesE
 
-          NodeNumberTable_X2(1:3,iNode) &
-            = [ iNodeE, iNodeX1, iNodeX3 ]
+      iNode = iNode + 1
 
-          iNode = iNode + 1
+      NodeNumberTable_X2(1:3,iNode) &
+        = [ iNodeE, iNodeX1, iNodeX3 ]
 
-        END DO
-      END DO
+    END DO
+    END DO
     END DO
 
     ALLOCATE( NodeNumberTable_X3(3,nDOF_X3) )
 
-    iNode = 1
+    iNode = 0
     DO iNodeX2 = 1, nNodesX(2)
-      DO iNodeX1 = 1, nNodesX(1)
-        DO iNodeE = 1, nNodesE
+    DO iNodeX1 = 1, nNodesX(1)
+    DO iNodeE  = 1, nNodesE
 
-          NodeNumberTable_X3(1:3,iNode) &
-            = [ iNodeE, iNodeX1, iNodeX2 ]
+      iNode = iNode + 1
 
-          iNode = iNode + 1
+      NodeNumberTable_X3(1:3,iNode) &
+        = [ iNodeE, iNodeX1, iNodeX2 ]
 
-        END DO
-      END DO
+    END DO
+    END DO
     END DO
 
     ALLOCATE( NodesE (nNodesE),    WeightsE (nNodesE) )
@@ -191,6 +212,19 @@ CONTAINS
       Nodes_q(1:4,iNode) &
         = [ NodesE (iNodeE),  NodesX1(iNodeX1), &
             NodesX2(iNodeX2), NodesX3(iNodeX3) ]
+
+    END DO
+
+    ALLOCATE( Weights_E(nDOF_E) )
+
+    DO iNode = 1, nDOF_E
+
+      iNodeX1 = NodeNumberTable_E(1,iNode)
+      iNodeX2 = NodeNumberTable_E(2,iNode)
+      iNodeX3 = NodeNumberTable_E(3,iNode)
+
+      Weights_E(iNode) &
+        = WeightsX1(iNodeX1) * WeightsX2(iNodeX2) * WeightsX3(iNodeX3)
 
     END DO
 
@@ -256,15 +290,17 @@ CONTAINS
 
     DEALLOCATE( NodeNumbersX )
     DEALLOCATE( NodeNumberTable )
+    DEALLOCATE( NodeNumberTable_E  )
     DEALLOCATE( NodeNumberTable_X1 )
     DEALLOCATE( NodeNumberTable_X2 )
     DEALLOCATE( NodeNumberTable_X3 )
     DEALLOCATE( NodeNumberTable4D )
-    DEALLOCATE( NodesE,  WeightsE )
+    DEALLOCATE( NodesE , WeightsE  )
     DEALLOCATE( NodesX1, WeightsX1 )
     DEALLOCATE( NodesX2, WeightsX2 )
     DEALLOCATE( NodesX3, WeightsX3 )
     DEALLOCATE( Nodes_q, Weights_q )
+    DEALLOCATE( Weights_E  )
     DEALLOCATE( Weights_X1 )
     DEALLOCATE( Weights_X2 )
     DEALLOCATE( Weights_X3 )
