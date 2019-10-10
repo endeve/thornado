@@ -52,61 +52,61 @@ CONTAINS
 
     iNodeX = 0
     DO iNodeX3 = 1, nNodesX(3)
-      DO iNodeX2 = 1, nNodesX(2)
-        DO iNodeX1 = 1, nNodesX(1)
+    DO iNodeX2 = 1, nNodesX(2)
+    DO iNodeX1 = 1, nNodesX(1)
 
-          iNodeX = iNodeX + 1
+      iNodeX = iNodeX + 1
 
-          NodeNumberTableX(1:3,iNodeX) &
-            = [ iNodeX1, iNodeX2, iNodeX3 ]
+      NodeNumberTableX(1:3,iNodeX) &
+        = [ iNodeX1, iNodeX2, iNodeX3 ]
 
-          NodeNumberTableX3D(iNodeX1,iNodeX2,iNodeX3) &
-            = iNodeX
+      NodeNumberTableX3D(iNodeX1,iNodeX2,iNodeX3) &
+        = iNodeX
 
-        END DO
-      END DO
+    END DO
+    END DO
     END DO
 
     ALLOCATE( NodeNumberTableX_X1(2,nDOFX_X1) )
 
-    iNodeX = 1
+    iNodeX = 0
     DO iNodeX3 = 1, nNodesX(3)
-      DO iNodeX2 = 1, nNodesX(2)
+    DO iNodeX2 = 1, nNodesX(2)
 
-        NodeNumberTableX_X1(1:2,iNodeX) &
-          = [ iNodeX2, iNodeX3 ]
+      iNodeX = iNodeX + 1
 
-        iNodeX = iNodeX + 1
+      NodeNumberTableX_X1(1:2,iNodeX) &
+        = [ iNodeX2, iNodeX3 ]
 
-      END DO
+    END DO
     END DO
 
     ALLOCATE( NodeNumberTableX_X2(2,nDOFX_X2) )
 
-    iNodeX = 1
+    iNodeX = 0
     DO iNodeX3 = 1, nNodesX(3)
-      DO iNodeX1 = 1, nNodesX(1)
+    DO iNodeX1 = 1, nNodesX(1)
 
-        NodeNumberTableX_X2(1:2,iNodeX) &
-          = [ iNodeX1, iNodeX3 ]
+      iNodeX = iNodeX + 1
 
-        iNodeX = iNodeX + 1
+      NodeNumberTableX_X2(1:2,iNodeX) &
+        = [ iNodeX1, iNodeX3 ]
 
-      END DO
+    END DO
     END DO
 
     ALLOCATE( NodeNumberTableX_X3(2,nDOFX_X3) )
 
-    iNodeX = 1
+    iNodeX = 0
     DO iNodeX2 = 1, nNodesX(2)
-      DO iNodeX1 = 1, nNodesX(1)
+    DO iNodeX1 = 1, nNodesX(1)
 
-        NodeNumberTableX_X3(1:2,iNodeX) &
-          = [ iNodeX1, iNodeX2 ]
+      iNodeX = iNodeX + 1
 
-        iNodeX = iNodeX + 1
+      NodeNumberTableX_X3(1:2,iNodeX) &
+        = [ iNodeX1, iNodeX2 ]
 
-      END DO
+    END DO
     END DO
 
     ! --- Gaussian Quadrature Points and Weights ---
