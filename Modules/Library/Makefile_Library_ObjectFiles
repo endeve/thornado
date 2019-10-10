@@ -9,6 +9,7 @@ LIBRARY = \
   LagrangePolynomialsModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleE.o \
+  ReferenceElementModuleZ.o \
   ReferenceElementModule.o \
   PolynomialBasisModuleX_Lagrange.o \
   PolynomialBasisModuleX_Legendre.o \
