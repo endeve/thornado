@@ -20,14 +20,17 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_TwoMoment &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+      U(1:nDOF, &
+        iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+        iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nCR,1:nSpecies)
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -36,6 +39,9 @@ CONTAINS
     !$ACC ENTER DATA &
     !$ACC COPYIN( U, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #endif
+
+    CALL ApplyBC_TwoMoment_E &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
     CALL ApplyBC_TwoMoment_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
@@ -59,6 +65,96 @@ CONTAINS
   END SUBROUTINE ApplyBoundaryConditions_TwoMoment
 
 
+  SUBROUTINE ApplyBC_TwoMoment_E( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(inout) :: &
+      U(1:nDOF, &
+        iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+        iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nCR,1:nSpecies)
+
+    INTEGER :: iNodeZ, iS, iCR, iZ1, iZ2, iZ3, iZ4
+
+    SELECT CASE ( bcZ(1) )
+
+    CASE ( 0 ) ! No Boundary Condition
+
+    CASE ( 1 ) ! Periodic
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = 1, swZ(1)
+
+        DO iNodeZ = 1, nDOF
+
+          ! --- Inner Boundary ---
+
+          U(iNodeZ,iZ_B0(1)-iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_E0(1)-(iZ1-1),iZ2,iZ3,iZ4,iCR,iS)
+
+          ! --- Outer Boundary ---
+
+          U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_B0(1)+(iZ1-1),iZ2,iZ3,iZ4,iCR,iS)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    CASE ( 2 ) ! Homogeneous
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = 1, swZ(1)
+
+        DO iNodeZ = 1, nDOF
+
+          ! --- Inner Boundary ---
+
+          U(iNodeZ,iZ_B0(1)-iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_B0(1),iZ2,iZ3,iZ4,iCR,iS)
+
+          ! --- Outer Boundary ---
+
+          U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_E0(1),iZ2,iZ3,iZ4,iCR,iS)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    CASE DEFAULT
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A45,I2.2)') &
+        '', 'Invalid Boundary Condition for TwoMoment E: ', bcZ(1)
+      STOP
+
+    END SELECT
+
+  END SUBROUTINE ApplyBC_TwoMoment_E
+
+
   SUBROUTINE ApplyBC_TwoMoment_X1( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
@@ -66,7 +162,10 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+      U(1:nDOF, &
+        iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+        iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nCR,1:nSpecies)
 
     INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
@@ -313,7 +412,10 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+      U(1:nDOF, &
+        iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+        iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nCR,1:nSpecies)
 
     INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
@@ -559,7 +661,10 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+      U(1:nDOF, &
+        iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+        iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nCR,1:nSpecies)
 
     INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
