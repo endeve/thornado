@@ -312,6 +312,9 @@ CONTAINS
   END FUNCTION EddingtonFactor_Vector
 
 
+  ! --- Heat Flux Factor ---
+
+
   FUNCTION HeatFluxFactor_Scalar( D, FF ) RESULT( HeatFluxFactor )
 
     REAL(DP), INTENT(in) :: D, FF
