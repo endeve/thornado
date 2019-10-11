@@ -83,6 +83,14 @@ PolynomialBasisModuleX_Legendre.o: \
   ProgramHeaderModule.o \
   PolynomialBasisModuleX_Legendre.f90
 
+PolynomialBasisModuleZ_Lagrange.o: \
+  KindModule.o \
+  PolynomialBasisModuleZ_Lagrange.f90
+
+PolynomialBasisModuleZ_Legendre.o: \
+  KindModule.o \
+  PolynomialBasisModuleZ_Legendre.f90
+
 PolynomialBasisModule_Lagrange.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -108,6 +116,10 @@ ReferenceElementModuleE_Lagrange.o: \
   ReferenceElementModuleE.o \
   PolynomialBasisModule_Lagrange.o \
   ReferenceElementModuleE_Lagrange.f90
+
+ReferenceElementModuleZ_Lagrange.o: \
+  KindModule.o \
+  ReferenceElementModuleZ_Lagrange.F90
 
 ReferenceElementModule_Lagrange.o: \
   KindModule.o \

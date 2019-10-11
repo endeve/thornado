@@ -13,10 +13,13 @@ LIBRARY = \
   ReferenceElementModule.o \
   PolynomialBasisModuleX_Lagrange.o \
   PolynomialBasisModuleX_Legendre.o \
+  PolynomialBasisModuleZ_Lagrange.o \
+  PolynomialBasisModuleZ_Legendre.o \
   PolynomialBasisModule_Lagrange.o \
   PolynomialBasisModule_Legendre.o \
   ReferenceElementModuleX_Lagrange.o \
   ReferenceElementModuleE_Lagrange.o \
+  ReferenceElementModuleZ_Lagrange.o \
   ReferenceElementModule_Lagrange.o \
   PolynomialBasisMappingModule.o \
   SubcellReconstructionModule.o
