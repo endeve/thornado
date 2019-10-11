@@ -25,12 +25,14 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     dLXdX1_q, &
     LX_X1_Dn, LX_X1_Up
   USE ReferenceElementModule, ONLY: &
+    nDOF_E, &
     nDOF_X1, &
     Weights_q, &
     Weights_X1
   USE ReferenceElementModule_Lagrange, ONLY: &
-    dLdX1_q, &
-    L_X1_Dn, L_X1_Up
+    L_E_Dn,  L_E_Up, &
+    L_X1_Dn, L_X1_Up, &
+    dLdX1_q
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModuleE, ONLY: &
@@ -65,6 +67,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     ApplyBoundaryConditions_TwoMoment
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputePrimitive_TwoMoment, &
+    Flux_E, &
     Flux_X1, &
     NumericalFlux_LLF
 
@@ -140,6 +143,9 @@ CONTAINS
     END DO
 
     CALL ComputeIncrement_Divergence_X1 &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+
+    CALL ComputeIncrement_ObserverCorrections &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
     CALL ComputeWeakDerivatives_X1 &
@@ -849,6 +855,277 @@ CONTAINS
     END ASSOCIATE ! dZ3, etc.
 
   END SUBROUTINE ComputeIncrement_Divergence_X1
+
+
+  SUBROUTINE ComputeIncrement_ObserverCorrections &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      GE  (1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
+    REAL(DP), INTENT(in)    :: &
+      GX  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
+    REAL(DP), INTENT(in)    :: &
+      U_F (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
+    REAL(DP), INTENT(in)    :: &
+      U_R (1:nDOFZ ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                   iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(inout) :: &
+      dU_R(1:nDOFZ ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                   iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+
+    INTEGER  :: iNode, iNodeZ, iNodeX
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
+    INTEGER  :: nK(4), nK_Z1(4), nV, nV_Z1
+    REAL(DP) :: uPR_L(nPR), Flux_L(nCR)
+    REAL(DP) :: uPR_R(nPR), Flux_R(nCR)
+    REAL(DP) :: uGF_K(nDOFX,nGF,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
+                      iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: uCF_K(nDOFX,nCF,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
+                      iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: uPF_K(nDOFX,nPF,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
+                      iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: uCR_K(nDOFZ,nCR,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
+                      iZ_B0(4):iZ_E0(4),nSpecies,iZ_B1(1):iZ_E1(1))
+    REAL(DP) :: uCR_L(nDOF_E,nCR,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
+                      iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(1):iZ_E1(1))
+    REAL(DP) :: uCR_R(nDOF_E,nCR,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
+                      iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(1):iZ_E1(1))
+
+    PRINT*, "      ComputeIncrement_ObserverCorrections"
+
+    IF( iZ_E0(1) .EQ. iZ_B0(1) ) RETURN
+
+    nK    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
+    nK_Z1 = nK + [1,0,0,0]    ! Number of Z1 Faces per Phase Space Dimension
+    nV    = nCR * nSpecies * PRODUCT( nK )
+    nV_Z1 = nCR * nSpecies * PRODUCT( nK_Z1 )
+
+    CALL TimersStart( Timer_Ex_Permute )
+
+    ! --- Permute Geometry Fields ---
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iGF = 1, nGF
+
+      DO iNodeX = 1, nDOFX
+
+        uGF_K(iNodeX,iGF,iZ2,iZ3,iZ4) &
+          = GX(iNodeX,iZ2,iZ3,iZ4,iGF)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    ! --- Permute Fluid Fields ---
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iCF = 1, nCF
+
+      DO iNodeX = 1, nDOFX
+
+        uCF_K(iNodeX,iCF,iZ2,iZ3,iZ4) &
+          = U_F(iNodeX,iZ2,iZ3,iZ4,iCF)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    ! --- Permute Radiation Fields ---
+
+    DO iZ1 = iZ_B1(1), iZ_E1(1)
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iCR = 1, nCR
+
+      DO iNodeZ = 1, nDOFZ
+
+        uCR_K(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
+          = U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop( Timer_Ex_Permute )
+
+    ! --- Compute Primitive Fluid ---
+
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      CALL ComputePrimitive_Euler_NonRelativistic &
+             ( uCF_K(:,iCF_D ,iZ2,iZ3,iZ4), &
+               uCF_K(:,iCF_S1,iZ2,iZ3,iZ4), &
+               uCF_K(:,iCF_S2,iZ2,iZ3,iZ4), &
+               uCF_K(:,iCF_S3,iZ2,iZ3,iZ4), &
+               uCF_K(:,iCF_E ,iZ2,iZ3,iZ4), &
+               uCF_K(:,iCF_Ne,iZ2,iZ3,iZ4), &
+               uPF_K(:,iPF_D ,iZ2,iZ3,iZ4), &
+               uPF_K(:,iPF_V1,iZ2,iZ3,iZ4), &
+               uPF_K(:,iPF_V2,iZ2,iZ3,iZ4), &
+               uPF_K(:,iPF_V3,iZ2,iZ3,iZ4), &
+               uPF_K(:,iPF_E ,iZ2,iZ3,iZ4), &
+               uPF_K(:,iPF_Ne,iZ2,iZ3,iZ4), &
+               uGF_K(:,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
+               uGF_K(:,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
+               uGF_K(:,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStart( Timer_Ex_Interpolate )
+
+    ! --- Interpolate Radiation Fields ---
+
+    ! --- Interpolate Left State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOF_E, nV_Z1, nDOFZ, One, L_E_Up, nDOF_E, &
+             uCR_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)-1), nDOFZ, Zero, &
+             uCR_L(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ), nDOF_E )
+
+    ! --- Interpolate Right State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOF_E, nV_Z1, nDOFZ, One, L_E_Dn, nDOF_E, &
+             uCR_K(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ), nDOFZ, Zero, &
+             uCR_R(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ), nDOF_E )
+
+    CALL TimersStop( Timer_Ex_Interpolate )
+
+    CALL TimersStart( Timer_Ex_Flux )
+
+    ! --- Numerical Flux ---
+
+    DO iZ1 = iZ_B0(1), iZ_E1(1)
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+!!$      IF( iZ2 == 1 )THEN
+!!$
+!!$        PRINT*, "iZ1, iZ2 = ", iZ1, iZ2
+!!$        PRINT*
+!!$        PRINT*, "N_L  = ", uCR_L(:,iCR_N ,iZ2,iZ3,iZ4,iS,iZ1)
+!!$        PRINT*, "G1_L = ", uCR_L(:,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1)
+!!$        PRINT*, "G2_L = ", uCR_L(:,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1)
+!!$        PRINT*, "G3_L = ", uCR_L(:,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1)
+!!$        PRINT*
+!!$        PRINT*, "N_R  = ", uCR_R(:,iCR_N ,iZ2,iZ3,iZ4,iS,iZ1)
+!!$        PRINT*, "G1_R = ", uCR_R(:,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1)
+!!$        PRINT*, "G2_R = ", uCR_R(:,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1)
+!!$        PRINT*, "G3_R = ", uCR_R(:,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1)
+!!$
+!!$      END IF
+
+      DO iNode = 1, nDOF_E ! = nDOFX
+
+        ! --- Left State Primitive ---
+
+        CALL ComputePrimitive_TwoMoment &
+               ( uCR_L(iNode,iCR_N ,iZ2,iZ3,iZ4,iS,iZ1), &
+                 uCR_L(iNode,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1), &
+                 uCR_L(iNode,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1), &
+                 uCR_L(iNode,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1), &
+                 uPR_L(iPR_D ), &
+                 uPR_L(iPR_I1), &
+                 uPR_L(iPR_I2), &
+                 uPR_L(iPR_I3), &
+                 uPF_K(iNode,iPF_V1,iZ2,iZ3,iZ4), &
+                 uPF_K(iNode,iPF_V2,iZ2,iZ3,iZ4), &
+                 uPF_K(iNode,iPF_V3,iZ2,iZ3,iZ4), &
+                 uGF_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
+                 uGF_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
+                 uGF_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+
+        ! --- Left State Flux ---
+
+        Flux_L &
+          = Flux_E( uPR_L(iPR_D ), uPR_L(iPR_I1), &
+                    uPR_L(iPR_I2), uPR_L(iPR_I3), &
+                    Zero, Zero, Zero, &
+                    uGF_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
+                    uGF_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
+                    uGF_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+
+        ! --- Right State Primitive ---
+
+        CALL ComputePrimitive_TwoMoment &
+               ( uCR_R(iNode,iCR_N ,iZ2,iZ3,iZ4,iS,iZ1), &
+                 uCR_R(iNode,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1), &
+                 uCR_R(iNode,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1), &
+                 uCR_R(iNode,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1), &
+                 uPR_R(iPR_D ), &
+                 uPR_R(iPR_I1), &
+                 uPR_R(iPR_I2), &
+                 uPR_R(iPR_I3), &
+                 uPF_K(iNode,iPF_V1,iZ2,iZ3,iZ4), &
+                 uPF_K(iNode,iPF_V2,iZ2,iZ3,iZ4), &
+                 uPF_K(iNode,iPF_V3,iZ2,iZ3,iZ4), &
+                 uGF_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
+                 uGF_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
+                 uGF_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+
+        ! --- Right State Flux ---
+
+        Flux_R &
+          = Flux_E( uPR_R(iPR_D ), uPR_R(iPR_I1), &
+                    uPR_R(iPR_I2), uPR_R(iPR_I3), &
+                    Zero, Zero, Zero, &
+                    uGF_K(iNode,iGF_Gm_dd_11,iZ2,iZ3,iZ4), &
+                    uGF_K(iNode,iGF_Gm_dd_22,iZ2,iZ3,iZ4), &
+                    uGF_K(iNode,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
+
+!!$        IF( iZ2 == 1 )THEN
+!!$
+!!$          PRINT*
+!!$          PRINT*, "D_L  = ", uPR_L(iPR_D )
+!!$          PRINT*, "I1_L = ", uPR_L(iPR_I1)
+!!$          PRINT*, "I2_L = ", uPR_L(iPR_I2)
+!!$          PRINT*, "I3_L = ", uPR_L(iPR_I3)
+!!$          PRINT*
+!!$          PRINT*, "D_R  = ", uPR_R(iPR_D )
+!!$          PRINT*, "I1_R = ", uPR_R(iPR_I1)
+!!$          PRINT*, "I2_R = ", uPR_R(iPR_I2)
+!!$          PRINT*, "I3_R = ", uPR_R(iPR_I3)
+!!$
+!!$        END IF
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop( Timer_Ex_Flux )
+
+  END SUBROUTINE ComputeIncrement_ObserverCorrections
 
 
   SUBROUTINE ComputeWeakDerivatives_X1 &
