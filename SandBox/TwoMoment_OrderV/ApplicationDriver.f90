@@ -149,7 +149,7 @@ PROGRAM ApplicationDriver
       nE  = 10
       eL  = 0.0_DP
       eR  = 1.0_DP
-      bcE = 0
+      bcE = 2
 
       nNodes = 3
 
