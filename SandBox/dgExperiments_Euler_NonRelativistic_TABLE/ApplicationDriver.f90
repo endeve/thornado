@@ -57,33 +57,33 @@ PROGRAM ApplicationDriver
 
   INCLUDE 'mpif.h'
 
-  CHARACTER(32) :: ProgramName
-  CHARACTER(32) :: RiemannProblemName
-  CHARACTER(32) :: CoordinateSystem
-  CHARACTER(32) :: EosTableName
-  LOGICAL       :: wrt
-  LOGICAL       :: UseSlopeLimiter
-  LOGICAL       :: UseCharacteristicLimiting
-  LOGICAL       :: UseTroubledCellIndicator
-  LOGICAL       :: UsePositivityLimiter
-  INTEGER       :: iCycle, iCycleD
-  INTEGER       :: nX(3), bcX(3), nNodes, nStages
-  REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, wTime
-  REAL(DP)      :: xL(3), xR(3)
-  REAL(DP)      :: BetaTVD, BetaTVB
-  REAL(DP)      :: LimiterThresholdParameter
-
-  CoordinateSystem = 'CARTESIAN'
+  CHARACTER(32)  :: ProgramName
+  CHARACTER(32)  :: RiemannProblemName
+  CHARACTER(32)  :: CoordinateSystem
+  CHARACTER(128) :: EosTableName
+  LOGICAL        :: wrt
+  LOGICAL        :: UseSlopeLimiter
+  LOGICAL        :: UseCharacteristicLimiting
+  LOGICAL        :: UseTroubledCellIndicator
+  LOGICAL        :: UsePositivityLimiter
+  INTEGER        :: iCycle, iCycleD
+  INTEGER        :: nX(3), bcX(3), nNodes, nStages
+  REAL(DP)       :: t, dt, t_end, dt_wrt, t_wrt, wTime
+  REAL(DP)       :: xL(3), xR(3)
+  REAL(DP)       :: BetaTVD, BetaTVB
+  REAL(DP)       :: LimiterThresholdParameter
 
   ProgramName = 'RiemannProblem'
 
-  EosTableName = 'wl-EOS-SFHo-15-25-50-noBCK.h5'
+  EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
     CASE( 'RiemannProblem' )
 
       RiemannProblemName = 'Sod'
+
+      CoordinateSystem = 'CARTESIAN'
 
       nX = [ 100, 1, 1 ]
       xL = [ - 5.0_DP,   0.0_DP, 0.0_DP ] * Kilometer
@@ -98,13 +98,13 @@ PROGRAM ApplicationDriver
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .TRUE.
+      UseCharacteristicLimiting = .FALSE.
 
       UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 1.0d-1
       UsePositivityLimiter      = .TRUE.
 
-      iCycleD = 10
+      iCycleD = 1
       t_end   = 2.5d-2 * Millisecond
       dt_wrt  = 2.5d-4 * Millisecond
 
@@ -140,6 +140,8 @@ PROGRAM ApplicationDriver
 
     CASE( 'Jet' )
 
+      CoordinateSystem = 'CARTESIAN'
+
       nX = [ 100, 100, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
@@ -164,6 +166,8 @@ PROGRAM ApplicationDriver
       dt_wrt  = 2.5d-6 * Millisecond
 
     CASE( 'Implosion' )
+
+      CoordinateSystem = 'CARTESIAN'
 
       nX = [ 64, 64, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
@@ -190,6 +194,14 @@ PROGRAM ApplicationDriver
 
     CASE DEFAULT
 
+      WRITE(*,*)
+      WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
+      WRITE(*,'(A)')     'Valid choices:'
+      WRITE(*,'(A)')     '  RiemannProblem'
+      WRITE(*,'(A)')     '  RiemannProblemSpherical'
+      WRITE(*,'(A)')     '  Jet'
+      WRITE(*,'(A)')     '  Implosion'
+      WRITE(*,'(A)')     'Stopping...'
       STOP
 
   END SELECT
@@ -226,7 +238,7 @@ PROGRAM ApplicationDriver
          ( EquationOfState_Option &
              = 'TABLE', &
            EquationOfStateTableName_Option &
-             = EosTableName )
+             = TRIM( EosTableName ) )
 
   CALL InitializeSlopeLimiter_Euler_NonRelativistic_TABLE &
          ( BetaTVD_Option = BetaTVD, &
@@ -318,10 +330,8 @@ PROGRAM ApplicationDriver
 
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
-      WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
-        '', 'Cycle = ', iCycle, '', &
-        't = ',  t / Millisecond, '', &
-        'dt = ', dt / Millisecond
+      WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A4,A5,ES13.6E3,A3)') &
+          '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, ' ms ', 'dt = ', dt / Millisecond, ' ms'
 
     END IF
 
