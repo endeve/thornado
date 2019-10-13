@@ -75,9 +75,9 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'RiemannProblemSpherical'
+  ProgramName = 'RiemannProblem'
 
-  EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
+  EosTableName = 'wl-EOS-SFHo-15-25-50-noBCK.h5'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -98,15 +98,15 @@ PROGRAM ApplicationDriver
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
 
       UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 1.0d-1
       UsePositivityLimiter      = .TRUE.
 
       iCycleD = 10
-      t_end   = 7.5d-2 * Millisecond
-      dt_wrt  = 7.5d-5 * Millisecond
+      t_end   = 2.5d-2 * Millisecond
+      dt_wrt  = 2.5d-4 * Millisecond
 
    CASE( 'RiemannProblemSpherical' )
 
@@ -284,7 +284,7 @@ PROGRAM ApplicationDriver
 
   t     = 0.0_DP * Millisecond
   t_wrt = dt_wrt
-  wrt   = .TRUE.
+  wrt   = .FALSE.
 
   CALL InitializeTally_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, &
@@ -319,7 +319,9 @@ PROGRAM ApplicationDriver
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
       WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
-          '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, '', 'dt = ', dt / Millisecond
+        '', 'Cycle = ', iCycle, '', &
+        't = ',  t / Millisecond, '', &
+        'dt = ', dt / Millisecond
 
     END IF
 
