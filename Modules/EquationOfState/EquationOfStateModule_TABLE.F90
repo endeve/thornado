@@ -414,17 +414,20 @@ CONTAINS
   END SUBROUTINE ApplyEquationOfState_TABLE
 
 
-  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE( D, E, Y, T )
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+    ( D, E, Y, T, Guess_Option, Error_Option )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, E, Y
-    REAL(DP), DIMENSION(:), INTENT(out) :: T
+    REAL(DP), INTENT(in )           :: D(:), E(:), Y(:)
+    REAL(DP), INTENT(out)           :: T(:)
+    REAL(DP), INTENT(in ), OPTIONAL :: Guess_Option(:)
+    INTEGER,  INTENT(out), OPTIONAL :: Error_Option(:)
 
-    INTEGER :: iP, nP, Error(SIZE(D))
-    LOGICAL :: do_gpu
+    LOGICAL  :: do_gpu
+    INTEGER  :: iP, nP
+    INTEGER  :: Error(SIZE(D))
+    REAL(DP) :: T_Guess(SIZE(D))
 
 #ifdef MICROPHYSICS_WEAKLIB
-
-    nP = SIZE(D)
 
     do_gpu = QueryOnGPU( D, E, Y, T )
 #if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
@@ -441,6 +444,10 @@ CONTAINS
     END IF
 #endif
 
+    nP = SIZE(D)
+
+    IF( PRESENT( Guess_Option ) )THEN
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP IF( do_gpu ) &
@@ -451,26 +458,44 @@ CONTAINS
     !$ACC PRESENT( D, E, Y, T ) &
     !$ACC COPYOUT( Error )
 #endif
-    DO iP = 1, nP
-
-      CALL ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
-             ( D(iP), E(iP), Y(iP), T(iP), Guess_Option = T(iP), Error_Option = Error(iP) )
-
-    END DO
-
-    IF ( ANY( Error(:) > 0 ) ) THEN 
       DO iP = 1, nP
-        IF ( Error(iP) > 0 ) CALL DescribeEOSInversionError( Error(iP) )
+
+        CALL ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
+               ( D(iP), E(iP), Y(iP), T(iP), Guess_Option = T(iP), &
+                 Error_Option = Error(iP) )
+
       END DO
-      STOP
+
+    ELSE
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP IF( do_gpu ) &
+    !$OMP MAP( from: Error )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC IF( do_gpu ) &
+    !$ACC PRESENT( D, E, Y, T ) &
+    !$ACC COPYOUT( Error )
+#endif
+      DO iP = 1, nP
+
+        CALL ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
+               ( D(iP), E(iP), Y(iP), T(iP), Error_Option = Error(iP) )
+
+      END DO
+
     END IF
 
 #endif
 
+    IF( PRESENT( Error_Option ) ) Error_Option = Error
+
   END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE
 
 
-  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE( D, E, Y, T, Guess_Option, Error_Option )
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
+    ( D, E, Y, T, Guess_Option, Error_Option )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
