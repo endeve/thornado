@@ -103,6 +103,17 @@ MODULE EquationOfStateModule
     END SUBROUTINE EosSubroutine_1_3
   END INTERFACE
 
+  INTERFACE
+    SUBROUTINE EosSubroutine_1_2 &
+                 ( X, Y, Z, V1, Guess_Option_V1, Error_Option )
+      USE KindModule, ONLY: DP
+        REAL(DP), INTENT(in)            :: X(:), Y(:), Z(:)
+        REAL(DP), INTENT(out)           :: V1(:)
+        REAL(DP), INTENT(in),  OPTIONAL :: Guess_Option_V1(:)
+        INTEGER,  INTENT(out), OPTIONAL :: Error_Option(:)
+    END SUBROUTINE EosSubroutine_1_2
+  END INTERFACE
+
   ! ---
   ! --- Declaration of Equation of State Functions and Subroutines ---
   ! ---
@@ -114,7 +125,6 @@ MODULE EquationOfStateModule
     ComputePressureFromPrimitive                 => NULL(), &
     ComputePressureFromSpecificInternalEnergy    => NULL(), &
     ComputeTemperatureFromPressure               => NULL(), &
-    ComputeTemperatureFromSpecificInternalEnergy => NULL(), &
     ComputeSoundSpeedFromPrimitive               => NULL()
   PROCEDURE (EosSubroutine_3),   POINTER, PUBLIC :: &
     ComputeThermodynamicStates_Primitive         => NULL(), &
@@ -128,6 +138,8 @@ MODULE EquationOfStateModule
     ComputeElectronChemicalPotential             => NULL(), &
     ComputeProtonChemicalPotential               => NULL(), &
     ComputeNeutronChemicalPotential              => NULL()
+  PROCEDURE (EosSubroutine_1_2), POINTER, PUBLIC :: &
+    ComputeTemperatureFromSpecificInternalEnergy => NULL()
 
   PUBLIC :: InitializeEquationOfState
   PUBLIC :: FinalizeEquationOfState
@@ -250,9 +262,9 @@ CONTAINS
 
       CASE ( 'TABLE' )
 
+        NULLIFY( ComputeTemperatureFromSpecificInternalEnergy )
         NULLIFY( ApplyEquationOfState )
         NULLIFY( ComputeTemperatureFromPressure )
-        NULLIFY( ComputeTemperatureFromSpecificInternalEnergy )
         NULLIFY( ComputeThermodynamicStates_Primitive )
         NULLIFY( ComputeThermodynamicStates_Auxiliary )
         NULLIFY( ComputePressureFromPrimitive )
