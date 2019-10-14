@@ -108,6 +108,11 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeNeutronChemicalPotentialPoints_TABLE
   PUBLIC :: ComputeNeutronChemicalPotentialPoint_TABLE
 
+  INTERFACE ComputePressureFromPrimitive_TABLE
+    MODULE PROCEDURE ComputePressureFromPrimitive_TABLE_Scalar
+    MODULE PROCEDURE ComputePressureFromPrimitive_TABLE_Vector
+  END INTERFACE ComputePressureFromPrimitive_TABLE
+
   INTERFACE ComputeSpecificInternalEnergy_TABLE
     MODULE PROCEDURE ComputeSpecificInternalEnergy_Point_TABLE
     MODULE PROCEDURE ComputeSpecificInternalEnergy_Points_TABLE
@@ -540,7 +545,15 @@ CONTAINS
   END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE
 
 
-  SUBROUTINE ComputePressureFromPrimitive_TABLE( D, Ev, Ne, P )
+  SUBROUTINE ComputePressureFromPrimitive_TABLE_Scalar( D, Ev, Ne, P )
+
+    REAL(DP), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), INTENT(out) :: P
+
+  END SUBROUTINE ComputePressureFromPrimitive_TABLE_Scalar
+
+
+  SUBROUTINE ComputePressureFromPrimitive_TABLE_Vector( D, Ev, Ne, P )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: P
@@ -556,7 +569,7 @@ CONTAINS
     CALL ComputePressure_TABLE &
            ( D(:), T(:), Y(:), P(:) )
 
-  END SUBROUTINE ComputePressureFromPrimitive_TABLE
+  END SUBROUTINE ComputePressureFromPrimitive_TABLE_Vector
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE( D, E, Y, P )
