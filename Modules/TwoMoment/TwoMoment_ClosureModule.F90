@@ -339,8 +339,10 @@ CONTAINS
     HeatFluxFactor = 0.0_DP
 
 #elif  MOMENT_CLOSURE_KERSHAW_BL
-
-    HeatFluxFactor = 0.0_DP
+    
+    HeatFluxFactor =
+    ((D+1.0_DP)/(24.0_DP*D))*(((D*FF+(1.0_DP-D)**2)/(1.0_DP-D))**4 &
+    -((D*FF-(1.0_DP-D)**2)/(1.0_DP-D))**4)+((2.0_DP-D)/3)*(FF**3+D**2*FF)
 
 #elif  MOMENT_CLOSURE_LEVERMORE
 
@@ -356,12 +358,13 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D(:), FF(:)
     REAL(DP)             :: HeatFluxFactor(SIZE(D))
+    INTEGER             :: vecsize, i
 
 #ifdef MOMENT_CLOSURE_MINERBO
 
     ! --- Maximum Entropy (ME) Minerbo Closure -------------------
     ! --- Expression from Just et al. (2015), MNRAS, 453, 3386 ---
-
+    
     HeatFluxFactor &
       = ( 45.0_DP + 10.0_DP * FF - 12.0 * FF**2 - 12.0_DP * FF**3 &
           + 38.0_DP * FF**4 - 12.0_DP * FF**5 + 18.0_DP * FF**6 ) &
@@ -376,9 +379,10 @@ CONTAINS
     HeatFluxFactor = 0.0_DP
 
 #elif  MOMENT_CLOSURE_KERSHAW_BL
-
-    HeatFluxFactor = 0.0_DP
-
+    vecsize=SIZE(D)
+    DO i=1,vecsize
+        HeatFluxFactor(i) = CALL HeatFluxFactor_Scalar(D(i),FF(i))
+    END DO
 #elif  MOMENT_CLOSURE_LEVERMORE
 
     HeatFluxFactor = 0.0_DP
