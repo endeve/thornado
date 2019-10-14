@@ -21,6 +21,9 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeSpecificInternalEnergy_TABLE
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_PositivityLimiter
 
   IMPLICIT NONE
   PRIVATE
@@ -167,6 +170,8 @@ CONTAINS
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
+
+    CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -343,6 +348,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop_Euler( Timer_Euler_PositivityLimiter )
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 

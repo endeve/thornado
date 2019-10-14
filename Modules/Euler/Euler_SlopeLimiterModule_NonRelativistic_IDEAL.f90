@@ -36,6 +36,7 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
     ComputeCharacteristicDecomposition_Euler_NonRelativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_SlopeLimiter, &
     Timer_Euler_TroubledCellIndicator
 
   IMPLICIT NONE
@@ -201,6 +202,8 @@ CONTAINS
 
     IF( .NOT. UseSlopeLimiter ) RETURN
 
+    CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
+
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
@@ -209,10 +212,8 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-    CALL TimersStart_Euler( Timer_Euler_TroubledCellIndicator )
     CALL DetectTroubledCells &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U )
-    CALL TimersStop_Euler( Timer_Euler_TroubledCellIndicator )
 
     LimitedCell = .FALSE.
 
@@ -431,6 +432,8 @@ CONTAINS
     CALL ApplyConservativeCorrection &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
+    CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
+
   END SUBROUTINE ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
 
 
@@ -547,6 +550,8 @@ CONTAINS
 
     END IF
 
+    CALL TimersStart_Euler( Timer_Euler_TroubledCellIndicator )
+
     ! --- Troubled-Cell Indicator from Fu & Shu (2017) ---
     ! --- JCP, 347, 305 - 327 ----------------------------
 
@@ -636,6 +641,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop_Euler( Timer_Euler_TroubledCellIndicator )
 
   END SUBROUTINE DetectTroubledCells
 

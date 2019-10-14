@@ -26,6 +26,9 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
     iGF_h_1, iGF_h_2, iGF_h_3, &
     iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
     iGF_SqrtGm
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_PositivityLimiter
 
   IMPLICIT NONE
   PRIVATE
@@ -148,6 +151,8 @@ CONTAINS
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
+
+    CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
 
     iErr = 0
     IF( PRESENT( iErr_Option ) ) iErr = iErr_Option
@@ -357,6 +362,8 @@ CONTAINS
     END DO
 
     IF( PRESENT( iErr_Option ) ) iErr_Option = iErr
+
+    CALL TimersStop_Euler( Timer_Euler_PositivityLimiter )
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL
 

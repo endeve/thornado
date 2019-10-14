@@ -22,6 +22,9 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_PositivityLimiter
 
   IMPLICIT NONE
   PRIVATE
@@ -139,6 +142,8 @@ CONTAINS
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
+    CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -249,6 +254,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop_Euler( Timer_Euler_PositivityLimiter )
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL
 

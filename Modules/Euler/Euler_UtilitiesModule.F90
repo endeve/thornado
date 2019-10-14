@@ -8,9 +8,6 @@ MODULE Euler_UtilitiesModule
     nGF
   USE FluidFieldsModule, ONLY: &
     nCF, nPF, nAF
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
-    Timer_Euler_ComputeTimeStep
 
 #if defined HYDRO_NONRELATIVISTIC
 
@@ -249,8 +246,6 @@ CONTAINS
     REAL(DP), INTENT(out)         :: &
       TimeStep
 
-    CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
-
 #if defined HYDRO_NONRELATIVISTIC
 
     CALL ComputeTimeStep_Euler_NonRelativistic &
@@ -288,8 +283,6 @@ CONTAINS
              CFL, TimeStep )
 
 #endif
-
-    CALL TimersStop_Euler( Timer_Euler_ComputeTimeStep )
 
   END SUBROUTINE ComputeTimeStep_Euler
 
