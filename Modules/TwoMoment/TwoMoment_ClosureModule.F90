@@ -340,8 +340,8 @@ CONTAINS
 
 #elif  MOMENT_CLOSURE_KERSHAW_BL
     
-    HeatFluxFactor =
-    ((D+1.0_DP)/(24.0_DP*D))*(((D*FF+(1.0_DP-D)**2)/(1.0_DP-D))**4 &
+    HeatFluxFactor &
+    =((D + 1.0_DP) / (24.0_DP*D))*(((D*FF+(1.0_DP-D)**2)/(1.0_DP-D))**4 &
     -((D*FF-(1.0_DP-D)**2)/(1.0_DP-D))**4)+((2.0_DP-D)/3)*(FF**3+D**2*FF)
 
 #elif  MOMENT_CLOSURE_LEVERMORE
@@ -358,7 +358,8 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D(:), FF(:)
     REAL(DP)             :: HeatFluxFactor(SIZE(D))
-    INTEGER             :: vecsize, i
+    
+    INTEGER :: i
 
 #ifdef MOMENT_CLOSURE_MINERBO
 
@@ -379,9 +380,9 @@ CONTAINS
     HeatFluxFactor = 0.0_DP
 
 #elif  MOMENT_CLOSURE_KERSHAW_BL
-    vecsize=SIZE(D)
-    DO i=1,vecsize
-        HeatFluxFactor(i) = CALL HeatFluxFactor_Scalar(D(i),FF(i))
+    
+    DO i = 1, SIZE( D )
+        HeatFluxFactor(i) = HeatFluxFactor_Scalar( D(i), FF(i) )
     END DO
 #elif  MOMENT_CLOSURE_LEVERMORE
 
