@@ -93,8 +93,8 @@ CONTAINS
       CASE( 'StandingAccretionShock' )
 
         CALL InitializeFields_StandingAccretionShock_Relativistic
-        
-    END SELECT 
+
+    END SELECT
 
   END SUBROUTINE InitializeFields_Relativistic
 
@@ -554,7 +554,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_SphericalSedov_Relativistic &
                ( nDetCells_Option, Eblast_Option )
-    
+
     INTEGER,  INTENT(in), OPTIONAL :: nDetCells_Option
     REAL(DP), INTENT(in), OPTIONAL :: Eblast_Option
 
@@ -880,26 +880,6 @@ CONTAINS
     END DO
     END DO
 
-    OPEN(  100, FILE = 'SAS_IC_interp.dat' )
-    iX2 = 1
-    iX3 = 1
-    DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNodeX = 1, nDOFX
-
-        ! --- Isolate node in X1 direction ---
-        iNodeX1 = NodeNumberTableX(1,iNodeX)
-          
-        ! --- Physical coordinate corresponding to iNodeX1 ---
-        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
-        WRITE(100,'(ES22.16E2,1x,ES22.16E2,1x,ES23.16E2,1x,ES22.16E2)') &
-             X1, uPF(iNodeX,iX1,iX2,iX3,iPF_D), &
-             uPF(iNodeX,iX1,iX2,iX3,iPF_V1), uPF(iNodeX,iX1,iX2,iX3,iPF_E)
-
-      END DO
-    END DO
-    CLOSE( 100 )
-!!$    STOP 'Wrote SAS_IC_interp.dat'
 
   END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
 
@@ -965,7 +945,7 @@ CONTAINS
 
     ! --- Allocate and read in parameters ---
     ALLOCATE( FluidFieldParameters(nParams) )
-    
+
     OPEN( 100, FILE = TRIM( FILEIN ) )
     READ( 100, * ) ! --- Skip the header ---
     DO i = 1, nParams
@@ -984,7 +964,7 @@ CONTAINS
 
   END SUBROUTINE ReadParameters
 
-  
+
   SUBROUTINE ReadData( FILEIN, nLines, FluidFieldData )
 
     CHARACTER( LEN = * ), INTENT(in)   :: FILEIN
@@ -1019,13 +999,6 @@ CONTAINS
     FluidFieldData(:,3) = FluidFieldData(:,3) * Meter / Second
     FluidFieldData(:,4) = FluidFieldData(:,4) * Joule / Meter**3
 
-    OPEN(  100, FILE = 'SAS_IC_raw.dat' )
-      DO i = 1, nLines
-        WRITE(100,'(ES22.16E2,1x,ES22.16E2,1x,ES23.16E2,1x,ES22.16E2)') &
-              FluidFieldData(i,:)
-      END DO
-    CLOSE( 100 )
-!!$    STOP 'Wrote SAS initial conditions to file: SAS_IC.dat'
 
   END SUBROUTINE ReadData
 
