@@ -43,11 +43,52 @@ MODULE Euler_UtilitiesModule
   PUBLIC :: Euler_NumericalFlux_X2
   PUBLIC :: Euler_NumericalFlux_X3
 
+  INTERFACE ComputePrimitive_Euler
+    MODULE PROCEDURE ComputePrimitive_Scalar
+    MODULE PROCEDURE ComputePrimitive_Vector
+  END INTERFACE ComputePrimitive_Euler
 
 CONTAINS
 
 
-  SUBROUTINE ComputePrimitive_Euler &
+  SUBROUTINE ComputePrimitive_Scalar &
+    ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+
+    REAL(DP), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, &
+                             CF_E, CF_Ne
+    REAL(DP), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, &
+                             PF_E, PF_Ne
+    REAL(DP), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
+
+#if defined HYDRO_NONRELATIVISTIC
+
+    CALL ComputePrimitive_Euler_NonRelativistic &
+           ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+             PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+
+#elif defined HYDRO_RELATIVISTIC
+
+    CALL ComputePrimitive_Euler_Relativistic &
+           ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+             PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+
+#else
+
+    CALL ComputePrimitive_Euler_NonRelativistic &
+           ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+             PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+
+#endif
+
+  END SUBROUTINE ComputePrimitive_Scalar
+
+
+  SUBROUTINE ComputePrimitive_Vector &
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
@@ -81,7 +122,7 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE ComputePrimitive_Euler
+  END SUBROUTINE ComputePrimitive_Vector
 
 
   SUBROUTINE ComputeConserved_Euler &
