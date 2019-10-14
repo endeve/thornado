@@ -69,7 +69,7 @@ f90EXE_sources += MeshModule.f90
 
 F90EXE_sources += EquationOfStateModule_IDEAL.F90
 F90EXE_sources += EquationOfStateModule_TABLE.F90
-f90EXE_sources += EquationOfStateModule.f90
+F90EXE_sources += EquationOfStateModule.F90
 
 # In THORNADO_DIR/Modules/Geometry:
 
