@@ -44,6 +44,11 @@ MODULE Euler_UtilitiesModule_NonRelativistic
     MODULE PROCEDURE ComputePrimitive_Vector
   END INTERFACE ComputePrimitive_Euler_NonRelativistic
 
+  INTERFACE ComputeConserved_Euler_NonRelativistic
+    MODULE PROCEDURE ComputeConserved_Scalar
+    MODULE PROCEDURE ComputeConserved_Vector
+  END INTERFACE ComputeConserved_Euler_NonRelativistic
+
 CONTAINS
 
 
@@ -71,8 +76,8 @@ CONTAINS
 
 
   SUBROUTINE ComputePrimitive_Vector &
-               ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: N, S_1, S_2, S_3, G, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: D, V_1, V_2, V_3, E, De
@@ -93,13 +98,13 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_Vector
 
 
-  SUBROUTINE ComputeConserved_Euler_NonRelativistic &
-               ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+  SUBROUTINE ComputeConserved_Scalar &
+    ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, V_1, V_2, V_3, E, De
-    REAL(DP), DIMENSION(:), INTENT(out) :: N, S_1, S_2, S_3, G, Ne
-    REAL(DP), DIMENSION(:), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(in ) :: D, V_1, V_2, V_3, E, De
+    REAL(DP), INTENT(out) :: N, S_1, S_2, S_3, G, Ne
+    REAL(DP), INTENT(in ) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     ! --- Three-Velocity: Index Up   ---
     ! --- Three-Momentum: Index Down ---
@@ -113,7 +118,30 @@ CONTAINS
                            + Gm_dd_33 * V_3**2 )
     Ne  = De
 
-  END SUBROUTINE ComputeConserved_Euler_NonRelativistic
+  END SUBROUTINE ComputeConserved_Scalar
+
+
+  SUBROUTINE ComputeConserved_Vector &
+    ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    REAL(DP), DIMENSION(:), INTENT(in ) :: D, V_1, V_2, V_3, E, De
+    REAL(DP), DIMENSION(:), INTENT(out) :: N, S_1, S_2, S_3, G, Ne
+    REAL(DP), DIMENSION(:), INTENT(in ) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+    ! --- Three-Velocity: Index Up   ---
+    ! --- Three-Momentum: Index Down ---
+
+    N   = D
+    S_1 = D * Gm_dd_11 * V_1
+    S_2 = D * Gm_dd_22 * V_2
+    S_3 = D * Gm_dd_33 * V_3
+    G   = E + Half * D * ( Gm_dd_11 * V_1**2 &
+                           + Gm_dd_22 * V_2**2 &
+                           + Gm_dd_33 * V_3**2 )
+    Ne  = De
+
+  END SUBROUTINE ComputeConserved_Vector
 
 
   SUBROUTINE ComputeFromConserved_Euler_NonRelativistic &
