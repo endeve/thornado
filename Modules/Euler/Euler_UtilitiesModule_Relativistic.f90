@@ -26,6 +26,9 @@ MODULE Euler_UtilitiesModule_Relativistic
     ComputeSoundSpeedFromPrimitive, &
     ComputeAuxiliary_Fluid,         &
     ComputePressureFromSpecificInternalEnergy
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_ComputeTimeStep
 
   IMPLICIT NONE
   PRIVATE
@@ -510,6 +513,8 @@ CONTAINS
                 EigVals_X2(nCF,nDOFX), alpha_X2, &
                 EigVals_X3(nCF,nDOFX), alpha_X3
 
+    CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
+
     TimeStep = HUGE( One )
     dt       = HUGE( One )
 
@@ -675,6 +680,8 @@ CONTAINS
     END DO
 
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
+
+    CALL TimersStop_Euler( Timer_Euler_ComputeTimeStep )
 
   END SUBROUTINE ComputeTimeStep_Euler_Relativistic
 

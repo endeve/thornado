@@ -2,9 +2,6 @@ MODULE Euler_SlopeLimiterModule
 
   USE KindModule, ONLY: &
     DP
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
-    Timer_Euler_SlopeLimiter
 
   USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   USE Euler_SlopeLimiterModule_NonRelativistic_TABLE
@@ -126,8 +123,6 @@ CONTAINS
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
 
-    CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
-
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
     CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
@@ -148,8 +143,6 @@ CONTAINS
     CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 #endif
-
-    CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
 
   END SUBROUTINE ApplySlopeLimiter_Euler
 
