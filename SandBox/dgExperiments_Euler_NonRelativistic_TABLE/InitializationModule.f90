@@ -140,18 +140,24 @@ CONTAINS
                  uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
 
-      END DO
+        CALL ComputeConserved_Euler_NonRelativistic &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-      CALL ComputeConserved_Euler_NonRelativistic &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+      END DO
 
     END DO
     END DO
