@@ -132,12 +132,15 @@ CONTAINS
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_T ) )
 
-      END DO
+        CALL ComputeThermodynamicStates_Primitive &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
 
-      CALL ComputeThermodynamicStates_Primitive &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
-               uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E ), &
-               uAF(:,iX1,iX2,iX3,iAF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne) )
+      END DO
 
       CALL ComputeConserved_Euler_NonRelativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
