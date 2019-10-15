@@ -86,7 +86,6 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ApplyEquationOfState_TABLE
   PUBLIC :: ComputeTemperatureFromPressure_TABLE
   PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy_TABLE
-  PUBLIC :: ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE
   PUBLIC :: ComputeThermodynamicStates_Primitive_TABLE
   PUBLIC :: ComputeThermodynamicStates_Auxiliary_TABLE
   PUBLIC :: ComputePressureFromPrimitive_TABLE
@@ -108,6 +107,21 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeNeutronChemicalPotentialPoints_TABLE
   PUBLIC :: ComputeNeutronChemicalPotentialPoint_TABLE
 
+  INTERFACE ComputePressureFromPrimitive_TABLE
+    MODULE PROCEDURE ComputePressureFromPrimitive_TABLE_Scalar
+    MODULE PROCEDURE ComputePressureFromPrimitive_TABLE_Vector
+  END INTERFACE ComputePressureFromPrimitive_TABLE
+
+  INTERFACE ComputeSoundSpeedFromPrimitive_TABLE
+    MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_TABLE_Scalar
+    MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_TABLE_Vector
+  END INTERFACE ComputeSoundSpeedFromPrimitive_TABLE
+
+  INTERFACE ComputeTemperatureFromSpecificInternalEnergy_TABLE
+    MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar
+    MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector
+  END INTERFACE ComputeTemperatureFromSpecificInternalEnergy_TABLE
+
   INTERFACE ComputeSpecificInternalEnergy_TABLE
     MODULE PROCEDURE ComputeSpecificInternalEnergy_Point_TABLE
     MODULE PROCEDURE ComputeSpecificInternalEnergy_Points_TABLE
@@ -127,6 +141,11 @@ MODULE EquationOfStateModule_TABLE
     MODULE PROCEDURE ComputeNeutronChemicalPotentialPoints_TABLE
     MODULE PROCEDURE ComputeNeutronChemicalPotentialPoint_TABLE
   END INTERFACE
+
+  INTERFACE ComputeDependentVariable_TABLE
+    MODULE PROCEDURE ComputeDependentVariable_TABLE_Scalar
+    MODULE PROCEDURE ComputeDependentVariable_TABLE_Vector
+  END INTERFACE ComputeDependentVariable_TABLE
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
@@ -414,7 +433,7 @@ CONTAINS
   END SUBROUTINE ApplyEquationOfState_TABLE
 
 
-  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector &
     ( D, E, Y, T, Guess_Option, Error_Option )
 
     REAL(DP), INTENT(in )           :: D(:), E(:), Y(:)
@@ -460,7 +479,7 @@ CONTAINS
 #endif
       DO iP = 1, nP
 
-        CALL ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
+        CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
                ( D(iP), E(iP), Y(iP), T(iP), Guess_Option = T(iP), &
                  Error_Option = Error(iP) )
 
@@ -480,7 +499,7 @@ CONTAINS
 #endif
       DO iP = 1, nP
 
-        CALL ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
+        CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
                ( D(iP), E(iP), Y(iP), T(iP), Error_Option = Error(iP) )
 
       END DO
@@ -491,10 +510,10 @@ CONTAINS
 
     IF( PRESENT( Error_Option ) ) Error_Option = Error
 
-  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE
+  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector
 
 
-  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
     ( D, E, Y, T, Guess_Option, Error_Option )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -537,10 +556,18 @@ CONTAINS
 
     IF ( PRESENT( Error_Option ) ) Error_Option = Error
 
-  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE
+  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar
 
 
-  SUBROUTINE ComputePressureFromPrimitive_TABLE( D, Ev, Ne, P )
+  SUBROUTINE ComputePressureFromPrimitive_TABLE_Scalar( D, Ev, Ne, P )
+
+    REAL(DP), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), INTENT(out) :: P
+
+  END SUBROUTINE ComputePressureFromPrimitive_TABLE_Scalar
+
+
+  SUBROUTINE ComputePressureFromPrimitive_TABLE_Vector( D, Ev, Ne, P )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: P
@@ -556,7 +583,7 @@ CONTAINS
     CALL ComputePressure_TABLE &
            ( D(:), T(:), Y(:), P(:) )
 
-  END SUBROUTINE ComputePressureFromPrimitive_TABLE
+  END SUBROUTINE ComputePressureFromPrimitive_TABLE_Vector
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE( D, E, Y, P )
@@ -574,30 +601,52 @@ CONTAINS
   END SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE
 
 
-  SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE( D, Ev, Ne, Cs )
+  SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Scalar( D, Ev, Ne, Cs )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: Cs
+    REAL(DP), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), INTENT(out) :: Cs
+
+    REAL(DP) :: P, T, Y, Em, Gm
+
+    Em = Ev / D
+    Y  = Ne * ( BaryonMass / D )
+
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+           ( D, Em, Y, T )
+
+    CALL ComputeDependentVariable_TABLE &
+           ( D, T, Y, P, Ps_T, OS_P, Units_V = Dyne / Centimeter**2 )
+
+    CALL ComputeDependentVariable_TABLE &
+           ( D, T, Y, Gm, Gms_T, OS_Gm, Units_V = 1.0_DP )
+
+    Cs = SQRT( Gm * P / D )
+
+  END SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Scalar
+
+
+  SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Vector( D, Ev, Ne, Cs )
+
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: Cs(:)
 
     REAL(DP), DIMENSION(SIZE(D)) :: P, T, Y, Em, Gm
 
-    Em(:) = Ev(:) / D(:)
-    Y (:) = Ne(:) * ( BaryonMass / D(:) )
+    Em = Ev / D
+    Y  = Ne * ( BaryonMass / D )
 
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-           ( D(:), Em(:), Y(:), T(:) )
+           ( D, Em, Y, T )
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), P(:), Ps_T, OS_P, &
-             Units_V = Dyne / Centimeter**2 )
+           ( D, T, Y, P, Ps_T, OS_P, Units_V = Dyne / Centimeter**2 )
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Gm(:), Gms_T, OS_Gm, &
-             Units_V = 1.0_DP )
+           ( D, T, Y, Gm, Gms_T, OS_Gm, Units_V = 1.0_DP )
 
-    Cs(:) = SQRT( Gm(:) * P(:) / D(:) )
+    Cs = SQRT( Gm * P / D )
 
-  END SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE
+  END SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Vector
 
 
   SUBROUTINE ComputeTemperatureFromPressure_TABLE( D, P, Y, T )
@@ -664,9 +713,8 @@ CONTAINS
 
       ! --- Interpolate Specific Internal Energy ------------------------
 
-      CALL ComputeDependentVariablePoint_TABLE &
-             ( D(iP), T(iP), Y(iP), Em(iP), Es_T, OS_E, &
-               Units_V = Erg / Gram )
+      CALL ComputeDependentVariable_TABLE &
+             ( D(iP), T(iP), Y(iP), Em(iP), Es_T, OS_E, Units_V = Erg / Gram )
 
       Ev(iP) = Em(iP) * D(iP)              ! --- Internal Energy per Unit Volume
       Ne(iP) = Y (iP) * D(iP) / BaryonMass ! --- Electrons per Unit Volume
@@ -722,7 +770,7 @@ CONTAINS
       Em(iP) = Ev(iP) / D(iP)              ! --- Internal Energy per Mass
       Y (iP) = Ne(iP) / D(iP) * BaryonMass ! --- Electron Fraction
 
-      CALL ComputeTemperatureFromSpecificInternalEnergyPoint_TABLE &
+      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
              ( D(iP), Em(iP), Y(iP), T(iP), Error_Option = Error(iP) )
 
     END DO
@@ -921,7 +969,7 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariablePoint_TABLE &
+      CALL ComputeDependentVariable_TABLE &
              ( D, T, Y, E, Es_T, OS_E, Units_V = Erg / Gram )
 
     END IF
@@ -1088,9 +1136,8 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariablePoint_TABLE &
-             ( D, T, Y, M, Mes_T, OS_Me, &
-               Units_V = MeV )
+      CALL ComputeDependentVariable_TABLE &
+             ( D, T, Y, M, Mes_T, OS_Me, Units_V = MeV )
 
     END IF
 
@@ -1201,9 +1248,8 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariablePoint_TABLE &
-             ( D, T, Y, M, Mps_T, Os_Mp, &
-               Units_V = MeV )
+      CALL ComputeDependentVariable_TABLE &
+             ( D, T, Y, M, Mps_T, Os_Mp, Units_V = MeV )
 
     END IF
 
@@ -1314,21 +1360,56 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariablePoint_TABLE &
-             ( D, T, Y, M, Mns_T, OS_Mn, &
-               Units_V = MeV )
+      CALL ComputeDependentVariable_TABLE &
+             ( D, T, Y, M, Mns_T, OS_Mn, Units_V = MeV )
 
     END IF
 
   END SUBROUTINE ComputeNeutronChemicalPotentialPoint_TABLE
 
 
-  SUBROUTINE ComputeDependentVariable_TABLE( D, T, Y, V, V_T, OS_V, Units_V )
+  SUBROUTINE ComputeDependentVariable_TABLE_Scalar &
+    ( D, T, Y, V, V_T, OS_V, Units_V )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
-    REAL(DP), DIMENSION(:),     INTENT(in)  :: D, T, Y
-    REAL(DP), DIMENSION(:),     INTENT(out) :: V
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: V_T
-    REAL(DP),                   INTENT(in)  :: OS_V, Units_V
+    REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(out) :: V
+    REAL(DP), INTENT(in)  :: V_T(:,:,:)
+    REAL(DP), INTENT(in)  :: OS_V, Units_V
+
+    REAL(DP) :: D_P, T_P, Y_P, V_P
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P = D / ( Gram / Centimeter**3 )
+    T_P = T / Kelvin
+    Y_P = Y
+
+    CALL LogInterpolateSingleVariable &
+           ( D_P, T_P, Y_P, Ds_T, Ts_T, Ys_T, OS_V, V_T, V_P )
+
+    V = V_P * Units_V
+
+#else
+
+    V = 0.0_DP
+
+#endif
+
+  END SUBROUTINE ComputeDependentVariable_TABLE_Scalar
+
+
+  SUBROUTINE ComputeDependentVariable_TABLE_Vector &
+    ( D, T, Y, V, V_T, OS_V, Units_V )
+
+    REAL(DP), INTENT(in)  :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out) :: V(:)
+    REAL(DP), INTENT(in)  :: V_T(:,:,:)
+    REAL(DP), INTENT(in)  :: OS_V, Units_V
 
     INTEGER :: iP, nP
     LOGICAL :: do_gpu
@@ -1362,48 +1443,14 @@ CONTAINS
 #endif
     DO iP = 1, nP
 
-      CALL ComputeDependentVariablePoint_TABLE &
+      CALL ComputeDependentVariable_TABLE &
              ( D(iP), T(iP), Y(iP), V(iP), V_T, OS_V, Units_V )
 
     END DO
 
 #endif
 
-  END SUBROUTINE ComputeDependentVariable_TABLE
-
-
-  SUBROUTINE ComputeDependentVariablePoint_TABLE( D, T, Y, V, V_T, OS_V, Units_V )
-#if defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
-#endif
-
-    REAL(DP),                   INTENT(in)  :: D, T, Y
-    REAL(DP),                   INTENT(out) :: V
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: V_T
-    REAL(DP),                   INTENT(in)  :: OS_V, Units_V
-
-    REAL(DP) :: D_P, T_P, Y_P, V_P
-
-#ifdef MICROPHYSICS_WEAKLIB
-
-    D_P = D / ( Gram / Centimeter**3 )
-    T_P = T / Kelvin
-    Y_P = Y
-
-    CALL LogInterpolateSingleVariable &
-           ( D_P, T_P, Y_P, Ds_T, Ts_T, Ys_T, OS_V, V_T, V_P )
-
-    V = V_P * Units_V
-
-#else
-
-    V = 0.0_DP
-
-#endif
-
-  END SUBROUTINE ComputeDependentVariablePoint_TABLE
+  END SUBROUTINE ComputeDependentVariable_TABLE_Vector
 
 
   SUBROUTINE ComputeDependentVariableAndDerivatives_TABLE &

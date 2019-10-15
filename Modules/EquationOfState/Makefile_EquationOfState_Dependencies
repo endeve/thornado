@@ -32,4 +32,4 @@ EquationOfStateModule.o: \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   FluidFieldsModule.o \
-  EquationOfStateModule.f90
+  EquationOfStateModule.F90

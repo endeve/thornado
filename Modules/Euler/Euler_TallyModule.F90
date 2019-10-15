@@ -18,30 +18,42 @@ MODULE Euler_TallyModule
 CONTAINS
 
 
-  SUBROUTINE InitializeTally_Euler( iX_B0, iX_E0, G, U )
+  SUBROUTINE InitializeTally_Euler( iX_B0, iX_E0, G, U, SuppressTally_Option )
 
-    INTEGER,  INTENT(in) :: &
+    INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3)
-    REAL(DP), INTENT(in) :: &
+    REAL(DP), INTENT(in)           :: &
       G(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
-    REAL(DP), INTENT(in) :: &
+    REAL(DP), INTENT(in)           :: &
       U(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      SuppressTally_Option
+
+    LOGICAL :: SuppressTally
+
+    SuppressTally = .FALSE.
+    IF( PRESENT( SuppressTally_Option ) ) &
+      SuppressTally = SuppressTally_Option
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL InitializeTally_Euler_NonRelativistic_TABLE( iX_B0, iX_E0, G, U )
+    CALL InitializeTally_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, G, U, SuppressTally )
 
 #elif defined HYDRO_NONRELATIVISTIC
 
-    CALL InitializeTally_Euler_NonRelativistic_IDEAL( iX_B0, iX_E0, G, U )
+    CALL InitializeTally_Euler_NonRelativistic_IDEAL &
+           ( iX_B0, iX_E0, G, U, SuppressTally )
 
 #elif defined HYDRO_RELATIVISTIC
 
-    CALL InitializeTally_Euler_Relativistic_IDEAL( iX_B0, iX_E0, G, U )
+    CALL InitializeTally_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, G, U, SuppressTally )
 
 #else
 
-    CALL InitializeTally_Euler_NonRelativistic_IDEAL( iX_B0, iX_E0, G, U )
+    CALL InitializeTally_Euler_NonRelativistic_IDEAL &
+           ( iX_B0, iX_E0, G, U, SuppressTally )
 
 #endif
 

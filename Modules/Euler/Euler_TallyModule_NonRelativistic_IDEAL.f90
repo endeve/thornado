@@ -29,6 +29,7 @@ MODULE Euler_TallyModule_NonRelativistic_IDEAL
   PUBLIC :: FinalizeTally_Euler_NonRelativistic_IDEAL
   PUBLIC :: ComputeTally_Euler_NonRelativistic_IDEAL
 
+  LOGICAL               :: SuppressTally
   CHARACTER(256)        :: TallyFileName
   INTEGER               :: nTallies
   INTEGER               :: iTally_E_i
@@ -39,16 +40,25 @@ MODULE Euler_TallyModule_NonRelativistic_IDEAL
 CONTAINS
 
 
-  SUBROUTINE InitializeTally_Euler_NonRelativistic_IDEAL( iX_B0, iX_E0, G, U )
+  SUBROUTINE InitializeTally_Euler_NonRelativistic_IDEAL &
+    ( iX_B0, iX_E0, G, U, SuppressTally_Option )
 
-    INTEGER,  INTENT(in) :: &
+    INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3)
-    REAL(DP), INTENT(in) :: &
+    REAL(DP), INTENT(in)           :: &
       G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    REAL(DP), INTENT(in) :: &
+    REAL(DP), INTENT(in)           :: &
       U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      SuppressTally_Option
 
     INTEGER :: FileUnit
+
+    SuppressTally = .FALSE.
+    IF( PRESENT( SuppressTally_Option ) ) &
+      SuppressTally = SuppressTally_Option
+
+    IF( SuppressTally ) RETURN
 
     nTallies   = nCF + 3
     iTally_E_i = nCF + 1
@@ -79,7 +89,8 @@ CONTAINS
 
   SUBROUTINE FinalizeTally_Euler_NonRelativistic_IDEAL
 
-    DEALLOCATE( EulerTally )
+    IF( .NOT. SuppressTally ) &
+      DEALLOCATE( EulerTally )
 
   END SUBROUTINE FinalizeTally_Euler_NonRelativistic_IDEAL
 
@@ -104,6 +115,8 @@ CONTAINS
     INTEGER  :: iState, iCF
     INTEGER  :: iX1, iX2, iX3
     REAL(DP) :: P(nDOFX,nPF)
+
+    IF( SuppressTally ) RETURN
 
     IF( PRESENT( iState_Option ) )THEN
       iState = iState_Option

@@ -2,9 +2,6 @@ MODULE Euler_PositivityLimiterModule
 
   USE KindModule, ONLY: &
     DP
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
-    Timer_Euler_PositivityLimiter
 
   USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE
@@ -100,8 +97,6 @@ CONTAINS
     INTEGER :: iErr = 0
     IF( PRESENT( iErr_Option ) ) iErr = iErr_Option
 
-    CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
-
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
@@ -125,8 +120,6 @@ CONTAINS
 #endif
 
     IF( PRESENT( iErr_Option ) ) iErr_Option = iErr
-
-    CALL TimersStop_Euler( Timer_Euler_PositivityLimiter )
 
   END SUBROUTINE ApplyPositivityLimiter_Euler
 

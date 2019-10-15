@@ -36,6 +36,10 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
     ApplyBoundaryConditions_Euler
   USE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE, ONLY: &
     ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_SlopeLimiter, &
+    Timer_Euler_TroubledCellIndicator
 
   IMPLICIT NONE
   PRIVATE
@@ -219,6 +223,8 @@ CONTAINS
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. UseSlopeLimiter ) RETURN
+
+    CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) ) &
@@ -453,6 +459,8 @@ CONTAINS
     CALL ApplyConservativeCorrection &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
 
+    CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
+
   END SUBROUTINE ApplySlopeLimiter_Euler_NonRelativistic_TABLE
 
 
@@ -569,6 +577,8 @@ CONTAINS
 
     END IF
 
+    CALL TimersStart_Euler( Timer_Euler_TroubledCellIndicator )
+
     ! --- Troubled-Cell Indicator from Fu & Shu (2017) ---
     ! --- JCP, 347, 305 - 327 ----------------------------
 
@@ -658,6 +668,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    CALL TimersStop_Euler( Timer_Euler_TroubledCellIndicator )
 
   END SUBROUTINE DetectTroubledCells
 

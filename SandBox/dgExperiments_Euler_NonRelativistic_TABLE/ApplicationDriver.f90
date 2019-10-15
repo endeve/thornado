@@ -75,7 +75,7 @@ PROGRAM ApplicationDriver
 
   ProgramName = 'RiemannProblem'
 
-  EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
+  EosTableName = 'wl-EOS-SFHo-15-25-50-noBCK.h5'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -98,13 +98,13 @@ PROGRAM ApplicationDriver
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
 
-      UseTroubledCellIndicator  = .FALSE.
-      LimiterThresholdParameter = 1.0d-1
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 1.0d-2
       UsePositivityLimiter      = .TRUE.
 
-      iCycleD = 1
+      iCycleD = 10
       t_end   = 2.5d-2 * Millisecond
       dt_wrt  = 2.5d-4 * Millisecond
 
