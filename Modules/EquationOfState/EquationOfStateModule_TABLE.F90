@@ -18,15 +18,14 @@ MODULE EquationOfStateModule_TABLE
   USE wlEOSInversionModule, ONLY: &
     InitializeEOSInversion, &
     ComputeTemperatureWith_DEY, &
+    ComputeTemperatureWith_DPY, &
     DescribeEOSInversionError
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable, &
     LogInterpolateDifferentiateSingleVariable, &
     ComputeTempFromIntEnergy_Lookup, &
     ComputeTempFromIntEnergy_Bisection, &
-    ComputeTempFromIntEnergy_Secant, &
-    ComputeTempFromPressure, &
-    ComputeTempFromPressure_Bisection
+    ComputeTempFromIntEnergy_Secant
 
   ! ----------------------------------------------
 
@@ -34,7 +33,7 @@ MODULE EquationOfStateModule_TABLE
 
   USE, INTRINSIC :: ISO_C_BINDING
   USE KindModule, ONLY: &
-    DP
+    DP, One
   USE UnitsModule, ONLY: &
     AtomicMassUnit, &
     BoltzmannConstant, &
@@ -63,6 +62,9 @@ MODULE EquationOfStateModule_TABLE
     iXp_T, iXn_T, iXa_T, iXh_T, iGm_T
   INTEGER, DIMENSION(3) :: &
     LogInterp
+  REAL(DP) :: &
+    UnitD, UnitT, UnitY, &
+    UnitP
   REAL(DP), PUBLIC :: &
     OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, &
     OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm
@@ -121,6 +123,11 @@ MODULE EquationOfStateModule_TABLE
     MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar
     MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector
   END INTERFACE ComputeTemperatureFromSpecificInternalEnergy_TABLE
+
+  INTERFACE ComputeTemperatureFromPressure_TABLE
+    MODULE PROCEDURE ComputeTemperatureFromPressure_TABLE_Scalar
+    MODULE PROCEDURE ComputeTemperatureFromPressure_TABLE_Vector
+  END INTERFACE ComputeTemperatureFromPressure_TABLE
 
   INTERFACE ComputeSpecificInternalEnergy_TABLE
     MODULE PROCEDURE ComputeSpecificInternalEnergy_Point_TABLE
@@ -221,6 +228,14 @@ CONTAINS
     iT_T = EOS % TS % Indices % iT
     iY_T = EOS % TS % Indices % iYe
 
+    ! --- Units ---
+
+    UnitD = Gram / Centimeter**3
+    UnitT = Kelvin
+    UnitY = One
+
+    UnitP = Dyne / Centimeter**2
+
     ! --- Thermodynamic States ---
 
     ALLOCATE( Ds_T(EOS % TS % nPoints(iD_T)) )
@@ -305,16 +320,19 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO &
-    !$OMP ( OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm )
+    !$OMP ( UnitD, UnitT, UnitY, UnitP, OS_P, OS_S, OS_E, OS_Me, OS_Mp, &
+    !$OMP   OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm )
 
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: Ds_T, Ts_T, Ys_T, &
-    !$OMP          Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T )
+    !$OMP          Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, &
+    !$OMP          Xas_T, Xhs_T, Gms_T )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( Ds_T, Ts_T, Ys_T, &
-    !$ACC   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, &
-    !$ACC   Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T )
+    !$ACC   UnitD, UnitT, UnitY, UnitP, OS_P, OS_S, OS_E, OS_Me, OS_Mp, &
+    !$ACC   OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, Ps_T, Ss_T, Es_T, &
+    !$ACC   Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T )
 #endif
 
 #endif
@@ -433,6 +451,52 @@ CONTAINS
   END SUBROUTINE ApplyEquationOfState_TABLE
 
 
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
+    ( D, E, Y, T, Guess_Option, Error_Option )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)            :: D, E, Y
+    REAL(DP), INTENT(out)           :: T
+    REAL(DP), INTENT(in),  OPTIONAL :: Guess_Option
+    INTEGER,  INTENT(out), OPTIONAL :: Error_Option
+
+    REAL(DP) :: D_P, E_P, Y_P, T_Lookup, T_Guess
+    INTEGER :: Error
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P = D / ( Gram / Centimeter**3 )
+    E_P = E / ( Erg / Gram )
+    Y_P = Y
+
+    IF ( PRESENT( Guess_Option ) ) THEN
+
+      T_Guess = Guess_Option / Kelvin
+
+      CALL ComputeTemperatureWith_DEY &
+             ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, T_Guess, &
+               Error_Option = Error )
+
+    ELSE
+
+      CALL ComputeTemperatureWith_DEY &
+             ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, &
+               Error_Option = Error )
+
+    END IF
+    T = T_Lookup * Kelvin
+
+#endif
+
+    IF ( PRESENT( Error_Option ) ) Error_Option = Error
+
+  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar
+
+
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector &
     ( D, E, Y, T, Guess_Option, Error_Option )
 
@@ -511,52 +575,6 @@ CONTAINS
     IF( PRESENT( Error_Option ) ) Error_Option = Error
 
   END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector
-
-
-  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
-    ( D, E, Y, T, Guess_Option, Error_Option )
-#if defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
-#endif
-
-    REAL(DP), INTENT(in)            :: D, E, Y
-    REAL(DP), INTENT(out)           :: T
-    REAL(DP), INTENT(in),  OPTIONAL :: Guess_Option
-    INTEGER,  INTENT(out), OPTIONAL :: Error_Option
-
-    REAL(DP) :: D_P, E_P, Y_P, T_Lookup, T_Guess
-    INTEGER :: Error
-
-#ifdef MICROPHYSICS_WEAKLIB
-
-    D_P = D / ( Gram / Centimeter**3 )
-    E_P = E / ( Erg / Gram )
-    Y_P = Y
-
-    IF ( PRESENT( Guess_Option ) ) THEN
-
-      T_Guess = Guess_Option / Kelvin
-
-      CALL ComputeTemperatureWith_DEY &
-             ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, T_Guess, &
-               Error_Option = Error )
-
-    ELSE
-
-      CALL ComputeTemperatureWith_DEY &
-             ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_Lookup, &
-               Error_Option = Error )
-
-    END IF
-    T = T_Lookup * Kelvin
-
-#endif
-
-    IF ( PRESENT( Error_Option ) ) Error_Option = Error
-
-  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar
 
 
   SUBROUTINE ComputePressureFromPrimitive_TABLE_Scalar( D, Ev, Ne, P )
@@ -649,27 +667,57 @@ CONTAINS
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Vector
 
 
-  SUBROUTINE ComputeTemperatureFromPressure_TABLE( D, P, Y, T )
+  SUBROUTINE ComputeTemperatureFromPressure_TABLE_Scalar( D, P, Y, T )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, P, Y
-    REAL(DP), DIMENSION(:), INTENT(out) :: T
+    REAL(DP), INTENT(in)  :: D, P, Y
+    REAL(DP), INTENT(out) :: T
 
-    REAL(DP), DIMENSION(SIZE(T)) :: T_Bisection
+    INTEGER  :: Error
+    REAL(DP) :: D_P, P_P, Y_P, T_P
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputeTempFromPressure_Bisection  &
-           ( D / ( Gram / Centimeter**3 ),   &
-             P / ( Dyne / Centimeter**2 ),             &
-             Y, Ds_T, Ts_T, Ys_T, LogInterp, &
-             Ps_T, OS_P, &
-             T_Bisection )
+    D_P = D / UnitD
+    P_P = P / UnitP
+    Y_P = Y / UnitY
 
-    T = T_Bisection * Kelvin
+    CALL ComputeTemperatureWith_DPY &
+           ( D_P, P_P, Y_P, Ds_T, Ts_T, Ys_T, Ps_T, OS_P, T_P, &
+             Error_Option = Error )
+
+    T = T_P * UnitT
 
 #endif
 
-  END SUBROUTINE ComputeTemperatureFromPressure_TABLE
+  END SUBROUTINE ComputeTemperatureFromPressure_TABLE_Scalar
+
+
+  SUBROUTINE ComputeTemperatureFromPressure_TABLE_Vector( D, P, Y, T )
+
+    REAL(DP), INTENT(in)  :: D(:), P(:), Y(:)
+    REAL(DP), INTENT(out) :: T(:)
+
+    INTEGER :: iP, nP
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    nP = SIZE( D )
+
+    DO iP = 1, nP
+
+      CALL ComputeTemperatureFromPressure_TABLE &
+             ( D(iP), P(iP), Y(iP), T(iP) )
+
+    END DO
+
+#endif
+
+  END SUBROUTINE ComputeTemperatureFromPressure_TABLE_Vector
 
 
   SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE( D, T, Y, Ev, Em, Ne )
