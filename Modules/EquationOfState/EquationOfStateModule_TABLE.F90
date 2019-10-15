@@ -22,10 +22,7 @@ MODULE EquationOfStateModule_TABLE
     DescribeEOSInversionError
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable, &
-    LogInterpolateDifferentiateSingleVariable, &
-    ComputeTempFromIntEnergy_Lookup, &
-    ComputeTempFromIntEnergy_Bisection, &
-    ComputeTempFromIntEnergy_Secant
+    LogInterpolateDifferentiateSingleVariable
 
   ! ----------------------------------------------
 
@@ -64,7 +61,7 @@ MODULE EquationOfStateModule_TABLE
     LogInterp
   REAL(DP) :: &
     UnitD, UnitT, UnitY, &
-    UnitP
+    UnitP, UnitE
   REAL(DP), PUBLIC :: &
     OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, &
     OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm
@@ -114,10 +111,20 @@ MODULE EquationOfStateModule_TABLE
     MODULE PROCEDURE ComputePressureFromPrimitive_TABLE_Vector
   END INTERFACE ComputePressureFromPrimitive_TABLE
 
+  INTERFACE ComputePressureFromSpecificInternalEnergy_TABLE
+    MODULE PROCEDURE ComputePressureFromSpecificInternalEnergy_TABLE_Scalar
+    MODULE PROCEDURE ComputePressureFromSpecificInternalEnergy_TABLE_Vector
+  END INTERFACE ComputePressureFromSpecificInternalEnergy_TABLE
+
   INTERFACE ComputeSoundSpeedFromPrimitive_TABLE
     MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_TABLE_Scalar
     MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_TABLE_Vector
   END INTERFACE ComputeSoundSpeedFromPrimitive_TABLE
+
+  INTERFACE ComputeThermodynamicStates_Primitive_TABLE
+    MODULE PROCEDURE ComputeThermodynamicStates_Primitive_TABLE_Scalar
+    MODULE PROCEDURE ComputeThermodynamicStates_Primitive_TABLE_Vector
+  END INTERFACE ComputeThermodynamicStates_Primitive_TABLE
 
   INTERFACE ComputeTemperatureFromSpecificInternalEnergy_TABLE
     MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar
@@ -235,6 +242,7 @@ CONTAINS
     UnitY = One
 
     UnitP = Dyne / Centimeter**2
+    UnitE = Erg / Gram
 
     ! --- Thermodynamic States ---
 
@@ -320,8 +328,8 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO &
-    !$OMP ( UnitD, UnitT, UnitY, UnitP, OS_P, OS_S, OS_E, OS_Me, OS_Mp, &
-    !$OMP   OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm )
+    !$OMP ( UnitD, UnitT, UnitY, UnitP, UnitE, OS_P, OS_S, OS_E, OS_Me, &
+    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm )
 
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: Ds_T, Ts_T, Ys_T, &
@@ -330,9 +338,9 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( Ds_T, Ts_T, Ys_T, &
-    !$ACC   UnitD, UnitT, UnitY, UnitP, OS_P, OS_S, OS_E, OS_Me, OS_Mp, &
-    !$ACC   OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, Ps_T, Ss_T, Es_T, &
-    !$ACC   Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T )
+    !$ACC   UnitD, UnitT, UnitY, UnitP, UnitE, OS_P, OS_S, OS_E, OS_Me, &
+    !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, Ps_T, Ss_T, &
+    !$ACC   Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T )
 #endif
 
 #endif
@@ -604,19 +612,39 @@ CONTAINS
   END SUBROUTINE ComputePressureFromPrimitive_TABLE_Vector
 
 
-  SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE( D, E, Y, P )
+  SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE_Scalar &
+    ( D, E, Y, P )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, E, Y
-    REAL(DP), DIMENSION(:), INTENT(out) :: P
+    REAL(DP), INTENT(in)  :: D, E, Y
+    REAL(DP), INTENT(out) :: P
 
     WRITE(*,*)
     WRITE(*,'(A4,A)') &
       '', 'ComputePressureFromSpecificInternalEnergy_TABLE Not Implemented'
     WRITE(*,*)
-
     STOP
 
-  END SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE
+  END SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE_Scalar
+
+
+  SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE_Vector &
+    ( D, E, Y, P )
+
+    REAL(DP), INTENT(in)  :: D(:), E(:), Y(:)
+    REAL(DP), INTENT(out) :: P(:)
+
+    INTEGER iP, nP
+
+    nP = SIZE( D )
+
+    DO iP = 1, nP
+
+      CALL ComputePressureFromSpecificInternalEnergy_TABLE &
+             ( D(iP), E(iP), Y(iP), P(iP) )
+
+    END DO
+
+  END SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE_Vector
 
 
   SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Scalar( D, Ev, Ne, Cs )
@@ -720,10 +748,28 @@ CONTAINS
   END SUBROUTINE ComputeTemperatureFromPressure_TABLE_Vector
 
 
-  SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE( D, T, Y, Ev, Em, Ne )
+  SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Scalar &
+    ( D, T, Y, Ev, Em, Ne )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out) :: Ev, Em, Ne
+    REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(out) :: Ev, Em, Ne
+
+    ! --- Interpolate Specific Internal Energy ------------------------
+
+    CALL ComputeDependentVariable_TABLE &
+           ( D, T, Y, Em, Es_T, OS_E, Units_V = UnitE )
+
+      Ev = Em * D              ! --- Internal Energy per Unit Volume
+      Ne = Y  * D / BaryonMass ! --- Electrons per Unit Volume
+
+  END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Scalar
+
+
+  SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Vector &
+    ( D, T, Y, Ev, Em, Ne )
+
+    REAL(DP), INTENT(in)  :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out) :: Ev(:), Em(:), Ne(:)
 
     INTEGER :: iP, nP
     LOGICAL :: do_gpu
@@ -759,17 +805,12 @@ CONTAINS
 #endif
     DO iP = 1, nP
 
-      ! --- Interpolate Specific Internal Energy ------------------------
-
-      CALL ComputeDependentVariable_TABLE &
-             ( D(iP), T(iP), Y(iP), Em(iP), Es_T, OS_E, Units_V = Erg / Gram )
-
-      Ev(iP) = Em(iP) * D(iP)              ! --- Internal Energy per Unit Volume
-      Ne(iP) = Y (iP) * D(iP) / BaryonMass ! --- Electrons per Unit Volume
+      CALL ComputeThermodynamicStates_Primitive_TABLE &
+             ( D(iP), T(iP), Y(iP), Ev(iP), Em(iP), Ne(iP) )
 
     END DO
 
-  END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE
+  END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Vector
 
 
   SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE( D, Ev, Ne, T, Em, Y )

@@ -28,6 +28,11 @@ MODULE EquationOfStateModule_IDEAL
     MODULE PROCEDURE ComputePressureFromPrimitive_IDEAL_Vector
   END INTERFACE ComputePressureFromPrimitive_IDEAL
 
+  INTERFACE ComputePressureFromSpecificInternalEnergy_IDEAL
+    MODULE PROCEDURE ComputePressureFromSpecificInternalEnergy_IDEAL_Scalar
+    MODULE PROCEDURE ComputePressureFromSpecificInternalEnergy_IDEAL_Vector
+  END INTERFACE ComputePressureFromSpecificInternalEnergy_IDEAL
+
   INTERFACE ComputeSoundSpeedFromPrimitive_IDEAL
     MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar
     MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_IDEAL_Vector
@@ -85,14 +90,35 @@ CONTAINS
   END SUBROUTINE ComputePressureFromPrimitive_IDEAL_Vector
 
 
-  SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Y, P )
+  SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL_Scalar &
+    ( D, Em, Y, P )
+
+    REAL(DP), INTENT(in)  :: D, Em, Y
+    REAL(DP), INTENT(out) :: P
+
+    P = ( Gamma_IDEAL - 1.0_DP ) * D * Em
+
+  END SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL_Scalar
+
+
+  SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL_Vector &
+    ( D, Em, Y, P )
 
     REAL(DP), INTENT(in)  :: D(:), Em(:), Y(:)
     REAL(DP), INTENT(out) :: P(:)
 
-    P(:) = ( Gamma_IDEAL - 1.0_DP ) * D(:) * Em(:)
+    INTEGER :: iP, nP
 
-  END SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL
+    nP = SIZE( D )
+
+    DO iP = 1, nP
+
+      CALL ComputePressureFromSpecificInternalEnergy_IDEAL &
+             ( D(iP), Em(iP), Y(iP), P(iP) )
+
+    END DO
+
+  END SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL_Vector
 
 
 #ifdef HYDRO_NONRELATIVISTIC

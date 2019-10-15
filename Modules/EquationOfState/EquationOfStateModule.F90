@@ -38,7 +38,9 @@ MODULE EquationOfStateModule
     BaryonMass = AtomicMassUnit
 
   PUBLIC :: ComputePressureFromPrimitive
+  PUBLIC :: ComputePressureFromSpecificInternalEnergy
   PUBLIC :: ComputeSoundSpeedFromPrimitive
+  PUBLIC :: ComputeThermodynamicStates_Primitive
   PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy
   PUBLIC :: ComputeTemperatureFromPressure
 
@@ -47,10 +49,20 @@ MODULE EquationOfStateModule
     MODULE PROCEDURE ComputePressureFromPrimitive_Vector
   END INTERFACE ComputePressureFromPrimitive
 
+  INTERFACE ComputePressureFromSpecificInternalEnergy
+    MODULE PROCEDURE ComputePressureFromSpecificInternalEnergy_Scalar
+    MODULE PROCEDURE ComputePressureFromSpecificInternalEnergy_Vector
+  END INTERFACE ComputePressureFromSpecificInternalEnergy
+
   INTERFACE ComputeSoundSpeedFromPrimitive
     MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_Scalar
     MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_Vector
   END INTERFACE ComputeSoundSpeedFromPrimitive
+
+  INTERFACE ComputeThermodynamicStates_Primitive
+    MODULE PROCEDURE ComputeThermodynamicStates_Primitive_Scalar
+    MODULE PROCEDURE ComputeThermodynamicStates_Primitive_Vector
+  END INTERFACE ComputeThermodynamicStates_Primitive
 
   INTERFACE ComputeTemperatureFromSpecificInternalEnergy
     MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_Scalar
@@ -146,10 +158,8 @@ MODULE EquationOfStateModule
   PROCEDURE (EosFunction),       POINTER, PUBLIC :: &
     Auxiliary_Fluid                              => NULL()
   PROCEDURE (EosSubroutine_1),   POINTER, PUBLIC :: &
-    ComputeInternalEnergyDensityFromPressure     => NULL(), &
-    ComputePressureFromSpecificInternalEnergy    => NULL()
+    ComputeInternalEnergyDensityFromPressure     => NULL()
   PROCEDURE (EosSubroutine_3),   POINTER, PUBLIC :: &
-    ComputeThermodynamicStates_Primitive         => NULL(), &
     ComputeThermodynamicStates_Auxiliary         => NULL()
   PROCEDURE (EosSubroutine_7),   POINTER, PUBLIC :: &
     ComputeAuxiliary_Fluid                       => NULL()
@@ -208,8 +218,6 @@ CONTAINS
 
         ComputeInternalEnergyDensityFromPressure &
           => ComputeInternalEnergyDensityFromPressure_IDEAL
-        ComputePressureFromSpecificInternalEnergy &
-          => ComputePressureFromSpecificInternalEnergy_IDEAL
         ComputeAuxiliary_Fluid &
           => ComputeAuxiliary_Fluid_IDEAL
         Auxiliary_Fluid &
@@ -224,12 +232,8 @@ CONTAINS
 
         ApplyEquationOfState &
           => ApplyEquationOfState_TABLE
-        ComputeThermodynamicStates_Primitive &
-          => ComputeThermodynamicStates_Primitive_TABLE
         ComputeThermodynamicStates_Auxiliary &
           => ComputeThermodynamicStates_Auxiliary_TABLE
-        ComputePressureFromSpecificInternalEnergy &
-          => ComputePressureFromSpecificInternalEnergy_TABLE
         ComputeAuxiliary_Fluid &
           => ComputeAuxiliary_Fluid_TABLE
         Auxiliary_Fluid &
@@ -262,16 +266,13 @@ CONTAINS
       CASE ( 'IDEAL' )
 
         NULLIFY( ComputeInternalEnergyDensityFromPressure )
-        NULLIFY( ComputePressureFromSpecificInternalEnergy )
         NULLIFY( ComputeAuxiliary_Fluid )
         NULLIFY( Auxiliary_Fluid )
 
       CASE ( 'TABLE' )
 
         NULLIFY( ApplyEquationOfState )
-        NULLIFY( ComputeThermodynamicStates_Primitive )
         NULLIFY( ComputeThermodynamicStates_Auxiliary )
-        NULLIFY( ComputePressureFromSpecificInternalEnergy )
         NULLIFY( ComputeAuxiliary_Fluid )
         NULLIFY( Auxiliary_Fluid )
         NULLIFY( ComputeSpecificInternalEnergy )
@@ -325,6 +326,47 @@ CONTAINS
   END SUBROUTINE ComputePressureFromPrimitive_Vector
 
 
+  ! --- ComputePressureFromSpecificInternalEnergy ---
+
+
+  SUBROUTINE ComputePressureFromSpecificInternalEnergy_Scalar &
+    ( D, Em, Ne, P )
+
+    REAL(DP), INTENT(in)  :: D, Em, Ne
+    REAL(DP), INTENT(out) :: P
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ComputePressureFromSpecificInternalEnergy_TABLE( D, Em, Ne, P )
+
+#else
+
+    CALL ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Ne, P )
+
+#endif
+
+  END SUBROUTINE ComputePressureFromSpecificInternalEnergy_Scalar
+
+
+  SUBROUTINE ComputePressureFromSpecificInternalEnergy_Vector &
+    ( D, Em, Ne, P )
+
+    REAL(DP), INTENT(in)  :: D(:), Em(:), Ne(:)
+    REAL(DP), INTENT(out) :: P(:)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ComputePressureFromSpecificInternalEnergy_TABLE( D, Em, Ne, P )
+
+#else
+
+    CALL ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Ne, P )
+
+#endif
+
+  END SUBROUTINE ComputePressureFromSpecificInternalEnergy_Vector
+
+
   ! --- ComputeSoundSpeedFromPrimitive ---
 
 
@@ -364,6 +406,43 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_Vector
+
+
+  ! --- ComputeThermodynamicStates_Primitive ---
+
+
+  SUBROUTINE ComputeThermodynamicStates_Primitive_Scalar &
+    ( D, T, Y, Ev, Em, Ne )
+
+    REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(out) :: Ev, Em, Ne
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ComputeThermodynamicStates_Primitive_TABLE( D, T, Y, Ev, Em, Ne )
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeThermodynamicStates_Primitive_Scalar
+
+
+  SUBROUTINE ComputeThermodynamicStates_Primitive_Vector &
+    ( D, T, Y, Ev, Em, Ne )
+
+    REAL(DP), INTENT(in)  :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out) :: Ev(:), Em(:), Ne(:)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ComputeThermodynamicStates_Primitive_TABLE( D, T, Y, Ev, Em, Ne )
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeThermodynamicStates_Primitive_Vector
 
 
   ! --- ComputeTemperatureFromSpecificInternalEnergy ---
