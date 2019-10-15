@@ -126,11 +126,13 @@ CONTAINS
 
         END SELECT
 
-      END DO
+        CALL ComputeTemperatureFromPressure &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_T ) )
 
-      CALL ComputeTemperatureFromPressure &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_P), &
-               uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_T) )
+      END DO
 
       CALL ComputeThermodynamicStates_Primitive &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
