@@ -37,12 +37,18 @@ MODULE EquationOfStateModule
   REAL(DP), PUBLIC, PARAMETER :: &
     BaryonMass = AtomicMassUnit
 
+  PUBLIC :: ApplyEquationOfState
   PUBLIC :: ComputePressureFromPrimitive
   PUBLIC :: ComputePressureFromSpecificInternalEnergy
   PUBLIC :: ComputeSoundSpeedFromPrimitive
   PUBLIC :: ComputeThermodynamicStates_Primitive
   PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy
   PUBLIC :: ComputeTemperatureFromPressure
+
+  INTERFACE ApplyEquationOfState
+    MODULE PROCEDURE ApplyEquationOfState_Scalar
+    MODULE PROCEDURE ApplyEquationOfState_Vector
+  END INTERFACE ApplyEquationOfState
 
   INTERFACE ComputePressureFromPrimitive
     MODULE PROCEDURE ComputePressureFromPrimitive_Scalar
@@ -120,16 +126,6 @@ MODULE EquationOfStateModule
   END INTERFACE
 
   INTERFACE
-    SUBROUTINE EosSubroutine_11 &
-                 ( X, Y, Z, V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11 )
-      USE KindModule, ONLY: DP
-      REAL(DP), DIMENSION(:), INTENT(in)  :: X, Y, Z
-      REAL(DP), DIMENSION(:), INTENT(out) :: V1, V2, V3, V4, V5, V6
-      REAL(DP), DIMENSION(:), INTENT(out) :: V7, V8, V9, V10, V11
-    END SUBROUTINE EosSubroutine_11
-  END INTERFACE
-
-  INTERFACE
     SUBROUTINE EosSubroutine_1_3( X, Y, Z, V, dVdX, dVdY, dVdZ )
       USE KindModule, ONLY: DP
       REAL(DP), DIMENSION(:), INTENT(in)                    :: X, Y, Z
@@ -163,8 +159,6 @@ MODULE EquationOfStateModule
     ComputeThermodynamicStates_Auxiliary         => NULL()
   PROCEDURE (EosSubroutine_7),   POINTER, PUBLIC :: &
     ComputeAuxiliary_Fluid                       => NULL()
-  PROCEDURE (EosSubroutine_11),  POINTER, PUBLIC :: &
-    ApplyEquationOfState                         => NULL()
   PROCEDURE (EosSubroutine_1_3), POINTER, PUBLIC :: &
     ComputeSpecificInternalEnergy                => NULL(), &
     ComputeElectronChemicalPotential             => NULL(), &
@@ -178,8 +172,8 @@ CONTAINS
 
 
   SUBROUTINE InitializeEquationOfState &
-               ( EquationOfState_Option, EquationOfStateTableName_Option, &
-                 Gamma_IDEAL_Option, Verbose_Option )
+    ( EquationOfState_Option, EquationOfStateTableName_Option, &
+      Gamma_IDEAL_Option, Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfState_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
@@ -230,8 +224,6 @@ CONTAINS
                    = EquationOfStateTableName_Option, &
                  Verbose_Option = .TRUE. )
 
-        ApplyEquationOfState &
-          => ApplyEquationOfState_TABLE
         ComputeThermodynamicStates_Auxiliary &
           => ComputeThermodynamicStates_Auxiliary_TABLE
         ComputeAuxiliary_Fluid &
@@ -271,7 +263,6 @@ CONTAINS
 
       CASE ( 'TABLE' )
 
-        NULLIFY( ApplyEquationOfState )
         NULLIFY( ComputeThermodynamicStates_Auxiliary )
         NULLIFY( ComputeAuxiliary_Fluid )
         NULLIFY( Auxiliary_Fluid )
@@ -283,6 +274,46 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE FinalizeEquationOfState
+
+
+  ! --- ApplyEquationOfState ---
+
+
+  SUBROUTINE ApplyEquationOfState_Scalar &
+    ( D, T, Y, P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm )
+
+    REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(out) :: P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ApplyEquationOfState_TABLE &
+           ( D, T, Y, P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm )
+
+#else
+
+#endif
+
+  END SUBROUTINE ApplyEquationOfState_Scalar
+
+
+  SUBROUTINE ApplyEquationOfState_Vector &
+    ( D, T, Y, P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm )
+
+    REAL(DP), INTENT(in)  :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out) :: P(:), S(:), E(:), Me(:), Mp(:), Mn(:)
+    REAL(DP), INTENT(out) :: Xp(:), Xn(:), Xa(:), Xh(:), Gm(:)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ApplyEquationOfState_TABLE &
+           ( D, T, Y, P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm )
+
+#else
+
+#endif
+
+  END SUBROUTINE ApplyEquationOfState_Vector
 
 
   ! --- ComputePressureFromPrimitive ---

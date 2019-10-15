@@ -61,7 +61,8 @@ MODULE EquationOfStateModule_TABLE
     LogInterp
   REAL(DP) :: &
     UnitD, UnitT, UnitY, &
-    UnitP, UnitE
+    UnitP, UnitS, UnitE, UnitMe, UnitMp, UnitMn, &
+    UnitXp, UnitXn, UnitXa, UnitXh, UnitGm
   REAL(DP), PUBLIC :: &
     OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, &
     OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm
@@ -105,6 +106,11 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
   PUBLIC :: ComputeNeutronChemicalPotentialPoints_TABLE
   PUBLIC :: ComputeNeutronChemicalPotentialPoint_TABLE
+
+  INTERFACE ApplyEquationOfState_TABLE
+    MODULE PROCEDURE ApplyEquationOfState_Table_Scalar
+    MODULE PROCEDURE ApplyEquationOfState_Table_Vector
+  END INTERFACE ApplyEquationOfState_TABLE
 
   INTERFACE ComputePressureFromPrimitive_TABLE
     MODULE PROCEDURE ComputePressureFromPrimitive_TABLE_Scalar
@@ -241,8 +247,17 @@ CONTAINS
     UnitT = Kelvin
     UnitY = One
 
-    UnitP = Dyne / Centimeter**2
-    UnitE = Erg / Gram
+    UnitP  = Dyne / Centimeter**2
+    UnitS  = BoltzmannConstant
+    UnitE  = Erg / Gram
+    UnitMe = MeV
+    UnitMp = MeV
+    UnitMn = MeV
+    UnitXp = One
+    UnitXn = One
+    UnitXa = One
+    UnitXh = One
+    UnitGm = One
 
     ! --- Thermodynamic States ---
 
@@ -328,9 +343,9 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO &
-    !$OMP ( UnitD, UnitT, UnitY, UnitP, UnitE, OS_P, OS_S, OS_E, OS_Me, &
+    !$OMP ( UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
+    !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm )
-
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: Ds_T, Ts_T, Ys_T, &
     !$OMP          Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, &
@@ -338,7 +353,8 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( Ds_T, Ts_T, Ys_T, &
-    !$ACC   UnitD, UnitT, UnitY, UnitP, UnitE, OS_P, OS_S, OS_E, OS_Me, &
+    !$ACC   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
+    !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, Ps_T, Ss_T, &
     !$ACC   Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T )
 #endif
@@ -381,82 +397,90 @@ CONTAINS
   END SUBROUTINE FinalizeEquationOfState_TABLE
 
 
-  SUBROUTINE ApplyEquationOfState_TABLE &
-               ( D, T, Y, P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm )
+  SUBROUTINE ApplyEquationOfState_TABLE_Scalar &
+    ( D, T, Y, P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out) :: P, S, E, Me, Mp, Mn
-    REAL(DP), DIMENSION(:), INTENT(out) :: Xp, Xn, Xa, Xh, Gm
-
-    REAL(DP), DIMENSION(SIZE( D )) :: TMP
+    REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(out) :: P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm
 
     ! --- Interpolate Pressure ----------------------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), P(:), Ps_T, OS_P, &
-             Units_V = Dyne / Centimeter**2 )
+           ( D, T, Y, P, Ps_T, OS_P, Units_V = UnitP )
 
     ! --- Interpolate Entropy Per Baryon ------------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), S(:), Ss_T, OS_S, &
-             Units_V = BoltzmannConstant )
+           ( D, T, Y, S, Ss_T, OS_S, Units_V = UnitS )
 
     ! --- Interpolate Specific Internal Energy ------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), E(:), Es_T, OS_E, &
-             Units_V = Erg / Gram )
+           ( D, T, Y, E, Es_T, OS_E, Units_V = UnitE )
 
     ! --- Interpolate Electron Chemical Potential ---------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Me(:), Mes_T, OS_Me, &
-             Units_V = MeV )
+           ( D, T, Y, Me, Mes_T, OS_Me, Units_V = UnitMe )
 
     ! --- Interpolate Proton Chemical Potential -----------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Mp(:), Mps_T, OS_Mp, &
-             Units_V = MeV )
+           ( D, T, Y, Mp, Mps_T, OS_Mp, Units_V = UnitMp )
 
     ! --- Interpolate Neutron Chemical Potential ----------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Mn(:), Mns_T, OS_Mn, &
-             Units_V = MeV )
+           ( D, T, Y, Mn, Mns_T, OS_Mn, Units_V = UnitMn )
 
     ! --- Interpolate Proton Mass Fraction ----------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Xp(:), Xps_T, OS_Xp, &
-             Units_V = 1.0_DP )
+           ( D, T, Y, Xp, Xps_T, OS_Xp, Units_V = UnitXp )
 
     ! --- Interpolate Neutron Mass Fraction ---------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Xn(:), Xns_T, OS_Xn, &
-             Units_V = 1.0_DP )
+           ( D, T, Y, Xn, Xns_T, OS_Xn, Units_V = UnitXn )
 
     ! --- Interpolate Alpha Mass Fraction -----------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Xa(:), Xas_T, OS_Xa, &
-             Units_V = 1.0_DP )
+           ( D, T, Y, Xa, Xas_T, OS_Xa, Units_V = UnitXa )
 
     ! --- Interpolate Heavy Mass Fraction -----------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Xh(:), Xhs_T, OS_Xh, &
-             Units_V = 1.0_DP )
+           ( D, T, Y, Xh, Xhs_T, OS_Xh, Units_V = UnitXh )
 
     ! --- Gamma1 ------------------------------------------------------
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Gm(:), Gms_T, OS_Gm, &
-             Units_V = 1.0_DP )
+           ( D, T, Y, Gm, Gms_T, OS_Gm, Units_V = UnitGm )
 
-  END SUBROUTINE ApplyEquationOfState_TABLE
+  END SUBROUTINE ApplyEquationOfState_TABLE_Scalar
+
+
+  SUBROUTINE ApplyEquationOfState_TABLE_Vector &
+    ( D, T, Y, P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm )
+
+    REAL(DP), INTENT(in)  :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out) :: P(:), S(:), E(:), Me(:), Mp(:), Mn(:)
+    REAL(DP), INTENT(out) :: Xp(:), Xn(:), Xa(:), Xh(:), Gm(:)
+
+    INTEGER :: iP, nP
+
+    nP = SIZE( D )
+
+    DO iP = 1, nP
+
+      CALL ApplyEquationOfState_TABLE &
+             ( D (iP), T (iP), Y (iP), P (iP), S (iP), E (iP), Me(iP), &
+               Mp(iP), Mn(iP), Xp(iP), Xn(iP), Xa(iP), Xh(iP), Gm(iP) )
+
+    END DO
+
+  END SUBROUTINE ApplyEquationOfState_TABLE_Vector
 
 
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
