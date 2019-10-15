@@ -28,6 +28,11 @@ MODULE EquationOfStateModule_IDEAL
     MODULE PROCEDURE ComputePressureFromPrimitive_IDEAL_Vector
   END INTERFACE ComputePressureFromPrimitive_IDEAL
 
+  INTERFACE ComputeSoundSpeedFromPrimitive_IDEAL
+    MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar
+    MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_IDEAL_Vector
+  END INTERFACE ComputeSoundSpeedFromPrimitive_IDEAL
+
 
 CONTAINS
 
@@ -90,20 +95,44 @@ CONTAINS
   END SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL
 
 
-#if defined HYDRO_NONRELATIVISTIC
+#ifdef HYDRO_NONRELATIVISTIC
 
-  SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
+
+  SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar( D, Ev, Ne, Cs )
+
+    REAL(DP), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), INTENT(out) :: Cs
+
+    Cs = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev / D )
+
+  END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar
+
+
+  SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Vector( D, Ev, Ne, Cs )
 
     REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
     REAL(DP), INTENT(out) :: Cs(:)
 
     Cs(:) = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev(:) / D(:) )
 
-  END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL
+  END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Vector
 
-#elif defined HYDRO_RELATIVISTIC
 
-  SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
+#elif HYDRO_RELATIVISTIC
+
+
+  SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar( D, Ev, Ne, Cs )
+
+    REAL(DP), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), INTENT(out) :: Cs
+
+    Cs = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev &
+                 / ( D + Gamma_IDEAL * Ev ) )
+
+  END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar
+
+
+  SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Vector( D, Ev, Ne, Cs )
 
     REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
     REAL(DP), INTENT(out) :: Cs(:)
@@ -111,18 +140,8 @@ CONTAINS
     Cs = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev &
                  / ( D + Gamma_IDEAL * Ev ) )
 
-  END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL
+  END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Vector
 
-#else
-
-  SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
-
-    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
-    REAL(DP), INTENT(out) :: Cs(:)
-
-    Cs(:) = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev(:) / D(:) )
-
-  END SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL
 
 #endif
 
