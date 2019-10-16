@@ -18,6 +18,9 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
     ComputeSpecificInternalEnergy_TABLE, &
     ComputeAuxiliary_Fluid_TABLE, &
     ComputePressure_TABLE
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_CharacteristicDecomposition
 
   IMPLICIT NONE
   PRIVATE
@@ -48,6 +51,8 @@ CONTAINS
 
     REAL(DP), DIMENSION(1) :: X, Alpha, B, Delta, Zero2
     REAL(DP), DIMENSION(3) :: Phi
+
+    CALL TimersStart_Euler( Timer_Euler_CharacteristicDecomposition )
 
     CALL ComputePrimitive_Euler_NonRelativistic &
            ( [ U(iCF_D ) ], [ U(iCF_S1) ], [ U(iCF_S2) ], &
@@ -251,6 +256,8 @@ CONTAINS
         END IF
 
     END SELECT
+
+    CALL TimersStop_Euler( Timer_Euler_CharacteristicDecomposition )
 
   END SUBROUTINE ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE
 
