@@ -134,6 +134,11 @@ MODULE EquationOfStateModule_TABLE
     MODULE PROCEDURE ComputeThermodynamicStates_Primitive_TABLE_Vector
   END INTERFACE ComputeThermodynamicStates_Primitive_TABLE
 
+  INTERFACE ComputeThermodynamicStates_Auxiliary_TABLE
+    MODULE PROCEDURE ComputeThermodynamicStates_Auxiliary_TABLE_Scalar
+    MODULE PROCEDURE ComputeThermodynamicStates_Auxiliary_TABLE_Vector
+  END INTERFACE ComputeThermodynamicStates_Auxiliary_TABLE
+
   INTERFACE ComputeTemperatureFromSpecificInternalEnergy_TABLE
     MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar
     MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector
@@ -784,6 +789,12 @@ CONTAINS
   SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Scalar &
     ( D, T, Y, Ev, Em, Ne )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in)  :: D, T, Y
     REAL(DP), INTENT(out) :: Ev, Em, Ne
 
@@ -801,7 +812,7 @@ CONTAINS
   SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Vector &
     ( D, T, Y, Ev, Em, Ne )
 
-    REAL(DP), INTENT(in)  :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(in)  :: D (:), T (:), Y (:)
     REAL(DP), INTENT(out) :: Ev(:), Em(:), Ne(:)
 
     INTEGER :: iP, nP
@@ -846,7 +857,29 @@ CONTAINS
   END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Vector
 
 
-  SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE( D, Ev, Ne, T, Em, Y )
+  SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Scalar &
+    ( D, Ev, Ne, T, Em, Y )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), INTENT(out) :: T, Em, Y
+
+    Em = Ev / D              ! --- Internal Energy per Mass
+    Y  = Ne / D * BaryonMass ! --- Electron Fraction
+
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+           ( D, Em, Y, T )
+
+  END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Scalar
+
+
+  SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Vector &
+    ( D, Ev, Ne, T, Em, Y )
 
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: T, Em, Y
@@ -906,7 +939,7 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE
+  END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Vector
 
 
   SUBROUTINE ComputeAuxiliary_Fluid_TABLE( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )

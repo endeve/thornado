@@ -45,6 +45,7 @@ MODULE EquationOfStateModule
   PUBLIC :: ComputePressureFromSpecificInternalEnergy
   PUBLIC :: ComputeSoundSpeedFromPrimitive
   PUBLIC :: ComputeThermodynamicStates_Primitive
+  PUBLIC :: ComputeThermodynamicStates_Auxiliary
   PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy
   PUBLIC :: ComputeTemperatureFromPressure
   PUBLIC :: ComputeElectronChemicalPotential
@@ -85,6 +86,11 @@ MODULE EquationOfStateModule
     MODULE PROCEDURE ComputeThermodynamicStates_Primitive_Scalar
     MODULE PROCEDURE ComputeThermodynamicStates_Primitive_Vector
   END INTERFACE ComputeThermodynamicStates_Primitive
+
+  INTERFACE ComputeThermodynamicStates_Auxiliary
+    MODULE PROCEDURE ComputeThermodynamicStates_Auxiliary_Scalar
+    MODULE PROCEDURE ComputeThermodynamicStates_Auxiliary_Vector
+  END INTERFACE ComputeThermodynamicStates_Auxiliary
 
   INTERFACE ComputeTemperatureFromSpecificInternalEnergy
     MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_Scalar
@@ -133,22 +139,6 @@ MODULE EquationOfStateModule
   END INTERFACE
 
   INTERFACE
-    SUBROUTINE EosSubroutine_3( X, Y, Z, V1, V2, V3 )
-      USE KindModule, ONLY: DP
-      REAL(DP), DIMENSION(:), INTENT(in)  :: X, Y, Z
-      REAL(DP), DIMENSION(:), INTENT(out) :: V1, V2, V3
-    END SUBROUTINE EosSubroutine_3
-  END INTERFACE
-
-  INTERFACE
-    SUBROUTINE EosSubroutine_6( X, Y, Z, V1, V2, V3, V4, V5, V6 )
-      USE KindModule, ONLY: DP
-      REAL(DP), DIMENSION(:), INTENT(in)  :: X, Y, Z
-      REAL(DP), DIMENSION(:), INTENT(out) :: V1, V2, V3, V4, V5, V6
-    END SUBROUTINE EosSubroutine_6
-  END INTERFACE
-
-  INTERFACE
     SUBROUTINE EosSubroutine_7( X, Y, Z, V1, V2, V3, V4, V5, V6, V7 )
       USE KindModule, ONLY: DP
       REAL(DP), DIMENSION(:), INTENT(in)  :: X, Y, Z
@@ -164,8 +154,6 @@ MODULE EquationOfStateModule
     Auxiliary_Fluid                              => NULL()
   PROCEDURE (EosSubroutine_1),   POINTER, PUBLIC :: &
     ComputeInternalEnergyDensityFromPressure     => NULL()
-  PROCEDURE (EosSubroutine_3),   POINTER, PUBLIC :: &
-    ComputeThermodynamicStates_Auxiliary         => NULL()
   PROCEDURE (EosSubroutine_7),   POINTER, PUBLIC :: &
     ComputeAuxiliary_Fluid                       => NULL()
 
@@ -228,8 +216,6 @@ CONTAINS
                    = EquationOfStateTableName_Option, &
                  Verbose_Option = .TRUE. )
 
-        ComputeThermodynamicStates_Auxiliary &
-          => ComputeThermodynamicStates_Auxiliary_TABLE
         ComputeAuxiliary_Fluid &
           => ComputeAuxiliary_Fluid_TABLE
         Auxiliary_Fluid &
@@ -259,7 +245,6 @@ CONTAINS
 
       CASE ( 'TABLE' )
 
-        NULLIFY( ComputeThermodynamicStates_Auxiliary )
         NULLIFY( ComputeAuxiliary_Fluid )
         NULLIFY( Auxiliary_Fluid )
 
@@ -698,7 +683,7 @@ CONTAINS
   SUBROUTINE ComputeThermodynamicStates_Primitive_Vector &
     ( D, T, Y, Ev, Em, Ne )
 
-    REAL(DP), INTENT(in)  :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(in)  :: D (:), T (:), Y (:)
     REAL(DP), INTENT(out) :: Ev(:), Em(:), Ne(:)
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -710,6 +695,43 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeThermodynamicStates_Primitive_Vector
+
+
+  ! --- ComputeThermodynamicStates_Auxiliary ---
+
+
+  SUBROUTINE ComputeThermodynamicStates_Auxiliary_Scalar &
+    ( D, Ev, Ne, T, Em, Y )
+
+    REAL(DP), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), INTENT(out) :: T, Em, Y
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ComputeThermodynamicStates_Auxiliary_TABLE( D, Ev, Ne, T, Em, Y )
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeThermodynamicStates_Auxiliary_Scalar
+
+
+  SUBROUTINE ComputeThermodynamicStates_Auxiliary_Vector &
+    ( D, Ev, Ne, T, Em, Y )
+
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: T(:), Em(:), Y (:)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ComputeThermodynamicStates_Auxiliary_TABLE( D, Ev, Ne, T, Em, Y )
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeThermodynamicStates_Auxiliary_Vector
 
 
   ! --- ComputeTemperatureFromSpecificInternalEnergy ---
