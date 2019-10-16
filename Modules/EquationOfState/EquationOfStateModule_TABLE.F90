@@ -699,6 +699,8 @@ CONTAINS
 
     REAL(DP) :: D_P, E_P, Y_P, T_P, T
 
+#ifdef MICROPHYSICS_WEAKLIB
+
     D_P = D  / UnitP
     E_P = Em / UnitE
     Y_P = Y  / UnitY
@@ -709,7 +711,9 @@ CONTAINS
     T = T_P * UnitT
 
     CALL ComputeDependentVariable_TABLE &
-           ( D, T, Y, P, Ps_T, OS_P, Units_V = UnitP )    
+           ( D, T, Y, P, Ps_T, OS_P, Units_V = UnitP )
+
+#endif
 
   END SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE_Scalar
 
