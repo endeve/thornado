@@ -13,6 +13,7 @@ MODULE EquationOfStateModule
   USE EquationOfStateModule_TABLE, ONLY: &
     InitializeEquationOfState_TABLE, &
     ApplyEquationOfState_TABLE, &
+    ComputePressure_TABLE, &
     ComputeTemperatureFromPressure_TABLE, &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE, &
@@ -22,7 +23,7 @@ MODULE EquationOfStateModule
     ComputeSoundSpeedFromPrimitive_TABLE, &
     ComputeAuxiliary_Fluid_TABLE, &
     Auxiliary_Fluid_TABLE, &
-    ComputeSpecificInternalEnergy_Points_TABLE, &
+    ComputeSpecificInternalEnergy_TABLE, &
     ComputeElectronChemicalPotentialPoints_TABLE, &
     ComputeProtonChemicalPotentialPoints_TABLE, &
     ComputeNeutronChemicalPotentialPoints_TABLE
@@ -38,6 +39,8 @@ MODULE EquationOfStateModule
     BaryonMass = AtomicMassUnit
 
   PUBLIC :: ApplyEquationOfState
+  PUBLIC :: ComputePressure
+  PUBLIC :: ComputeSpecificInternalEnergy
   PUBLIC :: ComputePressureFromPrimitive
   PUBLIC :: ComputePressureFromSpecificInternalEnergy
   PUBLIC :: ComputeSoundSpeedFromPrimitive
@@ -49,6 +52,16 @@ MODULE EquationOfStateModule
     MODULE PROCEDURE ApplyEquationOfState_Scalar
     MODULE PROCEDURE ApplyEquationOfState_Vector
   END INTERFACE ApplyEquationOfState
+
+  INTERFACE ComputePressure
+    MODULE PROCEDURE ComputePressure_Scalar
+    MODULE PROCEDURE ComputePressure_Vector
+  END INTERFACE ComputePressure
+
+  INTERFACE ComputeSpecificInternalEnergy
+    MODULE PROCEDURE ComputeSpecificInternalEnergy_Scalar
+    MODULE PROCEDURE ComputeSpecificInternalEnergy_Vector
+  END INTERFACE ComputeSpecificInternalEnergy
 
   INTERFACE ComputePressureFromPrimitive
     MODULE PROCEDURE ComputePressureFromPrimitive_Scalar
@@ -160,7 +173,6 @@ MODULE EquationOfStateModule
   PROCEDURE (EosSubroutine_7),   POINTER, PUBLIC :: &
     ComputeAuxiliary_Fluid                       => NULL()
   PROCEDURE (EosSubroutine_1_3), POINTER, PUBLIC :: &
-    ComputeSpecificInternalEnergy                => NULL(), &
     ComputeElectronChemicalPotential             => NULL(), &
     ComputeProtonChemicalPotential               => NULL(), &
     ComputeNeutronChemicalPotential              => NULL()
@@ -230,8 +242,6 @@ CONTAINS
           => ComputeAuxiliary_Fluid_TABLE
         Auxiliary_Fluid &
           => Auxiliary_Fluid_TABLE
-        ComputeSpecificInternalEnergy &
-          => ComputeSpecificInternalEnergy_Points_TABLE
         ComputeElectronChemicalPotential &
           => ComputeElectronChemicalPotentialPoints_TABLE
         ComputeProtonChemicalPotential &
@@ -266,7 +276,6 @@ CONTAINS
         NULLIFY( ComputeThermodynamicStates_Auxiliary )
         NULLIFY( ComputeAuxiliary_Fluid )
         NULLIFY( Auxiliary_Fluid )
-        NULLIFY( ComputeSpecificInternalEnergy )
         NULLIFY( ComputeElectronChemicalPotential )
         NULLIFY( ComputeProtonChemicalPotential )
         NULLIFY( ComputeNeutronChemicalPotential )
@@ -314,6 +323,250 @@ CONTAINS
 #endif
 
   END SUBROUTINE ApplyEquationOfState_Vector
+
+
+  ! --- ComputePressure ---
+
+
+  SUBROUTINE ComputePressure_Scalar &
+    ( D, T, Y, P, dPdD_Option, dPdT_Option, dPdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: P
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dPdD_Local, dPdT_Local, dPdY_Local
+    REAL(DP), POINTER :: dPdD      , dPdT      , dPdY
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dPdD_Option ) &
+        .OR. PRESENT( dPdT_Option ) &
+        .OR. PRESENT( dPdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dPdD_Option ) )THEN
+        dPdD => dPdD_Option
+      ELSE
+        dPdD => dPdD_Local
+      END IF
+
+      IF( PRESENT( dPdT_Option ) )THEN
+        dPdT => dPdT_Option
+      ELSE
+        dPdT => dPdT_Local
+      END IF
+
+      IF( PRESENT( dPdY_Option ) )THEN
+        dPdY => dPdY_Option
+      ELSE
+        dPdY => dPdY_Local
+      END IF
+
+      CALL ComputePressure_TABLE &
+             ( D, T, Y, P, dPdD, dPdT, dPdY )
+
+    ELSE
+
+      CALL ComputePressure_TABLE &
+             ( D, T, Y, P )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputePressure_Scalar
+
+
+  SUBROUTINE ComputePressure_Vector &
+    ( D, T, Y, P, dPdD_Option, dPdT_Option, dPdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out)                   :: P(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdY_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dPdD_Local, dPdT_Local, dPdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dPdD      , dPdT      , dPdY
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dPdD_Option ) &
+        .OR. PRESENT( dPdT_Option ) &
+        .OR. PRESENT( dPdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dPdD_Option ) )THEN
+        dPdD(1:nP) => dPdD_Option(:)
+      ELSE
+        dPdD(1:nP) => dPdD_Local(:)
+      END IF
+
+      IF( PRESENT( dPdT_Option ) )THEN
+        dPdT(1:nP) => dPdT_Option(:)
+      ELSE
+        dPdT(1:nP) => dPdT_Local(:)
+      END IF
+
+      IF( PRESENT( dPdY_Option ) )THEN
+        dPdY(1:nP) => dPdY_Option(:)
+      ELSE
+        dPdY(1:nP) => dPdY_Local(:)
+      END IF
+
+      CALL ComputePressure_TABLE &
+             ( D, T, Y, P, dPdD, dPdT, dPdY )
+
+    ELSE
+
+      CALL ComputePressure_TABLE &
+             ( D, T, Y, P )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputePressure_Vector
+
+
+  ! --- ComputeSpecificInternalEnergy ---
+
+
+  SUBROUTINE ComputeSpecificInternalEnergy_Scalar &
+    ( D, T, Y, E, dEdD_Option, dEdT_Option, dEdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: E
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dEdD_Local, dEdT_Local, dEdY_Local
+    REAL(DP), POINTER :: dEdD      , dEdT      , dEdY
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dEdD_Option ) &
+        .OR. PRESENT( dEdT_Option ) &
+        .OR. PRESENT( dEdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dEdD_Option ) )THEN
+        dEdD => dEdD_Option
+      ELSE
+        dEdD => dEdD_Local
+      END IF
+
+      IF( PRESENT( dEdT_Option ) )THEN
+        dEdT => dEdT_Option
+      ELSE
+        dEdT => dEdT_Local
+      END IF
+
+      IF( PRESENT( dEdY_Option ) )THEN
+        dEdY => dEdY_Option
+      ELSE
+        dEdY => dEdY_Local
+      END IF
+
+      CALL ComputeSpecificInternalEnergy_TABLE &
+             ( D, T, Y, E, dEdD, dEdT, dEdY )
+
+    ELSE
+
+      CALL ComputeSpecificInternalEnergy_TABLE &
+             ( D, T, Y, E )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeSpecificInternalEnergy_Scalar
+
+
+  SUBROUTINE ComputeSpecificInternalEnergy_Vector &
+    ( D, T, Y, E, dEdD_Option, dEdT_Option, dEdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out)                   :: E(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdY_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dEdD_Local, dEdT_Local, dEdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dEdD      , dEdT      , dEdY
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dEdD_Option ) &
+        .OR. PRESENT( dEdT_Option ) &
+        .OR. PRESENT( dEdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dEdD_Option ) )THEN
+        dEdD(1:nP) => dEdD_Option(:)
+      ELSE
+        dEdD(1:nP) => dEdD_Local(:)
+      END IF
+
+      IF( PRESENT( dEdT_Option ) )THEN
+        dEdT(1:nP) => dEdT_Option(:)
+      ELSE
+        dEdT(1:nP) => dEdT_Local(:)
+      END IF
+
+      IF( PRESENT( dEdY_Option ) )THEN
+        dEdY(1:nP) => dEdY_Option(:)
+      ELSE
+        dEdY(1:nP) => dEdY_Local(:)
+      END IF
+
+      CALL ComputeSpecificInternalEnergy_TABLE &
+             ( D, T, Y, E, dEdD, dEdT, dEdY )
+
+    ELSE
+
+      CALL ComputeSpecificInternalEnergy_TABLE &
+             ( D, T, Y, E )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeSpecificInternalEnergy_Vector
 
 
   ! --- ComputePressureFromPrimitive ---

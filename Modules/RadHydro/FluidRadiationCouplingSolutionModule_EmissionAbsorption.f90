@@ -256,8 +256,8 @@ CONTAINS
       CALL ComputeSpecificInternalEnergy & ! --- Computes Derivatives
              ( uPF_N(iPF_D, :), uAF_N(iAF_T,:), &
                uAF_N(iAF_Ye,:), uAF_N(iAF_E,:), &
-               dVdY = duAFdT_N(iAF_E,:), &
-               dVdZ = duAFdY_N(iAF_E,:) )
+               dEdT_Option = duAFdT_N(iAF_E,:), &
+               dEdY_Option = duAFdY_N(iAF_E,:) )
 
       ! --- Compute FD Distribution and Derivatives ---
 

@@ -471,7 +471,9 @@ CONTAINS
 
       CALL ComputeSpecificInternalEnergy &
              ( [ uPF_N(iPF_D, iX) ], [ uAF_N(iAF_T,iX) ], &
-               [ uAF_N(iAF_Ye,iX) ], TMP, dVdY = dEdT, dVdZ = dEdY )
+               [ uAF_N(iAF_Ye,iX) ], TMP, &
+               dEdT_Option = dEdT, &
+               dEdY_Option = dEdY )
 
       FD(:,iX) = FermiDirac( E_N, Mnu, kT(iX) )
       dFDdT_Y  = dFermiDiracdT( E_N, Mnu, kT(iX), dMnudT, uAF_N(iAF_T,iX) )
