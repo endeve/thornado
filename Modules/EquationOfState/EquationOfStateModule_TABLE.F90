@@ -30,7 +30,7 @@ MODULE EquationOfStateModule_TABLE
 
   USE, INTRINSIC :: ISO_C_BINDING
   USE KindModule, ONLY: &
-    DP, One
+    DP, Zero, One
   USE UnitsModule, ONLY: &
     AtomicMassUnit, &
     BoltzmannConstant, &
@@ -897,7 +897,7 @@ CONTAINS
 
     END DO
 
-    IF ( ANY( Error(:) > 0 ) ) THEN 
+    IF ( ANY( Error(:) > 0 ) ) THEN
       DO iP = 1, nP
         IF ( Error(iP) > 0 ) CALL DescribeEOSInversionError( Error(iP) )
       END DO
