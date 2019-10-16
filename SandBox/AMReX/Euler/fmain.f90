@@ -9,7 +9,8 @@ PROGRAM main
 
   ! --- thornado Modules ---
   USE MeshModule,                       ONLY: &
-    MeshX, DestroyMesh
+    MeshX, &
+    DestroyMesh
   USE InputOutputModuleAMReX,           ONLY: &
     ReadCheckpointFile,          &
     WriteFieldsAMReX_Checkpoint, &
@@ -17,8 +18,9 @@ PROGRAM main
   USE UnitsModule,                      ONLY: &
     Millisecond
   USE TimersModule_Euler,               ONLY: &
-    TimeIt_Euler, &
-    InitializeTimers_Euler, FinalizeTimers_Euler
+    TimeIt_Euler,           &
+    InitializeTimers_Euler, &
+    FinalizeTimers_Euler
 
   ! --- Local Modules ---
   USE MF_Euler_UtilitiesModule,         ONLY: &
@@ -37,20 +39,37 @@ PROGRAM main
   USE MF_UtilitiesModule,               ONLY: &
     ShowVariableFromMultifab
   USE MyAmrDataModule,                  ONLY: &
-    MF_uGF, MF_uCF, MF_uPF, MF_uAF
+    MF_uGF, &
+    MF_uCF, &
+    MF_uPF, &
+    MF_uAF
   USE InitializationModule,             ONLY: &
     InitializeProblem, &
-    chk, wrt
+    chk,               &
+    wrt
   USE MyAmrModule,                      ONLY: &
-    nLevels, StepNo,              &
-    t, dt, t_end, CFL,            &
-    t_wrt, dt_wrt, t_chk, dt_chk, &
-    iCycleD, iCycleW, iCycleChk,  &
-    ProgramName, GEOM
+    nLevels,   &
+    StepNo,    &
+    t,         &
+    dt,        &
+    t_end,     &
+    CFL,       &
+    t_wrt,     &
+    dt_wrt,    &
+    t_chk,     &
+    dt_chk,    &
+    iCycleD,   &
+    iCycleW,   &
+    iCycleChk, &
+    GEOM
+  USE UnitsModule,                      ONLY: &
+    UnitsDisplay
   USE TimersModule_AMReX_Euler,         ONLY: &
-    TimeIt_AMReX_Euler, &
-    InitializeTimers_AMReX_Euler, FinalizeTimers_AMReX_Euler, &
-    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    TimeIt_AMReX_Euler,            &
+    InitializeTimers_AMReX_Euler,  &
+    FinalizeTimers_AMReX_Euler,    &
+    TimersStart_AMReX_Euler,       &
+    TimersStop_AMReX_Euler,        &
     Timer_AMReX_Euler_InputOutput, &
     Timer_AMReX_Euler_MPI_Barrier
 
@@ -92,15 +111,12 @@ PROGRAM main
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
     IF( amrex_parallel_ioprocessor() )THEN
       IF( MOD( StepNo(0), iCycleD ) .EQ. 0 )THEN
-        IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' )THEN
-          WRITE(*,'(A8,A,I8.8,A,ES13.6E3,A,ES13.6E3,A)') &
-            '', 'StepNo: ', StepNo(0), &
-            ', t = ', t / Millisecond, ' ms, dt = ', dt(0) / Millisecond, ' ms'
-        ELSE
-          WRITE(*,'(A8,A,I8.8,A,ES13.6E3,A,ES13.6E3)') &
-            '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
-        END IF
-      END IF
+        WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
+          'StepNo: ', StepNo(0), ' t = ', t / UnitsDisplay % TimeUnit, &
+          TRIM( UnitsDisplay % TimeLabel ), &
+          ' dt = ', dt(0) /  UnitsDisplay % TimeUnit, &
+          TRIM( UnitsDisplay % TimeLabel )
+     END IF
     END IF
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
@@ -167,7 +183,7 @@ PROGRAM main
 
   IF( amrex_parallel_ioprocessor() )THEN
     WRITE(*,*)
-    WRITE(*,'(A,ES13.6E3,A)') &
+    WRITE(*,'(2x,A,ES13.6E3,A)') &
       'Total evolution time: ', MPI_WTIME() - Timer_Evolution, ' s'
   END IF
 
@@ -185,7 +201,7 @@ PROGRAM main
            MF_uAF % P )
 
   CALL WriteFieldsAMReX_PlotFile &
-         ( t(0), StepNo, &
+         ( t(0), StepNo,           &
            MF_uGF_Option = MF_uGF, &
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &
