@@ -10,7 +10,6 @@ thornado.ProgramName = "Sod_Relativistic"
 thornado.t_end     = 4.0e-1   # Final time
 thornado.dt_wrt    = 4.0e-3   # Time increment to write plot-file
 thornado.dt_chk    = 4.0e-2   # Time increment to write checkpoint-file
-thornado.Gamma     = 1.6666666666666666 # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
@@ -21,10 +20,10 @@ thornado.iCycleW   = -1       # MOD this number to write plotfile
 thornado.iCycleChk = -1       # MOD this number to write checkpoint file
 thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
 
-geometry.coord_sys     = 0           # CARTESIAN
-geometry.prob_lo       = 0.0 0.0 0.0 # Lower domain size
-geometry.prob_hi       = 1.0 1.0 1.0 # Upper domain size
-geometry.is_periodic   = 0 1 1       # Periodicity. 0 (no), 1 (yes)
+geometry.coord_sys   = 0           # CARTESIAN
+geometry.prob_lo     = 0.0 0.0 0.0 # Lower domain size
+geometry.prob_hi     = 1.0 1.0 1.0 # Upper domain size
+geometry.is_periodic = 0 1 1       # Periodicity. 0 (no), 1 (yes)
 
 amr.n_cell          = 256 001 001 # Number of cells in each dimension
 amr.max_grid_size   = 064 001 001 # nBoxes = n_cell / MaxGridSize
@@ -45,3 +44,6 @@ SL.UseConservativeCorrection = 1
 PL.UsePositivityLimiter = 1
 PL.Min_1                = 1.0e-13
 PL.Min_2                = 1.0e-13
+
+# Equation of state parameters
+EoS.Gamma = 1.6666666666666666 # Ideal Gas EoS Gamma

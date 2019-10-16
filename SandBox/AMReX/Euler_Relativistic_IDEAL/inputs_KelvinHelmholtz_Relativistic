@@ -10,24 +10,23 @@ thornado.ProgramName = "KelvinHelmholtz_Relativistic"
 thornado.t_end     = 3.0e+0   # Final time
 thornado.dt_wrt    = 6.0e-2   # Time increment to write plot-file
 thornado.dt_chk    = 3.0e-1   # Time increment to write checkpoint-file
-thornado.Gamma     = 1.3333333333333333 # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
 thornado.bcX       = 00 00 00 # Boundary conditions
 thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
-thornado.iCycleD   = 10       # MOD this number to display info
+thornado.iCycleD   = 1       # MOD this number to display info
 thornado.iCycleW   = -1       # MOD this number to write plotfile
 thornado.iCycleChk = -1       # MOD this number to write checkpoint file
 thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
 
-geometry.coord_sys     = 0             # CARTESIAN
-geometry.prob_lo       = -0.5 -1.0 0.0 # Lower domain size
-geometry.prob_hi       = +0.5 +1.0 1.0 # Upper domain size
-geometry.is_periodic   = 1 1 1         # Periodicity. 0 (no), 1 (yes)
+geometry.coord_sys   = 0             # CARTESIAN
+geometry.prob_lo     = -0.5 -1.0 0.0 # Lower domain size
+geometry.prob_hi     = +0.5 +1.0 1.0 # Upper domain size
+geometry.is_periodic = 1 1 1         # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell          = 064 128 001 # Number of cells in each dimension
-amr.max_grid_size   = 032 032 001 # nBoxes = n_cell / MaxGridSize
+amr.n_cell          = 016 032 001 # Number of cells in each dimension
+amr.max_grid_size   = 016 032 001 # nBoxes = n_cell / MaxGridSize
 amr.max_level       = 0           # Maximum number of refinement levels
 amr.blocking_factor = 1           # Must be a factor of max_grid_size
 
@@ -45,3 +44,6 @@ SL.UseConservativeCorrection = 1
 PL.UsePositivityLimiter = 1
 PL.Min_1                = 1.0e-13
 PL.Min_2                = 1.0e-13
+
+# Equation of state parameters
+EoS.Gamma = 1.3333333333333333 # Ideal Gas EoS Gamma

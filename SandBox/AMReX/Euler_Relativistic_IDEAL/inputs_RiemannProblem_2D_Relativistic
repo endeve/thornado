@@ -10,7 +10,6 @@ thornado.ProgramName = "RiemannProblem_2D_Relativistic"
 thornado.t_end     = 4.0e-1   # Final time
 thornado.dt_wrt    = 4.0e-3   # Time increment to write plot-file
 thornado.dt_chk    = 4.0e-2   # Time increment to write checkpoint-file
-thornado.Gamma     = 1.6666666666666666 # Ideal Gas EoS Gamma
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
@@ -39,10 +38,12 @@ SL.SlopeTolerance            = 1.00e-6
 SL.BetaTVD                   = 1.75e+0
 SL.BetaTVB                   = 0.00e+0
 SL.LimiterThresholdParameter = 3.00e-2
-SL.UseConservativeCorrection  = 1
 SL.UseConservativeCorrection = 1
 
 # Positivity limiter parameters
 PL.UsePositivityLimiter = 1
 PL.Min_1                = 1.0e-13
 PL.Min_2                = 1.0e-13
+
+# Equation of state parameters
+EoS.Gamma = 1.6666666666666666 # Ideal Gas EoS Gamma

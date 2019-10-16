@@ -19,7 +19,6 @@ SAS.PerturbAmplitude = 0.2
 thornado.t_end     = 80.0      # Final time
 thornado.dt_wrt    = -0.25      # Write time interval
 thornado.dt_chk    = -0.25      # # Time increment to write checkpoint-file
-thornado.Gamma     = 1.333333333333333 # Ideal Gas EoS Gamma
 thornado.nNodes    = 3         # Number of DG nodes in each active dimension
 thornado.nStages   = 3         # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5       # CFL number
@@ -56,3 +55,6 @@ SL.UseConservativeCorrection = 1
 PL.UsePositivityLimiter = 1
 PL.Min_1                = 1.0e-12
 PL.Min_2                = 1.0e-12
+
+# Equation of state parameters
+EoS.Gamma = 1.333333333333333 # Ideal Gas EoS Gamma
