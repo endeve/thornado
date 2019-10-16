@@ -96,14 +96,8 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputePressure_TABLE
   PUBLIC :: ComputeSpecificInternalEnergy_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
-  PUBLIC :: ComputeElectronChemicalPotentialPoints_TABLE
-  PUBLIC :: ComputeElectronChemicalPotentialPoint_TABLE
   PUBLIC :: ComputeProtonChemicalPotential_TABLE
-  PUBLIC :: ComputeProtonChemicalPotentialPoints_TABLE
-  PUBLIC :: ComputeProtonChemicalPotentialPoint_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
-  PUBLIC :: ComputeNeutronChemicalPotentialPoints_TABLE
-  PUBLIC :: ComputeNeutronChemicalPotentialPoint_TABLE
 
   INTERFACE ApplyEquationOfState_TABLE
     MODULE PROCEDURE ApplyEquationOfState_Table_Scalar
@@ -151,18 +145,18 @@ MODULE EquationOfStateModule_TABLE
   END INTERFACE ComputeTemperatureFromPressure_TABLE
 
   INTERFACE ComputeElectronChemicalPotential_TABLE
-    MODULE PROCEDURE ComputeElectronChemicalPotentialPoints_TABLE
-    MODULE PROCEDURE ComputeElectronChemicalPotentialPoint_TABLE
+    MODULE PROCEDURE ComputeElectronChemicalPotential_TABLE_Scalar
+    MODULE PROCEDURE ComputeElectronChemicalPotential_TABLE_Vector
   END INTERFACE
 
   INTERFACE ComputeProtonChemicalPotential_TABLE
-    MODULE PROCEDURE ComputeProtonChemicalPotentialPoints_TABLE
-    MODULE PROCEDURE ComputeProtonChemicalPotentialPoint_TABLE
+    MODULE PROCEDURE ComputeProtonChemicalPotential_TABLE_Scalar
+    MODULE PROCEDURE ComputeProtonChemicalPotential_TABLE_Vector
   END INTERFACE
 
   INTERFACE ComputeNeutronChemicalPotential_TABLE
-    MODULE PROCEDURE ComputeNeutronChemicalPotentialPoints_TABLE
-    MODULE PROCEDURE ComputeNeutronChemicalPotentialPoint_TABLE
+    MODULE PROCEDURE ComputeNeutronChemicalPotential_TABLE_Scalar
+    MODULE PROCEDURE ComputeNeutronChemicalPotential_TABLE_Vector
   END INTERFACE
 
   INTERFACE ComputeDependentVariable_TABLE
@@ -571,7 +565,7 @@ CONTAINS
     END IF
 #endif
 
-    nP = SIZE(D)
+    nP = SIZE( D )
 
     IF( PRESENT( Guess_Option ) )THEN
 
@@ -625,6 +619,9 @@ CONTAINS
 
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: P
+
+    PRINT*, "ComputePressureFromPrimitive_TABLE_Scalar not implemented"
+    STOP
 
   END SUBROUTINE ComputePressureFromPrimitive_TABLE_Scalar
 
@@ -810,7 +807,7 @@ CONTAINS
     INTEGER :: iP, nP
     LOGICAL :: do_gpu
 
-    nP = SIZE(D)
+    nP = SIZE( D )
 
     do_gpu = QueryOnGPU( D, T, Y, Ev, Em, Ne )
 #if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
@@ -859,7 +856,7 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    nP = SIZE(D)
+    nP = SIZE( D )
 
     do_gpu = QueryOnGPU( D, Ev, Ne, T, Em, Y )
 #if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
@@ -1076,7 +1073,7 @@ CONTAINS
 
     IF( ComputeDerivatives )THEN
 
-      nP = SIZE(D)
+      nP = SIZE( D )
 
       IF( PRESENT( dPdD_Option ) )THEN
         dPdD(1:nP) => dPdD_Option(:)
@@ -1222,63 +1219,9 @@ CONTAINS
   END SUBROUTINE ComputeSpecificInternalEnergy_TABLE_Vector
 
 
-  SUBROUTINE ComputeElectronChemicalPotentialPoints_TABLE &
+  SUBROUTINE ComputeElectronChemicalPotential_TABLE_Scalar &
     ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
-    REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)                   :: M
-    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
-    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
-    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
-
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: dMdD, dMdT, dMdY
-    INTEGER :: nP
-    LOGICAL :: ComputeDerivatives
-
-    nP = SIZE(D)
-    ComputeDerivatives = .FALSE.
-
-    IF ( PRESENT( dMdD_Option ) ) THEN
-      dMdD(1:nP) => dMdD_Option(:)
-      ComputeDerivatives = .TRUE.
-    ELSE
-      dMdD(1:nP) => dMdD_Local(:)
-    END IF
-
-    IF ( PRESENT( dMdT_Option ) ) THEN
-      dMdT(1:nP) => dMdT_Option(:)
-      ComputeDerivatives = .TRUE.
-    ELSE
-      dMdT(1:nP) => dMdT_Local(:)
-    END IF
-
-    IF ( PRESENT( dMdY_Option ) ) THEN
-      dMdY(1:nP) => dMdY_Option(:)
-      ComputeDerivatives = .TRUE.
-    ELSE
-      dMdY(1:nP) => dMdY_Local(:)
-    END IF
-
-    IF ( ComputeDerivatives ) THEN
-
-      CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mes_T, OS_Me, &
-               Units_V = MeV )
-
-    ELSE
-
-      CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, M, Mes_T, OS_Me, &
-               Units_V = MeV )
-
-    END IF
-
-  END SUBROUTINE ComputeElectronChemicalPotentialPoints_TABLE
-
-
-  SUBROUTINE ComputeElectronChemicalPotentialPoint_TABLE &
-               ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -1291,106 +1234,107 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
 
-    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), POINTER :: dMdD, dMdT, dMdY
     LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdY
 
     ComputeDerivatives &
       =      PRESENT( dMdD_Option ) &
         .OR. PRESENT( dMdT_Option ) &
         .OR. PRESENT( dMdY_Option )
 
-    IF ( PRESENT( dMdD_Option ) ) THEN
-      dMdD => dMdD_Option
-    ELSE
-      dMdD => dMdD_Local
-    END IF
+    IF( ComputeDerivatives )THEN
 
-    IF ( PRESENT( dMdT_Option ) ) THEN
-      dMdT => dMdT_Option
-    ELSE
-      dMdT => dMdT_Local
-    END IF
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
 
-    IF ( PRESENT( dMdY_Option ) ) THEN
-      dMdY => dMdY_Option
-    ELSE
-      dMdY => dMdY_Local
-    END IF
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
 
-    IF ( ComputeDerivatives ) THEN
+      IF( PRESENT( dMdY_Option ) )THEN
+        dMdY => dMdY_Option
+      ELSE
+        dMdY => dMdY_Local
+      END IF
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mes_T, OS_Me, &
-               Units_V = MeV )
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mes_T, OS_Me, Units_V = UnitMe )
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, M, Mes_T, OS_Me, Units_V = MeV )
+             ( D, T, Y, M, Mes_T, OS_Me, Units_V = UnitMe )
 
     END IF
 
-  END SUBROUTINE ComputeElectronChemicalPotentialPoint_TABLE
+  END SUBROUTINE ComputeElectronChemicalPotential_TABLE_Scalar
 
 
-  SUBROUTINE ComputeProtonChemicalPotentialPoints_TABLE &
-               ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+  SUBROUTINE ComputeElectronChemicalPotential_TABLE_Vector &
+    ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
-    REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)                   :: M
-    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
-    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
-    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out)                   :: M(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(:)
 
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: dMdD, dMdT, dMdY
-    INTEGER :: nP
     LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dMdD      , dMdT      , dMdY
 
-    nP = SIZE(D)
-    ComputeDerivatives = .FALSE.
-
-    IF ( PRESENT( dMdD_Option ) ) THEN
-      dMdD(1:nP) => dMdD_Option(:)
-      ComputeDerivatives = .TRUE.
-    ELSE
-      dMdD(1:nP) => dMdD_Local(:)
-    END IF
-
-    IF ( PRESENT( dMdT_Option ) ) THEN
-      dMdT(1:nP) => dMdT_Option(:)
-      ComputeDerivatives = .TRUE.
-    ELSE
-      dMdT(1:nP) => dMdT_Local(:)
-    END IF
-
-    IF ( PRESENT( dMdY_Option ) ) THEN
-      dMdY(1:nP) => dMdY_Option(:)
-      ComputeDerivatives = .TRUE.
-    ELSE
-      dMdY(1:nP) => dMdY_Local(:)
-    END IF
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdY_Option )
 
     IF ( ComputeDerivatives ) THEN
 
+      nP = SIZE( D )
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdY_Option ) )THEN
+        dMdY(1:nP) => dMdY_Option(:)
+      ELSE
+        dMdY(1:nP) => dMdY_Local(:)
+      END IF
+
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mps_T, OS_Mp, &
-               Units_V = MeV )
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mes_T, OS_Me, Units_V = UnitMe )
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, M, Mps_T, OS_Mp, &
-               Units_V = MeV )
+             ( D, T, Y, M, Mes_T, OS_Me, Units_V = UnitMe )
 
     END IF
 
-  END SUBROUTINE ComputeProtonChemicalPotentialPoints_TABLE
+  END SUBROUTINE ComputeElectronChemicalPotential_TABLE_Vector
 
 
-  SUBROUTINE ComputeProtonChemicalPotentialPoint_TABLE &
-               ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+  SUBROUTINE ComputeProtonChemicalPotential_TABLE_Scalar &
+    ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -1403,106 +1347,107 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
 
-    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), POINTER :: dMdD, dMdT, dMdY
     LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdY
 
     ComputeDerivatives &
       =      PRESENT( dMdD_Option ) &
         .OR. PRESENT( dMdT_Option ) &
         .OR. PRESENT( dMdY_Option )
 
-    IF ( PRESENT( dMdD_Option ) ) THEN
-      dMdD => dMdD_Option
-    ELSE
-      dMdD => dMdD_Local
-    END IF
-
-    IF ( PRESENT( dMdT_Option ) ) THEN
-      dMdT => dMdT_Option
-    ELSE
-      dMdT => dMdT_Local
-    END IF
-
-    IF ( PRESENT( dMdY_Option ) ) THEN
-      dMdY => dMdY_Option
-    ELSE
-      dMdY => dMdY_Local
-    END IF
-
     IF ( ComputeDerivatives ) THEN
 
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
+
+      IF( PRESENT( dMdY_Option ) )THEN
+        dMdY => dMdY_Option
+      ELSE
+        dMdY => dMdY_Local
+      END IF
+
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mps_T, Os_Mp, &
-               Units_V = MeV )
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mps_T, Os_Mp, Units_V = UnitMp )
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, M, Mps_T, Os_Mp, Units_V = MeV )
+             ( D, T, Y, M, Mps_T, Os_Mp, Units_V = UnitMp )
 
     END IF
 
-  END SUBROUTINE ComputeProtonChemicalPotentialPoint_TABLE
+  END SUBROUTINE ComputeProtonChemicalPotential_TABLE_Scalar
 
 
-  SUBROUTINE ComputeNeutronChemicalPotentialPoints_TABLE &
-               ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+  SUBROUTINE ComputeProtonChemicalPotential_TABLE_Vector &
+    ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
 
-    REAL(DP), DIMENSION(:), INTENT(in)                    :: D, T, Y
-    REAL(DP), DIMENSION(:), INTENT(out)                   :: M
-    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
-    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
-    REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out)                   :: M(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(:)
 
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: dMdD, dMdT, dMdY
-    INTEGER :: nP
     LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dMdD      , dMdT      , dMdY
 
-    nP = SIZE(D)
-    ComputeDerivatives = .FALSE.
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdY_Option )
 
-    IF ( PRESENT( dMdD_Option ) ) THEN
-      dMdD(1:nP) => dMdD_Option(:)
-      ComputeDerivatives = .TRUE.
-    ELSE
-      dMdD(1:nP) => dMdD_Local(:)
-    END IF
+    IF( ComputeDerivatives )THEN
 
-    IF ( PRESENT( dMdT_Option ) ) THEN
-      dMdT(1:nP) => dMdT_Option(:)
-      ComputeDerivatives = .TRUE.
-    ELSE
-      dMdT(1:nP) => dMdT_Local(:)
-    END IF
+      nP = SIZE( D )
 
-    IF ( PRESENT( dMdY_Option ) ) THEN
-      dMdY(1:nP) => dMdY_Option(:)
-      ComputeDerivatives = .TRUE.
-    ELSE
-      dMdY(1:nP) => dMdY_Local(:)
-    END IF
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
 
-    IF ( ComputeDerivatives ) THEN
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdY_Option ) )THEN
+        dMdY(1:nP) => dMdY_Option(:)
+      ELSE
+        dMdY(1:nP) => dMdY_Local(:)
+      END IF
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mns_T, OS_Mn, &
-               Units_V = MeV )
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mps_T, OS_Mp, Units_V = UnitMp )
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, M, Mns_T, OS_Mn, &
-               Units_V = MeV )
+             ( D, T, Y, M, Mps_T, OS_Mp, Units_V = UnitMp )
 
     END IF
 
-  END SUBROUTINE ComputeNeutronChemicalPotentialPoints_TABLE
+  END SUBROUTINE ComputeProtonChemicalPotential_TABLE_Vector
 
 
-  SUBROUTINE ComputeNeutronChemicalPotentialPoint_TABLE &
-               ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+  SUBROUTINE ComputeNeutronChemicalPotential_TABLE_Scalar &
+    ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -1515,51 +1460,107 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
 
-    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), POINTER :: dMdD, dMdT, dMdY
     LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdY
 
     ComputeDerivatives &
       =      PRESENT( dMdD_Option ) &
         .OR. PRESENT( dMdT_Option ) &
         .OR. PRESENT( dMdY_Option )
 
-    IF ( PRESENT( dMdD_Option ) ) THEN
-      dMdD => dMdD_Option
-    ELSE
-      dMdD => dMdD_Local
-    END IF
+    IF( ComputeDerivatives )THEN
 
-    IF ( PRESENT( dMdT_Option ) ) THEN
-      dMdT => dMdT_Option
-    ELSE
-      dMdT => dMdT_Local
-    END IF
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
 
-    IF ( PRESENT( dMdY_Option ) ) THEN
-      dMdY => dMdY_Option
-    ELSE
-      dMdY => dMdY_Local
-    END IF
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
 
-    IF ( ComputeDerivatives ) THEN
+      IF( PRESENT( dMdY_Option ) )THEN
+        dMdY => dMdY_Option
+      ELSE
+        dMdY => dMdY_Local
+      END IF
 
       CALL ComputeDependentVariableAndDerivatives_TABLE &
-             ( D, T, Y, M, dMdD, dMdT, dMdY, Mns_T, OS_Mn, &
-               Units_V = MeV )
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mns_T, OS_Mn, Units_V = UnitMn )
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE &
-             ( D, T, Y, M, Mns_T, OS_Mn, Units_V = MeV )
+             ( D, T, Y, M, Mns_T, OS_Mn, Units_V = UnitMn )
 
     END IF
 
-  END SUBROUTINE ComputeNeutronChemicalPotentialPoint_TABLE
+  END SUBROUTINE ComputeNeutronChemicalPotential_TABLE_Scalar
+
+
+  SUBROUTINE ComputeNeutronChemicalPotential_TABLE_Vector &
+    ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out)                   :: M(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dMdD      , dMdT      , dMdY
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdY_Option ) )THEN
+        dMdY(1:nP) => dMdY_Option(:)
+      ELSE
+        dMdY(1:nP) => dMdY_Local(:)
+      END IF
+
+      CALL ComputeDependentVariableAndDerivatives_TABLE &
+             ( D, T, Y, M, dMdD, dMdT, dMdY, Mns_T, OS_Mn, Units_V = UnitMn )
+
+    ELSE
+
+      CALL ComputeDependentVariable_TABLE &
+             ( D, T, Y, M, Mns_T, OS_Mn, Units_V = UnitMn )
+
+    END IF
+
+  END SUBROUTINE ComputeNeutronChemicalPotential_TABLE_Vector
 
 
   SUBROUTINE ComputeDependentVariable_TABLE_Scalar &
     ( D, T, Y, V, V_T, OS_V, Units_V )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -1575,9 +1576,9 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P = D / ( Gram / Centimeter**3 )
-    T_P = T / Kelvin
-    Y_P = Y
+    D_P = D / UnitD
+    T_P = T / UnitT
+    Y_P = Y / UnitY
 
     CALL LogInterpolateSingleVariable &
            ( D_P, T_P, Y_P, Ds_T, Ts_T, Ys_T, OS_V, V_T, V_P )
@@ -1606,7 +1607,7 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    nP = SIZE(D)
+    nP = SIZE( D )
 
     do_gpu = QueryOnGPU( D, T, Y, V )
 #if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
@@ -1645,6 +1646,7 @@ CONTAINS
 
   SUBROUTINE ComputeDependentVariableAndDerivatives_TABLE_Scalar &
     ( D, T, Y, V, dVdD, dVdT, dVdY, V_T, OS_V, Units_V )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -1698,7 +1700,7 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    nP = SIZE(D)
+    nP = SIZE( D )
 
     do_gpu = QueryOnGPU( D, T, Y, V, dVdD, dVdT, dVdY )
 #if defined(THORNADO_DEBUG_EOS) && defined(THORNADO_GPU)
