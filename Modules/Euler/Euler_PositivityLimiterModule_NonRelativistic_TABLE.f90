@@ -161,7 +161,7 @@ CONTAINS
     REAL(DP) :: Min_D_K, Max_D_K, Min_N_K, Max_N_K, &
                 Min_N, Max_N, Min_E(nPT),  &
                 Theta_1, Theta_2, Theta_3, Theta_P
-    REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF), E_K, Min_E_K(1), Min_E_PP
+    REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF), E_K, Min_E_K, Min_E_PP
     REAL(DP) :: Y_PP(nPT), E_PP(nPT), Y_K
 
     Min_N = Min_D * Min_Y / BaryonMass
@@ -276,7 +276,7 @@ CONTAINS
                ( U_K(1:nCF), E_K, Y_K )
 
         CALL ComputeSpecificInternalEnergy_TABLE &
-               ( [U_K(iCF_D)], [Min_T], [Y_K], Min_E_K )
+               ( U_K(iCF_D), Min_T, Y_K, Min_E_K )
 
         DO
 
@@ -289,7 +289,7 @@ CONTAINS
 
               CALL SolveTheta_Bisection &
                      ( U_PP(iP,1:nCF), U_K(1:nCF), Min_E(iP), &
-                       Min_E_K(1), Theta_P )
+                       Min_E_K, Theta_P )
 
               Theta_3 = MIN( Theta_3, 0.99_DP * Theta_P )
 
@@ -314,7 +314,7 @@ CONTAINS
                    ( U_PP(iP,1:nCF), E_PP(iP), Y_PP(iP) )
 
             CALL ComputeSpecificInternalEnergy_TABLE &
-                   ( [U_PP(iP,iCF_D)], [Min_T], [Y_PP(iP)], Min_E(iP:iP) )
+                   ( U_PP(iP,iCF_D), Min_T, Y_PP(iP), Min_E(iP) )
 
           END DO
 

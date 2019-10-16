@@ -177,7 +177,7 @@ CONTAINS
       '', '---------------------------'
     WRITE(*,*)
     WRITE(*,'(A7,A24,A)') &
-      '', 'Lenght Units: ', &
+      '', 'Length Units: ', &
       TRIM( UnitsDisplay % LengthLabel )
     WRITE(*,'(A7,A24,A)') &
       '', 'Time Units: ', &

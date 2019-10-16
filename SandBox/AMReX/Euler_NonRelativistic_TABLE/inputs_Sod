@@ -17,6 +17,7 @@ thornado.iCycleD   = 0010     # MOD this number to display info
 thornado.iCycleW   = 0100     # MOD this number to write plotfile
 thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
+thornado.UsePhysicalUnits = 1
 
 geometry.coord_sys   = 0             # CARTESIAN
 geometry.prob_lo     = -5.0 0.0 0.0 # Lower domain size

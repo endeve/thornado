@@ -226,6 +226,8 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
+    U_M = Zero
+
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option

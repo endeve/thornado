@@ -72,7 +72,7 @@ MODULE InitializationModule
     WriteFieldsAMReX_Checkpoint, &
     WriteFieldsAMReX_PlotFile
   USE UnitsModule,                      ONLY: &
-    SolarMass
+    SolarMass, Millisecond
 
   ! --- Local modules ---
   USE MF_Euler_UtilitiesModule,         ONLY: &
