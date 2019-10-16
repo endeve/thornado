@@ -15,6 +15,9 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_CharacteristicDecomposition
 
   IMPLICIT NONE
   PRIVATE
@@ -38,6 +41,8 @@ CONTAINS
     INTEGER :: i
     REAL(DP), DIMENSION(1) :: D, V1, V2, V3, Gmdd11, Gmdd22, Gmdd33, Vu1, Vu2, Vu3, E, Ne, P, Cs
     REAL(DP), DIMENSION(1) :: Q, K, H, J, Mu1, Mu2, Mu3, Vd1, Vd2, Vd3
+
+    CALL TimersStart_Euler( Timer_Euler_CharacteristicDecomposition )
 
     CALL ComputePrimitive_Euler_NonRelativistic &
            ( [ U(iCF_D ) ], [ U(iCF_S1) ], [ U(iCF_S2) ], &
@@ -235,6 +240,8 @@ CONTAINS
         END IF
 
     END SELECT
+
+    CALL TimersStop_Euler( Timer_Euler_CharacteristicDecomposition )
 
   END SUBROUTINE ComputeCharacteristicDecomposition_Euler_NonRelativistic_IDEAL
 

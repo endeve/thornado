@@ -23,6 +23,9 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
   USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
     ComputePressureFromPrimitive
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, TimersStop_Euler, &
+    Timer_Euler_CharacteristicDecomposition
 
   IMPLICIT NONE
   PRIVATE
@@ -59,6 +62,8 @@ CONTAINS
     LOGICAL  :: DEBUG = .FALSE.
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
     INTEGER  :: i
+
+    CALL TimersStart_Euler( Timer_Euler_CharacteristicDecomposition )
 
     Gmdd11         = G(iGF_Gm_dd_11)
     Gmdd22         = G(iGF_Gm_dd_22)
@@ -392,6 +397,8 @@ CONTAINS
         STOP
 
     END SELECT
+
+    CALL TimersStop_Euler( Timer_Euler_CharacteristicDecomposition )
 
   END SUBROUTINE ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
 
