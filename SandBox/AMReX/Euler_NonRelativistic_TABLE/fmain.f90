@@ -47,6 +47,8 @@ PROGRAM main
     t_wrt, dt_wrt, t_chk, dt_chk, &
     iCycleD, iCycleW, iCycleChk,  &
     ProgramName, GEOM
+  USE UnitsModule,                      ONLY: &
+    UnitsDisplay
   USE TimersModule_AMReX_Euler,         ONLY: &
     TimeIt_AMReX_Euler, &
     InitializeTimers_AMReX_Euler, FinalizeTimers_AMReX_Euler, &
@@ -92,15 +94,10 @@ PROGRAM main
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
     IF( amrex_parallel_ioprocessor() )THEN
       IF( MOD( StepNo(0), iCycleD ) .EQ. 0 )THEN
-        IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' )THEN
-          WRITE(*,'(A8,A,I8.8,A,ES13.6E3,A,ES13.6E3,A)') &
-            '', 'StepNo: ', StepNo(0), &
-            ', t = ', t / Millisecond, ' ms, dt = ', dt(0) / Millisecond, ' ms'
-        ELSE
-          WRITE(*,'(A8,A,I8.8,A,ES13.6E3,A,ES13.6E3)') &
-            '', 'StepNo: ', StepNo(0), ', t = ', t, ', dt = ', dt(0)
-        END IF
-      END IF
+        WRITE(*,'(A8,A,I8.8,A,ES13.6E3,A,A2,A,ES13.6E3,A,A2)') &
+          '', 'StepNo: ', StepNo(0), &
+          ', t = ', t / UnitsDisplay % TimeUnit, ' ', UnitsDisplay % TimeLabel, ', dt = ', dt(0) /  UnitsDisplay % TimeUnit, ' ', UnitsDisplay % TimeLabel
+     END IF
     END IF
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
