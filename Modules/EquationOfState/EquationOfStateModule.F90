@@ -1,7 +1,7 @@
 MODULE EquationOfStateModule
 
   USE KindModule, ONLY: &
-    DP
+    DP, Zero
   USE EquationOfStateModule_IDEAL, ONLY: &
     InitializeEquationOfState_IDEAL, &
     ComputeInternalEnergyDensityFromPressure_IDEAL, &
