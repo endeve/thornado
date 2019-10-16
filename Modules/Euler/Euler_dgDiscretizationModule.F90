@@ -4,13 +4,11 @@ MODULE Euler_dgDiscretizationModule
     DP, Zero, SqrtTiny, Half, One, Pi, TwoPi
   USE TimersModule_Euler,  ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
-    Timer_Euler_Inc, &
-    Timer_Euler_Div_X1, &
-    Timer_Euler_Div_X2, &
-    Timer_Euler_Div_X3, &
-    Timer_Euler_CompPrim, &
-    Timer_Euler_Grav, &
-    Timer_Euler_Geom, &
+    Timer_Euler_dgDiscretization, &
+    Timer_Euler_Divergence, &
+    Timer_Euler_ComputePrimitive, &
+    Timer_Euler_Gravity, &
+    Timer_Euler_Geometry, &
     Timer_Euler_MV, &
     Timer_Euler_RS
   USE ProgramHeaderModule, ONLY: &
@@ -87,7 +85,7 @@ CONTAINS
     REAL(DP) :: dX1, dX2, dX3
     LOGICAL  :: SuppressBC
 
-    CALL TimersStart_Euler( Timer_Euler_Inc )
+    CALL TimersStart_Euler( Timer_Euler_dgDiscretization )
 
     dU = Zero
 
@@ -99,20 +97,18 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-    CALL TimersStart_Euler( Timer_Euler_Div_X1 )
+    CALL TimersStart_Euler( Timer_Euler_Divergence )
+
     CALL ComputeIncrement_Divergence_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-    CALL TimersStop_Euler( Timer_Euler_Div_X1 )
 
-    CALL TimersStart_Euler( Timer_Euler_Div_X2 )
     CALL ComputeIncrement_Divergence_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-    CALL TimersStop_Euler( Timer_Euler_Div_X2 )
 
-    CALL TimersStart_Euler( Timer_Euler_Div_X3 )
     CALL ComputeIncrement_Divergence_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-    CALL TimersStop_Euler( Timer_Euler_Div_X3 )
+
+    CALL TimersStop_Euler( Timer_Euler_Divergence )
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -134,18 +130,22 @@ CONTAINS
       END DO
     END DO
 
-    CALL TimersStart_Euler( Timer_Euler_Geom )
+    CALL TimersStart_Euler( Timer_Euler_Geometry )
+
     CALL ComputeIncrement_Geometry &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-    CALL TimersStop_Euler( Timer_Euler_Geom )
 
-    CALL TimersStart_Euler( Timer_Euler_Grav )
+    CALL TimersStop_Euler( Timer_Euler_Geometry )
+
+    CALL TimersStart_Euler( Timer_Euler_Gravity )
+
     CALL ComputeIncrement_Gravity &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
-    CALL TimersStop_Euler( Timer_Euler_Grav )
 
-    CALL TimersStop_Euler( Timer_Euler_Inc )
+    CALL TimersStop_Euler( Timer_Euler_Gravity )
 
+
+    CALL TimersStop_Euler( Timer_Euler_dgDiscretization )
 
   END SUBROUTINE Euler_ComputeIncrement_DG_Explicit
 
@@ -212,7 +212,7 @@ CONTAINS
 
       IF( iX1 .LT. iX_E0(1) + 1 )THEN
 
-        CALL TimersStart_Euler( Timer_Euler_CompPrim )
+        CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
         CALL ComputePrimitive_Euler &
                ( uCF_K(:,iCF_D ),     &
                  uCF_K(:,iCF_S1),     &
@@ -229,7 +229,7 @@ CONTAINS
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
                  G_K(:,iGF_Gm_dd_33) )
-        CALL TimersStop_Euler( Timer_Euler_CompPrim )
+        CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
@@ -326,7 +326,7 @@ CONTAINS
 
       ! --- Left State Primitive, etc. ---
 
-      CALL TimersStart_Euler( Timer_Euler_CompPrim )
+      CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
       CALL ComputePrimitive_Euler &
              ( uCF_L(:,iCF_D ),       &
                uCF_L(:,iCF_S1),       &
@@ -343,7 +343,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
-      CALL TimersStop_Euler( Timer_Euler_CompPrim )
+      CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), P_L  )
@@ -386,7 +386,7 @@ CONTAINS
 
       ! --- Right State Primitive, etc. ---
 
-      CALL TimersStart_Euler( Timer_Euler_CompPrim )
+      CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
       CALL ComputePrimitive_Euler &
              ( uCF_R(:,iCF_D ),       &
                uCF_R(:,iCF_S1),       &
@@ -403,7 +403,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
-      CALL TimersStop_Euler( Timer_Euler_CompPrim )
+      CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), P_R  )
@@ -601,7 +601,7 @@ CONTAINS
 
       IF( iX2 .LT. iX_E0(2) + 1 )THEN
 
-        CALL TimersStart_Euler( Timer_Euler_CompPrim )
+        CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
         CALL ComputePrimitive_Euler &
                ( uCF_K(:,iCF_D ),     &
                  uCF_K(:,iCF_S1),     &
@@ -618,7 +618,7 @@ CONTAINS
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
                  G_K(:,iGF_Gm_dd_33) )
-        CALL TimersStop_Euler( Timer_Euler_CompPrim )
+        CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
@@ -716,7 +716,7 @@ CONTAINS
 
       ! --- Left State Primitive, etc. ---
 
-      CALL TimersStart_Euler( Timer_Euler_CompPrim )
+      CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
       CALL ComputePrimitive_Euler &
              ( uCF_L(:,iCF_D ),       &
                uCF_L(:,iCF_S1),       &
@@ -733,7 +733,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
-      CALL TimersStop_Euler( Timer_Euler_CompPrim )
+      CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), P_L  )
@@ -776,7 +776,7 @@ CONTAINS
 
       ! --- Right State Primitive, etc. ---
 
-      CALL TimersStart_Euler( Timer_Euler_CompPrim )
+      CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
       CALL ComputePrimitive_Euler &
              ( uCF_R(:,iCF_D ),       &
                uCF_R(:,iCF_S1),       &
@@ -793,7 +793,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
-      CALL TimersStop_Euler( Timer_Euler_CompPrim )
+      CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), P_R )
