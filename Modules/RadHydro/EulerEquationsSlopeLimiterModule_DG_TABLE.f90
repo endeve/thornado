@@ -17,11 +17,11 @@ MODULE EulerEquationsSlopeLimiterModule_DG_TABLE
     MapModalToNodal_Fluid
   USE FluidFieldsModule, ONLY: &
     uCF, nCF, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, &
-    nAF, iAF_T, iAF_Ye, iAF_P, iAF_Cs, &
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
+    nAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, iAF_Gm, iAF_Cs, &
     Shock
   USE EquationOfStateModule, ONLY: &
-    Auxiliary_Fluid
+    ComputeAuxiliary_Fluid
   USE EulerEquationsUtilitiesModule, ONLY: &
     Primitive
   USE EulerEquationsUtilitiesModule_TABLE, ONLY: &
@@ -114,8 +114,13 @@ CONTAINS
           uCF_A_P_X1(1:nCF) = uCF_M_P_X1(1,1:nCF)
           uCF_A_N_X1(1:nCF) = uCF_M_N_X1(1,1:nCF)
 
-          uPF_A(1:nPF) = Primitive      ( uCF_A(1:nCF) )
-          uAF_A(1:nAF) = Auxiliary_Fluid( uPF_A(1:nPF) )
+          uPF_A(1:nPF) = Primitive( uCF_A(1:nCF) )
+
+          CALL ComputeAuxiliary_Fluid &
+                 ( uPF_A(iPF_D ), uPF_A(iPF_E), uPF_A(iPF_Ne), &
+                   uAF_A(iAF_P ), uAF_A(iAF_T), uAF_A(iAF_Ye), &
+                   uAF_A(iAF_S ), uAF_A(iAF_E), uAF_A(iAF_Gm), &
+                   uAF_A(iAF_Cs) )
 
           ! --- Slope From Modal Representation ---
 
@@ -200,8 +205,13 @@ CONTAINS
             ! --- Cell-Averaged Quantities ---
 
             uCF_A(1:nCF) = uCF_M(1,1:nCF)
-            uPF_A(1:nPF) = Primitive      ( uCF_A(1:nCF) )
-            uAF_A(1:nAF) = Auxiliary_Fluid( uPF_A(1:nPF) )
+            uPF_A(1:nPF) = Primitive( uCF_A(1:nCF) )
+
+            CALL ComputeAuxiliary_Fluid &
+                   ( uPF_A(iPF_D ), uPF_A(iPF_E), uPF_A(iPF_Ne), &
+                     uAF_A(iAF_P ), uAF_A(iAF_T), uAF_A(iAF_Ye), &
+                     uAF_A(iAF_S ), uAF_A(iAF_E), uAF_A(iAF_Gm), &
+                     uAF_A(iAF_Cs) )
 
             ! --- Back to Conserved Variables ---
 
