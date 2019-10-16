@@ -31,7 +31,7 @@ MODULE MyAmrModule
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE UnitsModule,          ONLY: &
-    Millisecond, Kilometer
+    ActivateUnitsDisplay, UnitsDisplay
 
   ! --- Local Modules ---
   USE MyAmrDataModule
@@ -110,6 +110,10 @@ CONTAINS
       CALL PP % get   ( 'iRestart',         iRestart )
       CALL PP % query ( 'UsePhysicalUnits', UsePhysicalUnits )
     CALL amrex_parmparse_destroy( PP )
+
+    IF( UsePhysicalUnits ) &
+      CALL ActivateUnitsDisplay
+
     IF( iCycleW .GT. 0 .AND. dt_wrt .GT. 0.0_amrex_real )THEN
       WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'
       WRITE(*,'(A)') 'Stopping...'
@@ -140,13 +144,32 @@ CONTAINS
       STOP 'Invalid choice for coord_sys'
     END IF
 
-    IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' )THEN
+    IF( UsePhysicalUnits )THEN
 
-      t_end  = t_end  * Millisecond
-      dt_wrt = dt_wrt * Millisecond
-      dt_chk = dt_chk * Millisecond
-      xL(1)  = xL(1)  * Kilometer
-      xR(1)  = xR(1)  * Kilometer
+      t_end  = t_end  * UnitsDisplay % TimeUnit
+      dt_wrt = dt_wrt * UnitsDisplay % TimeUnit
+      dt_chk = dt_chk * UnitsDisplay % TimeUnit
+
+      IF     ( CoordSys .EQ. 'CARTESIAN'   )THEN
+
+        xL(1:3) = xL(1:3) * UnitsDisplay % LengthUnit
+        xR(1:3) = xR(1:3) * UnitsDisplay % LengthUnit
+
+      ELSE IF( CoordSys .EQ. 'CYLINDRICAL' )THEN
+
+        xL(1:2) = xL(1:2) * UnitsDisplay % LengthUnit
+        xR(1:2) = xR(1:2) * UnitsDisplay % LengthUnit
+
+      ELSE IF( CoordSys .EQ. 'SPHERICAL'   )THEN
+
+        xL(1)   = xL(1) * UnitsDisplay % LengthUnit
+        xR(1)   = xR(1) * UnitsDisplay % LengthUnit
+
+      ELSE
+
+        STOP 'Invalid choice for CoordSys'
+
+      END IF
 
     END IF
 
@@ -191,27 +214,6 @@ CONTAINS
       CALL PP % query( 'EquationOfState', EquationOfState )
       CALL PP % query( 'EosTableName',    EosTableName    )
     CALL amrex_parmparse_destroy( PP )
-
-    IF( EquationOfState .EQ. 'TABLE' )THEN
-
-      t_end  = t_end  * Millisecond
-      dt_wrt = dt_wrt * Millisecond
-      dt_chk = dt_chk * Millisecond
-
-      IF     ( CoordSys .EQ. 'CARTESIAN'   )THEN
-        xL(1:3) = xL(1:3) * Kilometer
-        xR(1:3) = xR(1:3) * Kilometer
-      ELSE IF( CoordSys .EQ. 'CYLINDRICAL' )THEN
-        xL(1:2) = xL(1:2) * Kilometer
-        xR(1:2) = xR(1:2) * Kilometer
-      ELSE IF( CoordSys .EQ. 'SPHERICAL'   )THEN
-        xL(1)   = xL(1)   * Kilometer
-        xR(1)   = xR(1)   * Kilometer
-      ELSE
-        STOP 'Invalid choice for CoordSys'
-      END IF
-
-    END IF
 
     CALL InitializeProgramHeader &
            ( ProgramName_Option = TRIM( ProgramName ), &
