@@ -8,8 +8,7 @@ MODULE EquationOfStateModule
     ComputePressureFromPrimitive_IDEAL, &
     ComputePressureFromSpecificInternalEnergy_IDEAL, &
     ComputeSoundSpeedFromPrimitive_IDEAL, &
-    ComputeAuxiliary_Fluid_IDEAL, &
-    Auxiliary_Fluid_IDEAL
+    ComputeAuxiliary_Fluid_IDEAL
   USE EquationOfStateModule_TABLE, ONLY: &
     InitializeEquationOfState_TABLE, &
     ApplyEquationOfState_TABLE, &
@@ -22,7 +21,6 @@ MODULE EquationOfStateModule
     ComputePressureFromSpecificInternalEnergy_TABLE, &
     ComputeSoundSpeedFromPrimitive_TABLE, &
     ComputeAuxiliary_Fluid_TABLE, &
-    Auxiliary_Fluid_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
     ComputeElectronChemicalPotential_TABLE, &
     ComputeProtonChemicalPotential_TABLE, &
@@ -43,7 +41,9 @@ MODULE EquationOfStateModule
   PUBLIC :: ComputeSpecificInternalEnergy
   PUBLIC :: ComputePressureFromPrimitive
   PUBLIC :: ComputePressureFromSpecificInternalEnergy
+  PUBLIC :: ComputeInternalEnergyDensityFromPressure
   PUBLIC :: ComputeSoundSpeedFromPrimitive
+  PUBLIC :: ComputeAuxiliary_Fluid
   PUBLIC :: ComputeThermodynamicStates_Primitive
   PUBLIC :: ComputeThermodynamicStates_Auxiliary
   PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy
@@ -77,10 +77,20 @@ MODULE EquationOfStateModule
     MODULE PROCEDURE ComputePressureFromSpecificInternalEnergy_Vector
   END INTERFACE ComputePressureFromSpecificInternalEnergy
 
+  INTERFACE ComputeInternalEnergyDensityFromPressure
+    MODULE PROCEDURE ComputeInternalEnergyDensityFromPressure_Scalar
+    MODULE PROCEDURE ComputeInternalEnergyDensityFromPressure_Vector
+  END INTERFACE ComputeInternalEnergyDensityFromPressure
+
   INTERFACE ComputeSoundSpeedFromPrimitive
     MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_Scalar
     MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_Vector
   END INTERFACE ComputeSoundSpeedFromPrimitive
+
+  INTERFACE ComputeAuxiliary_Fluid
+    MODULE PROCEDURE ComputeAuxiliary_Fluid_Scalar
+    MODULE PROCEDURE ComputeAuxiliary_Fluid_Vector
+  END INTERFACE ComputeAuxiliary_Fluid
 
   INTERFACE ComputeThermodynamicStates_Primitive
     MODULE PROCEDURE ComputeThermodynamicStates_Primitive_Scalar
@@ -116,46 +126,6 @@ MODULE EquationOfStateModule
     MODULE PROCEDURE ComputeNeutronChemicalPotential_Scalar
     MODULE PROCEDURE ComputeNeutronChemicalPotential_Vector
   END INTERFACE ComputeNeutronChemicalPotential
-
-  ! ---
-  ! --- Interfaces for Various Equation of State Functions and Subroutines ---
-  ! ---
-
-  INTERFACE
-    FUNCTION EosFunction( PF )
-      USE KindModule, ONLY: DP
-      USE FluidFieldsModule, ONLY: nPF, nAF
-      REAL(DP), DIMENSION(nPF), INTENT(in) :: PF
-      REAL(DP), DIMENSION(nAF)             :: EosFunction
-    END FUNCTION EosFunction
-  END INTERFACE
-
-  INTERFACE
-    SUBROUTINE EosSubroutine_1( X, Y, Z, V1 )
-      USE KindModule, ONLY: DP
-      REAL(DP), DIMENSION(:), INTENT(in)  :: X, Y, Z
-      REAL(DP), DIMENSION(:), INTENT(out) :: V1
-    END SUBROUTINE EosSubroutine_1
-  END INTERFACE
-
-  INTERFACE
-    SUBROUTINE EosSubroutine_7( X, Y, Z, V1, V2, V3, V4, V5, V6, V7 )
-      USE KindModule, ONLY: DP
-      REAL(DP), DIMENSION(:), INTENT(in)  :: X, Y, Z
-      REAL(DP), DIMENSION(:), INTENT(out) :: V1, V2, V3, V4, V5, V6, V7
-    END SUBROUTINE EosSubroutine_7
-  END INTERFACE
-
-  ! ---
-  ! --- Declaration of Equation of State Functions and Subroutines ---
-  ! ---
-
-  PROCEDURE (EosFunction),       POINTER, PUBLIC :: &
-    Auxiliary_Fluid                              => NULL()
-  PROCEDURE (EosSubroutine_1),   POINTER, PUBLIC :: &
-    ComputeInternalEnergyDensityFromPressure     => NULL()
-  PROCEDURE (EosSubroutine_7),   POINTER, PUBLIC :: &
-    ComputeAuxiliary_Fluid                       => NULL()
 
   PUBLIC :: InitializeEquationOfState
   PUBLIC :: FinalizeEquationOfState
@@ -202,24 +172,12 @@ CONTAINS
                ( Gamma_IDEAL_Option &
                    = Gamma_IDEAL_Option )
 
-        ComputeInternalEnergyDensityFromPressure &
-          => ComputeInternalEnergyDensityFromPressure_IDEAL
-        ComputeAuxiliary_Fluid &
-          => ComputeAuxiliary_Fluid_IDEAL
-        Auxiliary_Fluid &
-          => Auxiliary_Fluid_IDEAL
-
       CASE ( 'TABLE' )
 
         CALL InitializeEquationOfState_TABLE &
                ( EquationOfStateTableName_Option &
                    = EquationOfStateTableName_Option, &
                  Verbose_Option = .TRUE. )
-
-        ComputeAuxiliary_Fluid &
-          => ComputeAuxiliary_Fluid_TABLE
-        Auxiliary_Fluid &
-          => Auxiliary_Fluid_TABLE
 
       CASE DEFAULT
 
@@ -239,14 +197,7 @@ CONTAINS
 
       CASE ( 'IDEAL' )
 
-        NULLIFY( ComputeInternalEnergyDensityFromPressure )
-        NULLIFY( ComputeAuxiliary_Fluid )
-        NULLIFY( Auxiliary_Fluid )
-
       CASE ( 'TABLE' )
-
-        NULLIFY( ComputeAuxiliary_Fluid )
-        NULLIFY( Auxiliary_Fluid )
 
     END SELECT
 
@@ -582,18 +533,18 @@ CONTAINS
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_Scalar &
-    ( D, Em, Ne, P )
+    ( D, Em, Y, P )
 
-    REAL(DP), INTENT(in)  :: D, Em, Ne
+    REAL(DP), INTENT(in)  :: D, Em, Y
     REAL(DP), INTENT(out) :: P
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputePressureFromSpecificInternalEnergy_TABLE( D, Em, Ne, P )
+    CALL ComputePressureFromSpecificInternalEnergy_TABLE( D, Em, Y, P )
 
 #else
 
-    CALL ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Ne, P )
+    CALL ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Y, P )
 
 #endif
 
@@ -601,22 +552,59 @@ CONTAINS
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_Vector &
-    ( D, Em, Ne, P )
+    ( D, Em, Y, P )
 
-    REAL(DP), INTENT(in)  :: D(:), Em(:), Ne(:)
+    REAL(DP), INTENT(in)  :: D(:), Em(:), Y(:)
     REAL(DP), INTENT(out) :: P(:)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputePressureFromSpecificInternalEnergy_TABLE( D, Em, Ne, P )
+    CALL ComputePressureFromSpecificInternalEnergy_TABLE( D, Em, Y, P )
 
 #else
 
-    CALL ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Ne, P )
+    CALL ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Y, P )
 
 #endif
 
   END SUBROUTINE ComputePressureFromSpecificInternalEnergy_Vector
+
+
+  ! --- ComputeInternalEnergyDensityFromPressure ---
+
+
+  SUBROUTINE ComputeInternalEnergyDensityFromPressure_Scalar &
+    ( D, P, Y, Ev )
+
+    REAL(DP), INTENT(in)  :: D, P, Y
+    REAL(DP), INTENT(out) :: Ev
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+#else
+
+    CALL ComputeInternalEnergyDensityFromPressure_IDEAL( D, P, Y, Ev )
+
+#endif
+
+  END SUBROUTINE ComputeInternalEnergyDensityFromPressure_Scalar
+
+
+  SUBROUTINE ComputeInternalEnergyDensityFromPressure_Vector &
+    ( D, P, Y, Ev )
+
+    REAL(DP), INTENT(in)  :: D(:), P(:), Y(:)
+    REAL(DP), INTENT(out) :: Ev(:)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+#else
+
+    CALL ComputeInternalEnergyDensityFromPressure_IDEAL( D, P, Y, Ev )
+
+#endif
+
+  END SUBROUTINE ComputeInternalEnergyDensityFromPressure_Vector
 
 
   ! --- ComputeSoundSpeedFromPrimitive ---
@@ -658,6 +646,47 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_Vector
+
+
+  ! --- ComputeAuxiliary_Fluid ---
+
+
+  SUBROUTINE ComputeAuxiliary_Fluid_Scalar &
+    ( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
+
+    REAL(DP), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), INTENT(out) :: P, T, Y, S, Em, Gm, Cs
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ComputeAuxiliary_Fluid_TABLE( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
+
+#else
+
+    CALL ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
+
+#endif
+
+  END SUBROUTINE ComputeAuxiliary_Fluid_Scalar
+
+
+  SUBROUTINE ComputeAuxiliary_Fluid_Vector &
+    ( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
+
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: P(:), T (:), Y (:), S(:), Em(:), Gm(:), Cs(:)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ComputeAuxiliary_Fluid_TABLE( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
+
+#else
+
+    CALL ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
+
+#endif
+
+  END SUBROUTINE ComputeAuxiliary_Fluid_Vector
 
 
   ! --- ComputeThermodynamicStates_Primitive ---

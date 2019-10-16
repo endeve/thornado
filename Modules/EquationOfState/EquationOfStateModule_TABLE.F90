@@ -42,11 +42,6 @@ MODULE EquationOfStateModule_TABLE
     MeV
   USE DeviceModule, ONLY: &
     QueryOnGpu
-  USE FluidFieldsModule, ONLY: &
-    ! --- Primitive Fluid Fields:
-    iPF_D, iPF_E, iPF_Ne, nPF, &
-    ! --- Auxiliary Fluid Fields:
-    iAF_P, iAF_T, iAF_Ye, iAF_E, iAF_S, iAF_Gm, iAF_Cs, nAF
 
   IMPLICIT NONE
   PRIVATE
@@ -92,7 +87,6 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputePressureFromSpecificInternalEnergy_TABLE
   PUBLIC :: ComputeSoundSpeedFromPrimitive_TABLE
   PUBLIC :: ComputeAuxiliary_Fluid_TABLE
-  PUBLIC :: Auxiliary_Fluid_TABLE
   PUBLIC :: ComputePressure_TABLE
   PUBLIC :: ComputeSpecificInternalEnergy_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
@@ -138,6 +132,11 @@ MODULE EquationOfStateModule_TABLE
     MODULE PROCEDURE ComputeThermodynamicStates_Auxiliary_TABLE_Scalar
     MODULE PROCEDURE ComputeThermodynamicStates_Auxiliary_TABLE_Vector
   END INTERFACE ComputeThermodynamicStates_Auxiliary_TABLE
+
+  INTERFACE ComputeAuxiliary_Fluid_TABLE
+    MODULE PROCEDURE ComputeAuxiliary_Fluid_TABLE_Scalar
+    MODULE PROCEDURE ComputeAuxiliary_Fluid_TABLE_Vector
+  END INTERFACE ComputeAuxiliary_Fluid_TABLE
 
   INTERFACE ComputeTemperatureFromSpecificInternalEnergy_TABLE
     MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar
@@ -321,17 +320,50 @@ CONTAINS
     OS_Xh = EOS % DV % Offsets(iXh_T)
     OS_Gm = EOS % DV % Offsets(iGm_T)
 
-    ALLOCATE( Ps_T (1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
-    ALLOCATE( Ss_T (1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
-    ALLOCATE( Es_T (1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
-    ALLOCATE( Mes_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
-    ALLOCATE( Mps_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
-    ALLOCATE( Mns_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
-    ALLOCATE( Xps_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
-    ALLOCATE( Xns_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
-    ALLOCATE( Xas_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
-    ALLOCATE( Xhs_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
-    ALLOCATE( Gms_T(1:EOS % DV % nPoints(1), 1:EOS % DV % nPoints(2), 1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Ps_T (1:EOS % DV % nPoints(1), &
+              1:EOS % DV % nPoints(2), &
+              1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Ss_T (1:EOS % DV % nPoints(1), &
+              1:EOS % DV % nPoints(2), &
+              1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Es_T (1:EOS % DV % nPoints(1), &
+              1:EOS % DV % nPoints(2), &
+              1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Mes_T(1:EOS % DV % nPoints(1), &
+              1:EOS % DV % nPoints(2), &
+              1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Mps_T(1:EOS % DV % nPoints(1), &
+              1:EOS % DV % nPoints(2), &
+              1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Mns_T(1:EOS % DV % nPoints(1), &
+              1:EOS % DV % nPoints(2), &
+              1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Xps_T(1:EOS % DV % nPoints(1), &
+              1:EOS % DV % nPoints(2), &
+              1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Xns_T(1:EOS % DV % nPoints(1), &
+              1:EOS % DV % nPoints(2), &
+              1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Xas_T(1:EOS % DV % nPoints(1), &
+              1:EOS % DV % nPoints(2), &
+              1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Xhs_T(1:EOS % DV % nPoints(1), &
+              1:EOS % DV % nPoints(2), &
+              1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Gms_T(1:EOS % DV % nPoints(1), &
+              1:EOS % DV % nPoints(2), &
+              1:EOS % DV % nPoints(3)) )
 
     Ps_T (:,:,:) = EOS % DV % Variables(iP_T ) % Values(:,:,:)
     Ss_T (:,:,:) = EOS % DV % Variables(iS_T ) % Values(:,:,:)
@@ -382,7 +414,8 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: Ds_T, Ts_T, Ys_T, &
-    !$OMP               Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T )
+    !$OMP               Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, &
+    !$OMP               Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T )
 #endif
 
     DEALLOCATE( Ds_T, Ts_T, Ys_T )
@@ -496,6 +529,7 @@ CONTAINS
 
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
     ( D, E, Y, T, Guess_Option, Error_Option )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -625,8 +659,16 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, Ev, Ne
     REAL(DP), INTENT(out) :: P
 
-    PRINT*, "ComputePressureFromPrimitive_TABLE_Scalar not implemented"
-    STOP
+    REAL(DP) :: Em, T, Y
+
+    Em = Ev / D              ! --- Internal Energy per Mass
+    Y  = Ne / D * BaryonMass ! --- Electron Fraction
+
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+           ( D, Em, Y, T )
+
+    CALL ComputePressure_TABLE &
+           ( D, T, Y, P )
 
   END SUBROUTINE ComputePressureFromPrimitive_TABLE_Scalar
 
@@ -636,39 +678,46 @@ CONTAINS
     REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
     REAL(DP), DIMENSION(:), INTENT(out) :: P
 
-    REAL(DP), DIMENSION(SIZE(D)) :: Em, T, Y
+    INTEGER :: iP, nP
 
-    Em(:) = Ev(:) / D(:)              ! --- Internal Energy per Mass
-    Y (:) = Ne(:) / D(:) * BaryonMass ! --- Electron Fraction
+    nP = SIZE( D )
 
-    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-           ( D(:), Em(:), Y(:), T(:) )
+    DO iP = 1, nP
 
-    CALL ComputePressure_TABLE &
-           ( D(:), T(:), Y(:), P(:) )
+      CALL ComputePressureFromPrimitive_TABLE( D(iP), Ev(iP), Ne(iP), P(iP) )
+
+    END DO
 
   END SUBROUTINE ComputePressureFromPrimitive_TABLE_Vector
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE_Scalar &
-    ( D, E, Y, P )
+    ( D, Em, Y, P )
 
-    REAL(DP), INTENT(in)  :: D, E, Y
+    REAL(DP), INTENT(in)  :: D, Em, Y
     REAL(DP), INTENT(out) :: P
 
-    WRITE(*,*)
-    WRITE(*,'(A4,A)') &
-      '', 'ComputePressureFromSpecificInternalEnergy_TABLE Not Implemented'
-    WRITE(*,*)
-    STOP
+    REAL(DP) :: D_P, E_P, Y_P, T_P, T
+
+    D_P = D  / UnitP
+    E_P = Em / UnitE
+    Y_P = Y  / UnitY
+
+    CALL ComputeTemperatureWith_DEY &
+           ( D_P, E_P, Y_P, Ds_T, Ts_T, Ys_T, Es_T, OS_E, T_P )
+
+    T = T_P * UnitT
+
+    CALL ComputeDependentVariable_TABLE &
+           ( D, T, Y, P, Ps_T, OS_P, Units_V = UnitP )    
 
   END SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE_Scalar
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE_Vector &
-    ( D, E, Y, P )
+    ( D, Em, Y, P )
 
-    REAL(DP), INTENT(in)  :: D(:), E(:), Y(:)
+    REAL(DP), INTENT(in)  :: D(:), Em(:), Y(:)
     REAL(DP), INTENT(out) :: P(:)
 
     INTEGER iP, nP
@@ -678,7 +727,7 @@ CONTAINS
     DO iP = 1, nP
 
       CALL ComputePressureFromSpecificInternalEnergy_TABLE &
-             ( D(iP), E(iP), Y(iP), P(iP) )
+             ( D(iP), Em(iP), Y(iP), P(iP) )
 
     END DO
 
@@ -942,82 +991,57 @@ CONTAINS
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Vector
 
 
-  SUBROUTINE ComputeAuxiliary_Fluid_TABLE( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
+  SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Scalar &
+    ( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: D, Ev, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: P, T, Y, S, Em, Gm, Cs
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
-    Em(:) = Ev(:) / D(:)
-    Y (:) = Ne(:) * ( BaryonMass / D(:) )
+    REAL(DP), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), INTENT(out) :: P, T, Y, S, Em, Gm, Cs
+
+    Em = Ev / D
+    Y  = Ne * ( BaryonMass / D )
 
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-           ( D(:), Em(:), Y(:), T(:) )
+           ( D, Em, Y, T )
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), P(:), Ps_T, OS_P, &
-             Units_V = Dyne / Centimeter**2 )
+           ( D, T, Y, P, Ps_T, OS_P, Units_V = UnitP )
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), S(:), Ss_T, OS_S, &
-             Units_V = BoltzmannConstant )
+           ( D, T, Y, S, Ss_T, OS_S, Units_V = UnitS )
 
     CALL ComputeDependentVariable_TABLE &
-           ( D(:), T(:), Y(:), Gm(:), Gms_T, OS_Gm, &
-             Units_V = 1.0_DP )
+           ( D, T, Y, Gm, Gms_T, OS_Gm, Units_V = UnitGm )
 
-    Cs(:) = SQRT( Gm(:) * P(:) / D(:) )
+    Cs = SQRT( Gm * P / D )
 
-  END SUBROUTINE ComputeAuxiliary_Fluid_TABLE
+  END SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Scalar
 
 
-  FUNCTION Auxiliary_Fluid_TABLE( PF )
+  SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Vector &
+    ( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
 
-    REAL(DP), DIMENSION(nPF), INTENT(in) :: PF
-    REAL(DP), DIMENSION(nAF)             :: Auxiliary_Fluid_TABLE
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: P(:), T (:), Y (:), S(:), Em(:), Gm(:), Cs(:)
 
-    REAL(DP), DIMENSION(1) :: TMP
+    INTEGER :: iP, nP
 
-    Auxiliary_Fluid_TABLE(1:nAF) = 0.0_DP
+    nP = SIZE( D )
 
-    Auxiliary_Fluid_TABLE(iAF_E) &
-      = PF(iPF_E) / PF(iPF_D)
+    DO iP = 1, nP
 
-    Auxiliary_Fluid_TABLE(iAF_Ye) &
-      = PF(iPF_Ne) * ( BaryonMass / PF(iPF_D) )
+      CALL ComputeAuxiliary_Fluid_TABLE &
+             ( D(iP), Ev(iP), Ne(iP), &
+               P(iP), T (iP), Y (iP), S(iP), Em(iP), Gm(iP), Cs(iP) )
 
-    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE   &
-           ( [ PF(iPF_D) ], [ Auxiliary_Fluid_TABLE(iAF_E) ], &
-             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP )
+    END DO
 
-    Auxiliary_Fluid_TABLE(iAF_T) = TMP(1)
-
-    CALL ComputeDependentVariable_TABLE &
-           ( [ PF(iPF_D) ], [ Auxiliary_Fluid_TABLE(iAF_T) ], &
-             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP, Ps_T, OS_P, &
-             Units_V = Dyne / Centimeter**2 )
-
-    Auxiliary_Fluid_TABLE(iAF_P) = TMP(1)
-
-    CALL ComputeDependentVariable_TABLE &
-           ( [ PF(iPF_D) ], [ Auxiliary_Fluid_TABLE(iAF_T) ], &
-             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP, Ss_T, OS_S, &
-             Units_V = BoltzmannConstant )
-
-    Auxiliary_Fluid_TABLE(iAF_S) = TMP(1)
-
-    CALL ComputeDependentVariable_TABLE &
-           ( [ PF(iPF_D) ], [ Auxiliary_Fluid_TABLE(iAF_T) ], &
-             [ Auxiliary_Fluid_TABLE(iAF_Ye) ], TMP, Gms_T, OS_Gm, &
-             Units_V = 1.0_DP )
-
-    Auxiliary_Fluid_TABLE(iAF_Gm) = TMP(1)
-
-    Auxiliary_Fluid_TABLE(iAF_Cs) &
-      = SQRT( Auxiliary_Fluid_TABLE(iAF_Gm) &
-              * Auxiliary_Fluid_TABLE(iAF_P) / PF(iPF_D) )
-
-    RETURN
-  END FUNCTION Auxiliary_Fluid_TABLE
+  END SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Vector
 
 
   SUBROUTINE ComputePressure_TABLE_Scalar &
