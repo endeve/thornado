@@ -24,9 +24,9 @@ MODULE EquationOfStateModule
     ComputeAuxiliary_Fluid_TABLE, &
     Auxiliary_Fluid_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
-    ComputeElectronChemicalPotentialPoints_TABLE, &
-    ComputeProtonChemicalPotentialPoints_TABLE, &
-    ComputeNeutronChemicalPotentialPoints_TABLE
+    ComputeElectronChemicalPotential_TABLE, &
+    ComputeProtonChemicalPotential_TABLE, &
+    ComputeNeutronChemicalPotential_TABLE
   USE UnitsModule, ONLY: &
     AtomicMassUnit
 
@@ -47,6 +47,9 @@ MODULE EquationOfStateModule
   PUBLIC :: ComputeThermodynamicStates_Primitive
   PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy
   PUBLIC :: ComputeTemperatureFromPressure
+  PUBLIC :: ComputeElectronChemicalPotential
+  PUBLIC :: ComputeProtonChemicalPotential
+  PUBLIC :: ComputeNeutronChemicalPotential
 
   INTERFACE ApplyEquationOfState
     MODULE PROCEDURE ApplyEquationOfState_Scalar
@@ -93,6 +96,21 @@ MODULE EquationOfStateModule
     MODULE PROCEDURE ComputeTemperatureFromPressure_Vector
   END INTERFACE ComputeTemperatureFromPressure
 
+  INTERFACE ComputeElectronChemicalPotential
+    MODULE PROCEDURE ComputeElectronChemicalPotential_Scalar
+    MODULE PROCEDURE ComputeElectronChemicalPotential_Vector
+  END INTERFACE ComputeElectronChemicalPotential
+
+  INTERFACE ComputeProtonChemicalPotential
+    MODULE PROCEDURE ComputeProtonChemicalPotential_Scalar
+    MODULE PROCEDURE ComputeProtonChemicalPotential_Vector
+  END INTERFACE ComputeProtonChemicalPotential
+
+  INTERFACE ComputeNeutronChemicalPotential
+    MODULE PROCEDURE ComputeNeutronChemicalPotential_Scalar
+    MODULE PROCEDURE ComputeNeutronChemicalPotential_Vector
+  END INTERFACE ComputeNeutronChemicalPotential
+
   ! ---
   ! --- Interfaces for Various Equation of State Functions and Subroutines ---
   ! ---
@@ -138,28 +156,6 @@ MODULE EquationOfStateModule
     END SUBROUTINE EosSubroutine_7
   END INTERFACE
 
-  INTERFACE
-    SUBROUTINE EosSubroutine_1_3( X, Y, Z, V, dVdX, dVdY, dVdZ )
-      USE KindModule, ONLY: DP
-      REAL(DP), DIMENSION(:), INTENT(in)                    :: X, Y, Z
-      REAL(DP), DIMENSION(:), INTENT(out)                   :: V
-      REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dVdX
-      REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dVdY
-      REAL(DP), DIMENSION(:), INTENT(out), TARGET, OPTIONAL :: dVdZ
-    END SUBROUTINE EosSubroutine_1_3
-  END INTERFACE
-
-  INTERFACE
-    SUBROUTINE EosSubroutine_1_2 &
-                 ( X, Y, Z, V1, Guess_Option_V1, Error_Option )
-      USE KindModule, ONLY: DP
-        REAL(DP), INTENT(in)            :: X(:), Y(:), Z(:)
-        REAL(DP), INTENT(out)           :: V1(:)
-        REAL(DP), INTENT(in),  OPTIONAL :: Guess_Option_V1(:)
-        INTEGER,  INTENT(out), OPTIONAL :: Error_Option(:)
-    END SUBROUTINE EosSubroutine_1_2
-  END INTERFACE
-
   ! ---
   ! --- Declaration of Equation of State Functions and Subroutines ---
   ! ---
@@ -172,10 +168,6 @@ MODULE EquationOfStateModule
     ComputeThermodynamicStates_Auxiliary         => NULL()
   PROCEDURE (EosSubroutine_7),   POINTER, PUBLIC :: &
     ComputeAuxiliary_Fluid                       => NULL()
-  PROCEDURE (EosSubroutine_1_3), POINTER, PUBLIC :: &
-    ComputeElectronChemicalPotential             => NULL(), &
-    ComputeProtonChemicalPotential               => NULL(), &
-    ComputeNeutronChemicalPotential              => NULL()
 
   PUBLIC :: InitializeEquationOfState
   PUBLIC :: FinalizeEquationOfState
@@ -242,12 +234,6 @@ CONTAINS
           => ComputeAuxiliary_Fluid_TABLE
         Auxiliary_Fluid &
           => Auxiliary_Fluid_TABLE
-        ComputeElectronChemicalPotential &
-          => ComputeElectronChemicalPotentialPoints_TABLE
-        ComputeProtonChemicalPotential &
-          => ComputeProtonChemicalPotentialPoints_TABLE
-        ComputeNeutronChemicalPotential &
-          => ComputeNeutronChemicalPotentialPoints_TABLE
 
       CASE DEFAULT
 
@@ -276,9 +262,6 @@ CONTAINS
         NULLIFY( ComputeThermodynamicStates_Auxiliary )
         NULLIFY( ComputeAuxiliary_Fluid )
         NULLIFY( Auxiliary_Fluid )
-        NULLIFY( ComputeElectronChemicalPotential )
-        NULLIFY( ComputeProtonChemicalPotential )
-        NULLIFY( ComputeNeutronChemicalPotential )
 
     END SELECT
 
@@ -839,6 +822,372 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeTemperatureFromPressure_Vector
+
+
+  ! --- ComputeElectronChemicalPotential ---
+
+
+  SUBROUTINE ComputeElectronChemicalPotential_Scalar &
+    ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdY
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
+
+      IF( PRESENT( dMdY_Option ) )THEN
+        dMdY => dMdY_Option
+      ELSE
+        dMdY => dMdY_Local
+      END IF
+
+      CALL ComputeElectronChemicalPotential_TABLE &
+             ( D, T, Y, M, dMdD, dMdT, dMdY )
+
+    ELSE
+
+      CALL ComputeElectronChemicalPotential_TABLE &
+             ( D, T, Y, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeElectronChemicalPotential_Scalar
+
+
+  SUBROUTINE ComputeElectronChemicalPotential_Vector &
+    ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out)                   :: M(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dMdD      , dMdT      , dMdY
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdY_Option ) )THEN
+        dMdY(1:nP) => dMdY_Option(:)
+      ELSE
+        dMdY(1:nP) => dMdY_Local(:)
+      END IF
+
+      CALL ComputeElectronChemicalPotential_TABLE &
+             ( D, T, Y, M, dMdD, dMdT, dMdY )
+
+    ELSE
+
+      CALL ComputeElectronChemicalPotential_TABLE &
+             ( D, T, Y, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeElectronChemicalPotential_Vector
+
+
+  ! --- ComputeProtonChemicalPotential ---
+
+
+  SUBROUTINE ComputeProtonChemicalPotential_Scalar &
+    ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdY
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
+
+      IF( PRESENT( dMdY_Option ) )THEN
+        dMdY => dMdY_Option
+      ELSE
+        dMdY => dMdY_Local
+      END IF
+
+      CALL ComputeProtonChemicalPotential_TABLE &
+             ( D, T, Y, M, dMdD, dMdT, dMdY )
+
+    ELSE
+
+      CALL ComputeProtonChemicalPotential_TABLE &
+             ( D, T, Y, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeProtonChemicalPotential_Scalar
+
+
+  SUBROUTINE ComputeProtonChemicalPotential_Vector &
+    ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out)                   :: M(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dMdD      , dMdT      , dMdY
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdY_Option ) )THEN
+        dMdY(1:nP) => dMdY_Option(:)
+      ELSE
+        dMdY(1:nP) => dMdY_Local(:)
+      END IF
+
+      CALL ComputeProtonChemicalPotential_TABLE &
+             ( D, T, Y, M, dMdD, dMdT, dMdY )
+
+    ELSE
+
+      CALL ComputeProtonChemicalPotential_TABLE &
+             ( D, T, Y, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeProtonChemicalPotential_Vector
+
+
+  ! --- ComputeNeutronChemicalPotential ---
+
+
+  SUBROUTINE ComputeNeutronChemicalPotential_Scalar &
+    ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdY
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
+
+      IF( PRESENT( dMdY_Option ) )THEN
+        dMdY => dMdY_Option
+      ELSE
+        dMdY => dMdY_Local
+      END IF
+
+      CALL ComputeNeutronChemicalPotential_TABLE &
+             ( D, T, Y, M, dMdD, dMdT, dMdY )
+
+    ELSE
+
+      CALL ComputeNeutronChemicalPotential_TABLE &
+             ( D, T, Y, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeNeutronChemicalPotential_Scalar
+
+
+  SUBROUTINE ComputeNeutronChemicalPotential_Vector &
+    ( D, T, Y, M, dMdD_Option, dMdT_Option, dMdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
+    REAL(DP), INTENT(out)                   :: M(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dMdD_Local, dMdT_Local, dMdY_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dMdD      , dMdT      , dMdY
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdY_Option ) )THEN
+        dMdY(1:nP) => dMdY_Option(:)
+      ELSE
+        dMdY(1:nP) => dMdY_Local(:)
+      END IF
+
+      CALL ComputeNeutronChemicalPotential_TABLE &
+             ( D, T, Y, M, dMdD, dMdT, dMdY )
+
+    ELSE
+
+      CALL ComputeNeutronChemicalPotential_TABLE &
+             ( D, T, Y, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeNeutronChemicalPotential_Vector
 
 
 END MODULE EquationOfStateModule
