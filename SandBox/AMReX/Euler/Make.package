@@ -1,9 +1,13 @@
+
 # thornado VPATH_LOCATIONS:
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Euler
 
 f90EXE_sources += TimersModule_AMReX_Euler.f90
 f90EXE_sources += MF_UtilitiesModule.f90
-f90EXE_sources += MF_InitializationModule.f90
+F90EXE_sources += MF_InitializationModule.F90
+f90EXE_sources += MF_InitializationModule_NonRelativistic_TABLE.f90
+f90EXE_sources += MF_InitializationModule_NonRelativistic_IDEAL.f90
+f90EXE_sources += MF_InitializationModule_Relativistic_IDEAL.f90
 f90EXE_sources += InitializationModule.f90
 f90EXE_sources += FinalizationModule.f90
 f90EXE_sources += MF_GeometryModule.f90
