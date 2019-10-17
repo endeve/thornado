@@ -2,7 +2,7 @@ MODULE InitializationModule
 
   ! --- AMReX Modules ---
   USE amrex_fort_module, ONLY: &
-    amrex_real, &
+    AR => amrex_real, &
     amrex_spacedim
   USE amrex_amr_module, ONLY: &
     amrex_init, &
@@ -12,12 +12,12 @@ MODULE InitializationModule
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_boxarray_module, ONLY: &
-    amrex_boxarray, &
-    amrex_boxarray_build, &
+    amrex_boxarray,         &
+    amrex_boxarray_build,   &
     amrex_boxarray_destroy, &
     amrex_print
   USE amrex_distromap_module, ONLY: &
-    amrex_distromap, &
+    amrex_distromap,       &
     amrex_distromap_build, &
     amrex_distromap_destroy
   USE amrex_geometry_module, ONLY: &
@@ -37,7 +37,8 @@ MODULE InitializationModule
   ! --- thornado Modules ---
   USE ProgramHeaderModule,              ONLY: &
     DescribeProgramHeaderX, &
-    nDOFX, nNodesX
+    nDOFX,                  &
+    nNodesX
   USE PolynomialBasisModuleX_Lagrange,  ONLY: &
     InitializePolynomialBasisX_Lagrange
   USE PolynomialBasisModuleX_Legendre,  ONLY: &
@@ -47,15 +48,25 @@ MODULE InitializationModule
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
   USE MeshModule,                       ONLY: &
-    MeshX, CreateMesh, DestroyMesh
+    MeshX,      &
+    CreateMesh, &
+    DestroyMesh
   USE EquationOfStateModule,            ONLY: &
     InitializeEquationOfState
   USE EquationOfStateModule_TABLE,      ONLY: &
-    MinD, MaxD, MinT, MaxT, MinY, MaxY
+    MinD, &
+    MaxD, &
+    MinT, &
+    MaxT, &
+    MinY, &
+    MaxY
   USE GeometryFieldsModule,             ONLY: &
-    nGF, CoordinateSystem
+    nGF, &
+    CoordinateSystem
   USE FluidFieldsModule,                ONLY: &
-    nCF, nPF, nAF, &
+    nCF, &
+    nPF, &
+    nAF, &
     CreateFluidFields
   USE Euler_SlopeLimiterModule,         ONLY: &
     InitializeSlopeLimiter_Euler
@@ -72,7 +83,8 @@ MODULE InitializationModule
     WriteFieldsAMReX_Checkpoint, &
     WriteFieldsAMReX_PlotFile
   USE UnitsModule,                      ONLY: &
-    SolarMass, Millisecond
+    SolarMass, &
+    UnitsDisplay
 
   ! --- Local modules ---
   USE MF_Euler_UtilitiesModule,         ONLY: &
@@ -88,26 +100,77 @@ MODULE InitializationModule
     MF_InitializeFields
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
     MF_InitializeFluid_SSPRK
-  USE MyAmrDataModule
-  USE MyAmrModule
-  USE TimersModule_AMReX_Euler
+  USE MyAmrDataModule,                  ONLY: &
+    MF_uGF, &
+    MF_uCF, &
+    MF_uPF, &
+    MF_uAF
+  USE MyAmrModule,                      ONLY: &
+    t_end,                     &
+    t,                         &
+    dt,                        &
+    t_wrt,                     &
+    dt_wrt,                    &
+    t_chk,                     &
+    dt_chk,                    &
+    CFL,                       &
+    nNodes,                    &
+    nStages,                   &
+    nX,                        &
+    swX,                       &
+    bcX,                       &
+    xL,                        &
+    xR,                        &
+    ProgramName,               &
+    CoordSys,                  &
+    UseSlopeLimiter,           &
+    UseCharacteristicLimiting, &
+    UseTroubledCellIndicator,  &
+    SlopeTolerance,            &
+    BetaTVD,                   &
+    BetaTVB,                   &
+    LimiterThresholdParameter, &
+    UseConservativeCorrection, &
+    UsePositivityLimiter,      &
+    Min_1,                     &
+    Min_2,                     &
+    Gamma_IDEAL,               &
+    EquationOfState,           &
+    EosTableName,              &
+    StepNo,                    &
+    nLevels,                   &
+    iRestart,                  &
+    MaxGridSize,               &
+    BA,                        &
+    DM,                        &
+    GEOM,                      &
+    MyAmrInit
+  USE TimersModule_AMReX_Euler, ONLY: &
+    TimersStart_AMReX_Euler,      &
+    TimersStop_AMReX_Euler,       &
+    Timer_AMReX_Euler_Initialize, &
+    Timer_AMReX_Euler_InputOutput
 
   IMPLICIT NONE
 
-  PUBLIC :: InitializeProblem
+  PUBLIC :: InitializeProgram
 
-  INTEGER,               PUBLIC :: iLevel, iDim
-  TYPE(amrex_parmparse), PUBLIC :: PP
-  TYPE(amrex_box),       PUBLIC :: BX
-  REAL(amrex_real),      PUBLIC :: Mass
-  LOGICAL,               PUBLIC :: wrt, chk
+  LOGICAL, PUBLIC :: wrt, chk
 
-  REAL(amrex_real), PARAMETER :: One = KIND( 1.d0 )
+  REAL(AR), PARAMETER :: Zero = 0.0_AR
+  REAL(AR), PARAMETER :: One  = 1.0_AR
+  REAL(AR), PARAMETER :: Two  = 2.0_AR
+
 
 CONTAINS
 
 
-  SUBROUTINE InitializeProblem
+  SUBROUTINE InitializeProgram
+
+    INTEGER               :: iLevel, iDim
+    TYPE(amrex_parmparse) :: PP
+    TYPE(amrex_box)       :: BX
+    REAL(AR)              :: Mass
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
@@ -119,7 +182,7 @@ CONTAINS
     ! --- Parse parameter file ---
     CALL MyAmrInit
 
-    IF( iRestart < 0 )THEN
+    IF( iRestart .LT. 0 )THEN
 
       BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
@@ -143,20 +206,20 @@ CONTAINS
       DO iLevel = 0, nLevels
         CALL amrex_multifab_build &
                ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
-        CALL MF_uGF(iLevel) % SetVal( 0.0_amrex_real )
+        CALL MF_uGF(iLevel) % SetVal( Zero )
         CALL amrex_multifab_build &
                ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
-        CALL MF_uCF(iLevel) % SetVal( 0.0_amrex_real )
+        CALL MF_uCF(iLevel) % SetVal( Zero )
         CALL amrex_multifab_build &
                ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
-        CALL MF_uPF(iLevel) % SetVal( 0.0_amrex_real )
+        CALL MF_uPF(iLevel) % SetVal( Zero )
         CALL amrex_multifab_build &
                ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
-        CALL MF_uAF(iLevel) % SetVal( 0.0_amrex_real )
+        CALL MF_uAF(iLevel) % SetVal( Zero )
       END DO
 
-      t     = 0.0_amrex_real
-      dt    = 0.0_amrex_real
+      t     = Zero
+      dt    = Zero
       t_wrt = dt_wrt
       t_chk = dt_chk
 
@@ -179,26 +242,23 @@ CONTAINS
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
-      WRITE(*,'(A4,A6,A)')         '', 'Name: ', TRIM( ProgramName )
+      WRITE(*,'(4x,A6,A)')             'Name: ', TRIM( ProgramName )
       WRITE(*,*)
-      IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock_Relativistic' )THEN
-        WRITE(*,'(4x,A24,ES10.3E2,A)') 't_end   =', t_end  / Millisecond, ' ms'
-        WRITE(*,'(4x,A24,ES10.3E2,A)') 'dt_wrt  =', dt_wrt / Millisecond, ' ms'
-        WRITE(*,'(4x,A24,ES10.3E2,A)') 'dt_chk  =', dt_chk / Millisecond, ' ms'
-      ELSE
-        WRITE(*,'(A4,A24,ES10.3E2)') '', 't_end   =', t_end
-        WRITE(*,'(A4,A24,ES10.3E2)') '', 'dt_wrt  =', dt_wrt
-        WRITE(*,'(A4,A24,ES10.3E2)') '', 'dt_chk  =', dt_chk
-      END IF
-      WRITE(*,'(A4,A24,I3.2)')     '', 'nNodes  =', nNodes
-      WRITE(*,'(A4,A24,I3.2)')     '', 'nStages =', nStages
-      WRITE(*,'(A4,A24,I3.2)')     '', 'nDimsX  =', amrex_spacedim
-      WRITE(*,'(A4,A24,ES10.3E2)') '', 'Gamma   =', Gamma_IDEAL
-      WRITE(*,'(A5,A24,A)')        '', 'CoordinateSystem = ', CoordinateSystem
-      WRITE(*,'(A4,A24,3I7.6)')    '', 'nX          =', nX
-      WRITE(*,'(A4,A24,3I7.6)')    '', 'swX         =', swX
-      WRITE(*,'(A4,A24,3I7.6)')    '', 'bcX         =', bcX
-      WRITE(*,'(A4,A24,3I7.6)')    '', 'MaxGridSize =', MaxGridSize
+      WRITE(*,'(4x,A24,ES10.3E2,A,A)') 't_end   =', &
+        t_end  / UnitsDisplay % TimeUnit, ' ', TRIM( UnitsDisplay  % TimeLabel )
+      WRITE(*,'(4x,A24,ES10.3E2,A,A)') 'dt_wrt  =', &
+        dt_wrt / UnitsDisplay % TimeUnit, ' ', TRIM( UnitsDisplay  % TimeLabel )
+      WRITE(*,'(4x,A24,ES10.3E2,A,A)') 'dt_chk  =', &
+        dt_chk / UnitsDisplay % TimeUnit, ' ', TRIM( UnitsDisplay  % TimeLabel )
+      WRITE(*,'(4x,A24,I3.2)')         'nNodes  =', nNodes
+      WRITE(*,'(4x,A24,I3.2)')         'nStages =', nStages
+      WRITE(*,'(4x,A24,I3.2)')         'nDimsX  =', amrex_spacedim
+      WRITE(*,'(4x,A24,ES10.3E2)')     'Gamma   =', Gamma_IDEAL
+      WRITE(*,'(5x,A24,A)')            'CoordinateSystem = ', CoordinateSystem
+      WRITE(*,'(4x,A24,3I7.6)')        'nX          =', nX
+      WRITE(*,'(4x,A24,3I7.6)')        'swX         =', swX
+      WRITE(*,'(4x,A24,3I7.6)')        'bcX         =', bcX
+      WRITE(*,'(4x,A24,3I7.6)')        'MaxGridSize =', MaxGridSize
 
       CALL DescribeProgramHeaderX
 
@@ -217,27 +277,25 @@ CONTAINS
     CALL InitializePolynomialBasis_Legendre
 
     CALL InitializePolynomialBasisMapping &
-           ( [0.0d0], MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
+           ( [Zero], MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
 
     CALL InitializeReferenceElementX
     CALL InitializeReferenceElementX_Lagrange
 
-    Mass = 0.0_amrex_real
+    Mass = Zero
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % query( 'Mass', Mass )
     CALL amrex_parmparse_destroy( PP )
 
-    IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' )THEN
+    IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' ) &
       Mass = Mass * SolarMass
-      CALL MF_ComputeGeometryX( MF_uGF, Mass )
-    ELSE
-      CALL MF_ComputeGeometryX( MF_uGF, 0.0_amrex_real )
-    END IF
+
+    CALL MF_ComputeGeometryX( MF_uGF, Mass )
 
     IF( ProgramName .EQ. 'StandingAccretionShock' ) &
       CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
 
-    IF( EquationOfState .EQ. 'TABLE')THEN
+    IF( EquationOfState .EQ. 'TABLE' )THEN
 
       CALL InitializeEquationOfState &
              ( EquationOfState_Option = EquationOfState, &
@@ -293,14 +351,14 @@ CONTAINS
              Verbose_Option = amrex_parallel_ioprocessor() )
     IF( amrex_parallel_ioprocessor() ) WRITE(*,'(A6,A,ES11.3E3)') &
       '', 'CFL: ', &
-      CFL * ( amrex_spacedim * ( 2.0_amrex_real * nNodes - 1.0_amrex_real ) )
+      CFL * ( amrex_spacedim * ( Two * nNodes - One ) )
 
     ! --- Allocates 'Shock' and sets units for fluid fields ---
     CALL CreateFluidFields( nX, swX, amrex_parallel_ioprocessor() )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
-    IF( iRestart < 0 )THEN
+    IF( iRestart .LT. 0 )THEN
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
       CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
@@ -346,7 +404,7 @@ CONTAINS
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
-  END SUBROUTINE InitializeProblem
+  END SUBROUTINE InitializeProgram
 
 
 END MODULE InitializationModule

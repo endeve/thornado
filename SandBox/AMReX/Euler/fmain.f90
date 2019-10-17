@@ -44,7 +44,7 @@ PROGRAM main
     MF_uPF, &
     MF_uAF
   USE InitializationModule,             ONLY: &
-    InitializeProblem, &
+    InitializeProgram, &
     chk,               &
     wrt
   USE MyAmrModule,                      ONLY: &
@@ -86,7 +86,7 @@ PROGRAM main
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
 
-  CALL InitializeProblem
+  CALL InitializeProgram
 
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()

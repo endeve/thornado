@@ -86,6 +86,10 @@ CONTAINS
 
   SUBROUTINE MyAmrInit
 
+    REAL(AR), PARAMETER :: Zero = 0.0_AR
+    REAL(AR), PARAMETER :: One  = 1.0_AR
+    REAL(AR), PARAMETER :: Two  = 2.0_AR
+
     TYPE(amrex_parmparse) :: PP
 
     IF( .NOT. amrex_initialized() ) &
@@ -121,19 +125,18 @@ CONTAINS
     IF( UsePhysicalUnits ) &
       CALL ActivateUnitsDisplay
 
-    IF( iCycleW .GT. 0 .AND. dt_wrt .GT. 0.0_AR )THEN
+    IF( iCycleW .GT. 0 .AND. dt_wrt .GT. Zero )THEN
       WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'
       WRITE(*,'(A)') 'Stopping...'
       STOP
     END IF
-    IF( iCycleChk .GT. 0 .AND. dt_chk .GT. 0.0_AR )THEN
+    IF( iCycleChk .GT. 0 .AND. dt_chk .GT. Zero )THEN
       WRITE(*,'(A)') 'iCycleChk and dt_chk cannot both be greater than zero.'
       WRITE(*,'(A)') 'Stopping...'
       STOP
     END IF
 
-    CFL = CFL &
-            / ( amrex_spacedim * ( 2.0_AR * nNodes - 1.0_AR ) )
+    CFL = CFL / ( amrex_spacedim * ( Two * nNodes - One ) )
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
@@ -188,24 +191,33 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Slope limiter parameters SL.* ---
+    UseSlopeLimiter           = 1
+    UseCharacteristicLimiting = 1
+    UseTroubledCellIndicator  = 1
+    SlopeTolerance            = 1.0e-6_AR
+    BetaTVD                   = 1.75_AR
+    BetaTVB                   = Zero
+    LimiterThresholdParameter = 0.03_AR
+    UseConservativeCorrection = 1
     CALL amrex_parmparse_build( PP, 'SL' )
-      CALL PP % get( 'UseSlopeLimiter',           UseSlopeLimiter )
-      CALL PP % get( 'UseCharacteristicLimiting', UseCharacteristicLimiting )
-      CALL PP % get( 'UseTroubledCellIndicator',  UseTroubledCellIndicator )
-      CALL PP % get( 'SlopeTolerance',            SlopeTolerance )
-      CALL PP % get( 'BetaTVD',                   BetaTVD )
-      CALL PP % get( 'BetaTVB',                   BetaTVB )
-      CALL PP % get( 'LimiterThresholdParameter', LimiterThresholdParameter )
-      CALL PP % get( 'UseConservativeCorrection', UseConservativeCorrection )
+      CALL PP % query( 'UseSlopeLimiter',           UseSlopeLimiter )
+      CALL PP % query( 'UseCharacteristicLimiting', UseCharacteristicLimiting )
+      CALL PP % query( 'UseTroubledCellIndicator',  UseTroubledCellIndicator )
+      CALL PP % query( 'SlopeTolerance',            SlopeTolerance )
+      CALL PP % query( 'BetaTVD',                   BetaTVD )
+      CALL PP % query( 'BetaTVB',                   BetaTVB )
+      CALL PP % query( 'LimiterThresholdParameter', LimiterThresholdParameter )
+      CALL PP % query( 'UseConservativeCorrection', UseConservativeCorrection )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Positivitiy limiter parameters PL.* ---
-    Min_1 = 0.0_AR
-    Min_2 = 0.0_AR
+    UsePositivityLimiter = 1
+    Min_1                = 1.0e-12_AR
+    Min_2                = 1.0e-12_AR
     CALL amrex_parmparse_build( PP, 'PL' )
-      CALL PP % get( 'UsePositivityLimiter', UsePositivityLimiter )
-      CALL PP % get( 'Min_1',                Min_1 )
-      CALL PP % get( 'Min_2',                Min_2 )
+      CALL PP % query( 'UsePositivityLimiter', UsePositivityLimiter )
+      CALL PP % query( 'Min_1',                Min_1 )
+      CALL PP % query( 'Min_2',                Min_2 )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Equation of state parameters EoS.* ---
@@ -251,11 +263,11 @@ CONTAINS
     CALL FinalizeDataAMReX( nLevels )
 
     DEALLOCATE( GEOM )
-    DEALLOCATE( DM )
-    DEALLOCATE( BA )
+    DEALLOCATE( DM   )
+    DEALLOCATE( BA   )
 
-    DEALLOCATE( t )
-    DEALLOCATE( dt )
+    DEALLOCATE( t      )
+    DEALLOCATE( dt     )
     DEALLOCATE( StepNo )
 
   END SUBROUTINE MyAmrFinalize
