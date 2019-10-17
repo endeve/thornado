@@ -1297,21 +1297,25 @@ CONTAINS
 
       DO iGF = iGF_h_1, iGF_h_3
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                  G_P_X1(:,iGF), 1, Zero, G_X1_Dn(:,iGF), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                  G_K   (:,iGF), 1, Half, G_X1_Dn(:,iGF), 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         G_X1_Dn(:,iGF) = MAX( G_X1_Dn(:,iGF), SqrtTiny )
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                  G_K   (:,iGF), 1, Zero, G_X1_Up(:,iGF), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                  G_N_X1(:,iGF), 1, Half, G_X1_Up(:,iGF), 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         G_X1_Up(:,iGF) = MAX( G_X1_Up(:,iGF), SqrtTiny )
 
@@ -1319,34 +1323,40 @@ CONTAINS
 
       ! --- dh1dx1 ---
 
+      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
                   WeightsX_X1 * G_X1_Up(:,iGF_h_1), 1, Zero, dh1dX1, 1 )
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
                   WeightsX_X1 * G_X1_Dn(:,iGF_h_1), 1, One,  dh1dX1, 1 )
       CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
                   WeightsX_q  * G_K    (:,iGF_h_1), 1, One,  dh1dX1, 1 )
+      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       dh1dx1 = dh1dx1 / ( WeightsX_q * dX1 )
 
       ! --- dh2dx1 ---
 
+      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
                   WeightsX_X1 * G_X1_Up(:,iGF_h_2), 1, Zero, dh2dX1, 1 )
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
                   WeightsX_X1 * G_X1_Dn(:,iGF_h_2), 1, One,  dh2dX1, 1 )
       CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
                   WeightsX_q  * G_K    (:,iGF_h_2), 1, One,  dh2dX1, 1 )
+      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       dh2dx1 = dh2dx1 / ( WeightsX_q * dX1 )
 
       ! --- dh3dx1 ---
 
+      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
                   WeightsX_X1 * G_X1_Up(:,iGF_h_3), 1, Zero, dh3dX1, 1 )
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
                   WeightsX_X1 * G_X1_Dn(:,iGF_h_3), 1, One,  dh3dX1, 1 )
       CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
                   WeightsX_q  * G_K    (:,iGF_h_3), 1, One,  dh3dX1, 1 )
+      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       dh3dx1 = dh3dx1 / ( WeightsX_q * dX1 )
 
@@ -1354,32 +1364,38 @@ CONTAINS
 
       ! --- Face States (Average of Left and Right States) ---
 
+      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                G_P_X1(:,iGF_Alpha), 1, Zero, G_X1_Dn(:,iGF_Alpha), 1 )
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                G_K   (:,iGF_Alpha), 1, Half, G_X1_Dn(:,iGF_Alpha), 1 )
+      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       G_X1_Dn(:,iGF_Alpha) = MAX( G_X1_Dn(:,iGF_Alpha), SqrtTiny )
 
+      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                G_K   (:,iGF_Alpha), 1, Zero, G_X1_Up(:,iGF_Alpha), 1 )
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                G_N_X1(:,iGF_Alpha), 1, Half, G_X1_Up(:,iGF_Alpha), 1 )
+      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       G_X1_Up(:,iGF_Alpha) = MAX( G_X1_Up(:,iGF_Alpha), SqrtTiny )
 
       ! --- dadx1 ---
 
+      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
                   WeightsX_X1 * G_X1_Up(:,iGF_Alpha), 1, Zero, dadX1, 1 )
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
                   WeightsX_X1 * G_X1_Dn(:,iGF_Alpha), 1, One,  dadX1, 1 )
       CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
                   WeightsX_q  * G_K    (:,iGF_Alpha), 1, One,  dadX1, 1 )
+      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       dadx1 = dadx1 / ( WeightsX_q * dX1 )
 
@@ -1399,21 +1415,25 @@ CONTAINS
 
         DO iGF = iGF_h_1, iGF_h_3
 
+          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
           CALL DGEMV &
                  ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                    G_P_X2(:,iGF), 1, Zero, G_X2_Dn(:,iGF), 1 )
           CALL DGEMV &
                  ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                    G_K   (:,iGF), 1, Half, G_X2_Dn(:,iGF), 1 )
+          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
           G_X2_Dn(:,iGF) = MAX( G_X2_Dn(:,iGF), SqrtTiny )
 
+          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
           CALL DGEMV &
                  ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                    G_K   (:,iGF), 1, Zero, G_X2_Up(:,iGF), 1 )
           CALL DGEMV &
                  ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                    G_N_X2(:,iGF), 1, Half, G_X2_Up(:,iGF), 1 )
+          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
           G_X2_Up(:,iGF) = MAX( G_X2_Up(:,iGF), SqrtTiny )
 
@@ -1421,34 +1441,40 @@ CONTAINS
 
         ! --- dh1dx2 ---
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
                     WeightsX_X2 * G_X2_Up(:,iGF_h_1), 1, Zero, dh1dX2, 1 )
         CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
                     WeightsX_X2 * G_X2_Dn(:,iGF_h_1), 1, One,  dh1dX2, 1 )
         CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
                     WeightsX_q  * G_K    (:,iGF_h_1), 1, One,  dh1dX2, 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         dh1dx2 = dh1dx2 / ( WeightsX_q * dX2 )
 
         ! --- dh2dx2 ---
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
                     WeightsX_X2 * G_X2_Up(:,iGF_h_2), 1, Zero, dh2dX2, 1 )
         CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
                     WeightsX_X2 * G_X2_Dn(:,iGF_h_2), 1, One,  dh2dX2, 1 )
         CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
                     WeightsX_q  * G_K    (:,iGF_h_2), 1, One,  dh2dX2, 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         dh2dx2 = dh2dx2 / ( WeightsX_q * dX2 )
 
         ! --- dh3dx2 ---
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
                     WeightsX_X2 * G_X2_Up(:,iGF_h_3), 1, Zero, dh3dX2, 1 )
         CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
                     WeightsX_X2 * G_X2_Dn(:,iGF_h_3), 1, One,  dh3dX2, 1 )
         CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
                     WeightsX_q  * G_K    (:,iGF_h_3), 1, One,  dh3dX2, 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         dh3dx2 = dh3dx2 / ( WeightsX_q * dX2 )
 
@@ -1456,32 +1482,38 @@ CONTAINS
 
         ! --- Face States (Average of Left and Right States) ---
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                  G_P_X2(:,iGF_Alpha), 1, Zero, G_X2_Dn(:,iGF_Alpha), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                  G_K   (:,iGF_Alpha), 1, Half, G_X2_Dn(:,iGF_Alpha), 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         G_X2_Dn(:,iGF_Alpha) = MAX( G_X2_Dn(:,iGF_Alpha), SqrtTiny )
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                  G_K   (:,iGF_Alpha), 1, Zero, G_X2_Up(:,iGF_Alpha), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                  G_N_X2(:,iGF_Alpha), 1, Half, G_X2_Up(:,iGF_Alpha), 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         G_X2_Up(:,iGF_Alpha) = MAX( G_X2_Up(:,iGF_Alpha), SqrtTiny )
 
         ! --- dadx2 ---
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
                     WeightsX_X2 * G_X2_Up(:,iGF_Alpha), 1, Zero, dadX2, 1 )
         CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
                     WeightsX_X2 * G_X2_Dn(:,iGF_Alpha), 1, One,  dadX2, 1 )
         CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
                     WeightsX_q  * G_K    (:,iGF_Alpha), 1, One,  dadX2, 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         dadx2 = dadx2 / ( WeightsX_q * dX2 )
 
@@ -1503,21 +1535,25 @@ CONTAINS
 
         DO iGF = iGF_h_1, iGF_h_3
 
+          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
           CALL DGEMV &
                  ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
                    G_P_X3(:,iGF), 1, Zero, G_X3_Dn(:,iGF), 1 )
           CALL DGEMV &
                  ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
                    G_K   (:,iGF), 1, Half, G_X3_Dn(:,iGF), 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
           G_X3_Dn(:,iGF) = MAX( G_X3_Dn(:,iGF), SqrtTiny )
 
+          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
           CALL DGEMV &
                  ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
                    G_K   (:,iGF), 1, Zero, G_X3_Up(:,iGF), 1 )
           CALL DGEMV &
                  ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
                    G_N_X3(:,iGF), 1, Half, G_X3_Up(:,iGF), 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
           G_X3_Up(:,iGF) = MAX( G_X3_Up(:,iGF), SqrtTiny )
 
@@ -1525,34 +1561,40 @@ CONTAINS
 
         ! --- dh1dx3 ---
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
                     WeightsX_X3 * G_X3_Up(:,iGF_h_1), 1, Zero, dh1dX3, 1 )
         CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
                     WeightsX_X3 * G_X3_Dn(:,iGF_h_1), 1, One,  dh1dX3, 1 )
         CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
                     WeightsX_q  * G_K    (:,iGF_h_1), 1, One,  dh1dX3, 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         dh1dx3 = dh1dx3 / ( WeightsX_q * dX3 )
 
         ! --- dh2dx3 ---
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
                     WeightsX_X3 * G_X3_Up(:,iGF_h_2), 1, Zero, dh2dX3, 1 )
         CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
                     WeightsX_X3 * G_X3_Dn(:,iGF_h_2), 1, One,  dh2dX3, 1 )
         CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
                     WeightsX_q  * G_K    (:,iGF_h_2), 1, One,  dh2dX3, 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         dh2dx3 = dh2dx3 / ( WeightsX_q * dX3 )
 
         ! --- dh3dx3 ---
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
                     WeightsX_X3 * G_X3_Up(:,iGF_h_3), 1, Zero, dh3dX3, 1 )
         CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
                   WeightsX_X3 * G_X3_Dn(:,iGF_h_3), 1, One,  dh3dX3, 1 )
         CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
                     WeightsX_q  * G_K    (:,iGF_h_3), 1, One,  dh3dX3, 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         dh3dx3 = dh3dx3 / ( WeightsX_q * dX3 )
 
@@ -1560,32 +1602,38 @@ CONTAINS
 
         ! --- Face States (Average of Left and Right States) ---
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV &
                ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
                  G_P_X3(:,iGF_Alpha), 1, Zero, G_X3_Dn(:,iGF_Alpha), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
                  G_K   (:,iGF_Alpha), 1, Half, G_X3_Dn(:,iGF_Alpha), 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         G_X3_Dn(:,iGF_Alpha) = MAX( G_X3_Dn(:,iGF_Alpha), SqrtTiny )
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV &
                ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
                  G_K   (:,iGF_Alpha), 1, Zero, G_X3_Up(:,iGF_Alpha), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
                  G_N_X3(:,iGF_Alpha), 1, Half, G_X3_Up(:,iGF_Alpha), 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         G_X3_Up(:,iGF_Alpha) = MAX( G_X3_Up(:,iGF_Alpha), SqrtTiny )
 
         ! --- dadx3 ---
 
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Up, nDOFX_X3, &
                     WeightsX_X3 * G_X3_Up(:,iGF_Alpha), 1, Zero, dadX3, 1 )
         CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Dn, nDOFX_X3, &
                     WeightsX_X3 * G_X3_Dn(:,iGF_Alpha), 1, One,  dadX3, 1 )
         CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX3_q, nDOFX,    &
                     WeightsX_q  * G_K    (:,iGF_Alpha), 1, One,  dadX3, 1 )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         dadx3 = dadx3 / ( WeightsX_q * dX3 )
 
