@@ -3,14 +3,18 @@ MODULE Euler_dgDiscretizationModule
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Pi, TwoPi
   USE TimersModule_Euler,  ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
     Timer_Euler_dgDiscretization, &
     Timer_Euler_Divergence, &
-    Timer_Euler_ComputePrimitive, &
-    Timer_Euler_Gravity, &
     Timer_Euler_Geometry, &
-    Timer_Euler_MV, &
-    Timer_Euler_RS
+    Timer_Euler_Gravity, &
+    Timer_Euler_SurfaceTerm, &
+    Timer_Euler_NumericalFlux, &
+    Timer_Euler_VolumeTerm, &
+    Timer_Euler_Increment, &
+    Timer_Euler_ComputePrimitive, &
+    Timer_Euler_MatrixVectorMultiply
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDimsX
   USE MeshModule, ONLY: &
@@ -112,6 +116,8 @@ CONTAINS
 
     ! --- Multiply Inverse Mass Matrix ---
 
+    CALL TimersStart_Euler( Timer_Euler_Increment )
+
     DO iCF = 1, nCF
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -129,6 +135,8 @@ CONTAINS
       END DO
       END DO
     END DO
+
+    CALL TimersStop_Euler( Timer_Euler_Increment )
 
     CALL TimersStart_Euler( Timer_Euler_Geometry )
 
@@ -210,6 +218,8 @@ CONTAINS
       ! --- Volume Term ---
       !--------------------
 
+      CALL TimersStart_Euler( Timer_Euler_VolumeTerm )
+
       IF( iX1 .LT. iX_E0(1) + 1 )THEN
 
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
@@ -258,32 +268,36 @@ CONTAINS
           Flux_X1_q(:,iCF) &
             = dX2 * dX3 * WeightsX_q * G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) &
                 * Flux_X1_q(:,iCF)
-          CALL TimersStart_Euler( Timer_Euler_MV )
+          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
           CALL DGEMV &
                  ( 'T', nDOFX, nDOFX, One, dLXdX1_q, nDOFX, &
                    Flux_X1_q(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
-          CALL TimersStop_Euler( Timer_Euler_MV )
+          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
 
       END IF
 
+      CALL TimersStop_Euler( Timer_Euler_VolumeTerm )
+
       !---------------------
       ! --- Surface Term ---
       !---------------------
+
+      CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
       ! --- Interpolate Fluid Fields ---
 
       DO iCF = 1, nCF
 
-        CALL TimersStart_Euler( Timer_Euler_MV )
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Up, nDOFX_X1, &
                  uCF_P(:,iCF), 1, Zero, uCF_L(:,iCF), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
                  uCF_K(:,iCF), 1, Zero, uCF_R(:,iCF), 1 )
-        CALL TimersStop_Euler( Timer_Euler_MV )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       END DO
 
@@ -295,14 +309,14 @@ CONTAINS
 
       DO iGF = iGF_h_1, iGF_h_3
 
-        CALL TimersStart_Euler( Timer_Euler_MV )
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                  G_P(:,iGF), 1, Zero, G_F(:,iGF), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                  G_K(:,iGF), 1, Half, G_F(:,iGF), 1 )
-        CALL TimersStop_Euler( Timer_Euler_MV )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         G_F(:,iGF) = MAX( G_F(:,iGF), SqrtTiny )
 
@@ -312,7 +326,7 @@ CONTAINS
 
       ! --- Lapse Function ---
 
-      CALL TimersStart_Euler( Timer_Euler_MV )
+      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                G_P(:,iGF_Alpha), 1, Zero, G_F(:,iGF_Alpha), 1 )
@@ -320,7 +334,7 @@ CONTAINS
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                G_K(:,iGF_Alpha), 1, Half, G_F(:,iGF_Alpha), 1 )
-      CALL TimersStop_Euler( Timer_Euler_MV )
+      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       G_F(:,iGF_Alpha) = MAX( G_F(:,iGF_Alpha), SqrtTiny )
 
@@ -446,6 +460,8 @@ CONTAINS
 
       ! --- Numerical Flux ---
 
+      CALL TimersStart_Euler( Timer_Euler_NumericalFlux )
+
       DO iNodeX_X1 = 1, nDOFX_X1
 
         AlphaMns &
@@ -477,7 +493,6 @@ CONTAINS
                 G_F      (iNodeX_X1,iGF_Alpha),    &
                 G_F      (iNodeX_X1,iGF_Beta_1) )
 
-        CALL TimersStart_Euler( Timer_Euler_RS )
         NumericalFlux(iNodeX_X1,:) &
           = Euler_NumericalFlux_X1 &
               ( uCF_L    (iNodeX_X1,:),            &
@@ -492,9 +507,10 @@ CONTAINS
                 P_R      (iNodeX_X1),              &
                 G_F      (iNodeX_X1,iGF_Alpha),    &
                 G_F      (iNodeX_X1,iGF_Beta_1) )
-        CALL TimersStop_Euler( Timer_Euler_RS )
 
       END DO
+
+      CALL TimersStop_Euler( Timer_Euler_NumericalFlux )
 
       DO iCF = 1, nCF
 
@@ -510,11 +526,11 @@ CONTAINS
 
         DO iCF = 1, nCF
 
-          CALL TimersStart_Euler( Timer_Euler_MV )
+          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
           CALL DGEMV &
                  ( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Dn, nDOFX_X1, &
                    NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
-          CALL TimersStop_Euler( Timer_Euler_MV )
+          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
 
@@ -526,15 +542,17 @@ CONTAINS
 
         DO iCF = 1, nCF
 
-          CALL TimersStart_Euler( Timer_Euler_MV )
+          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
           CALL DGEMV &
                  ( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Up, nDOFX_X1, &
                    NumericalFlux(:,iCF), 1, One, dU(:,iX1-1,iX2,iX3,iCF), 1 )
-          CALL TimersStop_Euler( Timer_Euler_MV )
+          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
 
       END IF
+
+      CALL TimersStop_Euler( Timer_Euler_SurfaceTerm )
 
     END DO
     END DO
@@ -599,6 +617,8 @@ CONTAINS
       ! --- Volume Term ---
       !--------------------
 
+      CALL TimersStart_Euler( Timer_Euler_VolumeTerm )
+
       IF( iX2 .LT. iX_E0(2) + 1 )THEN
 
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
@@ -648,32 +668,36 @@ CONTAINS
             = dX1 * dX3 * WeightsX_q * G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) &
                 * Flux_X2_q(:,iCF)
 
-          CALL TimersStart_Euler( Timer_Euler_MV )
+          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
           CALL DGEMV &
                  ( 'T', nDOFX, nDOFX, One, dLXdX2_q, nDOFX, &
                    Flux_X2_q(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
-          CALL TimersStop_Euler( Timer_Euler_MV )
+          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
 
       END IF
 
+      CALL TimersStop_Euler( Timer_Euler_VolumeTerm )
+
       !---------------------
       ! --- Surface Term ---
       !---------------------
+
+      CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
       ! --- Interpolate Fluid Fields ---
 
       DO iCF = 1, nCF
 
-        CALL TimersStart_Euler( Timer_Euler_MV )
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Up, nDOFX_X2, &
                  uCF_P(:,iCF), 1, Zero, uCF_L(:,iCF), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
                  uCF_K(:,iCF), 1, Zero, uCF_R(:,iCF), 1 )
-        CALL TimersStop_Euler( Timer_Euler_MV )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       END DO
 
@@ -685,14 +709,14 @@ CONTAINS
 
       DO iGF = iGF_h_1, iGF_h_3
 
-        CALL TimersStart_Euler( Timer_Euler_MV )
+        CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                  G_P(:,iGF), 1, Zero, G_F(:,iGF), 1 )
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                  G_K(:,iGF), 1, Half, G_F(:,iGF), 1 )
-        CALL TimersStop_Euler( Timer_Euler_MV )
+        CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         G_F(:,iGF) = MAX( G_F(:,iGF), SqrtTiny )
 
@@ -702,7 +726,7 @@ CONTAINS
 
       ! --- Lapse Function ---
 
-      CALL TimersStart_Euler( Timer_Euler_MV )
+      CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
       CALL DGEMV &
              ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                G_P(:,iGF_Alpha), 1, Zero, G_F(:,iGF_Alpha), 1 )
@@ -710,7 +734,7 @@ CONTAINS
       CALL DGEMV &
              ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                G_K(:,iGF_Alpha), 1, Half, G_F(:,iGF_Alpha), 1 )
-      CALL TimersStop_Euler( Timer_Euler_MV )
+      CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       G_F(:,iGF_Alpha) = MAX( G_F(:,iGF_Alpha), SqrtTiny )
 
@@ -836,6 +860,8 @@ CONTAINS
 
       ! --- Numerical Flux ---
 
+      CALL TimersStart_Euler( Timer_Euler_NumericalFlux )
+
       DO iNodeX_X2 = 1, nDOFX_X2
 
         AlphaMns &
@@ -867,7 +893,6 @@ CONTAINS
                 G_F      (iNodeX_X2,iGF_Alpha),    &
                 G_F      (iNodeX_X2,iGF_Beta_2) )
 
-        CALL TimersStart_Euler( Timer_Euler_RS )
         NumericalFlux(iNodeX_X2,:) &
           = Euler_NumericalFlux_X2 &
               ( uCF_L    (iNodeX_X2,:),            &
@@ -882,9 +907,10 @@ CONTAINS
                 P_R      (iNodeX_X2),              &
                 G_F      (iNodeX_X2,iGF_Alpha),    &
                 G_F      (iNodeX_X2,iGF_Beta_2) )
-        CALL TimersStop_Euler( Timer_Euler_RS )
 
       END DO
+
+      CALL TimersStop_Euler( Timer_Euler_NumericalFlux )
 
       DO iCF = 1, nCF
 
@@ -900,10 +926,10 @@ CONTAINS
 
         DO iCF = 1, nCF
 
-          CALL TimersStart_Euler( Timer_Euler_MV )
+          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
           CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Dn, nDOFX_X2, &
                       NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
-          CALL TimersStop_Euler( Timer_Euler_MV )
+          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
 
@@ -915,14 +941,16 @@ CONTAINS
 
         DO iCF = 1, nCF
 
-          CALL TimersStart_Euler( Timer_Euler_MV )
+          CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
           CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Up, nDOFX_X2, &
                       NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2-1,iX3,iCF), 1 )
-          CALL TimersStop_Euler( Timer_Euler_MV )
+          CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
 
       END IF
+
+      CALL TimersStop_Euler( Timer_Euler_SurfaceTerm )
 
     END DO
     END DO
