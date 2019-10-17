@@ -68,6 +68,8 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: SphericalRiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
+  LOGICAL       :: OPTIMIZE = .FALSE.
+  LOGICAL       :: SuppressTally = .TRUE.
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
@@ -103,9 +105,9 @@ PROGRAM ApplicationDriver
 !  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
-!  ProgramName = 'KelvinHelmholtz_Relativistic'
+  ProgramName = 'KelvinHelmholtz_Relativistic'
 !  ProgramName = 'KelvinHelmholtz'
-  ProgramName = 'StandingAccretionShock'
+!  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -229,7 +231,7 @@ PROGRAM ApplicationDriver
 
        bcX = [ 1, 1, 0 ]
 
-       t_end = 3.0d0
+       t_end = 1.0d-1
 
     CASE( 'KelvinHelmholtz' )
 
@@ -305,9 +307,9 @@ PROGRAM ApplicationDriver
   Min_1 = 1.0d-13
   Min_2 = 1.0d-13
 
-  iCycleD = 10
-  iCycleW = 10; dt_wrt = -1.0d0
-!!$  dt_wrt = 1.0d-2 * t_end; iCycleW = -1
+  iCycleD = 1
+!!$  iCycleW = 10; dt_wrt = -1.0d0
+  dt_wrt = 1.0d-2 * t_end; iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -395,25 +397,31 @@ PROGRAM ApplicationDriver
            uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
            uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
 
-  CALL TimersStart_Euler( Timer_Euler_InputOutput )
-  CALL ComputeFromConserved_Euler_Relativistic &
-         ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
-           uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nGF), &
-           uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nCF), &
-           uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nPF), &
-           uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nAF) )
+  CALL TimersStop_Euler( Timer_Euler_Initialize )
 
-  CALL WriteFieldsHDF &
-       ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
-  CALL TimersStop_Euler( Timer_Euler_InputOutput )
+  IF( .NOT. OPTIMIZE )THEN
+    CALL TimersStart_Euler( Timer_Euler_InputOutput )
+    CALL ComputeFromConserved_Euler_Relativistic &
+           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+             uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),1:nGF), &
+             uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),1:nCF), &
+             uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),1:nPF), &
+             uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),1:nAF) )
+
+    CALL WriteFieldsHDF &
+         ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+    CALL TimersStop_Euler( Timer_Euler_InputOutput )
+  END IF
+
+  CALL TimersStart_Euler( Timer_Euler_Initialize )
 
   WRITE(*,*)
   WRITE(*,*)
@@ -428,7 +436,8 @@ PROGRAM ApplicationDriver
   CALL InitializeTally_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           SuppressTally_Option = SuppressTally )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -474,48 +483,50 @@ PROGRAM ApplicationDriver
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, Euler_ComputeIncrement_DG_Explicit )
 
-    CALL TimersStart_Euler( Timer_Euler_InputOutput )
-    IF( iCycleW .GT. 0 )THEN
-      IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
-        wrt = .TRUE.
-    ELSE
-      IF( t + dt .GT. t_wrt )THEN
-        t_wrt = t_wrt + dt_wrt
-        wrt   = .TRUE.
-      END IF
-    END IF
-    CALL TimersStop_Euler( Timer_Euler_InputOutput )
-
-    IF( wrt )THEN
-
+    IF( .NOT. OPTIMIZE )THEN
       CALL TimersStart_Euler( Timer_Euler_InputOutput )
-      CALL ComputeFromConserved_Euler_Relativistic &
-             ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
-               uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nGF), &
-               uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nCF), &
-               uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nPF), &
-               uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nAF) )
-
-      CALL WriteFieldsHDF &
-             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+      IF( iCycleW .GT. 0 )THEN
+        IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
+          wrt = .TRUE.
+      ELSE
+        IF( t + dt .GT. t_wrt )THEN
+          t_wrt = t_wrt + dt_wrt
+          wrt   = .TRUE.
+        END IF
+      END IF
       CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
-      CALL ComputeTally_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, &
-             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+      IF( wrt )THEN
 
-      wrt = .FALSE.
+        CALL TimersStart_Euler( Timer_Euler_InputOutput )
+        CALL ComputeFromConserved_Euler_Relativistic &
+               ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+                 uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nGF), &
+                 uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nCF), &
+                 uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nPF), &
+                 uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nAF) )
 
+        CALL WriteFieldsHDF &
+               ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+        CALL TimersStop_Euler( Timer_Euler_InputOutput )
+
+        CALL ComputeTally_Euler_Relativistic_IDEAL &
+             ( iX_B0, iX_E0, &
+               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+               Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+
+        wrt = .FALSE.
+
+      END IF
     END IF
 
   END DO
@@ -525,25 +536,27 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A,ES13.6E3,A)') 'Total evolution time: ', Timer_Evolution, ' s'
   WRITE(*,*)
 
-  CALL TimersStart_Euler( Timer_Euler_InputOutput )
-  CALL ComputeFromConserved_Euler_Relativistic &
-         ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
-           uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nGF), &
-           uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nCF), &
-           uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nPF), &
-           uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nAF) )
+  IF( .NOT. OPTIMIZE )THEN
+    CALL TimersStart_Euler( Timer_Euler_InputOutput )
+    CALL ComputeFromConserved_Euler_Relativistic &
+           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+             uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),1:nGF), &
+             uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),1:nCF), &
+             uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),1:nPF), &
+             uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),1:nAF) )
 
-  CALL WriteFieldsHDF &
-         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
-  CALL TimersStop_Euler( Timer_Euler_InputOutput )
+    CALL WriteFieldsHDF &
+           ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+    CALL TimersStop_Euler( Timer_Euler_InputOutput )
+  END IF
 
   CALL ComputeTally_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, &
