@@ -32,7 +32,9 @@ MODULE MyAmrModule
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE UnitsModule,          ONLY: &
-    ActivateUnitsDisplay, UnitsDisplay
+    ActivateUnitsDisplay, &
+    DescribeUnitsDisplay, &
+    UnitsDisplay
 
   ! --- Local Modules ---
   USE MyAmrDataModule, ONLY: &
@@ -124,6 +126,7 @@ CONTAINS
 
     IF( UsePhysicalUnits ) &
       CALL ActivateUnitsDisplay
+    CALL DescribeUnitsDisplay
 
     IF( iCycleW .GT. 0 .AND. dt_wrt .GT. Zero )THEN
       WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'

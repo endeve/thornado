@@ -2,45 +2,80 @@ MODULE InputOutputModuleAMReX
 
   ! --- AMReX Modules ---
 
+  USE amrex_fort_module, ONLY: &
+    AR => amrex_real
+
   USE ISO_C_BINDING
   USE amrex_base_module
   USE amrex_amr_module
 
   ! --- thornado Modules ---
 
-  USE KindModule,              ONLY: &
-    DP
   USE ProgramHeaderModule,     ONLY: &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
-  USE GeometryFieldsModule
-  USE FluidFieldsModule
-
-  ! --- thornado Modules ---
-  USE ProgramHeaderModule,     ONLY: &
-    InitializeProgramHeader
-  USE ReferenceElementModuleX, ONLY: &
-    InitializeReferenceElementX, &
-    FinalizeReferenceElementX
-  USE FluidFieldsModule,       ONLY: &
-    nCF, nPF, nAF
   USE GeometryFieldsModule,    ONLY: &
-    nGF
+    ShortNamesGF, &
+    nGF,          &
+    iGF_Phi_N,    &
+    iGF_h_1,      &
+    iGF_h_2,      &
+    iGF_h_3,      &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
+    iGF_SqrtGm,   &
+    iGF_Alpha,    &
+    iGF_Beta_1,   &
+    iGF_Beta_2,   &
+    iGF_Beta_3,   &
+    iGF_Psi
+  USE FluidFieldsModule,       ONLY: &
+    ShortNamesCF, &
+    nCF,          &
+    iCF_D,        &
+    iCF_S1,       &
+    iCF_S2,       &
+    iCF_S3,       &
+    iCF_E,        &
+    iCF_Ne,       &
+    ShortNamesPF, &
+    nPF,          &
+    iPF_D,        &
+    iPF_V1,       &
+    iPF_V2,       &
+    iPF_V3,       &
+    iPF_E,        &
+    iPF_Ne,       &
+    ShortNamesAF, &
+    nAF,          &
+    iAF_P,        &
+    iAF_T,        &
+    iAF_Ye,       &
+    iAF_S,        &
+    iAF_E,        &
+    iAF_Me,       &
+    iAF_Mp,       &
+    iAF_Mn,       &
+    iAF_Xp,       &
+    iAF_Xn,       &
+    iAF_Xa,       &
+    iAF_Xh,       &
+    iAF_Gm,       &
+    iAF_Cs
   USE UnitsModule,             ONLY: &
-    Millisecond, &
-    Gram, &
-    Centimeter, &
-    Kilometer, &
-    Second, &
+    Joule,  &
     Kelvin, &
-    MeV, &
-    Erg, &
-    BoltzmannConstant
+    UnitsDisplay
 
   ! --- Local Modules ---
   USE MyAmrModule
-  USE MyAmrDataModule
+  USE MyAmrDataModule,    ONLY: &
+    MF_uGF, &
+    MF_uCF, &
+    MF_uPF, &
+    MF_uAF
   USE MF_UtilitiesModule, ONLY: &
     AMReX2thornado, &
     ShowVariableFromMultiFab
@@ -49,6 +84,8 @@ MODULE InputOutputModuleAMReX
   PRIVATE
 
   CHARACTER(8) :: BaseFileName = 'thornado'
+
+  REAL(AR), PARAMETER :: One = 1.0_AR
 
   PUBLIC :: ReadCheckpointFile
   PUBLIC :: WriteFieldsAMReX_Checkpoint
@@ -61,14 +98,14 @@ MODULE InputOutputModuleAMReX
                    pMF_uGF, pMF_uCF, pMF_uPF, pMF_uAF ) BIND(c)
        IMPORT
        IMPLICIT NONE
-       INTEGER(c_int),   INTENT(in) :: StepNo(*)
-       INTEGER(c_int),   VALUE      :: FinestLevel
-       REAL(amrex_real), INTENT(in) :: dt(*), time(*), t_wrt
-       TYPE(c_ptr),      INTENT(in) :: pBA(*)
-       TYPE(c_ptr),      INTENT(in) :: pMF_uGF(*)
-       TYPE(c_ptr),      INTENT(in) :: pMF_uCF(*)
-       TYPE(c_ptr),      INTENT(in) :: pMF_uPF(*)
-       TYPE(c_ptr),      INTENT(in) :: pMF_uAF(*)
+       INTEGER(c_int), INTENT(in) :: StepNo(*)
+       INTEGER(c_int), VALUE      :: FinestLevel
+       REAL(AR),       INTENT(in) :: dt(*), time(*), t_wrt
+       TYPE(c_ptr),    INTENT(in) :: pBA(*)
+       TYPE(c_ptr),    INTENT(in) :: pMF_uGF(*)
+       TYPE(c_ptr),    INTENT(in) :: pMF_uCF(*)
+       TYPE(c_ptr),    INTENT(in) :: pMF_uPF(*)
+       TYPE(c_ptr),    INTENT(in) :: pMF_uAF(*)
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
@@ -76,11 +113,11 @@ MODULE InputOutputModuleAMReX
                    pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
-      INTEGER(c_int),   INTENT(out) :: FinestLevel(*)
-      INTEGER(c_int),   INTENT(out) :: StepNo(*)
-      REAL(amrex_real), INTENT(out) :: dt(*), time(*), t_wrt
-      TYPE(c_ptr),      INTENT(out) :: pBA(*), pDM(*)
-      INTEGER(c_int),   VALUE       :: iChkFile
+      INTEGER(c_int), INTENT(out) :: FinestLevel(*)
+      INTEGER(c_int), INTENT(out) :: StepNo(*)
+      REAL(AR),       INTENT(out) :: dt(*), time(*), t_wrt
+      TYPE(c_ptr),    INTENT(out) :: pBA(*), pDM(*)
+      INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
 
     SUBROUTINE ReadMultiFabData( FinestLevel, pMF, iMF, iChkFile ) BIND(c)
@@ -130,9 +167,7 @@ CONTAINS
 
   SUBROUTINE ReadCheckpointFile( iChkFile )
 
-    USE amrex_amr_module
     USE MyAmrModule
-    USE MyAmrDataModule
 
     IMPLICIT NONE
 
@@ -223,7 +258,7 @@ CONTAINS
   SUBROUTINE WriteFieldsAMReX_PlotFile &
     ( Time, StepNo, MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, MF_uAF_Option )
 
-    REAL(amrex_real),     INTENT(in)           :: Time
+    REAL(AR),             INTENT(in)           :: Time
     INTEGER,              INTENT(in)           :: StepNo(0:nLevels)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:nLevels)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCF_Option(0:nLevels)
@@ -242,7 +277,6 @@ CONTAINS
     TYPE(amrex_boxarray)            :: BA   (0:nLevels)
     TYPE(amrex_distromap)           :: DM   (0:nLevels)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
-    REAL(amrex_real)                :: TimeUnit
 
     ! --- Offset for C++ indexing ---
     iOS_CPP = 1
@@ -375,15 +409,9 @@ CONTAINS
 
     END DO ! End of loop over levels
 
-    IF( UsePhysicalUnits )THEN
-      TimeUnit = Millisecond
-    ELSE
-      TimeUnit = 1.0_amrex_real
-    END IF
-
     CALL amrex_write_plotfile &
            ( PlotFileName, nLevels+1, MF_PF, VarNames, &
-             GEOM, Time / TimeUnit, StepNo, amrex_ref_ratio )
+             GEOM, Time / UnitsDisplay % TimeUnit, StepNo, amrex_ref_ratio )
 
     DO iLevel = 0, nLevels
       CALL amrex_multifab_destroy ( MF_PF(iLevel) )
@@ -404,13 +432,13 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_A
     CHARACTER(2),         INTENT(in)    :: Field
 
-    INTEGER            :: iX1, iX2, iX3, iComp
-    INTEGER            :: lo(4), hi(4)
-    REAL(amrex_real)   :: u_K(nDOFX,nComp)
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
-    REAL(amrex_real), CONTIGUOUS, POINTER :: u  (:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: u_A(:,:,:,:)
+    INTEGER                       :: iX1, iX2, iX3, iComp
+    INTEGER                       :: lo(4), hi(4)
+    REAL(AR)                      :: u_K(nDOFX,nComp)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(AR), CONTIGUOUS, POINTER :: u  (:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: u_A(:,:,:,:)
 
     CALL amrex_mfiter_build( MFI, MF, tiling = .TRUE. )
 
@@ -442,8 +470,7 @@ CONTAINS
       END DO
       END DO
 
-      IF( UsePhysicalUnits ) &
-        CALL ConvertToPhysicalUnits( nComp, iOS, u_A, Field )
+      CALL ConvertUnits( nComp, iOS, u_A, Field )
 
     END DO
 
@@ -452,14 +479,14 @@ CONTAINS
   END SUBROUTINE MF_ComputeCellAverage
 
 
-  SUBROUTINE ConvertToPhysicalUnits( nComp, iOS, u_A, Field )
+  SUBROUTINE ConvertUnits( nComp, iOS, u_A, Field )
 
-    INTEGER,          INTENT(in)    :: nComp, iOS
-    REAL(amrex_real), INTENT(inout) :: u_A(:,:,:,:)
-    CHARACTER(2),     INTENT(in)    :: Field
+    INTEGER,      INTENT(in)    :: nComp, iOS
+    REAL(AR),     INTENT(inout) :: u_A(:,:,:,:)
+    CHARACTER(2), INTENT(in)    :: Field
 
-    INTEGER          :: iComp
-    REAL(amrex_real) :: unitsGF(nGF), unitsCF(nCF), unitsPF(nPF), unitsAF(nAF)
+    INTEGER  :: iComp
+    REAL(AR) :: unitsGF(nGF), unitsCF(nCF), unitsPF(nPF), unitsAF(nAF)
 
     CALL SetUnitsFields( unitsGF, unitsCF, unitsPF, unitsAF )
 
@@ -493,66 +520,105 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE ConvertToPhysicalUnits
+  END SUBROUTINE ConvertUnits
 
 
   SUBROUTINE SetUnitsFields( unitsGF, unitsCF, unitsPF, unitsAF )
 
-    REAL(amrex_real), INTENT(out) :: unitsGF(nGF)
-    REAL(amrex_real), INTENT(out) :: unitsCF(nCF)
-    REAL(amrex_real), INTENT(out) :: unitsPF(nPF)
-    REAL(amrex_real), INTENT(out) :: unitsAF(nAF)
+    REAL(AR), INTENT(out) :: unitsGF(nGF)
+    REAL(AR), INTENT(out) :: unitsCF(nCF)
+    REAL(AR), INTENT(out) :: unitsPF(nPF)
+    REAL(AR), INTENT(out) :: unitsAF(nAF)
 
     ! --- Geometry ---
 
-    unitsGF(iGF_Phi_N)    = Erg / Gram
-    unitsGF(iGF_h_1)      = 1.0_amrex_real
-    unitsGF(iGF_h_2)      = 1.0_amrex_real
-    unitsGF(iGF_h_3)      = 1.0_amrex_real
-    unitsGF(iGF_Gm_dd_11) = 1.0_amrex_real
-    unitsGF(iGF_Gm_dd_22) = 1.0_amrex_real
-    unitsGF(iGF_Gm_dd_33) = 1.0_amrex_real
-    unitsGF(iGF_SqrtGm)   = 1.0_amrex_real
-    unitsGF(iGF_Alpha)    = 1.0_amrex_real
-    unitsGF(iGF_Beta_1)   = Kilometer / Second
-    unitsGF(iGF_Beta_2)   = Kilometer / Second
-    unitsGF(iGF_Beta_3)   = Kilometer / Second
-    unitsGF(iGF_Psi)      = 1.0_amrex_real
+    unitsGF(iGF_Phi_N)    &
+      = UnitsDisplay % EnergyDensityUnit / UnitsDisplay % MassDensityUnit
+    unitsGF(iGF_h_1)      &
+      = One
+    unitsGF(iGF_h_2)      &
+      = One
+    unitsGF(iGF_h_3)      &
+      = One
+    unitsGF(iGF_Gm_dd_11) &
+      = One
+    unitsGF(iGF_Gm_dd_22) &
+      = One
+    unitsGF(iGF_Gm_dd_33) &
+      = One
+    unitsGF(iGF_SqrtGm)   &
+      = One
+    unitsGF(iGF_Alpha)    &
+      = One
+    unitsGF(iGF_Beta_1)   &
+      = UnitsDisplay % VelocityUnit
+    unitsGF(iGF_Beta_2)   &
+      = UnitsDisplay % VelocityUnit
+    unitsGF(iGF_Beta_3)   &
+      = UnitsDisplay % VelocityUnit
+    unitsGF(iGF_Psi)      &
+      = One
 
     ! --- Conserved ---
 
-    unitsCF(iCF_D)  = Gram / Centimeter**3
-    unitsCF(iCF_S1) = Gram / Centimeter**2 / Second
-    unitsCF(iCF_S2) = Gram / Centimeter**2 / Second
-    unitsCF(iCF_S3) = Gram / Centimeter**2 / Second
-    unitsCF(iCF_E)  = Erg / Centimeter**3
-    unitsCF(iCF_Ne) = 1.0_amrex_real / Centimeter**3
+    unitsCF(iCF_D)  &
+      = UnitsDisplay % MassDensityUnit
+    unitsCF(iCF_S1) &
+      = UnitsDisplay % MomentumDensityUnit
+    unitsCF(iCF_S2) &
+      = UnitsDisplay % MomentumDensityUnit
+    unitsCF(iCF_S3) &
+      = UnitsDisplay % MomentumDensityUnit
+    unitsCF(iCF_E)  &
+      = UnitsDisplay % EnergyDensityUnit
+    unitsCF(iCF_Ne) &
+      = UnitsDisplay % ParticleDensityUnit
 
     ! --- Primitive ---
 
-    unitsPF(iPF_D)  = Gram / Centimeter**3
-    unitsPF(iPF_V1) = Kilometer / Second
-    unitsPF(iPF_V2) = Kilometer / Second
-    unitsPF(iPF_V3) = Kilometer / Second
-    unitsPF(iPF_E)  = Erg / Centimeter**3
-    unitsPF(iPF_Ne) = 1.0_amrex_real / Centimeter**3
+    unitsPF(iPF_D)  &
+      = UnitsDisplay % MassDensityUnit
+    unitsPF(iPF_V1) &
+      = UnitsDisplay % VelocityUnit
+    unitsPF(iPF_V2) &
+      = UnitsDisplay % VelocityUnit
+    unitsPF(iPF_V3) &
+      = UnitsDisplay % VelocityUnit
+    unitsPF(iPF_E)  &
+      = UnitsDisplay % EnergyDensityUnit
+    unitsPF(iPF_Ne) &
+      = UnitsDisplay % ParticleDensityUnit
 
     ! --- Auxiliary ---
 
-    unitsAF(iAF_P)  = Erg / Centimeter**3
-    unitsAF(iAF_T)  = Kelvin
-    unitsAF(iAF_Ye) = 1.0_amrex_real
-    unitsAF(iAF_S)  = BoltzmannConstant
-    unitsAF(iAF_E)  = Erg / Gram
-    unitsAF(iAF_Me) = MeV
-    unitsAF(iAF_Mp) = MeV
-    unitsAF(iAF_Mn) = MeV
-    unitsAF(iAF_Xp) = 1.0_amrex_real
-    unitsAF(iAF_Xn) = 1.0_amrex_real
-    unitsAF(iAF_Xa) = 1.0_amrex_real
-    unitsAF(iAF_Xh) = 1.0_amrex_real
-    unitsAF(iAF_Gm) = 1.0_amrex_real
-    unitsAF(iAF_Cs) = Kilometer / Second
+    unitsAF(iAF_P)  &
+      = UnitsDisplay % PressureUnit
+    unitsAF(iAF_T)  &
+      = UnitsDisplay % TemperatureUnit
+    unitsAF(iAF_Ye) &
+      = One
+    unitsAF(iAF_S)  &
+      = Joule / Kelvin
+    unitsAF(iAF_E)  &
+      = UnitsDisplay % EnergyDensityUnit / UnitsDisplay % MassDensityUnit
+    unitsAF(iAF_Me) &
+      = UnitsDisplay % EnergyUnit
+    unitsAF(iAF_Mp) &
+      = UnitsDisplay % EnergyUnit
+    unitsAF(iAF_Mn) &
+      = UnitsDisplay % EnergyUnit
+    unitsAF(iAF_Xp) &
+      = One
+    unitsAF(iAF_Xn) &
+      = One
+    unitsAF(iAF_Xa) &
+      = One
+    unitsAF(iAF_Xh) &
+      = One
+    unitsAF(iAF_Gm) &
+      = One
+    unitsAF(iAF_Cs) &
+      = UnitsDisplay % VelocityUnit
 
   END SUBROUTINE SetUnitsFields
 
