@@ -1,11 +1,11 @@
 MODULE InitializationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Three, &
-    Pi, TwoPi, FourPi
+    DP, Zero, Half, One, TwoPi
   USE UnitsModule, ONLY: &
     Gram, Centimeter, &
-    Kilometer, Erg, Second, Kelvin
+    Kilometer, Erg, Second, Kelvin, &
+    SpeedOfLight
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     iX_B0, iX_E0, &
@@ -36,15 +36,22 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields &
-    ( RiemannProblemName_Option )
+    ( AdvectionProfile_Option, RiemannProblemName_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
+      AdvectionProfile_Option, &
       RiemannProblemName_Option
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
 
     SELECT CASE ( TRIM( ProgramName ) )
+
+      CASE ( 'Advection' )
+
+        CALL InitializeFields_Advection &
+               ( AdvectionProfile_Option &
+                   = AdvectionProfile_Option )
 
       CASE ( 'RiemannProblem' )
 
@@ -69,6 +76,100 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE InitializeFields
+
+
+  SUBROUTINE InitializeFields_Advection &
+    ( AdvectionProfile_Option )
+
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
+      AdvectionProfile_Option
+
+    REAL(DP), PARAMETER :: D_0 = 1.0d12 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: Amp = 1.0d11 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: L   = 1.0d02 * Kilometer
+
+    CHARACTER(32) :: AdvectionProfile
+    INTEGER       :: iX1, iX2, iX3
+    INTEGER       :: iNodeX, iNodeX1
+    REAL(DP)      :: X1
+
+    IF( PRESENT( AdvectionProfile_Option ) )THEN
+      AdvectionProfile = TRIM( AdvectionProfile_Option )
+    ELSE
+      AdvectionProfile = 'SineWave'
+    END IF
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A,A)') &
+      '', 'Advection Profile: ', TRIM( AdvectionProfile )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        SELECT CASE ( TRIM( AdvectionProfile ) )
+
+          CASE( 'SineWave' )
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
+              = D_0 + Amp * SIN( TwoPi * X1 / L )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = 0.1_DP * SpeedOfLight
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+              = 0.0_DP * Kilometer / Second
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+              = 0.0_DP * Kilometer / Second
+            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) &
+              = 1.0d-2 * D_0 * SpeedOfLight**2
+            uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+              = 0.3_DP
+
+        END SELECT
+
+        CALL ComputeTemperatureFromPressure &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_T ) )
+
+        CALL ComputeThermodynamicStates_Primitive &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
+
+        CALL ComputeConserved_Euler_NonRelativistic &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Advection
 
 
   SUBROUTINE InitializeFields_RiemannProblem &
