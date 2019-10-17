@@ -3,8 +3,12 @@ PROGRAM ApplicationDriver
   USE KindModule, ONLY: &
     DP, One, Two, Pi, TwoPi
   USE UnitsModule, ONLY: &
-    Millisecond, Microsecond, &
+    Second, &
+    Millisecond, &
+    Microsecond, &
     Kilometer
+  USE PhysicalConstantsModule, ONLY: &
+    SpeedOfLightMKS
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_B1, iX_E0, iX_E1
   USE ProgramInitializationModule, ONLY: &
@@ -58,6 +62,7 @@ PROGRAM ApplicationDriver
   INCLUDE 'mpif.h'
 
   CHARACTER(32)  :: ProgramName
+  CHARACTER(32)  :: AdvectionProfile
   CHARACTER(32)  :: RiemannProblemName
   CHARACTER(32)  :: CoordinateSystem
   CHARACTER(128) :: EosTableName
@@ -73,11 +78,40 @@ PROGRAM ApplicationDriver
   REAL(DP)       :: BetaTVD, BetaTVB
   REAL(DP)       :: LimiterThresholdParameter
 
-  ProgramName = 'RiemannProblem'
+  ProgramName = 'Advection'
 
   EosTableName = 'wl-EOS-SFHo-15-25-50-noBCK.h5'
 
   SELECT CASE ( TRIM( ProgramName ) )
+
+    CASE( 'Advection' )
+
+      AdvectionProfile = 'SineWave'
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX = [ 08, 01, 01 ]
+      xL = [ 0.0d0, 0.0d0, 0.0d0 ] * Kilometer
+      xR = [ 1.0d2, 1.0d2, 1.0d2 ] * Kilometer
+
+      bcX = [ 1, 1, 1 ]
+
+      nNodes  = 3
+      nStages = 3
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 1.0d-2
+      UsePositivityLimiter      = .FALSE.
+
+      iCycleD = 10
+      t_end   = 1.0d1 * ( 1.0d5 / SpeedOfLightMKS ) * Second
+      dt_wrt  = 1.0d-1 * t_end
 
     CASE( 'RiemannProblem' )
 
@@ -265,7 +299,9 @@ PROGRAM ApplicationDriver
            Max_3_Option = ( One - EPSILON(One) ) * MaxY )
 
   CALL InitializeFields &
-         ( RiemannProblemName_Option &
+         ( AdvectionProfile_Option &
+             = TRIM( AdvectionProfile ), &
+           RiemannProblemName_Option &
              = TRIM( RiemannProblemName ) )
 
   CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
