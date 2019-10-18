@@ -176,6 +176,8 @@ MODULE EquationOfStateModule_TABLE
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
   !$OMP ( Ds_T, Ts_T, Ys_T, &
+  !$OMP   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, UnitMe, UnitMp, UnitMn, &
+  !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, &
   !$OMP   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
   !$OMP   OS_Xa, OS_Xh, OS_Gm, &
   !$OMP   Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, &
@@ -183,6 +185,8 @@ MODULE EquationOfStateModule_TABLE
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( Ds_T, Ts_T, Ys_T, &
+  !$ACC   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, UnitMe, UnitMp, UnitMn, &
+  !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, &
   !$ACC   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
   !$ACC   OS_Xa, OS_Xh, OS_Gm, &
   !$ACC   Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, &
@@ -386,13 +390,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO &
-    !$OMP ( UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
+    !$OMP ( Ds_T, Ts_T, Ys_T, &
+    !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
-    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm )
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: Ds_T, Ts_T, Ys_T, &
-    !$OMP          Ps_T, Ss_T, Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, &
-    !$OMP          Xas_T, Xhs_T, Gms_T )
+    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, Ps_T, Ss_T, &
+    !$OMP   Es_T, Mes_T, Mps_T, Mns_T, Xps_T, Xns_T, Xas_T, Xhs_T, Gms_T )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( Ds_T, Ts_T, Ys_T, &
@@ -1107,12 +1109,6 @@ CONTAINS
 
   SUBROUTINE ComputePressure_TABLE_Vector &
     ( D, T, Y, P, dPdD_Option, dPdT_Option, dPdY_Option )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
-#endif
 
     REAL(DP), INTENT(in)                    :: D(:), T(:), Y(:)
     REAL(DP), INTENT(out)                   :: P(:)
