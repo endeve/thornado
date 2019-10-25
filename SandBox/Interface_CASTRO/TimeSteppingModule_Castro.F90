@@ -86,6 +86,8 @@ CONTAINS
       SingleStage, &
       CallFromThornado
     INTEGER  :: &
+      iS, iCR, iZ4, iZ3, iZ2, iZ1, iNode, iCF, iNodeX
+    INTEGER  :: &
       iX_SW(3), iZ_SW(4), iZ_SW_P(4)
     REAL(DP) :: &
       U0_F &
@@ -213,7 +215,29 @@ CONTAINS
 
     ELSE
 
-      T0_R = Zero
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( T0_R, iZ_B1, iZ_E1 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
+      DO iS = 1, nSpecies
+        DO iCR = 1, nCR
+          DO iZ4 = iZ_B1(4), iZ_E1(4)
+            DO iZ3 = iZ_B1(3), iZ_E1(3)
+              DO iZ2 = iZ_B1(2), iZ_E1(2)
+                DO iZ1 = iZ_B1(1), iZ_E1(1)
+                  DO iNode = 1, nDOF
+                    T0_R(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
 
     END IF
 
@@ -239,8 +263,49 @@ CONTAINS
 
     ELSE
 
-      Q1_F = Zero
-      Q1_R = Zero
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( Q1_R, iZ_B1, iZ_E1 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
+      DO iS = 1, nSpecies
+        DO iCR = 1, nCR
+          DO iZ4 = iZ_B1(4), iZ_E1(4)
+            DO iZ3 = iZ_B1(3), iZ_E1(3)
+              DO iZ2 = iZ_B1(2), iZ_E1(2)
+                DO iZ1 = iZ_B1(1), iZ_E1(1)
+                  DO iNode = 1, nDOF
+                    Q1_R(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( Q1_F, iZ_B1, iZ_E1 )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
+      DO iCF = 1, nCF
+        DO iZ4 = iZ_B1(4), iZ_E1(4)
+          DO iZ3 = iZ_B1(3), iZ_E1(3)
+            DO iZ2 = iZ_B1(2), iZ_E1(2)
+              DO iNodeX = 1, nDOFX
+                Q1_F(iNodeX,iZ2,iZ3,iZ4,iCF) = Zero
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
 
     END IF
 
@@ -275,7 +340,29 @@ CONTAINS
 
       ELSE
 
-        T1_R = 0.0_DP
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+        !$ACC PRESENT( T1_R, iZ_B1, iZ_E1 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B1(4), iZ_E1(4)
+              DO iZ3 = iZ_B1(3), iZ_E1(3)
+                DO iZ2 = iZ_B1(2), iZ_E1(2)
+                  DO iZ1 = iZ_B1(1), iZ_E1(1)
+                    DO iNode = 1, nDOF
+                      T1_R(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
+                    END DO
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
 
       END IF
 
@@ -310,8 +397,49 @@ CONTAINS
 
       ELSE
 
-        Q1_F = Zero
-        Q1_R = Zero
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+        !$ACC PRESENT( Q1_R, iZ_B1, iZ_E1 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B1(4), iZ_E1(4)
+              DO iZ3 = iZ_B1(3), iZ_E1(3)
+                DO iZ2 = iZ_B1(2), iZ_E1(2)
+                  DO iZ1 = iZ_B1(1), iZ_E1(1)
+                    DO iNode = 1, nDOF
+                      Q1_R(iNode,iZ1,iZ2,iZ3,iZ4,iCR,iS) = Zero
+                    END DO
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( Q1_F, iZ_B1, iZ_E1 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO SIMD COLLAPSE(7)
+#endif
+        DO iCF = 1, nCF
+          DO iZ4 = iZ_B1(4), iZ_E1(4)
+            DO iZ3 = iZ_B1(3), iZ_E1(3)
+              DO iZ2 = iZ_B1(2), iZ_E1(2)
+                DO iNodeX = 1, nDOFX
+                  Q1_F(iNodeX,iZ2,iZ3,iZ4,iCF) = Zero
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
 
       END IF
 
