@@ -359,26 +359,18 @@ CONTAINS
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     IF( iRestart .LT. 0 )THEN
+
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
+
       CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-      CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-      CALL WriteFieldsAMReX_PlotFile &
-             ( t(0), StepNo, &
-               MF_uGF_Option = MF_uGF, &
-               MF_uCF_Option = MF_uCF, &
-               MF_uPF_Option = MF_uPF, &
-               MF_uAF_Option = MF_uAF )
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
-
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
       CALL MF_ApplySlopeLimiter_Euler     ( MF_uGF, MF_uCF, GEOM )
       CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
+
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
       CALL WriteFieldsAMReX_PlotFile &
              ( t(0), StepNo, &
@@ -386,7 +378,9 @@ CONTAINS
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF )
+
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
     END IF
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
