@@ -41,7 +41,7 @@ QuadratureModule.o: \
 UtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  UtilitiesModule.f90
+  UtilitiesModule.F90
 
 LagrangePolynomialsModule.o: \
   KindModule.o \

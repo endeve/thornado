@@ -5,7 +5,7 @@ Euler_UtilitiesModule_NonRelativistic.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
-  Euler_UtilitiesModule_NonRelativistic.f90
+  Euler_UtilitiesModule_NonRelativistic.F90
 
 Euler_UtilitiesModule_Relativistic.o: \
   KindModule.o \
@@ -14,7 +14,7 @@ Euler_UtilitiesModule_Relativistic.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
-  Euler_UtilitiesModule_Relativistic.f90
+  Euler_UtilitiesModule_Relativistic.F90
 
 Euler_UtilitiesModule.o: \
   KindModule.o \
@@ -101,7 +101,7 @@ Euler_BoundaryConditionsModule.o: \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   FluidFieldsModule.o \
-  Euler_BoundaryConditionsModule.f90
+  Euler_BoundaryConditionsModule.F90
 
 Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o: \
   KindModule.o \
@@ -147,7 +147,7 @@ Euler_SlopeLimiterModule_Relativistic_IDEAL.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
-  Euler_SlopeLimiterModule_Relativistic_IDEAL.f90
+  Euler_SlopeLimiterModule_Relativistic_IDEAL.F90
 
 Euler_SlopeLimiterModule.o: \
   KindModule.o \
