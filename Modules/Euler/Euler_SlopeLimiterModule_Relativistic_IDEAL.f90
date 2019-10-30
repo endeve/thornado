@@ -198,7 +198,9 @@ CONTAINS
     REAL(DP) :: SlopeDifference(nCF)
     REAL(DP) :: G_K(nGF)
     REAL(DP) :: dU (nCF,nDimsX)
-    REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
+    REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
     REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
     REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
     REAL(DP) :: R_X3(nCF,nCF), invR_X3(nCF,nCF)
@@ -253,21 +255,26 @@ CONTAINS
 
       DO iCF = 1, nCF
 
-        CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+        CALL MapNodalToModal_Fluid( U(:,iX1,iX2,iX3,iCF), &
+                                    U_M(iCF,0,:,iX1,iX2,iX3) )
 
         ! --- Cell Average of Neighbors in X1 Direction ---
 
-        U_M(iCF,1,1) = DOT_PRODUCT( WeightsX_q, U(:,iX1-1,iX2,iX3,iCF) )
+        U_M(iCF,1,1,iX1,iX2,iX3) &
+          = DOT_PRODUCT( WeightsX_q, U(:,iX1-1,iX2,iX3,iCF) )
 
-        U_M(iCF,2,1) = DOT_PRODUCT( WeightsX_q, U(:,iX1+1,iX2,iX3,iCF) )
+        U_M(iCF,2,1,iX1,iX2,iX3) &
+          = DOT_PRODUCT( WeightsX_q, U(:,iX1+1,iX2,iX3,iCF) )
 
         IF( nDimsX .GT. 1 )THEN
 
           ! --- Cell Average of Neighbors in X2 Direction ---
 
-          U_M(iCF,3,1) = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2-1,iX3,iCF) )
+          U_M(iCF,3,1,iX1,iX2,iX3) &
+            = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2-1,iX3,iCF) )
 
-          U_M(iCF,4,1) = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2+1,iX3,iCF) )
+          U_M(iCF,4,1,iX1,iX2,iX3) &
+            = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2+1,iX3,iCF) )
 
         END IF
 
@@ -275,9 +282,11 @@ CONTAINS
 
           ! --- Cell Average of Neighbors in X3 Direction ---
 
-          U_M(iCF,5,1) = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2,iX3-1,iCF) )
+          U_M(iCF,5,1,iX1,iX2,iX3) &
+            = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2,iX3-1,iCF) )
 
-          U_M(iCF,6,1) = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2,iX3+1,iCF) )
+          U_M(iCF,6,1,iX1,iX2,iX3) &
+            = DOT_PRODUCT( WeightsX_q, U(:,iX1,iX2,iX3+1,iCF) )
 
         END IF
 
@@ -295,19 +304,19 @@ CONTAINS
         ! --- Compute Eigenvectors ---
 
         CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-               ( 1, G_K, U_M(:,0,1), R_X1, invR_X1 )
+               ( 1, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X1, invR_X1 )
 
         IF( nDimsX .GT. 1 )THEN
 
           CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-                 ( 2, G_K, U_M(:,0,1), R_X2, invR_X2 )
+                 ( 2, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X2, invR_X2 )
 
         END IF
 
         IF( nDimsX .GT. 2 )THEN
 
           CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-                 ( 3, G_K, U_M(:,0,1), R_X3, invR_X3 )
+                 ( 3, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X3, invR_X3 )
 
         END IF
 
@@ -325,18 +334,22 @@ CONTAINS
 
       dU(:,1) &
         = MinModB &
-            ( MATMUL( invR_X1, U_M(:,0,2) ), &
-              BetaTVD * MATMUL( invR_X1, (U_M(:,0,1)-U_M(:,1,1)) ), &
-              BetaTVD * MATMUL( invR_X1, (U_M(:,2,1)-U_M(:,0,1)) ), &
+            ( MATMUL( invR_X1, U_M(:,0,2,iX1,iX2,iX3) ), &
+              BetaTVD * MATMUL( invR_X1, &
+                          (U_M(:,0,1,iX1,iX2,iX3)-U_M(:,1,1,iX1,iX2,iX3)) ), &
+              BetaTVD * MATMUL( invR_X1, &
+                          (U_M(:,2,1,iX1,iX2,iX3)-U_M(:,0,1,iX1,iX2,iX3)) ), &
               dX1, BetaTVB )
 
       IF( nDimsX .GT. 1 )THEN
 
         dU(:,2) &
           = MinModB &
-              ( MATMUL( invR_X2, U_M(:,0,3) ), &
-                BetaTVD * MATMUL( invR_X2, (U_M(:,0,1)-U_M(:,3,1)) ), &
-                BetaTVD * MATMUL( invR_X2, (U_M(:,4,1)-U_M(:,0,1)) ), &
+              ( MATMUL( invR_X2, U_M(:,0,3,iX1,iX2,iX3) ), &
+                BetaTVD * MATMUL( invR_X2, &
+                            (U_M(:,0,1,iX1,iX2,iX3)-U_M(:,3,1,iX1,iX2,iX3)) ), &
+                BetaTVD * MATMUL( invR_X2, &
+                            (U_M(:,4,1,iX1,iX2,iX3)-U_M(:,0,1,iX1,iX2,iX3)) ), &
                 dX2, BetaTVB )
 
       END IF
@@ -345,9 +358,11 @@ CONTAINS
 
         dU(:,3) &
           = MinModB &
-              ( MATMUL( invR_X3, U_M(:,0,4) ), &
-                BetaTVD * MATMUL( invR_X3, (U_M(:,0,1)-U_M(:,5,1)) ), &
-                BetaTVD * MATMUL( invR_X3, (U_M(:,6,1)-U_M(:,0,1)) ), &
+              ( MATMUL( invR_X3, U_M(:,0,4,iX1,iX2,iX3) ), &
+                BetaTVD * MATMUL( invR_X3, &
+                            (U_M(:,0,1,iX1,iX2,iX3)-U_M(:,5,1,iX1,iX2,iX3)) ), &
+                BetaTVD * MATMUL( invR_X3, &
+                            (U_M(:,6,1,iX1,iX2,iX3)-U_M(:,0,1,iX1,iX2,iX3)) ), &
                 dX3, BetaTVB )
 
       END IF
@@ -376,13 +391,13 @@ CONTAINS
 
       DO iCF = 1, nCF
 
-        SlopeDifference(iCF) = ABS( U_M(iCF,0,2) - dU(iCF,1) )
+        SlopeDifference(iCF) = ABS( U_M(iCF,0,2,iX1,iX2,iX3) - dU(iCF,1) )
 
         IF( nDimsX .GT. 1 )THEN
 
           SlopeDifference(iCF) &
             = MAX( SlopeDifference(iCF), &
-                   ABS( U_M(iCF,0,3) - dU(iCF,2) ) )
+                   ABS( U_M(iCF,0,3,iX1,iX2,iX3) - dU(iCF,2) ) )
 
         END IF
 
@@ -390,7 +405,7 @@ CONTAINS
 
           SlopeDifference(iCF) &
             = MAX( SlopeDifference(iCF), &
-                   ABS( U_M(iCF,0,4) - dU(iCF,3) ) )
+                   ABS( U_M(iCF,0,4,iX1,iX2,iX3) - dU(iCF,3) ) )
 
         END IF
 
@@ -401,17 +416,16 @@ CONTAINS
 
       DO iCF = 1, nCF
 
-        IF( SlopeDifference(iCF) .GT. SlopeTolerance * ABS( U_M(iCF,0,1) ) )THEN
+        IF( SlopeDifference(iCF) &
+              .GT. SlopeTolerance * ABS( U_M(iCF,0,1,iX1,iX2,iX3) ) )THEN
 
-          U_M(iCF,0,2:nDOFX) = Zero
+          U_M(iCF,0,2:nDOFX,iX1,iX2,iX3) = Zero
 
-          U_M(iCF,0,2) = dU(iCF,1)
+          U_M(iCF,0,2,iX1,iX2,iX3) = dU(iCF,1)
 
-          IF( nDimsX .GT. 1 ) U_M(iCF,0,3) = dU(iCF,2)
+          IF( nDimsX .GT. 1 ) U_M(iCF,0,3,iX1,iX2,iX3) = dU(iCF,2)
 
-          IF( nDimsX .GT. 2 ) U_M(iCF,0,4) = dU(iCF,3)
-
-          CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
+          IF( nDimsX .GT. 2 ) U_M(iCF,0,4,iX1,iX2,iX3) = dU(iCF,3)
 
           LimitedCell(iCF,iX1,iX2,iX3) = .TRUE.
 
@@ -419,6 +433,19 @@ CONTAINS
 
       END DO
 
+    END DO
+    END DO
+    END DO
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCF = 1, nCF
+
+      IF( LimitedCell(iCF,iX1,iX2,iX3) ) &
+        CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), &
+                                    U_M(iCF,0,:,iX1,iX2,iX3) )
+    END DO
     END DO
     END DO
     END DO
