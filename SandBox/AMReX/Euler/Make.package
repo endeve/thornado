@@ -57,18 +57,18 @@ F90EXE_sources += ReferenceElementModuleX.F90
 f90EXE_sources += PolynomialBasisModuleX_Lagrange.f90
 f90EXE_sources += PolynomialBasisModuleX_Legendre.f90
 F90EXE_sources += ReferenceElementModuleX_Lagrange.F90
-f90EXE_sources += UtilitiesModule.f90
+F90EXE_sources += UtilitiesModule.F90
 f90EXE_sources += PolynomialBasisModule_Lagrange.f90
 f90EXE_sources += PolynomialBasisModule_Legendre.f90
 F90EXE_sources += ReferenceElementModule.F90
 f90EXE_sources += PolynomialBasisMappingModule.f90
 f90EXE_sources += TimersModule_Euler.f90
 F90EXE_sources += DeviceModule.F90
-F90EXE_sources += LinearAlgebraModule.F90
+#F90EXE_sources += LinearAlgebraModule.F90
 
 # In THORNADO_DIR/Modules/Mesh:
 
-f90EXE_sources += MeshModule.f90
+F90EXE_sources += MeshModule.F90
 
 # In THORNADO_DIR/Modules/EquationOfState:
 
@@ -88,13 +88,13 @@ F90EXE_sources += FluidFieldsModule.F90
 
 # In THORNADO_DIR/Modules/Euler:
 
-f90EXE_sources += Euler_UtilitiesModule_NonRelativistic.f90
-f90EXE_sources += Euler_UtilitiesModule_Relativistic.f90
+F90EXE_sources += Euler_UtilitiesModule_NonRelativistic.F90
+F90EXE_sources += Euler_UtilitiesModule_Relativistic.F90
 F90EXE_sources += Euler_UtilitiesModule.F90
-f90EXE_sources += Euler_BoundaryConditionsModule.f90
+F90EXE_sources += Euler_BoundaryConditionsModule.F90
 f90EXE_sources += Euler_SlopeLimiterModule_NonRelativistic_IDEAL.f90
 f90EXE_sources += Euler_SlopeLimiterModule_NonRelativistic_TABLE.f90
-f90EXE_sources += Euler_SlopeLimiterModule_Relativistic_IDEAL.f90
+F90EXE_sources += Euler_SlopeLimiterModule_Relativistic_IDEAL.F90
 F90EXE_sources += Euler_SlopeLimiterModule.F90
 f90EXE_sources += Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL.f90
 f90EXE_sources += Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.f90

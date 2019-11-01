@@ -3,14 +3,14 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
   USE KindModule, ONLY: &
     DP, Zero, SqrtTiny, Half, One, Two, Four
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
+    nGF,          &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_SqrtGm, &
-    iGF_Alpha, &
-    iGF_Beta_1, &
-    iGF_Beta_2, &
+    iGF_SqrtGm,   &
+    iGF_Alpha,    &
+    iGF_Beta_1,   &
+    iGF_Beta_2,   &
     iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
@@ -24,7 +24,8 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
     ComputeSoundSpeedFromPrimitive, &
     ComputePressureFromPrimitive
   USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler,  &
     Timer_Euler_CharacteristicDecomposition
 
   IMPLICIT NONE
@@ -48,8 +49,8 @@ CONTAINS
     ! --- Expressions for right and left eigenvector matrices from
     !     Rezzolla & Zanotti, Relativistic Hydrodynamics, Eq. 7.240-7.248 ---
 
-    REAL(DP) :: D(1), V1(1), V2(1), V3(1), E(1), Ne(1)
-    REAL(DP) :: P(1), Cs(1)
+    REAL(DP) :: D, V1, V2, V3, E, Ne
+    REAL(DP) :: P, Cs
     REAL(DP) :: Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq
     REAL(DP) :: Gmdd11, Gmdd22, Gmdd33, DetGm, LapseFunction, ShiftVector(3)
     REAL(DP) :: W, h, K
@@ -57,9 +58,12 @@ CONTAINS
     REAL(DP) :: LAMBDA_m, LAMBDA_p
     REAL(DP) :: Vm, Vp, Am, Ap, Nm, Np, Cm, Cp
     REAL(DP) :: xi, DELTA
-    REAL(DP) :: GAMMA_11, GAMMA_22
+    REAL(DP) :: GAMMA_11, GAMMA_22, GAMMA_33
 
-    LOGICAL  :: DEBUG = .FALSE.
+    LOGICAL  :: DEBUG    = .FALSE.
+    LOGICAL  :: DEBUG_X1 = .FALSE.
+    LOGICAL  :: DEBUG_X2 = .FALSE.
+    LOGICAL  :: DEBUG_X3 = .FALSE.
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
     INTEGER  :: i
 
@@ -75,18 +79,15 @@ CONTAINS
     ShiftVector(3) = G(iGF_Beta_3)
 
     CALL ComputePrimitive_Euler_Relativistic &
-           ( [U(iCF_D )], [U(iCF_S1)], [U(iCF_S2)], &
-             [U(iCF_S3)], [U(iCF_E )], [U(iCF_Ne)], &
-             D, V1, V2, V3, E, Ne, &
-             [G(iGF_Gm_dd_11)], &
-             [G(iGF_Gm_dd_22)], &
-             [G(iGF_Gm_dd_33)] )
+           ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
+             D, V1, V2, V3, E, Ne,                                           &
+             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33) )
 
     CALL ComputePressureFromPrimitive( D, E, Ne, P )
 
-    Vu1 = V1(1)
-    Vu2 = V2(1)
-    Vu3 = V3(1)
+    Vu1 = V1
+    Vu2 = V2
+    Vu3 = V3
 
     Vd1 = Gmdd11 * Vu1
     Vd2 = Gmdd22 * Vu2
@@ -96,14 +97,15 @@ CONTAINS
 
     ! --- Auxiliary quantities ---
     W = One / SQRT( One - VSq )
-    h = One + ( E(1) + P(1) ) / D(1)
+    h = One + ( E + P ) / D
 
     CALL ComputeSoundSpeedFromPrimitive( D, E, Ne, Cs )
 
     ! --- Rezzolla, Eq. (7.244) ---
-    K = ( Gamma_IDEAL - One ) / ( Gamma_IDEAL - One - Cs(1)**2 )
+    K = ( Gamma_IDEAL - One ) / ( Gamma_IDEAL - One - Cs**2 )
 
     IF( DEBUG )THEN
+
       WRITE(*,*)
       WRITE(*,'(A)') 'Debugging CharacteristicDecompositionModule...'
       WRITE(*,*)
@@ -121,12 +123,13 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A)') '# Fluid variables'
       WRITE(*,'(A,ES24.16E3)') 'Gamma  = ', Gamma_IDEAL
-      WRITE(*,'(A,ES24.16E3)') 'rho    = ', D(1)
+      WRITE(*,'(A,ES24.16E3)') 'rho    = ', D
       WRITE(*,'(A,ES24.16E3)') 'Vu1    = ', Vu1
       WRITE(*,'(A,ES24.16E3)') 'Vu2    = ', Vu2
       WRITE(*,'(A,ES24.16E3)') 'Vu3    = ', Vu3
-      WRITE(*,'(A,ES24.16E3)') 'e      = ', E(1)
+      WRITE(*,'(A,ES24.16E3)') 'e      = ', E
       WRITE(*,*)
+
     END IF
 
     SELECT CASE( iDim )
@@ -134,7 +137,7 @@ CONTAINS
       CASE( 1 )
 
         EigVals = Eigenvalues_Euler_Relativistic &
-                    ( Vu1, Cs(1), Gmdd11, Vu1, Vu2, Vu3, &
+                    ( Vu1, Cs, Gmdd11, Vu1, Vu2, Vu3, &
                       Gmdd11, Gmdd22, Gmdd33, &
                       LapseFunction, ShiftVector(1) )
 
@@ -235,25 +238,32 @@ CONTAINS
                           Zero ]
         invR(6,:) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
-        IF( DEBUG )THEN
+        IF( DEBUG_X1 )THEN
 
           WRITE(*,*)
-          WRITE(*,'(A)') 'X1'
+          WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X1)'
+          WRITE(*,'(2x,A)') '-------------------------------------------'
           WRITE(*,*)
 
-          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
+!!$          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
 
-          WRITE(*,*) 'EigVals:'
+          WRITE(*,'(4x,A)') 'Eigenvalues'
+          WRITE(*,'(4x,A)') '-----------'
           DO i = 1, nCF
-            WRITE(*,'(ES11.2E3)') EigVals(i)
+            WRITE(*,'(6x,ES10.2E3)') EigVals(i)
           END DO
           WRITE(*,*)
 
-          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
-!!$          WRITE(*,*) 'LAMBDA = inv(R) x dFdU x R:'
+!!$          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
+!!$          WRITE(*,'(4x,A)') '--------------------------'
+!!$          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
+          WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
+          WRITE(*,'(4x,A)') '-----------------'
+          LAMBDA = MATMUL( invR, R )
           DO i = 1, nCF
-            WRITE(*,'(6ES11.2E3)') LAMBDA(i,1), LAMBDA(i,2), LAMBDA(i,3), &
-                                   LAMBDA(i,4), LAMBDA(i,5), LAMBDA(i,6)
+            WRITE(*,'(6x,6ES11.2E3)') &
+              absX(LAMBDA(i,1)), absX(LAMBDA(i,2)), absX(LAMBDA(i,3)), &
+              absX(LAMBDA(i,4)), absX(LAMBDA(i,5)), absX(LAMBDA(i,6))
           END DO
           WRITE(*,*)
 
@@ -262,7 +272,7 @@ CONTAINS
       CASE( 2 )
 
         EigVals = Eigenvalues_Euler_Relativistic &
-                    ( Vu2, Cs(1), Gmdd22, Vu1, Vu2, Vu3, &
+                    ( Vu2, Cs, Gmdd22, Vu1, Vu2, Vu3, &
                       Gmdd11, Gmdd22, Gmdd33, &
                       LapseFunction, ShiftVector(2) )
 
@@ -285,17 +295,17 @@ CONTAINS
                    h * W * Vd3, &
                    h * W * Am - One, &
                    Zero ]
-        R(:,2) = [ K / ( h * W ), &
-                   Vd1, &
-                   Vd2, &
-                   Vd3, &
-                   One - K / ( h * W ), &
-                   Zero ]
-        R(:,3) = [ W * Vd1, &
+        R(:,2) = [ W * Vd1, &
                    h * ( Gmdd11 + Two * W**2 * Vd1 * Vd1 ), &
                    h *            Two * W**2 * Vd2 * Vd1, &
                    h *            Two * W**2 * Vd3 * Vd1, &
                    W * Vd1 * ( Two * h * W - One ), &
+                   Zero ]
+        R(:,3) = [ K / ( h * W ), &
+                   Vd1, &
+                   Vd2, &
+                   Vd3, &
+                   One - K / ( h * W ), &
                    Zero ]
         R(:,4) = [ W * Vd3, &
                    h *            Two * W**2 * Vd1 * Vd3, &
@@ -336,15 +346,15 @@ CONTAINS
                           Vp * Vu3 * ( Two * K - One ) * W**2 * xi, &
                           Nm, &
                           Zero ]
-        invR(2,:) = W / ( K - One ) &
-                      * [ h - W, W * Vu1, W * Vu2, W * Vu3, -W, Zero ]
-        invR(3,:) = One / ( h * xi ) &
+        invR(2,:) = One / ( h * xi ) &
                       * [ -Gmdd33 * Vd1, &
                           Gmdd33 * ( One - Vd2 * Vu2 ), &
                           Vu2 * Gmdd33 * Vd1, &
                           Zero, &
                           -Gmdd33 * Vd1, &
                           Zero ]
+        invR(3,:) = W / ( K - One ) &
+                      * [ h - W, W * Vu1, W * Vu2, W * Vu3, -W, Zero ]
         invR(4,:) = One / ( h * xi ) &
                       * [ -Gmdd11 * Vd3, &
                           Zero, &
@@ -363,25 +373,167 @@ CONTAINS
                           Zero ]
         invR(6,:) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
-        IF( DEBUG )THEN
+        IF( DEBUG_X2 )THEN
 
           WRITE(*,*)
-          WRITE(*,'(A)') 'X2'
+          WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X2)'
+          WRITE(*,'(2x,A)') '-------------------------------------------'
           WRITE(*,*)
 
-          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
+!!$          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
 
-          WRITE(*,*) 'EigVals:'
+          WRITE(*,'(4x,A)') 'Eigenvalues'
+          WRITE(*,'(4x,A)') '-----------'
           DO i = 1, nCF
-            WRITE(*,'(ES11.2E3)') EigVals(i)
+            WRITE(*,'(6x,ES10.2E3)') EigVals(i)
           END DO
           WRITE(*,*)
 
-          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
-!!$          WRITE(*,*) 'LAMBDA = inv(R) x dFdU x R:'
+!!$          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
+!!$          WRITE(*,'(4x,A)') '--------------------------'
+!!$          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
+          WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
+          WRITE(*,'(4x,A)') '-----------------'
+          LAMBDA = MATMUL( invR, R )
           DO i = 1, nCF
-            WRITE(*,'(6ES11.2E3)') LAMBDA(i,1), LAMBDA(i,2), LAMBDA(i,3), &
-                                   LAMBDA(i,4), LAMBDA(i,5), LAMBDA(i,6)
+            WRITE(*,'(6x,6ES11.2E3)') &
+              absX(LAMBDA(i,1)), absX(LAMBDA(i,2)), absX(LAMBDA(i,3)), &
+              absX(LAMBDA(i,4)), absX(LAMBDA(i,5)), absX(LAMBDA(i,6))
+          END DO
+          WRITE(*,*)
+
+        END IF
+
+      CASE( 3 )
+
+        EigVals = Eigenvalues_Euler_Relativistic &
+                    ( Vu3, Cs, Gmdd33, Vu1, Vu2, Vu3, &
+                      Gmdd11, Gmdd22, Gmdd33, &
+                      LapseFunction, ShiftVector(3) )
+
+        ! --- lambda_m = EigVals(1) ---
+        ! --- lambda_p = EigVals(3) ---
+
+        ! --- Rezzolla, Eq. (7.245) ---
+        LAMBDA_m = ( EigVals(1) + ShiftVector(2) ) / LapseFunction
+        LAMBDA_p = ( EigVals(3) + ShiftVector(2) ) / LapseFunction
+
+        Vm = ( Vu3 - LAMBDA_m ) / ( One / Gmdd33 - Vu3 * LAMBDA_m )
+        Vp = ( Vu3 - LAMBDA_p ) / ( One / Gmdd33 - Vu3 * LAMBDA_p )
+
+        Am = ( One / Gmdd33 - Vu3 * Vu3 ) / ( One / Gmdd33 - Vu3 * LAMBDA_m )
+        Ap = ( One / Gmdd33 - Vu3 * Vu3 ) / ( One / Gmdd33 - Vu3 * LAMBDA_p )
+
+        R(:,1) = [ One, &
+                   h * W * Vd1, &
+                   h * W * Vd2, &
+                   h * W * ( Vd3 - Vm ), &
+                   h * W * Am - One, &
+                   Zero ]
+        R(:,2) = [ W * Vd1, &
+                   h * ( Gmdd11 + Two * W**2 * Vd1 * Vd1 ), &
+                   h *            Two * W**2 * Vd2 * Vd1, &
+                   h *            Two * W**2 * Vd3 * Vd1, &
+                   W * Vd1 * ( Two * h * W - One ), &
+                   Zero ]
+        R(:,3) = [ W * Vd2, &
+                   h *            Two * W**2 * Vd1 * Vd2, &
+                   h * ( Gmdd22 + Two * W**2 * Vd2 * Vd2 ), &
+                   h *            Two * W**2 * Vd3 * Vd2, &
+                   W * Vd2 * ( Two * h * W - One ), &
+                   Zero ]
+        R(:,4) = [ K / ( h * W ), &
+                   Vd1, &
+                   Vd2, &
+                   Vd3, &
+                   One - K / ( h * W ), &
+                   Zero ]
+        R(:,5) = [ One, &
+                   h * W * Vd1, &
+                   h * W * Vd2, &
+                   h * W * ( Vd3 - Vp ), &
+                   h * W * Ap - One, &
+                   Zero ]
+        R(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
+
+        ! --- Rezzolla, Eq. (7.251) ---
+        GAMMA_33 = Gmdd11 * Gmdd22
+        xi = GAMMA_33 - DetGm * Vu3**2
+
+        ! --- Rezzolla, Eq. (7.249) ---
+        Nm = ( One - K ) * ( -DetGm * Vu3 + Vp * ( W**2 * xi - GAMMA_33 ) ) &
+               - K * W**2 * Vp * xi
+        Np = ( One - K ) * ( -DetGm * Vu3 + Vm * ( W**2 * xi - GAMMA_33 ) ) &
+               - K * W**2 * Vm * xi
+
+        ! --- Rezzolla, Eq. (7.250) ---
+        Cm = Vd3 - Vm
+        Cp = Vd3 - Vp
+        DELTA = h**3 * W * ( K - One ) * ( Cp - Cm ) * xi
+
+        ! --- Transpose of L, Eqs. (7.246-7.248) ---
+        invR(1,:) = + h**2 / DELTA &
+                      * [ h * W * Vp * xi + Nm, &
+                          Vp * Vu1 * ( Two * K - One ) * W**2 * xi, &
+                          Vp * Vu2 * ( Two * K - One ) * W**2 * xi, &
+                          Vp * Vu3 * ( Two * K - One ) &
+                            * ( W**2 * xi - GAMMA_33 ) &
+                            + GAMMA_33 * ( One - K * Ap ), &
+                          Nm, &
+                          Zero ]
+        invR(2,:) = One / ( h * xi ) &
+                      * [ -Gmdd22 * Vd1, &
+                          Gmdd22 * ( One - Vd3 * Vu3 ), &
+                          Zero, &
+                          Vu3 * Gmdd22 * Vd1, &
+                          -Gmdd22 * Vd1, &
+                          Zero ]
+        invR(3,:) = One / ( h * xi ) &
+                      * [ -Gmdd11 * Vd2, &
+                          Zero, &
+                          Gmdd11 * ( One - Vd3 * Vu3 ), &
+                          Vu3 * Gmdd11 * Vd2, &
+                          -Gmdd11 * Vd2, &
+                          Zero ]
+        invR(4,:) = W / ( K - One ) &
+                      * [ h - W, W * Vu1, W * Vu2, W * Vu3, -W, Zero ]
+        invR(5,:) = - h**2 / DELTA &
+                      * [ h * W * Vm * xi + Np, &
+                          Vm * Vu1 * ( Two * K - One ) * W**2 * xi, &
+                          Vm * Vu2 * ( Two * K - One ) * W**2 * xi, &
+                          Vm * Vu3 * ( Two * K - One ) &
+                            * ( W**2 * xi - GAMMA_33 ) &
+                            + GAMMA_33 * ( One - K * Am ), &
+                          Np, &
+                          Zero ]
+        invR(6,:) = [ Zero, Zero, Zero, Zero, Zero, One ]
+
+        IF( DEBUG_X3 )THEN
+
+          WRITE(*,*)
+          WRITE(*,'(2x,A)') 'Debugging characteristic decomposition (X3)'
+          WRITE(*,'(2x,A)') '-------------------------------------------'
+          WRITE(*,*)
+
+!!$          CALL ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
+
+          WRITE(*,'(4x,A)') 'Eigenvalues'
+          WRITE(*,'(4x,A)') '-----------'
+          DO i = 1, nCF
+            WRITE(*,'(6x,ES10.2E3)') EigVals(i)
+          END DO
+          WRITE(*,*)
+
+!!$          WRITE(*,'(4x,A)') 'Diagonalized flux-jacobian'
+!!$          WRITE(*,'(4x,A)') '--------------------------'
+!!$          LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
+          WRITE(*,'(4x,A)') 'MATMUL( invR, R )'
+          WRITE(*,'(4x,A)') '-----------------'
+          LAMBDA = MATMUL( invR, R )
+          DO i = 1, nCF
+            WRITE(*,'(6x,6ES11.2E3)') &
+              absX(LAMBDA(i,1)), absX(LAMBDA(i,2)), absX(LAMBDA(i,3)), &
+              absX(LAMBDA(i,4)), absX(LAMBDA(i,5)), absX(LAMBDA(i,6))
           END DO
           WRITE(*,*)
 
@@ -390,9 +542,9 @@ CONTAINS
       CASE DEFAULT
 
         WRITE(*,*)
-        WRITE(*,'(A5,A,I2.2)') '', 'Dimension = ', iDim
-        WRITE(*,'(A5,A)') &
-          '', 'Characteristic limiting not implemented for dimension > 2'
+        WRITE(*,'(5x,A,I1.1)') 'Dimension = ', iDim
+        WRITE(*,'(5x,A)') &
+          'Characteristic limiting not implemented for dimension > 2'
         WRITE(*,'(A5,A)') '', 'Stopping...'
         STOP
 
@@ -401,6 +553,19 @@ CONTAINS
     CALL TimersStop_Euler( Timer_Euler_CharacteristicDecomposition )
 
   END SUBROUTINE ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
+
+  REAL(DP) FUNCTION absX( X )
+
+    REAL(DP), INTENT(in) :: X
+
+    IF( ABS( X ) .LT. 1.0d-15 )THEN
+      absX = Zero
+    ELSE
+      absX = X
+    END IF
+
+    RETURN
+  END FUNCTION absX
 
 
 !!$  ! --- Find the inverse of a matrix, function definition from
@@ -441,6 +606,7 @@ CONTAINS
 !!$    END IF
 !!$  END FUNCTION inv
 
+
   SUBROUTINE ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
 
     INTEGER,  INTENT(in)  :: iDim
@@ -448,10 +614,12 @@ CONTAINS
     REAL(DP), INTENT(out) :: dFdU(nCF,nCF)
 
     REAL(DP) :: Gmdd11, Gmdd22, Gmdd33, LapseFunction, ShiftVector(3), eta
-    REAL(DP) :: D(1), V1(1), V2(1), V3(1), E(1), Ne(1), P(1), Cs(1)
+    REAL(DP) :: D, V1, V2, V3, E, Ne, P, Cs
     REAL(DP) :: Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq, W
     REAL(DP) :: rho, epsilon, kappa, chi, h
     REAL(DP) :: dUdV(nCF,nCF), dFdV(nCF,nCF)
+
+    REAL(DP) :: Vui(3), Vdj(3), Vdk(3)
 
     Gmdd11         = G(iGF_Gm_dd_11)
     Gmdd22         = G(iGF_Gm_dd_22)
@@ -462,31 +630,32 @@ CONTAINS
     ShiftVector(3) = G(iGF_Beta_3)
 
     CALL ComputePrimitive_Euler_Relativistic &
-           ( [U(iCF_D )], [U(iCF_S1)], [U(iCF_S2)], &
-             [U(iCF_S3)], [U(iCF_E )], [U(iCF_Ne)], &
+           ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
              D, V1, V2, V3, E, Ne, &
-             [G(iGF_Gm_dd_11)], &
-             [G(iGF_Gm_dd_22)], &
-             [G(iGF_Gm_dd_33)] )
+             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33) )
 
     CALL ComputePressureFromPrimitive( D, E, Ne, P )
 
     CALL ComputeSoundSpeedFromPrimitive( D, E, Ne, Cs )
 
-    rho     = D(1)
-    epsilon = E(1) / D(1)
-    h = One + epsilon + P(1) / rho
+    rho     = D
+    epsilon = E / D
+    h = One + epsilon + P / rho
 
     chi   = ( Gamma_IDEAL - One ) * epsilon
     kappa = ( Gamma_IDEAL - One ) * rho
 
-    Vu1 = V1(1)
-    Vu2 = V2(1)
-    Vu3 = V3(1)
+    Vu1 = V1
+    Vu2 = V2
+    Vu3 = V3
 
     Vd1 = Gmdd11 * Vu1
     Vd2 = Gmdd22 * Vu2
     Vd3 = Gmdd33 * Vu3
+
+    Vui = [ Vu1, Vu2, Vu3 ]
+    Vdj = [ Vd1, Vd2, Vd3 ]
+    Vdk = [ Vd1, Vd2, Vd3 ]
 
     VSq = Vu1*Vd1 + Vu2*Vd2 + Vu3*Vd3
 
@@ -532,82 +701,81 @@ CONTAINS
 
         eta = ShiftVector(1) / LapseFunction
 
-        dFdV(:,1) = [ Vu1 * W - eta * W, &
-                      ( One + epsilon + chi ) * W**2 * Vu1 * Vd1 + chi &
-                        - eta * ( One + epsilon + chi ) * W**2 * Vd1, &
-                      ( One + epsilon + chi ) * W**2 * Vu1 * Vd2       &
-                        - eta * ( One + epsilon + chi ) * W**2 * Vd2, &
-                      ( One + epsilon + chi ) * W**2 * Vu1 * Vd3       &
-                        - eta * ( One + epsilon + chi ) * W**2 * Vd3, &
-                      ( One + epsilon + chi ) * W**2 * Vu1 - W * Vu1 &
-                        - eta * ( W * ( W * ( One + epsilon + VSq * chi ) &
+
+        dFdV(:,1) = [ Vui(1) * W - eta * W, &
+                      ( One + epsilon + chi ) * W**2 * Vui(1) * Vdj(1) + chi   &
+                        - eta * ( One + epsilon + chi ) * W**2 * Vdj(1),       &
+                      ( One + epsilon + chi ) * W**2 * Vui(1) * Vdj(2) + Zero  &
+                        - eta * ( One + epsilon + chi ) * W**2 * Vdj(2),       &
+                      ( One + epsilon + chi ) * W**2 * Vui(1) * Vdj(3) + Zero  &
+                        - eta * ( One + epsilon + chi ) * W**2 * Vdj(3),       &
+                      ( One + epsilon + chi ) * W**2 * Vui(1) - W * Vui(1)     &
+                        - eta * ( W * ( W * ( One + epsilon + VSq * chi )      &
                           - One ) ), &
                       Zero ]
-        dFdV(:,2) = [ rho * W * ( W**2 * Vu1 * Vd1 + One ) &
-                        - eta * rho * W**3 * Vd1, &
-                      rho * h * W**2 * ( Two * W**2 * Vu1 * Vd1 * Vd1 &
-                        + Vd1 + Gmdd11 * Vu1 ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd1 * Vd1 + Gmdd11 ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu1 * Vd2 * Vd1 &
-                        + Vd2                ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd2 * Vd1          ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu1 * Vd3 * Vd1 &
-                        + Vd3                ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd3 * Vd1          ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu1 * Vd1 + One ) &
-                        - rho * W * ( W**2 * Vu1 * Vd1 + One ) &
-                        - eta * rho * W**3 * Vd1 * ( Two * h * W - One ), &
+        dFdV(:,2) = [ rho * W * ( W**2 * Vui(1) * Vdk(1) + One  )              &
+                        - eta * rho * W**3 * Vdk(1),                           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdj(1) * Vdk(1) &
+                        + Vdj(1) + Gmdd11 * Vui(1) )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(1) * Vdk(1) + Gmdd11 ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdj(2) * Vdk(1) &
+                        + Vdj(2) +     Zero        )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(2) * Vdk(1) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdj(3) * Vdk(1) &
+                        + Vdj(3) +     Zero        )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(3) * Vdk(1) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdk(1) + One  ) &
+                        - rho * W * ( W**2 * Vui(1) * Vdk(1) + One  )          &
+                        - eta * rho * W**3 * Vdk(1) * ( Two * h * W - One ),   &
                       Zero ]
-
-        dFdV(:,3) = [ rho * W * ( W**2 * Vu1 * Vd2       ) &
-                        - eta * rho * W**3 * Vd2, &
-                      rho * h * W**2 * ( Two * W**2 * Vu1 * Vd1 * Vd2 &
-                                             ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd1 * Vd2          ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu1 * Vd2 * Vd2 &
-                        + Gmdd22 * Vu1 ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd2 * Vd2 + Gmdd22 ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu1 * Vd3 * Vd2 &
-                                             ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd3 * Vd2          ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu1 * Vd2       ) &
-                        - rho * W * ( W**2 * Vu1 * Vd2       ) &
-                        - eta * rho * W**3 * Vd2 * ( Two * h * W - One ), &
+        dFdV(:,3) = [ rho * W * ( W**2 * Vui(1) * Vdk(2) + Zero )              &
+                        - eta * rho * W**3 * Vdk(2),                           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdj(1) * Vdk(2) &
+                        + Zero + Zero              )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(1) * Vdk(2) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdj(2) * Vdk(2) &
+                        + Zero + Gmdd22 * Vui(1)   )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(2) * Vdk(2) + Gmdd22 ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdj(3) * Vdk(2) &
+                        + Zero + Zero              )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(3) * Vdk(2) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdk(2) + Zero ) &
+                        - rho * W * ( W**2 * Vui(1) * Vdk(2) + Zero )          &
+                        - eta * rho * W**3 * Vdk(2) * ( Two * h * W - One ),   &
                       Zero ]
-
-        dFdV(:,4) = [ rho * W * ( W**2 * Vu1 * Vd3       ) &
-                        - eta * rho * W**3 * Vd3, &
-                      rho * h * W**2 * ( Two * W**2 * Vu1 * Vd1 * Vd3 &
-                                             ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd1 * Vd3          ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu1 * Vd2 * Vd3 &
-                                             ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd2 * Vd3          ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu1 * Vd3 * Vd3 &
-                              + Gmdd33 * Vu1 ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd3 * Vd3 + Gmdd33 ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu1 * Vd3       ) &
-                        - rho * W * ( W**2 * Vu1 * Vd3       ) &
-                        - eta * rho * W**3 * Vd3 * ( Two * h * W - One ), &
+        dFdV(:,4) = [ rho * W * ( W**2 * Vui(1) * Vdk(3) + Zero )              &
+                        - eta * rho * W**3 * Vdk(3),                           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdj(1) * Vdk(3) &
+                        + Zero + Zero              )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(1) * Vdk(3) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdj(2) * Vdk(3) &
+                        + Zero + Zero              )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(2) * Vdk(3) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdj(3) * Vdk(3) &
+                        + Zero + Gmdd33 * Vui(1)   )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(3) * Vdk(3) + Gmdd33   ),         &
+                      rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdk(3) + Zero ) &
+                        - rho * W * ( W**2 * Vui(1) * Vdk(3) + Zero )          &
+                        - eta * rho * W**3 * Vdk(3) * ( Two * h * W - One ),   &
                       Zero ]
-        dFdV(:,5) = [ Zero, &
-                      ( rho + kappa ) * W**2 * Vu1 * Vd1 + kappa &
-                        - eta * ( rho + kappa ) * W**2 * Vd1, &
-                      ( rho + kappa ) * W**2 * Vu1 * Vd2         &
-                        - eta * ( rho + kappa ) * W**2 * Vd2, &
-                      ( rho + kappa ) * W**2 * Vu1 * Vd3         &
-                        - eta * ( rho + kappa ) * W**2 * Vd3, &
-                      W**2 * ( rho + kappa ) * Vu1 &
-                        - eta * ( W**2 * ( rho + VSq * kappa ) ), &
+        dFdV(:,5) = [ Zero,                                                    &
+                      ( rho + kappa ) * W**2 * Vui(1) * Vdj(1) + kappa         &
+                        - eta * ( rho + kappa ) * W**2 * Vdj(1),               &
+                      ( rho + kappa ) * W**2 * Vui(1) * Vdj(2) + Zero          &
+                        - eta * ( rho + kappa ) * W**2 * Vdj(2),               &
+                      ( rho + kappa ) * W**2 * Vui(1) * Vdj(3) + Zero          &
+                        - eta * ( rho + kappa ) * W**2 * Vdj(3),               &
+                      W**2 * ( rho + kappa ) * Vui(1)                          &
+                        - eta * ( W**2 * ( rho + VSq * kappa ) ),              &
                       Zero ]
         dFdV(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
@@ -615,81 +783,164 @@ CONTAINS
 
         eta = ShiftVector(2) / LapseFunction
 
-        dFdV(:,1) = [ Vu2 * W - eta * W, &
-                      ( One + epsilon + chi ) * W**2 * Vu2 * Vd1       &
-                        - eta * ( One + epsilon + chi ) * W**2 * Vd1, &
-                      ( One + epsilon + chi ) * W**2 * Vu2 * Vd2 + chi &
-                        - eta * ( One + epsilon + chi ) * W**2 * Vd2, &
-                      ( One + epsilon + chi ) * W**2 * Vu2 * Vd3       &
-                        - eta * ( One + epsilon + chi ) * W**2 * Vd3, &
-                      ( One + epsilon + chi ) * W**2 * Vu2 - W * Vu2 &
-                        - eta * ( W * ( W * ( One + epsilon + VSq * chi ) &
+        dFdV(:,1) = [ Vui(2) * W - eta * W, &
+                      ( One + epsilon + chi ) * W**2 * Vui(2) * Vdj(1) + Zero  &
+                        - eta * ( One + epsilon + chi ) * W**2 * Vdj(1),       &
+                      ( One + epsilon + chi ) * W**2 * Vui(2) * Vdj(2) + chi   &
+                        - eta * ( One + epsilon + chi ) * W**2 * Vdj(2),       &
+                      ( One + epsilon + chi ) * W**2 * Vui(2) * Vdj(3) + Zero  &
+                        - eta * ( One + epsilon + chi ) * W**2 * Vdj(3),       &
+                      ( One + epsilon + chi ) * W**2 * Vui(2) - W * Vui(2)     &
+                        - eta * ( W * ( W * ( One + epsilon + VSq * chi )      &
                           - One ) ), &
                       Zero ]
-        dFdV(:,2) = [ rho * W * ( W**2 * Vu2 * Vd1       ) &
-                        - eta * rho * W**3 * Vd1, &
-                      rho * h * W**2 * ( Two * W**2 * Vu2 * Vd1 * Vd1 &
-                        +       Gmdd11 * Vu2 ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd1 * Vd1 + Gmdd11 ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu2 * Vd2 * Vd1 &
-                                             ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd2 * Vd1          ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu2 * Vd3 * Vd1 &
-                                             ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd3 * Vd1          ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu2 * Vd1       ) &
-                        - rho * W * ( W**2 * Vu2 * Vd1       ) &
-                        - eta * rho * W**3 * Vd1 * ( Two * h * W - One ), &
+        dFdV(:,2) = [ rho * W * ( W**2 * Vui(2) * Vdk(1) + Zero )              &
+                        - eta * rho * W**3 * Vdk(1),                           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdj(1) * Vdk(1) &
+                        + Zero  + Gmdd11 * Vui(2)  )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(1) * Vdk(1) + Gmdd11 ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdj(2) * Vdk(1) &
+                        + Zero  +     Zero         )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(2) * Vdk(1) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdj(3) * Vdk(1) &
+                        + Zero  +     Zero         )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(3) * Vdk(1) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdk(1) + Zero ) &
+                        - rho * W * ( W**2 * Vui(2) * Vdk(1) + Zero )          &
+                        - eta * rho * W**3 * Vdk(1) * ( Two * h * W - One ),   &
                       Zero ]
-        dFdV(:,3) = [ rho * W * ( W**2 * Vu2 * Vd2 + One ) &
-                        - eta * rho * W**3 * Vd2, &
-                      rho * h * W**2 * ( Two * W**2 * Vu2 * Vd1 * Vd2 &
-                        + Vd1                ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd1 * Vd2          ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu2 * Vd2 * Vd2 &
-                        + Vd2 + Gmdd22 * Vu2 ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd2 * Vd2 + Gmdd22 ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu2 * Vd3 * Vd2 &
-                        + Vd3                    ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd3 * Vd2          ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu2 * Vd2 + One ) &
-                        - rho * W * ( W**2 * Vu2 * Vd2 + One ) &
-                        - eta * rho * W**3 * Vd2 * ( Two * h * W - One ), &
+        dFdV(:,3) = [ rho * W * ( W**2 * Vui(2) * Vdk(2) + One  )              &
+                        - eta * rho * W**3 * Vdk(2),                           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdj(1) * Vdk(2) &
+                        + Vdj(1) + Zero            )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(1) * Vdk(2) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdj(2) * Vdk(2) &
+                        + Vdj(2) + Gmdd22 * Vui(2) )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(2) * Vdk(2) + Gmdd22 ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdj(3) * Vdk(2) &
+                        + Vdj(3) + Zero            )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(3) * Vdk(2) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdk(2) + One  ) &
+                        - rho * W * ( W**2 * Vui(2) * Vdk(2) + One  )          &
+                        - eta * rho * W**3 * Vdk(2) * ( Two * h * W - One ),   &
                       Zero ]
-        dFdV(:,4) = [ rho * W * ( W**2 * Vu2 * Vd3       ) &
-                        - eta * rho * W**3 * Vd3, &
-                      rho * h * W**2 * ( Two * W**2 * Vu2 * Vd1 * Vd3 &
-                                             ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd1 * Vd3          ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu2 * Vd2 * Vd3 &
-                                             ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd2 * Vd3          ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu2 * Vd3 * Vd3 &
-                        +       Gmdd33 * Vu2 ) &
-                        - eta * rho * h * W**2 &
-                        * ( Two * W**2 * Vd3 * Vd3 + Gmdd33 ), &
-                      rho * h * W**2 * ( Two * W**2 * Vu2 * Vd3       ) &
-                        - rho * W * ( W**2 * Vu2 * Vd3       ) &
-                        - eta * rho * W**3 * Vd3 * ( Two * h * W - One ), &
+        dFdV(:,4) = [ rho * W * ( W**2 * Vui(2) * Vdk(3) + Zero )              &
+                        - eta * rho * W**3 * Vdk(3),                           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdj(1) * Vdk(3) &
+                        + Zero + Zero              )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(1) * Vdk(3) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdj(2) * Vdk(3) &
+                        + Zero + Zero              )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(2) * Vdk(3) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdj(3) * Vdk(3) &
+                        + Zero + Gmdd33 * Vui(2)   )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(3) * Vdk(3) + Gmdd33   ),         &
+                      rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdk(3) + Zero ) &
+                        - rho * W * ( W**2 * Vui(2) * Vdk(3) + Zero )          &
+                        - eta * rho * W**3 * Vdk(3) * ( Two * h * W - One ),   &
                       Zero ]
-        dFdV(:,5) = [ Zero, &
-                      ( rho + kappa ) * W**2 * Vu2 * Vd1         &
-                        - eta * ( rho + kappa ) * W**2 * Vd1, &
-                      ( rho + kappa ) * W**2 * Vu2 * Vd2 + kappa &
-                        - eta * ( rho + kappa ) * W**2 * Vd2, &
-                      ( rho + kappa ) * W**2 * Vu2 * Vd3         &
-                        - eta * ( rho + kappa ) * W**2 * Vd3, &
-                      W**2 * ( rho + kappa ) * Vu2 &
-                        - eta * ( W**2 * ( rho + VSq * kappa ) ), &
+        dFdV(:,5) = [ Zero,                                                    &
+                      ( rho + kappa ) * W**2 * Vui(2) * Vdj(1) + Zero          &
+                        - eta * ( rho + kappa ) * W**2 * Vdj(1),               &
+                      ( rho + kappa ) * W**2 * Vui(2) * Vdj(2) + kappa         &
+                        - eta * ( rho + kappa ) * W**2 * Vdj(2),               &
+                      ( rho + kappa ) * W**2 * Vui(2) * Vdj(3) + Zero          &
+                        - eta * ( rho + kappa ) * W**2 * Vdj(3),               &
+                      W**2 * ( rho + kappa ) * Vui(2)                          &
+                        - eta * ( W**2 * ( rho + VSq * kappa ) ),              &
                       Zero ]
+        dFdV(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
+
+      CASE( 3 )
+
+        eta = ShiftVector(3) / LapseFunction
+
+        dFdV(:,1) = [ Vui(3) * W - eta * W, &
+                      ( One + epsilon + chi ) * W**2 * Vui(3) * Vdj(1) + Zero  &
+                        - eta * ( One + epsilon + chi ) * W**2 * Vdj(1),       &
+                      ( One + epsilon + chi ) * W**2 * Vui(3) * Vdj(2) + Zero  &
+                        - eta * ( One + epsilon + chi ) * W**2 * Vdj(2),       &
+                      ( One + epsilon + chi ) * W**2 * Vui(3) * Vdj(3) + chi   &
+                        - eta * ( One + epsilon + chi ) * W**2 * Vdj(3),       &
+                      ( One + epsilon + chi ) * W**2 * Vui(3) - W * Vui(3)     &
+                        - eta * ( W * ( W * ( One + epsilon + VSq * chi )      &
+                          - One ) ), &
+                      Zero ]
+        dFdV(:,2) = [ rho * W * ( W**2 * Vui(3) * Vdk(1) + Zero )              &
+                        - eta * rho * W**3 * Vdk(1),                           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdj(1) * Vdk(1) &
+                        + Zero  + Gmdd11 * Vui(3)  )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(1) * Vdk(1) + Gmdd11 ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdj(2) * Vdk(1) &
+                        + Zero  +     Zero         )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(2) * Vdk(1) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdj(3) * Vdk(1) &
+                        + Zero  +     Zero         )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(3) * Vdk(1) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdk(1) + Zero ) &
+                        - rho * W * ( W**2 * Vui(3) * Vdk(1) + Zero )          &
+                        - eta * rho * W**3 * Vdk(1) * ( Two * h * W - One ),   &
+                      Zero ]
+        dFdV(:,3) = [ rho * W * ( W**2 * Vui(3) * Vdk(2) + Zero )              &
+                        - eta * rho * W**3 * Vdk(2),                           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdj(1) * Vdk(2) &
+                        + Zero  + Zero             )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(1) * Vdk(2) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdj(2) * Vdk(2) &
+                        + Zero  + Gmdd22 * Vui(3)  )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(2) * Vdk(2) + Gmdd22 ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdj(3) * Vdk(2) &
+                        + Zero  +     Zero         )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(3) * Vdk(2) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdk(2) + Zero ) &
+                        - rho * W * ( W**2 * Vui(3) * Vdk(2) + Zero )          &
+                        - eta * rho * W**3 * Vdk(2) * ( Two * h * W - One ),   &
+                      Zero ]
+        dFdV(:,4) = [ rho * W * ( W**2 * Vui(3) * Vdk(3) + One  )              &
+                        - eta * rho * W**3 * Vdk(3),                           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdj(1) * Vdk(3) &
+                        + Vdj(1) + Zero            )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(1) * Vdk(3) + Zero   ),           &
+                      rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdj(2) * Vdk(3) &
+                        + Vdj(2) + Zero            )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(2) * Vdk(3) + Zero  ),            &
+                      rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdj(3) * Vdk(3) &
+                        + Vdj(3) + Gmdd33 * Vui(3) )                           &
+                        - eta * rho * h * W**2                                 &
+                        * ( Two * W**2 * Vdj(3) * Vdk(3) + Gmdd33   ),         &
+                      rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdk(3) + One  ) &
+                        - rho * W * ( W**2 * Vui(3) * Vdk(3) + One  )          &
+                        - eta * rho * W**3 * Vdk(3) * ( Two * h * W - One ),   &
+                      Zero ]
+
+        dFdV(:,5) = [ Zero,                                                    &
+                      ( rho + kappa ) * W**2 * Vui(3) * Vdj(1) + Zero          &
+                        - eta * ( rho + kappa ) * W**2 * Vdj(1),               &
+                      ( rho + kappa ) * W**2 * Vui(3) * Vdj(2) + Zero          &
+                        - eta * ( rho + kappa ) * W**2 * Vdj(2),               &
+                      ( rho + kappa ) * W**2 * Vui(3) * Vdj(3) + kappa         &
+                        - eta * ( rho + kappa ) * W**2 * Vdj(3),               &
+                      W**2 * ( rho + kappa ) * Vui(3)                          &
+                        - eta * ( W**2 * ( rho + VSq * kappa ) ),              &
+                      Zero ]
+
         dFdV(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
       CASE DEFAULT

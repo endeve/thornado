@@ -32,7 +32,9 @@ MODULE MyAmrModule
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE UnitsModule,          ONLY: &
-    ActivateUnitsDisplay, UnitsDisplay
+    ActivateUnitsDisplay, &
+    DescribeUnitsDisplay, &
+    UnitsDisplay
 
   ! --- Local Modules ---
   USE MyAmrDataModule, ONLY: &
@@ -124,6 +126,8 @@ CONTAINS
 
     IF( UsePhysicalUnits ) &
       CALL ActivateUnitsDisplay
+    IF( amrex_parallel_ioprocessor() ) &
+      CALL DescribeUnitsDisplay
 
     IF( iCycleW .GT. 0 .AND. dt_wrt .GT. Zero )THEN
       WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'
@@ -191,14 +195,14 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Slope limiter parameters SL.* ---
-    UseSlopeLimiter           = 1
-    UseCharacteristicLimiting = 1
-    UseTroubledCellIndicator  = 1
+    UseSlopeLimiter           = .TRUE.
+    UseCharacteristicLimiting = .TRUE.
+    UseTroubledCellIndicator  = .TRUE.
     SlopeTolerance            = 1.0e-6_AR
     BetaTVD                   = 1.75_AR
     BetaTVB                   = Zero
     LimiterThresholdParameter = 0.03_AR
-    UseConservativeCorrection = 1
+    UseConservativeCorrection = .TRUE.
     CALL amrex_parmparse_build( PP, 'SL' )
       CALL PP % query( 'UseSlopeLimiter',           UseSlopeLimiter )
       CALL PP % query( 'UseCharacteristicLimiting', UseCharacteristicLimiting )
@@ -211,7 +215,7 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Positivitiy limiter parameters PL.* ---
-    UsePositivityLimiter = 1
+    UsePositivityLimiter = .TRUE.
     Min_1                = 1.0e-12_AR
     Min_2                = 1.0e-12_AR
     CALL amrex_parmparse_build( PP, 'PL' )

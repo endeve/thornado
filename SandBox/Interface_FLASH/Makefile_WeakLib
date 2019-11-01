@@ -1,0 +1,12 @@
+weaklib = \
+  wlKindModule.o \
+  wlGridModule.o \
+  wlThermoStateModule.o \
+  wlDependentVariablesModule.o \
+  wlOpacityFieldsModule.o \
+  wlEquationOfStateTableModule.o \
+  wlInterpolationModule.o \
+  wlIOModuleHDF.o \
+  wlEOSIOModuleHDF.o \
+  wlOpacityTableModule.o \
+  wlOpacityTableIOModuleHDF.o 

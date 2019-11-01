@@ -1,7 +1,7 @@
 #ifdef THORNADO_DEBUG
 #define THORNADO_DEBUG_IMEX
 #endif
-MODULE TimeSteppingModule_Castro
+MODULE TimeSteppingModule_Flash
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One
@@ -617,4 +617,4 @@ CONTAINS
   END SUBROUTINE AddFields_Radiation
 
 
-END MODULE TimeSteppingModule_Castro
+END MODULE TimeSteppingModule_Flash
