@@ -115,6 +115,10 @@ CONTAINS
 
         CALL InitializeFields_KelvinHelmholtz_Relativistic( MF_uGF, MF_uCF )
 
+      CASE( 'KelvinHelmholtz_Relativistic_3D' )
+
+        CALL InitializeFields_KelvinHelmholtz_Relativistic_3D( MF_uGF, MF_uCF )
+
       CASE( 'RiemannProblem_2D_Relativistic' )
 
         CALL InitializeFields_RiemannProblem_2D_Relativistic( MF_uGF, MF_uCF )
@@ -132,6 +136,7 @@ CONTAINS
           WRITE(*,'(4x,A)')   'Valid Options:'
           WRITE(*,'(6x,A)')     'Sod_Relativistic'
           WRITE(*,'(6x,A)')     'KelvinHelmholtz_Relativistic'
+          WRITE(*,'(6x,A)')     'KelvinHelmholtz_Relativistic_3D'
           WRITE(*,'(6x,A)')     'RiemannProblem_2D_Relativistic'
           WRITE(*,'(6x,A)')     'StandingAccretionShock_Relativistic'
           STOP 'MF_InitializationModule.f90'
@@ -413,6 +418,159 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic
+
+
+  ! --- Relativistic 3D Kelvin-Helmholtz instability a la
+  !     Radice & Rezzolla, (2012), AA, 547, A26 ---
+  SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic_3D( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+
+    ! --- thornado ---
+    INTEGER        :: iDim
+    INTEGER        :: iX1, iX2, iX3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
+    REAL(AR)       :: X1, X2, X3
+    REAL(AR)       :: uGF_K(nDOFX,nGF)
+    REAL(AR)       :: uCF_K(nDOFX,nCF)
+    REAL(AR)       :: uPF_K(nDOFX,nPF)
+    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    TYPE(MeshType) :: MeshX(3)
+
+    ! --- AMReX ---
+    INTEGER                       :: iLevel
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_F(4), hi_F(4)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    ! --- Problem-dependent Parameters ---
+    REAL(AR) :: a      = 0.01_AR
+    REAL(AR) :: Vshear = Half
+    REAL(AR) :: A0     = 0.1_AR ! --- Perturbation amplitude ---
+    REAL(AR) :: sigma  = 0.1_AR
+    REAL(AR) :: rho0   = 0.505_AR
+    REAL(AR) :: rho1   = 0.495_AR
+    REAL(AR) :: Vz
+
+    uGF_K = Zero
+    uCF_K = Zero
+    uPF_K = Zero
+    uAF_K = Zero
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    DO iLevel = 0, nLevels
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+            ! --- V1 ---
+            IF( X2 .GT. Zero )THEN
+              uPF_K(iNodeX,iPF_V1) &
+                = +Vshear * TANH( ( X2 - Half ) / a )
+            ELSE
+              ! --- Paper has a typo here, the minus sign is required ---
+              uPF_K(iNodeX,iPF_V1) &
+                = -Vshear * TANH( ( X2 + Half ) / a )
+            END IF
+
+            ! --- V2 ---
+            IF( X2 .GT. Zero )THEN
+              uPF_K(iNodeX,iPF_V2) &
+                =  A0 * Vshear * SIN( 2.0_AR * Pi * X1 ) &
+                    * EXP( -( ( X2 - Half )**2 / sigma ) )
+            ELSE
+              uPF_K(iNodeX,iPF_V2) &
+                = -A0 * Vshear * SIN( 2.0_AR * Pi * X1 ) &
+                    * EXP( -( ( X2 + Half )**2 / sigma ) )
+            END IF
+
+            ! --- rho ---
+            IF( X2 .GT. Zero )THEN
+              uPF_K(iNodeX,iPF_D) &
+                = rho0 + rho1 * TANH( ( X2 - Half ) / a )
+            ELSE
+              uPF_K(iNodeX,iPF_D) &
+                = rho0 - rho1 * TANH( ( X2 + Half ) / a )
+            END IF
+
+            CALL RANDOM_NUMBER( Vz )
+            uPF_K(iNodeX,iPF_V3) = 0.01_AR * Vz
+            uPF_K(iNodeX,iPF_E)  = One / ( Gamma_IDEAL - One )
+
+          END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+          CALL ComputeConserved_Euler &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic_3D
 
 
   ! --- Relativistic 2D Riemann problem from
