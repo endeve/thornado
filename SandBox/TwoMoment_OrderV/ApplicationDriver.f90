@@ -141,7 +141,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'IsotropicRadiation' )
 
-      nX  = [ 10, 1, 1 ]
+      nX  = [ 16, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 0, 0 ]
@@ -151,21 +151,20 @@ PROGRAM ApplicationDriver
       eR  = 1.0_DP
       bcE = 2
 
-      nNodes = 3
+      nNodes = 2
 
-      TimeSteppingScheme = 'SSPRK3'
+      TimeSteppingScheme = 'SSPRK2'
 
-      t_end   = 1.0d0
-      iCycleD = 10
+      t_end   = 1.0d1
+      iCycleD = 1
       iCycleW = 10
       maxCycles = 1000000
 
-      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
-
 
     CASE( 'StreamingDopplerShift' )
       nX  = [ 100, 1, 1 ]
