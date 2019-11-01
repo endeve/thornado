@@ -9,12 +9,9 @@ from sys import argv, exit
 import matplotlib.pyplot as plt
 
 """
-To-Do:
-  - Make PNS circular
-    - Fix plot-window limits
-  - Add 2D movie-making capability
-    - Implement movie-making capability for curvilinear coordinates
-    - Allow custom variables, i.e. Entropy, to be made into movies
+Default use (python3 PlotAMReX_yt.py), plots last plot-file in ProblemDirectory
+
+Can also specify certain plot-file:  python3 PlotAMReX_yt.py thornado_00000010
 """
 
 yt.funcs.mylog.setLevel(0) # Suppress initial yt output to screen
@@ -23,33 +20,37 @@ yt.funcs.mylog.setLevel(0) # Suppress initial yt output to screen
 HOME = subprocess.check_output( ["echo $HOME"], shell = True)
 HOME = HOME[:-1].decode( "utf-8" ) + '/'
 
+# --- Get user's THORNADO_DIR directory ---
+THORNADO_DIR = subprocess.check_output( ["echo $THORNADO_DIR"], shell = True)
+THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
+
+#### ========== User Input ==========
+
 # Specify directory containing plotfiles
+ProblemDirectory = THORNADO_DIR + '/SandBox/AMReX/'
 
-#'''
-ProblemDirectory \
-  = HOME + 'Research/SN/thornado/SandBox/AMReX/Euler_Relativistic/'
-ProblemName = '2DRP'
+# Specify name of problem (only used for name of output file(s))
+ProblemName = 'KHI'
+
+# Specify field to plot
 VariableToPlot = 'PF_D'
-MakeMovie = True
-DataFileName = 'MovieData.dat'
-#'''
 
-'''
-ProblemDirectory \
-  = HOME + 'Desktop/'
-ProblemName = 'SAS_R'
-VariableToPlot = 'PF_D'
-MakeMovie = False
-DataFileName = 'MovieData.dat'
-'''
-
+# Specify whether or not to use physical units
 UsePhysicalUnits = False
+
+# Specify coordinate system (currently supports 'cartesian' and 'spherical' )
 CoordinateSystem = 'cartesian'
-if( ProblemName == 'SAS' ):
-    CoordinateSystem = 'spherical'
-if( ProblemName == 'SAS_R' ):
-    CoordinateSystem = 'spherical'
-    UsePhysicalUnits = True
+
+# Specify aspect ratio (relativistic KHI needs aspect = 0.5)
+aspect = 0.5
+
+# Specify colormap
+cmap = 'jet'
+
+# Specify whether or not to make a movie
+MakeMovie, DataFileName = False, 'MovieData.dat'
+
+#### ================================
 
 if( len( argv ) > 1 ):
     File = argv[1]
@@ -64,10 +65,6 @@ else:
             FileList.append( sFile )
     FileArray = np.array( FileList )
     File = FileArray[-1]
-
-# Change aspect ratio to make plotting cells square
-aspect = 1.0
-if( ProblemName == 'KHI_R' ): aspect = 0.5
 
 # Remove "/" at end of filename, if present
 if ( File[-1] == '/' ): File = File[:-1]
@@ -160,14 +157,12 @@ if  ( nDims == 1 ):
 
     x = np.linspace( xL[0].to_ndarray(), xH[0].to_ndarray(), nX[0] )
 
-    #"""
     plt.plot( x, Data[:,0,0], 'k-' )
     plt.xlim( xL[0], xH[0] )
     plt.xlabel( 'X1' )
     plt.ylabel( VariableToPlot )
     plt.show()
     plt.close()
-    #"""
 
     if( MakeMovie ):
         print( 'Making a movie...' )
@@ -294,15 +289,11 @@ elif( nDims == 2 ):
                         aspect = aspect, \
                         origin = 'lower-left-window' )
 
-    slc.set_cmap( field = field, cmap = 'jet' )
+    slc.set_cmap( field = field, cmap = cmap )
 
-    #slc.set_log( field, False ) # set_log is True by default
+    slc.set_log( field, True ) # set_log is True by default
     #slc.set_zlim( field, 0.0, 2.0 ) # Set colorbar limits
     #slc.set_colorbar_label( field, 'Primitive Rest-Mass-Density' )
-
-    # Only works in Cartesian coordinates
-    #slc.annotate_text( [-0.48,0.9], 't = 3.00', coord_system = 'plot', \
-    #                   text_args={'color':'black'} )
 
     if( CoordinateSystem == 'spherical' ):
         slc.set_width( 2 * xH[0].to_ndarray(), length_unit )
@@ -377,14 +368,14 @@ elif( nDims == 2 ):
             vmin = min( +np.inf, np.min( np.abs( Data ) ) )
             vmax = max( -np.inf, np.max( np.abs( Data ) ) )
 
-            im = plt.imshow( np.abs(f(0)), cmap = 'jet', animated = True, \
+            im = plt.imshow( np.abs(f(0)), cmap = cmap, animated = True, \
                              vmin = vmin, vmax = vmax, \
                              extent = [ xL[0], xH[0], xL[1], xH[1] ], \
                              aspect = 'equal', \
                              origin = 'lower', norm = LogNorm() )
         else:
             im = plt.imshow( f(0), \
-                             cmap = 'jet', \
+                             cmap = cmap, \
                              animated = True, \
                              vmin = np.min(Data), vmax = np.max(Data), \
                              extent = [ xL[0], xH[0], xL[1], xH[1] ], \
