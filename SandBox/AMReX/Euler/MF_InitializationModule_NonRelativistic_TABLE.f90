@@ -343,7 +343,7 @@ CONTAINS
 
           DO iNodeX = 1, nDOFX
 
-            IF( X1 .LE. Zero ) THEN
+            IF( X1 .LE. One * Kilometer ) THEN
 
               uPF_K(iNodeX,iPF_D ) = 1.0e12_AR * Gram / Centimeter**3
               uPF_K(iNodeX,iPF_V1) = Zero      * Kilometer / Second
@@ -358,7 +358,7 @@ CONTAINS
               uPF_K(iNodeX,iPF_V1) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V2) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V3) = Zero       * Kilometer / Second
-              uAF_K(iNodeX,iAF_P ) = 1.0e31_AR  * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_P ) = 1.0e30_AR  * Erg / Centimeter**3
               uAF_K(iNodeX,iAF_Ye) = 0.3_AR
 
             END IF

@@ -157,7 +157,7 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     LOGICAL  :: NegativeStates(3)
-    INTEGER  :: iX1, iX2, iX3, iCF, iP
+    INTEGER  :: iX1, iX2, iX3, iCF, iP, Iteration
     REAL(DP) :: Min_D_K, Max_D_K, Min_N_K, Max_N_K, &
                 Min_N, Max_N, Min_E(nPT),  &
                 Theta_1, Theta_2, Theta_3, Theta_P
@@ -278,9 +278,21 @@ CONTAINS
         CALL ComputeSpecificInternalEnergy_TABLE &
                ( U_K(iCF_D), Min_T, Y_K, Min_E_K )
 
-        DO
+        Iteration = 0
 
-          IF( ALL( E_PP(:) > Min_E(:) ) )EXIT
+        DO WHILE( ANY( E_PP(:) < Min_E(:) ) )
+
+          Iteration = Iteration + 1
+
+          IF( Iteration .EQ. 1000 )THEN
+
+            PRINT*,"ERROR: Euler_PositivityLimiterModule_NonRelativistic_TABLE"
+            PRINT*,"Iteration limit exceeded"
+            STOP ''
+
+          END IF
+
+!          IF( ALL( E_PP(:) > Min_E(:) ) )EXIT
 
           Theta_3 = One
           DO iP = 1, nPT
