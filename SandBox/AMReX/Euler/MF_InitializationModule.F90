@@ -27,8 +27,8 @@ CONTAINS
   SUBROUTINE MF_InitializeFields( ProgramName, MF_uGF, MF_uCF )
 
     CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
     CALL MF_InitializeFields_NonRelativistic_TABLE &

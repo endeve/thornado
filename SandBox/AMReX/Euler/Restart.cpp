@@ -25,7 +25,7 @@ using namespace amrex;
 extern "C"
 {
   void writefieldsamrex_checkpoint
-         ( int StepNo[], int FinestLevel,
+         ( int StepNo[], int nLevels,
            Real dt[], Real time[], Real t_wrt[],
            BoxArray** BA, MultiFab** MF_uGF, MultiFab** MF_uCF,
            MultiFab** MF_uPF, MultiFab** MF_uAF )
@@ -49,7 +49,7 @@ extern "C"
     if ( ParallelDescriptor::IOProcessor() )
       amrex::Print() << "\n    Writing checkpoint " << checkpointname << "\n";
 
-    const int nLevels = FinestLevel+1;
+    const int FinestLevel = nLevels-1;
 
     // ---- Prebuild a hierarchy of directories
     // ---- dirName is built first. If dirName exists, it is renamed. Then build
@@ -141,7 +141,7 @@ extern "C"
   } // End of WriteCheckpointFile function
 
   void readheaderandboxarraydata
-         ( int finest_level[], int stepno[],
+         ( int nLevels, int stepno[],
 	   Real dt[], Real time[], Real t_wrt[],
            BoxArray** ba, DistributionMapping** dm, int iChkFile )
   {
@@ -150,7 +150,7 @@ extern "C"
     sChkFile << chk_file << std::setw(8) << std::setfill('0') << iChkFile;
     restart_chkfile = sChkFile.str();
 
-    amrex::Print() << "Restart from checkpoint " << restart_chkfile << "\n";
+    amrex::Print() << "  Restart from checkpoint " << restart_chkfile << "\n";
 
     // Header
     std::string File( restart_chkfile + "/Header" );
@@ -168,8 +168,8 @@ extern "C"
     // Read in title line
     std::getline( is, line );
 
-    // Read in finest_level
-    is >> finest_level[0];
+    // Read in nLevels
+    is >> nLevels;
     GotoNextLine( is );
 
     // Read in array of istep
@@ -217,7 +217,7 @@ extern "C"
     }
 
     // Read in level 'iLevel' BoxArray from Header
-    for( int iLevel = 0; iLevel <= finest_level[0]; ++iLevel )
+    for( int iLevel = 0; iLevel <= nLevels; ++iLevel )
     {
 
       BoxArray& ba1 = *ba[iLevel];

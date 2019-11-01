@@ -64,10 +64,10 @@ MODULE MF_TimeSteppingModule_SSPRK
         amrex_multifab
       USE MyAmrModule, ONLY: &
         nLevels
-      TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels)
-      TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels)
-      TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels)
-      TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels)
+      TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
     END SUBROUTINE MF_Euler_Increment
   END INTERFACE
 
@@ -79,8 +79,8 @@ CONTAINS
     ( nStages, BA, DM, Verbose_Option )
 
     INTEGER,               INTENT(in)           :: nStages
-    TYPE(amrex_boxarray),  INTENT(in)           :: BA(0:nLevels)
-    TYPE(amrex_distromap), INTENT(in)           :: DM(0:nLevels)
+    TYPE(amrex_boxarray),  INTENT(in)           :: BA(0:nLevels-1)
+    TYPE(amrex_distromap), INTENT(in)           :: DM(0:nLevels-1)
     LOGICAL,               INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER         :: iS, iLevel
@@ -111,12 +111,12 @@ CONTAINS
       WRITE(*,*)
     END IF
 
-    ALLOCATE( MF_U(0:nLevels) )
-    ALLOCATE( MF_D(0:nLevels,1:nStages) )
+    ALLOCATE( MF_U(0:nLevels-1) )
+    ALLOCATE( MF_D(0:nLevels-1,1:nStages) )
 
     BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_multifab_build &
         ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
       DO iS = 1, nStages
@@ -134,7 +134,7 @@ CONTAINS
 
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_multifab_destroy( MF_U(iLevel) )
       DO iS = 1, nStages_SSPRK
         CALL amrex_multifab_destroy( MF_D(iLevel,iS) )
@@ -202,10 +202,10 @@ CONTAINS
   SUBROUTINE MF_UpdateFluid_SSPRK &
     ( t, dt, MF_uGF, MF_uCF, GEOM, MF_Euler_ComputeIncrement )
 
-    REAL(amrex_real),     INTENT(in)    :: t(0:nLevels), dt(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
-    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels)
+    REAL(amrex_real),     INTENT(in)    :: t(0:nLevels-1), dt(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
     PROCEDURE(MF_Euler_Increment)       :: MF_Euler_ComputeIncrement
 
     INTEGER :: iLevel
@@ -218,7 +218,7 @@ CONTAINS
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
     ! --- Set temporary MultiFabs U and dU to zero ---
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL MF_U(iLevel) % setval( 0.0_amrex_real )
       DO iS = 1, nStages_SSPRK
         CALL MF_D(iLevel,iS) % setval( 0.0_amrex_real )
@@ -229,7 +229,7 @@ CONTAINS
 
       ! --- Copy data from input MultiFab to temporary MultiFab ---
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
-      DO iLevel = 0, nLevels
+      DO iLevel = 0, nLevels-1
 
         CALL MF_U(iLevel) &
                % PARALLEL_COPY( MF_uCF(iLevel), 1, 1, &
@@ -255,7 +255,7 @@ CONTAINS
       END DO
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
 
-      DO iLevel = 0, nLevels
+      DO iLevel = 0, nLevels-1
         DO jS = 1, iS - 1
 
           IF( a_SSPRK(iS,jS) .NE. 0.0_amrex_real ) &
@@ -272,21 +272,21 @@ CONTAINS
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_Euler (1)'
         CALL MF_ApplySlopeLimiter_Euler &
-          ( MF_uGF(0:nLevels), MF_U(0:nLevels), GEOM(0:nLevels) )
+          ( MF_uGF(0:nLevels-1), MF_U(0:nLevels-1), GEOM(0:nLevels-1) )
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (1)'
         CALL MF_ApplyPositivityLimiter_Euler &
-          ( MF_uGF(0:nLevels), MF_U(0:nLevels) )
+          ( MF_uGF(0:nLevels-1), MF_U(0:nLevels-1) )
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ComputeIncrement'
         CALL MF_Euler_ComputeIncrement &
-          ( GEOM(0:nLevels), MF_uGF(0:nLevels), &
-            MF_U(0:nLevels), MF_D(0:nLevels,iS) )
+          ( GEOM(0:nLevels-1), MF_uGF(0:nLevels-1), &
+            MF_U(0:nLevels-1), MF_D(0:nLevels-1,iS) )
 
       END IF
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       DO iS = 1, nStages_SSPRK
 
         IF( w_SSPRK(iS) .NE. 0.0_amrex_real ) &
@@ -300,10 +300,10 @@ CONTAINS
 
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_Euler (2)'
     CALL MF_ApplySlopeLimiter_Euler &
-      ( MF_uGF(0:nLevels), MF_uCF(0:nLevels), GEOM(0:nLevels) )
+      ( MF_uGF(0:nLevels-1), MF_uCF(0:nLevels-1), GEOM(0:nLevels-1) )
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (2)'
     CALL MF_ApplyPositivityLimiter_Euler &
-      ( MF_uGF(0:nLevels), MF_uCF(0:nLevels) )
+      ( MF_uGF(0:nLevels-1), MF_uCF(0:nLevels-1) )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 

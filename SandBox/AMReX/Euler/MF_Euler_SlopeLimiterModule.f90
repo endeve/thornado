@@ -50,9 +50,9 @@ CONTAINS
 
   SUBROUTINE MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, GEOM )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
-    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -71,7 +71,7 @@ CONTAINS
 
     IF( .NOT. UseSlopeLimiter ) RETURN
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
       ! --- Apply boundary conditions to interior domains ---

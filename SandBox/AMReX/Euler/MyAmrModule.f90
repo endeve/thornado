@@ -76,7 +76,7 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE :: EosTableName
 
   ! --- AMReX  ---
-  INTEGER                                    :: nLevels, coord_sys
+  INTEGER                                    :: MaxLevel, nLevels, coord_sys
   INTEGER                                    :: MaxGridSizeX1
   INTEGER                                    :: MaxGridSizeX2
   INTEGER                                    :: MaxGridSizeX3
@@ -209,9 +209,10 @@ CONTAINS
       CALL PP % query ( 'blocking_factor_x', BlockingFactorX1 )
       CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
       CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
-      CALL PP % get   ( 'max_level',         nLevels )
+      CALL PP % get   ( 'max_level',         MaxLevel )
     CALL amrex_parmparse_destroy( PP )
     MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
+    nLevels = MaxLevel + 1
 
     ! --- Slope limiter parameters SL.* ---
     UseSlopeLimiter           = .TRUE.
@@ -267,13 +268,13 @@ CONTAINS
       STOP
     END IF
 
-    ALLOCATE( StepNo(0:nLevels) )
+    ALLOCATE( StepNo(0:nLevels-1) )
     StepNo = 0
 
-    ALLOCATE( dt(0:nLevels) )
+    ALLOCATE( dt(0:nLevels-1) )
     dt = -100.0e0_AR
 
-    ALLOCATE( t(0:nLevels) )
+    ALLOCATE( t(0:nLevels-1) )
     t = 0.0e0_AR
 
     CALL InitializeDataAMReX( nLevels )

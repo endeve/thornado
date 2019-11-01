@@ -94,12 +94,12 @@ MODULE InputOutputModuleAMReX
   INTERFACE
 
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
-                 ( StepNo, FinestLevel, dt, time, t_wrt, pBA, &
+                 ( StepNo, nLevels, dt, time, t_wrt, pBA, &
                    pMF_uGF, pMF_uCF, pMF_uPF, pMF_uAF ) BIND(c)
        IMPORT
        IMPLICIT NONE
        INTEGER(c_int), INTENT(in) :: StepNo(*)
-       INTEGER(c_int), VALUE      :: FinestLevel
+       INTEGER(c_int), VALUE      :: nLevels
        REAL(AR),       INTENT(in) :: dt(*), time(*), t_wrt
        TYPE(c_ptr),    INTENT(in) :: pBA(*)
        TYPE(c_ptr),    INTENT(in) :: pMF_uGF(*)
@@ -113,7 +113,7 @@ MODULE InputOutputModuleAMReX
                    pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
-      INTEGER(c_int), INTENT(out) :: FinestLevel(*)
+      INTEGER(c_int), INTENT(out) :: FinestLevel
       INTEGER(c_int), INTENT(out) :: StepNo(*)
       REAL(AR),       INTENT(out) :: dt(*), time(*), t_wrt
       TYPE(c_ptr),    INTENT(out) :: pBA(*), pDM(*)
@@ -173,7 +173,7 @@ CONTAINS
 
     INTEGER, INTENT(in) :: iChkFile
 
-    INTEGER         :: iLevel, FinestLevel(1)
+    INTEGER         :: iLevel, FinestLevel
     TYPE(c_ptr)     :: pBA(0:amrex_max_level)
     TYPE(c_ptr)     :: pDM(0:amrex_max_level)
     TYPE(c_ptr)     :: pGF(0:amrex_max_level)
@@ -187,18 +187,18 @@ CONTAINS
 
     BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
-    ALLOCATE( BA(0:nLevels) )
-    DO iLevel = 0, nLevels
+    ALLOCATE( BA(0:nLevels-1) )
+    DO iLevel = 0, nLevels-1
       CALL amrex_boxarray_build ( BA(iLevel), BX )
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL BA(iLevel) % maxSize( MaxGridSizeX )
     END DO
 
-    ALLOCATE( DM  (0:nLevels) )
-    ALLOCATE( GEOM(0:nLevels) )
-    DO iLevel = 0, nLevels
+    ALLOCATE( DM  (0:nLevels-1) )
+    ALLOCATE( GEOM(0:nLevels-1) )
+    DO iLevel = 0, nLevels-1
       CALL amrex_geometry_build( GEOM(iLevel), BX )
       CALL amrex_distromap_build( DM (iLevel), BA(iLevel) )
     END DO
@@ -206,23 +206,23 @@ CONTAINS
     pBA(0:amrex_max_level) = BA(0:amrex_max_level) % P
     pDM(0:amrex_max_level) = DM(0:amrex_max_level) % P
 
-    FinestLevel = nLevels
+    FinestLevel = nLevels-1
 
     CALL ReadHeaderAndBoxArrayData &
            ( FinestLevel, StepNo, dt, t, t_wrt, &
-             pBA(0:nLevels), pDM(0:nLevels), iChkFile )
+             pBA(0:nLevels-1), pDM(0:nLevels-1), iChkFile )
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       BA(iLevel) = pBA(iLevel)
       DM(iLevel) = pDM(iLevel)
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_fi_set_boxarray ( iLevel, BA(iLevel) % P, amrcore )
       CALL amrex_fi_set_distromap( iLevel, DM(iLevel) % P, amrcore )
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_multifab_build &
              ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
       CALL amrex_multifab_build &
@@ -238,19 +238,19 @@ CONTAINS
     pPF(0:amrex_max_level) = MF_uPF(0:amrex_max_level) % P
     pAF(0:amrex_max_level) = MF_uAF(0:amrex_max_level) % P
 
-    CALL ReadMultiFabData( nLevels, pGF(0:amrex_max_level), 0, iChkFile )
-    CALL ReadMultiFabData( nLevels, pCF(0:amrex_max_level), 1, iChkFile )
-    CALL ReadMultiFabData( nLevels, pPF(0:amrex_max_level), 2, iChkFile )
-    CALL ReadMultiFabData( nLevels, pAF(0:amrex_max_level), 3, iChkFile )
+    CALL ReadMultiFabData( nLevels-1, pGF(0:amrex_max_level), 0, iChkFile )
+    CALL ReadMultiFabData( nLevels-1, pCF(0:amrex_max_level), 1, iChkFile )
+    CALL ReadMultiFabData( nLevels-1, pPF(0:amrex_max_level), 2, iChkFile )
+    CALL ReadMultiFabData( nLevels-1, pAF(0:amrex_max_level), 3, iChkFile )
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
       CALL MF_uPF(iLevel) % Fill_Boundary( GEOM(iLevel) )
       CALL MF_uAF(iLevel) % Fill_Boundary( GEOM(iLevel) )
     END DO
 
-    CALL amrex_fi_set_finest_level( nLevels, amrcore )
+    CALL amrex_fi_set_finest_level( nLevels-1, amrcore )
 
   END SUBROUTINE ReadCheckpointFile
 
@@ -259,11 +259,11 @@ CONTAINS
     ( Time, StepNo, MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, MF_uAF_Option )
 
     REAL(AR),             INTENT(in)           :: Time
-    INTEGER,              INTENT(in)           :: StepNo(0:nLevels)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:nLevels)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCF_Option(0:nLevels)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPF_Option(0:nLevels)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uAF_Option(0:nLevels)
+    INTEGER,              INTENT(in)           :: StepNo(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCF_Option(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPF_Option(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uAF_Option(0:nLevels-1)
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(32)                   :: PlotFileName
@@ -272,10 +272,10 @@ CONTAINS
     INTEGER                         :: iComp, iOS, iLevel, nF, iOS_CPP(3)
     TYPE(amrex_mfiter)              :: MFI
     TYPE(amrex_box)                 :: BX
-    TYPE(amrex_multifab)            :: MF_PF(0:nLevels)
-    TYPE(amrex_geometry)            :: GEOM (0:nLevels)
-    TYPE(amrex_boxarray)            :: BA   (0:nLevels)
-    TYPE(amrex_distromap)           :: DM   (0:nLevels)
+    TYPE(amrex_multifab)            :: MF_PF(0:nLevels-1)
+    TYPE(amrex_geometry)            :: GEOM (0:nLevels-1)
+    TYPE(amrex_boxarray)            :: BA   (0:nLevels-1)
+    TYPE(amrex_distromap)           :: DM   (0:nLevels-1)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
 
     ! --- Offset for C++ indexing ---
@@ -289,15 +289,15 @@ CONTAINS
 
     BX = amrex_box( [ 0, 0, 0 ], [ nX(1)-1, nX(2)-1, nX(3)-1 ] )
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_boxarray_build( BA(iLevel), BX )
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL BA(iLevel) % maxSize( MaxGridSizeX )
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_geometry_build ( GEOM(iLevel), BX )
       CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
     END DO
@@ -334,7 +334,7 @@ CONTAINS
 
     END IF
 
-    IF( nLevels .EQ. 0 )THEN
+    IF( nLevels-1 .EQ. 0 )THEN
       WRITE(NumberString,'(I8.8)') StepNo(:)
     ELSE
       WRITE(NumberString,'(I8.8)') StepNo(0)
@@ -377,7 +377,7 @@ CONTAINS
       iOS = iOS + nAF
     END IF
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
              ( MF_PF(iLevel), BA(iLevel), DM(iLevel), nF, 0 )
@@ -410,10 +410,10 @@ CONTAINS
     END DO ! End of loop over levels
 
     CALL amrex_write_plotfile &
-           ( PlotFileName, nLevels+1, MF_PF, VarNames, &
+           ( PlotFileName, nLevels, MF_PF, VarNames, &
              GEOM, Time / UnitsDisplay % TimeUnit, StepNo, amrex_ref_ratio )
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_multifab_destroy ( MF_PF(iLevel) )
       CALL amrex_distromap_destroy( DM   (iLevel) )
       CALL amrex_geometry_destroy ( GEOM (iLevel) )

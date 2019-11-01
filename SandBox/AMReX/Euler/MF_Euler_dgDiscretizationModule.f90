@@ -48,10 +48,10 @@ CONTAINS
 
   SUBROUTINE MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_uCF, MF_duCF )
 
-    TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -69,7 +69,7 @@ CONTAINS
 
     TYPE(EdgeMap) :: Edge_Map
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       ! --- Apply boundary conditions to interior domains ---
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )

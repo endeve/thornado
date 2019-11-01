@@ -52,9 +52,9 @@ CONTAINS
   SUBROUTINE MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
     TYPE(amrex_multifab), INTENT(in   ) :: &
-      MF_uGF(0:nLevels), MF_uCF(0:nLevels)
+      MF_uGF(0:nLevels-1), MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: &
-      MF_uPF(0:nLevels), MF_uAF(0:nLevels)
+      MF_uPF(0:nLevels-1), MF_uAF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -71,7 +71,7 @@ CONTAINS
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -187,9 +187,9 @@ CONTAINS
 
   SUBROUTINE MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, TimeStepMin )
 
-    TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:nlevels), MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:nLevels-1), MF_uCF(0:nLevels-1)
     REAL(amrex_real),     INTENT(in)  :: CFL
-    REAL(amrex_real),     INTENT(out) :: TimeStepMin(0:nLevels)
+    REAL(amrex_real),     INTENT(out) :: TimeStepMin(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -202,13 +202,13 @@ CONTAINS
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
-    REAL(amrex_real) :: TimeStep(0:nLevels)
+    REAL(amrex_real) :: TimeStep(0:nLevels-1)
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_ComputeTimeStep_Euler )
 
     TimeStepMin = HUGE( 1.0e0_amrex_real )
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -273,7 +273,7 @@ CONTAINS
 
     END DO ! --- Loop over levels ---
 
-    CALL amrex_parallel_reduce_min( TimeStepMin, nLevels+1 )
+    CALL amrex_parallel_reduce_min( TimeStepMin, nLevels )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_ComputeTimeStep_Euler )
 
