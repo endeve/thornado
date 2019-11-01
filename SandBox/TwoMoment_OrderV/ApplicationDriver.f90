@@ -79,7 +79,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'IsotropicRadiation'
+  ProgramName = 'StreamingDopplerShift'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -167,22 +167,23 @@ PROGRAM ApplicationDriver
       Sigma = 0.0_DP
 
     CASE( 'StreamingDopplerShift' )
-      nX  = [ 100, 1, 1 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR  = [ 10.0_DP, 1.0_DP, 1.0_DP ]
+
+      nX  = [ 64, 1, 1 ]
+      xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0d1, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 0, 0 ]
-      
+
       nE  = 40 
-      eL  = 0.0_DP
-      eR  = 50.0_DP
+      eL  = 0.0d0
+      eR  = 5.0d1
       bcE = 2  
         
-      nNodes = 3
+      nNodes = 2
 
-      TimeSteppingScheme = 'SSPRK3'
+      TimeSteppingScheme = 'SSPRK2'
 
       t_end   = 1.0d0
-      iCycleD = 10
+      iCycleD = 1
       iCycleW = 10
       maxCycles = 1000000
 

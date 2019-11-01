@@ -60,6 +60,10 @@ CONTAINS
 
         CALL InitializeFields_IsotropicRadiation( V_0 )
 
+      CASE( 'StreamingDopplerShift' )
+
+        CALL InitializeFields_StreamingDopplerShift( V_0 )
+
     END SELECT
 
 
@@ -384,9 +388,15 @@ CONTAINS
     
     REAL(DP), INTENT(in) :: V_0(3)
 
-    INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeZ2
+    REAL(DP), PARAMETER :: X1_0 = 2.0_DP
+    REAL(DP), PARAMETER :: X1_1 = 3.5_DP
+    REAL(DP), PARAMETER :: X1_2 = 6.5_DP
+    REAL(DP), PARAMETER :: X1_3 = 8.0_DP
+    REAL(DP), PARAMETER :: L_X1 = 6.0_DP
+
+    INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeX1
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
-    REAL(DP) :: X1, Sigma
+    REAL(DP) :: X1
 
     ! --- Fluid Fields ---
 
@@ -396,31 +406,50 @@ CONTAINS
 
       DO iNodeX = 1, nDOFX
 
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_0(1)
+        IF( X1 .LT. X1_0 )THEN
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = 0.0_DP
+        ELSEIF( X1 .GE. X1_0 .AND. X1 .LT. X1_1 )THEN
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = V_0(1) * SIN( TwoPi * ( X1 - X1_0 ) / L_X1 )**2
+        ELSEIF( X1 .GE. X1_1 .AND. X1 .LT. X1_2 )THEN
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = V_0(1)
+        ELSEIF( X1 .GE. X1_2 .AND. X1 .LT. X1_3 )THEN
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = V_0(1) * SIN( TwoPi * ( X1 - X1_0 ) / L_X1 )**2
+        ELSE
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = 0.0_DP
+        END IF
         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_0(2)
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
-      END DO
+        CALL ComputeConserved_Euler_NonRelativistic &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-      CALL ComputeConserved_Euler_NonRelativistic &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), &
-               uPF(:,iX1,iX2,iX3,iPF_V1), &
-               uPF(:,iX1,iX2,iX3,iPF_V2), &
-               uPF(:,iX1,iX2,iX3,iPF_V3), &
-               uPF(:,iX1,iX2,iX3,iPF_E ), &
-               uPF(:,iX1,iX2,iX3,iPF_Ne), &
-               uCF(:,iX1,iX2,iX3,iCF_D ), &
-               uCF(:,iX1,iX2,iX3,iCF_S1), &
-               uCF(:,iX1,iX2,iX3,iCF_S2), &
-               uCF(:,iX1,iX2,iX3,iCF_S3), &
-               uCF(:,iX1,iX2,iX3,iCF_E ), &
-               uCF(:,iX1,iX2,iX3,iCF_Ne), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+      END DO
 
     END DO
     END DO
@@ -467,7 +496,6 @@ CONTAINS
     END DO
     END DO
 
-                                                                  
   END SUBROUTINE InitializeFields_StreamingDopplerShift
 
 
