@@ -1,7 +1,7 @@
 MODULE InitializationModule
 
   USE KindModule, ONLY: &
-    DP, Third, Three, Pi, TwoPi
+    DP, Third, Half, Three, Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nDOFZ, nDOFX, nDOFE, &
@@ -277,9 +277,11 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: V_0(3)
 
+    REAL(DP), PARAMETER :: L_X = 0.25_DP
+
     INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeX1
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
-    REAL(DP) :: X1
+    REAL(DP) :: X1_N, X1_E
 
     ! --- Fluid Fields ---
 
@@ -291,10 +293,21 @@ CONTAINS
 
         iNodeX1 = NodeNumberTableX(1,iNodeX)
 
-        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X1_N = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X1_E = MeshX(1) % Center(iX1) &
+                 + Half * MeshX(1) % Width(iX1)
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_0(1) * SIN( TwoPi * X1 )
+        IF( X1_E .LE. 0.25_DP )THEN
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = V_0(1) * ( X1_N - 0.0_DP ) / L_X
+        ELSEIF( X1_E .GT. 0.25_DP .AND. X1_E .LE. 0.75_DP )THEN
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = V_0(1) * ( 0.5_DP - X1_N ) / L_X
+        ELSE
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = V_0(1) * ( X1_N - 1.0_DP ) / L_X
+        END IF
         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_0(2)
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
