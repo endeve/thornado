@@ -36,6 +36,7 @@ geometry.is_periodic = 0 1 1 # Periodicity. 0 (no), 1 (yes)
 amr.n_cell            = 256 001 001 # Number of cells in each dimension
 amr.max_grid_size_x   = 32
 amr.blocking_factor_x = 1
+amr.max_level         = 0
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1

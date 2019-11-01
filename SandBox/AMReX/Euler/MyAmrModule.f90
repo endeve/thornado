@@ -201,7 +201,6 @@ CONTAINS
     BlockingFactorX1 = 1
     BlockingFactorX2 = 1
     BlockingFactorX3 = 1
-    nLevels          = 0
     CALL amrex_parmparse_build( PP, 'amr' )
       CALL PP % getarr( 'n_cell',            nX )
       CALL PP % query ( 'max_grid_size_x',   MaxGridSizeX1 )
@@ -210,7 +209,7 @@ CONTAINS
       CALL PP % query ( 'blocking_factor_x', BlockingFactorX1 )
       CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
       CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
-      CALL PP % query ( 'max_level',         nLevels )
+      CALL PP % get   ( 'max_level',         nLevels )
     CALL amrex_parmparse_destroy( PP )
     MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
 

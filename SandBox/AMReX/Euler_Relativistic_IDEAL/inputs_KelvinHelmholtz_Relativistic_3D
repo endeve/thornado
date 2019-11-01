@@ -32,6 +32,7 @@ amr.max_grid_size_z   = 8
 amr.blocking_factor_x = 1
 amr.blocking_factor_y = 1
 amr.blocking_factor_z = 1
+amr.max_level         = 0
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1
