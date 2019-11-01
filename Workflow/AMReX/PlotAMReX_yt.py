@@ -42,7 +42,7 @@ UsePhysicalUnits = False
 CoordinateSystem = 'cartesian'
 
 # Specify aspect ratio (relativistic KHI needs aspect = 0.5)
-aspect = 0.5
+aspect = 1.0
 
 # Specify colormap
 cmap = 'jet'
