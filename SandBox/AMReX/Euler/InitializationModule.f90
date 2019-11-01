@@ -140,7 +140,7 @@ MODULE InitializationModule
     StepNo,                    &
     nLevels,                   &
     iRestart,                  &
-    MaxGridSize,               &
+    MaxGridSizeX,              &
     BA,                        &
     DM,                        &
     GEOM,                      &
@@ -192,7 +192,7 @@ CONTAINS
       END DO
 
       DO iLevel = 0, nLevels
-        CALL BA(iLevel) % maxSize( MaxGridSize )
+        CALL BA(iLevel) % maxSize( MaxGridSizeX )
       END DO
 
       ALLOCATE( GEOM(0:nLevels) )
@@ -255,10 +255,10 @@ CONTAINS
       WRITE(*,'(4x,A24,I3.2)')         'nDimsX  =', amrex_spacedim
       WRITE(*,'(4x,A24,ES10.3E2)')     'Gamma   =', Gamma_IDEAL
       WRITE(*,'(5x,A24,A)')            'CoordinateSystem = ', CoordinateSystem
-      WRITE(*,'(4x,A24,3I7.6)')        'nX          =', nX
-      WRITE(*,'(4x,A24,3I7.6)')        'swX         =', swX
-      WRITE(*,'(4x,A24,3I7.6)')        'bcX         =', bcX
-      WRITE(*,'(4x,A24,3I7.6)')        'MaxGridSize =', MaxGridSize
+      WRITE(*,'(4x,A24,3I7.6)')        'nX           =', nX
+      WRITE(*,'(4x,A24,3I7.6)')        'swX          =', swX
+      WRITE(*,'(4x,A24,3I7.6)')        'bcX          =', bcX
+      WRITE(*,'(4x,A24,3I7.6)')        'MaxGridSizeX =', MaxGridSizeX
 
       CALL DescribeProgramHeaderX
 

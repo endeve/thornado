@@ -193,7 +193,7 @@ CONTAINS
     END DO
 
     DO iLevel = 0, nLevels
-      CALL BA(iLevel) % maxSize( MaxGridSize )
+      CALL BA(iLevel) % maxSize( MaxGridSizeX )
     END DO
 
     ALLOCATE( DM  (0:nLevels) )
@@ -294,7 +294,7 @@ CONTAINS
     END DO
 
     DO iLevel = 0, nLevels
-      CALL BA(iLevel) % maxSize( MaxGridSize )
+      CALL BA(iLevel) % maxSize( MaxGridSizeX )
     END DO
 
     DO iLevel = 0, nLevels

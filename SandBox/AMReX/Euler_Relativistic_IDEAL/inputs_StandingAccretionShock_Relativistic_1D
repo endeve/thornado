@@ -33,10 +33,9 @@ geometry.prob_lo     = 40.0  0.0               0.0               # Lower domain 
 geometry.prob_hi     = 360.0 3.141592653589793 6.283185307179586 # Upper domain size [km,rad,rad]
 geometry.is_periodic = 0 1 1 # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell          = 256 001 001 # Number of cells in each dimension
-amr.max_grid_size   = 032 001 001 # nBoxes = n_cell / MaxGridSize
-amr.max_level       = 0           # Maximum number of refinement levels
-amr.blocking_factor = 1           # Must be a factor of max_grid_size
+amr.n_cell            = 256 001 001 # Number of cells in each dimension
+amr.max_grid_size_x   = 32
+amr.blocking_factor_x = 1
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1

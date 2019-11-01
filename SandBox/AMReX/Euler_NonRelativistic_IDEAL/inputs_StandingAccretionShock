@@ -18,7 +18,7 @@ SAS.PerturbAmplitude = 0.2
 
 thornado.t_end     = 80.0      # Final time
 thornado.dt_wrt    = -0.25      # Write time interval
-thornado.dt_chk    = -0.25      # # Time increment to write checkpoint-file
+thornado.dt_chk    = -0.25      # Time increment to write checkpoint-file
 thornado.nNodes    = 3         # Number of DG nodes in each active dimension
 thornado.nStages   = 3         # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5       # CFL number
@@ -29,17 +29,16 @@ thornado.iCycleW   = 005000    # MOD this number to write plotfile
 thornado.iCycleChk = 100000    # MOD this number to write checkpoint file
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
 
-#geometry.coord_sys   = 0            # CARTESIAN
-#geometry.coord_sys   = 1            # CYLINDRICAL (r,z,phi/pi)
 geometry.coord_sys   = 2             # SPHERICAL (r,theta/pi,phi/pi)
 geometry.prob_lo     = 0.2 0.0  0.0  # Lower domain size
 geometry.prob_hi     = 2.0 3.141592653589793 6.283185307179586 # Upper domain size
 geometry.is_periodic = 00  00   00   # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell          = 256 064 01 # Number of cells in each dimension
-amr.max_grid_size   = 016 064 01 # nBoxes = n_cell / MaxGridSize
-amr.max_level       = 0          # Maximum number of refinement levels
-amr.blocking_factor = 8          # Must be a factor of max_grid_size
+amr.n_cell            = 256 064 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 16
+amr.max_grid_size_y   = 64
+amr.blocking_factor_x = 8
+amr.blocking_factor_y = 8
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1
