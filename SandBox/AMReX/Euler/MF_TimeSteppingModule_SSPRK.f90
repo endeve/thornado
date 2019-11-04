@@ -232,9 +232,8 @@ CONTAINS
       DO iLevel = 0, nLevels-1
 
         CALL MF_U(iLevel) &
-               % PARALLEL_COPY( MF_uCF(iLevel), 1, 1, &
-                                MF_uCF(iLevel) % nComp(), 0, swX(1), &
-                                GEOM(iLevel) )
+               % COPY( MF_uCF(iLevel), 1, 1, &
+                       MF_uCF(iLevel) % nComp(), swX(1) )
 
         ! --- Apply boundary conditions to interior domains ---
         CALL MF_U(iLevel) % Fill_Boundary( GEOM(iLevel) )
