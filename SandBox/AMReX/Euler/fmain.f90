@@ -80,13 +80,13 @@ PROGRAM main
   INTEGER          :: iErr
   REAL(amrex_real) :: Timer_Evolution
 
+  CALL InitializeProgram
+
   TimeIt_AMReX_Euler = .TRUE.
   CALL InitializeTimers_AMReX_Euler
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
-
-  CALL InitializeProgram
 
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()
@@ -210,11 +210,12 @@ PROGRAM main
 
   ! --- Finalize everything ---
 
-  CALL FinalizeProgram( GEOM, MeshX )
-
-  CALL FinalizeTimers_AMReX_Euler
   CALL FinalizeTimers_Euler &
          ( Verbose_Option = amrex_parallel_ioprocessor(), &
            SuppressApplicationDriver_Option = .TRUE. )
+
+  CALL FinalizeTimers_AMReX_Euler
+
+  CALL FinalizeProgram( GEOM, MeshX )
 
 END PROGRAM main
