@@ -44,8 +44,8 @@ CONTAINS
 
   SUBROUTINE MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -64,7 +64,7 @@ CONTAINS
 
     iErr = 0
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 

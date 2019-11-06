@@ -1,4 +1,4 @@
-##### inputs_KelvinHelmholtz_Relativistic #####
+##### inputs_KelvinHelmholtz_Relativistic_3D #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -25,10 +25,14 @@ geometry.prob_lo     = -0.5 -1.0 -0.5 # Lower domain size
 geometry.prob_hi     = +0.5 +1.0 +0.5 # Upper domain size
 geometry.is_periodic = 1 1 1          # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell          = 016 032 016 # Number of cells in each dimension
-amr.max_grid_size   = 008 016 008 # nBoxes = n_cell / MaxGridSize
-amr.max_level       = 0           # Maximum number of refinement levels
-amr.blocking_factor = 1           # Must be a factor of max_grid_size
+amr.n_cell            = 016 032 016 # Number of cells in each dimension
+amr.max_grid_size_x   = 8
+amr.max_grid_size_y   = 16
+amr.max_grid_size_z   = 8
+amr.blocking_factor_x = 1
+amr.blocking_factor_y = 1
+amr.blocking_factor_z = 1
+amr.max_level         = 0
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1

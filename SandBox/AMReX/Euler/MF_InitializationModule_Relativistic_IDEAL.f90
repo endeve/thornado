@@ -97,8 +97,8 @@ CONTAINS
     ( ProgramName, MF_uGF, MF_uCF )
 
     CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     IF( amrex_parallel_ioprocessor() )THEN
       WRITE(*,*)
@@ -149,8 +149,8 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Sod_Relativistic( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -185,7 +185,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -273,8 +273,8 @@ CONTAINS
   !     Radice & Rezzolla, (2012), AA, 547, A26 ---
   SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -317,7 +317,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -424,8 +424,8 @@ CONTAINS
   !     Radice & Rezzolla, (2012), AA, 547, A26 ---
   SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic_3D( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -469,7 +469,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -577,8 +577,8 @@ CONTAINS
   !     Del Zanna & Bucciantini, (2002), A&A, 390, 1177 ---
   SUBROUTINE InitializeFields_RiemannProblem_2D_Relativistic( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -613,7 +613,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -715,8 +715,8 @@ CONTAINS
   SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic &
     ( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -779,7 +779,7 @@ CONTAINS
       ( '../Euler_Relativistic_IDEAL/StandingAccretionShock_Data.dat', &
         nLines, FluidFieldData )
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 

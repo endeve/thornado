@@ -53,7 +53,8 @@ MODULE MyAmrModule
   REAL(AR),          ALLOCATABLE :: xL(:), xR(:)
   CHARACTER(LEN=:),  ALLOCATABLE :: ProgramName
   CHARACTER(LEN=32), SAVE        :: CoordSys
-  LOGICAL,           SAVE        :: DEBUG, UsePhysicalUnits
+  LOGICAL,           SAVE        :: UsePhysicalUnits
+  LOGICAL,           SAVE        :: DEBUG
 
   ! --- Slope limiter ---
   LOGICAL  :: UseSlopeLimiter
@@ -75,8 +76,14 @@ MODULE MyAmrModule
   CHARACTER(LEN=:), ALLOCATABLE :: EosTableName
 
   ! --- AMReX  ---
-  INTEGER                                    :: nLevels, coord_sys
-  INTEGER,               ALLOCATABLE         :: MaxGridSize(:)
+  INTEGER                                    :: MaxLevel, nLevels, coord_sys
+  INTEGER                                    :: MaxGridSizeX1
+  INTEGER                                    :: MaxGridSizeX2
+  INTEGER                                    :: MaxGridSizeX3
+  INTEGER                                    :: BlockingFactorX1
+  INTEGER                                    :: BlockingFactorX2
+  INTEGER                                    :: BlockingFactorX3
+  INTEGER                                    :: MaxGridSizeX(3)
   INTEGER,               ALLOCATABLE, SAVE   :: StepNo(:)
   TYPE(amrex_boxarray),  ALLOCATABLE, PUBLIC :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE, PUBLIC :: DM(:)
@@ -188,11 +195,24 @@ CONTAINS
     END IF
 
     ! --- Parameters amr.* ---
+    MaxGridSizeX1    = 1
+    MaxGridSizeX2    = 1
+    MaxGridSizeX3    = 1
+    BlockingFactorX1 = 1
+    BlockingFactorX2 = 1
+    BlockingFactorX3 = 1
     CALL amrex_parmparse_build( PP, 'amr' )
-      CALL PP % getarr( 'n_cell',        nX )
-      CALL PP % getarr( 'max_grid_size', MaxGridSize )
-      CALL PP % get   ( 'max_level',     nLevels )
+      CALL PP % getarr( 'n_cell',            nX )
+      CALL PP % query ( 'max_grid_size_x',   MaxGridSizeX1 )
+      CALL PP % query ( 'max_grid_size_y',   MaxGridSizeX2 )
+      CALL PP % query ( 'max_grid_size_z',   MaxGridSizeX3 )
+      CALL PP % query ( 'blocking_factor_x', BlockingFactorX1 )
+      CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
+      CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
+      CALL PP % get   ( 'max_level',         MaxLevel )
     CALL amrex_parmparse_destroy( PP )
+    MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
+    nLevels = MaxLevel + 1
 
     ! --- Slope limiter parameters SL.* ---
     UseSlopeLimiter           = .TRUE.
@@ -248,13 +268,13 @@ CONTAINS
       STOP
     END IF
 
-    ALLOCATE( StepNo(0:nLevels) )
+    ALLOCATE( StepNo(0:nLevels-1) )
     StepNo = 0
 
-    ALLOCATE( dt(0:nLevels) )
+    ALLOCATE( dt(0:nLevels-1) )
     dt = -100.0e0_AR
 
-    ALLOCATE( t(0:nLevels) )
+    ALLOCATE( t(0:nLevels-1) )
     t = 0.0e0_AR
 
     CALL InitializeDataAMReX( nLevels )

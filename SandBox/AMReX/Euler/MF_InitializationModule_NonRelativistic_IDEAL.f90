@@ -89,8 +89,8 @@ CONTAINS
     ( ProgramName, MF_uGF, MF_uCF )
 
     CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     IF( amrex_parallel_ioprocessor() )THEN
       WRITE(*,*)
@@ -145,8 +145,8 @@ CONTAINS
 
   SUBROUTINE InitializeFields_IsentropicVortex( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -185,7 +185,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -276,8 +276,8 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Sod( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -312,7 +312,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -398,8 +398,8 @@ CONTAINS
 
   SUBROUTINE InitializeFields_SphericalSod( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -434,7 +434,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -520,8 +520,8 @@ CONTAINS
 
   SUBROUTINE InitializeFields_TopHatAdvection( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -556,7 +556,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -637,8 +637,8 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Implosion( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -680,7 +680,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -768,8 +768,8 @@ CONTAINS
 
   SUBROUTINE InitializeFields_StandingAccretionShock( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -834,7 +834,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 

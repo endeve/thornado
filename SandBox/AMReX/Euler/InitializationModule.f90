@@ -140,7 +140,7 @@ MODULE InitializationModule
     StepNo,                    &
     nLevels,                   &
     iRestart,                  &
-    MaxGridSize,               &
+    MaxGridSizeX,              &
     BA,                        &
     DM,                        &
     GEOM,                      &
@@ -172,12 +172,12 @@ CONTAINS
     TYPE(amrex_box)       :: BX
     REAL(AR)              :: Mass
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
-
     ! --- Initialize AMReX ---
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     ! --- Parse parameter file ---
     CALL MyAmrInit
@@ -186,24 +186,24 @@ CONTAINS
 
       BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
-      ALLOCATE( BA(0:nLevels) )
-      DO iLevel = 0, nLevels
+      ALLOCATE( BA(0:nLevels-1) )
+      DO iLevel = 0, nLevels-1
         CALL amrex_boxarray_build( BA(iLevel), BX )
       END DO
 
-      DO iLevel = 0, nLevels
-        CALL BA(iLevel) % maxSize( MaxGridSize )
+      DO iLevel = 0, nLevels-1
+        CALL BA(iLevel) % maxSize( MaxGridSizeX )
       END DO
 
-      ALLOCATE( GEOM(0:nLevels) )
-      ALLOCATE( DM  (0:nLevels) )
+      ALLOCATE( GEOM(0:nLevels-1) )
+      ALLOCATE( DM  (0:nLevels-1) )
 
-      DO iLevel = 0, nLevels
+      DO iLevel = 0, nLevels-1
         CALL amrex_geometry_build ( GEOM(iLevel), BX )
         CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
       END DO
 
-      DO iLevel = 0, nLevels
+      DO iLevel = 0, nLevels-1
         CALL amrex_multifab_build &
                ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
         CALL MF_uGF(iLevel) % SetVal( Zero )
@@ -255,10 +255,10 @@ CONTAINS
       WRITE(*,'(4x,A24,I3.2)')         'nDimsX  =', amrex_spacedim
       WRITE(*,'(4x,A24,ES10.3E2)')     'Gamma   =', Gamma_IDEAL
       WRITE(*,'(5x,A24,A)')            'CoordinateSystem = ', CoordinateSystem
-      WRITE(*,'(4x,A24,3I7.6)')        'nX          =', nX
-      WRITE(*,'(4x,A24,3I7.6)')        'swX         =', swX
-      WRITE(*,'(4x,A24,3I7.6)')        'bcX         =', bcX
-      WRITE(*,'(4x,A24,3I7.6)')        'MaxGridSize =', MaxGridSize
+      WRITE(*,'(4x,A24,3I7.6)')        'nX           =', nX
+      WRITE(*,'(4x,A24,3I7.6)')        'swX          =', swX
+      WRITE(*,'(4x,A24,3I7.6)')        'bcX          =', bcX
+      WRITE(*,'(4x,A24,3I7.6)')        'MaxGridSizeX =', MaxGridSizeX
 
       CALL DescribeProgramHeaderX
 
@@ -385,7 +385,7 @@ CONTAINS
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_distromap_destroy( DM(iLevel) )
       CALL amrex_boxarray_destroy ( BA(iLevel) )
     END DO

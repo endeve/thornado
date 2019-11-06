@@ -15,7 +15,7 @@ MODULE MyAmrDataModule
   PUBLIC :: InitializeDataAMReX
   PUBLIC :: FinalizeDataAMReX
 
-  
+
 CONTAINS
 
 
@@ -23,10 +23,10 @@ CONTAINS
 
     INTEGER, INTENT(in) :: nLevels
 
-    ALLOCATE( MF_uGF(0:nLevels) )
-    ALLOCATE( MF_uCF(0:nLevels) )
-    ALLOCATE( MF_uPF(0:nLevels) )
-    ALLOCATE( MF_uAF(0:nLevels) )
+    ALLOCATE( MF_uGF(0:nLevels-1) )
+    ALLOCATE( MF_uCF(0:nLevels-1) )
+    ALLOCATE( MF_uPF(0:nLevels-1) )
+    ALLOCATE( MF_uAF(0:nLevels-1) )
 
   END SUBROUTINE InitializeDataAMReX
 
@@ -37,7 +37,7 @@ CONTAINS
 
     INTEGER :: iLevel
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_multifab_destroy( MF_uAF(iLevel) )
       CALL amrex_multifab_destroy( MF_uPF(iLevel) )
       CALL amrex_multifab_destroy( MF_uCF(iLevel) )
@@ -51,5 +51,5 @@ CONTAINS
 
   END SUBROUTINE FinalizeDataAMReX
 
-  
+
 END MODULE MyAmrDataModule

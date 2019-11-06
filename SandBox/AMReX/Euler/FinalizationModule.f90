@@ -44,7 +44,7 @@ CONTAINS
 
   SUBROUTINE FinalizeProgram( GEOM, MeshX )
 
-    TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels)
+    TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels-1)
     TYPE(MeshType),        INTENT(inout) :: MeshX(1:3)
 
     INTEGER :: iLevel, iDim
@@ -68,17 +68,17 @@ CONTAINS
       CALL DestroyMesh( MeshX(iDim) )
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_geometry_destroy( GEOM(iLevel) )
     END DO
 
     CALL MyAmrFinalize
 
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
+
     CALL amrex_amrcore_finalize
 
     CALL amrex_finalize
-
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
  END SUBROUTINE FinalizeProgram
 

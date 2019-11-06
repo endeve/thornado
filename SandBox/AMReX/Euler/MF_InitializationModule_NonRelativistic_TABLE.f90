@@ -104,8 +104,8 @@ CONTAINS
     ( ProgramName, MF_uGF, MF_uCF )
 
     CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     IF( amrex_parallel_ioprocessor() )THEN
       WRITE(*,*)
@@ -147,8 +147,8 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Sod_TABLE( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -183,7 +183,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -277,8 +277,8 @@ CONTAINS
 
   SUBROUTINE InitializeFields_SphericalSod_TABLE( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -313,7 +313,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -343,7 +343,7 @@ CONTAINS
 
           DO iNodeX = 1, nDOFX
 
-            IF( X1 .LE. Zero ) THEN
+            IF( X1 .LE. One * Kilometer ) THEN
 
               uPF_K(iNodeX,iPF_D ) = 1.0e12_AR * Gram / Centimeter**3
               uPF_K(iNodeX,iPF_V1) = Zero      * Kilometer / Second
@@ -358,7 +358,7 @@ CONTAINS
               uPF_K(iNodeX,iPF_V1) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V2) = Zero       * Kilometer / Second
               uPF_K(iNodeX,iPF_V3) = Zero       * Kilometer / Second
-              uAF_K(iNodeX,iAF_P ) = 1.0e31_AR  * Erg / Centimeter**3
+              uAF_K(iNodeX,iAF_P ) = 1.0e30_AR  * Erg / Centimeter**3
               uAF_K(iNodeX,iAF_Ye) = 0.3_AR
 
             END IF
@@ -409,8 +409,8 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Jet_TABLE( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER        :: iDim
@@ -445,7 +445,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -563,8 +563,8 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Implosion_TABLE( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
     INTEGER             :: iDim
@@ -605,7 +605,7 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 

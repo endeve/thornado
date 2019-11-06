@@ -44,7 +44,7 @@ CONTAINS
 
   SUBROUTINE MF_ComputeGeometryX( MF_uGF, Mass )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     REAL(amrex_real),     INTENT(in)    :: Mass
 
     INTEGER            :: iLevel
@@ -54,7 +54,7 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), ALLOCATABLE         :: G(:,:,:,:,:)
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -111,7 +111,7 @@ CONTAINS
 
   SUBROUTINE MF_ComputeGravitationalPotential( MF_uGF, Mass )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     REAL(amrex_real),     INTENT(in)    :: Mass
 
     INTEGER            :: iLevel
@@ -121,7 +121,7 @@ CONTAINS
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), ALLOCATABLE         :: G(:,:,:,:,:)
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 

@@ -89,7 +89,7 @@ CONTAINS
   SUBROUTINE ShowVariableFromMultiFab( MF, swX, iComp )
 
     INTEGER,              INTENT(in) :: swX(3)
-    TYPE(amrex_multifab), INTENT(in) :: MF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in) :: MF(0:nLevels-1)
     INTEGER,              INTENT(in) :: iComp
 
     INTEGER                               :: iX1, iX2, iX3, iLevel
@@ -98,7 +98,7 @@ CONTAINS
     TYPE(amrex_mfiter)                    :: MFI
     REAL(amrex_real), CONTIGUOUS, POINTER :: U(:,:,:,:)
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = .TRUE. )
 
       DO WHILE( MFI % next() )

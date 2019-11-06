@@ -5,9 +5,9 @@ DEBUG = 0
 
 thornado.ProgramName = "Implosion_TABLE"
 
-thornado.t_end     = 5.0e-1      # Final time
-thornado.dt_wrt    = -2.5e-2    # Time increment to write plot-file
-thornado.dt_chk    = -2.5e-2    # Time increment to write checkpoint-file
+thornado.t_end     = 5.0e-1   # Final time
+thornado.dt_wrt    = -2.5e-2   # Time increment to write plot-file
+thornado.dt_chk    = -2.5e-2   # Time increment to write checkpoint-file
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
 thornado.nStages   = 3        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
@@ -16,18 +16,20 @@ thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
 thornado.iCycleD   = 0001     # MOD this number to display info
 thornado.iCycleW   = 0010     # MOD this number to write plotfile
 thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
-thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
+thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
 thornado.UsePhysicalUnits = 1
 
-geometry.coord_sys   = 2             # CARTESIAN
+geometry.coord_sys   = 2              # SPHERICAL
 geometry.prob_lo     = 1.0e-3 0.0 0.0 # Lower domain size
-geometry.prob_hi     = 2.0e0 3.1415926535897932 4.0 # Upper domain size
-geometry.is_periodic = 00 00 01      # Periodicity. 0 (no), 1 (yes)
+geometry.prob_hi     = 2.0e0 3.1415926535897932 6.283185307179586 # Upper domain size
+geometry.is_periodic = 00 00 01       # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell          = 64 8 01 # Number of cells in each dimension
-amr.max_grid_size   = 64 8 01 # nBoxes = n_cell / MaxGridSize
-amr.max_level       = 0          # Maximum number of refinement levels
-amr.blocking_factor = 1          # Must be a factor of max_grid_size
+amr.n_cell            = 64 08 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 64
+amr.max_grid_size_y   = 8
+amr.blocking_factor_x = 1
+amr.blocking_factor_y = 1
+amr.max_level         = 0
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1
