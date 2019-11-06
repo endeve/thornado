@@ -1314,31 +1314,31 @@ CONTAINS
 
         dU_E(iNodeZ,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
           = dU_E(iNodeZ,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
-            + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+            - dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
               * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
               * uGF_K(iNodeX,iGF_SqrtGm,iZ2,iZ3,iZ4) &
               * ( Flux_K(iCR_G1) &
-                  - uPR_K(iPR_I1) * dV_d_dX1(iNodeX,1,iZ2,iZ3,iZ4) )
+                  + uPR_K(iPR_I1) * dV_d_dX1(iNodeX,1,iZ2,iZ3,iZ4) )
 
         ! --- iCR_G2 ---
 
         dU_E(iNodeZ,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
           = dU_E(iNodeZ,iCR_G2,iZ2,iZ3,iZ4,iS,iZ1) &
-            + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+            - dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
               * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
               * uGF_K(iNodeX,iGF_SqrtGm,iZ2,iZ3,iZ4) &
               * ( Flux_K(iCR_G2) &
-                  - uPR_K(iPR_I1) * dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4) )
+                  + uPR_K(iPR_I1) * dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4) )
 
         ! --- iCR_G3 ---
 
         dU_E(iNodeZ,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) &
           = dU_E(iNodeZ,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) &
-            + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
+            - dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
               * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
               * uGF_K(iNodeX,iGF_SqrtGm,iZ2,iZ3,iZ4) &
               * ( Flux_K(iCR_G3) &
-                  - uPR_K(iPR_I1) * dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4) )
+                  + uPR_K(iPR_I1) * dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4) )
 
       END DO
       END DO
