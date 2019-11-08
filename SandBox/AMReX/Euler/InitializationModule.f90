@@ -172,12 +172,12 @@ CONTAINS
     TYPE(amrex_box)       :: BX
     REAL(AR)              :: Mass
 
-    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
-
     ! --- Initialize AMReX ---
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     ! --- Parse parameter file ---
     CALL MyAmrInit

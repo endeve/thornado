@@ -321,6 +321,27 @@ CONTAINS
 
       END IF
 
+    CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = 1, swX(1)
+
+        ! --- Inner: No Boundary Condition ---
+
+        ! --- Outer: Homogeneous ---
+
+        IF( ApplyOuterBC( iApplyBC ) )THEN
+          DO iCF = 1, nCF
+            U(:,iX_E0(1)+iX1,iX2,iX3,iCF) &
+              = U(:,iX_E0(1),iX2,iX3,iCF)
+          END DO
+        END IF
+
+      END DO
+      END DO
+      END DO
+
     CASE ( 110 ) ! Custom BCs for Relativistic Accretion Problem
 
       IF( ApplyInnerBC( iApplyBC ) )THEN

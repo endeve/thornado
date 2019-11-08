@@ -168,31 +168,57 @@ PROGRAM ApplicationDriver
 
     CASE( 'StreamingDopplerShift' )
 
-      nX  = [ 64, 1, 1 ]
+      nX  = [ 128, 1, 1 ]
       xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0d1, 1.0_DP, 1.0_DP ]
-      bcX = [ 1, 0, 0 ]
+      bcX = [ 12, 0, 0 ]
 
-      nE  = 40 
+      nE  = 64
       eL  = 0.0d0
       eR  = 5.0d1
-      bcE = 2  
-        
-      nNodes = 2
+      bcE = 10
 
-      TimeSteppingScheme = 'SSPRK2'
+      nNodes = 1
 
-      t_end   = 1.0d0
+      TimeSteppingScheme = 'SSPRK1'
+
+      t_end   = 5.0d1
       iCycleD = 1
-      iCycleW = 10
+      iCycleW = 50
       maxCycles = 1000000
 
-      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
+    CASE( 'TransparentShock' )
+
+      nX  = [ 100, 1, 1 ]
+      xL  = [ 1.0d1, 0.0_DP, 0.0_DP ]
+      xR  = [ 5.0d2, 1.0_DP, 1.0_DP ]
+      bcX = [ 12, 0, 0 ]
+
+      nE  = 50
+      eL  = 0.0d0
+      eR  = 5.0d1
+      bcE = 10
+
+      nNodes = 1
+
+      TimeSteppingScheme = 'SSPRK1'
+
+      t_end   = 1.0d3
+      iCycleD = 1
+      iCycleW = 50
+      maxCycles = 1000000
+
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
 
     CASE DEFAULT
 

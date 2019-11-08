@@ -37,6 +37,7 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE TimersModule_AMReX_Euler,         ONLY: &
     TimersStart_AMReX_Euler, TimersStop_AMReX_Euler,  &
     Timer_AMReX_Euler_UpdateFluid, &
+    Timer_AMReX_Euler_InteriorBC, &
     Timer_AMReX_Euler_CopyMultiFab
 
   IMPLICIT NONE
@@ -228,16 +229,18 @@ CONTAINS
     DO iS = 1, nStages_SSPRK
 
       ! --- Copy data from input MultiFab to temporary MultiFab ---
-      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
       DO iLevel = 0, nLevels-1
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
         CALL MF_U(iLevel) &
-               % PARALLEL_COPY( MF_uCF(iLevel), 1, 1, &
-                                MF_uCF(iLevel) % nComp(), 0, swX(1), &
-                                GEOM(iLevel) )
+               % COPY( MF_uCF(iLevel), 1, 1, &
+                       MF_uCF(iLevel) % nComp(), swX(1) )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
 
         ! --- Apply boundary conditions to interior domains ---
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
         CALL MF_U(iLevel) % Fill_Boundary( GEOM(iLevel) )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
         ! --- Copy ghost data from physical boundaries ---
         CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
@@ -253,7 +256,6 @@ CONTAINS
         CALL amrex_mfiter_destroy( MFI )
 
       END DO
-      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
 
       DO iLevel = 0, nLevels-1
         DO jS = 1, iS - 1

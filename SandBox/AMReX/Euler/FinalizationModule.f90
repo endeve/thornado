@@ -74,11 +74,11 @@ CONTAINS
 
     CALL MyAmrFinalize
 
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
+
     CALL amrex_amrcore_finalize
 
     CALL amrex_finalize
-
-    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
  END SUBROUTINE FinalizeProgram
 
