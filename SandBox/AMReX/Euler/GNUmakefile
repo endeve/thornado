@@ -5,8 +5,8 @@ THORNADO_HOME ?= $(THORNADO_DIR)
 WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
 HDF5_HOME     ?= $(HDF5_DIR)
 
-HDF5_INC      ?= $(HDF5_HOME)/include
-HDF5_LIB      ?= $(HDF5_HOME)/lib
+HDF5_INC       = $(HDF5_HOME)/include
+HDF5_LIB       = $(HDF5_HOME)/lib
 
 EOS ?= IDEAL
 
