@@ -13,6 +13,8 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     nCF
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies
+  USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
+    ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_DiscretizationModule_Streaming_OrderV, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
   USE TwoMoment_DiscretizationModule_Collisions_OrderV, ONLY: &
@@ -80,6 +82,9 @@ CONTAINS
 
           ! --- Apply Limiters ---
 
+          CALL ApplyPositivityLimiter_TwoMoment &
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, UF, Ui )
+
         END IF
 
       END DO ! jS = 1, iS - 1
@@ -117,7 +122,7 @@ CONTAINS
     IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
         ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
 
-      PRINT*, "    ASSEMBLY"
+      PRINT*, "    ASSEMBLY:"
 
       Ui = U0
 
@@ -137,11 +142,12 @@ CONTAINS
 
       END DO
 
+      CALL ApplyPositivityLimiter_TwoMoment &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, UF, Ui )
+
     END IF
 
     UR = Ui
-
-    PRINT*, "Update_IMEX_RK (out)"
 
   END SUBROUTINE Update_IMEX_RK
 

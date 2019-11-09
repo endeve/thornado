@@ -899,7 +899,7 @@ CONTAINS
     INTEGER  :: iNode, iNodeZ, iNodeE, iNodeX
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
     INTEGER  :: nK(4), nK_Z1(4), nV, nV_Z1
-    REAL(DP) :: EdgeEnergyCubed
+    REAL(DP) :: EdgeEnergyCubed, Alpha
     REAL(DP) :: uPR_K(nPR), Flux_K(nCR)
     REAL(DP) :: uPR_L(nPR), Flux_L(nCR)
     REAL(DP) :: uPR_R(nPR), Flux_R(nCR)
@@ -1150,10 +1150,13 @@ CONTAINS
         EdgeEnergyCubed &
           = ( MeshE % Center(iZ1) - Half * MeshE % Width(iZ1) )**3
 
+        Alpha = dV_u_dX1(iNode,1,iZ2,iZ3,iZ4)
+        Alpha = SIGN( Half, Alpha ) + Half
+
         DO iCR = 1, nCR
 
           NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
-            = Half * ( Flux_L(iCR) + Flux_R(iCR) )
+            = (One-Alpha) * Flux_L(iCR) + Alpha * Flux_R(iCR)
 
           NumericalFlux(iNode,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
             = dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &

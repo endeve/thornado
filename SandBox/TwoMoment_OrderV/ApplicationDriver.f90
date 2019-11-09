@@ -54,6 +54,10 @@ PROGRAM ApplicationDriver
     InitializeClosure_TwoMoment
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeFromConserved_TwoMoment
+  USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
+    InitializePositivityLimiter_TwoMoment, &
+    FinalizePositivityLimiter_TwoMoment, &
+    ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_OpacityModule_OrderV, ONLY: &
     CreateOpacities, &
     SetConstantOpacities, &
@@ -70,6 +74,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(32) :: TimeSteppingScheme
+  LOGICAL       :: UsePositivityLimiter
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
@@ -78,6 +83,8 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: D_0, Chi, Sigma
 
   CoordinateSystem = 'CARTESIAN'
+
+  UsePositivityLimiter = .FALSE.
 
   ProgramName = 'StreamingDopplerShift'
 
@@ -168,19 +175,19 @@ PROGRAM ApplicationDriver
 
     CASE( 'StreamingDopplerShift' )
 
-      nX  = [ 128, 1, 1 ]
+      nX  = [ 32, 1, 1 ]
       xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0d1, 1.0_DP, 1.0_DP ]
       bcX = [ 12, 0, 0 ]
 
-      nE  = 64
+      nE  = 16
       eL  = 0.0d0
       eR  = 5.0d1
       bcE = 10
 
-      nNodes = 1
+      nNodes = 2
 
-      TimeSteppingScheme = 'SSPRK1'
+      TimeSteppingScheme = 'SSPRK2'
 
       t_end   = 5.0d1
       iCycleD = 1
@@ -192,6 +199,8 @@ PROGRAM ApplicationDriver
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
+
+      UsePositivityLimiter = .TRUE.
 
     CASE( 'TransparentShock' )
 
@@ -205,9 +214,9 @@ PROGRAM ApplicationDriver
       eR  = 5.0d1
       bcE = 10
 
-      nNodes = 1
+      nNodes = 2
 
-      TimeSteppingScheme = 'SSPRK1'
+      TimeSteppingScheme = 'SSPRK2'
 
       t_end   = 1.0d3
       iCycleD = 1
@@ -219,6 +228,8 @@ PROGRAM ApplicationDriver
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
+
+      UsePositivityLimiter = .TRUE.
 
     CASE DEFAULT
 
@@ -300,6 +311,15 @@ PROGRAM ApplicationDriver
 
   CALL InitializeClosure_TwoMoment
 
+  ! --- Initialize Positivity Limiter ---
+
+  CALL InitializePositivityLimiter_TwoMoment &
+         ( Min_1_Option = EPSILON( One ), &
+           Min_2_Option = EPSILON( One ), &
+           UsePositivityLimiter_Option &
+             = UsePositivityLimiter, &
+           Verbose_Option = .TRUE. )
+
   ! --- Initialize Opacities ---
 
   CALL CreateOpacities &
@@ -314,6 +334,11 @@ PROGRAM ApplicationDriver
   ! --- Set Initial Condition ---
 
   CALL InitializeFields( V_0 )
+
+  ! --- Apply Positivity Limiter to Initial Data ---
+
+  CALL ApplyPositivityLimiter_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
 
   ! --- Write Initial Condition ---
 
@@ -381,6 +406,8 @@ PROGRAM ApplicationDriver
            WriteRF_Option = .TRUE. )
 
   ! --- Finalize ---
+
+  CALL FinalizePositivityLimiter_TwoMoment
 
   CALL DestroyOpacities
 
