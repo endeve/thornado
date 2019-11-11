@@ -628,19 +628,38 @@ CONTAINS
 
         R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
         IF( R < R_Shock )THEN
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
+            = 1.0d-0
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
             = - 0.1_DP * V_Shock * ( R - R_Min ) / ( R_Max - R_Min )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+            = V_0(2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+            = V_0(3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
+            = 1.0d-1
+          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) &
+            = 0.0d-0
+
         ELSE
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
+            = 1.0d-0
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
             = - V_Shock * ( SQRT( R_Max / R ) - One ) &
                   / ( SQRT( R_Max / R_Shock ) - One )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+            = V_0(2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+            = V_0(3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
+            = 1.0d-1
+          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) &
+            = 0.0d-0
+
         END IF
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_0(2)
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
-        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
