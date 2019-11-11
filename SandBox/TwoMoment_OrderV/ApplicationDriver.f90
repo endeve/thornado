@@ -204,12 +204,12 @@ PROGRAM ApplicationDriver
 
     CASE( 'TransparentShock' )
 
-      nX  = [ 100, 1, 1 ]
+      nX  = [ 64, 1, 1 ]
       xL  = [ 1.0d1, 0.0_DP, 0.0_DP ]
       xR  = [ 5.0d2, 1.0_DP, 1.0_DP ]
       bcX = [ 12, 0, 0 ]
 
-      nE  = 50
+      nE  = 32
       eL  = 0.0d0
       eR  = 5.0d1
       bcE = 10
