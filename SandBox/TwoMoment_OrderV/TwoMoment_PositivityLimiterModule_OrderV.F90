@@ -1,7 +1,7 @@
 MODULE TwoMoment_PositivityLimiterModule_OrderV
 
   USE KindModule, ONLY: &
-    DP, Zero, One, &
+    DP, Zero, Half, One, &
     SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nNodesZ, &
@@ -51,6 +51,7 @@ MODULE TwoMoment_PositivityLimiterModule_OrderV
   INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
   INTEGER               :: nPT      ! Total Number of Positive Points
   REAL(DP)              :: Min_1, Max_1, Min_2
+  REAL(DP),   PARAMETER :: One_EPS = One - 1.0d1 * EPSILON( One )
   REAL(DP), ALLOCATABLE :: InterpMat(:,:)
 
 CONTAINS
@@ -215,7 +216,7 @@ CONTAINS
     LOGICAL  :: RecomputePointValues
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP
     INTEGER  :: iNodeZ, iNodeE, iNodeX
-    REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2
+    REAL(DP) :: Min_K, Max_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: Gamma, Gamma_Min
     REAL(DP) :: Tau_Q(nDOFZ, &
                       iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
@@ -356,6 +357,8 @@ CONTAINS
                  ABS( ( Max_1 - N_K(iZ1,iZ2,iZ3,iZ4,iS) ) &
                       / ( Max_K - N_K(iZ1,iZ2,iZ3,iZ4,iS)+SqrtTiny ) ) )
 
+        Theta_1 = One_EPS * Theta_1
+
         PRINT*, "Min_K, Max_K = ", Min_K, Max_K
         PRINT*, "Theta_1      = ", Theta_1
 
@@ -401,21 +404,49 @@ CONTAINS
 
         Gamma_Min = MIN( Gamma, Gamma_Min )
 
+        IF( Gamma_Min < Min_2 )THEN
+
+          CALL SolveTheta_Bisection &
+                 ( N_P (iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                   G1_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                   G2_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                   G3_P(iP,iZ1,iZ2,iZ3,iZ4,iS), &
+                   N_K (   iZ1,iZ2,iZ3,iZ4,iS), &
+                   G1_K(   iZ1,iZ2,iZ3,iZ4,iS), &
+                   G2_K(   iZ1,iZ2,iZ3,iZ4,iS), &
+                   G3_K(   iZ1,iZ2,iZ3,iZ4,iS), &
+                   Theta_P )
+
+          Theta_2 = MIN( Theta_2, Theta_P )
+
+        END IF
+
       END DO
 
       IF( Gamma_Min < Min_2 )THEN
 
+        ! --- Limit Towards Cell Average ---
+
         PRINT*, "Gamma_Min = ", Gamma_Min
+        PRINT*, "Theta_2   = ", Theta_2
 
-        PRINT*, "N_K       = ", N_K (iZ1,iZ2,iZ3,iZ4,iS)
-        PRINT*, "G1_K      = ", G1_K(iZ1,iZ2,iZ3,iZ4,iS)
-        PRINT*, "G2_K      = ", G2_K(iZ1,iZ2,iZ3,iZ4,iS)
-        PRINT*, "G3_K      = ", G3_K(iZ1,iZ2,iZ3,iZ4,iS)
+        Theta_2 = One_EPS * Theta_2
 
-        N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) = N_K (iZ1,iZ2,iZ3,iZ4,iS)
-        G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) = G1_K(iZ1,iZ2,iZ3,iZ4,iS)
-        G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) = G2_K(iZ1,iZ2,iZ3,iZ4,iS)
-        G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) = G3_K(iZ1,iZ2,iZ3,iZ4,iS)
+        N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
+          = Theta_2 * N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
+            + ( One - Theta_2 ) * N_K (iZ1,iZ2,iZ3,iZ4,iS)
+
+        G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+          = Theta_2 * G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            + ( One - Theta_2 ) * G1_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+        G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+          = Theta_2 * G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            + ( One - Theta_2 ) * G2_K(iZ1,iZ2,iZ3,iZ4,iS)
+
+        G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+          = Theta_2 * G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
+            + ( One - Theta_2 ) * G3_K(iZ1,iZ2,iZ3,iZ4,iS)
 
       END IF
 
@@ -513,6 +544,75 @@ CONTAINS
 
     RETURN
   END FUNCTION GammaFun
+
+
+  SUBROUTINE SolveTheta_Bisection &
+    ( N_P, G1_P, G2_P, G3_P, N_K, G1_K, G2_K, G3_K, Theta )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: N_P, G1_P, G2_P, G3_P
+    REAL(DP), INTENT(in)  :: N_K, G1_K, G2_K, G3_K
+    REAL(DP), INTENT(out) :: Theta
+
+    INTEGER,  PARAMETER :: ITERATION_MAX = 12
+    REAL(DP), PARAMETER :: dx_min = 1.0d-3
+
+    LOGICAL  :: CONVERGED
+    INTEGER  :: ITERATION
+    REAL(DP) :: x_a, x_b, x_c, dx
+    REAL(DP) :: f_a, f_b, f_c
+
+    x_a = Zero
+    f_a = GammaFun( N_K, G1_K, G2_K, G3_K ) - Min_2
+
+    x_b = One
+    f_b = GammaFun( N_P, G1_P, G2_P, G3_P ) - Min_2
+
+    dx = One
+
+    ITERATION = 0
+    CONVERGED = .FALSE.
+    DO WHILE ( .NOT. CONVERGED .AND. ITERATION < ITERATION_MAX )
+
+      ITERATION = ITERATION + 1
+
+      dx = Half * dx
+      x_c = x_a + dx
+
+      f_c = GammaFun &
+              ( x_c * N_P  + ( One - x_c ) * N_K,  &
+                x_c * G1_P + ( One - x_c ) * G1_K, &
+                x_c * G2_P + ( One - x_c ) * G2_K, &
+                x_c * G3_P + ( One - x_c ) * G3_K ) - Min_2
+
+      IF( f_a * f_c < Zero )THEN
+
+        x_b = x_c
+        f_b = f_c
+
+      ELSE
+
+        x_a = x_c
+        f_a = f_c
+
+      END IF
+
+      IF( dx < dx_min ) CONVERGED = .TRUE.
+
+    END DO
+
+    IF( ITERATION >= ITERATION_MAX )THEN
+      Theta = Zero
+    ELSE
+      Theta = x_a
+    END IF
+
+  END SUBROUTINE SolveTheta_Bisection
 
 
 END MODULE TwoMoment_PositivityLimiterModule_OrderV
