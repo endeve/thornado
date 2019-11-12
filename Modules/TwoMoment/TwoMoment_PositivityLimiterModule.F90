@@ -403,8 +403,8 @@ CONTAINS
           DO iZ2 = iZ_B0(2), iZ_E0(2)
             DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-              Min_K = One
-              Max_K = Zero
+              Min_K = Max_1
+              Max_K = Min_1
               DO iP = 1, nPT
                 Min_K = MIN( Min_K, U_P_N(iP,iZ1,iZ2,iZ3,iZ4,iS) )
                 Max_K = MAX( Max_K, U_P_N(iP,iZ1,iZ2,iZ3,iZ4,iS) )
@@ -539,7 +539,7 @@ CONTAINS
           DO iZ2 = iZ_B0(2), iZ_E0(2)
             DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-              Min_Gam = One
+              Min_Gam = Min_2
               Theta_2 = One
 
               DO iP = 1, nPT
