@@ -328,15 +328,25 @@ LIBRARIES_MAGMA                = $(LIBRARIES_MAGMA_$(MACHINE))
 
 LIBRARIES                      = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_POSEIDON)
 
-PP_titan_gnu                   =
-PP_titan_pgi                   =
-PP_summitdev_gcc               =
-PP_summitdev_pgi               =
-PP_summitdev_xl                = -WF,
-PP_summit_gcc                  =
-PP_summit_pgi                  =
-PP_summit_xl                   = -WF,
+PP_titan_gnu                   = -D
+PP_titan_pgi                   = -D
+PP_summitdev_gcc               = -D
+PP_summitdev_pgi               = -D
+PP_summitdev_xl                = -D
+PP_summit_gcc                  = -D
+PP_summit_pgi                  = -D
+PP_summit_xl                   = -D
 PP                             = $(PP_$(MACHINE))
+
+MDEFS_titan_gnu                   =
+MDEFS_titan_pgi                   =
+MDEFS_summitdev_gcc               =
+MDEFS_summitdev_pgi               =
+MDEFS_summitdev_xl                = -WF,
+MDEFS_summit_gcc                  =
+MDEFS_summit_pgi                  =
+MDEFS_summit_xl                   = -WF,
+MDEFS                             = $(MDEFS_$(MACHINE))
 
 ifeq ($(USE_GPU),TRUE)
    INCLUDE      += $(INCLUDE_CUDA)
