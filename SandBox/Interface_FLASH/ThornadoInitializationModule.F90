@@ -1,7 +1,5 @@
 module ThornadoInitializationModule
 
-#include "Flash.h"
-
   use KindModule, only: &
     DP, SqrtTiny
   use UnitsModule, only : &
@@ -44,7 +42,7 @@ module ThornadoInitializationModule
   use SubcellReconstructionModule, only: &
     InitializeSubcellReconstruction, &
     FinalizeSubcellReconstruction
-#ifdef FLASH_EOS_WEAKLIB
+#ifdef MICROPHYSICS_WEAKLIB
   use EquationOfStateModule_TABLE, only: &
     InitializeEquationOfState_TABLE, &
     FinalizeEquationOfState_TABLE
@@ -100,17 +98,17 @@ module ThornadoInitializationModule
 contains
 
   subroutine InitThornado &
-    ( swE, eL_MeV, eR_MeV, zoomE, &
+    ( nNodes, nDimsX, nE, swE, eL_MeV, eR_MeV, zoomE, &
       EquationOfStateTableName_Option, External_EOS, &
       Gamma_IDEAL_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option )
 
-    integer,  intent(in) :: swE
+    integer,  intent(in) :: nNodes, nDimsX, nE, swE
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
 
     character(len=*), intent(in), optional :: EquationOfStateTableName_Option
-#ifdef FLASH_EOS_WEAKLIB
+#ifdef MICROPHYSICS_WEAKLIB
     type(EquationOfStateTableType), pointer, &
                       intent(in), optional :: External_EOS
 #else
@@ -123,14 +121,10 @@ contains
     character(len=*), intent(in), optional :: OpacityTableName_NES_Option
     character(len=*), intent(in), optional :: OpacityTableName_Pair_Option
 
-    integer  :: nDimsX, nE, nX(3), nNodes, i
+    integer  :: nX(3), i
     real(dp) :: eL, eR
 
     ! --- Convert from MeV (expected) to thornado code units ---
-
-    nDimsX = NDIM
-    nE = THORNADO_NE
-    nNodes = THORNADO_NNODES
 
     eL = eL_MeV * MeV
     eR = eR_MeV * MeV
@@ -195,7 +189,7 @@ contains
              Verbose_Option = .FALSE. )
 
     ! --- Nuclear Equation of State ---
-#ifdef FLASH_EOS_WEAKLIB
+#ifdef MICROPHYSICS_WEAKLIB
     call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
@@ -265,7 +259,7 @@ contains
 
     call FinalizeSubcellReconstruction
 
-#ifdef FLASH_EOS_WEAKLIB
+#ifdef MICROPHYSICS_WEAKLIB
     call FinalizeEquationOfState_TABLE
 #else
     call FinalizeEquationOfState_IDEAL
@@ -281,14 +275,14 @@ contains
 
   end subroutine FreeThornado
 
-  subroutine InitThornado_Patch( nX, swX, xL, xR )
+  subroutine InitThornado_Patch( nX, swX, xL, xR, nSpecies )
 
     use ProgramHeaderModule, only: nE, swE, nNodesX
 
-    integer,  intent(in) :: nX(3), swX(3)
+    integer,  intent(in) :: nX(3), swX(3), nSpecies
     real(dp), intent(in) :: xL(3), xR(3)
 
-    integer :: iDim, nSpecies
+    integer :: iDim
 
     call InitializeProgramHeaderX &
            ( nX_Option = nX, swX_Option = swX, &
@@ -309,8 +303,6 @@ contains
 
     call CreateFluidFields &
            ( nX, swX, Verbose_Option = .FALSE. )
-
-    nSpecies = THORNADO_NSPECIES
 
     call CreateRadiationFields &
            ( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
