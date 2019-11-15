@@ -1,0 +1,38 @@
+ifeq ($(USE_OACC),TRUE)
+   USE_GPU = TRUE
+else ifeq ($(USE_OMP_OL),TRUE)
+   USE_GPU = TRUE
+else ifeq ($(USE_CUBLAS),TRUE)
+   USE_GPU = TRUE
+else ifeq ($(USE_MAGMA),TRUE)
+   USE_GPU = TRUE
+endif
+
+USE_GPU ?= FALSE
+ifeq ($(USE_GPU),TRUE)
+
+   USE_OMP   ?= FALSE
+
+   USE_OACC  ?= FALSE
+   ifeq ($(USE_OACC),TRUE)
+      USE_OMP_OL ?= FALSE
+   else
+      USE_OMP_OL ?= TRUE
+   endif
+
+   USE_MAGMA ?= FALSE
+   ifeq ($(USE_MAGMA),TRUE)
+      USE_CUBLAS ?= FALSE
+   else
+      USE_CUBLAS ?= TRUE
+   endif
+
+else
+
+   USE_OMP    ?= FALSE
+   USE_OACC   ?= FALSE
+   USE_OMP_OL ?= FALSE
+   USE_MAGMA  ?= FALSE
+   USE_CUBLAS ?= FALSE
+
+endif

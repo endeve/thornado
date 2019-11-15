@@ -18,6 +18,7 @@
 # compiled code
 *.o
 *.mod
+*.a
 
 # AMReX
 *main*ex
