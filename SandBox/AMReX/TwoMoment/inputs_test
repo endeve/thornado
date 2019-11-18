@@ -1,0 +1,35 @@
+
+
+
+
+DEBUG = 0
+
+thornado.ProgramName = "Test"
+
+thornado.t_end     = 10.0     # Final time
+thornado.dt_wrt    = -0.1      # Write time interval
+thornado.dt_chk    = -0.1      # Time increment to write checkpoint-file
+thornado.nNodes    = 3        # Number of DG nodes in each active dimension
+#thornado.nStages   = 3        # Number of SSP-RK stages for time integration
+thornado.CFL       = 1.0      # CFL number
+thornado.bcX       = 00 00 00 # Boundary conditions
+thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
+thornado.iCycleD   = 0010     # MOD this number to display info
+thornado.iCycleW   = 0100     # MOD this number to write plotfile
+thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
+thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
+
+
+geometry.coord_sys   = 0             # CARTESIAN
+geometry.prob_lo     = -5.0 -5.0 0.0 # Lower domain size
+geometry.prob_hi     = +5.0 +5.0 1.0 # Upper domain size
+geometry.is_periodic = 01 01 01      # Periodicity. 0 (no), 1 (yes)
+
+
+
+amr.n_cell            = 32 32 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 16
+amr.max_grid_size_y   = 16
+amr.blocking_factor_x = 1
+amr.blocking_factor_y = 1
+amr.max_level         = 0
