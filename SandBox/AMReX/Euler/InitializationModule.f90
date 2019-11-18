@@ -152,6 +152,7 @@ MODULE InitializationModule
     Timer_AMReX_Euler_InputOutput
 
   IMPLICIT NONE
+  PRIVATE
 
   PUBLIC :: InitializeProgram
 
@@ -160,7 +161,6 @@ MODULE InitializationModule
   REAL(AR), PARAMETER :: Zero = 0.0_AR
   REAL(AR), PARAMETER :: One  = 1.0_AR
   REAL(AR), PARAMETER :: Two  = 2.0_AR
-
 
 CONTAINS
 

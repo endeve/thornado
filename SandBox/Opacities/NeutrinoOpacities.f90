@@ -7,6 +7,12 @@ PROGRAM NeutrinoOpacities
     Centimeter, &
     Kelvin, &
     MeV
+  USE ProgramInitializationModule, ONLY: &
+    InitializeProgram, &
+    FinalizeProgram
+  USE MeshModule, ONLY: &
+    MeshE, &
+    NodeCoordinate
   USE UtilitiesModule, ONLY: &
     WriteVector, &
     WriteMatrix
@@ -38,8 +44,11 @@ PROGRAM NeutrinoOpacities
   INCLUDE 'mpif.h'
 
   INTEGER, PARAMETER :: &
-    nPointsX = 2**5, &
-    nPointsE = 2**5, &
+    nNodes   = 2, &
+    nE       = 2**4, &
+    nX1      = 2**11, &
+    nPointsX = nNodes * nX1, &
+    nPointsE = nNodes * nE, &
     nSpecies = 2
   REAL(DP), PARAMETER :: &
     Unit_D     = Gram / Centimeter**3, &
@@ -47,10 +56,13 @@ PROGRAM NeutrinoOpacities
     Unit_Y     = 1.0_DP, &
     Unit_E     = MeV, &
     Unit_Chi   = 1.0_DP / Centimeter, &
-    Unit_Sigma = 1.0_DP / Centimeter
+    Unit_Sigma = 1.0_DP / Centimeter, &
+    eL         = 0.0e0_DP * Unit_E, &
+    eR         = 3.0e2_DP * Unit_E, &
+    ZoomE      = 1.183081754893913_DP
 
   INTEGER :: &
-    mpierr, iE, iX, iS
+    mpierr, iE, iX, iS, iNodeE, iN_E
   REAL(DP) :: &
     Timer_ReadEos, &
     Timer_ReadOpacities, &
@@ -80,9 +92,33 @@ PROGRAM NeutrinoOpacities
     Phi_0_Pair_In,  dPhi_0_Pair_In_dY,  dPhi_0_Pair_In_dE, &
     Phi_0_Pair_Out, dPhi_0_Pair_Out_dY, dPhi_0_Pair_Out_dE
 
-  CALL MPI_INIT( mpierr )
-
-  CALL InitializeDevice
+  CALL InitializeProgram &
+         ( ProgramName_Option &
+             = 'NeutrinoOpacities', &
+           nX_Option &
+             = [ nX1, 1, 1 ], &
+           swX_Option &
+             = [ 01, 00, 00 ], &
+           bcX_Option &
+             = [ 32, 00, 00 ], &
+           nE_Option &
+             = nE, &
+           eL_Option &
+             = eL, &
+           eR_Option &
+             = eR, &
+           ZoomE_Option &
+             = ZoomE, &
+           nNodes_Option &
+             = nNodes, &
+           CoordinateSystem_Option &
+             = 'CARTESIAN', &
+           ActivateUnits_Option &
+             = .TRUE., &
+           nSpecies_Option &
+             = nSpecies, &
+           BasicInitialization_Option &
+             = .TRUE. )
 
   WRITE(*,*)
   WRITE(*,'(A4,A)') '', 'NeutrinoOpacities'
@@ -100,14 +136,16 @@ PROGRAM NeutrinoOpacities
 
   ! --- Energy Grid ---
 
-  dE(1:3) = 2.0_DP * Unit_E
-  DO iE = 4, nPointsE
-    dE(iE) = 1.095_DP * dE(iE-1)
-  END DO
+  !dE(1:3) = 2.0_DP * Unit_E
+  !DO iE = 4, nPointsE
+  !  dE(iE) = 1.095_DP * dE(iE-1)
+  !END DO
 
-  DO iE = 1, nPointsE
-    E(iE) = SUM( dE(1:iE-1) ) + 0.5_DP * dE(iE)
-    WRITE(*,'(A6,A2,I3.3,A10,ES8.2E2)') '','E(',iE,') [MeV] = ', E(iE) / Unit_E
+  DO iN_E = 1, nPointsE
+    iE      = MOD( (iN_E-1) / nNodes, nE     ) + 1
+    iNodeE  = MOD( (iN_E-1)         , nNodes ) + 1
+    E(iN_E) = NodeCoordinate( MeshE, iE, iNodeE )
+    WRITE(*,'(A6,A2,I3.3,A10,ES8.2E2)') '','E(',iN_E,') [MeV] = ', E(iN_E) / Unit_E
   END DO
 
   ! --- Initialize Equation of State ---

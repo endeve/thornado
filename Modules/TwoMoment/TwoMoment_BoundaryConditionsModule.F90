@@ -439,7 +439,7 @@ CONTAINS
                   DO iNode = 1, nDOF
 
                     U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
-                      = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS)
+                      = MAX( U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS), 0.0_DP )
 
                   END DO
 

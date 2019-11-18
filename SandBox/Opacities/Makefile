@@ -34,6 +34,8 @@ clobber: clean
 NeutrinoOpacities.o: \
   KindModule.o \
   UnitsModule.o \
+  ProgramInitializationModule.o \
+  MeshModule.o \
   UtilitiesModule.o \
   EquationOfStateModule_TABLE.o \
   OpacityModule_TABLE.o \
