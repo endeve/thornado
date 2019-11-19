@@ -113,9 +113,13 @@ PROGRAM Relaxation
   SELECT CASE( Configuration )
     CASE( 1 )
 
-      D_0 = 1.232d+14 * Gram / Centimeter**3
-      T_0 = 2.508E+11 * Kelvin
-      Y_0 = 0.2747_DP
+      !D_0 = 1.232d+14 * Gram / Centimeter**3
+      !T_0 = 2.508d+11 * Kelvin
+      !Y_0 = 0.2747_DP
+
+      D_0 = 3.999d14 * Gram / Centimeter**3
+      T_0 = 1.356d11 * Kelvin
+      Y_0 = 0.2783_DP
 
     CASE( 2 )
 
