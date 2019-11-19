@@ -1,0 +1,13 @@
+
+# thornado VPATH_LOCATIONS:
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Numbers
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/TwoMoment
+
+# In THORNADO_DIR/Modules/Numbers:
+
+f90EXE_sources += KindModule.f90
+
+f90EXE_sources += InitializationModule.f90
+f90EXE_sources += FinalizationModule.f90
+f90EXE_sources += fmain.f90
+f90EXE_sources += MyAmrModule.f90

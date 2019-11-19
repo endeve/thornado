@@ -26,6 +26,7 @@ MODULE InputOutputModuleHDF
     uCF, nCF, namesCF, unitsCF, &
     uPF, nPF, namesPF, unitsPF, &
     uAF, nAF, namesAF, unitsAF, &
+    uDF, nDF, namesDF, unitsDF, &
     Shock
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
@@ -354,7 +355,25 @@ CONTAINS
 
     END DO
 
-    ! --- Shock Detector ---
+    ! --- Diagnostic ---
+
+    GroupName2 = TRIM( GroupName ) // '/Diagnostic'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName2 ), FILE_ID )
+
+    DO iFF = 1, nDF
+
+      DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesDF(iFF) )
+
+      CALL WriteDataset3DHDF &
+             ( Field3D &
+                 ( uDF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ) / unitsDF(iFF), &
+               DatasetName, FILE_ID )
+
+    END DO
+
+   ! --- Shock Detector ---
 
     GroupName = 'Shock Detector'
 
