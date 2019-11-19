@@ -28,6 +28,9 @@ MODULE MF_GeometryModule
     nLevels
   USE MF_UtilitiesModule, ONLY: &
     AMReX2thornado, thornado2AMReX
+  USE TimersModule_AMReX_Euler, ONLY: &
+    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_DataTransfer
 
   IMPLICIT NONE
   PRIVATE
@@ -41,17 +44,17 @@ CONTAINS
 
   SUBROUTINE MF_ComputeGeometryX( MF_uGF, Mass )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     REAL(amrex_real),     INTENT(in)    :: Mass
 
-    INTEGER            :: iX1, iX2, iX3, iLevel
+    INTEGER            :: iLevel
     INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), ALLOCATABLE         :: G(:,:,:,:,:)
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -66,6 +69,7 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nGF) )
@@ -78,10 +82,12 @@ CONTAINS
                  G(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nGF) )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         CALL ComputeGeometryX &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         CALL thornado2AMReX &
                ( nGF, iX_B1, iX_E1, &
                  uGF(      iX_B1(1):iX_E1(1), &
@@ -92,6 +98,7 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nGF) )
 
         DEALLOCATE( G )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO
 
@@ -104,17 +111,17 @@ CONTAINS
 
   SUBROUTINE MF_ComputeGravitationalPotential( MF_uGF, Mass )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     REAL(amrex_real),     INTENT(in)    :: Mass
 
-    INTEGER            :: iX1, iX2, iX3, iLevel
+    INTEGER            :: iLevel
     INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(amrex_real), ALLOCATABLE         :: G(:,:,:,:,:)
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -128,6 +135,7 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
@@ -140,6 +148,7 @@ CONTAINS
                  G(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nGF) )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         CALL ComputeGravitationalPotential &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -147,6 +156,7 @@ CONTAINS
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nGF), Mass )
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         CALL thornado2AMReX &
                ( nGF, iX_B1, iX_E1, &
                  uGF(      iX_B1(1):iX_E1(1), &
@@ -157,6 +167,7 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nGF) )
 
         DEALLOCATE( G )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO
 

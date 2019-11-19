@@ -447,17 +447,20 @@ CONTAINS
     CALL ComputeElectronChemicalPotential &
            ( uPF_N(iPF_D, :), uAF_N(iAF_T, :), &
              uAF_N(iAF_Ye,:), uAF_N(iAF_Me,:), &
-             dVdY = dMedT(:), dVdZ = dMedY(:) )
+             dMdT_Option = dMedT(:), &
+             dMdY_Option = dMedY(:) )
 
     CALL ComputeProtonChemicalPotential &
            ( uPF_N(iPF_D, :), uAF_N(iAF_T, :), &
              uAF_N(iAF_Ye,:), uAF_N(iAF_Mp,:), &
-             dVdY = dMpdT(:), dVdZ = dMpdY(:) )
+             dMdT_Option = dMpdT(:), &
+             dMdY_Option = dMpdY(:) )
 
     CALL ComputeNeutronChemicalPotential &
            ( uPF_N(iPF_D, :), uAF_N(iAF_T, :), &
              uAF_N(iAF_Ye,:), uAF_N(iAF_Mn,:), &
-             dVdY = dMndT(:), dVdZ = dMndY(:) )
+             dMdT_Option = dMndT(:), &
+             dMdY_Option = dMndY(:) )
 
     ASSOCIATE( kT => BoltzmannConstant * uAF_N(iAF_T,:) )
 
@@ -471,7 +474,9 @@ CONTAINS
 
       CALL ComputeSpecificInternalEnergy &
              ( [ uPF_N(iPF_D, iX) ], [ uAF_N(iAF_T,iX) ], &
-               [ uAF_N(iAF_Ye,iX) ], TMP, dVdY = dEdT, dVdZ = dEdY )
+               [ uAF_N(iAF_Ye,iX) ], TMP, &
+               dEdT_Option = dEdT, &
+               dEdY_Option = dEdY )
 
       FD(:,iX) = FermiDirac( E_N, Mnu, kT(iX) )
       dFDdT_Y  = dFermiDiracdT( E_N, Mnu, kT(iX), dMnudT, uAF_N(iAF_T,iX) )

@@ -17,8 +17,8 @@ MODULE InitializationModule
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uAF, iAF_P
-  USE Euler_UtilitiesModule, ONLY: &
-    Euler_ComputeConserved
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
+    ComputeConserved_Euler_NonRelativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -66,7 +66,7 @@ CONTAINS
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) ! Physical coordinate
 
             IF( X1 <= rShock )THEN
-                
+
               CALL ComputeSettlingSpeed_Bisection &
                      ( X1, Alpha, Gamma, Mass, Speed )
 
@@ -78,7 +78,7 @@ CONTAINS
 
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
                 = 0.0_DP
-            
+
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
                 = 0.0_DP
 
@@ -94,18 +94,18 @@ CONTAINS
               P_prime  &
                 = 2.0_DP /(Gamma + 1.0_DP) * (mDot/FourPi) &
                     * SQRT(2.0_DP * Mass) * rShock**(-2.5_DP)
-             
+
               uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
                 = P_prime &
-                    * ( uPF(iNodeX,iX1,iX2,iX3,iPF_D) / D_prime )**Gamma &    
+                    * ( uPF(iNodeX,iX1,iX2,iX3,iPF_D) / D_prime )**Gamma &
                       / ( Gamma-1.0_DP )
 
-            ELSE 
-             
+            ELSE
+
               Speed &
-                = SQRT & 
+                = SQRT &
                     (1.0_DP/(1.0_DP + 2.0_DP/((Gamma-1.0_DP)*Mach**2))/X1)
-             
+
               uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
                 = mDot / (FourPi * X1**2 * Speed )
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
@@ -117,12 +117,12 @@ CONTAINS
               uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
                 = uPF(iNodeX, iX1, iX2, iX3, iPF_D) / Gamma &
                     * (Speed / Mach )**2.0_DP /(Gamma-1.0_DP)
- 
+
             END IF
 
           END DO
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler_NonRelativistic &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                    uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                    uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -131,8 +131,7 @@ CONTAINS
                    uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   uAF(:,iX1,iX2,iX3,iAF_P) )
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         END DO
       END DO
@@ -140,22 +139,22 @@ CONTAINS
 
   END SUBROUTINE InitializeFields
 
-  
+
   SUBROUTINE ApplyPerturbations(ShellIn, ShellOut, Order, PerturbParam)
 
     INTEGER,  INTENT(in) :: Order
-    REAL(DP), INTENT(in) :: ShellIn, ShellOut, PerturbParam 
+    REAL(DP), INTENT(in) :: ShellIn, ShellOut, PerturbParam
 
     INTEGER :: iX1, iX2, iX3
     INTEGER :: iNodeX, iNodeX1, iNodeX2
-    REAL(DP) :: X1, X2 
-      
+    REAL(DP) :: X1, X2
+
     DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
         DO iX1 = iX_B1(1), iX_E1(1)
 
           DO iNodeX = 1, nDOFX
- 
+
             iNodeX1 = NodeNumberTableX(1,iNodeX)
             iNodeX2 = NodeNumberTableX(2,iNodeX)
 
@@ -164,7 +163,7 @@ CONTAINS
 
             IF ( X1 >= ShellIn .AND. X1 <= ShellOut ) THEN
 
-              SELECT CASE( Order ) 
+              SELECT CASE( Order )
 
               CASE ( 0 )
 
@@ -172,7 +171,7 @@ CONTAINS
                   = (1.0_DP + PerturbParam) &
                       * uPF(iNodeX, iX1, iX2, iX3, iPF_D)
 
-              CASE ( 1 ) 
+              CASE ( 1 )
 
                 uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
                   = (1.0_DP + PerturbParam * COS(X2)) &
@@ -184,7 +183,7 @@ CONTAINS
 
           END DO
 
-          CALL Euler_ComputeConserved &
+          CALL ComputeConserved_Euler_NonRelativistic &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                    uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
                    uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
@@ -193,12 +192,11 @@ CONTAINS
                    uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                   uAF(:,iX1,iX2,iX3,iAF_P) )
- 
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
         END DO
       END DO
-    END DO 
+    END DO
 
   END SUBROUTINE
 
@@ -219,16 +217,16 @@ CONTAINS
     a = 1.0d-6
     F_a = SettlingSpeedFun(a, r, alpha, gamma, mass)
 
-    b = 1.0_DP 
+    b = 1.0_DP
     F_b = SettlingSpeedFun(b, r, alpha, gamma, mass)
 
     F_0 = F_a
     ab = b - a
 
-    Converged = .FALSE. 
-    Iter = 0 
+    Converged = .FALSE.
+    Iter = 0
 
-    DO WHILE ( .NOT. Converged) 
+    DO WHILE ( .NOT. Converged)
 
       Iter = Iter + 1
 
@@ -237,22 +235,22 @@ CONTAINS
 
       F_c = SettlingSpeedFun(c, r, alpha, gamma, mass)
 
-      IF( F_a * F_c < 0.0_DP ) THEN 
+      IF( F_a * F_c < 0.0_DP ) THEN
 
         b   = c
         F_b = F_c
 
-      ELSE 
+      ELSE
 
         a   = c
         F_a = F_c
- 
+
       END IF
 
       IF (ab < Tol_ab .AND. ABS( F_a ) / F_0 < Tol_F) Converged = .TRUE.
 
     END DO
-  
+
     V1 = a
 
   END SUBROUTINE ComputeSettlingSpeed_Bisection
@@ -263,7 +261,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: u, r, alpha, gamma, mass
 
     SettlingSpeedFun &
-      = r * u**2 & 
+      = r * u**2 &
         + alpha * r**(3.0_DP-2.0_DP*gamma) * u**(1.0_DP-gamma) &
         - 2.0_DP * mass
     RETURN

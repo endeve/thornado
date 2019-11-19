@@ -11,11 +11,15 @@ MODULE MF_Euler_BoundaryConditionsModule
 
   ! --- thornado Modules ---
   USE Euler_BoundaryConditionsModule, ONLY: &
-    Euler_ApplyBoundaryConditions
+    ApplyBoundaryConditions_Euler
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     DEBUG
+  USE TimersModule_AMReX_Euler, ONLY: &
+    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_ConstructEdgeMap, &
+    Timer_AMReX_Euler_GetBC
 
   IMPLICIT NONE
   PRIVATE
@@ -27,7 +31,7 @@ MODULE MF_Euler_BoundaryConditionsModule
   INTEGER, PARAMETER :: iEuler_ApplyBC_None  = 3
 
 
-  PUBLIC :: MF_Euler_ApplyBoundaryConditions
+  PUBLIC :: MF_ApplyBoundaryConditions_Euler
   PUBLIC :: ConstructEdgeMap
 
   TYPE, PUBLIC :: EdgeMap
@@ -41,7 +45,7 @@ MODULE MF_Euler_BoundaryConditionsModule
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ApplyBoundaryConditions &
+  SUBROUTINE MF_ApplyBoundaryConditions_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
     INTEGER,          INTENT(in)    :: &
@@ -55,12 +59,12 @@ CONTAINS
 
     CALL Edge_Map % Euler_GetBC( iApplyBC )
 
-    IF( DEBUG ) WRITE(*,'(A)') '      CALL Euler_ApplyBoundaryConditions'
-    CALL Euler_ApplyBoundaryConditions &
+    IF( DEBUG ) WRITE(*,'(A)') '      CALL ApplyBoundaryConditions_Euler'
+    CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), iApplyBC )
 
-  END SUBROUTINE MF_Euler_ApplyBoundaryConditions
+  END SUBROUTINE MF_ApplyBoundaryConditions_Euler
 
 
   SUBROUTINE ConstructEdgeMap( GEOM, BX, Edge_Map )
@@ -70,6 +74,8 @@ CONTAINS
     TYPE(EdgeMap),        INTENT(inout) :: Edge_Map
 
     INTEGER :: iDim
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_ConstructEdgeMap )
 
     Edge_Map % IsLowerBoundary = .FALSE.
     Edge_Map % IsUpperBoundary = .FALSE.
@@ -82,6 +88,8 @@ CONTAINS
       END IF
     END DO
 
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_ConstructEdgeMap )
+
   END SUBROUTINE ConstructEdgeMap
 
 
@@ -91,6 +99,8 @@ CONTAINS
     INTEGER,        INTENT(out) :: iApplyBC(3)
 
     INTEGER :: iDim
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_GetBC )
 
     DO iDim = 1, 3
       IF     ( this % IsLowerBoundary( iDim ) .AND. &
@@ -108,6 +118,8 @@ CONTAINS
 
       END IF
     END DO
+
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_GetBC )
 
   END SUBROUTINE EdgeMap_Euler_GetBC
 

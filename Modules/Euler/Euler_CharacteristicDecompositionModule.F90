@@ -7,26 +7,20 @@ MODULE Euler_CharacteristicDecompositionModule
   USE GeometryFieldsModule, ONLY: &
     nGF
 
-#ifdef HYDRO_NONRELATIVISTIC
-
-  USE Euler_CharacteristicDecompositionModule_NonRelativistic
-
-#elif HYDRO_RELATIVISTIC
-
-  USE Euler_CharacteristicDecompositionModule_Relativistic
-
-#endif
+  USE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL
+  USE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
+  USE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_ComputeCharacteristicDecomposition
+  PUBLIC :: ComputeCharacteristicDecomposition_Euler
 
 
 CONTAINS
 
 
-  SUBROUTINE Euler_ComputeCharacteristicDecomposition( iDim, G, U, R, invR )
+  SUBROUTINE ComputeCharacteristicDecomposition_Euler( iDim, G, U, R, invR )
 
     INTEGER,  INTENT(in)  :: iDim
     REAL(DP), INTENT(in)  :: G(nGF)
@@ -34,19 +28,29 @@ CONTAINS
     REAL(DP), INTENT(out) :: R(nCF,nCF)
     REAL(DP), INTENT(out) :: invR(nCF,nCF)
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_ComputeCharacteristicDecomposition_NonRelativistic &
+    CALL ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE &
            ( iDim, G, U, R, invR )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_ComputeCharacteristicDecomposition_Relativistic &
+    CALL ComputeCharacteristicDecomposition_Euler_NonRelativistic_IDEAL &
+           ( iDim, G, U, R, invR )
+
+#elif defined HYDRO_RELATIVISTIC
+
+    CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
+           ( iDim, G, U, R, invR )
+
+#else
+
+    CALL ComputeCharacteristicDecomposition_Euler_NonRelativistic_IDEAL &
            ( iDim, G, U, R, invR )
 
 #endif
 
-  END SUBROUTINE Euler_ComputeCharacteristicDecomposition
+  END SUBROUTINE ComputeCharacteristicDecomposition_Euler
 
 
 END MODULE Euler_CharacteristicDecompositionModule

@@ -7,4 +7,5 @@ TWO_MOMENT = \
   TwoMoment_SlopeLimiterModule.o \
   TwoMoment_PositivityLimiterModule.o \
   TwoMoment_DiscretizationModule_Streaming.o \
+  TwoMoment_NeutrinoMatterSolverModule.o \
   TwoMoment_DiscretizationModule_Collisions_Neutrinos.o

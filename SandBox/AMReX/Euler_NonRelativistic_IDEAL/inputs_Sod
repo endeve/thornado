@@ -1,0 +1,47 @@
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+DEBUG = 0
+
+thornado.ProgramName = "Sod"
+
+thornado.t_end     = 0.2      # Final time
+thornado.dt_wrt    = -0.045    # Time increment to write plot-file
+thornado.dt_chk    = -0.045    # Time increment to write checkpoint-file
+thornado.nNodes    = 3        # Number of DG nodes in each active dimension
+thornado.nStages   = 3        # Number of SSP-RK stages for time integration
+thornado.CFL       = 0.5      # CFL number
+thornado.bcX       = 02 00 00 # Boundary conditions
+thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
+thornado.iCycleD   = 0010     # MOD this number to display info
+thornado.iCycleW   = 0100     # MOD this number to write plotfile
+thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
+thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
+
+geometry.coord_sys   = 0             # CARTESIAN
+geometry.prob_lo     = 0.0 0.0 0.0   # Lower domain size
+geometry.prob_hi     = 1.0 1.0 1.0   # Upper domain size
+geometry.is_periodic = 00 01 01      # Periodicity. 0 (no), 1 (yes)
+
+amr.n_cell            = 256 01 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 256
+amr.blocking_factor_x = 1
+amr.max_level         = 0
+
+# Slope limiter parameters
+SL.UseSlopeLimiter           = 1
+SL.UseCharacteristicLimiting = 1
+SL.UseTroubledCellIndicator  = 1
+SL.SlopeTolerance            = 1.0e-6
+SL.BetaTVD                   = 1.5e0
+SL.BetaTVB                   = 0.0e0
+SL.LimiterThresholdParameter = 0.3e0
+SL.UseConservativeCorrection = 1
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter = 1
+PL.Min_1                = 1.0e-12
+PL.Min_2                = 1.0e-12
+
+# Equation of state parameters
+EoS.Gamma = 1.4 # Ideal Gas EoS Gamma

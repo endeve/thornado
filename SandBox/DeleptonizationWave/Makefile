@@ -11,6 +11,9 @@ include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
 
+VPATH += $(THORNADO_DIR)/SandBox/DeleptonizationWave
+VPATH += $(THORNADO_DIR)/SandBox/Interface_CASTRO
+
 #DEFINES += $(PP)-DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
@@ -135,4 +138,4 @@ TimeSteppingModule_Castro.o: \
   PhysicalConstantsModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o \
-  TimeSteppingModule_Castro.f90
+  TimeSteppingModule_Castro.F90

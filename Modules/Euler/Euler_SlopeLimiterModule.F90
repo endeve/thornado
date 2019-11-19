@@ -3,33 +3,26 @@ MODULE Euler_SlopeLimiterModule
   USE KindModule, ONLY: &
     DP
 
-#ifdef HYDRO_NONRELATIVISTIC
-
-  USE Euler_SlopeLimiterModule_NonRelativistic
-
-#elif HYDRO_RELATIVISTIC
-
-  USE Euler_SlopeLimiterModule_Relativistic
-
-#endif
-
+  USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
+  USE Euler_SlopeLimiterModule_NonRelativistic_TABLE
+  USE Euler_SlopeLimiterModule_Relativistic_IDEAL
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: Euler_InitializeSlopeLimiter
-  PUBLIC :: Euler_FinalizeSlopeLimiter
-  PUBLIC :: Euler_ApplySlopeLimiter
+  PUBLIC :: InitializeSlopeLimiter_Euler
+  PUBLIC :: FinalizeSlopeLimiter_Euler
+  PUBLIC :: ApplySlopeLimiter_Euler
 
 
 CONTAINS
 
 
-  SUBROUTINE Euler_InitializeSlopeLimiter &
+  SUBROUTINE InitializeSlopeLimiter_Euler &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
-      Verbose_Option )
+      UseConservativeCorrection_Option, Verbose_Option )
 
     REAL(DP), INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
@@ -39,47 +32,80 @@ CONTAINS
       UseSlopeLimiter_Option, &
       UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, &
+      UseConservativeCorrection_Option, &
       Verbose_Option
     REAL(DP), INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_InitializeSlopeLimiter_NonRelativistic &
+    CALL InitializeSlopeLimiter_Euler_NonRelativistic_TABLE &
            ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
              UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
              UseTroubledCellIndicator_Option, &
-             LimiterThresholdParameter_Option, Verbose_Option )
+             LimiterThresholdParameter_Option, &
+             UseConservativeCorrection_Option, &
+             Verbose_Option )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_InitializeSlopeLimiter_Relativistic &
+    CALL InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL &
            ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
              UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
              UseTroubledCellIndicator_Option, &
-             LimiterThresholdParameter_Option, Verbose_Option )
+             LimiterThresholdParameter_Option, &
+             UseConservativeCorrection_Option, &
+             Verbose_Option )
+
+#elif defined HYDRO_RELATIVISTIC
+
+    CALL InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
+           ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
+             UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
+             UseTroubledCellIndicator_Option, &
+             LimiterThresholdParameter_Option, &
+             UseConservativeCorrection_Option, &
+             Verbose_Option )
+
+#else
+
+    CALL InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL &
+           ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
+             UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
+             UseTroubledCellIndicator_Option, &
+             LimiterThresholdParameter_Option, &
+             UseConservativeCorrection_Option, &
+             Verbose_Option )
 
 #endif
 
-  END SUBROUTINE Euler_InitializeSlopeLimiter
+  END SUBROUTINE InitializeSlopeLimiter_Euler
 
 
-  SUBROUTINE Euler_FinalizeSlopeLimiter
+  SUBROUTINE FinalizeSlopeLimiter_Euler
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_FinalizeSlopeLimiter_NonRelativistic
+    CALL FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_FinalizeSlopeLimiter_Relativistic
+    CALL FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
+
+#elif defined HYDRO_RELATIVISTIC
+
+    CALL FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
+
+#else
+
+    CALL FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
 
 #endif
 
-  END SUBROUTINE Euler_FinalizeSlopeLimiter
+  END SUBROUTINE FinalizeSlopeLimiter_Euler
 
 
-  SUBROUTINE Euler_ApplySlopeLimiter &
+  SUBROUTINE ApplySlopeLimiter_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC_Option )
 
     INTEGER,  INTENT(in)           :: &
@@ -97,19 +123,28 @@ CONTAINS
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
 
-#ifdef HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
-    CALL Euler_ApplySlopeLimiter_NonRelativistic &
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 
-#elif HYDRO_RELATIVISTIC
+#elif defined HYDRO_NONRELATIVISTIC
 
-    CALL Euler_ApplySlopeLimiter_Relativistic &
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 
+#elif defined HYDRO_RELATIVISTIC
+
+    CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
+
+#else
+
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, SuppressBC )
 #endif
 
-  END SUBROUTINE Euler_ApplySlopeLimiter
+  END SUBROUTINE ApplySlopeLimiter_Euler
 
 
 END MODULE Euler_SlopeLimiterModule

@@ -25,8 +25,8 @@ using namespace amrex;
 extern "C"
 {
   void writefieldsamrex_checkpoint
-         ( int StepNo[], int FinestLevel,
-           Real dt[], Real time[], Real t_wrt[], Real t_chk[],
+         ( int StepNo[], int nLevels,
+           Real dt[], Real time[], Real t_wrt[],
            BoxArray** BA, MultiFab** MF_uGF, MultiFab** MF_uCF,
            MultiFab** MF_uPF, MultiFab** MF_uAF )
   {
@@ -42,13 +42,14 @@ extern "C"
 
     // Checkpoint file name, e.g., chk00010
 
+
     const std::string& checkpointname
-                         = amrex::Concatenate( chk_file, StepNo[0] );
+                         = amrex::Concatenate( chk_file, StepNo[0], 8 );
 
     if ( ParallelDescriptor::IOProcessor() )
       amrex::Print() << "\n    Writing checkpoint " << checkpointname << "\n";
 
-    const int nLevels = FinestLevel+1;
+    const int FinestLevel = nLevels-1;
 
     // ---- Prebuild a hierarchy of directories
     // ---- dirName is built first. If dirName exists, it is renamed. Then build
@@ -103,9 +104,8 @@ extern "C"
       }
       HeaderFile << "\n";
 
-      // Write out t_wrt and t_chk
+      // Write out t_wrt
       HeaderFile << t_wrt[0] << "\n";
-      HeaderFile << t_chk[0] << "\n";
 
       // Write the BoxArray at each level
       for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
@@ -141,16 +141,16 @@ extern "C"
   } // End of WriteCheckpointFile function
 
   void readheaderandboxarraydata
-         ( int finest_level[], int stepno[],
-	   Real dt[], Real time[], Real t_wrt[], Real t_chk[],
+         ( int nLevels, int stepno[],
+	   Real dt[], Real time[], Real t_wrt[],
            BoxArray** ba, DistributionMapping** dm, int iChkFile )
   {
 
     std::stringstream sChkFile;
-    sChkFile << chk_file << std::setw(5) << std::setfill('0') << iChkFile;
+    sChkFile << chk_file << std::setw(8) << std::setfill('0') << iChkFile;
     restart_chkfile = sChkFile.str();
 
-    amrex::Print() << "Restart from checkpoint " << restart_chkfile << "\n";
+    amrex::Print() << "  Restart from checkpoint " << restart_chkfile << "\n";
 
     // Header
     std::string File( restart_chkfile + "/Header" );
@@ -168,8 +168,8 @@ extern "C"
     // Read in title line
     std::getline( is, line );
 
-    // Read in finest_level
-    is >> finest_level[0];
+    // Read in nLevels
+    is >> nLevels;
     GotoNextLine( is );
 
     // Read in array of istep
@@ -216,23 +216,12 @@ extern "C"
       }
     }
 
-    // Read in t_chk
-    std::getline( is, line );
-    {
-      std::istringstream lis( line );
-      int i = 0;
-      while( lis >> word )
-      {
-        t_chk[i++] = std::stod( word );
-      }
-    }
-
     // Read in level 'iLevel' BoxArray from Header
-    for( int iLevel = 0; iLevel <= finest_level[0]; ++iLevel )
+    for( int iLevel = 0; iLevel <= nLevels; ++iLevel )
     {
 
       BoxArray& ba1 = *ba[iLevel];
-      ba1 = BoxArray(); 
+      ba1 = BoxArray();
       ba1.readFrom( is );
       ba[iLevel] = &ba1;
       GotoNextLine( is );
@@ -251,7 +240,7 @@ extern "C"
 
     std::stringstream sChkFile;
 
-    sChkFile << chk_file << std::setw(5) << std::setfill('0') << iChkFile;
+    sChkFile << chk_file << std::setw(8) << std::setfill('0') << iChkFile;
     restart_chkfile = sChkFile.str();
 
     // Header
@@ -286,7 +275,7 @@ extern "C"
 
     for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
     {
-      VisMF::Read( *MF[iLevel], 
+      VisMF::Read( *MF[iLevel],
         amrex::MultiFabFileFullPrefix
                  ( iLevel, restart_chkfile, "Level_", MF_Name ) );
     }

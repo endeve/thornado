@@ -1,0 +1,6 @@
+DEFINES += -DHYDRO_RELATIVISTIC
+DEFINES += -DHYDRO_RIEMANN_SOLVER_HLL
+
+f90EXE_sources += fmain.f90
+
+include ../Euler/GNUmakefile

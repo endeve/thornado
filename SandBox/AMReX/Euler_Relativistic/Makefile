@@ -1,6 +1,0 @@
-DEFINES += -DHYDRO_RELATIVISTIC
-DEFINES += -DHYDRO_NUMERICALFLUX_HLLC
-
-f90EXE_sources += fmain.f90
-
-include ../Euler/GNUmakefile

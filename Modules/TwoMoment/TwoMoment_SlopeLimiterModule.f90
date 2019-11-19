@@ -309,13 +309,13 @@ CONTAINS
 
         IF( nDimsX > 1 )THEN
 
-          dU(:,2) = MATMUL( R_Z2, dU(:,2) )
+          dU(:,2) = MATMUL( R_Z3, dU(:,2) )
 
         END IF
 
         IF( nDimsX > 2 )THEN
 
-          dU(:,3) = MATMUL( R_Z3, dU(:,3) )
+          dU(:,3) = MATMUL( R_Z4, dU(:,3) )
 
         END IF
 

@@ -41,16 +41,19 @@ MODULE TimeSteppingModule_IMEX_RK
         nGF
       USE RadiationFieldsModule, ONLY: &
         nCR, nSpecies
-      INTEGER, INTENT(in)     :: &
-        iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-      REAL(DP), INTENT(in)    :: &
-        GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
-      REAL(DP), INTENT(in)    :: &
-        GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
-      REAL(DP), INTENT(inout) :: &
-        U (1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
-      REAL(DP), INTENT(inout) :: &
-        dU(1:nDOF,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies)
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
+    REAL(DP), INTENT(in)    :: &
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
+    REAL(DP), INTENT(inout) :: &
+      U (1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                 iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out)   :: &
+      dU(1:nDOF ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                 iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     END SUBROUTINE IncrementExplicit
   END INTERFACE
 
@@ -69,7 +72,7 @@ MODULE TimeSteppingModule_IMEX_RK
       REAL(DP), INTENT(inout) :: &
         U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
       REAL(DP), INTENT(inout) :: &
-        dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+        dU(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
     END SUBROUTINE IncrementImplicit
   END INTERFACE
 
@@ -90,7 +93,7 @@ MODULE TimeSteppingModule_IMEX_RK
       REAL(DP), INTENT(inout) :: &
         U (1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
       REAL(DP), INTENT(inout) :: &
-        dU(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+        dU(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
     END SUBROUTINE IncrementCorrection
   END INTERFACE
 
@@ -591,8 +594,13 @@ CONTAINS
         WRITE(*,'(A6,A)') '', 'SSPRK1'
         WRITE(*,'(A6,A)') '', 'SSPRK2'
         WRITE(*,'(A6,A)') '', 'SSPRK3'
+        WRITE(*,'(A6,A)') '', 'IMEX_ARS_111'
         WRITE(*,'(A6,A)') '', 'IMEX_P_A2'
         WRITE(*,'(A6,A)') '', 'IMEX_P_A2_RC'
+        WRITE(*,'(A6,A)') '', 'IMEX_P_A2_RC2'
+        WRITE(*,'(A6,A)') '', 'IMEX_P_A2_RC3'
+        WRITE(*,'(A6,A)') '', 'IMEX_P_A2_RC4'
+        WRITE(*,'(A6,A)') '', 'IMEX_P_A2_RC5'
         WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2'
         WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2_RC'
         WRITE(*,'(A6,A)') '', 'IMEX_P_ARS2_RC2'
@@ -600,6 +608,8 @@ CONTAINS
         WRITE(*,'(A6,A)') '', 'IMEX_SSP2322'
         WRITE(*,'(A6,A)') '', 'IMEX_RKCB2'
         WRITE(*,'(A6,A)') '', 'IMEX_SIRK2'
+        WRITE(*,'(A6,A)') '', 'IMEX_PDARS_3'
+        WRITE(*,'(A6,A)') '', 'IMEX_PDARS_4'
         WRITE(*,'(A6,A)') '', 'IMEX_PC2'
 
         WRITE(*,*)
@@ -642,10 +652,10 @@ CONTAINS
 
     ALLOCATE &
       ( dU(1:nDOF, &
-           iZ_B0(1):iZ_E0(1), &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
+           iZ_B1(1):iZ_E1(1), &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
            1:nCR, 1:nSpecies) )
 
     nDOF_IMEX = nDOF * PRODUCT( iZ_E0 ) * nCR * nSpecies
@@ -741,7 +751,7 @@ CONTAINS
 
         IF( jS == iS - 1 )THEN
 
-          ! --- Apply Positivity Limiter ---
+          ! --- Apply Positivity and Slope Limiter ---
 
           CALL MapFromStage( iZ_B1, U, U_IMEX )
 
@@ -752,10 +762,10 @@ CONTAINS
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
 
           CALL MapToStage( iZ_B1, U, U_IMEX )
-
+        
         END IF
 
-      END DO
+      END DO ! jS = 1, iS - 1
 
       IF( ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero ) )THEN
 
@@ -766,11 +776,11 @@ CONTAINS
         CALL ComputeIncrement_Implicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, U, dU )
 
-        CALL MapToStage( iZ_B0, dU, dU_IM(:,iS) )
+        CALL MapToStage( iZ_B1, dU, dU_IM(:,iS) )
 
         U_IMEX(:) = U_IMEX(:) + dt * a_IM(iS,iS) * dU_IM(:,iS)
 
-        ! --- Apply Positivity Limiter ---
+        ! --- Apply Positivity and Slope Limiter ---
 
         CALL MapFromStage( iZ_B1, U, U_IMEX )
 
@@ -789,15 +799,17 @@ CONTAINS
         ! --- Explicit Solve ---
 
         CALL MapFromStage( iZ_B1, U, U_IMEX )
-
+        
         CALL ComputeIncrement_Explicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, dU )
 
-        CALL MapToStage( iZ_B0, dU, dU_EX(:,iS) )
+        CALL MapToStage( iZ_B1, dU, dU_EX(:,iS) )
 
       END IF
 
-    END DO
+    END DO ! iS
+
+    ! --- Weighted Sum ---
 
     IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) &
           .OR. ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
@@ -828,7 +840,9 @@ CONTAINS
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
 
     CALL ApplyPositivityLimiter_TwoMoment &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U ) ! Possibly move this
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
+
+    ! --- Correction Step ---
 
     IF( ANY( [ alpha_IM, alpha_EX ] > Zero ) )THEN
 
@@ -849,6 +863,12 @@ CONTAINS
               iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:) &
           + dt**2 * dU(:,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
                          iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),:,:)
+
+      CALL ApplySlopeLimiter_TwoMoment &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
+
+      CALL ApplyPositivityLimiter_TwoMoment &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U )
 
     END IF
 
@@ -948,6 +968,5 @@ CONTAINS
     END DO
 
   END SUBROUTINE MapFromStage
-
 
 END MODULE TimeSteppingModule_IMEX_RK

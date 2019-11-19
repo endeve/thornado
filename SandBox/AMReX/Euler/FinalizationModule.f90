@@ -13,22 +13,25 @@ MODULE FinalizationModule
     FinalizeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     FinalizeReferenceElementX_Lagrange
-   USE MeshModule,                      ONLY: &
+  USE MeshModule,                       ONLY: &
     MeshType, DestroyMesh
   USE FluidFieldsModule,                ONLY: &
     DestroyFluidFields
   USE EquationOfStateModule,            ONLY: &
     FinalizeEquationOfState
   USE Euler_SlopeLimiterModule,         ONLY: &
-    Euler_FinalizeSlopeLimiter
+    FinalizeSlopeLimiter_Euler
   USE Euler_PositivityLimiterModule,    ONLY: &
-    Euler_FinalizePositivityLimiter
+    FinalizePositivityLimiter_Euler
 
   ! --- Local Modules ---
   USE MyAmrModule,                 ONLY: &
     nLevels, MyAmrFinalize
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     MF_FinalizeFluid_SSPRK
+  USE TimersModule_AMReX_Euler,    ONLY: &
+    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_Finalize
 
   IMPLICIT NONE
   PRIVATE
@@ -41,18 +44,20 @@ CONTAINS
 
   SUBROUTINE FinalizeProgram( GEOM, MeshX )
 
-    TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels)
+    TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels-1)
     TYPE(MeshType),        INTENT(inout) :: MeshX(1:3)
 
     INTEGER :: iLevel, iDim
+
+    CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
     CALL MF_FinalizeFluid_SSPRK
 
     CALL DestroyFluidFields
 
-    CALL Euler_FinalizePositivityLimiter
+    CALL FinalizePositivityLimiter_Euler
 
-    CALL Euler_FinalizeSlopeLimiter
+    CALL FinalizeSlopeLimiter_Euler
 
     CALL FinalizeEquationOfState
 
@@ -63,11 +68,13 @@ CONTAINS
       CALL DestroyMesh( MeshX(iDim) )
     END DO
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_geometry_destroy( GEOM(iLevel) )
     END DO
 
     CALL MyAmrFinalize
+
+    CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
     CALL amrex_amrcore_finalize
 

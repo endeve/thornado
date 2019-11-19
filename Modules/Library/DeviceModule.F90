@@ -18,6 +18,14 @@ MODULE DeviceModule
     cublasCreate_v2, &
     cublasGetStream_v2, &
     cublasSetStream_v2
+  USE CusolverModule, ONLY: &
+    cusolver_handle, &
+    cusolverDnCreate, &
+    cusolverDnSetStream
+  USE CusparseModule, ONLY: &
+    cusparse_handle, &
+    cusparseCreate, &
+    cusparseSetStream
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
@@ -33,15 +41,18 @@ MODULE DeviceModule
   USE OpenMPModule, ONLY: &
     omp_set_default_device, &
     omp_get_default_device, &
+    omp_is_initial_device, &
     omp_target_is_present
 #endif
 
 #if defined(THORNADO_OACC)
   USE OpenACCModule, ONLY: &
     acc_get_device_num, &
+    acc_on_device, &
     acc_is_present, &
     acc_set_cuda_stream, &
     acc_get_default_async, &
+    acc_device_host, &
     acc_device_nvidia, &
     acc_async_default
 #endif
@@ -58,6 +69,8 @@ MODULE DeviceModule
     MODULE PROCEDURE QueryOnGPU_3D_DP_2
     MODULE PROCEDURE QueryOnGPU_3D_DP_3
     MODULE PROCEDURE QueryOnGPU_2D_DP_1
+    MODULE PROCEDURE QueryOnGPU_2D_DP_2
+    MODULE PROCEDURE QueryOnGPU_2D_DP_3
     MODULE PROCEDURE QueryOnGPU_DP_1
     MODULE PROCEDURE QueryOnGPU_DP_2
     MODULE PROCEDURE QueryOnGPU_DP_3
@@ -71,6 +84,7 @@ MODULE DeviceModule
   PUBLIC :: FinalizeDevice
   PUBLIC :: device_is_present
   PUBLIC :: get_device_num
+  PUBLIC :: on_device
   PUBLIC :: QueryOnGpu
 
 CONTAINS
@@ -101,13 +115,19 @@ CONTAINS
     ierr = cudaStreamCreate( stream )
     ierr = cublasSetStream_v2( cublas_handle, stream )
     !ierr = cublasGetStream_v2( cublas_handle, stream )
+
+    ierr = cusolverDnCreate( cusolver_handle )
+    ierr = cusolverDnSetStream( cusolver_handle, stream )
+
+    ierr = cusparseCreate( cusparse_handle )
+    ierr = cusparseSetStream( cusparse_handle, stream )
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
     CALL magma_getdevice( magma_device )
     CALL magma_init()
     CALL magma_queue_create_from_cuda &
-           ( magma_device, stream, cublas_handle, C_NULL_PTR, magma_queue )
+           ( magma_device, stream, cublas_handle, cusparse_handle, magma_queue )
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -153,6 +173,20 @@ CONTAINS
 #endif
     RETURN
   END FUNCTION get_device_num
+
+
+  LOGICAL FUNCTION on_device()
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+    on_device = ( .not. omp_is_initial_device() )
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+    on_device = ( .not. acc_on_device( acc_device_host ) )
+#else
+    on_device = .false.
+#endif
+    RETURN
+  END FUNCTION on_device
 
 
   FUNCTION QueryOnGPU_3D_DP_1( X1 ) RESULT( QueryOnGPU )
@@ -218,6 +252,43 @@ CONTAINS
     QueryOnGPU = device_is_present( C_LOC( X1 ), mydevice, SizeOf_X1 )
 
   END FUNCTION QueryOnGPU_2D_DP_1
+
+
+  FUNCTION QueryOnGPU_2D_DP_2( X1, X2 ) RESULT( QueryOnGPU )
+
+    REAL(DP), DIMENSION(:,:), INTENT(in), TARGET :: X1, X2
+    LOGICAL :: QueryOnGPU
+
+    INTEGER(C_SIZE_T) :: SizeOf_X1
+    INTEGER(C_SIZE_T) :: SizeOf_X2
+
+    SizeOf_X1 = SIZE(X1) * C_SIZEOF(0.0_DP)
+    SizeOf_X2 = SIZE(X2) * C_SIZEOF(0.0_DP)
+
+    QueryOnGPU = device_is_present( C_LOC( X1 ), mydevice, SizeOf_X1 ) &
+           .AND. device_is_present( C_LOC( X2 ), mydevice, SizeOf_X2 )
+
+  END FUNCTION QueryOnGPU_2D_DP_2
+
+
+  FUNCTION QueryOnGPU_2D_DP_3( X1, X2, X3 ) RESULT( QueryOnGPU )
+
+    REAL(DP), DIMENSION(:,:), INTENT(in), TARGET :: X1, X2, X3
+    LOGICAL :: QueryOnGPU
+
+    INTEGER(C_SIZE_T) :: SizeOf_X1
+    INTEGER(C_SIZE_T) :: SizeOf_X2
+    INTEGER(C_SIZE_T) :: SizeOf_X3
+
+    SizeOf_X1 = SIZE(X1) * C_SIZEOF(0.0_DP)
+    SizeOf_X2 = SIZE(X2) * C_SIZEOF(0.0_DP)
+    SizeOf_X3 = SIZE(X3) * C_SIZEOF(0.0_DP)
+
+    QueryOnGPU = device_is_present( C_LOC( X1 ), mydevice, SizeOf_X1 ) &
+           .AND. device_is_present( C_LOC( X2 ), mydevice, SizeOf_X2 ) &
+           .AND. device_is_present( C_LOC( X3 ), mydevice, SizeOf_X3 )
+
+  END FUNCTION QueryOnGPU_2D_DP_3
 
 
   FUNCTION QueryOnGPU_DP_1( X1 ) RESULT( QueryOnGPU )

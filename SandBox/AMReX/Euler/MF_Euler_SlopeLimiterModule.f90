@@ -1,3 +1,5 @@
+!> Module to apply slope-limiter to AMReX MultiFabs.
+!> @todo Fix issue of multiple grids giving different results.
 MODULE MF_Euler_SlopeLimiterModule
 
   ! --- AMReX Modules ---
@@ -21,7 +23,7 @@ MODULE MF_Euler_SlopeLimiterModule
   USE GeometryFieldsModule,     ONLY: &
     nGF
   USE Euler_SlopeLimiterModule, ONLY: &
-    Euler_ApplySlopeLimiter
+    ApplySlopeLimiter_Euler
 
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
@@ -31,23 +33,26 @@ MODULE MF_Euler_SlopeLimiterModule
     nLevels, UseSlopeLimiter, DEBUG
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap, ConstructEdgeMap, &
-    MF_Euler_ApplyBoundaryConditions
-  USE TimersModule_AMReX
+    MF_ApplyBoundaryConditions_Euler
+  USE TimersModule_AMReX_Euler, ONLY: &
+    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_InteriorBC, &
+    Timer_AMReX_Euler_DataTransfer
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_Euler_ApplySlopeLimiter
+  PUBLIC :: MF_ApplySlopeLimiter_Euler
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ApplySlopeLimiter( MF_uGF, MF_uCF, GEOM )
+  SUBROUTINE MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, GEOM )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
-    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -66,12 +71,12 @@ CONTAINS
 
     IF( .NOT. UseSlopeLimiter ) RETURN
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
 
-      CALL TimersStart_AMReX( Timer_AMReX_InternalBC )
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
       ! --- Apply boundary conditions to interior domains ---
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
-      CALL TimersStop_AMReX( Timer_AMReX_InternalBC )
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -87,12 +92,13 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF ) )
+                            iX_B1(3):iX_E1(3),1:nGF) )
         ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nCF ) )
+                            iX_B1(3):iX_E1(3),1:nCF) )
 
         CALL AMReX2thornado &
                ( nGF, iX_B1, iX_E1, &
@@ -111,19 +117,20 @@ CONTAINS
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         ! --- Apply boundary conditions to physical boundaries ---
         CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
 
-        IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_Euler_ApplyBoundaryConditions'
-        CALL MF_Euler_ApplyBoundaryConditions &
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_ApplyBoundaryConditions_Euler'
+        CALL MF_ApplyBoundaryConditions_Euler &
                ( iX_B0, iX_E0, iX_B1, iX_E1,  &
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF), Edge_Map )
 
-        IF( DEBUG ) WRITE(*,'(A)') '    CALL Euler_ApplySlopeLimiter'
-        CALL Euler_ApplySlopeLimiter &
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplySlopeLimiter_Euler'
+        CALL ApplySlopeLimiter_Euler &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
@@ -133,7 +140,7 @@ CONTAINS
                             iX_B1(3):iX_E1(3),1:nCF), &
                  SuppressBC_Option = .TRUE. )
 
-
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         CALL thornado2AMReX &
                ( nCF, iX_B1, iX_E1, &
                  uCF(      iX_B1(1):iX_E1(1), &
@@ -145,6 +152,7 @@ CONTAINS
 
         DEALLOCATE( U )
         DEALLOCATE( G )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO
 
@@ -152,7 +160,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_Euler_ApplySlopeLimiter
+  END SUBROUTINE MF_ApplySlopeLimiter_Euler
 
 
 END MODULE MF_Euler_SlopeLimiterModule

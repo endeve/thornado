@@ -18,6 +18,16 @@ elif [[ $THORNADO_MACHINE == titan* ]]; then
   module unload pgi gcc cce pathscale
   module unload PrgEnv-pgi PrgEnv-gnu PrgEnv-cray PrgEnv-pathscale PrgEnv-intel
 
+elif [[ $THORNADO_MACHINE == summit* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  source ${MODULESHOME}/init/bash
+
+  module unload xl spectrum-mpi hsi xalt lsf-tools darshan-runtime
+  module unload DefApps
+
 elif [[ $THORNADO_MACHINE == darter* ]]; then
 
   echo
@@ -34,6 +44,13 @@ elif [[ $THORNADO_MACHINE == beacon* ]]; then
 
   module unload pgi gcc cce intel
   module unload PE-gnu PE-intel
+
+elif [[ $THORNADO_MACHINE == acf* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  module unload PE-intel PE-gnu 
 
 elif [[ $THORNADO_MACHINE == sn1987b* ]]; then
 
@@ -85,6 +102,16 @@ elif [[ $THORNADO_MACHINE == mcarpe21* ]]; then
   echo
   echo "INFO: Setting environment for" $THORNADO_MACHINE
 
+elif [[ $THORNADO_MACHINE == dpochik* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+elif [[ $THORNADO_MACHINE == lucalin* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
 elif [[ $THORNADO_MACHINE == paullaiu_gnu* ]]; then
 
   echo
@@ -114,6 +141,16 @@ elif [[ $THORNADO_MACHINE == titan_cray ]]; then
   module load cray-hdf5
   module load subversion
 
+elif [[ $THORNADO_MACHINE == summit_pgi ]]; then
+
+  echo
+
+  module load pgi/19.4
+  module load spectrum-mpi
+  module load hdf5/1.10.3
+  module load netlib-lapack/3.8.0
+  module load essl
+
 elif [[ $THORNADO_MACHINE == darter_gnu ]]; then
 
   echo
@@ -134,6 +171,15 @@ elif [[ $THORNADO_MACHINE == beacon_intel ]]; then
 
   module load PE-intel
   module load hdf5/1.8.14
+
+elif [[ $THORNADO_MACHINE == acf_gnu ]]; then
+
+  echo 
+
+  module load PE-gnu
+  module swap intel-mpi/2017.2.174 openmpi/2.1.1-gcc4.8.2
+  module load hdf5
+  module load lapack 
 
 elif [[ $THORNADO_MACHINE == sn1987b ]]; then
 
@@ -182,6 +228,18 @@ elif [[ $THORNADO_MACHINE == mcarpe21 ]]; then
   echo
   export THORNADO_DIR=~/thornado
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/hdf5/lib/
+
+elif [[ $THORNADO_MACHINE == dpochik ]]; then
+
+  echo
+  export WEAKLIB_DIR=/home/dpochik/weaklib
+  export THORNADO_DIR=/home/dpochik/thornado_neos
+
+elif [[ $THORNADO_MACHINE == lucalin ]]; then
+
+  echo
+  export WEAKLIB_DIR=/home/luca/EOS_tables/weaklib
+  export THORNADO_DIR=/home/luca/thornado
 
 elif [[ $THORNADO_MACHINE == paullaiu_gnu ]]; then
 

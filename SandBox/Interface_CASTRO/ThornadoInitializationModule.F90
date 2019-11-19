@@ -7,6 +7,8 @@ module ThornadoInitializationModule
     InitializeProgramHeaderX, &
     nNodesX, nNodesE, &
     iE_B0, iE_E0, iE_B1, iE_E1
+  use DeviceModule, only: &
+    InitializeDevice
   use TimersModule, only: &
     InitializeTimers
   use QuadratureModule, only: &
@@ -91,6 +93,8 @@ contains
       nX(i) = nX(i) + 1
     END DO
 
+    call InitializeDevice
+
     call InitializeProgramHeader &
            ( ProgramName_Option = '', nNodes_Option = 2, &
              nX_Option = nX, nE_Option = nE, swE_Option = swE, &
@@ -140,7 +144,7 @@ contains
 
     call InitializePositivityLimiter_TwoMoment &
            ( Min_1_Option = 0.0_DP + SqrtTiny, &
-             Max_1_Option = 1.0_DP - SqrtTiny, &
+             Max_1_Option = 1.0d0 - EPSILON(1.0d0), &
              Min_2_Option = 0.0_DP + SqrtTiny, &
              UsePositivityLimiter_Option = .TRUE., &
              Verbose_Option = .FALSE. )
@@ -161,10 +165,29 @@ contains
     
     ! --- Neutrino Opacities ---
 
-    call InitializeOpacities_TABLE &
-           ( OpacityTableName_EmAb_Option = 'OpacityTable_EmAb.h5', &
-	     OpacityTableName_Iso_Option  = 'OpacityTable_Iso.h5',  &
-             Verbose_Option = .false. )
+    if( nSpecies == 1 )then
+
+      call InitializeOpacities_TABLE &
+             ( OpacityTableName_EmAb_Option &
+                 = 'OpacityTable_EmAb.h5',  &
+               OpacityTableName_Iso_Option  &
+                 = 'OpacityTable_Iso.h5',   &
+               Verbose_Option = .false. )
+
+    else
+
+      call InitializeOpacities_TABLE &
+             ( OpacityTableName_EmAb_Option &
+                 = 'OpacityTable_EmAb.h5',  &
+               OpacityTableName_Iso_Option  &
+                 = 'OpacityTable_Iso.h5',   &
+               OpacityTableName_NES_Option  &
+                 = 'OpacityTable_NES.h5',   &
+               OpacityTableName_Pair_Option &
+                 = 'OpacityTable_Pair.h5',  &
+               Verbose_Option = .false. )
+
+    end if
 
     ! --- For refinement and coarsening of DG data
 

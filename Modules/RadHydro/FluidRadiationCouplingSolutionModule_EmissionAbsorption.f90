@@ -256,8 +256,8 @@ CONTAINS
       CALL ComputeSpecificInternalEnergy & ! --- Computes Derivatives
              ( uPF_N(iPF_D, :), uAF_N(iAF_T,:), &
                uAF_N(iAF_Ye,:), uAF_N(iAF_E,:), &
-               dVdY = duAFdT_N(iAF_E,:), &
-               dVdZ = duAFdY_N(iAF_E,:) )
+               dEdT_Option = duAFdT_N(iAF_E,:), &
+               dEdY_Option = duAFdY_N(iAF_E,:) )
 
       ! --- Compute FD Distribution and Derivatives ---
 
@@ -403,20 +403,20 @@ CONTAINS
     CALL ComputeElectronChemicalPotential &
            ( uPF_N(iPF_D, :), uAF_N(iAF_T, :), &
              uAF_N(iAF_Ye,:), uAF_N(iAF_Me,:), &
-             dVdY = duAFdT_N(iAF_Me,:), &
-             dVdZ = duAFdY_N(iAF_Me,:) )
+             dMdT_Option = duAFdT_N(iAF_Me,:), &
+             dMdY_Option = duAFdY_N(iAF_Me,:) )
 
     CALL ComputeProtonChemicalPotential &
            ( uPF_N(iPF_D, :), uAF_N(iAF_T, :), &
              uAF_N(iAF_Ye,:), uAF_N(iAF_Mp,:), &
-             dVdY = duAFdT_N(iAF_Mp,:), &
-             dVdZ = duAFdY_N(iAF_Mp,:) )
+             dMdT_Option = duAFdT_N(iAF_Mp,:), &
+             dMdY_Option = duAFdY_N(iAF_Mp,:) )
 
     CALL ComputeNeutronChemicalPotential &
            ( uPF_N(iPF_D, :), uAF_N(iAF_T, :), &
              uAF_N(iAF_Ye,:), uAF_N(iAF_Mn,:), &
-             dVdY = duAFdT_N(iAF_Mn,:), &
-             dVdZ = duAFdY_N(iAF_Mn,:) )
+             dMdT_Option = duAFdT_N(iAF_Mn,:), &
+             dMdY_Option = duAFdY_N(iAF_Mn,:) )
 
     ASSOCIATE( kB => BoltzmannConstant )
 

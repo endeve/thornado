@@ -114,7 +114,9 @@ CONTAINS
 
       CASE ( 'RiemannProblem' )
 
-        CALL InitializeFields_RiemannProblem
+        CALL InitializeFields_RiemannProblem &
+               ( Direction_Option = Direction_Option )
+               
 
       CASE ( 'HomogeneousSphere' )
 
@@ -788,19 +790,30 @@ CONTAINS
   END SUBROUTINE InitializeFields_LineSource
 
   
-  SUBROUTINE InitializeFields_RiemannProblem
+  SUBROUTINE InitializeFields_RiemannProblem( Direction_Option )
 
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
+      Direction_Option
+
+    CHARACTER(8) :: Direction
     INTEGER      :: iE, iX1, iX2, iX3, iS, iK
-    INTEGER      :: iNodeX1
+    INTEGER      :: iNodeX1, iNodeX2
     INTEGER      :: iNode
-    REAL(DP)     :: X1
+    REAL(DP)     :: X1, X2
     REAL(DP)     :: Gm_dd_11(nDOF)
     REAL(DP)     :: Gm_dd_22(nDOF)
     REAL(DP)     :: Gm_dd_33(nDOF)
     REAL(DP)     :: Ones(nDOFE)
 
-    Ones = 1.0_DP
+    Direction = 'X'
+    IF( PRESENT( Direction_Option ) ) &
+      Direction = TRIM( Direction_Option )
 
+    WRITE(*,*)
+    WRITE(*,'(A6,A,A)') '', 'Direction = ', TRIM( Direction )
+
+    Ones = 1.0_DP
+    
     DO iS = 1, nSpecies
       DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -820,31 +833,64 @@ CONTAINS
 
             DO iE = iE_B0, iE_E0
 
-              DO iNode = 1, nDOF
+              SELECT CASE ( TRIM( Direction ) )
+              CASE ( 'X' )
 
-                iNodeX1 = NodeNumberTable(2,iNode)
+                DO iNode = 1, nDOF
 
-                X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+                  iNodeX1 = NodeNumberTable(2,iNode)
 
-                IF( X1 <= 0.0_DP ) THEN
-                  uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS)  &
-                    = 1.0_DP
-                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
-                    = 0.9999_DP 
-                ELSE
-                  uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS)  &
-                    = 0.50_DP
+                  X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+                  IF( X1 <= 0.0_DP ) THEN
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS)  &
+                      = 1.0_DP
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
+                      = 0.9999_DP 
+                  ELSE
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS)  &
+                      = 0.50_DP
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
+                      = 0.0_DP
+                  END IF
+  
+                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) &
+                    = 0.0_DP
+  
+                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) &
+                    = 0.0_DP
+  
+                END DO
+
+              CASE ( 'Y' )
+
+                DO iNode = 1, nDOF
+
+                  iNodeX2 = NodeNumberTable(3,iNode)
+
+                  X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+                  IF( X2 <= 0.0_DP ) THEN
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS)  &
+                      = 1.0_DP
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) &
+                      = 0.9999_DP
+                  ELSE
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS)  &
+                      = 0.50_DP
+                    uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) &
+                      = 0.0_DP
+                  END IF
+
                   uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
                     = 0.0_DP
-                END IF
 
-                uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) &
-                  = 0.0_DP
+                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) &
+                    = 0.0_DP
 
-                uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) &
-                  = 0.0_DP
+                END DO
 
-              END DO
+              END SELECT
 
               CALL ComputeConserved_TwoMoment &
                      ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &

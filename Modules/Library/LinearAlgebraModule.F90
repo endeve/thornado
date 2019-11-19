@@ -2,7 +2,9 @@ MODULE LinearAlgebraModule
 
   USE, INTRINSIC :: ISO_C_BINDING
   USE KindModule, ONLY: &
-    DP
+    DP, &
+    Zero, &
+    One
   USE DeviceModule, ONLY: &
     mydevice, &
     device_is_present
@@ -13,25 +15,68 @@ MODULE LinearAlgebraModule
     cudaStreamSynchronize
   USE CublasModule, ONLY: &
     cublas_handle, &
+    cublasDnrm2_v2, &
+    cublasDaxpy_v2, &
     cublasDgemm_v2, &
+    cublasDgemmStridedBatched, &
+    cublasDgetrfBatched, &
+    cublasDgetrsBatched, &
     cublasDgemv_v2, &
-    CUBLAS_OP_N, CUBLAS_OP_T
+    cublasDtrsv_v2, &
+    cublasDtrsm_v2, &
+    cublasDgeam, &
+    cublasDdgmm, &
+    CUBLAS_OP_N, CUBLAS_OP_T, &
+    CUBLAS_SIDE_LEFT, &
+    CUBLAS_FILL_MODE_UPPER, &
+    CUBLAS_DIAG_NON_UNIT
+  USE CusolverModule, ONLY: &
+    cusolver_handle, &
+    cusolverDnDgeqrf_bufferSize, &
+    cusolverDnDgeqrf, &
+    cusolverDnDormqr
+  USE CusparseModule, ONLY: &
+    cusparse_handle, &
+    cusparseDgthr, &
+    CUSPARSE_INDEX_BASE_ONE
 #endif
 
 #if defined(THORNADO_LA_MAGMA)
   USE MagmaModule, ONLY: &
     magma_queue, &
     magma_queue_sync, &
+    magma_dnrm2, &
+    magma_daxpy, &
     magma_dgemm, &
+    magmablas_dgemm_batched_strided, &
+    magma_dgetrf_batched, &
+    magma_dgetrs_batched, &
     magma_dgemv, &
-    MagmaNoTrans, MagmaTrans
+    magma_dgels_gpu, &
+    magmablas_dtranspose, &
+    magmablas_dlacpy, &
+    magmablas_dlascl2, &
+    magmablas_dgeadd2, &
+    magma_dmalloc, &
+    MagmaNoTrans, MagmaTrans, &
+    MagmaFull
 #endif
 
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: MatrixMatrixAdd
   PUBLIC :: MatrixMatrixMultiply
+  PUBLIC :: MatrixMatrixMultiplyBatched
   PUBLIC :: MatrixVectorMultiply
+  PUBLIC :: MatrixDiagScale
+  PUBLIC :: VectorNorm2
+  PUBLIC :: VectorNorm2_Kernel
+  PUBLIC :: VectorVectorAdd
+  PUBLIC :: VectorGather
+  PUBLIC :: LinearLeastSquares_LWORK
+  PUBLIC :: LinearLeastSquares
+  PUBLIC :: LinearSolveBatched
 
 CONTAINS
 
@@ -52,6 +97,191 @@ CONTAINS
 #endif
     RETURN
   END FUNCTION itrans_from_char
+
+
+  SUBROUTINE MatrixMatrixAdd( transa, transb, m, n, alpha, a, lda, beta, b, ldb, c, ldc )
+
+    CHARACTER                          :: transa, transb
+    INTEGER                            :: m, n, lda, ldb, ldc
+    REAL(DP)                           :: alpha, beta
+    REAL(DP), DIMENSION(lda,*), TARGET :: a
+    REAL(DP), DIMENSION(ldb,*), TARGET :: b
+    REAL(DP), DIMENSION(ldc,*), TARGET :: c
+
+    INTEGER                            :: i, j, ierr, info
+    INTEGER(C_INT)                     :: itransa, itransb
+    INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_b, sizeof_c, mn
+    REAL(DP), DIMENSION(:,:), POINTER  :: pa, pb, pc
+    TYPE(C_PTR)                        :: ha, hb, hc
+    TYPE(C_PTR)                        :: da, db, dc
+    TYPE(C_PTR)                        :: dat, dbt
+    INTEGER                            :: ka, kb
+    LOGICAL                            :: data_on_device
+
+    data_on_device = .false.
+    sizeof_a = m * n * c_sizeof(0.0_DP)
+    sizeof_b = m * n * c_sizeof(0.0_DP)
+    sizeof_c = m * n * c_sizeof(0.0_DP)
+    mn = m * n
+
+    IF ( transa == 'N' ) THEN
+      ka = n
+    ELSE
+      ka = m
+    END IF
+
+    IF ( transb == 'N' ) THEN
+      kb = n
+    ELSE
+      kb = m
+    END IF
+
+    pa(1:lda,1:ka) => a(:,1:ka)
+    pb(1:ldb,1:kb) => b(:,1:kb)
+    pc(1:ldc,1:n ) => c(:,1:n )
+
+    ha = C_LOC( pa )
+    hb = C_LOC( pb )
+    hc = C_LOC( pc )
+
+    data_on_device = device_is_present( ha, mydevice, sizeof_a ) &
+               .AND. device_is_present( hb, mydevice, sizeof_b ) &
+               .AND. device_is_present( hc, mydevice, sizeof_c )
+
+    IF ( data_on_device ) THEN
+
+      itransa = itrans_from_char( transa )
+      itransb = itrans_from_char( transb )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
+#endif
+      da = C_LOC( pa )
+      db = C_LOC( pb )
+      dc = C_LOC( pc )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+#endif
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cublasDgeam &
+             ( cublas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc )
+      ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_MAGMA)
+      IF ( transb  == 'N' ) THEN
+        CALL magmablas_dlacpy &
+               ( MagmaFull, m, n, db, ldb, dc, ldc, magma_queue )
+      ELSE
+        CALL magmablas_dtranspose &
+               ( n, m, db, ldb, dc, ldc, magma_queue )
+      END IF
+      IF ( transa == 'N' ) THEN
+        CALL magmablas_dgeadd2 &
+               ( m, n, alpha, da, lda, beta, dc, ldc, magma_queue )
+      ELSE
+        ierr = magma_dmalloc( dat, mn )
+        CALL magmablas_dtranspose &
+               ( n, m, da, lda, dat, m, magma_queue )
+        CALL magmablas_dgeadd2 &
+               ( m, n, alpha, dat, m, beta, dc, ldc, magma_queue )
+      END IF
+      CALL magma_queue_sync( magma_queue )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[MatrixMatrixAdd] Data not present on device'
+      IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
+        WRITE(*,*) '[MatrixMatrixAdd]   A missing'
+      IF ( .not. device_is_present( hb, mydevice, sizeof_b ) ) &
+        WRITE(*,*) '[MatrixMatrixAdd]   B missing'
+      IF ( .not. device_is_present( hc, mydevice, sizeof_c ) ) &
+        WRITE(*,*) '[MatrixMatrixAdd]   C missing'
+#endif
+
+      IF ( alpha == 0.0_DP .AND. beta == 0.0_DP ) THEN
+
+        DO j = 1, n
+          DO i = 1, m
+            c(i,j) = 0.0_DP
+          END DO
+        END DO
+
+      ELSE IF ( alpha == 0.0_DP ) THEN
+
+        IF ( transb == 'N' ) THEN
+          DO j = 1, n
+            DO i = 1, m
+              c(i,j) = + beta * b(i,j)
+            END DO
+          END DO
+        ELSE
+          DO j = 1, n
+            DO i = 1, m
+              c(i,j) = + beta * b(j,i)
+            END DO
+          END DO
+        END IF
+
+      ELSE IF ( beta == 0.0_DP ) THEN
+
+        IF ( transa == 'N' ) THEN
+          DO j = 1, n
+            DO i = 1, m
+              c(i,j) = alpha * a(i,j)
+            END DO
+          END DO
+        ELSE
+          DO j = 1, n
+            DO i = 1, m
+              c(i,j) = alpha * a(j,i)
+            END DO
+          END DO
+        END IF
+
+      ELSE
+
+        IF ( transa == 'N' ) THEN
+          IF ( transb == 'N' ) THEN
+            DO j = 1, n
+              DO i = 1, m
+                c(i,j) = alpha * a(i,j) + beta * b(i,j)
+              END DO
+            END DO
+          ELSE
+            DO j = 1, n
+              DO i = 1, m
+                c(i,j) = alpha * a(i,j) + beta * b(j,i)
+              END DO
+            END DO
+          END IF
+        ELSE
+          IF ( transb == 'N' ) THEN
+            DO j = 1, n
+              DO i = 1, m
+                c(i,j) = alpha * a(j,i) + beta * b(i,j)
+              END DO
+            END DO
+          ELSE
+            DO j = 1, n
+              DO i = 1, m
+                c(i,j) = alpha * a(j,i) + beta * b(j,i)
+              END DO
+            END DO
+          END IF
+        END IF
+
+      END IF
+
+    END IF
+
+  END SUBROUTINE MatrixMatrixAdd
+
 
   SUBROUTINE MatrixMatrixMultiply( transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc )
 
@@ -149,6 +379,251 @@ CONTAINS
   END SUBROUTINE MatrixMatrixMultiply
 
 
+  SUBROUTINE MatrixMatrixMultiplyBatched( transa, transb, m, n, k, alpha, a, lda, stridea, &
+                                          b, ldb, strideb, beta, c, ldc, stridec, batchcount )
+
+    CHARACTER                          :: transa, transb
+    INTEGER                            :: m, n, k, lda, ldb, ldc, stridea, strideb, stridec, batchcount
+    REAL(DP)                           :: alpha, beta
+    REAL(DP), DIMENSION(lda,*), TARGET :: a
+    REAL(DP), DIMENSION(ldb,*), TARGET :: b
+    REAL(DP), DIMENSION(ldc,*), TARGET :: c
+
+    INTEGER                            :: ierr, i
+    INTEGER(C_INT)                     :: itransa, itransb
+    INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_b, sizeof_c
+    REAL(DP), DIMENSION(:,:), POINTER  :: pa, pb, pc
+    TYPE(C_PTR)                        :: ha, hb, hc
+    TYPE(C_PTR)                        :: da, db, dc
+    INTEGER                            :: ka, kb
+    INTEGER                            :: osa, osb, osc
+    LOGICAL                            :: data_on_device
+
+    data_on_device = .false.
+    sizeof_a = m * k * batchcount * c_sizeof(0.0_DP)
+    sizeof_b = k * n * batchcount * c_sizeof(0.0_DP)
+    sizeof_c = m * n * batchcount * c_sizeof(0.0_DP)
+
+    IF ( transa == 'N' ) THEN
+      ka = k
+    ELSE
+      ka = m
+    END IF
+
+    IF ( transb == 'N' ) THEN
+      kb = n
+    ELSE
+      kb = k
+    END IF
+
+    pa(1:lda,1:ka*batchcount) => a(:,1:ka*batchcount)
+    pb(1:ldb,1:kb*batchcount) => b(:,1:kb*batchcount)
+    pc(1:ldc,1:n *batchcount) => c(:,1:n *batchcount)
+
+    ha = C_LOC( pa )
+    hb = C_LOC( pb )
+    hc = C_LOC( pc )
+
+    data_on_device = device_is_present( ha, mydevice, sizeof_a ) &
+               .AND. device_is_present( hb, mydevice, sizeof_b ) &
+               .AND. device_is_present( hc, mydevice, sizeof_c )
+
+    IF ( data_on_device ) THEN
+
+      itransa = itrans_from_char( transa )
+      itransb = itrans_from_char( transb )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pc )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( pa, pb, pc )
+#endif
+      da = C_LOC( pa )
+      db = C_LOC( pb )
+      dc = C_LOC( pc )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+#endif
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cublasDgemmStridedBatched &
+             ( cublas_handle, itransa, itransb, m, n, k, alpha, da, lda, stridea, &
+               db, ldb, strideb, beta, dc, ldc, stridec, batchcount )
+      ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_MAGMA)
+      CALL magmablas_dgemm_batched_strided &
+             ( itransa, itransb, m, n, k, alpha, da, lda, stridea, &
+               db, ldb, strideb, beta, dc, ldc, stridec, batchcount, magma_queue )
+      CALL magma_queue_sync( magma_queue )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[MatrixMatrixMultiplyBatched] Data not present on device'
+      IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
+        WRITE(*,*) '[MatrixMatrixMultiplyBatched]   A missing'
+      IF ( .not. device_is_present( hb, mydevice, sizeof_b ) ) &
+        WRITE(*,*) '[MatrixMatrixMultiplyBatched]   B missing'
+      IF ( .not. device_is_present( hc, mydevice, sizeof_c ) ) &
+        WRITE(*,*) '[MatrixMatrixMultiplyBatched]   C missing'
+#endif
+
+      DO i = 1, batchcount
+        osa = (i-1) * ka + 1
+        osb = (i-1) * kb + 1
+        osc = (i-1) * n  + 1
+        CALL DGEMM &
+               ( transa, transb, m, n, k, alpha, a(1,osa), lda, b(1,osb), ldb, beta, c(1,osc), ldc )
+      END DO
+
+    END IF
+
+  END SUBROUTINE MatrixMatrixMultiplyBatched
+
+
+  SUBROUTINE LinearSolveBatched( trans, n, nrhs, a, lda, ipiv, b, ldb, info, batchcount )
+
+    CHARACTER                          :: trans
+    INTEGER                            :: n, nrhs, lda, ldb, batchcount
+    REAL(DP), DIMENSION(lda,*), TARGET :: a
+    REAL(DP), DIMENSION(ldb,*), TARGET :: b
+    INTEGER,  DIMENSION(*),     TARGET :: ipiv
+    INTEGER,  DIMENSION(*),     TARGET :: info
+
+    INTEGER                                    :: ierr, i
+    INTEGER(C_INT)                             :: itrans
+    INTEGER(C_SIZE_T)                          :: sizeof_a, sizeof_b, sizeof_ipiv, sizeof_info
+    REAL(DP), DIMENSION(:,:), POINTER          :: pa, pb
+    INTEGER,  DIMENSION(:),   POINTER          :: pipiv, pinfo
+    TYPE(C_PTR)                                :: ha, hb, hipiv, hinfo
+    TYPE(C_PTR), DIMENSION(batchcount), TARGET :: da, db, dipiv
+    TYPE(C_PTR)                                :: da_array, db_array, dipiv_array, dinfo
+    INTEGER                                    :: osa, osb
+    LOGICAL                                    :: data_on_device
+
+    data_on_device = .false.
+    sizeof_a    = n * n * batchcount * c_sizeof(0.0_DP)
+    sizeof_b    = n * nrhs * batchcount * c_sizeof(0.0_DP)
+    sizeof_ipiv = n * batchcount * c_sizeof(0)
+    sizeof_info = batchcount * c_sizeof(0)
+
+    pa(1:lda,1:n*batchcount) => a(:,1:n*batchcount)
+    pb(1:ldb,1:nrhs*batchcount) => b(:,1:nrhs*batchcount)
+    pipiv(1:n*batchcount) => ipiv(1:n*batchcount)
+    pinfo(1:batchcount) => info(1:batchcount)
+
+    ha = C_LOC( pa )
+    hb = C_LOC( pb )
+    hipiv = C_LOC( pipiv )
+    hinfo = C_LOC( pinfo )
+
+    data_on_device = device_is_present( ha,    mydevice, sizeof_a    ) &
+               .AND. device_is_present( hb,    mydevice, sizeof_b    ) &
+               .AND. device_is_present( hipiv, mydevice, sizeof_ipiv ) &
+               .AND. device_is_present( hinfo, mydevice, sizeof_info )
+
+    IF ( data_on_device ) THEN
+
+      itrans = itrans_from_char( trans )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( alloc: da, db, dipiv, da_array, db_array, dipiv_array )
+#elif defined(THORNADO_OACC)
+      !$ACC ENTER DATA &
+      !$ACC CREATE( da, db, dipiv, da_array, db_array, dipiv_array )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, pipiv, pinfo )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( pa, pb, pipiv, pinfo )
+#endif
+      dinfo = C_LOC( pinfo )
+      DO i = 1, batchcount
+        osa = (i-1) * n + 1
+        osb = (i-1) * nrhs + 1
+        da(i) = C_LOC( pa(1,osa) )
+        db(i) = C_LOC( pb(1,osb) )
+        dipiv(i) = C_LOC( pipiv(osa) )
+      END DO
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+      !$OMP TARGET UPDATE TO( da, db, dipiv )
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+      !$ACC UPDATE DEVICE( da, db, dipiv )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( da, db, dipiv )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( da, db, dipiv )
+#endif
+      da_array = C_LOC( da )
+      db_array = C_LOC( db )
+      dipiv_array = C_LOC( dipiv )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+      !$OMP TARGET UPDATE TO( da_array, db_array, dipiv )
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+      !$ACC UPDATE DEVICE( da_array, db_array, dipiv )
+#endif
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cublasDgetrfBatched &
+             ( cublas_handle, n, da_array, lda, dipiv(1), dinfo, batchcount )
+      ierr = cublasDgetrsBatched &
+             ( cublas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
+      ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_MAGMA)
+      CALL magma_dgetrf_batched &
+             ( n, n, da_array, lda, dipiv_array, dinfo, batchcount, magma_queue )
+      CALL magma_dgetrs_batched &
+             ( itrans, n, nrhs, da_array, lda, dipiv_array, db_array, ldb, batchcount, magma_queue )
+      CALL magma_queue_sync( magma_queue )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: da, db, dipiv, da_array, db_array, dipiv_array )
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA &
+      !$ACC DELETE( da, db, dipiv, da_array, db_array, dipiv_array )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[LinearSolveBatched] Data not present on device'
+      IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
+        WRITE(*,*) '[LinearSolveBatched]   A missing'
+      IF ( .not. device_is_present( hb, mydevice, sizeof_b ) ) &
+        WRITE(*,*) '[LinearSolveBatched]   B missing'
+      IF ( .not. device_is_present( hipiv, mydevice, sizeof_ipiv ) ) &
+        WRITE(*,*) '[LinearSolveBatched]   ipiv missing'
+      IF ( .not. device_is_present( hinfo, mydevice, sizeof_info ) ) &
+        WRITE(*,*) '[LinearSolveBatched]   info missing'
+#endif
+
+      DO i = 1, batchcount
+        osa = (i-1) * n + 1
+        osb = (i-1) * nrhs + 1
+        CALL DGETRF &
+               ( n, n, a(1,osa), lda, ipiv(osa), info(i) )
+        CALL DGETRS &
+               ( trans, n, nrhs, a(1,osa), lda, ipiv(osa), b(1,osb), ldb, info(i) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE LinearSolveBatched
+
+
   SUBROUTINE MatrixVectorMultiply( trans, m, n, alpha, a, lda, x, incx, beta, y, incy )
 
     CHARACTER                          :: trans
@@ -158,7 +633,7 @@ CONTAINS
     REAL(DP), DIMENSION(*)    , TARGET :: x
     REAL(DP), DIMENSION(*)    , TARGET :: y
 
-    INTEGER                            :: ierr
+    INTEGER                            :: ierr, lenx, leny
     INTEGER(C_INT)                     :: itrans
     INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_x, sizeof_y
     REAL(DP), DIMENSION(:,:), POINTER  :: pa
@@ -168,13 +643,22 @@ CONTAINS
     LOGICAL                            :: data_on_device
 
     data_on_device = .false.
+
+    IF ( trans == 'T' ) THEN
+      lenx = m
+      leny = n
+    ELSE
+      lenx = n
+      leny = m
+    END IF
+
     sizeof_a = m * n * c_sizeof(0.0_DP)
-    sizeof_x = m     * c_sizeof(0.0_DP)
-    sizeof_y =     n * c_sizeof(0.0_DP)
+    sizeof_x = lenx * c_sizeof(0.0_DP)
+    sizeof_y = leny * c_sizeof(0.0_DP)
 
     pa(1:lda,1:n) => a(:,1:n)
-    px(1:m) => x(1:m)
-    py(1:n) => y(1:n)
+    px(1:lenx) => x(1:lenx)
+    py(1:leny) => y(1:leny)
 
     ha = C_LOC( pa )
     hx = C_LOC( px )
@@ -230,5 +714,524 @@ CONTAINS
     END IF
 
   END SUBROUTINE MatrixVectorMultiply
+
+
+  SUBROUTINE MatrixDiagScale( m, n, a, lda, x, incx, c, ldc )
+
+    CHARACTER                          :: trans
+    INTEGER                            :: m, n, lda, incx, ldc
+    REAL(DP), DIMENSION(lda,*), TARGET :: a
+    REAL(DP), DIMENSION(ldc,*), TARGET :: c
+    REAL(DP), DIMENSION(*)    , TARGET :: x
+
+    INTEGER                            :: ierr, info, i, j, ix
+    INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_c, sizeof_x
+    REAL(DP), DIMENSION(:,:), POINTER  :: pa, pc
+    REAL(DP), DIMENSION(:)  , POINTER  :: px
+    TYPE(C_PTR)                        :: ha, hx, hc
+    TYPE(C_PTR)                        :: da, dx, dc
+    LOGICAL                            :: data_on_device
+
+    data_on_device = .false.
+
+    sizeof_a = m * n * c_sizeof(0.0_DP)
+    sizeof_c = m * n * c_sizeof(0.0_DP)
+    sizeof_x = m * c_sizeof(0.0_DP)
+
+    pa(1:lda,1:n) => a(:,1:n)
+    pc(1:ldc,1:n) => c(:,1:n)
+    px(1:m) => x(1:m)
+
+    ha = C_LOC( pa )
+    hc = C_LOC( pc )
+    hx = C_LOC( px )
+
+    data_on_device = device_is_present( ha, mydevice, sizeof_a ) &
+               .AND. device_is_present( hc, mydevice, sizeof_c ) &
+               .AND. device_is_present( hx, mydevice, sizeof_x )
+
+    IF ( data_on_device ) THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pc, px )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( pa, pc, px )
+#endif
+      da = C_LOC( pa )
+      dc = C_LOC( pc )
+      dx = C_LOC( px )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+#endif
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cublasDdgmm &
+             ( cublas_handle, CUBLAS_SIDE_LEFT, m, n, da, lda, dx, incx, dc, ldc )
+      ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_MAGMA)
+      CALL magmablas_dlacpy &
+             ( MagmaFull, m, n, da, lda, dc, ldc, magma_queue )
+      CALL magmablas_dlascl2 &
+             ( MagmaFull, m, n, dx, dc, ldc, magma_queue, info )
+      CALL magma_queue_sync( magma_queue )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[MatrixDiagScale] Data not present on device'
+      IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
+        WRITE(*,*) '[MatrixDiagScale]   A missing'
+      IF ( .not. device_is_present( hc, mydevice, sizeof_c ) ) &
+        WRITE(*,*) '[MatrixDiagScale]   C missing'
+      IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
+        WRITE(*,*) '[MatrixDiagScale]   x missing'
+#endif
+
+      IF ( incx == 1 ) THEN
+        DO j = 1, n
+          DO i = 1, m
+            c(i,j) = a(i,j) * x(i)
+          END DO
+        END DO
+      ELSE
+        DO j = 1, n
+          ix = 1
+          IF ( incx < 0 ) ix = (-m+1)*incx + 1
+          DO i = 1, m
+            c(i,j) = a(i,j) * x(ix)
+            ix = ix + incx
+          END DO
+        END DO
+      END IF
+
+    END IF
+
+  END SUBROUTINE MatrixDiagScale
+
+
+  SUBROUTINE LinearLeastSquares_LWORK( trans, m, n, nrhs, a, lda, b, ldb, work, lwork )
+
+    CHARACTER                          :: trans
+    INTEGER                            :: m, n, nrhs, lda, ldb, lwork
+    REAL(DP), DIMENSION(lda,*), TARGET :: a
+    REAL(DP), DIMENSION(ldb,*), TARGET :: b
+    REAL(DP), DIMENSION(*)    , TARGET :: work
+
+    INTEGER                            :: ierr, info, max_mn
+    INTEGER(C_INT)                     :: itrans
+    INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_b, sizeof_work
+    REAL(DP), DIMENSION(:,:), POINTER  :: pa, pb
+    REAL(DP), DIMENSION(:)  , POINTER  :: pwork
+    TYPE(C_PTR)                        :: ha, hb, hwork
+    TYPE(C_PTR)                        :: da, db
+
+    lwork = -1
+
+    max_mn = MAX(m,n)
+
+    sizeof_a = m * n * c_sizeof(0.0_DP)
+    sizeof_b = max_mn * nrhs * c_sizeof(0.0_DP)
+    sizeof_work = lwork * c_sizeof(0.0_DP)
+
+    pa(1:lda,1:n) => a(:,1:n)
+    pb(1:ldb,1:nrhs) => b(:,1:nrhs)
+    pwork(1:lwork) => work(1:lwork)
+
+    ha = C_LOC( pa )
+    hb = C_LOC( pb )
+    hwork = C_LOC( pwork )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb )
+#elif defined(THORNADO_OACC)
+    !$ACC HOST_DATA USE_DEVICE( pa, pb )
+#endif
+    da = C_LOC( pa )
+    db = C_LOC( pb )
+#if defined(THORNADO_OMP_OL)
+    !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+    !$ACC END HOST_DATA
+#endif
+
+    itrans = itrans_from_char( trans )
+
+#if defined(THORNADO_LA_CUBLAS)
+    ierr = cusolverDnDgeqrf_bufferSize &
+           ( cusolver_handle, m, n, da, lda, lwork )
+#elif defined(THORNADO_LA_MAGMA)
+    CALL magma_dgels_gpu &
+           ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
+    lwork = INT( work(1) )
+#else
+    CALL DGELS &
+           ( trans, m, n, nrhs, a, lda, b, ldb, work, lwork, info )
+    lwork = INT( work(1) )
+#endif
+
+  END SUBROUTINE LinearLeastSquares_LWORK
+
+
+  SUBROUTINE LinearLeastSquares( trans, m, n, nrhs, a, lda, b, ldb, tau, work, lwork, info )
+
+    CHARACTER                          :: trans
+    INTEGER                            :: m, n, nrhs, lda, ldb, lwork
+    INTEGER                   , TARGET :: info
+    REAL(DP), DIMENSION(lda,*), TARGET :: a
+    REAL(DP), DIMENSION(ldb,*), TARGET :: b
+    REAL(DP), DIMENSION(*)    , TARGET :: tau
+    REAL(DP), DIMENSION(*)    , TARGET :: work
+
+    INTEGER                            :: ierr, max_mn, min_mn
+    INTEGER(C_INT)                     :: itrans
+    INTEGER(C_SIZE_T)                  :: sizeof_a, sizeof_b, sizeof_tau, sizeof_work, sizeof_info
+    REAL(DP), DIMENSION(:,:), POINTER  :: pa, pb
+    REAL(DP), DIMENSION(:)  , POINTER  :: ptau, pwork
+    INTEGER                 , POINTER  :: pinfo
+    TYPE(C_PTR)                        :: ha, hb, htau, hwork, hinfo
+    TYPE(C_PTR)                        :: da, db, dtau, dwork, dinfo
+    LOGICAL                            :: data_on_device
+
+    data_on_device = .false.
+    max_mn = MAX(m,n)
+    min_mn = MIN(m,n)
+
+    sizeof_a = m * n * c_sizeof(0.0_DP)
+    sizeof_b = max_mn * nrhs * c_sizeof(0.0_DP)
+    sizeof_tau = min_mn * c_sizeof(0.0_DP)
+    sizeof_work = lwork * c_sizeof(0.0_DP)
+    sizeof_info = c_sizeof(info)
+
+    pa(1:lda,1:n) => a(:,1:n)
+    pb(1:ldb,1:nrhs) => b(:,1:nrhs)
+    ptau(1:min_mn) => tau(1:min_mn)
+    pwork(1:lwork) => work(1:lwork)
+    pinfo => info
+
+    ha = C_LOC( pa )
+    hb = C_LOC( pb )
+    htau = C_LOC( ptau )
+    hwork = C_LOC( pwork )
+    hinfo = C_LOC( pinfo )
+
+    data_on_device = device_is_present( ha,    mydevice, sizeof_a    ) &
+               .AND. device_is_present( hb,    mydevice, sizeof_b    ) &
+               .AND. device_is_present( htau,  mydevice, sizeof_tau  ) &
+               .AND. device_is_present( hwork, mydevice, sizeof_work ) &
+               .AND. device_is_present( hinfo, mydevice, sizeof_info )
+
+    IF ( data_on_device ) THEN
+
+      itrans = itrans_from_char( trans )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( pa, pb, ptau, pwork, pinfo )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( pa, pb, ptau, pwork, pinfo )
+#endif
+      da = C_LOC( pa )
+      db = C_LOC( pb )
+      dtau = C_LOC( ptau )
+      dwork = C_LOC( pwork )
+      dinfo = C_LOC( pinfo )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+#endif
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cusolverDnDgeqrf &
+             ( cusolver_handle, m, n, da, lda, dtau, dwork, lwork, dinfo )
+      ierr = cusolverDnDormqr &
+             ( cusolver_handle, &
+               CUBLAS_SIDE_LEFT, CUBLAS_OP_T, &
+               m, nrhs, n, da, lda, dtau, db, ldb, dwork, lwork, dinfo )
+      ierr = cudaStreamSynchronize( stream )
+
+      IF ( nrhs == 1 ) THEN
+
+        ierr = cublasDtrsv_v2 &
+               ( cublas_handle, &
+                 CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT, &
+                 n, da, lda, db, 1 )
+
+      ELSE
+
+        ierr = cublasDtrsm_v2 &
+               ( cublas_handle, &
+                 CUBLAS_SIDE_LEFT, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT, &
+                 n, nrhs, One, da, lda, db, ldb )
+
+      END IF
+      ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_MAGMA)
+      CALL magma_dgels_gpu &
+             ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
+      CALL magma_queue_sync( magma_queue )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[LinearLeastSquares] Data not present on device'
+      IF ( .not. device_is_present( ha, mydevice, sizeof_a ) ) &
+        WRITE(*,*) '[LinearLeastSquares]   A missing'
+      IF ( .not. device_is_present( hb, mydevice, sizeof_b ) ) &
+        WRITE(*,*) '[LinearLeastSquares]   b missing'
+      IF ( .not. device_is_present( htau, mydevice, sizeof_tau ) ) &
+        WRITE(*,*) '[LinearLeastSquares]   tau missing'
+      IF ( .not. device_is_present( hwork, mydevice, sizeof_work ) ) &
+        WRITE(*,*) '[LinearLeastSquares]   work missing'
+      IF ( .not. device_is_present( hinfo, mydevice, sizeof_info ) ) &
+        WRITE(*,*) '[LinearLeastSquares]   info missing'
+#endif
+
+      CALL DGELS &
+             ( trans, m, n, nrhs, a, lda, b, ldb, work, lwork, info )
+
+    END IF
+
+  END SUBROUTINE LinearLeastSquares
+
+
+  SUBROUTINE VectorNorm2( n, x, incx, xnorm )
+
+    INTEGER                         :: n, incx
+    REAL(DP), DIMENSION(*), TARGET  :: x
+    REAL(DP)                        :: xnorm
+
+    INTEGER                         :: ierr
+    INTEGER(C_SIZE_T)               :: sizeof_x
+    REAL(DP), DIMENSION(:), POINTER :: px
+    TYPE(C_PTR)                     :: hx
+    TYPE(C_PTR)                     :: dx
+    LOGICAL                         :: data_on_device
+    REAL(DP), EXTERNAL              :: DNRM2
+
+    data_on_device = .false.
+    sizeof_x = n * c_sizeof(0.0_DP)
+
+    px(1:n) => x(1:n)
+
+    hx = C_LOC( px )
+
+    data_on_device = device_is_present( hx, mydevice, sizeof_x )
+
+    IF ( data_on_device ) THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( px )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( px )
+#endif
+      dx = C_LOC( px )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+#endif
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cublasDnrm2_v2( cublas_handle, n, dx, incx, xnorm )
+      ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_MAGMA)
+      xnorm = magma_dnrm2( n, dx, incx, magma_queue )
+      CALL magma_queue_sync( magma_queue )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[VectorNorm2] Data not present on device'
+      IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
+        WRITE(*,*) '[VectorNorm2]   x missing'
+#endif
+
+      xnorm = DNRM2( n, x, incx )
+
+    END IF
+
+  END SUBROUTINE VectorNorm2
+
+
+  SUBROUTINE VectorNorm2_Kernel( n, x, incx, xnorm )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER                         :: n, incx
+    REAL(DP), DIMENSION(*), TARGET  :: x
+    REAL(DP)                        :: xnorm
+
+    INTEGER                         :: ix
+    REAL(DP)                        :: xscale, xssq, absxi
+
+    IF ( n < 1 .OR. incx < 1 ) THEN
+      xnorm = 0.0d0
+    ELSE IF ( n == 1 ) THEN
+      xnorm = ABS( x(1) )
+    ELSE
+      xscale = 0.0d0
+      xssq = 1.0d0
+      DO ix = 1, 1 + (n-1)*incx, incx
+        IF ( x(ix) /= 0.0d0 ) THEN
+          absxi = ABS( x(ix) )
+          IF ( xscale < absxi ) THEN
+            xssq = 1.0d0 + xssq * (xscale/absxi)**2
+            xscale = absxi
+          ELSE
+            xssq = xssq + (absxi/xscale)**2
+          END IF
+        END IF
+      END DO
+      xnorm = xscale * SQRT(xssq)
+    END IF
+
+  END SUBROUTINE VectorNorm2_Kernel
+
+
+  SUBROUTINE VectorVectorAdd( n, alpha, x, incx, y, incy )
+
+    INTEGER                         :: n, incx, incy
+    REAL(DP)                        :: alpha
+    REAL(DP), DIMENSION(*), TARGET  :: x, y
+
+    INTEGER                         :: ierr
+    INTEGER(C_SIZE_T)               :: sizeof_x, sizeof_y
+    REAL(DP), DIMENSION(:), POINTER :: px, py
+    TYPE(C_PTR)                     :: hx, hy
+    TYPE(C_PTR)                     :: dx, dy
+    LOGICAL                         :: data_on_device
+
+    data_on_device = .false.
+
+    sizeof_x = n * c_sizeof(0.0_DP)
+    sizeof_y = n * c_sizeof(0.0_DP)
+
+    px(1:n) => x(1:n)
+    py(1:n) => y(1:n)
+
+    hx = C_LOC( px )
+    hy = C_LOC( py )
+
+    data_on_device = device_is_present( hx, mydevice, sizeof_x ) &
+               .AND. device_is_present( hy, mydevice, sizeof_y )
+
+    IF ( data_on_device ) THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( px, py )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( px, py )
+#endif
+      dx = C_LOC( px )
+      dy = C_LOC( py )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+#endif
+
+#if defined(THORNADO_LA_CUBLAS)
+      ierr = cublasDaxpy_v2( cublas_handle, n, alpha, dx, incx, dy, incy )
+      ierr = cudaStreamSynchronize( stream )
+#elif defined(THORNADO_LA_MAGMA)
+      xnorm = magma_daxpy( n, alpha, dx, incx, dy, incy, magma_queue )
+      CALL magma_queue_sync( magma_queue )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[VectorVectorAdd] Data not present on device'
+      IF ( .not. device_is_present( hx, mydevice, sizeof_x ) ) &
+        WRITE(*,*) '[VectorVectorAdd]   x missing'
+#endif
+
+      CALL DAXPY( n, alpha, x, incx, y, incy )
+
+    END IF
+
+  END SUBROUTINE VectorVectorAdd
+
+
+  SUBROUTINE VectorGather( nnz, y, xval, xind )
+
+    INTEGER                         :: nnz
+    REAL(DP), DIMENSION(*), TARGET  :: y, xval
+    INTEGER,  DIMENSION(*), TARGET  :: xind
+
+    INTEGER                         :: ierr, i
+    INTEGER(C_SIZE_T)               :: sizeof_xval, sizeof_xind, sizeof_y
+    REAL(DP), DIMENSION(:), POINTER :: pxval, py
+    INTEGER,  DIMENSION(:), POINTER :: pxind
+    TYPE(C_PTR)                     :: hxval, hxind, hy
+    TYPE(C_PTR)                     :: dxval, dxind, dy
+    LOGICAL                         :: data_on_device
+
+    data_on_device = .false.
+    sizeof_xval = nnz * c_sizeof(0.0_DP)
+    sizeof_xind = nnz * c_sizeof(0)
+    sizeof_y    = nnz * c_sizeof(0.0_DP)
+
+    pxval(1:nnz) => xval(1:nnz)
+    pxind(1:nnz) => xind(1:nnz)
+    py(1:nnz) => y(1:nnz)
+
+    hxval = C_LOC( pxval )
+    hxind = C_LOC( pxind )
+    hy = C_LOC( py )
+
+    data_on_device = device_is_present( hxval, mydevice, sizeof_xval ) &
+               .AND. device_is_present( hxind, mydevice, sizeof_xind ) &
+               .AND. device_is_present( hy,    mydevice, sizeof_y    )
+
+    IF ( data_on_device ) THEN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA USE_DEVICE_PTR( pxval, pxind, py )
+#elif defined(THORNADO_OACC)
+      !$ACC HOST_DATA USE_DEVICE( pxval, pxind, py )
+#endif
+      dxval = C_LOC( pxval )
+      dxind = C_LOC( pxind )
+      dy = C_LOC( py )
+#if defined(THORNADO_OMP_OL)
+      !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+      !$ACC END HOST_DATA
+#endif
+
+#if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
+      ierr = cusparseDgthr( cusparse_handle, nnz, dy, dxval, dxind, CUSPARSE_INDEX_BASE_ONE )
+      ierr = cudaStreamSynchronize( stream )
+#endif
+
+    ELSE
+
+#if defined(THORNADO_GPU)
+      WRITE(*,*) '[VectorGather] Data not present on device'
+      IF ( .not. device_is_present( hxval, mydevice, sizeof_xval ) ) &
+        WRITE(*,*) '[VectorGather]   xval missing'
+      IF ( .not. device_is_present( hxind, mydevice, sizeof_xind ) ) &
+        WRITE(*,*) '[VectorGather]   xind missing'
+      IF ( .not. device_is_present( hy, mydevice, sizeof_y ) ) &
+        WRITE(*,*) '[VectorGather]   y missing'
+#endif
+
+      DO i = 1, nnz
+        xval(i) = y(xind(i))
+      END DO
+
+    END IF
+
+  END SUBROUTINE VectorGather
+
 
 END MODULE LinearAlgebraModule

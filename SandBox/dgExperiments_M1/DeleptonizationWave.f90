@@ -36,11 +36,11 @@ PROGRAM DeleptonizationWave
     uGF
   USE MeshModule, ONLY: &
     MeshX
-  USE GeometryComputationModule_Beta, ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE GeometryFieldsModuleE, ONLY: &
     uGE
-  USE GeometryComputationModuleE_Beta, ONLY: &
+  USE GeometryComputationModuleE, ONLY: &
     ComputeGeometryE
   USE FluidFieldsModule, ONLY: &
     uPF, iPF_D, &
@@ -68,6 +68,10 @@ PROGRAM DeleptonizationWave
     WriteFieldsHDF
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
+  USE TwoMoment_SlopeLimiterModule, ONLY: &
+    InitializeSlopeLimiter_TwoMoment, &
+    FinalizeSlopeLimiter_TwoMoment, &
+    ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment, &
@@ -83,6 +87,8 @@ PROGRAM DeleptonizationWave
 
   INCLUDE 'mpif.h'
 
+  LOGICAL  :: TEST_DEBUG
+  LOGICAL  :: UsePositivityLimiter
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem
   INTEGER  :: iCycle, iCycleD, iCycleW
@@ -93,15 +99,17 @@ PROGRAM DeleptonizationWave
 
   CoordinateSystem = 'SPHERICAL'
 
-  SELECT CASE( CoordinateSystem)
+  TEST_DEBUG = .TRUE.
+
+  SELECT CASE( CoordinateSystem )
 
     CASE( 'CARTESIAN' )
 
       ProgramName = 'DeleptonizationWave'
 
-      nX = [ 128, 128, 1 ]  ! 96 / 128 [96, 96, 1]
-      xL = [  0.0d2,  0.0d2, - 1.0d2 ] * Kilometer
-      xR = [  2.0d2,  2.0d2, + 1.0d2 ] * Kilometer
+      nX = [  128, 128, 1 ]  ! 96 / 128 [96, 96, 1]
+      xL = [  0.0_DP, 0.0_DP, - 1.0d2 ] * Kilometer
+      xR = [  4.0d2,  4.0d2,  + 1.0d2 ] * Kilometer
       
       bcX = [ 32, 32, 32 ]
 
@@ -111,9 +119,10 @@ PROGRAM DeleptonizationWave
 
       ProgramName = 'DeleptonizationWave_Spherical'
 
-      nX = [ 512, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 3.0d3 * Kilometer, Pi,     TwoPi  ]
+      nX = [ 181, 1, 1 ] ! 512
+      xL = [ 0.0d0 * Kilometer, 0.0_DP, 0.0_DP ]
+      xR = [ 5.66d2 * Kilometer, Pi,     TwoPi  ]
+      !xR = [ 3.0d3 * Kilometer, Pi,     TwoPi  ]
 
       bcX = [ 32, 0, 0 ]
 
@@ -123,9 +132,13 @@ PROGRAM DeleptonizationWave
  
   nNodes = 2
 
+  UsePositivityLimiter = .TRUE.
+
+  IF( nNodes == 1 ) UsePositivityLimiter = .FALSE.
+
   nE = 10
   eL = 0.0d0 * MeV
-  eR = 3.0d2 * MeV
+  eR = 300.0d0 * MeV
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -203,6 +216,16 @@ PROGRAM DeleptonizationWave
 
   CALL CreateNeutrinoOpacities( nZ, nNodesZ, nSpecies )
 
+  ! --- Initialize Slope Limiter ---
+
+  CALL InitializeSlopeLimiter_TwoMoment                &
+         ( BetaTVD_Option = 2.0_DP,                    &
+           BetaTVB_Option = 0.0d0,                      &
+           SlopeTolerance_Option = 1.0d-6,             &
+           UseSlopeLimiter_Option = .FALSE.,            &
+           UseCharacteristicLimiting_Option = .FALSE., &
+           Verbose_Option = .TRUE. )
+
   ! --- Initialize Positivity Limiter ---
 
   CALL InitializePositivityLimiter_TwoMoment &
@@ -210,7 +233,7 @@ PROGRAM DeleptonizationWave
            Max_1_Option = 1.0d0 - SqrtTiny, &
            Min_2_Option = 0.0d0 + SqrtTiny, &
            UsePositivityLimiter_Option &
-             = .TRUE. )
+             = UsePositivityLimiter )
 
   ! --- Initialize Time Stepper ---
 
@@ -220,7 +243,10 @@ PROGRAM DeleptonizationWave
   ! --- Set Initial Condition ---
 
   CALL InitializeFields
-  !CALL InitializeFields( Profile_Option = 'Chimera100ms_fined.d')
+  !CALL InitializeFields( Profile_Option = 'ChimeraBounce_fined.d')
+
+  CALL ApplySlopeLimiter_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
 
   CALL ApplyPositivityLimiter_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCR )
@@ -245,26 +271,43 @@ PROGRAM DeleptonizationWave
   wTime = MPI_WTIME( )
 
   t     = 0.0_DP
-  t_end = 2.0d1 * Millisecond
+  t_end = 5.0d1 * Millisecond
 
-!  dt    = 1.0d-7 * Millisecond
-
-!  dt    = Third * (xR(1)-xL(1)) / DBLE( nX(1) ) &
-!            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
-
-  dt    = Third * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
+  IF ( CoordinateSystem == 'SPHERICAL') THEN
+    ! Spherical Coordinate time step
+    !!! NEED FIX for 2D
+    dt  = 0.2_DP * MINVAL( MeshX(1) % Width(1:nX(1)) ) &
             / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
-
-!  dt    = Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
-!            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+    WRITE(*,*)
+    WRITE(*,*) 'dr [km]', MINVAL( MeshX(1) % Width ) / Kilometer
+    WRITE(*,*) 'dr [km]', MINLOC( MeshX(1) % Width )
+    WRITE(*,*) 'dr [km]', MeshX(1) % Width(1),MeshX(1) % Width(nX(1))
+    WRITE(*,*) 'para   ', 0.1_DP / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+    WRITE(*,*) 'dt [dimless]', dt
+    WRITE(*,*) 'Millisecond', Millisecond
+    WRITE(*,*)
+  ELSE IF ( CoordinateSystem == 'CARTESIAN' ) THEN
+    ! Cartesian Coordinate time step
+    ! dt  = 0.49_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
+    dt  = 0.2_DP * MINVAL( (xR-xL) / DBLE( nX ) ) &
+            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
+    WRITE(*,*)
+    WRITE(*,*) 'dx [km]', MINVAL( (xR-xL) / DBLE( nX ) ) / Kilometer
+    WRITE(*,*)
+  END IF
 
   iCycleD = 10
-  iCycleW = 200 ! 200 -> 128, 150 -> 96 
+  IF( TEST_DEBUG ) THEN
+    iCycleW = INT(t_end / dt / 40)
+    !t_end = 6602 * dt
+  ELSE
+    iCycleW = 200 ! 200 -> 128, 150 -> 96
+  END IF
 
   WRITE(*,*)
-  WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
-    '', 'Evolving from t = ', t / Millisecond, &
-    ' to t = ', t_end / Millisecond
+  WRITE(*,'(A6,A,ES8.2E2,A3,A8,ES8.2E2,A3)') &
+    '', 'Evolving from t = ', t / Millisecond, 'ms', &
+    ' to t = ', t_end / Millisecond, 'ms'
   WRITE(*,*)
 
   iCycle = 0
@@ -275,12 +318,6 @@ PROGRAM DeleptonizationWave
     IF( t + dt > t_end )THEN
 
       dt = t_end - t
-
-!    ELSE
-!
-!      dt = MIN( dt * 1.01_dp, &
-!                Third * MINVAL( (xR-xL) / DBLE( nX ) ) &
-!              / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP ) )
 
     END IF
     
@@ -349,6 +386,8 @@ PROGRAM DeleptonizationWave
   CALL FinalizeOpacities_TABLE
 
   CALL DestroyNeutrinoOpacities
+
+  CALL FinalizeSlopeLimiter_TwoMoment
 
   CALL FinalizePositivityLimiter_TwoMoment
 

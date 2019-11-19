@@ -1,5 +1,6 @@
 FluidFieldsModule.o: \
   KindModule.o \
+  UnitsModule.o \
   ProgramHeaderModule.o \
   FluidFieldsModule.F90
 
@@ -10,6 +11,7 @@ FluidFieldsUtilitiesModule.o: \
 
 RadiationFieldsModule.o: \
   KindModule.o \
+  UnitsModule.o \
   ProgramHeaderModule.o \
   RadiationFieldsModule.f90
 

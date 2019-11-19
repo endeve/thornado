@@ -186,7 +186,7 @@ CONTAINS
         Jacobian(:,3) = [ One / Gm_dd_22, A23, A33, A43 ]
         Jacobian(:,4) = [ Zero,           A24, A34, A44 ]
 
-      CASE (3)
+      CASE ( 3 )
 
         A21 = Half * hd1 * hu3 * ( Elem1 - Three * dEFdFF_D * FF )
  

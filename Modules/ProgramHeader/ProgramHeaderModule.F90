@@ -56,6 +56,9 @@ MODULE ProgramHeaderModule
   REAL(DP), PUBLIC :: zoomZ(4)
 
   INTEGER,  PUBLIC :: nNodesZ(4)
+  INTEGER,  PUBLIC :: nDimsZ
+  INTEGER,  PUBLIC :: nDOFZ
+
   INTEGER,  PUBLIC :: nDims
   INTEGER,  PUBLIC :: nDOF
 
@@ -309,6 +312,9 @@ CONTAINS
     zL      = [ eL,      xL      ]
     zR      = [ eR,      xR      ]
     zoomZ   = [ zoomE,   zoomX   ]
+
+    nDimsZ = nDimsX + nDimsE
+    nDOFZ  = nNodes**nDimsZ
 
     nDims = nDimsX + nDimsE
     nDOF  = nNodes**nDims

@@ -1,0 +1,9 @@
+MACHINE = $(THORNADO_MACHINE)
+
+HYDRO                = RELATIVISTIC
+HYDRO_RIEMANN_SOLVER = HLL
+
+OPT_LEVEL = DEBUG
+FLAGS     = $(FLAGS_$(OPT_LEVEL))
+
+include ../Makefile

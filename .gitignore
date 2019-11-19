@@ -18,8 +18,17 @@
 # compiled code
 *.o
 *.mod
+*.a
 
-# Sam's files to ignore
-*.DS_Store
+# AMReX
 *main*ex
 *tmp_build_dir
+*chk*
+*thornado_*
+
+# Doxygen
+Documents/html
+Documents/latex
+
+# Misc.
+*.DS_Store

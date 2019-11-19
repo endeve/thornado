@@ -11,6 +11,7 @@ MODULE TwoMoment_ClosureModule
   PUBLIC :: InitializeClosure_TwoMoment
   PUBLIC :: FluxFactor
   PUBLIC :: EddingtonFactor
+  PUBLIC :: HeatFluxFactor
   PUBLIC :: ComputeEddingtonFactorDerivatives
 
   INTERFACE FluxFactor
@@ -22,6 +23,11 @@ MODULE TwoMoment_ClosureModule
     MODULE PROCEDURE EddingtonFactor_Scalar
     MODULE PROCEDURE EddingtonFactor_Vector
   END INTERFACE
+
+  INTERFACE HeatFluxFactor
+    MODULE PROCEDURE HeatFluxFactor_Scalar
+    MODULE PROCEDURE HeatFluxFactor_Vector
+  END INTERFACE HeatFluxFactor
 
   INTERFACE ClosurePolynomial_ME_CB
     MODULE PROCEDURE ClosurePolynomial_ME_CB_Scalar
@@ -116,6 +122,18 @@ CONTAINS
 
     END IF
 
+#elif  MOMENT_CLOSURE_LEVERMORE
+
+     ! --- Levermore Closure ---
+
+     IF( Verbose )THEN
+
+       WRITE(*,*)
+       WRITE(*,'(A6,A)') &
+         '', 'Two-Moment Closure: Levermore'
+      
+     END IF
+
 #else
 
     WRITE(*,*)
@@ -155,6 +173,7 @@ CONTAINS
 
     RETURN
   END FUNCTION FluxFactor_Scalar
+
 
   FUNCTION FluxFactor_Vector &
     ( D, I_1, I_2, I_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
@@ -226,6 +245,13 @@ CONTAINS
       = Third + Two * Third * ( One - D ) * ( One - Two * D ) &
           * ClosurePolynomial_KE_BL( FF / MAX( One - D, SqrtTiny ) )
 
+#elif  MOMENT_CLOSURE_LEVERMORE
+
+    ! --- Levermore Closure ---
+  
+    EddingtonFactor &
+      = Third * ( 5.0_dp - Two * SQRT( Four - Three * FF * FF ) )
+
 #endif
 
     RETURN
@@ -273,10 +299,99 @@ CONTAINS
       = Third + Two * Third * ( One - D ) * ( One - Two * D ) &
           * ClosurePolynomial_KE_BL( FF / MAX( One - D, SqrtTiny ) )
 
+#elif  MOMENT_CLOSURE_LEVERMORE
+
+    ! --- Levermore Closure ---
+
+    EddingtonFactor &
+      = Third * ( 5.0_dp - Two * SQRT( Four - Three * FF * FF ) )
+
 #endif
 
     RETURN
   END FUNCTION EddingtonFactor_Vector
+
+
+  ! --- Heat Flux Factor ---
+
+
+  FUNCTION HeatFluxFactor_Scalar( D, FF ) RESULT( HeatFluxFactor )
+
+    REAL(DP), INTENT(in) :: D, FF
+    REAL(DP)             :: HeatFluxFactor
+
+#ifdef MOMENT_CLOSURE_MINERBO
+
+    ! --- Maximum Entropy (ME) Minerbo Closure -------------------
+    ! --- Expression from Just et al. (2015), MNRAS, 453, 3386 ---
+
+    HeatFluxFactor &
+      = ( 45.0_DP + 10.0_DP * FF - 12.0 * FF**2 - 12.0_DP * FF**3 &
+          + 38.0_DP * FF**4 - 12.0_DP * FF**5 + 18.0_DP * FF**6 ) &
+        * FF / 75.0_DP
+
+#elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
+
+    HeatFluxFactor = 0.0_DP
+
+#elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_BL
+
+    HeatFluxFactor = 0.0_DP
+
+#elif  MOMENT_CLOSURE_KERSHAW_BL
+    
+    HeatFluxFactor &
+    =((D + 1.0_DP) / (24.0_DP*D))*(((D*FF+(1.0_DP-D)**2)/(1.0_DP-D))**4 &
+    -((D*FF-(1.0_DP-D)**2)/(1.0_DP-D))**4)+((2.0_DP-D)/3)*(FF**3+D**2*FF)
+
+#elif  MOMENT_CLOSURE_LEVERMORE
+
+    HeatFluxFactor = 0.0_DP
+
+#endif
+
+    RETURN
+  END FUNCTION HeatFluxFactor_Scalar
+
+
+  FUNCTION HeatFluxFactor_Vector( D, FF ) RESULT( HeatFluxFactor )
+
+    REAL(DP), INTENT(in) :: D(:), FF(:)
+    REAL(DP)             :: HeatFluxFactor(SIZE(D))
+    
+    INTEGER :: i
+
+#ifdef MOMENT_CLOSURE_MINERBO
+
+    ! --- Maximum Entropy (ME) Minerbo Closure -------------------
+    ! --- Expression from Just et al. (2015), MNRAS, 453, 3386 ---
+    
+    HeatFluxFactor &
+      = ( 45.0_DP + 10.0_DP * FF - 12.0 * FF**2 - 12.0_DP * FF**3 &
+          + 38.0_DP * FF**4 - 12.0_DP * FF**5 + 18.0_DP * FF**6 ) &
+        * FF / 75.0_DP
+
+#elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
+
+    HeatFluxFactor = 0.0_DP
+
+#elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_BL
+
+    HeatFluxFactor = 0.0_DP
+
+#elif  MOMENT_CLOSURE_KERSHAW_BL
+    
+    DO i = 1, SIZE( D )
+        HeatFluxFactor(i) = HeatFluxFactor_Scalar( D(i), FF(i) )
+    END DO
+#elif  MOMENT_CLOSURE_LEVERMORE
+
+    HeatFluxFactor = 0.0_DP
+
+#endif
+
+    RETURN
+  END FUNCTION HeatFluxFactor_Vector
 
 
   SUBROUTINE ComputeEddingtonFactorDerivatives( D, FF, dEFdD_FF, dEFdFF_D )
@@ -338,6 +453,16 @@ CONTAINS
     dEFdFF_D &
       = Two * Third * ( One - Two * D ) &
           * ClosurePolynomialDerivative_KE_BL( XX )
+
+#elif MOMENT_CLOSURE_LEVERMORE
+
+    ! --- Levermore Closure ---
+
+    dEFdD_FF &
+      = ZERO
+
+    dEFdFF_D &
+      = Two * FF / SQRT( Four - Three * FF * FF )
 
 #endif
 

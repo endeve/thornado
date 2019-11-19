@@ -1,3 +1,6 @@
+!> Module for operations on MultiFabs
+!> @todo Modify data transfer subroutine to allow specification of looping over
+!>       ghost cells
 MODULE MF_UtilitiesModule
 
   ! --- AMReX Modules ---
@@ -17,14 +20,12 @@ MODULE MF_UtilitiesModule
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     nLevels
-  USE TimersModule_AMReX
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: AMReX2thornado
   PUBLIC :: thornado2AMReX
-  PUBLIC :: LinComb
   PUBLIC :: ShowVariableFromMultiFab
 
 
@@ -42,8 +43,6 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iVar
 
-    CALL TimersStart_AMReX( Timer_AMReX_DataTransfer )
-
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
@@ -56,8 +55,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    CALL TimersStop_AMReX( Timer_AMReX_DataTransfer )
 
   END SUBROUTINE AMReX2thornado
 
@@ -73,8 +70,6 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iVar
 
-    CALL TimersStart_AMReX( Timer_AMReX_DataTransfer )
-
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
@@ -88,67 +83,13 @@ CONTAINS
     END DO
     END DO
 
-    CALL TimersStop_AMReX( Timer_AMReX_DataTransfer )
-
   END SUBROUTINE thornado2AMReX
-
-
-  SUBROUTINE LinComb( alpha, MF_U, beta, MF_D )
-
-    TYPE(amrex_multifab), INTENT(inout) :: MF_U(0:nLevels)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_D(0:nLevels)
-    REAL(amrex_real),     INTENT(in)    :: alpha, beta(0:nLevels)
-
-    INTEGER                               :: iX1, iX2, iX3, iLevel
-    INTEGER                               :: lo(4), hi(4)
-    TYPE(amrex_box)                       :: BX
-    TYPE(amrex_mfiter)                    :: MFI
-    REAL(amrex_real), CONTIGUOUS, POINTER :: U(:,:,:,:)
-    REAL(amrex_real), CONTIGUOUS, POINTER :: D(:,:,:,:)
-
-    INTEGER :: nComp, iComp
-
-    DO iLevel = 0, nLevels
-      CALL amrex_mfiter_build( MFI, MF_U(iLevel), tiling = .TRUE. )
-
-      DO WHILE( MFI % next() )
-
-        nComp = MF_U(iLevel) % nComp()
-
-        U => MF_U(iLevel) % DataPtr( MFI )
-        D => MF_D(iLevel) % DataPtr( MFI )
-
-        BX = MFI % tilebox()
-
-        lo = LBOUND( U ); hi = UBOUND( U )
-
-        DO iComp = 1, nComp
-
-          DO iX3 = BX % lo(3), BX % hi(3)
-          DO iX2 = BX % lo(2), BX % hi(2)
-          DO iX1 = BX % lo(1), BX % hi(1)
-
-            U(iX1,iX2,iX3,iComp) = alpha * U(iX1,iX2,iX3,iComp) &
-                                   + beta(iLevel) &
-                                   * D(iX1,iX2,iX3,iComp)
-
-          END DO
-          END DO
-          END DO
-
-        END DO
-
-      END DO
-
-    END DO
-
-  END SUBROUTINE LinComb
 
 
   SUBROUTINE ShowVariableFromMultiFab( MF, swX, iComp )
 
     INTEGER,              INTENT(in) :: swX(3)
-    TYPE(amrex_multifab), INTENT(in) :: MF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in) :: MF(0:nLevels-1)
     INTEGER,              INTENT(in) :: iComp
 
     INTEGER                               :: iX1, iX2, iX3, iLevel
@@ -157,7 +98,7 @@ CONTAINS
     TYPE(amrex_mfiter)                    :: MFI
     REAL(amrex_real), CONTIGUOUS, POINTER :: U(:,:,:,:)
 
-    DO iLevel = 0, nLevels
+    DO iLevel = 0, nLevels-1
       CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = .TRUE. )
 
       DO WHILE( MFI % next() )

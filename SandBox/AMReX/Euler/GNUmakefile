@@ -2,8 +2,15 @@
 # If you set AMREX_HOME as an environment variable, this line will be ignored
 AMREX_HOME    ?= $(AMREX_DIR)
 THORNADO_HOME ?= $(THORNADO_DIR)
+WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
+HDF5_HOME     ?= $(HDF5_DIR)
 
-DEBUG     = FALSE
+HDF5_INC       = $(HDF5_HOME)/include
+HDF5_LIB       = $(HDF5_HOME)/lib
+
+EOS ?= IDEAL
+
+DEBUG     = TRUE
 
 USE_MPI   = TRUE
 USE_OMP   = FALSE
@@ -19,6 +26,13 @@ COMP      = gnu
 DIM       = 2
 
 EBASE     = main
+
+ifeq ($(EOS),TABLE)
+  INCLUDE_LOCATIONS += $(HDF5_INC)
+  LIBRARY_LOCATIONS += $(HDF5_LIB)
+  LIBRARIES += -lhdf5_fortran -lhdf5
+  include $(THORNADO_HOME)/SandBox/AMReX/Euler/weaklib_Make.package
+endif
 
 include $(THORNADO_HOME)/SandBox/AMReX/Euler/Make.package
 

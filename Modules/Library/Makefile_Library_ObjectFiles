@@ -1,4 +1,5 @@
 LIBRARY = \
+  ArrayUtilitiesModule.o \
   DeviceModule.o \
   TimersModule.o \
   TimersModule_Euler.o \
@@ -8,13 +9,17 @@ LIBRARY = \
   LagrangePolynomialsModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleE.o \
+  ReferenceElementModuleZ.o \
   ReferenceElementModule.o \
   PolynomialBasisModuleX_Lagrange.o \
   PolynomialBasisModuleX_Legendre.o \
+  PolynomialBasisModuleZ_Lagrange.o \
+  PolynomialBasisModuleZ_Legendre.o \
   PolynomialBasisModule_Lagrange.o \
   PolynomialBasisModule_Legendre.o \
   ReferenceElementModuleX_Lagrange.o \
   ReferenceElementModuleE_Lagrange.o \
+  ReferenceElementModuleZ_Lagrange.o \
   ReferenceElementModule_Lagrange.o \
   PolynomialBasisMappingModule.o \
   SubcellReconstructionModule.o
@@ -34,8 +39,8 @@ endif
 
 ifeq ($(USE_MAGMA),TRUE)
 LIBRARY += \
-  MagmaModule.o CublasModule.o
+  MagmaModule.o CublasModule.o CusolverModule.o CusparseModule.o
 else ifeq ($(USE_CUBLAS),TRUE)
 LIBRARY += \
-  CublasModule.o
+  CublasModule.o CusolverModule.o CusparseModule.o
 endif

@@ -7,10 +7,14 @@ else ifeq ($(USE_OMP_OL),TRUE)
 DeviceModule_prereqs += OpenMPModule.o
 endif
 ifeq ($(USE_MAGMA),TRUE)
-DeviceModule_prereqs += MagmaModule.o CublasModule.o
+DeviceModule_prereqs += MagmaModule.o CublasModule.o CusolverModule.o CusparseModule.o
 else ifeq ($(USE_CUBLAS),TRUE)
-DeviceModule_prereqs += CublasModule.o
+DeviceModule_prereqs += CublasModule.o CusolverModule.o CusparseModule.o
 endif
+
+ArrayUtilitiesModule.o: \
+  KindModule.o \
+  ArrayUtilitiesModule.F90
 
 DeviceModule.o: \
   $(DeviceModule_prereqs) \
@@ -37,7 +41,7 @@ QuadratureModule.o: \
 UtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  UtilitiesModule.f90
+  UtilitiesModule.F90
 
 LagrangePolynomialsModule.o: \
   KindModule.o \
@@ -47,13 +51,19 @@ ReferenceElementModuleX.o: \
   KindModule.o \
   QuadratureModule.o \
   ProgramHeaderModule.o \
-  ReferenceElementModuleX.f90
+  ReferenceElementModuleX.F90
 
 ReferenceElementModuleE.o: \
   KindModule.o \
   QuadratureModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleE.f90
+
+ReferenceElementModuleZ.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleZ.F90
 
 ReferenceElementModule.o: \
   KindModule.o \
@@ -72,6 +82,14 @@ PolynomialBasisModuleX_Legendre.o: \
   QuadratureModule.o \
   ProgramHeaderModule.o \
   PolynomialBasisModuleX_Legendre.f90
+
+PolynomialBasisModuleZ_Lagrange.o: \
+  KindModule.o \
+  PolynomialBasisModuleZ_Lagrange.f90
+
+PolynomialBasisModuleZ_Legendre.o: \
+  KindModule.o \
+  PolynomialBasisModuleZ_Legendre.f90
 
 PolynomialBasisModule_Lagrange.o: \
   KindModule.o \
@@ -98,6 +116,10 @@ ReferenceElementModuleE_Lagrange.o: \
   ReferenceElementModuleE.o \
   PolynomialBasisModule_Lagrange.o \
   ReferenceElementModuleE_Lagrange.f90
+
+ReferenceElementModuleZ_Lagrange.o: \
+  KindModule.o \
+  ReferenceElementModuleZ_Lagrange.F90
 
 ReferenceElementModule_Lagrange.o: \
   KindModule.o \

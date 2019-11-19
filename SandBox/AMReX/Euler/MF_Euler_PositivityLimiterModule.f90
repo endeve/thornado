@@ -10,6 +10,8 @@ MODULE MF_Euler_PositivityLimiterModule
     amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_communicator
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,           ONLY: &
@@ -19,7 +21,7 @@ MODULE MF_Euler_PositivityLimiterModule
   USE GeometryFieldsModule,          ONLY: &
     nGF
   USE Euler_PositivityLimiterModule, ONLY: &
-    Euler_ApplyPositivityLimiter
+    ApplyPositivityLimiter_Euler
 
   ! --- Local Modules ---
   USE MF_UtilitiesModule, ONLY: &
@@ -27,20 +29,23 @@ MODULE MF_Euler_PositivityLimiterModule
     thornado2AMReX
   USE MyAmrModule,        ONLY: &
     nLevels, UsePositivityLimiter, DEBUG
+  USE TimersModule_AMReX_Euler, ONLY: &
+    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    Timer_AMReX_Euler_DataTransfer
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_Euler_ApplyPositivityLimiter
+  PUBLIC :: MF_ApplyPositivityLimiter_Euler
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ApplyPositivityLimiter( MF_uGF, MF_uCF )
+  SUBROUTINE MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -51,13 +56,15 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iErr
 
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
-    DO iLevel = 0, nLevels
+    iErr = 0
+
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
@@ -73,6 +80,7 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3), 1:nGF ) )
@@ -97,19 +105,26 @@ CONTAINS
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
 
-        IF( DEBUG ) WRITE(*,'(A)') '    CALL Euler_ApplyPositivityLimiter'
-        CALL Euler_ApplyPositivityLimiter &
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplyPositivityLimiter_Euler'
+        CALL ApplyPositivityLimiter_Euler &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF), &
                  U (1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nCF) )
+                            iX_B1(3):iX_E1(3),1:nCF), iErr_Option = iErr )
+
+        IF( iErr .EQ. -1 )THEN
+          WRITE(*,*) 'Failure in ApplyPositivityLimiter_Euler'
+          CALL MPI_ABORT( amrex_parallel_communicator(), iErr )
+        END IF
 
 
+        CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
         CALL thornado2AMReX &
                ( nCF, iX_B1, iX_E1, &
                  uCF(      iX_B1(1):iX_E1(1), &
@@ -121,6 +136,7 @@ CONTAINS
 
         DEALLOCATE( U )
         DEALLOCATE( G )
+        CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO
 
@@ -128,7 +144,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_Euler_ApplyPositivityLimiter
+  END SUBROUTINE MF_ApplyPositivityLimiter_Euler
 
 
 END MODULE MF_Euler_PositivityLimiterModule

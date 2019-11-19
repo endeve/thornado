@@ -22,8 +22,7 @@ MODULE EulerEquationsSolutionModule_DG
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
     uAF, iAF_P, iAF_T,  iAF_Ye, iAF_S,  iAF_E, iAF_Gm, iAF_Cs, nAF
   USE EquationOfStateModule, ONLY: &
-    ComputeAuxiliary_Fluid, &
-    Auxiliary_Fluid
+    ComputeAuxiliary_Fluid
   USE RiemannSolverModule, ONLY: &
     NumericalFlux_Fluid
   USE EulerEquationsUtilitiesModule, ONLY: &
@@ -291,7 +290,11 @@ CONTAINS
 
                 uPF_L = Primitive( uCF_L )
 
-                uAF_L = Auxiliary_Fluid( uPF_L )
+                CALL ComputeAuxiliary_Fluid &
+                       ( uPF_L(iPF_D ), uPF_L(iPF_E), uPF_L(iPF_Ne), &
+                         uAF_L(iAF_P ), uAF_L(iAF_T), uAF_L(iAF_Ye), &
+                         uAF_L(iAF_S ), uAF_L(iAF_E), uAF_L(iAF_Gm), &
+                         uAF_L(iAF_Cs) )
 
                 Flux_L &
                   = Flux_X1 &
@@ -305,7 +308,11 @@ CONTAINS
 
                 uPF_R = Primitive( uCF_R )
 
-                uAF_R = Auxiliary_Fluid( uPF_R )
+                CALL ComputeAuxiliary_Fluid &
+                       ( uPF_R(iPF_D ), uPF_R(iPF_E), uPF_R(iPF_Ne), &
+                         uAF_R(iAF_P ), uAF_R(iAF_T), uAF_R(iAF_Ye), &
+                         uAF_R(iAF_S ), uAF_R(iAF_E), uAF_R(iAF_Gm), &
+                         uAF_R(iAF_Cs) )
 
                 Flux_R &
                   = Flux_X1 &
@@ -369,7 +376,11 @@ CONTAINS
 
                 uPF_L = Primitive( uCF_L )
 
-                uAF_L = Auxiliary_Fluid( uPF_L )
+                CALL ComputeAuxiliary_Fluid &
+                       ( uPF_L(iPF_D ), uPF_L(iPF_E), uPF_L(iPF_Ne), &
+                         uAF_L(iAF_P ), uAF_L(iAF_T), uAF_L(iAF_Ye), &
+                         uAF_L(iAF_S ), uAF_L(iAF_E), uAF_L(iAF_Gm), &
+                         uAF_L(iAF_Cs) )
 
                 Flux_L &
                   = Flux_X1 &
@@ -383,7 +394,11 @@ CONTAINS
 
                 uPF_R = Primitive( uCF_R )
 
-                uAF_R = Auxiliary_Fluid( uPF_R )
+                CALL ComputeAuxiliary_Fluid &
+                       ( uPF_R(iPF_D ), uPF_R(iPF_E), uPF_R(iPF_Ne), &
+                         uAF_R(iAF_P ), uAF_R(iAF_T), uAF_R(iAF_Ye), &
+                         uAF_R(iAF_S ), uAF_R(iAF_E), uAF_R(iAF_Gm), &
+                         uAF_R(iAF_Cs) )
 
                 Flux_R &
                   = Flux_X1 &

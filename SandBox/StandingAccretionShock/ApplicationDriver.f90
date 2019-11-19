@@ -4,7 +4,8 @@ PROGRAM ApplicationDriver
     DP, Half, One, Two, &
     Pi, TwoPi, FourPi
   USE ProgramHeaderModule, ONLY: &
-    iX_B0, iX_B1, iX_E0, iX_E1
+    iX_B0, iX_B1, iX_E0, iX_E1, &
+    nDimsX, nDOFX
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -21,35 +22,36 @@ PROGRAM ApplicationDriver
   USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
     ComputeGravitationalPotential
   USE FluidFieldsModule, ONLY: &
+    nCF, nPF, nAF, &
     uCF, uPF, uAF
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
-  USE Euler_SlopeLimiterModule, ONLY: &
-    Euler_InitializeSlopeLimiter, &
-    Euler_FinalizeSlopeLimiter, &
-    Euler_ApplySlopeLimiter
-  USE Euler_PositivityLimiterModule, ONLY: &
-    Euler_InitializePositivityLimiter, &
-    Euler_FinalizePositivityLimiter, &
-    Euler_ApplyPositivityLimiter
+  USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
+    InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL, &
+    FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL, &
+    ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
+  USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL, ONLY: &
+    InitializePositivityLimiter_Euler_NonRelativistic_IDEAL, &
+    FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL, &
+    ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL
   USE GeometryFieldsModule, ONLY: &
-    uGF
+    nGF, uGF
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
   USE InitializationModule, ONLY: &
     InitializeFields, ApplyPerturbations
   USE Euler_UtilitiesModule, ONLY: &
-    Euler_ComputeFromConserved, &
-    Euler_ComputeTimeStep
+    ComputeFromConserved_Euler, &
+    ComputeTimeStep_Euler
   USE Euler_dgDiscretizationModule, ONLY: &
     Euler_ComputeIncrement_DG_Explicit
-  USE Euler_TallyModule, ONLY: &
-    Euler_InitializeTally, &
-    Euler_FinalizeTally, &
-    Euler_ComputeTally
+  USE Euler_TallyModule_NonRelativistic, ONLY: &
+    InitializeTally_Euler_NonRelativistic_IDEAL, &
+    FinalizeTally_Euler_NonRelativistic_IDEAL, &
+    ComputeTally_Euler_NonRelativistic_IDEAL
 
   IMPLICIT NONE
 
@@ -111,41 +113,51 @@ PROGRAM ApplicationDriver
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma )
 
-  CALL Euler_InitializeSlopeLimiter &
+  CALL InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL &
          ( BetaTVD_Option                   = 1.15_DP, &
            BetaTVB_Option                   = 0.00_DP, &
            SlopeTolerance_Option            = 1.00d-6, &
            UseSlopeLimiter_Option           = .TRUE., &
            UseCharacteristicLimiting_Option = .TRUE., &
            UseTroubledCellIndicator_Option  = .TRUE., &
+           UseConservativeCorrection_Option = .TRUE., &
            LimiterThresholdParameter_Option = 0.015_DP )
 
-  CALL Euler_InitializePositivityLimiter &
-         ( Min_1_Option = 1.0d-12, &
-           Min_2_Option = 1.0d-12, &
-           UsePositivityLimiter_Option = .TRUE. )
+  CALL InitializePositivityLimiter_Euler_NonRelativistic_IDEAL &
+         ( UsePositivityLimiter_Option = .TRUE., &
+           Verbose_Option = .TRUE., &
+           Min_1_Option = 1.0d-12, &
+           Min_2_Option = 1.0d-12 )
 
   CALL InitializeFields &
          ( mDot, Mass, rShock, Gamma, Mach )
 
   CALL ApplyPerturbations( 1.4_DP, 1.6_DP, 0, 2.0_DP )
 
-  CALL Euler_ApplySlopeLimiter &
+  CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-  CALL Euler_ApplyPositivityLimiter &
+  CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
            uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
 
-  CALL Euler_ComputeFromConserved &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+  CALL ComputeFromConserved_Euler &
+         ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+           uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                       iX_B1(2):iX_E1(2), &
+                       iX_B1(3):iX_E1(3),1:nGF), &
+           uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                       iX_B1(2):iX_E1(2), &
+                       iX_B1(3):iX_E1(3),1:nCF), &
+           uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                       iX_B1(2):iX_E1(2), &
+                       iX_B1(3):iX_E1(3),1:nPF), &
+           uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                       iX_B1(2):iX_E1(2), &
+                       iX_B1(3):iX_E1(3),1:nAF) )
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
@@ -158,7 +170,7 @@ PROGRAM ApplicationDriver
   t_wrt = dt_wrt
   wrt   = .FALSE.
 
-  CALL Euler_InitializeTally &
+  CALL InitializeTally_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
@@ -168,11 +180,16 @@ PROGRAM ApplicationDriver
 
     iCycle = iCycle + 1
 
-    CALL Euler_ComputeTimeStep &
-           ( iX_B0, iX_E0, &
-             uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-             CFL = 0.3_DP / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
+    CALL ComputeTimeStep_Euler &
+           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+             uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),1:nGF), &
+             uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),1:nCF), &
+             CFL = 0.3_DP / ( nDimsX * DBLE( nNodes - 1 ) + One ), &
+             TimeStep = dt )
 
     IF( t + dt > t_end )THEN
 
@@ -202,17 +219,25 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
-      CALL Euler_ComputeFromConserved &
-             ( iX_B0, iX_E0, &
-               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+      CALL ComputeFromConserved_Euler &
+             ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+               uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nGF), &
+               uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nCF), &
+               uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nPF), &
+               uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                           iX_B1(2):iX_E1(2), &
+                           iX_B1(3):iX_E1(3),1:nAF) )
 
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-      CALL Euler_ComputeTally &
+      CALL ComputeTally_Euler_NonRelativistic_IDEAL &
              ( iX_B0, iX_E0, &
                uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
                uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
@@ -224,23 +249,31 @@ PROGRAM ApplicationDriver
 
   END DO
 
-  CALL Euler_ComputeFromConserved &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uPF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uAF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+  CALL ComputeFromConserved_Euler &
+         ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
+           uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                       iX_B1(2):iX_E1(2), &
+                       iX_B1(3):iX_E1(3),1:nGF), &
+           uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                       iX_B1(2):iX_E1(2), &
+                       iX_B1(3):iX_E1(3),1:nCF), &
+           uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                       iX_B1(2):iX_E1(2), &
+                       iX_B1(3):iX_E1(3),1:nPF), &
+           uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
+                       iX_B1(2):iX_E1(2), &
+                       iX_B1(3):iX_E1(3),1:nAF) )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL Euler_ComputeTally &
+  CALL ComputeTally_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
-  CALL Euler_FinalizeTally
+  CALL FinalizeTally_Euler_NonRelativistic_IDEAL
 
   wTime = MPI_WTIME( ) - wTime
 
@@ -251,9 +284,9 @@ PROGRAM ApplicationDriver
 
   ! --- Finalize ---
 
-  CALL Euler_FinalizePositivityLimiter
+  CALL FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
-  CALL Euler_FinalizeSlopeLimiter
+  CALL FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
 
   CALL FinalizeEquationOfState
 

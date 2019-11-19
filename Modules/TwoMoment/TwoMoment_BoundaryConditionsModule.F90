@@ -20,14 +20,28 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_TwoMoment &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+      U(1:nDOF, &
+        iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+        iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nCR,1:nSpecies)
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: U, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( U, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+#endif
+
+    CALL ApplyBC_TwoMoment_E &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
     CALL ApplyBC_TwoMoment_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
@@ -38,7 +52,137 @@ CONTAINS
     CALL ApplyBC_TwoMoment_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: U ) &
+    !$OMP MAP( release: iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( U ) &
+    !$ACC DELETE( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+#endif
+
   END SUBROUTINE ApplyBoundaryConditions_TwoMoment
+
+
+  SUBROUTINE ApplyBC_TwoMoment_E( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(inout) :: &
+      U(1:nDOF, &
+        iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+        iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nCR,1:nSpecies)
+
+    INTEGER :: iNodeZ, iS, iCR, iZ1, iZ2, iZ3, iZ4
+
+    SELECT CASE ( bcZ(1) )
+
+    CASE ( 0 ) ! No Boundary Condition
+
+    CASE ( 1 ) ! Periodic
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = 1, swZ(1)
+
+        DO iNodeZ = 1, nDOF
+
+          ! --- Inner Boundary ---
+
+          U(iNodeZ,iZ_B0(1)-iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_E0(1)-(iZ1-1),iZ2,iZ3,iZ4,iCR,iS)
+
+          ! --- Outer Boundary ---
+
+          U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_B0(1)+(iZ1-1),iZ2,iZ3,iZ4,iCR,iS)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    CASE ( 2 ) ! Homogeneous
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = 1, swZ(1)
+
+        DO iNodeZ = 1, nDOF
+
+          ! --- Inner Boundary ---
+
+          U(iNodeZ,iZ_B0(1)-iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_B0(1),iZ2,iZ3,iZ4,iCR,iS)
+
+          ! --- Outer Boundary ---
+
+          U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_E0(1),iZ2,iZ3,iZ4,iCR,iS)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    CASE ( 10 ) ! Custom
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = 1, swZ(1)
+
+        DO iNodeZ = 1, nDOF
+
+          ! --- Inner Boundary ---
+
+          U(iNodeZ,iZ_B0(1)-iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_B0(1),iZ2,iZ3,iZ4,iCR,iS)
+
+          ! --- Outer Boundary ---
+
+          U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_E0(1),iZ2,iZ3,iZ4,iCR,iS)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    CASE DEFAULT
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A45,I2.2)') &
+        '', 'Invalid Boundary Condition for TwoMoment E: ', bcZ(1)
+      STOP
+
+    END SELECT
+
+  END SUBROUTINE ApplyBC_TwoMoment_E
 
 
   SUBROUTINE ApplyBC_TwoMoment_X1( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
@@ -48,7 +192,10 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+      U(1:nDOF, &
+        iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+        iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nCR,1:nSpecies)
 
     INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
@@ -61,9 +208,12 @@ CONTAINS
     CASE ( 1 ) ! Periodic
 
 #if defined(THORNADO_OMP_OL)
-      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -94,9 +244,12 @@ CONTAINS
     CASE ( 2 ) ! Homogeneous
 
 #if defined(THORNADO_OMP_OL)
-      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -127,10 +280,15 @@ CONTAINS
     CASE ( 3 ) ! Reflecting
 
 #if defined(THORNADO_OMP_OL)
-      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
-      !!$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -193,13 +351,45 @@ CONTAINS
         END DO
       END DO
 
+    CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
+
+      DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = 1, swZ(2)
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+        ! --- Inner: No Boundary Condition ---
+
+        ! --- Outer: Homogeneous ---
+
+        DO iNode = 1, nDOF
+
+          U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
     CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
 
 #if defined(THORNADO_OMP_OL)
-      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
-      !!$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -249,7 +439,7 @@ CONTAINS
                   DO iNode = 1, nDOF
 
                     U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
-                      = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS)
+                      = MAX( U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS), 0.0_DP )
 
                   END DO
 
@@ -279,7 +469,10 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+      U(1:nDOF, &
+        iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+        iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nCR,1:nSpecies)
 
     INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
@@ -292,9 +485,12 @@ CONTAINS
     CASE ( 1 ) ! Periodic
 
 #if defined(THORNADO_OMP_OL)
-      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -325,9 +521,12 @@ CONTAINS
     CASE ( 2 ) ! Homogeneous
 
 #if defined(THORNADO_OMP_OL)
-      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -358,10 +557,15 @@ CONTAINS
     CASE ( 3 ) ! Reflecting
 
 #if defined(THORNADO_OMP_OL)
-      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
-      !!$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PRIVATE( jNodeZ3, iNodeZ, jNodeZ ) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -427,10 +631,15 @@ CONTAINS
     CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
 
 #if defined(THORNADO_OMP_OL)
-      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
-      !!$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PRIVATE( jNodeZ3, iNodeZ, jNodeZ ) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -509,7 +718,10 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+      U(1:nDOF, &
+        iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+        iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nCR,1:nSpecies)
 
     INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
@@ -522,9 +734,12 @@ CONTAINS
     CASE ( 1 ) ! Periodic
 
 #if defined(THORNADO_OMP_OL)
-      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -555,9 +770,12 @@ CONTAINS
     CASE ( 2 ) ! Homogeneous
 
 #if defined(THORNADO_OMP_OL)
-      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(7)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(7)
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -588,10 +806,15 @@ CONTAINS
     CASE ( 3 ) ! Reflecting
 
 #if defined(THORNADO_OMP_OL)
-      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
-      !!$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PRIVATE( jNodeZ4, iNodeZ, jNodeZ ) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
@@ -657,10 +880,15 @@ CONTAINS
     CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
 
 #if defined(THORNADO_OMP_OL)
-      !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(6) &
-      !!$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
 #elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PRIVATE( jNodeZ4, iNodeZ, jNodeZ ) &
+      !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
 #elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
 #endif
       DO iS = 1, nSpecies
         DO iCR = 1, nCR
