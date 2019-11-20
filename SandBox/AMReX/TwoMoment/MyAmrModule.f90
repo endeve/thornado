@@ -24,7 +24,14 @@ MODULE MyAmrModule
   USE amrex_geometry_module,  ONLY: &
     amrex_geometry
 
+  ! --- thornado Modules ---
+  USE ProgramHeaderModule,  ONLY: &
+    InitializeProgramHeader, nDOFX, nDimsX
 
+  ! --- Local Modules ---
+  USE MyAmrDataModule, ONLY: &
+    InitializeDataAMReX, &
+    FinalizeDataAMReX
 
 
   ! --- thornado ---
@@ -32,9 +39,11 @@ MODULE MyAmrModule
   REAL(AR),          ALLOCATABLE :: t(:), dt(:)
   REAL(AR)                       :: CFL
   INTEGER                        :: nNodes, nStages
+  INTEGER                        :: nE, swE
   INTEGER                        :: iCycleD, iCycleW, iCycleChk, iRestart
   INTEGER,           ALLOCATABLE :: nX(:), swX(:), bcX(:)
   REAL(AR),          ALLOCATABLE :: xL(:), xR(:)
+  REAL(AR)                       :: eL, eR
   CHARACTER(LEN=:),  ALLOCATABLE :: ProgramName
   CHARACTER(LEN=32), SAVE        :: CoordSys
   LOGICAL,           SAVE        :: UsePhysicalUnits
@@ -90,6 +99,7 @@ CONTAINS
       CALL PP % get   ( 'ProgramName',      ProgramName )
       CALL PP % getarr( 'bcX',              bcX )
       CALL PP % getarr( 'swX',              swX )
+      CALL PP % get   ( 'swE',              swE )
       CALL PP % get   ( 'iCycleD',          iCycleD )
       CALL PP % get   ( 'iCycleW',          iCycleW )
       CALL PP % get   ( 'iCycleChk',        iCycleChk )
@@ -104,6 +114,8 @@ CONTAINS
       CALL PP % get   ( 'coord_sys',  coord_sys )
       CALL PP % getarr( 'prob_lo',    xL )
       CALL PP % getarr( 'prob_hi',    xR )
+      CALL PP % get   ( 'probE_lo',  eL )
+      CALL PP % get   ( 'probE_hi',  eR )
     CALL amrex_parmparse_destroy( PP )
     IF     ( coord_sys .EQ. 0 )THEN
       CoordSys = 'CARTESIAN'
@@ -131,13 +143,50 @@ CONTAINS
       CALL PP % query ( 'blocking_factor_x', BlockingFactorX1 )
       CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
       CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
+      CALL PP % query ( 'n_cellE', nE )
       CALL PP % get   ( 'max_level',         MaxLevel )
     CALL amrex_parmparse_destroy( PP )
+
     MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
+
     nLevels = MaxLevel + 1
-    
+
+    CALL InitializeProgramHeader &
+           ( ProgramName_Option = TRIM( ProgramName ), &
+             nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
+             xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
+             Verbose_Option = amrex_parallel_ioprocessor(), &
+             nE_Option = nE, swE_Option = swE, eL_option = eL, eR_option = eR )
+
+    ALLOCATE( StepNo(0:nLevels-1) )
+    StepNo = 0
+
+    ALLOCATE( dt(0:nLevels-1) )
+    dt = -100.0e0_AR
+
+    ALLOCATE( t(0:nLevels-1) )
+    t = 0.0e0_AR
+
+
+    CALL InitializeDataAMReX( nLevels )    
 
   END SUBROUTINE MyAmrInit
+
+
+  SUBROUTINE MyAmrFinalize
+
+    CALL FinalizeDataAMReX( nLevels )
+
+    DEALLOCATE( GEOM )
+    DEALLOCATE( DM   )
+    DEALLOCATE( BA   )
+
+    DEALLOCATE( t      )
+    DEALLOCATE( dt     )
+    DEALLOCATE( StepNo )
+
+  END SUBROUTINE MyAmrFinalize
+
 
 
 END MODULE MyAmrModule

@@ -8,6 +8,14 @@ MODULE FinalizationModule
   USE amrex_amrcore_module, ONLY: &
     amrex_amrcore_finalize
 
+  ! --- thornado Modules ---
+  USE RadiationFieldsModule,                ONLY: &
+    DestroyRadiationFields
+
+
+  ! --- Local Modules ---
+  USE MyAmrModule,                 ONLY: &
+    nLevels, MyAmrFinalize
 
   IMPLICIT NONE
   PRIVATE
@@ -20,12 +28,21 @@ MODULE FinalizationModule
 
 
 
-  SUBROUTINE FinalizeProgram
+  SUBROUTINE FinalizeProgram(GEOM)
 
 
-    !TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels-1)
-    !TYPE(MeshType),        INTENT(inout) :: MeshX(1:3)
+    TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels-1)
     
+    INTEGER :: iLevel, iDim
+
+    CALL DestroyRadiationFields
+
+    DO iLevel = 0, nLevels-1
+      CALL amrex_geometry_destroy( GEOM(iLevel) )
+    END DO
+   
+    CALL MyAmrFinalize
+ 
     CALL amrex_amrcore_finalize
 
     CALL amrex_finalize
