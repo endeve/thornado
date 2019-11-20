@@ -120,7 +120,7 @@ PROGRAM ApplicationDriver
 
         CASE( 'Sod' )
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.1d0
+          t_end = 0.2d0
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'MBProblem1' )

@@ -36,6 +36,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
+    uDF, iDF_Sh, &
     Shock
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
@@ -230,7 +231,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( Shock(iX1,iX2,iX3) .LT. LimiterThreshold ) CYCLE
+      IF( ALL( uDF(:,iX1,iX2,iX3,iDF_Sh) .LT. LimiterThreshold ) ) CYCLE
 
       dX1 = MeshX(1) % Width(iX1)
       dX2 = MeshX(2) % Width(iX2)
@@ -564,10 +565,12 @@ CONTAINS
     REAL(DP) :: U_K (0:2*nDimsX,nCF)
     REAL(DP) :: U_K0(0:2*nDimsX,nCF)
 
+    uDF(:,:,:,:,iDF_Sh) = Zero
     Shock = Zero
 
     IF( .NOT. UseTroubledCellIndicator )THEN
 
+      uDF(:,:,:,:,iDF_Sh) = 1.1_DP * LimiterThreshold
       Shock = 1.1_DP * LimiterThreshold
       RETURN
 
@@ -712,16 +715,18 @@ CONTAINS
 
       ! --- Use Conserved Density to Detect Troubled Cell ---
 
-      Shock(iX1,iX2,iX3) &
+      uDF(:,iX1,iX2,iX3,iDF_Sh) &
         = SUM( ABS( U_K(0,iCF_D) - U_K0(1:2*nDimsX,iCF_D) ) ) &
             / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_D) ) )
 
       ! --- Use Conserved Energy  to Detect Troubled Cell ---
 
-      Shock(iX1,iX2,iX3) &
-        = MAX( Shock(iX1,iX2,iX3), &
+      uDF(:,iX1,iX2,iX3,iDF_Sh) &
+        = MAX( MAXVAL(uDF(:,iX1,iX2,iX3,iDF_Sh) ), &
                SUM( ABS( U_K(0,iCF_E) - U_K0(1:2*nDimsX,iCF_E) ) ) &
                  / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_E) ) ) )
+
+      Shock(iX1,iX2,iX3) = MAXVAL( uDF(:,iX1,iX2,iX3,iDF_Sh) )
 
     END DO
     END DO
