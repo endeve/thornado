@@ -5,7 +5,10 @@ MODULE InitializationModule
   USE UnitsModule, ONLY: &
     Gram, Centimeter, &
     Kilometer, Kelvin, &
-    BoltzmannConstant
+    MeV, BoltzmannConstant
+  USE UtilitiesModule, ONLY: &
+    Locate, &
+    Interpolate1D_Linear
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     iX_B0, iX_E0, &
@@ -48,9 +51,29 @@ MODULE InitializationModule
 CONTAINS
 
 
-  SUBROUTINE InitializeFields_DeleptonizationWave
+  SUBROUTINE InitializeFields_DeleptonizationWave &
+    ( ProfileName_Option )
 
-    CALL InitializeFluidFields_DeleptonizationWave
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: ProfileName_Option
+
+    IF( PRESENT( ProfileName_Option ) )THEN
+
+      IF( LEN_TRIM( ProfileName_Option ) .GT. 0 )THEN
+
+        CALL InitializeFluidFields_DeleptonizationWave_Profile &
+               ( ProfileName_Option )
+
+      ELSE
+
+        CALL InitializeFluidFields_DeleptonizationWave
+
+      END IF
+
+    ELSE
+
+      CALL InitializeFluidFields_DeleptonizationWave
+
+    END IF
 
     CALL InitializeRadiationFields_DeleptonizationWave
 
@@ -163,6 +186,94 @@ CONTAINS
   END SUBROUTINE InitializeFluidFields_DeleptonizationWave
 
 
+  SUBROUTINE InitializeFluidFields_DeleptonizationWave_Profile &
+    ( ProfileName )
+
+    CHARACTER(LEN=*), INTENT(in) :: ProfileName
+
+    INTEGER  :: iX1, iX2, iX3, iNodeX, iR
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3
+    REAL(DP) :: X1, X2, X3, R
+    REAL(DP), ALLOCATABLE :: R_P(:), D_P(:), T_P(:), Y_P(:)
+
+    WRITE(*,*)
+    WRITE(*,'(A6,A,A)') '', 'Initializing from Profile: ', TRIM( ProfileName )
+
+    CALL ReadFluidProfile( ProfileName, R_P, D_P, T_P, Y_P )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+        iNodeX3 = NodeNumberTableX(3,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+        X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
+
+        IF( TRIM( CoordinateSystem ) == 'SPHERICAL' )THEN
+
+          R = X1
+
+        ELSE
+
+          R = SQRT( X1**2 + X2**2 + X3**2 )
+
+        END IF
+
+        iR = MAX( Locate( R, R_P, SIZE( R_P ) ), 1 )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+          = Interpolate1D_Linear( R, R_P(iR), R_P(iR+1), D_P(iR), D_P(iR+1) )
+
+        uAF(iNodeX,iX1,iX2,iX3,iAF_T) &
+          = Interpolate1D_Linear( R, R_P(iR), R_P(iR+1), T_P(iR), T_P(iR+1) )
+
+        uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+          = Interpolate1D_Linear( R, R_P(iR), R_P(iR+1), Y_P(iR), Y_P(iR+1) )
+
+      END DO
+
+      CALL ComputeThermodynamicStates_Primitive_TABLE &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
+               uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E ), &
+               uAF(:,iX1,iX2,iX3,iAF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne) )
+
+      uPF(:,iX1,iX2,iX3,iPF_V1) = Zero
+      uPF(:,iX1,iX2,iX3,iPF_V2) = Zero
+      uPF(:,iX1,iX2,iX3,iPF_V3) = Zero
+
+      CALL ApplyEquationOfState_TABLE &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
+               uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_P ), &
+               uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
+               uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mp), &
+               uAF(:,iX1,iX2,iX3,iAF_Mn), uAF(:,iX1,iX2,iX3,iAF_Xp), &
+               uAF(:,iX1,iX2,iX3,iAF_Xn), uAF(:,iX1,iX2,iX3,iAF_Xa), &
+               uAF(:,iX1,iX2,iX3,iAF_Xh), uAF(:,iX1,iX2,iX3,iAF_Gm) )
+
+      ! --- Conserved ---
+
+      uCF(:,iX1,iX2,iX3,iCF_D ) = uPF(:,iX1,iX2,iX3,iPF_D)
+      uCF(:,iX1,iX2,iX3,iCF_S1) = Zero
+      uCF(:,iX1,iX2,iX3,iCF_S2) = Zero
+      uCF(:,iX1,iX2,iX3,iCF_S3) = Zero
+      uCF(:,iX1,iX2,iX3,iCF_E ) = uPF(:,iX1,iX2,iX3,iPF_E)
+      uCF(:,iX1,iX2,iX3,iCF_Ne) = uPF(:,iX1,iX2,iX3,iPF_Ne)
+
+    END DO
+    END DO
+    END DO
+
+    DEALLOCATE( R_P, D_P, T_P, Y_P )
+
+  END SUBROUTINE InitializeFluidFields_DeleptonizationWave_Profile
+
+
   SUBROUTINE InitializeRadiationFields_DeleptonizationWave
 
     INTEGER  :: iE, iX1, iX2, iX3, iS
@@ -244,6 +355,52 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeRadiationFields_DeleptonizationWave
+
+
+  SUBROUTINE ReadFluidProfile( FileName, R, D, T, Y )
+
+    CHARACTER(*),          INTENT(in)    :: FileName
+    REAL(DP), ALLOCATABLE, INTENT(inout) :: R(:), D(:), T(:), Y(:)
+
+    CHARACTER(LEN=9)      :: Format1 = '(4ES12.3)'
+    INTEGER               :: nPoints, iPoint
+    INTEGER               :: Status
+    REAL(DP)              :: Buffer(4)
+    REAL(DP), ALLOCATABLE :: Data(:,:)
+
+    ! --- Count Lines ---
+
+    nPoints = 0
+    OPEN( 1, FILE = TRIM( FileName ), FORM = "formatted", ACTION = 'read' )
+    READ( 1, * )
+    DO
+      READ( 1, Format1, IOSTAT=Status ) Buffer
+      IF( Status .NE. 0 ) EXIT
+      nPoints = nPoints + 1
+    END DO
+    CLOSE( 1, STATUS = 'keep' )
+
+    ! --- Read Data ---
+
+    ALLOCATE( Data(nPoints,4) )
+
+    OPEN( 1, FILE = TRIM( FileName ), FORM = "formatted", ACTION = 'read' )
+    READ( 1, * )
+    DO iPoint = 1, nPoints
+      READ( 1, Format1, IOSTAT=Status ) Data(iPoint,:)
+    END DO
+    CLOSE( 1, STATUS = 'keep' )
+
+    ALLOCATE( R(nPoints), D(nPoints), T(nPoints), Y(nPoints) )
+
+    R = Data(:,1) * Kilometer
+    D = Data(:,2) * Gram / Centimeter**3
+    T = Data(:,3) * MeV
+    Y = Data(:,4)
+
+    DEALLOCATE( Data )
+
+  END SUBROUTINE ReadFluidProfile
 
 
 END MODULE InitializationModule

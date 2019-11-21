@@ -8,53 +8,44 @@
             readelf -wl my_exefile | grep my_line_address'
     to find out the offset for that line.
 
- 0: ./main1d.gnu.DEBUG.MPI.ex(+0x18100e) [0x7f51eeb8100e]
+ 0: ./main1d.gnu.DEBUG.MPI.ex(+0x18112e) [0x7fc59198112e]
     amrex::BLBackTrace::print_backtrace_info(_IO_FILE*) at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_BLBackTrace.cpp:163
 
- 1: ./main1d.gnu.DEBUG.MPI.ex(+0x180c77) [0x7f51eeb80c77]
+ 1: ./main1d.gnu.DEBUG.MPI.ex(+0x180d97) [0x7fc591980d97]
     amrex::BLBackTrace::handler(int) at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_BLBackTrace.cpp:71
 
- 2: ./main1d.gnu.DEBUG.MPI.ex(+0x70763) [0x7f51eea70763]
+ 2: ./main1d.gnu.DEBUG.MPI.ex(+0x70883) [0x7fc591870883]
     amrex::ParallelDescriptor::Abort(int, bool) at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_ParallelDescriptor.cpp:224
 
- 3: ./main1d.gnu.DEBUG.MPI.ex(+0x1b06c) [0x7f51eea1b06c]
+ 3: ./main1d.gnu.DEBUG.MPI.ex(+0x1b18c) [0x7fc59181b18c]
     amrex::Abort(char const*) at /mnt/c/Users/Zack/amrex/Src/Base/AMReX.cpp:204
 
- 4: ./main1d.gnu.DEBUG.MPI.ex(+0x2fcb9) [0x7f51eea2fcb9]
+ 4: ./main1d.gnu.DEBUG.MPI.ex(+0x2fdd9) [0x7fc59182fdd9]
     void amrex::(anonymous namespace)::(anonymous namespace)::sgetval<int>(std::__cxx11::list<amrex::ParmParse::PP_entry, std::allocator<amrex::ParmParse::PP_entry> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, int&, int, int) at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_ParmParse.cpp:736
 
- 5: ./main1d.gnu.DEBUG.MPI.ex(+0x2a25f) [0x7f51eea2a25f]
+ 5: ./main1d.gnu.DEBUG.MPI.ex(+0x2a37f) [0x7fc59182a37f]
     amrex::ParmParse::get(char const*, int&, int) const at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_ParmParse.cpp:1180 (discriminator 6)
 
- 6: ./main1d.gnu.DEBUG.MPI.ex(+0x20067f) [0x7f51eec0067f]
-    amrex::AmrMesh::InitAmrMesh(int, amrex::Vector<int, std::allocator<int> > const&, amrex::Vector<amrex::IntVect, std::allocator<amrex::IntVect> >, amrex::RealBox const*, int, int const*) at /mnt/c/Users/Zack/amrex/Src/AmrCore/AMReX_AmrMesh.cpp:85
+ 6: ./main1d.gnu.DEBUG.MPI.ex(+0x3fc5d) [0x7fc59183fc5d]
+    amrex_parmparse_get_int at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_parmparse_fi.cpp:30
 
- 7: ./main1d.gnu.DEBUG.MPI.ex(+0x1fff63) [0x7f51eebfff63]
-    amrex::AmrMesh::AmrMesh() at /mnt/c/Users/Zack/amrex/Src/AmrCore/AMReX_AmrMesh.cpp:36 (discriminator 1)
+ 7: ./main1d.gnu.DEBUG.MPI.ex(+0x2272fc) [0x7fc591a272fc]
+    __amrex_parmparse_module_MOD_get_int at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_parmparse_mod.F90:280 (discriminator 4)
 
- 8: ./main1d.gnu.DEBUG.MPI.ex(+0x1ba4fb) [0x7f51eebba4fb]
-    amrex::AmrCore::AmrCore() at /mnt/c/Users/Zack/amrex/Src/AmrCore/AMReX_AmrCore.cpp:37
+ 8: ./main1d.gnu.DEBUG.MPI.ex(+0x21546c) [0x7fc591a1546c]
+    __myamrmodule_MOD_myamrinit at /mnt/c/Users/Zack/thornado/SandBox/AMReX/TwoMoment/MyAmrModule.f90:102
 
- 9: ./main1d.gnu.DEBUG.MPI.ex(+0x20d147) [0x7f51eec0d147]
-    amrex::FAmrCore::FAmrCore() at /mnt/c/Users/Zack/amrex/Src/F_Interfaces/AmrCore/AMReX_FAmrCore.cpp:7
+ 9: ./main1d.gnu.DEBUG.MPI.ex(+0x21289d) [0x7fc591a1289d]
+    __initializationmodule_MOD_initializeprogram at /mnt/c/Users/Zack/thornado/SandBox/AMReX/TwoMoment/InitializationModule.f90:109 (discriminator 10)
 
-10: ./main1d.gnu.DEBUG.MPI.ex(+0x209a6f) [0x7f51eec09a6f]
-    amrex_fi_new_amrcore at /mnt/c/Users/Zack/amrex/Src/F_Interfaces/AmrCore/AMReX_amrcore_fi.cpp:10
+10: ./main1d.gnu.DEBUG.MPI.ex(+0x2144a1) [0x7fc591a144a1]
+    MAIN__ at /mnt/c/Users/Zack/thornado/SandBox/AMReX/TwoMoment/fmain.f90:27
 
-11: ./main1d.gnu.DEBUG.MPI.ex(+0x240d74) [0x7f51eec40d74]
-    __amrex_amrcore_module_MOD_amrex_amrcore_init at /mnt/c/Users/Zack/amrex/Src/F_Interfaces/AmrCore/AMReX_amrcore_mod.F90:185
-
-12: ./main1d.gnu.DEBUG.MPI.ex(+0x20e675) [0x7f51eec0e675]
-    __initializationmodule_MOD_initializeprogram at /mnt/c/Users/Zack/thornado/SandBox/AMReX/TwoMoment/InitializationModule.f90:29
-
-13: ./main1d.gnu.DEBUG.MPI.ex(+0x20e697) [0x7f51eec0e697]
-    MAIN__ at /mnt/c/Users/Zack/thornado/SandBox/AMReX/TwoMoment/fmain.f90:14
-
-14: ./main1d.gnu.DEBUG.MPI.ex(+0x20e6df) [0x7f51eec0e6df]
+11: ./main1d.gnu.DEBUG.MPI.ex(+0x214558) [0x7fc591a14558]
     main at /mnt/c/Users/Zack/thornado/SandBox/AMReX/TwoMoment/fmain.f90:3
 
-15: /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xe7) [0x7f51ecb51b97]
+12: /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xe7) [0x7fc58f951b97]
 
-16: ./main1d.gnu.DEBUG.MPI.ex(+0x1ab2a) [0x7f51eea1ab2a]
+13: ./main1d.gnu.DEBUG.MPI.ex(+0x1ac4a) [0x7fc59181ac4a]
     ?? ??:0
 

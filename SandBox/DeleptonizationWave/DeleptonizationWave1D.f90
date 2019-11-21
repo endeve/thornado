@@ -48,6 +48,8 @@ PROGRAM DeleptonizationWave1D
   USE ReferenceElementModule_Lagrange, ONLY: &
     InitializeReferenceElement_Lagrange, &
     FinalizeReferenceElement_Lagrange
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     uGF, &
     iGF_Gm_dd_11, &
@@ -97,28 +99,32 @@ PROGRAM DeleptonizationWave1D
 
   INCLUDE 'mpif.h'
 
-  LOGICAL  :: wrt
-  INTEGER  :: iCycle, iCycleD, iCycleT
-  INTEGER  :: nE, nX(3), nNodes, nSpecies
-  REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt
-  REAL(DP) :: eL, eR, ZoomE
-  REAL(DP) :: xL(3), xR(3)
+  CHARACTER(32) :: ProfileName
+  LOGICAL       :: wrt
+  INTEGER       :: iCycle, iCycleD, iCycleT
+  INTEGER       :: nE, nX(3), nNodes, nSpecies
+  REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt
+  REAL(DP)      :: eL, eR, ZoomE
+  REAL(DP)      :: xL(3), xR(3), ZoomX(3)
 
   nNodes   = 2
   nSpecies = 2
 
-  nX = [ 64, 1, 1 ]
+  nX = [ 128, 1, 1 ]
   xL = [ 0.0_DP           , 0.0_DP, 0.0_DP ]
-  xR = [ 1.0d2 * Kilometer, Pi    , TwoPi  ]
+  xR = [ 3.0d2 * Kilometer, Pi    , TwoPi  ]
+  ZoomX = [ 1.011986923647337_DP, 1.0_DP, 1.0_DP ]
 
   nE = 16
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
   ZoomE = 1.183081754893913_DP
 
+  ProfileName = ''
+
   t       = 0.0_DP
-  t_end   = 5.0d-0 * Millisecond
-  dt_wrt  = 5.0d-2 * Millisecond
+  t_end   = 1.0d+1 * Millisecond
+  dt_wrt  = 1.0d-1 * Millisecond
   iCycleD = 1
   iCycleT = 10
 
@@ -135,6 +141,8 @@ PROGRAM DeleptonizationWave1D
              = xL, &
            xR_Option &
              = xR, &
+           ZoomX_Option &
+             = ZoomX, &
            nE_Option &
              = nE, &
            eL_Option &
@@ -217,7 +225,7 @@ PROGRAM DeleptonizationWave1D
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields_DeleptonizationWave
+  CALL InitializeFields_DeleptonizationWave( ProfileName )
 
   ! --- Write Initial Condition Before Limiter ---
 
@@ -291,7 +299,7 @@ PROGRAM DeleptonizationWave1D
 
     iCycle = iCycle + 1
 
-    dt = Half * ( xR(1) - xL(1) ) / DBLE( nX(1) ) &
+    dt = Half * MINVAL( MeshX(1) % Width(iX_B0(1):iX_E0(1)) ) &
            / ( 2.0_DP * DBLE( nNodes - 1 ) + 1.0_DP )
 
     IF( t + dt > t_end )THEN

@@ -20,7 +20,7 @@ PROGRAM ApplicationDriver
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE InitializationModule_Relativistic, ONLY: &
-    InitializeFields_Relativistic, ReadParameters
+    InitializeFields_Relativistic
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_IDEAL, &
     FinalizeSlopeLimiter_Euler_Relativistic_IDEAL, &
@@ -46,7 +46,7 @@ PROGRAM ApplicationDriver
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
   USE UnitsModule, ONLY: &
-    Millisecond
+    Kilometer, SolarMass, Second, Millisecond
   USE Euler_TallyModule_Relativistic_IDEAL, ONLY: &
     InitializeTally_Euler_Relativistic_IDEAL, &
     FinalizeTally_Euler_Relativistic_IDEAL, &
@@ -92,7 +92,8 @@ PROGRAM ApplicationDriver
 
   ! --- Standing accretion shock ---
   REAL(DP), ALLOCATABLE :: FluidFieldParameters(:)
-  REAL(DP)              :: M_PNS = Zero, Ri, R_PNS, R_shock, Rf
+  REAL(DP)              :: MassPNS, RadiusPNS, ShockRadius, &
+                           AccretionRate, MachNumber
 
   LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
   REAL(DP) :: Timer_Evolution
@@ -101,11 +102,11 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-!  ProgramName = 'RiemannProblem'
+  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
-  ProgramName = 'KelvinHelmholtz_Relativistic'
+!  ProgramName = 'KelvinHelmholtz_Relativistic'
 !  ProgramName = 'KelvinHelmholtz'
 !  ProgramName = 'StandingAccretionShock'
 
@@ -119,7 +120,7 @@ PROGRAM ApplicationDriver
 
         CASE( 'Sod' )
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.1d0
+          t_end = 0.2d0
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'MBProblem1' )
@@ -251,19 +252,17 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'SPHERICAL'
 
-      CALL ReadParameters &
-             ( '../StandingAccretionShock_Parameters.dat', &
-                 FluidFieldParameters )
+      MassPNS       = 1.4_DP * SolarMass
+      RadiusPNS     = 40.0_DP * Kilometer
+      ShockRadius   = 180.0_DP * Kilometer
+      AccretionRate = 0.3_DP * SolarMass / Second
+      MachNumber    = 10.0_DP
 
-      M_PNS   = FluidFieldParameters(1)
-      Gamma   = FluidFieldParameters(2)
-      Ri      = FluidFieldParameters(3)
-      R_PNS   = FluidFieldParameters(4)
-      R_shock = FluidFieldParameters(5)
+      Gamma = 4.0d0 / 3.0d0
 
       nX = [ 256, 1, 1 ]
-      xL = [ R_PNS, 0.0_DP, 0.0_DP ]
-      xR = [ Two * R_shock, Pi, TwoPi ]
+      xL = [ RadiusPNS, 0.0_DP, 0.0_DP ]
+      xR = [ Two * ShockRadius, Pi, TwoPi ]
 
       bcX = [ 110, 0, 0 ]
 
@@ -348,7 +347,7 @@ PROGRAM ApplicationDriver
   CALL InitializeReferenceElementX_Lagrange
 
   CALL ComputeGeometryX &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = M_PNS )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = MassPNS )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &
@@ -381,11 +380,21 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
   CALL InitializeFields_Relativistic &
-         ( RiemannProblemName_Option = TRIM( RiemannProblemName ), &
-           RiemannProblem2dName_Option = TRIM( RiemannProblem2dName ), &
+         ( RiemannProblemName_Option &
+             = TRIM( RiemannProblemName ), &
+           RiemannProblem2dName_Option &
+             = TRIM( RiemannProblem2dName ), &
            SphericalRiemannProblemName_Option &
              = TRIM( SphericalRiemannProblemName ), &
-           nDetCells_Option = nDetCells, Eblast_Option = Eblast )
+           nDetCells_Option     = nDetCells, &
+           Eblast_Option        = Eblast, &
+           MassPNS_Option       = MassPNS, &
+           ShockRadius_Option   = ShockRadius, &
+           AccretionRate_Option = AccretionRate, &
+           MachNumber_Option    = MachNumber  )
+
+  CALL WriteFieldsHDF &
+         ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -635,12 +644,6 @@ CONTAINS
       IF( TRIM( ProgramName ) .EQ. 'SphericalSedov' )THEN
         WRITE(100,'(A,I4.4)')     'nDetCells: ', nDetCells
         WRITE(100,'(A,ES10.3E3)') 'Eblast:    ', Eblast
-      END IF
-      IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
-        WRITE(100,'(A,ES10.3E3)') 'PNS Mass:     ', M_PNS
-        WRITE(100,'(A,ES10.3E3)') 'Inner radius: ', Ri
-        WRITE(100,'(A,ES10.3E3)') 'PNS Radius:   ', R_PNS
-        WRITE(100,'(A,ES10.3E3)') 'Shock Radius: ', R_shock
       END IF
       WRITE(100,*)
       WRITE(100,'(A,F5.3)')      'Gamma_IDEAL: ', Gamma
