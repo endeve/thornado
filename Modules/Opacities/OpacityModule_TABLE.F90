@@ -86,14 +86,16 @@ CONTAINS
   SUBROUTINE InitializeOpacities_TABLE &
     ( OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
-      Verbose_Option )
+      EquationOfStateTableName_Option, Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_EmAb_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Iso_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_NES_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Pair_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
+    CHARACTER(128)     :: EquationOfStateTableName
     REAL(DP) :: E1, E2
     INTEGER :: iS, iM, iEta, iT, iN_E1, iN_E2, iE1, iE2, iNodeE1, iNodeE2, nPointsE
     LOGICAL :: Include_EmAb
@@ -138,6 +140,13 @@ CONTAINS
       Include_Pair = .FALSE.
     END IF
 
+    IF( PRESENT( EquationOfStateTableName_Option ) &
+        .AND. ( LEN( EquationOfStateTableName_Option ) > 1 ) )THEN
+       EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
+    ELSE
+       EquationOfStateTableName = 'EquationOfStateTable.h5'
+    END IF
+
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
     ELSE
@@ -169,7 +178,8 @@ CONTAINS
              FileName_EmAb_Option = TRIM( OpacityTableName_EmAb ), &
              FileName_Iso_Option  = TRIM( OpacityTableName_Iso  ), &
              FileName_NES_Option  = TRIM( OpacityTableName_NES  ), &
-             FileName_Pair_Option = TRIM( OpacityTableName_Pair ) )
+             FileName_Pair_Option = TRIM( OpacityTableName_Pair ), &
+             EquationOfStateTableName_Option = EquationOfStateTableName )
 
     CALL FinalizeHDF( )
 
