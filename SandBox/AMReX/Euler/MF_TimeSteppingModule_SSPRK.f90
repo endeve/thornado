@@ -201,11 +201,12 @@ CONTAINS
 
 
   SUBROUTINE MF_UpdateFluid_SSPRK &
-    ( t, dt, MF_uGF, MF_uCF, GEOM, MF_Euler_ComputeIncrement )
+    ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_Euler_ComputeIncrement )
 
     REAL(amrex_real),     INTENT(in)    :: t(0:nLevels-1), dt(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
     TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
     PROCEDURE(MF_Euler_Increment)       :: MF_Euler_ComputeIncrement
 
@@ -229,6 +230,7 @@ CONTAINS
     DO iS = 1, nStages_SSPRK
 
       ! --- Copy data from input MultiFab to temporary MultiFab ---
+
       DO iLevel = 0, nLevels-1
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
@@ -243,6 +245,7 @@ CONTAINS
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
         ! --- Copy ghost data from physical boundaries ---
+
         CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
         DO WHILE( MFI % next() )
@@ -273,16 +276,13 @@ CONTAINS
           .OR. ( w_SSPRK(iS) .NE. 0.0_amrex_real ) )THEN
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_Euler (1)'
-        CALL MF_ApplySlopeLimiter_Euler &
-          ( MF_uGF(0:nLevels-1), MF_U(0:nLevels-1), GEOM(0:nLevels-1) )
+        CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_U, MF_uDF, GEOM )
+
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (1)'
-        CALL MF_ApplyPositivityLimiter_Euler &
-          ( MF_uGF(0:nLevels-1), MF_U(0:nLevels-1) )
+        CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_U )
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ComputeIncrement'
-        CALL MF_Euler_ComputeIncrement &
-          ( GEOM(0:nLevels-1), MF_uGF(0:nLevels-1), &
-            MF_U(0:nLevels-1), MF_D(0:nLevels-1,iS) )
+        CALL MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_U, MF_D(:,iS) )
 
       END IF
 
@@ -301,11 +301,10 @@ CONTAINS
     END DO
 
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_Euler (2)'
-    CALL MF_ApplySlopeLimiter_Euler &
-      ( MF_uGF(0:nLevels-1), MF_uCF(0:nLevels-1), GEOM(0:nLevels-1) )
+    CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, MF_uDF, GEOM )
+
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (2)'
-    CALL MF_ApplyPositivityLimiter_Euler &
-      ( MF_uGF(0:nLevels-1), MF_uCF(0:nLevels-1) )
+    CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 

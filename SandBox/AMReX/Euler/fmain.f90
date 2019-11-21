@@ -42,7 +42,8 @@ PROGRAM main
     MF_uGF, &
     MF_uCF, &
     MF_uPF, &
-    MF_uAF
+    MF_uAF, &
+    MF_uDF
   USE InitializationModule,             ONLY: &
     InitializeProgram, &
     chk,               &
@@ -121,8 +122,7 @@ PROGRAM main
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
     CALL MF_UpdateFluid_SSPRK &
-           ( t, dt, MF_uGF, MF_uCF, &
-             GEOM, MF_Euler_ComputeIncrement )
+           ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_Euler_ComputeIncrement )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
     IF( iCycleChk .GT. 0 )THEN
@@ -170,7 +170,8 @@ PROGRAM main
                MF_uGF_Option = MF_uGF, &
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
-               MF_uAF_Option = MF_uAF )
+               MF_uAF_Option = MF_uAF, &
+               MF_uDF_Option = MF_uDF )
 
       wrt = .FALSE.
 
@@ -190,6 +191,7 @@ PROGRAM main
   StepNo = StepNo + 1
 
   CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   CALL WriteFieldsAMReX_Checkpoint &
@@ -205,7 +207,9 @@ PROGRAM main
            MF_uGF_Option = MF_uGF, &
            MF_uCF_Option = MF_uCF, &
            MF_uPF_Option = MF_uPF, &
-           MF_uAF_Option = MF_uAF )
+           MF_uAF_Option = MF_uAF, &
+           MF_uDF_Option = MF_uDF )
+
   CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
   ! --- Finalize everything ---

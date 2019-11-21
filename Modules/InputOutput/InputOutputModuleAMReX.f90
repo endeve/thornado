@@ -63,7 +63,10 @@ MODULE InputOutputModuleAMReX
     iAF_Xa,       &
     iAF_Xh,       &
     iAF_Gm,       &
-    iAF_Cs
+    iAF_Cs,       &
+    ShortNamesDF, &
+    nDF,          &
+    iDF_Sh
   USE UnitsModule,             ONLY: &
     Joule,  &
     Kelvin, &
@@ -256,7 +259,8 @@ CONTAINS
 
 
   SUBROUTINE WriteFieldsAMReX_PlotFile &
-    ( Time, StepNo, MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, MF_uAF_Option )
+    ( Time, StepNo, MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, &
+      MF_uAF_Option, MF_uDF_Option )
 
     REAL(AR),             INTENT(in)           :: Time
     INTEGER,              INTENT(in)           :: StepNo(0:nLevels-1)
@@ -264,11 +268,13 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCF_Option(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPF_Option(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uAF_Option(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uDF_Option(0:nLevels-1)
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(32)                   :: PlotFileName
     LOGICAL                         :: WriteGF
-    LOGICAL                         :: WriteFF_C, WriteFF_P, WriteFF_A
+    LOGICAL                         :: WriteFF_C, WriteFF_P, &
+                                       WriteFF_A, WriteFF_D
     INTEGER                         :: iComp, iOS, iLevel, nF, iOS_CPP(3)
     TYPE(amrex_mfiter)              :: MFI
     TYPE(amrex_box)                 :: BX
@@ -327,6 +333,12 @@ CONTAINS
       nF = nF + nAF
     END IF
 
+    WriteFF_D = .FALSE.
+    IF( PRESENT( MF_uDF_Option ) )THEN
+      WriteFF_D = .TRUE.
+      nF = nF + nDF
+    END IF
+
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
@@ -377,6 +389,14 @@ CONTAINS
       iOS = iOS + nAF
     END IF
 
+    IF( WriteFF_D )THEN
+      DO iComp = 1, nDF
+        CALL amrex_string_build &
+               ( VarNames(iComp + iOS), TRIM( ShortNamesDF(iComp) ) )
+      END DO
+      iOS = iOS + nDF
+    END IF
+
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
@@ -386,25 +406,35 @@ CONTAINS
       CALL amrex_mfiter_build( MFI, MF_PF(iLevel), tiling = .TRUE. )
 
       iOS = 0
+
       IF( WriteGF   )THEN
         CALL MF_ComputeCellAverage &
           ( nGF, MF_uGF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'GF' )
         iOS = iOS + nGF
       END IF
+
       IF( WriteFF_C )THEN
         CALL MF_ComputeCellAverage &
           ( nCF, MF_uCF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'CF' )
         iOS = iOS + nCF
       END IF
+
       IF( WriteFF_P )THEN
         CALL MF_ComputeCellAverage &
           ( nPF, MF_uPF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'PF' )
         iOS = iOS + nPF
       END IF
+
       IF( WriteFF_A )THEN
         CALL MF_ComputeCellAverage &
           ( nAF, MF_uAF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'AF' )
         iOS = iOS + nAF
+      END IF
+
+      IF( WriteFF_D )THEN
+        CALL MF_ComputeCellAverage &
+          ( nDF, MF_uDF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'DF' )
+        iOS = iOS + nDF
       END IF
 
     END DO ! End of loop over levels
@@ -486,9 +516,10 @@ CONTAINS
     CHARACTER(2), INTENT(in)    :: Field
 
     INTEGER  :: iComp
-    REAL(AR) :: unitsGF(nGF), unitsCF(nCF), unitsPF(nPF), unitsAF(nAF)
+    REAL(AR) :: unitsGF(nGF), unitsCF(nCF), unitsPF(nPF), &
+                unitsAF(nAF), unitsDF(nDF)
 
-    CALL SetUnitsFields( unitsGF, unitsCF, unitsPF, unitsAF )
+    CALL SetUnitsFields( unitsGF, unitsCF, unitsPF, unitsAF, unitsDF )
 
     IF     ( Field .EQ. 'GF' )THEN
 
@@ -514,6 +545,12 @@ CONTAINS
         u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsAF(iComp)
       END DO
 
+    ELSE IF( Field .EQ. 'DF' )THEN
+
+      DO iComp = 1, nComp
+        u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsDF(iComp)
+      END DO
+
     ELSE
 
       RETURN
@@ -523,12 +560,13 @@ CONTAINS
   END SUBROUTINE ConvertUnits
 
 
-  SUBROUTINE SetUnitsFields( unitsGF, unitsCF, unitsPF, unitsAF )
+  SUBROUTINE SetUnitsFields( unitsGF, unitsCF, unitsPF, unitsAF, unitsDF )
 
     REAL(AR), INTENT(out) :: unitsGF(nGF)
     REAL(AR), INTENT(out) :: unitsCF(nCF)
     REAL(AR), INTENT(out) :: unitsPF(nPF)
     REAL(AR), INTENT(out) :: unitsAF(nAF)
+    REAL(AR), INTENT(out) :: unitsDF(nDF)
 
     ! --- Geometry ---
 
@@ -619,6 +657,11 @@ CONTAINS
       = One
     unitsAF(iAF_Cs) &
       = UnitsDisplay % VelocityUnit
+
+    ! --- Diagnostic ---
+
+    unitsDF(iDF_Sh) &
+      = One
 
   END SUBROUTINE SetUnitsFields
 

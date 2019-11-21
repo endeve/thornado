@@ -32,7 +32,7 @@ PROGRAM ApplicationDriver
   USE EquationOfStateModule_TABLE, ONLY: &
     MinD, MaxD, MinT, MaxT, MinY, MaxY
   USE FluidFieldsModule, ONLY: &
-    uCF, uPF, uAF
+    uCF, uPF, uAF, uDF
   USE InitializationModule, ONLY: &
     InitializeFields
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -305,21 +305,13 @@ PROGRAM ApplicationDriver
              = TRIM( RiemannProblemName ) )
 
   CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, &
-           uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-           uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
   CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, &
-           uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-           uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, &
-           uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
-           uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
-           uPF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
-           uAF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
@@ -345,9 +337,7 @@ PROGRAM ApplicationDriver
     iCycle = iCycle + 1
 
     CALL ComputeTimeStep_Euler_NonRelativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
-             uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
              CFL = 0.5_DP / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
 
     IF( t + dt > t_end )THEN
@@ -367,23 +357,20 @@ PROGRAM ApplicationDriver
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
       WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A4,A5,ES13.6E3,A3)') &
-          '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, ' ms ', 'dt = ', dt / Millisecond, ' ms'
+          '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, ' ms ', &
+          'dt = ', dt / Millisecond, ' ms'
 
     END IF
 
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, Euler_ComputeIncrement_DG_Explicit )
+           ( t, dt, uGF, uCF, uDF, Euler_ComputeIncrement_DG_Explicit )
 
     t = t + dt
 
     IF( wrt )THEN
 
       CALL ComputeFromConserved_Euler_NonRelativistic &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, &
-               uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
-               uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
-               uPF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
-               uAF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
@@ -401,11 +388,7 @@ PROGRAM ApplicationDriver
   END DO
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, &
-           uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
-           uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
-           uPF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
-           uAF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )

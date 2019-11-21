@@ -36,7 +36,8 @@ PROGRAM ApplicationDriver
     WriteFieldsHDF
   USE FluidFieldsModule, ONLY: &
     nCF, nPF, nAF, &
-    uCF, uPF, uAF
+    uCF, uPF, uAF, &
+    uDF
   USE GeometryFieldsModule, ONLY: &
     nGF, uGF
   USE Euler_dgDiscretizationModule, ONLY: &
@@ -320,8 +321,6 @@ PROGRAM ApplicationDriver
   ! --- Cockburn & Shu, (2001), JSC, 16, 173 ---
   CFL = 0.5_DP
 
-  CALL WriteProgramHeader
-
   CALL InitializeProgram &
          ( ProgramName_Option &
              = TRIM( ProgramName ), &
@@ -397,33 +396,17 @@ PROGRAM ApplicationDriver
          ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, &
-           uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
-           uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
   CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, &
-           uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:),&
-           uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
   IF( .NOT. OPTIMIZE )THEN
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
     CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
-             uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                         iX_B1(2):iX_E1(2), &
-                         iX_B1(3):iX_E1(3),1:nGF), &
-             uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                         iX_B1(2):iX_E1(2), &
-                         iX_B1(3):iX_E1(3),1:nCF), &
-             uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                         iX_B1(2):iX_E1(2), &
-                         iX_B1(3):iX_E1(3),1:nPF), &
-             uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                         iX_B1(2):iX_E1(2), &
-                         iX_B1(3):iX_E1(3),1:nAF) )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
     CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -457,13 +440,8 @@ PROGRAM ApplicationDriver
     iCycle = iCycle + 1
 
     CALL ComputeTimeStep_Euler_Relativistic &
-           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
-             uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                         iX_B1(2):iX_E1(2), &
-                         iX_B1(3):iX_E1(3),1:nGF), &
-             uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                         iX_B1(2):iX_E1(2), &
-                         iX_B1(3):iX_E1(3),1:nCF), &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, &
+             uGF, uCF, &
              CFL = CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
              TimeStep = dt )
 
@@ -490,7 +468,7 @@ PROGRAM ApplicationDriver
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, Euler_ComputeIncrement_DG_Explicit )
+           ( t, dt, uGF, uCF, uDF, Euler_ComputeIncrement_DG_Explicit )
 
     IF( .NOT. OPTIMIZE )THEN
       CALL TimersStart_Euler( Timer_Euler_InputOutput )
@@ -509,19 +487,7 @@ PROGRAM ApplicationDriver
 
         CALL TimersStart_Euler( Timer_Euler_InputOutput )
         CALL ComputeFromConserved_Euler_Relativistic &
-               ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
-                 uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nGF), &
-                 uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nCF), &
-                 uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nPF), &
-                 uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nAF) )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
         CALL WriteFieldsHDF &
                ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -548,19 +514,7 @@ PROGRAM ApplicationDriver
   IF( .NOT. OPTIMIZE )THEN
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
     CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
-             uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                         iX_B1(2):iX_E1(2), &
-                         iX_B1(3):iX_E1(3),1:nGF), &
-             uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                         iX_B1(2):iX_E1(2), &
-                         iX_B1(3):iX_E1(3),1:nCF), &
-             uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                         iX_B1(2):iX_E1(2), &
-                         iX_B1(3):iX_E1(3),1:nPF), &
-             uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                         iX_B1(2):iX_E1(2), &
-                         iX_B1(3):iX_E1(3),1:nAF) )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
     CALL WriteFieldsHDF &
            ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -593,96 +547,5 @@ PROGRAM ApplicationDriver
   CALL TimersStop_Euler( Timer_Euler_Finalize )
 
   CALL FinalizeTimers_Euler
-
-CONTAINS
-
-  SUBROUTINE WriteProgramHeader
-
-    IF( ( .NOT. nNodes .GT. 1 ) .AND. UseSlopeLimiter )THEN
-      WRITE(*,*)
-      WRITE(*,'(A)') 'Slope limiter requires nNodes > 1'
-      WRITE(*,'(A)') 'Setting UseSlopeLimiter to .FALSE.'
-      WRITE(*,'(A)') 'Setting UseCharacteristicLimiting to .FALSE.'
-      WRITE(*,'(A)') 'Setting UseTroubledCellIndicator to .FALSE.'
-      WRITE(*,*)
-      UseSlopeLimiter           = .FALSE.
-      UseCharacteristicLimiting = .FALSE.
-      UseTroubledCellIndicator  = .FALSE.
-    END IF
-    IF( ( .NOT. nNodes .GT. 1 ) .AND. UsePositivityLimiter )THEN
-      WRITE(*,*)
-      WRITE(*,'(A)') 'Positivity limiter requires nNodes > 1'
-      WRITE(*,'(A)') 'Setting UsePositivityLimiter to .FALSE.'
-      UsePositivityLimiter = .FALSE.
-      WRITE(*,*)
-    END IF
-    IF( .NOT. UseSlopeLimiter .AND. UseCharacteristicLimiting )THEN
-      WRITE(*,*)
-      WRITE(*,'(A)') 'Characteristic limiting requires use of slope limiter'
-      WRITE(*,'(A)') 'Setting UseCharacteristicLimiting to .FALSE.'
-      WRITE(*,*)
-      UseCharacteristicLimiting = .FALSE.
-    END IF
-    IF( .NOT. UseSlopeLimiter .AND. UseTroubledCellIndicator )THEN
-      WRITE(*,*)
-      WRITE(*,'(A)') 'Troubled cell indicator requires use of slope limiter'
-      WRITE(*,'(A)') 'Setting UseTroubledCellIndicator to .FALSE.'
-      WRITE(*,*)
-      UseTroubledCellIndicator = .FALSE.
-    END IF
-
-    ! --- Write program parameters to header file ---
-    OPEN( 100, FILE = '../Output/.ProgramHeader' )
-      WRITE(100,'(A,A)')         'Program Name: ', TRIM(ProgramName)
-      WRITE(100,*)
-      IF( TRIM( ProgramName ) .EQ. 'RiemannProblem' ) &
-        WRITE(100,'(A,A)') &
-          'Riemann Problem Name: ', RiemannProblemName
-      IF( TRIM( ProgramName ) .EQ. 'RiemannProblem2d' ) &
-        WRITE(100,'(A,A)') &
-          '2D Riemann Problem Name: ', RiemannProblem2dName
-      IF( TRIM( ProgramName ) .EQ. 'SphericalSedov' )THEN
-        WRITE(100,'(A,I4.4)')     'nDetCells: ', nDetCells
-        WRITE(100,'(A,ES10.3E3)') 'Eblast:    ', Eblast
-      END IF
-      WRITE(100,*)
-      WRITE(100,'(A,F5.3)')      'Gamma_IDEAL: ', Gamma
-      WRITE(100,*)
-      WRITE(100,'(A)')           'Mesh'
-      WRITE(100,'(A)')           '----'
-      WRITE(100,'(A,A)')         'Coordinate System: ', TRIM( CoordinateSystem)
-      WRITE(100,'(A,3I5.4)')     'nX:     ', nX
-      WRITE(100,'(A,3I3.2)')     'bcX:    ', bcX
-      WRITE(100,'(A,3ES12.3E3)') 'xL:     ', xL
-      WRITE(100,'(A,3ES12.3E3)') 'xR:     ', xR
-      WRITE(100,'(A,I2.2)')      'nNodes: ', nNodes
-      WRITE(100,*)
-      WRITE(100,'(A)')           'Time-Stepping'
-      WRITE(100,'(A)')           '-------------'
-      WRITE(100,'(A,ES10.3E3)')  't_end:         ', t_end
-      WRITE(100,'(A,F4.2)')      'CFL:           ', CFL
-      WRITE(100,'(A,I1.1)')      'nStagesSSPRK:  ', nStagesSSPRK
-      WRITE(100,*)
-      WRITE(100,'(A)')           'Slope Limiter'
-      WRITE(100,'(A)')           '------------------'
-      WRITE(100,'(A,L)')         'UseSlopeLimiter:           ', UseSlopeLimiter
-      WRITE(100,'(A,L)')         'UseTroubledCellIndicator:  ', &
-                                   UseTroubledCellIndicator
-      WRITE(100,'(A,L)')         'UseCharacteristicLimiting: ', &
-                                   UseCharacteristicLimiting
-      WRITE(100,'(A,ES10.3E3)')  'BetaTVD:                   ', BetaTVD
-      WRITE(100,'(A,ES10.3E3)')  'BetaTVB:                   ', BetaTVB
-      WRITE(100,'(A,ES10.3E3)')  'SlopeTolerance:            ', SlopeTolerance
-      WRITE(100,'(A,F5.3)')      'LimiterThresholdParameter: ', &
-                                   LimiterThresholdParameter
-      WRITE(100,*)
-      WRITE(100,'(A)')           'Positivity Limiter'
-      WRITE(100,'(A)')           '------------------'
-      WRITE(100,'(A,L)')         'UsePositivityLimiter: ', UsePositivityLimiter
-      WRITE(100,'(A,ES11.3E3)')  'Min_1: ', Min_1
-      WRITE(100,'(A,ES11.3E3)')  'Min_2: ', Min_2
-    CLOSE(100)
-
-  END SUBROUTINE WriteProgramHeader
 
 END PROGRAM ApplicationDriver
