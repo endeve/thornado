@@ -27,7 +27,7 @@ GravitySolutionModule_Newtonian_PointMass_Old.o: \
   GeometryFieldsModule.o \
   GravitySolutionModule_Newtonian_PointMass_Old.f90
 
-GravitySolutionModule_Newtonian_Poseidon.o: \
+GravitySolutionModule_Newtonian_Poseidon_Old.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
@@ -35,7 +35,7 @@ GravitySolutionModule_Newtonian_Poseidon.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   GravitySolutionUtilitiesModule.o \
-  GravitySolutionModule_Newtonian_Poseidon.F90
+  GravitySolutionModule_Newtonian_Poseidon_Old.F90
 
 GravitySolutionModule.o: \
   KindModule.o \
@@ -44,7 +44,7 @@ GravitySolutionModule.o: \
   PolynomialBasisModule_Lagrange.o \
   MeshModule.o \
   GravitySolutionModule_Newtonian_PointMass_Old.o \
-  GravitySolutionModule_Newtonian_Poseidon.o \
+  GravitySolutionModule_Newtonian_Poseidon_Old.o \
   GravitySolutionModule.f90
 
 RiemannSolverModule.o: \
