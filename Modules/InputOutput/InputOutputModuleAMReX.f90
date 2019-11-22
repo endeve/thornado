@@ -78,7 +78,8 @@ MODULE InputOutputModuleAMReX
     MF_uGF, &
     MF_uCF, &
     MF_uPF, &
-    MF_uAF
+    MF_uAF, &
+    MF_uDF
   USE MF_UtilitiesModule, ONLY: &
     AMReX2thornado, &
     ShowVariableFromMultiFab
@@ -212,8 +213,7 @@ CONTAINS
     FinestLevel = nLevels-1
 
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevel, StepNo, dt, t, t_wrt, &
-             pBA(0:nLevels-1), pDM(0:nLevels-1), iChkFile )
+           ( FinestLevel, StepNo, dt, t, t_wrt, pBA, pDM, iChkFile )
 
     DO iLevel = 0, nLevels-1
       BA(iLevel) = pBA(iLevel)
@@ -234,6 +234,9 @@ CONTAINS
              ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
       CALL amrex_multifab_build &
              ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+      CALL amrex_multifab_build &
+             ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX(1) )
+      CALL MF_uDF(iLevel) % SetVal( 0.0_AR )
     END DO
 
     pGF(0:amrex_max_level) = MF_uGF(0:amrex_max_level) % P
@@ -241,10 +244,10 @@ CONTAINS
     pPF(0:amrex_max_level) = MF_uPF(0:amrex_max_level) % P
     pAF(0:amrex_max_level) = MF_uAF(0:amrex_max_level) % P
 
-    CALL ReadMultiFabData( nLevels-1, pGF(0:amrex_max_level), 0, iChkFile )
-    CALL ReadMultiFabData( nLevels-1, pCF(0:amrex_max_level), 1, iChkFile )
-    CALL ReadMultiFabData( nLevels-1, pPF(0:amrex_max_level), 2, iChkFile )
-    CALL ReadMultiFabData( nLevels-1, pAF(0:amrex_max_level), 3, iChkFile )
+    CALL ReadMultiFabData( nLevels-1, pGF, 0, iChkFile )
+    CALL ReadMultiFabData( nLevels-1, pCF, 1, iChkFile )
+    CALL ReadMultiFabData( nLevels-1, pPF, 2, iChkFile )
+    CALL ReadMultiFabData( nLevels-1, pAF, 3, iChkFile )
 
     DO iLevel = 0, nLevels-1
       CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
