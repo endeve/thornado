@@ -108,7 +108,7 @@ PROGRAM Relaxation
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
 
-  Configuration = 2
+  Configuration = 1
 
   SELECT CASE( Configuration )
     CASE( 1 )
