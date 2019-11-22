@@ -129,6 +129,19 @@ MODULE FluidFieldsModule
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Shock
 
+  INTEGER, PUBLIC, PARAMETER :: iDF_Sh = 01 ! Shock
+  INTEGER, PUBLIC, PARAMETER :: nDF    = 01
+
+  CHARACTER(32), DIMENSION(nDF), PUBLIC, PARAMETER :: &
+    namesDF = [ 'Shock                           ' ]
+
+  CHARACTER(10), DIMENSION(nDF), PUBLIC, PARAMETER :: &
+    ShortNamesDF = [ 'DF_Sh     ' ]
+
+  REAL(DP), DIMENSION(nDF), PUBLIC :: unitsDF
+
+  REAL(DP), ALLOCATABLE, PUBLIC :: uDF(:,:,:,:,:)
+
   PUBLIC :: CreateFluidFields
   PUBLIC :: DestroyFluidFields
 
@@ -160,9 +173,10 @@ CONTAINS
     END IF
 #endif
 
-    CALL CreateFluidFields_Conserved( nX, swX )
-    CALL CreateFluidFields_Primitive( nX, swX )
-    CALL CreateFluidFields_Auxiliary( nX, swX )
+    CALL CreateFluidFields_Conserved ( nX, swX )
+    CALL CreateFluidFields_Primitive ( nX, swX )
+    CALL CreateFluidFields_Auxiliary ( nX, swX )
+    CALL CreateFluidFields_Diagnostic( nX, swX )
 
     ALLOCATE( rhsCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF) )
 
@@ -247,9 +261,33 @@ CONTAINS
   END SUBROUTINE CreateFluidFields_Auxiliary
 
 
+  SUBROUTINE CreateFluidFields_Diagnostic( nX, swX )
+
+    INTEGER, INTENT(in) :: nX(3), swX(3)
+
+    INTEGER :: iDF
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A25)') '', 'Fluid Fields (Diagnostic)'
+      WRITE(*,*)
+      DO iDF = 1, nDF
+        WRITE(*,'(A5,A32)') '', TRIM( namesDF(iDF) )
+      END DO
+    END IF
+
+    ALLOCATE( uDF(1:nDOFX, &
+                  1-swX(1):nX(1)+swX(1), &
+                  1-swX(2):nX(2)+swX(2), &
+                  1-swX(3):nX(3)+swX(3), &
+                  1:nDF) )
+
+  END SUBROUTINE CreateFluidFields_Diagnostic
+
+
   SUBROUTINE DestroyFluidFields
 
-    DEALLOCATE( uCF, rhsCF, uPF, uAF )
+    DEALLOCATE( uCF, rhsCF, uPF, uAF, uDF )
     DEALLOCATE( Shock )
 
   END SUBROUTINE DestroyFluidFields
@@ -305,11 +343,15 @@ CONTAINS
       unitsAF(iAF_Gm) = 1.0_DP
       unitsAF(iAF_Cs) = Kilometer / Second
 
+      ! --- Diagnostic ---
+      unitsDF(iDF_Sh) = 1.0_DP
+
     ELSE
 
       unitsCF = 1.0_DP
       unitsPF = 1.0_DP
       unitsAF = 1.0_DP
+      unitsDF = 1.0_DP
 
     END IF
 

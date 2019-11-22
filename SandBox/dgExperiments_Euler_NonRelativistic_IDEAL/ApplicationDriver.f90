@@ -25,7 +25,8 @@ PROGRAM ApplicationDriver
     FinalizeEquationOfState
   USE FluidFieldsModule, ONLY: &
     nCF, nPF, nAF, &
-    uCF, uPF, uAF
+    uCF, uPF, uAF, &
+    uDF
   USE InitializationModule, ONLY: &
     InitializeFields
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -384,30 +385,14 @@ PROGRAM ApplicationDriver
            SedovEnergy_Option = Eblast )
 
   CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, &
-           uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-           uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
   CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, &
-           uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-           uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL TimersStart_Euler( Timer_Euler_InputOutput )
   CALL ComputeFromConserved_Euler_NonRelativistic &
-         ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
-           uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nGF), &
-           uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nCF), &
-           uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nPF), &
-           uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nAF) )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
@@ -436,13 +421,7 @@ PROGRAM ApplicationDriver
     iCycle = iCycle + 1
 
     CALL ComputeTimeStep_Euler_NonRelativistic &
-           ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
-             uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                         iX_B1(2):iX_E1(2), &
-                         iX_B1(3):iX_E1(3),1:nGF), &
-             uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                         iX_B1(2):iX_E1(2), &
-                         iX_B1(3):iX_E1(3),1:nCF), &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
              CFL = 0.5_DP / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
              TimeStep = dt )
 
@@ -470,7 +449,7 @@ PROGRAM ApplicationDriver
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, Euler_ComputeIncrement_DG_Explicit )
+           ( t, dt, uGF, uCF, uDF, Euler_ComputeIncrement_DG_Explicit )
 
     t = t + dt
 
@@ -478,19 +457,7 @@ PROGRAM ApplicationDriver
     IF( wrt )THEN
 
       CALL ComputeFromConserved_Euler_NonRelativistic &
-             ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
-               uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nGF), &
-               uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nCF), &
-               uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nPF), &
-               uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nAF) )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
@@ -510,19 +477,7 @@ PROGRAM ApplicationDriver
 
   CALL TimersStart_Euler( Timer_Euler_InputOutput )
   CALL ComputeFromConserved_Euler_NonRelativistic &
-         ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
-           uGF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nGF), &
-           uCF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nCF), &
-           uPF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nPF), &
-           uAF(1:nDOFX,iX_B1(1):iX_E1(1), &
-                       iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nAF) )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )

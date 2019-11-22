@@ -199,7 +199,7 @@ contains
     call InitializeEquationOfState_IDEAL &
            ( Gamma_IDEAL_Option = Gamma_IDEAL_Option )
 #endif
-    
+
     ! --- Neutrino Opacities ---
 
     call InitializeOpacities_TABLE &
@@ -211,6 +211,8 @@ contains
                = OpacityTableName_NES_Option, &
              OpacityTableName_Pair_Option &
                = OpacityTableName_Pair_Option, &
+             EquationOfStateTableName_Option &
+               = EquationOfStateTableName_Option, &
              Verbose_Option = .false. )
 
     ! --- For refinement and coarsening of DG data

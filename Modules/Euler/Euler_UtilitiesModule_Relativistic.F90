@@ -59,6 +59,11 @@ MODULE Euler_UtilitiesModule_Relativistic
     MODULE PROCEDURE ComputePrimitive_Vector
   END INTERFACE ComputePrimitive_Euler_Relativistic
 
+  INTERFACE ComputeConserved_Euler_Relativistic
+    MODULE PROCEDURE ComputeConserved_Scalar
+    MODULE PROCEDURE ComputeConserved_Vector
+  END INTERFACE ComputeConserved_Euler_Relativistic
+
 
   REAL(DP), PARAMETER :: TolP = 1.0d-8, TolFunP = 1.0d-6, MachineEPS = 1.0d-16
   LOGICAL             :: DEBUG = .FALSE.
@@ -404,7 +409,36 @@ CONTAINS
 
 
   !> Compute conserved variables from primitive variables.
-  SUBROUTINE ComputeConserved_Euler_Relativistic &
+  SUBROUTINE ComputeConserved_Scalar &
+    ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+      Gm11, Gm22, Gm33, &
+      AF_P )
+
+    REAL(DP), INTENT(in)  :: PF_D, PF_V1, PF_V2, PF_V3, &
+                             PF_E, PF_Ne, AF_P, &
+                             Gm11, Gm22, Gm33
+    REAL(DP), INTENT(out) :: CF_D, CF_S1, CF_S2, CF_S3, &
+                             CF_E, CF_Ne
+
+    REAL(DP) :: VSq, W, h
+
+    VSq = Gm11 * PF_V1**2 + Gm22 * PF_V2**2 + Gm33 * PF_V3**2
+
+    W = 1.0_DP / SQRT( 1.0_DP - VSq )
+    h = 1.0_DP + ( PF_E + AF_P ) / PF_D
+
+    CF_D  = W * PF_D
+    CF_S1 = h * W**2 * PF_D * Gm11 * PF_V1
+    CF_S2 = h * W**2 * PF_D * Gm22 * PF_V2
+    CF_S3 = h * W**2 * PF_D * Gm33 * PF_V3
+    CF_E  = h * W**2 * PF_D - AF_P - W * PF_D
+    CF_Ne = W * PF_Ne
+
+  END SUBROUTINE ComputeConserved_Scalar
+
+
+  SUBROUTINE ComputeConserved_Vector &
     ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       Gm11, Gm22, Gm33, &
@@ -430,7 +464,7 @@ CONTAINS
     CF_E  = h * W**2 * PF_D - AF_P - W * PF_D
     CF_Ne = W * PF_Ne
 
-  END SUBROUTINE ComputeConserved_Euler_Relativistic
+  END SUBROUTINE ComputeConserved_Vector
 
 
   !> Compute primitive variables, pressure, and sound-speed from conserved

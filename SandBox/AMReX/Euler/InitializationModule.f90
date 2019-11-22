@@ -67,6 +67,7 @@ MODULE InitializationModule
     nCF, &
     nPF, &
     nAF, &
+    nDF, &
     CreateFluidFields
   USE Euler_SlopeLimiterModule,         ONLY: &
     InitializeSlopeLimiter_Euler
@@ -104,7 +105,8 @@ MODULE InitializationModule
     MF_uGF, &
     MF_uCF, &
     MF_uPF, &
-    MF_uAF
+    MF_uAF, &
+    MF_uDF
   USE MyAmrModule,                      ONLY: &
     t_end,                     &
     t,                         &
@@ -204,18 +206,27 @@ CONTAINS
       END DO
 
       DO iLevel = 0, nLevels-1
+
         CALL amrex_multifab_build &
                ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
         CALL MF_uGF(iLevel) % SetVal( Zero )
+
         CALL amrex_multifab_build &
                ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
         CALL MF_uCF(iLevel) % SetVal( Zero )
+
         CALL amrex_multifab_build &
                ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
         CALL MF_uPF(iLevel) % SetVal( Zero )
+
         CALL amrex_multifab_build &
                ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
         CALL MF_uAF(iLevel) % SetVal( Zero )
+
+        CALL amrex_multifab_build &
+               ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX(1) )
+        CALL MF_uDF(iLevel) % SetVal( Zero )
+
       END DO
 
       t     = Zero
@@ -351,6 +362,7 @@ CONTAINS
     CALL MF_InitializeFluid_SSPRK &
            ( nStages, BA, DM, &
              Verbose_Option = amrex_parallel_ioprocessor() )
+
     IF( amrex_parallel_ioprocessor() ) WRITE(*,'(A6,A,ES11.3E3)') &
       '', 'CFL: ', &
       CFL * ( amrex_spacedim * ( Two * nNodes - One ) )
@@ -366,7 +378,7 @@ CONTAINS
 
       CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
 
-      CALL MF_ApplySlopeLimiter_Euler     ( MF_uGF, MF_uCF, GEOM )
+      CALL MF_ApplySlopeLimiter_Euler     ( MF_uGF, MF_uCF, MF_uDF, GEOM )
       CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
@@ -374,12 +386,14 @@ CONTAINS
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
       CALL WriteFieldsAMReX_PlotFile &
              ( t(0), StepNo, &
                MF_uGF_Option = MF_uGF, &
                MF_uCF_Option = MF_uCF, &
                MF_uPF_Option = MF_uPF, &
-               MF_uAF_Option = MF_uAF )
+               MF_uAF_Option = MF_uAF, &
+               MF_uDF_Option = MF_uDF )
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
