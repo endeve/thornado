@@ -155,7 +155,7 @@ CONTAINS
   END SUBROUTINE AllocateButcherTables_SSPRK
 
 
-  SUBROUTINE UpdateFluid_SSPRK( t, dt, G, U, ComputeIncrement_Fluid )
+  SUBROUTINE UpdateFluid_SSPRK( t, dt, G, U, D, ComputeIncrement_Fluid )
 
     REAL(DP), INTENT(in) :: &
       t, dt
@@ -163,6 +163,8 @@ CONTAINS
       G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(out)   :: &
+      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     PROCEDURE (FluidIncrement) :: &
       ComputeIncrement_Fluid
     LOGICAL :: DEBUG = .FALSE.
@@ -184,10 +186,7 @@ CONTAINS
 
           IF( DEBUG ) WRITE(*,'(A)') 'CALL AddIncrement_Fluid (1)'
           CALL AddIncrement_Fluid &
-                 ( One, &
-                   U_SSPRK(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-                   dt * a_SSPRK(iS,jS), &
-                   D_SSPRK(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:,jS) )
+                 ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
 
         END IF
 
@@ -197,20 +196,13 @@ CONTAINS
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
         CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G      (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-                 U_SSPRK(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:) )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
 
         CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G      (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-                 U_SSPRK(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:) )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
 
         CALL ComputeIncrement_Fluid &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G      (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-                 U_SSPRK(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-                 D_SSPRK(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:,iS) )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D_SSPRK(:,:,:,:,:,iS) )
 
       END IF
 
@@ -221,25 +213,17 @@ CONTAINS
       IF( w_SSPRK(iS) .NE. Zero )THEN
 
         CALL AddIncrement_Fluid &
-               ( One, &
-                 U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-                 dt * w_SSPRK(iS), &
-                 D_SSPRK(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:,iS) )
+               ( One, U, dt * w_SSPRK(iS), D_SSPRK(:,:,:,:,:,iS) )
 
       END IF
 
     END DO
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-             U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:) )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-             U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:) )
-
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 

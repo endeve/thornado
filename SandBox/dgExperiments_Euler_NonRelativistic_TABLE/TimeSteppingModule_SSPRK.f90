@@ -172,7 +172,7 @@ CONTAINS
 
 
   SUBROUTINE UpdateFluid_SSPRK &
-    ( t, dt, G, U, ComputeIncrement_Fluid, ComputeGravitationalPotential )
+    ( t, dt, G, U, D, ComputeIncrement_Fluid, ComputeGravitationalPotential )
 
     REAL(DP), INTENT(in) :: &
       t, dt
@@ -180,6 +180,8 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out)   :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     PROCEDURE(FluidIncrement) :: &
       ComputeIncrement_Fluid
     PROCEDURE(GravitySolver), OPTIONAL :: &
@@ -206,10 +208,7 @@ CONTAINS
         IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
           CALL AddIncrement_Fluid &
-                 ( One, &
-                   U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-                   dt * a_SSPRK(iS,jS), &
-                   D_SSPRK(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,jS) )
+                 ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
 
         END IF
 
@@ -219,29 +218,21 @@ CONTAINS
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
         CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-                 U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
 
         CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-                 U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
 
         IF( SolveGravity )THEN
 
           CALL ComputeGravitationalPotential &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                   G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-                   U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
+                   G, U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
 
         END IF
 
         CALL ComputeIncrement_Fluid &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G      (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-                 U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-                 D_SSPRK(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,iS) )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D_SSPRK(:,:,:,:,:,iS) )
 
       END IF
 
@@ -252,31 +243,24 @@ CONTAINS
       IF( w_SSPRK(iS) .NE. Zero )THEN
 
         CALL AddIncrement_Fluid &
-               ( One, &
-                 U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-                 dt * w_SSPRK(iS), &
-                 D_SSPRK(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:,iS) )
+               ( One, U, dt * w_SSPRK(iS), D_SSPRK(:,:,:,:,:,iS) )
 
       END IF
 
     END DO
 
     CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-             U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-             U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     IF( SolveGravity )THEN
 
       CALL ComputeGravitationalPotential &
+
              ( iX_B0, iX_E0, iX_B1, iX_E1, &
-               G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-               U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
+               G, U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
 
     END IF
 

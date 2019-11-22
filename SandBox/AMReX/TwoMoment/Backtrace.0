@@ -1,0 +1,51 @@
+=== If no file names and line numbers are shown below, one can run
+            addr2line -Cpfie my_exefile my_line_address
+    to convert `my_line_address` (e.g., 0x4a6b) into file name and line number.
+    Or one can use amrex/Tools/Backtrace/parse_bt.py.
+
+=== Please note that the line number reported by addr2line may not be accurate.
+    One can use
+            readelf -wl my_exefile | grep my_line_address'
+    to find out the offset for that line.
+
+ 0: ./main1d.gnu.DEBUG.MPI.ex(+0x18112e) [0x7fc59198112e]
+    amrex::BLBackTrace::print_backtrace_info(_IO_FILE*) at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_BLBackTrace.cpp:163
+
+ 1: ./main1d.gnu.DEBUG.MPI.ex(+0x180d97) [0x7fc591980d97]
+    amrex::BLBackTrace::handler(int) at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_BLBackTrace.cpp:71
+
+ 2: ./main1d.gnu.DEBUG.MPI.ex(+0x70883) [0x7fc591870883]
+    amrex::ParallelDescriptor::Abort(int, bool) at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_ParallelDescriptor.cpp:224
+
+ 3: ./main1d.gnu.DEBUG.MPI.ex(+0x1b18c) [0x7fc59181b18c]
+    amrex::Abort(char const*) at /mnt/c/Users/Zack/amrex/Src/Base/AMReX.cpp:204
+
+ 4: ./main1d.gnu.DEBUG.MPI.ex(+0x2fdd9) [0x7fc59182fdd9]
+    void amrex::(anonymous namespace)::(anonymous namespace)::sgetval<int>(std::__cxx11::list<amrex::ParmParse::PP_entry, std::allocator<amrex::ParmParse::PP_entry> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, int&, int, int) at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_ParmParse.cpp:736
+
+ 5: ./main1d.gnu.DEBUG.MPI.ex(+0x2a37f) [0x7fc59182a37f]
+    amrex::ParmParse::get(char const*, int&, int) const at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_ParmParse.cpp:1180 (discriminator 6)
+
+ 6: ./main1d.gnu.DEBUG.MPI.ex(+0x3fc5d) [0x7fc59183fc5d]
+    amrex_parmparse_get_int at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_parmparse_fi.cpp:30
+
+ 7: ./main1d.gnu.DEBUG.MPI.ex(+0x2272fc) [0x7fc591a272fc]
+    __amrex_parmparse_module_MOD_get_int at /mnt/c/Users/Zack/amrex/Src/Base/AMReX_parmparse_mod.F90:280 (discriminator 4)
+
+ 8: ./main1d.gnu.DEBUG.MPI.ex(+0x21546c) [0x7fc591a1546c]
+    __myamrmodule_MOD_myamrinit at /mnt/c/Users/Zack/thornado/SandBox/AMReX/TwoMoment/MyAmrModule.f90:102
+
+ 9: ./main1d.gnu.DEBUG.MPI.ex(+0x21289d) [0x7fc591a1289d]
+    __initializationmodule_MOD_initializeprogram at /mnt/c/Users/Zack/thornado/SandBox/AMReX/TwoMoment/InitializationModule.f90:109 (discriminator 10)
+
+10: ./main1d.gnu.DEBUG.MPI.ex(+0x2144a1) [0x7fc591a144a1]
+    MAIN__ at /mnt/c/Users/Zack/thornado/SandBox/AMReX/TwoMoment/fmain.f90:27
+
+11: ./main1d.gnu.DEBUG.MPI.ex(+0x214558) [0x7fc591a14558]
+    main at /mnt/c/Users/Zack/thornado/SandBox/AMReX/TwoMoment/fmain.f90:3
+
+12: /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xe7) [0x7fc58f951b97]
+
+13: ./main1d.gnu.DEBUG.MPI.ex(+0x1ac4a) [0x7fc59181ac4a]
+    ?? ??:0
+

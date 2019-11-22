@@ -1,0 +1,32 @@
+
+# thornado VPATH_LOCATIONS:
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Numbers
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Units
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/ProgramHeader
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/TwoMoment
+# In THORNADO_DIR/Modules/Numbers:
+
+f90EXE_sources += KindModule.f90
+
+
+# In THORNADO_DIR/Modules/Units
+
+f90EXE_sources += PhysicalConstantsModule.f90
+f90EXE_sources += UnitsModule.f90
+
+# In THORNADO_DIR/Modules/ProgramHeader
+
+F90EXE_sources += ProgramHeaderModule.F90
+
+# In THORNADO_DIR/Modules/Fields
+
+f90EXE_sources += RadiationFieldsModule.f90
+
+
+
+f90EXE_sources += InitializationModule.f90
+f90EXE_sources += FinalizationModule.f90
+f90EXE_sources += fmain.f90
+f90EXE_sources += MyAmrDataModule.f90
+f90EXE_sources += MyAmrModule.f90

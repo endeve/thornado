@@ -86,44 +86,65 @@ CONTAINS
   SUBROUTINE InitializeOpacities_TABLE &
     ( OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
-      Verbose_Option )
+      EquationOfStateTableName_Option, Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_EmAb_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Iso_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_NES_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Pair_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
+    CHARACTER(128)     :: EquationOfStateTableName
     REAL(DP) :: E1, E2
     INTEGER :: iS, iM, iEta, iT, iN_E1, iN_E2, iE1, iE2, iNodeE1, iNodeE2, nPointsE
+    LOGICAL :: Include_EmAb
+    LOGICAL :: Include_Iso
     LOGICAL :: Include_NES
     LOGICAL :: Include_Pair
     LOGICAL :: Verbose
 
-    IF( PRESENT( OpacityTableName_EmAb_Option ) )THEN
+    IF( PRESENT( OpacityTableName_EmAb_Option ) &
+        .AND. ( LEN( OpacityTableName_EmAb_Option ) > 1 ) )THEN
       OpacityTableName_EmAb = TRIM( OpacityTableName_EmAb_Option )
+      Include_EmAb = .TRUE.
     ELSE
-      OpacityTableName_EmAb = 'OpacityTable_EmAb.h5'
+      OpacityTableName_EmAb = ''
+      Include_EmAb = .FALSE.
     END IF
 
-    IF( PRESENT( OpacityTableName_Iso_Option ) )THEN
+    IF( PRESENT( OpacityTableName_Iso_Option ) &
+        .AND. ( LEN( OpacityTableName_Iso_Option ) > 1 ) )THEN
       OpacityTableName_Iso = TRIM( OpacityTableName_Iso_Option )
+      Include_Iso = .TRUE.
     ELSE
-      OpacityTableName_Iso = 'OpacityTable_Iso.h5'
+      OpacityTableName_Iso = ''
+      Include_Iso = .FALSE.
     END IF
 
-    IF( PRESENT( OpacityTableName_NES_Option ) )THEN
+    IF( PRESENT( OpacityTableName_NES_Option ) &
+        .AND. ( LEN( OpacityTableName_NES_Option ) > 1 ) )THEN
       OpacityTableName_NES = TRIM( OpacityTableName_NES_Option )
       Include_NES = .TRUE.
     ELSE
+      OpacityTableName_NES = ''
       Include_NES = .FALSE.
     END IF
 
-    IF( PRESENT( OpacityTableName_Pair_Option ) )THEN
+    IF( PRESENT( OpacityTableName_Pair_Option ) &
+        .AND. ( LEN( OpacityTableName_Pair_Option ) > 1 ) )THEN
       OpacityTableName_Pair = TRIM( OpacityTableName_Pair_Option )
       Include_Pair = .TRUE.
     ELSE
+      OpacityTableName_Pair = ''
       Include_Pair = .FALSE.
+    END IF
+
+    IF( PRESENT( EquationOfStateTableName_Option ) &
+        .AND. ( LEN( EquationOfStateTableName_Option ) > 1 ) )THEN
+       EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
+    ELSE
+       EquationOfStateTableName = 'EquationOfStateTable.h5'
     END IF
 
     IF( PRESENT( Verbose_Option ) )THEN
@@ -152,39 +173,13 @@ CONTAINS
 
     CALL InitializeHDF( )
 
-    IF( (.NOT.Include_NES) .AND. (.NOT.Include_Pair) )THEN
-
-      CALL ReadOpacityTableHDF &
-             ( OPACITIES, &
-               FileName_EmAb_Option = TRIM( OpacityTableName_EmAb ), &
-               FileName_Iso_Option  = TRIM( OpacityTableName_Iso  ) )
-
-    ELSE IF( Include_NES .AND. (.NOT.Include_Pair) )THEN
-
-      CALL ReadOpacityTableHDF &
-             ( OPACITIES, &
-               FileName_EmAb_Option = TRIM( OpacityTableName_EmAb ), &
-               FileName_Iso_Option  = TRIM( OpacityTableName_Iso  ), &
-               FileName_NES_Option  = TRIM( OpacityTableName_NES  ) )
-
-    ELSE IF( (.NOT.Include_NES) .AND. Include_Pair )THEN
-
-      CALL ReadOpacityTableHDF &
-             ( OPACITIES, &
-               FileName_EmAb_Option = TRIM( OpacityTableName_EmAb ), &
-               FileName_Iso_Option  = TRIM( OpacityTableName_Iso  ), &
-               FileName_Pair_Option = TRIM( OpacityTableName_Pair ) )
-
-    ELSE
-
-      CALL ReadOpacityTableHDF &
-             ( OPACITIES, &
-               FileName_EmAb_Option = TRIM( OpacityTableName_EmAb ), &
-               FileName_Iso_Option  = TRIM( OpacityTableName_Iso  ), &
-               FileName_NES_Option  = TRIM( OpacityTableName_NES  ), &
-               FileName_Pair_Option = TRIM( OpacityTableName_Pair ) )
-
-    END IF
+    CALL ReadOpacityTableHDF &
+           ( OPACITIES, &
+             FileName_EmAb_Option = TRIM( OpacityTableName_EmAb ), &
+             FileName_Iso_Option  = TRIM( OpacityTableName_Iso  ), &
+             FileName_NES_Option  = TRIM( OpacityTableName_NES  ), &
+             FileName_Pair_Option = TRIM( OpacityTableName_Pair ), &
+             EquationOfStateTableName_Option = EquationOfStateTableName )
 
     CALL FinalizeHDF( )
 
