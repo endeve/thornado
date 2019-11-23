@@ -60,13 +60,13 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
   USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive
   USE UnitsModule, ONLY: &
-    Meter, &
     Kilometer, &
-    Kilogram, &
     Second, &
-    Joule
+    SolarMass, &
+    SpeedOfLight, &
+    Gram, Centimeter
   USE UtilitiesModule, ONLY: &
-    Locate
+    NodeNumberX
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -80,14 +80,16 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
 
   PUBLIC :: MF_InitializeFields_Relativistic_IDEAL
 
-  REAL(AR), PARAMETER :: Zero   = 0.0_AR
-  REAL(AR), PARAMETER :: Half   = 0.5_AR
-  REAL(AR), PARAMETER :: One    = 1.0_AR
-  REAL(AR), PARAMETER :: Two    = 2.0_AR
-  REAL(AR), PARAMETER :: Three  = 3.0_AR
-  REAL(AR), PARAMETER :: Pi     = ACOS( -1.0_AR )
-  REAL(AR), PARAMETER :: TwoPi  = 2.0_AR * Pi
-  REAL(AR), PARAMETER :: FourPi = 4.0_AR * Pi
+  REAL(AR), PARAMETER :: Zero     = 0.0_AR
+  REAL(AR), PARAMETER :: SqrtTiny = SQRT( TINY( 1.0_AR ) )
+  REAL(AR), PARAMETER :: Half     = 0.5_AR
+  REAL(AR), PARAMETER :: One      = 1.0_AR
+  REAL(AR), PARAMETER :: Two      = 2.0_AR
+  REAL(AR), PARAMETER :: Three    = 3.0_AR
+  REAL(AR), PARAMETER :: Pi       = ACOS( -1.0_AR )
+  REAL(AR), PARAMETER :: Four     = 4.0_AR
+  REAL(AR), PARAMETER :: TwoPi    = 2.0_AR * Pi
+  REAL(AR), PARAMETER :: FourPi   = 4.0_AR * Pi
 
 
 CONTAINS
@@ -737,47 +739,207 @@ CONTAINS
     TYPE(amrex_mfiter)            :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    TYPE(amrex_parmparse)         :: PP
 
     ! --- Problem-dependent Parameters ---
-    INTEGER, PARAMETER    :: i_r = 1, i_D = 2, i_V1 = 3, i_E = 4
-    INTEGER               :: iL, nLines
-    REAL(AR), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
-    LOGICAL               :: ApplyPerturbation
-    INTEGER               :: PerturbationOrder
-    REAL(AR)              :: rPerturbationInner, rPerturbationOuter, &
-                               PerturbationAmplitude
+    INTEGER  :: iX1_1, iX1_2, iNodeX1_1, iNodeX1_2
+    REAL(AR) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_2
+    REAL(AR) :: Alpha, Psi, V0, VSq, W
+    REAL(AR) :: dX1, PolytropicConstant, MassConstant
+    REAL(AR) :: MassPNS, ShockRadius, AccretionRate, MachNumber
+    LOGICAL  :: FirstUnShockedElement = .FALSE.
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(AR), ALLOCATABLE :: D(:,:), V(:,:), P(:,:)
+    LOGICAL  :: ApplyPerturbation
+    INTEGER  :: PerturbationOrder
+    REAL(AR) :: PerturbationAmplitude, rPerturbationInner, rPerturbationOuter
 
-    TYPE(amrex_parmparse) :: PP
+    ApplyPerturbation     = .FALSE.
+    PerturbationOrder     = 0
+    PerturbationAmplitude = 0.0_AR
+    rPerturbationInner    = 0.0_AR
+    rPerturbationOuter    = 0.0_AR
+    CALL amrex_parmparse_build( PP, 'SAS' )
+      CALL PP % get  ( 'Mass'                 , MassPNS               )
+      CALL PP % get  ( 'AccretionRate'        , AccretionRate         )
+      CALL PP % get  ( 'ShockRadius'          , ShockRadius           )
+      CALL PP % get  ( 'MachNumber'           , MachNumber            )
+      CALL PP % query( 'ApplyPerturbation'    , ApplyPerturbation     )
+      CALL PP % query( 'PerturbationOrder'    , PerturbationOrder     )
+      CALL PP % query( 'PerturbationAmplitude', PerturbationAmplitude )
+      CALL PP % query( 'rPerturbationInner'   , rPerturbationInner    )
+      CALL PP % query( 'rPerturbationOuter'   , rPerturbationOuter    )
+    CALL amrex_parmparse_destroy( PP )
+
+    MassPNS            = MassPNS       * SolarMass
+    AccretionRate      = AccretionRate * SolarMass / Second
+    ShockRadius        = ShockRadius   * Kilometer
+    rPerturbationInner = rPerturbationInner * Kilometer
+    rPerturbationOuter = rPerturbationOuter * Kilometer
+
+    IF( amrex_parallel_ioprocessor() )THEN
+      WRITE(*,*)
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'Shock radius:   ', ShockRadius / Kilometer, ' km'
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'PNS Mass:       ', MassPNS / SolarMass, ' Msun'
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'Accretion Rate: ', AccretionRate / ( SolarMass / Second ), &
+        ' Msun/s'
+      WRITE(*,'(6x,A,ES9.2E3)') &
+        'Mach number:    ', MachNumber
+      WRITE(*,*)
+      WRITE(*,'(6x,A,L)') &
+        'Apply Perturbation: ', ApplyPerturbation
+      WRITE(*,'(6x,A,I1)') &
+        'Perturbation order: ', PerturbationOrder
+      WRITE(*,'(6x,A,ES9.2E3)') &
+        'Perturbation amplitude: ', PerturbationAmplitude
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'Inner perturbation radius: ', rPerturbationInner / Kilometer, ' km'
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'Outer perturbation radius: ', rPerturbationOuter / Kilometer, ' km'
+    END IF
 
     uGF_K = Zero
     uCF_K = Zero
     uPF_K = Zero
     uAF_K = Zero
 
-    CALL amrex_parmparse_build( PP, 'SAS' )
-      CALL PP % get( 'ApplyPerturbation',     ApplyPerturbation )
-      CALL PP % get( 'PerturbationOrder',     PerturbationOrder )
-      CALL PP % get( 'rPerturbationInner',    rPerturbationInner )
-      CALL PP % get( 'rPerturbationOuter',    rPerturbationOuter )
-      CALL PP % get( 'PerturbationAmplitude', PerturbationAmplitude )
-    CALL amrex_parmparse_destroy( PP )
-    rPerturbationInner = rPerturbationInner * Kilometer
-    rPerturbationOuter = rPerturbationOuter * Kilometer
-
     DO iDim = 1, 3
 
       CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(1), &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
                xL(iDim), xR(iDim) )
 
     END DO
 
-    CALL ReadParameters &
-      ( '../Euler_Relativistic_IDEAL/StandingAccretionShock_Parameters.dat', &
-             FluidFieldParameters )
-    CALL ReadData &
-      ( '../Euler_Relativistic_IDEAL/StandingAccretionShock_Data.dat', &
-        nLines, FluidFieldData )
+    iX_B1 = [1,1,1] - swX
+    iX_E1 = nX      + swX
+
+    ALLOCATE( D(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( V(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( P(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+
+    ! --- Compute fields, pre-shock ---
+    X1 = Zero
+    DO iX1 = iX_B1(1), iX_E1(1)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        dX1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) - X1
+        X1  = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        IF( X1 .LE. ShockRadius ) CYCLE
+
+        !  --- Detect first element of un-shocked fluid ---
+
+        IF( X1 .GT. ShockRadius .AND. .NOT. FirstUnShockedElement )THEN
+
+          iX1_1     = iX1
+          iNodeX1_1 = iNodeX1
+          X1_1      = X1
+          X1_2      = X1  - dX1
+
+          IF( iNodeX1_1 .EQ. 1 )THEN
+
+            iX1_2     = iX1_1 - 1
+            iNodeX1_2 = nNodesX(1)
+
+          ELSE
+
+            iX1_2     = iX1_1
+            iNodeX1_2 = iNodeX1_1
+
+          END IF
+
+          FirstUnShockedElement = .TRUE.
+
+        END IF
+
+        Alpha = LapseFunction  ( X1, MassPNS )
+        Psi   = ConformalFactor( X1, MassPNS )
+
+        V(iNodeX1,iX1) &
+          = -Psi**(-2) * SpeedOfLight * SQRT( One - Alpha**2 )
+
+        D(iNodeX1,iX1) &
+          = Psi**(-6) * AccretionRate &
+              / ( FourPi * X1**2 * ABS( V(iNodeX1,iX1) ) )
+
+        VSq = Psi**4 * V(iNodeX1,iX1)**2
+
+        P(iNodeX1,iX1) &
+          = D(iNodeX1,iX1) * VSq &
+              / ( Gamma_IDEAL * MachNumber**2 ) &
+              / ( One - ( VSq / SpeedOfLight**2 ) &
+              / ( MachNumber**2 * ( Gamma_IDEAL - One ) ) )
+
+      END DO
+    END DO
+
+    ! --- Apply jump conditions ---
+
+    D_1 = D(iNodeX1_1,iX1_1)
+    V_1 = V(iNodeX1_1,iX1_1)
+
+    CALL ApplyJumpConditions &
+           ( iX1_1, iNodeX1_1, X1_1, D_1, V_1, &
+             iX1_2, iNodeX1_2, X1_2, &
+             D_2, V_2, P_2, MassPNS, PolytropicConstant )
+
+    IF( amrex_parallel_ioprocessor() )THEN
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'Shock location:'
+      WRITE(*,'(8x,A)') 'Pre-shock:'
+      WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_1
+      WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_1
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_1 / Kilometer, ' km'
+      WRITE(*,'(8x,A)') 'Post-shock:'
+      WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_2
+      WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_2
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_2 / Kilometer, ' km'
+      WRITE(*,*)
+      WRITE(*,'(6x,A,ES13.6E3)') &
+        'Compression Ratio LOG10(D_2/D_1) = ', LOG( D_2 / D_1 ) / LOG( 1.0d1 )
+      WRITE(*,*)
+    END IF
+
+    ! --- Compute fields, post-shock ---
+
+    Alpha = LapseFunction  ( X1_1, MassPNS )
+    Psi   = ConformalFactor( X1_1, MassPNS )
+    W     = LorentzFactor( Psi, V_1 )
+
+    MassConstant = Psi**6 * Alpha * X1_1**2 * D_1 * W * V_1
+
+    V0 = V_2
+
+    DO iX1 = iX_E1(1), iX_B1(1), -1
+      DO iNodeX1 = nNodesX(1), 1, -1
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        IF( X1 .GT. ShockRadius ) CYCLE
+
+        Alpha = LapseFunction  ( X1, MassPNS )
+        Psi   = ConformalFactor( X1, MassPNS )
+
+        CALL NewtonRaphson_PostShockVelocity &
+               ( Alpha, Psi, MassConstant, PolytropicConstant, &
+                 MassPNS, AccretionRate, X1, V0  )
+
+        V(iNodeX1,iX1) = V0
+
+        W = LorentzFactor( Psi, V0 )
+
+        D(iNodeX1,iX1) &
+          = MassConstant / ( Psi**6 * Alpha * X1**2  * W * V0 )
+
+        P(iNodeX1,iX1) &
+          = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
+
+      END DO
+    END DO
 
     DO iLevel = 0, nLevels-1
 
@@ -796,94 +958,57 @@ CONTAINS
         lo_F = LBOUND( uCF )
         hi_F = UBOUND( uCF )
 
-        DO iX3 = BX % lo(3), BX % hi(3)
-        DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B1(1), iX_E1(1)
 
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          DO iNodeX = 1, nDOFX
+          DO iNodeX3 = 1, nNodesX(3)
+          DO iNodeX2 = 1, nNodesX(2)
+          DO iNodeX1 = 1, nNodesX(1)
 
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-            iNodeX2 = NodeNumberTableX(2,iNodeX)
+            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
-
-            ! --- Get lower index of input array
-            !     (FluidFieldData) corresponding to physical coordinate (X1) ---
-            iL = Locate( X1, FluidFieldData(:,i_r), nLines )
-
-            ! --- Interpolate to the physical point X1 ---
-
-            uPF_K(iNodeX,iPF_D) &
-              = InterpolateInitialConditionsOntoGrid &
-                  ( i_D, i_r, iL, X1, FluidFieldData )
-
-            uPF_K(iNodeX,iPF_V1) &
-              = InterpolateInitialConditionsOntoGrid &
-                  ( i_V1, i_r, iL, X1, FluidFieldData )
-
-            uPF_K(iNodeX,iPF_V2) = Zero
-
-            uPF_K(iNodeX,iPF_V3) = Zero
-
-            uPF_K(iNodeX,iPF_E) &
-              = InterpolateInitialConditionsOntoGrid &
-                  ( i_E, i_r, iL, X1, FluidFieldData )
-
-            uPF_K(iNodeX,iPF_Ne) = Zero
-
-            ! --- Apply perturbations ---
             IF( ApplyPerturbation )THEN
 
-              IF     ( PerturbationOrder .EQ. 0 )THEN
+              X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+              X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-                IF( X1 .GE. rPerturbationInner &
-                      .AND. X1 .LE. rPerturbationOuter )THEN
+              IF( X1 .GE. rPerturbationInner &
+                    .AND. X1 .LE. rPerturbationOuter )THEN
 
-                  uPF_K(iNodeX,iPF_D) &
-                    = uPF_K(iNodeX,iPF_D) &
+                IF( PerturbationOrder .EQ. 0 ) &
+                  D(iNodeX1,iX1) &
+                    = D(iNodeX1,iX1) &
                         * ( One + PerturbationAmplitude )
 
-                END IF
-
-              ELSE IF( PerturbationOrder .EQ. 1 )THEN
-
-                IF( nDimsX .EQ. 1 )THEN
-                  WRITE(*,'(A)') 'Cannot have l = 1 mode perturbation in 1D.'
-                  WRITE(*,'(A)') 'Stopping...'
-                  STOP
-                END IF
-
-                IF( X1 .GE. rPerturbationInner &
-                      .AND. X1 .LE. rPerturbationOuter )THEN
-
-                  uPF_K(iNodeX,iPF_D) &
-                    = uPF_K(iNodeX,iPF_D) &
+                IF( PerturbationOrder .EQ. 1 ) &
+                  D(iNodeX1,iX1) &
+                    = D(iNodeX1,iX1) &
                         * ( One + PerturbationAmplitude * COS( X2 ) )
-                END IF
-
-              ELSE
-
-                WRITE(*,'(A)') 'Fatal Error'
-                WRITE(*,'(A)') '-----------'
-                WRITE(*,'(A,I1)') 'Invalid value of PerturbationOrder: ', &
-                             PerturbationOrder
-                WRITE(*,'(A)') 'Valid values: 0, 1'
-                WRITE(*,'(A)') 'Stopping...'
-                STOP
 
               END IF
 
             END IF
 
-          END DO
+            uPF_K(iNodeX,iPF_D ) = D(iNodeX1,iX1)
+            uPF_K(iNodeX,iPF_V1) = V(iNodeX1,iX1)
+            uPF_K(iNodeX,iPF_V2) = Zero
+            uPF_K(iNodeX,iPF_V3) = Zero
+            uAF_K(iNodeX,iAF_P ) = P(iNodeX1,iX1)
+            uPF_K(iNodeX,iPF_E ) = uAF_K(iNodeX,iAF_P ) / ( Gamma_IDEAL - One )
 
-          CALL ComputePressureFromPrimitive &
-                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
-                   uAF_K(:,iAF_P) )
+
+          END DO
+          END DO
+          END DO
 
           CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
@@ -904,9 +1029,11 @@ CONTAINS
 
       END DO
 
-      CALL amrex_mfiter_destroy( MFI )
-
     END DO
+
+    DEALLOCATE( P )
+    DEALLOCATE( V )
+    DEALLOCATE( D )
 
     DO iDim = 1, 3
 
@@ -914,110 +1041,197 @@ CONTAINS
 
     END DO
 
+
   END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
 
 
-  ! --- Auxiliary functions/subroutines for relativistic SAS problem ---
+  ! --- Auxiliary functions/subroutines for SAS problem ---
 
-  REAL(AR) FUNCTION InterpolateInitialConditionsOntoGrid &
-    ( iVar, i_r, iL, X, FluidFieldData )  RESULT( yInterp )
 
-    INTEGER,  INTENT(in) :: iVar, i_r, iL
-    REAL(AR), INTENT(in) :: X
-    REAL(AR), INTENT(in) :: FluidFieldData(:,:)
+  SUBROUTINE ApplyJumpConditions &
+    ( iX1_1, iNodeX1_1, X1_1, D_1, V_1, &
+      iX1_2, iNodeX1_2, X1_2, &
+      D_2, V_2, P_2, MassPNS, PolytropicConstant )
 
-    REAL(AR)             :: Xa, Xb, Ya, Yb, m
+    INTEGER,  INTENT(in)  :: iX1_1, iNodeX1_1, iX1_2, iNodeX1_2
+    REAL(AR), INTENT(in)  :: X1_1, X1_2, D_1, V_1, MassPNS
+    REAL(AR), INTENT(out) :: D_2, V_2, P_2, PolytropicConstant
 
-    Xa = FluidFieldData(iL,i_r)
-    Xb = FLuidFieldData(iL+1,i_r)
-    Ya = FluidFieldData(iL,iVar)
-    Yb = FluidFieldData(iL+1,iVar)
+    REAL(AR) :: Alpha, Psi
+    REAL(AR) :: C1, C2, C3, a0, a1, a2, a3, a4, X1
+    REAL(AR) :: W
 
-    m = ( Yb - Ya ) / ( Xb - Xa )
+    REAL(AR), PARAMETER :: ShockTolerance = 0.1_AR
+    LOGICAL             :: FoundShockVelocity = .FALSE.
 
-    yInterp = m * ( X - Xa ) + Ya
+    ! --- Constants from three jump conditions ---
+
+    Alpha = LapseFunction  ( X1_1, MassPNS )
+    Psi   = ConformalFactor( X1_1, MassPNS )
+
+    C1 = D_1 * V_1 / Alpha
+
+    C2 = D_1 * SpeedOfLight**2 / Alpha**2 * ( V_1 / SpeedOfLight )**2
+
+    C3 = D_1 * SpeedOfLight**2 / Alpha**2 * V_1
+
+    ! --- Five constants for post-shock fluid-velocity ---
+
+    a4 = Psi**8 &
+          * One / ( Gamma_IDEAL - One )**2 * C3**2 / SpeedOfLight**6
+    a3 = -Two * Psi**8 &
+          * Gamma_IDEAL / ( Gamma_IDEAL - One )**2 * C2 * C3 / SpeedOfLight**4
+    a2 = Psi**4 &
+          / SpeedOfLight**2 * ( Psi**4 * Gamma_IDEAL**2 &
+          / ( Gamma_IDEAL - One )**2 * C2**2 + Two * One &
+          / ( Gamma_IDEAL - One ) &
+          * C3**2 / SpeedOfLight**2 + C1**2 * SpeedOfLight**2 )
+    a1 = -Two * Psi**4 &
+          * Gamma_IDEAL / ( Gamma_IDEAL - One ) * C2 * C3 / SpeedOfLight**2
+    a0 = One / SpeedOfLight**2 * ( C3**2 - C1**2 * SpeedOfLight**4 )
+
+    ! --- Newton-Raphson method for post-shock fluid-velocity ---
+
+    V_2 = Two * V_1
+
+    ! --- Ensure that shocked velocity is obtained ---
+
+    FoundShockVelocity = .FALSE.
+    DO WHILE( .NOT. FoundShockVelocity )
+
+      V_2 = Half * V_2
+      CALL NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V_2 )
+
+      IF( ABS( V_2 - V_1 ) / ABS( V_1 ) .GT. ShockTolerance ) &
+        FoundShockVelocity = .TRUE.
+
+    END DO
+
+    ! --- Post-shock density, velocity, pressure, and polytropic constant ---
+
+    Psi = ConformalFactor( X1_2, MassPNS )
+    W   = LorentzFactor( Psi, V_2 )
+
+    D_2 = ABS( C1 ) * SQRT( One / V_2**2 - Psi**4 / SpeedOfLight**2 )
+
+    P_2 = ( Gamma_IDEAL - One ) / Gamma_IDEAL &
+            * ( C3 - D_2 * SpeedOfLight**2 * W**2 * V_2 ) / ( W**2 * V_2 )
+
+    PolytropicConstant = P_2 / D_2**( Gamma_IDEAL )
+
+  END SUBROUTINE ApplyJumpConditions
+
+
+  SUBROUTINE NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V )
+
+    REAL(AR), INTENT(in)    :: a0, a1, a2, a3, a4
+    REAL(AR), INTENT(inout) :: V
+
+    REAL(AR) :: f, df, dV
+    LOGICAL  :: CONVERGED
+    INTEGER  :: ITERATION
+
+    INTEGER,  PARAMETER :: MAX_ITER = 10
+    REAL(AR), PARAMETER :: TOLERANCE = 1.0d-15
+
+    CONVERGED = .FALSE.
+    ITERATION = 0
+    DO WHILE( .NOT. CONVERGED .AND. ITERATION .LT. MAX_ITER )
+
+      ITERATION = ITERATION + 1
+
+      f  = a4 * V**4 + a3 * V**3 + a2 * V**2 + a1 * V + a0
+      df = Four * a4 * V**3 + Three * a3 * V**2 + Two * a2 * V + a1
+
+      dV = -f / df
+      V = V + dV
+
+      IF( ABS( dV / V ) .LT. TOLERANCE )THEN
+        CONVERGED = .TRUE.
+      END IF
+
+    END DO
+
+  END SUBROUTINE NewtonRaphson_JumpConditions
+
+
+  SUBROUTINE NewtonRaphson_PostShockVelocity &
+    ( Alpha, Psi, MassConstant, PolytropicConstant, &
+      MassPNS, AccretionRate, X1, V )
+
+    REAL(AR), INTENT(in)    :: Alpha, Psi, MassConstant, &
+                               PolytropicConstant, MassPNS, AccretionRate, X1
+    REAL(AR), INTENT(inout) :: V
+
+    REAL(AR) :: f, df, dV, W
+    INTEGER  :: ITERATION
+    LOGICAL  :: CONVERGED
+
+    INTEGER,  PARAMETER :: MAX_ITER = 20
+    REAL(AR), PARAMETER :: TOLERANCE = 1.0d-15
+
+    CONVERGED = .FALSE.
+    ITERATION = 0
+    DO WHILE( .NOT. CONVERGED .AND. ITERATION .LT. MAX_ITER )
+
+      ITERATION = ITERATION + 1
+
+      W = LorentzFactor( Psi, V )
+
+      f  = Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+             * PolytropicConstant / SpeedOfLight**2 * ( MassConstant &
+             / ( Psi**6 * Alpha * X1**2 * W * V ) )**( Gamma_IDEAL - One ) &
+             - One / ( Alpha * W ) + One
+
+      df = -Gamma_IDEAL * PolytropicConstant / SpeedOfLight**2 &
+             * ( MassConstant &
+                 / ( Psi**6 * Alpha * X1**2 * W * V ) )**( Gamma_IDEAL - One ) &
+                 * ( Psi**4 * V / SpeedOfLight**2 * W**2 + One / V ) &
+                 + W / Alpha * Psi**4 * V / SpeedOfLight**2
+
+      dV = -f / df
+      V = V + dV
+
+      IF( ABS( dV / V ) .LT. TOLERANCE ) &
+        CONVERGED = .TRUE.
+
+    END DO
+
+  END SUBROUTINE NewtonRaphson_PostShockVelocity
+
+
+  REAL(AR) FUNCTION LapseFunction( R, M )
+
+    REAL(AR), INTENT(in) :: R, M
+
+    ! --- Schwarzschild Metric in Isotropic Coordinates ---
+
+    LapseFunction = ABS( ( MAX( ABS( R ), SqrtTiny ) - Half * M ) &
+                       / ( MAX( ABS( R ), SqrtTiny ) + Half * M ) )
 
     RETURN
-  END FUNCTION InterpolateInitialConditionsOntoGrid
+  END FUNCTION LapseFunction
 
 
-  SUBROUTINE ReadParameters( FILEIN, FluidFieldParameters )
+  REAL(AR) FUNCTION ConformalFactor( R, M )
 
-    CHARACTER(LEN=*), INTENT(in)               :: FILEIN
-    REAL(AR),         INTENT(out), ALLOCATABLE :: FluidFieldParameters(:)
+    REAL(AR), INTENT(in) :: R, M
 
-    INTEGER :: i, nParams
+    ! --- Schwarzschild Metric in Isotropic Coordinates ---
 
-    ! --- Get number of parameters ---
-    nParams = 0
-    OPEN( 100, FILE = TRIM( FILEIN ) )
-    READ( 100, * ) ! --- Skip the header ---
-    DO
-      READ( 100, *, END = 10 )
-      nParams = nParams + 1
-    END DO
-    10 CLOSE( 100 )
+    ConformalFactor = One + Half * M / MAX( ABS( R ), SqrtTiny )
 
-    ! --- Allocate and read in parameters ---
-    ALLOCATE( FluidFieldParameters(nParams) )
-
-    OPEN( 100, FILE = TRIM( FILEIN ) )
-    READ( 100, * ) ! --- Skip the header ---
-    DO i = 1, nParams
-       READ( 100, '(ES23.16E2)' ) FluidFieldParameters(i)
-    END DO
-    CLOSE( 100 )
-
-    ! --- Convert from physical-units to code-units ---
-    FluidFieldParameters(1) = FluidFieldParameters(1) * Kilogram
-    FluidFieldParameters(2) = FluidFieldParameters(2)
-    FluidFieldParameters(3) = FluidFieldParameters(3) * Meter
-    FluidFieldParameters(4) = FluidFieldParameters(4) * Meter
-    FluidFieldParameters(5) = FluidFieldParameters(5) * Meter
-    FluidFieldParameters(6) = FluidFieldParameters(6) * Meter
-    FluidFieldParameters(7) = FluidFieldParameters(7) * Kilogram / Second
-
-  END SUBROUTINE ReadParameters
+    RETURN
+  END FUNCTION ConformalFactor
 
 
-  SUBROUTINE ReadData( FILEIN, nLines, FluidFieldData )
+  REAL(AR) FUNCTION LorentzFactor( Psi, V )
 
-    CHARACTER(LEN=*), INTENT(in)               :: FILEIN
-    INTEGER,          INTENT(inout)            :: nLines
-    REAL(AR),         INTENT(out), ALLOCATABLE :: FluidFieldData(:,:)
+    REAL(AR), INTENT(in) :: Psi, V
 
-    INTEGER :: i
+    LorentzFactor = One / SQRT( One - Psi**4 * ( V / SpeedOfLight )**2 )
 
-    ! --- Get number of lines in data file ---
-    nLines = 0
-    OPEN( 100, FILE = TRIM( FILEIN ) )
-    READ( 100, * ) ! --- Skip the header ---
-    READ( 100, * ) ! --- Skip the header ---
-    DO
-      READ( 100, *, END = 10 )
-      nLines = nLines + 1
-    END DO
-    10 CLOSE( 100 )
-
-    ! --- Allocate and read in data ---
-    ALLOCATE( FluidFieldData( 1:nLines, 4 ) )
-
-    OPEN( 100, FILE = TRIM( FILEIN ) )
-    READ( 100, * ) ! --- Skip the header ---
-    READ( 100, * ) ! --- Skip the header ---
-    DO i = 1, nLines
-       READ( 100, '(ES22.16E2,1x,ES22.16E2,1x,ES23.16E2,1x,ES22.16E2)' ) &
-         FluidFieldData(i,:)
-    END DO
-    CLOSE( 100 )
-
-    ! --- Convert from physical-units to code-units ---
-    FluidFieldData(:,1) = FluidFieldData(:,1) * Meter
-    FluidFieldData(:,2) = FluidFieldData(:,2) * Kilogram / Meter**3
-    FluidFieldData(:,3) = FluidFieldData(:,3) * Meter / Second
-    FluidFieldData(:,4) = FluidFieldData(:,4) * Joule / Meter**3
-
-  END SUBROUTINE ReadData
-
+    RETURN
+  END FUNCTION LorentzFactor
 
 END MODULE MF_InitializationModule_Relativistic_IDEAL
