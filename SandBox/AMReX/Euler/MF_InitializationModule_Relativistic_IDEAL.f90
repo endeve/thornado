@@ -985,30 +985,39 @@ CONTAINS
                     .AND. X1 .LE. rPerturbationOuter )THEN
 
                 IF( PerturbationOrder .EQ. 0 ) &
-                  D(iNodeX1,iX1) &
+                  uPF_K(iNodeX,iPF_D) &
                     = D(iNodeX1,iX1) &
                         * ( One + PerturbationAmplitude )
 
                 IF( PerturbationOrder .EQ. 1 ) &
-                  D(iNodeX1,iX1) &
+                  uPF_K(iNodeX,iPF_D) &
                     = D(iNodeX1,iX1) &
                         * ( One + PerturbationAmplitude * COS( X2 ) )
 
+              ELSE
+
+                uPF_K(iNodeX,iPF_D) = D(iNodeX1,iX1)
+
               END IF
+
+            ELSE
+
+              uPF_K(iNodeX,iPF_D) = D(iNodeX1,iX1)
 
             END IF
 
-            uPF_K(iNodeX,iPF_D ) = D(iNodeX1,iX1)
             uPF_K(iNodeX,iPF_V1) = V(iNodeX1,iX1)
             uPF_K(iNodeX,iPF_V2) = Zero
             uPF_K(iNodeX,iPF_V3) = Zero
-            uAF_K(iNodeX,iAF_P ) = P(iNodeX1,iX1)
-            uPF_K(iNodeX,iPF_E ) = uAF_K(iNodeX,iAF_P ) / ( Gamma_IDEAL - One )
-
+            uPF_K(iNodeX,iPF_E ) = P(iNodeX1,iX1) / ( Gamma_IDEAL - One )
 
           END DO
           END DO
           END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
 
           CALL ComputeConserved_Euler &
                  ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
