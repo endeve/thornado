@@ -31,8 +31,7 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, iCF_Ne, &
-    iDF_Sh, &
-    Shock
+    iDF_Sh
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE, ONLY: &
@@ -576,12 +575,10 @@ CONTAINS
     REAL(DP) :: U_K0(0:2*nDimsX,nCF)
 
     D(:,:,:,:,iDF_Sh) = Zero
-    Shock = Zero
 
     IF( .NOT. UseTroubledCellIndicator )THEN
 
       D(:,:,:,:,iDF_Sh) = 1.1_DP * LimiterThreshold
-      Shock = 1.1_DP * LimiterThreshold
       RETURN
 
     END IF
@@ -673,8 +670,6 @@ CONTAINS
         = MAX( MAXVAL( D(:,iX1,iX2,iX3,iDF_Sh) ), &
                SUM( ABS( U_K(0,iCF_E) - U_K0(1:2*nDimsX,iCF_E) ) ) &
                  / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_E) ) ) )
-
-      Shock(iX1,iX2,iX3) = MAXVAL( D(:,iX1,iX2,iX3,iDF_Sh) )
 
     END DO
     END DO
