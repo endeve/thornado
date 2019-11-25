@@ -101,6 +101,7 @@ contains
     ( nNodes, nDimsX, nE, swE, eL_MeV, eR_MeV, zoomE, &
       EquationOfStateTableName_Option, External_EOS, &
       Gamma_IDEAL_Option, &
+      PositivityLimiter_Option, UpperBry1_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option )
 
@@ -108,6 +109,7 @@ contains
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
 
     character(len=*), intent(in), optional :: EquationOfStateTableName_Option
+
 #ifdef MICROPHYSICS_WEAKLIB
     type(EquationOfStateTableType), pointer, &
                       intent(in), optional :: External_EOS
@@ -116,6 +118,8 @@ contains
 #endif
 
     real(dp),         intent(in), optional :: Gamma_IDEAL_Option
+    logical,          intent(in), optional :: PositivityLimiter_Option
+    real(dp),         intent(in), optional :: UpperBry1_Option
     character(len=*), intent(in), optional :: OpacityTableName_EmAb_Option
     character(len=*), intent(in), optional :: OpacityTableName_Iso_Option
     character(len=*), intent(in), optional :: OpacityTableName_NES_Option
@@ -123,6 +127,20 @@ contains
 
     integer  :: nX(3), i
     real(dp) :: eL, eR
+    logical  :: PositivityLimiter
+    real(dp) :: UpperBry1
+
+    IF( PRESENT(PositivityLimiter_Option) )THEN
+      PositivityLimiter = PositivityLimiter_Option
+    ELSE
+      PositivityLimiter = .FALSE.
+    END IF
+
+    IF( PRESENT(UpperBry1_Option) )THEN
+      UpperBry1 = UpperBry1_Option
+    ELSE
+      UpperBry1 = 1.0d0 - EPSILON(1.0d0)
+    END IF
 
     ! --- Convert from MeV (expected) to thornado code units ---
 
@@ -183,9 +201,9 @@ contains
 
     call InitializePositivityLimiter_TwoMoment &
            ( Min_1_Option = 0.0_DP + SqrtTiny, &
-             Max_1_Option = 1.0d0 - EPSILON(1.0d0), &
+             Max_1_Option = UpperBry1, &
              Min_2_Option = 0.0_DP + SqrtTiny, &
-             UsePositivityLimiter_Option = .FALSE., &
+             UsePositivityLimiter_Option = PositivityLimiter, &
              Verbose_Option = .FALSE. )
 
     ! --- Nuclear Equation of State ---
