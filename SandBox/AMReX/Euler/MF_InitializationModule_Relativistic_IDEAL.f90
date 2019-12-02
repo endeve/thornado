@@ -747,7 +747,7 @@ CONTAINS
     REAL(AR) :: Alpha, Psi, V0, VSq, W
     REAL(AR) :: dX1, PolytropicConstant, MassConstant
     REAL(AR) :: MassPNS, ShockRadius, AccretionRate, MachNumber
-    LOGICAL  :: FirstUnShockedElement = .FALSE.
+    LOGICAL  :: FirstPreShockElement = .FALSE.
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(AR), ALLOCATABLE :: D(:,:), V(:,:), P(:,:)
     LOGICAL  :: ApplyPerturbation
@@ -796,9 +796,9 @@ CONTAINS
       WRITE(*,'(6x,A,ES9.2E3)') &
         'Perturbation amplitude: ', PerturbationAmplitude
       WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'Inner perturbation radius: ', rPerturbationInner / Kilometer, ' km'
+        'Inner radius of perturbation: ', rPerturbationInner / Kilometer, ' km'
       WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'Outer perturbation radius: ', rPerturbationOuter / Kilometer, ' km'
+        'Outer radius of perturbation: ', rPerturbationOuter / Kilometer, ' km'
     END IF
 
     uGF_K = Zero
@@ -821,7 +821,8 @@ CONTAINS
     ALLOCATE( V(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
     ALLOCATE( P(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
 
-    ! --- Compute fields, pre-shock ---
+    ! --- Locate first un-shocked fluid element ---
+
     X1 = Zero
     DO iX1 = iX_B1(1), iX_E1(1)
       DO iNodeX1 = 1, nNodesX(1)
@@ -831,9 +832,7 @@ CONTAINS
 
         IF( X1 .LE. ShockRadius ) CYCLE
 
-        !  --- Detect first element of un-shocked fluid ---
-
-        IF( X1 .GT. ShockRadius .AND. .NOT. FirstUnShockedElement )THEN
+        IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
 
           iX1_1     = iX1
           iNodeX1_1 = iNodeX1
@@ -852,9 +851,21 @@ CONTAINS
 
           END IF
 
-          FirstUnShockedElement = .TRUE.
+          FirstPreShockElement = .TRUE.
 
         END IF
+
+      END DO
+    END DO
+
+    ! --- Compute fields, pre-shock ---
+
+    DO iX1 = iX_E1(1), iX1_1, -1
+      DO iNodeX1 = nNodesX(1), 1, -1
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        IF( X1 .LE. ShockRadius ) CYCLE
 
         Alpha = LapseFunction  ( X1, MassPNS )
         Psi   = ConformalFactor( X1, MassPNS )
@@ -914,7 +925,7 @@ CONTAINS
 
     V0 = V_2
 
-    DO iX1 = iX_E1(1), iX_B1(1), -1
+    DO iX1 = iX1_2, iX_B1(1), -1
       DO iNodeX1 = nNodesX(1), 1, -1
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
@@ -940,6 +951,8 @@ CONTAINS
 
       END DO
     END DO
+
+    ! --- Map to 3D domain ---
 
     DO iLevel = 0, nLevels-1
 
