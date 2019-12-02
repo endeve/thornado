@@ -24,6 +24,8 @@ PrimitiveConserved: \
 TimeStepper: \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_TroubledCellIndicatorModule.o \
+	TwoMoment_SlopeLimiterModule_OrderV.o \
 	TwoMoment_PositivityLimiterModule_OrderV.o \
 	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
@@ -33,6 +35,8 @@ TimeStepper: \
 	$(FLINKER) $(FLAGS) -o TimeStepper_$(MACHINE) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_TroubledCellIndicatorModule.o \
+	TwoMoment_SlopeLimiterModule_OrderV.o \
 	TwoMoment_PositivityLimiterModule_OrderV.o \
 	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
@@ -44,6 +48,8 @@ TimeStepper: \
 ApplicationDriver: \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_TroubledCellIndicatorModule.o \
+	TwoMoment_SlopeLimiterModule_OrderV.o \
 	TwoMoment_PositivityLimiterModule_OrderV.o \
 	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
@@ -54,6 +60,8 @@ ApplicationDriver: \
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
 	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMoment_TroubledCellIndicatorModule.o \
+	TwoMoment_SlopeLimiterModule_OrderV.o \
 	TwoMoment_PositivityLimiterModule_OrderV.o \
 	TwoMoment_OpacityModule_OrderV.o \
 	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
@@ -110,6 +118,14 @@ TwoMoment_UtilitiesModule.o: \
   KindModule.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_UtilitiesModule.F90
+
+TwoMoment_TroubledCellIndicatorModule.o: \
+  KindModule.o \
+  TwoMoment_TroubledCellIndicatorModule.F90
+
+TwoMoment_SlopeLimiterModule_OrderV.o: \
+  KindModule.o \
+  TwoMoment_SlopeLimiterModule_OrderV.F90
 
 TwoMoment_PositivityLimiterModule_OrderV.o: \
   KindModule.o \

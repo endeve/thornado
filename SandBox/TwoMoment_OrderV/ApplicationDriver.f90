@@ -54,6 +54,13 @@ PROGRAM ApplicationDriver
     InitializeClosure_TwoMoment
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeFromConserved_TwoMoment
+  USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
+    InitializeTroubledCellIndicator_TwoMoment, &
+    FinalizeTroubledCellIndicator_TwoMoment
+  USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
+    InitializeSlopeLimiter_TwoMoment, &
+    FinalizeSlopeLimiter_TwoMoment, &
+    ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment, &
@@ -205,8 +212,8 @@ PROGRAM ApplicationDriver
     CASE( 'TransparentShock' )
 
       nX  = [ 64, 1, 1 ]
-      xL  = [ 1.0d1, 0.0_DP, 0.0_DP ]
-      xR  = [ 5.0d2, 1.0_DP, 1.0_DP ]
+      xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
+      xR  = [ 2.0d0, 1.0_DP, 1.0_DP ]
       bcX = [ 12, 0, 0 ]
 
       nE  = 32
@@ -218,9 +225,9 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK2'
 
-      t_end   = 1.0d3
+      t_end   = 2.0d1
       iCycleD = 1
-      iCycleW = 50
+      iCycleW = 250
       maxCycles = 1000000
 
       V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
@@ -246,7 +253,7 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 1, 1 ], &
+             = [ 1, 0, 0 ], &
            bcX_Option &
              = bcX, &
            xL_Option &
@@ -311,6 +318,23 @@ PROGRAM ApplicationDriver
 
   CALL InitializeClosure_TwoMoment
 
+  ! --- Initialize Troubled Cell Indicator ---
+
+  CALL InitializeTroubledCellIndicator_TwoMoment &
+         ( UseTroubledCellIndicator_Option &
+             = .TRUE., &
+           C_TCI_Option &
+             = 0.1_DP, &
+           Verbose_Option &
+             = .TRUE. )
+
+  ! --- Initialize Slope Limiter ---
+
+  CALL InitializeSlopeLimiter_TwoMoment &
+         ( BetaTVD_Option = 2.0_DP, &
+           UseSlopeLimiter_Option = .TRUE., &
+           Verbose_Option = .TRUE. )
+
   ! --- Initialize Positivity Limiter ---
 
   CALL InitializePositivityLimiter_TwoMoment &
@@ -335,6 +359,11 @@ PROGRAM ApplicationDriver
 
   CALL InitializeFields( V_0 )
 
+  ! --- Apply Slope Limiter to Initial Data ---
+
+  CALL ApplySlopeLimiter_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
+
   ! --- Apply Positivity Limiter to Initial Data ---
 
   CALL ApplyPositivityLimiter_TwoMoment &
@@ -351,7 +380,7 @@ PROGRAM ApplicationDriver
   ! --- Evolve ---
 
   t = 0.0_DP
-  dt = 0.5_DP * MINVAL( (xR-xL) / DBLE(nX) ) &
+  dt = 0.3_DP * MINVAL( (xR-xL) / DBLE(nX) ) &
        / ( Two * DBLE(nNodes-1) + One )
 
   WRITE(*,*)
@@ -406,6 +435,10 @@ PROGRAM ApplicationDriver
            WriteRF_Option = .TRUE. )
 
   ! --- Finalize ---
+
+  CALL FinalizeTroubledCellIndicator_TwoMoment
+
+  CALL FinalizeSlopeLimiter_TwoMoment
 
   CALL FinalizePositivityLimiter_TwoMoment
 
