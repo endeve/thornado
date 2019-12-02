@@ -1,4 +1,5 @@
-MICROPHYSICS = WEAKLIB
+MICROPHYSICS   = WEAKLIB
+GRAVITY_SOLVER = POSEIDON_NEWTON
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -12,12 +13,14 @@ all: ApplicationDriver
 ApplicationDriver: \
 	$(weaklib) \
 	$(thornado) \
+	ProgenitorModule.o \
 	InitializationModule.o \
 	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
+	ProgenitorModule.o \
 	InitializationModule.o \
 	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o \

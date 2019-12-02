@@ -68,7 +68,7 @@ MODULE InitializationModule
     nPF, &
     nAF, &
     nDF, &
-    CreateFluidFields
+    SetUnitsFluidFields
   USE Euler_SlopeLimiterModule,         ONLY: &
     InitializeSlopeLimiter_Euler
   USE PolynomialBasisMappingModule,     ONLY: &
@@ -367,8 +367,7 @@ CONTAINS
       '', 'CFL: ', &
       CFL * ( amrex_spacedim * ( Two * nNodes - One ) )
 
-    ! --- Allocates 'Shock' and sets units for fluid fields ---
-    CALL CreateFluidFields( nX, swX, amrex_parallel_ioprocessor() )
+    CALL SetUnitsFluidFields
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

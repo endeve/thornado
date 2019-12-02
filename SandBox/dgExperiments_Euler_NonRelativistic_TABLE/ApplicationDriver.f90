@@ -32,7 +32,11 @@ PROGRAM ApplicationDriver
   USE EquationOfStateModule_TABLE, ONLY: &
     MinD, MaxD, MinT, MaxT, MinY, MaxY
   USE FluidFieldsModule, ONLY: &
-    uCF, uPF, uAF, uDF
+    uCF, iCF_D, uPF, uAF, uDF
+  USE GravitySolutionModule_Newtonian_Poseidon, ONLY: &
+    InitializeGravitySolver_Newtonian_Poseidon, &
+    FinalizeGravitySolver_Newtonian_Poseidon, &
+    SolveGravity_Newtonian_Poseidon
   USE InitializationModule, ONLY: &
     InitializeFields
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -66,21 +70,27 @@ PROGRAM ApplicationDriver
   CHARACTER(32)  :: RiemannProblemName
   CHARACTER(32)  :: CoordinateSystem
   CHARACTER(128) :: EosTableName
+  CHARACTER(32)  :: ProgenitorFile
   LOGICAL        :: wrt
   LOGICAL        :: UseSlopeLimiter
   LOGICAL        :: UseCharacteristicLimiting
   LOGICAL        :: UseTroubledCellIndicator
   LOGICAL        :: UsePositivityLimiter
+  LOGICAL        :: SelfGravity
   INTEGER        :: iCycle, iCycleD
   INTEGER        :: nX(3), bcX(3), nNodes, nStages
   REAL(DP)       :: t, dt, t_end, dt_wrt, t_wrt, wTime
-  REAL(DP)       :: xL(3), xR(3)
+  REAL(DP)       :: xL(3), xR(3), zoomX(3)
   REAL(DP)       :: BetaTVD, BetaTVB
   REAL(DP)       :: LimiterThresholdParameter
 
-  ProgramName = 'Advection'
+  ProgramName = 'GravitationalCollapse'
 
-  EosTableName = 'wl-EOS-SFHo-15-25-50-noBCK.h5'
+  EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
+
+  ProgenitorFile = '../Progenitors/WH07_15M_Sun.h5'
+
+  SelfGravity = .FALSE.
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -93,6 +103,7 @@ PROGRAM ApplicationDriver
       nX = [ 08, 01, 01 ]
       xL = [ 0.0d0, 0.0d0, 0.0d0 ] * Kilometer
       xR = [ 1.0d2, 1.0d2, 1.0d2 ] * Kilometer
+      zoomX = One
 
       bcX = [ 1, 1, 1 ]
 
@@ -122,6 +133,7 @@ PROGRAM ApplicationDriver
       nX = [ 100, 1, 1 ]
       xL = [ - 5.0_DP,   0.0_DP, 0.0_DP ] * Kilometer
       xR = [ + 5.0_DP, + 1.0_DP, 1.0_DP ] * Kilometer
+      zoomX = One
 
       bcX = [ 2, 0, 0 ]
 
@@ -151,6 +163,7 @@ PROGRAM ApplicationDriver
       nX = [ 128, 16, 1 ]
       xL = [ 1.0d-3 * Kilometer, 0.0_DP, 0.0_DP ]
       xR = [ 2.0_DP * Kilometer, Pi,     4.0_DP ]
+      zoomX = One
 
       bcX = [ 3, 3, 0 ]
 
@@ -179,6 +192,7 @@ PROGRAM ApplicationDriver
       nX = [ 100, 100, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+      zoomX = One
 
       bcX = [ 2, 2, 0 ]
 
@@ -206,6 +220,7 @@ PROGRAM ApplicationDriver
       nX = [ 64, 64, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
       xR = [ 0.3_DP, 0.3_DP, 1.0_DP ] * Kilometer
+      zoomX = One
 
       bcX = [ 3, 3, 0 ]
 
@@ -226,6 +241,36 @@ PROGRAM ApplicationDriver
       t_end   = 2.500_DP * Millisecond
       dt_wrt  = 0.045_DP * Millisecond
 
+    CASE( 'GravitationalCollapse' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      nX = [ 256, 1, 1 ]
+      xL = [ 0.0d0 * Kilometer, 0.0_DP, 0.0_DP ]
+      xR = [ 8.0d3 * Kilometer, Pi,      TwoPi ]
+      zoomX = [ 1.020059256924853_DP, 1.0_DP, 1.0_DP ]
+
+      bcX = [30, 0, 0]
+
+      nNodes  = 2
+      nStages = 2
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .FALSE.
+      UsePositivityLimiter      = .TRUE.
+
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 0.30_DP
+
+      SelfGravity = .TRUE.
+
+      iCycleD = 10
+      t_end   = 4.0d2  * Millisecond
+      dt_wrt  = 5.0d-1 * Millisecond
+
     CASE DEFAULT
 
       WRITE(*,*)
@@ -235,6 +280,7 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  RiemannProblemSpherical'
       WRITE(*,'(A)')     '  Jet'
       WRITE(*,'(A)')     '  Implosion'
+      WRITE(*,'(A)')     '  GravitationalCollapse'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
@@ -246,13 +292,15 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 1, 1 ], &
+             = [ 1, 1, 0 ], &
            bcX_Option &
              = bcX, &
            xL_Option &
              = xL, &
            xR_Option &
              = xR, &
+           zoomX_Option &
+             = zoomX, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -302,7 +350,9 @@ PROGRAM ApplicationDriver
          ( AdvectionProfile_Option &
              = TRIM( AdvectionProfile ), &
            RiemannProblemName_Option &
-             = TRIM( RiemannProblemName ) )
+             = TRIM( RiemannProblemName ), &
+           ProgenitorFileName_Option &
+             = TRIM( ProgenitorFile ) )
 
   CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
@@ -312,6 +362,16 @@ PROGRAM ApplicationDriver
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+  IF( SelfGravity )THEN
+
+    CALL InitializeGravitySolver_Newtonian_Poseidon
+
+    CALL SolveGravity_Newtonian_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, &
+             uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+             uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
+  END IF
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
@@ -362,8 +422,19 @@ PROGRAM ApplicationDriver
 
     END IF
 
-    CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, uDF, Euler_ComputeIncrement_DG_Explicit )
+    IF( SelfGravity )THEN
+
+      CALL UpdateFluid_SSPRK &
+            ( t, dt, uGF, uCF, uDF, &
+              Euler_ComputeIncrement_DG_Explicit, &
+              SolveGravity_Newtonian_Poseidon )
+
+    ELSE
+
+      CALL UpdateFluid_SSPRK &
+            ( t, dt, uGF, uCF, uDF, Euler_ComputeIncrement_DG_Explicit )
+
+    END IF
 
     t = t + dt
 
@@ -411,6 +482,8 @@ PROGRAM ApplicationDriver
   CALL FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 
   CALL FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
+
+  CALL FinalizeGravitySolver_Newtonian_Poseidon
 
   CALL FinalizeEquationOfState
 

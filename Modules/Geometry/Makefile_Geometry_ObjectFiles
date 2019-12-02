@@ -3,4 +3,5 @@ GEOMETRY = \
   GeometryComputationModule.o \
   GeometryFieldsModuleE.o \
   GeometryComputationModuleE.o \
-  GravitySolutionModule_Newtonian_PointMass.o
+  GravitySolutionModule_Newtonian_PointMass.o \
+  GravitySolutionModule_Newtonian_Poseidon.o

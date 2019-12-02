@@ -95,6 +95,10 @@ PROGRAM ApplicationDriver
   REAL(DP), ALLOCATABLE :: FluidFieldParameters(:)
   REAL(DP)              :: MassPNS, RadiusPNS, ShockRadius, &
                            AccretionRate, MachNumber
+  LOGICAL               :: ApplyPerturbation
+  INTEGER               :: PerturbationOrder
+  REAL(DP)              :: PerturbationAmplitude, &
+                           rPerturbationInner, rPerturbationOuter
 
   LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
   REAL(DP) :: Timer_Evolution
@@ -259,9 +263,15 @@ PROGRAM ApplicationDriver
       AccretionRate = 0.3_DP * SolarMass / Second
       MachNumber    = 10.0_DP
 
+      ApplyPerturbation     = .TRUE.
+      PerturbationOrder     = 1
+      PerturbationAmplitude = 0.1_DP
+      rPerturbationInner    = 260.0_DP * Kilometer
+      rPerturbationOuter    = 280.0_DP * Kilometer
+
       Gamma = 4.0d0 / 3.0d0
 
-      nX = [ 256, 1, 1 ]
+      nX = [ 128, 16, 1 ]
       xL = [ RadiusPNS, 0.0_DP, 0.0_DP ]
       xR = [ Two * ShockRadius, Pi, TwoPi ]
 
@@ -389,8 +399,13 @@ PROGRAM ApplicationDriver
            Eblast_Option        = Eblast, &
            MassPNS_Option       = MassPNS, &
            ShockRadius_Option   = ShockRadius, &
-           AccretionRate_Option = AccretionRate, &
-           MachNumber_Option    = MachNumber  )
+           AccretionRate_Option     = AccretionRate, &
+           MachNumber_Option        = MachNumber, &
+           ApplyPerturbation_Option = ApplyPerturbation, &
+           PerturbationOrder_Option = PerturbationOrder, &
+           PerturbationAmplitude_Option = PerturbationAmplitude, &
+           rPerturbationInner_Option = rPerturbationInner, &
+           rPerturbationOuter_Option = rPerturbationOuter )
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )

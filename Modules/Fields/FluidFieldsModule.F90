@@ -144,6 +144,7 @@ MODULE FluidFieldsModule
 
   PUBLIC :: CreateFluidFields
   PUBLIC :: DestroyFluidFields
+  PUBLIC :: SetUnitsFluidFields
 
 CONTAINS
 

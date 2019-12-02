@@ -3,10 +3,15 @@ MODULE GravitySolutionModule
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, nDOFX
+    nNodesX, nDOFX, &
+    iX_B0, iX_E0, iX_B1, iX_E1
   USE UtilitiesModule, ONLY: &
     NodeNumberX, &
     NodeNumberX_X1
+  USE FluidFieldsModule, ONLY: &
+    uCF
+  USE GeometryFieldsModule, ONLY: &
+    uGF
   USE PolynomialBasisModule_Lagrange, ONLY: &
      L_X1,  L_X2,  L_X3, &
     dL_X1, dL_X2, dL_X3
@@ -16,7 +21,7 @@ MODULE GravitySolutionModule
     InitializeGravitySolver_Newtonian_PointMass, &
     FinalizeGravitySolver_Newtonian_PointMass, &
     SolveGravity_Newtonian_PointMass
-  USE GravitySolutionModule_Newtonian_Poseidon, ONLY: &
+  USE GravitySolutionModule_Newtonian_Poseidon_Old, ONLY: &
     InitializeGravitySolver_Newtonian_Poseidon, &
     FinalizeGravitySolver_Newtonian_Poseidon, &
     SolveGravity_Newtonian_Poseidon

@@ -46,7 +46,10 @@ CONTAINS
                  SphericalRiemannProblemName_Option, &
                  nDetCells_Option, Eblast_Option, &
                  MassPNS_Option, ShockRadius_Option, &
-                 AccretionRate_Option, MachNumber_Option )
+                 AccretionRate_Option, MachNumber_Option, &
+                 ApplyPerturbation_Option, PerturbationOrder_Option, &
+                 PerturbationAmplitude_Option, &
+                 rPerturbationInner_Option, rPerturbationOuter_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemName_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblem2dName_Option
@@ -57,20 +60,30 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: ShockRadius_Option
     REAL(DP),         INTENT(in), OPTIONAL :: AccretionRate_Option
     REAL(DP),         INTENT(in), OPTIONAL :: MachNumber_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: ApplyPerturbation_Option
+    INTEGER,          INTENT(in), OPTIONAL :: PerturbationOrder_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: PerturbationAmplitude_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: rPerturbationInner_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: rPerturbationOuter_Option
 
     CHARACTER(LEN=64) :: RiemannProblemName = 'Sod'
     CHARACTER(LEN=64) :: RiemannProblem2dName = 'DzB2002'
     CHARACTER(LEN=64) :: SphericalRiemannProblemName = 'SphericalSod'
 
-    ! --- Sedov-Taylor Blast Wave ---
+    ! --- Sedov-Taylor Blast Wave (Defaults) ---
     INTEGER  :: nDetCells = 1
-    REAL(DP) :: Eblast = 1.0d-3
+    REAL(DP) :: Eblast    = 1.0d-3
 
-    ! --- Standing Accretion Shock ---
-    REAL(DP) :: MassPNS = 1.4_DP * SolarMass
-    REAL(DP) :: ShockRadius = 180.0_DP * Kilometer
-    REAL(DP) :: AccretionRate = 0.3_DP * SolarMass / Second
-    REAL(DP) :: MachNumber    = 10.0_DP
+    ! --- Standing Accretion Shock (Defaults) ---
+    REAL(DP) :: MassPNS               = 1.4_DP * SolarMass
+    REAL(DP) :: ShockRadius           = 180.0_DP * Kilometer
+    REAL(DP) :: AccretionRate         = 0.3_DP * SolarMass / Second
+    REAL(DP) :: MachNumber            = 10.0_DP
+    LOGICAL  :: ApplyPerturbation     = .FALSE.
+    INTEGER  :: PerturbationOrder     = 0
+    REAL(DP) :: PerturbationAmplitude = 0.0_DP
+    REAL(DP) :: rPerturbationInner    = 0.0_DP
+    REAL(DP) :: rPerturbationOuter    = 0.0_DP
 
     IF( PRESENT( RiemannProblemName_Option ) ) &
       RiemannProblemName = TRIM( RiemannProblemName_Option )
@@ -92,6 +105,16 @@ CONTAINS
       AccretionRate = AccretionRate_Option
     IF( PRESENT( MachNumber_Option ) ) &
       MachNumber = MachNumber_Option
+    IF( PRESENT( ApplyPerturbation_Option ) ) &
+      ApplyPerturbation = ApplyPerturbation_Option
+    IF( PRESENT( PerturbationOrder_Option ) ) &
+      PerturbationOrder = PerturbationOrder_Option
+    IF( PRESENT( PerturbationAmplitude_Option ) ) &
+      PerturbationAmplitude = PerturbationAmplitude_Option
+    IF( PRESENT( rPerturbationInner_Option ) ) &
+      rPerturbationInner = rPerturbationInner_Option
+    IF( PRESENT( rPerturbationOuter_Option ) ) &
+      rPerturbationOuter = rPerturbationOuter_Option
 
     WRITE(*,*)
     WRITE(*,'(A,A)') '    INFO: ', TRIM( ProgramName )
@@ -102,8 +125,8 @@ CONTAINS
 
         CALL InitializeFields_RiemannProblem_Relativistic &
                ( TRIM( RiemannProblemName ), &
-                 nDetCells_Option = nDetCells_Option, &
-                 Eblast_Option    = Eblast_Option )
+                 nDetCells_Option = nDetCells, &
+                 Eblast_Option    = Eblast )
 
       CASE( 'RiemannProblem2d' )
 
@@ -131,7 +154,9 @@ CONTAINS
       CASE( 'StandingAccretionShock' )
 
         CALL InitializeFields_StandingAccretionShock_Relativistic &
-               ( MassPNS, ShockRadius, AccretionRate, MachNumber )
+               ( MassPNS, ShockRadius, AccretionRate, MachNumber, &
+                 ApplyPerturbation, PerturbationOrder, PerturbationAmplitude, &
+                 rPerturbationInner, rPerturbationOuter )
 
     END SELECT
 
@@ -908,15 +933,22 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic &
-    ( MassPNS, ShockRadius, AccretionRate, MachNumber )
+    ( MassPNS, ShockRadius, AccretionRate, MachNumber, &
+      ApplyPerturbation, PerturbationOrder, PerturbationAmplitude, &
+      rPerturbationInner, rPerturbationOuter )
 
     REAL(DP), INTENT(in) :: MassPNS, ShockRadius, AccretionRate, MachNumber
+    LOGICAL,  INTENT(in) :: ApplyPerturbation
+    INTEGER,  INTENT(in) :: PerturbationOrder
+    REAL(DP), INTENT(in) :: PerturbationAmplitude
+    REAL(DP), INTENT(in) :: rPerturbationInner
+    REAL(DP), INTENT(in) :: rPerturbationOuter
 
     INTEGER  :: iX1, iX2, iX3, iNodeX1, iNodeX2, iNodeX3, iNodeX
     INTEGER  :: iX1_1, iX1_2, iNodeX1_1, iNodeX1_2
     REAL(DP) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_2
     REAL(DP) :: Alpha, Psi, V0, VSq, W
-    REAL(DP) :: X1, dX1, PolytropicConstant, MassConstant
+    REAL(DP) :: X1, X2, dX1, PolytropicConstant, MassConstant
     REAL(DP) :: D(1:nNodesX(1),iX_B1(1):iX_E1(1))
     REAL(DP) :: V(1:nNodesX(1),iX_B1(1):iX_E1(1))
     REAL(DP) :: P(1:nNodesX(1),iX_B1(1):iX_E1(1))
@@ -932,6 +964,17 @@ CONTAINS
       ' Msun/s'
     WRITE(*,'(6x,A,ES9.2E3)') &
       'Mach number:    ', MachNumber
+    WRITE(*,*)
+    WRITE(*,'(6x,A,L)') &
+      'Apply Perturbation: ', ApplyPerturbation
+    WRITE(*,'(6x,A,I1)') &
+      'Perturbation order: ', PerturbationOrder
+    WRITE(*,'(6x,A,ES9.2E3)') &
+      'Perturbation amplitude: ', PerturbationAmplitude
+    WRITE(*,'(6x,A,ES9.2E3,A)') &
+      'Inner perturbation radius: ', rPerturbationInner / Kilometer, ' km'
+    WRITE(*,'(6x,A,ES9.2E3,A)') &
+      'Outer perturbation radius: ', rPerturbationOuter / Kilometer, ' km'
 
     ! --- Compute fields, pre-shock ---
     DO iX1 = iX_B1(1), iX_E1(1)
@@ -1050,14 +1093,33 @@ CONTAINS
       END DO
     END DO
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
       DO iNodeX3 = 1, nNodesX(3)
       DO iNodeX2 = 1, nNodesX(2)
       DO iNodeX1 = 1, nNodesX(1)
 
         iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+        IF( ApplyPerturbation )THEN
+
+          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+          X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+          IF( X1 .GE. rPerturbationInner .AND. X1 .LE. rPerturbationOuter )THEN
+
+            IF( PerturbationOrder .EQ. 0 ) &
+              D(iNodeX1,iX1) &
+                = D(iNodeX1,iX1) * ( One + PerturbationAmplitude )
+
+            IF( PerturbationOrder .EQ. 1 ) &
+              D(iNodeX1,iX1) &
+                = D(iNodeX1,iX1) * ( One + PerturbationAmplitude * COS( X2 ) )
+
+          END IF
+
+        END IF
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = D(iNodeX1,iX1)
         uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V(iNodeX1,iX1)
@@ -1088,7 +1150,6 @@ CONTAINS
       END DO
       END DO
       END DO
-
     END DO
     END DO
     END DO

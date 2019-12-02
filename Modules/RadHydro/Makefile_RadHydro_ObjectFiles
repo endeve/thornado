@@ -2,7 +2,7 @@ RAD_HYDRO = \
   TallyModule.o \
   GravitySolutionUtilitiesModule.o \
   GravitySolutionModule_Newtonian_PointMass_Old.o \
-  GravitySolutionModule_Newtonian_Poseidon.o \
+  GravitySolutionModule_Newtonian_Poseidon_Old.o \
   GravitySolutionModule.o \
   RiemannSolverModule.o \
   EulerEquationsUtilitiesModule.o \
