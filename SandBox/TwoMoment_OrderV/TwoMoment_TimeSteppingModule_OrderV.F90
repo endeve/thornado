@@ -13,6 +13,10 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
     nCF
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies
+  USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
+    DetectTroubledCells_TwoMoment
+  USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
+    ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_DiscretizationModule_Streaming_OrderV, ONLY: &
@@ -49,12 +53,18 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
-      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
+      GX(1:nDOFX, &
+         iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nGF)
     REAL(DP), INTENT(inout) :: &
-      UF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
+      UF(1:nDOFX, &
+         iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nCF)
     REAL(DP), INTENT(inout) :: &
-      UR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
-                 iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+      UR(1:nDOFZ, &
+         iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nCR,1:nSpecies)
 
     INTEGER :: iS, jS
 
@@ -80,7 +90,13 @@ CONTAINS
 
         IF( jS == iS - 1 )THEN
 
+          CALL DetectTroubledCells_TwoMoment &
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, Ui )
+
           ! --- Apply Limiters ---
+
+          CALL ApplySLopeLimiter_TwoMoment &
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, UF, Ui )
 
           CALL ApplyPositivityLimiter_TwoMoment &
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, UF, Ui )
@@ -141,6 +157,12 @@ CONTAINS
         END IF
 
       END DO
+
+      CALL DetectTroubledCells_TwoMoment &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, Ui )
+
+      CALL ApplySlopeLimiter_TwoMoment &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, UF, Ui )
 
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, UF, Ui )
@@ -334,8 +356,9 @@ CONTAINS
     REAL(DP), ALLOCATABLE, INTENT(inout) :: Array7D(:,:,:,:,:,:,:)
 
     ALLOCATE &
-      ( Array7D(nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
-                      iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+      ( Array7D(nDOFZ, &
+                iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
                 nCR,nSpecies) )
 
     Array7D = Zero

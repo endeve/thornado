@@ -1763,22 +1763,34 @@ CONTAINS
     REAL(DP), INTENT(in) :: Gm_dd_11
     REAL(DP)             :: FaceVelocity_X1(1:3)
 
-    REAL(DP) :: aM, aP, D_M
+!!$    REAL(DP) :: aM, aP, D_M
+!!$
+!!$    aM = MAX( Zero, &
+!!$              - ( V1_L - Cs_L / Gm_dd_11 ), &
+!!$              - ( V1_R - Cs_R / Gm_dd_11 ), &
+!!$              - ( V1_L + Cs_L / Gm_dd_11 ), &
+!!$              - ( V1_R + Cs_R / Gm_dd_11 ) )
+!!$    aP = MAX( Zero, &
+!!$              + ( V1_L + Cs_L / Gm_dd_11 ), &
+!!$              + ( V1_R + Cs_R / Gm_dd_11 ), &
+!!$              + ( V1_L - Cs_L / Gm_dd_11 ), &
+!!$              + ( V1_R - Cs_R / Gm_dd_11 ) )
+!!$
+!!$    D_M = ( aM + V1_L ) * D_L + ( aP - V1_R ) * D_R
+!!$
+!!$    FaceVelocity_X1(1) &
+!!$      = ( aM + V1_L ) * D_L * V1_L + ( aP - V1_R ) * D_R * V1_R &
+!!$        - ( P_R - P_L ) / Gm_dd_11
+!!$    FaceVelocity_X1(2) &
+!!$      = ( aM + V1_L ) * D_L * V2_L + ( aP - V1_R ) * D_R * V2_R
+!!$    FaceVelocity_X1(3) &
+!!$      = ( aM + V1_L ) * D_L * V3_L + ( aP - V1_R ) * D_R * V3_R
+!!$
+!!$    FaceVelocity_X1 = FaceVelocity_X1 / D_M
 
-    aM = MAX( Zero, Cs_L / Gm_dd_11 - V1_L, Cs_R / Gm_dd_11 - V1_R )
-    aP = MAX( Zero, Cs_L / Gm_dd_11 + V1_L, Cs_R / Gm_dd_11 + V1_R )
-
-    D_M = ( aM + V1_L ) * D_L + ( aP - V1_R ) * D_R
-
-    FaceVelocity_X1(1) &
-      = ( aM + V1_L ) * D_L * V1_L + ( aP - V1_R ) * D_R * V1_R &
-        - ( P_R - P_L ) / Gm_dd_11
-    FaceVelocity_X1(2) &
-      = ( aM + V1_L ) * D_L * V2_L + ( aP - V1_R ) * D_R * V2_R
-    FaceVelocity_X1(3) &
-      = ( aM + V1_L ) * D_L * V3_L + ( aP - V1_R ) * D_R * V3_R
-
-    FaceVelocity_X1 = FaceVelocity_X1 / D_M
+    FaceVelocity_X1(1) = Half * ( V1_L + V1_R )
+    FaceVelocity_X1(2) = Half * ( V2_L + V2_R )
+    FaceVelocity_X1(3) = Half * ( V3_L + V3_R )
 
     RETURN
   END FUNCTION FaceVelocity_X1
