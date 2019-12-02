@@ -25,7 +25,7 @@ PROGRAM main
 
   CALL InitializeProgram
   print*, 'Yay'
-  CALL FinalizeProgram(GEOM)
+  CALL FinalizeProgram( GEOM )
 
 
 END PROGRAM main
