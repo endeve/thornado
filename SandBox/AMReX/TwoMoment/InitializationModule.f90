@@ -63,6 +63,10 @@ MODULE InitializationModule
     nPR,      &
     nSpecies, &
     CreateRadiationFields
+  USE GeometryFieldsModule,             ONLY: &
+    CreateGeometryFields
+  USE FluidFieldsModule,                ONLY: &
+    CreateFluidFields
   USE PolynomialBasisMappingModule,     ONLY: &
     InitializePolynomialBasisMapping
   USE PolynomialBasisModule_Lagrange,   ONLY: &
@@ -178,7 +182,7 @@ CONTAINS
         CALL MF_uCR(iLevel) % SetVal( Zero )
 
       END DO 
-  
+      print*, nDOFZ  
       t     = Zero
       dt    = Zero
       t_wrt = dt_wrt
@@ -209,7 +213,12 @@ CONTAINS
     CALL InitializeReferenceElementZ
 
     CALL CreateRadiationFields( nX, swX, nE, swE )
-    
+
+    CALL CreateFluidFields( nX, swX )
+  
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' ) 
+     
+
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uPR, MF_uCR )
     
   END SUBROUTINE InitializeProgram  
