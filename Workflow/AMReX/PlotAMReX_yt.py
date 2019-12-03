@@ -64,7 +64,7 @@ else:
     FileList = []
     for iFile in range( FileArray.shape[0] ):
         sFile = FileArray[iFile]
-        if( sFile[0:8] == 'thornado' ):
+        if( sFile[0:9] == 'thornado_' and sFile[9].isdigit() ):
             FileList.append( sFile )
     FileArray = np.array( FileList )
     File = FileArray[-1]
