@@ -110,6 +110,7 @@ MODULE NeutrinoOpacitiesComputationModule
   INTERFACE ComputeEquilibriumDistributions_Point
     MODULE PROCEDURE ComputeEquilibriumDistributions_Point_1
     MODULE PROCEDURE ComputeEquilibriumDistributions_Point_2
+    MODULE PROCEDURE ComputeEquilibriumDistributions_Point_3
   END INTERFACE
 
   INTERFACE ComputeEquilibriumDistributions_Points
@@ -390,6 +391,50 @@ CONTAINS
     END IF
 
   END SUBROUTINE ComputeEquilibriumDistributions_Point_2
+
+
+  SUBROUTINE ComputeEquilibriumDistributions_Point_3 &
+    ( E, D, T, Y, f0, iSpecies )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    ! --- Equilibrium Neutrino Distributions (Single E,D,T,Y) ---
+
+    REAL(DP), INTENT(in)  :: E
+    REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(out) :: f0
+    INTEGER,  INTENT(in)  :: iSpecies
+
+    INTEGER  :: iE
+    REAL(DP) :: Me, Mp, Mn, Mnu, kT
+
+    ! --- Compute Chemical Potentials ---
+
+    CALL ComputeElectronChemicalPotential_TABLE &
+           ( D, T, Y, Me )
+
+    CALL ComputeProtonChemicalPotential_TABLE &
+           ( D, T, Y, Mp )
+
+    CALL ComputeNeutronChemicalPotential_TABLE &
+           ( D, T, Y, Mn )
+
+    kT = BoltzmannConstant * T
+
+    Mnu = ( Me + Mp ) - Mn
+
+    IF ( iSpecies == iNuE ) THEN
+      f0 = FermiDirac( E, +Mnu, kT )
+    ELSE IF ( iSpecies == iNuE_Bar ) THEN
+      f0 = FermiDirac( E, -Mnu, kT )
+    ELSE
+      f0 = FermiDirac( E, Zero, kT )
+    END IF
+
+  END SUBROUTINE ComputeEquilibriumDistributions_Point_3
 
 
   SUBROUTINE ComputeEquilibriumDistributions_Points_1 &
