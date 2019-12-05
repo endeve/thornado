@@ -73,6 +73,9 @@ MODULE InitializationModule
     InitializePolynomialBasis_Lagrange
   USE PolynomialBasisModule_Legendre,   ONLY: &
     InitializePolynomialBasis_Legendre
+  USE InputOutput,           ONLY: &
+    WriteFieldsAMReX_PlotFile, &
+    WriteFieldsAMReX_Checkpoint
 
   ! --- Local modules ---
   USE MyAmrDataModule,                  ONLY: &
@@ -105,6 +108,7 @@ MODULE InitializationModule
     BA,                        &
     DM,                        &
     GEOM,                      &
+    StepNo,                    &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
@@ -220,6 +224,11 @@ CONTAINS
      
 
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uPR, MF_uCR )
+
+    CALL WriteFieldsAMReX_PlotFile &
+           ( t(0), StepNo, &
+             MF_uCR_Option = MF_uCR, &
+             MF_uPR_Option = MF_uPR )
     
   END SUBROUTINE InitializeProgram  
 

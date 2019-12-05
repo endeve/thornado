@@ -12,6 +12,7 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/EquationOfState
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Units
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/TwoMoment
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
+#VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/InputOutput
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/TwoMoment
 
 # In THORNADO_DIR/Modules/Numbers:
@@ -82,7 +83,12 @@ F90EXE_sources += TwoMoment_UtilitiesModule.F90
 
 #F90EXE_sources += TwoMoment_UtilitiesModule_OrderV.F90
 
+# In THORNADO_DIR/Modules/InputOutput
 
+#f90EXE_sources += InputOutputModuleAMReX.f90
+#f90EXE_sources += InputOutputUtilitiesModule.f90
+
+f90EXE_sources += InputOutput.f90
 f90EXE_sources += InitializationModule.f90
 F90EXE_sources += MF_InitializationModule.F90
 f90EXE_sources += FinalizationModule.f90
