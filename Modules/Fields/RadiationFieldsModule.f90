@@ -30,11 +30,11 @@ MODULE RadiationFieldsModule
                 'Eulerian Number Flux Density (2)', &
                 'Eulerian Number Flux Density (3)' ]
 
-  CHARACTER(10),  DIMENSION(nCR), PUBLIC, PARAMETER :: &
-    ShortNamesCR = [ 'CR_N      ', &
-                     'CR_G1     ', &
-                     'CR_G2     ', &
-                     'CR_G3     ' ]
+  CHARACTER(5),  DIMENSION(nCR), PUBLIC, PARAMETER :: &
+    ShortNamesCR = [ 'CR_N ', &
+                     'CR_G1', &
+                     'CR_G2', &
+                     'CR_G3' ]
 
 
   REAL(DP), DIMENSION(nCR), PUBLIC :: unitsCR
@@ -56,11 +56,11 @@ MODULE RadiationFieldsModule
                 'Lagrangian Number Flux Density (2)', &
                 'Lagrangian Number Flux Density (3)' ]
 
-  CHARACTER(10),  DIMENSION(nPR), PUBLIC, PARAMETER :: &
-    ShortNamesPR = [ 'PR_D      ', &
-                     'PR_I1     ', &
-                     'PR_I2     ', &
-                     'PR_I3     ' ]
+  CHARACTER(5),  DIMENSION(nPR), PUBLIC, PARAMETER :: &
+    ShortNamesPR = [ 'PR_D ', &
+                     'PR_I1', &
+                     'PR_I2', &
+                     'PR_I3' ]
 
   REAL(DP), DIMENSION(nPR), PUBLIC :: unitsPR
 
