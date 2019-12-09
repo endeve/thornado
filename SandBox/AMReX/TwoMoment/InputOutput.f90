@@ -28,14 +28,14 @@ MODULE InputOutput
     iCR_N,  &
     iCR_G1, &
     iCR_G2, &
-    iCR_G3
+    iCR_G3, &
+    ShortNamesCR, &
+    ShortNamesPR
   USE UnitsModule,             ONLY: &
     Joule,  &
     Kelvin, &
     UnitsDisplay
-  USE FluidFieldsModule,       ONLY: &
-    ShortNamesCF, &
-    ShortNamesPF
+
 
 
 
@@ -184,7 +184,7 @@ MODULE InputOutput
     IF( WriteFF_C )THEN
       DO iComp = 1, nCR
         CALL amrex_string_build &
-               ( VarNames(iComp + iOS), TRIM( ShortNamesCF(iComp) ) )
+               ( VarNames(iComp + iOS), TRIM( ShortNamesCR(iComp) ) )
       END DO
       iOS = iOS + nCR
     END IF
@@ -192,7 +192,7 @@ MODULE InputOutput
     IF( WriteFF_P )THEN
       DO iComp = 1, nPR
         CALL amrex_string_build &
-               ( VarNames(iComp + iOS), TRIM( ShortNamesPF(iComp) ) )
+               ( VarNames(iComp + iOS), TRIM( ShortNamesPR(iComp) ) )
       END DO
       iOS = iOS + nPR
     END IF
