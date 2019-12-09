@@ -12,7 +12,9 @@ MODULE InputOutput
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule,     ONLY: &
-    nDOFZ
+    nDOFZ,                  &
+    iZ_B0,                  &
+    iZ_E0
   USE ReferenceElementModuleZ, ONLY: &
     WeightsZ_q
   USE RadiationFieldsModule,       ONLY: &
@@ -114,8 +116,10 @@ MODULE InputOutput
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(32)                   :: PlotFileName
+    CHARACTER(32)                   :: Names
+    CHARACTER(3)                    :: iSC, iZ1C
     LOGICAL                         :: WriteFF_C, WriteFF_P
-    INTEGER                         :: iComp, iOS, iLevel, nF, iOS_CPP(3)
+    INTEGER                         :: iComp, iOS, iLevel, nF, iOS_CPP(3), iS, iZ1
     TYPE(amrex_mfiter)              :: MFI
     TYPE(amrex_box)                 :: BX
     TYPE(amrex_multifab)            :: MF_PR(0:nLevels-1)
@@ -177,24 +181,54 @@ MODULE InputOutput
 
     PlotFileName = TRIM( BaseFileName ) // '_' // NumberString
 
+    nF = nF * nE * nSpecies    
+
     ALLOCATE( VarNames(nF) )
 
     iOS = 0
-
+    
     IF( WriteFF_C )THEN
+      DO iS = 1, nSpecies
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
       DO iComp = 1, nCR
+        write(iZ1C,'(i3.3)') iZ1
+        write(iSC,'(i3.3)') iS
+        Names = ShortNamesCR(iComp) // '_' // iZ1C // '_' // iSC
+        !print*, Names
         CALL amrex_string_build &
-               ( VarNames(iComp + iOS), TRIM( ShortNamesCR(iComp) ) )
+               ( VarNames(iComp + ( iZ1 - 1 ) * nE + ( iS - 1 ) * nE * nCR + iOS), TRIM( Names ) )
+
       END DO
-      iOS = iOS + nCR
+      END DO
+      END DO
+
+        iOS = iOS + nCR * nE * nSpecies
+      !iOS = iOS + nCR * nE * nSpecies
+
     END IF
 
     IF( WriteFF_P )THEN
+
+      DO iS = 1, nSpecies
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
       DO iComp = 1, nPR
+
+        write(iZ1C,'(i3.3)') iZ1
+        write(iSC,'(i3.3)') iS
+
+        Names = ShortNamesPR(iComp) // '_' // iZ1C // '_' // iSC
+
+        !print*, Names
         CALL amrex_string_build &
-               ( VarNames(iComp + iOS), TRIM( ShortNamesPR(iComp) ) )
+               ( VarNames(iComp  + ( iZ1 - 1 ) * nE + ( iS - 1 ) * nPR * nE + iOS ), TRIM( Names ) )
+
       END DO
-      iOS = iOS + nPR
+      END DO
+      END DO
+
+      !iOS = iOS + nPR * nE * nSpecies
+
+        iOS = iOS + nPR * nE * nSpecies
     END IF
 
     DO iLevel = 0, nLevels-1
@@ -211,19 +245,18 @@ MODULE InputOutput
       IF( WriteFF_C )THEN
         CALL MF_ComputeCellAverage &
           ( nCR, MF_uCR_Option(iLevel), MF_PR(iLevel), iOS, iOS_CPP, 'CR' )
-        iOS = iOS + nCR
+        iOS = iOS + nCR * nE * nSpecies
       END IF
 
       IF( WriteFF_P )THEN
         CALL MF_ComputeCellAverage &
           ( nPR, MF_uPR_Option(iLevel), MF_PR(iLevel), iOS, iOS_CPP, 'PR' )
-        iOS = iOS + nPR
+        iOS = iOS + nPR * nE * nSpecies
       END IF
 
 
 
     END DO ! End of loop over levels
-
     CALL amrex_write_plotfile &
            ( PlotFileName, nLevels, MF_PR, VarNames, &
              GEOM, Time / UnitsDisplay % TimeUnit, StepNo, amrex_ref_ratio )
@@ -277,7 +310,7 @@ MODULE InputOutput
         ! --- Compute cell-average ---
         DO iComp = 1, nComp
 
-          u_A(iX1-iOS_CPP(1),iX2-iOS_CPP(2),iX3-iOS_CPP(3),iComp+iOS) &
+          u_A(iX1-iOS_CPP(1),iX2-iOS_CPP(2),iX3-iOS_CPP(3),iComp+( iZ1 - 1 ) * nE + ( iS - 1 ) * nComp * nE + iOS) &
             = DOT_PRODUCT( WeightsZ_q(:), u_K(:,iZ1,iComp,iS) )
 
         END DO

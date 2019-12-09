@@ -27,8 +27,6 @@ MODULE MyAmrModule
   ! --- thornado Modules ---
   USE ProgramHeaderModule,   ONLY: &
     InitializeProgramHeader, nDimsX
-  USE RadiationFieldsModule, ONLY: &
-    nSpecies
   ! --- Local Modules ---
   USE MyAmrDataModule, ONLY: &
     InitializeDataAMReX, &
@@ -41,7 +39,7 @@ MODULE MyAmrModule
   REAL(AR)                       :: CFL
   INTEGER                        :: nNodes, nStages
   INTEGER                        :: nE, swE, bcE
-  INTEGER                        :: iCycleD, iCycleW, iCycleChk, iRestart
+  INTEGER                        :: iCycleD, iCycleW, iCycleChk, iRestart, nSpecies
   INTEGER,           ALLOCATABLE :: nX(:), swX(:), bcX(:)
   REAL(AR),          ALLOCATABLE :: xL(:), xR(:)
   REAL(AR)                       :: eL, eR, zoomE

@@ -38,7 +38,6 @@ MODULE MF_InitializationModule
     uCR,    &
     nPR,    &
     uPR,    &
-    nSpecies, &
     iPR_D,  &
     iPR_I1, &
     iPR_I2, &
@@ -68,7 +67,8 @@ MODULE MF_InitializationModule
     nLevels, &
     xL,      &
     xR,      &
-    nE
+    nE,      &
+    nSpecies
 
 
   IMPLICIT NONE
@@ -147,10 +147,14 @@ CONTAINS
     REAL(AR)     :: Gm_dd_11(nDOFZ)
     REAL(AR)     :: Gm_dd_22(nDOFZ)
     REAL(AR)     :: Gm_dd_33(nDOFZ)
+
     uCR_K = Zero
     uPR_K = Zero
 
+    print*, nSpecies
+   
     Ones=1.0_AR
+
     DO iDim = 1, 3
 
       CALL CreateMesh &
@@ -191,11 +195,6 @@ CONTAINS
           Gm_dd_33 &
             = OuterProduct1D3D &
                 ( Ones, nDOFE, uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), nDOFX )
-          !uPR_K &
-           ! = RESHAPE( uPR(iX1,iX2,iX3,lo_P(4):hi_P(4)), [ nDOFZ, nE, nPR, nSpecies ] )  
-          
-          !uCR_K &
-           ! = RESHAPE( uCR(iX1,iX2,iX3,lo_C(4):hi_C(4)), [ nDOFZ, nE, nCR, nSpecies ] )  
 
           DO iNodeZ = 1, nDOFZ
             
@@ -209,10 +208,10 @@ CONTAINS
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
     
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                = 0.50_AR + 0.49_AR * SIN( TwoPi * X1 )  
+                = iZ1  !0.50_AR + 0.49_AR * SIN( TwoPi * X1 )  
             
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                = uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                = iS/10.0_AR !uPR_K( iNodeZ, iZ1, iPR_D, iS )
          
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
                 = 0.0_AR
@@ -236,24 +235,23 @@ CONTAINS
             END DO
 !Reshape here instead of up top look at Hydro example
           END DO 
-
+           
             uCR(iX1,iX2,iX3,lo_C(4):hi_C(4)) &
               = RESHAPE( uCR_K, [ hi_C(4) - lo_C(4) + 1 ] )
 
             uPR(iX1,iX2,iX3,lo_P(4):hi_P(4)) &
               = RESHAPE( uPR_K, [ hi_P(4) - lo_P(4) + 1 ] )
-        
+ 
         END DO
         END DO
         END DO
 
       END DO
-
+      
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
-
-
+    
   END SUBROUTINE InitializeFields_SineWaveStreaming
 
 END MODULE MF_InitializationModule

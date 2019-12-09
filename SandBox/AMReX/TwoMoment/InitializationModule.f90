@@ -61,7 +61,6 @@ MODULE InitializationModule
   USE RadiationFieldsModule,            ONLY: &
     nCR,      &
     nPR,      &
-    nSpecies, &
     CreateRadiationFields
   USE GeometryFieldsModule,             ONLY: &
     CreateGeometryFields
@@ -109,6 +108,7 @@ MODULE InitializationModule
     DM,                        &
     GEOM,                      &
     StepNo,                    &
+    nSpecies,                  &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
@@ -216,7 +216,7 @@ CONTAINS
     
     CALL InitializeReferenceElementZ
 
-    CALL CreateRadiationFields( nX, swX, nE, swE )
+    CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies )
 
     CALL CreateFluidFields( nX, swX )
   
@@ -224,12 +224,12 @@ CONTAINS
      
 
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uPR, MF_uCR )
-
+  
     CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &
              MF_uCR_Option = MF_uCR, &
              MF_uPR_Option = MF_uPR )
-    
+       
   END SUBROUTINE InitializeProgram  
 
 
