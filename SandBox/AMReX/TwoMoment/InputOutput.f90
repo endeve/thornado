@@ -78,26 +78,25 @@ MODULE InputOutput
   CHARACTER(8) :: BaseFileName = 'thornado'
 
 
-  PUBLIC :: WriteFieldsAMReX_Checkpoint
   REAL(AR), PARAMETER :: One = 1.0_AR
 
+
+  PUBLIC :: WriteFieldsAMReX_Checkpoint
   PUBLIC :: WriteFieldsAMReX_PlotFile
 
   INTERFACE
 
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
-                 ( StepNo, nLevels, dt, time, t_wrt, pBA, &
-                   pMF_uGF, pMF_uCF, pMF_uPF, pMF_uAF ) BIND(c)
+                 ( StepNo, nLevels, dt, time, t_wrt, &
+                   pMF_uCR, pMF_uPR ) BIND(c)
        IMPORT
        IMPLICIT NONE
        INTEGER(c_int), INTENT(in) :: StepNo(*)
        INTEGER(c_int), VALUE      :: nLevels
        REAL(AR),       INTENT(in) :: dt(*), time(*), t_wrt
-       TYPE(c_ptr),    INTENT(in) :: pBA(*)
-       TYPE(c_ptr),    INTENT(in) :: pMF_uGF(*)
-       TYPE(c_ptr),    INTENT(in) :: pMF_uCF(*)
-       TYPE(c_ptr),    INTENT(in) :: pMF_uPF(*)
-       TYPE(c_ptr),    INTENT(in) :: pMF_uAF(*)
+       TYPE(c_ptr),    INTENT(in) :: pMF_uCR(*)
+       TYPE(c_ptr),    INTENT(in) :: pMF_uPR(*)
+
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
   END INTERFACE
