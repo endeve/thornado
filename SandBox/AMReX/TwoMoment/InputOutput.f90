@@ -70,7 +70,9 @@ MODULE InputOutput
     GEOM,                      &
     StepNo,                    &
     MyAmrInit
-
+  USE MyAmrDataModule,    ONLY: &
+    MF_uCR, &
+    MF_uPR
 
   IMPLICIT NONE
   PRIVATE
@@ -80,30 +82,161 @@ MODULE InputOutput
 
   REAL(AR), PARAMETER :: One = 1.0_AR
 
-
+  PUBLIC :: ReadCheckpointFile
   PUBLIC :: WriteFieldsAMReX_Checkpoint
   PUBLIC :: WriteFieldsAMReX_PlotFile
 
   INTERFACE
 
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
-                 ( StepNo, nLevels, dt, time, t_wrt, &
+                 ( StepNo, nLevels, dt, time, t_wrt, pBA, &
                    pMF_uCR, pMF_uPR ) BIND(c)
        IMPORT
        IMPLICIT NONE
        INTEGER(c_int), INTENT(in) :: StepNo(*)
        INTEGER(c_int), VALUE      :: nLevels
        REAL(AR),       INTENT(in) :: dt(*), time(*), t_wrt
+       TYPE(c_ptr),    INTENT(in) :: pBA(*)
        TYPE(c_ptr),    INTENT(in) :: pMF_uCR(*)
        TYPE(c_ptr),    INTENT(in) :: pMF_uPR(*)
 
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
+
+    SUBROUTINE ReadHeaderAndBoxArrayData &
+                 ( FinestLevel, StepNo, dt, time, t_wrt, &
+                   pBA, pDM, iChkFile ) BIND(c)
+      IMPORT
+      IMPLICIT NONE
+      INTEGER(c_int), INTENT(out) :: FinestLevel
+      INTEGER(c_int), INTENT(out) :: StepNo(*)
+      REAL(AR),       INTENT(out) :: dt(*), time(*), t_wrt
+      TYPE(c_ptr),    INTENT(out) :: pBA(*), pDM(*)
+      INTEGER(c_int), VALUE       :: iChkFile
+    END SUBROUTINE ReadHeaderAndBoxArrayData
+
+    SUBROUTINE ReadMultiFabData( FinestLevel, pMF, iMF, iChkFile ) BIND(c)
+      IMPORT
+      IMPLICIT NONE
+      INTEGER(c_int), VALUE       :: FinestLevel
+      TYPE(c_ptr),    INTENT(out) :: pMF(*)
+      INTEGER(c_int), VALUE       :: iMF
+      INTEGER(c_int), VALUE       :: iChkFile
+    END SUBROUTINE ReadMultiFabData
+
+    SUBROUTINE amrex_fi_set_boxarray( iLevel, pBA, amrcore ) BIND(c)
+      IMPORT
+      IMPLICIT NONE
+      TYPE(c_ptr),    VALUE :: pBA
+      INTEGER(c_int), VALUE :: iLevel
+      TYPE(c_ptr),    VALUE :: amrcore
+    END SUBROUTINE amrex_fi_set_boxarray
+
+    SUBROUTINE amrex_fi_set_distromap  (lev, pdm, amrcore) BIND(c)
+      IMPORT
+      IMPLICIT NONE
+      TYPE(c_ptr),    VALUE :: pdm
+      INTEGER(c_int), VALUE :: lev
+      TYPE(c_ptr),    VALUE :: amrcore
+    END SUBROUTINE amrex_fi_set_distromap
+
+    SUBROUTINE amrex_fi_clone_boxarray (bao, bai) BIND(c)
+      IMPORT
+      IMPLICIT NONE
+      TYPE(c_ptr)        :: bao
+      TYPE(c_ptr), VALUE :: bai
+    END SUBROUTINE amrex_fi_clone_boxarray
+
+    SUBROUTINE amrex_fi_set_finest_level (lev, amrcore) BIND(c)
+      IMPORT
+      IMPLICIT NONE
+      INTEGER(c_int), VALUE :: lev
+      TYPE(c_ptr),    VALUE :: amrcore
+    END SUBROUTINE amrex_fi_set_finest_level
+
 
   END INTERFACE
 
 
 
   CONTAINS
+
+ SUBROUTINE ReadCheckpointFile( iChkFile )
+
+    USE MyAmrModule
+
+    IMPLICIT NONE
+
+    INTEGER, INTENT(in) :: iChkFile
+
+    INTEGER         :: iLevel, FinestLevel
+    TYPE(c_ptr)     :: pBA(0:amrex_max_level)
+    TYPE(c_ptr)     :: pDM(0:amrex_max_level)
+    TYPE(c_ptr)     :: pCR(0:amrex_max_level)
+    TYPE(c_ptr)     :: pPR(0:amrex_max_level)
+    TYPE(c_ptr)     :: amrcore
+    TYPE(amrex_box) :: BX
+
+    amrcore = amrex_get_amrcore()
+
+    BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
+
+    ALLOCATE( BA(0:nLevels-1) )
+    DO iLevel = 0, nLevels-1
+      CALL amrex_boxarray_build ( BA(iLevel), BX )
+    END DO
+
+    DO iLevel = 0, nLevels-1
+      CALL BA(iLevel) % maxSize( MaxGridSizeX )
+    END DO
+
+    ALLOCATE( DM  (0:nLevels-1) )
+    ALLOCATE( GEOM(0:nLevels-1) )
+    DO iLevel = 0, nLevels-1
+      CALL amrex_geometry_build( GEOM(iLevel), BX )
+      CALL amrex_distromap_build( DM (iLevel), BA(iLevel) )
+    END DO
+
+    pBA(0:amrex_max_level) = BA(0:amrex_max_level) % P
+    pDM(0:amrex_max_level) = DM(0:amrex_max_level) % P
+
+    FinestLevel = nLevels-1
+    
+    CALL ReadHeaderAndBoxArrayData &
+           ( FinestLevel, StepNo, dt, t, t_wrt, pBA, pDM, iChkFile )
+    print*, 'here'
+    DO iLevel = 0, nLevels-1
+      BA(iLevel) = pBA(iLevel)
+      DM(iLevel) = pDM(iLevel)
+    END DO
+
+    DO iLevel = 0, nLevels-1
+      CALL amrex_fi_set_boxarray ( iLevel, BA(iLevel) % P, amrcore )
+      CALL amrex_fi_set_distromap( iLevel, DM(iLevel) % P, amrcore )
+    END DO
+
+    DO iLevel = 0, nLevels-1
+      CALL amrex_multifab_build &
+             ( MF_uCR(iLevel), BA(iLevel), DM(iLevel), &
+               nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX(1) )
+      CALL amrex_multifab_build &
+             ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), & 
+               nDOFZ * nPR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX(1) )
+    END DO
+
+    pCR(0:amrex_max_level) = MF_uCR(0:amrex_max_level) % P
+    pPR(0:amrex_max_level) = MF_uPR(0:amrex_max_level) % P
+
+    CALL ReadMultiFabData( nLevels-1, pCR, 1, iChkFile )
+    CALL ReadMultiFabData( nLevels-1, pPR, 2, iChkFile )
+
+    DO iLevel = 0, nLevels-1
+      CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL MF_uPR(iLevel) % Fill_Boundary( GEOM(iLevel) )
+    END DO
+
+    CALL amrex_fi_set_finest_level( nLevels-1, amrcore )
+
+  END SUBROUTINE ReadCheckpointFile
 
   SUBROUTINE WriteFieldsAMReX_PlotFile &
     ( Time, StepNo, MF_uCR_Option, MF_uPR_Option )

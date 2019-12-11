@@ -74,7 +74,8 @@ MODULE InitializationModule
     InitializePolynomialBasis_Legendre
   USE InputOutput,           ONLY: &
     WriteFieldsAMReX_PlotFile, &
-    WriteFieldsAMReX_Checkpoint
+    WriteFieldsAMReX_Checkpoint, &
+    ReadCheckpointFile
 
   ! --- Local modules ---
   USE MyAmrDataModule,                  ONLY: &
@@ -169,7 +170,6 @@ CONTAINS
 
       END DO
 
-      print*, nDOFZ, iZ_B0(1), iZ_E0(1), nSpecies, nCR, nPR
 
       DO iLevel = 0, nLevels-1
 
@@ -193,7 +193,9 @@ CONTAINS
       t_chk = dt_chk
 
     ELSE
-      print*, 'else'
+
+      CALL ReadCheckpointFile( iRestart )
+
     END IF
 
      DO iDim = 1, 3
@@ -231,7 +233,7 @@ CONTAINS
              MF_uPR_Option = MF_uPR )
 
       CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, t, t_wrt, &
+             ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
                MF_uCR % P,  &
                MF_uPR % P  )
        
