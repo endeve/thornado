@@ -84,7 +84,7 @@ PROGRAM ApplicationDriver
   REAL(DP)       :: BetaTVD, BetaTVB
   REAL(DP)       :: LimiterThresholdParameter
 
-  ProgramName = 'GravitationalCollapse'
+  ProgramName = 'RiemannProblem'
 
   EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
@@ -483,7 +483,11 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
 
-  CALL FinalizeGravitySolver_Newtonian_Poseidon
+  IF( SelfGravity )THEN
+
+    CALL FinalizeGravitySolver_Newtonian_Poseidon
+
+  END IF
 
   CALL FinalizeEquationOfState
 

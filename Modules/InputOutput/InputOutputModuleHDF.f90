@@ -27,7 +27,7 @@ MODULE InputOutputModuleHDF
     uPF, nPF, namesPF, unitsPF, &
     uAF, nAF, namesAF, unitsAF, &
     uDF, nDF, namesDF, unitsDF, &
-    Shock
+    Shock, Theta1, Theta2, Theta3
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     uCR, nCR, namesCR, unitsCR, &
@@ -223,7 +223,11 @@ CONTAINS
     CHARACTER(256) :: FileName
     CHARACTER(256) :: GroupName
     CHARACTER(256) :: GroupName2
+    CHARACTER(256) :: GroupName_PL
     CHARACTER(256) :: DatasetName
+    CHARACTER(256) :: DatasetName1
+    CHARACTER(256) :: DatasetName2
+    CHARACTER(256) :: DatasetName3
     INTEGER        :: iFF
     INTEGER(HID_T) :: FILE_ID
     REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
@@ -383,6 +387,27 @@ CONTAINS
 
     CALL WriteDataset3DHDF &
            ( Shock(1:nX(1),1:nX(2),1:nX(3)), DatasetName, FILE_ID )
+
+    ! --- Positivity Limiter Detector ---
+
+    GroupName_PL = 'Positivity Limiter Detector'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName_PL ) , FILE_ID )
+
+    DatasetName1 = TRIM( GroupName_PL ) // '/Theta 1'
+
+    CALL WriteDataset3DHDF &
+           ( Theta1(1:nX(1),1:nX(2),1:nX(3)), DatasetName1, FILE_ID )
+
+    DatasetName2 = TRIM( GroupName_PL ) // '/Theta 2'
+
+    CALL WriteDataset3DHDF &
+           ( Theta2(1:nX(1),1:nX(2),1:nX(3)), DatasetName2, FILE_ID )
+
+    DatasetName3 = TRIM( GroupName_PL ) // '/Theta 3'
+
+    CALL WriteDataset3DHDF &
+           ( Theta3(1:nX(1),1:nX(2),1:nX(3)), DatasetName3, FILE_ID )
 
     CALL H5FCLOSE_F( FILE_ID, HDFERR )
 
