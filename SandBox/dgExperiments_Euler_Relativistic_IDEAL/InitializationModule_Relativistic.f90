@@ -121,6 +121,10 @@ CONTAINS
 
     SELECT CASE ( TRIM( ProgramName ) )
 
+      CASE( 'SineWaveAdvection' )
+
+        CALL InitializeFields_SineWaveAdvection_Relativistic
+
       CASE( 'TopHatAdvection' )
 
         CALL InitializeFields_TopHatAdvection_Relativistic
@@ -162,9 +166,70 @@ CONTAINS
                  ApplyPerturbation, PerturbationOrder, PerturbationAmplitude, &
                  rPerturbationInner, rPerturbationOuter )
 
+      CASE DEFAULT
+
+        WRITE(*,*)
+        WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
+        WRITE(*,'(A)')     'Valid choices:'
+        WRITE(*,'(A)')     '  SineWaveAdvection'
+        WRITE(*,'(A)')     '  TopHatAdvection'
+        WRITE(*,'(A)')     '  RiemannProblem'
+        WRITE(*,'(A)')     '  RiemannProblem2d'
+        WRITE(*,'(A)')     '  SphericalRiemannProblem'
+        WRITE(*,'(A)')     '  SphericalSedov'
+        WRITE(*,'(A)')     '  KelvinHelmholtz2D_Relativistic'
+        WRITE(*,'(A)')     '  StandingAccretionShock'
+        WRITE(*,'(A)')     'Stopping...'
+        STOP
+
     END SELECT
 
   END SUBROUTINE InitializeFields_Relativistic
+
+
+  SUBROUTINE InitializeFields_SineWaveAdvection_Relativistic
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1
+    REAL(DP) :: X1
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = One + 0.1_DP * SIN( TwoPi * X1 )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+        uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
+          = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+      END DO
+
+      CALL ComputeConserved_Euler_Relativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_SineWaveAdvection_Relativistic
 
 
   SUBROUTINE InitializeFields_TopHatAdvection_Relativistic
