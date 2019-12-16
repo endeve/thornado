@@ -214,13 +214,11 @@ CONTAINS
 
       CASE( 'TVD' )
 
-write(*,*) 'TVD'
         CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
 
       CASE( 'WENO' )
 
-write(*,*) 'WENO'
         CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
 
