@@ -61,14 +61,21 @@ MODULE InitializationModule
   USE RadiationFieldsModule,            ONLY: &
     nCR,      &
     nPR,      &
-    nSpecies, &
     CreateRadiationFields
+  USE GeometryFieldsModule,             ONLY: &
+    CreateGeometryFields
+  USE FluidFieldsModule,                ONLY: &
+    CreateFluidFields
   USE PolynomialBasisMappingModule,     ONLY: &
     InitializePolynomialBasisMapping
   USE PolynomialBasisModule_Lagrange,   ONLY: &
     InitializePolynomialBasis_Lagrange
   USE PolynomialBasisModule_Legendre,   ONLY: &
     InitializePolynomialBasis_Legendre
+  USE InputOutput,           ONLY: &
+    WriteFieldsAMReX_PlotFile, &
+    WriteFieldsAMReX_Checkpoint, &
+    ReadCheckpointFile
 
   ! --- Local modules ---
   USE MyAmrDataModule,                  ONLY: &
@@ -101,6 +108,8 @@ MODULE InitializationModule
     BA,                        &
     DM,                        &
     GEOM,                      &
+    StepNo,                    &
+    nSpecies,                  &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
@@ -161,7 +170,6 @@ CONTAINS
 
       END DO
 
-      print*, nDOFZ, iZ_B0(1), iZ_E0(1), nSpecies, nCR, nPR
 
       DO iLevel = 0, nLevels-1
 
@@ -178,14 +186,16 @@ CONTAINS
         CALL MF_uCR(iLevel) % SetVal( Zero )
 
       END DO 
-  
+      print*, nDOFZ  
       t     = Zero
       dt    = Zero
       t_wrt = dt_wrt
       t_chk = dt_chk
 
     ELSE
-      print*, 'else'
+
+      CALL ReadCheckpointFile( iRestart )
+
     END IF
 
      DO iDim = 1, 3
@@ -208,10 +218,25 @@ CONTAINS
     
     CALL InitializeReferenceElementZ
 
-    CALL CreateRadiationFields( nX, swX, nE, swE )
-    
+    CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies )
+
+    CALL CreateFluidFields( nX, swX )
+  
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' ) 
+     
+
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uPR, MF_uCR )
-    
+  
+    CALL WriteFieldsAMReX_PlotFile &
+           ( t(0), StepNo, &
+             MF_uCR_Option = MF_uCR, &
+             MF_uPR_Option = MF_uPR )
+
+      CALL WriteFieldsAMReX_Checkpoint &
+             ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
+               MF_uCR % P,  &
+               MF_uPR % P  )
+       
   END SUBROUTINE InitializeProgram  
 
 

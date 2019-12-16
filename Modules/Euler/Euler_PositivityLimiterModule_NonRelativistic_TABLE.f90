@@ -18,7 +18,8 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    Theta1, Theta2, Theta3
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeSpecificInternalEnergy_TABLE
   USE TimersModule_Euler, ONLY: &
@@ -147,7 +148,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, ResetIndicators_Option )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -155,7 +156,10 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    LOGICAL, INTENT(in), OPTIONAL :: &
+      ResetIndicators_Option
 
+    LOGICAL  :: ResetIndicators
     LOGICAL  :: NegativeStates(3)
     INTEGER  :: iX1, iX2, iX3, iCF, iP, Iteration
     REAL(DP) :: Min_D_K, Max_D_K, Min_N_K, Max_N_K, &
@@ -171,6 +175,12 @@ CONTAINS
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
+    IF( PRESENT( ResetIndicators_Option ) )THEN
+      ResetIndicators = ResetIndicators_Option
+    ELSE
+      ResetIndicators = .FALSE.
+    END IF
+
     CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
 
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -180,6 +190,14 @@ CONTAINS
       U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
 
       NegativeStates = .FALSE.
+
+      IF( ResetIndicators )THEN
+
+        Theta1(iX1,iX2,iX3) = One
+        Theta2(iX1,iX2,iX3) = One
+        Theta3(iX1,iX2,iX3) = One
+
+      END IF
 
       CALL ComputePointValues_Fluid( U_q, U_PP )
 
@@ -213,6 +231,8 @@ CONTAINS
 
         NegativeStates(1) = .TRUE.
 
+        Theta1(iX1,iX2,iX3) = MIN( Theta1(iX1,iX2,iX3), Theta_1)
+
       END IF
 
       ! --- Ensure Bounded Electron Density ---
@@ -244,6 +264,8 @@ CONTAINS
         ! --- Flag for Negative Electron Density --
 
         NegativeStates(2) = .TRUE.
+
+        Theta2(iX1,iX2,iX3) = MIN( Theta2(iX1,iX2,iX3), Theta_2)
 
       END IF
 
@@ -332,11 +354,13 @@ CONTAINS
 
         END DO
 
-        ! --- Flag for Negative Internal Energy Density ---
+        ! --- Flag for Negative Specific Internal Energy ---
 
         NegativeStates(1) = .FALSE.
         NegativeStates(2) = .FALSE.
         NegativeStates(3) = .TRUE.
+
+        Theta3(iX1,iX2,iX3) = MIN( Theta3(iX1,iX2,iX3), Theta_3)
 
       END IF
 

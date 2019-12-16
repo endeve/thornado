@@ -224,11 +224,11 @@ CONTAINS
 
             IF( X1 <= Zero )THEN
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.25d15 * Gram / Centimeter**3
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0d15 * Gram / Centimeter**3
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 6.35d35 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 4.18d35 * Erg / Centimeter**3
               uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.3_DP
 
             ELSE

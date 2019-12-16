@@ -40,6 +40,9 @@ endif
 ifeq ($(USE_OMP_OL),TRUE)
   FFLAGS += $(FFLAGS_OMP_OL)
 endif
+ifeq ($(MICROPHYSICS),WEAKLIB)
+  FFLAGS += -I../../../../weaklib/include
+endif
 
 # command for generating a library
 MKLIB = ar -r

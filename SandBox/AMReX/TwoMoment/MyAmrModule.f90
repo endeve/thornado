@@ -26,9 +26,7 @@ MODULE MyAmrModule
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,   ONLY: &
-    InitializeProgramHeader
-  USE RadiationFieldsModule, ONLY: &
-    nSpecies
+    InitializeProgramHeader, nDimsX
   ! --- Local Modules ---
   USE MyAmrDataModule, ONLY: &
     InitializeDataAMReX, &
@@ -41,7 +39,7 @@ MODULE MyAmrModule
   REAL(AR)                       :: CFL
   INTEGER                        :: nNodes, nStages
   INTEGER                        :: nE, swE, bcE
-  INTEGER                        :: iCycleD, iCycleW, iCycleChk, iRestart
+  INTEGER                        :: iCycleD, iCycleW, iCycleChk, iRestart, nSpecies
   INTEGER,           ALLOCATABLE :: nX(:), swX(:), bcX(:)
   REAL(AR),          ALLOCATABLE :: xL(:), xR(:)
   REAL(AR)                       :: eL, eR, zoomE
@@ -161,6 +159,14 @@ CONTAINS
              xL_Option = xL, xR_Option = xR, &
              nE_Option = nE, swE_Option = swE, bcE_Option = bcE, eL_option = eL, eR_option = eR, &
              Verbose_Option = amrex_parallel_ioprocessor() )
+
+    IF( nDimsX .NE. amrex_spacedim )THEN
+      WRITE(*,'(A)') 'ERROR'
+      WRITE(*,'(A)') '-----'
+      WRITE(*,'(A)') 'thornado nDimsX different from AMReX amrex_spacedim.'
+      WRITE(*,'(A)') 'Check DIM parameter in GNUmakefile. Stopping...'
+      STOP
+    END IF
 
     ALLOCATE( StepNo(0:nLevels-1) )
     StepNo = 0
