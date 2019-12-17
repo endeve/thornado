@@ -24,7 +24,9 @@ MODULE MF_UtilitiesModule
   PUBLIC :: AMReX2thornado
   PUBLIC :: thornado2AMReX
 
-  SUBROUTINE AMReX2thornado( nVars, nS, nE iZ_B, iZ_E, Data_amrex, Data_thornado )
+  CONTAINS
+
+  SUBROUTINE AMReX2thornado( nVars, nS, nE, iZ_B, iZ_E, Data_amrex, Data_thornado )
 
     INTEGER,          INTENT(in)  :: nVars, nS, nE
     INTEGER,          INTENT(in)  :: iZ_B(4), iZ_E(4)
@@ -32,7 +34,6 @@ MODULE MF_UtilitiesModule
       Data_amrex   (   iZ_B(2):,iZ_B(3):,iZ_B(4):,1:)
     REAL(amrex_real), INTENT(out) :: &
       Data_thornado(1:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):,1:,1:)
-
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iVar
 
     DO iZ4 = iZ_B(4), iZ_E(4)
@@ -62,9 +63,9 @@ MODULE MF_UtilitiesModule
 
     INTEGER,          INTENT(in)  :: nVars, nS, nE
     INTEGER,          INTENT(in)  :: iZ_B(4), iZ_E(4)
-    REAL(amrex_real), INTENT(in)  :: &
+    REAL(amrex_real), INTENT(out)  :: &
       Data_amrex   (   iZ_B(2):,iZ_B(3):,iZ_B(4):,1:)
-    REAL(amrex_real), INTENT(out) :: &
+    REAL(amrex_real), INTENT(in) :: &
       Data_thornado(1:,iZ_B(1):,iZ_B(2):,iZ_B(3):,iZ_B(4):,1:,1:)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iVar

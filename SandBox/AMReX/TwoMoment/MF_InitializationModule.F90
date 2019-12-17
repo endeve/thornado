@@ -179,7 +179,6 @@ CONTAINS
 
         lo_C = LBOUND( uCR )
         hi_C = UBOUND( uCR )
-        
         DO iX3 = BX % lo(3), BX % hi(3)
         DO iX2 = BX % lo(2), BX % hi(2)
         DO iX1 = BX % lo(1), BX % hi(1)         

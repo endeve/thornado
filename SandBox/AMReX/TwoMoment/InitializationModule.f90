@@ -232,11 +232,11 @@ CONTAINS
              MF_uCR_Option = MF_uCR, &
              MF_uPR_Option = MF_uPR )
 
-      CALL WriteFieldsAMReX_Checkpoint &
-             ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
-               MF_uCR % P,  &
-               MF_uPR % P  )
-       
+!      CALL WriteFieldsAMReX_Checkpoint &
+!             ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
+!               MF_uCR % P,  &
+!               MF_uPR % P  )
+!       
   END SUBROUTINE InitializeProgram  
 
 
