@@ -221,7 +221,7 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
 
         CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D, &
                  ResetIndicators_Option = ( iS == 1 ) )
 
         IF( SolveGravity )THEN
@@ -254,7 +254,7 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
     IF( SolveGravity )THEN
 

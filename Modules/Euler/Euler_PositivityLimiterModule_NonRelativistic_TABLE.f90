@@ -19,7 +19,7 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    Theta1, Theta2, Theta3
+    iDF_T1, iDF_T2, iDF_T3
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeSpecificInternalEnergy_TABLE
   USE TimersModule_Euler, ONLY: &
@@ -148,7 +148,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, ResetIndicators_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, ResetIndicators_Option )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -156,6 +156,8 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out)          :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL, INTENT(in), OPTIONAL :: &
       ResetIndicators_Option
 
@@ -193,9 +195,9 @@ CONTAINS
 
       IF( ResetIndicators )THEN
 
-        Theta1(iX1,iX2,iX3) = One
-        Theta2(iX1,iX2,iX3) = One
-        Theta3(iX1,iX2,iX3) = One
+        D(:,iX1,iX2,iX3,iDF_T1) = One
+        D(:,iX1,iX2,iX3,iDF_T2) = One
+        D(:,iX1,iX2,iX3,iDF_T3) = One
 
       END IF
 
@@ -231,7 +233,8 @@ CONTAINS
 
         NegativeStates(1) = .TRUE.
 
-        Theta1(iX1,iX2,iX3) = MIN( Theta1(iX1,iX2,iX3), Theta_1)
+        D(:,iX1,iX2,iX3,iDF_T1) &
+          = MIN( MINVAL( D(:,iX1,iX2,iX3,iDF_T1) ), Theta_1)
 
       END IF
 
@@ -265,7 +268,8 @@ CONTAINS
 
         NegativeStates(2) = .TRUE.
 
-        Theta2(iX1,iX2,iX3) = MIN( Theta2(iX1,iX2,iX3), Theta_2)
+        D(:,iX1,iX2,iX3,iDF_T2) &
+          = MIN( MINVAL( D(:,iX1,iX2,iX3,iDF_T2) ), Theta_2)
 
       END IF
 
@@ -360,7 +364,8 @@ CONTAINS
         NegativeStates(2) = .FALSE.
         NegativeStates(3) = .TRUE.
 
-        Theta3(iX1,iX2,iX3) = MIN( Theta3(iX1,iX2,iX3), Theta_3)
+        D(:,iX1,iX2,iX3,iDF_T3) &
+          = MIN( MINVAL( D(:,iX1,iX2,iX3,iDF_T3) ), Theta_3)
 
       END IF
 
