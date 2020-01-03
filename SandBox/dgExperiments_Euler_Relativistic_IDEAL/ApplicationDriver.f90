@@ -74,6 +74,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
+  CHARACTER(4)  :: SlopeLimiterMethod
   LOGICAL       :: UsePositivityLimiter
   LOGICAL       :: UseConservativeCorrection
   INTEGER       :: iCycle, iCycleD, iCycleW = 0
@@ -107,6 +108,8 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
+!  ProgramName = 'SineWaveAdvection'
+!  ProgramName = 'TopHatAdvection'
   ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
@@ -117,9 +120,37 @@ PROGRAM ApplicationDriver
 
   SELECT CASE ( TRIM( ProgramName ) )
 
+    CASE( 'SineWaveAdvection' )
+
+      Gamma = 5.0_DP / 3.0_DP
+      t_end = 10.0_DP
+      bcX = [ 1, 0, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX = [ 64, 1, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      WriteGF = .FALSE.
+
+    CASE( 'TopHatAdvection' )
+
+      Gamma = 5.0_DP / 3.0_DP
+      t_end = 10.0_DP
+      bcX = [ 1, 0, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX = [ 64, 1, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      WriteGF = .FALSE.
+
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'Sod'
+      RiemannProblemName = 'PerturbedShockTube'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
@@ -164,7 +195,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 256, 1, 1 ]
+      nX  = [ 128, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -286,6 +317,8 @@ PROGRAM ApplicationDriver
       WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)')     'Valid choices:'
+      WRITE(*,'(A)')     '  SineWaveAdvection'
+      WRITE(*,'(A)')     '  TopHatAdvection'
       WRITE(*,'(A)')     '  RiemannProblem'
       WRITE(*,'(A)')     '  RiemannProblem2d'
       WRITE(*,'(A)')     '  SphericalRiemannProblem'
@@ -309,6 +342,9 @@ PROGRAM ApplicationDriver
   UseCharacteristicLimiting = .TRUE.
 
   UseTroubledCellIndicator  = .TRUE.
+
+  SlopeLimiterMethod        = 'TVD'
+
   LimiterThresholdParameter = 0.015_DP
 
   UseConservativeCorrection = .TRUE.
@@ -317,14 +353,14 @@ PROGRAM ApplicationDriver
   Min_1 = 1.0d-13
   Min_2 = 1.0d-13
 
-  iCycleD = 1
+  iCycleD = 10
 !!$  iCycleW = 10; dt_wrt = -1.0d0
   dt_wrt = 1.0d-2 * t_end; iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = nNodes
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -373,6 +409,8 @@ PROGRAM ApplicationDriver
              = UseCharacteristicLimiting, &
            UseTroubledCellIndicator_Option &
              = UseTroubledCellIndicator, &
+           SlopeLimiterMethod_Option &
+             = TRIM( SlopeLimiterMethod ), &
            LimiterThresholdParameter_Option &
              = LimiterThresholdParameter, &
            UseConservativeCorrection_Option &
