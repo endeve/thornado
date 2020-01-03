@@ -69,7 +69,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   PUBLIC :: FinalizeNonlinearSolverTally
   PUBLIC :: WriteNonlinearSolverTally
 
-  LOGICAL, PARAMETER :: ReportConvergenceData = .TRUE.
+  LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
   INTEGER  :: Iterations_Min
   INTEGER  :: Iterations_Max
   REAL(DP) :: Iterations_Ave
