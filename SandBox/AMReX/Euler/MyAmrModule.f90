@@ -52,6 +52,7 @@ MODULE MyAmrModule
   INTEGER,           ALLOCATABLE :: nX(:), swX(:), bcX(:)
   REAL(AR),          ALLOCATABLE :: xL(:), xR(:)
   CHARACTER(LEN=:),  ALLOCATABLE :: ProgramName
+  CHARACTER(LEN=:),  ALLOCATABLE :: PlotFileBaseName
   CHARACTER(LEN=32), SAVE        :: CoordSys
   LOGICAL,           SAVE        :: UsePhysicalUnits
   LOGICAL,           SAVE        :: DEBUG
@@ -113,6 +114,7 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     UsePhysicalUnits = .FALSE.
+    PlotFileBaseName = 'thornado'
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'dt_wrt',           dt_wrt )
@@ -129,6 +131,7 @@ CONTAINS
       CALL PP % get   ( 'iCycleChk',        iCycleChk )
       CALL PP % get   ( 'iRestart',         iRestart )
       CALL PP % query ( 'UsePhysicalUnits', UsePhysicalUnits )
+      CALL PP % query ( 'PlotFileBaseName', PlotFileBaseName )
     CALL amrex_parmparse_destroy( PP )
 
     IF( UsePhysicalUnits ) &
