@@ -15,7 +15,8 @@ PROGRAM ApplicationDriver
     InitializeReferenceElementX_Lagrange, &
     FinalizeReferenceElementX_Lagrange
   USE InputOutputModuleHDF, ONLY: &
-    WriteFieldsHDF
+    WriteFieldsHDF, &
+    ReadFieldsHDF
   USE GeometryFieldsModule, ONLY: &
     nGF, uGF
   USE GeometryComputationModule, ONLY: &
@@ -74,6 +75,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseConservativeCorrection
   INTEGER       :: iCycle, iCycleD
   INTEGER       :: nX(3), bcX(3), nNodes
+  INTEGER       :: RestartFileNumber
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, wTime
   REAL(DP)      :: xL(3), xR(3), Gamma
   REAL(DP)      :: BetaTVD, BetaTVB
@@ -87,6 +89,10 @@ PROGRAM ApplicationDriver
   CoordinateSystem = 'CARTESIAN'
 
   ProgramName = 'RiemannProblem'
+
+  RestartFileNumber = 50
+
+  t = 0.0_DP
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -384,6 +390,12 @@ PROGRAM ApplicationDriver
              = TRIM( RiemannProblemName ), &
            SedovEnergy_Option = Eblast )
 
+  IF( RestartFileNumber .GE. 0 )THEN
+
+    CALL ReadFieldsHDF( RestartFileNumber, t, ReadFF_Option = .TRUE. )
+
+  END IF
+
   CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
@@ -404,8 +416,7 @@ PROGRAM ApplicationDriver
 
   wTime = MPI_WTIME( )
 
-  t     = 0.0_DP
-  t_wrt = dt_wrt
+  t_wrt = t + dt_wrt
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_NonRelativistic_IDEAL &

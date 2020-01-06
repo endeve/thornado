@@ -33,7 +33,8 @@ PROGRAM ApplicationDriver
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
-    WriteFieldsHDF
+    WriteFieldsHDF, &
+    ReadFieldsHDF
   USE FluidFieldsModule, ONLY: &
     nCF, nPF, nAF, &
     uCF, uPF, uAF, &
@@ -80,6 +81,7 @@ PROGRAM ApplicationDriver
   INTEGER       :: iCycle, iCycleD, iCycleW = 0
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
+  INTEGER       :: RestartFileNumber
   REAL(DP)      :: SlopeTolerance
   REAL(DP)      :: Min_1, Min_2
   REAL(DP)      :: xL(3), xR(3), Gamma
@@ -103,6 +105,10 @@ PROGRAM ApplicationDriver
 
   LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
   REAL(DP) :: Timer_Evolution
+
+  RestartFileNumber = 50
+
+  t = 0.0_DP
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
@@ -445,6 +451,12 @@ PROGRAM ApplicationDriver
            rPerturbationInner_Option = rPerturbationInner, &
            rPerturbationOuter_Option = rPerturbationOuter )
 
+  IF( RestartFileNumber .GE. 0 )THEN
+
+    CALL ReadFieldsHDF( RestartFileNumber, t, ReadFF_Option = .TRUE. )
+
+  END IF
+
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
@@ -474,8 +486,7 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A2,A)') '', '---------------'
   WRITE(*,*)
 
-  t     = 0.0_DP
-  t_wrt = dt_wrt
+  t_wrt = t + dt_wrt
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic_IDEAL &
