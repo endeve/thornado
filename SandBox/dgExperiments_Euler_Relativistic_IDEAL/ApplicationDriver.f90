@@ -106,7 +106,7 @@ PROGRAM ApplicationDriver
   LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
   REAL(DP) :: Timer_Evolution
 
-  RestartFileNumber = 50
+  RestartFileNumber = -1
 
   t = 0.0_DP
 
@@ -192,10 +192,19 @@ PROGRAM ApplicationDriver
           t_end = 0.75d0
           bcX   = [ 23, 0, 0 ]
 
-        CASE DEFAULT ! Sod
-          Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.4d0
-          bcX   = [ 2, 0, 0 ]
+        CASE DEFAULT
+
+          WRITE(*,*)
+          WRITE(*,'(A21,A)') 'Invalid RiemannProblemName: ', RiemannProblemName
+          WRITE(*,'(A)')     'Valid choices:'
+          WRITE(*,'(A)')     '  Sod'
+          WRITE(*,'(A)')     '  MBProblem1'
+          WRITE(*,'(A)')     '  MBProblem4'
+          WRITE(*,'(A)')     '  PerturbedShockTube'
+          WRITE(*,'(A)')     '  CartesianSedov'
+          WRITE(*,'(A)')     '  ShockReflection'
+          WRITE(*,'(A)')     'Stopping...'
+          STOP
 
       END SELECT
 
@@ -351,7 +360,7 @@ PROGRAM ApplicationDriver
 
   SlopeLimiterMethod        = 'TVD'
 
-  LimiterThresholdParameter = 0.015_DP
+  LimiterThresholdParameter = 0.2_DP
 
   UseConservativeCorrection = .TRUE.
 
