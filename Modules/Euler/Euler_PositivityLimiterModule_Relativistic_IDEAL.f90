@@ -129,13 +129,13 @@ CONTAINS
   SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr_Option )
 
-    INTEGER,  INTENT(in)             :: &
+    INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)             :: &
+    REAL(DP), INTENT(in)           :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout)          :: &
+    REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(inout), OPTIONAL :: &
+    INTEGER, INTENT(out), OPTIONAL :: &
       iErr_Option
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
@@ -181,8 +181,10 @@ CONTAINS
         IF( Min_K .LT. Min_D )THEN
 
           ! --- Limit point-values of density towards cell-average ---
+
           Theta_D &
             = ( U_K(iCF_D) - Min_D ) / ( U_K(iCF_D) - Min_K )
+
           U_q(1:nDOFX,iCF_D) &
             = U_K(iCF_D) + Theta_D * ( U_q(1:nDOFX,iCF_D) - U_K(iCF_D) )
 
@@ -191,12 +193,17 @@ CONTAINS
         ! --- Modify point-values of q if necessary ---
 
         DO iCF = 1, nCF
+
           CALL ComputePointValues( U_q(1:nDOFX,iCF), U_PP(1:nPT,iCF) )
+
         END DO
 
         DO iGF = iGF_h_1, iGF_h_3
+
           CALL ComputePointValues( G_q(1:nDOFX,iGF), G_PP(1:nPT,iGF) )
+
         END DO
+
         CALL ComputeGeometryX_FromScaleFactors( G_PP(1:nPT,1:nGF) )
 
         U_K(iCF_E) &
@@ -205,9 +212,28 @@ CONTAINS
                 / SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) ) )
 
         IF( U_K(iCF_E) .LT. Zero )THEN
-          WRITE(*,*) 'U_K(iCF_E) < 0'
-          iErr = -1
-          IF( .NOT. PRESENT( iErr_Option ) ) STOP ''
+
+          IF( .NOT. PRESENT( iErr_Option ) )THEN
+
+            WRITE(*,*)
+            WRITE(*,*) &
+              'FATAL ERROR'
+            WRITE(*,*) &
+              'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
+            WRITE(*,*) &
+              'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
+            WRITE(*,*) 'U_K(iCF_E) < 0'
+            STOP ''
+
+          ELSE
+
+            iErr = 01
+            iErr_Option = iErr
+
+            RETURN
+
+          END IF
+
         END IF
 
         Min_ESq = Min_2 * U_K(iCF_E)**2
@@ -218,14 +244,18 @@ CONTAINS
         IF( ANY( q(1:nPT) .LT. Zero ) )THEN
 
           DO iCF = 1, nCF
+
             U_K(iCF) = SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) &
                               * U_q(1:nDOFX,iCF) ) &
                          / SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) )
+
           END DO
 
           ! --- Compute cell-average of q ---
           DO iP = 1, nPT
+
             CALL Computeq( 1, U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, q_K(iP) )
+
           END DO
 
           ! --- Artificially inject some thermal energy if any q_K < 0 ---
@@ -238,41 +268,73 @@ CONTAINS
             ! --- Use maximum value of SSq(1:nPT) to determine how much
             !     internal energy to inject ---
             DO iP = 1, nPT
+
               SSq(iP) = U_K(iCF_S1)**2 / G_PP(iP,iGF_Gm_dd_11) &
                            + U_K(iCF_S2)**2 / G_PP(iP,iGF_Gm_dd_22) &
                            + U_K(iCF_S3)**2 / G_PP(iP,iGF_Gm_dd_33)
+
             END DO
 
             WRITE(*,'(A,ES24.16E3)') 'tau_K (old):', U_K(iCF_E)
+
             chi = ( Min_2 * U_K(iCF_E) - U_K(iCF_D) &
                       + SQRT( U_K(iCF_D)**2 + MAXVAL( SSq ) &
                                 + Min_ESq ) ) / U_K(iCF_E) - One
+
             U_K(iCF_E) = U_K(iCF_E) * ( One + chi )
+
             WRITE(*,'(A,ES13.6E3)') &
               'Fractional amount of internal energy added: ', chi
 
             DO iCF = 1, nCF
+
               U_q(1:nDOFX,iCF) = U_K(iCF)
+
             END DO
 
           ELSE
 
             ! --- Solve for Theta_q such that all point-values
             !     of q are positive ---
+
             Theta_q = One
+
             DO iP = 1, nPT
+
               IF( q(iP) .LT. Zero )THEN
+
                 CALL SolveTheta_Bisection &
                   ( U_PP(iP,1:nCF), U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, &
                     Theta_P, iX1, iX2, iX3, iP, iErr )
+
+                IF( iErr .NE. 0 )THEN
+
+                  IF( PRESENT( iErr_Option ) )THEN
+
+                    iErr_Option = iErr
+                    RETURN
+
+                  ELSE
+
+                    STOP ''
+
+                  END IF
+
+                END IF
+
                 Theta_q = MIN( Theta_q, Theta_P )
+
               END IF
+
             END DO
 
             ! --- Limit all variables towards cell-average ---
+
             DO iCF = 1, nCF
+
               U_q(1:nDOFX,iCF) &
                 = U_K(iCF) + Theta_q * ( U_q(1:nDOFX,iCF) - U_K(iCF) )
+
             END DO
 
           END IF
@@ -289,72 +351,98 @@ CONTAINS
         WRITE(*,'(A)') 'Setting all values to cell-average'
 
         DO iCF = 1, nCF
+
           U_K(iCF) &
             = SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) &
                      * U_q(1:nDOFX,iCF) ) &
               / SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) )
+
           U(1:nDOFX,iX1,iX2,iX3,iCF) = U_K(iCF)
+
         END DO
 
       END IF
 
       ! --- Ensure that all point-values of q are positive after limiting ---
+
       DO iCF = 1, nCF
+
         CALL ComputePointValues( U(1:nDOFX,iX1,iX2,iX3,iCF), U_PP(1:nPT,iCF) )
+
       END DO
+
       DO iGF = iGF_h_1, iGF_h_3
+
         CALL ComputePointValues( G(1:nDOFX,iX1,iX2,iX3,iGF), G_PP(1:nPT,iGF) )
+
       END DO
+
       CALL ComputeGeometryX_FromScaleFactors( G_PP(1:nPT,1:nGF) )
 
       CALL Computeq &
              ( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), Min_ESq, q(1:nPT) )
+
       IF( ANY( q(1:nPT) .LT. Zero ) )THEN
-        WRITE(*,*)
-        WRITE(*,'(A)') &
-            'FATAL ERROR: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
-        WRITE(*,'(A)') &
-            '------------------------------------------------------'
-        WRITE(*,'(A)') 'q < 0 after all limiting'
-        WRITE(*,*)
-        WRITE(*,'(A,3I5.4)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
-        WRITE(*,*)
-        DO iP = 1, SIZE( q(1:nPT) )
-          WRITE(*,'(A,I2.2,ES25.16E3)') &
-            'iP, q(iP) = ', iP, q(iP)
-          WRITE(*,'(A,6ES12.3E3)') &
-            'U_PP = ', U_PP(iP,:)
-          WRITE(*,'(A,ES23.16E3)') &
-            'SSq = ', &
-            U_PP(iP,iCF_S1)**2 / G_PP(iP,iGF_Gm_dd_11) &
-            + U_PP(iP,iCF_S2)**2 / G_PP(iP,iGF_Gm_dd_22) &
-            + U_PP(iP,iCF_S3)**2 / G_PP(iP,iGF_Gm_dd_33)
-          WRITE(*,'(A,3ES11.3E3)') &
-            'G_PP(Gm11:Gm33) = ', G_PP(iP,iGF_Gm_dd_11:iGF_Gm_dd_33)
+
+        IF( .NOT. PRESENT( iErr_Option ) )THEN
+
           WRITE(*,*)
-        END DO
-        ! --- Compute cell-average of q ---
-        DO iP = 1, nPT
-          CALL Computeq( 1, U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, q_K(iP) )
-        END DO
-        IF( ANY( q_K(1:nPT) .LT. Zero ) )THEN
-          WRITE(*,'(A)') 'At least one q_K(1:nPT) < 0'
-          DO iP = 1, nPT
-            WRITE(*,'(A,I2.2,ES25.16E3)') 'iP, q_K(iP) = ', iP, q_K(iP)
+          WRITE(*,*) &
+            'FATAL ERROR'
+          WRITE(*,*) &
+              'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
+          WRITE(*,*) &
+              'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
+          WRITE(*,*) 'q < 0 after all limiting'
+          WRITE(*,*)
+          WRITE(*,'(A,3I5.4)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
+          WRITE(*,*)
+          DO iP = 1, SIZE( q(1:nPT) )
+            WRITE(*,'(A,I2.2,ES25.16E3)') &
+              'iP, q(iP) = ', iP, q(iP)
+            WRITE(*,'(A,6ES12.3E3)') &
+              'U_PP = ', U_PP(iP,:)
+            WRITE(*,'(A,ES23.16E3)') &
+              'SSq = ', &
+              U_PP(iP,iCF_S1)**2 / G_PP(iP,iGF_Gm_dd_11) &
+              + U_PP(iP,iCF_S2)**2 / G_PP(iP,iGF_Gm_dd_22) &
+              + U_PP(iP,iCF_S3)**2 / G_PP(iP,iGF_Gm_dd_33)
+            WRITE(*,'(A,3ES11.3E3)') &
+              'G_PP(Gm11:Gm33) = ', G_PP(iP,iGF_Gm_dd_11:iGF_Gm_dd_33)
+            WRITE(*,*)
           END DO
-        WRITE(*,*)
-        END IF
-        WRITE(*,'(A,F18.16)')    'Theta_q = ', Theta_q
-        WRITE(*,*)
-        WRITE(*,'(A)') 'U(1:nDOFX,iX1,iX2,iX3,iCF)'
-        WRITE(*,'(A)') '--------------------------'
-        DO iCF = 1, nCF
-          WRITE(*,'(A,I1)') 'iCF = ', iCF
-          WRITE(*,*) U(1:nDOFX,iX1,iX2,iX3,iCF)
+          ! --- Compute cell-average of q ---
+          DO iP = 1, nPT
+            CALL Computeq( 1, U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, q_K(iP) )
+          END DO
+          IF( ANY( q_K(1:nPT) .LT. Zero ) )THEN
+            WRITE(*,'(A)') 'At least one q_K(1:nPT) < 0'
+            DO iP = 1, nPT
+              WRITE(*,'(A,I2.2,ES25.16E3)') 'iP, q_K(iP) = ', iP, q_K(iP)
+            END DO
           WRITE(*,*)
-        END DO
-        iErr = -1
-        IF( .NOT. PRESENT( iErr_Option ) ) STOP ''
+          END IF
+          WRITE(*,'(A,F18.16)')    'Theta_q = ', Theta_q
+          WRITE(*,*)
+          WRITE(*,'(A)') 'U(1:nDOFX,iX1,iX2,iX3,iCF)'
+          WRITE(*,'(A)') '--------------------------'
+          DO iCF = 1, nCF
+            WRITE(*,'(A,I1)') 'iCF = ', iCF
+            WRITE(*,*) U(1:nDOFX,iX1,iX2,iX3,iCF)
+            WRITE(*,*)
+          END DO
+
+          STOP ''
+
+        ELSE
+
+          iErr = 04
+          iErr_Option = iErr
+
+          RETURN
+
+        END IF
+
       END IF
 
     END DO
@@ -467,15 +555,15 @@ CONTAINS
 
 
   SUBROUTINE SolveTheta_Bisection &
-    ( U_Q, U_K, G_Q, Min_ESq, Theta_P, iX1, iX2, iX3, iP, iErr_Option )
+    ( U_Q, U_K, G_Q, Min_ESq, Theta_P, iX1, iX2, iX3, iP, iErr )
 
     REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), G_Q(nGF), Min_ESq
     REAL(DP), INTENT(out) :: Theta_P
 
     ! --- For de-bugging ---
     INTEGER, INTENT(in)    :: iX1, iX2, iX3, iP
-    INTEGER, INTENT(inout), OPTIONAL :: iErr_Option
-    INTEGER :: iCF, iGF, iErr
+    INTEGER, INTENT(inout) :: iErr
+    INTEGER                :: iCF, iGF
 
     INTEGER,  PARAMETER :: MAX_IT = 19
     REAL(DP), PARAMETER :: dx_min = 1.0d-3
@@ -484,9 +572,6 @@ CONTAINS
     INTEGER  :: ITERATION
     REAL(DP) :: x_a, x_b, x_c, dx
     REAL(DP) :: f_a, f_b, f_c
-
-    iErr = 0
-    IF( PRESENT( iErr_Option ) ) iErr = iErr_Option
 
 !!$    WRITE(*,*)
 !!$    WRITE(*,'(A,I3)') 'iP = ', iP
@@ -543,12 +628,10 @@ CONTAINS
         '', 'x_a, x_b = ', x_a, x_b
       WRITE(*,'(A8,A,2ES15.6e3)') &
         '', 'f_a, f_b = ', f_a, f_b
-      iErr = -1
-      IF( PRESENT( iErr_Option ) )THEN
-        iErr_Option = iErr
-      ELSE
-        STOP ''
-      END IF
+
+      iErr = 02
+
+      RETURN
 
     END IF
 
@@ -596,8 +679,11 @@ CONTAINS
           '', 'f_a, f_c, f_b     = ', f_a, f_c, f_b
 
         IF( ITERATION > MAX_IT + 3 )THEN
-          iErr = -1
-          IF( PRESENT( iErr_Option ) ) STOP
+
+          iErr = 03
+
+          RETURN
+
         END IF
 
       END IF
