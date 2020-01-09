@@ -2,12 +2,41 @@ MODULE InputOutputModuleAMReX
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
-    AR => amrex_real
-
   USE ISO_C_BINDING
-  USE amrex_base_module
-  USE amrex_amr_module
+  USE amrex_fort_module,      ONLY: &
+    AR => amrex_real, &
+    amrex_spacedim
+  USE amrex_plotfile_module,  ONLY: &
+    amrex_write_plotfile
+  USE amrex_string_module,    ONLY: &
+    amrex_string, &
+    amrex_string_build
+  USE amrex_box_module,       ONLY: &
+    amrex_box
+  USE amrex_boxarray_module,  ONLY: &
+    amrex_boxarray,       &
+    amrex_boxarray_build, &
+    amrex_boxarray_destroy
+  USE amrex_distromap_module, ONLY: &
+    amrex_distromap,       &
+    amrex_distromap_build, &
+    amrex_distromap_destroy
+  USE amrex_multifab_module,  ONLY: &
+    amrex_multifab,         &
+    amrex_multifab_build,   &
+    amrex_multifab_destroy, &
+    amrex_mfiter,           &
+    amrex_mfiter_build,     &
+    amrex_mfiter_destroy
+  USE amrex_geometry_module,  ONLY: &
+    amrex_geometry,       &
+    amrex_geometry_build, &
+    amrex_geometry_destroy
+  USE amrex_amrcore_module,   ONLY: &
+    amrex_get_amrcore, &
+    amrex_ref_ratio
+  USE amrex_parallel_module,  ONLY: &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
@@ -66,14 +95,21 @@ MODULE InputOutputModuleAMReX
     iAF_Cs,       &
     ShortNamesDF, &
     nDF,          &
-    iDF_Sh
+    iDF_Sh,       &
+    iDF_T1,       &
+    iDF_T2,       &
+    iDF_T3
   USE UnitsModule,             ONLY: &
     Joule,  &
     Kelvin, &
     UnitsDisplay
 
   ! --- Local Modules ---
-  USE MyAmrModule
+  USE MyAmrModule,        ONLY: &
+    nLevels,          &
+    MaxGridSizeX,     &
+    PlotFileBaseName, &
+    nX
   USE MyAmrDataModule,    ONLY: &
     MF_uGF, &
     MF_uCF, &
@@ -86,8 +122,6 @@ MODULE InputOutputModuleAMReX
 
   IMPLICIT NONE
   PRIVATE
-
-  CHARACTER(8) :: BaseFileName = 'thornado'
 
   REAL(AR), PARAMETER :: One = 1.0_AR
 
@@ -178,12 +212,12 @@ CONTAINS
     INTEGER, INTENT(in) :: iChkFile
 
     INTEGER         :: iLevel, FinestLevel
-    TYPE(c_ptr)     :: pBA(0:amrex_max_level)
-    TYPE(c_ptr)     :: pDM(0:amrex_max_level)
-    TYPE(c_ptr)     :: pGF(0:amrex_max_level)
-    TYPE(c_ptr)     :: pCF(0:amrex_max_level)
-    TYPE(c_ptr)     :: pPF(0:amrex_max_level)
-    TYPE(c_ptr)     :: pAF(0:amrex_max_level)
+    TYPE(c_ptr)     :: pBA(0:nLevels-1)
+    TYPE(c_ptr)     :: pDM(0:nLevels-1)
+    TYPE(c_ptr)     :: pGF(0:nLevels-1)
+    TYPE(c_ptr)     :: pCF(0:nLevels-1)
+    TYPE(c_ptr)     :: pPF(0:nLevels-1)
+    TYPE(c_ptr)     :: pAF(0:nLevels-1)
     TYPE(c_ptr)     :: amrcore
     TYPE(amrex_box) :: BX
 
@@ -207,8 +241,8 @@ CONTAINS
       CALL amrex_distromap_build( DM (iLevel), BA(iLevel) )
     END DO
 
-    pBA(0:amrex_max_level) = BA(0:amrex_max_level) % P
-    pDM(0:amrex_max_level) = DM(0:amrex_max_level) % P
+    pBA(0:nLevels-1) = BA(0:nLevels-1) % P
+    pDM(0:nLevels-1) = DM(0:nLevels-1) % P
 
     FinestLevel = nLevels-1
 
@@ -239,10 +273,10 @@ CONTAINS
       CALL MF_uDF(iLevel) % SetVal( 0.0_AR )
     END DO
 
-    pGF(0:amrex_max_level) = MF_uGF(0:amrex_max_level) % P
-    pCF(0:amrex_max_level) = MF_uCF(0:amrex_max_level) % P
-    pPF(0:amrex_max_level) = MF_uPF(0:amrex_max_level) % P
-    pAF(0:amrex_max_level) = MF_uAF(0:amrex_max_level) % P
+    pGF(0:nLevels-1) = MF_uGF(0:nLevels-1) % P
+    pCF(0:nLevels-1) = MF_uCF(0:nLevels-1) % P
+    pPF(0:nLevels-1) = MF_uPF(0:nLevels-1) % P
+    pAF(0:nLevels-1) = MF_uAF(0:nLevels-1) % P
 
     CALL ReadMultiFabData( nLevels-1, pGF, 0, iChkFile )
     CALL ReadMultiFabData( nLevels-1, pCF, 1, iChkFile )
@@ -274,7 +308,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uDF_Option(0:nLevels-1)
 
     CHARACTER(08)                   :: NumberString
-    CHARACTER(32)                   :: PlotFileName
+    CHARACTER(64)                   :: PlotFileName
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C, WriteFF_P, &
                                        WriteFF_A, WriteFF_D
@@ -355,7 +389,7 @@ CONTAINS
       WRITE(NumberString,'(I8.8)') StepNo(0)
     END IF
 
-    PlotFileName = TRIM( BaseFileName ) // '_' // NumberString
+    PlotFileName = TRIM( PlotFileBaseName ) // '_' // NumberString
 
     ALLOCATE( VarNames(nF) )
 
@@ -363,7 +397,7 @@ CONTAINS
     IF( WriteGF )THEN
       DO iComp = 1, nGF
         CALL amrex_string_build &
-               ( VarNames(iComp + iOS), TRIM( ShortNamesGF(iComp) ) )
+               ( VarNames( iComp + iOS ), TRIM( ShortNamesGF(iComp) ) )
       END DO
       iOS = iOS + nGF
     END IF
@@ -371,7 +405,7 @@ CONTAINS
     IF( WriteFF_C )THEN
       DO iComp = 1, nCF
         CALL amrex_string_build &
-               ( VarNames(iComp + iOS), TRIM( ShortNamesCF(iComp) ) )
+               ( VarNames( iComp + iOS ), TRIM( ShortNamesCF(iComp) ) )
       END DO
       iOS = iOS + nCF
     END IF
@@ -379,7 +413,7 @@ CONTAINS
     IF( WriteFF_P )THEN
       DO iComp = 1, nPF
         CALL amrex_string_build &
-               ( VarNames(iComp + iOS), TRIM( ShortNamesPF(iComp) ) )
+               ( VarNames( iComp + iOS ), TRIM( ShortNamesPF(iComp) ) )
       END DO
       iOS = iOS + nPF
     END IF
@@ -387,7 +421,7 @@ CONTAINS
     IF( WriteFF_A )THEN
       DO iComp = 1, nAF
         CALL amrex_string_build &
-               ( VarNames(iComp + iOS), TRIM( ShortNamesAF(iComp) ) )
+               ( VarNames( iComp + iOS ), TRIM( ShortNamesAF(iComp) ) )
       END DO
       iOS = iOS + nAF
     END IF
@@ -395,10 +429,11 @@ CONTAINS
     IF( WriteFF_D )THEN
       DO iComp = 1, nDF
         CALL amrex_string_build &
-               ( VarNames(iComp + iOS), TRIM( ShortNamesDF(iComp) ) )
+               ( VarNames( iComp + iOS ), TRIM( ShortNamesDF(iComp) ) )
       END DO
       iOS = iOS + nDF
     END IF
+
 
     DO iLevel = 0, nLevels-1
 
@@ -664,6 +699,12 @@ CONTAINS
     ! --- Diagnostic ---
 
     unitsDF(iDF_Sh) &
+      = One
+    unitsDF(iDF_T1) &
+      = One
+    unitsDF(iDF_T2) &
+      = One
+    unitsDF(iDF_T3) &
       = One
 
   END SUBROUTINE SetUnitsFields

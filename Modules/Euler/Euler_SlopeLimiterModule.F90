@@ -21,21 +21,24 @@ CONTAINS
   SUBROUTINE InitializeSlopeLimiter_Euler &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
-      UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
+      UseTroubledCellIndicator_Option, SlopeLimiterMethod_Option, &
+       LimiterThresholdParameter_Option, &
       UseConservativeCorrection_Option, Verbose_Option )
 
-    REAL(DP), INTENT(in), OPTIONAL :: &
+    REAL(DP),         INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
-    REAL(DP), INTENT(in), OPTIONAL :: &
+    REAL(DP),         INTENT(in), OPTIONAL :: &
       SlopeTolerance_Option
-    LOGICAL,  INTENT(in), OPTIONAL :: &
+    LOGICAL,          INTENT(in), OPTIONAL :: &
       UseSlopeLimiter_Option, &
       UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, &
       UseConservativeCorrection_Option, &
       Verbose_Option
-    REAL(DP), INTENT(in), OPTIONAL :: &
+    REAL(DP),         INTENT(in), OPTIONAL :: &
       LimiterThresholdParameter_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
+      SlopeLimiterMethod_Option
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
@@ -63,6 +66,7 @@ CONTAINS
            ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
              UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
              UseTroubledCellIndicator_Option, &
+             SlopeLimiterMethod_Option, &
              LimiterThresholdParameter_Option, &
              UseConservativeCorrection_Option, &
              Verbose_Option )

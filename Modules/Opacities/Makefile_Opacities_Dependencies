@@ -2,23 +2,11 @@ OpacityModule_IDEAL.o: \
   KindModule.o \
   OpacityModule_IDEAL.f90
 
-ifeq ($(MICROPHYSICS),WEAKLIB)
-OpacityModule_TABLE.o: \
-  wlIOModuleHDF.o \
-  wlOpacityTableIOModuleHDF.o \
-  wlOpacityTableModule.o \
-  wlInterpolationModule.o \
-  KindModule.o \
-  UnitsModule.o \
-  DeviceModule.o \
-  OpacityModule_TABLE.F90
-else
 OpacityModule_TABLE.o: \
   KindModule.o \
   UnitsModule.o \
   DeviceModule.o \
   OpacityModule_TABLE.F90
-endif
 
 OpacityModule.o: \
   KindModule.o \

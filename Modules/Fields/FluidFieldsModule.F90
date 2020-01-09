@@ -128,15 +128,27 @@ MODULE FluidFieldsModule
   ! --- Diagnostic Variables ---
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Shock
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta1
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta2
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta3
 
   INTEGER, PUBLIC, PARAMETER :: iDF_Sh = 01 ! Shock
-  INTEGER, PUBLIC, PARAMETER :: nDF    = 01
+  INTEGER, PUBLIC, PARAMETER :: iDF_T1 = 02 ! Theta 1
+  INTEGER, PUBLIC, PARAMETER :: iDF_T2 = 03 ! Theta 2
+  INTEGER, PUBLIC, PARAMETER :: iDF_T3 = 04 ! Theta 3
+  INTEGER, PUBLIC, PARAMETER :: nDF    = 04
 
   CHARACTER(32), DIMENSION(nDF), PUBLIC, PARAMETER :: &
-    namesDF = [ 'Shock                           ' ]
+    namesDF = [ 'Shock                           ', &
+                'Theta 1                         ', &
+                'Theta 2                         ', &
+                'Theta 3                         ' ]
 
   CHARACTER(10), DIMENSION(nDF), PUBLIC, PARAMETER :: &
-    ShortNamesDF = [ 'DF_Sh     ' ]
+    ShortNamesDF = [ 'DF_Sh     ', &
+                     'DF_T1     ', &
+                     'DF_T2     ', &
+                     'DF_T3     ' ]
 
   REAL(DP), DIMENSION(nDF), PUBLIC :: unitsDF
 
@@ -183,6 +195,13 @@ CONTAINS
 
     ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
     Shock = 0.0_DP
+
+    ALLOCATE( Theta1(1:nX(1),1:nX(2),1:nX(3)) )
+    ALLOCATE( Theta2(1:nX(1),1:nX(2),1:nX(3)) )
+    ALLOCATE( Theta3(1:nX(1),1:nX(2),1:nX(3)) )
+    Theta1 = 1.0_DP
+    Theta2 = 1.0_DP
+    Theta3 = 1.0_DP
 
     CALL SetUnitsFluidFields
 
@@ -290,6 +309,9 @@ CONTAINS
 
     DEALLOCATE( uCF, rhsCF, uPF, uAF, uDF )
     DEALLOCATE( Shock )
+    DEALLOCATE( Theta1 )
+    DEALLOCATE( Theta2 )
+    DEALLOCATE( Theta3 )
 
   END SUBROUTINE DestroyFluidFields
 
@@ -346,6 +368,9 @@ CONTAINS
 
       ! --- Diagnostic ---
       unitsDF(iDF_Sh) = 1.0_DP
+      unitsDF(iDF_T1) = 1.0_DP
+      unitsDF(iDF_T2) = 1.0_DP
+      unitsDF(iDF_T3) = 1.0_DP
 
     ELSE
 

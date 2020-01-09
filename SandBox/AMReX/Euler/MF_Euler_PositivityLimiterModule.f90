@@ -118,9 +118,12 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nCF), iErr_Option = iErr )
 
-        IF( iErr .EQ. -1 )THEN
-          WRITE(*,*) 'Failure in ApplyPositivityLimiter_Euler'
+        IF( iErr .NE. 0 )THEN
+
+          CALL DescribeError_PositivityLimiter( iErr )
+
           CALL MPI_ABORT( amrex_parallel_communicator(), iErr )
+
         END IF
 
 
@@ -145,6 +148,36 @@ CONTAINS
     END DO
 
   END SUBROUTINE MF_ApplyPositivityLimiter_Euler
+
+
+  SUBROUTINE DescribeError_PositivityLimiter( iErr )
+
+    INTEGER, INTENT(in) :: iErr
+
+    WRITE(*,*)
+    WRITE(*,*) 'FATAL ERROR'
+    WRITE(*,*) 'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
+    WRITE(*,*) 'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
+
+    IF     ( iErr .EQ. 01 )THEN
+
+      WRITE(*,*) 'U_K(iCF_E) < 0'
+
+    ELSE IF( iErr .EQ. 02 )THEN
+
+      WRITE(*,*) 'SolveTheta_Bisection: No root in interval'
+
+    ELSE IF( iErr .EQ. 03 )THEN
+
+      WRITE(*,*) 'SolveTheta_Bisection: Failure to converge'
+
+    ELSE IF( iErr .EQ. 04 )THEN
+
+      WRITE(*,*) 'q < 0 after all limiting'
+
+    END IF
+
+  END SUBROUTINE DescribeError_PositivityLimiter
 
 
 END MODULE MF_Euler_PositivityLimiterModule

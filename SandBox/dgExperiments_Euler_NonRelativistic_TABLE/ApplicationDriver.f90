@@ -21,7 +21,8 @@ PROGRAM ApplicationDriver
     InitializeReferenceElementX_Lagrange, &
     FinalizeReferenceElementX_Lagrange
   USE InputOutputModuleHDF, ONLY: &
-    WriteFieldsHDF
+    WriteFieldsHDF, &
+    ReadFieldsHDF
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE GeometryComputationModule, ONLY: &
@@ -78,19 +79,24 @@ PROGRAM ApplicationDriver
   LOGICAL        :: UsePositivityLimiter
   LOGICAL        :: SelfGravity
   INTEGER        :: iCycle, iCycleD
+  INTEGER        :: RestartFileNumber
   INTEGER        :: nX(3), bcX(3), nNodes, nStages
   REAL(DP)       :: t, dt, t_end, dt_wrt, t_wrt, wTime
   REAL(DP)       :: xL(3), xR(3), zoomX(3)
   REAL(DP)       :: BetaTVD, BetaTVB
   REAL(DP)       :: LimiterThresholdParameter
 
-  ProgramName = 'GravitationalCollapse'
+  ProgramName = 'RiemannProblem'
 
   EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
   ProgenitorFile = '../Progenitors/WH07_15M_Sun.h5'
 
   SelfGravity = .FALSE.
+
+  RestartFileNumber = -1
+
+  t = 0.0_DP
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -151,8 +157,8 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter      = .TRUE.
 
       iCycleD = 10
-      t_end   = 2.5d-2 * Millisecond
-      dt_wrt  = 2.5d-4 * Millisecond
+      t_end   = 1.25d-2 * Millisecond
+      dt_wrt  = 1.25d-4 * Millisecond
 
    CASE( 'RiemannProblemSpherical' )
 
@@ -354,11 +360,17 @@ PROGRAM ApplicationDriver
            ProgenitorFileName_Option &
              = TRIM( ProgenitorFile ) )
 
+  IF( RestartFileNumber .GE. 0 )THEN
+
+    CALL ReadFieldsHDF( RestartFileNumber, t, ReadFF_Option = .TRUE. )
+
+  END IF
+
   CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
   CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
@@ -382,8 +394,7 @@ PROGRAM ApplicationDriver
 
   wTime = MPI_WTIME( )
 
-  t     = 0.0_DP * Millisecond
-  t_wrt = dt_wrt
+  t_wrt = t + dt_wrt
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_NonRelativistic_TABLE &
@@ -483,7 +494,11 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
 
-  CALL FinalizeGravitySolver_Newtonian_Poseidon
+  IF( SelfGravity )THEN
+
+    CALL FinalizeGravitySolver_Newtonian_Poseidon
+
+  END IF
 
   CALL FinalizeEquationOfState
 

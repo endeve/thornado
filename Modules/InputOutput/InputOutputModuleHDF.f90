@@ -18,6 +18,7 @@ MODULE InputOutputModuleHDF
   USE InputOutputUtilitiesModule, ONLY: &
     NodeCoordinates, &
     Field3D, &
+    FromField3D, &
     Field4D, &
     Opacity4D
   USE GeometryFieldsModule, ONLY: &
@@ -27,7 +28,7 @@ MODULE InputOutputModuleHDF
     uPF, nPF, namesPF, unitsPF, &
     uAF, nAF, namesAF, unitsAF, &
     uDF, nDF, namesDF, unitsDF, &
-    Shock
+    Shock, Theta1, Theta2, Theta3
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     uCR, nCR, namesCR, unitsCR, &
@@ -60,6 +61,7 @@ MODULE InputOutputModuleHDF
   INTEGER :: HDFERR
 
   PUBLIC :: WriteFieldsHDF
+  PUBLIC :: ReadFieldsHDF
 
 CONTAINS
 
@@ -129,6 +131,40 @@ CONTAINS
     FileNumber = FileNumber + 1
 
   END SUBROUTINE WriteFieldsHDF
+
+
+  SUBROUTINE ReadFieldsHDF &
+    ( ReadFileNumber, Time, ReadGF_Option, ReadFF_Option, ReadRF_Option )
+
+    INTEGER,  INTENT(in)  :: &
+      ReadFileNumber
+    REAL(DP), INTENT(out) :: &
+      Time
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      ReadGF_Option, ReadFF_Option, ReadRF_Option
+
+    LOGICAL :: ReadGF, ReadFF, ReadRF
+
+    FileNumber = ReadFileNumber
+
+    ReadGF = .FALSE.
+    IF( PRESENT( ReadGF_Option ) ) ReadGF = ReadGF_Option
+
+    ReadFF = .FALSE.
+    IF( PRESENT( ReadFF_Option ) ) ReadFF = ReadFF_Option
+
+    ReadRF = .FALSE.
+    IF( PRESENT( ReadRF_Option ) ) ReadRF = ReadRF_Option
+
+    IF( ReadGF ) CALL ReadGeometryFieldsHDF( Time )
+
+    IF( ReadFF ) CALL ReadFluidFieldsHDF( Time )
+
+    IF( ReadRF ) CALL ReadRadiationFieldsHDF( Time )
+
+    FileNumber = FileNumber + 1
+
+  END SUBROUTINE ReadFieldsHDF
 
 
   SUBROUTINE WriteGeometryFieldsHDF( Time )
@@ -215,6 +251,13 @@ CONTAINS
   END SUBROUTINE WriteGeometryFieldsHDF
 
 
+  SUBROUTINE ReadGeometryFieldsHDF( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+  END SUBROUTINE ReadGeometryFieldsHDF
+
+
   SUBROUTINE WriteFluidFieldsHDF( Time )
 
     REAL(DP), INTENT(in) :: Time
@@ -223,7 +266,11 @@ CONTAINS
     CHARACTER(256) :: FileName
     CHARACTER(256) :: GroupName
     CHARACTER(256) :: GroupName2
+    CHARACTER(256) :: GroupName_PL
     CHARACTER(256) :: DatasetName
+    CHARACTER(256) :: DatasetName1
+    CHARACTER(256) :: DatasetName2
+    CHARACTER(256) :: DatasetName3
     INTEGER        :: iFF
     INTEGER(HID_T) :: FILE_ID
     REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
@@ -384,11 +431,128 @@ CONTAINS
     CALL WriteDataset3DHDF &
            ( Shock(1:nX(1),1:nX(2),1:nX(3)), DatasetName, FILE_ID )
 
+    ! --- Positivity Limiter Detector ---
+
+    GroupName_PL = 'Positivity Limiter Detector'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName_PL ) , FILE_ID )
+
+    DatasetName1 = TRIM( GroupName_PL ) // '/Theta 1'
+
+    CALL WriteDataset3DHDF &
+           ( Theta1(1:nX(1),1:nX(2),1:nX(3)), DatasetName1, FILE_ID )
+
+    DatasetName2 = TRIM( GroupName_PL ) // '/Theta 2'
+
+    CALL WriteDataset3DHDF &
+           ( Theta2(1:nX(1),1:nX(2),1:nX(3)), DatasetName2, FILE_ID )
+
+    DatasetName3 = TRIM( GroupName_PL ) // '/Theta 3'
+
+    CALL WriteDataset3DHDF &
+           ( Theta3(1:nX(1),1:nX(2),1:nX(3)), DatasetName3, FILE_ID )
+
     CALL H5FCLOSE_F( FILE_ID, HDFERR )
 
     CALL H5CLOSE_F( HDFERR )
 
   END SUBROUTINE WriteFluidFieldsHDF
+
+
+  SUBROUTINE ReadFluidFieldsHDF( Time )
+
+    REAL(DP), INTENT(out) :: Time
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: DatasetName
+    CHARACTER(256) :: GroupName
+    INTEGER(HID_T) :: FILE_ID
+    INTEGER        :: iFF
+    REAL(DP)       :: Dataset1D(1)
+    REAL(DP)       :: Dataset3D(nX(1)*nNodesX(1), &
+                                nX(2)*nNodesX(2), &
+                                nX(3)*nNodesX(3))
+
+    WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+    FileName &
+      = OutputDirectory // '/' // &
+        TRIM( ProgramName ) // '_' // &
+        FluidSuffix // '_' // &
+        FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
+
+    ASSOCIATE( U => UnitsDisplay )
+
+    ! --- Read Time ---
+
+    DatasetName = '/Time'
+
+    CALL ReadDataset1DHDF( Dataset1D, DatasetName, FILE_ID )
+
+    Time = Dataset1D(1) * U % TimeUnit
+
+    END ASSOCIATE
+
+    ! --- Read Fluid Variables ---
+
+    ! --- Conserved ---
+
+    GroupName = 'Fluid Fields/Conserved'
+
+    DO iFF = 1, nCF
+
+      DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCF(iFF) )
+
+      CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+      uCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+            * unitsCF(iFF)
+
+    END DO
+
+    ! --- Primitive ---
+
+    GroupName = 'Fluid Fields/Primitive'
+
+    DO iFF = 1, nPF
+
+      DatasetName = TRIM( GroupName ) // '/' // TRIM( namesPF(iFF) )
+
+      CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+      uPF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+            * unitsPF(iFF)
+
+    END DO
+
+    ! --- Auxiliary ---
+
+    GroupName = 'Fluid Fields/Auxiliary'
+
+    DO iFF = 1, nAF
+
+      DatasetName = TRIM( GroupName ) // '/' // TRIM( namesAF(iFF) )
+
+      CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+      uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+            * unitsAF(iFF)
+
+    END DO
+
+    CALL H5FCLOSE_F( FILE_ID, HDFERR )
+
+    CALL H5CLOSE_F( HDFERR )
+
+  END SUBROUTINE ReadFluidFieldsHDF
 
 
   SUBROUTINE WriteRadiationFieldsHDF( Time )
@@ -541,6 +705,13 @@ CONTAINS
     CALL H5CLOSE_F( HDFERR )
 
   END SUBROUTINE WriteRadiationFieldsHDF
+
+
+  SUBROUTINE ReadRadiationFieldsHDF( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+  END SUBROUTINE ReadRadiationFieldsHDF
 
 
   SUBROUTINE WriteNeutrinoOpacitiesHDF( Time )
@@ -711,6 +882,26 @@ CONTAINS
   END SUBROUTINE WriteDataset1DHDF
 
 
+  SUBROUTINE ReadDataset1DHDF( Dataset, DatasetName, FILE_ID )
+
+    REAL(DP),         INTENT(out) :: Dataset(:)
+    CHARACTER(LEN=*), INTENT(in)  :: DatasetName
+    INTEGER(HID_T),   INTENT(in)  :: FILE_ID
+
+    INTEGER(HID_T) :: DATASET_ID
+    INTEGER(HID_T) :: DATASIZE(1)
+
+    DATASIZE = SHAPE( Dataset )
+
+    CALL H5DOPEN_F( FILE_ID, TRIM( DatasetName ), DATASET_ID, HDFERR )
+
+    CALL H5DREAD_F( DATASET_ID, H5T_NATIVE_DOUBLE, Dataset, DATASIZE, HDFERR )
+
+    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE ReadDataset1DHDF
+
+
   SUBROUTINE WriteDataset3DHDF( Dataset, DatasetName, FILE_ID )
 
     REAL(DP),         INTENT(in) :: Dataset(:,:,:)
@@ -740,6 +931,26 @@ CONTAINS
     CALL H5DCLOSE_F( DATASET_ID, HDFERR )
 
   END SUBROUTINE WriteDataset3DHDF
+
+
+  SUBROUTINE ReadDataset3DHDF( Dataset, DatasetName, FILE_ID )
+
+    REAL(DP),         INTENT(out) :: Dataset(:,:,:)
+    CHARACTER(LEN=*), INTENT(in)  :: DatasetName
+    INTEGER(HID_T),   INTENT(in)  :: FILE_ID
+
+    INTEGER(HID_T) :: DATASET_ID
+    INTEGER(HID_T) :: DATASIZE(3)
+
+    DATASIZE = SHAPE( Dataset )
+
+    CALL H5DOPEN_F( FILE_ID, TRIM( DatasetName ), DATASET_ID, HDFERR )
+
+    CALL H5DREAD_F( DATASET_ID, H5T_NATIVE_DOUBLE, Dataset, DATASIZE, HDFERR )
+
+    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE ReadDataset3DHDF
 
 
   SUBROUTINE WriteDataset4DHDF( Dataset, DatasetName, FILE_ID )

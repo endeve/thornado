@@ -121,6 +121,14 @@ CONTAINS
 
     SELECT CASE ( TRIM( ProgramName ) )
 
+      CASE( 'SineWaveAdvection' )
+
+        CALL InitializeFields_SineWaveAdvection_Relativistic
+
+      CASE( 'TopHatAdvection' )
+
+        CALL InitializeFields_TopHatAdvection_Relativistic
+
       CASE( 'RiemannProblem' )
 
         CALL InitializeFields_RiemannProblem_Relativistic &
@@ -158,9 +166,124 @@ CONTAINS
                  ApplyPerturbation, PerturbationOrder, PerturbationAmplitude, &
                  rPerturbationInner, rPerturbationOuter )
 
+      CASE DEFAULT
+
+        WRITE(*,*)
+        WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
+        WRITE(*,'(A)')     'Valid choices:'
+        WRITE(*,'(A)')     '  SineWaveAdvection'
+        WRITE(*,'(A)')     '  TopHatAdvection'
+        WRITE(*,'(A)')     '  RiemannProblem'
+        WRITE(*,'(A)')     '  RiemannProblem2d'
+        WRITE(*,'(A)')     '  SphericalRiemannProblem'
+        WRITE(*,'(A)')     '  SphericalSedov'
+        WRITE(*,'(A)')     '  KelvinHelmholtz2D_Relativistic'
+        WRITE(*,'(A)')     '  StandingAccretionShock'
+        WRITE(*,'(A)')     'Stopping...'
+        STOP
+
     END SELECT
 
   END SUBROUTINE InitializeFields_Relativistic
+
+
+  SUBROUTINE InitializeFields_SineWaveAdvection_Relativistic
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1
+    REAL(DP) :: X1
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = One + 0.1_DP * SIN( TwoPi * X1 )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+        uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
+          = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+      END DO
+
+      CALL ComputeConserved_Euler_Relativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_SineWaveAdvection_Relativistic
+
+
+  SUBROUTINE InitializeFields_TopHatAdvection_Relativistic
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1
+    REAL(DP) :: X1
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        IF( X1 .GT. 0.45 .AND. X1 .LT. 0.55 )THEN
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 2.0_DP
+
+        ELSE
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+
+        END IF
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+          uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+            = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+      END DO
+
+      CALL ComputeConserved_Euler_Relativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_TopHatAdvection_Relativistic
 
 
   SUBROUTINE InitializeFields_RiemannProblem_Relativistic &
@@ -952,7 +1075,7 @@ CONTAINS
     REAL(DP) :: D(1:nNodesX(1),iX_B1(1):iX_E1(1))
     REAL(DP) :: V(1:nNodesX(1),iX_B1(1):iX_E1(1))
     REAL(DP) :: P(1:nNodesX(1),iX_B1(1):iX_E1(1))
-    LOGICAL  :: FirstUnShockedElement = .FALSE.
+    LOGICAL  :: FirstPreShockElement = .FALSE.
 
     WRITE(*,*)
     WRITE(*,'(6x,A,ES9.2E3,A)') &
@@ -972,11 +1095,12 @@ CONTAINS
     WRITE(*,'(6x,A,ES9.2E3)') &
       'Perturbation amplitude: ', PerturbationAmplitude
     WRITE(*,'(6x,A,ES9.2E3,A)') &
-      'Inner perturbation radius: ', rPerturbationInner / Kilometer, ' km'
+      'Inner radius of perturbation: ', rPerturbationInner / Kilometer, ' km'
     WRITE(*,'(6x,A,ES9.2E3,A)') &
-      'Outer perturbation radius: ', rPerturbationOuter / Kilometer, ' km'
+      'Outer radius of perturbation: ', rPerturbationOuter / Kilometer, ' km'
 
-    ! --- Compute fields, pre-shock ---
+    !  --- Locate first element of un-shocked fluid ---
+
     DO iX1 = iX_B1(1), iX_E1(1)
       DO iNodeX1 = 1, nNodesX(1)
 
@@ -985,14 +1109,12 @@ CONTAINS
 
         IF( X1 .LE. ShockRadius ) CYCLE
 
-        !  --- Detect first element of un-shocked fluid ---
-
-        IF( X1 .GT. ShockRadius .AND. .NOT. FirstUnShockedElement )THEN
+        IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
 
           iX1_1     = iX1
           iNodeX1_1 = iNodeX1
           X1_1      = X1
-          X1_2      = X1  - dX1
+          X1_2      = X1 - dX1
 
           IF( iNodeX1_1 .EQ. 1 )THEN
 
@@ -1006,9 +1128,21 @@ CONTAINS
 
           END IF
 
-          FirstUnShockedElement = .TRUE.
+          FirstPreShockElement = .TRUE.
 
         END IF
+
+      END DO
+    END DO
+
+    ! --- Compute fields, pre-shock ---
+
+    DO iX1 = iX_E1(1), iX1_1, -1
+      DO iNodeX1 = nNodesX(1), 1, -1
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        IF( X1 .LE. ShockRadius ) CYCLE
 
         Alpha = LapseFunction  ( X1, MassPNS )
         Psi   = ConformalFactor( X1, MassPNS )
@@ -1066,7 +1200,7 @@ CONTAINS
 
     V0 = V_2
 
-    DO iX1 = iX_E1(1), iX_B1(1), -1
+    DO iX1 = iX1_2, iX_B1(1), -1
       DO iNodeX1 = nNodesX(1), 1, -1
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
@@ -1093,6 +1227,8 @@ CONTAINS
       END DO
     END DO
 
+    ! --- Map to 3D domain ---
+
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
@@ -1110,18 +1246,25 @@ CONTAINS
           IF( X1 .GE. rPerturbationInner .AND. X1 .LE. rPerturbationOuter )THEN
 
             IF( PerturbationOrder .EQ. 0 ) &
-              D(iNodeX1,iX1) &
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
                 = D(iNodeX1,iX1) * ( One + PerturbationAmplitude )
 
             IF( PerturbationOrder .EQ. 1 ) &
-              D(iNodeX1,iX1) &
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
                 = D(iNodeX1,iX1) * ( One + PerturbationAmplitude * COS( X2 ) )
+
+          ELSE
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D) = D(iNodeX1,iX1)
 
           END IF
 
+        ELSE
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D) = D(iNodeX1,iX1)
+
         END IF
 
-        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = D(iNodeX1,iX1)
         uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V(iNodeX1,iX1)
         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
@@ -1156,6 +1299,8 @@ CONTAINS
 
   END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
 
+
+  ! --- Auxiliary utilities for standing accretion shock problem ---
 
   SUBROUTINE ApplyJumpConditions &
     ( iX1_1, iNodeX1_1, X1_1, D_1, V_1, &

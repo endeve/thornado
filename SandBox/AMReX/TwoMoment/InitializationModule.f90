@@ -41,15 +41,46 @@ MODULE InitializationModule
     nNodesX,                &
     nDOFE,                  &
     nNodesE,                &
-    nDOF
+    nDOFZ,                  &
+    iZ_B0,                  &
+    iZ_E0
+  USE PolynomialBasisModuleX_Lagrange,  ONLY: &
+    InitializePolynomialBasisX_Lagrange
+  USE PolynomialBasisModuleX_Legendre,  ONLY: &
+    InitializePolynomialBasisX_Legendre
+  USE ReferenceElementModuleX,          ONLY: &
+    InitializeReferenceElementX
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    InitializeReferenceElementX_Lagrange
+  USE ReferenceElementModuleZ,           ONLY: &
+    InitializeReferenceElementZ
+  USE MeshModule,                       ONLY: &
+    MeshX,      &
+    CreateMesh, &
+    DestroyMesh
   USE RadiationFieldsModule,            ONLY: &
-    nCR, &
-    nPR, &
+    nCR,      &
+    nPR,      &
     CreateRadiationFields
+  USE GeometryFieldsModule,             ONLY: &
+    CreateGeometryFields
+  USE FluidFieldsModule,                ONLY: &
+    CreateFluidFields
+  USE PolynomialBasisMappingModule,     ONLY: &
+    InitializePolynomialBasisMapping
+  USE PolynomialBasisModule_Lagrange,   ONLY: &
+    InitializePolynomialBasis_Lagrange
+  USE PolynomialBasisModule_Legendre,   ONLY: &
+    InitializePolynomialBasis_Legendre
+  USE InputOutput,           ONLY: &
+    WriteFieldsAMReX_PlotFile, &
+    WriteFieldsAMReX_Checkpoint, &
+    ReadCheckpointFile
+
   ! --- Local modules ---
   USE MyAmrDataModule,                  ONLY: &
-    MF_uPF, &
-    MF_uCF
+    MF_uPR, &
+    MF_uCR
   USE MyAmrModule,                      ONLY: &
     t_end,                     &
     t,                         &
@@ -77,8 +108,11 @@ MODULE InitializationModule
     BA,                        &
     DM,                        &
     GEOM,                      &
+    StepNo,                    &
+    nSpecies,                  &
     MyAmrInit
-
+  USE MF_InitializationModule,          ONLY: &
+    MF_InitializeFields
 
   IMPLICIT NONE
   PRIVATE
@@ -108,41 +142,101 @@ CONTAINS
     CALL MyAmrInit
 
     IF( iRestart .LT. 0 )THEN
+      
       BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
+
       ALLOCATE( BA(0:nLevels-1) )
+
       DO iLevel = 0, nLevels-1
+
         CALL amrex_boxarray_build( BA(iLevel), BX )
+
       END DO
+
       DO iLevel = 0, nLevels-1
+
         CALL BA(iLevel) % maxSize( MaxGridSizeX )
+
       END DO
+
       ALLOCATE( GEOM(0:nLevels-1) )
+
       ALLOCATE( DM  (0:nLevels-1) )
+
       DO iLevel = 0, nLevels-1
+
         CALL amrex_geometry_build ( GEOM(iLevel), BX )
         CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
+
       END DO
-    
+
+
       DO iLevel = 0, nLevels-1
+
         CALL amrex_multifab_build &
-               ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOF * nPR, swX(1) )
-        CALL MF_uPF(iLevel) % SetVal( Zero )
+               ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), &
+                 nDOFZ * nPR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX(1) )
+
+        CALL MF_uPR(iLevel) % SetVal( Zero )
+
         CALL amrex_multifab_build &
-               ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOF * nCR, swX(1) )
-        CALL MF_uCF(iLevel) % SetVal( Zero )
+               ( MF_uCR(iLevel), BA(iLevel), DM(iLevel), &
+                 nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX(1) )
+
+        CALL MF_uCR(iLevel) % SetVal( Zero )
+
       END DO 
-  
+      print*, nDOFZ  
       t     = Zero
       dt    = Zero
       t_wrt = dt_wrt
       t_chk = dt_chk
 
     ELSE
-      print*, 'else'
+
+      CALL ReadCheckpointFile( iRestart )
+
     END IF
 
-    CALL CreateRadiationFields( nX, swX, nE, swE )
-    print*, nDOFX,nDOFE,nDOF
+     DO iDim = 1, 3
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
+               xL(iDim), xR(iDim) )
+    END DO
+
+    CALL InitializePolynomialBasisX_Lagrange
+    CALL InitializePolynomialBasisX_Legendre
+
+    CALL InitializePolynomialBasis_Lagrange
+    CALL InitializePolynomialBasis_Legendre
+     
+    !CALL InitializePolynomialBasisMapping &
+    !       ( [Zero] , MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
+
+    CALL InitializeReferenceElementX
+    CALL InitializeReferenceElementX_Lagrange
+    
+    CALL InitializeReferenceElementZ
+
+    CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies )
+
+    CALL CreateFluidFields( nX, swX )
+  
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' ) 
+     
+
+    CALL MF_InitializeFields( TRIM( ProgramName ), MF_uPR, MF_uCR )
+  
+    CALL WriteFieldsAMReX_PlotFile &
+           ( t(0), StepNo, &
+             MF_uCR_Option = MF_uCR, &
+             MF_uPR_Option = MF_uPR )
+
+!      CALL WriteFieldsAMReX_Checkpoint &
+!             ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
+!               MF_uCR % P,  &
+!               MF_uPR % P  )
+!       
   END SUBROUTINE InitializeProgram  
 
 

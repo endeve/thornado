@@ -11,6 +11,7 @@ MODULE InputOutputUtilitiesModule
 
   PUBLIC :: NodeCoordinates
   PUBLIC :: Field3D
+  PUBLIC :: FromField3D
   PUBLIC :: Field4D
   PUBLIC :: Opacity4D
 
@@ -73,6 +74,41 @@ CONTAINS
 
     RETURN
   END FUNCTION Field3D
+
+
+  FUNCTION FromField3D( F, nX, nN, nDOF, Tab )
+
+    INTEGER,  INTENT(in) :: &
+      nX(3), nN(3), nDOF, Tab(3,nDOF)
+    REAL(DP), INTENT(in) :: &
+      F(nX(1)*nN(1),nX(2)*nN(2),nX(3)*nN(3))
+    REAL(DP) :: &
+      FromField3D(nDOF,nX(1),nX(2),nX(3))
+
+    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iN1, iN2, iN3, iNode
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNode = 1, nDOF
+
+            iN1 = Tab(1,iNode)
+            iN2 = Tab(2,iNode)
+            iN3 = Tab(3,iNode)
+
+            FromField3D(iNode,iX1,iX2,iX3) &
+              = F( (iX1-1)*nN(1)+iN1, (iX2-1)*nN(2)+iN2, (iX3-1)*nN(3)+iN3 )
+
+          END DO
+
+        END DO
+      END DO
+    END DO
+
+    RETURN
+  END FUNCTION FromField3D
 
 
   FUNCTION Field4D( F, nX, nN, nDOF, Tab )

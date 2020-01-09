@@ -1,7 +1,7 @@
 MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
 
   USE KindModule, ONLY: &
-    DP, Zero, One, SqrtTiny
+    DP, Zero, One, Two, Three, SqrtTiny
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_TroubledCellIndicator
@@ -23,7 +23,8 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     MapNodalToModal_Fluid, &
     MapModalToNodal_Fluid
   USE MeshModule, ONLY: &
-    MeshX
+    MeshX, &
+    NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     nGF,          &
     iGF_Gm_dd_11, &
@@ -53,19 +54,29 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   PUBLIC :: FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
   PUBLIC :: ApplySlopeLimiter_Euler_Relativistic_IDEAL
 
-  LOGICAL  :: UseSlopeLimiter
-  LOGICAL  :: UseCharacteristicLimiting
-  LOGICAL  :: UseConservativeCorrection
-  LOGICAL  :: UseTroubledCellIndicator
+  LOGICAL      :: UseSlopeLimiter
+  LOGICAL      :: UseCharacteristicLimiting
+  LOGICAL      :: UseConservativeCorrection
+  LOGICAL      :: UseTroubledCellIndicator
+  CHARACTER(4) :: SlopeLimiterMethod
+
+  ! --- WENO Limiter ---
+  REAL(DP), ALLOCATABLE :: OrthonormalBasis(:,:,:)
+  REAL(DP), ALLOCATABLE :: VandermondeMatrix(:,:)
+
+  ! --- TVD Limiter ---
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
   REAL(DP) :: LimiterThreshold
   REAL(DP) :: LimiterThresholdParameter
   REAL(DP) :: I_6x6(1:6,1:6)
+
+  ! --- For troubled-cell indicator ---
   REAL(DP), ALLOCATABLE :: WeightsX_X1_P(:), WeightsX_X1_N(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X2_P(:), WeightsX_X2_N(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X3_P(:), WeightsX_X3_N(:)
 
+  LOGICAL :: DEBUG = .FALSE.
 
 CONTAINS
 
@@ -73,21 +84,24 @@ CONTAINS
   SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
-      UseTroubledCellIndicator_Option, LimiterThresholdParameter_Option, &
+      UseTroubledCellIndicator_Option, SlopeLimiterMethod_Option, &
+      LimiterThresholdParameter_Option, &
       UseConservativeCorrection_Option, Verbose_Option )
 
-    REAL(DP), INTENT(in), OPTIONAL :: &
+    REAL(DP), INTENT(in),     OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
-    REAL(DP), INTENT(in), OPTIONAL :: &
+    REAL(DP), INTENT(in),     OPTIONAL :: &
       SlopeTolerance_Option
-    LOGICAL,  INTENT(in), OPTIONAL :: &
+    LOGICAL,  INTENT(in),     OPTIONAL :: &
       UseSlopeLimiter_Option, &
       UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option,  &
       UseConservativeCorrection_Option, &
       Verbose_Option
-    REAL(DP), INTENT(in), OPTIONAL :: &
+    REAL(DP), INTENT(in),     OPTIONAL :: &
       LimiterThresholdParameter_Option
+    CHARACTER(*), INTENT(in), OPTIONAL :: &
+      SlopeLimiterMethod_Option
 
     INTEGER :: i
     LOGICAL :: Verbose
@@ -115,6 +129,10 @@ CONTAINS
     UseTroubledCellIndicator = .TRUE.
     IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
       UseTroubledCellIndicator = UseTroubledCellIndicator_Option
+
+    SlopeLimiterMethod = 'TVD'
+    IF( PRESENT( SlopeLimiterMethod_Option ) )&
+      SlopeLimiterMethod = SlopeLimiterMethod_Option
 
     LimiterThresholdParameter = 0.03_DP
     IF( PRESENT( LimiterThresholdParameter_Option ) ) &
@@ -151,6 +169,9 @@ CONTAINS
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseTroubledCellIndicator: ' , &
         UseTroubledCellIndicator
       WRITE(*,*)
+      WRITE(*,'(A4,A27,A)')         '', 'SlopeLimiterMethod: ', &
+        TRIM( SlopeLimiterMethod )
+      WRITE(*,*)
       WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
         LimiterThreshold
       WRITE(*,*)
@@ -166,18 +187,52 @@ CONTAINS
       I_6x6(i,i) = One
     END DO
 
+    IF( TRIM( SlopeLimiterMethod ).EQ. 'WENO' )THEN
+
+      CALL InitializeSlopeLimiter_Euler_WENO
+
+    END IF
+
   END SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL
 
 
-  SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
-
-    IF( UseTroubledCellIndicator ) &
-      CALL FinalizeTroubledCellIndicator
-
-  END SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
-
-
   SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+
+    INTEGER, INTENT(in)            :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)           :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout)        :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out)          :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      SuppressBC_Option
+
+    SELECT CASE( TRIM( SlopeLimiterMethod ) )
+
+      CASE( 'TVD' )
+
+        CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+
+      CASE( 'WENO' )
+
+        CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+
+      CASE DEFAULT
+
+        CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+
+    END SELECT
+
+  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL
+
+
+  SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
 
     INTEGER, INTENT(in)            :: &
@@ -444,9 +499,10 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iCF = 1, nCF
 
-      IF( LimitedCell(iCF,iX1,iX2,iX3) ) &
+      IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
         CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), &
                                     U_M(iCF,0,:,iX1,iX2,iX3) )
+      END IF
     END DO
     END DO
     END DO
@@ -457,7 +513,615 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
 
-  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL
+  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD
+
+
+  SUBROUTINE InitializeSlopeLimiter_Euler_WENO
+
+    INTEGER  :: iNodeX, jNodeX
+    REAL(DP) :: eta
+
+    IF( nDimsX .GT. 1 )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A)') &
+         'WENO slope-limiter not implemented for nDimsX > 1. Stopping...'
+      STOP
+
+    END  IF
+
+    IF( nNodesX(1) .GT. 3 )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A)') &
+         'WENO slope-limiter not implemented for nNodesX(1) > 3. Stopping...'
+      STOP
+
+    END  IF
+
+    ALLOCATE( OrthonormalBasis(nDOFX,nDOFX,nDOFX) )
+    ALLOCATE( VandermondeMatrix(nDOFX,nDOFX) )
+
+    IF( nNodesX(1) .EQ. 2 )THEN
+      DO iNodeX = 1, nDOFX
+
+        eta = MeshX(1) % Nodes( iNodeX )
+
+        ! --- 0th derivative ---
+        OrthonormalBasis(iNodeX,1,1) &
+          = One
+        OrthonormalBasis(iNodeX,2,1) &
+          = SQRT(12.0_DP) * eta
+
+        ! --- 1st derivative ---
+        OrthonormalBasis(iNodeX,1,2) &
+          = Zero
+        OrthonormalBasis(iNodeX,2,2) &
+          = SQRT(12.0_DP)
+
+      END DO
+    END IF
+
+    IF( nNodesX(1) .EQ. 3 )THEN
+      DO iNodeX = 1, nDOFX
+
+        eta = MeshX(1) % Nodes( iNodeX )
+
+        ! --- 0th derivative ---
+        OrthonormalBasis(iNodeX,1,1) &
+          = One
+        OrthonormalBasis(iNodeX,2,1) &
+          = SQRT(12.0_DP) * eta
+        OrthonormalBasis(iNodeX,3,1) &
+          = SQRT(180.0_DP) * ( eta**2 - One / 12.0_DP )
+
+        ! --- 1st derivative ---
+        OrthonormalBasis(iNodeX,1,2) &
+          = Zero
+        OrthonormalBasis(iNodeX,2,2) &
+          = SQRT(12.0_DP)
+        OrthonormalBasis(iNodeX,3,2) &
+          = SQRT(180.0_DP) * Two * eta
+
+        ! --- 2nd derivative ---
+        OrthonormalBasis(iNodeX,1,3) &
+          = Zero
+        OrthonormalBasis(iNodeX,2,3) &
+          = Zero
+        OrthonormalBasis(iNodeX,3,3) &
+          = SQRT(180.0_DP) * Two
+
+      END DO
+    END IF
+
+    IF( nNodesX(1) .EQ. 4 )THEN
+      DO iNodeX = 1, nDOFX
+
+        eta = MeshX(1) % Nodes( iNodeX )
+
+        ! --- 0th derivative ---
+        OrthonormalBasis(iNodeX,1,1) &
+          = One
+        OrthonormalBasis(iNodeX,2,1) &
+          = SQRT(12.0_DP) * eta
+        OrthonormalBasis(iNodeX,3,1) &
+          = SQRT(180.0_DP) * ( eta**2 - One / 12.0_DP )
+        OrthonormalBasis(iNodeX,4,1) &
+          = SQRT(2800.0_DP) * ( eta**3 - 15.0_DP / 100.0_DP * eta )
+
+        ! --- 1st derivative ---
+        OrthonormalBasis(iNodeX,1,2) &
+          = One
+        OrthonormalBasis(iNodeX,2,2) &
+          = SQRT(12.0_DP)
+        OrthonormalBasis(iNodeX,3,2) &
+          = SQRT(180.0_DP) * Two * eta
+        OrthonormalBasis(iNodeX,4,2) &
+          = SQRT(2800.0_DP) * ( Three * eta**2 - 15.0_DP / 100.0_DP )
+
+        ! --- 2nd derivative ---
+        OrthonormalBasis(iNodeX,1,3) &
+          = Zero
+        OrthonormalBasis(iNodeX,2,3) &
+          = Zero
+        OrthonormalBasis(iNodeX,3,3) &
+          = SQRT(180.0_DP) * Two
+        OrthonormalBasis(iNodeX,4,3) &
+          = SQRT(2800.0_DP) * 6.0_DP * eta
+
+        ! --- 3rd derivative ---
+        OrthonormalBasis(iNodeX,1,4) &
+          = Zero
+        OrthonormalBasis(iNodeX,2,4) &
+          = Zero
+        OrthonormalBasis(iNodeX,3,4) &
+          = Zero
+        OrthonormalBasis(iNodeX,4,4) &
+          = SQRT(2800.0_DP) * 6.0_DP
+
+      END DO
+    END IF
+
+    DO iNodeX = 1, nDOFX ! Polynomial
+
+      DO jNodeX = 1, nDOFX ! Grid points
+
+        VandermondeMatrix(iNodeX,jNodeX) &
+          = WeightsX_q(jNodeX) * OrthonormalBasis(jNodeX,iNodeX,1)
+
+      END DO
+
+    END DO
+
+  END SUBROUTINE InitializeSlopeLimiter_Euler_WENO
+
+
+  SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
+
+    IF( UseTroubledCellIndicator ) &
+      CALL FinalizeTroubledCellIndicator
+
+    IF( TRIM( SlopeLimiterMethod ) .EQ. 'WENO' )THEN
+
+      DEALLOCATE( VandermondeMatrix )
+      DEALLOCATE( OrthonormalBasis )
+
+    END IF
+
+  END SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
+
+
+  SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+
+    INTEGER,  INTENT(in)           :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)           :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout)        :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out)          :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      SuppressBC_Option
+
+    INTEGER  :: iX1, iX2, iX3, iNodeX1, iNodeX2, iNodeX3, &
+                iNodeX, jNodeX, iCF
+    REAL(DP) :: dX1, dX2, dX3
+    LOGICAL  :: SuppressBC
+    REAL(DP) :: U_M(nDOFX,nCF,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
+    REAL(DP) :: UU(nDOFX,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3),nCF)
+    LOGICAL  :: LimitedCell(iX_B0(1):iX_E0(1), &
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3))
+
+    ! --- WENO Limiter ---
+    REAL(DP) :: q(nDOFX,nDOFX,nCF)
+    REAL(DP) :: LinearWeights(2*(nNodesX(1)-1))
+    REAL(DP) :: NonLinearWeights(2*(nNodesX(1)-1),nCF)
+    REAL(DP) :: SmoothnessIndicators(2*(nNodesX(1)-1),nCF)
+    REAL(DP) :: p (nDOFX,2*(nNodesX(1)-1),nCF)
+    REAL(DP) :: pC(nDOFX,2*(nNodesX(1)-1),nCF)
+    REAL(DP) :: pCoeffs(2*(nNodesX(1)-1),nNodesX(1),nCF)
+    REAL(DP) :: pNew(nDOFX,nCF)
+
+    ! --- Characteristic limiting ---
+    INTEGER  :: iGF
+    REAL(DP) :: R_X1(nCF,nCF,0:2), invR_X1(nCF,nCF,0:2)
+    REAL(DP) :: G_K(nGF)
+
+    IF( nDOFX .EQ. 1 ) RETURN
+
+    IF( .NOT. UseSlopeLimiter ) RETURN
+
+    CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
+
+    ! --- Get linear weights ---
+    DO iNodeX = 1, 2*(nNodesX(1)-1)
+
+      IF( MOD( iNodeX, 2 ) .NE. 0 )THEN
+
+        LinearWeights(iNodeX) = 0.01_DP
+
+      ELSE
+
+        LinearWeights(iNodeX) = 0.99_DP
+
+      END IF
+
+    END DO
+
+    SuppressBC = .FALSE.
+    IF( PRESENT( SuppressBC_Option ) ) &
+      SuppressBC = SuppressBC_Option
+
+    IF( .NOT. SuppressBC ) &
+      CALL ApplyBoundaryConditions_Euler &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    CALL DetectTroubledCells &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+    LimitedCell = .FALSE.
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( ALL( D(:,iX1,iX2,iX3,iDF_Sh) .LT. LimiterThreshold ) ) CYCLE
+
+      LimitedCell(iX1,iX2,iX3) = .TRUE.
+
+      dX1 = MeshX(1) % Width(iX1)
+      dX2 = MeshX(2) % Width(iX2)
+      dX3 = MeshX(3) % Width(iX3)
+
+      DO iCF = 1, nCF
+
+        CALL MapNodalToModal_Fluid_WENO &
+               ( VandermondeMatrix, &
+                 U(:,iX1,iX2,iX3,iCF), &
+                 U_M(:,iCF,iX1,iX2,iX3) )
+
+        CALL MapNodalToModal_Fluid_WENO &
+               ( VandermondeMatrix, &
+                 U(:,iX1-1,iX2,iX3,iCF), &
+                 U_M(:,iCF,iX1-1,iX2,iX3) )
+
+        CALL MapNodalToModal_Fluid_WENO &
+               ( VandermondeMatrix, &
+                 U(:,iX1+1,iX2,iX3,iCF), &
+                 U_M(:,iCF,iX1+1,iX2,iX3) )
+
+      END DO
+
+      ! --- Step 2.1: Compute left and right eigenvectors ---
+
+      IF( UseCharacteristicLimiting )THEN
+
+        DO iGF = iGF_Gm_dd_11, iGF_Beta_3
+
+          G_K(iGF) = SUM( WeightsX_q * G(:,iX1,iX2,iX3,iGF) )
+
+        END DO
+
+        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
+               ( 1, G_K, U_M(1,:,iX1  ,iX2,iX3), &
+                 R_X1(:,:,0), invR_X1(:,:,0) )
+
+        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
+               ( 1, G_K, U_M(1,:,iX1-1,iX2,iX3), &
+                 R_X1(:,:,1), invR_X1(:,:,1) )
+
+        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
+               ( 1, G_K, U_M(1,:,iX1+1,iX2,iX3), &
+                 R_X1(:,:,2), invR_X1(:,:,2) )
+
+        ! --- Step 2.2: Project into characteristic fields ---
+
+        DO iNodeX = 1, nDOFX ! Loop over modes
+
+          U_M(iNodeX,:,iX1  ,iX2,iX3) &
+            = MATMUL( invR_X1(:,:,0), U_M(iNodeX,:,iX1  ,iX2,iX3) )
+
+          U_M(iNodeX,:,iX1-1,iX2,iX3) &
+            = MATMUL( invR_X1(:,:,1), U_M(iNodeX,:,iX1-1,iX2,iX3) )
+
+          U_M(iNodeX,:,iX1+1,iX2,iX3) &
+            = MATMUL( invR_X1(:,:,2), U_M(iNodeX,:,iX1+1,iX2,iX3) )
+
+        END DO
+
+      END IF
+
+      ! --- Step 1.1: Compute 'q' polynomials ---
+
+      DO iCF = 1, nCF
+
+        DO iNodeX = 1, nDOFX ! Loop over modes
+
+          DO jNodeX = 1, nDOFX ! Loop over grid points
+
+            q(jNodeX,iNodeX,iCF) &
+              = SUM( U_M(1:iNodeX,iCF,iX1,iX2,iX3) &
+                       * OrthonormalBasis(jNodeX,1:iNodeX,1) )
+
+          END DO
+
+        END DO
+
+      END DO
+
+      pCoeffs = Zero
+
+      ! --- 2nd order ---
+
+      ! --- Step 1.2.1 ---
+
+      DO iCF = 1, nCF
+
+        CALL ComputeCoefficients_Order2 &
+               ( LinearWeights(1:2), pCoeffs(1:2,1:2,iCF) )
+
+        DO iNodeX = 1, nDOFX ! Loop over grid points
+
+          p(iNodeX,1,iCF) &
+            = DOT_PRODUCT( pCoeffs(1,1:2,iCF), q(iNodeX,1:2,iCF) )
+
+          p(iNodeX,2,iCF) &
+            = DOT_PRODUCT( pCoeffs(2,1:2,iCF), q(iNodeX,1:2,iCF) )
+
+        END DO
+
+        ! --- Step 1.3: Compute smoothness indicators ---
+
+        ! --- Hard-code smoothness indicator beta_01 ---
+
+        SmoothnessIndicators(1,iCF) &
+          = 12.0_DP &
+              * MIN( U_M(2,iCF,iX1-1,iX2,iX3)**2, U_M(2,iCF,iX1+1,iX2,iX3)**2 )
+
+        CALL ComputeSmoothnessIndicator_Order2 &
+               ( pCoeffs(1:2,1:2,iCF), &
+                 OrthonormalBasis, &
+                 U_M(1:2,iCF,iX1,iX2,iX3), &
+                 SmoothnessIndicators(2,iCF) )
+
+        ! --- Step 1.4: Compute nonlinear weights ---
+
+        CALL ComputeNonLinearWeights &
+               ( SmoothnessIndicators(1:2,iCF), LinearWeights(1:2), &
+                 NonLinearWeights(1:2,iCF) )
+
+      END DO ! End of loop over fields
+
+      ! --- 3rd order ---
+
+      IF( nNodesX(1) .GT. 2 )THEN
+
+        DO iCF = 1, nCF
+
+          ! --- Step 1.2.2 ---
+
+          CALL ComputeCoefficients_Order3 &
+                 ( LinearWeights(3:4), NonLinearWeights(1:2,iCF), &
+                   pCoeffs(:,:,iCF) )
+
+          DO iNodeX = 1, nDOFX ! Loop over grid points
+
+            p(iNodeX,3,iCF) &
+              = DOT_PRODUCT( pCoeffs(3,1:3,iCF), q(iNodeX,1:3,iCF) )
+
+            p(iNodeX,4,iCF) &
+              = DOT_PRODUCT( pCoeffs(4,1:3,iCF), q(iNodeX,1:3,iCF) )
+
+          END DO
+
+          ! --- Step 1.3: Compute smoothness indicators ---
+
+          CALL ComputeSmoothnessIndicators_Order3 &
+                 ( pCoeffs(:,:,iCF), OrthonormalBasis, U_M(:,iCF,iX1,iX2,iX3), &
+                   SmoothnessIndicators(3:4,iCF) )
+
+          ! --- Step 1.4: Compute nonlinear weights ---
+
+          CALL ComputeNonLinearWeights &
+                 ( SmoothnessIndicators(3:4,iCF), LinearWeights(3:4), &
+                   NonLinearWeights(3:4,iCF) )
+
+        END DO
+
+      END IF
+
+      ! --- Step 1.5: Reconstruct solution polynomial ---
+
+      DO iCF = 1, nCF
+
+        DO iNodeX = 1, nDOFX ! Loop over grid points
+
+          UU(iNodeX,iX1,iX2,iX3,iCF) &
+            = SUM( NonLinearWeights(2*(nNodesX(1)-1)-1:2*(nNodesX(1)-1),iCF) &
+                     * p(iNodeX,2*(nNodesX(1)-1)-1:2*(nNodesX(1)-1),iCF) )
+
+        END DO
+
+      END DO
+
+      ! --- Step 2.4: Project new polynomial back into physical space ---
+
+      IF( UseCharacteristicLimiting )THEN
+
+        DO iNodeX = 1, nDOFX
+
+          UU(iNodeX,iX1,iX2,iX3,:) &
+            = MATMUL( R_X1(:,:,0), UU(iNodeX,iX1,iX2,iX3,:) )
+
+        END DO
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( LimitedCell(iX1,iX2,iX3) )THEN
+
+        DO iCF = 1, nCF
+
+          U(:,iX1,iX2,iX3,iCF) = UU(:,iX1,iX2,iX3,iCF)
+
+        END DO
+
+      END IF
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
+
+  END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO
+
+
+  SUBROUTINE ComputeSmoothnessIndicator_Order2 &
+    ( pCoeffs, OrthonormalBasis, U_M, &
+      SmoothnessIndicator )
+
+    REAL(DP), INTENT(in)  :: pCoeffs(2,2)
+    REAL(DP), INTENT(in)  :: OrthonormalBasis(nDOFX,nDOFX,nDOFX)
+    REAL(DP), INTENT(in)  :: U_M(2)
+    REAL(DP), INTENT(out) :: SmoothnessIndicator
+
+    INTEGER  :: iNodeX
+    REAL(DP) :: dPx(nDOFX), dq(nDOFX,2)
+
+    DO iNodeX = 1, nDOFX ! Loop over quadrature points
+
+      dq(iNodeX,1) = U_M(1) * OrthonormalBasis(iNodeX,1,2)
+
+      dq(iNodeX,2) = SUM( U_M * OrthonormalBasis(iNodeX,1:2,2) )
+
+      dPx(iNodeX) = DOT_PRODUCT( pCoeffs(2,:), dq(iNodeX,:) )
+
+    END DO
+
+    SmoothnessIndicator = SUM( WeightsX_q * dPx**2 )
+
+  END SUBROUTINE ComputeSmoothnessIndicator_Order2
+
+
+  SUBROUTINE ComputeSmoothnessIndicators_Order3 &
+    ( pCoeffs, OrthonormalBasis, U_M, &
+      SmoothnessIndicators )
+
+    REAL(DP), INTENT(in)  :: pCoeffs(:,:)
+    REAL(DP), INTENT(in)  :: OrthonormalBasis(nDOFX,nDOFX,nDOFX)
+    REAL(DP), INTENT(in)  :: U_M(nDOFX)
+    REAL(DP), INTENT(out) :: SmoothnessIndicators(2)
+
+    INTEGER  :: iNodeX
+    REAL(DP) :: dPx(nDOFX), dq(nDOFX,nNodesX(1))
+    REAL(DP) :: ddPx(nDOFX,2), ddq(nDOFX,nNodesX(1))
+
+    DO iNodeX = 1, nDOFX ! Loop over quadrature points
+
+      ! --- 1st derivatives ---
+
+      dq(iNodeX,1) = U_M(1) * OrthonormalBasis(iNodeX,1,2)
+      dq(iNodeX,2) = SUM( U_M(1:2) * OrthonormalBasis(iNodeX,1:2,2) )
+      dq(iNodeX,3) = SUM( U_M(1:3) * OrthonormalBasis(iNodeX,1:3,2) )
+
+      dPx(iNodeX) = DOT_PRODUCT( pCoeffs(3,:), dq(iNodeX,:) )
+
+      ! --- 2nd derivatives ---
+
+      ddq(iNodeX,1) = U_M(1) * OrthonormalBasis(iNodeX,1,3)
+      ddq(iNodeX,2) = SUM( U_M(1:2) * OrthonormalBasis(iNodeX,1:2,3) )
+      ddq(iNodeX,3) = SUM( U_M(1:3) * OrthonormalBasis(iNodeX,1:3,3) )
+
+      ddPx(iNodeX,1) = DOT_PRODUCT( pCoeffs(3,:), ddq(iNodeX,:) )
+      ddPx(iNodeX,2) = DOT_PRODUCT( pCoeffs(4,:), ddq(iNodeX,:) )
+
+    END DO
+
+    SmoothnessIndicators(1) = SUM( WeightsX_q * dPx**2 )
+
+    SmoothnessIndicators(2) &
+      = SUM( WeightsX_q * ddPx(:,1)**2 ) + SUM( WeightsX_q * ddPx(:,2)**2 )
+
+  END SUBROUTINE ComputeSmoothnessIndicators_Order3
+
+
+  SUBROUTINE ComputeCoefficients_Order2 &
+    ( LinearWeights, PolynomialCoefficients )
+
+    REAL(DP), INTENT(in)  :: LinearWeights(2)
+    REAL(DP), INTENT(out) :: PolynomialCoefficients(:,:)
+
+    PolynomialCoefficients(1,1) = One
+
+    PolynomialCoefficients(1,2) = Zero
+
+    PolynomialCoefficients(2,1) = -LinearWeights(1) / LinearWeights(2)
+
+    PolynomialCoefficients(2,2) = One / LinearWeights(2)
+
+  END SUBROUTINE ComputeCoefficients_Order2
+
+
+  SUBROUTINE ComputeCoefficients_Order3 &
+    ( LinearWeights, NonLinearWeights, PolynomialCoefficients )
+
+    REAL(DP), INTENT(in)  :: LinearWeights(2), NonLinearWeights(:)
+    REAL(DP), INTENT(out) :: PolynomialCoefficients(:,:)
+
+    PolynomialCoefficients(3,1) &
+      = NonLinearWeights(1) &
+          - NonLinearWeights(2) * LinearWeights(1) / LinearWeights(2)
+
+    PolynomialCoefficients(3,2) &
+      = NonLinearWeights(2) / LinearWeights(2)
+
+    PolynomialCoefficients(3,3) &
+      = Zero
+
+    PolynomialCoefficients(4,1) &
+      = -LinearWeights(1) / LinearWeights(2) &
+          * ( NonLinearWeights(1) &
+                - NonLinearWeights(2) * LinearWeights(1) / LinearWeights(2) )
+
+    PolynomialCoefficients(4,2) &
+      = -LinearWeights(1) / LinearWeights(2) &
+          *  NonLinearWeights(2) / LinearWeights(2)
+
+    PolynomialCoefficients(4,3) &
+      = One / LinearWeights(2)
+
+  END SUBROUTINE ComputeCoefficients_Order3
+
+
+  SUBROUTINE ComputeNonLinearWeights &
+    ( SmoothnessIndicators, LinearWeights, NonLinearWeights )
+
+    REAL(DP), INTENT(in)  :: SmoothnessIndicators(2), LinearWeights(2)
+    REAL(DP), INTENT(out) :: NonLinearWeights(2)
+
+    REAL(DP) :: Tau, Normalization, EPS
+    EPS = 1.0d-10
+
+    Tau = ( SmoothnessIndicators(2) - SmoothnessIndicators(1) )**2
+
+    Normalization &
+      = SUM( LinearWeights * ( One + Tau / ( EPS + SmoothnessIndicators ) ) )
+
+    NonLinearWeights(1) &
+      = LinearWeights(1) * ( One + Tau / ( EPS + SmoothnessIndicators(1) ) ) &
+          / Normalization
+
+    NonLinearWeights(2) &
+      = LinearWeights(2) * ( One + Tau / ( EPS + SmoothnessIndicators(2) ) ) &
+          / Normalization
+
+  END SUBROUTINE ComputeNonLinearWeights
+
+
+  SUBROUTINE MapNodalToModal_Fluid_WENO( VandermondeMatrix, uN, uM )
+
+    REAL(DP), INTENT(in)  :: VandermondeMatrix(nDOFX,nDOFX)
+    REAL(DP), INTENT(in)  :: uN(nDOFX)
+    REAL(DP), INTENT(out) :: uM(nDOFX)
+
+    uM = MATMUL( VandermondeMatrix, uN )
+
+  END SUBROUTINE MapNodalToModal_Fluid_WENO
 
 
   SUBROUTINE InitializeTroubledCellIndicator

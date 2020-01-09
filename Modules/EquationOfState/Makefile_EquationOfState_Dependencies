@@ -3,26 +3,12 @@ EquationOfStateModule_IDEAL.o: \
   FluidFieldsModule.o \
   EquationOfStateModule_IDEAL.F90
 
-ifeq ($(MICROPHYSICS),WEAKLIB)
-EquationOfStateModule_TABLE.o: \
-  wlIOModuleHDF.o \
-  wlEOSIOModuleHDF.o \
-  wlEquationOfStateTableModule.o \
-  wlEOSInversionModule.o \
-  wlInterpolationModule.o \
-  KindModule.o \
-  UnitsModule.o \
-  DeviceModule.o \
-  FluidFieldsModule.o \
-  EquationOfStateModule_TABLE.F90
-else
 EquationOfStateModule_TABLE.o: \
   KindModule.o \
   UnitsModule.o \
   DeviceModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_TABLE.F90
-endif
 
 EquationOfStateModule.o: \
   KindModule.o \

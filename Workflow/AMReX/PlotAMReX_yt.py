@@ -35,6 +35,9 @@ ProblemName = 'KHI'
 # Specify field to plot
 VariableToPlot = 'PF_D'
 
+# Specify to plot in log-scale
+UseLogScale = True
+
 # Specify whether or not to use physical units
 UsePhysicalUnits = False
 
@@ -61,7 +64,7 @@ else:
     FileList = []
     for iFile in range( FileArray.shape[0] ):
         sFile = FileArray[iFile]
-        if( sFile[0:8] == 'thornado' ):
+        if( sFile[0:9] == 'thornado_' and sFile[9].isdigit() ):
             FileList.append( sFile )
     FileArray = np.array( FileList )
     File = FileArray[-1]
@@ -215,7 +218,7 @@ if  ( nDims == 1 ):
         time_text = plt.text( xL[0] + 0.5 * Width, \
                               np.min( Data ) + 0.7 * Height, '' )
 
-        ax.set_yscale( 'log' )
+        if( UseLogScale ): ax.set_yscale( 'log' )
         #IC,   = ax.plot([],[], color = 'red',   linewidth = 2 )
         line, = ax.plot([],[], color = 'black', linewidth = 1 )
         def InitializeFrame():
@@ -291,7 +294,10 @@ elif( nDims == 2 ):
 
     slc.set_cmap( field = field, cmap = cmap )
 
-    slc.set_log( field, True ) # set_log is True by default
+    if( UseLogScale ):
+        slc.set_log( field, True )
+    else:
+        slc.set_log( field, False )
     #slc.set_zlim( field, 0.0, 2.0 ) # Set colorbar limits
     #slc.set_colorbar_label( field, 'Primitive Rest-Mass-Density' )
 
@@ -362,7 +368,6 @@ elif( nDims == 2 ):
             def f(t):
                 return np.abs( Data[t] - Data[t].T )
 
-        UseLogScale = True
         if( UseLogScale ):
             from matplotlib.colors import LogNorm
             vmin = min( +np.inf, np.min( np.abs( Data ) ) )
