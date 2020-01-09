@@ -58,9 +58,6 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic
-  USE EquationOfStateModule, ONLY: &
-    ComputePressureFromPrimitive, &
-    ComputeSoundSpeedFromPrimitive
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
@@ -217,8 +214,8 @@ CONTAINS
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iPF
     INTEGER  :: nZ(4), nZ_X1(4), nK, nF, nF_X1
     INTEGER  :: nIterations
-    REAL(DP) :: uPF_L(nDOFX_X1,nPF), P_L(nDOFX_X1), Cs_L(nDOFX_X1)
-    REAL(DP) :: uPF_R(nDOFX_X1,nPF), P_R(nDOFX_X1), Cs_R(nDOFX_X1)
+    REAL(DP) :: uPF_L(nDOFX_X1,nPF)
+    REAL(DP) :: uPF_R(nDOFX_X1,nPF)
     REAL(DP) :: uPR_L(nPR), Flux_L(nCR)
     REAL(DP) :: uPR_R(nPR), Flux_R(nCR)
     REAL(DP) :: uPR_K(nPR), Flux_K(nCR)
@@ -257,9 +254,9 @@ CONTAINS
     REAL(DP) :: Flux_q(nDOFZ,nCR,iZ_B0(1):iZ_E0(1),iZ_B0(3):iZ_E0(3), &
                        iZ_B0(4):iZ_E0(4),nSpecies,iZ_B0(2):iZ_E0(2)  )
 
-    PRINT*, "      ComputeIncrement_Divergence_X1"
-
     IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
+
+    PRINT*, "      ComputeIncrement_Divergence_X1"
 
     nZ    = iZ_E0 - iZ_B0 + 1
     nZ_X1 = nZ + [0,1,0,0]
@@ -455,12 +452,6 @@ CONTAINS
                GX_F(:,iZ3,iZ4,iZ2,iGF_Gm_dd_22), &
                GX_F(:,iZ3,iZ4,iZ2,iGF_Gm_dd_33) )
 
-      CALL ComputePressureFromPrimitive &
-             ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), P_L )
-
-      CALL ComputeSoundSpeedFromPrimitive &
-             ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), Cs_L )
-
       ! --- Right States ---
 
       CALL ComputePrimitive_Euler_NonRelativistic &
@@ -477,23 +468,16 @@ CONTAINS
                GX_F(:,iZ3,iZ4,iZ2,iGF_Gm_dd_22), &
                GX_F(:,iZ3,iZ4,iZ2,iGF_Gm_dd_33) )
 
-      CALL ComputePressureFromPrimitive &
-             ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), P_R )
-
-      CALL ComputeSoundSpeedFromPrimitive &
-             ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), Cs_R )
-
       DO iNode = 1, nDOFX_X1
 
         V_u_X1(1:3,iNode,iZ3,iZ4,iZ2) &
           = FaceVelocity_X1 &
-              ( uPF_L(iNode,iPF_D ), uPF_L(iNode,iPF_V1), &
-                uPF_L(iNode,iPF_V2), uPF_L(iNode,iPF_V3), &
-                P_L(iNode), Cs_L(iNode), &
-                uPF_R(iNode,iPF_D ), uPF_R(iNode,iPF_V1), &
-                uPF_R(iNode,iPF_V2), uPF_R(iNode,iPF_V3), &
-                P_R(iNode), Cs_R(iNode), &
-                GX_F(iNode,iZ3,iZ4,iZ2,iGF_Gm_dd_11) )
+              ( uPF_L(iNode,iPF_V1), &
+                uPF_L(iNode,iPF_V2), &
+                uPF_L(iNode,iPF_V3), &
+                uPF_R(iNode,iPF_V1), &
+                uPF_R(iNode,iPF_V2), &
+                uPF_R(iNode,iPF_V3) )
 
       END DO
 
@@ -1406,9 +1390,7 @@ CONTAINS
     INTEGER  :: iNodeX
     INTEGER  :: i, iZ2, iZ3, iZ4, iCF, iGF
     REAL(DP) :: &
-      uPF_K(nPF), &
-      uPF_L(nPF), P_L, Cs_L, &
-      uPF_R(nPF), P_R, Cs_R
+      uPF_K(nPF), uPF_L(nPF), uPF_R(nPF)
     REAL(DP) :: &
       V_u_X1(nDOFX_X1,3,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
              iZ_B0(2):iZ_E0(2)+1), &
@@ -1541,6 +1523,8 @@ CONTAINS
 
       DO iNodeX = 1, nDOFX_X1
 
+        ! --- Left States ---
+
         CALL ComputePrimitive_Euler_NonRelativistic &
                ( uCF_L(iNodeX,iZ3,iZ4,iZ2,iCF_D ), &
                  uCF_L(iNodeX,iZ3,iZ4,iZ2,iCF_S1), &
@@ -1558,11 +1542,7 @@ CONTAINS
                  GX_F (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_22), &
                  GX_F (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_33) )
 
-        CALL ComputePressureFromPrimitive &
-               ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), P_L  )
-
-        CALL ComputeSoundSpeedFromPrimitive &
-               ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), Cs_L )
+        ! --- Right States ---
 
         CALL ComputePrimitive_Euler_NonRelativistic &
                ( uCF_R(iNodeX,iZ3,iZ4,iZ2,iCF_D ), &
@@ -1581,19 +1561,10 @@ CONTAINS
                  GX_F (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_22), &
                  GX_F (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_33) )
 
-        CALL ComputePressureFromPrimitive &
-               ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), P_R  )
-
-        CALL ComputeSoundSpeedFromPrimitive &
-               ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), Cs_R )
-
         V_u_X1(iNodeX,1:3,iZ3,iZ4,iZ2) &
           = FaceVelocity_X1 &
-              ( uPF_L(iPF_D), uPF_L(iPF_V1), uPF_L(iPF_V2), uPF_L(iPF_V3), &
-                P_L, Cs_L, &
-                uPF_R(iPF_D), uPF_R(iPF_V1), uPF_R(iPF_V2), uPF_R(iPF_V3), &
-                P_R, Cs_R, &
-                GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_11) )
+              ( uPF_L(iPF_V1), uPF_L(iPF_V2), uPF_L(iPF_V3), &
+                uPF_R(iPF_V1), uPF_R(iPF_V2), uPF_R(iPF_V3) )
 
         V_u_X1(iNodeX,1,iZ3,iZ4,iZ2) &
           = V_u_X1(iNodeX,1,iZ3,iZ4,iZ2) * WeightsX_X1(iNodeX)
@@ -1754,39 +1725,13 @@ CONTAINS
 
 
   FUNCTION FaceVelocity_X1 &
-    ( D_L, V1_L, V2_L, V3_L, P_L, Cs_L, &
-      D_R, V1_R, V2_R, V3_R, P_R, Cs_R, &
-      Gm_dd_11 )
+    ( V1_L, V2_L, V3_L, V1_R, V2_R, V3_R )
 
-    REAL(DP), INTENT(in) :: D_L, V1_L, V2_L, V3_L, P_L, Cs_L
-    REAL(DP), INTENT(in) :: D_R, V1_R, V2_R, V3_R, P_R, Cs_R
-    REAL(DP), INTENT(in) :: Gm_dd_11
+    REAL(DP), INTENT(in) :: V1_L, V2_L, V3_L
+    REAL(DP), INTENT(in) :: V1_R, V2_R, V3_R
     REAL(DP)             :: FaceVelocity_X1(1:3)
 
-!!$    REAL(DP) :: aM, aP, D_M
-!!$
-!!$    aM = MAX( Zero, &
-!!$              - ( V1_L - Cs_L / Gm_dd_11 ), &
-!!$              - ( V1_R - Cs_R / Gm_dd_11 ), &
-!!$              - ( V1_L + Cs_L / Gm_dd_11 ), &
-!!$              - ( V1_R + Cs_R / Gm_dd_11 ) )
-!!$    aP = MAX( Zero, &
-!!$              + ( V1_L + Cs_L / Gm_dd_11 ), &
-!!$              + ( V1_R + Cs_R / Gm_dd_11 ), &
-!!$              + ( V1_L - Cs_L / Gm_dd_11 ), &
-!!$              + ( V1_R - Cs_R / Gm_dd_11 ) )
-!!$
-!!$    D_M = ( aM + V1_L ) * D_L + ( aP - V1_R ) * D_R
-!!$
-!!$    FaceVelocity_X1(1) &
-!!$      = ( aM + V1_L ) * D_L * V1_L + ( aP - V1_R ) * D_R * V1_R &
-!!$        - ( P_R - P_L ) / Gm_dd_11
-!!$    FaceVelocity_X1(2) &
-!!$      = ( aM + V1_L ) * D_L * V2_L + ( aP - V1_R ) * D_R * V2_R
-!!$    FaceVelocity_X1(3) &
-!!$      = ( aM + V1_L ) * D_L * V3_L + ( aP - V1_R ) * D_R * V3_R
-!!$
-!!$    FaceVelocity_X1 = FaceVelocity_X1 / D_M
+    ! --- Average Left and Right States ---
 
     FaceVelocity_X1(1) = Half * ( V1_L + V1_R )
     FaceVelocity_X1(2) = Half * ( V2_L + V2_R )
