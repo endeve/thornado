@@ -295,12 +295,14 @@ contains
 
   end subroutine FreeThornado
 
-  subroutine InitThornado_Patch( nX, swX, xL, xR, nSpecies )
+  subroutine InitThornado_Patch &
+    ( nX, swX, xL, xR, nSpecies, CoordinateSystem_Option )
 
     use ProgramHeaderModule, only: nE, swE, nNodesX
 
     integer,  intent(in) :: nX(3), swX(3), nSpecies
     real(dp), intent(in) :: xL(3), xR(3)
+    character(len=*), intent(in), optional :: CoordinateSystem_Option
 
     integer :: iDim
 
@@ -318,7 +320,7 @@ contains
     END DO
 
     call CreateGeometryFields &
-           ( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+           ( nX, swX, CoordinateSystem_Option = CoordinateSystem_Option, &
              Verbose_Option = .FALSE. )
 
     call CreateFluidFields &
