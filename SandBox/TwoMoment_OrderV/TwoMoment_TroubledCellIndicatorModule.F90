@@ -204,7 +204,9 @@ CONTAINS
                      iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
                      1,1:nSpecies)
 
-    PRINT*, "DetectTroubledCells_TwoMoment (Start)"
+    IF( .NOT. UseTroubledCellIndicator ) RETURN
+
+    PRINT*, "      DetectTroubledCells_TwoMoment (Start)"
 
     IF( PRESENT( SuppressBC_Option ) )THEN
       SuppressBC = SuppressBC_Option
@@ -374,7 +376,7 @@ CONTAINS
     END DO
     END DO
 
-    PRINT*, "DetectTroubledCells_TwoMoment (Stop)"
+    PRINT*, "      DetectTroubledCells_TwoMoment (Stop)"
 
   END SUBROUTINE DetectTroubledCells_TwoMoment
 
