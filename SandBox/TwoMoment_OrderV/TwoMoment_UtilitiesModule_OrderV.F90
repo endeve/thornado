@@ -31,6 +31,7 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   PUBLIC :: ComputeFromConserved_TwoMoment
   PUBLIC :: Flux_E
   PUBLIC :: Flux_X1
+  PUBLIC :: Flux_X2
   PUBLIC :: ComputeEddingtonTensorComponents_dd
   PUBLIC :: NumericalFlux_LLF
 
