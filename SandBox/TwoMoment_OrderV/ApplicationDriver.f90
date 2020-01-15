@@ -81,6 +81,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(32) :: TimeSteppingScheme
+  LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UsePositivityLimiter
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
@@ -91,9 +92,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  UsePositivityLimiter = .FALSE.
-
-  ProgramName = 'StreamingDopplerShift'
+  ProgramName = 'SineWaveStreaming'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -104,7 +103,7 @@ PROGRAM ApplicationDriver
       nX  = [ 16, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
-      bcX = [ 1, 0, 0 ]
+      bcX = [ 1, 1, 0 ]
 
       nE  = 1
       eL  = 0.0_DP
@@ -115,16 +114,20 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK3'
 
-      t_end   = 1.0d0
+      t_end   = 1.0d-1
       iCycleD = 1
-      iCycleW = 1
+      iCycleW = 10
       maxCycles = 10000
 
-      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
+
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .FALSE.
 
     CASE( 'SineWaveDiffusion' )
 
@@ -153,6 +156,10 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 1.0d+2
 
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .FALSE.
+
     CASE( 'IsotropicRadiation' )
 
       nX  = [ 16, 1, 1 ]
@@ -180,6 +187,10 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .FALSE.
+
     CASE( 'StreamingDopplerShift' )
 
       nX  = [ 32, 1, 1 ]
@@ -206,6 +217,8 @@ PROGRAM ApplicationDriver
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
+
+      UseSlopeLimiter = .FALSE.
 
       UsePositivityLimiter = .TRUE.
 
@@ -236,6 +249,8 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
+      UseSlopeLimiter = .FALSE.
+
       UsePositivityLimiter = .TRUE.
 
     CASE DEFAULT
@@ -253,7 +268,7 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 0, 0 ], &
+             = [ 1, 1, 1 ], &
            bcX_Option &
              = bcX, &
            xL_Option &
@@ -322,7 +337,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeTroubledCellIndicator_TwoMoment &
          ( UseTroubledCellIndicator_Option &
-             = .TRUE., &
+             = .FALSE., &
            C_TCI_Option &
              = 0.1_DP, &
            Verbose_Option &
@@ -332,7 +347,8 @@ PROGRAM ApplicationDriver
 
   CALL InitializeSlopeLimiter_TwoMoment &
          ( BetaTVD_Option = 2.0_DP, &
-           UseSlopeLimiter_Option = .TRUE., &
+           UseSlopeLimiter_Option &
+             = UseSlopeLimiter, &
            Verbose_Option = .TRUE. )
 
   ! --- Initialize Positivity Limiter ---
