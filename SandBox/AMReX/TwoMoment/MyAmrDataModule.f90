@@ -8,6 +8,8 @@ MODULE MyAmrDataModule
   IMPLICIT NONE
   PRIVATE
 
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCF(:)
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uGF(:)
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uPR(:)
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCR(:)
 
@@ -21,6 +23,8 @@ CONTAINS
 
     INTEGER, INTENT(in) :: nLevels
 
+    ALLOCATE( MF_uCF(0:nLevels-1) )
+    ALLOCATE( MF_uGF(0:nLevels-1) )
     ALLOCATE( MF_uPR(0:nLevels-1) )
     ALLOCATE( MF_uCR(0:nLevels-1) )
 
@@ -34,10 +38,15 @@ CONTAINS
     INTEGER :: iLevel
 
     DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_destroy( MF_uCF(iLevel) )
+      CALL amrex_multifab_destroy( MF_uGF(iLevel) )
       CALL amrex_multifab_destroy( MF_uPR(iLevel) )
       CALL amrex_multifab_destroy( MF_uCR(iLevel) )
     END DO
 
+    DEALLOCATE( MF_uCF )
+    DEALLOCATE( MF_uGF )
     DEALLOCATE( MF_uPR )
     DEALLOCATE( MF_uCR )
 

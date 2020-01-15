@@ -88,17 +88,18 @@ MODULE MF_InitializationModule
 CONTAINS
 
   SUBROUTINE MF_InitializeFields &
-    ( ProgramName, MF_uPR, MF_uCR )
+    ( ProgramName, MF_uGF, MF_uCR, MF_uCF )
 
     CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uPR(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:nLevels-1) 
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     SELECT CASE ( TRIM( ProgramName ) )
       
       CASE ( 'SineWaveStreaming' )
 
-        CALL InitializeFields_SineWaveStreaming( MF_uPR, MF_uCR ) 
+        CALL InitializeFields_SineWaveStreaming( MF_uGF, MF_uCR, MF_uCF ) 
         print*, ProgramName
 
       CASE DEFAULT
@@ -107,12 +108,7 @@ CONTAINS
           WRITE(*,*)
           WRITE(*,'(4x,A,A)') 'Unknown Program: ', TRIM( ProgramName )
           WRITE(*,'(4x,A)')   'Valid Options:'
-          WRITE(*,'(6x,A)')     'IsentropicVortex'
-          WRITE(*,'(6x,A)')     'Sod'
-          WRITE(*,'(6x,A)')     'SphericalSod'
-          WRITE(*,'(6x,A)')     'TopHatAdvection'
-          WRITE(*,'(6x,A)')     'Implosion'
-          WRITE(*,'(6x,A)')     'StandingAccretionShock'
+          WRITE(*,'(6x,A)')     'SineWaveStreaming'
           STOP 'MF_InitializationModule_NonRelativistic_IDEAL.f90'
         END IF
 
@@ -120,10 +116,11 @@ CONTAINS
 
   END SUBROUTINE MF_InitializeFields
 
-  SUBROUTINE InitializeFields_SineWaveStreaming( MF_uPR, MF_uCR )
+  SUBROUTINE InitializeFields_SineWaveStreaming( MF_uGF, MF_uCR, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uPR(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
     !print*, 'hi'
 
     ! --- thornado ---
@@ -165,11 +162,10 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uPR(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
       DO WHILE( MFI % next() )
 
-        uPR => MF_uPR(iLevel) % DataPtr( MFI )
         uCR => MF_uCR(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
@@ -238,8 +234,6 @@ CONTAINS
             uCR(iX1,iX2,iX3,lo_C(4):hi_C(4)) &
               = RESHAPE( uCR_K, [ hi_C(4) - lo_C(4) + 1 ] )
 
-            uPR(iX1,iX2,iX3,lo_P(4):hi_P(4)) &
-              = RESHAPE( uPR_K, [ hi_P(4) - lo_P(4) + 1 ] )
  
         END DO
         END DO
