@@ -63,8 +63,10 @@ MODULE InitializationModule
     nPR,      &
     CreateRadiationFields
   USE GeometryFieldsModule,             ONLY: &
+    nGF,                     & 
     CreateGeometryFields
   USE FluidFieldsModule,                ONLY: &
+    nCF,                     &
     CreateFluidFields
   USE PolynomialBasisMappingModule,     ONLY: &
     InitializePolynomialBasisMapping
@@ -79,6 +81,8 @@ MODULE InitializationModule
 
   ! --- Local modules ---
   USE MyAmrDataModule,                  ONLY: &
+    MF_uGF, &
+    MF_uCF, &
     MF_uPR, &
     MF_uCR
   USE MyAmrModule,                      ONLY: &
@@ -174,6 +178,14 @@ CONTAINS
       DO iLevel = 0, nLevels-1
 
         CALL amrex_multifab_build &
+               ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX(1) )
+        CALL MF_uGF(iLevel) % SetVal( Zero )
+
+        CALL amrex_multifab_build &
+               ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+        CALL MF_uCF(iLevel) % SetVal( Zero )
+
+        CALL amrex_multifab_build &
                ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), &
                  nDOFZ * nPR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX(1) )
 
@@ -225,7 +237,7 @@ CONTAINS
     CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' ) 
      
 
-    CALL MF_InitializeFields( TRIM( ProgramName ), MF_uPR, MF_uCR )
+    CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF )
   
     CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &
