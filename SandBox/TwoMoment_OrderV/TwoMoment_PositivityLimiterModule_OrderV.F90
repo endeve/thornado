@@ -262,7 +262,7 @@ CONTAINS
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
                      nSpecies)
 
-    IF( nDOFZ == 1 ) RETURN
+    IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
 
     PRINT*, "      ApplyPositivityLimiter_TwoMoment"
 
