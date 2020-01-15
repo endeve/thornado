@@ -149,28 +149,28 @@ CONTAINS
 
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
           = 0.50_DP + 0.49_DP * SIN( TwoPi * X1 )
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
           = uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
           = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
           = 0.0_DP
 
         CALL ComputeConserved_TwoMoment &
-               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_D ,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS), &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
-                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
-                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
-                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
-                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
-                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
 
       END DO
 
