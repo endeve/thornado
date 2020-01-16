@@ -78,6 +78,7 @@ PROGRAM ApplicationDriver
 
   IMPLICIT NONE
 
+  CHARACTER(2)  :: Direction
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(32) :: TimeSteppingScheme
@@ -100,10 +101,10 @@ PROGRAM ApplicationDriver
 
       ! --- Minerbo Closure Only ---
 
-      nX  = [ 16, 1, 1 ]
+      nX  = [ 2, 4, 16 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
-      bcX = [ 1, 1, 0 ]
+      bcX = [ 1, 1, 1 ]
 
       nE  = 1
       eL  = 0.0_DP
@@ -114,12 +115,14 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK3'
 
-      t_end   = 1.0d-1
+      t_end   = 1.0d-0
       iCycleD = 1
-      iCycleW = 10
+      iCycleW = 50
       maxCycles = 10000
 
-      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.0_DP, 0.0_DP, 0.1_DP ]
+
+      Direction = 'Z'
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
@@ -373,7 +376,7 @@ PROGRAM ApplicationDriver
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields( V_0 )
+  CALL InitializeFields( V_0, Direction )
 
   ! --- Apply Slope Limiter to Initial Data ---
 
