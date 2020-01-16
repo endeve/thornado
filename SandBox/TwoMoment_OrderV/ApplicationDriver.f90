@@ -93,7 +93,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'SineWaveStreaming'
+  ProgramName = 'StreamingDopplerShift'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -196,10 +196,10 @@ PROGRAM ApplicationDriver
 
     CASE( 'StreamingDopplerShift' )
 
-      nX  = [ 32, 1, 1 ]
+      nX  = [ 32, 2, 4 ]
       xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0d1, 1.0_DP, 1.0_DP ]
-      bcX = [ 12, 0, 0 ]
+      bcX = [ 12, 1, 1 ]
 
       nE  = 16
       eL  = 0.0d0
@@ -210,7 +210,7 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK2'
 
-      t_end   = 5.0d1
+      t_end   = 2.5d-2
       iCycleD = 1
       iCycleW = 50
       maxCycles = 1000000
