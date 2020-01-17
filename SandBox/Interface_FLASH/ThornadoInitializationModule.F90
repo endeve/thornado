@@ -1,14 +1,15 @@
 module ThornadoInitializationModule
 
   use KindModule, only: &
-    DP, SqrtTiny
+    DP, SqrtTiny, Pi, TwoPi
   use UnitsModule, only : &
     MeV
   use ProgramHeaderModule, only: &
     InitializeProgramHeader, &
     InitializeProgramHeaderX, &
     nNodesE, &
-    iE_B0, iE_E0, iE_B1, iE_E1
+    iE_B0, iE_E0, iE_B1, iE_E1, &
+    iX_B0, iX_E0, iX_B1, iX_E1
   use DeviceModule, only: &
     InitializeDevice, &
     FinalizeDevice
@@ -62,11 +63,14 @@ module ThornadoInitializationModule
     DestroyMesh
   use GeometryFieldsModule, only: &
     CreateGeometryFields, &
-    DestroyGeometryFields
+    DestroyGeometryFields, &
+    uGF
   use GeometryFieldsModuleE, only: &
     CreateGeometryFieldsE, &
     DestroyGeometryFieldsE, &
     uGE
+  use GeometryComputationModule, only: &
+    ComputeGeometryX
   use GeometryComputationModuleE, only: &
     ComputeGeometryE
   use FluidFieldsModule, only: &
@@ -305,23 +309,48 @@ contains
     character(len=*), intent(in), optional :: CoordinateSystem_Option
 
     integer :: iDim
+    character(24) :: CoordinateSystem
+    real(dp) :: xLL(3), xRR(3)
+
+    xLL = xL
+    xRR = xR
+
+    IF( PRESENT(CoordinateSystem_Option) )THEN
+
+      IF( TRIM(CoordinateSystem_Option) == 'spherical' )THEN
+        CoordinateSystem = 'SPHERICAL'
+        xLL(2:3) = [0.0d0, 0.0d0]
+        xRR(2:3) = [Pi,    TwoPi]
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cartesian' )THEN
+        CoordinateSystem = 'CARTESIAN'
+      ELSE
+        print*, '[InitThornado_Patch] Invalid Coordinate System: ', &
+                 CoordinateSystem_Option
+      END IF
+
+    ELSE
+      CoordinateSystem = 'CARTESIAN'
+    END IF
 
     call InitializeProgramHeaderX &
            ( nX_Option = nX, swX_Option = swX, &
-             xL_Option = xL, xR_Option  = xR,  &
+             xL_Option = xLL, xR_Option  = xRR,  &
              reinitializeZ_Option = .TRUE. )
 
     DO iDim = 1, 3
 
       call CreateMesh &
              ( MeshX(iDim), nX(iDim), nNodesX(iDim), &
-               swX(iDim), xL(iDim), xR(iDim) )
+               swX(iDim), xLL(iDim), xRR(iDim) )
 
     END DO
 
     call CreateGeometryFields &
-           ( nX, swX, CoordinateSystem_Option = CoordinateSystem_Option, &
+           ( nX, swX, CoordinateSystem_Option = CoordinateSystem, &
              Verbose_Option = .FALSE. )
+
+    CALL ComputeGeometryX &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
     call CreateFluidFields &
            ( nX, swX, Verbose_Option = .FALSE. )
@@ -329,8 +358,6 @@ contains
     call CreateRadiationFields &
            ( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
              Verbose_Option = .FALSE. )
-
-    !call InitializeNonlinearSolverTally
 
   end subroutine InitThornado_Patch
 
@@ -349,8 +376,6 @@ contains
     call DestroyFluidFields
 
     call DestroyRadiationFields
-
-    !call FinalizeNonlinearSolverTally
 
   end subroutine FreeThornado_Patch
 
