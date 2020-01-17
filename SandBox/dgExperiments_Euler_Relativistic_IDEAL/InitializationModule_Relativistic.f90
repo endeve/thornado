@@ -40,8 +40,6 @@ CONTAINS
   SUBROUTINE InitializeFields_Relativistic &
                ( AdvectionProfile_Option, &
                  RiemannProblemName_Option, &
-                 RiemannProblem2DName_Option, &
-                 RiemannProblemSphericalName_Option, &
                  nDetCells_Option, Eblast_Option, &
                  MassPNS_Option, ShockRadius_Option, &
                  AccretionRate_Option, MachNumber_Option, &
@@ -51,8 +49,6 @@ CONTAINS
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemName_Option
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblem2DName_Option
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemSphericalName_Option
     INTEGER,          INTENT(in), OPTIONAL :: nDetCells_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Eblast_Option
     REAL(DP),         INTENT(in), OPTIONAL :: MassPNS_Option
@@ -67,8 +63,6 @@ CONTAINS
 
     CHARACTER(LEN=64) :: AdvectionProfile = 'SineWave'
     CHARACTER(LEN=64) :: RiemannProblemName = 'Sod'
-    CHARACTER(LEN=64) :: RiemannProblem2DName = 'DzB2002'
-    CHARACTER(LEN=64) :: RiemannProblemSphericalName = 'SphericalSod'
 
     ! --- Sedov-Taylor Blast Wave (Defaults) ---
     INTEGER  :: nDetCells = 1
@@ -90,10 +84,6 @@ CONTAINS
 
     IF( PRESENT( RiemannProblemName_Option ) ) &
       RiemannProblemName = TRIM( RiemannProblemName_Option )
-    IF( PRESENT( RiemannProblem2DName_Option ) ) &
-      RiemannProblem2DName = TRIM( RiemannProblem2DName_Option )
-    IF( PRESENT( RiemannProblemSphericalName_Option ) ) &
-      RiemannProblemSphericalName = TRIM( RiemannProblemSphericalName_Option )
 
     IF( PRESENT( nDetCells_Option ) ) &
       nDetCells = nDetCells_Option
@@ -129,6 +119,11 @@ CONTAINS
         CALL InitializeFields_Advection &
                ( TRIM( AdvectionProfile ) )
 
+      CASE( 'Advection2D' )
+
+        CALL InitializeFields_Advection2D &
+               ( TRIM( AdvectionProfile ) )
+
       CASE( 'RiemannProblem' )
 
         CALL InitializeFields_RiemannProblem &
@@ -139,12 +134,12 @@ CONTAINS
       CASE( 'RiemannProblem2D' )
 
         CALL InitializeFields_RiemannProblem2D &
-               ( TRIM( RiemannProblem2DName ) )
+               ( TRIM( RiemannProblemName ) )
 
       CASE( 'RiemannProblemSpherical' )
 
         CALL InitializeFields_RiemannProblemSpherical &
-               ( TRIM( RiemannProblemSphericalName ) )
+               ( TRIM( RiemannProblemName ) )
 
       CASE( 'SedovTaylorBlastWave' )
 
@@ -181,6 +176,10 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
     REAL(DP) :: X1
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A,A)') &
+      '', 'Advection Profile: ', TRIM( AdvectionProfile )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -256,6 +255,87 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_Advection
+
+
+  SUBROUTINE InitializeFields_Advection2D( AdvectionProfile )
+
+    CHARACTER(LEN=*), INTENT(in) :: AdvectionProfile
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A,A)') &
+      '', 'Advection Profile: ', TRIM( AdvectionProfile )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        SELECT CASE( TRIM( AdvectionProfile ) )
+
+          CASE( 'SineWaveX1' )
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = One + 0.1_DP * SIN( TwoPi * X1 )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
+              = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+          CASE( 'SineWaveX2' )
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = One + 0.1_DP * SIN( TwoPi * X2 )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.1_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
+              = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+          CASE DEFAULT
+
+            WRITE(*,*)
+            WRITE(*,'(A,A)') &
+              'Invalid choice for AdvectionProfile: ', AdvectionProfile
+            WRITE(*,'(A)') 'Valid choices:'
+            WRITE(*,'(A)') '  SineWaveX1'
+            WRITE(*,'(A)') '  SineWaveX2'
+            WRITE(*,*)
+            WRITE(*,'(A)') 'Stopping...'
+            STOP
+
+        END SELECT
+
+      END DO
+
+      CALL ComputeConserved_Euler_Relativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Advection2D
 
 
   SUBROUTINE InitializeFields_RiemannProblem &
@@ -451,23 +531,17 @@ CONTAINS
 
 
 
-  SUBROUTINE InitializeFields_RiemannProblem2D &
-               ( RiemannProblem2DName_Option )
+  SUBROUTINE InitializeFields_RiemannProblem2D( RiemannProblemName )
 
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblem2DName_Option
+    CHARACTER(LEN=*), INTENT(in) :: RiemannProblemName
 
-    CHARACTER(32) :: RiemannProblem2DName
     INTEGER       :: iX1, iX2, iX3
     INTEGER       :: iNodeX, iNodeX1, iNodeX2
     REAL(DP)      :: X1, X2
 
-    RiemannProblem2DName = 'DzB2002'
-    IF( PRESENT( RiemannProblem2DName_Option ) )&
-      RiemannProblem2DName = TRIM( RiemannProblem2DName_Option )
-
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
-      '', 'Riemann Problem 2D Name: ', TRIM( RiemannProblem2DName )
+      '', '2D Riemann Problem Name: ', TRIM( RiemannProblemName )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -481,7 +555,7 @@ CONTAINS
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
         X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-        SELECT CASE ( TRIM( RiemannProblem2DName ) )
+        SELECT CASE ( TRIM( RiemannProblemName ) )
 
           CASE( 'DzB2002' )
 
@@ -536,8 +610,8 @@ CONTAINS
 
             WRITE(*,*)
             WRITE(*,'(A,A)') &
-              'Invalid choice for RiemannProblem2DName: ', &
-                RiemannProblem2DName
+              'Invalid choice for RiemannProblemName: ', &
+                RiemannProblemName
             WRITE(*,'(A)') 'Valid choices:'
             WRITE(*,'(A)') &
               "  'DzB2002' - &
@@ -569,25 +643,18 @@ CONTAINS
   END SUBROUTINE InitializeFields_RiemannProblem2D
 
 
-  SUBROUTINE InitializeFields_RiemannProblemSpherical &
-               ( RiemannProblemSphericalName_Option )
+  SUBROUTINE InitializeFields_RiemannProblemSpherical( RiemannProblemName )
 
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
-         RiemannProblemSphericalName_Option
+    CHARACTER(LEN=*), INTENT(in) :: RiemannProblemName
 
-    CHARACTER(32) :: RiemannProblemSphericalName
     INTEGER       :: iX1, iX2, iX3
     INTEGER       :: iNodeX, iNodeX1
     REAL(DP)      :: X1
 
-    RiemannProblemSphericalName = 'SphericalSod'
-    IF( PRESENT( RiemannProblemSphericalName_Option ) ) &
-       RiemannProblemSphericalName = TRIM( RiemannProblemSphericalName_Option )
-
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
       '', 'Spherical Riemann Problem Name: ', &
-        TRIM( RiemannProblemSphericalName )
+        TRIM( RiemannProblemName )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -599,7 +666,7 @@ CONTAINS
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        SELECT CASE ( TRIM( RiemannProblemSphericalName ) )
+        SELECT CASE ( TRIM( RiemannProblemName ) )
 
           CASE( 'SphericalSod' )
 
@@ -629,8 +696,8 @@ CONTAINS
 
             WRITE(*,*)
             WRITE(*,*) &
-              'Invalid choice for RiemannProblemSphericalName: ', &
-              RiemannProblemSphericalName
+              'Invalid choice for RiemannProblemName: ', &
+              RiemannProblemName
             WRITE(*,*) 'Valid choices:'
             WRITE(*,*) &
               "'SphericalSod' - ", &
