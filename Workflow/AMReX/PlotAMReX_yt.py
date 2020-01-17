@@ -67,7 +67,6 @@ else:
     FileList = []
     for iFile in range( FileArray.shape[0] ):
         sFile = FileArray[iFile]
-        print( sFile )
         if( sFile[0:len(PlotFileBaseName)+1] == PlotFileBaseName + '_' \
               and sFile[9].isdigit() ):
             FileList.append( sFile )
