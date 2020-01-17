@@ -82,15 +82,19 @@ CONTAINS
 
 
   SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
-    ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
-      UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
-      UseTroubledCellIndicator_Option, SlopeLimiterMethod_Option, &
+    ( UseSlopeLimiter_Option,           &
+      SlopeLimiterMethod_Option,        &
+      BetaTVD_Option,                   &
+      BetaTVB_Option,                   &
+      SlopeTolerance_Option,            &
+      UseCharacteristicLimiting_Option, &
+      UseTroubledCellIndicator_Option,  &
       LimiterThresholdParameter_Option, &
-      UseConservativeCorrection_Option, Verbose_Option )
+      UseConservativeCorrection_Option, &
+      Verbose_Option )
 
     REAL(DP), INTENT(in),     OPTIONAL :: &
-      BetaTVD_Option, BetaTVB_Option
-    REAL(DP), INTENT(in),     OPTIONAL :: &
+      BetaTVD_Option, BetaTVB_Option, &
       SlopeTolerance_Option
     LOGICAL,  INTENT(in),     OPTIONAL :: &
       UseSlopeLimiter_Option, &
@@ -106,6 +110,14 @@ CONTAINS
     INTEGER :: i
     LOGICAL :: Verbose
 
+    UseSlopeLimiter = .TRUE.
+    IF( PRESENT( UseSlopeLimiter_Option ) ) &
+      UseSlopeLimiter = UseSlopeLimiter_Option
+
+    SlopeLimiterMethod = 'TVD'
+    IF( PRESENT( SlopeLimiterMethod_Option ) ) &
+      SlopeLimiterMethod = SlopeLimiterMethod_Option
+
     BetaTVD = One
     IF( PRESENT( BetaTVD_Option ) ) &
       BetaTVD = BetaTVD_Option
@@ -118,10 +130,6 @@ CONTAINS
     IF( PRESENT( SlopeTolerance_Option ) ) &
       SlopeTolerance = SlopeTolerance_Option
 
-    UseSlopeLimiter = .TRUE.
-    IF( PRESENT( UseSlopeLimiter_Option ) ) &
-      UseSlopeLimiter = UseSlopeLimiter_Option
-
     UseCharacteristicLimiting = .FALSE.
     IF( PRESENT( UseCharacteristicLimiting_Option ) ) &
       UseCharacteristicLimiting = UseCharacteristicLimiting_Option
@@ -129,10 +137,6 @@ CONTAINS
     UseTroubledCellIndicator = .TRUE.
     IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
       UseTroubledCellIndicator = UseTroubledCellIndicator_Option
-
-    SlopeLimiterMethod = 'TVD'
-    IF( PRESENT( SlopeLimiterMethod_Option ) )&
-      SlopeLimiterMethod = SlopeLimiterMethod_Option
 
     LimiterThresholdParameter = 0.03_DP
     IF( PRESENT( LimiterThresholdParameter_Option ) ) &
@@ -157,21 +161,27 @@ CONTAINS
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
       WRITE(*,*)
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVD: ' , &
-        BetaTVD
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVB: ' , &
-        BetaTVB
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
-        SlopeTolerance
+      WRITE(*,'(A4,A27,A)')         '', 'SlopeLimiterMethod: ', &
+        TRIM( SlopeLimiterMethod )
+      WRITE(*,*)
+
+      IF( TRIM( SlopeLimiterMethod ) .EQ. 'TVD' )THEN
+
+        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVD: ' , &
+          BetaTVD
+        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVB: ' , &
+          BetaTVB
+        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
+          SlopeTolerance
+        WRITE(*,*)
+
+      END IF
+
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseCharacteristicLimiting: ' , &
         UseCharacteristicLimiting
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseTroubledCellIndicator: ' , &
         UseTroubledCellIndicator
-      WRITE(*,*)
-      WRITE(*,'(A4,A27,A)')         '', 'SlopeLimiterMethod: ', &
-        TRIM( SlopeLimiterMethod )
-      WRITE(*,*)
       WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
         LimiterThreshold
       WRITE(*,*)

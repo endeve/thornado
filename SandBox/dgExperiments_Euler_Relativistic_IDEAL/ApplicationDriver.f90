@@ -67,8 +67,7 @@ PROGRAM ApplicationDriver
 
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: AdvectionProfile
-  CHARACTER(32) :: RiemannProblemName, RiemannProblem2DName
-  CHARACTER(32) :: RiemannProblemSphericalName
+  CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
   LOGICAL       :: OPTIMIZE = .FALSE.
@@ -115,7 +114,8 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-  ProgramName = 'Advection'
+!  ProgramName = 'Advection'
+  ProgramName = 'Advection2D'
 !  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2D'
 !  ProgramName = 'RiemannProblemSpherical'
@@ -136,6 +136,22 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'CARTESIAN'
 
       nX = [ 64, 1, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      WriteGF = .FALSE.
+
+    CASE( 'Advection2D' )
+
+      AdvectionProfile = 'SineWaveX1'
+
+      Gamma = 5.0_DP / 3.0_DP
+      t_end = 10.0_DP
+      bcX = [ 1, 1, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX = [ 32, 32, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -195,9 +211,9 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem2D' )
 
-      RiemannProblem2DName = 'DzB2002'
+      RiemannProblemName = 'DzB2002'
 
-      SELECT CASE ( TRIM( RiemannProblem2DName ) )
+      SELECT CASE ( TRIM( RiemannProblemName ) )
 
         CASE( 'DzB2002' )
 
@@ -215,7 +231,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblemSpherical' )
 
-      RiemannProblemSphericalName = 'SphericalSod'
+      RiemannProblemName = 'SphericalSod'
 
       CoordinateSystem = 'SPHERICAL'
 
@@ -297,8 +313,8 @@ PROGRAM ApplicationDriver
       WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)')     'Valid choices:'
-      WRITE(*,'(A)')     '  SineWaveAdvection'
-      WRITE(*,'(A)')     '  TopHatAdvection'
+      WRITE(*,'(A)')     '  Advection'
+      WRITE(*,'(A)')     '  Advection2D'
       WRITE(*,'(A)')     '  RiemannProblem'
       WRITE(*,'(A)')     '  RiemannProblem2D'
       WRITE(*,'(A)')     '  RiemannProblemSpherical'
@@ -379,18 +395,20 @@ PROGRAM ApplicationDriver
            Gamma_IDEAL_Option = Gamma )
 
   CALL InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
-         ( BetaTVD_Option = BetaTVD, &
-           BetaTVB_Option = BetaTVB, &
+         ( UseSlopeLimiter_Option &
+             = UseSlopeLimiter, &
+           SlopeLimiterMethod_Option &
+             = TRIM( SlopeLimiterMethod ), &
+           BetaTVD_Option &
+             = BetaTVD, &
+           BetaTVB_Option &
+             = BetaTVB, &
            SlopeTolerance_Option &
              = SlopeTolerance, &
-           UseSlopeLimiter_Option &
-             = UseSlopeLimiter, &
            UseCharacteristicLimiting_Option &
              = UseCharacteristicLimiting, &
            UseTroubledCellIndicator_Option &
              = UseTroubledCellIndicator, &
-           SlopeLimiterMethod_Option &
-             = TRIM( SlopeLimiterMethod ), &
            LimiterThresholdParameter_Option &
              = LimiterThresholdParameter, &
            UseConservativeCorrection_Option &
@@ -411,10 +429,6 @@ PROGRAM ApplicationDriver
              = TRIM( AdvectionProfile ), &
            RiemannProblemName_Option &
              = TRIM( RiemannProblemName ), &
-           RiemannProblem2DName_Option &
-             = TRIM( RiemannProblem2DName ), &
-           RiemannProblemSphericalName_Option &
-             = TRIM( RiemannProblemSphericalName ), &
            nDetCells_Option             = nDetCells, &
            Eblast_Option                = Eblast, &
            MassPNS_Option               = MassPNS, &

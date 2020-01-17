@@ -22,7 +22,7 @@ CONTAINS
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
       UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
       UseTroubledCellIndicator_Option, SlopeLimiterMethod_Option, &
-       LimiterThresholdParameter_Option, &
+      LimiterThresholdParameter_Option, &
       UseConservativeCorrection_Option, Verbose_Option )
 
     REAL(DP),         INTENT(in), OPTIONAL :: &
@@ -63,10 +63,13 @@ CONTAINS
 #elif defined HYDRO_RELATIVISTIC
 
     CALL InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
-           ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
-             UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
-             UseTroubledCellIndicator_Option, &
-             SlopeLimiterMethod_Option, &
+           ( UseSlopeLimiter_Option,           &
+             SlopeLimiterMethod_Option,        &
+             BetaTVD_Option,                   &
+             BetaTVB_Option,                   &
+             SlopeTolerance_Option,            &
+             UseCharacteristicLimiting_Option, &
+             UseTroubledCellIndicator_Option,  &
              LimiterThresholdParameter_Option, &
              UseConservativeCorrection_Option, &
              Verbose_Option )
