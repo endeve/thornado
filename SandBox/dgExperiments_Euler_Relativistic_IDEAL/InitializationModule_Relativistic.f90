@@ -33,17 +33,13 @@ MODULE InitializationModule_Relativistic
   PRIVATE
 
   PUBLIC :: InitializeFields_Relativistic
-!!$  PUBLIC :: ReadParameters
-
-  REAL(DP) :: a4, a3, a2, a1, a0
 
 CONTAINS
 
 
   SUBROUTINE InitializeFields_Relativistic &
-               ( RiemannProblemName_Option, &
-                 RiemannProblem2dName_Option, &
-                 SphericalRiemannProblemName_Option, &
+               ( AdvectionProfile_Option, &
+                 RiemannProblemName_Option, &
                  nDetCells_Option, Eblast_Option, &
                  MassPNS_Option, ShockRadius_Option, &
                  AccretionRate_Option, MachNumber_Option, &
@@ -51,9 +47,8 @@ CONTAINS
                  PerturbationAmplitude_Option, &
                  rPerturbationInner_Option, rPerturbationOuter_Option )
 
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemName_Option
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblem2dName_Option
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: SphericalRiemannProblemName_Option
     INTEGER,          INTENT(in), OPTIONAL :: nDetCells_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Eblast_Option
     REAL(DP),         INTENT(in), OPTIONAL :: MassPNS_Option
@@ -66,9 +61,8 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: rPerturbationInner_Option
     REAL(DP),         INTENT(in), OPTIONAL :: rPerturbationOuter_Option
 
+    CHARACTER(LEN=64) :: AdvectionProfile = 'SineWave'
     CHARACTER(LEN=64) :: RiemannProblemName = 'Sod'
-    CHARACTER(LEN=64) :: RiemannProblem2dName = 'DzB2002'
-    CHARACTER(LEN=64) :: SphericalRiemannProblemName = 'SphericalSod'
 
     ! --- Sedov-Taylor Blast Wave (Defaults) ---
     INTEGER  :: nDetCells = 1
@@ -85,12 +79,11 @@ CONTAINS
     REAL(DP) :: rPerturbationInner    = 0.0_DP
     REAL(DP) :: rPerturbationOuter    = 0.0_DP
 
+    IF( PRESENT( AdvectionProfile_Option ) ) &
+      AdvectionProfile = TRIM( AdvectionProfile_Option )
+
     IF( PRESENT( RiemannProblemName_Option ) ) &
       RiemannProblemName = TRIM( RiemannProblemName_Option )
-    IF( PRESENT( RiemannProblem2dName_Option ) ) &
-      RiemannProblem2dName = TRIM( RiemannProblem2dName_Option )
-    IF( PRESENT( SphericalRiemannProblemName_Option ) ) &
-      SphericalRiemannProblemName = TRIM( SphericalRiemannProblemName_Option )
 
     IF( PRESENT( nDetCells_Option ) ) &
       nDetCells = nDetCells_Option
@@ -121,47 +114,45 @@ CONTAINS
 
     SELECT CASE ( TRIM( ProgramName ) )
 
-      CASE( 'SineWaveAdvection' )
+      CASE( 'Advection' )
 
-        CALL InitializeFields_SineWaveAdvection_Relativistic
+        CALL InitializeFields_Advection &
+               ( TRIM( AdvectionProfile ) )
 
-      CASE( 'TopHatAdvection' )
+      CASE( 'Advection2D' )
 
-        CALL InitializeFields_TopHatAdvection_Relativistic
+        CALL InitializeFields_Advection2D &
+               ( TRIM( AdvectionProfile ) )
 
       CASE( 'RiemannProblem' )
 
-        CALL InitializeFields_RiemannProblem_Relativistic &
+        CALL InitializeFields_RiemannProblem &
                ( TRIM( RiemannProblemName ), &
                  nDetCells_Option = nDetCells, &
                  Eblast_Option    = Eblast )
 
-      CASE( 'RiemannProblem2d' )
+      CASE( 'RiemannProblem2D' )
 
-        CALL InitializeFields_RiemannProblem2d_Relativistic &
-               ( TRIM( RiemannProblem2dName ) )
+        CALL InitializeFields_RiemannProblem2D &
+               ( TRIM( RiemannProblemName ) )
 
-      CASE( 'SphericalRiemannProblem' )
+      CASE( 'RiemannProblemSpherical' )
 
-        CALL InitializeFields_SphericalRiemannProblem_Relativistic &
-               ( TRIM( SphericalRiemannProblemName ) )
+        CALL InitializeFields_RiemannProblemSpherical &
+               ( TRIM( RiemannProblemName ) )
 
-      CASE( 'SphericalSedov' )
+      CASE( 'SedovTaylorBlastWave' )
 
-        CALL InitializeFields_SphericalSedov_Relativistic &
+        CALL InitializeFields_SedovTaylorBlastWave &
                ( nDetCells, Eblast )
 
-      CASE( 'KelvinHelmholtz_Relativistic' )
+      CASE( 'KelvinHelmholtzInstability' )
 
-         CALL InitializeFields_KelvinHelmholtz_Relativistic
-
-      CASE( 'KelvinHelmholtz' )
-
-         CALL InitializeFields_KelvinHelmholtz
+         CALL InitializeFields_KelvinHelmholtzInstability
 
       CASE( 'StandingAccretionShock' )
 
-        CALL InitializeFields_StandingAccretionShock_Relativistic &
+        CALL InitializeFields_StandingAccretionShock &
                ( MassPNS, ShockRadius, AccretionRate, MachNumber, &
                  ApplyPerturbation, PerturbationOrder, PerturbationAmplitude, &
                  rPerturbationInner, rPerturbationOuter )
@@ -170,15 +161,6 @@ CONTAINS
 
         WRITE(*,*)
         WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
-        WRITE(*,'(A)')     'Valid choices:'
-        WRITE(*,'(A)')     '  SineWaveAdvection'
-        WRITE(*,'(A)')     '  TopHatAdvection'
-        WRITE(*,'(A)')     '  RiemannProblem'
-        WRITE(*,'(A)')     '  RiemannProblem2d'
-        WRITE(*,'(A)')     '  SphericalRiemannProblem'
-        WRITE(*,'(A)')     '  SphericalSedov'
-        WRITE(*,'(A)')     '  KelvinHelmholtz2D_Relativistic'
-        WRITE(*,'(A)')     '  StandingAccretionShock'
         WRITE(*,'(A)')     'Stopping...'
         STOP
 
@@ -187,11 +169,17 @@ CONTAINS
   END SUBROUTINE InitializeFields_Relativistic
 
 
-  SUBROUTINE InitializeFields_SineWaveAdvection_Relativistic
+  SUBROUTINE InitializeFields_Advection( AdvectionProfile )
+
+    CHARACTER(LEN=*), INTENT(in) :: AdvectionProfile
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
     REAL(DP) :: X1
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A,A)') &
+      '', 'Advection Profile: ', TRIM( AdvectionProfile )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -203,13 +191,50 @@ CONTAINS
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = One + 0.1_DP * SIN( TwoPi * X1 )
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-        uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
-          = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+        SELECT CASE( TRIM( AdvectionProfile ) )
+
+          CASE( 'SineWave' )
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = One + 0.1_DP * SIN( TwoPi * X1 )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
+              = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+          CASE( 'TopHat' )
+
+            IF( X1 .GT. 0.45 .AND. X1 .LT. 0.55 )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 2.0_DP
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+
+            END IF
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+          CASE DEFAULT
+
+            WRITE(*,*)
+            WRITE(*,'(A,A)') &
+              'Invalid choice for AdvectionProfile: ', AdvectionProfile
+            WRITE(*,'(A)') 'Valid choices:'
+            WRITE(*,'(A)') '  SineWave'
+            WRITE(*,'(A)') '  TopHat'
+            WRITE(*,*)
+            WRITE(*,'(A)') 'Stopping...'
+            STOP
+
+        END SELECT
 
       END DO
 
@@ -229,14 +254,20 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE InitializeFields_SineWaveAdvection_Relativistic
+  END SUBROUTINE InitializeFields_Advection
 
 
-  SUBROUTINE InitializeFields_TopHatAdvection_Relativistic
+  SUBROUTINE InitializeFields_Advection2D( AdvectionProfile )
+
+    CHARACTER(LEN=*), INTENT(in) :: AdvectionProfile
 
     INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX, iNodeX1
-    REAL(DP) :: X1
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2
+
+    WRITE(*,*)
+    WRITE(*,'(A4,A,A)') &
+      '', 'Advection Profile: ', TRIM( AdvectionProfile )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -245,25 +276,46 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-        IF( X1 .GT. 0.45 .AND. X1 .LT. 0.55 )THEN
+        SELECT CASE( TRIM( AdvectionProfile ) )
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 2.0_DP
+          CASE( 'SineWaveX1' )
 
-        ELSE
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = One + 0.1_DP * SIN( TwoPi * X1 )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
+              = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+          CASE( 'SineWaveX2' )
 
-        END IF
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = One + 0.1_DP * SIN( TwoPi * X2 )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.1_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
+              = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-          uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-            = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+          CASE DEFAULT
+
+            WRITE(*,*)
+            WRITE(*,'(A,A)') &
+              'Invalid choice for AdvectionProfile: ', AdvectionProfile
+            WRITE(*,'(A)') 'Valid choices:'
+            WRITE(*,'(A)') '  SineWaveX1'
+            WRITE(*,'(A)') '  SineWaveX2'
+            WRITE(*,*)
+            WRITE(*,'(A)') 'Stopping...'
+            STOP
+
+        END SELECT
 
       END DO
 
@@ -283,10 +335,10 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE InitializeFields_TopHatAdvection_Relativistic
+  END SUBROUTINE InitializeFields_Advection2D
 
 
-  SUBROUTINE InitializeFields_RiemannProblem_Relativistic &
+  SUBROUTINE InitializeFields_RiemannProblem &
                ( RiemannProblemName, &
                  nDetCells_Option, Eblast_Option )
 
@@ -304,23 +356,6 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
       '', 'Riemann Problem Name: ', TRIM( RiemannProblemName )
-
-    IF( TRIM( RiemannProblemName ) .EQ. 'CartesianSedov' )THEN
-
-      nDetCells = 1
-      IF( PRESENT( nDetCells_Option ) ) nDetCells = nDetCells_Option
-
-      Eblast = 1.0d0
-      IF( PRESENT( Eblast_Option ) ) Eblast = Eblast_Option
-
-      X_D = DBLE( nDetCells ) * MeshX(1) % Width(1)
-      WRITE(*,*)
-      WRITE(*,'(A,I4.4)')      '     nDetCells:              ', nDetCells
-      WRITE(*,'(A,ES23.16E3)') '     Initial blast radius:   ', X_D
-      WRITE(*,'(A,ES23.16E3)') '     Initial blast pressure: ', &
-                                       ( Gamma_IDEAL - One ) &
-                                         * Eblast / X_D**3
-    END IF
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -431,31 +466,6 @@ CONTAINS
 
             END IF
 
-          CASE( 'CartesianSedov' )
-
-            IF( X1 .LE. X_D )THEN
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = Eblast / X_D**3
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
-                = ( Gamma_IDEAL - One ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
-
-            ELSE
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d-6
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-           END IF
-
           CASE( 'ShockReflection' )
 
             IF( X1 .LE. One )THEN
@@ -491,18 +501,15 @@ CONTAINS
               Del Zanna & Bucciantini (2002) AA, 390, 1177, &
               Sinusoidal density perturbation"
             WRITE(*,'(A)') &
-              "  'CartesianSedov' - &
-              ..."
-            WRITE(*,'(A)') &
               "  'ShockReflection' - &
               Del Zanna & Bucciantini (2002) AA, 390, 1177, &
               Planar shock reflection"
             WRITE(*,'(A)') 'Stopping...'
             STOP
 
-          END SELECT
+        END SELECT
 
-        END DO
+      END DO
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
@@ -520,27 +527,21 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE InitializeFields_RiemannProblem_Relativistic
+  END SUBROUTINE InitializeFields_RiemannProblem
 
 
 
-  SUBROUTINE InitializeFields_RiemannProblem2d_Relativistic &
-               ( RiemannProblem2dName_Option )
+  SUBROUTINE InitializeFields_RiemannProblem2D( RiemannProblemName )
 
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblem2dName_Option
+    CHARACTER(LEN=*), INTENT(in) :: RiemannProblemName
 
-    CHARACTER(32) :: RiemannProblem2dName
     INTEGER       :: iX1, iX2, iX3
     INTEGER       :: iNodeX, iNodeX1, iNodeX2
     REAL(DP)      :: X1, X2
 
-    RiemannProblem2dName = 'DzB2002'
-    IF( PRESENT( RiemannProblem2dName_Option ) )&
-      RiemannProblem2dName = TRIM( RiemannProblem2dName_Option )
-
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
-      '', 'Riemann Problem 2D Name: ', TRIM( RiemannProblem2dName )
+      '', '2D Riemann Problem Name: ', TRIM( RiemannProblemName )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -554,7 +555,7 @@ CONTAINS
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
         X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-        SELECT CASE ( TRIM( RiemannProblem2dName ) )
+        SELECT CASE ( TRIM( RiemannProblemName ) )
 
           CASE( 'DzB2002' )
 
@@ -609,8 +610,8 @@ CONTAINS
 
             WRITE(*,*)
             WRITE(*,'(A,A)') &
-              'Invalid choice for RiemannProblem2dName: ', &
-                RiemannProblem2dName
+              'Invalid choice for RiemannProblemName: ', &
+                RiemannProblemName
             WRITE(*,'(A)') 'Valid choices:'
             WRITE(*,'(A)') &
               "  'DzB2002' - &
@@ -639,28 +640,21 @@ CONTAINS
     END DO
 
 
-  END SUBROUTINE InitializeFields_RiemannProblem2d_Relativistic
+  END SUBROUTINE InitializeFields_RiemannProblem2D
 
 
-  SUBROUTINE InitializeFields_SphericalRiemannProblem_Relativistic &
-               ( SphericalRiemannProblemName_Option )
+  SUBROUTINE InitializeFields_RiemannProblemSpherical( RiemannProblemName )
 
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
-         SphericalRiemannProblemName_Option
+    CHARACTER(LEN=*), INTENT(in) :: RiemannProblemName
 
-    CHARACTER(32) :: SphericalRiemannProblemName
     INTEGER       :: iX1, iX2, iX3
     INTEGER       :: iNodeX, iNodeX1
     REAL(DP)      :: X1
 
-    SphericalRiemannProblemName = 'SphericalSod'
-    IF( PRESENT( SphericalRiemannProblemName_Option ) ) &
-       SphericalRiemannProblemName = TRIM( SphericalRiemannProblemName_Option )
-
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
       '', 'Spherical Riemann Problem Name: ', &
-        TRIM( SphericalRiemannProblemName )
+        TRIM( RiemannProblemName )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -672,7 +666,7 @@ CONTAINS
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        SELECT CASE ( TRIM( SphericalRiemannProblemName ) )
+        SELECT CASE ( TRIM( RiemannProblemName ) )
 
           CASE( 'SphericalSod' )
 
@@ -702,8 +696,8 @@ CONTAINS
 
             WRITE(*,*)
             WRITE(*,*) &
-              'Invalid choice for SphericalRiemannProblemName: ', &
-              SphericalRiemannProblemName
+              'Invalid choice for RiemannProblemName: ', &
+              RiemannProblemName
             WRITE(*,*) 'Valid choices:'
             WRITE(*,*) &
               "'SphericalSod' - ", &
@@ -730,11 +724,10 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE InitializeFields_SphericalRiemannProblem_Relativistic
+  END SUBROUTINE InitializeFields_RiemannProblemSpherical
 
 
-  SUBROUTINE InitializeFields_SphericalSedov_Relativistic &
-    ( nDetCells, Eblast )
+  SUBROUTINE InitializeFields_SedovTaylorBlastWave( nDetCells, Eblast )
 
     INTEGER,  INTENT(in) :: nDetCells
     REAL(DP), INTENT(in) :: Eblast
@@ -803,12 +796,12 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE InitializeFields_SphericalSedov_Relativistic
+  END SUBROUTINE InitializeFields_SedovTaylorBlastWave
 
 
   ! --- Relativistic 2D Kelvin-Helmholtz instability a la
   !     Beckwith & Stone (2011), ApjS, 193, 6 (typo in Eq. (63)) ---
-  SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic
+  SUBROUTINE InitializeFields_KelvinHelmholtzInstability
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1, iNodeX2
@@ -887,175 +880,10 @@ CONTAINS
     END DO
 
 
-  END SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic
+  END SUBROUTINE InitializeFields_KelvinHelmholtzInstability
 
 
-  SUBROUTINE InitializeFields_KelvinHelmholtz
-
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX, iNodeX1, iNodeX2
-    REAL(DP) :: X1, X2, D_M, V_M
-    REAL(DP), PARAMETER :: D_1 = 1.0_DP
-    REAL(DP), PARAMETER :: D_2 = 2.0_DP
-    REAL(DP), PARAMETER :: L = 0.025_DP
-    REAL(DP), PARAMETER :: V_1 = + 0.5_DP
-    REAL(DP), PARAMETER :: V_2 = - 0.5_DP
-
-    D_M = Half * ( D_1 - D_2 )
-    V_M = Half * ( V_1 - V_2 )
-
-    DO iX3 = 1, nX(3)
-    DO iX2 = 1, nX(2)
-    DO iX1 = 1, nX(1)
-
-      DO iNodeX = 1, nDOFX
-
-        iNodeX1 = NodeNumberTableX(1,iNodeX)
-        iNodeX2 = NodeNumberTableX(2,iNodeX)
-
-        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
-
-        IF(     ( X2 .GE. 0.00_DP ) .AND. ( X2 .LT. 0.25_DP ) )THEN
-
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-            = D_1 - D_M * EXP( ( X2 - 0.25_DP ) / L )
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = V_1 - V_M * EXP( ( X2 - 0.25_DP ) / L )
-
-        ELSEIF( ( X2 .GE. 0.25_DP ) .AND. ( X2 .LT. 0.50_DP ) )THEN
-
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-            = D_2 + D_M * EXP( ( 0.25_DP - X2 ) / L )
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = V_2 + V_M * EXP( ( 0.25_DP - X2 ) / L )
-
-        ELSEIF( ( X2 .GE. 0.50_DP ) .AND. ( X2 .LT. 0.75_DP ) )THEN
-
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-            = D_2 + D_M * EXP( ( X2 - 0.75_DP ) / L )
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = V_2 + V_M * EXP( ( X2 - 0.75_DP ) / L )
-
-        ELSEIF( ( X2 .GE. 0.75_DP ) .AND. ( X2 .LT. 1.00_DP ) )THEN
-
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-            = D_1 - D_M * EXP( ( 0.75_DP - X2 ) / L )
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = V_1 - V_M * EXP( ( 0.75_DP - X2 ) / L )
-
-        END IF
-
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
-          = 0.01_DP * SIN( FourPi * X1 )
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
-          = Zero
-        uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-          = 3.75_DP
-
-      END DO
-
-      CALL ComputeConserved_Euler_Relativistic &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               uAF(:,iX1,iX2,iX3,iAF_P) )
-
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE InitializeFields_KelvinHelmholtz
-
-
-!!$  SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
-!!$
-!!$    REAL(DP) :: D, V(3), P
-!!$    INTEGER  :: iX1, iX2, iX3
-!!$    INTEGER  :: iNodeX, iNodeX1
-!!$    INTEGER, PARAMETER :: i_r = 1, i_D = 2, i_V1 = 3, i_E = 4
-!!$    INTEGER  :: iL, nLines
-!!$    REAL(DP) :: X1
-!!$    REAL(DP), ALLOCATABLE :: FluidFieldData(:,:), FluidFieldParameters(:)
-!!$
-!!$    CALL ReadParameters &
-!!$           ( '../StandingAccretionShock_Parameters.dat', FluidFieldParameters )
-!!$    CALL ReadData &
-!!$           ( '../StandingAccretionShock_Data.dat', nLines, FluidFieldData )
-!!$
-!!$    ! --- Interpolate initial conditions onto grid ---
-!!$
-!!$    ! --- Loop over all elements ---
-!!$    DO iX3 = iX_B1(3), iX_E1(3)
-!!$    DO iX2 = iX_B1(2), iX_E1(2)
-!!$    DO iX1 = iX_B1(1), iX_E1(1)
-!!$
-!!$      ! --- Loop over all nodes in an element ---
-!!$      DO iNodeX = 1, nDOFX
-!!$
-!!$        ! --- Isolate node in X1 direction ---
-!!$        iNodeX1 = NodeNumberTableX(1,iNodeX)
-!!$
-!!$        ! --- Physical coordinate corresponding to iNodeX1 ---
-!!$        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-!!$
-!!$        ! --- Get lower index of input array
-!!$        !     (FluidFieldData) corresponding to physical coordinate (X1) ---
-!!$        iL = Locate( X1, FluidFieldData(:,i_r), nLines )
-!!$
-!!$        ! --- Interpolate to the physical point X1 ---
-!!$
-!!$        uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-!!$          = InterpolateInitialConditionsOntoGrid &
-!!$              ( i_D, i_r, iL, X1, FluidFieldData )
-!!$
-!!$        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-!!$          = InterpolateInitialConditionsOntoGrid &
-!!$              ( i_V1, i_r, iL, X1, FluidFieldData )
-!!$
-!!$        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
-!!$
-!!$        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
-!!$
-!!$        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = Zero
-!!$
-!!$        uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-!!$          = InterpolateInitialConditionsOntoGrid &
-!!$              ( i_E, i_r, iL, X1, FluidFieldData )
-!!$
-!!$        ! --- Compute pressure from internal energy density ---
-!!$        uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
-!!$          = ( Gamma_IDEAL - 1.0_DP ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
-!!$
-!!$      END DO ! --- Loop over nodes ---
-!!$
-!!$      CALL ComputeConserved_Euler_Relativistic &
-!!$             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-!!$               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-!!$               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-!!$               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-!!$               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-!!$               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-!!$               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11),                      &
-!!$               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22),                      &
-!!$               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33),                      &
-!!$               uAF(:,iX1,iX2,iX3,iAF_P ) )
-!!$
-!!$    END DO
-!!$    END DO
-!!$    END DO
-!!$
-!!$
-!!$  END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
-
-
-  SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic &
+  SUBROUTINE InitializeFields_StandingAccretionShock &
     ( MassPNS, ShockRadius, AccretionRate, MachNumber, &
       ApplyPerturbation, PerturbationOrder, PerturbationAmplitude, &
       rPerturbationInner, rPerturbationOuter )
@@ -1297,7 +1125,7 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
+  END SUBROUTINE InitializeFields_StandingAccretionShock
 
 
   ! --- Auxiliary utilities for standing accretion shock problem ---
@@ -1487,125 +1315,6 @@ CONTAINS
 
     RETURN
   END FUNCTION LorentzFactor
-
-
-!!$  ! --- Auxiliary functions/subroutines for SAS problem ---
-!!$
-!!$  REAL(DP) FUNCTION InterpolateInitialConditionsOntoGrid &
-!!$                      (iVar, i_r, iL, X, FluidFieldData) RESULT( yInterp )
-!!$
-!!$    INTEGER,  INTENT(in) :: iVar, i_r, iL
-!!$    REAL(DP), INTENT(in) :: X
-!!$    REAL(DP), INTENT(in) :: FluidFieldData(:,:)
-!!$    REAL(DP)             :: X1, X2, Y1, Y2, m
-!!$
-!!$    LOGICAL :: DEBUG = .FALSE.
-!!$
-!!$    X1 = FluidFieldData(iL,i_r)
-!!$    X2 = FLuidFieldData(iL+1,i_r)
-!!$    Y1 = FluidFieldData(iL,iVar)
-!!$    Y2 = FluidFieldData(iL+1,iVar)
-!!$
-!!$    m = ( Y2 - Y1 ) / ( X2 - X1 )
-!!$
-!!$    ! --- Using only lower limit for slope ---
-!!$    yInterp = m * ( X - X1 ) + Y1
-!!$
-!!$    IF( DEBUG )THEN
-!!$      WRITE(*,'(A)') 'Debugging InterpolateInitialConditionsOntoGrid'
-!!$      WRITE(*,'(A,I1)') 'Variable: ', iVar
-!!$      WRITE(*,'(A,ES24.16E3)') 'Y1             = ', Y1
-!!$      WRITE(*,'(A,ES24.16E3)') 'Y2             = ', Y2
-!!$      WRITE(*,'(A,ES24.16E3)') 'Y2 - Y1        = ', Y2 - Y1
-!!$      WRITE(*,'(A,ES24.16E3)') 'X2 - X1        = ', X2 - X1
-!!$      WRITE(*,'(A,ES24.16E3)') 'm              = ', m
-!!$      WRITE(*,'(A,ES24.16E3)') 'm * ( X - X1 ) = ', m * ( X - X1 )
-!!$      WRITE(*,*)
-!!$    END IF
-!!$
-!!$    ! --- Using average slope ---
-!!$    ! --- Only changes accuracy in 12th decimal place ---
-!!$    !yInterp = ( 2.0_DP * m * ( X - X1 ) * ( X2 - X ) + ( Y1 * X2 + Y2 * X1 ) &
-!!$    !            - X * ( Y1 + Y2 ) ) / ( X1 + X2 - 2.0_DP * X )
-!!$
-!!$    RETURN
-!!$  END FUNCTION InterpolateInitialConditionsOntoGrid
-!!$
-!!$
-!!$  SUBROUTINE ReadParameters( FILEIN, FluidFieldParameters)
-!!$
-!!$    CHARACTER( LEN = * ), INTENT(in)   :: FILEIN
-!!$    REAL(DP), INTENT(out), ALLOCATABLE :: FluidFieldParameters(:)
-!!$    INTEGER                            :: i, nParams
-!!$
-!!$    ! --- Get number of parameters ---
-!!$    nParams = 0
-!!$    OPEN( 100, FILE = TRIM( FILEIN ) )
-!!$    READ( 100, * ) ! --- Skip the header ---
-!!$    DO
-!!$      READ( 100, *, END = 10 )
-!!$      nParams = nParams + 1
-!!$    END DO
-!!$    10 CLOSE( 100 )
-!!$
-!!$    ! --- Allocate and read in parameters ---
-!!$    ALLOCATE( FluidFieldParameters(nParams) )
-!!$
-!!$    OPEN( 100, FILE = TRIM( FILEIN ) )
-!!$    READ( 100, * ) ! --- Skip the header ---
-!!$    DO i = 1, nParams
-!!$       READ( 100, '(ES23.16E2)' ) FluidFieldParameters(i)
-!!$    END DO
-!!$    CLOSE( 100 )
-!!$
-!!$    ! --- Convert from physical-units to code-units ---
-!!$    FluidFieldParameters(1) = FluidFieldParameters(1) * Kilogram
-!!$    FluidFieldParameters(2) = FluidFieldParameters(2)
-!!$    FluidFieldParameters(3) = FluidFieldParameters(3) * Meter
-!!$    FluidFieldParameters(4) = FluidFieldParameters(4) * Meter
-!!$    FluidFieldParameters(5) = FluidFieldParameters(5) * Meter
-!!$    FluidFieldParameters(6) = FluidFieldParameters(6) * Meter
-!!$    FluidFieldParameters(7) = FluidFieldParameters(7) * Kilogram / Second
-!!$
-!!$  END SUBROUTINE ReadParameters
-!!$
-!!$
-!!$  SUBROUTINE ReadData( FILEIN, nLines, FluidFieldData )
-!!$
-!!$    CHARACTER( LEN = * ), INTENT(in)   :: FILEIN
-!!$    INTEGER,  INTENT(inout)            :: nLines
-!!$    REAL(DP), INTENT(out), ALLOCATABLE :: FluidFieldData(:,:)
-!!$    INTEGER                            :: i
-!!$
-!!$    ! --- Get number of lines in data file ---
-!!$    nLines = 0
-!!$    OPEN( 100, FILE = TRIM( FILEIN ) )
-!!$    READ( 100, * ) ! --- Skip the header ---
-!!$    DO
-!!$      READ( 100, *, END = 10 )
-!!$      nLines = nLines + 1
-!!$    END DO
-!!$    10 CLOSE( 100 )
-!!$
-!!$    ! --- Allocate and read in data ---
-!!$    ALLOCATE( FluidFieldData( 1:nLines, 4 ) )
-!!$
-!!$    OPEN( 100, FILE = TRIM( FILEIN ) )
-!!$    READ( 100, * ) ! --- Skip the header ---
-!!$    DO i = 1, nLines
-!!$       READ( 100, '(ES22.16E2,1x,ES22.16E2,1x,ES23.16E2,1x,ES22.16E2)' ) &
-!!$         FluidFieldData(i,:)
-!!$    END DO
-!!$    CLOSE( 100 )
-!!$
-!!$    ! --- Convert from physical-units to code-units ---
-!!$    FluidFieldData(:,1) = FluidFieldData(:,1) * Meter
-!!$    FluidFieldData(:,2) = FluidFieldData(:,2) * Kilogram / Meter**3
-!!$    FluidFieldData(:,3) = FluidFieldData(:,3) * Meter / Second
-!!$    FluidFieldData(:,4) = FluidFieldData(:,4) * Joule / Meter**3
-!!$
-!!$
-!!$  END SUBROUTINE ReadData
 
 
 END MODULE InitializationModule_Relativistic

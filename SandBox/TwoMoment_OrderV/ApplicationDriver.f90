@@ -78,9 +78,11 @@ PROGRAM ApplicationDriver
 
   IMPLICIT NONE
 
+  CHARACTER(2)  :: Direction
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(32) :: TimeSteppingScheme
+  LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UsePositivityLimiter
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
@@ -91,8 +93,6 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  UsePositivityLimiter = .FALSE.
-
   ProgramName = 'StreamingDopplerShift'
 
   SELECT CASE ( TRIM( ProgramName ) )
@@ -101,10 +101,10 @@ PROGRAM ApplicationDriver
 
       ! --- Minerbo Closure Only ---
 
-      nX  = [ 16, 1, 1 ]
+      nX  = [ 2, 4, 16 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
-      bcX = [ 1, 0, 0 ]
+      bcX = [ 1, 1, 1 ]
 
       nE  = 1
       eL  = 0.0_DP
@@ -115,16 +115,22 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK3'
 
-      t_end   = 1.0d0
+      t_end   = 1.0d-0
       iCycleD = 1
-      iCycleW = 1
+      iCycleW = 50
       maxCycles = 10000
 
-      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.0_DP, 0.0_DP, 0.1_DP ]
+
+      Direction = 'Z'
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
+
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .FALSE.
 
     CASE( 'SineWaveDiffusion' )
 
@@ -153,6 +159,10 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 1.0d+2
 
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .FALSE.
+
     CASE( 'IsotropicRadiation' )
 
       nX  = [ 16, 1, 1 ]
@@ -180,12 +190,16 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .FALSE.
+
     CASE( 'StreamingDopplerShift' )
 
-      nX  = [ 32, 1, 1 ]
+      nX  = [ 32, 2, 4 ]
       xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0d1, 1.0_DP, 1.0_DP ]
-      bcX = [ 12, 0, 0 ]
+      bcX = [ 12, 1, 1 ]
 
       nE  = 16
       eL  = 0.0d0
@@ -196,7 +210,7 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK2'
 
-      t_end   = 5.0d1
+      t_end   = 2.5d-2
       iCycleD = 1
       iCycleW = 50
       maxCycles = 1000000
@@ -206,6 +220,8 @@ PROGRAM ApplicationDriver
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
+
+      UseSlopeLimiter = .FALSE.
 
       UsePositivityLimiter = .TRUE.
 
@@ -236,6 +252,8 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
+      UseSlopeLimiter = .FALSE.
+
       UsePositivityLimiter = .TRUE.
 
     CASE DEFAULT
@@ -253,7 +271,7 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 0, 0 ], &
+             = [ 1, 1, 1 ], &
            bcX_Option &
              = bcX, &
            xL_Option &
@@ -322,7 +340,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeTroubledCellIndicator_TwoMoment &
          ( UseTroubledCellIndicator_Option &
-             = .TRUE., &
+             = .FALSE., &
            C_TCI_Option &
              = 0.1_DP, &
            Verbose_Option &
@@ -332,7 +350,8 @@ PROGRAM ApplicationDriver
 
   CALL InitializeSlopeLimiter_TwoMoment &
          ( BetaTVD_Option = 2.0_DP, &
-           UseSlopeLimiter_Option = .TRUE., &
+           UseSlopeLimiter_Option &
+             = UseSlopeLimiter, &
            Verbose_Option = .TRUE. )
 
   ! --- Initialize Positivity Limiter ---
@@ -357,7 +376,7 @@ PROGRAM ApplicationDriver
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields( V_0 )
+  CALL InitializeFields( V_0, Direction )
 
   ! --- Apply Slope Limiter to Initial Data ---
 

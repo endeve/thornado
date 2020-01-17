@@ -31,6 +31,8 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   PUBLIC :: ComputeFromConserved_TwoMoment
   PUBLIC :: Flux_E
   PUBLIC :: Flux_X1
+  PUBLIC :: Flux_X2
+  PUBLIC :: Flux_X3
   PUBLIC :: ComputeEddingtonTensorComponents_dd
   PUBLIC :: NumericalFlux_LLF
 
@@ -455,7 +457,7 @@ CONTAINS
     K_ud_12 = (     b * h_u_1 * h_d_2 ) * D
     K_ud_13 = (     b * h_u_1 * h_d_3 ) * D
 
-    Flux_X1(1) = I_u_1 + D * V_u_1
+    Flux_X1(1) = I_u_1   + V_u_1 * D
 
     Flux_X1(2) = K_ud_11 + V_u_1 * Gm_dd_11 * I_u_1
 
@@ -497,7 +499,7 @@ CONTAINS
     K_ud_22 = ( a + b * h_u_2 * h_d_2 ) * D
     K_ud_23 = (     b * h_u_2 * h_d_3 ) * D
 
-    Flux_X2(1) = I_u_2 + D * V_u_2
+    Flux_X2(1) = I_u_2   + V_u_2 * D
 
     Flux_X2(2) = K_ud_21 + V_u_2 * Gm_dd_11 * I_u_1
 
@@ -507,6 +509,48 @@ CONTAINS
 
     RETURN
   END FUNCTION Flux_X2
+
+
+  FUNCTION Flux_X3 &
+    ( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    REAL(DP) :: Flux_X3(4)
+    REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
+    REAL(DP), INTENT(in) ::    V_u_1, V_u_2, V_u_3
+    REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+    REAL(DP) :: FF, EF, a, b
+    REAL(DP) :: h_u_3, h_d_1, h_d_2, h_d_3
+    REAL(DP) :: K_ud_31, K_ud_32, K_ud_33
+
+    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    EF = EddingtonFactor( D, FF )
+
+    a = Half * ( One - EF )
+    b = Half * ( Three * EF - One )
+
+    h_u_3 = I_u_3 / ( FF * D )
+
+    h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
+    h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
+    h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
+
+    K_ud_31 = (     b * h_u_3 * h_d_1 ) * D
+    K_ud_32 = (     b * h_u_3 * h_d_2 ) * D
+    K_ud_33 = ( a + b * h_u_3 * h_d_3 ) * D
+
+    Flux_X3(1) = I_u_3   + V_u_3 * D
+
+    Flux_X3(2) = K_ud_31 + V_u_3 * Gm_dd_11 * I_u_1
+
+    Flux_X3(3) = K_ud_32 + V_u_3 * Gm_dd_22 * I_u_2
+
+    Flux_X3(4) = K_ud_33 + V_u_3 * Gm_dd_33 * I_u_3
+
+    RETURN
+  END FUNCTION Flux_X3
 
 
   SUBROUTINE ComputeEddingtonTensorComponents_dd &

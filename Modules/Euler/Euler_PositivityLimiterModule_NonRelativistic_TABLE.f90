@@ -148,7 +148,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, ResetIndicators_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -156,10 +156,8 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out)          :: &
-      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    LOGICAL, INTENT(in), OPTIONAL :: &
-      ResetIndicators_Option
+    REAL(DP), INTENT(inout) :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) ! Diagnostic Fluid
 
     LOGICAL  :: ResetIndicators
     LOGICAL  :: NegativeStates(3)
@@ -177,12 +175,6 @@ CONTAINS
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
-    IF( PRESENT( ResetIndicators_Option ) )THEN
-      ResetIndicators = ResetIndicators_Option
-    ELSE
-      ResetIndicators = .FALSE.
-    END IF
-
     CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
 
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -192,14 +184,6 @@ CONTAINS
       U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
 
       NegativeStates = .FALSE.
-
-      IF( ResetIndicators )THEN
-
-        D(:,iX1,iX2,iX3,iDF_T1) = One
-        D(:,iX1,iX2,iX3,iDF_T2) = One
-        D(:,iX1,iX2,iX3,iDF_T3) = One
-
-      END IF
 
       CALL ComputePointValues_Fluid( U_q, U_PP )
 

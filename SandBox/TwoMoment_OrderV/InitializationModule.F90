@@ -41,9 +41,10 @@ MODULE InitializationModule
 CONTAINS
 
 
-  SUBROUTINE InitializeFields( V_0 )
+  SUBROUTINE InitializeFields( V_0, Direction )
 
-    REAL(DP), INTENT(in) :: V_0(3)
+    REAL(DP),     INTENT(in) :: V_0(3)
+    CHARACTER(2), INTENT(in) :: Direction
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
@@ -52,7 +53,7 @@ CONTAINS
 
       CASE( 'SineWaveStreaming' )
 
-        CALL InitializeFields_SineWaveStreaming( V_0 )
+        CALL InitializeFields_SineWaveStreaming( V_0, Direction )
 
       CASE( 'SineWaveDiffusion' )
 
@@ -76,13 +77,15 @@ CONTAINS
   END SUBROUTINE InitializeFields
 
 
-  SUBROUTINE InitializeFields_SineWaveStreaming( V_0 )
+  SUBROUTINE InitializeFields_SineWaveStreaming( V_0, Direction )
 
-    REAL(DP), INTENT(in) :: V_0(3)
+    REAL(DP),     INTENT(in) :: V_0(3)
+    CHARACTER(2), INTENT(in) :: Direction
 
-    INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeZ2
+    INTEGER  :: iNodeX, iX1, iX2, iX3
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
-    REAL(DP) :: X1
+    INTEGER  :: iNodeZ2, iNodeZ3, iNodeZ4
+    REAL(DP) :: X1, X2, X3
 
 #ifndef MOMENT_CLOSURE_MINERBO
 
@@ -144,33 +147,74 @@ CONTAINS
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
         iNodeZ2 = NodeNumberTableZ(2,iNodeZ)
+        iNodeZ3 = NodeNumberTableZ(3,iNodeZ)
+        iNodeZ4 = NodeNumberTableZ(4,iNodeZ)
 
         X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
+        X2 = NodeCoordinate( MeshX(2), iZ3, iNodeZ3 )
+        X3 = NodeCoordinate( MeshX(3), iZ4, iNodeZ4 )
 
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
-          = 0.50_DP + 0.49_DP * SIN( TwoPi * X1 )
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
-          = uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
-          = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
-          = 0.0_DP
+        SELECT CASE( TRIM( Direction ) )
+        CASE( 'X' )
+
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
+            = 0.50_DP + 0.49_DP * SIN( TwoPi * X1 )
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+            = uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+            = 0.0_DP
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+            = 0.0_DP
+
+        CASE( 'Y' )
+
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
+            = 0.50_DP + 0.49_DP * SIN( TwoPi * X2 )
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+            = 0.0_DP
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+            = uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+            = 0.0_DP
+
+        CASE( 'Z' )
+
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
+            = 0.50_DP + 0.49_DP * SIN( TwoPi * X3 )
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+            = 0.0_DP
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+            = 0.0_DP
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+            = uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+
+        CASE( 'XY' )
+
+        CASE DEFAULT
+
+          WRITE(*,*)
+          WRITE(*,'(A8,A)')    '', 'InitializeFields_SineWaveStreaming'
+          WRITE(*,'(A8,A,A2)') '', 'Invalid Direction: ', TRIM( Direction )
+          WRITE(*,*)
+          STOP
+
+        END SELECT
 
         CALL ComputeConserved_TwoMoment &
-               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_D ,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS), &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
-                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
-                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
-                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
-                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
-                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
 
       END DO
 
@@ -474,25 +518,25 @@ CONTAINS
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = 1.0d-6
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) = 0.0_DP
         
         CALL ComputeConserved_TwoMoment &
-               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_D ,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS), &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
-                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
-                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
-                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
-                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
-                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
       
          END DO
 
@@ -568,28 +612,28 @@ CONTAINS
 
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
           = One / ( EXP( E / Three - Three ) + One )
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
           = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS)
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
           = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
           = 0.0_DP
 
         CALL ComputeConserved_TwoMoment &
-               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_D ,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS), &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
-                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
-                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
-                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
-                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
-                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
       
          END DO
 

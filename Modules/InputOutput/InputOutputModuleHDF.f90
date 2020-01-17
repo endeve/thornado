@@ -420,38 +420,6 @@ CONTAINS
 
     END DO
 
-   ! --- Shock Detector ---
-
-    GroupName = 'Shock Detector'
-
-    CALL CreateGroupHDF( FileName, TRIM( GroupName ) , FILE_ID )
-
-    DatasetName = TRIM( GroupName ) // '/Shock'
-
-    CALL WriteDataset3DHDF &
-           ( Shock(1:nX(1),1:nX(2),1:nX(3)), DatasetName, FILE_ID )
-
-    ! --- Positivity Limiter Detector ---
-
-    GroupName_PL = 'Positivity Limiter Detector'
-
-    CALL CreateGroupHDF( FileName, TRIM( GroupName_PL ) , FILE_ID )
-
-    DatasetName1 = TRIM( GroupName_PL ) // '/Theta 1'
-
-    CALL WriteDataset3DHDF &
-           ( Theta1(1:nX(1),1:nX(2),1:nX(3)), DatasetName1, FILE_ID )
-
-    DatasetName2 = TRIM( GroupName_PL ) // '/Theta 2'
-
-    CALL WriteDataset3DHDF &
-           ( Theta2(1:nX(1),1:nX(2),1:nX(3)), DatasetName2, FILE_ID )
-
-    DatasetName3 = TRIM( GroupName_PL ) // '/Theta 3'
-
-    CALL WriteDataset3DHDF &
-           ( Theta3(1:nX(1),1:nX(2),1:nX(3)), DatasetName3, FILE_ID )
-
     CALL H5FCLOSE_F( FILE_ID, HDFERR )
 
     CALL H5CLOSE_F( HDFERR )
