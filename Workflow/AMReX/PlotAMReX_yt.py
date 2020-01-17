@@ -32,11 +32,14 @@ ProblemDirectory = THORNADO_DIR + '/SandBox/AMReX/'
 # Specify name of problem (only used for name of output file(s))
 ProblemName = 'KHI'
 
+# Specify plot file base name
+PlotFileBaseName = 'thornado'
+
 # Specify field to plot
 VariableToPlot = 'PF_D'
 
 # Specify to plot in log-scale
-UseLogScale = True
+UseLogScale = False
 
 # Specify whether or not to use physical units
 UsePhysicalUnits = False
@@ -64,7 +67,9 @@ else:
     FileList = []
     for iFile in range( FileArray.shape[0] ):
         sFile = FileArray[iFile]
-        if( sFile[0:9] == 'thornado_' and sFile[9].isdigit() ):
+        print( sFile )
+        if( sFile[0:len(PlotFileBaseName)+1] == PlotFileBaseName + '_' \
+              and sFile[9].isdigit() ):
             FileList.append( sFile )
     FileArray = np.array( FileList )
     File = FileArray[-1]
