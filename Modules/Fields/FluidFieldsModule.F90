@@ -302,10 +302,6 @@ CONTAINS
   SUBROUTINE DestroyFluidFields
 
     DEALLOCATE( uCF, rhsCF, uPF, uAF, uDF )
-    DEALLOCATE( Shock )
-    DEALLOCATE( Theta1 )
-    DEALLOCATE( Theta2 )
-    DEALLOCATE( Theta3 )
 
   END SUBROUTINE DestroyFluidFields
 
