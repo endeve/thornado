@@ -2141,6 +2141,10 @@ CONTAINS
       END DO
     END DO
 
+    dh3dX2 = 0.0_DP
+
+    IF( iZ_B1(3) < iZ_E1(3) )THEN
+
     ! --- X2 Face ---
 
     CALL TimersStart( Timer_Ex_Permute )
@@ -2267,6 +2271,8 @@ CONTAINS
     END DO
 
     CALL TimersStart( Timer_Ex_Permute )
+
+    END IF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
