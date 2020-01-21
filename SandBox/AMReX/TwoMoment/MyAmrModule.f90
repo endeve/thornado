@@ -36,6 +36,7 @@ MODULE MyAmrModule
   ! --- thornado ---
   REAL(AR)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk
   REAL(AR),          ALLOCATABLE :: t(:), dt(:)
+  REAL(AR),          ALLOCATABLE :: V_0(:)
   REAL(AR)                       :: CFL
   INTEGER                        :: nNodes, nStages
   INTEGER                        :: nE, swE, bcE
@@ -97,7 +98,8 @@ CONTAINS
       CALL PP % get   ( 'CFL',              CFL )
       CALL PP % get   ( 'ProgramName',      ProgramName )
       CALL PP % getarr( 'bcX',              bcX )
-      CALL PP % getarr( 'swX',              swX )
+      CALL PP % getarr( 'swX',              swX ) 
+      CALL PP % getarr( 'V_0',              V_0 )
       CALL PP % query ( 'nE', nE )
       CALL PP % get   ( 'swE',              swE )
       CALL PP % get   ( 'bcE',              bcE )
