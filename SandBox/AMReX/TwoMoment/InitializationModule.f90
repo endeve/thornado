@@ -63,7 +63,8 @@ MODULE InitializationModule
     nPR,      &
     CreateRadiationFields
   USE GeometryFieldsModule,             ONLY: &
-    nGF,                     & 
+    nGF,                     &
+    CoordinateSystem,        & 
     CreateGeometryFields
   USE FluidFieldsModule,                ONLY: &
     nCF,                     &
@@ -114,9 +115,12 @@ MODULE InitializationModule
     GEOM,                      &
     StepNo,                    &
     nSpecies,                  &
+    V_0,                       &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
+  USE MF_GeometryModule,                ONLY: &
+    MF_ComputeGeometryX
 
   IMPLICIT NONE
   PRIVATE
@@ -198,7 +202,7 @@ CONTAINS
         CALL MF_uCR(iLevel) % SetVal( Zero )
 
       END DO 
-      print*, nDOFZ  
+      
       t     = Zero
       dt    = Zero
       t_wrt = dt_wrt
@@ -236,8 +240,9 @@ CONTAINS
   
     CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' ) 
      
+    CALL MF_ComputeGeometryX( MF_uGF, 0.0_AR )
 
-    CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF )
+    CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0 )
   
     CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &

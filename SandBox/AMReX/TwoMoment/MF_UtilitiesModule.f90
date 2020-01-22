@@ -12,7 +12,8 @@ MODULE MF_UtilitiesModule
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule, ONLY: &
-    nDOFZ
+    nDOFZ,                 &
+    nDOFX
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -23,6 +24,8 @@ MODULE MF_UtilitiesModule
 
   PUBLIC :: AMReX2thornado
   PUBLIC :: thornado2AMReX
+  PUBLIC :: AMReX2thornado_Euler
+  PUBLIC :: thornado2AMReX_Euler
 
   CONTAINS
 
@@ -90,5 +93,57 @@ MODULE MF_UtilitiesModule
 
   END SUBROUTINE thornado2AMReX
 
+  SUBROUTINE AMReX2thornado_Euler( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
+
+    INTEGER,          INTENT(in)  :: nVars
+    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3)
+    REAL(amrex_real), INTENT(in)  :: &
+      Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
+    REAL(amrex_real), INTENT(out) :: &
+      Data_thornado(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+
+    INTEGER :: iX1, iX2, iX3, iVar
+
+    DO iX3 = iX_B(3), iX_E(3)
+    DO iX2 = iX_B(2), iX_E(2)
+    DO iX1 = iX_B(1), iX_E(1)
+
+      DO iVar = 1, nVars
+        Data_thornado(1:nDOFX,iX1,iX2,iX3,iVar) &
+          = Data_amrex(iX1,iX2,iX3,nDOFX*(iVar-1)+1:nDOFX*iVar)
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE AMReX2thornado_Euler
+
+
+  SUBROUTINE thornado2AMReX_Euler( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
+
+    INTEGER,          INTENT(in)  :: nVars
+    INTEGER,          INTENT(in)  :: iX_B(3), iX_E(3)
+    REAL(amrex_real), INTENT(out) :: &
+      Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
+    REAL(amrex_real), INTENT(in)  :: &
+      Data_thornado(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
+
+    INTEGER :: iX1, iX2, iX3, iVar
+
+    DO iX3 = iX_B(3), iX_E(3)
+    DO iX2 = iX_B(2), iX_E(2)
+    DO iX1 = iX_B(1), iX_E(1)
+
+      DO iVar = 1, nVars
+        Data_amrex(iX1,iX2,iX3,nDOFX*(iVar-1)+1:nDOFX*iVar) &
+          = Data_thornado(1:nDOFX,iX1,iX2,iX3,iVar)
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE thornado2AMReX_Euler
 
 END MODULE MF_UtilitiesModule

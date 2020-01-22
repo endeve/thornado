@@ -83,7 +83,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, ResetIndicators_Option, iErr_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iErr_Option )
 
     INTEGER,  INTENT(in)              :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -93,8 +93,6 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout), OPTIONAL :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    LOGICAL, INTENT(in),     OPTIONAL :: &
-      ResetIndicators_Option
     INTEGER, INTENT(inout),  OPTIONAL :: &
       iErr_Option
 
@@ -104,7 +102,7 @@ CONTAINS
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, ResetIndicators_Option )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
 #elif defined HYDRO_NONRELATIVISTIC
 
