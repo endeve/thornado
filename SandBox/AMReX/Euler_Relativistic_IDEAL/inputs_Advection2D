@@ -6,7 +6,7 @@
 DEBUG = 0
 
 thornado.ProgramName = "Advection2D"
-thornado.AdvectionProfile = "SineWaveX1"
+thornado.AdvectionProfile = "SineWaveX1X2"
 
 thornado.t_end     = 1.0e+1   # Final time
 thornado.dt_wrt    = 1.0e-1   # Time increment to write plot-file
@@ -20,23 +20,24 @@ thornado.iCycleD   = 10       # MOD this number to display info
 thornado.iCycleW   = -1       # MOD this number to write plotfile
 thornado.iCycleChk = -1       # MOD this number to write checkpoint file
 thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
-thornado.PlotFileBaseName = "SineWaveX1_WENO"
+thornado.PlotFileBaseName = "SineWaveX1X2_TVD"
 
 geometry.coord_sys   = 0             # CARTESIAN
 geometry.prob_lo     = 0.0 0.0 0.0 # Lower domain size
-geometry.prob_hi     = 1.0 1.0 1.0 # Upper domain size
+#geometry.prob_hi     = 1.0 1.0 1.0 # Upper domain size
+geometry.prob_hi     = 0.7071067811865475 0.7071067811865475 1.0 # Upper domain size
 geometry.is_periodic = 1 1 1         # Periodicity. 0 (no), 1 (yes)
 
 amr.n_cell            = 64 64 001 # Number of cells in each dimension
-amr.max_grid_size_x   = 32
-amr.max_grid_size_y   = 32
+amr.max_grid_size_x   = 16
+amr.max_grid_size_y   = 16
 amr.blocking_factor_x = 1
 amr.blocking_factor_y = 1
 amr.max_level         = 0
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1
-SL.SlopeLimiterMethod        = "WENO"
+SL.SlopeLimiterMethod        = "TVD"
 SL.BetaTVD                   = 1.75e+0
 SL.BetaTVB                   = 0.00e+0
 SL.SlopeTolerance            = 1.00e-6

@@ -368,13 +368,20 @@ CONTAINS
               uPF_K(iNodeX,iPF_V3) = Zero
               uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
 
-            END IF
-
             ELSE IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX2' )THEN
 
               uPF_K(iNodeX,iPF_D ) = One + 0.1_AR * SIN( TwoPi * X2 )
               uPF_K(iNodeX,iPF_V1) = Zero
               uPF_K(iNodeX,iPF_V2) = 0.1_AR
+              uPF_K(iNodeX,iPF_V3) = Zero
+              uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
+
+            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1X2' )THEN
+
+              uPF_K(iNodeX,iPF_D ) &
+                = One + 0.1_AR * SIN( SQRT( Two ) * TwoPi * ( X1 + X2 ) )
+              uPF_K(iNodeX,iPF_V1) = 0.1_AR * COS( Pi / Four )
+              uPF_K(iNodeX,iPF_V2) = 0.1_AR * SIN( Pi / Four )
               uPF_K(iNodeX,iPF_V3) = Zero
               uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
 
