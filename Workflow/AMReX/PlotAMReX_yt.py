@@ -298,10 +298,7 @@ elif( nDims == 2 ):
 
     slc.set_cmap( field = field, cmap = cmap )
 
-    if( UseLogScale ):
-        slc.set_log( field, True )
-    else:
-        slc.set_log( field, False )
+    slc.set_log( field, UseLogScale )
     #slc.set_zlim( field, 0.0, 2.0 ) # Set colorbar limits
     #slc.set_colorbar_label( field, 'Primitive Rest-Mass-Density' )
 
@@ -362,7 +359,7 @@ elif( nDims == 2 ):
 
         fig = plt.figure()
         def f(t):
-            return Data[t]
+            return Data[t].T
 
         PlotTranspose = False
         if( PlotTranspose ):
