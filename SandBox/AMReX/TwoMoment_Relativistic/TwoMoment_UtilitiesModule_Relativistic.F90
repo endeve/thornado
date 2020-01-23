@@ -1,4 +1,4 @@
-MODULE TwoMoment_UtilitiesModule_
+MODULE TwoMoment_UtilitiesModule_Relativistic
 
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three, Five
@@ -48,10 +48,10 @@ CONTAINS
     REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
     REAL(DP) :: W    
 
-
-    W = 1.0_DP / SQRT( Gm_dd_11 * V_u_1 * V_u_1 &
+    
+    W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
                + Gm_dd_22 * V_u_2 * V_u_2 &  
-               + Gm_dd_33 * V_u_3 * V_u_3 )
+               + Gm_dd_33 * V_u_3 * V_u_3) )
 
     CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
 
@@ -219,10 +219,14 @@ CONTAINS
            ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
              k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
 
-    W = 1.0_DP / SQRT( Gm_dd_11 * V_u_1 * V_u_1 &
-               + Gm_dd_22 * V_u_2 * V_u_2 &  
-               + Gm_dd_33 * V_u_3 * V_u_3 )
 
+
+
+
+    W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
+               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_33 * V_u_3 * V_u_3) )
+    
     ! --- Conserved Number Density ---
 
     N = W * D + Gm_dd_11 * V_u_1 * I_u_1 &
@@ -293,4 +297,4 @@ CONTAINS
 
 
 
-END MODULE TwoMoment_UtilitiesModule_OrderV
+END MODULE TwoMoment_UtilitiesModule_Relativistic

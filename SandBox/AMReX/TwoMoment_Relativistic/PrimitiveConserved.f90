@@ -70,16 +70,16 @@ PROGRAM PrimitiveConserved
   eL = Zero
   eR = One
 
-  Vmax=0.3_DP
+  Vmax=0.5_DP
   CALL RANDOM_NUMBER(absV)
   CALL RANDOM_NUMBER(Vvec)
-  absV=absV*Vmax
+  !absV=absV*Vmax
+  absV=Vmax
   Vvec = 2.0_DP * ( Vvec - 0.5_DP )
   Vvec = Vvec / SQRT( DOT_PRODUCT( Vvec, Vvec ) )
   V1=absV*Vvec(1)
   V2=absV*Vvec(2)
   V3=absV*Vvec(3)
-
 
   CALL InitializeProgram &
          ( ProgramName_Option &
