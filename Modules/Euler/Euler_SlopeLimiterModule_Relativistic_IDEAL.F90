@@ -484,7 +484,7 @@ CONTAINS
       DO iCF = 1, nCF
 
         IF( SlopeDifference(iCF) &
-              .GT. SlopeTolerance * ABS( U_M(iCF,0,1,iX1,iX2,iX3) ) )THEN
+              .GE. SlopeTolerance * ABS( U_M(iCF,0,1,iX1,iX2,iX3) ) )THEN
 
           U_M(iCF,0,2:nDOFX,iX1,iX2,iX3) = Zero
 
@@ -507,13 +507,18 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iCF = 1, nCF
 
-      IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
-        CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), &
-                                    U_M(iCF,0,:,iX1,iX2,iX3) )
-      END IF
-    END DO
+      DO iCF = 1, nCF
+
+        IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
+
+          CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), &
+                                      U_M(iCF,0,:,iX1,iX2,iX3) )
+
+        END IF
+
+      END DO
+
     END DO
     END DO
     END DO
@@ -758,9 +763,9 @@ CONTAINS
     LOGICAL  :: SuppressBC
     INTEGER  :: iX1, iX2, iX3, iNodeX, iGridPt, iCF
     REAL(DP) :: dX1, dX2, dX3
-    REAL(DP) :: U_M(nDOFX,nCF,iX_B1(1):iX_E1(1), &
-                              iX_B1(2):iX_E1(2), &
-                              iX_B1(3):iX_E1(3))
+    REAL(DP) :: U_M(0:nDOFX-1,nCF,iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
     REAL(DP) :: UU(nDOFX,iX_B0(1):iX_E0(1), &
                          iX_B0(2):iX_E0(2), &
                          iX_B0(3):iX_E0(3),nCF)
@@ -779,9 +784,8 @@ CONTAINS
     REAL(DP) :: pX2(nDOFX,2*(nNodesX(1)-1),nCF)
     REAL(DP) :: pX1_new(nDOFX,nCF)
     REAL(DP) :: pX2_new(nDOFX,nCF)
-    REAL(DP) :: p(nDOFX,2*(nNodesX(1)-1),nCF)
     REAL(DP) :: pCoeffs(2*(nNodesX(1)-1),nNodesX(1),nCF)
-    INTEGER  :: nPspace
+    INTEGER  :: nPspace, k
 
     ! --- Characteristic limiting ---
     INTEGER  :: iGF
@@ -795,8 +799,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
+    k = nNodesX(1) - 1
+
     ! --- Get linear weights ---
-    DO iNodeX = 1, 2*(nNodesX(1)-1)
+    DO iNodeX = 1, 2*k
 
       IF( MOD( iNodeX, 2 ) .NE. 0 )THEN
 
@@ -877,11 +883,11 @@ CONTAINS
         END DO
 
         CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-               ( 1, G_K, U_M(1,:,iX1,iX2,iX3), R_X1, invR_X1 )
+               ( 1, G_K, U_M(0,:,iX1,iX2,iX3), R_X1, invR_X1 )
 
         IF( nDimsX .GT. 1 ) &
           CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-                 ( 2, G_K, U_M(1,:,iX1,iX2,iX3), R_X2, invR_X2 )
+                 ( 2, G_K, U_M(0,:,iX1,iX2,iX3), R_X2, invR_X2 )
 
       END IF
 
@@ -894,7 +900,7 @@ CONTAINS
           DO iGridPt = 1, nDOFX
 
             q(iGridPt,iNodeX,iCF) &
-              = SUM( U_M(1:nPspace+1,iCF,iX1,iX2,iX3) &
+              = SUM( U_M(0:nPspace,iCF,iX1,iX2,iX3) &
                        * OrthonormalBasis(iGridPt,0:nPspace,0) )
 
           END DO
@@ -944,11 +950,8 @@ CONTAINS
 
         DO iGridPt = 1, nDOFX
 
-          pX1(iGridPt,1,iCF) &
-            = DOT_PRODUCT( pCoeffs(1,1:2,iCF), qX1(iGridPt,0:1,iCF) )
-
-          pX1(iGridPt,2,iCF) &
-            = DOT_PRODUCT( pCoeffs(2,1:2,iCF), qX1(iGridPt,0:1,iCF) )
+          pX1(iGridPt,1:2,iCF) &
+            = MATMUL( pCoeffs(1:2,1:2,iCF), qX1(iGridPt,0:1,iCF) )
 
         END DO
 
@@ -960,11 +963,8 @@ CONTAINS
 
           DO iGridPt = 1, nDOFX
 
-            pX2(iGridPt,1,iCF) &
-              = DOT_PRODUCT( pCoeffs(1,1:2,iCF), qX2(iGridPt,0:1,iCF) )
-
-            pX2(iGridPt,2,iCF) &
-              = DOT_PRODUCT( pCoeffs(2,1:2,iCF), qX2(iGridPt,0:1,iCF) )
+            pX2(iGridPt,1:2,iCF) &
+              = MATMUL( pCoeffs(1:2,1:2,iCF), qX2(iGridPt,0:1,iCF) )
 
           END DO
 
@@ -980,8 +980,8 @@ CONTAINS
 
           SmoothnessIndicators(1,iCF) &
             = 12.0_DP &
-                * MIN( U_M(2,iCF,iX1-1,iX2,iX3)**2, &
-                       U_M(2,iCF,iX1+1,iX2,iX3)**2 )
+                * MIN( U_M(1,iCF,iX1-1,iX2,iX3)**2, &
+                       U_M(1,iCF,iX1+1,iX2,iX3)**2 )
 
         ELSE IF( nDimsX .EQ. 2 )THEN
 
@@ -989,21 +989,21 @@ CONTAINS
 
           SmoothnessIndicators(1,iCF) &
             = 12.0_DP &
-                * MIN( U_M(2,iCF,iX1-1,iX2,iX3)**2 &
-                         + U_M(3,iCF,iX1-1,iX2,iX3)**2, &
-                       U_M(2,iCF,iX1+1,iX2,iX3)**2 &
-                         + U_M(3,iCF,iX1+1,iX2,iX3)**2, &
-                       U_M(2,iCF,iX1,iX2-1,iX3)**2 &
-                         + U_M(3,iCF,iX1,iX2-1,iX3)**2, &
-                       U_M(2,iCF,iX1,iX2+1,iX3)**2 &
-                         + U_M(3,iCF,iX1,iX2+1,iX3)**2 )
+                * MIN( U_M(1,iCF,iX1-1,iX2,iX3)**2 &
+                         + U_M(2,iCF,iX1-1,iX2,iX3)**2, &
+                       U_M(1,iCF,iX1+1,iX2,iX3)**2 &
+                         + U_M(2,iCF,iX1+1,iX2,iX3)**2, &
+                       U_M(1,iCF,iX1,iX2-1,iX3)**2 &
+                         + U_M(2,iCF,iX1,iX2-1,iX3)**2, &
+                       U_M(1,iCF,iX1,iX2+1,iX3)**2 &
+                         + U_M(2,iCF,iX1,iX2+1,iX3)**2 )
 
         END IF
 
         CALL ComputeSmoothnessIndicator_Order2 &
                ( LinearWeights(2), &
                  OrthonormalBasis(1,1,1), &
-                 U_M(2:nDimsX+1,iCF,iX1,iX2,iX3), &
+                 U_M(1:nDimsX,iCF,iX1,iX2,iX3), &
                  SmoothnessIndicators(2,iCF) )
 
         CALL ComputeNonLinearWeights &
@@ -1024,11 +1024,8 @@ CONTAINS
 
           DO iGridPt = 1, nDOFX
 
-            pX1(iGridPt,3,iCF) &
-              = DOT_PRODUCT( pCoeffs(3,1:3,iCF), qX1(iGridPt,0:2,iCF) )
-
-            pX1(iGridPt,4,iCF) &
-              = DOT_PRODUCT( pCoeffs(4,1:3,iCF), qX1(iGridPt,0:2,iCF) )
+            pX1(iGridPt,3:4,iCF) &
+              = MATMUL( pCoeffs(3:4,1:3,iCF), qX1(iGridPt,0:2,iCF) )
 
           END DO
 
@@ -1040,11 +1037,8 @@ CONTAINS
 
             DO iGridPt = 1, nDOFX
 
-              pX2(iGridPt,3,iCF) &
-                = DOT_PRODUCT( pCoeffs(3,1:3,iCF), qX2(iGridPt,0:2,iCF) )
-
-              pX2(iGridPt,4,iCF) &
-                = DOT_PRODUCT( pCoeffs(4,1:3,iCF), qX2(iGridPt,0:2,iCF) )
+              pX2(iGridPt,3:4,iCF) &
+                = MATMUL( pCoeffs(3:4,1:3,iCF), qX2(iGridPt,0:2,iCF) )
 
             END DO
 
@@ -1072,8 +1066,8 @@ CONTAINS
         DO iGridPt = 1, nDOFX
 
           pX1_New(iGridPt,iCF) &
-            = SUM( NonLinearWeights(2*(nNodesX(1)-1)-1:2*(nNodesX(1)-1),iCF) &
-                     * pX1(iGridPt,2*(nNodesX(1)-1)-1:2*(nNodesX(1)-1),iCF) )
+            = SUM( NonLinearWeights(2*k-1:2*k,iCF) &
+                     * pX1(iGridPt,2*k-1:2*k,iCF) )
 
         END DO
 
@@ -1086,9 +1080,8 @@ CONTAINS
           DO iGridPt = 1, nDOFX
 
             pX2_New(iGridPt,iCF) &
-              = SUM( NonLinearWeights(2*(nNodesX(1)-1)-1:2*(nNodesX(1)-1),iCF) &
-                       * pX2(iGridPt,2*(nNodesX(1)-1)-1:2*(nNodesX(1)-1),iCF) )
-
+              = SUM( NonLinearWeights(2*k-1:2*k,iCF) &
+                       * pX2(iGridPt,2*k-1:2*k,iCF) )
 
           END DO
 
@@ -1118,7 +1111,7 @@ CONTAINS
 
         END IF
 
-      ELSE
+      ELSE ! Component-Wise Limiting
 
         IF( nDimsX .GT. 1 )THEN
 
@@ -1138,6 +1131,7 @@ CONTAINS
           = ( pX1_New(:,iCF) + pX2_New(:,iCF) ) / DBLE( nDimsX )
 
       END DO
+
 
     END DO
     END DO
@@ -1205,7 +1199,7 @@ CONTAINS
       pCoeffs, SmoothnessIndicators )
 
     REAL(DP), INTENT(in)  :: LinearWeights(:), NonLinearWeights(:)
-    REAL(DP), INTENT(in)  :: U_M(:), pCoeffs(:)
+    REAL(DP), INTENT(in)  :: U_M(0:nDOFX-1), pCoeffs(:)
     REAL(DP), INTENT(out) :: SmoothnessIndicators(:)
 
     REAL(DP) :: C1
@@ -1226,12 +1220,12 @@ CONTAINS
     C1 = OrthonormalBasis(1,1,1)
 
     SmoothnessIndicators(3) &
-      = ( C1 * NonLinearWeights(1) / LinearWeights(2) * U_M(2) )**2
+      = ( C1 * NonLinearWeights(1) / LinearWeights(2) * U_M(1) )**2
 
     IF( nDimsX .GT. 1 ) &
       SmoothnessIndicators(3) &
         = SmoothnessIndicators(3) &
-            + ( C1 * NonLinearWeights(1) / LinearWeights(2) * U_M(3) )**2
+            + ( C1 * NonLinearWeights(1) / LinearWeights(2) * U_M(2) )**2
 
     ! --- beta_22 ---
 
@@ -1239,14 +1233,14 @@ CONTAINS
 
       DO iGridPt = 1, nDOFX
 
-        dq_X1(iGridPt,0) = SUM( U_M(1:1) * OrthonormalBasis(iGridPt,0:0,1) )
-        dq_X1(iGridPt,1) = SUM( U_M(1:2) * OrthonormalBasis(iGridPt,0:1,1) )
-        dq_X1(iGridPt,2) = SUM( U_M(1:3) * OrthonormalBasis(iGridPt,0:2,1) )
+        dq_X1(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,1) )
+        dq_X1(iGridPt,1) = SUM( U_M(0:1) * OrthonormalBasis(iGridPt,0:1,1) )
+        dq_X1(iGridPt,2) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,1) )
         dp_X1 (iGridPt)  = DOT_PRODUCT( pCoeffs, dq_X1(iGridPt,:) )
 
-        ddq_X1(iGridPt,0) = SUM( U_M(1:1) * OrthonormalBasis(iGridPt,0:0,2) )
-        ddq_X1(iGridPt,1) = SUM( U_M(1:2) * OrthonormalBasis(iGridPt,0:1,2) )
-        ddq_X1(iGridPt,2) = SUM( U_M(1:3) * OrthonormalBasis(iGridPt,0:2,2) )
+        ddq_X1(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,2) )
+        ddq_X1(iGridPt,1) = SUM( U_M(0:1) * OrthonormalBasis(iGridPt,0:1,2) )
+        ddq_X1(iGridPt,2) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,2) )
         ddp_X1(iGridPt)   = DOT_PRODUCT( pCoeffs, ddq_X1(iGridPt,:) )
 
       END DO
@@ -1258,29 +1252,29 @@ CONTAINS
 
       DO iGridPt = 1, nDOFX
 
-        dq_X1(iGridPt,0) = SUM( U_M(1:1) * OrthonormalBasis(iGridPt,0:0,1) )
-        dq_X1(iGridPt,1) = SUM( U_M(1:3) * OrthonormalBasis(iGridPt,0:2,1) )
-        dq_X1(iGridPt,2) = SUM( U_M(1:6) * OrthonormalBasis(iGridPt,0:5,1) )
+        dq_X1(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,1) )
+        dq_X1(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,1) )
+        dq_X1(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,1) )
         dp_X1(iGridPt)   = DOT_PRODUCT( pCoeffs, dq_X1(iGridPt,:) )
 
-        dq_X2(iGridPt,0) = SUM( U_M(1:1) * OrthonormalBasis(iGridPt,0:0,2) )
-        dq_X2(iGridPt,1) = SUM( U_M(1:3) * OrthonormalBasis(iGridPt,0:2,2) )
-        dq_X2(iGridPt,2) = SUM( U_M(1:6) * OrthonormalBasis(iGridPt,0:5,2) )
+        dq_X2(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,2) )
+        dq_X2(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,2) )
+        dq_X2(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,2) )
         dp_X2(iGridPt)   = DOT_PRODUCT( pCoeffs, dq_X2(iGridPt,:) )
 
-        ddq_X1(iGridPt,0) = SUM( U_M(1:1) * OrthonormalBasis(iGridPt,0:0,3) )
-        ddq_X1(iGridPt,1) = SUM( U_M(1:3) * OrthonormalBasis(iGridPt,0:2,3) )
-        ddq_X1(iGridPt,2) = SUM( U_M(1:6) * OrthonormalBasis(iGridPt,0:5,3) )
+        ddq_X1(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,3) )
+        ddq_X1(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,3) )
+        ddq_X1(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,3) )
         ddp_X1(iGridPt)   = DOT_PRODUCT( pCoeffs, ddq_X1(iGridPt,:) )
 
-        ddq_X1X2(iGridPt,0) = SUM( U_M(1:1) * OrthonormalBasis(iGridPt,0:0,4) )
-        ddq_X1X2(iGridPt,1) = SUM( U_M(1:3) * OrthonormalBasis(iGridPt,0:2,4) )
-        ddq_X1X2(iGridPt,2) = SUM( U_M(1:6) * OrthonormalBasis(iGridPt,0:5,4) )
+        ddq_X1X2(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,4) )
+        ddq_X1X2(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,4) )
+        ddq_X1X2(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,4) )
         ddp_X1X2(iGridPt)   = DOT_PRODUCT( pCoeffs, ddq_X1X2(iGridPt,:) )
 
-        ddq_X2(iGridPt,0) = SUM( U_M(1:1) * OrthonormalBasis(iGridPt,0:0,5) )
-        ddq_X2(iGridPt,1) = SUM( U_M(1:3) * OrthonormalBasis(iGridPt,0:2,5) )
-        ddq_X2(iGridPt,2) = SUM( U_M(1:6) * OrthonormalBasis(iGridPt,0:5,5) )
+        ddq_X2(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,5) )
+        ddq_X2(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,5) )
+        ddq_X2(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,5) )
         ddp_X2(iGridPt)   = DOT_PRODUCT( pCoeffs, ddq_X2(iGridPt,:) )
 
       END DO
@@ -1364,8 +1358,8 @@ CONTAINS
     REAL(DP), INTENT(in)  :: SmoothnessIndicators(2), LinearWeights(2)
     REAL(DP), INTENT(out) :: NonLinearWeights(2)
 
-    REAL(DP) :: Tau, Normalization, EPS
-    EPS = 1.0d-10
+    REAL(DP) :: Tau, Normalization
+    REAL(DP), PARAMETER :: EPS = 1.0d-10
 
     Tau = ( SmoothnessIndicators(2) - SmoothnessIndicators(1) )**2
 
