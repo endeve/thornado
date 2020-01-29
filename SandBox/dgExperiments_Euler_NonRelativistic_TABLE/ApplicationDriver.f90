@@ -10,7 +10,7 @@ PROGRAM ApplicationDriver
   USE PhysicalConstantsModule, ONLY: &
     SpeedOfLightMKS
   USE ProgramHeaderModule, ONLY: &
-    iX_B0, iX_B1, iX_E0, iX_E1
+    iX_B0, iX_B1, iX_E0, iX_E1, swX
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -33,7 +33,8 @@ PROGRAM ApplicationDriver
   USE EquationOfStateModule_TABLE, ONLY: &
     MinD, MaxD, MinT, MaxT, MinY, MaxY
   USE FluidFieldsModule, ONLY: &
-    uCF, iCF_D, uPF, uAF, uDF
+    uCF, iCF_D, uPF, uAF, uDF, &
+    ResetFluidFields_Diagnostic
   USE GravitySolutionModule_Newtonian_Poseidon, ONLY: &
     InitializeGravitySolver_Newtonian_Poseidon, &
     FinalizeGravitySolver_Newtonian_Poseidon, &
@@ -268,8 +269,8 @@ PROGRAM ApplicationDriver
       UseCharacteristicLimiting = .FALSE.
       UsePositivityLimiter      = .TRUE.
 
-      UseTroubledCellIndicator  = .FALSE.
-      LimiterThresholdParameter = 0.30_DP
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 0.01_DP
 
       SelfGravity = .TRUE.
 
@@ -462,6 +463,8 @@ PROGRAM ApplicationDriver
              uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
              Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+
+      CALL ResetFluidFields_Diagnostic( nX, swX, uDF )
 
       wrt = .FALSE.
 
