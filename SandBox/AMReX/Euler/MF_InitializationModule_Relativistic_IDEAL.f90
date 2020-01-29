@@ -113,6 +113,10 @@ CONTAINS
 
         CALL InitializeFields_Sod( MF_uGF, MF_uCF )
 
+      CASE( 'Contact' )
+
+        CALL InitializeFields_Contact( MF_uGF, MF_uCF )
+
       CASE( 'Advection2D' )
 
         CALL InitializeFields_Advection2D( MF_uGF, MF_uCF )
@@ -274,6 +278,128 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_Sod
+
+
+  SUBROUTINE InitializeFields_Contact( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+
+    ! --- thornado ---
+    INTEGER        :: iDim
+    INTEGER        :: iX1, iX2, iX3
+    INTEGER        :: iNodeX
+    REAL(AR)       :: X1
+    REAL(AR)       :: uGF_K(nDOFX,nGF)
+    REAL(AR)       :: uCF_K(nDOFX,nCF)
+    REAL(AR)       :: uPF_K(nDOFX,nPF)
+    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    TYPE(MeshType) :: MeshX(3)
+
+    ! --- AMReX ---
+    INTEGER                       :: iLevel
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_F(4), hi_F(4)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    uGF_K = Zero
+    uCF_K = Zero
+    uPF_K = Zero
+    uAF_K = Zero
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          X1 = MeshX(1) % Center(iX1)
+
+          DO iNodeX = 1, nDOFX
+
+            IF( X1 .LE. Half ) THEN
+
+              uPF_K(iNodeX,iPF_D)  = 0.5_AR
+              uPF_K(iNodeX,iPF_V1) = Zero
+              uPF_K(iNodeX,iPF_V2) = Zero
+              uPF_K(iNodeX,iPF_V3) = Zero
+              uPF_K(iNodeX,iPF_E)  = One / (Gamma_IDEAL - One)
+
+            ELSE
+
+              uPF_K(iNodeX,iPF_D)  = 0.1_AR
+              uPF_K(iNodeX,iPF_V1) = Zero
+              uPF_K(iNodeX,iPF_V2) = 0.99_AR
+              uPF_K(iNodeX,iPF_V3) = Zero
+              uPF_K(iNodeX,iPF_E)  = One / (Gamma_IDEAL - One)
+
+            END IF
+
+          END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+          CALL ComputeConserved_Euler &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_Contact
 
 
   SUBROUTINE InitializeFields_Advection2D( MF_uGF, MF_uCF )
@@ -807,12 +933,14 @@ CONTAINS
               uPF_K(iNodeX,iPF_V1) = Zero
               uPF_K(iNodeX,iPF_V2) = Zero
               uPF_K(iNodeX,iPF_E ) = 0.01_AR / ( Gamma_IDEAL - One )
+
             ! --- NW ---
             ELSE IF( X1 .LE. Half .AND. X2 .GT. Half )THEN
               uPF_K(iNodeX,iPF_D ) = 0.1_AR
               uPF_K(iNodeX,iPF_V1) = 0.99_AR
               uPF_K(iNodeX,iPF_V2) = Zero
               uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
+
             ! --- SW ---
             ELSE IF( X1 .LE. Half .AND. X2 .LE. Half )THEN
               uPF_K(iNodeX,iPF_D ) = Half
@@ -826,6 +954,7 @@ CONTAINS
               uPF_K(iNodeX,iPF_V1) = Zero
               uPF_K(iNodeX,iPF_V2) = 0.99_AR
               uPF_K(iNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
+
             END IF
 
           END DO
