@@ -10,6 +10,7 @@ MODULE TwoMoment_ClosureModule
 
   PUBLIC :: InitializeClosure_TwoMoment
   PUBLIC :: FluxFactor
+  PUBLIC :: FluxFactor_Relativistic
   PUBLIC :: EddingtonFactor
   PUBLIC :: HeatFluxFactor
   PUBLIC :: ComputeEddingtonFactorDerivatives
@@ -17,6 +18,11 @@ MODULE TwoMoment_ClosureModule
   INTERFACE FluxFactor
     MODULE PROCEDURE FluxFactor_Scalar
     MODULE PROCEDURE FluxFactor_Vector
+  END INTERFACE
+
+  INTERFACE FluxFactor_Relativistic
+    MODULE PROCEDURE FluxFactor_Relativistic_Scalar
+    MODULE PROCEDURE FluxFactor_Relativistic_Vector
   END INTERFACE
 
   INTERFACE EddingtonFactor
@@ -198,6 +204,92 @@ CONTAINS
 
     RETURN
   END FUNCTION FluxFactor_Vector
+
+
+  FUNCTION FluxFactor_Relativistic_Scalar &
+    ( D, I_1, I_2, I_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, v_u_1, v_u_2, v_u_3 ) &
+    RESULT( FluxFactor_Relativistic )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D, I_1, I_2, I_3, alp, B_u_1, B_u_2, B_u_3, v_u_1, v_u_2, v_u_3
+    REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP) :: FluxFactor_Relativistic 
+    REAL(DP) :: v_d_0, v_d_1, v_d_2, v_d_3, I_u_0, B_d_1, B_d_2, B_d_3, Gm_dd_00, Isq
+
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
+    
+    v_d_1 = Gm_dd_11 * v_u_1
+    v_d_2 = Gm_dd_22 * v_u_2
+    v_d_3 = Gm_dd_33 * v_u_3
+
+    v_d_0 = B_d_1 * v_u_1 +  B_d_2 * v_u_2 + B_d_3 * v_u_3
+    I_u_0 = ( v_d_1 * I_1 + v_d_2 * I_2 + v_d_3 * I_3 ) / alp
+    I_u_0 = I_u_0 * ( 1.0_DP / (1.0_DP - v_d_0 / alp ) ) 
+
+    Gm_dd_00 = -alp**2 + B_d_1 * B_u_1 +  B_d_2 * B_u_2 + B_d_3 * B_u_3
+
+    Isq = Gm_dd_00 * I_u_0 * I_u_0
+    Isq = Isq + 2 * ( B_d_1 * I_1 * I_u_0 + B_d_2 * I_2 * I_u_0 + B_d_3 * I_3 * I_u_0 )
+    Isq = Isq + Gm_dd_11 * I_1**2 +  Gm_dd_22 * I_2**2 + Gm_dd_33 * I_3**2 
+
+    FluxFactor_Relativistic &
+      = MIN( MAX( SQRT( Isq ) &
+                    / MAX( D, SqrtTiny ), &
+                  SqrtTiny ), &
+             One )
+
+    RETURN
+  END FUNCTION FluxFactor_Relativistic_Scalar
+
+
+  FUNCTION FluxFactor_Relativistic_Vector &
+    ( D, I_1, I_2, I_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, v_u_1, v_u_2, v_u_3 ) &
+    RESULT( FluxFactor_Relativistic )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D(:), I_1(:), I_2(:), I_3(:) 
+    REAL(DP), INTENT(in) :: alp(:), B_u_1(:), B_u_2(:), B_u_3(:), v_u_1(:), v_u_2(:), v_u_3(:)
+    REAL(DP), INTENT(in) :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+    REAL(DP) :: FluxFactor_Relativistic(SIZE(D))
+    REAL(DP) :: v_d_0(SIZE(D)), v_d_1(SIZE(D)), v_d_2(SIZE(D)), v_d_3(SIZE(D)), I_u_0(SIZE(D))
+    REAL(DP) :: B_d_1(SIZE(D)), B_d_2(SIZE(D)), B_d_3(SIZE(D)), Gm_dd_00(SIZE(D)), Isq(SIZE(D))
+
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
+    
+    v_d_1 = Gm_dd_11 * v_u_1
+    v_d_2 = Gm_dd_22 * v_u_2
+    v_d_3 = Gm_dd_33 * v_u_3
+
+    v_d_0 = B_d_1 * v_u_1 +  B_d_2 * v_u_2 + B_d_3 * v_u_3
+    I_u_0 = ( v_d_1 * I_1 + v_d_2 * I_2 + v_d_3 * I_3 ) / alp
+    I_u_0 = I_u_0 * ( 1.0_DP / (1.0_DP - v_d_0 / alp ) ) 
+
+    Gm_dd_00 = -alp**2 + B_d_1 * B_u_1 +  B_d_2 * B_u_2 + B_d_3 * B_u_3
+
+    Isq = Gm_dd_00 * I_u_0 * I_u_0
+    Isq = Isq + 2 * ( B_d_1 * I_1 * I_u_0 + B_d_2 * I_2 * I_u_0 + B_d_3 * I_3 * I_u_0 )
+    Isq = Isq + Gm_dd_11 * I_1**2 +  Gm_dd_22 * I_2**2 + Gm_dd_33 * I_3**2 
+
+    FluxFactor_Relativistic &
+      = MIN( MAX( SQRT( Isq ) &
+                    / MAX( D, SqrtTiny ), &
+                  SqrtTiny ), &
+             One )
+
+    RETURN
+  END FUNCTION FluxFactor_Relativistic_Vector
 
 
   ! --- Eddington Factor ---
