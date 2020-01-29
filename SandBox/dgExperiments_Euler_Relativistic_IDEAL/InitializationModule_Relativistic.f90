@@ -114,6 +114,10 @@ CONTAINS
 
     SELECT CASE ( TRIM( ProgramName ) )
 
+      CASE( 'Polynomial' )
+
+        CALL InitializeFields_Polynomial
+
       CASE( 'Advection' )
 
         CALL InitializeFields_Advection &
@@ -167,6 +171,58 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE InitializeFields_Relativistic
+
+
+  SUBROUTINE InitializeFields_Polynomial
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1
+    REAL(DP) :: X1, a0, a1, a2, a3, a4, a5
+
+    a0 = 1.0_DP
+    a1 = 0.1_DP
+    a2 = 4.0_DP
+    a3 = -0.4_DP
+    a4 = -1.0_DP
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
+          = a0*X1**0 + a1*X1**1 + a2*X1**2 &
+              + a3*X1**3 + a4*X1**4
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+        uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = One
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = One / ( Gamma_IDEAL - One )
+
+      END DO
+
+      CALL ComputeConserved_Euler_Relativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Polynomial
 
 
   SUBROUTINE InitializeFields_Advection( AdvectionProfile )
