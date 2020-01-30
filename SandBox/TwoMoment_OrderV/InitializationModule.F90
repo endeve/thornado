@@ -1,7 +1,7 @@
 MODULE InitializationModule
 
   USE KindModule, ONLY: &
-    DP, Third, Half, One, Three, Pi, TwoPi
+    DP, Zero, Third, Half, One, Three, Pi, TwoPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nDOFZ, nDOFX, nDOFE, &
@@ -41,9 +41,10 @@ MODULE InitializationModule
 CONTAINS
 
 
-  SUBROUTINE InitializeFields( V_0, Direction )
+  SUBROUTINE InitializeFields( V_0, LengthScale, Direction )
 
     REAL(DP),     INTENT(in) :: V_0(3)
+    REAL(DP),     INTENT(in) :: LengthScale
     CHARACTER(2), INTENT(in) :: Direction
 
     WRITE(*,*)
@@ -53,7 +54,8 @@ CONTAINS
 
       CASE( 'SineWaveStreaming' )
 
-        CALL InitializeFields_SineWaveStreaming( V_0, Direction )
+        CALL InitializeFields_SineWaveStreaming &
+               ( V_0, Direction )
 
       CASE( 'SineWaveDiffusion' )
 
@@ -65,11 +67,17 @@ CONTAINS
 
       CASE( 'StreamingDopplerShift' )
 
-        CALL InitializeFields_StreamingDopplerShift( V_0 )
+        CALL InitializeFields_StreamingDopplerShift &
+               ( V_0, Direction )
 
       CASE( 'TransparentShock' )
 
-        CALL InitializeFields_TransparentShock( V_0 )
+        CALL InitializeFields_TransparentShock &
+               ( V_0, LengthScale, Direction )
+
+      CASE( 'HomogeneousSphere2D' )
+
+        CALL InitializeFields_HomogeneousSphere( V_0 )
 
     END SELECT
 
@@ -434,19 +442,22 @@ CONTAINS
   END SUBROUTINE InitializeFields_IsotropicRadiation
 
 
-  SUBROUTINE InitializeFields_StreamingDopplerShift( V_0 )
-    
-    REAL(DP), INTENT(in) :: V_0(3)
+  SUBROUTINE InitializeFields_StreamingDopplerShift &
+    ( V_0, Direction )
 
-    REAL(DP), PARAMETER :: X1_0 = 2.0_DP
-    REAL(DP), PARAMETER :: X1_1 = 3.5_DP
-    REAL(DP), PARAMETER :: X1_2 = 6.5_DP
-    REAL(DP), PARAMETER :: X1_3 = 8.0_DP
-    REAL(DP), PARAMETER :: L_X1 = 6.0_DP
+    REAL(DP),     INTENT(in) :: V_0(3)
+    CHARACTER(2), INTENT(in) :: Direction
 
-    INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeX1
+    REAL(DP), PARAMETER :: X_0 = 2.0_DP
+    REAL(DP), PARAMETER :: X_1 = 3.5_DP
+    REAL(DP), PARAMETER :: X_2 = 6.5_DP
+    REAL(DP), PARAMETER :: X_3 = 8.0_DP
+    REAL(DP), PARAMETER :: L_X = 6.0_DP
+
+    INTEGER  :: iNodeX, iX1, iX2, iX3
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
-    REAL(DP) :: X1
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3
+    REAL(DP) :: X1, X2, X3
 
     ! --- Fluid Fields ---
 
@@ -457,28 +468,81 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+        iNodeX3 = NodeNumberTableX(3,iNodeX)
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+        X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
-        IF( X1 .LT. X1_0 )THEN
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = 0.0_DP
-        ELSEIF( X1 .GE. X1_0 .AND. X1 .LT. X1_1 )THEN
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = V_0(1) * SIN( TwoPi * ( X1 - X1_0 ) / L_X1 )**2
-        ELSEIF( X1 .GE. X1_1 .AND. X1 .LT. X1_2 )THEN
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = V_0(1)
-        ELSEIF( X1 .GE. X1_2 .AND. X1 .LT. X1_3 )THEN
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = V_0(1) * SIN( TwoPi * ( X1 - X1_0 ) / L_X1 )**2
-        ELSE
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = 0.0_DP
-        END IF
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_0(2)
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
+
+        SELECT CASE( TRIM( Direction ) )
+        CASE( 'X' )
+
+          IF( X1 .LT. X_0 )THEN
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = 0.0_DP
+          ELSEIF( X1 .GE. X_0 .AND. X1 .LT. X_1 )THEN
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
+          ELSEIF( X1 .GE. X_1 .AND. X1 .LT. X_2 )THEN
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = V_0(1)
+          ELSEIF( X1 .GE. X_2 .AND. X1 .LT. X_3 )THEN
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
+          ELSE
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = 0.0_DP
+          END IF
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_0(2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
+
+        CASE( 'Y' )
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_0(1)
+          IF( X2 .LT. X_0 )THEN
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+              = 0.0_DP
+          ELSEIF( X2 .GE. X_0 .AND. X2 .LT. X_1 )THEN
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+              = V_0(2) * SIN( TwoPi * ( X2 - X_0 ) / L_X )**2
+          ELSEIF( X2 .GE. X_1 .AND. X2 .LT. X_2 )THEN
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+              = V_0(2)
+          ELSEIF( X2 .GE. X_2 .AND. X2 .LT. X_3 )THEN
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+              = V_0(2) * SIN( TwoPi * ( X2 - X_0 ) / L_X )**2
+          ELSE
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+              = 0.0_DP
+          END IF
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
+
+        CASE( 'Z' )
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_0(1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_0(2)
+          IF( X3 .LT. X_0 )THEN
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+              = 0.0_DP
+          ELSEIF( X3 .GE. X_0 .AND. X3 .LT. X_1 )THEN
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+              = V_0(3) * SIN( TwoPi * ( X3 - X_0 ) / L_X )**2
+          ELSEIF( X3 .GE. X_1 .AND. X3 .LT. X_2 )THEN
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+              = V_0(3)
+          ELSEIF( X3 .GE. X_2 .AND. X3 .LT. X_3 )THEN
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+              = V_0(3) * SIN( TwoPi * ( X3 - X_0 ) / L_X )**2
+          ELSE
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+              = 0.0_DP
+          END IF
+
+        END SELECT
+
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
@@ -517,7 +581,7 @@ CONTAINS
 
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = 1.0d-6
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = 1.0d-8
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) = 0.0_DP
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) = 0.0_DP
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) = 0.0_DP
@@ -546,22 +610,39 @@ CONTAINS
     END DO
     END DO
 
-    CALL SetInnerBoundary_StreamingDopplerShift
+    CALL SetInnerBoundary_StreamingDopplerShift( Direction )
 
   END SUBROUTINE InitializeFields_StreamingDopplerShift
 
 
-  SUBROUTINE SetInnerBoundary_StreamingDopplerShift
+  SUBROUTINE SetInnerBoundary_StreamingDopplerShift( Direction )
+
+    CHARACTER(2), INTENT(in) :: Direction
 
     INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeE
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER  :: loX(3), hiX(3)
+    INTEGER  :: loZ(4), hiZ(4)
     REAL(DP) :: E
 
     ! --- Fluid Fields ---
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B1(1), iX_B1(1)
+    loX = iX_B0
+    hiX = iX_E0
+    IF(     TRIM( Direction ) .EQ. 'X' )THEN
+      loX(1) = iX_B1(1)
+      hiX(1) = iX_B1(1)
+    ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+      loX(2) = iX_B1(2)
+      hiX(2) = iX_B1(2)
+    ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
+      loX(3) = iX_B1(3)
+      hiX(3) = iX_B1(3)
+    END IF
+
+    DO iX3 = loX(3), hiX(3)
+    DO iX2 = loX(2), hiX(2)
+    DO iX1 = loX(1), hiX(1)
 
       DO iNodeX = 1, nDOFX
 
@@ -596,12 +677,25 @@ CONTAINS
     END DO
 
     ! --- Radiation Fields ---
+
+    loZ = iZ_B0
+    hiZ = iZ_E0
+    IF(     TRIM( Direction ) .EQ. 'X' )THEN
+      loZ(2) = iZ_B1(2)
+      hiZ(2) = iZ_B1(2)
+    ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+      loZ(3) = iZ_B1(3)
+      hiZ(3) = iZ_B1(3)
+    ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
+      loZ(4) = iZ_B1(4)
+      hiZ(4) = iZ_B1(4)
+    END IF
     
     DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B1(2), iZ_B1(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iZ4 = loZ(4), hiZ(4)
+    DO iZ3 = loZ(3), hiZ(3)
+    DO iZ2 = loZ(2), hiZ(2)
+    DO iZ1 = loZ(1), hiZ(1)
 
       DO iNodeZ = 1, nDOFZ
 
@@ -612,12 +706,35 @@ CONTAINS
 
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
           = One / ( EXP( E / Three - Three ) + One )
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
-          = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS)
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
-          = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
-          = 0.0_DP
+
+        IF(     TRIM( Direction ) .EQ. 'X' )THEN
+
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+            = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS)
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+            = 0.0_DP
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+            = 0.0_DP
+
+        ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+            = 0.0_DP
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+            = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS)
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+            = 0.0_DP
+
+        ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
+
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+            = 0.0_DP
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+            = 0.0_DP
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+            = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS)
+
+        END IF
 
         CALL ComputeConserved_TwoMoment &
                ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
@@ -646,19 +763,24 @@ CONTAINS
   END SUBROUTINE SetInnerBoundary_StreamingDopplerShift
 
 
-  SUBROUTINE InitializeFields_TransparentShock( V_0 )
+  SUBROUTINE InitializeFields_TransparentShock( V_0, ShockWidth, Direction )
 
-    REAL(DP), INTENT(in) :: V_0(3)
+    REAL(DP),     INTENT(in) :: V_0(3)
+    REAL(DP),     INTENT(in) :: ShockWidth
+    CHARACTER(2), INTENT(in) :: Direction
 
-    REAL(DP), PARAMETER :: R_Shock = 1.0d0
+    REAL(DP), PARAMETER :: X_Shock = 1.0d0
 
-    INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeX1
+    INTEGER  :: iNodeX, iX1, iX2, iX3
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
-    REAL(DP) :: R, R_Min, R_Max, V_Shock
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3
+    REAL(DP) :: X1, X2, X3
 
-    R_Min   = xL (1)
-    R_Max   = xR (1)
-    V_Shock = V_0(1)
+    WRITE(*,*)
+    WRITE(*,'(A6,A13,3ES9.2E2)') '', 'V_0 = ', V_0
+    WRITE(*,'(A6,A13,1ES9.2E2)') '', 'ShockWidth = ', ShockWidth
+    WRITE(*,'(A6,A13,A2)'      ) '', 'Direction = ', TRIM( Direction )
+    WRITE(*,*)
 
     ! --- Fluid Fields ---
 
@@ -669,40 +791,42 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+        iNodeX3 = NodeNumberTableX(3,iNodeX)
 
-        R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+        X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
 
-        IF( R < R_Shock )THEN
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = One
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
-            = 6.8d-1
+        SELECT CASE( TRIM( Direction ) )
+        CASE( 'X' )
+
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = 0.0d-0
+            = Half * V_0(1) * ( One + TANH( (X1-X_Shock)/ShockWidth ) )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+
+        CASE( 'Y' )
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
-            = V_0(2)
+            = Half * V_0(2) * ( One + TANH( (X2-X_Shock)/ShockWidth ) )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+
+        CASE( 'Z' )
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
           uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
-            = V_0(3)
-          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
-            = 2.59d-2
-          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) &
-            = 0.0d-0
+            = Half * V_0(3) * ( One + TANH( (X3-X_Shock)/ShockWidth ) )
 
-        ELSE
+        END SELECT
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
-            = 1.0d-1
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-            = - V_Shock
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
-            = V_0(2)
-          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
-            = V_0(3)
-          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
-            = 2.25d-4
-          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) &
-            = 0.0d-0
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0d-0
 
-        END IF
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -739,7 +863,7 @@ CONTAINS
 
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = 1.0d-6
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = 1.0d-8
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) = 0.0_DP
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) = 0.0_DP
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) = 0.0_DP
@@ -768,31 +892,48 @@ CONTAINS
     END DO
     END DO
 
-    CALL SetInnerBoundary_TransparentShock
+    CALL SetInnerBoundary_TransparentShock( Direction )
 
   END SUBROUTINE InitializeFields_TransparentShock
 
 
-  SUBROUTINE SetInnerBoundary_TransparentShock
+  SUBROUTINE SetInnerBoundary_TransparentShock( Direction )
+
+    CHARACTER(2), INTENT(in) :: Direction
 
     INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeE
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER  :: loX(3), hiX(3)
+    INTEGER  :: loZ(4), hiZ(4)
     REAL(DP) :: E
 
     ! --- Fluid Fields ---
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B1(1), iX_B1(1)
+    loX = iX_B0
+    hiX = iX_E0
+    IF(     TRIM( Direction ) .EQ. 'X' )THEN
+      loX(1) = iX_B1(1)
+      hiX(1) = iX_B1(1)
+    ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+      loX(2) = iX_B1(2)
+      hiX(2) = iX_B1(2)
+    ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
+      loX(3) = iX_B1(3)
+      hiX(3) = iX_B1(3)
+    END IF
+
+    DO iX3 = loX(3), hiX(3)
+    DO iX2 = loX(2), hiX(2)
+    DO iX1 = loX(1), hiX(1)
 
       DO iNodeX = 1, nDOFX
 
-        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 6.80d-1
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.00_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.00_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.00_DP
-        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 2.59d-2
-        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.00_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = One
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = Zero
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -818,12 +959,25 @@ CONTAINS
     END DO
 
     ! --- Radiation Fields ---
-    
+
+    loZ = iZ_B0
+    hiZ = iZ_E0
+    IF(     TRIM( Direction ) .EQ. 'X' )THEN
+      loZ(2) = iZ_B1(2)
+      hiZ(2) = iZ_B1(2)
+    ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+      loZ(3) = iZ_B1(3)
+      hiZ(3) = iZ_B1(3)
+    ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
+      loZ(4) = iZ_B1(4)
+      hiZ(4) = iZ_B1(4)
+    END IF
+
     DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B1(2), iZ_B1(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iZ4 = loZ(4), hiZ(4)
+    DO iZ3 = loZ(3), hiZ(3)
+    DO iZ2 = loZ(2), hiZ(2)
+    DO iZ1 = loZ(1), hiZ(1)
 
       DO iNodeZ = 1, nDOFZ
 
@@ -834,12 +988,35 @@ CONTAINS
 
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
           = One / ( EXP( E / Three - Three ) + One )
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
-          = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS)
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
-          = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
-          = 0.0_DP
+
+        IF(     TRIM( Direction ) .EQ. 'X' )THEN
+
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
+            = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
+            = 0.0_DP
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
+            = 0.0_DP
+
+        ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
+            = 0.0_DP
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
+            = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
+            = 0.0_DP
+
+        ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
+
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
+            = 0.0_DP
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
+            = 0.0_DP
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
+            = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+
+        END IF
 
         CALL ComputeConserved_TwoMoment &
                ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_D ,iS), &
@@ -866,6 +1043,122 @@ CONTAINS
     END DO
 
   END SUBROUTINE SetInnerBoundary_TransparentShock
+
+
+  SUBROUTINE InitializeFields_HomogeneousSphere( V_0 )
+
+    REAL(DP), INTENT(in) :: V_0(3)
+
+    REAL(DP), PARAMETER :: R_Sh = 2.0_DP
+    REAL(DP), PARAMETER :: L_R  = 1.0d-2
+
+    INTEGER  :: iNodeX, iX1, iX2, iX3
+    INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3
+    REAL(DP) :: X1, X2, X3, R, absV, ShapeFunction
+
+    absV = SQRT( V_0(1)**2 + V_0(2)**2 + V_0(3)**2 )
+
+    ! --- Fluid Fields ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+        iNodeX3 = NodeNumberTableX(3,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+        X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
+
+        R = SQRT( X1**2 + X2**2 + X3**2 )
+
+        ShapeFunction &
+          = Half * ( One + tanh( ( R - R_Sh ) / L_R ) ) * sqrt( R_Sh / R )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+          = - absV * ShapeFunction * X1 / R
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+          = - absV * ShapeFunction * X2 / R
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+          = - absV * ShapeFunction * X3 / R
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+
+        CALL ComputeConserved_Euler_NonRelativistic &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Radiation Fields ---
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
+          = 1.0d-8
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+          = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+          = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+          = 0.0_DP
+
+        CALL ComputeConserved_TwoMoment &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_HomogeneousSphere
 
 
 END MODULE InitializationModule
