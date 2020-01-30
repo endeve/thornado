@@ -66,8 +66,8 @@ PROGRAM ApplicationDriver
   INCLUDE 'mpif.h'
 
   CHARACTER(32) :: ProgramName
-  CHARACTER(32) :: RiemannProblemName, RiemannProblem2dName
-  CHARACTER(32) :: SphericalRiemannProblemName
+  CHARACTER(32) :: AdvectionProfile
+  CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
   LOGICAL       :: OPTIMIZE = .FALSE.
@@ -89,7 +89,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
 
-  ! --- Sedov blast wave ---
+  ! --- Sedov--Taylor blast wave ---
   REAL(DP) :: Eblast
   INTEGER  :: nDetCells
   REAL(DP) :: Vmax, LorentzFactor
@@ -114,19 +114,20 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-!  ProgramName = 'SineWaveAdvection'
-!  ProgramName = 'TopHatAdvection'
-  ProgramName = 'RiemannProblem'
-!  ProgramName = 'RiemannProblem2d'
-!  ProgramName = 'SphericalRiemannProblem'
-!  ProgramName = 'SphericalSedov'
-!  ProgramName = 'KelvinHelmholtz_Relativistic'
-!  ProgramName = 'KelvinHelmholtz'
+!  ProgramName = 'Advection'
+  ProgramName = 'Advection2D'
+!  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem2D'
+!  ProgramName = 'RiemannProblemSpherical'
+!  ProgramName = 'SedovTaylorBlastWave'
+!  ProgramName = 'KelvinHelmholtzInstability'
 !  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
-    CASE( 'SineWaveAdvection' )
+    CASE( 'Advection' )
+
+      AdvectionProfile = 'TopHat'
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
@@ -140,15 +141,17 @@ PROGRAM ApplicationDriver
 
       WriteGF = .FALSE.
 
-    CASE( 'TopHatAdvection' )
+    CASE( 'Advection2D' )
+
+      AdvectionProfile = 'SineWaveX1'
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
-      bcX = [ 1, 0, 0 ]
+      bcX = [ 1, 1, 0 ]
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 64, 1, 1 ]
+      nX = [ 32, 32, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -180,13 +183,6 @@ PROGRAM ApplicationDriver
           t_end = 0.35d0
           bcX   = [ 2, 0, 0 ]
 
-        CASE( 'CartesianSedov' )
-          Gamma = 4.0_DP / 3.0_DP
-          t_end = 0.2d0
-          bcX   = [ 32, 0, 0 ]
-          nDetCells = 1
-          Eblast    = 1.0d-3
-
         CASE( 'ShockReflection' )
           Gamma = 5.0_DP / 3.0_DP
           t_end = 0.75d0
@@ -201,7 +197,6 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A)')     '  MBProblem1'
           WRITE(*,'(A)')     '  MBProblem4'
           WRITE(*,'(A)')     '  PerturbedShockTube'
-          WRITE(*,'(A)')     '  CartesianSedov'
           WRITE(*,'(A)')     '  ShockReflection'
           WRITE(*,'(A)')     'Stopping...'
           STOP
@@ -214,11 +209,11 @@ PROGRAM ApplicationDriver
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-    CASE( 'RiemannProblem2d' )
+    CASE( 'RiemannProblem2D' )
 
-      RiemannProblem2dName = 'DzB2002'
+      RiemannProblemName = 'DzB2002'
 
-      SELECT CASE ( TRIM( RiemannProblem2dName ) )
+      SELECT CASE ( TRIM( RiemannProblemName ) )
 
         CASE( 'DzB2002' )
 
@@ -234,9 +229,9 @@ PROGRAM ApplicationDriver
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-    CASE( 'SphericalRiemannProblem' )
+    CASE( 'RiemannProblemSpherical' )
 
-      SphericalRiemannProblemName = 'SphericalSod'
+      RiemannProblemName = 'SphericalSod'
 
       CoordinateSystem = 'SPHERICAL'
 
@@ -252,14 +247,14 @@ PROGRAM ApplicationDriver
 
       WriteGF = .TRUE.
 
-    CASE( 'SphericalSedov' )
+    CASE( 'SedovTaylorBlastWave' )
 
       nDetCells = 1
       Eblast    = 1.0d-3
 
       CoordinateSystem = 'SPHERICAL'
 
-      Gamma = 1.4_DP!4.0_DP / 3.0_DP
+      Gamma = 4.0_DP / 3.0_DP
 
       nX = [ 256, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
@@ -271,7 +266,7 @@ PROGRAM ApplicationDriver
 
       WriteGF = .TRUE.
 
-    CASE( 'KelvinHelmholtz_Relativistic' )
+    CASE( 'KelvinHelmholtzInstability' )
 
        CoordinateSystem = 'CARTESIAN'
 
@@ -284,20 +279,6 @@ PROGRAM ApplicationDriver
        bcX = [ 1, 1, 0 ]
 
        t_end = 1.0d-1
-
-    CASE( 'KelvinHelmholtz' )
-
-       CoordinateSystem = 'CARTESIAN'
-
-       Gamma = 5.0d0 / 3.0d0
-
-       nX = [ 32, 32, 1 ]
-       xL = [ 0.0d0, 0.0d0, 0.0d0 ]
-       xR = [ 1.0d0, 1.0d0, 1.0d0 ]
-
-       bcX = [ 1, 1, 0 ]
-
-       t_end = 1.5d0
 
     CASE( 'StandingAccretionShock' )
 
@@ -332,13 +313,13 @@ PROGRAM ApplicationDriver
       WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)')     'Valid choices:'
-      WRITE(*,'(A)')     '  SineWaveAdvection'
-      WRITE(*,'(A)')     '  TopHatAdvection'
+      WRITE(*,'(A)')     '  Advection'
+      WRITE(*,'(A)')     '  Advection2D'
       WRITE(*,'(A)')     '  RiemannProblem'
-      WRITE(*,'(A)')     '  RiemannProblem2d'
-      WRITE(*,'(A)')     '  SphericalRiemannProblem'
-      WRITE(*,'(A)')     '  SphericalSedov'
-      WRITE(*,'(A)')     '  KelvinHelmholtz2D_Relativistic'
+      WRITE(*,'(A)')     '  RiemannProblem2D'
+      WRITE(*,'(A)')     '  RiemannProblemSpherical'
+      WRITE(*,'(A)')     '  SedovTaylorBlastWave'
+      WRITE(*,'(A)')     '  KelvinHelmholtzInstability'
       WRITE(*,'(A)')     '  StandingAccretionShock'
       WRITE(*,'(A)')     'Stopping...'
       STOP
@@ -356,13 +337,13 @@ PROGRAM ApplicationDriver
   SlopeTolerance            = 1.0d-6
   UseCharacteristicLimiting = .TRUE.
 
-  UseTroubledCellIndicator  = .TRUE.
+  UseTroubledCellIndicator  = .FALSE.
 
   SlopeLimiterMethod        = 'TVD'
 
-  LimiterThresholdParameter = 0.2_DP
+  LimiterThresholdParameter = 0.0_DP
 
-  UseConservativeCorrection = .TRUE.
+  UseConservativeCorrection = .FALSE.
 
   UsePositivityLimiter = .TRUE.
   Min_1 = 1.0d-13
@@ -414,18 +395,20 @@ PROGRAM ApplicationDriver
            Gamma_IDEAL_Option = Gamma )
 
   CALL InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
-         ( BetaTVD_Option = BetaTVD, &
-           BetaTVB_Option = BetaTVB, &
+         ( UseSlopeLimiter_Option &
+             = UseSlopeLimiter, &
+           SlopeLimiterMethod_Option &
+             = TRIM( SlopeLimiterMethod ), &
+           BetaTVD_Option &
+             = BetaTVD, &
+           BetaTVB_Option &
+             = BetaTVB, &
            SlopeTolerance_Option &
              = SlopeTolerance, &
-           UseSlopeLimiter_Option &
-             = UseSlopeLimiter, &
            UseCharacteristicLimiting_Option &
              = UseCharacteristicLimiting, &
            UseTroubledCellIndicator_Option &
              = UseTroubledCellIndicator, &
-           SlopeLimiterMethod_Option &
-             = TRIM( SlopeLimiterMethod ), &
            LimiterThresholdParameter_Option &
              = LimiterThresholdParameter, &
            UseConservativeCorrection_Option &
@@ -442,23 +425,21 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
   CALL InitializeFields_Relativistic &
-         ( RiemannProblemName_Option &
+         ( AdvectionProfile_Option &
+             = TRIM( AdvectionProfile ), &
+           RiemannProblemName_Option &
              = TRIM( RiemannProblemName ), &
-           RiemannProblem2dName_Option &
-             = TRIM( RiemannProblem2dName ), &
-           SphericalRiemannProblemName_Option &
-             = TRIM( SphericalRiemannProblemName ), &
-           nDetCells_Option     = nDetCells, &
-           Eblast_Option        = Eblast, &
-           MassPNS_Option       = MassPNS, &
-           ShockRadius_Option   = ShockRadius, &
-           AccretionRate_Option     = AccretionRate, &
-           MachNumber_Option        = MachNumber, &
-           ApplyPerturbation_Option = ApplyPerturbation, &
-           PerturbationOrder_Option = PerturbationOrder, &
+           nDetCells_Option             = nDetCells, &
+           Eblast_Option                = Eblast, &
+           MassPNS_Option               = MassPNS, &
+           ShockRadius_Option           = ShockRadius, &
+           AccretionRate_Option         = AccretionRate, &
+           MachNumber_Option            = MachNumber, &
+           ApplyPerturbation_Option     = ApplyPerturbation, &
+           PerturbationOrder_Option     = PerturbationOrder, &
            PerturbationAmplitude_Option = PerturbationAmplitude, &
-           rPerturbationInner_Option = rPerturbationInner, &
-           rPerturbationOuter_Option = rPerturbationOuter )
+           rPerturbationInner_Option    = rPerturbationInner, &
+           rPerturbationOuter_Option    = rPerturbationOuter )
 
   IF( RestartFileNumber .GE. 0 )THEN
 

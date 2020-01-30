@@ -18,7 +18,7 @@ Modified by sjdunham for multiple MultiFabs (not working yet)
 #include <AMReX_MemProfiler.H>
 #endif
 
-#include "Restart.H"
+ #include "Restart.H"
 
 using namespace amrex;
 
@@ -42,6 +42,9 @@ extern "C"
 
     // Checkpoint file name, e.g., chk00010
 
+   ParmParse pp("thornado");
+   chk_file = "chk";
+   pp.query("CheckpointFileBaseName",chk_file);
 
     const std::string& checkpointname
                          = amrex::Concatenate( chk_file, StepNo[0], 8 );
@@ -146,6 +149,10 @@ extern "C"
            BoxArray** ba, DistributionMapping** dm, int iChkFile )
   {
 
+    ParmParse pp("thornado");
+    chk_file = "chk";
+    pp.query("CheckpointFileBaseName",chk_file);
+
     std::stringstream sChkFile;
     sChkFile << chk_file << std::setw(8) << std::setfill('0') << iChkFile;
     restart_chkfile = sChkFile.str();
@@ -237,6 +244,10 @@ extern "C"
   void readmultifabdata
     ( int FinestLevel, MultiFab** MF, int iMF, int iChkFile )
   {
+
+    ParmParse pp("thornado");
+    chk_file = "chk";
+    pp.query("CheckpointFileBaseName",chk_file);
 
     std::stringstream sChkFile;
 

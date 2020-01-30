@@ -126,6 +126,7 @@ MODULE InitializationModule
     ProgramName,               &
     CoordSys,                  &
     UseSlopeLimiter,           &
+    SlopeLimiterMethod,        &
     UseCharacteristicLimiting, &
     UseTroubledCellIndicator,  &
     SlopeTolerance,            &
@@ -352,6 +353,8 @@ CONTAINS
                = UseCharacteristicLimiting, &
              UseTroubledCellIndicator_Option &
                = UseTroubledCellIndicator, &
+             SlopeLimiterMethod_Option &
+               = SlopeLimiterMethod, &
              LimiterThresholdParameter_Option &
                = LimiterThresholdParameter, &
              UseConservativeCorrection_Option &

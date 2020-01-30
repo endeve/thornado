@@ -1,11 +1,11 @@
-##### inputs_KelvinHelmholtz_Relativistic #####
+##### inputs_KelvinHelmholtz #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
 DEBUG = 0
 
-thornado.ProgramName = "KelvinHelmholtz_Relativistic"
+thornado.ProgramName = "KelvinHelmholtz"
 
 thornado.t_end     = 3.0e+0   # Final time
 thornado.dt_wrt    = 6.0e-2   # Time increment to write plot-file
@@ -34,11 +34,12 @@ amr.max_level         = 0
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1
-SL.UseCharacteristicLimiting = 1
-SL.UseTroubledCellIndicator  = 1
-SL.SlopeTolerance            = 1.00e-6
+SL.SlopeLimiterMethod        = "TVD"
 SL.BetaTVD                   = 1.75e+0
 SL.BetaTVB                   = 0.00e+0
+SL.SlopeTolerance            = 1.00e-6
+SL.UseCharacteristicLimiting = 1
+SL.UseTroubledCellIndicator  = 1
 SL.LimiterThresholdParameter = 3.00e-2
 SL.UseConservativeCorrection = 1
 

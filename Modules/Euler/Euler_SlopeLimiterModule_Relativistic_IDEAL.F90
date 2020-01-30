@@ -82,15 +82,19 @@ CONTAINS
 
 
   SUBROUTINE InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
-    ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
-      UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
-      UseTroubledCellIndicator_Option, SlopeLimiterMethod_Option, &
+    ( UseSlopeLimiter_Option,           &
+      SlopeLimiterMethod_Option,        &
+      BetaTVD_Option,                   &
+      BetaTVB_Option,                   &
+      SlopeTolerance_Option,            &
+      UseCharacteristicLimiting_Option, &
+      UseTroubledCellIndicator_Option,  &
       LimiterThresholdParameter_Option, &
-      UseConservativeCorrection_Option, Verbose_Option )
+      UseConservativeCorrection_Option, &
+      Verbose_Option )
 
     REAL(DP), INTENT(in),     OPTIONAL :: &
-      BetaTVD_Option, BetaTVB_Option
-    REAL(DP), INTENT(in),     OPTIONAL :: &
+      BetaTVD_Option, BetaTVB_Option, &
       SlopeTolerance_Option
     LOGICAL,  INTENT(in),     OPTIONAL :: &
       UseSlopeLimiter_Option, &
@@ -106,6 +110,14 @@ CONTAINS
     INTEGER :: i
     LOGICAL :: Verbose
 
+    UseSlopeLimiter = .TRUE.
+    IF( PRESENT( UseSlopeLimiter_Option ) ) &
+      UseSlopeLimiter = UseSlopeLimiter_Option
+
+    SlopeLimiterMethod = 'TVD'
+    IF( PRESENT( SlopeLimiterMethod_Option ) ) &
+      SlopeLimiterMethod = SlopeLimiterMethod_Option
+
     BetaTVD = One
     IF( PRESENT( BetaTVD_Option ) ) &
       BetaTVD = BetaTVD_Option
@@ -118,10 +130,6 @@ CONTAINS
     IF( PRESENT( SlopeTolerance_Option ) ) &
       SlopeTolerance = SlopeTolerance_Option
 
-    UseSlopeLimiter = .TRUE.
-    IF( PRESENT( UseSlopeLimiter_Option ) ) &
-      UseSlopeLimiter = UseSlopeLimiter_Option
-
     UseCharacteristicLimiting = .FALSE.
     IF( PRESENT( UseCharacteristicLimiting_Option ) ) &
       UseCharacteristicLimiting = UseCharacteristicLimiting_Option
@@ -129,10 +137,6 @@ CONTAINS
     UseTroubledCellIndicator = .TRUE.
     IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
       UseTroubledCellIndicator = UseTroubledCellIndicator_Option
-
-    SlopeLimiterMethod = 'TVD'
-    IF( PRESENT( SlopeLimiterMethod_Option ) )&
-      SlopeLimiterMethod = SlopeLimiterMethod_Option
 
     LimiterThresholdParameter = 0.03_DP
     IF( PRESENT( LimiterThresholdParameter_Option ) ) &
@@ -157,21 +161,27 @@ CONTAINS
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
       WRITE(*,*)
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVD: ' , &
-        BetaTVD
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVB: ' , &
-        BetaTVB
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
-        SlopeTolerance
+      WRITE(*,'(A4,A27,A)')         '', 'SlopeLimiterMethod: ', &
+        TRIM( SlopeLimiterMethod )
+      WRITE(*,*)
+
+      IF( TRIM( SlopeLimiterMethod ) .EQ. 'TVD' )THEN
+
+        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVD: ' , &
+          BetaTVD
+        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVB: ' , &
+          BetaTVB
+        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
+          SlopeTolerance
+        WRITE(*,*)
+
+      END IF
+
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseCharacteristicLimiting: ' , &
         UseCharacteristicLimiting
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'       ) '', 'UseTroubledCellIndicator: ' , &
         UseTroubledCellIndicator
-      WRITE(*,*)
-      WRITE(*,'(A4,A27,A)')         '', 'SlopeLimiterMethod: ', &
-        TRIM( SlopeLimiterMethod )
-      WRITE(*,*)
       WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
         LimiterThreshold
       WRITE(*,*)
@@ -474,7 +484,7 @@ CONTAINS
       DO iCF = 1, nCF
 
         IF( SlopeDifference(iCF) &
-              .GT. SlopeTolerance * ABS( U_M(iCF,0,1,iX1,iX2,iX3) ) )THEN
+              .GE. SlopeTolerance * ABS( U_M(iCF,0,1,iX1,iX2,iX3) ) )THEN
 
           U_M(iCF,0,2:nDOFX,iX1,iX2,iX3) = Zero
 
@@ -497,13 +507,18 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iCF = 1, nCF
 
-      IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
-        CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), &
-                                    U_M(iCF,0,:,iX1,iX2,iX3) )
-      END IF
-    END DO
+      DO iCF = 1, nCF
+
+        IF( LimitedCell(iCF,iX1,iX2,iX3) )THEN
+
+          CALL MapModalToNodal_Fluid( U(:,iX1,iX2,iX3,iCF), &
+                                      U_M(iCF,0,:,iX1,iX2,iX3) )
+
+        END IF
+
+      END DO
+
     END DO
     END DO
     END DO
@@ -518,14 +533,15 @@ CONTAINS
 
   SUBROUTINE InitializeSlopeLimiter_Euler_WENO
 
-    INTEGER  :: iNodeX, jNodeX
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2, iGridPt
+    REAL(DP) :: OrthonormalBasis1D(1:nNodesX(1),0:nNodesX(1)-1,0:nNodesX(1)-1)
     REAL(DP) :: eta
 
-    IF( nDimsX .GT. 1 )THEN
+    IF( nDimsX .GT. 2 )THEN
 
       WRITE(*,*)
       WRITE(*,'(A)') &
-         'WENO slope-limiter not implemented for nDimsX > 1. Stopping...'
+         'WENO slope-limiter not implemented for nDimsX > 2. Stopping...'
       STOP
 
     END  IF
@@ -539,115 +555,172 @@ CONTAINS
 
     END  IF
 
-    ALLOCATE( OrthonormalBasis(nDOFX,nDOFX,nDOFX) )
+    IF( nNodesX(1) .EQ. 2 )THEN
+
+      DO iNodeX = 1, nNodesX(1)
+
+        eta = MeshX(1) % Nodes( iNodeX )
+
+        ! --- 0th derivative ---
+        OrthonormalBasis1D(iNodeX,0,0) &
+          = One
+        OrthonormalBasis1D(iNodeX,1,0) &
+          = SQRT(12.0_DP) * eta
+
+        ! --- 1st derivative ---
+        OrthonormalBasis1D(iNodeX,0,1) &
+          = Zero
+        OrthonormalBasis1D(iNodeX,1,1) &
+          = SQRT(12.0_DP)
+
+      END DO
+
+    ELSE IF( nNodesX(1) .EQ. 3 )THEN
+
+      DO iNodeX = 1, nNodesX(1)
+
+        eta = MeshX(1) % Nodes( iNodeX )
+
+        ! --- 0th derivative ---
+        OrthonormalBasis1D(iNodeX,0,0) &
+          = One
+        OrthonormalBasis1D(iNodeX,1,0) &
+          = SQRT(12.0_DP) * eta
+        OrthonormalBasis1D(iNodeX,2,0) &
+          = SQRT(180.0_DP) * ( eta**2 - One / 12.0_DP )
+
+        ! --- 1st derivative ---
+        OrthonormalBasis1D(iNodeX,0,1) &
+          = Zero
+        OrthonormalBasis1D(iNodeX,1,1) &
+          = SQRT(12.0_DP)
+        OrthonormalBasis1D(iNodeX,2,1) &
+          = SQRT(180.0_DP) * Two * eta
+
+        ! --- 2nd derivative ---
+        OrthonormalBasis1D(iNodeX,0,2) &
+          = Zero
+        OrthonormalBasis1D(iNodeX,1,2) &
+          = Zero
+        OrthonormalBasis1D(iNodeX,2,2) &
+          = SQRT(180.0_DP) * Two
+
+      END DO
+
+    END IF
+
     ALLOCATE( VandermondeMatrix(nDOFX,nDOFX) )
 
-    IF( nNodesX(1) .EQ. 2 )THEN
-      DO iNodeX = 1, nDOFX
+    IF( nDimsX .EQ. 1 )THEN
 
-        eta = MeshX(1) % Nodes( iNodeX )
+      ALLOCATE( OrthonormalBasis(1:nNodesX(1),0:nNodesX(1)-1,0:nNodesX(1)-1) )
 
-        ! --- 0th derivative ---
-        OrthonormalBasis(iNodeX,1,1) &
-          = One
-        OrthonormalBasis(iNodeX,2,1) &
-          = SQRT(12.0_DP) * eta
+      OrthonormalBasis = OrthonormalBasis1D
 
-        ! --- 1st derivative ---
-        OrthonormalBasis(iNodeX,1,2) &
-          = Zero
-        OrthonormalBasis(iNodeX,2,2) &
-          = SQRT(12.0_DP)
+    ELSE IF( nDimsX .EQ. 2 )THEN
 
-      END DO
-    END IF
+      ALLOCATE( OrthonormalBasis(1:nDOFX, &
+                                 0:nDOFX-1, &
+                                 0:nNodesX(1)*(nNodesX(1)+1)/2-1) )
 
-    IF( nNodesX(1) .EQ. 3 )THEN
-      DO iNodeX = 1, nDOFX
+      OrthonormalBasis = Zero
 
-        eta = MeshX(1) % Nodes( iNodeX )
+      IF     ( nNodesX(1) .EQ. 2 )THEN
 
-        ! --- 0th derivative ---
-        OrthonormalBasis(iNodeX,1,1) &
-          = One
-        OrthonormalBasis(iNodeX,2,1) &
-          = SQRT(12.0_DP) * eta
-        OrthonormalBasis(iNodeX,3,1) &
-          = SQRT(180.0_DP) * ( eta**2 - One / 12.0_DP )
+        DO iNodeX = 1, nDOFX
 
-        ! --- 1st derivative ---
-        OrthonormalBasis(iNodeX,1,2) &
-          = Zero
-        OrthonormalBasis(iNodeX,2,2) &
-          = SQRT(12.0_DP)
-        OrthonormalBasis(iNodeX,3,2) &
-          = SQRT(180.0_DP) * Two * eta
+          iNodeX1 = NodeNumberTableX(1,iNodeX)
+          iNodeX2 = NodeNumberTableX(2,iNodeX)
 
-        ! --- 2nd derivative ---
-        OrthonormalBasis(iNodeX,1,3) &
-          = Zero
-        OrthonormalBasis(iNodeX,2,3) &
-          = Zero
-        OrthonormalBasis(iNodeX,3,3) &
-          = SQRT(180.0_DP) * Two
+          ! --- 0th derivative ---
+          OrthonormalBasis(iNodeX,0,0) = OrthonormalBasis1D(iNodeX1,0,0)
+          OrthonormalBasis(iNodeX,1,0) = OrthonormalBasis1D(iNodeX1,1,0)
+          OrthonormalBasis(iNodeX,2,0) = OrthonormalBasis1D(iNodeX2,1,0)
 
-      END DO
-    END IF
+          ! --- 1st eta1 derivative ---
+          OrthonormalBasis(iNodeX,0,1) = OrthonormalBasis1D(iNodeX1,0,1)
+          OrthonormalBasis(iNodeX,1,1) = OrthonormalBasis1D(iNodeX1,1,1)
+          OrthonormalBasis(iNodeX,2,1) = Zero
 
-    IF( nNodesX(1) .EQ. 4 )THEN
-      DO iNodeX = 1, nDOFX
+          ! --- 1st eta2 derivative ---
+          OrthonormalBasis(iNodeX,0,2) = OrthonormalBasis1D(iNodeX2,0,1)
+          OrthonormalBasis(iNodeX,1,2) = Zero
+          OrthonormalBasis(iNodeX,2,2) = OrthonormalBasis1D(iNodeX2,1,1)
 
-        eta = MeshX(1) % Nodes( iNodeX )
+        END DO
 
-        ! --- 0th derivative ---
-        OrthonormalBasis(iNodeX,1,1) &
-          = One
-        OrthonormalBasis(iNodeX,2,1) &
-          = SQRT(12.0_DP) * eta
-        OrthonormalBasis(iNodeX,3,1) &
-          = SQRT(180.0_DP) * ( eta**2 - One / 12.0_DP )
-        OrthonormalBasis(iNodeX,4,1) &
-          = SQRT(2800.0_DP) * ( eta**3 - 15.0_DP / 100.0_DP * eta )
+      ELSE IF( nNodesX(1) .EQ. 3 )THEN
 
-        ! --- 1st derivative ---
-        OrthonormalBasis(iNodeX,1,2) &
-          = One
-        OrthonormalBasis(iNodeX,2,2) &
-          = SQRT(12.0_DP)
-        OrthonormalBasis(iNodeX,3,2) &
-          = SQRT(180.0_DP) * Two * eta
-        OrthonormalBasis(iNodeX,4,2) &
-          = SQRT(2800.0_DP) * ( Three * eta**2 - 15.0_DP / 100.0_DP )
+        DO iNodeX = 1, nDOFX
 
-        ! --- 2nd derivative ---
-        OrthonormalBasis(iNodeX,1,3) &
-          = Zero
-        OrthonormalBasis(iNodeX,2,3) &
-          = Zero
-        OrthonormalBasis(iNodeX,3,3) &
-          = SQRT(180.0_DP) * Two
-        OrthonormalBasis(iNodeX,4,3) &
-          = SQRT(2800.0_DP) * 6.0_DP * eta
+          iNodeX1 = NodeNumberTableX(1,iNodeX)
+          iNodeX2 = NodeNumberTableX(2,iNodeX)
 
-        ! --- 3rd derivative ---
-        OrthonormalBasis(iNodeX,1,4) &
-          = Zero
-        OrthonormalBasis(iNodeX,2,4) &
-          = Zero
-        OrthonormalBasis(iNodeX,3,4) &
-          = Zero
-        OrthonormalBasis(iNodeX,4,4) &
-          = SQRT(2800.0_DP) * 6.0_DP
+          ! --- 0th derivative ---
+          OrthonormalBasis(iNodeX,0,0) = OrthonormalBasis1D(iNodeX1,0,0)
+          OrthonormalBasis(iNodeX,1,0) = OrthonormalBasis1D(iNodeX1,1,0)
+          OrthonormalBasis(iNodeX,2,0) = OrthonormalBasis1D(iNodeX2,1,0)
+          OrthonormalBasis(iNodeX,3,0) = OrthonormalBasis1D(iNodeX1,2,0)
+          OrthonormalBasis(iNodeX,4,0) = OrthonormalBasis1D(iNodeX1,1,0) &
+                                           * OrthonormalBasis1D(iNodeX2,1,0)
+          OrthonormalBasis(iNodeX,5,0) = OrthonormalBasis1D(iNodeX2,2,0)
 
-      END DO
-    END IF
+          ! --- 1st eta1 derivative ---
+          OrthonormalBasis(iNodeX,0,1) = OrthonormalBasis1D(iNodeX1,0,1)
+          OrthonormalBasis(iNodeX,1,1) = OrthonormalBasis1D(iNodeX1,1,1)
+          OrthonormalBasis(iNodeX,2,1) = Zero
+          OrthonormalBasis(iNodeX,3,1) = OrthonormalBasis1D(iNodeX1,2,1)
+          OrthonormalBasis(iNodeX,4,1) = OrthonormalBasis1D(iNodeX1,1,1) &
+                                           * OrthonormalBasis1D(iNodeX2,1,0)
+
+          OrthonormalBasis(iNodeX,5,1) = Zero
+
+          ! --- 1st eta2 derivative ---
+          OrthonormalBasis(iNodeX,0,2) = OrthonormalBasis1D(iNodeX2,0,1)
+          OrthonormalBasis(iNodeX,1,2) = Zero
+          OrthonormalBasis(iNodeX,2,2) = OrthonormalBasis1D(iNodeX2,1,1)
+          OrthonormalBasis(iNodeX,3,2) = Zero
+          OrthonormalBasis(iNodeX,4,2) = OrthonormalBasis1D(iNodeX1,1,0) &
+                                           * OrthonormalBasis1D(iNodeX2,1,1)
+          OrthonormalBasis(iNodeX,5,2) = OrthonormalBasis1D(iNodeX2,2,1)
+
+          ! --- 2nd eta1 derivative ---
+          OrthonormalBasis(iNodeX,0,3) = OrthonormalBasis1D(iNodeX1,0,2)
+          OrthonormalBasis(iNodeX,1,3) = OrthonormalBasis1D(iNodeX1,1,2)
+          OrthonormalBasis(iNodeX,2,3) = Zero
+          OrthonormalBasis(iNodeX,3,3) = OrthonormalBasis1D(iNodeX1,2,2)
+          OrthonormalBasis(iNodeX,4,3) = Zero
+          OrthonormalBasis(iNodeX,5,3) = Zero
+
+          ! --- 1st mixed derivative ---
+          OrthonormalBasis(iNodeX,0,4) = Zero
+          OrthonormalBasis(iNodeX,1,4) = Zero
+          OrthonormalBasis(iNodeX,2,4) = Zero
+          OrthonormalBasis(iNodeX,3,4) = Zero
+          OrthonormalBasis(iNodeX,4,4) = OrthonormalBasis1D(iNodeX1,1,1) &
+                                           * OrthonormalBasis1D(iNodeX2,1,1)
+          OrthonormalBasis(iNodeX,5,4) = Zero
+
+          ! --- 2nd eta2 derivative ---
+          OrthonormalBasis(iNodeX,0,5) = OrthonormalBasis1D(iNodeX2,0,2)
+          OrthonormalBasis(iNodeX,1,5) = Zero
+          OrthonormalBasis(iNodeX,2,5) = OrthonormalBasis1D(iNodeX2,1,2)
+          OrthonormalBasis(iNodeX,3,5) = Zero
+          OrthonormalBasis(iNodeX,4,5) = Zero
+          OrthonormalBasis(iNodeX,5,5) = OrthonormalBasis1D(iNodeX2,2,2)
+
+        END DO
+
+      END IF ! Order of accuracy
+
+    END IF ! Spatial dimensions
 
     DO iNodeX = 1, nDOFX ! Polynomial
 
-      DO jNodeX = 1, nDOFX ! Grid points
+      DO iGridPt = 1, nDOFX
 
-        VandermondeMatrix(iNodeX,jNodeX) &
-          = WeightsX_q(jNodeX) * OrthonormalBasis(jNodeX,iNodeX,1)
+        VandermondeMatrix(iNodeX,iGridPt) &
+          = WeightsX_q(iGridPt) * OrthonormalBasis(iGridPt,iNodeX-1,0)
 
       END DO
 
@@ -685,13 +758,14 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
 
-    INTEGER  :: iX1, iX2, iX3, iNodeX1, iNodeX2, iNodeX3, &
-                iNodeX, jNodeX, iCF
-    REAL(DP) :: dX1, dX2, dX3
+    ! --- Currently assuming dX1 = dX2 = dX3 ---
+
     LOGICAL  :: SuppressBC
-    REAL(DP) :: U_M(nDOFX,nCF,iX_B1(1):iX_E1(1), &
-                              iX_B1(2):iX_E1(2), &
-                              iX_B1(3):iX_E1(3))
+    INTEGER  :: iX1, iX2, iX3, iNodeX, iGridPt, iCF
+    REAL(DP) :: dX1, dX2, dX3
+    REAL(DP) :: U_M(0:nDOFX-1,nCF,iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
     REAL(DP) :: UU(nDOFX,iX_B0(1):iX_E0(1), &
                          iX_B0(2):iX_E0(2), &
                          iX_B0(3):iX_E0(3),nCF)
@@ -700,18 +774,23 @@ CONTAINS
                             iX_B0(3):iX_E0(3))
 
     ! --- WENO Limiter ---
-    REAL(DP) :: q(nDOFX,nDOFX,nCF)
+    REAL(DP) :: q  (nDOFX,0:nNodesX(1)-1,nCF)
+    REAL(DP) :: qX1(nDOFX,0:nNodesX(1)-1,nCF)
+    REAL(DP) :: qX2(nDOFX,0:nNodesX(1)-1,nCF)
     REAL(DP) :: LinearWeights(2*(nNodesX(1)-1))
     REAL(DP) :: NonLinearWeights(2*(nNodesX(1)-1),nCF)
     REAL(DP) :: SmoothnessIndicators(2*(nNodesX(1)-1),nCF)
-    REAL(DP) :: p (nDOFX,2*(nNodesX(1)-1),nCF)
-    REAL(DP) :: pC(nDOFX,2*(nNodesX(1)-1),nCF)
+    REAL(DP) :: pX1(nDOFX,2*(nNodesX(1)-1),nCF)
+    REAL(DP) :: pX2(nDOFX,2*(nNodesX(1)-1),nCF)
+    REAL(DP) :: pX1_new(nDOFX,nCF)
+    REAL(DP) :: pX2_new(nDOFX,nCF)
     REAL(DP) :: pCoeffs(2*(nNodesX(1)-1),nNodesX(1),nCF)
-    REAL(DP) :: pNew(nDOFX,nCF)
+    INTEGER  :: nPspace, k
 
     ! --- Characteristic limiting ---
     INTEGER  :: iGF
-    REAL(DP) :: R_X1(nCF,nCF,0:2), invR_X1(nCF,nCF,0:2)
+    REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
+    REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
     REAL(DP) :: G_K(nGF)
 
     IF( nDOFX .EQ. 1 ) RETURN
@@ -720,8 +799,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
+    k = nNodesX(1) - 1
+
     ! --- Get linear weights ---
-    DO iNodeX = 1, 2*(nNodesX(1)-1)
+    DO iNodeX = 1, 2*k
 
       IF( MOD( iNodeX, 2 ) .NE. 0 )THEN
 
@@ -777,9 +858,21 @@ CONTAINS
                  U(:,iX1+1,iX2,iX3,iCF), &
                  U_M(:,iCF,iX1+1,iX2,iX3) )
 
-      END DO
+        IF( nDimsX .GT. 1 )THEN
 
-      ! --- Step 2.1: Compute left and right eigenvectors ---
+          CALL MapNodalToModal_Fluid_WENO &
+                 ( VandermondeMatrix, &
+                   U(:,iX1,iX2-1,iX3,iCF), &
+                   U_M(:,iCF,iX1,iX2-1,iX3) )
+
+          CALL MapNodalToModal_Fluid_WENO &
+                 ( VandermondeMatrix, &
+                   U(:,iX1,iX2+1,iX3,iCF), &
+                   U_M(:,iCF,iX1,iX2+1,iX3) )
+
+        END IF
+
+      END DO
 
       IF( UseCharacteristicLimiting )THEN
 
@@ -790,45 +883,25 @@ CONTAINS
         END DO
 
         CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-               ( 1, G_K, U_M(1,:,iX1  ,iX2,iX3), &
-                 R_X1(:,:,0), invR_X1(:,:,0) )
+               ( 1, G_K, U_M(0,:,iX1,iX2,iX3), R_X1, invR_X1 )
 
-        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-               ( 1, G_K, U_M(1,:,iX1-1,iX2,iX3), &
-                 R_X1(:,:,1), invR_X1(:,:,1) )
-
-        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-               ( 1, G_K, U_M(1,:,iX1+1,iX2,iX3), &
-                 R_X1(:,:,2), invR_X1(:,:,2) )
-
-        ! --- Step 2.2: Project into characteristic fields ---
-
-        DO iNodeX = 1, nDOFX ! Loop over modes
-
-          U_M(iNodeX,:,iX1  ,iX2,iX3) &
-            = MATMUL( invR_X1(:,:,0), U_M(iNodeX,:,iX1  ,iX2,iX3) )
-
-          U_M(iNodeX,:,iX1-1,iX2,iX3) &
-            = MATMUL( invR_X1(:,:,1), U_M(iNodeX,:,iX1-1,iX2,iX3) )
-
-          U_M(iNodeX,:,iX1+1,iX2,iX3) &
-            = MATMUL( invR_X1(:,:,2), U_M(iNodeX,:,iX1+1,iX2,iX3) )
-
-        END DO
+        IF( nDimsX .GT. 1 ) &
+          CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
+                 ( 2, G_K, U_M(0,:,iX1,iX2,iX3), R_X2, invR_X2 )
 
       END IF
 
-      ! --- Step 1.1: Compute 'q' polynomials ---
-
       DO iCF = 1, nCF
 
-        DO iNodeX = 1, nDOFX ! Loop over modes
+        DO iNodeX = 0, nNodesX(1)-1 ! Loop over basis polynomials
 
-          DO jNodeX = 1, nDOFX ! Loop over grid points
+          nPspace = UpperLimit_pSpace( iNodeX )
 
-            q(jNodeX,iNodeX,iCF) &
-              = SUM( U_M(1:iNodeX,iCF,iX1,iX2,iX3) &
-                       * OrthonormalBasis(jNodeX,1:iNodeX,1) )
+          DO iGridPt = 1, nDOFX
+
+            q(iGridPt,iNodeX,iCF) &
+              = SUM( U_M(0:nPspace,iCF,iX1,iX2,iX3) &
+                       * OrthonormalBasis(iGridPt,0:nPspace,0) )
 
           END DO
 
@@ -836,42 +909,102 @@ CONTAINS
 
       END DO
 
-      pCoeffs = Zero
+      IF( UseCharacteristicLimiting )THEN
+
+        DO iNodeX = 0, nNodesX(1)-1
+
+          DO iGridPt = 1, nDOFX
+
+            qX1(iGridPt,iNodeX,:) = MATMUL( invR_X1, q(iGridPt,iNodeX,:) )
+
+          END DO
+
+        END DO
+
+        IF( nDimsX .GT. 1 )THEN
+
+          DO iNodeX = 0, nNodesX(1)-1
+
+            DO iGridPt = 1, nDOFX
+
+              qX2(iGridPt,iNodeX,:) = MATMUL( invR_X2, q(iGridPt,iNodeX,:) )
+
+            END DO
+
+          END DO
+
+        END IF
+
+      ELSE
+
+        qX1 = q
+
+      END IF
 
       ! --- 2nd order ---
-
-      ! --- Step 1.2.1 ---
 
       DO iCF = 1, nCF
 
         CALL ComputeCoefficients_Order2 &
-               ( LinearWeights(1:2), pCoeffs(1:2,1:2,iCF) )
+               ( LinearWeights, pCoeffs(:,:,iCF) )
 
-        DO iNodeX = 1, nDOFX ! Loop over grid points
+        DO iGridPt = 1, nDOFX
 
-          p(iNodeX,1,iCF) &
-            = DOT_PRODUCT( pCoeffs(1,1:2,iCF), q(iNodeX,1:2,iCF) )
-
-          p(iNodeX,2,iCF) &
-            = DOT_PRODUCT( pCoeffs(2,1:2,iCF), q(iNodeX,1:2,iCF) )
+          pX1(iGridPt,1:2,iCF) &
+            = MATMUL( pCoeffs(1:2,1:2,iCF), qX1(iGridPt,0:1,iCF) )
 
         END DO
 
-        ! --- Step 1.3: Compute smoothness indicators ---
+      END DO
+
+      IF( UseCharacteristicLimiting .AND. nDimsX .GT. 1 )THEN
+
+        DO iCF = 1, nCF
+
+          DO iGridPt = 1, nDOFX
+
+            pX2(iGridPt,1:2,iCF) &
+              = MATMUL( pCoeffs(1:2,1:2,iCF), qX2(iGridPt,0:1,iCF) )
+
+          END DO
+
+        END DO
+
+      END IF
+
+      DO iCF = 1, nCF
 
         ! --- Hard-code smoothness indicator beta_01 ---
 
-        SmoothnessIndicators(1,iCF) &
-          = 12.0_DP &
-              * MIN( U_M(2,iCF,iX1-1,iX2,iX3)**2, U_M(2,iCF,iX1+1,iX2,iX3)**2 )
+        IF     ( nDimsX .EQ. 1 )THEN
+
+          SmoothnessIndicators(1,iCF) &
+            = 12.0_DP &
+                * MIN( U_M(1,iCF,iX1-1,iX2,iX3)**2, &
+                       U_M(1,iCF,iX1+1,iX2,iX3)**2 )
+
+        ELSE IF( nDimsX .EQ. 2 )THEN
+
+          ! --- Ignoring mesh size ratios because ignoring SqrtGm ---
+
+          SmoothnessIndicators(1,iCF) &
+            = 12.0_DP &
+                * MIN( U_M(1,iCF,iX1-1,iX2,iX3)**2 &
+                         + U_M(2,iCF,iX1-1,iX2,iX3)**2, &
+                       U_M(1,iCF,iX1+1,iX2,iX3)**2 &
+                         + U_M(2,iCF,iX1+1,iX2,iX3)**2, &
+                       U_M(1,iCF,iX1,iX2-1,iX3)**2 &
+                         + U_M(2,iCF,iX1,iX2-1,iX3)**2, &
+                       U_M(1,iCF,iX1,iX2+1,iX3)**2 &
+                         + U_M(2,iCF,iX1,iX2+1,iX3)**2 )
+
+        END IF
 
         CALL ComputeSmoothnessIndicator_Order2 &
-               ( pCoeffs(1:2,1:2,iCF), &
-                 OrthonormalBasis, &
-                 U_M(1:2,iCF,iX1,iX2,iX3), &
+               ( LinearWeights(2), &
+                 OrthonormalBasis(1,1,1), &
+                 U_M(1:nDimsX,iCF,iX1,iX2,iX3), &
                  SmoothnessIndicators(2,iCF) )
-
-        ! --- Step 1.4: Compute nonlinear weights ---
 
         CALL ComputeNonLinearWeights &
                ( SmoothnessIndicators(1:2,iCF), LinearWeights(1:2), &
@@ -885,29 +1018,40 @@ CONTAINS
 
         DO iCF = 1, nCF
 
-          ! --- Step 1.2.2 ---
-
           CALL ComputeCoefficients_Order3 &
-                 ( LinearWeights(3:4), NonLinearWeights(1:2,iCF), &
+                 ( LinearWeights, NonLinearWeights(:,iCF), &
                    pCoeffs(:,:,iCF) )
 
-          DO iNodeX = 1, nDOFX ! Loop over grid points
+          DO iGridPt = 1, nDOFX
 
-            p(iNodeX,3,iCF) &
-              = DOT_PRODUCT( pCoeffs(3,1:3,iCF), q(iNodeX,1:3,iCF) )
-
-            p(iNodeX,4,iCF) &
-              = DOT_PRODUCT( pCoeffs(4,1:3,iCF), q(iNodeX,1:3,iCF) )
+            pX1(iGridPt,3:4,iCF) &
+              = MATMUL( pCoeffs(3:4,1:3,iCF), qX1(iGridPt,0:2,iCF) )
 
           END DO
 
-          ! --- Step 1.3: Compute smoothness indicators ---
+        END DO
+
+        IF( UseCharacteristicLimiting .AND. nDimsX .GT. 1 )THEN
+
+          DO iCF = 1, nCF
+
+            DO iGridPt = 1, nDOFX
+
+              pX2(iGridPt,3:4,iCF) &
+                = MATMUL( pCoeffs(3:4,1:3,iCF), qX2(iGridPt,0:2,iCF) )
+
+            END DO
+
+          END DO
+
+        END IF
+
+        DO iCF = 1, nCF
 
           CALL ComputeSmoothnessIndicators_Order3 &
-                 ( pCoeffs(:,:,iCF), OrthonormalBasis, U_M(:,iCF,iX1,iX2,iX3), &
-                   SmoothnessIndicators(3:4,iCF) )
-
-          ! --- Step 1.4: Compute nonlinear weights ---
+                 ( LinearWeights, NonLinearWeights(:,iCF), &
+                   U_M(:,iCF,iX1,iX2,iX3), &
+                   pCoeffs(4,:,iCF), SmoothnessIndicators(:,iCF) )
 
           CALL ComputeNonLinearWeights &
                  ( SmoothnessIndicators(3:4,iCF), LinearWeights(3:4), &
@@ -917,32 +1061,77 @@ CONTAINS
 
       END IF
 
-      ! --- Step 1.5: Reconstruct solution polynomial ---
-
       DO iCF = 1, nCF
 
-        DO iNodeX = 1, nDOFX ! Loop over grid points
+        DO iGridPt = 1, nDOFX
 
-          UU(iNodeX,iX1,iX2,iX3,iCF) &
-            = SUM( NonLinearWeights(2*(nNodesX(1)-1)-1:2*(nNodesX(1)-1),iCF) &
-                     * p(iNodeX,2*(nNodesX(1)-1)-1:2*(nNodesX(1)-1),iCF) )
+          pX1_New(iGridPt,iCF) &
+            = SUM( NonLinearWeights(2*k-1:2*k,iCF) &
+                     * pX1(iGridPt,2*k-1:2*k,iCF) )
 
         END DO
 
       END DO
 
-      ! --- Step 2.4: Project new polynomial back into physical space ---
+      IF( UseCharacteristicLimiting .AND. nDimsX .GT. 1 )THEN
 
-      IF( UseCharacteristicLimiting )THEN
+        DO iCF = 1, nCF
 
-        DO iNodeX = 1, nDOFX
+          DO iGridPt = 1, nDOFX
 
-          UU(iNodeX,iX1,iX2,iX3,:) &
-            = MATMUL( R_X1(:,:,0), UU(iNodeX,iX1,iX2,iX3,:) )
+            pX2_New(iGridPt,iCF) &
+              = SUM( NonLinearWeights(2*k-1:2*k,iCF) &
+                       * pX2(iGridPt,2*k-1:2*k,iCF) )
+
+          END DO
 
         END DO
 
       END IF
+
+      IF( UseCharacteristicLimiting )THEN
+
+        DO iGridPt = 1, nDOFX
+
+          pX1_New(iGridPt,:) = MATMUL( R_X1, pX1_New(iGridPt,:) )
+
+        END DO
+
+        IF( nDimsX .GT. 1 )THEN
+
+          DO iGridPt = 1, nDOFX
+
+            pX2_New(iGridPt,:) = MATMUL( R_X2, pX2_New(iGridPt,:) )
+
+          END DO
+
+        ELSE
+
+          pX2_New = Zero
+
+        END IF
+
+      ELSE ! Component-Wise Limiting
+
+        IF( nDimsX .GT. 1 )THEN
+
+          pX2_New = pX1_New
+
+        ELSE
+
+          pX2_New = Zero
+
+        END IF
+
+      END IF
+
+      DO iCF = 1, nCF
+
+        UU(:,iX1,iX2,iX3,iCF) &
+          = ( pX1_New(:,iCF) + pX2_New(:,iCF) ) / DBLE( nDimsX )
+
+      END DO
+
 
     END DO
     END DO
@@ -971,71 +1160,131 @@ CONTAINS
   END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO
 
 
-  SUBROUTINE ComputeSmoothnessIndicator_Order2 &
-    ( pCoeffs, OrthonormalBasis, U_M, &
-      SmoothnessIndicator )
+  INTEGER FUNCTION UpperLimit_pSpace( ell )
 
-    REAL(DP), INTENT(in)  :: pCoeffs(2,2)
-    REAL(DP), INTENT(in)  :: OrthonormalBasis(nDOFX,nDOFX,nDOFX)
-    REAL(DP), INTENT(in)  :: U_M(2)
+    INTEGER, INTENT(in) :: ell
+
+    IF( nDimsX .EQ. 1 )THEN
+
+      UpperLimit_pSpace = ell
+
+    ELSE IF( nDimsX .EQ. 2 )THEN
+
+      UpperLimit_pSpace = ( ell + 1 ) * ( ell + 2 ) / 2 - 1
+
+    END IF
+
+    RETURN
+  END FUNCTION UpperLimit_pSpace
+
+  SUBROUTINE ComputeSmoothnessIndicator_Order2 &
+    ( LinearWeight, C1, U_M, SmoothnessIndicator )
+
+    REAL(DP), INTENT(in)  :: LinearWeight, C1, U_M(:)
     REAL(DP), INTENT(out) :: SmoothnessIndicator
 
-    INTEGER  :: iNodeX
-    REAL(DP) :: dPx(nDOFX), dq(nDOFX,2)
+    ! --- beta_11 ---
 
-    DO iNodeX = 1, nDOFX ! Loop over quadrature points
+    SmoothnessIndicator = ( U_M(1) / LinearWeight * C1 )**2
 
-      dq(iNodeX,1) = U_M(1) * OrthonormalBasis(iNodeX,1,2)
-
-      dq(iNodeX,2) = SUM( U_M * OrthonormalBasis(iNodeX,1:2,2) )
-
-      dPx(iNodeX) = DOT_PRODUCT( pCoeffs(2,:), dq(iNodeX,:) )
-
-    END DO
-
-    SmoothnessIndicator = SUM( WeightsX_q * dPx**2 )
+    IF( nDimsX .GT. 1 ) &
+      SmoothnessIndicator &
+        = SmoothnessIndicator + ( U_M(2) / LinearWeight * C1 )**2
 
   END SUBROUTINE ComputeSmoothnessIndicator_Order2
 
 
   SUBROUTINE ComputeSmoothnessIndicators_Order3 &
-    ( pCoeffs, OrthonormalBasis, U_M, &
-      SmoothnessIndicators )
+    ( LinearWeights, NonLinearWeights, U_M, &
+      pCoeffs, SmoothnessIndicators )
 
-    REAL(DP), INTENT(in)  :: pCoeffs(:,:)
-    REAL(DP), INTENT(in)  :: OrthonormalBasis(nDOFX,nDOFX,nDOFX)
-    REAL(DP), INTENT(in)  :: U_M(nDOFX)
-    REAL(DP), INTENT(out) :: SmoothnessIndicators(2)
+    REAL(DP), INTENT(in)  :: LinearWeights(:), NonLinearWeights(:)
+    REAL(DP), INTENT(in)  :: U_M(0:nDOFX-1), pCoeffs(:)
+    REAL(DP), INTENT(out) :: SmoothnessIndicators(:)
 
-    INTEGER  :: iNodeX
-    REAL(DP) :: dPx(nDOFX), dq(nDOFX,nNodesX(1))
-    REAL(DP) :: ddPx(nDOFX,2), ddq(nDOFX,nNodesX(1))
+    REAL(DP) :: C1
+    REAL(DP) :: dq_X1   (nDOFX,0:2), &
+                dq_X2   (nDOFX,0:2), &
+                ddq_X1  (nDOFX,0:2), &
+                ddq_X2  (nDOFX,0:2), &
+                ddq_X1X2(nDOFX,0:2)
+    REAL(DP) :: dP_X1   (nDOFX), &
+                dP_X2   (nDOFX), &
+                ddP_X1  (nDOFX), &
+                ddP_X2  (nDOFX), &
+                ddP_X1X2(nDOFX)
+    INTEGER  :: iGridPt
 
-    DO iNodeX = 1, nDOFX ! Loop over quadrature points
+    ! --- beta_12 ---
 
-      ! --- 1st derivatives ---
+    C1 = OrthonormalBasis(1,1,1)
 
-      dq(iNodeX,1) = U_M(1) * OrthonormalBasis(iNodeX,1,2)
-      dq(iNodeX,2) = SUM( U_M(1:2) * OrthonormalBasis(iNodeX,1:2,2) )
-      dq(iNodeX,3) = SUM( U_M(1:3) * OrthonormalBasis(iNodeX,1:3,2) )
+    SmoothnessIndicators(3) &
+      = ( C1 * NonLinearWeights(1) / LinearWeights(2) * U_M(1) )**2
 
-      dPx(iNodeX) = DOT_PRODUCT( pCoeffs(3,:), dq(iNodeX,:) )
+    IF( nDimsX .GT. 1 ) &
+      SmoothnessIndicators(3) &
+        = SmoothnessIndicators(3) &
+            + ( C1 * NonLinearWeights(1) / LinearWeights(2) * U_M(2) )**2
 
-      ! --- 2nd derivatives ---
+    ! --- beta_22 ---
 
-      ddq(iNodeX,1) = U_M(1) * OrthonormalBasis(iNodeX,1,3)
-      ddq(iNodeX,2) = SUM( U_M(1:2) * OrthonormalBasis(iNodeX,1:2,3) )
-      ddq(iNodeX,3) = SUM( U_M(1:3) * OrthonormalBasis(iNodeX,1:3,3) )
+    IF( nDimsX .EQ. 1 )THEN
 
-      ddPx(iNodeX,1) = DOT_PRODUCT( pCoeffs(3,:), ddq(iNodeX,:) )
-      ddPx(iNodeX,2) = DOT_PRODUCT( pCoeffs(4,:), ddq(iNodeX,:) )
+      DO iGridPt = 1, nDOFX
 
-    END DO
+        dq_X1(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,1) )
+        dq_X1(iGridPt,1) = SUM( U_M(0:1) * OrthonormalBasis(iGridPt,0:1,1) )
+        dq_X1(iGridPt,2) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,1) )
+        dp_X1 (iGridPt)  = DOT_PRODUCT( pCoeffs, dq_X1(iGridPt,:) )
 
-    SmoothnessIndicators(1) = SUM( WeightsX_q * dPx**2 )
+        ddq_X1(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,2) )
+        ddq_X1(iGridPt,1) = SUM( U_M(0:1) * OrthonormalBasis(iGridPt,0:1,2) )
+        ddq_X1(iGridPt,2) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,2) )
+        ddp_X1(iGridPt)   = DOT_PRODUCT( pCoeffs, ddq_X1(iGridPt,:) )
 
-    SmoothnessIndicators(2) &
-      = SUM( WeightsX_q * ddPx(:,1)**2 ) + SUM( WeightsX_q * ddPx(:,2)**2 )
+      END DO
+
+      SmoothnessIndicators(4) &
+        = SUM( WeightsX_q * ( dp_X1**2 + ddp_X1**2 ) )
+
+    ELSE IF( nDimsX .GT. 1 )THEN
+
+      DO iGridPt = 1, nDOFX
+
+        dq_X1(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,1) )
+        dq_X1(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,1) )
+        dq_X1(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,1) )
+        dp_X1(iGridPt)   = DOT_PRODUCT( pCoeffs, dq_X1(iGridPt,:) )
+
+        dq_X2(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,2) )
+        dq_X2(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,2) )
+        dq_X2(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,2) )
+        dp_X2(iGridPt)   = DOT_PRODUCT( pCoeffs, dq_X2(iGridPt,:) )
+
+        ddq_X1(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,3) )
+        ddq_X1(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,3) )
+        ddq_X1(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,3) )
+        ddp_X1(iGridPt)   = DOT_PRODUCT( pCoeffs, ddq_X1(iGridPt,:) )
+
+        ddq_X1X2(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,4) )
+        ddq_X1X2(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,4) )
+        ddq_X1X2(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,4) )
+        ddp_X1X2(iGridPt)   = DOT_PRODUCT( pCoeffs, ddq_X1X2(iGridPt,:) )
+
+        ddq_X2(iGridPt,0) = SUM( U_M(0:0) * OrthonormalBasis(iGridPt,0:0,5) )
+        ddq_X2(iGridPt,1) = SUM( U_M(0:2) * OrthonormalBasis(iGridPt,0:2,5) )
+        ddq_X2(iGridPt,2) = SUM( U_M(0:5) * OrthonormalBasis(iGridPt,0:5,5) )
+        ddp_X2(iGridPt)   = DOT_PRODUCT( pCoeffs, ddq_X2(iGridPt,:) )
+
+      END DO
+
+      SmoothnessIndicators(4) &
+        = SUM( WeightsX_q &
+                 * ( dp_X1**2 + ddp_X1**2 + dp_X2**2 &
+                       + ddp_X2**2 + ddp_X1X2**2 ) )
+
+    END IF
 
   END SUBROUTINE ComputeSmoothnessIndicators_Order3
 
@@ -1043,7 +1292,7 @@ CONTAINS
   SUBROUTINE ComputeCoefficients_Order2 &
     ( LinearWeights, PolynomialCoefficients )
 
-    REAL(DP), INTENT(in)  :: LinearWeights(2)
+    REAL(DP), INTENT(in)  :: LinearWeights(:)
     REAL(DP), INTENT(out) :: PolynomialCoefficients(:,:)
 
     PolynomialCoefficients(1,1) = One
@@ -1060,8 +1309,26 @@ CONTAINS
   SUBROUTINE ComputeCoefficients_Order3 &
     ( LinearWeights, NonLinearWeights, PolynomialCoefficients )
 
-    REAL(DP), INTENT(in)  :: LinearWeights(2), NonLinearWeights(:)
+    REAL(DP), INTENT(in)  :: LinearWeights(:), NonLinearWeights(:)
     REAL(DP), INTENT(out) :: PolynomialCoefficients(:,:)
+
+    PolynomialCoefficients(1,1) &
+      = One
+
+    PolynomialCoefficients(1,2) &
+      = Zero
+
+    PolynomialCoefficients(1,3) &
+      = Zero
+
+    PolynomialCoefficients(2,1) &
+      = -LinearWeights(1) / LinearWeights(2)
+
+    PolynomialCoefficients(2,2) &
+      = One / LinearWeights(2)
+
+    PolynomialCoefficients(2,3) &
+      = Zero
 
     PolynomialCoefficients(3,1) &
       = NonLinearWeights(1) &
@@ -1074,16 +1341,13 @@ CONTAINS
       = Zero
 
     PolynomialCoefficients(4,1) &
-      = -LinearWeights(1) / LinearWeights(2) &
-          * ( NonLinearWeights(1) &
-                - NonLinearWeights(2) * LinearWeights(1) / LinearWeights(2) )
+      = -LinearWeights(3) / LinearWeights(4) * PolynomialCoefficients(3,1)
 
     PolynomialCoefficients(4,2) &
-      = -LinearWeights(1) / LinearWeights(2) &
-          *  NonLinearWeights(2) / LinearWeights(2)
+      = -LinearWeights(3) / LinearWeights(4) * PolynomialCoefficients(3,2)
 
     PolynomialCoefficients(4,3) &
-      = One / LinearWeights(2)
+      = One / LinearWeights(4)
 
   END SUBROUTINE ComputeCoefficients_Order3
 
@@ -1094,8 +1358,8 @@ CONTAINS
     REAL(DP), INTENT(in)  :: SmoothnessIndicators(2), LinearWeights(2)
     REAL(DP), INTENT(out) :: NonLinearWeights(2)
 
-    REAL(DP) :: Tau, Normalization, EPS
-    EPS = 1.0d-10
+    REAL(DP) :: Tau, Normalization
+    REAL(DP), PARAMETER :: EPS = 1.0d-10
 
     Tau = ( SmoothnessIndicators(2) - SmoothnessIndicators(1) )**2
 
