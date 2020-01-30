@@ -547,6 +547,27 @@ CONTAINS
         END DO
         END DO
 
+    CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = 1, swX(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        ! --- Inner: No Boundary Condition ---
+
+        ! --- Outer: Homogeneous ---
+
+        IF( ApplyOuterBC( iApplyBC ) )THEN
+          DO iCF = 1, nCF
+            U(:,iX1,iX_E0(2)+iX2,iX3,iCF) &
+              = U(:,iX1,iX_E0(2),iX3,iCF)
+          END DO
+        END IF
+
+      END DO
+      END DO
+      END DO
+
     CASE DEFAULT
 
       WRITE(*,*)
