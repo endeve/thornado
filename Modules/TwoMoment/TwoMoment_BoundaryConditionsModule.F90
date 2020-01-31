@@ -628,6 +628,33 @@ CONTAINS
         END DO
       END DO
 
+    CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = 1, swZ(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+        ! --- Inner: No Boundary Condition ---
+
+        ! --- Outer: Homogeneous ---
+
+        DO iNode = 1, nDOF
+
+          U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
+            = U(iNode,iZ1,iZ2,iZ_E0(3),iZ4,iCR,iS)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
     CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
 
 #if defined(THORNADO_OMP_OL)
@@ -875,6 +902,33 @@ CONTAINS
             END DO
           END DO
         END DO
+      END DO
+
+    CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ4 = 1, swZ(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+        ! --- Inner: No Boundary Condition ---
+
+        ! --- Outer: Homogeneous ---
+
+        DO iNode = 1, nDOF
+
+          U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
+            = U(iNode,iZ1,iZ2,iZ3,iZ_E0(4),iCR,iS)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
       END DO
 
     CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)

@@ -3,7 +3,7 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three, Five
   USE TwoMoment_ClosureModule, ONLY: &
-    FluxFactor, &
+    FluxFactor_Relativistic, &
     EddingtonFactor, &
     HeatFluxFactor
 
@@ -20,11 +20,12 @@ CONTAINS
 
   SUBROUTINE ComputePrimitive_TwoMoment &
     ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Option )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations_Option, alp, B_u_1, B_u_2, B_u_3 )
 
     REAL(DP), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3 ! --- Index Down
     REAL(DP), INTENT(out) :: D, I_u_1, I_u_2, I_u_3 ! --- Index Up
     REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3 ! --- Index Up
+    REAL(DP), INTENT(in)  :: B_u_1, B_u_2, B_u_3, alp
     REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     INTEGER, INTENT(out), OPTIONAL :: nIterations_Option
 
@@ -41,17 +42,23 @@ CONTAINS
     INTEGER  :: i, k, mk, INFO
     REAL(DP) :: I_d_1, I_d_2, I_d_3, A_d_1, A_d_2, A_d_3
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: B_d_1, B_d_2, B_d_3
     REAL(DP) :: UVEC(4), CVEC(4)
     REAL(DP) :: GVEC(4,M), GVECm(4)
     REAL(DP) :: FVEC(4,M), FVECm(4)
     REAL(DP) :: LMAT(4,4), DET, Alpha(M)
     REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
-    REAL(DP) :: W    
+    REAL(DP) :: W, DT    
 
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
     
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
                + Gm_dd_22 * V_u_2 * V_u_2 &  
                + Gm_dd_33 * V_u_3 * V_u_3) )
+
+    DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
     CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
 
@@ -62,9 +69,13 @@ CONTAINS
     I_u_2 = Zero
     I_u_3 = Zero
 
-    I_d_1 = Gm_dd_11 * I_u_1
-    I_d_2 = Gm_dd_22 * I_u_2
-    I_d_3 = Gm_dd_33 * I_u_3
+    I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+    I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+    I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
+          - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
+
 
     k = 0
     CONVERGED = .FALSE.
@@ -77,7 +88,8 @@ CONTAINS
 
       CALL ComputeEddingtonTensorComponents_dd &
              ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-               k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+               k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
+               alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3   )
 
       A_d_1 = V_u_1 * k_dd_11 + V_u_2 * k_dd_12 + V_u_3 * k_dd_13
       A_d_2 = V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_23
@@ -157,11 +169,14 @@ CONTAINS
         FVEC = CSHIFT( FVEC, SHIFT = + 1, DIM = 2 )
 
       END IF
-
+      !this may be the problem converting abck and forth from upper to lower and back
       D     = UVEC(1)
-      I_d_1 = UVEC(2); I_u_1 = I_d_1 / Gm_dd_11
-      I_d_2 = UVEC(3); I_u_2 = I_d_2 / Gm_dd_22
-      I_d_3 = UVEC(4); I_u_3 = I_d_3 / Gm_dd_33
+      I_d_1 = UVEC(2); I_u_1 = ( 1.0_DP - B_d_1 * V_u_1 / alp ) * I_d_1 / Gm_dd_11  &
+            - I_d_2 * B_d_1 * V_u_2 / ( alp *Gm_dd_11 ) - I_d_3 * B_d_1 * V_u_3 / ( Gm_dd_11 * alp )
+      I_d_2 = UVEC(3); I_u_2 = ( 1.0_DP - B_d_2 * V_u_2 / alp ) * I_d_2 / Gm_dd_22  &
+            - I_d_1 * B_d_2 * V_u_1 / ( alp *Gm_dd_22 ) - I_d_3 * B_d_2 * V_u_3 / ( Gm_dd_22 * alp )
+      I_d_3 = UVEC(4); I_u_3 = ( 1.0_DP - B_d_3 * V_u_3 / alp ) * I_d_3 / Gm_dd_33  &
+            - I_d_1 * B_d_3 * V_u_1 / ( alp *Gm_dd_33 ) - I_d_2 * B_d_3 * V_u_2 / ( Gm_dd_33 * alp )
 
     END DO
 
@@ -205,51 +220,68 @@ CONTAINS
 
   SUBROUTINE ComputeConserved_TwoMoment &
     ( D, I_u_1, I_u_2, I_u_3, N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3 )
 
     REAL(DP), INTENT(in)  :: D, I_u_1, I_u_2, I_u_3 ! --- Index Up
     REAL(DP), INTENT(out) :: N, G_d_1, G_d_2, G_d_3 ! --- Index Down
     REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3 ! --- Index Up
     REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-
+    REAL(DP), INTENT(in)  :: B_u_1, B_u_2, B_u_3, alp
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
-    REAL(DP) :: W   
-    
+    REAL(DP) :: W  
+    REAL(DP) :: DT 
+    REAL(DP) :: B_d_1, B_d_2, B_d_3
+    REAL(DP) :: I_d_1, I_d_2, I_d_3 ! --- Index Up
+
     CALL ComputeEddingtonTensorComponents_dd &
            ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-             k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+             k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
+             alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
 
 
+   
 
-
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
 
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
                + Gm_dd_22 * V_u_2 * V_u_2 &  
                + Gm_dd_33 * V_u_3 * V_u_3) )
-    
+   
+    DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
+
+ 
+    I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+    I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+    I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
+          - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
+
     ! --- Conserved Number Density ---
 
-    N = W * D + Gm_dd_11 * V_u_1 * I_u_1 &
-              + Gm_dd_22 * V_u_2 * I_u_2 &
-              + Gm_dd_33 * V_u_3 * I_u_3
+    N = W * D + V_u_1 * I_d_1 &
+              + V_u_2 * I_d_2 &
+              + V_u_3 * I_d_3
 
     ! --- Conserved Number Flux Density (1) ---
 
-    G_d_1 = W * Gm_dd_11 * I_u_1 &
+    G_d_1 = W * I_d_1 &
                  + (   V_u_1 * k_dd_11 &
                      + V_u_2 * k_dd_12 &
                      + V_u_3 * k_dd_13 ) * D
 
     ! --- Conserved Number Flux Density (2) ---
 
-    G_d_2 = W * Gm_dd_22 * I_u_2 &
+    G_d_2 = W * I_d_2 &
                  + (   V_u_1 * k_dd_12 &
                      + V_u_2 * k_dd_22 &
                      + V_u_3 * k_dd_23 ) * D
 
     ! --- Conserved Number Flux Density (3) ---
 
-    G_d_3 = W * Gm_dd_33 * I_u_3 &
+    G_d_3 = W * I_d_3 &
                  + (   V_u_1 * k_dd_13 &
                      + V_u_2 * k_dd_23 &
                      + V_u_3 * k_dd_33 ) * D
@@ -259,38 +291,64 @@ CONTAINS
 
   SUBROUTINE ComputeEddingtonTensorComponents_dd &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+      k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
 
     REAL(DP), INTENT(in)  :: &
-      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
     REAL(DP), INTENT(out) :: &
       k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
 
-    REAL(DP) :: FF, EF, a, b
-    REAL(DP) :: h_d_1, h_d_2, h_d_3
+    REAL(DP) :: FF, EF, a, b, DT
+    REAL(DP) :: h_d_1, h_d_2, h_d_3, I_d_1, I_d_2, I_d_3
+    REAL(DP) :: B_d_1, B_d_2, B_d_3
+    REAL(DP) :: u_d_1, u_d_2, u_d_3, W
 
-    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                                  alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
 
     EF = EddingtonFactor( D, FF )
 
-    h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
-    h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
-    h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
+
+    W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
+               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_33 * V_u_3 * V_u_3) )
+   
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
+
+    u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
+    u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
+    u_d_3 = B_d_3 * W / alp + Gm_dd_33 * ( V_u_3 - B_u_3 / alp )
+ 
+    DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
+
+
+    I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+    I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+    I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
+          - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
+
+    h_d_1 = I_d_1 / ( FF * D )
+    h_d_2 = I_d_2 / ( FF * D )
+    h_d_3 = I_d_3 / ( FF * D )
 
     a = Half * ( One - EF )
     b = Half * ( Three * EF - One )
 
     ! --- Diagonal Eddington Tensor Components ---
 
-    k_dd_11 = a * Gm_dd_11 + b * h_d_1 * h_d_1
-    k_dd_22 = a * Gm_dd_22 + b * h_d_2 * h_d_2
-    k_dd_33 = a * Gm_dd_33 + b * h_d_3 * h_d_3
+    k_dd_11 = a * ( Gm_dd_11 + u_d_1 * u_d_1 ) + b * h_d_1 * h_d_1
+    k_dd_22 = a * ( Gm_dd_22 + u_d_2 * u_d_2 ) + b * h_d_2 * h_d_2
+    k_dd_33 = a * ( Gm_dd_33 + u_d_3 * u_d_3 ) + b * h_d_3 * h_d_3
 
     ! --- Off-Diagonal Eddington Tensor Components ---
 
-    k_dd_12 = b * h_d_1 * h_d_2
-    k_dd_13 = b * h_d_1 * h_d_3
-    k_dd_23 = b * h_d_2 * h_d_3
+    k_dd_12 = a * u_d_1 * u_d_2 + b * h_d_1 * h_d_2
+    k_dd_13 = a * u_d_1 * u_d_3 + b * h_d_1 * h_d_3
+    k_dd_23 = a * u_d_2 * u_d_3 + b * h_d_2 * h_d_3
 
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
 

@@ -107,7 +107,8 @@ contains
       Gamma_IDEAL_Option, &
       PositivityLimiter_Option, UpperBry1_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
-      OpacityTableName_NES_Option, OpacityTableName_Pair_Option )
+      OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
+      Verbose_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
@@ -128,16 +129,22 @@ contains
     character(len=*), intent(in), optional :: OpacityTableName_Iso_Option
     character(len=*), intent(in), optional :: OpacityTableName_NES_Option
     character(len=*), intent(in), optional :: OpacityTableName_Pair_Option
+    logical,          intent(in), optional :: Verbose_Option
 
+    logical  :: PositivityLimiter, Verbose
     integer  :: nX(3), i
-    real(dp) :: eL, eR
-    logical  :: PositivityLimiter
-    real(dp) :: UpperBry1
+    real(dp) :: eL, eR, UpperBry1
 
     IF( PRESENT(PositivityLimiter_Option) )THEN
       PositivityLimiter = PositivityLimiter_Option
     ELSE
       PositivityLimiter = .FALSE.
+    END IF
+
+    IF( PRESENT(Verbose_Option) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .FALSE.
     END IF
 
     IF( PRESENT(UpperBry1_Option) )THEN
@@ -193,7 +200,7 @@ contains
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
 
     call CreateGeometryFieldsE &
-           ( nE, swE, Verbose_Option = .FALSE. )
+           ( nE, swE, Verbose_Option = Verbose )
 
     call ComputeGeometryE &
            ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
@@ -201,21 +208,21 @@ contains
     ! --- Two-Moment Solver ---
 
     call InitializeClosure_TwoMoment &
-           ( Verbose_Option = .FALSE. )
+           ( Verbose_Option = Verbose )
 
     call InitializePositivityLimiter_TwoMoment &
            ( Min_1_Option = 0.0_DP + SqrtTiny, &
              Max_1_Option = UpperBry1, &
              Min_2_Option = 0.0_DP + SqrtTiny, &
              UsePositivityLimiter_Option = PositivityLimiter, &
-             Verbose_Option = .FALSE. )
+             Verbose_Option = Verbose )
 
     ! --- Nuclear Equation of State ---
 #ifdef MICROPHYSICS_WEAKLIB
     call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
-             Verbose_Option = .false. , &
+             Verbose_Option = Verbose , &
              External_EOS = External_EOS )
 #else
     call InitializeEquationOfState_IDEAL &
@@ -235,7 +242,7 @@ contains
                = OpacityTableName_Pair_Option, &
              EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
-             Verbose_Option = .false. )
+             Verbose_Option = Verbose )
 
     ! --- For refinement and coarsening of DG data
 

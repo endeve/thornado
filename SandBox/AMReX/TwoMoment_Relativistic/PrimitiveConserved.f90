@@ -57,6 +57,7 @@ PROGRAM PrimitiveConserved
   REAL(DP) :: eL, eR, xL(3), xR(3)
   REAL(DP) :: D, I1, I2, I3, V1, V2, V3
   REAL(DP) :: absI, nVec(3), Vmax, absV, Vvec(3)
+  REAL(DP) :: Bmax, absB, Bvec(3), B1, B2, B3, alp
   INTEGER, ALLOCATABLE :: nIterations(:)
 
   nNodes = 2
@@ -70,7 +71,19 @@ PROGRAM PrimitiveConserved
   eL = Zero
   eR = One
 
-  Vmax=0.5_DP
+  Bmax=0.1_DP
+  CALL RANDOM_NUMBER(absB)
+  CALL RANDOM_NUMBER(Bvec)
+  !absV=absV*Vmax
+  absB=Bmax
+  Bvec = 2.0_DP * ( Bvec - 0.5_DP )
+  Bvec = Bvec / SQRT( DOT_PRODUCT( Bvec, Bvec ) )
+  B1=absB*Bvec(1)
+  B2=absB*Bvec(2)
+  B3=absB*Bvec(3)
+  alp = 0.75_DP
+
+  Vmax=0.99_DP
   CALL RANDOM_NUMBER(absV)
   CALL RANDOM_NUMBER(Vvec)
   !absV=absV*Vmax
@@ -183,7 +196,8 @@ PROGRAM PrimitiveConserved
                  uCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS), &
                  uCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS), &
                  uCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS), &
-                 V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP )
+                 V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP , &
+                 alp, B1, B2, B3 )
 
       END DO
 
@@ -231,7 +245,7 @@ PROGRAM PrimitiveConserved
                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS), &
                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS), &
                  V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP, &
-                 nIterations(iPoint) )
+                 nIterations(iPoint), alp, B1, B2, B3 )
 
       END DO
 

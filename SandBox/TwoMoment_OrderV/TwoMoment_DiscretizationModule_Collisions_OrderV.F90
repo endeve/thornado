@@ -298,8 +298,8 @@ CONTAINS
 
     INTEGER,  PARAMETER :: M = 2
     INTEGER,  PARAMETER :: LWORK = 2 * M
-    INTEGER,  PARAMETER :: MaxIterations = 10
-    REAL(DP), PARAMETER :: Rtol = 1.0d-10
+    INTEGER,  PARAMETER :: MaxIterations = 100
+    REAL(DP), PARAMETER :: Rtol = 1.0d-08
 
     ! --- Local Variables ---
 
@@ -471,8 +471,6 @@ CONTAINS
       PRINT*, "  I_u_2 = ", I_u_2
       PRINT*, "  I_u_3 = ", I_u_3
       PRINT*
-
-      STOP
 
     END IF
 
