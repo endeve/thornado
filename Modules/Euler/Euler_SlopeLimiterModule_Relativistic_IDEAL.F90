@@ -979,7 +979,7 @@ CONTAINS
         IF     ( nDimsX .EQ. 1 )THEN
 
           SmoothnessIndicators(1,iCF) &
-            = 12.0_DP &
+            = OrthonormalBasis(1,1,1)**2 &
                 * MIN( U_M(1,iCF,iX1-1,iX2,iX3)**2, &
                        U_M(1,iCF,iX1+1,iX2,iX3)**2 )
 
@@ -988,7 +988,7 @@ CONTAINS
           ! --- Ignoring mesh size ratios because ignoring SqrtGm ---
 
           SmoothnessIndicators(1,iCF) &
-            = 12.0_DP &
+            = OrthonormalBasis(1,1,1)**2 &
                 * MIN( U_M(1,iCF,iX1-1,iX2,iX3)**2 &
                          + U_M(2,iCF,iX1-1,iX2,iX3)**2, &
                        U_M(1,iCF,iX1+1,iX2,iX3)**2 &
@@ -1019,7 +1019,7 @@ CONTAINS
         DO iCF = 1, nCF
 
           CALL ComputeCoefficients_Order3 &
-                 ( LinearWeights, NonLinearWeights(:,iCF), &
+                 ( LinearWeights, NonLinearWeights(1:2,iCF), &
                    pCoeffs(:,:,iCF) )
 
           DO iGridPt = 1, nDOFX
@@ -1049,7 +1049,7 @@ CONTAINS
         DO iCF = 1, nCF
 
           CALL ComputeSmoothnessIndicators_Order3 &
-                 ( LinearWeights, NonLinearWeights(:,iCF), &
+                 ( LinearWeights(2), NonLinearWeights(2,iCF), &
                    U_M(:,iCF,iX1,iX2,iX3), &
                    pCoeffs(4,:,iCF), SmoothnessIndicators(:,iCF) )
 
@@ -1132,7 +1132,6 @@ CONTAINS
 
       END DO
 
-
     END DO
     END DO
     END DO
@@ -1178,31 +1177,31 @@ CONTAINS
   END FUNCTION UpperLimit_pSpace
 
   SUBROUTINE ComputeSmoothnessIndicator_Order2 &
-    ( LinearWeight, C1, U_M, SmoothnessIndicator )
+    ( LinearWeight_11, Coeff_v1, U_M, SmoothnessIndicator )
 
-    REAL(DP), INTENT(in)  :: LinearWeight, C1, U_M(:)
+    REAL(DP), INTENT(in)  :: LinearWeight_11, Coeff_v1, U_M(:)
     REAL(DP), INTENT(out) :: SmoothnessIndicator
 
     ! --- beta_11 ---
 
-    SmoothnessIndicator = ( U_M(1) / LinearWeight * C1 )**2
+    SmoothnessIndicator = ( U_M(1) / LinearWeight_11 * Coeff_v1 )**2
 
     IF( nDimsX .GT. 1 ) &
       SmoothnessIndicator &
-        = SmoothnessIndicator + ( U_M(2) / LinearWeight * C1 )**2
+        = SmoothnessIndicator + ( U_M(2) / LinearWeight_11 * Coeff_v1 )**2
 
   END SUBROUTINE ComputeSmoothnessIndicator_Order2
 
 
   SUBROUTINE ComputeSmoothnessIndicators_Order3 &
-    ( LinearWeights, NonLinearWeights, U_M, &
+    ( LinearWeight_11, NonLinearWeight_11, U_M, &
       pCoeffs, SmoothnessIndicators )
 
-    REAL(DP), INTENT(in)  :: LinearWeights(:), NonLinearWeights(:)
+    REAL(DP), INTENT(in)  :: LinearWeight_11, NonLinearWeight_11
     REAL(DP), INTENT(in)  :: U_M(0:nDOFX-1), pCoeffs(:)
     REAL(DP), INTENT(out) :: SmoothnessIndicators(:)
 
-    REAL(DP) :: C1
+    REAL(DP) :: Coeff_v1
     REAL(DP) :: dq_X1   (nDOFX,0:2), &
                 dq_X2   (nDOFX,0:2), &
                 ddq_X1  (nDOFX,0:2), &
@@ -1217,15 +1216,15 @@ CONTAINS
 
     ! --- beta_12 ---
 
-    C1 = OrthonormalBasis(1,1,1)
+    Coeff_v1 = OrthonormalBasis(1,1,1)
 
     SmoothnessIndicators(3) &
-      = ( C1 * NonLinearWeights(1) / LinearWeights(2) * U_M(1) )**2
+      = ( Coeff_v1 * NonLinearWeight_11 / LinearWeight_11 * U_M(1) )**2
 
     IF( nDimsX .GT. 1 ) &
       SmoothnessIndicators(3) &
         = SmoothnessIndicators(3) &
-            + ( C1 * NonLinearWeights(1) / LinearWeights(2) * U_M(2) )**2
+            + ( Coeff_v1 * NonLinearWeight_11 / LinearWeight_11 * U_M(2) )**2
 
     ! --- beta_22 ---
 
