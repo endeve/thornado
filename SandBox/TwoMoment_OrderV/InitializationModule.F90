@@ -852,7 +852,7 @@ CONTAINS
     END DO
 
     ! --- Radiation Fields ---
-    
+
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -869,10 +869,10 @@ CONTAINS
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) = 0.0_DP
         
         CALL ComputeConserved_TwoMoment &
-               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_D ,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS), &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
@@ -1019,10 +1019,10 @@ CONTAINS
         END IF
 
         CALL ComputeConserved_TwoMoment &
-               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_D ,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS), &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
