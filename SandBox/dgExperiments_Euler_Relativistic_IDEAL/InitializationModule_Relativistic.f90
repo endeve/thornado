@@ -28,6 +28,10 @@ MODULE InitializationModule_Relativistic
   USE UtilitiesModule, ONLY: &
     Locate, &
     NodeNumberX
+  USE QuadratureModule, ONLY: &
+    GetQuadrature
+  USE PolynomialBasisModule_Lagrange, ONLY: &
+    LagrangeP
 
   IMPLICIT NONE
   PRIVATE
@@ -114,9 +118,9 @@ CONTAINS
 
     SELECT CASE ( TRIM( ProgramName ) )
 
-      CASE( 'Polynomial' )
+      CASE( 'SlopeLimiterTest' )
 
-        CALL InitializeFields_Polynomial
+        CALL InitializeFields_SlopeLimiterTest
 
       CASE( 'Advection' )
 
@@ -173,38 +177,85 @@ CONTAINS
   END SUBROUTINE InitializeFields_Relativistic
 
 
-  SUBROUTINE InitializeFields_Polynomial
+  SUBROUTINE InitializeFields_SlopeLimiterTest
 
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNodeX, iNodeX1
-    REAL(DP) :: X1, a0, a1, a2, a3, a4, a5
+    INTEGER       :: iX1, iX2, iX3
+    INTEGER       :: iNodeX, iNodeX1
+    REAL(DP)      :: X1
+    REAL(DP)      :: a0, a1, a2, a3, a4, a5
+    REAL(DP)      :: X0, theta
+    CHARACTER(32) :: Problem
 
+    INTEGER, PARAMETER :: M = 5
+    INTEGER            :: qNode
+    REAL(DP)           :: etaG(nNodesX(1)), xG(nNodesX(1)), wG(nNodesX(1))
+    REAL(DP)           :: etaQ(M), wQ(M)
+    REAL(DP)           :: u0(M)
+
+    REAL(DP) :: InterpolationMatrix(nDOFX,M)
+
+    CALL GetQuadrature( M         , etaQ, wQ )
+    CALL GetQuadrature( nNodesX(1), etaG, wG )
+
+    DO iNodeX = 1, nDOFX
+
+      DO qNode = 1, M
+
+        InterpolationMatrix(iNodeX,qNode) &
+          = wQ(qNode) * LagrangeP( etaQ(qNode), iNodeX, etaG, nNodesX(1) )
+
+      END DO
+
+    END DO
+
+    Problem = 'SinCosTANH'
+
+    ! --- Coefficients for polynomial problem ---
     a0 = 1.0_DP
     a1 = 0.1_DP
     a2 = 4.0_DP
     a3 = -0.4_DP
     a4 = -1.0_DP
 
+    ! --- Scale length for TANH problem ---
+    X0 = 0.1_DP
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      DO iNodeX = 1, nDOFX
+      DO qNode = 1, M
 
-        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        X1 = etaQ(qNode) * MeshX(1) % Width(iX1) + MeshX(1) % Center(iX1)
 
-        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        SELECT CASE( Problem )
 
-        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
-          = a0*X1**0 + a1*X1**1 + a2*X1**2 &
-              + a3*X1**3 + a4*X1**4
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
-        uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = One
-        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = One / ( Gamma_IDEAL - One )
+          CASE( 'Polynomial' )
+
+            u0(qNode) = a0*X1**0 + a1*X1**1 + a2*X1**2 &
+                          + a3*X1**3 + a4*X1**4
+
+          CASE( 'SmoothTANH' )
+
+            u0(qNode) = Two + TANH( X1 / X0 )
+
+          CASE( 'SinCosTANH' )
+
+            theta = Half * ( One - TANH( X1 / X0 ) )
+
+            u0(qNode) = One + theta * COS( TwoPi * X1 ) &
+                          + ( One - theta ) * SIN( TwoPi * X1 )
+
+        END SELECT
 
       END DO
+
+      uPF(:,iX1,iX2,iX3,iPF_D ) = MATMUL( InterpolationMatrix, u0 ) / wG
+      uPF(:,iX1,iX2,iX3,iPF_V1) = Zero
+      uPF(:,iX1,iX2,iX3,iPF_V2) = Zero
+      uPF(:,iX1,iX2,iX3,iPF_V3) = Zero
+      uAF(:,iX1,iX2,iX3,iAF_P ) = One
+      uPF(:,iX1,iX2,iX3,iPF_E ) = One / ( Gamma_IDEAL - One )
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
@@ -222,7 +273,7 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE InitializeFields_Polynomial
+  END SUBROUTINE InitializeFields_SlopeLimiterTest
 
 
   SUBROUTINE InitializeFields_Advection( AdvectionProfile )
@@ -444,6 +495,30 @@ CONTAINS
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
               uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.1_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+            END IF
+
+          CASE( 'Contact' )
+
+            IF( X1 .LE. Half )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.5_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.99_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
                 = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 

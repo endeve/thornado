@@ -51,16 +51,16 @@ PROGRAM ApplicationDriver
   LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
   REAL(DP) :: Timer_Evolution
 
-  ProgramName = 'Polynomial'
+  ProgramName = 'SlopeLimiterTest'
 
   Gamma = 5.0_DP / 3.0_DP
   bcX = [ 2, 0, 0 ]
 
-  nX = [ 4, 1, 1 ]
-  xL = [ -0.5_DP, 0.0_DP, 0.0_DP ]
-  xR = [  0.5_DP, 1.0_DP, 1.0_DP ]
+  nX = [ 7, 1, 1 ]
+  xL = [ -1.0_DP, 0.0_DP, 0.0_DP ]
+  xR = [ +1.0_DP, 1.0_DP, 1.0_DP ]
 
-  nNodes = 3
+  nNodes = 2
 
   UseSlopeLimiter           = .TRUE.
   UseCharacteristicLimiting = .FALSE.
