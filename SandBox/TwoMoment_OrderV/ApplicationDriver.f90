@@ -94,7 +94,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'TransparentShock'
+  ProgramName = 'StreamingDopplerShift'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -197,7 +197,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'StreamingDopplerShift' )
 
-      Direction = 'X' ! --- (X,Y, or Z)
+      Direction = 'Z' ! --- (X,Y, or Z)
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
