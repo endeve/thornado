@@ -34,6 +34,7 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   PUBLIC :: Flux_X2
   PUBLIC :: Flux_X3
   PUBLIC :: ComputeEddingtonTensorComponents_dd
+  PUBLIC :: ComputeEddingtonTensorComponents_ud
   PUBLIC :: NumericalFlux_LLF
 
 CONTAINS
@@ -355,73 +356,80 @@ CONTAINS
 
 
   FUNCTION Flux_E &
-    ( D, I_u_1, I_u_2, I_u_3, dV_u_1_dX1, dV_u_2_dX1, dV_u_3_dX1, &
+    ( D, I_u_1, I_u_2, I_u_3, &
+      dV_u_1_dX1, dV_u_2_dX1, dV_u_3_dX1, &
+      dV_u_1_dX2, dV_u_2_dX2, dV_u_3_dX2, &
+      dV_u_1_dX3, dV_u_2_dX3, dV_u_3_dX3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     REAL(DP)             :: Flux_E(4)
     REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
     REAL(DP), INTENT(in) :: dV_u_1_dX1, dV_u_2_dX1, dV_u_3_dX1
+    REAL(DP), INTENT(in) :: dV_u_1_dX2, dV_u_2_dX2, dV_u_3_dX2
+    REAL(DP), INTENT(in) :: dV_u_1_dX3, dV_u_2_dX3, dV_u_3_dX3
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
-    REAL(DP) :: FF, EF, HF, a, b
-    REAL(DP) :: h_u_1, h_d_1, h_d_2, h_d_3
-    REAL(DP) :: K_ud_11, K_ud_12, K_ud_13
-    REAL(DP) :: L_udd_111, L_udd_112, L_udd_113
-    REAL(DP) :: L_udd_122, L_udd_123, L_udd_133
-
-    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-    EF = EddingtonFactor( D, FF )
-
-    HF = HeatFluxFactor( D, FF )
-
-    h_u_1 = I_u_1 / ( FF * D )
-
-    h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
-    h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
-    h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
+    REAL(DP) :: k_ud_11, k_ud_12, k_ud_13
+    REAL(DP) ::          k_ud_22, k_ud_23
+    REAL(DP) ::                   k_ud_33
+    REAL(DP) :: l_udd_111, l_udd_121, l_udd_131
+    REAL(DP) ::            l_udd_221, l_udd_231
+    REAL(DP) ::                       l_udd_331
+    REAL(DP) :: l_udd_222, l_udd_223
+    REAL(DP) :: l_udd_333, l_udd_332
 
     ! --- Eddington Tensor Components ---
 
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
-
-    K_ud_11 = ( a + b * h_u_1 * h_d_1 ) * D
-    K_ud_12 =     ( b * h_u_1 * h_d_2 ) * D
-    K_ud_13 =     ( b * h_u_1 * h_d_3 ) * D
+    CALL ComputeEddingtonTensorComponents_ud &
+           ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+             k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33 )
 
     ! --- Heat Flux Tensor Components ---
 
-    a = Half * ( FF - HF )
-    b = Half * ( Five * HF - Three * FF )
+    CALL ComputeHeatFluxTensorComponents_udd &
+           ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 , &
+             l_udd_111, l_udd_121, l_udd_131, l_udd_221, l_udd_231, &
+             l_udd_331, l_udd_222, l_udd_223, l_udd_333, l_udd_332 )
 
-    L_udd_111 = ( a * ( h_u_1 * Gm_dd_11 + Two * h_d_1 ) &
-                  + b * h_u_1 * h_d_1 * h_d_1 ) * D
-    L_udd_112 = ( a * h_d_2 &
-                  + b * h_u_1 * h_d_1 * h_d_2 ) * D
-    L_udd_113 = ( a * h_d_3 &
-                  + b * h_u_1 * h_d_1 * h_d_3 ) * D
-    L_udd_122 = ( a * h_u_1 * Gm_dd_22 &
-                  + b * h_u_1 * h_d_2 * h_d_2 ) * D
-    L_udd_123 = (   b * h_u_1 * h_d_2 * h_d_3 ) * D
-    L_udd_133 = ( a * h_u_1 * Gm_dd_33 &
-                  + b * h_u_1 * h_d_3 * h_d_3 ) * D
+    Flux_E(1) = - (   k_ud_11 * dV_u_1_dX1 &
+                    + k_ud_12 * dV_u_2_dX1 &
+                    + k_ud_13 * dV_u_3_dX1 &
+                    + k_ud_12 * dV_u_1_dX2 &
+                    + k_ud_22 * dV_u_2_dX2 &
+                    + k_ud_23 * dV_u_3_dX2 &
+                    + k_ud_13 * dV_u_1_dX3 &
+                    + k_ud_23 * dV_u_2_dX3 &
+                    + k_ud_33 * dV_u_3_dX3 ) * D
 
-    Flux_E(1) = - (   K_ud_11 * dV_u_1_dX1 &
-                    + K_ud_12 * dV_u_2_dX1 &
-                    + K_ud_13 * dV_u_3_dX1 )
+    Flux_E(2) = - (   l_udd_111 * dV_u_1_dX1 &
+                    + l_udd_121 * dV_u_2_dX1 &
+                    + l_udd_131 * dV_u_3_dX1 &
+                    + l_udd_121 * dV_u_1_dX2 &
+                    + l_udd_221 * dV_u_2_dX2 &
+                    + l_udd_231 * dV_u_3_dX2 &
+                    + l_udd_131 * dV_u_1_dX3 &
+                    + l_udd_231 * dV_u_2_dX3 &
+                    + l_udd_331 * dV_u_3_dX3 ) * D
 
-    Flux_E(2) = - (   L_udd_111 * dV_u_1_dX1 &
-                    + L_udd_112 * dV_u_2_dX1 &
-                    + L_udd_113 * dV_u_3_dX1 )
+    Flux_E(3) = - (   l_udd_121 * dV_u_1_dX1 &
+                    + l_udd_221 * dV_u_2_dX1 &
+                    + l_udd_231 * dV_u_3_dX1 &
+                    + l_udd_221 * dV_u_1_dX2 &
+                    + l_udd_222 * dV_u_2_dX2 &
+                    + l_udd_223 * dV_u_3_dX2 &
+                    + l_udd_231 * dV_u_1_dX3 &
+                    + l_udd_223 * dV_u_2_dX3 &
+                    + l_udd_332 * dV_u_3_dX3) * D
 
-    Flux_E(3) = - (   L_udd_112 * dV_u_1_dX1 &
-                    + L_udd_122 * dV_u_2_dX1 &
-                    + L_udd_123 * dV_u_3_dX1 )
-
-    Flux_E(4) = - (   L_udd_113 * dV_u_1_dX1 &
-                    + L_udd_123 * dV_u_2_dX1 &
-                    + L_udd_133 * dV_u_3_dX1 )
+    Flux_E(4) = - (   l_udd_131 * dV_u_1_dX1 &
+                    + l_udd_231 * dV_u_2_dX1 &
+                    + l_udd_331 * dV_u_3_dX1 &
+                    + l_udd_231 * dV_u_1_dX2 &
+                    + l_udd_223 * dV_u_2_dX2 &
+                    + l_udd_332 * dV_u_3_dX2 &
+                    + l_udd_331 * dV_u_1_dX3 &
+                    + l_udd_332 * dV_u_2_dX3 &
+                    + l_udd_333 * dV_u_3_dX3 ) * D
 
     RETURN
   END FUNCTION Flux_E
@@ -569,12 +577,12 @@ CONTAINS
 
     EF = EddingtonFactor( D, FF )
 
+    a = Half * ( One - EF )
+    b = Half * ( Three * EF - One )
+
     h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
     h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
     h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
 
     ! --- Diagonal Eddington Tensor Components ---
 
@@ -589,6 +597,111 @@ CONTAINS
     k_dd_23 = b * h_d_2 * h_d_3
 
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
+
+
+  SUBROUTINE ComputeEddingtonTensorComponents_ud &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33 )
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(out) :: &
+      k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33
+
+    REAL(DP) :: FF, EF, a, b
+    REAL(DP) :: h_u_1, h_u_2, h_u_3
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+
+    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    EF = EddingtonFactor( D, FF )
+
+    a = Half * ( One - EF )
+    b = Half * ( Three * EF - One )
+
+    h_u_1 = I_u_1 / ( FF * D )
+    h_u_2 = I_u_2 / ( FF * D )
+    h_u_3 = I_u_3 / ( FF * D )
+
+    h_d_1 = Gm_dd_11 * h_u_1
+    h_d_2 = Gm_dd_22 * h_u_2
+    h_d_3 = Gm_dd_33 * h_u_3
+
+    ! --- Diagonal Eddington Tensor Components ---
+
+    k_ud_11 = a + b * h_u_1 * h_d_1
+    k_ud_22 = a + b * h_u_2 * h_d_2
+    k_ud_33 = a + b * h_u_3 * h_d_3
+
+    ! --- Off-Diagonal Eddington Tensor Components ---
+
+    k_ud_12 = b * h_u_1 * h_d_2
+    k_ud_13 = b * h_u_1 * h_d_3
+    k_ud_23 = b * h_u_2 * h_d_3
+
+  END SUBROUTINE ComputeEddingtonTensorComponents_ud
+
+
+  SUBROUTINE ComputeHeatFluxTensorComponents_udd &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      l_udd_111, l_udd_121, l_udd_131, l_udd_221, l_udd_231, l_udd_331, &
+      l_udd_222, l_udd_223, l_udd_333, l_udd_332 )
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(out) :: &
+      l_udd_111, l_udd_121, l_udd_131, &
+                 l_udd_221, l_udd_231, &
+                            l_udd_331, &
+      l_udd_222, l_udd_223, &
+      l_udd_333, l_udd_332
+
+    REAL(DP) :: FF, HF, a, b
+    REAL(DP) :: h_u_1, h_u_2, h_u_3
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+
+    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    HF = HeatFluxFactor( D, FF )
+
+    a = Half * ( FF - HF )
+    b = Half * ( Five * HF - Three * FF )
+
+    h_u_1 = I_u_1 / ( FF * D )
+    h_u_2 = I_u_2 / ( FF * D )
+    h_u_3 = I_u_3 / ( FF * D )
+
+    h_d_1 = Gm_dd_11 * h_u_1
+    h_d_2 = Gm_dd_22 * h_u_2
+    h_d_3 = Gm_dd_33 * h_u_3
+
+    ! --- Diagonal Heat Flux Tensor Components ---
+
+    l_udd_111 &
+      = a * ( h_u_1 * Gm_dd_11 + Two * h_d_1 ) + b * h_u_1 * h_d_1 * h_d_1
+    l_udd_222 &
+      = a * ( h_u_2 * Gm_dd_22 + Two * h_d_2 ) + b * h_u_2 * h_d_2 * h_d_2
+    l_udd_333 &
+      = a * ( h_u_3 * Gm_dd_33 + Two * h_d_3 ) + b * h_u_3 * h_d_3 * h_d_3
+
+    ! --- Off-Diagonal Heat Flux Tensor Components ---
+
+    l_udd_121 &
+      = a * h_d_2 + b * h_u_1 * h_d_2 * h_d_1
+    l_udd_131 &
+      = a * h_d_3 + b * h_u_1 * h_d_3 * h_d_1
+    l_udd_221 &
+      = a * h_d_1 + b * h_u_2 * h_d_2 * h_d_1
+    l_udd_231 &
+      =             b * h_u_2 * h_d_3 * h_d_1
+    l_udd_331 &
+      = a * h_d_1 + b * h_u_3 * h_d_3 * h_d_1
+    l_udd_223 &
+      = a * h_d_3 + b * h_u_2 * h_d_2 * h_d_3
+    l_udd_332 &
+      = a * h_d_2 + b * h_u_3 * h_d_3 * h_d_2
+
+  END SUBROUTINE ComputeHeatFluxTensorComponents_udd
 
 
   FUNCTION NumericalFlux_LLF( u_L, u_R, Flux_L, Flux_R, alpha )
