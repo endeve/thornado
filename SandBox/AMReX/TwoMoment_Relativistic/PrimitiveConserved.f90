@@ -47,7 +47,10 @@ PROGRAM PrimitiveConserved
     InitializeClosure_TwoMoment
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_TwoMoment, &
-    ComputeConserved_TwoMoment
+    ComputeConserved_TwoMoment, &
+    Flux_X1,                    &
+    Flux_X2,                    &
+    Flux_X3                    
 
   IMPLICIT NONE
 
@@ -57,7 +60,7 @@ PROGRAM PrimitiveConserved
   REAL(DP) :: eL, eR, xL(3), xR(3)
   REAL(DP) :: D, I1, I2, I3, V1, V2, V3
   REAL(DP) :: absI, nVec(3), Vmax, absV, Vvec(3)
-  REAL(DP) :: Bmax, absB, Bvec(3), B1, B2, B3, alp
+  REAL(DP) :: Bmax, absB, Bvec(3), B1, B2, B3, alp, F1(4), F2(4), F3(4), pep
   INTEGER, ALLOCATABLE :: nIterations(:)
 
   nNodes = 2
@@ -81,7 +84,7 @@ PROGRAM PrimitiveConserved
   B1=absB*Bvec(1)
   B2=absB*Bvec(2)
   B3=absB*Bvec(3)
-  alp = 0.75_DP
+  alp = 0.5_DP
 
   Vmax=0.99_DP
   CALL RANDOM_NUMBER(absV)
@@ -187,6 +190,30 @@ PROGRAM PrimitiveConserved
         uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) = I2
         uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) = I3
 
+        F1 = Flux_X1(uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS), &
+                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                     V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP, alp, B1, B2, B3)
+        F2 = Flux_X2(uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS), &
+                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                     V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP, alp, B1, B2, B3)
+        F3 = Flux_X3(uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS), &
+                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                     V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP, alp, B1, B2, B3)
+       pep=pep+1.0_DP
+       IF ( pep .EQ. 1 ) THEN
+       
+       print*, F1 
+       print*, F2
+       print*, F3 
+
+       END IF
+ 
         CALL ComputeConserved_TwoMoment &
                ( uPR(iNode,iE,iX1,iX2,iX3,iPR_D ,iS), &
                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS), &
@@ -223,7 +250,7 @@ PROGRAM PrimitiveConserved
   ALLOCATE( nIterations(nPoints) )
 
   iPoint = 0
-
+  
   DO iS  = 1, nSpecies
   DO iX3 = iX_B0(3), iX_E0(3)
   DO iX2 = iX_B0(2), iX_E0(2)
@@ -245,7 +272,9 @@ PROGRAM PrimitiveConserved
                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS), &
                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS), &
                  V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP, &
-                 nIterations(iPoint), alp, B1, B2, B3 )
+                 alp, B1, B2, B3, nIterations(iPoint) )
+        
+
 
       END DO
 
