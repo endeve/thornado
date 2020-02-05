@@ -54,7 +54,7 @@ aspect = 1.0
 cmap = 'jet'
 
 # Specify whether or not to make a movie
-MakeMovie, DataFileName, TimeFileName = True, 'MovieData.dat', 'MovieTime.dat'
+MakeMovie, DataFileName, TimeFileName = False, 'MovieData.dat', 'MovieTime.dat'
 
 #### ================================
 
