@@ -24,14 +24,19 @@ MODULE MF_Euler_PositivityLimiterModule
     ApplyPositivityLimiter_Euler
 
   ! --- Local Modules ---
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule,       ONLY: &
     AMReX2thornado, &
     thornado2AMReX
-  USE MyAmrModule,        ONLY: &
-    nLevels, UsePositivityLimiter, DEBUG
+  USE MyAmrModule,              ONLY: &
+    nLevels, &
+    UsePositivityLimiter, &
+    DEBUG
   USE TimersModule_AMReX_Euler, ONLY: &
-    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    TimersStart_AMReX_Euler, &
+    TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_DataTransfer
+  USE ErrorModule,              ONLY: &
+    DescribeError
 
   IMPLICIT NONE
   PRIVATE
@@ -81,6 +86,7 @@ CONTAINS
         iX_E1 = BX % hi + swX
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3), 1:nGF ) )
@@ -105,10 +111,11 @@ CONTAINS
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-
         IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplyPositivityLimiter_Euler'
+
         CALL ApplyPositivityLimiter_Euler &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G (1:nDOFX,iX_B1(1):iX_E1(1), &
@@ -118,16 +125,10 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nCF), iErr_Option = iErr )
 
-        IF( iErr .NE. 0 )THEN
-
-          CALL DescribeError_PositivityLimiter( iErr )
-
-          CALL MPI_ABORT( amrex_parallel_communicator(), iErr )
-
-        END IF
-
+        CALL DescribeError( iErr )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
         CALL thornado2AMReX &
                ( nCF, iX_B1, iX_E1, &
                  uCF(      iX_B1(1):iX_E1(1), &
@@ -139,6 +140,7 @@ CONTAINS
 
         DEALLOCATE( U )
         DEALLOCATE( G )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO
@@ -148,36 +150,6 @@ CONTAINS
     END DO
 
   END SUBROUTINE MF_ApplyPositivityLimiter_Euler
-
-
-  SUBROUTINE DescribeError_PositivityLimiter( iErr )
-
-    INTEGER, INTENT(in) :: iErr
-
-    WRITE(*,*)
-    WRITE(*,*) 'FATAL ERROR'
-    WRITE(*,*) 'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
-    WRITE(*,*) 'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
-
-    IF     ( iErr .EQ. 01 )THEN
-
-      WRITE(*,*) 'U_K(iCF_E) < 0'
-
-    ELSE IF( iErr .EQ. 02 )THEN
-
-      WRITE(*,*) 'SolveTheta_Bisection: No root in interval'
-
-    ELSE IF( iErr .EQ. 03 )THEN
-
-      WRITE(*,*) 'SolveTheta_Bisection: Failure to converge'
-
-    ELSE IF( iErr .EQ. 04 )THEN
-
-      WRITE(*,*) 'q < 0 after all limiting'
-
-    END IF
-
-  END SUBROUTINE DescribeError_PositivityLimiter
 
 
 END MODULE MF_Euler_PositivityLimiterModule
