@@ -21,11 +21,17 @@ HOME = subprocess.check_output( ["echo $HOME"], shell = True)
 HOME = HOME[:-1].decode( "utf-8" ) + '/'
 
 ############# User input #############
-DataDirectory = HOME + 'Research/DataFromPastRuns/AstroNum2019/SASI_nNodes3_HLL_noTCI_200x128/'
+DataDirectory = HOME + '/'
 
 TimeFileName     = 'MovieTime.dat'
 UsePhysicalUnits = True # Are you using physical units?
 Relativistic     = True # Are you plotting results from relativistic hydro?
+
+PlotFileBaseName = 'thornado'
+
+WriteExtras = False # Set to true if generating data on
+                    # external machine (Summit, ACF, etc.)
+
 ############# End of user input #############
 
 if( UsePhysicalUnits ):
@@ -40,7 +46,8 @@ FileArray = np.sort(np.array( [ file for file in listdir( DataDirectory ) ] ) )
 FileList = []
 for iFile in range( FileArray.shape[0] ):
     sFile = FileArray[iFile]
-    if( sFile[0:8] == 'thornado' ):
+    if( sFile[0:len(PlotFileBaseName)+1] == PlotFileBaseName + '_' \
+          and sFile[len(PlotFileBaseName)+1].isdigit() ):
         FileList.append( sFile )
 FileArray = np.array( FileList )
 
@@ -50,6 +57,26 @@ MaxLevel = ds.index.max_level
 nX       = ds.domain_dimensions
 xL       = ds.domain_left_edge
 xH       = ds.domain_right_edge
+
+if( WriteExtras ):
+
+    with open( 'FileArray.txt', 'w' ) as f:
+        for i in FileArray:
+            f.write( i )
+            f.write( '\n' )
+    with open( 'Numbers.txt', 'w' ) as f:
+        for i in nX:
+            f.write( str(i) )
+            f.write( ' ' )
+        f.write( '\n' )
+        for i in xL.to_ndarray():
+            f.write( str(i) )
+            f.write( ' ' )
+        f.write( '\n' )
+        for i in xH.to_ndarray():
+            f.write( str(i) )
+            f.write( ' ' )
+        f.write( '\n' )
 
 def MakeDataFile( Field, DataFileName ):
 
