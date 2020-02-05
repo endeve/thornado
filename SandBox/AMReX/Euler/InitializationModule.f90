@@ -81,7 +81,6 @@ MODULE InitializationModule
     InitializePositivityLimiter_Euler
   USE InputOutputModuleAMReX,           ONLY: &
     ReadCheckpointFile,          &
-    WriteFieldsAMReX_Checkpoint, &
     WriteFieldsAMReX_PlotFile
   USE UnitsModule,                      ONLY: &
     SolarMass, &

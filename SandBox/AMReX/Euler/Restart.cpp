@@ -27,8 +27,7 @@ extern "C"
   void writefieldsamrex_checkpoint
          ( int StepNo[], int nLevels,
            Real dt[], Real time[], Real t_wrt[],
-           BoxArray** BA, MultiFab** MF_uGF, MultiFab** MF_uCF,
-           MultiFab** MF_uPF, MultiFab** MF_uAF )
+           BoxArray** BA, MultiFab** MF_uGF, MultiFab** MF_uCF )
   {
 
     // chk00010            Write a checkpoint file with this root directory
@@ -125,20 +124,12 @@ extern "C"
     {
       MultiFab& MF_uGF1 = *MF_uGF[iLevel];
       MultiFab& MF_uCF1 = *MF_uCF[iLevel];
-      MultiFab& MF_uPF1 = *MF_uPF[iLevel];
-      MultiFab& MF_uAF1 = *MF_uAF[iLevel];
       VisMF::Write( MF_uGF1, amrex::MultiFabFileFullPrefix
                                       ( iLevel, checkpointname,
                                         "Level_", "Geometry" ) );
       VisMF::Write( MF_uCF1, amrex::MultiFabFileFullPrefix
                                       ( iLevel, checkpointname,
                                         "Level_", "Conserved" ) );
-      VisMF::Write( MF_uPF1, amrex::MultiFabFileFullPrefix
-                                      ( iLevel, checkpointname,
-                                        "Level_", "Primitive" ) );
-      VisMF::Write( MF_uAF1, amrex::MultiFabFileFullPrefix
-                                      ( iLevel, checkpointname,
-                                        "Level_", "Auxiliary" ) );
     }
 
   } // End of WriteCheckpointFile function
@@ -273,12 +264,6 @@ extern "C"
 	break;
       case 1:
 	MF_Name = "Conserved";
-	break;
-      case 2:
-	MF_Name = "Primitive";
-	break;
-      case 3:
-	MF_Name = "Auxiliary";
 	break;
       default:
         std::cout << "Invalid." << std::endl;
