@@ -12,7 +12,8 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     amrex_mfiter_build, &
     amrex_mfiter_destroy
   USE amrex_parallel_module,  ONLY: &
-    amrex_parallel_ioprocessor
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_communicator
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse,       &
     amrex_parmparse_build, &
@@ -102,6 +103,8 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
+    INTEGER :: iErr
+
     IF( amrex_parallel_ioprocessor() )THEN
       WRITE(*,*)
       WRITE(*,'(A4,A,A)') '', 'Initializing: ', TRIM( ProgramName )
@@ -150,8 +153,9 @@ CONTAINS
           WRITE(*,'(6x,A)')     'KelvinHelmholtz3D'
           WRITE(*,'(6x,A)')     'RiemannProblem2D'
           WRITE(*,'(6x,A)')     'StandingAccretionShock'
-          STOP 'MF_InitializationModule.f90'
         END IF
+
+        CALL MPI_ABORT( amrex_parallel_communicator(), iErr )
 
     END SELECT
 
