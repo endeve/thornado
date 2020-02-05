@@ -4,22 +4,24 @@ MODULE InitializationModule_Relativistic
     DP, Zero, SqrtTiny, Half, One, Two, Three, Pi, Four, TwoPi, FourPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nX, nNodesX, &
+    nX, nNodesX, nDimsX, &
     nDOFX, &
     iX_B0, iX_B1, iX_E0, iX_E1
   USE ReferenceElementModuleX, ONLY: &
-    NodeNumberTableX
+    NodeNumberTableX, &
+    WeightsX_q
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
+    nPF, uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uAF, iAF_P
   USE EquationOfStateModule_IDEAL, ONLY: &
-    Gamma_IDEAL
+    Gamma_IDEAL, &
+    ComputePressureFromPrimitive_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
   USE UnitsModule, ONLY: &
@@ -179,36 +181,89 @@ CONTAINS
 
   SUBROUTINE InitializeFields_SlopeLimiterTest
 
-    INTEGER       :: iX1, iX2, iX3
-    INTEGER       :: iNodeX, iNodeX1
-    REAL(DP)      :: X1
+    INTEGER       :: iX1, iX2, iX3, iPF
+    INTEGER       :: iNodeX, iNodeX1, iNodeX2, iNodeX3
+    REAL(DP)      :: X, X1, X2
     REAL(DP)      :: a0, a1, a2, a3, a4, a5
     REAL(DP)      :: X0, theta
     CHARACTER(32) :: Problem
 
-    INTEGER, PARAMETER :: M = 5
-    INTEGER            :: qNode
-    REAL(DP)           :: etaG(nNodesX(1)), xG(nNodesX(1)), wG(nNodesX(1))
-    REAL(DP)           :: etaQ(M), wQ(M)
-    REAL(DP)           :: u0(M)
+    INTEGER  :: M, M1, M2, M3, nDOFQ
+    INTEGER  :: qNodeX, qNodeX1, qNodeX2, qNodeX3
+    REAL(DP) :: etaG(nNodesX(1)), xG(nNodesX(1)), wG(nNodesX(1))
+    REAL(DP), ALLOCATABLE :: etaQ_X1(:), wQ_X1(:)
+    REAL(DP), ALLOCATABLE :: etaQ_X2(:), wQ_X2(:)
+    REAL(DP), ALLOCATABLE :: etaQ_X3(:), wQ_X3(:)
+    REAL(DP), ALLOCATABLE :: etaQ(:),    wQ(:)
+    REAL(DP), ALLOCATABLE :: u0(:,:)
+    INTEGER,  ALLOCATABLE :: NodeNumberTableQ(:,:)
 
-    REAL(DP) :: InterpolationMatrix(nDOFX,M)
+    REAL(DP), ALLOCATABLE :: InterpolationMatrix(:,:)
 
-    CALL GetQuadrature( M         , etaQ, wQ )
+    M = 5
+    nDOFQ = M**nDimsX
+
+    M1 = M
+    M2 = 1
+    M3 = 1
+    IF( nDimsX .GT. 1 ) M2 = M
+    IF( nDimsX .GT. 2 ) M3 = M
+
+    nDOFQ = M1 * M2 * M3
+
+    ALLOCATE( etaQ_X1(M1), wQ_X1(M1) )
+    ALLOCATE( etaQ_X2(M2), wQ_X2(M2) )
+    ALLOCATE( etaQ_X3(M3), wQ_X3(M3) )
+    ALLOCATE( etaQ(nDOFQ), wQ(nDOFQ) )
+    ALLOCATE( u0(nDOFQ,nPF) )
+    ALLOCATE( InterpolationMatrix(nDOFX,nDOFQ) )
+    ALLOCATE( NodeNumberTableQ(3,nDOFQ) )
+
+    CALL GetQuadrature( M1        , etaQ_X1, wQ_X1 )
+    CALL GetQuadrature( M2        , etaQ_X2, wQ_X2 )
+    CALL GetQuadrature( M3        , etaQ_X3, wQ_X3 )
     CALL GetQuadrature( nNodesX(1), etaG, wG )
+
+    qNodeX = 0
+    DO qNodeX3 = 1, M3
+    DO qNodeX2 = 1, M2
+    DO qNodeX1 = 1, M1
+
+      qNodeX = qNodeX + 1
+
+      NodeNumberTableQ(1:3,qNodeX) &
+        = [ qNodeX1, qNodeX2, qNodeX3 ]
+
+      etaQ(qNodeX) = etaQ_X1(qNodeX1) * etaQ_X2(qNodeX2) * etaQ_X3(qNodeX3)
+      wQ  (qNodeX) = wQ_X1  (qNodeX1) * wQ_X2  (qNodeX2) * wQ_X3  (qNodeX3)
+
+    END DO
+    END DO
+    END DO
 
     DO iNodeX = 1, nDOFX
 
-      DO qNode = 1, M
+      iNodeX1 = NodeNumberTableX(1,iNodeX)
+      iNodeX2 = NodeNumberTableX(2,iNodeX)
+      iNodeX3 = NodeNumberTableX(3,iNodeX)
 
-        InterpolationMatrix(iNodeX,qNode) &
-          = wQ(qNode) * LagrangeP( etaQ(qNode), iNodeX, etaG, nNodesX(1) )
+      DO qNodeX = 1, nDOFQ
+
+        qNodeX1 = NodeNumberTableQ(1,qNodeX)
+        qNodeX2 = NodeNumberTableQ(2,qNodeX)
+        qNodeX3 = NodeNumberTableQ(3,qNodeX)
+
+        InterpolationMatrix(iNodeX,qNodeX) &
+          = wQ(qNodeX) &
+              * LagrangeP( etaQ_X1(qNodeX1), iNodeX1, etaG, nNodesX(1) ) &
+              * LagrangeP( etaQ_X2(qNodeX2), iNodeX2, etaG, nNodesX(2) ) &
+              * LagrangeP( etaQ_X3(qNodeX3), iNodeX3, etaG, nNodesX(3) )
 
       END DO
 
     END DO
 
-    Problem = 'SinCosTANH'
+    Problem = 'SmoothTANH'
 
     ! --- Coefficients for polynomial problem ---
     a0 = 1.0_DP
@@ -218,44 +273,71 @@ CONTAINS
     a4 = -1.0_DP
 
     ! --- Scale length for TANH problem ---
-    X0 = 0.1_DP
+    X0 = 0.01_DP
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      DO qNode = 1, M
+      DO qNodeX = 1, nDOFQ
 
-        X1 = etaQ(qNode) * MeshX(1) % Width(iX1) + MeshX(1) % Center(iX1)
+        qNodeX1 = NodeNumberTableQ(1,qNodeX)
+        qNodeX2 = NodeNumberTableQ(2,qNodeX)
+
+        X1 = etaQ_X1(qNodeX1) * MeshX(1) % Width(iX1) + MeshX(1) % Center(iX1)
+        X2 = etaQ_X2(qNodeX2) * MeshX(2) % Width(iX2) + MeshX(2) % Center(iX2)
+
+        X = X1
+
+        u0(qNodeX,iPF_V1) = Zero
+        u0(qNodeX,iPF_V2) = Zero
+        u0(qNodeX,iPF_V3) = Zero
+        u0(qNodeX,iPF_E ) = One / ( Gamma_IDEAL - One )
+        u0(qNodeX,iPF_Ne) = Zero
 
         SELECT CASE( Problem )
 
           CASE( 'Polynomial' )
 
-            u0(qNode) = a0*X1**0 + a1*X1**1 + a2*X1**2 &
-                          + a3*X1**3 + a4*X1**4
+            u0(qNodeX,iPF_D) = a0*X**0 + a1*X**1 + a2*X**2 + a3*X**3 + a4*X**4
 
           CASE( 'SmoothTANH' )
 
-            u0(qNode) = Two + TANH( X1 / X0 )
+            u0(qNodeX,iPF_D) = 2.0d0 + TANH( X / X0 )
 
           CASE( 'SinCosTANH' )
 
-            theta = Half * ( One - TANH( X1 / X0 ) )
+            theta = Half * ( One - TANH( X / X0 ) )
 
-            u0(qNode) = One + theta * COS( TwoPi * X1 ) &
-                          + ( One - theta ) * SIN( TwoPi * X1 )
+            u0(qNodeX,iPF_D) = 1.0d0 + theta * COS( TwoPi * X ) &
+                                 + ( One - theta ) * SIN( TwoPi * X )
+
+          CASE( 'Contact' )
+
+            IF( X .LT. Zero )THEN
+
+               u0(qNodeX,iPF_D) = 0.1_DP
+
+           ELSE
+
+               u0(qNodeX,iPF_D) = 0.5_DP
+
+           END IF
 
         END SELECT
 
       END DO
 
-      uPF(:,iX1,iX2,iX3,iPF_D ) = MATMUL( InterpolationMatrix, u0 ) / wG
-      uPF(:,iX1,iX2,iX3,iPF_V1) = Zero
-      uPF(:,iX1,iX2,iX3,iPF_V2) = Zero
-      uPF(:,iX1,iX2,iX3,iPF_V3) = Zero
-      uAF(:,iX1,iX2,iX3,iAF_P ) = One
-      uPF(:,iX1,iX2,iX3,iPF_E ) = One / ( Gamma_IDEAL - One )
+      DO iPF = 1, nPF
+
+        uPF(:,iX1,iX2,iX3,iPF) &
+          = MATMUL( InterpolationMatrix, u0(:,iPF) ) / WeightsX_q
+
+      END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
@@ -272,6 +354,14 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    DEALLOCATE( NodeNumberTableQ )
+    DEALLOCATE( InterpolationMatrix )
+    DEALLOCATE( u0 )
+    DEALLOCATE( etaQ   , wQ )
+    DEALLOCATE( etaQ_X3, wQ_X3 )
+    DEALLOCATE( etaQ_X2, wQ_X2 )
+    DEALLOCATE( etaQ_X1, wQ_X1 )
 
   END SUBROUTINE InitializeFields_SlopeLimiterTest
 
