@@ -87,18 +87,16 @@ CONTAINS
     INTEGER         :: iS, iLevel
     TYPE(amrex_box) :: BX
 
-
-    IF( PRESENT( Verbose_Option ) )THEN
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
-    ELSE
-       Verbose = .TRUE.
-    END IF
 
     nStages_SSPRK = nStages
 
     CALL InitializeSSPRK( nStages )
 
     IF( Verbose )THEN
+
       WRITE(*,*)
       WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
 
@@ -110,6 +108,7 @@ CONTAINS
       END DO
       WRITE(*,'(A5,A14,3ES14.4E3)') '', '', w_SSPRK(1:nStages)
       WRITE(*,*)
+
     END IF
 
     ALLOCATE( MF_U(0:nLevels-1) )
@@ -118,12 +117,17 @@ CONTAINS
     BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
     DO iLevel = 0, nLevels-1
+
       CALL amrex_multifab_build &
         ( MF_U(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
+
       DO iS = 1, nStages
+
         CALL amrex_multifab_build &
                ( MF_D(iLevel,iS), BA(iLevel), DM(iLevel), nDOFX * nCF, 0 )
+
       END DO
+
     END DO
 
   END SUBROUTINE MF_InitializeFluid_SSPRK
@@ -136,11 +140,17 @@ CONTAINS
     DEALLOCATE( a_SSPRK, c_SSPRK, w_SSPRK )
 
     DO iLevel = 0, nLevels-1
+
       CALL amrex_multifab_destroy( MF_U(iLevel) )
+
       DO iS = 1, nStages_SSPRK
+
         CALL amrex_multifab_destroy( MF_D(iLevel,iS) )
+
       END DO
+
     END DO
+
     DEALLOCATE( MF_U )
     DEALLOCATE( MF_D )
 
@@ -156,6 +166,7 @@ CONTAINS
     CALL AllocateButcherTables_SSPRK( nStages )
 
     SELECT CASE ( nStages )
+
       CASE ( 1 )
 
         a_SSPRK(1,1) = 0.0_amrex_real
@@ -179,7 +190,9 @@ CONTAINS
     END SELECT
 
     DO iS = 1, nStages
+
       c_SSPRK(iS) = SUM( a_SSPRK(iS,1:iS-1) )
+
     END DO
 
   END SUBROUTINE InitializeSSPRK
@@ -221,10 +234,15 @@ CONTAINS
 
     ! --- Set temporary MultiFabs U and dU to zero ---
     DO iLevel = 0, nLevels-1
+
       CALL MF_U(iLevel) % setval( 0.0_amrex_real )
+
       DO iS = 1, nStages_SSPRK
+
         CALL MF_D(iLevel,iS) % setval( 0.0_amrex_real )
+
       END DO
+
     END DO
 
     DO iS = 1, nStages_SSPRK
@@ -234,14 +252,19 @@ CONTAINS
       DO iLevel = 0, nLevels-1
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
+
         CALL MF_U(iLevel) &
                % COPY( MF_uCF(iLevel), 1, 1, &
                        MF_uCF(iLevel) % nComp(), swX(1) )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_CopyMultiFab )
 
         ! --- Apply boundary conditions to interior domains ---
+
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
+
         CALL MF_U(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
         ! --- Copy ghost data from physical boundaries ---
@@ -261,6 +284,7 @@ CONTAINS
       END DO
 
       DO iLevel = 0, nLevels-1
+
         DO jS = 1, iS - 1
 
           IF( a_SSPRK(iS,jS) .NE. 0.0_amrex_real ) &
@@ -270,6 +294,7 @@ CONTAINS
                               1, MF_U(iLevel) % nComp(), 0 )
 
         END DO
+
       END DO
 
       IF( ANY( a_SSPRK(:,iS) .NE. 0.0_amrex_real ) &
@@ -289,6 +314,7 @@ CONTAINS
     END DO
 
     DO iLevel = 0, nLevels-1
+
       DO iS = 1, nStages_SSPRK
 
         IF( w_SSPRK(iS) .NE. 0.0_amrex_real ) &
@@ -298,6 +324,7 @@ CONTAINS
                             1, MF_uCF(iLevel) % nComp(), 0 )
 
       END DO
+
     END DO
 
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_Euler (2)'
