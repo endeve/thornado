@@ -90,6 +90,24 @@ OBJS = \
        UnitsModule.o \
        ThornadoInitializationModule.o \
        TimeSteppingModule_Flash.o
+ifeq ($(USE_GPU),TRUE)
+OBJS += \
+       CudaModule.o
+endif
+ifeq ($(USE_OACC),TRUE)
+OBJS += \
+       OpenACCModule.o
+else ifeq ($(USE_OMP_OL),TRUE)
+OBJS += \
+       OpenMPModule.o
+endif
+ifeq ($(USE_MAGMA),TRUE)
+OBJS += \
+       MagmaModule.o CublasModule.o CusolverModule.o CusparseModule.o
+else ifeq ($(USE_CUBLAS),TRUE)
+OBJS += \
+       CublasModule.o CusolverModule.o CusparseModule.o
+endif
 
 $(LIBNAME): $(OBJS)
 	$(MKLIB) $(LIBNAME) $(OBJS)
