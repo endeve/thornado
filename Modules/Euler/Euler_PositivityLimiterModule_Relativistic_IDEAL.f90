@@ -127,16 +127,16 @@ CONTAINS
   !>        and velocity
   !> @todo Modify to accomodate GR
   SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr )
 
-    INTEGER,  INTENT(in)           :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)           :: &
+    REAL(DP), INTENT(in)    :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout)        :: &
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(out), OPTIONAL :: &
-      iErr_Option
+    INTEGER, INTENT(out)    :: &
+      iErr
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
     REAL(DP) :: Theta_D, Theta_q, Theta_P
@@ -146,16 +146,14 @@ CONTAINS
 
     ! --- For de-bugging ---
     REAL(DP) :: q_K(nPT)
-    INTEGER  :: iErr
 
-    IF( nDOFX == 1 ) RETURN
+    IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
     CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
 
     iErr = 0
-    IF( PRESENT( iErr_Option ) ) iErr = iErr_Option
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -213,26 +211,9 @@ CONTAINS
 
         IF( U_K(iCF_E) .LT. Zero )THEN
 
-          IF( .NOT. PRESENT( iErr_Option ) )THEN
-
-            WRITE(*,*)
-            WRITE(*,*) &
-              'FATAL ERROR'
-            WRITE(*,*) &
-              'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
-            WRITE(*,*) &
-              'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
-            WRITE(*,*) 'U_K(iCF_E) < 0'
-            STOP ''
-
-          ELSE
-
             iErr = 01
-            iErr_Option = iErr
 
             RETURN
-
-          END IF
 
         END IF
 
@@ -307,20 +288,7 @@ CONTAINS
                   ( U_PP(iP,1:nCF), U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, &
                     Theta_P, iX1, iX2, iX3, iP, iErr )
 
-                IF( iErr .NE. 0 )THEN
-
-                  IF( PRESENT( iErr_Option ) )THEN
-
-                    iErr_Option = iErr
-                    RETURN
-
-                  ELSE
-
-                    STOP ''
-
-                  END IF
-
-                END IF
+                IF( iErr .NE. 0 ) RETURN
 
                 Theta_q = MIN( Theta_q, Theta_P )
 
@@ -384,72 +352,15 @@ CONTAINS
 
       IF( ANY( q(1:nPT) .LT. Zero ) )THEN
 
-        IF( .NOT. PRESENT( iErr_Option ) )THEN
-
-          WRITE(*,*)
-          WRITE(*,*) &
-            'FATAL ERROR'
-          WRITE(*,*) &
-              'MODULE: Euler_PositivityLimiterModule_Relativistic_IDEAL'
-          WRITE(*,*) &
-              'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
-          WRITE(*,*) 'q < 0 after all limiting'
-          WRITE(*,*)
-          WRITE(*,'(A,3I5.4)') 'iX1, iX2, iX3 = ', iX1, iX2, iX3
-          WRITE(*,*)
-          DO iP = 1, SIZE( q(1:nPT) )
-            WRITE(*,'(A,I2.2,ES25.16E3)') &
-              'iP, q(iP) = ', iP, q(iP)
-            WRITE(*,'(A,6ES12.3E3)') &
-              'U_PP = ', U_PP(iP,:)
-            WRITE(*,'(A,ES23.16E3)') &
-              'SSq = ', &
-              U_PP(iP,iCF_S1)**2 / G_PP(iP,iGF_Gm_dd_11) &
-              + U_PP(iP,iCF_S2)**2 / G_PP(iP,iGF_Gm_dd_22) &
-              + U_PP(iP,iCF_S3)**2 / G_PP(iP,iGF_Gm_dd_33)
-            WRITE(*,'(A,3ES11.3E3)') &
-              'G_PP(Gm11:Gm33) = ', G_PP(iP,iGF_Gm_dd_11:iGF_Gm_dd_33)
-            WRITE(*,*)
-          END DO
-          ! --- Compute cell-average of q ---
-          DO iP = 1, nPT
-            CALL Computeq( 1, U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, q_K(iP) )
-          END DO
-          IF( ANY( q_K(1:nPT) .LT. Zero ) )THEN
-            WRITE(*,'(A)') 'At least one q_K(1:nPT) < 0'
-            DO iP = 1, nPT
-              WRITE(*,'(A,I2.2,ES25.16E3)') 'iP, q_K(iP) = ', iP, q_K(iP)
-            END DO
-          WRITE(*,*)
-          END IF
-          WRITE(*,'(A,F18.16)')    'Theta_q = ', Theta_q
-          WRITE(*,*)
-          WRITE(*,'(A)') 'U(1:nDOFX,iX1,iX2,iX3,iCF)'
-          WRITE(*,'(A)') '--------------------------'
-          DO iCF = 1, nCF
-            WRITE(*,'(A,I1)') 'iCF = ', iCF
-            WRITE(*,*) U(1:nDOFX,iX1,iX2,iX3,iCF)
-            WRITE(*,*)
-          END DO
-
-          STOP ''
-
-        ELSE
-
           iErr = 04
-          iErr_Option = iErr
 
           RETURN
-
-        END IF
 
       END IF
 
     END DO
     END DO
     END DO
-
-    IF( PRESENT( iErr_Option ) ) iErr_Option = iErr
 
     CALL TimersStop_Euler( Timer_Euler_PositivityLimiter )
 
@@ -614,21 +525,6 @@ CONTAINS
 
     IF( .NOT. f_a * f_b < 0 )THEN
 
-      WRITE(*,'(A6,A)') &
-        '', 'SolveTheta_Bisection (Euler_PositivityLimiterModule_Relativistic_IDEAL):'
-
-      WRITE(*,*) 'iP = ', iP
-      WRITE(*,*) 'iX1, iX2, iX3 = ', iX1, iX2, iX3
-      WRITE(*,*) 'U_Q: ', U_Q
-      WRITE(*,*) 'U_K: ', U_K
-      WRITE(*,*) 'G_Q: ', G_Q(iGF_Gm_dd_11:iGF_Gm_dd_33)
-      WRITE(*,'(A8,A,I3.3)') &
-        '', 'Error: No Root in Interval'
-      WRITE(*,'(A8,A,2ES15.6e3)') &
-        '', 'x_a, x_b = ', x_a, x_b
-      WRITE(*,'(A8,A,2ES15.6e3)') &
-        '', 'f_a, f_b = ', f_a, f_b
-
       iErr = 02
 
       RETURN
@@ -665,9 +561,9 @@ CONTAINS
 
       END IF
 
-      IF( dx < dx_min ) CONVERGED = .TRUE.
+      IF( dx .LT. dx_min ) CONVERGED = .TRUE.
 
-      IF( ITERATION > MAX_IT .AND. .NOT. CONVERGED )THEN
+      IF( ITERATION .GT. MAX_IT .AND. .NOT. CONVERGED )THEN
 
         WRITE(*,'(6x,A)') &
           'SolveTheta_Bisection (ApplyPositivityLimiter_Euler_Relativistic_IDEAL):'
@@ -678,7 +574,7 @@ CONTAINS
         WRITE(*,'(A8,A,3ES15.6e3)') &
           '', 'f_a, f_c, f_b     = ', f_a, f_c, f_b
 
-        IF( ITERATION > MAX_IT + 3 )THEN
+        IF( ITERATION .GT. MAX_IT + 3 )THEN
 
           iErr = 03
 

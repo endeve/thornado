@@ -120,6 +120,7 @@ CONTAINS
 
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
+    INTEGER :: iErr
 
     CALL TimersStart( Timer_Explicit )
 
@@ -135,7 +136,7 @@ CONTAINS
         dZ4 => MeshX(3) % Width )
 
     CALL ApplyBoundaryConditions_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iErr )
 
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
@@ -3034,7 +3035,7 @@ CONTAINS
           = GX_K(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_33) &
               * V_u_K(iNodeX,3,iZ3,iZ4,iZ2)
 
-      END DO      
+      END DO
 
     END DO
     END DO
@@ -3458,7 +3459,7 @@ CONTAINS
           = GX_K(iNodeX,iGF_Gm_dd_33,iZ2,iZ4,iZ3) &
               * V_u_K(iNodeX,3,iZ2,iZ4,iZ3)
 
-      END DO      
+      END DO
 
     END DO
     END DO
@@ -3886,7 +3887,7 @@ CONTAINS
           = GX_K(iNodeX,iGF_Gm_dd_33,iZ2,iZ3,iZ4) &
               * V_u_K(iNodeX,3,iZ2,iZ3,iZ4)
 
-      END DO      
+      END DO
 
     END DO
     END DO

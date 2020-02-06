@@ -60,6 +60,8 @@ MODULE Euler_dgDiscretizationModule
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -89,6 +91,7 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iCF
     REAL(DP) :: dX1, dX2, dX3
     LOGICAL  :: SuppressBC
+    INTEGER  :: iErr
 
     CALL TimersStart_Euler( Timer_Euler_dgDiscretization )
 
@@ -98,9 +101,15 @@ CONTAINS
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
 
-    IF( .NOT. SuppressBC ) &
+    IF( .NOT. SuppressBC )THEN
+
       CALL ApplyBoundaryConditions_Euler &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr )
+
+      CALL DescribeError_Euler &
+             ( iErr, 'Calling from: Euler_ComputeIncrement_DG_Explicit' )
+
+    END IF
 
     CALL TimersStart_Euler( Timer_Euler_Divergence )
 

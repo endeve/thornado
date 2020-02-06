@@ -1,18 +1,22 @@
-MODULE ErrorModule
-
-  USE amrex_error_module, ONLY: &
-    amrex_abort
+MODULE Euler_ErrorModule
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: DescribeError_Euler_AMReX
+  PUBLIC :: DescribeError_Euler
 
 CONTAINS
 
-  SUBROUTINE DescribeError_Euler_AMReX( iErr )
+  SUBROUTINE DescribeError_Euler( iErr, Message_Option )
 
-    INTEGER, INTENT(in) :: iErr
+    INTEGER,          INTENT(in)           :: iErr
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: Message_Option
+
+    CHARACTER(LEN=128) :: Message
+
+    Message = ''
+    IF( PRESENT( Message_Option ) ) &
+      Message = TRIM( Message_Option )
 
     SELECT CASE( iErr )
 
@@ -29,8 +33,9 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
           WRITE(*,'(2x,A)') 'U_K(iCF_E) < 0'
+          WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL amrex_abort('')
+          STOP ''
 
       CASE( 02 )
 
@@ -41,8 +46,9 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
           WRITE(*,'(2x,A)') 'SolveTheta_Bisection: No root in interval'
+          WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL amrex_abort('')
+          STOP ''
 
       CASE( 03 )
 
@@ -53,8 +59,9 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
           WRITE(*,'(2x,A)') 'SolveTheta_Bisection: Failure to converge'
+          WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL amrex_abort('')
+          STOP ''
 
       CASE( 04 )
 
@@ -65,8 +72,9 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
           WRITE(*,'(2x,A)') 'q < 0 after all limiting'
+          WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL amrex_abort('')
+          STOP ''
 
       CASE( 05 )
 
@@ -78,8 +86,9 @@ CONTAINS
             'SUBROUTINE: Euler_ApplyBC_X1'
            WRITE(*,'(2x,A)') &
             'Invalid Boundary Condition for Fluid X1'
+          WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL amrex_abort('')
+          STOP ''
 
       CASE( 06 )
 
@@ -91,8 +100,9 @@ CONTAINS
             'SUBROUTINE: Euler_ApplyBC_X2'
            WRITE(*,'(2x,A)') &
             'Invalid Boundary Condition for Fluid X2'
+          WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL amrex_abort('')
+          STOP ''
 
       CASE( 07 )
 
@@ -104,18 +114,19 @@ CONTAINS
             'SUBROUTINE: Euler_ApplyBC_X3'
            WRITE(*,'(2x,A)') &
             'Invalid Boundary Condition for Fluid X3'
+          WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL amrex_abort('')
+          STOP ''
 
       CASE DEFAULT
 
           WRITE(*,'(2x,A,I2.2)') 'Unknown error: ', iErr
-          WRITE(*,'(2x,A)') 'Stopping...'
+          WRITE(*,'(2x,A)') TRIM( Message )
 
-          CALL amrex_abort('')
+          STOP ''
 
     END SELECT
 
-  END SUBROUTINE DescribeError_Euler_AMReX
+  END SUBROUTINE DescribeError_Euler
 
-END MODULE ErrorModule
+END MODULE Euler_ErrorModule

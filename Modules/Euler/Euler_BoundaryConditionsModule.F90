@@ -52,23 +52,20 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC_Option, iErr_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr, iApplyBC_Option )
 
-    INTEGER,  INTENT(in)              :: &
+    INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(inout)           :: &
+    REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER,  INTENT(in),    OPTIONAL :: &
+    INTEGER,  INTENT(out)          :: &
+      iErr
+    INTEGER,  INTENT(in), OPTIONAL :: &
       iApplyBC_Option(3)
-    INTEGER,  INTENT(inout), OPTIONAL :: &
-      iErr_Option
 
     INTEGER :: iApplyBC(3)
-    INTEGER :: iErr
 
     iErr = 0
-    IF( PRESENT( iErr_Option ) ) &
-       iErr = iErr_Option
 
     iApplyBC = iEuler_ApplyBC_Both
     IF( PRESENT( iApplyBC_Option ) ) &
@@ -79,74 +76,40 @@ CONTAINS
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), &
-             iApplyBC(1), iErr_Option = iErr )
+             iErr, iApplyBC(1) )
 
     CALL Euler_ApplyBC_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), &
-             iApplyBC(2), iErr_Option = iErr )
+             iErr, iApplyBC(2) )
 
     CALL Euler_ApplyBC_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), &
-             iApplyBC(3), iErr_Option = iErr )
-
-    IF( PRESENT( iErr_Option ) )THEN
-
-      iErr_Option = iErr
-
-    ELSE
-
-      SELECT CASE( iErr )
-
-        CASE( 05 )
-
-          WRITE(*,*)
-          WRITE(*,'(A5,A45,I2.2)') &
-            '', 'Invalid Boundary Condition for Fluid X1: ', bcX(1)
-          STOP
-
-        CASE( 06 )
-
-          WRITE(*,*)
-          WRITE(*,'(A5,A45,I2.2)') &
-            '', 'Invalid Boundary Condition for Fluid X2: ', bcX(2)
-          STOP
-
-        CASE( 07 )
-
-          WRITE(*,*)
-          WRITE(*,'(A5,A45,I2.2)') &
-            '', 'Invalid Boundary Condition for Fluid X3: ', bcX(3)
-          STOP
-
-      END SELECT
-
-    END IF
+             iErr, iApplyBC(3) )
 
   END SUBROUTINE ApplyBoundaryConditions_Euler
 
 
   SUBROUTINE Euler_ApplyBC_X1 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC, iErr_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr, iApplyBC )
 
-    INTEGER,  INTENT(in)             :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
-    REAL(DP), INTENT(inout)          :: &
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(inout), OPTIONAL :: &
-      iErr_Option
+    INTEGER, INTENT(inout)  :: &
+      iErr
 
     INTEGER  :: iCF, iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX_0
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX1
     REAL(DP) :: D_0, E_0, R_0, R_q
-    INTEGER  :: iErr = 0
 
     SELECT CASE ( bcX(1) )
 
@@ -432,8 +395,7 @@ CONTAINS
 
     CASE DEFAULT
 
-      iErr        = 05
-      iErr_Option = iErr
+      iErr = 05
 
     END SELECT
 
@@ -441,19 +403,18 @@ CONTAINS
 
 
   SUBROUTINE Euler_ApplyBC_X2 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC, iErr_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr, iApplyBC )
 
-    INTEGER,  INTENT(in)             :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
-    REAL(DP), INTENT(inout)          :: &
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(inout), OPTIONAL :: &
-      iErr_Option
+    INTEGER, INTENT(inout)  :: &
+      iErr
 
     INTEGER :: iCF, iX1, iX2, iX3
     INTEGER :: iNodeX, iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX2
-    INTEGER :: iErr = 0
 
     SELECT CASE ( bcX(2) )
 
@@ -619,8 +580,7 @@ CONTAINS
 
     CASE DEFAULT
 
-      iErr        = 06
-      iErr_Option = iErr
+      iErr = 06
 
     END SELECT
 
@@ -628,18 +588,17 @@ CONTAINS
 
 
   SUBROUTINE Euler_ApplyBC_X3 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC, iErr_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr, iApplyBC )
 
-    INTEGER,  INTENT(in)             :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
-    REAL(DP), INTENT(inout)          :: &
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(inout), OPTIONAL :: &
-      iErr_Option
+    INTEGER, INTENT(inout)  :: &
+      iErr
 
     INTEGER :: iCF, iX1, iX2, iX3
-    INTEGER  :: iErr = 0
 
     SELECT CASE ( bcX(3) )
 
@@ -712,8 +671,7 @@ CONTAINS
 
     CASE DEFAULT
 
-      iErr        = 07
-      iErr_Option = iErr
+      iErr = 07
 
     END SELECT
 

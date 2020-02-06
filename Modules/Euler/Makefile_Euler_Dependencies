@@ -1,3 +1,6 @@
+Euler_ErrorModule.o: \
+  Euler_ErrorModule.f90
+
 Euler_UtilitiesModule_NonRelativistic.o: \
   KindModule.o \
   ProgramHeaderModule.o \
