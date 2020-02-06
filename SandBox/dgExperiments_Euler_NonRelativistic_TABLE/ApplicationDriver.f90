@@ -62,6 +62,8 @@ PROGRAM ApplicationDriver
     InitializeTally_Euler_NonRelativistic_TABLE, &
     FinalizeTally_Euler_NonRelativistic_TABLE, &
     ComputeTally_Euler_NonRelativistic_TABLE
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
 
@@ -86,6 +88,7 @@ PROGRAM ApplicationDriver
   REAL(DP)       :: xL(3), xR(3), zoomX(3)
   REAL(DP)       :: BetaTVD, BetaTVB
   REAL(DP)       :: LimiterThresholdParameter
+  INTEGER        :: iErr
 
   ProgramName = 'RiemannProblem'
 
@@ -368,7 +371,9 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
+
+  CALL DescribeError_Euler( iErr )
 
   CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )

@@ -66,6 +66,7 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: D(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iErr
 
     TYPE(EdgeMap) :: Edge_Map
 
@@ -123,7 +124,7 @@ CONTAINS
 
         IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplySlopeLimiter_Euler'
         CALL ApplySlopeLimiter_Euler &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iErr, &
                  SuppressBC_Option = .TRUE. )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )

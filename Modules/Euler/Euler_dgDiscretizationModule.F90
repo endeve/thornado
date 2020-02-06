@@ -60,8 +60,6 @@ MODULE Euler_dgDiscretizationModule
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
-  USE Euler_ErrorModule, ONLY: &
-    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -95,6 +93,8 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_dgDiscretization )
 
+    iErr = 0
+
     dU = Zero
 
     SuppressBC = .FALSE.
@@ -106,8 +106,7 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr )
 
-      CALL DescribeError_Euler &
-             ( iErr, 'Calling from: Euler_ComputeIncrement_DG_Explicit' )
+      IF( iErr .NE. 0 ) RETURN
 
     END IF
 
@@ -233,6 +232,7 @@ CONTAINS
       IF( iX1 .LT. iX_E0(1) + 1 )THEN
 
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
         CALL ComputePrimitive_Euler &
                ( uCF_K(:,iCF_D ),     &
                  uCF_K(:,iCF_S1),     &
@@ -249,6 +249,7 @@ CONTAINS
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
                  G_K(:,iGF_Gm_dd_33) )
+
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
         CALL ComputePressureFromPrimitive &
@@ -278,10 +279,13 @@ CONTAINS
           Flux_X1_q(:,iCF) &
             = dX2 * dX3 * WeightsX_q * G_K(:,iGF_Alpha) * G_K(:,iGF_SqrtGm) &
                 * Flux_X1_q(:,iCF)
+
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
           CALL DGEMV &
                  ( 'T', nDOFX, nDOFX, One, dLXdX1_q, nDOFX, &
                    Flux_X1_q(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
@@ -301,12 +305,15 @@ CONTAINS
       DO iCF = 1, nCF
 
         CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Up, nDOFX_X1, &
                  uCF_P(:,iCF), 1, Zero, uCF_L(:,iCF), 1 )
+
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
                  uCF_K(:,iCF), 1, Zero, uCF_R(:,iCF), 1 )
+
         CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       END DO
@@ -320,12 +327,15 @@ CONTAINS
       DO iGF = iGF_h_1, iGF_h_3
 
         CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                  G_P(:,iGF), 1, Zero, G_F(:,iGF), 1 )
+
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                  G_K(:,iGF), 1, Half, G_F(:,iGF), 1 )
+
         CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         G_F(:,iGF) = MAX( G_F(:,iGF), SqrtTiny )
@@ -337,13 +347,16 @@ CONTAINS
       ! --- Lapse Function ---
 
       CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                G_P(:,iGF_Alpha), 1, Zero, G_F(:,iGF_Alpha), 1 )
 
+
       CALL DGEMV &
              ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                G_K(:,iGF_Alpha), 1, Half, G_F(:,iGF_Alpha), 1 )
+
       CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       G_F(:,iGF_Alpha) = MAX( G_F(:,iGF_Alpha), SqrtTiny )
@@ -351,6 +364,7 @@ CONTAINS
       ! --- Left State Primitive, etc. ---
 
       CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
       CALL ComputePrimitive_Euler &
              ( uCF_L(:,iCF_D ),       &
                uCF_L(:,iCF_S1),       &
@@ -367,6 +381,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
+
       CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
@@ -411,6 +426,7 @@ CONTAINS
       ! --- Right State Primitive, etc. ---
 
       CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
       CALL ComputePrimitive_Euler &
              ( uCF_R(:,iCF_D ),       &
                uCF_R(:,iCF_S1),       &
@@ -427,6 +443,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
+
       CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
@@ -537,9 +554,11 @@ CONTAINS
         DO iCF = 1, nCF
 
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
           CALL DGEMV &
                  ( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Dn, nDOFX_X1, &
                    NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
@@ -553,9 +572,11 @@ CONTAINS
         DO iCF = 1, nCF
 
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
           CALL DGEMV &
                  ( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Up, nDOFX_X1, &
                    NumericalFlux(:,iCF), 1, One, dU(:,iX1-1,iX2,iX3,iCF), 1 )
+
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
@@ -632,6 +653,7 @@ CONTAINS
       IF( iX2 .LT. iX_E0(2) + 1 )THEN
 
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
         CALL ComputePrimitive_Euler &
                ( uCF_K(:,iCF_D ),     &
                  uCF_K(:,iCF_S1),     &
@@ -648,6 +670,7 @@ CONTAINS
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
                  G_K(:,iGF_Gm_dd_33) )
+
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
         CALL ComputePressureFromPrimitive &
@@ -679,9 +702,11 @@ CONTAINS
                 * Flux_X2_q(:,iCF)
 
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
           CALL DGEMV &
                  ( 'T', nDOFX, nDOFX, One, dLXdX2_q, nDOFX, &
                    Flux_X2_q(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
@@ -701,12 +726,15 @@ CONTAINS
       DO iCF = 1, nCF
 
         CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Up, nDOFX_X2, &
                  uCF_P(:,iCF), 1, Zero, uCF_L(:,iCF), 1 )
+
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
                  uCF_K(:,iCF), 1, Zero, uCF_R(:,iCF), 1 )
+
         CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       END DO
@@ -720,12 +748,15 @@ CONTAINS
       DO iGF = iGF_h_1, iGF_h_3
 
         CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                  G_P(:,iGF), 1, Zero, G_F(:,iGF), 1 )
+
         CALL DGEMV &
                ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                  G_K(:,iGF), 1, Half, G_F(:,iGF), 1 )
+
         CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         G_F(:,iGF) = MAX( G_F(:,iGF), SqrtTiny )
@@ -737,6 +768,7 @@ CONTAINS
       ! --- Lapse Function ---
 
       CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
       CALL DGEMV &
              ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                G_P(:,iGF_Alpha), 1, Zero, G_F(:,iGF_Alpha), 1 )
@@ -744,6 +776,7 @@ CONTAINS
       CALL DGEMV &
              ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                G_K(:,iGF_Alpha), 1, Half, G_F(:,iGF_Alpha), 1 )
+
       CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       G_F(:,iGF_Alpha) = MAX( G_F(:,iGF_Alpha), SqrtTiny )
@@ -751,6 +784,7 @@ CONTAINS
       ! --- Left State Primitive, etc. ---
 
       CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
       CALL ComputePrimitive_Euler &
              ( uCF_L(:,iCF_D ),       &
                uCF_L(:,iCF_S1),       &
@@ -767,6 +801,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
+
       CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
@@ -811,6 +846,7 @@ CONTAINS
       ! --- Right State Primitive, etc. ---
 
       CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
       CALL ComputePrimitive_Euler &
              ( uCF_R(:,iCF_D ),       &
                uCF_R(:,iCF_S1),       &
@@ -827,6 +863,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
+
       CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
@@ -937,8 +974,10 @@ CONTAINS
         DO iCF = 1, nCF
 
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
           CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Dn, nDOFX_X2, &
                       NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
@@ -952,8 +991,10 @@ CONTAINS
         DO iCF = 1, nCF
 
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
           CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Up, nDOFX_X2, &
                       NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2-1,iX3,iCF), 1 )
+
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
@@ -1029,6 +1070,7 @@ CONTAINS
       IF( iX3 .LT. iX_E0(3) + 1 )THEN
 
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
         CALL ComputePrimitive_Euler &
                ( uCF_K(:,iCF_D ),     &
                  uCF_K(:,iCF_S1),     &
@@ -1045,6 +1087,7 @@ CONTAINS
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
                  G_K(:,iGF_Gm_dd_33) )
+
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
         CALL ComputePressureFromPrimitive &
@@ -1076,9 +1119,11 @@ CONTAINS
                 * Flux_X3_q(:,iCF)
 
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
           CALL DGEMV &
                  ( 'T', nDOFX, nDOFX, One, dLXdX3_q, nDOFX, &
                    Flux_X3_q(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
@@ -1098,12 +1143,15 @@ CONTAINS
       DO iCF = 1, nCF
 
         CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
         CALL DGEMV &
                ( 'N', nDOFX_X3, nDOFX, One, LX_X3_Up, nDOFX_X3, &
                  uCF_P(:,iCF), 1, Zero, uCF_L(:,iCF), 1 )
+
         CALL DGEMV &
                ( 'N', nDOFX_X3, nDOFX, One, LX_X3_Dn, nDOFX_X3, &
                  uCF_K(:,iCF), 1, Zero, uCF_R(:,iCF), 1 )
+
         CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       END DO
@@ -1117,12 +1165,15 @@ CONTAINS
       DO iGF = iGF_h_1, iGF_h_3
 
         CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
         CALL DGEMV &
                ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
                  G_P(:,iGF), 1, Zero, G_F(:,iGF), 1 )
+
         CALL DGEMV &
                ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
                  G_K(:,iGF), 1, Half, G_F(:,iGF), 1 )
+
         CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         G_F(:,iGF) = MAX( G_F(:,iGF), SqrtTiny )
@@ -1134,6 +1185,7 @@ CONTAINS
       ! --- Lapse Function ---
 
       CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
       CALL DGEMV &
              ( 'N', nDOFX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
                G_P(:,iGF_Alpha), 1, Zero, G_F(:,iGF_Alpha), 1 )
@@ -1141,6 +1193,7 @@ CONTAINS
       CALL DGEMV &
              ( 'N', nDOFX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
                G_K(:,iGF_Alpha), 1, Half, G_F(:,iGF_Alpha), 1 )
+
       CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
       G_F(:,iGF_Alpha) = MAX( G_F(:,iGF_Alpha), SqrtTiny )
@@ -1148,6 +1201,7 @@ CONTAINS
       ! --- Left State Primitive, etc. ---
 
       CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
       CALL ComputePrimitive_Euler &
              ( uCF_L(:,iCF_D ),       &
                uCF_L(:,iCF_S1),       &
@@ -1164,6 +1218,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
+
       CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
@@ -1208,6 +1263,7 @@ CONTAINS
       ! --- Right State Primitive, etc. ---
 
       CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
       CALL ComputePrimitive_Euler &
              ( uCF_R(:,iCF_D ),       &
                uCF_R(:,iCF_S1),       &
@@ -1224,6 +1280,7 @@ CONTAINS
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
                G_F  (:,iGF_Gm_dd_33) )
+
       CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
       CALL ComputePressureFromPrimitive &
@@ -1334,8 +1391,10 @@ CONTAINS
         DO iCF = 1, nCF
 
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
           CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Dn, nDOFX_X3, &
                       NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
@@ -1349,8 +1408,10 @@ CONTAINS
         DO iCF = 1, nCF
 
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
+
           CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Up, nDOFX_X3, &
                       NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3-1,iCF), 1 )
+
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
         END DO
@@ -1442,10 +1503,14 @@ CONTAINS
       END DO
 
       IF( nDimsX .GT. 1 )THEN
+
         DO iGF = 1, nGF
+
           G_P_X2(:,iGF) = G(:,iX1,iX2-1,iX3,iGF)
           G_N_X2(:,iGF) = G(:,iX1,iX2+1,iX3,iGF)
+
         END DO
+
       END IF
 
       CALL ComputePrimitive_Euler &
@@ -1483,6 +1548,7 @@ CONTAINS
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                  G_P_X1(:,iGF), 1, Zero, G_X1_Dn(:,iGF), 1 )
+
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                  G_K   (:,iGF), 1, Half, G_X1_Dn(:,iGF), 1 )
@@ -1493,6 +1559,7 @@ CONTAINS
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                  G_K   (:,iGF), 1, Zero, G_X1_Up(:,iGF), 1 )
+
         CALL DGEMV &
                ( 'N', nDOFX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                  G_N_X1(:,iGF), 1, Half, G_X1_Up(:,iGF), 1 )
@@ -1504,8 +1571,10 @@ CONTAINS
 
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
                   WeightsX_X1(:) * G_X1_Up(:,iGF_h_2), 1, Zero, dh2dX1, 1 )
+
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
                   WeightsX_X1(:) * G_X1_Dn(:,iGF_h_2), 1,  One, dh2dX1, 1 )
+
       CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
                   WeightsX_q (:) * G_K    (:,iGF_h_2), 1,  One, dh2dX1, 1 )
 
@@ -1513,8 +1582,10 @@ CONTAINS
 
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Up, nDOFX_X1, &
                   WeightsX_X1(:) * G_X1_Up(:,iGF_h_3), 1, Zero, dh3dX1, 1 )
+
       CALL DGEMV( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Dn, nDOFX_X1, &
                   WeightsX_X1(:) * G_X1_Dn(:,iGF_h_3), 1,  One, dh3dX1, 1 )
+
       CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX1_q, nDOFX,    &
                   WeightsX_q (:) * G_K    (:,iGF_h_3), 1,  One, dh3dX1, 1 )
 
@@ -1536,6 +1607,7 @@ CONTAINS
           CALL DGEMV &
                  ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                    G_P_X2(:,iGF), 1, Zero, G_X2_Dn(:,iGF), 1 )
+
           CALL DGEMV &
                  ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                    G_K   (:,iGF), 1, Half, G_X2_Dn(:,iGF), 1 )
@@ -1546,6 +1618,7 @@ CONTAINS
           CALL DGEMV &
                  ( 'N', nDOFX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                    G_K   (:,iGF), 1, Zero, G_X2_Up(:,iGF), 1 )
+
           CALL DGEMV &
                  ( 'N', nDOFX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                    G_N_X2(:,iGF), 1, Half, G_X2_Up(:,iGF), 1 )
@@ -1557,8 +1630,10 @@ CONTAINS
 
         CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Up, nDOFX_X2, &
                   WeightsX_X2(:) * G_X2_Up(:,iGF_h_3), 1, Zero, dh3dX2, 1 )
+
         CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Dn, nDOFX_X2, &
                   WeightsX_X2(:) * G_X2_Dn(:,iGF_h_3), 1,  One, dh3dX2, 1 )
+
         CALL DGEMV( 'T', nDOFX,    nDOFX, - One, dLXdX2_q, nDOFX,    &
                   WeightsX_q (:) * G_K    (:,iGF_h_3), 1,  One, dh3dX2, 1 )
 

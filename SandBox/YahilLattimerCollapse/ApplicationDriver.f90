@@ -59,6 +59,8 @@ PROGRAM ApplicationDriver
     InitializeTally_Euler, &
     FinalizeTally_Euler, &
     ComputeTally_Euler
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
 
@@ -76,6 +78,7 @@ PROGRAM ApplicationDriver
   INTEGER  :: nX(3), nNodes
   REAL(DP) :: xL(3), xR(3)
   REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt, wTime
+  INTEGER  :: iErr
 
   nX     = [ 128, 1, 1 ]
   nNodes = 3
@@ -140,7 +143,9 @@ PROGRAM ApplicationDriver
   CALL ApplySlopeLimiter_Euler &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
            uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-           uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+           uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), iErr )
+
+  CALL DescribeError_Euler( iErr )
 
   CALL ApplyPositivityLimiter_Euler &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &

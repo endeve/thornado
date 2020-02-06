@@ -53,6 +53,8 @@ PROGRAM ApplicationDriver
     InitializeTally_Euler_NonRelativistic_IDEAL, &
     FinalizeTally_Euler_NonRelativistic_IDEAL, &
     ComputeTally_Euler_NonRelativistic_IDEAL
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
 
@@ -68,6 +70,7 @@ PROGRAM ApplicationDriver
   INTEGER  :: iCycle, iCycleD
   INTEGER  :: nX(3), nNodes
   REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt, wTime
+  INTEGER  :: iErr
 
   nX     = [ 256, 1, 1 ]
   nNodes = 2
@@ -136,7 +139,9 @@ PROGRAM ApplicationDriver
   CALL ApplyPerturbations( 1.4_DP, 1.6_DP, 0, 2.0_DP )
 
   CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
+
+  CALL DescribeError_Euler( iErr )
 
   CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )

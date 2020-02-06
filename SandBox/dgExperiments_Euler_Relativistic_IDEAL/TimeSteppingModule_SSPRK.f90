@@ -199,7 +199,9 @@ CONTAINS
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
         CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D, iErr )
+
+        CALL DescribeError_Euler( iErr )
 
         CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, iErr )
@@ -208,6 +210,8 @@ CONTAINS
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D_SSPRK(:,:,:,:,:,iS) )
+
+        CALL DescribeError_Euler( iErr )
 
       END IF
 
@@ -225,7 +229,9 @@ CONTAINS
     END DO
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iErr )
+
+    CALL DescribeError_Euler( iErr )
 
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr )

@@ -38,8 +38,6 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_SlopeLimiter, &
     Timer_Euler_TroubledCellIndicator
-  USE Euler_ErrorModule, ONLY: &
-    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -173,7 +171,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iErr, SuppressBC_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -183,6 +181,8 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(out)          :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER,  INTENT(out)          :: &
+      iErr
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
 
@@ -201,7 +201,6 @@ CONTAINS
     REAL(DP) :: R_X3(nCF,nCF), invR_X3(nCF,nCF)
     REAL(DP) :: V_K(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP) :: U_K(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
-    INTEGER  :: iErr
 
     IF( nDOFX == 1 ) RETURN
 
@@ -218,9 +217,7 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr )
 
-      CALL DescribeError_Euler &
-             ( iErr, &
-               'Calling from: ApplySlopeLimiter_Euler_NonRelativistic_IDEAL' )
+      IF( iErr .NE. 0 ) RETURN
 
     END IF
 

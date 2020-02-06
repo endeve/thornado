@@ -78,6 +78,8 @@ CONTAINS
                        iX_B1(3):iX_E1(3),1:nCF), &
              iErr, iApplyBC(1) )
 
+    IF( iErr .NE. 0 ) RETURN
+
     CALL Euler_ApplyBC_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
@@ -85,12 +87,16 @@ CONTAINS
                        iX_B1(3):iX_E1(3),1:nCF), &
              iErr, iApplyBC(2) )
 
+    IF( iErr .NE. 0 ) RETURN
+
     CALL Euler_ApplyBC_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), &
              iErr, iApplyBC(3) )
+
+    IF( iErr .NE. 0 ) RETURN
 
   END SUBROUTINE ApplyBoundaryConditions_Euler
 

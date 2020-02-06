@@ -58,6 +58,8 @@ PROGRAM ApplicationDriver
     Timer_Euler_InputOutput, &
     Timer_Euler_Initialize, &
     Timer_Euler_Finalize
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
 
@@ -81,6 +83,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: Eblast
+  INTEGER       :: iErr
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
@@ -90,7 +93,7 @@ PROGRAM ApplicationDriver
 
   ProgramName = 'RiemannProblem'
 
-  RestartFileNumber = 50
+  RestartFileNumber = -1
 
   t = 0.0_DP
 
@@ -397,7 +400,9 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
+
+  CALL DescribeError_Euler( iErr )
 
   CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )

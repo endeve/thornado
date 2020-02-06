@@ -50,6 +50,7 @@ PROGRAM ApplicationDriver
 
   LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
   REAL(DP) :: Timer_Evolution
+  INTEGER  ::  iErr
 
   ProgramName = 'SlopeLimiterTest'
 
@@ -128,7 +129,7 @@ PROGRAM ApplicationDriver
              = .FALSE. )
 
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
 
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
@@ -151,7 +152,7 @@ PROGRAM ApplicationDriver
              = UseTroubledCellIndicator )
 
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
 
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
