@@ -90,6 +90,24 @@ OBJS = \
        UnitsModule.o \
        ThornadoInitializationModule.o \
        TimeSteppingModule_Flash.o
+ifeq ($(USE_GPU),TRUE)
+OBJS += \
+       CudaModule.o
+endif
+ifeq ($(USE_OACC),TRUE)
+OBJS += \
+       OpenACCModule.o
+else ifeq ($(USE_OMP_OL),TRUE)
+OBJS += \
+       OpenMPModule.o
+endif
+ifeq ($(USE_MAGMA),TRUE)
+OBJS += \
+       MagmaModule.o CublasModule.o CusolverModule.o CusparseModule.o
+else ifeq ($(USE_CUBLAS),TRUE)
+OBJS += \
+       CublasModule.o CusolverModule.o CusparseModule.o
+endif
 
 $(LIBNAME): $(OBJS)
 	$(MKLIB) $(LIBNAME) $(OBJS)
@@ -98,9 +116,9 @@ $(LIBNAME): $(OBJS)
 
 .SUFFIXES: .f90 .F90
 %.o %.mod : %.f90
-	$(FCOMP) $(FFLAGS) $(f90FLAGS) $(DEFINES) $< -o $@
+	$(FCOMP) $(FFLAGS) $(filter-out -qrealsize=8,$(f90FLAGS)) $(DEFINES) $< -o $@
 %.o %.mod : %.F90
-	$(FCOMP) $(FFLAGS) $(F90FLAGS) $(DEFINES) $< -o $@
+	$(FCOMP) $(FFLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) $(DEFINES) $< -o $@
 
 .PHONY: clean
 clean:
