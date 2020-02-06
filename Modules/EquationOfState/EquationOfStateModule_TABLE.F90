@@ -386,7 +386,7 @@ CONTAINS
              10.0d0**( Es_T ) - OS_E, &
              10.0d0**( Ps_T ) - OS_P, &
              10.0d0**( Ss_T ) - OS_S, &
-             Verbose_Option = .TRUE. )
+             Verbose_Option = Verbose )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO &
