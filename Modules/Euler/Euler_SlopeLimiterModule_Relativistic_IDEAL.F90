@@ -46,6 +46,8 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_SlopeLimiter, &
     Timer_Euler_TroubledCellIndicator
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -273,6 +275,7 @@ CONTAINS
     REAL(DP) :: R_X3(nCF,nCF), invR_X3(nCF,nCF)
     REAL(DP) :: V_K(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP) :: U_K(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+    INTEGER  :: iErr
 
     IF( nDOFX .EQ. 1 ) RETURN
 
@@ -284,9 +287,16 @@ CONTAINS
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
 
-    IF( .NOT. SuppressBC ) &
+    IF( .NOT. SuppressBC )THEN
+
       CALL ApplyBoundaryConditions_Euler &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr )
+
+      CALL DescribeError_Euler &
+             ( iErr, &
+               'Calling from: ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD' )
+
+    END IF
 
     CALL DetectTroubledCells &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
@@ -792,6 +802,7 @@ CONTAINS
     REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
     REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
     REAL(DP) :: G_K(nGF)
+    INTEGER  :: iErr
 
     IF( nDOFX .EQ. 1 ) RETURN
 
@@ -820,9 +831,16 @@ CONTAINS
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
 
-    IF( .NOT. SuppressBC ) &
+    IF( .NOT. SuppressBC )THEN
+
       CALL ApplyBoundaryConditions_Euler &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr )
+
+      CALL DescribeError_Euler &
+             ( iErr, &
+               'Calling from: ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO' )
+
+    END IF
 
     CALL DetectTroubledCells &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )

@@ -60,6 +60,8 @@ PROGRAM ApplicationDriver
     Timer_Euler_InputOutput, &
     Timer_Euler_Initialize, &
     Timer_Euler_Finalize
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
 
@@ -88,6 +90,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, CFL
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
+  INTEGER       :: iErr = 0
 
   ! --- Sedov--Taylor blast wave ---
   REAL(DP) :: Eblast
@@ -454,7 +457,9 @@ PROGRAM ApplicationDriver
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
   CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, iErr )
+
+  CALL DescribeError_Euler( iErr )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 

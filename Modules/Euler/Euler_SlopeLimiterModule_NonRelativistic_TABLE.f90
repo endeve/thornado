@@ -40,6 +40,8 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_SlopeLimiter, &
     Timer_Euler_TroubledCellIndicator
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -221,6 +223,7 @@ CONTAINS
     REAL(DP) :: R_X3(nCF,nCF), invR_X3(nCF,nCF)
     REAL(DP) :: V_K(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP) :: U_K(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
+    INTEGER  :: iErr
 
     IF( nDOFX == 1 ) RETURN
 
@@ -234,9 +237,15 @@ CONTAINS
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
 
-    IF( .NOT. SuppressBC ) &
+    IF( .NOT. SuppressBC )THEN
+
       CALL ApplyBoundaryConditions_Euler &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr )
+
+      CALL DescribeError_Euler &
+             ( iErr, 'Calling from: ApplySlopeLimiter_NonRelativistic_TABLE' )
+
+    END IF
 
     CALL DetectTroubledCells &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )

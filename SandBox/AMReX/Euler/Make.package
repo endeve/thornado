@@ -103,6 +103,7 @@ f90EXE_sources += Euler_PositivityLimiterModule_NonRelativistic_TABLE.f90
 f90EXE_sources += Euler_PositivityLimiterModule_Relativistic_IDEAL.f90
 F90EXE_sources += Euler_PositivityLimiterModule.F90
 F90EXE_sources += Euler_dgDiscretizationModule.F90
+f90EXE_sources += Euler_ErrorModule.f90
 
 # In THORNADO_DIR/Modules/InputOutput
 
