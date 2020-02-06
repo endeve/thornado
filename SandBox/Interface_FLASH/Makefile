@@ -98,9 +98,9 @@ $(LIBNAME): $(OBJS)
 
 .SUFFIXES: .f90 .F90
 %.o %.mod : %.f90
-	$(FCOMP) $(FFLAGS) $(f90FLAGS) $(DEFINES) $< -o $@
+	$(FCOMP) $(FFLAGS) $(filter-out -qrealsize=8,$(f90FLAGS)) $(DEFINES) $< -o $@
 %.o %.mod : %.F90
-	$(FCOMP) $(FFLAGS) $(F90FLAGS) $(DEFINES) $< -o $@
+	$(FCOMP) $(FFLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) $(DEFINES) $< -o $@
 
 .PHONY: clean
 clean:
