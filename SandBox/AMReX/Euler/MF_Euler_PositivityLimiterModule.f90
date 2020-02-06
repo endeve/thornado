@@ -35,7 +35,7 @@ MODULE MF_Euler_PositivityLimiterModule
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_DataTransfer
-  USE ErrorModule,              ONLY: &
+  USE Euler_AMReX_ErrorModule,  ONLY: &
     DescribeError_Euler_AMReX
 
   IMPLICIT NONE

@@ -14,13 +14,13 @@ MODULE MF_Euler_BoundaryConditionsModule
     ApplyBoundaryConditions_Euler
 
   ! --- Local Modules ---
-  USE MyAmrModule, ONLY: &
+  USE MyAmrModule,              ONLY: &
     DEBUG
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_ConstructEdgeMap, &
     Timer_AMReX_Euler_GetBC
-  USE ErrorModule, ONLY: &
+  USE Euler_AMReX_ErrorModule,  ONLY: &
     DescribeError_Euler_AMReX
 
   IMPLICIT NONE
