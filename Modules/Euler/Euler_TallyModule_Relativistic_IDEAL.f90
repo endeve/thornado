@@ -114,6 +114,8 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3
     REAL(DP) :: P(nDOFX,nPF), Pressure(nDOFX)
 
+integer::ierr=0
+
     IF( SuppressTally ) RETURN
 
     IF( PRESENT( iState_Option ) )THEN
@@ -168,7 +170,9 @@ CONTAINS
                P(:,iPF_V3), P(:,iPF_E) , P(:,iPF_Ne), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_33), iErr )
+
+      IF( iErr .NE. 0 ) RETURN
 
       CALL ComputePressureFromPrimitive &
              ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), Pressure )

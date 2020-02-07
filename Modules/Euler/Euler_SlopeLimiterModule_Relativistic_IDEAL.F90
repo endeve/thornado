@@ -278,6 +278,8 @@ CONTAINS
     REAL(DP) :: V_K(iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
     REAL(DP) :: U_K(nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3))
 
+    iErr = 0
+
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UseSlopeLimiter ) RETURN
@@ -380,19 +382,25 @@ CONTAINS
         ! --- Compute Eigenvectors ---
 
         CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-               ( 1, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X1, invR_X1 )
+               ( 1, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X1, invR_X1, iErr )
+
+        IF( iErr .NE. 0 ) RETURN
 
         IF( nDimsX .GT. 1 )THEN
 
           CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-                 ( 2, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X2, invR_X2 )
+                 ( 2, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X2, invR_X2, iErr )
+
+          IF( iErr .NE. 0 ) RETURN
 
         END IF
 
         IF( nDimsX .GT. 2 )THEN
 
           CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-                 ( 3, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X3, invR_X3 )
+                 ( 3, G_K, U_M(:,0,1,iX1,iX2,iX3), R_X3, invR_X3, iErr )
+
+          IF( iErr .NE. 0 ) RETURN
 
         END IF
 
@@ -804,6 +812,8 @@ CONTAINS
     REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
     REAL(DP) :: G_K(nGF)
 
+    iErr = 0
+
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UseSlopeLimiter ) RETURN
@@ -899,11 +909,15 @@ CONTAINS
         END DO
 
         CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-               ( 1, G_K, U_M(0,:,iX1,iX2,iX3), R_X1, invR_X1 )
+               ( 1, G_K, U_M(0,:,iX1,iX2,iX3), R_X1, invR_X1, iErr )
+
+        IF( iErr .NE. 0 ) RETURN
 
         IF( nDimsX .GT. 1 ) &
           CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-                 ( 2, G_K, U_M(0,:,iX1,iX2,iX3), R_X2, invR_X2 )
+                 ( 2, G_K, U_M(0,:,iX1,iX2,iX3), R_X2, invR_X2, iErr )
+
+        IF( iErr .NE. 0 ) RETURN
 
       END IF
 

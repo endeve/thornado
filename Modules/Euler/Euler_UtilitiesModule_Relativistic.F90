@@ -79,11 +79,12 @@ CONTAINS
   SUBROUTINE ComputePrimitive_Scalar &
               ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
                 PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, iErr )
 
     REAL(DP), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
     REAL(DP), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
     REAL(DP), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
+    INTEGER,  INTENT(out) :: iErr
 
     LOGICAL            :: CONVERGED
     INTEGER, PARAMETER :: MAX_IT = 100
@@ -97,19 +98,11 @@ CONTAINS
                               + CF_S3**2 / GF_Gm_dd_33 )
 
     IF( q .LT. Zero )THEN
-      WRITE(*,*)
-      WRITE(*,'(A)')            'ComputePrimitive_Euler_Relativistic (Scalar)'
-      WRITE(*,'(A)')            '--------------------------------------------'
-      WRITE(*,'(A9,ES18.10E3)') 'q:    ', q
-      WRITE(*,'(A9,ES18.10E3)') 'Gm11: ', GF_Gm_dd_11
-      WRITE(*,'(A9,ES18.10E3)') 'Gm22: ', GF_Gm_dd_22
-      WRITE(*,'(A9,ES18.10E3)') 'Gm33: ', GF_Gm_dd_33
-      WRITE(*,'(A9,ES18.10E3)') 'D:    ', CF_D
-      WRITE(*,'(A9,ES18.10E3)') 'tau:  ', CF_E
-      WRITE(*,'(A9,ES18.10E3)') 'S1:   ', CF_S1
-      WRITE(*,'(A9,ES18.10E3)') 'S2:   ', CF_S2
-      WRITE(*,'(A9,ES18.10E3)') 'S3:   ', CF_S3
-      STOP 'q < 0'
+
+      iErr = 08
+
+      RETURN
+
     END IF
 
     SSq = CF_S1**2 / GF_Gm_dd_11 &
@@ -240,13 +233,14 @@ CONTAINS
   SUBROUTINE ComputePrimitive_Vector &
               ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
                 PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, iErr )
 
     REAL(DP), INTENT(in)  :: CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), &
                              CF_E(:), CF_Ne(:)
     REAL(DP), INTENT(out) :: PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), &
                              PF_E(:), PF_Ne(:)
     REAL(DP), INTENT(in)  :: GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
+    INTEGER,  INTENT(out) :: iErr
 
     LOGICAL            :: CONVERGED
     INTEGER, PARAMETER :: MAX_IT = 100
@@ -264,20 +258,11 @@ CONTAINS
                                   + CF_S3(i)**2 / GF_Gm_dd_33(i) )
 
       IF( q .LT. Zero )THEN
-        WRITE(*,*)
-        WRITE(*,'(A)')            'ComputePrimitive_Euler_Relativistic (Vector)'
-        WRITE(*,'(A)')            '--------------------------------------------'
-        WRITE(*,'(A6,I1)')        'Node:    ', i
-        WRITE(*,'(A9,ES18.10E3)') 'q:       ', q
-        WRITE(*,'(A9,ES18.10E3)') 'Gm11(i): ', GF_Gm_dd_11(i)
-        WRITE(*,'(A9,ES18.10E3)') 'Gm22(i): ', GF_Gm_dd_22(i)
-        WRITE(*,'(A9,ES18.10E3)') 'Gm33(i): ', GF_Gm_dd_33(i)
-        WRITE(*,'(A9,ES18.10E3)') 'D(i):    ', CF_D(i)
-        WRITE(*,'(A9,ES18.10E3)') 'tau(i):  ', CF_E(i)
-        WRITE(*,'(A9,ES18.10E3)') 'S1(i):   ', CF_S1(i)
-        WRITE(*,'(A9,ES18.10E3)') 'S2(i):   ', CF_S2(i)
-        WRITE(*,'(A9,ES18.10E3)') 'S3(i):   ', CF_S3(i)
-        STOP 'q < 0'
+
+        iErr = 09
+
+        RETURN
+
       END IF
 
       SSq =   CF_S1(i)**2 / GF_Gm_dd_11(i) &
@@ -470,7 +455,7 @@ CONTAINS
   !> Compute primitive variables, pressure, and sound-speed from conserved
   !> variables for a data block.
   SUBROUTINE ComputeFromConserved_Euler_Relativistic &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, iErr )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -480,8 +465,12 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER,  INTENT(out) :: &
+      iErr
 
     INTEGER :: iX1, iX2, iX3
+
+    iErr = 0
 
     ! --- Update primitive variables, pressure, and sound speed ---
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -503,7 +492,9 @@ CONTAINS
                P(1:nDOFX,iX1,iX2,iX3,iPF_Ne),        &
                G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
                G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
-               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33), iErr )
+
+      IF( iErr .NE. 0 ) RETURN
 
       CALL ComputeAuxiliary_Fluid &
              ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), &
@@ -527,7 +518,7 @@ CONTAINS
   !> Loop over all the elements in the spatial domain and compute the minimum
   !> required time-step for numerical stability.
   SUBROUTINE ComputeTimeStep_Euler_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, iErr )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -538,6 +529,8 @@ CONTAINS
       CFL
     REAL(DP), INTENT(out) :: &
       TimeStep
+    INTEGER,  INTENT(out) :: &
+      iErr
 
     INTEGER  :: iX1, iX2, iX3, iNodeX
     REAL(DP) :: dX(3), dt(3)
@@ -548,6 +541,8 @@ CONTAINS
                 EigVals_X3(nCF,nDOFX), alpha_X3
 
     CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
+
+    iErr = 0
 
     TimeStep = HUGE( One )
     dt       = HUGE( One )
@@ -580,7 +575,9 @@ CONTAINS
                P(1:nDOFX,iPF_Ne), &
                G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33), iErr )
+
+      IF( iErr .NE. 0 ) RETURN
 
       CALL ComputeSoundSpeedFromPrimitive &
              ( P(1:nDOFX,iPF_D), P(1:nDOFX,iPF_E), P(1:nDOFX,iPF_Ne), &

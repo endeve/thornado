@@ -40,11 +40,12 @@ CONTAINS
 
 
   SUBROUTINE ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-    ( iDim, G, U, R, invR )
+    ( iDim, G, U, R, invR, iErr )
 
     INTEGER,  INTENT(in)  :: iDim
     REAL(DP), INTENT(in)  :: G(nGF), U(nCF)
     REAL(DP), INTENT(out) :: R(nCF,nCF), invR(nCF,nCF)
+    INTEGER,  INTENT(out) :: iErr
 
     ! --- Expressions for right and left eigenvector matrices from
     !     Rezzolla & Zanotti, Relativistic Hydrodynamics, Eq. 7.240-7.248 ---
@@ -69,6 +70,8 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_CharacteristicDecomposition )
 
+    iErr = 0
+
     Gmdd11         = G(iGF_Gm_dd_11)
     Gmdd22         = G(iGF_Gm_dd_22)
     Gmdd33         = G(iGF_Gm_dd_33)
@@ -81,7 +84,9 @@ CONTAINS
     CALL ComputePrimitive_Euler_Relativistic &
            ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
              D, V1, V2, V3, E, Ne,                                           &
-             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33) )
+             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33), iErr )
+
+    IF( iErr .NE. 0 ) RETURN
 
     CALL ComputePressureFromPrimitive( D, E, Ne, P )
 
@@ -621,6 +626,8 @@ CONTAINS
 
     REAL(DP) :: Vui(3), Vdj(3), Vdk(3)
 
+    INTEGER :: iErr = 0
+
     Gmdd11         = G(iGF_Gm_dd_11)
     Gmdd22         = G(iGF_Gm_dd_22)
     Gmdd33         = G(iGF_Gm_dd_33)
@@ -632,7 +639,9 @@ CONTAINS
     CALL ComputePrimitive_Euler_Relativistic &
            ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
              D, V1, V2, V3, E, Ne, &
-             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33) )
+             G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33), iErr )
+
+    IF( iErr .NE. 0 ) RETURN
 
     CALL ComputePressureFromPrimitive( D, E, Ne, P )
 

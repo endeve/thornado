@@ -36,6 +36,8 @@ PROGRAM ApplicationDriver
     uDF
   USE GeometryFieldsModule, ONLY: &
     nGF, uGF
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
 
@@ -101,7 +103,9 @@ PROGRAM ApplicationDriver
   CALL InitializeFields_Relativistic
 
   CALL ComputeFromConserved_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, iErr )
+
+  CALL DescribeError_Euler( iErr )
 
   CALL WriteFieldsHDF &
        ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -132,7 +136,9 @@ PROGRAM ApplicationDriver
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
 
   CALL ComputeFromConserved_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, iErr )
+
+  CALL DescribeError_Euler( iErr )
 
   CALL WriteFieldsHDF &
        ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -155,7 +161,9 @@ PROGRAM ApplicationDriver
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
 
   CALL ComputeFromConserved_Euler_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, iErr )
+
+  CALL DescribeError_Euler( iErr )
 
   CALL WriteFieldsHDF &
        ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )

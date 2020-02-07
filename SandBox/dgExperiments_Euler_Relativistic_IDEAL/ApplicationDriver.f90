@@ -466,13 +466,19 @@ PROGRAM ApplicationDriver
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
   IF( .NOT. OPTIMIZE )THEN
+
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
     CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, iErr )
+
+    CALL DescribeError_Euler( iErr )
 
     CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
+
   END IF
 
   CALL TimersStart_Euler( Timer_Euler_Initialize )
@@ -503,8 +509,10 @@ PROGRAM ApplicationDriver
     CALL ComputeTimeStep_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF, uCF, &
-             CFL = CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             TimeStep = dt )
+             CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
+             dt, iErr )
+
+    CALL DescribeError_Euler( iErr )
 
     IF( t + dt .LT. t_end )THEN
       t = t + dt
@@ -514,44 +522,62 @@ PROGRAM ApplicationDriver
     END IF
 
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
     IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
 
       IF( ProgramName .EQ. 'StandingAccretionShock' )THEN
+
         WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A4,A5,ES13.6E3,A3)') &
           '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, ' ms ', &
           'dt = ', dt / Millisecond, ' ms'
+
       ELSE
+
         WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
           '', 'Cycle = ', iCycle, '', 't = ',  t, '', 'dt = ', dt
+
       END IF
 
     END IF
+
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, uDF, Euler_ComputeIncrement_DG_Explicit )
 
     IF( .NOT. OPTIMIZE )THEN
+
       CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
       IF( iCycleW .GT. 0 )THEN
+
         IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
           wrt = .TRUE.
+
       ELSE
+
         IF( t + dt .GT. t_wrt )THEN
           t_wrt = t_wrt + dt_wrt
           wrt   = .TRUE.
+
         END IF
+
       END IF
+
       CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
       IF( wrt )THEN
 
         CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
         CALL ComputeFromConserved_Euler_Relativistic &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, iErr )
+
+        CALL DescribeError_Euler( iErr )
 
         CALL WriteFieldsHDF &
                ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+
         CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
         CALL ComputeTally_Euler_Relativistic_IDEAL &
@@ -573,13 +599,19 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
 
   IF( .NOT. OPTIMIZE )THEN
+
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
     CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, iErr )
+
+    CALL DescribeError_Euler( iErr )
 
     CALL WriteFieldsHDF &
            ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
+
   END IF
 
   CALL ComputeTally_Euler_Relativistic_IDEAL &
@@ -589,6 +621,7 @@ PROGRAM ApplicationDriver
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
+
   CALL FinalizeTally_Euler_Relativistic_IDEAL
 
   CALL FinalizePositivityLimiter_Euler_Relativistic_IDEAL

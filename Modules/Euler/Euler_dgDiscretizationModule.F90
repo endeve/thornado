@@ -73,23 +73,24 @@ CONTAINS
 
 
   SUBROUTINE Euler_ComputeIncrement_DG_Explicit &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, SuppressBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, iErr, SuppressBC_Option )
 
-    INTEGER, INTENT(in)            :: &
+    INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)           :: &
+    REAL(DP), INTENT(in)            :: &
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-    REAL(DP), INTENT(inout)        :: &
+    REAL(DP), INTENT(inout)         :: &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-    REAL(DP), INTENT(out)          :: &
+    REAL(DP), INTENT(out)           :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
-    LOGICAL,  INTENT(in), OPTIONAL :: &
+    INTEGER,  INTENT(out)           :: &
+      iErr
+    LOGICAL,  INTENT(in),  OPTIONAL :: &
       SuppressBC_Option
 
     INTEGER  :: iX1, iX2, iX3, iCF
     REAL(DP) :: dX1, dX2, dX3
     LOGICAL  :: SuppressBC
-    INTEGER  :: iErr
 
     CALL TimersStart_Euler( Timer_Euler_dgDiscretization )
 
@@ -113,13 +114,19 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_Divergence )
 
     CALL ComputeIncrement_Divergence_X1 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, iErr )
+
+    IF( iErr .NE. 0 ) RETURN
 
     CALL ComputeIncrement_Divergence_X2 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, iErr )
+
+    IF( iErr .NE. 0 ) RETURN
 
     CALL ComputeIncrement_Divergence_X3 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, iErr )
+
+    IF( iErr .NE. 0 ) RETURN
 
     CALL TimersStop_Euler( Timer_Euler_Divergence )
 
@@ -150,9 +157,11 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_Geometry )
 
     CALL ComputeIncrement_Geometry &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, iErr )
 
     CALL TimersStop_Euler( Timer_Euler_Geometry )
+
+    IF( iErr .NE. 0 ) RETURN
 
     CALL TimersStart_Euler( Timer_Euler_Gravity )
 
@@ -161,22 +170,23 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_Gravity )
 
-
     CALL TimersStop_Euler( Timer_Euler_dgDiscretization )
 
   END SUBROUTINE Euler_ComputeIncrement_DG_Explicit
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, iErr )
 
-    INTEGER, INTENT(in)     :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+    INTEGER,  INTENT(out)   :: &
+      iErr
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X1
     REAL(DP) :: dX2, dX3
@@ -194,6 +204,8 @@ CONTAINS
     REAL(DP) :: Flux_X1_L(nDOFX_X1,nCF), Flux_X1_R(nDOFX_X1,nCF)
     REAL(DP) :: Flux_X1_q(nDOFX,nCF)
     REAL(DP) :: NumericalFlux(nDOFX_X1,nCF)
+
+    iErr = 0
 
     IF( iX_E0(1) .EQ. iX_B0(1) ) RETURN
 
@@ -248,9 +260,11 @@ CONTAINS
                  uPF_K(:,iPF_Ne),     &
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
-                 G_K(:,iGF_Gm_dd_33) )
+                 G_K(:,iGF_Gm_dd_33), iErr )
 
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+        IF( iErr .NE. 0 ) RETURN
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
@@ -380,9 +394,11 @@ CONTAINS
                uPF_L(:,iPF_Ne),       &
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
-               G_F  (:,iGF_Gm_dd_33) )
+               G_F  (:,iGF_Gm_dd_33), iErr )
 
       CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+      IF( iErr .NE. 0 ) RETURN
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), P_L  )
@@ -442,9 +458,11 @@ CONTAINS
                uPF_R(:,iPF_Ne),       &
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
-               G_F  (:,iGF_Gm_dd_33) )
+               G_F  (:,iGF_Gm_dd_33), iErr )
 
       CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+      IF( iErr .NE. 0 ) RETURN
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), P_R  )
@@ -594,15 +612,17 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X2 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, iErr )
 
-    INTEGER, INTENT(in)     :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+    INTEGER,  INTENT(out)   :: &
+      iErr
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X2
     REAL(DP) :: dX1, dX3
@@ -620,6 +640,8 @@ CONTAINS
     REAL(DP) :: Flux_X2_L(nDOFX_X2,nCF), Flux_X2_R(nDOFX_X2,nCF)
     REAL(DP) :: Flux_X2_q(nDOFX,nCF)
     REAL(DP) :: NumericalFlux(nDOFX_X2,nCF)
+
+    iErr = 0
 
     IF( iX_E0(2) .EQ. iX_B0(2) ) RETURN
 
@@ -669,9 +691,11 @@ CONTAINS
                  uPF_K(:,iPF_Ne),     &
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
-                 G_K(:,iGF_Gm_dd_33) )
+                 G_K(:,iGF_Gm_dd_33), iErr )
 
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+        IF( iErr .NE. 0 ) RETURN
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
@@ -800,9 +824,11 @@ CONTAINS
                uPF_L(:,iPF_Ne),       &
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
-               G_F  (:,iGF_Gm_dd_33) )
+               G_F  (:,iGF_Gm_dd_33), iErr )
 
       CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+      IF( iErr .NE. 0 ) RETURN
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), P_L  )
@@ -862,9 +888,11 @@ CONTAINS
                uPF_R(:,iPF_Ne),       &
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
-               G_F  (:,iGF_Gm_dd_33) )
+               G_F  (:,iGF_Gm_dd_33), iErr )
 
       CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+      IF( iErr .NE. 0 ) RETURN
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), P_R )
@@ -1011,15 +1039,17 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X3 &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, iErr )
 
-    INTEGER, INTENT(in)     :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    INTEGER,  INTENT(out)   :: &
+      iErr
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X3
     REAL(DP) :: dX1, dX2
@@ -1037,6 +1067,8 @@ CONTAINS
     REAL(DP) :: Flux_X3_L(nDOFX_X3,nCF), Flux_X3_R(nDOFX_X3,nCF)
     REAL(DP) :: Flux_X3_q(nDOFX,nCF)
     REAL(DP) :: NumericalFlux(nDOFX_X3,nCF)
+
+    iErr = 0
 
     IF( iX_E0(3) .EQ. iX_B0(3) ) RETURN
 
@@ -1086,9 +1118,11 @@ CONTAINS
                  uPF_K(:,iPF_Ne),     &
                  G_K(:,iGF_Gm_dd_11), &
                  G_K(:,iGF_Gm_dd_22), &
-                 G_K(:,iGF_Gm_dd_33) )
+                 G_K(:,iGF_Gm_dd_33), iErr )
 
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+        IF( iErr .NE. 0 ) RETURN
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(:,iPF_D ), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )
@@ -1217,9 +1251,11 @@ CONTAINS
                uPF_L(:,iPF_Ne),       &
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
-               G_F  (:,iGF_Gm_dd_33) )
+               G_F  (:,iGF_Gm_dd_33), iErr )
 
       CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+      IF( iErr .NE. 0 ) RETURN
 
       CALL ComputePressureFromPrimitive &
              ( uPF_L(:,iPF_D), uPF_L(:,iPF_E), uPF_L(:,iPF_Ne), P_L  )
@@ -1279,9 +1315,11 @@ CONTAINS
                uPF_R(:,iPF_Ne),       &
                G_F  (:,iGF_Gm_dd_11), &
                G_F  (:,iGF_Gm_dd_22), &
-               G_F  (:,iGF_Gm_dd_33) )
+               G_F  (:,iGF_Gm_dd_33), iErr )
 
       CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+      IF( iErr .NE. 0 ) RETURN
 
       CALL ComputePressureFromPrimitive &
              ( uPF_R(:,iPF_D), uPF_R(:,iPF_E), uPF_R(:,iPF_Ne), P_R )
@@ -1428,15 +1466,19 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, iErr )
 
-    INTEGER, INTENT(in)     :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+    INTEGER,  INTENT(out)   :: &
+      iErr
+
+    iErr = 0
 
 #if defined HYDRO_NONRELATIVISTIC
 
@@ -1446,7 +1488,9 @@ CONTAINS
 #elif defined HYDRO_RELATIVISTIC
 
     CALL ComputeIncrement_Geometry_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, iErr )
+
+    IF( iErr .NE. 0 ) RETURN
 
 #endif
 
@@ -1514,10 +1558,18 @@ CONTAINS
       END IF
 
       CALL ComputePrimitive_Euler &
-             ( uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-               uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-               uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-               uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+             ( uCF_K(:,iCF_D ), &
+               uCF_K(:,iCF_S1), &
+               uCF_K(:,iCF_S2), &
+               uCF_K(:,iCF_S3), &
+               uCF_K(:,iCF_E ), &
+               uCF_K(:,iCF_Ne), &
+               uPF_K(:,iPF_D ), &
+               uPF_K(:,iPF_V1), &
+               uPF_K(:,iPF_V2), &
+               uPF_K(:,iPF_V3), &
+               uPF_K(:,iPF_E ), &
+               uPF_K(:,iPF_Ne), &
                G_K(:,iGF_Gm_dd_11), &
                G_K(:,iGF_Gm_dd_22), &
                G_K(:,iGF_Gm_dd_33) )
@@ -1653,15 +1705,17 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, iErr )
 
-    INTEGER, INTENT(in)     :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+    INTEGER,  INTENT(out)   :: &
+      iErr
 
     ! --- This subroutine currently assumes a stationary spacetime ---
 
@@ -1683,6 +1737,8 @@ CONTAINS
     REAL(DP) :: G_X1_Dn(nDOFX_X1,nGF), G_X1_Up(nDOFX_X1,nGF), &
                 G_X2_Dn(nDOFX_X2,nGF), G_X2_Up(nDOFX_X2,nGF), &
                 G_X3_Dn(nDOFX_X3,nGF), G_X3_Up(nDOFX_X3,nGF)
+
+    iErr = 0
 
     dadx1  = Zero
     dadx2  = Zero
@@ -1765,7 +1821,9 @@ CONTAINS
              uPF_K(:,iPF_Ne),     &
              G_K(:,iGF_Gm_dd_11), &
              G_K(:,iGF_Gm_dd_22), &
-             G_K(:,iGF_Gm_dd_33) )
+             G_K(:,iGF_Gm_dd_33), iErr )
+
+      IF( iErr .NE. 0 ) RETURN
 
       CALL ComputePressureFromPrimitive &
              ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), P_K )

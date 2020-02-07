@@ -118,6 +118,34 @@ CONTAINS
 
           STOP ''
 
+      CASE( 08 )
+
+          WRITE(*,*)
+          WRITE(*,'(2x,A)') 'FATAL ERROR'
+          WRITE(*,'(2x,A)') &
+            'MODULE: Euler_UtilitiesModule_Relativistic'
+          WRITE(*,'(2x,A)') &
+            'SUBROUTINE: ComputePrimitive_Scalar'
+           WRITE(*,'(2x,A)') &
+            'q < 0'
+          WRITE(*,'(2x,A)') TRIM( Message )
+
+          STOP ''
+
+      CASE( 09 )
+
+          WRITE(*,*)
+          WRITE(*,'(2x,A)') 'FATAL ERROR'
+          WRITE(*,'(2x,A)') &
+            'MODULE: Euler_UtilitiesModule_Relativistic'
+          WRITE(*,'(2x,A)') &
+            'SUBROUTINE: ComputePrimitive_Vector'
+           WRITE(*,'(2x,A)') &
+            'q < 0'
+          WRITE(*,'(2x,A)') TRIM( Message )
+
+          STOP ''
+
       CASE DEFAULT
 
           WRITE(*,'(2x,A,I2.2)') 'Unknown error: ', iErr

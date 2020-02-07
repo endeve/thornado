@@ -36,17 +36,19 @@ MODULE TimeSteppingModule_SSPRK
 
   INTERFACE
     SUBROUTINE FluidIncrement &
-      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, SuppressBC_Option )
+      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, iErr, SuppressBC_Option )
       USE KindModule, ONLY: DP
-      INTEGER, INTENT(in)           :: &
+      INTEGER,  INTENT(in)           :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-      REAL(DP), INTENT(in)          :: &
-        G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      REAL(DP), INTENT(inout)       :: &
-        U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      REAL(DP), INTENT(out)         :: &
-        dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-      LOGICAL, INTENT(in), OPTIONAL :: &
+      REAL(DP), INTENT(in)           :: &
+        G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      REAL(DP), INTENT(inout)        :: &
+        U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      REAL(DP), INTENT(out)          :: &
+        dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+      INTEGER,  INTENT(out)          :: &
+        iErr
+      LOGICAL,  INTENT(in), OPTIONAL :: &
         SuppressBC_Option
     END SUBROUTINE FluidIncrement
   END INTERFACE
@@ -241,7 +243,10 @@ CONTAINS
         END IF
 
         CALL ComputeIncrement_Fluid &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D_SSPRK(:,:,:,:,:,iS) )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, &
+                 G, U_SSPRK, D_SSPRK(:,:,:,:,:,iS), iErr )
+
+        CALL DescribeError_Euler( iErr )
 
       END IF
 

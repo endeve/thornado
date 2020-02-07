@@ -114,6 +114,32 @@ CONTAINS
 
           CALL amrex_abort( TRIM( Message ) )
 
+      CASE( 08 )
+
+          WRITE(*,*)
+          WRITE(*,'(2x,A)') 'FATAL ERROR'
+          WRITE(*,'(2x,A)') &
+            'MODULE: Euler_UtilitiesModule_Relativistic'
+          WRITE(*,'(2x,A)') &
+            'SUBROUTINE: ComputePrimitive_Scalar'
+           WRITE(*,'(2x,A)') &
+            'q < 0'
+
+          CALL amrex_abort( TRIM( Message ) )
+
+      CASE( 09 )
+
+          WRITE(*,*)
+          WRITE(*,'(2x,A)') 'FATAL ERROR'
+          WRITE(*,'(2x,A)') &
+            'MODULE: Euler_UtilitiesModule_Relativistic'
+          WRITE(*,'(2x,A)') &
+            'SUBROUTINE: ComputePrimitive_Vector'
+           WRITE(*,'(2x,A)') &
+            'q < 0'
+
+          CALL amrex_abort( TRIM( Message ) )
+
       CASE DEFAULT
 
           WRITE(*,'(2x,A,I2.2)') 'Unknown error: ', iErr

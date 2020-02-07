@@ -472,9 +472,9 @@ CONTAINS
     REAL(DP), INTENT(out) :: Theta_P
 
     ! --- For de-bugging ---
-    INTEGER, INTENT(in)    :: iX1, iX2, iX3, iP
-    INTEGER, INTENT(inout) :: iErr
-    INTEGER                :: iCF, iGF
+    INTEGER, INTENT(in)  :: iX1, iX2, iX3, iP
+    INTEGER, INTENT(out) :: iErr
+    INTEGER              :: iCF, iGF
 
     INTEGER,  PARAMETER :: MAX_IT = 19
     REAL(DP), PARAMETER :: dx_min = 1.0d-3
@@ -483,6 +483,8 @@ CONTAINS
     INTEGER  :: ITERATION
     REAL(DP) :: x_a, x_b, x_c, dx
     REAL(DP) :: f_a, f_b, f_c
+
+    iErr = 0
 
 !!$    WRITE(*,*)
 !!$    WRITE(*,'(A,I3)') 'iP = ', iP

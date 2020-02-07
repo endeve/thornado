@@ -109,13 +109,15 @@ CONTAINS
       iApplyBC
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(inout)  :: &
+    INTEGER, INTENT(out)    :: &
       iErr
 
     INTEGER  :: iCF, iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX_0
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX1
     REAL(DP) :: D_0, E_0, R_0, R_q
+
+    iErr = 0
 
     SELECT CASE ( bcX(1) )
 
@@ -416,11 +418,13 @@ CONTAINS
       iApplyBC
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(inout)  :: &
+    INTEGER, INTENT(out)  :: &
       iErr
 
     INTEGER :: iCF, iX1, iX2, iX3
     INTEGER :: iNodeX, iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX2
+
+    iErr = 0
 
     SELECT CASE ( bcX(2) )
 
@@ -601,10 +605,12 @@ CONTAINS
       iApplyBC
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(inout)  :: &
+    INTEGER, INTENT(out)    :: &
       iErr
 
     INTEGER :: iCF, iX1, iX2, iX3
+
+    iErr = 0
 
     SELECT CASE ( bcX(3) )
 

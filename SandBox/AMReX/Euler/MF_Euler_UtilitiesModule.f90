@@ -38,6 +38,8 @@ MODULE MF_Euler_UtilitiesModule
     TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_DataTransfer, &
     Timer_AMReX_ComputeTimeStep_Euler
+  USE Euler_AMReX_ErrorModule, ONLY: &
+    DescribeError_Euler_AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -70,6 +72,7 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: A(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iErr
 
     DO iLevel = 0, nLevels-1
 
@@ -90,15 +93,19 @@ CONTAINS
         iX_E1(1:3) = BX % hi(1:3) + swX(1:3)
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
+
         ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nCF) )
+
         ALLOCATE( P(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nPF) )
+
         ALLOCATE( A(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nAF) )
@@ -111,6 +118,7 @@ CONTAINS
                  G(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nGF) )
+
         CALL AMReX2thornado &
                ( nCF, iX_B1(1:3), iX_E1(1:3), &
                  uCF(      iX_B1(1):iX_E1(1), &
@@ -119,6 +127,7 @@ CONTAINS
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
+
         CALL AMReX2thornado &
                ( nPF, iX_B1(1:3), iX_E1(1:3), &
                  uPF(      iX_B1(1):iX_E1(1), &
@@ -127,6 +136,7 @@ CONTAINS
                  P(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nPF) )
+
         CALL AMReX2thornado &
                ( nAF, iX_B1(1:3), iX_E1(1:3), &
                  uAF(      iX_B1(1):iX_E1(1), &
@@ -135,6 +145,7 @@ CONTAINS
                  A(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nAF) )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         CALL ComputeFromConserved_Euler &
@@ -150,9 +161,12 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nPF), &
                  A(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nAF) )
+                           iX_B1(3):iX_E1(3),1:nAF), iErr_Option = iErr )
+
+        CALL DescribeError_Euler_AMReX( iErr )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
         CALL thornado2AMReX &
                ( nPF, iX_B1(1:3), iX_E1(1:3), &
                  uPF(      iX_B1(1):iX_E1(1), &
@@ -161,6 +175,7 @@ CONTAINS
                  P(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nPF) )
+
         CALL thornado2AMReX &
                ( nAF, iX_B1(1:3), iX_E1(1:3), &
                  uAF(      iX_B1(1):iX_E1(1), &
@@ -174,6 +189,7 @@ CONTAINS
         DEALLOCATE( P )
         DEALLOCATE( U )
         DEALLOCATE( G )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO
@@ -201,6 +217,7 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iErr
 
     REAL(amrex_real) :: TimeStep(0:nLevels-1)
 
@@ -225,9 +242,11 @@ CONTAINS
         iX_E1(1:3) = BX % hi(1:3) + swX(1:3)
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
+
         ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nCF) )
@@ -240,6 +259,7 @@ CONTAINS
                  G(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nGF) )
+
         CALL AMReX2thornado &
                ( nCF, iX_B1(1:3), iX_E1(1:3), &
                  uCF(      iX_B1(1):iX_E1(1), &
@@ -248,6 +268,7 @@ CONTAINS
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         CALL ComputeTimeStep_Euler &
@@ -258,13 +279,18 @@ CONTAINS
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF), &
-                 CFL, TimeStep(iLevel) )
+                 CFL, TimeStep(iLevel), iErr_Option = iErr )
+
+        CALL DescribeError_Euler_AMReX &
+               ( iErr, Message_Option = 'Calling from: MF_ComputeTimeStep' )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
         DEALLOCATE( U )
         DEALLOCATE( G )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO ! --- Loop over grids (boxes) ---
