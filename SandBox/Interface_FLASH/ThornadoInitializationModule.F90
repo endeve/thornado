@@ -317,17 +317,11 @@ contains
 
     integer :: iDim
     character(24) :: CoordinateSystem
-    real(dp) :: xLL(3), xRR(3)
-
-    xLL = xL
-    xRR = xR
 
     IF( PRESENT(CoordinateSystem_Option) )THEN
 
       IF( TRIM(CoordinateSystem_Option) == 'spherical' )THEN
         CoordinateSystem = 'SPHERICAL'
-        xLL(2:3) = [0.0d0, 0.0d0]
-        xRR(2:3) = [Pi,    TwoPi]
       ELSE IF( TRIM(CoordinateSystem_Option) == 'cartesian' )THEN
         CoordinateSystem = 'CARTESIAN'
       ELSE
@@ -341,14 +335,14 @@ contains
 
     call InitializeProgramHeaderX &
            ( nX_Option = nX, swX_Option = swX, &
-             xL_Option = xLL, xR_Option  = xRR,  &
+             xL_Option = xL, xR_Option  = xR,  &
              reinitializeZ_Option = .TRUE. )
 
     DO iDim = 1, 3
 
       call CreateMesh &
              ( MeshX(iDim), nX(iDim), nNodesX(iDim), &
-               swX(iDim), xLL(iDim), xRR(iDim) )
+               swX(iDim), xL(iDim), xR(iDim) )
 
     END DO
 
