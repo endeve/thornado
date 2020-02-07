@@ -27,7 +27,7 @@ THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 #### ========== User Input ==========
 
 # Specify directory containing plotfiles
-ProblemDirectory = THORNADO_DIR + '/SandBox/AMReX/'
+ProblemDirectory = THORNADO_DIR + 'SandBox/AMReX/'
 
 # Specify name of problem (only used for name of output file(s))
 ProblemName = 'KHI'
