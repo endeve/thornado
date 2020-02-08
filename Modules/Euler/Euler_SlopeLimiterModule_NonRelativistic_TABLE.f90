@@ -193,7 +193,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iErr, SuppressBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -203,8 +203,6 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(out)          :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER,  INTENT(out)          :: &
-      iErr
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
 

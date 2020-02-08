@@ -129,7 +129,7 @@ PROGRAM ApplicationDriver
              = .FALSE. )
 
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, iErr )
@@ -152,7 +152,7 @@ PROGRAM ApplicationDriver
              = UseTroubledCellIndicator )
 
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, iErr )

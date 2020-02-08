@@ -21,18 +21,13 @@ CONTAINS
 
 
   SUBROUTINE ComputeCharacteristicDecomposition_Euler &
-    ( iDim, G, U, R, invR, iErr_Option )
+    ( iDim, G, U, R, invR )
 
     INTEGER,  INTENT(in)            :: iDim
     REAL(DP), INTENT(in)            :: G(nGF)
     REAL(DP), INTENT(in)            :: U(nCF)
     REAL(DP), INTENT(out)           :: R(nCF,nCF)
     REAL(DP), INTENT(out)           :: invR(nCF,nCF)
-    INTEGER,  INTENT(out), OPTIONAL :: iErr_Option
-
-    INTEGER :: iErr
-
-    iErr = 0
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
@@ -47,7 +42,7 @@ CONTAINS
 #elif defined HYDRO_RELATIVISTIC
 
     CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-           ( iDim, G, U, R, invR, iErr )
+           ( iDim, G, U, R, invR )
 
 #else
 
@@ -55,9 +50,6 @@ CONTAINS
            ( iDim, G, U, R, invR )
 
 #endif
-
-    IF( PRESENT( iErr_Option ) ) &
-      iErr_Option = iErr
 
   END SUBROUTINE ComputeCharacteristicDecomposition_Euler
 

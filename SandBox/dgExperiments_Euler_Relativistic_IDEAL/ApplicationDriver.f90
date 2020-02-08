@@ -452,7 +452,7 @@ PROGRAM ApplicationDriver
          ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
   CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )

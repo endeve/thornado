@@ -199,7 +199,7 @@ CONTAINS
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
         CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D, iErr )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
 
         CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
@@ -224,7 +224,7 @@ CONTAINS
     END DO
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iErr )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )

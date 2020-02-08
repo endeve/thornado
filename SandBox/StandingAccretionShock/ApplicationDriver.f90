@@ -137,7 +137,7 @@ PROGRAM ApplicationDriver
   CALL ApplyPerturbations( 1.4_DP, 1.6_DP, 0, 2.0_DP )
 
   CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
   CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )

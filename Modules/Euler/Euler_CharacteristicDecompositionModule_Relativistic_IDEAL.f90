@@ -40,12 +40,11 @@ CONTAINS
 
 
   SUBROUTINE ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
-    ( iDim, G, U, R, invR, iErr )
+    ( iDim, G, U, R, invR )
 
     INTEGER,  INTENT(in)  :: iDim
     REAL(DP), INTENT(in)  :: G(nGF), U(nCF)
     REAL(DP), INTENT(out) :: R(nCF,nCF), invR(nCF,nCF)
-    INTEGER,  INTENT(out) :: iErr
 
     ! --- Expressions for right and left eigenvector matrices from
     !     Rezzolla & Zanotti, Relativistic Hydrodynamics, Eq. 7.240-7.248 ---
@@ -67,6 +66,7 @@ CONTAINS
     LOGICAL  :: DEBUG_X3 = .FALSE.
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
     INTEGER  :: i
+    INTEGER  :: iErr
 
     CALL TimersStart_Euler( Timer_Euler_CharacteristicDecomposition )
 
