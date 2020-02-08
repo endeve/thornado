@@ -38,8 +38,6 @@ MODULE MF_Euler_UtilitiesModule
     TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_DataTransfer, &
     Timer_AMReX_ComputeTimeStep_Euler
-  USE Euler_AMReX_ErrorModule, ONLY: &
-    DescribeError_Euler_AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -163,8 +161,6 @@ CONTAINS
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nAF), iErr_Option = iErr )
 
-        CALL DescribeError_Euler_AMReX( iErr )
-
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         CALL thornado2AMReX &
@@ -280,9 +276,6 @@ CONTAINS
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF), &
                  CFL, TimeStep(iLevel), iErr_Option = iErr )
-
-        CALL DescribeError_Euler_AMReX &
-               ( iErr, Message_Option = 'Calling from: MF_ComputeTimeStep' )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 

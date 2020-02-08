@@ -20,8 +20,6 @@ MODULE MF_Euler_BoundaryConditionsModule
     TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_ConstructEdgeMap, &
     Timer_AMReX_Euler_GetBC
-  USE Euler_AMReX_ErrorModule,  ONLY: &
-    DescribeError_Euler_AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -67,8 +65,6 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
              iErr, iApplyBC )
-
-    CALL DescribeError_Euler_AMReX( iErr )
 
   END SUBROUTINE MF_ApplyBoundaryConditions_Euler
 

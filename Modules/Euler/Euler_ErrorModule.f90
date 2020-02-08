@@ -1,5 +1,8 @@
 MODULE Euler_ErrorModule
 
+  USE UtilitiesModule, ONLY: &
+    thornado_abort
+
   IMPLICIT NONE
   PRIVATE
 
@@ -35,7 +38,7 @@ CONTAINS
           WRITE(*,'(2x,A)') 'U_K(iCF_E) < 0'
           WRITE(*,'(2x,A)') TRIM( Message )
 
-          STOP ''
+          CALL thornado_abort
 
       CASE( 02 )
 
@@ -48,7 +51,7 @@ CONTAINS
           WRITE(*,'(2x,A)') 'SolveTheta_Bisection: No root in interval'
           WRITE(*,'(2x,A)') TRIM( Message )
 
-          STOP ''
+          CALL thornado_abort
 
       CASE( 03 )
 
@@ -61,7 +64,7 @@ CONTAINS
           WRITE(*,'(2x,A)') 'SolveTheta_Bisection: Failure to converge'
           WRITE(*,'(2x,A)') TRIM( Message )
 
-          STOP ''
+          CALL thornado_abort
 
       CASE( 04 )
 
@@ -74,7 +77,7 @@ CONTAINS
           WRITE(*,'(2x,A)') 'q < 0 after all limiting'
           WRITE(*,'(2x,A)') TRIM( Message )
 
-          STOP ''
+          CALL thornado_abort
 
       CASE( 05 )
 
@@ -88,7 +91,7 @@ CONTAINS
             'Invalid Boundary Condition for Fluid X1'
           WRITE(*,'(2x,A)') TRIM( Message )
 
-          STOP ''
+          CALL thornado_abort
 
       CASE( 06 )
 
@@ -102,7 +105,7 @@ CONTAINS
             'Invalid Boundary Condition for Fluid X2'
           WRITE(*,'(2x,A)') TRIM( Message )
 
-          STOP ''
+          CALL thornado_abort
 
       CASE( 07 )
 
@@ -116,7 +119,7 @@ CONTAINS
             'Invalid Boundary Condition for Fluid X3'
           WRITE(*,'(2x,A)') TRIM( Message )
 
-          STOP ''
+          CALL thornado_abort
 
       CASE( 08 )
 
@@ -130,7 +133,7 @@ CONTAINS
             'q < 0'
           WRITE(*,'(2x,A)') TRIM( Message )
 
-          STOP ''
+          CALL thornado_abort
 
       CASE( 09 )
 
@@ -144,14 +147,14 @@ CONTAINS
             'q < 0'
           WRITE(*,'(2x,A)') TRIM( Message )
 
-          STOP ''
+          CALL thornado_abort
 
       CASE DEFAULT
 
           WRITE(*,'(2x,A,I2.2)') 'Unknown error: ', iErr
           WRITE(*,'(2x,A)') TRIM( Message )
 
-          STOP ''
+          CALL thornado_abort
 
     END SELECT
 

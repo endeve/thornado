@@ -60,8 +60,6 @@ PROGRAM ApplicationDriver
     Timer_Euler_InputOutput, &
     Timer_Euler_Initialize, &
     Timer_Euler_Finalize
-  USE Euler_ErrorModule, ONLY: &
-    DescribeError_Euler
 
   IMPLICIT NONE
 
@@ -456,12 +454,8 @@ PROGRAM ApplicationDriver
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
 
-  CALL DescribeError_Euler( iErr )
-
   CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, iErr )
-
-  CALL DescribeError_Euler( iErr )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -471,8 +465,6 @@ PROGRAM ApplicationDriver
 
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, iErr )
-
-    CALL DescribeError_Euler( iErr )
 
     CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -511,8 +503,6 @@ PROGRAM ApplicationDriver
              uGF, uCF, &
              CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
              dt, iErr )
-
-    CALL DescribeError_Euler( iErr )
 
     IF( t + dt .LT. t_end )THEN
       t = t + dt
@@ -573,8 +563,6 @@ PROGRAM ApplicationDriver
         CALL ComputeFromConserved_Euler_Relativistic &
                ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, iErr )
 
-        CALL DescribeError_Euler( iErr )
-
         CALL WriteFieldsHDF &
                ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
@@ -604,8 +592,6 @@ PROGRAM ApplicationDriver
 
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF, iErr )
-
-    CALL DescribeError_Euler( iErr )
 
     CALL WriteFieldsHDF &
            ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )

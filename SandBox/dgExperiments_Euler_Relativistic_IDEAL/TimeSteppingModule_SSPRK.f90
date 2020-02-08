@@ -14,8 +14,6 @@ MODULE TimeSteppingModule_SSPRK
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_UpdateFluid
-  USE Euler_ErrorModule, ONLY: &
-    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -203,18 +201,12 @@ CONTAINS
         CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D, iErr )
 
-        CALL DescribeError_Euler( iErr )
-
         CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, iErr )
-
-        CALL DescribeError_Euler( iErr )
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D_SSPRK(:,:,:,:,:,iS), iErr )
-
-        CALL DescribeError_Euler( iErr )
 
       END IF
 
@@ -234,12 +226,8 @@ CONTAINS
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iErr )
 
-    CALL DescribeError_Euler( iErr )
-
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr )
-
-    CALL DescribeError_Euler( iErr )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 

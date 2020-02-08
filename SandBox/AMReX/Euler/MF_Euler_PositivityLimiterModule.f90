@@ -35,8 +35,6 @@ MODULE MF_Euler_PositivityLimiterModule
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_DataTransfer
-  USE Euler_AMReX_ErrorModule,  ONLY: &
-    DescribeError_Euler_AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -124,8 +122,6 @@ CONTAINS
                  U (1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nCF), iErr_Option = iErr )
-
-        CALL DescribeError_Euler_AMReX( iErr )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 

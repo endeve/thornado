@@ -62,8 +62,6 @@ PROGRAM ApplicationDriver
     InitializeTally_Euler_NonRelativistic_TABLE, &
     FinalizeTally_Euler_NonRelativistic_TABLE, &
     ComputeTally_Euler_NonRelativistic_TABLE
-  USE Euler_ErrorModule, ONLY: &
-    DescribeError_Euler
 
   IMPLICIT NONE
 
@@ -372,8 +370,6 @@ PROGRAM ApplicationDriver
 
   CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF, iErr )
-
-  CALL DescribeError_Euler( iErr )
 
   CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )

@@ -36,8 +36,6 @@ MODULE  MF_Euler_dgDiscretizationModule
     TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
     Timer_AMReX_Euler_InteriorBC, &
     Timer_AMReX_Euler_DataTransfer
-  USE Euler_AMReX_ErrorModule, ONLY: &
-    DescribeError_Euler_AMReX
 
   IMPLICIT NONE
   PRIVATE
@@ -157,10 +155,6 @@ CONTAINS
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3),1:nCF), &
                  iErr, SuppressBC_Option = .TRUE. )
-
-        CALL DescribeError_Euler_AMReX &
-               ( iErr, &
-                 Message_Option = 'Calling from: MF_Euler_ComputeIncrement' )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
