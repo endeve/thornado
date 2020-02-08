@@ -70,7 +70,6 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: A(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iErr
 
     DO iLevel = 0, nLevels-1
 
@@ -159,7 +158,7 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nPF), &
                  A(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nAF), iErr_Option = iErr )
+                           iX_B1(3):iX_E1(3),1:nAF) )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
@@ -213,7 +212,6 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iErr
 
     REAL(amrex_real) :: TimeStep(0:nLevels-1)
 
@@ -275,7 +273,7 @@ CONTAINS
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF), &
-                 CFL, TimeStep(iLevel), iErr_Option = iErr )
+                 CFL, TimeStep(iLevel) )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 

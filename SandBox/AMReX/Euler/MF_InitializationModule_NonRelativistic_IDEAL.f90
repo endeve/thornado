@@ -12,8 +12,7 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
     amrex_mfiter_build, &
     amrex_mfiter_destroy
   USE amrex_parallel_module,  ONLY: &
-    amrex_parallel_ioprocessor, &
-    amrex_parallel_communicator
+    amrex_parallel_ioprocessor
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse,       &
     amrex_parmparse_build, &
@@ -60,6 +59,8 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
     ComputeConserved_Euler
   USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive
+  USE Euler_ErrorModule,       ONLY: &
+    DescribeError_Euler
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -92,8 +93,6 @@ CONTAINS
     CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
     TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-
-    INTEGER :: iErr
 
     IF( amrex_parallel_ioprocessor() )THEN
       WRITE(*,*)
@@ -140,7 +139,7 @@ CONTAINS
           WRITE(*,'(6x,A)')     'StandingAccretionShock'
         END IF
 
-        CALL MPI_ABORT( amrex_parallel_communicator(), iErr )
+        CALL DescribeError_Euler( 99 )
 
     END SELECT
 
@@ -155,8 +154,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -286,8 +285,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX
+    REAL(AR)       :: X1
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -408,8 +407,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX
+    REAL(AR)       :: X1
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -530,8 +529,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1
+    REAL(AR)       :: X1
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -647,8 +646,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -778,8 +777,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)

@@ -12,8 +12,7 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     amrex_mfiter_build, &
     amrex_mfiter_destroy
   USE amrex_parallel_module,  ONLY: &
-    amrex_parallel_ioprocessor, &
-    amrex_parallel_communicator
+    amrex_parallel_ioprocessor
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse,       &
     amrex_parmparse_build, &
@@ -60,14 +59,16 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     ComputeConserved_Euler
   USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive
-  USE UnitsModule, ONLY: &
+  USE UnitsModule,             ONLY: &
     Kilometer, &
     Second, &
     SolarMass, &
     SpeedOfLight, &
     Gram, Centimeter
-  USE UtilitiesModule, ONLY: &
+  USE UtilitiesModule,         ONLY: &
     NodeNumberX
+  USE Euler_ErrorModule,       ONLY: &
+    DescribeError_Euler
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -103,7 +104,6 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
-    INTEGER :: iErr
 
     IF( amrex_parallel_ioprocessor() )THEN
       WRITE(*,*)
@@ -155,7 +155,7 @@ CONTAINS
           WRITE(*,'(6x,A)')     'StandingAccretionShock'
         END IF
 
-        CALL MPI_ABORT( amrex_parallel_communicator(), iErr )
+        CALL DescribeError_Euler( 99 )
 
     END SELECT
 
@@ -170,8 +170,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1
+    REAL(AR)       :: X1
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -224,7 +224,9 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          X1 = MeshX(1) % Center(iX1)
+          iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
           DO iNodeX = 1, nDOFX
 
@@ -416,8 +418,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -567,8 +569,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -718,8 +720,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -871,8 +873,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -1013,7 +1015,7 @@ CONTAINS
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -1369,7 +1371,7 @@ CONTAINS
     REAL(AR), INTENT(out) :: D_2, V_2, P_2, PolytropicConstant
 
     REAL(AR) :: Alpha, Psi
-    REAL(AR) :: C1, C2, C3, a0, a1, a2, a3, a4, X1
+    REAL(AR) :: C1, C2, C3, a0, a1, a2, a3, a4
     REAL(AR) :: W
 
     REAL(AR), PARAMETER :: ShockTolerance = 0.1_AR

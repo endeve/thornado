@@ -66,7 +66,6 @@ CONTAINS
 
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iErr
 
     TYPE(EdgeMap) :: Edge_Map
 
@@ -154,7 +153,7 @@ CONTAINS
                  dU(1:nDOFX,iX_B0(1):iX_E0(1), &
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3),1:nCF), &
-                 iErr, SuppressBC_Option = .TRUE. )
+                 SuppressBC_Option = .TRUE. )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 

@@ -51,7 +51,7 @@ CONTAINS
   SUBROUTINE ComputePrimitive_Scalar &
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, iErr_Option )
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
     REAL(DP), INTENT(in)            :: &
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
@@ -59,12 +59,6 @@ CONTAINS
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
     REAL(DP), INTENT(in)            :: &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
-    INTEGER,  INTENT(out), OPTIONAL :: &
-      iErr_Option
-
-    INTEGER :: iErr
-
-    iErr = 0
 
 #if defined HYDRO_NONRELATIVISTIC
 
@@ -78,7 +72,7 @@ CONTAINS
     CALL ComputePrimitive_Euler_Relativistic &
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
              PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, iErr )
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #else
 
@@ -88,9 +82,6 @@ CONTAINS
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #endif
-
-    IF( PRESENT( iErr_Option ) ) &
-      iErr_Option = iErr
 
   END SUBROUTINE ComputePrimitive_Scalar
 
@@ -98,7 +89,7 @@ CONTAINS
   SUBROUTINE ComputePrimitive_Vector &
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, iErr_Option )
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
     REAL(DP), INTENT(in)            :: &
       CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:)
@@ -106,12 +97,6 @@ CONTAINS
       PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), PF_E(:), PF_Ne(:)
     REAL(DP), INTENT(in)            :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
-    INTEGER,  INTENT(out), OPTIONAL :: &
-      iErr_Option
-
-    INTEGER :: iErr
-
-    iErr = 0
 
 #if defined HYDRO_NONRELATIVISTIC
 
@@ -125,7 +110,7 @@ CONTAINS
     CALL ComputePrimitive_Euler_Relativistic &
            ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
              PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, iErr )
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #else
 
@@ -135,9 +120,6 @@ CONTAINS
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #endif
-
-    IF( PRESENT( iErr_Option ) ) &
-      iErr_Option = iErr
 
   END SUBROUTINE ComputePrimitive_Vector
 
@@ -185,7 +167,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeFromConserved_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, iErr_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
 
     INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -195,12 +177,6 @@ CONTAINS
     REAL(DP), INTENT(out)           :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER,  INTENT(out), OPTIONAL :: &
-      iErr_Option
-
-    INTEGER :: iErr
-
-    iErr = 0
 
 #if defined HYDRO_NONRELATIVISTIC
 
@@ -234,7 +210,7 @@ CONTAINS
                        iX_B1(3):iX_E1(3),1:nPF), &
              A(1:nDOFX,iX_B1(1):iX_E1(1),&
                        iX_B1(2):iX_E1(2),&
-                       iX_B1(3):iX_E1(3),1:nAF), iErr )
+                       iX_B1(3):iX_E1(3),1:nAF) )
 
 #else
 
@@ -256,14 +232,11 @@ CONTAINS
 
 #endif
 
-    IF( PRESENT( iErr_Option ) ) &
-      iErr_Option = iErr
-
   END SUBROUTINE ComputeFromConserved_Euler
 
 
   SUBROUTINE ComputeTimeStep_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, iErr_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
 
     INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -274,12 +247,6 @@ CONTAINS
       CFL
     REAL(DP), INTENT(out)           :: &
       TimeStep
-    INTEGER,  INTENT(out), OPTIONAL :: &
-      iErr_Option
-
-    INTEGER :: iErr
-
-    iErr = 0
 
 #if defined HYDRO_NONRELATIVISTIC
 
@@ -303,7 +270,7 @@ CONTAINS
              U(1:nDOFX,iX_B1(1):iX_E1(1),&
                        iX_B1(2):iX_E1(2),&
                        iX_B1(3):iX_E1(3),1:nCF), &
-             CFL, TimeStep, iErr )
+             CFL, TimeStep )
 
 #else
 
@@ -318,9 +285,6 @@ CONTAINS
              CFL, TimeStep )
 
 #endif
-
-    IF( PRESENT( iErr_Option ) ) &
-      iErr_Option = iErr
 
   END SUBROUTINE ComputeTimeStep_Euler
 

@@ -9,6 +9,7 @@ Euler_UtilitiesModule_NonRelativistic.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
+  TimersModule_Euler.o \
   Euler_UtilitiesModule_NonRelativistic.F90
 
 Euler_UtilitiesModule_Relativistic.o: \
@@ -18,6 +19,8 @@ Euler_UtilitiesModule_Relativistic.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
+  TimersModule_Euler.o \
+  Euler_ErrorModule.o \
   Euler_UtilitiesModule_Relativistic.F90
 
 Euler_UtilitiesModule.o: \
@@ -32,6 +35,7 @@ Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   EquationOfStateModule.o \
+  TimersModule_Euler.o \
   Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL.f90
 
 Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o: \
@@ -41,6 +45,7 @@ Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   EquationOfStateModule_TABLE.o \
+  TimersModule_Euler.o \
   Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.f90
 
 Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o: \
@@ -49,6 +54,7 @@ Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_Relativistic.o \
   EquationOfStateModule.o \
+  TimersModule_Euler.o \
   Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.f90
 
 Euler_CharacteristicDecompositionModule.o: \
