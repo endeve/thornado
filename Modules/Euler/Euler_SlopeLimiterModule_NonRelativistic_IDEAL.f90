@@ -212,14 +212,9 @@ CONTAINS
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
 
-    IF( .NOT. SuppressBC )THEN
-
+    IF( .NOT. SuppressBC ) &
       CALL ApplyBoundaryConditions_Euler &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr )
-
-      IF( iErr .NE. 0 ) RETURN
-
-    END IF
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL DetectTroubledCells &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )

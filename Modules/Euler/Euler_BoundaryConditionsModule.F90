@@ -12,6 +12,8 @@ MODULE Euler_BoundaryConditionsModule
     NodeNumberX
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -52,20 +54,16 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr, iApplyBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER,  INTENT(out)          :: &
-      iErr
     INTEGER,  INTENT(in), OPTIONAL :: &
       iApplyBC_Option(3)
 
     INTEGER :: iApplyBC(3)
-
-    iErr = 0
 
     iApplyBC = iEuler_ApplyBC_Both
     IF( PRESENT( iApplyBC_Option ) ) &
@@ -76,48 +74,38 @@ CONTAINS
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), &
-             iErr, iApplyBC(1) )
-
-    IF( iErr .NE. 0 ) RETURN
+             iApplyBC(1) )
 
     CALL Euler_ApplyBC_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), &
-             iErr, iApplyBC(2) )
-
-    IF( iErr .NE. 0 ) RETURN
+             iApplyBC(2) )
 
     CALL Euler_ApplyBC_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), &
-             iErr, iApplyBC(3) )
-
-    IF( iErr .NE. 0 ) RETURN
+             iApplyBC(3) )
 
   END SUBROUTINE ApplyBoundaryConditions_Euler
 
 
   SUBROUTINE Euler_ApplyBC_X1 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr, iApplyBC )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(out)    :: &
-      iErr
 
     INTEGER  :: iCF, iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX_0
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX1
     REAL(DP) :: D_0, E_0, R_0, R_q
-
-    iErr = 0
 
     SELECT CASE ( bcX(1) )
 
@@ -403,7 +391,7 @@ CONTAINS
 
     CASE DEFAULT
 
-      iErr = 05
+      CALL DescribeError_Euler( 05 )
 
     END SELECT
 
@@ -411,20 +399,16 @@ CONTAINS
 
 
   SUBROUTINE Euler_ApplyBC_X2 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr, iApplyBC )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(out)  :: &
-      iErr
 
     INTEGER :: iCF, iX1, iX2, iX3
     INTEGER :: iNodeX, iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX2
-
-    iErr = 0
 
     SELECT CASE ( bcX(2) )
 
@@ -590,7 +574,7 @@ CONTAINS
 
     CASE DEFAULT
 
-      iErr = 06
+      CALL DescribeError_Euler( 06 )
 
     END SELECT
 
@@ -598,19 +582,15 @@ CONTAINS
 
 
   SUBROUTINE Euler_ApplyBC_X3 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iErr, iApplyBC )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(out)    :: &
-      iErr
 
     INTEGER :: iCF, iX1, iX2, iX3
-
-    iErr = 0
 
     SELECT CASE ( bcX(3) )
 
@@ -683,7 +663,7 @@ CONTAINS
 
     CASE DEFAULT
 
-      iErr = 07
+      CALL DescribeError_Euler( 07 )
 
     END SELECT
 

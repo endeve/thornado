@@ -109,6 +109,7 @@ Euler_BoundaryConditionsModule.o: \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   FluidFieldsModule.o \
+  ErrorModule_Euler.o \
   Euler_BoundaryConditionsModule.F90
 
 Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o: \
@@ -124,6 +125,7 @@ Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL.o \
+  TimersModule_Euler.o \
   Euler_SlopeLimiterModule_NonRelativistic_IDEAL.f90
 
 Euler_SlopeLimiterModule_NonRelativistic_TABLE.o: \
@@ -140,6 +142,7 @@ Euler_SlopeLimiterModule_NonRelativistic_TABLE.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o \
+  TimersModule_Euler.o \
   Euler_SlopeLimiterModule_NonRelativistic_TABLE.f90
 
 Euler_SlopeLimiterModule_Relativistic_IDEAL.o: \
@@ -155,6 +158,7 @@ Euler_SlopeLimiterModule_Relativistic_IDEAL.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
+  TimersModule_Euler.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.F90
 
 Euler_SlopeLimiterModule.o: \

@@ -56,7 +56,6 @@ CONTAINS
       Edge_Map
 
     INTEGER :: iApplyBC(3)
-    INTEGER :: iErr = 0
 
     CALL Edge_Map % Euler_GetBC( iApplyBC )
 
@@ -64,7 +63,7 @@ CONTAINS
     CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-             iErr, iApplyBC )
+             iApplyBC )
 
   END SUBROUTINE MF_ApplyBoundaryConditions_Euler
 
