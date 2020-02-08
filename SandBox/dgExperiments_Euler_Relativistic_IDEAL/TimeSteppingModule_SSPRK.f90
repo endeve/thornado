@@ -202,7 +202,7 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D, iErr )
 
         CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, iErr )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -227,7 +227,7 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iErr )
 
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 

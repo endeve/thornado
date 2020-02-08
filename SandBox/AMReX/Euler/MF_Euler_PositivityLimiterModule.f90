@@ -59,13 +59,11 @@ CONTAINS
     REAL(amrex_real), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(amrex_real), ALLOCATABLE :: G(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iErr
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
-
-    iErr = 0
 
     DO iLevel = 0, nLevels-1
 
@@ -121,7 +119,7 @@ CONTAINS
                             iX_B1(3):iX_E1(3),1:nGF), &
                  U (1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nCF), iErr_Option = iErr )
+                            iX_B1(3):iX_E1(3),1:nCF) )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 

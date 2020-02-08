@@ -68,6 +68,7 @@ Euler_PositivityLimiterModule_NonRelativistic_IDEAL.o: \
   GeometryComputationModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
+  TimersModule_Euler.o \
   Euler_PositivityLimiterModule_NonRelativistic_IDEAL.f90
 
 Euler_PositivityLimiterModule_NonRelativistic_TABLE.o: \
@@ -79,6 +80,7 @@ Euler_PositivityLimiterModule_NonRelativistic_TABLE.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_TABLE.o \
+  TimersModule_Euler.o \
   Euler_PositivityLimiterModule_NonRelativistic_TABLE.f90
 
 Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
@@ -89,6 +91,8 @@ Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
   FluidFieldsModule.o \
   GeometryComputationModule.o \
   GeometryFieldsModule.o \
+  TimersModule_Euler.o \
+  Euler_ErrorModule.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.f90
 
 Euler_PositivityLimiterModule.o: \

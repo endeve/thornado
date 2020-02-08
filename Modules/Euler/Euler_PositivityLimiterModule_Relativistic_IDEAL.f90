@@ -29,6 +29,8 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_PositivityLimiter
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -127,7 +129,7 @@ CONTAINS
   !>        and velocity
   !> @todo Modify to accomodate GR
   SUBROUTINE ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -135,8 +137,6 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(out)    :: &
-      iErr
 
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
     REAL(DP) :: Theta_D, Theta_q, Theta_P
@@ -152,8 +152,6 @@ CONTAINS
     IF( .NOT. UsePositivityLimiter ) RETURN
 
     CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
-
-    iErr = 0
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -209,13 +207,8 @@ CONTAINS
                      * U_q(1:nDOFX,iCF_E) ) &
                 / SUM( WeightsX_q(1:nDOFX) * G_q(1:nDOFX,iGF_SqrtGm) ) )
 
-        IF( U_K(iCF_E) .LT. Zero )THEN
-
-            iErr = 01
-
-            RETURN
-
-        END IF
+        IF( U_K(iCF_E) .LT. Zero ) &
+            CALL DescribeError_Euler( 01 )
 
         Min_ESq = Min_2 * U_K(iCF_E)**2
 
@@ -286,9 +279,7 @@ CONTAINS
 
                 CALL SolveTheta_Bisection &
                   ( U_PP(iP,1:nCF), U_K(1:nCF), G_PP(iP,1:nGF), Min_ESq, &
-                    Theta_P, iX1, iX2, iX3, iP, iErr )
-
-                IF( iErr .NE. 0 ) RETURN
+                    Theta_P, iX1, iX2, iX3, iP )
 
                 Theta_q = MIN( Theta_q, Theta_P )
 
@@ -350,13 +341,8 @@ CONTAINS
       CALL Computeq &
              ( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), Min_ESq, q(1:nPT) )
 
-      IF( ANY( q(1:nPT) .LT. Zero ) )THEN
-
-          iErr = 04
-
-          RETURN
-
-      END IF
+      IF( ANY( q(1:nPT) .LT. Zero ) ) &
+          CALL DescribeError_Euler( 04 )
 
     END DO
     END DO
@@ -466,14 +452,13 @@ CONTAINS
 
 
   SUBROUTINE SolveTheta_Bisection &
-    ( U_Q, U_K, G_Q, Min_ESq, Theta_P, iX1, iX2, iX3, iP, iErr )
+    ( U_Q, U_K, G_Q, Min_ESq, Theta_P, iX1, iX2, iX3, iP )
 
     REAL(DP), INTENT(in)  :: U_Q(nCF), U_K(nCF), G_Q(nGF), Min_ESq
     REAL(DP), INTENT(out) :: Theta_P
 
     ! --- For de-bugging ---
     INTEGER, INTENT(in)  :: iX1, iX2, iX3, iP
-    INTEGER, INTENT(out) :: iErr
     INTEGER              :: iCF, iGF
 
     INTEGER,  PARAMETER :: MAX_IT = 19
@@ -483,8 +468,6 @@ CONTAINS
     INTEGER  :: ITERATION
     REAL(DP) :: x_a, x_b, x_c, dx
     REAL(DP) :: f_a, f_b, f_c
-
-    iErr = 0
 
 !!$    WRITE(*,*)
 !!$    WRITE(*,'(A,I3)') 'iP = ', iP
@@ -525,13 +508,8 @@ CONTAINS
               x_b * U_Q(iCF_E)  + ( One - x_b ) * U_K(iCF_E),         &
               G_Q(iGF_Gm_dd_11), G_Q(iGF_Gm_dd_22), G_Q(iGF_Gm_dd_33), Min_ESq )
 
-    IF( .NOT. f_a * f_b < 0 )THEN
-
-      iErr = 02
-
-      RETURN
-
-    END IF
+    IF( .NOT. f_a * f_b < 0 ) &
+      CALL DescribeError_Euler( 02 )
 
     dx = x_b - x_a
 
@@ -576,13 +554,8 @@ CONTAINS
         WRITE(*,'(A8,A,3ES15.6e3)') &
           '', 'f_a, f_c, f_b     = ', f_a, f_c, f_b
 
-        IF( ITERATION .GT. MAX_IT + 3 )THEN
-
-          iErr = 03
-
-          RETURN
-
-        END IF
+        IF( ITERATION .GT. MAX_IT + 3 ) &
+          CALL DescribeError_Euler( 03 )
 
       END IF
 
