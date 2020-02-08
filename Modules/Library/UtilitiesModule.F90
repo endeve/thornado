@@ -23,6 +23,7 @@ MODULE UtilitiesModule
   PUBLIC :: WriteVector
   PUBLIC :: WriteMatrix
   PUBLIC :: WriteRank3Tensor
+  PUBLIC :: thornado_abort
 
   INTERFACE InitializeWeights
     MODULE PROCEDURE InitializeWeights3D
@@ -381,6 +382,24 @@ CONTAINS
     CLOSE( FUNIT )
 
   END SUBROUTINE WriteRank3Tensor
+
+
+  SUBROUTINE thornado_abort
+
+#if defined USE_AMREX_TRUE
+
+    USE amrex_error_module, ONLY: &
+      amrex_abort
+
+    CALL amrex_abort('')
+
+#else
+
+    STOP ''
+
+#endif
+
+  END SUBROUTINE thornado_abort
 
 
 END MODULE UtilitiesModule

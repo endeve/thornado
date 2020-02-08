@@ -1,6 +1,8 @@
 MOMENT_CLOSURE = MINERBO
 #MOMENT_CLOSURE = MAXIMUM_ENTROPY_CB
 
+DEFINES += -DUSE_AMREX_TRUE
+
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
