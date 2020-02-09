@@ -136,9 +136,9 @@ CONTAINS
 
         CALL InitializeFields_RiemannProblem2D( MF_uGF, MF_uCF )
 
-      CASE( 'StandingAccretionShock' )
+      CASE( 'StandingAccretionShock_Relativistic' )
 
-        CALL InitializeFields_StandingAccretionShock &
+        CALL InitializeFields_StandingAccretionShock_Relativistic &
                ( MF_uGF, MF_uCF )
 
       CASE DEFAULT
@@ -152,7 +152,7 @@ CONTAINS
           WRITE(*,'(6x,A)')     'KelvinHelmholtz'
           WRITE(*,'(6x,A)')     'KelvinHelmholtz3D'
           WRITE(*,'(6x,A)')     'RiemannProblem2D'
-          WRITE(*,'(6x,A)')     'StandingAccretionShock'
+          WRITE(*,'(6x,A)')     'StandingAccretionShock_Relativistic'
         END IF
 
         CALL DescribeError_Euler( 99 )
@@ -1005,7 +1005,7 @@ CONTAINS
   END SUBROUTINE InitializeFields_RiemannProblem2D
 
 
-  SUBROUTINE InitializeFields_StandingAccretionShock &
+  SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic &
     ( MF_uGF, MF_uCF )
 
     TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
@@ -1355,7 +1355,7 @@ CONTAINS
     END DO
 
 
-  END SUBROUTINE InitializeFields_StandingAccretionShock
+  END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
 
 
   ! --- Auxiliary functions/subroutines for SAS problem ---
