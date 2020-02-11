@@ -25,9 +25,8 @@ MODULE MyAmrModule
     amrex_geometry
 
   ! --- thornado Modules ---
-  USE ProgramHeaderModule,  ONLY: &
-    InitializeProgramHeader, nDOFX, nDimsX
-
+  USE ProgramHeaderModule,   ONLY: &
+    InitializeProgramHeader, nDimsX
   ! --- Local Modules ---
   USE MyAmrDataModule, ONLY: &
     InitializeDataAMReX, &
@@ -37,13 +36,14 @@ MODULE MyAmrModule
   ! --- thornado ---
   REAL(AR)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk
   REAL(AR),          ALLOCATABLE :: t(:), dt(:)
+  REAL(AR),          ALLOCATABLE :: V_0(:)
   REAL(AR)                       :: CFL
   INTEGER                        :: nNodes, nStages
-  INTEGER                        :: nE, swE
-  INTEGER                        :: iCycleD, iCycleW, iCycleChk, iRestart
+  INTEGER                        :: nE, swE, bcE
+  INTEGER                        :: iCycleD, iCycleW, iCycleChk, iRestart, nSpecies
   INTEGER,           ALLOCATABLE :: nX(:), swX(:), bcX(:)
   REAL(AR),          ALLOCATABLE :: xL(:), xR(:)
-  REAL(AR)                       :: eL, eR
+  REAL(AR)                       :: eL, eR, zoomE
   CHARACTER(LEN=:),  ALLOCATABLE :: ProgramName
   CHARACTER(LEN=32), SAVE        :: CoordSys
   LOGICAL,           SAVE        :: UsePhysicalUnits
@@ -98,8 +98,15 @@ CONTAINS
       CALL PP % get   ( 'CFL',              CFL )
       CALL PP % get   ( 'ProgramName',      ProgramName )
       CALL PP % getarr( 'bcX',              bcX )
-      CALL PP % getarr( 'swX',              swX )
+      CALL PP % getarr( 'swX',              swX ) 
+      CALL PP % getarr( 'V_0',              V_0 )
+      CALL PP % query ( 'nE', nE )
       CALL PP % get   ( 'swE',              swE )
+      CALL PP % get   ( 'bcE',              bcE )
+      CALL PP % get   ( 'eL',  eL )
+      CALL PP % get   ( 'eR',  eR )  
+      CALL PP % get   ( 'zoomE',  zoomE )
+      CALL PP % get   ( 'nSpecies',        nSpecies )
       CALL PP % get   ( 'iCycleD',          iCycleD )
       CALL PP % get   ( 'iCycleW',          iCycleW )
       CALL PP % get   ( 'iCycleChk',        iCycleChk )
@@ -114,8 +121,6 @@ CONTAINS
       CALL PP % get   ( 'coord_sys',  coord_sys )
       CALL PP % getarr( 'prob_lo',    xL )
       CALL PP % getarr( 'prob_hi',    xR )
-      CALL PP % get   ( 'probE_lo',  eL )
-      CALL PP % get   ( 'probE_hi',  eR )
     CALL amrex_parmparse_destroy( PP )
     IF     ( coord_sys .EQ. 0 )THEN
       CoordSys = 'CARTESIAN'
@@ -143,7 +148,6 @@ CONTAINS
       CALL PP % query ( 'blocking_factor_x', BlockingFactorX1 )
       CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
       CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
-      CALL PP % query ( 'n_cellE', nE )
       CALL PP % get   ( 'max_level',         MaxLevel )
     CALL amrex_parmparse_destroy( PP )
 
@@ -153,10 +157,18 @@ CONTAINS
 
     CALL InitializeProgramHeader &
            ( ProgramName_Option = TRIM( ProgramName ), &
-             nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
-             xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
-             Verbose_Option = amrex_parallel_ioprocessor(), &
-             nE_Option = nE, swE_Option = swE, eL_option = eL, eR_option = eR )
+             nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, bcX_Option = bcX, &
+             xL_Option = xL, xR_Option = xR, &
+             nE_Option = nE, swE_Option = swE, bcE_Option = bcE, eL_option = eL, eR_option = eR, &
+             Verbose_Option = amrex_parallel_ioprocessor() )
+
+    IF( nDimsX .NE. amrex_spacedim )THEN
+      WRITE(*,'(A)') 'ERROR'
+      WRITE(*,'(A)') '-----'
+      WRITE(*,'(A)') 'thornado nDimsX different from AMReX amrex_spacedim.'
+      WRITE(*,'(A)') 'Check DIM parameter in GNUmakefile. Stopping...'
+      STOP
+    END IF
 
     ALLOCATE( StepNo(0:nLevels-1) )
     StepNo = 0

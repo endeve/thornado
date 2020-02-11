@@ -29,6 +29,8 @@ MODULE Euler_UtilitiesModule_Relativistic
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_ComputeTimeStep
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -96,21 +98,8 @@ CONTAINS
                               + CF_S2**2 / GF_Gm_dd_22  &
                               + CF_S3**2 / GF_Gm_dd_33 )
 
-    IF( q .LT. Zero )THEN
-      WRITE(*,*)
-      WRITE(*,'(A)')            'ComputePrimitive_Euler_Relativistic (Scalar)'
-      WRITE(*,'(A)')            '--------------------------------------------'
-      WRITE(*,'(A9,ES18.10E3)') 'q:    ', q
-      WRITE(*,'(A9,ES18.10E3)') 'Gm11: ', GF_Gm_dd_11
-      WRITE(*,'(A9,ES18.10E3)') 'Gm22: ', GF_Gm_dd_22
-      WRITE(*,'(A9,ES18.10E3)') 'Gm33: ', GF_Gm_dd_33
-      WRITE(*,'(A9,ES18.10E3)') 'D:    ', CF_D
-      WRITE(*,'(A9,ES18.10E3)') 'tau:  ', CF_E
-      WRITE(*,'(A9,ES18.10E3)') 'S1:   ', CF_S1
-      WRITE(*,'(A9,ES18.10E3)') 'S2:   ', CF_S2
-      WRITE(*,'(A9,ES18.10E3)') 'S3:   ', CF_S3
-      STOP 'q < 0'
-    END IF
+    IF( q .LT. Zero ) &
+      CALL DescribeError_Euler( 08 )
 
     SSq = CF_S1**2 / GF_Gm_dd_11 &
             + CF_S2**2 / GF_Gm_dd_22 &
@@ -263,22 +252,8 @@ CONTAINS
                                   + CF_S2(i)**2 / GF_Gm_dd_22(i)  &
                                   + CF_S3(i)**2 / GF_Gm_dd_33(i) )
 
-      IF( q .LT. Zero )THEN
-        WRITE(*,*)
-        WRITE(*,'(A)')            'ComputePrimitive_Euler_Relativistic (Vector)'
-        WRITE(*,'(A)')            '--------------------------------------------'
-        WRITE(*,'(A6,I1)')        'Node:    ', i
-        WRITE(*,'(A9,ES18.10E3)') 'q:       ', q
-        WRITE(*,'(A9,ES18.10E3)') 'Gm11(i): ', GF_Gm_dd_11(i)
-        WRITE(*,'(A9,ES18.10E3)') 'Gm22(i): ', GF_Gm_dd_22(i)
-        WRITE(*,'(A9,ES18.10E3)') 'Gm33(i): ', GF_Gm_dd_33(i)
-        WRITE(*,'(A9,ES18.10E3)') 'D(i):    ', CF_D(i)
-        WRITE(*,'(A9,ES18.10E3)') 'tau(i):  ', CF_E(i)
-        WRITE(*,'(A9,ES18.10E3)') 'S1(i):   ', CF_S1(i)
-        WRITE(*,'(A9,ES18.10E3)') 'S2(i):   ', CF_S2(i)
-        WRITE(*,'(A9,ES18.10E3)') 'S3(i):   ', CF_S3(i)
-        STOP 'q < 0'
-      END IF
+      IF( q .LT. Zero ) &
+        CALL DescribeError_Euler( 09 )
 
       SSq =   CF_S1(i)**2 / GF_Gm_dd_11(i) &
             + CF_S2(i)**2 / GF_Gm_dd_22(i) &
@@ -470,7 +445,7 @@ CONTAINS
   !> Compute primitive variables, pressure, and sound-speed from conserved
   !> variables for a data block.
   SUBROUTINE ComputeFromConserved_Euler_Relativistic &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)

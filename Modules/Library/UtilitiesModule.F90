@@ -22,6 +22,8 @@ MODULE UtilitiesModule
   PUBLIC :: MinModB
   PUBLIC :: WriteVector
   PUBLIC :: WriteMatrix
+  PUBLIC :: WriteRank3Tensor
+  PUBLIC :: thornado_abort
 
   INTERFACE InitializeWeights
     MODULE PROCEDURE InitializeWeights3D
@@ -362,6 +364,42 @@ CONTAINS
     CLOSE( FUNIT )
 
   END SUBROUTINE WriteMatrix
+
+  ! --- Writes an object with three dimensions to file. ---
+
+  SUBROUTINE WriteRank3Tensor( M, N, P, R3Tens, FileName )
+
+    INTEGER,                    INTENT(in) :: M, N, P
+    REAL(DP), DIMENSION(M,N,P), INTENT(in) :: R3Tens
+    CHARACTER(LEN=*),           INTENT(in) :: FileName
+
+    INTEGER FUNIT
+
+    OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
+
+    WRITE( FUNIT, * ) M, N, P, R3Tens(1:M,1:N,1:P)
+
+    CLOSE( FUNIT )
+
+  END SUBROUTINE WriteRank3Tensor
+
+
+  SUBROUTINE thornado_abort
+
+#if defined USE_AMREX_TRUE
+
+    USE amrex_error_module, ONLY: &
+      amrex_abort
+
+    CALL amrex_abort('')
+
+#else
+
+    STOP ''
+
+#endif
+
+  END SUBROUTINE thornado_abort
 
 
 END MODULE UtilitiesModule

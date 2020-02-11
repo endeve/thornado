@@ -69,8 +69,6 @@ CONTAINS
 
     INTEGER :: i, iNodeZ, iOS
 
-    PRINT*, "InitializePositivityLimiter_TwoMoment"
-
     IF( PRESENT( Min_1_Option ) )THEN
       Min_1 = Min_1_Option
     ELSE
@@ -104,14 +102,15 @@ CONTAINS
     IF( Verbose )THEN
 
       WRITE(*,*)
-      WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'InitializePositivityLimiter'
+      WRITE(*,'(A)') '  INFO: InitializePositivityLimiter_TwoMoment:'
+      WRITE(*,'(A)') '  --------------------------------------------'
       WRITE(*,*)
-      WRITE(*,'(A6,A,L1)') &
+      WRITE(*,'(A4,A32,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter 
       WRITE(*,*)
-      WRITE(*,'(A6,A12,ES23.15E3)') '', 'Min_1 = ', Min_1
-      WRITE(*,'(A6,A12,ES23.15E3)') '', 'Max_1 = ', Max_1
-      WRITE(*,'(A6,A12,ES23.15E3)') '', 'Min_2 = ', Min_2
+      WRITE(*,'(A4,A32,ES11.3E3)') '', 'Min_1: ', Min_1
+      WRITE(*,'(A4,A32,ES11.3E3)') '', 'Max_1: ', Max_1
+      WRITE(*,'(A4,A32,ES11.3E3)') '', 'Min_2: ', Min_2
 
     END IF
 
@@ -129,9 +128,6 @@ CONTAINS
     END DO
 
     nPT = SUM( nPP )
-
-    PRINT*, "nPP = ", nPP
-    PRINT*, "nPT = ", nPT
 
     ALLOCATE( InterpMat(nPT,nDOFZ) )
 
@@ -266,7 +262,7 @@ CONTAINS
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
                      nSpecies)
 
-    IF( nDOFZ == 1 ) RETURN
+    IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
 
     PRINT*, "      ApplyPositivityLimiter_TwoMoment"
 
@@ -359,9 +355,6 @@ CONTAINS
 
         Theta_1 = One_EPS * Theta_1
 
-        PRINT*, "Min_K, Max_K = ", Min_K, Max_K
-        PRINT*, "Theta_1      = ", Theta_1
-
         N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
           = Theta_1 * N_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
             + ( One - Theta_1 ) * N_K(iZ1,iZ2,iZ3,iZ4,iS)
@@ -426,9 +419,6 @@ CONTAINS
       IF( Gamma_Min < Min_2 )THEN
 
         ! --- Limit Towards Cell Average ---
-
-        PRINT*, "Gamma_Min = ", Gamma_Min
-        PRINT*, "Theta_2   = ", Theta_2
 
         Theta_2 = One_EPS * Theta_2
 

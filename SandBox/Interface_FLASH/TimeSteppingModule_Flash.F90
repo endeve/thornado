@@ -187,10 +187,14 @@ CONTAINS
        iX_SW   = [    1, 1, 1 ]
        iZ_SW   = [ 0, 1, 1, 1 ] 
        iZ_SW_P = [ 0, 2, 2, 2 ]
-    else
+    else if (nDimsX .eq. 2) then
        iX_SW   = [    1, 1, 0 ]
        iZ_SW   = [ 0, 1, 1, 0 ]
        iZ_SW_P = [ 0, 2, 2, 0 ]
+    else if (nDimsX .eq. 1) then
+       iX_SW   = [    1, 0, 0 ]
+       iZ_SW   = [ 0, 1, 0, 0 ]
+       iZ_SW_P = [ 0, 2, 0, 0 ]
     end if
 
     IF( CallFromThornado )THEN

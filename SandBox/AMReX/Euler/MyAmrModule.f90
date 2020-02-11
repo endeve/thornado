@@ -52,18 +52,19 @@ MODULE MyAmrModule
   INTEGER,           ALLOCATABLE :: nX(:), swX(:), bcX(:)
   REAL(AR),          ALLOCATABLE :: xL(:), xR(:)
   CHARACTER(LEN=:),  ALLOCATABLE :: ProgramName
+  CHARACTER(LEN=:),  ALLOCATABLE :: PlotFileBaseName
   CHARACTER(LEN=32), SAVE        :: CoordSys
   LOGICAL,           SAVE        :: UsePhysicalUnits
   LOGICAL,           SAVE        :: DEBUG
 
   ! --- Slope limiter ---
-  LOGICAL  :: UseSlopeLimiter
-  LOGICAL  :: UseCharacteristicLimiting
-  LOGICAL  :: UseTroubledCellIndicator
-  REAL(AR) :: SlopeTolerance
-  REAL(AR) :: BetaTVD, BetaTVB
-  REAL(AR) :: LimiterThresholdParameter
-  LOGICAL  :: UseConservativeCorrection
+  LOGICAL                       :: UseSlopeLimiter
+  CHARACTER(LEN=:), ALLOCATABLE :: SlopeLimiterMethod
+  REAL(AR)                      :: BetaTVD, BetaTVB, SlopeTolerance
+  LOGICAL                       :: UseCharacteristicLimiting
+  LOGICAL                       :: UseTroubledCellIndicator
+  REAL(AR)                      :: LimiterThresholdParameter
+  LOGICAL                       :: UseConservativeCorrection
 
   ! --- Positivity limiter ---
   LOGICAL  :: UsePositivityLimiter
@@ -113,6 +114,7 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     UsePhysicalUnits = .FALSE.
+    PlotFileBaseName = 'thornado'
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'dt_wrt',           dt_wrt )
@@ -129,6 +131,7 @@ CONTAINS
       CALL PP % get   ( 'iCycleChk',        iCycleChk )
       CALL PP % get   ( 'iRestart',         iRestart )
       CALL PP % query ( 'UsePhysicalUnits', UsePhysicalUnits )
+      CALL PP % query ( 'PlotFileBaseName', PlotFileBaseName )
     CALL amrex_parmparse_destroy( PP )
 
     IF( UsePhysicalUnits ) &
@@ -216,20 +219,22 @@ CONTAINS
 
     ! --- Slope limiter parameters SL.* ---
     UseSlopeLimiter           = .TRUE.
-    UseCharacteristicLimiting = .TRUE.
-    UseTroubledCellIndicator  = .TRUE.
-    SlopeTolerance            = 1.0e-6_AR
+    SlopeLimiterMethod        = 'TVD'
     BetaTVD                   = 1.75_AR
     BetaTVB                   = Zero
+    SlopeTolerance            = 1.0e-6_AR
+    UseCharacteristicLimiting = .TRUE.
+    UseTroubledCellIndicator  = .TRUE.
     LimiterThresholdParameter = 0.03_AR
     UseConservativeCorrection = .TRUE.
     CALL amrex_parmparse_build( PP, 'SL' )
       CALL PP % query( 'UseSlopeLimiter',           UseSlopeLimiter )
-      CALL PP % query( 'UseCharacteristicLimiting', UseCharacteristicLimiting )
-      CALL PP % query( 'UseTroubledCellIndicator',  UseTroubledCellIndicator )
-      CALL PP % query( 'SlopeTolerance',            SlopeTolerance )
+      CALL PP % query( 'SlopeLimiterMethod',        SlopeLimiterMethod )
       CALL PP % query( 'BetaTVD',                   BetaTVD )
       CALL PP % query( 'BetaTVB',                   BetaTVB )
+      CALL PP % query( 'SlopeTolerance',            SlopeTolerance )
+      CALL PP % query( 'UseCharacteristicLimiting', UseCharacteristicLimiting )
+      CALL PP % query( 'UseTroubledCellIndicator',  UseTroubledCellIndicator )
       CALL PP % query( 'LimiterThresholdParameter', LimiterThresholdParameter )
       CALL PP % query( 'UseConservativeCorrection', UseConservativeCorrection )
     CALL amrex_parmparse_destroy( PP )

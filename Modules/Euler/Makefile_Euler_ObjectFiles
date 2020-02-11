@@ -1,4 +1,5 @@
 EULER = \
+  Euler_ErrorModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   Euler_UtilitiesModule_Relativistic.o \
   Euler_UtilitiesModule.o \

@@ -72,8 +72,11 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       ! --- Apply boundary conditions to interior domains ---
+
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
+
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
       CALL MF_duCF(iLevel) % setval( 0.0_amrex_real )
@@ -94,12 +97,15 @@ CONTAINS
         iX_E1 = BX % hi + swX
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
         ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nGF) )
+
         ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nCF) )
+
         ALLOCATE( dU(1:nDOFX,iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3),1:nCF) )
@@ -121,10 +127,13 @@ CONTAINS
                  U(1:nDOFX,iX_B1(1):iX_E1(1), &
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         ! --- Apply boundary conditions to physical boundaries ---
+
         CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+
         IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_ApplyBoundaryConditions_Euler'
         CALL MF_ApplyBoundaryConditions_Euler &
                ( iX_B0, iX_E0, iX_B1, iX_E1,  &
@@ -147,6 +156,7 @@ CONTAINS
                  SuppressBC_Option = .TRUE. )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
         CALL thornado2AMReX &
                ( nCF, iX_B0, iX_E0, &
                  duCF(      iX_B0(1):iX_E0(1), &
@@ -159,6 +169,7 @@ CONTAINS
         DEALLOCATE( dU )
         DEALLOCATE( U  )
         DEALLOCATE( G  )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO

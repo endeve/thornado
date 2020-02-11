@@ -68,7 +68,7 @@ MODULE InitializationModule
     nPF, &
     nAF, &
     nDF, &
-    CreateFluidFields
+    SetUnitsFluidFields
   USE Euler_SlopeLimiterModule,         ONLY: &
     InitializeSlopeLimiter_Euler
   USE PolynomialBasisMappingModule,     ONLY: &
@@ -81,7 +81,6 @@ MODULE InitializationModule
     InitializePositivityLimiter_Euler
   USE InputOutputModuleAMReX,           ONLY: &
     ReadCheckpointFile,          &
-    WriteFieldsAMReX_Checkpoint, &
     WriteFieldsAMReX_PlotFile
   USE UnitsModule,                      ONLY: &
     SolarMass, &
@@ -126,6 +125,7 @@ MODULE InitializationModule
     ProgramName,               &
     CoordSys,                  &
     UseSlopeLimiter,           &
+    SlopeLimiterMethod,        &
     UseCharacteristicLimiting, &
     UseTroubledCellIndicator,  &
     SlopeTolerance,            &
@@ -352,6 +352,8 @@ CONTAINS
                = UseCharacteristicLimiting, &
              UseTroubledCellIndicator_Option &
                = UseTroubledCellIndicator, &
+             SlopeLimiterMethod_Option &
+               = SlopeLimiterMethod, &
              LimiterThresholdParameter_Option &
                = LimiterThresholdParameter, &
              UseConservativeCorrection_Option &
@@ -367,8 +369,7 @@ CONTAINS
       '', 'CFL: ', &
       CFL * ( amrex_spacedim * ( Two * nNodes - One ) )
 
-    ! --- Allocates 'Shock' and sets units for fluid fields ---
-    CALL CreateFluidFields( nX, swX, amrex_parallel_ioprocessor() )
+    CALL SetUnitsFluidFields
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

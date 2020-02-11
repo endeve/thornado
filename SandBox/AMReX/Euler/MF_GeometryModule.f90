@@ -24,9 +24,9 @@ MODULE MF_GeometryModule
     ComputeGravitationalPotential
 
   ! --- Local Modules ---
-  USE MyAmrModule,        ONLY: &
+  USE MyAmrModule,              ONLY: &
     nLevels
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule,       ONLY: &
     AMReX2thornado, thornado2AMReX
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
@@ -70,6 +70,7 @@ CONTAINS
         iX_E1 = BX % hi + swX
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
         ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nGF) )
@@ -88,6 +89,7 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass_Option = Mass )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
         CALL thornado2AMReX &
                ( nGF, iX_B1, iX_E1, &
                  uGF(      iX_B1(1):iX_E1(1), &
@@ -98,6 +100,7 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nGF) )
 
         DEALLOCATE( G )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO
@@ -136,6 +139,7 @@ CONTAINS
         iX_E1 = BX % hi + swX
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
@@ -157,6 +161,7 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nGF), Mass )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
+
         CALL thornado2AMReX &
                ( nGF, iX_B1, iX_E1, &
                  uGF(      iX_B1(1):iX_E1(1), &
@@ -167,6 +172,7 @@ CONTAINS
                            iX_B1(3):iX_E1(3),1:nGF) )
 
         DEALLOCATE( G )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
       END DO

@@ -1,14 +1,15 @@
 module ThornadoInitializationModule
 
   use KindModule, only: &
-    DP, SqrtTiny
+    DP, SqrtTiny, Pi, TwoPi
   use UnitsModule, only : &
     MeV
   use ProgramHeaderModule, only: &
     InitializeProgramHeader, &
     InitializeProgramHeaderX, &
     nNodesE, &
-    iE_B0, iE_E0, iE_B1, iE_E1
+    iE_B0, iE_E0, iE_B1, iE_E1, &
+    iX_B0, iX_E0, iX_B1, iX_E1
   use DeviceModule, only: &
     InitializeDevice, &
     FinalizeDevice
@@ -62,11 +63,14 @@ module ThornadoInitializationModule
     DestroyMesh
   use GeometryFieldsModule, only: &
     CreateGeometryFields, &
-    DestroyGeometryFields
+    DestroyGeometryFields, &
+    uGF
   use GeometryFieldsModuleE, only: &
     CreateGeometryFieldsE, &
     DestroyGeometryFieldsE, &
     uGE
+  use GeometryComputationModule, only: &
+    ComputeGeometryX
   use GeometryComputationModuleE, only: &
     ComputeGeometryE
   use FluidFieldsModule, only: &
@@ -101,13 +105,16 @@ contains
     ( nNodes, nDimsX, nE, swE, eL_MeV, eR_MeV, zoomE, &
       EquationOfStateTableName_Option, External_EOS, &
       Gamma_IDEAL_Option, &
+      PositivityLimiter_Option, UpperBry1_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
-      OpacityTableName_NES_Option, OpacityTableName_Pair_Option )
+      OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
+      Verbose_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
 
     character(len=*), intent(in), optional :: EquationOfStateTableName_Option
+
 #ifdef MICROPHYSICS_WEAKLIB
     type(EquationOfStateTableType), pointer, &
                       intent(in), optional :: External_EOS
@@ -116,13 +123,35 @@ contains
 #endif
 
     real(dp),         intent(in), optional :: Gamma_IDEAL_Option
+    logical,          intent(in), optional :: PositivityLimiter_Option
+    real(dp),         intent(in), optional :: UpperBry1_Option
     character(len=*), intent(in), optional :: OpacityTableName_EmAb_Option
     character(len=*), intent(in), optional :: OpacityTableName_Iso_Option
     character(len=*), intent(in), optional :: OpacityTableName_NES_Option
     character(len=*), intent(in), optional :: OpacityTableName_Pair_Option
+    logical,          intent(in), optional :: Verbose_Option
 
+    logical  :: PositivityLimiter, Verbose
     integer  :: nX(3), i
-    real(dp) :: eL, eR
+    real(dp) :: eL, eR, UpperBry1
+
+    IF( PRESENT(PositivityLimiter_Option) )THEN
+      PositivityLimiter = PositivityLimiter_Option
+    ELSE
+      PositivityLimiter = .FALSE.
+    END IF
+
+    IF( PRESENT(Verbose_Option) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .FALSE.
+    END IF
+
+    IF( PRESENT(UpperBry1_Option) )THEN
+      UpperBry1 = UpperBry1_Option
+    ELSE
+      UpperBry1 = 1.0d0 - EPSILON(1.0d0)
+    END IF
 
     ! --- Convert from MeV (expected) to thornado code units ---
 
@@ -171,7 +200,7 @@ contains
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
 
     call CreateGeometryFieldsE &
-           ( nE, swE, Verbose_Option = .FALSE. )
+           ( nE, swE, Verbose_Option = Verbose )
 
     call ComputeGeometryE &
            ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
@@ -179,21 +208,21 @@ contains
     ! --- Two-Moment Solver ---
 
     call InitializeClosure_TwoMoment &
-           ( Verbose_Option = .FALSE. )
+           ( Verbose_Option = Verbose )
 
     call InitializePositivityLimiter_TwoMoment &
            ( Min_1_Option = 0.0_DP + SqrtTiny, &
-             Max_1_Option = 1.0d0 - EPSILON(1.0d0), &
+             Max_1_Option = UpperBry1, &
              Min_2_Option = 0.0_DP + SqrtTiny, &
-             UsePositivityLimiter_Option = .FALSE., &
-             Verbose_Option = .FALSE. )
+             UsePositivityLimiter_Option = PositivityLimiter, &
+             Verbose_Option = Verbose )
 
     ! --- Nuclear Equation of State ---
 #ifdef MICROPHYSICS_WEAKLIB
     call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
-             Verbose_Option = .false. , &
+             Verbose_Option = Verbose , &
              External_EOS = External_EOS )
 #else
     call InitializeEquationOfState_IDEAL &
@@ -213,7 +242,7 @@ contains
                = OpacityTableName_Pair_Option, &
              EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
-             Verbose_Option = .false. )
+             Verbose_Option = Verbose )
 
     ! --- For refinement and coarsening of DG data
 
@@ -277,14 +306,32 @@ contains
 
   end subroutine FreeThornado
 
-  subroutine InitThornado_Patch( nX, swX, xL, xR, nSpecies )
+  subroutine InitThornado_Patch &
+    ( nX, swX, xL, xR, nSpecies, CoordinateSystem_Option )
 
     use ProgramHeaderModule, only: nE, swE, nNodesX
 
     integer,  intent(in) :: nX(3), swX(3), nSpecies
     real(dp), intent(in) :: xL(3), xR(3)
+    character(len=*), intent(in), optional :: CoordinateSystem_Option
 
     integer :: iDim
+    character(24) :: CoordinateSystem
+
+    IF( PRESENT(CoordinateSystem_Option) )THEN
+
+      IF( TRIM(CoordinateSystem_Option) == 'spherical' )THEN
+        CoordinateSystem = 'SPHERICAL'
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cartesian' )THEN
+        CoordinateSystem = 'CARTESIAN'
+      ELSE
+        print*, '[InitThornado_Patch] Invalid Coordinate System: ', &
+                 CoordinateSystem_Option
+      END IF
+
+    ELSE
+      CoordinateSystem = 'CARTESIAN'
+    END IF
 
     call InitializeProgramHeaderX &
            ( nX_Option = nX, swX_Option = swX, &
@@ -300,8 +347,11 @@ contains
     END DO
 
     call CreateGeometryFields &
-           ( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+           ( nX, swX, CoordinateSystem_Option = CoordinateSystem, &
              Verbose_Option = .FALSE. )
+
+    CALL ComputeGeometryX &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
     call CreateFluidFields &
            ( nX, swX, Verbose_Option = .FALSE. )
@@ -309,8 +359,6 @@ contains
     call CreateRadiationFields &
            ( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
              Verbose_Option = .FALSE. )
-
-    !call InitializeNonlinearSolverTally
 
   end subroutine InitThornado_Patch
 
@@ -329,8 +377,6 @@ contains
     call DestroyFluidFields
 
     call DestroyRadiationFields
-
-    !call FinalizeNonlinearSolverTally
 
   end subroutine FreeThornado_Patch
 

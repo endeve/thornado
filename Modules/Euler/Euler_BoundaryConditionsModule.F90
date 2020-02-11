@@ -12,6 +12,8 @@ MODULE Euler_BoundaryConditionsModule
     NodeNumberX
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
+  USE Euler_ErrorModule, ONLY: &
+    DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -71,24 +73,28 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nCF), iApplyBC(1) )
+                       iX_B1(3):iX_E1(3),1:nCF), &
+             iApplyBC(1) )
 
     CALL Euler_ApplyBC_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nCF), iApplyBC(2) )
+                       iX_B1(3):iX_E1(3),1:nCF), &
+             iApplyBC(2) )
 
     CALL Euler_ApplyBC_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
-                       iX_B1(3):iX_E1(3),1:nCF), iApplyBC(3) )
+                       iX_B1(3):iX_E1(3),1:nCF), &
+             iApplyBC(3) )
 
   END SUBROUTINE ApplyBoundaryConditions_Euler
 
 
-  SUBROUTINE Euler_ApplyBC_X1( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
+  SUBROUTINE Euler_ApplyBC_X1 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
@@ -96,9 +102,9 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iCF, iX1, iX2, iX3
-    INTEGER :: iNodeX, iNodeX_0
-    INTEGER :: iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX1
+    INTEGER  :: iCF, iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX_0
+    INTEGER  :: iNodeX1, iNodeX2, iNodeX3, jNodeX, jNodeX1
     REAL(DP) :: D_0, E_0, R_0, R_q
 
     SELECT CASE ( bcX(1) )
@@ -385,17 +391,15 @@ CONTAINS
 
     CASE DEFAULT
 
-      WRITE(*,*)
-      WRITE(*,'(A5,A45,I2.2)') &
-        '', 'Invalid Boundary Condition for Fluid X1: ', bcX(1)
-      STOP
+      CALL DescribeError_Euler( 05 )
 
     END SELECT
 
   END SUBROUTINE Euler_ApplyBC_X1
 
 
-  SUBROUTINE Euler_ApplyBC_X2( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
+  SUBROUTINE Euler_ApplyBC_X2 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
@@ -547,19 +551,38 @@ CONTAINS
         END DO
         END DO
 
+    CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = 1, swX(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        ! --- Inner: No Boundary Condition ---
+
+        ! --- Outer: Homogeneous ---
+
+        IF( ApplyOuterBC( iApplyBC ) )THEN
+          DO iCF = 1, nCF
+            U(:,iX1,iX_E0(2)+iX2,iX3,iCF) &
+              = U(:,iX1,iX_E0(2),iX3,iCF)
+          END DO
+        END IF
+
+      END DO
+      END DO
+      END DO
+
     CASE DEFAULT
 
-      WRITE(*,*)
-      WRITE(*,'(A5,A45,I2.2)') &
-        '', 'Invalid Boundary Condition for Fluid X2: ', bcX(2)
-      STOP
+      CALL DescribeError_Euler( 06 )
 
     END SELECT
 
   END SUBROUTINE Euler_ApplyBC_X2
 
 
-  SUBROUTINE Euler_ApplyBC_X3( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
+  SUBROUTINE Euler_ApplyBC_X3 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
@@ -617,12 +640,30 @@ CONTAINS
         END DO
       END DO
 
+    CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
+
+      DO iX3 = 1, swX(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        ! --- Inner: No Boundary Condition ---
+
+        ! --- Outer: Homogeneous ---
+
+        IF( ApplyOuterBC( iApplyBC ) )THEN
+          DO iCF = 1, nCF
+            U(:,iX1,iX2,iX_E0(3)+iX3,iCF) &
+              = U(:,iX1,iX2,iX_E0(3),iCF)
+          END DO
+        END IF
+
+      END DO
+      END DO
+      END DO
+
     CASE DEFAULT
 
-      WRITE(*,*)
-      WRITE(*,'(A5,A45,I2.2)') &
-        '', 'Invalid Boundary Condition for Fluid X3: ', bcX(3)
-      STOP
+      CALL DescribeError_Euler( 07 )
 
     END SELECT
 

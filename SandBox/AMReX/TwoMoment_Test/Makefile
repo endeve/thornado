@@ -1,0 +1,6 @@
+DEFINES += -DMOMENT_CLOSURE_MINERBO
+DEFINES += -DHYDRO_NONRELATIVISTIC
+DEFINES += -DUSE_AMREX_TRUE
+#f90EXE_sources += ./fmain.f90
+
+include ../TwoMoment/GNUmakefile

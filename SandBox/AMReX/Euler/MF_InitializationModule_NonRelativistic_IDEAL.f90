@@ -59,6 +59,8 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
     ComputeConserved_Euler
   USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive
+  USE Euler_ErrorModule,       ONLY: &
+    DescribeError_Euler
 
   ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -135,8 +137,9 @@ CONTAINS
           WRITE(*,'(6x,A)')     'TopHatAdvection'
           WRITE(*,'(6x,A)')     'Implosion'
           WRITE(*,'(6x,A)')     'StandingAccretionShock'
-          STOP 'MF_InitializationModule_NonRelativistic_IDEAL.f90'
         END IF
+
+        CALL DescribeError_Euler( 99 )
 
     END SELECT
 
@@ -151,8 +154,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -282,8 +285,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX
+    REAL(AR)       :: X1
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -404,8 +407,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX
+    REAL(AR)       :: X1
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -526,8 +529,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1
+    REAL(AR)       :: X1
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -643,8 +646,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
@@ -774,8 +777,8 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
-    REAL(AR)       :: X1, X2, X3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2
+    REAL(AR)       :: X1, X2
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)

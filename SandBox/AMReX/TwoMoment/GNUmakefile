@@ -21,9 +21,13 @@ TINY_PROFILE = FALSE
 
 COMP      = gnu
 
-DIM       = 1
+DIM       = 2
 
 EBASE     = main
+
+INCLUDE_LOCATIONS += /usr/include
+LIBRARY_LOCATIONS += /usr/lib/x86_64-linux-gnu/lapack
+LIBRARIES += -llapack -lblas
 
 include $(THORNADO_HOME)/SandBox/AMReX/TwoMoment/Make.package
 
@@ -41,4 +45,3 @@ include $(AMREX_HOME)/Src/AmrCore/Make.package
 include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules
-

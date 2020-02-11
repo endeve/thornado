@@ -33,7 +33,8 @@ PROGRAM ApplicationDriver
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
-    WriteFieldsHDF
+    WriteFieldsHDF, &
+    ReadFieldsHDF
   USE FluidFieldsModule, ONLY: &
     nCF, nPF, nAF, &
     uCF, uPF, uAF, &
@@ -65,8 +66,8 @@ PROGRAM ApplicationDriver
   INCLUDE 'mpif.h'
 
   CHARACTER(32) :: ProgramName
-  CHARACTER(32) :: RiemannProblemName, RiemannProblem2dName
-  CHARACTER(32) :: SphericalRiemannProblemName
+  CHARACTER(32) :: AdvectionProfile
+  CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
   LOGICAL       :: OPTIMIZE = .FALSE.
@@ -74,11 +75,13 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
+  CHARACTER(4)  :: SlopeLimiterMethod
   LOGICAL       :: UsePositivityLimiter
   LOGICAL       :: UseConservativeCorrection
   INTEGER       :: iCycle, iCycleD, iCycleW = 0
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
+  INTEGER       :: RestartFileNumber
   REAL(DP)      :: SlopeTolerance
   REAL(DP)      :: Min_1, Min_2
   REAL(DP)      :: xL(3), xR(3), Gamma
@@ -86,7 +89,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
 
-  ! --- Sedov blast wave ---
+  ! --- Sedov--Taylor blast wave ---
   REAL(DP) :: Eblast
   INTEGER  :: nDetCells
   REAL(DP) :: Vmax, LorentzFactor
@@ -95,27 +98,68 @@ PROGRAM ApplicationDriver
   REAL(DP), ALLOCATABLE :: FluidFieldParameters(:)
   REAL(DP)              :: MassPNS, RadiusPNS, ShockRadius, &
                            AccretionRate, MachNumber
+  LOGICAL               :: ApplyPerturbation
+  INTEGER               :: PerturbationOrder
+  REAL(DP)              :: PerturbationAmplitude, &
+                           rPerturbationInner, rPerturbationOuter
 
   LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
   REAL(DP) :: Timer_Evolution
+
+  RestartFileNumber = -1
+
+  t = 0.0_DP
 
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-  ProgramName = 'RiemannProblem'
-!  ProgramName = 'RiemannProblem2d'
-!  ProgramName = 'SphericalRiemannProblem'
-!  ProgramName = 'SphericalSedov'
-!  ProgramName = 'KelvinHelmholtz_Relativistic'
-!  ProgramName = 'KelvinHelmholtz'
+!  ProgramName = 'Advection'
+  ProgramName = 'Advection2D'
+!  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem2D'
+!  ProgramName = 'RiemannProblemSpherical'
+!  ProgramName = 'SedovTaylorBlastWave'
+!  ProgramName = 'KelvinHelmholtzInstability'
 !  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
+    CASE( 'Advection' )
+
+      AdvectionProfile = 'TopHat'
+
+      Gamma = 5.0_DP / 3.0_DP
+      t_end = 10.0_DP
+      bcX = [ 1, 0, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX = [ 64, 1, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      WriteGF = .FALSE.
+
+    CASE( 'Advection2D' )
+
+      AdvectionProfile = 'SineWaveX1'
+
+      Gamma = 5.0_DP / 3.0_DP
+      t_end = 10.0_DP
+      bcX = [ 1, 1, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX = [ 32, 32, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      WriteGF = .FALSE.
+
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'Sod'
+      RiemannProblemName = 'PerturbedShockTube'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
@@ -139,36 +183,37 @@ PROGRAM ApplicationDriver
           t_end = 0.35d0
           bcX   = [ 2, 0, 0 ]
 
-        CASE( 'CartesianSedov' )
-          Gamma = 4.0_DP / 3.0_DP
-          t_end = 0.2d0
-          bcX   = [ 32, 0, 0 ]
-          nDetCells = 1
-          Eblast    = 1.0d-3
-
         CASE( 'ShockReflection' )
           Gamma = 5.0_DP / 3.0_DP
           t_end = 0.75d0
           bcX   = [ 23, 0, 0 ]
 
-        CASE DEFAULT ! Sod
-          Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.4d0
-          bcX   = [ 2, 0, 0 ]
+        CASE DEFAULT
+
+          WRITE(*,*)
+          WRITE(*,'(A21,A)') 'Invalid RiemannProblemName: ', RiemannProblemName
+          WRITE(*,'(A)')     'Valid choices:'
+          WRITE(*,'(A)')     '  Sod'
+          WRITE(*,'(A)')     '  MBProblem1'
+          WRITE(*,'(A)')     '  MBProblem4'
+          WRITE(*,'(A)')     '  PerturbedShockTube'
+          WRITE(*,'(A)')     '  ShockReflection'
+          WRITE(*,'(A)')     'Stopping...'
+          STOP
 
       END SELECT
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 256, 1, 1 ]
+      nX  = [ 128, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-    CASE( 'RiemannProblem2d' )
+    CASE( 'RiemannProblem2D' )
 
-      RiemannProblem2dName = 'DzB2002'
+      RiemannProblemName = 'DzB2002'
 
-      SELECT CASE ( TRIM( RiemannProblem2dName ) )
+      SELECT CASE ( TRIM( RiemannProblemName ) )
 
         CASE( 'DzB2002' )
 
@@ -184,9 +229,9 @@ PROGRAM ApplicationDriver
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-    CASE( 'SphericalRiemannProblem' )
+    CASE( 'RiemannProblemSpherical' )
 
-      SphericalRiemannProblemName = 'SphericalSod'
+      RiemannProblemName = 'SphericalSod'
 
       CoordinateSystem = 'SPHERICAL'
 
@@ -202,14 +247,14 @@ PROGRAM ApplicationDriver
 
       WriteGF = .TRUE.
 
-    CASE( 'SphericalSedov' )
+    CASE( 'SedovTaylorBlastWave' )
 
       nDetCells = 1
       Eblast    = 1.0d-3
 
       CoordinateSystem = 'SPHERICAL'
 
-      Gamma = 1.4_DP!4.0_DP / 3.0_DP
+      Gamma = 4.0_DP / 3.0_DP
 
       nX = [ 256, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
@@ -221,7 +266,7 @@ PROGRAM ApplicationDriver
 
       WriteGF = .TRUE.
 
-    CASE( 'KelvinHelmholtz_Relativistic' )
+    CASE( 'KelvinHelmholtzInstability' )
 
        CoordinateSystem = 'CARTESIAN'
 
@@ -235,20 +280,6 @@ PROGRAM ApplicationDriver
 
        t_end = 1.0d-1
 
-    CASE( 'KelvinHelmholtz' )
-
-       CoordinateSystem = 'CARTESIAN'
-
-       Gamma = 5.0d0 / 3.0d0
-
-       nX = [ 32, 32, 1 ]
-       xL = [ 0.0d0, 0.0d0, 0.0d0 ]
-       xR = [ 1.0d0, 1.0d0, 1.0d0 ]
-
-       bcX = [ 1, 1, 0 ]
-
-       t_end = 1.5d0
-
     CASE( 'StandingAccretionShock' )
 
       CoordinateSystem = 'SPHERICAL'
@@ -259,9 +290,15 @@ PROGRAM ApplicationDriver
       AccretionRate = 0.3_DP * SolarMass / Second
       MachNumber    = 10.0_DP
 
+      ApplyPerturbation     = .TRUE.
+      PerturbationOrder     = 1
+      PerturbationAmplitude = 0.1_DP
+      rPerturbationInner    = 260.0_DP * Kilometer
+      rPerturbationOuter    = 280.0_DP * Kilometer
+
       Gamma = 4.0d0 / 3.0d0
 
-      nX = [ 256, 1, 1 ]
+      nX = [ 128, 16, 1 ]
       xL = [ RadiusPNS, 0.0_DP, 0.0_DP ]
       xR = [ Two * ShockRadius, Pi, TwoPi ]
 
@@ -276,11 +313,13 @@ PROGRAM ApplicationDriver
       WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)')     'Valid choices:'
+      WRITE(*,'(A)')     '  Advection'
+      WRITE(*,'(A)')     '  Advection2D'
       WRITE(*,'(A)')     '  RiemannProblem'
-      WRITE(*,'(A)')     '  RiemannProblem2d'
-      WRITE(*,'(A)')     '  SphericalRiemannProblem'
-      WRITE(*,'(A)')     '  SphericalSedov'
-      WRITE(*,'(A)')     '  KelvinHelmholtz2D_Relativistic'
+      WRITE(*,'(A)')     '  RiemannProblem2D'
+      WRITE(*,'(A)')     '  RiemannProblemSpherical'
+      WRITE(*,'(A)')     '  SedovTaylorBlastWave'
+      WRITE(*,'(A)')     '  KelvinHelmholtzInstability'
       WRITE(*,'(A)')     '  StandingAccretionShock'
       WRITE(*,'(A)')     'Stopping...'
       STOP
@@ -298,23 +337,26 @@ PROGRAM ApplicationDriver
   SlopeTolerance            = 1.0d-6
   UseCharacteristicLimiting = .TRUE.
 
-  UseTroubledCellIndicator  = .TRUE.
-  LimiterThresholdParameter = 0.015_DP
+  UseTroubledCellIndicator  = .FALSE.
 
-  UseConservativeCorrection = .TRUE.
+  SlopeLimiterMethod        = 'TVD'
+
+  LimiterThresholdParameter = 0.0_DP
+
+  UseConservativeCorrection = .FALSE.
 
   UsePositivityLimiter = .TRUE.
   Min_1 = 1.0d-13
   Min_2 = 1.0d-13
 
-  iCycleD = 1
+  iCycleD = 10
 !!$  iCycleW = 10; dt_wrt = -1.0d0
   dt_wrt = 1.0d-2 * t_end; iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = nNodes
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -353,12 +395,16 @@ PROGRAM ApplicationDriver
            Gamma_IDEAL_Option = Gamma )
 
   CALL InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
-         ( BetaTVD_Option = BetaTVD, &
-           BetaTVB_Option = BetaTVB, &
+         ( UseSlopeLimiter_Option &
+             = UseSlopeLimiter, &
+           SlopeLimiterMethod_Option &
+             = TRIM( SlopeLimiterMethod ), &
+           BetaTVD_Option &
+             = BetaTVD, &
+           BetaTVB_Option &
+             = BetaTVB, &
            SlopeTolerance_Option &
              = SlopeTolerance, &
-           UseSlopeLimiter_Option &
-             = UseSlopeLimiter, &
            UseCharacteristicLimiting_Option &
              = UseCharacteristicLimiting, &
            UseTroubledCellIndicator_Option &
@@ -379,18 +425,27 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
 
   CALL InitializeFields_Relativistic &
-         ( RiemannProblemName_Option &
+         ( AdvectionProfile_Option &
+             = TRIM( AdvectionProfile ), &
+           RiemannProblemName_Option &
              = TRIM( RiemannProblemName ), &
-           RiemannProblem2dName_Option &
-             = TRIM( RiemannProblem2dName ), &
-           SphericalRiemannProblemName_Option &
-             = TRIM( SphericalRiemannProblemName ), &
-           nDetCells_Option     = nDetCells, &
-           Eblast_Option        = Eblast, &
-           MassPNS_Option       = MassPNS, &
-           ShockRadius_Option   = ShockRadius, &
-           AccretionRate_Option = AccretionRate, &
-           MachNumber_Option    = MachNumber  )
+           nDetCells_Option             = nDetCells, &
+           Eblast_Option                = Eblast, &
+           MassPNS_Option               = MassPNS, &
+           ShockRadius_Option           = ShockRadius, &
+           AccretionRate_Option         = AccretionRate, &
+           MachNumber_Option            = MachNumber, &
+           ApplyPerturbation_Option     = ApplyPerturbation, &
+           PerturbationOrder_Option     = PerturbationOrder, &
+           PerturbationAmplitude_Option = PerturbationAmplitude, &
+           rPerturbationInner_Option    = rPerturbationInner, &
+           rPerturbationOuter_Option    = rPerturbationOuter )
+
+  IF( RestartFileNumber .GE. 0 )THEN
+
+    CALL ReadFieldsHDF( RestartFileNumber, t, ReadFF_Option = .TRUE. )
+
+  END IF
 
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -404,13 +459,17 @@ PROGRAM ApplicationDriver
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
   IF( .NOT. OPTIMIZE )THEN
+
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
     CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
+
   END IF
 
   CALL TimersStart_Euler( Timer_Euler_Initialize )
@@ -421,8 +480,7 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A2,A)') '', '---------------'
   WRITE(*,*)
 
-  t     = 0.0_DP
-  t_wrt = dt_wrt
+  t_wrt = t + dt_wrt
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic_IDEAL &
@@ -442,8 +500,8 @@ PROGRAM ApplicationDriver
     CALL ComputeTimeStep_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF, uCF, &
-             CFL = CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             TimeStep = dt )
+             CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
+             dt )
 
     IF( t + dt .LT. t_end )THEN
       t = t + dt
@@ -453,44 +511,60 @@ PROGRAM ApplicationDriver
     END IF
 
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
     IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
 
       IF( ProgramName .EQ. 'StandingAccretionShock' )THEN
+
         WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A4,A5,ES13.6E3,A3)') &
           '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, ' ms ', &
           'dt = ', dt / Millisecond, ' ms'
+
       ELSE
+
         WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
           '', 'Cycle = ', iCycle, '', 't = ',  t, '', 'dt = ', dt
+
       END IF
 
     END IF
+
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, uDF, Euler_ComputeIncrement_DG_Explicit )
 
     IF( .NOT. OPTIMIZE )THEN
+
       CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
       IF( iCycleW .GT. 0 )THEN
+
         IF( MOD( iCycle, iCycleW ) .EQ. 0 ) &
           wrt = .TRUE.
+
       ELSE
+
         IF( t + dt .GT. t_wrt )THEN
           t_wrt = t_wrt + dt_wrt
           wrt   = .TRUE.
+
         END IF
+
       END IF
+
       CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
       IF( wrt )THEN
 
         CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
         CALL ComputeFromConserved_Euler_Relativistic &
                ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
         CALL WriteFieldsHDF &
                ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+
         CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
         CALL ComputeTally_Euler_Relativistic_IDEAL &
@@ -512,13 +586,17 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
 
   IF( .NOT. OPTIMIZE )THEN
+
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
     CALL WriteFieldsHDF &
            ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
+
   END IF
 
   CALL ComputeTally_Euler_Relativistic_IDEAL &
@@ -528,6 +606,7 @@ PROGRAM ApplicationDriver
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
+
   CALL FinalizeTally_Euler_Relativistic_IDEAL
 
   CALL FinalizePositivityLimiter_Euler_Relativistic_IDEAL

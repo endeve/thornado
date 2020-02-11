@@ -54,13 +54,20 @@ PROGRAM ApplicationDriver
     InitializeClosure_TwoMoment
   USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeFromConserved_TwoMoment
+  USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
+    InitializeTroubledCellIndicator_TwoMoment, &
+    FinalizeTroubledCellIndicator_TwoMoment
+  USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
+    InitializeSlopeLimiter_TwoMoment, &
+    FinalizeSlopeLimiter_TwoMoment, &
+    ApplySlopeLimiter_TwoMoment
   USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment, &
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_OpacityModule_OrderV, ONLY: &
     CreateOpacities, &
-    SetConstantOpacities, &
+    SetOpacities, &
     DestroyOpacities
   USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Initialize_IMEX_RK, &
@@ -71,9 +78,11 @@ PROGRAM ApplicationDriver
 
   IMPLICIT NONE
 
+  CHARACTER(2)  :: Direction
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(32) :: TimeSteppingScheme
+  LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UsePositivityLimiter
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
@@ -81,10 +90,9 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: eL, eR, xL(3), xR(3)
   REAL(DP)      :: t, dt, t_end, V_0(3)
   REAL(DP)      :: D_0, Chi, Sigma
+  REAL(DP)      :: LengthScale
 
   CoordinateSystem = 'CARTESIAN'
-
-  UsePositivityLimiter = .FALSE.
 
   ProgramName = 'StreamingDopplerShift'
 
@@ -94,10 +102,10 @@ PROGRAM ApplicationDriver
 
       ! --- Minerbo Closure Only ---
 
-      nX  = [ 16, 1, 1 ]
+      nX  = [ 2, 4, 16 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
-      bcX = [ 1, 0, 0 ]
+      bcX = [ 1, 1, 1 ]
 
       nE  = 1
       eL  = 0.0_DP
@@ -108,16 +116,22 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK3'
 
-      t_end   = 1.0d0
+      t_end   = 1.0d-0
       iCycleD = 1
-      iCycleW = 1
+      iCycleW = 50
       maxCycles = 10000
 
-      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.0_DP, 0.0_DP, 0.1_DP ]
+
+      Direction = 'Z'
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
+
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .FALSE.
 
     CASE( 'SineWaveDiffusion' )
 
@@ -146,6 +160,10 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 1.0d+2
 
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .FALSE.
+
     CASE( 'IsotropicRadiation' )
 
       nX  = [ 16, 1, 1 ]
@@ -173,12 +191,50 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .FALSE.
+
     CASE( 'StreamingDopplerShift' )
 
-      nX  = [ 32, 1, 1 ]
-      xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
-      xR  = [ 1.0d1, 1.0_DP, 1.0_DP ]
-      bcX = [ 12, 0, 0 ]
+      Direction = 'Z' ! --- (X,Y, or Z)
+
+      IF(     TRIM( Direction ) .EQ. 'X' )THEN
+
+        nX  = [ 32, 1, 1 ]
+        xL  = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR  = [ 1.0d1, 1.0d0, 1.0d0 ]
+        bcX = [ 12, 1, 1 ]
+
+        V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+
+      ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+
+        nX  = [ 1, 32, 1 ]
+        xL  = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR  = [ 1.0d0, 1.0d1, 1.0d0 ]
+        bcX = [ 1, 12, 1 ]
+
+        V_0 = [ 0.0_DP, 0.1_DP, 0.0_DP ]
+
+      ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
+
+        nX  = [ 1, 1, 32 ]
+        xL  = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR  = [ 1.0d0, 1.0d0, 1.0d1 ]
+        bcX = [ 1, 1, 12 ]
+
+        V_0 = [ 0.0_DP, 0.0_DP, 0.1_DP ]
+
+      ELSE
+
+        WRITE(*,*)
+        WRITE(*,'(A6,A)') &
+          '', 'StreamingDopplerShift.  Direction must be X, Y, or Z'
+        WRITE(*,*)
+        STOP
+
+      END IF
 
       nE  = 16
       eL  = 0.0d0
@@ -189,25 +245,61 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK2'
 
-      t_end   = 5.0d1
+      t_end   = 2.5d+1
       iCycleD = 1
-      iCycleW = 50
+      iCycleW = 100
       maxCycles = 1000000
-
-      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
+      UseSlopeLimiter = .FALSE.
+
       UsePositivityLimiter = .TRUE.
 
     CASE( 'TransparentShock' )
 
-      nX  = [ 64, 1, 1 ]
-      xL  = [ 1.0d1, 0.0_DP, 0.0_DP ]
-      xR  = [ 5.0d2, 1.0_DP, 1.0_DP ]
-      bcX = [ 12, 0, 0 ]
+      Direction = 'X' ! --- (X,Y, or Z)
+
+      LengthScale = 2.5d-2 ! --- Shock Width
+
+      IF(     TRIM( Direction ) .EQ. 'X' )THEN
+
+        nX  = [ 80, 1, 1 ]
+        xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
+        xR  = [ 2.0d0, 1.0_DP, 1.0_DP ]
+        bcX = [ 12, 0, 0 ]
+
+        V_0 = [ - 0.1_DP, 0.0_DP, 0.0_DP ]
+
+      ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+
+        nX  = [ 1, 64, 1 ]
+        xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
+        xR  = [ 1.0d0, 2.0_DP, 1.0_DP ]
+        bcX = [ 0, 12, 0 ]
+
+        V_0 = [ 0.0_DP, - 0.1_DP, 0.0_DP ]
+
+      ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
+
+        nX  = [ 1, 1, 64 ]
+        xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
+        xR  = [ 1.0d0, 1.0_DP, 2.0_DP ]
+        bcX = [ 0, 0, 12 ]
+
+        V_0 = [ 0.0_DP, 0.0_DP, - 0.1_DP ]
+
+      ELSE
+
+        WRITE(*,*)
+        WRITE(*,'(A6,A)') &
+          '', 'TransparentShock.  Direction must be X, Y, or Z'
+        WRITE(*,*)
+        STOP
+
+      END IF
 
       nE  = 32
       eL  = 0.0d0
@@ -218,16 +310,47 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK2'
 
-      t_end   = 1.0d3
+      t_end   = 5.0d0
       iCycleD = 1
-      iCycleW = 50
+      iCycleW = 250
       maxCycles = 1000000
-
-      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
+
+      UseSlopeLimiter = .TRUE.
+
+      UsePositivityLimiter = .TRUE.
+
+    CASE( 'HomogeneousSphere2D' )
+
+      nX  = [ 48, 48, 1 ]
+      xL  = [ - 3.0_DP, - 3.0_DP, - 1.0_DP ]
+      xR  = [ + 3.0_DP, + 3.0_DP, + 1.0_DP ]
+      bcX = [ 2, 2, 1 ]
+
+      nE  = 12
+      eL  = 0.0d0
+      eR  = 5.0d1
+      bcE = 10
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 1.0d+1
+      iCycleD = 1
+      iCycleW = 100
+      maxCycles = 1000000
+
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.8_DP
+      Chi   = 4.0_DP
+      Sigma = 0.0_DP
+
+      UseSlopeLimiter = .FALSE.
 
       UsePositivityLimiter = .TRUE.
 
@@ -311,6 +434,25 @@ PROGRAM ApplicationDriver
 
   CALL InitializeClosure_TwoMoment
 
+  ! --- Initialize Troubled Cell Indicator ---
+
+  CALL InitializeTroubledCellIndicator_TwoMoment &
+         ( UseTroubledCellIndicator_Option &
+             = .FALSE., &
+           C_TCI_Option &
+             = 0.1_DP, &
+           Verbose_Option &
+             = .TRUE. )
+
+  ! --- Initialize Slope Limiter ---
+
+  CALL InitializeSlopeLimiter_TwoMoment &
+         ( BetaTVD_Option = 2.0_DP, &
+           UseSlopeLimiter_Option &
+             = UseSlopeLimiter, &
+           Verbose_Option &
+             = .TRUE. )
+
   ! --- Initialize Positivity Limiter ---
 
   CALL InitializePositivityLimiter_TwoMoment &
@@ -325,7 +467,7 @@ PROGRAM ApplicationDriver
   CALL CreateOpacities &
          ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = .TRUE. )
 
-  CALL SetConstantOpacities( D_0, Chi, Sigma )
+  CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma )
 
   ! --- Initialize Time Stepper ---
 
@@ -333,7 +475,12 @@ PROGRAM ApplicationDriver
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields( V_0 )
+  CALL InitializeFields( V_0, LengthScale, Direction )
+
+  ! --- Apply Slope Limiter to Initial Data ---
+
+  CALL ApplySlopeLimiter_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
 
   ! --- Apply Positivity Limiter to Initial Data ---
 
@@ -351,7 +498,7 @@ PROGRAM ApplicationDriver
   ! --- Evolve ---
 
   t = 0.0_DP
-  dt = 0.5_DP * MINVAL( (xR-xL) / DBLE(nX) ) &
+  dt = 0.3_DP * MINVAL( (xR-xL) / DBLE(nX) ) &
        / ( Two * DBLE(nNodes-1) + One )
 
   WRITE(*,*)
@@ -406,6 +553,10 @@ PROGRAM ApplicationDriver
            WriteRF_Option = .TRUE. )
 
   ! --- Finalize ---
+
+  CALL FinalizeTroubledCellIndicator_TwoMoment
+
+  CALL FinalizeSlopeLimiter_TwoMoment
 
   CALL FinalizePositivityLimiter_TwoMoment
 

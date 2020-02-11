@@ -27,13 +27,19 @@ THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 #### ========== User Input ==========
 
 # Specify directory containing plotfiles
-ProblemDirectory = THORNADO_DIR + '/SandBox/AMReX/'
+ProblemDirectory = THORNADO_DIR + 'SandBox/AMReX/'
 
 # Specify name of problem (only used for name of output file(s))
 ProblemName = 'KHI'
 
+# Specify plot file base name
+PlotFileBaseName = 'thornado'
+
 # Specify field to plot
 VariableToPlot = 'PF_D'
+
+# Specify to plot in log-scale
+UseLogScale = False
 
 # Specify whether or not to use physical units
 UsePhysicalUnits = False
@@ -48,7 +54,7 @@ aspect = 1.0
 cmap = 'jet'
 
 # Specify whether or not to make a movie
-MakeMovie, DataFileName = False, 'MovieData.dat'
+MakeMovie, DataFileName, TimeFileName = False, 'MovieData.dat', 'MovieTime.dat'
 
 #### ================================
 
@@ -61,7 +67,8 @@ else:
     FileList = []
     for iFile in range( FileArray.shape[0] ):
         sFile = FileArray[iFile]
-        if( sFile[0:8] == 'thornado' ):
+        if( sFile[0:len(PlotFileBaseName)+1] == PlotFileBaseName + '_' \
+              and sFile[len(PlotFileBaseName)+1].isdigit() ):
             FileList.append( sFile )
     FileArray = np.array( FileList )
     File = FileArray[-1]
@@ -180,8 +187,10 @@ if  ( nDims == 1 ):
 
         if( Overwrite ):
             # Put all time-slices into one array to use for movie making
-            Data = np.empty( (FileArray.shape[0],nX[0]), float )
+            Data = np.empty( (FileArray.shape[0]+1,nX[0]), float )
             Time = np.empty( FileArray.shape[0], float )
+
+            Data[0] = x
             for i in range( FileArray.shape[0] ):
                 print( '{:}/{:}'.format( i+1, FileArray.shape[0] ) )
                 ds = yt.load( '{:}'.format( ProblemDirectory + FileArray[i] ) )
@@ -193,14 +202,14 @@ if  ( nDims == 1 ):
                         dims            = nX * 2**MaxLevel, \
                         num_ghost_zones = nX[0] )
 
-                Data[i] = CoveringGrid[VariableToPlot].to_ndarray()[:,0,0]
+                Data[i+1] = CoveringGrid[VariableToPlot].to_ndarray()[:,0,0]
                 Time[i] = ds.current_time
 
             np.savetxt( DataFileName, Data )
-            np.savetxt( 'MovieTime.dat', Time )
+            np.savetxt( TimeFileName, Time )
 
-        Data = np.loadtxt( DataFileName )
-        Time = np.loadtxt( 'MovieTime.dat' )
+        Data = np.loadtxt( DataFileName, skiprows=1 )
+        Time = np.loadtxt( TimeFileName )
 
         fig, ax = plt.subplots()
 
@@ -215,7 +224,7 @@ if  ( nDims == 1 ):
         time_text = plt.text( xL[0] + 0.5 * Width, \
                               np.min( Data ) + 0.7 * Height, '' )
 
-        ax.set_yscale( 'log' )
+        if( UseLogScale ): ax.set_yscale( 'log' )
         #IC,   = ax.plot([],[], color = 'red',   linewidth = 2 )
         line, = ax.plot([],[], color = 'black', linewidth = 1 )
         def InitializeFrame():
@@ -291,14 +300,14 @@ elif( nDims == 2 ):
 
     slc.set_cmap( field = field, cmap = cmap )
 
-    slc.set_log( field, True ) # set_log is True by default
+    slc.set_log( field, UseLogScale )
     #slc.set_zlim( field, 0.0, 2.0 ) # Set colorbar limits
     #slc.set_colorbar_label( field, 'Primitive Rest-Mass-Density' )
 
     if( CoordinateSystem == 'spherical' ):
         slc.set_width( 2 * xH[0].to_ndarray(), length_unit )
 
-    slc.save( ProblemName + '_' + VariableToPlot \
+    slc.save( ProblemName + '_' + PlotFileBaseName + '_' + VariableToPlot \
                 + '_{:}.png'.format( File[-8:] ) )
 
     if( MakeMovie ):
@@ -352,7 +361,7 @@ elif( nDims == 2 ):
 
         fig = plt.figure()
         def f(t):
-            return Data[t]
+            return Data[t].T
 
         PlotTranspose = False
         if( PlotTranspose ):
@@ -362,7 +371,6 @@ elif( nDims == 2 ):
             def f(t):
                 return np.abs( Data[t] - Data[t].T )
 
-        UseLogScale = True
         if( UseLogScale ):
             from matplotlib.colors import LogNorm
             vmin = min( +np.inf, np.min( np.abs( Data ) ) )

@@ -14,7 +14,7 @@ MODULE MF_Euler_BoundaryConditionsModule
     ApplyBoundaryConditions_Euler
 
   ! --- Local Modules ---
-  USE MyAmrModule, ONLY: &
+  USE MyAmrModule,              ONLY: &
     DEBUG
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
@@ -62,7 +62,8 @@ CONTAINS
     IF( DEBUG ) WRITE(*,'(A)') '      CALL ApplyBoundaryConditions_Euler'
     CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), iApplyBC )
+             U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+             iApplyBC )
 
   END SUBROUTINE MF_ApplyBoundaryConditions_Euler
 
@@ -79,13 +80,19 @@ CONTAINS
 
     Edge_Map % IsLowerBoundary = .FALSE.
     Edge_Map % IsUpperBoundary = .FALSE.
+
     DO iDim = 1, 3
+
       IF( iDim .LE. amrex_spacedim )THEN
+
         IF( BX % lo( iDim ) .LE. GEOM % DOMAIN % lo( iDim ) ) &
           Edge_Map % IsLowerBoundary( iDim ) = .TRUE.
+
         IF( BX % hi( iDim ) .GE. GEOM % DOMAIN % hi( iDim ) ) &
           Edge_Map % IsUpperBoundary( iDim ) = .TRUE.
+
       END IF
+
     END DO
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_ConstructEdgeMap )
@@ -103,6 +110,7 @@ CONTAINS
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_GetBC )
 
     DO iDim = 1, 3
+
       IF     ( this % IsLowerBoundary( iDim ) .AND. &
                this % IsUpperBoundary( iDim ) )THEN
         iApplyBC(iDim) = iEuler_ApplyBC_Both
@@ -117,6 +125,7 @@ CONTAINS
         iApplyBC(iDim) = iEuler_ApplyBC_None
 
       END IF
+
     END DO
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_GetBC )

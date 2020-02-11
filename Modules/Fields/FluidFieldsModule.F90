@@ -128,15 +128,27 @@ MODULE FluidFieldsModule
   ! --- Diagnostic Variables ---
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Shock
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta1
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta2
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta3
 
   INTEGER, PUBLIC, PARAMETER :: iDF_Sh = 01 ! Shock
-  INTEGER, PUBLIC, PARAMETER :: nDF    = 01
+  INTEGER, PUBLIC, PARAMETER :: iDF_T1 = 02 ! Theta 1
+  INTEGER, PUBLIC, PARAMETER :: iDF_T2 = 03 ! Theta 2
+  INTEGER, PUBLIC, PARAMETER :: iDF_T3 = 04 ! Theta 3
+  INTEGER, PUBLIC, PARAMETER :: nDF    = 04
 
   CHARACTER(32), DIMENSION(nDF), PUBLIC, PARAMETER :: &
-    namesDF = [ 'Shock                           ' ]
+    namesDF = [ 'Shock                           ', &
+                'Theta 1                         ', &
+                'Theta 2                         ', &
+                'Theta 3                         ' ]
 
   CHARACTER(10), DIMENSION(nDF), PUBLIC, PARAMETER :: &
-    ShortNamesDF = [ 'DF_Sh     ' ]
+    ShortNamesDF = [ 'DF_Sh     ', &
+                     'DF_T1     ', &
+                     'DF_T2     ', &
+                     'DF_T3     ' ]
 
   REAL(DP), DIMENSION(nDF), PUBLIC :: unitsDF
 
@@ -144,6 +156,8 @@ MODULE FluidFieldsModule
 
   PUBLIC :: CreateFluidFields
   PUBLIC :: DestroyFluidFields
+  PUBLIC :: ResetFluidFields_Diagnostic
+  PUBLIC :: SetUnitsFluidFields
 
 CONTAINS
 
@@ -178,10 +192,10 @@ CONTAINS
     CALL CreateFluidFields_Auxiliary ( nX, swX )
     CALL CreateFluidFields_Diagnostic( nX, swX )
 
-    ALLOCATE( rhsCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF) )
+    CALL ResetFluidFields_Diagnostic &
+           ( nX, swX, uDF )
 
-    ALLOCATE( Shock(1:nX(1),1:nX(2),1:nX(3)) )
-    Shock = 0.0_DP
+    ALLOCATE( rhsCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF) )
 
     CALL SetUnitsFluidFields
 
@@ -288,9 +302,26 @@ CONTAINS
   SUBROUTINE DestroyFluidFields
 
     DEALLOCATE( uCF, rhsCF, uPF, uAF, uDF )
-    DEALLOCATE( Shock )
 
   END SUBROUTINE DestroyFluidFields
+
+
+  SUBROUTINE ResetFluidFields_Diagnostic( nX, swX, uDF )
+
+     INTEGER, INTENT(in) :: nX(3), swX(3)
+
+     REAL(DP), INTENT(out) :: uDF( 1:nDOFX, &
+                                   1-swX(1):nX(1)+swX(1), &
+                                   1-swX(2):nX(2)+swX(2), &
+                                   1-swX(3):nX(3)+swX(3), &
+                                   1:nDF)
+
+    uDF(:,:,:,:,iDF_Sh) = 0.0_DP
+    uDF(:,:,:,:,iDF_T1) = 1.0_DP
+    uDF(:,:,:,:,iDF_T3) = 1.0_DP
+    uDF(:,:,:,:,iDF_T2) = 1.0_DP
+
+  END SUBROUTINE ResetFluidFields_Diagnostic
 
 
   SUBROUTINE SetUnitsFluidFields
@@ -345,6 +376,9 @@ CONTAINS
 
       ! --- Diagnostic ---
       unitsDF(iDF_Sh) = 1.0_DP
+      unitsDF(iDF_T1) = 1.0_DP
+      unitsDF(iDF_T2) = 1.0_DP
+      unitsDF(iDF_T3) = 1.0_DP
 
     ELSE
 

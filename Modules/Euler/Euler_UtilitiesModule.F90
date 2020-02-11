@@ -53,11 +53,12 @@ CONTAINS
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
-    REAL(DP), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, &
-                             CF_E, CF_Ne
-    REAL(DP), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, &
-                             PF_E, PF_Ne
-    REAL(DP), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
+    REAL(DP), INTENT(in)            :: &
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
+    REAL(DP), INTENT(out)           :: &
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
+    REAL(DP), INTENT(in)            :: &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
 #if defined HYDRO_NONRELATIVISTIC
 
@@ -90,11 +91,12 @@ CONTAINS
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
-    REAL(DP), INTENT(in)  :: CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), &
-                             CF_E(:), CF_Ne(:)
-    REAL(DP), INTENT(out) :: PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), &
-                             PF_E(:), PF_Ne(:)
-    REAL(DP), INTENT(in)  :: GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
+    REAL(DP), INTENT(in)            :: &
+      CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:)
+    REAL(DP), INTENT(out)           :: &
+      PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), PF_E(:), PF_Ne(:)
+    REAL(DP), INTENT(in)            :: &
+      GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
 
 #if defined HYDRO_NONRELATIVISTIC
 
@@ -167,12 +169,12 @@ CONTAINS
   SUBROUTINE ComputeFromConserved_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)            :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)           :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
@@ -236,14 +238,14 @@ CONTAINS
   SUBROUTINE ComputeTimeStep_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
 
-    INTEGER,  INTENT(in)          :: &
+    INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)          :: &
+    REAL(DP), INTENT(in)            :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(in)          :: &
+    REAL(DP), INTENT(in)            :: &
       CFL
-    REAL(DP), INTENT(out)         :: &
+    REAL(DP), INTENT(out)           :: &
       TimeStep
 
 #if defined HYDRO_NONRELATIVISTIC

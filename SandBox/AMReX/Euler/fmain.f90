@@ -12,7 +12,6 @@ PROGRAM main
     MeshX, &
     DestroyMesh
   USE InputOutputModuleAMReX,           ONLY: &
-    ReadCheckpointFile,          &
     WriteFieldsAMReX_Checkpoint, &
     WriteFieldsAMReX_PlotFile
   USE UnitsModule,                      ONLY: &
@@ -143,9 +142,7 @@ PROGRAM main
              ( StepNo, nLevels, dt, t, t_wrt, &
                MF_uGF % BA % P, &
                MF_uGF % P, &
-               MF_uCF % P, &
-               MF_uPF % P, &
-               MF_uAF % P )
+               MF_uCF % P )
 
       chk = .FALSE.
 
@@ -198,9 +195,7 @@ PROGRAM main
          ( StepNo, nLevels, dt, t, t_wrt, &
            MF_uGF % BA % P, &
            MF_uGF % P, &
-           MF_uCF % P, &
-           MF_uPF % P, &
-           MF_uAF % P )
+           MF_uCF % P )
 
   CALL WriteFieldsAMReX_PlotFile &
          ( t(0), StepNo,           &

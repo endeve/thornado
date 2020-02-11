@@ -83,24 +83,21 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-    INTEGER,  INTENT(in)             :: &
+    INTEGER,  INTENT(in)              :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)             :: &
+    REAL(DP), INTENT(in)              :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout)          :: &
+    REAL(DP), INTENT(inout)           :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    INTEGER, INTENT(inout), OPTIONAL :: &
-      iErr_Option
-
-    INTEGER :: iErr = 0
-    IF( PRESENT( iErr_Option ) ) iErr = iErr_Option
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
 #elif defined HYDRO_NONRELATIVISTIC
 
@@ -110,7 +107,7 @@ CONTAINS
 #elif defined HYDRO_RELATIVISTIC
 
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, iErr_Option = iErr )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
 #else
 
@@ -118,8 +115,6 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
 #endif
-
-    IF( PRESENT( iErr_Option ) ) iErr_Option = iErr
 
   END SUBROUTINE ApplyPositivityLimiter_Euler
 

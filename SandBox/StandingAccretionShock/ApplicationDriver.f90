@@ -68,6 +68,7 @@ PROGRAM ApplicationDriver
   INTEGER  :: iCycle, iCycleD
   INTEGER  :: nX(3), nNodes
   REAL(DP) :: t, dt, t_end, dt_wrt, t_wrt, wTime
+  INTEGER  :: iErr
 
   nX     = [ 256, 1, 1 ]
   nNodes = 2

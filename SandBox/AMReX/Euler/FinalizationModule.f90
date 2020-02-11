@@ -15,8 +15,6 @@ MODULE FinalizationModule
     FinalizeReferenceElementX_Lagrange
   USE MeshModule,                       ONLY: &
     MeshType, DestroyMesh
-  USE FluidFieldsModule,                ONLY: &
-    DestroyFluidFields
   USE EquationOfStateModule,            ONLY: &
     FinalizeEquationOfState
   USE Euler_SlopeLimiterModule,         ONLY: &
@@ -52,8 +50,6 @@ CONTAINS
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 
     CALL MF_FinalizeFluid_SSPRK
-
-    CALL DestroyFluidFields
 
     CALL FinalizePositivityLimiter_Euler
 
