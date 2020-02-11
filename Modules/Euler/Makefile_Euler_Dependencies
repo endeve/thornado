@@ -115,7 +115,7 @@ Euler_BoundaryConditionsModule.o: \
   ProgramHeaderModule.o \
   UtilitiesModule.o \
   FluidFieldsModule.o \
-  ErrorModule_Euler.o \
+  Euler_ErrorModule.o \
   Euler_BoundaryConditionsModule.F90
 
 Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o: \
