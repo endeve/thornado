@@ -686,7 +686,7 @@ CONTAINS
     INTEGER,  PARAMETER :: iE = 2
     INTEGER,  PARAMETER :: OS_1 = iE
     INTEGER,  PARAMETER :: MaxIter = 100
-    REAL(DP), PARAMETER :: Rtol = 1.0d-08
+    REAL(DP), PARAMETER :: Rtol = 1.0d-8
     REAL(DP), PARAMETER :: Utol = 1.0d-10
 
     ! --- Local Variables ---
@@ -2119,7 +2119,7 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
       DO iN_E = 1, nE_G
-        
+
         S_1(iN_E,iN_X) = One / ( One + dt * Chi_1(iN_E,iN_X) )
         S_2(iN_E,iN_X) = One / ( One + dt * Chi_2(iN_E,iN_X) )
 

@@ -108,30 +108,54 @@ PROGRAM Relaxation
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
 
-  Configuration = 1
+  Configuration = 2
 
   SELECT CASE( Configuration )
+
+    CASE ( 0 )
+      ! from new profile, Nested_Newton fails
+      D_0 = 3.999d14 * Gram / Centimeter**3
+      T_0 = 1.356d1 * MeV
+      Y_0 = 0.2783_DP
+
     CASE( 1 )
 
       !D_0 = 1.232d+14 * Gram / Centimeter**3
       !T_0 = 2.508d+11 * Kelvin
       !Y_0 = 0.2747_DP
 
-      D_0 = 3.999d14 * Gram / Centimeter**3
-      T_0 = 1.356d11 * Kelvin
-      Y_0 = 0.2783_DP
+      ! from new profile, right above D = 1e14
+      D_0 = 1.084d14 * Gram / Centimeter**3
+      T_0 = 1.590d1 * MeV
+      Y_0 = 0.2728_DP
 
     CASE( 2 )
 
-      D_0 = 1.0520d+12 * Gram / Centimeter**3
-      T_0 = 8.9670d+10 * Kelvin
-      Y_0 = 0.1352_DP
+      !D_0 = 1.0520d+12 * Gram / Centimeter**3
+      !T_0 = 8.9670d+10 * Kelvin
+      !Y_0 = 0.1352_DP
+
+      ! from new profile, right above D = 1e12
+      D_0 = 1.032d12 * Gram / Centimeter**3
+      T_0 = 7.588d0 * MeV
+      Y_0 = 0.1347_DP
 
     CASE( 3 )
 
-      D_0 = 6.233d09 * Gram / Centimeter**3
-      T_0 = 3.021d10 * Kelvin
-      Y_0 = 0.3178_DP
+      !D_0 = 6.233d09 * Gram / Centimeter**3
+      !T_0 = 3.021d10 * Kelvin
+      !Y_0 = 0.3178_DP
+
+      ! from new profile, right above D = 1e10
+      D_0 = 1.104d10 * Gram / Centimeter**3
+      T_0 = 2.054d0 * MeV
+      Y_0 = 0.2818_DP
+
+    CASE ( 4 )
+      ! from new profile, higher Antineutrino density (max = 0.1)
+      D_0 = 2.564d13 * Gram / Centimeter**3
+      T_0 = 1.978d1 * MeV
+      Y_0 = 0.2876_DP
 
   END SELECT
 
@@ -146,9 +170,9 @@ PROGRAM Relaxation
 
   dt_0    = 1.0d-3 * Millisecond
   t       = 0.0d-0 * Millisecond
-  t_end   = 1.0d+0 * Millisecond
+  t_end   = 3.0d1 * Millisecond
   iCycleD = 1
-  iCycleW = 1
+  iCycleW = 100
 
   CALL InitializeProgram &
          ( ProgramName_Option &
