@@ -301,18 +301,18 @@ CONTAINS
 
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
           = 0.49_DP * SIN( Third * Pi * X1 ) + 0.5_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
           = - ( 0.49_DP * Pi / ( 9.0_DP * Sigma ) ) * COS( Third * Pi * X1 )
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
           = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
           = 0.0_DP
 
         CALL ComputeConserved_TwoMoment &
-               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_D ,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS), &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
@@ -411,15 +411,15 @@ CONTAINS
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = 0.5_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) = 0.0_DP
 
         CALL ComputeConserved_TwoMoment &
-               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_D ,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS), &
-                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS), &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
                  uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
@@ -864,9 +864,9 @@ CONTAINS
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
         uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = 1.0d-8
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) = 0.0_DP
-        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) = 0.0_DP
         
         CALL ComputeConserved_TwoMoment &
                ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
@@ -991,29 +991,29 @@ CONTAINS
 
         IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
-          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
             = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
-          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
             = 0.0_DP
-          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
             = 0.0_DP
 
         ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
-          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
             = 0.0_DP
-          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
             = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
-          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
             = 0.0_DP
 
         ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
 
-          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I1,iS) &
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
             = 0.0_DP
-          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I2,iS) &
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
             = 0.0_DP
-          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ3,iPR_I3,iS) &
+          uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
             = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
 
         END IF
