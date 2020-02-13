@@ -3,6 +3,10 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
   USE KindModule, ONLY: &
     DP, Zero, Half, One, &
     SqrtTiny
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX, &
+    nDOFE, &
+    nDOFZ
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
   USE ReferenceElementModuleX, ONLY: &
@@ -78,12 +82,14 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
 CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, alp, B_u_1, B_u_2, B_u_3 )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      alp, B_u_1, B_u_2, B_u_3
     REAL(DP), INTENT(in)    :: &
       GE  (1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
@@ -112,12 +118,12 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
-    CALL ApplyBoundaryConditions_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
-
-    CALL ApplyBoundaryConditions_TwoMoment &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
-
+!    CALL ApplyBoundaryConditions_Euler &
+!           ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+!
+!    CALL ApplyBoundaryConditions_TwoMoment &
+!           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
+!
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
     DO iZ4 = iZ_B1(4), iZ_E1(4)
@@ -139,7 +145,7 @@ CONTAINS
     END DO
 
     CALL ComputeIncrement_Divergence_X1 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, alp, B_u_1, B_u_2, B_u_3 )
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -177,12 +183,14 @@ CONTAINS
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, alp, B_u_1, B_u_2, B_u_3 )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)    :: &
+      alp, B_u_1, B_u_2, B_u_3
     REAL(DP), INTENT(in)    :: &
       GE  (1:nDOFE, &
            iZ_B1(1):iZ_E1(1), &
@@ -514,7 +522,7 @@ CONTAINS
                  GX_F(iNodeX,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                  GX_F(iNodeX,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                  GX_F(iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2), &
-                 nIterations )
+                 alp, B_u_1, B_u_2, B_u_3, nIterations )
 
         ! --- Left State Flux ---
 
@@ -527,7 +535,8 @@ CONTAINS
                 V_u(3,iNodeX,iZ3,iZ4,iZ2), &
                 GX_F(iNodeX,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                 GX_F(iNodeX,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
-                GX_F(iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
+                GX_F(iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2), & 
+                alp, B_u_1, B_u_2, B_u_3 )
 
         ! --- Right State Primitive ---
 
@@ -544,7 +553,7 @@ CONTAINS
                  GX_F(iNodeX,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                  GX_F(iNodeX,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                  GX_F(iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2), &
-                 nIterations )
+                 alp, B_u_1, B_u_2, B_u_3, nIterations )
 
         ! --- Right State Flux ---
 
@@ -557,7 +566,8 @@ CONTAINS
                 V_u(3,iNodeX,iZ3,iZ4,iZ2), &
                 GX_F(iNodeX,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                 GX_F(iNodeX,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
-                GX_F(iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
+                GX_F(iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2), &
+                alp, B_u_1, B_u_2, B_u_3 )
 
         ! --- Numerical Flux ---
 
@@ -661,7 +671,7 @@ CONTAINS
                  GX_K (iNodeX,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                  GX_K (iNodeX,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                  GX_K (iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2), &
-                 nIterations )
+                 alp, B_u_1, B_u_2, B_u_3, nIterations )
 
         Flux_K &
           = Flux_X1 &
@@ -672,7 +682,8 @@ CONTAINS
                 uPF_K(iNodeX,iPF_V3      ,iZ3,iZ4,iZ2), &
                 GX_K (iNodeX,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                 GX_K (iNodeX,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
-                GX_K (iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2) )
+                GX_K (iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2), &
+                alp, B_u_1, B_u_2, B_u_3 )
 
         DO iCR = 1, nCR
 
@@ -726,6 +737,21 @@ CONTAINS
 
   END SUBROUTINE ComputeIncrement_Divergence_X1
 
+  FUNCTION FaceVelocity_X1 &
+    ( V1_L, V2_L, V3_L, V1_R, V2_R, V3_R )
+
+    REAL(DP), INTENT(in) :: V1_L, V2_L, V3_L
+    REAL(DP), INTENT(in) :: V1_R, V2_R, V3_R
+    REAL(DP)             :: FaceVelocity_X1(1:3)
+
+    ! --- Average Left and Right States ---
+
+    FaceVelocity_X1(1) = Half * ( V1_L + V1_R )
+    FaceVelocity_X1(2) = Half * ( V2_L + V2_R )
+    FaceVelocity_X1(3) = Half * ( V3_L + V3_R )
+
+    RETURN
+  END FUNCTION FaceVelocity_X1
 
 
-END MODULE MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
+END MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
