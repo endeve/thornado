@@ -82,7 +82,7 @@ MODULE MF_InitializationModule
     NodeNumberTableZ
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_TwoMoment  
 ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -274,7 +274,8 @@ CONTAINS
                      uPF_K(iNodeX,iPF_V3),        &                         
                      uGF_K(iNodeX,iGF_Gm_dd_11), &
                      uGF_K(iNodeX,iGF_Gm_dd_22), &
-                     uGF_K(iNodeX,iGF_Gm_dd_33))
+                     uGF_K(iNodeX,iGF_Gm_dd_33), &
+                     1.0_AR, 0.0_AR, 0.0_AR, 0.0_AR )
 
               
             END DO
