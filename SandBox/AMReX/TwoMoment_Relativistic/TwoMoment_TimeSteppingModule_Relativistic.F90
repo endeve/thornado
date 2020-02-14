@@ -41,10 +41,10 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
 CONTAINS
 
 
-  SUBROUTINE Update_IMEX_RK( dt, GE, GX, UF, UR )
+  SUBROUTINE Update_IMEX_RK( dt, GE, GX, UF, UR, alp, B_u_1, B_u_2, B_u_3 )
    
     REAL(DP), INTENT(in) :: &
-      dt
+      dt, alp, B_u_1, B_u_2, B_u_3
     REAL(DP), INTENT(in)    :: &
       GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
@@ -60,6 +60,68 @@ CONTAINS
          iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
          iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
          1:nCR,1:nSpecies)
+
+    INTEGER :: iS, jS
+
+    U0 = UR
+
+    DO iS = 1, nStages
+
+      Ui = U0
+
+      DO jS = 1, iS - 1
+
+
+        IF( a_EX(iS,jS) .NE. Zero )THEN
+
+          Ui = Ui + dt * a_EX(iS,jS) * StageData(jS) % dU_EX
+
+        END IF
+
+      END DO ! jS = 1, iS - 1
+
+
+      IF( ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero ) )THEN
+
+        ! --- Explicit Solve ---
+
+        PRINT*, "    EXPLICIT: ", iS
+
+        CALL ComputeIncrement_TwoMoment_Explicit &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+                 GE, GX, UF, Ui, StageData(iS) % dU_EX, &
+                 alp, B_u_1, B_u_2, B_u_3 )
+
+      END IF
+
+    END DO ! iS = 1, nStages
+
+    ! --- Assembly Step ---
+
+    IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
+        ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
+
+      PRINT*, "    ASSEMBLY:"
+
+      Ui = U0
+
+      DO iS = 1, nStages
+
+
+        IF( w_EX(iS) .NE. Zero )THEN
+
+          Ui = Ui + dt * w_EX(iS) * StageData(iS) % dU_EX
+
+        END IF
+
+      END DO
+
+
+    END IF
+
+    UR = Ui
+
+
 
   END SUBROUTINE Update_IMEX_RK
 
