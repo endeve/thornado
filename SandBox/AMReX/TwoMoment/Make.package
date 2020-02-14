@@ -67,7 +67,8 @@ F90EXE_sources += GeometryComputationModule.F90
 # In (THORNADO_DIR)/Modules/Euler
 
 F90EXE_sources += Euler_UtilitiesModule_NonRelativistic.F90
-
+F90EXE_sources += Euler_BoundaryConditionsModule.F90
+f90EXE_sources += Euler_ErrorModule.f90
 # In THORNADO_DIR/Modules/EquationOfState
 
 F90EXE_sources += EquationOfStateModule_IDEAL.F90
@@ -86,6 +87,7 @@ F90EXE_sources += TwoMoment_UtilitiesModule_OrderV.F90
 
 F90EXE_sources += TwoMoment_ClosureModule.F90
 F90EXE_sources += TwoMoment_UtilitiesModule.F90
+F90EXE_sources += TwoMoment_BoundaryConditionsModule.F90
 
 
 f90EXE_sources += InputOutput.f90
