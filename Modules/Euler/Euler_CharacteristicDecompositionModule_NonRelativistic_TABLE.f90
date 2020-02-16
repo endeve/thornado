@@ -33,7 +33,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE &
-    ( iDim, G, U, R, invR )
+    ( iDim, G, U, R, invR, cs_T, UseAnalytic_Option )
 
     INTEGER,  INTENT(in)  :: iDim
     REAL(DP), INTENT(in)  :: G(nGF)
@@ -41,8 +41,13 @@ CONTAINS
     REAL(DP), INTENT(out) :: R(nCF,nCF)
     REAL(DP), INTENT(out) :: invR(nCF,nCF)
 
+    LOGICAL,  INTENT(in) , OPTIONAL :: UseAnalytic_Option
+    REAL(DP), INTENT(out), OPTIONAL :: cs_T
+
+    LOGICAL :: UseAnalytic
+
     INTEGER :: i
-    REAL(DP), DIMENSION(1) :: D, V1, V2, V3, E, Ne, P, Cs, invCsSq, Cs_table
+    REAL(DP), DIMENSION(1) :: D, V1, V2, V3, E, Ne, P, Cs, Cs_table
     REAL(DP), DIMENSION(1) :: K, H, Tau, T, Y, Vsq, W, Em, Gm, S
 
     REAL(DP), DIMENSION(1) :: dPdD, dPdT, dPdY
@@ -51,6 +56,14 @@ CONTAINS
 
     REAL(DP), DIMENSION(1) :: X, Alpha, B, Delta, Zero2
     REAL(DP), DIMENSION(3) :: Phi
+
+    REAL(DP), DIMENSION(nCF,nCF) :: dFdU(nCF,nCF)
+
+    IF ( PRESENT ( UseAnalytic_Option ) ) THEN
+      UseAnalytic = UseAnalytic_Option
+    ELSE
+      UseAnalytic = .FALSE.
+    END IF
 
     CALL TimersStart_Euler( Timer_Euler_CharacteristicDecomposition )
 
@@ -77,7 +90,6 @@ CONTAINS
     dPdDe  = ( Tau ) * ( dPdY - dEdY * dPdE )
     dPdTau = (dPdDe * (Y - 1) + dEdD * dPdE)/ (Tau**2)
 
-
     Vsq = V1**2 + V2**2 + V3**2
 
     IF ( Tau(1)**2 * ( P(1) * dPdE(1) - dPdTau(1) ) + Y(1) * dPdDe(1) .GT. Zero) THEN
@@ -94,6 +106,59 @@ CONTAINS
     W = Tau * (dPdE*(Vsq - 2.0_DP * Em) &
                - 2.0_DP * dPdTau * Tau )
 
+    ! --- Compute the flux Jacobian for debugging/use in numeric routine ---
+
+    SELECT CASE( iDim )
+      CASE(1)
+        CALL ComputeFluxJacobian_X1( Tau, T, Y, V1, V2, V3, Vsq, Em, H, dPdTau, dPdE, dPdDe, dFdU )
+      CASE(2)
+        CALL ComputeFluxJacobian_X2( Tau, T, Y, V1, V2, V3, Vsq, Em, H, dPdTau, dPdE, dPdDe, dFdU )
+      CASE(3)
+        CALL ComputeFluxJacobian_X3( Tau, T, Y, V1, V2, V3, Vsq, Em, H, dPdTau, dPdE, dPdDe, dFdU )
+    END SELECT
+
+    IF ( UseAnalytic ) THEN
+      CALL ComputeCharacteristicDecomposition_Analytic( iDim, D, V1, V2, V3, E, Ne, P, Cs,  &
+                                                        K, H, Tau, T, Y, VSq, W, Em, dPdD,  &
+                                                        dPdT, dPdY, dEdD, dEdT, dEdY, dPdE, &
+                                                        dPdDe, dPdTau, R, invR )
+    ELSE
+      CALL ComputeCharacteristicDecomposition_Numeric( R, invR, dFdU )
+    END IF
+
+    CALL TimersStop_Euler( Timer_Euler_CharacteristicDecomposition )
+
+    ! -- Begin debugging statements. ---
+
+    IF ( PRESENT( cs_T ) )THEN
+      cs_T = Cs(1)
+    END IF
+
+  END SUBROUTINE ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE
+
+  SUBROUTINE ComputeCharacteristicDecomposition_Analytic &
+               ( iDim, D, V1, V2, V3, E, Ne, P, Cs,  &
+                 K, H, Tau, T, Y, VSq, W, Em, dPdD,  &
+                 dPdT, dPdY, dEdD, dEdT, dEdY, dPdE, &
+                 dPdDe, dPdTau, R, invR )
+
+    INTEGER,  INTENT(in)  :: iDim
+
+    REAL(DP), DIMENSION(1), INTENT(in) :: D, V1, V2, V3, E, Ne, P, Cs
+    REAL(DP), DIMENSION(1), INTENT(in) :: K, H, Tau, T, Y, Vsq, W, Em
+
+    REAL(DP), DIMENSION(1), INTENT(in) :: dPdD, dPdT, dPdY
+    REAL(DP), DIMENSION(1), INTENT(in) :: dEdD, dEdT, dEdY
+    REAL(DP), DIMENSION(1), INTENT(in) :: dPdE, dPdDe, dPdTau
+
+    INTEGER :: i
+
+    REAL(DP), DIMENSION(1) :: X, Alpha, B, Delta, Zero2, invCsSq
+    REAL(DP), DIMENSION(3) :: Phi
+
+    REAL(DP), INTENT(out) :: R(nCF,nCF)
+    REAL(DP), INTENT(out) :: invR(nCF,nCF)
+
     Phi(1) = dPdE(1) * Tau(1) * V1(1)
     Phi(2) = dPdE(1) * Tau(1) * V2(1)
     Phi(3) = dPdE(1) * Tau(1) * V3(1)
@@ -106,7 +171,6 @@ CONTAINS
 
         Delta = V1**2 - V2**2 - V3**2
 
-        Delta = V1**2 - V2**2 - V3**2
         B = 0.5_DP * (Delta + 2.0_DP * Em + &
                      (2.0_DP * dPdTau * Tau)/dPdE)
         X = (dPdE * ( Delta + 2.0_DP * Em) + 2.0_DP * dPdTau * Tau )
@@ -257,9 +321,177 @@ CONTAINS
 
     END SELECT
 
-    CALL TimersStop_Euler( Timer_Euler_CharacteristicDecomposition )
+  END SUBROUTINE ComputeCharacteristicDecomposition_Analytic
 
-  END SUBROUTINE ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE
 
+  SUBROUTINE ComputeCharacteristicDecomposition_Numeric( R, invR, dFdU )
+
+    REAL(DP), INTENT(in)  :: dFdU(nCF,nCF)
+    REAL(DP), INTENT(out) :: R(nCF,nCF)
+    REAL(DP), INTENT(out) :: invR(nCF,nCF)
+    REAL(DP)              :: Lambda(nCF,nCF)
+
+    INTEGER  :: i, INFO, LWORK
+    INTEGER  :: IPIV(nCF)
+
+    REAL(DP)              :: WR(nCF)
+    REAL(DP)              :: WI(nCF)
+    REAL(DP)              :: TEMP(1)
+    REAL(DP)              :: dFdU_Copy(nCF,nCF)
+    REAL(DP)              :: invR_Copy(nCF,nCF)
+    REAL(DP), ALLOCATABLE :: WORK1(:), WORK2(:)
+
+    ! --- Copy to avoid overwriting dFdU ---
+
+    dFdU_Copy = dFdU
+
+    ! --- Necessary workplace query to get LWORK. ----
+
+    CALL DGEEV( 'V', 'N', nCF, dFdU_Copy, nCF, WR, &
+                WI, invR, nCF, 0, nCF, TEMP, &
+                -1, INFO )
+
+    LWORK = TEMP(1)
+    ALLOCATE( WORK1(LWORK) )
+
+    Lambda(:,:) = Zero
+
+    ! --- Actual computation of eigedecomposition. ---
+
+    CALL DGEEV( 'V', 'N', nCF, dFdU_Copy, nCF, WR, &
+                WI, invR, nCF, 0, nCF, WORK1,  &
+                LWORK, INFO )
+
+    invR = TRANSPOSE( invR )
+
+    invR_Copy = invR
+
+    CALL DGETRF( nCF, nCF, invR_Copy, nCF, IPIV, INFO )
+
+    LWORK = -1
+    CALL DGETRI( nCF, invR_Copy, nCF, IPIV, TEMP, LWORK, INFO )
+
+    LWORK = TEMP(1)
+    ALLOCATE( WORK2(LWORK) )
+
+    CALL DGETRI( nCF, invR_Copy, nCF, IPIV, WORK2, LWORK, INFO )
+
+    R = invR_Copy
+
+    IF ( ( INFO .NE. 0 ) .OR. ( ANY( ABS( WI ) > 1d-15 ) ) ) THEN
+
+      PRINT*, 'INFO: ', INFO
+      PRINT*, 'WR: ', WR
+      PRINT*, 'WI: ', WI
+
+      DO i = 1, 6
+
+        PRINT*, 'Lambda(i,:) : ', Lambda(i,:)
+
+      END DO
+
+    END IF
+
+  END SUBROUTINE ComputeCharacteristicDecomposition_Numeric
+
+  SUBROUTINE ComputeFluxJacobian_X1( Tau, T, Y, V1, V2, V3, Vsq, Em, H, &
+                                     dPdTau, dPdE, dPdDe, dFdU_X1 )
+
+    REAL(DP), DIMENSION(1), INTENT(in) :: Tau, T, Y, V1, V2, V3, VSq, Em, H
+    REAL(DP), DIMENSION(1), INTENT(in) :: dPdTau, dPdE, dPdDe
+    REAL(DP), INTENT(out) :: dFdU_X1(nCF,nCF)
+
+    dFdU_X1(1,:) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+
+    dFdU_X1(2,1) = - V1(1)**2 - Tau(1)**2 * dPdTau(1) &
+                   - Tau(1) * dPdE(1) * ( Em(1) - 0.5_DP * Vsq(1) )
+    dFdU_X1(2,2) = V1(1) * ( 2.0_DP - Tau(1) * dPdE(1) )
+    dFdU_X1(2,3) = - dPdE(1) * Tau(1) * V2(1)
+    dFdU_X1(2,4) = - dPdE(1) * Tau(1) * V3(1)
+    dFdU_X1(2,5) = dPdE(1) * Tau(1)
+    dFdU_X1(2,6) = dPdDe(1)
+
+    dFdU_X1(3,:) = [ - V1(1) * V2(1), V2(1), V1(1), 0.0_DP, 0.0_DP, 0.0_DP ]
+
+    dFdU_X1(4,:) = [ - V1(1) * V3(1), V3(1), 0.0_DP, V1(1), 0.0_DP, 0.0_DP ]
+
+    dFdU_X1(5,1) = V1(1) * ( - H(1) - dPdTau(1) * Tau(1)**2 &
+                             - Tau(1) * dPdE(1) * ( Em(1) - 0.5_DP * Vsq(1) ) )
+    dFdU_X1(5,2) = H(1) - dPdE(1) * Tau(1) * V1(1)**2
+    dFdU_X1(5,3) =      - dPdE(1) * Tau(1) * V1(1) * V2(1)
+    dFdU_X1(5,4) =      - dPdE(1) * Tau(1) * V1(1) * V3(1)
+    dFdU_X1(5,5) = V1(1) * ( 1.0_DP + dPdE(1) * Tau(1) )
+    dFdU_X1(5,6) = V1(1) * dPdDe(1)
+
+    dFdU_X1(6,:) = [ - V1(1) * Y(1), Y(1), 0.0_DP, 0.0_DP, 0.0_DP, V1(1) ]
+
+  END SUBROUTINE ComputeFluxJacobian_X1
+
+  SUBROUTINE ComputeFluxJacobian_X2( Tau, T, Y, V1, V2, V3, Vsq, E, H, &
+                                     dPdTau, dPdE, dPdDe, dFdU_X2 )
+
+    REAL(DP), DIMENSION(1), INTENT(in) :: Tau, T, Y, V1, V2, V3, VSq, E, H
+    REAL(DP), DIMENSION(1), INTENT(in) :: dPdTau, dPdE, dPdDe
+    REAL(DP), INTENT(out) :: dFdU_X2(nCF,nCF)
+
+    dFdU_X2(1,:) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+
+    dFdU_X2(2,:) = [ - V1(1) * V2(1), V2(1), V1(1), 0.0_DP, 0.0_DP, 0.0_DP ]
+
+    dFdU_X2(3,1) = - V2(1)**2 - Tau(1)**2 * dPdTau(1) &
+                   - Tau(1) * dPdE(1) * ( Tau(1) * E(1) - 0.5_DP * Vsq(1) )
+    dFdU_X2(3,2) = - dPdE(1) * Tau(1) * V1(1)
+    dFdU_X2(3,3) = V2(1) * ( 2.0_DP - Tau(1) * dPdE(1) )
+    dFdU_X2(3,4) = - dPdE(1) * Tau(1) * V3(1)
+    dFdU_X2(3,5) = dPdE(1) * Tau(1)
+    dFdU_X2(3,6) = dPdDe(1)
+
+    dFdU_X2(4,:) = [ - V2(1) * V3(1), 0.0_DP, V3(1), V2(1), 0.0_DP, 0.0_DP ]
+
+    dFdU_X2(5,1) = V2(1) * ( - H(1) - dPdTau(1) * Tau(1)**2 &
+                             - Tau(1) * dPdE(1) * ( Tau(1) * E(1) - 0.5_DP * Vsq(1) ) )
+    dFdU_X2(5,2) =      - dPdE(1) * Tau(1) * V1(1) * V2(1)
+    dFdU_X2(5,3) = H(1) - dPdE(1) * Tau(1) * V2(1)**2
+    dFdU_X2(5,4) =      - dPdE(1) * Tau(1) * V2(1) * V3(1)
+    dFdU_X2(5,5) = V1(1) * ( 1.0_DP + dPdE(1) * Tau(1) )
+    dFdU_X2(5,6) = V1(1) * dPdDe(1)
+
+    dFdU_X2(6,:) = [ - V2(1) * Y(1), 0.0_DP, Y(1), 0.0_DP, 0.0_DP, V2(1) ]
+
+  END SUBROUTINE ComputeFluxJacobian_X2
+
+  SUBROUTINE ComputeFluxJacobian_X3( Tau, T, Y, V1, V2, V3, Vsq, E, H, &
+                                     dPdTau, dPdE, dPdDe, dFdU_X3 )
+
+    REAL(DP), DIMENSION(1), INTENT(in) :: Tau, T, Y, V1, V2, V3, VSq, E, H
+    REAL(DP), DIMENSION(1), INTENT(in) :: dPdTau, dPdE, dPdDe
+    REAL(DP), INTENT(out) :: dFdU_X3(nCF,nCF)
+
+    dFdU_X3(1,:) = [ 0.0_DP, 1.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
+
+    dFdU_X3(2,:) = [ - V1(1) * V3(1), V3(1), 0.0_DP, V1(1), 0.0_DP, 0.0_DP ]
+
+    dFdU_X3(3,:) = [ - V3(1) * V2(1), 0.0_DP, V3(1), V2(1), 0.0_DP, 0.0_DP ]
+
+    dFdU_X3(4,1) = - V3(1)**2 - Tau(1)**2 * dPdTau(1) &
+                   - Tau(1) * dPdE(1) * ( Tau(1) * E(1) - 0.5_DP * Vsq(1) )
+    dFdU_X3(4,2) = - dPdE(1) * Tau(1) * V1(1)
+    dFdU_X3(4,3) = - dPdE(1) * Tau(1) * V2(1)
+    dFdU_X3(4,4) = V3(1) * ( 2.0_DP - Tau(1) * dPdE(1) )
+    dFdU_X3(4,5) = dPdE(1) * Tau(1)
+    dFdU_X3(4,6) = dPdDe(1)
+
+    dFdU_X3(5,1) = V2(1) * ( - H(1) - dPdTau(1) * Tau(1)**2 &
+                             - Tau(1) * dPdE(1) * ( Tau(1) * E(1) - 0.5_DP * Vsq(1) ) )
+    dFdU_X3(5,2) =      - dPdE(1) * Tau(1) * V1(1) * V2(1)
+    dFdU_X3(5,3) = H(1) - dPdE(1) * Tau(1) * V2(1)**2
+    dFdU_X3(5,4) =      - dPdE(1) * Tau(1) * V2(1) * V3(1)
+    dFdU_X3(5,5) = V1(1) * ( 1.0_DP + dPdE(1) * Tau(1) )
+    dFdU_X3(5,6) = V1(1) * dPdDe(1)
+
+    dFdU_X3(6,:) = [ - V2(1) * Y(1), 0.0_DP, Y(1), 0.0_DP, 0.0_DP, V2(1) ]
+
+  END SUBROUTINE ComputeFluxJacobian_X3
 
 END MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
+
