@@ -1,5 +1,5 @@
 function...
-  [ Time, X1, X2, X3, Shock, Theta_1, Theta_2, Theta_3 ]...
+  [ Time, X1, X2, X3, Shock, Theta_1, Theta_2, Theta_3, Min_E ]...
     = ReadFluidFields_Diagnostic( AppName, FileNumber, Directory )
 
   if( exist( 'Directory', 'var' ) )
@@ -19,5 +19,6 @@ function...
   Theta_1 = h5read( FileName, '/Fluid Fields/Diagnostic/Theta 1' );
   Theta_2 = h5read( FileName, '/Fluid Fields/Diagnostic/Theta 2' );
   Theta_3 = h5read( FileName, '/Fluid Fields/Diagnostic/Theta 3' );
+  Min_E   = h5read( FileName, '/Fluid Fields/Diagnostic/Min E'
 
 end

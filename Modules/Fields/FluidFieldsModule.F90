@@ -136,19 +136,22 @@ MODULE FluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iDF_T1 = 02 ! Theta 1
   INTEGER, PUBLIC, PARAMETER :: iDF_T2 = 03 ! Theta 2
   INTEGER, PUBLIC, PARAMETER :: iDF_T3 = 04 ! Theta 3
-  INTEGER, PUBLIC, PARAMETER :: nDF    = 04
+  INTEGER, PUBLIC, PARAMETER :: iDF_E  = 05 ! Minimum Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: nDF    = 05 ! n Diagnostic Fluid Fields
 
   CHARACTER(32), DIMENSION(nDF), PUBLIC, PARAMETER :: &
     namesDF = [ 'Shock                           ', &
                 'Theta 1                         ', &
                 'Theta 2                         ', &
-                'Theta 3                         ' ]
+                'Theta 3                         ', &
+                'Min E                           ' ]
 
   CHARACTER(10), DIMENSION(nDF), PUBLIC, PARAMETER :: &
     ShortNamesDF = [ 'DF_Sh     ', &
                      'DF_T1     ', &
                      'DF_T2     ', &
-                     'DF_T3     ' ]
+                     'DF_T3     ', &
+                     'DF_E      ' ]
 
   REAL(DP), DIMENSION(nDF), PUBLIC :: unitsDF
 
@@ -379,6 +382,7 @@ CONTAINS
       unitsDF(iDF_T1) = 1.0_DP
       unitsDF(iDF_T2) = 1.0_DP
       unitsDF(iDF_T3) = 1.0_DP
+      unitsDF(iDF_E)  = Erg / Gram
 
     ELSE
 
