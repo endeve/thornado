@@ -41,10 +41,10 @@ MODULE TwoMoment_TimeSteppingModule_OrderV
 CONTAINS
 
 
-  SUBROUTINE Update_IMEX_RK( dt, GE, GX, UF, UR, alp, B_u_1, B_u_2, B_u_3 )
+  SUBROUTINE Update_IMEX_RK( dt, GE, GX, UF, UR )
    
     REAL(DP), INTENT(in) :: &
-      dt, alp, B_u_1, B_u_2, B_u_3
+      dt
     REAL(DP), INTENT(in)    :: &
       GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
     REAL(DP), INTENT(in)    :: &
@@ -89,8 +89,7 @@ CONTAINS
 
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-                 GE, GX, UF, Ui, StageData(iS) % dU_EX, &
-                 alp, B_u_1, B_u_2, B_u_3 )
+                 GE, GX, UF, Ui, StageData(iS) % dU_EX )
 
       END IF
 
