@@ -65,7 +65,10 @@ MODULE MyAmrModule
   TYPE(amrex_distromap), ALLOCATABLE, PUBLIC :: DM(:)
   TYPE(amrex_geometry),  ALLOCATABLE, PUBLIC :: GEOM(:)
 
-
+  ! --- Equation Of State ---
+  REAL(AR)                      :: Gamma_IDEAL
+  CHARACTER(LEN=:), ALLOCATABLE :: EquationOfState
+  CHARACTER(LEN=:), ALLOCATABLE :: EosTableName
 
 CONTAINS
 
@@ -150,6 +153,18 @@ CONTAINS
       CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
       CALL PP % get   ( 'max_level',         MaxLevel )
     CALL amrex_parmparse_destroy( PP )
+
+    ! --- Equation of state parameters EoS.* ---
+    Gamma_IDEAL     = 5.0_AR / 3.0_AR
+    EquationOfState = 'IDEAL'
+    EosTableName    = ''
+    CALL amrex_parmparse_build( PP, 'EoS' )
+      CALL PP % query( 'Gamma',           Gamma_IDEAL )
+      CALL PP % query( 'EquationOfState', EquationOfState )
+      CALL PP % query( 'EosTableName',    EosTableName    )
+    CALL amrex_parmparse_destroy( PP )
+
+
 
     MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
 

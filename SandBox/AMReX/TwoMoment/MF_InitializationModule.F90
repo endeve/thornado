@@ -18,8 +18,10 @@ MODULE MF_InitializationModule
     amrex_parmparse_destroy
 
   ! --- thornado Modules ---
-  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    ComputeConserved_Euler_NonRelativistic
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputeConserved_Euler_Relativistic
+  USE EquationOfStateModule,   ONLY: &
+    ComputePressureFromPrimitive
   USE ProgramHeaderModule,              ONLY: &
     DescribeProgramHeaderX, &
     nDOFX,                  &
@@ -156,6 +158,7 @@ CONTAINS
     REAL(AR)       :: uGF_K( nDOFX, nGF )
     REAL(AR)       :: uPF_K( nDOFX, nPF )
     REAL(AR)       :: uCF_K( nDOFX, nCF )
+    REAL(AR)       :: uAF_K( nDOFX, nAF )
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -172,6 +175,7 @@ CONTAINS
     uPF_K = Zero
     uCF_K = Zero
     uGF_K = Zero
+    uAF_K = Zero
 
     Ones=1.0_AR
     print*, V_0 
@@ -182,7 +186,7 @@ CONTAINS
                xL(iDim), xR(iDim) )
 
     END DO
-    print*, 'beans'
+    
     DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = .TRUE. )
@@ -217,7 +221,12 @@ CONTAINS
             uPF_K(iNodeX,iPF_Ne) = 0.0_AR
 
           END DO
-        CALL ComputeConserved_Euler_NonRelativistic &
+       
+        CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+        CALL ComputeConserved_Euler_Relativistic &
                ( uPF_K(:,iPF_D ), &
                  uPF_K(:,iPF_V1), &
                  uPF_K(:,iPF_V2), &
@@ -232,9 +241,9 @@ CONTAINS
                  uCF_K(:,iCF_Ne), &
                  uGF_K(:,iGF_Gm_dd_11), &
                  uGF_K(:,iGF_Gm_dd_22), &
-                 uGF_K(:,iGF_Gm_dd_33))
+                 uGF_K(:,iGF_Gm_dd_33), &
+                 uAF_K(:,iAF_P)      )
          
-          !problem is with calculating these
 
           DO iNodeZ = 1, nDOFZ
                         
@@ -275,6 +284,7 @@ CONTAINS
                      uGF_K(iNodeX,iGF_Gm_dd_11), &
                      uGF_K(iNodeX,iGF_Gm_dd_22), &
                      uGF_K(iNodeX,iGF_Gm_dd_33), &
+                     0.0_AR, 0.0_AR, 0.0_AR,     &
                      1.0_AR, 0.0_AR, 0.0_AR, 0.0_AR )
 
               

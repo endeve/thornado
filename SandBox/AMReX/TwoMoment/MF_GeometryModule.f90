@@ -16,11 +16,15 @@ MODULE MF_GeometryModule
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,                       ONLY: &
-    nDOFX, swX
+    nDOFX, swX, swE
   USE GeometryFieldsModule,                      ONLY: &
     nGF, iGF_Phi_N
+  USE GeometryFieldsModuleE,                      ONLY: &
+    nGE
   USE GeometryComputationModule,                 ONLY: &
     ComputeGeometryX
+  USE GeometryComputationModuleE,                 ONLY: &
+    ComputeGeometryE
 
   ! --- Local Modules ---
   USE MyAmrModule,        ONLY: &
@@ -97,5 +101,6 @@ CONTAINS
     END DO
 
   END SUBROUTINE MF_ComputeGeometryX
+
 
 END MODULE MF_GeometryModule
