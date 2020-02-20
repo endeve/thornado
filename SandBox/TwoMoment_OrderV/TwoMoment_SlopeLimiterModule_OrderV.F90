@@ -162,7 +162,7 @@ CONTAINS
     END IF
 
     PRINT*
-    PRINT*, "    ApplySlopeLimiter_TwoMoment"
+    PRINT*, "      ApplySlopeLimiter_TwoMoment"
 
     SELECT CASE ( TRIM( SlopeLimiterMethod ) )
 
@@ -226,7 +226,7 @@ CONTAINS
       uCR_K(1:nCR,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
             1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
 
-    PRINT*, "    ApplySlopeLimiter_TVD"
+    PRINT*, "      ApplySlopeLimiter_TVD"
 
     iX_B0 = iZ_B0(2:4)
     iX_E0 = iZ_E0(2:4)
@@ -416,7 +416,7 @@ CONTAINS
           iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
           iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
-    PRINT*, "    ApplySlopeLimiter_WENO"
+    PRINT*, "      ApplySlopeLimiter_WENO"
 
     STOP
 
