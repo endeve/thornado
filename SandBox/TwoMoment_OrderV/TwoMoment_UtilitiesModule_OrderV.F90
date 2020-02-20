@@ -35,6 +35,7 @@ MODULE TwoMoment_UtilitiesModule_OrderV
   PUBLIC :: Flux_X3
   PUBLIC :: ComputeEddingtonTensorComponents_dd
   PUBLIC :: ComputeEddingtonTensorComponents_ud
+  PUBLIC :: ComputeHeatFluxTensorComponents_udd
   PUBLIC :: NumericalFlux_LLF
 
 CONTAINS
