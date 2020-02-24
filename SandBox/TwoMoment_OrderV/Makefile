@@ -9,7 +9,17 @@ VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 
 .DEFAULT_GOAL := all
 
-all: PrimitiveConserved TimeStepper ApplicationDriver
+all: TwoMomentClosure PrimitiveConserved TimeStepper ApplicationDriver
+
+TwoMomentClosure: \
+	$(thornado) \
+	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMomentClosure.o
+	$(FLINKER) $(FLAGS) -o TwoMomentClosure_$(MACHINE) \
+	$(thornado) \
+	TwoMoment_UtilitiesModule_OrderV.o \
+	TwoMomentClosure.o \
+	$(LIBRARIES)
 
 PrimitiveConserved: \
 	$(thornado) \
@@ -75,12 +85,18 @@ clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
+	rm -f  TwoMomentClosure_$(MACHINE)
+	rm -rf TwoMomentClosure_$(MACHINE).dSYM
 	rm -f  PrimitiveConserved_$(MACHINE)
 	rm -rf PrimitiveConserved_$(MACHINE).dSYM
 	rm -f  TimeStepper_$(MACHINE)
 	rm -rf TimeStepper_$(MACHINE).dSYM
 	rm -f  ApplicationDriver_$(MACHINE)
 	rm -rf ApplicationDriver_$(MACHINE).dSYM
+
+TwoMomentClosure.o: \
+  KindModule.o \
+  TwoMomentClosure.f90
 
 PrimitiveConserved.o: \
   KindModule.o \
