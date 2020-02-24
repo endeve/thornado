@@ -8,14 +8,14 @@ DEBUG = 0
 thornado.ProgramName = "RiemannProblem2D"
 
 thornado.t_end     = 4.0e-1   # Final time
-thornado.dt_wrt    = 4.0e-3   # Time increment to write plot-file
-thornado.dt_chk    = 4.0e-2   # Time increment to write checkpoint-file
-thornado.nNodes    = 3        # Number of DG nodes in each active dimension
-thornado.nStages   = 3        # Number of SSP-RK stages for time integration
+thornado.dt_wrt    = 4.0e-2   # Time increment to write plot-file
+thornado.dt_chk    = 2.0e+2   # Time increment to write checkpoint-file
+thornado.nNodes    = 2        # Number of DG nodes in each active dimension
+thornado.nStages   = 2        # Number of SSP-RK stages for time integration
 thornado.CFL       = 0.5      # CFL number
 thornado.bcX       = 02 02 00 # Boundary conditions
 thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
-thornado.iCycleD   = 10       # MOD this number to display info
+thornado.iCycleD   = 1       # MOD this number to display info
 thornado.iCycleW   = -1       # MOD this number to write plotfile
 thornado.iCycleChk = -1       # MOD this number to write checkpoint file
 thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
@@ -25,21 +25,21 @@ geometry.prob_lo     = 0.0 0.0 0.0 # Lower domain size
 geometry.prob_hi     = 1.0 1.0 1.0 # Upper domain size
 geometry.is_periodic = 0 0 1       # Periodicity. 0 (no), 1 (yes)
 
-amr.n_cell            = 128 128 001 # Number of cells in each dimension
-amr.max_grid_size_x   = 32
-amr.max_grid_size_y   = 64
+amr.n_cell            = 32 32 001 # Number of cells in each dimension
+amr.max_grid_size_x   = 8
+amr.max_grid_size_y   = 8
 amr.blocking_factor_x = 1
 amr.blocking_factor_y = 1
 amr.max_level         = 0
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1
-SL.SlopeLimiterMethod        = "TVD"
+SL.SlopeLimiterMethod        = "WENO"
 SL.BetaTVD                   = 1.75e+0
 SL.BetaTVB                   = 0.00e+0
-SL.SlopeTolerance            = 1.00e-6
-SL.UseCharacteristicLimiting = 1
-SL.UseTroubledCellIndicator  = 1
+SL.SlopeTolerance            = 0.00e-6
+SL.UseCharacteristicLimiting = 0
+SL.UseTroubledCellIndicator  = 0
 SL.LimiterThresholdParameter = 3.00e-2
 SL.UseConservativeCorrection = 1
 

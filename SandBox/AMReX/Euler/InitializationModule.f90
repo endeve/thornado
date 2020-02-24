@@ -369,7 +369,7 @@ CONTAINS
       '', 'CFL: ', &
       CFL * ( amrex_spacedim * ( Two * nNodes - One ) )
 
-    CALL SetUnitsFluidFields
+    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ) )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

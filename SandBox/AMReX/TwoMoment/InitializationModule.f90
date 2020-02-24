@@ -1,5 +1,5 @@
 MODULE InitializationModule
-  
+
   ! --- AMReX Modules ---
   USE amrex_fort_module, ONLY: &
     AR => amrex_real, &
@@ -75,7 +75,7 @@ MODULE InitializationModule
     CreateRadiationFields
   USE GeometryFieldsModule,             ONLY: &
     nGF,                     &
-    CoordinateSystem,        & 
+    CoordinateSystem,        &
     CreateGeometryFields
   USE GeometryFieldsModuleE, ONLY: &
     CreateGeometryFieldsE, &
@@ -84,7 +84,7 @@ MODULE InitializationModule
   USE GeometryComputationModuleE, ONLY: &
     ComputeGeometryE
   USE FluidFieldsModule,                ONLY: &
-    nCF,                     & 
+    nCF,                     &
     nAF,                     &
     CreateFluidFields
   USE PolynomialBasisMappingModule,     ONLY: &
@@ -101,7 +101,7 @@ MODULE InitializationModule
   ! --- Local modules ---
   USE MyAmrDataModule,                  ONLY: &
     MF_uGF, &
-    MF_uCF, & 
+    MF_uCF, &
     MF_uAF, &
     MF_uPR, &
     MF_uCR
@@ -174,7 +174,7 @@ CONTAINS
     CALL MyAmrInit
 
     IF( iRestart .LT. 0 )THEN
-      
+
       BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
       ALLOCATE( BA(0:nLevels-1) )
@@ -212,7 +212,7 @@ CONTAINS
         CALL amrex_multifab_build &
                ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX(1) )
         CALL MF_uCF(iLevel) % SetVal( Zero )
-     
+
         CALL amrex_multifab_build &
                ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
         CALL MF_uAF(iLevel) % SetVal( Zero )
@@ -229,8 +229,8 @@ CONTAINS
 
         CALL MF_uCR(iLevel) % SetVal( Zero )
 
-      END DO 
-      
+      END DO
+
       t     = Zero
       dt    = Zero
       t_wrt = dt_wrt
@@ -253,19 +253,19 @@ CONTAINS
 
     CALL InitializePolynomialBasis_Lagrange
     CALL InitializePolynomialBasis_Legendre
-     
-  
+
+
     CALL InitializeReferenceElementX
-    
+
     CALL InitializeReferenceElementE
-  
+
     CALL InitializeReferenceElementZ
 
     CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies )
 
-    CALL CreateFluidFields( nX, swX )
-  
-    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' ) 
+    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' )
+
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' )
 
     call CreateMesh &
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
@@ -275,7 +275,7 @@ CONTAINS
 
     call ComputeGeometryE &
            ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
-     
+
     CALL MF_ComputeGeometryX( MF_uGF, 0.0_AR )
 
     CALL InitializeEquationOfState &
@@ -283,13 +283,13 @@ CONTAINS
                Gamma_IDEAL_Option = Gamma_IDEAL )
 
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0 )
-  
+
     CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &
              MF_uCR_Option = MF_uCR, &
              MF_uPR_Option = MF_uPR )
 
-  END SUBROUTINE InitializeProgram  
+  END SUBROUTINE InitializeProgram
 
 
 END MODULE InitializationModule

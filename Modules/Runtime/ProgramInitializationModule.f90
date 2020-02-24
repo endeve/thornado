@@ -337,7 +337,8 @@ CONTAINS
 
     ! --- Fluid Fields ---
 
-    CALL CreateFluidFields( nX, swX )
+    CALL CreateFluidFields &
+           ( nX, swX, CoordinateSystem_Option = CoordinateSystem_Option )
 
     ! --- Radiation Fields ---
 
