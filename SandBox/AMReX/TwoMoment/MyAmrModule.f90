@@ -45,6 +45,7 @@ MODULE MyAmrModule
   REAL(AR),          ALLOCATABLE :: xL(:), xR(:)
   REAL(AR)                       :: eL, eR, zoomE
   CHARACTER(LEN=:),  ALLOCATABLE :: ProgramName
+  CHARACTER(LEN=:),  ALLOCATABLE :: Scheme
   CHARACTER(LEN=32), SAVE        :: CoordSys
   LOGICAL,           SAVE        :: UsePhysicalUnits
   LOGICAL,           SAVE        :: DEBUG
@@ -100,6 +101,7 @@ CONTAINS
       CALL PP % get   ( 'nNodes',           nNodes )
       CALL PP % get   ( 'CFL',              CFL )
       CALL PP % get   ( 'ProgramName',      ProgramName )
+      CALL PP % get   ( 'Scheme',           Scheme )
       CALL PP % getarr( 'bcX',              bcX )
       CALL PP % getarr( 'swX',              swX ) 
       CALL PP % getarr( 'V_0',              V_0 )

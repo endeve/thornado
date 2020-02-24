@@ -15,8 +15,8 @@ MODULE InputOutput
     nDOFZ,                  &
     iZ_B0,                  &
     iZ_E0
-  USE ReferenceElementModuleZ, ONLY: &
-    WeightsZ_q
+  USE ReferenceElementModule, ONLY: &
+    Weights_q
   USE RadiationFieldsModule,       ONLY: &
     nCR,    &
     uCR,    &
@@ -443,7 +443,7 @@ MODULE InputOutput
         DO iComp = 1, nComp
 
           u_A(iX1-iOS_CPP(1),iX2-iOS_CPP(2),iX3-iOS_CPP(3),iComp+( iZ1 - 1 ) * nE + ( iS - 1 ) * nComp * nE + iOS) &
-            = DOT_PRODUCT( WeightsZ_q(:), u_K(:,iZ1,iComp,iS) )
+            = DOT_PRODUCT( Weights_q(:), u_K(:,iZ1,iComp,iS) )
 
         END DO
 

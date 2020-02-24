@@ -12,7 +12,9 @@ PROGRAM main
     MF_ComputeTimeStep
   USE MyAmrDataModule,                  ONLY: &
     MF_uCR, &
-    MF_uPR
+    MF_uPR, &
+    MF_uCF, &
+    MF_uGF
   USE InitializationModule,             ONLY: &
     InitializeProgram
   USE FinalizationModule,               ONLY: &
@@ -33,14 +35,16 @@ PROGRAM main
     iCycleChk, &
     BA,        &
     GEOM
-  USE MF_TimeSteppingModule_IMEX,      ONLY: &
-    MF_UpdateField_IMEX
+  USE MF_TwoMoment_TimeSteppingModule_Relativistic,      ONLY: &
+    MF_Update_IMEX_RK
 
   ! --- thornado Modules ---
   USE InputOutput,           ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint, &
     ReadCheckpointFile
+  USE GeometryFieldsModuleE, ONLY: &
+    uGE
 
   IMPLICIT NONE
 
@@ -70,8 +74,8 @@ PROGRAM main
       ' dt = ', dt(0) 
 
     !this is where the issue is
-    CALL MF_UpdateField_IMEX &
-           ( t, dt, MF_uPR )
+    CALL MF_Update_IMEX_RK &
+           ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM )
 
   END DO
   

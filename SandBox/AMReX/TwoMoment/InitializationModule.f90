@@ -56,8 +56,10 @@ MODULE InitializationModule
     InitializeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
-  USE ReferenceElementModuleZ,           ONLY: &
-    InitializeReferenceElementZ
+  USE ReferenceElementModule_Lagrange, ONLY: &
+    InitializeReferenceElement_Lagrange
+  USE ReferenceElementModule,           ONLY: &
+    InitializeReferenceElement
   USE ReferenceElementModuleE, ONLY: &
     InitializeReferenceElementE
   USE ReferenceElementModule, ONLY: &
@@ -127,6 +129,7 @@ MODULE InitializationModule
     xL,                        &
     xR,                        &
     ProgramName,               &
+    Scheme,                    &
     CoordSys,                  &
     StepNo,                    &
     nLevels,                   &
@@ -145,6 +148,9 @@ MODULE InitializationModule
     MF_InitializeFields
   USE MF_GeometryModule,                ONLY: &
     MF_ComputeGeometryX
+  USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
+    MF_InitializeField_IMEX_RK
+
 
   IMPLICIT NONE
   PRIVATE
@@ -248,18 +254,20 @@ CONTAINS
                xL(iDim), xR(iDim) )
     END DO
 
+    CALL InitializeReferenceElementX
+    
+    CALL InitializeReferenceElementE
+  
+    CALL InitializeReferenceElement
+
     CALL InitializePolynomialBasisX_Lagrange
     CALL InitializePolynomialBasisX_Legendre
 
     CALL InitializePolynomialBasis_Lagrange
     CALL InitializePolynomialBasis_Legendre
-     
-  
-    CALL InitializeReferenceElementX
-    
-    CALL InitializeReferenceElementE
-  
-    CALL InitializeReferenceElementZ
+
+    CALL InitializeReferenceElementX_Lagrange     
+    CALL InitializeReferenceElement_Lagrange  
 
     CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies )
 
@@ -267,13 +275,13 @@ CONTAINS
   
     CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' ) 
 
-    call CreateMesh &
+    CALL CreateMesh &
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
 
-    call CreateGeometryFieldsE &
+    CALL CreateGeometryFieldsE &
            ( nE, swE, Verbose_Option = .FALSE. )
 
-    call ComputeGeometryE &
+    CALL ComputeGeometryE &
            ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
      
     CALL MF_ComputeGeometryX( MF_uGF, 0.0_AR )
@@ -283,6 +291,19 @@ CONTAINS
                Gamma_IDEAL_Option = Gamma_IDEAL )
 
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0 )
+
+    DO iLevel = 0, nLevels-1
+
+
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+
+    END DO
+
+
+
+
+    CALL MF_InitializeField_IMEX_RK( Scheme, BA, DM )
   
     CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &

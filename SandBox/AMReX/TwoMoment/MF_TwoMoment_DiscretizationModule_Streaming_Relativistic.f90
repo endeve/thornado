@@ -73,7 +73,6 @@ CONTAINS
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i
 
-
     DO iLevel = 0, nLevels-1
 
       ! --- Apply boundary conditions to interior domains ---
@@ -89,7 +88,7 @@ CONTAINS
         uCF  => MF_uCF (iLevel) % DataPtr( MFI )
         uCR  => MF_uCR (iLevel) % DataPtr( MFI )
         duCR => MF_duCR(iLevel) % DataPtr( MFI )
-
+        
         BX = MFI % tilebox()
 
         iX_B0 = BX % lo
@@ -110,13 +109,13 @@ CONTAINS
 
           ELSE 
 
-            iZ_B0(i)=iX_B0(i) 
-            iZ_E0(i)=iX_E0(i)
-            iZ_B1(i)=iX_B1(i)
-            iZ_E1(i)=iX_E1(i)
+            iZ_B0(i)=iX_B0(i-1) 
+            iZ_E0(i)=iX_E0(i-1)
+            iZ_B1(i)=iX_B1(i-1)
+            iZ_E1(i)=iX_E1(i-1)
 
           END IF
-
+          i = i + 1 
         END DO
 
 
@@ -124,13 +123,17 @@ CONTAINS
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nGF) )
 
-        ALLOCATE( U (1:nDOFZ,iE_B1:iE_E1,iX_B1(1):iX_E1(1), &
+        ALLOCATE( C (1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nCR,1:nSpecies) )
+                             iX_B1(3):iX_E1(3),1:nCF) )
 
-        ALLOCATE( dU (1:nDOFZ,iE_B1:iE_E1,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nCR,1:nSpecies) )
+        ALLOCATE( U (1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                             iZ_B1(3):iZ_E1(3), &
+                             iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+
+        ALLOCATE( dU (1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                             iZ_B1(3):iZ_E1(3), &
+                             iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
 
         CALL AMReX2thornado_Euler &
@@ -151,26 +154,32 @@ CONTAINS
                            iX_B1(2):iX_E1(2), &
                            iX_B1(3):iX_E1(3),1:nCF) )
 
+
+
+!check this for iZ_B1
         CALL AMReX2thornado &
-               ( nCR, nSpecies, nE, iZ_B1, iZ_E1, &
-                 uCR(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFZ*nCR*nSpecies*nE), &
-                 U(1:nDOFZ,1:nE,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nCR,1:nSpecies) )
+               ( nCR, nSpecies, nE, iE_B0, iE_E0, &
+                 iX_B1, iX_E1,                    &
+                 uCR(      iZ_B1(2):iZ_E1(2), &
+                           iZ_B1(3):iZ_E1(3), &
+                           iZ_B1(4):iZ_E1(4),1:nDOFZ*nCR*nSpecies*nE), &
+                 U(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
+                           iZ_B1(2):iZ_E1(2), &
+                           iZ_B1(3):iZ_E1(3), &
+                           iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
         CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU )
 
         CALL thornado2AMReX &
-               ( nCR, nSpecies, nE, iZ_B1, iZ_E1, &
-                 duCR(      iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nDOFZ*nCR*nSpecies*nE), &
-                 dU(1:nDOFZ,1:nE,iX_B1(1):iX_E1(1), &
-                           iX_B1(2):iX_E1(2), &
-                           iX_B1(3):iX_E1(3),1:nCR,1:nSpecies) )
+               ( nCR, nSpecies, nE, iE_B0, iE_E0, iX_B0, iX_E0, &
+                 duCR(     iZ_B0(2):iZ_E0(2), &
+                           iZ_B0(3):iZ_E0(3), &
+                           iZ_B0(4):iZ_E0(4),1:nDOFZ*nCR*nSpecies*nE), &
+                 dU(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
+                            iZ_B0(2):iZ_E0(2), &
+                            iZ_B0(3):iZ_E0(3), &
+                            iZ_B0(4):iZ_E0(4),1:nCR,1:nSpecies) )
 
       END DO
 
