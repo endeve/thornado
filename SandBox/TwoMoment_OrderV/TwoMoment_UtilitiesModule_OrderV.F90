@@ -420,7 +420,7 @@ CONTAINS
                     + l_udd_223 * dV_u_3_dX2 &
                     + l_udd_231 * dV_u_1_dX3 &
                     + l_udd_223 * dV_u_2_dX3 &
-                    + l_udd_332 * dV_u_3_dX3) * D
+                    + l_udd_332 * dV_u_3_dX3 ) * D
 
     Flux_E(4) = - (   l_udd_131 * dV_u_1_dX1 &
                     + l_udd_231 * dV_u_2_dX1 &
@@ -679,11 +679,11 @@ CONTAINS
     ! --- Diagonal Heat Flux Tensor Components ---
 
     l_udd_111 &
-      = a * ( h_u_1 * Gm_dd_11 + Two * h_d_1 ) + b * h_u_1 * h_d_1 * h_d_1
+      = a * ( h_d_1 + Two * h_d_1 ) + b * h_u_1 * h_d_1 * h_d_1
     l_udd_222 &
-      = a * ( h_u_2 * Gm_dd_22 + Two * h_d_2 ) + b * h_u_2 * h_d_2 * h_d_2
+      = a * ( h_d_2 + Two * h_d_2 ) + b * h_u_2 * h_d_2 * h_d_2
     l_udd_333 &
-      = a * ( h_u_3 * Gm_dd_33 + Two * h_d_3 ) + b * h_u_3 * h_d_3 * h_d_3
+      = a * ( h_d_3 + Two * h_d_3 ) + b * h_u_3 * h_d_3 * h_d_3
 
     ! --- Off-Diagonal Heat Flux Tensor Components ---
 
