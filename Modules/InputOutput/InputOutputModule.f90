@@ -179,11 +179,11 @@ CONTAINS
       FluidField1D( uPF(:,1:nX(1),1,1,iPF_D ), nX(1) ) &
         / U % MassDensityUnit, &
       FluidField1D( uPF(:,1:nX(1),1,1,iPF_V1), nX(1) ) &
-        / U % VelocityUnit, &
+        / U % VelocityX1Unit, &
       FluidField1D( uPF(:,1:nX(1),1,1,iPF_V2), nX(1) ) &
-        / U % VelocityUnit, &
+        / U % VelocityX2Unit, &
       FluidField1D( uPF(:,1:nX(1),1,1,iPF_V3), nX(1) ) &
-        / U % VelocityUnit, &
+        / U % VelocityX3Unit, &
       FluidField1D( uPF(:,1:nX(1),1,1,iPF_E ), nX(1) ) &
         / U % EnergyDensityUnit, &
       FluidField1D( uPF(:,1:nX(1),1,1,iPF_Ne), nX(1) ) &
@@ -208,7 +208,7 @@ CONTAINS
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_Xh), nX(1) ), &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_Gm), nX(1) ), &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_Cs), nX(1) ) &
-        / U % VelocityUnit, &
+        / U % VelocityX1Unit, &
       Shock(1:nX(1),1,1)
 
     CLOSE( FUNIT )
@@ -271,11 +271,11 @@ CONTAINS
       FluidField1D_N( uPF(:,1:nX(1),1,1,iPF_D ), nX(1), nNodesX(1) ) &
         / U % MassDensityUnit, &
       FluidField1D_N( uPF(:,1:nX(1),1,1,iPF_V1), nX(1), nNodesX(1) ) &
-        / U % VelocityUnit, &
+        / U % VelocityX1Unit, &
       FluidField1D_N( uPF(:,1:nX(1),1,1,iPF_V2), nX(1), nNodesX(1) ) &
-        / U % VelocityUnit, &
+        / U % VelocityX2Unit, &
       FluidField1D_N( uPF(:,1:nX(1),1,1,iPF_V3), nX(1), nNodesX(1) ) &
-        / U % VelocityUnit, &
+        / U % VelocityX3Unit, &
       FluidField1D_N( uPF(:,1:nX(1),1,1,iPF_E ), nX(1), nNodesX(1) ) &
         / U % EnergyDensityUnit, &
       FluidField1D_N( uPF(:,1:nX(1),1,1,iPF_Ne), nX(1), nNodesX(1) ) &
@@ -300,7 +300,7 @@ CONTAINS
       FluidField1D_N( uAF(:,1:nX(1),1,1,iAF_Xh), nX(1), nNodesX(1) ), &
       FluidField1D_N( uAF(:,1:nX(1),1,1,iAF_Gm), nX(1), nNodesX(1) ), &
       FluidField1D_N( uAF(:,1:nX(1),1,1,iAF_Cs), nX(1), nNodesX(1) ) &
-        / U % VelocityUnit, &
+        / U % VelocityX1Unit, &
       Shock(1:nX(1),1,1)
 
     CLOSE( FUNIT )
@@ -595,7 +595,7 @@ CONTAINS
 
     WRITE( FUNIT, * ) RestartFileNumber
     WRITE( FUNIT, * ) FileNumber
-    WRITE( FUNIT, * ) Time / U % TimeUnit 
+    WRITE( FUNIT, * ) Time / U % TimeUnit
     WRITE( FUNIT, * ) nX(1)
     WRITE( FUNIT, * ) nNodesX(1)
 
@@ -610,17 +610,17 @@ CONTAINS
     WRITE( FUNIT, * ) & ! uPF_V1
       FluidFieldRestart1D_Out &
         ( uPF(:,1:nX(1),1,1,iPF_V1), nX(1), nNodesX(1) ) &
-          / U % VelocityUnit
+          / U % VelocityX1Unit
 
     WRITE( FUNIT, * ) & ! uPF_V2
       FluidFieldRestart1D_Out &
         ( uPF(:,1:nX(1),1,1,iPF_V2), nX(1), nNodesX(1) ) &
-          / U % VelocityUnit
+          / U % VelocityX2Unit
 
     WRITE( FUNIT, * ) & ! uPF_V3
       FluidFieldRestart1D_Out &
         ( uPF(:,1:nX(1),1,1,iPF_V3), nX(1), nNodesX(1) ) &
-          / U % VelocityUnit
+          / U % VelocityX3Unit
 
     WRITE( FUNIT, * ) & ! uPF_E
       FluidFieldRestart1D_Out &
@@ -740,15 +740,15 @@ CONTAINS
     READ( FUNIT, * ) RealBuffer1D ! uPF_V1
     uPF(:,1:nX(1),1,1,iPF_V1) &
       = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
-          * U % VelocityUnit
+          * U % VelocityX1Unit
     READ( FUNIT, * ) RealBuffer1D ! uPF_V2
     uPF(:,1:nX(1),1,1,iPF_V2) &
       = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
-          * U % VelocityUnit
+          * U % VelocityX2Unit
     READ( FUNIT, * ) RealBuffer1D ! uPF_V3
     uPF(:,1:nX(1),1,1,iPF_V3) &
       = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
-          * U % VelocityUnit
+          * U % VelocityX3Unit
     READ( FUNIT, * ) RealBuffer1D ! uPF_E
     uPF(:,1:nX(1),1,1,iPF_E) &
       = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &

@@ -209,7 +209,8 @@ CONTAINS
 
     IF( ActivateUnits )THEN
 
-      CALL ActivateUnitsDisplay
+      CALL ActivateUnitsDisplay &
+             ( CoordinateSystem_Option = CoordinateSystem_Option )
       CALL DescribeUnitsDisplay
 
     END IF

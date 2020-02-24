@@ -134,11 +134,6 @@ CONTAINS
       CALL PP % query ( 'PlotFileBaseName', PlotFileBaseName )
     CALL amrex_parmparse_destroy( PP )
 
-    IF( UsePhysicalUnits ) &
-      CALL ActivateUnitsDisplay
-    IF( amrex_parallel_ioprocessor() ) &
-      CALL DescribeUnitsDisplay
-
     IF( iCycleW .GT. 0 .AND. dt_wrt .GT. Zero )THEN
       WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'
       WRITE(*,'(A)') 'Stopping...'
@@ -167,6 +162,11 @@ CONTAINS
     ELSE
       STOP 'Invalid choice for coord_sys'
     END IF
+
+    IF( UsePhysicalUnits ) &
+      CALL ActivateUnitsDisplay( CoordinateSystem_Option = TRIM( CoordSys ) )
+    IF( amrex_parallel_ioprocessor() ) &
+      CALL DescribeUnitsDisplay
 
     IF( UsePhysicalUnits )THEN
 
