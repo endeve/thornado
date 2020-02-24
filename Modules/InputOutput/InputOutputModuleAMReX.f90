@@ -98,7 +98,8 @@ MODULE InputOutputModuleAMReX
     iDF_Sh,       &
     iDF_T1,       &
     iDF_T2,       &
-    iDF_T3
+    iDF_T3,       &
+    iDF_E
   USE UnitsModule,             ONLY: &
     Joule,  &
     Kelvin, &
@@ -710,6 +711,8 @@ CONTAINS
       = One
     unitsDF(iDF_T3) &
       = One
+    unitsDF(iDF_E) &
+      = UnitsDisplay % EnergyDensityUnit / UnitsDisplay % MassDensityUnit
 
   END SUBROUTINE SetUnitsFields
 
