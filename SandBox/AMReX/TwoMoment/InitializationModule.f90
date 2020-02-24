@@ -1,5 +1,5 @@
 MODULE InitializationModule
-  
+
   ! --- AMReX Modules ---
   USE amrex_fort_module, ONLY: &
     AR => amrex_real, &
@@ -43,7 +43,11 @@ MODULE InitializationModule
     nNodesE,                &
     nDOFZ,                  &
     iZ_B0,                  &
-    iZ_E0
+    iZ_E0,                  &
+    iE_B0,                  &
+    iE_E0,                  &
+    iE_B1,                  &
+    iE_E1
   USE PolynomialBasisModuleX_Lagrange,  ONLY: &
     InitializePolynomialBasisX_Lagrange
   USE PolynomialBasisModuleX_Legendre,  ONLY: &
@@ -52,10 +56,19 @@ MODULE InitializationModule
     InitializeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
-  USE ReferenceElementModuleZ,           ONLY: &
-    InitializeReferenceElementZ
+  USE ReferenceElementModule_Lagrange, ONLY: &
+    InitializeReferenceElement_Lagrange
+  USE ReferenceElementModule,           ONLY: &
+    InitializeReferenceElement
+  USE ReferenceElementModuleE, ONLY: &
+    InitializeReferenceElementE
+  USE ReferenceElementModule, ONLY: &
+    InitializeReferenceElement
+  USE EquationOfStateModule,            ONLY: &
+    InitializeEquationOfState
   USE MeshModule,                       ONLY: &
     MeshX,      &
+    MeshE,      &
     CreateMesh, &
     DestroyMesh
   USE RadiationFieldsModule,            ONLY: &
@@ -64,10 +77,17 @@ MODULE InitializationModule
     CreateRadiationFields
   USE GeometryFieldsModule,             ONLY: &
     nGF,                     &
-    CoordinateSystem,        & 
+    CoordinateSystem,        &
     CreateGeometryFields
+  USE GeometryFieldsModuleE, ONLY: &
+    CreateGeometryFieldsE, &
+    DestroyGeometryFieldsE, &
+    uGE
+  USE GeometryComputationModuleE, ONLY: &
+    ComputeGeometryE
   USE FluidFieldsModule,                ONLY: &
     nCF,                     &
+    nAF,                     &
     CreateFluidFields
   USE PolynomialBasisMappingModule,     ONLY: &
     InitializePolynomialBasisMapping
@@ -84,6 +104,7 @@ MODULE InitializationModule
   USE MyAmrDataModule,                  ONLY: &
     MF_uGF, &
     MF_uCF, &
+    MF_uAF, &
     MF_uPR, &
     MF_uCR
   USE MyAmrModule,                      ONLY: &
@@ -101,10 +122,14 @@ MODULE InitializationModule
     nE,                        &
     swX,                       &
     swE,                       &
+    eR,                        &
+    eL,                        &
+    zoomE,                     &
     bcX,                       &
     xL,                        &
     xR,                        &
     ProgramName,               &
+    Scheme,                    &
     CoordSys,                  &
     StepNo,                    &
     nLevels,                   &
@@ -116,11 +141,16 @@ MODULE InitializationModule
     StepNo,                    &
     nSpecies,                  &
     V_0,                       &
+    Gamma_IDEAL,               &
+    EquationOfState,           &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
   USE MF_GeometryModule,                ONLY: &
     MF_ComputeGeometryX
+  USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
+    MF_InitializeField_IMEX_RK
+
 
   IMPLICIT NONE
   PRIVATE
@@ -150,7 +180,7 @@ CONTAINS
     CALL MyAmrInit
 
     IF( iRestart .LT. 0 )THEN
-      
+
       BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
       ALLOCATE( BA(0:nLevels-1) )
@@ -190,6 +220,10 @@ CONTAINS
         CALL MF_uCF(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
+               ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+        CALL MF_uAF(iLevel) % SetVal( Zero )
+
+        CALL amrex_multifab_build &
                ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), &
                  nDOFZ * nPR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX(1) )
 
@@ -201,8 +235,8 @@ CONTAINS
 
         CALL MF_uCR(iLevel) % SetVal( Zero )
 
-      END DO 
-      
+      END DO
+
       t     = Zero
       dt    = Zero
       t_wrt = dt_wrt
@@ -220,41 +254,58 @@ CONTAINS
                xL(iDim), xR(iDim) )
     END DO
 
+    CALL InitializeReferenceElementX
+
+    CALL InitializeReferenceElementE
+
+    CALL InitializeReferenceElement
+
     CALL InitializePolynomialBasisX_Lagrange
     CALL InitializePolynomialBasisX_Legendre
 
     CALL InitializePolynomialBasis_Lagrange
     CALL InitializePolynomialBasis_Legendre
-     
-    !CALL InitializePolynomialBasisMapping &
-    !       ( [Zero] , MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
 
-    CALL InitializeReferenceElementX
     CALL InitializeReferenceElementX_Lagrange
-    
-    CALL InitializeReferenceElementZ
+    CALL InitializeReferenceElement_Lagrange
 
     CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies )
 
-    CALL CreateFluidFields( nX, swX )
-  
-    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' ) 
-     
+    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' )
+
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' )
+
+    CALL CreateMesh &
+           ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
+
+    CALL CreateGeometryFieldsE &
+           ( nE, swE, Verbose_Option = .FALSE. )
+
+    CALL ComputeGeometryE &
+           ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
+
     CALL MF_ComputeGeometryX( MF_uGF, 0.0_AR )
 
+    CALL InitializeEquationOfState &
+             ( EquationOfState_Option = EquationOfState, &
+               Gamma_IDEAL_Option = Gamma_IDEAL )
+
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0 )
-  
+
+    DO iLevel = 0, nLevels-1
+
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+    END DO
+
+    CALL MF_InitializeField_IMEX_RK( Scheme, BA, DM )
+
     CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &
              MF_uCR_Option = MF_uCR, &
              MF_uPR_Option = MF_uPR )
 
-!      CALL WriteFieldsAMReX_Checkpoint &
-!             ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
-!               MF_uCR % P,  &
-!               MF_uPR % P  )
-!       
-  END SUBROUTINE InitializeProgram  
+  END SUBROUTINE InitializeProgram
 
 
 END MODULE InitializationModule

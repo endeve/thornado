@@ -18,17 +18,18 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
   PUBLIC :: Flux_X1
   PUBLIC :: Flux_X2
   PUBLIC :: Flux_X3
+  PUBLIC :: NumericalFlux_LLF
 
 CONTAINS
 
   SUBROUTINE ComputePrimitive_TwoMoment &
     ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, nIterations_Option )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm_dd_12, Gm_dd_13, Gm_dd_23, alp, B_u_1, B_u_2, B_u_3, nIterations_Option )
 
     REAL(DP), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3 ! --- Index Down
     REAL(DP), INTENT(out) :: D, I_u_1, I_u_2, I_u_3 ! --- Index Up
     REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3 ! --- Index Up
-    REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm_dd_12, Gm_dd_13, Gm_dd_23
     REAL(DP), INTENT(in)  :: B_u_1, B_u_2, B_u_3, alp
     INTEGER, INTENT(out), OPTIONAL :: nIterations_Option
 
@@ -223,12 +224,12 @@ CONTAINS
 
   SUBROUTINE ComputeConserved_TwoMoment &
     ( D, I_u_1, I_u_2, I_u_3, N, G_d_1, G_d_2, G_d_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm_dd_12, Gm_dd_13, Gm_dd_23, alp, B_u_1, B_u_2, B_u_3 )
 
     REAL(DP), INTENT(in)  :: D, I_u_1, I_u_2, I_u_3 ! --- Index Up
     REAL(DP), INTENT(out) :: N, G_d_1, G_d_2, G_d_3 ! --- Index Down
     REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3 ! --- Index Up
-    REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm_dd_12, Gm_dd_13, Gm_dd_23
     REAL(DP), INTENT(in)  :: B_u_1, B_u_2, B_u_3, alp
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: W  
@@ -357,7 +358,7 @@ CONTAINS
 
   SUBROUTINE ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33  )
 
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
@@ -387,9 +388,9 @@ CONTAINS
     u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
     u_d_3 = B_d_3 * W / alp + Gm_dd_33 * ( V_u_3 - B_u_3 / alp )
 
-    u_u_1 = u_d_1 / Gm_dd_11 
-    u_u_2 = u_d_2 / Gm_dd_22
-    u_u_3 = u_d_3 / Gm_dd_33
+    u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
+    u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
+    u_u_3 = W * ( V_u_3 - B_u_3 / alp ) 
  
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
@@ -458,12 +459,12 @@ CONTAINS
 
     CALL ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33 )
 
     Flux_X1(1) = alp * I_u_1 + ( alp * V_u_1 - B_u_1 ) * W * D
-    Flux_X1(2) = alp * k_ud_11 + (alp * V_u_1 - B_u_1 ) * W * I_d_1
-    Flux_X1(3) = alp * k_ud_12 + (alp * V_u_1 - B_u_1 ) * W * I_d_2
-    Flux_X1(4) = alp * k_ud_13 + (alp * V_u_1 - B_u_1 ) * W * I_d_3
+    Flux_X1(2) = alp * k_ud_11 * D + (alp * V_u_1 - B_u_1 ) * W * I_d_1
+    Flux_X1(3) = alp * k_ud_12 * D + (alp * V_u_1 - B_u_1 ) * W * I_d_2
+    Flux_X1(4) = alp * k_ud_13 * D + (alp * V_u_1 - B_u_1 ) * W * I_d_3
 
 
 
@@ -504,12 +505,12 @@ CONTAINS
 
     CALL ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33   )
 
     Flux_X2(1) = alp * I_u_2 + ( alp * V_u_2 - B_u_2 ) * W * D
-    Flux_X2(2) = alp * k_ud_12 + (alp * V_u_2 - B_u_2 ) * W * I_d_1
-    Flux_X2(3) = alp * k_ud_22 + (alp * V_u_2 - B_u_2 ) * W * I_d_2
-    Flux_X2(4) = alp * k_ud_23 + (alp * V_u_2 - B_u_2 ) * W * I_d_3
+    Flux_X2(2) = alp * k_ud_12 * D + (alp * V_u_2 - B_u_2 ) * W * I_d_1
+    Flux_X2(3) = alp * k_ud_22 * D + (alp * V_u_2 - B_u_2 ) * W * I_d_2
+    Flux_X2(4) = alp * k_ud_23 * D + (alp * V_u_2 - B_u_2 ) * W * I_d_3
 
 
 
@@ -550,12 +551,13 @@ CONTAINS
 
     CALL ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33 )
+
 
     Flux_X3(1) = alp * I_u_3 + ( alp * V_u_3 - B_u_3 ) * W * D
-    Flux_X3(2) = alp * k_ud_13 + (alp * V_u_3 - B_u_3 ) * W * I_d_1
-    Flux_X3(3) = alp * k_ud_23 + (alp * V_u_3 - B_u_3 ) * W * I_d_2
-    Flux_X3(4) = alp * k_ud_33 + (alp * V_u_3 - B_u_3 ) * W * I_d_3
+    Flux_X3(2) = alp * k_ud_13 * D + (alp * V_u_3 - B_u_3 ) * W * I_d_1
+    Flux_X3(3) = alp * k_ud_23 * D + (alp * V_u_3 - B_u_3 ) * W * I_d_2
+    Flux_X3(4) = alp * k_ud_33 * D + (alp * V_u_3 - B_u_3 ) * W * I_d_3
 
 
 
@@ -564,6 +566,16 @@ CONTAINS
 
   END FUNCTION FLUX_X3
 
+  FUNCTION NumericalFlux_LLF( u_L, u_R, Flux_L, Flux_R, alpha )
+
+    REAL(DP)             :: NumericalFlux_LLF
+    REAL(DP), INTENT(in) :: u_L, u_R, flux_L, flux_R, alpha
+
+    NumericalFlux_LLF &
+      = Half * ( flux_L + flux_R - alpha * ( u_R - u_L ) )
+
+    RETURN
+  END FUNCTION NumericalFlux_LLF
 
 
 END MODULE TwoMoment_UtilitiesModule_Relativistic

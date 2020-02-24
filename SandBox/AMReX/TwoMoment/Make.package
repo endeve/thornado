@@ -10,10 +10,10 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Euler
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/EquationOfState
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Units
-VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/TwoMoment
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/TwoMoment
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Euler
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/TwoMoment_Relativistic
 
 # In THORNADO_DIR/Modules/Numbers:
 
@@ -34,10 +34,11 @@ F90EXE_sources += ProgramHeaderModule.F90
 f90EXE_sources += QuadratureModule.f90
 f90EXE_sources += LagrangePolynomialsModule.f90
 F90EXE_sources += ReferenceElementModuleX.F90
-F90EXE_sources += ReferenceElementModuleZ.F90
+f90EXE_sources += ReferenceElementModuleE.f90
 f90EXE_sources += PolynomialBasisModuleX_Lagrange.f90
 f90EXE_sources += PolynomialBasisModuleX_Legendre.f90
 F90EXE_sources += ReferenceElementModuleX_Lagrange.F90
+F90EXE_sources += ReferenceElementModule_Lagrange.F90
 F90EXE_sources += UtilitiesModule.F90
 f90EXE_sources += PolynomialBasisModule_Lagrange.f90
 f90EXE_sources += PolynomialBasisModule_Legendre.f90
@@ -45,7 +46,8 @@ F90EXE_sources += ReferenceElementModule.F90
 f90EXE_sources += PolynomialBasisMappingModule.f90
 f90EXE_sources += TimersModule_Euler.f90
 F90EXE_sources += DeviceModule.F90
-
+F90EXE_sources += LinearAlgebraModule.F90
+F90EXE_sources += ReferenceElementModule_Lagrange.F90
 
 # In THORNADO_DIR/Modules/Fields
 
@@ -59,12 +61,16 @@ F90EXE_sources += MeshModule.F90
 # In (THORNADO_DIR)/Modules/Geometry 
 
 f90EXE_sources += GeometryFieldsModule.f90
+f90EXE_sources += GeometryFieldsModuleE.f90
 F90EXE_sources += GeometryComputationModule.F90
+f90EXE_sources += GeometryComputationModuleE.f90
 
 # In (THORNADO_DIR)/Modules/Euler
 
 F90EXE_sources += Euler_UtilitiesModule_NonRelativistic.F90
-
+F90EXE_sources += Euler_UtilitiesModule_Relativistic.F90
+F90EXE_sources += Euler_BoundaryConditionsModule.F90
+f90EXE_sources += Euler_ErrorModule.f90
 # In THORNADO_DIR/Modules/EquationOfState
 
 F90EXE_sources += EquationOfStateModule_IDEAL.F90
@@ -75,19 +81,16 @@ F90EXE_sources += EquationOfStateModule.F90
 f90EXE_sources += UnitsModule.f90
 
 
-# In THORNADO_DIR/SandBox/TwoMoment_OrderV
-
-F90EXE_sources += TwoMoment_UtilitiesModule_OrderV.F90
 
 # In THORNADO_DIR/Modules/TwoMoment
 
 F90EXE_sources += TwoMoment_ClosureModule.F90
 F90EXE_sources += TwoMoment_UtilitiesModule.F90
+F90EXE_sources += TwoMoment_BoundaryConditionsModule.F90
 
 
 f90EXE_sources += InputOutput.f90
 f90EXE_sources += MF_UtilitiesModule.f90
-f90EXE_sources += MF_TimeSteppingModule_IMEX.f90 
 f90EXE_sources += InitializationModule.f90
 F90EXE_sources += MF_InitializationModule.F90
 f90EXE_sources += MF_TwoMoment_UtilitiesModule.f90
@@ -97,10 +100,13 @@ f90EXE_sources += fmain.f90
 f90EXE_sources += MyAmrDataModule.f90
 f90EXE_sources += MyAmrModule.f90
 f90EXE_sources += MF_TwoMoment_UtilitiesModule.f90
+f90EXE_sources += MF_TwoMoment_DiscretizationModule_Streaming_Relativistic.f90 
+F90EXE_sources += MF_TwoMoment_TimeSteppingModule_Relativistic.F90
 CEXE_sources   += Restart.cpp
 
 
 
 F90EXE_sources += dgemv.F90 lsame.F90
 
-
+F90EXE_sources += TwoMoment_UtilitiesModule_Relativistic.F90
+F90EXE_sources += TwoMoment_DiscretizationModule_Streaming_Relativistic.F90

@@ -209,7 +209,8 @@ CONTAINS
 
     IF( ActivateUnits )THEN
 
-      CALL ActivateUnitsDisplay
+      CALL ActivateUnitsDisplay &
+             ( CoordinateSystem_Option = CoordinateSystem_Option )
       CALL DescribeUnitsDisplay
 
     END IF
@@ -337,7 +338,8 @@ CONTAINS
 
     ! --- Fluid Fields ---
 
-    CALL CreateFluidFields( nX, swX )
+    CALL CreateFluidFields &
+           ( nX, swX, CoordinateSystem_Option = CoordinateSystem_Option )
 
     ! --- Radiation Fields ---
 

@@ -86,7 +86,7 @@ PROGRAM PrimitiveConserved
   B3=absB*Bvec(3)
   alp = 0.5_DP
 
-  Vmax=0.99_DP
+  Vmax=0.75_DP
   CALL RANDOM_NUMBER(absV)
   CALL RANDOM_NUMBER(Vvec)
   !absV=absV*Vmax
@@ -169,13 +169,15 @@ PROGRAM PrimitiveConserved
 
         CALL RANDOM_NUMBER( D )
 
-        uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) = D
+        uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) = 1.2_DP * D
 
+       ! uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) = 1.2_DP * D
         ! --- Number Flux: Realizable with Random Direction ---
 
         CALL RANDOM_NUMBER( absI )
 
-        absI = absI * ( One - D ) * D
+        !absI = absI * ( One - D ) * D
+        absI = absI * 1.2_DP * D
 
         CALL RANDOM_NUMBER( nVec )
 

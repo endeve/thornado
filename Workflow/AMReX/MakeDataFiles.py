@@ -21,7 +21,7 @@ HOME = subprocess.check_output( ["echo $HOME"], shell = True)
 HOME = HOME[:-1].decode( "utf-8" ) + '/'
 
 ############# User input #############
-DataDirectory = HOME + '/'
+DataDirectory = HOME
 
 TimeFileName     = 'MovieTime.dat'
 UsePhysicalUnits = True # Are you using physical units?
@@ -152,6 +152,35 @@ def MakeDataFile( Field, DataFileName ):
                 Data[i] = ( PF_E + AF_P ) / PF_D
                 if( Relativistic ): # Plot h/c^2
                     Data[i] = ( c**2 + ( PF_E + AF_P ) / PF_D ) / c**2
+
+            elif( Field == 'Vorticity' ):
+
+                dX1 = ( xH[0].to_ndarray() - xL[0].to_ndarray() ) / nX[0]
+                dX2 = ( xH[1].to_ndarray() - xL[1].to_ndarray() ) / nX[1]
+
+                XL = xL.to_ndarray() + 0.5 * np.array( [ dX1, dX2, 0.0 ] )
+                XH = xH.to_ndarray() - 0.5 * np.array( [ dX1, dX2, 0.0 ] )
+
+                X1 = np.linspace( XL[0], XH[0], nX[0] )
+                X2 = np.linspace( XL[1], XH[1], nX[1] )
+
+                PF_V1 = CoveringGrid['PF_V1'][:,:,0].to_ndarray() * Centimeter
+                PF_V2 = CoveringGrid['PF_V2'][:,:,0].to_ndarray() * Centimeter
+                indX1 = np.linspace( 1, nX[0]-2, nX[0]-2, dtype = int )
+                indX2 = np.linspace( 1, nX[1]-2, nX[1]-2, dtype = int )
+                Data[i] = 0.0
+                for j in indX1:
+                    for k in indX2:
+                        Data[i,j,k] \
+                          = 1.0 / X1[j] \
+                              * ( ( X1[j+1]**2 * PF_V2[j+1,k] \
+                                      + X1[j-1]**2 * PF_V2[j-1,k] \
+                                      - 2.0 * X1[j]**2 * PF_V2[j,k] ) \
+                                  / dX1**2 \
+                                    - ( PF_V1[j,k+1] \
+                                          + PF_V1[j,k-1] \
+                                          - 2.0 * PF_V1[j,k] ) \
+                                  / dX2**2 )
 
             else:
 

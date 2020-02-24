@@ -159,6 +159,39 @@ elif( VariableToPlot == 'Entropy' ):
         else:
             DataUnit = 'erg/cm**3/(g/cm**3)**({:}/3)'.format( \
                          int( 3 * AF_Gm[0][0][0] ) )
+elif( VariableToPlot == 'Vorticity' ):
+
+    dX1 = ( xH[0].to_ndarray() - xL[0].to_ndarray() ) / nX[0]
+    dX2 = ( xH[1].to_ndarray() - xL[1].to_ndarray() ) / nX[1]
+
+    XL = xL.to_ndarray() + 0.5 * np.array( [ dX1, dX2, 0.0 ] )
+    XH = xH.to_ndarray() - 0.5 * np.array( [ dX1, dX2, 0.0 ] )
+
+    X1 = np.linspace( XL[0], XH[0], nX[0] )
+    X2 = np.linspace( XL[1], XH[1], nX[1] )
+
+    PF_V1 = CoveringGrid['PF_V1'].to_ndarray()
+    PF_V2 = CoveringGrid['PF_V2'].to_ndarray()
+    indX1 = np.linspace( 1, nX[0]-2, nX[0]-2, dtype = int )
+    indX2 = np.linspace( 1, nX[1]-2, nX[1]-2, dtype = int )
+    Data = np.zeros( (nX[0],nX[1],1), float )
+    for j in indX1:
+        for k in indX2:
+            Data[j,k] \
+              = 1.0 / X1[j] \
+                  * ( ( X1[j+1]**2 * PF_V2[j+1,k] \
+                          + X1[j-1]**2 * PF_V2[j-1,k] \
+                          - 2.0 * X1[j]**2 * PF_V2[j,k] ) \
+                      / dX1**2 \
+                        - ( PF_V1[j,k+1] \
+                              + PF_V1[j,k-1] \
+                              - 2.0 * PF_V1[j,k] ) \
+                      / dX2**2 )
+
+
+    if( UsePhysicalUnits ):
+        DataUnit = '1/s'
+
 
 if  ( nDims == 1 ):
 

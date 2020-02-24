@@ -98,7 +98,8 @@ MODULE InputOutputModuleAMReX
     iDF_Sh,       &
     iDF_T1,       &
     iDF_T2,       &
-    iDF_T3
+    iDF_T3,       &
+    iDF_E
   USE UnitsModule,             ONLY: &
     Joule,  &
     Kelvin, &
@@ -631,11 +632,11 @@ CONTAINS
     unitsGF(iGF_Alpha)    &
       = One
     unitsGF(iGF_Beta_1)   &
-      = UnitsDisplay % VelocityUnit
+      = UnitsDisplay % VelocityX1Unit
     unitsGF(iGF_Beta_2)   &
-      = UnitsDisplay % VelocityUnit
+      = UnitsDisplay % VelocityX2Unit
     unitsGF(iGF_Beta_3)   &
-      = UnitsDisplay % VelocityUnit
+      = UnitsDisplay % VelocityX3Unit
     unitsGF(iGF_Psi)      &
       = One
 
@@ -659,11 +660,11 @@ CONTAINS
     unitsPF(iPF_D)  &
       = UnitsDisplay % MassDensityUnit
     unitsPF(iPF_V1) &
-      = UnitsDisplay % VelocityUnit
+      = UnitsDisplay % VelocityX1Unit
     unitsPF(iPF_V2) &
-      = UnitsDisplay % VelocityUnit
+      = UnitsDisplay % VelocityX2Unit
     unitsPF(iPF_V3) &
-      = UnitsDisplay % VelocityUnit
+      = UnitsDisplay % VelocityX3Unit
     unitsPF(iPF_E)  &
       = UnitsDisplay % EnergyDensityUnit
     unitsPF(iPF_Ne) &
@@ -698,7 +699,7 @@ CONTAINS
     unitsAF(iAF_Gm) &
       = One
     unitsAF(iAF_Cs) &
-      = UnitsDisplay % VelocityUnit
+      = UnitsDisplay % VelocityX1Unit
 
     ! --- Diagnostic ---
 
@@ -710,6 +711,8 @@ CONTAINS
       = One
     unitsDF(iDF_T3) &
       = One
+    unitsDF(iDF_E) &
+      = UnitsDisplay % EnergyDensityUnit / UnitsDisplay % MassDensityUnit
 
   END SUBROUTINE SetUnitsFields
 

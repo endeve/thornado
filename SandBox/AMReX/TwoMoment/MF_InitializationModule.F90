@@ -18,8 +18,10 @@ MODULE MF_InitializationModule
     amrex_parmparse_destroy
 
   ! --- thornado Modules ---
-  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    ComputeConserved_Euler_NonRelativistic
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputeConserved_Euler_Relativistic
+  USE EquationOfStateModule,   ONLY: &
+    ComputePressureFromPrimitive
   USE ProgramHeaderModule,              ONLY: &
     DescribeProgramHeaderX, &
     nDOFX,                  &
@@ -78,11 +80,11 @@ MODULE MF_InitializationModule
     NodeCoordinate
   USE ReferenceElementModule, ONLY: &
     OuterProduct1D3D
-  USE ReferenceElementModuleZ, ONLY: &
-    NodeNumberTableZ
+  USE ReferenceElementModule, ONLY: &
+    NodeNumberTable
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_TwoMoment  
 ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
@@ -156,22 +158,26 @@ CONTAINS
     REAL(AR)       :: uGF_K( nDOFX, nGF )
     REAL(AR)       :: uPF_K( nDOFX, nPF )
     REAL(AR)       :: uCF_K( nDOFX, nCF )
+    REAL(AR)       :: uAF_K( nDOFX, nAF )
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
     INTEGER                       :: iLevel
     INTEGER                       :: lo_C(4), hi_C(4)
     INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(AR)                      :: Ones(nDOFE)
 
     uCR_K = Zero
     uPF_K = Zero
     uCF_K = Zero
     uGF_K = Zero
+    uAF_K = Zero
 
     Ones=1.0_AR
     print*, V_0 
@@ -182,7 +188,7 @@ CONTAINS
                xL(iDim), xR(iDim) )
 
     END DO
-    print*, 'beans'
+    
     DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uCR(iLevel), tiling = .TRUE. )
@@ -191,6 +197,7 @@ CONTAINS
         
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCR => MF_uCR(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -199,6 +206,9 @@ CONTAINS
 
         lo_C = LBOUND( uCR )
         hi_C = UBOUND( uCR )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
 
         DO iX3 = BX % lo(3), BX % hi(3)
         DO iX2 = BX % lo(2), BX % hi(2)
@@ -217,7 +227,11 @@ CONTAINS
             uPF_K(iNodeX,iPF_Ne) = 0.0_AR
 
           END DO
-        CALL ComputeConserved_Euler_NonRelativistic &
+        CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+        CALL ComputeConserved_Euler_Relativistic &
                ( uPF_K(:,iPF_D ), &
                  uPF_K(:,iPF_V1), &
                  uPF_K(:,iPF_V2), &
@@ -232,10 +246,12 @@ CONTAINS
                  uCF_K(:,iCF_Ne), &
                  uGF_K(:,iGF_Gm_dd_11), &
                  uGF_K(:,iGF_Gm_dd_22), &
-                 uGF_K(:,iGF_Gm_dd_33))
-         
-          !problem is with calculating these
+                 uGF_K(:,iGF_Gm_dd_33), &
+                 uAF_K(:,iAF_P)      )
 
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )   
+      
           DO iNodeZ = 1, nDOFZ
                         
             DO iS = 1, nSpecies
@@ -243,15 +259,15 @@ CONTAINS
 
               iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
-              iNodeZ2 = NodeNumberTableZ(2,iNodeZ)
+              iNodeZ2 = NodeNumberTable(2,iNodeZ)
 
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
     
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                = iZ1  !0.50_AR + 0.49_AR * SIN( TwoPi * X1 )  
+                = 0.50_AR + 0.49_AR * SIN( TwoPi * X1 )  
             
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                = iS/10.0_AR !uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                = uPR_K( iNodeZ, iZ1, iPR_D, iS )
          
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
                 = 0.0_AR
@@ -274,7 +290,9 @@ CONTAINS
                      uPF_K(iNodeX,iPF_V3),        &                         
                      uGF_K(iNodeX,iGF_Gm_dd_11), &
                      uGF_K(iNodeX,iGF_Gm_dd_22), &
-                     uGF_K(iNodeX,iGF_Gm_dd_33))
+                     uGF_K(iNodeX,iGF_Gm_dd_33), &
+                     0.0_AR, 0.0_AR, 0.0_AR,     &
+                     1.0_AR, 0.0_AR, 0.0_AR, 0.0_AR )
 
               
             END DO

@@ -19,7 +19,7 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    iDF_T1, iDF_T2, iDF_T3
+    iDF_T1, iDF_T2, iDF_T3, iDF_E
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeSpecificInternalEnergy_TABLE
   USE TimersModule_Euler, ONLY: &
@@ -269,6 +269,13 @@ CONTAINS
                 ( [U_PP(iP,iCF_D)], [Min_T], [Y_PP(iP)], Min_E(iP:iP) )
 
       END DO
+
+      DO iP = 1, nDOFX
+
+        D(iP,iX1,iX2,iX3,iDF_E) = Min_E(iP)
+
+      END DO
+
 
       IF( ANY( E_PP(:) < Min_E(:) ) )THEN
 
