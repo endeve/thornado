@@ -43,12 +43,16 @@ X2  = np.linspace( xL[1], xH[1], nX[1] )
 theta, r = np.meshgrid( X2, X1 )
 
 if( UseLogScale ):
-    from matplotlib.colors import LogNorm
-    norm = LogNorm()
-    def f(t):
-        return np.abs( Data[t] )
+
+    if( np.any( Data < 0.0 ) ):
+        def f(t):
+            return np.sign( Data[t] ) * np.log10( np.abs( Data[t] ) + 1.0 )
+    else:
+        def f(t):
+            return np.log10( Data[t] )
+
 else:
-    norm = None
+
     def f(t):
         return Data[t]
 
@@ -56,8 +60,18 @@ if( UseCustomTicks ):
 
     vmin = min( +np.inf, np.min( Data ) )
     vmax = max( -np.inf, np.max( Data ) )
+
     if( UseLogScale ):
-        ticks = np.logspace( np.log10( vmin ), np.log10( vmax ), 5 )
+
+        vmax = np.log10( vmax )
+
+        if( np.any( Data < 0.0 ) ):
+            vmin = -np.log10( abs( np.min( Data ) ) )
+        else:
+          vmin = np.log10( vmin )
+
+        ticks = np.linspace( vmin, vmax, 5 )
+
     else:
         ticks = np.linspace( vmin, vmax, 5 )
 
@@ -75,7 +89,7 @@ else:
 im = ax.pcolormesh( theta, r, f(0)[:-1,:-1], \
                     cmap = cmap, \
                     vmin = vmin, vmax = vmax, \
-                    norm = norm )
+                    norm = None )
 ax.set_thetamin( 180.0/np.pi * X2[0 ] )
 ax.set_thetamax( 180.0/np.pi * X2[-1] )
 ax.set_theta_direction( -1 )
