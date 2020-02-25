@@ -156,7 +156,6 @@ CONTAINS
 
 
 
-!check this for iZ_B1
         CALL AMReX2thornado &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iX_B1, iX_E1,                    &
@@ -167,6 +166,9 @@ CONTAINS
                            iZ_B1(2):iZ_E1(2), &
                            iZ_B1(3):iZ_E1(3), &
                            iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+
+
+print*, U(1, 1,1,1,1,:,1)
 
         CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU )
