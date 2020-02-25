@@ -24,6 +24,10 @@ PROGRAM main
     StepNo,    &
     t,         &
     dt,        &
+    nX,        &
+    xR,        &
+    xL,        &
+    nNodes,    &
     t_end,     &
     CFL,       &
     t_wrt,     &
@@ -61,7 +65,7 @@ PROGRAM main
     
     StepNo = StepNo + 1
  
-    CALL MF_ComputeTimeStep( dt )
+    CALL MF_ComputeTimeStep( nX, xR, xL, nNodes, CFL, dt )
     IF( ALL( t + dt .LE. t_end ) )THEN
       t = t + dt
     ELSE
