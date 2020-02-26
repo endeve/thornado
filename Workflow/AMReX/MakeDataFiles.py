@@ -36,10 +36,8 @@ WriteExtras = False # Set to true if generating data on
 
 if( UsePhysicalUnits ):
     c = 2.99792458e10
-    Centimeter = 1.0e5 # Centimeters per kilometer
 else:
     c = 1.0
-    Centimeter = 1.0
 
 # Get array of all plot-files
 FileArray = np.sort(np.array( [ file for file in listdir( DataDirectory ) ] ) )
@@ -123,11 +121,11 @@ def MakeDataFile( Field, DataFileName ):
             elif( Field == 'LorentzFactor' ):
 
                 PF_V1 \
-                  = CoveringGrid['PF_V1'   ].to_ndarray()[:,:,0] * Centimeter
+                  = CoveringGrid['PF_V1'   ].to_ndarray()[:,:,0]
                 PF_V2 \
-                  = CoveringGrid['PF_V2'   ].to_ndarray()[:,:,0] * Centimeter
+                  = CoveringGrid['PF_V2'   ].to_ndarray()[:,:,0]
                 PF_V3 \
-                  = CoveringGrid['PF_V3'   ].to_ndarray()[:,:,0] * Centimeter
+                  = CoveringGrid['PF_V3'   ].to_ndarray()[:,:,0]
                 GF_g1 \
                   = CoveringGrid['GF_Gm_11'].to_ndarray()[:,:,0]
                 GF_g2 \
@@ -164,8 +162,8 @@ def MakeDataFile( Field, DataFileName ):
                 X1 = np.linspace( XL[0], XH[0], nX[0] )
                 X2 = np.linspace( XL[1], XH[1], nX[1] )
 
-                PF_V1 = CoveringGrid['PF_V1'][:,:,0].to_ndarray() * Centimeter
-                PF_V2 = CoveringGrid['PF_V2'][:,:,0].to_ndarray() * Centimeter
+                PF_V1 = CoveringGrid['PF_V1'][:,:,0].to_ndarray()
+                PF_V2 = CoveringGrid['PF_V2'][:,:,0].to_ndarray()
                 indX1 = np.linspace( 1, nX[0]-2, nX[0]-2, dtype = int )
                 indX2 = np.linspace( 1, nX[1]-2, nX[1]-2, dtype = int )
                 Data[i] = 0.0
@@ -186,9 +184,6 @@ def MakeDataFile( Field, DataFileName ):
 
                 Data[i] \
                   = CoveringGrid[Field].to_ndarray()[:,:,0]
-
-                if( Field[-2] == 'V' ):
-                    Data[i] *= Centimeter
 
             Time[i] = ds.current_time
 
