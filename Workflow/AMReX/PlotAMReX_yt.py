@@ -110,15 +110,24 @@ if  ( VariableToPlot == 'PF_D'  ):
 elif( VariableToPlot == 'PF_V1' ):
     Data = CoveringGrid['PF_V1'].to_ndarray()
     if( UsePhysicalUnits ):
-        DataUnit = 'km/s'
+        if  ( CoordinateSystem == 'cartesian' ):
+            DataUnit = 'km/s'
+        elif( CoordinateSystem == 'spherical' ):
+            DataUnit = 'km/s'
 elif( VariableToPlot == 'PF_V2' ):
     Data = CoveringGrid['PF_V2'].to_ndarray()
     if( UsePhysicalUnits ):
-        DataUnit = 'km/s'
+        if  ( CoordinateSystem == 'cartesian' ):
+            DataUnit = 'km/s'
+        elif( CoordinateSystem == 'spherical' ):
+            DataUnit = '1/s'
 elif( VariableToPlot == 'PF_V3' ):
     Data = CoveringGrid['PF_V3'].to_ndarray()
     if( UsePhysicalUnits ):
-        DataUnit = 'km/s'
+        if  ( CoordinateSystem == 'cartesian' ):
+            DataUnit = 'km/s'
+        elif( CoordinateSystem == 'spherical' ):
+            DataUnit = '1/s'
 elif( VariableToPlot == 'PF_E'  ):
     Data = CoveringGrid['PF_E' ].to_ndarray()
     if( UsePhysicalUnits ):
@@ -177,21 +186,42 @@ elif( VariableToPlot == 'Vorticity' ):
     Data = np.zeros( (nX[0],nX[1],1), float )
     for j in indX1:
         for k in indX2:
-            Data[j,k] \
+            Data[j,k,0] \
               = 1.0 / X1[j] \
                   * ( ( X1[j+1]**2 * PF_V2[j+1,k] \
-                          + X1[j-1]**2 * PF_V2[j-1,k] \
-                          - 2.0 * X1[j]**2 * PF_V2[j,k] ) \
-                      / dX1**2 \
-                        - ( PF_V1[j,k+1] \
-                              + PF_V1[j,k-1] \
-                              - 2.0 * PF_V1[j,k] ) \
-                      / dX2**2 )
+                          - X1[j-1]**2 * PF_V2[j-1,k] ) \
+                      / ( 2.0 * dX1 ) \
+                    - ( PF_V1[j,k+1] \
+                          - PF_V1[j,k-1] ) \
+                      / ( 2.0 * dX2 ) )
 
+    # Apply boundary conditions to theta elements
+    for j in indX1:
+
+        # North pole
+        k = 0
+        Data[j,k,0] \
+          = 1.0 / X1[j] \
+              * ( ( X1[j+1]**2 * PF_V2[j+1,k] \
+                      - X1[j-1]**2 * PF_V2[j-1,k] ) \
+                  / ( 2.0 * dX1 ) \
+                - ( PF_V1[j,k+1] \
+                      - PF_V1[j,k] ) \
+                  / ( 2.0 * dX2 ) )
+
+        # South pole
+        k = nX[1]-1
+        Data[j,k,0] \
+          = 1.0 / X1[j] \
+              * ( ( X1[j+1]**2 * PF_V2[j+1,k] \
+                      - X1[j-1]**2 * PF_V2[j-1,k] ) \
+                  / ( 2.0 * dX1 ) \
+                - ( PF_V1[j,k] \
+                      - PF_V1[j,k-1] ) \
+                  / ( 2.0 * dX2 ) )
 
     if( UsePhysicalUnits ):
         DataUnit = '1/s'
-
 
 if  ( nDims == 1 ):
 
