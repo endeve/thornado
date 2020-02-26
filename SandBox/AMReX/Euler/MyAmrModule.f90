@@ -182,38 +182,23 @@ CONTAINS
 
     END IF
 
-    IF( UsePhysicalUnits ) &
+    IF( UsePhysicalUnits )THEN
+
       CALL ActivateUnitsDisplay( CoordinateSystem_Option = TRIM( CoordSys ) )
 
-    IF( amrex_parallel_ioprocessor() ) &
-      CALL DescribeUnitsDisplay
-
-    IF( UsePhysicalUnits )THEN
+      IF( amrex_parallel_ioprocessor() ) &
+        CALL DescribeUnitsDisplay
 
       t_end  = t_end  * UnitsDisplay % TimeUnit
       dt_wrt = dt_wrt * UnitsDisplay % TimeUnit
       dt_chk = dt_chk * UnitsDisplay % TimeUnit
 
-      IF     ( CoordSys .EQ. 'CARTESIAN'   )THEN
-
-        xL(1:3) = xL(1:3) * UnitsDisplay % LengthUnit
-        xR(1:3) = xR(1:3) * UnitsDisplay % LengthUnit
-
-      ELSE IF( CoordSys .EQ. 'CYLINDRICAL' )THEN
-
-        xL(1:2) = xL(1:2) * UnitsDisplay % LengthUnit
-        xR(1:2) = xR(1:2) * UnitsDisplay % LengthUnit
-
-      ELSE IF( CoordSys .EQ. 'SPHERICAL'   )THEN
-
-        xL(1)   = xL(1) * UnitsDisplay % LengthUnit
-        xR(1)   = xR(1) * UnitsDisplay % LengthUnit
-
-      ELSE
-
-        STOP 'Invalid choice for CoordSys'
-
-      END IF
+      xL(1) = xL(1) * UnitsDisplay % LengthX1Unit
+      xR(1) = xR(1) * UnitsDisplay % LengthX1Unit
+      xL(2) = xL(2) * UnitsDisplay % LengthX2Unit
+      xR(2) = xR(2) * UnitsDisplay % LengthX2Unit
+      xL(3) = xL(3) * UnitsDisplay % LengthX3Unit
+      xR(3) = xR(3) * UnitsDisplay % LengthX3Unit
 
     END IF
 

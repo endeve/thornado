@@ -104,6 +104,7 @@ PROGRAM ApplicationDriver
                            rPerturbationInner, rPerturbationOuter
 
   LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
+  LOGICAL  :: ActivateUnits = .FALSE.
   REAL(DP) :: Timer_Evolution
 
   RestartFileNumber = -1
@@ -115,13 +116,13 @@ PROGRAM ApplicationDriver
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
 !  ProgramName = 'Advection'
-  ProgramName = 'Advection2D'
+!  ProgramName = 'Advection2D'
 !  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2D'
 !  ProgramName = 'RiemannProblemSpherical'
 !  ProgramName = 'SedovTaylorBlastWave'
 !  ProgramName = 'KelvinHelmholtzInstability'
-!  ProgramName = 'StandingAccretionShock'
+  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -139,8 +140,6 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      WriteGF = .FALSE.
-
     CASE( 'Advection2D' )
 
       AdvectionProfile = 'SineWaveX1'
@@ -154,8 +153,6 @@ PROGRAM ApplicationDriver
       nX = [ 32, 32, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
-
-      WriteGF = .FALSE.
 
     CASE( 'RiemannProblem' )
 
@@ -308,6 +305,8 @@ PROGRAM ApplicationDriver
 
       WriteGF = .TRUE.
 
+      ActivateUnits = .TRUE.
+
     CASE DEFAULT
 
       WRITE(*,*)
@@ -380,6 +379,8 @@ PROGRAM ApplicationDriver
              = nNodes, &
            CoordinateSystem_Option &
              = TRIM( CoordinateSystem ), &
+           ActivateUnits_Option &
+             = ActivateUnits, &
            BasicInitialization_Option &
              = .TRUE. )
 

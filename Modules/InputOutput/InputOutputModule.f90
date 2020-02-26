@@ -113,7 +113,7 @@ CONTAINS
     OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
 
     WRITE( FUNIT, * ) &
-      Time / U % TimeUnit, nX(1), X1 / U % LengthUnit, &
+      Time / U % TimeUnit, nX(1), X1 / U % LengthX1Unit, &
       GeometryField1D( uGF(:,1:nX(1),1,1,iGF_Phi_N    ), nX(1) ) &
         / ( U % EnergyDensityUnit / U % MassDensityUnit ), &
       GeometryField1D( uGF(:,1:nX(1),1,1,iGF_Gm_dd_11 ), nX(1) ), &
@@ -163,7 +163,7 @@ CONTAINS
     OPEN( NEWUNIT = FUNIT, FILE = TRIM( FileName ) )
 
     WRITE( FUNIT, * ) &
-      Time / U % TimeUnit, nX(1), X1 / U % LengthUnit, &
+      Time / U % TimeUnit, nX(1), X1 / U % LengthX1Unit, &
       FluidField1D( uCF(:,1:nX(1),1,1,iCF_D ), nX(1) ) &
         / U % MassDensityUnit, &
       FluidField1D( uCF(:,1:nX(1),1,1,iCF_S1), nX(1) ) &
@@ -255,7 +255,7 @@ CONTAINS
     WRITE( FUNIT, * ) &
       Time / U % TimeUnit, &
       nX(1), nNodesX(1), &
-      NodeCoordinatesX1( nX(1), nNodesX(1) ) / U % LengthUnit, &
+      NodeCoordinatesX1( nX(1), nNodesX(1) ) / U % LengthX1Unit, &
       FluidField1D_N( uCF(:,1:nX(1),1,1,iCF_D ), nX(1), nNodesX(1) ) &
         / U % MassDensityUnit, &
       FluidField1D_N( uCF(:,1:nX(1),1,1,iCF_S1), nX(1), nNodesX(1) ) &
@@ -352,7 +352,7 @@ CONTAINS
 
     WRITE( FUNIT, * ) &
       Time / U % TimeUnit, &
-      nE, E / U % EnergyUnit, nX(1), X1 / U % LengthUnit, &
+      nE, E / U % EnergyUnit, nX(1), X1 / U % LengthX1Unit, &
       RadiationField1D( uCR(:,1:nE,1:nX(1),1,1,iCR_N, 1), nE, nX(1) ), &
       RadiationField1D( uCR(:,1:nE,1:nX(1),1,1,iCR_G1,1), nE, nX(1) ), &
       RadiationField1D( uCR(:,1:nE,1:nX(1),1,1,iCR_G2,1), nE, nX(1) ), &
@@ -487,7 +487,7 @@ CONTAINS
       nE, nNodesE, &
       NodeCoordinatesE( nE, nNodesE ) / U % EnergyUnit, &
       nX(1), nNodesX(1), &
-      NodeCoordinatesX1( nX(1), nNodesX(1) ) / U % LengthUnit, &
+      NodeCoordinatesX1( nX(1), nNodesX(1) ) / U % LengthX1Unit, &
       RadiationField1D_N &
         ( uCR(:,1:nE,1:nX(1),1,1,iCR_N, 1), nE, nNodesE, nX(1), nNodesX(1) ), &
       RadiationField1D_N &
@@ -600,7 +600,7 @@ CONTAINS
     WRITE( FUNIT, * ) nNodesX(1)
 
     WRITE( FUNIT, * ) &
-      NodeCoordinatesX1( nX(1), nNodesX(1) ) / U % LengthUnit
+      NodeCoordinatesX1( nX(1), nNodesX(1) ) / U % LengthX1Unit
 
     WRITE( FUNIT, * ) & ! uPF_D
       FluidFieldRestart1D_Out &

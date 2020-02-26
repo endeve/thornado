@@ -61,7 +61,8 @@ MODULE UnitsModule
 
   CHARACTER(16), PRIVATE, PARAMETER :: &
     DisplayLabel_Null            = '', &
-    DisplayLabel_Length          = 'km', &
+    DisplayLabel_Length_L        = 'km', &
+    DisplayLabel_Length_A        = 'rad', &
     DisplayLabel_Time            = 'ms', &
     DisplayLabel_Mass            = 'M_sun', &
     DisplayLabel_MassDensity     = 'g/cm^3', &
@@ -77,7 +78,8 @@ MODULE UnitsModule
     DisplayLabel_Temperature     = 'K'
 
   REAL(DP), PRIVATE, PARAMETER :: &
-    DisplayUnit_Length          = Kilometer, &
+    DisplayUnit_Length_L        = Kilometer, &
+    DisplayUnit_Length_A        = 1.0_DP, &
     DisplayUnit_Time            = Millisecond, &
     DisplayUnit_Mass            = SolarMass, &
     DisplayUnit_MassDensity     = Gram / Centimeter**3, &
@@ -96,7 +98,9 @@ MODULE UnitsModule
     LOGICAL  :: &
       Active = .FALSE.
     CHARACTER(16) :: &
-      LengthLabel          = DisplayLabel_Null, &
+      LengthX1Label        = DisplayLabel_Null, &
+      LengthX2Label        = DisplayLabel_Null, &
+      LengthX3Label        = DisplayLabel_Null, &
       TimeLabel            = DisplayLabel_Null, &
       MassLabel            = DisplayLabel_Null, &
       MassDensityLabel     = DisplayLabel_Null, &
@@ -112,7 +116,9 @@ MODULE UnitsModule
       PressureLabel        = DisplayLabel_Null, &
       TemperatureLabel     = DisplayLabel_Null
     REAL(DP) :: &
-      LengthUnit          = 1.0_DP, &
+      LengthX1Unit        = 1.0_DP, &
+      LengthX2Unit        = 1.0_DP, &
+      LengthX3Unit        = 1.0_DP, &
       TimeUnit            = 1.0_DP, &
       MassUnit            = 1.0_DP, &
       MassDensityUnit     = 1.0_DP, &
@@ -151,7 +157,6 @@ CONTAINS
 
     UnitsDisplay % Active = .TRUE.
 
-    UnitsDisplay % LengthLabel          = DisplayLabel_Length
     UnitsDisplay % TimeLabel            = DisplayLabel_Time
     UnitsDisplay % MassLabel            = DisplayLabel_Mass
     UnitsDisplay % MassDensityLabel     = DisplayLabel_MassDensity
@@ -161,17 +166,29 @@ CONTAINS
 
       CASE( 'CARTESIAN' )
 
+        UnitsDisplay % LengthX1Label = DisplayLabel_Length_L
+        UnitsDisplay % LengthX2Label = DisplayLabel_Length_L
+        UnitsDisplay % LengthX3Label = DisplayLabel_Length_L
+
         UnitsDisplay % VelocityX1Label = DisplayLabel_Velocity_L
         UnitsDisplay % VelocityX2Label = DisplayLabel_Velocity_L
         UnitsDisplay % VelocityX3Label = DisplayLabel_Velocity_L
 
       CASE( 'CYLINDRICAL' )
 
+        UnitsDisplay % LengthX1Label = DisplayLabel_Length_L
+        UnitsDisplay % LengthX2Label = DisplayLabel_Length_L
+        UnitsDisplay % LengthX3Label = DisplayLabel_Length_A
+
         UnitsDisplay % VelocityX1Label = DisplayLabel_Velocity_L
         UnitsDisplay % VelocityX2Label = DisplayLabel_Velocity_L
         UnitsDisplay % VelocityX3Label = DisplayLabel_Velocity_A
 
       CASE( 'SPHERICAL' )
+
+        UnitsDisplay % LengthX1Label = DisplayLabel_Length_L
+        UnitsDisplay % LengthX2Label = DisplayLabel_Length_A
+        UnitsDisplay % LengthX3Label = DisplayLabel_Length_A
 
         UnitsDisplay % VelocityX1Label = DisplayLabel_Velocity_L
         UnitsDisplay % VelocityX2Label = DisplayLabel_Velocity_A
@@ -192,7 +209,6 @@ CONTAINS
     UnitsDisplay % PressureLabel        = DisplayLabel_Pressure
     UnitsDisplay % TemperatureLabel     = DisplayLabel_Temperature
 
-    UnitsDisplay % LengthUnit          = DisplayUnit_Length
     UnitsDisplay % TimeUnit            = DisplayUnit_Time
     UnitsDisplay % MassUnit            = DisplayUnit_Mass
     UnitsDisplay % MassDensityUnit     = DisplayUnit_MassDensity
@@ -202,17 +218,29 @@ CONTAINS
 
       CASE( 'CARTESIAN' )
 
+        UnitsDisplay % LengthX1Unit = DisplayUnit_Length_L
+        UnitsDisplay % LengthX2Unit = DisplayUnit_Length_L
+        UnitsDisplay % LengthX3Unit = DisplayUnit_Length_L
+
         UnitsDisplay % VelocityX1Unit = DisplayUnit_Velocity_L
         UnitsDisplay % VelocityX2Unit = DisplayUnit_Velocity_L
         UnitsDisplay % VelocityX3Unit = DisplayUnit_Velocity_L
 
       CASE( 'CYLINDRICAL' )
 
+        UnitsDisplay % LengthX1Unit = DisplayUnit_Length_L
+        UnitsDisplay % LengthX2Unit = DisplayUnit_Length_L
+        UnitsDisplay % LengthX3Unit = DisplayUnit_Length_A
+
         UnitsDisplay % VelocityX1Unit = DisplayUnit_Velocity_L
         UnitsDisplay % VelocityX2Unit = DisplayUnit_Velocity_L
         UnitsDisplay % VelocityX3Unit = DisplayUnit_Velocity_A
 
       CASE( 'SPHERICAL' )
+
+        UnitsDisplay % LengthX1Unit = DisplayUnit_Length_L
+        UnitsDisplay % LengthX2Unit = DisplayUnit_Length_A
+        UnitsDisplay % LengthX3Unit = DisplayUnit_Length_A
 
         UnitsDisplay % VelocityX1Unit = DisplayUnit_Velocity_L
         UnitsDisplay % VelocityX2Unit = DisplayUnit_Velocity_A
@@ -245,8 +273,14 @@ CONTAINS
       '', '---------------------------'
     WRITE(*,*)
     WRITE(*,'(A7,A24,A)') &
-      '', 'Length Units: ', &
-      TRIM( UnitsDisplay % LengthLabel )
+      '', 'Length (X1) Units: ', &
+      TRIM( UnitsDisplay % LengthX1Label )
+    WRITE(*,'(A7,A24,A)') &
+      '', 'Length (X2) Units: ', &
+      TRIM( UnitsDisplay % LengthX2Label )
+    WRITE(*,'(A7,A24,A)') &
+      '', 'Length (X3) Units: ', &
+      TRIM( UnitsDisplay % LengthX3Label )
     WRITE(*,'(A7,A24,A)') &
       '', 'Time Units: ', &
       TRIM( UnitsDisplay % TimeLabel )

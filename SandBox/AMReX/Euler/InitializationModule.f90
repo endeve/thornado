@@ -2,16 +2,16 @@ MODULE InitializationModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
+  USE amrex_fort_module,      ONLY: &
     AR => amrex_real, &
     amrex_spacedim
-  USE amrex_amr_module, ONLY: &
+  USE amrex_amr_module,       ONLY: &
     amrex_init
-  USE amrex_amrcore_module, ONLY: &
+  USE amrex_amrcore_module,   ONLY: &
     amrex_amrcore_init
-  USE amrex_box_module, ONLY: &
+  USE amrex_box_module,       ONLY: &
     amrex_box
-  USE amrex_boxarray_module, ONLY: &
+  USE amrex_boxarray_module,  ONLY: &
     amrex_boxarray,         &
     amrex_boxarray_build,   &
     amrex_boxarray_destroy
@@ -19,13 +19,13 @@ MODULE InitializationModule
     amrex_distromap,       &
     amrex_distromap_build, &
     amrex_distromap_destroy
-  USE amrex_geometry_module, ONLY: &
+  USE amrex_geometry_module,  ONLY: &
     amrex_geometry, &
     amrex_geometry_build
-  USE amrex_multifab_module, ONLY: &
+  USE amrex_multifab_module,  ONLY: &
     amrex_multifab, &
     amrex_multifab_build
-  USE amrex_parallel_module, ONLY: &
+  USE amrex_parallel_module,  ONLY: &
     amrex_parallel_ioprocessor
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse,       &
@@ -59,7 +59,8 @@ MODULE InitializationModule
     MinY, &
     MaxY
   USE GeometryFieldsModule,             ONLY: &
-    nGF, &
+    nGF,                    &
+    SetUnitsGeometryFields, &
     CoordinateSystem
   USE FluidFieldsModule,                ONLY: &
     nCF, &
@@ -387,6 +388,7 @@ CONTAINS
       '', 'CFL: ', &
       CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
+    CALL SetUnitsGeometryFields
     CALL SetUnitsFluidFields( TRIM( CoordinateSystem ) )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )

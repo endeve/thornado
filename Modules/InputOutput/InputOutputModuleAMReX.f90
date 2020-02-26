@@ -46,6 +46,7 @@ MODULE InputOutputModuleAMReX
     WeightsX_q
   USE GeometryFieldsModule,    ONLY: &
     ShortNamesGF, &
+    unitsGF,      &
     nGF,          &
     iGF_Phi_N,    &
     iGF_h_1,      &
@@ -62,6 +63,7 @@ MODULE InputOutputModuleAMReX
     iGF_Psi
   USE FluidFieldsModule,       ONLY: &
     ShortNamesCF, &
+    unitsCF,      &
     nCF,          &
     iCF_D,        &
     iCF_S1,       &
@@ -70,6 +72,7 @@ MODULE InputOutputModuleAMReX
     iCF_E,        &
     iCF_Ne,       &
     ShortNamesPF, &
+    unitsPF,      &
     nPF,          &
     iPF_D,        &
     iPF_V1,       &
@@ -78,6 +81,7 @@ MODULE InputOutputModuleAMReX
     iPF_E,        &
     iPF_Ne,       &
     ShortNamesAF, &
+    unitsAF,      &
     nAF,          &
     iAF_P,        &
     iAF_T,        &
@@ -94,6 +98,7 @@ MODULE InputOutputModuleAMReX
     iAF_Gm,       &
     iAF_Cs,       &
     ShortNamesDF, &
+    unitsDF,      &
     nDF,          &
     iDF_Sh,       &
     iDF_T1,       &
@@ -124,11 +129,11 @@ MODULE InputOutputModuleAMReX
   IMPLICIT NONE
   PRIVATE
 
-  REAL(AR), PARAMETER :: One = 1.0_AR
-
   PUBLIC :: ReadCheckpointFile
   PUBLIC :: WriteFieldsAMReX_Checkpoint
   PUBLIC :: WriteFieldsAMReX_PlotFile
+
+  REAL(AR), PARAMETER :: Zero = 0.0_AR
 
   INTERFACE
 
@@ -270,15 +275,15 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX(1) )
-      CALL MF_uPF(iLevel) % SetVal( 0.0_AR )
+      CALL MF_uPF(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
-      CALL MF_uAF(iLevel) % SetVal( 0.0_AR )
+      CALL MF_uAF(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX(1) )
-      CALL MF_uDF(iLevel) % SetVal( 0.0_AR )
+      CALL MF_uDF(iLevel) % SetVal( Zero )
 
     END DO
 
@@ -327,58 +332,81 @@ CONTAINS
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
 
     ! --- Offset for C++ indexing ---
+
     iOS_CPP = 1
+
     IF     ( amrex_spacedim .EQ. 1 )THEN
+
       iOS_CPP(2) = 0
       iOS_CPP(3) = 0
+
     ELSE IF( amrex_spacedim .EQ. 2 )THEN
+
       iOS_CPP(3) = 0
+
     END IF
 
     BX = amrex_box( [ 0, 0, 0 ], [ nX(1)-1, nX(2)-1, nX(3)-1 ] )
 
     DO iLevel = 0, nLevels-1
+
       CALL amrex_boxarray_build( BA(iLevel), BX )
+
     END DO
 
     DO iLevel = 0, nLevels-1
+
       CALL BA(iLevel) % maxSize( MaxGridSizeX )
+
     END DO
 
     DO iLevel = 0, nLevels-1
+
       CALL amrex_geometry_build ( GEOM(iLevel), BX )
       CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
+
     END DO
 
     nF = 0
-    WriteGF   = .FALSE.
+
+    WriteGF = .FALSE.
     IF( PRESENT( MF_uGF_Option ) )THEN
-      WriteGF   = .TRUE.
+
+      WriteGF = .TRUE.
       nF = nF + nGF
+
     END IF
 
     WriteFF_C = .FALSE.
     IF( PRESENT( MF_uCF_Option ) )THEN
+
       WriteFF_C = .TRUE.
       nF = nF + nCF
+
     END IF
 
     WriteFF_P = .FALSE.
     IF( PRESENT( MF_uPF_Option ) )THEN
+
       WriteFF_P = .TRUE.
       nF = nF + nPF
+
     END IF
 
     WriteFF_A = .FALSE.
     IF( PRESENT( MF_uAF_Option ) )THEN
+
       WriteFF_A = .TRUE.
       nF = nF + nAF
+
     END IF
 
     WriteFF_D = .FALSE.
     IF( PRESENT( MF_uDF_Option ) )THEN
+
       WriteFF_D = .TRUE.
       nF = nF + nDF
+
     END IF
 
     IF( amrex_parallel_ioprocessor() )THEN
@@ -389,9 +417,13 @@ CONTAINS
     END IF
 
     IF( nLevels-1 .EQ. 0 )THEN
+
       WRITE(NumberString,'(I8.8)') StepNo(:)
+
     ELSE
+
       WRITE(NumberString,'(I8.8)') StepNo(0)
+
     END IF
 
     PlotFileName = TRIM( PlotFileBaseName ) // '_' // NumberString
@@ -399,44 +431,67 @@ CONTAINS
     ALLOCATE( VarNames(nF) )
 
     iOS = 0
+
     IF( WriteGF )THEN
+
       DO iComp = 1, nGF
         CALL amrex_string_build &
                ( VarNames( iComp + iOS ), TRIM( ShortNamesGF(iComp) ) )
+
       END DO
+
       iOS = iOS + nGF
+
     END IF
 
     IF( WriteFF_C )THEN
+
       DO iComp = 1, nCF
+
         CALL amrex_string_build &
                ( VarNames( iComp + iOS ), TRIM( ShortNamesCF(iComp) ) )
+
       END DO
+
       iOS = iOS + nCF
+
     END IF
 
     IF( WriteFF_P )THEN
+
       DO iComp = 1, nPF
         CALL amrex_string_build &
                ( VarNames( iComp + iOS ), TRIM( ShortNamesPF(iComp) ) )
       END DO
+
       iOS = iOS + nPF
+
     END IF
 
     IF( WriteFF_A )THEN
+
       DO iComp = 1, nAF
+
         CALL amrex_string_build &
                ( VarNames( iComp + iOS ), TRIM( ShortNamesAF(iComp) ) )
+
       END DO
+
       iOS = iOS + nAF
+
     END IF
 
     IF( WriteFF_D )THEN
+
       DO iComp = 1, nDF
+
         CALL amrex_string_build &
                ( VarNames( iComp + iOS ), TRIM( ShortNamesDF(iComp) ) )
+
       END DO
+
       iOS = iOS + nDF
+
     END IF
 
 
@@ -444,40 +499,55 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( MF_PF(iLevel), BA(iLevel), DM(iLevel), nF, 0 )
-      CALL MF_PF(iLevel) % setVal( 0.0d0 )
+      CALL MF_PF(iLevel) % setVal( Zero )
 
       CALL amrex_mfiter_build( MFI, MF_PF(iLevel), tiling = .TRUE. )
 
       iOS = 0
 
       IF( WriteGF   )THEN
+
         CALL MF_ComputeCellAverage &
           ( nGF, MF_uGF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'GF' )
+
         iOS = iOS + nGF
+
       END IF
 
       IF( WriteFF_C )THEN
+
         CALL MF_ComputeCellAverage &
           ( nCF, MF_uCF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'CF' )
+
         iOS = iOS + nCF
+
       END IF
 
       IF( WriteFF_P )THEN
+
         CALL MF_ComputeCellAverage &
           ( nPF, MF_uPF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'PF' )
+
         iOS = iOS + nPF
+
       END IF
 
       IF( WriteFF_A )THEN
+
         CALL MF_ComputeCellAverage &
           ( nAF, MF_uAF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'AF' )
+
         iOS = iOS + nAF
+
       END IF
 
       IF( WriteFF_D )THEN
+
         CALL MF_ComputeCellAverage &
           ( nDF, MF_uDF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'DF' )
+
         iOS = iOS + nDF
+
       END IF
 
     END DO ! End of loop over levels
@@ -487,10 +557,12 @@ CONTAINS
              GEOM, Time / UnitsDisplay % TimeUnit, StepNo, amrex_ref_ratio )
 
     DO iLevel = 0, nLevels-1
+
       CALL amrex_multifab_destroy ( MF_PF(iLevel) )
       CALL amrex_distromap_destroy( DM   (iLevel) )
       CALL amrex_geometry_destroy ( GEOM (iLevel) )
       CALL amrex_boxarray_destroy ( BA   (iLevel) )
+
     END DO
 
     DEALLOCATE( VarNames )
@@ -559,39 +631,45 @@ CONTAINS
     CHARACTER(2), INTENT(in)    :: Field
 
     INTEGER  :: iComp
-    REAL(AR) :: unitsGF(nGF), unitsCF(nCF), unitsPF(nPF), &
-                unitsAF(nAF), unitsDF(nDF)
-
-    CALL SetUnitsFields( unitsGF, unitsCF, unitsPF, unitsAF, unitsDF )
 
     IF     ( Field .EQ. 'GF' )THEN
 
       DO iComp = 1, nComp
+
         u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsGF(iComp)
+
       END DO
 
     ELSE IF( Field .EQ. 'CF' )THEN
 
       DO iComp = 1, nComp
+
         u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsCF(iComp)
+
       END DO
 
     ELSE IF( Field .EQ. 'PF' )THEN
 
       DO iComp = 1, nComp
+
         u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsPF(iComp)
+
       END DO
 
     ELSE IF( Field .EQ. 'AF' )THEN
 
       DO iComp = 1, nComp
+
         u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsAF(iComp)
+
       END DO
 
     ELSE IF( Field .EQ. 'DF' )THEN
 
       DO iComp = 1, nComp
+
         u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsDF(iComp)
+
       END DO
 
     ELSE
@@ -601,120 +679,6 @@ CONTAINS
     END IF
 
   END SUBROUTINE ConvertUnits
-
-
-  SUBROUTINE SetUnitsFields( unitsGF, unitsCF, unitsPF, unitsAF, unitsDF )
-
-    REAL(AR), INTENT(out) :: unitsGF(nGF)
-    REAL(AR), INTENT(out) :: unitsCF(nCF)
-    REAL(AR), INTENT(out) :: unitsPF(nPF)
-    REAL(AR), INTENT(out) :: unitsAF(nAF)
-    REAL(AR), INTENT(out) :: unitsDF(nDF)
-
-    ! --- Geometry ---
-
-    unitsGF(iGF_Phi_N)    &
-      = UnitsDisplay % EnergyDensityUnit / UnitsDisplay % MassDensityUnit
-    unitsGF(iGF_h_1)      &
-      = One
-    unitsGF(iGF_h_2)      &
-      = One
-    unitsGF(iGF_h_3)      &
-      = One
-    unitsGF(iGF_Gm_dd_11) &
-      = One
-    unitsGF(iGF_Gm_dd_22) &
-      = One
-    unitsGF(iGF_Gm_dd_33) &
-      = One
-    unitsGF(iGF_SqrtGm)   &
-      = One
-    unitsGF(iGF_Alpha)    &
-      = One
-    unitsGF(iGF_Beta_1)   &
-      = UnitsDisplay % VelocityX1Unit
-    unitsGF(iGF_Beta_2)   &
-      = UnitsDisplay % VelocityX2Unit
-    unitsGF(iGF_Beta_3)   &
-      = UnitsDisplay % VelocityX3Unit
-    unitsGF(iGF_Psi)      &
-      = One
-
-    ! --- Conserved ---
-
-    unitsCF(iCF_D)  &
-      = UnitsDisplay % MassDensityUnit
-    unitsCF(iCF_S1) &
-      = UnitsDisplay % MomentumDensityUnit
-    unitsCF(iCF_S2) &
-      = UnitsDisplay % MomentumDensityUnit
-    unitsCF(iCF_S3) &
-      = UnitsDisplay % MomentumDensityUnit
-    unitsCF(iCF_E)  &
-      = UnitsDisplay % EnergyDensityUnit
-    unitsCF(iCF_Ne) &
-      = UnitsDisplay % ParticleDensityUnit
-
-    ! --- Primitive ---
-
-    unitsPF(iPF_D)  &
-      = UnitsDisplay % MassDensityUnit
-    unitsPF(iPF_V1) &
-      = UnitsDisplay % VelocityX1Unit
-    unitsPF(iPF_V2) &
-      = UnitsDisplay % VelocityX2Unit
-    unitsPF(iPF_V3) &
-      = UnitsDisplay % VelocityX3Unit
-    unitsPF(iPF_E)  &
-      = UnitsDisplay % EnergyDensityUnit
-    unitsPF(iPF_Ne) &
-      = UnitsDisplay % ParticleDensityUnit
-
-    ! --- Auxiliary ---
-
-    unitsAF(iAF_P)  &
-      = UnitsDisplay % PressureUnit
-    unitsAF(iAF_T)  &
-      = UnitsDisplay % TemperatureUnit
-    unitsAF(iAF_Ye) &
-      = One
-    unitsAF(iAF_S)  &
-      = Joule / Kelvin
-    unitsAF(iAF_E)  &
-      = UnitsDisplay % EnergyDensityUnit / UnitsDisplay % MassDensityUnit
-    unitsAF(iAF_Me) &
-      = UnitsDisplay % EnergyUnit
-    unitsAF(iAF_Mp) &
-      = UnitsDisplay % EnergyUnit
-    unitsAF(iAF_Mn) &
-      = UnitsDisplay % EnergyUnit
-    unitsAF(iAF_Xp) &
-      = One
-    unitsAF(iAF_Xn) &
-      = One
-    unitsAF(iAF_Xa) &
-      = One
-    unitsAF(iAF_Xh) &
-      = One
-    unitsAF(iAF_Gm) &
-      = One
-    unitsAF(iAF_Cs) &
-      = UnitsDisplay % VelocityX1Unit
-
-    ! --- Diagnostic ---
-
-    unitsDF(iDF_Sh) &
-      = One
-    unitsDF(iDF_T1) &
-      = One
-    unitsDF(iDF_T2) &
-      = One
-    unitsDF(iDF_T3) &
-      = One
-    unitsDF(iDF_E) &
-      = UnitsDisplay % EnergyDensityUnit / UnitsDisplay % MassDensityUnit
-
-  END SUBROUTINE SetUnitsFields
 
 
 END MODULE InputOutputModuleAMReX
