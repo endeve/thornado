@@ -1,20 +1,19 @@
 MODULE MyAmrModule
 
   ! --- AMReX Modules ---
+
   USE amrex_fort_module,      ONLY: &
     AR => amrex_real, &
     amrex_spacedim
   USE amrex_base_module,      ONLY: &
-    amrex_init, &
+    amrex_init,        &
     amrex_initialized, &
     amrex_parallel_ioprocessor
   USE amrex_amr_module,       ONLY: &
     amrex_amrcore_init, &
-    amrex_amrcore_initialized, &
-    amrex_is_all_periodic, &
-    amrex_spacedim
+    amrex_amrcore_initialized
   USE amrex_parmparse_module, ONLY: &
-    amrex_parmparse, &
+    amrex_parmparse,       &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
   USE amrex_boxarray_module,  ONLY: &
@@ -25,10 +24,15 @@ MODULE MyAmrModule
     amrex_geometry
 
   ! --- thornado Modules ---
+
   USE ProgramHeaderModule,  ONLY: &
-    InitializeProgramHeader, nDOFX, nDimsX
+    nDOFX,  &
+    nDimsX, &
+    InitializeProgramHeader
   USE FluidFieldsModule,    ONLY: &
-    nCF, nPF, nAF
+    nCF, &
+    nPF, &
+    nAF
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE UnitsModule,          ONLY: &
@@ -37,6 +41,7 @@ MODULE MyAmrModule
     UnitsDisplay
 
   ! --- Local Modules ---
+
   USE MyAmrDataModule, ONLY: &
     InitializeDataAMReX, &
     FinalizeDataAMReX
@@ -135,17 +140,22 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     IF( iCycleW .GT. 0 .AND. dt_wrt .GT. Zero )THEN
+
       WRITE(*,'(A)') 'iCycleW and dt_wrt cannot both be greater than zero.'
       WRITE(*,'(A)') 'Stopping...'
       STOP
+
     END IF
+
     IF( iCycleChk .GT. 0 .AND. dt_chk .GT. Zero )THEN
+
       WRITE(*,'(A)') 'iCycleChk and dt_chk cannot both be greater than zero.'
       WRITE(*,'(A)') 'Stopping...'
       STOP
+
     END IF
 
-    CFL = CFL / ( amrex_spacedim * ( Two * nNodes - One ) )
+    CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
@@ -153,18 +163,28 @@ CONTAINS
       CALL PP % getarr( 'prob_lo',    xL )
       CALL PP % getarr( 'prob_hi',    xR )
     CALL amrex_parmparse_destroy( PP )
+
     IF     ( coord_sys .EQ. 0 )THEN
+
       CoordSys = 'CARTESIAN'
+
     ELSE IF( coord_sys .EQ. 1 )THEN
+
       CoordSys = 'CYLINDRICAL'
+
     ELSE IF( coord_sys .EQ. 2 )THEN
+
       CoordSys = 'SPHERICAL'
+
     ELSE
+
       STOP 'Invalid choice for coord_sys'
+
     END IF
 
     IF( UsePhysicalUnits ) &
       CALL ActivateUnitsDisplay( CoordinateSystem_Option = TRIM( CoordSys ) )
+
     IF( amrex_parallel_ioprocessor() ) &
       CALL DescribeUnitsDisplay
 
@@ -266,11 +286,13 @@ CONTAINS
              Verbose_Option = amrex_parallel_ioprocessor() )
 
     IF( nDimsX .NE. amrex_spacedim )THEN
+
       WRITE(*,'(A)') 'ERROR'
       WRITE(*,'(A)') '-----'
       WRITE(*,'(A)') 'thornado nDimsX different from AMReX amrex_spacedim.'
       WRITE(*,'(A)') 'Check DIM parameter in GNUmakefile. Stopping...'
       STOP
+
     END IF
 
     ALLOCATE( StepNo(0:nLevels-1) )

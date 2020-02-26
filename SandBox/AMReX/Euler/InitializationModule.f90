@@ -1,12 +1,12 @@
 MODULE InitializationModule
 
   ! --- AMReX Modules ---
+
   USE amrex_fort_module, ONLY: &
     AR => amrex_real, &
     amrex_spacedim
   USE amrex_amr_module, ONLY: &
-    amrex_init, &
-    amrex_finalize
+    amrex_init
   USE amrex_amrcore_module, ONLY: &
     amrex_amrcore_init
   USE amrex_box_module, ONLY: &
@@ -14,8 +14,7 @@ MODULE InitializationModule
   USE amrex_boxarray_module, ONLY: &
     amrex_boxarray,         &
     amrex_boxarray_build,   &
-    amrex_boxarray_destroy, &
-    amrex_print
+    amrex_boxarray_destroy
   USE amrex_distromap_module, ONLY: &
     amrex_distromap,       &
     amrex_distromap_build, &
@@ -27,14 +26,14 @@ MODULE InitializationModule
     amrex_multifab, &
     amrex_multifab_build
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor, &
-    amrex_parallel_communicator
+    amrex_parallel_ioprocessor
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse,       &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
 
   ! --- thornado Modules ---
+
   USE ProgramHeaderModule,              ONLY: &
     DescribeProgramHeaderX, &
     nDOFX,                  &
@@ -49,8 +48,7 @@ MODULE InitializationModule
     InitializeReferenceElementX_Lagrange
   USE MeshModule,                       ONLY: &
     MeshX,      &
-    CreateMesh, &
-    DestroyMesh
+    CreateMesh
   USE EquationOfStateModule,            ONLY: &
     InitializeEquationOfState
   USE EquationOfStateModule_TABLE,      ONLY: &
@@ -80,13 +78,14 @@ MODULE InitializationModule
   USE Euler_PositivityLimiterModule,    ONLY: &
     InitializePositivityLimiter_Euler
   USE InputOutputModuleAMReX,           ONLY: &
-    ReadCheckpointFile,          &
+    ReadCheckpointFile, &
     WriteFieldsAMReX_PlotFile
   USE UnitsModule,                      ONLY: &
     SolarMass, &
     UnitsDisplay
 
   ! --- Local modules ---
+
   USE MF_Euler_UtilitiesModule,         ONLY: &
     MF_ComputeFromConserved
   USE MF_GeometryModule,                ONLY: &
@@ -164,6 +163,7 @@ MODULE InitializationModule
   REAL(AR), PARAMETER :: One  = 1.0_AR
   REAL(AR), PARAMETER :: Two  = 2.0_AR
 
+
 CONTAINS
 
 
@@ -175,6 +175,7 @@ CONTAINS
     REAL(AR)              :: Mass
 
     ! --- Initialize AMReX ---
+
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
@@ -182,6 +183,7 @@ CONTAINS
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     ! --- Parse parameter file ---
+
     CALL MyAmrInit
 
     IF( iRestart .LT. 0 )THEN
@@ -189,20 +191,29 @@ CONTAINS
       BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
       ALLOCATE( BA(0:nLevels-1) )
+
       DO iLevel = 0, nLevels-1
+
         CALL amrex_boxarray_build( BA(iLevel), BX )
+
       END DO
 
       DO iLevel = 0, nLevels-1
+
         CALL BA(iLevel) % maxSize( MaxGridSizeX )
+
       END DO
 
       ALLOCATE( GEOM(0:nLevels-1) )
+
       ALLOCATE( DM  (0:nLevels-1) )
 
       DO iLevel = 0, nLevels-1
+
         CALL amrex_geometry_build ( GEOM(iLevel), BX )
+
         CALL amrex_distromap_build( DM  (iLevel), BA(iLevel) )
+
       END DO
 
       DO iLevel = 0, nLevels-1
@@ -276,9 +287,11 @@ CONTAINS
     END IF
 
     DO iDim = 1, 3
+
       CALL CreateMesh &
              ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
                xL(iDim), xR(iDim) )
+
     END DO
 
     CALL InitializePolynomialBasisX_Lagrange
@@ -299,10 +312,15 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' )THEN
+
       Mass = Mass * SolarMass
+
       CALL MF_ComputeGeometryX( MF_uGF, Mass )
+
     ELSE
-      CALL MF_ComputeGeometryX( MF_uGF, 0.0_AR )
+
+      CALL MF_ComputeGeometryX( MF_uGF, Zero )
+
     END IF
 
     IF( ProgramName .EQ. 'StandingAccretionShock' ) &
@@ -367,7 +385,7 @@ CONTAINS
 
     IF( amrex_parallel_ioprocessor() ) WRITE(*,'(A6,A,ES11.3E3)') &
       '', 'CFL: ', &
-      CFL * ( amrex_spacedim * ( Two * nNodes - One ) )
+      CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
     CALL SetUnitsFluidFields( TRIM( CoordinateSystem ) )
 
@@ -379,7 +397,8 @@ CONTAINS
 
       CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
 
-      CALL MF_ApplySlopeLimiter_Euler     ( MF_uGF, MF_uCF, MF_uDF, GEOM )
+      CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, MF_uDF, GEOM )
+
       CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
@@ -403,14 +422,18 @@ CONTAINS
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     DO iLevel = 0, nLevels-1
+
       CALL amrex_distromap_destroy( DM(iLevel) )
       CALL amrex_boxarray_destroy ( BA(iLevel) )
+
     END DO
 
     IF( amrex_parallel_ioprocessor() )THEN
+
       WRITE(*,*)
       WRITE(*,'(A)') '  Evolving fields...'
       WRITE(*,*)
+
     END IF
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )

@@ -1,13 +1,15 @@
 PROGRAM main
 
   ! --- AMReX Modules ---
+
   USE amrex_fort_module,                ONLY: &
-    amrex_real
+    AR => amrex_real
   USE amrex_parallel_module,            ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_communicator
 
   ! --- thornado Modules ---
+
   USE MeshModule,                       ONLY: &
     MeshX, &
     DestroyMesh
@@ -15,13 +17,15 @@ PROGRAM main
     WriteFieldsAMReX_Checkpoint, &
     WriteFieldsAMReX_PlotFile
   USE UnitsModule,                      ONLY: &
-    Millisecond
+    Millisecond, &
+    UnitsDisplay
   USE TimersModule_Euler,               ONLY: &
     TimeIt_Euler,           &
     InitializeTimers_Euler, &
     FinalizeTimers_Euler
 
   ! --- Local Modules ---
+
   USE MF_Euler_UtilitiesModule,         ONLY: &
     MF_ComputeFromConserved, &
     MF_ComputeTimeStep
@@ -62,8 +66,6 @@ PROGRAM main
     iCycleW,   &
     iCycleChk, &
     GEOM
-  USE UnitsModule,                      ONLY: &
-    UnitsDisplay
   USE TimersModule_AMReX_Euler,         ONLY: &
     TimeIt_AMReX_Euler,            &
     InitializeTimers_AMReX_Euler,  &
@@ -77,8 +79,8 @@ PROGRAM main
 
   INCLUDE 'mpif.h'
 
-  INTEGER          :: iErr
-  REAL(amrex_real) :: Timer_Evolution
+  INTEGER  :: iErr
+  REAL(AR) :: Timer_Evolution
 
   CALL InitializeProgram
 
@@ -92,7 +94,9 @@ PROGRAM main
       Timer_Evolution = MPI_WTIME()
 
   CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_MPI_Barrier )
+
   CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
   CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_MPI_Barrier )
 
   DO WHILE( ALL( t .LT. t_end ) )
@@ -102,36 +106,53 @@ PROGRAM main
     CALL MF_ComputeTimeStep( MF_uGF, MF_uCF, CFL, dt )
 
     IF( ALL( t + dt .LE. t_end ) )THEN
+
       t = t + dt
+
     ELSE
+
       dt = t_end - [t]
       t  = [t_end]
+
     END IF
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
     IF( amrex_parallel_ioprocessor() )THEN
+
       IF( MOD( StepNo(0), iCycleD ) .EQ. 0 )THEN
+
         WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
           'StepNo: ', StepNo(0), ' t = ', t / UnitsDisplay % TimeUnit, &
           TRIM( UnitsDisplay % TimeLabel ), &
           ' dt = ', dt(0) /  UnitsDisplay % TimeUnit, &
           TRIM( UnitsDisplay % TimeLabel )
+
      END IF
+
     END IF
+
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
     CALL MF_UpdateFluid_SSPRK &
            ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_Euler_ComputeIncrement )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
     IF( iCycleChk .GT. 0 )THEN
+
       IF( MOD( StepNo(0), iCycleChk ) .EQ. 0 ) &
         chk = .TRUE.
+
     ELSE
+
       IF( ALL( t + dt .GT. t_chk ) )THEN
+
         t_chk = t_chk + dt_chk
         chk   = .TRUE.
+
       END IF
+
     END IF
 
     IF( chk )THEN
@@ -149,13 +170,18 @@ PROGRAM main
     END IF
 
     IF( iCycleW .GT. 0 )THEN
+
       IF( MOD( StepNo(0), iCycleW ) .EQ. 0 ) &
         wrt = .TRUE.
+
     ELSE
+
       IF( ALL( t + dt .GT. t_wrt ) )THEN
         t_wrt = t_wrt + dt_wrt
         wrt   = .TRUE.
+
       END IF
+
     END IF
 
     IF( wrt )THEN
@@ -173,6 +199,7 @@ PROGRAM main
       wrt = .FALSE.
 
     END IF
+
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
   END DO
@@ -180,9 +207,11 @@ PROGRAM main
   ! --- END of evolution ---
 
   IF( amrex_parallel_ioprocessor() )THEN
+
     WRITE(*,*)
     WRITE(*,'(2x,A,ES13.6E3,A)') &
       'Total evolution time: ', MPI_WTIME() - Timer_Evolution, ' s'
+
   END IF
 
   StepNo = StepNo + 1

@@ -1,20 +1,23 @@
 MODULE FinalizationModule
 
   ! --- AMReX Modules ---
+
   USE amrex_amr_module,     ONLY: &
-    amrex_geometry, &
+    amrex_geometry,         &
     amrex_geometry_destroy, &
     amrex_finalize
   USE amrex_amrcore_module, ONLY: &
     amrex_amrcore_finalize
 
   ! --- thornado Modules ---
+
   USE ReferenceElementModuleX,          ONLY: &
     FinalizeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     FinalizeReferenceElementX_Lagrange
   USE MeshModule,                       ONLY: &
-    MeshType, DestroyMesh
+    MeshType, &
+    DestroyMesh
   USE EquationOfStateModule,            ONLY: &
     FinalizeEquationOfState
   USE Euler_SlopeLimiterModule,         ONLY: &
@@ -23,12 +26,15 @@ MODULE FinalizationModule
     FinalizePositivityLimiter_Euler
 
   ! --- Local Modules ---
+
   USE MyAmrModule,                 ONLY: &
-    nLevels, MyAmrFinalize
+    nLevels, &
+    MyAmrFinalize
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     MF_FinalizeFluid_SSPRK
   USE TimersModule_AMReX_Euler,    ONLY: &
-    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    TimersStart_AMReX_Euler, &
+    TimersStop_AMReX_Euler,  &
     Timer_AMReX_Euler_Finalize
 
   IMPLICIT NONE
@@ -61,11 +67,15 @@ CONTAINS
     CALL FinalizeReferenceElementX
 
     DO iDim = 1, 3
+
       CALL DestroyMesh( MeshX(iDim) )
+
     END DO
 
     DO iLevel = 0, nLevels-1
+
       CALL amrex_geometry_destroy( GEOM(iLevel) )
+
     END DO
 
     CALL MyAmrFinalize

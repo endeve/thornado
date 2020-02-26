@@ -1,21 +1,26 @@
 MODULE TimersModule_AMReX_Euler
 
-  USE amrex_fort_module, ONLY: &
+  USE amrex_fort_module,     ONLY: &
     AR => amrex_real
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_communicator, &
-    amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_min, &
-    amrex_parallel_reduce_max, &
-    amrex_parallel_reduce_sum, &
+    amrex_parallel_ioprocessor,  &
+    amrex_parallel_reduce_min,   &
+    amrex_parallel_reduce_max,   &
+    amrex_parallel_reduce_sum,   &
     amrex_parallel_nprocs
-  USE MyAmrModule, ONLY: &
+  USE MyAmrModule,           ONLY: &
     nLevels
 
   IMPLICIT NONE
   PRIVATE
 
   INCLUDE 'mpif.h'
+
+  PUBLIC :: InitializeTimers_AMReX_Euler
+  PUBLIC :: FinalizeTimers_AMReX_Euler
+  PUBLIC :: TimersStart_AMReX_Euler
+  PUBLIC :: TimersStop_AMReX_Euler
+  PUBLIC :: TimersWtime_AMReX
 
   LOGICAL,  PUBLIC :: TimeIt_AMReX_Euler = .FALSE.
 
@@ -36,15 +41,13 @@ MODULE TimersModule_AMReX_Euler
   REAL(AR), PUBLIC :: Timer_AMReX_Euler_ConstructEdgeMap; INTEGER :: iT_CEM = 11
   REAL(AR), PUBLIC :: Timer_AMReX_Euler_GetBC;            INTEGER :: iT_GBC = 12
 
-  INTEGER :: nT = 12
-
-  PUBLIC :: InitializeTimers_AMReX_Euler
-  PUBLIC :: FinalizeTimers_AMReX_Euler
-  PUBLIC :: TimersStart_AMReX_Euler
-  PUBLIC :: TimersStop_AMReX_Euler
-  PUBLIC :: TimersWtime_AMReX
+  INTEGER :: nTimers = 12
 
   INTEGER :: nProcs
+
+  REAL(AR), PARAMETER :: Zero    = 0.0_AR
+  REAL(AR), PARAMETER :: Hundred = 100.0_AR
+
 
 CONTAINS
 
@@ -55,20 +58,20 @@ CONTAINS
 
     nProcs = amrex_parallel_nprocs()
 
-    Timer_AMReX_Euler_Program          = 0.0_AR
+    Timer_AMReX_Euler_Program          = Zero
 
-    Timer_AMReX_Euler_Initialize       = 0.0_AR
-    Timer_AMReX_Euler_MPI_Barrier      = 0.0_AR
-    Timer_AMReX_ComputeTimeStep_Euler  = 0.0_AR
-    Timer_AMReX_Euler_UpdateFluid      = 0.0_AR
-    Timer_AMReX_Euler_InputOutput      = 0.0_AR
-    Timer_AMReX_Euler_Finalize         = 0.0_AR
+    Timer_AMReX_Euler_Initialize       = Zero
+    Timer_AMReX_Euler_MPI_Barrier      = Zero
+    Timer_AMReX_ComputeTimeStep_Euler  = Zero
+    Timer_AMReX_Euler_UpdateFluid      = Zero
+    Timer_AMReX_Euler_InputOutput      = Zero
+    Timer_AMReX_Euler_Finalize         = Zero
 
-    Timer_AMReX_Euler_DataTransfer     = 0.0_AR
-    Timer_AMReX_Euler_InteriorBC       = 0.0_AR
-    Timer_AMReX_Euler_CopyMultiFab     = 0.0_AR
-    Timer_AMReX_Euler_ConstructEdgeMap = 0.0_AR
-    Timer_AMReX_Euler_GetBC            = 0.0_AR
+    Timer_AMReX_Euler_DataTransfer     = Zero
+    Timer_AMReX_Euler_InteriorBC       = Zero
+    Timer_AMReX_Euler_CopyMultiFab     = Zero
+    Timer_AMReX_Euler_ConstructEdgeMap = Zero
+    Timer_AMReX_Euler_GetBC            = Zero
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Program )
 
@@ -78,12 +81,14 @@ CONTAINS
 
   SUBROUTINE FinalizeTimers_AMReX_Euler
 
-    REAL(AR) :: Timer(nT), TotalTime
+    REAL(AR) :: Timer(nTimers), TotalTime
+    REAL(AR) :: TimerSum(nTimers), TimerMin(nTimers), &
+                TimerMax(nTimers), TimerAve(nTimers)
 
-    REAL(AR) :: TimerSum(nT), TimerMin(nT), TimerMax(nT), TimerAve(nT)
-
-    CHARACTER(32) :: OutFMT = '(8x,A,ES13.6E3,A5,F7.3,A2)'
-    CHARACTER(64) :: OutMMA = '(10x,A6,ES13.6E3,A4,A6,ES13.6E3,A4,A6,ES13.6E3,A2)'
+    CHARACTER(32) :: &
+      OutFMT = '(8x,A,ES13.6E3,A5,F7.3,A2)'
+    CHARACTER(64) :: &
+      OutMMA = '(10x,A6,ES13.6E3,A4,A6,ES13.6E3,A4,A6,ES13.6E3,A2)'
     INTEGER       :: iT
 
     IF( .NOT. TimeIt_AMReX_Euler ) RETURN
@@ -105,7 +110,7 @@ CONTAINS
     Timer(iT_CEM) = Timer_AMReX_Euler_ConstructEdgeMap
     Timer(iT_GBC) = Timer_AMReX_Euler_GetBC
 
-    DO iT = 1, nT
+    DO iT = 1, nTimers
 
       CALL SumMinMaxAve( Timer(iT), TimerSum(iT), &
                          TimerMin(iT), TimerMax(iT), TimerAve(iT) )
@@ -129,14 +134,14 @@ CONTAINS
         'Total run-time (ave) = ', TimerAve(iT_P), ' s'
       WRITE(*,*)
 
-      TotalTime = 0.0_AR
+      TotalTime = Zero
       DO iT = iT_I, iT_F
         TotalTime = TotalTime + TimerSum(iT)
       END DO
 
       WRITE(*,'(8x,A26,F7.3,A2)') &
         'Timers / ProgramRunTime = ', &
-        100.0_AR * TotalTime / TimerSum(iT_P), ' %'
+        Hundred * TotalTime / TimerSum(iT_P), ' %'
 
       WRITE(*,*)
       WRITE(*,'(6x,A5)') 'fmain'
@@ -146,7 +151,7 @@ CONTAINS
       iT = iT_I
       WRITE(*,TRIM(OutFMT)) &
         'Initialize:        ', TimerSum(iT), ' s = ', &
-        100.0_AR * TimerSum(iT) / TimerSum(iT_P), ' %'
+        Hundred * TimerSum(iT) / TimerSum(iT_P), ' %'
       WRITE(*,TRIM(OutMMA)) &
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
@@ -157,7 +162,7 @@ CONTAINS
       iT = iT_CTS
       WRITE(*,TRIM(OutFMT)) &
         'Compute Time-Step: ', TimerSum(iT), ' s = ', &
-        100.0_AR * TimerSum(iT) / TimerSum(iT_P), ' %'
+        Hundred * TimerSum(iT) / TimerSum(iT_P), ' %'
       WRITE(*,TRIM(OutMMA)) &
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
@@ -168,7 +173,7 @@ CONTAINS
       iT = iT_UF
       WRITE(*,TRIM(OutFMT)) &
         'Update Fluid:      ', TimerSum(iT), ' s = ', &
-        100.0_AR * TimerSum(iT) / TimerSum(iT_P), ' %'
+        Hundred * TimerSum(iT) / TimerSum(iT_P), ' %'
       WRITE(*,TRIM(OutMMA)) &
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
@@ -179,7 +184,7 @@ CONTAINS
       iT = iT_IO
       WRITE(*,TRIM(OutFMT)) &
         'Input/Output:      ', TimerSum(iT), ' s = ', &
-        100.0_AR * TimerSum(iT) / TimerSum(iT_P), ' %'
+        Hundred * TimerSum(iT) / TimerSum(iT_P), ' %'
       WRITE(*,TRIM(OutMMA)) &
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
@@ -190,7 +195,7 @@ CONTAINS
       iT = iT_F
       WRITE(*,TRIM(OutFMT)) &
         'Finalize:          ', TimerSum(iT), ' s = ', &
-        100.0_AR * TimerSum(iT) / TimerSum(iT_P), ' %'
+        Hundred * TimerSum(iT) / TimerSum(iT_P), ' %'
       WRITE(*,TRIM(OutMMA)) &
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
@@ -206,7 +211,7 @@ CONTAINS
       iT = iT_DT
       WRITE(*,TRIM(OutFMT)) &
         'Data Transfer:                ', TimerSum(iT), ' s = ', &
-        100.0_AR * TimerSum(iT) / TimerSum(iT_P), ' %'
+        Hundred * TimerSum(iT) / TimerSum(iT_P), ' %'
       WRITE(*,TRIM(OutMMA)) &
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
@@ -217,7 +222,7 @@ CONTAINS
       iT = iT_IBC
       WRITE(*,TRIM(OutFMT)) &
         'Interior Boundary Conditions: ', TimerSum(iT), ' s = ', &
-        100.0_AR * TimerSum(iT) / TimerSum(iT_P), ' %'
+        Hundred * TimerSum(iT) / TimerSum(iT_P), ' %'
       WRITE(*,TRIM(OutMMA)) &
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
@@ -228,7 +233,7 @@ CONTAINS
       iT = iT_CMF
       WRITE(*,TRIM(OutFMT)) &
         'Copy MultiFab:                ', TimerSum(iT), ' s = ', &
-        100.0_AR * TimerSum(iT) / TimerSum(iT_P), ' %'
+        Hundred * TimerSum(iT) / TimerSum(iT_P), ' %'
       WRITE(*,TRIM(OutMMA)) &
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
@@ -239,7 +244,7 @@ CONTAINS
       iT = iT_CEM
       WRITE(*,TRIM(OutFMT)) &
         'Construct Edge-Map:           ', TimerSum(iT), ' s = ', &
-        100.0_AR * TimerSum(iT) / TimerSum(iT_P), ' %'
+        Hundred * TimerSum(iT) / TimerSum(iT_P), ' %'
       WRITE(*,TRIM(OutMMA)) &
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
@@ -250,7 +255,7 @@ CONTAINS
       iT = iT_GBC
       WRITE(*,TRIM(OutFMT)) &
         'Get Boundary-Conditions:      ', TimerSum(iT), ' s = ', &
-        100.0_AR * TimerSum(iT) / TimerSum(iT_P), ' %'
+        Hundred * TimerSum(iT) / TimerSum(iT_P), ' %'
       WRITE(*,TRIM(OutMMA)) &
         'Min = ', TimerMin(iT), ' s, ', &
         'Max = ', TimerMax(iT), ' s, ', &
@@ -301,7 +306,7 @@ CONTAINS
   SUBROUTINE SumMinMaxAve &
     ( Timer, TimerSum, TimerMin, TimerMax, TimerAve )
 
-    REAL(AR), INTENT(in)    :: Timer
+    REAL(AR), INTENT(in   ) :: Timer
     REAL(AR), INTENT(inout) :: TimerSum, TimerMin, TimerMax, TimerAve
 
     TimerSum = Timer

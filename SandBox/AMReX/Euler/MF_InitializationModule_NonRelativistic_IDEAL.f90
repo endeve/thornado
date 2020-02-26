@@ -63,6 +63,7 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
     DescribeError_Euler
 
   ! --- Local Modules ---
+
   USE MyAmrModule, ONLY: &
     nLevels, &
     xL,      &
@@ -95,8 +96,10 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     IF( amrex_parallel_ioprocessor() )THEN
+
       WRITE(*,*)
       WRITE(*,'(A4,A,A)') '', 'Initializing: ', TRIM( ProgramName )
+
     END IF
 
     SELECT CASE ( TRIM( ProgramName ) )
@@ -128,6 +131,7 @@ CONTAINS
       CASE DEFAULT
 
         IF( amrex_parallel_ioprocessor() )THEN
+
           WRITE(*,*)
           WRITE(*,'(4x,A,A)') 'Unknown Program: ', TRIM( ProgramName )
           WRITE(*,'(4x,A)')   'Valid Options:'
@@ -137,6 +141,7 @@ CONTAINS
           WRITE(*,'(6x,A)')     'TopHatAdvection'
           WRITE(*,'(6x,A)')     'Implosion'
           WRITE(*,'(6x,A)')     'StandingAccretionShock'
+
         END IF
 
         CALL DescribeError_Euler( 99 )
@@ -285,7 +290,7 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX
+    INTEGER        :: iNodeX, iNodeX1
     REAL(AR)       :: X1
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
@@ -339,7 +344,9 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          X1 = MeshX(1) % Center(iX1)
+          iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
           DO iNodeX = 1, nDOFX
 
@@ -407,7 +414,7 @@ CONTAINS
     ! --- thornado ---
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX
+    INTEGER        :: iNodeX, iNodeX1
     REAL(AR)       :: X1
     REAL(AR)       :: uGF_K(nDOFX,nGF)
     REAL(AR)       :: uCF_K(nDOFX,nCF)
@@ -461,7 +468,9 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          X1 = MeshX(1) % Center(iX1)
+          iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
           DO iNodeX = 1, nDOFX
 
@@ -590,9 +599,13 @@ CONTAINS
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
             IF( ABS( X1 - Half ) .LE. 0.25_AR )THEN
+
               uPF_K(iNodeX,iPF_D) = Two
+
             ELSE
+
               uPF_K(iNodeX,iPF_D) = One
+
             END IF
 
           END DO
@@ -992,12 +1005,12 @@ CONTAINS
     INTEGER             :: Iter
     REAL(AR)            :: a, b, c, ab, F_a, F_b, F_c, F_0
     INTEGER,  PARAMETER :: MaxIter = 128
-    REAL(AR), PARAMETER :: Tol_ab = 1.0d-8
-    REAL(AR), PARAMETER :: Tol_F = 1.0d-8
+    REAL(AR), PARAMETER :: Tol_ab  = 1.0e-8_AR
+    REAL(AR), PARAMETER :: Tol_F   = 1.0e-8_AR
 
     REAL(AR), INTENT(out) :: V1
 
-    a = 1.0d-6
+    a = 1.0e-6_AR
     F_a = SettlingSpeedFun(a, r, Alpha, Gamma, Mass)
 
     b = One
@@ -1048,6 +1061,7 @@ CONTAINS
         + Alpha * r**(Three-Two*Gamma) &
         * u**(One-Gamma) &
         - Two * Mass
+
     RETURN
   END FUNCTION SettlingSpeedFun
 

@@ -60,9 +60,9 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
   USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive
   USE UnitsModule,             ONLY: &
-    Kilometer, &
-    Second, &
-    SolarMass, &
+    Kilometer,    &
+    Second,       &
+    SolarMass,    &
     SpeedOfLight, &
     Gram, Centimeter
   USE UtilitiesModule,         ONLY: &
@@ -71,6 +71,7 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     DescribeError_Euler
 
   ! --- Local Modules ---
+
   USE MyAmrModule, ONLY: &
     nLevels, &
     xL,      &
@@ -88,8 +89,8 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
   REAL(AR), PARAMETER :: One      = 1.0_AR
   REAL(AR), PARAMETER :: Two      = 2.0_AR
   REAL(AR), PARAMETER :: Three    = 3.0_AR
-  REAL(AR), PARAMETER :: Pi       = ACOS( -1.0_AR )
   REAL(AR), PARAMETER :: Four     = 4.0_AR
+  REAL(AR), PARAMETER :: Pi       = ACOS( -1.0_AR )
   REAL(AR), PARAMETER :: TwoPi    = 2.0_AR * Pi
   REAL(AR), PARAMETER :: FourPi   = 4.0_AR * Pi
 
@@ -106,8 +107,10 @@ CONTAINS
 
 
     IF( amrex_parallel_ioprocessor() )THEN
+
       WRITE(*,*)
       WRITE(*,'(A4,A,A)') '', 'Initializing: ', TRIM( ProgramName )
+
     END IF
 
     SELECT CASE ( TRIM( ProgramName ) )
@@ -436,7 +439,7 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-    ! --- Problem-dependent parameters ---
+    ! --- Problem-dependent Parameters ---
     CHARACTER(LEN=:), ALLOCATABLE :: AdvectionProfile
 
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -641,32 +644,44 @@ CONTAINS
 
             ! --- V1 ---
             IF( X2 .GT. Zero )THEN
+
               uPF_K(iNodeX,iPF_V1) &
                 = +Vshear * TANH( ( X2 - Half ) / a )
+
             ELSE
+
               ! --- Paper has a typo here, the minus sign is required ---
               uPF_K(iNodeX,iPF_V1) &
                 = -Vshear * TANH( ( X2 + Half ) / a )
+
             END IF
 
             ! --- V2 ---
             IF( X2 .GT. Zero )THEN
+
               uPF_K(iNodeX,iPF_V2) &
-                =  A0 * Vshear * SIN( 2.0_AR * Pi * X1 ) &
+                =  A0 * Vshear * SIN( TwoPi * X1 ) &
                     * EXP( -( ( X2 - Half )**2 / sigma ) )
+
             ELSE
+
               uPF_K(iNodeX,iPF_V2) &
-                = -A0 * Vshear * SIN( 2.0_AR * Pi * X1 ) &
+                = -A0 * Vshear * SIN( TwoPi * X1 ) &
                     * EXP( -( ( X2 + Half )**2 / sigma ) )
+
             END IF
 
             ! --- rho ---
             IF( X2 .GT. Zero )THEN
+
               uPF_K(iNodeX,iPF_D) &
                 = rho0 + rho1 * TANH( ( X2 - Half ) / a )
+
             ELSE
+
               uPF_K(iNodeX,iPF_D) &
                 = rho0 - rho1 * TANH( ( X2 + Half ) / a )
+
             END IF
 
             uPF_K(iNodeX,iPF_V3) = Zero
@@ -793,36 +808,50 @@ CONTAINS
 
             ! --- V1 ---
             IF( X2 .GT. Zero )THEN
+
               uPF_K(iNodeX,iPF_V1) &
                 = +Vshear * TANH( ( X2 - Half ) / a )
+
             ELSE
+
               ! --- Paper has a typo here, the minus sign is required ---
               uPF_K(iNodeX,iPF_V1) &
                 = -Vshear * TANH( ( X2 + Half ) / a )
+
             END IF
 
             ! --- V2 ---
             IF( X2 .GT. Zero )THEN
+
               uPF_K(iNodeX,iPF_V2) &
-                =  A0 * Vshear * SIN( 2.0_AR * Pi * X1 ) &
+                =  A0 * Vshear * SIN( TwoPi * X1 ) &
                     * EXP( -( ( X2 - Half )**2 / sigma ) )
+
             ELSE
+
               uPF_K(iNodeX,iPF_V2) &
-                = -A0 * Vshear * SIN( 2.0_AR * Pi * X1 ) &
+                = -A0 * Vshear * SIN( TwoPi * X1 ) &
                     * EXP( -( ( X2 + Half )**2 / sigma ) )
+
             END IF
 
             ! --- rho ---
             IF( X2 .GT. Zero )THEN
+
               uPF_K(iNodeX,iPF_D) &
                 = rho0 + rho1 * TANH( ( X2 - Half ) / a )
+
             ELSE
+
               uPF_K(iNodeX,iPF_D) &
                 = rho0 - rho1 * TANH( ( X2 + Half ) / a )
+
             END IF
 
             CALL RANDOM_NUMBER( Vz )
+
             uPF_K(iNodeX,iPF_V3) = 0.01_AR * Vz
+
             uPF_K(iNodeX,iPF_E)  = One / ( Gamma_IDEAL - One )
 
           END DO
@@ -937,6 +966,7 @@ CONTAINS
 
             ! --- NE ---
             IF     ( X1 .GT. Half .AND. X2 .GT. Half )THEN
+
               uPF_K(iNodeX,iPF_D ) = 0.1_AR
               uPF_K(iNodeX,iPF_V1) = Zero
               uPF_K(iNodeX,iPF_V2) = Zero
@@ -944,6 +974,7 @@ CONTAINS
 
             ! --- NW ---
             ELSE IF( X1 .LE. Half .AND. X2 .GT. Half )THEN
+
               uPF_K(iNodeX,iPF_D ) = 0.1_AR
               uPF_K(iNodeX,iPF_V1) = 0.99_AR
               uPF_K(iNodeX,iPF_V2) = Zero
@@ -951,6 +982,7 @@ CONTAINS
 
             ! --- SW ---
             ELSE IF( X1 .LE. Half .AND. X2 .LE. Half )THEN
+
               uPF_K(iNodeX,iPF_D ) = Half
               uPF_K(iNodeX,iPF_V1) = Zero
               uPF_K(iNodeX,iPF_V2) = Zero
@@ -958,6 +990,7 @@ CONTAINS
 
             ! --- SE ---
             ELSE
+
               uPF_K(iNodeX,iPF_D ) = 0.1_AR
               uPF_K(iNodeX,iPF_V1) = Zero
               uPF_K(iNodeX,iPF_V2) = 0.99_AR
@@ -1033,23 +1066,24 @@ CONTAINS
     TYPE(amrex_parmparse)         :: PP
 
     ! --- Problem-dependent Parameters ---
-    INTEGER  :: iX1_1, iX1_2, iNodeX1_1, iNodeX1_2
-    REAL(AR) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_2
-    REAL(AR) :: Alpha, Psi, V0, VSq, W
-    REAL(AR) :: dX1, PolytropicConstant, MassConstant
-    REAL(AR) :: MassPNS, ShockRadius, AccretionRate, MachNumber
-    LOGICAL  :: FirstPreShockElement = .FALSE.
-    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER               :: iX1_1, iX1_2, iNodeX1_1, iNodeX1_2
+    REAL(AR)              :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_2
+    REAL(AR)              :: Alpha, Psi, V0, VSq, W
+    REAL(AR)              :: dX1, PolytropicConstant, MassConstant
+    REAL(AR)              :: MassPNS, ShockRadius, AccretionRate, MachNumber
+    LOGICAL               :: FirstPreShockElement = .FALSE.
+    INTEGER               :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(AR), ALLOCATABLE :: D(:,:), V(:,:), P(:,:)
-    LOGICAL  :: ApplyPerturbation
-    INTEGER  :: PerturbationOrder
-    REAL(AR) :: PerturbationAmplitude, rPerturbationInner, rPerturbationOuter
+    LOGICAL               :: ApplyPerturbation
+    INTEGER               :: PerturbationOrder
+    REAL(AR)              :: PerturbationAmplitude, &
+                             rPerturbationInner, rPerturbationOuter
 
     ApplyPerturbation     = .FALSE.
     PerturbationOrder     = 0
-    PerturbationAmplitude = 0.0_AR
-    rPerturbationInner    = 0.0_AR
-    rPerturbationOuter    = 0.0_AR
+    PerturbationAmplitude = Zero
+    rPerturbationInner    = Zero
+    rPerturbationOuter    = Zero
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % get  ( 'Mass'                 , MassPNS               )
       CALL PP % get  ( 'AccretionRate'        , AccretionRate         )
@@ -1062,34 +1096,46 @@ CONTAINS
       CALL PP % query( 'rPerturbationOuter'   , rPerturbationOuter    )
     CALL amrex_parmparse_destroy( PP )
 
-    MassPNS            = MassPNS       * SolarMass
-    AccretionRate      = AccretionRate * SolarMass / Second
-    ShockRadius        = ShockRadius   * Kilometer
+    MassPNS            = MassPNS            * SolarMass
+    AccretionRate      = AccretionRate      * SolarMass / Second
+    ShockRadius        = ShockRadius        * Kilometer
     rPerturbationInner = rPerturbationInner * Kilometer
     rPerturbationOuter = rPerturbationOuter * Kilometer
 
     IF( amrex_parallel_ioprocessor() )THEN
+
       WRITE(*,*)
+
       WRITE(*,'(6x,A,ES9.2E3,A)') &
         'Shock radius:   ', ShockRadius / Kilometer, ' km'
+
       WRITE(*,'(6x,A,ES9.2E3,A)') &
         'PNS Mass:       ', MassPNS / SolarMass, ' Msun'
+
       WRITE(*,'(6x,A,ES9.2E3,A)') &
         'Accretion Rate: ', AccretionRate / ( SolarMass / Second ), &
         ' Msun/s'
+
       WRITE(*,'(6x,A,ES9.2E3)') &
         'Mach number:    ', MachNumber
+
       WRITE(*,*)
+
       WRITE(*,'(6x,A,L)') &
         'Apply Perturbation: ', ApplyPerturbation
+
       WRITE(*,'(6x,A,I1)') &
         'Perturbation order: ', PerturbationOrder
+
       WRITE(*,'(6x,A,ES9.2E3)') &
         'Perturbation amplitude: ', PerturbationAmplitude
+
       WRITE(*,'(6x,A,ES9.2E3,A)') &
         'Inner radius of perturbation: ', rPerturbationInner / Kilometer, ' km'
+
       WRITE(*,'(6x,A,ES9.2E3,A)') &
         'Outer radius of perturbation: ', rPerturbationOuter / Kilometer, ' km'
+
     END IF
 
     uGF_K = Zero
@@ -1112,10 +1158,12 @@ CONTAINS
     ALLOCATE( V(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
     ALLOCATE( P(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
 
-    ! --- Locate first un-shocked fluid element ---
+    ! --- Locate first element with un-shocked fluid ---
 
     X1 = Zero
+
     DO iX1 = iX_B1(1), iX_E1(1)
+
       DO iNodeX1 = 1, nNodesX(1)
 
         dX1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) - X1
@@ -1147,11 +1195,13 @@ CONTAINS
         END IF
 
       END DO
+
     END DO
 
     ! --- Compute fields, pre-shock ---
 
     DO iX1 = iX_E1(1), iX1_1, -1
+
       DO iNodeX1 = nNodesX(1), 1, -1
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
@@ -1177,6 +1227,7 @@ CONTAINS
               / ( MachNumber**2 * ( Gamma_IDEAL - One ) ) )
 
       END DO
+
     END DO
 
     ! --- Apply jump conditions ---
@@ -1190,6 +1241,7 @@ CONTAINS
              D_2, V_2, P_2, MassPNS, PolytropicConstant )
 
     IF( amrex_parallel_ioprocessor() )THEN
+
       WRITE(*,*)
       WRITE(*,'(6x,A)') 'Shock location:'
       WRITE(*,'(8x,A)') 'Pre-shock:'
@@ -1204,6 +1256,7 @@ CONTAINS
       WRITE(*,'(6x,A,ES13.6E3)') &
         'Compression Ratio LOG10(D_2/D_1) = ', LOG( D_2 / D_1 ) / LOG( 1.0d1 )
       WRITE(*,*)
+
     END IF
 
     ! --- Compute fields, post-shock ---
@@ -1217,6 +1270,7 @@ CONTAINS
     V0 = V_2
 
     DO iX1 = iX1_2, iX_B1(1), -1
+
       DO iNodeX1 = nNodesX(1), 1, -1
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
@@ -1241,6 +1295,7 @@ CONTAINS
           = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
 
       END DO
+
     END DO
 
     ! --- Map to 3D domain ---
@@ -1374,7 +1429,7 @@ CONTAINS
     REAL(AR) :: C1, C2, C3, a0, a1, a2, a3, a4
     REAL(AR) :: W
 
-    REAL(AR), PARAMETER :: ShockTolerance = 0.1_AR
+    REAL(AR), PARAMETER :: ShockTolerance     = 0.1_AR
     LOGICAL             :: FoundShockVelocity = .FALSE.
 
     ! --- Constants from three jump conditions ---
@@ -1388,7 +1443,7 @@ CONTAINS
 
     C3 = D_1 * SpeedOfLight**2 / Alpha**2 * V_1
 
-    ! --- Five constants for post-shock fluid-velocity ---
+    ! --- Five constants for post-shock fluid three-velocity ---
 
     a4 = Psi**8 &
           * One / ( Gamma_IDEAL - One )**2 * C3**2 / SpeedOfLight**6
@@ -1403,11 +1458,12 @@ CONTAINS
           * Gamma_IDEAL / ( Gamma_IDEAL - One ) * C2 * C3 / SpeedOfLight**2
     a0 = One / SpeedOfLight**2 * ( C3**2 - C1**2 * SpeedOfLight**4 )
 
-    ! --- Newton-Raphson method for post-shock fluid-velocity ---
+    ! --- Use Newton-Raphson method to get post-shock fluid-velocity ---
 
     V_2 = Two * V_1
 
-    ! --- Ensure that shocked velocity is obtained ---
+    ! --- Ensure that shocked velocity is obtained
+    !     instead of smooth solution ---
 
     FoundShockVelocity = .FALSE.
     DO WHILE( .NOT. FoundShockVelocity )
@@ -1437,14 +1493,14 @@ CONTAINS
 
   SUBROUTINE NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V )
 
-    REAL(AR), INTENT(in)    :: a0, a1, a2, a3, a4
+    REAL(AR), INTENT(in   ) :: a0, a1, a2, a3, a4
     REAL(AR), INTENT(inout) :: V
 
     REAL(AR) :: f, df, dV
     LOGICAL  :: CONVERGED
     INTEGER  :: ITERATION
 
-    INTEGER,  PARAMETER :: MAX_ITER = 10
+    INTEGER,  PARAMETER :: MAX_ITER  = 10
     REAL(AR), PARAMETER :: TOLERANCE = 1.0d-15
 
     CONVERGED = .FALSE.
@@ -1459,9 +1515,8 @@ CONTAINS
       dV = -f / df
       V = V + dV
 
-      IF( ABS( dV / V ) .LT. TOLERANCE )THEN
+      IF( ABS( dV / V ) .LT. TOLERANCE ) &
         CONVERGED = .TRUE.
-      END IF
 
     END DO
 
@@ -1472,7 +1527,7 @@ CONTAINS
     ( Alpha, Psi, MassConstant, PolytropicConstant, &
       MassPNS, AccretionRate, X1, V )
 
-    REAL(AR), INTENT(in)    :: Alpha, Psi, MassConstant, &
+    REAL(AR), INTENT(in   ) :: Alpha, Psi, MassConstant, &
                                PolytropicConstant, MassPNS, AccretionRate, X1
     REAL(AR), INTENT(inout) :: V
 
@@ -1480,7 +1535,7 @@ CONTAINS
     INTEGER  :: ITERATION
     LOGICAL  :: CONVERGED
 
-    INTEGER,  PARAMETER :: MAX_ITER = 20
+    INTEGER,  PARAMETER :: MAX_ITER  = 20
     REAL(AR), PARAMETER :: TOLERANCE = 1.0d-15
 
     CONVERGED = .FALSE.
@@ -1546,5 +1601,6 @@ CONTAINS
 
     RETURN
   END FUNCTION LorentzFactor
+
 
 END MODULE MF_InitializationModule_Relativistic_IDEAL

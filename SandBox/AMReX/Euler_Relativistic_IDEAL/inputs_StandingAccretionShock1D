@@ -1,4 +1,4 @@
-##### inputs_StandingAccretionShock_Relativistic_1D #####
+##### inputs_StandingAccretionShock1D #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
