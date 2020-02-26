@@ -89,7 +89,7 @@ CONTAINS
 
     LOGICAL            :: CONVERGED
     INTEGER, PARAMETER :: MAX_IT = 100
-    INTEGER            :: i, ITERATION, nNodes
+    INTEGER            :: i, ITERATION
     REAL(DP)           :: SSq, Pold, vSq, W, h, Pnew, q, Pbisec
     REAL(DP)           :: FunP, JacP, AF_P
 
@@ -965,7 +965,7 @@ CONTAINS
   !> in the X1-direction.
   !> @param Shift The first contravariant component of the shift-vector.
   !> @param Gm11 The first covariant component of the spatial three-metric.
-  PURE FUNCTION NumericalFlux_X1_HLLC_Euler_Relativistic &
+  FUNCTION NumericalFlux_X1_HLLC_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
@@ -1069,7 +1069,7 @@ CONTAINS
   !> in the X2-direction.
   !> @param Shift The second contravariant component of the shift-vector.
   !> @param Gm22 The second covariant component of the spatial three-metric.
-  PURE FUNCTION NumericalFlux_X2_HLLC_Euler_Relativistic &
+  FUNCTION NumericalFlux_X2_HLLC_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
@@ -1173,7 +1173,7 @@ CONTAINS
   !> in the X3-direction.
   !> @param Shift The third contravariant component of the shift-vector.
   !> @param Gm33 The third covariant component of the spatial three-metric.
-  PURE FUNCTION NumericalFlux_X3_HLLC_Euler_Relativistic &
+  FUNCTION NumericalFlux_X3_HLLC_Euler_Relativistic &
       ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift )
 
     ! --- Shift is the third contravariant component of the shift-vector

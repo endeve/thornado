@@ -54,9 +54,9 @@ MODULE Euler_dgDiscretizationModule
     Flux_X2_Euler,               &
     Flux_X3_Euler,               &
     StressTensor_Diagonal_Euler, &
-    Euler_NumericalFlux_X1,      &
-    Euler_NumericalFlux_X2,      &
-    Euler_NumericalFlux_X3
+    NumericalFlux_Euler_X1,      &
+    NumericalFlux_Euler_X2,      &
+    NumericalFlux_Euler_X3
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -192,7 +192,7 @@ CONTAINS
     !$OMP& ( iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X1, dX2, dX3, &
     !$OMP&   uCF_P, uCF_K, uCF_L, uCF_R, uPF_K, uPF_L, uPF_R, P_K, &
     !$OMP&   P_L, P_R, Cs_L, Cs_R, G_P, G_K, G_F, Flux_X1_q, &
-    !$OMP&   Flux_X1_L, Flux_X1_R, NumericalFlux )
+    !$OMP&   Flux_X1_L, Flux_X1_R, NumericalFlux, NumericalFluxK )
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1) + 1
@@ -512,7 +512,7 @@ CONTAINS
                 G_F      (iNodeX_X1,iGF_Beta_1) )
 
         NumericalFlux(iNodeX_X1,:) &
-          = Euler_NumericalFlux_X1 &
+          = NumericalFlux_Euler_X1 &
               ( uCF_L    (iNodeX_X1,:),            &
                 uCF_R    (iNodeX_X1,:),            &
                 Flux_X1_L(iNodeX_X1,:),            &
@@ -932,7 +932,7 @@ CONTAINS
                 G_F      (iNodeX_X2,iGF_Beta_2) )
 
         NumericalFlux(iNodeX_X2,:) &
-          = Euler_NumericalFlux_X2 &
+          = NumericalFlux_Euler_X2 &
               ( uCF_L    (iNodeX_X2,:),            &
                 uCF_R    (iNodeX_X2,:),            &
                 Flux_X2_L(iNodeX_X2,:),            &
@@ -1349,7 +1349,7 @@ CONTAINS
                 G_F      (iNodeX_X3,iGF_Beta_3) )
 
         NumericalFlux(iNodeX_X3,:) &
-          = Euler_NumericalFlux_X3 &
+          = NumericalFlux_Euler_X3 &
               ( uCF_L    (iNodeX_X3,:),            &
                 uCF_R    (iNodeX_X3,:),            &
                 Flux_X3_L(iNodeX_X3,:),            &
