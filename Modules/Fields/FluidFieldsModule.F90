@@ -182,22 +182,6 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-#if defined HYDRO_RIEMANN_SOLVER_HLL
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(5x,A)') 'Fluid Fields'
-      WRITE(*,*)
-      WRITE(*,'(5x,A)') 'Riemann Solver: HLL'
-    END IF
-#elif defined HYDRO_RIEMANN_SOLVER_HLLC
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(5x,A)') 'Fluid Fields'
-      WRITE(*,*)
-      WRITE(*,'(5x,A)') 'Riemann Solver: HLLC'
-    END IF
-#endif
-
     CALL CreateFluidFields_Conserved ( nX, swX )
     CALL CreateFluidFields_Primitive ( nX, swX )
     CALL CreateFluidFields_Auxiliary ( nX, swX )
@@ -349,6 +333,15 @@ CONTAINS
       BoltzmannConstant
 
     CHARACTER(LEN=*), INTENT(in) :: CoordinateSystem
+
+    WRITE(*,*)
+#if defined HYDRO_RIEMANN_SOLVER_HLL
+    WRITE(*,'(5x,A)') 'Fluid Riemann Solver: HLL'
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
+    WRITE(*,'(5x,A)') 'Fluid Riemann Solver: HLLC'
+#elif defined HYDRO_RIEMANN_SOLVER_HYBRID
+    WRITE(*,'(5x,A)') 'Fluid Riemann Solver: HYBRID'
+#endif
 
     IF( UnitsActive )THEN
 

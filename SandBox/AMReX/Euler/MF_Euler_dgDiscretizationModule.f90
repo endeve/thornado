@@ -20,7 +20,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     swX, &
     nDOFX
   USE FluidFieldsModule,            ONLY: &
-    nCF
+    nCF, &
+    nDF
   USE GeometryFieldsModule,         ONLY: &
     nGF
   USE Euler_dgDiscretizationModule, ONLY: &
@@ -53,11 +54,12 @@ MODULE  MF_Euler_dgDiscretizationModule
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_uCF, MF_duCF )
+  SUBROUTINE MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
 
     TYPE(amrex_geometry), INTENT(in   ) :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uCF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uDF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
@@ -65,10 +67,12 @@ CONTAINS
 
     REAL(AR), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uDF (:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: duCF(:,:,:,:)
 
     REAL(AR), ALLOCATABLE :: G (:,:,:,:,:)
     REAL(AR), ALLOCATABLE :: U (:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: D (:,:,:,:,:)
     REAL(AR), ALLOCATABLE :: dU(:,:,:,:,:)
 
     INTEGER :: iLevel
@@ -94,6 +98,7 @@ CONTAINS
 
         uGF  => MF_uGF (iLevel) % DataPtr( MFI )
         uCF  => MF_uCF (iLevel) % DataPtr( MFI )
+        uDF  => MF_uDF (iLevel) % DataPtr( MFI )
         duCF => MF_duCF(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
@@ -113,6 +118,10 @@ CONTAINS
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3),1:nCF) )
 
+        ALLOCATE( D (1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nDF) )
+
         ALLOCATE( dU(1:nDOFX,iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3),1:nCF) )
@@ -120,6 +129,8 @@ CONTAINS
         CALL AMReX2thornado( nGF, iX_B1, iX_E1, uGF, G )
 
         CALL AMReX2thornado( nCF, iX_B1, iX_E1, uCF, U )
+
+        CALL AMReX2thornado( nDF, iX_B1, iX_E1, uDF, D )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
@@ -135,7 +146,7 @@ CONTAINS
         IF( DEBUG ) WRITE(*,'(A)') '    CALL Euler_ComputeIncrement_DG_Explicit'
 
         CALL Euler_ComputeIncrement_DG_Explicit &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                  SuppressBC_Option = .TRUE. )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
@@ -143,6 +154,8 @@ CONTAINS
         CALL thornado2AMReX( nCF, iX_B0, iX_E0, duCF, dU )
 
         DEALLOCATE( dU )
+
+        DEALLOCATE( D  )
 
         DEALLOCATE( U  )
 

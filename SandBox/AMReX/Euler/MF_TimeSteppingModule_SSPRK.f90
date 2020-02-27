@@ -73,7 +73,7 @@ MODULE MF_TimeSteppingModule_SSPRK
 
   INTERFACE
     SUBROUTINE MF_Euler_Increment &
-      ( GEOM, MF_uGF, MF_uCF, MF_duCF )
+      ( GEOM, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
       USE amrex_base_module, ONLY: &
         amrex_geometry, &
         amrex_multifab
@@ -81,7 +81,8 @@ MODULE MF_TimeSteppingModule_SSPRK
         nLevels
       TYPE(amrex_geometry), INTENT(in   ) :: GEOM   (0:nLevels-1)
       TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF (0:nLevels-1)
-      TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(in   ) :: MF_uCF (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(in   ) :: MF_uDF (0:nLevels-1)
       TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
     END SUBROUTINE MF_Euler_Increment
   END INTERFACE
@@ -323,7 +324,7 @@ CONTAINS
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ComputeIncrement'
 
-        CALL MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_U, MF_D(:,iS) )
+        CALL MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_U, MF_uDF, MF_D(:,iS) )
 
       END IF
 

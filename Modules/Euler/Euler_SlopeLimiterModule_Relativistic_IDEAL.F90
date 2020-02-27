@@ -51,6 +51,8 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   PUBLIC :: FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
   PUBLIC :: ApplySlopeLimiter_Euler_Relativistic_IDEAL
 
+  REAL(DP), PUBLIC :: LimiterThreshold
+
   LOGICAL      :: UseSlopeLimiter
   LOGICAL      :: UseCharacteristicLimiting
   LOGICAL      :: UseConservativeCorrection
@@ -64,7 +66,6 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   ! --- TVD Limiter ---
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
-  REAL(DP) :: LimiterThreshold
   REAL(DP) :: LimiterThresholdParameter
   REAL(DP) :: I_6x6(1:6,1:6)
 

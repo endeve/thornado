@@ -48,6 +48,8 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
   PUBLIC :: FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
   PUBLIC :: ApplySlopeLimiter_Euler_NonRelativistic_TABLE
 
+  REAL(DP), PUBLIC :: LimiterThreshold
+
   LOGICAL  :: UseSlopeLimiter
   LOGICAL  :: UseCharacteristicLimiting
   LOGICAL  :: UseConservativeCorrection
@@ -55,7 +57,6 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
   LOGICAL  :: Verbose
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
-  REAL(DP) :: LimiterThreshold
   REAL(DP) :: LimiterThresholdParameter
   REAL(DP) :: I_6x6(1:6,1:6)
   REAL(DP), ALLOCATABLE :: WeightsX_X1_P(:), WeightsX_X1_N(:)

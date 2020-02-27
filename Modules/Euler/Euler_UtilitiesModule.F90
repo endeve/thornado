@@ -9,17 +9,23 @@ MODULE Euler_UtilitiesModule
   USE FluidFieldsModule, ONLY: &
     nCF, nPF, nAF
 
-#if defined HYDRO_NONRELATIVISTIC
+#if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
   USE Euler_UtilitiesModule_NonRelativistic
+  USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
+    LimiterThreshold
 
 #elif defined HYDRO_RELATIVISTIC
 
   USE Euler_UtilitiesModule_Relativistic
+  USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
+    LimiterThreshold
 
 #else
 
   USE Euler_UtilitiesModule_NonRelativistic
+  USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
+    LimiterThreshold
 
 #endif
 
@@ -371,17 +377,34 @@ CONTAINS
 
 
   FUNCTION NumericalFlux_Euler_X1 &
-    ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift_X1 )
+    ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift_X1, LT )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            aP, aM, aC, Gm11
+                            aP, aM, aC, Gm11, LT
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift_X1
 
     REAL(DP) :: NumericalFlux_Euler_X1(nCF)
 
-#if defined HYDRO_RIEMANN_SOLVER_HLLC
+#if defined HYDRO_RIEMANN_SOLVER_HYBRID
+
+    IF( LT .GT. LimiterThreshold )THEN
+
+      NumericalFlux_Euler_X1 &
+        = NumericalFlux_Euler_HLL &
+            ( uL, uR, fL, fR, aP, aM )
+
+    ELSE
+
+      NumericalFlux_Euler_X1 &
+        = NumericalFlux_Euler_HLLC_X1 &
+            ( uL, uR, fL, fR, aP, aM, &
+              aC, Gm11, vL, vR, pL, pR, Lapse, Shift_X1 )
+
+    END IF
+
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
 
     NumericalFlux_Euler_X1 &
       = NumericalFlux_Euler_HLLC_X1 &
@@ -400,17 +423,34 @@ CONTAINS
 
 
   FUNCTION NumericalFlux_Euler_X2 &
-    ( uL, uR, fL, fR, aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift_X2 )
+    ( uL, uR, fL, fR, aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift_X2, LT )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            aP, aM, aC, Gm22
+                            aP, aM, aC, Gm22, LT
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift_X2
 
     REAL(DP) :: NumericalFlux_Euler_X2(nCF)
 
-#if defined HYDRO_RIEMANN_SOLVER_HLLC
+#if defined HYDRO_RIEMANN_SOLVER_HYBRID
+
+    IF( LT .GT. LimiterThreshold )THEN
+
+      NumericalFlux_Euler_X2 &
+        = NumericalFlux_Euler_HLL &
+            ( uL, uR, fL, fR, aP, aM )
+
+    ELSE
+
+      NumericalFlux_Euler_X2 &
+        = NumericalFlux_Euler_HLLC_X2 &
+            ( uL, uR, fL, fR, aP, aM, &
+              aC, Gm22, vL, vR, pL, pR, Lapse, Shift_X2 )
+
+    END IF
+
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
 
     NumericalFlux_Euler_X2 &
       = NumericalFlux_Euler_HLLC_X2 &
@@ -429,17 +469,34 @@ CONTAINS
 
 
   FUNCTION NumericalFlux_Euler_X3 &
-    ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift_X3 )
+    ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift_X3, LT )
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            aP, aM, aC, Gm33
+                            aP, aM, aC, Gm33, LT
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: vL, vR, pL, pR, Lapse, Shift_X3
 
     REAL(DP) :: NumericalFlux_Euler_X3(nCF)
 
-#if defined HYDRO_RIEMANN_SOLVER_HLLC
+#if defined HYDRO_RIEMANN_SOLVER_HYBRID
+
+    IF( LT .GT. LimiterThreshold )THEN
+
+      NumericalFlux_Euler_X3 &
+        = NumericalFlux_Euler_HLL &
+            ( uL, uR, fL, fR, aP, aM )
+
+    ELSE
+
+      NumericalFlux_Euler_X3 &
+        = NumericalFlux_Euler_HLLC_X3 &
+            ( uL, uR, fL, fR, aP, aM, &
+              aC, Gm33, vL, vR, pL, pR, Lapse, Shift_X3 )
+
+    END IF
+
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
 
     NumericalFlux_Euler_X3 &
       = NumericalFlux_Euler_HLLC_X3 &
