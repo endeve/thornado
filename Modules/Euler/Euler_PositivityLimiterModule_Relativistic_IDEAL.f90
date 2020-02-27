@@ -459,7 +459,7 @@ CONTAINS
 
     ! --- For de-bugging ---
     INTEGER, INTENT(in)  :: iX1, iX2, iX3, iP
-    INTEGER              :: iCF, iGF
+!!$    INTEGER              :: iCF, iGF
 
     INTEGER,  PARAMETER :: MAX_IT = 19
     REAL(DP), PARAMETER :: dx_min = 1.0d-3

@@ -389,6 +389,7 @@ CONTAINS
       CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
     CALL SetUnitsGeometryFields
+
     CALL SetUnitsFluidFields( TRIM( CoordinateSystem ) )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
