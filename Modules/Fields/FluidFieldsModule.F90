@@ -132,12 +132,12 @@ MODULE FluidFieldsModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta2
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta3
 
-  INTEGER, PUBLIC, PARAMETER :: iDF_Sh = 01 ! Shock
-  INTEGER, PUBLIC, PARAMETER :: iDF_T1 = 02 ! Theta 1
-  INTEGER, PUBLIC, PARAMETER :: iDF_T2 = 03 ! Theta 2
-  INTEGER, PUBLIC, PARAMETER :: iDF_T3 = 04 ! Theta 3
-  INTEGER, PUBLIC, PARAMETER :: iDF_E  = 05 ! Minimum Specific Internal Energy
-  INTEGER, PUBLIC, PARAMETER :: nDF    = 05 ! n Diagnostic Fluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iDF_TCI = 01 ! Troubled-Cell Indicator
+  INTEGER, PUBLIC, PARAMETER :: iDF_T1  = 02 ! Theta 1
+  INTEGER, PUBLIC, PARAMETER :: iDF_T2  = 03 ! Theta 2
+  INTEGER, PUBLIC, PARAMETER :: iDF_T3  = 04 ! Theta 3
+  INTEGER, PUBLIC, PARAMETER :: iDF_E   = 05 ! Minimum Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: nDF     = 05 ! n Diagnostic Fluid Fields
 
   CHARACTER(32), DIMENSION(nDF), PUBLIC, PARAMETER :: &
     namesDF = [ 'Shock                           ', &
@@ -147,7 +147,7 @@ MODULE FluidFieldsModule
                 'Min E                           ' ]
 
   CHARACTER(10), DIMENSION(nDF), PUBLIC, PARAMETER :: &
-    ShortNamesDF = [ 'DF_Sh     ', &
+    ShortNamesDF = [ 'DF_TCI    ', &
                      'DF_T1     ', &
                      'DF_T2     ', &
                      'DF_T3     ', &
@@ -311,10 +311,10 @@ CONTAINS
                                    1-swX(3):nX(3)+swX(3), &
                                    1:nDF)
 
-    uDF(:,:,:,:,iDF_Sh) = Zero
-    uDF(:,:,:,:,iDF_T1) = One
-    uDF(:,:,:,:,iDF_T3) = One
-    uDF(:,:,:,:,iDF_T2) = One
+    uDF(:,:,:,:,iDF_TCI) = Zero
+    uDF(:,:,:,:,iDF_T1)  = One
+    uDF(:,:,:,:,iDF_T3)  = One
+    uDF(:,:,:,:,iDF_T2)  = One
 
   END SUBROUTINE ResetFluidFields_Diagnostic
 
@@ -407,11 +407,11 @@ CONTAINS
       unitsAF(iAF_Cs) = Kilometer / Second
 
       ! --- Diagnostic ---
-      unitsDF(iDF_Sh) = One
-      unitsDF(iDF_T1) = One
-      unitsDF(iDF_T2) = One
-      unitsDF(iDF_T3) = One
-      unitsDF(iDF_E)  = Erg / Gram
+      unitsDF(iDF_TCI) = One
+      unitsDF(iDF_T1)  = One
+      unitsDF(iDF_T2)  = One
+      unitsDF(iDF_T3)  = One
+      unitsDF(iDF_E)   = Erg / Gram
 
     ELSE
 

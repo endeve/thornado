@@ -34,7 +34,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_E, &
-    iDF_Sh
+    iDF_TCI
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL, ONLY: &
@@ -295,7 +295,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( ALL( D(:,iX1,iX2,iX3,iDF_Sh) .LT. LimiterThreshold ) ) CYCLE
+      IF( ALL( D(:,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) ) CYCLE
 
       dX1 = MeshX(1) % Width(iX1)
       dX2 = MeshX(2) % Width(iX2)
@@ -831,7 +831,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( ALL( D(:,iX1,iX2,iX3,iDF_Sh) .LT. LimiterThreshold ) ) CYCLE
+      IF( ALL( D(:,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) ) CYCLE
 
       LimitedCell(iX1,iX2,iX3) = .TRUE.
 
@@ -1493,11 +1493,11 @@ CONTAINS
     REAL(DP) :: U_K (0:2*nDimsX,nCF)
     REAL(DP) :: U_K0(0:2*nDimsX,nCF)
 
-    D(:,:,:,:,iDF_Sh) = Zero
+    D(:,:,:,:,iDF_TCI) = Zero
 
     IF( .NOT. UseTroubledCellIndicator )THEN
 
-      D(:,:,:,:,iDF_Sh) = 1.1_DP * LimiterThreshold
+      D(:,:,:,:,iDF_TCI) = 1.1_DP * LimiterThreshold
       RETURN
 
     END IF
@@ -1641,14 +1641,14 @@ CONTAINS
 
       ! --- Use Conserved Density to Detect Troubled Cell ---
 
-      D(:,iX1,iX2,iX3,iDF_Sh) &
+      D(:,iX1,iX2,iX3,iDF_TCI) &
         = SUM( ABS( U_K(0,iCF_D) - U_K0(1:2*nDimsX,iCF_D) ) ) &
             / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_D) ) )
 
       ! --- Use Conserved Energy  to Detect Troubled Cell ---
 
-      D(:,iX1,iX2,iX3,iDF_Sh) &
-        = MAX( MAXVAL(D(:,iX1,iX2,iX3,iDF_Sh) ), &
+      D(:,iX1,iX2,iX3,iDF_TCI) &
+        = MAX( MAXVAL(D(:,iX1,iX2,iX3,iDF_TCI) ), &
                SUM( ABS( U_K(0,iCF_E) - U_K0(1:2*nDimsX,iCF_E) ) ) &
                  / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_E) ) ) )
 

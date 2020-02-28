@@ -44,7 +44,7 @@ MODULE Euler_dgDiscretizationModule
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_P, &
-    iDF_Sh
+    iDF_TCI
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule, ONLY: &
@@ -532,7 +532,7 @@ CONTAINS
                   P_R      (iNodeX_X1),              &
                   G_F      (iNodeX_X1,iGF_Alpha),    &
                   G_F      (iNodeX_X1,iGF_Beta_1),   &
-                  MAXVAL( D(:,iX1-1,iX2,iX3,iDF_Sh) ) )
+                  MAXVAL( D(:,iX1-1,iX2,iX3,iDF_TCI) ) )
 
         ELSE
 
@@ -556,7 +556,7 @@ CONTAINS
                   P_R      (iNodeX_X1),              &
                   G_F      (iNodeX_X1,iGF_Alpha),    &
                   G_F      (iNodeX_X1,iGF_Beta_1),   &
-                  MAXVAL( D(:,iX1,iX2,iX3,iDF_Sh) ) )
+                  MAXVAL( D(:,iX1,iX2,iX3,iDF_TCI) ) )
 
         ELSE
 
@@ -991,7 +991,7 @@ CONTAINS
                   P_R      (iNodeX_X2),              &
                   G_F      (iNodeX_X2,iGF_Alpha),    &
                   G_F      (iNodeX_X2,iGF_Beta_2),   &
-                  MAXVAL( D(:,iX1,iX2-1,iX3,iDF_Sh) ) )
+                  MAXVAL( D(:,iX1,iX2-1,iX3,iDF_TCI) ) )
 
         ELSE
 
@@ -1015,7 +1015,7 @@ CONTAINS
                   P_R      (iNodeX_X2),              &
                   G_F      (iNodeX_X2,iGF_Alpha),    &
                   G_F      (iNodeX_X2,iGF_Beta_2),   &
-                  MAXVAL( D(:,iX1,iX2,iX3,iDF_Sh) ) )
+                  MAXVAL( D(:,iX1,iX2,iX3,iDF_TCI) ) )
 
         ELSE
 
@@ -1449,7 +1449,7 @@ CONTAINS
                   P_R      (iNodeX_X3),              &
                   G_F      (iNodeX_X3,iGF_Alpha),    &
                   G_F      (iNodeX_X3,iGF_Beta_3),   &
-                  MAXVAL( D(:,iX1,iX2,iX3-1,iDF_Sh) ) )
+                  MAXVAL( D(:,iX1,iX2,iX3-1,iDF_TCI) ) )
 
         ELSE
 
@@ -1473,7 +1473,7 @@ CONTAINS
                   P_R      (iNodeX_X3),              &
                   G_F      (iNodeX_X3,iGF_Alpha),    &
                   G_F      (iNodeX_X3,iGF_Beta_3),   &
-                  MAXVAL( D(:,iX1,iX2,iX3,iDF_Sh) ) )
+                  MAXVAL( D(:,iX1,iX2,iX3,iDF_TCI) ) )
 
         ELSE
 
