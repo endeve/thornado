@@ -47,64 +47,20 @@ MODULE InputOutputModuleAMReX
   USE GeometryFieldsModule,    ONLY: &
     ShortNamesGF, &
     unitsGF,      &
-    nGF,          &
-    iGF_Phi_N,    &
-    iGF_h_1,      &
-    iGF_h_2,      &
-    iGF_h_3,      &
-    iGF_Gm_dd_11, &
-    iGF_Gm_dd_22, &
-    iGF_Gm_dd_33, &
-    iGF_SqrtGm,   &
-    iGF_Alpha,    &
-    iGF_Beta_1,   &
-    iGF_Beta_2,   &
-    iGF_Beta_3,   &
-    iGF_Psi
+    nGF
   USE FluidFieldsModule,       ONLY: &
     ShortNamesCF, &
     unitsCF,      &
     nCF,          &
-    iCF_D,        &
-    iCF_S1,       &
-    iCF_S2,       &
-    iCF_S3,       &
-    iCF_E,        &
-    iCF_Ne,       &
     ShortNamesPF, &
     unitsPF,      &
     nPF,          &
-    iPF_D,        &
-    iPF_V1,       &
-    iPF_V2,       &
-    iPF_V3,       &
-    iPF_E,        &
-    iPF_Ne,       &
     ShortNamesAF, &
     unitsAF,      &
     nAF,          &
-    iAF_P,        &
-    iAF_T,        &
-    iAF_Ye,       &
-    iAF_S,        &
-    iAF_E,        &
-    iAF_Me,       &
-    iAF_Mp,       &
-    iAF_Mn,       &
-    iAF_Xp,       &
-    iAF_Xn,       &
-    iAF_Xa,       &
-    iAF_Xh,       &
-    iAF_Gm,       &
-    iAF_Cs,       &
     ShortNamesDF, &
     unitsDF,      &
-    nDF,          &
-    iDF_Sh,       &
-    iDF_T1,       &
-    iDF_T2,       &
-    iDF_T3,       &
-    iDF_E
+    nDF
   USE UnitsModule,             ONLY: &
     Joule,  &
     Kelvin, &
