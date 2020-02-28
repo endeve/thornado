@@ -420,7 +420,6 @@ PROGRAM ApplicationDriver
 
     IF( t + dt > t_wrt )THEN
 
-      dt    = t_wrt - t
       t_wrt = t_wrt + dt_wrt
       wrt   = .TRUE.
 
