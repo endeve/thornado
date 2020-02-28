@@ -117,12 +117,12 @@ PROGRAM ApplicationDriver
 
 !  ProgramName = 'Advection'
 !  ProgramName = 'Advection2D'
-!  ProgramName = 'RiemannProblem'
+  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2D'
 !  ProgramName = 'RiemannProblemSpherical'
 !  ProgramName = 'SedovTaylorBlastWave'
 !  ProgramName = 'KelvinHelmholtzInstability'
-  ProgramName = 'StandingAccretionShock'
+!  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -156,12 +156,17 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'PerturbedShockTube'
+      RiemannProblemName = 'Sod'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
         CASE( 'Sod' )
           Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.2d0
+          bcX   = [ 2, 0, 0 ]
+
+        CASE( 'Contact' )
+          Gamma = 4.0_DP / 3.0_DP
           t_end = 0.2d0
           bcX   = [ 2, 0, 0 ]
 
@@ -191,6 +196,7 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A21,A)') 'Invalid RiemannProblemName: ', RiemannProblemName
           WRITE(*,'(A)')     'Valid choices:'
           WRITE(*,'(A)')     '  Sod'
+          WRITE(*,'(A)')     '  Contact'
           WRITE(*,'(A)')     '  MBProblem1'
           WRITE(*,'(A)')     '  MBProblem4'
           WRITE(*,'(A)')     '  PerturbedShockTube'
@@ -476,7 +482,6 @@ PROGRAM ApplicationDriver
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
   WRITE(*,*)
-  WRITE(*,*)
   WRITE(*,'(A2,A)') '', 'Begin evolution'
   WRITE(*,'(A2,A)') '', '---------------'
   WRITE(*,*)
@@ -505,10 +510,14 @@ PROGRAM ApplicationDriver
              dt )
 
     IF( t + dt .LT. t_end )THEN
+
       t = t + dt
+
     ELSE
+
       dt = t_end - t
       t  = t_end
+
     END IF
 
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
@@ -547,6 +556,7 @@ PROGRAM ApplicationDriver
       ELSE
 
         IF( t + dt .GT. t_wrt )THEN
+
           t_wrt = t_wrt + dt_wrt
           wrt   = .TRUE.
 

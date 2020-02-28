@@ -545,14 +545,164 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
-    REAL(DP) :: X1
+    REAL(DP) :: X1, XD
 
     INTEGER  :: nDetCells
-    REAL(DP) :: Eblast, X_D
+    REAL(DP) :: Eblast
+
+    REAL(DP) :: LeftState(nPF), RightState(nPF)
 
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
       '', 'Riemann Problem Name: ', TRIM( RiemannProblemName )
+    WRITE(*,*)
+
+    SELECT CASE( TRIM( RiemannProblemName ) )
+
+      CASE( 'Sod' )
+
+        XD = 0.5_DP
+
+        LeftState(iPF_D ) = 1.0_DP
+        LeftState(iPF_V1) = 0.0_DP
+        LeftState(iPF_V2) = 0.0_DP
+        LeftState(iPF_V3) = 0.0_DP
+        LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 0.125_DP
+        RightState(iPF_V1) = 0.0_DP
+        RightState(iPF_V2) = 0.0_DP
+        RightState(iPF_V3) = 0.0_DP
+        RightState(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
+
+      CASE( 'Contact' )
+
+        XD = 0.5_DP
+
+        LeftState(iPF_D ) = 1.0_DP
+        LeftState(iPF_V1) = 0.0_DP
+        LeftState(iPF_V2) = 0.0_DP
+        LeftState(iPF_V3) = 0.0_DP
+        LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 0.1_DP
+        RightState(iPF_V1) = 0.0_DP
+        RightState(iPF_V2) = 0.0_DP
+        RightState(iPF_V3) = 0.0_DP
+        RightState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+      CASE( 'MBProblem1' )
+
+        XD = 0.5_DP
+
+        LeftState(iPF_D ) = 1.0_DP
+        LeftState(iPF_V1) = 0.9_DP
+        LeftState(iPF_V2) = 0.0_DP
+        LeftState(iPF_V3) = 0.0_DP
+        LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 1.0_DP
+        RightState(iPF_V1) = 0.0_DP
+        RightState(iPF_V2) = 0.0_DP
+        RightState(iPF_V3) = 0.0_DP
+        RightState(iPF_E ) = 10.0_DP / ( Gamma_IDEAL - One )
+
+      CASE( 'MBProblem4' )
+
+        XD = 0.5_DP
+
+        LeftState(iPF_D ) = 1.0_DP
+        LeftState(iPF_V1) = 0.0_DP
+        LeftState(iPF_V2) = 0.0_DP
+        LeftState(iPF_V3) = 0.0_DP
+        LeftState(iPF_E ) = 1.0e3_DP / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 1.0_DP
+        RightState(iPF_V1) = 0.0_DP
+        RightState(iPF_V2) = 0.0_DP
+        RightState(iPF_V3) = 0.0_DP
+        RightState(iPF_E ) = 1.0e-2_DP / ( Gamma_IDEAL - One )
+
+      CASE( 'PerturbedShockTube' )
+
+        XD = 0.5_DP
+
+        LeftState(iPF_D ) = 5.0_DP
+        LeftState(iPF_V1) = 0.0_DP
+        LeftState(iPF_V2) = 0.0_DP
+        LeftState(iPF_V3) = 0.0_DP
+        LeftState(iPF_E ) = 50.0_DP / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 0.0_DP ! --- Dummy ---
+        RightState(iPF_V1) = 0.0_DP
+        RightState(iPF_V2) = 0.0_DP
+        RightState(iPF_V3) = 0.0_DP
+        RightState(iPF_E ) = 5.0_DP / ( Gamma_IDEAL - One )
+
+      CASE( 'ShockReflection' )
+
+        XD = 1.0_DP
+
+        LeftState(iPF_D ) = 1.0_DP
+        LeftState(iPF_V1) = 0.99999_DP
+        LeftState(iPF_V2) = 0.0_DP
+        LeftState(iPF_V3) = 0.0_DP
+        LeftState(iPF_E ) = 0.01_DP / ( Gamma_IDEAL - One )
+
+        ! --- All of these are dummies ---
+        RightState(iPF_D ) = 0.0_DP
+        RightState(iPF_V1) = 0.0_DP
+        RightState(iPF_V2) = 0.0_DP
+        RightState(iPF_V3) = 0.0_DP
+        RightState(iPF_E ) = 0.0_DP
+
+      CASE DEFAULT
+
+        WRITE(*,*)
+        WRITE(*,'(A,A)') &
+          'Invalid choice for RiemannProblemName: ', RiemannProblemName
+        WRITE(*,'(A)') 'Valid choices:'
+        WRITE(*,'(A)') &
+          "  'Sod' - &
+          Sod's shock tube"
+        WRITE(*,'(A)') &
+          "  'MBProblem1' - &
+          Mignone & Bodo (2005) MNRAS, 364, 126, Problem 1"
+        WRITE(*,'(A)') &
+          "  'MBProblem4' - &
+          Mignone & Bodo (2005) MNRAS, 364, 126, Problem 4"
+        WRITE(*,'(A)') &
+          "  'PerturbedShockTube' - &
+          Del Zanna & Bucciantini (2002) AA, 390, 1177, &
+          Sinusoidal density perturbation"
+        WRITE(*,'(A)') &
+          "  'ShockReflection' - &
+          Del Zanna & Bucciantini (2002) AA, 390, 1177, &
+          Planar shock reflection"
+        WRITE(*,'(A)') 'Stopping...'
+        STOP
+
+    END SELECT
+
+    WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
+    WRITE(*,*)
+    WRITE(*,'(6x,A,F8.6)') 'XD = ', XD
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'Left State:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', LeftState(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', LeftState(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', LeftState(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', LeftState(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', LeftState(iPF_E )
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'Right State:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', RightState(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', RightState(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', RightState(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', RightState(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', RightState(iPF_E )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -564,173 +714,33 @@ CONTAINS
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        SELECT CASE ( TRIM( RiemannProblemName ) )
+        IF( X1 .LE. XD )THEN
 
-          CASE( 'Sod' )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = LeftState(iPF_D )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = LeftState(iPF_V1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = LeftState(iPF_V2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = LeftState(iPF_V3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = LeftState(iPF_E )
 
-            IF( X1 .LE. Half )THEN
+        ELSE
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = RightState(iPF_D )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = RightState(iPF_V1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = RightState(iPF_V2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = RightState(iPF_V3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = RightState(iPF_E )
 
-            ELSE
+          IF( TRIM( RiemannProblemName ) .EQ. 'PerturbedShockTube' ) &
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+              = 2.0_DP + 0.3_DP * SIN( 50.0_DP * X1 )
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.1_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            END IF
-
-          CASE( 'Contact' )
-
-            IF( X1 .LE. Half )THEN
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            ELSE
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.5_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.99_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            END IF
-
-          CASE( 'MBProblem1' )
-
-            IF( X1 .LE. Half )THEN
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.9_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            ELSE
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 10.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            END IF
-
-          CASE( 'MBProblem4' )
-
-            IF( X1 .LE. Half )THEN
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d3
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            ELSE
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d-2
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            END IF
-
-          CASE( 'PerturbedShockTube' )
-
-            IF( X1 .LE. Half )THEN
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 5.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 50.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            ELSE
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  &
-                = 2.0_DP + 0.3_DP * SIN( 50.0_DP * X1 )
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 5.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            END IF
-
-          CASE( 'ShockReflection' )
-
-            IF( X1 .LE. One )THEN
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.99999_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.01_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            END IF
-
-
-          CASE DEFAULT
-
-            WRITE(*,*)
-            WRITE(*,'(A,A)') &
-              'Invalid choice for RiemannProblemName: ', RiemannProblemName
-            WRITE(*,'(A)') 'Valid choices:'
-            WRITE(*,'(A)') &
-              "  'Sod' - &
-              Sod's shock tube"
-            WRITE(*,'(A)') &
-              "  'MBProblem1' - &
-              Mignone & Bodo (2005) MNRAS, 364, 126, Problem 1"
-            WRITE(*,'(A)') &
-              "  'MBProblem4' - &
-              Mignone & Bodo (2005) MNRAS, 364, 126, Problem 4"
-            WRITE(*,'(A)') &
-              "  'PerturbedShockTube' - &
-              Del Zanna & Bucciantini (2002) AA, 390, 1177, &
-              Sinusoidal density perturbation"
-            WRITE(*,'(A)') &
-              "  'ShockReflection' - &
-              Del Zanna & Bucciantini (2002) AA, 390, 1177, &
-              Planar shock reflection"
-            WRITE(*,'(A)') 'Stopping...'
-            STOP
-
-        END SELECT
+        END IF
 
       END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E ), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
