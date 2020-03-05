@@ -94,7 +94,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'StreamingDopplerShift'
+  ProgramName = 'TransparentVortex'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -258,36 +258,99 @@ PROGRAM ApplicationDriver
 
       UsePositivityLimiter = .TRUE.
 
-    CASE( 'TransparentShock' )
+    CASE( 'TransparentTurbulence' )
 
       Direction = 'X' ! --- (X,Y, or Z)
 
-      LengthScale = 2.5d-2 ! --- Shock Width
+      IF(     TRIM( Direction ) .EQ. 'X' )THEN
+
+        nX  = [ 64, 1, 1 ]
+        xL  = [ - 1.0_DP, 0.0_DP, 0.0_DP ]
+        xR  = [ + 1.0_DP, 1.0_DP, 1.0_DP ]
+        bcX = [ 12, 1, 1 ]
+
+        V_0 = [ 0.01_DP, 0.0_DP, 0.0_DP ]
+
+      ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+
+        nX  = [ 2, 80, 1 ]
+        xL  = [ 0.0_DP, - 1.0_DP, 0.0_DP ]
+        xR  = [ 1.0_DP, + 1.0_DP, 1.0_DP ]
+        bcX = [ 1, 12, 1 ]
+
+        V_0 = [ 0.0_DP, 0.1_DP, 0.0_DP ]
+
+      ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
+
+        nX  = [ 2, 2, 80 ]
+        xL  = [ 0.0_DP, 0.0_DP, - 1.0_DP ]
+        xR  = [ 1.0_DP, 1.0_DP, + 1.0_DP ]
+        bcX = [ 1, 1, 12 ]
+
+        V_0 = [ 0.0_DP, 0.0_DP, 0.1_DP ]
+
+      ELSE
+
+        WRITE(*,*)
+        WRITE(*,'(A6,A)') &
+          '', 'TransparentTurbulence.  Direction must be X, Y, or Z'
+        WRITE(*,*)
+        STOP
+
+      END IF
+
+      nE  = 16
+      eL  = 0.0d0
+      eR  = 5.0d1
+      bcE = 10
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'SSPRK3'
+
+      t_end   = 5.0d0
+      iCycleD = 1
+      iCycleW = 250
+      maxCycles = 1000000
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .TRUE.
+
+    CASE( 'TransparentShock' )
+
+      Direction = 'Y' ! --- (X,Y, or Z)
+
+      LengthScale = 2.5d-4 ! --- Shock Width
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
         nX  = [ 80, 1, 1 ]
         xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
         xR  = [ 2.0d0, 1.0_DP, 1.0_DP ]
-        bcX = [ 12, 0, 0 ]
+        bcX = [ 12, 1, 1 ]
 
         V_0 = [ - 0.1_DP, 0.0_DP, 0.0_DP ]
 
       ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
-        nX  = [ 1, 64, 1 ]
+        nX  = [ 2, 80, 1 ]
         xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
         xR  = [ 1.0d0, 2.0_DP, 1.0_DP ]
-        bcX = [ 0, 12, 0 ]
+        bcX = [ 1, 12, 1 ]
 
         V_0 = [ 0.0_DP, - 0.1_DP, 0.0_DP ]
 
       ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
 
-        nX  = [ 1, 1, 64 ]
+        nX  = [ 2, 2, 80 ]
         xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
         xR  = [ 1.0d0, 1.0_DP, 2.0_DP ]
-        bcX = [ 0, 0, 12 ]
+        bcX = [ 1, 1, 12 ]
 
         V_0 = [ 0.0_DP, 0.0_DP, - 0.1_DP ]
 
@@ -320,6 +383,87 @@ PROGRAM ApplicationDriver
       Sigma = 0.0_DP
 
       UseSlopeLimiter = .TRUE.
+
+      UsePositivityLimiter = .TRUE.
+
+    CASE( 'TransparentVortex' )
+
+      Direction = 'X' ! --- (X or Y)
+
+      nX  = [ 16, 16, 1 ]
+      xL  = [ - 5.0_DP, - 5.0_DP, - 0.5_DP ]
+      xR  = [ + 5.0_DP, + 5.0_DP, + 0.5_DP ]
+
+      IF(     TRIM( Direction ) .EQ. 'X' )THEN
+
+        bcX = [ 12, 1, 1 ]
+
+      ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+
+        bcX = [ 1, 12, 1 ]
+
+      ELSE
+
+        WRITE(*,*)
+        WRITE(*,'(A6,A)') &
+          '', 'TransparentVortex.  Direction must be X or Y'
+        WRITE(*,*)
+        STOP
+
+      END IF
+
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+
+      nE  = 16
+      eL  = 0.0d0
+      eR  = 5.0d1
+      bcE = 10
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'SSPRK3'
+
+      t_end   = 4.0d+1
+      iCycleD = 1
+      iCycleW = 100
+      maxCycles = 1000000
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      UseSlopeLimiter = .FALSE.
+
+      UsePositivityLimiter = .TRUE.
+
+    CASE( 'GaussianDiffusion' )
+
+      nX  = [ 48, 32, 1 ]
+      xL  = [ 0.0_DP, 0.0_DP, - 0.5_DP ]
+      xR  = [ 3.0_DP, 2.0_DP, + 0.5_DP ]
+      bcX = [ 1, 1, 1 ]
+
+      nE  = 1
+      eL  = 0.0d0
+      eR  = 1.0d0
+      bcE = 0
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 5.0d0
+      iCycleD = 10
+      iCycleW = 10
+      maxCycles = 1000000
+
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 1.0d+2
+
+      UseSlopeLimiter = .FALSE.
 
       UsePositivityLimiter = .TRUE.
 
