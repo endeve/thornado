@@ -133,14 +133,16 @@ MODULE FluidFieldsModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta3
 
   INTEGER, PUBLIC, PARAMETER :: iDF_TCI = 01 ! Troubled-Cell Indicator
-  INTEGER, PUBLIC, PARAMETER :: iDF_T1  = 02 ! Theta 1
-  INTEGER, PUBLIC, PARAMETER :: iDF_T2  = 03 ! Theta 2
-  INTEGER, PUBLIC, PARAMETER :: iDF_T3  = 04 ! Theta 3
-  INTEGER, PUBLIC, PARAMETER :: iDF_E   = 05 ! Minimum Specific Internal Energy
-  INTEGER, PUBLIC, PARAMETER :: nDF     = 05 ! n Diagnostic Fluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iDF_Sh  = 02 ! Shock Detector
+  INTEGER, PUBLIC, PARAMETER :: iDF_T1  = 03 ! Theta 1
+  INTEGER, PUBLIC, PARAMETER :: iDF_T2  = 04 ! Theta 2
+  INTEGER, PUBLIC, PARAMETER :: iDF_T3  = 05 ! Theta 3
+  INTEGER, PUBLIC, PARAMETER :: iDF_E   = 06 ! Minimum Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: nDF     = 06 ! n Diagnostic Fluid Fields
 
   CHARACTER(32), DIMENSION(nDF), PUBLIC, PARAMETER :: &
-    namesDF = [ 'Shock                           ', &
+    namesDF = [ 'TCI                             ', &
+                'Shock                           ', &
                 'Theta 1                         ', &
                 'Theta 2                         ', &
                 'Theta 3                         ', &
@@ -148,6 +150,7 @@ MODULE FluidFieldsModule
 
   CHARACTER(10), DIMENSION(nDF), PUBLIC, PARAMETER :: &
     ShortNamesDF = [ 'DF_TCI    ', &
+                     'DF_Sh     ', &
                      'DF_T1     ', &
                      'DF_T2     ', &
                      'DF_T3     ', &
@@ -192,7 +195,8 @@ CONTAINS
 
     ALLOCATE( rhsCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF) )
 
-    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ) )
+    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
+                              Verbose_Option = Verbose )
 
   END SUBROUTINE CreateFluidFields
 
@@ -312,14 +316,15 @@ CONTAINS
                                    1:nDF)
 
     uDF(:,:,:,:,iDF_TCI) = Zero
+    uDF(:,:,:,:,iDF_Sh)  = Zero
     uDF(:,:,:,:,iDF_T1)  = One
-    uDF(:,:,:,:,iDF_T3)  = One
     uDF(:,:,:,:,iDF_T2)  = One
+    uDF(:,:,:,:,iDF_T3)  = One
 
   END SUBROUTINE ResetFluidFields_Diagnostic
 
 
-  SUBROUTINE SetUnitsFluidFields( CoordinateSystem )
+  SUBROUTINE SetUnitsFluidFields( CoordinateSystem, Verbose_Option )
 
     USE UnitsModule, ONLY: &
       UnitsActive, &
@@ -332,16 +337,27 @@ CONTAINS
       Erg, &
       BoltzmannConstant
 
-    CHARACTER(LEN=*), INTENT(in) :: CoordinateSystem
+    CHARACTER(LEN=*), INTENT(in)           :: CoordinateSystem
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
-    WRITE(*,*)
+    LOGICAL :: Verbose
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
 #if defined HYDRO_RIEMANN_SOLVER_HLL
-    WRITE(*,'(5x,A)') 'Fluid Riemann Solver: HLL'
+      WRITE(*,'(5x,A)') 'Fluid Riemann Solver: HLL'
 #elif defined HYDRO_RIEMANN_SOLVER_HLLC
-    WRITE(*,'(5x,A)') 'Fluid Riemann Solver: HLLC'
+      WRITE(*,'(5x,A)') 'Fluid Riemann Solver: HLLC'
 #elif defined HYDRO_RIEMANN_SOLVER_HYBRID
-    WRITE(*,'(5x,A)') 'Fluid Riemann Solver: HYBRID'
+      WRITE(*,'(5x,A)') 'Fluid Riemann Solver: HYBRID'
 #endif
+
+  END IF
 
     IF( UnitsActive )THEN
 
@@ -408,6 +424,7 @@ CONTAINS
 
       ! --- Diagnostic ---
       unitsDF(iDF_TCI) = One
+      unitsDF(iDF_Sh)  = One
       unitsDF(iDF_T1)  = One
       unitsDF(iDF_T2)  = One
       unitsDF(iDF_T3)  = One

@@ -390,7 +390,8 @@ CONTAINS
 
     CALL SetUnitsGeometryFields
 
-    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ) )
+    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
+                              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
