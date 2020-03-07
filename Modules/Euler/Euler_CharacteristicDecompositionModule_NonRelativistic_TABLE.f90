@@ -88,7 +88,7 @@ CONTAINS
 
     dPdE   = dPdT / dEdT
     dPdDe  = ( Tau ) * ( dPdY - dEdY * dPdE )
-    dPdTau = (dPdDe * (Y - 1) + dEdD * dPdE)/ (Tau**2)
+    dPdTau = (dPdDe * Y + dEdD * dPdE - dPdD) / (Tau**2)
 
     Vsq = V1**2 + V2**2 + V3**2
 
