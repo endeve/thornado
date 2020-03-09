@@ -90,6 +90,8 @@ CONTAINS
 
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
+      CALL MF_uDF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )

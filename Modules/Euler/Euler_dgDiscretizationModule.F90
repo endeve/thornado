@@ -44,7 +44,7 @@ MODULE Euler_dgDiscretizationModule
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_P, &
-    iDF_TCI
+    iDF_Sh
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule, ONLY: &
@@ -188,8 +188,7 @@ CONTAINS
     REAL(DP) :: EigVals_L(nDOFX_X1,nCF), EigVals_R(nDOFX_X1,nCF)
     REAL(DP) :: Flux_X1_L(nDOFX_X1,nCF), Flux_X1_R(nDOFX_X1,nCF)
     REAL(DP) :: Flux_X1_q(nDOFX,nCF)
-    REAL(DP) :: NumericalFluxP(nDOFX_X1,nCF)
-    REAL(DP) :: NumericalFluxK(nDOFX_X1,nCF)
+    REAL(DP) :: NumericalFlux(nDOFX_X1,nCF)
 
     IF( iX_E0(1) .EQ. iX_B0(1) ) RETURN
 
@@ -197,7 +196,7 @@ CONTAINS
     !$OMP& ( iX1, iX2, iX3, iCF, iGF, iNodeX, iNodeX_X1, dX2, dX3, &
     !$OMP&   uCF_P, uCF_K, uCF_L, uCF_R, uPF_K, uPF_L, uPF_R, P_K, &
     !$OMP&   P_L, P_R, Cs_L, Cs_R, G_P, G_K, G_F, Flux_X1_q, &
-    !$OMP&   Flux_X1_L, Flux_X1_R, NumericalFluxP, NumericalFluxK )
+    !$OMP&   Flux_X1_L, Flux_X1_R, NumericalFlux )
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1) + 1
@@ -516,53 +515,22 @@ CONTAINS
                 G_F      (iNodeX_X1,iGF_Alpha),    &
                 G_F      (iNodeX_X1,iGF_Beta_1) )
 
-        IF( iX1 .GT. iX_B0(1) )THEN
-
-          NumericalFluxP(iNodeX_X1,:) &
-            = NumericalFlux_Euler_X1 &
-                ( uCF_L    (iNodeX_X1,:),            &
-                  uCF_R    (iNodeX_X1,:),            &
-                  Flux_X1_L(iNodeX_X1,:),            &
-                  Flux_X1_R(iNodeX_X1,:),            &
-                  AlphaPls, AlphaMns, AlphaMdl,      &
-                  G_F      (iNodeX_X1,iGF_Gm_dd_11), &
-                  uPF_L    (iNodeX_X1,iPF_V1),       &
-                  uPF_R    (iNodeX_X1,iPF_V1),       &
-                  P_L      (iNodeX_X1),              &
-                  P_R      (iNodeX_X1),              &
-                  G_F      (iNodeX_X1,iGF_Alpha),    &
-                  G_F      (iNodeX_X1,iGF_Beta_1),   &
-                  MAXVAL( D(:,iX1-1,iX2,iX3,iDF_TCI) ) )
-
-        ELSE
-
-          NumericalFluxP(iNodeX_X1,:) = 0.0_DP
-
-        END IF
-
-        IF( iX1 .LT. iX_E0(1) + 1 )THEN
-
-          NumericalFluxK(iNodeX_X1,:) &
-            = NumericalFlux_Euler_X1 &
-                ( uCF_L    (iNodeX_X1,:),            &
-                  uCF_R    (iNodeX_X1,:),            &
-                  Flux_X1_L(iNodeX_X1,:),            &
-                  Flux_X1_R(iNodeX_X1,:),            &
-                  AlphaPls, AlphaMns, AlphaMdl,      &
-                  G_F      (iNodeX_X1,iGF_Gm_dd_11), &
-                  uPF_L    (iNodeX_X1,iPF_V1),       &
-                  uPF_R    (iNodeX_X1,iPF_V1),       &
-                  P_L      (iNodeX_X1),              &
-                  P_R      (iNodeX_X1),              &
-                  G_F      (iNodeX_X1,iGF_Alpha),    &
-                  G_F      (iNodeX_X1,iGF_Beta_1),   &
-                  MAXVAL( D(:,iX1,iX2,iX3,iDF_TCI) ) )
-
-        ELSE
-
-          NumericalFluxK(iNodeX_X1,:) = 0.0_DP
-
-        END IF
+        NumericalFlux(iNodeX_X1,:) &
+          = NumericalFlux_Euler_X1 &
+              ( uCF_L    (iNodeX_X1,:),              &
+                uCF_R    (iNodeX_X1,:),              &
+                Flux_X1_L(iNodeX_X1,:),              &
+                Flux_X1_R(iNodeX_X1,:),              &
+                AlphaPls, AlphaMns, AlphaMdl,        &
+                G_F      (iNodeX_X1,iGF_Gm_dd_11),   &
+                uPF_L    (iNodeX_X1,iPF_V1),         &
+                uPF_R    (iNodeX_X1,iPF_V1),         &
+                P_L      (iNodeX_X1),                &
+                P_R      (iNodeX_X1),                &
+                G_F      (iNodeX_X1,iGF_Alpha),      &
+                G_F      (iNodeX_X1,iGF_Beta_1),     &
+                MAXVAL( D(:,iX1-1,iX2,iX3,iDF_Sh) ), &
+                MAXVAL( D(:,iX1  ,iX2,iX3,iDF_Sh) ) )
 
       END DO
 
@@ -570,13 +538,9 @@ CONTAINS
 
       DO iCF = 1, nCF
 
-        NumericalFluxP(:,iCF) &
+        NumericalFlux(:,iCF) &
           = dX2 * dX3 * WeightsX_X1 * G_F(:,iGF_Alpha) * G_F(:,iGF_SqrtGm) &
-              * NumericalFluxP(:,iCF)
-
-        NumericalFluxK(:,iCF) &
-          = dX2 * dX3 * WeightsX_X1 * G_F(:,iGF_Alpha) * G_F(:,iGF_SqrtGm) &
-              * NumericalFluxK(:,iCF)
+              * NumericalFlux(:,iCF)
 
       END DO
 
@@ -590,7 +554,7 @@ CONTAINS
 
           CALL DGEMV &
                  ( 'T', nDOFX_X1, nDOFX, + One, LX_X1_Dn, nDOFX_X1, &
-                   NumericalFluxK(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+                   NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
 
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
@@ -608,7 +572,7 @@ CONTAINS
 
           CALL DGEMV &
                  ( 'T', nDOFX_X1, nDOFX, - One, LX_X1_Up, nDOFX_X1, &
-                   NumericalFluxP(:,iCF), 1, One, dU(:,iX1-1,iX2,iX3,iCF), 1 )
+                   NumericalFlux(:,iCF), 1, One, dU(:,iX1-1,iX2,iX3,iCF), 1 )
 
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
@@ -653,8 +617,7 @@ CONTAINS
     REAL(DP) :: EigVals_L(nDOFX_X2,nCF), EigVals_R(nDOFX_X2,nCF)
     REAL(DP) :: Flux_X2_L(nDOFX_X2,nCF), Flux_X2_R(nDOFX_X2,nCF)
     REAL(DP) :: Flux_X2_q(nDOFX,nCF)
-    REAL(DP) :: NumericalFluxP(nDOFX_X2,nCF)
-    REAL(DP) :: NumericalFluxK(nDOFX_X2,nCF)
+    REAL(DP) :: NumericalFlux(nDOFX_X2,nCF)
 
     IF( iX_E0(2) .EQ. iX_B0(2) ) RETURN
 
@@ -975,53 +938,22 @@ CONTAINS
                 G_F      (iNodeX_X2,iGF_Alpha),    &
                 G_F      (iNodeX_X2,iGF_Beta_2) )
 
-        IF( iX2 .GT. iX_B0(2) )THEN
-
-          NumericalFluxP(iNodeX_X2,:) &
-            = NumericalFlux_Euler_X2 &
-                ( uCF_L    (iNodeX_X2,:),            &
-                  uCF_R    (iNodeX_X2,:),            &
-                  Flux_X2_L(iNodeX_X2,:),            &
-                  Flux_X2_R(iNodeX_X2,:),            &
-                  AlphaPls, AlphaMns, AlphaMdl,      &
-                  G_F      (iNodeX_X2,iGF_Gm_dd_22), &
-                  uPF_L    (iNodeX_X2,iPF_V2),       &
-                  uPF_R    (iNodeX_X2,iPF_V2),       &
-                  P_L      (iNodeX_X2),              &
-                  P_R      (iNodeX_X2),              &
-                  G_F      (iNodeX_X2,iGF_Alpha),    &
-                  G_F      (iNodeX_X2,iGF_Beta_2),   &
-                  MAXVAL( D(:,iX1,iX2-1,iX3,iDF_TCI) ) )
-
-        ELSE
-
-          NumericalFluxP(iNodeX_X2,:) = 0.0_DP
-
-        END IF
-
-        IF( iX2 .LT. iX_E0(2) + 1 )THEN
-
-          NumericalFluxK(iNodeX_X2,:) &
-            = NumericalFlux_Euler_X2 &
-                ( uCF_L    (iNodeX_X2,:),            &
-                  uCF_R    (iNodeX_X2,:),            &
-                  Flux_X2_L(iNodeX_X2,:),            &
-                  Flux_X2_R(iNodeX_X2,:),            &
-                  AlphaPls, AlphaMns, AlphaMdl,      &
-                  G_F      (iNodeX_X2,iGF_Gm_dd_22), &
-                  uPF_L    (iNodeX_X2,iPF_V2),       &
-                  uPF_R    (iNodeX_X2,iPF_V2),       &
-                  P_L      (iNodeX_X2),              &
-                  P_R      (iNodeX_X2),              &
-                  G_F      (iNodeX_X2,iGF_Alpha),    &
-                  G_F      (iNodeX_X2,iGF_Beta_2),   &
-                  MAXVAL( D(:,iX1,iX2,iX3,iDF_TCI) ) )
-
-        ELSE
-
-          NumericalFluxK(iNodeX_X2,:) = 0.0_DP
-
-        END IF
+        NumericalFlux(iNodeX_X2,:) &
+          = NumericalFlux_Euler_X2 &
+              ( uCF_L    (iNodeX_X2,:),              &
+                uCF_R    (iNodeX_X2,:),              &
+                Flux_X2_L(iNodeX_X2,:),              &
+                Flux_X2_R(iNodeX_X2,:),              &
+                AlphaPls, AlphaMns, AlphaMdl,        &
+                G_F      (iNodeX_X2,iGF_Gm_dd_22),   &
+                uPF_L    (iNodeX_X2,iPF_V2),         &
+                uPF_R    (iNodeX_X2,iPF_V2),         &
+                P_L      (iNodeX_X2),                &
+                P_R      (iNodeX_X2),                &
+                G_F      (iNodeX_X2,iGF_Alpha),      &
+                G_F      (iNodeX_X2,iGF_Beta_2),     &
+                MAXVAL( D(:,iX1,iX2-1,iX3,iDF_Sh) ), &
+                MAXVAL( D(:,iX1,iX2  ,iX3,iDF_Sh) ) )
 
       END DO
 
@@ -1029,13 +961,9 @@ CONTAINS
 
       DO iCF = 1, nCF
 
-        NumericalFluxP(:,iCF) &
+        NumericalFlux(:,iCF) &
           = dX1 * dX3 * WeightsX_X2 * G_F(:,iGF_Alpha) * G_F(:,iGF_SqrtGm) &
-              * NumericalFluxP(:,iCF)
-
-        NumericalFluxK(:,iCF) &
-          = dX1 * dX3 * WeightsX_X2 * G_F(:,iGF_Alpha) * G_F(:,iGF_SqrtGm) &
-              * NumericalFluxK(:,iCF)
+              * NumericalFlux(:,iCF)
 
       END DO
 
@@ -1049,7 +977,7 @@ CONTAINS
 
           CALL DGEMV &
                  ( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Dn, nDOFX_X2, &
-                   NumericalFluxK(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+                   NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
 
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
@@ -1067,7 +995,7 @@ CONTAINS
 
           CALL DGEMV &
                  ( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Up, nDOFX_X2, &
-                   NumericalFluxP(:,iCF), 1, One, dU(:,iX1,iX2-1,iX3,iCF), 1 )
+                   NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2-1,iX3,iCF), 1 )
 
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
@@ -1111,8 +1039,7 @@ CONTAINS
     REAL(DP) :: EigVals_L(nDOFX_X3,nCF), EigVals_R(nDOFX_X3,nCF)
     REAL(DP) :: Flux_X3_L(nDOFX_X3,nCF), Flux_X3_R(nDOFX_X3,nCF)
     REAL(DP) :: Flux_X3_q(nDOFX,nCF)
-    REAL(DP) :: NumericalFluxP(nDOFX_X3,nCF)
-    REAL(DP) :: NumericalFluxK(nDOFX_X3,nCF)
+    REAL(DP) :: NumericalFlux(nDOFX_X3,nCF)
 
     IF( iX_E0(3) .EQ. iX_B0(3) ) RETURN
 
@@ -1433,53 +1360,22 @@ CONTAINS
                 G_F      (iNodeX_X3,iGF_Alpha),    &
                 G_F      (iNodeX_X3,iGF_Beta_3) )
 
-        IF( iX3 .GT. iX_B0(3) )THEN
-
-          NumericalFluxP(iNodeX_X3,:) &
-            = NumericalFlux_Euler_X3 &
-                ( uCF_L    (iNodeX_X3,:),            &
-                  uCF_R    (iNodeX_X3,:),            &
-                  Flux_X3_L(iNodeX_X3,:),            &
-                  Flux_X3_R(iNodeX_X3,:),            &
-                  AlphaPls, AlphaMns, AlphaMdl,      &
-                  G_F      (iNodeX_X3,iGF_Gm_dd_33), &
-                  uPF_L    (iNodeX_X3,iPF_V3),       &
-                  uPF_R    (iNodeX_X3,iPF_V3),       &
-                  P_L      (iNodeX_X3),              &
-                  P_R      (iNodeX_X3),              &
-                  G_F      (iNodeX_X3,iGF_Alpha),    &
-                  G_F      (iNodeX_X3,iGF_Beta_3),   &
-                  MAXVAL( D(:,iX1,iX2,iX3-1,iDF_TCI) ) )
-
-        ELSE
-
-          NumericalFluxP(iNodeX_X3,:) = 0.0_DP
-
-        END IF
-
-        IF( iX3 .LT. iX_E0(3) + 1 )THEN
-
-          NumericalFluxK(iNodeX_X3,:) &
-            = NumericalFlux_Euler_X3 &
-                ( uCF_L    (iNodeX_X3,:),            &
-                  uCF_R    (iNodeX_X3,:),            &
-                  Flux_X3_L(iNodeX_X3,:),            &
-                  Flux_X3_R(iNodeX_X3,:),            &
-                  AlphaPls, AlphaMns, AlphaMdl,      &
-                  G_F      (iNodeX_X3,iGF_Gm_dd_33), &
-                  uPF_L    (iNodeX_X3,iPF_V3),       &
-                  uPF_R    (iNodeX_X3,iPF_V3),       &
-                  P_L      (iNodeX_X3),              &
-                  P_R      (iNodeX_X3),              &
-                  G_F      (iNodeX_X3,iGF_Alpha),    &
-                  G_F      (iNodeX_X3,iGF_Beta_3),   &
-                  MAXVAL( D(:,iX1,iX2,iX3,iDF_TCI) ) )
-
-        ELSE
-
-          NumericalFluxK(iNodeX_X3,:) = 0.0_DP
-
-        END IF
+        NumericalFlux(iNodeX_X3,:) &
+          = NumericalFlux_Euler_X3 &
+              ( uCF_L    (iNodeX_X3,:),              &
+                uCF_R    (iNodeX_X3,:),              &
+                Flux_X3_L(iNodeX_X3,:),              &
+                Flux_X3_R(iNodeX_X3,:),              &
+                AlphaPls, AlphaMns, AlphaMdl,        &
+                G_F      (iNodeX_X3,iGF_Gm_dd_33),   &
+                uPF_L    (iNodeX_X3,iPF_V3),         &
+                uPF_R    (iNodeX_X3,iPF_V3),         &
+                P_L      (iNodeX_X3),                &
+                P_R      (iNodeX_X3),                &
+                G_F      (iNodeX_X3,iGF_Alpha),      &
+                G_F      (iNodeX_X3,iGF_Beta_3),     &
+                MAXVAL( D(:,iX1,iX2,iX3-1,iDF_Sh) ), &
+                MAXVAL( D(:,iX1,iX2,iX3  ,iDF_Sh) ) )
 
       END DO
 
@@ -1487,13 +1383,9 @@ CONTAINS
 
       DO iCF = 1, nCF
 
-        NumericalFluxP(:,iCF) &
+        NumericalFlux(:,iCF) &
           = dX1 * dX2 * WeightsX_X3 * G_F(:,iGF_Alpha) * G_F(:,iGF_SqrtGm) &
-              * NumericalFluxP(:,iCF)
-
-        NumericalFluxK(:,iCF) &
-          = dX1 * dX2 * WeightsX_X3 * G_F(:,iGF_Alpha) * G_F(:,iGF_SqrtGm) &
-              * NumericalFluxK(:,iCF)
+              * NumericalFlux(:,iCF)
 
       END DO
 
@@ -1507,7 +1399,7 @@ CONTAINS
 
           CALL DGEMV &
                  ( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Dn, nDOFX_X3, &
-                   NumericalFluxK(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+                   NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
 
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
@@ -1525,7 +1417,7 @@ CONTAINS
 
           CALL DGEMV &
                  ( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Up, nDOFX_X3, &
-                   NumericalFluxP(:,iCF), 1, One, dU(:,iX1,iX2,iX3-1,iCF), 1 )
+                   NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3-1,iCF), 1 )
 
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
