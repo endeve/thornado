@@ -125,6 +125,8 @@ CONTAINS
 
         CALL AMReX2thornado( nCF, iX_B1, iX_E1, uCF, U )
 
+        CALL AMReX2thornado( nDF, iX_B1, iX_E1, uDF, D )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         ! --- Apply boundary conditions to physical boundaries ---
