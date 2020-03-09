@@ -150,6 +150,8 @@ MODULE InitializationModule
     MF_ComputeGeometryX
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
     MF_InitializeField_IMEX_RK
+  USE TwoMoment_ClosureModule,                       ONLY: &
+    InitializeClosure_TwoMoment
 
 
   IMPLICIT NONE
@@ -169,7 +171,7 @@ CONTAINS
     INTEGER               :: iLevel, iDim
     TYPE(amrex_parmparse) :: PP
     TYPE(amrex_box)       :: BX
-    REAL(AR)              :: Mass
+    REAL(AR)              :: Mass, W, Vad
 
     ! --- Initialize AMReX ---
     CALL amrex_init()
@@ -300,10 +302,21 @@ CONTAINS
 
     CALL MF_InitializeField_IMEX_RK( Scheme, BA, DM )
 
+
+    CALL InitializeClosure_TwoMoment
+
+
     CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &
              MF_uCR_Option = MF_uCR, &
              MF_uPR_Option = MF_uPR )
+!  IF (ProgramName == "SineWaveStreaming") THEN
+!    W = 1.0_AR - DOT_PRODUCT(V_0,V_0)
+!    W = 1.0_AR / SQRT(W)
+!    Vad = (1.0_AR + V_0(1) * W ) / ( W + V_0(1) )
+!    t_end = t_end / Vad
+!  END IF
+! 
 
   END SUBROUTINE InitializeProgram
 

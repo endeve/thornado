@@ -171,7 +171,7 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(AR)                      :: Ones(nDOFE)
+    REAL(AR)                      :: Ones(nDOFE), W
 
     uCR_K = Zero
     uPF_K = Zero
@@ -180,7 +180,10 @@ CONTAINS
     uAF_K = Zero
 
     Ones=1.0_AR
-    print*, V_0 
+   
+    W = 1.0_AR - ( V_0(1)*V_0(1) + V_0(2)*V_0(2) + V_0(3)*V_0(3) )
+    W = 1.0_AR / SQRT( W )
+   
     DO iDim = 1, 3
 
       CALL CreateMesh &
@@ -267,7 +270,7 @@ CONTAINS
                 = 0.50_AR + 0.49_AR * SIN( TwoPi * X1 )  
             
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                = uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                = W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
          
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
                 = 0.0_AR
