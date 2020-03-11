@@ -39,8 +39,6 @@ PROGRAM main
     MF_UpdateFluid_SSPRK
   USE FinalizationModule,               ONLY: &
     FinalizeProgram
-  USE MF_UtilitiesModule,               ONLY: &
-    ShowVariableFromMultifab
   USE MyAmrDataModule,                  ONLY: &
     MF_uGF, &
     MF_uCF, &
