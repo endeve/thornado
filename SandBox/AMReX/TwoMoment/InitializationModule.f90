@@ -271,11 +271,14 @@ CONTAINS
     CALL InitializeReferenceElementX_Lagrange
     CALL InitializeReferenceElement_Lagrange
 
-    CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies )
+    CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
+                                Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' )
+    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+                              Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' )
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+                               Verbose_Option = amrex_parallel_ioprocessor()  )
 
     CALL CreateMesh &
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
@@ -290,9 +293,11 @@ CONTAINS
 
     CALL InitializeEquationOfState &
              ( EquationOfState_Option = EquationOfState, &
-               Gamma_IDEAL_Option = Gamma_IDEAL )
+               Gamma_IDEAL_Option = Gamma_IDEAL, &
+               Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0 )
+    CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0, &
+                              Verbose_Option = amrex_parallel_ioprocessor() )
 
     DO iLevel = 0, nLevels-1
 
@@ -300,7 +305,8 @@ CONTAINS
 
     END DO
 
-    CALL MF_InitializeField_IMEX_RK( Scheme, BA, DM )
+    CALL MF_InitializeField_IMEX_RK( Scheme, BA, DM, &
+                                     Verbose_Option = amrex_parallel_ioprocessor() )
 
 
     CALL InitializeClosure_TwoMoment

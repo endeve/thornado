@@ -70,13 +70,14 @@ PROGRAM main
       dt = t_end - [t]
       t  = [t_end]
     END IF
-
-    !WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
-     print*,  'StepNo: ', StepNo(0), ' t = ', t , ' dt = ', dt(0) 
-
+    IF( amrex_parallel_ioprocessor() )THEN
+      !WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
+       print*,  'StepNo: ', StepNo(0), ' t = ', t , ' dt = ', dt(0) 
+    END IF
     !this is where the issue is
     CALL MF_Update_IMEX_RK &
-           ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM )
+           ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, &
+            Verbose_Option = amrex_parallel_ioprocessor()  )
 
   END DO
   
