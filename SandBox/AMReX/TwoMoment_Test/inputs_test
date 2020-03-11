@@ -5,17 +5,17 @@
 DEBUG = 0
 
 thornado.ProgramName = "SineWaveStreaming"
-thornado.Scheme = "SSPRK1"
+thornado.Scheme = "SSPRK2"
 
-thornado.t_end     = 10.0     # Final time
+thornado.t_end     = 1.0     # Final time
 thornado.dt_wrt    = -0.1      # Write time interval
 thornado.dt_chk    = -0.1      # Time increment to write checkpoint-file
-thornado.nNodes    = 1        # Number of DG nodes in each active dimension
-thornado.CFL       = 1.0      # CFL number
+thornado.nNodes    = 2        # Number of DG nodes in each active dimension
+thornado.CFL       = 0.5      # CFL number
 thornado.bcX       = 00 00 00 # Boundary conditions
 thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
-thornado.V_0       = 0.0 0.0 0.0  # three velocity
-thornado.nE        = 4       # Number of Energy Cells
+thornado.V_0       = 0.5 0.0 0.0  # three velocity
+thornado.nE        = 1       # Number of Energy Cells
 thornado.swE       = 01
 thornado.bcE       = 0
 thornado.eL        = 0.0           # Lower energy domain size
@@ -34,9 +34,9 @@ geometry.prob_hi     = 1.0 1.0 1.0         # High energy domain size
 geometry.is_periodic = 1   1   1
 
 
-amr.n_cell            = 32 32 01 # Number of cells in each dimension
-amr.max_grid_size_x   = 32
-amr.max_grid_size_y   = 32
+amr.n_cell            = 256 2 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 64
+amr.max_grid_size_y   = 2
 amr.blocking_factor_x = 1
 amr.blocking_factor_y = 1
 amr.max_level         = 0
