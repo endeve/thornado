@@ -33,6 +33,8 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
     CreateMesh,  &
     DestroyMesh, &
     NodeCoordinate
+  USE UtilitiesModule,         ONLY: &
+    NodeNumberX
   USE GeometryFieldsModule,    ONLY: &
     nGF,          &
     iGF_Gm_dd_11, &
@@ -59,6 +61,11 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
     ComputeConserved_Euler
   USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive
+  USE UnitsModule,             ONLY: &
+    GravitationalConstant, &
+    SolarMass,             &
+    Second,                &
+    Kilometer
   USE Euler_ErrorModule,       ONLY: &
     DescribeError_Euler
 
@@ -80,6 +87,8 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
   REAL(AR), PARAMETER :: One    = 1.0_AR
   REAL(AR), PARAMETER :: Two    = 2.0_AR
   REAL(AR), PARAMETER :: Three  = 3.0_AR
+  REAL(AR), PARAMETER :: Four   = 4.0_AR
+  REAL(AR), PARAMETER :: Five   = 5.0_AR
   REAL(AR), PARAMETER :: Pi     = ACOS( -1.0_AR )
   REAL(AR), PARAMETER :: TwoPi  = 2.0_AR * Pi
   REAL(AR), PARAMETER :: FourPi = 4.0_AR * Pi
@@ -128,6 +137,10 @@ CONTAINS
 
         CALL InitializeFields_StandingAccretionShock( MF_uGF, MF_uCF )
 
+      CASE( 'SASI' )
+
+        CALL InitializeFields_SASI( MF_uGF, MF_uCF )
+
       CASE DEFAULT
 
         IF( amrex_parallel_ioprocessor() )THEN
@@ -141,6 +154,7 @@ CONTAINS
           WRITE(*,'(6x,A)')     'TopHatAdvection'
           WRITE(*,'(6x,A)')     'Implosion'
           WRITE(*,'(6x,A)')     'StandingAccretionShock'
+          WRITE(*,'(6x,A)')     'SASI'
 
         END IF
 
@@ -995,6 +1009,430 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_StandingAccretionShock
+
+
+  SUBROUTINE InitializeFields_SASI &
+    ( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+
+    ! --- thornado ---
+    INTEGER        :: iDim
+    INTEGER        :: iX1, iX2, iX3
+    INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3
+    REAL(AR)       :: X1, X2
+    REAL(AR)       :: uGF_K(nDOFX,nGF)
+    REAL(AR)       :: uCF_K(nDOFX,nCF)
+    REAL(AR)       :: uPF_K(nDOFX,nPF)
+    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    TYPE(MeshType) :: MeshX(3)
+
+    ! --- AMReX ---
+    INTEGER                       :: iLevel
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_F(4), hi_F(4)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    TYPE(amrex_parmparse)         :: PP
+
+    ! --- Problem-dependent Parameters ---
+    INTEGER               :: iX1_1, iX1_2, iNodeX1_1, iNodeX1_2
+    REAL(AR)              :: X1_1, X1_2, dX1
+    REAL(AR)              :: alpha, PolytropicConstant, V0
+    LOGICAL               :: FirstPreShockElement = .FALSE.
+    INTEGER               :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(AR), ALLOCATABLE :: D(:,:), V(:,:), P(:,:)
+    REAL(AR)              :: MassPNS, ShockRadius, AccretionRate, MachNumber
+    LOGICAL               :: ApplyPerturbation
+    INTEGER               :: PerturbationOrder
+    REAL(AR)              :: PerturbationAmplitude, &
+                             rPerturbationInner, rPerturbationOuter
+
+    ApplyPerturbation     = .FALSE.
+    PerturbationOrder     = 0
+    PerturbationAmplitude = Zero
+    rPerturbationInner    = Zero
+    rPerturbationOuter    = Zero
+    CALL amrex_parmparse_build( PP, 'SAS' )
+      CALL PP % get  ( 'Mass'                 , MassPNS               )
+      CALL PP % get  ( 'AccretionRate'        , AccretionRate         )
+      CALL PP % get  ( 'ShockRadius'          , ShockRadius           )
+      CALL PP % get  ( 'MachNumber'           , MachNumber            )
+      CALL PP % query( 'ApplyPerturbation'    , ApplyPerturbation     )
+      CALL PP % query( 'PerturbationOrder'    , PerturbationOrder     )
+      CALL PP % query( 'PerturbationAmplitude', PerturbationAmplitude )
+      CALL PP % query( 'rPerturbationInner'   , rPerturbationInner    )
+      CALL PP % query( 'rPerturbationOuter'   , rPerturbationOuter    )
+    CALL amrex_parmparse_destroy( PP )
+
+    MassPNS            = MassPNS            * SolarMass
+    AccretionRate      = AccretionRate      * SolarMass / Second
+    ShockRadius        = ShockRadius        * Kilometer
+    rPerturbationInner = rPerturbationInner * Kilometer
+    rPerturbationOuter = rPerturbationOuter * Kilometer
+
+    alpha = Four * Gamma_IDEAL &
+              / ( ( Gamma_IDEAL - One ) * ( Gamma_IDEAL + One ) ) &
+              * ( ( Gamma_IDEAL - One ) / ( Gamma_IDEAL + One ) &
+                )**Gamma_IDEAL
+
+    PolytropicConstant &
+      = Two / ( Gamma_IDEAL + One ) &
+          * ( ( Gamma_IDEAL - One ) / ( Gamma_IDEAL + One ) )**( Gamma_IDEAL ) &
+          * ( AccretionRate / FourPi )**( One - Gamma_IDEAL ) &
+          * ( Two * GravitationalConstant * MassPNS &
+            )**( ( Gamma_IDEAL + One ) / Two ) &
+          * ShockRadius**( ( Three * Gamma_IDEAL - Five ) / Two )
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,*)
+
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'Shock radius:   ', ShockRadius / Kilometer, ' km'
+
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'PNS Mass:       ', MassPNS / SolarMass, ' Msun'
+
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'Accretion Rate: ', AccretionRate / ( SolarMass / Second ), &
+        ' Msun/s'
+
+      WRITE(*,'(6x,A,ES9.2E3)') &
+        'Mach number:    ', MachNumber
+
+      WRITE(*,'(6x,A,ES9.2E3)') &
+        'alpha:          ', alpha
+
+      WRITE(*,*)
+
+      WRITE(*,'(6x,A,L)') &
+        'Apply Perturbation: ', ApplyPerturbation
+
+      WRITE(*,'(6x,A,I1)') &
+        'Perturbation order: ', PerturbationOrder
+
+      WRITE(*,'(6x,A,ES9.2E3)') &
+        'Perturbation amplitude: ', PerturbationAmplitude
+
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'Inner radius of perturbation: ', rPerturbationInner / Kilometer, ' km'
+
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'Outer radius of perturbation: ', rPerturbationOuter / Kilometer, ' km'
+
+    END IF
+
+    uGF_K = Zero
+    uCF_K = Zero
+    uPF_K = Zero
+    uAF_K = Zero
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    iX_B1 = [1,1,1] - swX
+    iX_E1 = nX      + swX
+
+    ALLOCATE( D(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( V(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( P(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+
+    ! --- Locate first element with un-shocked fluid ---
+
+    X1 = Zero
+
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      DO iNodeX1 = 1, nNodesX(1)
+
+        dX1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) - X1
+        X1  = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        IF( X1 .LE. ShockRadius ) CYCLE
+
+        IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
+
+          iX1_1     = iX1
+          iNodeX1_1 = iNodeX1
+          X1_1      = X1
+          X1_2      = X1  - dX1
+
+          IF( iNodeX1_1 .EQ. 1 )THEN
+
+            iX1_2     = iX1_1 - 1
+            iNodeX1_2 = nNodesX(1)
+
+          ELSE
+
+            iX1_2     = iX1_1
+            iNodeX1_2 = iNodeX1_1
+
+          END IF
+
+          FirstPreShockElement = .TRUE.
+
+        END IF
+
+      END DO
+
+    END DO
+
+    ! --- Compute fields, pre-shock ---
+
+    DO iX1 = iX_E1(1), iX1_1, -1
+
+      DO iNodeX1 = nNodesX(1), 1, -1
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        IF( X1 .LE. ShockRadius ) CYCLE
+
+        V(iNodeX1,iX1) = -SQRT( Two * GravitationalConstant * MassPNS / X1 )
+
+        D(iNodeX1,iX1) = -AccretionRate / ( FourPi * X1**2 * V(iNodeX1,iX1) )
+
+        P(iNodeX1,iX1) = D(iNodeX1,iX1) * V(iNodeX1,iX1)**2 &
+                           / ( Gamma_IDEAL * MachNumber**2 )
+
+      END DO
+
+    END DO
+
+    ! --- Apply jump conditions (Blondin et al., (2003), ApJ, 584, 971) ---
+
+    V(iNodeX1_2,iX1_2) &
+      = - ( Gamma_IDEAL - One ) / ( Gamma_IDEAL + One ) &
+          * ( Two * GravitationalConstant * MassPNS )**( Half ) &
+          * ShockRadius**( -Half )
+
+    D(iNodeX1_2,iX1_2) &
+      = ( Gamma_IDEAL + One ) / ( Gamma_IDEAL - One ) &
+          * ( AccretionRate / FourPi ) &
+          * ( Two * GravitationalConstant * MassPNS )**( -Half ) &
+          * ShockRadius**( -Three / Two )
+
+    P(iNodeX1_2,iX1_2) &
+      = Two / ( Gamma_IDEAL + One ) &
+          * ( AccretionRate / FourPi ) &
+          * ( Two * GravitationalConstant * MassPNS )**( Half ) &
+          * ShockRadius**( -Five / Two )
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'Shock location:'
+      WRITE(*,'(8x,A)') 'Pre-shock:'
+      WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_1
+      WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_1
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_1 / Kilometer, ' km'
+      WRITE(*,'(8x,A)') 'Post-shock:'
+      WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_2
+      WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_2
+      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_2 / Kilometer, ' km'
+      WRITE(*,*)
+      WRITE(*,'(6x,A,ES13.6E3)') &
+        'Compression Ratio LOG10(D_2/D_1) = ', &
+        LOG( D(iNodeX1_2,iX1_2) / D(iNodeX1_1,iX1_1) ) / LOG( 10.0_AR )
+      WRITE(*,*)
+
+    END IF
+
+    ! --- Compute fields, post-shock ---
+
+    V0 = V(iNodeX1_2,iX1_2)
+
+    DO iX1 = iX1_2, iX_B1(1), -1
+
+      DO iNodeX1 = nNodesX(1), 1, -1
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+        IF( X1 .GT. ShockRadius ) CYCLE
+
+        V0 = ABS( V0 )
+
+        CALL NewtonRaphson_PostShockVelocity &
+               ( X1, alpha, MassPNS, ShockRadius, V0 )
+
+        V(iNodeX1,iX1) = -V0
+
+        D(iNodeX1,iX1) &
+          = ( ( Gamma_IDEAL - One ) &
+              / ( Two * Gamma_IDEAL * PolytropicConstant ) &
+              * ( Two * GravitationalConstant * MassPNS / X1 &
+                    - V(iNodeX1,iX1)**2 ) &
+            )**( One / ( Gamma_IDEAL - One ) )
+
+        P(iNodeX1,iX1) &
+          = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
+
+      END DO
+
+    END DO
+
+    ! --- Map to 3D domain ---
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B1(1), iX_E1(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          DO iNodeX3 = 1, nNodesX(3)
+          DO iNodeX2 = 1, nNodesX(2)
+          DO iNodeX1 = 1, nNodesX(1)
+
+            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+
+            IF( ApplyPerturbation )THEN
+
+              X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+              X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+              IF( X1 .GE. rPerturbationInner &
+                    .AND. X1 .LE. rPerturbationOuter )THEN
+
+                IF( PerturbationOrder .EQ. 0 ) &
+                  uPF_K(iNodeX,iPF_D) &
+                    = D(iNodeX1,iX1) &
+                        * ( One + PerturbationAmplitude )
+
+                IF( PerturbationOrder .EQ. 1 ) &
+                  uPF_K(iNodeX,iPF_D) &
+                    = D(iNodeX1,iX1) &
+                        * ( One + PerturbationAmplitude * COS( X2 ) )
+
+              ELSE
+
+                uPF_K(iNodeX,iPF_D) = D(iNodeX1,iX1)
+
+              END IF
+
+            ELSE
+
+              uPF_K(iNodeX,iPF_D) = D(iNodeX1,iX1)
+
+            END IF
+
+            uPF_K(iNodeX,iPF_V1) = V(iNodeX1,iX1)
+            uPF_K(iNodeX,iPF_V2) = Zero
+            uPF_K(iNodeX,iPF_V3) = Zero
+            uPF_K(iNodeX,iPF_E ) = P(iNodeX1,iX1) / ( Gamma_IDEAL - One )
+
+          END DO
+          END DO
+          END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+          CALL ComputeConserved_Euler &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+    END DO
+
+    DEALLOCATE( P )
+    DEALLOCATE( V )
+    DEALLOCATE( D )
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_SASI
+
+
+  SUBROUTINE NewtonRaphson_PostShockVelocity &
+    ( X1, alpha, MassPNS, ShockRadius, V )
+
+    REAL(AR), INTENT(in)    :: X1, alpha, MassPNS, ShockRadius
+    REAL(AR), INTENT(inout) :: V
+
+    REAL(AR) :: a0, a1, a2, f, df, dV
+    LOGICAL  :: CONVERGED
+    INTEGER  :: ITERATION
+
+    INTEGER,  PARAMETER :: MAX_ITER  = 10
+    REAL(AR), PARAMETER :: TOLERANCE = 1.0e-15_AR
+
+    CONVERGED = .FALSE.
+    ITERATION = 0
+    DO WHILE( .NOT. CONVERGED .AND. ITERATION .LT. MAX_ITER )
+
+      ITERATION = ITERATION + 1
+
+      a0 = -Two * GravitationalConstant * MassPNS
+
+      a1 = alpha * ( -a0 )**( ( Gamma_IDEAL + One ) / Two ) &
+             * ShockRadius**( ( Three * Gamma_IDEAL - Five ) / Two ) &
+             * X1**( Three - Two * Gamma_IDEAL )
+
+      a2 = X1
+
+      f  = a0 + a1 * V**( One - Gamma_IDEAL ) + a2 * V**2
+
+      df = ( One - Gamma_IDEAL ) * a1 * V**( -Gamma_IDEAL ) + Two * a2 * V
+
+      dV = -f / df
+      V  = V + dV
+
+      IF( ABS( dV / V ) .LT. TOLERANCE ) &
+        CONVERGED = .TRUE.
+
+    END DO
+
+  END SUBROUTINE NewtonRaphson_PostShockVelocity
 
 
   SUBROUTINE ComputeSettlingSpeed_Bisection( r, Alpha, Gamma, Mass, V1 )
