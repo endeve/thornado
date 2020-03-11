@@ -112,20 +112,32 @@ MODULE MF_InitializationModule
 CONTAINS
 
   SUBROUTINE MF_InitializeFields &
-    ( ProgramName, MF_uGF, MF_uCR, MF_uCF, V_0 )
+    ( ProgramName, MF_uGF, MF_uCR, MF_uCF, V_0, Verbose_Option )
 
     CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
     TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:nLevels-1) 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
     REAL(AR)                            :: V_0(3)    
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
+
+
+    LOGICAL :: Verbose
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
 
     SELECT CASE ( TRIM( ProgramName ) )
       
       CASE ( 'SineWaveStreaming' )
 
         CALL InitializeFields_SineWaveStreaming( MF_uGF, MF_uCR, MF_uCF, V_0 ) 
-        print*, ProgramName
+
+        IF (Verbose) THEN
+          print*, ProgramName
+        END IF
 
       CASE DEFAULT
 

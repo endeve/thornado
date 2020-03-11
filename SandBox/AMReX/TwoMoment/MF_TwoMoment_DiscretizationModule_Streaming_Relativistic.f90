@@ -48,13 +48,14 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
 CONTAINS
 
 
-  SUBROUTINE MF_TwoMoment_ComputeIncrement( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR )
+  SUBROUTINE MF_TwoMoment_ComputeIncrement( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCR(0:nLevels-1)
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -169,7 +170,7 @@ CONTAINS
 
 
         CALL ComputeIncrement_TwoMoment_Explicit &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, Verbose_Option = Verbose_Option )
 
         CALL thornado2AMReX &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, iX_B0, iX_E0, &

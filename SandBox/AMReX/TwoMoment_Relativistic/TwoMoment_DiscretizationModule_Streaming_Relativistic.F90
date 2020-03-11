@@ -90,7 +90,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
 CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -110,6 +110,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU_R(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
                    iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
@@ -152,20 +153,10 @@ CONTAINS
     END DO
 
 
-    DO iZ2 = iZ_B0(2), iZ_E1(2)
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-!print*, iZ2, iZ3, iZ4
-!print*, U_R(1,1, iZ2,iZ3,iZ4, :,1)
-!print*, U_F(1,iZ2,iZ3,iZ4,:)  
-!print*, uCF_L(1,:,iZ3,iZ4,iZ2) 
-    END DO
-    END DO
-    END DO
 
     CALL ComputeIncrement_Divergence_X1 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
-
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
+             Verbose_Option = Verbose_Option )
     ! --- Multiply Inverse Mass Matrix ---
 
     DO iS  = 1, nSpecies
@@ -202,7 +193,7 @@ CONTAINS
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -240,6 +231,7 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF, iPF
@@ -327,11 +319,17 @@ CONTAINS
             iZ_B0(4):iZ_E0(4), &
             nSpecies, &
             iZ_B0(2):iZ_E0(2))
-
+    LOGICAL :: Verbose
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
 
-    PRINT*, "      ComputeIncrement_Divergence_X1"
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
+    IF (Verbose) THEN
+      PRINT*, "      ComputeIncrement_Divergence_X1"
+    END IF
 
     nZ    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nZ_X1 = nZ + [0,1,0,0]    ! Number of X3 Faces per Phase Space Dimension
@@ -423,14 +421,10 @@ CONTAINS
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
 
-!print*, U_F(1,iZ2,iZ3,iZ4,:)  
-!print*, uCF_L(1,:,iZ3,iZ4,iZ2) 
     END DO
     END DO
     END DO
 
-!the issue here is that we initialize uCF to run from index 1 to 32 not 0 to 33 one of the i
-!check if this is right should it end at E1 or E0
     DO iZ2  = iZ_B0(2), iZ_E1(2)
     DO iZ4  = iZ_B0(4), iZ_E0(4)
     DO iZ3  = iZ_B0(3), iZ_E0(3)
@@ -534,7 +528,6 @@ CONTAINS
       DO iNodeE = 1, nDOFE
 
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-
         ! --- Left State Primitive ---
         CALL ComputePrimitive_TwoMoment &
                ( uCR_L(iNodeZ,iCR_N ,iZ1,iZ3,iZ4,iS,iZ2), &
@@ -633,7 +626,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
     ! --- Surface Contributions ---
 
     ! --- Contribution from Left Face ---
@@ -710,10 +702,10 @@ CONTAINS
                  GX_K (iNodeX,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                  GX_K (iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2), &
                  0.0_DP, 0.0_DP, 0.0_DP,                &
-                 GX_F(iNodeX,iGF_Alpha   ,iZ3,iZ4,iZ2), &
-                 GX_F(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
-                 GX_F(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
-                 GX_F(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2), &
+                 GX_K(iNodeX,iGF_Alpha   ,iZ3,iZ4,iZ2), &
+                 GX_K(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
+                 GX_K(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
+                 GX_K(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2), &
                  nIterations )
 
         Flux_K &
@@ -726,10 +718,10 @@ CONTAINS
                 GX_K (iNodeX,iGF_Gm_dd_11,iZ3,iZ4,iZ2), &
                 GX_K (iNodeX,iGF_Gm_dd_22,iZ3,iZ4,iZ2), &
                 GX_K (iNodeX,iGF_Gm_dd_33,iZ3,iZ4,iZ2), &
-                GX_F(iNodeX,iGF_Alpha   ,iZ3,iZ4,iZ2), &
-                GX_F(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
-                GX_F(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
-                GX_F(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2) )
+                GX_K(iNodeX,iGF_Alpha   ,iZ3,iZ4,iZ2), &
+                GX_K(iNodeX,iGF_Beta_1  ,iZ3,iZ4,iZ2), &
+                GX_K(iNodeX,iGF_Beta_2  ,iZ3,iZ4,iZ2), &
+                GX_K(iNodeX,iGF_Beta_3  ,iZ3,iZ4,iZ2) )
 
         DO iCR = 1, nCR
 
@@ -778,7 +770,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
     END ASSOCIATE ! dZ1, etc.
 
   END SUBROUTINE ComputeIncrement_Divergence_X1
