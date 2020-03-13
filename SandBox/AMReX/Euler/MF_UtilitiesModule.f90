@@ -170,13 +170,13 @@ CONTAINS
 
   SUBROUTINE WriteRawDataToFile( GEOM, MF_uGF, MF_uCF )
 
-    TYPE(amrex_geometry), INTENT(in) :: GEOM   (0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
 
     INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER            :: iLevel, nCompGF, nCompCF
-    INTEGER            :: iX1, iX2, iX3, iNode, iCF, iGF, nLines
+    INTEGER            :: iX1, iX2, iX3, iNode, iCF, iGF
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
     CHARACTER(LEN=16)  :: FMT
@@ -298,13 +298,9 @@ CONTAINS
       WRITE(101,*) FMT
       WRITE(102,*) FMT
 
-      nLines = 0
-
       DO iX3 = 1-swX(3), nX(3)+swX(3)
       DO iX2 = 1-swX(2), nX(2)+swX(2)
       DO iX1 = 1-swX(1), nX(1)+swX(1)
-
-        nLines = nLines + 1
 
         CALL ComputePrimitive_Euler &
                ( U(:,iX1,iX2,iX3,iCF_D ),       &
@@ -324,7 +320,7 @@ CONTAINS
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         CALL ComputePressureFromPrimitive &
-               ( P(:,iPF_D ), P(:,iPF_E ), P(:,iPF_Ne), Pressure(:) )
+               ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), Pressure(:) )
 
         WRITE(100,TRIM(FMT)) P(:,iPF_D )
         WRITE(101,TRIM(FMT)) P(:,iPF_V1)
@@ -333,10 +329,6 @@ CONTAINS
       END DO
       END DO
       END DO
-
-      WRITE(100,*) nLines
-      WRITE(101,*) nLines
-      WRITE(102,*) nLines
 
       CLOSE( 102 )
       CLOSE( 101 )
