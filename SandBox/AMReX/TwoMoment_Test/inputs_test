@@ -5,7 +5,7 @@
 DEBUG = 0
 
 thornado.ProgramName = "SineWaveStreaming"
-thornado.Scheme = "SSPRK2"
+thornado.Scheme = "IMEX_ARS_111"
 
 thornado.t_end     = 1.0     # Final time
 thornado.dt_wrt    = -0.1      # Write time interval
@@ -20,6 +20,9 @@ thornado.swE       = 01
 thornado.bcE       = 0
 thornado.eL        = 0.0           # Lower energy domain size
 thornado.eR        = 1.0           # Lower energy domain size
+thornado.D_0     = 0.0
+thornado.Chi     = 0.0
+thornado.Sigma     = 100.0
 thornado.zoomE     = 1.0
 thornado.nSpecies  = 1
 thornado.iCycleD   = 0010     # MOD this number to display info
@@ -34,8 +37,8 @@ geometry.prob_hi     = 1.0 1.0 1.0         # High energy domain size
 geometry.is_periodic = 1   1   1
 
 
-amr.n_cell            = 256 2 01 # Number of cells in each dimension
-amr.max_grid_size_x   = 64
+amr.n_cell            = 8 2 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 8
 amr.max_grid_size_y   = 2
 amr.blocking_factor_x = 1
 amr.blocking_factor_y = 1
