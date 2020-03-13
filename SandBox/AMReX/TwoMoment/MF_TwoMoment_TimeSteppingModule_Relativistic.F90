@@ -34,7 +34,9 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies
   USE MF_TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
-    MF_TwoMoment_ComputeIncrement
+    MF_TwoMoment_ComputeIncrement_Explicit
+  USE MF_TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
+    MF_TwoMoment_ComputeIncrement_Implicit
 
   ! --- Local Modules ---
   USE MyAmrModule,                      ONLY: &
@@ -52,7 +54,8 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
   REAL(AR),            ALLOCATABLE :: c_IM(:), w_IM(:), a_IM(:,:)
   REAL(AR),            ALLOCATABLE :: c_EX(:), w_EX(:), a_EX(:,:)
   TYPE(amrex_multifab), DIMENSION(:),   ALLOCATABLE :: MF_U
-  TYPE(amrex_multifab), DIMENSION(:,:), ALLOCATABLE :: MF_DU
+  TYPE(amrex_multifab), DIMENSION(:,:), ALLOCATABLE :: MF_DU_Im
+  TYPE(amrex_multifab), DIMENSION(:,:), ALLOCATABLE :: MF_DU_Ex
   REAL(AR),            ALLOCATABLE :: U0(:,:,:,:,:,:,:)
   REAL(AR),            ALLOCATABLE :: Ui(:,:,:,:,:,:,:)
   TYPE(StageDataType), ALLOCATABLE :: StageData(:)
@@ -98,7 +101,8 @@ CONTAINS
 
       DO iS = 1, nStages
 
-        CALL MF_DU(iLevel,iS) % setval( 0.0_AR )
+        CALL MF_DU_Ex(iLevel,iS) % setval( 0.0_AR )
+        CALL MF_DU_Im(iLevel,iS) % setval( 0.0_AR )
 
       END DO
 
@@ -151,13 +155,28 @@ CONTAINS
         IF( a_EX(iS,jS) .NE. 0.0_AR )THEN
           CALL MF_U(iLevel) &
                    % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
-                              dt(iLevel) * a_EX(iS,jS), MF_DU(iLevel,jS), 1, &
+                              dt(iLevel) * a_EX(iS,jS), MF_DU_Ex(iLevel,jS), 1, &
                               1, MF_U(iLevel) % nComp(), 0 )
+        END IF
 
+        IF( a_IM(iS,jS) .NE. 0.0_AR )THEN
+          CALL MF_U(iLevel) &
+                   % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
+                              dt(iLevel) * a_IM(iS,jS), MF_DU_Im(iLevel,jS), 1, &
+                              1, MF_U(iLevel) % nComp(), 0 )
         END IF
 
       END DO ! jS = 1, iS - 1
 
+      IF( ANY( a_IM(:,iS) .NE. 0.0_AR ) .OR. ( w_IM(iS) .NE. 0.0_AR ) )THEN
+
+        ! --- Explicit Solve ---
+        IF (Verbose) THEN
+          PRINT*, "    IMPLICIT: ", iS
+        END IF
+        CALL MF_TwoMoment_ComputeIncrement_Implicit &
+               ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Im(:,iS),dt(iLevel), Verbose_Option = Verbose )
+      END IF
 
       IF( ANY( a_EX(:,iS) .NE. 0.0_AR ) .OR. ( w_EX(iS) .NE. 0.0_AR ) )THEN
 
@@ -165,9 +184,8 @@ CONTAINS
         IF (Verbose) THEN
           PRINT*, "    EXPLICIT: ", iS
         END IF
-        CALL MF_TwoMoment_ComputeIncrement &
-               ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU(:,iS), &
-                 Verbose_Option = Verbose )
+        CALL MF_TwoMoment_ComputeIncrement_Explicit &
+               ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Ex(:,iS), Verbose_Option = Verbose )
       END IF
 
     END DO ! iS = 1, nStages
@@ -188,11 +206,20 @@ CONTAINS
       DO iS = 1, nStages
 
 
+        IF( w_IM(iS) .NE. 0.0_AR )THEN
+
+          CALL MF_uCR(iLevel) &
+                 % LinComb( 1.0_AR,              MF_uCR(iLevel),    1, &
+                            dt(iLevel) * w_IM(iS), MF_DU_Im(iLevel,iS), 1, &
+                            1, MF_uCR(iLevel) % nComp(), 0 )
+
+        END IF
+
         IF( w_EX(iS) .NE. 0.0_AR )THEN
 
           CALL MF_uCR(iLevel) &
                  % LinComb( 1.0_AR,              MF_uCR(iLevel),    1, &
-                            dt(iLevel) * w_EX(iS), MF_DU(iLevel,iS), 1, &
+                            dt(iLevel) * w_EX(iS), MF_DU_Ex(iLevel,iS), 1, &
                             1, MF_uCR(iLevel) % nComp(), 0 )
 
         END IF
@@ -221,7 +248,8 @@ CONTAINS
     CALL Initialize_IMEX_RK( Scheme, Verbose_Option )
 
     ALLOCATE( MF_U(0:nLevels-1) )
-    ALLOCATE( MF_DU(0:nLevels-1,1:nStages) )
+    ALLOCATE( MF_DU_Ex(0:nLevels-1,1:nStages) )
+    ALLOCATE( MF_DU_Im(0:nLevels-1,1:nStages) )
 
     BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
@@ -233,7 +261,9 @@ CONTAINS
       DO iS = 1, nStages
 
         CALL amrex_multifab_build &
-               ( MF_DU(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, 0 )
+               ( MF_DU_Ex(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, 0 )
+        CALL amrex_multifab_build &
+               ( MF_DU_Im(iLevel,iS), BA(iLevel), DM(iLevel), nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, 0 )
 
       END DO
 
@@ -255,14 +285,16 @@ CONTAINS
 
       DO iS = 1, nStages
 
-        CALL amrex_multifab_destroy( MF_DU(iLevel,iS) )
+        CALL amrex_multifab_destroy( MF_DU_Ex(iLevel,iS) )
+        CALL amrex_multifab_destroy( MF_DU_Im(iLevel,iS) )
 
       END DO
 
     END DO
 
     DEALLOCATE( MF_U )
-    DEALLOCATE( MF_DU )
+    DEALLOCATE( MF_DU_Ex)
+    DEALLOCATE( MF_DU_Im)
 
   END SUBROUTINE MF_FinalizeField_IMEX_RK
 

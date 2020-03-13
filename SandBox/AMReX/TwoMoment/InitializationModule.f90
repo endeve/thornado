@@ -44,6 +44,8 @@ MODULE InitializationModule
     nDOFZ,                  &
     iZ_B0,                  &
     iZ_E0,                  &
+    iZ_B1,                  &
+    iZ_E1,                  &
     iE_B0,                  &
     iE_E0,                  &
     iE_B1,                  &
@@ -89,6 +91,9 @@ MODULE InitializationModule
     nCF,                     &
     nAF,                     &
     CreateFluidFields
+  USE TwoMoment_OpacityModule_Relativistic,  ONLY: &
+    CreateOpacities,         &
+    SetOpacities
   USE PolynomialBasisMappingModule,     ONLY: &
     InitializePolynomialBasisMapping
   USE PolynomialBasisModule_Lagrange,   ONLY: &
@@ -142,6 +147,9 @@ MODULE InitializationModule
     nSpecies,                  &
     V_0,                       &
     Gamma_IDEAL,               &
+    D_0,                       &
+    Chi,                       &
+    Sigma,                     &
     EquationOfState,           &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
@@ -310,6 +318,11 @@ CONTAINS
 
 
     CALL InitializeClosure_TwoMoment
+
+  CALL CreateOpacities &
+         ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = amrex_parallel_ioprocessor() )
+
+  CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma )
 
 
     CALL WriteFieldsAMReX_PlotFile &

@@ -42,13 +42,13 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_TwoMoment_ComputeIncrement
+  PUBLIC :: MF_TwoMoment_ComputeIncrement_Explicit
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_TwoMoment_ComputeIncrement( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
+  SUBROUTINE MF_TwoMoment_ComputeIncrement_Explicit( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
@@ -73,6 +73,15 @@ CONTAINS
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i
+
+
+    LOGICAL :: Verbose
+
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
+
 
     DO iLevel = 0, nLevels-1
 
@@ -170,7 +179,7 @@ CONTAINS
 
 
         CALL ComputeIncrement_TwoMoment_Explicit &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, Verbose_Option = Verbose_Option )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, Verbose_Option = Verbose )
 
         CALL thornado2AMReX &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, iX_B0, iX_E0, &
@@ -188,7 +197,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_TwoMoment_ComputeIncrement
+  END SUBROUTINE MF_TwoMoment_ComputeIncrement_Explicit
 
 
 END MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
