@@ -44,6 +44,7 @@ MODULE MyAmrModule
   INTEGER,           ALLOCATABLE :: nX(:), swX(:), bcX(:)
   REAL(AR),          ALLOCATABLE :: xL(:), xR(:)
   REAL(AR)                       :: eL, eR, zoomE
+  REAL(AR)                       :: D_0, Chi, Sigma
   CHARACTER(LEN=:),  ALLOCATABLE :: ProgramName
   CHARACTER(LEN=:),  ALLOCATABLE :: Scheme
   CHARACTER(LEN=32), SAVE        :: CoordSys
@@ -110,6 +111,9 @@ CONTAINS
       CALL PP % get   ( 'bcE',              bcE )
       CALL PP % get   ( 'eL',  eL )
       CALL PP % get   ( 'eR',  eR )  
+      CALL PP % get   ( 'D_0',  D_0 )
+      CALL PP % get   ( 'Chi',  Chi )
+      CALL PP % get   ( 'Sigma',  Sigma )
       CALL PP % get   ( 'zoomE',  zoomE )
       CALL PP % get   ( 'nSpecies',        nSpecies )
       CALL PP % get   ( 'iCycleD',          iCycleD )

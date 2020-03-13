@@ -38,10 +38,21 @@ ComputeEigensystem_NuclearEOS: \
 	ComputeEigensystem_NuclearEOS.o \
 	$(LIBRARIES)
 
+EigensystemTest: \
+	$(weaklib) \
+	$(thornado) \
+        EigensystemTest.o
+	$(FLINKER) $(FLAGS) -o EigensystemTest_$(MACHINE) \
+        $(weaklib) \
+        $(thornado) \
+        EigensystemTest.o \
+        $(LIBRARIES)
+
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
 	rm -f ApplicationDriver_$(MACHINE)
 	rm -f ComputeEigensystem_NuclearEOS_$(MACHINE)
+	rm -f EigensystemTest_$(MACHINE)
 	rm -rf *.dSYM

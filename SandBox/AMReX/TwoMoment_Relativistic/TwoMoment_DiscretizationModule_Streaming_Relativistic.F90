@@ -114,7 +114,11 @@ CONTAINS
 
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
-    
+    LOGICAL :: Verbose
+
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option    
    
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
@@ -156,7 +160,7 @@ CONTAINS
 
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
-             Verbose_Option = Verbose_Option )
+             Verbose_Option = Verbose )
     ! --- Multiply Inverse Mass Matrix ---
 
     DO iS  = 1, nSpecies
