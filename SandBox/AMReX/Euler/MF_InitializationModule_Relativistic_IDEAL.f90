@@ -72,10 +72,12 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
   ! --- Local Modules ---
 
   USE MyAmrModule, ONLY: &
-    nLevels, &
-    xL,      &
-    xR,      &
-    Gamma_IDEAL
+    nLevels,            &
+    xL,                 &
+    xR,                 &
+    Gamma_IDEAL,        &
+    InitializeFromFile, &
+    OutputDataFileName
 
   IMPLICIT NONE
   PRIVATE
@@ -1073,7 +1075,7 @@ CONTAINS
     LOGICAL               :: FirstPreShockElement = .FALSE.
     INTEGER               :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(AR), ALLOCATABLE :: D(:,:), V(:,:), P(:,:)
-    LOGICAL               :: ApplyPerturbation, InitializeFromFile
+    LOGICAL               :: ApplyPerturbation
     INTEGER               :: PerturbationOrder
     REAL(AR)              :: PerturbationAmplitude, &
                              rPerturbationInner, rPerturbationOuter
@@ -1083,7 +1085,6 @@ CONTAINS
     PerturbationAmplitude = Zero
     rPerturbationInner    = Zero
     rPerturbationOuter    = Zero
-    InitializeFromFile    = .FALSE.
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % get  ( 'Mass'                 , MassPNS               )
       CALL PP % get  ( 'AccretionRate'        , AccretionRate         )
@@ -1094,7 +1095,6 @@ CONTAINS
       CALL PP % query( 'PerturbationAmplitude', PerturbationAmplitude )
       CALL PP % query( 'rPerturbationInner'   , rPerturbationInner    )
       CALL PP % query( 'rPerturbationOuter'   , rPerturbationOuter    )
-      CALL PP % query( 'InitializeFromFile'   , InitializeFromFile    )
     CALL amrex_parmparse_destroy( PP )
 
     MassPNS            = MassPNS            * SolarMass
@@ -1433,26 +1433,18 @@ CONTAINS
     CHARACTER(LEN=16) :: FMT
     INTEGER           :: iX1
 
-    OPEN( UNIT = 100, FILE = 'D.dat' )
-    OPEN( UNIT = 101, FILE = 'V.dat' )
-    OPEN( UNIT = 102, FILE = 'P.dat' )
+    OPEN( UNIT = 100, FILE = TRIM( OutputDataFileName ) )
 
     READ(100,*) FMT
-
-    READ(101,*)
-
-    READ(102,*)
 
     DO iX1 = iX_B1(1), iX_E1(1)
 
       READ(100,TRIM(FMT)) D(:,iX1)
-      READ(101,TRIM(FMT)) V(:,iX1)
-      READ(102,TRIM(FMT)) P(:,iX1)
+      READ(100,TRIM(FMT)) V(:,iX1)
+      READ(100,TRIM(FMT)) P(:,iX1)
 
     END DO
 
-    CLOSE( 102 )
-    CLOSE( 101 )
     CLOSE( 100 )
 
   END SUBROUTINE ReadFluidFieldsFromFile
