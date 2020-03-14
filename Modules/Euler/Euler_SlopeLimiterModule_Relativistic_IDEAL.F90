@@ -377,6 +377,8 @@ CONTAINS
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_22) )
         G_K(iGF_Gm_dd_33) &
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+        G_K(iGF_SqrtGm) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_SqrtGm  ) )
         G_K(iGF_Alpha) &
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Alpha   ) )
         G_K(iGF_Beta_1) &
@@ -900,6 +902,8 @@ CONTAINS
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_22) )
         G_K(iGF_Gm_dd_33) &
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+        G_K(iGF_SqrtGm) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_SqrtGm  ) )
         G_K(iGF_Alpha) &
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Alpha   ) )
         G_K(iGF_Beta_1) &
