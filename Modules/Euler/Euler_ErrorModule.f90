@@ -86,7 +86,7 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'MODULE: Euler_BoundaryConditionsModule'
           WRITE(*,'(2x,A)') &
-            'SUBROUTINE: Euler_ApplyBC_X1'
+            'SUBROUTINE: ApplyBC_Euler_X1'
            WRITE(*,'(2x,A)') &
             'Invalid Boundary Condition for Fluid X1'
           WRITE(*,'(2x,A)') TRIM( Message )
@@ -100,7 +100,7 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'MODULE: Euler_BoundaryConditionsModule'
           WRITE(*,'(2x,A)') &
-            'SUBROUTINE: Euler_ApplyBC_X2'
+            'SUBROUTINE: ApplyBC_Euler_X2'
            WRITE(*,'(2x,A)') &
             'Invalid Boundary Condition for Fluid X2'
           WRITE(*,'(2x,A)') TRIM( Message )
@@ -114,7 +114,7 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'MODULE: Euler_BoundaryConditionsModule'
           WRITE(*,'(2x,A)') &
-            'SUBROUTINE: Euler_ApplyBC_X3'
+            'SUBROUTINE: ApplyBC_Euler_X3'
            WRITE(*,'(2x,A)') &
             'Invalid Boundary Condition for Fluid X3'
           WRITE(*,'(2x,A)') TRIM( Message )
