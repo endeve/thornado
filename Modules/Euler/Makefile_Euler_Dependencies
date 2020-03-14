@@ -53,6 +53,7 @@ Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_Relativistic.o \
+  EquationOfStateModule_IDEAL.o \
   EquationOfStateModule.o \
   TimersModule_Euler.o \
   Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.f90
@@ -94,9 +95,9 @@ Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
-  FluidFieldsModule.o \
-  GeometryComputationModule.o \
   GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  FluidFieldsModule.o \
   TimersModule_Euler.o \
   Euler_ErrorModule.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.f90
