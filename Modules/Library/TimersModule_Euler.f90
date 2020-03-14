@@ -104,10 +104,8 @@ CONTAINS
     CHARACTER(64) :: OverallTimeDG = '(10x,A,ES13.6E3,A,F6.3,A,F7.3,A)'
     CHARACTER(64) :: TimeDG        = '(12x,A,ES13.6E3,A,F6.3,A,F6.3,A)'
 
-    CHARACTER(64) :: OverallTimeAux = '(12x,A,ES13.6E3,A,F6.3,A,F7.3,A)'
     CHARACTER(64) :: TimeAux        = '(12x,A,ES13.6E3,A,F6.3,A,F6.3,A)'
 
-    CHARACTER(64) :: OverallTimeCPU = '(12x,A,ES13.6E3,A,F6.3,A,F7.3,A)'
     CHARACTER(64) :: TimeCPU        = '(12x,A,ES13.6E3,A,F6.3,A,F6.3,A)'
 
     CHARACTER(64) :: OverallTimeLim = '(10x,A,ES13.6E3,A,F6.3,A,F7.3,A)'
