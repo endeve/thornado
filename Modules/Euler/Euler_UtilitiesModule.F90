@@ -1,12 +1,12 @@
 MODULE Euler_UtilitiesModule
 
-  USE KindModule, ONLY: &
+  USE KindModule,           ONLY: &
     DP
-  USE ProgramHeaderModule, ONLY: &
+  USE ProgramHeaderModule,  ONLY: &
     nDOFX
   USE GeometryFieldsModule, ONLY: &
     nGF
-  USE FluidFieldsModule, ONLY: &
+  USE FluidFieldsModule,    ONLY: &
     nCF
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
@@ -45,6 +45,7 @@ MODULE Euler_UtilitiesModule
     MODULE PROCEDURE ComputePrimitive_Scalar
     MODULE PROCEDURE ComputePrimitive_Vector
   END INTERFACE ComputePrimitive_Euler
+
 
 CONTAINS
 

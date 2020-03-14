@@ -37,9 +37,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     iGF_Beta_3,   &
     iGF_SqrtGm
   USE FluidFieldsModule,                                          ONLY: &
-    nCF,   &
-    iCF_D, &
-    iCF_E, &
+    nCF, &
     iDF_TCI
   USE Euler_BoundaryConditionsModule,                             ONLY: &
     ApplyBoundaryConditions_Euler
@@ -51,7 +49,8 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     DetectTroubledCells_Euler,             &
     DetectShocks_Euler
   USE TimersModule_Euler,                                         ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler,  &
     Timer_Euler_SlopeLimiter
 
   IMPLICIT NONE
@@ -80,6 +79,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   REAL(DP) :: I_6x6(1:6,1:6)
 
   LOGICAL :: DEBUG = .FALSE.
+
 
 CONTAINS
 
@@ -371,9 +371,13 @@ CONTAINS
         ! --- Cell Average of Geometry (Spatial Metric, Lapse Function,
         !     and Shift Vector) ---
 
-        DO iGF = iGF_Gm_dd_11, iGF_Beta_3
-          G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF) )
-        END DO
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_11) )
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_22) )
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Alpha   ) )
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_1  ) )
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_2  ) )
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_3  ) )
 
         ! --- Compute Eigenvectors ---
 
@@ -541,7 +545,7 @@ CONTAINS
   SUBROUTINE InitializeSlopeLimiter_Euler_WENO
 
     INTEGER  :: iNodeX, iNodeX1, iNodeX2, iGridPt
-    REAL(DP) :: OrthonormalBasis1D(1:nNodesX(1),0:nNodesX(1)-1,0:nNodesX(1)-1)
+    REAL(DP) :: OrthonormalBasis1D(1:nNodes,0:nNodes-1,0:nNodes-1)
     REAL(DP) :: eta
 
     IF( nDimsX .GT. 2 )THEN
@@ -553,18 +557,18 @@ CONTAINS
 
     END  IF
 
-    IF( nNodesX(1) .GT. 3 )THEN
+    IF( nNodes .GT. 3 )THEN
 
       WRITE(*,*)
       WRITE(*,'(A)') &
-         'WENO slope-limiter not implemented for nNodesX(1) > 3. Stopping...'
+         'WENO slope-limiter not implemented for nNodes > 3. Stopping...'
       STOP
 
     END  IF
 
-    IF( nNodesX(1) .EQ. 2 )THEN
+    IF( nNodes .EQ. 2 )THEN
 
-      DO iNodeX = 1, nNodesX(1)
+      DO iNodeX = 1, nNodes
 
         eta = MeshX(1) % Nodes( iNodeX )
 
@@ -582,9 +586,9 @@ CONTAINS
 
       END DO
 
-    ELSE IF( nNodesX(1) .EQ. 3 )THEN
+    ELSE IF( nNodes .EQ. 3 )THEN
 
-      DO iNodeX = 1, nNodesX(1)
+      DO iNodeX = 1, nNodes
 
         eta = MeshX(1) % Nodes( iNodeX )
 
@@ -620,7 +624,7 @@ CONTAINS
 
     IF( nDimsX .EQ. 1 )THEN
 
-      ALLOCATE( OrthonormalBasis(1:nNodesX(1),0:nNodesX(1)-1,0:nNodesX(1)-1) )
+      ALLOCATE( OrthonormalBasis(1:nNodes,0:nNodes-1,0:nNodes-1) )
 
       OrthonormalBasis = OrthonormalBasis1D
 
@@ -628,11 +632,11 @@ CONTAINS
 
       ALLOCATE( OrthonormalBasis(1:nDOFX, &
                                  0:nDOFX-1, &
-                                 0:nNodesX(1)*(nNodesX(1)+1)/2-1) )
+                                 0:nNodes*(nNodes+1)/2-1) )
 
       OrthonormalBasis = Zero
 
-      IF     ( nNodesX(1) .EQ. 2 )THEN
+      IF     ( nNodes .EQ. 2 )THEN
 
         DO iNodeX = 1, nDOFX
 
@@ -656,7 +660,7 @@ CONTAINS
 
         END DO
 
-      ELSE IF( nNodesX(1) .EQ. 3 )THEN
+      ELSE IF( nNodes .EQ. 3 )THEN
 
         DO iNodeX = 1, nDOFX
 
@@ -781,17 +785,17 @@ CONTAINS
                             iX_B0(3):iX_E0(3))
 
     ! --- WENO Limiter ---
-    REAL(DP) :: q  (nDOFX,0:nNodesX(1)-1,nCF)
-    REAL(DP) :: qX1(nDOFX,0:nNodesX(1)-1,nCF)
-    REAL(DP) :: qX2(nDOFX,0:nNodesX(1)-1,nCF)
-    REAL(DP) :: LinearWeights(2*(nNodesX(1)-1))
-    REAL(DP) :: NonLinearWeights(2*(nNodesX(1)-1),nCF)
-    REAL(DP) :: SmoothnessIndicators(2*(nNodesX(1)-1),nCF)
-    REAL(DP) :: pX1(nDOFX,2*(nNodesX(1)-1),nCF)
-    REAL(DP) :: pX2(nDOFX,2*(nNodesX(1)-1),nCF)
+    REAL(DP) :: q  (nDOFX,0:nNodes-1,nCF)
+    REAL(DP) :: qX1(nDOFX,0:nNodes-1,nCF)
+    REAL(DP) :: qX2(nDOFX,0:nNodes-1,nCF)
+    REAL(DP) :: LinearWeights(2*(nNodes-1))
+    REAL(DP) :: NonLinearWeights(2*(nNodes-1),nCF)
+    REAL(DP) :: SmoothnessIndicators(2*(nNodes-1),nCF)
+    REAL(DP) :: pX1(nDOFX,2*(nNodes-1),nCF)
+    REAL(DP) :: pX2(nDOFX,2*(nNodes-1),nCF)
     REAL(DP) :: pX1_new(nDOFX,nCF)
     REAL(DP) :: pX2_new(nDOFX,nCF)
-    REAL(DP) :: pCoeffs(2*(nNodesX(1)-1),nNodesX(1),nCF)
+    REAL(DP) :: pCoeffs(2*(nNodes-1),nNodes,nCF)
     INTEGER  :: nPspace, k
 
     ! --- Characteristic limiting ---
@@ -806,7 +810,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
-    k = nNodesX(1) - 1
+    k = nNodes - 1
 
     ! --- Get linear weights ---
     DO iNodeX = 1, 2*k
@@ -883,11 +887,13 @@ CONTAINS
 
       IF( UseCharacteristicLimiting )THEN
 
-        DO iGF = iGF_Gm_dd_11, iGF_Beta_3
-
-          G_K(iGF) = SUM( WeightsX_q * G(:,iX1,iX2,iX3,iGF) )
-
-        END DO
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_11) )
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_22) )
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Alpha   ) )
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_1  ) )
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_2  ) )
+        G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_3  ) )
 
         CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
                ( 1, G_K, U_M(0,:,iX1,iX2,iX3), R_X1, invR_X1 )
@@ -900,7 +906,7 @@ CONTAINS
 
       DO iCF = 1, nCF
 
-        DO iNodeX = 0, nNodesX(1)-1 ! Loop over basis polynomials
+        DO iNodeX = 0, nNodes-1 ! Loop over basis polynomials
 
           nPspace = UpperLimit_pSpace( iNodeX )
 
@@ -918,7 +924,7 @@ CONTAINS
 
       IF( UseCharacteristicLimiting )THEN
 
-        DO iNodeX = 0, nNodesX(1)-1
+        DO iNodeX = 0, nNodes-1
 
           DO iGridPt = 1, nDOFX
 
@@ -930,7 +936,7 @@ CONTAINS
 
         IF( nDimsX .GT. 1 )THEN
 
-          DO iNodeX = 0, nNodesX(1)-1
+          DO iNodeX = 0, nNodes-1
 
             DO iGridPt = 1, nDOFX
 
@@ -1021,7 +1027,7 @@ CONTAINS
 
       ! --- 3rd order ---
 
-      IF( nNodesX(1) .GT. 2 )THEN
+      IF( nNodes .GT. 2 )THEN
 
         DO iCF = 1, nCF
 

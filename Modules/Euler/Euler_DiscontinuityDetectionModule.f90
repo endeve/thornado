@@ -6,9 +6,8 @@ MODULE Euler_DiscontinuityDetectionModule
     One,  &
     Two
   USE ProgramHeaderModule,            ONLY: &
-    nDOFX,   &
-    nDimsX,  &
-    nNodesX, &
+    nDOFX,  &
+    nDimsX, &
     nNodes
   USE ReferenceElementModuleX,        ONLY: &
     NodeNumberTableX, &
@@ -314,7 +313,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iNodeX1, iNodeX2, iNodeX3, iNodeX
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF
     REAL(DP) :: V_K
     REAL(DP) :: uPF_K(nPF)
     REAL(DP) :: uCF_K(nCF)

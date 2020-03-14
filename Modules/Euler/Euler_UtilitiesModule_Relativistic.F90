@@ -8,28 +8,59 @@
 !> @todo Find optimal values for parameters TolP and TolFunP.
 MODULE Euler_UtilitiesModule_Relativistic
 
-  USE KindModule, ONLY: &
-    DP, Zero, SqrtTiny, Half, One, Two, Three, Four
-  USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX
+  USE KindModule,            ONLY: &
+    DP,       &
+    Zero,     &
+    SqrtTiny, &
+    Half,     &
+    One,      &
+    Two,      &
+    Three,    &
+    Four
+  USE ProgramHeaderModule,   ONLY: &
+    nDOFX, &
+    nDimsX
   USE MeshModule, ONLY: &
     MeshX
-  USE GeometryFieldsModule, ONLY: &
-    nGF, iGF_h_1, iGF_h_2, iGF_h_3,           &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
-    iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
-  USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, iAF_Gm, iAF_Cs
+  USE GeometryFieldsModule,  ONLY: &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
+    iGF_Alpha,    &
+    iGF_Beta_1,   &
+    iGF_Beta_2,   &
+    iGF_Beta_3
+  USE FluidFieldsModule,     ONLY: &
+    nCF,    &
+    iCF_D,  &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E,  &
+    iCF_Ne, &
+    nPF,    &
+    iPF_D,  &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E,  &
+    iPF_Ne, &
+    iAF_P,  &
+    iAF_T,  &
+    iAF_Ye, &
+    iAF_S,  &
+    iAF_E,  &
+    iAF_Gm, &
+    iAF_Cs
   USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
     ComputeAuxiliary_Fluid,         &
     ComputePressureFromSpecificInternalEnergy
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+  USE TimersModule_Euler,    ONLY: &
+    TimersStart_Euler, &
+    TimersStop_Euler,  &
     Timer_Euler_ComputeTimeStep
-  USE Euler_ErrorModule, ONLY: &
+  USE Euler_ErrorModule,     ONLY: &
     DescribeError_Euler
 
   IMPLICIT NONE
@@ -73,15 +104,16 @@ MODULE Euler_UtilitiesModule_Relativistic
 
 CONTAINS
 
+
   !> Compute the primitive variables from the conserved variables,
   !> a la Rezzolla & Zanotti, Relativistic Hydrodynamics, 2013, Appendix D.
   !> Use bisection algorithm to obtain an initial guess for the pressure,
   !> then use Newton-Raphson method hone-in on the actual pressure
   !> @todo Decide whether or not to send in previous pressure as initial guess.
   SUBROUTINE ComputePrimitive_Scalar &
-              ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-                PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+    ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
     REAL(DP), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
     REAL(DP), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
@@ -227,9 +259,9 @@ CONTAINS
 
 
   SUBROUTINE ComputePrimitive_Vector &
-              ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-                PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+    ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
     REAL(DP), INTENT(in)  :: CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), &
                              CF_E(:), CF_Ne(:)
@@ -1174,7 +1206,7 @@ CONTAINS
   !> @param Shift The third contravariant component of the shift-vector.
   !> @param Gm33 The third covariant component of the spatial three-metric.
   FUNCTION NumericalFlux_X3_HLLC_Euler_Relativistic &
-      ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift )
+    ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift )
 
     ! --- Shift is the third contravariant component of the shift-vector
     !     Gm is the third covariant component of the spatial three-metric ---
