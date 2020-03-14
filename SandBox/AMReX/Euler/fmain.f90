@@ -34,7 +34,7 @@ PROGRAM main
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     MF_ApplyPositivityLimiter_Euler
   USE MF_Euler_dgDiscretizationModule,  ONLY: &
-    MF_Euler_ComputeIncrement
+    MF_ComputeIncrement_Euler
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
     MF_UpdateFluid_SSPRK
   USE FinalizationModule,               ONLY: &
@@ -133,7 +133,7 @@ PROGRAM main
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
     CALL MF_UpdateFluid_SSPRK &
-           ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_Euler_ComputeIncrement )
+           ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_ComputeIncrement_Euler )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 

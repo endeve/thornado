@@ -228,14 +228,14 @@ CONTAINS
 
 
   SUBROUTINE MF_UpdateFluid_SSPRK &
-    ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_Euler_ComputeIncrement )
+    ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_ComputeIncrement_Euler )
 
     REAL(AR),             INTENT(in   ) :: t(0:nLevels-1), dt(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
     TYPE(amrex_geometry), INTENT(in   ) :: GEOM  (0:nLevels-1)
-    PROCEDURE(MF_Euler_Increment)       :: MF_Euler_ComputeIncrement
+    PROCEDURE(MF_Euler_Increment)       :: MF_ComputeIncrement_Euler
 
     INTEGER :: iS, jS
 
@@ -322,9 +322,9 @@ CONTAINS
 
         CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_U )
 
-        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ComputeIncrement'
+        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ComputeIncrement_Euler'
 
-        CALL MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_U, MF_uDF, MF_D(:,iS) )
+        CALL MF_ComputeIncrement_Euler( GEOM, MF_uGF, MF_U, MF_uDF, MF_D(:,iS) )
 
       END IF
 

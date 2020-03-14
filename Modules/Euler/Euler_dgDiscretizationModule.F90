@@ -67,13 +67,13 @@ MODULE Euler_dgDiscretizationModule
 
   INCLUDE 'mpif.h'
 
-  PUBLIC :: Euler_ComputeIncrement_DG_Explicit
+  PUBLIC :: ComputeIncrement_Euler_DG_Explicit
 
 
 CONTAINS
 
 
-  SUBROUTINE Euler_ComputeIncrement_DG_Explicit &
+  SUBROUTINE ComputeIncrement_Euler_DG_Explicit &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SuppressBC_Option )
 
     INTEGER,  INTENT(in)            :: &
@@ -158,7 +158,7 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_dgDiscretization )
 
-  END SUBROUTINE Euler_ComputeIncrement_DG_Explicit
+  END SUBROUTINE ComputeIncrement_Euler_DG_Explicit
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &

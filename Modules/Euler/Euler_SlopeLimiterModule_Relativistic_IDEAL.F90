@@ -267,7 +267,7 @@ CONTAINS
                                 iX_B0(2):iX_E0(2), &
                                 iX_B0(3):iX_E0(3))
     LOGICAL  :: SuppressBC
-    INTEGER  :: iX1, iX2, iX3, iGF, iCF
+    INTEGER  :: iX1, iX2, iX3, iCF
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
     REAL(DP) :: G_K(nGF)
@@ -808,7 +808,6 @@ CONTAINS
     INTEGER  :: nPspace, k
 
     ! --- Characteristic limiting ---
-    INTEGER  :: iGF
     REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
     REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
     REAL(DP) :: G_K(nGF)
