@@ -50,17 +50,20 @@ MODULE MyAmrModule
 
   ! --- thornado ---
   REAL(AR)                       :: t_end, t_wrt, dt_wrt, t_chk, dt_chk
-  REAL(AR),          ALLOCATABLE :: t(:), dt(:)
+  REAL(AR)         , ALLOCATABLE :: t(:), dt(:)
   REAL(AR)                       :: CFL
   INTEGER                        :: nNodes, nStages
   INTEGER                        :: iCycleD, iCycleW, iCycleChk, iRestart
-  INTEGER,           ALLOCATABLE :: nX(:), swX(:), bcX(:)
-  REAL(AR),          ALLOCATABLE :: xL(:), xR(:)
-  CHARACTER(LEN=:),  ALLOCATABLE :: ProgramName
-  CHARACTER(LEN=:),  ALLOCATABLE :: PlotFileBaseName
+  INTEGER          , ALLOCATABLE :: nX(:), swX(:), bcX(:)
+  REAL(AR)         , ALLOCATABLE :: xL(:), xR(:)
+  CHARACTER(LEN=:) , ALLOCATABLE :: ProgramName
+  CHARACTER(LEN=:) , ALLOCATABLE :: PlotFileBaseName
+  CHARACTER(LEN=:) , ALLOCATABLE :: OutputDataFileName
   CHARACTER(LEN=32), SAVE        :: CoordSys
-  LOGICAL,           SAVE        :: UsePhysicalUnits
-  LOGICAL,           SAVE        :: DEBUG
+  LOGICAL          , SAVE        :: UsePhysicalUnits
+  LOGICAL          , SAVE        :: InitializeFromFile
+  LOGICAL          , SAVE        :: WriteOutputData
+  LOGICAL          , SAVE        :: DEBUG
 
   ! --- Slope limiter ---
   LOGICAL                       :: UseSlopeLimiter
@@ -90,10 +93,10 @@ MODULE MyAmrModule
   INTEGER                                    :: BlockingFactorX2
   INTEGER                                    :: BlockingFactorX3
   INTEGER                                    :: MaxGridSizeX(3)
-  INTEGER,               ALLOCATABLE, SAVE   :: StepNo(:)
-  TYPE(amrex_boxarray),  ALLOCATABLE, PUBLIC :: BA(:)
+  INTEGER              , ALLOCATABLE, SAVE   :: StepNo(:)
+  TYPE(amrex_boxarray) , ALLOCATABLE, PUBLIC :: BA(:)
   TYPE(amrex_distromap), ALLOCATABLE, PUBLIC :: DM(:)
-  TYPE(amrex_geometry),  ALLOCATABLE, PUBLIC :: GEOM(:)
+  TYPE(amrex_geometry) , ALLOCATABLE, PUBLIC :: GEOM(:)
 
 
 CONTAINS
@@ -118,25 +121,31 @@ CONTAINS
       CALL PP % query( 'DEBUG', DEBUG )
     CALL amrex_parmparse_destroy( PP )
 
-    UsePhysicalUnits = .FALSE.
-    PlotFileBaseName = 'thornado'
+    UsePhysicalUnits   = .FALSE.
+    PlotFileBaseName   = 'thornado'
+    WriteOutputData    = .FALSE.
+    InitializeFromFile = .FALSE.
+    OutputDataFileName = 'OutputData.dat'
     ! --- thornado paramaters thornado.* ---
     CALL amrex_parmparse_build( PP, 'thornado' )
-      CALL PP % get   ( 'dt_wrt',           dt_wrt )
-      CALL PP % get   ( 'dt_chk',           dt_chk )
-      CALL PP % get   ( 't_end',            t_end )
-      CALL PP % get   ( 'nNodes',           nNodes )
-      CALL PP % get   ( 'nStages',          nStages )
-      CALL PP % get   ( 'CFL',              CFL )
-      CALL PP % get   ( 'ProgramName',      ProgramName )
-      CALL PP % getarr( 'bcX',              bcX )
-      CALL PP % getarr( 'swX',              swX )
-      CALL PP % get   ( 'iCycleD',          iCycleD )
-      CALL PP % get   ( 'iCycleW',          iCycleW )
-      CALL PP % get   ( 'iCycleChk',        iCycleChk )
-      CALL PP % get   ( 'iRestart',         iRestart )
-      CALL PP % query ( 'UsePhysicalUnits', UsePhysicalUnits )
-      CALL PP % query ( 'PlotFileBaseName', PlotFileBaseName )
+      CALL PP % get   ( 'dt_wrt'            , dt_wrt             )
+      CALL PP % get   ( 'dt_chk'            , dt_chk             )
+      CALL PP % get   ( 't_end'             , t_end              )
+      CALL PP % get   ( 'nNodes'            , nNodes             )
+      CALL PP % get   ( 'nStages'           , nStages            )
+      CALL PP % get   ( 'CFL'               , CFL                )
+      CALL PP % get   ( 'ProgramName'       , ProgramName        )
+      CALL PP % getarr( 'bcX'               , bcX                )
+      CALL PP % getarr( 'swX'               , swX                )
+      CALL PP % get   ( 'iCycleD'           , iCycleD            )
+      CALL PP % get   ( 'iCycleW'           , iCycleW            )
+      CALL PP % get   ( 'iCycleChk'         , iCycleChk          )
+      CALL PP % get   ( 'iRestart'          , iRestart           )
+      CALL PP % query ( 'UsePhysicalUnits'  , UsePhysicalUnits   )
+      CALL PP % query ( 'PlotFileBaseName'  , PlotFileBaseName   )
+      CALL PP % query ( 'WriteOutputData'   , WriteOutputData    )
+      CALL PP % query ( 'InitializeFromFile', InitializeFromFile )
+      CALL PP % query ( 'OutputDataFileName', OutputDataFileName )
     CALL amrex_parmparse_destroy( PP )
 
     IF( iCycleW .GT. 0 .AND. dt_wrt .GT. Zero )THEN
@@ -159,9 +168,9 @@ CONTAINS
 
     ! --- Parameters geometry.* ---
     CALL amrex_parmparse_build( PP, 'geometry' )
-      CALL PP % get   ( 'coord_sys',  coord_sys )
-      CALL PP % getarr( 'prob_lo',    xL )
-      CALL PP % getarr( 'prob_hi',    xR )
+      CALL PP % get   ( 'coord_sys', coord_sys )
+      CALL PP % getarr( 'prob_lo'  , xL        )
+      CALL PP % getarr( 'prob_hi'  , xR        )
     CALL amrex_parmparse_destroy( PP )
 
     IF     ( coord_sys .EQ. 0 )THEN
@@ -210,15 +219,16 @@ CONTAINS
     BlockingFactorX2 = 1
     BlockingFactorX3 = 1
     CALL amrex_parmparse_build( PP, 'amr' )
-      CALL PP % getarr( 'n_cell',            nX )
-      CALL PP % query ( 'max_grid_size_x',   MaxGridSizeX1 )
-      CALL PP % query ( 'max_grid_size_y',   MaxGridSizeX2 )
-      CALL PP % query ( 'max_grid_size_z',   MaxGridSizeX3 )
+      CALL PP % getarr( 'n_cell'           , nX               )
+      CALL PP % query ( 'max_grid_size_x'  , MaxGridSizeX1    )
+      CALL PP % query ( 'max_grid_size_y'  , MaxGridSizeX2    )
+      CALL PP % query ( 'max_grid_size_z'  , MaxGridSizeX3    )
       CALL PP % query ( 'blocking_factor_x', BlockingFactorX1 )
       CALL PP % query ( 'blocking_factor_y', BlockingFactorX2 )
       CALL PP % query ( 'blocking_factor_z', BlockingFactorX3 )
-      CALL PP % get   ( 'max_level',         MaxLevel )
+      CALL PP % get   ( 'max_level'        , MaxLevel         )
     CALL amrex_parmparse_destroy( PP )
+
     MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
     nLevels = MaxLevel + 1
 
@@ -233,13 +243,13 @@ CONTAINS
     LimiterThresholdParameter = 0.03_AR
     UseConservativeCorrection = .TRUE.
     CALL amrex_parmparse_build( PP, 'SL' )
-      CALL PP % query( 'UseSlopeLimiter',           UseSlopeLimiter )
-      CALL PP % query( 'SlopeLimiterMethod',        SlopeLimiterMethod )
-      CALL PP % query( 'BetaTVD',                   BetaTVD )
-      CALL PP % query( 'BetaTVB',                   BetaTVB )
-      CALL PP % query( 'SlopeTolerance',            SlopeTolerance )
+      CALL PP % query( 'UseSlopeLimiter'          , UseSlopeLimiter           )
+      CALL PP % query( 'SlopeLimiterMethod'       , SlopeLimiterMethod        )
+      CALL PP % query( 'BetaTVD'                  , BetaTVD                   )
+      CALL PP % query( 'BetaTVB'                  , BetaTVB                   )
+      CALL PP % query( 'SlopeTolerance'           , SlopeTolerance            )
       CALL PP % query( 'UseCharacteristicLimiting', UseCharacteristicLimiting )
-      CALL PP % query( 'UseTroubledCellIndicator',  UseTroubledCellIndicator )
+      CALL PP % query( 'UseTroubledCellIndicator' , UseTroubledCellIndicator  )
       CALL PP % query( 'LimiterThresholdParameter', LimiterThresholdParameter )
       CALL PP % query( 'UseConservativeCorrection', UseConservativeCorrection )
     CALL amrex_parmparse_destroy( PP )
@@ -250,8 +260,8 @@ CONTAINS
     Min_2                = 1.0e-12_AR
     CALL amrex_parmparse_build( PP, 'PL' )
       CALL PP % query( 'UsePositivityLimiter', UsePositivityLimiter )
-      CALL PP % query( 'Min_1',                Min_1 )
-      CALL PP % query( 'Min_2',                Min_2 )
+      CALL PP % query( 'Min_1'               , Min_1                )
+      CALL PP % query( 'Min_2'               , Min_2                )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Equation of state parameters EoS.* ---
@@ -259,16 +269,20 @@ CONTAINS
     EquationOfState = 'IDEAL'
     EosTableName    = ''
     CALL amrex_parmparse_build( PP, 'EoS' )
-      CALL PP % query( 'Gamma',           Gamma_IDEAL )
+      CALL PP % query( 'Gamma'          , Gamma_IDEAL     )
       CALL PP % query( 'EquationOfState', EquationOfState )
-      CALL PP % query( 'EosTableName',    EosTableName    )
+      CALL PP % query( 'EosTableName'   , EosTableName    )
     CALL amrex_parmparse_destroy( PP )
 
     CALL InitializeProgramHeader &
            ( ProgramName_Option = TRIM( ProgramName ), &
-             nNodes_Option = nNodes, nX_Option = nX, swX_Option = swX, &
-             xL_Option = xL, xR_Option = xR, bcX_Option = bcX, &
-             Verbose_Option = amrex_parallel_ioprocessor() )
+             nNodes_Option      = nNodes,              &
+             nX_Option          = nX,                  &
+             swX_Option         = swX,                 &
+             xL_Option          = xL,                  &
+             xR_Option          = xR,                  &
+             bcX_Option         = bcX,                 &
+             Verbose_Option     = amrex_parallel_ioprocessor() )
 
     IF( nDimsX .NE. amrex_spacedim )THEN
 

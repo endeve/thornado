@@ -1,20 +1,18 @@
 !> Module for operations on MultiFabs
-!> @todo Modify data transfer subroutine to allow specification of looping over
-!>       ghost cells
 MODULE MF_UtilitiesModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,     ONLY: &
+  USE amrex_fort_module,      ONLY: &
     AR => amrex_real
-  USE amrex_box_module,      ONLY: &
+  USE amrex_box_module,       ONLY: &
     amrex_box
-  USE amrex_parallel_module, ONLY: &
+  USE amrex_parallel_module,  ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum
-  USE amrex_geometry_module, ONLY: &
+  USE amrex_geometry_module,  ONLY: &
     amrex_geometry
-  USE amrex_multifab_module, ONLY: &
+  USE amrex_multifab_module,  ONLY: &
     amrex_multifab, &
     amrex_mfiter, &
     amrex_mfiter_build
@@ -53,7 +51,8 @@ MODULE MF_UtilitiesModule
   USE MyAmrModule,                       ONLY: &
     nLevels, &
     nX,      &
-    swX
+    swX,     &
+    OutputDataFileName
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap, &
@@ -174,21 +173,21 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
 
-    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER            :: iLevel, nCompGF, nCompCF
-    INTEGER            :: iX1, iX2, iX3, iNode, iCF, iGF
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
-    CHARACTER(LEN=16)  :: FMT
+    INTEGER               :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
+                             iX_B (3), iX_E (3)
+    INTEGER               :: iLevel, nCompGF, nCompCF
+    INTEGER               :: iX1, iX2, iX3, iNode, iCF, iGF
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_mfiter)    :: MFI
+    CHARACTER(LEN=16)     :: FMT
 
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(AR), ALLOCATABLE         :: G  (:,:,:,:,:)
-    REAL(AR), ALLOCATABLE         :: U  (:,:,:,:,:)
-    TYPE(EdgeMap)                 :: Edge_Map
-
-    REAL(AR)                      :: P       (nDOFX,nPF)
-    REAL(AR)                      :: Pressure(nDOFX)
+    REAL(AR),         CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(AR),         CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(AR),         ALLOCATABLE         :: G  (:,:,:,:,:)
+    REAL(AR),         ALLOCATABLE         :: U  (:,:,:,:,:)
+    TYPE(EdgeMap)                         :: Edge_Map
+    REAL(AR)                              :: P       (nDOFX,nPF)
+    REAL(AR)                              :: Pressure(nDOFX)
 
     ALLOCATE( G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
                         1-swX(2):nX(2)+swX(2), &
@@ -228,23 +227,35 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
-        CALL AMReX2thornado( nGF, iX_B1, iX_E1, &
-                             uGF(iX_B1(1):iX_E1(1), &
-                                 iX_B1(2):iX_E1(2), &
-                                 iX_B1(3):iX_E1(3),1:nCompGF), &
-                             G  (1:nDOFX, &
-                                 iX_B1(1):iX_E1(1), &
-                                 iX_B1(2):iX_E1(2), &
-                                 iX_B1(3):iX_E1(3),1:nGF) )
+        iX_B = iX_B0
+        iX_E = iX_E0
 
-        CALL AMReX2thornado( nCF, iX_B1, iX_E1, &
-                             uCF(iX_B1(1):iX_E1(1), &
-                                 iX_B1(2):iX_E1(2), &
-                                 iX_B1(3):iX_E1(3),1:nCompCF), &
+        ! --- Ensure only physical ghost cells are used (not exchange cells) ---
+
+        IF( iX_B0(1) .EQ. 1     ) iX_B(1) = 1     - swX(1)
+        IF( iX_B0(2) .EQ. 1     ) iX_B(2) = 1     - swX(2)
+        IF( iX_B0(3) .EQ. 1     ) iX_B(3) = 1     - swX(3)
+        IF( iX_E0(1) .EQ. nX(1) ) iX_E(1) = nX(1) + swX(1)
+        IF( iX_E0(2) .EQ. nX(2) ) iX_E(2) = nX(2) + swX(2)
+        IF( iX_E0(3) .EQ. nX(3) ) iX_E(3) = nX(3) + swX(3)
+
+        CALL AMReX2thornado( nGF, iX_B, iX_E, &
+                             uGF(iX_B(1):iX_E(1), &
+                                 iX_B(2):iX_E(2), &
+                                 iX_B(3):iX_E(3),1:nCompGF), &
+                             G  (1:nDOFX, &
+                                 iX_B(1):iX_E(1), &
+                                 iX_B(2):iX_E(2), &
+                                 iX_B(3):iX_E(3),1:nGF) )
+
+        CALL AMReX2thornado( nCF, iX_B, iX_E, &
+                             uCF(iX_B(1):iX_E(1), &
+                                 iX_B(2):iX_E(2), &
+                                 iX_B(3):iX_E(3),1:nCompCF), &
                              U  (1:nDOFX, &
-                                 iX_B1(1):iX_E1(1), &
-                                 iX_B1(2):iX_E1(2), &
-                                 iX_B1(3):iX_E1(3),1:nCF) )
+                                 iX_B(1):iX_E(1), &
+                                 iX_B(2):iX_E(2), &
+                                 iX_B(3):iX_E(3),1:nCF) )
 
         ! --- Apply boundary conditions ---
 
@@ -284,19 +295,15 @@ CONTAINS
     END DO
     END DO
 
-    ! --- Compute primitive and write to files ---
+    ! --- Compute primitive and write to file ---
 
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(FMT,'(A3,I3.3,A10)') '(SP', nDOFX, 'ES25.16E3)'
 
-      OPEN( UNIT = 100, FILE = 'D.dat' )
-      OPEN( UNIT = 101, FILE = 'V.dat' )
-      OPEN( UNIT = 102, FILE = 'P.dat' )
+      OPEN( UNIT = 100, FILE = TRIM( OutputDataFileName ) )
 
       WRITE(100,*) FMT
-      WRITE(101,*) FMT
-      WRITE(102,*) FMT
 
       DO iX3 = 1-swX(3), nX(3)+swX(3)
       DO iX2 = 1-swX(2), nX(2)+swX(2)
@@ -323,15 +330,13 @@ CONTAINS
                ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), Pressure(:) )
 
         WRITE(100,TRIM(FMT)) P(:,iPF_D )
-        WRITE(101,TRIM(FMT)) P(:,iPF_V1)
-        WRITE(102,TRIM(FMT)) Pressure(:)
+        WRITE(100,TRIM(FMT)) P(:,iPF_V1)
+        WRITE(100,TRIM(FMT)) Pressure(:)
 
       END DO
       END DO
       END DO
 
-      CLOSE( 102 )
-      CLOSE( 101 )
       CLOSE( 100 )
 
     END IF
