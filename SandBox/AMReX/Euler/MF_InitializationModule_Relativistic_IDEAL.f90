@@ -1193,7 +1193,7 @@ CONTAINS
             ELSE
 
               iX1_2     = iX1_1
-              iNodeX1_2 = iNodeX1_1
+              iNodeX1_2 = iNodeX1_1 - 1
 
             END IF
 
