@@ -206,7 +206,6 @@ CONTAINS
 
       DO iN_E = 1, nE_G
       DO iS   = 1, nSpecies
-
         CALL ComputeIncrement_FixedPoint &
                ( dt, &
                  CR_N(iCR_N ,iS,iN_E,iN_X), &
@@ -230,7 +229,6 @@ CONTAINS
                  dCR_N(iCR_G1,iS,iN_E,iN_X), &
                  dCR_N(iCR_G2,iS,iN_E,iN_X), &
                  dCR_N(iCR_G3,iS,iN_E,iN_X) )
-
       END DO
       END DO
 
@@ -315,11 +313,24 @@ CONTAINS
     REAL(DP) :: FVEC(4,M), FVECm(4)
     REAL(DP) :: LMAT(4,4), DET, Alpha(M)
     REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
+    REAL(DP) :: W, DTE, B_d_1, B_d_2, B_d_3
+
+
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
+
+    W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
+               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_33 * V_u_3 * V_u_3) )
+
+    DTE = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
+
 
     Kappa = Chi + Sigma
 
-    D_00 = One + dt * Chi
-    D_ii = One + dt * Kappa
+    D_00 = W + dt * Chi
+    D_ii = W + dt * Kappa
 
     ! --- Constant Vector ---
 
@@ -327,14 +338,17 @@ CONTAINS
 
     ! --- Initial Guess ---
 
-    D     = N
+    D     = ( N + dt * Chi * D_0 ) / ( W + dt * Chi )
     I_u_1 = Zero
     I_u_2 = Zero
     I_u_3 = Zero
 
-    I_d_1 = Gm_dd_11 * I_u_1
-    I_d_2 = Gm_dd_22 * I_u_2
-    I_d_3 = Gm_dd_33 * I_u_3
+    I_d_1 = DTE * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
+          - DTE * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DTE * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+    I_d_2 = DTE * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
+          - DTE * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DTE * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+    I_d_3 = DTE * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
+          - DTE * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DTE * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
 
     k = 0
     CONVERGED = .FALSE.
@@ -434,9 +448,12 @@ CONTAINS
       END IF
 
       D     = UVEC(1)
-      I_d_1 = UVEC(2); I_u_1 = I_d_1 / Gm_dd_11
-      I_d_2 = UVEC(3); I_u_2 = I_d_2 / Gm_dd_22
-      I_d_3 = UVEC(4); I_u_3 = I_d_3 / Gm_dd_33
+      I_d_1 = UVEC(2); I_u_1 = ( 1.0_DP - B_d_1 * V_u_1 / alp ) * I_d_1 / Gm_dd_11  &
+            - I_d_2 * B_d_1 * V_u_2 / ( alp *Gm_dd_11 ) - I_d_3 * B_d_1 * V_u_3 / ( Gm_dd_11 * alp )
+      I_d_2 = UVEC(3); I_u_2 = ( 1.0_DP - B_d_2 * V_u_2 / alp ) * I_d_2 / Gm_dd_22  &
+            - I_d_1 * B_d_2 * V_u_1 / ( alp *Gm_dd_22 ) - I_d_3 * B_d_2 * V_u_3 / ( Gm_dd_22 * alp )
+      I_d_3 = UVEC(4); I_u_3 = ( 1.0_DP - B_d_3 * V_u_3 / alp ) * I_d_3 / Gm_dd_33  &
+            - I_d_1 * B_d_3 * V_u_1 / ( alp *Gm_dd_33 ) - I_d_2 * B_d_3 * V_u_2 / ( Gm_dd_33 * alp )
 
     END DO
 
