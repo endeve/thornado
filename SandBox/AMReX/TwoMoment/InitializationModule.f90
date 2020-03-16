@@ -304,6 +304,11 @@ CONTAINS
                Gamma_IDEAL_Option = Gamma_IDEAL, &
                Verbose_Option = amrex_parallel_ioprocessor()  )
 
+    CALL CreateOpacities &
+         ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = amrex_parallel_ioprocessor() )
+
+    CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma )
+
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0, &
                               Verbose_Option = amrex_parallel_ioprocessor() )
 
@@ -319,10 +324,6 @@ CONTAINS
 
     CALL InitializeClosure_TwoMoment
 
-  CALL CreateOpacities &
-         ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = amrex_parallel_ioprocessor() )
-
-  CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma )
 
 
     CALL WriteFieldsAMReX_PlotFile &
