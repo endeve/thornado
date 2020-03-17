@@ -360,6 +360,7 @@ elif( nDims == 2 ):
     oray = ds.ortho_ray( axis = 0, coords = (0,0) )
     x = np.linspace( xL[0], xH[0], nX[0] )
     plt.plot( x, oray[Field] )
+    if( UseLogScale ): plt.yscale( 'log' )
     plt.show()
     exit()
     '''
