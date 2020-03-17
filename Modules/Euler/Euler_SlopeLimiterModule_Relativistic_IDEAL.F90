@@ -504,7 +504,7 @@ CONTAINS
       DO iCF = 1, nCF
 
         IF( SlopeDifference(iCF) &
-              .GE. SlopeTolerance * ABS( U_M(iCF,0,1,iX1,iX2,iX3) ) )THEN
+              .GT. SlopeTolerance * ABS( U_M(iCF,0,1,iX1,iX2,iX3) ) )THEN
 
           U_M(iCF,0,2:nDOFX,iX1,iX2,iX3) = Zero
 
