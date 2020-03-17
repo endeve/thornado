@@ -9,9 +9,13 @@ from sys import argv, exit
 import matplotlib.pyplot as plt
 
 """
-Default use (python3 PlotAMReX_yt.py), plots last plot-file in ProblemDirectory
+Default usage, plots last plotfile in DataDirectory:
 
-Can also specify certain plot-file:  python3 PlotAMReX_yt.py thornado_00000010
+  $ python3 PlotFieldsAMReX.py
+
+Alernate usage, plot specific file in DataDirectory:
+
+  $ python3 PlotFieldsAMReX.py thornado_00000010
 """
 
 yt.funcs.mylog.setLevel(0) # Suppress initial yt output to screen
@@ -27,25 +31,25 @@ THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 #### ========== User Input ==========
 
 # Specify directory containing plotfiles
-ProblemDirectory = THORNADO_DIR + 'SandBox/AMReX/'
+DataDirectory = THORNADO_DIR + 'SandBox/AMReX/'
 
 # Specify name of problem (only used for name of output file(s))
-ProblemName = 'KHI'
+ProblemName = 'SASI'
 
 # Specify plot file base name
 PlotFileBaseName = 'thornado'
 
 # Specify field to plot
-VariableToPlot = 'PF_D'
+Field = 'PF_D'
 
 # Specify to plot in log-scale
-UseLogScale = False
+UseLogScale = True
 
 # Specify whether or not to use physical units
-UsePhysicalUnits = False
+UsePhysicalUnits = True
 
 # Specify coordinate system (currently supports 'cartesian' and 'spherical' )
-CoordinateSystem = 'cartesian'
+CoordinateSystem = 'spherical'
 
 # Specify aspect ratio (relativistic KHI needs aspect = 0.5)
 aspect = 1.0
@@ -56,27 +60,44 @@ cmap = 'jet'
 # Specify whether or not to make a movie
 MakeMovie, DataFileName, TimeFileName = False, 'MovieData.dat', 'MovieTime.dat'
 
-#### ================================
+#### ====== End of User Input =======
 
-if( len( argv ) > 1 ):
-    File = argv[1]
-else:
+# Append "/" to DataDirectory, if not present
+if( not DataDirectory[-1] == '/' ): DataDirectory += '/'
+
+if( len( argv ) == 1 ):
+
     # Get last plotfile in directory
+
     FileArray \
-      = np.sort(np.array( [ file for file in listdir( ProblemDirectory ) ] ))
+      = np.sort( np.array( [ file for file in listdir( DataDirectory ) ] ) )
+
     FileList = []
+
     for iFile in range( FileArray.shape[0] ):
+
         sFile = FileArray[iFile]
+
         if( sFile[0:len(PlotFileBaseName)+1] == PlotFileBaseName + '_' \
               and sFile[len(PlotFileBaseName)+1].isdigit() ):
             FileList.append( sFile )
+
     FileArray = np.array( FileList )
-    File = FileArray[-1]
+    File      = FileArray[-1]
+
+elif( len( argv ) == 2 ):
+
+    File = argv[1]
+
+else:
+
+    print( 'Invalid number of optional parameters' )
+    exit( 'Exiting...' )
 
 # Remove "/" at end of filename, if present
 if ( File[-1] == '/' ): File = File[:-1]
 
-ds = yt.load( '{:}'.format( ProblemDirectory + File ) )
+ds = yt.load( '{:}'.format( DataDirectory + File ) )
 
 print( 'Reading from file: {:}'.format( File ) )
 MaxLevel = ds.index.max_level
@@ -103,60 +124,60 @@ CoveringGrid \
 # XXX.to_ndarray() strips array of yt units
 
 DataUnit = ''
-if  ( VariableToPlot == 'PF_D'  ):
+if  ( Field == 'PF_D'  ):
     Data = CoveringGrid['PF_D' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**3'
-elif( VariableToPlot == 'PF_V1' ):
+elif( Field == 'PF_V1' ):
     Data = CoveringGrid['PF_V1'].to_ndarray()
     if( UsePhysicalUnits ):
         if  ( CoordinateSystem == 'cartesian' ):
             DataUnit = 'km/s'
         elif( CoordinateSystem == 'spherical' ):
             DataUnit = 'km/s'
-elif( VariableToPlot == 'PF_V2' ):
+elif( Field == 'PF_V2' ):
     Data = CoveringGrid['PF_V2'].to_ndarray()
     if( UsePhysicalUnits ):
         if  ( CoordinateSystem == 'cartesian' ):
             DataUnit = 'km/s'
         elif( CoordinateSystem == 'spherical' ):
             DataUnit = '1/s'
-elif( VariableToPlot == 'PF_V3' ):
+elif( Field == 'PF_V3' ):
     Data = CoveringGrid['PF_V3'].to_ndarray()
     if( UsePhysicalUnits ):
         if  ( CoordinateSystem == 'cartesian' ):
             DataUnit = 'km/s'
         elif( CoordinateSystem == 'spherical' ):
             DataUnit = '1/s'
-elif( VariableToPlot == 'PF_E'  ):
+elif( Field == 'PF_E'  ):
     Data = CoveringGrid['PF_E' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'erg/cm**3'
-elif( VariableToPlot == 'CF_D'  ):
+elif( Field == 'CF_D'  ):
     Data = CoveringGrid['CF_D' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**3'
-elif( VariableToPlot == 'CF_S1' ):
+elif( Field == 'CF_S1' ):
     Data = CoveringGrid['CF_S1'].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**2/s'
-elif( VariableToPlot == 'CF_S2' ):
+elif( Field == 'CF_S2' ):
     Data = CoveringGrid['CF_S2'].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**2/s'
-elif( VariableToPlot == 'CF_S3' ):
+elif( Field == 'CF_S3' ):
     Data = CoveringGrid['CF_S3'].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**2/s'
-elif( VariableToPlot == 'CF_E'  ):
+elif( Field == 'CF_E'  ):
     Data = CoveringGrid['CF_E' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'erg/cm**3'
-elif( VariableToPlot == 'AF_P'  ):
+elif( Field == 'AF_P'  ):
     Data = CoveringGrid['AF_P' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'erg/cm**3'
-elif( VariableToPlot == 'Entropy' ):
+elif( Field == 'Entropy' ):
     PF_D  = CoveringGrid['PF_D' ].to_ndarray()
     AF_P  = CoveringGrid['AF_P' ].to_ndarray()
     AF_Gm = CoveringGrid['AF_Gm'].to_ndarray()
@@ -168,7 +189,7 @@ elif( VariableToPlot == 'Entropy' ):
         else:
             DataUnit = 'erg/cm**3/(g/cm**3)**({:}/3)'.format( \
                          int( 3 * AF_Gm[0][0][0] ) )
-elif( VariableToPlot == 'Vorticity' ):
+elif( Field == 'Vorticity' ):
 
     dX1 = ( xH[0].to_ndarray() - xL[0].to_ndarray() ) / nX[0]
     dX2 = ( xH[1].to_ndarray() - xL[1].to_ndarray() ) / nX[1]
@@ -228,9 +249,10 @@ if  ( nDims == 1 ):
     x = np.linspace( xL[0].to_ndarray(), xH[0].to_ndarray(), nX[0] )
 
     plt.plot( x, Data[:,0,0], 'k-' )
+    if( UseLogScale ): plt.yscale( 'log' )
     plt.xlim( xL[0], xH[0] )
     plt.xlabel( 'X1' )
-    plt.ylabel( VariableToPlot )
+    plt.ylabel( Field )
     plt.show()
     plt.close()
 
@@ -256,7 +278,7 @@ if  ( nDims == 1 ):
             Data[0] = x
             for i in range( FileArray.shape[0] ):
                 print( '{:}/{:}'.format( i+1, FileArray.shape[0] ) )
-                ds = yt.load( '{:}'.format( ProblemDirectory + FileArray[i] ) )
+                ds = yt.load( '{:}'.format( DataDirectory + FileArray[i] ) )
 
                 CoveringGrid \
                   = ds.covering_grid \
@@ -265,7 +287,7 @@ if  ( nDims == 1 ):
                         dims            = nX * 2**MaxLevel, \
                         num_ghost_zones = nX[0] )
 
-                Data[i+1] = CoveringGrid[VariableToPlot].to_ndarray()[:,0,0]
+                Data[i+1] = CoveringGrid[Field].to_ndarray()[:,0,0]
                 Time[i] = ds.current_time
 
             np.savetxt( DataFileName, Data )
@@ -280,7 +302,7 @@ if  ( nDims == 1 ):
         ax.set_ylim( np.min( Data ), np.max( Data ) )
 
         ax.set_xlabel( 'X1' )
-        ax.set_ylabel( VariableToPlot )
+        ax.set_ylabel( Field )
 
         Width     = xH[0] - xL[0]
         Height    = np.max( Data ) - np.min( Data )
@@ -309,7 +331,7 @@ if  ( nDims == 1 ):
                                         init_func = InitializeFrame, \
                                         frames = FileArray.shape[0], \
                                         interval = 200, blit = True )
-        anim.save( VariableToPlot + '.mp4' )
+        anim.save( Field + '.mp4' )
 
     """
     # Plot slices from 'Data' file, created with MakeMovie script above
@@ -331,16 +353,19 @@ elif( nDims == 2 ):
 
     '''
     # To make lineout plot
-    # From: https://yt-project.org/doc/reference/api/yt.data_objects.selection_data_containers.html#yt.data_objects.selection_data_containers.YTOrthoRay
+    # From:
+    #  https://yt-project.org/doc/reference/api/\
+    #  yt.data_objects.selection_data_containers.html#yt.data_objects.\
+    #  selection_data_containers.YTOrthoRay
     oray = ds.ortho_ray( axis = 0, coords = (0,0) )
     x = np.linspace( xL[0], xH[0], nX[0] )
-    plt.plot( x, oray[VariableToPlot] )
+    plt.plot( x, oray[Field] )
     plt.show()
     exit()
     '''
 
-    data          = { VariableToPlot: (Data,DataUnit) }
-    field         = VariableToPlot
+    data          = { Field: (Data,DataUnit) }
+    field         = Field
     length_unit   = 'code_length'
     SliceVariable = 'z'
     if( CoordinateSystem == 'spherical' ):
@@ -352,14 +377,32 @@ elif( nDims == 2 ):
            ( data, \
              nX, \
              bbox = np.array( \
-                      [ [xL[0],xH[0]], [xL[1],xH[1]], [xL[2],xH[2]] ] ), \
+                      [ [xL[0],xH[0]], \
+                        [xL[1],xH[1]], \
+                        [xL[2],xH[2]] ] ), \
              length_unit = length_unit, \
              geometry = CoordinateSystem )
 
-    slc = yt.SlicePlot( ds, SliceVariable, field, \
-                        axes_unit = length_unit, \
-                        aspect = aspect, \
-                        origin = 'lower-left-window' )
+    if( CoordinateSystem == 'spherical' ):
+
+        w0 = xH[0] + xL[0]
+        w1 = 2.0 * xH[0]
+        slc = yt.SlicePlot( ds        = ds, \
+                            normal    = SliceVariable, \
+                            fields    = field, \
+                            width     = ((w0),(w1)), \
+                            axes_unit = length_unit, \
+                            aspect    = aspect, \
+                            origin    = 'lower-left-window' )
+
+    else:
+
+        slc = yt.SlicePlot( ds        = ds, \
+                            normal    = SliceVariable, \
+                            fields    = field, \
+                            axes_unit = length_unit, \
+                            aspect    = aspect, \
+                            origin    = 'lower-left-window' )
 
     slc.set_cmap( field = field, cmap = cmap )
 
@@ -367,10 +410,7 @@ elif( nDims == 2 ):
     #slc.set_zlim( field, 0.0, 2.0 ) # Set colorbar limits
     #slc.set_colorbar_label( field, 'Primitive Rest-Mass-Density' )
 
-    if( CoordinateSystem == 'spherical' ):
-        slc.set_width( 2 * xH[0].to_ndarray(), length_unit )
-
-    slc.save( ProblemName + '_' + PlotFileBaseName + '_' + VariableToPlot \
+    slc.save( ProblemName + '_' + PlotFileBaseName + '_' + Field \
                 + '_{:}.png'.format( File[-8:] ) )
 
     if( MakeMovie ):
@@ -392,7 +432,7 @@ elif( nDims == 2 ):
             Time = np.empty( FileArray.shape[0], float )
             for i in range( FileArray.shape[0] ):
                 print( '{:}/{:}'.format( i+1, FileArray.shape[0] ) )
-                ds = yt.load( '{:}'.format( ProblemDirectory + FileArray[i] ) )
+                ds = yt.load( '{:}'.format( DataDirectory + FileArray[i] ) )
 
                 CoveringGrid \
                   = ds.covering_grid \
@@ -401,11 +441,12 @@ elif( nDims == 2 ):
                         dims            = nX * 2**MaxLevel, \
                         num_ghost_zones = nX[0] )
 
-                Data[i] = CoveringGrid[VariableToPlot].to_ndarray()[:,:,0]
+                Data[i] = CoveringGrid[Field].to_ndarray()[:,:,0]
                 Time[i] = ds.current_time
 
             # Save multi-D array with np.savetxt. Taken from:
-            # https://stackoverflow.com/questions/3685265/how-to-write-a-multidimensional-array-to-a-text-file
+            # https://stackoverflow.com/questions/3685265/\
+            # how-to-write-a-multidimensional-array-to-a-text-file
 
             with open( DataFileName, 'w' ) as FileOut:
                 FileOut.write( '# Array shape: {0}\n'.format( Data.shape ) )
@@ -416,11 +457,11 @@ elif( nDims == 2 ):
                     np.savetxt( FileOut, TimeSlice )
                     FileOut.write( '# New slice\n' )
 
-            np.savetxt( 'MovieTime.dat', Time )
+            np.savetxt( TimeFileName, Time )
 
         Data = np.loadtxt( DataFileName ).reshape( \
                                             (FileArray.shape[0],nX[0],nX[1]) )
-        Time = np.loadtxt( 'MovieTime.dat' )
+        Time = np.loadtxt( TimeFileName )
 
         fig = plt.figure()
         def f(t):
@@ -429,7 +470,7 @@ elif( nDims == 2 ):
         PlotTranspose = False
         if( PlotTranspose ):
             fig.suptitle( '|{:}-{:}.T|'.format \
-                          ( VariableToPlot, VariableToPlot ), \
+                          ( Field, Field ), \
                           fontsize = 20 )
             def f(t):
                 return np.abs( Data[t] - Data[t].T )
@@ -476,7 +517,7 @@ elif( nDims == 2 ):
                  ( fig, UpdateFrame, frames = FileArray.shape[0], \
                    interval = 100, blit = True)
 
-        anim.save( '{:}_{:}.mp4'.format( ProblemName, VariableToPlot ), \
+        anim.save( '{:}_{:}.mp4'.format( ProblemName, Field ), \
                    fps = 5 )
         plt.close()
 
