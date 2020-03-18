@@ -121,9 +121,10 @@ construction_data_containers.YTCoveringGrid
 """
 CoveringGrid \
   = ds.covering_grid \
-      ( level     = MaxLevel, \
-        left_edge = xL, \
-        dims      = nX * 2**MaxLevel )
+      ( level           = MaxLevel, \
+        left_edge       = xL, \
+        dims            = nX * 2**MaxLevel, \
+        num_ghost_zones = nX[0] )
 
 # XXX.to_ndarray() strips yt array of units
 
@@ -286,9 +287,10 @@ if  ( nDims == 1 ):
 
                 CoveringGrid \
                   = ds.covering_grid \
-                      ( level     = MaxLevel, \
-                        left_edge = xL, \
-                        dims      = nX * 2**MaxLevel )
+                      ( level           = MaxLevel, \
+                        left_edge       = xL, \
+                        dims            = nX * 2**MaxLevel, \
+                        num_ghost_zones = nX[0] )
 
                 Data[i+1] = CoveringGrid[Field].to_ndarray()[:,0,0]
                 Time[i] = ds.current_time
