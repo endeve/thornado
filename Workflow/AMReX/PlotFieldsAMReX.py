@@ -114,14 +114,18 @@ elif( nX[2] == 1 ):
 else:
     nDims = 3
 
+"""
+https://yt-project.org/doc/reference/api/
+yt.data_objects.construction_data_containers.html#yt.data_objects.
+construction_data_containers.YTCoveringGrid
+"""
 CoveringGrid \
   = ds.covering_grid \
-      ( level           = MaxLevel, \
-        left_edge       = xL, \
-        dims            = nX * 2**MaxLevel, \
-        num_ghost_zones = nX[0] )
+      ( level     = MaxLevel, \
+        left_edge = xL, \
+        dims      = nX * 2**MaxLevel )
 
-# XXX.to_ndarray() strips array of yt units
+# XXX.to_ndarray() strips yt array of units
 
 DataUnit = ''
 if  ( Field == 'PF_D'  ):
@@ -282,10 +286,9 @@ if  ( nDims == 1 ):
 
                 CoveringGrid \
                   = ds.covering_grid \
-                      ( level           = MaxLevel, \
-                        left_edge       = xL, \
-                        dims            = nX * 2**MaxLevel, \
-                        num_ghost_zones = nX[0] )
+                      ( level     = MaxLevel, \
+                        left_edge = xL, \
+                        dims      = nX * 2**MaxLevel )
 
                 Data[i+1] = CoveringGrid[Field].to_ndarray()[:,0,0]
                 Time[i] = ds.current_time
@@ -353,13 +356,16 @@ elif( nDims == 2 ):
 
     '''
     # To make lineout plot
-    # From:
-    #  https://yt-project.org/doc/reference/api/\
-    #  yt.data_objects.selection_data_containers.html#yt.data_objects.\
-    #  selection_data_containers.YTOrthoRay
-    oray = ds.ortho_ray( axis = 0, coords = (0,0) )
+    # From: https://yt-project.org/doc/visualizing/
+            manual_plotting.html#line-plots
+
     x = np.linspace( xL[0], xH[0], nX[0] )
-    plt.plot( x, oray[Field] )
+
+    oray = ds.ortho_ray( axis = 0, coords = (0,0) )
+    srt  = np.argsort( oray[Field] )
+
+    plt.plot( np.array( oray[Field][srt[::-1]] ) )
+
     if( UseLogScale ): plt.yscale( 'log' )
     plt.show()
     exit()
@@ -445,10 +451,11 @@ elif( nDims == 2 ):
                 Data[i] = CoveringGrid[Field].to_ndarray()[:,:,0]
                 Time[i] = ds.current_time
 
-            # Save multi-D array with np.savetxt. Taken from:
-            # https://stackoverflow.com/questions/3685265/\
-            # how-to-write-a-multidimensional-array-to-a-text-file
-
+            """
+            Save multi-D array with np.savetxt. Taken from:
+            https://stackoverflow.com/questions/3685265/
+            how-to-write-a-multidimensional-array-to-a-text-file
+            """
             with open( DataFileName, 'w' ) as FileOut:
                 FileOut.write( '# Array shape: {0}\n'.format( Data.shape ) )
 
