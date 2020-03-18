@@ -359,7 +359,7 @@ elif( nDims == 2 ):
     '''
     # To make lineout plot
     # From: https://yt-project.org/doc/visualizing/
-            manual_plotting.html#line-plots
+    #       manual_plotting.html#line-plots
 
     x = np.linspace( xL[0], xH[0], nX[0] )
 
