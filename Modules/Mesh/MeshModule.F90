@@ -48,12 +48,12 @@ CONTAINS
 
     IF( Zoom > 1.0_DP )THEN
 
-      CALL CreateGeometricMesh &
+      CALL CreateMesh_Geometric &
              ( N, SW, xL, xR, Mesh % Center, Mesh % Width, Zoom )
 
     ELSE
 
-      CALL CreateEquidistantMesh &
+      CALL CreateMesh_Equidistant &
              ( N, SW, xL, xR, Mesh % Center, Mesh % Width )
 
     END IF
@@ -66,7 +66,7 @@ CONTAINS
   END SUBROUTINE CreateMesh
 
 
-  SUBROUTINE CreateEquidistantMesh( N, SW, xL, xR, Center, Width )
+  SUBROUTINE CreateMesh_Equidistant( N, SW, xL, xR, Center, Width )
 
     INTEGER,                        INTENT(in)    :: N, SW
     REAL(DP),                       INTENT(in)    :: xL, xR
@@ -89,10 +89,10 @@ CONTAINS
       Center(i) = Center(i-1) + Width(i-1)
     END DO
 
-  END SUBROUTINE CreateEquidistantMesh
+  END SUBROUTINE CreateMesh_Equidistant
 
 
-  SUBROUTINE CreateGeometricMesh( N, SW, xL, xR, Center, Width, Zoom )
+  SUBROUTINE CreateMesh_Geometric( N, SW, xL, xR, Center, Width, Zoom )
 
     INTEGER,                        INTENT(in)    :: N, SW
     REAL(DP),                       INTENT(in)    :: xL, xR, Zoom
@@ -117,7 +117,20 @@ CONTAINS
       Center(i) = xL + SUM( Width(1:i-1) ) + 0.5_DP * Width(i)
     END DO
 
-  END SUBROUTINE CreateGeometricMesh
+  END SUBROUTINE CreateMesh_Geometric
+
+
+  SUBROUTINE CreateMesh_Custom &
+    ( N, SW, nEquidistant, MinWidth, xL, xR, Center, Width )
+
+    INTEGER,  INTENT(in)    :: N,  SW
+    INTEGER,  INTENT(in)    :: nEquidistant
+    REAL(DP), INTENT(in)    :: MinWidth
+    REAL(DP), INTENT(in)    :: xL, xR
+    REAL(DP), INTENT(inout) :: Center(1-SW:N+SW)
+    REAL(DP), INTENT(inout) :: Width (1-SW:N+SW)
+
+  END SUBROUTINE CreateMesh_Custom
 
 
   SUBROUTINE DestroyMesh( Mesh )
