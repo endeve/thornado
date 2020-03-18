@@ -136,6 +136,7 @@ CONTAINS
     LOGICAL  :: NegativeStates(2)
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
     REAL(DP) :: Min_K, Theta_1, Theta_2, Theta_P
+    REAL(DP) :: Min_D, Min_E
     REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), IntE(nPT)
 
     IF( nDOFX == 1 ) RETURN
@@ -167,15 +168,17 @@ CONTAINS
 
       Min_K = MINVAL( U_PP(:,iCF_D) )
 
-      IF( Min_K < Min_1 )THEN
+      ! --- Cell Average ---
 
-        ! --- Cell Average ---
+      U_K(iCF_D) &
+        = SUM( WeightsX_q(:) * U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
+            / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
 
-        U_K(iCF_D) &
-          = SUM( WeightsX_q(:) * U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
-              / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
+      Min_D = Min_1 * U_K(iCF_D)
 
-        Theta_1 = MIN( One, ( U_K(iCF_D) - Min_1 ) / ( U_K(iCF_D) - Min_K ) )
+      IF( Min_K < Min_D )THEN
+
+        Theta_1 = MIN( One, ( U_K(iCF_D) - Min_D ) / ( U_K(iCF_D) - Min_K ) )
 
         ! --- Limit Density Towards Cell Average ---
 
@@ -197,7 +200,13 @@ CONTAINS
       CALL ComputeInternalEnergyDensity &
              ( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), IntE(1:nPT) )
 
-      IF( ANY( IntE(:) < Min_2 ) )THEN
+      U_K(iCF_E) &
+        = SUM( WeightsX_q(:) * U_q(:,iCF_E) * G_q(:,iGF_SqrtGm) ) &
+            / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
+
+      Min_E = Min_2 * U_K(iCF_E)
+
+      IF( ANY( IntE(:) < Min_E ) )THEN
 
         ! --- Cell Average ---
 
@@ -212,10 +221,11 @@ CONTAINS
         Theta_2 = One
         DO iP = 1, nPT
 
-          IF( IntE(iP) < Min_2 )THEN
+          IF( IntE(iP) < Min_E )THEN
 
             CALL SolveTheta_Bisection &
-                   ( U_PP(iP,1:nCF), G_PP(iP,1:nGF), U_K(1:nCF), Min_2, Theta_P )
+                   ( U_PP(iP,1:nCF), G_PP(iP,1:nGF), U_K(1:nCF), &
+                     Min_E, Theta_P )
 
             Theta_2 = MIN( Theta_2, Theta_P )
 

@@ -36,12 +36,6 @@ CONTAINS
              Min_1_Option, Min_2_Option, Min_3_Option, &
              Max_1_Option, Max_2_Option, Max_3_Option )
 
-#elif defined HYDRO_NONRELATIVISTIC
-
-    CALL InitializePositivityLimiter_Euler_NonRelativistic_IDEAL &
-           ( UsePositivityLimiter_Option, Verbose_Option, &
-             Min_1_Option, Min_2_Option )
-
 #elif defined HYDRO_RELATIVISTIC
 
     CALL InitializePositivityLimiter_Euler_Relativistic_IDEAL &
@@ -64,10 +58,6 @@ CONTAINS
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
     CALL FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
-
-#elif defined HYDRO_NONRELATIVISTIC
-
-    CALL FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
 #elif defined HYDRO_RELATIVISTIC
 
@@ -98,11 +88,6 @@ CONTAINS
 
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-
-#elif defined HYDRO_NONRELATIVISTIC
-
-    CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
 #elif defined HYDRO_RELATIVISTIC
 

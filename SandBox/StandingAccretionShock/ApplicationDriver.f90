@@ -48,7 +48,7 @@ PROGRAM ApplicationDriver
     ComputeFromConserved_Euler, &
     ComputeTimeStep_Euler
   USE Euler_dgDiscretizationModule, ONLY: &
-    Euler_ComputeIncrement_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit
   USE Euler_TallyModule_NonRelativistic_IDEAL, ONLY: &
     InitializeTally_Euler_NonRelativistic_IDEAL, &
     FinalizeTally_Euler_NonRelativistic_IDEAL, &
@@ -193,7 +193,7 @@ PROGRAM ApplicationDriver
     END IF
 
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, uDF, Euler_ComputeIncrement_DG_Explicit )
+           ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit )
 
     t = t + dt
 

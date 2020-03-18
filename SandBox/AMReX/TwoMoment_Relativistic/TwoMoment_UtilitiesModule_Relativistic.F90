@@ -46,33 +46,70 @@ CONTAINS
     INTEGER  :: i, k, mk, INFO
     REAL(DP) :: I_d_1, I_d_2, I_d_3, A_d_1, A_d_2, A_d_3
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: h_dd_11, h_dd_22, h_dd_33, h_dd_12, h_dd_13, h_dd_23, u_d_1, u_d_2, u_d_3
     REAL(DP) :: B_d_1, B_d_2, B_d_3
     REAL(DP) :: UVEC(4), CVEC(4)
     REAL(DP) :: GVEC(4,M), GVECm(4)
     REAL(DP) :: FVEC(4,M), FVECm(4)
     REAL(DP) :: LMAT(4,4), DET, Alpha(M)
     REAL(DP) :: BVEC(4), AMAT(4,M), WORK(LWORK)
-    REAL(DP) :: W, DT    
-
+    REAL(DP) :: W, DT, DTG
+    
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
     B_d_3 = Gm_dd_33 * B_u_3
+
     
+
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
                + Gm_dd_22 * V_u_2 * V_u_2 &  
                + Gm_dd_33 * V_u_3 * V_u_3) )
 
     DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
+!    u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
+!    u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
+!    u_d_3 = B_d_3 * W / alp + Gm_dd_33 * ( V_u_3 - B_u_3 / alp )
+!
+!    h_dd_11 = Gm_dd_11 + u_d_1 * u_d_1 
+!    h_dd_22 = Gm_dd_22 + u_d_2 * u_d_2 
+!    h_dd_33 = Gm_dd_33 + u_d_3 * u_d_3 
+!    h_dd_12 = u_d_1 * u_d_2 
+!    h_dd_13 = u_d_1 * u_d_2 
+!    h_dd_23 = u_d_1 * u_d_2 
+!
+!    DTG = ( -3.0_DP * W**2 + h_dd_11 * V_u_2**2 + 2.0_DP * h_dd_12 * V_u_1 * V_u_2 &
+!        + 2.0_DP * h_dd_13 * V_u_1 * V_u_3 + 2.0_DP * h_dd_22 * V_u_2 * V_u_2 &
+!        + 2.0_DP * h_dd_23 * V_u_2 * V_u_3 + 2.0_DP * h_dd_33 * V_u_3 * V_u_3  ) 
+!
     CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
 
     ! --- Initial Guess ---
 
-    D     = N / W
-    I_u_1 = Zero
-    I_u_2 = Zero
-    I_u_3 = Zero
+    D     = N
+    I_u_1 = G_d_1
+    I_u_2 = G_d_2
+    I_u_3 = G_d_3
 
+!    D     = ( -3.0_DP * N + 3.0_DP * V_u_1 * G_d_1 + 3.0_DP * V_u_2 * G_d_2 + 3.0_DP * V_u_3 * G_d_3 ) / DTG
+!    I_d_1 = ( h_dd_11 * V_u_1 + h_dd_12 * V_u_2 + h_dd_13 * V_u_3 ) * N  &
+!          + ( h_dd_22*V_u_2**2 + 2*h_dd_23*V_u_2*V_u_3 + V_u_1*h_dd_12*V_u_2 &
+!          + h_dd_33*V_u_3**2 + V_u_1*h_dd_13*V_u_3 - 3*W**2 ) * G_d_1 &
+!          -(V_u_2**2*h_dd_12 + V_u_1*V_u_2*h_dd_11 + V_u_2*V_u_3*h_dd_13) * G_d_2  &
+!          -(V_u_3**2*h_dd_13 + V_u_1*V_u_3*h_dd_11 + V_u_2*V_u_3*h_dd_12) * G_d_3
+!    I_d_1 = I_d_1 / ( W * DTG )
+!    I_d_2 = (V_u_3*h_dd_23 + V_u_1*h_dd_12 + V_u_2*h_dd_22) * N  &
+!          -(V_u_1**2*h_dd_12 + V_u_1*V_u_3*h_dd_23 + V_u_1*V_u_2*h_dd_22) * G_d_1 &
+!          + (h_dd_11*V_u_1**2 + 2*h_dd_13*V_u_1*V_u_3 + V_u_2*h_dd_12*V_u_1 &
+!          + h_dd_33*V_u_3**2 + V_u_2*h_dd_23*V_u_3 - 3*W**2) * G_d_2 &
+!          -(V_u_3**2*h_dd_23 + V_u_1*V_u_3*h_dd_12 + V_u_2*V_u_3*h_dd_22) * G_d_3
+!    I_d_2 = I_d_2 / ( W * DTG )
+!    I_d_3 = (V_u_2*h_dd_23 + V_u_1*h_dd_13 + V_u_3*h_dd_33) * N &
+!          -(V_u_1**2*h_dd_13 + V_u_1*V_u_2*h_dd_23 + V_u_1*V_u_3*h_dd_33) *G_d_1 &
+!          -(V_u_2**2*h_dd_23 + V_u_1*V_u_2*h_dd_13 + V_u_2*V_u_3*h_dd_33) * G_d_2 &
+!          + (h_dd_11*V_u_1**2 + 2*h_dd_12*V_u_1*V_u_2 + V_u_3*h_dd_13*V_u_1 &
+!          + h_dd_22*V_u_2**2 + V_u_3*h_dd_23*V_u_2 - 3*W**2) * G_d_3 
+!    I_d_3 = I_d_3 / ( W * DTG ) 
     I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
           - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
     I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
@@ -181,7 +218,6 @@ CONTAINS
             - I_d_1 * B_d_2 * V_u_1 / ( alp *Gm_dd_22 ) - I_d_3 * B_d_2 * V_u_3 / ( Gm_dd_22 * alp )
       I_d_3 = UVEC(4); I_u_3 = ( 1.0_DP - B_d_3 * V_u_3 / alp ) * I_d_3 / Gm_dd_33  &
             - I_d_1 * B_d_3 * V_u_1 / ( alp *Gm_dd_33 ) - I_d_2 * B_d_3 * V_u_2 / ( Gm_dd_33 * alp )
-
     END DO
 
     IF( PRESENT( nIterations_Option ) )THEN
@@ -219,7 +255,6 @@ CONTAINS
       PRINT*
 
     END IF
-
   END SUBROUTINE ComputePrimitive_TwoMoment
 
   SUBROUTINE ComputeConserved_TwoMoment &
@@ -243,7 +278,6 @@ CONTAINS
              alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
 
 
-   
 
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
@@ -309,10 +343,7 @@ CONTAINS
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                                   alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
-
     EF = EddingtonFactor( D, FF )
-
-
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
                + Gm_dd_22 * V_u_2 * V_u_2 &  
                + Gm_dd_33 * V_u_3 * V_u_3) )
@@ -341,15 +372,13 @@ CONTAINS
 
     a = Half * ( One - EF )
     b = Half * ( Three * EF - One )
-
+   
     ! --- Diagonal Eddington Tensor Components ---
 
     k_dd_11 = a * ( Gm_dd_11 + u_d_1 * u_d_1 ) + b * h_d_1 * h_d_1
     k_dd_22 = a * ( Gm_dd_22 + u_d_2 * u_d_2 ) + b * h_d_2 * h_d_2
     k_dd_33 = a * ( Gm_dd_33 + u_d_3 * u_d_3 ) + b * h_d_3 * h_d_3
-
     ! --- Off-Diagonal Eddington Tensor Components ---
-
     k_dd_12 = a * u_d_1 * u_d_2 + b * h_d_1 * h_d_2
     k_dd_13 = a * u_d_1 * u_d_3 + b * h_d_1 * h_d_3
     k_dd_23 = a * u_d_2 * u_d_3 + b * h_d_2 * h_d_3

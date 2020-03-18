@@ -1,26 +1,39 @@
 MODULE Euler_TallyModule_Relativistic_IDEAL
 
-  USE KindModule, ONLY: &
-    DP, Zero
-  USE UnitsModule, ONLY: &
+  USE KindModule,                         ONLY: &
+    DP, &
+    Zero
+  USE UnitsModule,                        ONLY: &
     UnitsDisplay
-  USE ProgramHeaderModule, ONLY: &
+  USE ProgramHeaderModule,                ONLY: &
     nDOFX
-  USE ReferenceElementModuleX, ONLY: &
+  USE ReferenceElementModuleX,            ONLY: &
     WeightsX_q
-  USE MeshModule, ONLY: &
+  USE MeshModule,                         ONLY: &
     MeshX
-  USE GeometryFieldsModule, ONLY: &
+  USE GeometryFieldsModule,               ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_SqrtGm
-  USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
+  USE FluidFieldsModule,                  ONLY: &
+    nCF,    &
+    iCF_D,  &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E,  &
+    iCF_Ne, &
+    nPF,    &
+    iPF_D,  &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E,  &
+    iPF_Ne
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
-  USE EquationOfStateModule, ONLY: &
+  USE EquationOfStateModule,              ONLY: &
     ComputePressureFromPrimitive
 
   IMPLICIT NONE

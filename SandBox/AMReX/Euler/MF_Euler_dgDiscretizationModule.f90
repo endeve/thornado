@@ -25,7 +25,7 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE GeometryFieldsModule,         ONLY: &
     nGF
   USE Euler_dgDiscretizationModule, ONLY: &
-    Euler_ComputeIncrement_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit
 
   ! --- Local Modules ---
 
@@ -48,13 +48,13 @@ MODULE  MF_Euler_dgDiscretizationModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_Euler_ComputeIncrement
+  PUBLIC :: MF_ComputeIncrement_Euler
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
+  SUBROUTINE MF_ComputeIncrement_Euler( GEOM, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
 
     TYPE(amrex_geometry), INTENT(in   ) :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF (0:nLevels-1)
@@ -87,6 +87,8 @@ CONTAINS
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL MF_uDF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
@@ -143,9 +145,9 @@ CONTAINS
         CALL MF_ApplyBoundaryConditions_Euler &
                ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
-        IF( DEBUG ) WRITE(*,'(A)') '    CALL Euler_ComputeIncrement_DG_Explicit'
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL ComputeIncrement_Euler_DG_Explicit'
 
-        CALL Euler_ComputeIncrement_DG_Explicit &
+        CALL ComputeIncrement_Euler_DG_Explicit &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                  SuppressBC_Option = .TRUE. )
 
@@ -169,7 +171,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_Euler_ComputeIncrement
+  END SUBROUTINE MF_ComputeIncrement_Euler
 
 
 END MODULE MF_Euler_dgDiscretizationModule

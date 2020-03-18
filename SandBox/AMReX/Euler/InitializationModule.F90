@@ -124,6 +124,7 @@ MODULE InitializationModule
     xR,                        &
     ProgramName,               &
     CoordSys,                  &
+    UsePhysicalUnits,          &
     UseSlopeLimiter,           &
     SlopeLimiterMethod,        &
     UseCharacteristicLimiting, &
@@ -312,20 +313,19 @@ CONTAINS
       CALL PP % query( 'Mass', Mass )
     CALL amrex_parmparse_destroy( PP )
 
-    IF( ProgramName .EQ. 'StandingAccretionShock_Relativistic' )THEN
-
+    IF( UsePhysicalUnits ) &
       Mass = Mass * SolarMass
+
+#if defined HYDRO_RELATIVISTIC
 
       CALL MF_ComputeGeometryX( MF_uGF, Mass )
 
-    ELSE
+#else
 
       CALL MF_ComputeGeometryX( MF_uGF, Zero )
-
-    END IF
-
-    IF( ProgramName .EQ. 'StandingAccretionShock' ) &
       CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
+
+#endif
 
     IF( EquationOfState .EQ. 'TABLE' )THEN
 

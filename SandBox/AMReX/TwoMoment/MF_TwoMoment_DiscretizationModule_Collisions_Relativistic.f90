@@ -1,4 +1,4 @@
-MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
+MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Relativistic
 
   ! --- AMReX Modules ---
   USE amrex_fort_module,     ONLY: &
@@ -24,8 +24,8 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     nCR
   USE FluidFieldsModule,            ONLY: &
     nCF
-  USE TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
-    ComputeIncrement_TwoMoment_Explicit
+  USE TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
+    ComputeIncrement_TwoMoment_Implicit
 
   ! --- Local Modules ---
   USE MF_UtilitiesModule,                ONLY: &
@@ -42,17 +42,18 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: MF_TwoMoment_ComputeIncrement_Explicit
+  PUBLIC :: MF_TwoMoment_ComputeIncrement_Implicit
 
 
 CONTAINS
 
 
-  SUBROUTINE MF_TwoMoment_ComputeIncrement_Explicit( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
+  SUBROUTINE MF_TwoMoment_ComputeIncrement_Implicit( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, dt, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
+    REAL(amrex_real),     INTENT(in)    :: dt   
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCR(0:nLevels-1)
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
@@ -177,9 +178,8 @@ CONTAINS
                            iZ_B1(3):iZ_E1(3), &
                            iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
-
-        CALL ComputeIncrement_TwoMoment_Explicit &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, Verbose_Option = Verbose )
+        CALL ComputeIncrement_TwoMoment_Implicit &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, U, dU, Verbose_Option = Verbose )
 
         CALL thornado2AMReX &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, iX_B0, iX_E0, &
@@ -197,7 +197,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE MF_TwoMoment_ComputeIncrement_Explicit
+  END SUBROUTINE MF_TwoMoment_ComputeIncrement_Implicit
 
 
-END MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
+END MODULE  MF_TwoMoment_DiscretizationModule_Collisions_Relativistic

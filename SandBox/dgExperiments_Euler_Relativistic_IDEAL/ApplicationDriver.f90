@@ -42,7 +42,7 @@ PROGRAM ApplicationDriver
   USE GeometryFieldsModule, ONLY: &
     nGF, uGF
   USE Euler_dgDiscretizationModule, ONLY: &
-    Euler_ComputeIncrement_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
@@ -542,7 +542,7 @@ PROGRAM ApplicationDriver
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, uDF, Euler_ComputeIncrement_DG_Explicit )
+           ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit )
 
     IF( .NOT. OPTIMIZE )THEN
 

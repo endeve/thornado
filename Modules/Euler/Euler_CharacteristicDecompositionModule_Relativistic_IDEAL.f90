@@ -1,8 +1,11 @@
 MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
 
-  USE KindModule, ONLY: &
-    DP, Zero, SqrtTiny, Half, One, Two, Four
-  USE GeometryFieldsModule, ONLY: &
+  USE KindModule,                         ONLY: &
+    DP,   &
+    Zero, &
+    One,  &
+    Two
+  USE GeometryFieldsModule,               ONLY: &
     nGF,          &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -12,18 +15,23 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
     iGF_Beta_1,   &
     iGF_Beta_2,   &
     iGF_Beta_3
-  USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE EquationOfStateModule_IDEAL, ONLY: &
-    Gamma_IDEAL
+  USE FluidFieldsModule,                  ONLY: &
+    nCF,    &
+    iCF_D,  &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E,  &
+    iCF_Ne
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic, &
     Eigenvalues_Euler_Relativistic
-  USE EquationOfStateModule, ONLY: &
+  USE EquationOfStateModule_IDEAL,        ONLY: &
+    Gamma_IDEAL
+  USE EquationOfStateModule,              ONLY: &
     ComputeSoundSpeedFromPrimitive, &
     ComputePressureFromPrimitive
-  USE TimersModule_Euler, ONLY: &
+  USE TimersModule_Euler,                 ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
     Timer_Euler_CharacteristicDecomposition

@@ -44,6 +44,8 @@ MODULE InitializationModule
     nDOFZ,                  &
     iZ_B0,                  &
     iZ_E0,                  &
+    iZ_B1,                  &
+    iZ_E1,                  &
     iE_B0,                  &
     iE_E0,                  &
     iE_B1,                  &
@@ -89,6 +91,9 @@ MODULE InitializationModule
     nCF,                     &
     nAF,                     &
     CreateFluidFields
+  USE TwoMoment_OpacityModule_Relativistic,  ONLY: &
+    CreateOpacities,         &
+    SetOpacities
   USE PolynomialBasisMappingModule,     ONLY: &
     InitializePolynomialBasisMapping
   USE PolynomialBasisModule_Lagrange,   ONLY: &
@@ -142,6 +147,9 @@ MODULE InitializationModule
     nSpecies,                  &
     V_0,                       &
     Gamma_IDEAL,               &
+    D_0,                       &
+    Chi,                       &
+    Sigma,                     &
     EquationOfState,           &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
@@ -150,6 +158,8 @@ MODULE InitializationModule
     MF_ComputeGeometryX
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
     MF_InitializeField_IMEX_RK
+  USE TwoMoment_ClosureModule,                       ONLY: &
+    InitializeClosure_TwoMoment
 
 
   IMPLICIT NONE
@@ -169,7 +179,7 @@ CONTAINS
     INTEGER               :: iLevel, iDim
     TYPE(amrex_parmparse) :: PP
     TYPE(amrex_box)       :: BX
-    REAL(AR)              :: Mass
+    REAL(AR)              :: Mass, W, Vad
 
     ! --- Initialize AMReX ---
     CALL amrex_init()
@@ -269,11 +279,14 @@ CONTAINS
     CALL InitializeReferenceElementX_Lagrange
     CALL InitializeReferenceElement_Lagrange
 
-    CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies )
+    CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
+                                Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' )
+    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+                              Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' )
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+                               Verbose_Option = amrex_parallel_ioprocessor()  )
 
     CALL CreateMesh &
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
@@ -288,9 +301,16 @@ CONTAINS
 
     CALL InitializeEquationOfState &
              ( EquationOfState_Option = EquationOfState, &
-               Gamma_IDEAL_Option = Gamma_IDEAL )
+               Gamma_IDEAL_Option = Gamma_IDEAL, &
+               Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0 )
+    CALL CreateOpacities &
+         ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = amrex_parallel_ioprocessor() )
+
+    CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma )
+
+    CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0, &
+                              Verbose_Option = amrex_parallel_ioprocessor() )
 
     DO iLevel = 0, nLevels-1
 
@@ -298,12 +318,25 @@ CONTAINS
 
     END DO
 
-    CALL MF_InitializeField_IMEX_RK( Scheme, BA, DM )
+    CALL MF_InitializeField_IMEX_RK( Scheme, BA, DM, &
+                                     Verbose_Option = amrex_parallel_ioprocessor() )
+
+
+    CALL InitializeClosure_TwoMoment
+
+
 
     CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &
              MF_uCR_Option = MF_uCR, &
              MF_uPR_Option = MF_uPR )
+!  IF (ProgramName == "SineWaveStreaming") THEN
+!    W = 1.0_AR - DOT_PRODUCT(V_0,V_0)
+!    W = 1.0_AR / SQRT(W)
+!    Vad = (1.0_AR + V_0(1) * W ) / ( W + V_0(1) )
+!    t_end = t_end / Vad
+!  END IF
+! 
 
   END SUBROUTINE InitializeProgram
 

@@ -63,8 +63,7 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     Kilometer,    &
     Second,       &
     SolarMass,    &
-    SpeedOfLight, &
-    Gram, Centimeter
+    SpeedOfLight
   USE UtilitiesModule,         ONLY: &
     NodeNumberX
   USE Euler_ErrorModule,       ONLY: &
@@ -73,10 +72,12 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
   ! --- Local Modules ---
 
   USE MyAmrModule, ONLY: &
-    nLevels, &
-    xL,      &
-    xR,      &
-    Gamma_IDEAL
+    nLevels,            &
+    xL,                 &
+    xR,                 &
+    Gamma_IDEAL,        &
+    InitializeFromFile, &
+    OutputDataFileName
 
   IMPLICIT NONE
   PRIVATE
@@ -1158,145 +1159,153 @@ CONTAINS
     ALLOCATE( V(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
     ALLOCATE( P(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
 
-    ! --- Locate first element with un-shocked fluid ---
+    IF( InitializeFromFile )THEN
 
-    X1 = Zero
+      CALL ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
 
-    DO iX1 = iX_B1(1), iX_E1(1)
+    ELSE
 
-      DO iNodeX1 = 1, nNodesX(1)
+      ! --- Locate first element with un-shocked fluid ---
 
-        dX1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) - X1
-        X1  = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+      X1 = Zero
 
-        IF( X1 .LE. ShockRadius ) CYCLE
+      DO iX1 = iX_B1(1), iX_E1(1)
 
-        IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
+        DO iNodeX1 = 1, nNodesX(1)
 
-          iX1_1     = iX1
-          iNodeX1_1 = iNodeX1
-          X1_1      = X1
-          X1_2      = X1  - dX1
+          dX1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) - X1
+          X1  = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-          IF( iNodeX1_1 .EQ. 1 )THEN
+          IF( X1 .LE. ShockRadius ) CYCLE
 
-            iX1_2     = iX1_1 - 1
-            iNodeX1_2 = nNodesX(1)
+          IF( X1 .GT. ShockRadius .AND. .NOT. FirstPreShockElement )THEN
 
-          ELSE
+            iX1_1     = iX1
+            iNodeX1_1 = iNodeX1
+            X1_1      = X1
+            X1_2      = X1  - dX1
 
-            iX1_2     = iX1_1
-            iNodeX1_2 = iNodeX1_1
+            IF( iNodeX1_1 .EQ. 1 )THEN
+
+              iX1_2     = iX1_1 - 1
+              iNodeX1_2 = nNodesX(1)
+
+            ELSE
+
+              iX1_2     = iX1_1
+              iNodeX1_2 = iNodeX1_1 - 1
+
+            END IF
+
+            FirstPreShockElement = .TRUE.
 
           END IF
 
-          FirstPreShockElement = .TRUE.
-
-        END IF
+        END DO
 
       END DO
 
-    END DO
+      ! --- Compute fields, pre-shock ---
 
-    ! --- Compute fields, pre-shock ---
+      DO iX1 = iX_E1(1), iX1_1, -1
 
-    DO iX1 = iX_E1(1), iX1_1, -1
+        DO iNodeX1 = nNodesX(1), 1, -1
 
-      DO iNodeX1 = nNodesX(1), 1, -1
+          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+          IF( X1 .LE. ShockRadius ) CYCLE
 
-        IF( X1 .LE. ShockRadius ) CYCLE
+          Alpha = LapseFunction  ( X1, MassPNS )
+          Psi   = ConformalFactor( X1, MassPNS )
 
-        Alpha = LapseFunction  ( X1, MassPNS )
-        Psi   = ConformalFactor( X1, MassPNS )
+          V(iNodeX1,iX1) &
+            = -Psi**(-2) * SpeedOfLight * SQRT( One - Alpha**2 )
 
-        V(iNodeX1,iX1) &
-          = -Psi**(-2) * SpeedOfLight * SQRT( One - Alpha**2 )
+          D(iNodeX1,iX1) &
+            = Psi**(-6) * AccretionRate &
+                / ( FourPi * X1**2 * ABS( V(iNodeX1,iX1) ) )
 
-        D(iNodeX1,iX1) &
-          = Psi**(-6) * AccretionRate &
-              / ( FourPi * X1**2 * ABS( V(iNodeX1,iX1) ) )
+          VSq = Psi**4 * V(iNodeX1,iX1)**2
 
-        VSq = Psi**4 * V(iNodeX1,iX1)**2
+          P(iNodeX1,iX1) &
+            = D(iNodeX1,iX1) * VSq &
+                / ( Gamma_IDEAL * MachNumber**2 ) &
+                / ( One - ( VSq / SpeedOfLight**2 ) &
+                / ( MachNumber**2 * ( Gamma_IDEAL - One ) ) )
 
-        P(iNodeX1,iX1) &
-          = D(iNodeX1,iX1) * VSq &
-              / ( Gamma_IDEAL * MachNumber**2 ) &
-              / ( One - ( VSq / SpeedOfLight**2 ) &
-              / ( MachNumber**2 * ( Gamma_IDEAL - One ) ) )
+        END DO
 
       END DO
 
-    END DO
+      ! --- Apply jump conditions ---
 
-    ! --- Apply jump conditions ---
+      D_1 = D(iNodeX1_1,iX1_1)
+      V_1 = V(iNodeX1_1,iX1_1)
 
-    D_1 = D(iNodeX1_1,iX1_1)
-    V_1 = V(iNodeX1_1,iX1_1)
+      CALL ApplyJumpConditions &
+             ( iX1_1, iNodeX1_1, X1_1, D_1, V_1, &
+               iX1_2, iNodeX1_2, X1_2, &
+               D_2, V_2, P_2, MassPNS, PolytropicConstant )
 
-    CALL ApplyJumpConditions &
-           ( iX1_1, iNodeX1_1, X1_1, D_1, V_1, &
-             iX1_2, iNodeX1_2, X1_2, &
-             D_2, V_2, P_2, MassPNS, PolytropicConstant )
+      IF( amrex_parallel_ioprocessor() )THEN
 
-    IF( amrex_parallel_ioprocessor() )THEN
+        WRITE(*,*)
+        WRITE(*,'(6x,A)') 'Shock location:'
+        WRITE(*,'(8x,A)') 'Pre-shock:'
+        WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_1
+        WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_1
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_1 / Kilometer, ' km'
+        WRITE(*,'(8x,A)') 'Post-shock:'
+        WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_2
+        WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_2
+        WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_2 / Kilometer, ' km'
+        WRITE(*,*)
+        WRITE(*,'(6x,A,ES13.6E3)') &
+          'Compression Ratio LOG10(D_2/D_1) = ', LOG( D_2 / D_1 ) / LOG( 1.0d1 )
+        WRITE(*,*)
 
-      WRITE(*,*)
-      WRITE(*,'(6x,A)') 'Shock location:'
-      WRITE(*,'(8x,A)') 'Pre-shock:'
-      WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_1
-      WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_1
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_1 / Kilometer, ' km'
-      WRITE(*,'(8x,A)') 'Post-shock:'
-      WRITE(*,'(10x,A,I4.4)')       'iX1     = ', iX1_2
-      WRITE(*,'(10x,A,I2.2)')       'iNodeX1 = ', iNodeX1_2
-      WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_2 / Kilometer, ' km'
-      WRITE(*,*)
-      WRITE(*,'(6x,A,ES13.6E3)') &
-        'Compression Ratio LOG10(D_2/D_1) = ', LOG( D_2 / D_1 ) / LOG( 1.0d1 )
-      WRITE(*,*)
+      END IF
+
+      ! --- Compute fields, post-shock ---
+
+      Alpha = LapseFunction  ( X1_1, MassPNS )
+      Psi   = ConformalFactor( X1_1, MassPNS )
+      W     = LorentzFactor( Psi, V_1 )
+
+      MassConstant = Psi**6 * Alpha * X1_1**2 * D_1 * W * V_1
+
+      V0 = V_2
+
+      DO iX1 = iX1_2, iX_B1(1), -1
+
+        DO iNodeX1 = nNodesX(1), 1, -1
+
+          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+          IF( X1 .GT. ShockRadius ) CYCLE
+
+          Alpha = LapseFunction  ( X1, MassPNS )
+          Psi   = ConformalFactor( X1, MassPNS )
+
+          CALL NewtonRaphson_PostShockVelocity &
+                 ( Alpha, Psi, MassConstant, PolytropicConstant, &
+                   MassPNS, AccretionRate, X1, V0  )
+
+          V(iNodeX1,iX1) = V0
+
+          W = LorentzFactor( Psi, V0 )
+
+          D(iNodeX1,iX1) &
+            = MassConstant / ( Psi**6 * Alpha * X1**2  * W * V0 )
+
+          P(iNodeX1,iX1) &
+            = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
+
+        END DO
+
+      END DO
 
     END IF
-
-    ! --- Compute fields, post-shock ---
-
-    Alpha = LapseFunction  ( X1_1, MassPNS )
-    Psi   = ConformalFactor( X1_1, MassPNS )
-    W     = LorentzFactor( Psi, V_1 )
-
-    MassConstant = Psi**6 * Alpha * X1_1**2 * D_1 * W * V_1
-
-    V0 = V_2
-
-    DO iX1 = iX1_2, iX_B1(1), -1
-
-      DO iNodeX1 = nNodesX(1), 1, -1
-
-        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
-        IF( X1 .GT. ShockRadius ) CYCLE
-
-        Alpha = LapseFunction  ( X1, MassPNS )
-        Psi   = ConformalFactor( X1, MassPNS )
-
-        CALL NewtonRaphson_PostShockVelocity &
-               ( Alpha, Psi, MassConstant, PolytropicConstant, &
-                 MassPNS, AccretionRate, X1, V0  )
-
-        V(iNodeX1,iX1) = V0
-
-        W = LorentzFactor( Psi, V0 )
-
-        D(iNodeX1,iX1) &
-          = MassConstant / ( Psi**6 * Alpha * X1**2  * W * V0 )
-
-        P(iNodeX1,iX1) &
-          = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
-
-      END DO
-
-    END DO
 
     ! --- Map to 3D domain ---
 
@@ -1414,6 +1423,31 @@ CONTAINS
 
 
   ! --- Auxiliary functions/subroutines for SAS problem ---
+
+
+  SUBROUTINE ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
+
+    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3)
+    REAL(AR), INTENT(out) :: D(1:,iX_B1(1):), V(1:,iX_B1(1):), P(1:,iX_B1(1):)
+
+    CHARACTER(LEN=16) :: FMT
+    INTEGER           :: iX1
+
+    OPEN( UNIT = 100, FILE = TRIM( OutputDataFileName ) )
+
+    READ(100,*) FMT
+
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      READ(100,TRIM(FMT)) D(:,iX1)
+      READ(100,TRIM(FMT)) V(:,iX1)
+      READ(100,TRIM(FMT)) P(:,iX1)
+
+    END DO
+
+    CLOSE( 100 )
+
+  END SUBROUTINE ReadFluidFieldsFromFile
 
 
   SUBROUTINE ApplyJumpConditions &

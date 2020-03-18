@@ -33,7 +33,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE &
-    ( iDim, G, U, R, invR, cs_T, UseAnalytic_Option )
+    ( iDim, G, U, R, invR, FJ, cs_T, UseAnalytic_Option )
 
     INTEGER,  INTENT(in)  :: iDim
     REAL(DP), INTENT(in)  :: G(nGF)
@@ -43,6 +43,7 @@ CONTAINS
 
     LOGICAL,  INTENT(in) , OPTIONAL :: UseAnalytic_Option
     REAL(DP), INTENT(out), OPTIONAL :: cs_T
+    REAL(DP), INTENT(out), OPTIONAL :: FJ(nCF,nCF)
 
     LOGICAL :: UseAnalytic
 
@@ -57,7 +58,7 @@ CONTAINS
     REAL(DP) :: X, Alpha, B, Delta, Zero2
     REAL(DP), DIMENSION(3) :: Phi
 
-    REAL(DP), DIMENSION(nCF,nCF) :: dFdU(nCF,nCF)
+    REAL(DP) :: dFdU(nCF,nCF)
 
     IF ( PRESENT ( UseAnalytic_Option ) ) THEN
       UseAnalytic = UseAnalytic_Option
@@ -116,6 +117,10 @@ CONTAINS
       CASE(3)
         CALL ComputeFluxJacobian_X3( Tau, T, Y, V1, V2, V3, Vsq, Em, H, dPdTau, dPdE, dPdDe, dFdU )
     END SELECT
+
+    IF( PRESENT( FJ ) ) THEN
+      FJ = dFdU
+    END IF
 
     IF ( UseAnalytic ) THEN
       CALL ComputeCharacteristicDecomposition_Analytic( iDim, D, V1, V2, V3, E, Ne, P, Cs,  &

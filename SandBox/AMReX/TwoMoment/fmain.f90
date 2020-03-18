@@ -54,13 +54,11 @@ PROGRAM main
 
   CALL InitializeProgram
 
-  print*, 'Yay'
-
-  CALL WriteFieldsAMReX_Checkpoint & 
-      ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
-        MF_uCR % P,  &
-        MF_uPR % P  )
-  
+!  CALL WriteFieldsAMReX_Checkpoint & 
+!      ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
+!        MF_uCR % P,  &
+!        MF_uPR % P  )
+!  
   DO WHILE( ALL( t .LT. t_end ) )
     
     StepNo = StepNo + 1
@@ -72,14 +70,14 @@ PROGRAM main
       dt = t_end - [t]
       t  = [t_end]
     END IF
-
-    WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
-      'StepNo: ', StepNo(0), ' t = ', t , &
-      ' dt = ', dt(0) 
-
+    IF( amrex_parallel_ioprocessor() )THEN
+      !WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
+       print*,  'StepNo: ', StepNo(0), ' t = ', t , ' dt = ', dt(0) 
+    END IF
     !this is where the issue is
     CALL MF_Update_IMEX_RK &
-           ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM )
+           ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, &
+            Verbose_Option = amrex_parallel_ioprocessor()  )
 
   END DO
   
@@ -92,7 +90,6 @@ PROGRAM main
            ( t(0), StepNo, &
              MF_uCR_Option = MF_uCR, &
              MF_uPR_Option = MF_uPR )
-
 
   CALL FinalizeProgram( GEOM )
   

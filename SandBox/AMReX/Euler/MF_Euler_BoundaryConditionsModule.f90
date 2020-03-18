@@ -38,11 +38,11 @@ MODULE MF_Euler_BoundaryConditionsModule
     PROCEDURE :: Euler_GetBC => EdgeMap_Euler_GetBC
   END TYPE EdgeMap
 
-  ! --- Hack to get iEuler_ApplyBC_XXX. DO NOT CHANGE THESE VALUES ---
-  INTEGER, PARAMETER :: iEuler_ApplyBC_Both  = 0
-  INTEGER, PARAMETER :: iEuler_ApplyBC_Inner = 1
-  INTEGER, PARAMETER :: iEuler_ApplyBC_Outer = 2
-  INTEGER, PARAMETER :: iEuler_ApplyBC_None  = 3
+  ! --- Hack to get iApplyBC_Euler_XXX. DO NOT CHANGE THESE VALUES ---
+  INTEGER, PARAMETER :: iApplyBC_Euler_Both  = 0
+  INTEGER, PARAMETER :: iApplyBC_Euler_Inner = 1
+  INTEGER, PARAMETER :: iApplyBC_Euler_Outer = 2
+  INTEGER, PARAMETER :: iApplyBC_Euler_None  = 3
 
 
 CONTAINS
@@ -116,19 +116,19 @@ CONTAINS
       IF     ( this % IsLowerBoundary( iDim ) .AND. &
                this % IsUpperBoundary( iDim ) )THEN
 
-        iApplyBC(iDim) = iEuler_ApplyBC_Both
+        iApplyBC(iDim) = iApplyBC_Euler_Both
 
       ELSE IF( this % IsLowerBoundary( iDim ) )THEN
 
-        iApplyBC(iDim) = iEuler_ApplyBC_Inner
+        iApplyBC(iDim) = iApplyBC_Euler_Inner
 
       ELSE IF( this % IsUpperBoundary( iDim ) )THEN
 
-        iApplyBC(iDim) = iEuler_ApplyBC_Outer
+        iApplyBC(iDim) = iApplyBC_Euler_Outer
 
       ELSE
 
-        iApplyBC(iDim) = iEuler_ApplyBC_None
+        iApplyBC(iDim) = iApplyBC_Euler_None
 
       END IF
 

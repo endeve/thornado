@@ -3,7 +3,8 @@ MODULE Euler_DiscontinuityDetectionModule
   USE KindModule,                     ONLY: &
     DP,   &
     Zero, &
-    One
+    One,  &
+    Two
   USE ProgramHeaderModule,            ONLY: &
     nDOFX,  &
     nDimsX, &
@@ -14,21 +15,49 @@ MODULE Euler_DiscontinuityDetectionModule
     NodesX1,          &
     NodesX2,          &
     NodesX3
+  USE MeshModule,                     ONLY: &
+    MeshX
   USE PolynomialBasisModule_Lagrange, ONLY: &
     L_X1, &
     L_X2, &
     L_X3
   USE GeometryFieldsModule,           ONLY: &
+    nGF,          &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
+    iGF_Alpha,    &
+    iGF_Beta_1,   &
+    iGF_Beta_2,   &
+    iGF_Beta_3,   &
     iGF_SqrtGm
   USE FluidFieldsModule,              ONLY: &
-    nCF,   &
-    iCF_D, &
-    iCF_E, &
-    iDF_TCI
+    nCF,     &
+    iCF_D,   &
+    iCF_S1,  &
+    iCF_S2,  &
+    iCF_S3,  &
+    iCF_E,   &
+    iCF_Ne,  &
+    nPF,     &
+    iPF_D,   &
+    iPF_V1,  &
+    iPF_V2,  &
+    iPF_V3,  &
+    iPF_E,   &
+    iPF_Ne,  &
+    iAF_P,   &
+    iDF_TCI, &
+    iDF_Sh
+  USE Euler_UtilitiesModule,          ONLY: &
+    ComputePrimitive_Euler
+  USE EquationOfStateModule,          ONLY: &
+    ComputePressureFromPrimitive
   USE TimersModule_Euler,             ONLY: &
-    TimersStart_Euler, &
-    TimersStop_Euler,  &
-    Timer_Euler_TroubledCellIndicator
+    TimersStart_Euler,                 &
+    TimersStop_Euler,                  &
+    Timer_Euler_TroubledCellIndicator, &
+    Timer_Euler_ShockDetector
 
   IMPLICIT NONE
   PRIVATE
@@ -36,6 +65,7 @@ MODULE Euler_DiscontinuityDetectionModule
   PUBLIC :: InitializeTroubledCellIndicator_Euler
   PUBLIC :: FinalizeTroubledCellIndicator_Euler
   PUBLIC :: DetectTroubledCells_Euler
+  PUBLIC :: DetectShocks_Euler
 
   ! --- For troubled-cell indicator ---
   REAL(DP), ALLOCATABLE :: WeightsX_X1_P(:), WeightsX_X1_N(:)
@@ -154,11 +184,11 @@ CONTAINS
 
   SUBROUTINE DetectTroubledCells_Euler( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iX1, iX2, iX3, iCF
@@ -271,6 +301,356 @@ CONTAINS
     CALL TimersStop_Euler( Timer_Euler_TroubledCellIndicator )
 
   END SUBROUTINE DetectTroubledCells_Euler
+
+
+  SUBROUTINE DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER  :: iX1, iX2, iX3, iCF, iGF
+    REAL(DP) :: V_K
+    REAL(DP) :: uPF_K(nPF)
+    REAL(DP) :: uCF_K(nCF)
+    REAL(DP) :: uGF_K(nGF)
+    REAL(DP) :: P_K(2), VX_K(2)
+    REAL(DP) :: GradP(nDimsX), DivV
+    REAL(DP) :: dX1, dX2, dX3
+
+    ! --- Shock detector, adapted from
+    !     Fryxell et al., (2000), ApJS, 131, 273 ---
+
+    CALL TimersStart_Euler( Timer_Euler_ShockDetector )
+
+    D(:,:,:,:,iDF_Sh) = Zero
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      dX1 = MeshX(1) % Width(iX1)
+      dX2 = MeshX(2) % Width(iX2)
+      dX3 = MeshX(3) % Width(iX3)
+
+      GradP = Zero
+
+      ! --- Lower neighbor in X1 direction ---
+
+      V_K = DOT_PRODUCT( WeightsX_q, G(:,iX1-1,iX2,iX3,iGF_SqrtGm) )
+
+      DO iCF = 1, nCF
+
+        uCF_K(iCF) &
+          = DOT_PRODUCT &
+              ( WeightsX_q, &
+                G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
+                  * U(:,iX1-1,iX2,iX3,iCF) ) / V_K
+
+      END DO
+
+      DO iGF = 1, nGF
+
+        uGF_K(iGF) &
+          = DOT_PRODUCT &
+              ( WeightsX_q, &
+                G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
+                  * G(:,iX1-1,iX2,iX3,iGF) ) / V_K
+
+      END DO
+
+      CALL ComputePrimitive_Euler &
+           ( uCF_K(iCF_D ), &
+             uCF_K(iCF_S1), &
+             uCF_K(iCF_S2), &
+             uCF_K(iCF_S3), &
+             uCF_K(iCF_E ), &
+             uCF_K(iCF_Ne), &
+             uPF_K(iPF_D ), &
+             uPF_K(iPF_V1), &
+             uPF_K(iPF_V2), &
+             uPF_K(iPF_V3), &
+             uPF_K(iPF_E ), &
+             uPF_K(iPF_Ne), &
+             uGF_K(iGF_Gm_dd_11), &
+             uGF_K(iGF_Gm_dd_22), &
+             uGF_K(iGF_Gm_dd_33) )
+
+      VX_K(1) = uGF_K(iGF_Alpha) * uPF_K(iPF_V1) + uGF_K(iGF_Beta_1)
+
+      CALL ComputePressureFromPrimitive &
+             ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K(1) )
+
+      ! --- Upper neighbor in X1 direction ---
+
+      V_K = DOT_PRODUCT( WeightsX_q, G(:,iX1+1,iX2,iX3,iGF_SqrtGm) )
+
+      DO iCF = 1, nCF
+
+        uCF_K(iCF) &
+          = DOT_PRODUCT &
+              ( WeightsX_q, &
+                G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
+                  * U(:,iX1+1,iX2,iX3,iCF) ) / V_K
+
+      END DO
+
+      DO iGF = 1, nGF
+
+        uGF_K(iGF) &
+          = DOT_PRODUCT &
+              ( WeightsX_q, &
+                G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
+                  * G(:,iX1+1,iX2,iX3,iGF) ) / V_K
+
+      END DO
+
+      CALL ComputePrimitive_Euler &
+           ( uCF_K(iCF_D ), &
+             uCF_K(iCF_S1), &
+             uCF_K(iCF_S2), &
+             uCF_K(iCF_S3), &
+             uCF_K(iCF_E ), &
+             uCF_K(iCF_Ne), &
+             uPF_K(iPF_D ), &
+             uPF_K(iPF_V1), &
+             uPF_K(iPF_V2), &
+             uPF_K(iPF_V3), &
+             uPF_K(iPF_E ), &
+             uPF_K(iPF_Ne), &
+             uGF_K(iGF_Gm_dd_11), &
+             uGF_K(iGF_Gm_dd_22), &
+             uGF_K(iGF_Gm_dd_33) )
+
+      VX_K(2) = uGF_K(iGF_Alpha) * uPF_K(iPF_V1) + uGF_K(iGF_Beta_1)
+
+      CALL ComputePressureFromPrimitive &
+             ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K(2) )
+
+      ! --- Compute pressure gradient and divergence of velocity (X1) ---
+
+      GradP(1) = ABS( P_K(2) - P_K(1) ) / MIN( P_K(2), P_K(1) )
+
+      DivV     = ( VX_K(2) - VX_K(1) ) / ( Two * dX1 )
+
+      IF( nDimsX .GT. 1 )THEN
+
+        ! --- Lower neighbor in X2 direction ---
+
+        V_K = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2-1,iX3,iGF_SqrtGm) )
+
+        DO iCF = 1, nCF
+
+          uCF_K(iCF) &
+            = DOT_PRODUCT &
+                ( WeightsX_q, &
+                  G(:,iX1,iX2-1,iX3,iGF_SqrtGm) &
+                    * U(:,iX1,iX2-1,iX3,iCF) ) / V_K
+
+        END DO
+
+        DO iGF = 1, nGF
+
+          uGF_K(iGF) &
+            = DOT_PRODUCT &
+                ( WeightsX_q, &
+                  G(:,iX1,iX2-1,iX3,iGF_SqrtGm) &
+                    * G(:,iX1,iX2-1,iX3,iGF) ) / V_K
+
+        END DO
+
+        CALL ComputePrimitive_Euler &
+             ( uCF_K(iCF_D ), &
+               uCF_K(iCF_S1), &
+               uCF_K(iCF_S2), &
+               uCF_K(iCF_S3), &
+               uCF_K(iCF_E ), &
+               uCF_K(iCF_Ne), &
+               uPF_K(iPF_D ), &
+               uPF_K(iPF_V1), &
+               uPF_K(iPF_V2), &
+               uPF_K(iPF_V3), &
+               uPF_K(iPF_E ), &
+               uPF_K(iPF_Ne), &
+               uGF_K(iGF_Gm_dd_11), &
+               uGF_K(iGF_Gm_dd_22), &
+               uGF_K(iGF_Gm_dd_33) )
+
+        VX_K(1) = uGF_K(iGF_Alpha) * uPF_K(iPF_V2) + uGF_K(iGF_Beta_2)
+
+        CALL ComputePressureFromPrimitive &
+               ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K(1) )
+
+        ! --- Upper neighbor in X2 direction ---
+
+        V_K = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2+1,iX3,iGF_SqrtGm) )
+
+        DO iCF = 1, nCF
+
+          uCF_K(iCF) &
+            = DOT_PRODUCT &
+                ( WeightsX_q, &
+                  G(:,iX1,iX2+1,iX3,iGF_SqrtGm) &
+                    * U(:,iX1,iX2+1,iX3,iCF) ) / V_K
+
+        END DO
+
+        DO iGF = 1, nGF
+
+          uGF_K(iGF) &
+            = DOT_PRODUCT &
+                ( WeightsX_q, &
+                  G(:,iX1,iX2+1,iX3,iGF_SqrtGm) &
+                    * G(:,iX1,iX2+1,iX3,iGF) ) / V_K
+
+        END DO
+
+        CALL ComputePrimitive_Euler &
+             ( uCF_K(iCF_D ), &
+               uCF_K(iCF_S1), &
+               uCF_K(iCF_S2), &
+               uCF_K(iCF_S3), &
+               uCF_K(iCF_E ), &
+               uCF_K(iCF_Ne), &
+               uPF_K(iPF_D ), &
+               uPF_K(iPF_V1), &
+               uPF_K(iPF_V2), &
+               uPF_K(iPF_V3), &
+               uPF_K(iPF_E ), &
+               uPF_K(iPF_Ne), &
+               uGF_K(iGF_Gm_dd_11), &
+               uGF_K(iGF_Gm_dd_22), &
+               uGF_K(iGF_Gm_dd_33) )
+
+        VX_K(2) = uGF_K(iGF_Alpha) * uPF_K(iPF_V2) + uGF_K(iGF_Beta_2)
+
+        CALL ComputePressureFromPrimitive &
+               ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K(2) )
+
+        ! --- Compute pressure gradient and divergence of velocity (X2) ---
+
+        GradP(2) = ABS( P_K(2) - P_K(1) ) / MIN( P_K(2), P_K(1) )
+
+        DivV     = DivV + ( VX_K(2) - VX_K(1) ) / ( Two * dX2 )
+
+      END IF
+
+      IF( nDimsX .GT. 2 )THEN
+
+        ! --- Lower neighbor in X3 direction ---
+
+        V_K = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3-1,iGF_SqrtGm) )
+
+        DO iCF = 1, nCF
+
+          uCF_K(iCF) &
+            = DOT_PRODUCT &
+                ( WeightsX_q, &
+                  G(:,iX1,iX2,iX3-1,iGF_SqrtGm) &
+                    * U(:,iX1,iX2,iX3-1,iCF) ) / V_K
+
+        END DO
+
+        DO iGF = 1, nGF
+
+          uGF_K(iGF) &
+            = DOT_PRODUCT &
+                ( WeightsX_q, &
+                  G(:,iX1,iX2,iX3-1,iGF_SqrtGm) &
+                    * G(:,iX1,iX2,iX3-1,iGF) ) / V_K
+
+        END DO
+
+        CALL ComputePrimitive_Euler &
+             ( uCF_K(iCF_D ), &
+               uCF_K(iCF_S1), &
+               uCF_K(iCF_S2), &
+               uCF_K(iCF_S3), &
+               uCF_K(iCF_E ), &
+               uCF_K(iCF_Ne), &
+               uPF_K(iPF_D ), &
+               uPF_K(iPF_V1), &
+               uPF_K(iPF_V2), &
+               uPF_K(iPF_V3), &
+               uPF_K(iPF_E ), &
+               uPF_K(iPF_Ne), &
+               uGF_K(iGF_Gm_dd_11), &
+               uGF_K(iGF_Gm_dd_22), &
+               uGF_K(iGF_Gm_dd_33) )
+
+        VX_K(1) = uGF_K(iGF_Alpha) * uPF_K(iPF_V3) + uGF_K(iGF_Beta_3)
+
+        CALL ComputePressureFromPrimitive &
+               ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K(1) )
+
+        ! --- Upper neighbor in X3 direction ---
+
+        V_K = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3+1,iGF_SqrtGm) )
+
+        DO iCF = 1, nCF
+
+          uCF_K(iCF) &
+            = DOT_PRODUCT &
+                ( WeightsX_q, &
+                  G(:,iX1,iX2,iX3+1,iGF_SqrtGm) &
+                    * U(:,iX1,iX2,iX3+1,iCF) ) / V_K
+
+        END DO
+
+        DO iGF = 1, nGF
+
+          uGF_K(iGF) &
+            = DOT_PRODUCT &
+                ( WeightsX_q, &
+                  G(:,iX1,iX2,iX3+1,iGF_SqrtGm) &
+                    * G(:,iX1,iX2,iX3+1,iGF) ) / V_K
+
+        END DO
+
+        CALL ComputePrimitive_Euler &
+             ( uCF_K(iCF_D ), &
+               uCF_K(iCF_S1), &
+               uCF_K(iCF_S2), &
+               uCF_K(iCF_S3), &
+               uCF_K(iCF_E ), &
+               uCF_K(iCF_Ne), &
+               uPF_K(iPF_D ), &
+               uPF_K(iPF_V1), &
+               uPF_K(iPF_V2), &
+               uPF_K(iPF_V3), &
+               uPF_K(iPF_E ), &
+               uPF_K(iPF_Ne), &
+               uGF_K(iGF_Gm_dd_11), &
+               uGF_K(iGF_Gm_dd_22), &
+               uGF_K(iGF_Gm_dd_33) )
+
+        VX_K(2) = uGF_K(iGF_Alpha) * uPF_K(iPF_V3) + uGF_K(iGF_Beta_3)
+
+        CALL ComputePressureFromPrimitive &
+               ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K(2) )
+
+        ! --- Compute pressure gradient and divergence of velocity (X3) ---
+
+        GradP(3) = ABS( P_K(2) - P_K(1) ) / MIN( P_K(2), P_K(1) )
+
+        DivV     = DivV + ( VX_K(2) - VX_K(1) ) / ( Two * dX3 )
+
+      END IF
+
+      IF( SQRT( SUM( GradP**2 ) ) .GT. 1.0_DP / 3.0_DP .AND. DivV .LT. Zero ) &
+        D(:,iX1,iX2,iX3,iDF_Sh) = One
+
+    END DO
+    END DO
+    END DO
+
+    CALL TimersStop_Euler( Timer_Euler_ShockDetector )
+
+  END SUBROUTINE DetectShocks_Euler
 
 
 END MODULE Euler_DiscontinuityDetectionModule

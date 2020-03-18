@@ -2,34 +2,49 @@
 !> Qin et al., (2016), JCP, 315, 323
 MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
 
-  USE KindModule, ONLY: &
-    DP, Zero, Half, One, SqrtTiny
-  USE ProgramHeaderModule, ONLY: &
-    nNodesX, nDOFX
-  USE ReferenceElementModuleX, ONLY: &
-    NodesX_q, &
-    nDOFX_X1, NodesX1, &
-    nDOFX_X2, NodesX2, &
-    nDOFX_X3, NodesX3, &
+  USE KindModule,                       ONLY: &
+    DP,   &
+    Zero, &
+    Half, &
+    One
+  USE ProgramHeaderModule,              ONLY: &
+    nNodesX, &
+    nDOFX
+  USE ReferenceElementModuleX,          ONLY: &
+    nDOFX_X1, &
+    nDOFX_X2, &
+    nDOFX_X3, &
     WeightsX_q
   USE ReferenceElementModuleX_Lagrange, ONLY: &
-    LX_X1_Dn, LX_X1_Up, &
-    LX_X2_Dn, LX_X2_Up, &
-    LX_X3_Dn, LX_X3_Up
-  USE FluidFieldsModule, ONLY: &
-    nCF, &
-    iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
-  USE GeometryComputationModule, ONLY: &
-    ComputeGeometryX_FromScaleFactors
-  USE GeometryFieldsModule, ONLY: &
-    nGF, &
-    iGF_h_1, iGF_h_2, iGF_h_3, &
-    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    LX_X1_Dn, &
+    LX_X1_Up, &
+    LX_X2_Dn, &
+    LX_X2_Up, &
+    LX_X3_Dn, &
+    LX_X3_Up
+  USE GeometryFieldsModule,             ONLY: &
+    nGF,          &
+    iGF_h_1,      &
+    iGF_h_2,      &
+    iGF_h_3,      &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
     iGF_SqrtGm
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
+  USE GeometryComputationModule,        ONLY: &
+    ComputeGeometryX_FromScaleFactors
+  USE FluidFieldsModule,                ONLY: &
+    nCF,    &
+    iCF_D,  &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E
+  USE TimersModule_Euler,               ONLY: &
+    TimersStart_Euler, &
+    TimersStop_Euler,  &
     Timer_Euler_PositivityLimiter
-  USE Euler_ErrorModule, ONLY: &
+  USE Euler_ErrorModule,                ONLY: &
     DescribeError_Euler
 
   IMPLICIT NONE
@@ -47,6 +62,7 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
   INTEGER               :: nPT      ! Total number of Positive Points
   REAL(DP)              :: Min_1, Min_2
   REAL(DP), ALLOCATABLE :: U_PP(:,:), G_PP(:,:)
+
 
 CONTAINS
 
@@ -138,7 +154,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
+    INTEGER  :: iX1, iX2, iX3, iCF, iP
     REAL(DP) :: Theta_D, Theta_q, Theta_P
     REAL(DP) :: Min_K, Min_D, Min_ESq
     REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), q(nPT), SSq(nPT)
@@ -194,11 +210,9 @@ CONTAINS
 
         END DO
 
-        DO iGF = iGF_h_1, iGF_h_3
-
-          CALL ComputePointValues( G_q(1:nDOFX,iGF), G_PP(1:nPT,iGF) )
-
-        END DO
+        CALL ComputePointValues( G_q(1:nDOFX,iGF_h_1), G_PP(1:nPT,iGF_h_1) )
+        CALL ComputePointValues( G_q(1:nDOFX,iGF_h_2), G_PP(1:nPT,iGF_h_2) )
+        CALL ComputePointValues( G_q(1:nDOFX,iGF_h_3), G_PP(1:nPT,iGF_h_3) )
 
         CALL ComputeGeometryX_FromScaleFactors( G_PP(1:nPT,1:nGF) )
 
@@ -330,11 +344,12 @@ CONTAINS
 
       END DO
 
-      DO iGF = iGF_h_1, iGF_h_3
-
-        CALL ComputePointValues( G(1:nDOFX,iX1,iX2,iX3,iGF), G_PP(1:nPT,iGF) )
-
-      END DO
+      CALL ComputePointValues &
+             ( G(1:nDOFX,iX1,iX2,iX3,iGF_h_1), G_PP(1:nPT,iGF_h_1) )
+      CALL ComputePointValues &
+             ( G(1:nDOFX,iX1,iX2,iX3,iGF_h_2), G_PP(1:nPT,iGF_h_2) )
+      CALL ComputePointValues &
+             ( G(1:nDOFX,iX1,iX2,iX3,iGF_h_3), G_PP(1:nPT,iGF_h_3) )
 
       CALL ComputeGeometryX_FromScaleFactors( G_PP(1:nPT,1:nGF) )
 

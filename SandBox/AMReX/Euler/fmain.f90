@@ -34,13 +34,11 @@ PROGRAM main
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     MF_ApplyPositivityLimiter_Euler
   USE MF_Euler_dgDiscretizationModule,  ONLY: &
-    MF_Euler_ComputeIncrement
+    MF_ComputeIncrement_Euler
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
     MF_UpdateFluid_SSPRK
   USE FinalizationModule,               ONLY: &
     FinalizeProgram
-  USE MF_UtilitiesModule,               ONLY: &
-    ShowVariableFromMultifab
   USE MyAmrDataModule,                  ONLY: &
     MF_uGF, &
     MF_uCF, &
@@ -52,20 +50,23 @@ PROGRAM main
     chk,               &
     wrt
   USE MyAmrModule,                      ONLY: &
-    nLevels,   &
-    StepNo,    &
-    t,         &
-    dt,        &
-    t_end,     &
-    CFL,       &
-    t_wrt,     &
-    dt_wrt,    &
-    t_chk,     &
-    dt_chk,    &
-    iCycleD,   &
-    iCycleW,   &
-    iCycleChk, &
+    nLevels,         &
+    StepNo,          &
+    t,               &
+    dt,              &
+    t_end,           &
+    CFL,             &
+    t_wrt,           &
+    dt_wrt,          &
+    t_chk,           &
+    dt_chk,          &
+    iCycleD,         &
+    iCycleW,         &
+    iCycleChk,       &
+    WriteOutputData, &
     GEOM
+  USE MF_UtilitiesModule,               ONLY: &
+    WriteRawDataToFile
   USE TimersModule_AMReX_Euler,         ONLY: &
     TimeIt_AMReX_Euler,            &
     InitializeTimers_AMReX_Euler,  &
@@ -135,7 +136,7 @@ PROGRAM main
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
     CALL MF_UpdateFluid_SSPRK &
-           ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_Euler_ComputeIncrement )
+           ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_ComputeIncrement_Euler )
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
@@ -217,6 +218,9 @@ PROGRAM main
   StepNo = StepNo + 1
 
   CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
+
+  IF( WriteOutputData ) &
+    CALL WriteRawDataToFile( GEOM, MF_uGF, MF_uCF )
 
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 

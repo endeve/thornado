@@ -78,9 +78,6 @@ MODULE InputOutputModuleAMReX
     MF_uPF, &
     MF_uAF, &
     MF_uDF
-  USE MF_UtilitiesModule, ONLY: &
-    AMReX2thornado, &
-    ShowVariableFromMultiFab
 
   IMPLICIT NONE
   PRIVATE

@@ -90,6 +90,8 @@ CONTAINS
 
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
+      CALL MF_uDF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
@@ -124,6 +126,8 @@ CONTAINS
         CALL AMReX2thornado( nGF, iX_B1, iX_E1, uGF, G )
 
         CALL AMReX2thornado( nCF, iX_B1, iX_E1, uCF, U )
+
+        CALL AMReX2thornado( nDF, iX_B1, iX_E1, uDF, D )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 

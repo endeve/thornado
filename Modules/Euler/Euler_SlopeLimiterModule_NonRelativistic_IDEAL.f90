@@ -31,7 +31,8 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
     FinalizeTroubledCellIndicator_Euler, &
-    DetectTroubledCells_Euler
+    DetectTroubledCells_Euler, &
+    DetectShocks_Euler
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_SlopeLimiter
@@ -175,7 +176,7 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out)          :: &
+    REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
@@ -429,6 +430,9 @@ CONTAINS
 
     CALL ApplyConservativeCorrection &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, V_K, U, U_K, LimitedCell )
+
+    CALL DetectShocks_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
     CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
 
