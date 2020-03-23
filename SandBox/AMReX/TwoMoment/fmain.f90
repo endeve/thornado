@@ -9,7 +9,8 @@ PROGRAM main
 
   ! --- Local Modules ---
   USE MF_TwoMoment_UtilitiesModule,     ONLY: & 
-    MF_ComputeTimeStep
+    MF_ComputeTimeStep,                &
+    MF_ComputeFromConserved
   USE MyAmrDataModule,                  ONLY: &
     MF_uCR, &
     MF_uPR, &
@@ -80,13 +81,15 @@ PROGRAM main
             Verbose_Option = amrex_parallel_ioprocessor()  )
 
   END DO
-  
+ 
+  CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+
   CALL WriteFieldsAMReX_Checkpoint & 
       ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
         MF_uCR % P,  &
         MF_uPR % P  )
 
-    CALL WriteFieldsAMReX_PlotFile &
+  CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &
              MF_uCR_Option = MF_uCR, &
              MF_uPR_Option = MF_uPR )
