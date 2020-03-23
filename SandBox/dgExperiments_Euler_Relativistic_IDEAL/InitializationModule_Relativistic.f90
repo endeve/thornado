@@ -545,7 +545,7 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
-    REAL(DP) :: X1, XD
+    REAL(DP) :: X1, XD, Vs
 
     INTEGER  :: nDetCells
     REAL(DP) :: Eblast
@@ -574,6 +574,29 @@ CONTAINS
         RightState(iPF_V2) = 0.0_DP
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
+
+      CASE( 'Grid-AlignedShock' )
+
+        Vs = 0.01_DP
+        XD = Half
+
+        RightState(iPF_D)  = 1.0_DP
+        RightState(iPF_V1) = -0.9_DP
+        RightState(iPF_V2) = 0.0_DP
+        RightState(iPF_V3) = 0.0_DP
+        RightState(iPF_E)  = 1.0_DP / ( Gamma_IDEAL - One )
+
+        CALL ComputeLeftState &
+               ( Vs,                 &
+                 RightState(iPF_D ), &
+                 RightState(iPF_V1), &
+                 RightState(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 LeftState (iPF_D ), &
+                 LeftState (iPF_V1), &
+                 LeftState(iPF_E ) )
+
+        LeftState(iPF_V2) = 0.0_DP
+        LeftState(iPF_V3) = 0.0_DP
 
       CASE( 'Contact' )
 
@@ -684,17 +707,16 @@ CONTAINS
 
     END SELECT
 
+    IF( TRIM( RiemannProblemName ) .EQ. 'Grid-AlignedShock' )THEN
+
+      WRITE(*,'(6x,A,ES14.6E3)') 'Shock Velocity = ', Vs
+      WRITE(*,*)
+
+    END IF
+
     WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
     WRITE(*,*)
     WRITE(*,'(6x,A,F8.6)') 'XD = ', XD
-    WRITE(*,*)
-    WRITE(*,'(6x,A)') 'Left State:'
-    WRITE(*,*)
-    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', LeftState(iPF_D )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', LeftState(iPF_V1)
-    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', LeftState(iPF_V2)
-    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', LeftState(iPF_V3)
-    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', LeftState(iPF_E )
     WRITE(*,*)
     WRITE(*,'(6x,A)') 'Right State:'
     WRITE(*,*)
@@ -703,6 +725,14 @@ CONTAINS
     WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', RightState(iPF_V2)
     WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', RightState(iPF_V3)
     WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', RightState(iPF_E )
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'Left State:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', LeftState(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', LeftState(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', LeftState(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', LeftState(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', LeftState(iPF_E )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -787,6 +817,32 @@ CONTAINS
         X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
         SELECT CASE ( TRIM( RiemannProblemName ) )
+
+          CASE( 'Grid-AlignedShock' )
+
+            ! --- Left ---
+            IF( X1 .LE. Half )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.3607219640060581_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = -0.8499999999999994_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.16343812081309952_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+            ! --- Right ---
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = -0.5_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+            END IF
 
           CASE( 'DzB2002' )
 
@@ -1546,6 +1602,169 @@ CONTAINS
 
     RETURN
   END FUNCTION LorentzFactor
+
+
+  ! --- Auxiliary functions/subroutines for computine left state ---
+
+
+  SUBROUTINE ComputeLeftState( Vs, DR, VR, PR, DL, VL, PL )
+
+    REAL(DP), INTENT(in)  :: Vs, DR, VR, PR
+    REAL(DP), INTENT(out) ::     DL, VL, PL
+
+    CALL ApplyJumpConditions_LeftState( Vs, DR, VR, PR, DL, VL, PL )
+
+    ! --- Return energy-density instead of pressure ---
+    PL = PL / ( Gamma_IDEAL - One )
+
+  END SUBROUTINE ComputeLeftState
+
+
+  SUBROUTINE ApplyJumpConditions_LeftState( Vs, DR, VR, PR, DL, VL, PL )
+
+    REAL(DP), INTENT(in)  :: Vs, DR, VR, PR
+    REAL(DP), INTENT(out) ::     DL, VL, PL
+
+    REAL(DP), PARAMETER :: EPS = 1.0e-15_DP
+
+    REAL(DP), PARAMETER :: ToldV = EPS
+    REAL(DP), PARAMETER :: TolF  = EPS
+    INTEGER,  PARAMETER :: nMaxIter = 1000
+
+    INTEGER :: ITERATION
+    REAL(DP) :: D, V, P, F
+    REAL(DP) :: Vmin, Vmax, Fmin, Fmax, VV, FF
+
+    IF( VR .LT. Zero )THEN
+
+      Vmin = VR   + EPS
+      Vmax = +One - EPS
+
+    ELSE
+
+      Vmin = -One + EPS
+      Vmax = VR   - EPS
+
+    END IF
+
+    D = Density ( Vs, DR, VR, Vmin )
+    P = Pressure( Vs, DR, VR, PR, D, Vmin )
+    Fmin = PostShockVelocity( Vs, DR, VR, PR, D, Vmin, P )
+
+    D = Density( Vs, DR, VR, Vmax )
+    P = Pressure( Vs, DR, VR, PR, D, Vmax )
+    Fmax = PostShockVelocity( Vs, DR, VR, PR, D, Vmax, P )
+
+    IF( .NOT. Fmin * Fmax .LT. Zero )THEN
+
+      WRITE(*,*) 'Root not bracketed. Stopping...'
+      STOP
+
+    END IF
+
+    IF( Fmin .GT. Zero )THEN
+
+      VV = Vmax
+      FF = Fmax
+
+      Vmax = Vmin
+      Vmin = VV
+
+      Fmax = Fmin
+      Fmin = FF
+
+    END IF
+
+    DO WHILE( ITERATION .LT. nMaxIter )
+
+      ITERATION = ITERATION + 1
+
+      V = ( Vmin + Vmax ) / Two
+
+      D = Density ( Vs, DR, VR, V )
+      P = Pressure( Vs, DR, VR, PR, D, V )
+
+      F = PostShockVelocity( Vs, DR, VR, PR, D, V, P )
+
+      IF( ABS( V - Vmin ) / MAX( ABS( Vmax ), ABS( Vmin ) ) .LT. ToldV ) EXIT
+
+      IF( F .GT. Zero )THEN
+
+        Vmax = V
+        Fmax = F
+
+     ELSE
+
+        Vmin = V
+        Fmin = F
+
+     END IF
+
+    END DO
+
+!!$    WRITE(*,*) 'Converged at iteration ', ITERATION
+!!$    WRITE(*,*) '|F|:  ' , ABS( F )
+!!$    WRITE(*,*) 'dV/V: ', ABS( V - Vmax ) / ABS( Vmax )
+
+    VL = V
+    DL = Density ( Vs, DR, VR, VL )
+    PL = Pressure( Vs, DR, VR, PR, DL, VL )
+
+  END SUBROUTINE ApplyJumpConditions_LeftState
+
+
+  REAL(DP) FUNCTION Density( Vs, DR, VR, VL )
+
+    REAL(DP), INTENT(in) :: Vs, DR, VR, VL
+
+    REAL(DP) :: WR, WL
+
+    WR = LorentzFactor( One, VR )
+    WL = LorentzFactor( One, VL )
+
+    Density = DR * ( WR * ( VR - Vs ) ) / ( WL * ( VL - Vs ) )
+
+    RETURN
+  END FUNCTION Density
+
+
+  REAL(DP) FUNCTION Pressure( Vs, DR, VR, PR, DL, VL )
+
+    REAL(DP), INTENT(in) :: Vs, DR, VR, PR, DL, VL
+
+    REAL(DP) :: WR, WL, tau
+
+    WR = LorentzFactor( One, VR )
+    WL = LorentzFactor( One, VL )
+
+    tau = Gamma_IDEAL / ( Gamma_IDEAL - One )
+
+    Pressure = ( PR * ( One + tau * WR**2 * VR * ( VR - Vs ) ) &
+                 - DL * WL**2 * VL**2 + DR * WR**2 * VR**2 &
+                 + Vs * ( DL * WL**2 * VL - DR * WR**2 * VR ) ) &
+               / ( One + tau * WL**2 * VL * ( VL - Vs ) )
+
+    RETURN
+  END FUNCTION Pressure
+
+
+  REAL(DP) FUNCTION PostShockVelocity( Vs, DR, VR, PR, DL, VL, PL )
+
+    REAL(DP), INTENT(in) :: Vs, DR, VR, PR, DL, VL, PL
+
+    REAL(DP) :: WR, WL, tau
+
+    WR = LorentzFactor( One, VR )
+    WL = LorentzFactor( One, VL )
+
+    tau = Gamma_IDEAL / ( Gamma_IDEAL - One )
+
+    PostShockVelocity &
+      = ( DL + tau * PL ) * WL**2 * ( VL - Vs ) &
+          - ( DR + tau * PR ) * WR**2 * ( VR - Vs ) + Vs * ( PL - PR )
+
+    RETURN
+  END FUNCTION PostShockVelocity
 
 
 END MODULE InitializationModule_Relativistic

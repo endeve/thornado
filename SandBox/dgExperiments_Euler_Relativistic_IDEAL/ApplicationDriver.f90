@@ -156,13 +156,19 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'Sod'
+      RiemannProblemName = 'Grid-AlignedShock'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
         CASE( 'Sod' )
           Gamma = 5.0_DP / 3.0_DP
           t_end = 0.2d0
+          bcX   = [ 2, 0, 0 ]
+
+        CASE( 'Grid-AlignedShock' )
+
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 0.1_DP
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'Contact' )
@@ -214,7 +220,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem2D' )
 
-      RiemannProblemName = 'DzB2002'
+      RiemannProblemName = 'Grid-AlignedShock'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
@@ -222,6 +228,12 @@ PROGRAM ApplicationDriver
 
           Gamma = 5.0_DP / 3.0_DP
           t_end = 0.4d0
+          bcX   = [ 2, 2, 0 ]
+
+        CASE( 'Grid-AlignedShock' )
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 2.0_DP
           bcX   = [ 2, 2, 0 ]
 
       END SELECT
@@ -455,7 +467,7 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL WriteFieldsHDF &
-         ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
