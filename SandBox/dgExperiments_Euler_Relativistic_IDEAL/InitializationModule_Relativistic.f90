@@ -66,6 +66,8 @@ MODULE InitializationModule_Relativistic
     GetQuadrature
   USE PolynomialBasisModule_Lagrange,     ONLY: &
     LagrangeP
+  USE Euler_BoundaryConditionsModule,     ONLY: &
+    SlopeD, SlopeE
 
   IMPLICIT NONE
   PRIVATE
@@ -1443,6 +1445,38 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    ! --- Get values for boundary conditions ---
+
+    IF( nNodesX(1) .GT. 1 )THEN
+
+      X1_1 = NodeCoordinate( MeshX(1), iX_B0(1), 1 )
+      X1_2 = NodeCoordinate( MeshX(1), iX_B0(1), 2 )
+
+      SlopeD = ABS( ( LOG( uCF(1,iX_B0(1),iX_B0(2),iX_B0(3),iCF_D) ) &
+                        - LOG( uCF(2,iX_B0(1),iX_B0(2),iX_B0(3),iCF_D) ) ) &
+                      / ( LOG( X1_1 ) - LOG( X1_2 ) ) )
+      SlopeE = ABS( ( LOG( uCF(1,iX_B0(1),iX_B0(2),iX_B0(3),iCF_E) ) &
+                        - LOG( uCF(2,iX_B0(1),iX_B0(2),iX_B0(3),iCF_E) ) ) &
+                      / ( LOG( X1_1 ) - LOG( X1_2 ) ) )
+
+    ELSE
+
+      X1_1 = NodeCoordinate( MeshX(1), iX_B0(1)  , 1 )
+      X1_2 = NodeCoordinate( MeshX(1), iX_B0(1)+1, 1 )
+
+      SlopeD = ABS( ( LOG( uCF(1,iX_B0(1),iX_B0(2),iX_B0(3),iCF_D) ) &
+                        - LOG( uCF(1,iX_B0(1)+1,iX_B0(2),iX_B0(3),iCF_D) ) ) &
+                      / ( LOG( X1_1 ) - LOG( X1_2 ) ) )
+
+      SlopeE = ABS( ( LOG( uCF(1,iX_B0(1),iX_B0(2),iX_B0(3),iCF_E) ) &
+                        - LOG( uCF(1,iX_B0(1)+1,iX_B0(2),iX_B0(3),iCF_E) ) ) &
+                      / ( LOG( X1_1 ) - LOG( X1_2 ) ) )
+
+    END IF
+
+    WRITE(*,'(6x,A,F8.6,A)') 'SlopeD = ', SlopeD
+    WRITE(*,'(6x,A,F8.6,A)') 'SlopeE = ', SlopeE
 
   END SUBROUTINE InitializeFields_StandingAccretionShock
 

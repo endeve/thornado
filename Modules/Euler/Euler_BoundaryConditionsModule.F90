@@ -25,6 +25,9 @@ MODULE Euler_BoundaryConditionsModule
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_Outer = 2
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_None  = 3
 
+  ! --- Boundary conditions for relativistic SASI ---
+  REAL(DP), PUBLIC :: SlopeD, SlopeE
+
 
 CONTAINS
 
@@ -374,10 +377,10 @@ CONTAINS
               R_q = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNodeX1 )
 
               U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
-                = D_0 * ( R_0 / R_q )**3
+                = D_0 * ( R_0 / R_q )**( SlopeD )
 
               U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
-                = E_0 * ( R_0 / R_q )**4
+                = E_0 * ( R_0 / R_q )**( SlopeE )
 
             END DO
             END DO

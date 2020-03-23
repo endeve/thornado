@@ -9,49 +9,61 @@ thornado.ProgramName = "StandingAccretionShock_Relativistic"
 
 SAS.Mass                  = 1.4   # [Msun]
 SAS.ShockRadius           = 180.0 # [km]
-SAS.AccretionRate         = 0.3 # [Msun/s]
+SAS.AccretionRate         = 0.3   # [Msun/s]
 SAS.MachNumber            = 10.0
 
-SAS.ApplyPerturbation     = 1
+SAS.ApplyPerturbation     = 0
 SAS.PerturbationOrder     = 0
 SAS.rPerturbationInner    = 260.0 # [km]
 SAS.rPerturbationOuter    = 280.0 # [km]
 SAS.PerturbationAmplitude = 0.5   # Fractional density increase
 
-thornado.t_end              = 1.0e-1    # Final time [ms]
-thornado.dt_wrt             = 1.0e+0    # Time increment to write plot-file [ms]
-thornado.dt_chk             = 5.0e+1    # Time increment to write checkpoint-file [ms]
-thornado.nNodes             = 3         # Number of DG nodes in each active dimension
-thornado.nStages            = 3         # Number of SSP-RK stages for time integration
-thornado.CFL                = 0.5       # CFL number
-thornado.bcX                = 110 00 00 # Boundary conditions
-thornado.swX                = 01 00 00  # Stencil width (nGhostCells) in each dimension
-thornado.iCycleD            = 10        # MOD this number to display info
-thornado.iCycleW            = -1        # MOD this number to write plotfile
-thornado.iCycleChk          = -1        # MOD this number to write checkpoint file
-thornado.iRestart           = -1        # Checkpoint-file to restart from. Negative for clean start
-thornado.UsePhysicalUnits   = 1         # LOGICAL, OPTIONAL, default 0 (.FALSE.)
-thornado.WriteOutputData    = 1         # LOGICAL, OPTIONAL, default 0 (.FALSE.)
+thornado.iRestart           = -1
+thornado.InitializeFromFile = 0
+thornado.UsePhysicalUnits   = 1
+
+thornado.t_end   = 3.0e+2
+thornado.iCycleD = 10
+
+thornado.dt_wrt  = 1.0e+0
+thornado.iCycleW = -1
+
+thornado.dt_chk    = 1.0e+2
+thornado.iCycleChk = -1
+
+thornado.nNodes  = 3
+thornado.nStages = 3
+
+thornado.CFL = 0.5
+
+thornado.bcX = 110 00 00
+thornado.swX = 01 00 00
+
+thornado.PlotFileBaseName       = "plt_SAS1D"
+thornado.CheckpointFileBaseName = "chk_SAS1D"
+
+thornado.WriteOutputData    = 0
 thornado.OutputDataFileName = "MPNS1.4_Rs180_Mdot0.3.dat"
 
-geometry.coord_sys   = 2     # SPHERICAL
-geometry.prob_lo     = 40.0  0.0               0.0               # Lower domain size [km,rad,rad]
-geometry.prob_hi     = 360.0 3.141592653589793 6.283185307179586 # Upper domain size [km,rad,rad]
-geometry.is_periodic = 0 1 1 # Periodicity. 0 (no), 1 (yes)
+geometry.coord_sys   = 2
+geometry.prob_lo     = 040.0 0.0               0.0
+geometry.prob_hi     = 540.0 3.141592653589793 6.283185307179586
+geometry.is_periodic = 0 1 1
 
-amr.n_cell            = 256 001 001 # Number of cells in each dimension
-amr.max_grid_size_x   = 32
+amr.n_cell            = 1024 001 001
+amr.max_grid_size_x   = 64
 amr.blocking_factor_x = 1
 amr.max_level         = 0
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1
-SL.UseCharacteristicLimiting = 1
-SL.UseTroubledCellIndicator  = 1
-SL.SlopeTolerance            = 1.00e-6
+SL.SlopeLimiterMethod        = "TVD"
 SL.BetaTVD                   = 1.75e+0
 SL.BetaTVB                   = 0.00e+0
-SL.LimiterThresholdParameter = 3.00e-2
+SL.SlopeTolerance            = 1.00e-6
+SL.UseCharacteristicLimiting = 1
+SL.UseTroubledCellIndicator  = 1
+SL.LimiterThresholdParameter = 5.00e-3
 SL.UseConservativeCorrection = 1
 
 # Positivity limiter parameters
@@ -60,4 +72,4 @@ PL.Min_1                = 1.0e-13
 PL.Min_2                = 1.0e-13
 
 # Equation of state parameters
-EoS.Gamma = 1.3333333333333333 # Ideal Gas EoS Gamma
+EoS.Gamma = 1.3333333333333333
