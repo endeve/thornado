@@ -160,7 +160,8 @@ MODULE InitializationModule
     MF_InitializeField_IMEX_RK
   USE TwoMoment_ClosureModule,                       ONLY: &
     InitializeClosure_TwoMoment
-
+  USE MF_TwoMoment_UtilitiesModule,     ONLY: & 
+    MF_ComputeFromConserved
 
   IMPLICIT NONE
   PRIVATE
@@ -325,6 +326,7 @@ CONTAINS
     CALL InitializeClosure_TwoMoment
 
 
+    CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
     CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &

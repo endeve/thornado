@@ -467,7 +467,7 @@ CONTAINS
                 = 0.50_AR + 0.49_AR * SIN( TwoPi * X1 )  
             
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                = - ( 1.0_AR / ( 3.0_AR * 100.0_AR ) ) * TwoPi * COS( TwoPi * X1 )
+                = - W * ( 1.0_AR / ( 3.0_AR * 100.0_AR ) ) * TwoPi * COS( TwoPi * X1 )
          
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
                 = 0.0_AR
