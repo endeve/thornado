@@ -1,38 +1,70 @@
 MODULE InitializationModule_Relativistic
 
-  USE KindModule, ONLY: &
-    DP, Zero, SqrtTiny, Half, One, Two, Three, Pi, Four, TwoPi, FourPi
-  USE ProgramHeaderModule, ONLY: &
+  USE KindModule,                         ONLY: &
+    DP,       &
+    SqrtTiny, &
+    Zero,     &
+    Half,     &
+    One,      &
+    Two,      &
+    Three,    &
+    Four,     &
+    Pi,       &
+    TwoPi,    &
+    FourPi
+  USE ProgramHeaderModule,                ONLY: &
     ProgramName, &
-    nX, nNodesX, nDimsX, &
-    nDOFX, &
-    iX_B0, iX_B1, iX_E0, iX_E1
-  USE ReferenceElementModuleX, ONLY: &
+    nNodesX,     &
+    nDimsX,      &
+    nDOFX,       &
+    iX_B0,       &
+    iX_B1,       &
+    iX_E0,       &
+    iX_E1
+  USE ReferenceElementModuleX,            ONLY: &
     NodeNumberTableX, &
     WeightsX_q
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
-  USE GeometryFieldsModule, ONLY: &
-    uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
-  USE FluidFieldsModule, ONLY: &
-    nPF, uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    uAF, iAF_P
-  USE EquationOfStateModule_IDEAL, ONLY: &
+  USE GeometryFieldsModule,               ONLY: &
+    uGF,          &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33
+  USE FluidFieldsModule,                  ONLY: &
+    nPF,    &
+    uPF,    &
+    iPF_D,  &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E,  &
+    iPF_Ne, &
+    uCF,    &
+    iCF_D,  &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E,  &
+    iCF_Ne, &
+    uAF, &
+    iAF_P
+  USE EquationOfStateModule_IDEAL,        ONLY: &
     Gamma_IDEAL, &
     ComputePressureFromPrimitive_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
-  USE UnitsModule, ONLY: &
-    Meter, SpeedOfLight, Kilometer, SolarMass, Kilogram, Second, Joule, &
-    Gram, Centimeter, Erg
-  USE UtilitiesModule, ONLY: &
-    Locate, &
+  USE UnitsModule,                        ONLY: &
+    SpeedOfLight, &
+    Kilometer,    &
+    SolarMass,    &
+    Second
+  USE UtilitiesModule,                    ONLY: &
     NodeNumberX
-  USE QuadratureModule, ONLY: &
+  USE QuadratureModule,                   ONLY: &
     GetQuadrature
-  USE PolynomialBasisModule_Lagrange, ONLY: &
+  USE PolynomialBasisModule_Lagrange,     ONLY: &
     LagrangeP
 
   IMPLICIT NONE
@@ -75,9 +107,9 @@ CONTAINS
     REAL(DP) :: Eblast    = 1.0d-3
 
     ! --- Standing Accretion Shock (Defaults) ---
-    REAL(DP) :: MassPNS               = 1.4_DP * SolarMass
+    REAL(DP) :: MassPNS               = 1.4_DP   * SolarMass
     REAL(DP) :: ShockRadius           = 180.0_DP * Kilometer
-    REAL(DP) :: AccretionRate         = 0.3_DP * SolarMass / Second
+    REAL(DP) :: AccretionRate         = 0.3_DP   * SolarMass / Second
     REAL(DP) :: MachNumber            = 10.0_DP
     LOGICAL  :: ApplyPerturbation     = .FALSE.
     INTEGER  :: PerturbationOrder     = 0
@@ -593,7 +625,7 @@ CONTAINS
                  RightState(iPF_E ) * ( Gamma_IDEAL - One ), &
                  LeftState (iPF_D ), &
                  LeftState (iPF_V1), &
-                 LeftState(iPF_E ) )
+                 LeftState (iPF_E ) )
 
         LeftState(iPF_V2) = 0.0_DP
         LeftState(iPF_V3) = 0.0_DP
@@ -1658,6 +1690,8 @@ CONTAINS
     IF( .NOT. Fmin * Fmax .LT. Zero )THEN
 
       WRITE(*,*) 'Root not bracketed. Stopping...'
+      WRITE(*,*) 'Fmin = ', Fmin
+      WRITE(*,*) 'Fmax = ', Fmax
       STOP
 
     END IF

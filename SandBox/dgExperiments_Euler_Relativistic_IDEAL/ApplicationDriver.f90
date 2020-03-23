@@ -161,6 +161,7 @@ PROGRAM ApplicationDriver
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
         CASE( 'Sod' )
+
           Gamma = 5.0_DP / 3.0_DP
           t_end = 0.2d0
           bcX   = [ 2, 0, 0 ]
@@ -202,6 +203,7 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A21,A)') 'Invalid RiemannProblemName: ', RiemannProblemName
           WRITE(*,'(A)')     'Valid choices:'
           WRITE(*,'(A)')     '  Sod'
+          WRITE(*,'(A)')     '  Grid-AlignedShock'
           WRITE(*,'(A)')     '  Contact'
           WRITE(*,'(A)')     '  MBProblem1'
           WRITE(*,'(A)')     '  MBProblem4'
