@@ -156,7 +156,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'Grid-AlignedShock'
+      RiemannProblemName = 'Sod'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
@@ -234,8 +234,8 @@ PROGRAM ApplicationDriver
 
         CASE( 'Grid-AlignedShock' )
 
-          Gamma = 5.0_DP / 3.0_DP
-          t_end = 2.0_DP
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 25.0_DP
           bcX   = [ 2, 2, 0 ]
 
       END SELECT

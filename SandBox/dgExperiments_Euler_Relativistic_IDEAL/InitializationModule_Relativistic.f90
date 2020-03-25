@@ -74,6 +74,7 @@ MODULE InitializationModule_Relativistic
 
   PUBLIC :: InitializeFields_Relativistic
 
+
 CONTAINS
 
 
@@ -825,18 +826,154 @@ CONTAINS
   END SUBROUTINE InitializeFields_RiemannProblem
 
 
-
   SUBROUTINE InitializeFields_RiemannProblem2D( RiemannProblemName )
 
     CHARACTER(LEN=*), INTENT(in) :: RiemannProblemName
 
-    INTEGER       :: iX1, iX2, iX3
-    INTEGER       :: iNodeX, iNodeX1, iNodeX2
-    REAL(DP)      :: X1, X2
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2, X1D, X2D, Vs
+
+    REAL(DP) :: NE(nPF), NW(nPF), SW(nPF), SE(nPF)
 
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
       '', '2D Riemann Problem Name: ', TRIM( RiemannProblemName )
+    WRITE(*,*)
+
+    SELECT CASE( TRIM( RiemannProblemName ) )
+
+      CASE( 'DzB2002' )
+
+        X1D = 0.5_DP
+        X2D = 0.5_DP
+
+        NE(iPF_D ) = 0.1_DP
+        NE(iPF_V1) = 0.0_DP
+        NE(iPF_V2) = 0.0_DP
+        NE(iPF_V3) = 0.0_DP
+        NE(iPF_E ) = 0.01_DP / ( Gamma_IDEAL - One )
+
+        NW(iPF_D ) = 0.1_DP
+        NW(iPF_V1) = 0.99_DP
+        NW(iPF_V2) = 0.0_DP
+        NW(iPF_V3) = 0.0_DP
+        NW(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        SW(iPF_D ) = 0.5_DP
+        SW(iPF_V1) = 0.0_DP
+        SW(iPF_V2) = 0.0_DP
+        SW(iPF_V3) = 0.0_DP
+        SW(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        SE(iPF_D ) = 0.1_DP
+        SE(iPF_V1) = 0.0_DP
+        SE(iPF_V2) = 0.99_DP
+        SE(iPF_V3) = 0.0_DP
+        SE(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+      CASE( 'Grid-AlignedShock' )
+
+        Vs = 0.01_DP
+
+        X1D = 0.5_DP
+        X2D = 0.5_DP
+
+        NE(iPF_D ) = 1.0_DP
+        NE(iPF_V1) = -0.9_DP
+        NE(iPF_V2) = 0.0_DP
+        NE(iPF_V3) = 0.0_DP
+        NE(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        CALL ComputeLeftState &
+               ( Vs, &
+                 NE(iPF_D ), &
+                 NE(iPF_V1), &
+                 NE(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 NW(iPF_D ), &
+                 NW(iPF_V1), &
+                 NW(iPF_E ) )
+
+        NW(iPF_V2) = 0.0_DP
+        NW(iPF_V3) = 0.0_DP
+
+        SE(iPF_D ) = 1.0_DP
+        SE(iPF_V1) = -0.9_DP
+        SE(iPF_V2) = 0.0_DP
+        SE(iPF_V3) = 0.0_DP
+        SE(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        CALL ComputeLeftState &
+               ( Vs, &
+                 SE(iPF_D ), &
+                 SE(iPF_V1), &
+                 SE(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 SW(iPF_D ), &
+                 SW(iPF_V1), &
+                 SW(iPF_E ) )
+
+        SW(iPF_V2) = 0.0_DP
+        SW(iPF_V3) = 0.0_DP
+
+      CASE DEFAULT
+
+        WRITE(*,*)
+        WRITE(*,'(A,A)') &
+          'Invalid choice for RiemannProblemName: ', TRIM( RiemannProblemName )
+        WRITE(*,'(A)') 'Valid choices:'
+        WRITE(*,'(A)') &
+          "  'DzB2002' - &
+          Blast wave from Del-Zanna & Bucciantini (2002)"
+        WRITE(*,'(A)') &
+          "  'Grid-AlignedShock'"
+        WRITE(*,'(A)') 'Stopping...'
+        STOP
+
+    END SELECT
+
+    IF( TRIM( RiemannProblemName ) .EQ. 'Grid-AlignedShock' )THEN
+
+      WRITE(*,'(6x,A,ES14.6E3)') 'Shock Velocity = ', Vs
+      WRITE(*,*)
+
+    END IF
+
+    WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
+    WRITE(*,*)
+    WRITE(*,'(6x,A,F8.6)') 'X1D = ', X1D
+    WRITE(*,'(6x,A,F8.6)') 'X2D = ', X2D
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'NE:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', NE(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', NE(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', NE(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', NE(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', NE(iPF_E )
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'NW:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', NW(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', NW(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', NW(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', NW(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', NW(iPF_E )
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'SE:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', SE(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', SE(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', SE(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', SE(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', SE(iPF_E )
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'SW:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', SW(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', SW(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', SW(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', SW(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', SW(iPF_E )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -850,99 +987,49 @@ CONTAINS
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
         X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-        SELECT CASE ( TRIM( RiemannProblemName ) )
+        ! --- NE ---
+        IF     ( X1 .GT. X1D .AND. X2 .GT. X2D )THEN
 
-          CASE( 'Grid-AlignedShock' )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = NE(iPF_D )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = NE(iPF_V1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = NE(iPF_V2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = NE(iPF_V3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = NE(iPF_E )
 
-            ! --- Left ---
-            IF( X1 .LE. Half )THEN
+        ! --- NW ---
+        ELSE IF( X1 .LE. X1D .AND. X2 .GT. X2D )THEN
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.3607219640060581_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = -0.8499999999999994_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.16343812081309952_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = NW(iPF_D )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = NW(iPF_V1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = NW(iPF_V2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = NW(iPF_V3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = NW(iPF_E )
 
-            ! --- Right ---
-            ELSE
+        ! --- SW ---
+        ELSE IF( X1 .LE. X1D .AND. X2 .LE. X2D )THEN
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = -0.5_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = SW(iPF_D )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = SW(iPF_V1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = SW(iPF_V2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = SW(iPF_V3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = SW(iPF_E )
 
-            END IF
+        ! --- SE ---
+        ELSE
 
-          CASE( 'DzB2002' )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = SE(iPF_D )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = SE(iPF_V1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = SE(iPF_V2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = SE(iPF_V3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = SE(iPF_E )
 
-            ! --- SW ---
-            IF( X1 .LE. Half .AND. X2 .LE. Half )THEN
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.5_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            ! --- NW ---
-            ELSE IF( X1 .LE. Half .AND. X2 .GT. Half )THEN
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.99_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            ! --- NE ---
-            ELSE IF( X1 .GT. Half .AND. X2 .GT. Half )THEN
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.01_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            ! --- SE ---
-            ELSE
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.99_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            END IF
-
-
-          CASE DEFAULT
-
-            WRITE(*,*)
-            WRITE(*,'(A,A)') &
-              'Invalid choice for RiemannProblemName: ', &
-                RiemannProblemName
-            WRITE(*,'(A)') 'Valid choices:'
-            WRITE(*,'(A)') &
-              "  'DzB2002' - &
-              Del-Zanna & Bucciantini, 2D Riemann Problem"
-            WRITE(*,'(A)') 'Stopping...'
-            STOP
-
-        END SELECT
+        END IF
 
       END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E ), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
