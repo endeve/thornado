@@ -58,7 +58,7 @@ aspect = 1.0
 cmap = 'jet'
 
 # Specify whether or not to make a movie
-MakeMovie    = True
+MakeMovie    = False
 DataFileName = 'MovieData_{:}_{:}.dat'.format( 'OldBC', Field )
 TimeFileName = 'MovieTime_{:}_{:}.dat'.format( 'OldBC', Field )
 
