@@ -58,7 +58,9 @@ aspect = 1.0
 cmap = 'jet'
 
 # Specify whether or not to make a movie
-MakeMovie, DataFileName, TimeFileName = False, 'MovieData.dat', 'MovieTime.dat'
+MakeMovie    = True
+DataFileName = 'MovieData_{:}_{:}.dat'.format( 'OldBC', Field )
+TimeFileName = 'MovieTime_{:}_{:}.dat'.format( 'OldBC', Field )
 
 #### ====== End of User Input =======
 
@@ -113,6 +115,10 @@ elif( nX[2] == 1 ):
     nDims = 2
 else:
     nDims = 3
+
+
+TimeUnit = ''
+if( UsePhysicalUnits ): TimeUnit = 'ms'
 
 """
 https://yt-project.org/doc/reference/api/
@@ -292,7 +298,17 @@ if  ( nDims == 1 ):
                         dims            = nX * 2**MaxLevel, \
                         num_ghost_zones = nX[0] )
 
-                Data[i+1] = CoveringGrid[Field].to_ndarray()[:,0,0]
+                if( Field == 'Entropy' ):
+
+                    AF_P  = CoveringGrid['AF_P' ].to_ndarray()[:,0,0]
+                    AF_Gm = CoveringGrid['AF_Gm'].to_ndarray()[:,0,0]
+                    PF_D  = CoveringGrid['PF_D' ].to_ndarray()[:,0,0]
+                    Data[i+1] = AF_P / PF_D**(AF_Gm)
+
+                else:
+
+                    Data[i+1] = CoveringGrid[Field].to_ndarray()[:,0,0]
+
                 Time[i] = ds.current_time
 
             np.savetxt( DataFileName, Data )
@@ -324,12 +340,10 @@ if  ( nDims == 1 ):
             return line, time_text#, IC
         def UpdateFrame(t):
             #IC.set_data( x, Data[0] )
-            y = np.abs( Data[t] )
+            y = Data[t]
             line.set_data( x, y )
-            if( UsePhysicalUnits ):
-                time_text.set_text( 'time = {:d} ms'.format( int( Time[t] ) ) )
-            else:
-                time_text.set_text( 'time = {:d}'.format( int( Time[t] ) ) )
+            time_text.set_text( 'time = {:.3e} {:}'.format \
+              ( Time[t], TimeUnit ) )
             return line,
 
         anim = animation.FuncAnimation( fig, UpdateFrame, \
@@ -341,14 +355,16 @@ if  ( nDims == 1 ):
     """
     # Plot slices from 'Data' file, created with MakeMovie script above
     Data = np.loadtxt( DataFileName )
-    plt.semilogy( x, Data[0],  'k-',  label = 't = 0 ms'   )
-    plt.semilogy( x, Data[-1], 'k--', label = 't = 300 ms' )
+    x = Data[0]
+    Data = np.copy( Data[1:] )
+    plt.plot( x, Data[0],  'k-',  label = 't = 0 ms'   )
     plt.xlabel( 'Radial Distance [km]' )
-    plt.ylabel( r'$\rho\ \left[g\,cm^{-3}\right]$' )
-    #plt.suptitle( 'Standing Accretion Shock' )
-    plt.xlim( 40, 360 )
-    plt.ylim( 8.0e6, 3.0e10 )
-    plt.text( 160, 1e10, 'nX = 32', fontsize = 20 )
+    if( UsePhysicalUnits ):
+        plt.ylabel( '{:} [{:}]'.format( Field, DataUnit ) )
+    else:
+        plt.ylabel( '{:}'.format( Field ) )
+    plt.xlim( x.min(), x.max() )
+    plt.ylim( Data.min(), Data.max() )
     plt.legend()
     plt.show()
     plt.close()
@@ -514,12 +530,14 @@ elif( nDims == 2 ):
         if( UseLogScale ):
             def UpdateFrame(t):
                 im.set_array( np.abs(f(t)) )
-                time_text.set_text('time = {:.3e}'.format( Time[t] ) )
+                time_text.set_text( 'Time = {:.3e} {:}'.format \
+                  ( Time[t], TimeUnit ) )
                 return im,
         else:
             def UpdateFrame(t):
                 im.set_array( f(t) )
-                time_text.set_text('time = {:.3e}'.format( Time[t] ) )
+                time_text.set_text( 'Time = {:.3e} {:}'.format \
+                  ( Time[t], TimeUnit ) )
                 return im,
 
         # Call the animator
