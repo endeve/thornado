@@ -166,7 +166,7 @@ PROGRAM ApplicationDriver
           t_end = 0.2d0
           bcX   = [ 2, 0, 0 ]
 
-        CASE( 'Grid-AlignedShock' )
+        CASE( 'IsolatedShock' )
 
           Gamma = 4.0_DP / 3.0_DP
           t_end = 0.1_DP
@@ -203,7 +203,7 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A21,A)') 'Invalid RiemannProblemName: ', RiemannProblemName
           WRITE(*,'(A)')     'Valid choices:'
           WRITE(*,'(A)')     '  Sod'
-          WRITE(*,'(A)')     '  Grid-AlignedShock'
+          WRITE(*,'(A)')     '  IsolatedShock'
           WRITE(*,'(A)')     '  Contact'
           WRITE(*,'(A)')     '  MBProblem1'
           WRITE(*,'(A)')     '  MBProblem4'
@@ -222,7 +222,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem2D' )
 
-      RiemannProblemName = 'Grid-AlignedShock'
+      RiemannProblemName = 'IsolatedShock'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
@@ -232,7 +232,7 @@ PROGRAM ApplicationDriver
           t_end = 0.4d0
           bcX   = [ 2, 2, 0 ]
 
-        CASE( 'Grid-AlignedShock' )
+        CASE( 'IsolatedShock' )
 
           Gamma = 4.0_DP / 3.0_DP
           t_end = 25.0_DP

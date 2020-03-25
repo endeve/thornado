@@ -610,7 +610,7 @@ CONTAINS
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
 
-      CASE( 'Grid-AlignedShock' )
+      CASE( 'IsolatedShock' )
 
         Vs = 0.01_DP
         XD = Half
@@ -742,7 +742,7 @@ CONTAINS
 
     END SELECT
 
-    IF( TRIM( RiemannProblemName ) .EQ. 'Grid-AlignedShock' )THEN
+    IF( TRIM( RiemannProblemName ) .EQ. 'IsolatedShock' )THEN
 
       WRITE(*,'(6x,A,ES14.6E3)') 'Shock Velocity = ', Vs
       WRITE(*,*)
@@ -872,7 +872,7 @@ CONTAINS
         SE(iPF_V3) = 0.0_DP
         SE(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
 
-      CASE( 'Grid-AlignedShock' )
+      CASE( 'IsolatedShock' )
 
         Vs = 0.01_DP
 
@@ -925,13 +925,13 @@ CONTAINS
           "  'DzB2002' - &
           Blast wave from Del-Zanna & Bucciantini (2002)"
         WRITE(*,'(A)') &
-          "  'Grid-AlignedShock'"
+          "  'IsolatedShock'"
         WRITE(*,'(A)') 'Stopping...'
         STOP
 
     END SELECT
 
-    IF( TRIM( RiemannProblemName ) .EQ. 'Grid-AlignedShock' )THEN
+    IF( TRIM( RiemannProblemName ) .EQ. 'IsolatedShock' )THEN
 
       WRITE(*,'(6x,A,ES14.6E3)') 'Shock Velocity = ', Vs
       WRITE(*,*)
