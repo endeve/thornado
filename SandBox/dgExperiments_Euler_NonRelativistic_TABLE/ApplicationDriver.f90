@@ -387,7 +387,7 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL WriteFieldsHDF &
-         ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+         ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
   CALL InitializeFluid_SSPRK( nStages )
 
