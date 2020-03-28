@@ -59,8 +59,8 @@ cmap = 'jet'
 
 # Specify whether or not to make a movie
 MakeMovie    = False
-DataFileName = 'MovieData_{:}_{:}.dat'.format( 'OldBC', Field )
-TimeFileName = 'MovieTime_{:}_{:}.dat'.format( 'OldBC', Field )
+DataFileName = 'MovieData_{:}.dat'.format( Field )
+TimeFileName = 'MovieTime_{:}.dat'.format( Field )
 
 #### ====== End of User Input =======
 
