@@ -69,7 +69,11 @@ MODULE MF_InitializationModule
     nGF,          &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33
+    iGF_Gm_dd_33, &
+    iGF_Alpha,    &
+    iGF_Beta_1,   &
+    iGF_Beta_2,   &
+    iGF_Beta_3
   USE TwoMoment_OpacityModule_Relativistic,  ONLY: &
    uOP, iOP_D0, iOP_Chi, iOP_Sigma, nOP
   USE MeshModule,              ONLY: &
@@ -87,7 +91,10 @@ MODULE MF_InitializationModule
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
-    ComputeConserved_TwoMoment  
+    ComputeConserved_TwoMoment 
+  USE TwoMoment_OpacityModule_Relativistic, ONLY: &
+    uOP, &
+    iOP_Sigma 
 ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     nLevels, &
@@ -313,7 +320,10 @@ CONTAINS
                      uGF_K(iNodeX,iGF_Gm_dd_22), &
                      uGF_K(iNodeX,iGF_Gm_dd_33), &
                      0.0_AR, 0.0_AR, 0.0_AR,     &
-                     1.0_AR, 0.0_AR, 0.0_AR, 0.0_AR )
+                     uGF_K(iNodeX,iGF_Alpha), &
+                     uGF_K(iNodeX,iGF_Beta_1), &
+                     uGF_K(iNodeX,iGF_Beta_2), &
+                     uGF_K(iNodeX,iGF_Beta_3) )
 
               
             END DO
@@ -368,7 +378,7 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(AR)                      :: Ones(nDOFE), W
+    REAL(AR)                      :: Ones(nDOFE), W, Third
 
     uCR_K = Zero
     uPF_K = Zero
@@ -377,7 +387,9 @@ CONTAINS
     uAF_K = Zero
 
     Ones=1.0_AR
-   
+
+    Third = 1.0_AR / 3.0_AR
+  
     W = 1.0_AR - ( V_0(1)*V_0(1) + V_0(2)*V_0(2) + V_0(3)*V_0(3) )
     W = 1.0_AR / SQRT( W )
    
@@ -464,11 +476,11 @@ CONTAINS
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
     
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                = 0.50_AR + 0.49_AR * SIN( TwoPi * X1 )  
+                =  0.49_AR * SIN( Third * Pi * X1 ) + 0.5_AR  
             
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                = - W * ( 1.0_AR / ( 3.0_AR * 100.0_AR ) ) * TwoPi * COS( TwoPi * X1 )
-         
+                = - W * ( 0.49_AR * Pi / ( 9.0_AR * uOP(iNodeZ,iZ1,iX1,iX2,iX3,iOP_Sigma,iS) ) ) &
+                  * COS( Third * Pi * X1 ) 
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
                 = 0.0_AR
 
@@ -492,6 +504,7 @@ CONTAINS
                      uGF_K(iNodeX,iGF_Gm_dd_22), &
                      uGF_K(iNodeX,iGF_Gm_dd_33), &
                      0.0_AR, 0.0_AR, 0.0_AR,     &
+                     
                      1.0_AR, 0.0_AR, 0.0_AR, 0.0_AR )
 
               
