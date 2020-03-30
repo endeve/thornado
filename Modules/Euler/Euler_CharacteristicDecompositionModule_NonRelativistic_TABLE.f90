@@ -27,6 +27,17 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
 
   LOGICAL, PARAMETER :: Debug = .FALSE.
 
+  REAL(DP), PARAMETER :: dCs_Threshold = 0.1_DP
+  REAL(DP), PARAMETER :: D_Threshold   = 1.0d13
+  REAL(DP), PARAMETER, DIMENSION(6,6) :: &
+    I_6x6 = RESHAPE( (/1, 0, 0, 0, 0, 0, &
+                       0, 1, 0, 0, 0, 0, &
+                       0, 0, 1, 0, 0, 0, &
+                       0, 0, 0, 1, 0, 0, &
+                       0, 0, 0, 0, 1, 0, &
+                       0, 0, 0, 0, 0, 1/), &
+                       (/6,6/) )
+
   PUBLIC :: ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE
 
 CONTAINS
@@ -49,7 +60,8 @@ CONTAINS
 
     INTEGER  :: i
     REAL(DP) :: D, V1, V2, V3, E, Ne, P, Cs, Cs_table
-    REAL(DP) :: K, H, Tau, T, Y, Vsq, W, Em, Gm, S
+    REAL(DP) :: K, H, Tau, T, Y, Vsq, CsSq, W, Em, Gm, S
+    REAL(DP) :: D_PhysicalUnits
 
     REAL(DP) :: dPdD, dPdT, dPdY
     REAL(DP) :: dEdD, dEdT, dEdY
@@ -63,7 +75,7 @@ CONTAINS
     IF ( PRESENT ( UseAnalytic_Option ) ) THEN
       UseAnalytic = UseAnalytic_Option
     ELSE
-      UseAnalytic = .FALSE.
+      UseAnalytic = .TRUE.
     END IF
 
     CALL TimersStart_Euler( Timer_Euler_CharacteristicDecomposition )
@@ -93,12 +105,21 @@ CONTAINS
 
     Vsq = V1**2 + V2**2 + V3**2
 
-    IF ( Tau**2 * ( P * dPdE - dPdTau ) + Y * dPdDe .GT. Zero) THEN
-      ! Cs = SQRT( Tau**2 * ( P * dPdE - dPdTau) + Y * dPdDe   )
+    CsSq = Tau**2 * ( P * dPdE - dPdTau ) + Y * dPdDe
+
+    D_PhysicalUnits = D / ( Gram / Centimeter**3 )
+
+    IF ( ( CsSq .LT. Zero ) .OR. ( D_PhysicalUnits  .GT. D_Threshold ) ) THEN
       Cs = Cs_table
+      R    = I_6x6
+      invR = I_6x6
     ELSE
-      Cs = Cs_table
-      ! write(*,*) "Switching Sound Speed to TABLE value"
+      Cs = SQRT( CsSq )
+      IF ( ABS( Cs - Cs_table ) / Cs_table .GT. dCs_Threshold ) THEN
+        R    = I_6x6
+        invR = I_6x6
+        RETURN
+     END IF
     END IF
 
     K = ( (- (Y/Tau) * dPdDe + dPdE * ( &
@@ -136,7 +157,7 @@ CONTAINS
     ! -- Begin debugging statements. ---
 
     IF ( PRESENT( cs_T ) )THEN
-      cs_T = Cs
+      cs_T = Cs_table
     END IF
 
   END SUBROUTINE ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE
