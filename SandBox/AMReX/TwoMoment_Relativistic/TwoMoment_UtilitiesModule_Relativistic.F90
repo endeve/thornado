@@ -383,6 +383,7 @@ CONTAINS
     k_dd_13 = a * u_d_1 * u_d_3 + b * h_d_1 * h_d_3
     k_dd_23 = a * u_d_2 * u_d_3 + b * h_d_2 * h_d_3
 
+
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
 
   SUBROUTINE ComputeEddingtonTensorComponents_ud &

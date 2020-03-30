@@ -147,7 +147,8 @@ CONTAINS
   DO iLevel = 0, nLevels-1 
 
     DO iS = 1, nStages
-
+     
+      U = uCR
 
       DO jS = 1, iS - 1
 
@@ -175,7 +176,12 @@ CONTAINS
           PRINT*, "    IMPLICIT: ", iS
         END IF
         CALL MF_TwoMoment_ComputeIncrement_Implicit &
-               ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Im(:,iS),dt(iLevel), Verbose_Option = Verbose )
+               ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Im(:,iS), dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
+        
+        CALL MF_U(iLevel) &
+                 % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
+                            dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
+                            1, MF_U(iLevel) % nComp(), 0 )
       END IF
 
       IF( ANY( a_EX(:,iS) .NE. 0.0_AR ) .OR. ( w_EX(iS) .NE. 0.0_AR ) )THEN
@@ -195,10 +201,9 @@ CONTAINS
     ! --- Assembly Step ---
 
   DO iLevel = 0, nLevels-1
-
     IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
         ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
-      
+      U = uCR
       IF (Verbose) THEN 
         PRINT*, "    ASSEMBLY:"
       END IF
@@ -208,19 +213,19 @@ CONTAINS
 
         IF( w_IM(iS) .NE. 0.0_AR )THEN
 
-          CALL MF_uCR(iLevel) &
-                 % LinComb( 1.0_AR,              MF_uCR(iLevel),    1, &
+          CALL MF_U(iLevel) &
+                 % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * w_IM(iS), MF_DU_Im(iLevel,iS), 1, &
-                            1, MF_uCR(iLevel) % nComp(), 0 )
+                            1, MF_U(iLevel) % nComp(), 0 )
 
         END IF
 
         IF( w_EX(iS) .NE. 0.0_AR )THEN
 
-          CALL MF_uCR(iLevel) &
-                 % LinComb( 1.0_AR,              MF_uCR(iLevel),    1, &
+          CALL MF_U(iLevel) &
+                 % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * w_EX(iS), MF_DU_Ex(iLevel,iS), 1, &
-                            1, MF_uCR(iLevel) % nComp(), 0 )
+                            1, MF_U(iLevel) % nComp(), 0 )
 
         END IF
 
@@ -229,7 +234,7 @@ CONTAINS
 
     END IF
   END DO
-
+  uCR = U
 
 
   END SUBROUTINE MF_Update_IMEX_RK

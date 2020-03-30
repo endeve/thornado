@@ -178,7 +178,6 @@ CONTAINS
       iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
 
       OP_N(iOP,iS,iN_E,iN_X) = uOP(iNodeZ,iE,iX1,iX2,iX3,iOP,iS)
-
     END DO
     END DO
     END DO
@@ -326,19 +325,17 @@ CONTAINS
 
     DTE = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
 
-
     Kappa = Chi + Sigma
 
     D_00 = W + dt * Chi
     D_ii = W + dt * Kappa
-
     ! --- Constant Vector ---
 
     CVEC = [ N + dt * Chi * D_0, G_d_1, G_d_2, G_d_3 ]
 
     ! --- Initial Guess ---
 
-    D     = ( N + dt * Chi * D_0 ) / ( W + dt * Chi )
+    D     = N
     I_u_1 = Zero
     I_u_2 = Zero
     I_u_3 = Zero
@@ -456,12 +453,10 @@ CONTAINS
             - I_d_1 * B_d_3 * V_u_1 / ( alp *Gm_dd_33 ) - I_d_2 * B_d_3 * V_u_2 / ( Gm_dd_33 * alp )
 
     END DO
-
     dN     = Chi * ( D_0 - D )
     dG_d_1 = - Kappa * I_d_1
     dG_d_2 = - Kappa * I_d_2
     dG_d_3 = - Kappa * I_d_3
-
     IF( k == MaxIterations )THEN
 
       PRINT*

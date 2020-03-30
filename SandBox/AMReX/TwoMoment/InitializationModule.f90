@@ -308,7 +308,8 @@ CONTAINS
     CALL CreateOpacities &
          ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = amrex_parallel_ioprocessor() )
 
-    CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma )
+    CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, & 
+                       Verbose_Option = amrex_parallel_ioprocessor()  )
 
     CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0, &
                               Verbose_Option = amrex_parallel_ioprocessor() )
