@@ -928,7 +928,7 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-specific parameters ---
-    REAL(AR) :: Vs, X1D, X2D, NE(nPF), NW(nPF), SE(nPF), SW(nPF)
+    REAL(AR) :: Vs, X1D, X2D, NE(nPF), NW(nPF), SE(nPF), SW(nPF), V2
 
     Vs  = 0.01_AR
 
@@ -1097,6 +1097,10 @@ CONTAINS
               uPF_K(iNodeX,iPF_E ) = SE(iPF_E )
 
             END IF
+
+            ! --- Perturb velocity in X2-direction ---
+            CALL RANDOM_NUMBER( V2 )
+            uPF_K(iNodeX,iPF_V2) = 1.0e-13_AR * ( Two * V2 - One )
 
           END DO
 
