@@ -1469,13 +1469,31 @@ CONTAINS
             = Psi**(-6) * AccretionRate &
                 / ( FourPi * X1**2 * ABS( V(iNodeX1,iX1) ) )
 
-          VSq = Psi**4 * V(iNodeX1,iX1)**2
+          IF( iNodeX1 .EQ. nNodesX(1) .AND. iX1 .EQ. iX_E1(1) )THEN
+
+            VSq = Psi**4 * V(iNodeX1,iX1)**2
+
+            P(iNodeX1,iX1) &
+              = D(iNodeX1,iX1) * VSq &
+                  / ( MachNumber**2 * Gamma_IDEAL &
+                        - Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                        * VSq / SpeedOfLight**2 )
+
+            PolytropicConstant &
+              = P(iNodeX1,iX1) * D(iNodeX1,iX1)**( -Gamma_IDEAL )
+
+          END IF
 
           P(iNodeX1,iX1) &
-            = D(iNodeX1,iX1) * VSq &
-                / ( Gamma_IDEAL * MachNumber**2 ) &
-                / ( One - ( VSq / SpeedOfLight**2 ) &
-                / ( MachNumber**2 * ( Gamma_IDEAL - One ) ) )
+            = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
+
+!!$          VSq = Psi**4 * V(iNodeX1,iX1)**2
+!!$
+!!$          P(iNodeX1,iX1) &
+!!$            = D(iNodeX1,iX1) * VSq &
+!!$                / ( Gamma_IDEAL * MachNumber**2 ) &
+!!$                / ( One - ( VSq / SpeedOfLight**2 ) &
+!!$                / ( MachNumber**2 * ( Gamma_IDEAL - One ) ) )
 
         END DO
 
