@@ -69,9 +69,6 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     NodeNumberX
   USE Euler_ErrorModule,              ONLY: &
     DescribeError_Euler
-  USE Euler_BoundaryConditionsModule, ONLY: &
-    SlopeD, &
-    SlopeE
 
   ! --- Local Modules ---
 
@@ -1326,11 +1323,6 @@ CONTAINS
     INTEGER               :: PerturbationOrder
     REAL(AR)              :: PerturbationAmplitude, &
                              rPerturbationInner, rPerturbationOuter
-    REAL(AR)              :: CF_D(2), CF_E(2), X1_BC(2)
-
-    CF_D     = Zero
-    CF_E     = Zero
-    X1_BC    = Zero
 
     ApplyPerturbation     = .FALSE.
     PerturbationOrder     = 0
@@ -1649,35 +1641,6 @@ CONTAINS
                    uGF_K(:,iGF_Gm_dd_33), &
                    uAF_K(:,iAF_P) )
 
-          ! --- Get values for boundary conditions ---
-
-          IF     ( nNodesX(1) .GT. 1 .AND. iX1 .EQ. 1 )THEN
-
-            X1_BC(1) = NodeCoordinate( MeshX(1), iX1, 1 )
-            X1_BC(2) = NodeCoordinate( MeshX(1), iX1, 2 )
-
-            CF_D(1) = uCF_K(1,iCF_D)
-            CF_D(2) = uCF_K(2,iCF_D)
-
-            CF_E(1) = uCF_K(1,iCF_E)
-            CF_E(2) = uCF_K(2,iCF_E)
-
-          ELSE IF( nNodesX(1) .EQ. 1 .AND. iX1 .EQ. 1 )THEN
-
-            X1_BC(1) = NodeCoordinate( MeshX(1), iX1, 1 )
-
-            CF_D(1) = uCF_K(1,iCF_D)
-            CF_E(1) = uCF_K(1,iCF_E)
-
-          ELSE IF( nNodesX(1) .EQ. 1 .AND. iX1 .EQ. 2 )THEN
-
-            X1_BC(2) = NodeCoordinate( MeshX(1), iX1, 1 )
-
-            CF_D(2) = uCF_K(1,iCF_D)
-            CF_E(2) = uCF_K(1,iCF_E)
-
-          END IF
-
           uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
 
@@ -1692,25 +1655,6 @@ CONTAINS
     DEALLOCATE( P )
     DEALLOCATE( V )
     DEALLOCATE( D )
-
-    CALL amrex_parallel_reduce_sum( CF_D (1) )
-    CALL amrex_parallel_reduce_sum( CF_D (2) )
-    CALL amrex_parallel_reduce_sum( CF_E (1) )
-    CALL amrex_parallel_reduce_sum( CF_E (2) )
-    CALL amrex_parallel_reduce_sum( X1_BC(1) )
-    CALL amrex_parallel_reduce_sum( X1_BC(2) )
-
-    IF( amrex_parallel_ioprocessor() )THEN
-
-      SlopeD = ABS( ( LOG( CF_D(1) ) - LOG( CF_D(2) ) ) &
-                 / ( LOG( X1_BC(1) ) - LOG( X1_BC(2) ) ) )
-      SlopeE = ABS( ( LOG( CF_E(1) ) - LOG( CF_E(2) ) ) &
-                 / ( LOG( X1_BC(1) ) - LOG( X1_BC(2) ) ) )
-
-      WRITE(*,'(6x,A,F8.6,A)') 'SlopeD = ', SlopeD
-      WRITE(*,'(6x,A,F8.6,A)') 'SlopeE = ', SlopeE
-
-    END IF
 
     DO iDim = 1, 3
 
