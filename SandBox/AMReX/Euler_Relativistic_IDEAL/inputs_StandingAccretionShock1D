@@ -41,8 +41,8 @@ thornado.nStages = 3
 
 thornado.CFL = 0.5
 
-thornado.bcX         = 110 00 00
-geometry.is_periodic = 0   1  1
+thornado.bcX         = 11 00 00
+geometry.is_periodic = 0  1  1
 
 geometry.coord_sys   = 2
 geometry.prob_lo     = 040.0 0.0               0.0

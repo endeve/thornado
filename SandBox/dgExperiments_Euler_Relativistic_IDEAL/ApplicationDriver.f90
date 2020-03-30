@@ -319,7 +319,7 @@ PROGRAM ApplicationDriver
       xL = [ RadiusPNS, 0.0_DP, 0.0_DP ]
       xR = [ Two * ShockRadius, Pi, TwoPi ]
 
-      bcX = [ 110, 0, 0 ]
+      bcX = [ 11, 0, 0 ]
 
       t_end = 3.0d2 * Millisecond
 
