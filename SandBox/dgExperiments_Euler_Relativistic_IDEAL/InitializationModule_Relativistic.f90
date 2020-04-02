@@ -1333,9 +1333,12 @@ CONTAINS
     WRITE(*,'(6x,A,ES9.2E3,A)') &
       'Outer radius of perturbation: ', rPerturbationOuter / Kilometer, ' km'
 
-    !  --- Locate first element of un-shocked fluid ---
+    !  --- Locate first element containing un-shocked fluid ---
+
+    X1 = 0.0_DP
 
     DO iX1 = iX_B1(1), iX_E1(1)
+
       DO iNodeX1 = 1, nNodesX(1)
 
         dX1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) - X1
@@ -1367,16 +1370,46 @@ CONTAINS
         END IF
 
       END DO
+
     END DO
 
     ! --- Compute fields, pre-shock ---
 
-    DO iX1 = iX_E1(1), iX1_1, -1
+    ! --- Compute polytropic constant for pre-shock flow ---
+
+    iX1     = iX_E1(1)
+    iNodeX1 = nNodesX(1)
+
+    X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+    Alpha = LapseFunction  ( X1, MassPNS )
+    Psi   = ConformalFactor( X1, MassPNS )
+
+    V(iNodeX1,iX1) &
+      = -Psi**(-2) * SpeedOfLight * SQRT( One - Alpha**2 )
+
+    D(iNodeX1,iX1) &
+      = Psi**(-6) * AccretionRate &
+          / ( FourPi * X1**2 * ABS( V(iNodeX1,iX1) ) )
+
+    VSq = Psi**4 * V(iNodeX1,iX1)**2
+
+    P(iNodeX1,iX1) &
+      = D(iNodeX1,iX1) * VSq &
+          / ( MachNumber**2 * Gamma_IDEAL &
+                - Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                * VSq / SpeedOfLight**2 )
+
+    PolytropicConstant &
+      = P(iNodeX1,iX1) * D(iNodeX1,iX1)**( -Gamma_IDEAL )
+
+    DO iX1 = iX_E1(1), iX1_2, -1
+
       DO iNodeX1 = nNodesX(1), 1, -1
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        IF( X1 .LE. ShockRadius ) CYCLE
+        IF( X1 .LT. X1_1 ) CYCLE
 
         Alpha = LapseFunction  ( X1, MassPNS )
         Psi   = ConformalFactor( X1, MassPNS )
@@ -1387,21 +1420,6 @@ CONTAINS
         D(iNodeX1,iX1) &
           = Psi**(-6) * AccretionRate &
               / ( FourPi * X1**2 * ABS( V(iNodeX1,iX1) ) )
-
-        IF( iNodeX1 .EQ. nNodesX(1) .AND. iX1 .EQ. iX_E1(1) )THEN
-
-          VSq = Psi**4 * V(iNodeX1,iX1)**2
-
-          P(iNodeX1,iX1) &
-            = D(iNodeX1,iX1) * VSq &
-                / ( MachNumber**2 * Gamma_IDEAL &
-                      - Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-                      * VSq / SpeedOfLight**2 )
-
-          PolytropicConstant &
-            = P(iNodeX1,iX1) * D(iNodeX1,iX1)**( -Gamma_IDEAL )
-
-        END IF
 
         P(iNodeX1,iX1) &
           = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
@@ -1415,6 +1433,7 @@ CONTAINS
 !!$              / ( MachNumber**2 * ( Gamma_IDEAL - One ) ) )
 
       END DO
+
     END DO
 
     ! --- Apply jump conditions ---
@@ -1439,7 +1458,7 @@ CONTAINS
     WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_2 / Kilometer, ' km'
     WRITE(*,*)
     WRITE(*,'(6x,A,ES13.6E3)') &
-      'Compression Ratio LOG10(D_2/D_1) = ', LOG( D_2 / D_1 ) / LOG( 1.0d1 )
+      'Compression Ratio LOG10(D_2/D_1) = ', LOG( D_2 / D_1 ) / LOG( 10.0_DP )
     WRITE(*,*)
 
     ! --- Compute fields, post-shock ---
@@ -1453,11 +1472,12 @@ CONTAINS
     V0 = V_2
 
     DO iX1 = iX1_2, iX_B1(1), -1
+
       DO iNodeX1 = nNodesX(1), 1, -1
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        IF( X1 .GT. ShockRadius ) CYCLE
+        IF( X1 .GT. X1_2 ) CYCLE
 
         Alpha = LapseFunction  ( X1, MassPNS )
         Psi   = ConformalFactor( X1, MassPNS )
@@ -1477,6 +1497,7 @@ CONTAINS
           = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
 
       END DO
+
     END DO
 
     ! --- Map to 3D domain ---
@@ -1607,6 +1628,7 @@ CONTAINS
 
       V_2 = Half * V_2
       CALL NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V_2 )
+!!$      CALL Bisection_JumpConditions( a0, a1, a2, a3, a4, V_2 )
 
       IF( ABS( V_2 - V_1 ) / ABS( V_1 ) .GT. ShockTolerance ) &
         FoundShockVelocity = .TRUE.
@@ -1626,6 +1648,88 @@ CONTAINS
     PolytropicConstant = P_2 / D_2**( Gamma_IDEAL )
 
   END SUBROUTINE ApplyJumpConditions
+
+
+  SUBROUTINE Bisection_JumpConditions( a0, a1, a2, a3, a4, V )
+
+    REAL(DP), INTENT(in)    :: a0, a1, a2, a3, a4
+    REAL(DP), INTENT(inout) :: V
+
+    REAL(DP) :: F, dV, Vmin, Vmax, Fmin, Fmax
+    LOGICAL  :: CONVERGED
+    INTEGER  :: ITERATION
+
+    INTEGER,  PARAMETER :: nMaxIter = 100
+    REAL(DP), PARAMETER :: ToldV = 1.0d-15
+    REAL(DP), PARAMETER :: EPS = 1.0e-15_DP
+
+    IF( V .LT. Zero )THEN
+
+      Vmin = V    + EPS
+      Vmax = +One - EPS
+
+    ELSE
+
+      Vmin = -One + EPS
+      Vmax = V    - EPS
+
+    END IF
+
+    Fmin = a4 * Vmin**4 + a3 * Vmin**3 + a2 * Vmin**2 + a1 * Vmin + a0
+    Fmax = a4 * Vmax**4 + a3 * Vmax**3 + a2 * Vmax**2 + a1 * Vmax + a0
+
+    IF( .NOT. Fmin * Fmax .LT. Zero )THEN
+
+      WRITE(*,*) 'Root not bracketed. Stopping...'
+      WRITE(*,*) 'Fmin = ', Fmin
+      WRITE(*,*) 'Fmax = ', Fmax
+      STOP
+
+    END IF
+
+    IF( Fmin .GT. Zero )THEN
+
+      V = Vmax
+      F = Fmax
+
+      Vmax = Vmin
+      Vmin = V
+
+      Fmax = Fmin
+      Fmin = F
+
+    END IF
+
+    ITERATION = 0
+    DO WHILE( ITERATION .LT. nMaxIter )
+
+      ITERATION = ITERATION + 1
+
+      V = ( Vmin + Vmax ) / Two
+
+      F = a4 * V**4 + a3 * V**3 + a2 * V**2 + a1 * V + a0
+
+      IF( ABS( V - Vmin ) / MAX( ABS( Vmax ), ABS( Vmin ) ) .LT. ToldV ) EXIT
+
+      IF( F .GT. Zero )THEN
+
+        Vmax = V
+        Fmax = F
+
+     ELSE
+
+        Vmin = V
+        Fmin = F
+
+     END IF
+
+    END DO
+
+!!$    WRITE(*,*) 'Converged at iteration ', ITERATION
+!!$    WRITE(*,*) '|F|:  ' , ABS( F )
+!!$    WRITE(*,*) 'dV/V: ', ABS( V - Vmax ) / ABS( Vmax )
+
+  END SUBROUTINE Bisection_JumpConditions
 
 
   SUBROUTINE NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V )

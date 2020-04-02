@@ -1427,7 +1427,7 @@ CONTAINS
             iX1_1     = iX1
             iNodeX1_1 = iNodeX1
             X1_1      = X1
-            X1_2      = X1  - dX1
+            X1_2      = X1 - dX1
 
             IF( iNodeX1_1 .EQ. 1 )THEN
 
