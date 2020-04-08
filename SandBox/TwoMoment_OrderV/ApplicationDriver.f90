@@ -197,7 +197,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'StreamingDopplerShift' )
 
-      Direction = 'Z' ! --- (X,Y, or Z)
+      Direction = 'X' ! --- (X,Y, or Z)
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
