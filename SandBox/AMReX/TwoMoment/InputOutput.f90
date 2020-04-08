@@ -326,9 +326,8 @@ MODULE InputOutput
         write(iZ1C,'(i3.3)') iZ1
         write(iSC,'(i3.3)') iS
         Names = ShortNamesCR(iComp) // '_' // iZ1C // '_' // iSC
-        !print*, Names
         CALL amrex_string_build &
-               ( VarNames(iComp + ( iZ1 - 1 ) * nE + ( iS - 1 ) * nE * nCR + iOS), TRIM( Names ) )
+               ( VarNames(iComp + ( iZ1 - 1 ) * nCR + ( iS - 1 ) * nE * nCR + iOS), TRIM( Names ) )
 
       END DO
       END DO
@@ -349,10 +348,8 @@ MODULE InputOutput
         write(iSC,'(i3.3)') iS
 
         Names = ShortNamesPR(iComp) // '_' // iZ1C // '_' // iSC
-
-        !print*, Names
         CALL amrex_string_build &
-               ( VarNames(iComp  + ( iZ1 - 1 ) * nE + ( iS - 1 ) * nPR * nE + iOS ), TRIM( Names ) )
+               ( VarNames(iComp  + ( iZ1 - 1 ) * nPR + ( iS - 1 ) * nPR * nE + iOS ), TRIM( Names ) )
 
       END DO
       END DO
@@ -442,7 +439,7 @@ MODULE InputOutput
         ! --- Compute cell-average ---
         DO iComp = 1, nComp
 
-          u_A(iX1-iOS_CPP(1),iX2-iOS_CPP(2),iX3-iOS_CPP(3),iComp+( iZ1 - 1 ) * nE + ( iS - 1 ) * nComp * nE + iOS) &
+          u_A(iX1-iOS_CPP(1),iX2-iOS_CPP(2),iX3-iOS_CPP(3),iComp+( iZ1 - 1 ) * nComp + ( iS - 1 ) * nComp * nE + iOS) &
             = DOT_PRODUCT( Weights_q(:), u_K(:,iZ1,iComp,iS) )
 
         END DO
