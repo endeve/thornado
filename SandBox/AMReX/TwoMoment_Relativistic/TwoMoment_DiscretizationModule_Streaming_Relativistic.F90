@@ -86,6 +86,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
   PRIVATE
 
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit
+  PUBLIC :: ComputeWeakDerivatives_X1
 
 CONTAINS
 
@@ -113,8 +114,28 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
+    INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS, i
     LOGICAL :: Verbose
+
+    REAL(DP) :: &
+      dWV_u_dX1 &
+        (nDOFX,3, &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      dWV_d_dX1 &
+        (nDOFX,3, &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      dW_dX1 &
+        (nDOFX, &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
+
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -129,6 +150,8 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
+    CALL ComputeWeakDerivatives_X1 &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dWV_u_dX1, dWV_d_dX1, dW_dX1 )
 
     CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
@@ -1002,7 +1025,6 @@ CONTAINS
                uCF_R(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iCF), nDOFX_X1 )
 
     END DO
-
     DO iZ2 = iZ_B0(2), iZ_E0(2) + 1
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -1046,6 +1068,7 @@ CONTAINS
                  GX_F (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_11), &
                  GX_F (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_22), &
                  GX_F (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_33) )
+
 
         V_u_X1(iNodeX,1:3,iZ3,iZ4,iZ2) &
           = FaceVelocity_X1 &
@@ -1274,6 +1297,22 @@ CONTAINS
     END DO
     END DO
 
+   open(1, file = 'Wvdiff.txt', status = 'new')  
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+      write(1,*) dWV_u_dX1(iNodeX,1,iZ3,iZ4,iZ2)
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+
+   open(2, file = 'Wdiff.txt', status = 'new')  
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1283,7 +1322,7 @@ CONTAINS
         dW_dX1_Out(iNodeX,iZ2,iZ3,iZ4) &
           = dW_dX1(iNodeX,iZ3,iZ4,iZ2)
 
-
+      write(2,*) dW_dX1(iNodeX,iZ3,iZ4,iZ2)
       END DO
 
     END DO
