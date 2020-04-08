@@ -18,16 +18,22 @@ SAS.rPerturbationInner    = 260.0 # [km]
 SAS.rPerturbationOuter    = 280.0 # [km]
 SAS.PerturbationAmplitude = 0.04  # Fractional density increase
 
+thornado.WriteOutputData    = 0
+thornado.OutputDataFileName = "MPNS1.4_Rs180_Mdot0.3.dat"
+
 thornado.iRestart           = -1
 thornado.InitializeFromFile = 0
-thornado.UsePhysicalUnits   = 1
+
+thornado.UsePhysicalUnits = 1
 
 thornado.t_end   = 1.0e+2
 thornado.iCycleD = 10
 
+thornado.PlotFileBaseName = "plt_MPNS1.4_Rs180_Mdot0.3"
 thornado.dt_wrt  = 1.0e+0
 thornado.iCycleW = -1
 
+thornado.CheckpointFileBaseName = "chk_MPNS1.4_Rs180_Mdot0.3"
 thornado.dt_chk    = 1.1e+2
 thornado.iCycleChk = -1
 
@@ -36,21 +42,15 @@ thornado.nStages = 3
 
 thornado.CFL = 0.5
 
-thornado.bcX = 110 03 00
-thornado.swX = 01  01 00
+thornado.bcX         = 11 03 00
+geometry.is_periodic = 0  0  1
 
-thornado.PlotFileBaseName       = "plt_MPNS1.4_Rs180_Mdot0.3"
-thornado.CheckpointFileBaseName = "chk_MPNS1.4_Rs180_Mdot0.3"
-
-thornado.WriteOutputData    = 0
-thornado.OutputDataFileName = "MPNS1.4_Rs180_Mdot0.3.dat"
-
-geometry.coord_sys   = 2
-geometry.prob_lo     = 040.0 0.0               0.0
-geometry.prob_hi     = 540.0 3.141592653589793 6.283185307179586
-geometry.is_periodic = 0 0 1
+geometry.coord_sys = 2
+geometry.prob_lo   = 040.0 0.0               0.0
+geometry.prob_hi   = 540.0 3.141592653589793 6.283185307179586
 
 amr.n_cell            = 1024 256 001
+thornado.swX          = 01   01  00
 amr.max_grid_size_x   = 64
 amr.max_grid_size_y   = 64
 amr.blocking_factor_x = 8

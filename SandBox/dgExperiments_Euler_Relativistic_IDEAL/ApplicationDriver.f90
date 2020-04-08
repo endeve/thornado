@@ -161,8 +161,15 @@ PROGRAM ApplicationDriver
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
         CASE( 'Sod' )
+
           Gamma = 5.0_DP / 3.0_DP
           t_end = 0.2d0
+          bcX   = [ 2, 0, 0 ]
+
+        CASE( 'IsolatedShock' )
+
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 0.1_DP
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'Contact' )
@@ -196,6 +203,7 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A21,A)') 'Invalid RiemannProblemName: ', RiemannProblemName
           WRITE(*,'(A)')     'Valid choices:'
           WRITE(*,'(A)')     '  Sod'
+          WRITE(*,'(A)')     '  IsolatedShock'
           WRITE(*,'(A)')     '  Contact'
           WRITE(*,'(A)')     '  MBProblem1'
           WRITE(*,'(A)')     '  MBProblem4'
@@ -214,7 +222,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem2D' )
 
-      RiemannProblemName = 'DzB2002'
+      RiemannProblemName = 'IsolatedShock'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
@@ -222,6 +230,12 @@ PROGRAM ApplicationDriver
 
           Gamma = 5.0_DP / 3.0_DP
           t_end = 0.4d0
+          bcX   = [ 2, 2, 0 ]
+
+        CASE( 'IsolatedShock' )
+
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 25.0_DP
           bcX   = [ 2, 2, 0 ]
 
       END SELECT
@@ -305,7 +319,7 @@ PROGRAM ApplicationDriver
       xL = [ RadiusPNS, 0.0_DP, 0.0_DP ]
       xR = [ Two * ShockRadius, Pi, TwoPi ]
 
-      bcX = [ 110, 0, 0 ]
+      bcX = [ 11, 0, 0 ]
 
       t_end = 3.0d2 * Millisecond
 
@@ -353,13 +367,6 @@ PROGRAM ApplicationDriver
   UsePositivityLimiter = .TRUE.
   Min_1 = 1.0d-13
   Min_2 = 1.0d-13
-
-  iCycleD = 10
-!!$  iCycleW = 10; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * t_end; iCycleW = -1
-
-  IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
-    STOP 'dt_wrt and iCycleW cannot both be present'
 
   nStagesSSPRK = nNodes
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
@@ -454,8 +461,12 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  CALL WriteFieldsHDF &
-         ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+  iCycleD = 10
+!!$  iCycleW = 10; dt_wrt = -1.0d0
+  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+
+  IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
+    STOP 'dt_wrt and iCycleW cannot both be present'
 
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
@@ -465,7 +476,7 @@ PROGRAM ApplicationDriver
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
-  IF( .NOT. OPTIMIZE )THEN
+  IF( .NOT. OPTIMIZE .AND. RestartFileNumber .LT. 0 )THEN
 
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
 
@@ -473,7 +484,7 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
     CALL WriteFieldsHDF &
-         ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 

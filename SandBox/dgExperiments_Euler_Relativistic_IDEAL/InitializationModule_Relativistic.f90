@@ -1,44 +1,77 @@
 MODULE InitializationModule_Relativistic
 
-  USE KindModule, ONLY: &
-    DP, Zero, SqrtTiny, Half, One, Two, Three, Pi, Four, TwoPi, FourPi
-  USE ProgramHeaderModule, ONLY: &
+  USE KindModule,                         ONLY: &
+    DP,       &
+    SqrtTiny, &
+    Zero,     &
+    Half,     &
+    One,      &
+    Two,      &
+    Three,    &
+    Four,     &
+    Pi,       &
+    TwoPi,    &
+    FourPi
+  USE ProgramHeaderModule,                ONLY: &
     ProgramName, &
-    nX, nNodesX, nDimsX, &
-    nDOFX, &
-    iX_B0, iX_B1, iX_E0, iX_E1
-  USE ReferenceElementModuleX, ONLY: &
+    nNodesX,     &
+    nDimsX,      &
+    nDOFX,       &
+    iX_B0,       &
+    iX_B1,       &
+    iX_E0,       &
+    iX_E1
+  USE ReferenceElementModuleX,            ONLY: &
     NodeNumberTableX, &
     WeightsX_q
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
-  USE GeometryFieldsModule, ONLY: &
-    uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
-  USE FluidFieldsModule, ONLY: &
-    nPF, uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    uAF, iAF_P
-  USE EquationOfStateModule_IDEAL, ONLY: &
+  USE GeometryFieldsModule,               ONLY: &
+    uGF,          &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33
+  USE FluidFieldsModule,                  ONLY: &
+    nPF,    &
+    uPF,    &
+    iPF_D,  &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E,  &
+    iPF_Ne, &
+    uCF,    &
+    iCF_D,  &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E,  &
+    iCF_Ne, &
+    uAF, &
+    iAF_P
+  USE EquationOfStateModule_IDEAL,        ONLY: &
     Gamma_IDEAL, &
     ComputePressureFromPrimitive_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
-  USE UnitsModule, ONLY: &
-    Meter, SpeedOfLight, Kilometer, SolarMass, Kilogram, Second, Joule, &
-    Gram, Centimeter, Erg
-  USE UtilitiesModule, ONLY: &
-    Locate, &
+  USE UnitsModule,                        ONLY: &
+    SpeedOfLight, &
+    Kilometer,    &
+    SolarMass,    &
+    Second
+  USE UtilitiesModule,                    ONLY: &
     NodeNumberX
-  USE QuadratureModule, ONLY: &
+  USE QuadratureModule,                   ONLY: &
     GetQuadrature
-  USE PolynomialBasisModule_Lagrange, ONLY: &
+  USE PolynomialBasisModule_Lagrange,     ONLY: &
     LagrangeP
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: InitializeFields_Relativistic
+
 
 CONTAINS
 
@@ -75,9 +108,9 @@ CONTAINS
     REAL(DP) :: Eblast    = 1.0d-3
 
     ! --- Standing Accretion Shock (Defaults) ---
-    REAL(DP) :: MassPNS               = 1.4_DP * SolarMass
+    REAL(DP) :: MassPNS               = 1.4_DP   * SolarMass
     REAL(DP) :: ShockRadius           = 180.0_DP * Kilometer
-    REAL(DP) :: AccretionRate         = 0.3_DP * SolarMass / Second
+    REAL(DP) :: AccretionRate         = 0.3_DP   * SolarMass / Second
     REAL(DP) :: MachNumber            = 10.0_DP
     LOGICAL  :: ApplyPerturbation     = .FALSE.
     INTEGER  :: PerturbationOrder     = 0
@@ -545,7 +578,7 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
-    REAL(DP) :: X1, XD
+    REAL(DP) :: X1, XD, Vs
 
     INTEGER  :: nDetCells
     REAL(DP) :: Eblast
@@ -574,6 +607,29 @@ CONTAINS
         RightState(iPF_V2) = 0.0_DP
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
+
+      CASE( 'IsolatedShock' )
+
+        Vs = 0.01_DP
+        XD = Half
+
+        RightState(iPF_D)  = 1.0_DP
+        RightState(iPF_V1) = -0.9_DP
+        RightState(iPF_V2) = 0.0_DP
+        RightState(iPF_V3) = 0.0_DP
+        RightState(iPF_E)  = 1.0_DP / ( Gamma_IDEAL - One )
+
+        CALL ComputeLeftState &
+               ( Vs,                 &
+                 RightState(iPF_D ), &
+                 RightState(iPF_V1), &
+                 RightState(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 LeftState (iPF_D ), &
+                 LeftState (iPF_V1), &
+                 LeftState (iPF_E ) )
+
+        LeftState(iPF_V2) = 0.0_DP
+        LeftState(iPF_V3) = 0.0_DP
 
       CASE( 'Contact' )
 
@@ -684,17 +740,16 @@ CONTAINS
 
     END SELECT
 
+    IF( TRIM( RiemannProblemName ) .EQ. 'IsolatedShock' )THEN
+
+      WRITE(*,'(6x,A,ES14.6E3)') 'Shock Velocity = ', Vs
+      WRITE(*,*)
+
+    END IF
+
     WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
     WRITE(*,*)
     WRITE(*,'(6x,A,F8.6)') 'XD = ', XD
-    WRITE(*,*)
-    WRITE(*,'(6x,A)') 'Left State:'
-    WRITE(*,*)
-    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', LeftState(iPF_D )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', LeftState(iPF_V1)
-    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', LeftState(iPF_V2)
-    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', LeftState(iPF_V3)
-    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', LeftState(iPF_E )
     WRITE(*,*)
     WRITE(*,'(6x,A)') 'Right State:'
     WRITE(*,*)
@@ -703,6 +758,14 @@ CONTAINS
     WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', RightState(iPF_V2)
     WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', RightState(iPF_V3)
     WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', RightState(iPF_E )
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'Left State:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', LeftState(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', LeftState(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', LeftState(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', LeftState(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', LeftState(iPF_E )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -761,18 +824,154 @@ CONTAINS
   END SUBROUTINE InitializeFields_RiemannProblem
 
 
-
   SUBROUTINE InitializeFields_RiemannProblem2D( RiemannProblemName )
 
     CHARACTER(LEN=*), INTENT(in) :: RiemannProblemName
 
-    INTEGER       :: iX1, iX2, iX3
-    INTEGER       :: iNodeX, iNodeX1, iNodeX2
-    REAL(DP)      :: X1, X2
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2, X1D, X2D, Vs
+
+    REAL(DP) :: NE(nPF), NW(nPF), SW(nPF), SE(nPF)
 
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
       '', '2D Riemann Problem Name: ', TRIM( RiemannProblemName )
+    WRITE(*,*)
+
+    SELECT CASE( TRIM( RiemannProblemName ) )
+
+      CASE( 'DzB2002' )
+
+        X1D = 0.5_DP
+        X2D = 0.5_DP
+
+        NE(iPF_D ) = 0.1_DP
+        NE(iPF_V1) = 0.0_DP
+        NE(iPF_V2) = 0.0_DP
+        NE(iPF_V3) = 0.0_DP
+        NE(iPF_E ) = 0.01_DP / ( Gamma_IDEAL - One )
+
+        NW(iPF_D ) = 0.1_DP
+        NW(iPF_V1) = 0.99_DP
+        NW(iPF_V2) = 0.0_DP
+        NW(iPF_V3) = 0.0_DP
+        NW(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        SW(iPF_D ) = 0.5_DP
+        SW(iPF_V1) = 0.0_DP
+        SW(iPF_V2) = 0.0_DP
+        SW(iPF_V3) = 0.0_DP
+        SW(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        SE(iPF_D ) = 0.1_DP
+        SE(iPF_V1) = 0.0_DP
+        SE(iPF_V2) = 0.99_DP
+        SE(iPF_V3) = 0.0_DP
+        SE(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+      CASE( 'IsolatedShock' )
+
+        Vs = 0.01_DP
+
+        X1D = 0.5_DP
+        X2D = 0.5_DP
+
+        NE(iPF_D ) = 1.0_DP
+        NE(iPF_V1) = -0.9_DP
+        NE(iPF_V2) = 0.0_DP
+        NE(iPF_V3) = 0.0_DP
+        NE(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        CALL ComputeLeftState &
+               ( Vs, &
+                 NE(iPF_D ), &
+                 NE(iPF_V1), &
+                 NE(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 NW(iPF_D ), &
+                 NW(iPF_V1), &
+                 NW(iPF_E ) )
+
+        NW(iPF_V2) = 0.0_DP
+        NW(iPF_V3) = 0.0_DP
+
+        SE(iPF_D ) = 1.0_DP
+        SE(iPF_V1) = -0.9_DP
+        SE(iPF_V2) = 0.0_DP
+        SE(iPF_V3) = 0.0_DP
+        SE(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        CALL ComputeLeftState &
+               ( Vs, &
+                 SE(iPF_D ), &
+                 SE(iPF_V1), &
+                 SE(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 SW(iPF_D ), &
+                 SW(iPF_V1), &
+                 SW(iPF_E ) )
+
+        SW(iPF_V2) = 0.0_DP
+        SW(iPF_V3) = 0.0_DP
+
+      CASE DEFAULT
+
+        WRITE(*,*)
+        WRITE(*,'(A,A)') &
+          'Invalid choice for RiemannProblemName: ', TRIM( RiemannProblemName )
+        WRITE(*,'(A)') 'Valid choices:'
+        WRITE(*,'(A)') &
+          "  'DzB2002' - &
+          Blast wave from Del-Zanna & Bucciantini (2002)"
+        WRITE(*,'(A)') &
+          "  'IsolatedShock'"
+        WRITE(*,'(A)') 'Stopping...'
+        STOP
+
+    END SELECT
+
+    IF( TRIM( RiemannProblemName ) .EQ. 'IsolatedShock' )THEN
+
+      WRITE(*,'(6x,A,ES14.6E3)') 'Shock Velocity = ', Vs
+      WRITE(*,*)
+
+    END IF
+
+    WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
+    WRITE(*,*)
+    WRITE(*,'(6x,A,F8.6)') 'X1D = ', X1D
+    WRITE(*,'(6x,A,F8.6)') 'X2D = ', X2D
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'NE:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', NE(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', NE(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', NE(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', NE(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', NE(iPF_E )
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'NW:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', NW(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', NW(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', NW(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', NW(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', NW(iPF_E )
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'SE:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', SE(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', SE(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', SE(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', SE(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', SE(iPF_E )
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'SW:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', SW(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', SW(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', SW(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', SW(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', SW(iPF_E )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -786,73 +985,49 @@ CONTAINS
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
         X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-        SELECT CASE ( TRIM( RiemannProblemName ) )
+        ! --- NE ---
+        IF     ( X1 .GT. X1D .AND. X2 .GT. X2D )THEN
 
-          CASE( 'DzB2002' )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = NE(iPF_D )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = NE(iPF_V1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = NE(iPF_V2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = NE(iPF_V3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = NE(iPF_E )
 
-            ! --- SW ---
-            IF( X1 .LE. Half .AND. X2 .LE. Half )THEN
+        ! --- NW ---
+        ELSE IF( X1 .LE. X1D .AND. X2 .GT. X2D )THEN
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.5_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = NW(iPF_D )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = NW(iPF_V1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = NW(iPF_V2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = NW(iPF_V3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = NW(iPF_E )
 
-            ! --- NW ---
-            ELSE IF( X1 .LE. Half .AND. X2 .GT. Half )THEN
+        ! --- SW ---
+        ELSE IF( X1 .LE. X1D .AND. X2 .LE. X2D )THEN
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.99_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = SW(iPF_D )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = SW(iPF_V1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = SW(iPF_V2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = SW(iPF_V3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = SW(iPF_E )
 
-            ! --- NE ---
-            ELSE IF( X1 .GT. Half .AND. X2 .GT. Half )THEN
+        ! --- SE ---
+        ELSE
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.01_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = SE(iPF_D )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = SE(iPF_V1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = SE(iPF_V2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = SE(iPF_V3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = SE(iPF_E )
 
-            ! --- SE ---
-            ELSE
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.1_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.99_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
-
-            END IF
-
-
-          CASE DEFAULT
-
-            WRITE(*,*)
-            WRITE(*,'(A,A)') &
-              'Invalid choice for RiemannProblemName: ', &
-                RiemannProblemName
-            WRITE(*,'(A)') 'Valid choices:'
-            WRITE(*,'(A)') &
-              "  'DzB2002' - &
-              Del-Zanna & Bucciantini, 2D Riemann Problem"
-            WRITE(*,'(A)') 'Stopping...'
-            STOP
-
-        END SELECT
+        END IF
 
       END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E ), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
@@ -1158,9 +1333,12 @@ CONTAINS
     WRITE(*,'(6x,A,ES9.2E3,A)') &
       'Outer radius of perturbation: ', rPerturbationOuter / Kilometer, ' km'
 
-    !  --- Locate first element of un-shocked fluid ---
+    !  --- Locate first element containing un-shocked fluid ---
+
+    X1 = 0.0_DP
 
     DO iX1 = iX_B1(1), iX_E1(1)
+
       DO iNodeX1 = 1, nNodesX(1)
 
         dX1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 ) - X1
@@ -1192,16 +1370,46 @@ CONTAINS
         END IF
 
       END DO
+
     END DO
 
     ! --- Compute fields, pre-shock ---
 
-    DO iX1 = iX_E1(1), iX1_1, -1
+    ! --- Compute polytropic constant for pre-shock flow ---
+
+    iX1     = iX_E1(1)
+    iNodeX1 = nNodesX(1)
+
+    X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+    Alpha = LapseFunction  ( X1, MassPNS )
+    Psi   = ConformalFactor( X1, MassPNS )
+
+    V(iNodeX1,iX1) &
+      = -Psi**(-2) * SpeedOfLight * SQRT( One - Alpha**2 )
+
+    D(iNodeX1,iX1) &
+      = Psi**(-6) * AccretionRate &
+          / ( FourPi * X1**2 * ABS( V(iNodeX1,iX1) ) )
+
+    VSq = Psi**4 * V(iNodeX1,iX1)**2
+
+    P(iNodeX1,iX1) &
+      = D(iNodeX1,iX1) * VSq &
+          / ( MachNumber**2 * Gamma_IDEAL &
+                - Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                * VSq / SpeedOfLight**2 )
+
+    PolytropicConstant &
+      = P(iNodeX1,iX1) * D(iNodeX1,iX1)**( -Gamma_IDEAL )
+
+    DO iX1 = iX_E1(1), iX1_2, -1
+
       DO iNodeX1 = nNodesX(1), 1, -1
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        IF( X1 .LE. ShockRadius ) CYCLE
+        IF( X1 .LT. X1_1 ) CYCLE
 
         Alpha = LapseFunction  ( X1, MassPNS )
         Psi   = ConformalFactor( X1, MassPNS )
@@ -1213,15 +1421,19 @@ CONTAINS
           = Psi**(-6) * AccretionRate &
               / ( FourPi * X1**2 * ABS( V(iNodeX1,iX1) ) )
 
-        VSq = Psi**4 * V(iNodeX1,iX1)**2
-
         P(iNodeX1,iX1) &
-          = D(iNodeX1,iX1) * VSq &
-              / ( Gamma_IDEAL * MachNumber**2 ) &
-              / ( One - ( VSq / SpeedOfLight**2 ) &
-              / ( MachNumber**2 * ( Gamma_IDEAL - One ) ) )
+          = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
+
+!!$        VSq = Psi**4 * V(iNodeX1,iX1)**2
+!!$
+!!$        P(iNodeX1,iX1) &
+!!$          = D(iNodeX1,iX1) * VSq &
+!!$              / ( Gamma_IDEAL * MachNumber**2 ) &
+!!$              / ( One - ( VSq / SpeedOfLight**2 ) &
+!!$              / ( MachNumber**2 * ( Gamma_IDEAL - One ) ) )
 
       END DO
+
     END DO
 
     ! --- Apply jump conditions ---
@@ -1246,7 +1458,7 @@ CONTAINS
     WRITE(*,'(10x,A,ES13.6E3,A)') 'X1      = ', X1_2 / Kilometer, ' km'
     WRITE(*,*)
     WRITE(*,'(6x,A,ES13.6E3)') &
-      'Compression Ratio LOG10(D_2/D_1) = ', LOG( D_2 / D_1 ) / LOG( 1.0d1 )
+      'Compression Ratio LOG10(D_2/D_1) = ', LOG( D_2 / D_1 ) / LOG( 10.0_DP )
     WRITE(*,*)
 
     ! --- Compute fields, post-shock ---
@@ -1260,11 +1472,12 @@ CONTAINS
     V0 = V_2
 
     DO iX1 = iX1_2, iX_B1(1), -1
+
       DO iNodeX1 = nNodesX(1), 1, -1
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        IF( X1 .GT. ShockRadius ) CYCLE
+        IF( X1 .GT. X1_2 ) CYCLE
 
         Alpha = LapseFunction  ( X1, MassPNS )
         Psi   = ConformalFactor( X1, MassPNS )
@@ -1284,6 +1497,7 @@ CONTAINS
           = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
 
       END DO
+
     END DO
 
     ! --- Map to 3D domain ---
@@ -1414,6 +1628,7 @@ CONTAINS
 
       V_2 = Half * V_2
       CALL NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V_2 )
+!!$      CALL Bisection_JumpConditions( a0, a1, a2, a3, a4, V_2 )
 
       IF( ABS( V_2 - V_1 ) / ABS( V_1 ) .GT. ShockTolerance ) &
         FoundShockVelocity = .TRUE.
@@ -1433,6 +1648,88 @@ CONTAINS
     PolytropicConstant = P_2 / D_2**( Gamma_IDEAL )
 
   END SUBROUTINE ApplyJumpConditions
+
+
+  SUBROUTINE Bisection_JumpConditions( a0, a1, a2, a3, a4, V )
+
+    REAL(DP), INTENT(in)    :: a0, a1, a2, a3, a4
+    REAL(DP), INTENT(inout) :: V
+
+    REAL(DP) :: F, dV, Vmin, Vmax, Fmin, Fmax
+    LOGICAL  :: CONVERGED
+    INTEGER  :: ITERATION
+
+    INTEGER,  PARAMETER :: nMaxIter = 100
+    REAL(DP), PARAMETER :: ToldV = 1.0d-15
+    REAL(DP), PARAMETER :: EPS = 1.0e-15_DP
+
+    IF( V .LT. Zero )THEN
+
+      Vmin = V    + EPS
+      Vmax = +One - EPS
+
+    ELSE
+
+      Vmin = -One + EPS
+      Vmax = V    - EPS
+
+    END IF
+
+    Fmin = a4 * Vmin**4 + a3 * Vmin**3 + a2 * Vmin**2 + a1 * Vmin + a0
+    Fmax = a4 * Vmax**4 + a3 * Vmax**3 + a2 * Vmax**2 + a1 * Vmax + a0
+
+    IF( .NOT. Fmin * Fmax .LT. Zero )THEN
+
+      WRITE(*,*) 'Root not bracketed. Stopping...'
+      WRITE(*,*) 'Fmin = ', Fmin
+      WRITE(*,*) 'Fmax = ', Fmax
+      STOP
+
+    END IF
+
+    IF( Fmin .GT. Zero )THEN
+
+      V = Vmax
+      F = Fmax
+
+      Vmax = Vmin
+      Vmin = V
+
+      Fmax = Fmin
+      Fmin = F
+
+    END IF
+
+    ITERATION = 0
+    DO WHILE( ITERATION .LT. nMaxIter )
+
+      ITERATION = ITERATION + 1
+
+      V = ( Vmin + Vmax ) / Two
+
+      F = a4 * V**4 + a3 * V**3 + a2 * V**2 + a1 * V + a0
+
+      IF( ABS( V - Vmin ) / MAX( ABS( Vmax ), ABS( Vmin ) ) .LT. ToldV ) EXIT
+
+      IF( F .GT. Zero )THEN
+
+        Vmax = V
+        Fmax = F
+
+     ELSE
+
+        Vmin = V
+        Fmin = F
+
+     END IF
+
+    END DO
+
+!!$    WRITE(*,*) 'Converged at iteration ', ITERATION
+!!$    WRITE(*,*) '|F|:  ' , ABS( F )
+!!$    WRITE(*,*) 'dV/V: ', ABS( V - Vmax ) / ABS( Vmax )
+
+  END SUBROUTINE Bisection_JumpConditions
 
 
   SUBROUTINE NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V )
@@ -1546,6 +1843,172 @@ CONTAINS
 
     RETURN
   END FUNCTION LorentzFactor
+
+
+  ! --- Auxiliary functions/subroutines for computine left state ---
+
+
+  SUBROUTINE ComputeLeftState( Vs, DR, VR, PR, DL, VL, PL )
+
+    REAL(DP), INTENT(in)  :: Vs, DR, VR, PR
+    REAL(DP), INTENT(out) ::     DL, VL, PL
+
+    CALL ApplyJumpConditions_LeftState( Vs, DR, VR, PR, DL, VL, PL )
+
+    ! --- Return energy-density instead of pressure ---
+    PL = PL / ( Gamma_IDEAL - One )
+
+  END SUBROUTINE ComputeLeftState
+
+
+  SUBROUTINE ApplyJumpConditions_LeftState( Vs, DR, VR, PR, DL, VL, PL )
+
+    REAL(DP), INTENT(in)  :: Vs, DR, VR, PR
+    REAL(DP), INTENT(out) ::     DL, VL, PL
+
+    REAL(DP), PARAMETER :: EPS = 1.0e-15_DP
+
+    REAL(DP), PARAMETER :: ToldV = EPS
+    REAL(DP), PARAMETER :: TolF  = EPS
+    INTEGER,  PARAMETER :: nMaxIter = 1000
+
+    INTEGER :: ITERATION
+    REAL(DP) :: D, V, P, F
+    REAL(DP) :: Vmin, Vmax, Fmin, Fmax, VV, FF
+
+    IF( VR .LT. Zero )THEN
+
+      Vmin = VR   + EPS
+      Vmax = +One - EPS
+
+    ELSE
+
+      Vmin = -One + EPS
+      Vmax = VR   - EPS
+
+    END IF
+
+    D = Density ( Vs, DR, VR, Vmin )
+    P = Pressure( Vs, DR, VR, PR, D, Vmin )
+    Fmin = PostShockVelocity( Vs, DR, VR, PR, D, Vmin, P )
+
+    D = Density( Vs, DR, VR, Vmax )
+    P = Pressure( Vs, DR, VR, PR, D, Vmax )
+    Fmax = PostShockVelocity( Vs, DR, VR, PR, D, Vmax, P )
+
+    IF( .NOT. Fmin * Fmax .LT. Zero )THEN
+
+      WRITE(*,*) 'Root not bracketed. Stopping...'
+      WRITE(*,*) 'Fmin = ', Fmin
+      WRITE(*,*) 'Fmax = ', Fmax
+      STOP
+
+    END IF
+
+    IF( Fmin .GT. Zero )THEN
+
+      VV = Vmax
+      FF = Fmax
+
+      Vmax = Vmin
+      Vmin = VV
+
+      Fmax = Fmin
+      Fmin = FF
+
+    END IF
+
+    ITERATION = 0
+    DO WHILE( ITERATION .LT. nMaxIter )
+
+      ITERATION = ITERATION + 1
+
+      V = ( Vmin + Vmax ) / Two
+
+      D = Density ( Vs, DR, VR, V )
+      P = Pressure( Vs, DR, VR, PR, D, V )
+
+      F = PostShockVelocity( Vs, DR, VR, PR, D, V, P )
+
+      IF( ABS( V - Vmin ) / MAX( ABS( Vmax ), ABS( Vmin ) ) .LT. ToldV ) EXIT
+
+      IF( F .GT. Zero )THEN
+
+        Vmax = V
+        Fmax = F
+
+     ELSE
+
+        Vmin = V
+        Fmin = F
+
+     END IF
+
+    END DO
+
+!!$    WRITE(*,*) 'Converged at iteration ', ITERATION
+!!$    WRITE(*,*) '|F|:  ' , ABS( F )
+!!$    WRITE(*,*) 'dV/V: ', ABS( V - Vmax ) / ABS( Vmax )
+
+    VL = V
+    DL = Density ( Vs, DR, VR, VL )
+    PL = Pressure( Vs, DR, VR, PR, DL, VL )
+
+  END SUBROUTINE ApplyJumpConditions_LeftState
+
+
+  REAL(DP) FUNCTION Density( Vs, DR, VR, VL )
+
+    REAL(DP), INTENT(in) :: Vs, DR, VR, VL
+
+    REAL(DP) :: WR, WL
+
+    WR = LorentzFactor( One, VR )
+    WL = LorentzFactor( One, VL )
+
+    Density = DR * ( WR * ( VR - Vs ) ) / ( WL * ( VL - Vs ) )
+
+    RETURN
+  END FUNCTION Density
+
+
+  REAL(DP) FUNCTION Pressure( Vs, DR, VR, PR, DL, VL )
+
+    REAL(DP), INTENT(in) :: Vs, DR, VR, PR, DL, VL
+
+    REAL(DP) :: WR, WL, tau
+
+    WR = LorentzFactor( One, VR )
+    WL = LorentzFactor( One, VL )
+
+    tau = Gamma_IDEAL / ( Gamma_IDEAL - One )
+
+    Pressure = ( PR * ( One + tau * WR**2 * VR * ( VR - Vs ) ) &
+                 - DL * WL**2 * VL**2 + DR * WR**2 * VR**2 &
+                 + Vs * ( DL * WL**2 * VL - DR * WR**2 * VR ) ) &
+               / ( One + tau * WL**2 * VL * ( VL - Vs ) )
+
+    RETURN
+  END FUNCTION Pressure
+
+
+  REAL(DP) FUNCTION PostShockVelocity( Vs, DR, VR, PR, DL, VL, PL )
+
+    REAL(DP), INTENT(in) :: Vs, DR, VR, PR, DL, VL, PL
+
+    REAL(DP) :: WR, WL, tau
+
+    WR = LorentzFactor( One, VR )
+    WL = LorentzFactor( One, VL )
+
+    tau = Gamma_IDEAL / ( Gamma_IDEAL - One )
+
+    PostShockVelocity &
+      = ( DL + tau * PL ) * WL**2 * ( VL - Vs ) &
+          - ( DR + tau * PR ) * WR**2 * ( VR - Vs ) + Vs * ( PL - PR )
+
+    RETURN
+  END FUNCTION PostShockVelocity
 
 
 END MODULE InitializationModule_Relativistic

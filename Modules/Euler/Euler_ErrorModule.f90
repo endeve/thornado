@@ -149,6 +149,20 @@ CONTAINS
 
           CALL thornado_abort
 
+      CASE( 10 )
+
+          WRITE(*,*)
+          WRITE(*,'(2x,A)') 'FATAL ERROR'
+          WRITE(*,'(2x,A)') &
+            'MODULE: MF_InitializationModule_Relativistic_IDEAL'
+          WRITE(*,'(2x,A)') &
+            'SUBROUTINE: ApplyJumpConditions_LeftState'
+           WRITE(*,'(2x,A)') &
+            'Root not bracketed'
+          WRITE(*,'(2x,A)') TRIM( Message )
+
+          CALL thornado_abort
+
       CASE DEFAULT
 
           WRITE(*,'(2x,A,I2.2)') 'Unknown error: ', iErr

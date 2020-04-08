@@ -386,7 +386,7 @@ CONTAINS
 
 #if defined HYDRO_RIEMANN_SOLVER_HYBRID
 
-    IF( ShockL .GT. 1.0e-6_DP .OR. ShockR .GT. 1.0e-6_DP )THEN
+    IF( ShockL .GT. Half .OR. ShockR .GT. Half )THEN
 
       NumericalFlux_Euler_X1 &
         = NumericalFlux_Euler_HLL &
@@ -433,7 +433,7 @@ CONTAINS
 
 #if defined HYDRO_RIEMANN_SOLVER_HYBRID
 
-    IF( ShockL .GT. 1.0e-6_DP .OR. ShockR .GT. 1.0e-6_DP )THEN
+    IF( ShockL .GT. Half .OR. ShockR .GT. Half )THEN
 
       NumericalFlux_Euler_X2 &
         = NumericalFlux_Euler_HLL &
@@ -480,7 +480,7 @@ CONTAINS
 
 #if defined HYDRO_RIEMANN_SOLVER_HYBRID
 
-    IF( ShockL .GT. 1.0e-6_DP .OR. ShockR .GT. 1.0e-6_DP )THEN
+    IF( ShockL .GT. Half .OR. ShockR .GT. Half )THEN
 
       NumericalFlux_Euler_X3 &
         = NumericalFlux_Euler_HLL &

@@ -15,6 +15,11 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
   PUBLIC :: ComputeConserved_TwoMoment
   PUBLIC :: ComputeEddingtonTensorComponents_dd
   PUBLIC :: ComputeEddingtonTensorComponents_ud
+  PUBLIC :: ComputeHeatFluxTensorComponents_ddd_Lagrangian 
+  PUBLIC :: ComputeHeatFluxTensorComponents_udd_Lagrangian
+  PUBLIC :: ComputeStressEnergyComponents_Eulerian
+  PUBLIC :: ComputeHeatFluxTensorComponents_udd_Eulerian
+  PUBLIC :: ComputeXYZ
   PUBLIC :: Flux_X1
   PUBLIC :: Flux_X2
   PUBLIC :: Flux_X3
@@ -383,6 +388,7 @@ CONTAINS
     k_dd_13 = a * u_d_1 * u_d_3 + b * h_d_1 * h_d_3
     k_dd_23 = a * u_d_2 * u_d_3 + b * h_d_2 * h_d_3
 
+
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
 
   SUBROUTINE ComputeEddingtonTensorComponents_ud &
@@ -455,6 +461,1073 @@ CONTAINS
     k_ud_23 = a * u_u_2 * u_d_3 + b * h_u_2 * h_d_3
 
   END SUBROUTINE ComputeEddingtonTensorComponents_ud
+
+  SUBROUTINE ComputeHeatFluxTensorComponents_ddd_Lagrangian &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3,         &
+      l_ddd_111, l_ddd_112, l_ddd_113, l_ddd_121, l_ddd_122, & 
+      l_ddd_123, l_ddd_131, l_ddd_132, l_ddd_133, l_ddd_211, & 
+      l_ddd_212, l_ddd_213, l_ddd_221, l_ddd_222, l_ddd_223, & 
+      l_ddd_231, l_ddd_232, l_ddd_233, l_ddd_311, l_ddd_312, & 
+      l_ddd_313, l_ddd_321, l_ddd_322, l_ddd_323, l_ddd_331, & 
+      l_ddd_332, l_ddd_333 )
+ 
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
+
+    REAL(DP), INTENT(out) :: &
+      l_ddd_111, l_ddd_112, l_ddd_113, l_ddd_121, l_ddd_122, & 
+      l_ddd_123, l_ddd_131, l_ddd_132, l_ddd_133, l_ddd_211, & 
+      l_ddd_212, l_ddd_213, l_ddd_221, l_ddd_222, l_ddd_223, & 
+      l_ddd_231, l_ddd_232, l_ddd_233, l_ddd_311, l_ddd_312, & 
+      l_ddd_313, l_ddd_321, l_ddd_322, l_ddd_323, l_ddd_331, & 
+      l_ddd_332, l_ddd_333
+
+
+    REAL(DP) :: FF, HF, a, b, DT
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+    REAL(DP) :: I_d_1, I_d_2, I_d_3
+    REAL(DP) :: B_d_1, B_d_2, B_d_3
+    REAL(DP) :: u_d_1, u_d_2, u_d_3, W
+    REAL(DP) :: h_dd_11, h_dd_22, h_dd_33, h_dd_12, h_dd_13, h_dd_23, h_dd_21, h_dd_31, h_dd_32
+   
+
+    FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                                  alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
+    HF = HeatFluxFactor( D, FF )
+
+
+    W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
+               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_33 * V_u_3 * V_u_3) )
+   
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
+
+    u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
+    u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
+    u_d_3 = B_d_3 * W / alp + Gm_dd_33 * ( V_u_3 - B_u_3 / alp )
+
+
+    DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
+
+
+    I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+    I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+    I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
+          - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
+
+    h_dd_11 = Gm_dd_11 + u_d_1 * u_d_1
+    h_dd_22 = Gm_dd_22 + u_d_2 * u_d_2
+    h_dd_33 = Gm_dd_33 + u_d_3 * u_d_3
+    h_dd_12 = u_d_1 * u_d_2
+    h_dd_13 = u_d_1 * u_d_3
+    h_dd_23 = u_d_2 * u_d_3
+    h_dd_21 = u_d_1 * u_d_2
+    h_dd_31 = u_d_1 * u_d_3
+    h_dd_32 = u_d_2 * u_d_3
+ 
+    a = Half * ( FF - HF )
+    b = Half * ( Five * HF - Three * FF )
+
+    h_d_1 = I_d_1 / ( FF * D )
+    h_d_2 = I_d_2 / ( FF * D )
+    h_d_3 = I_d_3 / ( FF * D )
+
+
+     l_ddd_111 & 
+      = a * ( h_d_1 * h_dd_11 + h_d_1 * h_dd_11 + h_d_1 * h_dd_11 ) + b * h_d_1 * h_d_1 * h_d_1
+
+    l_ddd_112 & 
+      = a * ( h_d_1 * h_dd_12 + h_d_1 * h_dd_12 + h_d_2 * h_dd_11 ) + b * h_d_1 * h_d_1 * h_d_2
+
+    l_ddd_113 & 
+      = a * ( h_d_1 * h_dd_13 + h_d_1 * h_dd_13 + h_d_3 * h_dd_11 ) + b * h_d_1 * h_d_1 * h_d_3
+
+    l_ddd_121 & 
+      = a * ( h_d_1 * h_dd_21 + h_d_2 * h_dd_11 + h_d_1 * h_dd_12 ) + b * h_d_1 * h_d_2 * h_d_1
+
+    l_ddd_122 & 
+      = a * ( h_d_1 * h_dd_22 + h_d_2 * h_dd_12 + h_d_2 * h_dd_12 ) + b * h_d_1 * h_d_2 * h_d_2
+
+    l_ddd_123 & 
+      = a * ( h_d_1 * h_dd_23 + h_d_2 * h_dd_13 + h_d_3 * h_dd_12 ) + b * h_d_1 * h_d_2 * h_d_3
+
+    l_ddd_131 & 
+      = a * ( h_d_1 * h_dd_31 + h_d_3 * h_dd_11 + h_d_1 * h_dd_13 ) + b * h_d_1 * h_d_3 * h_d_1
+
+    l_ddd_132 & 
+      = a * ( h_d_1 * h_dd_32 + h_d_3 * h_dd_12 + h_d_2 * h_dd_13 ) + b * h_d_1 * h_d_3 * h_d_2
+
+    l_ddd_133 & 
+      = a * ( h_d_1 * h_dd_33 + h_d_3 * h_dd_13 + h_d_3 * h_dd_13 ) + b * h_d_1 * h_d_3 * h_d_3
+
+    l_ddd_211 & 
+      = a * ( h_d_2 * h_dd_11 + h_d_1 * h_dd_21 + h_d_1 * h_dd_21 ) + b * h_d_2 * h_d_1 * h_d_1
+
+    l_ddd_212 & 
+      = a * ( h_d_2 * h_dd_12 + h_d_1 * h_dd_22 + h_d_2 * h_dd_21 ) + b * h_d_2 * h_d_1 * h_d_2
+
+    l_ddd_213 & 
+      = a * ( h_d_2 * h_dd_13 + h_d_1 * h_dd_23 + h_d_3 * h_dd_21 ) + b * h_d_2 * h_d_1 * h_d_3
+
+    l_ddd_221 & 
+      = a * ( h_d_2 * h_dd_21 + h_d_2 * h_dd_21 + h_d_1 * h_dd_22 ) + b * h_d_2 * h_d_2 * h_d_1
+
+    l_ddd_222 & 
+      = a * ( h_d_2 * h_dd_22 + h_d_2 * h_dd_22 + h_d_2 * h_dd_22 ) + b * h_d_2 * h_d_2 * h_d_2
+
+    l_ddd_223 & 
+      = a * ( h_d_2 * h_dd_23 + h_d_2 * h_dd_23 + h_d_3 * h_dd_22 ) + b * h_d_2 * h_d_2 * h_d_3
+
+    l_ddd_231 & 
+      = a * ( h_d_2 * h_dd_31 + h_d_3 * h_dd_21 + h_d_1 * h_dd_23 ) + b * h_d_2 * h_d_3 * h_d_1
+
+    l_ddd_232 & 
+      = a * ( h_d_2 * h_dd_32 + h_d_3 * h_dd_22 + h_d_2 * h_dd_23 ) + b * h_d_2 * h_d_3 * h_d_2
+
+    l_ddd_233 & 
+      = a * ( h_d_2 * h_dd_33 + h_d_3 * h_dd_23 + h_d_3 * h_dd_23 ) + b * h_d_2 * h_d_3 * h_d_3
+
+    l_ddd_311 & 
+      = a * ( h_d_3 * h_dd_11 + h_d_1 * h_dd_31 + h_d_1 * h_dd_31 ) + b * h_d_3 * h_d_1 * h_d_1
+
+    l_ddd_312 & 
+      = a * ( h_d_3 * h_dd_12 + h_d_1 * h_dd_32 + h_d_2 * h_dd_31 ) + b * h_d_3 * h_d_1 * h_d_2
+
+    l_ddd_313 & 
+      = a * ( h_d_3 * h_dd_13 + h_d_1 * h_dd_33 + h_d_3 * h_dd_31 ) + b * h_d_3 * h_d_1 * h_d_3
+
+    l_ddd_321 & 
+      = a * ( h_d_3 * h_dd_21 + h_d_2 * h_dd_31 + h_d_1 * h_dd_32 ) + b * h_d_3 * h_d_2 * h_d_1
+
+    l_ddd_322 & 
+      = a * ( h_d_3 * h_dd_22 + h_d_2 * h_dd_32 + h_d_2 * h_dd_32 ) + b * h_d_3 * h_d_2 * h_d_2
+
+    l_ddd_323 & 
+      = a * ( h_d_3 * h_dd_23 + h_d_2 * h_dd_33 + h_d_3 * h_dd_32 ) + b * h_d_3 * h_d_2 * h_d_3
+
+    l_ddd_331 & 
+      = a * ( h_d_3 * h_dd_31 + h_d_3 * h_dd_31 + h_d_1 * h_dd_33 ) + b * h_d_3 * h_d_3 * h_d_1
+
+    l_ddd_332 & 
+      = a * ( h_d_3 * h_dd_32 + h_d_3 * h_dd_32 + h_d_2 * h_dd_33 ) + b * h_d_3 * h_d_3 * h_d_2
+
+    l_ddd_333 & 
+      = a * ( h_d_3 * h_dd_33 + h_d_3 * h_dd_33 + h_d_3 * h_dd_33 ) + b * h_d_3 * h_d_3 * h_d_3
+
+
+
+  END SUBROUTINE ComputeHeatFluxTensorComponents_ddd_Lagrangian
+
+  SUBROUTINE ComputeHeatFluxTensorComponents_udd_Lagrangian &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3,         &
+      l_udd_111, l_udd_112, l_udd_113, l_udd_121, l_udd_122, & 
+      l_udd_123, l_udd_131, l_udd_132, l_udd_133, l_udd_211, & 
+      l_udd_212, l_udd_213, l_udd_221, l_udd_222, l_udd_223, & 
+      l_udd_231, l_udd_232, l_udd_233, l_udd_311, l_udd_312, & 
+      l_udd_313, l_udd_321, l_udd_322, l_udd_323, l_udd_331, & 
+      l_udd_332, l_udd_333 )
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
+    REAL(DP), INTENT(out) :: &
+      l_udd_111, l_udd_112, l_udd_113, l_udd_121, l_udd_122, & 
+      l_udd_123, l_udd_131, l_udd_132, l_udd_133, l_udd_211, & 
+      l_udd_212, l_udd_213, l_udd_221, l_udd_222, l_udd_223, & 
+      l_udd_231, l_udd_232, l_udd_233, l_udd_311, l_udd_312, & 
+      l_udd_313, l_udd_321, l_udd_322, l_udd_323, l_udd_331, & 
+      l_udd_332, l_udd_333 
+
+    REAL(DP) :: FF, HF, a, b, DT
+    REAL(DP) :: h_u_1, h_u_2, h_u_3
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+    REAL(DP) :: I_d_1, I_d_2, I_d_3
+    REAL(DP) :: B_d_1, B_d_2, B_d_3
+    REAL(DP) :: u_d_1, u_d_2, u_d_3, W, u_u_1, u_u_2, u_u_3
+    REAL(DP) :: h_dd_11, h_dd_22, h_dd_33, h_dd_12, h_dd_13, h_dd_23, h_dd_21, h_dd_31, h_dd_32
+    REAL(DP) :: h_ud_11, h_ud_22, h_ud_33, h_ud_12, h_ud_21, h_ud_13, h_ud_31, h_ud_23, h_ud_32
+   
+
+    FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                                  alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
+    HF = HeatFluxFactor( D, FF )
+
+
+    W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
+               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_33 * V_u_3 * V_u_3) )
+   
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
+
+    u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
+    u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
+    u_d_3 = B_d_3 * W / alp + Gm_dd_33 * ( V_u_3 - B_u_3 / alp )
+
+    u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
+    u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
+    u_u_3 = W * ( V_u_3 - B_u_3 / alp ) 
+
+    DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
+
+
+    I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+    I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+    I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
+          - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
+
+    h_dd_11 = Gm_dd_11 + u_d_1 * u_d_1
+    h_dd_22 = Gm_dd_22 + u_d_2 * u_d_2
+    h_dd_33 = Gm_dd_33 + u_d_3 * u_d_3
+    h_dd_12 = u_d_1 * u_d_2
+    h_dd_13 = u_d_1 * u_d_3
+    h_dd_23 = u_d_2 * u_d_3
+    h_dd_21 = u_d_1 * u_d_2
+    h_dd_31 = u_d_1 * u_d_3
+    h_dd_32 = u_d_2 * u_d_3
+
+
+    h_ud_11 = 1.0_DP + u_u_1 * u_d_1
+    h_ud_22 = 1.0_DP + u_u_2 * u_d_2
+    h_ud_33 = 1.0_DP + u_u_3 * u_d_3
+    h_ud_12 = u_u_1 * u_d_2
+    h_ud_13 = u_u_1 * u_d_3
+    h_ud_23 = u_u_2 * u_d_3
+    h_ud_21 = u_u_2 * u_d_1
+    h_ud_31 = u_u_3 * u_d_1
+    h_ud_32 = u_u_3 * u_d_2
+ 
+
+
+
+
+    a = Half * ( FF - HF )
+    b = Half * ( Five * HF - Three * FF )
+
+    h_u_1 = I_u_1 / ( FF * D )
+    h_u_2 = I_u_2 / ( FF * D )
+    h_u_3 = I_u_3 / ( FF * D )
+
+    h_d_1 = I_d_1 / ( FF * D )
+    h_d_2 = I_d_2 / ( FF * D )
+    h_d_3 = I_d_3 / ( FF * D )
+
+    ! --- Diagonal Heat Flux Tensor Components ---
+
+    l_udd_111 & 
+      = a * ( h_u_1 * h_dd_11 + h_d_1 * h_ud_11 + h_d_1 * h_ud_11 ) + b * h_u_1 * h_d_1 * h_d_1
+
+    l_udd_112 & 
+      = a * ( h_u_1 * h_dd_12 + h_d_1 * h_ud_12 + h_d_2 * h_ud_11 ) + b * h_u_1 * h_d_1 * h_d_2
+
+    l_udd_113 & 
+      = a * ( h_u_1 * h_dd_13 + h_d_1 * h_ud_13 + h_d_3 * h_ud_11 ) + b * h_u_1 * h_d_1 * h_d_3
+
+    l_udd_121 & 
+      = a * ( h_u_1 * h_dd_21 + h_d_2 * h_ud_11 + h_d_1 * h_ud_12 ) + b * h_u_1 * h_d_2 * h_d_1
+
+    l_udd_122 & 
+      = a * ( h_u_1 * h_dd_22 + h_d_2 * h_ud_12 + h_d_2 * h_ud_12 ) + b * h_u_1 * h_d_2 * h_d_2
+
+    l_udd_123 & 
+      = a * ( h_u_1 * h_dd_23 + h_d_2 * h_ud_13 + h_d_3 * h_ud_12 ) + b * h_u_1 * h_d_2 * h_d_3
+
+    l_udd_131 & 
+      = a * ( h_u_1 * h_dd_31 + h_d_3 * h_ud_11 + h_d_1 * h_ud_13 ) + b * h_u_1 * h_d_3 * h_d_1
+
+    l_udd_132 & 
+      = a * ( h_u_1 * h_dd_32 + h_d_3 * h_ud_12 + h_d_2 * h_ud_13 ) + b * h_u_1 * h_d_3 * h_d_2
+
+    l_udd_133 & 
+      = a * ( h_u_1 * h_dd_33 + h_d_3 * h_ud_13 + h_d_3 * h_ud_13 ) + b * h_u_1 * h_d_3 * h_d_3
+
+    l_udd_211 & 
+      = a * ( h_u_2 * h_dd_11 + h_d_1 * h_ud_21 + h_d_1 * h_ud_21 ) + b * h_u_2 * h_d_1 * h_d_1
+
+    l_udd_212 & 
+      = a * ( h_u_2 * h_dd_12 + h_d_1 * h_ud_22 + h_d_2 * h_ud_21 ) + b * h_u_2 * h_d_1 * h_d_2
+
+    l_udd_213 & 
+      = a * ( h_u_2 * h_dd_13 + h_d_1 * h_ud_23 + h_d_3 * h_ud_21 ) + b * h_u_2 * h_d_1 * h_d_3
+
+    l_udd_221 & 
+      = a * ( h_u_2 * h_dd_21 + h_d_2 * h_ud_21 + h_d_1 * h_ud_22 ) + b * h_u_2 * h_d_2 * h_d_1
+
+    l_udd_222 & 
+      = a * ( h_u_2 * h_dd_22 + h_d_2 * h_ud_22 + h_d_2 * h_ud_22 ) + b * h_u_2 * h_d_2 * h_d_2
+
+    l_udd_223 & 
+      = a * ( h_u_2 * h_dd_23 + h_d_2 * h_ud_23 + h_d_3 * h_ud_22 ) + b * h_u_2 * h_d_2 * h_d_3
+
+    l_udd_231 & 
+      = a * ( h_u_2 * h_dd_31 + h_d_3 * h_ud_21 + h_d_1 * h_ud_23 ) + b * h_u_2 * h_d_3 * h_d_1
+
+    l_udd_232 & 
+      = a * ( h_u_2 * h_dd_32 + h_d_3 * h_ud_22 + h_d_2 * h_ud_23 ) + b * h_u_2 * h_d_3 * h_d_2
+
+    l_udd_233 & 
+      = a * ( h_u_2 * h_dd_33 + h_d_3 * h_ud_23 + h_d_3 * h_ud_23 ) + b * h_u_2 * h_d_3 * h_d_3
+
+    l_udd_311 & 
+      = a * ( h_u_3 * h_dd_11 + h_d_1 * h_ud_31 + h_d_1 * h_ud_31 ) + b * h_u_3 * h_d_1 * h_d_1
+
+    l_udd_312 & 
+      = a * ( h_u_3 * h_dd_12 + h_d_1 * h_ud_32 + h_d_2 * h_ud_31 ) + b * h_u_3 * h_d_1 * h_d_2
+
+    l_udd_313 & 
+      = a * ( h_u_3 * h_dd_13 + h_d_1 * h_ud_33 + h_d_3 * h_ud_31 ) + b * h_u_3 * h_d_1 * h_d_3
+
+    l_udd_321 & 
+      = a * ( h_u_3 * h_dd_21 + h_d_2 * h_ud_31 + h_d_1 * h_ud_32 ) + b * h_u_3 * h_d_2 * h_d_1
+
+    l_udd_322 & 
+      = a * ( h_u_3 * h_dd_22 + h_d_2 * h_ud_32 + h_d_2 * h_ud_32 ) + b * h_u_3 * h_d_2 * h_d_2
+
+    l_udd_323 & 
+      = a * ( h_u_3 * h_dd_23 + h_d_2 * h_ud_33 + h_d_3 * h_ud_32 ) + b * h_u_3 * h_d_2 * h_d_3
+
+    l_udd_331 & 
+      = a * ( h_u_3 * h_dd_31 + h_d_3 * h_ud_31 + h_d_1 * h_ud_33 ) + b * h_u_3 * h_d_3 * h_d_1
+
+    l_udd_332 & 
+      = a * ( h_u_3 * h_dd_32 + h_d_3 * h_ud_32 + h_d_2 * h_ud_33 ) + b * h_u_3 * h_d_3 * h_d_2
+
+    l_udd_333 & 
+      = a * ( h_u_3 * h_dd_33 + h_d_3 * h_ud_33 + h_d_3 * h_ud_33 ) + b * h_u_3 * h_d_3 * h_d_3
+
+
+  END SUBROUTINE ComputeHeatFluxTensorComponents_udd_Lagrangian
+
+
+
+
+
+  SUBROUTINE ComputeStressEnergyComponents_Eulerian &
+                        ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, V_u_1, V_u_2, V_u_3, &
+                         alp, B_u_1, B_u_2, B_u_3, EP, F_u_1, F_u_2, F_u_3, &
+                         S_ud_11, S_ud_22, S_ud_33, S_ud_12, S_ud_13, S_ud_23, S_ud_21, S_ud_31, S_ud_32 )
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
+    REAL(DP), INTENT(out) :: &
+      EP, F_u_1, F_u_2, F_u_3
+    REAL(DP), INTENT(out) :: &
+      S_ud_11, S_ud_22, S_ud_33, S_ud_12, S_ud_13, S_ud_23, S_ud_21, S_ud_31, S_ud_32
+
+    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: k_ud_11, k_ud_22, k_ud_33, k_ud_12, k_ud_13, k_ud_23
+    REAL(DP) :: W, DT, I_d_1, I_d_2, I_d_3, B_d_1, B_d_2, B_d_3
+    REAL(DP) :: V_d_1, V_d_2, V_d_3
+    REAL(DP) :: n_u_1, n_u_2, n_u_3
+
+
+    W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
+               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_33 * V_u_3 * V_u_3) )
+
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
+
+    V_d_1 = Gm_dd_11 * V_u_1
+    V_d_2 = Gm_dd_22 * V_u_2
+    V_d_3 = Gm_dd_33 * V_u_3
+
+    n_u_1 = -B_u_1 / alp    
+    n_u_2 = -B_u_2 / alp    
+    n_u_3 = -B_u_3 / alp    
+
+
+    DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
+
+    I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+    I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+    I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
+          - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
+
+    CALL ComputeEddingtonTensorComponents_dd &
+           ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+             k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
+             alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3   )
+
+    CALL ComputeEddingtonTensorComponents_ud &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33 )
+
+    EP = ( W**2 * D + 2.0_DP * W * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 ) )
+    EP = EP + ( V_u_1 * V_u_2 * k_dd_12 * D + V_u_1 * V_u_3 * k_dd_13 * D + V_u_2 * V_u_3 * k_dd_23 * D )
+    EP = EP + 2.0_DP * ( V_u_1 * V_u_2 * k_dd_12 * D + V_u_1 * V_u_3 * k_dd_13 * D + V_u_2 * V_u_3 * k_dd_23 * D )
+
+
+
+    F_u_1 = ( W * I_u_1 ) 
+    F_u_1 = F_u_1 + V_u_1 * ( n_u_1 * W * I_d_1 + k_ud_11 * D ) + V_u_2 * ( n_u_1 * W * I_d_2 + k_ud_12 * D ) + V_u_3 * ( n_u_1 * W * I_d_3 + k_ud_13 * D )
+    F_u_1 = F_u_1 + ( W**2 * V_u_1 * D )
+    F_u_1 = F_u_1 +  n_u_1 * ( V_u_1**2 * k_dd_11 * D + V_u_2**2 * k_dd_22 * D + V_u_3**2 * k_dd_33 * D ) 
+    F_u_1 = F_u_1 + 2.0_DP * n_u_1 * ( V_u_1 * V_u_2 * k_dd_12 * D + V_u_1 * V_u_3 * k_dd_13 * D + V_u_2 * V_u_3 * k_dd_23 * D )
+    F_u_1 = F_u_1 +  W * V_u_1 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
+
+    F_u_2 = ( W * I_u_2 ) 
+    F_u_2 = F_u_2 +  V_u_1 * ( n_u_2 * W * I_d_1 + k_ud_12 * D ) + V_u_2 * ( n_u_2 * W * I_d_2 + k_ud_22 * D ) + V_u_3 * ( n_u_2 * W * I_d_3 + k_ud_23 * D )
+    F_u_2 = F_u_2 + ( W**2 * V_u_2 * D )
+    F_u_2 = F_u_2 +  n_u_2 * ( V_u_1**2 * k_dd_11 * D + V_u_2**2 * k_dd_22 * D + V_u_3**2 * k_dd_33 * D ) 
+    F_u_2 = F_u_2 + 2.0_DP * n_u_2 * ( V_u_1 * V_u_2 * k_dd_12 * D + V_u_1 * V_u_3 * k_dd_13 * D + V_u_2 * V_u_3 * k_dd_23 * D )
+    F_u_2 = F_u_2 + W * V_u_2 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
+
+    F_u_3 = ( W * I_u_3 ) 
+    F_u_3 = F_u_3 +  V_u_1 * ( n_u_3 * W * I_d_1 + k_ud_13 * D ) + V_u_2 * ( n_u_3 * W * I_d_2 + k_ud_23 * D ) + V_u_3 * ( n_u_3 * W * I_d_3 + k_ud_33 * D )
+    F_u_3 = F_u_3 + ( W**2 * V_u_3 * D )
+    F_u_3 = F_u_3 +  n_u_3 * ( V_u_1**2 * k_dd_11 * D + V_u_2**2 * k_dd_22 * D + V_u_3**2 * k_dd_33 * D ) 
+    F_u_3 = F_u_3 + 2.0_DP *  n_u_3 * ( V_u_1 * V_u_2 * k_dd_12 * D + V_u_1 * V_u_3 * k_dd_13 * D + V_u_2 * V_u_3 * k_dd_23 * D )
+    F_u_3 = F_u_3 + W * V_u_3 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
+
+
+
+    S_ud_11 =  ( k_ud_11 * D + W * ( I_u_1 * V_d_1 + V_u_1 * I_d_1 ) + V_d_1 * V_u_1 * W**2 * D )
+    S_ud_11 = S_ud_11 -  n_u_1 * ( V_u_1 * k_dd_11 * D + V_u_2 * k_dd_12 * D + V_u_3 * k_dd_13 )
+    S_ud_11 = S_ud_11 - V_d_1 * n_u_1 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
+
+    S_ud_22 =  ( k_ud_22 * D + W * ( I_u_2 * V_d_2 + V_u_2 * I_d_2 ) + V_d_2 * V_u_2 * W**2 * D )
+    S_ud_22 = S_ud_22 -  n_u_2 * ( V_u_1 * k_dd_12 * D + V_u_2 * k_dd_22 * D + V_u_3 * k_dd_23 )
+    S_ud_22 = S_ud_22 - V_d_2 * n_u_2 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
+
+    S_ud_33 = ( k_ud_33 * D + W * ( I_u_3 * V_d_3 + V_u_3 * I_d_3 ) + V_d_3 * V_u_3 * W**2 * D )
+    S_ud_33 = S_ud_33 - n_u_3 * ( V_u_1 * k_dd_13 * D + V_u_2 * k_dd_23 * D + V_u_3 * k_dd_33 )
+    S_ud_33 = S_ud_33 -  V_d_3 * n_u_3 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
+
+    S_ud_12 = ( k_ud_12 * D + W * ( I_u_1 * V_d_2 + V_u_1 * I_d_2 ) + V_d_1 * V_u_2 * W**2 * D )
+    S_ud_12 = S_ud_12 - n_u_1 * ( V_u_1 * k_dd_12 * D + V_u_2 * k_dd_22 * D + V_u_3 * k_dd_23 )
+    S_ud_12 = S_ud_12 - V_d_2 * n_u_1 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
+
+    S_ud_23 = ( k_ud_23 * D + W * ( I_u_2 * V_d_3 + V_u_2 * I_d_3 ) + V_d_2 * V_u_3 * W**2 * D )
+    S_ud_23 = S_ud_23 - n_u_2 * ( V_u_1 * k_dd_13 * D + V_u_2 * k_dd_23 * D + V_u_3 * k_dd_33 )
+    S_ud_23 = S_ud_23 - V_d_3 * n_u_2 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
+
+    S_ud_13 = ( k_ud_13 * D + W * ( I_u_1 * V_d_3 + V_u_1 * I_d_3 ) + V_d_1 * V_u_3 * W**2 * D )
+    S_ud_13 = S_ud_13 - n_u_1 * ( V_u_1 * k_dd_13 * D + V_u_2 * k_dd_23 * D + V_u_3 * k_dd_33 )
+    S_ud_13 = S_ud_13 - V_d_3 * n_u_1 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
+
+    S_ud_21 = ( k_ud_12 * D + W * ( I_u_2 * V_d_1 + V_u_2 * I_d_1 ) + V_d_2 * V_u_1 * W**2 * D )
+    S_ud_21 = S_ud_21 - n_u_2 * ( V_u_1 * k_dd_11 * D + V_u_2 * k_dd_12 * D + V_u_3 * k_dd_13 )
+    S_ud_21 = S_ud_21 - V_d_1 * n_u_2 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
+
+    S_ud_32 =  ( k_ud_23 * D + W * ( I_u_3 * V_d_2 + V_u_3 * I_d_2 ) + V_d_3 * V_u_2 * W**2 * D )
+    S_ud_32 = S_ud_32 -  n_u_3 * ( V_u_1 * k_dd_12 * D + V_u_2 * k_dd_22 * D + V_u_3 * k_dd_23 )
+    S_ud_32 = S_ud_32 - V_d_2 * n_u_3 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
+
+    S_ud_31 = ( k_ud_13 * D + W * ( I_u_3 * V_d_1 + V_u_3 * I_d_1 ) + V_d_3 * V_u_1 * W**2 * D )
+    S_ud_31 = S_ud_31 - n_u_3 * ( V_u_1 * k_dd_11 * D + V_u_2 * k_dd_12 * D + V_u_3 * k_dd_13 )
+    S_ud_31 = S_ud_31 - V_d_1 * n_u_3 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
+
+
+  END SUBROUTINE ComputeStressEnergyComponents_Eulerian
+
+
+  SUBROUTINE ComputeHeatFluxTensorComponents_udd_Eulerian &
+                                          ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                                           alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, E, &
+                                           W_udd_111, W_udd_112, W_udd_113, W_udd_121, W_udd_122, & 
+                                           W_udd_123, W_udd_131, W_udd_132, W_udd_133, W_udd_211, & 
+                                           W_udd_212, W_udd_213, W_udd_221, W_udd_222, W_udd_223, & 
+                                           W_udd_231, W_udd_232, W_udd_233, W_udd_311, W_udd_312, & 
+                                           W_udd_313, W_udd_321, W_udd_322, W_udd_323, W_udd_331, & 
+                                           W_udd_332, W_udd_333) 
+ 
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, E
+
+    REAL(DP), INTENT(out)  :: &
+      W_udd_111, W_udd_112, W_udd_113, W_udd_121, W_udd_122, & 
+      W_udd_123, W_udd_131, W_udd_132, W_udd_133, W_udd_211, & 
+      W_udd_212, W_udd_213, W_udd_221, W_udd_222, W_udd_223, & 
+      W_udd_231, W_udd_232, W_udd_233, W_udd_311, W_udd_312, & 
+      W_udd_313, W_udd_321, W_udd_322, W_udd_323, W_udd_331, & 
+      W_udd_332, W_udd_333
+
+
+    REAL(DP) :: &
+      l_udd_111, l_udd_112, l_udd_113, l_udd_121, l_udd_122, & 
+      l_udd_123, l_udd_131, l_udd_132, l_udd_133, l_udd_211, & 
+      l_udd_212, l_udd_213, l_udd_221, l_udd_222, l_udd_223, & 
+      l_udd_231, l_udd_232, l_udd_233, l_udd_311, l_udd_312, & 
+      l_udd_313, l_udd_321, l_udd_322, l_udd_323, l_udd_331, & 
+      l_udd_332, l_udd_333 
+
+    REAL(DP) :: &
+      l_ddd_111, l_ddd_112, l_ddd_113, l_ddd_121, l_ddd_122, & 
+      l_ddd_123, l_ddd_131, l_ddd_132, l_ddd_133, l_ddd_211, & 
+      l_ddd_212, l_ddd_213, l_ddd_221, l_ddd_222, l_ddd_223, & 
+      l_ddd_231, l_ddd_232, l_ddd_233, l_ddd_311, l_ddd_312, & 
+      l_ddd_313, l_ddd_321, l_ddd_322, l_ddd_323, l_ddd_331, & 
+      l_ddd_332, l_ddd_333 
+
+    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
+                k_dd_21, k_dd_31, k_dd_32
+    REAL(DP) :: k_ud_11, k_ud_22, k_ud_33, k_ud_12, k_ud_13, k_ud_23, &
+                k_ud_21, k_ud_31, k_ud_32
+
+    REAL(DP) :: n_u_1, n_u_2, n_u_3
+    REAL(DP) :: V_d_1, V_d_2, V_d_3
+    REAL(DP) :: I_d_1, I_d_2, I_d_3
+    REAL(DP) :: B_d_1, B_d_2, B_d_3
+    REAL(DP) :: W, DT
+
+    W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
+               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_33 * V_u_3 * V_u_3) )
+
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
+
+    V_d_1 = Gm_dd_11 * V_u_1
+    V_d_2 = Gm_dd_22 * V_u_2
+    V_d_3 = Gm_dd_33 * V_u_3
+
+    n_u_1 = -B_u_1 / alp    
+    n_u_2 = -B_u_2 / alp    
+    n_u_3 = -B_u_3 / alp    
+
+
+    DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
+
+    I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+    I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+    I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
+          - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
+
+
+
+
+    CALL ComputeEddingtonTensorComponents_ud &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33 )
+
+    CALL ComputeEddingtonTensorComponents_dd &
+           ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+             k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
+             alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3   )
+
+    k_dd_21 = k_dd_12
+    k_dd_31 = k_dd_13
+    k_dd_32 = k_dd_23
+
+    k_ud_21 = k_ud_12
+    k_ud_31 = k_ud_13
+    k_ud_32 = k_ud_23
+
+   CALL ComputeHeatFluxTensorComponents_udd_Lagrangian &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3,         &
+      l_udd_111, l_udd_112, l_udd_113, l_udd_121, l_udd_122, & 
+      l_udd_123, l_udd_131, l_udd_132, l_udd_133, l_udd_211, & 
+      l_udd_212, l_udd_213, l_udd_221, l_udd_222, l_udd_223, & 
+      l_udd_231, l_udd_232, l_udd_233, l_udd_311, l_udd_312, & 
+      l_udd_313, l_udd_321, l_udd_322, l_udd_323, l_udd_331, & 
+      l_udd_332, l_udd_333 )
+
+    CALL ComputeHeatFluxTensorComponents_ddd_Lagrangian &
+      ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+        alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3,         &
+        l_ddd_111, l_ddd_112, l_ddd_113, l_ddd_121, l_ddd_122, & 
+        l_ddd_123, l_ddd_131, l_ddd_132, l_ddd_133, l_ddd_211, & 
+        l_ddd_212, l_ddd_213, l_ddd_221, l_ddd_222, l_ddd_223, & 
+        l_ddd_231, l_ddd_232, l_ddd_233, l_ddd_311, l_ddd_312, & 
+        l_ddd_313, l_ddd_321, l_ddd_322, l_ddd_323, l_ddd_331, & 
+        l_ddd_332, l_ddd_333 )
+
+    n_u_1 = -B_u_1 / alp    
+    n_u_2 = -B_u_2 / alp    
+    n_u_3 = -B_u_3 / alp    
+
+    V_d_1 = Gm_dd_11 * V_u_1
+    V_d_2 = Gm_dd_22 * V_u_2
+    V_d_3 = Gm_dd_33 * V_u_3
+
+    W_udd_111 = E**2 * ( W**3 * V_u_1 * V_d_1 * V_d_1 * D & 
+      + W**2 * V_d_1 * V_d_1 * ( I_u_1 - n_u_1 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_1 * V_u_1 * I_d_1 & 
+      + W**2 * V_u_1 * V_d_1 * I_d_1 & 
+      + W * V_d_1 * ( k_ud_11 * D - n_u_1 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + W * V_u_1 * k_dd_11 * D & 
+      + W * V_d_1 * ( k_ud_11 * D - n_u_1 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + l_udd_111 * D & 
+      + n_u_1 * ( V_u_1 * l_ddd_111 + V_u_2 * l_ddd_211 + V_u_3 * l_ddd_311 ) * D ) 
+ 
+    W_udd_112 = E**2 * ( W**3 * V_u_1 * V_d_1 * V_d_2 * D & 
+      + W**2 * V_d_1 * V_d_2 * ( I_u_1 - n_u_1 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_2 * V_u_1 * I_d_1 & 
+      + W**2 * V_u_1 * V_d_1 * I_d_2 & 
+      + W * V_d_2 * ( k_ud_11 * D - n_u_1 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + W * V_u_1 * k_dd_12 * D & 
+      + W * V_d_1 * ( k_ud_12 * D - n_u_1 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + l_udd_112 * D & 
+      + n_u_1 * ( V_u_1 * l_ddd_112 + V_u_2 * l_ddd_212 + V_u_3 * l_ddd_312 ) * D ) 
+ 
+    W_udd_113 = E**2 * ( W**3 * V_u_1 * V_d_1 * V_d_3 * D & 
+      + W**2 * V_d_1 * V_d_3 * ( I_u_1 - n_u_1 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_3 * V_u_1 * I_d_1 & 
+      + W**2 * V_u_1 * V_d_1 * I_d_3 & 
+      + W * V_d_3 * ( k_ud_11 * D - n_u_1 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + W * V_u_1 * k_dd_13 * D & 
+      + W * V_d_1 * ( k_ud_13 * D - n_u_1 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + l_udd_113 * D & 
+      + n_u_1 * ( V_u_1 * l_ddd_113 + V_u_2 * l_ddd_213 + V_u_3 * l_ddd_313 ) * D ) 
+ 
+    W_udd_121 = E**2 * ( W**3 * V_u_1 * V_d_2 * V_d_1 * D & 
+      + W**2 * V_d_2 * V_d_1 * ( I_u_1 - n_u_1 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_1 * V_u_1 * I_d_2 & 
+      + W**2 * V_u_1 * V_d_2 * I_d_1 & 
+      + W * V_d_1 * ( k_ud_12 * D - n_u_1 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + W * V_u_1 * k_dd_21 * D & 
+      + W * V_d_2 * ( k_ud_11 * D - n_u_1 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + l_udd_121 * D & 
+      + n_u_1 * ( V_u_1 * l_ddd_121 + V_u_2 * l_ddd_221 + V_u_3 * l_ddd_321 ) * D ) 
+ 
+    W_udd_122 = E**2 * ( W**3 * V_u_1 * V_d_2 * V_d_2 * D & 
+      + W**2 * V_d_2 * V_d_2 * ( I_u_1 - n_u_1 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_2 * V_u_1 * I_d_2 & 
+      + W**2 * V_u_1 * V_d_2 * I_d_2 & 
+      + W * V_d_2 * ( k_ud_12 * D - n_u_1 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + W * V_u_1 * k_dd_22 * D & 
+      + W * V_d_2 * ( k_ud_12 * D - n_u_1 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + l_udd_122 * D & 
+      + n_u_1 * ( V_u_1 * l_ddd_122 + V_u_2 * l_ddd_222 + V_u_3 * l_ddd_322 ) * D ) 
+ 
+    W_udd_123 = E**2 * ( W**3 * V_u_1 * V_d_2 * V_d_3 * D & 
+      + W**2 * V_d_2 * V_d_3 * ( I_u_1 - n_u_1 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_3 * V_u_1 * I_d_2 & 
+      + W**2 * V_u_1 * V_d_2 * I_d_3 & 
+      + W * V_d_3 * ( k_ud_12 * D - n_u_1 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + W * V_u_1 * k_dd_23 * D & 
+      + W * V_d_2 * ( k_ud_13 * D - n_u_1 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + l_udd_123 * D & 
+      + n_u_1 * ( V_u_1 * l_ddd_123 + V_u_2 * l_ddd_223 + V_u_3 * l_ddd_323 ) * D ) 
+ 
+    W_udd_131 = E**2 * ( W**3 * V_u_1 * V_d_3 * V_d_1 * D & 
+      + W**2 * V_d_3 * V_d_1 * ( I_u_1 - n_u_1 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_1 * V_u_1 * I_d_3 & 
+      + W**2 * V_u_1 * V_d_3 * I_d_1 & 
+      + W * V_d_1 * ( k_ud_13 * D - n_u_1 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + W * V_u_1 * k_dd_31 * D & 
+      + W * V_d_3 * ( k_ud_11 * D - n_u_1 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + l_udd_131 * D & 
+      + n_u_1 * ( V_u_1 * l_ddd_131 + V_u_2 * l_ddd_231 + V_u_3 * l_ddd_331 ) * D ) 
+ 
+    W_udd_132 = E**2 * ( W**3 * V_u_1 * V_d_3 * V_d_2 * D & 
+      + W**2 * V_d_3 * V_d_2 * ( I_u_1 - n_u_1 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_2 * V_u_1 * I_d_3 & 
+      + W**2 * V_u_1 * V_d_3 * I_d_2 & 
+      + W * V_d_2 * ( k_ud_13 * D - n_u_1 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + W * V_u_1 * k_dd_32 * D & 
+      + W * V_d_3 * ( k_ud_12 * D - n_u_1 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + l_udd_132 * D & 
+      + n_u_1 * ( V_u_1 * l_ddd_132 + V_u_2 * l_ddd_232 + V_u_3 * l_ddd_332 ) * D ) 
+ 
+    W_udd_133 = E**2 * ( W**3 * V_u_1 * V_d_3 * V_d_3 * D & 
+      + W**2 * V_d_3 * V_d_3 * ( I_u_1 - n_u_1 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_3 * V_u_1 * I_d_3 & 
+      + W**2 * V_u_1 * V_d_3 * I_d_3 & 
+      + W * V_d_3 * ( k_ud_13 * D - n_u_1 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + W * V_u_1 * k_dd_33 * D & 
+      + W * V_d_3 * ( k_ud_13 * D - n_u_1 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + l_udd_133 * D & 
+      + n_u_1 * ( V_u_1 * l_ddd_133 + V_u_2 * l_ddd_233 + V_u_3 * l_ddd_333 ) * D ) 
+ 
+    W_udd_211 = E**2 * ( W**3 * V_u_2 * V_d_1 * V_d_1 * D & 
+      + W**2 * V_d_1 * V_d_1 * ( I_u_2 - n_u_2 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_1 * V_u_2 * I_d_1 & 
+      + W**2 * V_u_2 * V_d_1 * I_d_1 & 
+      + W * V_d_1 * ( k_ud_21 * D - n_u_2 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + W * V_u_2 * k_dd_11 * D & 
+      + W * V_d_1 * ( k_ud_21 * D - n_u_2 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + l_udd_211 * D & 
+      + n_u_2 * ( V_u_1 * l_ddd_111 + V_u_2 * l_ddd_211 + V_u_3 * l_ddd_311 ) * D ) 
+ 
+    W_udd_212 = E**2 * ( W**3 * V_u_2 * V_d_1 * V_d_2 * D & 
+      + W**2 * V_d_1 * V_d_2 * ( I_u_2 - n_u_2 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_2 * V_u_2 * I_d_1 & 
+      + W**2 * V_u_2 * V_d_1 * I_d_2 & 
+      + W * V_d_2 * ( k_ud_21 * D - n_u_2 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + W * V_u_2 * k_dd_12 * D & 
+      + W * V_d_1 * ( k_ud_22 * D - n_u_2 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + l_udd_212 * D & 
+      + n_u_2 * ( V_u_1 * l_ddd_112 + V_u_2 * l_ddd_212 + V_u_3 * l_ddd_312 ) * D ) 
+ 
+    W_udd_213 = E**2 * ( W**3 * V_u_2 * V_d_1 * V_d_3 * D & 
+      + W**2 * V_d_1 * V_d_3 * ( I_u_2 - n_u_2 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_3 * V_u_2 * I_d_1 & 
+      + W**2 * V_u_2 * V_d_1 * I_d_3 & 
+      + W * V_d_3 * ( k_ud_21 * D - n_u_2 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + W * V_u_2 * k_dd_13 * D & 
+      + W * V_d_1 * ( k_ud_23 * D - n_u_2 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + l_udd_213 * D & 
+      + n_u_2 * ( V_u_1 * l_ddd_113 + V_u_2 * l_ddd_213 + V_u_3 * l_ddd_313 ) * D ) 
+ 
+    W_udd_221 = E**2 * ( W**3 * V_u_2 * V_d_2 * V_d_1 * D & 
+      + W**2 * V_d_2 * V_d_1 * ( I_u_2 - n_u_2 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_1 * V_u_2 * I_d_2 & 
+      + W**2 * V_u_2 * V_d_2 * I_d_1 & 
+      + W * V_d_1 * ( k_ud_22 * D - n_u_2 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + W * V_u_2 * k_dd_21 * D & 
+      + W * V_d_2 * ( k_ud_21 * D - n_u_2 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + l_udd_221 * D & 
+      + n_u_2 * ( V_u_1 * l_ddd_121 + V_u_2 * l_ddd_221 + V_u_3 * l_ddd_321 ) * D ) 
+ 
+    W_udd_222 = E**2 * ( W**3 * V_u_2 * V_d_2 * V_d_2 * D & 
+      + W**2 * V_d_2 * V_d_2 * ( I_u_2 - n_u_2 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_2 * V_u_2 * I_d_2 & 
+      + W**2 * V_u_2 * V_d_2 * I_d_2 & 
+      + W * V_d_2 * ( k_ud_22 * D - n_u_2 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + W * V_u_2 * k_dd_22 * D & 
+      + W * V_d_2 * ( k_ud_22 * D - n_u_2 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + l_udd_222 * D & 
+      + n_u_2 * ( V_u_1 * l_ddd_122 + V_u_2 * l_ddd_222 + V_u_3 * l_ddd_322 ) * D ) 
+ 
+    W_udd_223 = E**2 * ( W**3 * V_u_2 * V_d_2 * V_d_3 * D & 
+      + W**2 * V_d_2 * V_d_3 * ( I_u_2 - n_u_2 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_3 * V_u_2 * I_d_2 & 
+      + W**2 * V_u_2 * V_d_2 * I_d_3 & 
+      + W * V_d_3 * ( k_ud_22 * D - n_u_2 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + W * V_u_2 * k_dd_23 * D & 
+      + W * V_d_2 * ( k_ud_23 * D - n_u_2 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + l_udd_223 * D & 
+      + n_u_2 * ( V_u_1 * l_ddd_123 + V_u_2 * l_ddd_223 + V_u_3 * l_ddd_323 ) * D ) 
+ 
+    W_udd_231 = E**2 * ( W**3 * V_u_2 * V_d_3 * V_d_1 * D & 
+      + W**2 * V_d_3 * V_d_1 * ( I_u_2 - n_u_2 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_1 * V_u_2 * I_d_3 & 
+      + W**2 * V_u_2 * V_d_3 * I_d_1 & 
+      + W * V_d_1 * ( k_ud_23 * D - n_u_2 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + W * V_u_2 * k_dd_31 * D & 
+      + W * V_d_3 * ( k_ud_21 * D - n_u_2 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + l_udd_231 * D & 
+      + n_u_2 * ( V_u_1 * l_ddd_131 + V_u_2 * l_ddd_231 + V_u_3 * l_ddd_331 ) * D ) 
+ 
+    W_udd_232 = E**2 * ( W**3 * V_u_2 * V_d_3 * V_d_2 * D & 
+      + W**2 * V_d_3 * V_d_2 * ( I_u_2 - n_u_2 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_2 * V_u_2 * I_d_3 & 
+      + W**2 * V_u_2 * V_d_3 * I_d_2 & 
+      + W * V_d_2 * ( k_ud_23 * D - n_u_2 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + W * V_u_2 * k_dd_32 * D & 
+      + W * V_d_3 * ( k_ud_22 * D - n_u_2 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + l_udd_232 * D & 
+      + n_u_2 * ( V_u_1 * l_ddd_132 + V_u_2 * l_ddd_232 + V_u_3 * l_ddd_332 ) * D ) 
+ 
+    W_udd_233 = E**2 * ( W**3 * V_u_2 * V_d_3 * V_d_3 * D & 
+      + W**2 * V_d_3 * V_d_3 * ( I_u_2 - n_u_2 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_3 * V_u_2 * I_d_3 & 
+      + W**2 * V_u_2 * V_d_3 * I_d_3 & 
+      + W * V_d_3 * ( k_ud_23 * D - n_u_2 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + W * V_u_2 * k_dd_33 * D & 
+      + W * V_d_3 * ( k_ud_23 * D - n_u_2 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + l_udd_233 * D & 
+      + n_u_2 * ( V_u_1 * l_ddd_133 + V_u_2 * l_ddd_233 + V_u_3 * l_ddd_333 ) * D ) 
+ 
+    W_udd_311 = E**2 * ( W**3 * V_u_3 * V_d_1 * V_d_1 * D & 
+      + W**2 * V_d_1 * V_d_1 * ( I_u_3 - n_u_3 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_1 * V_u_3 * I_d_1 & 
+      + W**2 * V_u_3 * V_d_1 * I_d_1 & 
+      + W * V_d_1 * ( k_ud_31 * D - n_u_3 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + W * V_u_3 * k_dd_11 * D & 
+      + W * V_d_1 * ( k_ud_31 * D - n_u_3 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + l_udd_311 * D & 
+      + n_u_3 * ( V_u_1 * l_ddd_111 + V_u_2 * l_ddd_211 + V_u_3 * l_ddd_311 ) * D ) 
+ 
+    W_udd_312 = E**2 * ( W**3 * V_u_3 * V_d_1 * V_d_2 * D & 
+      + W**2 * V_d_1 * V_d_2 * ( I_u_3 - n_u_3 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_2 * V_u_3 * I_d_1 & 
+      + W**2 * V_u_3 * V_d_1 * I_d_2 & 
+      + W * V_d_2 * ( k_ud_31 * D - n_u_3 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + W * V_u_3 * k_dd_12 * D & 
+      + W * V_d_1 * ( k_ud_32 * D - n_u_3 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + l_udd_312 * D & 
+      + n_u_3 * ( V_u_1 * l_ddd_112 + V_u_2 * l_ddd_212 + V_u_3 * l_ddd_312 ) * D ) 
+ 
+    W_udd_313 = E**2 * ( W**3 * V_u_3 * V_d_1 * V_d_3 * D & 
+      + W**2 * V_d_1 * V_d_3 * ( I_u_3 - n_u_3 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_3 * V_u_3 * I_d_1 & 
+      + W**2 * V_u_3 * V_d_1 * I_d_3 & 
+      + W * V_d_3 * ( k_ud_31 * D - n_u_3 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + W * V_u_3 * k_dd_13 * D & 
+      + W * V_d_1 * ( k_ud_33 * D - n_u_3 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + l_udd_313 * D & 
+      + n_u_3 * ( V_u_1 * l_ddd_113 + V_u_2 * l_ddd_213 + V_u_3 * l_ddd_313 ) * D ) 
+ 
+    W_udd_321 = E**2 * ( W**3 * V_u_3 * V_d_2 * V_d_1 * D & 
+      + W**2 * V_d_2 * V_d_1 * ( I_u_3 - n_u_3 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_1 * V_u_3 * I_d_2 & 
+      + W**2 * V_u_3 * V_d_2 * I_d_1 & 
+      + W * V_d_1 * ( k_ud_32 * D - n_u_3 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + W * V_u_3 * k_dd_21 * D & 
+      + W * V_d_2 * ( k_ud_31 * D - n_u_3 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + l_udd_321 * D & 
+      + n_u_3 * ( V_u_1 * l_ddd_121 + V_u_2 * l_ddd_221 + V_u_3 * l_ddd_321 ) * D ) 
+ 
+    W_udd_322 = E**2 * ( W**3 * V_u_3 * V_d_2 * V_d_2 * D & 
+      + W**2 * V_d_2 * V_d_2 * ( I_u_3 - n_u_3 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_2 * V_u_3 * I_d_2 & 
+      + W**2 * V_u_3 * V_d_2 * I_d_2 & 
+      + W * V_d_2 * ( k_ud_32 * D - n_u_3 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + W * V_u_3 * k_dd_22 * D & 
+      + W * V_d_2 * ( k_ud_32 * D - n_u_3 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + l_udd_322 * D & 
+      + n_u_3 * ( V_u_1 * l_ddd_122 + V_u_2 * l_ddd_222 + V_u_3 * l_ddd_322 ) * D ) 
+ 
+    W_udd_323 = E**2 * ( W**3 * V_u_3 * V_d_2 * V_d_3 * D & 
+      + W**2 * V_d_2 * V_d_3 * ( I_u_3 - n_u_3 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_3 * V_u_3 * I_d_2 & 
+      + W**2 * V_u_3 * V_d_2 * I_d_3 & 
+      + W * V_d_3 * ( k_ud_32 * D - n_u_3 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + W * V_u_3 * k_dd_23 * D & 
+      + W * V_d_2 * ( k_ud_33 * D - n_u_3 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + l_udd_323 * D & 
+      + n_u_3 * ( V_u_1 * l_ddd_123 + V_u_2 * l_ddd_223 + V_u_3 * l_ddd_323 ) * D ) 
+ 
+    W_udd_331 = E**2 * ( W**3 * V_u_3 * V_d_3 * V_d_1 * D & 
+      + W**2 * V_d_3 * V_d_1 * ( I_u_3 - n_u_3 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_1 * V_u_3 * I_d_3 & 
+      + W**2 * V_u_3 * V_d_3 * I_d_1 & 
+      + W * V_d_1 * ( k_ud_33 * D - n_u_3 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + W * V_u_3 * k_dd_31 * D & 
+      + W * V_d_3 * ( k_ud_31 * D - n_u_3 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
+      + l_udd_331 * D & 
+      + n_u_3 * ( V_u_1 * l_ddd_131 + V_u_2 * l_ddd_231 + V_u_3 * l_ddd_331 ) * D ) 
+ 
+    W_udd_332 = E**2 * ( W**3 * V_u_3 * V_d_3 * V_d_2 * D & 
+      + W**2 * V_d_3 * V_d_2 * ( I_u_3 - n_u_3 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_2 * V_u_3 * I_d_3 & 
+      + W**2 * V_u_3 * V_d_3 * I_d_2 & 
+      + W * V_d_2 * ( k_ud_33 * D - n_u_3 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + W * V_u_3 * k_dd_32 * D & 
+      + W * V_d_3 * ( k_ud_32 * D - n_u_3 * ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 + V_u_3 * k_dd_32 ) * D ) & 
+      + l_udd_332 * D & 
+      + n_u_3 * ( V_u_1 * l_ddd_132 + V_u_2 * l_ddd_232 + V_u_3 * l_ddd_332 ) * D ) 
+ 
+    W_udd_333 = E**2 * ( W**3 * V_u_3 * V_d_3 * V_d_3 * D & 
+      + W**2 * V_d_3 * V_d_3 * ( I_u_3 - n_u_3 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
+      + W**2 * V_d_3 * V_u_3 * I_d_3 & 
+      + W**2 * V_u_3 * V_d_3 * I_d_3 & 
+      + W * V_d_3 * ( k_ud_33 * D - n_u_3 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + W * V_u_3 * k_dd_33 * D & 
+      + W * V_d_3 * ( k_ud_33 * D - n_u_3 * ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 + V_u_3 * k_dd_33 ) * D ) & 
+      + l_udd_333 * D & 
+      + n_u_3 * ( V_u_1 * l_ddd_133 + V_u_2 * l_ddd_233 + V_u_3 * l_ddd_333 ) * D ) 
+ 
+
+  END SUBROUTINE ComputeHeatFluxTensorComponents_udd_Eulerian
+
+  SUBROUTINE ComputeXYZ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                         alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, E, &
+                         X, Y_d_1, Y_d_2, Y_d_3, Z_ud_11, Z_ud_12, Z_ud_13, Z_ud_21, Z_ud_22, & 
+                         Z_ud_23, Z_ud_31, Z_ud_32, Z_ud_33 )
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, E
+
+    REAL(DP), INTENT(out)  :: &
+      X, Y_d_1, Y_d_2, Y_d_3, Z_ud_11, Z_ud_12, Z_ud_13, Z_ud_21, Z_ud_22, &
+      Z_ud_23, Z_ud_31, Z_ud_32, Z_ud_33 
+
+    REAL(DP) &
+      EP, F_u_1, F_u_2, F_u_3, F_d_1, F_d_2, F_d_3
+    REAL(DP) :: &
+      S_ud_11, S_ud_22, S_ud_33, S_ud_12, S_ud_13, S_ud_23, S_ud_21, S_ud_31, S_ud_32
+    REAL(DP)  :: &
+      S_dd_11, S_dd_22, S_dd_33, S_dd_12, S_dd_13, S_dd_23, S_dd_21, S_dd_31, S_dd_32
+    REAL(DP)  :: &
+      W_udd_111, W_udd_112, W_udd_113, W_udd_121, W_udd_122, & 
+      W_udd_123, W_udd_131, W_udd_132, W_udd_133, W_udd_211, & 
+      W_udd_212, W_udd_213, W_udd_221, W_udd_222, W_udd_223, & 
+      W_udd_231, W_udd_232, W_udd_233, W_udd_311, W_udd_312, & 
+      W_udd_313, W_udd_321, W_udd_322, W_udd_323, W_udd_331, & 
+      W_udd_332, W_udd_333
+    REAL(DP)  :: &
+      W_ddd_111, W_ddd_112, W_ddd_113, W_ddd_121, W_ddd_122, & 
+      W_ddd_123, W_ddd_131, W_ddd_132, W_ddd_133, W_ddd_211, & 
+      W_ddd_212, W_ddd_213, W_ddd_221, W_ddd_222, W_ddd_223, & 
+      W_ddd_231, W_ddd_232, W_ddd_233, W_ddd_311, W_ddd_312, & 
+      W_ddd_313, W_ddd_321, W_ddd_322, W_ddd_323, W_ddd_331, & 
+      W_ddd_332, W_ddd_333
+
+    REAL(DP) :: W
+
+    W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
+               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_33 * V_u_3 * V_u_3) )
+
+    CALL ComputeStressEnergyComponents_Eulerian &
+                        ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, V_u_1, V_u_2, V_u_3, &
+                         alp, B_u_1, B_u_2, B_u_3,EP, F_u_1, F_u_2, F_u_3, &
+                         S_ud_11, S_ud_22, S_ud_33, S_ud_12, S_ud_13, S_ud_23, S_ud_21, S_ud_31, S_ud_32 )
+
+    CALL ComputeHeatFluxTensorComponents_udd_Eulerian &
+                                          ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                                           alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, E, &
+                                           W_udd_111, W_udd_112, W_udd_113, W_udd_121, W_udd_122, & 
+                                           W_udd_123, W_udd_131, W_udd_132, W_udd_133, W_udd_211, & 
+                                           W_udd_212, W_udd_213, W_udd_221, W_udd_222, W_udd_223, & 
+                                           W_udd_231, W_udd_232, W_udd_233, W_udd_311, W_udd_312, & 
+                                           W_udd_313, W_udd_321, W_udd_322, W_udd_323, W_udd_331, & 
+                                           W_udd_332, W_udd_333)
+
+    F_d_1 = Gm_dd_11 * F_u_1
+
+    F_d_2 = Gm_dd_22 * F_u_2
+
+    F_d_3 = Gm_dd_33 * F_u_3
+
+    S_dd_11 =  Gm_dd_11 * S_ud_11 
+ 
+    S_dd_12 =  Gm_dd_11 * S_ud_12 
+ 
+    S_dd_13 =  Gm_dd_11 * S_ud_13 
+ 
+    S_dd_21 =  Gm_dd_22 * S_ud_21 
+ 
+    S_dd_22 =  Gm_dd_22 * S_ud_22 
+ 
+    S_dd_23 =  Gm_dd_22 * S_ud_23 
+ 
+    S_dd_31 =  Gm_dd_33 * S_ud_31 
+ 
+    S_dd_32 =  Gm_dd_33 * S_ud_32 
+ 
+    S_dd_33 =  Gm_dd_33 * S_ud_33 
+
+    W_ddd_111 =  Gm_dd_11 * W_udd_111 
+ 
+    W_ddd_112 =  Gm_dd_11 * W_udd_112 
+ 
+    W_ddd_113 =  Gm_dd_11 * W_udd_113 
+ 
+    W_ddd_121 =  Gm_dd_11 * W_udd_121 
+ 
+    W_ddd_122 =  Gm_dd_11 * W_udd_122 
+ 
+    W_ddd_123 =  Gm_dd_11 * W_udd_123 
+ 
+    W_ddd_131 =  Gm_dd_11 * W_udd_131 
+ 
+    W_ddd_132 =  Gm_dd_11 * W_udd_132 
+ 
+    W_ddd_133 =  Gm_dd_11 * W_udd_133 
+ 
+    W_ddd_211 =  Gm_dd_22 * W_udd_211 
+ 
+    W_ddd_212 =  Gm_dd_22 * W_udd_212 
+ 
+    W_ddd_213 =  Gm_dd_22 * W_udd_213 
+ 
+    W_ddd_221 =  Gm_dd_22 * W_udd_221 
+ 
+    W_ddd_222 =  Gm_dd_22 * W_udd_222 
+ 
+    W_ddd_223 =  Gm_dd_22 * W_udd_223 
+ 
+    W_ddd_231 =  Gm_dd_22 * W_udd_231 
+ 
+    W_ddd_232 =  Gm_dd_22 * W_udd_232 
+ 
+    W_ddd_233 =  Gm_dd_22 * W_udd_233 
+ 
+    W_ddd_311 =  Gm_dd_33 * W_udd_311 
+ 
+    W_ddd_312 =  Gm_dd_33 * W_udd_312 
+ 
+    W_ddd_313 =  Gm_dd_33 * W_udd_313 
+ 
+    W_ddd_321 =  Gm_dd_33 * W_udd_321 
+ 
+    W_ddd_322 =  Gm_dd_33 * W_udd_322 
+ 
+    W_ddd_323 =  Gm_dd_33 * W_udd_323 
+ 
+    W_ddd_331 =  Gm_dd_33 * W_udd_331 
+ 
+    W_ddd_332 =  Gm_dd_33 * W_udd_332 
+ 
+    W_ddd_333 =  Gm_dd_33 * W_udd_333 
+
+
+    X = E * EP + E * ( V_u_1 * F_d_1 + V_u_2 * F_d_2 + V_u_3 * F_d_3 ) &
+      + E * ( V_u_1 * V_u_1 * S_dd_11 + V_u_1 * V_u_2 * S_dd_12 + V_u_1 * V_u_3 * S_dd_13 & 
+      + V_u_2 * V_u_1 * S_dd_21 + V_u_2 * V_u_2 * S_dd_22 + V_u_2 * V_u_3 * S_dd_23 & 
+      + V_u_3 * V_u_1 * S_dd_31 + V_u_3 * V_u_2 * S_dd_32 + V_u_3 * V_u_3 * S_dd_33 ) &
+      + E * W * ( V_u_1 * V_u_1 * V_u_1 * W_ddd_111 + V_u_1 * V_u_1 * V_u_2 * W_ddd_112 + V_u_1 * V_u_1 * V_u_3 * W_ddd_113 & 
+      + V_u_1 * V_u_2 * V_u_1 * W_ddd_121 + V_u_1 * V_u_2 * V_u_2 * W_ddd_122 + V_u_1 * V_u_2 * V_u_3 * W_ddd_123 & 
+      + V_u_1 * V_u_3 * V_u_1 * W_ddd_131 + V_u_1 * V_u_3 * V_u_2 * W_ddd_132 + V_u_1 * V_u_3 * V_u_3 * W_ddd_133 & 
+      + V_u_2 * V_u_1 * V_u_1 * W_ddd_211 + V_u_2 * V_u_1 * V_u_2 * W_ddd_212 + V_u_2 * V_u_1 * V_u_3 * W_ddd_213 & 
+      + V_u_2 * V_u_2 * V_u_1 * W_ddd_221 + V_u_2 * V_u_2 * V_u_2 * W_ddd_222 + V_u_2 * V_u_2 * V_u_3 * W_ddd_223 & 
+      + V_u_2 * V_u_3 * V_u_1 * W_ddd_231 + V_u_2 * V_u_3 * V_u_2 * W_ddd_232 + V_u_2 * V_u_3 * V_u_3 * W_ddd_233 & 
+      + V_u_3 * V_u_1 * V_u_1 * W_ddd_311 + V_u_3 * V_u_1 * V_u_2 * W_ddd_312 + V_u_3 * V_u_1 * V_u_3 * W_ddd_313 & 
+      + V_u_3 * V_u_2 * V_u_1 * W_ddd_321 + V_u_3 * V_u_2 * V_u_2 * W_ddd_322 + V_u_3 * V_u_2 * V_u_3 * W_ddd_323 & 
+      + V_u_3 * V_u_3 * V_u_1 * W_ddd_331 + V_u_3 * V_u_3 * V_u_2 * W_ddd_332 + V_u_3 * V_u_3 * V_u_3 * W_ddd_333 )  
+    X = X / W
+
+    Y_d_1 = E * F_d_1 + E * ( V_u_1 * S_dd_11 + V_u_2 * S_dd_12 + V_u_3 * S_dd_13 ) &
+          + W * E * ( V_u_1 * V_u_1 * W_ddd_111 + V_u_1 * V_u_2 * W_ddd_112 + V_u_1 * V_u_3 * W_ddd_113 & 
+          + V_u_2 * V_u_1 * W_ddd_121 + V_u_2 * V_u_2 * W_ddd_122 + V_u_2 * V_u_3 * W_ddd_123 & 
+          + V_u_3 * V_u_1 * W_ddd_131 + V_u_3 * V_u_2 * W_ddd_132 + V_u_3 * V_u_3 * W_ddd_133 )
+    Y_d_1 = Y_d_1 / W
+
+    Y_d_2 = E * F_d_2 + E * ( V_u_1 * S_dd_21 + V_u_2 * S_dd_22 + V_u_3 * S_dd_23 ) &
+          + W * E * ( V_u_1 * V_u_1 * W_ddd_211 + V_u_1 * V_u_2 * W_ddd_212 + V_u_1 * V_u_3 * W_ddd_213 & 
+          + V_u_2 * V_u_1 * W_ddd_221 + V_u_2 * V_u_2 * W_ddd_222 + V_u_2 * V_u_3 * W_ddd_223 & 
+          + V_u_3 * V_u_1 * W_ddd_231 + V_u_3 * V_u_2 * W_ddd_232 + V_u_3 * V_u_3 * W_ddd_233 )
+    Y_d_3 = Y_d_3 / W
+
+    Y_d_3 = E * F_d_3 + E * ( V_u_1 * S_dd_31 + V_u_2 * S_dd_32 + V_u_3 * S_dd_33 ) &
+          + W * E * ( V_u_1 * V_u_1 * W_ddd_311 + V_u_1 * V_u_2 * W_ddd_312 + V_u_1 * V_u_3 * W_ddd_313 & 
+          + V_u_2 * V_u_1 * W_ddd_321 + V_u_2 * V_u_2 * W_ddd_322 + V_u_2 * V_u_3 * W_ddd_323 & 
+          + V_u_3 * V_u_1 * W_ddd_331 + V_u_3 * V_u_2 * W_ddd_332 + V_u_3 * V_u_3 * W_ddd_333 )
+    Y_d_3 = Y_d_3 / W
+
+    Z_ud_11 = E * S_ud_11 + W * ( V_u_1 * W_udd_111 + V_u_2 * W_udd_112 + V_u_3 * W_udd_113 )
+    Z_ud_11 = Z_ud_11 / W
+
+    Z_ud_12 = E * S_ud_12 + W * ( V_u_1 * W_udd_121 + V_u_2 * W_udd_122 + V_u_3 * W_udd_123 )
+    Z_ud_12 = Z_ud_12 / W
+
+    Z_ud_13 = E * S_ud_13 + W * ( V_u_1 * W_udd_131 + V_u_2 * W_udd_132 + V_u_3 * W_udd_133 )
+    Z_ud_13 = Z_ud_13 / W
+
+    Z_ud_21 = E * S_ud_21 + W * ( V_u_1 * W_udd_211 + V_u_2 * W_udd_212 + V_u_3 * W_udd_213 )
+    Z_ud_21 = Z_ud_21 / W
+
+    Z_ud_22 = E * S_ud_22 + W * ( V_u_1 * W_udd_221 + V_u_2 * W_udd_222 + V_u_3 * W_udd_223 )
+    Z_ud_22 = Z_ud_22 / W
+
+    Z_ud_23 = E * S_ud_23 + W * ( V_u_1 * W_udd_231 + V_u_2 * W_udd_232 + V_u_3 * W_udd_233 )
+    Z_ud_23 = Z_ud_23 / W
+
+    Z_ud_31 = E * S_ud_31 + W * ( V_u_1 * W_udd_311 + V_u_2 * W_udd_312 + V_u_3 * W_udd_313 )
+    Z_ud_31 = Z_ud_31 / W
+
+    Z_ud_32 = E * S_ud_32 + W * ( V_u_1 * W_udd_321 + V_u_2 * W_udd_322 + V_u_3 * W_udd_323 )
+    Z_ud_32 = Z_ud_32 / W
+
+    Z_ud_33 = E * S_ud_33 + W * ( V_u_1 * W_udd_331 + V_u_2 * W_udd_332 + V_u_3 * W_udd_333 )
+    Z_ud_33 = Z_ud_33 / W
+
+
+  END SUBROUTINE 
+
+
+
+
 
   FUNCTION Flux_X1( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                       alp, B_u_1, B_u_2, B_u_3 )

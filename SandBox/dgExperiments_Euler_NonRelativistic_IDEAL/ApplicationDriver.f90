@@ -403,11 +403,13 @@ PROGRAM ApplicationDriver
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
   CALL WriteFieldsHDF &
-         ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+         ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
   CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
   CALL InitializeFluid_SSPRK( nStages = 3 )
