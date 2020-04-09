@@ -118,9 +118,9 @@ PROGRAM DeleptonizationWave1D
   nE = 16
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
-  ZoomE = 1.183081754893913_DP
+  ZoomE = 1.158291374972257_DP
 
-  ProfileName = ''
+  ProfileName = 'input_thornado_VX_100ms.dat'
 
   t       = 0.0_DP
   t_end   = 1.0d+1 * Millisecond
