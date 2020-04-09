@@ -186,7 +186,7 @@ INCLUDE_HDF5_zelledge          = -I/usr/include/hdf5/serial
 #INCLUDE_HDF5_zelledge          = -I/usr/lib/x86_64-linux-gnu/hdf5/serial
 INCLUDE_HDF5_dpochik           = -I/usr/include/hdf5/serial
 INCLUDE_HDF5_lucalin           = -I/usr/local/hdf5-1.10.5/hdf5/include
-INCLUDE_HDF5_paullaiu_gnu      = -I/usr/lib/x86_64-linux-gnu/hdf5/serial/include
+INCLUDE_HDF5_paullaiu_gnu      = -I/usr/lib/hdf5/include
 INCLUDE_HDF5_titan_gnu         = # Use Module Load
 INCLUDE_HDF5_titan_pgi         = # Use Module Load
 INCLUDE_HDF5_titan_cray        = # Use Module Load
@@ -204,7 +204,6 @@ INCLUDE_HDF5                   = $(INCLUDE_HDF5_$(MACHINE))
 INCLUDE_POSEIDON_mac_gnu       =
 INCLUDE_POSEIDON_sn1987b       = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON_kristopher    = -I$(POSEIDON_DIR)/Obj
-INCLUDE_POSEIDON_dpochik       = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON               = $(INCLUDE_POSEIDON_$(MACHINE))
 
 INCLUDE_LAPACK_ranchu          = -I/usr/include
@@ -258,7 +257,7 @@ LIBRARIES_HDF5_sjdunham        = -L/usr/local/Cellar/hdf5/1.10.4/lib -lhdf5_fort
 LIBRARIES_HDF5_zelledge        = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_dpochik         = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_lucalin         = -L/usr/local/hdf5-1.10.5/hdf5/lib -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_paullaiu_gnu    = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_paullaiu_gnu    = -L/usr/lib/hdf5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_accre           = -L/accre/arch/easybuild/software/MPI/GCC/5.4.0-2.26/OpenMPI/1.10.3/HDF5/1.8.17/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_titan_gnu       = # Use Module Load
 LIBRARIES_HDF5_titan_pgi       = # Use Module Load
@@ -276,10 +275,9 @@ LIBRARIES_HDF5_summit_xl       = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_acf_gnu         = $(HDF5_LIB) -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5                 = $(LIBRARIES_HDF5_$(MACHINE))
 
-LIBRARIES_POSEIDON_mac_gnu     =
+LIBRARIES_POSEIDON_mac_gnu     =s
 LIBRARIES_POSEIDON_sn1987b     = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON_kristopher  = $(POSEIDON_DIR)/Obj/poseidon.a
-LIBRARIES_POSEIDON_dpochik     = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON             = $(LIBRARIES_POSEIDON_$(MACHINE))
 
 LIBRARIES_LAPACK_ranchu        = -L/usr/lib -llapack -lblas
