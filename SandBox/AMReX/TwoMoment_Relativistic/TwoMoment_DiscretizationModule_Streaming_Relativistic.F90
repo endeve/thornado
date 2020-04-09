@@ -86,7 +86,6 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
   PRIVATE
 
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit
-  PUBLIC :: ComputeWeakDerivatives_X1
 
 CONTAINS
 
@@ -150,14 +149,15 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
-    CALL ComputeWeakDerivatives_X1 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dWV_u_dX1, dWV_d_dX1, dW_dX1 )
 
     CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
 
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
+
+    CALL ComputeWeakDerivatives_X1 &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dWV_u_dX1, dWV_d_dX1, dW_dX1 )
 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -920,6 +920,9 @@ CONTAINS
       uCF_R(nDOFX_X1,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), &
             iZ_B0(2):iZ_E0(2)+1,nCF)
     REAL(DP) :: Vsq_X1, Vsq_K
+    CHARACTER(len=40) :: name1, name2
+    CHARACTER(len=1):: nds
+    CHARACTER(len=3)::nxn
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) )THEN
       dWV_u_dX1_Out = Zero
@@ -934,7 +937,32 @@ CONTAINS
     nK_X1 = nK + [0,1,0,0]    ! Number of X1 Faces per Phase Space Dimension
     nX    = PRODUCT( nK   (2:4) ) ! Number of Elements in Position Space
     nX_X1 = PRODUCT( nK_X1(2:4) ) ! Number of X1 Faces in Position Space
+    
+    IF ( nDOFX == 1) THEN
+      nds="1"
+    ELSE IF( nDOFX == 2) THEN
+      nds="2"
+    ELSE
+      nds="3"
+    END IF 
 
+    IF ( nX == 32) THEN
+      nxn="32"
+    ELSE IF( nX == 64) THEN
+      nxn="64"
+    ELSE IF (nX == 128) THEN
+      nxn="128"
+    ELSE
+      nxn="256"
+    END IF 
+
+
+    name1="dWdX"//nds//nxn//".txt"
+    name2="dWvdX"//nds//nxn//".txt"
+    print*, name1
+    print*, name2
+    name1=trim(name1)
+    name2=trim(name2)
     ! --- Permute Geometry Fields ---
 
     DO iGF = 1, nGF
@@ -1076,13 +1104,13 @@ CONTAINS
                 uPF_R(iPF_V1), uPF_R(iPF_V2), uPF_R(iPF_V3) )
 
         V_u_X1(iNodeX,1,iZ3,iZ4,iZ2) &
-          = V_u_X1(iNodeX,1,iZ3,iZ4,iZ2) * WeightsX_X1(iNodeX)
+          = V_u_X1(iNodeX,1,iZ3,iZ4,iZ2) 
 
         V_u_X1(iNodeX,2,iZ3,iZ4,iZ2) &
-          = V_u_X1(iNodeX,2,iZ3,iZ4,iZ2) * WeightsX_X1(iNodeX)
+          = V_u_X1(iNodeX,2,iZ3,iZ4,iZ2) 
 
         V_u_X1(iNodeX,3,iZ3,iZ4,iZ2) &
-          = V_u_X1(iNodeX,3,iZ3,iZ4,iZ2) * WeightsX_X1(iNodeX)
+          = V_u_X1(iNodeX,3,iZ3,iZ4,iZ2) 
 
         V_d_X1(iNodeX,1,iZ3,iZ4,iZ2) &
           = GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_11) &
@@ -1098,9 +1126,9 @@ CONTAINS
 
         Vsq_X1 = V_u_X1(iNodeX,1,iZ3,iZ4,iZ2) * V_d_X1(iNodeX,1,iZ3,iZ4,iZ2) &
                + V_u_X1(iNodeX,2,iZ3,iZ4,iZ2) * V_d_X1(iNodeX,2,iZ3,iZ4,iZ2) &
-               + V_u_X1(iNodeX,3,iZ3,iZ4,iZ2) * V_d_X1(iNodeX,3,iZ3,iZ4,iZ2)  
-
-        W_X1(iNodeX,iZ3,iZ4,iZ2) = 1.0_DP / SQRT(1.0_DP - Vsq_X1) 
+               + V_u_X1(iNodeX,3,iZ3,iZ4,iZ2) * V_d_X1(iNodeX,3,iZ3,iZ4,iZ2) 
+ 
+        W_X1(iNodeX,iZ3,iZ4,iZ2) = WeightsX_X1(iNodeX)  / SQRT(1.0_DP - Vsq_X1) 
 
         WV_u_X1(iNodeX,1,iZ3,iZ4,iZ2) = V_u_X1(iNodeX,1,iZ3,iZ4,iZ2) * W_X1(iNodeX,iZ3,iZ4,iZ2) 
 
@@ -1178,13 +1206,13 @@ CONTAINS
                  GX_K (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_33) )
 
         V_u_K(iNodeX,1,iZ3,iZ4,iZ2) &
-          = uPF_K(iPF_V1) * WeightsX_q(iNodeX)
+          = uPF_K(iPF_V1) 
 
         V_u_K(iNodeX,2,iZ3,iZ4,iZ2) &
-          = uPF_K(iPF_V2) * WeightsX_q(iNodeX)
+          = uPF_K(iPF_V2)  
 
         V_u_K(iNodeX,3,iZ3,iZ4,iZ2) &
-          = uPF_K(iPF_V3) * WeightsX_q(iNodeX)
+          = uPF_K(iPF_V3) 
 
         V_d_K(iNodeX,1,iZ3,iZ4,iZ2) &
           = GX_K(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_11) &
@@ -1199,22 +1227,21 @@ CONTAINS
               * V_u_K(iNodeX,3,iZ3,iZ4,iZ2)
 
         Vsq_K =  V_u_K(iNodeX,1,iZ3,iZ4,iZ2) * V_d_K(iNodeX,1,iZ3,iZ4,iZ2) & 
-              +  V_u_K(iNodeX,2,iZ3,iZ4,iZ2) * V_d_K(iNodeX,3,iZ3,iZ4,iZ2) &
+              +  V_u_K(iNodeX,2,iZ3,iZ4,iZ2) * V_d_K(iNodeX,2,iZ3,iZ4,iZ2) &
               +  V_u_K(iNodeX,3,iZ3,iZ4,iZ2) * V_d_K(iNodeX,3,iZ3,iZ4,iZ2) 
+        W_K(iNodeX,iZ3,iZ4,iZ2) = ( WeightsX_q(iNodeX)  / SQRT( 1.0_DP - Vsq_K ) )  
 
-        W_K(iNodeX,iZ3,iZ4,iZ2) =  1.0_DP / SQRT( 1.0_DP - Vsq_K )
+        WV_u_K(iNodeX,1,iZ3,iZ4,iZ2) = W_K(iNodeX,iZ3,iZ4,iZ2) * V_u_K(iNodeX,1,iZ3,iZ4,iZ2)
 
-        WV_u_K(iNodeX,1,iZ3,iZ4,iZ2) = W_k(iNodeX,iZ3,iZ4,iZ2) * V_u_k(iNodeX,1,iZ3,iZ4,iZ2)
+        WV_u_K(iNodeX,2,iZ3,iZ4,iZ2) = W_K(iNodeX,iZ3,iZ4,iZ2) * V_u_K(iNodeX,2,iZ3,iZ4,iZ2)
 
-        WV_u_K(iNodeX,2,iZ3,iZ4,iZ2) = W_k(iNodeX,iZ3,iZ4,iZ2) * V_u_k(iNodeX,2,iZ3,iZ4,iZ2)
+        WV_u_K(iNodeX,3,iZ3,iZ4,iZ2) = W_K(iNodeX,iZ3,iZ4,iZ2) * V_u_K(iNodeX,3,iZ3,iZ4,iZ2)
 
-        WV_u_K(iNodeX,3,iZ3,iZ4,iZ2) = W_k(iNodeX,iZ3,iZ4,iZ2) * V_u_k(iNodeX,3,iZ3,iZ4,iZ2)
+        WV_d_K(iNodeX,1,iZ3,iZ4,iZ2) = W_K(iNodeX,iZ3,iZ4,iZ2) * V_d_K(iNodeX,1,iZ3,iZ4,iZ2)
 
-        WV_d_K(iNodeX,1,iZ3,iZ4,iZ2) = W_k(iNodeX,iZ3,iZ4,iZ2) * V_d_k(iNodeX,1,iZ3,iZ4,iZ2)
+        WV_d_K(iNodeX,2,iZ3,iZ4,iZ2) = W_K(iNodeX,iZ3,iZ4,iZ2) * V_d_K(iNodeX,2,iZ3,iZ4,iZ2)
 
-        WV_d_K(iNodeX,2,iZ3,iZ4,iZ2) = W_k(iNodeX,iZ3,iZ4,iZ2) * V_d_k(iNodeX,2,iZ3,iZ4,iZ2)
-
-        WV_d_K(iNodeX,3,iZ3,iZ4,iZ2) = W_k(iNodeX,iZ3,iZ4,iZ2) * V_d_k(iNodeX,3,iZ3,iZ4,iZ2)
+        WV_d_K(iNodeX,3,iZ3,iZ4,iZ2) = W_K(iNodeX,iZ3,iZ4,iZ2) * V_d_K(iNodeX,3,iZ3,iZ4,iZ2)
 
       END DO
 
@@ -1240,94 +1267,85 @@ CONTAINS
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
 
-      DO i = 1, 3
       DO iNodeX = 1, nDOFX
 
-        dWV_u_dX1(iNodeX,i,iZ3,iZ4,iZ2) &
-         = dWV_u_dX1(iNodeX,i,iZ3,iZ4,iZ2) &
+        dWV_u_dX1(iNodeX,1,iZ3,iZ4,iZ2) &
+         = dWV_u_dX1(iNodeX,1,iZ3,iZ4,iZ2) &
              / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
 
-        dWV_d_dX1(iNodeX,i,iZ3,iZ4,iZ2) &
-         = dWV_d_dX1(iNodeX,i,iZ3,iZ4,iZ2) &
+        dWV_d_dX1(iNodeX,1,iZ3,iZ4,iZ2) &
+         = dWV_d_dX1(iNodeX,1,iZ3,iZ4,iZ2) &
              / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
 
-      END DO
-      END DO
+        dWV_u_dX1(iNodeX,2,iZ3,iZ4,iZ2) &
+         = dWV_u_dX1(iNodeX,2,iZ3,iZ4,iZ2) &
+             / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
 
-    END DO
-    END DO
-    END DO
+        dWV_d_dX1(iNodeX,2,iZ3,iZ4,iZ2) &
+         = dWV_d_dX1(iNodeX,2,iZ3,iZ4,iZ2) &
+             / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
 
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
+        dWV_u_dX1(iNodeX,3,iZ3,iZ4,iZ2) &
+         = dWV_u_dX1(iNodeX,3,iZ3,iZ4,iZ2) &
+             / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
 
-      DO iNodeX = 1, nDOFX
+        dWV_d_dX1(iNodeX,3,iZ3,iZ4,iZ2) &
+         = dWV_d_dX1(iNodeX,3,iZ3,iZ4,iZ2) &
+             / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
 
         dW_dX1(iNodeX,iZ3,iZ4,iZ2) &
          = dW_dX1(iNodeX,iZ3,iZ4,iZ2) &
              / ( WeightsX_q(iNodeX) * dZ2(iZ2) )
-
-
       END DO
 
     END DO
     END DO
     END DO
+
 
     END ASSOCIATE
 
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-
-      DO i = 1, 3
-      DO iNodeX = 1, nDOFX
-
-        dWV_u_dX1_Out(iNodeX,i,iZ2,iZ3,iZ4) &
-          = dWV_u_dX1(iNodeX,i,iZ3,iZ4,iZ2)
-
-        dWV_d_dX1_Out(iNodeX,i,iZ2,iZ3,iZ4) &
-          = dWV_d_dX1(iNodeX,i,iZ3,iZ4,iZ2)
-
-      END DO
-      END DO
-
-    END DO
-    END DO
-    END DO
-
-   open(1, file = 'Wvdiff.txt', status = 'new')  
+   open(1, file = name2, status = 'new') 
+ 
+   open(2, file = name1, status = 'new')  
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
       DO iNodeX = 1, nDOFX
 
-      write(1,*) dWV_u_dX1(iNodeX,1,iZ3,iZ4,iZ2)
-      END DO
+        dWV_u_dX1_Out(iNodeX,1,iZ2,iZ3,iZ4) &
+          = dWV_u_dX1(iNodeX,1,iZ3,iZ4,iZ2)
 
-    END DO
-    END DO
-    END DO
+        dWV_d_dX1_Out(iNodeX,1,iZ2,iZ3,iZ4) &
+          = dWV_d_dX1(iNodeX,1,iZ3,iZ4,iZ2)
 
+        dWV_u_dX1_Out(iNodeX,2,iZ2,iZ3,iZ4) &
+          = dWV_u_dX1(iNodeX,2,iZ3,iZ4,iZ2)
 
-   open(2, file = 'Wdiff.txt', status = 'new')  
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
+        dWV_d_dX1_Out(iNodeX,2,iZ2,iZ3,iZ4) &
+          = dWV_d_dX1(iNodeX,2,iZ3,iZ4,iZ2)
 
-      DO iNodeX = 1, nDOFX
+        dWV_u_dX1_Out(iNodeX,3,iZ2,iZ3,iZ4) &
+          = dWV_u_dX1(iNodeX,3,iZ3,iZ4,iZ2)
+
+        dWV_d_dX1_Out(iNodeX,3,iZ2,iZ3,iZ4) &
+          = dWV_d_dX1(iNodeX,3,iZ3,iZ4,iZ2)
 
         dW_dX1_Out(iNodeX,iZ2,iZ3,iZ4) &
           = dW_dX1(iNodeX,iZ3,iZ4,iZ2)
 
-      write(2,*) dW_dX1(iNodeX,iZ3,iZ4,iZ2)
+        write(1,*) dWV_u_dX1(iNodeX,1,iZ3,iZ4,iZ2)
+
+        write(2,*) dW_dX1(iNodeX,iZ3,iZ4,iZ2)
       END DO
 
     END DO
     END DO
     END DO
+
+    close(1)
+    close(2)
 
   END SUBROUTINE ComputeWeakDerivatives_X1
 
@@ -1594,13 +1612,13 @@ CONTAINS
                 uPF_R(iPF_V1), uPF_R(iPF_V2), uPF_R(iPF_V3) )
 
         V_u_F(iNodeX,1,iZ2,iZ4,iZ3) &
-          = V_u_F(iNodeX,1,iZ2,iZ4,iZ3) * WeightsX_X2(iNodeX)
+          = V_u_F(iNodeX,1,iZ2,iZ4,iZ3)  
 
         V_u_F(iNodeX,2,iZ2,iZ4,iZ3) &
-          = V_u_F(iNodeX,2,iZ2,iZ4,iZ3) * WeightsX_X2(iNodeX)
+          = V_u_F(iNodeX,2,iZ2,iZ4,iZ3) 
 
         V_u_F(iNodeX,3,iZ2,iZ4,iZ3) &
-          = V_u_F(iNodeX,3,iZ2,iZ4,iZ3) * WeightsX_X2(iNodeX)
+          = V_u_F(iNodeX,3,iZ2,iZ4,iZ3) 
 
         V_d_F(iNodeX,1,iZ2,iZ4,iZ3) &
           = GX_F(iNodeX,iGF_Gm_dd_11,iZ2,iZ4,iZ3) &
@@ -1619,7 +1637,7 @@ CONTAINS
                + V_u_F(iNodeX,3,iZ2,iZ4,iZ3) * V_d_F(iNodeX,3,iZ2,iZ4,iZ3)  
 
 
-        W_X2(iNodeX,iZ2,iZ4,iZ3) = 1.0_DP / SQRT(1.0_DP - Vsq_X2) 
+        W_X2(iNodeX,iZ2,iZ4,iZ3) = WeightsX_X2(iNodeX)  / SQRT(1.0_DP - Vsq_X2) 
 
 
         WV_u_X2(iNodeX,1,iZ2,iZ4,iZ3) = V_u_F(iNodeX,1,iZ2,iZ4,iZ3) * W_X2(iNodeX,iZ2,iZ4,iZ3) 
@@ -1710,13 +1728,13 @@ CONTAINS
                  GX_K (iNodeX,iGF_Gm_dd_33,iZ2,iZ4,iZ3) )
 
         V_u_K(iNodeX,1,iZ2,iZ4,iZ3) &
-          = uPF_K(iPF_V1) * WeightsX_q(iNodeX)
+          = uPF_K(iPF_V1) 
 
         V_u_K(iNodeX,2,iZ2,iZ4,iZ3) &
-          = uPF_K(iPF_V2) * WeightsX_q(iNodeX)
+          = uPF_K(iPF_V2) 
 
         V_u_K(iNodeX,3,iZ2,iZ4,iZ3) &
-          = uPF_K(iPF_V3) * WeightsX_q(iNodeX)
+          = uPF_K(iPF_V3) 
 
         V_d_K(iNodeX,1,iZ2,iZ4,iZ3) &
           = GX_K(iNodeX,iGF_Gm_dd_11,iZ2,iZ4,iZ3) &
@@ -1736,7 +1754,7 @@ CONTAINS
               +  V_u_K(iNodeX,3,iZ2,iZ4,iZ3) * V_d_K(iNodeX,3,iZ2,iZ4,iZ3) 
 
 
-        W_K(iNodeX,iZ2,iZ4,iZ3) =  1.0_DP / SQRT( 1.0_DP - Vsq_K )
+        W_K(iNodeX,iZ2,iZ4,iZ3) =  WeightsX_q(iNodeX)  / SQRT( 1.0_DP - Vsq_K )
 
 
         WV_u_K(iNodeX,1,iZ2,iZ4,iZ3) = W_k(iNodeX,iZ2,iZ4,iZ3) * V_u_k(iNodeX,1,iZ2,iZ4,iZ3)
@@ -1783,34 +1801,35 @@ CONTAINS
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-      DO i      = 1, 3
       DO iNodeX = 1, nDOFX
 
-        dWV_u_dX2(iNodeX,i,iZ2,iZ4,iZ3) &
-         = dWV_u_dX2(iNodeX,i,iZ2,iZ4,iZ3) &
+        dWV_u_dX2(iNodeX,1,iZ2,iZ4,iZ3) &
+         = dWV_u_dX2(iNodeX,1,iZ2,iZ4,iZ3) &
              / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
 
-        dWV_d_dX2(iNodeX,i,iZ2,iZ4,iZ3) &
-         = dWV_d_dX2(iNodeX,i,iZ2,iZ4,iZ3) &
+        dWV_d_dX2(iNodeX,1,iZ2,iZ4,iZ3) &
+         = dWV_d_dX2(iNodeX,1,iZ2,iZ4,iZ3) &
              / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
-      END DO
-      END DO
 
-    END DO
-    END DO
-    END DO
+        dWV_u_dX2(iNodeX,2,iZ2,iZ4,iZ3) &
+         = dWV_u_dX2(iNodeX,2,iZ2,iZ4,iZ3) &
+             / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
 
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
+        dWV_d_dX2(iNodeX,2,iZ2,iZ4,iZ3) &
+         = dWV_d_dX2(iNodeX,2,iZ2,iZ4,iZ3) &
+             / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
 
-      DO iNodeX = 1, nDOFX
+        dWV_u_dX2(iNodeX,3,iZ2,iZ4,iZ3) &
+         = dWV_u_dX2(iNodeX,3,iZ2,iZ4,iZ3) &
+             / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
+
+        dWV_d_dX2(iNodeX,3,iZ2,iZ4,iZ3) &
+         = dWV_d_dX2(iNodeX,3,iZ2,iZ4,iZ3) &
+             / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
 
         dW_dX2(iNodeX,iZ2,iZ4,iZ3) &
          = dW_dX2(iNodeX,iZ2,iZ4,iZ3) &
              / ( WeightsX_q(iNodeX) * dZ3(iZ3) )
-
-
       END DO
 
     END DO
@@ -1824,38 +1843,35 @@ CONTAINS
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-      DO i      = 1, 3
       DO iNodeX = 1, nDOFX
 
 
-        dWV_u_dX2_Out(iNodeX,i,iZ2,iZ3,iZ4) &
-          = dWV_u_dX2(iNodeX,i,iZ2,iZ4,iZ3)
+        dWV_u_dX2_Out(iNodeX,1,iZ2,iZ3,iZ4) &
+          = dWV_u_dX2(iNodeX,1,iZ2,iZ4,iZ3)
 
-        dWV_d_dX2_Out(iNodeX,i,iZ2,iZ3,iZ4) &
-          = dWV_d_dX2(iNodeX,i,iZ2,iZ4,iZ3)
+        dWV_d_dX2_Out(iNodeX,1,iZ2,iZ3,iZ4) &
+          = dWV_d_dX2(iNodeX,1,iZ2,iZ4,iZ3)
 
-      END DO
-      END DO
+        dWV_u_dX2_Out(iNodeX,2,iZ2,iZ3,iZ4) &
+          = dWV_u_dX2(iNodeX,2,iZ2,iZ4,iZ3)
 
-    END DO
-    END DO
-    END DO
+        dWV_d_dX2_Out(iNodeX,2,iZ2,iZ3,iZ4) &
+          = dWV_d_dX2(iNodeX,2,iZ2,iZ4,iZ3)
 
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
+        dWV_u_dX2_Out(iNodeX,3,iZ2,iZ3,iZ4) &
+          = dWV_u_dX2(iNodeX,3,iZ2,iZ4,iZ3)
 
-      DO iNodeX = 1, nDOFX
+        dWV_d_dX2_Out(iNodeX,3,iZ2,iZ3,iZ4) &
+          = dWV_d_dX2(iNodeX,3,iZ2,iZ4,iZ3)
 
         dW_dX2_Out(iNodeX,iZ2,iZ3,iZ4) &
           = dW_dX2(iNodeX,iZ2,iZ4,iZ3)
-
-
       END DO
 
     END DO
     END DO
     END DO
+
   END SUBROUTINE ComputeWeakDerivatives_X2
 
 
@@ -2127,13 +2143,13 @@ CONTAINS
                 uPF_R(iPF_V1), uPF_R(iPF_V2), uPF_R(iPF_V3) )
 
         V_u_F(iNodeX,1,iZ2,iZ3,iZ4) &
-          = V_u_F(iNodeX,1,iZ2,iZ3,iZ4) * WeightsX_X3(iNodeX)
+          = V_u_F(iNodeX,1,iZ2,iZ3,iZ4) 
 
         V_u_F(iNodeX,2,iZ2,iZ3,iZ4) &
-          = V_u_F(iNodeX,2,iZ2,iZ3,iZ4) * WeightsX_X3(iNodeX)
+          = V_u_F(iNodeX,2,iZ2,iZ3,iZ4)
 
         V_u_F(iNodeX,3,iZ2,iZ3,iZ4) &
-          = V_u_F(iNodeX,3,iZ2,iZ3,iZ4) * WeightsX_X3(iNodeX)
+          = V_u_F(iNodeX,3,iZ2,iZ3,iZ4)
 
         V_d_F(iNodeX,1,iZ2,iZ3,iZ4) &
           = GX_F(iNodeX,iGF_Gm_dd_11,iZ2,iZ3,iZ4) &
@@ -2152,7 +2168,7 @@ CONTAINS
                + V_u_F(iNodeX,3,iZ2,iZ3,iZ4) * V_d_F(iNodeX,3,iZ2,iZ3,iZ4)  
 
 
-        W_X3(iNodeX,iZ2,iZ3,iZ4) = 1.0_DP / SQRT(1.0_DP - Vsq_X3) 
+        W_X3(iNodeX,iZ2,iZ3,iZ4) = WeightsX_X3(iNodeX)  / SQRT(1.0_DP - Vsq_X3) 
 
         WV_u_X3(iNodeX,1,iZ2,iZ3,iZ4) = V_u_F(iNodeX,1,iZ2,iZ3,iZ4) * W_X3(iNodeX,iZ2,iZ3,iZ4) 
 
@@ -2242,13 +2258,13 @@ CONTAINS
                  GX_K (iNodeX,iGF_Gm_dd_33,iZ2,iZ3,iZ4) )
 
         V_u_K(iNodeX,1,iZ2,iZ3,iZ4) &
-          = uPF_K(iPF_V1) * WeightsX_q(iNodeX)
+          = uPF_K(iPF_V1) 
 
         V_u_K(iNodeX,2,iZ2,iZ3,iZ4) &
-          = uPF_K(iPF_V2) * WeightsX_q(iNodeX)
+          = uPF_K(iPF_V2) 
 
         V_u_K(iNodeX,3,iZ2,iZ3,iZ4) &
-          = uPF_K(iPF_V3) * WeightsX_q(iNodeX)
+          = uPF_K(iPF_V3)
 
         V_d_K(iNodeX,1,iZ2,iZ3,iZ4) &
           = GX_K(iNodeX,iGF_Gm_dd_11,iZ2,iZ3,iZ4) &
@@ -2268,7 +2284,7 @@ CONTAINS
               +  V_u_K(iNodeX,3,iZ2,iZ3,iZ4) * V_d_K(iNodeX,3,iZ2,iZ3,iZ4) 
 
 
-        W_K(iNodeX,iZ2,iZ3,iZ4) =  1.0_DP / SQRT( 1.0_DP - Vsq_K )
+        W_K(iNodeX,iZ2,iZ3,iZ4) =   WeightsX_q(iNodeX)  / SQRT( 1.0_DP - Vsq_K )
 
 
         WV_u_K(iNodeX,1,iZ2,iZ3,iZ4) = W_k(iNodeX,iZ2,iZ3,iZ4) * V_u_k(iNodeX,1,iZ2,iZ3,iZ4)
@@ -2315,39 +2331,41 @@ CONTAINS
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-      DO i      = 1, 3
       DO iNodeX = 1, nDOFX
 
-        dWV_u_dX3(iNodeX,i,iZ2,iZ3,iZ4) &
-         = dWV_u_dX3(iNodeX,i,iZ2,iZ3,iZ4) &
+        dWV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4) &
+         = dWV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4) &
              / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
 
-        dWV_d_dX3(iNodeX,i,iZ2,iZ3,iZ4) &
-         = dWV_d_dX3(iNodeX,i,iZ2,iZ3,iZ4) &
+        dWV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4) &
+         = dWV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4) &
              / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
-      END DO
-      END DO
 
-    END DO
-    END DO
-    END DO
+        dWV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4) &
+         = dWV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4) &
+             / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
 
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
+        dWV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4) &
+         = dWV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4) &
+             / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
 
-      DO iNodeX = 1, nDOFX
+        dWV_u_dX3(iNodeX,3,iZ2,iZ3,iZ4) &
+         = dWV_u_dX3(iNodeX,3,iZ2,iZ3,iZ4) &
+             / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
+
+        dWV_d_dX3(iNodeX,3,iZ2,iZ3,iZ4) &
+         = dWV_d_dX3(iNodeX,3,iZ2,iZ3,iZ4) &
+             / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
 
         dW_dX3(iNodeX,iZ2,iZ3,iZ4) &
          = dW_dX3(iNodeX,iZ2,iZ3,iZ4) &
              / ( WeightsX_q(iNodeX) * dZ4(iZ4) )
-
-
       END DO
 
     END DO
     END DO
     END DO
+
 
     END ASSOCIATE
 
@@ -2355,37 +2373,34 @@ CONTAINS
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
-      DO i      = 1, 3
       DO iNodeX = 1, nDOFX
 
-        dWV_u_dX3_Out(iNodeX,i,iZ2,iZ3,iZ4) &
-          = dWV_u_dX3(iNodeX,i,iZ2,iZ3,iZ4)
+        dWV_u_dX3_Out(iNodeX,1,iZ2,iZ3,iZ4) &
+          = dWV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4)
 
-        dWV_d_dX3_Out(iNodeX,i,iZ2,iZ3,iZ4) &
-          = dWV_d_dX3(iNodeX,i,iZ2,iZ3,iZ4)
+        dWV_d_dX3_Out(iNodeX,1,iZ2,iZ3,iZ4) &
+          = dWV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4)
 
-      END DO
-      END DO
+        dWV_u_dX3_Out(iNodeX,2,iZ2,iZ3,iZ4) &
+          = dWV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4)
 
-    END DO
-    END DO
-    END DO
+        dWV_d_dX3_Out(iNodeX,2,iZ2,iZ3,iZ4) &
+          = dWV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4)
 
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
+        dWV_u_dX3_Out(iNodeX,3,iZ2,iZ3,iZ4) &
+          = dWV_u_dX3(iNodeX,3,iZ2,iZ3,iZ4)
 
-      DO iNodeX = 1, nDOFX
+        dWV_d_dX3_Out(iNodeX,3,iZ2,iZ3,iZ4) &
+          = dWV_d_dX3(iNodeX,3,iZ2,iZ3,iZ4)
 
         dW_dX3_Out(iNodeX,iZ2,iZ3,iZ4) &
           = dW_dX3(iNodeX,iZ2,iZ3,iZ4)
-
-
       END DO
 
     END DO
     END DO
     END DO
+
 
   END SUBROUTINE ComputeWeakDerivatives_X3
 
