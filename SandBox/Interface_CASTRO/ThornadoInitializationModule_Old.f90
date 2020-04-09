@@ -125,7 +125,8 @@ CONTAINS
              Verbose_Option = .FALSE. )
 
     CALL CreateFluidFields &
-           ( nX, swX, Verbose_Option = .FALSE. )
+           ( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+             Verbose_Option = .FALSE. )
 
     CALL CreateGeometryFieldsE &
            ( nE, swE, Verbose_Option = .FALSE. )

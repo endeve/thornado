@@ -108,7 +108,7 @@ PROGRAM Relaxation
   eL = 0.0d0 * MeV
   eR = 3.0d2 * MeV
 
-  Configuration = 2
+  Configuration = 1
 
   SELECT CASE( Configuration )
 
@@ -168,11 +168,11 @@ PROGRAM Relaxation
   WRITE(*,*)
 
 
-  dt_0    = 1.0d-3 * Millisecond
+  dt_0    = 1.0d-2 * Millisecond
   t       = 0.0d-0 * Millisecond
-  t_end   = 3.0d1 * Millisecond
+  t_end   = 5.0d-1 * Millisecond
   iCycleD = 1
-  iCycleW = 100
+  iCycleW = 1
 
   CALL InitializeProgram &
          ( ProgramName_Option &

@@ -90,7 +90,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'HomogeneousSphere_Spherical'
+  ProgramName = 'SineWaveDiffusion'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -183,7 +183,7 @@ PROGRAM ApplicationDriver
 
       nNodes = 3
 
-      TimeSteppingScheme = 'IMEX_P_A2'
+      TimeSteppingScheme = 'IMEX_PDARS_3'
 
       N0     = 0.0_DP
       SigmaA = 1.0_DP
@@ -203,7 +203,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'SineWaveDiffusion' )
 
-      nX = [ 8, 1, 1 ]
+      nX = [ 32, 1, 1 ]
       xL = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ + 3.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -213,13 +213,13 @@ PROGRAM ApplicationDriver
       eL = 0.0_DP
       eR = 1.0_DP
 
-      nNodes = 4
+      nNodes = 2
 
-      TimeSteppingScheme = 'IMEX_PARSD'
+      TimeSteppingScheme = 'IMEX_PDARS_3'
 
       N0     = 0.0_DP
       SigmaA = 0.0_DP
-      SigmaS = 1.0d+4
+      SigmaS = 1.0d+2
 
       UsePositivityLimiter = .FALSE.
 
@@ -227,7 +227,7 @@ PROGRAM ApplicationDriver
       Max_1 = + HUGE( One ) ! --- Max Density
       Min_2 = - HUGE( One ) ! --- Min "Gamma"
 
-      t_end     = 1.0d+4
+      t_end     = 1.0d+2
       iCycleD   = 10
       iCycleW   = 2000
       iCycleT   = 10

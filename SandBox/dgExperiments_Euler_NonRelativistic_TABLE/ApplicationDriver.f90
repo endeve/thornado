@@ -57,7 +57,7 @@ PROGRAM ApplicationDriver
     ComputeFromConserved_Euler_NonRelativistic, &
     ComputeTimeStep_Euler_NonRelativistic
   USE Euler_dgDiscretizationModule, ONLY: &
-    Euler_ComputeIncrement_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit
   USE Euler_TallyModule_NonRelativistic_TABLE, ONLY: &
     InitializeTally_Euler_NonRelativistic_TABLE, &
     FinalizeTally_Euler_NonRelativistic_TABLE, &
@@ -387,7 +387,7 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL WriteFieldsHDF &
-         ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+         ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
   CALL InitializeFluid_SSPRK( nStages )
 
@@ -420,7 +420,6 @@ PROGRAM ApplicationDriver
 
     IF( t + dt > t_wrt )THEN
 
-      dt    = t_wrt - t
       t_wrt = t_wrt + dt_wrt
       wrt   = .TRUE.
 
@@ -438,13 +437,13 @@ PROGRAM ApplicationDriver
 
       CALL UpdateFluid_SSPRK &
             ( t, dt, uGF, uCF, uDF, &
-              Euler_ComputeIncrement_DG_Explicit, &
+              ComputeIncrement_Euler_DG_Explicit, &
               SolveGravity_Newtonian_Poseidon )
 
     ELSE
 
       CALL UpdateFluid_SSPRK &
-            ( t, dt, uGF, uCF, uDF, Euler_ComputeIncrement_DG_Explicit )
+            ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit )
 
     END IF
 

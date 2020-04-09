@@ -21,7 +21,7 @@ TINY_PROFILE = FALSE
 
 COMP      = gnu
 
-DIM       = 2
+DIM       = 1
 
 EBASE     = main
 

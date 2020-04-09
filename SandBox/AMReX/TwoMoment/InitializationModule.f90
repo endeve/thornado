@@ -1,5 +1,5 @@
 MODULE InitializationModule
-  
+
   ! --- AMReX Modules ---
   USE amrex_fort_module, ONLY: &
     AR => amrex_real, &
@@ -43,7 +43,13 @@ MODULE InitializationModule
     nNodesE,                &
     nDOFZ,                  &
     iZ_B0,                  &
-    iZ_E0
+    iZ_E0,                  &
+    iZ_B1,                  &
+    iZ_E1,                  &
+    iE_B0,                  &
+    iE_E0,                  &
+    iE_B1,                  &
+    iE_E1
   USE PolynomialBasisModuleX_Lagrange,  ONLY: &
     InitializePolynomialBasisX_Lagrange
   USE PolynomialBasisModuleX_Legendre,  ONLY: &
@@ -52,10 +58,19 @@ MODULE InitializationModule
     InitializeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
-  USE ReferenceElementModuleZ,           ONLY: &
-    InitializeReferenceElementZ
+  USE ReferenceElementModule_Lagrange, ONLY: &
+    InitializeReferenceElement_Lagrange
+  USE ReferenceElementModule,           ONLY: &
+    InitializeReferenceElement
+  USE ReferenceElementModuleE, ONLY: &
+    InitializeReferenceElementE
+  USE ReferenceElementModule, ONLY: &
+    InitializeReferenceElement
+  USE EquationOfStateModule,            ONLY: &
+    InitializeEquationOfState
   USE MeshModule,                       ONLY: &
     MeshX,      &
+    MeshE,      &
     CreateMesh, &
     DestroyMesh
   USE RadiationFieldsModule,            ONLY: &
@@ -64,11 +79,21 @@ MODULE InitializationModule
     CreateRadiationFields
   USE GeometryFieldsModule,             ONLY: &
     nGF,                     &
-    CoordinateSystem,        & 
+    CoordinateSystem,        &
     CreateGeometryFields
+  USE GeometryFieldsModuleE, ONLY: &
+    CreateGeometryFieldsE, &
+    DestroyGeometryFieldsE, &
+    uGE
+  USE GeometryComputationModuleE, ONLY: &
+    ComputeGeometryE
   USE FluidFieldsModule,                ONLY: &
     nCF,                     &
+    nAF,                     &
     CreateFluidFields
+  USE TwoMoment_OpacityModule_Relativistic,  ONLY: &
+    CreateOpacities,         &
+    SetOpacities
   USE PolynomialBasisMappingModule,     ONLY: &
     InitializePolynomialBasisMapping
   USE PolynomialBasisModule_Lagrange,   ONLY: &
@@ -84,6 +109,7 @@ MODULE InitializationModule
   USE MyAmrDataModule,                  ONLY: &
     MF_uGF, &
     MF_uCF, &
+    MF_uAF, &
     MF_uPR, &
     MF_uCR
   USE MyAmrModule,                      ONLY: &
@@ -101,10 +127,14 @@ MODULE InitializationModule
     nE,                        &
     swX,                       &
     swE,                       &
+    eR,                        &
+    eL,                        &
+    zoomE,                     &
     bcX,                       &
     xL,                        &
     xR,                        &
     ProgramName,               &
+    Scheme,                    &
     CoordSys,                  &
     StepNo,                    &
     nLevels,                   &
@@ -116,11 +146,22 @@ MODULE InitializationModule
     StepNo,                    &
     nSpecies,                  &
     V_0,                       &
+    Gamma_IDEAL,               &
+    D_0,                       &
+    Chi,                       &
+    Sigma,                     &
+    EquationOfState,           &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
   USE MF_GeometryModule,                ONLY: &
     MF_ComputeGeometryX
+  USE MF_TwoMoment_TimeSteppingModule_Relativistic,  ONLY: &
+    MF_InitializeField_IMEX_RK
+  USE TwoMoment_ClosureModule,                       ONLY: &
+    InitializeClosure_TwoMoment
+  USE MF_TwoMoment_UtilitiesModule,     ONLY: & 
+    MF_ComputeFromConserved
 
   IMPLICIT NONE
   PRIVATE
@@ -139,7 +180,7 @@ CONTAINS
     INTEGER               :: iLevel, iDim
     TYPE(amrex_parmparse) :: PP
     TYPE(amrex_box)       :: BX
-    REAL(AR)              :: Mass
+    REAL(AR)              :: Mass, W, Vad
 
     ! --- Initialize AMReX ---
     CALL amrex_init()
@@ -150,7 +191,7 @@ CONTAINS
     CALL MyAmrInit
 
     IF( iRestart .LT. 0 )THEN
-      
+
       BX = amrex_box( [ 1, 1, 1 ], [ nX(1), nX(2), nX(3) ] )
 
       ALLOCATE( BA(0:nLevels-1) )
@@ -190,6 +231,10 @@ CONTAINS
         CALL MF_uCF(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
+               ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX(1) )
+        CALL MF_uAF(iLevel) % SetVal( Zero )
+
+        CALL amrex_multifab_build &
                ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), &
                  nDOFZ * nPR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX(1) )
 
@@ -201,8 +246,8 @@ CONTAINS
 
         CALL MF_uCR(iLevel) % SetVal( Zero )
 
-      END DO 
-      
+      END DO
+
       t     = Zero
       dt    = Zero
       t_wrt = dt_wrt
@@ -220,41 +265,83 @@ CONTAINS
                xL(iDim), xR(iDim) )
     END DO
 
+    CALL InitializeReferenceElementX
+
+    CALL InitializeReferenceElementE
+
+    CALL InitializeReferenceElement
+
     CALL InitializePolynomialBasisX_Lagrange
     CALL InitializePolynomialBasisX_Legendre
 
     CALL InitializePolynomialBasis_Lagrange
     CALL InitializePolynomialBasis_Legendre
-     
-    !CALL InitializePolynomialBasisMapping &
-    !       ( [Zero] , MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
 
-    CALL InitializeReferenceElementX
     CALL InitializeReferenceElementX_Lagrange
-    
-    CALL InitializeReferenceElementZ
+    CALL InitializeReferenceElement_Lagrange
 
-    CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies )
+    CALL CreateRadiationFields( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
+                                Verbose_Option = amrex_parallel_ioprocessor()  )
 
-    CALL CreateFluidFields( nX, swX )
-  
-    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN' ) 
-     
+    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+                              Verbose_Option = amrex_parallel_ioprocessor()  )
+
+    CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
+                               Verbose_Option = amrex_parallel_ioprocessor()  )
+
+    CALL CreateMesh &
+           ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
+
+    CALL CreateGeometryFieldsE &
+           ( nE, swE, Verbose_Option = .FALSE. )
+
+    CALL ComputeGeometryE &
+           ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
+
     CALL MF_ComputeGeometryX( MF_uGF, 0.0_AR )
 
-    CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0 )
-  
+    CALL InitializeEquationOfState &
+             ( EquationOfState_Option = EquationOfState, &
+               Gamma_IDEAL_Option = Gamma_IDEAL, &
+               Verbose_Option = amrex_parallel_ioprocessor()  )
+
+    CALL CreateOpacities &
+         ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = amrex_parallel_ioprocessor() )
+
+    CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, & 
+                       Verbose_Option = amrex_parallel_ioprocessor()  )
+
+    CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCR, MF_uCF, V_0, &
+                              Verbose_Option = amrex_parallel_ioprocessor() )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+    END DO
+
+    CALL MF_InitializeField_IMEX_RK( Scheme, BA, DM, &
+                                     Verbose_Option = amrex_parallel_ioprocessor() )
+
+
+    CALL InitializeClosure_TwoMoment
+
+
+    CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+
     CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &
              MF_uCR_Option = MF_uCR, &
              MF_uPR_Option = MF_uPR )
+!  IF (ProgramName == "SineWaveStreaming") THEN
+!    W = 1.0_AR - DOT_PRODUCT(V_0,V_0)
+!    W = 1.0_AR / SQRT(W)
+!    Vad = (1.0_AR + V_0(1) * W ) / ( W + V_0(1) )
+!    t_end = t_end / Vad
+!  END IF
+! 
 
-!      CALL WriteFieldsAMReX_Checkpoint &
-!             ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
-!               MF_uCR % P,  &
-!               MF_uPR % P  )
-!       
-  END SUBROUTINE InitializeProgram  
+  END SUBROUTINE InitializeProgram
 
 
 END MODULE InitializationModule

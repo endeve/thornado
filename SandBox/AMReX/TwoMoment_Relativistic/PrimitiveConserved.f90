@@ -59,7 +59,7 @@ PROGRAM PrimitiveConserved
   INTEGER  :: iNode, iE, iX1, iX2, iX3, iS
   REAL(DP) :: eL, eR, xL(3), xR(3)
   REAL(DP) :: D, I1, I2, I3, V1, V2, V3
-  REAL(DP) :: absI, nVec(3), Vmax, absV, Vvec(3)
+  REAL(DP) :: absI, nVec(3), Vmax, absV, Vvec(3), Vsq, W
   REAL(DP) :: Bmax, absB, Bvec(3), B1, B2, B3, alp, F1(4), F2(4), F3(4), pep
   INTEGER, ALLOCATABLE :: nIterations(:)
 
@@ -74,7 +74,7 @@ PROGRAM PrimitiveConserved
   eL = Zero
   eR = One
 
-  Bmax=0.1_DP
+  Bmax=0.0_DP
   CALL RANDOM_NUMBER(absB)
   CALL RANDOM_NUMBER(Bvec)
   !absV=absV*Vmax
@@ -84,19 +84,28 @@ PROGRAM PrimitiveConserved
   B1=absB*Bvec(1)
   B2=absB*Bvec(2)
   B3=absB*Bvec(3)
-  alp = 0.5_DP
+  alp = 1.0_DP
 
-  Vmax=0.99_DP
+  Vmax=0.9_DP
   CALL RANDOM_NUMBER(absV)
-  CALL RANDOM_NUMBER(Vvec)
+  CALL RANDOM_NUMBER(Vvec(1))
+  !CALL RANDOM_NUMBER(Vvec)
   !absV=absV*Vmax
-  absV=Vmax
-  Vvec = 2.0_DP * ( Vvec - 0.5_DP )
-  Vvec = Vvec / SQRT( DOT_PRODUCT( Vvec, Vvec ) )
-  V1=absV*Vvec(1)
-  V2=absV*Vvec(2)
-  V3=absV*Vvec(3)
+  !absV=Vmax
+  !Vvec = 2.0_DP * ( Vvec - 0.5_DP )
+  !Vvec = Vvec / SQRT( DOT_PRODUCT( Vvec, Vvec ) )
 
+  Vvec(1) = 2.0_DP * ( Vvec(1) - 0.5_DP )
+  Vvec(1) = Vvec(1) / SQRT( Vvec(1) * Vvec(1) )
+  V1 = absV * Vmax * Vvec(1)
+  V2 = 0.0_DP
+  V3 = 0.0_DP
+  print*, V1
+  !V1=absV*Vvec(1)
+  !V2=absV*Vvec(2)
+  !V3=absV*Vvec(3)
+  Vsq = V1**2 + V2**2 + V3**2
+  W = 1.0_DP / SQRT( 1.0_DP - Vsq )
   CALL InitializeProgram &
          ( ProgramName_Option &
              = 'PrimitiveConserved', &
@@ -171,48 +180,40 @@ PROGRAM PrimitiveConserved
 
         uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) = D
 
+       ! uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) = 1.2_DP * D
         ! --- Number Flux: Realizable with Random Direction ---
 
         CALL RANDOM_NUMBER( absI )
 
-        absI = absI * ( One - D ) * D
+        !absI = absI * ( One - D ) * D
+        absI = absI * D
 
-        CALL RANDOM_NUMBER( nVec )
+        !CALL RANDOM_NUMBER( nVec )
 
-        nVec = 2.0_DP * ( nVec - 0.5_DP )
-        nVec = nVec / SQRT( DOT_PRODUCT( nVec, nVec ) )
+        !nVec = 2.0_DP * ( nVec - 0.5_DP )
+!        nVec = nVec / SQRT( DOT_PRODUCT( nVec, nVec ) )
+
+        CALL RANDOM_NUMBER( nVec(1) )
+
+        nVec(1) = 2.0_DP * ( nVec(1) - 0.5_DP )
+        nVec(1) = nVec(1) / SQRT( nVec(1) * nVec(1)  )
 
         I1 = absI * nVec(1)
-        I2 = absI * nVec(2)
-        I3 = absI * nVec(3)
+        I2 = 0.0_DP
+        I3 = 0.0_DP
+!        I2 = absI * nVec(2)
+ !       I3 = absI * nVec(3)
 
-        uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) = I1
-        uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) = I2
-        uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) = I3
+        uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) = ( 1.0_DP + ( ( W - 1.0_DP ) / Vsq ) * V1 * V1 ) * I1 &
+                                            + ( ( W - 1.0_DP ) / Vsq ) * V1 * V2 * I2 &
+                                            + ( ( W - 1.0_DP ) / Vsq ) * V1 * V3 * I3  
+        uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) = ( 1.0_DP + ( ( W - 1.0_DP ) / Vsq ) * V2 * V2 ) * I2 &
+                                            + ( ( W - 1.0_DP ) / Vsq ) * V1 * V2 * I1 &
+                                            + ( ( W - 1.0_DP ) / Vsq ) * V2 * V3 * I3  
+        uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) = ( 1.0_DP + ( ( W - 1.0_DP ) / Vsq ) * V3 * V3 ) * I3 &
+                                            + ( ( W - 1.0_DP ) / Vsq ) * V1 * V3 * I1 &
+                                            + ( ( W - 1.0_DP ) / Vsq ) * V2 * V3 * I2  
 
-        F1 = Flux_X1(uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS), &
-                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS), &
-                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS), &
-                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS), &
-                     V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP, alp, B1, B2, B3)
-        F2 = Flux_X2(uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS), &
-                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS), &
-                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS), &
-                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS), &
-                     V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP, alp, B1, B2, B3)
-        F3 = Flux_X3(uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS), &
-                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS), &
-                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS), &
-                     uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS), &
-                     V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP, alp, B1, B2, B3)
-       pep=pep+1.0_DP
-       IF ( pep .EQ. 1 ) THEN
-       
-       print*, F1 
-       print*, F2
-       print*, F3 
-
-       END IF
  
         CALL ComputeConserved_TwoMoment &
                ( uPR(iNode,iE,iX1,iX2,iX3,iPR_D ,iS), &
@@ -223,7 +224,9 @@ PROGRAM PrimitiveConserved
                  uCR(iNode,iE,iX1,iX2,iX3,iCR_G1,iS), &
                  uCR(iNode,iE,iX1,iX2,iX3,iCR_G2,iS), &
                  uCR(iNode,iE,iX1,iX2,iX3,iCR_G3,iS), &
-                 V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP , &
+                 V1, V2, V3,                          &
+                 1.0_DP, 1.0_DP, 1.0_DP ,             &
+                 0.0_DP, 0.0_DP, 0.0_DP,              &
                  alp, B1, B2, B3 )
 
       END DO
@@ -272,6 +275,7 @@ PROGRAM PrimitiveConserved
                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS), &
                  uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS), &
                  V1, V2, V3, 1.0_DP, 1.0_DP, 1.0_DP, &
+                 0.0_DP, 0.0_DP, 0.0_DP,              &
                  alp, B1, B2, B3, nIterations(iPoint) )
         
 
@@ -284,6 +288,11 @@ PROGRAM PrimitiveConserved
   END DO
   END DO
   END DO
+
+
+
+
+   
 
   CALL WriteFieldsHDF &
          ( Time = 0.0_DP, &

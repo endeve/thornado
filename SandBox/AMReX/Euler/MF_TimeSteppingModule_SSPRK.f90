@@ -1,73 +1,88 @@
 MODULE MF_TimeSteppingModule_SSPRK
 
   ! --- AMReX Modules ---
+
   USE amrex_fort_module,      ONLY: &
-    amrex_real
+    AR => amrex_real
   USE amrex_box_module,       ONLY: &
     amrex_box
   USE amrex_geometry_module,  ONLY: &
     amrex_geometry
   USE amrex_multifab_module,  ONLY: &
-    amrex_multifab, &
-    amrex_multifab_build, amrex_multifab_destroy, &
-    amrex_mfiter, &
-    amrex_mfiter_build, amrex_mfiter_destroy
+    amrex_multifab,         &
+    amrex_multifab_build,   &
+    amrex_multifab_destroy, &
+    amrex_mfiter,           &
+    amrex_mfiter_build,     &
+    amrex_mfiter_destroy
   USE amrex_boxarray_module,  ONLY: &
-    amrex_boxarray, &
-    amrex_boxarray_build, amrex_boxarray_destroy
+    amrex_boxarray,       &
+    amrex_boxarray_build, &
+    amrex_boxarray_destroy
   USE amrex_distromap_module, ONLY: &
-    amrex_distromap, &
-    amrex_distromap_build, amrex_distromap_destroy
+    amrex_distromap,       &
+    amrex_distromap_build, &
+    amrex_distromap_destroy
 
   ! --- thornado Modules ---
+
   USE ProgramHeaderModule,  ONLY: &
-    swX, nDOFX, nX
+    swX,   &
+    nDOFX, &
+    nX
   USE FluidFieldsModule,    ONLY: &
     nCF
   USE GeometryFieldsModule, ONLY: &
     nGF
 
   ! --- Local Modules ---
+
   USE MF_Euler_SlopeLimiterModule,      ONLY: &
     MF_ApplySlopeLimiter_Euler
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     MF_ApplyPositivityLimiter_Euler
   USE MyAmrModule,                      ONLY: &
-    nLevels, DEBUG
+    nLevels, &
+    DEBUG
   USE TimersModule_AMReX_Euler,         ONLY: &
-    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler,  &
+    TimersStart_AMReX_Euler,       &
+    TimersStop_AMReX_Euler,        &
     Timer_AMReX_Euler_UpdateFluid, &
-    Timer_AMReX_Euler_InteriorBC, &
+    Timer_AMReX_Euler_InteriorBC,  &
     Timer_AMReX_Euler_CopyMultiFab
 
   IMPLICIT NONE
   PRIVATE
 
+  PUBLIC :: MF_InitializeFluid_SSPRK
+  PUBLIC :: MF_UpdateFluid_SSPRK
+  PUBLIC :: MF_FinalizeFluid_SSPRK
+
   INTEGER :: nStages_SSPRK
-  REAL(amrex_real), DIMENSION(:),   ALLOCATABLE :: c_SSPRK
-  REAL(amrex_real), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
-  REAL(amrex_real), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
+  REAL(AR), DIMENSION(:),   ALLOCATABLE :: c_SSPRK
+  REAL(AR), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
+  REAL(AR), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
 
   TYPE(amrex_multifab), DIMENSION(:),   ALLOCATABLE :: MF_U
   TYPE(amrex_multifab), DIMENSION(:,:), ALLOCATABLE :: MF_D
 
   LOGICAL :: Verbose
 
-  PUBLIC :: MF_InitializeFluid_SSPRK
-  PUBLIC :: MF_UpdateFluid_SSPRK
-  PUBLIC :: MF_FinalizeFluid_SSPRK
+  REAL(AR), PARAMETER :: Zero = 0.0_AR
+  REAL(AR), PARAMETER :: One  = 1.0_AR
 
   INTERFACE
     SUBROUTINE MF_Euler_Increment &
-      ( GEOM, MF_uGF, MF_uCF, MF_duCF )
+      ( GEOM, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
       USE amrex_base_module, ONLY: &
         amrex_geometry, &
         amrex_multifab
       USE MyAmrModule, ONLY: &
         nLevels
-      TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
-      TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
-      TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:nLevels-1)
+      TYPE(amrex_geometry), INTENT(in   ) :: GEOM   (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(in   ) :: MF_uCF (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(in   ) :: MF_uDF (0:nLevels-1)
       TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
     END SUBROUTINE MF_Euler_Increment
   END INTERFACE
@@ -76,8 +91,7 @@ MODULE MF_TimeSteppingModule_SSPRK
 CONTAINS
 
 
-  SUBROUTINE MF_InitializeFluid_SSPRK &
-    ( nStages, BA, DM, Verbose_Option )
+  SUBROUTINE MF_InitializeFluid_SSPRK( nStages, BA, DM, Verbose_Option )
 
     INTEGER,               INTENT(in)           :: nStages
     TYPE(amrex_boxarray),  INTENT(in)           :: BA(0:nLevels-1)
@@ -169,23 +183,23 @@ CONTAINS
 
       CASE ( 1 )
 
-        a_SSPRK(1,1) = 0.0_amrex_real
-        w_SSPRK(1)   = 1.0_amrex_real
+        a_SSPRK(1,1) = 0.0_AR
+        w_SSPRK(1)   = 1.0_AR
 
       CASE ( 2 )
 
-        a_SSPRK(1,1:2) = [ 0.0_amrex_real, 0.0_amrex_real ]
-        a_SSPRK(2,1:2) = [ 1.0_amrex_real, 0.0_amrex_real ]
-        w_SSPRK(1:2)   = [ 0.5_amrex_real, 0.5_amrex_real ]
+        a_SSPRK(1,1:2) = [ 0.0_AR, 0.0_AR ]
+        a_SSPRK(2,1:2) = [ 1.0_AR, 0.0_AR ]
+        w_SSPRK(1:2)   = [ 0.5_AR, 0.5_AR ]
 
       CASE ( 3 )
 
-        a_SSPRK(1,1:3) = [ 0.00_amrex_real, 0.00_amrex_real, 0.00_amrex_real ]
-        a_SSPRK(2,1:3) = [ 1.00_amrex_real, 0.00_amrex_real, 0.00_amrex_real ]
-        a_SSPRK(3,1:3) = [ 0.25_amrex_real, 0.25_amrex_real, 0.00_amrex_real ]
-        w_SSPRK(1:3)   = [ 1.0_amrex_real / 6.0_amrex_real, &
-                           1.0_amrex_real / 6.0_amrex_real, &
-                           2.0_amrex_real / 3.0_amrex_real ]
+        a_SSPRK(1,1:3) = [ 0.00_AR, 0.00_AR, 0.00_AR ]
+        a_SSPRK(2,1:3) = [ 1.00_AR, 0.00_AR, 0.00_AR ]
+        a_SSPRK(3,1:3) = [ 0.25_AR, 0.25_AR, 0.00_AR ]
+        w_SSPRK(1:3)   = [ 1.0_AR / 6.0_AR, &
+                           1.0_AR / 6.0_AR, &
+                           2.0_AR / 3.0_AR ]
 
     END SELECT
 
@@ -206,40 +220,40 @@ CONTAINS
     ALLOCATE( c_SSPRK(nStages) )
     ALLOCATE( w_SSPRK(nStages) )
 
-    a_SSPRK = 0.0_amrex_real
-    c_SSPRK = 0.0_amrex_real
-    w_SSPRK = 0.0_amrex_real
+    a_SSPRK = Zero
+    c_SSPRK = Zero
+    w_SSPRK = Zero
 
   END SUBROUTINE AllocateButcherTables_SSPRK
 
 
   SUBROUTINE MF_UpdateFluid_SSPRK &
-    ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_Euler_ComputeIncrement )
+    ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_ComputeIncrement_Euler )
 
-    REAL(amrex_real),     INTENT(in)    :: t(0:nLevels-1), dt(0:nLevels-1)
+    REAL(AR),             INTENT(in   ) :: t(0:nLevels-1), dt(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
-    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
-    PROCEDURE(MF_Euler_Increment)       :: MF_Euler_ComputeIncrement
+    TYPE(amrex_geometry), INTENT(in   ) :: GEOM  (0:nLevels-1)
+    PROCEDURE(MF_Euler_Increment)       :: MF_ComputeIncrement_Euler
 
-    INTEGER :: iLevel
     INTEGER :: iS, jS
 
-    ! --- For physical boundary conditions ---
-    TYPE(amrex_mfiter)                    :: MFI
-    REAL(amrex_real), CONTIGUOUS, POINTER :: uCF(:,:,:,:), U(:,:,:,:)
+    INTEGER                       :: iLevel
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:), U(:,:,:,:)
 
     CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
     ! --- Set temporary MultiFabs U and dU to zero ---
+
     DO iLevel = 0, nLevels-1
 
-      CALL MF_U(iLevel) % setval( 0.0_amrex_real )
+      CALL MF_U(iLevel) % setval( Zero )
 
       DO iS = 1, nStages_SSPRK
 
-        CALL MF_D(iLevel,iS) % setval( 0.0_amrex_real )
+        CALL MF_D(iLevel,iS) % setval( Zero )
 
       END DO
 
@@ -285,11 +299,11 @@ CONTAINS
 
       DO iLevel = 0, nLevels-1
 
-        DO jS = 1, iS - 1
+        DO jS = 1, iS-1
 
-          IF( a_SSPRK(iS,jS) .NE. 0.0_amrex_real ) &
+          IF( a_SSPRK(iS,jS) .NE. Zero ) &
             CALL MF_U(iLevel) &
-                   % LinComb( 1.0_amrex_real,              MF_U(iLevel),    1, &
+                   % LinComb( One, MF_U(iLevel), 1, &
                               dt(iLevel) * a_SSPRK(iS,jS), MF_D(iLevel,jS), 1, &
                               1, MF_U(iLevel) % nComp(), 0 )
 
@@ -297,17 +311,20 @@ CONTAINS
 
       END DO
 
-      IF( ANY( a_SSPRK(:,iS) .NE. 0.0_amrex_real ) &
-          .OR. ( w_SSPRK(iS) .NE. 0.0_amrex_real ) )THEN
+      IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
+          .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_Euler (1)'
+
         CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_U, MF_uDF, GEOM )
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (1)'
+
         CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_U )
 
-        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_Euler_ComputeIncrement'
-        CALL MF_Euler_ComputeIncrement( GEOM, MF_uGF, MF_U, MF_D(:,iS) )
+        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ComputeIncrement_Euler'
+
+        CALL MF_ComputeIncrement_Euler( GEOM, MF_uGF, MF_U, MF_uDF, MF_D(:,iS) )
 
       END IF
 
@@ -317,9 +334,9 @@ CONTAINS
 
       DO iS = 1, nStages_SSPRK
 
-        IF( w_SSPRK(iS) .NE. 0.0_amrex_real ) &
+        IF( w_SSPRK(iS) .NE. Zero ) &
           CALL MF_uCF(iLevel) &
-                 % LinComb( 1.0_amrex_real,           MF_uCF(iLevel),  1, &
+                 % LinComb( One, MF_uCF(iLevel), 1, &
                             dt(iLevel) * w_SSPRK(iS), MF_D(iLevel,iS), 1, &
                             1, MF_uCF(iLevel) % nComp(), 0 )
 
@@ -328,9 +345,11 @@ CONTAINS
     END DO
 
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_Euler (2)'
+
     CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, MF_uDF, GEOM )
 
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (2)'
+
     CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )

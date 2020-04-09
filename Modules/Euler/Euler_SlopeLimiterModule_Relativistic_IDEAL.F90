@@ -1,28 +1,32 @@
 MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
 
-  USE KindModule, ONLY: &
-    DP, Zero, One, Two, Three, SqrtTiny
-  USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX, nNodes, nNodesX
-  USE ReferenceElementModuleX, ONLY: &
-    NodeNumberTableX, &
-    NodesX1, WeightsX1, &
-    NodesX2, WeightsX2, &
-    NodesX3, WeightsX3, &
-    WeightsX_q
-  USE UtilitiesModule, ONLY: &
-    MinModB, NodeNumberX
-  USE PolynomialBasisModule_Lagrange, ONLY: &
-    L_X1, L_X2, L_X3
-  USE PolynomialBasisModule_Legendre, ONLY: &
-    P_X1, P_X2, P_X3, IndPX_Q
-  USE PolynomialBasisMappingModule, ONLY: &
+  USE KindModule,                                                 ONLY: &
+    DP,   &
+    Zero, &
+    One,  &
+    Two
+  USE ProgramHeaderModule,                                        ONLY: &
+    nDOFX,  &
+    nDimsX, &
+    nNodes, &
+    nNodesX
+  USE ReferenceElementModuleX,                                    ONLY: &
+    WeightsX_q, &
+    NodeNumberTableX
+  USE UtilitiesModule,                                            ONLY: &
+    MinModB, &
+    NodeNumberX
+  USE PolynomialBasisModule_Legendre,                             ONLY: &
+    P_X1, &
+    P_X2, &
+    P_X3, &
+    IndPX_Q
+  USE PolynomialBasisMappingModule,                               ONLY: &
     MapNodalToModal_Fluid, &
     MapModalToNodal_Fluid
-  USE MeshModule, ONLY: &
-    MeshX, &
-    NodeCoordinate
-  USE GeometryFieldsModule, ONLY: &
+  USE MeshModule,                                                 ONLY: &
+    MeshX
+  USE GeometryFieldsModule,                                       ONLY: &
     nGF,          &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -32,17 +36,22 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     iGF_Beta_2,   &
     iGF_Beta_3,   &
     iGF_SqrtGm
-  USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_E, &
-    iDF_Sh
-  USE Euler_BoundaryConditionsModule, ONLY: &
+  USE FluidFieldsModule,                                          ONLY: &
+    nCF, &
+    iDF_TCI
+  USE Euler_BoundaryConditionsModule,                             ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL, ONLY: &
     ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
-    Timer_Euler_SlopeLimiter, &
-    Timer_Euler_TroubledCellIndicator
+  USE Euler_DiscontinuityDetectionModule,                         ONLY: &
+    InitializeTroubledCellIndicator_Euler, &
+    FinalizeTroubledCellIndicator_Euler,   &
+    DetectTroubledCells_Euler,             &
+    DetectShocks_Euler
+  USE TimersModule_Euler,                                         ONLY: &
+    TimersStart_Euler, &
+    TimersStop_Euler,  &
+    Timer_Euler_SlopeLimiter
 
   IMPLICIT NONE
   PRIVATE
@@ -50,6 +59,8 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   PUBLIC :: InitializeSlopeLimiter_Euler_Relativistic_IDEAL
   PUBLIC :: FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
   PUBLIC :: ApplySlopeLimiter_Euler_Relativistic_IDEAL
+
+  REAL(DP), PUBLIC :: LimiterThreshold
 
   LOGICAL      :: UseSlopeLimiter
   LOGICAL      :: UseCharacteristicLimiting
@@ -64,16 +75,11 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   ! --- TVD Limiter ---
   REAL(DP) :: BetaTVD, BetaTVB
   REAL(DP) :: SlopeTolerance
-  REAL(DP) :: LimiterThreshold
   REAL(DP) :: LimiterThresholdParameter
   REAL(DP) :: I_6x6(1:6,1:6)
 
-  ! --- For troubled-cell indicator ---
-  REAL(DP), ALLOCATABLE :: WeightsX_X1_P(:), WeightsX_X1_N(:)
-  REAL(DP), ALLOCATABLE :: WeightsX_X2_P(:), WeightsX_X2_N(:)
-  REAL(DP), ALLOCATABLE :: WeightsX_X3_P(:), WeightsX_X3_N(:)
-
   LOGICAL :: DEBUG = .FALSE.
+
 
 CONTAINS
 
@@ -186,8 +192,9 @@ CONTAINS
         UseConservativeCorrection
     END IF
 
-    IF( UseTroubledCellIndicator ) &
-      CALL InitializeTroubledCellIndicator
+    CALL InitializeTroubledCellIndicator_Euler &
+           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
+             LimiterThreshold_Option = LimiterThreshold )
 
     I_6x6 = Zero
     DO i = 1, 6
@@ -236,6 +243,9 @@ CONTAINS
 
     END SELECT
 
+    CALL DetectShocks_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
   END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL
 
 
@@ -248,7 +258,7 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out)          :: &
+    REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
@@ -257,7 +267,7 @@ CONTAINS
                                 iX_B0(2):iX_E0(2), &
                                 iX_B0(3):iX_E0(3))
     LOGICAL  :: SuppressBC
-    INTEGER  :: iX1, iX2, iX3, iGF, iCF
+    INTEGER  :: iX1, iX2, iX3, iCF
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
     REAL(DP) :: G_K(nGF)
@@ -285,8 +295,8 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-    CALL DetectTroubledCells &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+    CALL DetectTroubledCells_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
 
     LimitedCell = .FALSE.
 
@@ -294,7 +304,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( ALL( D(:,iX1,iX2,iX3,iDF_Sh) .LT. LimiterThreshold ) ) CYCLE
+      IF( ALL( D(:,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) ) CYCLE
 
       dX1 = MeshX(1) % Width(iX1)
       dX2 = MeshX(2) % Width(iX2)
@@ -361,9 +371,22 @@ CONTAINS
         ! --- Cell Average of Geometry (Spatial Metric, Lapse Function,
         !     and Shift Vector) ---
 
-        DO iGF = iGF_Gm_dd_11, iGF_Beta_3
-          G_K(iGF) = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF) )
-        END DO
+        G_K(iGF_Gm_dd_11) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_11) )
+        G_K(iGF_Gm_dd_22) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_22) )
+        G_K(iGF_Gm_dd_33) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+        G_K(iGF_SqrtGm) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_SqrtGm  ) )
+        G_K(iGF_Alpha) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Alpha   ) )
+        G_K(iGF_Beta_1) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_1  ) )
+        G_K(iGF_Beta_2) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_2  ) )
+        G_K(iGF_Beta_3) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_3  ) )
 
         ! --- Compute Eigenvectors ---
 
@@ -481,7 +504,7 @@ CONTAINS
       DO iCF = 1, nCF
 
         IF( SlopeDifference(iCF) &
-              .GE. SlopeTolerance * ABS( U_M(iCF,0,1,iX1,iX2,iX3) ) )THEN
+              .GT. SlopeTolerance * ABS( U_M(iCF,0,1,iX1,iX2,iX3) ) )THEN
 
           U_M(iCF,0,2:nDOFX,iX1,iX2,iX3) = Zero
 
@@ -531,7 +554,7 @@ CONTAINS
   SUBROUTINE InitializeSlopeLimiter_Euler_WENO
 
     INTEGER  :: iNodeX, iNodeX1, iNodeX2, iGridPt
-    REAL(DP) :: OrthonormalBasis1D(1:nNodesX(1),0:nNodesX(1)-1,0:nNodesX(1)-1)
+    REAL(DP) :: OrthonormalBasis1D(1:nNodes,0:nNodes-1,0:nNodes-1)
     REAL(DP) :: eta
 
     IF( nDimsX .GT. 2 )THEN
@@ -543,18 +566,18 @@ CONTAINS
 
     END  IF
 
-    IF( nNodesX(1) .GT. 3 )THEN
+    IF( nNodes .GT. 3 )THEN
 
       WRITE(*,*)
       WRITE(*,'(A)') &
-         'WENO slope-limiter not implemented for nNodesX(1) > 3. Stopping...'
+         'WENO slope-limiter not implemented for nNodes > 3. Stopping...'
       STOP
 
     END  IF
 
-    IF( nNodesX(1) .EQ. 2 )THEN
+    IF( nNodes .EQ. 2 )THEN
 
-      DO iNodeX = 1, nNodesX(1)
+      DO iNodeX = 1, nNodes
 
         eta = MeshX(1) % Nodes( iNodeX )
 
@@ -572,9 +595,9 @@ CONTAINS
 
       END DO
 
-    ELSE IF( nNodesX(1) .EQ. 3 )THEN
+    ELSE IF( nNodes .EQ. 3 )THEN
 
-      DO iNodeX = 1, nNodesX(1)
+      DO iNodeX = 1, nNodes
 
         eta = MeshX(1) % Nodes( iNodeX )
 
@@ -610,7 +633,7 @@ CONTAINS
 
     IF( nDimsX .EQ. 1 )THEN
 
-      ALLOCATE( OrthonormalBasis(1:nNodesX(1),0:nNodesX(1)-1,0:nNodesX(1)-1) )
+      ALLOCATE( OrthonormalBasis(1:nNodes,0:nNodes-1,0:nNodes-1) )
 
       OrthonormalBasis = OrthonormalBasis1D
 
@@ -618,11 +641,11 @@ CONTAINS
 
       ALLOCATE( OrthonormalBasis(1:nDOFX, &
                                  0:nDOFX-1, &
-                                 0:nNodesX(1)*(nNodesX(1)+1)/2-1) )
+                                 0:nNodes*(nNodes+1)/2-1) )
 
       OrthonormalBasis = Zero
 
-      IF     ( nNodesX(1) .EQ. 2 )THEN
+      IF     ( nNodes .EQ. 2 )THEN
 
         DO iNodeX = 1, nDOFX
 
@@ -646,7 +669,7 @@ CONTAINS
 
         END DO
 
-      ELSE IF( nNodesX(1) .EQ. 3 )THEN
+      ELSE IF( nNodes .EQ. 3 )THEN
 
         DO iNodeX = 1, nDOFX
 
@@ -729,7 +752,7 @@ CONTAINS
   SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
     IF( UseTroubledCellIndicator ) &
-      CALL FinalizeTroubledCellIndicator
+      CALL FinalizeTroubledCellIndicator_Euler
 
     IF( TRIM( SlopeLimiterMethod ) .EQ. 'WENO' )THEN
 
@@ -750,7 +773,7 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out)          :: &
+    REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
@@ -771,21 +794,20 @@ CONTAINS
                             iX_B0(3):iX_E0(3))
 
     ! --- WENO Limiter ---
-    REAL(DP) :: q  (nDOFX,0:nNodesX(1)-1,nCF)
-    REAL(DP) :: qX1(nDOFX,0:nNodesX(1)-1,nCF)
-    REAL(DP) :: qX2(nDOFX,0:nNodesX(1)-1,nCF)
-    REAL(DP) :: LinearWeights(2*(nNodesX(1)-1))
-    REAL(DP) :: NonLinearWeights(2*(nNodesX(1)-1),nCF)
-    REAL(DP) :: SmoothnessIndicators(2*(nNodesX(1)-1),nCF)
-    REAL(DP) :: pX1(nDOFX,2*(nNodesX(1)-1),nCF)
-    REAL(DP) :: pX2(nDOFX,2*(nNodesX(1)-1),nCF)
+    REAL(DP) :: q  (nDOFX,0:nNodes-1,nCF)
+    REAL(DP) :: qX1(nDOFX,0:nNodes-1,nCF)
+    REAL(DP) :: qX2(nDOFX,0:nNodes-1,nCF)
+    REAL(DP) :: LinearWeights(2*(nNodes-1))
+    REAL(DP) :: NonLinearWeights(2*(nNodes-1),nCF)
+    REAL(DP) :: SmoothnessIndicators(2*(nNodes-1),nCF)
+    REAL(DP) :: pX1(nDOFX,2*(nNodes-1),nCF)
+    REAL(DP) :: pX2(nDOFX,2*(nNodes-1),nCF)
     REAL(DP) :: pX1_new(nDOFX,nCF)
     REAL(DP) :: pX2_new(nDOFX,nCF)
-    REAL(DP) :: pCoeffs(2*(nNodesX(1)-1),nNodesX(1),nCF)
+    REAL(DP) :: pCoeffs(2*(nNodes-1),nNodes,nCF)
     INTEGER  :: nPspace, k
 
     ! --- Characteristic limiting ---
-    INTEGER  :: iGF
     REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
     REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
     REAL(DP) :: G_K(nGF)
@@ -796,7 +818,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
-    k = nNodesX(1) - 1
+    k = nNodes - 1
 
     ! --- Get linear weights ---
     DO iNodeX = 1, 2*k
@@ -821,8 +843,8 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-    CALL DetectTroubledCells &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+    CALL DetectTroubledCells_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
 
     LimitedCell = .FALSE.
 
@@ -830,7 +852,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( ALL( D(:,iX1,iX2,iX3,iDF_Sh) .LT. LimiterThreshold ) ) CYCLE
+      IF( ALL( D(:,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) ) CYCLE
 
       LimitedCell(iX1,iX2,iX3) = .TRUE.
 
@@ -873,11 +895,22 @@ CONTAINS
 
       IF( UseCharacteristicLimiting )THEN
 
-        DO iGF = iGF_Gm_dd_11, iGF_Beta_3
-
-          G_K(iGF) = SUM( WeightsX_q * G(:,iX1,iX2,iX3,iGF) )
-
-        END DO
+        G_K(iGF_Gm_dd_11) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_11) )
+        G_K(iGF_Gm_dd_22) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_22) )
+        G_K(iGF_Gm_dd_33) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+        G_K(iGF_SqrtGm) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_SqrtGm  ) )
+        G_K(iGF_Alpha) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Alpha   ) )
+        G_K(iGF_Beta_1) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_1  ) )
+        G_K(iGF_Beta_2) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_2  ) )
+        G_K(iGF_Beta_3) &
+          = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_3  ) )
 
         CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
                ( 1, G_K, U_M(0,:,iX1,iX2,iX3), R_X1, invR_X1 )
@@ -890,7 +923,7 @@ CONTAINS
 
       DO iCF = 1, nCF
 
-        DO iNodeX = 0, nNodesX(1)-1 ! Loop over basis polynomials
+        DO iNodeX = 0, nNodes-1 ! Loop over basis polynomials
 
           nPspace = UpperLimit_pSpace( iNodeX )
 
@@ -908,7 +941,7 @@ CONTAINS
 
       IF( UseCharacteristicLimiting )THEN
 
-        DO iNodeX = 0, nNodesX(1)-1
+        DO iNodeX = 0, nNodes-1
 
           DO iGridPt = 1, nDOFX
 
@@ -920,7 +953,7 @@ CONTAINS
 
         IF( nDimsX .GT. 1 )THEN
 
-          DO iNodeX = 0, nNodesX(1)-1
+          DO iNodeX = 0, nNodes-1
 
             DO iGridPt = 1, nDOFX
 
@@ -1011,7 +1044,7 @@ CONTAINS
 
       ! --- 3rd order ---
 
-      IF( nNodesX(1) .GT. 2 )THEN
+      IF( nNodes .GT. 2 )THEN
 
         DO iCF = 1, nCF
 
@@ -1382,282 +1415,6 @@ CONTAINS
     uM = MATMUL( VandermondeMatrix, uN )
 
   END SUBROUTINE MapNodalToModal_Fluid_WENO
-
-
-  SUBROUTINE InitializeTroubledCellIndicator
-
-    INTEGER  :: iNode, iNodeX1, iNodeX2, iNodeX3
-    INTEGER  :: jNode, jNodeX1, jNodeX2, jNodeX3
-    REAL(DP) :: WeightX
-
-    ALLOCATE( WeightsX_X1_P(nDOFX), WeightsX_X1_N(nDOFX) )
-    ALLOCATE( WeightsX_X2_P(nDOFX), WeightsX_X2_N(nDOFX) )
-    ALLOCATE( WeightsX_X3_P(nDOFX), WeightsX_X3_N(nDOFX) )
-
-    ! --- Compute Weights for Extrapolating Neighbors into Target Cell ---
-
-    DO jNode = 1, nDOFX
-
-      jNodeX1 = NodeNumberTableX(1,jNode)
-      jNodeX2 = NodeNumberTableX(2,jNode)
-      jNodeX3 = NodeNumberTableX(3,jNode)
-
-      WeightsX_X1_P(jNode) = Zero
-      WeightsX_X1_N(jNode) = Zero
-      WeightsX_X2_P(jNode) = Zero
-      WeightsX_X2_N(jNode) = Zero
-      WeightsX_X3_P(jNode) = Zero
-      WeightsX_X3_N(jNode) = Zero
-
-      DO iNode = 1, nDOFX
-
-        iNodeX1 = NodeNumberTableX(1,iNode)
-        iNodeX2 = NodeNumberTableX(2,iNode)
-        iNodeX3 = NodeNumberTableX(3,iNode)
-
-        WeightX = WeightsX1  (iNodeX1) &
-                  * WeightsX2(iNodeX2) &
-                  * WeightsX3(iNodeX3)
-
-        WeightsX_X1_P(jNode) &
-          = WeightsX_X1_P(jNode) &
-              + WeightX &
-                * ( L_X1  (jNodeX1) % P( NodesX1(iNodeX1) + One ) &
-                    * L_X2(jNodeX2) % P( NodesX2(iNodeX2) ) &
-                    * L_X3(jNodeX3) % P( NodesX3(iNodeX3) ) )
-
-        WeightsX_X1_N(jNode) &
-          = WeightsX_X1_N(jNode) &
-              + WeightX &
-                * ( L_X1  (jNodeX1) % P( NodesX1(iNodeX1) - One ) &
-                    * L_X2(jNodeX2) % P( NodesX2(iNodeX2) ) &
-                    * L_X3(jNodeX3) % P( NodesX3(iNodeX3) ) )
-
-        WeightsX_X2_P(jNode) &
-          = WeightsX_X2_P(jNode) &
-              + WeightX &
-                * ( L_X1  (jNodeX1) % P( NodesX1(iNodeX1) ) &
-                    * L_X2(jNodeX2) % P( NodesX2(iNodeX2) + One ) &
-                    * L_X3(jNodeX3) % P( NodesX3(iNodeX3) ) )
-
-        WeightsX_X2_N(jNode) &
-          = WeightsX_X2_N(jNode) &
-              + WeightX &
-                * ( L_X1  (jNodeX1) % P( NodesX1(iNodeX1) ) &
-                    * L_X2(jNodeX2) % P( NodesX2(iNodeX2) - One ) &
-                    * L_X3(jNodeX3) % P( NodesX3(iNodeX3) ) )
-
-        WeightsX_X3_P(jNode) &
-          = WeightsX_X3_P(jNode) &
-              + WeightX &
-                * ( L_X1  (jNodeX1) % P( NodesX1(iNodeX1) ) &
-                    * L_X2(jNodeX2) % P( NodesX2(iNodeX2) ) &
-                    * L_X3(jNodeX3) % P( NodesX3(iNodeX3) + One ) )
-
-        WeightsX_X3_N(jNode) &
-          = WeightsX_X3_N(jNode) &
-              + WeightX &
-                * ( L_X1  (jNodeX1) % P( NodesX1(iNodeX1) ) &
-                    * L_X2(jNodeX2) % P( NodesX2(iNodeX2) ) &
-                    * L_X3(jNodeX3) % P( NodesX3(iNodeX3) - One ) )
-
-      END DO
-
-    END DO
-
-  END SUBROUTINE InitializeTroubledCellIndicator
-
-
-  SUBROUTINE FinalizeTroubledCellIndicator
-
-    DEALLOCATE( WeightsX_X1_P, WeightsX_X1_N )
-    DEALLOCATE( WeightsX_X2_P, WeightsX_X2_N )
-    DEALLOCATE( WeightsX_X3_P, WeightsX_X3_N )
-
-  END SUBROUTINE FinalizeTroubledCellIndicator
-
-
-  SUBROUTINE DetectTroubledCells( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-
-    INTEGER,  INTENT(in)  :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out) :: &
-      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    INTEGER  :: iX1, iX2, iX3, iCF
-    REAL(DP) :: V_K (0:2*nDimsX)
-    REAL(DP) :: U_K (0:2*nDimsX,nCF)
-    REAL(DP) :: U_K0(0:2*nDimsX,nCF)
-
-    D(:,:,:,:,iDF_Sh) = Zero
-
-    IF( .NOT. UseTroubledCellIndicator )THEN
-
-      D(:,:,:,:,iDF_Sh) = 1.1_DP * LimiterThreshold
-      RETURN
-
-    END IF
-
-    CALL TimersStart_Euler( Timer_Euler_TroubledCellIndicator )
-
-    ! --- Troubled-Cell Indicator from Fu & Shu (2017) ---
-    ! --- JCP, 347, 305 - 327 ----------------------------
-
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-
-      ! --- Compute Cell Volumes and Cell Averages ---------
-      ! --- in Target Cell and Neighbors in X1 Direction ---
-
-      V_K(0) = DOT_PRODUCT &
-                 ( WeightsX_q, G(:,iX1,  iX2,iX3,iGF_SqrtGm) )
-
-      V_K(1) = DOT_PRODUCT &
-                 ( WeightsX_q, G(:,iX1-1,iX2,iX3,iGF_SqrtGm) )
-
-      V_K(2) = DOT_PRODUCT &
-                 ( WeightsX_q, G(:,iX1+1,iX2,iX3,iGF_SqrtGm) )
-
-      DO iCF = 1, nCF
-
-        U_K(0,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1,iX2,iX3,iCF) ) / V_K(0)
-
-        U_K(1,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1-1,iX2,iX3,iCF) ) / V_K(1)
-
-        U_K0(1,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_X1_P, &
-                G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1-1,iX2,iX3,iCF) ) / V_K(0)
-
-        U_K(2,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1+1,iX2,iX3,iCF) ) / V_K(2)
-
-        U_K0(2,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_X1_N, &
-                G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1+1,iX2,iX3,iCF) ) / V_K(0)
-
-      END DO
-
-      ! --- Compute Cell Volumes and Cell Averages ---
-      ! --- in Neighbors in X2 Direction -------------
-
-      IF( nDimsX .GT. 1 )THEN
-
-        V_K(3) = DOT_PRODUCT &
-                   ( WeightsX_q, G(:,iX1,iX2-1,iX3,iGF_SqrtGm) )
-
-        V_K(4) = DOT_PRODUCT &
-                   ( WeightsX_q, G(:,iX1,iX2+1,iX3,iGF_SqrtGm) )
-
-        DO iCF = 1, nCF
-
-          U_K(3,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2-1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2-1,iX3,iCF) ) / V_K(3)
-
-          U_K0(3,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X2_P, &
-                  G(:,iX1,iX2-1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2-1,iX3,iCF) ) / V_K(0)
-
-          U_K(4,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2+1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2+1,iX3,iCF) ) / V_K(4)
-
-          U_K0(4,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X2_N, &
-                  G(:,iX1,iX2+1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2+1,iX3,iCF) ) / V_K(0)
-
-        END DO
-
-      END IF
-
-      ! --- Compute Cell Volumes and Cell Averages ---
-      ! --- in Neighbors in X3 Direction -------------
-
-      IF( nDimsX .GT. 2 )THEN
-
-        V_K(5) = DOT_PRODUCT &
-                   ( WeightsX_q, G(:,iX1,iX2,iX3-1,iGF_SqrtGm) )
-
-        V_K(6) = DOT_PRODUCT &
-                   ( WeightsX_q, G(:,iX1,iX2,iX3+1,iGF_SqrtGm) )
-
-        DO iCF = 1, nCF
-
-          U_K(5,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2,iX3-1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3-1,iCF) ) / V_K(5)
-
-          U_K0(5,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X3_P, &
-                  G(:,iX1,iX2,iX3-1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3-1,iCF) ) / V_K(0)
-
-          U_K(6,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2,iX3+1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3+1,iCF) ) / V_K(6)
-
-          U_K0(6,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X3_N, &
-                  G(:,iX1,iX2,iX3+1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3+1,iCF) ) / V_K(0)
-
-        END DO
-
-      END IF
-
-      ! --- Use Conserved Density to Detect Troubled Cell ---
-
-      D(:,iX1,iX2,iX3,iDF_Sh) &
-        = SUM( ABS( U_K(0,iCF_D) - U_K0(1:2*nDimsX,iCF_D) ) ) &
-            / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_D) ) )
-
-      ! --- Use Conserved Energy  to Detect Troubled Cell ---
-
-      D(:,iX1,iX2,iX3,iDF_Sh) &
-        = MAX( MAXVAL(D(:,iX1,iX2,iX3,iDF_Sh) ), &
-               SUM( ABS( U_K(0,iCF_E) - U_K0(1:2*nDimsX,iCF_E) ) ) &
-                 / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_E) ) ) )
-
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop_Euler( Timer_Euler_TroubledCellIndicator )
-
-  END SUBROUTINE DetectTroubledCells
 
 
   SUBROUTINE ApplyConservativeCorrection &

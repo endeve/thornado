@@ -37,6 +37,7 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_Euler_PositivityLimiter
   REAL(DP), PUBLIC :: Timer_Euler_SlopeLimiter
   REAL(DP), PUBLIC :: Timer_Euler_TroubledCellIndicator
+  REAL(DP), PUBLIC :: Timer_Euler_ShockDetector
   REAL(DP), PUBLIC :: Timer_Euler_CharacteristicDecomposition
 
   PUBLIC :: InitializeTimers_Euler
@@ -77,6 +78,7 @@ CONTAINS
     Timer_Euler_SlopeLimiter                = Zero
     Timer_Euler_CharacteristicDecomposition = Zero
     Timer_Euler_TroubledCellIndicator       = Zero
+    Timer_Euler_ShockDetector               = Zero
 
     CALL TimersStart_Euler( Timer_Euler_Program )
 
@@ -102,10 +104,8 @@ CONTAINS
     CHARACTER(64) :: OverallTimeDG = '(10x,A,ES13.6E3,A,F6.3,A,F7.3,A)'
     CHARACTER(64) :: TimeDG        = '(12x,A,ES13.6E3,A,F6.3,A,F6.3,A)'
 
-    CHARACTER(64) :: OverallTimeAux = '(12x,A,ES13.6E3,A,F6.3,A,F7.3,A)'
     CHARACTER(64) :: TimeAux        = '(12x,A,ES13.6E3,A,F6.3,A,F6.3,A)'
 
-    CHARACTER(64) :: OverallTimeCPU = '(12x,A,ES13.6E3,A,F6.3,A,F7.3,A)'
     CHARACTER(64) :: TimeCPU        = '(12x,A,ES13.6E3,A,F6.3,A,F6.3,A)'
 
     CHARACTER(64) :: OverallTimeLim = '(10x,A,ES13.6E3,A,F6.3,A,F7.3,A)'
@@ -305,6 +305,13 @@ CONTAINS
         Timer_Euler_TroubledCellIndicator, ' s = ', &
         100.0_DP &
           * Timer_Euler_TroubledCellIndicator / Timer_Euler_Program, ' %'
+
+      WRITE(*,*)
+      WRITE(*,TRIM(TimeLim2)) &
+        'Shock Detector:               ', &
+        Timer_Euler_ShockDetector, ' s = ', &
+        100.0_DP &
+          * Timer_Euler_ShockDetector / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeLim2)) &
         'Characteristic Decomposition: ', &

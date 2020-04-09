@@ -66,6 +66,7 @@ MODULE GeometryFieldsModule
 
   PUBLIC :: CreateGeometryFields
   PUBLIC :: DestroyGeometryFields
+  PUBLIC :: SetUnitsGeometryFields
 
 CONTAINS
 
@@ -143,22 +144,50 @@ CONTAINS
     USE UnitsModule, ONLY: &
       UnitsActive, &
       Erg, &
-      Gram
+      Gram, &
+      UnitsDisplay
+
+    ASSOCIATE( U => UnitsDisplay )
 
     IF( UnitsActive )THEN
 
-      unitsGF(iGF_Phi_N)    = Erg / Gram
-      unitsGF(iGF_h_1)      = 1.0_DP
-      unitsGF(iGF_h_2)      = 1.0_DP
-      unitsGF(iGF_h_3)      = 1.0_DP
-      unitsGF(iGF_Gm_dd_11) = 1.0_DP
-      unitsGF(iGF_Gm_dd_22) = 1.0_DP
-      unitsGF(iGF_Gm_dd_33) = 1.0_DP
-      unitsGF(iGF_SqrtGm)   = 1.0_DP
+      unitsGF(iGF_Phi_N) = Erg / Gram
+
+      IF     ( TRIM( CoordinateSystem ) .EQ. 'CARTESIAN' )THEN
+
+        unitsGF(iGF_h_1) = 1.0_DP
+        unitsGF(iGF_h_2) = 1.0_DP
+        unitsGF(iGF_h_3) = 1.0_DP
+
+      ELSE IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDRICAL' )THEN
+
+        unitsGF(iGF_h_1) = 1.0_DP
+        unitsGF(iGF_h_2) = 1.0_DP
+        unitsGF(iGF_h_3) = U % LengthX1Unit
+
+      ELSE IF( TRIM( CoordinateSystem ) .EQ. 'SPHERICAL' )THEN
+
+        unitsGF(iGF_h_1) = 1.0_DP
+        unitsGF(iGF_h_2) = U % LengthX1Unit
+        unitsGF(iGF_h_3) = U % LengthX1Unit
+
+      ELSE
+
+        WRITE(*,*) 'Invalid choice of CoordinateSystem: ', &
+                   TRIM( CoordinateSystem )
+
+      END IF
+
+      unitsGF(iGF_Gm_dd_11) = unitsGF(iGF_h_1)**2
+      unitsGF(iGF_Gm_dd_22) = unitsGF(iGF_h_2)**2
+      unitsGF(iGF_Gm_dd_33) = unitsGF(iGF_h_3)**2
+      unitsGF(iGF_SqrtGm)   = unitsGF(iGF_h_1) &
+                                * unitsGF(iGF_h_2) &
+                                * unitsGF(iGF_h_3)
+      unitsGF(iGF_Beta_1)   = U % VelocityX1Unit
+      unitsGF(iGF_Beta_2)   = U % VelocityX2Unit
+      unitsGF(iGF_Beta_3)   = U % VelocityX3Unit
       unitsGF(iGF_Alpha)    = 1.0_DP
-      unitsGF(iGF_Beta_1)   = 1.0_DP
-      unitsGF(iGF_Beta_2)   = 1.0_DP
-      unitsGF(iGF_Beta_3)   = 1.0_DP
       unitsGF(iGF_Psi)      = 1.0_DP
 
     ELSE
@@ -166,6 +195,8 @@ CONTAINS
       unitsGF = 1.0_DP
 
     END IF
+
+    END ASSOCIATE
 
   END SUBROUTINE SetUnitsGeometryFields
 

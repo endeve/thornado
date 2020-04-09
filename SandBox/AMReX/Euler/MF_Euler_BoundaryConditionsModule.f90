@@ -1,8 +1,9 @@
 MODULE MF_Euler_BoundaryConditionsModule
 
   ! --- AMReX Modules ---
+
   USE amrex_fort_module,     ONLY: &
-    amrex_real, &
+    AR => amrex_real, &
     amrex_spacedim
   USE amrex_box_module,      ONLY: &
     amrex_box
@@ -10,26 +11,22 @@ MODULE MF_Euler_BoundaryConditionsModule
     amrex_geometry
 
   ! --- thornado Modules ---
+
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
 
   ! --- Local Modules ---
+
   USE MyAmrModule,              ONLY: &
     DEBUG
   USE TimersModule_AMReX_Euler, ONLY: &
-    TimersStart_AMReX_Euler, TimersStop_AMReX_Euler, &
+    TimersStart_AMReX_Euler,            &
+    TimersStop_AMReX_Euler,             &
     Timer_AMReX_Euler_ConstructEdgeMap, &
     Timer_AMReX_Euler_GetBC
 
   IMPLICIT NONE
   PRIVATE
-
-  ! --- Hack to get iEuler_ApplyBC_XXX. DO NOT CHANGE THESE VALUES ---
-  INTEGER, PARAMETER :: iEuler_ApplyBC_Both  = 0
-  INTEGER, PARAMETER :: iEuler_ApplyBC_Inner = 1
-  INTEGER, PARAMETER :: iEuler_ApplyBC_Outer = 2
-  INTEGER, PARAMETER :: iEuler_ApplyBC_None  = 3
-
 
   PUBLIC :: MF_ApplyBoundaryConditions_Euler
   PUBLIC :: ConstructEdgeMap
@@ -41,6 +38,12 @@ MODULE MF_Euler_BoundaryConditionsModule
     PROCEDURE :: Euler_GetBC => EdgeMap_Euler_GetBC
   END TYPE EdgeMap
 
+  ! --- Hack to get iApplyBC_Euler_XXX. DO NOT CHANGE THESE VALUES ---
+  INTEGER, PARAMETER :: iApplyBC_Euler_Both  = 0
+  INTEGER, PARAMETER :: iApplyBC_Euler_Inner = 1
+  INTEGER, PARAMETER :: iApplyBC_Euler_Outer = 2
+  INTEGER, PARAMETER :: iApplyBC_Euler_None  = 3
+
 
 CONTAINS
 
@@ -48,11 +51,11 @@ CONTAINS
   SUBROUTINE MF_ApplyBoundaryConditions_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
-    INTEGER,          INTENT(in)    :: &
+    INTEGER,       INTENT(in   ) :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(amrex_real), INTENT(inout) :: &
+    REAL(AR),      INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    TYPE(EdgeMap),    INTENT(in)    :: &
+    TYPE(EdgeMap), INTENT(in   ) :: &
       Edge_Map
 
     INTEGER :: iApplyBC(3)
@@ -60,18 +63,17 @@ CONTAINS
     CALL Edge_Map % Euler_GetBC( iApplyBC )
 
     IF( DEBUG ) WRITE(*,'(A)') '      CALL ApplyBoundaryConditions_Euler'
+
     CALL ApplyBoundaryConditions_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-             iApplyBC )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
   END SUBROUTINE MF_ApplyBoundaryConditions_Euler
 
 
   SUBROUTINE ConstructEdgeMap( GEOM, BX, Edge_Map )
 
-    TYPE(amrex_geometry), INTENT(in)    :: GEOM
-    TYPE(amrex_box),      INTENT(in)    :: BX
+    TYPE(amrex_geometry), INTENT(in   ) :: GEOM
+    TYPE(amrex_box),      INTENT(in   ) :: BX
     TYPE(EdgeMap),        INTENT(inout) :: Edge_Map
 
     INTEGER :: iDim
@@ -113,16 +115,20 @@ CONTAINS
 
       IF     ( this % IsLowerBoundary( iDim ) .AND. &
                this % IsUpperBoundary( iDim ) )THEN
-        iApplyBC(iDim) = iEuler_ApplyBC_Both
+
+        iApplyBC(iDim) = iApplyBC_Euler_Both
 
       ELSE IF( this % IsLowerBoundary( iDim ) )THEN
-        iApplyBC(iDim) = iEuler_ApplyBC_Inner
+
+        iApplyBC(iDim) = iApplyBC_Euler_Inner
 
       ELSE IF( this % IsUpperBoundary( iDim ) )THEN
-        iApplyBC(iDim) = iEuler_ApplyBC_Outer
+
+        iApplyBC(iDim) = iApplyBC_Euler_Outer
 
       ELSE
-        iApplyBC(iDim) = iEuler_ApplyBC_None
+
+        iApplyBC(iDim) = iApplyBC_Euler_None
 
       END IF
 

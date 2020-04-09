@@ -16,6 +16,9 @@ MODULE FinalizationModule
   ! --- Local Modules ---
   USE MyAmrModule,                 ONLY: &
     nLevels, MyAmrFinalize
+  USE MF_TwoMoment_TimeSteppingModule_Relativistic,    ONLY: &
+    MF_FinalizeField_IMEX_RK
+
 
   IMPLICIT NONE
   PRIVATE
@@ -37,10 +40,12 @@ MODULE FinalizationModule
 
     CALL DestroyRadiationFields
 
+    CALL MF_FinalizeField_IMEX_RK
+
     DO iLevel = 0, nLevels-1
       CALL amrex_geometry_destroy( GEOM(iLevel) )
-    END DO
-   
+    END DO  
+ 
     CALL MyAmrFinalize
  
     CALL amrex_amrcore_finalize

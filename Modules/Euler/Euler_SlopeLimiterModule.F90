@@ -50,16 +50,6 @@ CONTAINS
              UseConservativeCorrection_Option, &
              Verbose_Option )
 
-#elif defined HYDRO_NONRELATIVISTIC
-
-    CALL InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL &
-           ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
-             UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
-             UseTroubledCellIndicator_Option, &
-             LimiterThresholdParameter_Option, &
-             UseConservativeCorrection_Option, &
-             Verbose_Option )
-
 #elif defined HYDRO_RELATIVISTIC
 
     CALL InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
@@ -95,10 +85,6 @@ CONTAINS
 
     CALL FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
 
-#elif defined HYDRO_NONRELATIVISTIC
-
-    CALL FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL
-
 #elif defined HYDRO_RELATIVISTIC
 
     CALL FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
@@ -121,7 +107,7 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out)          :: &
+    REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
@@ -135,11 +121,6 @@ CONTAINS
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
     CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC )
-
-#elif defined HYDRO_NONRELATIVISTIC
-
-    CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC )
 
 #elif defined HYDRO_RELATIVISTIC

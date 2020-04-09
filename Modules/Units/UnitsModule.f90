@@ -61,12 +61,14 @@ MODULE UnitsModule
 
   CHARACTER(16), PRIVATE, PARAMETER :: &
     DisplayLabel_Null            = '', &
-    DisplayLabel_Length          = 'km', &
+    DisplayLabel_Length_L        = 'km', &
+    DisplayLabel_Length_A        = 'rad', &
     DisplayLabel_Time            = 'ms', &
     DisplayLabel_Mass            = 'M_sun', &
     DisplayLabel_MassDensity     = 'g/cm^3', &
     DisplayLabel_ParticleDensity = '1/cm^3', &
-    DisplayLabel_Velocity        = 'km/s', &
+    DisplayLabel_Velocity_L      = 'km/s', &
+    DisplayLabel_Velocity_A      = '1/s', &
     DisplayLabel_Momentum        = 'g cm/s', &
     DisplayLabel_MomentumDensity = 'g/cm^2/s', &
     DisplayLabel_Energy          = 'MeV', &
@@ -76,12 +78,14 @@ MODULE UnitsModule
     DisplayLabel_Temperature     = 'K'
 
   REAL(DP), PRIVATE, PARAMETER :: &
-    DisplayUnit_Length          = Kilometer, &
+    DisplayUnit_Length_L        = Kilometer, &
+    DisplayUnit_Length_A        = 1.0_DP, &
     DisplayUnit_Time            = Millisecond, &
     DisplayUnit_Mass            = SolarMass, &
     DisplayUnit_MassDensity     = Gram / Centimeter**3, &
     DisplayUnit_ParticleDensity = 1.0_DP / Centimeter**3, &
-    DisplayUnit_Velocity        = Kilometer / Second, &
+    DisplayUnit_Velocity_L      = Kilometer / Second, &
+    DisplayUnit_Velocity_A      = 1.0_DP / Second, &
     DisplayUnit_Momentum        = Gram * Centimeter / Second, &
     DisplayUnit_MomentumDensity = Gram / Centimeter**2 / Second, &
     DisplayUnit_Energy          = MeV, &
@@ -94,12 +98,16 @@ MODULE UnitsModule
     LOGICAL  :: &
       Active = .FALSE.
     CHARACTER(16) :: &
-      LengthLabel          = DisplayLabel_Null, &
+      LengthX1Label        = DisplayLabel_Null, &
+      LengthX2Label        = DisplayLabel_Null, &
+      LengthX3Label        = DisplayLabel_Null, &
       TimeLabel            = DisplayLabel_Null, &
       MassLabel            = DisplayLabel_Null, &
       MassDensityLabel     = DisplayLabel_Null, &
       ParticleDensityLabel = DisplayLabel_Null, &
-      VelocityLabel        = DisplayLabel_Null, &
+      VelocityX1Label      = DisplayLabel_Null, &
+      VelocityX2Label      = DisplayLabel_Null, &
+      VelocityX3Label      = DisplayLabel_Null, &
       MomentumLabel        = DisplayLabel_Null, &
       MomentumDensityLabel = DisplayLabel_Null, &
       EnergyLabel          = DisplayLabel_Null, &
@@ -108,12 +116,16 @@ MODULE UnitsModule
       PressureLabel        = DisplayLabel_Null, &
       TemperatureLabel     = DisplayLabel_Null
     REAL(DP) :: &
-      LengthUnit          = 1.0_DP, &
+      LengthX1Unit        = 1.0_DP, &
+      LengthX2Unit        = 1.0_DP, &
+      LengthX3Unit        = 1.0_DP, &
       TimeUnit            = 1.0_DP, &
       MassUnit            = 1.0_DP, &
       MassDensityUnit     = 1.0_DP, &
       ParticleDensityUnit = 1.0_DP, &
-      VelocityUnit        = 1.0_DP, &
+      VelocityX1Unit      = 1.0_DP, &
+      VelocityX2Unit      = 1.0_DP, &
+      VelocityX3Unit      = 1.0_DP, &
       MomentumUnit        = 1.0_DP, &
       MomentumDensityUnit = 1.0_DP, &
       EnergyUnit          = 1.0_DP, &
@@ -131,18 +143,64 @@ MODULE UnitsModule
 CONTAINS
 
 
-  SUBROUTINE ActivateUnitsDisplay
+  SUBROUTINE ActivateUnitsDisplay( CoordinateSystem_Option )
+
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL ::  CoordinateSystem_Option
+
+    CHARACTER(LEN=16)  :: CoordinateSystem
+
+    CoordinateSystem = 'CARTESIAN'
+    IF( PRESENT( CoordinateSystem_Option ) ) &
+      CoordinateSystem = TRIM( CoordinateSystem_Option )
 
     UnitsActive = .TRUE.
 
     UnitsDisplay % Active = .TRUE.
 
-    UnitsDisplay % LengthLabel          = DisplayLabel_Length
     UnitsDisplay % TimeLabel            = DisplayLabel_Time
     UnitsDisplay % MassLabel            = DisplayLabel_Mass
     UnitsDisplay % MassDensityLabel     = DisplayLabel_MassDensity
     UnitsDisplay % ParticleDensityLabel = DisplayLabel_ParticleDensity
-    UnitsDisplay % VelocityLabel        = DisplayLabel_Velocity
+
+    SELECT CASE( TRIM( CoordinateSystem ) )
+
+      CASE( 'CARTESIAN' )
+
+        UnitsDisplay % LengthX1Label = DisplayLabel_Length_L
+        UnitsDisplay % LengthX2Label = DisplayLabel_Length_L
+        UnitsDisplay % LengthX3Label = DisplayLabel_Length_L
+
+        UnitsDisplay % VelocityX1Label = DisplayLabel_Velocity_L
+        UnitsDisplay % VelocityX2Label = DisplayLabel_Velocity_L
+        UnitsDisplay % VelocityX3Label = DisplayLabel_Velocity_L
+
+      CASE( 'CYLINDRICAL' )
+
+        UnitsDisplay % LengthX1Label = DisplayLabel_Length_L
+        UnitsDisplay % LengthX2Label = DisplayLabel_Length_L
+        UnitsDisplay % LengthX3Label = DisplayLabel_Length_A
+
+        UnitsDisplay % VelocityX1Label = DisplayLabel_Velocity_L
+        UnitsDisplay % VelocityX2Label = DisplayLabel_Velocity_L
+        UnitsDisplay % VelocityX3Label = DisplayLabel_Velocity_A
+
+      CASE( 'SPHERICAL' )
+
+        UnitsDisplay % LengthX1Label = DisplayLabel_Length_L
+        UnitsDisplay % LengthX2Label = DisplayLabel_Length_A
+        UnitsDisplay % LengthX3Label = DisplayLabel_Length_A
+
+        UnitsDisplay % VelocityX1Label = DisplayLabel_Velocity_L
+        UnitsDisplay % VelocityX2Label = DisplayLabel_Velocity_A
+        UnitsDisplay % VelocityX3Label = DisplayLabel_Velocity_A
+
+      CASE DEFAULT
+
+        WRITE(*,*) 'Invalid choice for coodinate system: ', &
+                   TRIM( CoordinateSystem )
+
+    END SELECT
+
     UnitsDisplay % MomentumLabel        = DisplayLabel_Momentum
     UnitsDisplay % MomentumDensityLabel = DisplayLabel_MomentumDensity
     UnitsDisplay % EnergyLabel          = DisplayLabel_Energy
@@ -151,12 +209,50 @@ CONTAINS
     UnitsDisplay % PressureLabel        = DisplayLabel_Pressure
     UnitsDisplay % TemperatureLabel     = DisplayLabel_Temperature
 
-    UnitsDisplay % LengthUnit          = DisplayUnit_Length
     UnitsDisplay % TimeUnit            = DisplayUnit_Time
     UnitsDisplay % MassUnit            = DisplayUnit_Mass
     UnitsDisplay % MassDensityUnit     = DisplayUnit_MassDensity
     UnitsDisplay % ParticleDensityUnit = DisplayUnit_ParticleDensity
-    UnitsDisplay % VelocityUnit        = DisplayUnit_Velocity
+
+    SELECT CASE( TRIM( CoordinateSystem ) )
+
+      CASE( 'CARTESIAN' )
+
+        UnitsDisplay % LengthX1Unit = DisplayUnit_Length_L
+        UnitsDisplay % LengthX2Unit = DisplayUnit_Length_L
+        UnitsDisplay % LengthX3Unit = DisplayUnit_Length_L
+
+        UnitsDisplay % VelocityX1Unit = DisplayUnit_Velocity_L
+        UnitsDisplay % VelocityX2Unit = DisplayUnit_Velocity_L
+        UnitsDisplay % VelocityX3Unit = DisplayUnit_Velocity_L
+
+      CASE( 'CYLINDRICAL' )
+
+        UnitsDisplay % LengthX1Unit = DisplayUnit_Length_L
+        UnitsDisplay % LengthX2Unit = DisplayUnit_Length_L
+        UnitsDisplay % LengthX3Unit = DisplayUnit_Length_A
+
+        UnitsDisplay % VelocityX1Unit = DisplayUnit_Velocity_L
+        UnitsDisplay % VelocityX2Unit = DisplayUnit_Velocity_L
+        UnitsDisplay % VelocityX3Unit = DisplayUnit_Velocity_A
+
+      CASE( 'SPHERICAL' )
+
+        UnitsDisplay % LengthX1Unit = DisplayUnit_Length_L
+        UnitsDisplay % LengthX2Unit = DisplayUnit_Length_A
+        UnitsDisplay % LengthX3Unit = DisplayUnit_Length_A
+
+        UnitsDisplay % VelocityX1Unit = DisplayUnit_Velocity_L
+        UnitsDisplay % VelocityX2Unit = DisplayUnit_Velocity_A
+        UnitsDisplay % VelocityX3Unit = DisplayUnit_Velocity_A
+
+      CASE DEFAULT
+
+        WRITE(*,*) 'Invalid choice for coodinate system: ', &
+                   TRIM( CoordinateSystem )
+
+    END SELECT
+
     UnitsDisplay % MomentumUnit        = DisplayUnit_Momentum
     UnitsDisplay % MomentumDensityUnit = DisplayUnit_MomentumDensity
     UnitsDisplay % EnergyUnit          = DisplayUnit_Energy
@@ -177,8 +273,14 @@ CONTAINS
       '', '---------------------------'
     WRITE(*,*)
     WRITE(*,'(A7,A24,A)') &
-      '', 'Length Units: ', &
-      TRIM( UnitsDisplay % LengthLabel )
+      '', 'Length (X1) Units: ', &
+      TRIM( UnitsDisplay % LengthX1Label )
+    WRITE(*,'(A7,A24,A)') &
+      '', 'Length (X2) Units: ', &
+      TRIM( UnitsDisplay % LengthX2Label )
+    WRITE(*,'(A7,A24,A)') &
+      '', 'Length (X3) Units: ', &
+      TRIM( UnitsDisplay % LengthX3Label )
     WRITE(*,'(A7,A24,A)') &
       '', 'Time Units: ', &
       TRIM( UnitsDisplay % TimeLabel )
@@ -192,8 +294,14 @@ CONTAINS
       '', 'Particle Density Units: ', &
       TRIM( UnitsDisplay % ParticleDensityLabel )
     WRITE(*,'(A7,A24,A)') &
-      '', 'Velocity Units: ', &
-      TRIM( UnitsDisplay % VelocityLabel )
+      '', 'Velocity (X1) Units: ', &
+      TRIM( UnitsDisplay % VelocityX1Label )
+    WRITE(*,'(A7,A24,A)') &
+      '', 'Velocity (X2) Units: ', &
+      TRIM( UnitsDisplay % VelocityX2Label )
+    WRITE(*,'(A7,A24,A)') &
+      '', 'Velocity (X3) Units: ', &
+      TRIM( UnitsDisplay % VelocityX3Label )
     WRITE(*,'(A7,A24,A)') &
       '', 'Momentum Units: ', &
       TRIM( UnitsDisplay % MomentumLabel )

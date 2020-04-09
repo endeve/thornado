@@ -46,7 +46,7 @@ PROGRAM ApplicationDriver
     ComputeFromConserved_Euler_NonRelativistic, &
     ComputeTimeStep_Euler_NonRelativistic
   USE Euler_dgDiscretizationModule, ONLY: &
-    Euler_ComputeIncrement_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit
   USE Euler_TallyModule_NonRelativistic_IDEAL, ONLY: &
     InitializeTally_Euler_NonRelativistic_IDEAL, &
     FinalizeTally_Euler_NonRelativistic_IDEAL, &
@@ -403,11 +403,13 @@ PROGRAM ApplicationDriver
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
   CALL WriteFieldsHDF &
-         ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+         ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
   CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
   CALL InitializeFluid_SSPRK( nStages = 3 )
@@ -460,7 +462,7 @@ PROGRAM ApplicationDriver
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, uDF, Euler_ComputeIncrement_DG_Explicit )
+           ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit )
 
     t = t + dt
 

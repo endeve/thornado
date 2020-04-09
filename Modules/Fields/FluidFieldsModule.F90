@@ -1,7 +1,7 @@
 MODULE FluidFieldsModule
 
   USE KindModule, ONLY: &
-    DP
+    DP, Zero, One
   USE ProgramHeaderModule, ONLY: &
     nDOFX
 
@@ -132,23 +132,29 @@ MODULE FluidFieldsModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta2
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: Theta3
 
-  INTEGER, PUBLIC, PARAMETER :: iDF_Sh = 01 ! Shock
-  INTEGER, PUBLIC, PARAMETER :: iDF_T1 = 02 ! Theta 1
-  INTEGER, PUBLIC, PARAMETER :: iDF_T2 = 03 ! Theta 2
-  INTEGER, PUBLIC, PARAMETER :: iDF_T3 = 04 ! Theta 3
-  INTEGER, PUBLIC, PARAMETER :: nDF    = 04
+  INTEGER, PUBLIC, PARAMETER :: iDF_TCI = 01 ! Troubled-Cell Indicator
+  INTEGER, PUBLIC, PARAMETER :: iDF_Sh  = 02 ! Shock Detector
+  INTEGER, PUBLIC, PARAMETER :: iDF_T1  = 03 ! Theta 1
+  INTEGER, PUBLIC, PARAMETER :: iDF_T2  = 04 ! Theta 2
+  INTEGER, PUBLIC, PARAMETER :: iDF_T3  = 05 ! Theta 3
+  INTEGER, PUBLIC, PARAMETER :: iDF_E   = 06 ! Minimum Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: nDF     = 06 ! n Diagnostic Fluid Fields
 
   CHARACTER(32), DIMENSION(nDF), PUBLIC, PARAMETER :: &
-    namesDF = [ 'Shock                           ', &
+    namesDF = [ 'TCI                             ', &
+                'Shock                           ', &
                 'Theta 1                         ', &
                 'Theta 2                         ', &
-                'Theta 3                         ' ]
+                'Theta 3                         ', &
+                'Min E                           ' ]
 
   CHARACTER(10), DIMENSION(nDF), PUBLIC, PARAMETER :: &
-    ShortNamesDF = [ 'DF_Sh     ', &
+    ShortNamesDF = [ 'DF_TCI    ', &
+                     'DF_Sh     ', &
                      'DF_T1     ', &
                      'DF_T2     ', &
-                     'DF_T3     ' ]
+                     'DF_T3     ', &
+                     'DF_E      ' ]
 
   REAL(DP), DIMENSION(nDF), PUBLIC :: unitsDF
 
@@ -162,30 +168,22 @@ MODULE FluidFieldsModule
 CONTAINS
 
 
-  SUBROUTINE CreateFluidFields( nX, swX, Verbose_Option )
+  SUBROUTINE CreateFluidFields &
+    ( nX, swX, CoordinateSystem_Option, Verbose_Option )
 
-    INTEGER, INTENT(in)           :: nX(3), swX(3)
-    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
+    INTEGER,          INTENT(in)           :: nX(3), swX(3)
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: CoordinateSystem_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
+
+    CHARACTER(LEN=16) :: CoordinateSystem
+
+    CoordinateSystem = 'CARTESIAN'
+    IF( PRESENT( CoordinateSystem_Option ) ) &
+      CoordinateSystem = TRIM( CoordinateSystem_Option )
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
-
-#if defined HYDRO_RIEMANN_SOLVER_HLL
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(5x,A)') 'Fluid Fields'
-      WRITE(*,*)
-      WRITE(*,'(5x,A)') 'Riemann Solver: HLL'
-    END IF
-#elif defined HYDRO_RIEMANN_SOLVER_HLLC
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(5x,A)') 'Fluid Fields'
-      WRITE(*,*)
-      WRITE(*,'(5x,A)') 'Riemann Solver: HLLC'
-    END IF
-#endif
 
     CALL CreateFluidFields_Conserved ( nX, swX )
     CALL CreateFluidFields_Primitive ( nX, swX )
@@ -197,7 +195,8 @@ CONTAINS
 
     ALLOCATE( rhsCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),1:nCF) )
 
-    CALL SetUnitsFluidFields
+    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
+                              Verbose_Option = Verbose )
 
   END SUBROUTINE CreateFluidFields
 
@@ -316,15 +315,16 @@ CONTAINS
                                    1-swX(3):nX(3)+swX(3), &
                                    1:nDF)
 
-    uDF(:,:,:,:,iDF_Sh) = 0.0_DP
-    uDF(:,:,:,:,iDF_T1) = 1.0_DP
-    uDF(:,:,:,:,iDF_T3) = 1.0_DP
-    uDF(:,:,:,:,iDF_T2) = 1.0_DP
+    uDF(:,:,:,:,iDF_TCI) = Zero
+    uDF(:,:,:,:,iDF_Sh)  = Zero
+    uDF(:,:,:,:,iDF_T1)  = One
+    uDF(:,:,:,:,iDF_T2)  = One
+    uDF(:,:,:,:,iDF_T3)  = One
 
   END SUBROUTINE ResetFluidFields_Diagnostic
 
 
-  SUBROUTINE SetUnitsFluidFields
+  SUBROUTINE SetUnitsFluidFields( CoordinateSystem, Verbose_Option )
 
     USE UnitsModule, ONLY: &
       UnitsActive, &
@@ -337,6 +337,28 @@ CONTAINS
       Erg, &
       BoltzmannConstant
 
+    CHARACTER(LEN=*), INTENT(in)           :: CoordinateSystem
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
+
+    LOGICAL :: Verbose
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+#if defined HYDRO_RIEMANN_SOLVER_HLL
+      WRITE(*,'(5x,A)') 'Fluid Riemann Solver: HLL'
+#elif defined HYDRO_RIEMANN_SOLVER_HLLC
+      WRITE(*,'(5x,A)') 'Fluid Riemann Solver: HLLC'
+#elif defined HYDRO_RIEMANN_SOLVER_HYBRID
+      WRITE(*,'(5x,A)') 'Fluid Riemann Solver: HYBRID'
+#endif
+
+  END IF
+
     IF( UnitsActive )THEN
 
       ! --- Conserved ---
@@ -346,46 +368,74 @@ CONTAINS
       unitsCF(iCF_S2) = Gram / Centimeter**2 / Second
       unitsCF(iCF_S3) = Gram / Centimeter**2 / Second
       unitsCF(iCF_E)  = Erg / Centimeter**3
-      unitsCF(iCF_Ne) = 1.0_DP / Centimeter**3
+      unitsCF(iCF_Ne) = One / Centimeter**3
 
       ! --- Primitive ---
 
       unitsPF(iPF_D)  = Gram / Centimeter**3
-      unitsPF(iPF_V1) = Kilometer / Second
-      unitsPF(iPF_V2) = Kilometer / Second
-      unitsPF(iPF_V3) = Kilometer / Second
+
+      SELECT CASE( TRIM( CoordinateSystem ) )
+
+        CASE( 'CARTESIAN' )
+
+          unitsPF(iPF_V1) = Kilometer / Second
+          unitsPF(iPF_V2) = Kilometer / Second
+          unitsPF(iPF_V3) = Kilometer / Second
+
+        CASE( 'CYLINDRICAL' )
+
+          unitsPF(iPF_V1) = Kilometer / Second
+          unitsPF(iPF_V2) = Kilometer / Second
+          unitsPF(iPF_V3) = One / Second
+
+        CASE( 'SPHERICAL' )
+
+          unitsPF(iPF_V1) = Kilometer / Second
+          unitsPF(iPF_V2) = One / Second
+          unitsPF(iPF_V3) = One / Second
+
+        CASE DEFAULT
+
+          WRITE(*,*) 'Invalid choice of coordinate system: ', CoordinateSystem
+          WRITE(*,*) 'Stopping...'
+          STOP
+
+      END SELECT
+
       unitsPF(iPF_E)  = Erg / Centimeter**3
-      unitsPF(iPF_Ne) = 1.0_DP / Centimeter**3
+      unitsPF(iPF_Ne) = One / Centimeter**3
 
       ! --- Auxiliary ---
 
       unitsAF(iAF_P)  = Erg / Centimeter**3
       unitsAF(iAF_T)  = Kelvin
-      unitsAF(iAF_Ye) = 1.0_DP
+      unitsAF(iAF_Ye) = One
       unitsAF(iAF_S)  = BoltzmannConstant
       unitsAF(iAF_E)  = Erg / Gram
       unitsAF(iAF_Me) = MeV
       unitsAF(iAF_Mp) = MeV
       unitsAF(iAF_Mn) = MeV
-      unitsAF(iAF_Xp) = 1.0_DP
-      unitsAF(iAF_Xn) = 1.0_DP
-      unitsAF(iAF_Xa) = 1.0_DP
-      unitsAF(iAF_Xh) = 1.0_DP
-      unitsAF(iAF_Gm) = 1.0_DP
+      unitsAF(iAF_Xp) = One
+      unitsAF(iAF_Xn) = One
+      unitsAF(iAF_Xa) = One
+      unitsAF(iAF_Xh) = One
+      unitsAF(iAF_Gm) = One
       unitsAF(iAF_Cs) = Kilometer / Second
 
       ! --- Diagnostic ---
-      unitsDF(iDF_Sh) = 1.0_DP
-      unitsDF(iDF_T1) = 1.0_DP
-      unitsDF(iDF_T2) = 1.0_DP
-      unitsDF(iDF_T3) = 1.0_DP
+      unitsDF(iDF_TCI) = One
+      unitsDF(iDF_Sh)  = One
+      unitsDF(iDF_T1)  = One
+      unitsDF(iDF_T2)  = One
+      unitsDF(iDF_T3)  = One
+      unitsDF(iDF_E)   = Erg / Gram
 
     ELSE
 
-      unitsCF = 1.0_DP
-      unitsPF = 1.0_DP
-      unitsAF = 1.0_DP
-      unitsDF = 1.0_DP
+      unitsCF = One
+      unitsPF = One
+      unitsAF = One
+      unitsDF = One
 
     END IF
 

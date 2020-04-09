@@ -173,19 +173,19 @@ CONTAINS
 
     CALL WriteDataset1DHDF &
            ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)) &
-               / U % LengthUnit, DatasetName, FILE_ID )
+               / U % LengthX1Unit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X2'
 
     CALL WriteDataset1DHDF &
            ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)) &
-               / U % LengthUnit, DatasetName, FILE_ID )
+               / U % LengthX2Unit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X3'
 
     CALL WriteDataset1DHDF &
            ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
-               / U % LengthUnit, DatasetName, FILE_ID )
+               / U % LengthX3Unit, DatasetName, FILE_ID )
 
     END ASSOCIATE ! U
 
@@ -258,38 +258,38 @@ CONTAINS
 
     CALL WriteDataset1DHDF &
            ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)) &
-               / U % LengthUnit, DatasetName, FILE_ID )
+               / U % LengthX1Unit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X2'
 
     CALL WriteDataset1DHDF &
            ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)) &
-               / U % LengthUnit, DatasetName, FILE_ID )
+               / U % LengthX2Unit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X3'
 
     CALL WriteDataset1DHDF &
            ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
-               / U % LengthUnit, DatasetName, FILE_ID )
+               / U % LengthX3Unit, DatasetName, FILE_ID )
 
     ! --- Write Cell Center Coordinates ---
 
     DatasetName = TRIM( GroupName ) // '/X1_C'
 
     CALL WriteDataset1DHDF &
-           ( MeshX(1) % Center(1:nX(1)) / U % LengthUnit, &
+           ( MeshX(1) % Center(1:nX(1)) / U % LengthX1Unit, &
              DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X2_C'
 
     CALL WriteDataset1DHDF &
-           ( MeshX(2) % Center(1:nX(2)) / U % LengthUnit, &
+           ( MeshX(2) % Center(1:nX(2)) / U % LengthX2Unit, &
              DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X3_C'
 
     CALL WriteDataset1DHDF &
-           ( MeshX(3) % Center(1:nX(3)) / U % LengthUnit, &
+           ( MeshX(3) % Center(1:nX(3)) / U % LengthX3Unit, &
              DatasetName, FILE_ID )
 
     END ASSOCIATE ! U
@@ -442,19 +442,19 @@ CONTAINS
 
     CALL WriteDataset1DHDF &
            ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)) &
-               / U % LengthUnit, DatasetName, FILE_ID )
+               / U % LengthX1Unit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X2'
 
     CALL WriteDataset1DHDF &
            ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)) &
-               / U % LengthUnit, DatasetName, FILE_ID )
+               / U % LengthX2Unit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X3'
 
     CALL WriteDataset1DHDF &
            ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
-               / U % LengthUnit, DatasetName, FILE_ID )
+               / U % LengthX3Unit, DatasetName, FILE_ID )
 
     ! --- Write Energy Grid ---
 
@@ -594,19 +594,19 @@ CONTAINS
 
     CALL WriteDataset1DHDF &
            ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)) &
-               / U % LengthUnit, DatasetName, FILE_ID )
+               / U % LengthX1Unit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X2'
 
     CALL WriteDataset1DHDF &
            ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)) &
-               / U % LengthUnit, DatasetName, FILE_ID )
+               / U % LengthX2Unit, DatasetName, FILE_ID )
 
     DatasetName = TRIM( GroupName ) // '/X3'
 
     CALL WriteDataset1DHDF &
            ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
-               / U % LengthUnit, DatasetName, FILE_ID )
+               / U % LengthX3Unit, DatasetName, FILE_ID )
 
     ! --- Write Energy Grid ---
 

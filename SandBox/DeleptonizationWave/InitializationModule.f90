@@ -1,7 +1,7 @@
 MODULE InitializationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, TwoPi
+    DP, Zero, Half, One, Two, TwoPi
   USE UnitsModule, ONLY: &
     Gram, Centimeter, &
     Kilometer, Kelvin, &
@@ -13,7 +13,7 @@ MODULE InitializationModule
     ProgramName, &
     iX_B0, iX_E0, &
     iE_B0, iE_E0, &
-    nDOF, nDOFX
+    nDOF, nDOFX, nDOFE
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE ReferenceElementModule, ONLY: &
@@ -38,6 +38,9 @@ MODULE InitializationModule
   USE EquationOfStateModule_TABLE, ONLY: &
     ApplyEquationOfState_TABLE, &
     ComputeThermodynamicStates_Primitive_TABLE
+  USE NeutrinoOpacitiesComputationModule, ONLY: &
+    ComputeNeutrinoOpacities_EC_Points, &
+    ComputeEquilibriumDistributions_Points
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeConserved_TwoMoment
 
@@ -63,9 +66,14 @@ CONTAINS
         CALL InitializeFluidFields_DeleptonizationWave_Profile &
                ( ProfileName_Option )
 
+        CALL InitializeRadiationFields_DeleptonizationWave_Profile &
+               ( ProfileName_Option )
+
       ELSE
 
         CALL InitializeFluidFields_DeleptonizationWave
+
+        CALL InitializeRadiationFields_DeleptonizationWave
 
       END IF
 
@@ -73,9 +81,9 @@ CONTAINS
 
       CALL InitializeFluidFields_DeleptonizationWave
 
-    END IF
+      CALL InitializeRadiationFields_DeleptonizationWave
 
-    CALL InitializeRadiationFields_DeleptonizationWave
+    END IF
 
   END SUBROUTINE InitializeFields_DeleptonizationWave
 
@@ -355,6 +363,241 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeRadiationFields_DeleptonizationWave
+
+
+  SUBROUTINE InitializeRadiationFields_DeleptonizationWave_Profile &
+    ( ProfileName )
+
+    CHARACTER(LEN=*), INTENT(in) :: ProfileName
+
+    INTEGER  :: nR, nE, iR, i
+    INTEGER  :: iE, iX1, iX2, iX3, iS
+    INTEGER  :: iNode, iNodeE, iNodeX1, iNodeX2, iNodeX3
+    REAL(DP) :: Gm_dd_11(nDOF)
+    REAL(DP) :: Gm_dd_22(nDOF)
+    REAL(DP) :: Gm_dd_33(nDOF)
+    REAL(DP) :: Tau, X1, X2, X3, R
+    REAL(DP), ALLOCATABLE :: R_P(:), D_P(:), T_P(:), Y_P(:)
+    REAL(DP), ALLOCATABLE :: Chi(:,:,:), fEQ(:,:,:), R_Nu(:,:), E_Nu(:)
+    REAL(DP), ALLOCATABLE :: D_Nu_P(:,:,:), I1_Nu_P(:,:,:)
+
+    CALL ReadFluidProfile( ProfileName, R_P, D_P, T_P, Y_P )
+
+    ! --- Prevent too low temperature ---
+    T_P = MAX( T_P, T_P(Locate( 5.0d3 * Kilometer, R_P, SIZE( R_P ) )) )
+
+    nR = SIZE( R_P )
+    nE = ( iE_E0 - iE_B0 + 1 ) * nDOFE
+
+    ALLOCATE( E_Nu(nE) )
+    ALLOCATE( R_Nu(nE,nSpecies) )
+    ALLOCATE( Chi(nE,nR,nSpecies) )
+    ALLOCATE( fEQ(nE,nR,nSpecies) )
+    ALLOCATE( D_Nu_P (nE,nR,nSpecies) )
+    ALLOCATE( I1_Nu_P(nE,nR,nSpecies) )
+
+    ! --- Compute Neutrino Energies ---
+
+    i = 1
+    DO iE = iE_B0, iE_E0
+    DO iNodeE = 1, nDOFE
+
+      E_Nu(i) = NodeCoordinate( MeshE, iE, iNodeE )
+
+      i = i + 1
+
+    END DO
+    END DO
+
+    ! --- Compute Neutrino Absorption Opacities ---
+
+    DO iS = 1, nSpecies
+
+      CALL ComputeNeutrinoOpacities_EC_Points &
+             ( 1, nE, 1, nR, E_Nu, D_P, T_P, Y_P, iS, Chi(:,:,iS) )
+
+      CALL ComputeEquilibriumDistributions_Points &
+             ( 1, nE, 1, nR, E_Nu, D_P, T_P, Y_P, fEQ(:,:,iS), iS )
+
+    END DO
+
+    ! --- Compute Approximate Neutrino Sphere Radii ---
+
+    DO iS = 1, nSpecies
+    DO iE = 1, nE
+
+      Tau = Zero
+      DO iR = nR-1, 1, -1
+
+        IF( Tau > 2.0_DP / 3.0_DP ) CYCLE
+
+        Tau = Tau + Half * ( R_P(iR+1) - R_P(iR) ) &
+                         * ( Chi(iE,iR+1,iS) + Chi(iE,iR,iS) )
+
+        R_Nu(iE,iS) = MAX( R_P(iR), 1.0d1 * Kilometer )
+
+      END DO
+
+    END DO
+    END DO
+
+    DO iS = 1, nSpecies
+    DO iR = 1, nR
+    DO iE = 1, nE
+
+      ! --- Use Chi and fEQ at local radius or neutrino sphere ---
+
+      i = MIN( iR, Locate( R_Nu(iE,iS), R_P, SIZE( R_P ) ) )
+
+      CALL ComputeSphereSolution &
+             ( R_Nu(iE,iS), Chi(iE,i,iS), fEQ(iE,i,iS), &
+               R_P(iR), D_Nu_P(iE,iR,iS), I1_Nu_P(iE,iR,iS) )
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Initialize Radiation Fields ---
+
+    DO iS = 1, nSpecies
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      Gm_dd_11 &
+        = uGF(NodeNumbersX,iX1,iX2,iX3,iGF_Gm_dd_11)
+
+      Gm_dd_22 &
+        = uGF(NodeNumbersX,iX1,iX2,iX3,iGF_Gm_dd_22)
+
+      Gm_dd_33 &
+        = uGF(NodeNumbersX,iX1,iX2,iX3,iGF_Gm_dd_33)
+
+      DO iE = iE_B0, iE_E0
+      DO iNode = 1, nDOF
+
+        iNodeX1 = NodeNumberTable(2,iNode)
+        iNodeX2 = NodeNumberTable(3,iNode)
+        iNodeX3 = NodeNumberTable(4,iNode)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+        X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
+
+        iNodeE = ( iE - 1 ) * nDOFE + NodeNumberTable(1,iNode)
+
+        IF( TRIM( CoordinateSystem ) == 'SPHERICAL' )THEN
+
+          R = X1
+
+        ELSE
+
+          R = SQRT( X1**2 + X2**2 + X3**2 )
+
+        END IF
+
+        iR = MAX( Locate( R, R_P, SIZE( R_P ) ), 1 )
+
+        uPR(iNode,iE,iX1,iX2,iX3,iPR_D,iS) &
+          = Interpolate1D_Linear &
+              ( R, R_P(iR), R_P(iR+1), &
+                D_Nu_P (iNodeE,iR,iS), D_Nu_P (iNodeE,iR+1,iS) )
+
+        uPR(iNode,iE,iX1,iX2,iX3,iPR_I1,iS) &
+          = Interpolate1D_Linear &
+              ( R, R_P(iR), R_P(iR+1), &
+                I1_Nu_P(iNodeE,iR,iS), I1_Nu_P(iNodeE,iR+1,iS) )
+
+        uPR(iNode,iE,iX1,iX2,iX3,iPR_I2,iS) &
+          = Zero
+
+        uPR(iNode,iE,iX1,iX2,iX3,iPR_I3,iS) &
+          = Zero
+
+      END DO
+
+        CALL ComputeConserved_TwoMoment &
+               ( uPR(:,iE,iX1,iX2,iX3,iPR_D, iS), &
+                 uPR(:,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                 uPR(:,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                 uPR(:,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                 uCR(:,iE,iX1,iX2,iX3,iCR_N, iS), &
+                 uCR(:,iE,iX1,iX2,iX3,iCR_G1,iS), &
+                 uCR(:,iE,iX1,iX2,iX3,iCR_G2,iS), &
+                 uCR(:,iE,iX1,iX2,iX3,iCR_G3,iS), &
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DEALLOCATE( E_Nu, R_Nu, Chi, fEQ, D_Nu_P, I1_Nu_P )
+
+  END SUBROUTINE InitializeRadiationFields_DeleptonizationWave_Profile
+
+
+  SUBROUTINE ComputeSphereSolution( R0, Chi, f0, R, D, I )
+
+    REAL(DP), INTENT(in)  :: R0, Chi, f0, R
+    REAL(DP), INTENT(out) :: D, I
+
+    INTEGER, PARAMETER :: nMu = 2048
+    INTEGER            :: iMu
+    REAL(DP)           :: Mu(nMu), Distribution(nMu)
+
+    DO iMu = 1, nMu
+
+      Mu(iMu) = - One + Two * DBLE(iMu-1)/DBLE(nMu-1)
+
+      Distribution(iMu) = f_A( R, Mu(iMu), R0, f0, Chi )
+
+    END DO
+
+    D = Half * TRAPEZ( nMu, Mu, Distribution )
+    I = Half * TRAPEZ( nMu, Mu, Distribution * Mu )
+
+  END SUBROUTINE ComputeSphereSolution
+
+
+  REAL(DP) FUNCTION f_A( R, Mu, R0, f0, Chi )
+
+    REAL(DP), INTENT(in) :: R, Mu, R0, f0, Chi
+
+    REAL(DP) :: s
+
+    IF( R < R0 )THEN
+      s = ( R * Mu + R0 * SQRT( One - ( R / R0 )**2 * ( One - Mu**2 ) ) )
+    ELSE
+      IF( Mu >= SQRT( One - ( R0 / R )**2 ) )THEN
+        s = ( Two * R0 * SQRT( One - ( R / R0 )**2 * ( One - Mu**2 ) ) )
+      ELSE
+        s = Zero
+      END IF
+    END IF
+
+    f_A = f0 * ( One - EXP( - Chi * s ) )
+
+    RETURN
+  END FUNCTION f_A
+
+
+  REAL(DP) FUNCTION TRAPEZ( n, x, y )
+
+    INTEGER,  INTENT(in) :: n
+    REAL(dp), INTENT(in) :: x(n), y(n)
+
+    INTEGER :: i
+
+    TRAPEZ = 0.0_dp
+    DO i = 1, n - 1
+      TRAPEZ = TRAPEZ + 0.5_dp * ( x(i+1) - x(i) ) * ( y(i) + y(i+1) )
+    END DO
+
+    RETURN
+  END FUNCTION TRAPEZ
 
 
   SUBROUTINE ReadFluidProfile( FileName, R, D, T, Y )

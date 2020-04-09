@@ -81,10 +81,10 @@ CONTAINS
       '', 'D_R = ', D_R / U % MassDensityUnit, &
       '', TRIM( U % MassDensityLabel )
     WRITE(*,'(A7,A7,3ES10.3E2,A1,A,A4,A7,3ES10.3E2,A1,A)') &
-      '', 'V_L = ', V_L / U % VelocityUnit, &
-      '', TRIM( U % VelocityLabel ), &
-      '', 'V_R = ', V_R / U % VelocityUnit, &
-      '', TRIM( U % VelocityLabel )
+      '', 'V_L = ', V_L / U % VelocityUnitX1, &
+      '', TRIM( U % VelocityLabelX1 ), &
+      '', 'V_R = ', V_R / U % VelocityUnitX1, &
+      '', TRIM( U % VelocityLabelX1 )
     WRITE(*,'(A7,A7,ES10.3E2,A1,A,A20,A7,ES10.3E2,A1,A)') &
       '', 'P_L = ', P_L / U % PressureUnit, &
       '', TRIM( U % PressureLabel ), &

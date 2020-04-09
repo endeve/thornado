@@ -53,6 +53,7 @@ Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_Relativistic.o \
+  EquationOfStateModule_IDEAL.o \
   EquationOfStateModule.o \
   TimersModule_Euler.o \
   Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.f90
@@ -94,9 +95,9 @@ Euler_PositivityLimiterModule_Relativistic_IDEAL.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
-  FluidFieldsModule.o \
-  GeometryComputationModule.o \
   GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  FluidFieldsModule.o \
   TimersModule_Euler.o \
   Euler_ErrorModule.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.f90
@@ -118,12 +119,24 @@ Euler_BoundaryConditionsModule.o: \
   Euler_ErrorModule.o \
   Euler_BoundaryConditionsModule.F90
 
+Euler_DiscontinuityDetectionModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule.o \
+  EquationOfStateModule.o \
+  TimersModule_Euler.o \
+  Euler_DiscontinuityDetectionModule.f90
+
 Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   UtilitiesModule.o \
-  PolynomialBasisModule_Lagrange.o \
   PolynomialBasisModule_Legendre.o \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
@@ -131,6 +144,7 @@ Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL.o \
+  Euler_DiscontinuityDetectionModule.o \
   TimersModule_Euler.o \
   Euler_SlopeLimiterModule_NonRelativistic_IDEAL.f90
 
@@ -140,7 +154,6 @@ Euler_SlopeLimiterModule_NonRelativistic_TABLE.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   UtilitiesModule.o \
-  PolynomialBasisModule_Lagrange.o \
   PolynomialBasisModule_Legendre.o \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
@@ -148,6 +161,7 @@ Euler_SlopeLimiterModule_NonRelativistic_TABLE.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE.o \
+  Euler_DiscontinuityDetectionModule.o \
   TimersModule_Euler.o \
   Euler_SlopeLimiterModule_NonRelativistic_TABLE.f90
 
@@ -156,7 +170,6 @@ Euler_SlopeLimiterModule_Relativistic_IDEAL.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   UtilitiesModule.o \
-  PolynomialBasisModule_Lagrange.o \
   PolynomialBasisModule_Legendre.o \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
@@ -164,6 +177,7 @@ Euler_SlopeLimiterModule_Relativistic_IDEAL.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
+  Euler_DiscontinuityDetectionModule.o \
   TimersModule_Euler.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.F90
 

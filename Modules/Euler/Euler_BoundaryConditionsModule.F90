@@ -20,10 +20,10 @@ MODULE Euler_BoundaryConditionsModule
 
   PUBLIC :: ApplyBoundaryConditions_Euler
 
-  INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Both  = 0
-  INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Inner = 1
-  INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Outer = 2
-  INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_None  = 3
+  INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_Both  = 0
+  INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_Inner = 1
+  INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_Outer = 2
+  INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_None  = 3
 
 
 CONTAINS
@@ -34,8 +34,8 @@ CONTAINS
     INTEGER, INTENT(in) :: iApplyBC
 
     ApplyInnerBC = .FALSE.
-    IF( iApplyBC .EQ. iEuler_ApplyBC_Inner .OR. &
-        iApplyBC .EQ. iEuler_ApplyBC_Both ) &
+    IF( iApplyBC .EQ. iApplyBC_Euler_Inner .OR. &
+        iApplyBC .EQ. iApplyBC_Euler_Both ) &
     ApplyInnerBC = .TRUE.
 
   END FUNCTION ApplyInnerBC
@@ -46,8 +46,8 @@ CONTAINS
     INTEGER, INTENT(in) :: iApplyBC
 
     ApplyOuterBC = .FALSE.
-    IF( iApplyBC .EQ. iEuler_ApplyBC_Outer .OR. &
-        iApplyBC .EQ. iEuler_ApplyBC_Both ) &
+    IF( iApplyBC .EQ. iApplyBC_Euler_Outer .OR. &
+        iApplyBC .EQ. iApplyBC_Euler_Both ) &
     ApplyOuterBC = .TRUE.
 
   END FUNCTION ApplyOuterBC
@@ -65,25 +65,25 @@ CONTAINS
 
     INTEGER :: iApplyBC(3)
 
-    iApplyBC = iEuler_ApplyBC_Both
+    iApplyBC = iApplyBC_Euler_Both
     IF( PRESENT( iApplyBC_Option ) ) &
       iApplyBC = iApplyBC_Option
 
-    CALL Euler_ApplyBC_X1 &
+    CALL ApplyBC_Euler_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), &
              iApplyBC(1) )
 
-    CALL Euler_ApplyBC_X2 &
+    CALL ApplyBC_Euler_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), &
              iApplyBC(2) )
 
-    CALL Euler_ApplyBC_X3 &
+    CALL ApplyBC_Euler_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              U(1:nDOFX,iX_B1(1):iX_E1(1), &
                        iX_B1(2):iX_E1(2), &
@@ -93,7 +93,7 @@ CONTAINS
   END SUBROUTINE ApplyBoundaryConditions_Euler
 
 
-  SUBROUTINE Euler_ApplyBC_X1 &
+  SUBROUTINE ApplyBC_Euler_X1 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
     INTEGER,  INTENT(in)    :: &
@@ -348,57 +348,16 @@ CONTAINS
       END DO
       END DO
 
-    CASE ( 110 ) ! Custom BCs for Relativistic Accretion Problem
-
-      IF( ApplyInnerBC( iApplyBC ) )THEN
-        R_0 = MeshX(1) % Center(1) &
-                + MeshX(1) % Width(1) &
-                    * MeshX(1) % Nodes(1)
-
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = 1, swX(1)
-
-            ! --- Inner Boundary ---
-
-            DO iNodeX3 = 1, nNodesX(3)
-            DO iNodeX2 = 1, nNodesX(2)
-            DO iNodeX1 = 1, nNodesX(1)
-
-              iNodeX   = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-              iNodeX_0 = NodeNumberX( 1,       iNodeX2, iNodeX3 )
-
-              D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
-              E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
-
-              R_q = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNodeX1 )
-
-              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
-                = D_0 * ( R_0 / R_q )**3
-
-              U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
-                = E_0 * ( R_0 / R_q )**4
-
-            END DO
-            END DO
-            END DO
-
-        END DO
-        END DO
-        END DO
-
-      END IF
-
     CASE DEFAULT
 
       CALL DescribeError_Euler( 05 )
 
     END SELECT
 
-  END SUBROUTINE Euler_ApplyBC_X1
+  END SUBROUTINE ApplyBC_Euler_X1
 
 
-  SUBROUTINE Euler_ApplyBC_X2 &
+  SUBROUTINE ApplyBC_Euler_X2 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
     INTEGER,  INTENT(in)    :: &
@@ -578,10 +537,10 @@ CONTAINS
 
     END SELECT
 
-  END SUBROUTINE Euler_ApplyBC_X2
+  END SUBROUTINE ApplyBC_Euler_X2
 
 
-  SUBROUTINE Euler_ApplyBC_X3 &
+  SUBROUTINE ApplyBC_Euler_X3 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
     INTEGER,  INTENT(in)    :: &
@@ -667,7 +626,7 @@ CONTAINS
 
     END SELECT
 
-  END SUBROUTINE Euler_ApplyBC_X3
+  END SUBROUTINE ApplyBC_Euler_X3
 
 
 END MODULE Euler_BoundaryConditionsModule

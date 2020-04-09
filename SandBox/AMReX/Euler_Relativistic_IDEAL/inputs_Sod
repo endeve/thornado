@@ -7,25 +7,33 @@ DEBUG = 0
 
 thornado.ProgramName = "Sod"
 
-thornado.t_end     = 4.0e-1   # Final time
-thornado.dt_wrt    = 4.0e-3   # Time increment to write plot-file
-thornado.dt_chk    = 4.0e-2   # Time increment to write checkpoint-file
-thornado.nNodes    = 3        # Number of DG nodes in each active dimension
-thornado.nStages   = 3        # Number of SSP-RK stages for time integration
-thornado.CFL       = 0.5      # CFL number
-thornado.bcX       = 02 00 00 # Boundary conditions
-thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
-thornado.iCycleD   = 10       # MOD this number to display info
-thornado.iCycleW   = -1       # MOD this number to write plotfile
-thornado.iCycleChk = -1       # MOD this number to write checkpoint file
-thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
+thornado.iRestart = -1 # Checkpoint-file to restart from. Default: -1
 
-geometry.coord_sys   = 0           # CARTESIAN
-geometry.prob_lo     = 0.0 0.0 0.0 # Lower domain size
-geometry.prob_hi     = 1.0 1.0 1.0 # Upper domain size
-geometry.is_periodic = 0 1 1       # Periodicity. 0 (no), 1 (yes)
+thornado.t_end   = 4.0e-1 # Final time
+thornado.iCycleD = 10     # MOD this number to display info
+
+thornado.PlotFileBaseName = "plt"
+thornado.dt_wrt  = 4.0e-3 # Time increment to write plot-file
+thornado.iCycleW = -1     # MOD this number to write plotfile
+
+thornado.CheckpointFileBaseName = "chk"
+thornado.dt_chk    = 4.0e-2 # Time increment to write checkpoint-file
+thornado.iCycleChk = -1     # MOD this number to write checkpoint file
+
+thornado.nNodes  = 3 # Number of DG nodes in each active dimension
+thornado.nStages = 3 # Number of SSP-RK stages for time integration
+
+thornado.CFL = 0.5 # CFL number
+
+thornado.bcX         = 02 00 00 # Boundary conditions
+geometry.is_periodic = 0  1  1  # Periodic BCs: 0 (no), 1 (yes)
+
+geometry.coord_sys = 0           # CARTESIAN
+geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
+geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
 
 amr.n_cell            = 256 001 001 # Number of cells in each dimension
+thornado.swX          = 01  00  00  # Stencil width (nGhostCells) in each dimension
 amr.max_grid_size_x   = 64
 amr.blocking_factor_x = 1
 amr.max_level         = 0

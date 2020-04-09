@@ -43,7 +43,8 @@ MODULE Euler_dgDiscretizationModule
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_P
+    nAF, iAF_P, &
+    iDF_Sh
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule, ONLY: &
@@ -54,9 +55,9 @@ MODULE Euler_dgDiscretizationModule
     Flux_X2_Euler,               &
     Flux_X3_Euler,               &
     StressTensor_Diagonal_Euler, &
-    Euler_NumericalFlux_X1,      &
-    Euler_NumericalFlux_X2,      &
-    Euler_NumericalFlux_X3
+    NumericalFlux_Euler_X1,      &
+    NumericalFlux_Euler_X2,      &
+    NumericalFlux_Euler_X3
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -66,14 +67,14 @@ MODULE Euler_dgDiscretizationModule
 
   INCLUDE 'mpif.h'
 
-  PUBLIC :: Euler_ComputeIncrement_DG_Explicit
+  PUBLIC :: ComputeIncrement_Euler_DG_Explicit
 
 
 CONTAINS
 
 
-  SUBROUTINE Euler_ComputeIncrement_DG_Explicit &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU, SuppressBC_Option )
+  SUBROUTINE ComputeIncrement_Euler_DG_Explicit &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SuppressBC_Option )
 
     INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -81,6 +82,8 @@ CONTAINS
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout)         :: &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(in)            :: &
+      D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(out)           :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
     LOGICAL,  INTENT(in),  OPTIONAL :: &
@@ -105,13 +108,13 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_Divergence )
 
     CALL ComputeIncrement_Divergence_X1 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
     CALL ComputeIncrement_Divergence_X2 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
     CALL ComputeIncrement_Divergence_X3 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
     CALL TimersStop_Euler( Timer_Euler_Divergence )
 
@@ -155,17 +158,18 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_dgDiscretization )
 
-  END SUBROUTINE Euler_ComputeIncrement_DG_Explicit
+  END SUBROUTINE ComputeIncrement_Euler_DG_Explicit
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
@@ -512,19 +516,21 @@ CONTAINS
                 G_F      (iNodeX_X1,iGF_Beta_1) )
 
         NumericalFlux(iNodeX_X1,:) &
-          = Euler_NumericalFlux_X1 &
-              ( uCF_L    (iNodeX_X1,:),            &
-                uCF_R    (iNodeX_X1,:),            &
-                Flux_X1_L(iNodeX_X1,:),            &
-                Flux_X1_R(iNodeX_X1,:),            &
-                AlphaPls, AlphaMns, AlphaMdl,      &
-                G_F      (iNodeX_X1,iGF_Gm_dd_11), &
-                uPF_L    (iNodeX_X1,iPF_V1),       &
-                uPF_R    (iNodeX_X1,iPF_V1),       &
-                P_L      (iNodeX_X1),              &
-                P_R      (iNodeX_X1),              &
-                G_F      (iNodeX_X1,iGF_Alpha),    &
-                G_F      (iNodeX_X1,iGF_Beta_1) )
+          = NumericalFlux_Euler_X1 &
+              ( uCF_L    (iNodeX_X1,:),              &
+                uCF_R    (iNodeX_X1,:),              &
+                Flux_X1_L(iNodeX_X1,:),              &
+                Flux_X1_R(iNodeX_X1,:),              &
+                AlphaPls, AlphaMns, AlphaMdl,        &
+                G_F      (iNodeX_X1,iGF_Gm_dd_11),   &
+                uPF_L    (iNodeX_X1,iPF_V1),         &
+                uPF_R    (iNodeX_X1,iPF_V1),         &
+                P_L      (iNodeX_X1),                &
+                P_R      (iNodeX_X1),                &
+                G_F      (iNodeX_X1,iGF_Alpha),      &
+                G_F      (iNodeX_X1,iGF_Beta_1),     &
+                MAXVAL( D(:,iX1-1,iX2,iX3,iDF_Sh) ), &
+                MAXVAL( D(:,iX1  ,iX2,iX3,iDF_Sh) ) )
 
       END DO
 
@@ -585,13 +591,14 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X2 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
 
@@ -932,19 +939,21 @@ CONTAINS
                 G_F      (iNodeX_X2,iGF_Beta_2) )
 
         NumericalFlux(iNodeX_X2,:) &
-          = Euler_NumericalFlux_X2 &
-              ( uCF_L    (iNodeX_X2,:),            &
-                uCF_R    (iNodeX_X2,:),            &
-                Flux_X2_L(iNodeX_X2,:),            &
-                Flux_X2_R(iNodeX_X2,:),            &
-                AlphaPls, AlphaMns, AlphaMdl,      &
-                G_F      (iNodeX_X2,iGF_Gm_dd_22), &
-                uPF_L    (iNodeX_X2,iPF_V2),       &
-                uPF_R    (iNodeX_X2,iPF_V2),       &
-                P_L      (iNodeX_X2),              &
-                P_R      (iNodeX_X2),              &
-                G_F      (iNodeX_X2,iGF_Alpha),    &
-                G_F      (iNodeX_X2,iGF_Beta_2) )
+          = NumericalFlux_Euler_X2 &
+              ( uCF_L    (iNodeX_X2,:),              &
+                uCF_R    (iNodeX_X2,:),              &
+                Flux_X2_L(iNodeX_X2,:),              &
+                Flux_X2_R(iNodeX_X2,:),              &
+                AlphaPls, AlphaMns, AlphaMdl,        &
+                G_F      (iNodeX_X2,iGF_Gm_dd_22),   &
+                uPF_L    (iNodeX_X2,iPF_V2),         &
+                uPF_R    (iNodeX_X2,iPF_V2),         &
+                P_L      (iNodeX_X2),                &
+                P_R      (iNodeX_X2),                &
+                G_F      (iNodeX_X2,iGF_Alpha),      &
+                G_F      (iNodeX_X2,iGF_Beta_2),     &
+                MAXVAL( D(:,iX1,iX2-1,iX3,iDF_Sh) ), &
+                MAXVAL( D(:,iX1,iX2  ,iX3,iDF_Sh) ) )
 
       END DO
 
@@ -966,8 +975,9 @@ CONTAINS
 
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
 
-          CALL DGEMV( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Dn, nDOFX_X2, &
-                      NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+          CALL DGEMV &
+                 ( 'T', nDOFX_X2, nDOFX, + One, LX_X2_Dn, nDOFX_X2, &
+                   NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
 
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
@@ -983,8 +993,9 @@ CONTAINS
 
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
 
-          CALL DGEMV( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Up, nDOFX_X2, &
-                      NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2-1,iX3,iCF), 1 )
+          CALL DGEMV &
+                 ( 'T', nDOFX_X2, nDOFX, - One, LX_X2_Up, nDOFX_X2, &
+                   NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2-1,iX3,iCF), 1 )
 
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
@@ -1002,13 +1013,14 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X3 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       dU(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
@@ -1349,19 +1361,21 @@ CONTAINS
                 G_F      (iNodeX_X3,iGF_Beta_3) )
 
         NumericalFlux(iNodeX_X3,:) &
-          = Euler_NumericalFlux_X3 &
-              ( uCF_L    (iNodeX_X3,:),            &
-                uCF_R    (iNodeX_X3,:),            &
-                Flux_X3_L(iNodeX_X3,:),            &
-                Flux_X3_R(iNodeX_X3,:),            &
-                AlphaPls, AlphaMns, AlphaMdl,      &
-                G_F      (iNodeX_X3,iGF_Gm_dd_33), &
-                uPF_L    (iNodeX_X3,iPF_V3),       &
-                uPF_R    (iNodeX_X3,iPF_V3),       &
-                P_L      (iNodeX_X3),              &
-                P_R      (iNodeX_X3),              &
-                G_F      (iNodeX_X3,iGF_Alpha),    &
-                G_F      (iNodeX_X3,iGF_Beta_3) )
+          = NumericalFlux_Euler_X3 &
+              ( uCF_L    (iNodeX_X3,:),              &
+                uCF_R    (iNodeX_X3,:),              &
+                Flux_X3_L(iNodeX_X3,:),              &
+                Flux_X3_R(iNodeX_X3,:),              &
+                AlphaPls, AlphaMns, AlphaMdl,        &
+                G_F      (iNodeX_X3,iGF_Gm_dd_33),   &
+                uPF_L    (iNodeX_X3,iPF_V3),         &
+                uPF_R    (iNodeX_X3,iPF_V3),         &
+                P_L      (iNodeX_X3),                &
+                P_R      (iNodeX_X3),                &
+                G_F      (iNodeX_X3,iGF_Alpha),      &
+                G_F      (iNodeX_X3,iGF_Beta_3),     &
+                MAXVAL( D(:,iX1,iX2,iX3-1,iDF_Sh) ), &
+                MAXVAL( D(:,iX1,iX2,iX3  ,iDF_Sh) ) )
 
       END DO
 
@@ -1383,8 +1397,9 @@ CONTAINS
 
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
 
-          CALL DGEMV( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Dn, nDOFX_X3, &
-                      NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
+          CALL DGEMV &
+                 ( 'T', nDOFX_X3, nDOFX, + One, LX_X3_Dn, nDOFX_X3, &
+                   NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3,iCF), 1 )
 
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 
@@ -1400,8 +1415,9 @@ CONTAINS
 
           CALL TimersStart_Euler( Timer_Euler_MatrixVectorMultiply )
 
-          CALL DGEMV( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Up, nDOFX_X3, &
-                      NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3-1,iCF), 1 )
+          CALL DGEMV &
+                 ( 'T', nDOFX_X3, nDOFX, - One, LX_X3_Up, nDOFX_X3, &
+                   NumericalFlux(:,iCF), 1, One, dU(:,iX1,iX2,iX3-1,iCF), 1 )
 
           CALL TimersStop_Euler( Timer_Euler_MatrixVectorMultiply )
 

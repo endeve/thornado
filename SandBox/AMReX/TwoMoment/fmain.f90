@@ -9,10 +9,13 @@ PROGRAM main
 
   ! --- Local Modules ---
   USE MF_TwoMoment_UtilitiesModule,     ONLY: & 
-    MF_ComputeTimeStep
+    MF_ComputeTimeStep,                &
+    MF_ComputeFromConserved
   USE MyAmrDataModule,                  ONLY: &
     MF_uCR, &
-    MF_uPR
+    MF_uPR, &
+    MF_uCF, &
+    MF_uGF
   USE InitializationModule,             ONLY: &
     InitializeProgram
   USE FinalizationModule,               ONLY: &
@@ -22,6 +25,10 @@ PROGRAM main
     StepNo,    &
     t,         &
     dt,        &
+    nX,        &
+    xR,        &
+    xL,        &
+    nNodes,    &
     t_end,     &
     CFL,       &
     t_wrt,     &
@@ -33,58 +40,59 @@ PROGRAM main
     iCycleChk, &
     BA,        &
     GEOM
-  USE MF_TimeSteppingModule_IMEX,      ONLY: &
-    MF_UpdateField_IMEX
+  USE MF_TwoMoment_TimeSteppingModule_Relativistic,      ONLY: &
+    MF_Update_IMEX_RK
 
   ! --- thornado Modules ---
   USE InputOutput,           ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint, &
     ReadCheckpointFile
+  USE GeometryFieldsModuleE, ONLY: &
+    uGE
 
   IMPLICIT NONE
 
   CALL InitializeProgram
 
-  print*, 'Yay'
-
-  CALL WriteFieldsAMReX_Checkpoint & 
-      ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
-        MF_uCR % P,  &
-        MF_uPR % P  )
-  
+!  CALL WriteFieldsAMReX_Checkpoint & 
+!      ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
+!        MF_uCR % P,  &
+!        MF_uPR % P  )
+!  
   DO WHILE( ALL( t .LT. t_end ) )
     
     StepNo = StepNo + 1
  
-    CALL MF_ComputeTimeStep( dt )
+    CALL MF_ComputeTimeStep( nX, xR, xL, nNodes, CFL, dt )
     IF( ALL( t + dt .LE. t_end ) )THEN
       t = t + dt
     ELSE
       dt = t_end - [t]
       t  = [t_end]
     END IF
-
-    WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
-      'StepNo: ', StepNo(0), ' t = ', t , &
-      ' dt = ', dt(0) 
-
+    IF( amrex_parallel_ioprocessor() )THEN
+      !WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
+       print*,  'StepNo: ', StepNo(0), ' t = ', t , ' dt = ', dt(0) 
+    END IF
     !this is where the issue is
-    CALL MF_UpdateField_IMEX &
-           ( t, dt, MF_uPR )
+    CALL MF_Update_IMEX_RK &
+           ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, &
+            Verbose_Option = amrex_parallel_ioprocessor()  )
 
   END DO
-  
+ 
+  CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+
   CALL WriteFieldsAMReX_Checkpoint & 
       ( StepNo, nLevels, dt, t, t_wrt, BA % P, &
         MF_uCR % P,  &
         MF_uPR % P  )
 
-    CALL WriteFieldsAMReX_PlotFile &
+  CALL WriteFieldsAMReX_PlotFile &
            ( t(0), StepNo, &
              MF_uCR_Option = MF_uCR, &
              MF_uPR_Option = MF_uPR )
-
 
   CALL FinalizeProgram( GEOM )
   

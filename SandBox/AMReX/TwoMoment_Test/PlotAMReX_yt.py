@@ -27,7 +27,7 @@ THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 #### ========== User Input ==========
 
 # Specify directory containing plotfiles
-ProblemDirectory = THORNADO_DIR + 'SandBox/AMReX/'
+ProblemDirectory = THORNADO_DIR + 'SandBox/AMReX/TwoMoment_Test/'
 
 # Specify name of problem (only used for name of output file(s))
 ProblemName = 'KHI'
@@ -36,7 +36,7 @@ ProblemName = 'KHI'
 PlotFileBaseName = 'thornado'
 
 # Specify field to plot
-VariableToPlot = 'PF_D'
+VariableToPlot = 'CR_N'
 
 # Specify to plot in log-scale
 UseLogScale = False
@@ -52,6 +52,16 @@ aspect = 1.0
 
 # Specify colormap
 cmap = 'jet'
+
+# Specify to write out data to a file
+WriteOut = 1
+# Specify to read in data from a file
+ReadIn = 1
+
+#init or final
+time = 1
+#number of cells
+cells = "8"
 
 # Specify whether or not to make a movie
 MakeMovie, DataFileName, TimeFileName = False, 'MovieData.dat', 'MovieTime.dat'
@@ -103,62 +113,96 @@ CoveringGrid \
 # XXX.to_ndarray() strips array of yt units
 
 DataUnit = ''
-if  ( VariableToPlot == 'PF_D'  ):
-    Data = CoveringGrid['PF_D' ].to_ndarray()
+if  ( VariableToPlot == 'PR_D'  ):
+    Data = CoveringGrid['PR_D_001_001' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**3'
-elif( VariableToPlot == 'PF_V1' ):
-    Data = CoveringGrid['PF_V1'].to_ndarray()
+elif( VariableToPlot == 'PR_I1' ):
+    Data = CoveringGrid['PR_I1_001_001'].to_ndarray()
     if( UsePhysicalUnits ):
-        DataUnit = 'km/s'
-elif( VariableToPlot == 'PF_V2' ):
-    Data = CoveringGrid['PF_V2'].to_ndarray()
+        if  ( CoordinateSystem == 'cartesian' ):
+            DataUnit = 'km/s'
+        elif( CoordinateSystem == 'spherical' ):
+            DataUnit = 'km/s'
+elif( VariableToPlot == 'PR_I2' ):
+    Data = CoveringGrid['PR_I2_001_001'].to_ndarray()
     if( UsePhysicalUnits ):
-        DataUnit = 'km/s'
-elif( VariableToPlot == 'PF_V3' ):
-    Data = CoveringGrid['PF_V3'].to_ndarray()
+        if  ( CoordinateSystem == 'cartesian' ):
+            DataUnit = 'km/s'
+        elif( CoordinateSystem == 'spherical' ):
+            DataUnit = '1/s'
+elif( VariableToPlot == 'PR_I3' ):
+    Data = CoveringGrid['PR_I3_001_001'].to_ndarray()
     if( UsePhysicalUnits ):
-        DataUnit = 'km/s'
-elif( VariableToPlot == 'PF_E'  ):
-    Data = CoveringGrid['PF_E' ].to_ndarray()
-    if( UsePhysicalUnits ):
-        DataUnit = 'erg/cm**3'
-elif( VariableToPlot == 'CF_D'  ):
-    Data = CoveringGrid['CF_D' ].to_ndarray()
+        if  ( CoordinateSystem == 'cartesian' ):
+            DataUnit = 'km/s'
+        elif( CoordinateSystem == 'spherical' ):
+            DataUnit = '1/s'
+elif( VariableToPlot == 'CR_N'  ):
+    Data = CoveringGrid['CR_N _001_001' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**3'
-elif( VariableToPlot == 'CF_S1' ):
-    Data = CoveringGrid['CF_S1'].to_ndarray()
+elif( VariableToPlot == 'CR_G1' ):
+    Data = CoveringGrid['CR_G1_001_001'].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**2/s'
-elif( VariableToPlot == 'CF_S2' ):
-    Data = CoveringGrid['CF_S2'].to_ndarray()
+elif( VariableToPlot == 'CR_G2' ):
+    Data = CoveringGrid['CR_G2_001_001'].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**2/s'
-elif( VariableToPlot == 'CF_S3' ):
-    Data = CoveringGrid['CF_S3'].to_ndarray()
+elif( VariableToPlot == 'CR_I3' ):
+    Data = CoveringGrid['CR_I3_001_001'].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**2/s'
-elif( VariableToPlot == 'CF_E'  ):
-    Data = CoveringGrid['CF_E' ].to_ndarray()
+
+    # Apply boundary conditions to theta elements
+    for j in indX1:
+
+        # North pole
+        k = 0
+        Data[j,k,0] \
+          = 1.0 / X1[j] \
+              * ( ( X1[j+1]**2 * PF_V2[j+1,k] \
+                      - X1[j-1]**2 * PF_V2[j-1,k] ) \
+                  / ( 2.0 * dX1 ) \
+                - ( PF_V1[j,k+1] \
+                      - PF_V1[j,k] ) \
+                  / ( 2.0 * dX2 ) )
+
+        # South pole
+        k = nX[1]-1
+        Data[j,k,0] \
+          = 1.0 / X1[j] \
+              * ( ( X1[j+1]**2 * PF_V2[j+1,k] \
+                      - X1[j-1]**2 * PF_V2[j-1,k] ) \
+                  / ( 2.0 * dX1 ) \
+                - ( PF_V1[j,k] \
+                      - PF_V1[j,k-1] ) \
+                  / ( 2.0 * dX2 ) )
+
     if( UsePhysicalUnits ):
-        DataUnit = 'erg/cm**3'
-elif( VariableToPlot == 'AF_P'  ):
-    Data = CoveringGrid['AF_P' ].to_ndarray()
-    if( UsePhysicalUnits ):
-        DataUnit = 'erg/cm**3'
-elif( VariableToPlot == 'Entropy' ):
-    PF_D  = CoveringGrid['PF_D' ].to_ndarray()
-    AF_P  = CoveringGrid['AF_P' ].to_ndarray()
-    AF_Gm = CoveringGrid['AF_Gm'].to_ndarray()
-    Data  = AF_P / PF_D**AF_Gm
-    if( UsePhysicalUnits ):
-        if( round( AF_Gm[0][0][0], 1 ) == 1.4 ):
-            DataUnit = 'erg/cm**3/(g/cm**3)**({:})'.format( \
-                         AF_Gm[0][0][0] )
-        else:
-            DataUnit = 'erg/cm**3/(g/cm**3)**({:}/3)'.format( \
-                         int( 3 * AF_Gm[0][0][0] ) )
+        DataUnit = '1/s'
+
+
+if  (WriteOut == 1 ):
+    if (time == 1):
+        f = open("thornado" + cells + "fin" + ".txt", "w")
+        f.write("\n".join([",".join([str(n) for n in item]) for item in Data[:,:,0].tolist()]))
+        f.close()
+    if (time == 0):
+        f = open("thornado" + cells + "init" + ".txt", "w")
+        f.write("\n".join([",".join([str(n) for n in item]) for item in Data[:,:,0].tolist()]))
+        f.close()
+
+#if  ( ReadIn == 1 ):
+#    dataList = [[float(s) for s in item.strip().split(",")] for item in open("numpytest.txt").readlines()]
+#    rows = len(dataList)
+#    cols = len(dataList[0])
+#    arr1 = np.zeros([rows,cols], dtype=np.float64)
+#    for i, row in enumerate(dataList):
+#        for j, number in enumerate(row):
+#            arr1[i][j] = number
+#
 
 if  ( nDims == 1 ):
 

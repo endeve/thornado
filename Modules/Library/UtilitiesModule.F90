@@ -5,6 +5,13 @@ MODULE UtilitiesModule
   USE ProgramHeaderModule, ONLY: &
     nNodesX, nNodesE
 
+#if defined USE_AMREX_TRUE
+
+    USE amrex_error_module, ONLY: &
+      amrex_abort
+
+#endif
+
   IMPLICIT NONE
   PRIVATE
 
@@ -387,9 +394,6 @@ CONTAINS
   SUBROUTINE thornado_abort
 
 #if defined USE_AMREX_TRUE
-
-    USE amrex_error_module, ONLY: &
-      amrex_abort
 
     CALL amrex_abort('')
 

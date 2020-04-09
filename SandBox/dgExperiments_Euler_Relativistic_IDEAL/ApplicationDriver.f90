@@ -42,7 +42,7 @@ PROGRAM ApplicationDriver
   USE GeometryFieldsModule, ONLY: &
     nGF, uGF
   USE Euler_dgDiscretizationModule, ONLY: &
-    Euler_ComputeIncrement_DG_Explicit
+    ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
@@ -104,6 +104,7 @@ PROGRAM ApplicationDriver
                            rPerturbationInner, rPerturbationOuter
 
   LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
+  LOGICAL  :: ActivateUnits = .FALSE.
   REAL(DP) :: Timer_Evolution
 
   RestartFileNumber = -1
@@ -115,8 +116,8 @@ PROGRAM ApplicationDriver
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
 !  ProgramName = 'Advection'
-  ProgramName = 'Advection2D'
-!  ProgramName = 'RiemannProblem'
+!  ProgramName = 'Advection2D'
+  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2D'
 !  ProgramName = 'RiemannProblemSpherical'
 !  ProgramName = 'SedovTaylorBlastWave'
@@ -139,8 +140,6 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      WriteGF = .FALSE.
-
     CASE( 'Advection2D' )
 
       AdvectionProfile = 'SineWaveX1'
@@ -155,16 +154,26 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      WriteGF = .FALSE.
-
     CASE( 'RiemannProblem' )
 
-      RiemannProblemName = 'PerturbedShockTube'
+      RiemannProblemName = 'Sod'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
         CASE( 'Sod' )
+
           Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.2d0
+          bcX   = [ 2, 0, 0 ]
+
+        CASE( 'IsolatedShock' )
+
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 0.1_DP
+          bcX   = [ 2, 0, 0 ]
+
+        CASE( 'Contact' )
+          Gamma = 4.0_DP / 3.0_DP
           t_end = 0.2d0
           bcX   = [ 2, 0, 0 ]
 
@@ -194,6 +203,8 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A21,A)') 'Invalid RiemannProblemName: ', RiemannProblemName
           WRITE(*,'(A)')     'Valid choices:'
           WRITE(*,'(A)')     '  Sod'
+          WRITE(*,'(A)')     '  IsolatedShock'
+          WRITE(*,'(A)')     '  Contact'
           WRITE(*,'(A)')     '  MBProblem1'
           WRITE(*,'(A)')     '  MBProblem4'
           WRITE(*,'(A)')     '  PerturbedShockTube'
@@ -211,7 +222,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'RiemannProblem2D' )
 
-      RiemannProblemName = 'DzB2002'
+      RiemannProblemName = 'IsolatedShock'
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
@@ -219,6 +230,12 @@ PROGRAM ApplicationDriver
 
           Gamma = 5.0_DP / 3.0_DP
           t_end = 0.4d0
+          bcX   = [ 2, 2, 0 ]
+
+        CASE( 'IsolatedShock' )
+
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 25.0_DP
           bcX   = [ 2, 2, 0 ]
 
       END SELECT
@@ -302,11 +319,13 @@ PROGRAM ApplicationDriver
       xL = [ RadiusPNS, 0.0_DP, 0.0_DP ]
       xR = [ Two * ShockRadius, Pi, TwoPi ]
 
-      bcX = [ 110, 0, 0 ]
+      bcX = [ 11, 0, 0 ]
 
       t_end = 3.0d2 * Millisecond
 
       WriteGF = .TRUE.
+
+      ActivateUnits = .TRUE.
 
     CASE DEFAULT
 
@@ -349,13 +368,6 @@ PROGRAM ApplicationDriver
   Min_1 = 1.0d-13
   Min_2 = 1.0d-13
 
-  iCycleD = 10
-!!$  iCycleW = 10; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * t_end; iCycleW = -1
-
-  IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
-    STOP 'dt_wrt and iCycleW cannot both be present'
-
   nStagesSSPRK = nNodes
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
@@ -380,6 +392,8 @@ PROGRAM ApplicationDriver
              = nNodes, &
            CoordinateSystem_Option &
              = TRIM( CoordinateSystem ), &
+           ActivateUnits_Option &
+             = ActivateUnits, &
            BasicInitialization_Option &
              = .TRUE. )
 
@@ -447,8 +461,12 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  CALL WriteFieldsHDF &
-         ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+  iCycleD = 10
+!!$  iCycleW = 10; dt_wrt = -1.0d0
+  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+
+  IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
+    STOP 'dt_wrt and iCycleW cannot both be present'
 
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
@@ -458,7 +476,7 @@ PROGRAM ApplicationDriver
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
-  IF( .NOT. OPTIMIZE )THEN
+  IF( .NOT. OPTIMIZE .AND. RestartFileNumber .LT. 0 )THEN
 
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
 
@@ -466,7 +484,7 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
     CALL WriteFieldsHDF &
-         ( 0.0_DP, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
@@ -474,7 +492,6 @@ PROGRAM ApplicationDriver
 
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-  WRITE(*,*)
   WRITE(*,*)
   WRITE(*,'(A2,A)') '', 'Begin evolution'
   WRITE(*,'(A2,A)') '', '---------------'
@@ -504,10 +521,14 @@ PROGRAM ApplicationDriver
              dt )
 
     IF( t + dt .LT. t_end )THEN
+
       t = t + dt
+
     ELSE
+
       dt = t_end - t
       t  = t_end
+
     END IF
 
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
@@ -532,7 +553,7 @@ PROGRAM ApplicationDriver
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, uDF, Euler_ComputeIncrement_DG_Explicit )
+           ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit )
 
     IF( .NOT. OPTIMIZE )THEN
 
@@ -546,6 +567,7 @@ PROGRAM ApplicationDriver
       ELSE
 
         IF( t + dt .GT. t_wrt )THEN
+
           t_wrt = t_wrt + dt_wrt
           wrt   = .TRUE.
 

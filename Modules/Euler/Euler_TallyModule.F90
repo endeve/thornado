@@ -40,11 +40,6 @@ CONTAINS
     CALL InitializeTally_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, G, U, SuppressTally )
 
-#elif defined HYDRO_NONRELATIVISTIC
-
-    CALL InitializeTally_Euler_NonRelativistic_IDEAL &
-           ( iX_B0, iX_E0, G, U, SuppressTally )
-
 #elif defined HYDRO_RELATIVISTIC
 
     CALL InitializeTally_Euler_Relativistic_IDEAL &
@@ -65,10 +60,6 @@ CONTAINS
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
     CALL FinalizeTally_Euler_NonRelativistic_TABLE
-
-#elif defined HYDRO_NONRELATIVISTIC
-
-    CALL FinalizeTally_Euler_NonRelativistic_IDEAL
 
 #elif defined HYDRO_RELATIVISTIC
 
@@ -104,11 +95,6 @@ CONTAINS
     CALL ComputeTally_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
 
-
-#elif defined HYDRO_NONRELATIVISTIC
-
-    CALL ComputeTally_Euler_NonRelativistic_IDEAL &
-           ( iX_B0, iX_E0, G, U, Time, iState_Option, DisplayTally_Option )
 
 #elif defined HYDRO_RELATIVISTIC
 

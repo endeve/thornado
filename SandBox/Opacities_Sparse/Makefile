@@ -32,11 +32,23 @@ all: NeutrinoOpacities
 NeutrinoOpacities: \
 	$(weaklib) \
 	$(thornado) \
+	NeutrinoOpacitiesSparseComputationModule.o \
 	NeutrinoOpacities.o
 	$(FLINKER) $(FLAGS) -o NeutrinoOpacities_$(MACHINE) \
 	$(weaklib) \
 	$(thornado) \
+	NeutrinoOpacitiesSparseComputationModule.o \
 	NeutrinoOpacities.o \
+	$(LIBRARIES)
+
+TasmanianTest: \
+	$(weaklib) \
+	$(thornado) \
+	example_sparse_grids.o
+	$(FLINKER) $(FLAGS) -o TasmanianTest_$(MACHINE) \
+	$(weaklib) \
+	$(thornado) \
+	example_sparse_grids.o \
 	$(LIBRARIES)
 
 clean:
@@ -44,6 +56,36 @@ clean:
 
 clobber: clean
 	rm -f NeutrinoOpacities_$(MACHINE)
+	rm -f TasmanianTest_$(MACHINE)
 
 NeutrinoOpacities.o: \
+	KindModule.o \
+	UnitsModule.o \
+	ProgramInitializationModule.o \
+	MeshModule.o \
+	UtilitiesModule.o \
+	EquationOfStateModule_TABLE.o \
+	OpacityModule_TABLE.o \
+	RadiationFieldsModule.o \
+	NeutrinoOpacitiesComputationModule.o \
+	DeviceModule.o \
+	NeutrinoOpacitiesSparseComputationModule.o \
   NeutrinoOpacities.f90
+
+NeutrinoOpacitiesSparseComputationModule.o: \
+	KindModule.o \
+	UnitsModule.o \
+	ProgramHeaderModule.o \
+	DeviceModule.o \
+	LinearAlgebraModule.o \
+	ReferenceElementModuleX.o \
+	ReferenceElementModule.o \
+	MeshModule.o \
+	EquationOfStateModule_TABLE.o \
+	OpacityModule_TABLE.o \
+	RadiationFieldsModule.o \
+	NeutrinoOpacitiesModule.o \
+	NeutrinoOpacitiesSparseComputationModule.F90
+
+example_sparse_grids.o: \
+  example_sparse_grids.f90
