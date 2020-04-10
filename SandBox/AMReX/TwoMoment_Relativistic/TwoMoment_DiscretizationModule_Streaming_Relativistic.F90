@@ -922,7 +922,8 @@ CONTAINS
     REAL(DP) :: Vsq_X1, Vsq_K
     CHARACTER(len=40) :: name1, name2
     CHARACTER(len=1):: nds
-    CHARACTER(len=3)::nxn
+    CHARACTER(len=2)::nxn1
+    CHARACTER(len=3)::nxn2
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) )THEN
       dWV_u_dX1_Out = Zero
@@ -947,18 +948,23 @@ CONTAINS
     END IF 
 
     IF ( nX == 32) THEN
-      nxn="32"
+      nxn1="32"
     ELSE IF( nX == 64) THEN
-      nxn="64"
+      nxn1="64"
     ELSE IF (nX == 128) THEN
-      nxn="128"
+      nxn2="128"
     ELSE
-      nxn="256"
+      nxn2="256"
     END IF 
+    
+    IF (nX==32 .OR. nX==64) THEN
+      name1="dWdX"//nds//nxn1//".txt"
+      name2="dWvdX"//nds//nxn1//".txt"
+    ELSE 
+      name1='dWdX'//nds//nxn2//'.txt'
+      name2="dWvdX"//nds//nxn2//".txt"
+    END IF
 
-
-    name1="dWdX"//nds//nxn//".txt"
-    name2="dWvdX"//nds//nxn//".txt"
     print*, name1
     print*, name2
     name1=trim(name1)
