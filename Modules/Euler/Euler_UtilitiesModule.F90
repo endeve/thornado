@@ -1,7 +1,7 @@
 MODULE Euler_UtilitiesModule
 
   USE KindModule,           ONLY: &
-    DP
+    DP, Half
   USE ProgramHeaderModule,  ONLY: &
     nDOFX
   USE GeometryFieldsModule, ONLY: &
