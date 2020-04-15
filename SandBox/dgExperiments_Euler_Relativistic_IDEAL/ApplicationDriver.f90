@@ -169,12 +169,12 @@ PROGRAM ApplicationDriver
         CASE( 'IsolatedShock' )
 
           Gamma = 4.0_DP / 3.0_DP
-          t_end = 0.1_DP
+          t_end = 2.0e1_DP
           bcX   = [ 2, 0, 0 ]
 
-        CASE( 'Contact' )
+        CASE( 'IsolatedContact' )
           Gamma = 4.0_DP / 3.0_DP
-          t_end = 0.2d0
+          t_end = 2.0e1_DP
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'MBProblem1' )
@@ -204,7 +204,7 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A)')     'Valid choices:'
           WRITE(*,'(A)')     '  Sod'
           WRITE(*,'(A)')     '  IsolatedShock'
-          WRITE(*,'(A)')     '  Contact'
+          WRITE(*,'(A)')     '  IsolatedContact'
           WRITE(*,'(A)')     '  MBProblem1'
           WRITE(*,'(A)')     '  MBProblem4'
           WRITE(*,'(A)')     '  PerturbedShockTube'
@@ -356,13 +356,13 @@ PROGRAM ApplicationDriver
   SlopeTolerance            = 1.0d-6
   UseCharacteristicLimiting = .TRUE.
 
-  UseTroubledCellIndicator  = .FALSE.
+  UseTroubledCellIndicator  = .TRUE.
 
   SlopeLimiterMethod        = 'TVD'
 
-  LimiterThresholdParameter = 0.0_DP
+  LimiterThresholdParameter = 0.01_DP
 
-  UseConservativeCorrection = .FALSE.
+  UseConservativeCorrection = .TRUE.
 
   UsePositivityLimiter = .TRUE.
   Min_1 = 1.0d-13

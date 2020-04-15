@@ -345,7 +345,7 @@ CONTAINS
             u0(qNodeX,iPF_D) = 1.0d0 + theta * COS( TwoPi * X ) &
                                  + ( One - theta ) * SIN( TwoPi * X )
 
-          CASE( 'Contact' )
+          CASE( 'IsolatedContact' )
 
             IF( X .LT. Zero )THEN
 
@@ -631,18 +631,19 @@ CONTAINS
         LeftState(iPF_V2) = 0.0_DP
         LeftState(iPF_V3) = 0.0_DP
 
-      CASE( 'Contact' )
+      CASE( 'IsolatedContact' )
 
+        Vs = 0.01_DP
         XD = 0.5_DP
 
-        LeftState(iPF_D ) = 1.0_DP
-        LeftState(iPF_V1) = 0.0_DP
+        LeftState(iPF_D ) = 5.9718209694880811e0_DP
+        LeftState(iPF_V1) = Vs
         LeftState(iPF_V2) = 0.0_DP
         LeftState(iPF_V3) = 0.0_DP
         LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
 
-        RightState(iPF_D ) = 0.1_DP
-        RightState(iPF_V1) = 0.0_DP
+        RightState(iPF_D ) = 1.0_DP
+        RightState(iPF_V1) = Vs
         RightState(iPF_V2) = 0.0_DP
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
