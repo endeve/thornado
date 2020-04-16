@@ -1489,7 +1489,7 @@ CONTAINS
           + W * ( V_u_1 * V_u_1 * W_ddd_211 + V_u_1 * V_u_2 * W_ddd_212 + V_u_1 * V_u_3 * W_ddd_213 & 
           + V_u_2 * V_u_1 * W_ddd_221 + V_u_2 * V_u_2 * W_ddd_222 + V_u_2 * V_u_3 * W_ddd_223 & 
           + V_u_3 * V_u_1 * W_ddd_231 + V_u_3 * V_u_2 * W_ddd_232 + V_u_3 * V_u_3 * W_ddd_233 )
-    Y_d_3 = Y_d_3 / W
+    Y_d_2 = Y_d_2 / W
 
     Y_d_3 = F_d_3 + ( V_u_1 * S_dd_31 + V_u_2 * S_dd_32 + V_u_3 * S_dd_33 ) &
           + W * ( V_u_1 * V_u_1 * W_ddd_311 + V_u_1 * V_u_2 * W_ddd_312 + V_u_1 * V_u_3 * W_ddd_313 & 
@@ -1717,7 +1717,6 @@ CONTAINS
       WT_udd_332, WT_udd_333
 
     REAL(DP) :: W, V_d_1, V_d_2, V_d_3
-
     W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
                + Gm_dd_22 * V_u_2 * V_u_2 &  
                + Gm_dd_33 * V_u_3 * V_u_3) )
@@ -1726,6 +1725,8 @@ CONTAINS
     V_d_2 = Gm_dd_22 * V_u_2
     V_d_3 = Gm_dd_33 * V_u_3
 
+
+!have XYZ have W as variables so I dont have to calculate them mroe than once
     CALL ComputeXYZ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                          alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, &
                          X, Y_d_1, Y_d_2, Y_d_3, Z_ud_11, Z_ud_12, Z_ud_13, Z_ud_21, Z_ud_22, & 
@@ -1735,6 +1736,7 @@ CONTAINS
                     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, V_u_1, V_u_2, V_u_3, &
                       alp, B_u_1, B_u_2, B_u_3, EP, F_u_1, F_u_2, F_u_3, &
                       S_ud_11, S_ud_22, S_ud_33, S_ud_12, S_ud_13, S_ud_23, S_ud_21, S_ud_31, S_ud_32 )
+
     CALL ComputeHeatFluxTensorComponents_udd_Eulerian &
                     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                       alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, &
