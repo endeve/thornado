@@ -96,7 +96,7 @@ MODULE MF_InitializationModule
     ComputeConserved_TwoMoment 
   USE TwoMoment_OpacityModule_Relativistic, ONLY: &
     uOP, &
-    iOP_Sigma 
+    iOP_Sigma
 ! --- Local Modules ---
   USE MyAmrModule, ONLY: &
     nLevels, &
@@ -578,6 +578,40 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(AR)                      :: Ones(nDOFE), W, Third
+    CHARACTER(len=40) :: name1
+    CHARACTER(len=1):: nds
+    CHARACTER(len=2)::nxn1
+    CHARACTER(len=3)::nxn2
+
+
+!    IF ( nDOFX == 1) THEN
+!      nds="1"
+!    ELSE IF( nDOFX == 2) THEN
+!      nds="2"
+!    ELSE
+!      nds="3"
+!    END IF 
+!
+!    IF ( nX(1) == 32) THEN
+!      nxn1="32"
+!    ELSE IF( nX(1) == 64) THEN
+!      nxn1="64"
+!    ELSE IF (nX(1) == 128) THEN
+!      nxn2="128"
+!    ELSE
+!      nxn2="256"
+!    END IF 
+!
+!    
+!
+!    print*, name1
+!    IF (nX(1)==32 .OR. nX(1)==64) THEN
+!      name1='X'//nds//nxn1//'.txt'
+!    ELSE
+!      name1='X'//nds//nxn2//'.txt'
+!    END IF
+!    name1=trim(name1)
+!
 
     uCR_K = Zero
     uPF_K = Zero
@@ -591,7 +625,10 @@ CONTAINS
   
     W = 1.0_AR - ( V_0(1)*V_0(1) + V_0(2)*V_0(2) + V_0(3)*V_0(3) )
     W = 1.0_AR / SQRT( W )
-   
+  
+
+
+ 
     DO iDim = 1, 3
 
       CALL CreateMesh &
@@ -620,7 +657,7 @@ CONTAINS
 
         lo_F = LBOUND( uCF )
         hi_F = UBOUND( uCF )
-
+!   open(1, file = name1, status = 'new') 
         DO iX3 = BX % lo(3), BX % hi(3)
         DO iX2 = BX % lo(2), BX % hi(2)
         DO iX1 = BX % lo(1), BX % hi(1)         
@@ -635,8 +672,7 @@ CONTAINS
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
             uPF_K(iNodeX,iPF_D ) = 1.0_AR
-            uPF_K(iNodeX,iPF_V1) = V_0(1)
-
+            
             IF( X1 .LT. X_0 )THEN
               uPF_K(iNodeX,iPF_V1) &
                 = 0.0_AR
@@ -653,8 +689,10 @@ CONTAINS
               uPF_K(iNodeX,iPF_V1) &
                 = 0.0_AR
             END IF
+     !     
+ 
 
-
+ !     write(1,*) X1
             uPF_K(iNodeX,iPF_V2) = V_0(2)
             uPF_K(iNodeX,iPF_V3) = V_0(3)
             uPF_K(iNodeX,iPF_E ) = 0.1_AR
@@ -726,8 +764,6 @@ CONTAINS
                      uGF_K(iNodeX,iGF_Gm_dd_33), &
                      0.0_AR, 0.0_AR, 0.0_AR,     &                     
                      1.0_AR, 0.0_AR, 0.0_AR, 0.0_AR )
-
-              
             END DO
             END DO
 !Reshape here instead of up top look at Hydro example
@@ -746,7 +782,7 @@ CONTAINS
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
-
+   !issue with this is MF doesnt carry ghost cells
     CALL SetInnerBoundary_StreamingDopplerShift( MF_uGF, MF_uCR, MF_uCF )
 !going to need to change this for paralellization
 
@@ -795,7 +831,6 @@ CONTAINS
 
     Ones=1.0_AR
 
-   
     DO iDim = 1, 3
 
       CALL CreateMesh &
@@ -828,7 +863,6 @@ CONTAINS
         DO iX3 = BX % lo(3), BX % hi(3)
         DO iX2 = BX % lo(2), BX % hi(2)
         DO iX1 = iX_B1(1), iX_B1(1)         
-          
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
@@ -886,7 +920,7 @@ CONTAINS
                 =  1.0_AR / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR ) 
             
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                = 0.999_AR * uPR_K(iNodeZ,iZ1,iPR_I1 ,iS)
+                = 0.999_AR * uPR_K(iNodeZ,iZ1,iPR_D ,iS)
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
                 = 0.0_AR
               uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &

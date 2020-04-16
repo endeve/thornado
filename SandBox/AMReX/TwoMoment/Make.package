@@ -101,7 +101,8 @@ f90EXE_sources += MyAmrDataModule.f90
 f90EXE_sources += MyAmrModule.f90
 f90EXE_sources += MF_TwoMoment_UtilitiesModule.f90
 f90EXE_sources += MF_TwoMoment_DiscretizationModule_Streaming_Relativistic.f90 
-f90EXE_sources += MF_TwoMoment_DiscretizationModule_Collisions_Relativistic.f90 
+f90EXE_sources += MF_TwoMoment_DiscretizationModule_Collisions_Relativistic.f90
+f90EXE_sources += MF_TwoMoment_BoundaryConditionsModule.f90
 F90EXE_sources += MF_TwoMoment_TimeSteppingModule_Relativistic.F90
 CEXE_sources   += Restart.cpp
 

@@ -37,7 +37,10 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     nLevels, &
     nSpecies, &
     nE
-
+  USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
+    EdgeMap,          &
+    ConstructEdgeMap, &
+    MF_ApplyBoundaryConditions_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
@@ -72,10 +75,12 @@ CONTAINS
 
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i
+    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i, iZ2, iZ1
 
 
     LOGICAL :: Verbose
+
+    TYPE(EdgeMap) :: Edge_Map
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -176,10 +181,16 @@ CONTAINS
                            iZ_B1(2):iZ_E1(2), &
                            iZ_B1(3):iZ_E1(3), &
                            iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+        
 
+        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )        
+
+        CALL MF_ApplyBoundaryConditions_TwoMoment &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
         CALL ComputeIncrement_TwoMoment_Explicit &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, Verbose_Option = Verbose )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, Verbose_Option = Verbose, &
+               SuppressBC_Option = .TRUE.  )
 
         CALL thornado2AMReX &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, iX_B0, iX_E0, &
@@ -196,6 +207,8 @@ CONTAINS
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
+
+
 
   END SUBROUTINE MF_TwoMoment_ComputeIncrement_Explicit
 
