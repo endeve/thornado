@@ -59,8 +59,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE Euler_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_Euler
+  USE Euler_BoundaryConditionsModule_Relativistic, ONLY: &
+    ApplyBoundaryConditions_Euler_Relativistic
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
   USE RadiationFieldsModule, ONLY: &
@@ -70,8 +70,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
     EddingtonFactor
-  USE TwoMoment_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_TwoMoment
+  USE TwoMoment_BoundaryConditionsModule_Relativistic, ONLY: &
+    ApplyBoundaryConditions_TwoMoment_Relativistic
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_TwoMoment, &
     Flux_X1, &
@@ -97,7 +97,6 @@ CONTAINS
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, Verbose_Option, SuppressBC_Option  )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
-
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)    :: &
@@ -161,10 +160,10 @@ CONTAINS
         dZ4 => MeshX(3) % Width )
 
 
-    CALL ApplyBoundaryConditions_Euler &
+    CALL ApplyBoundaryConditions_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
     IF( .NOT. SuppressBC ) &
-      CALL ApplyBoundaryConditions_TwoMoment &
+      CALL ApplyBoundaryConditions_TwoMoment_Relativistic &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
 
 
@@ -1122,8 +1121,6 @@ CONTAINS
 
       DO iNode = 1, nDOF_E ! = nDOFX
         ! --- Left State Primitive --
-        print*, iZ1,iZ2,iZ3,iZ4
-        print*, uCR_L(iNode,:,iZ2,iZ3,iZ4,iS,iZ1)
         CALL ComputePrimitive_TwoMoment &
                ( uCR_L(iNode,iCR_N       ,iZ2,iZ3,iZ4,iS,iZ1), &
                  uCR_L(iNode,iCR_G1      ,iZ2,iZ3,iZ4,iS,iZ1), &
