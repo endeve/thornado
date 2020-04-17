@@ -12,8 +12,8 @@
 
   ! --- thornado Modules ---
 
-  USE TwoMoment_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_TwoMoment
+  USE TwoMoment_BoundaryConditionsModule_Relativistic, ONLY: &
+    ApplyBoundaryConditions_TwoMoment_Relativistic
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR
@@ -66,7 +66,7 @@ CONTAINS
 
     IF( DEBUG ) WRITE(*,'(A)') '      CALL ApplyBoundaryConditions_TwoMoment'
 
-    CALL ApplyBoundaryConditions_TwoMoment &
+    CALL ApplyBoundaryConditions_TwoMoment_Relativistic &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
   END SUBROUTINE MF_ApplyBoundaryConditions_TwoMoment
