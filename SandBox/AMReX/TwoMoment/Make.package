@@ -114,5 +114,4 @@ F90EXE_sources += TwoMoment_UtilitiesModule_Relativistic.F90
 F90EXE_sources += TwoMoment_DiscretizationModule_Streaming_Relativistic.F90
 F90EXE_sources += TwoMoment_DiscretizationModule_Collisions_Relativistic.F90
 F90EXE_sources += TwoMoment_OpacityModule_Relativistic.F90
-F90EXE_sources += TwoMoment_BoundaryConditionsModule_Relativistic.F90
 F90EXE_sources += Euler_BoundaryConditionsModule_Relativistic.F90
