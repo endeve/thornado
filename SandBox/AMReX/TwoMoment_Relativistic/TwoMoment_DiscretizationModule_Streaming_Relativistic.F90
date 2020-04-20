@@ -70,8 +70,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming_Relativistic
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
     EddingtonFactor
-  USE TwoMoment_BoundaryConditionsModule_Relativistic, ONLY: &
-    ApplyBoundaryConditions_TwoMoment_Relativistic
+  USE TwoMoment_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_TwoMoment
   USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_TwoMoment, &
     Flux_X1, &
@@ -163,7 +163,7 @@ CONTAINS
     CALL ApplyBoundaryConditions_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
     IF( .NOT. SuppressBC ) &
-      CALL ApplyBoundaryConditions_TwoMoment_Relativistic &
+      CALL ApplyBoundaryConditions_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
 
 
