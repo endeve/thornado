@@ -1,15 +1,19 @@
-MODULE TwoMoment_BoundaryConditionsModule
+MODULE TwoMoment_BoundaryConditionsModule_Relativistic
 
   USE KindModule, ONLY: &
     DP
   USE ProgramHeaderModule, ONLY: &
     bcZ, swZ, &
-    nNodesZ, nDOF, nDOFE
+    nNodesZ, nDOF
   USE ReferenceElementModule, ONLY: &
     NodeNumberTable4D
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    nCR,iCR_N, iCR_G1, iCR_G2, iCR_G3
+    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
+    nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
+  USE ProgramHeaderModule,              ONLY: &
+    nDOFX,                  &
+    nDOFE
   USE MeshModule,              ONLY: &
     MeshType,    &
     CreateMesh,  &
@@ -17,16 +21,15 @@ MODULE TwoMoment_BoundaryConditionsModule
     MeshX,          &
     MeshE,          &
     NodeCoordinate
-
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ApplyBoundaryConditions_TwoMoment
+  PUBLIC :: ApplyBoundaryConditions_TwoMoment_Relativistic
 
 CONTAINS
 
 
-  SUBROUTINE ApplyBoundaryConditions_TwoMoment &
+  SUBROUTINE ApplyBoundaryConditions_TwoMoment_Relativistic &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
@@ -69,7 +72,7 @@ CONTAINS
     !$ACC DELETE( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 #endif
 
-  END SUBROUTINE ApplyBoundaryConditions_TwoMoment
+  END SUBROUTINE ApplyBoundaryConditions_TwoMoment_Relativistic
 
 
   SUBROUTINE ApplyBC_TwoMoment_E( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
@@ -180,8 +183,6 @@ CONTAINS
       END DO
       END DO
 
-
-
     CASE DEFAULT
 
       WRITE(*,*)
@@ -208,9 +209,8 @@ CONTAINS
 
     INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
-    INTEGER :: jNodeZ2, iNodeZ, jNodeZ, iNodeE
+    INTEGER :: jNodeZ2, iNodeZ, jNodeZ, iNodeE, iNodeX
     REAL(DP):: E
-
     SELECT CASE ( bcZ(2) )
 
     CASE ( 0 ) ! No Boundary Condition
@@ -468,23 +468,25 @@ CONTAINS
                 DO iZ1 = iZ_B0(1), iZ_E0(1)
                   DO iNode = 1, nDOF
 
+                    iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
                     iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
 
+                    iNodeZ = (iNodeX-1) * nDOFE + iNodeE
 
                     E = NodeCoordinate( MeshE, iZ1, iNodeE )
 
                     ! --- Inner Boundary ---
-                    U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)  &
+                    U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_N,iS)  &
                       =  1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP ) 
             
-                    U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G1,iS)  &
-                      = 0.999_DP * U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)
+                    U( iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_G1,iS)  &
+                      = 0.999_DP * U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_N,iS)
 
-                    U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G2,iS) &
+                    U( iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_G2,iS) &
                       = 0.0_DP
 
-                    U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G3,iS) &
+                    U( iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_G3,iS) &
                       = 0.0_DP
 
 
@@ -1075,4 +1077,4 @@ CONTAINS
   END SUBROUTINE ApplyBC_TwoMoment_X3
 
 
-END MODULE TwoMoment_BoundaryConditionsModule
+END MODULE TwoMoment_BoundaryConditionsModule_Relativistic
