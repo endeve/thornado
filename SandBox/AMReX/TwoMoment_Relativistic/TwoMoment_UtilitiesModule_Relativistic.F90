@@ -23,6 +23,7 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
   PUBLIC :: Flux_X2
   PUBLIC :: Flux_X3
   PUBLIC :: Flux_E
+  PUBLIC :: Flux_G
   PUBLIC :: NumericalFlux_LLF
 
 CONTAINS
@@ -1675,7 +1676,7 @@ CONTAINS
                       dWV_u_1_dX1, dWV_u_2_dX1, dWV_u_3_dX1, &
                       dWV_u_1_dX2, dWV_u_2_dX2, dWV_u_3_dX2, &
                       dWV_u_1_dX3, dWV_u_2_dX3, dWV_u_3_dX3 )
-
+! negative sign has been incorperated into Flux_E
 
     REAL(DP)             :: Flux_E(4)
     REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
@@ -1794,6 +1795,9 @@ CONTAINS
                + ( S_ud_11 * dWV_u_1_dX1 + S_ud_12 * dWV_u_2_dX1 + S_ud_13 * dWV_u_3_dX1 & 
                + S_ud_21 * dWV_u_1_dX2 + S_ud_22 * dWV_u_2_dX2 + S_ud_23 * dWV_u_3_dX2 & 
                + S_ud_31 * dWV_u_1_dX3 + S_ud_32 * dWV_u_2_dX3 + S_ud_33 * dWV_u_3_dX3 ) 
+    
+    Flux_E(1) = -Flux_E(1)
+
 
     Flux_E(2) = - ( alp * ZT_ud_11 - YT_d_1 * B_u_1 ) * dW_dX1 &
                 - ( alp * ZT_ud_21 - YT_d_1 * B_u_2 ) * dW_dX2 &
@@ -1803,7 +1807,7 @@ CONTAINS
                 + alp * WT_udd_212 * dWV_u_2_dX2 + alp * WT_udd_213 * dWV_u_3_dX2& 
                 + alp * WT_udd_311 * dWV_u_1_dX3 + alp * WT_udd_312 * dWV_u_2_dX3& 
                 + alp * WT_udd_313 * dWV_u_3_dX3
-    Flux_E(2) = Flux_E(2) / alp
+    Flux_E(2) = -Flux_E(2) / alp
 
     Flux_E(3) = - ( alp * ZT_ud_12 - YT_d_2 * B_u_1 ) * dW_dX1 &
                 - ( alp * ZT_ud_22 - YT_d_2 * B_u_2 ) * dW_dX2 &
@@ -1813,7 +1817,7 @@ CONTAINS
                 + alp * WT_udd_222 * dWV_u_2_dX2 + alp * WT_udd_223 * dWV_u_3_dX2& 
                 + alp * WT_udd_321 * dWV_u_1_dX3 + alp * WT_udd_322 * dWV_u_2_dX3& 
                 + alp * WT_udd_323 * dWV_u_3_dX3
-    Flux_E(3) = Flux_E(3) / alp
+    Flux_E(3) = -Flux_E(3) / alp
 
     Flux_E(4) = - ( alp * ZT_ud_13 - YT_d_3 * B_u_1 ) * dW_dX1 &
                 - ( alp * ZT_ud_23 - YT_d_3 * B_u_2 ) * dW_dX2 &
@@ -1824,7 +1828,7 @@ CONTAINS
                 + alp * WT_udd_331 * dWV_u_1_dX3 + alp * WT_udd_332 * dWV_u_2_dX3& 
                 + alp * WT_udd_333 * dWV_u_3_dX3
 
-    Flux_E(4) = Flux_E(4) / alp
+    Flux_E(4) = -Flux_E(4) / alp
 
     RETURN
 
@@ -1842,5 +1846,44 @@ CONTAINS
     RETURN
   END FUNCTION NumericalFlux_LLF
 
+  FUNCTION Flux_G( D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                      alp, B_u_1, B_u_2, B_u_3 )
+
+    REAL(DP)             :: Flux_G(3)
+    REAL(DP), INTENT(in) :: D, I_u_1, I_u_2, I_u_3
+    REAL(DP), INTENT(in) ::    V_u_1, V_u_2, V_u_3
+    REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(in) :: alp, B_u_1, B_u_2, B_u_3
+
+    REAL(DP) :: W, DT, I_d_1, I_d_2, I_d_3, B_d_1, B_d_2, B_d_3, vI
+
+    W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
+               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_33 * V_u_3 * V_u_3) )
+
+
+
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
+
+    DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
+
+    I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+    I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+    I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
+          - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
+
+    vI = V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3
+
+
+   Flux_G(1) = I_u_1 + W * D * V_u_1 - ( B_u_1 / alp ) * vI
+   Flux_G(2) = I_u_2 + W * D * V_u_2 - ( B_u_2 / alp ) * vI
+   Flux_G(3) = I_u_3 + W * D * V_u_3 - ( B_u_3 / alp ) * vI
+
+
+   END FUNCTION Flux_G
 
 END MODULE TwoMoment_UtilitiesModule_Relativistic
