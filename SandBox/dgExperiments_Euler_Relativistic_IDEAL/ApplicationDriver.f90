@@ -34,7 +34,8 @@ PROGRAM ApplicationDriver
     ComputeTimeStep_Euler_Relativistic
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
-    ReadFieldsHDF
+    ReadFieldsHDF,  &
+    WriteAccretionShockDiagnosticsHDF
   USE FluidFieldsModule, ONLY: &
     nCF, nPF, nAF, &
     uCF, uPF, uAF, &
@@ -60,6 +61,8 @@ PROGRAM ApplicationDriver
     Timer_Euler_InputOutput, &
     Timer_Euler_Initialize, &
     Timer_Euler_Finalize
+  USE AccretionShockDiagnosticsModule, ONLY: &
+    ComputePowerInLegendreModes
 
   IMPLICIT NONE
 
@@ -102,6 +105,7 @@ PROGRAM ApplicationDriver
   INTEGER               :: PerturbationOrder
   REAL(DP)              :: PerturbationAmplitude, &
                            rPerturbationInner, rPerturbationOuter
+  REAL(DP)              :: Power(0:2)
 
   LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
@@ -598,6 +602,18 @@ PROGRAM ApplicationDriver
         wrt = .FALSE.
 
       END IF
+    END IF
+
+    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
+
+      CALL ComputeFromConserved_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+      CALL ComputePowerInLegendreModes &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
+
+      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+
     END IF
 
   END DO
