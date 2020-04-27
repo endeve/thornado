@@ -141,6 +141,8 @@ CONTAINS
          iZ_B0(2):iZ_E0(2), &
          iZ_B0(3):iZ_E0(3), &
          iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: K11,K22,K33,K12,K13,K23
+    REAL(DP):: F1, F2, F3, EP, S11,S22,S33,S12,S21,S13,S31,S23,S32     
 
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) ) &
@@ -166,8 +168,6 @@ CONTAINS
     IF( .NOT. SuppressBC ) &
       CALL ApplyBoundaryConditions_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
-
-
 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -460,13 +460,6 @@ CONTAINS
 
 
 
-    DO iZ2 = iZ_B0(2), iZ_E1(2)
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-
-    END DO
-    END DO
-    END DO
 
     DO iZ2  = iZ_B0(2), iZ_E1(2)
     DO iZ4  = iZ_B0(4), iZ_E0(4)
@@ -994,6 +987,8 @@ CONTAINS
 
     CALL ComputeWeakDerivatives_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dWV_u_dX3, dWV_d_dX3, dW_dX3, Verbose_Option = Verbose )
+
+
 
     nK    = iZ_E0 - iZ_B0 + 1 ! Number of Elements per Phase Space Dimension
     nK_Z1 = nK + [1,0,0,0]    ! Number of Z1 Faces per Phase Space Dimension
@@ -1813,7 +1808,7 @@ CONTAINS
 !    print*, name2
 !    name1=trim(name1)
 !    name2=trim(name2)
-!    ! --- Permute Geometry Fields ---
+    ! --- Permute Geometry Fields ---
 
     DO iGF = 1, nGF
     DO iZ2 = iZ_B1(2), iZ_E1(2)
@@ -2157,9 +2152,9 @@ CONTAINS
 
     END ASSOCIATE
 
-!   open(1, file = name2, status = 'new') 
+ !  open(1, file = name2, status = 'new') 
  
- !  open(2, file = name1, status = 'new')  
+!   open(2, file = name1, status = 'new')  
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -2187,17 +2182,14 @@ CONTAINS
         dW_dX1_Out(iNodeX,iZ2,iZ3,iZ4) &
           = dW_dX1(iNodeX,iZ3,iZ4,iZ2)
 
-  !      write(1,*) dWV_u_dX1(iNodeX,1,iZ3,iZ4,iZ2)
+        !write(1,*) dWV_u_dX1(iNodeX,1,iZ3,iZ4,iZ2)
 
-   !     write(2,*) dW_dX1(iNodeX,iZ3,iZ4,iZ2)
+        !write(2,*) dW_dX1(iNodeX,iZ3,iZ4,iZ2)
       END DO
 
     END DO
     END DO
     END DO
-
-   ! close(1)
-   ! close(2)
 
   END SUBROUTINE ComputeWeakDerivatives_X1
 
