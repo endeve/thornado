@@ -24,14 +24,25 @@ MODULE InitializationModule_Relativistic
   USE ReferenceElementModuleX,            ONLY: &
     NodeNumberTableX, &
     WeightsX_q
-  USE MeshModule, ONLY: &
+  USE MeshModule,                         ONLY: &
     MeshX, &
     NodeCoordinate
   USE GeometryFieldsModule,               ONLY: &
+    nGF,          &
     uGF,          &
+    iGF_Phi_N,    &
+    iGF_h_1,      &
+    iGF_h_2,      &
+    iGF_h_3,      &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33
+    iGF_Gm_dd_33, &
+    iGF_Beta_1,   &
+    iGF_Beta_2,   &
+    iGF_Beta_3,   &
+    iGF_SqrtGm,   &
+    iGF_Alpha,    &
+    iGF_Psi
   USE FluidFieldsModule,                  ONLY: &
     nPF,    &
     uPF,    &
@@ -48,7 +59,7 @@ MODULE InitializationModule_Relativistic
     iCF_S3, &
     iCF_E,  &
     iCF_Ne, &
-    uAF, &
+    uAF,    &
     iAF_P
   USE EquationOfStateModule_IDEAL,        ONLY: &
     Gamma_IDEAL, &
@@ -56,9 +67,13 @@ MODULE InitializationModule_Relativistic
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
   USE UnitsModule,                        ONLY: &
-    SpeedOfLight, &
-    Kilometer,    &
-    SolarMass,    &
+    GravitationalConstant, &
+    SpeedOfLight,          &
+    Kilometer,             &
+    SolarMass,             &
+    Gram,                  &
+    Centimeter,            &
+    Erg,                   &
     Second
   USE UtilitiesModule,                    ONLY: &
     NodeNumberX
@@ -71,6 +86,9 @@ MODULE InitializationModule_Relativistic
   PRIVATE
 
   PUBLIC :: InitializeFields_Relativistic
+
+  REAL(DP), PARAMETER :: &
+    PolytropicConstant_TOV = 1.0e7_DP * Erg * Centimeter**3 / Gram**2
 
 
 CONTAINS
@@ -199,6 +217,10 @@ CONTAINS
                ( MassPNS, ShockRadius, AccretionRate, MachNumber, &
                  ApplyPerturbation, PerturbationOrder, PerturbationAmplitude, &
                  rPerturbationInner, rPerturbationOuter )
+
+      CASE( 'StaticTOV' )
+
+         CALL InitializeFields_StaticTOV
 
       CASE DEFAULT
 
@@ -1574,7 +1596,172 @@ CONTAINS
   END SUBROUTINE InitializeFields_StandingAccretionShock
 
 
+  SUBROUTINE InitializeFields_StaticTOV
+
+    REAL(DP), PARAMETER :: &
+      CentralDensity = 3.0e14_DP * ( Gram / Centimeter**3 )
+    REAL(DP), PARAMETER :: &
+      dX1            = 1.0e-2_DP * Kilometer
+    REAL(DP) :: X1
+    REAL(DP) :: CentralPressure
+    REAL(DP) :: Pressure, Psi, Phi, E1, E2
+logical::debug=.true.
+
+    CentralPressure = PolytropicConstant_TOV * CentralDensity**( Gamma_IDEAL )
+
+    WRITE(*,*)
+    WRITE(*,'(6x,A,ES11.3E3)' ) &
+      'Polytropic Constant = ', PolytropicConstant_TOV
+    WRITE(*,'(6x,A,ES11.3E3)')  &
+      'Central Density     = ', CentralDensity / ( Gram / Centimeter**3 )
+    WRITE(*,'(6x,A,ES11.3E3)')  &
+      'Central Pressure    = ', CentralPressure / ( Erg / Centimeter**3 )
+    WRITE(*,*)
+
+    ! --- Set inner boundary values ---
+
+    X1       = SqrtTiny * Kilometer
+    Pressure = CentralPressure
+    E1       = Zero
+    E2       = Zero
+    Psi      = 1.1_DP
+    Phi      = 0.9_DP
+
+if(debug)then
+open(unit=100,file='X1.dat')
+open(unit=101,file='P.dat')
+endif
+
+!    DO WHILE( Pressure .GT. 1.0e-8_DP * CentralPressure )
+    DO WHILE( X1 .LT. 10.0_DP * Kilometer )
+
+if(debug) &
+write(101,*) Pressure / ( Erg / Centimeter**3 )
+
+      Pressure = Pressure + dX1 * dpdr  ( Pressure, Phi, Psi, E1, E2, X1 )
+      E1       = E1       + dX1 * dE1dr ( Pressure, Psi, X1 )
+      E2       = E2       + dX1 * dE2dr ( Pressure, Phi, Psi, X1 )
+      Psi      = Psi      + dX1 * dPsidr( Pressure, E1, X1 )
+      Phi      = Phi      + dX1 * dPhidr( Pressure, E2, X1 )
+
+if(debug)then
+print*,'Pressure = ', Pressure / ( Erg / Centimeter**3 )
+print*,'E1/c^2   = ', E1 / Erg / 9.0d20
+print*,'E2/c^2   = ', E2 / Erg / 9.0d20
+print*,'Psi      = ', Psi
+print*,'Phi      = ', Phi
+print*,'X1       = ', X1 / Kilometer
+print*
+endif
+
+if(debug) &
+write(100,*) X1 / Kilometer
+
+      X1 = X1 + dX1
+
+    END DO
+
+if(debug)then
+close(101)
+close(100)
+endif
+stop 'InitializeFields_StaticTOV'
+
+  END SUBROUTINE InitializeFields_StaticTOV
+
+
+  ! --- Auxiliary utilities for TOV problem ---
+
+
+  REAL(DP) FUNCTION dpdr( Pressure, Phi, Psi, E1, E2, X1  )
+
+    REAL(DP), INTENT(in) :: Pressure, Phi, Psi, E1, E2, X1
+
+    REAL(DP) :: Lapse
+
+    Lapse = Phi / Psi
+
+    dpdr = - Enthalpy( Pressure ) &
+             * ( dPhidr( Pressure, E2, X1 ) &
+                   - Lapse * dPsidr( Pressure, E1, X1 ) ) / Phi
+
+    RETURN
+  END FUNCTION dpdr
+
+
+  REAL(DP) FUNCTION Enthalpy( Pressure )
+
+    REAL(DP), INTENT(in) :: Pressure
+
+    Enthalpy = SQRT( Pressure / PolytropicConstant_TOV ) * SpeedOfLight**2 &
+                 + Two * Pressure
+
+    RETURN
+  END FUNCTION Enthalpy
+
+
+  REAL(DP) FUNCTION dPhidr( Pressure, E2, X1 )
+
+    REAL(DP), INTENT(in) :: Pressure, E2, X1
+
+    dPhidr = GravitationalConstant / ( Two * SpeedOfLight**4 ) * E2 / X1**2
+
+    RETURN
+  END FUNCTION dPhidr
+
+
+  REAL(DP) FUNCTION dPsidr( Pressure, E1, X1 )
+
+    REAL(DP), INTENT(in) :: Pressure, E1, X1
+
+    dPsidr = -GravitationalConstant / ( Two * SpeedOfLight**4 ) * E1 / X1**2
+
+    RETURN
+  END FUNCTION dPsidr
+
+
+  REAL(DP) FUNCTION dE1dr( Pressure, Psi, X1 )
+
+    REAL(DP), INTENT(in) :: Pressure, Psi, X1
+
+    dE1dr = FourPi * X1**2 * f_E1( Pressure ) * Psi**5
+
+    RETURN
+  END FUNCTION dE1dr
+
+
+  REAL(DP) FUNCTION dE2dr( Pressure, Phi, Psi, X1 )
+
+    REAL(DP), INTENT(in) :: Pressure, Phi, Psi, X1
+
+    dE2dr = FourPi * X1**2 * f_E2( Pressure ) * Phi * Psi**4
+
+    RETURN
+  END FUNCTION dE2dr
+
+
+  REAL(DP) FUNCTION f_E1( Pressure )
+
+    REAL(DP), INTENT(in) :: Pressure
+
+    f_E1 = Enthalpy( Pressure ) - Pressure
+
+    RETURN
+  END FUNCTION f_E1
+
+
+  REAL(DP) FUNCTION f_E2( Pressure )
+
+    REAL(DP), INTENT(in) :: Pressure
+
+    f_E2 = f_E1( Pressure ) + 6.0_DP * Pressure
+
+    RETURN
+  END FUNCTION f_E2
+
+
   ! --- Auxiliary utilities for standing accretion shock problem ---
+
 
   SUBROUTINE ApplyJumpConditions &
     ( iX1_1, iNodeX1_1, X1_1, D_1, V_1, &
