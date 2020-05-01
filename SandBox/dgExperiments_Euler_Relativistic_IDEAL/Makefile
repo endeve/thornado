@@ -1,6 +1,6 @@
 include ../../../Build/Makefile_Build
 
-all: ApplicationDriver SlopeLimiterDiagnostics #ComputePrimitiveTest
+all: ApplicationDriver #SlopeLimiterDiagnostics #ComputePrimitiveTest
 
 ApplicationDriver: \
 	$(thornado) \
@@ -24,15 +24,15 @@ ApplicationDriver: \
 #	ComputePrimitiveTest.o \
 #	$(LIBRARIES)
 
-SlopeLimiterDiagnostics: \
-	$(thornado) \
-	InitializationModule_Relativistic.o \
-	SlopeLimiterDiagnostics.o
-	$(FLINKER) $(FLAGS) -o SlopeLimiterDiagnostics_$(MACHINE) \
-	$(thornado) \
-	InitializationModule_Relativistic.o \
-	SlopeLimiterDiagnostics.o \
-	$(LIBRARIES)
+#SlopeLimiterDiagnostics: \
+#	$(thornado) \
+#	InitializationModule_Relativistic.o \
+#	SlopeLimiterDiagnostics.o
+#	$(FLINKER) $(FLAGS) -o SlopeLimiterDiagnostics_$(MACHINE) \
+#	$(thornado) \
+#	InitializationModule_Relativistic.o \
+#	SlopeLimiterDiagnostics.o \
+#	$(LIBRARIES)
 
 clean:
 	rm -f *.o *.mod *.ld
@@ -42,5 +42,5 @@ clobber: clean
 	rm -rf ApplicationDriver_$(MACHINE).dSYM
 #	rm -f  ComputePrimitiveTest_$(MACHINE)
 #	rm -rf ComputePrimitiveTest_$(MACHINE).dSYM
-	rm -f  SlopeLimiterDiagnostics_$(MACHINE)
-	rm -rf SlopeLimiterDiagnostics_$(MACHINE).dSYM
+#	rm -f  SlopeLimiterDiagnostics_$(MACHINE)
+#	rm -rf SlopeLimiterDiagnostics_$(MACHINE).dSYM

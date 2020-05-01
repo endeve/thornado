@@ -88,7 +88,8 @@ MODULE InitializationModule_Relativistic
   PUBLIC :: InitializeFields_Relativistic
 
   REAL(DP), PARAMETER :: &
-    PolytropicConstant_TOV = 1.0e7_DP * Erg * Centimeter**3 / Gram**2
+    PolytropicConstant_TOV &
+      = 2.910e5_DP * Erg * Centimeter**3 / Gram**2
 
 
 CONTAINS
@@ -1599,23 +1600,32 @@ CONTAINS
   SUBROUTINE InitializeFields_StaticTOV
 
     REAL(DP), PARAMETER :: &
-      CentralDensity = 3.0e14_DP * ( Gram / Centimeter**3 )
+      CentralDensity = 7.906e14_DP * ( Gram / Centimeter**3 )
     REAL(DP), PARAMETER :: &
-      dX1            = 1.0e-2_DP * Kilometer
+      dX1            = 1.0e-3_DP * Kilometer
     REAL(DP) :: X1
     REAL(DP) :: CentralPressure
-    REAL(DP) :: Pressure, Psi, Phi, E1, E2
+    REAL(DP) :: Pressure, Psi, Phi, Alpha, E1, E2
+    REAL(DP) :: PressureN, PsiN, PhiN, E1N, E2N
+    REAL(DP) :: M_NS, Density
 logical::debug=.true.
+real(dp)::Psi_A, Alpha_A
 
     CentralPressure = PolytropicConstant_TOV * CentralDensity**( Gamma_IDEAL )
 
     WRITE(*,*)
-    WRITE(*,'(6x,A,ES11.3E3)' ) &
-      'Polytropic Constant = ', PolytropicConstant_TOV
-    WRITE(*,'(6x,A,ES11.3E3)')  &
-      'Central Density     = ', CentralDensity / ( Gram / Centimeter**3 )
-    WRITE(*,'(6x,A,ES11.3E3)')  &
-      'Central Pressure    = ', CentralPressure / ( Erg / Centimeter**3 )
+    WRITE(*,'(6x,A,ES11.3E3,A)' ) &
+      'Polytropic Constant = ', PolytropicConstant_TOV &
+                                  / ( Erg * Centimeter**3 / Gram**2 ), &
+      ' [ erg * cm^3 / g^2 ]'
+    WRITE(*,'(6x,A,ES11.3E3,A)')  &
+      'Central Density     = ', CentralDensity &
+                                  / ( Gram / Centimeter**3 ), &
+      ' [ g / cm^3 ]'
+    WRITE(*,'(6x,A,ES11.3E3,A)')  &
+      'Central Pressure    = ', CentralPressure &
+                                  / ( Erg / Centimeter**3 ), &
+      ' [ erg / cm^3 ]'
     WRITE(*,*)
 
     ! --- Set inner boundary values ---
@@ -1624,44 +1634,88 @@ logical::debug=.true.
     Pressure = CentralPressure
     E1       = Zero
     E2       = Zero
-    Psi      = 1.1_DP
-    Phi      = 0.9_DP
+    Psi      = 1.4_DP
+    Phi      = 0.6_DP
+    M_NS     = Zero
+    Density  = CentralDensity
 
 if(debug)then
 open(unit=100,file='X1.dat')
 open(unit=101,file='P.dat')
+open(unit=102,file='D.dat')
+open(unit=103,file='CF.dat')
+open(unit=104,file='La.dat')
 endif
 
-!    DO WHILE( Pressure .GT. 1.0e-8_DP * CentralPressure )
-    DO WHILE( X1 .LT. 10.0_DP * Kilometer )
-
-if(debug) &
-write(101,*) Pressure / ( Erg / Centimeter**3 )
-
-      Pressure = Pressure + dX1 * dpdr  ( Pressure, Phi, Psi, E1, E2, X1 )
-      E1       = E1       + dX1 * dE1dr ( Pressure, Psi, X1 )
-      E2       = E2       + dX1 * dE2dr ( Pressure, Phi, Psi, X1 )
-      Psi      = Psi      + dX1 * dPsidr( Pressure, E1, X1 )
-      Phi      = Phi      + dX1 * dPhidr( Pressure, E2, X1 )
+    DO WHILE( Pressure .GT. 1.0e-8_DP * CentralPressure )
 
 if(debug)then
-print*,'Pressure = ', Pressure / ( Erg / Centimeter**3 )
-print*,'E1/c^2   = ', E1 / Erg / 9.0d20
-print*,'E2/c^2   = ', E2 / Erg / 9.0d20
-print*,'Psi      = ', Psi
-print*,'Phi      = ', Phi
-print*,'X1       = ', X1 / Kilometer
-print*
+write(101,*) Pressure / ( Erg / Centimeter**3 )
+write(102,*)  Density / ( Gram / Centimeter**3 )
+write(103,*) Psi
+write(104,*) Phi / Psi
 endif
 
-if(debug) &
-write(100,*) X1 / Kilometer
+      ! --- Explicit ---
+
+      PressureN = Pressure + dX1 * dpdr  ( Pressure, Phi, Psi, E1, E2, X1 )
+      E1N       = E1       + dX1 * dE1dr ( Pressure, Psi, X1 )
+      E2N       = E2       + dX1 * dE2dr ( Pressure, Phi, Psi, X1 )
+
+      ! --- Implicit ---
+
+      PsiN      = Psi      + dX1 * dPsidr( Pressure, E1, X1 )
+      PhiN      = Phi      + dX1 * dPhidr( Pressure, E2, X1 )
+
+      Pressure = PressureN
+      E1       = E1N
+      E2       = E2N
+      Psi      = PsiN
+      Phi      = PhiN
+
+      Density = SQRT( Pressure / PolytropicConstant_TOV )
+      M_NS    = M_NS + FourPi * X1**2 * Density * dX1
+
+if(debug)then
+print*,'Pressure = ', Pressure/ ( Erg / Centimeter**3 ), ' erg / cm^3'
+print*,'E1/c^2   = ', E1 / Erg / 9.0d20, ' g'
+print*,'E2/c^2   = ', E2 / Erg / 9.0d20, ' g'
+print*,'Psi      = ', Psi
+Alpha = Phi / Psi
+print*,'Alpha    = ', Alpha
+print*,'X1       = ', X1 / Kilometer, ' km'
+print*
+endif
 
       X1 = X1 + dX1
 
     END DO
 
+    WRITE(*,'(4x,A)') 'Stellar Parameters'
+    WRITE(*,'(4x,A)') '------------------'
+    WRITE(*,'(6x,A,F5.3,A)') 'Mass                = ', &
+               M_NS / SolarMass, ' Msun'
+    WRITE(*,'(6x,A,F6.3,A)') 'Radius              = ', &
+               X1 / Kilometer, ' km'
+    WRITE(*,'(6x,A,ES10.3E3,A)') 'Schwarzchild Radius = ', &
+               M_NS / ( Two * X1 ) / Kilometer, ' km'
+    WRITE(*,*)
+
 if(debug)then
+Alpha   = Phi / Psi
+Alpha_A = ( One - M_NS / ( Two * X1 ) ) / ( One + M_NS / ( Two * X1 ) )
+Psi     = Psi
+Psi_A   = One + M_NS / ( Two * X1 )
+
+print*,'Psi            = ', Psi
+print*,'Psi_A          = ', Psi_A
+print*,'dPsi/Psi_A     = ', ( Psi_A - Psi ) / Psi_A
+print*,'Alpha          = ', Alpha
+print*,'Alpha_A        = ', Alpha_A
+print*,'dAlpha/Alpha_A = ', ( Alpha_A - Alpha ) / Alpha_A
+close(104)
+close(103)
+close(102)
 close(101)
 close(100)
 endif
