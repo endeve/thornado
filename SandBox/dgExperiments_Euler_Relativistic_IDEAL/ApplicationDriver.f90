@@ -82,7 +82,7 @@ PROGRAM ApplicationDriver
     Timer_Euler_Initialize,  &
     Timer_Euler_Finalize
   USE AccretionShockDiagnosticsModule, ONLY: &
-    ComputePowerInLegendreModes
+    ComputeAccretionShockDiagnostics
 
   IMPLICIT NONE
 
@@ -142,12 +142,12 @@ PROGRAM ApplicationDriver
 
 !  ProgramName = 'Advection'
 !  ProgramName = 'Advection2D'
-  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2D'
 !  ProgramName = 'RiemannProblemSpherical'
 !  ProgramName = 'SedovTaylorBlastWave'
 !  ProgramName = 'KelvinHelmholtzInstability'
-!  ProgramName = 'StandingAccretionShock'
+  ProgramName = 'StandingAccretionShock'
 !  ProgramName = 'StaticTOV'
 
   SELECT CASE ( TRIM( ProgramName ) )
@@ -645,7 +645,7 @@ PROGRAM ApplicationDriver
       CALL ComputeFromConserved_Euler_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-      CALL ComputePowerInLegendreModes &
+      CALL ComputeAccretionShockDiagnostics &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
 
       CALL WriteAccretionShockDiagnosticsHDF( t, Power )

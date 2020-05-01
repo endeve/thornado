@@ -850,6 +850,8 @@ CONTAINS
 
     CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
 
+    ! --- Power in Legendre modes ---
+
     DatasetName = TRIM( GroupName ) // '/' // 'Power in P0'
 
     CALL WriteDataset1DHDF &
@@ -864,6 +866,8 @@ CONTAINS
 
     CALL WriteDataset1DHDF &
            ( [ Power(2) ], DatasetName, FILE_ID )
+
+    ! --- Additional diagnostics go here ---
 
     CALL H5CLOSE_F( HDFERR )
 

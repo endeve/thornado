@@ -30,10 +30,24 @@ MODULE AccretionShockDiagnosticsModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ComputePowerInLegendreModes
+  PUBLIC :: ComputeAccretionShockDiagnostics
 
 
 CONTAINS
+
+
+  SUBROUTINE ComputeAccretionShockDiagnostics &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power_Legendre )
+
+    INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: uPF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)    :: uAF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: Power_Legendre(0:)
+
+    CALL ComputePowerInLegendreModes &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power_Legendre )
+
+  END SUBROUTINE ComputeAccretionShockDiagnostics
 
 
   SUBROUTINE ComputePowerInLegendreModes &
@@ -50,8 +64,8 @@ CONTAINS
     REAL(DP) :: P0(nNodes), P1(nNodes), P2(nNodes)
     REAL(DP) :: G(0:2,nNodes,iX_B0(1):iX_E0(1))
     REAL(DP) :: Field(nDOFX,iX_B0(1):iX_E0(1), &
-                              iX_B0(2):iX_E0(2), &
-                              iX_B0(3):iX_E0(3))
+                            iX_B0(2):iX_E0(2), &
+                            iX_B0(3):iX_E0(3))
 
 ! Debugging
 logical::debug=.false.
