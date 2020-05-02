@@ -61,8 +61,8 @@ MODULE MF_UtilitiesModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: AMReX2thornado
-  PUBLIC :: thornado2AMReX
+  PUBLIC :: amrex2thornado_Euler
+  PUBLIC :: thornado2amrex_Euler
   PUBLIC :: ShowVariableFromMultiFab
   PUBLIC :: WriteRawDataToFile
 
@@ -70,7 +70,8 @@ MODULE MF_UtilitiesModule
 CONTAINS
 
 
-  SUBROUTINE AMReX2thornado( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
+  SUBROUTINE amrex2thornado_Euler &
+    ( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
 
     INTEGER,  INTENT(in)  :: nVars
     INTEGER,  INTENT(in)  :: iX_B(3), iX_E(3)
@@ -94,10 +95,11 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE AMReX2thornado
+  END SUBROUTINE amrex2thornado_Euler
 
 
-  SUBROUTINE thornado2AMReX( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
+  SUBROUTINE thornado2amrex_Euler &
+    ( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
 
     INTEGER,  INTENT(in)  :: nVars
     INTEGER,  INTENT(in)  :: iX_B(3), iX_E(3)
@@ -121,7 +123,7 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE thornado2AMReX
+  END SUBROUTINE thornado2amrex_Euler
 
 
   SUBROUTINE ShowVariableFromMultiFab( MF, swXX, iComp )
@@ -239,23 +241,23 @@ CONTAINS
         IF( iX_E0(2) .EQ. nX(2) ) iX_E(2) = nX(2) + swX(2)
         IF( iX_E0(3) .EQ. nX(3) ) iX_E(3) = nX(3) + swX(3)
 
-        CALL AMReX2thornado( nGF, iX_B, iX_E, &
-                             uGF(iX_B(1):iX_E(1), &
-                                 iX_B(2):iX_E(2), &
-                                 iX_B(3):iX_E(3),1:nCompGF), &
-                             G  (1:nDOFX, &
-                                 iX_B(1):iX_E(1), &
-                                 iX_B(2):iX_E(2), &
-                                 iX_B(3):iX_E(3),1:nGF) )
+        CALL amrex2thornado_Euler( nGF, iX_B, iX_E, &
+                                   uGF(iX_B(1):iX_E(1), &
+                                   iX_B(2):iX_E(2), &
+                                   iX_B(3):iX_E(3),1:nCompGF), &
+                                   G  (1:nDOFX, &
+                                       iX_B(1):iX_E(1), &
+                                       iX_B(2):iX_E(2), &
+                                       iX_B(3):iX_E(3),1:nGF) )
 
-        CALL AMReX2thornado( nCF, iX_B, iX_E, &
-                             uCF(iX_B(1):iX_E(1), &
-                                 iX_B(2):iX_E(2), &
-                                 iX_B(3):iX_E(3),1:nCompCF), &
-                             U  (1:nDOFX, &
-                                 iX_B(1):iX_E(1), &
-                                 iX_B(2):iX_E(2), &
-                                 iX_B(3):iX_E(3),1:nCF) )
+        CALL amrex2thornado_Euler( nCF, iX_B, iX_E, &
+                                   uCF(iX_B(1):iX_E(1), &
+                                       iX_B(2):iX_E(2), &
+                                       iX_B(3):iX_E(3),1:nCompCF), &
+                                   U  (1:nDOFX, &
+                                       iX_B(1):iX_E(1), &
+                                       iX_B(2):iX_E(2), &
+                                       iX_B(3):iX_E(3),1:nCF) )
 
         ! --- Apply boundary conditions ---
 

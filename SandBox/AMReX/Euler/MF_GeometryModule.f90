@@ -32,8 +32,8 @@ MODULE MF_GeometryModule
   USE MyAmrModule,              ONLY: &
     nLevels
   USE MF_UtilitiesModule,       ONLY: &
-    AMReX2thornado, &
-    thornado2AMReX
+    amrex2thornado_Euler, &
+    thornado2amrex_Euler
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler,  &
@@ -82,7 +82,7 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
 
-        CALL AMReX2thornado( nGF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
@@ -91,7 +91,7 @@ CONTAINS
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-        CALL thornado2AMReX( nGF, iX_B1, iX_E1, uGF, G )
+        CALL thornado2amrex_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
         DEALLOCATE( G )
 
@@ -139,7 +139,7 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nGF) )
 
-        CALL AMReX2thornado( nGF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
@@ -148,7 +148,7 @@ CONTAINS
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-        CALL thornado2AMReX( nGF, iX_B1, iX_E1, uGF, G )
+        CALL thornado2amrex_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
         DEALLOCATE( G )
 
