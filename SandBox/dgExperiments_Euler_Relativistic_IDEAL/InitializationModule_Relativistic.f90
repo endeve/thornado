@@ -17,6 +17,7 @@ MODULE InitializationModule_Relativistic
     nNodesX,     &
     nDimsX,      &
     nDOFX,       &
+    swX,         &
     iX_B0,       &
     iX_B1,       &
     iX_E0,       &
@@ -66,6 +67,8 @@ MODULE InitializationModule_Relativistic
     ComputePressureFromPrimitive_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
+  USE PhysicalConstantsModule,            ONlY: &
+    SpeedOfLightCGS
   USE UnitsModule,                        ONLY: &
     GravitationalConstant, &
     SpeedOfLight,          &
@@ -76,7 +79,9 @@ MODULE InitializationModule_Relativistic
     Erg,                   &
     Second
   USE UtilitiesModule,                    ONLY: &
-    NodeNumberX
+    NodeNumberX, &
+    Locate,      &
+    Interpolate1D_Linear
   USE QuadratureModule,                   ONLY: &
     GetQuadrature
   USE PolynomialBasisModule_Lagrange,     ONLY: &
@@ -89,7 +94,7 @@ MODULE InitializationModule_Relativistic
 
   REAL(DP), PARAMETER :: &
     PolytropicConstant_TOV &
-      = 2.910e5_DP * Erg * Centimeter**3 / Gram**2
+      = 1.455e5_DP * Erg * Centimeter**3 / Gram**2
 
 
 CONTAINS
@@ -1600,131 +1605,278 @@ CONTAINS
   SUBROUTINE InitializeFields_StaticTOV
 
     REAL(DP), PARAMETER :: &
-      CentralDensity = 7.906e14_DP * ( Gram / Centimeter**3 )
-    REAL(DP), PARAMETER :: &
-      dX1            = 1.0e-3_DP * Kilometer
-    REAL(DP) :: X1
-    REAL(DP) :: CentralPressure
-    REAL(DP) :: Pressure, Psi, Phi, Alpha, E1, E2
-    REAL(DP) :: PressureN, PsiN, PhiN, E1N, E2N
-    REAL(DP) :: M_NS, Density
-logical::debug=.true.
-real(dp)::Psi_A, Alpha_A
+      CentralDensity = 7.906e14_DP * ( Gram / Centimeter**3 ), &
+      dX1            = 1.0e-4_DP * Kilometer, &
+      TolF           = 1.0e-10_DP
+
+    INTEGER  :: iX1, iX2, iX3, iNodeX, iNodeX1, iNodeX2, iNodeX3, &
+                jNodeX, jNodeX1, iL, ITER, nX, iGF
+    REAL(DP) :: X1, X2
+    REAL(DP) :: Pressure, E1, E2, Psi, Alpha, Phi
+    REAL(DP) :: CentralPressure, Psi0, Alpha0
+    REAL(DP) :: GravitationalMass, Radius, dAlpha, dPsi, dF
+
+    REAL(DP), ALLOCATABLE :: PressureArr(:), DensityArr(:), &
+                             AlphaArr(:), PsiArr(:), X1Arr(:)
 
     CentralPressure = PolytropicConstant_TOV * CentralDensity**( Gamma_IDEAL )
+    Psi0            = 1.4_DP ! --- Initial guess ---
+    Alpha0          = 0.8_DP ! --- Initial guess ---
 
     WRITE(*,*)
-    WRITE(*,'(6x,A,ES11.3E3,A)' ) &
+    WRITE(*,'(6x,A,ES10.3E3,A)' ) &
       'Polytropic Constant = ', PolytropicConstant_TOV &
                                   / ( Erg * Centimeter**3 / Gram**2 ), &
       ' [ erg * cm^3 / g^2 ]'
-    WRITE(*,'(6x,A,ES11.3E3,A)')  &
+    WRITE(*,'(6x,A,ES10.3E3,A)')  &
       'Central Density     = ', CentralDensity &
                                   / ( Gram / Centimeter**3 ), &
       ' [ g / cm^3 ]'
-    WRITE(*,'(6x,A,ES11.3E3,A)')  &
+    WRITE(*,'(6x,A,ES10.3E3,A)')  &
       'Central Pressure    = ', CentralPressure &
                                   / ( Erg / Centimeter**3 ), &
       ' [ erg / cm^3 ]'
     WRITE(*,*)
 
-    ! --- Set inner boundary values ---
+    ! --- Find geometry fields at center by iteratively integrating outward ---
 
-    X1       = SqrtTiny * Kilometer
-    Pressure = CentralPressure
-    E1       = Zero
-    E2       = Zero
-    Psi      = 1.4_DP
-    Phi      = 0.6_DP
-    M_NS     = Zero
-    Density  = CentralDensity
+    dF   = TolF + One
+    ITER = 0
+    DO WHILE( dF .GT. TolF )
 
-if(debug)then
-open(unit=100,file='X1.dat')
-open(unit=101,file='P.dat')
-open(unit=102,file='D.dat')
-open(unit=103,file='CF.dat')
-open(unit=104,file='La.dat')
-endif
+      ITER = ITER + 1
 
-    DO WHILE( Pressure .GT. 1.0e-8_DP * CentralPressure )
+      CALL IntegrateOutwards &
+             ( dX1, CentralPressure, Psi0, Alpha0, &
+               GravitationalMass, Radius, dAlpha, dPsi, nX )
 
-if(debug)then
-write(101,*) Pressure / ( Erg / Centimeter**3 )
-write(102,*)  Density / ( Gram / Centimeter**3 )
-write(103,*) Psi
-write(104,*) Phi / Psi
-endif
+      ! --- Update guess for central values ---
 
-      ! --- Explicit ---
+      Alpha0 = Alpha0 + dAlpha
+      Psi0   = Psi0   + dPsi
 
-      PressureN = Pressure + dX1 * dpdr  ( Pressure, Phi, Psi, E1, E2, X1 )
-      E1N       = E1       + dX1 * dE1dr ( Pressure, Psi, X1 )
-      E2N       = E2       + dX1 * dE2dr ( Pressure, Phi, Psi, X1 )
+      dF = MAX( ABS( dAlpha ), ABS( dPsi ) )
 
-      ! --- Implicit ---
+    END DO
 
-      PsiN      = Psi      + dX1 * dPsidr( Pressure, E1, X1 )
-      PhiN      = Phi      + dX1 * dPhidr( Pressure, E2, X1 )
+    WRITE(*,'(6x,A,I4.4)') &
+      'nIterations         = ', ITER
+    WRITE(*,'(6x,A,ES13.6E3)'  )  &
+      'Alpha0              = ', Alpha0
+    WRITE(*,'(6x,A,ES13.6E3)'  )  &
+      'Psi0                = ', Psi0
+    WRITE(*,'(6x,A,ES13.6E3,A)')  &
+      'Radius              = ', Radius / Kilometer, ' km'
+    WRITE(*,'(6x,A,ES13.6E3,A)')  &
+      'Gravitational Mass  = ', GravitationalMass / SolarMass, ' Msun'
 
-      Pressure = PressureN
-      E1       = E1N
-      E2       = E2N
-      Psi      = PsiN
-      Phi      = PhiN
+    ! --- Populate arrays ---
 
-      Density = SQRT( Pressure / PolytropicConstant_TOV )
-      M_NS    = M_NS + FourPi * X1**2 * Density * dX1
+    ALLOCATE( PressureArr(nX), DensityArr(nX), AlphaArr(nX), &
+              PsiArr(nX), X1Arr(nX) )
 
-if(debug)then
-print*,'Pressure = ', Pressure/ ( Erg / Centimeter**3 ), ' erg / cm^3'
-print*,'E1/c^2   = ', E1 / Erg / 9.0d20, ' g'
-print*,'E2/c^2   = ', E2 / Erg / 9.0d20, ' g'
-print*,'Psi      = ', Psi
-Alpha = Phi / Psi
-print*,'Alpha    = ', Alpha
-print*,'X1       = ', X1 / Kilometer, ' km'
-print*
-endif
+    ! --- Central values ---
+
+    X1                = SqrtTiny * Kilometer
+    Pressure          = CentralPressure
+    E1                = Zero
+    E2                = Zero
+    Psi               = Psi0
+    Phi               = Alpha0 * Psi0
+    GravitationalMass = E1 / SpeedOfLight**2
+
+    DO iX1 = 1, nX
+
+      X1Arr      (iX1) = X1
+      PressureArr(iX1) = Pressure
+      DensityArr (iX1) = SQRT( Pressure / PolytropicConstant_TOV )
+      PsiArr     (iX1) = Psi
+      AlphaArr   (iX1) = Phi / Psi
+
+      Pressure = Pressure + dX1 * dpdr  ( Pressure, Phi, Psi, E1, E2, X1 )
+      E1       = E1       + dX1 * dE1dr ( Pressure, Psi, X1 )
+      E2       = E2       + dX1 * dE2dr ( Pressure, Phi, Psi, X1 )
+      Psi      = Psi      + dX1 * dPsidr( Pressure, E1, X1 )
+      Phi      = Phi      + dX1 * dPhidr( Pressure, E2, X1 )
 
       X1 = X1 + dX1
 
     END DO
 
-    WRITE(*,'(4x,A)') 'Stellar Parameters'
-    WRITE(*,'(4x,A)') '------------------'
-    WRITE(*,'(6x,A,F5.3,A)') 'Mass                = ', &
-               M_NS / SolarMass, ' Msun'
-    WRITE(*,'(6x,A,F6.3,A)') 'Radius              = ', &
-               X1 / Kilometer, ' km'
-    WRITE(*,'(6x,A,ES10.3E3,A)') 'Schwarzchild Radius = ', &
-               M_NS / ( Two * X1 ) / Kilometer, ' km'
-    WRITE(*,*)
+    ! --- Map to 3D domain ---
 
-if(debug)then
-Alpha   = Phi / Psi
-Alpha_A = ( One - M_NS / ( Two * X1 ) ) / ( One + M_NS / ( Two * X1 ) )
-Psi     = Psi
-Psi_A   = One + M_NS / ( Two * X1 )
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E1(1)
 
-print*,'Psi            = ', Psi
-print*,'Psi_A          = ', Psi_A
-print*,'dPsi/Psi_A     = ', ( Psi_A - Psi ) / Psi_A
-print*,'Alpha          = ', Alpha
-print*,'Alpha_A        = ', Alpha_A
-print*,'dAlpha/Alpha_A = ', ( Alpha_A - Alpha ) / Alpha_A
-close(104)
-close(103)
-close(102)
-close(101)
-close(100)
-endif
-stop 'InitializeFields_StaticTOV'
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        iL = Locate( X1, X1Arr, nX )
+
+        ! --- Geometry Fields ---
+
+        uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha) &
+          = Interpolate1D_Linear( X1, X1Arr(iL), X1Arr(iL+1), &
+                                  AlphaArr(iL), AlphaArr(iL+1) )
+
+        uGF(iNodeX,iX1,iX2,iX3,iGF_Psi) &
+          = Interpolate1D_Linear( X1, X1Arr(iL), X1Arr(iL+1), &
+                                  PsiArr(iL), PsiArr(iL+1) )
+
+        uGF(iNodeX,iX1,iX2,iX3,iGF_h_1) &
+          = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**4
+        uGF(iNodeX,iX1,iX2,iX3,iGF_h_2) &
+          = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**4 * X1**2
+        uGF(iNodeX,iX1,iX2,iX3,iGF_h_3) &
+          = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**4 * X1**2 * SIN( X2 )**2
+
+        uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &
+          = uGF(iNodeX,iX1,iX2,iX3,iGF_h_1)**2
+        uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+          = uGF(iNodeX,iX1,iX2,iX3,iGF_h_2)**2
+        uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) &
+          = uGF(iNodeX,iX1,iX2,iX3,iGF_h_3)**2
+
+        uGF(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) &
+          = SQRT( uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &
+                    * uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+                    * uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) = Zero
+        uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) = Zero
+        uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) = Zero
+
+        ! --- Fluid Fields ---
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+          = Interpolate1D_Linear( X1, X1Arr(iL), X1Arr(iL+1), &
+                                  DensityArr(iL), DensityArr(iL+1) )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+          = Interpolate1D_Linear &
+              ( X1, X1Arr(iL), X1Arr(iL+1), &
+                PressureArr(iL), PressureArr(iL+1) ) / ( Gamma_IDEAL - One )
+
+      END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
+
+      CALL ComputeConserved_Euler_Relativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Apply reflecting boundary conditions to geometry fields (X1) ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = 1, swX(1)
+
+        DO iNodeX3 = 1, nNodesX(3)
+        DO iNodeX2 = 1, nNodesX(2)
+        DO iNodeX1 = 1, nNodesX(1)
+
+          jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+
+          iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+          jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
+
+          DO iGF = 1, nGF
+
+            uGF(iNodeX,iX_B0(1)-iX1,iX2,iX3,iGF) &
+              = uGF(jNodeX,iX_B0(1),iX2,iX3,iGF)
+
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+    END DO
+    END DO
+    END DO
+
+    DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, PressureArr )
 
   END SUBROUTINE InitializeFields_StaticTOV
 
 
   ! --- Auxiliary utilities for TOV problem ---
+
+
+  SUBROUTINE IntegrateOutwards &
+    ( dX1, CentralPressure, Psi0, Alpha0, &
+      GravitationalMass, Radius, dAlpha, dPsi, nX )
+
+    REAL(DP), INTENT(in)  :: dX1, CentralPressure, Psi0, Alpha0
+    REAL(DP), INTENT(out) :: GravitationalMass, Radius, dAlpha, dPsi
+    INTEGER,  INTENT(out) :: nX
+
+    REAL(DP)            :: X1, Pressure, E1, E2, Psi, Phi
+    REAL(DP)            :: Alpha, Alpha_A, Psi_A
+
+    ! --- Set inner boundary values ---
+
+    X1                = SqrtTiny * Kilometer
+    Pressure          = CentralPressure
+    E1                = Zero
+    E2                = Zero
+    Psi               = Psi0
+    Phi               = Alpha0 * Psi0
+    GravitationalMass = Zero
+
+    nX = 1
+
+    DO WHILE( Pressure .GT. 1.0e-8_DP * CentralPressure )
+
+      Pressure = Pressure + dX1 * dpdr  ( Pressure, Phi, Psi, E1, E2, X1 )
+      E1       = E1       + dX1 * dE1dr ( Pressure, Psi, X1 )
+      E2       = E2       + dX1 * dE2dr ( Pressure, Phi, Psi, X1 )
+      Psi      = Psi      + dX1 * dPsidr( Pressure, E1, X1 )
+      Phi      = Phi      + dX1 * dPhidr( Pressure, E2, X1 )
+
+      X1 = X1 + dX1
+
+      nX = nX + 1
+
+    END DO
+
+    GravitationalMass = E1 / SpeedOfLight**2
+    Radius            = X1
+
+    Alpha   = Phi / Psi
+    Alpha_A =  ( One - GravitationalMass / ( Two * Radius ) ) &
+                / ( One + GravitationalMass / ( Two * Radius ) )
+    Psi     = Psi
+    Psi_A   = One + GravitationalMass / ( Two * Radius )
+
+    dAlpha = ( Alpha_A - Alpha ) / Alpha_A
+    dPsi   = ( Psi_A - Psi ) / Psi_A
+
+  END SUBROUTINE IntegrateOutwards
 
 
   REAL(DP) FUNCTION dpdr( Pressure, Phi, Psi, E1, E2, X1  )
