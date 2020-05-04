@@ -4,7 +4,8 @@ MODULE Euler_DiscontinuityDetectionModule
     DP,   &
     Zero, &
     One,  &
-    Two
+    Two,  &
+    SqrtTiny
   USE ProgramHeaderModule,            ONLY: &
     nDOFX,  &
     nDimsX, &
@@ -194,8 +195,12 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iCF
     REAL(DP) :: U_K (0:2*nDimsX,nCF)
     REAL(DP) :: U_K0(0:2*nDimsX,nCF)
-
-    D(:,:,:,:,iDF_TCI) = Zero
+    REAL(DP) :: Y_K (0:2*nDimsX)
+    REAL(DP) :: Y_K0(0:2*nDimsX)
+    REAL(DP) :: Y(1:nDOFX, &
+                  iX_B1(1):iX_E1(1), &
+                  iX_B1(2):iX_E1(2), &
+                  iX_B1(3):iX_E1(3))
 
     IF( .NOT. UseTroubledCellIndicator )THEN
 
@@ -203,6 +208,10 @@ CONTAINS
       RETURN
 
     END IF
+
+    D(:,:,:,:,iDF_TCI) = Zero
+
+    Y = U(:,:,:,:,iCF_Ne) / MAX( U(:,:,:,:,iCF_D), SqrtTiny )
 
     CALL TimersStart_Euler( Timer_Euler_TroubledCellIndicator )
 
@@ -235,6 +244,17 @@ CONTAINS
 
       END DO
 
+      Y_K (0) &
+        = DOT_PRODUCT( WeightsX_q,    Y(:,iX1  ,iX2,iX3) )
+      Y_K (1) &
+        = DOT_PRODUCT( WeightsX_q,    Y(:,iX1-1,iX2,iX3) )
+      Y_K0(1) &
+        = DOT_PRODUCT( WeightsX_X1_P, Y(:,iX1-1,iX2,iX3) )
+      Y_K (2) &
+        = DOT_PRODUCT( WeightsX_q,    Y(:,iX1+1,iX2,iX3) )
+      Y_K0(2) &
+        = DOT_PRODUCT( WeightsX_X1_N, Y(:,iX1+1,iX2,iX3) )
+
       ! --- Compute Cell Averages ---
       ! --- in Neighbors in X2 Direction -------------
 
@@ -255,6 +275,15 @@ CONTAINS
             = DOT_PRODUCT( WeightsX_X2_N, U(:,iX1,iX2+1,iX3,iCF) )
 
         END DO
+
+        Y_K (3) &
+          = DOT_PRODUCT( WeightsX_q,    Y(:,iX1,iX2-1,iX3) )
+        Y_K0(3) &
+          = DOT_PRODUCT( WeightsX_X2_P, Y(:,iX1,iX2-1,iX3) )
+        Y_K (4) &
+          = DOT_PRODUCT( WeightsX_q,    Y(:,iX1,iX2+1,iX3) )
+        Y_K0(4) &
+          = DOT_PRODUCT( WeightsX_X2_N, Y(:,iX1,iX2+1,iX3) )
 
       END IF
 
@@ -279,6 +308,15 @@ CONTAINS
 
         END DO
 
+        Y_K (5) &
+          = DOT_PRODUCT( WeightsX_q,    Y(:,iX1,iX2,iX3-1) )
+        Y_K0(5) &
+          = DOT_PRODUCT( WeightsX_X3_P, Y(:,iX1,iX2,iX3-1) )
+        Y_K (6) &
+          = DOT_PRODUCT( WeightsX_q,    Y(:,iX1,iX2,iX3+1) )
+        Y_K0(6) &
+          = DOT_PRODUCT( WeightsX_X2_N, Y(:,iX1,iX2,iX3+1) )
+
       END IF
 
       ! --- Use Conserved Density to Detect Troubled Cell ---
@@ -293,6 +331,13 @@ CONTAINS
         = MAX( MAXVAL(D(:,iX1,iX2,iX3,iDF_TCI) ), &
                SUM( ABS( U_K(0,iCF_E) - U_K0(1:2*nDimsX,iCF_E) ) ) &
                  / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_E) ) ) )
+
+      ! --- Use Electron Fraction to Detect Troubled Cell ---
+
+      D(:,iX1,iX2,iX3,iDF_TCI) &
+        = MAX( MAXVAL( D(:,iX1,iX2,iX3,iDF_TCI) ), &
+               SUM( 1.0d2 * ABS( Y_K(0) - Y_K0(1:2*nDimsX) ) ) &
+                 / MAXVAL( ABS( Y_K(0:2*nDimsX) ) ) )
 
     END DO
     END DO
