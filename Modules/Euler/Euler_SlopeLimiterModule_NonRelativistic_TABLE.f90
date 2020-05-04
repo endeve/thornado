@@ -203,12 +203,16 @@ CONTAINS
                                 iX_B0(2):iX_E0(2), &
                                 iX_B0(3):iX_E0(3))
     LOGICAL  :: SuppressBC
+    LOGICAL  :: LimitField(nCF)
     INTEGER  :: iX1, iX2, iX3, iGF, iCF
     REAL(DP) :: dX1, dX2, dX3
+    REAL(DP) :: dY(nDimsX)
     REAL(DP) :: SlopeDifference(nCF)
     REAL(DP) :: G_K(nGF)
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
+    REAL(DP) :: Y_N(    0:2*nDimsX,nDOFX) ! --- Nodal Ye
+    REAL(DP) :: Y_M(    0:2*nDimsX,nDOFX) ! --- Modal Ye
     REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
     REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
     REAL(DP) :: R_X3(nCF,nCF), invR_X3(nCF,nCF)
@@ -345,32 +349,98 @@ CONTAINS
       IF( UseCharacteristicLimiting ) &
         U_M(iCF_Ne,:,:) = U_M(iCF_Ne,:,:) * AtomicMassUnit
 
-      dU(:,1) &
-        = MinModB &
-            ( MATMUL( invR_X1, U_M(:,0,2) ), &
-              BetaTVD * MATMUL( invR_X1, (U_M(:,0,1)-U_M(:,1,1)) ), &
-              BetaTVD * MATMUL( invR_X1, (U_M(:,2,1)-U_M(:,0,1)) ), &
-              dX1, BetaTVB )
+      IF    ( iX1 .EQ. iX_B0(1) )THEN
+
+        dU(:,1) &
+          = MinModB &
+              ( MATMUL( invR_X1, U_M(:,0,2) ), &
+                BetaTVD * MATMUL( invR_X1, (U_M(:,2,1)-U_M(:,0,1)) ), &
+                BetaTVD * MATMUL( invR_X1, (U_M(:,2,1)-U_M(:,0,1)) ), &
+                dX1, BetaTVB )
+
+      ELSEIF( iX1 .EQ. iX_E0(1) )THEN
+
+        dU(:,1) &
+          = MinModB &
+              ( MATMUL( invR_X1, U_M(:,0,2) ), &
+                BetaTVD * MATMUL( invR_X1, (U_M(:,0,1)-U_M(:,1,1)) ), &
+                BetaTVD * MATMUL( invR_X1, (U_M(:,0,1)-U_M(:,1,1)) ), &
+                dX1, BetaTVB )
+
+      ELSE
+
+        dU(:,1) &
+          = MinModB &
+              ( MATMUL( invR_X1, U_M(:,0,2) ), &
+                BetaTVD * MATMUL( invR_X1, (U_M(:,0,1)-U_M(:,1,1)) ), &
+                BetaTVD * MATMUL( invR_X1, (U_M(:,2,1)-U_M(:,0,1)) ), &
+                dX1, BetaTVB )
+
+      END IF
 
       IF( nDimsX > 1 )THEN
 
-        dU(:,2) &
-          = MinModB &
-              ( MATMUL( invR_X2, U_M(:,0,3) ), &
-                BetaTVD * MATMUL( invR_X2, (U_M(:,0,1)-U_M(:,3,1)) ), &
-                BetaTVD * MATMUL( invR_X2, (U_M(:,4,1)-U_M(:,0,1)) ), &
-                dX2, BetaTVB )
+        IF    ( iX2 .EQ. iX_B0(2) )THEN
+
+          dU(:,2) &
+            = MinModB &
+                ( MATMUL( invR_X2, U_M(:,0,3) ), &
+                  BetaTVD * MATMUL( invR_X2, (U_M(:,4,1)-U_M(:,0,1)) ), &
+                  BetaTVD * MATMUL( invR_X2, (U_M(:,4,1)-U_M(:,0,1)) ), &
+                  dX2, BetaTVB )
+
+        ELSEIF( iX2 .EQ. iX_E0(2) )THEN
+
+          dU(:,2) &
+            = MinModB &
+                ( MATMUL( invR_X2, U_M(:,0,3) ), &
+                  BetaTVD * MATMUL( invR_X2, (U_M(:,0,1)-U_M(:,3,1)) ), &
+                  BetaTVD * MATMUL( invR_X2, (U_M(:,0,1)-U_M(:,3,1)) ), &
+                  dX2, BetaTVB )
+
+        ELSE
+
+          dU(:,2) &
+            = MinModB &
+                ( MATMUL( invR_X2, U_M(:,0,3) ), &
+                  BetaTVD * MATMUL( invR_X2, (U_M(:,0,1)-U_M(:,3,1)) ), &
+                  BetaTVD * MATMUL( invR_X2, (U_M(:,4,1)-U_M(:,0,1)) ), &
+                  dX2, BetaTVB )
+
+        END IF
 
       END IF
 
       IF( nDimsX > 2 )THEN
 
-        dU(:,3) &
-          = MinModB &
-              ( MATMUL( invR_X3, U_M(:,0,4) ), &
-                BetaTVD * MATMUL( invR_X3, (U_M(:,0,1)-U_M(:,5,1)) ), &
-                BetaTVD * MATMUL( invR_X3, (U_M(:,6,1)-U_M(:,0,1)) ), &
-                dX3, BetaTVB )
+        IF    ( iX3 .EQ. iX_B0(3) )THEN
+
+          dU(:,3) &
+            = MinModB &
+                ( MATMUL( invR_X3, U_M(:,0,4) ), &
+                  BetaTVD * MATMUL( invR_X3, (U_M(:,6,1)-U_M(:,0,1)) ), &
+                  BetaTVD * MATMUL( invR_X3, (U_M(:,6,1)-U_M(:,0,1)) ), &
+                  dX3, BetaTVB )
+
+        ELSEIF( iX3 .EQ. iX_E0(3) )THEN
+
+          dU(:,3) &
+            = MinModB &
+                ( MATMUL( invR_X3, U_M(:,0,4) ), &
+                  BetaTVD * MATMUL( invR_X3, (U_M(:,0,1)-U_M(:,5,1)) ), &
+                  BetaTVD * MATMUL( invR_X3, (U_M(:,0,1)-U_M(:,5,1)) ), &
+                  dX3, BetaTVB )
+
+        ELSE
+
+          dU(:,3) &
+            = MinModB &
+                ( MATMUL( invR_X3, U_M(:,0,4) ), &
+                  BetaTVD * MATMUL( invR_X3, (U_M(:,0,1)-U_M(:,5,1)) ), &
+                  BetaTVD * MATMUL( invR_X3, (U_M(:,6,1)-U_M(:,0,1)) ), &
+                  dX3, BetaTVB )
+
+        END IF
 
       END IF
 
@@ -392,6 +462,132 @@ CONTAINS
         IF( nDimsX > 2 )THEN
 
           dU(:,3) = MATMUL( R_X3, dU(:,3) )
+
+        END IF
+
+      END IF
+
+      ! --- Compute Ye Slopes ---
+
+      Y_N(0,:) = U(:,iX1,iX2,iX3,iCF_Ne) * AtomicMassUnit &
+                 / U(:,iX1,iX2,iX3,iCF_D)
+
+      CALL MapNodalToModal_Fluid( Y_N(0,:), Y_M(0,:) )
+
+      Y_N(1,:) = U(:,iX1-1,iX2,iX3,iCF_Ne) * AtomicMassUnit &
+                   / U(:,iX1-1,iX2,iX3,iCF_D)
+      Y_N(2,:) = U(:,iX1+1,iX2,iX3,iCF_Ne) * AtomicMassUnit &
+                   / U(:,iX1+1,iX2,iX3,iCF_D)
+
+      Y_M(1,1) = DOT_PRODUCT( WeightsX_q, Y_N(1,:) )
+      Y_M(2,1) = DOT_PRODUCT( WeightsX_q, Y_N(2,:) )
+
+      IF    ( iX1 .EQ. iX_B0(1) )THEN
+
+        dY(1) &
+          = MinModB &
+              ( Y_M(0,2), &
+                BetaTVD * (Y_M(2,1)-Y_M(0,1)), &
+                BetaTVD * (Y_M(2,1)-Y_M(0,1)), &
+                dX1, BetaTVB )
+
+      ELSEIF( iX1 .EQ. iX_E0(1) )THEN
+
+        dY(1) &
+          = MinModB &
+              ( Y_M(0,2), &
+                BetaTVD * (Y_M(0,1)-Y_M(1,1)), &
+                BetaTVD * (Y_M(0,1)-Y_M(1,1)), &
+                dX1, BetaTVB )
+
+      ELSE
+
+        dY(1) &
+          = MinModB &
+              ( Y_M(0,2), &
+                BetaTVD * (Y_M(0,1)-Y_M(1,1)), &
+                BetaTVD * (Y_M(2,1)-Y_M(0,1)), &
+                dX1, BetaTVB )
+
+      END IF
+
+      IF( nDimsX > 1 )THEN
+
+        Y_N(3,:) = U(:,iX1,iX2-1,iX3,iCF_Ne) * AtomicMassUnit &
+                     / U(:,iX1,iX2-1,iX3,iCF_D)
+        Y_N(4,:) = U(:,iX1,iX2+1,iX3,iCF_Ne) * AtomicMassUnit &
+                     / U(:,iX1,iX2+1,iX3,iCF_D)
+
+        Y_M(3,1) = DOT_PRODUCT( WeightsX_q, Y_N(3,:) )
+        Y_M(4,1) = DOT_PRODUCT( WeightsX_q, Y_N(4,:) )
+
+        IF    ( iX2 .EQ. iX_B0(2) )THEN
+
+          dY(2) &
+            = MinModB &
+                ( Y_M(0,3), &
+                  BetaTVD * (Y_M(4,1)-Y_M(0,1)), &
+                  BetaTVD * (Y_M(4,1)-Y_M(0,1)), &
+                  dX2, BetaTVB )
+
+        ELSEIF( iX2 .EQ. iX_E0(2) )THEN
+
+          dY(2) &
+            = MinModB &
+                ( Y_M(0,3), &
+                  BetaTVD * (Y_M(0,1)-Y_M(3,1)), &
+                  BetaTVD * (Y_M(0,1)-Y_M(3,1)), &
+                  dX2, BetaTVB )
+
+        ELSE
+
+          dY(2) &
+            = MinModB &
+                ( Y_M(0,3), &
+                  BetaTVD * (Y_M(0,1)-Y_M(3,1)), &
+                  BetaTVD * (Y_M(4,1)-Y_M(0,1)), &
+                  dX2, BetaTVB )
+
+        END IF
+
+      END IF
+
+      IF( nDimsX > 2 )THEN
+
+        Y_N(5,:) = U(:,iX1,iX2,iX3-1,iCF_Ne) * AtomicMassUnit &
+                     / U(:,iX1,iX2,iX3-1,iCF_D)
+        Y_N(6,:) = U(:,iX1,iX2,iX3+1,iCF_Ne) * AtomicMassUnit &
+                     / U(:,iX1,iX2,iX3+1,iCF_D)
+
+        Y_M(5,1) = DOT_PRODUCT( WeightsX_q, Y_N(5,:) )
+        Y_M(6,1) = DOT_PRODUCT( WeightsX_q, Y_N(6,:) )
+
+        IF    ( iX3 .EQ. iX_B0(3) )THEN
+
+          dY(3) &
+            = MinModB &
+                ( Y_M(0,4), &
+                  BetaTVD * (Y_M(6,1)-Y_M(0,1)), &
+                  BetaTVD * (Y_M(6,1)-Y_M(0,1)), &
+                  dX3, BetaTVB )
+
+        ELSEIF( iX3 .EQ. iX_E0(3) )THEN
+
+          dY(3) &
+            = MinModB &
+                ( Y_M(0,4), &
+                  BetaTVD * (Y_M(0,1)-Y_M(5,1)), &
+                  BetaTVD * (Y_M(0,1)-Y_M(5,1)), &
+                  dX3, BetaTVB )
+
+        ELSE
+
+          dY(3) &
+            = MinModB &
+                ( Y_M(0,4), &
+                  BetaTVD * (Y_M(0,1)-Y_M(5,1)), &
+                  BetaTVD * (Y_M(6,1)-Y_M(0,1)), &
+                  dX3, BetaTVB )
 
         END IF
 
@@ -425,20 +621,79 @@ CONTAINS
       ! --- Replace Slopes and Discard High-Order Components ---
       ! --- if Limited Slopes Deviate too Much from Original ---
 
+      LimitField = SlopeDifference > SlopeTolerance * ABS( U_M(:,0,1) )
+
+      IF( LimitField(iCF_D) .NEQV. LimitField(iCF_Ne) )THEN
+
+        LimitField(iCF_D)  = .TRUE.
+        LimitField(iCF_Ne) = .TRUE.
+
+      END IF
+
+      IF( ABS( Y_M(0,2) - dY(1) ) > SlopeTolerance * ABS( Y_M(0,1) ) )THEN
+
+        LimitField(iCF_D)  = .TRUE.
+        LimitField(iCF_Ne) = .TRUE.
+
+      END IF
+
+      IF( nDimsX > 1 )THEN
+
+        IF( ABS( Y_M(0,3) - dY(2) ) > SlopeTolerance * ABS( Y_M(0,1) ) )THEN
+
+          LimitField(iCF_D)  = .TRUE.
+          LimitField(iCF_Ne) = .TRUE.
+
+        END IF
+
+      END IF
+
+      IF( nDimsX > 2 )THEN
+
+        IF( ABS( Y_M(0,4) - dY(3) ) > SlopeTolerance * ABS( Y_M(0,1) ) )THEN
+
+          LimitField(iCF_D)  = .TRUE.
+          LimitField(iCF_Ne) = .TRUE.
+
+        END IF
+
+      END IF
+
       DO iCF = 1, nCF
 
-        IF( SlopeDifference(iCF) &
-              > SlopeTolerance * ABS( U_M(iCF,0,1) ) )THEN
+        IF( LimitField(iCF) )THEN
 
           U_M(iCF,0,2:nDOFX) = Zero
 
-          U_M(iCF,0,2) = dU(iCF,1)
+          IF( iCF .NE. iCF_Ne )THEN
 
-          IF( nDimsX > 1 ) &
-            U_M(iCF,0,3) = dU(iCF,2)
+            U_M(iCF,0,2) = dU(iCF,1)
 
-          IF( nDimsX > 2 ) &
-            U_M(iCF,0,4) = dU(iCF,3)
+            IF( nDimsX > 1 ) &
+              U_M(iCF,0,3) = dU(iCF,2)
+
+            IF( nDimsX > 2 ) &
+              U_M(iCF,0,4) = dU(iCF,3)
+
+          ELSE
+
+            ! --- Electron Density ---
+
+            U_M(iCF,0,2) &
+              = ( U_M(iCF_D,0,1) * dY(1) + Y_M(0,1) * dU(iCF_D,1) ) &
+                  / AtomicMassUnit
+
+            IF( nDimsX > 1 ) &
+              U_M(iCF,0,3) &
+                = ( U_M(iCF_D,0,1) * dY(2) + Y_M(0,1) * dU(iCF_D,2) ) &
+                    / AtomicMassUnit
+
+            IF( nDimsX > 2 ) &
+              U_M(iCF,0,4) &
+                = ( U_M(iCF_D,0,1) * dY(3) + Y_M(0,1) * dU(iCF_D,3) ) &
+                    / AtomicMassUnit
+
+          END IF
 
           CALL MapModalToNodal_Fluid &
                  ( U(:,iX1,iX2,iX3,iCF), U_M(iCF,0,:) )
