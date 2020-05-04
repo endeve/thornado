@@ -1,65 +1,88 @@
 PROGRAM ApplicationDriver
 
-  USE KindModule, ONLY: &
-    DP, Zero, One, Two, Pi, TwoPi
-  USE ProgramInitializationModule, ONLY: &
+  USE KindModule,                                       ONLY: &
+    DP,   &
+    Zero, &
+    One,  &
+    Two,  &
+    Pi,   &
+    TwoPi
+  USE ProgramInitializationModule,                      ONLY: &
     InitializeProgram, &
     FinalizeProgram
-  USE ReferenceElementModuleX, ONLY: &
+  USE ReferenceElementModuleX,                          ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
-  USE ReferenceElementModuleX_Lagrange, ONLY: &
+  USE ReferenceElementModuleX_Lagrange,                 ONLY: &
     InitializeReferenceElementX_Lagrange, &
     FinalizeReferenceElementX_Lagrange
-  USE EquationOfStateModule, ONLY: &
+  USE EquationOfStateModule,                            ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
-  USE ProgramHeaderModule, ONLY: &
-    iX_B0, iX_B1, iX_E0, iX_E1, &
-    nDimsX, nDOFX
-  USE GeometryComputationModule, ONLY: &
+  USE ProgramHeaderModule,                              ONLY: &
+    iX_B0,  &
+    iX_B1,  &
+    iX_E0,  &
+    iX_E1,  &
+    nDimsX, &
+    nDOFX
+  USE GeometryComputationModule,                        ONLY: &
     ComputeGeometryX
-  USE InitializationModule_Relativistic, ONLY: &
+  USE InitializationModule_Relativistic,                ONLY: &
     InitializeFields_Relativistic
-  USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
+  USE Euler_SlopeLimiterModule_Relativistic_IDEAL,      ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_IDEAL, &
-    FinalizeSlopeLimiter_Euler_Relativistic_IDEAL, &
+    FinalizeSlopeLimiter_Euler_Relativistic_IDEAL,   &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializePositivityLimiter_Euler_Relativistic_IDEAL, &
-    FinalizePositivityLimiter_Euler_Relativistic_IDEAL, &
+    FinalizePositivityLimiter_Euler_Relativistic_IDEAL,   &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
-  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+  USE Euler_UtilitiesModule_Relativistic,               ONLY: &
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
-  USE InputOutputModuleHDF, ONLY: &
+  USE InputOutputModuleHDF,                             ONLY: &
     WriteFieldsHDF, &
-    ReadFieldsHDF
-  USE FluidFieldsModule, ONLY: &
-    nCF, nPF, nAF, &
-    uCF, uPF, uAF, &
+    ReadFieldsHDF,  &
+    WriteAccretionShockDiagnosticsHDF
+  USE FluidFieldsModule,                                ONLY: &
+    nCF, &
+    nPF, &
+    nAF, &
+    uCF, &
+    uPF, &
+    uAF, &
     uDF
-  USE GeometryFieldsModule, ONLY: &
-    nGF, uGF
-  USE Euler_dgDiscretizationModule, ONLY: &
+  USE GeometryFieldsModule,                             ONLY: &
+    nGF, &
+    uGF
+  USE Euler_dgDiscretizationModule,                     ONLY: &
     ComputeIncrement_Euler_DG_Explicit
-  USE TimeSteppingModule_SSPRK, ONLY: &
+  USE TimeSteppingModule_SSPRK,                         ONLY: &
     InitializeFluid_SSPRK, &
-    FinalizeFluid_SSPRK, &
+    FinalizeFluid_SSPRK,   &
     UpdateFluid_SSPRK
-  USE UnitsModule, ONLY: &
-    Kilometer, SolarMass, Second, Millisecond
-  USE Euler_TallyModule_Relativistic_IDEAL, ONLY: &
+  USE UnitsModule,                                      ONLY: &
+    Kilometer,   &
+    SolarMass,   &
+    Second,      &
+    Millisecond, &
+    UnitsDisplay
+  USE Euler_TallyModule_Relativistic_IDEAL,             ONLY: &
     InitializeTally_Euler_Relativistic_IDEAL, &
-    FinalizeTally_Euler_Relativistic_IDEAL, &
+    FinalizeTally_Euler_Relativistic_IDEAL,   &
     ComputeTally_Euler_Relativistic_IDEAL
-  USE TimersModule_Euler, ONLY: &
-    TimeIt_Euler, &
-    InitializeTimers_Euler, FinalizeTimers_Euler, &
-    TimersStart_Euler, TimersStop_Euler, &
+  USE TimersModule_Euler,                               ONLY: &
+    TimeIt_Euler,            &
+    InitializeTimers_Euler,  &
+    FinalizeTimers_Euler,    &
+    TimersStart_Euler,       &
+    TimersStop_Euler,        &
     Timer_Euler_InputOutput, &
-    Timer_Euler_Initialize, &
+    Timer_Euler_Initialize,  &
     Timer_Euler_Finalize
+  USE AccretionShockDiagnosticsModule, ONLY: &
+    ComputeAccretionShockDiagnostics
 
   IMPLICIT NONE
 
@@ -88,6 +111,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, CFL
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
+  REAL(DP)      :: Mass = Zero
 
   ! --- Sedov--Taylor blast wave ---
   REAL(DP) :: Eblast
@@ -102,6 +126,7 @@ PROGRAM ApplicationDriver
   INTEGER               :: PerturbationOrder
   REAL(DP)              :: PerturbationAmplitude, &
                            rPerturbationInner, rPerturbationOuter
+  REAL(DP)              :: Power(0:2)
 
   LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
@@ -117,18 +142,19 @@ PROGRAM ApplicationDriver
 
 !  ProgramName = 'Advection'
 !  ProgramName = 'Advection2D'
-  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2D'
 !  ProgramName = 'RiemannProblemSpherical'
 !  ProgramName = 'SedovTaylorBlastWave'
 !  ProgramName = 'KelvinHelmholtzInstability'
-!  ProgramName = 'StandingAccretionShock'
+  ProgramName = 'StandingAccretionShock'
+!  ProgramName = 'StaticTOV'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
     CASE( 'Advection' )
 
-      AdvectionProfile = 'TopHat'
+      AdvectionProfile = 'SineWave'
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
@@ -309,7 +335,7 @@ PROGRAM ApplicationDriver
 
       ApplyPerturbation     = .TRUE.
       PerturbationOrder     = 1
-      PerturbationAmplitude = 0.1_DP
+      PerturbationAmplitude = 0.04_DP
       rPerturbationInner    = 260.0_DP * Kilometer
       rPerturbationOuter    = 280.0_DP * Kilometer
 
@@ -322,6 +348,26 @@ PROGRAM ApplicationDriver
       bcX = [ 11, 0, 0 ]
 
       t_end = 3.0d2 * Millisecond
+
+      WriteGF = .TRUE.
+
+      ActivateUnits = .TRUE.
+
+      Mass = MassPNS
+
+    CASE( 'StaticTOV' )
+
+       CoordinateSystem = 'SPHERICAL'
+
+       Gamma = 2.0_DP
+
+       nX = [ 640, 1, 1 ]
+       xL = [ Zero    , Zero, Zero  ]
+       xR = [ 8.13e0_DP,  Pi , TwoPi ]
+
+       bcX = [ 30, 0, 0 ]
+
+       t_end = 1.0e-1 * Millisecond
 
       WriteGF = .TRUE.
 
@@ -340,6 +386,7 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  SedovTaylorBlastWave'
       WRITE(*,'(A)')     '  KelvinHelmholtzInstability'
       WRITE(*,'(A)')     '  StandingAccretionShock'
+      WRITE(*,'(A)')     '  StaticTOV'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
@@ -402,7 +449,7 @@ PROGRAM ApplicationDriver
   CALL InitializeReferenceElementX_Lagrange
 
   CALL ComputeGeometryX &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = MassPNS )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = Mass )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &
@@ -535,18 +582,11 @@ PROGRAM ApplicationDriver
 
     IF( MOD( iCycle, iCycleD ) .EQ. 0 )THEN
 
-      IF( ProgramName .EQ. 'StandingAccretionShock' )THEN
-
-        WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A4,A5,ES13.6E3,A3)') &
-          '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, ' ms ', &
-          'dt = ', dt / Millisecond, ' ms'
-
-      ELSE
-
-        WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A1,A5,ES13.6E3)') &
-          '', 'Cycle = ', iCycle, '', 't = ',  t, '', 'dt = ', dt
-
-      END IF
+      WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
+        'Cycle: ', iCycle, ' t = ', t / UnitsDisplay % TimeUnit, &
+        TRIM( UnitsDisplay % TimeLabel ), &
+        ' dt = ', dt /  UnitsDisplay % TimeUnit, &
+        TRIM( UnitsDisplay % TimeLabel )
 
     END IF
 
@@ -598,6 +638,18 @@ PROGRAM ApplicationDriver
         wrt = .FALSE.
 
       END IF
+    END IF
+
+    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
+
+      CALL ComputeFromConserved_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+      CALL ComputeAccretionShockDiagnostics &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
+
+      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+
     END IF
 
   END DO

@@ -26,8 +26,8 @@ MODULE MF_Euler_PositivityLimiterModule
   ! --- Local Modules ---
 
   USE MF_UtilitiesModule,       ONLY: &
-    AMReX2thornado, &
-    thornado2AMReX
+    amrex2thornado_Euler, &
+    thornado2amrex_Euler
   USE MyAmrModule,              ONLY: &
     nLevels,              &
     UsePositivityLimiter, &
@@ -92,9 +92,9 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nCF ) )
 
-        CALL AMReX2thornado( nGF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
-        CALL AMReX2thornado( nCF, iX_B1, iX_E1, uCF, U )
+        CALL amrex2thornado_Euler( nCF, iX_B1, iX_E1, uCF, U )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
@@ -104,7 +104,7 @@ CONTAINS
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-        CALL thornado2AMReX( nCF, iX_B1, iX_E1, uCF, U )
+        CALL thornado2amrex_Euler( nCF, iX_B1, iX_E1, uCF, U )
 
         DEALLOCATE( U )
 

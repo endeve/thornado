@@ -30,8 +30,8 @@ MODULE  MF_Euler_dgDiscretizationModule
   ! --- Local Modules ---
 
   USE MF_UtilitiesModule,                ONLY: &
-    AMReX2thornado, &
-    thornado2AMReX
+    amrex2thornado_Euler, &
+    thornado2amrex_Euler
   USE MyAmrModule,                       ONLY: &
     nLevels, &
     DEBUG
@@ -128,11 +128,11 @@ CONTAINS
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3),1:nCF) )
 
-        CALL AMReX2thornado( nGF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
-        CALL AMReX2thornado( nCF, iX_B1, iX_E1, uCF, U )
+        CALL amrex2thornado_Euler( nCF, iX_B1, iX_E1, uCF, U )
 
-        CALL AMReX2thornado( nDF, iX_B1, iX_E1, uDF, D )
+        CALL amrex2thornado_Euler( nDF, iX_B1, iX_E1, uDF, D )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
@@ -153,7 +153,7 @@ CONTAINS
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-        CALL thornado2AMReX( nCF, iX_B0, iX_E0, duCF, dU )
+        CALL thornado2amrex_Euler( nCF, iX_B0, iX_E0, duCF, dU )
 
         DEALLOCATE( dU )
 

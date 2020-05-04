@@ -58,10 +58,16 @@ MODULE InputOutputModuleHDF
     OpacitySuffix   = 'Opacities'
   INTEGER :: FileNumber = 0
 
+  ! --- Accretion Shock Diagnostics ---
+  CHARACTER(25), PARAMETER :: &
+    BaseName = 'AccretionShockDiagnostics'
+  INTEGER :: FileNumber_AS = 0
+
   INTEGER :: HDFERR
 
   PUBLIC :: WriteFieldsHDF
   PUBLIC :: ReadFieldsHDF
+  PUBLIC :: WriteAccretionShockDiagnosticsHDF
 
 CONTAINS
 
@@ -802,6 +808,72 @@ CONTAINS
     CALL H5CLOSE_F( HDFERR )
 
   END SUBROUTINE WriteNeutrinoOpacitiesHDF
+
+
+  SUBROUTINE WriteAccretionShockDiagnosticsHDF( Time, Power )
+
+    REAL(DP), INTENT(in) :: Time
+    REAL(DP), INTENT(in) :: Power(0:)
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: GroupName
+    CHARACTER(256) :: DatasetName
+    INTEGER(HID_T) :: FILE_ID
+    REAL(DP)       :: Dummy3D(2,2,2) = 0.0_DP
+
+    WRITE( FileNumberString, FMT='(I6.6)' ) FileNumber_AS
+
+    FileName &
+      = OutputDirectory // '/' // &
+        BaseName // '_' // &
+        FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
+
+    ASSOCIATE( U => UnitsDisplay )
+
+    ! --- Write Time ---
+
+    DatasetName = '/Time'
+
+    CALL WriteDataset1DHDF &
+           ( [ Time ] / U % TimeUnit, DatasetName, FILE_ID )
+
+    END ASSOCIATE ! U
+
+    ! --- Write Accretion Shock Diagnostic Variables ---
+
+    GroupName = 'Accretion Shock Diagnostic Variables'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    ! --- Power in Legendre modes ---
+
+    DatasetName = TRIM( GroupName ) // '/' // 'Power in P0'
+
+    CALL WriteDataset1DHDF &
+           ( [ Power(0) ], DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/' // 'Power in P1'
+
+    CALL WriteDataset1DHDF &
+           ( [ Power(1) ], DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/' // 'Power in P2'
+
+    CALL WriteDataset1DHDF &
+           ( [ Power(2) ], DatasetName, FILE_ID )
+
+    ! --- Additional diagnostics go here ---
+
+    CALL H5CLOSE_F( HDFERR )
+
+    FileNumber_AS = FileNumber_AS + 1
+
+  END SUBROUTINE WriteAccretionShockDiagnosticsHDF
 
 
   SUBROUTINE CreateGroupHDF( FileName, GroupName, FILE_ID )
