@@ -1607,12 +1607,13 @@ CONTAINS
     REAL(DP), PARAMETER :: &
       CentralDensity = 7.906e14_DP * ( Gram / Centimeter**3 ), &
       dX1            = 1.0e-4_DP * Kilometer, &
-      TolF           = 1.0e-10_DP
+      TolF           = 1.0e-15_DP
 
     INTEGER  :: iX1, iX2, iX3, iNodeX, iNodeX1, iNodeX2, iNodeX3, &
                 jNodeX, jNodeX1, iL, ITER, nX, iGF
     REAL(DP) :: X1, X2
-    REAL(DP) :: Pressure, E1, E2, Psi, Alpha, Phi
+    REAL(DP) :: Pressure , E1 , E2, Psi, Alpha, Phi
+    REAL(DP) :: PressureN, E1N, E2N
     REAL(DP) :: CentralPressure, Psi0, Alpha0
     REAL(DP) :: GravitationalMass, Radius, dAlpha, dPsi, dF
 
@@ -1636,6 +1637,12 @@ CONTAINS
       'Central Pressure    = ', CentralPressure &
                                   / ( Erg / Centimeter**3 ), &
       ' [ erg / cm^3 ]'
+    WRITE(*,'(6x,A,ES10.3E3,A)')  &
+      'dX                  = ', dX1 &
+                                  / ( Kilometer ), &
+      ' [ km ]'
+    WRITE(*,'(6x,A,ES10.3E3)')    &
+      'TolF                = ', TolF
     WRITE(*,*)
 
     ! --- Find geometry fields at center by iteratively integrating outward ---
@@ -1690,16 +1697,25 @@ CONTAINS
       X1Arr      (iX1) = X1
       PressureArr(iX1) = Pressure
       DensityArr (iX1) = SQRT( Pressure / PolytropicConstant_TOV )
-      PsiArr     (iX1) = Psi
-      AlphaArr   (iX1) = Phi / Psi
 
-      Pressure = Pressure + dX1 * dpdr  ( Pressure, Phi, Psi, E1, E2, X1 )
-      E1       = E1       + dX1 * dE1dr ( Pressure, Psi, X1 )
-      E2       = E2       + dX1 * dE2dr ( Pressure, Phi, Psi, X1 )
-      Psi      = Psi      + dX1 * dPsidr( Pressure, E1, X1 )
-      Phi      = Phi      + dX1 * dPhidr( Pressure, E2, X1 )
+      ! --- Explicit steps ---
 
-      X1 = X1 + dX1
+      PressureN = Pressure + dX1 * dpdr  ( Pressure, Phi, Psi, E1, E2, X1 )
+      E1N       = E1       + dX1 * dE1dr ( Pressure, Psi, X1 )
+      E2N       = E2       + dX1 * dE2dr ( Pressure, Phi, Psi, X1 )
+
+      ! --- Implicit steps ---
+
+      X1  = X1  + dX1
+      Psi = Psi + dX1 * dPsidr( PressureN, E1N, X1 )
+      Phi = Phi + dX1 * dPhidr( PressureN, E2N, X1 )
+
+      PsiArr  (iX1) = Psi
+      AlphaArr(iX1) = Phi / Psi
+
+      Pressure = PressureN
+      E1       = E1N
+      E2       = E2N
 
     END DO
 
@@ -1730,11 +1746,11 @@ CONTAINS
                                   PsiArr(iL), PsiArr(iL+1) )
 
         uGF(iNodeX,iX1,iX2,iX3,iGF_h_1) &
-          = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**4
+          = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**2
         uGF(iNodeX,iX1,iX2,iX3,iGF_h_2) &
-          = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**4 * X1**2
+          = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**2 * X1
         uGF(iNodeX,iX1,iX2,iX3,iGF_h_3) &
-          = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**4 * X1**2 * SIN( X2 )**2
+          = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**2 * X1 * SIN( X2 )
 
         uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &
           = uGF(iNodeX,iX1,iX2,iX3,iGF_h_1)**2
@@ -1835,8 +1851,9 @@ CONTAINS
     REAL(DP), INTENT(out) :: GravitationalMass, Radius, dAlpha, dPsi
     INTEGER,  INTENT(out) :: nX
 
-    REAL(DP)            :: X1, Pressure, E1, E2, Psi, Phi
-    REAL(DP)            :: Alpha, Alpha_A, Psi_A
+    REAL(DP) :: Pressure , E1 , E2 , Psi , Phi, X1
+    REAL(DP) :: PressureN, E1N, E2N
+    REAL(DP) :: Alpha, Alpha_A, Psi_A
 
     ! --- Set inner boundary values ---
 
@@ -1846,19 +1863,27 @@ CONTAINS
     E2                = Zero
     Psi               = Psi0
     Phi               = Alpha0 * Psi0
-    GravitationalMass = Zero
+    GravitationalMass = E1 / SpeedOfLight**2
 
     nX = 1
 
     DO WHILE( Pressure .GT. 1.0e-8_DP * CentralPressure )
 
-      Pressure = Pressure + dX1 * dpdr  ( Pressure, Phi, Psi, E1, E2, X1 )
-      E1       = E1       + dX1 * dE1dr ( Pressure, Psi, X1 )
-      E2       = E2       + dX1 * dE2dr ( Pressure, Phi, Psi, X1 )
-      Psi      = Psi      + dX1 * dPsidr( Pressure, E1, X1 )
-      Phi      = Phi      + dX1 * dPhidr( Pressure, E2, X1 )
+      ! --- Explicit steps ---
 
-      X1 = X1 + dX1
+      PressureN = Pressure + dX1 * dpdr  ( Pressure, Phi, Psi, E1, E2, X1 )
+      E1N       = E1       + dX1 * dE1dr ( Pressure, Psi, X1 )
+      E2N       = E2       + dX1 * dE2dr ( Pressure, Phi, Psi, X1 )
+
+      ! --- Implicit steps ---
+
+      X1  = X1  + dX1
+      Psi = Psi + dX1 * dPsidr( PressureN, E1N, X1 )
+      Phi = Phi + dX1 * dPhidr( PressureN, E2N, X1 )
+
+      Pressure = PressureN
+      E1       = E1N
+      E2       = E2N
 
       nX = nX + 1
 
