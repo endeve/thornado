@@ -337,7 +337,7 @@ CONTAINS
       D(:,iX1,iX2,iX3,iDF_TCI) &
         = MAX( MAXVAL( D(:,iX1,iX2,iX3,iDF_TCI) ), &
                SUM( 1.0d2 * ABS( Y_K(0) - Y_K0(1:2*nDimsX) ) ) &
-                 / MAXVAL( ABS( Y_K(0:2*nDimsX) ) ) )
+                 / MAX( MAXVAL( ABS( Y_K(0:2*nDimsX) ) ), SqrtTiny ) )
 
     END DO
     END DO
