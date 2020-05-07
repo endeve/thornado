@@ -27,6 +27,9 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
     nCF, iCF_D, iCF_E, iCF_Ne, &
     iDF_TCI
   USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyInnerBC_Euler,  &
+    ApplyOuterBC_Euler,  &
+    iApplyBC_Euler_Both, &
     ApplyBoundaryConditions_Euler
   USE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE, ONLY: &
     ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE
@@ -186,7 +189,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -198,14 +201,17 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
+    INTEGER,  INTENT(in), OPTIONAL :: &
+      iApplyBC_Option(3)
 
     LOGICAL  :: LimitedCell(nCF,iX_B0(1):iX_E0(1), &
                                 iX_B0(2):iX_E0(2), &
                                 iX_B0(3):iX_E0(3))
     LOGICAL  :: SuppressBC
     LOGICAL  :: LimitField(nCF)
-    LOGICAL  :: UseInnerGhostCell(3), UseOuterGhostCell(3)
+    LOGICAL  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
     INTEGER  :: iX1, iX2, iX3, iGF, iCF
+    INTEGER  :: iApplyBC(3)
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: dY(nDimsX)
     REAL(DP) :: SlopeDifference(nCF)
@@ -230,6 +236,10 @@ CONTAINS
 
     U_M = Zero
 
+    iApplyBC = iApplyBC_Euler_Both
+    IF( PRESENT( iApplyBC_Option ) ) &
+      iApplyBC = iApplyBC_Option
+
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
@@ -249,14 +259,20 @@ CONTAINS
 
       IF( ALL( D(:,iX1,iX2,iX3,iDF_TCI) < LimiterThreshold ) ) CYCLE
 
-      UseInnerGhostCell = .TRUE.
-      UseOuterGhostCell = .TRUE.
-      IF( iX1 .EQ. iX_B0(1) .AND. bcX(1) .NE. 1 ) UseInnerGhostCell(1) = .FALSE.
-      IF( iX1 .EQ. iX_E0(1) .AND. bcX(1) .NE. 1 ) UseOuterGhostCell(1) = .FALSE.
-      IF( iX2 .EQ. iX_B0(2) .AND. bcX(2) .NE. 1 ) UseInnerGhostCell(2) = .FALSE.
-      IF( iX2 .EQ. iX_E0(2) .AND. bcX(2) .NE. 1 ) UseOuterGhostCell(2) = .FALSE.
-      IF( iX3 .EQ. iX_B0(3) .AND. bcX(3) .NE. 1 ) UseInnerGhostCell(3) = .FALSE.
-      IF( iX3 .EQ. iX_E0(3) .AND. bcX(3) .NE. 1 ) UseOuterGhostCell(3) = .FALSE.
+      ExcludeInnerGhostCell = .FALSE.
+      ExcludeOuterGhostCell = .FALSE.
+      IF( iX1 .EQ. iX_B0(1) .AND. ApplyInnerBC_Euler( iApplyBC(1) ) &
+            .AND. bcX(1) .NE. 1 ) ExcludeInnerGhostCell(1) = .TRUE.
+      IF( iX1 .EQ. iX_E0(1) .AND. ApplyOuterBC_Euler( iApplyBC(1) ) &
+            .AND. bcX(1) .NE. 1 ) ExcludeOuterGhostCell(1) = .TRUE.
+      IF( iX2 .EQ. iX_B0(2) .AND. ApplyInnerBC_Euler( iApplyBC(2) ) &
+            .AND. bcX(2) .NE. 1 ) ExcludeInnerGhostCell(2) = .TRUE.
+      IF( iX2 .EQ. iX_E0(2) .AND. ApplyOuterBC_Euler( iApplyBC(2) ) &
+            .AND. bcX(2) .NE. 1 ) ExcludeOuterGhostCell(2) = .TRUE.
+      IF( iX3 .EQ. iX_B0(3) .AND. ApplyInnerBC_Euler( iApplyBC(3) ) &
+            .AND. bcX(3) .NE. 1 ) ExcludeInnerGhostCell(3) = .TRUE.
+      IF( iX3 .EQ. iX_E0(3) .AND. ApplyOuterBC_Euler( iApplyBC(3) ) &
+            .AND. bcX(3) .NE. 1 ) ExcludeOuterGhostCell(3) = .TRUE.
 
       dX1 = MeshX(1) % Width(iX1)
       dX2 = MeshX(2) % Width(iX2)
@@ -363,20 +379,21 @@ CONTAINS
 
       a = MATMUL( invR_X1, U_M(:,0,2) )
 
-      IF( UseInnerGhostCell(1) .AND. UseOuterGhostCell(1) )THEN
+      IF( .NOT. ExcludeOuterGhostCell(1) &
+            .AND. .NOT. ExcludeInnerGhostCell(1) )THEN
 
         b = BetaTVD * MATMUL( invR_X1, ( U_M(:,0,1) - U_M(:,1,1) ) )
         c = BetaTVD * MATMUL( invR_X1, ( U_M(:,2,1) - U_M(:,0,1) ) )
 
-      ELSE IF( UseInnerGhostCell(1) )THEN
-
-        b = BetaTVD * MATMUL( invR_X1, ( U_M(:,0,1) - U_M(:,1,1) ) )
-        c = b
-
-      ELSE IF( UseOuterGhostCell(1) )THEN
+      ELSE IF( ExcludeInnerGhostCell(1) )THEN
 
         c = BetaTVD * MATMUL( invR_X1, ( U_M(:,2,1) - U_M(:,0,1) ) )
         b = c
+
+      ELSE IF( ExcludeOuterGhostCell(1) )THEN
+
+        b = BetaTVD * MATMUL( invR_X1, ( U_M(:,0,1) - U_M(:,1,1) ) )
+        c = b
 
       END IF
 
@@ -386,20 +403,21 @@ CONTAINS
 
         a = MATMUL( invR_X2, U_M(:,0,3) )
 
-        IF( UseInnerGhostCell(2) .AND. UseOuterGhostCell(2) )THEN
+        IF( .NOT. ExcludeOuterGhostCell(2) &
+              .AND. .NOT. ExcludeInnerGhostCell(2) )THEN
 
           b = BetaTVD * MATMUL( invR_X2, ( U_M(:,0,1) - U_M(:,3,1) ) )
           c = BetaTVD * MATMUL( invR_X2, ( U_M(:,4,1) - U_M(:,0,1) ) )
 
-        ELSE IF( UseInnerGhostCell(2) )THEN
-
-          b = BetaTVD * MATMUL( invR_X2, ( U_M(:,0,1) - U_M(:,3,1) ) )
-          c = b
-
-        ELSE IF( UseOuterGhostCell(2) )THEN
+        ELSE IF( ExcludeInnerGhostCell(2) )THEN
 
           c = BetaTVD * MATMUL( invR_X2, ( U_M(:,4,1) - U_M(:,0,1) ) )
           b = c
+
+        ELSE IF( ExcludeOuterGhostCell(2) )THEN
+
+          b = BetaTVD * MATMUL( invR_X2, ( U_M(:,0,1) - U_M(:,3,1) ) )
+          c = b
 
         END IF
 
@@ -411,20 +429,21 @@ CONTAINS
 
         a = MATMUL( invR_X3, U_M(:,0,4) )
 
-        IF( UseInnerGhostCell(3) .AND. UseOuterGhostCell(3) )THEN
+        IF( .NOT. ExcludeOuterGhostCell(3) &
+              .AND. .NOT. ExcludeInnerGhostCell(3) )THEN
 
           b = BetaTVD * MATMUL( invR_X3, ( U_M(:,0,1) - U_M(:,5,1) ) )
           c = BetaTVD * MATMUL( invR_X3, ( U_M(:,6,1) - U_M(:,0,1) ) )
 
-        ELSE IF( UseInnerGhostCell(3) )THEN
-
-          b = BetaTVD * MATMUL( invR_X3, ( U_M(:,0,1) - U_M(:,5,1) ) )
-          c = b
-
-        ELSE IF( UseOuterGhostCell(3) )THEN
+        ELSE IF( ExcludeInnerGhostCell(3) )THEN
 
           c = BetaTVD * MATMUL( invR_X3, ( U_M(:,6,1) - U_M(:,0,1) ) )
           b = c
+
+        ELSE IF( ExcludeOuterGhostCell(3) )THEN
+
+          b = BetaTVD * MATMUL( invR_X3, ( U_M(:,0,1) - U_M(:,5,1) ) )
+          c = b
 
         END IF
 
@@ -472,17 +491,18 @@ CONTAINS
 
       aY = Y_M(0,2)
 
-      IF( UseInnerGhostCell(1) .AND. UseOuterGhostCell(1) )THEN
+      IF( .NOT. ExcludeOuterGhostCell(1) &
+            .AND. .NOT. ExcludeInnerGhostCell(1) )THEN
 
         bY = BetaTVD * ( Y_M(0,1) - Y_M(1,1) )
         cY = BetaTVD * ( Y_M(2,1) - Y_M(0,1) )
 
-      ELSE IF( UseInnerGhostCell(1) )THEN
+      ELSE IF( ExcludeInnerGhostCell(1) )THEN
 
-        bY = BetaTVD * ( Y_M(2,1) - Y_M(0,1) )
-        cY = bY
+        cY = BetaTVD * ( Y_M(2,1) - Y_M(0,1) )
+        bY = cY
 
-      ELSE IF( UseOuterGhostCell(1) )THEN
+      ELSE IF( ExcludeOuterGhostCell(1) )THEN
 
         cY = BetaTVD * ( Y_M(0,1) - Y_M(1,1) )
         bY = cY
@@ -503,20 +523,21 @@ CONTAINS
 
         aY = Y_M(0,3)
 
-        IF( UseInnerGhostCell(2) .AND. UseOuterGhostCell(2) )THEN
+        IF( .NOT. ExcludeOuterGhostCell(2) &
+              .AND. .NOT. ExcludeInnerGhostCell(2) )THEN
 
           bY = BetaTVD * ( Y_M(0,1) - Y_M(3,1) )
           cY = BetaTVD * ( Y_M(4,1) - Y_M(0,1) )
 
-        ELSE IF( UseInnerGhostCell(1) )THEN
-
-          bY = BetaTVD * ( Y_M(0,1) - Y_M(3,1) )
-          cY = bY
-
-        ELSE IF( UseOuterGhostCell(2) )THEN
+        ELSE IF( ExcludeInnerGhostCell(2) )THEN
 
           cY = BetaTVD * ( Y_M(4,1) - Y_M(0,1) )
           bY = cY
+
+        ELSE IF( ExcludeOuterGhostCell(1) )THEN
+
+          bY = BetaTVD * ( Y_M(0,1) - Y_M(3,1) )
+          cY = bY
 
         END IF
 
@@ -536,20 +557,21 @@ CONTAINS
 
         aY = Y_M(0,4)
 
-        IF( UseInnerGhostCell(3) .AND. UseOuterGhostCell(3) )THEN
+        IF( .NOT. ExcludeOuterGhostCell(3) &
+              .AND. .NOT. ExcludeInnerGhostCell(3) )THEN
 
           bY = BetaTVD * ( Y_M(0,1) - Y_M(5,1) )
           cY = BetaTVD * ( Y_M(6,1) - Y_M(0,1) )
 
-        ELSE IF( UseInnerGhostCell(3) )THEN
-
-          bY = BetaTVD * ( Y_M(0,1) - Y_M(5,1) )
-          cY = bY
-
-        ELSE IF( UseOuterGhostCell(3) )THEN
+        ELSE IF( ExcludeInnerGhostCell(3) )THEN
 
           cY = BetaTVD * ( Y_M(6,1) - Y_M(0,1) )
           bY = cY
+
+        ELSE IF( ExcludeOuterGhostCell(3) )THEN
+
+          bY = BetaTVD * ( Y_M(0,1) - Y_M(5,1) )
+          cY = bY
 
         END IF
 

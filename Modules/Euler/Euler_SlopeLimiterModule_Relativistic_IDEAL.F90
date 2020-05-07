@@ -210,9 +210,9 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
 
-    INTEGER, INTENT(in)            :: &
+    INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)           :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
@@ -222,6 +222,8 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
+    INTEGER,  INTENT(in), OPTIONAL :: &
+      iApplyBC_Option(3)
 
     SELECT CASE( TRIM( SlopeLimiterMethod ) )
 
