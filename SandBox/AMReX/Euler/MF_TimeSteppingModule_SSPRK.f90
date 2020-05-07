@@ -320,7 +320,7 @@ CONTAINS
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (1)'
 
-        CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_U )
+        CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_U, MF_uDF )
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ComputeIncrement_Euler'
 
@@ -350,7 +350,7 @@ CONTAINS
 
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplyPositivityLimiter_Euler (2)'
 
-    CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
+    CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF, MF_uDF )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_UpdateFluid )
 
