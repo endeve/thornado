@@ -13,6 +13,10 @@ MODULE MF_Euler_BoundaryConditionsModule
   ! --- thornado Modules ---
 
   USE Euler_BoundaryConditionsModule, ONLY: &
+    iApplyBC_Euler_Both,  &
+    iApplyBC_Euler_Inner, &
+    iApplyBC_Euler_Outer, &
+    iApplyBC_Euler_None,  &
     ApplyBoundaryConditions_Euler
 
   ! --- Local Modules ---
@@ -37,12 +41,6 @@ MODULE MF_Euler_BoundaryConditionsModule
   CONTAINS
     PROCEDURE :: Euler_GetBC => EdgeMap_Euler_GetBC
   END TYPE EdgeMap
-
-  ! --- Hack to get iApplyBC_Euler_XXX. DO NOT CHANGE THESE VALUES ---
-  INTEGER, PARAMETER :: iApplyBC_Euler_Both  = 0
-  INTEGER, PARAMETER :: iApplyBC_Euler_Inner = 1
-  INTEGER, PARAMETER :: iApplyBC_Euler_Outer = 2
-  INTEGER, PARAMETER :: iApplyBC_Euler_None  = 3
 
 
 CONTAINS
