@@ -270,12 +270,11 @@ CONTAINS
 
       END DO
 
-      DO iP = 1, nDOFX
+      DO iP = 1, nDOFX ! --- Doesn't include points on interfaces
 
         D(iP,iX1,iX2,iX3,iDF_E) = Min_E(iP)
 
       END DO
-
 
       IF( ANY( E_PP(:) < Min_E(:) ) )THEN
 
@@ -312,6 +311,7 @@ CONTAINS
 !          IF( ALL( E_PP(:) > Min_E(:) ) )EXIT
 
           Theta_3 = One
+
           DO iP = 1, nPT
 
             IF( E_PP(iP) < Min_E(iP) )THEN
