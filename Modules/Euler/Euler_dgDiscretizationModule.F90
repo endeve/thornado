@@ -58,6 +58,8 @@ MODULE Euler_dgDiscretizationModule
     NumericalFlux_Euler_X1,      &
     NumericalFlux_Euler_X2,      &
     NumericalFlux_Euler_X3
+  USE Euler_DiscontinuityDetectionModule, ONLY: &
+    DetectShocks_Euler
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -82,7 +84,7 @@ CONTAINS
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout)         :: &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-    REAL(DP), INTENT(in)            :: &
+    REAL(DP), INTENT(inout)         :: &
       D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(out)           :: &
       dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
@@ -104,6 +106,9 @@ CONTAINS
     IF( .NOT. SuppressBC ) &
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    CALL DetectShocks_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
     CALL TimersStart_Euler( Timer_Euler_Divergence )
 

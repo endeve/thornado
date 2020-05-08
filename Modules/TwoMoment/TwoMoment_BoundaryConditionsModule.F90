@@ -4,12 +4,19 @@ MODULE TwoMoment_BoundaryConditionsModule
     DP
   USE ProgramHeaderModule, ONLY: &
     bcZ, swZ, &
-    nNodesZ, nDOF
+    nNodesZ, nDOF, nDOFE
   USE ReferenceElementModule, ONLY: &
     NodeNumberTable4D
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
-    nCR, iCR_G1, iCR_G2, iCR_G3
+    nCR,iCR_N, iCR_G1, iCR_G2, iCR_G3
+  USE MeshModule,              ONLY: &
+    MeshType,    &
+    CreateMesh,  &
+    DestroyMesh, &
+    MeshX,          &
+    MeshE,          &
+    NodeCoordinate
 
   IMPLICIT NONE
   PRIVATE
@@ -173,6 +180,8 @@ CONTAINS
       END DO
       END DO
 
+
+
     CASE DEFAULT
 
       WRITE(*,*)
@@ -199,7 +208,8 @@ CONTAINS
 
     INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
-    INTEGER :: jNodeZ2, iNodeZ, jNodeZ
+    INTEGER :: jNodeZ2, iNodeZ, jNodeZ, iNodeE
+    REAL(DP):: E
 
     SELECT CASE ( bcZ(2) )
 
@@ -448,6 +458,56 @@ CONTAINS
             END DO
           END DO
         END DO
+      END DO
+
+    CASE ( 22 ) ! Custom Boundary Conditions for radiating inner and outflow outer
+      DO iS = 1, nSpecies
+          DO iZ4 = iZ_B0(4), iZ_E0(4)
+            DO iZ3 = iZ_B0(3), iZ_E0(3)
+              DO iZ2 = 1, swZ(2)
+                DO iZ1 = iZ_B0(1), iZ_E0(1)
+                  DO iNode = 1, nDOF
+
+
+                    iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
+
+
+                    E = NodeCoordinate( MeshE, iZ1, iNodeE )
+
+                    ! --- Inner Boundary ---
+                    U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)  &
+                      =  1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP ) 
+            
+                    U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G1,iS)  &
+                      = 0.999_DP * U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)
+
+                    U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G2,iS) &
+                      = 0.0_DP
+
+                    U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G3,iS) &
+                      = 0.0_DP
+
+
+
+
+                    ! --- Outer Boundary ---
+
+                    U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_N,iS) &
+                      = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR_N,iS)
+
+                    U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_G1,iS) &
+                      = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR_G1,iS)
+
+                    U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_G2,iS) &
+                      = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR_G2,iS)
+
+                    U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_G3,iS) &
+                      = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR_G3,iS)
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
       END DO
 
     CASE DEFAULT

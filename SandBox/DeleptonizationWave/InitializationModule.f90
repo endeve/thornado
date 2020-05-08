@@ -205,7 +205,8 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: R_P(:), D_P(:), T_P(:), Y_P(:)
 
     WRITE(*,*)
-    WRITE(*,'(A6,A,A)') '', 'Initializing from Profile: ', TRIM( ProfileName )
+    WRITE(*,'(A6,A,A)') '', &
+      'Initializing Fluid from Profile: ', TRIM( ProfileName )
 
     CALL ReadFluidProfile( ProfileName, R_P, D_P, T_P, Y_P )
 
@@ -381,8 +382,14 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: Chi(:,:,:), fEQ(:,:,:), R_Nu(:,:), E_Nu(:)
     REAL(DP), ALLOCATABLE :: D_Nu_P(:,:,:), I1_Nu_P(:,:,:)
 
+    WRITE(*,*)
+    WRITE(*,'(A6,A,A)') '', &
+      'Initializing Radiation from Profile: ', TRIM( ProfileName )
+
     CALL ReadFluidProfile( ProfileName, R_P, D_P, T_P, Y_P )
 
+    ! --- Prevent too low density ---
+    D_P = MAX( D_P, D_P(Locate( 5.0d3 * Kilometer, R_P, SIZE( R_P ) )) )
     ! --- Prevent too low temperature ---
     T_P = MAX( T_P, T_P(Locate( 5.0d3 * Kilometer, R_P, SIZE( R_P ) )) )
 

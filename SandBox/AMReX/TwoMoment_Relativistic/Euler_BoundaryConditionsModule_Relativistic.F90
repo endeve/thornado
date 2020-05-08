@@ -1,4 +1,4 @@
-MODULE Euler_BoundaryConditionsModule
+MODULE Euler_BoundaryConditionsModule_Relativistic
 
   USE KindModule, ONLY: &
     DP
@@ -11,16 +11,21 @@ MODULE Euler_BoundaryConditionsModule
   USE UtilitiesModule, ONLY: &
     NodeNumberX
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, &
+    iPF_Ne, &
+    nPF,    &
+    iPF_D,  &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ApplyBoundaryConditions_Euler
-  PUBLIC :: ApplyInnerBC_Euler
-  PUBLIC :: ApplyOuterBC_Euler
+  PUBLIC :: ApplyBoundaryConditions_Euler_Relativistic
 
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_Both  = 0
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_Inner = 1
@@ -55,7 +60,7 @@ CONTAINS
   END FUNCTION ApplyOuterBC_Euler
 
 
-  SUBROUTINE ApplyBoundaryConditions_Euler &
+  SUBROUTINE ApplyBoundaryConditions_Euler_Relativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
@@ -92,7 +97,7 @@ CONTAINS
                        iX_B1(3):iX_E1(3),1:nCF), &
              iApplyBC(3) )
 
-  END SUBROUTINE ApplyBoundaryConditions_Euler
+  END SUBROUTINE ApplyBoundaryConditions_Euler_Relativistic
 
 
   SUBROUTINE ApplyBC_Euler_X1 &
@@ -349,6 +354,27 @@ CONTAINS
       END DO
       END DO
       END DO
+
+    CASE ( 22 ) ! Periodic
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+
+          ! --- Inner Boundary ---
+          IF( ApplyInnerBC_Euler( iApplyBC ) ) THEN
+            U(:,iX_B0(1)-iX1,iX2,iX3,iPF_D) = 1.0_DP
+            U(:,iX_B0(1)-iX1,iX2,iX3,iPF_V1) = 0.0_DP
+            U(:,iX_B0(1)-iX1,iX2,iX3,iPF_V2) = 0.0_DP
+            U(:,iX_B0(1)-iX1,iX2,iX3,iPF_V3) = 0.0_DP
+            U(:,iX_B0(1)-iX1,iX2,iX3,iPF_E) = 0.1_DP
+            U(:,iX_B0(1)-iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+
+          END IF
+
+        END DO
+        END DO
+        END DO
 
     CASE DEFAULT
 
@@ -631,4 +657,4 @@ CONTAINS
   END SUBROUTINE ApplyBC_Euler_X3
 
 
-END MODULE Euler_BoundaryConditionsModule
+END MODULE Euler_BoundaryConditionsModule_Relativistic

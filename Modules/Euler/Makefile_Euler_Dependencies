@@ -183,6 +183,7 @@ Euler_SlopeLimiterModule_Relativistic_IDEAL.o: \
 
 Euler_SlopeLimiterModule.o: \
   KindModule.o \
+  Euler_BoundaryConditionsModule.o \
   Euler_SlopeLimiterModule_NonRelativistic_IDEAL.o \
   Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
@@ -200,6 +201,7 @@ Euler_dgDiscretizationModule.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_UtilitiesModule.o \
+  Euler_DiscontinuityDetectionModule.o \
   EquationOfStateModule.o \
   Euler_dgDiscretizationModule.F90
 

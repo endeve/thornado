@@ -2,6 +2,8 @@ MODULE Euler_SlopeLimiterModule
 
   USE KindModule, ONLY: &
     DP
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    iApplyBC_Euler_Both
 
   USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL
   USE Euler_SlopeLimiterModule_NonRelativistic_TABLE
@@ -99,7 +101,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -111,27 +113,38 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
+    INTEGER,  INTENT(in), OPTIONAL :: &
+      iApplyBC_Option(3)
 
     LOGICAL :: SuppressBC
+    INTEGER :: iApplyBC(3)
 
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
 
+    iApplyBC = iApplyBC_Euler_Both
+    IF( PRESENT( iApplyBC_Option ) ) &
+      iApplyBC = iApplyBC_Option
+
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
 
     CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+             SuppressBC_Option = SuppressBC, iApplyBC_Option = iApplyBC )
 
 #elif defined HYDRO_RELATIVISTIC
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+             SuppressBC_Option = SuppressBC, iApplyBC_Option = iApplyBC )
 
 #else
 
     CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+             SuppressBC_Option = SuppressBC, iApplyBC_Option = iApplyBC )
+
 #endif
 
   END SUBROUTINE ApplySlopeLimiter_Euler

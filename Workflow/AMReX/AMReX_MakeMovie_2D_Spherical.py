@@ -38,8 +38,8 @@ fig = plt.figure( figsize = (8,6) )
 ax  = fig.add_subplot( 111, polar = True )
 xL  = xL.to_ndarray()
 xH  = xH.to_ndarray()
-X1  = np.linspace( xL[0], xH[0], nX[0] )
-X2  = np.linspace( xL[1], xH[1], nX[1] )
+X1  = np.linspace( xL[0], xH[0], nX[0]+1 )
+X2  = np.linspace( xL[1], xH[1], nX[1]+1 )
 theta, r = np.meshgrid( X2, X1 )
 
 if( UseLogScale ):
@@ -86,11 +86,11 @@ else:
 
 # Taken from:
 # https://brushingupscience.com/2016/06/21/matplotlib-animations-the-easy-way/
-im = ax.pcolormesh( theta, r, f(0)[:-1,:-1], \
+im = ax.pcolormesh( theta, r, f(0)[:,:], \
                     cmap = cmap, \
                     vmin = vmin, vmax = vmax, \
                     norm = None )
-ax.set_thetamin( 180.0/np.pi * X2[0 ] )
+ax.set_thetamin( 180.0/np.pi * X2[0]  )
 ax.set_thetamax( 180.0/np.pi * X2[-1] )
 ax.set_theta_direction( -1 )
 
@@ -108,7 +108,7 @@ else:
     cbar = fig.colorbar( im )
 
 def UpdateFrame(t):
-    im.set_array( f(t)[:-1,:-1].flatten() )
+    im.set_array( f(t)[:,:].flatten() )
     if( UsePhysicalUnits ):
       time_text.set_text('time = {:d} ms'.format( np.int( Time[t] ) ) )
     else:

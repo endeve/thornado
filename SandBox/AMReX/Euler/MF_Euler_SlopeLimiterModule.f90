@@ -32,8 +32,8 @@ MODULE MF_Euler_SlopeLimiterModule
   ! --- Local Modules ---
 
   USE MF_UtilitiesModule,                ONLY: &
-    AMReX2thornado, &
-    thornado2AMReX
+    amrex2thornado_Euler, &
+    thornado2amrex_Euler
   USE MyAmrModule,                       ONLY: &
     nLevels,         &
     UseSlopeLimiter, &
@@ -75,7 +75,7 @@ CONTAINS
     REAL(AR), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(AR), ALLOCATABLE :: D(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iApplyBC(3)
     TYPE(EdgeMap) :: Edge_Map
 
     IF( nDOFX .EQ. 1 ) RETURN
@@ -123,11 +123,11 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nDF) )
 
-        CALL AMReX2thornado( nGF, iX_B1, iX_E1, uGF, G )
+        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
-        CALL AMReX2thornado( nCF, iX_B1, iX_E1, uCF, U )
+        CALL amrex2thornado_Euler( nCF, iX_B1, iX_E1, uCF, U )
 
-        CALL AMReX2thornado( nDF, iX_B1, iX_E1, uDF, D )
+        CALL amrex2thornado_Euler( nDF, iX_B1, iX_E1, uDF, D )
 
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
@@ -142,15 +142,17 @@ CONTAINS
 
         IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplySlopeLimiter_Euler'
 
+        CALL Edge_Map % Euler_GetBC( iApplyBC )
+
         CALL ApplySlopeLimiter_Euler &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-                 SuppressBC_Option = .TRUE. )
+                 SuppressBC_Option = .TRUE., iApplyBC_Option = iApplyBC )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
-        CALL thornado2AMReX( nCF, iX_B1, iX_E1, uCF, U )
+        CALL thornado2amrex_Euler( nCF, iX_B1, iX_E1, uCF, U )
 
-        CALL thornado2AMReX( nDF, iX_B1, iX_E1, uDF, D )
+        CALL thornado2amrex_Euler( nDF, iX_B1, iX_E1, uDF, D )
 
         DEALLOCATE( D )
 
