@@ -177,7 +177,7 @@ elif [[ $THORNADO_MACHINE == acf_gnu ]]; then
   echo 
 
   module load PE-gnu
-  module swap intel-mpi/2017.2.174 openmpi/2.1.1-gcc4.8.2
+  module swap intel-mpi/2018.1.163 openmpi/3.0.0-gcc6.3.0
   module load hdf5
   module load lapack 
 

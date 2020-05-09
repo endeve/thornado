@@ -17,7 +17,8 @@ MODULE MF_Euler_PositivityLimiterModule
   USE ProgramHeaderModule,           ONLY: &
     swX, nDOFX
   USE FluidFieldsModule,             ONLY: &
-    nCF
+    nCF, &
+    nDF
   USE GeometryFieldsModule,          ONLY: &
     nGF
   USE Euler_PositivityLimiterModule, ONLY: &
@@ -46,19 +47,23 @@ MODULE MF_Euler_PositivityLimiterModule
 CONTAINS
 
 
-  SUBROUTINE MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
+  SUBROUTINE MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF, mF_uDF )
 
     TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uDF(:,:,:,:)
 
     REAL(AR), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(AR), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(AR), ALLOCATABLE :: D(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
@@ -74,6 +79,7 @@ CONTAINS
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uDF => MF_uDF(iLevel) % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -86,25 +92,35 @@ CONTAINS
 
         ALLOCATE( G(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nGF ) )
+                            iX_B1(3):iX_E1(3),1:nGF) )
 
         ALLOCATE( U(1:nDOFX,iX_B1(1):iX_E1(1), &
                             iX_B1(2):iX_E1(2), &
-                            iX_B1(3):iX_E1(3),1:nCF ) )
+                            iX_B1(3):iX_E1(3),1:nCF) )
+
+        ALLOCATE( D(1:nDOFX,iX_B1(1):iX_E1(1), &
+                            iX_B1(2):iX_E1(2), &
+                            iX_B1(3):iX_E1(3),1:nDF) )
 
         CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
 
         CALL amrex2thornado_Euler( nCF, iX_B1, iX_E1, uCF, U )
 
+        CALL amrex2thornado_Euler( nDF, iX_B1, iX_E1, uDF, D )
+
         CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplyPositivityLimiter_Euler'
 
-        CALL ApplyPositivityLimiter_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+        CALL ApplyPositivityLimiter_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
         CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_DataTransfer )
 
         CALL thornado2amrex_Euler( nCF, iX_B1, iX_E1, uCF, U )
+
+        CALL thornado2amrex_Euler( nDF, iX_B1, iX_E1, uDF, D )
+
+        DEALLOCATE( D )
 
         DEALLOCATE( U )
 

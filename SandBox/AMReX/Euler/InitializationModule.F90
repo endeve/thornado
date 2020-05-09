@@ -403,7 +403,7 @@ CONTAINS
 
       CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, MF_uDF, GEOM )
 
-      CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF )
+      CALL MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF, MF_uDF )
 
       CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
