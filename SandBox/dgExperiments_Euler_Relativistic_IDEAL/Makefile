@@ -1,6 +1,6 @@
 include ../../../Build/Makefile_Build
 
-all: ApplicationDriver ComputePrimitiveTest_TABLE #SlopeLimiterDiagnostics #ComputePrimitiveTest
+all: ApplicationDriver ComputePrimitiveTest #SlopeLimiterDiagnostics
 
 ApplicationDriver: \
 	$(thornado) \
@@ -16,21 +16,13 @@ ApplicationDriver: \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
-ComputePrimitiveTest_TABLE: \
+ComputePrimitiveTest: \
 	$(thornado) \
-	ComputePrimitiveTest_TABLE.o
-	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_TABLE_$(MACHINE) \
+	ComputePrimitiveTest.o
+	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_$(MACHINE) \
 	$(thornado) \
-	ComputePrimitiveTest_TABLE.o \
+	ComputePrimitiveTest.o \
 	$(LIBRARIES)
-
-#ComputePrimitiveTest: \
-#	$(thornado) \
-#	ComputePrimitiveTest.o
-#	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_$(MACHINE) \
-#	$(thornado) \
-#	ComputePrimitiveTest.o \
-#	$(LIBRARIES)
 
 #SlopeLimiterDiagnostics: \
 #	$(thornado) \
@@ -48,9 +40,7 @@ clean:
 clobber: clean
 	rm -f  ApplicationDriver_$(MACHINE)
 	rm -rf ApplicationDriver_$(MACHINE).dSYM
-	rm -f  ComputePrimitiveTest_TABLE_$(MACHINE)
-	rm -rf ComputePrimitiveTest_TABLE_$(MACHINE).dSYM
-#	rm -f  ComputePrimitiveTest_$(MACHINE)
-#	rm -rf ComputePrimitiveTest_$(MACHINE).dSYM
+	rm -f  ComputePrimitiveTest_$(MACHINE)
+	rm -rf ComputePrimitiveTest_$(MACHINE).dSYM
 #	rm -f  SlopeLimiterDiagnostics_$(MACHINE)
 #	rm -rf SlopeLimiterDiagnostics_$(MACHINE).dSYM

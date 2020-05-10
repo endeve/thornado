@@ -102,7 +102,7 @@ MODULE Euler_UtilitiesModule_Relativistic
   REAL(DP), PARAMETER :: TolZ = 1.0d-8, TolP = 1.0d-8, &
                          TolFunP = 1.0d-6, MachineEPS = 1.0d-16
   LOGICAL             :: DEBUG = .FALSE.
-
+  INTEGER, PARAMETER  :: MAX_IT = - INT( LOG( TolP ) / LOG( Two ) )
 
 CONTAINS
 
@@ -191,7 +191,6 @@ CONTAINS
     REAL(DP), INTENT(out) :: z0
 
     LOGICAL             :: CONVERGED
-    INTEGER,  PARAMETER :: MAX_IT = 1 - INT( LOG( 1.0e-16_DP ) / LOG( Two ) )
     INTEGER             :: ITERATION
     REAL(DP)            :: za, zb, zc, z, dz
     REAL(DP)            :: fa, fb, fc, Norm
@@ -211,7 +210,7 @@ CONTAINS
     IF( .NOT. fa * fb .LT. 0 )THEN
 
       WRITE(*,'(6x,A)') &
-        'ComputeVelocityWithBisectionMethod:'
+        'SolveZ_Bisection:'
       WRITE(*,'(8x,A)') &
         'Error: No Root in Interval'
       WRITE(*,'(8x,A,ES24.16E3)') 'CF_D: ', CF_D
@@ -281,7 +280,6 @@ CONTAINS
     END DO
 
     z0 = zc
-print*,'nIter = ', ITERATION
 
   END SUBROUTINE SolveZ_Bisection
 
@@ -300,11 +298,10 @@ print*,'nIter = ', ITERATION
     REAL(DP), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
     REAL(DP), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
-    LOGICAL            :: CONVERGED
-    INTEGER, PARAMETER :: MAX_IT = 100
-    INTEGER            :: i, ITERATION
-    REAL(DP)           :: SSq, Pold, vSq, W, h, Pnew, q, Pbisec
-    REAL(DP)           :: FunP, JacP, AF_P
+    LOGICAL :: CONVERGED
+    INTEGER :: i, ITERATION
+    REAL(DP):: SSq, Pold, vSq, W, h, Pnew, q, Pbisec
+    REAL(DP):: FunP, JacP, AF_P
 
     q = CF_E + CF_D - SQRT( CF_D**2 &
                               + CF_S1**2 / GF_Gm_dd_11  &
@@ -450,11 +447,10 @@ print*,'nIter = ', ITERATION
                              PF_E(:), PF_Ne(:)
     REAL(DP), INTENT(in)  :: GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
 
-    LOGICAL            :: CONVERGED
-    INTEGER, PARAMETER :: MAX_IT = 100
-    INTEGER            :: i, ITERATION, nNodes
-    REAL(DP)           :: SSq, Pold, vSq, W, h, Pnew, q, Pbisec
-    REAL(DP)           :: FunP, JacP, AF_P(SIZE(PF_D))
+    LOGICAL  :: CONVERGED
+    INTEGER  :: i, ITERATION, nNodes
+    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q, Pbisec
+    REAL(DP) :: FunP, JacP, AF_P(SIZE(PF_D))
 
     ! --- Loop through all the nodes ---
     nNodes = SIZE( CF_D )
@@ -1531,7 +1527,6 @@ print*,'nIter = ', ITERATION
     REAL(DP), INTENT(out) :: P
 
     LOGICAL            :: CONVERGED
-    INTEGER, PARAMETER :: MAX_IT = 1 - INT( LOG(TolP) / LOG(2.0d0) )
     INTEGER            :: ITERATION
     REAL(DP)           :: PA, PB, PC, DeltaP
     REAL(DP)           :: FunPA, FunPB, FunPC
@@ -1606,9 +1601,8 @@ print*,'nIter = ', ITERATION
     REAL(DP) :: FunPA, FunPB, FunPC, FunPS
     REAL(DP) :: JacPA, JacPB, JacPC, JacPS
 
-    LOGICAL            :: mflag, COND1, COND2, COND3, COND4, COND5
-    INTEGER, PARAMETER :: MAX_IT = 100
-    INTEGER            :: ITERATION
+    LOGICAL :: mflag, COND1, COND2, COND3, COND4, COND5
+    INTEGER :: ITERATION
 
     ! --- Implementation of Brent's method from:
     !     https://en.wikipedia.org/wiki/Brent%27s_method#Algorithm ---
