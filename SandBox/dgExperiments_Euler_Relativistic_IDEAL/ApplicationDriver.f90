@@ -142,12 +142,12 @@ PROGRAM ApplicationDriver
 
 !  ProgramName = 'Advection'
 !  ProgramName = 'Advection2D'
-!  ProgramName = 'RiemannProblem'
+  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2D'
 !  ProgramName = 'RiemannProblemSpherical'
 !  ProgramName = 'SedovTaylorBlastWave'
 !  ProgramName = 'KelvinHelmholtzInstability'
-  ProgramName = 'StandingAccretionShock'
+!  ProgramName = 'StandingAccretionShock'
 !  ProgramName = 'StaticTOV'
 
   SELECT CASE ( TRIM( ProgramName ) )
