@@ -1,6 +1,6 @@
 include ../../../Build/Makefile_Build
 
-all: ApplicationDriver #ComputePrimitiveTest #SlopeLimiterDiagnostics
+all: ApplicationDriver ComputePrimitiveTest #SlopeLimiterDiagnostics
 
 ApplicationDriver: \
 	$(thornado) \
