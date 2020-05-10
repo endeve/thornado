@@ -16,7 +16,8 @@ MODULE Euler_UtilitiesModule_Relativistic
     One,      &
     Two,      &
     Three,    &
-    Four
+    Four,     &
+    Fourth
   USE ProgramHeaderModule,   ONLY: &
     nDOFX, &
     nDimsX
@@ -67,6 +68,7 @@ MODULE Euler_UtilitiesModule_Relativistic
   PRIVATE
 
   PUBLIC :: ComputePrimitive_Euler_Relativistic
+  PUBLIC :: ComputePrimitive_Euler_Relativistic_TABLE_Scalar
   PUBLIC :: ComputeConserved_Euler_Relativistic
   PUBLIC :: ComputeFromConserved_Euler_Relativistic
   PUBLIC :: ComputeTimeStep_Euler_Relativistic
@@ -97,12 +99,191 @@ MODULE Euler_UtilitiesModule_Relativistic
     MODULE PROCEDURE ComputeConserved_Vector
   END INTERFACE ComputeConserved_Euler_Relativistic
 
-
-  REAL(DP), PARAMETER :: TolP = 1.0d-8, TolFunP = 1.0d-6, MachineEPS = 1.0d-16
+  REAL(DP), PARAMETER :: TolZ = 1.0d-8, TolP = 1.0d-8, &
+                         TolFunP = 1.0d-6, MachineEPS = 1.0d-16
   LOGICAL             :: DEBUG = .FALSE.
 
 
 CONTAINS
+
+
+  !> Compute the primitive variables from the conserved variables,
+  !> a la Galeazzi et al., (2013), Phys. Rev. D., 88, 064009, Appendix C
+  !> @todo Modify for tabular EOS
+  SUBROUTINE ComputePrimitive_Euler_Relativistic_TABLE_Scalar &
+    ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+      GF_Gm11, GF_Gm22, GF_Gm33,              &
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne )
+
+    REAL(DP), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
+    REAL(DP), INTENT(in)  :: GF_Gm11, GF_Gm22, GF_Gm33
+    REAL(DP), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
+
+    REAL(DP) :: S, q, r, k, z0
+    REAL(DP) :: W, eps, p, h
+
+    S = SQRT( CF_S1**2 / GF_Gm11 + CF_S2**2 / GF_Gm22 + CF_S3**2 / GF_Gm33 )
+
+    ! --- Eq. C2 ---
+
+    q = CF_E / CF_D
+    r = S    / CF_D
+    k = r    / ( One + q )
+
+    CALL SolveZ_Bisection( CF_D, q, r, k, z0 )
+
+    ! --- Eq. C15 ---
+
+    W    = SQRT( One + z0**2 )
+    PF_D = CF_D / W
+
+    ! --- Eq. C16 ---
+
+    eps = W * q - z0 * r + z0**2 / ( One + W )
+
+    CALL ComputePressureFromSpecificInternalEnergy &
+           ( PF_D, eps, 0.0_DP, p )
+
+    h = One + eps + p / PF_D
+
+    PF_V1 = ( CF_S1 / GF_Gm11 ) / ( CF_D * W * h )
+    PF_V2 = ( CF_S2 / GF_Gm22 ) / ( CF_D * W * h )
+    PF_V3 = ( CF_S3 / GF_Gm33 ) / ( CF_D * W * h )
+    PF_E  = CF_D * ( h - One ) / W - p
+    PF_Ne = CF_Ne / W
+
+  END SUBROUTINE ComputePrimitive_Euler_Relativistic_TABLE_Scalar
+
+
+  REAL(DP) FUNCTION FunZ( z, D, q, r, k )
+
+    REAL(DP), INTENT(in) :: z, D, q, r, k
+
+    REAL(DP) :: Wt, rhot, epst, pt, at
+
+    ! --- Eq. C15 ---
+
+    Wt = SQRT( One + z**2 )
+    rhot = D / Wt
+
+    ! --- Eq. C16 ---
+
+    epst = Wt * q - z * r + z**2 / ( One + Wt )
+
+    CALL ComputePressureFromSpecificInternalEnergy &
+         ( rhot, epst, 0.0_DP, pt )
+
+    ! --- Eq. C20 ---
+
+    at = pt / ( rhot * ( One + epst ) )
+
+    ! --- Eq. C24 ---
+
+    FunZ = z - k / ( ( Wt - z * k ) * ( One + at ) )
+
+    RETURN
+  END FUNCTION FunZ
+
+
+  SUBROUTINE SolveZ_Bisection( CF_D, q, r, k, z0 )
+
+    REAL(DP), INTENT(in)  :: CF_D, q, r, k
+    REAL(DP), INTENT(out) :: z0
+
+    LOGICAL             :: CONVERGED
+    INTEGER,  PARAMETER :: MAX_IT = 1 - INT( LOG( 1.0e-16_DP ) / LOG( Two ) )
+    INTEGER             :: ITERATION
+    REAL(DP)            :: za, zb, zc, z, dz
+    REAL(DP)            :: fa, fb, fc, Norm
+    REAL(DP), PARAMETER :: dz_min = 1.0e-16_DP
+
+    ! --- Eq. C23 ---
+
+    za = Half * k / SQRT( One - Fourth * k**2 ) - SqrtTiny
+    zb = k        / SQRT( One - k**2 )          + SqrtTiny
+
+    ! --- Compute FunZ for upper and lower bounds ---
+
+    fa = FunZ( za, CF_D, q, r, k )
+    fb = FunZ( zb, CF_D, q, r, k )
+
+    ! --- Check that sign of FunP changes across bounds ---
+    IF( .NOT. fa * fb .LT. 0 )THEN
+
+      WRITE(*,'(6x,A)') &
+        'ComputeVelocityWithBisectionMethod:'
+      WRITE(*,'(8x,A)') &
+        'Error: No Root in Interval'
+      WRITE(*,'(8x,A,ES24.16E3)') 'CF_D: ', CF_D
+      WRITE(*,'(8x,A,ES24.16E3)') 'q:    ', q
+      WRITE(*,'(8x,A,ES24.16E3)') 'r:    ', r
+      WRITE(*,'(8x,A,ES24.16E3)') 'k:    ', k
+      WRITE(*,'(8x,A,2ES15.6E3)') &
+        'za, zb = ', za, zb
+      WRITE(*,'(8x,A,2ES15.6E3)') &
+        'fa, fb = ', fa, fb
+      STOP
+
+    END IF
+
+    dz = ( zb - za )
+
+    ITERATION = 0
+    CONVERGED = .FALSE.
+    DO WHILE ( ITERATION .LT. MAX_IT .AND. .NOT. CONVERGED )
+
+      ITERATION = ITERATION + 1
+
+      ! --- Compute midpoint, zc ---
+
+      dz = Half * dz
+
+      ! --- Bisection ---
+
+      zc = za + dz
+
+!!$      ! --- Regula Falsi ---
+!!$
+!!$      zc = ( za * fb - zb * fa  ) / ( fb - fa )
+
+!!$      ! --- Illinois ---
+!!$
+!!$      IF( fa * fc .GT. Zero )THEN
+!!$
+!!$        zc = ( fb * za - Half * fa * zb ) / ( fb - Half * fa )
+!!$
+!!$      ELSE
+!!$
+!!$        zc = ( Half * fb * za - fa * zb ) / ( Half * fb - fa )
+!!$
+!!$      ENDIF
+
+      ! --- Compute f(zc) for midpoint zc ---
+
+      fc = FunZ( zc, CF_D, q, r, k )
+
+      ! --- Change zc to za or zb, depending on sign of fc ---
+
+      IF( fa * fc .LT. Zero )THEN
+
+        zb = zc
+        fb = fc
+
+      ELSE
+
+        za = zc
+        fa = fc
+
+      END IF
+
+      IF( dz .LT. dz_min ) CONVERGED = .TRUE.
+
+    END DO
+
+    z0 = zc
+print*,'nIter = ', ITERATION
+
+  END SUBROUTINE SolveZ_Bisection
 
 
   !> Compute the primitive variables from the conserved variables,

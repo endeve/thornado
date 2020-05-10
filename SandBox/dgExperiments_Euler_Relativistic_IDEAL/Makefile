@@ -1,6 +1,6 @@
 include ../../../Build/Makefile_Build
 
-all: ApplicationDriver #SlopeLimiterDiagnostics #ComputePrimitiveTest
+all: ApplicationDriver ComputePrimitiveTest_TABLE #SlopeLimiterDiagnostics #ComputePrimitiveTest
 
 ApplicationDriver: \
 	$(thornado) \
@@ -14,6 +14,14 @@ ApplicationDriver: \
 	TimeSteppingModule_SSPRK.o \
 	AccretionShockDiagnosticsModule.o \
 	ApplicationDriver.o \
+	$(LIBRARIES)
+
+ComputePrimitiveTest_TABLE: \
+	$(thornado) \
+	ComputePrimitiveTest_TABLE.o
+	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_TABLE_$(MACHINE) \
+	$(thornado) \
+	ComputePrimitiveTest_TABLE.o \
 	$(LIBRARIES)
 
 #ComputePrimitiveTest: \
@@ -40,6 +48,8 @@ clean:
 clobber: clean
 	rm -f  ApplicationDriver_$(MACHINE)
 	rm -rf ApplicationDriver_$(MACHINE).dSYM
+	rm -f  ComputePrimitiveTest_TABLE_$(MACHINE)
+	rm -rf ComputePrimitiveTest_TABLE_$(MACHINE).dSYM
 #	rm -f  ComputePrimitiveTest_$(MACHINE)
 #	rm -rf ComputePrimitiveTest_$(MACHINE).dSYM
 #	rm -f  SlopeLimiterDiagnostics_$(MACHINE)
