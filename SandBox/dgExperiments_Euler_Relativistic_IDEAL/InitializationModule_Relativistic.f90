@@ -1615,10 +1615,12 @@ CONTAINS
     REAL(DP) :: Pressure , E1 , E2, Psi, Alpha, Phi
     REAL(DP) :: PressureN, E1N, E2N
     REAL(DP) :: CentralPressure, Psi0, Alpha0
-    REAL(DP) :: GravitationalMass, Radius, dAlpha, dPsi, dF
+    REAL(DP) :: GravitationalMass, Radius, dAlpha, dPsi, Alpha_A, Psi_A, dF
 
     REAL(DP), ALLOCATABLE :: PressureArr(:), DensityArr(:), &
                              AlphaArr(:), PsiArr(:), X1Arr(:)
+
+    INTEGER, PARAMETER :: nMaxIter = 1000
 
     CentralPressure = PolytropicConstant_TOV * CentralDensity**( Gamma_IDEAL )
     Psi0            = 1.4_DP ! --- Initial guess ---
@@ -1649,25 +1651,29 @@ CONTAINS
 
     dF   = TolF + One
     ITER = 0
-    DO WHILE( dF .GT. TolF )
+    DO WHILE( dF .GT. TolF .AND. ITER .LT. nMaxIter )
 
       ITER = ITER + 1
 
+      IF( MOD(  ITER, 100 ) .EQ. 0 ) PRINT*, 'Iteration ', ITER
+
       CALL IntegrateOutwards &
              ( dX1, CentralPressure, Psi0, Alpha0, &
-               GravitationalMass, Radius, dAlpha, dPsi, nX )
+               GravitationalMass, Radius, dAlpha, dPsi, Alpha_A, Psi_A, nX )
 
       ! --- Update guess for central values ---
 
       Alpha0 = Alpha0 + dAlpha
       Psi0   = Psi0   + dPsi
 
-      dF = MAX( ABS( dAlpha ), ABS( dPsi ) )
+      dF = MAX( ABS( dAlpha / Alpha_A ), ABS( dPsi / Psi_A ) )
 
     END DO
 
     WRITE(*,'(6x,A,I4.4)') &
       'nIterations         = ', ITER
+    WRITE(*,'(6x,A,ES13.6E3)'  )  &
+      'dF                  = ', dF
     WRITE(*,'(6x,A,ES13.6E3)'  )  &
       'Alpha0              = ', Alpha0
     WRITE(*,'(6x,A,ES13.6E3)'  )  &
@@ -1845,15 +1851,16 @@ CONTAINS
 
   SUBROUTINE IntegrateOutwards &
     ( dX1, CentralPressure, Psi0, Alpha0, &
-      GravitationalMass, Radius, dAlpha, dPsi, nX )
+      GravitationalMass, Radius, dAlpha, dPsi, Alpha_A, Psi_A, nX )
 
     REAL(DP), INTENT(in)  :: dX1, CentralPressure, Psi0, Alpha0
-    REAL(DP), INTENT(out) :: GravitationalMass, Radius, dAlpha, dPsi
+    REAL(DP), INTENT(out) :: GravitationalMass, Radius, &
+                             dAlpha, dPsi, Alpha_A, Psi_A
     INTEGER,  INTENT(out) :: nX
 
     REAL(DP) :: Pressure , E1 , E2 , Psi , Phi, X1
     REAL(DP) :: PressureN, E1N, E2N
-    REAL(DP) :: Alpha, Alpha_A, Psi_A
+    REAL(DP) :: Alpha
 
     ! --- Set inner boundary values ---
 
@@ -1892,14 +1899,21 @@ CONTAINS
     GravitationalMass = E1 / SpeedOfLight**2
     Radius            = X1
 
-    Alpha   = Phi / Psi
-    Alpha_A =  ( One - GravitationalMass / ( Two * Radius ) ) &
-                / ( One + GravitationalMass / ( Two * Radius ) )
-    Psi     = Psi
-    Psi_A   = One + GravitationalMass / ( Two * Radius )
+    Alpha   &
+      = Phi / Psi
 
-    dAlpha = ( Alpha_A - Alpha ) / Alpha_A
-    dPsi   = ( Psi_A - Psi ) / Psi_A
+    Alpha_A &
+      =  ( One - GravitationalMass / ( Two * SpeedOfLight**2 * Radius ) ) &
+       / ( One + GravitationalMass / ( Two * SpeedOfLight**2 * Radius ) )
+
+    Psi     &
+      = Psi
+
+    Psi_A   &
+      = One + GravitationalMass / ( Two * SpeedOfLight**2 * Radius )
+
+    dAlpha = Alpha_A - Alpha
+    dPsi   = Psi_A - Psi
 
   END SUBROUTINE IntegrateOutwards
 
