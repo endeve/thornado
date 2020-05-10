@@ -8,22 +8,21 @@
 !> @todo Find optimal values for parameters TolP and TolFunP.
 MODULE Euler_UtilitiesModule_Relativistic
 
-  USE KindModule,            ONLY: &
+  USE KindModule, ONLY: &
     DP,       &
     Zero,     &
     SqrtTiny, &
     Half,     &
     One,      &
     Two,      &
-    Three,    &
     Four,     &
     Fourth
-  USE ProgramHeaderModule,   ONLY: &
+  USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDimsX
   USE MeshModule, ONLY: &
     MeshX
-  USE GeometryFieldsModule,  ONLY: &
+  USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
@@ -31,7 +30,7 @@ MODULE Euler_UtilitiesModule_Relativistic
     iGF_Beta_1,   &
     iGF_Beta_2,   &
     iGF_Beta_3
-  USE FluidFieldsModule,     ONLY: &
+  USE FluidFieldsModule, ONLY: &
     nCF,    &
     iCF_D,  &
     iCF_S1, &
@@ -57,18 +56,17 @@ MODULE Euler_UtilitiesModule_Relativistic
     ComputeSoundSpeedFromPrimitive, &
     ComputeAuxiliary_Fluid,         &
     ComputePressureFromSpecificInternalEnergy
-  USE TimersModule_Euler,    ONLY: &
+  USE TimersModule_Euler,ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
     Timer_Euler_ComputeTimeStep
-  USE Euler_ErrorModule,     ONLY: &
+  USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: ComputePrimitive_Euler_Relativistic
-  PUBLIC :: ComputePrimitive_Euler_Relativistic_TABLE_Scalar
   PUBLIC :: ComputeConserved_Euler_Relativistic
   PUBLIC :: ComputeFromConserved_Euler_Relativistic
   PUBLIC :: ComputeTimeStep_Euler_Relativistic
@@ -84,11 +82,6 @@ MODULE Euler_UtilitiesModule_Relativistic
   PUBLIC :: NumericalFlux_X2_HLLC_Euler_Relativistic
   PUBLIC :: NumericalFlux_X3_HLLC_Euler_Relativistic
 
-  PRIVATE :: ComputeFunJacP
-  PRIVATE :: ComputePressureWithBisectionMethod
-  PRIVATE :: ComputePressureWithBrentsMethod
-  PRIVATE :: ComputeFunP
-
   INTERFACE ComputePrimitive_Euler_Relativistic
     MODULE PROCEDURE ComputePrimitive_Scalar
     MODULE PROCEDURE ComputePrimitive_Vector
@@ -99,10 +92,10 @@ MODULE Euler_UtilitiesModule_Relativistic
     MODULE PROCEDURE ComputeConserved_Vector
   END INTERFACE ComputeConserved_Euler_Relativistic
 
-  REAL(DP), PARAMETER :: TolZ = 1.0d-8, TolP = 1.0d-8, &
-                         TolFunP = 1.0d-6, MachineEPS = 1.0d-16
+  REAL(DP), PARAMETER :: TolZ = 1.0d-8
+  INTEGER, PARAMETER  :: MAX_IT = 2 - INT( LOG( TolZ ) / LOG( Two ) )
   LOGICAL             :: DEBUG = .FALSE.
-  INTEGER, PARAMETER  :: MAX_IT = - INT( LOG( TolP ) / LOG( Two ) )
+
 
 CONTAINS
 
@@ -110,10 +103,10 @@ CONTAINS
   !> Compute the primitive variables from the conserved variables,
   !> a la Galeazzi et al., (2013), Phys. Rev. D., 88, 064009, Appendix C
   !> @todo Modify for tabular EOS
-  SUBROUTINE ComputePrimitive_Euler_Relativistic_TABLE_Scalar &
+  SUBROUTINE ComputePrimitive_Scalar &
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-      GF_Gm11, GF_Gm22, GF_Gm33,              &
-      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne )
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+      GF_Gm11, GF_Gm22, GF_Gm33 )
 
     REAL(DP), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
     REAL(DP), INTENT(in)  :: GF_Gm11, GF_Gm22, GF_Gm33
@@ -152,442 +145,42 @@ CONTAINS
     PF_E  = CF_D * ( h - One ) / W - p
     PF_Ne = CF_Ne / W
 
-  END SUBROUTINE ComputePrimitive_Euler_Relativistic_TABLE_Scalar
-
-
-  REAL(DP) FUNCTION FunZ( z, D, q, r, k )
-
-    REAL(DP), INTENT(in) :: z, D, q, r, k
-
-    REAL(DP) :: Wt, rhot, epst, pt, at
-
-    ! --- Eq. C15 ---
-
-    Wt = SQRT( One + z**2 )
-    rhot = D / Wt
-
-    ! --- Eq. C16 ---
-
-    epst = Wt * q - z * r + z**2 / ( One + Wt )
-
-    CALL ComputePressureFromSpecificInternalEnergy &
-         ( rhot, epst, 0.0_DP, pt )
-
-    ! --- Eq. C20 ---
-
-    at = pt / ( rhot * ( One + epst ) )
-
-    ! --- Eq. C24 ---
-
-    FunZ = z - k / ( ( Wt - z * k ) * ( One + at ) )
-
-    RETURN
-  END FUNCTION FunZ
-
-
-  SUBROUTINE SolveZ_Bisection( CF_D, q, r, k, z0 )
-
-    REAL(DP), INTENT(in)  :: CF_D, q, r, k
-    REAL(DP), INTENT(out) :: z0
-
-    LOGICAL             :: CONVERGED
-    INTEGER             :: ITERATION
-    REAL(DP)            :: za, zb, zc, z, dz
-    REAL(DP)            :: fa, fb, fc, Norm
-    REAL(DP), PARAMETER :: dz_min = 1.0e-16_DP
-
-    ! --- Eq. C23 ---
-
-    za = Half * k / SQRT( One - Fourth * k**2 ) - SqrtTiny
-    zb = k        / SQRT( One - k**2 )          + SqrtTiny
-
-    ! --- Compute FunZ for upper and lower bounds ---
-
-    fa = FunZ( za, CF_D, q, r, k )
-    fb = FunZ( zb, CF_D, q, r, k )
-
-    ! --- Check that sign of FunP changes across bounds ---
-    IF( .NOT. fa * fb .LT. 0 )THEN
-
-      WRITE(*,'(6x,A)') &
-        'SolveZ_Bisection:'
-      WRITE(*,'(8x,A)') &
-        'Error: No Root in Interval'
-      WRITE(*,'(8x,A,ES24.16E3)') 'CF_D: ', CF_D
-      WRITE(*,'(8x,A,ES24.16E3)') 'q:    ', q
-      WRITE(*,'(8x,A,ES24.16E3)') 'r:    ', r
-      WRITE(*,'(8x,A,ES24.16E3)') 'k:    ', k
-      WRITE(*,'(8x,A,2ES15.6E3)') &
-        'za, zb = ', za, zb
-      WRITE(*,'(8x,A,2ES15.6E3)') &
-        'fa, fb = ', fa, fb
-      STOP
-
-    END IF
-
-    dz = ( zb - za )
-
-    ITERATION = 0
-    CONVERGED = .FALSE.
-    DO WHILE ( ITERATION .LT. MAX_IT .AND. .NOT. CONVERGED )
-
-      ITERATION = ITERATION + 1
-
-      ! --- Compute midpoint, zc ---
-
-      dz = Half * dz
-
-      ! --- Bisection ---
-
-      zc = za + dz
-
-!!$      ! --- Regula Falsi ---
-!!$
-!!$      zc = ( za * fb - zb * fa  ) / ( fb - fa )
-
-!!$      ! --- Illinois ---
-!!$
-!!$      IF( fa * fc .GT. Zero )THEN
-!!$
-!!$        zc = ( fb * za - Half * fa * zb ) / ( fb - Half * fa )
-!!$
-!!$      ELSE
-!!$
-!!$        zc = ( Half * fb * za - fa * zb ) / ( Half * fb - fa )
-!!$
-!!$      ENDIF
-
-      ! --- Compute f(zc) for midpoint zc ---
-
-      fc = FunZ( zc, CF_D, q, r, k )
-
-      ! --- Change zc to za or zb, depending on sign of fc ---
-
-      IF( fa * fc .LT. Zero )THEN
-
-        zb = zc
-        fb = fc
-
-      ELSE
-
-        za = zc
-        fa = fc
-
-      END IF
-
-      IF( dz .LT. dz_min ) CONVERGED = .TRUE.
-
-    END DO
-
-    z0 = zc
-
-  END SUBROUTINE SolveZ_Bisection
-
-
-  !> Compute the primitive variables from the conserved variables,
-  !> a la Rezzolla & Zanotti, Relativistic Hydrodynamics, 2013, Appendix D.
-  !> Use bisection algorithm to obtain an initial guess for the pressure,
-  !> then use Newton-Raphson method hone-in on the actual pressure
-  !> @todo Decide whether or not to send in previous pressure as initial guess.
-  SUBROUTINE ComputePrimitive_Scalar &
-    ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
-
-    REAL(DP), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
-    REAL(DP), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
-    REAL(DP), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
-
-    LOGICAL :: CONVERGED
-    INTEGER :: i, ITERATION
-    REAL(DP):: SSq, Pold, vSq, W, h, Pnew, q, Pbisec
-    REAL(DP):: FunP, JacP, AF_P
-
-    q = CF_E + CF_D - SQRT( CF_D**2 &
-                              + CF_S1**2 / GF_Gm_dd_11  &
-                              + CF_S2**2 / GF_Gm_dd_22  &
-                              + CF_S3**2 / GF_Gm_dd_33 )
-
-    IF( q .LT. Zero ) &
-      CALL DescribeError_Euler( 08 )
-
-    SSq = CF_S1**2 / GF_Gm_dd_11 &
-            + CF_S2**2 / GF_Gm_dd_22 &
-            + CF_S3**2 / GF_Gm_dd_33
-
-    ! --- Find Pressure with Newton's Method ---
-
-    ! --- Get initial guess for pressure with bisection method ---
-    CALL ComputePressureWithBisectionMethod( CF_D, CF_E, SSq, Pbisec )
-
-    Pold = Pbisec
-    IF( Pbisec .LT. SqrtTiny )THEN
-      WRITE(*,'(A)') '    EE: Pbisec < SqrTiny. Stopping...'
-      STOP
-    END IF
-
-    ! --- Get initial value for FunP ---
-    CALL ComputeFunJacP( CF_D, CF_E, SSq, Pold, FunP, JacP )
-
-    CONVERGED = .FALSE.
-
-    IF( ABS( FunP ) .LT. TolFunP * ABS( TolFunP ) )THEN
-      Pnew = Pold
-      CONVERGED = .TRUE.
-    END IF
-
-    ITERATION = 0
-
-    DO WHILE ( .NOT. CONVERGED )
-
-      ITERATION = ITERATION + 1
-
-      CALL ComputeFunJacP( CF_D, CF_E, SSq, Pold, FunP, JacP )
-
-      IF( ABS( FunP / JacP ) .LT. MachineEPS ) THEN
-        Pnew = Pold
-        CONVERGED = .TRUE.
-        EXIT
-      END IF
-
-      Pnew = MAX( Pold - FunP / JacP, SqrtTiny )
-
-      ! --- Check if Newton's method has converged ---
-      IF( ( ABS( ( Pnew - Pold ) / Pold ) ) .LT. TolP )THEN
-
-        CALL ComputeFunJacP( CF_D, CF_E, SSq, Pnew, FunP, JacP )
-
-        IF( .NOT. ( ABS( FunP ) .LT. TolFunP * ABS( Pnew ) ) ) THEN
-          WRITE(*,*)
-          WRITE(*,'(A)') 'WARNING:'
-          WRITE(*,'(A)') '--------'
-          WRITE(*,'(A)') 'ABS( FunP / Pnew ) > TolFunP'
-          WRITE(*,'(A,ES24.16E3)') 'TolFunP              = ', TolFunP
-          WRITE(*,'(A,ES24.16E3)') 'Pold                 = ', Pold
-          WRITE(*,'(A,ES24.16E3)') 'Pnew                 = ', Pnew
-          WRITE(*,'(A,ES24.16E3)') &
-            '|(Pnew - Pold)/Pold| = ', ABS( ( Pnew - Pold ) / Pold )
-          WRITE(*,'(A,ES24.16E3)') &
-            '|FunP(Pnew) / Pnew|  = ', ABS( FunP / Pnew )
-        END IF
-
-        CONVERGED = .TRUE.
-        EXIT
-
-      END IF
-
-      ! --- STOP after MAX_IT iterations ---
-      IF( ITERATION .GE. MAX_IT - 4 .OR. DEBUG )THEN
-        WRITE(*,*)
-        WRITE(*,'(A)')           '    CP: Max iterations IF statement'
-        WRITE(*,'(A)')           '    -------------------------------'
-        WRITE(*,'(A,I1)')        '    CP: Node: ', i
-        WRITE(*,'(A,ES7.1E2)')   '    CP: TolP    = ', TolP
-        WRITE(*,'(A,ES7.1E2)')   '    CP: TolFunP = ', TolFunP
-        WRITE(*,*)
-        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_D)  = ', CF_D
-        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_S1) = ', CF_S1
-        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_S2) = ', CF_S2
-        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_S3) = ', CF_S3
-        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_E)  = ', CF_E
-        WRITE(*,*)
-        WRITE(*,'(A,ES24.16E3)') '    G(i,iGF_Gm_dd_11) = ', GF_Gm_dd_11
-        WRITE(*,'(A,ES24.16E3)') '    G(i,iGF_Gm_dd_22) = ', GF_Gm_dd_22
-        WRITE(*,'(A,ES24.16E3)') '    G(i,iGF_Gm_dd_33) = ', GF_Gm_dd_33
-        WRITE(*,*)
-        WRITE(*,'(A,ES24.16E3)') '    CP: |v|   = ', &
-          ABS( CF_S1 / ( CF_E + CF_D + Pnew ) )
-        WRITE(*,'(A,ES24.16E3)') '    CP: W     = ', &
-          1.0d0 / SQRT( 1.0d0 - SSq / ( CF_E + CF_D + Pnew )**2 )
-        WRITE(*,'(A,ES24.16E3)') '    CP: P/rho = ', &
-          Pnew / ( CF_D / ( 1.0d0 / SQRT( 1.0d0 &
-            - SSq / ( CF_E + CF_D + Pnew )**2 ) ) )
-        WRITE(*,*)
-        WRITE(*,'(A,ES24.16E3)') '    CP: Pold   = ', Pold
-        WRITE(*,*)
-      END IF
-
-      Pold = Pnew
-
-    END DO
-
-    AF_P = Pnew
-
-    vSq = SSq / ( CF_E + Pnew + CF_D )**2
-
-    W = 1.0_DP / SQRT( 1.0_DP - vSq )
-
-    h = ( CF_E + Pnew + CF_D ) / ( W * CF_D )
-
-    ! --- Recover Primitive Variables ---
-
-    PF_D  = CF_D / W
-
-    PF_V1 = CF_S1 / ( CF_D * h * W * GF_Gm_dd_11 )
-
-    PF_V2 = CF_S2 / ( CF_D * h * W * GF_Gm_dd_22 )
-
-    PF_V3 = CF_S3 / ( CF_D * h * W * GF_Gm_dd_33 )
-
-    PF_E  = CF_D * ( h - 1.0_DP ) / W - Pnew
-
-    PF_Ne = CF_Ne / W
-
   END SUBROUTINE ComputePrimitive_Scalar
 
 
   SUBROUTINE ComputePrimitive_Vector &
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+      GF_Gm11, GF_Gm22, GF_Gm33 )
 
-    REAL(DP), INTENT(in)  :: CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), &
-                             CF_E(:), CF_Ne(:)
-    REAL(DP), INTENT(out) :: PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), &
-                             PF_E(:), PF_Ne(:)
-    REAL(DP), INTENT(in)  :: GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
+    REAL(DP), INTENT(in)  :: CF_D(:), CF_S1(:), CF_S2(:), &
+                             CF_S3(:), CF_E(:), CF_Ne(:)
+    REAL(DP), INTENT(in)  :: GF_Gm11(:), GF_Gm22(:), GF_Gm33(:)
+    REAL(DP), INTENT(out) :: PF_D(:), PF_V1(:), PF_V2(:), &
+                             PF_V3(:), PF_E(:), PF_Ne(:)
 
-    LOGICAL  :: CONVERGED
-    INTEGER  :: i, ITERATION, nNodes
-    REAL(DP) :: SSq, Pold, vSq, W, h, Pnew, q, Pbisec
-    REAL(DP) :: FunP, JacP, AF_P(SIZE(PF_D))
+    INTEGER :: iNodeX
 
-    ! --- Loop through all the nodes ---
-    nNodes = SIZE( CF_D )
-    DO i = 1, nNodes
+    DO iNodeX = 1, SIZE( CF_D )
 
-      q = CF_E(i) + CF_D(i) - SQRT( CF_D(i)**2 &
-                                  + CF_S1(i)**2 / GF_Gm_dd_11(i)  &
-                                  + CF_S2(i)**2 / GF_Gm_dd_22(i)  &
-                                  + CF_S3(i)**2 / GF_Gm_dd_33(i) )
+      CALL ComputePrimitive_Scalar &
+             ( CF_D   (iNodeX), &
+               CF_S1  (iNodeX), &
+               CF_S2  (iNodeX), &
+               CF_S3  (iNodeX), &
+               CF_E   (iNodeX), &
+               CF_Ne  (iNodeX), &
+               PF_D   (iNodeX), &
+               PF_V1  (iNodeX), &
+               PF_V2  (iNodeX), &
+               PF_V3  (iNodeX), &
+               PF_E   (iNodeX), &
+               PF_Ne  (iNodeX), &
+               GF_Gm11(iNodeX), &
+               GF_Gm22(iNodeX), &
+               GF_Gm33(iNodeX) )
 
-      IF( q .LT. Zero ) &
-        CALL DescribeError_Euler( 09 )
-
-      SSq =   CF_S1(i)**2 / GF_Gm_dd_11(i) &
-            + CF_S2(i)**2 / GF_Gm_dd_22(i) &
-            + CF_S3(i)**2 / GF_Gm_dd_33(i)
-
-      ! --- Find Pressure with Newton's Method ---
-
-      ! --- Get initial guess for pressure with bisection method ---
-      CALL ComputePressureWithBisectionMethod( CF_D(i), CF_E(i), SSq, Pbisec )
-
-      Pold = Pbisec
-      IF( Pbisec .LT. SqrtTiny )THEN
-        WRITE(*,'(A)') '    EE: Pbisec < SqrTiny. Stopping...'
-        STOP
-      END IF
-
-      ! --- Get initial value for FunP ---
-      CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
-
-      CONVERGED = .FALSE.
-
-      IF( ABS( FunP ) .LT. TolFunP * ABS( TolFunP ) )THEN
-        Pnew = Pold
-        CONVERGED = .TRUE.
-      END IF
-
-      ITERATION = 0
-
-      DO WHILE ( .NOT. CONVERGED )
-
-        ITERATION = ITERATION + 1
-
-        CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pold, FunP, JacP )
-
-        IF( ABS( FunP / JacP ) .LT. MachineEPS ) THEN
-          Pnew = Pold
-          CONVERGED = .TRUE.
-          EXIT
-        END IF
-
-        Pnew = MAX( Pold - FunP / JacP, SqrtTiny )
-
-        ! --- Check if Newton's method has converged ---
-        IF( ( ABS( ( Pnew - Pold ) / Pold ) ) .LT. TolP )THEN
-
-          CALL ComputeFunJacP( CF_D(i), CF_E(i), SSq, Pnew, FunP, JacP )
-
-          IF( .NOT. ( ABS( FunP ) .LT. TolFunP * ABS( Pnew ) ) ) THEN
-            WRITE(*,*)
-            WRITE(*,'(A)') 'WARNING:'
-            WRITE(*,'(A)') '--------'
-            WRITE(*,'(A)') 'ABS( FunP / Pnew ) > TolFunP'
-            WRITE(*,'(A,ES24.16E3)') 'TolFunP              = ', TolFunP
-            WRITE(*,'(A,ES24.16E3)') 'Pold                 = ', Pold
-            WRITE(*,'(A,ES24.16E3)') 'Pnew                 = ', Pnew
-            WRITE(*,'(A,ES24.16E3)') &
-              '|(Pnew - Pold)/Pold| = ', ABS( ( Pnew - Pold ) / Pold )
-            WRITE(*,'(A,ES24.16E3)') &
-              '|FunP(Pnew) / Pnew|  = ', ABS( FunP / Pnew )
-          END IF
-
-          CONVERGED = .TRUE.
-          EXIT
-
-        END IF
-
-        ! --- STOP after MAX_IT iterations ---
-        IF( ITERATION .GE. MAX_IT - 4 .OR. DEBUG )THEN
-          WRITE(*,*)
-          WRITE(*,'(A)')           '    CP: Max iterations IF statement'
-          WRITE(*,'(A)')           '    -------------------------------'
-          WRITE(*,'(A,I1)')        '    CP: Node: ', i
-          WRITE(*,'(A,ES7.1E2)')   '    CP: TolP    = ', TolP
-          WRITE(*,'(A,ES7.1E2)')   '    CP: TolFunP = ', TolFunP
-          WRITE(*,*)
-          WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_D)  = ', CF_D(i)
-          WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_S1) = ', CF_S1(i)
-          WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_S2) = ', CF_S2(i)
-          WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_S3) = ', CF_S3(i)
-          WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_E)  = ', CF_E(i)
-          WRITE(*,*)
-          WRITE(*,'(A,ES24.16E3)') '    G(i,iGF_Gm_dd_11) = ', GF_Gm_dd_11(i)
-          WRITE(*,'(A,ES24.16E3)') '    G(i,iGF_Gm_dd_22) = ', GF_Gm_dd_22(i)
-          WRITE(*,'(A,ES24.16E3)') '    G(i,iGF_Gm_dd_33) = ', GF_Gm_dd_33(i)
-          WRITE(*,*)
-          WRITE(*,'(A,ES24.16E3)') '    CP: |v|   = ', &
-            ABS( CF_S1(i) / ( CF_E(i) + CF_D(i) + Pnew ) )
-          WRITE(*,'(A,ES24.16E3)') '    CP: W     = ', &
-            1.0d0 / SQRT( 1.0d0 - SSq / ( CF_E(i) + CF_D(i) + Pnew )**2 )
-          WRITE(*,'(A,ES24.16E3)') '    CP: P/rho = ', &
-            Pnew / ( CF_D(i) / ( 1.0d0 / SQRT( 1.0d0 &
-              - SSq / ( CF_E(i) + CF_D(i) + Pnew )**2 ) ) )
-          WRITE(*,*)
-          WRITE(*,'(A,ES24.16E3)') '    CP: Pold   = ', Pold
-          WRITE(*,*)
-        END IF
-
-        Pold = Pnew
-
-      END DO
-
-      AF_P(i) = Pnew
-
-      vSq = SSq / ( CF_E(i) + Pnew + CF_D(i) )**2
-
-      W = 1.0_DP / SQRT( 1.0_DP - vSq )
-
-      h = ( CF_E(i) + Pnew + CF_D(i) ) / ( W * CF_D(i) )
-
-      ! --- Recover Primitive Variables ---
-
-      PF_D(i)  = CF_D(i) / W
-
-      PF_V1(i) = CF_S1(i) / ( CF_D(i) * h * W * GF_Gm_dd_11(i) )
-
-      PF_V2(i) = CF_S2(i) / ( CF_D(i) * h * W * GF_Gm_dd_22(i) )
-
-      PF_V3(i) = CF_S3(i) / ( CF_D(i) * h * W * GF_Gm_dd_33(i) )
-
-      PF_E(i)  = CF_D(i) * ( h - 1.0_DP ) / W - Pnew
-
-      PF_Ne(i) = CF_Ne(i) / W
-
-   END DO ! --- End of loop over nodes ---
-
+    END DO
 
   END SUBROUTINE ComputePrimitive_Vector
 
@@ -609,8 +202,8 @@ CONTAINS
 
     VSq = Gm11 * PF_V1**2 + Gm22 * PF_V2**2 + Gm33 * PF_V3**2
 
-    W = 1.0_DP / SQRT( 1.0_DP - VSq )
-    h = 1.0_DP + ( PF_E + AF_P ) / PF_D
+    W = One / SQRT( One - VSq )
+    h = One + ( PF_E + AF_P ) / PF_D
 
     CF_D  = W * PF_D
     CF_S1 = h * W**2 * PF_D * Gm11 * PF_V1
@@ -634,19 +227,29 @@ CONTAINS
     REAL(DP), INTENT(out) :: CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), &
                              CF_E(:), CF_Ne(:)
 
-    REAL(DP) :: VSq(SIZE(PF_D)), W(SIZE(PF_D)), h(SIZE(PF_D))
+    INTEGER :: iNodeX
 
-    VSq = Gm11 * PF_V1**2 + Gm22 * PF_V2**2 + Gm33 * PF_V3**2
+    DO iNodeX = 1, SIZE( PF_D )
 
-    W = 1.0_DP / SQRT( 1.0_DP - VSq )
-    h = 1.0_DP + ( PF_E + AF_P ) / PF_D
+      CALL ComputeConserved_Scalar &
+             ( PF_D (iNodeX), &
+               PF_V1(iNodeX), &
+               PF_V2(iNodeX), &
+               PF_V3(iNodeX), &
+               PF_E (iNodeX), &
+               PF_Ne(iNodeX), &
+               CF_D (iNodeX), &
+               CF_S1(iNodeX), &
+               CF_S2(iNodeX), &
+               CF_S3(iNodeX), &
+               CF_E (iNodeX), &
+               CF_Ne(iNodeX), &
+               Gm11 (iNodeX), &
+               Gm22 (iNodeX), &
+               Gm33 (iNodeX), &
+               AF_P (iNodeX) )
 
-    CF_D  = W * PF_D
-    CF_S1 = h * W**2 * PF_D * Gm11 * PF_V1
-    CF_S2 = h * W**2 * PF_D * Gm22 * PF_V2
-    CF_S3 = h * W**2 * PF_D * Gm33 * PF_V3
-    CF_E  = h * W**2 * PF_D - AF_P - W * PF_D
-    CF_Ne = W * PF_Ne
+    END DO
 
   END SUBROUTINE ComputeConserved_Vector
 
@@ -668,6 +271,7 @@ CONTAINS
     INTEGER :: iX1, iX2, iX3
 
     ! --- Update primitive variables, pressure, and sound speed ---
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -737,6 +341,7 @@ CONTAINS
     dt       = HUGE( One )
 
     ! --- Maximum wave-speeds ---
+
     alpha_X1 = -HUGE( One )
     alpha_X2 = -HUGE( One )
     alpha_X3 = -HUGE( One )
@@ -770,47 +375,31 @@ CONTAINS
              ( P(1:nDOFX,iPF_D), P(1:nDOFX,iPF_E), P(1:nDOFX,iPF_Ne), &
                Cs(1:nDOFX) )
 
-      IF     ( nDimsX .EQ. 1 )THEN
+      DO iNodeX = 1, nDOFX
+
+        EigVals_X1(1:nCF,iNodeX) &
+          = Eigenvalues_Euler_Relativistic &
+              ( P (iNodeX,iPF_V1), &
+                Cs(iNodeX),        &
+                G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                P (iNodeX,iPF_V1), &
+                P (iNodeX,iPF_V2), &
+                P (iNodeX,iPF_V3), &
+                G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
+                G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
+
+      END DO
+
+      alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1(1:nCF,1:nDOFX) ) ) )
+
+      dt(1) = dX(1) / alpha_X1
+
+      IF( nDimsX .GT. 1 )THEN
 
         DO iNodeX = 1, nDOFX
-
-          EigVals_X1(1:nCF,iNodeX) &
-            = Eigenvalues_Euler_Relativistic &
-                ( P (iNodeX,iPF_V1), &
-                  Cs(iNodeX),        &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                  P (iNodeX,iPF_V1), &
-                  P (iNodeX,iPF_V2), &
-                  P (iNodeX,iPF_V3), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
-
-        END DO
-
-        alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1(1:nCF,1:nDOFX) ) ) )
-
-        dt(1) = dX(1) / alpha_X1
-
-      ELSE IF( nDimsX .EQ. 2 )THEN
-
-        DO iNodeX = 1, nDOFX
-
-          EigVals_X1(1:nCF,iNodeX) &
-            = Eigenvalues_Euler_Relativistic &
-                ( P (iNodeX,iPF_V1), &
-                  Cs(iNodeX),        &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                  P (iNodeX,iPF_V1), &
-                  P (iNodeX,iPF_V2), &
-                  P (iNodeX,iPF_V3), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
 
           EigVals_X2(1:nCF,iNodeX) &
             = Eigenvalues_Euler_Relativistic &
@@ -827,43 +416,15 @@ CONTAINS
                   G (iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
         END DO
 
-        alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1(1:nCF,1:nDOFX) ) ) )
         alpha_X2 = MAX( alpha_X2, MAXVAL( ABS( EigVals_X2(1:nCF,1:nDOFX) ) ) )
 
-        dt(1) = dX(1) / alpha_X1
         dt(2) = dX(2) / alpha_X2
 
-      ELSE
+      END IF
+
+      IF( nDimsX .GT. 2 )THEN
 
         DO iNodeX = 1, nDOFX
-
-          EigVals_X1(1:nCF,iNodeX) &
-            = Eigenvalues_Euler_Relativistic &
-                ( P (iNodeX,iPF_V1), &
-                  Cs(iNodeX),        &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                  P (iNodeX,iPF_V1), &
-                  P (iNodeX,iPF_V2), &
-                  P (iNodeX,iPF_V3), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Beta_1) )
-
-          EigVals_X2(1:nCF,iNodeX) &
-            = Eigenvalues_Euler_Relativistic &
-                ( P (iNodeX,iPF_V2), &
-                  Cs(iNodeX),        &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                  P (iNodeX,iPF_V1), &
-                  P (iNodeX,iPF_V2), &
-                  P (iNodeX,iPF_V3), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Alpha),    &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Beta_2) )
 
           EigVals_X3(1:nCF,iNodeX) &
             = Eigenvalues_Euler_Relativistic &
@@ -881,12 +442,8 @@ CONTAINS
 
         END DO
 
-        alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1(1:nCF,1:nDOFX) ) ) )
-        alpha_X2 = MAX( alpha_X2, MAXVAL( ABS( EigVals_X2(1:nCF,1:nDOFX) ) ) )
         alpha_X3 = MAX( alpha_X3, MAXVAL( ABS( EigVals_X3(1:nCF,1:nDOFX) ) ) )
 
-        dt(1) = dX(1) / alpha_X1
-        dt(2) = dX(2) / alpha_X2
         dt(3) = dX(3) / alpha_X3
 
       END IF
@@ -971,6 +528,7 @@ CONTAINS
     FS_HLL = Lapse * ( aP * F_SL + aM * F_SR ) - aM * aP * ( SR - SL )
 
     ! --- Coefficients in quadratic equation ---
+
     a2 = Gmii**2 * ( FE_HLL + Shift * E_HLL )
     a1 = -Gmii * ( Lapse * E_HLL + FS_HLL + Shift * S_HLL )
     a0 = Lapse * S_HLL
@@ -1012,8 +570,8 @@ CONTAINS
     REAL(DP) :: VSq, W, h, Flux_X1_Euler_Relativistic(nCF)
 
     VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
-    W   = 1.0d0 / SQRT( 1.0d0 - VSq )
-    h   = 1.0d0 + ( E + P ) / D
+    W   = One / SQRT( One - VSq )
+    h   = One + ( E + P ) / D
 
     Flux_X1_Euler_Relativistic(iCF_D)  &
       = D * W * ( V1 - Shift / Lapse )
@@ -1028,7 +586,7 @@ CONTAINS
       = D * h * W**2 * Gm33 * V3  * ( V1 - Shift / Lapse )
 
     Flux_X1_Euler_Relativistic(iCF_E)  &
-      = D * W * ( h * W - 1.0d0 ) * ( V1 - Shift / Lapse ) + Shift / Lapse * P
+      = D * W * ( h * W - One ) * ( V1 - Shift / Lapse ) + Shift / Lapse * P
 
     Flux_X1_Euler_Relativistic(iCF_Ne) &
       = Ne * W * ( V1 - Shift / Lapse )
@@ -1050,8 +608,8 @@ CONTAINS
     REAL(DP) :: VSq, W, h, Flux_X2_Euler_Relativistic(nCF)
 
     VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
-    W   = 1.0d0 / SQRT( 1.0d0 - VSq )
-    h   = 1.0d0 + ( E + P ) / D
+    W   = One / SQRT( One - VSq )
+    h   = One + ( E + P ) / D
 
     Flux_X2_Euler_Relativistic(iCF_D)  &
       = D * W * ( V2 - Shift / Lapse )
@@ -1066,7 +624,7 @@ CONTAINS
       = D * h * W**2 * Gm33 * V3  * ( V2 - Shift / Lapse )
 
     Flux_X2_Euler_Relativistic(iCF_E)  &
-      = D * W * ( h * W - 1.0d0 ) * ( V2 - Shift / Lapse ) + Shift / Lapse * P
+      = D * W * ( h * W - One ) * ( V2 - Shift / Lapse ) + Shift / Lapse * P
 
     Flux_X2_Euler_Relativistic(iCF_Ne) &
       = Ne * W * ( V2 - Shift / Lapse )
@@ -1088,8 +646,8 @@ CONTAINS
     REAL(DP) :: VSq, W, h, Flux_X3_Euler_Relativistic(nCF)
 
     VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
-    W   = 1.0d0 / SQRT( 1.0d0 - VSq )
-    h   = 1.0d0 + ( E + P ) / D
+    W   = One / SQRT( One - VSq )
+    h   = One + ( E + P ) / D
 
     Flux_X3_Euler_Relativistic(iCF_D)  &
       = D * W * ( V3 - Shift / Lapse )
@@ -1104,7 +662,7 @@ CONTAINS
       = D * h * W**2 * Gm33 * V3  * ( V3 - Shift / Lapse ) + P
 
     Flux_X3_Euler_Relativistic(iCF_E)  &
-      = D * W * ( h * W - 1.0d0 ) * ( V3 - Shift / Lapse ) + Shift / Lapse * P
+      = D * W * ( h * W - One ) * ( V3 - Shift / Lapse ) + Shift / Lapse * P
 
     Flux_X3_Euler_Relativistic(iCF_Ne) &
       = Ne * W * ( V3 - Shift / Lapse )
@@ -1257,14 +815,19 @@ CONTAINS
 
       NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_D)  &
         = D  * ( aC - Shift / Lapse )
+
       NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_S1) &
         = S1 * ( aC - Shift / Lapse ) + p
+
       NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_S2) &
         = S2 * ( aC - Shift / Lapse )
+
       NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_S3) &
         = S3 * ( aC - Shift / Lapse )
+
       NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_E)  &
         = S1 / Gm11 - D * aC - Shift / Lapse * ( E - D )
+
       NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_Ne) &
         = Ne * ( aC - Shift / Lapse )
 
@@ -1361,14 +924,19 @@ CONTAINS
 
       NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_D)  &
         = D  * ( aC - Shift / Lapse )
+
       NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_S1) &
         = S1 * ( aC - Shift / Lapse )
+
       NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_S2) &
         = S2 * ( aC - Shift / Lapse ) + p
+
       NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_S3) &
         = S3 * ( aC - Shift / Lapse )
+
       NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_E)  &
         = S2 / Gm22 - D * aC - Shift / Lapse * ( E - D )
+
       NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_Ne) &
         = Ne * ( aC - Shift / Lapse )
 
@@ -1468,14 +1036,19 @@ CONTAINS
 
       NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_D)  &
         = D  * ( aC - Shift / Lapse )
+
       NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_S1) &
         = S1 * ( aC - Shift / Lapse )
+
       NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_S2) &
         = S2 * ( aC - Shift / Lapse )
+
       NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_S3) &
         = S3 * ( aC - Shift / Lapse ) + p
+
       NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_E)  &
         = S3 / Gm33 - D * aC - Shift / Lapse * ( E - D )
+
       NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_Ne) &
         = Ne * ( aC - Shift / Lapse )
 
@@ -1485,289 +1058,136 @@ CONTAINS
   END FUNCTION NumericalFlux_X3_HLLC_Euler_Relativistic
 
 
-  ! --- PRIVATE FUNCTIONS/SUBROUTINES ---
+  ! --- Auxiliary utilities for ComputePrimitive ---
 
 
-  SUBROUTINE ComputeFunJacP( CF_D, CF_E, SSq, P, FunP, JacP, Pnorm_Option )
+  REAL(DP) FUNCTION FunZ( z, D, q, r, k )
 
-    REAL(DP), INTENT(in)           :: CF_D, CF_E, SSq, P
-    REAL(DP), INTENT(in), OPTIONAL :: Pnorm_Option
-    REAL(DP), INTENT(out)          :: FunP, JacP
+    REAL(DP), INTENT(in) :: z, D, q, r, k
 
-    REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS, Pnorm
-    REAL(DP) :: Pbar(1)
+    REAL(DP) :: Wt, rhot, epst, pt, at
 
-    Pnorm = One
-    IF( PRESENT( Pnorm_Option ) ) Pnorm = Pnorm_Option
+    ! --- Eq. C15 ---
 
-    HSq = ( CF_E + P + CF_D )**2
+    Wt = SQRT( One + z**2 )
+    rhot = D / Wt
 
-    RHO = CF_D * SQRT( HSq - SSq ) / SQRT( HSq )
+    ! --- Eq. C16 ---
 
-    EPS = ( SQRT( HSq - SSq ) &
-            - P * SQRT( HSq ) / SQRT( HSq - SSq ) - CF_D ) / CF_D
+    epst = Wt * q - z * r + z**2 / ( One + Wt )
 
     CALL ComputePressureFromSpecificInternalEnergy &
-         ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
+         ( rhot, epst, 0.0_DP, pt )
 
-    FunP = ( P - Pbar(1) ) / Pnorm
+    ! --- Eq. C20 ---
 
-    dRHO = CF_D * SSq / ( SQRT( HSq - SSq ) * HSq )
+    at = pt / ( rhot * ( One + epst ) )
 
-    dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
+    ! --- Eq. C24 ---
 
-    JacP = ( 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS ) ) / Pnorm
+    FunZ = z - k / ( ( Wt - z * k ) * ( One + at ) )
 
-  END SUBROUTINE ComputeFunJacP
+    RETURN
+  END FUNCTION FunZ
 
 
-  SUBROUTINE ComputePressureWithBisectionMethod( CF_D, CF_E, SSq, P )
+  SUBROUTINE SolveZ_Bisection( CF_D, q, r, k, z0 )
 
-    REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq
-    REAL(DP), INTENT(out) :: P
+    REAL(DP), INTENT(in)  :: CF_D, q, r, k
+    REAL(DP), INTENT(out) :: z0
 
-    LOGICAL            :: CONVERGED
-    INTEGER            :: ITERATION
-    REAL(DP)           :: PA, PB, PC, DeltaP
-    REAL(DP)           :: FunPA, FunPB, FunPC
+    LOGICAL             :: CONVERGED
+    INTEGER             :: ITERATION
+    REAL(DP)            :: za, zb, zc, z, dz
+    REAL(DP)            :: fa, fb, fc, Norm
+    REAL(DP), PARAMETER :: dz_min = 1.0e-16_DP
 
-    ! --- Get upper and lower bounds on pressure, PA, PB ---
-    PA = SqrtTiny
-    PB = Three * CF_E
+    ! --- Eq. C23 ---
 
-    ! --- Compute FunP for upper and lower bounds ---
-    CALL ComputeFunP( CF_D, CF_E, SSq, PA, FunPA )
-    CALL ComputeFunP( CF_D, CF_E, SSq, PB, FunPB )
+    za = Half * k / SQRT( One - Fourth * k**2 ) - SqrtTiny
+    zb = k        / SQRT( One - k**2 )          + SqrtTiny
+
+    ! --- Compute FunZ for upper and lower bounds ---
+
+    fa = FunZ( za, CF_D, q, r, k )
+    fb = FunZ( zb, CF_D, q, r, k )
 
     ! --- Check that sign of FunP changes across bounds ---
-    IF( .NOT. FunPA * FunPB .LT. 0 )THEN
+    IF( .NOT. fa * fb .LT. 0 )THEN
 
       WRITE(*,'(6x,A)') &
-        'ComputePressureWithBisectionMethod:'
+        'SolveZ_Bisection:'
       WRITE(*,'(8x,A)') &
         'Error: No Root in Interval'
       WRITE(*,'(8x,A,ES24.16E3)') 'CF_D: ', CF_D
-      WRITE(*,'(8x,A,ES24.16E3)') 'CF_E: ', CF_E
-      WRITE(*,'(8x,A,ES24.16E3)') 'SSq:  ', SSq
+      WRITE(*,'(8x,A,ES24.16E3)') 'q:    ', q
+      WRITE(*,'(8x,A,ES24.16E3)') 'r:    ', r
+      WRITE(*,'(8x,A,ES24.16E3)') 'k:    ', k
       WRITE(*,'(8x,A,2ES15.6E3)') &
-        'PA, PB = ', PA, PB
+        'za, zb = ', za, zb
       WRITE(*,'(8x,A,2ES15.6E3)') &
-        'FunPA, FunPB = ', FunPA, FunPB
+        'fa, fb = ', fa, fb
       STOP
 
     END IF
 
-    DeltaP = PB - PA
+    dz = ( zb - za )
 
     ITERATION = 0
     CONVERGED = .FALSE.
-    DO WHILE ( ITERATION .LT. MAX_IT )
+    DO WHILE ( ITERATION .LT. MAX_IT .AND. .NOT. CONVERGED )
 
       ITERATION = ITERATION + 1
 
-      ! --- Compute midpoint, PC ---
-      DeltaP = Half * DeltaP
-      PC     = PA + DeltaP
+      ! --- Compute midpoint, zc ---
 
-      ! --- Compute FunP for midpoint pressure ---
-      CALL ComputeFunP( CF_D, CF_E, SSq, PC, FunPC )
+      dz = Half * dz
 
-      ! --- Change PC to PA or PB, depending on sign of FunP(PC) ---
-      IF( FunPA * FunPC .LT. Zero )THEN
+      ! --- Bisection ---
 
-        PB = PC
-        FunPB = FunPC
+      zc = za + dz
+
+!!$      ! --- Regula Falsi ---
+!!$
+!!$      zc = ( za * fb - zb * fa  ) / ( fb - fa )
+
+!!$      ! --- Illinois ---
+!!$
+!!$      IF( fa * fc .GT. Zero )THEN
+!!$
+!!$        zc = ( fb * za - Half * fa * zb ) / ( fb - Half * fa )
+!!$
+!!$      ELSE
+!!$
+!!$        zc = ( Half * fb * za - fa * zb ) / ( Half * fb - fa )
+!!$
+!!$      ENDIF
+
+      ! --- Compute f(zc) for midpoint zc ---
+
+      fc = FunZ( zc, CF_D, q, r, k )
+
+      ! --- Change zc to za or zb, depending on sign of fc ---
+
+      IF( fa * fc .LT. Zero )THEN
+
+        zb = zc
+        fb = fc
 
       ELSE
 
-        PA = PC
-        FunPA = FunPC
+        za = zc
+        fa = fc
 
       END IF
+
+      IF( dz .LT. dz_min ) CONVERGED = .TRUE.
 
     END DO
 
-    P = PA
+    z0 = zc
 
-  END SUBROUTINE ComputePressureWithBisectionMethod
-
-
-  SUBROUTINE ComputePressureWithBrentsMethod( CF_D, CF_E, SSq, Pbrent )
-
-    REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq
-    REAL(DP), INTENT(out) :: Pbrent
-
-    REAL(DP) :: PA, PB, PC, PD, PS, PSwap, Pbisec
-    REAL(DP) :: FunPA, FunPB, FunPC, FunPS
-    REAL(DP) :: JacPA, JacPB, JacPC, JacPS
-
-    LOGICAL :: mflag, COND1, COND2, COND3, COND4, COND5
-    INTEGER :: ITERATION
-
-    ! --- Implementation of Brent's method from:
-    !     https://en.wikipedia.org/wiki/Brent%27s_method#Algorithm ---
-
-    ! --- Get Pbisec to normalize FunP ---
-    CALL ComputePressureWithBisectionMethod( CF_D, CF_E, SSq, Pbisec )
-
-    ! --- Define values that bracket the root ---
-    PA = Zero
-    PB = Three * CF_E
-    CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA )
-    CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB )
-
-    ! --- Exit if solution is not bracketed ---
-    IF( .NOT. FunPA * FunPB .LT. 0.0_DP )THEN
-      WRITE(*,'(A)') 'No root in interval. Exiting...'
-      STOP
-    END IF
-
-    ! --- Conditionally swap PA and PB ---
-    IF( ABS( FunPA ) .LT. ABS( FunPB ) )THEN
-      PSwap = PB
-      PB    = PA
-      PA    = PSwap
-      CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA )
-      CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB )
-    END IF
-
-    ! --- Set PC = PA and compute FunPC ---
-    PC = PA
-    CALL ComputeFunJacP( CF_D, CF_E, SSq, PC, FunPC, JacPC )
-
-    ! --- Set mflag ---
-    mflag = .TRUE.
-
-    ITERATION = 0
-    DO WHILE( ( ABS( PB - PA ) / ABS( Pbisec ) .GE. TolP    ) &
-        .AND. ( ABS( FunPB )                   .GE. TolFunP ) &
-        .AND. ( ITERATION                      .LE. MAX_IT  ) )
-
-      ITERATION = ITERATION + 1
-
-      IF( ( FunPA .NE. FunPC ) .AND. ( FunPB .NE. FunPC ) )THEN
-        ! --- Inverse quadratic interpolation ---
-        PS =   PA * FunPB * FunPC / ( ( FunPA - FunPB ) * ( FunPA - FunPC ) ) &
-             + PB * FunPA * FunPC / ( ( FunPB - FunPA ) * ( FunPB - FunPC ) ) &
-             + PC * FunPA * FunPB / ( ( FunPC - FunPA ) * ( FunPC - FunPB ) )
-      ELSE
-        ! --- Secant method (replace with Newton's method?) ---
-        PS = PB - FunPB * ( PB - PA ) / ( FunPB - FunPA )
-      END IF
-
-      ! --- Condition 1 ---
-      IF( PB .GT. ( 3.0_DP * PA + PB ) / 4.0_DP )THEN
-        IF( .NOT. ( ( PS .GT. ( 3.0_DP * PA + PB ) / 4.0_DP ) &
-                    .AND. ( PS .LT. PB ) ) )THEN
-          COND1 = .TRUE.
-        ELSE
-          COND1 = .FALSE.
-        END IF
-      ELSE
-        IF( .NOT. ( ( PS .LT. ( 3.0_DP * PA + PB ) / 4.0_DP ) &
-              .AND. ( PS .GT. PB ) ) )THEN
-          COND1 = .TRUE.
-        ELSE
-          COND1 = .FALSE.
-        END IF
-      END IF
-
-      ! --- Condition 2 ---
-      IF( mflag .AND. ( ABS( PS - PB ) .GE. ( ABS( PB - PC ) / 2.0_DP ) ) )THEN
-        COND2 = .TRUE.
-      ELSE
-        COND2 = .FALSE.
-      END IF
-
-      ! --- Condition 3 ---
-      IF( .NOT. mflag .AND. ( ABS( PS - PB ) &
-          .GE. ( ABS( PC - PD ) / 2.0_DP ) ) )THEN
-        COND3 = .TRUE.
-      ELSE
-        COND3 = .FALSE.
-      END IF
-
-      ! --- Condition 4 ---
-      IF( mflag .AND. ( ABS( PB - PC ) .LT. TolP ) )THEN
-        COND4 = .TRUE.
-      ELSE
-        COND4 = .FALSE.
-      END IF
-
-      ! --- Condition 5 ---
-      IF( .NOT. mflag .AND. ( ABS( PC - PD ) .LT. TolP ) )THEN
-        COND5 = .TRUE.
-      ELSE
-        COND5 = .FALSE.
-      END IF
-
-      IF( COND1 .OR. COND2 .OR. COND3 .OR. COND4 .OR. COND5 )THEN
-        PS = ( PA + PB ) / 2.0_DP
-        mflag = .TRUE.
-      ELSE
-        mflag = .FALSE.
-      END IF
-
-      CALL ComputeFunJacP( CF_D, CF_E, SSq, PS, FunPS, JacPS )
-      PD = PC
-      PC = PB
-
-      IF( FunPA * FunPS .LT. 0.0_DP )THEN
-        PB = PS
-        CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB )
-      ELSE
-        PA = PS
-        CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA )
-      END IF
-
-      ! --- Conditionally swap PA and PB ---
-      IF( ABS( FunPA ) .LT. ABS( FunPB ) )THEN
-        PSwap = PB
-        PB    = PA
-        PA    = PSwap
-        CALL ComputeFunJacP( CF_D, CF_E, SSq, PA, FunPA, JacPA )
-        CALL ComputeFunJacP( CF_D, CF_E, SSq, PB, FunPB, JacPB )
-      END IF
-
-      Pbrent = PB
-
-      IF( ITERATION .EQ. MAX_IT )THEN
-        WRITE(*,*)
-        WRITE(*,'(A)') 'Maximum number of iterations reached.'
-        WRITE(*,'(A,ES24.16E3)') 'Pbrent =        ', Pbrent
-        WRITE(*,'(A,ES24.16E3)') '|dP|/|Pbisec| = ', &
-          ABS( PB - PA ) / ABS( Pbisec )
-        WRITE(*,'(A,ES24.16E3)') '|Pbrent-Pbisec|/|Pbisec| = ', &
-          ABS( Pbrent - Pbisec ) / ABS( Pbisec )
-        STOP
-      END IF
-
-    END DO
-
-  END SUBROUTINE ComputePressureWithBrentsMethod
-
-
-  SUBROUTINE ComputeFunP( CF_D, CF_E, SSq, P, FunP )
-
-    REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq, P
-    REAL(DP), INTENT(out) :: FunP
-
-    REAL(DP) :: HSq, RHO, EPS
-    REAL(DP) :: Pbar(1)
-
-    HSq = ( CF_E + P + CF_D )**2
-
-    RHO = CF_D * SQRT( HSq - SSq ) / SQRT( HSq )
-
-    EPS = ( SQRT( HSq - SSq ) &
-            - P * SQRT( HSq ) / SQRT( HSq - SSq ) - CF_D ) / CF_D
-
-    CALL ComputePressureFromSpecificInternalEnergy &
-         ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
-
-    FunP = P - Pbar(1)
-
-  END SUBROUTINE ComputeFunP
+  END SUBROUTINE SolveZ_Bisection
 
 
 END MODULE Euler_UtilitiesModule_Relativistic
