@@ -1,11 +1,6 @@
 !> Perform computations related to the 3+1, CFA Euler equations.
 !> Find the equations in Rezzolla & Zanotti, Relativistic Hydrodynamics, 2013,
 !> Equation 7.234.
-!> @param TolP Threshold for step-size in Newton-Raphson algorithm in
-!>             ComputePrimitive_Euler_Relativistic to accept solution.
-!> @param TolFunP Threshold for function in Newton-Raphson algorithm in
-!>                ComputePrimitive_Euler_Relativistic to accept solution.
-!> @todo Find optimal values for parameters TolP and TolFunP.
 MODULE Euler_UtilitiesModule_Relativistic
 
   USE KindModule, ONLY: &
@@ -91,10 +86,6 @@ MODULE Euler_UtilitiesModule_Relativistic
     MODULE PROCEDURE ComputeConserved_Scalar
     MODULE PROCEDURE ComputeConserved_Vector
   END INTERFACE ComputeConserved_Euler_Relativistic
-
-  REAL(DP), PARAMETER :: TolZ = 1.0d-8
-  INTEGER, PARAMETER  :: MAX_IT = 2 - INT( LOG( TolZ ) / LOG( Two ) )
-  LOGICAL             :: DEBUG = .FALSE.
 
 
 CONTAINS
@@ -506,6 +497,7 @@ CONTAINS
   !> Mignone & Bodo, (2005), MNRAS, 364, 126.
   !> @param Shift The ith contravariant component of the shift-vector.
   !> @param Gmii The ith covariant component of the spatial three-metric.
+  !> @todo Optimize special cases of quadratic formula solutions.
   REAL(DP) FUNCTION AlphaMiddle_Euler_Relativistic &
     ( DL, SL, tauL, F_DL, F_SL, F_tauL, DR, SR, tauR, F_DR, F_SR, F_tauR, &
       Gmii, aP, aM, Lapse, Shift )
@@ -538,16 +530,27 @@ CONTAINS
 
     IF     ( ( ABS( a2 ) .LT. SqrtTiny ) .AND. ( ABS( a1 ) .LT. SqrtTiny ) &
             .AND. ( ABS( a0 ) .LT. SqrtTiny ) )THEN
+
       STOP 'AlphaMiddle is undefined'
+
     ELSE IF( ( ABS( a2 ) .LT. SqrtTiny ) .AND. ( ABS( a1 ) .LT. SqrtTiny ) )THEN
+
       STOP 'AlphaMiddle is undefined'
+
     ELSE IF( ( ABS( a2 ) .LT. SqrtTiny ) .AND. ( ABS( a0 ) .LT. SqrtTiny ) )THEN
+
       AlphaMiddle_Euler_Relativistic = Zero
+
     ELSE IF( ABS( a2 ) .LT. SqrtTiny )THEN
+
       AlphaMiddle_Euler_Relativistic = -a0 / a1
+
     ELSE IF( ABS( a0 ) .LT. SqrtTiny )THEN
+
        AlphaMiddle_Euler_Relativistic = Zero
+
     ELSE
+
       AlphaMiddle_Euler_Relativistic &
         = ( -a1 - SQRT( MAX( a1**2 - Four * a2 * a0, SqrtTiny ) ) ) &
             / ( Two * a2 )
@@ -1098,9 +1101,10 @@ CONTAINS
 
     LOGICAL             :: CONVERGED
     INTEGER             :: ITERATION
-    REAL(DP)            :: za, zb, zc, z, dz
-    REAL(DP)            :: fa, fb, fc, Norm
-    REAL(DP), PARAMETER :: dz_min = 1.0e-16_DP
+    REAL(DP)            :: za, zb, zc, dz
+    REAL(DP)            :: fa, fb, fc
+    REAL(DP), PARAMETER :: dz_min = 1.0e-8_DP
+    INTEGER,  PARAMETER :: MAX_IT = 4 - INT( LOG( dz_min) / LOG( Two ) )
 
     ! --- Eq. C23 ---
 
@@ -1112,7 +1116,8 @@ CONTAINS
     fa = FunZ( za, CF_D, q, r, k )
     fb = FunZ( zb, CF_D, q, r, k )
 
-    ! --- Check that sign of FunP changes across bounds ---
+    ! --- Check that sign of FunZ changes across bounds ---
+
     IF( .NOT. fa * fb .LT. 0 )THEN
 
       WRITE(*,'(6x,A)') &
@@ -1131,11 +1136,11 @@ CONTAINS
 
     END IF
 
-    dz = ( zb - za )
+    dz = zb - za
 
     ITERATION = 0
     CONVERGED = .FALSE.
-    DO WHILE ( ITERATION .LT. MAX_IT .AND. .NOT. CONVERGED )
+    DO WHILE ( .NOT. CONVERGED .AND. ITERATION .LT. MAX_IT )
 
       ITERATION = ITERATION + 1
 
@@ -1181,7 +1186,16 @@ CONTAINS
 
       END IF
 
-      IF( dz .LT. dz_min ) CONVERGED = .TRUE.
+      IF( ABS( dz / za ) .LT. dz_min ) CONVERGED = .TRUE.
+
+!!$      IF( ITERATION .GT. MAX_IT - 3 )THEN
+!!$
+!!$        WRITE(*,*) 'Iter   = ', ITERATION
+!!$        WRITE(*,*) 'za, zb = ', za, zb
+!!$        WRITE(*,*) 'dz     = ', dz
+!!$        WRITE(*,*)
+!!$
+!!$      END IF
 
     END DO
 
