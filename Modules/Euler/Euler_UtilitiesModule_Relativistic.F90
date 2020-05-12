@@ -1179,10 +1179,14 @@ CONTAINS
         zb = zc
         fb = fc
 
-      ELSE
+      ELSE IF( fa * fc .GT. Zero )THEN
 
         za = zc
         fa = fc
+
+      ELSE
+
+        CONVERGED = .TRUE.
 
       END IF
 
