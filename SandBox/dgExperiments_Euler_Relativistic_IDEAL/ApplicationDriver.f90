@@ -361,13 +361,13 @@ PROGRAM ApplicationDriver
 
        Gamma = 2.0_DP
 
-       nX = [ 640, 1, 1 ]
+       nX = [ 128, 1, 1 ]
        xL = [ Zero    , Zero, Zero  ]
-       xR = [ 8.13e0_DP,  Pi , TwoPi ]
+       xR = [ 1.0e1_DP * Kilometer,  Pi , TwoPi ]
 
        bcX = [ 30, 0, 0 ]
 
-       t_end = 1.0e-1 * Millisecond
+       t_end = 1.0e+1 * Millisecond
 
       WriteGF = .TRUE.
 

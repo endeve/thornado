@@ -77,7 +77,9 @@ MODULE InitializationModule_Relativistic
     Gram,                  &
     Centimeter,            &
     Erg,                   &
-    Second
+    Second,                &
+    PlanckConstant,        &
+    AtomicMassUnit
   USE UtilitiesModule,                    ONLY: &
     NodeNumberX, &
     Locate,      &
@@ -94,7 +96,12 @@ MODULE InitializationModule_Relativistic
 
   REAL(DP), PARAMETER :: &
     PolytropicConstant_TOV &
-      = 1.455e5_DP * Erg * Centimeter**3 / Gram**2
+      = 1.0_DP / 20.0_DP * ( 3.0_DP / Pi )**( 2.0_DP / 3.0_DP ) &
+          * ( PlanckConstant / ( Erg * Second ) )**2 &
+          / ( AtomicMassUnit / Gram )**( 8.0_DP / 3.0_DP ) &
+          * ( Erg / Centimeter**3 ) &
+          / ( Gram / Centimeter**3 )**( 5.0_DP/ 3.0_DP )
+!!$      = 1.455e5_DP * Erg * Centimeter**3 / Gram**2
 
 
 CONTAINS
@@ -1605,7 +1612,8 @@ CONTAINS
   SUBROUTINE InitializeFields_StaticTOV
 
     REAL(DP), PARAMETER :: &
-      CentralDensity = 7.906e14_DP * ( Gram / Centimeter**3 ), &
+      CentralDensity = 3.301e14_DP * ( Gram / Centimeter**3 ), &
+!!$      CentralDensity = 7.906e14_DP * ( Gram / Centimeter**3 ), &
       dX1            = 1.0e-4_DP * Kilometer, &
       TolF           = 1.0e-15_DP
 
@@ -1629,8 +1637,11 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(6x,A,ES10.3E3,A)' ) &
       'Polytropic Constant = ', PolytropicConstant_TOV &
-                                  / ( Erg * Centimeter**3 / Gram**2 ), &
-      ' [ erg * cm^3 / g^2 ]'
+                                  / ( Erg / Centimeter**3 &
+                                  / ( Gram / Centimeter**3 )** &
+                                    ( Gamma_IDEAL &
+                                    ) ), &
+      ' [ erg / cm^3 / ( g / cm^3 )^( Gamma ) ]'
     WRITE(*,'(6x,A,ES10.3E3,A)')  &
       'Central Density     = ', CentralDensity &
                                   / ( Gram / Centimeter**3 ), &
@@ -1649,13 +1660,13 @@ CONTAINS
 
     ! --- Find geometry fields at center by iteratively integrating outward ---
 
-    dF   = TolF + One
+    dF   = 1.1_DP * TolF
     ITER = 0
     DO WHILE( dF .GT. TolF .AND. ITER .LT. nMaxIter )
 
       ITER = ITER + 1
 
-      IF( MOD(  ITER, 100 ) .EQ. 0 ) PRINT*, 'Iteration ', ITER
+      IF( MOD( ITER, 100 ) .EQ. 0 ) PRINT*, 'Iteration ', ITER
 
       CALL IntegrateOutwards &
              ( dX1, CentralPressure, Psi0, Alpha0, &
@@ -1702,7 +1713,8 @@ CONTAINS
 
       X1Arr      (iX1) = X1
       PressureArr(iX1) = Pressure
-      DensityArr (iX1) = SQRT( Pressure / PolytropicConstant_TOV )
+      DensityArr (iX1) = ( Pressure &
+                             / PolytropicConstant_TOV )**( One / Gamma_IDEAL )
 
       ! --- Explicit steps ---
 
@@ -1938,8 +1950,8 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: Pressure
 
-    Enthalpy = SQRT( Pressure / PolytropicConstant_TOV ) * SpeedOfLight**2 &
-                 + Two * Pressure
+    Enthalpy = ( Pressure / PolytropicConstant_TOV )**( One / Gamma_IDEAL ) &
+                 * SpeedOfLight**2 + Pressure / ( Gamma_IDEAL - One ) + Pressure
 
     RETURN
   END FUNCTION Enthalpy
@@ -1999,7 +2011,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: Pressure
 
-    f_E2 = f_E1( Pressure ) + 6.0_DP * Pressure
+    f_E2 = f_E1( Pressure ) - 6.0_DP * Pressure
 
     RETURN
   END FUNCTION f_E2
