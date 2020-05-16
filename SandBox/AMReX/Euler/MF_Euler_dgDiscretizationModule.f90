@@ -155,6 +155,8 @@ CONTAINS
 
         CALL thornado2amrex_Euler( nCF, iX_B0, iX_E0, duCF, dU )
 
+        CALL thornado2amrex_Euler( nDF, iX_B1, iX_E1, uDF , D )
+
         DEALLOCATE( dU )
 
         DEALLOCATE( D  )
