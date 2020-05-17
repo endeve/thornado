@@ -55,7 +55,7 @@ CoordinateSystem = 'spherical'
 aspect = 1.0
 
 # Specify colormap
-cmap = 'jet'
+cmap = 'Purples'
 
 # Specify whether or not to make a movie
 MakeMovie    = False
@@ -188,6 +188,12 @@ elif( Field == 'AF_P'  ):
     Data = CoveringGrid['AF_P' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'erg/cm**3'
+elif( Field == 'DF_Sh_X1'  ):
+    Data = CoveringGrid['DF_Sh_X1' ].to_ndarray()
+elif( Field == 'DF_Sh_X2'  ):
+    Data = CoveringGrid['DF_Sh_X2' ].to_ndarray()
+elif( Field == 'DF_Sh_X3'  ):
+    Data = CoveringGrid['DF_Sh_X3' ].to_ndarray()
 elif( Field == 'Entropy' ):
     PF_D  = CoveringGrid['PF_D' ].to_ndarray()
     AF_P  = CoveringGrid['AF_P' ].to_ndarray()
