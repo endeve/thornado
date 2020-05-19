@@ -103,12 +103,15 @@ CONTAINS
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
 
-    IF( .NOT. SuppressBC ) &
+    IF( .NOT. SuppressBC )THEN
+
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-    CALL DetectShocks_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+      CALL DetectShocks_Euler &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+    END IF
 
     CALL TimersStart_Euler( Timer_Euler_Divergence )
 
@@ -534,8 +537,10 @@ CONTAINS
                 P_R      (iNodeX_X1),                   &
                 G_F      (iNodeX_X1,iGF_Alpha),         &
                 G_F      (iNodeX_X1,iGF_Beta_1),        &
-                MAXVAL( D(:,iX1-1,iX2,iX3,iDF_Sh_X1) ), &
-                MAXVAL( D(:,iX1  ,iX2,iX3,iDF_Sh_X1) ) )
+                MAXVAL( D(:,iX1-1,iX2,iX3,iDF_Sh_X2) ), &
+                MAXVAL( D(:,iX1  ,iX2,iX3,iDF_Sh_X2) ), &
+                MAXVAL( D(:,iX1-1,iX2,iX3,iDF_Sh_X3) ), &
+                MAXVAL( D(:,iX1  ,iX2,iX3,iDF_Sh_X3) ) )
 
       END DO
 
@@ -957,8 +962,10 @@ CONTAINS
                 P_R      (iNodeX_X2),                   &
                 G_F      (iNodeX_X2,iGF_Alpha),         &
                 G_F      (iNodeX_X2,iGF_Beta_2),        &
-                MAXVAL( D(:,iX1,iX2-1,iX3,iDF_Sh_X2) ), &
-                MAXVAL( D(:,iX1,iX2  ,iX3,iDF_Sh_X2) ) )
+                MAXVAL( D(:,iX1,iX2-1,iX3,iDF_Sh_X1) ), &
+                MAXVAL( D(:,iX1,iX2  ,iX3,iDF_Sh_X1) ), &
+                MAXVAL( D(:,iX1,iX2-1,iX3,iDF_Sh_X3) ), &
+                MAXVAL( D(:,iX1,iX2  ,iX3,iDF_Sh_X3) ) )
 
       END DO
 
@@ -1379,8 +1386,10 @@ CONTAINS
                 P_R      (iNodeX_X3),                   &
                 G_F      (iNodeX_X3,iGF_Alpha),         &
                 G_F      (iNodeX_X3,iGF_Beta_3),        &
-                MAXVAL( D(:,iX1,iX2,iX3-1,iDF_Sh_X3) ), &
-                MAXVAL( D(:,iX1,iX2,iX3  ,iDF_Sh_X3) ) )
+                MAXVAL( D(:,iX1,iX2,iX3-1,iDF_Sh_X1) ), &
+                MAXVAL( D(:,iX1,iX2,iX3  ,iDF_Sh_X1) ), &
+                MAXVAL( D(:,iX1,iX2,iX3-1,iDF_Sh_X2) ), &
+                MAXVAL( D(:,iX1,iX2,iX3  ,iDF_Sh_X2) ) )
 
       END DO
 

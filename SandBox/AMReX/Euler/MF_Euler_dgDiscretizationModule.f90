@@ -16,16 +16,18 @@ MODULE  MF_Euler_dgDiscretizationModule
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,          ONLY: &
+  USE ProgramHeaderModule,                ONLY: &
     swX, &
     nDOFX
-  USE FluidFieldsModule,            ONLY: &
+  USE FluidFieldsModule,                  ONLY: &
     nCF, &
     nDF
-  USE GeometryFieldsModule,         ONLY: &
+  USE GeometryFieldsModule,               ONLY: &
     nGF
-  USE Euler_dgDiscretizationModule, ONLY: &
+  USE Euler_dgDiscretizationModule,       ONLY: &
     ComputeIncrement_Euler_DG_Explicit
+  USE Euler_DiscontinuityDetectionModule, ONLY: &
+    DetectShocks_Euler
 
   ! --- Local Modules ---
 
@@ -79,6 +81,57 @@ CONTAINS
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     TYPE(EdgeMap) :: Edge_Map
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uCF  => MF_uCF (iLevel) % DataPtr( MFI )
+        uGF  => MF_uGF (iLevel) % DataPtr( MFI )
+        uDF  => MF_uDF (iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
+
+        ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nGF) )
+
+        ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nCF) )
+
+        ALLOCATE( D (1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3),1:nDF) )
+
+        CALL amrex2thornado_Euler( nGF, iX_B1, iX_E1, uGF, G )
+
+        CALL amrex2thornado_Euler( nCF, iX_B1, iX_E1, uCF, U )
+
+        CALL amrex2thornado_Euler( nDF, iX_B1, iX_E1, uDF, D )
+
+        CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+        CALL thornado2amrex_Euler( nDF, iX_B1, iX_E1, uDF, D )
+
+        DEALLOCATE( D  )
+
+        DEALLOCATE( U  )
+
+        DEALLOCATE( G  )
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
 
     DO iLevel = 0, nLevels-1
 
