@@ -27,10 +27,12 @@ MODULE MF_InitializationModule
 CONTAINS
 
 
-  SUBROUTINE MF_InitializeFields( ProgramName, MF_uGF, MF_uCF )
+  SUBROUTINE MF_InitializeFields &
+    ( ProgramName, MF_uGF, MF_uCF, RiemannProblemName )
 
-    CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
+    CHARACTER(LEN=*),     INTENT(in)    :: RiemannProblemName
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
 #if defined HYDRO_NONRELATIVISTIC && defined MICROPHYSICS_WEAKLIB
@@ -38,15 +40,10 @@ CONTAINS
     CALL MF_InitializeFields_NonRelativistic_TABLE &
            ( ProgramName, MF_uGF, MF_uCF )
 
-#elif defined HYDRO_NONRELATIVISTIC
-
-    CALL MF_InitializeFields_NonRelativistic_IDEAL &
-           ( ProgramName, MF_uGF, MF_uCF )
-
 #elif defined HYDRO_RELATIVISTIC
 
     CALL MF_InitializeFields_Relativistic_IDEAL &
-           ( ProgramName, MF_uGF, MF_uCF )
+           ( ProgramName, MF_uGF, MF_uCF, RiemannProblemName )
 
 #else
 

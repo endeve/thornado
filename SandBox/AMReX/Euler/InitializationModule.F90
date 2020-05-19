@@ -176,10 +176,12 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
-    INTEGER               :: iLevel, iDim
-    TYPE(amrex_parmparse) :: PP
-    TYPE(amrex_box)       :: BX
-    REAL(AR)              :: Mass
+    INTEGER                       :: iLevel, iDim
+    TYPE(amrex_parmparse)         :: PP
+    TYPE(amrex_box)               :: BX
+    REAL(AR)                      :: Mass
+    CHARACTER(LEN=:), ALLOCATABLE :: RiemannProblemName
+
 
     ! --- Initialize AMReX ---
 
@@ -406,13 +408,19 @@ CONTAINS
       '', 'CFL: ', &
       CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
+    RiemannProblemName = 'Sod'
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'RiemannProblemName', RiemannProblemName )
+    CALL amrex_parmparse_destroy( PP )
+
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
     IF( iRestart .LT. 0 )THEN
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 
-      CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCF )
+      CALL MF_InitializeFields &
+             ( TRIM( ProgramName ), MF_uGF, MF_uCF, TRIM( RiemannProblemName ) )
 
       CALL MF_ApplySlopeLimiter_Euler( MF_uGF, MF_uCF, MF_uDF, GEOM )
 

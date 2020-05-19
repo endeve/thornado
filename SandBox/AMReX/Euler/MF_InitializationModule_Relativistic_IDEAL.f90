@@ -101,12 +101,12 @@ CONTAINS
 
 
   SUBROUTINE MF_InitializeFields_Relativistic_IDEAL &
-    ( ProgramName, MF_uGF, MF_uCF )
+    ( ProgramName, MF_uGF, MF_uCF, RiemannProblemName )
 
-    CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
+    CHARACTER(LEN=*),     INTENT(in)    :: RiemannProblemName
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -117,13 +117,10 @@ CONTAINS
 
     SELECT CASE ( TRIM( ProgramName ) )
 
-      CASE( 'Sod' )
+      CASE( 'RiemannProblem1D' )
 
-        CALL InitializeFields_Sod( MF_uGF, MF_uCF )
-
-      CASE( 'Contact' )
-
-        CALL InitializeFields_Contact( MF_uGF, MF_uCF )
+        CALL InitializeFields_RiemannProblem1D &
+               ( MF_uGF, MF_uCF, RiemannProblemName )
 
       CASE( 'Advection2D' )
 
@@ -171,13 +168,14 @@ CONTAINS
   END SUBROUTINE MF_InitializeFields_Relativistic_IDEAL
 
 
-  SUBROUTINE InitializeFields_Sod( MF_uGF, MF_uCF )
+  SUBROUTINE InitializeFields_RiemannProblem1D &
+               ( MF_uGF, MF_uCF, RiemannProblemName )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    CHARACTER(LEN=*)    , INTENT(in)    :: RiemannProblemName
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
-    INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3
     INTEGER        :: iNodeX, iNodeX1
     REAL(AR)       :: X1
@@ -185,6 +183,7 @@ CONTAINS
     REAL(AR)       :: uCF_K(nDOFX,nCF)
     REAL(AR)       :: uPF_K(nDOFX,nPF)
     REAL(AR)       :: uAF_K(nDOFX,nAF)
+    INTEGER        :: iDim
     TYPE(MeshType) :: MeshX(3)
 
     ! --- AMReX ---
@@ -195,6 +194,10 @@ CONTAINS
     TYPE(amrex_mfiter)            :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    ! --- Problem-Specific ---
+    REAL(AR) :: XD, Vs
+    REAL(AR) :: LeftState(nPF), RightState(nPF)
 
     uGF_K = Zero
     uCF_K = Zero
@@ -209,129 +212,202 @@ CONTAINS
 
     END DO
 
-    DO iLevel = 0, nLevels-1
+    IF( amrex_parallel_ioprocessor() )THEN
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+      WRITE(*,*)
+      WRITE(*,'(A4,A,A)') &
+        '', 'Riemann Problem Name: ', TRIM( RiemannProblemName )
+      WRITE(*,*)
 
-      DO WHILE( MFI % next() )
+    END IF
 
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+    SELECT CASE( TRIM( RiemannProblemName ) )
 
-        BX = MFI % tilebox()
+      CASE( 'Sod' )
 
-        lo_G = LBOUND( uGF )
-        hi_G = UBOUND( uGF )
+        XD = Half
 
-        lo_F = LBOUND( uCF )
-        hi_F = UBOUND( uCF )
+        LeftState(iPF_D ) = 1.0_AR
+        LeftState(iPF_V1) = 0.0_AR
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
 
-        DO iX3 = BX % lo(3), BX % hi(3)
-        DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1)
+        RightState(iPF_D ) = 0.125_AR
+        RightState(iPF_V1) = 0.0_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 0.1_AR / ( Gamma_IDEAL - One )
 
-          uGF_K &
-            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+      CASE( 'IsolatedShock' )
 
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
+        Vs = 0.01_AR
+        XD = Half
 
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        RightState(iPF_D)  = 1.0_AR
+        RightState(iPF_V1) = -0.9_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E)  = 1.0_AR / ( Gamma_IDEAL - One )
 
-          DO iNodeX = 1, nDOFX
+        CALL ComputeLeftState &
+               ( Vs,                 &
+                 RightState(iPF_D ), &
+                 RightState(iPF_V1), &
+                 RightState(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 LeftState (iPF_D ), &
+                 LeftState (iPF_V1), &
+                 LeftState (iPF_E ) )
 
-            IF( X1 .LE. Half ) THEN
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
 
-              uPF_K(iNodeX,iPF_D)  = One
-              uPF_K(iNodeX,iPF_V1) = Zero
-              uPF_K(iNodeX,iPF_V2) = Zero
-              uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E)  = One / (Gamma_IDEAL - One)
+      CASE( 'IsolatedContact' )
 
-            ELSE
+        Vs = 0.01_AR
+        XD = Half
 
-              uPF_K(iNodeX,iPF_D)  = 0.125_AR
-              uPF_K(iNodeX,iPF_V1) = Zero
-              uPF_K(iNodeX,iPF_V2) = Zero
-              uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E)  = 0.1_AR / (Gamma_IDEAL - One)
+        LeftState(iPF_D ) = 5.9718209694880811e0_AR
+        LeftState(iPF_V1) = Vs
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
 
-            END IF
+        RightState(iPF_D ) = 1.0_AR
+        RightState(iPF_V1) = Vs
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
 
-          END DO
+      CASE( 'MBProblem1' )
 
-          CALL ComputePressureFromPrimitive &
-                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
-                   uAF_K(:,iAF_P) )
+        XD = Half
 
-          CALL ComputeConserved_Euler &
-                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
-                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
-                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
-                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
-                   uGF_K(:,iGF_Gm_dd_11), &
-                   uGF_K(:,iGF_Gm_dd_22), &
-                   uGF_K(:,iGF_Gm_dd_33), &
-                   uAF_K(:,iAF_P) )
+        LeftState(iPF_D ) = 1.0_AR
+        LeftState(iPF_V1) = 0.9_AR
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
 
-          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
-            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+        RightState(iPF_D ) = 1.0_AR
+        RightState(iPF_V1) = 0.0_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 10.0_AR / ( Gamma_IDEAL - One )
 
-        END DO
-        END DO
-        END DO
+      CASE( 'MBProblem4' )
 
-      END DO
+        XD = Half
 
-      CALL amrex_mfiter_destroy( MFI )
+        LeftState(iPF_D ) = 1.0_AR
+        LeftState(iPF_V1) = 0.0_AR
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 1.0e3_AR / ( Gamma_IDEAL - One )
 
-    END DO
+        RightState(iPF_D ) = 1.0_AR
+        RightState(iPF_V1) = 0.0_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 1.0e-2_AR / ( Gamma_IDEAL - One )
 
-    DO iDim = 1, 3
+      CASE( 'PerturbedShockTube' )
 
-      CALL DestroyMesh( MeshX(iDim) )
+        XD = Half
 
-    END DO
+        LeftState(iPF_D ) = 5.0_AR
+        LeftState(iPF_V1) = 0.0_AR
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 50.0_AR / ( Gamma_IDEAL - One )
 
-  END SUBROUTINE InitializeFields_Sod
+        RightState(iPF_D ) = 0.0_AR ! --- Dummy ---
+        RightState(iPF_V1) = 0.0_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 5.0_AR / ( Gamma_IDEAL - One )
 
+      CASE( 'ShockReflection' )
 
-  SUBROUTINE InitializeFields_Contact( MF_uGF, MF_uCF )
+        XD = One
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+        LeftState(iPF_D ) = 1.0_AR
+        LeftState(iPF_V1) = 0.99999_AR
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 0.01_AR / ( Gamma_IDEAL - One )
 
-    ! --- thornado ---
-    INTEGER        :: iDim
-    INTEGER        :: iX1, iX2, iX3
-    INTEGER        :: iNodeX, iNodeX1
-    REAL(AR)       :: X1
-    REAL(AR)       :: uGF_K(nDOFX,nGF)
-    REAL(AR)       :: uCF_K(nDOFX,nCF)
-    REAL(AR)       :: uPF_K(nDOFX,nPF)
-    REAL(AR)       :: uAF_K(nDOFX,nAF)
-    TYPE(MeshType) :: MeshX(3)
+        ! --- All of these are dummies ---
+        RightState(iPF_D ) = 0.0_AR
+        RightState(iPF_V1) = 0.0_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 0.0_AR
 
-    ! --- AMReX ---
-    INTEGER                       :: iLevel
-    INTEGER                       :: lo_G(4), hi_G(4)
-    INTEGER                       :: lo_F(4), hi_F(4)
-    TYPE(amrex_box)               :: BX
-    TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+      CASE DEFAULT
 
-    uGF_K = Zero
-    uCF_K = Zero
-    uPF_K = Zero
-    uAF_K = Zero
+        IF( amrex_parallel_ioprocessor() )THEN
 
-    DO iDim = 1, 3
+          WRITE(*,*)
+          WRITE(*,'(A,A)') &
+            'Invalid choice for RiemannProblemName: ', &
+            TRIM( RiemannProblemName )
+          WRITE(*,'(A)') 'Valid choices:'
+          WRITE(*,'(A)') &
+            "  'Sod' - &
+            Sod's shock tube"
+          WRITE(*,'(A)') &
+            "  'MBProblem1' - &
+            Mignone & Bodo (2005) MNRAS, 364, 126, Problem 1"
+          WRITE(*,'(A)') &
+            "  'MBProblem4' - &
+            Mignone & Bodo (2005) MNRAS, 364, 126, Problem 4"
+          WRITE(*,'(A)') &
+            "  'PerturbedShockTube' - &
+            Del Zanna & Bucciantini (2002) AA, 390, 1177, &
+            Sinusoidal density perturbation"
+          WRITE(*,'(A)') &
+            "  'ShockReflection' - &
+            Del Zanna & Bucciantini (2002) AA, 390, 1177, &
+            Planar shock reflection"
+          WRITE(*,'(A)') 'Stopping...'
 
-      CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
-               xL(iDim), xR(iDim) )
+        END IF
 
-    END DO
+        CALL DescribeError_Euler( 99 )
+
+    END SELECT
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      IF( TRIM( RiemannProblemName ) .EQ. 'IsolatedShock' )THEN
+
+        WRITE(*,'(6x,A,ES14.6E3)') 'Shock Velocity = ', Vs
+        WRITE(*,*)
+
+      END IF
+
+      WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
+      WRITE(*,*)
+      WRITE(*,'(6x,A,F8.6)') 'XD = ', XD
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'Right State:'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', RightState(iPF_D )
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', RightState(iPF_V1)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', RightState(iPF_V2)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', RightState(iPF_V3)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', RightState(iPF_E )
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'Left State:'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', LeftState(iPF_D )
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', LeftState(iPF_V1)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', LeftState(iPF_V2)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', LeftState(iPF_V3)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', LeftState(iPF_E )
+
+    END IF
 
     DO iLevel = 0, nLevels-1
 
@@ -363,21 +439,25 @@ CONTAINS
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-            IF( X1 .LE. Half ) THEN
+            IF( X1 .LE. XD ) THEN
 
-              uPF_K(iNodeX,iPF_D)  = 0.5_AR
-              uPF_K(iNodeX,iPF_V1) = Zero
-              uPF_K(iNodeX,iPF_V2) = Zero
-              uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E)  = One / (Gamma_IDEAL - One)
+              uPF_K(iNodeX,iPF_D)  = LeftState(iPF_D )
+              uPF_K(iNodeX,iPF_V1) = LeftState(iPF_V1)
+              uPF_K(iNodeX,iPF_V2) = LeftState(iPF_V2)
+              uPF_K(iNodeX,iPF_V3) = LeftState(iPF_V3)
+              uPF_K(iNodeX,iPF_E)  = LeftState(iPF_E )
 
             ELSE
 
-              uPF_K(iNodeX,iPF_D)  = 0.1_AR
-              uPF_K(iNodeX,iPF_V1) = Zero
-              uPF_K(iNodeX,iPF_V2) = 0.99_AR
-              uPF_K(iNodeX,iPF_V3) = Zero
-              uPF_K(iNodeX,iPF_E)  = One / (Gamma_IDEAL - One)
+              uPF_K(iNodeX,iPF_D)  = RightState(iPF_D )
+              uPF_K(iNodeX,iPF_V1) = RightState(iPF_V1)
+              uPF_K(iNodeX,iPF_V2) = RightState(iPF_V2)
+              uPF_K(iNodeX,iPF_V3) = RightState(iPF_V3)
+              uPF_K(iNodeX,iPF_E)  = RightState(iPF_E )
+
+              IF( TRIM( RiemannProblemName ) .EQ. 'PerturbedShockTube' ) &
+                uPF_k(iNodeX,iPF_D) &
+                  = 2.0_AR + 0.3_AR * SIN( 50.0_AR * X1 )
 
             END IF
 
@@ -416,7 +496,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE InitializeFields_Contact
+  END SUBROUTINE InitializeFields_RiemannProblem1D
 
 
   SUBROUTINE InitializeFields_Advection2D( MF_uGF, MF_uCF )
@@ -1946,7 +2026,7 @@ CONTAINS
     P = Pressure( Vs, DR, VR, PR, D, Vmin )
     Fmin = PostShockVelocity( Vs, DR, VR, PR, D, Vmin, P )
 
-    D = Density( Vs, DR, VR, Vmax )
+    D = Density ( Vs, DR, VR, Vmax )
     P = Pressure( Vs, DR, VR, PR, D, Vmax )
     Fmax = PostShockVelocity( Vs, DR, VR, PR, D, Vmax, P )
 
