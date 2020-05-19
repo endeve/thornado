@@ -332,6 +332,19 @@ CONTAINS
 
 #endif
 
+    CALL SetUnitsGeometryFields
+
+    CALL DescribeFluidFields_Conserved( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Primitive( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Auxiliary( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
+
+    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
+                              Verbose_Option = amrex_parallel_ioprocessor() )
+
     IF( EquationOfState .EQ. 'TABLE' )THEN
 
       CALL InitializeEquationOfState &
@@ -392,21 +405,6 @@ CONTAINS
     IF( amrex_parallel_ioprocessor() ) WRITE(*,'(A6,A,ES11.3E3)') &
       '', 'CFL: ', &
       CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
-
-    CALL DescribeGeometryFields( TRIM( CoordinateSystem ) )
-
-    CALL SetUnitsGeometryFields
-
-    CALL DescribeFluidFields_Conserved( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Primitive( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Auxiliary( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
-
-    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
-                              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

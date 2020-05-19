@@ -93,8 +93,7 @@ CONTAINS
       Verbose = .TRUE.
     END IF
 
-    IF( Verbose ) &
-      CALL DescribeGeometryFields( CoordinateSystem )
+    CALL DescribeGeometryFields( CoordinateSystem, Verbose )
 
     ALLOCATE &
       ( uGF(1:nDOFX, &
@@ -124,21 +123,26 @@ CONTAINS
   END SUBROUTINE CreateGeometryFields
 
 
-  SUBROUTINE DescribeGeometryFields( CoordinateSystem )
+  SUBROUTINE DescribeGeometryFields( CoordinateSystem, Verbose )
 
     CHARACTER(*), INTENT(in) :: CoordinateSystem
+    LOGICAL,      INTENT(in) :: Verbose
 
     INTEGER :: iGF
 
-    WRITE(*,*)
-    WRITE(*,'(A5,A15)') '', 'Geometry Fields'
-    WRITE(*,*)
-    WRITE(*,'(A5,A,A)') &
-      '', 'Coordinate System: ', TRIM( CoordinateSystem )
-    WRITE(*,*)
-    DO iGF = 1, nGF
-      WRITE(*,'(A5,A32)') '', TRIM( namesGF(iGF) )
-    END DO
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A15)') '', 'Geometry Fields'
+      WRITE(*,*)
+      WRITE(*,'(A5,A,A)') &
+        '', 'Coordinate System: ', TRIM( CoordinateSystem )
+      WRITE(*,*)
+      DO iGF = 1, nGF
+        WRITE(*,'(A5,A32)') '', TRIM( namesGF(iGF) )
+      END DO
+
+    END IF
 
   END SUBROUTINE DescribeGeometryFields
 
