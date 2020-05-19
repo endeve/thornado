@@ -27,11 +27,9 @@ MODULE MF_InitializationModule
 CONTAINS
 
 
-  SUBROUTINE MF_InitializeFields &
-    ( ProgramName, MF_uGF, MF_uCF, RiemannProblemName )
+  SUBROUTINE MF_InitializeFields( ProgramName, MF_uGF, MF_uCF )
 
     CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
-    CHARACTER(LEN=*),     INTENT(in)    :: RiemannProblemName
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
@@ -43,7 +41,7 @@ CONTAINS
 #elif defined HYDRO_RELATIVISTIC
 
     CALL MF_InitializeFields_Relativistic_IDEAL &
-           ( ProgramName, MF_uGF, MF_uCF, RiemannProblemName )
+           ( ProgramName, MF_uGF, MF_uCF )
 
 #else
 

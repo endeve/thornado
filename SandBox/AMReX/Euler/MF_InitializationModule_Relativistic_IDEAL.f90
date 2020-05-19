@@ -101,10 +101,9 @@ CONTAINS
 
 
   SUBROUTINE MF_InitializeFields_Relativistic_IDEAL &
-    ( ProgramName, MF_uGF, MF_uCF, RiemannProblemName )
+    ( ProgramName, MF_uGF, MF_uCF )
 
     CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
-    CHARACTER(LEN=*),     INTENT(in)    :: RiemannProblemName
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
@@ -119,8 +118,7 @@ CONTAINS
 
       CASE( 'RiemannProblem1D' )
 
-        CALL InitializeFields_RiemannProblem1D &
-               ( MF_uGF, MF_uCF, RiemannProblemName )
+        CALL InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
 
       CASE( 'Advection2D' )
 
@@ -168,10 +166,8 @@ CONTAINS
   END SUBROUTINE MF_InitializeFields_Relativistic_IDEAL
 
 
-  SUBROUTINE InitializeFields_RiemannProblem1D &
-               ( MF_uGF, MF_uCF, RiemannProblemName )
+  SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
 
-    CHARACTER(LEN=*)    , INTENT(in)    :: RiemannProblemName
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
@@ -191,13 +187,20 @@ CONTAINS
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
+    TYPE(amrex_parmparse)         :: PP
     TYPE(amrex_mfiter)            :: MFI
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     ! --- Problem-Specific ---
+    CHARACTER(LEN=:), ALLOCATABLE :: RiemannProblemName
     REAL(AR) :: XD, Vs
     REAL(AR) :: LeftState(nPF), RightState(nPF)
+
+    RiemannProblemName = 'Sod'
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'RiemannProblemName', RiemannProblemName )
+    CALL amrex_parmparse_destroy( PP )
 
     uGF_K = Zero
     uCF_K = Zero
