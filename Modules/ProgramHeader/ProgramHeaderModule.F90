@@ -124,25 +124,6 @@ CONTAINS
       nNodes = 1
     END IF
 
-#if defined HYDRO_RIEMANN_SOLVER_HYBRID
-
-    IF( nNodes .EQ. 1 )THEN
-
-      WRITE(*,*)
-      WRITE(*,*) 'FATAL ERROR'
-      WRITE(*,*) '-----------'
-      WRITE(*,*) 'HYBRID Riemann solver incompatible with nNodes = 1.'
-      WRITE(*,*) 'Please choose from a compatible Riemann solver.'
-      WRITE(*,*) 'Available Riemann solvers:'
-      WRITE(*,*) '  HLL'
-      WRITE(*,*) '  HLLC'
-      WRITE(*,*) 'Stopping...'
-      STOP
-
-    END IF
-
-#endif
-
     ! --- Position Space ---
 
     CALL InitializeProgramHeaderX &
