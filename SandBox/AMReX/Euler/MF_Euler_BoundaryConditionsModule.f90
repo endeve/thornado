@@ -49,11 +49,11 @@ CONTAINS
   SUBROUTINE MF_ApplyBoundaryConditions_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
-    INTEGER,       INTENT(in   ) :: &
+    INTEGER,       INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(AR),      INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    TYPE(EdgeMap), INTENT(in   ) :: &
+    TYPE(EdgeMap), INTENT(in)    :: &
       Edge_Map
 
     INTEGER :: iApplyBC(3)
@@ -70,8 +70,8 @@ CONTAINS
 
   SUBROUTINE ConstructEdgeMap( GEOM, BX, Edge_Map )
 
-    TYPE(amrex_geometry), INTENT(in   ) :: GEOM
-    TYPE(amrex_box),      INTENT(in   ) :: BX
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM
+    TYPE(amrex_box),      INTENT(in)    :: BX
     TYPE(EdgeMap),        INTENT(inout) :: Edge_Map
 
     INTEGER :: iDim

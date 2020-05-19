@@ -306,7 +306,7 @@ CONTAINS
   SUBROUTINE SumMinMaxAve &
     ( Timer, TimerSum, TimerMin, TimerMax, TimerAve )
 
-    REAL(AR), INTENT(in   ) :: Timer
+    REAL(AR), INTENT(in)    :: Timer
     REAL(AR), INTENT(inout) :: TimerSum, TimerMin, TimerMax, TimerAve
 
     TimerSum = Timer

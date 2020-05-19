@@ -319,7 +319,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Advection2D( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -831,7 +831,7 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
 
   SUBROUTINE InitializeFields_RiemannProblem2D( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -1152,7 +1152,7 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
   !     Radice & Rezzolla, (2012), AA, 547, A26 ---
   SUBROUTINE InitializeFields_KelvinHelmholtz( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -1315,7 +1315,7 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
   !     Radice & Rezzolla, (2012), AA, 547, A26 ---
   SUBROUTINE InitializeFields_KelvinHelmholtz3D( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -1481,7 +1481,7 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
   SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic &
     ( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -1984,7 +1984,7 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
 
   SUBROUTINE NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V )
 
-    REAL(AR), INTENT(in   ) :: a0, a1, a2, a3, a4
+    REAL(AR), INTENT(in)    :: a0, a1, a2, a3, a4
     REAL(AR), INTENT(inout) :: V
 
     REAL(AR) :: f, df, dV
@@ -2018,7 +2018,7 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
     ( Alpha, Psi, MassConstant, PolytropicConstant, &
       MassPNS, AccretionRate, X1, V )
 
-    REAL(AR), INTENT(in   ) :: Alpha, Psi, MassConstant, &
+    REAL(AR), INTENT(in)    :: Alpha, Psi, MassConstant, &
                                PolytropicConstant, MassPNS, AccretionRate, X1
     REAL(AR), INTENT(inout) :: V
 

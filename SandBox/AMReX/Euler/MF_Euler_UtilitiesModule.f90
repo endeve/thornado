@@ -58,7 +58,7 @@ CONTAINS
 
   SUBROUTINE MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: &
+    TYPE(amrex_multifab), INTENT(in)    :: &
       MF_uGF(0:nLevels-1), MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: &
       MF_uPF(0:nLevels-1), MF_uAF(0:nLevels-1)
