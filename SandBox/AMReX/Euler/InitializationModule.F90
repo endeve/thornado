@@ -59,14 +59,19 @@ MODULE InitializationModule
     MinY, &
     MaxY
   USE GeometryFieldsModule,             ONLY: &
-    nGF,                    &
-    SetUnitsGeometryFields, &
+    nGF,                     &
+    DescribeGeometryFields,  &
+    SetUnitsGeometryFields,  &
     CoordinateSystem
   USE FluidFieldsModule,                ONLY: &
-    nCF, &
-    nPF, &
-    nAF, &
-    nDF, &
+    nCF,                            &
+    nPF,                            &
+    nAF,                            &
+    nDF,                            &
+    DescribeFluidFields_Primitive,  &
+    DescribeFluidFields_Conserved,  &
+    DescribeFluidFields_Auxiliary,  &
+    DescribeFluidFields_Diagnostic, &
     SetUnitsFluidFields
   USE Euler_SlopeLimiterModule,         ONLY: &
     InitializeSlopeLimiter_Euler
@@ -388,7 +393,17 @@ CONTAINS
       '', 'CFL: ', &
       CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
+    CALL DescribeGeometryFields( TRIM( CoordinateSystem ) )
+
     CALL SetUnitsGeometryFields
+
+    CALL DescribeFluidFields_Conserved( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Primitive( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Auxiliary( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
 
     CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
                               Verbose_Option = amrex_parallel_ioprocessor() )

@@ -170,6 +170,10 @@ MODULE FluidFieldsModule
   PUBLIC :: DestroyFluidFields
   PUBLIC :: ResetFluidFields_Diagnostic
   PUBLIC :: SetUnitsFluidFields
+  PUBLIC :: DescribeFluidFields_Conserved
+  PUBLIC :: DescribeFluidFields_Primitive
+  PUBLIC :: DescribeFluidFields_Auxiliary
+  PUBLIC :: DescribeFluidFields_Diagnostic
 
 CONTAINS
 
@@ -211,16 +215,7 @@ CONTAINS
 
     INTEGER, INTENT(in) :: nX(3), swX(3)
 
-    INTEGER :: iCF
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Conserved)'
-      WRITE(*,*)
-      DO iCF = 1, nCF
-        WRITE(*,'(A5,A32)') '', TRIM( namesCF(iCF) )
-      END DO
-    END IF
+    CALL DescribeFluidFields_Conserved( Verbose )
 
     ALLOCATE( uCF &
                 (1:nDOFX, &
@@ -232,20 +227,31 @@ CONTAINS
   END SUBROUTINE CreateFluidFields_Conserved
 
 
+  SUBROUTINE DescribeFluidFields_Conserved( Verbose )
+
+    LOGICAL, INTENT(in) :: Verbose
+
+    INTEGER :: iCF
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Conserved)'
+      WRITE(*,*)
+      DO iCF = 1, nCF
+        WRITE(*,'(A5,A32)') '', TRIM( namesCF(iCF) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeFluidFields_Conserved
+
+
   SUBROUTINE CreateFluidFields_Primitive( nX, swX )
 
     INTEGER, INTENT(in) :: nX(3), swX(3)
 
-    INTEGER :: iPF
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Primitive)'
-      WRITE(*,*)
-      DO iPF = 1, nPF
-        WRITE(*,'(A5,A32)') '', TRIM( namesPF(iPF) )
-      END DO
-    END IF
+    CALL DescribeFluidFields_Primitive( Verbose )
 
     ALLOCATE( uPF(1:nDOFX, &
                   1-swX(1):nX(1)+swX(1), &
@@ -256,20 +262,31 @@ CONTAINS
   END SUBROUTINE CreateFluidFields_Primitive
 
 
+  SUBROUTINE DescribeFluidFields_Primitive( Verbose )
+
+    LOGICAL, INTENT(in) :: Verbose
+
+    INTEGER :: iPF
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Primitive)'
+      WRITE(*,*)
+      DO iPF = 1, nPF
+        WRITE(*,'(A5,A32)') '', TRIM( namesPF(iPF) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeFluidFields_Primitive
+
+
   SUBROUTINE CreateFluidFields_Auxiliary( nX, swX )
 
     INTEGER, INTENT(in) :: nX(3), swX(3)
 
-    INTEGER :: iAF
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A24)') '', 'Fluid Fields (Auxiliary)'
-      WRITE(*,*)
-      DO iAF = 1, nAF
-        WRITE(*,'(A5,A32)') '', TRIM( namesAF(iAF) )
-      END DO
-    END IF
+    CALL DescribeFluidFields_Auxiliary( Verbose )
 
     ALLOCATE( uAF(1:nDOFX, &
                   1-swX(1):nX(1)+swX(1), &
@@ -280,20 +297,31 @@ CONTAINS
   END SUBROUTINE CreateFluidFields_Auxiliary
 
 
+  SUBROUTINE DescribeFluidFields_Auxiliary( Verbose )
+
+    LOGICAL, INTENT(in) :: Verbose
+
+    INTEGER :: iAF
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A25)') '', 'Fluid Fields (Auxiliary)'
+      WRITE(*,*)
+      DO iAF = 1, nAF
+        WRITE(*,'(A5,A32)') '', TRIM( namesAF(iAF) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeFluidFields_Auxiliary
+
+
   SUBROUTINE CreateFluidFields_Diagnostic( nX, swX )
 
     INTEGER, INTENT(in) :: nX(3), swX(3)
 
-    INTEGER :: iDF
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A25)') '', 'Fluid Fields (Diagnostic)'
-      WRITE(*,*)
-      DO iDF = 1, nDF
-        WRITE(*,'(A5,A32)') '', TRIM( namesDF(iDF) )
-      END DO
-    END IF
+    CALL DescribeFluidFields_Diagnostic( Verbose )
 
     ALLOCATE( uDF(1:nDOFX, &
                   1-swX(1):nX(1)+swX(1), &
@@ -302,6 +330,26 @@ CONTAINS
                   1:nDF) )
 
   END SUBROUTINE CreateFluidFields_Diagnostic
+
+
+  SUBROUTINE DescribeFluidFields_Diagnostic( Verbose )
+
+    LOGICAL, INTENT(in) :: Verbose
+
+    INTEGER :: iDF
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A25)') '', 'Fluid Fields (Diagnostic)'
+      WRITE(*,*)
+      DO iDF = 1, nDF
+        WRITE(*,'(A5,A32)') '', TRIM( namesDF(iDF) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeFluidFields_Diagnostic
 
 
   SUBROUTINE DestroyFluidFields
