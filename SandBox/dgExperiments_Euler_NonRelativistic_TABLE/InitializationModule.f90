@@ -1,7 +1,7 @@
 MODULE InitializationModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, TwoPi
+    DP, Zero, Half, One, Pi, TwoPi
   USE UnitsModule, ONLY: &
     Gram, Centimeter, &
     Kilometer, Erg, Second, Kelvin, &
@@ -146,6 +146,111 @@ CONTAINS
               = 1.0d-2 * D_0 * SpeedOfLight**2
             uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
               = 0.3_DP
+
+          CASE( 'QuarticSineWave' )
+
+            ! SIN^4 profile modified from Suresh and Huynh (1997),
+            ! JCP 136, 83-99.
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+              = D_0 + Amp * SIN( Pi * X1 / L )**4
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = 0.1_DP * SpeedOfLight
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+              = 0.0_DP * Kilometer / Second
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+              = 0.0_DP * Kilometer / Second
+            uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+              = 1.0d-2 * D_0 * SpeedOfLight**2
+            uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+              = 0.3_DP
+
+          CASE( 'DiscontinuousMultiWave' )
+
+            ! Discontinuous profile with multiple types of waves
+            ! from Suresh and Huynh (1997), JCP 136, 83-99.
+
+            IF( ( X1 .GE. -0.8_DP * L ) .AND. ( X1 .LE. -0.6_DP * L ) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0 + Amp &
+                          * EXP( ( -LOG(2.0_DP) / ( 9.0d-4 ) ) &
+                                 * ( ( X1 / L ) + 7.0d-1 )**2 )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.0d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = 0.3_DP
+
+            ELSE IF( ( X1 .GE. -0.4_DP * L ) .AND. ( X1 .LE. -0.2_DP * L ) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0 + Amp
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.0d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = 0.3_DP
+
+            ELSE IF( ( X1 .GE. 0.0_DP * L ) .AND. ( X1 .LE. 0.2_DP * L ) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0 + Amp &
+                          * ( 1.0_DP &
+                                - ABS( 10.0_DP * ( ( X1 / L) - 0.1_DP ) ) )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.0d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = 0.3_DP
+
+            ELSE IF( ( X1 .GE. 0.4_DP * L ) .AND. ( X1 .LE. 0.6_DP * L ) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0 + Amp &
+                        * SQRT( 1.0_DP - 1.0d2 * ( ( X1 / L ) - 0.5_DP )**2 )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.0d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = 0.3_DP
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                = D_0
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = 0.1_DP * SpeedOfLight
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+                = 0.0_DP * Kilometer / Second
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+                = 0.0_DP * Kilometer / Second
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P) &
+                = 1.0d-2 * D_0 * SpeedOfLight**2
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
+                = 0.3_DP
+
+          END IF
 
         END SELECT
 
@@ -703,6 +808,5 @@ CONTAINS
     RETURN
 
   END FUNCTION Interpolate1D
-
 
 END MODULE InitializationModule
