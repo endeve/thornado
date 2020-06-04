@@ -1,7 +1,7 @@
 MODULE TwoMoment_BoundaryConditionsModule
 
   USE KindModule, ONLY: &
-    DP
+    DP, sqrttiny
   USE ProgramHeaderModule, ONLY: &
     bcZ, swZ, &
     nNodesZ, nDOF, nDOFE
@@ -83,7 +83,7 @@ CONTAINS
         iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
         iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
         1:nCR,1:nSpecies)
-
+    REAL(DP) :: C
     INTEGER :: iNodeZ, iS, iCR, iZ1, iZ2, iZ3, iZ4
 
     SELECT CASE ( bcZ(1) )
@@ -180,6 +180,40 @@ CONTAINS
       END DO
       END DO
 
+    CASE ( 22 ) ! Custom
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = 1, swZ(1)
+
+        DO iNodeZ = 1, nDOF
+
+          IF ( U(iNodeZ,iZ_E0(1)-1,iZ2,iZ3,iZ4,iCR_N,iS) .GT. sqrttiny ) THEN
+              C =  U(iNodeZ,iZ_E0(1),iZ2,iZ3,iZ4,iCR_N,iS) /  U(iNodeZ,iZ_E0(1)-1,iZ2,iZ3,iZ4,iCR_N,iS) 
+          ELSE
+              C = 0.0_DP
+          END IF
+          ! --- Inner Boundary ---
+          U(iNodeZ,iZ_B0(1)-iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = U(iNodeZ,iZ_B0(1),iZ2,iZ3,iZ4,iCR,iS)
+
+          ! --- Outer Boundary ---
+
+          U(iNodeZ,iZ_E0(1)+iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = C * U(iNodeZ,iZ_E0(1),iZ2,iZ3,iZ4,iCR,iS)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
 
 
     CASE DEFAULT
@@ -209,7 +243,7 @@ CONTAINS
     INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
     INTEGER :: jNodeZ2, iNodeZ, jNodeZ, iNodeE
-    REAL(DP):: E
+    REAL(DP):: E, Mu_0
 
     SELECT CASE ( bcZ(2) )
 
@@ -461,6 +495,7 @@ CONTAINS
       END DO
 
     CASE ( 22 ) ! Custom Boundary Conditions for radiating inner and outflow outer
+      Mu_0 = 0.9_DP
       DO iS = 1, nSpecies
           DO iZ4 = iZ_B0(4), iZ_E0(4)
             DO iZ3 = iZ_B0(3), iZ_E0(3)
@@ -468,19 +503,18 @@ CONTAINS
                 DO iZ1 = iZ_B0(1), iZ_E0(1)
                   DO iNode = 1, nDOF
 
-
                     iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
 
 
                     E = NodeCoordinate( MeshE, iZ1, iNodeE )
-
+           !         print*, E
                     ! --- Inner Boundary ---
                     U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)  &
-                      =  1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP ) 
-            
+                    !  = 0.5_DP * ( 1.0_DP - Mu_0 ) / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP ) 
+                       =   1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP ) 
                     U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G1,iS)  &
-                      = 0.999_DP * U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)
-
+                    !  = 0.5_DP * ( 1.0_DP + Mu_0 ) * U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS) 
+                       = U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_N,iS)
                     U( iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR_G2,iS) &
                       = 0.0_DP
 
@@ -494,7 +528,6 @@ CONTAINS
 
                     U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_N,iS) &
                       = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR_N,iS)
-
                     U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR_G1,iS) &
                       = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR_G1,iS)
 
