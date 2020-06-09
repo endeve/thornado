@@ -401,7 +401,16 @@ CONTAINS
         = NumericalFlux_Euler_HLL &
             ( uL, uR, fL, fR, aP, aM )
 
+!!$      NumericalFlux_Euler_X1 &
+!!$        = NumericalFlux_Euler_HLLC_X1 &
+!!$            ( uL, uR, fL, fR, aP, aM, &
+!!$              aC, Gm11, vL, vR, pL, pR, Lapse, Shift_X1 )
+
     ELSE
+
+!!$      NumericalFlux_Euler_X1 &
+!!$        = NumericalFlux_Euler_HLL &
+!!$            ( uL, uR, fL, fR, aP, aM )
 
       NumericalFlux_Euler_X1 &
         = NumericalFlux_Euler_HLLC_X1 &
@@ -457,7 +466,16 @@ CONTAINS
         = NumericalFlux_Euler_HLL &
             ( uL, uR, fL, fR, aP, aM )
 
+!!$      NumericalFlux_Euler_X2 &
+!!$        = NumericalFlux_Euler_HLLC_X2 &
+!!$            ( uL, uR, fL, fR, aP, aM, &
+!!$              aC, Gm22, vL, vR, pL, pR, Lapse, Shift_X2 )
+
     ELSE
+
+!!$      NumericalFlux_Euler_X2 &
+!!$        = NumericalFlux_Euler_HLL &
+!!$            ( uL, uR, fL, fR, aP, aM )
 
       NumericalFlux_Euler_X2 &
         = NumericalFlux_Euler_HLLC_X2 &
@@ -513,7 +531,16 @@ CONTAINS
         = NumericalFlux_Euler_HLL &
             ( uL, uR, fL, fR, aP, aM )
 
+!!$      NumericalFlux_Euler_X3 &
+!!$        = NumericalFlux_Euler_HLLC_X3 &
+!!$            ( uL, uR, fL, fR, aP, aM, &
+!!$              aC, Gm33, vL, vR, pL, pR, Lapse, Shift_X3 )
+
     ELSE
+
+!!$      NumericalFlux_Euler_X3 &
+!!$        = NumericalFlux_Euler_HLL &
+!!$            ( uL, uR, fL, fR, aP, aM )
 
       NumericalFlux_Euler_X3 &
         = NumericalFlux_Euler_HLLC_X3 &
