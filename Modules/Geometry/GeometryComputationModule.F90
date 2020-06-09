@@ -221,9 +221,9 @@ CONTAINS
     XC = 0.0_DP
     dX = 0.0_DP
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
 
       XC(1) = MeshX(1) % Center(iX1)
       dX(1) = MeshX(1) % Width (iX1)
