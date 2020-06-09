@@ -163,13 +163,13 @@ CONTAINS
     LOGICAL  :: NegativeStates(3)
     INTEGER  :: iX1, iX2, iX3, iCF, iP, Iteration
     REAL(DP) :: Min_D_K, Max_D_K, Min_N_K, Max_N_K, &
-                Min_N, Max_N, Min_E(nPT),  &
+                Min_N(nPT), Max_N(nPT), Min_E(nPT),  &
                 Theta_1, Theta_2, Theta_3, Theta_P
     REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF), E_K, Min_E_K, Min_E_PP
     REAL(DP) :: Y_PP(nPT), E_PP(nPT), Y_K
 
-    Min_N = Min_D * Min_Y / BaryonMass
-    Max_N = Max_D * Max_Y / BaryonMass
+    !Min_N = Min_D * Min_Y / BaryonMass
+    !Max_N = Max_D * Max_Y / BaryonMass
 
     IF( nDOFX == 1 ) RETURN
 
@@ -224,10 +224,13 @@ CONTAINS
 
       ! --- Ensure Bounded Electron Density ---
 
+      Min_N = U_PP(:,iCF_D) * Min_Y / BaryonMass
+      Max_N = U_PP(:,iCF_D) * Max_Y / BaryonMass
+
       Min_N_K = MINVAL( U_PP(:,iCF_Ne) )
       Max_N_K = MAXVAL( U_PP(:,iCF_Ne) )
 
-      IF( Min_N_K < Min_N  .OR. Max_N_K > Max_N )THEN
+      IF( ANY( Min_N_K < Min_N ) .OR. ANY( Max_N_K > Max_N ) )THEN
 
         ! --- Cell Average ---
 
@@ -235,9 +238,19 @@ CONTAINS
           = SUM( WeightsX_q(:) * U_q(:,iCF_Ne) * G(:,iX1,iX2,iX3,iGF_SqrtGm) ) &
               / SUM( WeightsX_q(:) * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
-        Theta_2 = MIN( One, &
-                       ABS( ( Min_N-U_K(iCF_Ne) ) / ( Min_N_K-U_K(iCF_Ne) ) ), &
-                       ABS( ( Max_N-U_K(iCF_Ne) ) / ( Max_N_K-U_K(iCF_Ne) ) ) )
+        Theta_2 = One
+
+        DO iP = 1, nPT
+
+          Theta_P = MIN( One, &
+                         ABS( ( Min_N(iP)-U_K(iCF_Ne) ) &
+                              / ( Min_N_K-U_K(iCF_Ne) ) ), &
+                         ABS( ( Max_N(iP)-U_K(iCF_Ne) ) &
+                              / ( Max_N_K-U_K(iCF_Ne) ) ) )
+
+          Theta_2 = MIN( Theta_2, 0.99_DP * Theta_P )
+
+        END DO
 
         ! --- Limit Electron Density Towards Cell Average ---
 
@@ -258,7 +271,6 @@ CONTAINS
       END IF
 
       ! --- Ensure Positive Specific Internal Energy ---
-
 
       DO iP = 1, nPT
 
