@@ -130,7 +130,7 @@ DEBUG_zelledge     = -g
 DEBUG_dpochik      = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_lucalin	   = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_bison        = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
-DEBUG_ranchuair    = -g3 -framework Accelerate -fno-backtrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fdump-parse-tree -fdump-fortran-original
+DEBUG_ranchuair    = -g -framework Accelerate -fbacktrace -fcheck=all -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fdump-fortran-optimized
 DEBUG_sjdunham     = -g -framework Accelerate -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_accre        = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
 DEBUG_titan_gnu    = -g -Og -ffpe-trap=invalid,zero -fcheck=bounds
@@ -184,7 +184,7 @@ INCLUDE_HDF5_bbarker           = -I/usr/local/Cellar/hdf5/1.10.2_1/include
 INCLUDE_HDF5_juliana           = -I/usr/local/hdf5/include
 INCLUDE_HDF5_kristopher        = -I/usr/local/Cellar/hdf5/1.10.2_1/include
 INCLUDE_HDF5_ranchu            = -I/usr/local/hdf5/include
-INCLUDE_HDF5_ranchuair         = -I/usr/local/Cellar/hdf5/1.10.5_1/include
+INCLUDE_HDF5_ranchuair         = -I/usr/local/Cellar/hdf5/1.12.0/include
 INCLUDE_HDF5_sjdunham          = -I/usr/local/Cellar/hdf5/1.12.0/include
 INCLUDE_HDF5_accre             = -I/accre/arch/easybuild/software/MPI/GCC/5.4.0-2.26/OpenMPI/1.10.3/HDF5/1.8.17/include
 INCLUDE_HDF5_zelledge          = -I/usr/include/hdf5/serial
@@ -259,7 +259,7 @@ LIBRARIES_HDF5_bbarker         = -L/usr/local/Cellar/hdf5/1.10.2_1/lib -lhdf5_fo
 LIBRARIES_HDF5_juliana         = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_kristopher      = -L/usr/local/Cellar/hdf5/1.10.2_1/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_ranchu          = -L/usr/local/hdf5/lib -lhdf5_fortran -lhdf5
-LIBRARIES_HDF5_ranchuair       = -L/usr/local/Cellar/hdf5/1.10.5_1/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5_ranchuair       = -L/usr/local/Cellar/hdf5/1.12.0/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_sjdunham        = -L/usr/local/Cellar/hdf5/1.12.0/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_zelledge        = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
 LIBRARIES_HDF5_dpochik         = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran -lhdf5
