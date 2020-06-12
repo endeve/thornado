@@ -428,7 +428,7 @@ CONTAINS
 
           CASE( 'SphericalSod' )
 
-            IF( X1 <= One * Kilometer )THEN
+            IF( X1 <= 5.0_DP * Kilometer )THEN
 
               uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.00d12 * Gram / Centimeter**3
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
@@ -443,8 +443,8 @@ CONTAINS
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP * Kilometer / Second
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP * Kilometer / Second
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP * Kilometer / Second
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0d30 * Erg / Centimeter**3
-              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.3_DP
+              uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0d31 * Erg / Centimeter**3
+              uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 0.4_DP
 
             END IF
 
