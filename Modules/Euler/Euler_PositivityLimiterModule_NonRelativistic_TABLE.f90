@@ -33,13 +33,14 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
   PUBLIC :: FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
   PUBLIC :: ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
 
-  REAL(DP), PARAMETER   :: Unit_D     = Gram / Centimeter**3
-  REAL(DP), PARAMETER   :: Unit_T     = Kelvin
-  REAL(DP), PARAMETER   :: BaryonMass = AtomicMassUnit
+  INTEGER,  PARAMETER   :: nPS          = 7
+  REAL(DP), PARAMETER   :: Unit_D       = Gram / Centimeter**3
+  REAL(DP), PARAMETER   :: Unit_T       = Kelvin
+  REAL(DP), PARAMETER   :: BaryonMass   = AtomicMassUnit
+  REAL(DP), PARAMETER   :: SafetyFactor = 0.99_DP
 
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: Verbose
-  INTEGER, PARAMETER    :: nPS = 7
   INTEGER               :: nPP(nPS)
   INTEGER               :: nPT
   REAL(DP)              :: Min_D, Max_D, Min_T, Max_T, &
@@ -159,23 +160,22 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) ! Diagnostic Fluid
 
-    LOGICAL  :: ResetIndicators
     LOGICAL  :: NegativeStates(3)
     INTEGER  :: iX1, iX2, iX3, iCF, iP, Iteration
-    REAL(DP) :: Min_D_K, Max_D_K, Min_N_K, Max_N_K, &
-                Min_N, Max_N, Min_E(nPT),  &
-                Theta_1, Theta_2, Theta_3, Theta_P
-    REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF), E_K, Min_E_K, Min_E_PP
-    REAL(DP) :: Y_PP(nPT), E_PP(nPT), Y_K
-
-    Min_N = Min_D * Min_Y / BaryonMass
-    Max_N = Max_D * Max_Y / BaryonMass
+    REAL(DP) :: Min_D_K, Max_D_K, Min_N_K, Max_N_K, Min_E_K
+    REAL(DP) :: Min_N, Max_N, Min_E(nPT)
+    REAL(DP) :: Theta_1, Theta_2, Theta_3, Theta_P
+    REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF)
+    REAL(DP) :: Y_PP(nPT), E_PP(nPT), Y_K, E_K
 
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
     CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
+
+    Min_N = Min_D * Min_Y / BaryonMass
+    Max_N = Max_D * Max_Y / BaryonMass
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -206,10 +206,12 @@ CONTAINS
                        ABS( ( Max_D   - U_K(iCF_D) )    &
                           / ( Max_D_K - U_K(iCF_D) ) ) )
 
+        Theta_1 = SafetyFactor * Theta_1
+
         ! --- Limit Density Towards Cell Average ---
 
-        U_q(:,iCF_D) = Theta_1 * U_q(:,iCF_D) &
-                       + ( One - Theta_1 ) * U_K(iCF_D)
+        U_q(:,iCF_D) &
+          = Theta_1 * U_q(:,iCF_D) + ( One - Theta_1 ) * U_K(iCF_D)
 
         ! --- Recompute Point Values ---
 
@@ -243,10 +245,12 @@ CONTAINS
                        ABS( ( Max_N   - U_K(iCF_Ne) )    &
                           / ( Max_N_K - U_K(iCF_Ne) ) ) )
 
+        Theta_2 = SafetyFactor * Theta_2
+
         ! --- Limit Electron Density Towards Cell Average ---
 
-        U_q(:,iCF_Ne) = Theta_2 * U_q(:,iCF_Ne) &
-                        + ( One - Theta_2 ) * U_K(iCF_Ne)
+        U_q(:,iCF_Ne) &
+          = Theta_2 * U_q(:,iCF_Ne) + ( One - Theta_2 ) * U_K(iCF_Ne)
 
         ! --- Recompute Point Values ---
 
@@ -257,7 +261,7 @@ CONTAINS
         NegativeStates(2) = .TRUE.
 
         D(:,iX1,iX2,iX3,iDF_T2) &
-          = MIN( MINVAL( D(:,iX1,iX2,iX3,iDF_T2) ), Theta_2)
+          = MIN( MINVAL( D(:,iX1,iX2,iX3,iDF_T2) ), Theta_2 )
 
       END IF
 
@@ -269,7 +273,7 @@ CONTAINS
                 ( U_PP(iP,1:nCF), E_PP(iP), Y_PP(iP) )
 
          CALL ComputeSpecificInternalEnergy_TABLE &
-                ( [U_PP(iP,iCF_D)], [Min_T], [Y_PP(iP)], Min_E(iP:iP) )
+                ( U_PP(iP,iCF_D), Min_T, Y_PP(iP), Min_E(iP) )
 
       END DO
 
@@ -311,8 +315,6 @@ CONTAINS
 
           END IF
 
-!          IF( ALL( E_PP(:) > Min_E(:) ) )EXIT
-
           Theta_3 = One
 
           DO iP = 1, nPT
@@ -320,10 +322,9 @@ CONTAINS
             IF( E_PP(iP) < Min_E(iP) )THEN
 
               CALL SolveTheta_Bisection &
-                     ( U_PP(iP,1:nCF), U_K(1:nCF), Min_E(iP), &
-                       Min_E_K, Theta_P )
+                     ( U_PP(iP,1:nCF), U_K(1:nCF), Min_E(iP), Min_E_K, Theta_P )
 
-              Theta_3 = MIN( Theta_3, 0.99_DP * Theta_P )
+              Theta_3 = MIN( Theta_3, SafetyFactor * Theta_P )
 
             END IF
 
@@ -333,8 +334,7 @@ CONTAINS
 
           DO iCF = 1, nCF
 
-            U_q(:,iCF) = Theta_3 * U_q(:,iCF) &
-                         + ( One - Theta_3 ) * U_K(iCF)
+            U_q(:,iCF) = Theta_3 * U_q(:,iCF) + ( One - Theta_3 ) * U_K(iCF)
 
           END DO
 
@@ -354,29 +354,16 @@ CONTAINS
 
         ! --- Flag for Negative Specific Internal Energy ---
 
-        NegativeStates(1) = .FALSE.
-        NegativeStates(2) = .FALSE.
         NegativeStates(3) = .TRUE.
 
         D(:,iX1,iX2,iX3,iDF_T3) &
-          = MIN( MINVAL( D(:,iX1,iX2,iX3,iDF_T3) ), Theta_3)
+          = MIN( MINVAL( D(:,iX1,iX2,iX3,iDF_T3) ), Theta_3 )
 
       END IF
 
-      IF( NegativeStates(1) )THEN
+      IF( ANY( NegativeStates ) )THEN
 
-        U(1:nDOFX,iX1,iX2,iX3,iCF_D) &
-          = U_q(1:nDOFX,iCF_D)
-
-      ELSEIF( NegativeStates(2) )THEN
-
-        U(1:nDOFX,iX1,iX2,iX3,iCF_Ne) &
-          = U_q(1:nDOFX,iCF_Ne)
-
-      ELSEIF( NegativeStates(3) )THEN
-
-        U(1:nDOFX,iX1,iX2,iX3,1:nCF) &
-          = U_q(1:nDOFX,1:nCF)
+        U(1:nDOFX,iX1,iX2,iX3,1:nCF) = U_q(1:nDOFX,1:nCF)
 
       END IF
 
