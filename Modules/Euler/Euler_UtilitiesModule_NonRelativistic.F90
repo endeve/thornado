@@ -13,10 +13,13 @@ MODULE Euler_UtilitiesModule_NonRelativistic
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, iAF_Gm, iAF_Cs
+    nAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, iAF_Gm, iAF_Cs, &
+    iAF_Me, iAF_Mp, iAF_Mn, iAF_Xp, iAF_Xn, iAF_Xa, iAF_Xh, &
+    iAF_Gm
   USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
-    ComputeAuxiliary_Fluid
+    ComputeAuxiliary_Fluid, &
+    ApplyEquationOfState
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_ComputeTimeStep
@@ -190,6 +193,22 @@ CONTAINS
                A(1:nDOFX,iX1,iX2,iX3,iAF_E ), &
                A(1:nDOFX,iX1,iX2,iX3,iAF_Gm), &
                A(1:nDOFX,iX1,iX2,iX3,iAF_Cs) )
+
+      CALL ApplyEquationOfState &
+             ( P(1:nDOFX,iX1,iX2,iX3,iPF_D),   &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_T),   &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Ye),  &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_P),   &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_S),   &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_E),   &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Me),  &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Mp),  &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Mn),  &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Xp),  &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Xn),  &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Xa),  &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Xh),  &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Gm) )
 
     END DO
     END DO

@@ -183,7 +183,9 @@ PROGRAM DeleptonizationWave
   ! --- Initialize Equation of State ---
 
   CALL InitializeEquationOfState_TABLE &
-         ( EquationOfStateTableName_Option = 'EquationOfStateTable.h5' )
+         ( EquationOfStateTableName_Option &
+             = 'EquationOfStateTable.h5', &
+           Verbose_Option = .TRUE. )
 
   ! --- Initialize Opacities ---
 

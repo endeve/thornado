@@ -139,8 +139,9 @@ MODULE FluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iDF_T1    = 05 ! Theta 1
   INTEGER, PUBLIC, PARAMETER :: iDF_T2    = 06 ! Theta 2
   INTEGER, PUBLIC, PARAMETER :: iDF_T3    = 07 ! Theta 3
-  INTEGER, PUBLIC, PARAMETER :: iDF_E     = 08 ! Minimum Specific Internal Energy
-  INTEGER, PUBLIC, PARAMETER :: nDF       = 08 ! n Diagnostic Fluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iDF_MinE  = 08 ! Minimum Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: iDF_MaxE  = 09 ! Maximum Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: nDF       = 09 ! n Diagnostic Fluid Fields
 
   CHARACTER(32), DIMENSION(nDF), PUBLIC, PARAMETER :: &
     namesDF = [ 'TCI                             ', &
@@ -150,7 +151,8 @@ MODULE FluidFieldsModule
                 'Theta 1                         ', &
                 'Theta 2                         ', &
                 'Theta 3                         ', &
-                'Min E                           ' ]
+                'Min E                           ', &
+                'Max E                           ' ]
 
   CHARACTER(10), DIMENSION(nDF), PUBLIC, PARAMETER :: &
     ShortNamesDF = [ 'DF_TCI    ', &
@@ -160,7 +162,8 @@ MODULE FluidFieldsModule
                      'DF_T1     ', &
                      'DF_T2     ', &
                      'DF_T3     ', &
-                     'DF_E      ' ]
+                     'DF_MinE   ', &
+                     'DF_MaxE   ' ]
 
   REAL(DP), DIMENSION(nDF), PUBLIC :: unitsDF
 
@@ -486,7 +489,8 @@ CONTAINS
       unitsDF(iDF_T1)    = One
       unitsDF(iDF_T2)    = One
       unitsDF(iDF_T3)    = One
-      unitsDF(iDF_E)     = Erg / Gram
+      unitsDF(iDF_MinE)  = Erg / Gram
+      unitsDF(iDF_MaxE)  = Erg / Gram
 
     ELSE
 
