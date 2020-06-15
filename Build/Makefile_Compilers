@@ -210,6 +210,7 @@ INCLUDE_HDF5                   = $(INCLUDE_HDF5_$(MACHINE))
 INCLUDE_POSEIDON_mac_gnu       =
 INCLUDE_POSEIDON_sn1987b       = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON_kristopher    = -I$(POSEIDON_DIR)/Obj
+INCLUDE_POSEIDON_dpochik       = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON               = $(INCLUDE_POSEIDON_$(MACHINE))
 
 INCLUDE_LAPACK_ranchu          = -I/usr/include
@@ -286,6 +287,7 @@ LIBRARIES_HDF5                 = $(LIBRARIES_HDF5_$(MACHINE))
 LIBRARIES_POSEIDON_mac_gnu     =s
 LIBRARIES_POSEIDON_sn1987b     = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON_kristopher  = $(POSEIDON_DIR)/Obj/poseidon.a
+LIBRARIES_POSEIDON_dpochik     = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON             = $(LIBRARIES_POSEIDON_$(MACHINE))
 
 LIBRARIES_LAPACK_ranchu        = -L/usr/lib -llapack -lblas

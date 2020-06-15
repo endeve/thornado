@@ -19,7 +19,7 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    iDF_T1, iDF_T2, iDF_T3, iDF_E
+    iDF_T1, iDF_T2, iDF_T3, iDF_MinE, iDF_MaxE
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeSpecificInternalEnergy_TABLE
   USE TimersModule_Euler, ONLY: &
@@ -163,7 +163,7 @@ CONTAINS
     LOGICAL  :: NegativeStates(3)
     INTEGER  :: iX1, iX2, iX3, iCF, iP, Iteration
     REAL(DP) :: Min_D_K, Max_D_K, Min_N_K, Max_N_K, Min_E_K
-    REAL(DP) :: Min_N, Max_N, Min_E(nPT)
+    REAL(DP) :: Min_N, Max_N, Min_E(nPT), Max_E(nPT)
     REAL(DP) :: Theta_1, Theta_2, Theta_3, Theta_P
     REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF)
     REAL(DP) :: Y_PP(nPT), E_PP(nPT), Y_K, E_K
@@ -275,11 +275,16 @@ CONTAINS
          CALL ComputeSpecificInternalEnergy_TABLE &
                 ( U_PP(iP,iCF_D), Min_T, Y_PP(iP), Min_E(iP) )
 
+         CALL ComputeSpecificInternalEnergy_TABLE &
+                ( U_PP(iP,iCF_D), Max_T, Y_PP(iP), Max_E(iP) )
+
+
       END DO
 
       DO iP = 1, nDOFX ! --- Doesn't include points on interfaces
 
-        D(iP,iX1,iX2,iX3,iDF_E) = Min_E(iP)
+        D(iP,iX1,iX2,iX3,iDF_MinE) = Min_E(iP)
+        D(iP,iX1,iX2,iX3,iDF_MaxE) = Max_E(iP)
 
       END DO
 
