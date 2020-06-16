@@ -67,6 +67,9 @@ PROGRAM ApplicationDriver
     SolarMass,   &
     Second,      &
     Millisecond, &
+    Centimeter,  &
+    Gram,        &
+    Erg,         &
     UnitsDisplay
   USE Euler_TallyModule_Relativistic_IDEAL,             ONLY: &
     InitializeTally_Euler_Relativistic_IDEAL, &
@@ -121,7 +124,7 @@ PROGRAM ApplicationDriver
   ! --- Standing accretion shock ---
   REAL(DP), ALLOCATABLE :: FluidFieldParameters(:)
   REAL(DP)              :: MassPNS, RadiusPNS, ShockRadius, &
-                           AccretionRate, MachNumber
+                           AccretionRate, PolytropicConstant
   LOGICAL               :: ApplyPerturbation
   INTEGER               :: PerturbationOrder
   REAL(DP)              :: PerturbationAmplitude, &
@@ -327,23 +330,24 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'SPHERICAL'
 
-      MassPNS       = 1.4_DP * SolarMass
-      RadiusPNS     = 40.0_DP * Kilometer
-      ShockRadius   = 180.0_DP * Kilometer
-      AccretionRate = 0.3_DP * SolarMass / Second
-      MachNumber    = 10.0_DP
+      Gamma = 4.0e0_DP / 3.0e0_DP
+
+      MassPNS            = 1.4_DP    * SolarMass
+      RadiusPNS          = 40.0_DP   * Kilometer
+      ShockRadius        = 180.0_DP  * Kilometer
+      AccretionRate      = 0.3_DP    * SolarMass / Second
+      PolytropicConstant = 2.0e14_DP * Erg / Centimeter**3 &
+                                         / ( Gram / Centimeter**3 )**( Gamma )
 
       ApplyPerturbation     = .TRUE.
-      PerturbationOrder     = 1
+      PerturbationOrder     = 0
       PerturbationAmplitude = 0.04_DP
       rPerturbationInner    = 260.0_DP * Kilometer
       rPerturbationOuter    = 280.0_DP * Kilometer
 
-      Gamma = 4.0d0 / 3.0d0
-
-      nX = [ 128, 16, 1 ]
+      nX = [ 960, 1, 1 ]
       xL = [ RadiusPNS, 0.0_DP, 0.0_DP ]
-      xR = [ Two * ShockRadius, Pi, TwoPi ]
+      xR = [ 1.0e3_DP * Kilometer, Pi, TwoPi ]
 
       bcX = [ 11, 0, 0 ]
 
@@ -415,7 +419,7 @@ PROGRAM ApplicationDriver
   Min_1 = 1.0d-13
   Min_2 = 1.0d-13
 
-  nStagesSSPRK = nNodes
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -495,7 +499,7 @@ PROGRAM ApplicationDriver
            MassPNS_Option               = MassPNS, &
            ShockRadius_Option           = ShockRadius, &
            AccretionRate_Option         = AccretionRate, &
-           MachNumber_Option            = MachNumber, &
+           PolytropicConstant_Option    = PolytropicConstant, &
            ApplyPerturbation_Option     = ApplyPerturbation, &
            PerturbationOrder_Option     = PerturbationOrder, &
            PerturbationAmplitude_Option = PerturbationAmplitude, &
@@ -640,17 +644,17 @@ PROGRAM ApplicationDriver
       END IF
     END IF
 
-    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
-
-      CALL ComputeFromConserved_Euler_Relativistic &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-      CALL ComputeAccretionShockDiagnostics &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
-
-      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
-
-    END IF
+!!$    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
+!!$
+!!$      CALL ComputeFromConserved_Euler_Relativistic &
+!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+!!$
+!!$      CALL ComputeAccretionShockDiagnostics &
+!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
+!!$
+!!$      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+!!$
+!!$    END IF
 
   END DO
 
