@@ -13,7 +13,7 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     amrex_mfiter_destroy
   USE amrex_parallel_module,  ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_sum
+    amrex_parallel_reduce_max
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse,       &
     amrex_parmparse_build, &
@@ -36,6 +36,8 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     NodeCoordinate
   USE GeometryFieldsModule,           ONLY: &
     nGF,          &
+    iGF_Alpha,    &
+    iGF_Psi,      &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
@@ -64,7 +66,11 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     Kilometer,    &
     Second,       &
     SolarMass,    &
-    SpeedOfLight
+    Gram,         &
+    Centimeter,   &
+    Erg,          &
+    SpeedOfLight, &
+    GravitationalConstant
   USE UtilitiesModule,                ONLY: &
     NodeNumberX
   USE Euler_ErrorModule,              ONLY: &
@@ -490,7 +496,7 @@ CONTAINS
   END SUBROUTINE InitializeFields_Advection2D
 
 
-SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
+  SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
@@ -1506,18 +1512,28 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
     TYPE(amrex_parmparse)         :: PP
 
     ! --- Problem-dependent Parameters ---
-    INTEGER               :: iX1_1, iX1_2, iNodeX1_1, iNodeX1_2
-    REAL(AR)              :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_2
-    REAL(AR)              :: Alpha, Psi, V0, VSq, W
-    REAL(AR)              :: dX1, PolytropicConstant, MassConstant
-    REAL(AR)              :: MassPNS, ShockRadius, AccretionRate, MachNumber
-    LOGICAL               :: FirstPreShockElement = .FALSE.
-    INTEGER               :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(AR), ALLOCATABLE :: D(:,:), V(:,:), P(:,:)
-    LOGICAL               :: ApplyPerturbation
-    INTEGER               :: PerturbationOrder
-    REAL(AR)              :: PerturbationAmplitude, &
-                             rPerturbationInner, rPerturbationOuter
+    REAL(AR) :: MassPNS, ShockRadius, AccretionRate, PolytropicConstant
+    LOGICAL  :: ApplyPerturbation
+    INTEGER  :: PerturbationOrder
+    REAL(AR) :: PerturbationAmplitude
+    REAL(AR) :: rPerturbationInner
+    REAL(AR) :: rPerturbationOuter
+
+    INTEGER  :: iX1_1, iX1_2, iNodeX1_1, iNodeX1_2
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
+    REAL(AR) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2, C1, C2, C3
+    REAL(AR) :: D0, V0, P0
+    REAL(AR) :: W, dX1, Ka, Kb, Mdot
+    REAL(AR), ALLOCATABLE :: D     (:,:)
+    REAL(AR), ALLOCATABLE :: V     (:,:)
+    REAL(AR), ALLOCATABLE :: P     (:,:)
+    REAL(AR), ALLOCATABLE :: Alpha (:,:)
+    REAL(AR), ALLOCATABLE :: Psi   (:,:)
+    REAL(AR), ALLOCATABLE :: Alpha0(:,:,:)
+    REAL(AR), ALLOCATABLE :: Psi0  (:,:,:)
+    LOGICAL  :: FirstPreShockElement = .FALSE.
+
+    ! --- Quantities with (1) are pre-shock, those with (2) are post-shock ---
 
     ApplyPerturbation     = .FALSE.
     PerturbationOrder     = 0
@@ -1528,7 +1544,7 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
       CALL PP % get  ( 'Mass'                 , MassPNS               )
       CALL PP % get  ( 'AccretionRate'        , AccretionRate         )
       CALL PP % get  ( 'ShockRadius'          , ShockRadius           )
-      CALL PP % get  ( 'MachNumber'           , MachNumber            )
+      CALL PP % get  ( 'PolytropicConstant'   , PolytropicConstant    )
       CALL PP % query( 'ApplyPerturbation'    , ApplyPerturbation     )
       CALL PP % query( 'PerturbationOrder'    , PerturbationOrder     )
       CALL PP % query( 'PerturbationAmplitude', PerturbationAmplitude )
@@ -1539,42 +1555,65 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
     MassPNS            = MassPNS            * SolarMass
     AccretionRate      = AccretionRate      * SolarMass / Second
     ShockRadius        = ShockRadius        * Kilometer
+    PolytropicConstant = PolytropicConstant &
+                           * ( Erg / Centimeter**3 ) &
+                           / ( Gram / Centimeter**3 )**( Gamma_IDEAL )
     rPerturbationInner = rPerturbationInner * Kilometer
     rPerturbationOuter = rPerturbationOuter * Kilometer
+
+    Mdot = AccretionRate
+    Ka   = PolytropicConstant
 
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
 
-      WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'Shock radius:   ', ShockRadius / Kilometer, ' km'
+      WRITE(*,'(6x,A,L)') &
+        'InitializeFromFile:              ', &
+        InitializeFromFile
 
       WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'PNS Mass:       ', MassPNS / SolarMass, ' Msun'
+        'Shock radius:                    ', &
+        ShockRadius / Kilometer, &
+        ' km'
 
       WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'Accretion Rate: ', AccretionRate / ( SolarMass / Second ), &
+        'PNS Mass:                        ', &
+        MassPNS / SolarMass, &
+        ' Msun'
+
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'Accretion Rate:                  ', &
+        AccretionRate / ( SolarMass / Second ), &
         ' Msun/s'
 
-      WRITE(*,'(6x,A,ES9.2E3)') &
-        'Mach number:    ', MachNumber
+      WRITE(*,'(6x,A,ES9.2E3,A)') &
+        'Polytropic Constant (pre-shock): ', &
+        Ka / ( ( Erg / Centimeter**3 ) &
+          / ( Gram / Centimeter**3 )**( Gamma_IDEAL ) ), &
+        ' erg/cm^3 / (g/cm^3)^( Gamma )'
 
       WRITE(*,*)
 
       WRITE(*,'(6x,A,L)') &
-        'Apply Perturbation: ', ApplyPerturbation
+        'Apply Perturbation:           ', &
+        ApplyPerturbation
 
       WRITE(*,'(6x,A,I1)') &
-        'Perturbation order: ', PerturbationOrder
+        'Perturbation order:           ', &
+        PerturbationOrder
 
       WRITE(*,'(6x,A,ES9.2E3)') &
-        'Perturbation amplitude: ', PerturbationAmplitude
+        'Perturbation amplitude:       ', &
+         PerturbationAmplitude
 
       WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'Inner radius of perturbation: ', rPerturbationInner / Kilometer, ' km'
+        'Inner radius of perturbation: ', &
+        rPerturbationInner / Kilometer, ' km'
 
       WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'Outer radius of perturbation: ', rPerturbationOuter / Kilometer, ' km'
+        'Outer radius of perturbation: ', &
+        rPerturbationOuter / Kilometer, ' km'
 
     END IF
 
@@ -1594,15 +1633,96 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
     iX_B1 = [1,1,1] - swX
     iX_E1 = nX      + swX
 
-    ALLOCATE( D(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( V(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( P(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( D     (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( V     (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( P     (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( Alpha (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( Psi   (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
+    ALLOCATE( Alpha0(1:nNodesX(1),iX_B1(1):iX_E1(1),0:nLevels-1) )
+    ALLOCATE( Psi0  (1:nNodesX(1),iX_B1(1):iX_E1(1),0:nLevels-1) )
 
     IF( InitializeFromFile )THEN
 
       CALL ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
 
     ELSE
+
+      ! --- Make local copies of Lapse and Conformal Factor ---
+
+      Alpha0 = Zero
+      Psi0   = Zero
+
+      DO iLevel = 0, nLevels-1
+
+        CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+        DO WHILE( MFI % next() )
+
+          uGF => MF_uGF(iLevel) % DataPtr( MFI )
+
+          BX = MFI % tilebox()
+
+          lo_G = LBOUND( uGF )
+          hi_G = UBOUND( uGF )
+
+          iX_B = BX % lo
+          iX_E = BX % hi
+
+          ! -- Get physical ghost cells right ---
+
+          IF( BX % lo(1) .EQ. 1     ) iX_B(1) = iX_B(1) - swX(1)
+          IF( BX % lo(2) .EQ. 1     ) iX_B(2) = iX_B(2) - swX(2)
+          IF( BX % lo(3) .EQ. 1     ) iX_B(3) = iX_B(3) - swX(3)
+          IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = iX_E(1) + swX(1)
+          IF( BX % hi(2) .EQ. nX(2) ) iX_E(2) = iX_E(2) + swX(2)
+          IF( BX % hi(3) .EQ. nX(3) ) iX_E(3) = iX_E(3) + swX(3)
+
+          DO iX3 = iX_B(3), iX_E(3)
+          DO iX2 = iX_B(2), iX_E(2)
+          DO iX1 = iX_B(1), iX_E(1)
+
+            uGF_K &
+              = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+            DO iNodeX3 = 1, nNodesX(3)
+            DO iNodeX2 = 1, nNodesX(2)
+            DO iNodeX1 = 1, nNodesX(1)
+
+              iNodeX = NodeNumberX(iNodeX1,iNodeX2,iNodeX3)
+
+              Alpha0(iNodeX1,iX1,iLevel) = uGF_K(iNodeX,iGF_Alpha)
+              Psi0  (iNodeX1,iX1,iLevel) = uGF_K(iNodeX,iGF_Psi)
+
+            END DO
+            END DO
+            END DO
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+
+        CALL amrex_mfiter_destroy( MFI )
+
+      END DO
+
+      ! --- Combine data from different grids ---
+
+      DO iX1 = iX_B1(1), iX_E1(1)
+
+        DO iNodeX1 = 1, nNodesX(1)
+
+          CALL amrex_parallel_reduce_max( Alpha0(iNodeX1,iX1,:), nLevels )
+          CALL amrex_parallel_reduce_max( Psi0  (iNodeX1,iX1,:), nLevels )
+
+          Alpha(iNodeX1,iX1) = Alpha0(iNodeX1,iX1,0)
+          Psi  (iNodeX1,iX1) = Psi0  (iNodeX1,iX1,0)
+
+        END DO
+
+      END DO
+
 
       ! --- Locate first element with un-shocked fluid ---
 
@@ -1644,7 +1764,15 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
 
       END DO
 
-      ! --- Compute fields, pre-shock ---
+      ! --- Pre-shock Fields ---
+
+      X1 = NodeCoordinate( MeshX(1), iX_E1(1), nNodesX(1) )
+
+      ! --- Use Newtonian values as initial guesses ---
+
+      V0 = -SQRT( Two * GravitationalConstant * MassPNS / X1 )
+      D0 = -Mdot / ( FourPi * X1**2 * V0 )
+      P0 = Ka * D0**( Gamma_IDEAL )
 
       DO iX1 = iX_E1(1), iX1_1, -1
 
@@ -1654,55 +1782,40 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
 
           IF( X1 .LE. ShockRadius ) CYCLE
 
-          Alpha = LapseFunction  ( X1, MassPNS )
-          Psi   = ConformalFactor( X1, MassPNS )
+          CALL NewtonRaphson_SAS &
+                 ( X1, MassPNS, Ka, Mdot, &
+                   Alpha(iNodeX1,iX1), Psi(iNodeX1,iX1), D0, V0, P0, &
+                   D(iNodeX1,iX1), V(iNodeX1,iX1), P(iNodeX1,iX1) )
 
-          V(iNodeX1,iX1) &
-            = -Psi**(-2) * SpeedOfLight * SQRT( One - Alpha**2 )
-
-          D(iNodeX1,iX1) &
-            = Psi**(-6) * AccretionRate &
-                / ( FourPi * X1**2 * ABS( V(iNodeX1,iX1) ) )
-
-          IF( iNodeX1 .EQ. nNodesX(1) .AND. iX1 .EQ. iX_E1(1) )THEN
-
-            VSq = Psi**4 * V(iNodeX1,iX1)**2
-
-            P(iNodeX1,iX1) &
-              = D(iNodeX1,iX1) * VSq &
-                  / ( MachNumber**2 * Gamma_IDEAL &
-                        - Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-                        * VSq / SpeedOfLight**2 )
-
-            PolytropicConstant &
-              = P(iNodeX1,iX1) * D(iNodeX1,iX1)**( -Gamma_IDEAL )
-
-          END IF
-
-          P(iNodeX1,iX1) &
-            = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
-
-!!$          VSq = Psi**4 * V(iNodeX1,iX1)**2
-!!$
-!!$          P(iNodeX1,iX1) &
-!!$            = D(iNodeX1,iX1) * VSq &
-!!$                / ( Gamma_IDEAL * MachNumber**2 ) &
-!!$                / ( One - ( VSq / SpeedOfLight**2 ) &
-!!$                / ( MachNumber**2 * ( Gamma_IDEAL - One ) ) )
+          D0 = D(iNodeX1,iX1)
+          V0 = V(iNodeX1,iX1)
+          P0 = P(iNodeX1,iX1)
 
         END DO
 
       END DO
 
-      ! --- Apply jump conditions ---
+      ! --- Apply Jump Conditions ---
 
       D_1 = D(iNodeX1_1,iX1_1)
       V_1 = V(iNodeX1_1,iX1_1)
+      P_1 = P(iNodeX1_1,iX1_1)
 
-      CALL ApplyJumpConditions &
-             ( iX1_1, iNodeX1_1, X1_1, D_1, V_1, &
-               iX1_2, iNodeX1_2, X1_2, &
-               D_2, V_2, P_2, MassPNS, PolytropicConstant )
+      W = LorentzFactor( Psi(iNodeX1_1,iX1), V_1 )
+
+      C1 = D_1 * W * V_1
+      C2 = D_1 &
+             * ( SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P_1 / D_1  ) * W**2 * V_1**2 / SpeedOfLight**2 &
+             + Psi(iNodeX1_1,iX1)**( -4 ) * P_1
+      C3 = D_1 &
+             * ( SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P_1 / D_1  ) * W**2 * V_1
+
+      CALL ApplyJumpConditions_SAS &
+             ( Psi(iNodeX1_1,iX1), V_1, C1, C2, C3, D_2, V_2, P_2 )
+
+      Kb = P_2 / D_2**( Gamma_IDEAL )
 
       IF( amrex_parallel_ioprocessor() )THEN
 
@@ -1723,15 +1836,11 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
 
       END IF
 
-      ! --- Compute fields, post-shock ---
+      ! --- Post-shock Fields ---
 
-      Alpha = LapseFunction  ( X1_1, MassPNS )
-      Psi   = ConformalFactor( X1_1, MassPNS )
-      W     = LorentzFactor( Psi, V_1 )
-
-      MassConstant = Psi**6 * Alpha * X1_1**2 * D_1 * W * V_1
-
+      D0 = D_2
       V0 = V_2
+      P0 = P_2
 
       DO iX1 = iX1_2, iX_B1(1), -1
 
@@ -1741,22 +1850,14 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
 
           IF( X1 .GT. ShockRadius ) CYCLE
 
-          Alpha = LapseFunction  ( X1, MassPNS )
-          Psi   = ConformalFactor( X1, MassPNS )
+          CALL NewtonRaphson_SAS &
+                 ( X1, MassPNS, Kb, Mdot, &
+                   Alpha(iNodeX1,iX1), Psi(iNodeX1,iX1), D0, V0, P0, &
+                   D(iNodeX1,iX1), V(iNodeX1,iX1), P(iNodeX1,iX1) )
 
-          CALL NewtonRaphson_PostShockVelocity &
-                 ( Alpha, Psi, MassConstant, PolytropicConstant, &
-                   MassPNS, AccretionRate, X1, V0  )
-
-          V(iNodeX1,iX1) = V0
-
-          W = LorentzFactor( Psi, V0 )
-
-          D(iNodeX1,iX1) &
-            = MassConstant / ( Psi**6 * Alpha * X1**2  * W * V0 )
-
-          P(iNodeX1,iX1) &
-            = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
+          D0 = D(iNodeX1,iX1)
+          V0 = V(iNodeX1,iX1)
+          P0 = P(iNodeX1,iX1)
 
         END DO
 
@@ -1788,9 +1889,15 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
+        iX_B(1) = iX_B0(1)
+        iX_E(1) = iX_E0(1)
+
+        IF( BX % lo(1) .EQ. 1     ) iX_B(1) = iX_B1(1)
+        IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = iX_E1(1)
+
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B1(1), iX_E1(1)
+        DO iX1 = iX_B (1), iX_E (1)
 
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
@@ -1865,6 +1972,10 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
 
     END DO
 
+    DEALLOCATE( Psi0   )
+    DEALLOCATE( Alpha0 )
+    DEALLOCATE( Psi    )
+    DEALLOCATE( Alpha  )
     DEALLOCATE( P )
     DEALLOCATE( V )
     DEALLOCATE( D )
@@ -1874,7 +1985,6 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
       CALL DestroyMesh( MeshX(iDim) )
 
     END DO
-
 
   END SUBROUTINE InitializeFields_StandingAccretionShock_Relativistic
 
@@ -1907,181 +2017,195 @@ SUBROUTINE InitializeFields_RiemannProblem1D( MF_uGF, MF_uCF )
   END SUBROUTINE ReadFluidFieldsFromFile
 
 
-  SUBROUTINE ApplyJumpConditions &
-    ( iX1_1, iNodeX1_1, X1_1, D_1, V_1, &
-      iX1_2, iNodeX1_2, X1_2, &
-      D_2, V_2, P_2, MassPNS, PolytropicConstant )
+  SUBROUTINE NewtonRaphson_SAS &
+    ( X1, MassPNS, K, Mdot, Alpha, Psi, D0, V0, P0, D, V, P )
 
-    INTEGER,  INTENT(in)  :: iX1_1, iNodeX1_1, iX1_2, iNodeX1_2
-    REAL(AR), INTENT(in)  :: X1_1, X1_2, D_1, V_1, MassPNS
-    REAL(AR), INTENT(out) :: D_2, V_2, P_2, PolytropicConstant
+    REAL(AR), INTENT(in)  :: X1, MassPNS, K, &
+                             Mdot, Alpha, Psi, D0, V0, P0
+    REAL(AR), INTENT(out) :: D ,V ,P
 
-    REAL(AR) :: Alpha, Psi
-    REAL(AR) :: C1, C2, C3, a0, a1, a2, a3, a4
     REAL(AR) :: W
+    REAL(AR) :: Jac(3,3), invJac(3,3)
+    REAL(AR) :: f(3), uO(3), uN(3), du(3)
 
-    REAL(AR), PARAMETER :: ShockTolerance     = 0.1_AR
-    LOGICAL             :: FoundShockVelocity = .FALSE.
+    LOGICAL             :: CONVERGED
+    INTEGER             :: ITER
+    REAL(AR), PARAMETER :: Tolu = 1.0e-16_AR
+    REAL(AR), PARAMETER :: Tolf = 1.0e-16_AR
+    INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolu ) /  LOG( Two ) )
 
-    ! --- Constants from three jump conditions ---
-
-    Alpha = LapseFunction  ( X1_1, MassPNS )
-    Psi   = ConformalFactor( X1_1, MassPNS )
-
-    C1 = D_1 * V_1 / Alpha
-
-    C2 = D_1 * SpeedOfLight**2 / Alpha**2 * ( V_1 / SpeedOfLight )**2
-
-    C3 = D_1 * SpeedOfLight**2 / Alpha**2 * V_1
-
-    ! --- Five constants for post-shock fluid three-velocity ---
-
-    a4 = Psi**8 &
-          * One / ( Gamma_IDEAL - One )**2 * C3**2 / SpeedOfLight**6
-    a3 = -Two * Psi**8 &
-          * Gamma_IDEAL / ( Gamma_IDEAL - One )**2 * C2 * C3 / SpeedOfLight**4
-    a2 = Psi**4 &
-          / SpeedOfLight**2 * ( Psi**4 * Gamma_IDEAL**2 &
-          / ( Gamma_IDEAL - One )**2 * C2**2 + Two * One &
-          / ( Gamma_IDEAL - One ) &
-          * C3**2 / SpeedOfLight**2 + C1**2 * SpeedOfLight**2 )
-    a1 = -Two * Psi**4 &
-          * Gamma_IDEAL / ( Gamma_IDEAL - One ) * C2 * C3 / SpeedOfLight**2
-    a0 = One / SpeedOfLight**2 * ( C3**2 - C1**2 * SpeedOfLight**4 )
-
-    ! --- Use Newton-Raphson method to get post-shock fluid-velocity ---
-
-    V_2 = Two * V_1
-
-    ! --- Ensure that shocked velocity is obtained
-    !     instead of smooth solution ---
-
-    FoundShockVelocity = .FALSE.
-    DO WHILE( .NOT. FoundShockVelocity )
-
-      V_2 = Half * V_2
-      CALL NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V_2 )
-
-      IF( ABS( V_2 - V_1 ) / ABS( V_1 ) .GT. ShockTolerance ) &
-        FoundShockVelocity = .TRUE.
-
-    END DO
-
-    ! --- Post-shock density, velocity, pressure, and polytropic constant ---
-
-    Psi = ConformalFactor( X1_2, MassPNS )
-    W   = LorentzFactor( Psi, V_2 )
-
-    D_2 = ABS( C1 ) * SQRT( One / V_2**2 - Psi**4 / SpeedOfLight**2 )
-
-    P_2 = ( Gamma_IDEAL - One ) / Gamma_IDEAL &
-            * ( C3 - D_2 * SpeedOfLight**2 * W**2 * V_2 ) / ( W**2 * V_2 )
-
-    PolytropicConstant = P_2 / D_2**( Gamma_IDEAL )
-
-  END SUBROUTINE ApplyJumpConditions
-
-
-  SUBROUTINE NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V )
-
-    REAL(AR), INTENT(in)    :: a0, a1, a2, a3, a4
-    REAL(AR), INTENT(inout) :: V
-
-    REAL(AR) :: f, df, dV
-    LOGICAL  :: CONVERGED
-    INTEGER  :: ITERATION
-
-    INTEGER,  PARAMETER :: MAX_ITER  = 10
-    REAL(AR), PARAMETER :: TOLERANCE = 1.0d-15
+    uO(1) = One
+    uO(2) = One
+    uO(3) = One
 
     CONVERGED = .FALSE.
-    ITERATION = 0
-    DO WHILE( .NOT. CONVERGED .AND. ITERATION .LT. MAX_ITER )
+    ITER      = 0
+    DO WHILE( .NOT. CONVERGED .AND. ITER .LT. MAX_ITER )
 
-      ITERATION = ITERATION + 1
+      ITER = ITER + 1
 
-      f  = a4 * V**4 + a3 * V**3 + a2 * V**2 + a1 * V + a0
-      df = Four * a4 * V**3 + Three * a3 * V**2 + Two * a2 * V + a1
+      W = LorentzFactor( Psi, V0 * uO(2) )
 
-      dV = -f / df
-      V = V + dV
+      f(1) &
+        = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0 &
+            * uO(1) * W * uO(2) + One
+      f(2) &
+        = Alpha * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                      * P0 / ( D0 * SpeedOfLight**2 ) * uO(3) / uO(1) ) * W &
+            - One
+      f(3) &
+        = One / ( D0 * SpeedOfLight**2 ) &
+            * ( P0 * uO(3) - K * D0**( Gamma_IDEAL ) * uO(1)**( Gamma_IDEAL ) )
 
-      IF( ABS( dV / V ) .LT. TOLERANCE ) &
-        CONVERGED = .TRUE.
+      Jac(1,1) = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0 &
+                   * W * uO(2)
+      Jac(1,2) = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0 &
+                   * uO(1) * W**3
+      Jac(1,3) = Zero
+      Jac(2,1) = -Alpha * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P0 / ( D0 * SpeedOfLight**2 ) * uO(3) / uO(1)**2 * W
+      Jac(2,2) = Alpha * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P0 / ( D0 * SpeedOfLight**2 ) * uO(3) / uO(1) ) &
+                   * W**3 * Psi**4 * V0**2 / SpeedOfLight**2 * uO(2)
+      Jac(2,3) = Alpha * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P0 / ( D0 * SpeedOfLight**2 ) / uO(1) * W
+      Jac(3,1) = -Gamma_IDEAL * K * D0**( Gamma_IDEAL - One ) &
+                   / SpeedOfLight**2 * uO(1)**( Gamma_IDEAL - One )
+
+      Jac(3,2) = Zero
+      Jac(3,3) = P0 / ( D0 * SpeedOfLight**2 )
+
+      InvJac = Inv3x3( Jac )
+
+      uN = uO - MATMUL( InvJac, f )
+
+      du = uN - uO
+
+      IF( MAXVAL( ABS( du / uO ) ) .LT. Tolu ) CONVERGED = .TRUE.
+
+      uO = uN
 
     END DO
 
-  END SUBROUTINE NewtonRaphson_JumpConditions
+    D = uN(1) * D0
+    V = uN(2) * V0
+    P = uN(3) * P0
+
+  END SUBROUTINE NewtonRaphson_SAS
 
 
-  SUBROUTINE NewtonRaphson_PostShockVelocity &
-    ( Alpha, Psi, MassConstant, PolytropicConstant, &
-      MassPNS, AccretionRate, X1, V )
+  SUBROUTINE ApplyJumpConditions_SAS( Psi, V_1, C1, C2, C3, D_2, V_2, P_2 )
 
-    REAL(AR), INTENT(in)    :: Alpha, Psi, MassConstant, &
-                               PolytropicConstant, MassPNS, AccretionRate, X1
-    REAL(AR), INTENT(inout) :: V
+    REAL(AR), INTENT(in)  :: Psi, V_1, C1, C2, C3
+    REAL(AR), INTENT(out) :: D_2, V_2, P_2
 
-    REAL(AR) :: f, df, dV, W
-    INTEGER  :: ITERATION
-    LOGICAL  :: CONVERGED
+    REAL(AR) :: A, B, C, D, E
+    REAL(AR) :: dx, xa, xb, xc, fa, fb, fc, W
 
-    INTEGER,  PARAMETER :: MAX_ITER  = 20
-    REAL(AR), PARAMETER :: TOLERANCE = 1.0d-15
+    INTEGER             :: ITER
+    INTEGER,  PARAMETER :: MAX_ITER = 1000
+    REAL(AR), PARAMETER :: TolChi = 1.0e-16_AR
 
+    LOGICAL :: CONVERGED
+
+    A = SpeedOfLight**( -4 ) * ( C3 / C1 )**2 - One
+    B = -Two * SpeedOfLight**( 3 ) * C2 * C3 / C1**2 &
+          * Gamma_IDEAL / ( Gamma_IDEAL - One ) * Psi**4
+    C = SpeedOfLight**( -2 ) * ( C2 / C1 )**2 &
+          * ( Gamma_IDEAL / ( Gamma_IDEAL - One ) )**2 * Psi**8 &
+          + Two * SpeedOfLight**( -4 ) * ( C3 / C1 )**2 &
+          / ( Gamma_IDEAL - One ) * Psi**4 + Psi**4
+    D = -Two * SpeedOfLight**( -3 ) * C2 * C3 / C1**2 &
+          * Gamma_IDEAL / ( Gamma_IDEAL - One )**2 * Psi**8
+    E = SpeedOfLight**( -4 ) * ( C3 / C1 )**2 &
+          / ( Gamma_IDEAL - One )**2 * Psi**8
+
+    ! --- Solve with bisection ---
+
+    ! Add 1 km/s to exclude smooth solution
+    xa = ( V_1 + One * Kilometer / Second ) / SpeedOfLight
+
+    xb = 1.0e-10_AR * xa
+
+    fa = A * xa**( -2 ) + B * xa**( -1 ) &
+             + C + D * xa + E * xa**2
+    fb = A * xb**( -2 ) + B * xb**( -1 ) &
+             + C + D * xb + E * xb**2
+
+    dx = xb - xa
+
+    ITER      = 0
     CONVERGED = .FALSE.
-    ITERATION = 0
-    DO WHILE( .NOT. CONVERGED .AND. ITERATION .LT. MAX_ITER )
+    DO WHILE( .NOT. CONVERGED .AND. ITER .LT. MAX_ITER )
 
-      ITERATION = ITERATION + 1
+      ITER = ITER + 1
 
-      W = LorentzFactor( Psi, V )
+      dx = Half * dx
 
-      f  = Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-             * PolytropicConstant / SpeedOfLight**2 * ( MassConstant &
-             / ( Psi**6 * Alpha * X1**2 * W * V ) )**( Gamma_IDEAL - One ) &
-             - One / ( Alpha * W ) + One
+      xc = xa + dx
 
-      df = -Gamma_IDEAL * PolytropicConstant / SpeedOfLight**2 &
-             * ( MassConstant &
-                 / ( Psi**6 * Alpha * X1**2 * W * V ) )**( Gamma_IDEAL - One ) &
-                 * ( Psi**4 * V / SpeedOfLight**2 * W**2 + One / V ) &
-                 + W / Alpha * Psi**4 * V / SpeedOfLight**2
+      fc = A * xc**( -2 ) + B * xc**( -1 ) + C + D * xc + E * xc**2
 
-      dV = -f / df
-      V = V + dV
+      IF( fa * fc .LT. Zero )THEN
 
-      IF( ABS( dV / V ) .LT. TOLERANCE ) &
+        xb = xc
+        fb = fc
+
+      ELSE IF( fa * fc .GT. Zero )THEN
+
+        xa = xc
+        fa = fc
+
+      ELSE
+
         CONVERGED = .TRUE.
+
+      END IF
+
+      IF( ABS( dx / xa ) .LT. TolChi ) CONVERGED = .TRUE.
 
     END DO
 
-  END SUBROUTINE NewtonRaphson_PostShockVelocity
+    V_2 = xc * SpeedOfLight
+
+    W = LorentzFactor( Psi, V_2 )
+
+    D_2 = SpeedOfLight**( -1 ) * ABS( C1 ) * SQRT( xc**( -2 ) - Psi**4 )
+    P_2 = ( C3 - D_2 * SpeedOfLight**2 * W**2 * V_2 ) &
+            / ( Gamma_IDEAL / ( Gamma_IDEAL - One ) * W**2 * V_2 )
+
+  END SUBROUTINE ApplyJumpConditions_SAS
 
 
-  REAL(AR) FUNCTION LapseFunction( R, M )
+  ! --- From: http://fortranwiki.org/fortran/show/Matrix+inversion ---
+  FUNCTION Inv3x3( A ) RESULT( invA )
 
-    REAL(AR), INTENT(in) :: R, M
+    ! --- Performs a direct calculation of the inverse of a 3×3 matrix ---
 
-    ! --- Schwarzschild Metric in Isotropic Coordinates ---
+    REAL(AR), INTENT(in) :: A   (3,3)
+    REAL(AR)             :: invA(3,3)
+    REAL(AR)             :: InvDet
 
-    LapseFunction = ABS( ( MAX( ABS( R ), SqrtTiny ) - Half * M ) &
-                       / ( MAX( ABS( R ), SqrtTiny ) + Half * M ) )
+    ! --- Calculate the inverse of the determinant of the matrix ---
+
+    InvDet = One / ( A(1,1)*A(2,2)*A(3,3) - A(1,1)*A(2,3)*A(3,2)     &
+                       - A(1,2)*A(2,1)*A(3,3) + A(1,2)*A(2,3)*A(3,1) &
+                       + A(1,3)*A(2,1)*A(3,2) - A(1,3)*A(2,2)*A(3,1) )
+
+    ! --- Calculate the inverse of the matrix ---
+
+    invA(1,1) = +InvDet * ( A(2,2)*A(3,3) - A(2,3)*A(3,2) )
+    invA(2,1) = -InvDet * ( A(2,1)*A(3,3) - A(2,3)*A(3,1) )
+    invA(3,1) = +InvDet * ( A(2,1)*A(3,2) - A(2,2)*A(3,1) )
+    invA(1,2) = -InvDet * ( A(1,2)*A(3,3) - A(1,3)*A(3,2) )
+    invA(2,2) = +InvDet * ( A(1,1)*A(3,3) - A(1,3)*A(3,1) )
+    invA(3,2) = -InvDet * ( A(1,1)*A(3,2) - A(1,2)*A(3,1) )
+    invA(1,3) = +InvDet * ( A(1,2)*A(2,3) - A(1,3)*A(2,2) )
+    invA(2,3) = -InvDet * ( A(1,1)*A(2,3) - A(1,3)*A(2,1) )
+    invA(3,3) = +InvDet * ( A(1,1)*A(2,2) - A(1,2)*A(2,1) )
 
     RETURN
-  END FUNCTION LapseFunction
-
-
-  REAL(AR) FUNCTION ConformalFactor( R, M )
-
-    REAL(AR), INTENT(in) :: R, M
-
-    ! --- Schwarzschild Metric in Isotropic Coordinates ---
-
-    ConformalFactor = One + Half * M / MAX( ABS( R ), SqrtTiny )
-
-    RETURN
-  END FUNCTION ConformalFactor
+  END FUNCTION Inv3x3
 
 
   REAL(AR) FUNCTION LorentzFactor( Psi, V )
