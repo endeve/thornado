@@ -84,6 +84,16 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
+      ! --- Apply boundary conditions to interior domains ---
+
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
+
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL MF_uDF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
       DO WHILE( MFI % next() )
@@ -117,6 +127,15 @@ CONTAINS
 
         CALL amrex2thornado_Euler( nDF, iX_B1, iX_E1, uDF, D )
 
+        ! --- Apply boundary conditions to physical boundaries ---
+
+        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_ApplyBoundaryConditions_Euler'
+
+        CALL MF_ApplyBoundaryConditions_Euler &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
         CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
         CALL thornado2amrex_Euler( nDF, iX_B1, iX_E1, uDF, D )
@@ -134,6 +153,9 @@ CONTAINS
     END DO
 
     DO iLevel = 0, nLevels-1
+
+      ! --- Maybe don't need to apply boudnary conditions since
+      !     they're applied in the shock detector ---
 
       ! --- Apply boundary conditions to interior domains ---
 
