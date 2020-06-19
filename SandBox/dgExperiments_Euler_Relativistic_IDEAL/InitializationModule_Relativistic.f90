@@ -1900,8 +1900,7 @@ CONTAINS
                       * P0 / ( D0 * SpeedOfLight**2 ) * uO(3) / uO(1) ) * W &
             - One
       f(3) &
-        = One / ( D0 * SpeedOfLight**2 ) &
-            * ( P0 * uO(3) - K * D0**( Gamma_IDEAL ) * uO(1)**( Gamma_IDEAL ) )
+        = P0 * D0**( -Gamma_IDEAL ) / K * uO(3) * uO(1)**( -Gamma_IDEAL ) - One
 
       Jac(1,1) = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0 &
                    * W * uO(2)
@@ -1915,11 +1914,12 @@ CONTAINS
                    * W**3 * Psi**4 * V0**2 / SpeedOfLight**2 * uO(2)
       Jac(2,3) = Alpha * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
                    * P0 / ( D0 * SpeedOfLight**2 ) / uO(1) * W
-      Jac(3,1) = -Gamma_IDEAL * K * D0**( Gamma_IDEAL - One ) &
-                   / SpeedOfLight**2 * uO(1)**( Gamma_IDEAL - One )
+      Jac(3,1) = -P0 * D0**( -Gamma_IDEAL ) / K &
+                   * Gamma_IDEAL * uO(3) * uO(1)**( -Gamma_IDEAL - One )
 
       Jac(3,2) = Zero
-      Jac(3,3) = P0 / ( D0 * SpeedOfLight**2 )
+      Jac(3,3) = P0 * D0**( -Gamma_IDEAL ) / K &
+                   * uO(1)**( -Gamma_IDEAL )
 
       InvJac = Inv3x3( Jac )
 
