@@ -49,7 +49,7 @@ CONTAINS
 
   SUBROUTINE MF_ApplyPositivityLimiter_Euler( MF_uGF, MF_uCF, mF_uDF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)

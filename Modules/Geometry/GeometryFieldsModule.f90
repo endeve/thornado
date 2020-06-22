@@ -67,6 +67,7 @@ MODULE GeometryFieldsModule
   PUBLIC :: CreateGeometryFields
   PUBLIC :: DestroyGeometryFields
   PUBLIC :: SetUnitsGeometryFields
+  PUBLIC :: DescribeGeometryFields
 
 CONTAINS
 
@@ -92,17 +93,7 @@ CONTAINS
       Verbose = .TRUE.
     END IF
 
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A5,A15)') '', 'Geometry Fields'
-      WRITE(*,*)
-      WRITE(*,'(A5,A,A)') &
-        '', 'Coordinate System: ', TRIM( CoordinateSystem )
-      WRITE(*,*)
-      DO iGF = 1, nGF
-        WRITE(*,'(A5,A32)') '', TRIM( namesGF(iGF) )
-      END DO
-    END IF
+    CALL DescribeGeometryFields( CoordinateSystem, Verbose )
 
     ALLOCATE &
       ( uGF(1:nDOFX, &
@@ -130,6 +121,30 @@ CONTAINS
     uGF(:,:,:,:,iGF_Psi)      = 1.0_DP
 
   END SUBROUTINE CreateGeometryFields
+
+
+  SUBROUTINE DescribeGeometryFields( CoordinateSystem, Verbose )
+
+    CHARACTER(*), INTENT(in) :: CoordinateSystem
+    LOGICAL,      INTENT(in) :: Verbose
+
+    INTEGER :: iGF
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A15)') '', 'Geometry Fields'
+      WRITE(*,*)
+      WRITE(*,'(A5,A,A)') &
+        '', 'Coordinate System: ', TRIM( CoordinateSystem )
+      WRITE(*,*)
+      DO iGF = 1, nGF
+        WRITE(*,'(A5,A32)') '', TRIM( namesGF(iGF) )
+      END DO
+
+    END IF
+
+  END SUBROUTINE DescribeGeometryFields
 
 
   SUBROUTINE DestroyGeometryFields

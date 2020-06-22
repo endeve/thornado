@@ -100,8 +100,8 @@ CONTAINS
   SUBROUTINE MF_InitializeFields_NonRelativistic_IDEAL &
     ( ProgramName, MF_uGF, MF_uCF )
 
-    CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     IF( amrex_parallel_ioprocessor() )THEN
@@ -167,7 +167,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_IsentropicVortex( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -298,7 +298,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Sod( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -422,7 +422,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_SphericalSod( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -546,7 +546,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_TopHatAdvection( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -667,7 +667,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Implosion( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -798,7 +798,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_StandingAccretionShock( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -1014,7 +1014,7 @@ CONTAINS
   SUBROUTINE InitializeFields_SASI &
     ( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---

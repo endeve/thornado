@@ -107,8 +107,8 @@ CONTAINS
   SUBROUTINE MF_InitializeFields_NonRelativistic_TABLE &
     ( ProgramName, MF_uGF, MF_uCF )
 
-    CHARACTER(LEN=*),     INTENT(in   ) :: ProgramName
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
 
@@ -165,7 +165,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Advection_TABLE( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -294,7 +294,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Sod_TABLE( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -354,11 +354,11 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
           DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
             IF( X1 .LE. Zero ) THEN
 
@@ -426,7 +426,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_SphericalSod_TABLE( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -486,11 +486,11 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
           DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
             IF( X1 .LE. One * Kilometer ) THEN
 
@@ -558,7 +558,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Jet_TABLE( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---
@@ -714,7 +714,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Implosion_TABLE( MF_uGF, MF_uCF )
 
-    TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
 
     ! --- thornado ---

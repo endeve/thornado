@@ -79,10 +79,10 @@ MODULE MF_TimeSteppingModule_SSPRK
         amrex_multifab
       USE MyAmrModule, ONLY: &
         nLevels
-      TYPE(amrex_geometry), INTENT(in   ) :: GEOM   (0:nLevels-1)
-      TYPE(amrex_multifab), INTENT(in   ) :: MF_uGF (0:nLevels-1)
-      TYPE(amrex_multifab), INTENT(in   ) :: MF_uCF (0:nLevels-1)
-      TYPE(amrex_multifab), INTENT(in   ) :: MF_uDF (0:nLevels-1)
+      TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
+      TYPE(amrex_multifab), INTENT(in)    :: MF_uDF (0:nLevels-1)
       TYPE(amrex_multifab), INTENT(inout) :: MF_duCF(0:nLevels-1)
     END SUBROUTINE MF_Euler_Increment
   END INTERFACE
@@ -230,11 +230,11 @@ CONTAINS
   SUBROUTINE MF_UpdateFluid_SSPRK &
     ( t, dt, MF_uGF, MF_uCF, MF_uDF, GEOM, MF_ComputeIncrement_Euler )
 
-    REAL(AR),             INTENT(in   ) :: t(0:nLevels-1), dt(0:nLevels-1)
+    REAL(AR),             INTENT(in)    :: t(0:nLevels-1), dt(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:nLevels-1)
-    TYPE(amrex_geometry), INTENT(in   ) :: GEOM  (0:nLevels-1)
+    TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
     PROCEDURE(MF_Euler_Increment)       :: MF_ComputeIncrement_Euler
 
     INTEGER :: iS, jS

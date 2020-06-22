@@ -1,10 +1,11 @@
 MODULE Euler_DiscontinuityDetectionModule
 
   USE KindModule,                     ONLY: &
-    DP,   &
-    Zero, &
-    One,  &
-    Two,  &
+    DP,    &
+    Zero,  &
+    One,   &
+    Two,   &
+    Third, &
     SqrtTiny
   USE ProgramHeaderModule,            ONLY: &
     nDOFX,  &
@@ -33,23 +34,25 @@ MODULE Euler_DiscontinuityDetectionModule
     iGF_Beta_3,   &
     iGF_SqrtGm
   USE FluidFieldsModule,              ONLY: &
-    nCF,     &
-    iCF_D,   &
-    iCF_S1,  &
-    iCF_S2,  &
-    iCF_S3,  &
-    iCF_E,   &
-    iCF_Ne,  &
-    nPF,     &
-    iPF_D,   &
-    iPF_V1,  &
-    iPF_V2,  &
-    iPF_V3,  &
-    iPF_E,   &
-    iPF_Ne,  &
-    iAF_P,   &
-    iDF_TCI, &
-    iDF_Sh
+    nCF,       &
+    iCF_D,     &
+    iCF_S1,    &
+    iCF_S2,    &
+    iCF_S3,    &
+    iCF_E,     &
+    iCF_Ne,    &
+    nPF,       &
+    iPF_D,     &
+    iPF_V1,    &
+    iPF_V2,    &
+    iPF_V3,    &
+    iPF_E,     &
+    iPF_Ne,    &
+    iAF_P,     &
+    iDF_TCI,   &
+    iDF_Sh_X1, &
+    iDF_Sh_X2, &
+    iDF_Sh_X3
   USE Euler_UtilitiesModule,          ONLY: &
     ComputePrimitive_Euler
   USE EquationOfStateModule,          ONLY: &
@@ -364,25 +367,20 @@ CONTAINS
     REAL(DP) :: uCF_K(nCF)
     REAL(DP) :: uGF_K(nGF)
     REAL(DP) :: P_K(2), VX_K(2)
-    REAL(DP) :: GradP(nDimsX), DivV
-    REAL(DP) :: dX1, dX2, dX3
+    REAL(DP) :: GradP, DivV
 
     ! --- Shock detector, adapted from
     !     Fryxell et al., (2000), ApJS, 131, 273 ---
 
     CALL TimersStart_Euler( Timer_Euler_ShockDetector )
 
-    D(:,:,:,:,iDF_Sh) = Zero
+    D(:,:,:,:,iDF_Sh_X1) = Zero
+    D(:,:,:,:,iDF_Sh_X2) = Zero
+    D(:,:,:,:,iDF_Sh_X3) = Zero
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-
-      dX1 = MeshX(1) % Width(iX1)
-      dX2 = MeshX(2) % Width(iX2)
-      dX3 = MeshX(3) % Width(iX3)
-
-      GradP = Zero
 
       ! --- Lower neighbor in X1 direction ---
 
@@ -478,9 +476,12 @@ CONTAINS
 
       ! --- Compute pressure gradient and divergence of velocity (X1) ---
 
-      GradP(1) = ABS( P_K(2) - P_K(1) ) / MIN( P_K(2), P_K(1) )
+      GradP = ABS( P_K(2) - P_K(1) ) / MIN( P_K(2), P_K(1) )
 
-      DivV     = ( VX_K(2) - VX_K(1) ) / ( Two * dX1 )
+      DivV  = VX_K(2) - VX_K(1)
+
+      IF( GradP .GT. Third .AND. DivV .LT. Zero ) &
+        D(:,iX1,iX2,iX3,iDF_Sh_X1) = One
 
       IF( nDimsX .GT. 1 )THEN
 
@@ -578,9 +579,12 @@ CONTAINS
 
         ! --- Compute pressure gradient and divergence of velocity (X2) ---
 
-        GradP(2) = ABS( P_K(2) - P_K(1) ) / MIN( P_K(2), P_K(1) )
+        GradP = ABS( P_K(2) - P_K(1) ) / MIN( P_K(2), P_K(1) )
 
-        DivV     = DivV + ( VX_K(2) - VX_K(1) ) / ( Two * dX2 )
+        DivV  = VX_K(2) - VX_K(1)
+
+        IF( GradP .GT. Third .AND. DivV .LT. Zero ) &
+          D(:,iX1,iX2,iX3,iDF_Sh_X2) = One
 
       END IF
 
@@ -680,14 +684,14 @@ CONTAINS
 
         ! --- Compute pressure gradient and divergence of velocity (X3) ---
 
-        GradP(3) = ABS( P_K(2) - P_K(1) ) / MIN( P_K(2), P_K(1) )
+        GradP = ABS( P_K(2) - P_K(1) ) / MIN( P_K(2), P_K(1) )
 
-        DivV     = DivV + ( VX_K(2) - VX_K(1) ) / ( Two * dX3 )
+        DivV  = VX_K(2) - VX_K(1)
+
+        IF( GradP .GT. Third .AND. DivV .LT. Zero ) &
+          D(:,iX1,iX2,iX3,iDF_Sh_X3) = One
 
       END IF
-
-      IF( SQRT( SUM( GradP**2 ) ) .GT. 1.0_DP / 3.0_DP .AND. DivV .LT. Zero ) &
-        D(:,iX1,iX2,iX3,iDF_Sh) = One
 
     END DO
     END DO

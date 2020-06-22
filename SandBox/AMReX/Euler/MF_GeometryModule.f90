@@ -52,7 +52,7 @@ CONTAINS
   SUBROUTINE MF_ComputeGeometryX( MF_uGF, Mass )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    REAL(AR),             INTENT(in   ) :: Mass
+    REAL(AR),             INTENT(in)    :: Mass
 
     INTEGER                       :: iLevel
     INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -109,7 +109,7 @@ CONTAINS
   SUBROUTINE MF_ComputeGravitationalPotential( MF_uGF, Mass )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    REAL(AR),             INTENT(in   ) :: Mass
+    REAL(AR),             INTENT(in)    :: Mass
 
     INTEGER                       :: iLevel
     INTEGER                       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)

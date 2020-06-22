@@ -1,43 +1,42 @@
-##### inputs_IsolatedShock2D #####
+##### inputs_Advection2D #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
 DEBUG = 0
 
-thornado.ProgramName = "IsolatedShock2D"
+thornado.ProgramName      = "Advection1D"
+thornado.AdvectionProfile = "SineWave"
 
 thornado.iRestart = -1 # Checkpoint-file to restart from. Default: -1
 
-thornado.t_end   = 2.5e+1 # Final time
+thornado.t_end   = 1.0e+1 # Final time
 thornado.iCycleD = 10     # MOD this number to display info
 
 thornado.PlotFileBaseName = "plt"
-thornado.dt_wrt  = 2.5e-1 # Time increment to write plot-file
-thornado.iCycleW = -1     # MOD this number to write plotfile
+thornado.dt_wrt  = 1.0e-1 # Time increment to write plot-file
+thornado.iCycleW = -1     # MOD this number to write plot-file
 
 thornado.CheckpointFileBaseName = "chk"
-thornado.dt_chk    = 2.6e+1 # Time increment to write checkpoint-file
-thornado.iCycleChk = -1     # MOD this number to write checkpoint file
+thornado.dt_chk    = 5.0e+0 # Time increment to write checkpoint-file
+thornado.iCycleChk = -1     # MOD this number to write checkpoint-file
 
 thornado.nNodes  = 3 # Number of DG nodes in each active dimension
 thornado.nStages = 3 # Number of SSP-RK stages for time integration
 
 thornado.CFL = 0.5 # CFL number
 
-thornado.bcX         = 02 02 00 # Boundary conditions
-geometry.is_periodic = 0  0  1  # Periodic BCs: 0 (no), 1 (yes)
+thornado.bcX         = 00 00 00 # Boundary conditions
+geometry.is_periodic = 1  1  1  # Periodic BCs: 0 (no), 1 (yes)
 
 geometry.coord_sys = 0           # CARTESIAN
 geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
 geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
 
-amr.n_cell            = 128 008 001 # Number of cells in each dimension
-thornado.swX          = 01  01  00  # Stencil width (nGhostCells) in each dimension
-amr.max_grid_size_x   = 016
-amr.max_grid_size_y   = 004
+amr.n_cell            = 64 01 01 # Number of cells in each dimension
+thornado.swX          = 01 00 00 # Stencil width (nGhostCells) in each dimension
+amr.max_grid_size_x   = 16
 amr.blocking_factor_x = 1
-amr.blocking_factor_y = 1
 amr.max_level         = 0
 
 # Slope limiter parameters
@@ -47,8 +46,8 @@ SL.BetaTVD                   = 1.75e+0
 SL.BetaTVB                   = 0.00e+0
 SL.SlopeTolerance            = 1.00e-6
 SL.UseCharacteristicLimiting = 1
-SL.UseTroubledCellIndicator  = 1
-SL.LimiterThresholdParameter = 5.00e-3
+SL.UseTroubledCellIndicator  = 0
+SL.LimiterThresholdParameter = 3.00e-2
 SL.UseConservativeCorrection = 1
 
 # Positivity limiter parameters

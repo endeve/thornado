@@ -99,7 +99,7 @@ PROGRAM DeleptonizationWave1D
 
   INCLUDE 'mpif.h'
 
-  CHARACTER(32) :: ProfileName
+  CHARACTER(64) :: ProfileName
   LOGICAL       :: wrt
   INTEGER       :: iCycle, iCycleD, iCycleT
   INTEGER       :: nE, nX(3), nNodes, nSpecies

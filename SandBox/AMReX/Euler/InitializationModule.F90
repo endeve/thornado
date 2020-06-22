@@ -59,14 +59,19 @@ MODULE InitializationModule
     MinY, &
     MaxY
   USE GeometryFieldsModule,             ONLY: &
-    nGF,                    &
-    SetUnitsGeometryFields, &
+    nGF,                     &
+    DescribeGeometryFields,  &
+    SetUnitsGeometryFields,  &
     CoordinateSystem
   USE FluidFieldsModule,                ONLY: &
-    nCF, &
-    nPF, &
-    nAF, &
-    nDF, &
+    nCF,                            &
+    nPF,                            &
+    nAF,                            &
+    nDF,                            &
+    DescribeFluidFields_Primitive,  &
+    DescribeFluidFields_Conserved,  &
+    DescribeFluidFields_Auxiliary,  &
+    DescribeFluidFields_Diagnostic, &
     SetUnitsFluidFields
   USE Euler_SlopeLimiterModule,         ONLY: &
     InitializeSlopeLimiter_Euler
@@ -175,6 +180,7 @@ CONTAINS
     TYPE(amrex_parmparse) :: PP
     TYPE(amrex_box)       :: BX
     REAL(AR)              :: Mass
+
 
     ! --- Initialize AMReX ---
 
@@ -327,6 +333,19 @@ CONTAINS
 
 #endif
 
+    CALL SetUnitsGeometryFields
+
+    CALL DescribeFluidFields_Conserved( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Primitive( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Auxiliary( amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
+
+    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
+                              Verbose_Option = amrex_parallel_ioprocessor() )
+
     IF( EquationOfState .EQ. 'TABLE' )THEN
 
       CALL InitializeEquationOfState &
@@ -387,11 +406,6 @@ CONTAINS
     IF( amrex_parallel_ioprocessor() ) WRITE(*,'(A6,A,ES11.3E3)') &
       '', 'CFL: ', &
       CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
-
-    CALL SetUnitsGeometryFields
-
-    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
-                              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Initialize )
 

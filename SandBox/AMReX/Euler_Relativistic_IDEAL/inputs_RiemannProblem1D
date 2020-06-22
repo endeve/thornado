@@ -5,7 +5,8 @@
 
 DEBUG = 0
 
-thornado.ProgramName = "Sod"
+thornado.ProgramName        = "RiemannProblem1D"
+thornado.RiemannProblemName = "IsolatedShock"
 
 thornado.iRestart = -1 # Checkpoint-file to restart from. Default: -1
 
@@ -34,7 +35,7 @@ geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
 
 amr.n_cell            = 256 001 001 # Number of cells in each dimension
 thornado.swX          = 01  00  00  # Stencil width (nGhostCells) in each dimension
-amr.max_grid_size_x   = 64
+amr.max_grid_size_x   = 256
 amr.blocking_factor_x = 1
 amr.max_level         = 0
 
@@ -55,4 +56,5 @@ PL.Min_1                = 1.0e-13
 PL.Min_2                = 1.0e-13
 
 # Equation of state parameters
-EoS.Gamma = 1.6666666666666666 # Ideal Gas EoS Gamma
+#EoS.Gamma = 1.6666666666666666 # Ideal Gas EoS Gamma
+EoS.Gamma = 1.33333333333333333 # Ideal Gas EoS Gamma

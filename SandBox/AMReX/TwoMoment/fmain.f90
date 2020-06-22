@@ -53,6 +53,9 @@ PROGRAM main
 
   IMPLICIT NONE
 
+  REAL(amrex_real) :: n, m
+
+  n = 1.0_amrex_real
   CALL InitializeProgram
 
 !  CALL WriteFieldsAMReX_Checkpoint & 
@@ -79,7 +82,19 @@ PROGRAM main
     CALL MF_Update_IMEX_RK &
            ( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, &
             Verbose_Option = amrex_parallel_ioprocessor()  )
-
+!    IF (t(0) .GE. n) THEN
+!
+!  CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+!
+!   CALL WriteFieldsAMReX_PlotFile &
+!         ( t(0), StepNo, &
+!             MF_uCR_Option = MF_uCR, &
+!             MF_uPR_Option = MF_uPR )
+!
+!             n = n+1.0_amrex_real
+!        
+!    END IF
+!
   END DO
  
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uCR, MF_uPR )

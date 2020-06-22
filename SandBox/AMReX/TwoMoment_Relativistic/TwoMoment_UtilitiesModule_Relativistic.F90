@@ -123,7 +123,6 @@ CONTAINS
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
 
-
     k = 0
     CONVERGED = .FALSE.
     DO WHILE( .NOT. CONVERGED .AND. k < MaxIterations )
@@ -217,6 +216,8 @@ CONTAINS
 
       END IF
       !this may be the problem converting abck and forth from upper to lower and back
+
+     
       D     = UVEC(1)
       I_d_1 = UVEC(2); I_u_1 = ( 1.0_DP - B_d_1 * V_u_1 / alp ) * I_d_1 / Gm_dd_11  &
             - I_d_2 * B_d_1 * V_u_2 / ( alp *Gm_dd_11 ) - I_d_3 * B_d_1 * V_u_3 / ( Gm_dd_11 * alp )
@@ -224,6 +225,7 @@ CONTAINS
             - I_d_1 * B_d_2 * V_u_1 / ( alp *Gm_dd_22 ) - I_d_3 * B_d_2 * V_u_3 / ( Gm_dd_22 * alp )
       I_d_3 = UVEC(4); I_u_3 = ( 1.0_DP - B_d_3 * V_u_3 / alp ) * I_d_3 / Gm_dd_33  &
             - I_d_1 * B_d_3 * V_u_1 / ( alp *Gm_dd_33 ) - I_d_2 * B_d_3 * V_u_2 / ( Gm_dd_33 * alp )
+
     END DO
 
     IF( PRESENT( nIterations_Option ) )THEN
@@ -855,7 +857,6 @@ CONTAINS
           - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
     I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
           - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
-
     CALL ComputeEddingtonTensorComponents_dd &
            ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
              k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
@@ -868,8 +869,6 @@ CONTAINS
     EP = ( W**2 * D + 2.0_DP * W * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 ) )
     EP = EP + ( V_u_1 * V_u_1 * k_dd_11 * D + V_u_2 * V_u_2 * k_dd_22 * D + V_u_3 * V_u_3 * k_dd_33 * D )
     EP = EP + 2.0_DP * ( V_u_1 * V_u_2 * k_dd_12 * D + V_u_1 * V_u_3 * k_dd_13 * D + V_u_2 * V_u_3 * k_dd_23 * D )
-
-
 
     F_u_1 = ( W * I_u_1 ) 
     F_u_1 = F_u_1 + V_u_1 * ( n_u_1 * W * I_d_1 + k_ud_11 * D ) + V_u_2 * ( n_u_1 * W * I_d_2 + k_ud_12 * D ) + V_u_3 * ( n_u_1 * W * I_d_3 + k_ud_13 * D )
@@ -895,39 +894,39 @@ CONTAINS
 
 
     S_ud_11 =  ( k_ud_11 * D + W * ( I_u_1 * V_d_1 + V_u_1 * I_d_1 ) + V_d_1 * V_u_1 * W**2 * D )
-    S_ud_11 = S_ud_11 -  n_u_1 * ( V_u_1 * k_dd_11 * D + V_u_2 * k_dd_12 * D + V_u_3 * k_dd_13 )
+    S_ud_11 = S_ud_11 -  n_u_1 * ( V_u_1 * k_dd_11 * D + V_u_2 * k_dd_12 * D + V_u_3 * k_dd_13 * D )
     S_ud_11 = S_ud_11 - V_d_1 * n_u_1 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
 
     S_ud_22 =  ( k_ud_22 * D + W * ( I_u_2 * V_d_2 + V_u_2 * I_d_2 ) + V_d_2 * V_u_2 * W**2 * D )
-    S_ud_22 = S_ud_22 -  n_u_2 * ( V_u_1 * k_dd_12 * D + V_u_2 * k_dd_22 * D + V_u_3 * k_dd_23 )
+    S_ud_22 = S_ud_22 -  n_u_2 * ( V_u_1 * k_dd_12 * D + V_u_2 * k_dd_22 * D + V_u_3 * k_dd_23 * D )
     S_ud_22 = S_ud_22 - V_d_2 * n_u_2 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
 
     S_ud_33 = ( k_ud_33 * D + W * ( I_u_3 * V_d_3 + V_u_3 * I_d_3 ) + V_d_3 * V_u_3 * W**2 * D )
-    S_ud_33 = S_ud_33 - n_u_3 * ( V_u_1 * k_dd_13 * D + V_u_2 * k_dd_23 * D + V_u_3 * k_dd_33 )
+    S_ud_33 = S_ud_33 - n_u_3 * ( V_u_1 * k_dd_13 * D + V_u_2 * k_dd_23 * D + V_u_3 * k_dd_33 * D )
     S_ud_33 = S_ud_33 -  V_d_3 * n_u_3 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
 
     S_ud_12 = ( k_ud_12 * D + W * ( I_u_1 * V_d_2 + V_u_1 * I_d_2 ) + V_d_1 * V_u_2 * W**2 * D )
-    S_ud_12 = S_ud_12 - n_u_1 * ( V_u_1 * k_dd_12 * D + V_u_2 * k_dd_22 * D + V_u_3 * k_dd_23 )
+    S_ud_12 = S_ud_12 - n_u_1 * ( V_u_1 * k_dd_12 * D + V_u_2 * k_dd_22 * D + V_u_3 * k_dd_23 * D )
     S_ud_12 = S_ud_12 - V_d_2 * n_u_1 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
 
     S_ud_23 = ( k_ud_23 * D + W * ( I_u_2 * V_d_3 + V_u_2 * I_d_3 ) + V_d_2 * V_u_3 * W**2 * D )
-    S_ud_23 = S_ud_23 - n_u_2 * ( V_u_1 * k_dd_13 * D + V_u_2 * k_dd_23 * D + V_u_3 * k_dd_33 )
+    S_ud_23 = S_ud_23 - n_u_2 * ( V_u_1 * k_dd_13 * D + V_u_2 * k_dd_23 * D + V_u_3 * k_dd_33 * D )
     S_ud_23 = S_ud_23 - V_d_3 * n_u_2 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
 
     S_ud_13 = ( k_ud_13 * D + W * ( I_u_1 * V_d_3 + V_u_1 * I_d_3 ) + V_d_1 * V_u_3 * W**2 * D )
-    S_ud_13 = S_ud_13 - n_u_1 * ( V_u_1 * k_dd_13 * D + V_u_2 * k_dd_23 * D + V_u_3 * k_dd_33 )
+    S_ud_13 = S_ud_13 - n_u_1 * ( V_u_1 * k_dd_13 * D + V_u_2 * k_dd_23 * D + V_u_3 * k_dd_33 * D )
     S_ud_13 = S_ud_13 - V_d_3 * n_u_1 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
 
     S_ud_21 = ( k_ud_12 * D + W * ( I_u_2 * V_d_1 + V_u_2 * I_d_1 ) + V_d_2 * V_u_1 * W**2 * D )
-    S_ud_21 = S_ud_21 - n_u_2 * ( V_u_1 * k_dd_11 * D + V_u_2 * k_dd_12 * D + V_u_3 * k_dd_13 )
+    S_ud_21 = S_ud_21 - n_u_2 * ( V_u_1 * k_dd_11 * D + V_u_2 * k_dd_12 * D + V_u_3 * k_dd_13 * D )
     S_ud_21 = S_ud_21 - V_d_1 * n_u_2 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
 
     S_ud_32 =  ( k_ud_23 * D + W * ( I_u_3 * V_d_2 + V_u_3 * I_d_2 ) + V_d_3 * V_u_2 * W**2 * D )
-    S_ud_32 = S_ud_32 -  n_u_3 * ( V_u_1 * k_dd_12 * D + V_u_2 * k_dd_22 * D + V_u_3 * k_dd_23 )
+    S_ud_32 = S_ud_32 -  n_u_3 * ( V_u_1 * k_dd_12 * D + V_u_2 * k_dd_22 * D + V_u_3 * k_dd_23 * D )
     S_ud_32 = S_ud_32 - V_d_2 * n_u_3 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
 
     S_ud_31 = ( k_ud_13 * D + W * ( I_u_3 * V_d_1 + V_u_3 * I_d_1 ) + V_d_3 * V_u_1 * W**2 * D )
-    S_ud_31 = S_ud_31 - n_u_3 * ( V_u_1 * k_dd_11 * D + V_u_2 * k_dd_12 * D + V_u_3 * k_dd_13 )
+    S_ud_31 = S_ud_31 - n_u_3 * ( V_u_1 * k_dd_11 * D + V_u_2 * k_dd_12 * D + V_u_3 * k_dd_13 * D )
     S_ud_31 = S_ud_31 - V_d_1 * n_u_3 * ( V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3 )
 
 
@@ -1067,7 +1066,7 @@ CONTAINS
       + W * V_u_1 * k_dd_11 * D & 
       + W * V_d_1 * ( k_ud_11 * D - n_u_1 * ( V_u_1 * k_dd_11 + V_u_2 * k_dd_21 + V_u_3 * k_dd_31 ) * D ) & 
       + l_udd_111 * D & 
-      + n_u_1 * ( V_u_1 * l_ddd_111 + V_u_2 * l_ddd_211 + V_u_3 * l_ddd_311 ) * D ) 
+      + n_u_1 * ( V_u_1 * l_ddd_111 + V_u_2 * l_ddd_211 + V_u_3 * l_ddd_311 ) * D )
  
     W_udd_112 = ( W**3 * V_u_1 * V_d_1 * V_d_2 * D & 
       + W**2 * V_d_1 * V_d_2 * ( I_u_1 - n_u_1 * (V_u_1 * I_d_1 + V_u_2 * I_d_2 + V_u_3 * I_d_3)) & 
@@ -1526,6 +1525,7 @@ CONTAINS
     Z_ud_33 = Z_ud_33 / W
 
 
+
   END SUBROUTINE 
 
 
@@ -1795,7 +1795,6 @@ CONTAINS
                + ( S_ud_11 * dWV_u_1_dX1 + S_ud_12 * dWV_u_2_dX1 + S_ud_13 * dWV_u_3_dX1 & 
                + S_ud_21 * dWV_u_1_dX2 + S_ud_22 * dWV_u_2_dX2 + S_ud_23 * dWV_u_3_dX2 & 
                + S_ud_31 * dWV_u_1_dX3 + S_ud_32 * dWV_u_2_dX3 + S_ud_33 * dWV_u_3_dX3 ) 
-    
     Flux_E(1) = -Flux_E(1)
 
 
@@ -1808,6 +1807,8 @@ CONTAINS
                 + alp * WT_udd_311 * dWV_u_1_dX3 + alp * WT_udd_312 * dWV_u_2_dX3& 
                 + alp * WT_udd_313 * dWV_u_3_dX3
     Flux_E(2) = -Flux_E(2) / alp
+
+
 
     Flux_E(3) = - ( alp * ZT_ud_12 - YT_d_2 * B_u_1 ) * dW_dX1 &
                 - ( alp * ZT_ud_22 - YT_d_2 * B_u_2 ) * dW_dX2 &
@@ -1882,7 +1883,6 @@ CONTAINS
    Flux_G(1) = I_u_1 + W * D * V_u_1 - ( B_u_1 / alp ) * vI
    Flux_G(2) = I_u_2 + W * D * V_u_2 - ( B_u_2 / alp ) * vI
    Flux_G(3) = I_u_3 + W * D * V_u_3 - ( B_u_3 / alp ) * vI
-
 
    END FUNCTION Flux_G
 

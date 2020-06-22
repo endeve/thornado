@@ -195,9 +195,6 @@ CONTAINS
 
       CALL ActivateUnitsDisplay( CoordinateSystem_Option = TRIM( CoordSys ) )
 
-      IF( amrex_parallel_ioprocessor() ) &
-        CALL DescribeUnitsDisplay
-
       t_end  = t_end  * UnitsDisplay % TimeUnit
       dt_wrt = dt_wrt * UnitsDisplay % TimeUnit
       dt_chk = dt_chk * UnitsDisplay % TimeUnit
@@ -283,6 +280,9 @@ CONTAINS
              xR_Option          = xR,                  &
              bcX_Option         = bcX,                 &
              Verbose_Option     = amrex_parallel_ioprocessor() )
+
+    IF( amrex_parallel_ioprocessor() ) &
+      CALL DescribeUnitsDisplay
 
     IF( nDimsX .NE. amrex_spacedim )THEN
 

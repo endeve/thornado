@@ -574,7 +574,7 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(AR)                      :: Ones(nDOFE), W, Third
+    REAL(AR)                      :: Ones(nDOFE), W, Third, E, Mu_0, S
     CHARACTER(len=40) :: name1
     CHARACTER(len=1):: nds
     CHARACTER(len=2)::nxn1
@@ -621,7 +621,7 @@ CONTAINS
     W = 1.0_AR - ( V_0(1)*V_0(1) + V_0(2)*V_0(2) + V_0(3)*V_0(3) )
     W = 1.0_AR / SQRT( W )
   
-
+    Mu_0 = 0.8_AR
 
  
     DO iDim = 1, 3
@@ -682,11 +682,10 @@ CONTAINS
                 = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
             ELSE
               uPF_K(iNodeX,iPF_V1) &
-                = 0.0_AR
+               = 0.0_AR 
             END IF
 
-  
-
+            W = 1.0_AR / SQRT(1.0_AR - uPF_K(iNodeX,iPF_V1)**2) 
 print*,iX1," ",  X1, " ", uPF_K(iNodeX, iPF_V1)
       !write(1,*) X1
             uPF_K(iNodeX,iPF_V2) = V_0(2)
@@ -725,17 +724,28 @@ print*,iX1," ",  X1, " ", uPF_K(iNodeX, iPF_V1)
             DO iS = 1, nSpecies
             DO iZ1 = 1, nE          
 
+              iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
+
               iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
 
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
-    
+ 
+              E = NodeCoordinate( MeshE, iZ1, iNodeE )   
+              S = SQRT(1.0_AR+ uPF_K(iNodeX,iPF_V1))/SQRT(1.0_AR - uPF_K(iNodeX,iPF_V1))
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                =  1.0d-8 
-            
+                 !=1d-8
+                 != 1.0_AR / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
+                  = S**2 / ( EXP( S * E / 3.0_AR - 3.0_AR ) + 1.0_AR ) 
+                 ! = 0.5_AR
+                  ! = 0.5_AR * ( 1.0_AR - Mu_0 ) / ( EXP( E / 3.0_AR - 3.0_AR ) + 1.0_AR )
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                = 0.0_AR
+                 != 0.999_AR * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                 !=0.0_AR 
+                 = W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                 != W * 0.5_AR
+                 ! = 0.5_AR * ( 1.0_AR + Mu_0 ) * uPR_K(iNodeZ,iZ1,iPR_D,iS)
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
                 = 0.0_AR
               uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
@@ -777,9 +787,6 @@ print*,iX1," ",  X1, " ", uPF_K(iNodeX, iPF_V1)
       CALL amrex_mfiter_destroy( MFI )
 
     END DO
-   !issue with this is MF doesnt carry ghost cells
- !   CALL SetInnerBoundary_StreamingDopplerShift( MF_uGF, MF_uCR, MF_uCF )
-!going to need to change this for paralellization
 
   END SUBROUTINE InitializeFields_StreamingDopplerShift
 

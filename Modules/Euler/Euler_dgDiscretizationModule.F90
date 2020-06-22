@@ -44,7 +44,7 @@ MODULE Euler_dgDiscretizationModule
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     nAF, iAF_P, &
-    iDF_Sh
+    iDF_Sh_X1, iDF_Sh_X2, iDF_Sh_X3
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule, ONLY: &
@@ -103,12 +103,15 @@ CONTAINS
     IF( PRESENT( SuppressBC_Option ) ) &
       SuppressBC = SuppressBC_Option
 
-    IF( .NOT. SuppressBC ) &
+    IF( .NOT. SuppressBC )THEN
+
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-    CALL DetectShocks_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+      CALL DetectShocks_Euler &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+    END IF
 
     CALL TimersStart_Euler( Timer_Euler_Divergence )
 
@@ -522,20 +525,22 @@ CONTAINS
 
         NumericalFlux(iNodeX_X1,:) &
           = NumericalFlux_Euler_X1 &
-              ( uCF_L    (iNodeX_X1,:),              &
-                uCF_R    (iNodeX_X1,:),              &
-                Flux_X1_L(iNodeX_X1,:),              &
-                Flux_X1_R(iNodeX_X1,:),              &
-                AlphaPls, AlphaMns, AlphaMdl,        &
-                G_F      (iNodeX_X1,iGF_Gm_dd_11),   &
-                uPF_L    (iNodeX_X1,iPF_V1),         &
-                uPF_R    (iNodeX_X1,iPF_V1),         &
-                P_L      (iNodeX_X1),                &
-                P_R      (iNodeX_X1),                &
-                G_F      (iNodeX_X1,iGF_Alpha),      &
-                G_F      (iNodeX_X1,iGF_Beta_1),     &
-                MAXVAL( D(:,iX1-1,iX2,iX3,iDF_Sh) ), &
-                MAXVAL( D(:,iX1  ,iX2,iX3,iDF_Sh) ) )
+              ( uCF_L    (iNodeX_X1,:),                 &
+                uCF_R    (iNodeX_X1,:),                 &
+                Flux_X1_L(iNodeX_X1,:),                 &
+                Flux_X1_R(iNodeX_X1,:),                 &
+                AlphaPls, AlphaMns, AlphaMdl,           &
+                G_F      (iNodeX_X1,iGF_Gm_dd_11),      &
+                uPF_L    (iNodeX_X1,iPF_V1),            &
+                uPF_R    (iNodeX_X1,iPF_V1),            &
+                P_L      (iNodeX_X1),                   &
+                P_R      (iNodeX_X1),                   &
+                G_F      (iNodeX_X1,iGF_Alpha),         &
+                G_F      (iNodeX_X1,iGF_Beta_1),        &
+                MAXVAL( D(:,iX1-1,iX2,iX3,iDF_Sh_X2) ), &
+                MAXVAL( D(:,iX1  ,iX2,iX3,iDF_Sh_X2) ), &
+                MAXVAL( D(:,iX1-1,iX2,iX3,iDF_Sh_X3) ), &
+                MAXVAL( D(:,iX1  ,iX2,iX3,iDF_Sh_X3) ) )
 
       END DO
 
@@ -945,20 +950,22 @@ CONTAINS
 
         NumericalFlux(iNodeX_X2,:) &
           = NumericalFlux_Euler_X2 &
-              ( uCF_L    (iNodeX_X2,:),              &
-                uCF_R    (iNodeX_X2,:),              &
-                Flux_X2_L(iNodeX_X2,:),              &
-                Flux_X2_R(iNodeX_X2,:),              &
-                AlphaPls, AlphaMns, AlphaMdl,        &
-                G_F      (iNodeX_X2,iGF_Gm_dd_22),   &
-                uPF_L    (iNodeX_X2,iPF_V2),         &
-                uPF_R    (iNodeX_X2,iPF_V2),         &
-                P_L      (iNodeX_X2),                &
-                P_R      (iNodeX_X2),                &
-                G_F      (iNodeX_X2,iGF_Alpha),      &
-                G_F      (iNodeX_X2,iGF_Beta_2),     &
-                MAXVAL( D(:,iX1,iX2-1,iX3,iDF_Sh) ), &
-                MAXVAL( D(:,iX1,iX2  ,iX3,iDF_Sh) ) )
+              ( uCF_L    (iNodeX_X2,:),                 &
+                uCF_R    (iNodeX_X2,:),                 &
+                Flux_X2_L(iNodeX_X2,:),                 &
+                Flux_X2_R(iNodeX_X2,:),                 &
+                AlphaPls, AlphaMns, AlphaMdl,           &
+                G_F      (iNodeX_X2,iGF_Gm_dd_22),      &
+                uPF_L    (iNodeX_X2,iPF_V2),            &
+                uPF_R    (iNodeX_X2,iPF_V2),            &
+                P_L      (iNodeX_X2),                   &
+                P_R      (iNodeX_X2),                   &
+                G_F      (iNodeX_X2,iGF_Alpha),         &
+                G_F      (iNodeX_X2,iGF_Beta_2),        &
+                MAXVAL( D(:,iX1,iX2-1,iX3,iDF_Sh_X1) ), &
+                MAXVAL( D(:,iX1,iX2  ,iX3,iDF_Sh_X1) ), &
+                MAXVAL( D(:,iX1,iX2-1,iX3,iDF_Sh_X3) ), &
+                MAXVAL( D(:,iX1,iX2  ,iX3,iDF_Sh_X3) ) )
 
       END DO
 
@@ -1367,20 +1374,22 @@ CONTAINS
 
         NumericalFlux(iNodeX_X3,:) &
           = NumericalFlux_Euler_X3 &
-              ( uCF_L    (iNodeX_X3,:),              &
-                uCF_R    (iNodeX_X3,:),              &
-                Flux_X3_L(iNodeX_X3,:),              &
-                Flux_X3_R(iNodeX_X3,:),              &
-                AlphaPls, AlphaMns, AlphaMdl,        &
-                G_F      (iNodeX_X3,iGF_Gm_dd_33),   &
-                uPF_L    (iNodeX_X3,iPF_V3),         &
-                uPF_R    (iNodeX_X3,iPF_V3),         &
-                P_L      (iNodeX_X3),                &
-                P_R      (iNodeX_X3),                &
-                G_F      (iNodeX_X3,iGF_Alpha),      &
-                G_F      (iNodeX_X3,iGF_Beta_3),     &
-                MAXVAL( D(:,iX1,iX2,iX3-1,iDF_Sh) ), &
-                MAXVAL( D(:,iX1,iX2,iX3  ,iDF_Sh) ) )
+              ( uCF_L    (iNodeX_X3,:),                 &
+                uCF_R    (iNodeX_X3,:),                 &
+                Flux_X3_L(iNodeX_X3,:),                 &
+                Flux_X3_R(iNodeX_X3,:),                 &
+                AlphaPls, AlphaMns, AlphaMdl,           &
+                G_F      (iNodeX_X3,iGF_Gm_dd_33),      &
+                uPF_L    (iNodeX_X3,iPF_V3),            &
+                uPF_R    (iNodeX_X3,iPF_V3),            &
+                P_L      (iNodeX_X3),                   &
+                P_R      (iNodeX_X3),                   &
+                G_F      (iNodeX_X3,iGF_Alpha),         &
+                G_F      (iNodeX_X3,iGF_Beta_3),        &
+                MAXVAL( D(:,iX1,iX2,iX3-1,iDF_Sh_X1) ), &
+                MAXVAL( D(:,iX1,iX2,iX3  ,iDF_Sh_X1) ), &
+                MAXVAL( D(:,iX1,iX2,iX3-1,iDF_Sh_X2) ), &
+                MAXVAL( D(:,iX1,iX2,iX3  ,iDF_Sh_X2) ) )
 
       END DO
 

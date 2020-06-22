@@ -192,6 +192,37 @@ PROGRAM ApplicationDriver
       t_end   = 5.0d-1 * Millisecond
       dt_wrt  = 2.5d-2 * Millisecond
 
+    CASE( 'RiemannProblemCylindrical' )
+
+      RiemannProblemName = 'CylindricalSod'
+
+      CoordinateSystem = 'CYLINDRICAL'
+
+      nX = [ 100, 100, 1 ]
+      xL = [    0.0_DP * Kilometer,-10.0d0 * Kilometer, 0.0_DP * Kilometer ]
+      xR = [   10.0_DP * Kilometer, 10.0d0 * Kilometer, TwoPi ]
+      zoomX = One
+
+      bcX = [ 3, 3, 0 ]
+
+      nNodes = 3
+      nStages = 3
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 0.01_DP
+
+      UsePositivityLimiter      = .TRUE.
+
+      iCycleD = 10
+      t_end   = 2.5d-2 * Millisecond
+      dt_wrt  = 1.25d-4 * Millisecond
+
     CASE( 'Jet' )
 
       CoordinateSystem = 'CARTESIAN'
@@ -311,8 +342,10 @@ PROGRAM ApplicationDriver
       WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)')     'Valid choices:'
+      WRITE(*,'(A)')     '  Advection'
       WRITE(*,'(A)')     '  RiemannProblem'
       WRITE(*,'(A)')     '  RiemannProblemSpherical'
+      WRITE(*,'(A)')     '  RiemannProblemCylindrical'
       WRITE(*,'(A)')     '  Jet'
       WRITE(*,'(A)')     '  Implosion'
       WRITE(*,'(A)')     '  GravitationalCollapse'
