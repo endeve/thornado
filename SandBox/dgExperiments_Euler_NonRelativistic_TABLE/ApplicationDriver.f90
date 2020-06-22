@@ -87,7 +87,7 @@ PROGRAM ApplicationDriver
   REAL(DP)       :: BetaTVD, BetaTVB
   REAL(DP)       :: LimiterThresholdParameter
 
-  ProgramName = 'RiemannProblem'
+  ProgramName = 'ShockEntropyWave'
 
   EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
@@ -95,9 +95,9 @@ PROGRAM ApplicationDriver
 
   SelfGravity = .FALSE.
 
-  RestartFileNumber = -1
+  RestartFileNumber = -1 ! 603
 
-  t = 0.0_DP
+  t = 0.0_DP ! 301.5_DP
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -151,14 +151,14 @@ PROGRAM ApplicationDriver
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .TRUE.
+      UseCharacteristicLimiting = .FALSE.
 
-      UseTroubledCellIndicator  = .TRUE.
+      UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 1.0d-2
       UsePositivityLimiter      = .TRUE.
 
       iCycleD = 10
-      t_end   = 1.25d-2 * Millisecond
+      t_end   = 2.5d-2 * Millisecond
       dt_wrt  = 1.25d-4 * Millisecond
 
    CASE( 'RiemannProblemSpherical' )
@@ -266,17 +266,45 @@ PROGRAM ApplicationDriver
       BetaTVB = 0.0d+00
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
       UsePositivityLimiter      = .TRUE.
 
-      UseTroubledCellIndicator  = .TRUE.
+      UseTroubledCellIndicator  = .FALSE.
       LimiterThresholdParameter = 0.01_DP
 
       SelfGravity = .TRUE.
 
       iCycleD = 10
-      t_end   = 4.0d2  * Millisecond
+      t_end   = 301.5d0  * Millisecond
       dt_wrt  = 5.0d-1 * Millisecond
+
+    CASE( 'ShockEntropyWave' )
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX = [ 256, 1, 1 ]
+      xL = [ - 5.0_DP,   0.0_DP, 0.0_DP ] * Kilometer
+      xR = [ + 5.0_DP, + 1.0_DP, 1.0_DP ] * Kilometer
+      zoomX = One
+
+      bcX = [ 2, 0, 0 ]
+
+      nNodes  = 3
+      nStages = 3
+
+      BetaTVD = 2.0_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .FALSE.
+
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 1.5d-0
+      UsePositivityLimiter      = .TRUE.
+
+      iCycleD = 10
+      t_end   = 7.5d-2 * Millisecond
+      dt_wrt  = 1.25d-4 * Millisecond  
 
     CASE DEFAULT
 
@@ -299,7 +327,7 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 1, 0 ], &
+             = [ 1, 0, 0 ], & ! 1 1 0
            bcX_Option &
              = bcX, &
            xL_Option &
@@ -468,7 +496,7 @@ PROGRAM ApplicationDriver
       wrt = .FALSE.
 
     END IF
-
+    !STOP ! HACKZ
   END DO
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
