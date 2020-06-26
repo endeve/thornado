@@ -238,11 +238,21 @@ CONTAINS
 
         xG_q = XC + dX * xL_q
 
+        ! --- Compute Lapse Function and Conformal Factor ---
+
+        G_L(iNodeX,iGF_Alpha) &
+          = One
+        G_L(iNodeX,iGF_Psi) &
+          = One
+
         ! --- Set Geometry in Lobatto Points ---
 
-        G_L(iNodeX,iGF_h_1) = One
-        G_L(iNodeX,iGF_h_2) = One
-        G_L(iNodeX,iGF_h_3) = xG_q(1)
+        G_L(iNodeX,iGF_h_1) &
+          = G_L(iNodeX,iGF_Psi)**2
+        G_L(iNodeX,iGF_h_2) &
+          = G_L(iNodeX,iGF_Psi)**2
+        G_L(iNodeX,iGF_h_3) &
+          = G_L(iNodeX,iGF_Psi)**2 * xG_q(1)
 
       END DO
 
@@ -259,6 +269,14 @@ CONTAINS
                G_L(:,iGF_h_3), 1, Zero, G(:,iX1,iX2,iX3,iGF_h_3), 1 )
 
       CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+
+      CALL DGEMV &
+             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+               G_L(:,iGF_Alpha), 1, Zero, G(:,iX1,iX2,iX3,iGF_Alpha), 1 )
+
+      CALL DGEMV &
+             ( 'N', nDOFX, nDOFX, One, LX_L2G, nDOFX, &
+               G_L(:,iGF_Psi),   1, Zero, G(:,iX1,iX2,iX3,iGF_Psi),   1 )
 
     END DO
     END DO
