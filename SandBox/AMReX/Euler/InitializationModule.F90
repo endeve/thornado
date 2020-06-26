@@ -179,6 +179,8 @@ CONTAINS
     INTEGER               :: iLevel, iDim
     TYPE(amrex_parmparse) :: PP
     TYPE(amrex_box)       :: BX
+
+    LOGICAL               :: SolveGravity
     REAL(AR)              :: Mass
 
 
@@ -314,6 +316,11 @@ CONTAINS
     CALL InitializeReferenceElementX
     CALL InitializeReferenceElementX_Lagrange
 
+    SolveGravity = .FALSE.
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'SolveGravity', SolveGravity )
+    CALL amrex_parmparse_destroy( PP )
+
     Mass = Zero
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % query( 'Mass', Mass )
@@ -329,7 +336,12 @@ CONTAINS
 #else
 
       CALL MF_ComputeGeometryX( MF_uGF, Zero )
-      CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
+
+      IF( SolveGravity ) THEN
+
+        CALL MF_ComputeGravitationalPotential( MF_uGF, Mass )
+
+      END IF
 
 #endif
 
