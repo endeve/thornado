@@ -158,6 +158,20 @@ CONTAINS
 
                 END IF
 
+              CASE( 'QuarticSineWave' )
+
+                IF( TRIM( Direction ) .EQ. 'X' )THEN
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                    = One + Half * SIN( Pi * X1 )**4
+
+                ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+
+                  uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+                    = One + Half * SIN( Pi * X2 )**4
+
+                END IF
+
               CASE( 'TopHat' )
 
                 IF( TRIM( Direction ) .EQ. 'X' )THEN
