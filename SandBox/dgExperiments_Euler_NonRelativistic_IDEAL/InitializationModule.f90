@@ -110,6 +110,8 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       Direction_Option
 
+    REAL(DP), PARAMETER :: Amp = 0.1_DP
+
     CHARACTER(32) :: AdvectionProfile
     CHARACTER(32) :: Direction
     INTEGER       :: iX1, iX2, iX3
@@ -149,12 +151,12 @@ CONTAINS
                 IF( TRIM( Direction ) .EQ. 'X' )THEN
 
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-                    = One + Half * SIN( TwoPi * X1 )
+                    = One + Amp * SIN( TwoPi * X1 )
 
                 ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-                    = One + Half * SIN( TwoPi * X2 )
+                    = One + Amp * SIN( TwoPi * X2 )
 
                 END IF
 
@@ -163,12 +165,12 @@ CONTAINS
                 IF( TRIM( Direction ) .EQ. 'X' )THEN
 
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-                    = One + Half * SIN( Pi * X1 )**4
+                    = One + Amp * SIN( Pi * X1 )**4
 
                 ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
                   uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
-                    = One + Half * SIN( Pi * X2 )**4
+                    = One + Amp * SIN( Pi * X2 )**4
 
                 END IF
 
