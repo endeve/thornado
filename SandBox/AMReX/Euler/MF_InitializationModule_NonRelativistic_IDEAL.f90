@@ -358,11 +358,11 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
           DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
             IF( X1 .LE. Half ) THEN
 
@@ -482,11 +482,11 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
           DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
             IF( X1 <= One ) THEN
 
