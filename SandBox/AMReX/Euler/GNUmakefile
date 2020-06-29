@@ -4,9 +4,13 @@ AMREX_HOME    ?= $(AMREX_DIR)
 THORNADO_HOME ?= $(THORNADO_DIR)
 WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
 HDF5_HOME     ?= $(HDF5_DIR)
+LAPACK_HOME   ?= $(LAPACK_DIR)
 
 HDF5_INC       = $(HDF5_HOME)/include
 HDF5_LIB       = $(HDF5_HOME)/lib
+
+LAPACK_INC     = $(LAPACK_HOME)/include
+LAPACK_LIB     = $(LAPACK_HOME)/lib
 
 EOS ?= IDEAL
 
@@ -26,6 +30,10 @@ COMP      = gnu
 DIM       = 2
 
 EBASE     = main
+
+INCLUDE_LOCATIONS += $(LAPACK_INC)
+LIBRARY_LOCATIONS += $(LAPACK_LIB)
+LIBRARIES += -llapack
 
 ifeq ($(EOS),TABLE)
   INCLUDE_LOCATIONS += $(HDF5_INC)

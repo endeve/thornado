@@ -1,32 +1,33 @@
 MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
 
-  USE KindModule,                                                 ONLY: &
+  USE KindModule, ONLY: &
     DP,   &
     Zero, &
     One,  &
     Two
-  USE ProgramHeaderModule,                                        ONLY: &
-    nDOFX,  &
-    nDimsX, &
-    nNodes, &
-    nNodesX
-  USE ReferenceElementModuleX,                                    ONLY: &
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX,   &
+    nDimsX,  &
+    nNodes,  &
+    nNodesX, &
+    bcX
+  USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
     NodeNumberTableX
-  USE UtilitiesModule,                                            ONLY: &
+  USE UtilitiesModule, ONLY: &
     MinModB, &
     NodeNumberX
-  USE PolynomialBasisModule_Legendre,                             ONLY: &
+  USE PolynomialBasisModule_Legendre, ONLY: &
     P_X1, &
     P_X2, &
     P_X3, &
     IndPX_Q
-  USE PolynomialBasisMappingModule,                               ONLY: &
+  USE PolynomialBasisMappingModule, ONLY: &
     MapNodalToModal_Fluid, &
     MapModalToNodal_Fluid
-  USE MeshModule,                                                 ONLY: &
+  USE MeshModule, ONLY: &
     MeshX
-  USE GeometryFieldsModule,                                       ONLY: &
+  USE GeometryFieldsModule, ONLY: &
     nGF,          &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -36,18 +37,21 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     iGF_Beta_2,   &
     iGF_Beta_3,   &
     iGF_SqrtGm
-  USE FluidFieldsModule,                                          ONLY: &
+  USE FluidFieldsModule, ONLY: &
     nCF, &
     iDF_TCI
-  USE Euler_BoundaryConditionsModule,                             ONLY: &
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyInnerBC_Euler,  &
+    ApplyOuterBC_Euler,  &
+    iApplyBC_Euler_Both, &
     ApplyBoundaryConditions_Euler
   USE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL, ONLY: &
     ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
-  USE Euler_DiscontinuityDetectionModule,                         ONLY: &
+  USE Euler_DiscontinuityDetectionModule, ONLY: &
     InitializeTroubledCellIndicator_Euler, &
     FinalizeTroubledCellIndicator_Euler,   &
     DetectTroubledCells_Euler
-  USE TimersModule_Euler,                                         ONLY: &
+  USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
     Timer_Euler_SlopeLimiter
@@ -228,26 +232,30 @@ CONTAINS
       CASE( 'TVD' )
 
         CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+                 SuppressBC_Option, iApplyBC_Option )
 
       CASE( 'WENO' )
 
         IF( UseCharacteristicLimiting )THEN
 
           CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_Characteristic &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+                   SuppressBC_Option, iApplyBC_Option )
 
         ELSE
 
           CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_ComponentWise &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+                   SuppressBC_Option, iApplyBC_Option )
 
         END IF
 
       CASE DEFAULT
 
         CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+                 SuppressBC_Option, iApplyBC_Option )
 
     END SELECT
 
@@ -255,9 +263,9 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_TVD &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
 
-    INTEGER, INTENT(in)            :: &
+    INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)           :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
@@ -267,14 +275,19 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
+    INTEGER,  INTENT(in), OPTIONAL :: &
+      iApplyBC_Option(3)
 
     LOGICAL  :: LimitedCell(nCF,iX_B0(1):iX_E0(1), &
                                 iX_B0(2):iX_E0(2), &
                                 iX_B0(3):iX_E0(3))
     LOGICAL  :: SuppressBC
+    LOGICAL  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
     INTEGER  :: iX1, iX2, iX3, iCF
+    INTEGER  :: iApplyBC(3)
     REAL(DP) :: dX1, dX2, dX3
     REAL(DP) :: SlopeDifference(nCF)
+    REAL(DP) :: a(nCF), b(nCF), c(nCF) ! --- Arguments for MinMod (fluid)
     REAL(DP) :: G_K(nGF)
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX,iX_B0(1):iX_E0(1), &
@@ -291,6 +304,10 @@ CONTAINS
     IF( .NOT. UseSlopeLimiter ) RETURN
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
+
+    iApplyBC = iApplyBC_Euler_Both
+    IF( PRESENT( iApplyBC_Option ) ) &
+       iApplyBC = iApplyBC_Option
 
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) ) &
@@ -310,6 +327,21 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       IF( ALL( D(:,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) ) CYCLE
+
+      ExcludeInnerGhostCell = .FALSE.
+      ExcludeOuterGhostCell = .FALSE.
+      IF( iX1 .EQ. iX_B0(1) .AND. ApplyInnerBC_Euler( iApplyBC(1) ) &
+            .AND. bcX(1) .NE. 1 ) ExcludeInnerGhostCell(1) = .TRUE.
+      IF( iX1 .EQ. iX_E0(1) .AND. ApplyOuterBC_Euler( iApplyBC(1) ) &
+            .AND. bcX(1) .NE. 1 ) ExcludeOuterGhostCell(1) = .TRUE.
+      IF( iX2 .EQ. iX_B0(2) .AND. ApplyInnerBC_Euler( iApplyBC(2) ) &
+            .AND. bcX(2) .NE. 1 ) ExcludeInnerGhostCell(2) = .TRUE.
+      IF( iX2 .EQ. iX_E0(2) .AND. ApplyOuterBC_Euler( iApplyBC(2) ) &
+            .AND. bcX(2) .NE. 1 ) ExcludeOuterGhostCell(2) = .TRUE.
+      IF( iX3 .EQ. iX_B0(3) .AND. ApplyInnerBC_Euler( iApplyBC(3) ) &
+            .AND. bcX(3) .NE. 1 ) ExcludeInnerGhostCell(3) = .TRUE.
+      IF( iX3 .EQ. iX_E0(3) .AND. ApplyOuterBC_Euler( iApplyBC(3) ) &
+            .AND. bcX(3) .NE. 1 ) ExcludeOuterGhostCell(3) = .TRUE.
 
       dX1 = MeshX(1) % Width(iX1)
       dX2 = MeshX(2) % Width(iX2)
@@ -382,15 +414,15 @@ CONTAINS
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_22) )
         G_K(iGF_Gm_dd_33) &
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
-        G_K(iGF_SqrtGm) &
+        G_K(iGF_SqrtGm  ) &
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_SqrtGm  ) )
-        G_K(iGF_Alpha) &
+        G_K(iGF_Alpha   ) &
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Alpha   ) )
-        G_K(iGF_Beta_1) &
+        G_K(iGF_Beta_1  ) &
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_1  ) )
-        G_K(iGF_Beta_2) &
+        G_K(iGF_Beta_2  ) &
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_2  ) )
-        G_K(iGF_Beta_3) &
+        G_K(iGF_Beta_3  ) &
           = DOT_PRODUCT( WeightsX_q, G(:,iX1,iX2,iX3,iGF_Beta_3  ) )
 
         ! --- Compute Eigenvectors ---
@@ -424,38 +456,89 @@ CONTAINS
 
       ! --- Compute Limited Slopes ---
 
-      dU(:,1) &
-        = MinModB &
-            ( MATMUL( invR_X1, U_M(:,0,2,iX1,iX2,iX3) ), &
-              BetaTVD * MATMUL( invR_X1, &
-                          (U_M(:,0,1,iX1,iX2,iX3)-U_M(:,1,1,iX1,iX2,iX3)) ), &
-              BetaTVD * MATMUL( invR_X1, &
-                          (U_M(:,2,1,iX1,iX2,iX3)-U_M(:,0,1,iX1,iX2,iX3)) ), &
-              dX1, BetaTVB )
+      a = MATMUL( invR_X1, U_M(:,0,2,iX1,iX2,iX3) )
+
+      IF( .NOT. ExcludeOuterGhostCell(1) &
+            .AND. .NOT. ExcludeInnerGhostCell(1) )THEN
+
+        b = BetaTVD * MATMUL( invR_X1, ( U_M(:,0,1,iX1,iX2,iX3) &
+                                           - U_M(:,1,1,iX1,iX2,iX3) ) )
+        c = BetaTVD * MATMUL( invR_X1, ( U_M(:,2,1,iX1,iX2,iX3) &
+                                           - U_M(:,0,1,iX1,iX2,iX3) ) )
+
+      ELSE IF( ExcludeInnerGhostCell(1) )THEN
+
+        c = BetaTVD * MATMUL( invR_X1, ( U_M(:,2,1,iX1,iX2,iX3) &
+                                           - U_M(:,0,1,iX1,iX2,iX3) ) )
+        b = c
+
+      ELSE IF( ExcludeOuterGhostCell(1) )THEN
+
+        b = BetaTVD * MATMUL( invR_X1, ( U_M(:,0,1,iX1,iX2,iX3) &
+                                           - U_M(:,1,1,iX1,iX2,iX3) ) )
+        c = b
+
+      END IF
+
+      dU(:,1) = MinModB( a, b, c, dX1, BetaTVB )
 
       IF( nDimsX .GT. 1 )THEN
 
-        dU(:,2) &
-          = MinModB &
-              ( MATMUL( invR_X2, U_M(:,0,3,iX1,iX2,iX3) ), &
-                BetaTVD * MATMUL( invR_X2, &
-                            (U_M(:,0,1,iX1,iX2,iX3)-U_M(:,3,1,iX1,iX2,iX3)) ), &
-                BetaTVD * MATMUL( invR_X2, &
-                            (U_M(:,4,1,iX1,iX2,iX3)-U_M(:,0,1,iX1,iX2,iX3)) ), &
-                dX2, BetaTVB )
+        a = MATMUL( invR_X2, U_M(:,0,3,iX1,iX2,iX3) )
+
+        IF( .NOT. ExcludeOuterGhostCell(2) &
+              .AND. .NOT. ExcludeInnerGhostCell(2) )THEN
+
+          b = BetaTVD * MATMUL( invR_X2, ( U_M(:,0,1,iX1,iX2,iX3) &
+                                             - U_M(:,3,1,iX1,iX2,iX3) ) )
+          c = BetaTVD * MATMUL( invR_X2, ( U_M(:,4,1,iX1,iX2,iX3) &
+                                             - U_M(:,0,1,iX1,iX2,iX3) ) )
+
+        ELSE IF( ExcludeInnerGhostCell(2) )THEN
+
+          c = BetaTVD * MATMUL( invR_X2, ( U_M(:,4,1,iX1,iX2,iX3) &
+                                             - U_M(:,0,1,iX1,iX2,iX3) ) )
+          b = c
+
+        ELSE IF( ExcludeOuterGhostCell(2) )THEN
+
+          b = BetaTVD * MATMUL( invR_X2, ( U_M(:,0,1,iX1,iX2,iX3) &
+                                             - U_M(:,3,1,iX1,iX2,iX3) ) )
+          c = b
+
+        END IF
+
+        dU(:,2) = MinModB( a, b, c, dX2, BetaTVB )
 
       END IF
 
       IF( nDimsX .GT. 2 )THEN
 
-        dU(:,3) &
-          = MinModB &
-              ( MATMUL( invR_X3, U_M(:,0,4,iX1,iX2,iX3) ), &
-                BetaTVD * MATMUL( invR_X3, &
-                            (U_M(:,0,1,iX1,iX2,iX3)-U_M(:,5,1,iX1,iX2,iX3)) ), &
-                BetaTVD * MATMUL( invR_X3, &
-                            (U_M(:,6,1,iX1,iX2,iX3)-U_M(:,0,1,iX1,iX2,iX3)) ), &
-                dX3, BetaTVB )
+        a = MATMUL( invR_X3, U_M(:,0,4,iX1,iX2,iX3) )
+
+        IF( .NOT. ExcludeOuterGhostCell(3) &
+              .AND. .NOT. ExcludeInnerGhostCell(3) )THEN
+
+          b = BetaTVD * MATMUL( invR_X3, ( U_M(:,0,1,iX1,iX2,iX3) &
+                                             - U_M(:,5,1,iX1,iX2,iX3) ) )
+          c = BetaTVD * MATMUL( invR_X3, ( U_M(:,6,1,iX1,iX2,iX3) &
+                                             - U_M(:,0,1,iX1,iX2,iX3) ) )
+
+        ELSE IF( ExcludeInnerGhostCell(3) )THEN
+
+          c = BetaTVD * MATMUL( invR_X3, ( U_M(:,6,1,iX1,iX2,iX3) &
+                                             - U_M(:,0,1,iX1,iX2,iX3) ) )
+          b = c
+
+        ELSE IF( ExcludeOuterGhostCell(3) )THEN
+
+          b = BetaTVD * MATMUL( invR_X3, ( U_M(:,0,1,iX1,iX2,iX3) &
+                                             - U_M(:,5,1,iX1,iX2,iX3) ) )
+          c = b
+
+        END IF
+
+        dU(:,3) = MinModB( a, b, c, dX3, BetaTVB )
 
       END IF
 
@@ -771,7 +854,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_ComponentWise &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -783,6 +866,8 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
+    INTEGER,  INTENT(in), OPTIONAL :: &
+      iApplyBC_Option(3)
 
     LOGICAL  :: SuppressBC
     INTEGER  :: iX1, iX2, iX3, iGridPt, iCF, ell
@@ -933,7 +1018,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL_WENO_Characteristic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -945,6 +1030,8 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
+    INTEGER,  INTENT(in), OPTIONAL :: &
+      iApplyBC_Option(3)
 
     LOGICAL  :: SuppressBC
     INTEGER  :: iX1, iX2, iX3, iNodeX, iGridPt, iCF, iCell, ell

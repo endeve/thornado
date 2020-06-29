@@ -16,7 +16,7 @@ SAS.ApplyPerturbation     = 0
 SAS.PerturbationOrder     = 0
 SAS.rPerturbationInner    = 260.0 # [km]
 SAS.rPerturbationOuter    = 280.0 # [km]
-SAS.PerturbationAmplitude = 0.5   # Fractional density increase
+SAS.PerturbationAmplitude = 0.1   # Fractional density increase
 
 thornado.WriteOutputData    = 0
 thornado.OutputDataFileName = "MPNS1.4_Rs180_Mdot0.3.dat"
@@ -25,7 +25,7 @@ thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
 
-thornado.t_end   = 1.0e+1
+thornado.t_end   = 6.0e+2
 thornado.iCycleD = 10
 
 thornado.PlotFileBaseName = "plt"
@@ -33,7 +33,7 @@ thornado.dt_wrt  = 1.0e+0
 thornado.iCycleW = -1
 
 thornado.CheckpointFileBaseName = "chk"
-thornado.dt_chk    = 1.1e+1
+thornado.dt_chk    = 6.1e+2
 thornado.iCycleChk = -1
 
 thornado.nNodes  = 3
@@ -56,7 +56,7 @@ amr.max_level         = 0
 
 # Slope limiter parameters
 SL.UseSlopeLimiter           = 1
-SL.SlopeLimitingMethod       = "TVD"
+SL.SlopeLimiterMethod        = "TVD"
 SL.BetaTVD                   = 1.75e+0
 SL.BetaTVB                   = 0.00e+0
 SL.SlopeTolerance            = 1.00e-6
