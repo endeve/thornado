@@ -16,25 +16,31 @@ Default usage, plots last plotfile in DataDirectory:
 Alernate usage, plot specific file in DataDirectory:
 
   $ python3 PlotFieldsAMReX.py thornado_00000010
+
+TODO:
+  - Add SymLogNorm scaling
 """
 
-yt.funcs.mylog.setLevel(0) # Suppress initial yt output to screen
+# https://yt-project.org/doc/faq/index.html#how-can-i-change-yt-s-log-level
+yt.funcs.mylog.setLevel(40) # Suppress yt warnings
 
 # --- Get user's HOME directory ---
-HOME = subprocess.check_output( ["echo $HOME"], shell = True)
+
+HOME = subprocess.check_output( ["echo $HOME"], shell = True )
 HOME = HOME[:-1].decode( "utf-8" ) + '/'
 
 # --- Get user's THORNADO_DIR directory ---
-THORNADO_DIR = subprocess.check_output( ["echo $THORNADO_DIR"], shell = True)
+
+THORNADO_DIR = subprocess.check_output( ["echo $THORNADO_DIR"], shell = True )
 THORNADO_DIR = THORNADO_DIR[:-1].decode( "utf-8" ) + '/'
 
 #### ========== User Input ==========
 
+# Specify name of problem
+ProblemName = 'SASI'
+
 # Specify directory containing plotfiles
 DataDirectory = THORNADO_DIR + 'SandBox/AMReX/'
-
-# Specify name of problem (only used for name of output file(s))
-ProblemName = 'SASI'
 
 # Specify plot file base name
 PlotFileBaseName = 'thornado'
@@ -57,10 +63,12 @@ aspect = 1.0
 # Specify colormap
 cmap = 'Purples'
 
-# Specify whether or not to make a movie
+# Specify whether or not to make a datafile and/or movie
+MakeDataFile = False
 MakeMovie    = False
-DataFileName = 'MovieData_{:}.dat'.format( Field )
-TimeFileName = 'MovieTime_{:}.dat'.format( Field )
+ID = '{:}_{:}_{:}'.format( ProblemName, PlotFileBaseName, Field )
+DataFileName = '{:}_MovieData.dat'.format( ID )
+TimeFileName = '{:}_MovieTime.dat'.format( ID )
 
 #### ====== End of User Input =======
 
@@ -116,7 +124,6 @@ elif( nX[2] == 1 ):
 else:
     nDims = 3
 
-
 TimeUnit = ''
 if( UsePhysicalUnits ): TimeUnit = 'ms'
 
@@ -135,10 +142,12 @@ CoveringGrid \
 # XXX.to_ndarray() strips yt array of units
 
 DataUnit = ''
+
 if  ( Field == 'PF_D'  ):
     Data = CoveringGrid['PF_D' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**3'
+
 elif( Field == 'PF_V1' ):
     Data = CoveringGrid['PF_V1'].to_ndarray()
     if( UsePhysicalUnits ):
@@ -146,6 +155,7 @@ elif( Field == 'PF_V1' ):
             DataUnit = 'km/s'
         elif( CoordinateSystem == 'spherical' ):
             DataUnit = 'km/s'
+
 elif( Field == 'PF_V2' ):
     Data = CoveringGrid['PF_V2'].to_ndarray()
     if( UsePhysicalUnits ):
@@ -153,6 +163,7 @@ elif( Field == 'PF_V2' ):
             DataUnit = 'km/s'
         elif( CoordinateSystem == 'spherical' ):
             DataUnit = '1/s'
+
 elif( Field == 'PF_V3' ):
     Data = CoveringGrid['PF_V3'].to_ndarray()
     if( UsePhysicalUnits ):
@@ -160,41 +171,59 @@ elif( Field == 'PF_V3' ):
             DataUnit = 'km/s'
         elif( CoordinateSystem == 'spherical' ):
             DataUnit = '1/s'
+
 elif( Field == 'PF_E'  ):
     Data = CoveringGrid['PF_E' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'erg/cm**3'
+
 elif( Field == 'CF_D'  ):
     Data = CoveringGrid['CF_D' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**3'
+
 elif( Field == 'CF_S1' ):
     Data = CoveringGrid['CF_S1'].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**2/s'
+
 elif( Field == 'CF_S2' ):
     Data = CoveringGrid['CF_S2'].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**2/s'
+
 elif( Field == 'CF_S3' ):
     Data = CoveringGrid['CF_S3'].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'g/cm**2/s'
+
 elif( Field == 'CF_E'  ):
     Data = CoveringGrid['CF_E' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'erg/cm**3'
+
 elif( Field == 'AF_P'  ):
     Data = CoveringGrid['AF_P' ].to_ndarray()
     if( UsePhysicalUnits ):
         DataUnit = 'erg/cm**3'
+
+elif( Field == 'AF_Cs' ):
+    Data = CoveringGrid['AF_Cs'].to_ndarray()
+    if( UsePhysicalUnits ):
+        DataUnit = 'km/s'
+
 elif( Field == 'DF_Sh_X1'  ):
-    Data = CoveringGrid['DF_Sh_X1' ].to_ndarray()
+    Data = CoveringGrid['DF_Sh_X1'].to_ndarray()
+
 elif( Field == 'DF_Sh_X2'  ):
-    Data = CoveringGrid['DF_Sh_X2' ].to_ndarray()
+    Data = CoveringGrid['DF_Sh_X2'].to_ndarray()
+
 elif( Field == 'DF_Sh_X3'  ):
-    Data = CoveringGrid['DF_Sh_X3' ].to_ndarray()
-elif( Field == 'Entropy' ):
+    Data = CoveringGrid['DF_Sh_X3'].to_ndarray()
+
+# --- Derived Fields ---
+
+elif( Field == 'PolytropicConstant' ):
     PF_D  = CoveringGrid['PF_D' ].to_ndarray()
     AF_P  = CoveringGrid['AF_P' ].to_ndarray()
     AF_Gm = CoveringGrid['AF_Gm'].to_ndarray()
@@ -206,6 +235,7 @@ elif( Field == 'Entropy' ):
         else:
             DataUnit = 'erg/cm**3/(g/cm**3)**({:}/3)'.format( \
                          int( 3 * AF_Gm[0][0][0] ) )
+
 elif( Field == 'Vorticity' ):
 
     dX1 = ( xH[0].to_ndarray() - xL[0].to_ndarray() ) / nX[0]
@@ -260,10 +290,17 @@ elif( Field == 'Vorticity' ):
 
     if( UsePhysicalUnits ):
         DataUnit = '1/s'
+else:
+
+    print( 'Invalid field: {:}'.format( Field ) )
+    exit( 'Exiting...' )
 
 if  ( nDims == 1 ):
 
-    x = np.linspace( xL[0].to_ndarray(), xH[0].to_ndarray(), nX[0] )
+    dX1 = ( xH[0].to_ndarray() - xL[0].to_ndarray() ) / nX[0]
+
+    x = np.linspace( xL[0].to_ndarray() + 0.5 * dX1, \
+                     xH[0].to_ndarray() - 0.5 * dX1, nX[0] )
 
     plt.plot( x, Data[:,0,0], 'k-' )
     if( UseLogScale ): plt.yscale( 'log' )
@@ -273,9 +310,7 @@ if  ( nDims == 1 ):
     plt.show()
     plt.close()
 
-    if( MakeMovie ):
-        print( 'Making a movie...' )
-        from matplotlib import animation
+    if( MakeDataFile ):
 
         Overwrite = True
         if( isfile( DataFileName ) ):
@@ -304,7 +339,7 @@ if  ( nDims == 1 ):
                         dims            = nX * 2**MaxLevel, \
                         num_ghost_zones = nX[0] )
 
-                if( Field == 'Entropy' ):
+                if( Field == 'PolytropicConstant' ):
 
                     AF_P  = CoveringGrid['AF_P' ].to_ndarray()[:,0,0]
                     AF_Gm = CoveringGrid['AF_Gm'].to_ndarray()[:,0,0]
@@ -320,7 +355,16 @@ if  ( nDims == 1 ):
             np.savetxt( DataFileName, Data )
             np.savetxt( TimeFileName, Time )
 
-        Data = np.loadtxt( DataFileName, skiprows=1 )
+    if( MakeMovie ):
+
+        from matplotlib import animation
+
+        if( not isfile( DataFileName ) ):
+
+            print( 'File: {:} does not exist.'.format( DataFileName ) )
+            exit( 'Exiting...' )
+
+        Data = np.loadtxt( DataFileName, skiprows = 1 )
         Time = np.loadtxt( TimeFileName )
 
         fig, ax = plt.subplots()
@@ -356,7 +400,7 @@ if  ( nDims == 1 ):
                                         init_func = InitializeFrame, \
                                         frames = FileArray.shape[0], \
                                         interval = 200, blit = True )
-        anim.save( Field + '.mp4' )
+        anim.save( '{:}_Movie.mp4'.format( ID ) )
 
     """
     # Plot slices from 'Data' file, created with MakeMovie script above
@@ -444,8 +488,7 @@ elif( nDims == 2 ):
     slc.save( ProblemName + '_' + PlotFileBaseName + '_' + Field \
                 + '_{:}.png'.format( File[-8:] ) )
 
-    if( MakeMovie ):
-        from matplotlib import animation
+    if( MakeDataFile ):
 
         Overwrite = True
         if( isfile( DataFileName ) ):
@@ -491,69 +534,79 @@ elif( nDims == 2 ):
 
             np.savetxt( TimeFileName, Time )
 
-        Data = np.loadtxt( DataFileName ).reshape( \
-                                            (FileArray.shape[0],nX[0],nX[1]) )
-        Time = np.loadtxt( TimeFileName )
+        if( MakeMovie ):
 
-        fig = plt.figure()
-        def f(t):
-            return Data[t].T
+            from matplotlib import animation
 
-        PlotTranspose = False
-        if( PlotTranspose ):
-            fig.suptitle( '|{:}-{:}.T|'.format \
-                          ( Field, Field ), \
-                          fontsize = 20 )
+            if( not isfile( DataFileName ) ):
+
+                print( 'File: {:} does not exist.'.format( DataFileName ) )
+                exit( 'Exiting...' )
+
+            Data \
+              = np.loadtxt( DataFileName ).reshape( \
+                  (FileArray.shape[0],nX[0],nX[1]) )
+            Time = np.loadtxt( TimeFileName )
+
+            fig = plt.figure()
             def f(t):
-                return np.abs( Data[t] - Data[t].T )
+                return Data[t].T
 
-        if( UseLogScale ):
-            from matplotlib.colors import LogNorm
-            vmin = min( +np.inf, np.min( np.abs( Data ) ) )
-            vmax = max( -np.inf, np.max( np.abs( Data ) ) )
+            PlotTranspose = False
+            if( PlotTranspose ):
+                fig.suptitle( '|{:}-{:}.T|'.format \
+                              ( Field, Field ), \
+                              fontsize = 20 )
+                def f(t):
+                    return np.abs( Data[t] - Data[t].T )
 
-            im = plt.imshow( np.abs(f(0)), cmap = cmap, animated = True, \
-                             vmin = vmin, vmax = vmax, \
-                             extent = [ xL[0], xH[0], xL[1], xH[1] ], \
-                             aspect = 'equal', \
-                             origin = 'lower', norm = LogNorm() )
-        else:
-            im = plt.imshow( f(0), \
-                             cmap = cmap, \
-                             animated = True, \
-                             vmin = np.min(Data), vmax = np.max(Data), \
-                             extent = [ xL[0], xH[0], xL[1], xH[1] ], \
-                             aspect = 'equal', \
-                             origin = 'lower'  )
+            if( UseLogScale ):
+                from matplotlib.colors import LogNorm
+                vmin = min( +np.inf, np.min( np.abs( Data ) ) )
+                vmax = max( -np.inf, np.max( np.abs( Data ) ) )
 
-        plt.colorbar(im)
+                im = plt.imshow( np.abs(f(0)), cmap = cmap, animated = True, \
+                                 vmin = vmin, vmax = vmax, \
+                                 extent = [ xL[0], xH[0], xL[1], xH[1] ], \
+                                 aspect = 'equal', \
+                                 origin = 'lower', norm = LogNorm() )
+            else:
+                im = plt.imshow( f(0), \
+                                 cmap = cmap, \
+                                 animated = True, \
+                                 vmin = np.min(Data), vmax = np.max(Data), \
+                                 extent = [ xL[0], xH[0], xL[1], xH[1] ], \
+                                 aspect = 'equal', \
+                                 origin = 'lower'  )
 
-        Width  = xH[0] - xL[0]
-        Height = xH[1] - xL[1]
+            plt.colorbar(im)
 
-        time_text = plt.text( xL[0] + 0.5 * Width, xL[1] + 0.9 * Height, '' )
+            Width  = xH[0] - xL[0]
+            Height = xH[1] - xL[1]
 
-        if( UseLogScale ):
-            def UpdateFrame(t):
-                im.set_array( np.abs(f(t)) )
-                time_text.set_text( 'Time = {:.3e} {:}'.format \
-                  ( Time[t], TimeUnit ) )
-                return im,
-        else:
-            def UpdateFrame(t):
-                im.set_array( f(t) )
-                time_text.set_text( 'Time = {:.3e} {:}'.format \
-                  ( Time[t], TimeUnit ) )
-                return im,
+            time_text \
+              = plt.text( xL[0] + 0.5 * Width, xL[1] + 0.9 * Height, '' )
 
-        # Call the animator
-        anim = animation.FuncAnimation \
-                 ( fig, UpdateFrame, frames = FileArray.shape[0], \
-                   interval = 100, blit = True)
+            if( UseLogScale ):
+                def UpdateFrame(t):
+                    im.set_array( np.abs(f(t)) )
+                    time_text.set_text( 'Time = {:.3e} {:}'.format \
+                      ( Time[t], TimeUnit ) )
+                    return im,
+            else:
+                def UpdateFrame(t):
+                    im.set_array( f(t) )
+                    time_text.set_text( 'Time = {:.3e} {:}'.format \
+                      ( Time[t], TimeUnit ) )
+                    return im,
 
-        anim.save( '{:}_{:}.mp4'.format( ProblemName, Field ), \
-                   fps = 5 )
-        plt.close()
+            # Call the animator
+            anim = animation.FuncAnimation \
+                     ( fig, UpdateFrame, frames = FileArray.shape[0], \
+                       interval = 100, blit = True)
+
+            anim.save( '{:}_Movie.mp4'.format( ID ), fps = 5 )
+            plt.close()
 
     exit()
 
