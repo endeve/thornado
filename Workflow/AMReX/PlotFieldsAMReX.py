@@ -66,7 +66,7 @@ cmap = 'Purples'
 # Specify whether or not to make a datafile and/or movie
 MakeDataFile = False
 MakeMovie    = False
-ID = '{:}_{:}_{:}'.format( ProblemName, PlotFileBaseName, Field )
+ID = '{:}_{:}_{:}'.format( ProblemName, PlotFileBaseName[4:], Field )
 DataFileName = '{:}_MovieData.dat'.format( ID )
 TimeFileName = '{:}_MovieTime.dat'.format( ID )
 
