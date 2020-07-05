@@ -8,7 +8,7 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_TABLE
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
   USE UnitsModule, ONLY: &
-    AtomicMassUnit, Gram, Centimeter, MeV, Erg, Kelvin
+    AtomicMassUnit, Gram, Centimeter, MeV
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
