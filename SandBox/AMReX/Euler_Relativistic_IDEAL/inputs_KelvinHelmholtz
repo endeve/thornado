@@ -25,8 +25,8 @@ thornado.nStages = 3 # Number of SSP-RK stages for time integration
 
 thornado.CFL = 0.5 # CFL number
 
-thornado.bcX         = 00 00 00 # Boundary conditions
-geometry.is_periodic = 1  1  1  # Periodic BCs: 0 (no), 1 (yes)
+thornado.bcX         = 1 1 0 # Boundary conditions
+geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
 
 geometry.coord_sys = 0             # CARTESIAN
 geometry.prob_lo   = -0.5 -1.0 0.0 # Lower domain size
