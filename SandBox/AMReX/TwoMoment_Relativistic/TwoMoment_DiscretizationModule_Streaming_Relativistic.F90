@@ -924,6 +924,30 @@ CONTAINS
             iZ_B0(3):iZ_E0(3), &
             iZ_B0(4):iZ_E0(4))
     REAL(DP) :: &
+      dU0_dX0 &
+        (nDOFX, &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      dU1_dX0 &
+        (nDOFX, &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      dU2_dX0 &
+        (nDOFX, &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
+      dU3_dX0 &
+        (nDOFX, &
+         iZ_B0(2):iZ_E0(2), &
+         iZ_B0(3):iZ_E0(3), &
+         iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: &
       dU0_dX1 &
         (nDOFX, &
          iZ_B0(2):iZ_E0(2), &
@@ -1036,6 +1060,9 @@ CONTAINS
     IF (Verbose) THEN
        PRINT*, "      ComputeIncrement_ObserverCorrections"
     END IF
+
+    CALL ComputeWeakDerivatives_X0 &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU0_dX0, dU1_dX0, dU2_dX0, dU3_dX0, Verbose_Option = Verbose )
 
     CALL ComputeWeakDerivatives_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, dU0_dX1, dU1_dX1, dU2_dX1, dU3_dX1, Verbose_Option = Verbose )
@@ -1698,6 +1725,38 @@ CONTAINS
 
     RETURN
   END FUNCTION FaceVelocity_X3
+
+  SUBROUTINE ComputeWeakDerivatives_X0 &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, uCF, dU0_dX0, dU1_dX0, dU2_dX0, dU3_dX0, Verbose_Option  )
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)  :: &
+      GX (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      uCF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF)
+    REAL(DP), INTENT(out) :: &
+      dU0_dX0 &
+         (1:nDOFX, &
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), & 
+      dU1_dX0 &
+         (1:nDOFX, &
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+      dU2_dX0 &
+         (1:nDOFX, &
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+      dU3_dX0 &
+         (1:nDOFX, &
+          iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
+
+
+      dU0_dX0 = Zero  
+      dU1_dX0 = Zero
+      dU2_dX0 = Zero
+      dU3_dX0 = Zero
+
+  END SUBROUTINE ComputeWeakDerivatives_X0 
 
 
   SUBROUTINE ComputeWeakDerivatives_X1 &
