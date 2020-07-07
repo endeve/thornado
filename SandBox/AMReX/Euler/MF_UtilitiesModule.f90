@@ -50,8 +50,8 @@ MODULE MF_UtilitiesModule
     ComputePrimitive_Euler
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive
-  USE UnitsModule,          ONLY: &
-    Gram,
+  USE UnitsModule,           ONLY: &
+    Gram, &
     Centimeter
 
   ! --- Local Modules ---

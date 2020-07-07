@@ -219,8 +219,8 @@ PROGRAM main
 
   CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InputOutput )
 
-  IF( WriteOutputData ) &
-    CALL WriteRawDataToFile( GEOM, MF_uGF, MF_uCF )
+!!$  IF( WriteOutputData ) &
+!!$    CALL WriteRawDataToFile( GEOM, MF_uGF, MF_uCF )
 
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
