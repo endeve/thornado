@@ -1131,14 +1131,69 @@ CONTAINS
 
     CHARACTER(LEN=*), INTENT(in) :: RiemannProblemName
 
-    INTEGER       :: iX1, iX2, iX3
-    INTEGER       :: iNodeX, iNodeX1
-    REAL(DP)      :: X1
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1
+    REAL(DP) :: X1, XD
+
+    REAL(DP) :: LeftState(nPF), RightState(nPF)
 
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
-      '', 'Spherical Riemann Problem Name: ', &
+      '', 'Riemann Problem Name: ', &
         TRIM( RiemannProblemName )
+    WRITE(*,*)
+
+    SELECT CASE( TRIM( RiemannProblemName ) )
+
+      CASE( 'SphericalSod' )
+
+        XD = 1.0_DP
+
+        LeftState(iPF_D ) = 1.0_DP
+        LeftState(iPF_V1) = 0.0_DP
+        LeftState(iPF_V2) = 0.0_DP
+        LeftState(iPF_V3) = 0.0_DP
+        LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 0.125_DP
+        RightState(iPF_V1) = 0.0_DP
+        RightState(iPF_V2) = 0.0_DP
+        RightState(iPF_V3) = 0.0_DP
+        RightState(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
+
+      CASE DEFAULT
+
+        WRITE(*,*)
+        WRITE(*,'(A,A)') &
+          'Invalid choice for RiemannProblemName: ', RiemannProblemName
+        WRITE(*,'(A)') 'Valid choices:'
+        WRITE(*,'(A)') &
+          "  'SphericalSod' - &
+          Spherical Sod's shock tube"
+        WRITE(*,'(A)') 'Stopping...'
+        STOP
+
+    END SELECT
+
+    WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
+    WRITE(*,*)
+    WRITE(*,'(6x,A,F8.6)') 'XD = ', XD
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'Right State:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', RightState(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', RightState(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', RightState(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', RightState(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', RightState(iPF_E )
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'Left State:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', LeftState(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', LeftState(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', LeftState(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', LeftState(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', LeftState(iPF_E )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1154,43 +1209,27 @@ CONTAINS
 
           CASE( 'SphericalSod' )
 
-            IF( X1 <= One )THEN
+            IF( X1 .LE. XD )THEN
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = LeftState(iPF_D )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = LeftState(iPF_V1)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = LeftState(iPF_V2)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = LeftState(iPF_V3)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = LeftState(iPF_E )
 
             ELSE
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.1_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = RightState(iPF_D )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = RightState(iPF_V1)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = RightState(iPF_V2)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = RightState(iPF_V3)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = RightState(iPF_E )
 
             END IF
 
-         CASE DEFAULT
+        END SELECT
 
-            WRITE(*,*)
-            WRITE(*,*) &
-              'Invalid choice for RiemannProblemName: ', &
-              RiemannProblemName
-            WRITE(*,*) 'Valid choices:'
-            WRITE(*,*) &
-              "'SphericalSod' - ", &
-              "Spherical Sod's shock tube"
-            STOP
-
-          END SELECT
-
-        END DO
+      END DO
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
