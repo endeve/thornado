@@ -602,8 +602,8 @@ CONTAINS
 
             uPF(iNodeX,iX1,iX2,iX3,iPF_D)  &
               = One + 0.1_DP * SIN( SQRT( Two ) * TwoPi * ( X1 + X2 ) )
-            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP * COS( Pi / Four )
-            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.1_DP * SIN( Pi / Four )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP / SQRT( Two )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.1_DP / SQRT( Two )
             uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
             uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
             uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &

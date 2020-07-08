@@ -133,7 +133,7 @@ PROGRAM ApplicationDriver
   ! --- Yahil Collapse ---
   REAL(DP) :: CentralDensity, CentralPressure, CoreRadius, CollapseTime
 
-  LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
+  LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
   REAL(DP) :: Timer_Evolution
 
@@ -145,9 +145,9 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-!  ProgramName = 'Advection'
+  ProgramName = 'Advection'
 !  ProgramName = 'Advection2D'
-  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2D'
 !  ProgramName = 'RiemannProblemSpherical'
 !  ProgramName = 'SedovTaylorBlastWave'
@@ -174,7 +174,7 @@ PROGRAM ApplicationDriver
 
     CASE( 'Advection2D' )
 
-      AdvectionProfile = 'SineWaveX1'
+      AdvectionProfile = 'SineWaveX1X2'
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
@@ -184,7 +184,7 @@ PROGRAM ApplicationDriver
 
       nX = [ 32, 32, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      xR = [ One / SQRT( Two ), One / SQRT( Two ), 1.0_DP ]
 
     CASE( 'RiemannProblem' )
 
@@ -286,7 +286,7 @@ PROGRAM ApplicationDriver
 
       Gamma = 5.0_DP / 3.0_DP
 
-      nX = [ 128, 1, 1 ]
+      nX = [ 256, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 2.0_DP, Pi, TwoPi ]
 
@@ -423,35 +423,39 @@ PROGRAM ApplicationDriver
 
   END SELECT
 
+  ! --- DG ---
+
   nNodes = 3
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
-  BetaTVD = 1.75d0
-  BetaTVB = 0.0d0
-
-  UseSlopeLimiter           = .TRUE.
-  SlopeTolerance            = 1.0d-6
-  UseCharacteristicLimiting = .TRUE.
-
-  UseTroubledCellIndicator  = .TRUE.
-
-  SlopeLimiterMethod        = 'TVD'
-
-  LimiterThresholdParameter = 0.01_DP
-
-  UseConservativeCorrection = .TRUE.
-
-  UsePositivityLimiter = .TRUE.
-  Min_1 = 1.0d-13
-  Min_2 = 1.0d-13
+  ! --- Time Stepping ---
 
   nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
-  ! --- Cockburn & Shu, (2001), JSC, 16, 173 ---
-  CFL = 0.5_DP
+  CFL = 0.5_DP ! Cockburn & Shu, (2001), JSC, 16, 173
+
+  ! --- Slope Limiter ---
+
+  UseSlopeLimiter           = .TRUE.
+  SlopeLimiterMethod        = 'TVD'
+  BetaTVD                   = 1.75d0
+  BetaTVB                   = 0.0d0
+  SlopeTolerance            = 0.0d-6
+  UseCharacteristicLimiting = .FALSE.
+  UseTroubledCellIndicator  = .FALSE.
+  LimiterThresholdParameter = 0.03_DP
+  UseConservativeCorrection = .TRUE.
+
+  ! --- Positivity Limiter ---
+
+  UsePositivityLimiter = .TRUE.
+  Min_1                = 1.0d-13
+  Min_2                = 1.0d-13
+
+  ! === End of User Input ===
 
   CALL InitializeProgram &
          ( ProgramName_Option &
