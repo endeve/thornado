@@ -35,7 +35,7 @@ thornado.PlotFileBaseName = "plt_MPNS1.4_Rs180_Mdot0.3"
 
 geometry.coord_sys   = 2     # SPHERICAL
 geometry.prob_lo     = 40.0  0.0               0.0               # Lower domain size [km,rad,rad]
-geometry.prob_hi     = 360.0 3.141592653589793 6.283185307179586 # Upper domain size [km,rad,rad]
+geometry.prob_hi     = 360.0 3.1415926535897931 6.2831853071795862 # Upper domain size [km,rad,rad]
 geometry.is_periodic = 0 0 1 # Periodicity. 0 (no), 1 (yes)
 
 amr.n_cell            = 256 016 001 # Number of cells in each dimension

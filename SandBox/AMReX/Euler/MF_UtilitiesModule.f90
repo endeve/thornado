@@ -3,31 +3,31 @@ MODULE MF_UtilitiesModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,      ONLY: &
+  USE amrex_fort_module,                 ONLY: &
     AR => amrex_real
-  USE amrex_box_module,       ONLY: &
+  USE amrex_box_module,                  ONLY: &
     amrex_box
-  USE amrex_parallel_module,  ONLY: &
+  USE amrex_parallel_module,             ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum
-  USE amrex_geometry_module,  ONLY: &
+  USE amrex_geometry_module,             ONLY: &
     amrex_geometry
-  USE amrex_multifab_module,  ONLY: &
+  USE amrex_multifab_module,             ONLY: &
     amrex_multifab, &
-    amrex_mfiter, &
+    amrex_mfiter,   &
     amrex_mfiter_build
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,    ONLY: &
+  USE ProgramHeaderModule,               ONLY: &
     nDOFX, &
     nNodesX
-  USE GeometryFieldsModule,   ONLY: &
+  USE GeometryFieldsModule,              ONLY: &
     nGF,          &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
-  USE FluidFieldsModule,      ONLY: &
+  USE FluidFieldsModule,                 ONLY: &
     nCF,     &
     iCF_D,   &
     iCF_S1,  &
@@ -46,21 +46,21 @@ MODULE MF_UtilitiesModule
     iDF_TCI, &
     nAF,     &
     iAF_P
-  USE Euler_UtilitiesModule, ONLY: &
+  USE Euler_UtilitiesModule,             ONLY: &
     ComputePrimitive_Euler
-  USE EquationOfStateModule, ONLY: &
+  USE EquationOfStateModule,             ONLY: &
     ComputePressureFromPrimitive
-  USE UnitsModule,           ONLY: &
+  USE UnitsModule,                       ONLY: &
     Gram, &
     Centimeter
 
   ! --- Local Modules ---
 
-  USE MyAmrModule,                       ONLY: &
+  USE InputParsingModule,                ONLY: &
     nLevels, &
     nX,      &
     swX,     &
-    OutputDataFileName,usephysicalunits
+    OutputDataFileName
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap, &

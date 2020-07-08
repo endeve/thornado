@@ -2,26 +2,26 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
+  USE amrex_fort_module,       ONLY: &
     AR => amrex_real
-  USE amrex_box_module, ONLY: &
+  USE amrex_box_module,        ONLY: &
     amrex_box
-  USE amrex_multifab_module, ONLY: &
+  USE amrex_multifab_module,   ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
-  USE amrex_parallel_module, ONLY: &
+  USE amrex_parallel_module,   ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_max
-  USE amrex_parmparse_module, ONLY: &
+  USE amrex_parmparse_module,  ONLY: &
     amrex_parmparse,       &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule, ONLY: &
+  USE ProgramHeaderModule,     ONLY: &
     nDOFX,   &
     nX,      &
     nNodesX, &
@@ -29,19 +29,19 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     nDimsX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
-  USE MeshModule, ONLY: &
+  USE MeshModule,              ONLY: &
     MeshType,    &
     CreateMesh,  &
     DestroyMesh, &
     NodeCoordinate
-  USE GeometryFieldsModule, ONLY: &
+  USE GeometryFieldsModule,    ONLY: &
     nGF,          &
     iGF_Alpha,    &
     iGF_Psi,      &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
-  USE FluidFieldsModule, ONLY: &
+  USE FluidFieldsModule,       ONLY: &
     nCF,    &
     iCF_D,  &
     iCF_S1, &
@@ -58,11 +58,11 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     iCF_Ne, &
     nAF,    &
     iAF_P
-  USE Euler_UtilitiesModule, ONLY: &
+  USE Euler_UtilitiesModule,   ONLY: &
     ComputeConserved_Euler
-  USE EquationOfStateModule, ONLY: &
+  USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive
-  USE UnitsModule, ONLY: &
+  USE UnitsModule,             ONLY: &
     Kilometer,    &
     Second,       &
     SolarMass,    &
@@ -71,14 +71,14 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     Erg,          &
     SpeedOfLight, &
     GravitationalConstant
-  USE UtilitiesModule, ONLY: &
+  USE UtilitiesModule,         ONLY: &
     NodeNumberX
-  USE Euler_ErrorModule, ONLY: &
+  USE Euler_ErrorModule,       ONLY: &
     DescribeError_Euler
 
   ! --- Local Modules ---
 
-  USE MyAmrModule, ONLY: &
+  USE InputParsingModule,      ONLY: &
     nLevels,            &
     xL,                 &
     xR,                 &

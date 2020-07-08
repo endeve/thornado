@@ -2,11 +2,12 @@ MODULE FinalizationModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_amr_module,     ONLY: &
-    amrex_geometry,         &
-    amrex_geometry_destroy, &
+  USE amrex_init_module,                ONLY: &
     amrex_finalize
-  USE amrex_amrcore_module, ONLY: &
+  USE amrex_geometry_module,            ONLY: &
+    amrex_geometry, &
+    amrex_geometry_destroy
+  USE amrex_amrcore_module,             ONLY: &
     amrex_amrcore_finalize
 
   ! --- thornado Modules ---
@@ -16,7 +17,7 @@ MODULE FinalizationModule
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     FinalizeReferenceElementX_Lagrange
   USE MeshModule,                       ONLY: &
-    MeshType, &
+    MeshX,    &
     DestroyMesh
   USE EquationOfStateModule,            ONLY: &
     FinalizeEquationOfState
@@ -27,12 +28,12 @@ MODULE FinalizationModule
 
   ! --- Local Modules ---
 
-  USE MyAmrModule,                 ONLY: &
+  USE InputParsingModule,               ONLY: &
     nLevels, &
-    MyAmrFinalize
-  USE MF_TimeSteppingModule_SSPRK, ONLY: &
+    FinalizeParameters
+  USE MF_TimeSteppingModule_SSPRK,      ONLY: &
     MF_FinalizeFluid_SSPRK
-  USE TimersModule_AMReX_Euler,    ONLY: &
+  USE TimersModule_AMReX_Euler,         ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler,  &
     Timer_AMReX_Euler_Finalize
@@ -46,10 +47,9 @@ MODULE FinalizationModule
 CONTAINS
 
 
-  SUBROUTINE FinalizeProgram( GEOM, MeshX )
+  SUBROUTINE FinalizeProgram( GEOM )
 
     TYPE(amrex_geometry),  INTENT(inout) :: GEOM(0:nLevels-1)
-    TYPE(MeshType),        INTENT(inout) :: MeshX(1:3)
 
     INTEGER :: iLevel, iDim
 
@@ -78,7 +78,7 @@ CONTAINS
 
     END DO
 
-    CALL MyAmrFinalize
+    CALL FinalizeParameters
 
     CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_Finalize )
 

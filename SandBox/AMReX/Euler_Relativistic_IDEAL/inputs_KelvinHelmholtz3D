@@ -57,4 +57,5 @@ PL.Min_1                = 1.0e-13
 PL.Min_2                = 1.0e-13
 
 # Equation of state parameters
+#EoS.Gamma = 1.6666666666666667 # Ideal Gas EoS Gamma
 EoS.Gamma = 1.3333333333333333 # Ideal Gas EoS Gamma

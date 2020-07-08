@@ -2,18 +2,18 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,      ONLY: &
+  USE amrex_fort_module,       ONLY: &
     AR => amrex_real
-  USE amrex_box_module,       ONLY: &
+  USE amrex_box_module,        ONLY: &
     amrex_box
-  USE amrex_multifab_module,  ONLY: &
+  USE amrex_multifab_module,   ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
-  USE amrex_parallel_module,  ONLY: &
+  USE amrex_parallel_module,   ONLY: &
     amrex_parallel_ioprocessor
-  USE amrex_parmparse_module, ONLY: &
+  USE amrex_parmparse_module,  ONLY: &
     amrex_parmparse,       &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
@@ -71,7 +71,7 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
 
   ! --- Local Modules ---
 
-  USE MyAmrModule, ONLY: &
+  USE InputParsingModule,      ONLY: &
     nLevels, &
     xL,      &
     xR,      &

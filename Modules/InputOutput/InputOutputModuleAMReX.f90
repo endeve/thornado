@@ -3,39 +3,39 @@ MODULE InputOutputModuleAMReX
   ! --- AMReX Modules ---
 
   USE ISO_C_BINDING
-  USE amrex_fort_module,      ONLY: &
+  USE amrex_fort_module,       ONLY: &
     AR => amrex_real, &
     amrex_spacedim
-  USE amrex_plotfile_module,  ONLY: &
+  USE amrex_plotfile_module,   ONLY: &
     amrex_write_plotfile
-  USE amrex_string_module,    ONLY: &
+  USE amrex_string_module,     ONLY: &
     amrex_string, &
     amrex_string_build
-  USE amrex_box_module,       ONLY: &
+  USE amrex_box_module,        ONLY: &
     amrex_box
-  USE amrex_boxarray_module,  ONLY: &
+  USE amrex_boxarray_module,   ONLY: &
     amrex_boxarray,       &
     amrex_boxarray_build, &
     amrex_boxarray_destroy
-  USE amrex_distromap_module, ONLY: &
+  USE amrex_distromap_module,  ONLY: &
     amrex_distromap,       &
     amrex_distromap_build, &
     amrex_distromap_destroy
-  USE amrex_multifab_module,  ONLY: &
+  USE amrex_multifab_module,   ONLY: &
     amrex_multifab,         &
     amrex_multifab_build,   &
     amrex_multifab_destroy, &
     amrex_mfiter,           &
     amrex_mfiter_build,     &
     amrex_mfiter_destroy
-  USE amrex_geometry_module,  ONLY: &
+  USE amrex_geometry_module,   ONLY: &
     amrex_geometry,       &
     amrex_geometry_build, &
     amrex_geometry_destroy
-  USE amrex_amrcore_module,   ONLY: &
+  USE amrex_amrcore_module,    ONLY: &
     amrex_get_amrcore, &
     amrex_ref_ratio
-  USE amrex_parallel_module,  ONLY: &
+  USE amrex_parallel_module,   ONLY: &
     amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
@@ -68,12 +68,12 @@ MODULE InputOutputModuleAMReX
     UnitsDisplay
 
   ! --- Local Modules ---
-  USE MyAmrModule,        ONLY: &
+  USE InputParsingModule,      ONLY: &
     nLevels,          &
     MaxGridSizeX,     &
     PlotFileBaseName, &
     nX
-  USE MyAmrDataModule,    ONLY: &
+  USE MF_FieldsModule,         ONLY: &
     MF_uGF, &
     MF_uCF, &
     MF_uPF, &
@@ -163,7 +163,7 @@ CONTAINS
 
   SUBROUTINE ReadCheckpointFile( iChkFile )
 
-    USE MyAmrModule
+    USE InputParsingModule
 
     IMPLICIT NONE
 

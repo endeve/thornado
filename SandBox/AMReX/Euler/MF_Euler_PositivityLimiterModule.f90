@@ -2,11 +2,11 @@ MODULE MF_Euler_PositivityLimiterModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,     ONLY: &
+  USE amrex_fort_module,             ONLY: &
     AR => amrex_real
-  USE amrex_box_module,      ONLY: &
+  USE amrex_box_module,              ONLY: &
     amrex_box
-  USE amrex_multifab_module, ONLY: &
+  USE amrex_multifab_module,         ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
     amrex_mfiter_build, &
@@ -15,7 +15,8 @@ MODULE MF_Euler_PositivityLimiterModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule,           ONLY: &
-    swX, nDOFX
+    swX, &
+    nDOFX
   USE FluidFieldsModule,             ONLY: &
     nCF, &
     nDF
@@ -26,14 +27,14 @@ MODULE MF_Euler_PositivityLimiterModule
 
   ! --- Local Modules ---
 
-  USE MF_UtilitiesModule,       ONLY: &
+  USE MF_UtilitiesModule,            ONLY: &
     amrex2thornado_Euler, &
     thornado2amrex_Euler
-  USE MyAmrModule,              ONLY: &
+  USE InputParsingModule,            ONLY: &
     nLevels,              &
     UsePositivityLimiter, &
     DEBUG
-  USE TimersModule_AMReX_Euler, ONLY: &
+  USE TimersModule_AMReX_Euler,      ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler,  &
     Timer_AMReX_Euler_DataTransfer

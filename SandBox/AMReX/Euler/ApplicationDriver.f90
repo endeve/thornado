@@ -1,4 +1,4 @@
-PROGRAM main
+PROGRAM ApplicationDriver
 
   ! --- AMReX Modules ---
 
@@ -10,14 +10,10 @@ PROGRAM main
 
   ! --- thornado Modules ---
 
-  USE MeshModule,                       ONLY: &
-    MeshX, &
-    DestroyMesh
   USE InputOutputModuleAMReX,           ONLY: &
     WriteFieldsAMReX_Checkpoint, &
     WriteFieldsAMReX_PlotFile
   USE UnitsModule,                      ONLY: &
-    Millisecond, &
     UnitsDisplay
   USE TimersModule_Euler,               ONLY: &
     TimeIt_Euler,           &
@@ -29,17 +25,13 @@ PROGRAM main
   USE MF_Euler_UtilitiesModule,         ONLY: &
     MF_ComputeFromConserved, &
     MF_ComputeTimeStep
-  USE MF_Euler_SlopeLimiterModule,      ONLY: &
-    MF_ApplySlopeLimiter_Euler
-  USE MF_Euler_PositivityLimiterModule, ONLY: &
-    MF_ApplyPositivityLimiter_Euler
   USE MF_Euler_dgDiscretizationModule,  ONLY: &
     MF_ComputeIncrement_Euler
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
     MF_UpdateFluid_SSPRK
   USE FinalizationModule,               ONLY: &
     FinalizeProgram
-  USE MyAmrDataModule,                  ONLY: &
+  USE MF_FieldsModule,                  ONLY: &
     MF_uGF, &
     MF_uCF, &
     MF_uPF, &
@@ -49,7 +41,7 @@ PROGRAM main
     InitializeProgram, &
     chk,               &
     wrt
-  USE MyAmrModule,                      ONLY: &
+  USE InputParsingModule,               ONLY: &
     nLevels,         &
     StepNo,          &
     t,               &
@@ -65,8 +57,8 @@ PROGRAM main
     iCycleChk,       &
     WriteOutputData, &
     GEOM
-  USE MF_UtilitiesModule,               ONLY: &
-    WriteRawDataToFile
+!!$  USE MF_UtilitiesModule,               ONLY: &
+!!$    WriteRawDataToFile
   USE TimersModule_AMReX_Euler,         ONLY: &
     TimeIt_AMReX_Euler,            &
     InitializeTimers_AMReX_Euler,  &
@@ -75,6 +67,8 @@ PROGRAM main
     TimersStop_AMReX_Euler,        &
     Timer_AMReX_Euler_InputOutput, &
     Timer_AMReX_Euler_MPI_Barrier
+
+use hdf5
 
   IMPLICIT NONE
 
@@ -248,6 +242,6 @@ PROGRAM main
 
   CALL FinalizeTimers_AMReX_Euler
 
-  CALL FinalizeProgram( GEOM, MeshX )
+  CALL FinalizeProgram( GEOM )
 
-END PROGRAM main
+END PROGRAM ApplicationDriver

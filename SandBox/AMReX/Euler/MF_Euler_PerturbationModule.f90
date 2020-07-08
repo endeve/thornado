@@ -38,7 +38,7 @@ MODULE MF_PerturbationModule
   USE MF_UtilitiesModule,                ONLY: &
     amrex2thornado_Euler, &
     thornado2amrex_Euler
-  USE MyAmrModule,                       ONLY: &
+  USE InputParsingModule,                ONLY: &
     nLevels,          &
     DEBUG,            &
     UsePhysicalUnits, &

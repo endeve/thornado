@@ -23,7 +23,7 @@ thornado.SolveGravity = 0
 
 geometry.coord_sys   = 1              # CYLINDRICAL
 geometry.prob_lo     = 0.0  -10.0 0.0 # Lower domain size
-geometry.prob_hi     = 10.0  10.0 6.283185307179586 # Upper domain size
+geometry.prob_hi     = 10.0  10.0 6.2831853071795862 # Upper domain size
 geometry.is_periodic = 00 00 01       # Periodicity. 0 (no), 1 (yes)
 
 amr.n_cell            = 100 200 01 # Number of cells in each dimension

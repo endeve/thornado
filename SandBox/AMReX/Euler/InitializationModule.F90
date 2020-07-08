@@ -5,7 +5,7 @@ MODULE InitializationModule
   USE amrex_fort_module,      ONLY: &
     AR => amrex_real, &
     amrex_spacedim
-  USE amrex_amr_module,       ONLY: &
+  USE amrex_init_module,      ONLY: &
     amrex_init
   USE amrex_amrcore_module,   ONLY: &
     amrex_amrcore_init
@@ -105,13 +105,13 @@ MODULE InitializationModule
     MF_InitializeFields
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
     MF_InitializeFluid_SSPRK
-  USE MyAmrDataModule,                  ONLY: &
+  USE MF_FieldsModule,                  ONLY: &
     MF_uGF, &
     MF_uCF, &
     MF_uPF, &
     MF_uAF, &
     MF_uDF
-  USE MyAmrModule,                      ONLY: &
+  USE InputParsingModule,               ONLY: &
     t_end,                     &
     t,                         &
     dt,                        &
@@ -152,7 +152,7 @@ MODULE InitializationModule
     BA,                        &
     DM,                        &
     GEOM,                      &
-    MyAmrInit
+    InitializeParameters
   USE TimersModule_AMReX_Euler, ONLY: &
     TimersStart_AMReX_Euler,      &
     TimersStop_AMReX_Euler,       &
@@ -194,7 +194,7 @@ CONTAINS
 
     ! --- Parse parameter file ---
 
-    CALL MyAmrInit
+    CALL InitializeParameters
 
     IF( iRestart .LT. 0 )THEN
 
@@ -358,6 +358,28 @@ CONTAINS
     CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
                               Verbose_Option = amrex_parallel_ioprocessor() )
 
+    CALL InitializeSlopeLimiter_Euler &
+           ( BetaTVD_Option &
+               = BetaTVD, &
+             BetaTVB_Option &
+               = BetaTVB, &
+             SlopeTolerance_Option &
+               = SlopeTolerance, &
+             UseSlopeLimiter_Option &
+               = UseSlopeLimiter, &
+             UseCharacteristicLimiting_Option &
+               = UseCharacteristicLimiting, &
+             UseTroubledCellIndicator_Option &
+               = UseTroubledCellIndicator, &
+             SlopeLimiterMethod_Option &
+               = SlopeLimiterMethod, &
+             LimiterThresholdParameter_Option &
+               = LimiterThresholdParameter, &
+             UseConservativeCorrection_Option &
+               = UseConservativeCorrection, &
+             Verbose_Option &
+               = amrex_parallel_ioprocessor() )
+
     IF( EquationOfState .EQ. 'TABLE' )THEN
 
       CALL InitializeEquationOfState &
@@ -388,28 +410,6 @@ CONTAINS
                Min_2_Option = Min_2 )
 
     END IF
-
-    CALL InitializeSlopeLimiter_Euler &
-           ( BetaTVD_Option &
-               = BetaTVD, &
-             BetaTVB_Option &
-               = BetaTVB, &
-             SlopeTolerance_Option &
-               = SlopeTolerance, &
-             UseSlopeLimiter_Option &
-               = UseSlopeLimiter, &
-             UseCharacteristicLimiting_Option &
-               = UseCharacteristicLimiting, &
-             UseTroubledCellIndicator_Option &
-               = UseTroubledCellIndicator, &
-             SlopeLimiterMethod_Option &
-               = SlopeLimiterMethod, &
-             LimiterThresholdParameter_Option &
-               = LimiterThresholdParameter, &
-             UseConservativeCorrection_Option &
-               = UseConservativeCorrection, &
-             Verbose_Option &
-               = amrex_parallel_ioprocessor() )
 
     CALL MF_InitializeFluid_SSPRK &
            ( nStages, BA, DM, &

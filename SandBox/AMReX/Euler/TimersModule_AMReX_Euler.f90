@@ -1,5 +1,7 @@
 MODULE TimersModule_AMReX_Euler
 
+  ! --- AMReX Modules ---
+
   USE amrex_fort_module,     ONLY: &
     AR => amrex_real
   USE amrex_parallel_module, ONLY: &
@@ -8,7 +10,10 @@ MODULE TimersModule_AMReX_Euler
     amrex_parallel_reduce_max,   &
     amrex_parallel_reduce_sum,   &
     amrex_parallel_nprocs
-  USE MyAmrModule,           ONLY: &
+
+  ! --- Local Modules ---
+
+  USE InputParsingModule,    ONLY: &
     nLevels
 
   IMPLICIT NONE
