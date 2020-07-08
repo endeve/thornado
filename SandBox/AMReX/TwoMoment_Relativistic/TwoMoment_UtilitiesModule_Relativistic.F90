@@ -337,7 +337,8 @@ CONTAINS
 
   SUBROUTINE ComputeEddingtonTensorComponents_dd &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
+      k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
 
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
@@ -346,7 +347,7 @@ CONTAINS
 
     REAL(DP) :: FF, EF, a, b, DT
     REAL(DP) :: h_d_1, h_d_2, h_d_3, I_d_1, I_d_2, I_d_3
-    REAL(DP) :: B_d_1, B_d_2, B_d_3
+    REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3
     REAL(DP) :: u_d_1, u_d_2, u_d_3, W
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -359,6 +360,11 @@ CONTAINS
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
     B_d_3 = Gm_dd_33 * B_u_3
+
+    V_d_1 = Gm_dd_11 * V_u_1
+    V_d_2 = Gm_dd_22 * V_u_2
+    V_d_3 = Gm_dd_33 * V_u_3
+
 
     u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
     u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
@@ -390,9 +396,76 @@ CONTAINS
     k_dd_12 = a * u_d_1 * u_d_2 + b * h_d_1 * h_d_2
     k_dd_13 = a * u_d_1 * u_d_3 + b * h_d_1 * h_d_3
     k_dd_23 = a * u_d_2 * u_d_3 + b * h_d_2 * h_d_3
-
-
+    
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
+
+  SUBROUTINE ComputeEuuingtonTensorComponents_uu &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      k_uu_11, k_uu_12, k_uu_13, k_uu_22, k_uu_23, k_uu_33, &
+      k_uu_10, k_uu_20, k_uu_30, k_uu_00, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
+
+
+	    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
+	    REAL(DP), INTENT(out) :: &
+      k_uu_11, k_uu_12, k_uu_13, k_uu_22, k_uu_23, k_uu_33, k_uu_10, k_uu_20, k_uu_30, k_uu_00
+
+
+	    REAL(DP) :: FF, EF, a, b
+	    REAL(DP) :: h_u_1, h_u_2, h_u_3
+	    REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, V_0
+	    REAL(DP) :: u_u_1, u_u_2, u_u_3, W
+
+
+    FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                                  alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
+    EF = EddingtonFactor( D, FF )
+    W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
+               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_33 * V_u_3 * V_u_3) )
+   
+
+    V_d_1 = Gm_dd_11 * V_u_1
+    V_d_2 = Gm_dd_22 * V_u_2
+    V_d_3 = Gm_dd_33 * V_u_3
+
+    u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
+    u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
+    u_u_3 = W * ( V_u_2 - B_u_2 / alp ) 
+
+
+    h_u_1 = I_u_1 / ( FF * D )
+    h_u_2 = I_u_2 / ( FF * D )
+    h_u_3 = I_u_3 / ( FF * D )
+
+
+    a = Half * ( One - EF )
+    b = Half * ( Three * EF - One )
+   
+    ! --- Diagonal Euuington Tensor Components ---
+
+
+    k_uu_11 = a * ( Gm_dd_11 + u_u_1 * u_u_1 ) + b * h_u_1 * h_u_1
+    k_uu_22 = a * ( Gm_dd_22 + u_u_2 * u_u_2 ) + b * h_u_2 * h_u_2
+    k_uu_33 = a * ( Gm_dd_33 + u_u_3 * u_u_3 ) + b * h_u_3 * h_u_3
+    ! --- Off-Diagonal Euuington Tensor Components ---
+    k_uu_12 = a * u_u_1 * u_u_2 + b * h_u_1 * h_u_2
+    k_uu_13 = a * u_u_1 * u_u_3 + b * h_u_1 * h_u_3
+    k_uu_23 = a * u_u_2 * u_u_3 + b * h_u_2 * h_u_3
+
+
+
+    k_uu_10 = ( 1.0_DP/( 1.0_DP - V_0 / alp ) ) * ( V_d_1 * k_uu_11 + V_d_2 * k_uu_12 + V_d_3 * k_uu_13 ) / alp
+
+    k_uu_20 = ( 1.0_DP/( 1.0_DP - V_0 / alp ) ) * ( V_d_1 * k_uu_12 + V_d_2 * k_uu_22 + V_d_3 * k_uu_23 ) / alp
+    k_uu_30 = ( 1.0_DP/( 1.0_DP - V_0 / alp ) ) * ( V_d_1 * k_uu_13 + V_d_2 * k_uu_23 + V_d_3 * k_uu_33 ) / alp
+    
+    k_uu_00 =  ( 1.0_DP/( 1.0_DP - V_0 / alp )**2 ) *( ( V_d_1**2 * k_uu_11 + V_d_2**2 * k_uu_22 + V_d_3**2 * k_uu_33 ) &
+               + 2.0_DP * ( V_d_1 * V_d_2 * k_uu_12 + V_d_1 * V_d_3 * k_uu_13 + V_d_2 * V_d_3 * k_uu_23 ))/alp**2
+
+  END SUBROUTINE ComputeEuuingtonTensorComponents_uu
+
+
 
   SUBROUTINE ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -405,7 +478,7 @@ CONTAINS
 
     REAL(DP) :: FF, EF, a, b, DT
     REAL(DP) :: h_u_1, h_u_2, h_u_3, h_d_1, h_d_2, h_d_3, I_d_1, I_d_2, I_d_3
-    REAL(DP) :: B_d_1, B_d_2, B_d_3
+    REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, V_0
     REAL(DP) :: u_d_1, u_d_2, u_d_3, u_u_1, u_u_2, u_u_3, W
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -421,6 +494,12 @@ CONTAINS
     B_d_1 = Gm_dd_11 * B_u_1
     B_d_2 = Gm_dd_22 * B_u_2
     B_d_3 = Gm_dd_33 * B_u_3
+
+    V_d_1 = Gm_dd_11 * V_u_1
+    V_d_2 = Gm_dd_22 * V_u_2
+    V_d_3 = Gm_dd_33 * V_u_3
+
+    V_0 = B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3
 
     u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
     u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
