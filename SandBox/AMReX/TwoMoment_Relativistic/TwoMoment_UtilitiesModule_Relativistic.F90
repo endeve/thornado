@@ -13,6 +13,7 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
   PUBLIC :: ComputePrimitive_TwoMoment
   PUBLIC :: ComputeConserved_TwoMoment
   PUBLIC :: ComputeEddingtonTensorComponents_dd
+  PUBLIC :: ComputeEddingtonTensorComponents_uu
   PUBLIC :: ComputeEddingtonTensorComponents_ud
   PUBLIC :: ComputeHeatFluxTensorComponents_ddd_Lagrangian 
   PUBLIC :: ComputeHeatFluxTensorComponents_udd_Lagrangian
@@ -399,7 +400,7 @@ CONTAINS
     
   END SUBROUTINE ComputeEddingtonTensorComponents_dd
 
-  SUBROUTINE ComputeEuuingtonTensorComponents_uu &
+  SUBROUTINE ComputeEddingtonTensorComponents_uu &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       k_uu_11, k_uu_12, k_uu_13, k_uu_22, k_uu_23, k_uu_33, &
       k_uu_10, k_uu_20, k_uu_30, k_uu_00, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3  )
@@ -463,23 +464,25 @@ CONTAINS
     k_uu_00 =  ( 1.0_DP/( 1.0_DP - V_0 / alp )**2 ) *( ( V_d_1**2 * k_uu_11 + V_d_2**2 * k_uu_22 + V_d_3**2 * k_uu_33 ) &
                + 2.0_DP * ( V_d_1 * V_d_2 * k_uu_12 + V_d_1 * V_d_3 * k_uu_13 + V_d_2 * V_d_3 * k_uu_23 ))/alp**2
 
-  END SUBROUTINE ComputeEuuingtonTensorComponents_uu
+  END SUBROUTINE ComputeEddingtonTensorComponents_uu
 
 
 
   SUBROUTINE ComputeEddingtonTensorComponents_ud &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33  )
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3, &
+      k_ud_11, k_ud_12, k_ud_21, k_ud_13, k_ud_31, k_ud_22, k_ud_23, k_ud_32, k_ud_33, &
+      k_ud_10, k_ud_20, k_ud_30, k_ud_01, k_ud_02, k_ud_03,  k_ud_00 )
 
     REAL(DP), INTENT(in)  :: &
       D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
     REAL(DP), INTENT(out) :: &
-      k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33
-
+      k_ud_11, k_ud_12, k_ud_13, k_ud_22, k_ud_23, k_ud_33, k_ud_21, k_ud_31, k_ud_32, & 
+      k_ud_10, k_ud_20, k_ud_30, k_ud_01, k_ud_02, k_ud_03,  k_ud_00 
     REAL(DP) :: FF, EF, a, b, DT
     REAL(DP) :: h_u_1, h_u_2, h_u_3, h_d_1, h_d_2, h_d_3, I_d_1, I_d_2, I_d_3
     REAL(DP) :: B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, V_0
-    REAL(DP) :: u_d_1, u_d_2, u_d_3, u_u_1, u_u_2, u_u_3, W
+    REAL(DP) :: u_d_1, u_d_2, u_d_3, u_u_1, u_u_2, u_u_3, W, x, y
 
     FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                                   alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
@@ -541,6 +544,26 @@ CONTAINS
     k_ud_12 = a * u_u_1 * u_d_2 + b * h_u_1 * h_d_2
     k_ud_13 = a * u_u_1 * u_d_3 + b * h_u_1 * h_d_3
     k_ud_23 = a * u_u_2 * u_d_3 + b * h_u_2 * h_d_3
+
+    k_ud_21 = a * u_u_2 * u_d_1 + b * h_u_2 * h_d_1
+    k_ud_31 = a * u_u_3 * u_d_1 + b * h_u_3 * h_d_1
+    k_ud_32 = a * u_u_3 * u_d_2 + b * h_u_3 * h_d_2
+
+    x = ( 1.0_DP / alp ) * ( 1.0_DP / ( 1.0_DP - V_0 / alp ) ) 
+    y = ( 1.0_DP / alp ) 
+ 
+    k_ud_01 = x * ( V_d_1 * k_ud_11 + V_d_2 * k_ud_21 + V_d_3 * k_ud_31 )
+    k_ud_02 = x * ( V_d_1 * k_ud_12 + V_d_2 * k_ud_22 + V_d_3 * k_ud_32 )
+    k_ud_03 = x * ( V_d_1 * k_ud_13 + V_d_2 * k_ud_23 + V_d_3 * k_ud_33 )
+
+    k_ud_10 = y * ( V_u_1 * k_ud_11 + V_u_2 * k_ud_12 + V_u_3 * k_ud_13 )
+    k_ud_20 = y * ( V_u_1 * k_ud_21 + V_u_2 * k_ud_22 + V_u_3 * k_ud_23 )
+    k_ud_30 = y * ( V_u_1 * k_ud_31 + V_u_2 * k_ud_32 + V_u_3 * k_ud_33 )
+
+    k_ud_00 = x * y * ( V_u_1 * V_d_1 * k_ud_11 + V_u_1 * V_d_2 * k_ud_21 + V_u_1 * V_d_3 * k_ud_31 &
+            + V_u_2 * V_d_1 * k_ud_12 + V_u_2 * V_d_2 * k_ud_22 + V_u_2 * V_d_3 * k_ud_32 &
+            + V_u_3 * V_d_1 * k_ud_13 + V_u_3 * V_d_2 * k_ud_23 + V_u_3 * V_d_3 * k_ud_33 )
+             
 
   END SUBROUTINE ComputeEddingtonTensorComponents_ud
 
