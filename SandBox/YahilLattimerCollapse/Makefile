@@ -6,29 +6,13 @@ all: ApplicationDriver
 
 ApplicationDriver: \
 	$(thornado) \
-	GravitySolutionModule_Newtonian_Poseidon_Beta.o \
-	EulerEquationsUtilitiesModule_Beta.o \
-	CharacteristicDecompositionModule.o \
-        InitializationModule.o \
-	BoundaryConditionsModule_Beta.o \
-	SlopeLimiterModule_Euler.o \
-        PositivityLimiterModule_Euler.o \
-	dgDiscretizationModule_Euler.o \
+	InitializationModule.o \
 	TimeSteppingModule_SSPRK.o \
-	Euler_TallyModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
-	GravitySolutionModule_Newtonian_Poseidon_Beta.o \
-	EulerEquationsUtilitiesModule_Beta.o \
-	CharacteristicDecompositionModule.o \
-        InitializationModule.o \
-	BoundaryConditionsModule_Beta.o \
-	SlopeLimiterModule_Euler.o \
-        PositivityLimiterModule_Euler.o \
-	dgDiscretizationModule_Euler.o \
+	InitializationModule.o \
 	TimeSteppingModule_SSPRK.o \
-	Euler_TallyModule.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
