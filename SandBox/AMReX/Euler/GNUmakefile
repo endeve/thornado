@@ -38,7 +38,7 @@ endif
 
 INCLUDE_LOCATIONS += $(LAPACK_INC)
 LIBRARY_LOCATIONS += $(LAPACK_LIB)
-LIBRARIES += -llapack
+LIBRARIES += -llapack -lblas
 
 # Set pre-processor directives
 # This is also where, e.g., USE_HDF5 and USE_PETSC are used

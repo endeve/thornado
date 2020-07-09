@@ -443,9 +443,9 @@ PROGRAM ApplicationDriver
   SlopeLimiterMethod        = 'TVD'
   BetaTVD                   = 1.75d0
   BetaTVB                   = 0.0d0
-  SlopeTolerance            = 0.0d-6
-  UseCharacteristicLimiting = .FALSE.
-  UseTroubledCellIndicator  = .FALSE.
+  SlopeTolerance            = 1.0d-6
+  UseCharacteristicLimiting = .TRUE.
+  UseTroubledCellIndicator  = .TRUE.
   LimiterThresholdParameter = 0.03_DP
   UseConservativeCorrection = .TRUE.
 
