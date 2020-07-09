@@ -14,6 +14,9 @@ PROGRAM ApplicationDriver
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
+  USE MeshModule, ONLY: &
+    MeshX, &
+    CreateMesh_Custom
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
@@ -73,6 +76,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32)  :: CoordinateSystem
   CHARACTER(128) :: EosTableName
   CHARACTER(32)  :: ProgenitorFile
+  LOGICAL        :: CustomRadialGrid
   LOGICAL        :: wrt
   LOGICAL        :: UseSlopeLimiter
   LOGICAL        :: UseCharacteristicLimiting
@@ -82,8 +86,9 @@ PROGRAM ApplicationDriver
   INTEGER        :: iCycle, iCycleD
   INTEGER        :: RestartFileNumber
   INTEGER        :: nX(3), bcX(3), nNodes, nStages
+  INTEGER        :: nEquidistantElements
   REAL(DP)       :: t, dt, t_end, dt_wrt, t_wrt, wTime
-  REAL(DP)       :: xL(3), xR(3), zoomX(3)
+  REAL(DP)       :: xL(3), xR(3), zoomX(3), dxEquidistant
   REAL(DP)       :: BetaTVD, BetaTVB
   REAL(DP)       :: LimiterThresholdParameter
 
@@ -92,6 +97,8 @@ PROGRAM ApplicationDriver
   EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
   ProgenitorFile = '../Progenitors/WH07_15M_Sun.h5'
+
+  CustomRadialGrid = .FALSE.
 
   SelfGravity = .FALSE.
 
@@ -288,6 +295,10 @@ PROGRAM ApplicationDriver
       xR = [ 8.0d3 * Kilometer, Pi,      TwoPi ]
       zoomX = [ 1.020059256924853_DP, 1.0_DP, 1.0_DP ]
 
+      CustomRadialGrid     = .FALSE.
+      nEquidistantElements = 100
+      dxEquidistant        = 0.5_DP * Kilometer
+
       bcX = [30, 0, 0]
 
       nNodes  = 2
@@ -377,6 +388,14 @@ PROGRAM ApplicationDriver
              = .TRUE., &
            BasicInitialization_Option &
              = .TRUE. )
+
+  IF( CustomRadialGrid )THEN
+
+    CALL CreateMesh_Custom &
+           ( MeshX(1), nX(1), nNodes, 1, xL(1), xR(1), &
+             nEquidistantElements, dxEquidistant, Verbose_Option = .TRUE. )
+
+  END IF
 
   CALL InitializeReferenceElementX
 
