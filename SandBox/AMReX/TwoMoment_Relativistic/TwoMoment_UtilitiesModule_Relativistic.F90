@@ -16,6 +16,7 @@ MODULE TwoMoment_UtilitiesModule_Relativistic
   PUBLIC :: ComputeEddingtonTensorComponents_uu
   PUBLIC :: ComputeEddingtonTensorComponents_ud
   PUBLIC :: ComputeHeatFluxTensorComponents_ddd_Lagrangian 
+  PUBLIC :: ComputeHeatFluxTensorComponents_uud_Lagrangian
   PUBLIC :: ComputeHeatFluxTensorComponents_udd_Lagrangian
   PUBLIC :: ComputeStressEnergyComponents_Eulerian
   PUBLIC :: ComputeHeatFluxTensorComponents_udd_Eulerian
@@ -727,6 +728,330 @@ CONTAINS
 
 
   END SUBROUTINE ComputeHeatFluxTensorComponents_ddd_Lagrangian
+
+  SUBROUTINE ComputeHeatFluxTensorComponents_uud_Lagrangian &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3,         &
+      l_uud_000, l_uud_001, l_uud_002, l_uud_003, & 
+      l_uud_010, l_uud_011, l_uud_012, l_uud_013, & 
+      l_uud_020, l_uud_021, l_uud_022, l_uud_023, & 
+      l_uud_030, l_uud_031, l_uud_032, l_uud_033, & 
+      l_uud_100, l_uud_101, l_uud_102, l_uud_103, & 
+      l_uud_110, l_uud_111, l_uud_112, l_uud_113, & 
+      l_uud_120, l_uud_121, l_uud_122, l_uud_123, & 
+      l_uud_130, l_uud_131, l_uud_132, l_uud_133, & 
+      l_uud_200, l_uud_201, l_uud_202, l_uud_203, & 
+      l_uud_210, l_uud_211, l_uud_212, l_uud_213, & 
+      l_uud_220, l_uud_221, l_uud_222, l_uud_223, & 
+      l_uud_230, l_uud_231, l_uud_232, l_uud_233, & 
+      l_uud_300, l_uud_301, l_uud_302, l_uud_303, & 
+      l_uud_310, l_uud_311, l_uud_312, l_uud_313, & 
+      l_uud_320, l_uud_321, l_uud_322, l_uud_323, & 
+      l_uud_330, l_uud_331, l_uud_332, l_uud_333 )
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3
+    REAL(DP), INTENT(out) :: &
+      l_uud_000, l_uud_001, l_uud_002, l_uud_003, & 
+      l_uud_010, l_uud_011, l_uud_012, l_uud_013, & 
+      l_uud_020, l_uud_021, l_uud_022, l_uud_023, & 
+      l_uud_030, l_uud_031, l_uud_032, l_uud_033, & 
+      l_uud_100, l_uud_101, l_uud_102, l_uud_103, & 
+      l_uud_110, l_uud_111, l_uud_112, l_uud_113, & 
+      l_uud_120, l_uud_121, l_uud_122, l_uud_123, & 
+      l_uud_130, l_uud_131, l_uud_132, l_uud_133, & 
+      l_uud_200, l_uud_201, l_uud_202, l_uud_203, & 
+      l_uud_210, l_uud_211, l_uud_212, l_uud_213, & 
+      l_uud_220, l_uud_221, l_uud_222, l_uud_223, & 
+      l_uud_230, l_uud_231, l_uud_232, l_uud_233, & 
+      l_uud_300, l_uud_301, l_uud_302, l_uud_303, & 
+      l_uud_310, l_uud_311, l_uud_312, l_uud_313, & 
+      l_uud_320, l_uud_321, l_uud_322, l_uud_323, & 
+      l_uud_330, l_uud_331, l_uud_332, l_uud_333
+
+
+    REAL(DP) :: FF, HF, a, b, DT, V_0, x, y
+    REAL(DP) :: h_u_1, h_u_2, h_u_3
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+    REAL(DP) :: I_d_1, I_d_2, I_d_3
+    REAL(DP) :: B_d_1, B_d_2, B_d_3
+    REAL(DP) :: V_d_1, V_d_2, V_d_3
+    REAL(DP) :: u_d_1, u_d_2, u_d_3, W, u_u_1, u_u_2, u_u_3
+    REAL(DP) :: h_uu_11, h_uu_22, h_uu_33, h_uu_12, h_uu_13, h_uu_23, h_uu_21, h_uu_31, h_uu_32
+    REAL(DP) :: h_ud_11, h_ud_22, h_ud_33, h_ud_12, h_ud_21, h_ud_13, h_ud_31, h_ud_23, h_ud_32
+   
+
+    FF = FluxFactor_Relativistic( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                                  alp, B_u_1, B_u_2, B_u_3, V_u_1, V_u_2, V_u_3 )
+    HF = HeatFluxFactor( D, FF )
+
+
+    W = 1.0_DP / SQRT( 1.0_DP - (Gm_dd_11 * V_u_1 * V_u_1 &
+               + Gm_dd_22 * V_u_2 * V_u_2 &  
+               + Gm_dd_33 * V_u_3 * V_u_3) )
+   
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
+
+    V_d_1 = Gm_dd_11 * V_u_1
+    V_d_2 = Gm_dd_22 * V_u_2
+    V_d_3 = Gm_dd_33 * V_u_3
+
+    u_d_1 = B_d_1 * W / alp + Gm_dd_11 * ( V_u_1 - B_u_1 / alp )
+    u_d_2 = B_d_2 * W / alp + Gm_dd_22 * ( V_u_2 - B_u_2 / alp )
+    u_d_3 = B_d_3 * W / alp + Gm_dd_33 * ( V_u_3 - B_u_3 / alp )
+
+    u_u_1 = W * ( V_u_1 - B_u_1 / alp ) 
+    u_u_2 = W * ( V_u_2 - B_u_2 / alp ) 
+    u_u_3 = W * ( V_u_3 - B_u_3 / alp ) 
+
+    DT = 1.0_DP / ( B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp )
+
+
+    I_d_1 = DT * ( B_d_2 * V_u_2 + B_d_3 * V_u_3 - alp ) * Gm_dd_11 * I_u_1 &
+          - DT * ( B_d_1 * V_u_2 *Gm_dd_22 ) * I_u_2 - DT * ( B_d_1 * V_u_3 * Gm_dd_33 ) * I_u_3 
+    I_d_2 = DT * ( B_d_1 * V_u_1 + B_d_3 * V_u_3 - alp ) * Gm_dd_22 * I_u_2 &
+          - DT * ( B_d_2 * V_u_1 * Gm_dd_11 ) * I_u_1 - DT * ( Gm_dd_33 * I_u_3 * B_d_2 * V_u_3 ) 
+    I_d_3 = DT * ( B_d_1 * V_u_1 + B_d_2 * V_u_2 - alp ) * Gm_dd_33 * I_u_3 &
+          - DT * ( Gm_dd_11 * I_u_1 * B_d_3 * V_u_1 ) - DT * ( Gm_dd_22 * I_u_2 * B_d_3 * V_u_2 )
+
+    !need to change Gm-dd_ii to Gm_uu_ii
+
+    h_uu_11 = Gm_dd_11 + u_u_1 * u_u_1
+    h_uu_22 = Gm_dd_22 + u_u_2 * u_u_2
+    h_uu_33 = Gm_dd_33 + u_u_3 * u_u_3
+    h_uu_12 = u_u_1 * u_u_2
+    h_uu_13 = u_u_1 * u_u_3
+    h_uu_23 = u_u_2 * u_u_3
+    h_uu_21 = u_u_1 * u_u_2
+    h_uu_31 = u_u_1 * u_u_3
+    h_uu_32 = u_u_2 * u_u_3
+
+
+    h_ud_11 = 1.0_DP + u_u_1 * u_d_1
+    h_ud_22 = 1.0_DP + u_u_2 * u_d_2
+    h_ud_33 = 1.0_DP + u_u_3 * u_d_3
+    h_ud_12 = u_u_1 * u_d_2
+    h_ud_13 = u_u_1 * u_d_3
+    h_ud_23 = u_u_2 * u_d_3
+    h_ud_21 = u_u_2 * u_d_1
+    h_ud_31 = u_u_3 * u_d_1
+    h_ud_32 = u_u_3 * u_d_2
+ 
+
+
+
+
+    a = Half * ( FF - HF )
+    b = Half * ( Five * HF - Three * FF )
+
+    h_u_1 = I_u_1 / ( FF * D )
+    h_u_2 = I_u_2 / ( FF * D )
+    h_u_3 = I_u_3 / ( FF * D )
+
+    h_d_1 = I_d_1 / ( FF * D )
+    h_d_2 = I_d_2 / ( FF * D )
+    h_d_3 = I_d_3 / ( FF * D )
+
+    ! --- Diagonal Heat Flux Tensor Components ---
+
+    l_uud_111 & 
+      = a * ( h_u_1 * h_ud_11 + h_u_1 * h_ud_11 + h_d_1 * h_uu_11 ) + b * h_u_1 * h_u_1 * h_d_1
+
+    l_uud_112 & 
+      = a * ( h_u_1 * h_ud_12 + h_u_1 * h_ud_12 + h_d_2 * h_uu_11 ) + b * h_u_1 * h_u_1 * h_d_2
+
+    l_uud_113 & 
+      = a * ( h_u_1 * h_ud_13 + h_u_1 * h_ud_13 + h_d_3 * h_uu_11 ) + b * h_u_1 * h_u_1 * h_d_3
+
+    l_uud_121 & 
+      = a * ( h_u_1 * h_ud_21 + h_u_2 * h_ud_11 + h_d_1 * h_uu_12 ) + b * h_u_1 * h_u_2 * h_d_1
+
+    l_uud_122 & 
+      = a * ( h_u_1 * h_ud_22 + h_u_2 * h_ud_12 + h_d_2 * h_uu_12 ) + b * h_u_1 * h_u_2 * h_d_2
+
+    l_uud_123 & 
+      = a * ( h_u_1 * h_ud_23 + h_u_2 * h_ud_13 + h_d_3 * h_uu_12 ) + b * h_u_1 * h_u_2 * h_d_3
+
+    l_uud_131 & 
+      = a * ( h_u_1 * h_ud_31 + h_u_3 * h_ud_11 + h_d_1 * h_uu_13 ) + b * h_u_1 * h_u_3 * h_d_1
+
+    l_uud_132 & 
+      = a * ( h_u_1 * h_ud_32 + h_u_3 * h_ud_12 + h_d_2 * h_uu_13 ) + b * h_u_1 * h_u_3 * h_d_2
+
+    l_uud_133 & 
+      = a * ( h_u_1 * h_ud_33 + h_u_3 * h_ud_13 + h_d_3 * h_uu_13 ) + b * h_u_1 * h_u_3 * h_d_3
+
+    l_uud_211 & 
+      = a * ( h_u_2 * h_ud_11 + h_u_1 * h_ud_21 + h_d_1 * h_uu_21 ) + b * h_u_2 * h_u_1 * h_d_1
+
+    l_uud_212 & 
+      = a * ( h_u_2 * h_ud_12 + h_u_1 * h_ud_22 + h_d_2 * h_uu_21 ) + b * h_u_2 * h_u_1 * h_d_2
+
+    l_uud_213 & 
+      = a * ( h_u_2 * h_ud_13 + h_u_1 * h_ud_23 + h_d_3 * h_uu_21 ) + b * h_u_2 * h_u_1 * h_d_3
+
+    l_uud_221 & 
+      = a * ( h_u_2 * h_ud_21 + h_u_2 * h_ud_21 + h_d_1 * h_uu_22 ) + b * h_u_2 * h_u_2 * h_d_1
+
+    l_uud_222 & 
+      = a * ( h_u_2 * h_ud_22 + h_u_2 * h_ud_22 + h_d_2 * h_uu_22 ) + b * h_u_2 * h_u_2 * h_d_2
+
+    l_uud_223 & 
+      = a * ( h_u_2 * h_ud_23 + h_u_2 * h_ud_23 + h_d_3 * h_uu_22 ) + b * h_u_2 * h_u_2 * h_d_3
+
+    l_uud_231 & 
+      = a * ( h_u_2 * h_ud_31 + h_u_3 * h_ud_21 + h_d_1 * h_uu_23 ) + b * h_u_2 * h_u_3 * h_d_1
+
+    l_uud_232 & 
+      = a * ( h_u_2 * h_ud_32 + h_u_3 * h_ud_22 + h_d_2 * h_uu_23 ) + b * h_u_2 * h_u_3 * h_d_2
+
+    l_uud_233 & 
+      = a * ( h_u_2 * h_ud_33 + h_u_3 * h_ud_23 + h_d_3 * h_uu_23 ) + b * h_u_2 * h_u_3 * h_d_3
+
+    l_uud_311 & 
+      = a * ( h_u_3 * h_ud_11 + h_u_1 * h_ud_31 + h_d_1 * h_uu_31 ) + b * h_u_3 * h_u_1 * h_d_1
+
+    l_uud_312 & 
+      = a * ( h_u_3 * h_ud_12 + h_u_1 * h_ud_32 + h_d_2 * h_uu_31 ) + b * h_u_3 * h_u_1 * h_d_2
+
+    l_uud_313 & 
+      = a * ( h_u_3 * h_ud_13 + h_u_1 * h_ud_33 + h_d_3 * h_uu_31 ) + b * h_u_3 * h_u_1 * h_d_3
+
+    l_uud_321 & 
+      = a * ( h_u_3 * h_ud_21 + h_u_2 * h_ud_31 + h_d_1 * h_uu_32 ) + b * h_u_3 * h_u_2 * h_d_1
+
+    l_uud_322 & 
+      = a * ( h_u_3 * h_ud_22 + h_u_2 * h_ud_32 + h_d_2 * h_uu_32 ) + b * h_u_3 * h_u_2 * h_d_2
+
+    l_uud_323 & 
+      = a * ( h_u_3 * h_ud_23 + h_u_2 * h_ud_33 + h_d_3 * h_uu_32 ) + b * h_u_3 * h_u_2 * h_d_3
+
+    l_uud_331 & 
+      = a * ( h_u_3 * h_ud_31 + h_u_3 * h_ud_31 + h_d_1 * h_uu_33 ) + b * h_u_3 * h_u_3 * h_d_1
+
+    l_uud_332 & 
+      = a * ( h_u_3 * h_ud_32 + h_u_3 * h_ud_32 + h_d_2 * h_uu_33 ) + b * h_u_3 * h_u_3 * h_d_2
+
+    l_uud_333 & 
+      = a * ( h_u_3 * h_ud_33 + h_u_3 * h_ud_33 + h_d_3 * h_uu_33 ) + b * h_u_3 * h_u_3 * h_d_3
+
+    V_0 = B_d_1 * V_u_1 + B_d_2 * V_u_2 + B_d_3 * V_u_3
+
+    x = ( 1.0_DP / alp ) * ( 1.0_DP / ( 1.0_DP - V_0 / alp ) ) 
+    y = ( 1.0_DP / alp ) 
+
+    l_uud_011 = x * (V_d_1 * l_uud_111 + V_d_2 * l_uud_211 + V_d_3 * l_uud_311)
+ 
+    l_uud_012 = x * (V_d_1 * l_uud_112 + V_d_2 * l_uud_212 + V_d_3 * l_uud_312) 
+ 
+    l_uud_013 = x * (V_d_1 * l_uud_113 + V_d_2 * l_uud_213 + V_d_3 * l_uud_313) 
+ 
+    l_uud_021 = x * (V_d_1 * l_uud_121 + V_d_2 * l_uud_221 + V_d_3 * l_uud_321) 
+ 
+    l_uud_022 = x * (V_d_1 * l_uud_122 + V_d_2 * l_uud_222 + V_d_3 * l_uud_322) 
+ 
+    l_uud_023 = x * (V_d_1 * l_uud_123 + V_d_2 * l_uud_223 + V_d_3 * l_uud_323) 
+ 
+    l_uud_031 = x * (V_d_1 * l_uud_131 + V_d_2 * l_uud_231 + V_d_3 * l_uud_331) 
+ 
+    l_uud_032 = x * (V_d_1 * l_uud_132 + V_d_2 * l_uud_232 + V_d_3 * l_uud_332) 
+
+    l_uud_101 = x * (V_d_1 * l_uud_111 + V_d_1 * l_uud_121 + V_d_1 * l_uud_131) 
+ 
+    l_uud_102 = x * (V_d_1 * l_uud_112 + V_d_1 * l_uud_122 + V_d_1 * l_uud_132) 
+ 
+    l_uud_103 = x * (V_d_1 * l_uud_113 + V_d_1 * l_uud_123 + V_d_1 * l_uud_133) 
+ 
+    l_uud_201 = x * (V_d_2 * l_uud_211 + V_d_2 * l_uud_221 + V_d_2 * l_uud_231) 
+ 
+    l_uud_202 = x * (V_d_2 * l_uud_212 + V_d_2 * l_uud_222 + V_d_2 * l_uud_232) 
+ 
+    l_uud_203 = x * (V_d_2 * l_uud_213 + V_d_2 * l_uud_223 + V_d_2 * l_uud_233) 
+ 
+    l_uud_301 = x * (V_d_3 * l_uud_311 + V_d_3 * l_uud_321 + V_d_3 * l_uud_331) 
+ 
+    l_uud_302 = x * (V_d_3 * l_uud_312 + V_d_3 * l_uud_322 + V_d_3 * l_uud_332) 
+ 
+    l_uud_303 = x * (V_d_3 * l_uud_313 + V_d_3 * l_uud_323 + V_d_3 * l_uud_333)
+ 
+    l_uud_110 = y * (V_d_1 * l_uud_111 + V_d_1 * l_uud_112 + V_d_1 * l_uud_113) 
+ 
+    l_uud_120 = y * (V_d_1 * l_uud_121 + V_d_1 * l_uud_122 + V_d_1 * l_uud_123) 
+ 
+    l_uud_130 = y * (V_d_1 * l_uud_131 + V_d_1 * l_uud_132 + V_d_1 * l_uud_133)
+ 
+    l_uud_210 = y * (V_d_2 * l_uud_211 + V_d_2 * l_uud_212 + V_d_2 * l_uud_213)
+ 
+    l_uud_220 = y * (V_d_2 * l_uud_221 + V_d_2 * l_uud_222 + V_d_2 * l_uud_223)
+ 
+    l_uud_230 = y * (V_d_2 * l_uud_231 + V_d_2 * l_uud_232 + V_d_2 * l_uud_233)
+ 
+    l_uud_310 = y * (V_d_3 * l_uud_311 + V_d_3 * l_uud_312 + V_d_3 * l_uud_313)
+ 
+    l_uud_320 = y * (V_d_3 * l_uud_321 + V_d_3 * l_uud_322 + V_d_3 * l_uud_323)
+ 
+    l_uud_330 = y * (V_d_3 * l_uud_331 + V_d_3 * l_uud_332 + V_d_3 * l_uud_333)
+
+    l_uud_001 = x**2 * (  V_d_1 * V_d_1 * l_uud_111 + V_d_1 * V_d_2 * l_uud_121 + V_d_1 * V_d_3 * l_uud_131 & 
+              + V_d_2 * V_d_1 * l_uud_211 + V_d_2 * V_d_2 * l_uud_221 + V_d_2 * V_d_3 * l_uud_231 & 
+              + V_d_3 * V_d_1 * l_uud_311 + V_d_3 * V_d_2 * l_uud_321 + V_d_3 * V_d_3 * l_uud_331 ) 
+             
+ 
+    l_uud_002 = x**2 * (  V_d_1 * V_d_1 * l_uud_112 + V_d_1 * V_d_2 * l_uud_122 + V_d_1 * V_d_3 * l_uud_132 & 
+              + V_d_2 * V_d_1 * l_uud_212 + V_d_2 * V_d_2 * l_uud_222 + V_d_2 * V_d_3 * l_uud_232 & 
+              + V_d_3 * V_d_1 * l_uud_312 + V_d_3 * V_d_2 * l_uud_322 + V_d_3 * V_d_3 * l_uud_332 ) 
+             
+ 
+    l_uud_003 = x**2 * (  V_d_1 * V_d_1 * l_uud_113 + V_d_1 * V_d_2 * l_uud_123 + V_d_1 * V_d_3 * l_uud_133 & 
+              + V_d_2 * V_d_1 * l_uud_213 + V_d_2 * V_d_2 * l_uud_223 + V_d_2 * V_d_3 * l_uud_233 & 
+              + V_d_3 * V_d_1 * l_uud_313 + V_d_3 * V_d_2 * l_uud_323 + V_d_3 * V_d_3 * l_uud_333 ) 
+
+    l_uud_100 = x * y * (  V_d_1 * V_u_1 * l_uud_111 + V_d_1 * V_u_2 * l_uud_112 + V_d_1 * V_u_3 * l_uud_113 & 
+              + V_d_2 * V_u_1 * l_uud_121 + V_d_2 * V_u_2 * l_uud_122 + V_d_2 * V_u_3 * l_uud_123 & 
+              + V_d_3 * V_u_1 * l_uud_131 + V_d_3 * V_u_2 * l_uud_132 + V_d_3 * V_u_3 * l_uud_133 ) 
+             
+ 
+    l_uud_200 = x * y * (  V_d_1 * V_u_1 * l_uud_211 + V_d_1 * V_u_2 * l_uud_212 + V_d_1 * V_u_3 * l_uud_213 & 
+              + V_d_2 * V_u_1 * l_uud_221 + V_d_2 * V_u_2 * l_uud_222 + V_d_2 * V_u_3 * l_uud_223 & 
+              + V_d_3 * V_u_1 * l_uud_231 + V_d_3 * V_u_2 * l_uud_232 + V_d_3 * V_u_3 * l_uud_233 ) 
+             
+    l_uud_300 = x * y * (  V_d_1 * V_u_1 * l_uud_311 + V_d_1 * V_u_2 * l_uud_312 + V_d_1 * V_u_3 * l_uud_313 & 
+              + V_d_2 * V_u_1 * l_uud_321 + V_d_2 * V_u_2 * l_uud_322 + V_d_2 * V_u_3 * l_uud_323 & 
+              + V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_u_3 * l_uud_333 ) 
+
+
+    l_uud_010 = x * y * (  V_d_1 * V_u_1 * l_uud_111 + V_d_1 * V_u_2 * l_uud_112 + V_d_1 * V_u_3 * l_uud_113 & 
+              + V_d_2 * V_u_1 * l_uud_211 + V_d_2 * V_u_2 * l_uud_212 + V_d_2 * V_u_3 * l_uud_213 & 
+              + V_d_3 * V_u_1 * l_uud_311 + V_d_3 * V_u_2 * l_uud_312 + V_d_3 * V_u_3 * l_uud_313 ) 
+             
+ 
+    l_uud_020 = x * y * (  V_d_1 * V_u_1 * l_uud_121 + V_d_1 * V_u_2 * l_uud_122 + V_d_1 * V_u_3 * l_uud_123 & 
+              + V_d_2 * V_u_1 * l_uud_221 + V_d_2 * V_u_2 * l_uud_222 + V_d_2 * V_u_3 * l_uud_223 & 
+              + V_d_3 * V_u_1 * l_uud_321 + V_d_3 * V_u_2 * l_uud_322 + V_d_3 * V_u_3 * l_uud_323 ) 
+             
+ 
+    l_uud_030 = x * y * (  V_d_1 * V_u_1 * l_uud_131 + V_d_1 * V_u_2 * l_uud_132 + V_d_1 * V_u_3 * l_uud_133 & 
+              + V_d_2 * V_u_1 * l_uud_231 + V_d_2 * V_u_2 * l_uud_232 + V_d_2 * V_u_3 * l_uud_233 & 
+              + V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_u_3 * l_uud_333 ) 
+
+    l_uud_000 = x**2 * y * (  V_d_1 * V_d_1 * V_u_1 * l_uud_111 + V_d_1 * V_d_1 * V_u_2 * l_uud_112 + V_d_1 * V_d_1 * V_u_3 * l_uud_113 & 
+              + V_d_1 * V_d_2 * V_u_1 * l_uud_121 + V_d_1 * V_d_2 * V_u_2 * l_uud_122 + V_d_1 * V_d_2 * V_u_3 * l_uud_123 & 
+              + V_d_1 * V_d_3 * V_u_1 * l_uud_131 + V_d_1 * V_d_3 * V_u_2 * l_uud_132 + V_d_1 * V_d_3 * V_u_3 * l_uud_133 & 
+              + V_d_2 * V_d_1 * V_u_1 * l_uud_211 + V_d_2 * V_d_1 * V_u_2 * l_uud_212 + V_d_2 * V_d_1 * V_u_3 * l_uud_213 & 
+              + V_d_2 * V_d_2 * V_u_1 * l_uud_221 + V_d_2 * V_d_2 * V_u_2 * l_uud_222 + V_d_2 * V_d_2 * V_u_3 * l_uud_223 & 
+              + V_d_2 * V_d_3 * V_u_1 * l_uud_231 + V_d_2 * V_d_3 * V_u_2 * l_uud_232 + V_d_2 * V_d_3 * V_u_3 * l_uud_233 & 
+              + V_d_3 * V_d_1 * V_u_1 * l_uud_311 + V_d_3 * V_d_1 * V_u_2 * l_uud_312 + V_d_3 * V_d_1 * V_u_3 * l_uud_313 & 
+              + V_d_3 * V_d_2 * V_u_1 * l_uud_321 + V_d_3 * V_d_2 * V_u_2 * l_uud_322 + V_d_3 * V_d_2 * V_u_3 * l_uud_323 & 
+              + V_d_3 * V_d_3 * V_u_1 * l_uud_331 + V_d_3 * V_d_3 * V_u_2 * l_uud_332 + V_d_3 * V_d_3 * V_u_3 * l_uud_333 ) 
+
+
+  END SUBROUTINE ComputeHeatFluxTensorComponents_uud_Lagrangian
+
+
+
+
 
   SUBROUTINE ComputeHeatFluxTensorComponents_udd_Lagrangian &
     ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
