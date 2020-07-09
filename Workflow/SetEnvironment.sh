@@ -52,6 +52,14 @@ elif [[ $THORNADO_MACHINE == acf* ]]; then
 
   module unload PE-intel PE-gnu 
 
+elif [[ $THORNADO_MACHINE == acf* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  module purge
+  module load GNU/8.2.0-2.31.1 OpenMPI/3.1.3 HDF5/1.10.4
+
 elif [[ $THORNADO_MACHINE == sn1987b* ]]; then
 
   echo
@@ -185,9 +193,18 @@ elif [[ $THORNADO_MACHINE == sn1987b ]]; then
 
   echo
 
+elif [[ $THORNADO_MACHINE == sn1987b ]]; then
+
+  echo
+
 elif [[ $THORNADO_MACHINE == bbarker ]]; then
 
   echo
+
+  module purge
+  module load GNU/8.2.0-2.31.1
+  module load OpenMPI/3.1.3
+  module load HDF5/1.10.4
 
 elif [[ $THORNADO_MACHINE == juliana ]]; then
 

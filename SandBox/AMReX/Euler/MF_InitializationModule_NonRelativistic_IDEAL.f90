@@ -2,18 +2,18 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,      ONLY: &
+  USE amrex_fort_module,       ONLY: &
     AR => amrex_real
-  USE amrex_box_module,       ONLY: &
+  USE amrex_box_module,        ONLY: &
     amrex_box
-  USE amrex_multifab_module,  ONLY: &
+  USE amrex_multifab_module,   ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
-  USE amrex_parallel_module,  ONLY: &
+  USE amrex_parallel_module,   ONLY: &
     amrex_parallel_ioprocessor
-  USE amrex_parmparse_module, ONLY: &
+  USE amrex_parmparse_module,  ONLY: &
     amrex_parmparse,       &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
@@ -71,7 +71,7 @@ MODULE MF_InitializationModule_NonRelativistic_IDEAL
 
   ! --- Local Modules ---
 
-  USE MyAmrModule, ONLY: &
+  USE InputParsingModule,      ONLY: &
     nLevels, &
     xL,      &
     xR,      &
@@ -358,11 +358,11 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
           DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
             IF( X1 .LE. Half ) THEN
 
@@ -482,11 +482,11 @@ CONTAINS
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-
           DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
             IF( X1 <= One ) THEN
 

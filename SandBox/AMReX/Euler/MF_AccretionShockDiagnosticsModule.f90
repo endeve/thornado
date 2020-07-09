@@ -2,24 +2,24 @@ MODULE MF_AccretionShockDiagnosticsModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,     ONLY: &
+  USE amrex_fort_module,               ONLY: &
     AR => amrex_real
-  USE amrex_box_module,      ONLY: &
+  USE amrex_box_module,                ONLY: &
     amrex_box
-  USE amrex_multifab_module, ONLY: &
+  USE amrex_multifab_module,           ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
-  USE amrex_parallel_module, ONLY: &
+  USE amrex_parallel_module,           ONLY: &
     amrex_parallel_reduce_sum
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,           ONLY: &
+  USE ProgramHeaderModule,             ONLY: &
     swX, &
     nDOFX
-  USE FluidFieldsModule,             ONLY: &
+  USE FluidFieldsModule,               ONLY: &
     nPF, &
     nAF
   USE AccretionShockDiagnosticsModule, ONLY: &
@@ -27,12 +27,12 @@ MODULE MF_AccretionShockDiagnosticsModule
 
   ! --- Local Modules ---
 
-  USE MF_UtilitiesModule,       ONLY: &
+  USE MF_UtilitiesModule,              ONLY: &
     amrex2thornado_Euler
-  USE MyAmrModule,              ONLY: &
+  USE InputParsingModule,              ONLY: &
     nLevels, &
     DEBUG
-  USE TimersModule_AMReX_Euler, ONLY: &
+  USE TimersModule_AMReX_Euler,        ONLY: &
     TimersStart_AMReX_Euler, &
     TimersStop_AMReX_Euler,  &
     Timer_AMReX_Euler_DataTransfer

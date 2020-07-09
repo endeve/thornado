@@ -1,4 +1,4 @@
-MODULE MyAmrDataModule
+MODULE MF_FieldsModule
 
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
@@ -22,14 +22,14 @@ MODULE MyAmrDataModule
   ! --- Diagnostic Fields ---
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uDF(:)
 
-  PUBLIC :: InitializeDataAMReX
-  PUBLIC :: FinalizeDataAMReX
+  PUBLIC :: CreateFields_MF
+  PUBLIC :: DestroyFields_MF
 
 
 CONTAINS
 
 
-  SUBROUTINE InitializeDataAMReX( nLevels )
+  SUBROUTINE CreateFields_MF( nLevels )
 
     INTEGER, INTENT(in) :: nLevels
 
@@ -39,10 +39,10 @@ CONTAINS
     ALLOCATE( MF_uAF(0:nLevels-1) )
     ALLOCATE( MF_uDF(0:nLevels-1) )
 
-  END SUBROUTINE InitializeDataAMReX
+  END SUBROUTINE CreateFields_MF
 
 
-  SUBROUTINE FinalizeDataAMReX( nLevels )
+  SUBROUTINE DestroyFields_MF( nLevels )
 
     INTEGER, INTENT(in) :: nLevels
 
@@ -64,7 +64,7 @@ CONTAINS
     DEALLOCATE( MF_uCF )
     DEALLOCATE( MF_uGF )
 
-  END SUBROUTINE FinalizeDataAMReX
+  END SUBROUTINE DestroyFields_MF
 
 
-END MODULE MyAmrDataModule
+END MODULE MF_FieldsModule

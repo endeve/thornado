@@ -3,39 +3,39 @@ MODULE InputOutputModuleAMReX
   ! --- AMReX Modules ---
 
   USE ISO_C_BINDING
-  USE amrex_fort_module,      ONLY: &
+  USE amrex_fort_module,       ONLY: &
     AR => amrex_real, &
     amrex_spacedim
-  USE amrex_plotfile_module,  ONLY: &
+  USE amrex_plotfile_module,   ONLY: &
     amrex_write_plotfile
-  USE amrex_string_module,    ONLY: &
+  USE amrex_string_module,     ONLY: &
     amrex_string, &
     amrex_string_build
-  USE amrex_box_module,       ONLY: &
+  USE amrex_box_module,        ONLY: &
     amrex_box
-  USE amrex_boxarray_module,  ONLY: &
+  USE amrex_boxarray_module,   ONLY: &
     amrex_boxarray,       &
     amrex_boxarray_build, &
     amrex_boxarray_destroy
-  USE amrex_distromap_module, ONLY: &
+  USE amrex_distromap_module,  ONLY: &
     amrex_distromap,       &
     amrex_distromap_build, &
     amrex_distromap_destroy
-  USE amrex_multifab_module,  ONLY: &
+  USE amrex_multifab_module,   ONLY: &
     amrex_multifab,         &
     amrex_multifab_build,   &
     amrex_multifab_destroy, &
     amrex_mfiter,           &
     amrex_mfiter_build,     &
     amrex_mfiter_destroy
-  USE amrex_geometry_module,  ONLY: &
+  USE amrex_geometry_module,   ONLY: &
     amrex_geometry,       &
     amrex_geometry_build, &
     amrex_geometry_destroy
-  USE amrex_amrcore_module,   ONLY: &
+  USE amrex_amrcore_module,    ONLY: &
     amrex_get_amrcore, &
     amrex_ref_ratio
-  USE amrex_parallel_module,  ONLY: &
+  USE amrex_parallel_module,   ONLY: &
     amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
@@ -47,7 +47,8 @@ MODULE InputOutputModuleAMReX
   USE GeometryFieldsModule,    ONLY: &
     ShortNamesGF, &
     unitsGF,      &
-    nGF
+    nGF,          &
+    iGF_SqrtGm
   USE FluidFieldsModule,       ONLY: &
     ShortNamesCF, &
     unitsCF,      &
@@ -67,12 +68,12 @@ MODULE InputOutputModuleAMReX
     UnitsDisplay
 
   ! --- Local Modules ---
-  USE MyAmrModule,        ONLY: &
+  USE InputParsingModule,      ONLY: &
     nLevels,          &
     MaxGridSizeX,     &
     PlotFileBaseName, &
     nX
-  USE MyAmrDataModule,    ONLY: &
+  USE MF_FieldsModule,         ONLY: &
     MF_uGF, &
     MF_uCF, &
     MF_uPF, &
@@ -162,7 +163,7 @@ CONTAINS
 
   SUBROUTINE ReadCheckpointFile( iChkFile )
 
-    USE MyAmrModule
+    USE InputParsingModule
 
     IMPLICIT NONE
 
@@ -278,10 +279,10 @@ CONTAINS
     INTEGER                         :: iComp, iOS, iLevel, nF, iOS_CPP(3)
     TYPE(amrex_mfiter)              :: MFI
     TYPE(amrex_box)                 :: BX
-    TYPE(amrex_multifab)            :: MF_PF(0:nLevels-1)
-    TYPE(amrex_geometry)            :: GEOM (0:nLevels-1)
-    TYPE(amrex_boxarray)            :: BA   (0:nLevels-1)
-    TYPE(amrex_distromap)           :: DM   (0:nLevels-1)
+    TYPE(amrex_multifab)            :: MF_plt(0:nLevels-1)
+    TYPE(amrex_geometry)            :: GEOM  (0:nLevels-1)
+    TYPE(amrex_boxarray)            :: BA    (0:nLevels-1)
+    TYPE(amrex_distromap)           :: DM    (0:nLevels-1)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
 
     ! --- Offset for C++ indexing ---
@@ -451,17 +452,18 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
-             ( MF_PF(iLevel), BA(iLevel), DM(iLevel), nF, 0 )
-      CALL MF_PF(iLevel) % setVal( Zero )
+             ( MF_plt(iLevel), BA(iLevel), DM(iLevel), nF, 0 )
+      CALL MF_plt(iLevel) % setVal( Zero )
 
-      CALL amrex_mfiter_build( MFI, MF_PF(iLevel), tiling = .TRUE. )
+      CALL amrex_mfiter_build( MFI, MF_plt(iLevel), tiling = .TRUE. )
 
       iOS = 0
 
       IF( WriteGF   )THEN
 
-        CALL MF_ComputeCellAverage &
-          ( nGF, MF_uGF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'GF' )
+        CALL ComputeCellAverage_MF &
+          ( nGF, MF_uGF_Option(iLevel), MF_uGF_Option(iLevel), &
+            iOS, iOS_CPP, 'GF', MF_plt(iLevel) )
 
         iOS = iOS + nGF
 
@@ -469,8 +471,9 @@ CONTAINS
 
       IF( WriteFF_C )THEN
 
-        CALL MF_ComputeCellAverage &
-          ( nCF, MF_uCF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'CF' )
+        CALL ComputeCellAverage_MF &
+          ( nCF, MF_uCF_Option(iLevel), MF_uGF_Option(iLevel), &
+            iOS, iOS_CPP, 'CF', MF_plt(iLevel) )
 
         iOS = iOS + nCF
 
@@ -478,8 +481,9 @@ CONTAINS
 
       IF( WriteFF_P )THEN
 
-        CALL MF_ComputeCellAverage &
-          ( nPF, MF_uPF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'PF' )
+        CALL ComputeCellAverage_MF &
+          ( nPF, MF_uPF_Option(iLevel), MF_uGF_Option(iLevel), &
+            iOS, iOS_CPP, 'PF', MF_plt(iLevel) )
 
         iOS = iOS + nPF
 
@@ -487,8 +491,9 @@ CONTAINS
 
       IF( WriteFF_A )THEN
 
-        CALL MF_ComputeCellAverage &
-          ( nAF, MF_uAF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'AF' )
+        CALL ComputeCellAverage_MF &
+          ( nAF, MF_uAF_Option(iLevel), MF_uGF_Option(iLevel), &
+            iOS, iOS_CPP, 'AF', MF_plt(iLevel) )
 
         iOS = iOS + nAF
 
@@ -496,8 +501,9 @@ CONTAINS
 
       IF( WriteFF_D )THEN
 
-        CALL MF_ComputeCellAverage &
-          ( nDF, MF_uDF_Option(iLevel), MF_PF(iLevel), iOS, iOS_CPP, 'DF' )
+        CALL ComputeCellAverage_MF &
+          ( nDF, MF_uDF_Option(iLevel), MF_uGF_Option(iLevel), &
+            iOS, iOS_CPP, 'DF', MF_plt(iLevel) )
 
         iOS = iOS + nDF
 
@@ -506,15 +512,15 @@ CONTAINS
     END DO ! End of loop over levels
 
     CALL amrex_write_plotfile &
-           ( PlotFileName, nLevels, MF_PF, VarNames, &
+           ( PlotFileName, nLevels, MF_plt, VarNames, &
              GEOM, Time / UnitsDisplay % TimeUnit, StepNo, amrex_ref_ratio )
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_multifab_destroy ( MF_PF(iLevel) )
-      CALL amrex_distromap_destroy( DM   (iLevel) )
-      CALL amrex_geometry_destroy ( GEOM (iLevel) )
-      CALL amrex_boxarray_destroy ( BA   (iLevel) )
+      CALL amrex_multifab_destroy ( MF_plt(iLevel) )
+      CALL amrex_distromap_destroy( DM    (iLevel) )
+      CALL amrex_geometry_destroy ( GEOM  (iLevel) )
+      CALL amrex_boxarray_destroy ( BA    (iLevel) )
 
     END DO
 
@@ -523,44 +529,53 @@ CONTAINS
   END SUBROUTINE WriteFieldsAMReX_PlotFile
 
 
-  SUBROUTINE MF_ComputeCellAverage( nComp, MF, MF_A, iOS, iOS_CPP, Field )
+  SUBROUTINE ComputeCellAverage_MF &
+    ( nComp, MF, MF_uGF, iOS, iOS_CPP, Field, MF_plt )
 
     INTEGER,              INTENT(in)    :: nComp, iOS, iOS_CPP(3)
-    TYPE(amrex_multifab), INTENT(in)    :: MF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_A
+    TYPE(amrex_multifab), INTENT(in)    :: MF, MF_uGF
     CHARACTER(2),         INTENT(in)    :: Field
+    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
 
     INTEGER                       :: iX1, iX2, iX3, iComp
-    INTEGER                       :: lo(4), hi(4)
-    REAL(AR)                      :: u_K(nDOFX,nComp)
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_U(4), hi_U(4)
+    REAL(AR)                      :: G_K(nDOFX,nGF  )
+    REAL(AR)                      :: U_K(nDOFX,nComp)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(AR), CONTIGUOUS, POINTER :: u  (:,:,:,:)
-    REAL(AR), CONTIGUOUS, POINTER :: u_A(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: G    (:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: U    (:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
 
     CALL amrex_mfiter_build( MFI, MF, tiling = .TRUE. )
 
     DO WHILE( MFI % next() )
 
-      u   => MF   % DataPtr( MFI )
-      u_A => MF_A % DataPtr( MFI )
+      G     => MF_uGF % DataPtr( MFI )
+      U     => MF     % DataPtr( MFI )
+      U_plt => MF_plt % DataPtr( MFI )
 
       BX = MFI % tilebox()
 
-      lo = LBOUND( u ); hi = UBOUND( u )
+      lo_G = LBOUND( G ); hi_G = UBOUND( G )
+      lo_U = LBOUND( U ); hi_U = UBOUND( U )
 
       DO iX3 = BX % lo(3), BX % hi(3)
       DO iX2 = BX % lo(2), BX % hi(2)
       DO iX1 = BX % lo(1), BX % hi(1)
 
-        u_K(1:nDOFX,1:nComp) &
-          = RESHAPE( u(iX1,iX2,iX3,lo(4):hi(4)), [ nDOFX, nComp ] )
+        G_K(1:nDOFX,1:nGF) &
+          = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF    ] )
 
-        ! --- Compute cell-average ---
+        U_K(1:nDOFX,1:nComp ) &
+          = RESHAPE( U(iX1,iX2,iX3,lo_U(4):hi_U(4)), [ nDOFX, nComp  ] )
+
         DO iComp = 1, nComp
 
-          u_A(iX1-iOS_CPP(1),iX2-iOS_CPP(2),iX3-iOS_CPP(3),iComp+iOS) &
-            = DOT_PRODUCT( WeightsX_q(:), u_K(:,iComp) )
+          U_plt(iX1-iOS_CPP(1),iX2-iOS_CPP(2),iX3-iOS_CPP(3),iComp+iOS) &
+            = SUM( WeightsX_q * G_K(:,iGF_SqrtGm) * U_K(:,iComp) ) &
+                / SUM( WeightsX_q * G_K(:,iGF_SqrtGm) )
 
         END DO
 
@@ -568,19 +583,19 @@ CONTAINS
       END DO
       END DO
 
-      CALL ConvertUnits( nComp, iOS, u_A, Field )
+      CALL ConvertUnits( nComp, iOS, U_plt, Field )
 
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
 
-  END SUBROUTINE MF_ComputeCellAverage
+  END SUBROUTINE ComputeCellAverage_MF
 
 
-  SUBROUTINE ConvertUnits( nComp, iOS, u_A, Field )
+  SUBROUTINE ConvertUnits( nComp, iOS, U_plt, Field )
 
     INTEGER,      INTENT(in)    :: nComp, iOS
-    REAL(AR),     INTENT(inout) :: u_A(:,:,:,:)
+    REAL(AR),     INTENT(inout) :: U_plt(:,:,:,:)
     CHARACTER(2), INTENT(in)    :: Field
 
     INTEGER  :: iComp
@@ -589,7 +604,7 @@ CONTAINS
 
       DO iComp = 1, nComp
 
-        u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsGF(iComp)
+        U_plt(:,:,:,iComp+iOS) = U_plt(:,:,:,iComp+iOS) / unitsGF(iComp)
 
       END DO
 
@@ -597,7 +612,7 @@ CONTAINS
 
       DO iComp = 1, nComp
 
-        u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsCF(iComp)
+        U_plt(:,:,:,iComp+iOS) = U_plt(:,:,:,iComp+iOS) / unitsCF(iComp)
 
       END DO
 
@@ -605,7 +620,7 @@ CONTAINS
 
       DO iComp = 1, nComp
 
-        u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsPF(iComp)
+        U_plt(:,:,:,iComp+iOS) = U_plt(:,:,:,iComp+iOS) / unitsPF(iComp)
 
       END DO
 
@@ -613,7 +628,7 @@ CONTAINS
 
       DO iComp = 1, nComp
 
-        u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsAF(iComp)
+        U_plt(:,:,:,iComp+iOS) = U_plt(:,:,:,iComp+iOS) / unitsAF(iComp)
 
       END DO
 
@@ -621,7 +636,7 @@ CONTAINS
 
       DO iComp = 1, nComp
 
-        u_A(:,:,:,iComp+iOS) = u_A(:,:,:,iComp+iOS) / unitsDF(iComp)
+        U_plt(:,:,:,iComp+iOS) = U_plt(:,:,:,iComp+iOS) / unitsDF(iComp)
 
       END DO
 

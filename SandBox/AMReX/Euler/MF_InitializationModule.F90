@@ -2,12 +2,12 @@ MODULE MF_InitializationModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_multifab_module, ONLY: &
+  USE amrex_multifab_module,                         ONLY: &
     amrex_multifab
 
   ! --- Local Modules ---
 
-  USE MyAmrModule,                                   ONLY: &
+  USE InputParsingModule,                            ONLY: &
     nLevels
   USE MF_InitializationModule_NonRelativistic_TABLE, ONLY: &
     MF_InitializeFields_NonRelativistic_TABLE

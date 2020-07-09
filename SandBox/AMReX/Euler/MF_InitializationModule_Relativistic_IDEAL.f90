@@ -2,46 +2,46 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,      ONLY: &
+  USE amrex_fort_module,       ONLY: &
     AR => amrex_real
-  USE amrex_box_module,       ONLY: &
+  USE amrex_box_module,        ONLY: &
     amrex_box
-  USE amrex_multifab_module,  ONLY: &
+  USE amrex_multifab_module,   ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
-  USE amrex_parallel_module,  ONLY: &
+  USE amrex_parallel_module,   ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_max
-  USE amrex_parmparse_module, ONLY: &
+  USE amrex_parmparse_module,  ONLY: &
     amrex_parmparse,       &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,            ONLY: &
+  USE ProgramHeaderModule,     ONLY: &
     nDOFX,   &
     nX,      &
     nNodesX, &
     swX,     &
     nDimsX
-  USE ReferenceElementModuleX,        ONLY: &
+  USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
-  USE MeshModule,                     ONLY: &
+  USE MeshModule,              ONLY: &
     MeshType,    &
     CreateMesh,  &
     DestroyMesh, &
     NodeCoordinate
-  USE GeometryFieldsModule,           ONLY: &
+  USE GeometryFieldsModule,    ONLY: &
     nGF,          &
     iGF_Alpha,    &
     iGF_Psi,      &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
-  USE FluidFieldsModule,              ONLY: &
+  USE FluidFieldsModule,       ONLY: &
     nCF,    &
     iCF_D,  &
     iCF_S1, &
@@ -58,11 +58,11 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     iCF_Ne, &
     nAF,    &
     iAF_P
-  USE Euler_UtilitiesModule,          ONLY: &
+  USE Euler_UtilitiesModule,   ONLY: &
     ComputeConserved_Euler
-  USE EquationOfStateModule,          ONLY: &
+  USE EquationOfStateModule,   ONLY: &
     ComputePressureFromPrimitive
-  USE UnitsModule,                    ONLY: &
+  USE UnitsModule,             ONLY: &
     Kilometer,    &
     Second,       &
     SolarMass,    &
@@ -71,14 +71,14 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     Erg,          &
     SpeedOfLight, &
     GravitationalConstant
-  USE UtilitiesModule,                ONLY: &
+  USE UtilitiesModule,         ONLY: &
     NodeNumberX
-  USE Euler_ErrorModule,              ONLY: &
+  USE Euler_ErrorModule,       ONLY: &
     DescribeError_Euler
 
   ! --- Local Modules ---
 
-  USE MyAmrModule, ONLY: &
+  USE InputParsingModule,      ONLY: &
     nLevels,            &
     xL,                 &
     xR,                 &
@@ -138,6 +138,10 @@ CONTAINS
 
         CALL InitializeFields_RiemannProblem2D( MF_uGF, MF_uCF )
 
+      CASE( 'RiemannProblemSpherical' )
+
+        CALL InitializeFields_RiemannProblemSpherical( MF_uGF, MF_uCF )
+
       CASE( 'KelvinHelmholtz' )
 
         CALL InitializeFields_KelvinHelmholtz( MF_uGF, MF_uCF )
@@ -161,6 +165,7 @@ CONTAINS
           WRITE(*,'(6x,A)')     'Advection2D'
           WRITE(*,'(6x,A)')     'RiemannProblem1D'
           WRITE(*,'(6x,A)')     'RiemannProblem2D'
+          WRITE(*,'(6x,A)')     'RiemannProblemSpherical'
           WRITE(*,'(6x,A)')     'KelvinHelmholtz'
           WRITE(*,'(6x,A)')     'KelvinHelmholtz3D'
           WRITE(*,'(6x,A)')     'StandingAccretionShock_Relativistic'
@@ -524,8 +529,8 @@ CONTAINS
 
     ! --- Problem-Specific Parameters ---
     CHARACTER(LEN=:), ALLOCATABLE :: RiemannProblemName
-    REAL(AR) :: XD, Vs
-    REAL(AR) :: LeftState(nPF), RightState(nPF)
+    REAL(AR)                      :: XD, Vs
+    REAL(AR)                      :: LeftState(nPF), RightState(nPF)
 
     RiemannProblemName = 'Sod'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -863,8 +868,8 @@ CONTAINS
 
     ! --- Problem-specific parameters ---
     CHARACTER(LEN=:), ALLOCATABLE :: RiemannProblemName
-    REAL(AR) :: X1D, X2D, Vs, V2
-    REAL(AR) :: NE(nPF), NW(nPF), SE(nPF), SW(nPF)
+    REAL(AR)                      :: X1D, X2D, Vs, V2
+    REAL(AR)                      :: NE(nPF), NW(nPF), SE(nPF), SW(nPF)
 
     RiemannProblemName = 'DzB2002'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -1154,7 +1159,215 @@ CONTAINS
   END SUBROUTINE InitializeFields_RiemannProblem2D
 
 
-    ! --- Relativistic 2D Kelvin-Helmholtz instability a la
+  SUBROUTINE InitializeFields_RiemannProblemSpherical( MF_uGF, MF_uCF )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+
+    ! --- thornado ---
+    INTEGER        :: iX1, iX2, iX3
+    INTEGER        :: iNodeX, iNodeX1
+    REAL(AR)       :: X1
+    REAL(AR)       :: uGF_K(nDOFX,nGF)
+    REAL(AR)       :: uCF_K(nDOFX,nCF)
+    REAL(AR)       :: uPF_K(nDOFX,nPF)
+    REAL(AR)       :: uAF_K(nDOFX,nAF)
+    INTEGER        :: iDim
+    TYPE(MeshType) :: MeshX(3)
+
+    ! --- AMReX ---
+    INTEGER                       :: iLevel
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_F(4), hi_F(4)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_parmparse)         :: PP
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    ! --- Problem-Specific Parameters ---
+    CHARACTER(LEN=:), ALLOCATABLE :: RiemannProblemName
+    REAL(AR)                      :: XD
+    REAL(AR)                      :: LeftState(nPF), RightState(nPF)
+
+    RiemannProblemName = 'SphericalSod'
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'RiemannProblemName', RiemannProblemName )
+    CALL amrex_parmparse_destroy( PP )
+
+    uGF_K = Zero
+    uCF_K = Zero
+    uPF_K = Zero
+    uAF_K = Zero
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A4,A,A)') &
+        '', 'Riemann Problem Name: ', TRIM( RiemannProblemName )
+      WRITE(*,*)
+
+    END IF
+
+    SELECT CASE( TRIM( RiemannProblemName ) )
+
+      CASE( 'SphericalSod' )
+
+        XD = One
+
+        LeftState(iPF_D ) = 1.0_AR
+        LeftState(iPF_V1) = 0.0_AR
+        LeftState(iPF_V2) = 0.0_AR
+        LeftState(iPF_V3) = 0.0_AR
+        LeftState(iPF_E ) = 1.0_AR / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 0.125_AR
+        RightState(iPF_V1) = 0.0_AR
+        RightState(iPF_V2) = 0.0_AR
+        RightState(iPF_V3) = 0.0_AR
+        RightState(iPF_E ) = 0.1_AR / ( Gamma_IDEAL - One )
+
+      CASE DEFAULT
+
+        IF( amrex_parallel_ioprocessor() )THEN
+
+          WRITE(*,*)
+          WRITE(*,'(A,A)') &
+            'Invalid choice for RiemannProblemName: ', &
+            TRIM( RiemannProblemName )
+          WRITE(*,'(A)') 'Valid choices:'
+          WRITE(*,'(A)') &
+            "  'SphericalSod' - &
+            Spherical Sod shock tube"
+          WRITE(*,*)
+          WRITE(*,'(A)') 'Stopping...'
+
+        END IF
+
+        CALL DescribeError_Euler( 99 )
+
+    END SELECT
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
+      WRITE(*,*)
+      WRITE(*,'(6x,A,F8.6)') 'XD = ', XD
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'Right State:'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', RightState(iPF_D )
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', RightState(iPF_V1)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', RightState(iPF_V2)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', RightState(iPF_V3)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', RightState(iPF_E )
+      WRITE(*,*)
+      WRITE(*,'(6x,A)') 'Left State:'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', LeftState(iPF_D )
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', LeftState(iPF_V1)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', LeftState(iPF_V2)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', LeftState(iPF_V3)
+      WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', LeftState(iPF_E )
+      WRITE(*,*)
+
+    END IF
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            IF( X1 .LE. XD ) THEN
+
+              uPF_K(iNodeX,iPF_D)  = LeftState(iPF_D )
+              uPF_K(iNodeX,iPF_V1) = LeftState(iPF_V1)
+              uPF_K(iNodeX,iPF_V2) = LeftState(iPF_V2)
+              uPF_K(iNodeX,iPF_V3) = LeftState(iPF_V3)
+              uPF_K(iNodeX,iPF_E)  = LeftState(iPF_E )
+
+            ELSE
+
+              uPF_K(iNodeX,iPF_D)  = RightState(iPF_D )
+              uPF_K(iNodeX,iPF_V1) = RightState(iPF_V1)
+              uPF_K(iNodeX,iPF_V2) = RightState(iPF_V2)
+              uPF_K(iNodeX,iPF_V3) = RightState(iPF_V3)
+              uPF_K(iNodeX,iPF_E)  = RightState(iPF_E )
+
+            END IF
+
+          END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+          CALL ComputeConserved_Euler &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_RiemannProblemSpherical
+
+
+  ! --- Relativistic 2D Kelvin-Helmholtz instability a la
   !     Radice & Rezzolla, (2012), AA, 547, A26 ---
   SUBROUTINE InitializeFields_KelvinHelmholtz( MF_uGF, MF_uCF )
 

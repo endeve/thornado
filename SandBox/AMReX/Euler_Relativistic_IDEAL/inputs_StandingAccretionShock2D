@@ -25,14 +25,14 @@ thornado.OutputDataFileName = "MPNS1.4_Rs180_Mdot0.3.dat"
 thornado.UsePhysicalUnits = 1
 
 thornado.PlotFileBaseName = "plt"
-thornado.t_end   = 3.0e+2
+thornado.t_end   = 6.0e+2
 thornado.iCycleD = 10
 
 thornado.dt_wrt  = 1.0e+0
 thornado.iCycleW = -1
 
 thornado.CheckpointFileBaseName = "chk"
-thornado.dt_chk    = 5.0e+1
+thornado.dt_chk    = 6.1e+2
 thornado.iCycleChk = -1
 
 thornado.nNodes  = 3
@@ -45,7 +45,7 @@ geometry.is_periodic = 0  0  1
 
 geometry.coord_sys = 2
 geometry.prob_lo   = 040.0 0.0               0.0
-geometry.prob_hi   = 540.0 3.141592653589793 6.283185307179586
+geometry.prob_hi   = 1000.0 3.1415926535897931 6.2831853071795862
 
 amr.n_cell            = 1024 256 001
 thornado.swX          = 01   01  00
@@ -72,4 +72,5 @@ PL.Min_1                = 1.0e-13
 PL.Min_2                = 1.0e-13
 
 # Equation of state parameters
+#EoS.Gamma = 1.6666666666666667
 EoS.Gamma = 1.3333333333333333

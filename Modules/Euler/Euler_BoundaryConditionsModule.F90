@@ -3,15 +3,25 @@ MODULE Euler_BoundaryConditionsModule
   USE KindModule, ONLY: &
     DP
   USE MeshModule, ONLY: &
-    MeshX, NodeCoordinate
+    MeshX, &
+    NodeCoordinate
   USE ReferenceElementModuleX, ONLY: &
-    NodeNumberTableX, WeightsX_q
+    NodeNumberTableX, &
+    WeightsX_q
   USE ProgramHeaderModule, ONLY: &
-    bcX, swX, nDOFX, nNodesX
+    bcX,   &
+    swX,   &
+    nDOFX, &
+    nNodesX
   USE UtilitiesModule, ONLY: &
     NodeNumberX
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E
+    nCF,    &
+    iCF_D,  &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
@@ -38,7 +48,7 @@ CONTAINS
     ApplyInnerBC_Euler = .FALSE.
     IF( iApplyBC .EQ. iApplyBC_Euler_Inner .OR. &
         iApplyBC .EQ. iApplyBC_Euler_Both ) &
-    ApplyInnerBC_Euler = .TRUE.
+      ApplyInnerBC_Euler = .TRUE.
 
   END FUNCTION ApplyInnerBC_Euler
 
@@ -50,7 +60,7 @@ CONTAINS
     ApplyOuterBC_Euler = .FALSE.
     IF( iApplyBC .EQ. iApplyBC_Euler_Outer .OR. &
         iApplyBC .EQ. iApplyBC_Euler_Both ) &
-    ApplyOuterBC_Euler = .TRUE.
+      ApplyOuterBC_Euler = .TRUE.
 
   END FUNCTION ApplyOuterBC_Euler
 
@@ -115,6 +125,8 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
+#ifndef USE_AMREX_TRUE
+
       DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -134,6 +146,8 @@ CONTAINS
         END DO
         END DO
       END DO
+
+#endif
 
     CASE ( 2 ) ! Homogeneous
 
@@ -377,6 +391,8 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
+#ifndef USE_AMREX_TRUE
+
       DO iCF = 1, nCF
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = 1, swX(2)
@@ -396,6 +412,8 @@ CONTAINS
         END DO
         END DO
       END DO
+
+#endif
 
     CASE ( 2 ) ! Homogeneous
 
@@ -559,6 +577,8 @@ CONTAINS
 
     CASE ( 1 ) ! Periodic
 
+#ifndef USE_AMREX_TRUE
+
       DO iCF = 1, nCF
         DO iX3 = 1, swX(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -578,6 +598,8 @@ CONTAINS
         END DO
         END DO
       END DO
+
+#endif
 
     CASE ( 2 ) ! Homogeneous
 

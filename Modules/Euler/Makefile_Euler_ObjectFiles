@@ -21,4 +21,5 @@ EULER = \
   Euler_TallyModule_NonRelativistic_TABLE.o \
   Euler_TallyModule_Relativistic_IDEAL.o \
   Euler_TallyModule.o \
-  Euler_dgDiscretizationModule.o
+  Euler_dgDiscretizationModule.o \
+  Euler_PerturbationModule.o

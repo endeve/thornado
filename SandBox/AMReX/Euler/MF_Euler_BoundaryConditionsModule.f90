@@ -2,12 +2,12 @@ MODULE MF_Euler_BoundaryConditionsModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,     ONLY: &
+  USE amrex_fort_module,              ONLY: &
     AR => amrex_real, &
     amrex_spacedim
-  USE amrex_box_module,      ONLY: &
+  USE amrex_box_module,               ONLY: &
     amrex_box
-  USE amrex_geometry_module, ONLY: &
+  USE amrex_geometry_module,          ONLY: &
     amrex_geometry
 
   ! --- thornado Modules ---
@@ -21,9 +21,9 @@ MODULE MF_Euler_BoundaryConditionsModule
 
   ! --- Local Modules ---
 
-  USE MyAmrModule,              ONLY: &
+  USE InputParsingModule,             ONLY: &
     DEBUG
-  USE TimersModule_AMReX_Euler, ONLY: &
+  USE TimersModule_AMReX_Euler,       ONLY: &
     TimersStart_AMReX_Euler,            &
     TimersStop_AMReX_Euler,             &
     Timer_AMReX_Euler_ConstructEdgeMap, &

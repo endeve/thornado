@@ -1,13 +1,14 @@
-MODULE MyAmrModule
+MODULE InputParsingModule
 
   ! --- AMReX Modules ---
 
   USE amrex_fort_module,      ONLY: &
     AR => amrex_real, &
     amrex_spacedim
-  USE amrex_base_module,      ONLY: &
-    amrex_init,        &
-    amrex_initialized, &
+  USE amrex_init_module,      ONLY: &
+    amrex_init, &
+    amrex_initialized
+  USE amrex_parallel_module,  ONLY: &
     amrex_parallel_ioprocessor
   USE amrex_amr_module,       ONLY: &
     amrex_amrcore_init, &
@@ -25,26 +26,26 @@ MODULE MyAmrModule
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,  ONLY: &
+  USE ProgramHeaderModule,    ONLY: &
     nDOFX,  &
     nDimsX, &
     InitializeProgramHeader
-  USE FluidFieldsModule,    ONLY: &
+  USE FluidFieldsModule,      ONLY: &
     nCF, &
     nPF, &
     nAF
-  USE GeometryFieldsModule, ONLY: &
+  USE GeometryFieldsModule,   ONLY: &
     nGF
-  USE UnitsModule,          ONLY: &
+  USE UnitsModule,            ONLY: &
     ActivateUnitsDisplay, &
     DescribeUnitsDisplay, &
     UnitsDisplay
 
   ! --- Local Modules ---
 
-  USE MyAmrDataModule, ONLY: &
-    InitializeDataAMReX, &
-    FinalizeDataAMReX
+  USE MF_FieldsModule,        ONLY: &
+    CreateFields_MF, &
+    DestroyFields_MF
 
   IMPLICIT NONE
 
@@ -102,7 +103,7 @@ MODULE MyAmrModule
 CONTAINS
 
 
-  SUBROUTINE MyAmrInit
+  SUBROUTINE InitializeParameters
 
     REAL(AR), PARAMETER :: Zero = 0.0_AR
     REAL(AR), PARAMETER :: One  = 1.0_AR
@@ -303,14 +304,14 @@ CONTAINS
     ALLOCATE( t(0:nLevels-1) )
     t = 0.0e0_AR
 
-    CALL InitializeDataAMReX( nLevels )
+    CALL CreateFields_MF( nLevels )
 
-  END SUBROUTINE MyAmrInit
+  END SUBROUTINE InitializeParameters
 
 
-  SUBROUTINE MyAmrFinalize
+  SUBROUTINE FinalizeParameters
 
-    CALL FinalizeDataAMReX( nLevels )
+    CALL DestroyFields_MF( nLevels )
 
     DEALLOCATE( GEOM )
     DEALLOCATE( DM   )
@@ -320,7 +321,7 @@ CONTAINS
     DEALLOCATE( dt     )
     DEALLOCATE( StepNo )
 
-  END SUBROUTINE MyAmrFinalize
+  END SUBROUTINE FinalizeParameters
 
 
-END MODULE MyAmrModule
+END MODULE InputParsingModule

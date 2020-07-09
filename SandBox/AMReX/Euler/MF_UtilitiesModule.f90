@@ -3,52 +3,60 @@ MODULE MF_UtilitiesModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,      ONLY: &
+  USE amrex_fort_module,                 ONLY: &
     AR => amrex_real
-  USE amrex_box_module,       ONLY: &
+  USE amrex_box_module,                  ONLY: &
     amrex_box
-  USE amrex_parallel_module,  ONLY: &
+  USE amrex_parallel_module,             ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum
-  USE amrex_geometry_module,  ONLY: &
+  USE amrex_geometry_module,             ONLY: &
     amrex_geometry
-  USE amrex_multifab_module,  ONLY: &
+  USE amrex_multifab_module,             ONLY: &
     amrex_multifab, &
-    amrex_mfiter, &
+    amrex_mfiter,   &
     amrex_mfiter_build
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,    ONLY: &
-    nDOFX
-  USE GeometryFieldsModule,   ONLY: &
+  USE ProgramHeaderModule,               ONLY: &
+    nDOFX, &
+    nNodesX
+  USE GeometryFieldsModule,              ONLY: &
     nGF,          &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
-  USE FluidFieldsModule,      ONLY: &
-    nCF,    &
-    iCF_D,  &
-    iCF_S1, &
-    iCF_S2, &
-    iCF_S3, &
-    iCF_E,  &
-    iCF_Ne, &
-    nPF,    &
-    iPF_D,  &
-    iPF_V1, &
-    iPF_V2, &
-    iPF_V3, &
-    iPF_E,  &
-    iPF_Ne
-  USE Euler_UtilitiesModule, ONLY: &
+  USE FluidFieldsModule,                 ONLY: &
+    nCF,     &
+    iCF_D,   &
+    iCF_S1,  &
+    iCF_S2,  &
+    iCF_S3,  &
+    iCF_E,   &
+    iCF_Ne,  &
+    nPF,     &
+    iPF_D,   &
+    iPF_V1,  &
+    iPF_V2,  &
+    iPF_V3,  &
+    iPF_E,   &
+    iPF_Ne,  &
+    nDF,     &
+    iDF_TCI, &
+    nAF,     &
+    iAF_P
+  USE Euler_UtilitiesModule,             ONLY: &
     ComputePrimitive_Euler
-  USE EquationOfStateModule, ONLY: &
+  USE EquationOfStateModule,             ONLY: &
     ComputePressureFromPrimitive
+  USE UnitsModule,                       ONLY: &
+    Gram, &
+    Centimeter
 
   ! --- Local Modules ---
 
-  USE MyAmrModule,                       ONLY: &
+  USE InputParsingModule,                ONLY: &
     nLevels, &
     nX,      &
     swX,     &
@@ -71,24 +79,26 @@ CONTAINS
 
 
   SUBROUTINE amrex2thornado_Euler &
-    ( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
+    ( nFields, iX_B, iX_E, Data_amrex, Data_thornado )
 
-    INTEGER,  INTENT(in)  :: nVars
+    INTEGER,  INTENT(in)  :: nFields
     INTEGER,  INTENT(in)  :: iX_B(3), iX_E(3)
     REAL(AR), INTENT(in)  :: &
       Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
     REAL(AR), INTENT(out) :: &
       Data_thornado(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
 
-    INTEGER :: iX1, iX2, iX3, iVar
+    INTEGER :: iX1, iX2, iX3, iField
 
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
 
-      DO iVar = 1, nVars
-        Data_thornado(1:nDOFX,iX1,iX2,iX3,iVar) &
-          = Data_amrex(iX1,iX2,iX3,nDOFX*(iVar-1)+1:nDOFX*iVar)
+      DO iField = 1, nFields
+
+        Data_thornado(1:nDOFX,iX1,iX2,iX3,iField) &
+          = Data_amrex(iX1,iX2,iX3,nDOFX*(iField-1)+1:nDOFX*iField)
+
       END DO
 
     END DO
@@ -99,24 +109,26 @@ CONTAINS
 
 
   SUBROUTINE thornado2amrex_Euler &
-    ( nVars, iX_B, iX_E, Data_amrex, Data_thornado )
+    ( nFields, iX_B, iX_E, Data_amrex, Data_thornado )
 
-    INTEGER,  INTENT(in)  :: nVars
+    INTEGER,  INTENT(in)  :: nFields
     INTEGER,  INTENT(in)  :: iX_B(3), iX_E(3)
     REAL(AR), INTENT(out) :: &
       Data_amrex   (   iX_B(1):,iX_B(2):,iX_B(3):,1:)
     REAL(AR), INTENT(in)  :: &
       Data_thornado(1:,iX_B(1):,iX_B(2):,iX_B(3):,1:)
 
-    INTEGER :: iX1, iX2, iX3, iVar
+    INTEGER :: iX1, iX2, iX3, iField
 
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
 
-      DO iVar = 1, nVars
-        Data_amrex(iX1,iX2,iX3,nDOFX*(iVar-1)+1:nDOFX*iVar) &
-          = Data_thornado(1:nDOFX,iX1,iX2,iX3,iVar)
+      DO iField = 1, nFields
+
+        Data_amrex(iX1,iX2,iX3,nDOFX*(iField-1)+1:nDOFX*iField) &
+          = Data_thornado(1:nDOFX,iX1,iX2,iX3,iField)
+
       END DO
 
     END DO
@@ -169,27 +181,32 @@ CONTAINS
   END SUBROUTINE ShowVariableFromMultiFab
 
 
-  SUBROUTINE WriteRawDataToFile( GEOM, MF_uGF, MF_uCF )
+  SUBROUTINE WriteRawDataToFile( GEOM, MF_uGF, MF_uCF, MF_uDF, FileName )
 
     TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uDF(0:nLevels-1)
+    CHARACTER(LEN=*)    , INTENT(in) :: FileName
 
-    INTEGER               :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
-                             iX_B (3), iX_E (3)
-    INTEGER               :: iLevel, nCompGF, nCompCF
-    INTEGER               :: iX1, iX2, iX3, iNode, iCF, iGF
-    TYPE(amrex_box)       :: BX
-    TYPE(amrex_mfiter)    :: MFI
-    CHARACTER(LEN=16)     :: FMT
+    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
+                          iX_B (3), iX_E (3), iXL(3), iXR(3),     &
+                          iLevel, nCompGF, nCompCF, nCompDF,      &
+                          iX1, iX2, iX3, iNode, iCF, iGF, iDF,    &
+                          iNodeX, iNodeX1, iNodeX2, iNodeX3
+    CHARACTER(LEN=16)  :: FMT
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(EdgeMap)      :: Edge_Map
 
-    REAL(AR),         CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(AR),         CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(AR),         ALLOCATABLE         :: G  (:,:,:,:,:)
-    REAL(AR),         ALLOCATABLE         :: U  (:,:,:,:,:)
-    TYPE(EdgeMap)                         :: Edge_Map
-    REAL(AR)                              :: P       (nDOFX,nPF)
-    REAL(AR)                              :: Pressure(nDOFX)
+    REAL(AR), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(AR), CONTIGUOUS, POINTER :: uDF(:,:,:,:)
+    REAL(AR), ALLOCATABLE         :: G  (:,:,:,:,:)
+    REAL(AR), ALLOCATABLE         :: U  (:,:,:,:,:)
+    REAL(AR), ALLOCATABLE         :: P  (:,:,:,:,:)
+    REAL(AR), ALLOCATABLE         :: A  (:,:,:,:,:)
+    REAL(AR), ALLOCATABLE         :: D  (:,:,:,:,:)
 
     ALLOCATE( G(1:nDOFX,1-swX(1):nX(1)+swX(1), &
                         1-swX(2):nX(2)+swX(2), &
@@ -199,8 +216,22 @@ CONTAINS
                         1-swX(2):nX(2)+swX(2), &
                         1-swX(3):nX(3)+swX(3),1:nCF) )
 
+    ALLOCATE( P(1:nDOFX,1-swX(1):nX(1)+swX(1), &
+                        1-swX(2):nX(2)+swX(2), &
+                        1-swX(3):nX(3)+swX(3),1:nPF) )
+
+    ALLOCATE( A(1:nDOFX,1-swX(1):nX(1)+swX(1), &
+                        1-swX(2):nX(2)+swX(2), &
+                        1-swX(3):nX(3)+swX(3),1:nAF) )
+
+    ALLOCATE( D(1:nDOFX,1-swX(1):nX(1)+swX(1), &
+                        1-swX(2):nX(2)+swX(2), &
+                        1-swX(3):nX(3)+swX(3),1:nDF) )
+
     G = 0.0_AR
     U = 0.0_AR
+    p = 0.0_AR
+    D = 0.0_AR
 
     ! --- Convert AMReX MultiFabs to thornado arrays ---
 
@@ -212,6 +243,8 @@ CONTAINS
 
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
+      CALL MF_uDF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
       DO WHILE( MFI % next() )
@@ -221,6 +254,9 @@ CONTAINS
 
         uCF    => MF_uCF(iLevel) % DataPtr( MFI )
         nCompCF = MF_uCF(iLevel) % nComp()
+
+        uDF    => MF_uDF(iLevel) % DataPtr( MFI )
+        nCompDF = MF_uDF(iLevel) % nComp()
 
         BX = MFI % tilebox()
 
@@ -232,7 +268,7 @@ CONTAINS
         iX_B = iX_B0
         iX_E = iX_E0
 
-        ! --- Ensure only physical ghost cells are used (not exchange cells) ---
+        ! --- Ensure exchange cells are excluded ---
 
         IF( iX_B0(1) .EQ. 1     ) iX_B(1) = 1     - swX(1)
         IF( iX_B0(2) .EQ. 1     ) iX_B(2) = 1     - swX(2)
@@ -243,8 +279,8 @@ CONTAINS
 
         CALL amrex2thornado_Euler( nGF, iX_B, iX_E, &
                                    uGF(iX_B(1):iX_E(1), &
-                                   iX_B(2):iX_E(2), &
-                                   iX_B(3):iX_E(3),1:nCompGF), &
+                                       iX_B(2):iX_E(2), &
+                                       iX_B(3):iX_E(3),1:nCompGF), &
                                    G  (1:nDOFX, &
                                        iX_B(1):iX_E(1), &
                                        iX_B(2):iX_E(2), &
@@ -258,6 +294,15 @@ CONTAINS
                                        iX_B(1):iX_E(1), &
                                        iX_B(2):iX_E(2), &
                                        iX_B(3):iX_E(3),1:nCF) )
+
+        CALL amrex2thornado_Euler( nDF, iX_B, iX_E, &
+                                   uDF(iX_B(1):iX_E(1), &
+                                       iX_B(2):iX_E(2), &
+                                       iX_B(3):iX_E(3),1:nCompDF), &
+                                   D  (1:nDOFX, &
+                                       iX_B(1):iX_E(1), &
+                                       iX_B(2):iX_E(2), &
+                                       iX_B(3):iX_E(3),1:nDF) )
 
         ! --- Apply boundary conditions ---
 
@@ -275,20 +320,20 @@ CONTAINS
 
     ! --- Combine data from all processes ---
 
-    DO iX3   = 1-swX(3), nX(3)+swX(3)
-    DO iX2   = 1-swX(2), nX(2)+swX(2)
-    DO iX1   = 1-swX(1), nX(1)+swX(1)
-    DO iNode = 1       , nDOFX
+    DO iX3    = 1-swX(3), nX(3)+swX(3)
+    DO iX2    = 1-swX(2), nX(2)+swX(2)
+    DO iX1    = 1-swX(1), nX(1)+swX(1)
+    DO iNodeX = 1       , nDOFX
 
       DO iGF = 1, nGF
 
-        CALL amrex_parallel_reduce_sum( G(iNode,iX1,iX2,iX3,iGF) )
+        CALL amrex_parallel_reduce_sum( G(iNodeX,iX1,iX2,iX3,iGF) )
 
       END DO
 
       DO iCF = 1, nCF
 
-        CALL amrex_parallel_reduce_sum( U(iNode,iX1,iX2,iX3,iCF) )
+        CALL amrex_parallel_reduce_sum( U(iNodeX,iX1,iX2,iX3,iCF) )
 
       END DO
 
@@ -301,15 +346,14 @@ CONTAINS
 
     IF( amrex_parallel_ioprocessor() )THEN
 
-      WRITE(FMT,'(A3,I3.3,A10)') '(SP', nDOFX, 'ES25.16E3)'
+!!$      WRITE(FMT,'(A3,I3.3,A10)') '(SP', nDOFX, 'ES25.16E3)'
 
-      OPEN( UNIT = 100, FILE = TRIM( OutputDataFileName ) )
-
-      WRITE(100,*) FMT
-
-      DO iX3 = 1-swX(3), nX(3)+swX(3)
-      DO iX2 = 1-swX(2), nX(2)+swX(2)
-      DO iX1 = 1-swX(1), nX(1)+swX(1)
+!!$      DO iX3 = 1-swX(3), nX(3)+swX(3)
+!!$      DO iX2 = 1-swX(2), nX(2)+swX(2)
+!!$      DO iX1 = 1-swX(1), nX(1)+swX(1)
+      DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+      DO iX1 = 1, nX(1)
 
         CALL ComputePrimitive_Euler &
                ( U(:,iX1,iX2,iX3,iCF_D ),       &
@@ -318,24 +362,65 @@ CONTAINS
                  U(:,iX1,iX2,iX3,iCF_S3),       &
                  U(:,iX1,iX2,iX3,iCF_E ),       &
                  U(:,iX1,iX2,iX3,iCF_Ne),       &
-                 P(:,iPF_D ),                   &
-                 P(:,iPF_V1),                   &
-                 P(:,iPF_V2),                   &
-                 P(:,iPF_V3),                   &
-                 P(:,iPF_E ),                   &
-                 P(:,iPF_Ne),                   &
+                 P(:,iX1,iX2,iX3,iPF_D ),       &
+                 P(:,iX1,iX2,iX3,iPF_V1),       &
+                 P(:,iX1,iX2,iX3,iPF_V2),       &
+                 P(:,iX1,iX2,iX3,iPF_V3),       &
+                 P(:,iX1,iX2,iX3,iPF_E ),       &
+                 P(:,iX1,iX2,iX3,iPF_Ne),       &
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         CALL ComputePressureFromPrimitive &
-               ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), Pressure(:) )
-
-        WRITE(100,TRIM(FMT)) P(:,iPF_D )
-        WRITE(100,TRIM(FMT)) P(:,iPF_V1)
-        WRITE(100,TRIM(FMT)) Pressure(:)
+               ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_E ), &
+                 P(:,iX1,iX2,iX3,iPF_Ne), A(:,iX1,iX2,iX3,iAF_P) )
 
       END DO
+      END DO
+      END DO
+
+      OPEN( UNIT = 100, FILE = TRIM( FileName ) )
+
+      ! --- Works only for 1D and 2D problems ---
+
+      DO iX3     = 1, nX(3)
+      DO iNodeX3 = 1, nNodesX(3)
+
+        DO iX2     = 1, nX(2)
+        DO iNodeX2 = 1, nNodesX(2)
+
+          IF     ( iNodeX2 .EQ. 1 )THEN
+
+            iXL(1) = 1
+            iXR(1) = nNodesX(1)
+
+          ELSE IF( iNodeX2 .EQ. 2 )THEN
+
+            iXL(1) = nNodesX(1) + 1
+            iXR(1) = 2 * nNodesX(1)
+
+          ELSE IF( iNodeX2 .EQ. 3 )THEN
+
+            iXL(1) = 2 * nNodesX(1) + 1
+            iXR(1) = 3 * nNodesX(1)
+
+          END IF
+
+          DO iX1     = 1, nX(1)
+          DO iNodeX1 = iXL(1), iXR(1)
+
+            WRITE(100,'(ES24.16E3,1x)',ADVANCE='NO') &
+              P(iNodeX1,iX1,iX2,iX3,iPF_D)
+
+          END DO
+          END DO
+
+        WRITE(100,*)
+
+        END DO
+        END DO
+
       END DO
       END DO
 
@@ -343,6 +428,8 @@ CONTAINS
 
     END IF
 
+    DEALLOCATE( D )
+    DEALLOCATE( P )
     DEALLOCATE( U )
     DEALLOCATE( G )
 

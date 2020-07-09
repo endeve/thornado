@@ -2,40 +2,40 @@ MODULE MF_Euler_UtilitiesModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,     ONLY: &
+  USE amrex_fort_module,        ONLY: &
     AR => amrex_real
-  USE amrex_box_module,      ONLY: &
+  USE amrex_box_module,         ONLY: &
     amrex_box
-  USE amrex_multifab_module, ONLY: &
+  USE amrex_multifab_module,    ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
-  USE amrex_parallel_module, ONLY: &
+  USE amrex_parallel_module,    ONLY: &
     amrex_parallel_reduce_min, &
     amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule,   ONLY: &
+  USE ProgramHeaderModule,      ONLY: &
     nDOFX, &
     swX
-  USE GeometryFieldsModule,  ONLY: &
+  USE GeometryFieldsModule,     ONLY: &
     nGF
-  USE FluidFieldsModule,     ONLY: &
+  USE FluidFieldsModule,        ONLY: &
     nCF, &
     nPF, &
     nAF
-  USE Euler_UtilitiesModule, ONLY: &
+  USE Euler_UtilitiesModule,    ONLY: &
     ComputeTimeStep_Euler, &
     ComputeFromConserved_Euler
-  USE EquationOfStateModule, ONLY: &
+  USE EquationOfStateModule,    ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
 
   ! --- Local Modules ---
 
-  USE MyAmrModule,              ONLY: &
+  USE InputParsingModule,       ONLY: &
     nLevels
   USE MF_UtilitiesModule,       ONLY: &
     amrex2thornado_Euler, &

@@ -59,16 +59,15 @@ CONTAINS
     LOGICAL :: UseAnalytic
 
     INTEGER  :: i
-    REAL(DP) :: D, V1, V2, V3, E, Ne, P, Cs, Cs_table
+    REAL(DP) :: Gmdd11, Gmdd22, Gmdd33
+    REAL(DP) :: D, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3
+    REAL(DP) :: E, Ne, P, Cs, Cs_table
     REAL(DP) :: K, H, Tau, T, Y, Vsq, CsSq, W, Em, Gm, S
     REAL(DP) :: D_PhysicalUnits
 
     REAL(DP) :: dPdD, dPdT, dPdY
     REAL(DP) :: dEdD, dEdT, dEdY
     REAL(DP) :: dPdE, dPdDe, dPdTau
-
-    REAL(DP) :: X, Alpha, B, Delta, Zero2
-    REAL(DP), DIMENSION(3) :: Phi
 
     REAL(DP) :: dFdU(nCF,nCF)
 
@@ -83,7 +82,7 @@ CONTAINS
     CALL ComputePrimitive_Euler_NonRelativistic &
            ( U(iCF_D ), U(iCF_S1), U(iCF_S2), &
              U(iCF_S3), U(iCF_E ), U(iCF_Ne), &
-             D, V1, V2, V3, E, Ne, &
+             D, Vu1, Vu2, Vu3, E, Ne, &
              G(iGF_Gm_dd_11), &
              G(iGF_Gm_dd_22), &
              G(iGF_Gm_dd_33) )
@@ -97,13 +96,23 @@ CONTAINS
     CALL ComputePressure_TABLE &
           ( D, T, Y, P, dPdD, dPdT, dPdY )
 
+    Gmdd11 = G(iGF_Gm_dd_11)
+    Gmdd22 = G(iGF_Gm_dd_22)
+    Gmdd33 = G(iGF_Gm_dd_33)
+
+    ! --- Distinguish co-/contra-variant velocities.
+
+    Vd1 = Gmdd11 * Vu1
+    Vd2 = Gmdd22 * Vu2
+    Vd3 = Gmdd33 * Vu3
+
     Tau = 1.0_DP / D
 
     dPdE   = dPdT / dEdT
     dPdDe  = ( Tau ) * ( dPdY - dEdY * dPdE )
     dPdTau = (dPdDe * Y + dEdD * dPdE - dPdD) / (Tau**2)
 
-    Vsq = V1**2 + V2**2 + V3**2
+    Vsq = Vu1 * Vd1 + Vu2 * Vd2 + Vu3 * Vd3
 
     CsSq = Tau**2 * ( P * dPdE - dPdTau ) + Y * dPdDe
 
@@ -132,11 +141,14 @@ CONTAINS
 
     SELECT CASE( iDim )
       CASE(1)
-        CALL ComputeFluxJacobian_X1( Tau, T, Y, V1, V2, V3, Vsq, Em, H, dPdTau, dPdE, dPdDe, dFdU )
+        CALL ComputeFluxJacobian_X1 &
+               ( Gmdd11, Tau, T, Y, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, Vsq, Em, H, dPdTau, dPdE, dPdDe, dFdU )
       CASE(2)
-        CALL ComputeFluxJacobian_X2( Tau, T, Y, V1, V2, V3, Vsq, Em, H, dPdTau, dPdE, dPdDe, dFdU )
+        CALL ComputeFluxJacobian_X2 &
+               ( Gmdd22, Tau, T, Y, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, Vsq, Em, H, dPdTau, dPdE, dPdDe, dFdU )
       CASE(3)
-        CALL ComputeFluxJacobian_X3( Tau, T, Y, V1, V2, V3, Vsq, Em, H, dPdTau, dPdE, dPdDe, dFdU )
+        CALL ComputeFluxJacobian_X3 &
+               ( Gmdd33, Tau, T, Y, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, Vsq, Em, H, dPdTau, dPdE, dPdDe, dFdU )
     END SELECT
 
     IF( PRESENT( FJ ) ) THEN
@@ -144,10 +156,13 @@ CONTAINS
     END IF
 
     IF ( UseAnalytic ) THEN
-      CALL ComputeCharacteristicDecomposition_Analytic( iDim, D, V1, V2, V3, E, Ne, P, Cs,  &
-                                                        K, H, Tau, T, Y, VSq, W, Em, dPdD,  &
-                                                        dPdT, dPdY, dEdD, dEdT, dEdY, dPdE, &
-                                                        dPdDe, dPdTau, R, invR )
+      CALL ComputeCharacteristicDecomposition_Analytic &
+             ( iDim, Gmdd11, Gmdd22, Gmdd33, &
+               D, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, E, &
+               Ne, P, Cs, K, H, Tau, T, Y, VSq, W, Em, &
+               dPdD, dPdT, dPdY, dEdD, dEdT, dEdY, dPdE, &
+               dPdDe, dPdTau, R, invR )
+
     ELSE
       CALL ComputeCharacteristicDecomposition_Numeric( R, invR, dFdU )
     END IF
@@ -163,14 +178,18 @@ CONTAINS
   END SUBROUTINE ComputeCharacteristicDecomposition_Euler_NonRelativistic_TABLE
 
   SUBROUTINE ComputeCharacteristicDecomposition_Analytic &
-               ( iDim, D, V1, V2, V3, E, Ne, P, Cs,  &
-                 K, H, Tau, T, Y, VSq, W, Em, dPdD,  &
-                 dPdT, dPdY, dEdD, dEdT, dEdY, dPdE, &
+               ( iDim, Gmdd11, Gmdd22, Gmdd33, &
+                 D, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, E, &
+                 Ne, P, Cs, K, H, Tau, T, Y, VSq, W, Em, &
+                 dPdD, dPdT, dPdY, dEdD, dEdT, dEdY, dPdE, &
                  dPdDe, dPdTau, R, invR )
 
     INTEGER,  INTENT(in)  :: iDim
 
-    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, Cs
+    REAL(DP), INTENT(in) :: Gmdd11, Gmdd22, Gmdd33
+
+    REAL(DP), INTENT(in) :: D, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3
+    REAL(DP), INTENT(in) :: E, Ne, P, Cs
     REAL(DP), INTENT(in) :: K, H, Tau, T, Y, Vsq, W, Em
 
     REAL(DP), INTENT(in) :: dPdD, dPdT, dPdY
@@ -180,14 +199,18 @@ CONTAINS
     INTEGER :: i
 
     REAL(DP) :: X, Alpha, B, Delta, Zero2, invCsSq
-    REAL(DP), DIMENSION(3) :: Phi
+    REAL(DP), DIMENSION(3) :: Phi_u, Phi_d
 
     REAL(DP), INTENT(out) :: R(nCF,nCF)
     REAL(DP), INTENT(out) :: invR(nCF,nCF)
 
-    Phi(1) = dPdE * Tau * V1
-    Phi(2) = dPdE * Tau * V2
-    Phi(3) = dPdE * Tau * V3
+    Phi_u(1) = dPdE * Tau * Vu1
+    Phi_u(2) = dPdE * Tau * Vu2
+    Phi_u(3) = dPdE * Tau * Vu3
+
+    Phi_d(1) = dPdE * Tau * Vd1
+    Phi_d(2) = dPdE * Tau * Vd2
+    Phi_d(3) = dPdE * Tau * Vd3
 
     invCsSq = 1.0_DP / Cs**2
 
@@ -195,7 +218,7 @@ CONTAINS
 
       CASE( 1 )
 
-        Delta = V1**2 - V2**2 - V3**2
+        Delta = Vu1 * Vd1 - Vu2 * Vd2 - Vu3 * Vd3
 
         B = 0.5_DP * (Delta + 2.0_DP * Em + &
                      (2.0_DP * dPdTau * Tau)/dPdE)
@@ -203,59 +226,62 @@ CONTAINS
 
         Alpha = 2.0_DP * (Y) * dPdDe - X * Tau
 
-        R(:,1) = [ One, V1 - Cs, V2, V3, H - Cs * V1, Y]
-        R(:,2) = [ Zero, Zero, One, Zero, V2, Zero ]
-        R(:,3) = [ One, V1, Zero, Zero, B, Zero ]
-        R(:,4) = [ One, V1, Zero, Zero, Zero, (Tau * X) / (2.0_DP * dPdDe) ]
-        R(:,5) = [ Zero, Zero, Zero, One, V3, Zero ]
-        R(:,6) = [ One, V1 + Cs, V2, V3, H + Cs * V1, Y]
+        R(:,1) = [ One, Vd1 - Cs * SQRT( Gmdd11 ), Vd2, &
+                   Vd3, H - Cs * SQRT( Gmdd11 ) * Vu1, Y ]
+        R(:,2) = [ Zero, Zero, One, Zero, Vu2, Zero ]
+        R(:,3) = [ One, Vd1, Zero, Zero, B, Zero ]
+        R(:,4) = [ One, Vd1, Zero, Zero, Zero, &
+                   (Tau * X) / (2.0_DP * dPdDe) ]
+        R(:,5) = [ Zero, Zero, Zero, One, Vu3, Zero ]
+        R(:,6) = [ One, Vd1 + Cs * SQRT( Gmdd11 ), Vd2, &
+                   Vd3, H + Cs * SQRT( Gmdd11 ) * Vu1, Y ]
 
         invR(:,1) = invCsSq * &
-            [ + (2.0_DP * Cs * V1 + W) * 0.25_DP, &
-              - Half * V2 * W, &
+            [ + 0.25_DP * (W + 2.0_DP * Cs * SQRT( Gmdd11 ) * Vu1), &
+              - Half * Vd2 * W, &
               + (2.0_DP * Cs**2 * X + Alpha * W / Tau)/(2.0_DP * X), &
               - (Y) * dPdDe * W / (X * Tau), &
-              - Half * V3 * W, &
-              + 0.25_DP * (W - 2.0_DP * Cs * V1) ]
+              - Half * Vd3 * W, &
+              + 0.25_DP * (W - 2.0_DP * Cs * SQRT( Gmdd11 ) * Vu1) ]
 
         invR(:,2) = invCsSq * &
-            [ - Half * (Cs + Phi(1)), &
-              + Phi(1) * V2, &
-              - Phi(1) * Alpha / (X * Tau), &
-              + 2.0_DP * Y * dPdDe * Phi(1) / (X * Tau), &
-              + Phi(1) * V3, &
-              + Half * (Cs - Phi(1)) ]
+            [ - Half * ( ( Cs / SQRT( Gmdd11 ) ) + Phi_u(1) ), &
+              + Phi_u(1) * Vd2, &
+              - Phi_u(1) * Alpha / (X * Tau), &
+              + 2.0_DP * Y * dPdDe * Phi_u(1) / (X * Tau), &
+              + Phi_u(1) * Vd3, &
+              + Half * ( ( Cs / SQRT( Gmdd11 ) ) - Phi_u(1) ) ]
 
         invR(:,3) = invCsSq * &
-            [ - Half * Phi(2), &
-              + Cs**2 + Phi(2) * V2, &
-              - Phi(2) * Alpha / (X * Tau), &
-              + 2.0_DP * Y * dPdDe * Phi(2) / (X * Tau), &
-              + Phi(2) * V3, &
-              - Half * Phi(2) ]
+            [ - Half * Phi_u(2), &
+              + Cs**2 + Phi_u(2) * Vd2, &
+              - Phi_u(2) * Alpha / (X * Tau), &
+              + 2.0_DP * Y * dPdDe * Phi_u(2) / (X * Tau), &
+              + Phi_u(2) * Vd3, &
+              - Half * Phi_u(2) ]
 
         invR(:,4) = invCsSq * &
-            [ - Half * Phi(3), &
-              + Phi(3) * V2, &
-              - Phi(3) * Alpha / (X * Tau), &
-              + 2.0_DP * Y * dPdDe * Phi(3) / (X * Tau), &
-              + Cs**2 + Phi(3) * V3, &
-              - Half * Phi(3) ]
+            [ - Half * Phi_u(3), &
+              + Phi_u(3) * Vd2, &
+              - Phi_u(3) * Alpha / (X * Tau), &
+              + 2.0_DP * Y * dPdDe * Phi_u(3) / (X * Tau), &
+              + Cs**2 + Phi_u(3) * Vd3, &
+              - Half * Phi_u(3) ]
 
         invR(:,5) = invCsSq * &
             [ + Half * dPdE * Tau, &
-              - Phi(2), &
+              - Phi_d(2), &
               + dPdE * Alpha  / X, &
               - ((2.0_DP * Y * dPdDe * dPdE)/ X), &
-              - Phi(3), &
+              - Phi_d(3), &
               + Half * dPdE * Tau ]
 
         invR(:,6) = invCsSq * &
             [ + Half * dPdDe, &
-              - V2 * dPdDe, &
+              - Vd2 * dPdDe, &
               + (dPdDe * (-2.0_DP * Cs**2 + Alpha))/(Tau * X), &
               + 2.0_DP * dPdDe * (Cs**2 - Y * dPdDe)/(Tau * X), &
-              - dPdDe * V3, &
+              - Vd3 * dPdDe, &
               + Half * dPdDe ]
 
         IF( Debug )THEN
@@ -271,7 +297,7 @@ CONTAINS
 
       CASE(2)
 
-        Delta = V2**2 - V3**2 - V1**2
+        Delta = Vu2 * Vd2 - Vu1 * Vd1 - Vu3 * Vd3
 
         B = 0.5_DP * (Delta + 2.0_DP * Em + &
                      (2.0_DP * dPdTau * Tau)/dPdE)
@@ -279,59 +305,62 @@ CONTAINS
 
         Alpha = 2.0_DP * (Y) * dPdDe - X * Tau
 
-        R(:,1) = [ One, V1, V2 - Cs, V3, H - Cs * V2, Y]
-        R(:,2) = [ Zero, One, Zero, Zero, V1, Zero ]
-        R(:,3) = [ One, Zero, V2, Zero, B, Zero ]
-        R(:,4) = [ One, Zero, V2, Zero, Zero, (Tau * X) / (2.0_DP * dPdDe) ]
-        R(:,5) = [ Zero, Zero, Zero, One, V3, Zero ]
-        R(:,6) = [ One, V1, V2 + Cs, V3, H + Cs * V2, Y]
+        R(:,1) = [ One, Vd1, Vd2 - Cs * SQRT( Gmdd22 ), &
+                   Vd3, H - Cs * SQRT( Gmdd22 ) * Vu2, Y ]
+        R(:,2) = [ Zero, One, Zero, Zero, Vu1, Zero ]
+        R(:,3) = [ One, Zero, Vd2, Zero, B, Zero ]
+        R(:,4) = [ One, Zero, Vd2, Zero, Zero, &
+                   (Tau * X) / (2.0_DP * dPdDe) ]
+        R(:,5) = [ Zero, Zero, Zero, One, Vu3, Zero ]
+        R(:,6) = [ One, Vd1, Vd2 + Cs * SQRT( Gmdd22 ), &
+                   Vd3, H + Cs * SQRT( Gmdd22 ) * Vu2, Y ]
 
         invR(:,1) = invCsSq * &
-            [ + (2.0_DP * Cs * V2 + W) * 0.25_DP, &
-              - Half * V1 * W, & ! CHANGE V2 TO V1
+            [ + 0.25_DP * (W + 2.0_DP * Cs * SQRT( Gmdd22 ) * Vu2), &
+              - Half * Vd1 * W, &
               + (2.0_DP * Cs**2 * X + Alpha * W / Tau)/(2.0_DP * X), &
               - (Y) * dPdDe * W / (X * Tau), &
-              - Half * V3 * W, &
-              + 0.25_DP * (W - 2.0_DP * Cs * V2) ] ! CHANGE TO V2
+              - Half * Vd3 * W, &
+              + 0.25_DP * (W - 2.0_DP * Cs * SQRT( Gmdd22 ) * Vu2) ]
 
         invR(:,2) = invCsSq * &
-            [ - Half * (Phi(1)), &
-              + Cs**2 + Phi(1) * V1, &
-              - Phi(1) * Alpha / (X * Tau), &
-              + 2.0_DP * Y * dPdDe * Phi(1) / (X * Tau), &
-              + Phi(1) * V3, &
-              - Half * (Phi(1)) ]
+            [ - Half * (Phi_u(1)), &
+              + Cs**2 + Phi_u(1) * Vd1, &
+              - Phi_u(1) * Alpha / (X * Tau), &
+              + 2.0_DP * Y * dPdDe * Phi_u(1) / (X * Tau), &
+              + Phi_u(1) * Vd3, &
+              - Half * (Phi_u(1)) ]
 
         invR(:,3) = invCsSq * &
-            [ - Half * (Cs + Phi(2)), &
-              + Phi(2) * V1, &
-              - Phi(2) * Alpha / (X * Tau), &
-              + 2.0_DP * Y * dPdDe * Phi(2) / (X * Tau), &
-              + Phi(2) * V3, &
-              + Half * (Cs - Phi(2)) ]
+            [ - Half * ( ( Cs / Gmdd22 ) + Phi_u(2)), &
+              + Phi_u(2) * Vd1, &
+              - Phi_u(2) * Alpha / (X * Tau), &
+              + 2.0_DP * Y * dPdDe * Phi_u(2) / (X * Tau), &
+              + Phi_u(2) * Vd3, &
+              + Half * ( ( Cs / Gmdd22 ) - Phi_u(2)) ]
 
         invR(:,4) = invCsSq * &
-            [ - Half * Phi(3), &
-              + Phi(3) * V1, &
-              - Phi(3) * Alpha / (X * Tau), &
-              + 2.0_DP * Y * dPdDe * Phi(3) / (X * Tau), &
-              + Cs**2 + Phi(3) * V3, &
-              - Half * Phi(3) ]
+            [ - Half * Phi_u(3), &
+              + Phi_u(3) * Vd1, &
+              - Phi_u(3) * Alpha / (X * Tau), &
+              + 2.0_DP * Y * dPdDe * Phi_u(3) / (X * Tau), &
+              + Cs**2 + Phi_u(3) * Vd3, &
+              - Half * Phi_u(3) ]
 
         invR(:,5) = invCsSq * &
             [ + Half * dPdE * Tau, &
-              - Phi(1), &
+              - Phi_d(1), &
               + dPdE * Alpha  / X, &
               - ((2.0_DP * Y * dPdDe * dPdE)/ X), &
-              - Phi(3), &
+              - Phi_d(3), &
               + Half * dPdE * Tau ]
 
         invR(:,6) = invCsSq * &
             [ + Half * dPdDe, &
-              - V1 * dPdDe, &
+              - Vd1 * dPdDe, &
               + (dPdDe * (-2.0_DP * Cs**2 + Alpha))/(Tau * X), &
               + 2.0_DP * dPdDe * (Cs**2 - Y * dPdDe)/(Tau * X), &
-              - dPdDe * V3, &
+              - Vd3 * dPdDe, &
               + Half * dPdDe ]
 
         IF( Debug )THEN
@@ -420,102 +449,114 @@ CONTAINS
 
   END SUBROUTINE ComputeCharacteristicDecomposition_Numeric
 
-  SUBROUTINE ComputeFluxJacobian_X1( Tau, T, Y, V1, V2, V3, Vsq, Em, H, &
-                                     dPdTau, dPdE, dPdDe, dFdU_X1 )
+  SUBROUTINE ComputeFluxJacobian_X1( Gmdd11, Tau, T, Y, Vu1, Vu2, Vu3, &
+                                     Vd1, Vd2, Vd3, Vsq, Em, H, dPdTau, &
+                                     dPdE, dPdDe, dFdU_X1 )
 
-    REAL(DP),  INTENT(in) :: Tau, T, Y, V1, V2, V3, VSq, Em, H
+    REAL(DP),  INTENT(in) :: Gmdd11
+    REAL(DP),  INTENT(in) :: Tau, T, Y
+    REAL(DP),  INTENT(in) :: Vu1, Vu2, Vu3, Vd1, Vd2, Vd3
+    REAL(DP),  INTENT(in) :: Vsq, Em, H
     REAL(DP),  INTENT(in) :: dPdTau, dPdE, dPdDe
     REAL(DP), INTENT(out) :: dFdU_X1(nCF,nCF)
 
-    dFdU_X1(1,:) = [ 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+    dFdU_X1(1,:) = [ 0.0_DP, 1.0_DP / Gmdd11, 0.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
 
-    dFdU_X1(2,1) = - V1**2 - Tau**2 * dPdTau &
+    dFdU_X1(2,1) = - Vu1 * Vd1 - Tau**2 * dPdTau &
                    - Tau * dPdE * ( Em - 0.5_DP * Vsq )
-    dFdU_X1(2,2) = V1 * ( 2.0_DP - Tau * dPdE )
-    dFdU_X1(2,3) = - dPdE * Tau * V2
-    dFdU_X1(2,4) = - dPdE * Tau * V3
+    dFdU_X1(2,2) = Vu1 * ( 2.0_DP - Tau * dPdE )
+    dFdU_X1(2,3) = - dPdE * Tau * Vu2
+    dFdU_X1(2,4) = - dPdE * Tau * Vu3
     dFdU_X1(2,5) = dPdE * Tau
     dFdU_X1(2,6) = dPdDe
 
-    dFdU_X1(3,:) = [ - V1 * V2, V2, V1, 0.0_DP, 0.0_DP, 0.0_DP ]
+    dFdU_X1(3,:) = [ - Vu1 * Vd2, Vd2 / Gmdd11, Vu1, 0.0_DP, 0.0_DP, 0.0_DP ]
 
-    dFdU_X1(4,:) = [ - V1 * V3, V3, 0.0_DP, V1, 0.0_DP, 0.0_DP ]
+    dFdU_X1(4,:) = [ - Vu1 * Vd3, Vd3 / Gmdd11, 0.0_DP, Vu1, 0.0_DP, 0.0_DP ]
 
-    dFdU_X1(5,1) = V1 * ( - H - dPdTau * Tau**2 &
+    dFdU_X1(5,1) = Vu1 * ( - H - dPdTau * Tau**2 &
                           - Tau * dPdE * ( Em - 0.5_DP * Vsq ) )
-    dFdU_X1(5,2) = H - dPdE * Tau * V1**2
-    dFdU_X1(5,3) =   - dPdE * Tau * V1 * V2
-    dFdU_X1(5,4) =   - dPdE * Tau * V1 * V3
-    dFdU_X1(5,5) = V1 * ( 1.0_DP + dPdE * Tau )
-    dFdU_X1(5,6) = V1 * dPdDe
+    dFdU_X1(5,2) = ( H / Gmdd11 ) - dPdE * Tau * Vu1**2
+    dFdU_X1(5,3) =   - dPdE * Tau * Vu1 * Vu2
+    dFdU_X1(5,4) =   - dPdE * Tau * Vu1 * Vu3
+    dFdU_X1(5,5) = Vu1 * ( 1.0_DP + dPdE * Tau )
+    dFdU_X1(5,6) = Vu1 * dPdDe
 
-    dFdU_X1(6,:) = [ - V1 * Y, Y, 0.0_DP, 0.0_DP, 0.0_DP, V1 ]
+    dFdU_X1(6,:) = [ - Vu1 * Y, Y / Gmdd11, 0.0_DP, 0.0_DP, 0.0_DP, Vu1 ]
 
   END SUBROUTINE ComputeFluxJacobian_X1
 
-  SUBROUTINE ComputeFluxJacobian_X2( Tau, T, Y, V1, V2, V3, Vsq, E, H, &
-                                     dPdTau, dPdE, dPdDe, dFdU_X2 )
+  SUBROUTINE ComputeFluxJacobian_X2( Gmdd22, Tau, T, Y, Vu1, Vu2, Vu3, &
+                                     Vd1, Vd2, Vd3, Vsq, Em, H, dPdTau, &
+                                     dPdE, dPdDe, dFdU_X2 )
 
-    REAL(DP),  INTENT(in) :: Tau, T, Y, V1, V2, V3, VSq, E, H
+    REAL(DP),  INTENT(in) :: Gmdd22
+    REAL(DP),  INTENT(in) :: Tau, T, Y
+    REAL(DP),  INTENT(in) :: Vu1, Vu2, Vu3, Vd1, Vd2, Vd3
+    REAL(DP),  INTENT(in) :: Vsq, Em, H
     REAL(DP),  INTENT(in) :: dPdTau, dPdE, dPdDe
     REAL(DP), INTENT(out) :: dFdU_X2(nCF,nCF)
 
-    dFdU_X2(1,:) = [ 0.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP, 0.0_DP ]
+    dFdU_X2(1,:) = [ 0.0_DP, 0.0_DP, 1.0_DP / Gmdd22, 0.0_DP, 0.0_DP, 0.0_DP ]
 
-    dFdU_X2(2,:) = [ - V1 * V2, V2, V1, 0.0_DP, 0.0_DP, 0.0_DP ]
+    dFdU_X2(2,:) = [ - Vu2 * Vd1, Vu2, Vd1 / Gmdd22, 0.0_DP, 0.0_DP, 0.0_DP ]
 
-    dFdU_X2(3,1) = - V2**2 - Tau**2 * dPdTau &
-                   - Tau * dPdE * ( Tau * E - 0.5_DP * Vsq )
-    dFdU_X2(3,2) = - dPdE * Tau * V1
-    dFdU_X2(3,3) = V2 * ( 2.0_DP - Tau * dPdE )
-    dFdU_X2(3,4) = - dPdE * Tau * V3
+    dFdU_X2(3,1) = - Vu2 * Vd2 - Tau**2 * dPdTau &
+                   - Tau * dPdE * ( Tau * Em - 0.5_DP * Vsq )
+    dFdU_X2(3,2) = - dPdE * Tau * Vu1
+    dFdU_X2(3,3) = Vu2 * ( 2.0_DP - Tau * dPdE )
+    dFdU_X2(3,4) = - dPdE * Tau * Vu3
     dFdU_X2(3,5) = dPdE * Tau
     dFdU_X2(3,6) = dPdDe
 
-    dFdU_X2(4,:) = [ - V2 * V3, 0.0_DP, V3, V2, 0.0_DP, 0.0_DP ]
+    dFdU_X2(4,:) = [ - Vu2 * Vd3, 0.0_DP, Vd3 / Gmdd22, Vu2, 0.0_DP, 0.0_DP ]
 
-    dFdU_X2(5,1) = V2 * ( - H - dPdTau * Tau**2 &
-                          - Tau * dPdE * ( Tau * E - 0.5_DP * Vsq ) )
-    dFdU_X2(5,2) =   - dPdE * Tau * V1 * V2
-    dFdU_X2(5,3) = H - dPdE * Tau * V2**2
-    dFdU_X2(5,4) =   - dPdE * Tau * V2 * V3
-    dFdU_X2(5,5) = V1 * ( 1.0_DP + dPdE * Tau )
-    dFdU_X2(5,6) = V1 * dPdDe
+    dFdU_X2(5,1) = Vu2 * ( - H - dPdTau * Tau**2 &
+                          - Tau * dPdE * ( Em - 0.5_DP * Vsq ) )
+    dFdU_X2(5,2) =   - dPdE * Tau * Vu1 * Vu2
+    dFdU_X2(5,3) = ( H / Gmdd22 ) - dPdE * Tau * Vu2**2
+    dFdU_X2(5,4) =   - dPdE * Tau * Vu2 * Vu3
+    dFdU_X2(5,5) = Vu2 * ( 1.0_DP + dPdE * Tau )
+    dFdU_X2(5,6) = Vu2 * dPdDe
 
-    dFdU_X2(6,:) = [ - V2 * Y, 0.0_DP, Y, 0.0_DP, 0.0_DP, V2 ]
+    dFdU_X2(6,:) = [ - Vu2 * Y, 0.0_DP, Y / Gmdd22, 0.0_DP, 0.0_DP, Vu2 ]
 
   END SUBROUTINE ComputeFluxJacobian_X2
 
-  SUBROUTINE ComputeFluxJacobian_X3( Tau, T, Y, V1, V2, V3, Vsq, E, H, &
-                                     dPdTau, dPdE, dPdDe, dFdU_X3 )
+  SUBROUTINE ComputeFluxJacobian_X3( Gmdd33, Tau, T, Y, Vu1, Vu2, Vu3, &
+                                     Vd1, Vd2, Vd3, Vsq, Em, H, dPdTau, &
+                                     dPdE, dPdDe, dFdU_X3 )
 
-    REAL(DP),  INTENT(in) :: Tau, T, Y, V1, V2, V3, VSq, E, H
+    REAL(DP),  INTENT(in) :: Gmdd33
+    REAL(DP),  INTENT(in) :: Tau, T, Y
+    REAL(DP),  INTENT(in) :: Vu1, Vu2, Vu3, Vd1, Vd2, Vd3
+    REAL(DP),  INTENT(in) :: Vsq, Em, H
     REAL(DP),  INTENT(in) :: dPdTau, dPdE, dPdDe
     REAL(DP), INTENT(out) :: dFdU_X3(nCF,nCF)
 
-    dFdU_X3(1,:) = [ 0.0_DP, 1.0_DP, 0.0_DP, 1.0_DP, 0.0_DP, 0.0_DP ]
+    dFdU_X3(1,:) = [ 0.0_DP, 0.0_DP, 0.0_DP, 1.0_DP / Gmdd33, 0.0_DP, 0.0_DP ]
 
-    dFdU_X3(2,:) = [ - V1 * V3, V3, 0.0_DP, V1, 0.0_DP, 0.0_DP ]
+    dFdU_X3(2,:) = [ - Vu3 * Vd1, Vu3, 0.0_DP, Vd1 / Gmdd33, 0.0_DP, 0.0_DP ]
 
-    dFdU_X3(3,:) = [ - V3 * V2, 0.0_DP, V3, V2, 0.0_DP, 0.0_DP ]
+    dFdU_X3(3,:) = [ - Vu3 * Vd2, 0.0_DP, Vu3, Vd2 / Gmdd33, 0.0_DP, 0.0_DP ]
 
-    dFdU_X3(4,1) = - V3**2 - Tau**2 * dPdTau &
-                   - Tau * dPdE * ( Tau * E - 0.5_DP * Vsq )
-    dFdU_X3(4,2) = - dPdE * Tau * V1
-    dFdU_X3(4,3) = - dPdE * Tau * V2
-    dFdU_X3(4,4) = V3 * ( 2.0_DP - Tau * dPdE )
+    dFdU_X3(4,1) = - Vu3 * Vd3 - Tau**2 * dPdTau &
+                   - Tau * dPdE * ( Tau * Em - 0.5_DP * Vsq )
+    dFdU_X3(4,2) = - dPdE * Tau * Vu1
+    dFdU_X3(4,3) = - dPdE * Tau * Vu2
+    dFdU_X3(4,4) = Vu3 * ( 2.0_DP - Tau * dPdE )
     dFdU_X3(4,5) = dPdE * Tau
     dFdU_X3(4,6) = dPdDe
 
-    dFdU_X3(5,1) = V2 * ( - H - dPdTau * Tau**2 &
-                          - Tau * dPdE * ( Tau * E - 0.5_DP * Vsq ) )
-    dFdU_X3(5,2) =   - dPdE * Tau * V1 * V2
-    dFdU_X3(5,3) = H - dPdE * Tau * V2**2
-    dFdU_X3(5,4) =   - dPdE * Tau * V2 * V3
-    dFdU_X3(5,5) = V1 * ( 1.0_DP + dPdE * Tau )
-    dFdU_X3(5,6) = V1 * dPdDe
+    dFdU_X3(5,1) = Vu3 * ( - H - dPdTau * Tau**2 &
+                          - Tau * dPdE * ( Em - 0.5_DP * Vsq ) )
+    dFdU_X3(5,2) =   - dPdE * Tau * Vu3 * Vu1
+    dFdU_X3(5,3) = ( H / Gmdd33 ) - dPdE * Tau * Vu3**2
+    dFdU_X3(5,4) =   - dPdE * Tau * Vu3 * Vu2
+    dFdU_X3(5,5) = Vu3 * ( 1.0_DP + dPdE * Tau )
+    dFdU_X3(5,6) = Vu3 * dPdDe
 
-    dFdU_X3(6,:) = [ - V2 * Y, 0.0_DP, Y, 0.0_DP, 0.0_DP, V2 ]
+    dFdU_X3(6,:) = [ - Vu3 * Y, 0.0_DP, 0.0_DP, Y / Gmdd33, 0.0_DP, Vu3 ]
 
   END SUBROUTINE ComputeFluxJacobian_X3
 

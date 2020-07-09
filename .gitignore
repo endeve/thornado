@@ -21,10 +21,12 @@
 *.a
 
 # AMReX
-*main*ex
+*ApplicationDriver*ex
 *tmp_build_dir
-*chk*
+*chk_*
+*plt_*
 *thornado_*
+*Backtrace.*
 
 # Doxygen
 Documents/html
