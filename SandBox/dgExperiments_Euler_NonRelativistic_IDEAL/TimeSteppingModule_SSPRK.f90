@@ -6,7 +6,7 @@ MODULE TimeSteppingModule_SSPRK
     iX_B0, iX_B1, iX_E0, iX_E1, &
     nDOFX
   USE FluidFieldsModule, ONLY: &
-    nCF
+    nCF, iCF_D
   USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
     ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
   USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL, ONLY: &
@@ -52,14 +52,14 @@ MODULE TimeSteppingModule_SSPRK
   END INTERFACE
 
   INTERFACE
-    SUBROUTINE GravitySolver( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+    SUBROUTINE GravitySolver( iX_B0, iX_E0, iX_B1, iX_E1, G, D )
       USE KindModule, ONLY: DP
       INTEGER, INTENT(in)     :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
       REAL(DP), INTENT(inout) :: &
         G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(in)    :: &
-        U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+        D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
     END SUBROUTINE GravitySolver
   END INTERFACE
 
@@ -233,7 +233,8 @@ CONTAINS
         IF( SolveGravity )THEN
 
           CALL ComputeGravitationalPotential &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, &
+                   G, U_SSPRK(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
 
         END IF
 
@@ -265,7 +266,8 @@ CONTAINS
     IF( SolveGravity )THEN
 
       CALL ComputeGravitationalPotential &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, &
+               G, U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,iCF_D) )
 
     END IF
 
