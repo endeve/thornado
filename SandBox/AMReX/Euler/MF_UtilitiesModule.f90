@@ -26,7 +26,9 @@ MODULE MF_UtilitiesModule
     nGF,          &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33
+    iGF_Gm_dd_33, &
+    iGF_SqrtGm,   &
+    unitsGF
   USE FluidFieldsModule,                 ONLY: &
     nCF,     &
     iCF_D,   &
@@ -42,6 +44,7 @@ MODULE MF_UtilitiesModule
     iPF_V3,  &
     iPF_E,   &
     iPF_Ne,  &
+    unitsPF, &
     nDF,     &
     iDF_TCI, &
     nAF,     &
@@ -51,7 +54,8 @@ MODULE MF_UtilitiesModule
   USE EquationOfStateModule,             ONLY: &
     ComputePressureFromPrimitive
   USE UnitsModule,                       ONLY: &
-    Gram, &
+    Gram,      &
+    Kilometer, &
     Centimeter
 
   ! --- Local Modules ---
@@ -381,6 +385,7 @@ CONTAINS
       END DO
 
       OPEN( UNIT = 100, FILE = TRIM( FileName ) )
+      OPEN( UNIT = 101, FILE = TRIM( FileName ) // '.SqrtGm' )
 
       ! --- Works only for 1D and 2D problems ---
 
@@ -411,7 +416,10 @@ CONTAINS
           DO iNodeX1 = iXL(1), iXR(1)
 
             WRITE(100,'(ES24.16E3,1x)',ADVANCE='NO') &
-              P(iNodeX1,iX1,iX2,iX3,iPF_D)
+              P(iNodeX1,iX1,iX2,iX3,iPF_D) / unitsPF(iPF_D)
+
+            WRITE(101,'(ES24.16E3,1x)',ADVANCE='NO') &
+              G(iNodeX1,iX1,iX2,iX3,iGF_SqrtGm) / unitsGF(iGF_SqrtGm)
 
           END DO
           END DO
@@ -424,6 +432,7 @@ CONTAINS
       END DO
       END DO
 
+      CLOSE( 101 )
       CLOSE( 100 )
 
     END IF
