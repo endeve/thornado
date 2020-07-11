@@ -133,7 +133,7 @@ CONTAINS
     PF_V1 = ( CF_S1 / GF_Gm11 ) / ( CF_D * W * h )
     PF_V2 = ( CF_S2 / GF_Gm22 ) / ( CF_D * W * h )
     PF_V3 = ( CF_S3 / GF_Gm33 ) / ( CF_D * W * h )
-    PF_E  = CF_D * ( h - One ) / W - p
+    PF_E  = CF_D * ( eps + p / PF_D ) / W - p
     PF_Ne = CF_Ne / W
 
   END SUBROUTINE ComputePrimitive_Scalar
