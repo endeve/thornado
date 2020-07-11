@@ -2102,12 +2102,14 @@ CONTAINS
         iX_E1 = BX % hi + swX
 
         iX_E(1) = iX_E0(1)
+        iX_B(1) = iX_B0(1)
 
+        IF( BX % lo(1) .EQ. 1     ) iX_B(1) = iX_B1(1)
         IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = iX_E1(1)
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E (1)
+        DO iX1 = iX_B (1), iX_E (1)
 
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
