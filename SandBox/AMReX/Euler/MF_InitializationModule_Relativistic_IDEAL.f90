@@ -1766,11 +1766,11 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     MassPNS            = MassPNS            * SolarMass
-    AccretionRate      = AccretionRate      * SolarMass / Second
+    AccretionRate      = AccretionRate      * ( SolarMass / Second )
     ShockRadius        = ShockRadius        * Kilometer
     PolytropicConstant = PolytropicConstant &
-                           * ( Erg / Centimeter**3 ) &
-                           / ( Gram / Centimeter**3 )**( Gamma_IDEAL )
+                           * ( ( Erg / Centimeter**3 ) &
+                           / ( Gram / Centimeter**3 )**( Gamma_IDEAL ) )
     rPerturbationInner = rPerturbationInner * Kilometer
     rPerturbationOuter = rPerturbationOuter * Kilometer
 
@@ -1935,7 +1935,6 @@ CONTAINS
         END DO
 
       END DO
-
 
       ! --- Locate first element with un-shocked fluid ---
 
@@ -2102,24 +2101,21 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
-        iX_B(1) = iX_B0(1)
         iX_E(1) = iX_E0(1)
 
-        IF( BX % lo(1) .EQ. 1     ) iX_B(1) = iX_B1(1)
         IF( BX % hi(1) .EQ. nX(1) ) iX_E(1) = iX_E1(1)
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B (1), iX_E (1)
+        DO iX1 = iX_B0(1), iX_E (1)
 
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          DO iNodeX3 = 1, nNodesX(3)
-          DO iNodeX2 = 1, nNodesX(2)
-          DO iNodeX1 = 1, nNodesX(1)
+          DO iNodeX = 1, nDOFX
 
-            iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
 
             IF( ApplyPerturbation )THEN
 
@@ -2156,8 +2152,6 @@ CONTAINS
             uPF_K(iNodeX,iPF_V3) = Zero
             uPF_K(iNodeX,iPF_E ) = P(iNodeX1,iX1) / ( Gamma_IDEAL - One )
 
-          END DO
-          END DO
           END DO
 
           CALL ComputePressureFromPrimitive &
