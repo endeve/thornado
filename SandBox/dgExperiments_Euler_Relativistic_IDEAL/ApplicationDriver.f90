@@ -137,6 +137,7 @@ PROGRAM ApplicationDriver
   LOGICAL  :: ActivateUnits = .FALSE.
   REAL(DP) :: Timer_Evolution
 
+  swX = [ 0, 0, 0 ]
   RestartFileNumber = -1
 
   t = 0.0_DP
@@ -168,9 +169,10 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 64, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      nX  = [ 64, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
     CASE( 'Advection2D' )
 
@@ -182,9 +184,10 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 32, 32, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ One / SQRT( Two ), One / SQRT( Two ), 1.0_DP ]
+      nX  = [ 32, 32, 1 ]
+      swX = [ 1, 1, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ One / SQRT( Two ), One / SQRT( Two ), 1.0_DP ]
 
     CASE( 'RiemannProblem' )
 
@@ -249,6 +252,7 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'CARTESIAN'
 
       nX  = [ 128, 1, 1 ]
+      swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -275,6 +279,7 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'CARTESIAN'
 
       nX  = [ 64, 64, 1 ]
+      swX = [ 1, 1, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -285,14 +290,13 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'SPHERICAL'
 
       Gamma = 5.0_DP / 3.0_DP
-
-      nX = [ 256, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 2.0_DP, Pi, TwoPi ]
-
+      t_end = 5.0d-1
       bcX = [ 2, 0, 0 ]
 
-      t_end = 5.0d-1
+      nX  = [ 256, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 2.0_DP, Pi, TwoPi ]
 
       WriteGF = .TRUE.
 
@@ -304,14 +308,13 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'SPHERICAL'
 
       Gamma = 4.0_DP / 3.0_DP
-
-      nX = [ 256, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.2_DP, Pi, TwoPi ]
-
+      t_end = 1.0d0
       bcX = [ 3, 0, 0 ]
 
-      t_end = 1.0d0
+      nX  = [ 256, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.2_DP, Pi, TwoPi ]
 
       WriteGF = .TRUE.
 
@@ -320,20 +323,19 @@ PROGRAM ApplicationDriver
        CoordinateSystem = 'CARTESIAN'
 
        Gamma = 4.0d0 / 3.0d0
+       t_end = 1.0d-1
+       bcX = [ 1, 1, 0 ]
 
        nX = [ 16, 32, 1 ]
+      swX = [ 1, 1, 0 ]
        xL = [ -0.5d0, -1.0d0, 0.0d0 ]
        xR = [  0.5d0,  1.0d0, 1.0d0 ]
 
-       bcX = [ 1, 1, 0 ]
-
-       t_end = 1.0d-1
-
     CASE( 'StandingAccretionShock' )
 
-      CoordinateSystem = 'SPHERICAL'
-
       Gamma = 4.0e0_DP / 3.0e0_DP
+      t_end = 3.0d2 * Millisecond
+      bcX = [ 11, 0, 0 ]
 
       MassPNS            = 1.4_DP    * SolarMass
       RadiusPNS          = 40.0_DP   * Kilometer
@@ -341,20 +343,18 @@ PROGRAM ApplicationDriver
       AccretionRate      = 0.3_DP    * SolarMass / Second
       PolytropicConstant = 2.0e14_DP * Erg / Centimeter**3 &
                                          / ( Gram / Centimeter**3 )**( Gamma )
-
       ApplyPerturbation     = .TRUE.
       PerturbationOrder     = 0
       PerturbationAmplitude = 0.04_DP
       rPerturbationInner    = 260.0_DP * Kilometer
       rPerturbationOuter    = 280.0_DP * Kilometer
 
-      nX = [ 960, 1, 1 ]
-      xL = [ RadiusPNS, 0.0_DP, 0.0_DP ]
-      xR = [ 1.0e3_DP * Kilometer, Pi, TwoPi ]
+      nX  = [ 960, 1, 1 ]
+      swX = [ 1, 1, 0 ]
+      xL  = [ RadiusPNS, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0e3_DP * Kilometer, Pi, TwoPi ]
 
-      bcX = [ 11, 0, 0 ]
-
-      t_end = 3.0d2 * Millisecond
+      CoordinateSystem = 'SPHERICAL'
 
       WriteGF = .TRUE.
 
@@ -367,14 +367,13 @@ PROGRAM ApplicationDriver
        CoordinateSystem = 'SPHERICAL'
 
        Gamma = 2.0_DP
-
-       nX = [ 128, 1, 1 ]
-       xL = [ Zero    , Zero, Zero  ]
-       xR = [ 1.0e1_DP * Kilometer,  Pi , TwoPi ]
-
+       t_end = 1.0e+1 * Millisecond
        bcX = [ 30, 0, 0 ]
 
-       t_end = 1.0e+1 * Millisecond
+       nX = [ 128, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+       xL = [ Zero, Zero, Zero  ]
+       xR = [ 1.0e1_DP * Kilometer,  Pi , TwoPi ]
 
       WriteGF = .TRUE.
 
@@ -385,6 +384,8 @@ PROGRAM ApplicationDriver
        CoordinateSystem = 'SPHERICAL'
 
        Gamma = 1.30_DP
+       t_end = CollapseTime - 0.5_DP * Millisecond
+       bcX = [ 30, 0, 0 ]
 
        CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
        CentralPressure = 6.0e27_DP * Erg / Centimeter**3
@@ -392,12 +393,9 @@ PROGRAM ApplicationDriver
        CollapseTime    = 1.50e2_DP * Millisecond
 
        nX = [ 256, 1, 1 ]
+      swX = [ 1, 0, 0 ]
        xL = [ Zero      , Zero, Zero  ]
        xR = [ CoreRadius,  Pi , TwoPi ]
-
-       bcX = [ 30, 0, 0 ]
-
-       t_end = CollapseTime - 0.5_DP * Millisecond
 
       WriteGF = .TRUE.
 
@@ -463,7 +461,7 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 1, 1 ], &
+             = swX, &
            bcX_Option &
              = bcX, &
            xL_Option &
